@@ -130,3 +130,19 @@ Catena render: `inverno_render9..15.py` (+ `inverno_citta.js`, `inverno_soglie.j
 - `inverno_render17.py`: i «rombi scuri a spigolo vivo» (anche quelli vicino ai lampioni) erano l'isola a bassa risoluzione (`buildBase`, 8 cm sotto i blocchi) che spuntava dove il terreno vero è livellato/incavato. Ora è a pezzi da un blocco (`ISO.basePieces`) e si spegne dove il blocco vero è caricato (`updateChunks`); texture lineare. Asfalto: tinta da rumore morbido invece che per gruppi di 4 caselle. Piazza: niente scacchiera/fughe per casella, lastre a correre continue.
 - `inverno_render18.py`: fanghiglia, chiazze bagnate, fuliggine e rattoppi da rettangoli a ovali sfumati (`smear`).
 - Copia di render.js prima di questi due: `_backup_neon_modelli/render_prima_dei_suoli.js`.
+
+## 4-5 ottobre — notte (niente neve, niente azzurri, regime, luci, murali)
+Catena: dopo render18 → `inverno_render19..25.py` (+ frammento `inverno_propaganda.js` incluso da render22, la cui buildPropaganda è poi riscritta da render24). Ogni script ha la guardia «già applicato».
+- render19: `const NEVE = false` in cima a render.js spegne tutta la neve (terreno, tetti, cumuli, alberi, fiocchi, marciapiedi). `true` la rimette.
+- render20: niente azzurri (nel post-processing ogni ciano saturo va verso il grigio, manopola `AZZ`); Bar Sirena non più verde acqua.
+- render21: tonalità del regime nel post (manopole `REG_SAT`, `REG_BIANCO`): restano vivi rossi e luce calda. render24 l'ha ammorbidita (REG_SAT .62) perché era tutto grigio.
+- render23: luci artificiali quasi spente di giorno, aloni a terra deboli, meno luci di riempimento (le ombre si vedono).
+- render24: `propPlan()` decide ALLA COSTRUZIONE dove va il ritratto del Garante: quel tratto di facciata (S o E, non il lato della porta, tutta l'altezza) nasce muro cieco, senza finestre né cornici. Slogan = insegne a lettere sul tetto. Manifesti e oggetti a muro del piano terra solo sui moduli `wall` (`b.__gwall`). Intonaci bianchi in PALS.borgo, finestre calde (LIT), sodio `#f0a048`.
+- render25: `clearMurals()` (TT 'pulizia', ultimo) toglie ogni oggetto piccolo davanti ai murali.
+- Copie: `_backup_neon_modelli/render_con_neve.js`, `render_con_azzurri.js`, `render_prima_del_regime.js`, `render_prima_della_propaganda.js`, `render_prima_delle_luci.js`, `render_prima_dei_muri_ciechi.js`, `render_prima_della_pulizia.js`.
+- Nota: la cartella del progetto ora è `Documents\porto-vecchio\porto-vecchio\`.
+- render26: le 2 luci puntuali più vicine alla camera fanno ombra (256 px, aggiornata a turno ogni 6 fotogrammi o quando la luce cambia sorgente); aloni a terra quasi spenti. lowQuality spegne queste ombre.
+- render27: `tone(hex, x, z)` dà a ogni luce (e al suo alone) un tono dalla posizione: chiaro, caldo, freddo spento, giallo, ambra, arancio; il rosso del regime resta. Finestre accese di toni diversi (LIT). Copie: `render_prima_delle_ombre_luci.js`, `render_prima_dei_toni.js`.
+- render28 (STUDIO LUCI): il gruppo di luci è ora `SPOOL` (faretti con ombra, quanti ne regge la scheda: N = maxTextures-7, tra 4 e 12) + `PPOOL` (8 punti senza ombra per i fuochi). Si accendono sulle sorgenti di `LSRC` dentro l'inquadratura (frustum), le più vicine prima. Ombre rifatte quando un faretto cambia sorgente e a turno 3 per fotogramma. Coni di luce leggeri nella foschia sotto le sorgenti alte di notte. Rimesso lo sfarfallio (render23 l'aveva spento per errore). Copia: `render_prima_dello_studio_luci.js`.
+- Da fare per lo studio luci: luce che lava le facciate (le insegne illuminano solo verso il basso), luce che esce dalle vetrine sul marciapiede, interni (oggi PointLight senza ombra in buildInteriors).
+- render29 (bilanciamento): faretti con decadimento 1.25 e bordo sfumato (penombra .95), intensità divisa tra sorgenti vicine (`L.nb`, sorgenti entro 7 m), spalla delle alte luci da .48, un filo di luna di notte. Andrea: «o bruciate o scure». Copia: `render_prima_del_bilanciamento.js`.

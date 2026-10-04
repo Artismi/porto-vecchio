@@ -302,7 +302,7 @@ var RisaccaUI = (function () {
           };
           raw = JSON.stringify(aiData);
           U.model = 'mente';
-        } else if (window.Mente.state.lastError) note = 'Mente: ' + window.Mente.state.lastError;
+        }
       } catch (e) {
         note = 'Errore Mente: uso ripiego';
       }

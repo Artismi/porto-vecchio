@@ -37,7 +37,7 @@ var Render = (function () {
   const MC = {};
   const sm = (c, o) => { const k = 'S' + c + (o ? JSON.stringify(o) : ''); return MC[k] || (MC[k] = std(Object.assign({ color: c }, o || {}))); };
   const sl = c => MC['L' + c] || (MC['L' + c] = lam(c));
-  const sb = c => MC['B' + c] || (MC['B' + c] = new THREE.MeshBasicMaterial({ color: c, toneMapped: false, fog: false }));   // [inverno30] la nebbia non brucia le luci
+  const sb = c => MC['B' + c] || (MC['B' + c] = new THREE.MeshBasicMaterial({ color: c, toneMapped: false }));
 
   // ---------------- QUOTE DEL TERRENO (solo visive) ----------------
   function rampH(R, x, z) { const k = R.axis === 'x' ? (x / TS - R.x) / R.w : (z / TS - R.y) / R.h; return R.h0 + (R.h1 - R.h0) * clamp(k, 0, 1); }
@@ -1125,63 +1125,6 @@ var Render = (function () {
     return WETENV;
   }
   // ---- blocchi di terreno ----
-  // ================= [inverno30] LUCE COTTA: la città col coprifuoco =================
-  // Per ogni blocco di terreno, una volta sola: la luce di TUTTE le sorgenti accese (lampioni, insegne, porte, vetrine, finestre
-  // del piano terra) cade a terra con le ombre degli edifici (raggio sulla mappa delle caselle). Diventa la luce emissiva del terreno,
-  // accesa di notte. Compressione morbida (1 - e^-x): le pozze si sommano senza mai bruciare.
-  // SPILL = luce che esce da vetrine e finestre: calda, bassa, solo verso la strada.
-  const SPILLS = [], BAKEQ = 4;   // 4 texel per casella = mezzo metro
-  function addSpill(x, z, nx, nz, color, base, dist) { const gy = groundH(x, z); SPILLS.push({ x, z, y: gy + 1.3, gy, nx, nz, color: new THREE.Color(color), base, dist: dist || 6, spill: true }); }
-  function bakeLight(tx0, ty0, n, m) {
-    const T = G.T, Q = BAKEQ, W = n * Q, H = m * Q, acc = new Float32Array(W * H * 3), X0 = tx0 * TS, Z0 = ty0 * TS, tq = TS / Q;
-    const solid = (wx, wz) => { const tx = Math.floor(wx / TS), ty = Math.floor(wz / TS); return G.tileAt(tx, ty) === T.BLD; };
-    const src = LSRC.filter(L => !L.off && L.base > 0).concat(SPILLS);
-    src.forEach(L => {
-      const R = (L.dist || 8) * (L.spill ? 1 : 1.5); if (L.x < X0 - R || L.x > X0 + n * TS + R || L.z < Z0 - R || L.z > Z0 + m * TS + R) return;
-      if (L.gy === undefined) L.gy = groundH(L.x, L.z); if (solid(L.x, L.z)) return;
-      const h = Math.max(.8, L.y - L.gy), h2 = h * h, cr = L.color.r, cg = L.color.g, cb = L.color.b, I = L.base * (L.spill ? .55 : .38) * (L.flick > .5 ? .7 : 1);
-      const i0 = Math.max(0, Math.floor((L.x - R - X0) / tq)), i1 = Math.min(W - 1, Math.ceil((L.x + R - X0) / tq)), j0 = Math.max(0, Math.floor((L.z - R - Z0) / tq)), j1 = Math.min(H - 1, Math.ceil((L.z + R - Z0) / tq));
-      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-        const px = X0 + (i + .5) * tq, pz = Z0 + (j + .5) * tq, dx = px - L.x, dz = pz - L.z, d2 = dx * dx + dz * dz; if (d2 > R * R) continue;
-        const d = Math.sqrt(d2);
-        let f = Math.pow(h2 / (d2 + h2), 1.5) * Math.pow(1 - d / R, 2);
-        if (L.spill) { const dot = (dx * L.nx + dz * L.nz) / (d || 1); if (dot <= .05) continue; f *= Math.pow(dot, .6); }
-        if (f < .004) continue;
-        if (solid(px, pz)) continue;
-        // ombra: dal punto verso la sorgente, a passi di un metro; il primo metro vicino alla sorgente non conta (lampade a muro)
-        let lit = true; const st = Math.floor(d / 1); for (let s = 1; s < st; s++) { const t = s / st; if (d * (1 - t) < .9) break; if (solid(px - dx * t, pz - dz * t)) { lit = false; break; } }
-        if (!lit) continue;
-        const o = (j * W + i) * 3, v = f * I; acc[o] += cr * v; acc[o + 1] += cg * v; acc[o + 2] += cb * v;
-      }
-    });
-    const c = mk(W, H), x = c.getContext('2d'), id = x.createImageData(W, H), D = id.data;
-    for (let q = 0; q < W * H; q++) { for (let k = 0; k < 3; k++) D[q * 4 + k] = Math.round((1 - Math.exp(-acc[q * 3 + k] * 1.35)) * 255); D[q * 4 + 3] = 255; }
-    x.putImageData(id, 0, 0);
-    const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; t.encoding = THREE.sRGBEncoding;
-    return t;
-  }
-  // ---- riflessi sull'asfalto bagnato: una striscia di luce allungata verso la camera sotto ogni sorgente accesa ----
-  const REFL = [];
-  let reflTexC = null;
-  function reflTex() { if (reflTexC) return reflTexC; const c = mk(16, 64), x = c.getContext('2d'), r = rng(4);
-    for (let y = 0; y < 64; y++) { const a = Math.pow(1 - y / 64, 1.6) * (y < 3 ? y / 3 : 1); for (let i = 0; i < 16; i++) { const e = 1 - Math.abs(i - 7.5) / 8; const n = .7 + r() * .3; x.fillStyle = `rgba(255,255,255,${(a * e * e * n).toFixed(3)})`; x.fillRect(i, y, 1, 1); } }
-    reflTexC = new THREE.CanvasTexture(c); return reflTexC; }
-  function wetAt(x, z) { const v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)), T = G.T; return v === T.VIA || v === T.COB || v === T.PIAZZA || v === T.WALK || v === T.QUAY; }
-  function initRefl() { const g = new THREE.PlaneGeometry(1, 1); g.translate(0, .5, 0); g.rotateX(-Math.PI / 2);
-    for (let i = 0; i < 48; i++) { const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: reflTex(), color: '#ffffff', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, toneMapped: false })); m.visible = false; m.renderOrder = 1; scene.add(m); REFL.push(m); } }
-  function updateRefl(night, list) {
-    if (!REFL.length) initRefl();
-    const cx = camera.position.x, cz = camera.position.z; let k = 0;
-    if (night > .15) for (const L of list) {
-      if (k >= REFL.length) break; if (L.off || !L.base) continue; if (L.gy === undefined) L.gy = groundH(L.x, L.z);
-      const h = L.y - L.gy; if (h < .6) continue; let dx = cx - L.x, dz = cz - L.z; const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
-      const bx = L.x + dx * .3, bz = L.z + dz * .3; if (!wetAt(bx, bz)) continue;
-      const m = REFL[k++], len = Math.min(9, h * 1.7 + 1), wid = L.spill ? 1.6 : .55 + h * .08;
-      m.position.set(bx, groundH(bx, bz) + .04, bz); m.rotation.set(0, Math.atan2(dx, dz), 0); m.scale.set(wid, 1, len);
-      m.material.color.copy(L.color); m.material.opacity = night * (L.spill ? .22 : .42) * Math.min(1, L.base / 2); m.visible = true;
-    }
-    for (; k < REFL.length; k++) REFL[k].visible = false;
-  }
   function buildChunk(ci, cj) {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
@@ -1208,17 +1151,16 @@ var Render = (function () {
       idx.push(a, b, cc, a, cc, d);
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
-    const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
-    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .55, emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 });
+    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .55 });
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
     const nat = buildNat(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');
     scene.add(grp);
-    return { grp, geo, mat, tex, btex, veg, nat, lt, rev: ISO.rev };
+    return { grp, geo, mat, tex, veg, nat, lt, rev: ISO.rev };
   }
   function dropChunk(ch) {
-    scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose();
+    scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose();
     ch.veg.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });
     if (ch.nat) ch.nat.children.forEach(im => { im.geometry.dispose(); if (im.dispose) im.dispose(); });
   }
@@ -1850,9 +1792,6 @@ var Render = (function () {
         const pc = modPiece(grp, name, mat, ...xyz(span === 2 ? sd.at(k + .5) : sd.at(k), base), sd.rot, isWin ? gm : null);
         if (name === 'wall-doorway-square' || name === 'wall-doorway-round') { const dr = Kit.get('bkit/door-rotate-square-a'); dr.traverse(m => { if (m.isMesh) m.material = mat; }); dr.position.set(-.06, 0, -.46); pc.add(dr); }
         if (name.includes('doorway')) litPanel(pc, name, shop || b.warehouse ? litShop : dark);
-        { const N = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[sd.f], q = span === 2 ? sd.at(k + .5) : sd.at(k);   // [inverno30] luce che esce
-          if (name.includes('doorway') && shop) addSpill(q[0] + N[0] * .7, q[1] + N[1] * .7, N[0], N[1], '#ffc070', 2.2, 7);
-          else if (isWin && gm) addSpill(q[0] + N[0] * .6, q[1] + N[1] * .6, N[0], N[1], gm === litShop ? '#ffc880' : '#ffb060', 1.1, 5); }
         if (shutM && name === 'wall-window-square') shutters(pc, shutM);
         for (let s = 0; s < span; s++) modPiece(grp, 'wall-low', mat, ...xyz(sd.at(k + s), base + MF), sd.rot);
       });
@@ -1954,7 +1893,7 @@ var Render = (function () {
     return glowTex;
   }
   function glow(x, y, z, color, size, add) { color = tone(color, x, z); size *= .65;
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: .8, fog: false }));
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: .8 }));
     s.position.set(x, y, z); s.scale.set(size, size, 1); scene.add(s); if (add !== false) dyn.flicker.push({ s, base: .8 }); return s;
   }
   // tubo al neon: scatola sottile che brilla, con alone
@@ -2290,13 +2229,10 @@ var Render = (function () {
       [-1, 1].forEach(s => add(g, box(.03, .5, .03, iron), s * .17, 3.7, .86 + s * .17));
       lz = .86; ly = 3.7;
     }
-    const hq = th(Math.round(x), Math.round(z), 71), lampOff = kind !== 'deco' && hq < .33;   // [inverno30] coprifuoco: elettricità razionata
-    if (lampOff) g.traverse(o => { if (o.isMesh && o.material === sb(lcol)) o.material = sm('#2e2e34'); });
     g.position.set(x, y0, z); g.rotation.y = rot || 0; const tag = kind === 'wall' ? null : newTag(); curTag = tag; addStatic(g); curTag = null;
     const c = Math.cos(rot || 0), s = Math.sin(rot || 0), wx = x + lx * c + lz * s, wz = z - lx * s + lz * c;
     const gl = glow(wx, y0 + ly, wz, col, kind === 'deco' ? 2.4 : 2.0);
-    const L = addLight(wx, y0 + ly - .3, wz, kind === 'deco' ? col : '#ffb35c', kind === 'sodium' ? 2.0 : 1.6, kind === 'sodium' ? 10 : 7.5, !lampOff && hq < .48 ? .75 : .03);
-    if (lampOff) { L.off = true; L.base = 0; gl.visible = false; }
+    const L = addLight(wx, y0 + ly - .3, wz, kind === 'deco' ? col : '#ffb35c', kind === 'sodium' ? 2.0 : 1.6, kind === 'sodium' ? 10 : 7.5, .03);
     if (tag) { const rec = regProp(g, tag, 'lamp'); if (rec) { rec.light = L; rec.lbase = L.base; rec.glowS = gl; rec.mass = 1.2; rec.fragile = false; } }
     return L;
   }
@@ -3401,7 +3337,7 @@ var Render = (function () {
           float vg = smoothstep(.18, .5, length(q*vec2(1.,1.2)));
           c = mix(c, vec3(.55,.02,.05), vg*hurt*.75);
           c = c*1.32/(1.+c*.5);
-          { vec3 hi = max(c-.48, 0.); c = min(c, vec3(.48)) + hi/(1.+hi*3.6); }   // [inverno29] spalla più morbida   // [inverno] spalla: le alte luci si comprimono invece di bruciare
+          { vec3 hi = max(c-.6, 0.); c = min(c, vec3(.6)) + hi/(1.+hi*2.8); }   // [inverno] spalla: le alte luci si comprimono invece di bruciare
           c *= 1. - .05*mod(floor(vUv.y*res.y), 2.);   // [inverno] righe di schermo: tutto è visto attraverso i monitor del regime
           float bd = bayer(floor(vUv*res)) - .5;
           c = floor(c*40. + bd*.6 + .5)/40.;
@@ -4468,7 +4404,7 @@ var Render = (function () {
     // [inverno28] faretti con ombra (quanti ne regge la scheda video) + punti senza ombra per i fuochi
     { const maxT = (renderer.capabilities && renderer.capabilities.maxTextures) || 16, N = Math.max(4, Math.min(12, maxT - 7));
       const coneG = new THREE.ConeGeometry(1, 1, 18, 1, true); coneG.translate(0, -.5, 0);
-      for (let i = 0; i < N; i++) { const l = new THREE.SpotLight('#ffb35c', 0, 10, 1.2, .95, 1.25);   // [inverno29] caduta morbida, bordo sfumato
+      for (let i = 0; i < N; i++) { const l = new THREE.SpotLight('#ffb35c', 0, 10, 1.12, .55, 2);
         l.castShadow = true; l.shadow.autoUpdate = false; l.shadow.needsUpdate = true; l.shadow.mapSize.set(512, 512); l.shadow.bias = -.0012; l.shadow.normalBias = .035; l.shadow.camera.near = .2; l.shadow.camera.far = 14;
         const cone = new THREE.Mesh(coneG, new THREE.MeshBasicMaterial({ color: '#ffd8a0', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); cone.visible = false; cone.renderOrder = 2;
         l.userData.cone = cone; scene.add(l); scene.add(l.target); scene.add(cone); SPOOL.push(l); LPOOL.push(l); }
@@ -5206,9 +5142,8 @@ var Render = (function () {
       if (!L) { l.intensity = 0; cone.visible = false; return; }
       const k = kOf(L), hh = Math.max(1.2, L.y - L.gy);
       if (l.userData.src !== L) { l.userData.src = L; l.position.set(L.x, L.y, L.z); l.target.position.set(L.x, L.gy - 2, L.z); l.target.updateMatrixWorld(); l.color.copy(L.color);
-        l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.shadow.needsUpdate = true; }
-      if (L.nb === undefined) { L.nb = 0; LSRC.forEach(o => { if (o !== L && Math.abs(o.x - L.x) < 7 && Math.abs(o.z - L.z) < 7) L.nb++; }); }   // [inverno29] vicine: si dividono la luce
-      l.intensity = L.base * k * .55 / Math.sqrt(1 + L.nb * .6);   // [inverno30] la pozza a terra la fa la luce cotta
+        l.distance = (L.dist || 8) * 1.25 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.shadow.needsUpdate = true; }
+      l.intensity = L.base * k * .95;
       const tall = hh > 2.8 && night > .25;
       cone.visible = tall && k > .05; if (cone.visible) { const rr = hh * .62; cone.position.set(L.x, L.y - .15, L.z); cone.scale.set(rr, hh - .1, rr); cone.material.color.copy(L.color); cone.material.opacity = .03 * Math.min(1, k); }
     });
@@ -5224,9 +5159,9 @@ var Render = (function () {
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, .22 + night * .12); scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
     // [inverno] luce di neve: tanto cielo, poco sole
-    hemi.intensity = .22 + (1 - night) * .3 + night * .08;   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
+    hemi.intensity = .22 + (1 - night) * .3;   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
     fillAmb.intensity = .12 + (1 - night) * .12; fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');
-    moon.intensity = .34 + (1 - night) * .68; moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
+    moon.intensity = .3 + (1 - night) * .72; moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
     moon.position.set(cam.x - 34 - dusk * 18, 22 - dusk * 8, cam.y - 30); moon.target.position.set(cam.x, 0, cam.y);
     if (dyn.fill) { dyn.fill.position.set(cam.x + 8, 14, cam.y + 40); dyn.fill.target.position.set(cam.x, 0, cam.y); dyn.fill.intensity = .12 + (1 - night) * .06; dyn.fill.color.set(night > .5 ? '#5f86b4' : '#a8bcd0'); }
     if (dyn.rim) { dyn.rim.position.set(cam.x + 30, 18, cam.y + 34); dyn.rim.target.position.set(cam.x, 0, cam.y); dyn.rim.intensity = .1 + (1 - night) * .1; dyn.rim.color.set(night > .5 ? '#6a8ac8' : '#b8c8e8'); }
@@ -5234,9 +5169,6 @@ var Render = (function () {
     if (dyn.backdropMats) dyn.backdropMats.forEach(m => m.emissiveIntensity = .1 + night * .9);
     const time = ui.time || st.clock;
     updateLights(time, night, cam.x, cam.y);
-    ISO.chunks.forEach(ch => { if (ch.mat) ch.mat.emissiveIntensity = night * .95; });   // [inverno30]
-    if (frameN % 2 === 0 || !dyn.reflList) { dyn.reflList = (dyn.lsp || []).concat(dyn.lpp || []).concat(SPILLS.filter(S => { const a = S.x - cam.x, b = S.z - cam.y; return a * a + b * b < 38 * 38; })); }
-    updateRefl(night, dyn.reflList);
     dyn.flicker.forEach(f => { f.s.material.opacity = f.base * (.2 + night * .8) * (.85 + Math.sin(time * 9 + f.base * 7) * .15); });
     dyn.signs.forEach(s => { if (s.flick) { const on = Math.sin(time * 17) > -.85 || Math.sin(time * 2.3) > .2; s.m.color.setScalar(on ? 1 : .35); if (s.gl) s.gl.material.opacity = on ? .45 : .1; } });
     if (dyn.water) { const U = dyn.water.uniforms; U.time.value = time; U.night.value = night; U.dusk.value = dusk; U.fogC.value.copy(tmpC); U.camP.value.copy(camera.position); U.fogN.value = scene.fog.near; U.fogF.value = scene.fog.far; }

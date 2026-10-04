@@ -17,11 +17,7 @@ var Render = (function () {
   const pick = (r, a) => a[Math.floor(r() * a.length)];
   const NEVE = false;   // [inverno19] la neve: true la rimette dappertutto
   const NOSNOW = new THREE.MeshBasicMaterial({ visible: false });
-  const NQ = ['#e8d8bc', '#b84a3c', '#f0a048'].map(h => new THREE.Color(h));   // [inverno16] tubo freddo spento, rosso cupo, sodio
-  // [inverno27] toni delle luci: chiaro, caldo, freddo, giallo, ambra, molto caldo (pesati verso il caldo)
-  const LTONES = ['#fff0d8', '#ffd49a', '#ffc070', '#e4e8ea', '#ffe27a', '#ffae48', '#ff9a40', '#ff8530', '#ffb860', '#f6f2ea'];
-  function tone(hex, x, z) { const q = nq(hex); if (q === '#' + NQ[1].getHexString()) return q; const c = new THREE.Color(hex), h = {}; c.getHSL(h); if (h.s < .2 && h.l > .85) return hex;
-    let k = Math.imul((Math.round(x * 2) * 73856093) ^ (Math.round(z * 2) * 19349663), 2654435761) >>> 0; return LTONES[k % LTONES.length]; }
+  const NQ = ['#d4d0c6', '#b84a3c', '#d8904a'].map(h => new THREE.Color(h));   // [inverno16] tubo freddo spento, rosso cupo, sodio
   function nq(hex) { const c = new THREE.Color(hex), h = {}; c.getHSL(h); const hu = h.h * 360; if (h.s < .25) return hex; let best = 0, bd = 999; [185, 355, 32].forEach((t, i) => { let d = Math.abs(hu - t); d = Math.min(d, 360 - d); if (d < bd) { bd = d; best = i; } }); return '#' + NQ[best].getHexString(); }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   function canvasTex(c) { const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; }
@@ -37,7 +33,7 @@ var Render = (function () {
   const MC = {};
   const sm = (c, o) => { const k = 'S' + c + (o ? JSON.stringify(o) : ''); return MC[k] || (MC[k] = std(Object.assign({ color: c }, o || {}))); };
   const sl = c => MC['L' + c] || (MC['L' + c] = lam(c));
-  const sb = c => MC['B' + c] || (MC['B' + c] = new THREE.MeshBasicMaterial({ color: c, toneMapped: false, fog: false }));   // [inverno30] la nebbia non brucia le luci
+  const sb = c => MC['B' + c] || (MC['B' + c] = new THREE.MeshBasicMaterial({ color: c, toneMapped: false }));
 
   // ---------------- QUOTE DEL TERRENO (solo visive) ----------------
   function rampH(R, x, z) { const k = R.axis === 'x' ? (x / TS - R.x) / R.w : (z / TS - R.y) / R.h; return R.h0 + (R.h1 - R.h0) * clamp(k, 0, 1); }
@@ -1125,63 +1121,6 @@ var Render = (function () {
     return WETENV;
   }
   // ---- blocchi di terreno ----
-  // ================= [inverno30] LUCE COTTA: la città col coprifuoco =================
-  // Per ogni blocco di terreno, una volta sola: la luce di TUTTE le sorgenti accese (lampioni, insegne, porte, vetrine, finestre
-  // del piano terra) cade a terra con le ombre degli edifici (raggio sulla mappa delle caselle). Diventa la luce emissiva del terreno,
-  // accesa di notte. Compressione morbida (1 - e^-x): le pozze si sommano senza mai bruciare.
-  // SPILL = luce che esce da vetrine e finestre: calda, bassa, solo verso la strada.
-  const SPILLS = [], BAKEQ = 4;   // 4 texel per casella = mezzo metro
-  function addSpill(x, z, nx, nz, color, base, dist) { const gy = groundH(x, z); SPILLS.push({ x, z, y: gy + 1.3, gy, nx, nz, color: new THREE.Color(color), base, dist: dist || 6, spill: true }); }
-  function bakeLight(tx0, ty0, n, m) {
-    const T = G.T, Q = BAKEQ, W = n * Q, H = m * Q, acc = new Float32Array(W * H * 3), X0 = tx0 * TS, Z0 = ty0 * TS, tq = TS / Q;
-    const solid = (wx, wz) => { const tx = Math.floor(wx / TS), ty = Math.floor(wz / TS); return G.tileAt(tx, ty) === T.BLD; };
-    const src = LSRC.filter(L => !L.off && L.base > 0).concat(SPILLS);
-    src.forEach(L => {
-      const R = (L.dist || 8) * (L.spill ? 1 : 1.5); if (L.x < X0 - R || L.x > X0 + n * TS + R || L.z < Z0 - R || L.z > Z0 + m * TS + R) return;
-      if (L.gy === undefined) L.gy = groundH(L.x, L.z); if (solid(L.x, L.z)) return;
-      const h = Math.max(.8, L.y - L.gy), h2 = h * h, cr = L.color.r, cg = L.color.g, cb = L.color.b, I = L.base * (L.spill ? .55 : .38) * (L.flick > .5 ? .7 : 1);
-      const i0 = Math.max(0, Math.floor((L.x - R - X0) / tq)), i1 = Math.min(W - 1, Math.ceil((L.x + R - X0) / tq)), j0 = Math.max(0, Math.floor((L.z - R - Z0) / tq)), j1 = Math.min(H - 1, Math.ceil((L.z + R - Z0) / tq));
-      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-        const px = X0 + (i + .5) * tq, pz = Z0 + (j + .5) * tq, dx = px - L.x, dz = pz - L.z, d2 = dx * dx + dz * dz; if (d2 > R * R) continue;
-        const d = Math.sqrt(d2);
-        let f = Math.pow(h2 / (d2 + h2), 1.5) * Math.pow(1 - d / R, 2);
-        if (L.spill) { const dot = (dx * L.nx + dz * L.nz) / (d || 1); if (dot <= .05) continue; f *= Math.pow(dot, .6); }
-        if (f < .004) continue;
-        if (solid(px, pz)) continue;
-        // ombra: dal punto verso la sorgente, a passi di un metro; il primo metro vicino alla sorgente non conta (lampade a muro)
-        let lit = true; const st = Math.floor(d / 1); for (let s = 1; s < st; s++) { const t = s / st; if (d * (1 - t) < .9) break; if (solid(px - dx * t, pz - dz * t)) { lit = false; break; } }
-        if (!lit) continue;
-        const o = (j * W + i) * 3, v = f * I; acc[o] += cr * v; acc[o + 1] += cg * v; acc[o + 2] += cb * v;
-      }
-    });
-    const c = mk(W, H), x = c.getContext('2d'), id = x.createImageData(W, H), D = id.data;
-    for (let q = 0; q < W * H; q++) { for (let k = 0; k < 3; k++) D[q * 4 + k] = Math.round((1 - Math.exp(-acc[q * 3 + k] * 1.35)) * 255); D[q * 4 + 3] = 255; }
-    x.putImageData(id, 0, 0);
-    const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; t.encoding = THREE.sRGBEncoding;
-    return t;
-  }
-  // ---- riflessi sull'asfalto bagnato: una striscia di luce allungata verso la camera sotto ogni sorgente accesa ----
-  const REFL = [];
-  let reflTexC = null;
-  function reflTex() { if (reflTexC) return reflTexC; const c = mk(16, 64), x = c.getContext('2d'), r = rng(4);
-    for (let y = 0; y < 64; y++) { const a = Math.pow(1 - y / 64, 1.6) * (y < 3 ? y / 3 : 1); for (let i = 0; i < 16; i++) { const e = 1 - Math.abs(i - 7.5) / 8; const n = .7 + r() * .3; x.fillStyle = `rgba(255,255,255,${(a * e * e * n).toFixed(3)})`; x.fillRect(i, y, 1, 1); } }
-    reflTexC = new THREE.CanvasTexture(c); return reflTexC; }
-  function wetAt(x, z) { const v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)), T = G.T; return v === T.VIA || v === T.COB || v === T.PIAZZA || v === T.WALK || v === T.QUAY; }
-  function initRefl() { const g = new THREE.PlaneGeometry(1, 1); g.translate(0, .5, 0); g.rotateX(-Math.PI / 2);
-    for (let i = 0; i < 48; i++) { const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: reflTex(), color: '#ffffff', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, toneMapped: false })); m.visible = false; m.renderOrder = 1; scene.add(m); REFL.push(m); } }
-  function updateRefl(night, list) {
-    if (!REFL.length) initRefl();
-    const cx = camera.position.x, cz = camera.position.z; let k = 0;
-    if (night > .15) for (const L of list) {
-      if (k >= REFL.length) break; if (L.off || !L.base) continue; if (L.gy === undefined) L.gy = groundH(L.x, L.z);
-      const h = L.y - L.gy; if (h < .6) continue; let dx = cx - L.x, dz = cz - L.z; const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
-      const bx = L.x + dx * .3, bz = L.z + dz * .3; if (!wetAt(bx, bz)) continue;
-      const m = REFL[k++], len = Math.min(9, h * 1.7 + 1), wid = L.spill ? 1.6 : .55 + h * .08;
-      m.position.set(bx, groundH(bx, bz) + .04, bz); m.rotation.set(0, Math.atan2(dx, dz), 0); m.scale.set(wid, 1, len);
-      m.material.color.copy(L.color); m.material.opacity = night * (L.spill ? .22 : .42) * Math.min(1, L.base / 2); m.visible = true;
-    }
-    for (; k < REFL.length; k++) REFL[k].visible = false;
-  }
   function buildChunk(ci, cj) {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
@@ -1208,17 +1147,16 @@ var Render = (function () {
       idx.push(a, b, cc, a, cc, d);
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
-    const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
-    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .55, emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 });
+    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .55 });
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
     const nat = buildNat(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');
     scene.add(grp);
-    return { grp, geo, mat, tex, btex, veg, nat, lt, rev: ISO.rev };
+    return { grp, geo, mat, tex, veg, nat, lt, rev: ISO.rev };
   }
   function dropChunk(ch) {
-    scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose();
+    scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose();
     ch.veg.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });
     if (ch.nat) ch.nat.children.forEach(im => { im.geometry.dispose(); if (im.dispose) im.dispose(); });
   }
@@ -1753,7 +1691,7 @@ var Render = (function () {
   const CELL = { wall: 5, wallTop: 7, column: 4, trim: 9, metal: 8 };
   const PALS = {
     // [inverno] intonaci sovietici scrostati: ocra, pistacchio, salmone, azzurro ghiaccio, cemento
-    borgo: [['#b8a27c', '#d8d2c6'], ['#9aaa98', '#d4d0c8'], ['#b8907e', '#d8d0c4'], ['#a8a090', '#cfc8bc'], ['#8e9cac', '#d0ccc4'], ['#c4ae7c', '#e0d8c8'], ['#a08068', '#d2c8b6'], ['#8a968a', '#cac4b8'], ['#9c8aa0', '#d4ccd0'], ['#7e8c90', '#c8c6c0'], ['#5a9aa4', '#a8b4b0'], ['#a05c48', '#b8a890'], ['#6e8696', '#9aa4aa'], ['#c8b04c', '#d8d0b0'], ['#7a6a90', '#a8a0b0'], ['#5a8270', '#a8b4a4'], ['#d8d4ca', '#eeeae2'], ['#cfc9bd', '#e6e0d4'], ['#e0dcd2', '#c8c2b6']],   // [inverno24] qualche intonaco bianco
+    borgo: [['#b8a27c', '#d8d2c6'], ['#9aaa98', '#d4d0c8'], ['#b8907e', '#d8d0c4'], ['#a8a090', '#cfc8bc'], ['#8e9cac', '#d0ccc4'], ['#c4ae7c', '#e0d8c8'], ['#a08068', '#d2c8b6'], ['#8a968a', '#cac4b8'], ['#9c8aa0', '#d4ccd0'], ['#7e8c90', '#c8c6c0'], ['#5a9aa4', '#a8b4b0'], ['#a05c48', '#b8a890'], ['#6e8696', '#9aa4aa'], ['#c8b04c', '#d8d0b0'], ['#7a6a90', '#a8a0b0'], ['#5a8270', '#a8b4a4']],
     farm: [['#6e5a48', '#a89478'], ['#7a6450', '#b8a07a'], ['#5e5044', '#9a8a70'], ['#84705a', '#c0b090']],
     port: [['#7f8a8c', '#c9c2b4'], ['#8a6a58', '#cfc6b6'], ['#6a7a6a', '#c8c0aa'], ['#9a8a70', '#d8d0c0']],
     mil: [['#6f7658', '#b8b49a'], ['#7a7a62', '#c2bea4']],
@@ -1783,7 +1721,7 @@ var Render = (function () {
   // finestre accese: un pannello dietro al vetro, si accende di notte con gli altri emissivi
   let litTex = null;
   const litMat = c => { if (!litTex) { const cc = mk(2, 2), x = cc.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 2, 2); litTex = canvasTex(cc); } return std({ color: '#0b0a12', emissive: c, emissiveMap: litTex, emissiveIntensity: 1, roughness: 1 }); };
-  const LIT = ['#ffb050', '#ffc470', '#fff0d8', '#ffa040', '#ffc880', '#e4e8ea', '#ffe27a', '#ff9040', '#f0d0a0', '#ffb860'];   // [inverno27] finestre di toni diversi   // [inverno24] finestre calde   // [inverno] fluorescenti malati, ogni tanto un sodio
+  const LIT = ['#ffb050', '#ffc470', '#ffb050', '#8fe0d4', '#ffb050', '#6fb8d8'];   // [inverno] fluorescenti malati, ogni tanto un sodio
   // vano luce di ogni modulo: larghezza, altezza, quota del centro (metri, misurati sul kit)
   const WIN = { 'wall-window-square': [.95, 1.35, 1.3], 'wall-window-square-detailed': [.95, 1.35, 1.3], 'wall-window-round': [.95, 1.45, 1.3], 'wall-window-round-detailed': [.95, 1.45, 1.3], 'wall-window-wide-square': [3.1, 1.3, 1.3], 'wall-window-wide-square-detailed': [3.1, 1.3, 1.3], 'wall-window-wide-round': [3.1, 1.4, 1.3], 'wall-window-wide-round-detailed': [3.1, 1.4, 1.3], 'wall-doorway-wide-round': [3.2, 2.1, 1.05], 'wall-doorway-wide-square': [3.2, 2.1, 1.05], 'wall-doorway-square': [1, 2.1, 1.05], 'wall-doorway-round': [1, 2.2, 1.1] };
   function litPanel(piece, name, mat) { const d = WIN[name]; if (!d) return; const p = new THREE.Mesh(new THREE.PlaneGeometry(d[0], d[1]), mat); p.position.set(-.16, d[2], 0); p.rotation.y = Math.PI / 2; piece.add(p); }
@@ -1798,21 +1736,6 @@ var Render = (function () {
     if (b.id === 'commissariato' || b.id === 'biblioteca' || b.id === 'ambulatorio') return 'civic';
     return 'borgo';
   }
-  // [inverno24] dove va il volto del Garante: un tratto di facciata (lato S o E, non quello della porta) che nasce cieco
-  function propPlan(b, i, kind, fl, base, x0, z0, w, d) {
-    if (fl < 2) return null;
-    const dd = M.world && M.world.districtAt ? M.world.districtAt(x0 + w / 2) : 'centro'; if (dd === 'prateria' || dd === 'foresta') return null;
-    const r = rng(i * 733 + 101), civic = kind === 'civic' || kind === 'mil'; if (r() > (civic ? .8 : .34)) return null;
-    const T = G.T, open = (tx, ty) => { const v = G.tileAt(tx, ty); return v === T.VIA || v === T.WALK || v === T.PIAZZA || v === T.COB || v === T.QUAY; };
-    const face = faceOf(b), cand = [];
-    if (face !== 'S' && b.w >= 3 && open(b.x + Math.floor(b.w / 2), b.y + b.h + 1)) cand.push({ f: 'S', n: b.w });
-    if (face !== 'E' && b.h >= 3 && open(b.x + b.w + 1, b.y + Math.floor(b.h / 2))) cand.push({ f: 'E', n: b.h });
-    if (!cand.length) return null;
-    const sd = pick(r, cand), H = MG + (fl - 1) * MF, span = Math.max(2, Math.min(sd.n, Math.round((H - .8) * .7 / TS))), k0 = Math.floor((sd.n - span) / 2);
-    const mid = (k0 + span / 2) * TS, pw = span * TS - .5, ph = Math.min(H - .8, pw / .7);
-    const pos = sd.f === 'S' ? { x: x0 + mid, z: z0 + d, yaw: 0 } : { x: x0 + w, z: z0 + d - mid, yaw: Math.PI / 2 };
-    return { f: sd.f, k0, k1: k0 + span, pw, ph, yc: base + .3 + H / 2, ...pos, defaced: r() < .22, top: base + H };
-  }
   function buildModular(b, i, base, low, plinth) {
     const r = rng(i * 97 + 11), w = b.w * TS, d = b.h * TS, x0 = b.x * TS, z0 = b.y * TS, cx = x0 + w / 2, cz = z0 + d / 2;
     const kind = modKind(b), P = PALS[kind], pal = P[(i * 7 + (b.style || 0)) % P.length];
@@ -1824,15 +1747,13 @@ var Render = (function () {
     const lit = litMat(pick(r, LIT)), litShop = litMat('#ffd890'), dark = std({ color: '#100c16', roughness: 1 });
     const shutM = null; // [inverno] niente persiane liguri
     const face0 = faceOf(b);
-    const PP = b.__prop !== undefined ? b.__prop : (b.__prop = propPlan(b, i, kind, fl, base, x0, z0, w, d)); b.__top = top; b.__gwall = {};   // [inverno24]
-    const inMural = (sd, k, y) => PP && PP.f === sd.f && k >= PP.k0 && k < PP.k1;   // tutta l'altezza: piano terra compreso
     const sides = [
       { f: 'S', n: b.w, rot: -Math.PI / 2, at: k => [x0 + k * TS + 1, z0 + d], tile: k => [b.x + k, b.y + b.h] },
       { f: 'N', n: b.w, rot: Math.PI / 2, at: k => [x0 + w - k * TS - 1, z0], tile: k => [b.x + b.w - 1 - k, b.y - 1] },
       { f: 'E', n: b.h, rot: 0, at: k => [x0 + w, z0 + d - k * TS - 1], tile: k => [b.x + b.w, b.y + b.h - 1 - k] },
       { f: 'W', n: b.h, rot: Math.PI, at: k => [x0, z0 + k * TS + 1], tile: k => [b.x - 1, b.y + k] },
     ];
-    const row = (name, sd, y) => { for (let k = 0; k < sd.n; k++) { if (inMural(sd, k, y)) continue; modPiece(grp, name, mat, ...xyz(sd.at(k), y), sd.rot); } };
+    const row = (name, sd, y) => { for (let k = 0; k < sd.n; k++) modPiece(grp, name, mat, ...xyz(sd.at(k), y), sd.rot); };
     sides.forEach(sd => {
       let doorK = -1;
       if (b.door && face0 === sd.f) for (let k = 0; k < sd.n; k++) { const t = sd.tile(k); if (t[0] === b.door[0] && t[1] === b.door[1]) doorK = k; }
@@ -1843,16 +1764,13 @@ var Render = (function () {
         if ((shop || b.warehouse) && sd.n >= 2) { const k2 = doorK + 1 < sd.n ? doorK : doorK - 1; ground.push([k2, b.warehouse ? 'wall-doorway-wide-square' : 'wall-doorway-wide-round', 2]); used.add(k2); used.add(k2 + 1); }
         else { ground.push([doorK, kind === 'civic' ? 'wall-doorway-round' : 'wall-doorway-square', 1]); used.add(doorK); }
       }
-      for (let k = 0; k < sd.n; k++) if (!used.has(k)) ground.push([k, inMural(sd, k, base) ? 'wall' : (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
+      for (let k = 0; k < sd.n; k++) if (!used.has(k)) ground.push([k, (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
       // nota: sul piano terra le finestre si alternano col muro pieno, partendo dalla porta (ritmo regolare)
       ground.forEach(([k, name, span]) => {
-        const isWin = name.includes('window'), gm = shop ? litShop : (r() < .3 ? lit : null); if (name === 'wall') for (let s2 = 0; s2 < span; s2++) if (!inMural(sd, k + s2, base)) (b.__gwall[sd.f] = b.__gwall[sd.f] || []).push(k + s2);
+        const isWin = name.includes('window'), gm = shop ? litShop : (r() < .3 ? lit : null);
         const pc = modPiece(grp, name, mat, ...xyz(span === 2 ? sd.at(k + .5) : sd.at(k), base), sd.rot, isWin ? gm : null);
         if (name === 'wall-doorway-square' || name === 'wall-doorway-round') { const dr = Kit.get('bkit/door-rotate-square-a'); dr.traverse(m => { if (m.isMesh) m.material = mat; }); dr.position.set(-.06, 0, -.46); pc.add(dr); }
         if (name.includes('doorway')) litPanel(pc, name, shop || b.warehouse ? litShop : dark);
-        { const N = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[sd.f], q = span === 2 ? sd.at(k + .5) : sd.at(k);   // [inverno30] luce che esce
-          if (name.includes('doorway') && shop) addSpill(q[0] + N[0] * .7, q[1] + N[1] * .7, N[0], N[1], '#ffc070', 2.2, 7);
-          else if (isWin && gm) addSpill(q[0] + N[0] * .6, q[1] + N[1] * .6, N[0], N[1], gm === litShop ? '#ffc880' : '#ffb060', 1.1, 5); }
         if (shutM && name === 'wall-window-square') shutters(pc, shutM);
         for (let s = 0; s < span; s++) modPiece(grp, 'wall-low', mat, ...xyz(sd.at(k + s), base + MF), sd.rot);
       });
@@ -1864,10 +1782,10 @@ var Render = (function () {
         if (wide) {
           let k = 0;
           if (sd.n % 2 === 1) { modPiece(grp, 'wall', mat, ...xyz(sd.at(0), y), sd.rot); k = 1; }
-          for (; k + 1 < sd.n; k += 2) { if (inMural(sd, k, y) || inMural(sd, k + 1, y)) { modPiece(grp, 'wall', mat, ...xyz(sd.at(k), y), sd.rot); modPiece(grp, 'wall', mat, ...xyz(sd.at(k + 1), y), sd.rot); continue; } modPiece(grp, upper, mat, ...xyz(sd.at(k + .5), y), sd.rot, r() < .35 ? lit : null); }
+          for (; k + 1 < sd.n; k += 2) modPiece(grp, upper, mat, ...xyz(sd.at(k + .5), y), sd.rot, r() < .35 ? lit : null);
         } else for (let k = 0; k < sd.n; k++) {
           // sul retro (nord e ovest, visti solo quando la camera gira) una finestra semplice ogni due moduli
-          const back = sd.f === 'N' || sd.f === 'W', nm = inMural(sd, k, y) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
+          const back = sd.f === 'N' || sd.f === 'W', nm = back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
           const pc = modPiece(grp, nm, mat, ...xyz(sd.at(k), y), sd.rot, r() < .3 ? lit : null);
           if (nm !== 'wall' && shutM && !back) shutters(pc, shutM);
         }
@@ -1947,14 +1865,14 @@ var Render = (function () {
 
   // luci: tante sorgenti registrate, poche PointLight vere assegnate alle più vicine alla camera
   const LSRC = [];
-  function addLight(x, y, z, color, intensity, distance, flick) { const rec = { x, y, z, color: new THREE.Color(tone(color, x, z)), base: intensity, dist: distance, flick: flick || 0, phase: Math.random() * 10 }; LSRC.push(rec); return rec; }
+  function addLight(x, y, z, color, intensity, distance, flick) { const rec = { x, y, z, color: new THREE.Color(nq(color)), base: intensity, dist: distance, flick: flick || 0, phase: Math.random() * 10 }; LSRC.push(rec); return rec; }
   let glowTex = null;
   function glowTexture() {
     if (!glowTex) { const c = mk(32, 32), gx = c.getContext('2d'), gr = gx.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.35, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); gx.fillStyle = gr; gx.fillRect(0, 0, 32, 32); glowTex = new THREE.CanvasTexture(c); }
     return glowTex;
   }
-  function glow(x, y, z, color, size, add) { color = tone(color, x, z); size *= .65;
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: .8, fog: false }));
+  function glow(x, y, z, color, size, add) { color = nq(color); size *= .65;
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: .8 }));
     s.position.set(x, y, z); s.scale.set(size, size, 1); scene.add(s); if (add !== false) dyn.flicker.push({ s, base: .8 }); return s;
   }
   // tubo al neon: scatola sottile che brilla, con alone
@@ -2290,13 +2208,10 @@ var Render = (function () {
       [-1, 1].forEach(s => add(g, box(.03, .5, .03, iron), s * .17, 3.7, .86 + s * .17));
       lz = .86; ly = 3.7;
     }
-    const hq = th(Math.round(x), Math.round(z), 71), lampOff = kind !== 'deco' && hq < .33;   // [inverno30] coprifuoco: elettricità razionata
-    if (lampOff) g.traverse(o => { if (o.isMesh && o.material === sb(lcol)) o.material = sm('#2e2e34'); });
     g.position.set(x, y0, z); g.rotation.y = rot || 0; const tag = kind === 'wall' ? null : newTag(); curTag = tag; addStatic(g); curTag = null;
     const c = Math.cos(rot || 0), s = Math.sin(rot || 0), wx = x + lx * c + lz * s, wz = z - lx * s + lz * c;
     const gl = glow(wx, y0 + ly, wz, col, kind === 'deco' ? 2.4 : 2.0);
-    const L = addLight(wx, y0 + ly - .3, wz, kind === 'deco' ? col : '#ffb35c', kind === 'sodium' ? 2.0 : 1.6, kind === 'sodium' ? 10 : 7.5, !lampOff && hq < .48 ? .75 : .03);
-    if (lampOff) { L.off = true; L.base = 0; gl.visible = false; }
+    const L = addLight(wx, y0 + ly - .3, wz, kind === 'deco' ? col : '#ffb35c', kind === 'sodium' ? 2.0 : 1.6, kind === 'sodium' ? 10 : 7.5, .03);
     if (tag) { const rec = regProp(g, tag, 'lamp'); if (rec) { rec.light = L; rec.lbase = L.base; rec.glowS = gl; rec.mass = 1.2; rec.fragile = false; } }
     return L;
   }
@@ -3385,23 +3300,23 @@ var Render = (function () {
           float chroma = max(max(c.r,c.g),c.b) - min(min(c.r,c.g),c.b);
           float hot = smoothstep(.5,.9,chroma*max(max(c.r,c.g),c.b)*2.);
           c = mix(c, c*.7*vec3(.78,1.,1.04) + vec3(.01,.075,.085)*.6, (1.-smoothstep(.0,.62,l))*.9);
-          c *= mix(vec3(1.), vec3(1.02,1.,.96), smoothstep(.28,.8,l)*(1.-hot));   // [inverno24] alte luci appena calde, non azzurrine
+          c *= mix(vec3(1.), vec3(.93,1.,1.05), smoothstep(.28,.8,l)*(1.-hot));
           c = mix(vec3(l), c, mix(.66, 1.3, hot)*sat);
           c += vec3(.012,.014,.02);
           c = (c-.5)*1.24+.5;
           { float AZZ = .12; float cy = smoothstep(.03,.16, min(c.g,c.b)-c.r) * smoothstep(.06,.22, max(max(c.r,c.g),c.b)-min(min(c.r,c.g),c.b));   // [inverno20] niente azzurri
             vec3 gr = vec3(dot(c, vec3(.3,.59,.11))) * vec3(1.,.99,.97); c = mix(c, mix(gr, c, AZZ), cy); }
-          { float REG_SAT = .62, REG_BIANCO = .1;   // [inverno21] il regime: cemento, rosso, luce calda
+          { float REG_SAT = .38, REG_BIANCO = .16;   // [inverno21] il regime: cemento, rosso, luce calda
             float lu = dot(c, vec3(.3,.59,.11));
             float rosso = smoothstep(.12,.3, c.r-c.g) * smoothstep(.06,.2, c.r-c.b);          // rossi e arancio delle lampade
-            float keep = max(REG_SAT, max(rosso*1.05, hot*1.0));
+            float keep = max(REG_SAT, max(rosso*.95, hot*.85));
             c = mix(vec3(lu) * vec3(.98,1.,.98), c, keep);                                     // grigio appena verdastro, da caserma
             c *= 1. - smoothstep(.62,.95, lu) * REG_BIANCO; }                                   // niente bianchi puliti
           vec2 q = vUv-.5; c *= 1. - dot(q,q)*1.25;
           float vg = smoothstep(.18, .5, length(q*vec2(1.,1.2)));
           c = mix(c, vec3(.55,.02,.05), vg*hurt*.75);
           c = c*1.32/(1.+c*.5);
-          { vec3 hi = max(c-.48, 0.); c = min(c, vec3(.48)) + hi/(1.+hi*3.6); }   // [inverno29] spalla più morbida   // [inverno] spalla: le alte luci si comprimono invece di bruciare
+          { vec3 hi = max(c-.6, 0.); c = min(c, vec3(.6)) + hi/(1.+hi*2.8); }   // [inverno] spalla: le alte luci si comprimono invece di bruciare
           c *= 1. - .05*mod(floor(vUv.y*res.y), 2.);   // [inverno] righe di schermo: tutto è visto attraverso i monitor del regime
           float bd = bayer(floor(vUv*res)) - .5;
           c = floor(c*40. + bd*.6 + .5)/40.;
@@ -3418,7 +3333,7 @@ var Render = (function () {
     postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
   }
   let TARGET = 540, lastSize = null;
-  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
+  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
     PX = Math.max(2, Math.round(ch * dpr / TARGET));
@@ -3625,7 +3540,7 @@ var Render = (function () {
     // e qualcuno nei cortili e lungo le costiere, nelle periferie
     let nb = 0; for (let t = 0; t < 900 && nb < 34; t++) { const x = 250 + r() * 300, z = 70 + r() * 150, tx = Math.floor(x / TS), tz = Math.floor(z / TS), v = G.tileAt(tx, tz); if ((v !== T.WALK && v !== T.COB) || !free(x + 1, z) || !free(x, z + 1)) continue; let near = false; for (const f of WX.fires) if (Math.hypot(f.g.position.x - x, f.g.position.z - z) < 16) near = true; if (near) continue; fireBarrel(x, z, r); nb++; }
     // ---- neon sgangherati: tubi rosa, ciano, giallo, azzurro freddo sulle facciate; alcuni rotti o che sfarfallano ----
-    const NEON = ['#f0a048', '#d4d0c6', '#f0a048', '#d4d0c6', '#f0a048', '#b84a3c'];
+    const NEON = ['#d8904a', '#d4d0c6', '#d8904a', '#d4d0c6', '#d8904a', '#b84a3c'];
     WX.neon = WX.neon || [];
     (G.BUILDINGS || []).forEach((b, bi) => {
       if (!b.door || b.military || b.farm || b.wood) return;
@@ -3718,7 +3633,7 @@ var Render = (function () {
     x.fillStyle = 'rgba(12,10,16,.82)'; for (let i = 0; i < 2; i++) x.fillRect(Math.floor(vegHash(text.length, i, 4) * (w - 12)) + 4, Math.floor(vegHash(i, text.length, 5) * (h - 12)) + 4, vert ? w - 10 : 10, vert ? 8 : h - 10);
     const t = canvasTex(c); return FACT[key] = t;
   }
-  const NEONS = ['#f0a048', '#d4d0c6', '#f0a048', '#b84a3c', '#d4d0c6'], WORDS = ['ПОМПА', 'РАБОТА', 'НОВОСТИ', 'ОТЕЛЬ', 'БАР', 'АПТЕКА', 'СКЛАД', '24 ЧАСА', '새 일자리', '약국', '酒', 'ЛОМБАРД', 'КИНО', 'ЧАЙ', '식당'];
+  const NEONS = ['#d8904a', '#d4d0c6', '#d8904a', '#b84a3c', '#d4d0c6'], WORDS = ['ПОМПА', 'РАБОТА', 'НОВОСТИ', 'ОТЕЛЬ', 'БАР', 'АПТЕКА', 'СКЛАД', '24 ЧАСА', '새 일자리', '약국', '酒', 'ЛОМБАРД', 'КИНО', 'ЧАЙ', '식당'];
   function buildFacades() {
     const T = G.T, st = sm('#3a3d44', { roughness: .7, metalness: .5 }), rust = sm('#6a4636', { roughness: 1 }), pipeM = sm('#4a4e54', { roughness: .6, metalness: .5 }), acM = sm('#8a8e94', { roughness: .6 });
     const cables = [], anchors = [];
@@ -3879,56 +3794,41 @@ var Render = (function () {
       x.globalCompositeOperation = 'destination-out'; for (let i = 0; i < 900; i++) { x.fillStyle = 'rgba(0,0,0,' + (.3 + r() * .7) + ')'; x.fillRect(Math.floor(r() * W), Math.floor(r() * H), 1 + Math.floor(r() * 3), 1); } x.globalCompositeOperation = 'source-over';
     }
     const t = canvasTex(c); t.magFilter = THREE.NearestFilter;
-    return PROP[key] = new THREE.MeshLambertMaterial({ map: t, transparent: true, alphaTest: .35, side: THREE.DoubleSide, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: .34, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    return PROP[key] = new THREE.MeshLambertMaterial({ map: t, transparent: true, alphaTest: .35, side: THREE.DoubleSide, emissive: '#1e1a1c', polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   }
-  const MURALS = [];
-  function clearMurals() {   // [inverno25] niente compenetrazioni davanti ai murali
-    if (!MURALS.length) return;
-    const boxes = MURALS.map(P => { const hw = P.pw / 2 + .15, y0 = P.yc - P.ph / 2 - .1, y1 = P.yc + P.ph / 2 + .1;
-      return P.yaw ? new THREE.Box3(new THREE.Vector3(P.x - .35, y0, P.z - hw), new THREE.Vector3(P.x + 1.6, y1, P.z + hw)) : new THREE.Box3(new THREE.Vector3(P.x - hw, y0, P.z - .35), new THREE.Vector3(P.x + hw, y1, P.z + 1.6)); });
-    const keep = new Set(); dyn.buildings.forEach(rec => rec.grp && rec.grp.traverse(o => keep.add(o)));
-    const bb = new THREE.Box3(), c = new THREE.Vector3(), sz = new THREE.Vector3(), M4 = new THREE.Matrix4(), Z = new THREE.Matrix4().makeScale(0, 0, 0); let n = 0;
-    scene.updateMatrixWorld(true);
-    scene.traverse(o => {
-      if (!o.isMesh || keep.has(o) || o.userData.mural || !o.geometry) return;
-      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); const gb = o.geometry.boundingBox; if (!gb) return;
-      if (o.isInstancedMesh) {
-        let hit = false;
-        for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, M4); bb.copy(gb).applyMatrix4(M4).applyMatrix4(o.matrixWorld); bb.getSize(sz); if (Math.max(sz.x, sz.y, sz.z) > 4) continue; bb.getCenter(c); if (boxes.some(B => B.containsPoint(c))) { o.setMatrixAt(i, Z); hit = true; n++; } }
-        if (hit) o.instanceMatrix.needsUpdate = true;
-      } else {
-        bb.copy(gb).applyMatrix4(o.matrixWorld); bb.getSize(sz); if (Math.max(sz.x, sz.y, sz.z) > 4) return; bb.getCenter(c);
-        if (boxes.some(B => B.containsPoint(c))) { o.visible = false; n++; }
-      }
-    });
-    window.__muralClear = n;
-  }
-  function buildPropaganda() {   // [inverno24] ritratti nei muri ciechi decisi alla costruzione, slogan a lettere sui tetti
+  function buildPropaganda() {
     const T = G.T, WD = M.world && M.world.districtAt, g = new THREE.Group(); let nR = 0, nS = 0;
-    const iron = sm('#1e1c20', { roughness: .7, metalness: .5 });
+    const open = (tx, ty) => { const v = G.tileAt(tx, ty); return v === T.VIA || v === T.WALK || v === T.PIAZZA || v === T.COB || v === T.QUAY; };
     dyn.buildings.forEach((rec, bi) => {
-      const b = rec.b; if (!b) return;
-      const PP = b.__prop;
-      if (PP) {
-        const m = new THREE.Mesh(new THREE.PlaneGeometry(PP.pw, PP.ph), propTex('ritratto', (bi % 7) + (PP.defaced ? 100 : 0)));
-        m.position.set(PP.x + Math.sin(PP.yaw) * .14, PP.yc, PP.z + Math.cos(PP.yaw) * .14); m.rotation.y = PP.yaw; m.userData.mural = 1; g.add(m); nR++; MURALS.push(PP);
-        (window.__propPos = window.__propPos || []).push([Math.round(PP.x), Math.round(PP.z), 'ritratto']);
-        if (bi % 3 === 0) addLight(PP.x + Math.sin(PP.yaw) * 2, PP.yc - PP.ph / 2 + .4, PP.z + Math.cos(PP.yaw) * 2, '#e0a050', 1.8, 10, .02);   // faretto da sotto
+      const b = rec.b; if (!b || !rec.box3) return;
+      const bb = rec.box3, x0 = bb.min.x - .3, z0 = bb.min.z - .3, w = bb.max.x - bb.min.x + .6, d = bb.max.z - bb.min.z + .6, base = bb.min.y + .1, top = bb.max.y - 2.5;
+      const dd = WD ? WD((x0 + w / 2)) : 'centro'; if (dd === 'prateria' || dd === 'foresta') return;
+      const hgt = top - base; if (hgt < 4.5) return;
+      const r = rng(bi * 733 + 101), face = b.door ? faceOf(b) : null;
+      const sides = [
+        { f: 'S', len: w, at: u => [x0 + u, z0 + d], yaw: 0, ok: open(Math.floor((x0 + w / 2) / TS), Math.floor((z0 + d + 1) / TS)) },
+        { f: 'N', len: w, at: u => [x0 + w - u, z0], yaw: Math.PI, ok: open(Math.floor((x0 + w / 2) / TS), Math.floor((z0 - 1) / TS)) },
+        { f: 'E', len: d, at: u => [x0 + w, z0 + d - u], yaw: Math.PI / 2, ok: open(Math.floor((x0 + w + 1) / TS), Math.floor((z0 + d / 2) / TS)) },
+        { f: 'W', len: d, at: u => [x0, z0 + u], yaw: -Math.PI / 2, ok: open(Math.floor((x0 - 1) / TS), Math.floor((z0 + d / 2) / TS)) },
+      ].filter(s2 => s2.ok && s2.len >= 4.5 && (s2.f === 'S' || s2.f === 'E'));   // solo i lati che la camera vede
+      if (!sides.length) return;
+      const put = (sd, u, mat, pw, ph, y, off) => { const p = sd.at(u), m = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), mat); m.position.set(p[0] + Math.sin(sd.yaw) * off, y, p[1] + Math.cos(sd.yaw) * off); m.rotation.y = sd.yaw; g.add(m); return m; };
+      const mk0 = modKind(b), civic = mk0 === 'civic' || mk0 === 'mil';
+      // 1) il volto: sul lato senza porta (muro cieco), o un telone rosso appeso sulla facciata
+      const q = r();
+      if (q < (civic ? .75 : .38) && nR < 90) {
+        const blind = sides.filter(s2 => s2.f !== face), sd = blind.length ? pick(r, blind) : pick(r, sides), kind = blind.length && r() < .65 ? 'ritratto' : 'telone';
+        const ph = Math.min(hgt - 1.2, kind === 'ritratto' ? 8 : 9), pw = ph * (96 / 136); if (pw < sd.len - .6 && ph > 3) {
+          const m = put(sd, sd.len / 2, propTex(kind, nR % 9), pw, ph, base + hgt - ph / 2 - .3, kind === 'telone' ? .55 : .38); nR++; (window.__propPos = window.__propPos || []).push([Math.round(m.position.x), Math.round(m.position.z), kind]);
+          if (kind === 'telone') { const bar = new THREE.Mesh(new THREE.BoxGeometry(pw + .4, .08, .08), PM.iron()); bar.position.copy(m.position); bar.position.y += ph / 2 + .05; bar.rotation.y = sd.yaw; g.add(bar); }
+          if (r() < .35) { const p = sd.at(sd.len / 2); addLight(p[0] + Math.sin(sd.yaw) * 1.5, base + 1, p[1] + Math.cos(sd.yaw) * 1.5, '#d8904a', 1.6, 9, .02); }   // un faretto da sotto, di notte
+        }
       }
-      // slogan sul tetto: telaio di ferro sul bordo verso la strada, lettere rosse
-      if (!b.__top || !rec.box3) return;
-      const dd = WD ? WD(b.x * TS) : 'centro'; if (dd === 'prateria' || dd === 'foresta') return;
-      const r = rng(bi * 557 + 31), kind = modKind(b), civic = kind === 'civic' || kind === 'mil';
-      if (r() > (civic ? .75 : .2) || nS > 70 || (b.fl || 1) < 2) return;
-      const f = (PP && PP.f === 'S') || b.w >= b.h ? 'S' : 'E', len = (f === 'S' ? b.w : b.h) * TS, sw = Math.min(len - 1.2, 11), sh = sw * (56 / 512) * 1.15;
-      if (sw < 4) return;
-      const x0 = b.x * TS, z0 = b.y * TS, inset = .9, yb = b.__top + .55;
-      const cx = f === 'S' ? x0 + b.w * TS / 2 : x0 + b.w * TS - inset, cz = f === 'S' ? z0 + b.h * TS - inset : z0 + b.h * TS / 2, yaw = f === 'S' ? 0 : Math.PI / 2;
-      const grp = new THREE.Group(); grp.position.set(cx, yb, cz); grp.rotation.y = yaw; g.add(grp);
-      const L = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), propTex('slogan', Math.floor(r() * 997))); L.position.set(0, .35 + sh / 2, .05); grp.add(L);
-      [-sw / 2 + .2, 0, sw / 2 - .2].forEach(px => { const post = new THREE.Mesh(new THREE.BoxGeometry(.07, .35 + sh, .07), iron); post.position.set(px, (.35 + sh) / 2 - .55, -.05); grp.add(post); });
-      [.35, .35 + sh].forEach(py => { const rail = new THREE.Mesh(new THREE.BoxGeometry(sw, .05, .05), iron); rail.position.set(0, py, -.05); grp.add(rail); });
-      nS++;
+      // 2) lo slogan rosso a pennello, sotto il cornicione
+      if (r() < (civic ? .85 : .5) && nS < 140) {
+        const sd = pick(r, sides), sw = Math.min(sd.len - .8, 14), sh = sw * (56 / 512);
+        put(sd, sd.len / 2, propTex('slogan', Math.floor(r() * 997)), sw, sh, base + hgt - .55 - sh / 2, .36); nS++;
+      }
     });
     scene.add(g); window.__propaganda = { ritratti: nR, slogan: nS };
   }
@@ -3944,13 +3844,11 @@ var Render = (function () {
       const r = rng(bi * 311 + 29), g = new THREE.Group();
       const open = (tx, ty) => { const v = G.tileAt(tx, ty); return v === T.VIA || v === T.WALK || v === T.PIAZZA || v === T.COB || v === T.QUAY; };
       const sides = [
-        { f: 'S', len: w, at: u => [x0 + u, z0 + d], yaw: 0, ok: open(Math.floor((x0 + w / 2) / TS), Math.floor((z0 + d + 1) / TS)) },
-        { f: 'N', len: w, at: u => [x0 + w - u, z0], yaw: Math.PI, ok: open(Math.floor((x0 + w / 2) / TS), Math.floor((z0 - 1) / TS)) },
-        { f: 'E', len: d, at: u => [x0 + w, z0 + d - u], yaw: Math.PI / 2, ok: open(Math.floor((x0 + w + 1) / TS), Math.floor((z0 + d / 2) / TS)) },
-        { f: 'W', len: d, at: u => [x0, z0 + u], yaw: -Math.PI / 2, ok: open(Math.floor((x0 - 1) / TS), Math.floor((z0 + d / 2) / TS)) },
+        { len: w, at: u => [x0 + u, z0 + d], yaw: 0, ok: open(Math.floor((x0 + w / 2) / TS), Math.floor((z0 + d + 1) / TS)) },
+        { len: w, at: u => [x0 + w - u, z0], yaw: Math.PI, ok: open(Math.floor((x0 + w / 2) / TS), Math.floor((z0 - 1) / TS)) },
+        { len: d, at: u => [x0 + w, z0 + d - u], yaw: Math.PI / 2, ok: open(Math.floor((x0 + w + 1) / TS), Math.floor((z0 + d / 2) / TS)) },
+        { len: d, at: u => [x0, z0 + u], yaw: -Math.PI / 2, ok: open(Math.floor((x0 - 1) / TS), Math.floor((z0 + d / 2) / TS)) },
       ].filter(s2 => s2.ok);
-      // [inverno24] solo dove il piano terra è muro pieno: niente manifesti sui vetri
-      const wallU = (sd, u) => { if (!b.__gwall) return u; const L = b.__gwall[sd.f] || []; if (!L.length) return null; const k = L[Math.floor((u * 7.3) % L.length)]; return k * TS + .3 + ((u * 13.7) % 1) * 1.4; };
       const mkA = (sd, u) => { const a = new THREE.Group(), p = sd.at(u); a.position.set(p[0], base - .1, p[1]); a.rotation.y = sd.yaw; g.add(a); return a; };
       const ad = (a, o, x, y, z) => { o.position.set(x, y, z); a.add(o); return o; };
       const lightAt = (a, x, y, z, col, I, D) => { const q = new THREE.Vector3(x, y, z); a.updateMatrixWorld(true); q.applyMatrix4(a.matrixWorld); addLight(q.x, q.y, q.z, col, I, D, .05); };
@@ -3958,14 +3856,14 @@ var Render = (function () {
       sides.forEach(sd => {
         const n = 2 + Math.floor(r() * 4);
         for (let k = 0; k < n; k++) {
-          const u0 = .7 + r() * Math.max(.1, sd.len - 1.4), u = wallU(sd, u0); if (u === null || u > sd.len - .4) continue; const a = mkA(sd, u), kind = Math.floor(r() * 24) % 16, big = kind % 8 !== 6 && kind % 8 !== 7 && r() < .6, sz = big ? [.6, .85] : [.34, .46];
+          const u = .7 + r() * Math.max(.1, sd.len - 1.4), a = mkA(sd, u), kind = Math.floor(r() * 24) % 16, big = kind % 8 !== 6 && kind % 8 !== 7 && r() < .6, sz = big ? [.6, .85] : [.34, .46];
           const m = new THREE.Mesh(new THREE.PlaneGeometry(sz[0], sz[1]), plane(kind)); m.rotation.z = (r() - .5) * .1; ad(a, m, 0, .9 + r() * 1.3 + (kind % 8 === 7 ? .3 : 0), .07 + r() * .01);
           if (kind % 8 === 7) m.scale.set(2.2, 2.2, 1);
         }
         // piccoli oggetti attaccati al muro
         const extra = Math.floor(r() * 4);
         for (let k = 0; k < extra; k++) {
-          const u1 = wallU(sd, .6 + r() * Math.max(.1, sd.len - 1.2)); if (u1 === null || u1 > sd.len - .4) continue; const a = mkA(sd, u1), t = r();
+          const a = mkA(sd, .6 + r() * Math.max(.1, sd.len - 1.2)), t = r();
           if (t < .25) { ad(a, box(.3, .4, .14, metal), 0, 1.4, .1); ad(a, box(.24, .04, .02, dark), 0, 1.5, .18); }                          // contatore
           else if (t < .45) { ad(a, cyl(.14, .14, .08, 8, dark), 0, 2.3, .1).rotation.x = Math.PI / 2; ad(a, new THREE.Mesh(new THREE.SphereGeometry(.07, 6, 5), bulb), 0, 2.3, .18); if (r() < .3) lightAt(a, 0, 2.3, .5, '#ffb35c', 1.1, 6); }   // lampada a muro
           else if (t < .6) { ad(a, box(.04, 2.6, .04, yel), .3, 1.3, .08); ad(a, box(.6, .04, .04, yel), 0, 1.0, .08); }                       // tubo del gas
@@ -4147,7 +4045,7 @@ var Render = (function () {
   // insegne verticali fitte al neon, schermi pubblicitari e del regime, parabole e antenne. Colori forti, non pastello.
   const CITY = {};
   const CGLY = ['電', '脳', '夜', '薬', '酒', '食', '銀', '館', 'РАБ', 'БАР', 'МИР', 'ЧАЙ', '약', '국', '24', 'HOTEL', 'OK', 'ЛОМ', '診', '愛'];
-  const CCOL = ['#d4d0c6', '#f0a048'];
+  const CCOL = ['#d4d0c6', '#d8904a'];
   function cityWin(pane) {
     const key = 'w' + pane; if (CITY[key]) return CITY[key];
     const c = mk(64, 24), x = c.getContext('2d'), e = mk(64, 24), ex = e.getContext('2d'), n = 4;
@@ -4424,7 +4322,7 @@ var Render = (function () {
   function tickVolumes(time, night) {
     VEGU.time.value = time;
     VX.cones.forEach(m => { m.material.opacity = night * .045; m.visible = night > .05; });
-    VX.decals.forEach(d => { d.m.material.opacity = (d.always ? night * .045 : night * .02); });
+    VX.decals.forEach(d => { d.m.material.opacity = (d.always ? .02 + night * .12 : night * .08); });
     VX.steam.forEach(s => { const t = ((time * .35 + s.ph) % 3) / 3, sz = (.6 + t * 2.2) * s.k; s.sp.position.set(s.x + Math.sin(time + s.ph) * .3 * t, s.y + t * 3.2, s.z + t * .8); s.sp.scale.set(sz, sz, 1); s.sp.material.opacity = (1 - t) * t * 1.1 * (.35 + night * .25); });
     VX.fog.forEach((pl, k) => { const U = pl.material.uniforms; U.time.value = time; U.col.value.copy(scene.fog.color).lerp(new THREE.Color('#d0d4da'), .3 * (1 - night)); U.ctr.value.set(cam.x, cam.y); U.amt.value = .22 + night * .1 - k * .06; pl.position.x = cam.x; pl.position.z = cam.y; });
   }
@@ -4449,7 +4347,7 @@ var Render = (function () {
   }
 
   // ---------------- INIZIALIZZAZIONE ----------------
-  const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
+  const LPOOL = [];
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     renderer.setPixelRatio(1);
@@ -4465,18 +4363,10 @@ var Render = (function () {
     dyn.rim = new THREE.DirectionalLight('#b8c8e8', .4); scene.add(dyn.rim); scene.add(dyn.rim.target);
     dyn.fill = new THREE.DirectionalLight('#6f8fb0', .3); scene.add(dyn.fill); scene.add(dyn.fill.target);   // [inverno] riempimento sud: pareti in ombra leggibili   // [inverno] controluce: stacca i volumi dal fondo
     // poche luci vere, spostate ogni fotogramma sulle sorgenti più vicine
-    // [inverno28] faretti con ombra (quanti ne regge la scheda video) + punti senza ombra per i fuochi
-    { const maxT = (renderer.capabilities && renderer.capabilities.maxTextures) || 16, N = Math.max(4, Math.min(12, maxT - 7));
-      const coneG = new THREE.ConeGeometry(1, 1, 18, 1, true); coneG.translate(0, -.5, 0);
-      for (let i = 0; i < N; i++) { const l = new THREE.SpotLight('#ffb35c', 0, 10, 1.2, .95, 1.25);   // [inverno29] caduta morbida, bordo sfumato
-        l.castShadow = true; l.shadow.autoUpdate = false; l.shadow.needsUpdate = true; l.shadow.mapSize.set(512, 512); l.shadow.bias = -.0012; l.shadow.normalBias = .035; l.shadow.camera.near = .2; l.shadow.camera.far = 14;
-        const cone = new THREE.Mesh(coneG, new THREE.MeshBasicMaterial({ color: '#ffd8a0', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); cone.visible = false; cone.renderOrder = 2;
-        l.userData.cone = cone; scene.add(l); scene.add(l.target); scene.add(cone); SPOOL.push(l); LPOOL.push(l); }
-      for (let i = 0; i < 8; i++) { const l = new THREE.PointLight('#ffa040', 0, 8, 2); scene.add(l); PPOOL.push(l); LPOOL.push(l); }
-      window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
+    for (let i = 0; i < 14; i++) { const l = new THREE.PointLight('#ffb35c', 0, 10, 2); scene.add(l); LPOOL.push(l); }
     dyn.vehicles = {};
     const TT = (n, f) => { const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
-    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('props', buildPropsIsland); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
+    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('props', buildPropsIsland); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('soglie', buildThresholds); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     if (window.Models) try { Models.attach({ scene, G, groundH }); } catch (e) { console.warn(e); }
     const mk2 = new THREE.Group();
@@ -5185,37 +5075,14 @@ var Render = (function () {
   const lerp = (a, b, k) => a + (b - a) * k;
   const angLerp = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
   let frameN = 0, playerH = 0;
-  const LFR = new THREE.Frustum(), LPM = new THREE.Matrix4(), LSPH = new THREE.Sphere();
-  function updateLights(time, night, fx, fz) {   // [inverno28] studio luci
+  function updateLights(time, night, fx, fz) {
     frameN++;
-    if (frameN % 4 === 1 || !dyn.lsp) {
-      camera.updateMatrixWorld(); LPM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); LFR.setFromProjectionMatrix(LPM);
-      const on = [];
-      LSRC.forEach(L => { const dx = L.x - fx, dz = L.z - fz; L.d2 = dx * dx + dz * dz; if (L.d2 > 80 * 80) return; if (L.gy === undefined) L.gy = groundH(L.x, L.z);
-        LSPH.center.set(L.x, (L.y + L.gy) / 2, L.z); LSPH.radius = Math.max(2, (L.dist || 8) * .6); if (LFR.intersectsSphere(LSPH)) on.push(L); });
-      on.sort((a, b) => a.d2 - b.d2);
-      const sp = [], pp = [];
-      on.forEach(L => { const fire = L.flick >= .25 && L.y - L.gy < 2.2; if (!fire && sp.length < SPOOL.length) sp.push(L); else if (pp.length < PPOOL.length) pp.push(L); });
-      dyn.lsp = sp; dyn.lpp = pp;
-    }
-    const kOf = L => { let k = L.always ? .06 + night * .94 : night * night;
-      if (L.flick) k *= 1 - L.flick * .5 * (Math.sin(time * 13 + L.phase) * .5 + .5) * (Math.sin(time * 3.7 + L.phase * 2) > .3 ? 1 : .2);
-      return k; };
-    SPOOL.forEach((l, i) => {
-      const L = dyn.lsp[i], cone = l.userData.cone;
-      if (!L) { l.intensity = 0; cone.visible = false; return; }
-      const k = kOf(L), hh = Math.max(1.2, L.y - L.gy);
-      if (l.userData.src !== L) { l.userData.src = L; l.position.set(L.x, L.y, L.z); l.target.position.set(L.x, L.gy - 2, L.z); l.target.updateMatrixWorld(); l.color.copy(L.color);
-        l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.shadow.needsUpdate = true; }
-      if (L.nb === undefined) { L.nb = 0; LSRC.forEach(o => { if (o !== L && Math.abs(o.x - L.x) < 7 && Math.abs(o.z - L.z) < 7) L.nb++; }); }   // [inverno29] vicine: si dividono la luce
-      l.intensity = L.base * k * .55 / Math.sqrt(1 + L.nb * .6);   // [inverno30] la pozza a terra la fa la luce cotta
-      const tall = hh > 2.8 && night > .25;
-      cone.visible = tall && k > .05; if (cone.visible) { const rr = hh * .62; cone.position.set(L.x, L.y - .15, L.z); cone.scale.set(rr, hh - .1, rr); cone.material.color.copy(L.color); cone.material.opacity = .03 * Math.min(1, k); }
-    });
-    for (let q = 0; q < 3; q++) { const l = SPOOL[(frameN * 3 + q) % SPOOL.length]; if (l && l.intensity > 0) l.shadow.needsUpdate = true; }
-    PPOOL.forEach((l, i) => {
-      const L = dyn.lpp[i]; if (!L) { l.intensity = 0; return; }
-      l.position.set(L.x, L.y, L.z); l.color.copy(L.color); l.distance = L.dist; l.intensity = L.base * kOf(L) * .8;
+    if (frameN % 4 === 1 || !dyn.lsorted) { LSRC.forEach(L => { const dx = L.x - fx, dz = L.z - fz; L.d2 = dx * dx + dz * dz; }); dyn.lsorted = LSRC.filter(L => L.d2 < 55 * 55).sort((a, b) => a.d2 - b.d2).slice(0, LPOOL.length); }
+    LPOOL.forEach((l, i) => {
+      const L = dyn.lsorted[i]; if (!L) { l.intensity = 0; return; }
+      let k = L.always ? .06 + night * .94 : night * night;   // [inverno23] di giorno quasi spente if (L.flick) k *= 1 - L.flick * .5 * (Math.sin(time * 13 + L.phase) * .5 + .5) * (Math.sin(time * 3.7 + L.phase * 2) > .3 ? 1 : .2);
+      const fadeD = Math.max(0, 1 - Math.max(0, Math.sqrt(L.d2) - 40) / 15);
+      l.position.set(L.x, L.y, L.z); l.color.copy(L.color); l.distance = L.dist; l.intensity = L.base * k * fadeD * .62;
     });
   }
   function frame(st, dt, ui) {
@@ -5224,9 +5091,9 @@ var Render = (function () {
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, .22 + night * .12); scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
     // [inverno] luce di neve: tanto cielo, poco sole
-    hemi.intensity = .22 + (1 - night) * .3 + night * .08;   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
+    hemi.intensity = .22 + (1 - night) * .3;   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
     fillAmb.intensity = .12 + (1 - night) * .12; fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');
-    moon.intensity = .34 + (1 - night) * .68; moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
+    moon.intensity = .3 + (1 - night) * .72; moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
     moon.position.set(cam.x - 34 - dusk * 18, 22 - dusk * 8, cam.y - 30); moon.target.position.set(cam.x, 0, cam.y);
     if (dyn.fill) { dyn.fill.position.set(cam.x + 8, 14, cam.y + 40); dyn.fill.target.position.set(cam.x, 0, cam.y); dyn.fill.intensity = .12 + (1 - night) * .06; dyn.fill.color.set(night > .5 ? '#5f86b4' : '#a8bcd0'); }
     if (dyn.rim) { dyn.rim.position.set(cam.x + 30, 18, cam.y + 34); dyn.rim.target.position.set(cam.x, 0, cam.y); dyn.rim.intensity = .1 + (1 - night) * .1; dyn.rim.color.set(night > .5 ? '#6a8ac8' : '#b8c8e8'); }
@@ -5234,9 +5101,6 @@ var Render = (function () {
     if (dyn.backdropMats) dyn.backdropMats.forEach(m => m.emissiveIntensity = .1 + night * .9);
     const time = ui.time || st.clock;
     updateLights(time, night, cam.x, cam.y);
-    ISO.chunks.forEach(ch => { if (ch.mat) ch.mat.emissiveIntensity = night * .95; });   // [inverno30]
-    if (frameN % 2 === 0 || !dyn.reflList) { dyn.reflList = (dyn.lsp || []).concat(dyn.lpp || []).concat(SPILLS.filter(S => { const a = S.x - cam.x, b = S.z - cam.y; return a * a + b * b < 38 * 38; })); }
-    updateRefl(night, dyn.reflList);
     dyn.flicker.forEach(f => { f.s.material.opacity = f.base * (.2 + night * .8) * (.85 + Math.sin(time * 9 + f.base * 7) * .15); });
     dyn.signs.forEach(s => { if (s.flick) { const on = Math.sin(time * 17) > -.85 || Math.sin(time * 2.3) > .2; s.m.color.setScalar(on ? 1 : .35); if (s.gl) s.gl.material.opacity = on ? .45 : .1; } });
     if (dyn.water) { const U = dyn.water.uniforms; U.time.value = time; U.night.value = night; U.dusk.value = dusk; U.fogC.value.copy(tmpC); U.camP.value.copy(camera.position); U.fogN.value = scene.fog.near; U.fogF.value = scene.fog.far; }

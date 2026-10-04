@@ -20,10 +20,7 @@ var Mente = (function () {
     model: '',
     cache: new Map(),
     lastCall: 0,
-    minInterval: 1200, // protezione rate-limit in ms
-    working: false,
-    lastError: null,
-    talkCd: 0          // pausa tra due chiacchiere IA (ms, orologio reale)
+    minInterval: 1200 // protezione rate-limit in ms
   };
 
   // Verifica lo stato del backend
@@ -36,8 +33,6 @@ var Mente = (function () {
         state.provider = data.provider;
         state.active = data.active;
         state.model = data.model;
-        state.working = !!data.working;
-        state.lastError = data.lastError || null;
         return true;
       }
     } catch (e) {
@@ -67,9 +62,6 @@ var Mente = (function () {
       });
       if (res.ok) {
         const body = await res.json();
-        state.lastError = body.data ? null : (body.error || 'nessuna risposta');
-        state.working = !!body.data;
-        if (!body.data && body.error) console.warn('[Mente] ripiego:', body.error);
         return body.data || null;
       }
     } catch (e) {
@@ -163,41 +155,6 @@ var Mente = (function () {
     return aiResp;
   }
 
-  // 4. Le chiacchiere che il giocatore sente passando diventano vere battute IA.
-  //    La simulazione (Azioni.social) decide CHI parla e QUANDO e ne applica gli effetti;
-  //    la Mente sostituisce solo le parole del fumetto. Solo vicino al giocatore, all'aperto,
-  //    con una pausa tra una chiamata e l'altra per contenere i costi.
-  function hookTalk() {
-    if (typeof Azioni === 'undefined' || !Azioni.CFG || typeof Game === 'undefined' || !Game.say) return;
-    Azioni.CFG.talk = function (st, a, b, kind) {
-      if (!state.active || state.lastError && state.working === false && state.calls > 3) return;
-      if (kind !== 'chiacchiera' && kind !== 'sfotti' && kind !== 'apprezza') return;
-      if (!a.pop || !a.pop.near || a.inside || b.inside) return;
-      const p = st.player;
-      if (p && Math.hypot(a.x - p.x, a.y - p.y) > 14) return;
-      const now = Date.now();
-      if (now < state.talkCd) return;
-      state.talkCd = now + 9000;
-      state.calls = (state.calls || 0) + 1;
-      const info = n => ({
-        id: n.id, name: n.name, role: n.role,
-        lavoro: n.pop && n.pop.job ? n.pop.job.title : undefined,
-        umore: n.pop ? { rabbia: +(n.pop.need.rabbia || 0).toFixed(2), paura: +(n.pop.need.paura || 0).toFixed(2) } : undefined,
-        ricordo: n.pop && n.pop.diary && n.pop.diary.length ? n.pop.diary[n.pop.diary.length - 1].text : undefined
-      });
-      const where = (a.pop.at && a.pop.at.label) || (Game.nearestPlace ? Game.nearestPlace(a.x, a.y).name : '');
-      callBackend({
-        kind: 'chiacchiera',
-        npcA: info(a), npcB: info(b),
-        context: `Tipo di scambio: ${kind}. Vicino a ${where}, ore ${Game.clockStr(st.t)}. Repressione: ${st.ris ? Math.round(st.ris.repr) : 0}.`
-      }).then(r => {
-        if (!r || !r.battutaA) return;
-        Game.say(st, a, String(r.battutaA).slice(0, 90), 3.2);
-        if (r.battutaB) setTimeout(() => { try { Game.say(st, b, String(r.battutaB).slice(0, 90), 3.2); } catch (e) { } }, 1600);
-      }).catch(() => { });
-    };
-  }
-
   // Inizializzazione automatica
   function init() {
     checkStatus().then(ok => {
@@ -209,7 +166,6 @@ var Mente = (function () {
     });
 
     hookNightReflection();
-    hookTalk();
   }
 
   if (typeof document !== 'undefined') {

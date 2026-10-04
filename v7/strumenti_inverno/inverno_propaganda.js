@@ -52,7 +52,7 @@
       x.globalCompositeOperation = 'destination-out'; for (let i = 0; i < 900; i++) { x.fillStyle = 'rgba(0,0,0,' + (.3 + r() * .7) + ')'; x.fillRect(Math.floor(r() * W), Math.floor(r() * H), 1 + Math.floor(r() * 3), 1); } x.globalCompositeOperation = 'source-over';
     }
     const t = canvasTex(c); t.magFilter = THREE.NearestFilter;
-    return PROP[key] = new THREE.MeshLambertMaterial({ map: t, transparent: true, alphaTest: .35, side: THREE.DoubleSide, emissive: '#1e1a1c', polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    return PROP[key] = new THREE.MeshLambertMaterial({ map: t, transparent: true, alphaTest: .35, side: THREE.DoubleSide, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: .34, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   }
   function buildPropaganda() {
     const T = G.T, WD = M.world && M.world.districtAt, g = new THREE.Group(); let nR = 0, nS = 0;

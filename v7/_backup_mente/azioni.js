@@ -715,7 +715,6 @@ var Azioni = (function () {
     const Ra = rel(st, a, b), Rb = rel(st, b, a), place = (a.pop.at && a.pop.at.label) || placeName(a.x, a.y);
     st.pop.stats.incontri = (st.pop.stats.incontri || 0) + 1;
     say(st, a, LINES[kind] || LINES.chiacchiera);
-    if (CFG.talk) try { CFG.talk(st, a, b, kind); } catch (e) { } // la Mente può dare voce vera allo scambio
     switch (kind) {
       case 'chiacchiera': I.share(st, a, b); I.share(st, b, a); moveRel(st, a, b, .03); moveRel(st, b, a, .03); feel(a, 'compagnia', -.15); feel(b, 'compagnia', -.15); break;
       case 'sfotti': {
