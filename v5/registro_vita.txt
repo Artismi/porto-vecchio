@@ -1,0 +1,384 @@
+
+==================== MARTEDÌ (giorno 1) ====================
+Città: progetti nati 17, riusciti 0, falliti 0 · furti 0 · arresti 0 · scritte degli abitanti 0 · graffiti 0 · appuntamenti 0 (bidoni 0) · ritardi 0 · morale 10 repressione 0
+
+— Ettore «Lupo» Ganz, 70 anni, Bibliotecario, ex partigiano [cast]. Interessi: i libri, la politica. Soldi 118, dispensa 2.
+  Giornata: 21:00 dorme
+  Bisogni: igiene 0.61
+
+— Gino Ferraro, 52 anni, Barista del Bar Da Gino [cast]. Interessi: le carte, le chiacchiere, lo sport. Soldi 119, dispensa 3.
+  Giornata: 21:14 dorme
+  Bisogni: tranquillo
+
+— Rosa Amato, 55 anni, Fioraia [cast]. Interessi: la fede, la campagna. Soldi 103, dispensa 1.
+  Giornata: 18:01 va a Chiesa di San Rocco → 18:16 va a Piazza San Rocco → 19:58 dorme
+  Bisogni: tranquillo
+
+— Gigi «Betamax» Mura, 46 anni, Gestore della Videoteca Stella [cast]. Interessi: il cinema, la musica. Soldi 155, debito 220, dispensa 2.
+  Giornata: 21:35 dorme
+  Bisogni: igiene 0.6, compagnia 0.58
+
+— Rita «Vinile» Sanna, 29 anni, DJ della Discoteca Luna [cast]. Interessi: la musica, il ballo, l'arte (disegnare, dipingere i muri). Soldi 122, dispensa 3.
+  Giornata: 19:13 al lavoro (Discoteca Luna)
+  Bisogni: sonno 0.66, svago 0.68
+
+— Sasà «Cono» Deiana, 19 anni, Ragazzo della Gelateria Polo Nord [cast]. Interessi: l'arte (disegnare, dipingere i muri), i motori, il ballo. Soldi 67, dispensa 2.
+  Giornata: 20:08 va a Via al Mare → 21:14 va a Vico del Campo
+  Bisogni: fame 0.68, sonno 0.61, igiene 0.56
+
+— Sandro «lo Squalo» Neri, 50 anni, Ricettatore. Gli devi dei soldi [cast]. Interessi: le carte, i motori. Soldi 98, dispensa 4.
+  Giornata: 19:42 dorme
+  Bisogni: tranquillo
+
+— Colonnello Ruggero Vasco, 58 anni, Comandante della Guardia Insulare [cast]. Interessi: i libri, lo sport. Soldi 67, dispensa 3.
+  Giornata: 19:39 dorme
+  Bisogni: tranquillo
+
+— Marco Puddu, 43 anni, Attendente al comando (Hotel Miramare). Interessi: lo sport, i motori. Soldi 51, debito 178, dispensa 1.
+  Giornata: 19:22 torna a casa → 20:32 a fare due chiacchiere (Passeggiata a mare) → 23:54 rientra prima dell'Ora Quieta
+  Bisogni: tranquillo
+
+— Claudio Arru «Zampa», 28 anni, Disoccupato. Interessi: le chiacchiere, lo sport. Soldi 49, debito 218, dispensa 1.
+  Giornata: 18:43 rientra → 23:29 rientra prima dell'Ora Quieta
+  Stanotte ha pensato: deve trovare un lavoro
+  Progetti: trovare un lavoro [passo 1/4: chiede lavoro a giornata alla calata]
+  Bisogni: tranquillo
+
+— Renato Mancini, 29 anni, Portiere d'albergo (Hotel Paradiso). Interessi: la fotografia, la pesca, la cucina. Soldi 80, debito 334, dispensa 3.
+  Giornata: 23:09 torna a casa → 23:24 dorme
+  Stanotte ha pensato: deve dare allo Squalo una parte del debito
+  Progetti: dare allo Squalo una parte del debito [passo 1/2: mettere da parte i soldi per lo Squalo]
+  Bisogni: tranquillo
+
+— Antonietta Esposito, 51 anni, Bracciante (Masseria Sant'Elia). Interessi: le carte, il cinema. Soldi 68, dispensa 2.
+  Giornata: 20:43 a giocare a scopa (Osteria di San Giacomo) → 23:38 rientra prima dell'Ora Quieta
+  Bisogni: igiene 0.62
+
+— Anna Floris, 23 anni, Commessa (Alimentari Wu). Interessi: la politica, il ballo. Soldi 32, dispensa 3.
+  Giornata: 18:37 va al bar (Trattoria da Nina) → 20:05 torna a casa → 23:37 rientra prima dell'Ora Quieta
+  Bisogni: tranquillo
+
+— Carmine Dessì, 69 anni, Pensionato. Interessi: il mare, la pesca, la campagna. Soldi 62, dispensa 2.
+  Giornata: 18:00 al cinema (Cinema Astor) → 23:31 rientra prima dell'Ora Quieta
+  Bisogni: igiene 0.63
+
+— Lella Contu, 27 anni, Barbiere (Barbiere Gavino). Interessi: la musica, l'arte (disegnare, dipingere i muri), la pesca. Soldi 84, dispensa 3.
+  Giornata: 19:13 torna a casa → 20:28 al Flipper (Sala giochi Flipper) → 23:39 rientra prima dell'Ora Quieta
+  Bisogni: tranquillo
+
+>>> Mercoledì 10:00: i Grigi portano via Bachisio Esposito, figlio di Antonietta Esposito.
+
+==================== MERCOLEDÌ (giorno 2) ====================
+Città: progetti nati 58, riusciti 2, falliti 0 · furti 1 · arresti 1 · scritte degli abitanti 0 · graffiti 0 · appuntamenti 34 (bidoni 1) · ritardi 5 · morale 5 repressione 0
+
+— Ettore «Lupo» Ganz, 70 anni, Bibliotecario, ex partigiano [cast]. Interessi: i libri, la politica. Soldi 138, dispensa 0.
+  Giornata: 00:00 dorme → 05:37 al lavoro (Biblioteca civica) → 13:00 va a Piazza San Rocco → 13:41 al lavoro (Biblioteca civica) → 17:30 va a Osteria del Porto → 21:00 dorme
+  Bisogni: igiene 0.58
+
+— Gino Ferraro, 52 anni, Barista del Bar Da Gino [cast]. Interessi: le carte, le chiacchiere, lo sport. Soldi 146, dispensa 1.
+  Giornata: 00:00 dorme → 05:17 si prepara → 06:00 al lavoro (Bar Da Gino) → 23:07 dorme
+  Stanotte ha pensato: deve conoscere qualcuno
+  Progetti: conoscere qualcuno [passo 1/1: invita Nunzia a bere qualcosa]
+  Bisogni: sonno 0.73, compagnia 0.7, svago 1
+
+— Rosa Amato, 55 anni, Fioraia [cast]. Interessi: la fede, la campagna. Soldi 120, dispensa 1.
+  Giornata: 00:00 dorme → 05:32 al lavoro (Banco dei fiori) → 16:59 va a Chiesa di San Rocco → 18:19 va a Piazza San Rocco → 19:53 dorme
+  Bisogni: igiene 0.58, compagnia 0.61, svago 0.65
+
+— Gigi «Betamax» Mura, 46 anni, Gestore della Videoteca Stella [cast]. Interessi: il cinema, la musica. Soldi 115, debito 165, dispensa 0.
+  Giornata: 00:00 dorme → 08:10 si prepara → 09:00 al lavoro (Videoteca Stella) → 13:00 va a Passeggiata a mare → 14:00 al lavoro (Videoteca Stella) → 23:00 dorme
+  Stanotte ha pensato: deve conoscere qualcuno
+  Progetti: conoscere qualcuno [passo 1/1: invita Peppino a bere qualcosa]
+  Bisogni: sonno 0.58, compagnia 0.89, svago 1
+
+— Rita «Vinile» Sanna, 29 anni, DJ della Discoteca Luna [cast]. Interessi: la musica, il ballo, l'arte (disegnare, dipingere i muri). Soldi 156, dispensa 2.
+  Giornata: 00:00 al lavoro (Discoteca Luna) → 03:37 dorme → 10:07 a casa → 15:00 si annoia: al cinema (Cinema Astor) → 16:37 torna a casa → 19:07 va a Bar Sirena → 19:13 al lavoro (Discoteca Luna)
+  Bisogni: sonno 0.59, svago 0.59
+
+— Sasà «Cono» Deiana, 19 anni, Ragazzo della Gelateria Polo Nord [cast]. Interessi: l'arte (disegnare, dipingere i muri), i motori, il ballo. Soldi 89, dispensa 0.
+  Giornata: 00:00 dorme → 08:00 ha fame, torna a casa a mangiare → 08:18 si prepara → 09:00 al lavoro (Gelateria Polo Nord) → 20:08 va a Via al Mare → 21:14 va a Vico del Campo
+  Bisogni: sonno 0.75, svago 0.71
+
+— Sandro «lo Squalo» Neri, 50 anni, Ricettatore. Gli devi dei soldi [cast]. Interessi: le carte, i motori. Soldi 120, dispensa 3.
+  Giornata: 00:00 dorme → 10:00 al lavoro → 17:06 va a Sala giochi Flipper → 18:20 appuntamento con Rocco (Via al Mare) → 21:06 dorme
+  Bisogni: tranquillo
+
+— Colonnello Ruggero Vasco, 58 anni, Comandante della Guardia Insulare [cast]. Interessi: i libri, lo sport. Soldi 89, dispensa 2.
+  Giornata: 00:00 dorme → 08:00 al lavoro → 12:02 va a Piazza San Rocco → 19:02 va a Via al Mare → 19:38 dorme
+  Bisogni: tranquillo
+
+— Marco Puddu, 43 anni, Attendente al comando (Hotel Miramare). Interessi: lo sport, i motori. Soldi 22, debito 170, dispensa 0.
+  Giornata: 00:00 dorme → 05:37 si prepara → 06:22 al lavoro (attendente al comando) (Hotel Miramare) → 19:22 torna a casa → 23:52 rientra prima dell'Ora Quieta
+  Stanotte ha pensato: deve dare allo Squalo una parte del debito
+  Progetti: dare allo Squalo una parte del debito [passo 1/2: mettere da parte i soldi per lo Squalo]
+  Bisogni: tranquillo
+
+— Claudio Arru «Zampa», 28 anni, Disoccupato. Interessi: le chiacchiere, lo sport. Soldi 17, debito 217, dispensa 3.
+  Giornata: 00:00 dorme → 07:13 chiede lavoro a giornata alla calata (Calata del porto) → 09:53 a fare la spesa (Alimentari Wu) → 10:24 pranza a casa → 10:43 rientra → 15:53 a giocare a pallone (Spiaggia del Lido) → 17:22 borsaiolo (Via al Mare) → 18:43 rientra → 23:21 rientra prima dell'Ora Quieta
+  Stanotte ha pensato: Via al Mare non è più un posto sicuro
+  Progetti: trovare un lavoro [passo 2/4: chiede nelle botteghe se cercano qualcuno] · dare allo Squalo una parte del debito [passo 1/2: mettere da parte i soldi per lo Squalo]
+  Bisogni: soldi 0.63
+
+— Renato Mancini, 29 anni, Portiere d'albergo (Hotel Paradiso). Interessi: la fotografia, la pesca, la cucina. Soldi 39, debito 328, dispensa 1.
+  Giornata: 00:00 dorme → 10:23 borsaiolo (Passeggiata a mare) → 13:09 rientra → 13:42 si prepara → 14:20 al lavoro (portiere d'albergo) (Hotel Paradiso) → 23:09 torna a casa → 23:24 dorme
+  Stanotte ha pensato: deve conoscere qualcuno
+  Progetti: dare allo Squalo una parte del debito [passo 1/2: mettere da parte i soldi per lo Squalo] · conoscere qualcuno [passo 1/1: invita Vittorio a bere qualcosa]
+  Bisogni: compagnia 0.83, svago 0.89, soldi 0.84
+
+— Antonietta Esposito, 51 anni, Bracciante (Masseria Sant'Elia). Interessi: le carte, il cinema. Soldi 57, dispensa 5.
+  Giornata: 00:00 dorme → 03:33 si prepara → 04:15 al lavoro (bracciante) (Masseria Sant'Elia) → 14:04 torna a casa → 14:14 fa la spesa dopo il lavoro (Panetteria Mario) → 14:39 va alla Rocca a chiedere di Bachisio (Rocca della Tutela) → 15:59 torna a casa → 20:44 a giocare a scopa (Osteria di San Giacomo) → 21:00 ha fame, va a mangiare (Osteria di San Giacomo) → 22:34 torna a casa → 23:36 rientra prima dell'Ora Quieta
+  Bisogni: igiene 0.93
+
+— Anna Floris, 23 anni, Commessa (Alimentari Wu). Interessi: la politica, il ballo. Soldi 30, dispensa 1.
+  Giornata: 00:00 dorme → 06:19 si prepara → 07:54 al lavoro (commessa) (Alimentari Wu) → 10:35 pausa pranzo (Osteria di San Giacomo) → 14:00 torna al lavoro (Alimentari Wu) → 17:18 esce la sera (Molo dei pescatori) → 18:13 torna a casa → 23:09 rientra prima dell'Ora Quieta
+  Bisogni: tranquillo
+
+— Carmine Dessì, 69 anni, Pensionato. Interessi: il mare, la pesca, la campagna. Soldi 55, dispensa 5.
+  Giornata: 00:00 dorme → 06:12 all'asta del pesce (Molo dei pescatori) → 10:54 a fare la spesa (Alimentari Wu) → 16:08 a pescare (Punta Scogli) → 17:00 ha fame, torna a casa a mangiare → 17:50 al vespro (Chiesa di San Rocco) → 21:10 rientra prima dell'Ora Quieta → 21:35 dorme
+  Bisogni: igiene 0.55
+
+— Lella Contu, 27 anni, Barbiere (Barbiere Gavino). Interessi: la musica, l'arte (disegnare, dipingere i muri), la pesca. Soldi 81, dispensa 1.
+  Giornata: 00:00 dorme → 06:35 si prepara → 07:18 al lavoro (barbiere) (Barbiere Gavino) → 19:13 torna a casa → 20:35 al Flipper (Sala giochi Flipper) → 23:44 rientra prima dell'Ora Quieta
+  Bisogni: sonno 0.66
+
+==================== GIOVEDÌ (giorno 3) ====================
+Città: progetti nati 115, riusciti 17, falliti 0 · furti 2 · arresti 2 · scritte degli abitanti 0 · graffiti 0 · appuntamenti 58 (bidoni 12) · ritardi 15 · morale 1 repressione 0
+
+— Ettore «Lupo» Ganz, 70 anni, Bibliotecario, ex partigiano [cast]. Interessi: i libri, la politica. Soldi 152, dispensa 0.
+  Giornata: 00:00 dorme → 05:37 al lavoro (Biblioteca civica) → 11:41 va a Piazza San Rocco → 13:51 al lavoro (Biblioteca civica) → 17:30 va a Osteria del Porto → 21:00 dorme
+  Bisogni: igiene 0.58
+
+— Gino Ferraro, 52 anni, Barista del Bar Da Gino [cast]. Interessi: le carte, le chiacchiere, lo sport. Soldi 168, dispensa 0.
+  Giornata: 00:00 dorme → 05:17 si prepara → 06:00 al lavoro (Bar Da Gino) → 18:50 appuntamento con Nunzia (Bar Da Gino) → 20:07 torna a casa → 23:07 dorme
+  Chiusi: conoscere qualcuno (riuscito)
+  Bisogni: tranquillo
+
+— Rosa Amato, 55 anni, Fioraia [cast]. Interessi: la fede, la campagna. Soldi 131, dispensa 0.
+  Giornata: 00:00 dorme → 05:32 al lavoro (Banco dei fiori) → 16:59 va a Chiesa di San Rocco → 18:00 si annoia: al cinema (Cinema Astor) → 18:06 appuntamento con Tore (Piazza San Rocco) → 19:02 torna a casa → 21:02 dorme
+  Stanotte ha pensato: deve conoscere qualcuno
+  Progetti: conoscere qualcuno [passo 1/1: invita Franca a bere qualcosa]
+  Bisogni: igiene 0.58, compagnia 0.69
+
+— Gigi «Betamax» Mura, 46 anni, Gestore della Videoteca Stella [cast]. Interessi: il cinema, la musica. Soldi 145, debito 165, dispensa 0.
+  Giornata: 00:00 dorme → 07:00 cerca compagnia (Trattoria da Nina) → 08:10 si prepara → 09:00 al lavoro (Videoteca Stella) → 13:00 va a Passeggiata a mare → 14:00 al lavoro (Videoteca Stella) → 18:50 appuntamento con Peppino (Fontana di San Rocco) → 19:00 si annoia: al cinema (Cinema Astor) → 20:00 torna a casa → 23:00 dorme
+  Chiusi: conoscere qualcuno (riuscito)
+  Bisogni: tranquillo
+
+— Rita «Vinile» Sanna, 29 anni, DJ della Discoteca Luna [cast]. Interessi: la musica, il ballo, l'arte (disegnare, dipingere i muri). Soldi 193, dispensa 2.
+  Giornata: 00:00 al lavoro (Discoteca Luna) → 03:37 dorme → 10:07 a casa → 14:20 appuntamento con Sasà (Molo dei pescatori) → 19:07 va a Bar Sirena → 19:13 al lavoro (Discoteca Luna)
+  Bisogni: sonno 0.59
+
+— Sasà «Cono» Deiana, 19 anni, Ragazzo della Gelateria Polo Nord [cast]. Interessi: l'arte (disegnare, dipingere i muri), i motori, il ballo. Soldi 105, dispensa 3.
+  Giornata: 00:00 dorme → 08:18 si prepara → 09:00 al lavoro (Gelateria Polo Nord) → 14:20 appuntamento con Rita (Molo dei pescatori) → 20:00 ha fame, va a mangiare (Trattoria da Nina) → 22:08 va a Vico del Campo
+  Bisogni: sonno 0.68
+
+— Sandro «lo Squalo» Neri, 50 anni, Ricettatore. Gli devi dei soldi [cast]. Interessi: le carte, i motori. Soldi 141, dispensa 1.
+  Giornata: 00:00 dorme → 10:00 al lavoro → 17:06 va a Sala giochi Flipper → 21:06 dorme
+  Stanotte ha pensato: deve sapere che fine ha fatto Rocco
+  Progetti: sapere che fine ha fatto Rocco [passo 1/2: va alla Rocca a chiedere di Rocco] · farsi una partita a scopa [passo 1/1: partita a scopa con Tano]
+  Bisogni: tranquillo
+
+— Colonnello Ruggero Vasco, 58 anni, Comandante della Guardia Insulare [cast]. Interessi: i libri, lo sport. Soldi 112, dispensa 0.
+  Giornata: 00:00 dorme → 08:00 al lavoro → 12:02 va a Piazza San Rocco → 19:02 va a Via al Mare → 19:42 dorme
+  Bisogni: tranquillo
+
+— Marco Puddu, 43 anni, Attendente al comando (Hotel Miramare). Interessi: lo sport, i motori. Soldi 10, debito 170, dispensa 0.
+  Giornata: 00:00 dorme → 05:45 si prepara → 06:22 al lavoro (attendente al comando) (Hotel Miramare) → 13:22 pausa pranzo (Osteria del Porto) → 19:22 torna a casa → 20:46 in palestra (Palestra Pina) → 23:49 rientra prima dell'Ora Quieta
+  Stanotte ha pensato: deve trovare i soldi dell'affitto
+  Progetti: dare allo Squalo una parte del debito [passo 1/2: mettere da parte i soldi per lo Squalo] · trovare i soldi dell'affitto [passo 1/1: chiede un anticipo al padrone]
+  Bisogni: sonno 0.71, soldi 0.63
+
+— Claudio Arru «Zampa», 28 anni, Disoccupato. Interessi: le chiacchiere, lo sport. Soldi 16, debito 217, dispensa 4.
+  Giornata: 00:00 dorme → 08:21 si prepara → 09:13 chiede nelle botteghe se cercano qualcuno (Magazzino Neri) → 10:55 a fare la spesa (Alimentari Wu) → 15:44 a fare due chiacchiere (Passeggiata a mare) → 17:29 borsaiolo (Passeggiata a mare) → 21:09 esce la sera (Sala giochi Flipper) → 21:13 rientra → 23:05 rientra prima dell'Ora Quieta
+  Stanotte ha pensato: così non si va avanti, lo Squalo vuole i suoi soldi
+  Progetti: trovare un lavoro [passo 3/4: si presenta al cantiere] · dare allo Squalo una parte del debito [passo 1/2: mettere da parte i soldi per lo Squalo]
+  Bisogni: compagnia 0.64, soldi 0.65
+
+— Renato Mancini, 29 anni, Portiere d'albergo (Hotel Paradiso). Interessi: la fotografia, la pesca, la cucina. Soldi 29, debito 328, dispensa 0.
+  Giornata: 00:00 dorme → 07:00 cerca compagnia (Trattoria da Nina) → 08:39 torna a casa → 13:57 si prepara → 14:20 al lavoro (portiere d'albergo) (Hotel Paradiso) → 18:50 appuntamento con Vittorio (Osteria del Porto) → 23:09 torna a casa → 23:24 dorme
+  Stanotte ha pensato: così non si va avanti, lo Squalo vuole i suoi soldi
+  Progetti: dare allo Squalo una parte del debito [passo 1/2: mettere da parte i soldi per lo Squalo]
+  Chiusi: conoscere qualcuno (riuscito)
+  Bisogni: soldi 0.92
+
+— Antonietta Esposito, 51 anni, Bracciante (Masseria Sant'Elia). Interessi: le carte, il cinema. Soldi 52, dispensa 3.
+  Giornata: 00:00 dorme → 03:17 si prepara → 04:15 al lavoro (bracciante) (Masseria Sant'Elia) → 14:04 torna a casa → 20:54 a giocare a scopa (Osteria di San Giacomo) → 23:38 rientra prima dell'Ora Quieta
+  Chiusi: sapere che fine ha fatto Bachisio (riuscito)
+  Bisogni: sonno 0.71, igiene 0.93
+
+— Anna Floris, 23 anni, Commessa (Alimentari Wu). Interessi: la politica, il ballo. Soldi 26, dispensa 0.
+  Giornata: 00:00 dorme → 06:45 si prepara → 07:27 al lavoro (commessa) (Alimentari Wu) → 18:58 torna a casa → 20:45 a fare due chiacchiere (Passeggiata a mare) → 23:12 rientra prima dell'Ora Quieta → 23:59 dorme
+  Bisogni: sonno 0.61
+
+— Carmine Dessì, 69 anni, Pensionato. Interessi: il mare, la pesca, la campagna. Soldi 48, dispensa 7.
+  Giornata: 00:00 dorme → 07:38 si prepara → 09:58 a fare la spesa (Alimentari Wu) → 10:25 pranza a casa → 15:41 a pescare (Punta Scogli) → 17:50 al vespro (Chiesa di San Rocco) → 18:27 in palestra (Palestra Nello) → 23:37 rientra prima dell'Ora Quieta
+  Bisogni: tranquillo
+
+— Lella Contu, 27 anni, Barbiere (Barbiere Gavino). Interessi: la musica, l'arte (disegnare, dipingere i muri), la pesca. Soldi 74, dispensa 0.
+  Giornata: 00:00 dorme → 06:31 si prepara → 07:18 al lavoro (barbiere) (Barbiere Gavino) → 13:13 pausa pranzo → 14:00 torna al lavoro (Barbiere Gavino) → 19:13 torna a casa → 21:07 al Flipper (Sala giochi Flipper) → 23:38 rientra prima dell'Ora Quieta
+  Bisogni: sonno 0.66
+
+==================== VENERDÌ (giorno 4) ====================
+Città: progetti nati 166, riusciti 52, falliti 0 · furti 4 · arresti 2 · scritte degli abitanti 0 · graffiti 0 · appuntamenti 78 (bidoni 22) · ritardi 20 · morale 0 repressione 0
+
+— Ettore «Lupo» Ganz, 70 anni, Bibliotecario, ex partigiano [cast]. Interessi: i libri, la politica. Soldi 166, dispensa 0.
+  Giornata: 00:00 dorme → 05:37 al lavoro (Biblioteca civica) → 11:41 va a Piazza San Rocco → 13:46 al lavoro (Biblioteca civica) → 17:30 va a Osteria del Porto → 21:00 dorme
+  Stanotte ha pensato: ha voglia di capire cosa succede davvero
+  Progetti: capire cosa succede davvero [passo 1/2: cerca i giornali vecchi in biblioteca]
+  Bisogni: igiene 0.58
+
+— Gino Ferraro, 52 anni, Barista del Bar Da Gino [cast]. Interessi: le carte, le chiacchiere, lo sport. Soldi 190, dispensa 0.
+  Giornata: 00:00 dorme → 05:17 si prepara → 06:00 al lavoro (Bar Da Gino) → 23:07 dorme
+  Bisogni: sonno 0.73, svago 0.72
+
+— Rosa Amato, 55 anni, Fioraia [cast]. Interessi: la fede, la campagna. Soldi 141, dispensa 0.
+  Giornata: 00:00 dorme → 05:32 al lavoro (Banco dei fiori) → 16:57 va a Chiesa di San Rocco → 18:07 appuntamento con Franca (Piazza San Rocco) → 18:57 torna a casa → 20:00 cerca compagnia (Circolo dei Lavoratori) → 20:34 dorme
+  Progetti: conoscere qualcuno [passo 1/1: invita Franca a bere qualcosa]
+  Bisogni: igiene 0.58, compagnia 0.73, svago 0.71
+
+— Gigi «Betamax» Mura, 46 anni, Gestore della Videoteca Stella [cast]. Interessi: il cinema, la musica. Soldi 180, debito 165, dispensa 0.
+  Giornata: 00:00 dorme → 08:10 si prepara → 09:00 al lavoro (Videoteca Stella) → 13:00 va a Passeggiata a mare → 14:00 al lavoro (Videoteca Stella) → 23:00 dorme
+  Bisogni: sonno 0.58, svago 0.71
+
+— Rita «Vinile» Sanna, 29 anni, DJ della Discoteca Luna [cast]. Interessi: la musica, il ballo, l'arte (disegnare, dipingere i muri). Soldi 228, dispensa 1.
+  Giornata: 00:00 al lavoro (Discoteca Luna) → 03:37 dorme → 10:07 a casa → 15:07 va a Spiaggia del Lido → 19:07 va a Bar Sirena → 19:13 al lavoro (Discoteca Luna)
+  Stanotte ha pensato: ha voglia di andare a ballare sabato alla Luna
+  Progetti: andare a ballare sabato alla Luna [passo 1/1: sabato alla Luna con Sasà]
+  Bisogni: sonno 0.59
+
+— Sasà «Cono» Deiana, 19 anni, Ragazzo della Gelateria Polo Nord [cast]. Interessi: l'arte (disegnare, dipingere i muri), i motori, il ballo. Soldi 128, dispensa 1.
+  Giornata: 00:00 dorme → 08:18 si prepara → 09:00 al lavoro (Gelateria Polo Nord) → 20:08 va a Via al Mare → 21:10 va a Vico del Campo
+  Bisogni: fame 0.59, sonno 0.75
+
+— Sandro «lo Squalo» Neri, 50 anni, Ricettatore. Gli devi dei soldi [cast]. Interessi: le carte, i motori. Soldi 160, dispensa 0.
+  Giornata: 00:00 dorme → 10:00 al lavoro → 17:06 va a Sala giochi Flipper → 17:36 va alla Rocca a chiedere di Rocco (Rocca della Tutela) → 18:56 torna a casa → 20:50 appuntamento con Tano (Bar Da Gino) → 22:06 torna a casa
+  Progetti: farsi una partita a scopa [passo 1/1: partita a scopa con Tano]
+  Bisogni: tranquillo
+
+— Colonnello Ruggero Vasco, 58 anni, Comandante della Guardia Insulare [cast]. Interessi: i libri, lo sport. Soldi 130, dispensa 0.
+  Giornata: 00:00 dorme → 08:00 al lavoro → 12:02 va a Piazza San Rocco → 19:02 va a Via al Mare → 19:47 dorme
+  Bisogni: tranquillo
+
+— Marco Puddu, 43 anni, Attendente al comando (Hotel Miramare). Interessi: lo sport, i motori. Soldi 220, debito 170, dispensa 0.
+  Giornata: 00:00 dorme → 05:59 si prepara → 06:22 al lavoro (attendente al comando) (Hotel Miramare) → 07:45 chiede un anticipo al padrone (Hotel Miramare) → 13:22 pausa pranzo (Osteria del Porto) → 19:22 torna a casa → 20:56 a fare due chiacchiere (Passeggiata a mare) → 23:49 rientra prima dell'Ora Quieta
+  Progetti: dare allo Squalo una parte del debito [passo 2/2: porta i soldi allo Squalo]
+  Chiusi: trovare i soldi dell'affitto (riuscito)
+  Bisogni: sonno 0.71, svago 0.56
+
+— Claudio Arru «Zampa», 28 anni, Disoccupato. Interessi: le chiacchiere, lo sport. Soldi 18, debito 217, dispensa 2.
+  Giornata: 00:00 dorme → 08:01 cerca lavoro a giornata (Calata del porto) → 08:01 borsaiolo (Calata del porto) → 10:43 rientra → 10:46 pranza a casa → 13:37 a giocare a pallone (Spiaggia del Lido) → 23:34 rientra prima dell'Ora Quieta
+  Stanotte ha pensato: così non si va avanti, lo Squalo vuole i suoi soldi
+  Progetti: trovare un lavoro [passo 3/4: si presenta al cantiere] · dare allo Squalo una parte del debito [passo 1/2: mettere da parte i soldi per lo Squalo]
+  Bisogni: soldi 0.62
+
+— Renato Mancini, 29 anni, Portiere d'albergo (Hotel Paradiso). Interessi: la fotografia, la pesca, la cucina. Soldi 148, debito 328, dispensa 0.
+  Giornata: 00:00 dorme → 10:31 borsaiolo (Piazza San Rocco) → 10:52 rientra → 13:52 si prepara → 14:20 al lavoro (portiere d'albergo) (Hotel Paradiso) → 23:09 torna a casa → 23:24 dorme
+  Progetti: dare allo Squalo una parte del debito [passo 2/2: porta i soldi allo Squalo]
+  Bisogni: tranquillo
+
+— Antonietta Esposito, 51 anni, Bracciante (Masseria Sant'Elia). Interessi: le carte, il cinema. Soldi 159, dispensa 0.
+  Giornata: 00:00 dorme → 03:16 si prepara → 04:15 al lavoro (bracciante) (Masseria Sant'Elia) → 14:04 torna a casa → 23:36 rientra prima dell'Ora Quieta
+  Bisogni: sonno 0.61, igiene 0.93
+
+— Anna Floris, 23 anni, Commessa (Alimentari Wu). Interessi: la politica, il ballo. Soldi 135, dispensa 0.
+  Giornata: 00:00 dorme → 06:52 si prepara → 07:27 al lavoro (commessa) (Alimentari Wu) → 18:44 va al bar (Trattoria da Nina) → 23:27 rientra prima dell'Ora Quieta
+  Bisogni: sonno 0.65
+
+— Carmine Dessì, 69 anni, Pensionato. Interessi: il mare, la pesca, la campagna. Soldi 46, dispensa 9.
+  Giornata: 00:00 dorme → 07:21 si prepara → 09:49 a fare la spesa (Panetteria Mario) → 13:05 pranza a casa → 15:51 a pescare (Punta Scogli) → 16:14 informatore degli Orecchi (Bar Sirena) → 23:35 rientra prima dell'Ora Quieta
+  Stanotte ha pensato: ha voglia di fare un bagno alla caletta
+  Progetti: fare un bagno alla caletta [passo 1/1: fa il bagno alla caletta]
+  Bisogni: tranquillo
+
+— Lella Contu, 27 anni, Barbiere (Barbiere Gavino). Interessi: la musica, l'arte (disegnare, dipingere i muri), la pesca. Soldi 227, dispensa 0.
+  Giornata: 00:00 dorme → 06:28 si prepara → 07:18 al lavoro (barbiere) (Barbiere Gavino) → 18:50 appuntamento con Ada (Fontana di San Rocco) → 19:10 torna a casa → 23:46 rientra prima dell'Ora Quieta
+  Bisogni: tranquillo
+
+==================== SABATO (giorno 5) ====================
+Città: progetti nati 213, riusciti 95, falliti 2 · furti 7 · arresti 2 · scritte degli abitanti 0 · graffiti 0 · appuntamenti 101 (bidoni 33) · ritardi 25 · morale 0 repressione 0
+
+— Ettore «Lupo» Ganz, 70 anni, Bibliotecario, ex partigiano [cast]. Interessi: i libri, la politica. Soldi 179, dispensa 0.
+  Giornata: 00:00 dorme → 05:37 al lavoro (Biblioteca civica) → 13:00 va a Piazza San Rocco → 13:41 al lavoro (Biblioteca civica) → 16:42 cerca i giornali vecchi in biblioteca (Biblioteca civica) → 17:30 va a Osteria del Porto → 21:00 dorme
+  Progetti: capire cosa succede davvero [passo 2/2: discute di politica all'osteria]
+  Bisogni: igiene 0.58
+
+— Gino Ferraro, 52 anni, Barista del Bar Da Gino [cast]. Interessi: le carte, le chiacchiere, lo sport. Soldi 212, dispensa 0.
+  Giornata: 00:00 dorme → 05:17 si prepara → 06:00 al lavoro (Bar Da Gino) → 13:20 appuntamento con Tonino (Spiaggia del Lido) → 14:37 torna a casa → 23:07 dorme
+  Bisogni: tranquillo
+
+— Rosa Amato, 55 anni, Fioraia [cast]. Interessi: la fede, la campagna. Soldi 150, dispensa 0.
+  Giornata: 00:00 dorme → 05:28 al lavoro (Banco dei fiori) → 17:02 va a Chiesa di San Rocco → 18:00 si annoia: al cinema (Cinema Astor) → 18:06 appuntamento con Franca (Piazza San Rocco) → 19:08 torna a casa → 21:02 dorme
+  Progetti: conoscere qualcuno [passo 1/1: invita Franca a bere qualcosa]
+  Bisogni: igiene 0.58, compagnia 0.88
+
+— Gigi «Betamax» Mura, 46 anni, Gestore della Videoteca Stella [cast]. Interessi: il cinema, la musica. Soldi 214, debito 165, dispensa 0.
+  Giornata: 00:00 dorme → 08:10 si prepara → 09:00 al lavoro (Videoteca Stella) → 13:00 va a Passeggiata a mare → 14:00 al lavoro (Videoteca Stella) → 23:00 dorme
+  Bisogni: sonno 0.58, compagnia 0.72, svago 1
+
+— Rita «Vinile» Sanna, 29 anni, DJ della Discoteca Luna [cast]. Interessi: la musica, il ballo, l'arte (disegnare, dipingere i muri). Soldi 260, dispensa 0.
+  Giornata: 00:00 al lavoro (Discoteca Luna) → 03:37 dorme → 10:07 a casa → 15:07 va a Spiaggia del Lido → 19:07 va a Bar Sirena → 19:13 al lavoro (Discoteca Luna) → 21:50 appuntamento con Sasà (Discoteca Luna) → 23:07 torna a casa
+  Progetti: andare a ballare sabato alla Luna [passo 1/1: sabato alla Luna con Sasà]
+  Bisogni: tranquillo
+
+— Sasà «Cono» Deiana, 19 anni, Ragazzo della Gelateria Polo Nord [cast]. Interessi: l'arte (disegnare, dipingere i muri), i motori, il ballo. Soldi 148, dispensa 0.
+  Giornata: 00:00 dorme → 08:18 si prepara → 09:00 al lavoro (Gelateria Polo Nord) → 20:08 va a Via al Mare → 23:08 torna a casa
+  Stanotte ha pensato: ha voglia di rimettere a posto la Vespa
+  Progetti: rimettere a posto la Vespa [passo 1/3: compra i pezzi per la Vespa]
+  Bisogni: sonno 0.58, svago 0.87
+
+— Sandro «lo Squalo» Neri, 50 anni, Ricettatore. Gli devi dei soldi [cast]. Interessi: le carte, i motori. Soldi 174, dispensa 0.
+  Giornata: 00:00 dorme → 10:00 al lavoro → 17:06 va a Sala giochi Flipper → 20:50 appuntamento con Tano (Bar Da Gino) → 22:06 torna a casa
+  Stanotte ha pensato: su Tano non si può contare
+  Progetti: farsi una partita a scopa [passo 1/1: partita a scopa con Tano] · rimettere a posto la Vespa [passo 1/3: compra i pezzi per la Vespa]
+  Chiusi: sapere che fine ha fatto Rocco (riuscito)
+  Bisogni: tranquillo
+
+— Colonnello Ruggero Vasco, 58 anni, Comandante della Guardia Insulare [cast]. Interessi: i libri, lo sport. Soldi 149, dispensa 0.
+  Giornata: 00:00 dorme → 08:00 al lavoro → 12:02 va a Piazza San Rocco → 19:02 va a Via al Mare → 19:37 dorme
+  Stanotte ha pensato: ha voglia di trovare un buon libro
+  Progetti: trovare un buon libro [passo 1/2: cerca un libro in biblioteca]
+  Bisogni: tranquillo
+
+— Marco Puddu, 43 anni, Attendente al comando (Hotel Miramare). Interessi: lo sport, i motori. Soldi 62, debito 23, dispensa 0.
+  Giornata: 00:00 dorme → 06:03 si prepara → 06:22 al lavoro (attendente al comando) (Hotel Miramare) → 13:22 pausa pranzo (Osteria di San Giacomo) → 14:00 torna al lavoro (Hotel Miramare) → 19:22 torna a casa → 19:52 porta i soldi allo Squalo (Magazzino Neri) → 21:12 torna a casa → 23:48 rientra prima dell'Ora Quieta
+  Chiusi: dare allo Squalo una parte del debito (riuscito)
+  Bisogni: svago 0.61
+
+— Claudio Arru «Zampa», 28 anni, Pescatore. Interessi: le chiacchiere, lo sport. Soldi 32, debito 217, dispensa 4.
+  Giornata: 00:00 dorme → 08:13 si presenta al cantiere (Cantiere navale) → 09:06 si prepara → 09:14 a fare la spesa (Panetteria Mario) → 10:22 borsaiolo (Fontana di San Rocco) → 10:43 rientra → 10:51 pranza a casa → 16:04 a fare due chiacchiere (Belvedere) → 17:14 borsaiolo (Calata del porto) → 18:21 esce la sera (Sala giochi Flipper) → 18:43 rientra → 23:15 rientra prima dell'Ora Quieta
+  Progetti: dare allo Squalo una parte del debito [passo 1/2: mettere da parte i soldi per lo Squalo]
+  Chiusi: trovare un lavoro (riuscito)
+  Bisogni: tranquillo
+
+— Renato Mancini, 29 anni, Portiere d'albergo (Hotel Paradiso). Interessi: la fotografia, la pesca, la cucina. Soldi 146, debito 328, dispensa 0.
+  Giornata: 00:00 dorme → 10:31 borsaiolo (Via al Mare) → 13:09 rientra → 13:40 si prepara → 14:20 al lavoro (portiere d'albergo) (Hotel Paradiso) → 23:09 torna a casa → 23:24 dorme
+  Progetti: dare allo Squalo una parte del debito [passo 2/2: porta i soldi allo Squalo]
+  Bisogni: compagnia 0.63, svago 0.67
+
+— Antonietta Esposito, 51 anni, Bracciante (Masseria Sant'Elia). Interessi: le carte, il cinema. Soldi 145, dispensa 3.
+  Giornata: 00:00 dorme → 03:44 si prepara → 04:15 al lavoro (bracciante) (Masseria Sant'Elia) → 14:04 torna a casa → 14:14 fa la spesa dopo il lavoro (Panetteria Mario) → 18:00 ha fame, va a mangiare (Osteria del Porto) → 18:03 a giocare a scopa (Osteria di San Giacomo) → 23:36 rientra prima dell'Ora Quieta
+  Bisogni: sonno 0.71, igiene 0.93
+
+— Anna Floris, 23 anni, Commessa (Alimentari Wu). Interessi: la politica, il ballo. Soldi 128, dispensa 0.
+  Giornata: 00:00 dorme → 06:24 si prepara → 07:27 al lavoro (commessa) (Alimentari Wu) → 18:57 torna a casa → 20:19 al Flipper (Sala giochi Flipper) → 23:15 rientra prima dell'Ora Quieta
+  Stanotte ha pensato: ha voglia di andare a ballare sabato alla Luna
+  Progetti: andare a ballare sabato alla Luna [passo 1/1: va a ballare alla Luna]
+  Bisogni: sonno 0.65
+
+— Carmine Dessì, 69 anni, Pensionato. Interessi: il mare, la pesca, la campagna. Soldi 47, dispensa 13.
+  Giornata: 00:00 dorme → 07:23 si prepara → 09:41 al mercato (Piazza San Rocco) → 12:56 pranza a casa → 15:27 a pescare (Punta Scogli) → 16:28 informatore degli Orecchi (Bar Sirena) → 23:30 rientra prima dell'Ora Quieta
+  Progetti: fare un bagno alla caletta [passo 1/1: fa il bagno alla caletta]
+  Bisogni: tranquillo
+
+— Lella Contu, 27 anni, Barbiere (Barbiere Gavino). Interessi: la musica, l'arte (disegnare, dipingere i muri), la pesca. Soldi 216, dispensa 0.
+  Giornata: 00:00 dorme → 06:50 si prepara → 07:18 al lavoro (barbiere) (Barbiere Gavino) → 13:13 pausa pranzo (Bar Da Gino) → 14:00 torna al lavoro (Barbiere Gavino) → 19:13 torna a casa → 20:00 si annoia: al Flipper (Sala giochi Flipper) → 21:06 al Flipper (Sala giochi Flipper) → 23:38 rientra prima dell'Ora Quieta
+  Bisogni: sonno 0.66, svago 0.55
+
+Muri: nessuno
+
+86413 passi, 0.62 ms per passo.
+{"abitanti":210,"cast":37,"stats":{"furti":10,"arresti":2,"licenziati":0,"ritardi":25,"appuntamenti":108,"bidoni":38,"progetti":213,"riusciti":116,"falliti":2,"scritte":0,"graffiti":0,"liti":4,"incidenti":2,"reazioni":7,"risse":6}}
+
+Scheda per la chat (Lupo): Ettore Ganz, 70 anni, bibliotecario. Nel '79 era tra quelli che non firmarono per la Tutela. Ha già fatto tutto questo una volta. Gli piacciono i libri, la politica. Oggi: al lavoro (Biblioteca civica); va a Piazza San Rocco; al lavoro (Biblioteca civica); discute di politica all'osteria (Osteria del Porto). Ultimamente ha pensato: «Ha voglia di capire cosa succede davvero». Ricorda: poco fa: riuscito a capire cosa succede davvero.
+
+Scheda per la chat (Colonnello Ruggero Vasco): Il Colonnello Ruggero Vasco, comandante della Guardia Insulare. Ha requisito il Miramare come comando. Brutale ma prevedibile. Gli piacciono i libri, lo sport. Oggi: dorme; al lavoro; va a Piazza San Rocco. Ha in testa di trovare un buon libro. Ultimamente ha pensato: «Ha voglia di trovare un buon libro».

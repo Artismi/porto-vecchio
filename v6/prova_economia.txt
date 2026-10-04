@@ -1,0 +1,65 @@
+Botteghe nuove: Fabbro Nello (casa_2), Frutta e verdura Tina (casa_14), Falegnameria Efisio (casa_18), Macelleria Gavino (casa_38), Emporio Imperiale (casa_49)
+Mestieri: direttore dell'Emporio 1, falegname 1, macellaio 1, boscaiolo 5, cuoco della mensa 1, apprendista fabbro 1, cuoca 1, allevatore 3, fornaio 2, fabbro 1, commesso dell'Emporio 3, saldatore 2, pescatore 8, cuoco 1, fruttivendolo 1, guardiano dell'Emporio 1
+
+martedì 18:00
+  Emporio Imperiale: corda 9 (3.2), sacchi 13 (1.9), spugne 10 (1.8), colla 9 (3.2), caffe 13 (4.9), scatolame 24 (3.4), benzina 24 (6.2)
+  Macelleria Gavino: carne 15 (5)
+  Frutta e verdura Tina: verdura 21 (1.8), frutta 24 (1.5), olio 8 (4.5)
+  Fabbro Nello: coltello 4 (4), pala 3 (6), piede 2 (4.9), chiodi 13 (1.2)
+  Falegnameria Efisio: mobili 2 (14.7), casse 6 (3.5), carriola 2 (15)
+  Panetteria Mario: pane 32 (1)
+  Osteria del Porto: pasto 13 (3.8), carne 5 (7.2), pesce 5 (5.8), verdura 5 (2.3), pasta 5 (2.3)
+  Alimentari Wu: pane 19 (1.2), verdura 33 (1.4), latte 17 (1.1), pasta 31 (1.5), caffe 14 (3.1)
+  Piazza San Rocco: verdura 0 (2.5), frutta 0 (2.5), pesce 0 (6.7), formaggio 0 (5), olio 0 (6.7), carne 0 (8.3)
+
+mercoledì 18:00 — {"prodotto":1231.6000000000006,"venduto":114,"mancato":4,"consegne":233,"navi":0,"sequestri":0} · mancato: verdura 4
+  Emporio Imperiale: corda 9 (3.2), sacchi 13 (1.9), spugne 10 (1.8), colla 7 (3.6), caffe 13 (4.9), scatolame 45 (2.4), benzina 24 (6.2)
+  Macelleria Gavino: carne 34 (4)
+  Frutta e verdura Tina: verdura 45 (1.2), frutta 38 (1.2), olio 15 (3.2)
+  Fabbro Nello: coltello 8 (3.2), pala 6 (4.8), piede 6 (3.2), chiodi 38 (0.8)
+  Falegnameria Efisio: mobili 4 (9.6), casse 12 (2.4), carriola 3 (12)
+  Panetteria Mario: pane 74 (0.8)
+  Osteria del Porto: pasto 30 (3.2), carne 5 (7.2), pesce 5 (5.8), verdura 5 (2.3), pasta 5 (2.3)
+  Alimentari Wu: pane 19 (1.2), verdura 45 (1.2), latte 30 (0.8), pasta 31 (1.5), caffe 14 (3.1)
+  Piazza San Rocco: verdura 0 (2.5), frutta 0 (2.5), pesce 0 (6.7), formaggio 0 (5), olio 0 (6.7), carne 0 (8.3)
+  Vuoti: 
+
+giovedì 18:00 — {"prodotto":1594.7500000000066,"venduto":260,"mancato":4,"consegne":348,"navi":1,"sequestri":0} · mancato: verdura 4
+  Emporio Imperiale: corda 16 (2.4), sacchi 32 (1.2), spugne 24 (1.2), colla 15 (2.4), caffe 24 (3.6), scatolame 45 (2.4), benzina 40 (4.8)
+  Macelleria Gavino: carne 26 (4)
+  Frutta e verdura Tina: verdura 45 (1.2), frutta 38 (1.2), olio 15 (3.2)
+  Fabbro Nello: coltello 8 (3.2), pala 6 (4.8), piede 6 (3.2), chiodi 38 (0.8)
+  Falegnameria Efisio: mobili 6 (9.6), casse 16 (2.4), carriola 4 (12)
+  Panetteria Mario: pane 66 (0.8)
+  Osteria del Porto: pasto 34 (3.2), carne 7 (6.8), pesce 5 (5.8), verdura 5 (2.3), pasta 5 (2.3)
+  Alimentari Wu: pane 16 (1.3), verdura 45 (1.2), latte 30 (0.8), pasta 30 (1.5), caffe 15 (3)
+  Piazza San Rocco: verdura 0 (2.5), frutta 0 (2.5), pesce 0 (6.7), formaggio 0 (5), olio 0 (6.7), carne 0 (8.3)
+  Vuoti: 
+
+Dopo tre giorni di nave bloccata (domenica 18:00):
+  Emporio Imperiale: corda 16 (2.4), sacchi 32 (1.2), spugne 24 (1.2), colla 15 (2.4), caffe 24 (3.6), scatolame 45 (2.4), benzina 40 (4.8)
+  Macelleria Gavino: carne 8 (6.6)
+  Frutta e verdura Tina: verdura 45 (1.2), frutta 38 (1.2), olio 15 (3.2)
+  Fabbro Nello: coltello 8 (3.2), pala 6 (4.8), piede 6 (3.2), chiodi 38 (0.8)
+  Falegnameria Efisio: mobili 6 (9.6), casse 16 (2.4), carriola 4 (12)
+  Panetteria Mario: pane 54 (0.8)
+  Osteria del Porto: pasto 16 (3.2), carne 6 (7), pesce 5 (5.8), verdura 5 (2.3), pasta 5 (2.3)
+  Alimentari Wu: pane 11 (1.4), verdura 45 (1.2), latte 30 (0.8), pasta 26 (1.6), caffe 15 (3)
+  Piazza San Rocco: verdura 0 (2.5), frutta 0 (2.5), pesce 0 (6.7), formaggio 0 (5), olio 0 (6.7), carne 0 (8.3)
+  Lamentele dell'ultimo giorno (0): 
+  Pensieri: 0 — 
+
+Clandestino: Enzo Marino «Spillo» (Operaio del secondo turno (Conservificio Sanna)) — compra carta e inchiostro, senza dare nell'occhio → stampa di nascosto in cantina → attacca i manifesti di notte → passa i libretti a chi si fida
+  martedì 07:48 compra carta e inchiostro, senza dare nell'occhio
+  mercoledì 01:43 visto sul muro di Vico del Campo un pesce volante enorme, blu e arancione: bello
+  mercoledì 23:18 stampa di nascosto in cantina
+  mercoledì 23:18 stampato di nascosto otto manifesti e quattro libretti
+  giovedì 02:00 attacca i manifesti di notte
+  giovedì 02:00 scritto sul muro di Calata del porto: un manifesto stampato a mano: «RIDATECI I NOSTRI FIGLI»
+  giovedì 02:00 fermato dai Grigi: scritte sui muri
+  Hanno letto un libretto: nessuno. Stampe in città: 3
+
+Barricarsi in casa (Peppino Esposito): va a comprare chiodi a Fabbro Nello → torna a casa → inchioda assi a porta e finestre
+
+34595 passi nei primi 2 giorni, 4.18 ms per passo (media su tutto).
+EXIT 0

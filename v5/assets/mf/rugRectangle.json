@@ -1,0 +1,197 @@
+{
+  "extensionsUsed": [
+    "KHR_materials_unlit"
+  ],
+  "asset": {
+    "generator": "UniGLTF-1.24",
+    "version": "2.0"
+  },
+  "buffers": [
+    {
+      "name": "rugRectangle",
+      "byteLength": 1360,
+      "uri": "data:application/octet-stream;base64,AAAAAAAAAAAfhWu/AAAAAAAAAAAAAACAwvXIPwAAAAAfhWu/wvXIPwAAAAAAAACAAAAAAAAAAAAfhWu/wvXIPwAAAAAfhWu/AAAAAArXIzwfhWu/wvXIPwrXIzwfhWu/AAAAAArXIzwfhWu/+L7oPQrXIzz4vui9AAAAAArXIzwAAACAwvXIPwrXIzwAAACA02m6PwrXIzz4vui902m6PwrXIzxAbU6/+L7oPQrXIzxAbU6/wvXIPwrXIzwfhWu/AAAAAArXIzwAAACAAAAAAAAAAAAAAACAAAAAAArXIzwfhWu/AAAAAAAAAAAfhWu/wvXIPwAAAAAAAACAAAAAAAAAAAAAAACAwvXIPwrXIzwAAACAAAAAAArXIzwAAACAwvXIPwAAAAAAAACAwvXIPwrXIzwAAACAwvXIPwAAAAAfhWu/wvXIPwrXIzwfhWu/hr0nPgrXIzyGvSe+hr0nPgrXIzy9lUG/Ev6zPwrXIzyGvSe+Ev6zPwrXIzy9lUG/AAAAAAAAgL8AAACAAAAAAAAAgL8AAACAAAAAAAAAgL8AAACAAAAAAAAAgL8AAACAAAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAAAAAAIC/AAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAACAvwAAAAAAAACAAACAvwAAAAAAAACAAACAvwAAAAAAAACAAACAvwAAAAAAAACAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AACAPwAAAAAAAACAAACAPwAAAAAAAACAAACAPwAAAAAAAACAAACAPwAAAAAAAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAMThDMIAAAAAAACAP30+d8LE4QzCfT53wgAAgD8AAAAAAACAP30+d8IAAIA/AAAAAG02Gz99PnfCbTYbPwAAAADE4QzC6SyPQNJZXsAAAAAAAACAP30+d0IAAIA/4FhlQtJZXsDgWGVCTfj1weksj0BN+PXBfT53QsThDMIAAAAAbTYbPwAAAAAAAIA/xOEQwm02Gz/E4RDCAACAP30+d0IAAIA/AAAAAAAAgD99PndCbTYbPwAAAABtNhs/AAAAAAAAgD8AAAAAbTYbP8ThEEIAAIA/xOEQQm02Gz+ZX85AmV+uwJlfzkChK+bBinJdQplfrsCKcl1CoSvmwQIAAAABAAAAAAAAAAEAAAACAAAAAwAAAAYAAAAFAAAABAAAAAUAAAAGAAAABwAAAAoAAAAJAAAACAAAAAkAAAAKAAAACwAAAAkAAAALAAAADAAAAAwAAAALAAAADQAAAA4AAAAIAAAACQAAAAgAAAAOAAAADwAAAA8AAAAOAAAADQAAAA8AAAANAAAACwAAABIAAAARAAAAEAAAABEAAAASAAAAEwAAABYAAAAVAAAAFAAAABUAAAAWAAAAFwAAABoAAAAZAAAAGAAAABkAAAAaAAAAGwAAAB4AAAAdAAAAHAAAAB0AAAAeAAAAHwAAAAkAAAAcAAAADgAAABwAAAAJAAAADAAAABwAAAAMAAAAHgAAAB4AAAAMAAAAHwAAAB0AAAAOAAAAHAAAAA4AAAAdAAAADQAAAA0AAAAdAAAAHwAAAA0AAAAfAAAADAAAAA=="
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 384,
+      "target": 34962,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 384,
+      "byteLength": 384,
+      "target": 34962,
+      "byteStride": 12
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 768,
+      "byteLength": 256,
+      "target": 34962,
+      "byteStride": 8
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 1024,
+      "byteLength": 240,
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 1264,
+      "byteLength": 96,
+      "target": 34963
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "byteOffset": 0,
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 32,
+      "max": [
+        1.56999993,
+        0.01,
+        0
+      ],
+      "min": [
+        0,
+        0,
+        -0.92
+      ]
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 0,
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 32
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 0,
+      "type": "VEC2",
+      "componentType": 5126,
+      "count": 32
+    },
+    {
+      "bufferView": 3,
+      "byteOffset": 0,
+      "type": "SCALAR",
+      "componentType": 5125,
+      "count": 60
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 0,
+      "type": "SCALAR",
+      "componentType": 5125,
+      "count": 24
+    }
+  ],
+  "materials": [
+    {
+      "name": "carpet",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.9433962,
+          0.367175967,
+          0.3426486,
+          1
+        ],
+        "metallicFactor": 0,
+        "roughnessFactor": 1
+      },
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ],
+      "doubleSided": false,
+      "alphaMode": "OPAQUE"
+    },
+    {
+      "name": "carpetDarker",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.608,
+          0.29781273,
+          0.285152018,
+          1
+        ],
+        "metallicFactor": 0,
+        "roughnessFactor": 1
+      },
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ],
+      "doubleSided": false,
+      "alphaMode": "OPAQUE"
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Mesh rugRectangle",
+      "primitives": [
+        {
+          "mode": 4,
+          "indices": 3,
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "TEXCOORD_0": 2
+          },
+          "material": 0
+        },
+        {
+          "mode": 4,
+          "indices": 4,
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "TEXCOORD_0": 2
+          },
+          "material": 1
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "rugRectangle(Clone)",
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "mesh": 0
+    }
+  ],
+  "scenes": [
+    {
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "scene": 0
+}
