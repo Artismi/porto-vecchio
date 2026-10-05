@@ -124,6 +124,7 @@ var MenuUI = (function () {
   // =====================================================================================================================
   const TH = new Map(), THQ = [], THS = 128;
   const thumb = id => TH.get(id) || (THQ.includes(id) || THQ.push(id), null);
+  const CUST = {}; const thumbFor = (key, make) => { CUST[key] = make; return thumb(key); };
   function mini(id) {
     const T = THREE, g = new T.Group(), [s, c0] = fam(id), c = TINTS[id] || c0 || hex(tint(id)), t = hex(tint(id));
     const M = (col, o) => new T.MeshStandardMaterial(Object.assign({ color: col, roughness: .7, metalness: 0 }, o || {}));
@@ -189,7 +190,7 @@ var MenuUI = (function () {
       obj.rotation.y = back ? Math.PI * .85 : side ? -.9 : -.35; cam.position.set(side ? .3 : 0, F[0] + F[1] * .15, F[1] * 2.2); cam.lookAt(side ? .25 : 0, F[0], 0);
     } else {
       const R = PV() && PV().R, W = st && G().WEAPONS && G().WEAPONS[id] && R && R.__models && R.__models.weaponModel;
-      obj = W ? R.__models.weaponModel(id) : mini(id);
+      obj = CUST[id] ? CUST[id]() : W ? R.__models.weaponModel(id) : mini(id);
       const box = new T.Box3().setFromObject(obj), size = box.getSize(new T.Vector3()), ctr = box.getCenter(new T.Vector3()), r = Math.max(size.x, size.y, size.z) || 1;
       const holder = new T.Group(); obj.position.sub(ctr); holder.add(obj); holder.rotation.set(.45, -.6, 0); obj = holder;
       cam.position.set(0, 0, r * 2.3); cam.lookAt(0, 0, 0);
@@ -201,7 +202,7 @@ var MenuUI = (function () {
   }
   function thumbPump() {
     requestAnimationFrame(thumbPump);
-    if (!U.open || !THQ.length || !window.THREE) return;
+    if (!THQ.length || !window.THREE) return;
     const t0 = performance.now();
     while (THQ.length && performance.now() - t0 < 14) {
       const id = THQ.shift(); let cv = null; try { cv = makeThumb(id); } catch (e) { console.error('[Anteprime]', id, e); }
@@ -441,6 +442,10 @@ var MenuUI = (function () {
 #mu .ab2 { display: flex; justify-content: space-between; align-items: center; gap: 14px; } #mu .ab2 .stat { flex: 1; max-width: 300px; }
 /* il banco */
 #mu .rec canvas.tc { width: 52px; height: 52px; }
+#mu .armi { margin-bottom: 18px; } #mu .wrow { display: grid; grid-template-columns: 150px 1fr; gap: 14px; align-items: start; padding: 10px 0; border-bottom: 1px solid rgba(58,90,80,.4); }
+#mu .wn { display: grid; gap: 4px; } #mu .wn canvas { width: 130px; height: 65px; } #mu .wn b { font: 400 20px var(--fs); }
+#mu .wm { display: flex; flex-wrap: wrap; gap: 8px; } #mu .mod { width: 190px; padding: 8px 10px; border-radius: 12px; background: rgba(31,58,52,.4); box-shadow: inset 0 0 0 1px rgba(58,90,80,.7); display: grid; gap: 4px; }
+#mu .mod.on { box-shadow: 0 0 0 2px var(--ott); } #mu .mod b { font: 400 17px var(--fs); } #mu .mod small { font-size: 11.5px; color: rgba(233,220,188,.6); } #mu .mod small.n { color: var(--neon); } #mu .mod em { font: 600 11px var(--fl); letter-spacing: .16em; text-transform: uppercase; color: var(--ott); font-style: normal; }
 #mu .bench { margin-top: 10px; border-radius: 10px; padding: 10px 12px 14px; background: radial-gradient(ellipse at 50% 0%, rgba(255,210,140,.18), transparent 70%), repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0 2px, transparent 2px 64px), linear-gradient(#5a3e28, #3a281a); box-shadow: inset 0 0 0 2px #2a1c12, 0 10px 20px rgba(0,0,0,.35); }
 #mu .peg { display: flex; gap: 8px; flex-wrap: wrap; padding: 6px 8px 10px; margin: -2px -4px 10px; border-radius: 6px; background: radial-gradient(circle, rgba(0,0,0,.35) 1.5px, transparent 2px) 0 0 / 14px 14px, #6a5844; }
 #mu .tool, #mu .pz { position: relative; display: grid; justify-items: center; width: 74px; } #mu .tool canvas, #mu .pz canvas { width: 56px; height: 56px; filter: drop-shadow(0 6px 4px rgba(0,0,0,.45)); }
@@ -498,7 +503,7 @@ var MenuUI = (function () {
     try {
       if (U.tab === 'zaino') [title, sub, body] = ['Roba', inCovo(st) ? 'sul tavolo del covo' : 'rovesciata sul marciapiede', pZaino(st)];
       else if (U.tab === 'pg') [title, sub, body] = ['Chi è', 'Nino', pPg(st)];
-      else if (U.tab === 'lavora') { const v = O().recipesView(st); title = 'Banco'; sub = v.stations.length ? `qui: ${v.stations.join(', ')}` : 'nessuna postazione: solo quello che si fa a mano'; tabs = KINDS.map(([k, l]) => `<button class="pill ${U.filt === k ? 'on' : ''}" data-a="filt" data-x='"${k}"'>${l} ${v.list.filter(r => (k === 'tutto' || r.kind === k) && r.ok).length}</button>`).join(''); body = pLavora(st, v); }
+      else if (U.tab === 'lavora') { const v = O().recipesView(st); title = U.arg && U.arg.titolo ? U.arg.titolo : 'Banco'; sub = v.stations.length ? `qui: ${v.stations.join(', ')}` : 'nessuna postazione: solo quello che si fa a mano'; tabs = KINDS.map(([k, l]) => `<button class="pill ${U.filt === k ? 'on' : ''}" data-a="filt" data-x='"${k}"'>${l} ${v.list.filter(r => (k === 'tutto' || r.kind === k) && r.ok).length}</button>`).join(''); body = pLavora(st, v); }
       else if (U.tab === 'lavori') [title, sub, body] = ['Lavori', '', pLavori(st)];
       else if (U.tab === 'qui') [title, sub, body] = ['Qui, adesso', G().nearestPlace ? G().nearestPlace(st.player.x, st.player.y).name : '', pQui(st)];
       else if (U.tab === 'bottega') { const c = O().counter(st, U.arg); if (!c) { open('zaino'); return; } title = c.label; sub = c.emporio ? 'prezzi del regime' : c.black ? 'mercato nero: tutto, a prezzo doppio' : c.market ? 'mercato' : ''; tabs = ['compra', 'vendi'].map(t => `<button class="pill ${U.shopTab === t ? 'on' : ''}" data-a="shoptab" data-x='"${t}"'>${t === 'compra' ? 'Compra' : `Vendi ${c.buys.length}`}</button>`).join(''); body = pBottega(st, c); }
@@ -603,7 +608,11 @@ var MenuUI = (function () {
   // ---------------- BANCO DI LAVORO ----------------
   const KINDS = [['tutto', 'Tutto'], ['cucina', 'Cucina'], ['fai', 'Fabbricare'], ['smonta', 'Smontare'], ['raccogli', 'Raccogliere']];
   function pLavora(st, v) {
-    const l = v.list.filter(r => U.filt === 'tutto' || r.kind === U.filt);
+    const A0 = U.arg && U.arg.st ? U.arg : null, RC = O().RECIPES;
+    // dalla postazione del covo: solo le sue ricette (il banco delle armi: le armi e le modifiche)
+    const mine = r => !A0 || (RC[r.id] && RC[r.id].st && RC[r.id].st.split('|').some(k => k === A0.st || k === A0.st2)) || (A0.armi && r.out.some(o => O().CAT[o.k] && O().CAT[o.k].cat === 'armi'));
+    const l = v.list.filter(r => (U.filt === 'tutto' || r.kind === U.filt) && mine(r));
+    const armi = A0 && A0.armi && typeof Cantiere !== 'undefined' ? pArmi(st) : '';
     if (!U.sel || !l.some(r => r.id === U.sel)) U.sel = (l.find(r => r.ok) || l[0] || {}).id || null;
     const r = l.find(x => x.id === U.sel), outId = x => x.out[0] ? x.out[0].k : 'casse';
     const tiles = l.slice(0, 180).map(x => `<button class="rec ${x.ok ? 'ok' : x.here ? '' : 'no'} ${x.id === U.sel ? 'sel' : ''}" data-a="sel" data-x="${esc(JSON.stringify(x.id))}" title="${esc(cap(x.nome))}">${ic(outId(x))}<span>${esc(cap(x.nome))}</span></button>`).join('');
@@ -614,7 +623,13 @@ var MenuUI = (function () {
       <div class="arrow">↓</div>
       <div class="res ${r.ok ? 'ok' : ''}">${r.out.map(o => `<div class="pz big">${ic(o.k)}<em>${esc(corto(o.k))}${o.q > 1 ? ` ×${o.q}` : ''}</em></div>`).join('')}</div>
       <div class="row">${btn('fai', r.ok ? 'Fai' : 'Manca qualcosa', { id: r.id, q: 1 }, 'y', !r.ok)}${btn('fai', '×3', { id: r.id, q: 3 }, '', !r.ok)}</div></div>` : '<div class="dim">Niente da fare qui.</div>';
-    return `<div class="lav"><div><h4>Quaderno · ${l.filter(x => x.ok).length} cose che puoi fare adesso</h4><div class="recs">${tiles || '<div class="dim">Nessuna ricetta.</div>'}</div></div>${det}</div>`;
+    return `${armi}<div class="lav"><div><h4>Quaderno · ${l.filter(x => x.ok).length} cose che puoi fare adesso</h4><div class="recs">${tiles || '<div class="dim">Nessuna ricetta.</div>'}</div></div>${det}</div>`;
+  }
+
+  // il banco delle armi: le modifiche, arma per arma
+  function pArmi(st) {
+    const V = Cantiere.modsView(st);
+    return `<div class="armi"><h4>Modifiche alle armi</h4>${V.length ? V.map(w => `<div class="wrow"><div class="wn">${ic(w.k, 32)}<b>${esc(w.nome)}</b></div><div class="wm">${w.mods.map(m => `<div class="mod ${m.on ? 'on' : ''}"><b>${esc(m.nome)}</b><small>${Object.entries(m.eff).map(([k, d]) => `${{ range: 'gittata', spread: 'dispersione', mag: 'colpi', noise: 'rumore', dmg: 'danno', kick: 'rinculo', shake: 'scossone', pellets: 'pallini', bloom: 'raffica', rate: 'velocità' }[k] || k} ${d > 0 ? '+' : ''}${Math.abs(d) < 1 ? Math.round(d * 1000) / 10 + '%' : d}`).join(' · ')}</small>${m.on ? '<em>montato</em>' : `<small class="${m.miss.length ? 'n' : ''}">${Object.entries(m.cost).map(([k, q]) => `${esc(O().nm(k))} ×${q}`).join(', ')}</small>${btn('mod', 'Monta', { k: w.k, id: m.id }, 'y', !!m.miss.length)}`}</div>`).join('')}</div></div>`).join('') : '<div class="dim">Non hai armi da modificare. Le pistole, le lupare e i mitra si trovano, si comprano, si rubano.</div>'}</div>`;
   }
 
   // ---------------- BOTTEGA ----------------
@@ -708,6 +723,7 @@ var MenuUI = (function () {
       case 'indossa': act('indossa', x); break;
       case 'togli': act('togli', x); break;
       case 'tieni': act('tieni', x); break;
+      case 'mod': say(Cantiere.mod(st, x.k, x.id)); break;
       case 'scambia_mani': act('scambia_mani'); break;
       case 'usa_sinistra': act('usa_sinistra'); break;
       case 'spogliati': act('spogliati', null, x); break;
@@ -767,5 +783,5 @@ var MenuUI = (function () {
     }
   }, true);
   setInterval(() => { try { if (U.open) render(false); } catch (e) { } }, 400);
-  return { open, close, toggle, render, icon, state: U, quiList, quiCount };
+  return { open, close, toggle, render, icon, state: U, quiList, quiCount, thumbFor };
 })();

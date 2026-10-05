@@ -56,11 +56,12 @@
   addEventListener('pointermove', e => { if (camDrag !== null) { ui.drag += (e.clientX - camDrag) * .008; camDrag = e.clientX; } });
   addEventListener('pointerup', e => { if (e.button === 1) camDrag = null; });
   cv.addEventListener('pointerdown', e => { cv.focus(); A.init(); const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
+    if (window.Cantiere && Cantiere.active() && e.button !== 1) { Cantiere.down(e.button, nx, ny); return; }   // [cantiere] si costruisce, non si cammina
     if (e.button === 2) { mouse.down = true; mouse.pressed = true; return; }
     if (e.button === 0) { mouse.nx = nx; mouse.ny = ny; onClick(nx, ny, e.detail >= 2); } });
   addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; });
   cv.addEventListener('contextmenu', e => e.preventDefault());
-  cv.addEventListener('wheel', e => { if (ui.intro || ui.dialog || ui.book) return; e.preventDefault(); zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });
+  cv.addEventListener('wheel', e => { if (ui.intro || ui.dialog || ui.book) return; e.preventDefault(); if (window.Cantiere && Cantiere.wheel(e.deltaY)) return; zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });
   addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     A.init();
@@ -153,7 +154,8 @@
       for (const hh of [.6, 1.2, 1.7]) { const pr = R.project(n.x, hh, n.y); if (pr.behind) continue; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = { kind: 'npc', n }; } }
     });
     if (best) return best;
-    if (window.Bottino) { const L = Bottino.pick(st, nx, ny, o); if (L) return L; }   // [bottino] la roba da frugare è un oggetto in scena
+    if (window.Bottino) { const L = Bottino.pick(st, nx, ny, o); if (L) return L; }
+    if (window.Cantiere) { const C = Cantiere.pick(st, nx, ny, o); if (C) return C; }   // [cantiere] le postazioni del covo   // [bottino] la roba da frugare è un oggetto in scena
     const g = R.screenToGround(nx, ny); if (!g) return null;
     for (const v of st.vehicles) {
       if (v.hidden || v.wreck) continue; const K = G.VK[v.kind], c = Math.cos(v.ang), s = Math.sin(v.ang), dx = g.x - v.x, dy = g.y - v.y;
@@ -187,7 +189,7 @@
     }
     if (h.kind === 'npc') { click.t = { kind: 'npc', id: h.n.id, path: [], pt: -9, run: dbl }; ui.mark = null; }
     else if (h.kind === 'car') { click.t = { kind: 'car', id: h.v.id, path: [], pt: -9, run: dbl }; ui.mark = { x: h.v.x, y: h.v.y, t: ui.time, k: 'car' }; }
-    else if (h.kind === 'loot') { const q = Bottino.goal(st, h.ref) || h; click.t = { kind: 'loot', ref: h.ref, x: q.x, y: q.y, path: goalPath(q.x, q.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
+    else if (h.kind === 'loot') { const B0 = h.via === 'covo' ? Cantiere : Bottino, q = B0.goal(st, h.ref) || h; click.t = { kind: 'loot', via: h.via, ref: h.ref, x: q.x, y: q.y, path: goalPath(q.x, q.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
     else if (h.kind === 'door') { click.t = { kind: 'door', bi: h.bi, x: h.x, y: h.y, path: goalPath(h.x, h.y), pt: ui.time, run: dbl }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
     else { click.t = { kind: 'move', x: h.x, y: h.y, path: goalPath(h.x, h.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
   }
@@ -203,9 +205,9 @@
       if (Math.hypot(gx - p.x, gy - p.y) < .8) { c.pushT = c.pushT || ui.time; if (ui.time - c.pushT > 1.6) return stop(); const a2 = Math.atan2(cy - p.y, cx - p.x); return { x: Math.cos(a2), y: Math.sin(a2), sprint: false, aim: a2 }; }
     }
     if (c.kind === 'loot') {   // [bottino] ci si avvicina; arrivati si raccoglie o si apre il pannello
-      const L = Bottino.find(st, c.ref); if (!L) return stop();
-      const d = Math.hypot(L.x - p.x, L.y - p.y), r = Bottino.reach(c.ref);
-      if (d < r || (ui.time - c.bestT > 1.2 && d < r + 1.2)) { stop(); Bottino.arrive(st, c.ref); return { x: 0, y: 0, sprint, aim: Math.atan2(L.y - p.y, L.x - p.x) }; }
+      const B0 = c.via === 'covo' ? Cantiere : Bottino, L = B0.find(st, c.ref); if (!L) return stop();
+      const d = Math.hypot(L.x - p.x, L.y - p.y), r = B0.reach(c.ref);
+      if (d < r || (ui.time - c.bestT > 1.2 && d < r + 1.2)) { stop(); B0.arrive(st, c.ref); return { x: 0, y: 0, sprint, aim: Math.atan2(L.y - p.y, L.x - p.x) }; }
       if (d < c.best - .2) { c.best = d; c.bestT = ui.time; } else if (ui.time - c.bestT > 1.5) return stop();
     }
     if (c.kind === 'npc') {
@@ -267,7 +269,7 @@
     }
     if (ui.burst) { const n = G.byId(st, ui.burst.id); if (!n || n.dead || ui.time > ui.burst.until) ui.burst = null; else { G.fire(st, Math.atan2(n.y - p.y, n.x - p.x), { x: n.x, y: n.y }, ui.burst.first); ui.burst.first = false; } }
     // cosa c'è sotto il puntatore
-    if (mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.menu && !ui.over && !ring.n) {
+    if (mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.menu && !ui.over && !ring.n && !(window.Cantiere && Cantiere.active())) {
       const h = pickAt(mouse.nx, mouse.ny); let t = '';
       if (h && h.kind === 'npc') t = h.n.first || h.n.name;
       else if (h && h.kind === 'loot') t = h.label;

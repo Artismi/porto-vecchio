@@ -568,8 +568,10 @@ var Game = (function () {
     if (id !== p.cur) { p.cur = id; p.reload = 0; p.cool = Math.max(p.cool, .15); st.sfx.push({ k: 'switch' }); }
     return true;
   }
+  // [cantiere] le armi del giocatore con le modifiche del banco delle armi
+  const pW = (st, k) => (HOOKS.playerWeapon ? HOOKS.playerWeapon(st, k, WEAPONS[k]) : WEAPONS[k]);
   function reload(st) {
-    const p = st.player, W = WEAPONS[p.cur], a = p.arms[p.cur];
+    const p = st.player, W = pW(st, p.cur), a = p.arms[p.cur];
     if (!W.mag || W.throw || p.reload > 0 || a.mag >= W.mag || a.reserve <= 0) return false;
     p.reload = W.reload; st.sfx.push({ k: 'reload', w: p.cur }); return true;
   }
@@ -577,7 +579,7 @@ var Game = (function () {
   function fire(st, aim, aimPoint, pressed) {
     const p = st.player;
     if (st.over || p.stun > 0 || p.cool > 0 || p.reload > 0) return false;
-    const W = WEAPONS[p.cur], a = p.arms[p.cur];
+    const W = pW(st, p.cur), a = p.arms[p.cur];
     if (!W.auto && !pressed && !W.melee) return false;
     if (W.melee) {
       if (p.vehicle) return false;
@@ -625,7 +627,7 @@ var Game = (function () {
   }
   // colpo generico (giocatore o NPC)
   function shoot(st, s, wid, ang, spread, who) {
-    const W = WEAPONS[wid];
+    const W = who === 'player' ? pW(st, wid) : WEAPONS[wid];
     const sx = s.x + Math.cos(ang) * .55, sy = s.y + Math.sin(ang) * .55;
     const myVeh = who === 'player' ? st.player.vehicle : null;
     st.fx.push({ k: 'muzzle', x: sx, y: sy, a: ang, w: wid, npc: who !== 'player' });

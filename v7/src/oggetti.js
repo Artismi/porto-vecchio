@@ -943,6 +943,7 @@ var Oggetti = (function () {
     nearFurn(st, 2.6).forEach(x => { const s = FURN2ST[x.o.id]; if (s) put(s, 'mobile'); });
     if (p.indoor && isHomeB(st, p.indoor.b)) HOME_ST.forEach(s => put(s, 'casa'));
     const Lg = luogoHere(st); if (Lg) Lg.posts.forEach(q => put(q.st, 'luogo'));
+    if (typeof Cantiere !== 'undefined' && Cantiere.stationsNear) Cantiere.stationsNear(st, 3.2).forEach(s => put(s, 'covo'));   // [cantiere] le postazioni piazzate nel covo
     return out;
   }
   function nearTile(st, t, r) { if (t === undefined) return false; const p = p_(st), tx = Math.floor(p.x / TS), ty = Math.floor(p.y / TS); for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) if (G.tileAt && G.tileAt(tx + i, ty + j) === t) return true; return false; }
