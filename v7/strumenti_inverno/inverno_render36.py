@@ -11,7 +11,7 @@ def rep(old, new, n=1):
 rep("  function buildBuildings() {\n", frag + "\n  function buildBuildings() {\n")
 rep("      const px = i * P, py = j * P, z = zoneT(tx, ty), r = rng((tx * 7919 + ty * 104729) >>> 0);\n",
     "      const px = i * P, py = j * P, z = zoneT(tx, ty), r = rng((tx * 7919 + ty * 104729) >>> 0);\n      if (bosco36(x, px, py, P, tx, ty, r, v, z, ii)) continue;   // [isola36]\n")
-rep("    info.forEach(q => { if (!q.natural || zoneT(q.tx, q.ty) === ZN.CITTA) return;", "    info.forEach(q => { if (!q.natural || zoneT(q.tx, q.ty) === ZN.CITTA || (M.world && M.world.XF && q.tx * TS < M.world.XF)) return;   /* [isola36] */")
+rep("    info.forEach(q => { if (!q.natural || zoneT(q.tx, q.ty) === ZN.CITTA) return;", "    info.forEach(q => { if (!q.natural || zoneT(q.tx, q.ty) === ZN.CITTA || (M.world && M.world.XG && q.tx * TS < M.world.XG)) return;   /* [isola36] */")
 rep("x, groundH(x, z) - .02, z, 1.6 + r() * 2, r() * 6.28, { col: pick(r, ['#f0ece4', '#e4e0d8', '#d8d4cc']) }", "x, groundH(x, z) - .02, z, 1.6 + r() * 2, r() * 6.28, { col: (f & 8192) ? pick(r, ['#8a8478', '#7a746a', '#968e82']) : pick(r, ['#f0ece4', '#e4e0d8', '#d8d4cc']) }")
 rep("if (r() < .08) { const s = .5 + r() * .6; add('Rock_Medium_' + (1 + Math.floor(r() * 3)), cx, groundH(cx, cz) - .3 * s, cz, s, r() * 6.28, { col: '#d0ccc4' }); }", "if (r() < .08) { const s = .5 + r() * .6; add('Rock_Medium_' + (1 + Math.floor(r() * 3)), cx, groundH(cx, cz) - .3 * s, cz, s, r() * 6.28, { col: (f & 8192) ? '#8e8a82' : '#d0ccc4' }); }")
 # città: il ciottolato non ha ciuffi d'erba dipinti a caso (il verde sta nei cortili)

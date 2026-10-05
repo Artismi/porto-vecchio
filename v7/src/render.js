@@ -541,7 +541,7 @@ var Render = (function () {
     }
     sx.putImageData(img, 0, 0);
     // 2) sotto: terra fradicia scura (il verde d'estate non spunta), erba secca in prateria
-    info.forEach(q => { if (!q.natural || zoneT(q.tx, q.ty) === ZN.CITTA || (M.world && M.world.XF && q.tx * TS < M.world.XF)) return;   /* [isola36] */ const r = rng((q.tx * 4561 + q.ty * 9203) >>> 0);
+    info.forEach(q => { if (!q.natural || zoneT(q.tx, q.ty) === ZN.CITTA || (M.world && M.world.XG && q.tx * TS < M.world.XG)) return;   /* [isola36] */ const r = rng((q.tx * 4561 + q.ty * 9203) >>> 0);
       if (q.prairie) { const wx = q.tx * TS, wy = q.ty * TS, k = vnz(wx / 40, wy / 40) + vnz(wx / 9, wy / 9) * .4; blot(q.px, q.py, P, P, `rgb(${Math.round(122 + k * 30)},${Math.round(108 + k * 26)},${Math.round(74 + k * 16)})`); }   // erba secca color paglia, a macchie larghe
       else blot(q.px, q.py, P, P, pick(r, ['#4e463e', '#524a40', '#4a423c'])); });
     // 3) la neve: velo sfumato, poi chiazze col contorno morbido ritagliate dal rumore
@@ -2948,7 +2948,7 @@ var Render = (function () {
   // a fascia continua che si dirada verso il bosco, sul pianoro roccia bagnata ed erba bassa. Si dipinge a mezzo metro con
   // rumori lisci e con la distanza vera dalla parete, così i bordi sono curvi e non seguono la griglia.
   function bosco36(x, px, py, P, tx, ty, r, v, z, ii) {
-    const W0 = M.world, T = G.T; if (!W0 || !W0.TAV || !W0.XF || tx * TS >= W0.XF || z === ZN.CITTA) return false;
+    const W0 = M.world, T = G.T; if (!W0 || !W0.TAV || !W0.XG || tx * TS >= W0.XG || z === ZN.CITTA) return false;   // la testa, il collo e il monte
     if (RW[ii] > 0 && (v === T.VIA || v === T.DIRT)) return false;
     const F = W0.feat ? W0.feat[ii] : 0, talus = !!(F & 8192), top = !!(F & 2048);
     if (!(v === T.TREE || v === T.SHRUB || v === T.GRASS || ((v === T.GRAVEL || v === T.ROCK) && (talus || top)))) return false;

@@ -3,7 +3,7 @@
   // a fascia continua che si dirada verso il bosco, sul pianoro roccia bagnata ed erba bassa. Si dipinge a mezzo metro con
   // rumori lisci e con la distanza vera dalla parete, così i bordi sono curvi e non seguono la griglia.
   function bosco36(x, px, py, P, tx, ty, r, v, z, ii) {
-    const W0 = M.world, T = G.T; if (!W0 || !W0.TAV || !W0.XF || tx * TS >= W0.XF || z === ZN.CITTA) return false;
+    const W0 = M.world, T = G.T; if (!W0 || !W0.TAV || !W0.XG || tx * TS >= W0.XG || z === ZN.CITTA) return false;   // la testa, il collo e il monte
     if (RW[ii] > 0 && (v === T.VIA || v === T.DIRT)) return false;
     const F = W0.feat ? W0.feat[ii] : 0, talus = !!(F & 8192), top = !!(F & 2048);
     if (!(v === T.TREE || v === T.SHRUB || v === T.GRASS || ((v === T.GRAVEL || v === T.ROCK) && (talus || top)))) return false;

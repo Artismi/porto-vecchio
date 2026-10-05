@@ -104,7 +104,7 @@ var World = (function () {
   // il sottobosco sale verso l'interno della testa e lungo la mezzeria del collo (lì corre la strada centrale); valloni scendono al mare
   function boscoFloor(x, y, inl) {
     const hm = .6 + 12.4 * (1 - sstep(330, XF - 6, x)), prof = sstep(3, 48, inl);
-    const und = (fbm(x / 38, y / 38, 411, 3) - .5) * 7 * sstep(.3, 1, prof) * sstep(1.5, 5, hm);
+    const und = (fbm(x / 60, y / 60, 411, 2) - .5) * 4 * sstep(.3, 1, prof) * sstep(1.5, 5, hm);   // [isola] il sottobosco ondula largo
     const ph = x / 44 + (fbm(x / 50, y / 30, 412, 2) - .5) * 1.4, vi = Math.floor(ph + .5), rv = Math.abs(ph - vi) * 2;
     const vall = (1 - sstep(0, .35, rv)) * prof * (1 - prof) * 4 * (1.5 + hash2(vi, y > Yc(x) ? 1 : 0, 413) * 3) * sstep(2, 6, hm);
     return .4 + (hm - .4) * prof + und - vall;
@@ -222,7 +222,7 @@ var World = (function () {
   const lerp = (a, b, t) => a + (b - a) * t;
   const interp = (tab, x) => { if (x <= tab[0][0]) return tab[0][1]; for (let k = 0; k < tab.length - 1; k++) { const [a, ha] = tab[k], [b, hb] = tab[k + 1]; if (x < b) { const t = (x - a) / (b - a), s2 = t * t * (3 - 2 * t); return ha + (hb - ha) * s2; } } return tab[tab.length - 1][1]; };
   // la cresta: quota e posizione lungo x (da ovest: scarpata della Sila, altopiano, il Pizzo, la sella, il Monte dei Pini, giù verso il centro)
-  const CREST = [[146, 0], [156, 2], [163, 9], [168, 15.5], [184, 16], [212, 16.6], [226, 21], [238, 27], [248, 30], [258, 26.5], [270, 19], [281, 14.2], [294, 18.5], [306, 21], [318, 17.5], [334, 9], [350, 3.5], [364, .4]];
+  const CREST = [[146, 0], [172, 4], [202, 12], [230, 19], [250, 23], [272, 19.5], [290, 17], [312, 18], [338, 10], [358, 3], [370, .4]];   // [isola] una cima e una sella larga
   const crestY = x => yc(x) + 5 * Math.sin(x / 41) - 2;
   const ALTO = { x: 190, y: 150, rx: 27, ry: 30 };                     // l'altopiano del lago
   const PIZZO = [248, crestY(248)];
@@ -243,66 +243,22 @@ var World = (function () {
     const key = Math.round(x * 4) * 100000 + Math.round(y * 4); const c0 = MCACHE.get(key); if (c0) return c0;
     const r = monte0(x, y); if (MCACHE.size < 400000) MCACHE.set(key, r); return r;
   }
-  function monte0(x, y) {
+  function monte0(x, y) {   // [isola] il Monte Scuro è un'unica cresta liscia: fianchi pieni e arrotondati, una cima e una sella, niente gole né guglie
     let f = 0;
     if (x < 140 || x > 380 || !onLand(x, y)) return { h: .4, f };
     const cy = crestY(x), dy = y - cy, side = dy < 0 ? -1 : 1;
-    const shore = side < 0 ? northY(x) : southY(x), room = Math.abs(shore - cy) - 9;   // spazio fino alla riva
-    const t = clamp(Math.abs(dy) / Math.max(10, room), 0, 1.2);
-    const Hc = interp(CREST, x);
-    // profilo trasversale: fianchi pieni in alto, ripidi verso il mare
-    let prof = t >= 1 ? 0 : 1 - Math.pow(t, 1.9);
-    // l'altopiano: tavolato piatto che finisce con un ciglio netto
-    const qa = inAlto(x, y), alto = 1 - sstep(.86, 1.02, qa);
-    // valloni e speroni sui fianchi (scendono verso il mare, cioè lungo y)
-    const mid = t * (1 - t) * 4;
-    // valloni: uno ogni 30-40 m lungo la cresta, scendono serpeggiando verso il mare, profondi a caso
-    const ph = x / 33 + (fbm(x / 40, y / 22, 301, 2) - .5) * 1.6 + side * .37, vi = Math.floor(ph + .5), rv = Math.abs(ph - vi) * 2;
-    const vallone = (1 - sstep(0, .3, rv)) * mid * (2 + hash2(vi, side, 302) * 4.5);
-    const sperone = (fbm(x / 26, y / 26, 303, 3) - .5) * 6 * mid;
-    const crag = (fbm(x / 12, y / 12, 304, 2) - .5) * .7 * sstep(.3, .9, prof);
-    const hs = Hc * prof;
-    let h = hs + sperone - vallone + crag;
-    // [inverno] creste e costoloni che serpeggiano (rumore a creste con la mappa deformata): il fianco non è più una pendenza liscia uguale ovunque
-    { const mm = sstep(3, 12, h) * (1 - alto * .85), wx = x + (fbm(x / 46, y / 46, 321, 2) - .5) * 30, wy = y + (fbm(x / 46 + 7, y / 46 + 3, 322, 2) - .5) * 30;
-      const rid = 1 - Math.abs(fbm(wx / 34, wy / 24, 323, 3) * 2 - 1), rid2 = 1 - Math.abs(fbm(wx / 15, wy / 11, 324, 2) * 2 - 1);
-      h += ((Math.pow(rid, 2.2) - .32) * 6.5 + (Math.pow(rid2, 2) - .35) * 1.6) * mm * sstep(.12, .6, prof); }
-    if (alto > 0) { const top = 16 + (fbm(x / 18, y / 18, 305, 2) - .5) * 1.4; h = lerp(h, Math.max(h, top), alto); if (alto > .5) f |= MF.ALTO; }
-    // la scarpata ovest dell'altopiano: un gradino di roccia sopra la prateria
-    // il Pizzo: una cupola rocciosa
-    const dp = dist(x, y, PIZZO[0], PIZZO[1]); if (dp < 16) { h = Math.max(h, 30 - dp * dp * .035); if (dp < 6) f |= MF.CIMA; }
-    // sulla riva la montagna si tuffa: resta una striscia bassa per la costiera
+    const shore = side < 0 ? northY(x) : southY(x), room = Math.abs(shore - cy) - 9;
+    const t = clamp(Math.abs(dy) / Math.max(10, room), 0, 1);
+    const Hc = crestH(x), prof = Math.pow(.5 + .5 * Math.cos(Math.PI * t), .8);
+    let h = Hc * prof + (fbm(x / 110, y / 110, 301, 2) - .5) * 1.4 * prof;
     const inl = inland(x, y); h = .4 + (h - .4) * sstep(7, 26, inl);
-    // calanchi: argilla grigia a creste fitte, tra l'altopiano e la prateria a nord-ovest
-    const cal = sstep(0, 1, 1 - Math.hypot((x - 163) / 17, (y - 86) / 26)) * sstep(6, 14, inl);
-    if (cal > 0) { const ph = (x * .62 + y * .78) / 2.3 + fbm(x / 11, y / 11, 306, 2) * 5, cr = 1 - Math.abs(Math.sin(ph)); h = Math.max(h, .4 + cal * (2 + 4.2 * Math.pow(cr, 3) + fbm(x / 9, y / 9, 307, 2) * 2)); if (cal > .25) f |= MF.CAL; }
-    // la gola: pareti a picco, fondo stretto che scende a salti
-    const g = near(GOLA, x, y, 14);
-    if (g) {
-      const s = g.s, floor = s < gHead ? 22 : .4 + 11.4 * Math.pow(1 - (s - gHead) / (1 - gHead), 1.35), wf = 2.4 + 2 * s;
-      const cut = floor + Math.max(0, g.d - wf) * 7;
-      if (cut < h) { h = cut; if (g.d < wf + .6 && s >= gHead) f |= MF.GOLA; }
-    }
-    // la fiumara: letto di ghiaia largo e piatto, sponde ripide
-    const fm = near(FIUM, x, y, 30);
-    if (fm) {
-      const s = fm.s, bed = .5 + 13 * Math.pow(1 - s, 1.7), w = 2.5 + 11 * Math.pow(s, .8), bank = bed + Math.max(0, fm.d - w) * 1.25;
-      if (bank < h) { h = bank; if (fm.d < w + .5) f |= MF.FIUM; }
-      if (fm.d < w) h = bed + (fbm(x / 5, y / 5, 308, 2) - .5) * .35;
-    }
-    // terrazze: il fianco tagliato a gradini da muri a secco
-    for (const q of TERRAZZE) {
-      if (x < q.x0 - 6 || x > q.x1 + 6 || (q.y0 && (y < q.y0 - 6 || y > q.y1 + 6)) || side !== q.side || (f & (MF.FIUM | MF.GOLA))) continue;
-      const k = sstep(q.x0 - 6, q.x0, x) * (1 - sstep(q.x1, q.x1 + 6, x)) * (q.y0 ? sstep(q.y0 - 6, q.y0, y) * (1 - sstep(q.y1, q.y1 + 6, y)) : 1);
-      if (k < .5 || h < q.h0 || h > q.h1) continue;
-      const step = 2, hq = Math.floor((hs * .7 + h * .3 - q.h0) / step) * step + q.h0 + .15 + (fbm(x / 6, y / 6, 310, 2) - .5) * .3; h = lerp(h, hq, k); f |= MF.TERR;
-    }
-    // borghi arroccati: un ripiano sullo sperone, il bordo cade a picco
-    for (const id in BORGHI) { const [bx, by, br0, bh] = BORGHI[id], br = br0 * (.8 + fbm(Math.atan2(y - by, x - bx) * 1.3 + 9, br0, 311, 2) * .45), d = dist(x, y, bx, by); if (d < br + 4) { const k = 1 - sstep(br, br + 4, d); h = lerp(h, bh, k); if (d < br) f |= MF.BORGO; } }
-    // le Cinque Dita: guglie di arenaria rossa
-    for (const [gx, gy, gr, gh] of DITA) { const d = dist(x, y, gx, gy); if (d < gr) { const k = 1 - sstep(gr * .45, gr, d); h = Math.max(h, h + gh * k * (1 + (fbm(x / 2, y / 2, 309, 2) - .5) * .3)); f |= MF.DITA; } }
+    // i borghi stanno su un ripiano
+    for (const id in BORGHI) { const [bx, by, br0, bh] = BORGHI[id], d = dist(x, y, bx, by); if (d < br0 + 6) { const k = 1 - sstep(br0, br0 + 6, d); h = lerp(h, Math.min(bh, h + 1.5), k); if (k > .5) f |= MF.BORGO; } }
+    if (Hc * prof > 13) f |= MF.ALTO;
     return { h: Math.max(.4, h), f };
   }
+  // la quota del crinale: interpolazione morbida (coseno) dei punti di CREST, poi una media larga: niente spigoli
+  function crestH(x) { let s = 0, c = 0; for (let q = -12; q <= 12; q += 3) { const u = x + q; let k = 0; while (k < CREST.length - 2 && u > CREST[k + 1][0]) k++; const [x0, h0] = CREST[k], [x1, h1] = CREST[k + 1], tt = clamp((u - x0) / ((x1 - x0) || 1), 0, 1), e = .5 - .5 * Math.cos(Math.PI * tt); s += h0 + (h1 - h0) * e; c++; } return s / c; }
 
   function rawElevO(x, y) {
     if (!onLand(x, y)) return -2;
@@ -552,9 +508,8 @@ var World = (function () {
         else if (f & MF.CAL) v = fbm(x / 9, y / 9, 62, 2) > .7 ? T.SHRUB : T.DIRT;
         else if (f & MF.BORGO) v = fbm(x / 12, y / 12, 63, 2) > .55 ? T.FIELD : T.GRASS;
         else if (f & MF.TERR) v = h1 < .26 ? T.TREE : h1 < .4 ? T.SHRUB : T.GRASS;
-        else if (f & MF.ALTO) v = fbm(x / 13, y / 13, 64, 3) > .5 && h1 < .7 ? T.TREE : fbm(x / 20, y / 20, 65, 2) > .5 ? T.GRASS : T.SHRUB;
-        else if (e > 25) v = fbm(x / 8, y / 8, 66, 2) > .58 ? T.ROCK : h1 < .12 ? T.TREE : T.GRASS;
-        else if (e > 2) v = fbm(x / 15, y / 15, 67, 3) > .62 ? T.ROCK : fbm(x / 13, y / 13, 68, 3) > .46 && h1 < .72 ? T.TREE : h1 < .5 ? T.SHRUB : T.GRASS;
+        // [isola] il monte è tutto bosco fitto, come la testa: qualche macchia più rada, le radure le aprono i sentieri
+        else if (e > 2) { const gl = fbm(x / 34, y / 34, 64, 2); v = gl < .22 ? (h1 < .4 ? T.SHRUB : T.GRASS) : fbm(x / 13, y / 13, 68, 3) > .3 ? T.TREE : h1 < .6 ? T.SHRUB : T.GRASS; }
       }
       // [isola] la testa di bosco e il collo di foresta: bosco fitto, radure, la Spiaggia Lunga, il Tavolato (pareti, ghiaione, canaloni, pianoro)
       if (x < XF && z !== Z.MARE) {
@@ -579,7 +534,7 @@ var World = (function () {
     // saline e lago
     const blob = (cx, cy, rx, ry, f) => { for (let ty = Math.floor((cy - ry) / TS); ty <= Math.ceil((cy + ry) / TS); ty++) for (let tx = Math.floor((cx - rx) / TS); tx <= Math.ceil((cx + rx) / TS); tx++) { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const x = tx * TS + 1, y = ty * TS + 1, q = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 + (fbm(x / 9, y / 9, 91, 2) - .5) * .6; if (q < 1) f(ty * GW + tx, q); } };
     blob(100, 314, 15, 9, i => { if (grid[i] !== T.WATER) grid[i] = T.SALT; });   // [isola] le saline, dietro la Spiaggia Lunga
-    const LAKE = { x: xn(186), y: 150, rx: 13, ry: 9, h: 15.6 };    // il lago gelato dell'altopiano
+    const LAKE = { x: xn(186), y: 150, rx: 13, ry: 9, h: Math.max(2, rawElev(xn(186), 150)) + .4 };   // [isola] il lago sta alla quota del monte nuovo    // il lago gelato dell'altopiano
     blob(LAKE.x, LAKE.y, LAKE.rx, LAKE.ry, (i, q) => { grid[i] = q < .8 ? T.WATER : T.GRASS; elev[i] = q < .8 ? LAKE.h - 1.4 : Math.max(elev[i], LAKE.h + .2); });
     // strade
     const roads = [], TUNNELS = []; let CARR = null;   // CARR: vertici delle carreggiate già spianate
@@ -652,7 +607,7 @@ var World = (function () {
       CITY.piazzette = nodes.filter(n => n.deg >= 3 && hash2(n.i, n.j, 807) < .22).map(n => [n.x, n.y, 4 + hash2(n.i, n.j, 808) * 3]);
     }
     CITY.roads.forEach(rd => roads.push(rd));
-    ROADS0.filter(q => !['deserto', 'miniera', 'stazione2', 'saline', 'faro'].includes(q[0])).forEach(([id, name, w, kind, cp]) => roads.push({ id, name, w, kind, pts: rounded(rel(cp).map(q => [xn(q[0]), q[1]]), w > 5 ? 16 : 8, false) }));
+    ROADS0.filter(q => !['deserto', 'miniera', 'stazione2', 'saline', 'faro', 'crinale_e', 'sent_o1', 'sent_o2', 'sent_e1', 'sent_e2', 'anello_on', 'anello_os', 'mulattiera_o', 'anello_en', 'anello_es', 'mulattiera_e'].includes(q[0])).forEach(([id, name, w, kind, cp]) => roads.push({ id, name, w, kind, pts: rounded(rel(cp).map(q => [xn(q[0]), q[1]]), w > 5 ? 16 : 8, false) }));
     // [isola] le strade della testa di bosco e del collo, in coordinate nuove. La strada centrale sale col terreno e diventa mulattiera.
     const canTrail = c => { const N = 7, v = [-c.u[1], c.u[0]], out = []; for (let k = 0; k <= N; k++) { const al = CAN1 + 1 - (CAN1 + 1 - (CAN0 + 3)) * k / N, lat = k === 0 || k === N ? 0 : (k % 2 ? 1 : -1) * (canHalf(al) - 3.6); out.push([TAV.x + c.u[0] * (c.R + al) + v[0] * lat, TAV.y + c.u[1] * (c.R + al) + v[1] * lat, canFloor(c, al)]); } return out; };
     const CE = canTrail(CANALI[0]), CO = canTrail(CANALI[1]), footE = CE[0], footO = CO[0];
@@ -678,8 +633,8 @@ var World = (function () {
       roads.push(rd);
     });
     // strade di montagna: le quote disegnate (quando ci sono) si interpolano lungo il percorso
-    MONTI.forEach(([id, name, w, kind, cp0]) => {
-      const cp = cp0.map(q => [xn(q[0])].concat(q.slice(1)));   // [isola] in coordinate nuove
+    MONTI.filter(q => !['cantina', 'crinale_o', 'ciglio', 'gola', 'ponte_o', 'cengia', 'calanchi', 'caletta', 'vecchio', 'collina_o'].includes(q[0])).forEach(([id, name, w, kind, cp0]) => {
+      const cp = cp0.map(q => [xn(q[0]), q[1]]);   // [isola] in coordinate nuove; le quote vengono dal terreno nuovo
       const pts = chaikin(cp.map(p => [p[0], p[1]]), 3), rd = { id, name, w, kind, pts, monte: true };
       if (cp.some(p => p.length > 2)) {
         const near0 = ([x, y]) => { let bk = 0, bd = 1e9; cp.forEach((p, k) => { const d = dist(x, y, p[0], p[1]); if (d < bd) { bd = d; bk = k; } }); return bk; };
@@ -691,6 +646,54 @@ var World = (function () {
       }
       roads.push(rd);
     });
+    // [isola] i sentieri della montagna si tracciano sul terreno: dalla meta (una cima, un passo, una sorgente, un rudere) fino alla
+    // strada più comoda, col costo che cresce con la pendenza (segue le curve di livello, sale a tornanti solo dove è ripido),
+    // evita acqua e pareti e preferisce i sentieri già fatti (si uniscono invece di correre paralleli). Poi si arrotonda.
+    {
+      const CS = TS, cellOf = (x, y) => [Math.floor(x / CS), Math.floor(y / CS)], ck = (i, j) => i * 4096 + j;
+      const RN = new Set(), mark = rd => rd.pts.forEach(([x, y]) => { const [i, j] = cellOf(x, y); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) RN.add(ck(i + a, j + b)); });
+      roads.forEach(rd => { if (rd.kind !== 'vicolo') mark(rd); });
+      const hC = new Map(), hAt = (i, j) => { const k = ck(i, j); let h = hC.get(k); if (h === undefined) { h = OnLand(i * CS + 1, j * CS + 1) ? rawElev(i * CS + 1, j * CS + 1) : -99; hC.set(k, h); } return h; };
+      const blocked = (i, j) => { if (i < 1 || j < 1 || i >= GW - 1 || j >= GH - 1) return true; const v = grid[j * GW + i]; return v === T.WATER || v === T.CLIFF || hAt(i, j) < .2; };
+      const trace = (from, to, R) => {   // to: [x, y] oppure null = la strada più vicina
+        const [si, sj] = cellOf(from[0], from[1]), goal = to ? cellOf(to[0], to[1]) : null, D = new Map(), PR = new Map(), Q = [[0, si, sj]];
+        D.set(ck(si, sj), 0); let end = null;
+        while (Q.length) {
+          let bi = 0; for (let q = 1; q < Q.length; q++) if (Q[q][0] < Q[bi][0]) bi = q; const [d, i, j] = Q[bi]; Q[bi] = Q[Q.length - 1]; Q.pop();
+          if (d > D.get(ck(i, j))) continue;
+          if (goal ? (Math.abs(i - goal[0]) <= 1 && Math.abs(j - goal[1]) <= 1) : (RN.has(ck(i, j)) && d > 6)) { end = [i, j]; break; }
+          for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+            const ni = i + a, nj = j + b; if (Math.abs(ni - si) * CS > R || Math.abs(nj - sj) * CS > R || blocked(ni, nj)) continue;
+            const L = Math.hypot(a, b) * CS, sl = Math.abs(hAt(ni, nj) - hAt(i, j)) / L; if (sl > .3) continue;
+            const mea = .8 + .4 * fbm(ni / 7, nj / 7, 420, 2), c = d + L * (1 + Math.pow(sl / .1, 2) * 3) * mea * (RN.has(ck(ni, nj)) ? .4 : 1), k = ck(ni, nj);   // sale a tornanti, serpeggia
+            if (c < (D.has(k) ? D.get(k) : 1e18)) { D.set(k, c); PR.set(k, ck(i, j)); Q.push([c, ni, nj]); }
+          }
+        }
+        if (!end) return null;
+        const out = []; let k = ck(end[0], end[1]); while (k !== undefined) { const i = Math.floor(k / 4096), j = k - i * 4096; out.push([i * CS + 1, j * CS + 1]); k = PR.get(k); }
+        out.reverse();   // dalla strada (o dalla meta d'arrivo) alla meta di partenza
+        const thin = out.filter((q, n) => n % 3 === 0 || n === out.length - 1); if (thin.length < 2) return null;
+        return chaikin(thin, 2);
+      };
+      const T1 = [   // id, nome, partenza (la meta), arrivo (null = la strada), raggio di ricerca
+        ['sent_pizzo', 'Mulattiera del Pizzo', [781, 143], null, 140], ['sent_neviera', 'Sentiero della Neviera', [773, 135], [781, 143], 60],
+        ['crinale_o', 'Sentiero di crinale', [781, 143], [813, 137], 90], ['crinale_mono', 'Crinale del Monolite', [813, 137], [855, 143], 90],
+        ['sent_sorgente', 'Sentiero della Sorgente', [775, 159], null, 120], ['sent_rudere', 'Sentiero del Casale', [833, 111], null, 120],
+        ['sent_spiazzo', 'Sentiero dello Spiazzo', [795, 139], null, 120], ['sent_carbonaia', 'Sentiero dei Carbonai', [869, 169], null, 100],
+        ['sent_monolite', 'Sentiero del Monolite', [855, 143], null, 100], ['ciglio', 'Sentiero del Ciglio', [767, 113], null, 100],
+        ['sent_salita', 'Salita della Collina Nera', [1083, 129], null, 90], ['sent_grotta', 'Sentiero della Grotta', [1083, 151], null, 90],
+        ['crinale_e', 'Crinale della Collina Nera', [1083, 129], [1157, 141], 120], ['sent_cava', 'Sentiero della Cava', [1143, 151], null, 90],
+        ['sent_ruderi', 'Sentiero dei Ruderi', [1125, 161], null, 90], ['sent_covo', 'Traccia del Covo', [1157, 141], null, 90]];
+      // la sterrata principale corre sul crinale, da un capo all'altro del monte
+      { const cp = []; for (let xo0 = 166; xo0 <= 350; xo0 += 6) cp.push([xn(xo0), crestY(xo0)]);
+        const vg = CITY.roads.find(r => r.id === 'via_governo'); if (vg) { let b = vg.pts[0], bd = 1e9; vg.pts.forEach(q => { const d = dist(q[0], q[1], cp[cp.length - 1][0], cp[cp.length - 1][1]); if (d < bd) { bd = d; b = q; } }); cp.push(b.slice()); }
+        const rd = { id: 'cresta', name: 'Sterrata di cresta', w: 4, kind: 'sterrato', pts: chaikin(cp, 3), monte: true }; roads.push(rd); mark(rd); }
+      const CLR = [];
+      T1.forEach(([id, name, from, to, R]) => { const pts = trace(from, to, R); if (!pts) return; const rd = { id, name, w: 1.4, kind: 'sterrato', pts, monte: true, traccia: true }; roads.push(rd); mark(rd);
+        let acc = 0; for (let k = 1; k < pts.length; k++) { acc += dist(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1]); if (acc > 38 && hash2(Math.round(pts[k][0]), Math.round(pts[k][1]), 421) < .55) { acc = 0; const a = hash2(k, id.length, 422) * 6.28; CLR.push([pts[k][0] + Math.cos(a) * 4, pts[k][1] + Math.sin(a) * 4, 5 + hash2(k, 3, 423) * 4]); } } });
+      // le radure lungo i sentieri: il bosco si apre, erba e qualche cespuglio
+      CLR.forEach(([cx, cy, rr]) => { for (let j = Math.floor((cy - rr) / TS); j <= Math.ceil((cy + rr) / TS); j++) for (let i = Math.floor((cx - rr) / TS); i <= Math.ceil((cx + rr) / TS); i++) { if (i < 0 || j < 0 || i >= GW || j >= GH) continue; const q = ((i * TS + 1 - cx) ** 2 + (j * TS + 1 - cy) ** 2) / (rr * rr) + (fbm(i / 3, j / 3, 424, 2) - .5) * .5; const k = j * GW + i; if (q < 1 && (grid[k] === T.TREE || grid[k] === T.SHRUB)) grid[k] = hash2(i, j, 425) < .12 ? T.SHRUB : T.GRASS; } });
+    }
     const paint = (rd) => {
       if (rd.rect) {
         const q = rd.rect, v = rd.kind === 'vicolo' ? T.COB : T.VIA;
@@ -1107,6 +1110,7 @@ var World = (function () {
       b.door = best;
     });
     Object.values(PLACES).forEach(p => { if (!reach[p.ty * GW + p.tx]) { const q = nearReach(p.tx, p.ty); if (q) { p.tx = q[0]; p.ty = q[1]; } } });
+    B.forEach(b => { if (b.name && b.door && !b.barrack && !PLACES[b.id]) PLACES[b.id] = { id: b.id, name: b.name, tx: b.door[0], ty: b.door[1] }; });   // [isola] chi ha avuto la porta dopo
     B.forEach(b => { if (b.name && b.door && PLACES[b.id]) { PLACES[b.id].tx = b.door[0]; PLACES[b.id].ty = b.door[1]; } });
     Object.values(PLACES).forEach(p => { p.x = p.tx * TS + TS / 2; p.y = p.ty * TS + TS / 2; });
     // quote ai vertici dalle caselle (strade e edifici spianati): il terreno che si vede
@@ -1142,7 +1146,7 @@ var World = (function () {
         let P = rd.prof ? rd.prof.slice() : rd.pts.map(([x, y]) => sampleVH(x, y));
         const blur = (A, r) => A.map((_, k) => { let sm = 0, c = 0; for (let q = -r; q <= r; q++) { sm += A[clamp(k + q, 0, n - 1)]; c++; } return sm / c; });
         for (let pass = 0; pass < 3; pass++) P = blur(P, rd.monte ? 5 : 4);
-        rd._seg = seg; rd._P = P; rd._G = rd.kind === 'sterrato' ? (rd.trail ? .26 : rd.w <= 2 ? .42 : rd.w <= 3 ? .3 : .2) : .15;   // i sentieri a piedi possono essere ripidi (gradini), le piste no
+        rd._seg = seg; rd._P = P; rd._G = rd.traccia ? .2 : rd.kind === 'sterrato' ? (rd.trail ? .26 : rd.w <= 2 ? .42 : rd.w <= 3 ? .3 : .2) : .15;   // i sentieri a piedi possono essere ripidi (gradini), le piste no
         let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; rd.pts.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }); rd._box = [x0, y0, x1, y1];
       });
       const done = [];
@@ -1181,7 +1185,7 @@ var World = (function () {
       });
       const cutV = new Uint8Array(NV), wallV = new Uint8Array(NV), carrV = new Uint8Array(NV), carrN = [], TUN = []; CARR = carrV;
       RD.forEach(rd => {
-        const n = rd.pts.length, P = rd.h, side = rd.kind === 'citta' || rd.kind === 'litoranea' ? 2 : 0, flat = rd.w / 2 + side + .6, R = flat + 12, best = new Map(), asph = rd.kind !== 'sterrato';
+        const n = rd.pts.length, P = rd.h, side = rd.kind === 'citta' || rd.kind === 'litoranea' ? 2 : 0, flat = rd.w / 2 + side + (rd.traccia ? .25 : .6), R = flat + (rd.traccia ? 6 : 12), best = new Map(), asph = rd.kind !== 'sterrato';
         for (let k = 0; k < n - 1; k++) {
           const [ax, ay] = rd.pts[k], [bx, by] = rd.pts[k + 1], L2 = (bx - ax) * (bx - ax) + (by - ay) * (by - ay) || 1;
           for (let j = Math.max(0, Math.floor((Math.min(ay, by) - R) / TS)); j <= Math.min(GH, Math.ceil((Math.max(ay, by) + R) / TS)); j++) for (let i = Math.max(0, Math.floor((Math.min(ax, bx) - R) / TS)); i <= Math.min(GW, Math.ceil((Math.max(ax, bx) + R) / TS)); i++) {
@@ -1193,7 +1197,7 @@ var World = (function () {
           if (carrV[q]) return;   // la carreggiata di una strada più importante non si tocca più
           const dh = vh[q] - o.h; let b;
           if (o.d <= flat) { b = 1; carrN.push(q); }
-          else if (dh > 0) { const run = .5 + dh * (asph ? .42 : .7); b = 1 - sstep(flat, flat + run, o.d); if (dh > 1.4 && o.d < flat + run + 1.5) cutV[q] = 1; }       // scavo: roccia tagliata
+          else if (dh > 0) { const run = .5 + dh * (asph ? .42 : .7); b = 1 - sstep(flat, flat + run, o.d); if (dh > 1.4 && o.d < flat + run + 1.5 && !rd.traccia) cutV[q] = 1; }       // scavo: roccia tagliata
           else { const fill = -dh; if (fill > 1.3 && asph) { b = o.d <= flat + .7 ? 1 : 0; if (o.d <= flat + 2.6) wallV[q] = 1; }                                       // rilevato alto: muro di sostegno
             else { const run = 1 + fill * 1.7; b = 1 - sstep(flat, flat + run, o.d); } }
           if (b > 0) { vh[q] += (o.h - vh[q]) * b; touched[q] = 1; }
@@ -1257,7 +1261,7 @@ var World = (function () {
     // ---------------- PARTENZE DEI VEICOLI E CORSIE ----------------
     const lanes = roads.filter(rd => rd.kind !== 'sterrato' && rd.kind !== 'vicolo').map(rd => ({ id: rd.id, w: rd.w, pts: rd.pts, closed: false }));
     // ponti sospesi (si camminano sopra, sotto si passa) e grotte naturali che attraversano la montagna (sottosuolo)
-    const BRIDGES = [{ id: 'ponte_diavolo', name: 'Ponte del Diavolo', a: [xn(220.5), 97.2], b: [xn(240.5), 97.6], w: 1.6 }];
+    const BRIDGES = [];   // [isola] la gola non c'è più
     BRIDGES.forEach(B => { const ta = [Math.floor(B.a[0] / TS), Math.floor(B.a[1] / TS)], tb = [Math.floor(B.b[0] / TS), Math.floor(B.b[1] / TS)]; B.h0 = elev[ta[1] * GW + ta[0]]; B.h1 = elev[tb[1] * GW + tb[0]]; });
     const CAVES0 = [
       // la Grotta del Romito: si entra dal fondo della gola, sale sotto il ciglio e sbuca in un pozzo vicino al sentiero; dentro, il toro inciso
