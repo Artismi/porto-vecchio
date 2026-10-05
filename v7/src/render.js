@@ -1279,6 +1279,8 @@ var Render = (function () {
     const brick = sm('#8a6656', { roughness: 1 }), capM = sm('#4a4644', { roughness: 1 });
     dyn.buildings.forEach((rec, bi) => {
       const b = rec.b, bb = rec.box3; if (!b || !bb || b.warehouse) return;
+      if (rec.stove) { AIR2.ch.push({ x: rec.stove[0], y: rec.stove[1] + .1, z: rec.stove[2], ph: (bi * 7.3) % 20, k: .6 }); return; }   // baracche: fuma il tubo della stufa
+      if (rec.shack || rec.special || b.__tierBase) return;   // baracche senza stufa nota, governo, corpi bassi dei gradoni: niente camino
       const u = String(b.use || '') + String(b.kind || ''); if (/caserma|rocca|hangar|deposito|commiss|cultura|baracca|chiesa/.test(u)) return;
       const w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z; if (w < 3 || d < 3) return;
       const r = rng(bi * 977 + 13); if (r() < .3) return;
