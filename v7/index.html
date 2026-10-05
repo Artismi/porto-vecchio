@@ -21804,7 +21804,7 @@ var Render = (function () {
     const k = vnz(x / 34, z / 34) + vnz(x / 11, z / 11) * .35, j = r();
     if (/Pine/.test(name)) return k > .15 ? pick(r, ['#e8f0d0', '#f0f4d8']) : k < -.15 ? pick(r, ['#b8d0c0', '#c4d8c8']) : pick(r, ['#d4e4cc', '#dce8d0']);
     if (/Common/.test(name)) return k > .1 ? pick(r, ['#f4d890', '#f0c878', '#e8d8a0']) : k < -.2 ? pick(r, ['#e8a878', '#dca070']) : j < .5 ? '#e0e8b8' : '#f0e0b0';
-    if (/Quercia/.test(name)) { const q = vnz(x / 18 + 5, z / 18 + 9) + (r() - .5) * .5; return q > .25 ? pick(r, ['#fff4c0', '#f8f0a8']) : q < -.25 ? pick(r, ['#a8c0b8', '#b8ccc0']) : q > 0 ? pick(r, ['#ffffff', '#f0f8e0']) : pick(r, ['#d8e8c8', '#c8dcc0']); }   // [verde]
+    if (/Quercia/.test(name)) { const q = vnz(x / 18 + 5, z / 18 + 9) + (r() - .5) * .5; return q > .25 ? pick(r, ['#fff0b0', '#ffe8a0', '#ffffff']) : q < -.25 ? pick(r, ['#c8dcd0', '#d0e0d0']) : pick(r, ['#ffffff', '#f4fae4', '#e8f0d8']); }   // [verde]
     if (/Twisted/.test(name)) return pick(r, ['#d8e0c0', '#c8d4b0']);
     return pick(r, ['#e8e0d8', '#d8d0c4', '#f0e8dc']);
   }
@@ -22502,44 +22502,72 @@ var Render = (function () {
         bl.card([c[0] - px * w + dx * w * .3, c[1] - hh, c[2] - pz * w + dz * w * .3], [c[0] + px * w + dx * w * .3, c[1] - hh, c[2] + pz * w + dz * w * .3], [c[0] + px * w, c[1] + .05, c[2] + pz * w], [c[0] - px * w, c[1] + .05, c[2] - pz * w], r() < .6 ? 4 : 14, vdL(H_('#c8e0a0'), H_('#f0f8d0'), r()), H_('#ffffff'), y / H * 1.4, y / H * 1.1); } }
     return { wood: bw.build(), leaf: bl.build() };
   }
-  function querciaGeo(seed, H) {
-    const r = rng(seed), bw = vdB(false), bl = vdB(false), TAU = 6.2832, H_ = vdH;
-    const trunkTop = H * (.38 + r() * .1), R0 = .032 * H, lean = [(r() - .5) * .06 * H, (r() - .5) * .06 * H];
+  // le latifoglie: otto forme (tonda, ovale alta, larga a ombrello, a colonna, piangente, sbilanciata dal vento, a nuvole, giovane rada)
+  // e otto tavolozze; la chioma è un involucro pieno di tanti grappoli piccoli che si sovrappongono, la luce la attraversa (crownMat)
+  const QSHAPE = [
+    { rx: .42, ry: .34, cy: .64, n: 16, pal: ['#2e5a1c', '#6a9a34', '#c8e070'] },   // quercia tonda
+    { rx: .3, ry: .42, cy: .6, n: 15, pal: ['#2a5226', '#5a8e3a', '#b0d870'] },    // faggio ovale alto
+    { rx: .55, ry: .24, cy: .72, n: 18, pal: ['#34581e', '#7a9a3a', '#d8e078'], flat: 1 },   // ombrello largo
+    { rx: .2, ry: .45, cy: .55, n: 12, pal: ['#2e4e2a', '#5a7e46', '#a8c880'] },   // a colonna (pioppo)
+    { rx: .45, ry: .38, cy: .55, n: 16, pal: ['#3a5e22', '#7aa040', '#e0e888'], weep: 1 },   // piangente (salice)
+    { rx: .44, ry: .3, cy: .66, n: 15, pal: ['#2c4e30', '#4e7a50', '#98c088'], wind: 1 },   // sbilanciata, verde-blu (leccio)
+    { rx: .5, ry: .38, cy: .62, n: 20, pal: ['#40601a', '#8aaa30', '#ece070'], clouds: 1 },   // a nuvole, gialla (acero)
+    { rx: .3, ry: .28, cy: .62, n: 9, pal: ['#3a6020', '#6e9c3a', '#c0dc6a'] },   // giovane rada
+  ];
+  function querciaGeo(seed, H, sh) {
+    const r = rng(seed), bw = vdB(false), bl = vdB(false), TAU = 6.2832, H_ = vdH, S = QSHAPE[sh % QSHAPE.length];
+    const R0 = .03 * H * (sh === 7 ? .6 : 1), bend = S.wind ? [.12 * H, 0] : [(r() - .5) * .05 * H, (r() - .5) * .05 * H];
+    const C0 = [bend[0] * .6, H * S.cy, bend[1] * .6], trunkTop = H * (S.cy - S.ry * .55);
     const seg = (a, b, ra, rb, ca, cb) => { const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], L = Math.hypot(dx, dy, dz) || 1, ux = dx / L, uy = dy / L, uz = dz / L;
-      let px = uy * 0 - uz * 1, py = uz * 0 - ux * 0, pz = ux * 1 - uy * 0; if (Math.hypot(px, py, pz) < .1) { px = 1; py = 0; pz = 0; } const pl = Math.hypot(px, py, pz); px /= pl; py /= pl; pz /= pl;
+      let px = -uz, py = 0, pz = ux; if (Math.hypot(px, pz) < .1) { px = 1; pz = 0; } const pl = Math.hypot(px, py, pz); px /= pl; pz /= pl;
       const qx = uy * pz - uz * py, qy = uz * px - ux * pz, qz = ux * py - uy * px, SD = 6;
       for (let i = 0; i < SD; i++) { const a0 = i / SD * TAU, a1 = (i + 1) / SD * TAU, o = (an, rr) => [Math.cos(an) * px * rr + Math.sin(an) * qx * rr, Math.cos(an) * py * rr + Math.sin(an) * qy * rr, Math.cos(an) * pz * rr + Math.sin(an) * qz * rr];
         const A0 = o(a0, ra), A1 = o(a1, ra), B0 = o(a0, rb), B1 = o(a1, rb);
         bw.quad([a[0] + A0[0], a[1] + A0[1], a[2] + A0[2]], [a[0] + A1[0], a[1] + A1[1], a[2] + A1[2]], [b[0] + B1[0], b[1] + B1[1], b[2] + B1[2]], [b[0] + B0[0], b[1] + B0[1], b[2] + B0[2]], ca, ca, cb, cb, 0, 0, b[1] / H * .3, b[1] / H * .3); } };
-    const TOP = [lean[0], trunkTop, lean[1]];
-    seg([0, 0, 0], TOP, R0 * 1.25, R0 * .8, H_('#4a3a2e'), H_('#5a4a3a'));
-    // i grappoli: uno in cima, gli altri in cerchio, a quote diverse; ognuno col suo ramo
-    const NC = 6 + Math.floor(r() * 3), CL = [[lean[0] * 1.5, H * (.86 + r() * .06), lean[1] * 1.5, H * (.2 + r() * .04)]];
-    for (let k = 0; k < NC; k++) { const a = k / NC * TAU + r() * .6, d = H * (.17 + r() * .14), y = H * (.55 + r() * .25); CL.push([Math.cos(a) * d + lean[0], y, Math.sin(a) * d + lean[1], H * (.13 + r() * .06)]); }
+    const TOP = [bend[0] * .35, trunkTop, bend[1] * .35];
+    seg([0, 0, 0], [bend[0] * .15, trunkTop * .5, bend[1] * .15], R0 * 1.3, R0, H_('#3e3228'), H_('#4e4034')); seg([bend[0] * .15, trunkTop * .5, bend[1] * .15], TOP, R0, R0 * .75, H_('#4e4034'), H_('#5a4a3c'));
+    // i grappoli dentro l'involucro: punti sparsi (più fitti verso fuori), il primo in cima
+    const CL = [];
+    for (let k = 0; k < S.n; k++) { let u, v, w; do { u = r() * 2 - 1; v = r() * 2 - 1; w = r() * 2 - 1; } while (u * u + v * v + w * w > 1);
+      const L = Math.hypot(u, v, w) || 1, out = .45 + .55 * Math.pow(L, .5); u = u / L * out; v = v / L * out; w = w / L * out;
+      let x = C0[0] + u * S.rx * H, y = C0[1] + v * S.ry * H, z = C0[2] + w * S.rx * H;
+      if (S.flat) y = C0[1] + Math.abs(v) * S.ry * H * .7 - S.ry * H * .15;
+      if (S.wind) x += (v + 1) * .06 * H;
+      if (S.clouds && k % 4 === 0) y += .06 * H;
+      CL.push([x, y, z, H * (S.flat ? .13 : S.n < 12 ? .1 : .115) * (.75 + r() * .5)]); }
+    const P0 = vdH(S.pal[0]), P1 = vdH(S.pal[1]), P2 = vdH(S.pal[2]);
     CL.forEach(([cx, cy, cz, R], k) => {
-      const mid = [TOP[0] + (cx - TOP[0]) * .55, TOP[1] + (cy - TOP[1]) * .45 + R * .2, TOP[2] + (cz - TOP[2]) * .55];
-      seg(TOP, mid, R0 * .7, R0 * .45, H_('#5a4a3a'), H_('#5e4e40')); seg(mid, [cx, cy - R * .3, cz], R0 * .45, R0 * .2, H_('#5e4e40'), H_('#6a5a4a'));
-      // rametti a foglie sulla superficie del grappolo (sfera di Fibonacci), girati verso fuori; normali tonde, tinta dalla luce
-      const NL = 22;
+      const mid = [TOP[0] + (cx - TOP[0]) * .45, TOP[1] + (cy - R * .9 - TOP[1]) * .5, TOP[2] + (cz - TOP[2]) * .45];
+      seg(TOP, mid, R0 * .5, R0 * .28, H_('#3a2e24'), H_('#3e3228')); seg(mid, [cx * .9 + TOP[0] * .1, cy - R * .75, cz * .9 + TOP[2] * .1], R0 * .28, R0 * .1, H_('#3e3228'), H_('#46382c'));
+      const hue = (r() - .5) * .12, NL = 16;   // ogni grappolo un filo diverso di tinta
       for (let q = 0; q < NL; q++) {
-        const yy = 1 - (q + .5) / NL * 2, rad = Math.sqrt(1 - yy * yy), th = q * 2.39996 + k, n = [Math.cos(th) * rad, yy * .85 + .15, Math.sin(th) * rad], nl = Math.hypot(n[0], n[1], n[2]); n[0] /= nl; n[1] /= nl; n[2] /= nl;
-        const rr = R * (.72 + r() * .35), p = [cx + n[0] * rr, cy + n[1] * rr * .8, cz + n[2] * rr], sz = R * (.62 + r() * .3);
+        const yy = 1 - (q + .5) / NL * 2, rad = Math.sqrt(1 - yy * yy), th = q * 2.39996 + k * 1.7, n = [Math.cos(th) * rad, yy * .8 + .2, Math.sin(th) * rad], nl = Math.hypot(n[0], n[1], n[2]); n[0] /= nl; n[1] /= nl; n[2] /= nl;
+        // la normale è quella dell'involucro intero (la chioma si illumina come un solo volume), mescolata a quella del grappolo
+        const ex = (cx - C0[0]) / (S.rx * H), ey = (cy - C0[1]) / (S.ry * H), ez = (cz - C0[2]) / (S.rx * H), el = Math.hypot(ex, ey, ez) || 1, N = [n[0] * .5 + ex / el * .5, n[1] * .5 + ey / el * .5 + .1, n[2] * .5 + ez / el * .5], Nl = Math.hypot(N[0], N[1], N[2]); N[0] /= Nl; N[1] /= Nl; N[2] /= Nl;
+        const rr = R * (.6 + r() * .45), p = [cx + n[0] * rr, cy + n[1] * rr * .85 - (S.weep ? Math.max(0, -n[1]) * R * 1.2 : 0), cz + n[2] * rr], sz = R * (.55 + r() * .35) * (S.weep && n[1] < 0 ? 1.3 : 1);
         let t1 = [-n[2], 0, n[0]]; const tl = Math.hypot(t1[0], t1[2]) || 1; t1 = [t1[0] / tl, 0, t1[2] / tl]; const t2 = [n[1] * t1[2] - n[2] * t1[1], n[2] * t1[0] - n[0] * t1[2], n[0] * t1[1] - n[1] * t1[0]];
         const ang = r() * TAU, ca = Math.cos(ang), sa = Math.sin(ang), u = [t1[0] * ca + t2[0] * sa, t1[1] * ca + t2[1] * sa, t1[2] * ca + t2[2] * sa], v = [t2[0] * ca - t1[0] * sa, t2[1] * ca - t1[1] * sa, t2[2] * ca - t1[2] * sa];
-        const lit = Math.max(0, n[1] * .7 + (n[0] * -.5 + n[2] * -.3) * .5 + .3), inner = Math.min(1, Math.hypot(p[0] - lean[0], p[2] - lean[1]) / (H * .35));
-        const cB = vdL(H_('#1e3414'), H_('#3e6a24'), .4 + inner * .4), cT = vdL(H_('#4e8030'), H_('#c8e070'), Math.min(1, lit));
+        // la tinta: dalla luce sull'involucro (sole da sud-ovest in alto), il lato in ombra resta verde vivo (la luce passa)
+        const lit = Math.max(0, Math.min(1, N[1] * .6 + (N[0] * -.45 + N[2] * -.25) * .6 + .35)), inner = Math.min(1, el);
+        let cT = lit > .5 ? vdL(P1, P2, (lit - .5) * 2) : vdL(P0, P1, lit * 2); cT = vdL(cT, P0, (1 - inner) * .35);
+        cT = [cT[0] * (1 + hue), cT[1], cT[2] * (1 - hue)]; const cB = vdK(cT, .72);
         const A = [p[0] - u[0] * sz - v[0] * sz, p[1] - u[1] * sz - v[1] * sz, p[2] - u[2] * sz - v[2] * sz], B = [p[0] + u[0] * sz - v[0] * sz, p[1] + u[1] * sz - v[1] * sz, p[2] + u[2] * sz - v[2] * sz];
         const Cc = [p[0] + u[0] * sz + v[0] * sz, p[1] + u[1] * sz + v[1] * sz, p[2] + u[2] * sz + v[2] * sz], D = [p[0] - u[0] * sz + v[0] * sz, p[1] - u[1] * sz + v[1] * sz, p[2] - u[2] * sz + v[2] * sz];
-        const c0 = vdL(cB, cT, .35), c1 = cT, cell = r() < .8 ? 4 : 14, w = cy / H * 1.1, uvA = vdUV(cell, 0, 0), uvB = vdUV(cell, 1, 0), uvC = vdUV(cell, 1, 1), uvD = vdUV(cell, 0, 1);
-        bl.tri(A, B, Cc, c0, c0, c1, w, w, w * 1.2, [uvA[0], uvA[1], uvB[0], uvB[1], uvC[0], uvC[1]], n); bl.tri(A, Cc, D, c0, c1, c1, w, w * 1.2, w * 1.2, [uvA[0], uvA[1], uvC[0], uvC[1], uvD[0], uvD[1]], n);
+        const cell = r() < .75 ? 4 : 14, w = cy / H * 1.1, uvA = vdUV(cell, 0, 0), uvB = vdUV(cell, 1, 0), uvC = vdUV(cell, 1, 1), uvD = vdUV(cell, 0, 1);
+        bl.tri(A, B, Cc, cB, cB, cT, w, w, w * 1.2, [uvA[0], uvA[1], uvB[0], uvB[1], uvC[0], uvC[1]], N); bl.tri(A, Cc, D, cB, cT, cT, w, w * 1.2, w * 1.2, [uvA[0], uvA[1], uvC[0], uvC[1], uvD[0], uvD[1]], N);
       }
-      // il cuore del grappolo: un lobo scuro che chiude i buchi (da sotto non si vede il cielo attraverso)
-      bl.lobe(cx, cy - R * .1, cz, R * .62, R * .5, R * .62, H_('#14240e'), H_('#2e4a1c'), k * 7 + 3, .3, 0, cy / H * .8);
     });
     return { wood: bw.build(), leaf: bl.build() };
   }
+  // il materiale delle chiome: la luce attraversa le foglie (il lato in ombra si accende di verde-giallo), mai nero
+  function crownMat() {
+    if (VD.crown) return VD.crown;
+    const m = natMat(vdAtlas(), true, '#fffffe'); m.vertexColors = true; m.alphaTest = .45; m.color.setRGB(1.25, 1.25, 1.2);
+    m.emissive = new THREE.Color('#6a8a3a'); m.emissiveMap = vdAtlas(); m.emissiveIntensity = .5;
+    return (VD.crown = m);
+  }
   function abeteModel(name) {
-    if (/^Quercia_/.test(name)) { const ref = natModel('CommonTree_1'), H = ref && ref.top ? ref.top * .95 : 9, g = querciaGeo(8101 + (+name.slice(-1) || 0) * 97, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: vdMat(), leafy: true }], top: H }; }
+    if (/^Quercia_/.test(name)) { const v = +name.slice(-1) || 0, ref = natModel('CommonTree_1'), H = (ref && ref.top ? ref.top * .95 : 9) * [1, 1.1, .85, 1.2, .95, .9, 1, .7][v], g = querciaGeo(8101 + v * 97, H, v); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: crownMat(), leafy: true }], top: H }; }
     if (/^Betulla_/.test(name)) { const pine = natModel('Pine_1'), H = pine && pine.top ? pine.top * .95 : 10, g = betullaGeo(5101 + (+name.slice(-1) || 0) * 53, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: vdMat(), leafy: true }], top: H }; }
     if (/^Abete_secco/.test(name)) { const pine = natModel('Pine_1'), H = pine && pine.top ? pine.top * 1.15 : 13; return { parts: [{ geo: seccoGeo(7311 + (+name.slice(-1) || 0) * 31, H), mat: vdMat(), leafy: false }], top: H }; }
     const v = +(name.split('_')[1] || 0), pine = natModel('Pine_1'), H = pine && pine.top ? pine.top * 1.08 : 12, g = abeteGeo(9001 + v * 77, H);
@@ -22550,17 +22578,17 @@ var Render = (function () {
     const W0 = M.world, E = (W0 && W0.ECO) || {}; if (!VD.on || !W0 || !W0.eco) return natTree(tx, ty, r);
     const X = tx * TS + 1, Y = ty * TS + 1, e = vdEcoMix(X, Y, 1), q = th(tx, ty, 96), k = th(tx, ty, 97), sc = th(tx, ty, 95), pk = (a) => a[Math.floor(k * a.length) % a.length];
     const AB = () => q < .06 ? ['Abete_secco' + (k < .5 ? 0 : 1), .9 + sc * .3] : ['Abete_' + Math.floor(k * 3), q < .16 ? .4 + sc * .25 : .9 + sc * .35];
-    const OAK = (s0) => ['Quercia_' + Math.floor(k * 4), s0 + sc * .25];
+    const OAK = (s0, L) => { L = L || [0, 1, 2, 5, 6, 7]; const h = vnz(X / 20 + 3, Y / 20 + 7) + (k - .5) * .6; return ['Quercia_' + L[Math.max(0, Math.min(L.length - 1, Math.floor((h + .5) * L.length)))], s0 + sc * .25]; };
     switch (e) {
       case E.ABETAIA: return q < .94 ? AB() : ['Pine_3', .9 + sc * .3];
-      case E.FAGGETA: return q < .82 ? OAK(.72) : q < .92 ? ['Betulla_' + Math.floor(k * 3), .85 + sc * .25] : AB();
-      case E.VALLONE: return q < .65 ? OAK(.8) : AB();
+      case E.FAGGETA: return q < .82 ? OAK(.72, [0, 1, 1, 6, 7]) : q < .92 ? ['Betulla_' + Math.floor(k * 3), .85 + sc * .25] : AB();
+      case E.VALLONE: return q < .65 ? OAK(.8, [4, 0, 6, 1]) : AB();
       case E.PINETA: return q < .72 ? ['Pine_5', .9 + sc * .35] : ['Pine_2', .85 + sc * .3];
       case E.MACCHIA: return q < .8 ? [pk(['TwistedTree_1', 'TwistedTree_2', 'TwistedTree_3', 'TwistedTree_4', 'TwistedTree_5']), .26 + sc * .1] : ['Pine_5', .55 + sc * .2, -.12];
       case E.FARO: return ['Pine_5', .6 + sc * .25, -.18 - sc * .12];   // piegati dal vento di ponente
-      case E.PASCOLO: return q < .6 ? [pk(['TwistedTree_1', 'TwistedTree_2', 'TwistedTree_4']), .36 + sc * .12] : OAK(.8);
-      case E.RADURA: case E.RUDERALE: return q < .75 ? OAK(.85) : ['Betulla_' + Math.floor(k * 3), .9 + sc * .2];
-      case E.RIPARIALE: return q < .55 ? OAK(.5) : ['Betulla_' + Math.floor(k * 3), .8 + sc * .2];
+      case E.PASCOLO: return q < .4 ? [pk(['TwistedTree_1', 'TwistedTree_2', 'TwistedTree_4']), .36 + sc * .12] : OAK(.85, [2, 5, 0]);
+      case E.RADURA: case E.RUDERALE: return q < .75 ? OAK(.85, [0, 2, 6, 3]) : ['Betulla_' + Math.floor(k * 3), .9 + sc * .2];
+      case E.RIPARIALE: return q < .55 ? OAK(.8, [4, 3]) : ['Betulla_' + Math.floor(k * 3), .8 + sc * .2];
       case E.BETULLE: return q < .9 ? ['Betulla_' + Math.floor(k * 3), .8 + sc * .35] : AB();
       case E.PINIMONTE: return [pk(['Pine_1', 'Pine_2', 'Pine_3', 'Pine_4']), .85 + sc * .35];
       default: return natTree(tx, ty, r);

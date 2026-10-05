@@ -49,5 +49,5 @@ rep("    pass(dirt, rd => rd.w + 1.2, () => 'rgba(110,84,58,.55)');\n    pass(di
     "    vdSterrate(x, X0, Y0, X1, Y1);   // [verde]\n")
 # le querce e i faggi nuovi: ogni chioma una tinta sua, a macchie (gialla, scura e fredda, chiara, piena)
 rep("    if (/Twisted/.test(name)) return pick(r, ['#d8e0c0', '#c8d4b0']);",
-    "    if (/Quercia/.test(name)) { const q = vnz(x / 18 + 5, z / 18 + 9) + (r() - .5) * .5; return q > .25 ? pick(r, ['#fff4c0', '#f8f0a8']) : q < -.25 ? pick(r, ['#a8c0b8', '#b8ccc0']) : q > 0 ? pick(r, ['#ffffff', '#f0f8e0']) : pick(r, ['#d8e8c8', '#c8dcc0']); }   // [verde]\n    if (/Twisted/.test(name)) return pick(r, ['#d8e0c0', '#c8d4b0']);")
+    "    if (/Quercia/.test(name)) { const q = vnz(x / 18 + 5, z / 18 + 9) + (r() - .5) * .5; return q > .25 ? pick(r, ['#fff0b0', '#ffe8a0', '#ffffff']) : q < -.25 ? pick(r, ['#c8dcd0', '#d0e0d0']) : pick(r, ['#ffffff', '#f4fae4', '#e8f0d8']); }   // [verde]\n    if (/Twisted/.test(name)) return pick(r, ['#d8e0c0', '#c8d4b0']);")
 open(p, 'w', encoding='utf-8').write(s); print('ok')
