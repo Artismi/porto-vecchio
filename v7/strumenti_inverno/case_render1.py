@@ -39,7 +39,7 @@ rep("if (!cache.has(o.material)) cache.set(o.material, o.material.clone());",
 rep("const tank = cyl(.7, .7, 1.4, 10, sm('#9a948a')); tank.position.set(cx + (r() - .5) * w * .4, top + .8, cz + (r() - .5) * d * .4); grp.add(tank);",
     "const tank = oTank(i % 3 === 0 ? 1 : 0, rng(i * 17 + 3)); tank.position.set(cx + (r() - .5) * w * .4, top + .08, cz + (r() - .5) * d * .4); grp.add(tank);   // [case] forme")
 rep("ad(a, box(.8, .5, .45, acM), 0, base + MG + (f - 1) * MF + .2, .25); ad(a, cyl(.17, .17, .03, 8, pipeM), 0, base + MG + (f - 1) * MF + .2, .5).rotation.x = Math.PI / 2;",
-    "ad(a, oAC(rng(bi * 79 + k), true), 0, base + MG + (f - 1) * MF - .05, .2);")
+    "if (!(b.__prop && b.__prop.f === sd.n)) ad(a, oAC(rng(bi * 79 + k), true), 0, base + MG + (f - 1) * MF - .05, .2); /* [case] mai sul murale */")
 rep("put(box(.9, .6, .7, metal), x, .3, z, r() * 3); const f = cyl(.22, .22, .04, 10, dark); put(f, x, .62, z);",
     "put(oAC(rng(bi * 31 + k * 7)), x, 0, z, r() * 3);")
 rep("put(cyl(.04, .04, 1.1, 5, metal), x, .55, z); const dish = cyl(.5, .06, .18, 12, sm('#c8ccd0', { roughness: .5 })); put(dish, x, 1.2, z).rotation.set(.9, r() * 6, 0);",

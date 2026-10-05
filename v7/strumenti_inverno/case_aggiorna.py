@@ -25,4 +25,5 @@ once("    const r = rng(i * 733 + 101), civic = kind === 'civic' || kind === 'mi
      "    const r = rng(i * 733 + 101), civic = kind === 'civic' || kind === 'mil'; if (r() > (civic ? .85 : .55)) return null;   // [case] più murali", "[case] più murali")
 once("        if (bi % 3 === 0) addLight(PP.x + Math.sin(PP.yaw) * 2, PP.yc - PP.ph / 2 + .4, PP.z + Math.cos(PP.yaw) * 2, '#e0a050', 1.8, 10, .02);   // faretto da sotto",
      "        { const lg = new THREE.Group(); muralLights(PP, lg); lg.traverse(o => { if (o.isMesh) o.castShadow = false; }); g.add(lg); }   // [case] due fari veri sul murale", "[case] due fari veri sul murale")
+once("ad(a, oAC(rng(bi * 79 + k), true), 0, base + MG + (f - 1) * MF - .05, .2);", "if (!(b.__prop && b.__prop.f === sd.n)) ad(a, oAC(rng(bi * 79 + k), true), 0, base + MG + (f - 1) * MF - .05, .2); /* [case] mai sul murale */", "[case] mai sul murale")
 open(p, 'w', encoding='utf-8').write(s); print('aggiornato')

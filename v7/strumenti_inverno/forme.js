@@ -236,3 +236,19 @@
     fRod(g, [.04, hh - .2, .02], [.05, .3, .03], .008, '#1a1a1c', 'rubber'); fRod(g, [.05, .3, .03], [.4, .02, .3], .008, '#1a1a1c', 'rubber');
     return g;
   }
+  // cespuglio: tanti ciuffi piccoli di tre verdi (non un grumo solo), un po' schiacciati; alberello: tronco che si divide, chioma a ciuffi
+  const LEAFS = ['#3e5a32', '#4a6a38', '#56683a', '#46603a', '#5a6a40'];
+  function oShrub(r, s, col) {
+    const g = new THREE.Group(); s = s || 1; col = col || pick(r, LEAFS); const n = 8 + Math.floor(r() * 6);
+    for (let k = 0; k < n; k++) { const a = r() * 6.28, rr = Math.sqrt(r()) * .24 * s, y = (.1 + r() * .32) * s * (1 - rr / (.3 * s) * .4), rad = Math.round((.08 + r() * .07) * s * 50) / 50;
+      const c = fI(Math.max(.04, rad), 1, shade(col, [.78, 1, 1.18][Math.floor(r() * 3)]), 'leaf'); c.position.set(Math.cos(a) * rr, y, Math.sin(a) * rr); c.scale.y = .78; c.rotation.y = r() * 3; g.add(c); }
+    return g;
+  }
+  function oTree(r, s, col) {
+    const g = new THREE.Group(); s = s || 1; col = col || pick(r, LEAFS); const h = (.9 + r() * .5) * s;
+    fRod(g, [0, 0, 0], [0, h, 0], .035 * s, '#5a4a3a', 'wood');
+    for (let k = 0; k < 3; k++) { const a = k * 2.1 + r(), tip = [Math.cos(a) * .28 * s, h + (.15 + r() * .25) * s, Math.sin(a) * .28 * s]; fRod(g, [0, h * .8, 0], tip, .018 * s, '#5a4a3a', 'wood');
+      const sh = oShrub(r, .75 * s, col); sh.position.set(tip[0], tip[1] - .12 * s, tip[2]); g.add(sh); }
+    const top = oShrub(r, .9 * s, col); top.position.y = h + .1 * s; g.add(top);
+    return g;
+  }

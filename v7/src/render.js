@@ -4938,7 +4938,7 @@ var Render = (function () {
         // tubi lungo il muro
         if (r() < .55) { const sd = sides[Math.floor(r() * sides.length)], a = mkA(sd, .5 + r() * (sd.len - 1)); ad(a, cyl(.07, .07, top - base, 6, pipeM), 0, base + (top - base) / 2, .1); for (let f = 1; f < fl; f++) ad(a, box(.2, .06, .2, pipeM), 0, base + MG + (f - 1) * MF, .1); }
         // condizionatori appesi alla facciata
-        const nac = Math.floor(r() * 4); for (let k = 0; k < nac; k++) { const sd = sides[Math.floor(r() * sides.length)], a = mkA(sd, .8 + r() * (sd.len - 1.6)), f = 1 + Math.floor(r() * (fl - 1)); ad(a, oAC(rng(bi * 79 + k), true), 0, base + MG + (f - 1) * MF - .05, .2); }
+        const nac = Math.floor(r() * 4); for (let k = 0; k < nac; k++) { const sd = sides[Math.floor(r() * sides.length)], a = mkA(sd, .8 + r() * (sd.len - 1.6)), f = 1 + Math.floor(r() * (fl - 1)); if (!(b.__prop && b.__prop.f === sd.n)) ad(a, oAC(rng(bi * 79 + k), true), 0, base + MG + (f - 1) * MF - .05, .2); /* [case] mai sul murale */ }
         // insegna a bandiera verticale al neon
         if (b.use && r() < .6) { const sd = sides[Math.floor(r() * sides.length)], a = mkA(sd, 1 + r() * Math.max(.1, sd.len - 2)), word = WORDS[Math.floor(r() * WORDS.length)], col = NEONS[Math.floor(r() * NEONS.length)];
           const m = new THREE.MeshBasicMaterial({ map: labelTex(word.slice(0, 5), col, true, 48, 160) }); const H = 2.2 + r() * .8, y = base + MG * .5 + H / 2 + 1;
@@ -5606,6 +5606,22 @@ var Render = (function () {
     fRod(g, [.04, hh - .2, .02], [.05, .3, .03], .008, '#1a1a1c', 'rubber'); fRod(g, [.05, .3, .03], [.4, .02, .3], .008, '#1a1a1c', 'rubber');
     return g;
   }
+  // cespuglio: tanti ciuffi piccoli di tre verdi (non un grumo solo), un po' schiacciati; alberello: tronco che si divide, chioma a ciuffi
+  const LEAFS = ['#3e5a32', '#4a6a38', '#56683a', '#46603a', '#5a6a40'];
+  function oShrub(r, s, col) {
+    const g = new THREE.Group(); s = s || 1; col = col || pick(r, LEAFS); const n = 8 + Math.floor(r() * 6);
+    for (let k = 0; k < n; k++) { const a = r() * 6.28, rr = Math.sqrt(r()) * .24 * s, y = (.1 + r() * .32) * s * (1 - rr / (.3 * s) * .4), rad = Math.round((.08 + r() * .07) * s * 50) / 50;
+      const c = fI(Math.max(.04, rad), 1, shade(col, [.78, 1, 1.18][Math.floor(r() * 3)]), 'leaf'); c.position.set(Math.cos(a) * rr, y, Math.sin(a) * rr); c.scale.y = .78; c.rotation.y = r() * 3; g.add(c); }
+    return g;
+  }
+  function oTree(r, s, col) {
+    const g = new THREE.Group(); s = s || 1; col = col || pick(r, LEAFS); const h = (.9 + r() * .5) * s;
+    fRod(g, [0, 0, 0], [0, h, 0], .035 * s, '#5a4a3a', 'wood');
+    for (let k = 0; k < 3; k++) { const a = k * 2.1 + r(), tip = [Math.cos(a) * .28 * s, h + (.15 + r() * .25) * s, Math.sin(a) * .28 * s]; fRod(g, [0, h * .8, 0], tip, .018 * s, '#5a4a3a', 'wood');
+      const sh = oShrub(r, .75 * s, col); sh.position.set(tip[0], tip[1] - .12 * s, tip[2]); g.add(sh); }
+    const top = oShrub(r, .9 * s, col); top.position.y = h + .1 * s; g.add(top);
+    return g;
+  }
   // ================= [case] CASE COL CARATTERE =================
   // Le case non sono più scatole uguali: ogni casa ha una storia. Intonaci caldi e diversi (basamento più scuro,
   // l'ultimo piano rifatto in un'altra tinta), persiane di legno (aperte, socchiuse, chiuse, una che manca),
@@ -5800,53 +5816,59 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
           });
         }
         // tende e tapparelle dietro ai vetri accesi: le finestre non sono più rettangoli tutti uguali
-        if (W0.lit && blinds) { const q = r();
+        if ((W0.lit || r() < .6) && blinds && !(W0.g && W0.shop)) { const q = r();   // [composizione] quasi ogni finestra ha una tenda o una tapparella, anche spenta
+         
           if (q < .45) at(f, cbox(ww - .08, hh * (.25 + r() * .4), .02, pick(r, ['#c8b89a', '#a89070', '#8a6a52', '#d0c4a8']), 'slat'), u, yc + hh / 2 - .02 - hh * .15, -.08);
           else if (q < .8) { const cc = pick(r, ['#b04838', '#c8a070', '#8a5a70', '#d8c8a8', '#6a7a5a']); [-1, 1].forEach(s => at(f, cbox(ww * .26, hh - .1, .02, cc, 'cloth'), u + s * (ww / 2 - ww * .13 - .03), yc, -.08)); }
         }
         // fioriere sotto il davanzale (non al piano terra dei negozi)
         if (flowers && !W0.g && r() < .55) {
           const by = yc - hh / 2 - .14; at(f, oPlanter(ww + .1, r), u, by - .09, .2);
-          for (let q = 0; q < 4; q++) { const bl = cblob(.15 + r() * .07, pick(r, LEAF)); bl.scale.set(1, .8, .9); at(f, bl, u - ww / 2 + .1 + q * (ww - .1) / 3, by + .2, .2 + (r() - .5) * .08); }
+          for (let q = 0; q < 3; q++) at(f, oShrub(r, .5), u - ww / 2 + .2 + q * (ww - .4) / 2, by + .1, .2 + (r() - .5) * .06);
           if (r() < .6) for (let q = 0; q < 5; q++) at(f, cbox(.07, .07, .07, pick(r, FLOW)), u + (r() - .5) * ww, by + .3 + r() * .1, .24 + r() * .08);
           if (r() < .4) for (let q = 0; q < 3; q++) { const tr = cblob(.09, pick(r, LEAF)); tr.scale.set(.8, 2.2, .6); at(f, tr, u + (r() - .5) * ww, by - .25 - r() * .2, .3); }   // ricadenti
         }
       });
 
-      // ---- bovindo di legno a sbalzo (uno o due piani), col tettuccio in coppi ----
-      if (!kitHouse && borgo && fl >= 2 && r() < (fl >= 3 ? .5 : .32)) {
-        const cand = showF.filter(f => FACES[f].cam && FACES[f].n >= 2); if (cand.length) {
-          const f = pick(r, cand), F = FACES[f], wide = F.n >= 4 && r() < .45, k = Math.floor(r() * (F.n - (wide ? 1 : 0))), u = k * TS + (wide ? 2 : 1);
-          if (!inMural(f, u)) {
-            const f0 = 1 + Math.floor(r() * (fl - 2)), nf = Math.min(fl - f0, r() < .5 ? 2 : 1), y0 = base + MG + (f0 - 1) * MF + .05, H = nf * MF - .15, bw = wide ? 3.7 : 1.75, dep = .8 + r() * .25;
-            const plank = r() < .6, bodyC = pick(r, ['#c8b48a', '#8a6a4a', '#b07a5a', '#6a7a6a', '#a89a7a']);
-            const body = plank ? tbox(bw, H, dep, CT.woodM, 1.2) : cbox(bw, H, dep, bodyC);
-            at(f, body, u, y0 + H / 2, dep / 2);
-            for (let q = 0; q < nf; q++) {   // finestre del bovindo: una fascia sul davanti, due strette sui fianchi
-              const yy = y0 + q * MF + 1.25, lit = r() < .55, gm = lit ? caseLit(pick(r, LIT)) : null;
-              const pane = gm ? new THREE.Mesh(new THREE.PlaneGeometry(bw - .4, .95), gm) : cbox(bw - .4, .95, .02, '#2a3440', 'glass');
+      // ---- la composizione, come nei riferimenti: piano terra = la bottega o la porta; piani alti = UN elemento forte; tetto = UN gruppo ----
+      const F0 = FACES[face0], shopLike = !!(b.shop || b.sign || (b.use && b.use !== 'casa' && b.use !== 'cascina'));
+      const du0 = F0 && b.door ? { S: (b.door[0] - b.x) * TS + 1, N: (b.x + b.w - 1 - b.door[0]) * TS + 1, E: (b.y + b.h - 1 - b.door[1]) * TS + 1, W: (b.door[1] - b.y) * TS + 1 }[face0] : 0;
+      // tettoia in coppi: sulle botteghe copre la vetrina e l'ingresso (~4 m), sulle case è un cappello sopra la porta; mai a tutta facciata
+      let pent = false, pentTop = 0;
+      if (borgo && F0 && F0.open && b.door && !(PP && PP.f === face0) && (shopLike ? r() < .7 : r() < .3)) {
+        pent = true; b.__pent = true;
+        const half = shopLike ? Math.min(2.3, F0.L / 2) : .85, uA = Math.max(.1, du0 - half), uB = Math.min(F0.L - .1, du0 + half), L = uB - uA, um = (uA + uB) / 2;
+        const yT = base + (shopLike ? MG + .1 : 2.78), dep = shopLike ? 1.05 : .75, ang = shopLike ? .34 : .42, drop = Math.sin(ang) * dep; pentTop = yT + .2;
+        const roof = tbox(L + .2, .1, dep + .1, CT.tileM, 1.5); roof.rotation.x = ang; at(face0, roof, um, yT - drop / 2, dep / 2);
+        at(face0, fB(L + .26, .12, .16, '#6a3e2e', 'clay', .02), um, yT + .03, .06);                   // scossalina contro il muro
+        at(face0, fB(L + .2, .1, .06, WOODD, 'wood', 0), um, yT - drop - .02, dep + .02);            // gronda
+        [uA - .1, uB + .1].forEach(uu => { const sb = fB(.05, .22, dep, WOODD, 'wood', 0); sb.rotation.x = ang; at(face0, sb, uu, yT - drop / 2 - .1, dep / 2); });   // testate
+        (shopLike ? [uA + .15, um, uB - .15] : [uA + .1, uB - .1]).forEach(uu => { at(face0, fB(.08, .42, .07, WOODD, 'wood', .01), uu, yT - .42, .05); const br = fB(.07, .07, dep * 1.1, WOODD, 'wood', 0); br.rotation.x = -.66; at(face0, br, uu, yT - .5, dep * .42); });   // mensole
+      }
+      // bovindo dipinto (crema, salvia, cotto, legno sbiancato): finestra accesa, fioriera, tettuccio; mai sulla fascia della tettoia
+      if (!kitHouse && borgo && fl >= 2 && r() < (fl >= 3 ? .45 : .28)) {
+        const cand = showF.filter(f => FACES[f].cam && FACES[f].n >= 2 && !(pent && f === face0 && fl < 3)); if (cand.length) {
+          const f = pick(r, cand), F = FACES[f], wide = F.n >= 4 && r() < .4, k = Math.floor(r() * (F.n - (wide ? 1 : 0))), u = k * TS + (wide ? 2 : 1);
+          if (!inMural(f, u) && !(pent && f === face0 && Math.abs(u - du0) < 3.5 && fl < 3)) {
+            const f0 = pent && f === face0 ? 2 : 1 + Math.floor(r() * (fl - 2)), nf = Math.min(fl - f0, r() < .5 ? 2 : 1), y0 = base + MG + (f0 - 1) * MF + .05, H = nf * MF - .15, bw = wide ? 3.7 : 1.75, dep = .7 + r() * .2;
+            const bodyC = pick(r, ['#d8cdb4', '#a8b49a', '#b8705a', '#c8c0a8', '#8a9a8a', '#d0b890']), trim = shade(bodyC, .62);
+            at(f, fB(bw, H, dep, bodyC, 'wood', .02), u, y0 + H / 2, dep / 2);
+            [-1, 1].forEach(s2 => at(f, fB(.08, H + .04, .08, trim, 'paint', .01), u + s2 * (bw / 2 - .02), y0 + H / 2, dep + .01));   // spigoli
+            for (let q = 0; q < nf; q++) {
+              const yy = y0 + q * MF + 1.25, gm = r() < .75 ? caseLit(pick(r, LIT)) : null;
+              const pane = gm ? new THREE.Mesh(new THREE.PlaneGeometry(bw - .4, .95), gm) : fB(bw - .4, .95, .02, '#2a3440', 'glass', 0);
               at(f, pane, u, yy, dep + .015);
-              for (let m = 0; m <= (wide ? 4 : 2); m++) at(f, cbox(.06, 1.02, .05, WOODD), u - (bw - .4) / 2 + m * (bw - .4) / (wide ? 4 : 2), yy, dep + .03);
-              at(f, cbox(bw - .3, .07, .12, WOODD), u, yy - .52, dep + .04); at(f, cbox(bw - .3, .06, .08, WOODD), u, yy + .52, dep + .03);
-              [-1, 1].forEach(s => { const sp = cbox(.02, .8, .32, '#2a3440', 'glass'); at(f, sp, u + s * (bw / 2 + .01), yy, dep * .55); });
-              if (gm) { const N = [Math.sin(F.yaw), Math.cos(F.yaw)], T2 = [Math.cos(F.yaw), -Math.sin(F.yaw)], wx = F.p[0] + T2[0] * u + N[0] * (dep + .4), wz = F.p[1] + T2[1] * u + N[1] * (dep + .4); if (r() < .5) addSpill(wx, wz, N[0], N[1], '#ffb060', .9, 5); }
+              for (let m = 0; m <= (wide ? 4 : 2); m++) at(f, fB(.06, 1.02, .05, trim, 'paint', 0), u - (bw - .4) / 2 + m * (bw - .4) / (wide ? 4 : 2), yy, dep + .03);
+              at(f, fB(bw - .3, .07, .14, trim, 'paint', 0), u, yy - .52, dep + .05); at(f, fB(bw - .3, .06, .08, trim, 'paint', 0), u, yy + .52, dep + .03);
+              if (gm) { const N = [Math.sin(F.yaw), Math.cos(F.yaw)], T2 = [Math.cos(F.yaw), -Math.sin(F.yaw)]; addSpill(F.p[0] + T2[0] * u + N[0] * (dep + .4), F.p[1] + T2[1] * u + N[1] * (dep + .4), N[0], N[1], '#ffb060', .9, 5); }
+              if (q === 0 && r() < .7) { at(f, oPlanter(bw - .3, r), u, yy - .78, dep + .16); for (let m = 0; m < 3; m++) { const sh = oShrub(r, .55); at(f, sh, u - (bw - .6) / 2 + m * (bw - .6) / 2, yy - .6, dep + .18); } }
             }
             const roof = tbox(bw + .35, .09, dep + .4, CT.tileM, 1.5); roof.rotation.x = .38; at(f, roof, u, y0 + H + .18, dep / 2 + .12);
-            at(f, cbox(bw + .3, .14, .06, WOODD), u, y0 + H + .02, dep + .3);
-            [-1, 1].forEach(s => { const br = cbox(.09, .09, dep * 1.25, WOODD); br.rotation.x = -.75; at(f, br, u + s * (bw / 2 - .2), y0 - .35, dep * .42); });   // mensole
-            at(f, cbox(bw, .12, dep, shade(bodyC, .7)), u, y0 - .02, dep / 2);
+            at(f, fB(bw + .3, .14, .06, trim, 'wood', 0), u, y0 + H + .02, dep + .3);
+            [-1, 1].forEach(s2 => { const br = fB(.08, .08, dep * 1.2, trim, 'wood', 0); br.rotation.x = -.75; at(f, br, u + s2 * (bw / 2 - .2), y0 - .33, dep * .42); });   // mensole
+            at(f, fB(bw + .06, .14, dep + .04, trim, 'paint', .02), u, y0 - .02, dep / 2);
           }
         }
-      }
-
-      // ---- tettoia in coppi sopra il piano terra delle botteghe, con le mensole di legno ----
-      const F0 = FACES[face0], shopLike = !!(b.shop || b.sign || b.use);
-      let pent = false;
-      if (borgo && F0 && F0.open && !(PP && PP.f === face0) && (shopLike ? r() < .5 : r() < .22)) {
-        pent = true; b.__pent = true; const L = F0.L + .2, yT = base + MG + .1, dep = 1.05;
-        const roof = tbox(L, .1, dep + .1, CT.tileM, 1.5); roof.rotation.x = .34; at(face0, roof, F0.L / 2, yT - Math.sin(.34) * dep / 2, dep / 2);
-        at(face0, cbox(L, .12, .06, WOODD), F0.L / 2, yT - Math.sin(.34) * dep - .02, dep + .02);   // gronda
-        for (let u2 = .15; u2 < F0.L; u2 += Math.max(1.8, F0.L / Math.max(2, Math.round(F0.L / 2.6)))) { const br = cbox(.1, .1, dep * 1.15, WOODD); br.rotation.x = -.62; at(face0, br, u2, yT - .5, dep * .44); }
       }
       // ---- lanterne di carta rossa ai lati dell'insegna dei locali ----
       if (borgo && F0 && F0.open && b.door && (b.shop || b.sign) && r() < .65) {
@@ -5876,34 +5898,35 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       });
       wins.forEach(W0 => { if (W0.g || r() > .1) return; const D = WIN[W0.name]; if (!D) return; at(W0.f, decal(D[0] * .9, .9 + r() * .6, 8 + Math.floor(r() * 4)), W0.u, W0.y + D[2] - D[1] / 2 - .55, .072); });
 
-      // ---- edera e rampicanti che pendono dal tetto ----
-      if (rec.flat && (borgo ? r() < .35 : r() < .15)) {
-        const cand = showF.filter(f => FACES[f].cam); const nv = 1 + Math.floor(r() * 3);
+      // ---- edera che pende dal tetto: foglie piccole e fitte, più larga in alto, che si sfrangia scendendo ----
+      const roofTheme = rec.flat && borgo && w >= 5 && d >= 5 ? (() => { const q = r(); return q < .3 ? 'giardino' : q < .42 ? 'pergola' : ''; })() : '';
+      if (rec.flat && roofTheme !== 'pergola' && (borgo ? r() < .25 : r() < .1)) {
+        const cand = showF.filter(f => FACES[f].cam), nv = 1 + Math.floor(r() * 2);
         for (let q = 0; q < nv && cand.length; q++) {
           const f = pick(r, cand), F = FACES[f], u = Math.min(F.L - .4, Math.max(.4, Math.floor(r() * (F.n + 1)) * TS + (r() - .5) * .4)); if (inMural(f, u)) continue;
-          const len = Math.min(top - base - .5, 1.5 + r() * (top - base) * .55), col = pick(r, LEAF), wd = .5 + r() * .5;
-          for (let yy = 0; yy < len; yy += .26) { const t = yy / len, s = (1 - t * .6) * (.22 + r() * .08); for (let m = 0; m < (t < .3 ? 3 : 2); m++) { const bl = cblob(s, r() < .15 ? shade(col, 1.25) : col); bl.scale.set(1.2, 1, .45); at(f, bl, u + (r() - .5) * wd * (1 - t * .5), top + .3 - yy, .12 + r() * .1); } }
-          for (let m = 0; m < 4; m++) { const bl = cblob(.3, col); bl.scale.set(1.3, .7, 1); at(f, bl, u + (r() - .5) * 1.2, top + .55, -.2 + r() * .3); }   // il ciuffo sul bordo del tetto
+          const len = Math.min(top - base - .5, 1.2 + r() * (top - base) * .5), col = pick(r, LEAFS), wd = .7 + r() * .5;
+          for (let yy = 0; yy < len; yy += .13) { const t = yy / len, nl = t < .25 ? 4 : t < .7 ? 3 : 1 + (r() < .5 ? 1 : 0);
+            for (let m = 0; m < nl; m++) { const lf = fI(Math.round((.06 + r() * .05) * 50) / 50 || .06, 0, shade(col, [.75, 1, 1.2][Math.floor(r() * 3)]), 'leaf'); lf.scale.set(1.2, .9, .4); lf.rotation.z = r() * 3; at(f, lf, u + (r() - .5) * wd * (1 - t * .55), top + .25 - yy, .1 + r() * .08); } }
+          const crest = oShrub(r, 1.1, col); at(f, crest, u, top + .1, -.15);   // il ciuffo sul parapetto
         }
       }
-      // ---- giardino pensile e pergolato sui tetti piani ----
-      if (rec.flat && borgo && w >= 5 && d >= 5 && r() < .38) {
-        const np = 3 + Math.floor(r() * 4);
+      // ---- sul tetto UN gruppo solo, raccolto nell'angolo che si vede: il giardino in vasi oppure il pergolato ----
+      if (roofTheme === 'giardino') {
+        const cx2 = x0 + w - 1.2, cz2 = z0 + d - 1.2, np = 3 + Math.floor(r() * 3);
         for (let q = 0; q < np; q++) {
-          const alongS = r() < .5, px = alongS ? x0 + .8 + r() * (w - 1.6) : x0 + w - .8, pz = alongS ? z0 + d - .8 : z0 + .8 + r() * (d - 1.6), t = r();
-          const pot = ccyl(.28, .22, .45, 8, pick(r, [POT, '#8a5a40', '#6a6a64'])); pot.position.set(px, top + .3, pz); g.add(pot);
-          if (t < .45) { const bl = cblob(.42 + r() * .2, pick(r, LEAF)); bl.position.set(px, top + .85, pz); g.add(bl); }
-          else if (t < .75) { const tr = ccyl(.05, .06, 1.1, 5, WOODD); tr.position.set(px, top + 1.05, pz); g.add(tr); for (let m = 0; m < 3; m++) { const bl = cblob(.42, pick(r, LEAF)); bl.position.set(px + (r() - .5) * .5, top + 1.6 + m * .22, pz + (r() - .5) * .5); g.add(bl); } }   // alberello
-          else { const c2 = new THREE.Mesh(caUV(new THREE.ConeGeometry(.3, 1.6, 7), caCell('#34502e', 'leaf'), false), CA.mat); c2.position.set(px, top + 1.3, pz); g.add(c2); }   // cipressino
+          const along = q % 2 === 0, off = .2 + Math.floor(q / 2) * 1.05, px = along ? cx2 - off : cx2 + .3, pz = along ? cz2 + .3 : cz2 - off, s2 = .9 + r() * .6, t = r();
+          const pot = oPot(r, s2, false); pot.position.set(px, top, pz); g.add(pot); const H0 = top + .34 * s2;
+          const pl = t < .45 ? oShrub(r, 1.3 * s2) : t < .8 ? oTree(r, .9 + r() * .4) : oShrub(r, 1, '#6a6a40'); pl.position.set(px, H0, pz); g.add(pl);
         }
-        if (r() < .45) {   // pergolato con la vite secca e una sedia
-          const pw = 2.6, pd = 2.2, px = x0 + w - pw / 2 - .7, pz = z0 + d - pd / 2 - .7;
-          [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => { const p = cbox(.1, 2.3, .1, WOODD); p.position.set(px + sx * pw / 2, top + 1.15, pz + sz * pd / 2); g.add(p); });
-          for (let q = 0; q < 5; q++) { const bm = cbox(pw + .3, .08, .08, WOODD); bm.position.set(px, top + 2.32, pz - pd / 2 + q * pd / 4); g.add(bm); }
-          for (let q = 0; q < 7; q++) { const bl = cblob(.35 + r() * .2, pick(r, ['#5a6a3a', '#6a6a40', '#4a5a34'])); bl.scale.y = .45; bl.position.set(px + (r() - .5) * pw, top + 2.45, pz + (r() - .5) * pd); g.add(bl); }
-          const ch = cbox(.45, .06, .45, '#8a3a2e'); ch.position.set(px - .3, top + .5, pz); g.add(ch); const cb = cbox(.45, .5, .05, '#8a3a2e'); cb.position.set(px - .3, top + .75, pz - .22); g.add(cb);
-          const tb = ccyl(.35, .35, .05, 10, '#c8c0b0'); tb.position.set(px + .5, top + .75, pz); g.add(tb); const tl = ccyl(.04, .04, .72, 5, IRON); tl.position.set(px + .5, top + .37, pz); g.add(tl);
-        }
+        const bench = new THREE.Group(); fAt(bench, fB(1.2, .05, .36, '#8a6a46', 'wood', .01), 0, .44, 0); [-.5, .5].forEach(o2 => fAt(bench, fB(.05, .44, .32, '#3a2a20', 'paint', .01), o2, .22, 0)); bench.position.set(cx2 - 1.8, top, cz2 - 1.2); bench.rotation.y = Math.PI / 2; g.add(bench);
+      } else if (roofTheme === 'pergola') {   // pergolato col rampicante, una sedia e un tavolino
+        const pw = 2.6, pd = 2.2, px = x0 + w - pw / 2 - .7, pz = z0 + d - pd / 2 - .7;
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => { const p = fB(.1, 2.3, .1, WOODD, 'wood', .01); p.position.set(px + sx * pw / 2, top + 1.15, pz + sz * pd / 2); g.add(p); });
+        for (let q = 0; q < 5; q++) { const bm = fB(pw + .3, .08, .08, WOODD, 'wood', 0); bm.position.set(px, top + 2.32, pz - pd / 2 + q * pd / 4); g.add(bm); }
+        for (let q = 0; q < 6; q++) { const sh = oShrub(r, 1.1, pick(r, ['#5a6a3a', '#6a6a40', '#4a5a34'])); sh.scale.y = .5; sh.position.set(px + (r() - .5) * pw, top + 2.32, pz + (r() - .5) * pd); g.add(sh); }
+        [[-1, -1], [1, 1]].forEach(([sx, sz]) => { const sh = oShrub(r, .8); sh.scale.set(.6, 3.2, .6); sh.position.set(px + sx * pw / 2, top, pz + sz * pd / 2); g.add(sh); });   // il rampicante sui pali
+        const ch = new THREE.Group(); fAt(ch, fB(.42, .05, .42, '#8a3a2e', 'paint', .01), 0, .45, 0); fAt(ch, fB(.42, .5, .05, '#8a3a2e', 'paint', .01), 0, .72, -.19); [[-.18, -.18], [.18, -.18], [-.18, .18], [.18, .18]].forEach(([a2, c2]) => fRod(ch, [a2, 0, c2], [a2, .45, c2], .012, IRON)); ch.position.set(px - .3, top, pz); g.add(ch);
+        const tb = new THREE.Group(); fAt(tb, fC(.35, .35, .04, 12, '#c8c0b0', 'paint'), 0, .74, 0); fAt(tb, fC(.03, .03, .72, 6, IRON, 'paint'), 0, .37, 0); fAt(tb, fC(.18, .2, .03, 10, IRON, 'paint'), 0, .015, 0); tb.position.set(px + .5, top, pz); g.add(tb);
       }
       // ---- bucato steso tra due finestre ----
       if (borgo && fl >= 2 && r() < .3) {
