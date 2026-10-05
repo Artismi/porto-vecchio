@@ -1,0 +1,6 @@
+{
+  "functions": { "api/*.js": { "maxDuration": 20 } },
+  "headers": [
+    { "source": "/v7/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }] }
+  ]
+}
