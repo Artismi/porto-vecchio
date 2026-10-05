@@ -173,3 +173,9 @@ Questa chat si occupa SOLO delle luci; la chat «I progetti» fa mappa e arredo 
 - Copia prima di questo script: `_backup_neon_modelli/render_prima_di_acqua_fumo.js`.
 - Restano due puntini rosa (un palo in piazza e un'insegna): non vengono dai tetti, da trovare.
 - Coordinamento con la mappa nuova (ramo `claude/jolly-curie-i6kxq8`, script isola31-33): ordine **30 → isola31/32/33 → luci_regia1/2/3**; provato: tutti e tre si applicano sopra la mappa nuova senza conflitti e il gioco parte. `zoneAt()` ora conosce anche `governo, garante, ministero, pietra, archivio` e `piazza_gov` (raggio 22): luce bianca del regime. Camini: niente su `rec.shack` (fuma `rec.stove`, il tubo della stufa), `rec.special`, `rec.b.__tierBase`.
+- `strumenti_inverno/luci_regia4.py` (dopo luci_regia3, guardia `[luci4]`) — **ombre nella nebbia** (Andrea: «non vedo le ombre, dovrebbero proiettarsi anche nella nebbia, è quello che la mette in rilievo»):
+  - Nebbia volumetrica nel post-processing: per ogni pixel il raggio della vista attraversa le sfere d'influenza delle 4 luci con ombra accese più vicine (`SPOOL`), 14 passi ciascuna, e a ogni passo legge la mappa d'ombra del faretto (`shadow.map`, `shadow.matrix`): dove pali, persone, banchi, tettoie coprono la luce, l'aria resta buia. Passi sfalsati col dither di Bayer.
+  - Manopola: `c += vol * vOn * .36` nel post. Spenta con `lowQuality()`, al chiuso e di giorno.
+  - La luce senz'ombra cede il posto: coni pieni dei faretti .34 → .1, aloni larghi .085 → .05, nebbiolina di aria2 sotto i lampioni al 35% (le vetrine restano).
+- Copia prima di questo script: `_backup_neon_modelli/render_prima_delle_ombre_nella_nebbia.js`.
+- Ordine completo: 30 → isola31/32/33 → luci_regia1 → 2 → 3 → 4.

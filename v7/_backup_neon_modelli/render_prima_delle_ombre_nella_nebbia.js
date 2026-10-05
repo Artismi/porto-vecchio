@@ -1304,7 +1304,7 @@ var Render = (function () {
     // nebbiolina: le sorgenti più vicine la accendono
     const src = (dyn.reflList || []).filter(L => !L.off && L.base > 0);
     for (let i = 0; i < MISTN; i++) { const L = src[i];
-      if (L) { AIR2.lp[i].set(L.x, L.y, L.z); const kk = night * Math.min(1.4, L.base * .35) * (L.spill ? .7 : .35); AIR2.lc[i].set(L.color.r * kk, L.color.g * kk, L.color.b * kk); }
+      if (L) { AIR2.lp[i].set(L.x, L.y, L.z); const kk = night * Math.min(1.4, L.base * .35) * (L.spill ? .7 : 1); AIR2.lc[i].set(L.color.r * kk, L.color.g * kk, L.color.b * kk); }
       else { AIR2.lp[i].set(0, -99, 0); AIR2.lc[i].set(0, 0, 0); } }
     AIR2.mist.forEach((pl, k) => { const U = pl.material.uniforms; U.time.value = time; U.ctr.value.set(cam.x, cam.y);
       pl.position.set(cam.x, cam.h + pl.userData.hy, cam.y);
@@ -3499,9 +3499,7 @@ var Render = (function () {
   function buildPost() {
     postScene = new THREE.Scene(); postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     postMat = new THREE.ShaderMaterial({
-      uniforms: { tC: { value: null }, tD: { value: null }, res: { value: new THREE.Vector2(1, 1) }, near: { value: 1 }, far: { value: 300 }, letter: { value: 0 }, pillar: { value: 0 }, fade: { value: 0 }, flash: { value: 0 }, hurt: { value: 0 }, sat: { value: 1 }, dusk: { value: 0 }, night: { value: 1 },
-        vInvVP: { value: new THREE.Matrix4() }, vCam: { value: new THREE.Vector3() }, vOn: { value: 0 }, vSM0: { value: null }, vSM1: { value: null }, vSM2: { value: null }, vSM3: { value: null },
-        vSMat: { value: [0, 1, 2, 3].map(() => new THREE.Matrix4()) }, vLP: { value: [0, 1, 2, 3].map(() => new THREE.Vector4()) }, vLC: { value: [0, 1, 2, 3].map(() => new THREE.Vector3()) }, vLD: { value: [0, 1, 2, 3].map(() => new THREE.Vector4()) } },   // [luci4]
+      uniforms: { tC: { value: null }, tD: { value: null }, res: { value: new THREE.Vector2(1, 1) }, near: { value: 1 }, far: { value: 300 }, letter: { value: 0 }, pillar: { value: 0 }, fade: { value: 0 }, flash: { value: 0 }, hurt: { value: 0 }, sat: { value: 1 }, dusk: { value: 0 }, night: { value: 1 } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
       fragmentShader: `
         uniform sampler2D tC; uniform sampler2D tD; uniform vec2 res; uniform float near; uniform float far; uniform float letter; uniform float pillar; uniform float fade; uniform float flash; uniform float hurt; uniform float sat; uniform float dusk; uniform float night;
@@ -3509,20 +3507,6 @@ var Render = (function () {
         float bayer(vec2 p){ int x=int(mod(p.x,4.)); int y=int(mod(p.y,4.)); int i=x+y*4;
           float m[16]; m[0]=0.;m[1]=8.;m[2]=2.;m[3]=10.;m[4]=12.;m[5]=4.;m[6]=14.;m[7]=6.;m[8]=3.;m[9]=11.;m[10]=1.;m[11]=9.;m[12]=15.;m[13]=7.;m[14]=13.;m[15]=5.;
           for(int k=0;k<16;k++){ if(k==i) return m[k]/16.; } return 0.; }
-        #include <packing>
-        uniform mat4 vInvVP; uniform vec3 vCam; uniform float vOn; uniform sampler2D vSM0; uniform sampler2D vSM1; uniform sampler2D vSM2; uniform sampler2D vSM3;
-        uniform mat4 vSMat[4]; uniform vec4 vLP[4]; uniform vec3 vLC[4]; uniform vec4 vLD[4];
-        float vSh(sampler2D sm, mat4 M, vec3 p){ vec4 q = M * vec4(p, 1.); q.xyz /= q.w; if (q.x < 0. || q.x > 1. || q.y < 0. || q.y > 1. || q.z > 1.) return 1.;
-          return step(q.z - .0015, unpackRGBAToDepth(texture2D(sm, q.xy))); }
-        vec3 vScat(sampler2D sm, mat4 M, vec4 LP, vec3 LC, vec4 LD, vec3 ro, vec3 rd, float tmax, float jit){
-          if (dot(LC, LC) < 1e-5) return vec3(0.);
-          vec3 oc = ro - LP.xyz; float b = dot(oc, rd), cc = dot(oc, oc) - LP.w * LP.w, h = b * b - cc; if (h <= 0.) return vec3(0.); h = sqrt(h);
-          float t0 = max(-b - h, 0.), t1 = min(-b + h, tmax); if (t1 <= t0) return vec3(0.);
-          float dt = (t1 - t0) / 14.; float acc = 0.;
-          for (int k = 0; k < 14; k++) { vec3 q = ro + rd * (t0 + (float(k) + jit) * dt), v = q - LP.xyz; float dl = max(length(v), .3);
-            float cone = smoothstep(LD.w, LD.w + .14, dot(v / dl, LD.xyz)), att = pow(max(0., 1. - dl / LP.w), 1.6) / (1. + dl * dl * .12);
-            float w = cone * att; if (w < .003) continue; acc += w * vSh(sm, M, q); }
-          return LC * acc * dt; }
         float lin(float d){ float z = d*2.-1.; return 2.*near*far/(far+near-z*(far-near)); }
         void main(){
           vec2 px = 1./res;
@@ -3544,13 +3528,7 @@ var Render = (function () {
           c += bl*(.05 + night*.06);
           { vec3 wb = vec3(0.); for (int k=0;k<10;k++){ float a = float(k)*.628 + .1; vec2 d0 = vec2(cos(a),sin(a));
               for (int j=0;j<2;j++){ float rr = j==0 ? 14. : 24.; vec3 s = texture2D(tC, uv + d0*px*rr).rgb; float mx = max(max(s.r,s.g),s.b); wb += max(s - .3, 0.) * smoothstep(.35, .75, mx) * (j==0 ? .6 : .4); } }
-            c += wb * .05 * night; }   // [luci2] aloni nell'aria umida   [luci4] più deboli: la luce nell'aria ora la fa la nebbia con le ombre
-          if (vOn > .01) {   // [luci4] ombre nella nebbia
-            float z0 = texture2D(tD, uv).r; vec4 wp = vInvVP * vec4(uv * 2. - 1., z0 * 2. - 1., 1.); wp.xyz /= wp.w;
-            vec3 rd = wp.xyz - vCam; float tm = length(rd); rd /= tm; float jit = bayer(floor(vUv * res));
-            vec3 vol = vScat(vSM0, vSMat[0], vLP[0], vLC[0], vLD[0], vCam, rd, tm, jit) + vScat(vSM1, vSMat[1], vLP[1], vLC[1], vLD[1], vCam, rd, tm, jit)
-                     + vScat(vSM2, vSMat[2], vLP[2], vLC[2], vLD[2], vCam, rd, tm, jit) + vScat(vSM3, vSMat[3], vLP[3], vLC[3], vLD[3], vCam, rd, tm, jit);
-            c += vol * vOn * .36; }   // manopola: densità della nebbia con le ombre
+            c += wb * .085 * night; }   // [luci2] aloni nell'aria umida
           { float far01 = smoothstep(dc*1.02, dc*1.7, d); vec3 hz = mix(vec3(.50,.52,.54), vec3(.075,.085,.09), night);
             c = mix(c, hz + c*.35, far01 * (.42 + night*.1)); }   // [luci2] aria spessa lontano
           float l = dot(c, vec3(.299,.587,.114));
@@ -5387,7 +5365,7 @@ var Render = (function () {
       if (L.nb === undefined) { L.nb = 0; LSRC.forEach(o => { if (o !== L && Math.abs(o.x - L.x) < 7 && Math.abs(o.z - L.z) < 7) L.nb++; }); }   // [inverno29] vicine: si dividono la luce
       l.intensity = L.base * k * .55 / Math.sqrt(1 + L.nb * .6);   // [inverno30] la pozza a terra la fa la luce cotta
       const tall = hh > 2.8 && night > .25;
-      cone.visible = tall && k > .05; if (cone.visible) { const rr = hh * .62; cone.position.set(L.x, L.y - .15, L.z); cone.scale.set(rr, hh - .1, rr); cone.material.color.copy(L.color); cone.material.opacity = .1 * Math.min(1, k); }   // [luci2] (la forma la dà lo shader)
+      cone.visible = tall && k > .05; if (cone.visible) { const rr = hh * .62; cone.position.set(L.x, L.y - .15, L.z); cone.scale.set(rr, hh - .1, rr); cone.material.color.copy(L.color); cone.material.opacity = .34 * Math.min(1, k); }   // [luci2] (la forma la dà lo shader)
     });
     for (let q = 0; q < 3; q++) { const l = SPOOL[(frameN * 3 + q) % SPOOL.length]; if (l && l.intensity > 0) l.shadow.needsUpdate = true; }
     PPOOL.forEach((l, i) => {
@@ -5634,18 +5612,6 @@ var Render = (function () {
     U.fade.value = ui.fade || 0; U.flash.value = ui.flash || 0; U.sat.value = ui.desat ? .45 : 1;
     const hurtK = Math.max(0, 1 - (st.clock - p.hurtT) * 1.5);
     U.hurt.value = Math.max(hurtK, p.hp < 35 ? (.35 + Math.sin(time * 5) * .1) * (1 - p.hp / 35) : 0);
-    {   // [luci4] ombre nella nebbia: le 4 luci con ombra accese più vicine
-      U.vInvVP.value.multiplyMatrices(camera.matrixWorld, camera.projectionMatrixInverse); U.vCam.value.copy(camera.position);
-      U.vOn.value = (LOWQ.on || p.indoor || indoorNow) ? 0 : night;
-      let j = 0;
-      for (const l of SPOOL) { if (j >= 4) break; if (!(l.intensity > .02) || !l.castShadow || !l.shadow.map) continue;
-        U['vSM' + j].value = l.shadow.map.texture; U.vSMat.value[j].copy(l.shadow.matrix);
-        U.vLP.value[j].set(l.position.x, l.position.y, l.position.z, Math.min(l.distance || 10, 14));
-        U.vLC.value[j].set(l.color.r, l.color.g, l.color.b).multiplyScalar(l.intensity);
-        const tx = l.target.position.x - l.position.x, ty = l.target.position.y - l.position.y, tz = l.target.position.z - l.position.z, tl = Math.hypot(tx, ty, tz) || 1;
-        U.vLD.value[j].set(tx / tl, ty / tl, tz / tl, Math.cos(l.angle)); j++; }
-      for (; j < 4; j++) { U['vSM' + j].value = null; U.vLC.value[j].set(0, 0, 0); }
-    }
     renderer.render(postScene, postCam);
   }
 
