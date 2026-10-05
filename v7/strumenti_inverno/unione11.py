@@ -164,6 +164,9 @@ rep("    const tex = canvasTex(c);\n    let rtex = null;", "    const tex = canv
 # cornici e fasce sono dipinte, non in rilievo. Sulle superfici verticali (normale ricostruita dalla profondità) l'inchiostro
 # riprende il lato scuro dei salti netti di colore; sui pavimenti no (le fughe non tornano). Sui muri, a chiazze rade, qualche
 # mattone schizzato (solo alcuni del gruppo), ancorato al muro. Sul fogliame verde e giallo l'inchiostro resta un filo leggero («sulla vegetazione è troppo spesso»).
+# (poi: «doppie linee che percorrono l'outline confondono») Linee di forma, pieghe e ricalco del colore rispondevano anche al pixel
+# di fondo subito fuori dalla sagoma: una seconda linea parallela. Ora sul lato di fondo di una sagoma (un vicino molto più vicino)
+# si spengono, e il ricalco del colore tace a ridosso di ogni salto di profondità: una linea sola per bordo.
 # (poi: «per certe cose sono fittissime come il prato, per altre sono senza») La soglia era un salto di mezzo metro: cornici e
 # gradini restavano senza linea, foglie ed erba la superavano ovunque. Ora il contorno nasce da ogni cambio di forma, anche di pochi
 # centimetri (seconda differenza della profondità, che sui piani di sbieco resta zero); dove i bordi sono fittissimi (fogliame,
@@ -174,17 +177,19 @@ rep("    const tex = canvasTex(c);\n    let rtex = null;", "    const tex = canv
 # staccano dal fondo e i piani si leggono, senza aggiungere grana.
 rep("c = mix(c, c*.55 + vec3(.02,.025,.04), ol*aK2.z*(1.-coc));   // [amb2]",
 """{   /* [unione11] inchiostro col peso della mano */
-            float tA = .45*(1.+d*.01), tB = .9*(1.+d*.012), e2 = 0., busy = 0., busyS = 0., tS = d * .536 / res.y * .55 + .004, s2 = max(abs(d1 + d2 - 2. * d), abs(d3 + d4 - 2. * d));   // tS: soglia della forma in proporzione alla grandezza di un texel a quella distanza (cornici e spigoli sì, piani dritti no)
+            float tA = .45*(1.+d*.01), tB = .9*(1.+d*.012), e2 = 0., nearR = 0., busy = 0., busyS = 0., tS = d * .536 / res.y * .55 + .004, s2 = max(abs(d1 + d2 - 2. * d), abs(d3 + d4 - 2. * d));   // tS: soglia della forma in proporzione alla grandezza di un texel a quella distanza (cornici e spigoli sì, piani dritti no)
             float fb11 = 0.; { float dB = 0.; for (int k = 0; k < 8; k++) { float a = float(k) * .7854 + .2; dB += dL(uv + vec2(cos(a), sin(a)) * px * (k < 4 ? 5. : 10.)); } dB /= 8.;   // oscuramento di profondità
               float behind = clamp((d - dB) / (d * .02 + .4), 0., 1.), front = clamp((dB - d) / (d * .02 + .4), 0., 1.), nearK = (1. - coc) * (1. - smoothstep(dc * 1.2, dc * 2., d) * .7);
               c *= 1. - behind * .3 * nearK; c += c * front * .14 * nearK; fb11 = behind * nearK; }
-            for (int k = 0; k < 8; k++) { float a = float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * px * (k - k/2*2 == 0 ? 2. : 1.7); float jk = dL(uv + o) - d; e2 = max(e2, jk); busy += step(tA, abs(jk)); busyS += step(tS * 2., jk); }
+            for (int k = 0; k < 8; k++) { float a = float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * px * (k - k/2*2 == 0 ? 2. : 1.7); float jk = dL(uv + o) - d; e2 = max(e2, jk); nearR = max(nearR, -jk); busy += step(tA, abs(jk)); busyS += step(tS * 2., jk); }
             float lum0 = dot(c, vec3(.3,.59,.11)), dark = 1. - smoothstep(.08, .5, lum0);
             float zr = texture2D(tD, uv).r; vec4 wq = vInvVP * vec4(uv * 2. - 1., zr * 2. - 1., 1.); vec3 wp = wq.xyz / wq.w; vec2 sp = vec2(wp.x + wp.y * .6, wp.z - wp.y * .6) * .9;
             float thin = smoothstep(tS, tS * 1.35, min(edge, s2));   // il contorno nasce da ogni cambio di forma (cornici, gradini, sagome), non dai piani visti di sbieco
             float thick = 0.;   // niente ingrossamento: sui pali e sulle cose sottili diventava tutto nero
             float d2x = abs(d1 + d2 - 2. * d), d2y = abs(d3 + d4 - 2. * d), form = smoothstep(tS * 1.3, tS * 1.8, max(d2x, d2y)) * (1. - thin) * .6;   // filetti di forma: spigoli e pieghe dentro la sagoma, sottili e netti
             float cvi = (d1 + d2 + d3 + d4 - 4. * d) / (d * .012 + .08), crease = smoothstep(.9, 2.2, -cvi) * .55;
+            float bgSide = smoothstep(tS * 1.5, tS * 3., max(max(d - d1, d - d2), max(d - d3, d - d4)));   // pixel di fondo accanto a una sagoma: qui la linea c'è già, sull'oggetto davanti
+            form *= 1. - bgSide; crease *= 1. - bgSide;
             float thinObj = max(step(tS, d1 - d) * step(tS, d2 - d), step(tS, d3 - d) * step(tS, d4 - d));   // ringhiere, tubi, cavi: lontano da tutti e due i lati, la linea si alleggerisce
             float shapeI = 0., brick = 0.; float busyK = smoothstep(4.5, 6.5, max(busy, busyS - .5));
             if (zr < .9999) {   // sui muri: l'inchiostro riprende le forme dipinte (cornici, fasce, davanzali) e schizza qualche mattone
@@ -192,7 +197,7 @@ rep("c = mix(c, c*.55 + vec3(.02,.025,.04), ol*aK2.z*(1.-coc));   // [amb2]",
               float wallK = (1. - smoothstep(.35, .6, abs(nn.y))) * (1. - busyK) * (1. - thinObj) * (1. - smoothstep(dc * 1.1, dc * 1.7, d));
               vec3 LW = vec3(.3,.59,.11); float l0 = dot(texture2D(tC, uv).rgb, LW);
               float lm = max(max(dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, LW), dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, LW)), max(dot(texture2D(tC, uv + vec2(0., px.y)).rgb, LW), dot(texture2D(tC, uv - vec2(0., px.y)).rgb, LW)));
-              shapeI = clamp((lm - l0) / max(lm, .05) * 3.2 - .5, 0., 1.) * wallK;   // il lato scuro di un salto netto di colore
+              shapeI = clamp((lm - l0) / max(lm, .05) * 3.2 - .5, 0., 1.) * wallK * (1. - smoothstep(tS * 1.5, tS * 3., max(nearR, e2)));   // a ridosso di una sagoma no: il contorno c'è già   // il lato scuro di un salto netto di colore
               vec2 tw = vec2(-nn.z, nn.x); tw = dot(tw, tw) > 1e-6 ? normalize(tw) : vec2(1., 0.);
               float al = dot(wp.xz, tw); vec2 bq = vec2(al / .44, wp.y / .19); bq.x += mod(floor(bq.y), 2.) * .5;
               vec2 cell = floor(bq), f = fract(bq), fw2 = max(fwidth(bq), vec2(1e-4));
