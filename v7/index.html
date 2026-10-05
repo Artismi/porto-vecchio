@@ -23000,7 +23000,7 @@ var Render = (function () {
       SITES.push([x, z]); const a = rd.pts[k - 2], c = rd.pts[k + 2], L = Math.hypot(c[0] - a[0], c[1] - a[1]) || 1, ux = (c[0] - a[0]) / L, uz = (c[1] - a[1]) / L, nx = -uz, nz = ux, sd = r() < .5 ? 1 : -1, off = rd.w / 4;
       // si chiude mezza carreggiata: coni in diagonale, due transenne, il cartello
       for (let q = -3; q <= 3; q++) { const px = x + ux * q * 2.2 + nx * sd * (off + (Math.abs(q) === 3 ? .8 : 0)), pz = z + uz * q * 2.2 + nz * sd * (off + (Math.abs(q) === 3 ? .8 : 0)); cone(px, pz); }
-      transenna(x + nx * sd * (off + .2) - ux * 1.2, z + nz * sd * (off + .2) - uz * 1.2, Math.atan2(ux, uz)); transenna(x + nx * sd * (off + .2) + ux * 1.6, z + nz * sd * (off + .2) + uz * 1.6, Math.atan2(ux, uz) + .2);
+      transenna(x + nx * sd * (off + .2) - ux * 1.2, z + nz * sd * (off + .2) - uz * 1.2, Math.atan2(ux, uz)); transenna(x + nx * sd * (off + .2) + ux * 1.6, z + nz * sd * (off + .2) + uz * 1.6, Math.atan2(ux, uz));   /* [pulitore2] */
       const sx = x - ux * 9 + nx * sd * (rd.w / 2 + 1.2), sz = z - uz * 9 + nz * sd * (rd.w / 2 + 1.2); if (free(sx, sz)) roadSign(sx, sz, Math.atan2(-ux, -uz), 'tri', '⚒', r);
       const lx = x + nx * sd * (off + .2) - ux * 1.2, lz = z + nz * sd * (off + .2) - uz * 1.2; glow(lx, groundH(lx, lz) + 1.15, lz, '#f0a030', 1.1); addLight(lx, groundH(lx, lz) + 1.2, lz, '#f0a030', .8, 4, .9);
       const gx = x + nx * sd * (rd.w / 2 + 3), gz = z + nz * sd * (rd.w / 2 + 3); if (free(gx, gz)) { const pile = new THREE.Mesh(new THREE.ConeGeometry(1.6, .9, 9), sm('#8a8478', { roughness: 1 })); pile.position.set(gx, groundH(gx, gz) + .4, gz); addStatic(pile); }
@@ -23622,6 +23622,7 @@ var Render = (function () {
     if (!JG1) { const s2 = new THREE.Shape(); [[-.3, 0], [.3, 0], [.28, .08], [.12, .26], [.08, .8], [-.08, .8], [-.12, .26], [-.28, .08]].forEach(([a, b], i) => i ? s2.lineTo(a, b) : s2.moveTo(a, b)); JG1 = new THREE.ExtrudeGeometry(s2, { depth: 1.9, bevelEnabled: true, bevelThickness: .02, bevelSize: .015, bevelSegments: 1 }); JG1.translate(0, 0, -.95); }
     const hex = plastic ? (col || '#c8c2b6') : C1.conc, m = new THREE.Mesh(fGeo('jersey1', () => JG1.clone(), hex, plastic ? 'plastic' : 'concrete', 'box'), FA.mat), g = G0(); if (plastic) m.scale.y = .9; g.add(m);
     if (plastic) { g.add(at1(fC(.06, .06, .03, 8, hex, 'plastic'), 0, .73, .5)); g.add(at1(fC(.06, .06, .03, 8, hex, 'plastic'), 0, .73, -.5)); } else { [-.7, .7].forEach(o => g.add(at1(fB(.62, .04, .12, C1.black, 'rubber', 0), 0, .02, o))); g.add(at1(fT(.05, .01, 8, C1.galv, 'rust'), 0, .82, .8)); }   // tappi dell'acqua / ganci di sollevamento
+    g.userData.free2 = true;   /* [pulitore2] il verso lo decide chi la mette in fila */
     return place(g, x, z, rot);
   }
   // rete arancione da cantiere fra due paletti
@@ -23697,7 +23698,7 @@ var Render = (function () {
     works1().forEach(w => {
       const { ux, uy, nx, ny } = w, L = w.len / 2 + .5, W = w.wid / 2 + .4, c = (a, b) => [w.x + ux * a + nx * b, w.y + uy * a + ny * b];
       [[-L, -W, L, -W], [L, -W, L, W], [L, W, -L, W], [-L, W, -L, -W]].forEach(([a1, b1, a2, b2]) => { const p = c(a1, b1), q = c(a2, b2); netFence1(p[0], p[1], q[0], q[1]); });
-      for (let q = 0; q < 4; q++) { const p = c(-L - 2 - q * 2, -W + q * .45 - .9), col = q % 2 ? '#c8c2b6' : '#a83a2a'; jersey1(p[0], p[1], Math.atan2(ux, uy) + .22, true, col); const pl = c(-L - 2 - q * 2, -W + q * .45 - .9); if (q % 2 === 0) lampada1(pl[0], groundH(pl[0], pl[1]) + .85, pl[1]); }
+      for (let q = 0; q < 4; q++) { const p = c(-L - 2 - q * 2, -W + q * .45 - .9), col = q % 2 ? '#c8c2b6' : '#a83a2a'; const p2 = c(-L - 2 - (q + 1) * 2, -W + (q + 1) * .45 - .9); jersey1(p[0], p[1], Math.atan2(p[0] - p2[0], p[1] - p2[1]), true, col);   /* [pulitore2] lungo la fila */ const pl = c(-L - 2 - q * 2, -W + q * .45 - .9); if (q % 2 === 0) lampada1(pl[0], groundH(pl[0], pl[1]) + .85, pl[1]); }
       [c(L, -W), c(L, W), c(-L, W)].forEach(p => lampada1(p[0], groundH(p[0], p[1]) + 1.25, p[1]));
       // cartelli: lavori e strettoia 25 m prima, sul lato di chi arriva
       const back = 22, s1 = c(-L - back, 0), side = w.w / 2 + 1, sx = s1[0] + nx * (side - w.w / 4), sz = s1[1] + ny * (side - w.w / 4);
@@ -25912,7 +25913,30 @@ var Render = (function () {
   function G0() { return new THREE.Group(); }
   function add(g, mesh, x, y, z, rx, ry, rz) { mesh.position.set(x || 0, y || 0, z || 0); if (rx || ry || rz) mesh.rotation.set(rx || 0, ry || 0, rz || 0); g.add(mesh); return mesh; }
   // piazza un oggetto sul terreno e lo manda alla geometria statica
-  function place(o, x, z, rot, live) { o.position.set(x, groundH(x, z), z); o.rotation.y = rot || 0; if (live) { shadowed(o); scene.add(o); DZ.hint = null; } else { const tag = newTag(); curTag = tag; addStatic(o); curTag = null; regProp(o, tag); } return o; }
+  // [pulitore2] il verso delle cose: allineate alla strada vicina o alla griglia, mai a un angolo a caso
+  const RS2 = { h: null, box: new THREE.Box3(), v: new THREE.Vector3() };
+  function roadDir2(x, z) {
+    if (!RS2.h) { RS2.h = new Map(); (M.roads || []).forEach(rd => { if (rd.rect || !rd.pts) return; const P = rd.pts;
+      for (let k = 0; k < P.length - 1; k++) { const ax = P[k][0], az = P[k][1], bx = P[k + 1][0], bz = P[k + 1][1];
+        for (let i = Math.floor(Math.min(ax, bx) / 16) - 1; i <= Math.floor(Math.max(ax, bx) / 16) + 1; i++) for (let j = Math.floor(Math.min(az, bz) / 16) - 1; j <= Math.floor(Math.max(az, bz) / 16) + 1; j++) {
+          const kk = i * 4096 + j; let a = RS2.h.get(kk); if (!a) RS2.h.set(kk, a = []); a.push([ax, az, bx, bz, rd.w || 6]); } } }); }
+    let best = null, bd = 1e9; for (const sg of RS2.h.get(Math.floor(x / 16) * 4096 + Math.floor(z / 16)) || []) {
+      const dx = sg[2] - sg[0], dz = sg[3] - sg[1], L2 = dx * dx + dz * dz; if (L2 < .01) continue; const t = Math.max(0, Math.min(1, ((x - sg[0]) * dx + (z - sg[1]) * dz) / L2));
+      const d = Math.hypot(sg[0] + dx * t - x, sg[1] + dz * t - z) - sg[4] / 2; if (d < bd) { bd = d; best = Math.atan2(dx, dz); } }
+    return { a: best, d: bd }; }
+  function wallDist2(x, z) {   // distanza dal muro di casa più vicino (le case stanno sulla griglia)
+    if (!RS2.b) { RS2.b = new Map(); (G.BUILDINGS || []).forEach(b => { const q = [b.x * TS, b.y * TS, (b.x + b.w) * TS, (b.y + b.h) * TS];
+      for (let i = Math.floor(q[0] / 16) - 1; i <= Math.floor(q[2] / 16) + 1; i++) for (let j = Math.floor(q[1] / 16) - 1; j <= Math.floor(q[3] / 16) + 1; j++) { const kk = i * 4096 + j; let a = RS2.b.get(kk); if (!a) RS2.b.set(kk, a = []); a.push(q); } }); }
+    let bd = 1e9; for (const q of RS2.b.get(Math.floor(x / 16) * 4096 + Math.floor(z / 16)) || []) { const dx = Math.max(q[0] - x, 0, x - q[2]), dz = Math.max(q[1] - z, 0, z - q[3]); bd = Math.min(bd, Math.hypot(dx, dz)); }
+    return bd; }
+  function snapRot2(o, x, z, rot) {
+    if (!rot || o.userData.free2) return rot || 0;
+    o.rotation.y = 0; o.position.set(0, 0, 0); o.updateMatrixWorld(true); RS2.box.setFromObject(o); RS2.box.getSize(RS2.v);
+    if (!isFinite(RS2.v.x) || Math.max(RS2.v.x, RS2.v.z) < .45) return rot;
+    const wd = wallDist2(x, z), rd = roadDir2(x, z); let a0;
+    if (wd < 3 && !(rd.d < wd)) a0 = 0; else if (rd.a !== null && rd.d < 6) a0 = rd.a; else return rot;
+    const q = Math.PI / 2; return a0 + Math.round((rot - a0) / q) * q; }
+  function place(o, x, z, rot, live) { rot = snapRot2(o, x, z, rot);   /* [pulitore2] */ o.position.set(x, groundH(x, z), z); o.rotation.y = rot || 0; if (live) { shadowed(o); scene.add(o); DZ.hint = null; } else { const tag = newTag(); curTag = tag; addStatic(o); curTag = null; regProp(o, tag); } return o; }
 
   // --- lampioni ---
   function streetLamp(x, z, kind, rot) {
