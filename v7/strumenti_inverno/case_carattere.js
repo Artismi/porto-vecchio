@@ -126,12 +126,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         for (let i = 0; i < 14; i++) { const gx = cx + (r() - .5) * 34, gy = cy + (r() - .5) * 30, R = 6 + r() * 14, g = x.createRadialGradient(gx, gy, 0, gx, gy, R); const col = r() < .4 ? '58,62,40' : '36,30,28'; g.addColorStop(0, `rgba(${col},.3)`); g.addColorStop(1, `rgba(${col},0)`); x.fillStyle = g; x.fillRect(gx - R, gy - R, R * 2, R * 2); }
       }
       CT.dec = canvasTex(c); CT.dec.magFilter = THREE.NearestFilter;
-      CT.decM = std({ map: CT.dec, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); }
+      CT.decM = std({ map: CT.dec, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); CT.decM.userData.keepTr = true; }
     { const c = mk(64, 32), x = c.getContext('2d'), r = rng(99);   // umidità che sale dal marciapiede: bordo frastagliato
       let h = 14; for (let k = 0; k < 64; k++) { h = Math.max(6, Math.min(26, h + (r() - .5) * 4)); const g = x.createLinearGradient(0, 32, 0, 32 - h); g.addColorStop(0, 'rgba(30,26,22,.6)'); g.addColorStop(.7, 'rgba(36,32,26,.32)'); g.addColorStop(1, 'rgba(40,36,30,0)'); x.fillStyle = g; x.fillRect(k, 32 - h, 1, h);
         if (r() < .25) { x.fillStyle = 'rgba(220,214,200,.35)'; x.fillRect(k, 32 - h + Math.floor(r() * 3), 1, 1); } }   // salnitro
       CT.damp = canvasTex(c); CT.damp.wrapS = THREE.RepeatWrapping; CT.damp.magFilter = THREE.NearestFilter;
-      CT.dampM = std({ map: CT.damp, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); }
+      CT.dampM = std({ map: CT.damp, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); CT.dampM.userData.keepTr = true; }
     litMat('#000');   // inizializza litTex
     CT.lantM = std({ map: (faAtlas(), FA.tex), color: '#ffffff', emissive: '#ff5a2a', emissiveMap: litTex, emissiveIntensity: 1, roughness: .8 });
     CT.lit = {};
@@ -344,6 +344,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         }
       });
 
+      pienezza({ b, rec, r, FACES, at, fr, inMural, showF, face0, base, top, fl, kitHouse, wins, doorsU, borgo, g });   // manifesti, storia dei muri, cavi, luci, botteghe
       if (!g.children.length) { rec.caseDone = true; return; }
       const gm = mergeGroup(g);
       gm.traverse(o => { if (!o.isMesh) return; const dec = o.material === CT.decM || o.material === CT.dampM; o.castShadow = !dec; o.receiveShadow = true; if (dec) o.renderOrder = 1; });

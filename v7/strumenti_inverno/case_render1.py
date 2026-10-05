@@ -5,7 +5,7 @@ import sys, os, re
 p = sys.argv[1]; s = open(p, encoding='utf-8').read()
 if '[case]' in s: print('già applicato'); sys.exit()
 D = os.path.dirname(os.path.abspath(__file__))
-frag = open(os.path.join(D, 'forme.js'), encoding='utf-8').read() + open(os.path.join(D, 'case_carattere.js'), encoding='utf-8').read()
+frag = ''.join(open(os.path.join(D, n), encoding='utf-8').read() for n in ('forme.js', 'case_carattere.js', 'case_pienezza.js'))
 def rep(old, new, n=1):
     global s
     assert s.count(old) == n, (old[:90], s.count(old)); s = s.replace(old, new)
@@ -56,6 +56,12 @@ rep("for (let k = 0; k < 2; k++) put(box(.8, .55, .6, acM), cx + (r() - .5) * pw
 rep("if (r() < .5) { put(cyl(.04, .04, 1.1, 5, iron), ax, top + .55, az); const ds = new THREE.Mesh(dishG, dishM); ds.scale.setScalar(.6 + r() * .7); ds.rotation.set(.9, r() * 6, 0); put(ds, ax, top + 1.2, az); } else { const hh = 2 + r() * 3; put(cyl(.03, .035, hh, 5, iron), ax, top + hh / 2, az); const ry0 = r() * 3; for (let c2 = 0; c2 < 5; c2++) put(box(1.3 - c2 * .22, .03, .03, iron), ax, top + hh * .45 + c2 * hh * .12, az, ry0); }",
     "if (r() < .5) { put(oDish(r() * 6, rng(bi * 67 + k), .6 + r() * .7), ax, top, az); } else { const hh = 2 + r() * 3, ry0 = r() * 3; put(oAntenna(hh, ry0, rng(bi * 71 + k)), ax, top, az); }")
 rep("if (r() < .6) ad(a, box(.8, .55, .5, acM), -bw / 2 + .6, y + .4, .55);", "if (r() < .6) ad(a, oAC(rng(bi * 73 + k)), -bw / 2 + .6, y + .06, .5);")
+# il murale del governo dipinto al posto del ritratto incollato
+rep("  function propTex(kind, k) {\n    const key = kind + k; if (PROP[key]) return PROP[key];",
+    "  function propTex(kind, k) {\n    const key = kind + k; if (PROP[key]) return PROP[key];\n    if (kind === 'ritratto') return PROP[key] = muralMat(k);   // [case] murale dipinto")
+# la dissolvenza degli edifici non deve rendere opache le decalcomanie (sempre trasparenti: userData.keepTr)
+rep("      B.mats.forEach(m => { const tr = op < .99; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !tr; if (m.emissiveMap) m.emissiveIntensity *= op; });",
+    "      B.mats.forEach(m => { const kt = m.userData.keepTr, tr = op < .99 || !!kt; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !tr; if (m.emissiveMap) m.emissiveIntensity *= op; });   // [case] keepTr")
 # il pass nuovo, dopo la città (che ha già messo torrette, balconi e insegne)
 rep("  function buildCity() {", frag + "  function buildCity() {")
 rep("TT('citta', buildCity);", "TT('citta', buildCity); TT('case', buildCase);")
