@@ -61,3 +61,13 @@ Andrea: «voglio un lavoro tripla A, dal sapore e la croccantezza cinematografic
 4. **Di notte in città restano macchie tonde sfocate sospese**: da capire da dove vengono (fumo? vapore? altri sprite) e da pulire.
 5. **Stagione nei modelli**: abeti e betulle del kit d'inverno (`tree()` nella sezione [inverno]), nome «Lago gelato», «pista di terra gelata», cristalli di brina nei coni di luce.
 6. **Resa pittorica** (filtro Kuwahara al posto di retino e righe) da provare.
+
+## Ambiente 3: definizione (`ambiente3.py`, guardia `[amb3]`, dopo ambiente2)
+Andrea: «uno strato di pittura che completi i modelli e le texture, colori più saturi ma in palette»; poi «via il dithering, confonde»; poi «è tutto sfocato e sgranato».
+- **Risoluzione piena**: prima il gioco disegnava a metà risoluzione (`PX` minimo 2) e ingrandiva a pixel grossi. Ora `PX = round(dpr)`, cioè un pixel del gioco per ogni pixel logico dello schermo; in bassa qualità si torna al doppio.
+- **Cavità dalla profondità**: gli spigoli convessi prendono luce, le pieghe e gli incavi si scuriscono (`cav`).
+- **Chiarezza**: contrasto locale a media scala, piena in città e ridotta in natura, dove esalterebbe l'erba (`clar`).
+- **Inchiostro colorato e profili**: un inchiostro freddo sul lato scuro dei bordi di colore (`ink`) e una luce calda sui profili alti degli oggetti (`rim`).
+- **Palette di 52 colori a rampe**, in OKLab, con spinta di saturazione (`sat`). Attira i colori in modo morbido (`pal = .5`, sfuma fra i due colori più vicini), senza retino.
+- **Spenti per scelta**: profondità di campo, grana, aberrazione cromatica (`dof`, `grain`, `ca` = 0). Spenta anche la pennellata di Kuwahara (`paint = 0`): resta nel codice, si riaccende con `__AMB.paint = 1`.
+- Tutte le manopole sono in `window.__AMB`.
