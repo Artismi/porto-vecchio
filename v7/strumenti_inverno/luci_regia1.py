@@ -24,7 +24,8 @@ rep("""  function tone(hex, x, z) { const q = nq(hex); if (q === '#' + NQ[1].get
   function zoneAt(x, z) {
     if (!ZONES) { ZONES = []; const P = G.PLACES || {};
       const put = (ids, k, r) => ids.forEach(id => { const q = P[id]; if (q) ZONES.push({ x: q.x, z: q.y, k, r2: r * r }); });
-      put(['commissariato', 'caserma_p', 'rocca', 'varco', 'muro', 'cultura', 'hangar1', 'hangar2', 'deposito_n', 'deposito_s', 'eliporto', 'poligono'], 'regime', 14);
+      put(['commissariato', 'caserma_p', 'rocca', 'varco', 'muro', 'cultura', 'hangar1', 'hangar2', 'deposito_n', 'deposito_s', 'eliporto', 'poligono', 'governo', 'garante', 'ministero', 'pietra', 'archivio'], 'regime', 14);
+      put(['piazza_gov'], 'regime', 22);   // quartiere del governo (mappa nuova)
       put(['sirena', 'bar', 'osteria', 'miramare', 'stella', 'aurora', 'gabbiano', 'flamingo', 'paradiso', 'oceano', 'disco', 'flipper', 'chiosco', 'osteria_sg'], 'bar', 9);
       put(['molo', 'calata', 'pontile', 'marina', 'molo_cargo', 'cantiere'], 'porto', 16); }
     let best = null, bd = 1e9; for (const Z of ZONES) { const d = (Z.x - x) * (Z.x - x) + (Z.z - z) * (Z.z - z); if (d < Z.r2 && d < bd) { bd = d; best = Z.k; } }

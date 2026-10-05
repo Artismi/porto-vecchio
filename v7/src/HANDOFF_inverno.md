@@ -172,3 +172,4 @@ Questa chat si occupa SOLO delle luci; la chat «I progetti» fa mappa e arredo 
   - Neon dei tetti e spie delle antenne non più rosa/ciano.
 - Copia prima di questo script: `_backup_neon_modelli/render_prima_di_acqua_fumo.js`.
 - Restano due puntini rosa (un palo in piazza e un'insegna): non vengono dai tetti, da trovare.
+- Coordinamento con la mappa nuova (ramo `claude/jolly-curie-i6kxq8`, script isola31-33): ordine **30 → isola31/32/33 → luci_regia1/2/3**; provato: tutti e tre si applicano sopra la mappa nuova senza conflitti e il gioco parte. `zoneAt()` ora conosce anche `governo, garante, ministero, pietra, archivio` e `piazza_gov` (raggio 22): luce bianca del regime. Camini: niente su `rec.shack` (fuma `rec.stove`, il tubo della stufa), `rec.special`, `rec.b.__tierBase`.
