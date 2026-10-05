@@ -24,8 +24,8 @@ rep("    paintTiles(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m);",
 rep("    const nat = buildNat(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');",
     "    const nat = buildNat(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');\n    const vd = verde38(tx0, ty0, n, m); vd.visible = false; grp.add(vd);   // [verde]")
 rep("    return { grp, geo, mat, tex, btex, veg, nat, lt, rev: ISO.rev };", "    return { grp, geo, mat, tex, btex, veg, nat, lt, vd, rev: ISO.rev };")
-rep("    if (ch.nat) ch.nat.children.forEach(", "    if (ch.vd) ch.vd.children.forEach(im => { im.geometry.dispose(); if (im.dispose) im.dispose(); });   // [verde]\n    if (ch.nat) ch.nat.children.forEach(")
-rep("      if (ch && ch.nat) { const hi", "      if (ch && ch.vd) ch.vd.visible = d < (LOWQ.on ? 36 : 62);   // [verde]\n      if (ch && ch.nat) { const hi")
+rep("    if (ch.nat) ch.nat.children.forEach(", "    if (ch.vd) ch.vd.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });   // [verde]\n    if (ch.nat) ch.nat.children.forEach(")
+rep("      if (ch && ch.nat) { const hi", "      if (ch && ch.vd) { ch.vd.visible = d < (LOWQ.on ? 36 : 62); if (ch.vd.userData.tap) ch.vd.userData.tap.visible = d < (LOWQ.on ? 26 : 44); }   // [verde]\n      if (ch && ch.nat) { const hi")
 # vicino alla camera il prato e i suoi margini sono del pass [verde]: il kit non ci mette più felci e cespugli a caso
 rep("      } else if (v === T.SHRUB || v === T.GRASS) {", "      } else if ((v === T.SHRUB || v === T.GRASS) && !VD.on) {   // [verde]")
 # i ciuffi del Tavolato restano solo da lontano (vicino ci sono i cespi veri)
@@ -37,9 +37,10 @@ rep("      if (r() < .1) blob(x0 + r() * 2, z0 + r() * 2, .35 + r() * .35, pick(
     "      if (r() < .1) blob(x0 + r() * 2, z0 + r() * 2, .35 + r() * .35, pick(r, VG31.GRN));\n      if (false) for (let q = 0; q < 4; q++)   /* [verde] */")
 # l'abete rosso del riferimento: una parte dei pini del kit, a macchie (abetaie)
 rep("    if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/' + name)) return (NAT.models[name] = null);",
-    "    if (/^Abete_/.test(name)) return (NAT.models[name] = abeteModel(name));   // [verde]\n    if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/' + name)) return (NAT.models[name] = null);")
-rep("const [name, s] = natTree(tx, ty, r), big = ", "const [name, s] = abete38(natTree(tx, ty, r), tx, ty), big = ")
-rep("const tree = /Tree|Pine/.test(name);", "const tree = /Tree|Pine|Abete/.test(name);")
+    "    if (/^(Abete|Betulla)_/.test(name)) return (NAT.models[name] = abeteModel(name));   // [verde]\n    if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/' + name)) return (NAT.models[name] = null);")
+rep("const [name, s] = natTree(tx, ty, r), big = ", "const [name, s, lean] = eco38(tx, ty, r), big = ")
+rep("{ rx: (r() - .5) * .06, rz: (r() - .5) * .06, col: treeCol36(name, cx, cz, r) });", "{ rx: (r() - .5) * .06, rz: (r() - .5) * .06 + (lean || 0), col: treeCol36(name, cx, cz, r) });")
+rep("const tree = /Tree|Pine/.test(name);", "const tree = /Tree|Pine|Abete|Betulla/.test(name);")
 # il suolo del bosco: muschio verde a macchie larghe, aghi e foglie solo dove è più asciutto
 rep("col = k2 > -.05 ? `rgb(${44 + g},${36 + g},${26 + g / 2})` : `rgb(${36 + g / 2},${48 + g},${28})`;",
     "col = k2 > .12 ? `rgb(${50 + g},${44 + g},${28 + g / 2})` : `rgb(${36 + g / 2},${62 + g},${30})`;   /* [verde] */")

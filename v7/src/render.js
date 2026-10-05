@@ -848,7 +848,7 @@ var Render = (function () {
     if (name === '__ceppo') { const bark = natModel('Pine_1'); const geo = new THREE.CylinderGeometry(.28, .38, .5, 9); geo.translate(0, .25, 0); const top = new THREE.CircleGeometry(.28, 9); top.rotateX(-Math.PI / 2); top.translate(0, .5, 0);
       const mkp = (g, mat) => { const c = g.attributes.position.count; g.setAttribute('aSnow', new THREE.BufferAttribute(new Float32Array(c), 1)); g.setAttribute('aSway', new THREE.BufferAttribute(new Float32Array(c), 1)); return { geo: g, mat }; };
       return (NAT.models[name] = { parts: [mkp(geo, bark ? bark.parts.find(q => !q.leafy).mat : natMat(null, false, '#6a5040')), mkp(top, natMat(null, false, '#d8b888'))], top: .5 }); }
-    if (/^Abete_/.test(name)) return (NAT.models[name] = abeteModel(name));   // [verde]
+    if (/^(Abete|Betulla)_/.test(name)) return (NAT.models[name] = abeteModel(name));   // [verde]
     if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/' + name)) return (NAT.models[name] = null);
     const g = Kit.get('natura/' + name); g.updateMatrixWorld(true); const parts = []; let top = 0;
     g.traverse(o => { if (!o.isMesh) return; const geo = o.geometry.clone(); geo.applyMatrix4(o.matrixWorld); geo.computeBoundingBox(); top = Math.max(top, geo.boundingBox.max.y); parts.push({ geo, src: o.material }); });
@@ -893,8 +893,8 @@ var Render = (function () {
       const cx = tx * TS + .6 + r() * .8, cz = ty * TS + .6 + r() * .8, th = thick(tx * TS, ty * TS), nt = nearT(tx, ty);
       const under = (x, z, s0) => { const q = r(); add(q < .45 ? 'Fern_1' : q < .75 ? 'Bush_Common' : q < .9 ? 'Grass_Wispy_Tall' : 'Plant_1_Big', x, 0, z, s0 * (q < .45 ? .32 : q < .75 ? .55 : .9), r() * 6.28, { ground: true, col: pick(r, LEAF) }); };
       if (v === T.TREE) {
-        const [name, s] = abete38(natTree(tx, ty, r), tx, ty), big = (th > .55 ? 1.05 : th < .35 ? .82 : .94) * .78;
-        add(name, cx, groundH(cx, cz) - .15, cz, s * big * (.9 + r() * .2), r() * 6.28, { rx: (r() - .5) * .06, rz: (r() - .5) * .06, col: treeCol36(name, cx, cz, r) });   // [isola36]
+        const [name, s, lean] = eco38(tx, ty, r), big = (th > .55 ? 1.05 : th < .35 ? .82 : .94) * .78;
+        add(name, cx, groundH(cx, cz) - .15, cz, s * big * (.9 + r() * .2), r() * 6.28, { rx: (r() - .5) * .06, rz: (r() - .5) * .06 + (lean || 0), col: treeCol36(name, cx, cz, r) });   // [isola36]
         const k = (th > .5 ? 3 : 2) + (nt < 5 ? 1 : 0); for (let q = 0; q < k; q++) if (r() < .72) under(tx * TS + r() * 2, ty * TS + r() * 2, .8 + r() * .5);
         if (/DeadTree/.test(name) && r() < .45) for (let q = 0; q < 3; q++) add(r() < .7 ? 'Mushroom_Common' : 'Mushroom_Laetiporus', cx + (r() - .5) * 1.2, 0, cz + (r() - .5) * 1.2, .5 + r() * .5, r() * 6.28, { ground: true, col: '#f0e8dc' });
       } else if (orig && orig[ii] === T.TREE) {
@@ -932,7 +932,7 @@ var Render = (function () {
       let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
       arr.forEach(o => { if (o.ground) o.y = groundH(o.x, o.z) - .05; x0 = Math.min(x0, o.x); x1 = Math.max(x1, o.x); y0 = Math.min(y0, o.y); y1 = Math.max(y1, o.y + mdl.top * o.s * o.sy); z0 = Math.min(z0, o.z); z1 = Math.max(z1, o.z); });
       const sph = new THREE.Sphere(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2 + 10);
-      const tree = /Tree|Pine|Abete/.test(name);
+      const tree = /Tree|Pine|Abete|Betulla/.test(name);
       mdl.parts.forEach(p => {
         const g2 = p.geo.clone(); g2.boundingSphere = sph;
         const im = new THREE.InstancedMesh(g2, p.mat, arr.length);
@@ -1376,7 +1376,7 @@ var Render = (function () {
   function dropChunk(ch) {
     scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose();
     ch.veg.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });
-    if (ch.vd) ch.vd.children.forEach(im => { im.geometry.dispose(); if (im.dispose) im.dispose(); });   // [verde]
+    if (ch.vd) ch.vd.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });   // [verde]
     if (ch.nat) ch.nat.children.forEach(im => { im.geometry.dispose(); if (im.dispose) im.dispose(); });
   }
   // isola intera a bassa risoluzione: si vede ai bordi e da lontano, sotto i blocchi veri
@@ -1407,7 +1407,7 @@ var Render = (function () {
     let best = null, bd = 1e9;
     for (let cj = 0; cj < NCY; cj++) for (let ci = 0; ci < NCX; ci++) {
       const mx = Math.max(ci * W, Math.min(cx, (ci + 1) * W)), mz = Math.max(cj * W, Math.min(cz, (cj + 1) * W)), d = Math.hypot(mx - cx, mz - cz), key = ci + ',' + cj, ch = ISO.chunks.get(key);
-      if (ch && ch.vd) ch.vd.visible = d < (LOWQ.on ? 36 : 62);   // [verde]
+      if (ch && ch.vd) { ch.vd.visible = d < (LOWQ.on ? 36 : 62); if (ch.vd.userData.tap) ch.vd.userData.tap.visible = d < (LOWQ.on ? 26 : 44); }   // [verde]
       if (ch && ch.nat) { const hi = ch.nat.children.length > 0 && d < (LOWQ.on ? 34 : 58); ch.nat.visible = hi; if (ch.lt) ch.lt.visible = !hi; }   // [monte] bosco vero vicino
       if (d < 135) { if ((!ch || ch.rev !== ISO.rev) && d < bd) { bd = d; best = [ci, cj, key]; } }
       else if (ch && d > 190) { dropChunk(ch); ISO.chunks.delete(key); }
@@ -3191,6 +3191,11 @@ var Render = (function () {
     if (ed > 0) c = vdMix(c, VDC.litter, Math.min(.55, ed * .05));                             // margine del bosco: foglie cadute
     const bare = vnz(X / 5 + 50, Y / 5 + 50) + rd * .02; if (bare > .34) c = vdMix(c, VDC.mud, Math.min(.7, (bare - .34) * 4));
     if (top) { const q = k1 + vnz(X / 23 + 17, Y / 23 + 17) * .6; if (q > .2) c = vdMix(c, VDC.rock, Math.min(.85, (q - .2) * 4)); }   // il pianoro: roccia bagnata che affiora
+    if (M.world && M.world.eco) {   // [ambienti] il suolo dell'ambiente, sfumato; sotto le masse di piante più scuro e più verde
+      c = vdMix(c, vdGroundTint(X, Y), .5);
+      const pl = vdPlan(vdEcoMix(X, Y)), [, hv] = vdWin(pl.H, X, Y), [, sv] = vdWin(pl.S, X, Y), mass = Math.max(vdS(0, .25, hv - pl.hth), vdS(0, .25, sv - pl.sth));
+      c = vdMix(c, vdMix(pl.g, [30, 44, 24], .55), mass * .5);
+    }
     return c;
   }
   // gli appezzamenti: celle di Voronoi da 24 m, ognuna col suo tipo e la direzione dei solchi; e = distanza dal confine
@@ -3260,9 +3265,85 @@ var Render = (function () {
   const vdH = h => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
   const vdL = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
   const vdK = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+  // l'atlante delle texture: 4 × 4 celle da 128 px. La cella 7 è bianca piena: le parti senza texture la usano (un materiale per tutto)
+  const VDA = { N: 4, WHITE: 7 };
+  const vdUV = (cell, u, v) => { const cx = cell % VDA.N, cy = Math.floor(cell / VDA.N), m = .02; return [(cx + m + u * (1 - 2 * m)) / VDA.N, 1 - (cy + m + (1 - v) * (1 - 2 * m)) / VDA.N]; };
+  const VDWUV = (() => { const a = vdUV(7, .5, .5); return [a[0], a[1], a[0], a[1], a[0], a[1]]; })();
+  // ---------------- l'atlante: frasche d'abete ad aghi, fronde di felce, ciuffi d'erba, erba coi fiorellini, foglie, aghi di pino,
+  // palma a ventaglio, foglia a cuore, squame di ginepro, muschio. Dipinto a mano su canvas, con la trasparenza (le carte si ritagliano)
+  function vdAtlas() {
+    if (VD.atlas) return VD.atlas;
+    const S = 128, c = mk(S * 4, S * 4), x = c.getContext('2d'), r = rng(4242);
+    const cell = (k, fn) => { const ox = (k % 4) * S, oy = Math.floor(k / 4) * S; x.save(); x.beginPath(); x.rect(ox + 3, oy + 3, S - 6, S - 6); x.clip(); x.translate(ox, oy); fn(); x.restore(); };
+    const G1 = ['#1e3a14', '#2a4a1a', '#3a6022', '#4e7a2a', '#6a9432', '#86ac3c', '#a4c04a'], G2 = ['#4a7a2a', '#5a8a30', '#6a9a36', '#7aa83c', '#8ab444', '#9cc04e', '#b0cc5c'];
+    const line = (x0, y0, x1, y1, w, col) => { x.strokeStyle = col; x.lineWidth = w; x.beginPath(); x.moveTo(x0, y0); x.lineTo(x1, y1); x.stroke(); };
+    const blade = (x0, y0, h, lean, w, col) => { x.fillStyle = col; x.beginPath(); x.moveTo(x0 - w, y0); x.quadraticCurveTo(x0 + lean * .3, y0 - h * .6, x0 + lean, y0 - h); x.quadraticCurveTo(x0 + lean * .3 + w * .3, y0 - h * .55, x0 + w, y0); x.fill(); };
+    // 0: frasca d'abete, vista di sopra: il rametto al centro, rametti laterali, aghi fitti e corti, punte chiare
+    cell(0, () => { line(64, 126, 64, 6, 2.5, '#4a3424');
+      for (let y = 118; y > 12; y -= 9) { const L = 18 + (y - 12) / 106 * 34; [-1, 1].forEach(sd => { const ex = 64 + sd * L, ey = y - L * .55; line(64, y, ex, ey, 1.4, '#4a3828');
+        for (let t = 0; t < 1; t += .06) { const px = 64 + (ex - 64) * t, py = y + (ey - y) * t, n = 7 * (1 - t * .4); [-1, 1].forEach(s2 => { const col = G1[Math.min(6, Math.floor(1 + t * 5 + r() * 2))]; line(px, py, px + s2 * n * .5 + sd * n * .45, py - n * .8, 1.6, col); }); } }); }
+      for (let y = 124; y > 6; y -= 3) [-1, 1].forEach(s2 => line(64, y, 64 + s2 * 5, y - 5, 1.5, G1[3 + Math.floor(r() * 3)])); });
+    // 1: fronda di felce: rachide e pinne seghettate che si stringono in punta
+    cell(1, () => { line(64, 126, 64, 6, 2, '#3a5a1e');
+      for (let y = 120; y > 10; y -= 7) { const t = (126 - y) / 116, L = 50 * Math.sin(Math.PI * (t * .85 + .12)); [-1, 1].forEach(sd => { for (let k = 0; k < L; k += 3) { const px = 64 + sd * k, py = y - k * .35, w = 4.5 * (1 - k / L) + 1; x.fillStyle = G1[Math.min(6, 2 + Math.floor(t * 3 + r() * 2.2))]; x.fillRect(Math.min(px, px + sd * 2), py - w, 2.6, w * 1.6); } }); } });
+    // 2: ciuffo d'erba fitto
+    cell(2, () => { for (let k = 0; k < 110; k++) { const x0 = 8 + r() * 112, h = 50 + r() * 74; blade(x0, 128, h, (r() - .5) * 46, 2.2 + r() * 1.8, G2[Math.floor(r() * 7)]); } });
+    // 3: erba alta con le spighe
+    cell(3, () => { for (let k = 0; k < 60; k++) { const x0 = 14 + r() * 100, h = 70 + r() * 54; blade(x0, 128, h, (r() - .5) * 40, 1.6 + r() * 1.2, pick(r, ['#3e6024', '#5a7a2c', '#86983c', '#a8a85a', '#c0b06a'])); }
+      for (let k = 0; k < 9; k++) { const x0 = 20 + r() * 88, top = 6 + r() * 22, lx = x0 + (r() - .5) * 20; line(x0, 128, lx, top + 12, 1.2, '#8a8a4a'); x.fillStyle = pick(r, ['#c8b878', '#d8c890', '#b4a464']); x.beginPath(); x.ellipse(lx, top + 6, 2.6, 9, (r() - .5) * .4, 0, 6.3); x.fill(); } });
+    // 4: rametto di foglie larghe (faggio, betulla, sambuco, rovo)
+    cell(4, () => { line(64, 126, 64, 10, 2, '#4a3a28');
+      for (let k = 0; k < 26; k++) { const y = 118 - k * 4.2, sd = k % 2 ? 1 : -1, L = 16 + r() * 22, ex = 64 + sd * L, ey = y - 8 - r() * 10, a = Math.atan2(ey - y, ex - 64); line(64, y, ex, ey, 1, '#4a3a28');
+        x.fillStyle = pick(r, G1.slice(2)); x.beginPath(); x.ellipse(ex, ey, 11 + r() * 5, 6 + r() * 2.5, a, 0, 6.3); x.fill(); line(ex - Math.cos(a) * 9, ey - Math.sin(a) * 9, ex + Math.cos(a) * 9, ey + Math.sin(a) * 9, .8, 'rgba(200,220,140,.6)'); } });
+    // 5: ciuffi di aghi di pino, lunghi
+    cell(5, () => { for (let k = 0; k < 7; k++) { const cx = 20 + r() * 88, cy = 24 + r() * 80; for (let q = 0; q < 26; q++) { const a = r() * 6.28, L = 12 + r() * 16; line(cx, cy, cx + Math.cos(a) * L, cy + Math.sin(a) * L, 1.3, pick(r, G1.slice(1, 6))); } } });
+    // 6: erba bassa piena di fiorellini bianchi (il prato del riferimento)
+    cell(6, () => { for (let k = 0; k < 100; k++) { const x0 = 8 + r() * 112, h = 36 + r() * 60; blade(x0, 128, h, (r() - .5) * 40, 2 + r() * 1.6, G2[Math.floor(r() * 7)]); }
+      for (let k = 0; k < 18; k++) { const fx = 12 + r() * 104, fy = 30 + r() * 60; line(fx, 128, fx + (r() - .5) * 8, fy, 1, '#4e7a2a'); for (let q = 0; q < 5; q++) { const a = q / 5 * 6.28; x.fillStyle = '#f2f0e4'; x.beginPath(); x.arc(fx + Math.cos(a) * 3, fy + Math.sin(a) * 3, 2.2, 0, 6.3); x.fill(); } x.fillStyle = '#e8c840'; x.fillRect(fx - 1, fy - 1, 2.5, 2.5); } });
+    // 7: bianco pieno
+    { x.fillStyle = '#ffffff'; x.fillRect(3 * S, S, S, S); }
+    // 8: palma a ventaglio
+    cell(8, () => { for (let k = 0; k < 17; k++) { const a = Math.PI + .12 + k / 16 * (Math.PI - .24), a2 = a + .1; x.fillStyle = k % 2 ? '#3e7a26' : '#5a9e34'; x.beginPath(); x.moveTo(64, 124); x.lineTo(64 + Math.cos(a) * 62, 124 + Math.sin(a) * 118); x.lineTo(64 + Math.cos(a2) * 58, 124 + Math.sin(a2) * 112); x.fill(); line(64, 124, 64 + Math.cos(a + .05) * 60, 124 + Math.sin(a + .05) * 114, .8, 'rgba(180,220,120,.6)'); } });
+    // 9: foglia a cuore con le nervature
+    cell(9, () => { x.fillStyle = '#3a7a26'; x.beginPath(); x.moveTo(64, 120); x.bezierCurveTo(4, 70, 18, 4, 64, 30); x.bezierCurveTo(110, 4, 124, 70, 64, 120); x.fill();
+      x.fillStyle = 'rgba(120,180,70,.35)'; x.beginPath(); x.ellipse(50, 60, 22, 30, -.3, 0, 6.3); x.fill(); line(64, 120, 64, 30, 2.4, '#9ad064'); for (let k = 0; k < 6; k++) { const y = 104 - k * 13; line(64, y, 26 + k * 3, y - 18, 1.2, '#7ab84a'); line(64, y, 102 - k * 3, y - 18, 1.2, '#7ab84a'); } });
+    // 10: squame fitte (ginepro, erica): grumi di aghi con buchi
+    cell(10, () => { for (let k = 0; k < 900; k++) { const px = 4 + r() * 120, py = 4 + r() * 120, d = Math.hypot(px - 64, py - 64); if (d > 60 * (.75 + r() * .3)) continue; x.fillStyle = pick(r, ['#1e3424', '#2e4a34', '#3e5e44', '#4e6e50', '#62806a']); x.fillRect(px, py, 2 + r() * 2, 2); } });
+    // 11: muschio e trifoglio, tappeto basso
+    cell(11, () => { for (let k = 0; k < 140; k++) { const x0 = 4 + r() * 120, h = 14 + r() * 30; blade(x0, 128, h, (r() - .5) * 24, 2.4 + r() * 2, G2[Math.floor(r() * 7)]); }
+      for (let k = 0; k < 30; k++) { const fx = 8 + r() * 112, fy = 92 + r() * 30; x.fillStyle = pick(r, ['#5a9a34', '#6aac3a', '#4a8a2a']); for (let q = 0; q < 3; q++) { x.beginPath(); x.arc(fx + Math.cos(q * 2.1) * 3, fy + Math.sin(q * 2.1) * 3, 3, 0, 6.3); x.fill(); } } });
+    // 12: erba secca e paglia (dune, pascolo bruciato dal vento)
+    cell(12, () => { for (let k = 0; k < 80; k++) { const x0 = 10 + r() * 108, h = 50 + r() * 74; blade(x0, 128, h, (r() - .5) * 60, 1.6 + r() * 1.2, pick(r, ['#8a8a4a', '#a8a060', '#c4b878', '#6a7a3a', '#d4c890'])); } });
+    // 13: fiori di campo misti (gialli e viola)
+    cell(13, () => { for (let k = 0; k < 50; k++) { const x0 = 8 + r() * 112, h = 30 + r() * 50; blade(x0, 128, h, (r() - .5) * 30, 1.6, G1[2 + Math.floor(r() * 4)]); }
+      for (let k = 0; k < 16; k++) { const fx = 12 + r() * 104, fy = 40 + r() * 50, col = pick(r, ['#e8c430', '#f0d850', '#8a6ab8', '#a080d0', '#e8e4d8']); line(fx, 128, fx, fy, 1, '#4e7a2a'); x.fillStyle = col; x.beginPath(); x.arc(fx, fy, 4, 0, 6.3); x.fill(); } });
+    // 14: rametto spoglio (betulla d'inverno in punta, arbusti): rametti sottili con poche foglie
+    cell(14, () => { const tw = (x0, y0, a, L, d) => { if (d > 4 || L < 5) return; const ex = x0 + Math.cos(a) * L, ey = y0 + Math.sin(a) * L; line(x0, y0, ex, ey, Math.max(.8, 2.4 - d * .5), '#5a4a3e'); if (d > 1 && r() < .7) { x.fillStyle = pick(r, ['#8aac3c', '#a4c04a', '#6a9432', '#c0c860']); x.beginPath(); x.ellipse(ex, ey, 5, 3, a, 0, 6.3); x.fill(); } tw(ex, ey, a - .45 - r() * .3, L * .72, d + 1); tw(ex, ey, a + .45 + r() * .3, L * .72, d + 1); }; tw(64, 126, -Math.PI / 2, 40, 0); });
+    // 15: canne e giunchi
+    cell(15, () => { for (let k = 0; k < 50; k++) { const x0 = 10 + r() * 108, h = 70 + r() * 56; blade(x0, 128, h, (r() - .5) * 14, 1.4, pick(r, ['#2e4a1e', '#3e5e26', '#4e6e2c', '#6a7a3a'])); } for (let k = 0; k < 6; k++) { const fx = 16 + r() * 96, fy = 10 + r() * 30; x.fillStyle = '#6a4a2a'; x.beginPath(); x.ellipse(fx, fy, 3, 10, 0, 0, 6.3); x.fill(); } });
+    const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4;
+    return (VD.atlas = t);
+  }
+  // un materiale per tutta la vegetazione nuova: atlante, ritaglio, colori per vertice, vento e il bosco che si apre attorno al giocatore
+  function vdMat() {
+    if (VD.mat) return VD.mat;
+    const m = natMat(vdAtlas(), false); m.vertexColors = true; m.alphaTest = .42; m.side = THREE.DoubleSide; m.color.setRGB(1.15, 1.15, 1.15);
+    return (VD.mat = m);
+  }
   function vdB(soft) {
-    const P = [], C = [], W = [];
-    const tri = (a, b, c, ca, cb, cc, wa, wb, wc) => { P.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]); C.push(ca[0], ca[1], ca[2], cb[0], cb[1], cb[2], cc[0], cc[1], cc[2]); W.push(wa || 0, wb || 0, wc || 0); };
+    const P = [], C = [], W = [], U = [];
+    const tri = (a, b, c, ca, cb, cc, wa, wb, wc, uv) => { P.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]); C.push(ca[0], ca[1], ca[2], cb[0], cb[1], cb[2], cc[0], cc[1], cc[2]); W.push(wa || 0, wb || 0, wc || 0); const q = uv || VDWUV; U.push(q[0], q[1], q[2], q[3], q[4], q[5]); };
+    // una carta con la texture di una cella: a, b in basso (sinistra, destra), c, d in alto (destra, sinistra)
+    const card = (a, b, c, d, cell, c0, c1, w0, w1) => { const A = vdUV(cell, 0, 0), B = vdUV(cell, 1, 0), Cc = vdUV(cell, 1, 1), D = vdUV(cell, 0, 1);
+      tri(a, b, c, c0, c0, c1, w0, w0, w1, [A[0], A[1], B[0], B[1], Cc[0], Cc[1]]); tri(a, c, d, c0, c1, c1, w0, w1, w1, [A[0], A[1], Cc[0], Cc[1], D[0], D[1]]); };
+    // una carta piegata in due segmenti (fronde, frasche che pendono): base, metà, punta; larghezza w, perpendicolare orizzontale
+    const bent = (p0, p1, p2, w, cell, c0, c1, w0, w1, flat) => {
+      const dx = p2[0] - p0[0], dz = p2[2] - p0[2], L = Math.hypot(dx, dz) || 1, nx = flat ? -dz / L * w : w, nz = flat ? dx / L * w : 0, ny = 0;
+      const pl = (p, k) => [p[0] - nx * k, p[1] - ny, p[2] - nz * k], pr = (p, k) => [p[0] + nx * k, p[1] + ny, p[2] + nz * k];
+      const A = vdUV(cell, 0, 0), B = vdUV(cell, 1, 0), M0 = vdUV(cell, 0, .5), M1 = vdUV(cell, 1, .5), T0 = vdUV(cell, 0, 1), T1 = vdUV(cell, 1, 1), cm = vdL(c0, c1, .5), wm = (w0 + w1) / 2;
+      const a = pl(p0, .7), b = pr(p0, .7), m0 = pl(p1, 1), m1 = pr(p1, 1), t0 = pl(p2, .8), t1 = pr(p2, .8);
+      tri(a, b, m1, c0, c0, cm, w0, w0, wm, [A[0], A[1], B[0], B[1], M1[0], M1[1]]); tri(a, m1, m0, c0, cm, cm, w0, wm, wm, [A[0], A[1], M1[0], M1[1], M0[0], M0[1]]);
+      tri(m0, m1, t1, cm, cm, c1, wm, wm, w1, [M0[0], M0[1], M1[0], M1[1], T1[0], T1[1]]); tri(m0, t1, t0, cm, c1, c1, wm, w1, w1, [M0[0], M0[1], T1[0], T1[1], T0[0], T0[1]]); };
     const quad = (a, b, c, d, ca, cb, cc, cd, wa, wb, wc, wd) => { tri(a, b, c, ca, cb, cc, wa, wb, wc); tri(a, c, d, ca, cc, cd, wa, wc, wd); };
     // un filo d'erba (o una foglia lunga): base larga, a metà più stretto, punta che piega
     const blade = (x0, z0, ang, h, lean, w, c0, c1, sw) => {
@@ -3306,12 +3387,12 @@ var Render = (function () {
     const build = () => {
       const g = new THREE.BufferGeometry(), n = P.length / 3;
       g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
-      g.setAttribute('aSnow', new THREE.Float32BufferAttribute(new Float32Array(n), 1)); g.setAttribute('aSway', new THREE.Float32BufferAttribute(W, 1));
+      g.setAttribute('aSnow', new THREE.Float32BufferAttribute(new Float32Array(n), 1)); g.setAttribute('aSway', new THREE.Float32BufferAttribute(W, 1)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
       g.computeVertexNormals();
       if (soft) { const nn = g.attributes.normal; for (let i = 0; i < n; i++) { const x = nn.getX(i) * .35, y = Math.abs(nn.getY(i)) * .35 + .75, z = nn.getZ(i) * .35, L = Math.hypot(x, y, z); nn.setXYZ(i, x / L, y / L, z / L); } }
       g.computeBoundingSphere(); return g;
     };
-    return { tri, quad, blade, stalk, head, leaf, ribbon, lobe, build };
+    return { tri, quad, card, bent, blade, stalk, head, leaf, ribbon, lobe, build };
   }
   // le specie: ognuna in 2-3 varianti di forma
   function vdGeoms() {
@@ -3319,12 +3400,16 @@ var Render = (function () {
     const Gm = {}, H = vdH, TAU = 6.2832;
     const many = (name, k, fn) => { Gm[name] = []; for (let v = 0; v < k; v++) Gm[name].push(fn(rng(name.length * 977 + v * 131 + 7), v)); };
     // cespo d'erba d'inverno: base verde-oliva, punte color paglia, qualche filo tutto secco
-    many('cespo', 3, r => { const b = vdB(true), N = 12 + Math.floor(r() * 4);
-      for (let k = 0; k < N; k++) { const a = k / N * TAU + r() * .5, h = .32 + r() * .32, d = r() < .25; b.blade(Math.cos(a) * .04, Math.sin(a) * .04, a, h, .12 + r() * .22, .028, d ? H('#3e4a24') : H('#24401a'), d ? H('#a8a860') : vdL(H('#5a9032'), H('#8ab848'), r())); }
+    // cespo d'erba: un ciuffo grande a ventaglio (carte d'erba e di paglia), più alto del tappeto
+    many('cespo', 3, (r, v) => { const b = vdB(true);
+      for (let q = 0; q < 6; q++) { const a = q / 6 * TAU + r() * .5, ux = Math.cos(a), uz = Math.sin(a), w = .38 + r() * .12, px = -uz * w, pz = ux * w, hh = .55 + r() * .25, o = hh * (.5 + r() * .3);
+        b.card([-px, 0, -pz], [px, 0, pz], [px + ux * o, hh, pz + uz * o], [-px + ux * o, hh, -pz + uz * o], q % 2 || v === 2 ? 12 : 2, H('#b0b898'), H('#ffffff'), 0, hh * 1.8); }
       return b.build(); });
     // erba bassa e verde dei prati umidi e dei bordi strada
-    many('cespoV', 2, r => { const b = vdB(true), N = 11;
-      for (let k = 0; k < N; k++) { const a = k / N * TAU + r() * .6, h = .16 + r() * .16; b.blade(Math.cos(a) * .05, Math.sin(a) * .05, a, h, .08 + r() * .14, .03, H('#2a4a1c'), vdL(H('#5c9a34'), H('#8cc04a'), r())); }
+    // erba bassa e verde dei prati umidi e dei bordi strada: ciuffo basso e largo
+    many('cespoV', 2, r => { const b = vdB(true);
+      for (let q = 0; q < 5; q++) { const a = q / 5 * TAU + r() * .6, ux = Math.cos(a), uz = Math.sin(a), w = .35 + r() * .1, px = -uz * w, pz = ux * w, hh = .3 + r() * .15, o = hh * (.9 + r() * .4);
+        b.card([-px, 0, -pz], [px, 0, pz], [px + ux * o, hh * .8, pz + uz * o], [-px + ux * o, hh * .8, -pz + uz * o], q === 0 ? 11 : 2, H('#b0c098'), H('#ffffff'), 0, hh * 1.8); }
       return b.build(); });
     // erba alta secca con le spighe
     many('alta', 2, r => { const b = vdB(true);
@@ -3351,6 +3436,7 @@ var Render = (function () {
         for (let k = 0; k <= 5; k++) { const t = k / 5; pts.push([dx * d * t, Hh * 4 * t * (1 - t) * .9 + .05, dz * d * t]); }
         b.ribbon(pts, .02, H('#4a1e22'), H('#6a2a2e'), .8);
         for (let k = 1; k < 5; k++) b.leaf(pts[k], .13, .05, a + (r() - .5) * 2.5, -.2, r() < .4 ? H('#5a3420') : H('#1e2c12'), r() < .4 ? H('#7a4a2a') : H('#34461e'), .8); }
+      for (let k = 0; k < 8; k++) { const a = r() * TAU, rr = .6 * (.55 + r() * .5), y = .35 * (.6 + r() * .8), cx = Math.cos(a) * rr, cz = Math.sin(a) * rr, w = .22 + r() * .12, ux = Math.cos(a + 1.57) * w, uz = Math.sin(a + 1.57) * w; b.card([cx - ux, y - w * .3, cz - uz], [cx + ux, y - w * .3, cz + uz], [cx + ux + Math.cos(a) * w * 1.6, y + w * .9, cz + uz + Math.sin(a) * w * 1.6], [cx - ux + Math.cos(a) * w * 1.6, y + w * .9, cz - uz + Math.sin(a) * w * 1.6], 4, H('#7a9070'), H('#ffffff'), y * .3, y * .5); }
       return b.build(); });
     // rosa canina d'inverno: rami spogli ad arco, cinorrodi rossi
     many('rosa', 2, r => { const b = vdB(false);
@@ -3370,11 +3456,13 @@ var Render = (function () {
     many('ginepro', 3, (r, v) => { const b = vdB(false), N = v === 2 ? 4 : 6;
       for (let k = 0; k < N; k++) { const a = r() * TAU, d = v === 2 ? r() * .12 : r() * .45, y = v === 2 ? .3 + k * .32 : .22 + r() * .25, s = v === 2 ? .38 - k * .05 : .3 + r() * .2;
         b.lobe(Math.cos(a) * d, y, Math.sin(a) * d, s, v === 2 ? s * 1.4 : s * .85, s, H('#14201c'), H('#3a5048'), k * 7 + v, .42, 0, .25, H('#26342a')); }
+      for (let k = 0; k < 10; k++) { const a = r() * TAU, rr = .5 * (.55 + r() * .5), y = .4 * (.6 + r() * .8), cx = Math.cos(a) * rr, cz = Math.sin(a) * rr, w = .22 + r() * .12, ux = Math.cos(a + 1.57) * w, uz = Math.sin(a + 1.57) * w; b.card([cx - ux, y - w * .3, cz - uz], [cx + ux, y - w * .3, cz + uz], [cx + ux + Math.cos(a) * w * 1.6, y + w * .9, cz + uz + Math.sin(a) * w * 1.6], [cx - ux + Math.cos(a) * w * 1.6, y + w * .9, cz - uz + Math.sin(a) * w * 1.6], 10, H('#c0d0c8'), H('#ffffff'), y * .3, y * .5); }
       return b.build(); });
     // erica: cuscini bassi ruggine e malva
     many('erica', 2, r => { const b = vdB(false);
       b.lobe(0, .14, 0, .5, .2, .45, H('#2a2018'), H('#6a4a4a'), 5, .3, 1, .2, H('#7a5a6a'));
       for (let k = 0; k < 2; k++) { const a = r() * TAU; b.lobe(Math.cos(a) * .4, .1, Math.sin(a) * .4, .3, .14, .28, H('#2a2018'), H('#7a5244'), 9 + k, .35, 0, .2, H('#8a6070')); }
+      for (let k = 0; k < 6; k++) { const a = r() * TAU, rr = .45 * (.55 + r() * .5), y = .18 * (.6 + r() * .8), cx = Math.cos(a) * rr, cz = Math.sin(a) * rr, w = .22 + r() * .12, ux = Math.cos(a + 1.57) * w, uz = Math.sin(a + 1.57) * w; b.card([cx - ux, y - w * .3, cz - uz], [cx + ux, y - w * .3, cz + uz], [cx + ux + Math.cos(a) * w * 1.6, y + w * .9, cz + uz + Math.sin(a) * w * 1.6], [cx - ux + Math.cos(a) * w * 1.6, y + w * .9, cz - uz + Math.sin(a) * w * 1.6], 10, H('#d0a8b0'), H('#ffffff'), y * .3, y * .5); }
       return b.build(); });
     // ginestra: fascio di verghe verde scuro
     many('ginestra', 2, r => { const b = vdB(true);
@@ -3411,6 +3499,7 @@ var Render = (function () {
     many('cespuglio', 3, r => { const b = vdB(false), N = 3 + Math.floor(r() * 3);
       for (let k = 0; k < N; k++) { const a = r() * TAU, d = r() * .35, s = .32 + r() * .2; b.lobe(Math.cos(a) * d, .3 + r() * .25, Math.sin(a) * d, s, s * .8, s, H('#101a0c'), H('#3a4c22'), k * 11, .4, 0, .3, H('#2a3a1a')); }
       for (let k = 0; k < 3; k++) { const a = r() * TAU; b.ribbon([[0, 0, 0], [Math.cos(a) * .3, .5, Math.sin(a) * .3], [Math.cos(a) * .55, .85, Math.sin(a) * .55]], .015, H('#3a3028'), H('#5a4a3a'), .4); }
+      for (let k = 0; k < 12; k++) { const a = r() * TAU, rr = .5 * (.55 + r() * .5), y = .55 * (.6 + r() * .8), cx = Math.cos(a) * rr, cz = Math.sin(a) * rr, w = .22 + r() * .12, ux = Math.cos(a + 1.57) * w, uz = Math.sin(a + 1.57) * w; b.card([cx - ux, y - w * .3, cz - uz], [cx + ux, y - w * .3, cz + uz], [cx + ux + Math.cos(a) * w * 1.6, y + w * .9, cz + uz + Math.sin(a) * w * 1.6], [cx - ux + Math.cos(a) * w * 1.6, y + w * .9, cz - uz + Math.sin(a) * w * 1.6], 4, H('#9ab088'), H('#ffffff'), y * .3, y * .5); }
       return b.build(); });
     // cavolo dell'orto: cuore tondo e foglie larghe blu-verdi
     many('cavolo', 2, r => { const b = vdB(false); b.lobe(0, .14, 0, .16, .13, .16, H('#2a3a30'), H('#6a8a74'), 4, .2, 0, 0);
@@ -3418,31 +3507,34 @@ var Render = (function () {
     // ramo caduto al margine del bosco
     many('ramo', 2, r => { const b = vdB(false), L = 1.6 + r() * .8, pts = [[-L / 2, .06, 0], [-L / 6, .08, (r() - .5) * .2], [L / 6, .07, (r() - .5) * .2], [L / 2, .05, (r() - .5) * .3]];
       b.ribbon(pts, .06, H('#3a3028'), H('#5a4c3e'), 0); for (let k = 0; k < 3; k++) { const p = pts[1 + (k % 2)], a = r() * TAU; b.ribbon([p, [p[0] + Math.cos(a) * .4, .15 + r() * .2, p[2] + Math.sin(a) * .4]], .025, H('#4a3e32'), H('#6a5a4a'), 0); } return b.build(); });
-    // felce verde e folta: fronde ad arco con le pinne fitte, chiare in punta
-    many('felceV', 3, r => { const b = vdB(true), N = 6 + Math.floor(r() * 3);
-      for (let f = 0; f < N; f++) { const a = f / N * TAU + r() * .5, L = .75 + r() * .4, Hh = .5 + r() * .3, dx = Math.cos(a), dz = Math.sin(a), pts = [];
-        for (let k = 0; k <= 8; k++) { const t = k / 8; pts.push([dx * L * t, Hh * (2 * t - 1.3 * t * t) + .02, dz * L * t]); }
-        b.ribbon(pts, .012, H('#24401a'), H('#4a7a2a'), 1.4);
-        for (let k = 1; k < 8; k++) { const t = k / 8, p = pts[k], l = .22 * Math.sin(Math.PI * (t * .85 + .1)) * L, cA = vdL(H('#1e4416'), H('#3e7a26'), t), cB = vdL(H('#4a8a2a'), H('#9ad04a'), t); [-1, 1].forEach(sd => b.leaf(p, l, .028, a + sd * 1.25, -.25, cA, cB, 1.4)); } }
+    // felce verde e folta: fronde ad arco fatte con la texture della fronda (cella 1)
+    many('felceV', 3, r => { const b = vdB(true), N = 7 + Math.floor(r() * 3);
+      for (let f = 0; f < N; f++) { const a = f / N * TAU + r() * .5, L = .8 + r() * .45, Hh = .45 + r() * .3, dx = Math.cos(a), dz = Math.sin(a);
+        b.bent([dx * .04, .02, dz * .04], [dx * L * .5, Hh, dz * L * .5], [dx * L, Hh * .55, dz * L], .2 + r() * .06, 1, vdL(H('#5a7a44'), H('#8aa070'), r()), H('#ffffff'), 0, 1.6, true); }
       return b.build(); });
-    // palma a ventaglio del sottobosco: picciolo lungo e il ventaglio di lamine pieghettate
+    // felce aquilina secca: la stessa fronda tinta di ruggine
+    many('felce', 2, r => { const b = vdB(true), N = 5 + Math.floor(r() * 3);
+      for (let f = 0; f < N; f++) { const a = f / N * TAU + r() * .6, L = .7 + r() * .3, Hh = .4 + r() * .25, dx = Math.cos(a), dz = Math.sin(a);
+        b.bent([dx * .04, .02, dz * .04], [dx * L * .5, Hh, dz * L * .5], [dx * L, Hh * .5, dz * L], .2, 1, H('#a06a3a'), H('#e0a060'), 0, 1.4, true); }
+      return b.build(); });
+    // palma a ventaglio del sottobosco: picciolo e il ventaglio dipinto (cella 8), inclinato verso fuori
     many('palmaV', 2, r => { const b = vdB(true), N = 5 + Math.floor(r() * 3);
-      for (let f = 0; f < N; f++) { const a = f / N * TAU + r() * .6, l = .35 + r() * .45, h = .45 + r() * .55, c = [Math.cos(a) * l, h, Math.sin(a) * l], R = .42 + r() * .18, tilt = .35 + r() * .3;
+      for (let f = 0; f < N; f++) { const a = f / N * TAU + r() * .6, l = .3 + r() * .4, h = .5 + r() * .6, c = [Math.cos(a) * l, h, Math.sin(a) * l], R = .5 + r() * .2, dx = Math.cos(a), dz = Math.sin(a), px = -dz, pz = dx, tilt = .35 + r() * .35;
         b.stalk([0, 0, 0], c, .012, H('#2a4a1a'), H('#4a7a2a'), 1.2);
-        const ux = Math.cos(a), uz = Math.sin(a);
-        for (let q = 0; q < 12; q++) { const b0 = -1.25 + q / 12 * 2.5, b1 = -1.25 + (q + 1) / 12 * 2.5, bm = (b0 + b1) / 2, dir = g => [Math.cos(a + g), Math.sin(a + g)], d0 = dir(b0), d1 = dir(b1), dm = dir(bm);
-          const e0 = [c[0] + d0[0] * R, c[1] + tilt * R * .4 - .05, c[2] + d0[1] * R], e1 = [c[0] + d1[0] * R, c[1] + tilt * R * .4 - .05, c[2] + d1[1] * R], em = [c[0] + dm[0] * R * 1.08, c[1] + tilt * R * .4 + .04, c[2] + dm[1] * R * 1.08];
-          const cc = q % 2 ? H('#3a7a26') : H('#56a234'), ce = q % 2 ? H('#6ab03a') : H('#8ccc4a'); b.tri(c, e0, em, cc, ce, ce, h, h * 1.3, h * 1.4); b.tri(c, em, e1, cc, ce, ce, h, h * 1.4, h * 1.3); } }
+        b.card([c[0] - px * R, c[1] - .02, c[2] - pz * R], [c[0] + px * R, c[1] - .02, c[2] + pz * R], [c[0] + px * R + dx * R * 1.6, c[1] + R * tilt, c[2] + pz * R + dz * R * 1.6], [c[0] - px * R + dx * R * 1.6, c[1] + R * tilt, c[2] - pz * R + dz * R * 1.6], 8, H('#c8e0b0'), H('#ffffff'), h, h * 1.4); }
       return b.build(); });
-    // foglie grandi a cuore su piccioli lunghi (colocasia): verde lucido con la nervatura chiara
+    // foglie grandi a cuore (cella 9) su piccioli lunghi, piegate in giù verso la punta
     many('foglione', 2, r => { const b = vdB(true), N = 4 + Math.floor(r() * 3);
-      for (let f = 0; f < N; f++) { const a = f / N * TAU + r() * .7, l = .2 + r() * .3, h = .55 + r() * .6, c = [Math.cos(a) * l, h, Math.sin(a) * l], L = .55 + r() * .3, W = L * .7, dx = Math.cos(a), dz = Math.sin(a), px = -dz, pz = dx, dn = -.35;
+      for (let f = 0; f < N; f++) { const a = f / N * TAU + r() * .7, l = .2 + r() * .25, h = .55 + r() * .6, c = [Math.cos(a) * l, h, Math.sin(a) * l], L = .6 + r() * .3, dx = Math.cos(a), dz = Math.sin(a);
         b.stalk([0, 0, 0], c, .016, H('#2e5a1e'), H('#4a8a2a'), 1);
-        const tip = [c[0] + dx * L, c[1] + dn * L, c[2] + dz * L], m = [c[0] + dx * L * .4, c[1] + dn * L * .3 + .05, c[2] + dz * L * .4], lL = [m[0] + px * W * .5, m[1] - .08, m[2] + pz * W * .5], lR = [m[0] - px * W * .5, m[1] - .08, m[2] - pz * W * .5];
-        const lobL = [c[0] - dx * L * .18 + px * W * .32, c[1] - .02, c[2] - dz * L * .18 + pz * W * .32], lobR = [c[0] - dx * L * .18 - px * W * .32, c[1] - .02, c[2] - dz * L * .18 - pz * W * .32];
-        const vein = H('#8ac860'), g1 = H('#2e6a22'), g2 = H('#4e9a32');
-        b.tri(c, lL, m, vein, g1, vein, h, h, h); b.tri(c, m, lR, vein, vein, g1, h, h, h); b.tri(m, lL, tip, vein, g2, vein, h, h, h * 1.2); b.tri(m, tip, lR, vein, vein, g2, h, h * 1.2, h); b.tri(c, lobL, lL, vein, g1, g2, h, h, h); b.tri(c, lR, lobR, vein, g2, g1, h, h, h); }
+        b.bent([c[0] - dx * L * .1, c[1] + .04, c[2] - dz * L * .1], [c[0] + dx * L * .45, c[1] + .08, c[2] + dz * L * .45], [c[0] + dx * L, c[1] - L * .35, c[2] + dz * L], L * .42, 9, H('#d0e8c0'), H('#ffffff'), h, h * 1.2, true); }
       return b.build(); });
+    // il tappeto d'erba: tre carte incrociate con la texture di un ciuffo (erba, fiorellini, muschio, paglia, fiori di campo, erba alta, canne)
+    const tap = (name, cell, w, h, k) => many(name, k || 2, r => { const b = vdB(true);
+      for (let q = 0; q < 4; q++) { const a = q / 4 * TAU + r() * .5, ux = Math.cos(a), uz = Math.sin(a), px = -uz * w / 2, pz = ux * w / 2, hh = h * (.85 + r() * .3), o = hh * (.75 + r() * .3);
+        b.card([-px - ux * .05, 0, -pz - uz * .05], [px - ux * .05, 0, pz - uz * .05], [px + ux * o, hh * .7, pz + uz * o], [-px + ux * o, hh * .7, -pz + uz * o], cell, H('#a8b898'), H('#ffffff'), 0, hh * 1.8); }
+      return b.build(); });
+    tap('tErba', 2, .8, .5, 3); tap('tFiori', 6, .8, .42); tap('tMuschio', 11, .9, .26); tap('tPaglia', 12, .8, .55); tap('tCampo', 13, .8, .45); tap('tAlta', 3, .8, .85); tap('tCanne', 15, .7, 1.1);
     // liana che pende dai rami: fili sottili con le foglioline
     many('liana', 3, r => { const b = vdB(true);
       for (let k = 0; k < 4; k++) { const ox = (r() - .5) * 1.2, oz = (r() - .5) * 1.2, top = 5.5 + r() * 2.5, bot = 1.2 + r() * 2.5, pts = [];
@@ -3455,6 +3547,7 @@ var Render = (function () {
       for (let k = 0; k < 4; k++) { const a = r() * TAU, d = r() * .4, s2 = .35 + r() * .2; b.lobe(Math.cos(a) * d, .45 + r() * .3, Math.sin(a) * d, s2, s2 * .8, s2, H('#1a3a12'), H('#4a8a2a'), k * 13, .4, 0, .3, H('#2e5a1e')); }
       for (let k = 0; k < 9; k++) { const a = r() * TAU, d = .2 + r() * .45, c = [Math.cos(a) * d, .75 + r() * .45, Math.sin(a) * d], R = .1 + r() * .05;
         for (let q = 0; q < 6; q++) { const a1 = q / 6 * TAU, a2 = (q + 1) / 6 * TAU; b.tri([c[0], c[1] + .02, c[2]], [c[0] + Math.cos(a1) * R, c[1], c[2] + Math.sin(a1) * R], [c[0] + Math.cos(a2) * R, c[1], c[2] + Math.sin(a2) * R], H('#f4f0dc'), H('#e4e0c8'), H('#e4e0c8'), .3, .3, .3); } }
+      for (let k = 0; k < 14; k++) { const a = r() * TAU, rr = .55 * (.55 + r() * .5), y = .6 * (.6 + r() * .8), cx = Math.cos(a) * rr, cz = Math.sin(a) * rr, w = .22 + r() * .12, ux = Math.cos(a + 1.57) * w, uz = Math.sin(a + 1.57) * w; b.card([cx - ux, y - w * .3, cz - uz], [cx + ux, y - w * .3, cz + uz], [cx + ux + Math.cos(a) * w * 1.6, y + w * .9, cz + uz + Math.sin(a) * w * 1.6], [cx - ux + Math.cos(a) * w * 1.6, y + w * .9, cz - uz + Math.sin(a) * w * 1.6], 4, H('#9ab088'), H('#ffffff'), y * .3, y * .5); }
       return b.build(); });
     // tronco caduto col muschio sopra
     many('tronco', 2, r => { const b = vdB(false), L = 3.2 + r() * 1.6, R = .2 + r() * .08, SD = 7;
@@ -3465,67 +3558,84 @@ var Render = (function () {
       return b.build(); });
     const boost = (k, names) => names.forEach(nm => Gm[nm].forEach(g => { const c = g.attributes.color; for (let i = 0; i < c.count; i++) c.setXYZ(i, Math.min(1, c.getX(i) * k), Math.min(1, c.getY(i) * k), Math.min(1, c.getZ(i) * k)); }));
     boost(1.7, ['rovo', 'ginepro', 'erica', 'cespuglio', 'sasso', 'mucchio']); boost(1.35, ['spoglio', 'rosa', 'ramo', 'ginestra']); boost(1.2, ['cespo', 'cespoV', 'alta', 'giunco', 'felce', 'cardo', 'ombrella', 'verbasco', 'felceV', 'palmaV', 'foglione', 'liana']); boost(1.4, ['sambuco', 'tronco']);
-    const mat = vegMat(); mat.side = THREE.DoubleSide;
-    VD.mat = mat; return (VD.geo = Gm);
+    vdMat(); return (VD.geo = Gm);
   }
-  const VDHERB = ['felceV', 'palmaV', 'foglione', 'cespo', 'cespoV', 'alta', 'giunco', 'felce', 'cardo', 'ombrella', 'verbasco', 'fiori'];
-  const VDSHRUB = ['rovo', 'rosa', 'spoglio', 'ginepro', 'erica', 'ginestra', 'cespuglio', 'sasso', 'ramo'];
-  const VDSC = { felceV: [.9, 1.5], palmaV: [.8, 1.4], foglione: [.8, 1.3], liana: [.8, 1.2], sambuco: [.8, 1.3], tronco: [.9, 1.1], cespo: [1, 1.6], cespoV: [1, 1.5], alta: [.9, 1.3], giunco: [.9, 1.3], felce: [.9, 1.4], cardo: [.8, 1.2], ombrella: [.8, 1.15], verbasco: [.8, 1.2], fiori: [.8, 1.2],
-    rovo: [.8, 1.4], rosa: [.8, 1.3], spoglio: [.8, 1.5], ginepro: [.7, 1.5], erica: [.8, 1.4], ginestra: [.8, 1.3], cespuglio: [.7, 1.3], sasso: [.5, 1.3], ramo: [.8, 1.1], mucchio: [.8, 1.2], cavolo: [.8, 1.15] };
+  const VDSC = { felceV: [.9, 1.5], palmaV: [.8, 1.4], foglione: [.45, .75], liana: [.8, 1.2], sambuco: [.8, 1.3], tronco: [.9, 1.1], cespo: [1, 1.6], cespoV: [1, 1.5], alta: [.9, 1.3], giunco: [.9, 1.3], felce: [.9, 1.4], cardo: [.8, 1.2], ombrella: [.8, 1.15], verbasco: [.8, 1.2], fiori: [.8, 1.2],
+    rovo: [.8, 1.4], rosa: [.8, 1.3], spoglio: [.8, 1.5], ginepro: [.7, 1.5], erica: [.8, 1.4], ginestra: [.8, 1.3], cespuglio: [.7, 1.3], sasso: [.5, 1.3], ramo: [.8, 1.1], mucchio: [.8, 1.2], cavolo: [.8, 1.15],
+    tErba: [.8, 1.3], tFiori: [.8, 1.2], tMuschio: [.8, 1.3], tPaglia: [.8, 1.3], tCampo: [.8, 1.2], tAlta: [.8, 1.2], tCanne: [.8, 1.3] };
   const VDSHADOW = { sambuco: 1, tronco: 1, palmaV: 1, foglione: 1, rovo: 1, rosa: 1, spoglio: 1, ginepro: 1, erica: 1, ginestra: 1, cespuglio: 1, sasso: 1, mucchio: 1 };
-  // la colonia: ogni specie vive a macchie sue, non sparsa a caso
+  // ---------------- gli ambienti: cosa cresce in ognuno ----------------
+  // Le erbe e gli arbusti non si spargono: ogni specie ha un suo campo largo e morbido (la "deriva", come cresce davvero: a masse
+  // che si allargano); in ogni punto vince la specie più forte, quindi il manto è continuo, a macchie che si toccano, con i bordi
+  // organici e una fascia dove le due si intrecciano. Più forte il campo, più grandi le piante: le masse si gonfiano al centro.
+  // tap: tipi del tappeto d'erba; H/S: strati di erbe e di arbusti [specie, vantaggio]; th: sotto questa forza resta il tappeto
+  // g: il colore del suolo; t: il tono delle piante.
+  const VDPLAN = {
+    ABETAIA: { T: [['tMuschio', .15], ['tErba', -.05]], H: [['felceV', 0]], hth: .05, S: [['cespuglio', -.25]], sth: .1, g: [44, 72, 34], t: '#c8d8c0', d: .7 },
+    FAGGETA: { T: [['tErba', .1], ['tFiori', -.05], ['tMuschio', 0]], H: [['felceV', .12], ['fiori', -.12], ['cespoV', -.05]], hth: -.08, S: [['cespuglio', -.05], ['sambuco', -.12]], sth: .12, g: [64, 84, 40], t: '#f0f4d8', d: 1 },
+    VALLONE: { T: [['tMuschio', .1], ['tErba', 0]], H: [['felceV', .18], ['palmaV', .08], ['foglione', .04]], hth: -.25, S: [['sambuco', -.05]], sth: .15, g: [40, 84, 32], t: '#e0f8d0', d: 1.15 },
+    PINETA: { T: [['tPaglia', .1], ['tErba', -.05]], H: [['cespo', .05], ['alta', -.1]], hth: .02, S: [['cespuglio', .05], ['ginepro', 0], ['ginestra', -.08]], sth: -.02, g: [104, 82, 52], t: '#fff0d8', d: .8 },
+    DUNA: { T: [['tPaglia', .1]], H: [['alta', .05], ['cespo', 0]], hth: -.05, S: [['ginepro', -.2]], sth: .2, g: [150, 140, 100], t: '#fff4d8', d: .6 },
+    MACCHIA: { T: [['tPaglia', 0], ['tErba', 0]], H: [['cespo', 0]], hth: .05, S: [['cespuglio', .1], ['ginepro', .02], ['ginestra', -.02], ['erica', -.05], ['rovo', -.1]], sth: -.2, g: [56, 62, 38], t: '#e4ecd0', d: .9 },
+    FARO: { T: [['tPaglia', .05], ['tErba', 0], ['tCampo', -.05]], H: [['cespo', .05]], hth: .02, S: [['erica', .05], ['ginepro', 0], ['sasso', -.1]], sth: .02, g: [104, 110, 66], t: '#f8f4d8', d: .9 },
+    PASCOLO: { T: [['tErba', .12], ['tFiori', 0], ['tCampo', -.05], ['tMuschio', -.08]], H: [['cespoV', .05], ['cespo', 0], ['cardo', -.2]], hth: .1, S: [['ginepro', 0], ['erica', -.05], ['sasso', -.05]], sth: .22, g: [76, 116, 44], t: '#f0fff0', d: 1.1 },
+    GHIAIONE: { T: [['tPaglia', 0]], H: [['cespo', 0]], hth: .15, S: [['sasso', 0], ['ginepro', -.1]], sth: .1, g: [90, 88, 80], t: '#e8ecd8', d: .4 },
+    SALINA: { T: [['tCanne', .1], ['tErba', 0]], H: [['giunco', .1], ['cespoV', -.1]], hth: -.1, S: [['erica', -.1]], sth: .2, g: [100, 98, 74], t: '#f0f0d8', d: 1 },
+    RUDERALE: { T: [['tErba', .05], ['tPaglia', 0]], H: [['cespoV', .02], ['cardo', 0], ['ombrella', 0], ['verbasco', -.08]], hth: -.02, S: [['rovo', 0], ['sambuco', -.05]], sth: .12, g: [92, 86, 56], t: '#f4f0d8', d: .9 },
+    RADURA: { T: [['tErba', .05], ['tFiori', .05], ['tCampo', 0], ['tAlta', -.05]], H: [['alta', .02], ['fiori', 0], ['felceV', -.05]], hth: .02, S: [['sambuco', -.02], ['rovo', -.05]], sth: .2, g: [78, 118, 46], t: '#f0ffe8', d: 1.2 },
+    RIPARIALE: { T: [['tCanne', .1], ['tErba', 0], ['tMuschio', 0]], H: [['giunco', .12], ['foglione', 0]], hth: -.15, S: [['cespuglio', -.05]], sth: .15, g: [56, 96, 44], t: '#e8f8d8', d: 1.1 },
+    BETULLE: { T: [['tErba', .1], ['tAlta', 0], ['tFiori', 0]], H: [['felce', .05], ['alta', 0], ['fiori', -.05]], hth: -.02, S: [['cespuglio', -.2]], sth: .2, g: [86, 116, 52], t: '#f8ffe0', d: 1.1 },
+    PINIMONTE: { T: [['tPaglia', .05], ['tErba', 0]], H: [['cespo', 0], ['felceV', -.05]], hth: .05, S: [['ginepro', 0], ['ginestra', -.05]], sth: .08, g: [92, 86, 54], t: '#f4f0d8', d: .8 },
+    VIGNE: { T: [['tErba', .05], ['tCampo', 0]], H: [['cespoV', 0], ['ombrella', -.1]], hth: .1, S: [['rovo', -.1]], sth: .25, g: [80, 104, 48], t: '#f0f8e0', d: .9 },
+    ULIVETO: { T: [['tErba', 0], ['tPaglia', 0]], H: [['cespo', 0]], hth: .1, S: [['ginestra', -.05]], sth: .2, g: [104, 100, 62], t: '#f8f4dc', d: .8 },
+    NONE: { T: [['tErba', 0]], H: [['cespoV', 0], ['cespo', 0]], hth: .05, S: [['cespuglio', -.1], ['rovo', -.1]], sth: .2, g: [70, 100, 46], t: '#f0f8e0', d: .8 },
+  };
+  // la deriva di una specie: rumore largo (la massa) con un po' di rumore fine (il bordo frastagliato)
+  const VDDS = { felceV: 9, palmaV: 7, foglione: 6, cespoV: 11, cespo: 10, alta: 8, fiori: 6, cardo: 7, ombrella: 7, verbasco: 6, giunco: 8, felce: 9,
+    cespuglio: 13, sambuco: 10, ginepro: 9, ginestra: 9, erica: 8, rovo: 8, sasso: 6, tErba: 12, tFiori: 7, tMuschio: 9, tPaglia: 12, tCampo: 8, tAlta: 9, tCanne: 8 };
+  const VDHASH = s => { let h = 0; for (let i = 0; i < s.length; i++) h = h * 31 + s.charCodeAt(i) | 0; return Math.abs(h) % 97; };
+  function vdDrift(sp, X, Y) { const k = VDHASH(sp), sc = VDDS[sp] || 8; return vnz(X / sc + k * 7.13, Y / sc + k * 3.71) + vnz(X / (sc * .32) - k * 1.3, Y / (sc * .32) + k * 2.1) * .3; }
+  // chi vince in un punto: [specie, forza]; vicino al pareggio le due si alternano (r)
+  function vdWin(L, X, Y, r) { let b = null, bv = -9, c = null, cv = -9; for (const [sp, adv] of L) { const v = vdDrift(sp, X, Y) + adv; if (v > bv) { c = b; cv = bv; b = sp; bv = v; } else if (v > cv) { c = sp; cv = v; } } if (r && c && bv - cv < .07 && r() < .45) return [c, cv]; return [b, bv]; }
+  const VDEN = {}; (() => { const E = (M.world && M.world.ECO) || {}; for (const k in E) VDEN[E[k]] = k; })();
+  const vdEco = (tx, ty) => { const W0 = M.world; if (!W0 || !W0.eco || tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; return W0.eco[ty * G.GW + tx]; };
+  // l'ambiente in un punto, mescolato come in world.js: si legge da un punto spostato (rumore largo + grana), ai bordi si alternano
+  const vdEcoMix = (X, Y, j) => { const dx = vnz(X / 30, Y / 30) * 26 + (j || 0) * 10 * (vnz(X * 1.7, Y * 1.3) * 2), dy = vnz(X / 30 + 9, Y / 30 + 4) * 26 + (j || 0) * 10 * (vnz(X * 1.3 + 5, Y * 1.9) * 2); return vdEco(Math.floor((X + dx) / TS), Math.floor((Y + dy) / TS)) || vdEco(Math.floor(X / TS), Math.floor(Y / TS)); };
+  const vdPlan = e => VDPLAN[VDEN[e] || 'NONE'] || VDPLAN.NONE;
+  // il colore del suolo dell'ambiente, sfumato: media di quattro letture spostate
+  function vdGroundTint(X, Y) { let r = 0, g = 0, b = 0; for (const [ox, oy] of [[-7, -3], [6, -6], [-4, 7], [7, 5]]) { const c = vdPlan(vdEcoMix(X + ox, Y + oy)).g; r += c[0]; g += c[1]; b += c[2]; } return [r / 4, g / 4, b / 4]; }
   const vdCol = (k, X, Y, sc) => Math.max(0, Math.min(1.6, .15 + 2.4 * (vnz(X / sc + k * 17.13, Y / sc + k * 9.31) + .25)));
   function vdPick(r, W) { let t = 0; for (const k in W) t += Math.max(0, W[k]); let q = r() * t; for (const k in W) { q -= Math.max(0, W[k]); if (q <= 0) return k; } return 'none'; }
   function verde38(tx0, ty0, n, m) {
-    const grp = new THREE.Group(); grp.name = 'verde';
+    const grp = new THREE.Group(); grp.name = 'verde'; const tapG = new THREE.Group(); tapG.name = 'tap'; grp.add(tapG); grp.userData.tap = tapG;
     if (!VD.on) return grp;
-    const Gm = vdGeoms(), T = G.T, W0 = M.world, F = W0 && W0.feat, B = new Map(), low = LOWQ.on;
+    const Gm = vdGeoms(), T = G.T, W0 = M.world, F = W0 && W0.feat, B = new Map(), low = LOWQ.on, E = (W0 && W0.ECO) || {};
     const put = (sp, r, x, z, o) => { const vs = Gm[sp]; if (!vs) return; const key = sp + '|' + Math.floor(r() * vs.length); let a = B.get(key); if (!a) B.set(key, a = []); const sr = VDSC[sp] || [1, 1];
       a.push(Object.assign({ x, z, s: sr[0] + r() * (sr[1] - sr[0]), ry: r() * 6.2832, rx: (r() - .5) * .12, rz: (r() - .5) * .12, sy: 1, col: null }, o || {})); };
-    const natural = v => v === T.GRASS || v === T.SHRUB || v === T.ROCK || v === T.GRAVEL || v === T.FIELD || v === T.TREE;
+    const tone = (hex, k, X, Y) => { const c = new THREE.Color(hex), w = vdWet(X, Y), l = k * (.86 + (vnz(X / 6 + 3, Y / 6 + 8) + .5) * .26); return '#' + c.setRGB(Math.min(1, c.r * l * (1 - w * .05)), Math.min(1, c.g * l * (1 + w * .06)), Math.min(1, c.b * l)).getHexString(); };
+    const natural = v => v === T.GRASS || v === T.SHRUB || v === T.ROCK || v === T.GRAVEL || v === T.FIELD || v === T.TREE || v === T.SAND;
+    const forest = e => e === E.ABETAIA || e === E.FAGGETA || e === E.VALLONE || e === E.PINETA || e === E.BETULLE || e === E.PINIMONTE;
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, v = gT(tx, ty), z = zoneT(tx, ty);
       if (z === ZN.CITTA || !natural(v) || RW[ii] > 0) continue;
-      const f = F ? F[ii] : 0; if ((f & 8192) && v !== T.GRASS) continue;
+      const f = F ? F[ii] : 0; if ((f & 8192) && v !== T.GRASS && v !== T.ROCK && v !== T.GRAVEL) continue;
       const r = rng((tx * 69061 + ty * 30011) >>> 0), wx = tx * TS, wy = ty * TS, X0 = wx + 1, Y0 = wy + 1;
-      const w = vdWet(X0, Y0), d = Math.max(0, -w), wv = Math.max(0, w), nt = vdTreeN(tx, ty), e = v === T.TREE ? 0 : Math.min(1, nt / 6), rd = Math.min(1, vdRoadN(tx, ty) / 5);
-      const top = (f & 2048) ? 1 : 0, mont = z === ZN.MONTE ? 1 : 0, tav = z === ZN.DESERTO ? 1 : 0;
-      let rocky = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const q = gT(tx + dx, ty + dy); if (q === T.ROCK || q === T.CLIFF || q === T.GRAVEL) rocky++; } rocky = Math.min(1, rocky / 4);
-      const warm = vdS(-.3, .4, d - wv), tint = (k0) => { const c = vdL(vdH('#e0f0cc'), vdH('#fff0d4'), warm), k = k0 * (.86 + r() * .22); return '#' + new THREE.Color(c[0] * k, c[1] * k, c[2] * k).getHexString(); };
-      const herbW = (X, Y, extra) => {
-        const W = {
-          cespoV: (.9 + rd * 1.6 + wv * .6 - top * .5) * (.5 + vnz(X / 9 + 3, Y / 9 + 1) + .5),
-          cespo: (.9 + d * 1.2 + top * .8 + tav * .4) * (.5 + vnz(X / 9 + 8, Y / 9 + 4) + .5),
-          alta: (.35 + d * .8 + e * .7 - rd * .3) * vdCol(1, X, Y, 8),
-          giunco: (wv > .3 ? (wv - .3) * 7 : 0) * vdCol(2, X, Y, 6),
-          felce: (e * 1.4 + mont * .3 + (v === T.TREE ? 1 : 0)) * vdCol(3, X, Y, 7),
-          cardo: (.15 + rd * .5 + d * .3) * vdCol(4, X, Y, 9),
-          ombrella: (.1 + rd * .9 + e * .25) * vdCol(5, X, Y, 8),
-          verbasco: (.06 + d * .25 + rocky * .3) * vdCol(6, X, Y, 10),
-          fiori: .3 * vdCol(7, X, Y, 6), felceV: (e * .8 + wv * .4) * vdCol(19, X, Y, 7),
-          none: 1 + Math.max(0, vnz(X / 5 + 50, Y / 5 + 50)) * 4 + (v === T.TREE ? 2 : 0),
-        };
-        if (extra) for (const k in extra) W[k] = (W[k] || 0) * extra[k];
-        return W;
-      };
-      const shrubW = (X, Y, scrub) => ({
-        rovo: (e * 1 + rd * .25) * vdCol(11, X, Y, 11), rosa: (e * .35 + rd * .15) * vdCol(12, X, Y, 12), spoglio: (e * .6 + .03) * vdCol(13, X, Y, 10),
-        ginepro: (rocky * .5 + top * .25 + mont * .25 + tav * .1) * vdCol(14, X, Y, 12), erica: (top * .45 + tav * .2 + mont * d * .4) * vdCol(15, X, Y, 9),
-        ginestra: (d * .45 + rd * .25 + mont * .15) * vdCol(16, X, Y, 11), cespuglio: (e * .4 + .05 + (scrub ? .5 : 0)) * vdCol(17, X, Y, 10), sambuco: (e * .5 + rd * .15) * vdCol(20, X, Y, 12), tronco: e * .1,
-        sasso: (rocky * .4 + .03 + top * .12) * vdCol(18, X, Y, 8), ramo: e * .15,
-        none: scrub ? 1.6 : 7,
-      });
-      const herb = (X, Y, extra) => { const sp = vdPick(r, herbW(X, Y, extra)); if (sp === 'none') return; const nm = sp === 'fiori' ? pick(r, th(Math.floor(X / 26), Math.floor(Y / 26), 63) < .4 ? ['fioriB'] : th(Math.floor(X / 26), Math.floor(Y / 26), 63) < .72 ? ['fioriG'] : ['fioriV']) : sp; put(nm, r, X, Y, { col: tint(1) }); };
-      const shrub = (X, Y, scrub, W) => { const sp = vdPick(r, W || shrubW(X, Y, scrub)); if (sp === 'none') return; put(sp, r, X, Y, { col: tint(1.02), rx: 0, rz: 0 }); };
-      const slot = q => [wx + .5 + (q % 2) + (r() - .5) * .8, wy + .5 + (q >> 1) + (r() - .5) * .8];
-      if (v === T.FIELD) {
+      const e0 = vdEco(tx, ty);
+      if (v === T.SAND && (e0 !== E.DUNA || coastIn(X0, Y0) < 6)) continue;   // sulla sabbia solo la duna, mai sul bagnasciuga
+      const nt = vdTreeN(tx, ty), rd = Math.min(1, vdRoadN(tx, ty) / 5);
+      const slot = () => [wx + .2 + r() * 1.6, wy + .2 + r() * 1.6];
+      // il tappeto d'erba: fitto (3 × 3 per casella), del tipo che vince in quel punto
+      const tmul = v === T.GRASS ? 1 : v === T.SHRUB ? .9 : v === T.TREE ? .55 : v === T.FIELD ? 0 : v === T.SAND ? .45 : v === T.ROCK ? .4 : .2, NT = low ? 2 : 3;
+      for (let q = 0; q < NT * NT; q++) { const X = wx + (q % NT + .5 + (r() - .5) * .8) * TS / NT, Y = wy + (Math.floor(q / NT) + .5 + (r() - .5) * .8) * TS / NT, pl = vdPlan(vdEcoMix(X, Y, 1));
+        if (r() > tmul * pl.d) continue; const [sp] = vdWin(pl.T, X, Y, r); put(sp, r, X, Y, { col: tone(pl.t, 1, X, Y), rx: (r() - .5) * .2, rz: (r() - .5) * .2 }); }
+      if (v === T.FIELD) {   // i campi: la capezzagna ha le sue erbe e la siepe, l'orto i cavoli a file, il maggese i cardi
         const pc = vdParcel(X0, Y0);
-        if (pc.e < 1.4) {   // la capezzagna: erba, cardi, ombrellifere; ogni tanto la siepe o il mucchio di sassi
-          for (let q = 0; q < (low ? 1 : 3); q++) { const [X, Y] = slot(q); if (vdParcel(X, Y).e < 1.2) herb(X, Y, { ombrella: 2.2, cardo: 1.8, alta: 1.4 }); }
-          if (pc.e < .9) { if (th(tx, ty, 71) < .03) put('mucchio', r, X0, Y0); else shrub(X0 + (r() - .5), Y0 + (r() - .5), false, { rovo: .5, rosa: .35, spoglio: .45, ginestra: .15, none: 2.2 }); }
-        } else if (pc.t === 3) { for (let q = 0; q < (low ? 1 : 3); q++) { const [X, Y] = slot(q); herb(X, Y, { cardo: 3, ombrella: 1.5, alta: 1.5, none: .7 }); } }   // maggese
-        else if (pc.t === 1) { if (r() < .25) { const [X, Y] = slot(0); put('cespo', r, X, Y, { col: tint(1) }); } }   // stoppie
-        else if (pc.t === 4) {   // orto: cavoli a file sulle prose
+        if (pc.e < 1.4) {
+          for (let q = 0; q < (low ? 1 : 3); q++) { const [X, Y] = slot(); if (vdParcel(X, Y).e < 1.2) { put(vdPick(r, { tErba: 1, tCampo: .8, tAlta: .6 }), r, X, Y, { col: tone('#f0f8e0', 1, X, Y) }); const sp = vdPick(r, { ombrella: .6, cardo: .4, cespoV: .6, none: 1 }); if (sp !== 'none') put(sp, r, X, Y); } }
+          if (pc.e < .9) { if (th(tx, ty, 71) < .03) put('mucchio', r, X0, Y0); else { const sp = vdPick(r, { rovo: .5, sambuco: .4, cespuglio: .4, none: 2.2 }); if (sp !== 'none') put(sp, r, X0 + (r() - .5), Y0 + (r() - .5), { rx: 0, rz: 0 }); } }
+        } else if (pc.t === 3) { for (let q = 0; q < (low ? 1 : 3); q++) { const [X, Y] = slot(), sp = vdPick(r, { cardo: 1.2, ombrella: .8, tPaglia: 1, tErba: 1, none: .4 }); if (sp !== 'none') put(sp, r, X, Y, sp[0] === 't' ? { col: tone('#fff0d8', 1, X, Y) } : null); } }
+        else if (pc.t === 1) { if (r() < .4) { const [X, Y] = slot(); put('tPaglia', r, X, Y, { col: '#fff4d8' }); } }
+        else if (pc.t === 4) {
           const ca = Math.cos(pc.ang), sa = Math.sin(pc.ang), C = [[wx, wy], [wx + TS, wy], [wx, wy + TS], [wx + TS, wy + TS]].map(([X, Y]) => [X * ca + Y * sa, -X * sa + Y * ca]);
           const u0 = Math.min(...C.map(c => c[0])), u1 = Math.max(...C.map(c => c[0])), v0 = Math.min(...C.map(c => c[1])), v1 = Math.max(...C.map(c => c[1])), ct = th(pc.a, pc.b, 85) < .5 ? '#a8d890' : '#8cb8a0';
           for (let k = Math.floor(u0 / 1.4); k <= Math.ceil(u1 / 1.4); k++) for (const off of [.3, .7]) { const u = k * 1.4 + off; if (u < u0 || u > u1) continue;
@@ -3534,30 +3644,36 @@ var Render = (function () {
         }
         continue;
       }
-      if (v === T.TREE) {   // nel bosco ci pensa il kit: qui solo il margine (rovi, arbusti, felci) e i rami caduti
-        const U = { felceV: 1.8 * vdCol(21, X0, Y0, 9) + .3, palmaV: (.25 + wv * 1.2) * vdCol(22, X0, Y0, 11), foglione: (.1 + wv * 1.4) * vdCol(23, X0, Y0, 10), cespoV: .25, none: low ? 2.5 : 1.1 };
-        for (let q = 0; q < (low ? 1 : 2); q++) { const [X, Y] = slot(Math.floor(r() * 4)), sp = vdPick(r, U); if (sp !== 'none') put(sp, r, X, Y, { col: tint(1) }); }
-        if (nt < 14 && r() < .22) shrub(X0 + (r() - .5), Y0 + (r() - .5), false, { rovo: .5, sambuco: .5, spoglio: .3, cespuglio: .3, none: 1.2 });
-        if (r() < (.05 + wv * .2) * (low ? .5 : 1)) put('liana', r, X0 + (r() - .5) * .6, Y0 + (r() - .5) * .6, { rx: 0, rz: 0, col: tint(1) });
-        if (r() < .03) put(r() < .5 ? 'tronco' : 'ramo', r, X0 + (r() - .5), Y0 + (r() - .5), { rx: 0, rz: 0 });
-        continue;
-      }
-      const scrub = v === T.SHRUB, nh = (v === T.GRASS ? 4 : v === T.SHRUB ? 3 : v === T.ROCK ? 2 : 1) >> (low ? 1 : 0);
-      for (let q = 0; q < nh; q++) { const [X, Y] = slot(nh === 4 ? q : Math.floor(r() * 4)); herb(X, Y); }
-      if (v !== T.GRAVEL || r() < .3) shrub(X0 + (r() - .5) * 1.2, Y0 + (r() - .5) * 1.2, scrub);
+      // le erbe: a masse continue (2 × 2 per casella), più grandi dove la specie è più forte
+      const NH = low ? 1 : 2;
+      for (let q = 0; q < NH * NH; q++) { const X = wx + (q % NH + .5 + (r() - .5) * .7) * TS / NH, Y = wy + (Math.floor(q / NH) + .5 + (r() - .5) * .7) * TS / NH, pl = vdPlan(vdEcoMix(X, Y, 1));
+        let L = pl.H, th0 = pl.hth; if (rd > .3) { L = L.concat([['cespoV', .1 * rd], ['ombrella', 0], ['cardo', -.05]]); th0 -= .1 * rd; }   // il bordo strada
+        const [sp, val] = vdWin(L, X, Y, r), k = (val - th0) / .3; if (k < 0 || (k < .2 && r() > k * 5) || (v === T.SAND && r() < .5)) continue;
+        const nm = sp === 'fiori' ? (th(Math.floor(X / 26), Math.floor(Y / 26), 63) < .4 ? 'fioriB' : th(Math.floor(X / 26), Math.floor(Y / 26), 63) < .72 ? 'fioriG' : 'fioriV') : sp, sr = VDSC[nm] || [1, 1];
+        put(nm, r, X, Y, { col: tone(pl.t, 1, X, Y), s: (sr[0] + (sr[1] - sr[0]) * Math.min(1, k)) * (.88 + r() * .24) }); }
+      // gli arbusti: macchie e cespuglieti continui; al margine del bosco il mantello (rovi, sambuco, cespugli) segue il margine
+      { const X = X0 + (r() - .5) * 1.1, Y = Y0 + (r() - .5) * 1.1, e1 = vdEcoMix(X, Y, 1), pl = vdPlan(e1); let L = pl.S, th0 = pl.sth;
+        if (v !== T.TREE && nt >= 3 && nt <= 14 && forest(e1)) { L = [['rovo', .05], ['sambuco', 0], ['cespuglio', .05]]; th0 = -.1; }   // il mantello
+        if (v === T.TREE) th0 += .15;
+        if (v === T.SAND) th0 += .2;
+        const [sp, val] = vdWin(L, X, Y, r), k = (val - th0) / .3, sr = VDSC[sp] || [1, 1];
+        if (k > 0 && !(k < .2 && r() > k * 5)) put(sp, r, X, Y, { col: tone(pl.t, 1.02, X, Y), rx: 0, rz: 0, s: (sr[0] + (sr[1] - sr[0]) * Math.min(1, k)) * (.88 + r() * .24) }); }
+      // un tronco caduto ogni tanto nel bosco fitto (uno per cella di 18 m, non a pioggia)
+      if (v === T.TREE && (e0 === E.ABETAIA || e0 === E.FAGGETA || e0 === E.VALLONE)) { const ci = Math.floor(X0 / 18), cj = Math.floor(Y0 / 18); if (Math.floor(((ci + th(ci, cj, 181)) * 18) / TS) === tx && Math.floor(((cj + th(ci, cj, 182)) * 18) / TS) === ty && th(ci, cj, 183) < .5) put('tronco', r, X0, Y0, { rx: 0, rz: 0, ry: th(ci, cj, 184) * 6.28 }); }
+      // le liane pendono dagli alberi dei valloni e delle faggete umide
+      if (v === T.TREE && (e0 === E.VALLONE || (e0 === E.FAGGETA && vdWet(X0, Y0) > .25)) && r() < (e0 === E.VALLONE ? .35 : .1) * (low ? .5 : 1)) put('liana', r, X0 + (r() - .5) * .6, Y0 + (r() - .5) * .6, { rx: 0, rz: 0, col: tone('#e8f8d8', 1, X0, Y0) });
     }
     for (const [key, arr] of B) {
       const [sp, vi] = key.split('|'), geo = Gm[sp][+vi]; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, y0 = 1e9, y1 = -1e9;
       arr.forEach(o => { o.y = groundH(o.x, o.z) - .03; x0 = Math.min(x0, o.x); x1 = Math.max(x1, o.x); z0 = Math.min(z0, o.z); z1 = Math.max(z1, o.z); y0 = Math.min(y0, o.y); y1 = Math.max(y1, o.y + 2); });
       const g2 = geo.clone(); g2.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2 + 3);
-      const im = new THREE.InstancedMesh(g2, VD.mat, arr.length);
+      const im = new THREE.InstancedMesh(g2, vdMat(), arr.length);
       arr.forEach((o, k) => { vE.set(o.rx, o.ry, o.rz, 'YXZ'); vQ.setFromEuler(vE); vV.set(o.x, o.y, o.z); vS.set(o.s, o.s * o.sy, o.s); vM4.compose(vV, vQ, vS); im.setMatrixAt(k, vM4); im.setColorAt(k, vC.set(o.col || '#ffffff')); });
       im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
-      im.castShadow = !!VDSHADOW[sp] && !low; im.receiveShadow = false; grp.add(im);
+      im.castShadow = !!VDSHADOW[sp] && !low; im.receiveShadow = false; (sp[0] === 't' && sp[1] === sp[1].toUpperCase() ? tapG : grp).add(im);
     }
     return grp;
   }
-
   // ---------------- [verde] l'abete rosso (riferimento di Andrea): alto e stretto, palchi di rami che pendono a tende frangiate,
   // verde-giallo chiaro sulle punte e oliva scuro dentro, il tronco rossiccio nudo in basso. Sostituisce una parte dei pini del kit, a macchie.
   function abeteGeo(seed, H) {
@@ -3567,7 +3683,7 @@ var Render = (function () {
     for (let k = 0; k < 5; k++) { const ya = k / 5 * .97 * H, yb = (k + 1) / 5 * .97 * H, ra = R0 * (1 - ya / H * .92) + .02, rb = R0 * (1 - yb / H * .92) + .02, ca = vdL(H_('#5a3a2c'), H_('#7a5a44'), k / 5), cb = vdL(H_('#5a3a2c'), H_('#7a5a44'), (k + 1) / 5);
       for (let i = 0; i < SD; i++) { const a0 = i / SD * TAU, a1 = (i + 1) / SD * TAU; bw.quad([Math.cos(a0) * ra, ya, Math.sin(a0) * ra], [Math.cos(a1) * ra, ya, Math.sin(a1) * ra], [Math.cos(a1) * rb, yb, Math.sin(a1) * rb], [Math.cos(a0) * rb, yb, Math.sin(a0) * rb], ca, ca, cb, cb, 0, 0, yb / H * .3, yb / H * .3); } }
     // i palchi: rami corti in cima, lunghi in basso, che scendono e pendono
-    const y0 = .2 * H, y1 = .96 * H, NW = 15, cIn = H_('#24401a'), cMid = H_('#4a7a2a'), cOut = H_('#94bc48');
+    const y0 = .2 * H, y1 = .96 * H, NW = 18, cIn = H_('#24401a'), cMid = H_('#4a7a2a'), cOut = H_('#94bc48');
     for (let w = 0; w < NW; w++) {
       const t = w / (NW - 1), y = y0 + (y1 - y0) * t + (r() - .5) * .025 * H, L = .19 * H * Math.pow(1 - t, .85) + .025 * H, nb = t > .85 ? 4 : 6, rot = r() * TAU;
       for (let b = 0; b < nb; b++) {
@@ -3575,16 +3691,11 @@ var Render = (function () {
         const P = u => [dx * L * u, y + L * (.1 * u - droop * u * u), dz * L * u], sw = u => (y / H) * (.4 + u * 1.2);
         const tip = vdL(cOut, H_('#c0c460'), r() * .5), mid = vdL(cMid, cOut, r() * .3);
         bw.ribbon([P(0), P(.5), P(1)], .022 * H * (1 - t * .7) * .4, H_('#4a3428'), H_('#5a4232'), .2);
-        // il ventaglio lungo il ramo (si vede dall'alto)
-        const A = P(.12), Bp = P(1.02), w1 = L * .1, w2 = L * .32;
-        bl.quad([A[0] - px * w1, A[1], A[2] - pz * w1], [A[0] + px * w1, A[1], A[2] + pz * w1], [Bp[0] + px * w2, Bp[1] - L * .05, Bp[2] + pz * w2], [Bp[0] - px * w2, Bp[1] - L * .05, Bp[2] - pz * w2], cIn, cIn, tip, tip, sw(0), sw(0), sw(1), sw(1));
-        // le tende che pendono dal ramo, col bordo frangiato
-        for (const u of [.42, .74, 1]) {
-          const c = P(u), ww = L * .3 * (1.15 - u * .35), hh = L * .5 * (.55 + u * .5) * (.8 + r() * .4), o = L * .06;
-          const tL = [c[0] - px * ww, c[1], c[2] - pz * ww], tR = [c[0] + px * ww, c[1], c[2] + pz * ww];
-          const b1 = [c[0] - px * ww * .75 + dx * o, c[1] - hh * (.75 + r() * .2), c[2] - pz * ww * .75 + dz * o], b2 = [c[0] + dx * o * 1.6, c[1] - hh * (1.05 + r() * .15), c[2] + dz * o * 1.6], b3 = [c[0] + px * ww * .75 + dx * o, c[1] - hh * (.7 + r() * .25), c[2] + pz * ww * .75 + dz * o];
-          bl.tri(tL, tR, b2, mid, mid, tip, sw(u), sw(u), sw(u) * 1.4); bl.tri(tL, b2, b1, mid, tip, tip, sw(u), sw(u) * 1.4, sw(u) * 1.3); bl.tri(tR, b3, b2, mid, tip, tip, sw(u), sw(u) * 1.3, sw(u) * 1.4);
-        }
+        // la frasca lungo il ramo (texture degli aghi, cella 0), piegata come il ramo, e due frasche che pendono sotto
+        const tc = vdL(H_('#a8c890'), H_('#ffffff'), r() * .6);
+        bl.bent(P(.05), P(.55), P(1.04), L * .3, 0, H_('#7a9070'), tc, sw(0), sw(1), true);
+        for (const u of [.45, .8]) { const c = P(u), ww = L * .2, hh = L * .55 * (.7 + r() * .5), o = L * .08;
+          bl.card([c[0] - px * ww + dx * o, c[1] - hh, c[2] - pz * ww + dz * o], [c[0] + px * ww + dx * o, c[1] - hh, c[2] + pz * ww + dz * o], [c[0] + px * ww, c[1] + .02, c[2] + pz * ww], [c[0] - px * ww, c[1] + .02, c[2] - pz * ww], 0, tc, H_('#8aa080'), sw(u) * 1.4, sw(u)); }
       }
     }
     // la cima: una punta sottile e dritta
@@ -3600,21 +3711,45 @@ var Render = (function () {
       bw.ribbon([[dx * .02 * H, y, dz * .02 * H], [dx * L * .6, y - L * .1, dz * L * .6], [dx * L, y - L * .45, dz * L]], .012 * H * .3, H_('#8a8278'), H_('#a8a296'), .1); }
     return bw.build();
   }
-  function abeteModel(name) {
-    if (/^Abete_secco/.test(name)) { const pine = natModel('Pine_1'), H = pine && pine.top ? pine.top * 1.15 : 13, mw = natMat(null, false, '#fffffb'); mw.vertexColors = true; return { parts: [{ geo: seccoGeo(7311 + (+name.slice(-1) || 0) * 31, H), mat: mw, leafy: false }], top: H }; }
-    const v = +(name.split('_')[1] || 0), pine = natModel('Pine_1'), H = pine && pine.top ? pine.top * 1.08 : 12, g = abeteGeo(9001 + v * 77, H);
-    const mw = natMat(null, false, '#fffffc'); mw.vertexColors = true;
-    const ml = natMat(null, false, '#fffffd'); ml.vertexColors = true; ml.side = THREE.DoubleSide;
-    return { parts: [{ geo: g.wood, mat: mw, leafy: false }, { geo: g.leaf, mat: ml, leafy: true }], top: H };
+  // la betulla: fusto bianco con le macchie nere, rami fini che salgono e poi ricadono, chioma leggera di rametti a foglie (celle 4 e 14)
+  function betullaGeo(seed, H) {
+    const r = rng(seed), bw = vdB(false), bl = vdB(true), TAU = 6.2832, H_ = vdH, R0 = .016 * H, SD = 7, lean = (r() - .5) * .06 * H;
+    for (let k = 0; k < 10; k++) { const ya = k / 10 * .92 * H, yb = (k + 1) / 10 * .92 * H, ra = R0 * (1 - ya / H * .85) + .015, rb = R0 * (1 - yb / H * .85) + .015, ox = lean * k / 10, ox2 = lean * (k + 1) / 10;
+      for (let i = 0; i < SD; i++) { const a0 = i / SD * TAU, a1 = (i + 1) / SD * TAU, dark = r() < (k < 2 ? .6 : .22), ca = dark ? H_('#2a2624') : H_('#ece8e0'), cb = dark ? H_('#3a3430') : H_('#f4f0e8');
+        bw.quad([ox + Math.cos(a0) * ra, ya, Math.sin(a0) * ra], [ox + Math.cos(a1) * ra, ya, Math.sin(a1) * ra], [ox2 + Math.cos(a1) * rb, yb, Math.sin(a1) * rb], [ox2 + Math.cos(a0) * rb, yb, Math.sin(a0) * rb], ca, ca, cb, cb, 0, 0, yb / H * .2, yb / H * .2); } }
+    for (let k = 0; k < 16; k++) { const y = (.38 + r() * .55) * H, a = r() * TAU, L = (.12 + r() * .14) * H * (1.15 - y / H), dx = Math.cos(a), dz = Math.sin(a), o = lean * y / H;
+      const p0 = [o + dx * .02 * H, y, dz * .02 * H], p1 = [o + dx * L * .6, y + L * .55, dz * L * .6], p2 = [o + dx * L, y + L * .3, dz * L];
+      bw.ribbon([p0, p1, p2], .006 * H, H_('#d8d2c8'), H_('#5a4a3e'), .4);
+      for (let q = 0; q < 3; q++) { const t = .4 + q * .3, c = [p0[0] + (p2[0] - p0[0]) * t, p1[1] + (r() - .3) * L * .3, p0[2] + (p2[2] - p0[2]) * t], w = .05 * H, hh = .11 * H * (.7 + r() * .5), px = -dz, pz = dx;
+        bl.card([c[0] - px * w + dx * w * .3, c[1] - hh, c[2] - pz * w + dz * w * .3], [c[0] + px * w + dx * w * .3, c[1] - hh, c[2] + pz * w + dz * w * .3], [c[0] + px * w, c[1] + .05, c[2] + pz * w], [c[0] - px * w, c[1] + .05, c[2] - pz * w], r() < .6 ? 4 : 14, vdL(H_('#c8e0a0'), H_('#f0f8d0'), r()), H_('#ffffff'), y / H * 1.4, y / H * 1.1); } }
+    return { wood: bw.build(), leaf: bl.build() };
   }
-  // dove i pini del kit diventano abeti: a macchie larghe (le abetaie), mai il pino marittimo grande (Pine_5)
-  function abete38(res, tx, ty) {
-    const [name, s] = res; if (!VD.on || !/^Pine_[1-4]$/.test(name)) return res;
-    const k = vnz(tx * TS / 46 + 90, ty * TS / 46 + 90) + (th(tx, ty, 93) - .5) * .5;
-    if (k <= -.12) return res;
-    const q = th(tx, ty, 96);
-    if (q < .08) return ['Abete_secco' + Math.floor(th(tx, ty, 97) * 2), s * (.9 + th(tx, ty, 95) * .3)];   // abete morto in piedi
-    return ['Abete_' + Math.floor(th(tx, ty, 94) * 3), s * (q < .22 ? .4 + th(tx, ty, 95) * .25 : .9 + th(tx, ty, 95) * .3)];   // qualche abete giovane
+  function abeteModel(name) {
+    if (/^Betulla_/.test(name)) { const pine = natModel('Pine_1'), H = pine && pine.top ? pine.top * .95 : 10, g = betullaGeo(5101 + (+name.slice(-1) || 0) * 53, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: vdMat(), leafy: true }], top: H }; }
+    if (/^Abete_secco/.test(name)) { const pine = natModel('Pine_1'), H = pine && pine.top ? pine.top * 1.15 : 13; return { parts: [{ geo: seccoGeo(7311 + (+name.slice(-1) || 0) * 31, H), mat: vdMat(), leafy: false }], top: H }; }
+    const v = +(name.split('_')[1] || 0), pine = natModel('Pine_1'), H = pine && pine.top ? pine.top * 1.08 : 12, g = abeteGeo(9001 + v * 77, H);
+    return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: vdMat(), leafy: true }], top: H };
+  }
+  // l'albero di una casella secondo l'ambiente (letto mescolato: ai bordi le specie si alternano). [nome, scala, inclinazione]
+  function eco38(tx, ty, r) {
+    const W0 = M.world, E = (W0 && W0.ECO) || {}; if (!VD.on || !W0 || !W0.eco) return natTree(tx, ty, r);
+    const X = tx * TS + 1, Y = ty * TS + 1, e = vdEcoMix(X, Y, 1), q = th(tx, ty, 96), k = th(tx, ty, 97), sc = th(tx, ty, 95), pk = (a) => a[Math.floor(k * a.length) % a.length];
+    const AB = () => q < .06 ? ['Abete_secco' + (k < .5 ? 0 : 1), .9 + sc * .3] : ['Abete_' + Math.floor(k * 3), q < .16 ? .4 + sc * .25 : .9 + sc * .35];
+    const OAK = (s0) => [pk(['CommonTree_1', 'CommonTree_2', 'CommonTree_3', 'CommonTree_4', 'CommonTree_5']), s0 + sc * .25];
+    switch (e) {
+      case E.ABETAIA: return q < .94 ? AB() : ['Pine_3', .9 + sc * .3];
+      case E.FAGGETA: return q < .82 ? OAK(.72) : q < .92 ? ['Betulla_' + Math.floor(k * 3), .85 + sc * .25] : AB();
+      case E.VALLONE: return q < .65 ? OAK(.8) : AB();
+      case E.PINETA: return q < .72 ? ['Pine_5', .9 + sc * .35] : ['Pine_2', .85 + sc * .3];
+      case E.MACCHIA: return q < .8 ? [pk(['TwistedTree_1', 'TwistedTree_2', 'TwistedTree_3', 'TwistedTree_4', 'TwistedTree_5']), .26 + sc * .1] : ['Pine_5', .55 + sc * .2, -.12];
+      case E.FARO: return ['Pine_5', .6 + sc * .25, -.18 - sc * .12];   // piegati dal vento di ponente
+      case E.PASCOLO: return q < .6 ? [pk(['TwistedTree_1', 'TwistedTree_2', 'TwistedTree_4']), .36 + sc * .12] : OAK(.8);
+      case E.RADURA: case E.RUDERALE: return q < .75 ? OAK(.85) : ['Betulla_' + Math.floor(k * 3), .9 + sc * .2];
+      case E.RIPARIALE: return q < .55 ? OAK(.5) : ['Betulla_' + Math.floor(k * 3), .8 + sc * .2];
+      case E.BETULLE: return q < .9 ? ['Betulla_' + Math.floor(k * 3), .8 + sc * .35] : AB();
+      case E.PINIMONTE: return [pk(['Pine_1', 'Pine_2', 'Pine_3', 'Pine_4']), .85 + sc * .35];
+      default: return natTree(tx, ty, r);
+    }
   }
 
   function buildBuildings() {
