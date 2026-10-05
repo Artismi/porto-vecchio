@@ -901,7 +901,7 @@ var Oggetti = (function () {
   function sub(bag, id, q) { bag[id] = r1((bag[id] || 0) - q); if (bag[id] <= 0) delete bag[id]; }
   // quanto si porta addosso
   function weightOf(bag) { return Object.entries(bag || {}).reduce((s, [k, v]) => s + (CAT[k] ? CAT[k].peso * v : .5 * v), 0); }
-  function capacity(st) { const b = inv(st); let c = 30; if (cnt(b, 'zaino')) c += CAT.zaino.bag; if (st.player.hand === 'carriola') c += 100; return c; }
+  function capacity(st) { const b = inv(st); let c = 30; if (cnt(b, 'zaino') || worn(st).spalle === 'zaino') c += CAT.zaino.bag; if (st.player.hand === 'carriola') c += 100; return c; }
   // le armi del motore: chi compra o trova una pistola la ha tra le armi, non in tasca
   function giveWeapon(st, id, q) {
     const p = st.player, w = CAT[id] && CAT[id].wpn; if (!w || !G.WEAPONS[w]) return false;
@@ -1474,7 +1474,7 @@ var Oggetti = (function () {
     // cosa compra la bottega da te: quello che vende lei (il mercato nero: anche la roba che scotta)
     const buys = Object.keys(b).filter(g => CAT[g] && cnt(b, g) > 0 && (Sh.sells[g] || (Sh.black && (CAT[g].ill || CAT[g].prezzo >= 6)))).map(g => ({ g, name: nm(g), q: cnt(b, g), price: sellPrice(st, Sh, g) }));
     const Lg = luoghi(st)[k], ck = Lg ? clerk(st, Lg) : null;
-    return { k, label: Sh.label, clerk: ck ? ck.first : null, open: isOpen(st, Lg), emporio: !!Sh.emporio, black: !!Sh.black, market: !!Sh.market, cash: Math.floor(tillOf(st, Sh)), goods, buys, wallet: st.player.money, peso: r1(weightOf(b)), cap: capacity(st) };
+    return { k, label: Sh.label, clerk: ck ? ck.first : null, clerkId: ck ? ck.id : null, open: isOpen(st, Lg), emporio: !!Sh.emporio, black: !!Sh.black, market: !!Sh.market, cash: Math.floor(tillOf(st, Sh)), goods, buys, wallet: st.player.money, peso: r1(weightOf(b)), cap: capacity(st) };
   }
   function tillOf(st, Sh) { if (So && st.soldi) { const T = So.till(st, So.ditta(st, Sh.t)); return T ? (T.cash || 0) : (Sh.cash || 0); } return Sh.cash || 0; }
   function tillMove(st, Sh, x) { if (So && st.soldi) { const D = So.ditta(st, Sh.t), T = So.till(st, D); if (T) { T.cash = (T.cash || 0) + x; if (x > 0) D.rev = (D.rev || 0) + x; return; } } Sh.cash = (Sh.cash || 0) + x; }
@@ -1697,6 +1697,37 @@ var Oggetti = (function () {
   })();
 
   // =====================================================================================================================
+  // ADDOSSO: i vestiti si indossano, ognuno al suo posto; la mano sinistra tiene un oggetto (la destra è quella del motore: arma o attrezzo)
+  // Quello che hai addosso non pesa nella borsa, scalda (calore), e lo zaino sulle spalle porta 20 kg in più.
+  // =====================================================================================================================
+  const WEAR = {
+    testa: ['berretto', 'elmetto', 'passamontagna', 'maschera_gas'], collo: ['sciarpa'],
+    busto: ['maglione', 'vestiti', 'tuta', 'divisa'], sopra: ['cappotto', 'giacca_pelle', 'giubbotto', 'impermeabile', 'coperta'],
+    mani: ['guanti_lana', 'guanti'], gambe: ['jeans', 'calze_nylon'], piedi: ['scarpe', 'stivali'], spalle: ['zaino'],
+  };
+  const SLOTNAME = { testa: 'testa', collo: 'collo', busto: 'maglia', sopra: 'giacca', mani: 'mani', gambe: 'gambe', piedi: 'piedi', spalle: 'spalle', sx: 'mano sinistra' };
+  const SLOT_OF = {}; Object.entries(WEAR).forEach(([k, l]) => l.forEach(id => { if (CAT[id]) SLOT_OF[id] = k; }));
+  const worn = st => { const M = S(st); M.worn = M.worn || {}; return M.worn; };
+  const canHold = id => !!CAT[id] && !SLOT_OF[id] && CAT[id].peso <= 2 && !CAT[id].st;
+  function wear(st, id) {
+    const slot = SLOT_OF[id]; if (!slot) return R_(false, 'Non si indossa.');
+    const b = inv(st); if (!cnt(b, id)) return R_(false, 'Non ce l\'hai.');
+    const W = worn(st), old = W[slot]; sub(b, id, 1); if (old) add(b, old, 1); W[slot] = id;
+    return R_(true, `Indossi ${nm(id)}${old ? ` al posto di ${nm(old)}` : ''}.`);
+  }
+  function unwear(st, slot) {
+    const W = worn(st), id = W[slot]; if (!id) return R_(false, 'Lì non hai niente.');
+    delete W[slot]; add(inv(st), id, 1); return R_(true, slot === 'sx' ? `Metti via ${nm(id)}.` : `Ti togli ${nm(id)}.`);
+  }
+  function hold(st, id) {
+    if (!canHold(id)) return R_(false, 'In mano non ci sta, o va indossato.');
+    const b = inv(st); if (!cnt(b, id)) return R_(false, 'Non ce l\'hai.');
+    const W = worn(st), old = W.sx; sub(b, id, 1); if (old) add(b, old, 1); W.sx = id; return R_(true, `Nella sinistra: ${nm(id)}.`);
+  }
+  const warmth = st => Math.round(Object.entries(worn(st)).reduce((s, [k, id]) => s + (k !== 'sx' && CAT[id] && CAT[id].calore || 0), 0) * 100) / 100;
+  function wornView(st) { const W = worn(st); return { slots: Object.keys(SLOTNAME).map(k => ({ slot: k, label: SLOTNAME[k], id: W[k] || null, nome: W[k] ? nm(W[k]) : '' })), calore: warmth(st) }; }
+
+  // =====================================================================================================================
   // LE AZIONI DEL GIOCATORE (QUI, ADESSO)
   // =====================================================================================================================
   function here(st) {
@@ -1725,6 +1756,9 @@ var Oggetti = (function () {
       case 'prendi': { const C = contByRef(st, arg); if (!C) return R_(false, 'Non c\'è niente da frugare qui.'); if (C.locked) return R_(false, 'È chiuso.'); return takeFrom(st, C, ex.g, ex.q); }
       case 'prendi_tutto': { const C = contByRef(st, arg); if (!C || C.locked) return R_(false, 'Non si può.'); const msgs = []; for (const v of contView(st, C).filter(v => v.src !== 'shop' || ex.shop)) { const r = takeFrom(st, C, v.id, v.q); if (r.ok) msgs.push(r.msg); if (/ti ha visto/.test(r.msg)) break; } return R_(!!msgs.length, msgs.join(' ') || 'Non ti sta più niente addosso.'); }
       case 'posa': { const C = contByRef(st, arg); if (!C) return R_(false, 'Non qui.'); return putInto(st, C, ex.g, ex.q); }
+      case 'indossa': return wear(st, arg);
+      case 'togli': return unwear(st, arg);
+      case 'tieni': return hold(st, arg);
       case 'scambia': return barter(st, arg, ex);
       case 'cerca': return search(st);
       case 'borseggia': return pickpocket(st, arg);
@@ -1798,7 +1832,7 @@ var Oggetti = (function () {
     return { stats: M.stats, vuoti: empty.length, esempiVuoti: empty.slice(0, 12), laboratori: work, mancanze: E.missing };
   }
   return { CAT, GROUPS, RECIPES, STATIONS, FURN2ST, SHOPLIST, LOOT, ROOM_LOOT, SPOT_LOOT, BUILD, JOBPROD, S, nm, inv, givePlayer, weightOf, capacity, stationsHere, containersHere, recipesView, craft, consume,
-    luoghi, luogoHere, staffIndoor, clerk, isOpen, search, pickpocket, scatterInit, lootables, TIERS, tier,
+    WEAR, SLOT_OF, SLOTNAME, wear, unwear, hold, canHold, warmth, wornView, luoghi, luogoHere, staffIndoor, clerk, isOpen, search, pickpocket, scatterInit, lootables, TIERS, tier,
     counter, buy, sell, barterView, barter, frugaView, contByRef, pocketsView, here, act, report, produceHour, supply, householdDay, prime };
 })();
 if (typeof module !== 'undefined') module.exports = Oggetti;

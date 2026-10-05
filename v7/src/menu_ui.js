@@ -141,126 +141,190 @@ var MenuUI = (function () {
     r(wall, 0, 0, W0, H0); for (let y = 0; y < 52; y += 4) r(sh(wall, .9), 0, y, W0, 1);
     for (const sy of [12, 26, 40]) { r('#6a4a2c', 4, sy, W0 - 8, 2); for (let i = 0; i < 18; i++) { const hh = hash(label + sy + i); if (hh % 5 === 0) continue; const c = `hsl(${hh % 360},${40 + hh % 30}%,${40 + (hh >>> 3) % 25}%)`; r(c, 6 + i * 5, sy - 3 - (hh % 3), 3, 3 + (hh % 3)); } }
     r('#e8d040', 30, 1, 60, 8); r('#20181a', 31, 2, 58, 6);   // insegna
-    // la persona
-    const skin = ['#e0b090', '#c89070', '#a87050', '#f0c8a8'][(h >>> 3) % 4], hair = ['#2a2024', '#5a3a2a', '#9a9aa0', '#c8b088', '#1a1418'][(h >>> 5) % 5], apron = ['#a8b0b8', '#8a3a3a', '#3a5a8a', '#5a6a3a', '#e8e0d0'][(h >>> 7) % 5];
-    const cx = 60;
-    r('#4a4e5a', cx - 14, 46, 28, 24); r(apron, cx - 9, 50, 18, 20); r(sh(apron, .8), cx - 9, 50, 18, 1);
-    r(skin, cx - 7, 30, 14, 15); r(sh(skin, .85), cx + 3, 31, 4, 13); r(hair, cx - 8, 26, 16, 6); r(hair, cx - 8, 30, 2, 6);
-    r('#1a1418', cx - 4, 36, 2, 2); r('#1a1418', cx + 2, 36, 2, 2);
-    if ((h >>> 9) % 2) r(hair === '#9a9aa0' ? '#c8c8cc' : hair, cx - 4, 41, 8, 2); else r(sh(skin, .7), cx - 2, 42, 4, 1);
-    if ((h >>> 10) % 3 === 0) { r('#2a2a2e', cx - 6, 35, 5, 3); r('#2a2a2e', cx + 1, 35, 5, 3); r('#6a8aa0', cx - 5, 36, 3, 1); r('#6a8aa0', cx + 2, 36, 3, 1); }
-    r(skin, cx - 18, 62, 6, 4); r(skin, cx + 12, 62, 6, 4);
     // il bancone col registratore
     r('#6a4a2c', 0, 66, W0, 14); r('#8a6238', 0, 66, W0, 2); r('#4a3220', 0, 79, W0, 1);
     r('#c8c0a8', 8, 56, 16, 10); r('#2a2a2e', 10, 58, 12, 3); r('#6ad860', 11, 59, 6, 1); r('#a8a090', 8, 64, 16, 2);
     r('#d8d0c0', 92, 60, 8, 6); r('#e8c040', 104, 62, 6, 4);
   }
 
+
+  // =====================================================================================================================
+  // RITRATTI 3D: i personaggi veri del gioco (Models.person), con i vestiti che hai addosso. Si girano trascinando.
+  // =====================================================================================================================
+  const PLOOK = { skin: '#dcae88', top: '#8c2f24', bottom: '#34425f', hair: '#17110e', hat: 'none', build: 1.05, extra: '' };
+  const WCOL = { maglione: '#7a3a2a', vestiti: '#5a6a7a', tuta: '#3a5a7a', divisa: '#4a5060', cappotto: '#3a3e4a', giacca_pelle: '#2a1c16', giubbotto: '#3a4a2e', impermeabile: '#8a7a4a', coperta: '#6a5a4a', jeans: '#2e4a7a', calze_nylon: '#2a2024' };
+  const R3 = { r: null, sc: {}, t: 0, drag: null };
+  const ready3 = () => !!(window.THREE && window.Models && Models.charsReady && Models.charsReady());
+  function lookOf(st, key) {
+    if (key === 'player') { const W = O().wornView ? Object.fromEntries(O().wornView(st).slots.map(s => [s.slot, s.id])) : {}; return [Object.assign({}, PLOOK, { top: WCOL[W.sopra] || WCOL[W.busto] || PLOOK.top, bottom: WCOL[W.gambe] || PLOOK.bottom }), 'player']; }
+    const n = G().byId(st, key.slice(4)); if (!n) return [null, null]; return [n.look || {}, n.cop || n.military ? 'cop' : null];
+  }
+  const FRAME = { full: { fov: 24, cam: [0, 1.0, 4.9], at: [0, .9, 0] }, bust: { fov: 26, cam: [0, 1.52, 1.75], at: [0, 1.45, 0] }, banco: { fov: 28, cam: [0, 1.35, 3.6], at: [0, 1.22, 0] } };
+  function scene3(st, key, frame) {
+    const [look, who] = lookOf(st, key); if (!look) return null; const sig = key + frame + JSON.stringify(look);
+    let e = R3.sc[key + frame]; if (e && e.sig === sig) return e;
+    const T = THREE, sc = new T.Scene(), g = Models.person(look, who); if (!g) return null;
+    sc.add(new T.HemisphereLight('#e9dcbc', '#1f3a34', .75)); const d = new T.DirectionalLight('#ffe8c8', .8); d.position.set(-1.5, 3, 3); sc.add(d); const rim = new T.DirectionalLight('#b08d57', .9); rim.position.set(2, 2, -3); sc.add(rim);
+    if (g.userData.shadowC) g.userData.shadowC.visible = frame === 'full';
+    sc.add(g);
+    if (frame === 'banco') { const cnt = new T.Mesh(new T.BoxGeometry(4, .92, .5), new T.MeshLambertMaterial({ color: '#3e2a1a' })); cnt.position.set(0, .46, .75); sc.add(cnt); const top = new T.Mesh(new T.BoxGeometry(4.05, .05, .6), new T.MeshLambertMaterial({ color: '#6a4a2c' })); top.position.set(0, .94, .75); sc.add(top); }
+    const F = FRAME[frame] || FRAME.full, cam = new T.PerspectiveCamera(F.fov, 1, .05, 30); cam.position.set(...F.cam); cam.lookAt(...F.at);
+    e = R3.sc[key + frame] = { sig, sc, g, cam, rot: e ? e.rot : (frame === 'full' ? -.35 : -.15) };
+    return e;
+  }
+  function draw3(now) {
+    requestAnimationFrame(draw3);
+    const dt = Math.min(.05, (now - (R3.t || now)) / 1000); R3.t = now;
+    const m = $('mu'), st = ST(); if (!U.open || !m || !st || !ready3()) return;
+    const cvs = m.querySelectorAll('canvas.r3'); if (!cvs.length) return;
+    if (!R3.r) { R3.r = new THREE.WebGLRenderer({ alpha: true, antialias: true }); R3.r.setClearColor(0x000000, 0); }
+    const p = st.player;
+    cvs.forEach(cv => {
+      const key = cv.dataset.r3, e = scene3(st, key, cv.dataset.frame || 'full'); if (!e) return;
+      e.g.rotation.y = e.rot;
+      try { if (key === 'player') Models.animPerson(e.g, { speed: 0, weapon: p.cur && p.cur !== 'pugni' ? p.cur : null, held: p.hand }, dt); else if (e.g.userData.mixer) e.g.userData.mixer.update(dt); } catch (x) { if (e.g.userData.mixer) e.g.userData.mixer.update(dt); }
+      const w = cv.width, h = cv.height; if (R3.r.domElement.width !== w || R3.r.domElement.height !== h) R3.r.setSize(w, h, false);
+      e.cam.aspect = w / h; e.cam.updateProjectionMatrix(); R3.r.render(e.sc, e.cam);
+      const x = cv.getContext('2d'); x.clearRect(0, 0, w, h); x.drawImage(R3.r.domElement, 0, 0);
+    });
+  }
+  if (typeof window !== 'undefined') requestAnimationFrame(draw3);
+  const r3 = (key, frame, w, h, css) => ready3() ? `<canvas class="r3" data-r3="${esc(key)}" data-frame="${frame}" width="${w}" height="${h}" style="${css || ''}"></canvas>` : (key === 'player' ? '<canvas class="fig" width="32" height="64" data-fig="1"></canvas>' : '');
   // =====================================================================================================================
   // STILE
   // =====================================================================================================================
   const CSS = `
-#mu { position: absolute; inset: 0; z-index: 64; display: none; background: radial-gradient(ellipse at 50% 40%, rgba(30,28,36,.82), rgba(6,6,10,.94)); color: #d8d4cc; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+#mu { --notte: #0D1015; --mad1: #1F3A34; --mad2: #2B2A3A; --verde: #3A5A50; --vetro: #0F1B19; --ott: #B08D57; --crema: #E9DCBC; --neon: #FF5FA2; --cem: #8D8F8C; --rug: #9B3B2E;
+  --fs: 'Instrument Serif', Georgia, 'Times New Roman', serif; --ft: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif; --fl: 'Saira Condensed', 'Arial Narrow', system-ui, sans-serif;
+  position: absolute; inset: 0; z-index: 64; display: none; color: var(--crema); font-family: var(--ft); background: linear-gradient(90deg, rgba(13,16,21,.0), rgba(13,16,21,.55) 18%, rgba(13,16,21,.55) 82%, rgba(13,16,21,0)); }
 #mu.on { display: block; }
-#mu .case { position: absolute; inset: 18px 22px; display: grid; grid-template-columns: 84px 1fr; border-radius: 10px; padding: 10px;
-  background: linear-gradient(#2a2826, #1c1a1a); box-shadow: 0 0 0 1px #4a4640, inset 0 0 0 1px #0c0b0c, 0 20px 60px rgba(0,0,0,.6); }
-#mu .case::before { content: ''; position: absolute; left: 50%; top: -9px; width: 120px; height: 12px; margin-left: -60px; border-radius: 6px 6px 0 0; background: #2a2826; box-shadow: 0 0 0 1px #4a4640; }
-#mu .rail { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 6px 0; }
-#mu .rail button { position: relative; background: #24221f; border: 1px solid #3a3632; border-radius: 4px; color: #a8a090; cursor: pointer; padding: 8px 0 6px; display: grid; justify-items: center; gap: 4px; font: 700 9.5px system-ui; letter-spacing: .08em; text-transform: uppercase; }
-#mu .rail button canvas { width: 40px; height: 40px; image-rendering: pixelated; }
-#mu .rail button:hover { border-color: #6a645a; color: #e8e4dc; }
-#mu .rail button.on { background: #e8d040; border-color: #e8d040; color: #16161b; }
-#mu .rail button .dot { position: absolute; right: 5px; top: 5px; min-width: 15px; height: 15px; border-radius: 8px; background: #e04a4a; color: #fff; font-size: 9px; line-height: 15px; text-align: center; padding: 0 3px; }
+/* il dispositivo: madreperla scura, cornice di verderame, rivetti d'ottone; la città resta visibile ai lati */
+#mu .case { position: absolute; inset: 22px max(22px, calc(50% - 640px)); display: grid; grid-template-columns: 92px 1fr; gap: 10px; padding: 12px; border-radius: 22px;
+  background: linear-gradient(135deg, rgba(31,58,52,.94), rgba(43,42,58,.94) 55%, rgba(31,58,52,.94)); box-shadow: 0 0 0 1px var(--verde), 0 0 0 4px rgba(13,16,21,.8), 0 0 0 5px rgba(176,141,87,.35), 0 30px 80px rgba(0,0,0,.55); }
+#mu .case::before, #mu .case::after { content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #e8cf98, var(--ott) 55%, #5a4628); top: 9px; left: 9px; box-shadow: 0 calc(100vh - 80px) 0 0 transparent; }
+#mu .case::after { left: auto; right: 9px; }
+#mu .rail { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; align-items: center; }
+#mu .rail button { position: relative; width: 74px; height: 74px; border-radius: 50%; cursor: pointer; display: grid; place-items: center; align-content: center; gap: 2px; color: var(--crema); padding: 0;
+  font: 600 11px/1 var(--fl); letter-spacing: .14em; text-transform: uppercase; border: 1px solid rgba(233,220,188,.18);
+  background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.14), transparent 45%), linear-gradient(135deg, #24443c, #2e2c40 50%, #24443c); background-size: 100% 100%, 220% 220%; transition: background-position .5s, transform .08s, box-shadow .2s; }
+#mu .rail button canvas { width: 30px; height: 30px; image-rendering: pixelated; opacity: .85; }
+#mu .rail button:hover { background-position: 0 0, 100% 100%; border-color: rgba(233,220,188,.4); }
+#mu .rail button:active { transform: translateY(1px) scale(.98); }
+#mu .rail button.on { box-shadow: inset 0 2px 6px rgba(0,0,0,.5), 0 0 0 2px var(--ott); border-color: transparent; }
+#mu .rail button .dot { position: absolute; right: 2px; top: 2px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--neon); color: var(--notte); font: 700 11px/18px var(--fl); text-align: center; padding: 0 4px; letter-spacing: 0; }
 #mu .rail .sp { flex: 1; }
-#mu .in { position: relative; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; background: #141316; border-radius: 6px; box-shadow: inset 0 0 0 1px #050506, inset 0 2px 12px rgba(0,0,0,.6); }
-#mu header { display: flex; align-items: center; gap: 16px; padding: 14px 22px 10px; border-bottom: 1px solid #222024; }
-#mu header b { white-space: nowrap; font: 800 15px system-ui; letter-spacing: .22em; color: #f2ead8; text-transform: uppercase; }
-#mu header span { color: #8a8690; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; } #mu header .tabs { flex-wrap: wrap; overflow: visible; }
-#mu header .tabs { display: flex; gap: 4px; margin-left: 10px; }
-#mu header .x { margin-left: auto; width: 30px; height: 30px; border: 1px solid #3a3a42; background: none; color: #aaa; cursor: pointer; font-size: 16px; border-radius: 3px; } #mu header .x:hover { border-color: #e8d040; color: #e8d040; }
-#mu main { min-height: 0; overflow: auto; padding: 16px 22px; }
-#mu footer { display: flex; align-items: center; gap: 20px; padding: 9px 22px 11px; border-top: 1px solid #222024; font: 600 11px system-ui; letter-spacing: .08em; color: #8a8690; text-transform: uppercase; }
-#mu footer kbd { font: 700 9px system-ui; border: 1px solid #77707a; color: #c8c0b0; padding: 2px 6px; border-radius: 9px; margin-right: 5px; }
-#mu footer .r { margin-left: auto; display: flex; gap: 18px; align-items: center; } #mu footer .r b { color: #e8d040; } #mu footer .over { color: #e0604a; }
-#mu .msg { position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); background: #1c1b1e; border: 1px solid #e8d040; color: #e8e4dc; padding: 7px 14px; font-size: 13px; max-width: 70%; text-align: center; pointer-events: none; } #mu .msg.no { border-color: #e0604a; }
-#mu h4 { margin: 0 0 10px; font: 700 10.5px system-ui; letter-spacing: .16em; text-transform: uppercase; color: #8a8690; }
-#mu .dim { color: #8a8690; font-size: 12.5px; line-height: 1.5; }
+#mu .in { position: relative; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; border-radius: 14px; background: var(--vetro); box-shadow: inset 0 0 0 1px rgba(58,90,80,.6), inset 0 10px 30px rgba(0,0,0,.45); }
+#mu header { display: flex; align-items: baseline; gap: 16px; padding: 16px 26px 10px; }
+#mu header b { font: 400 34px/1 var(--fs); color: var(--crema); white-space: nowrap; }
+#mu header span { font: 400 15px var(--fs); font-style: italic; color: rgba(233,220,188,.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#mu header .tabs { display: flex; gap: 6px; flex-wrap: wrap; align-self: center; margin-left: 6px; font-style: normal; overflow: visible; }
+#mu header .x { margin-left: auto; align-self: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(233,220,188,.25); background: none; color: var(--crema); cursor: pointer; font-size: 17px; } #mu header .x:hover { border-color: var(--ott); }
+#mu main { min-height: 0; overflow: auto; padding: 8px 26px 18px; scrollbar-color: var(--verde) transparent; }
+#mu footer { white-space: nowrap; overflow: hidden; display: flex; align-items: center; gap: 18px; padding: 10px 26px 13px; font: 600 11.5px var(--fl); letter-spacing: .16em; color: rgba(233,220,188,.5); text-transform: uppercase; border-top: 1px solid rgba(58,90,80,.45); }
+#mu footer kbd { font: 600 10.5px var(--fl); border: 1px solid rgba(233,220,188,.3); color: var(--crema); padding: 1px 7px; border-radius: 10px; margin-right: 6px; }
+#mu footer .r { margin-left: auto; display: flex; gap: 20px; align-items: center; } #mu footer .r b { color: var(--crema); font-weight: 700; } #mu footer .over { color: var(--neon); }
+#mu footer .tm { color: var(--ott); }
+#mu .msg { position: absolute; left: 50%; bottom: 50px; transform: translateX(-50%); background: var(--mad2); border: 1px solid var(--ott); color: var(--crema); padding: 8px 16px; border-radius: 18px; font-size: 14px; max-width: 70%; text-align: center; pointer-events: none; } #mu .msg.no { border-color: var(--neon); }
+#mu h4 { margin: 0 0 10px; font: 600 12px var(--fl); letter-spacing: .2em; text-transform: uppercase; color: rgba(233,220,188,.5); }
+#mu .dim { color: rgba(233,220,188,.6); font-size: 13.5px; line-height: 1.5; }
 #mu .ic { image-rendering: pixelated; }
-#mu button.b { background: none; border: 1px solid #5a5560; color: #e8e4dc; font: 700 11px system-ui; letter-spacing: .1em; padding: 7px 12px; cursor: pointer; text-transform: uppercase; border-radius: 2px; }
-#mu button.b:hover { border-color: #e8d040; color: #e8d040; } #mu button.b[disabled] { color: #55505a; border-color: #2e2e36; cursor: default; }
-#mu button.b.y { background: #e8d040; border-color: #e8d040; color: #16161b; } #mu button.b.y:hover { background: #fff070; }
-#mu button.b.bad { border-color: #7a3a3a; color: #e8a0a0; } #mu button.b.bad:hover { border-color: #e04a4a; color: #ff8a8a; }
-#mu button.pill { background: #201f22; border: 1px solid #34323a; color: #a8a4a0; font: 700 10.5px system-ui; letter-spacing: .1em; padding: 5px 10px; cursor: pointer; text-transform: uppercase; border-radius: 12px; }
-#mu button.pill.on { background: #e8d040; color: #16161b; border-color: #e8d040; }
-/* zaino: la valigetta */
-#mu .zaino { display: grid; grid-template-columns: auto minmax(240px, 300px) minmax(200px, 250px); gap: 26px; align-items: start; }
-#mu .bag { --c: 48px; position: relative; display: grid; grid-template-columns: repeat(10, var(--c)); grid-auto-rows: var(--c); padding: 6px; border-radius: 4px;
-  background-color: #1b1a1d; background-image: linear-gradient(#2a282c 1px, transparent 1px), linear-gradient(90deg, #2a282c 1px, transparent 1px); background-size: var(--c) var(--c); background-position: 6px 6px; box-shadow: inset 0 0 0 1px #2e2c30; }
-#mu .tile { position: relative; margin: 2px; background: linear-gradient(#26242a, #1e1d21); border: 1px solid #3a3740; border-radius: 3px; cursor: pointer; display: grid; place-items: center; padding: 0; }
-#mu .tile:hover { border-color: #8a8070; } #mu .tile.sel { border-color: #e8d040; box-shadow: 0 0 0 1px #e8d040, 0 0 12px rgba(232,208,64,.25); }
-#mu .tile canvas { width: 32px; height: 32px; } #mu .tile.w canvas { width: 64px; height: 32px; } #mu .tile.big canvas { width: 64px; height: 64px; } #mu .tile.big.w canvas { width: 128px; height: 64px; }
-#mu .tile .q { position: absolute; right: 4px; bottom: 1px; font: 700 12px system-ui; color: #f2ead8; text-shadow: 0 1px 0 #000; }
-#mu .tile .on { position: absolute; left: 4px; top: 3px; width: 6px; height: 6px; border-radius: 50%; background: #e8d040; }
-#mu .tile.ill { border-top-color: #c84a3a; } #mu .tile.no { opacity: .38; } #mu .tile .wear { position: absolute; left: 4px; right: 4px; bottom: 3px; height: 2px; background: #3a3a42; } #mu .tile .wear b { display: block; height: 100%; background: #6ad860; }
-#mu .tile .pr { position: absolute; left: 0; right: 0; bottom: -1px; font: 700 10px system-ui; color: #e8d040; text-align: center; text-shadow: 0 1px 0 #000; }
-#mu .det { background: #1b1a1d; border: 1px solid #2e2c30; border-radius: 4px; padding: 14px; display: grid; gap: 10px; }
-#mu .det .hd { display: grid; grid-template-columns: 84px 1fr; gap: 12px; align-items: center; }
-#mu .det .pic { width: 84px; height: 84px; background: #141316; border: 1px solid #2e2c30; border-radius: 3px; display: grid; place-items: center; } #mu .det .pic canvas { width: 64px; height: 64px; }
-#mu .det .pic.w canvas { width: 76px; height: 38px; }
-#mu .det .nm { font: 800 17px system-ui; color: #e8d040; letter-spacing: .02em; } #mu .det .ct { font: 700 10px system-ui; letter-spacing: .14em; color: #8a8690; text-transform: uppercase; margin-top: 3px; }
-#mu .det .ds { font-size: 13px; color: #b8b4ac; line-height: 1.5; } #mu .det .row { display: flex; gap: 6px; flex-wrap: wrap; }
-#mu .stat { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font: 700 10.5px system-ui; letter-spacing: .08em; color: #a8a4a0; text-transform: uppercase; } #mu .stat em { font-style: normal; color: #e8e4dc; }
-#mu .stat i { grid-column: 1 / 3; height: 3px; background: #2e2c34; } #mu .stat i b { display: block; height: 100%; background: #a8a4a0; } #mu .stat i b.g { background: #6ad860; } #mu .stat i b.w { background: #e8b040; } #mu .stat i b.r { background: #e05050; }
-#mu .who { display: grid; gap: 12px; justify-items: center; }
-#mu .who canvas.fig { width: 160px; height: 320px; image-rendering: pixelated; }
-#mu .slots { display: grid; grid-template-columns: repeat(3, 56px); gap: 6px; } #mu .slot { width: 56px; height: 56px; border: 1px solid #3a3740; background: #1b1a1d; border-radius: 3px; display: grid; place-items: center; position: relative; cursor: pointer; }
-#mu .slot canvas { width: 48px; height: 24px; } #mu .slot.on { border-color: #e8d040; } #mu .slot .q { position: absolute; right: 3px; bottom: 1px; font: 700 10px system-ui; color: #e8e4dc; } #mu .slot.e { cursor: default; opacity: .4; }
-/* personaggio */
-#mu .pg { display: grid; grid-template-columns: 220px 1fr 1fr; gap: 26px; align-items: start; }
-#mu .card { background: #1b1a1d; border: 1px solid #2e2c30; border-radius: 4px; padding: 14px; display: grid; gap: 10px; align-content: start; }
-#mu .card .big { font: 800 20px system-ui; color: #f2ead8; } #mu .card .y { color: #e8d040; }
-#mu .ab { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: center; padding: 8px; background: #161518; border: 1px solid #2a282c; border-radius: 3px; }
-#mu .ab canvas { width: 32px; height: 32px; } #mu .ab b { display: block; font-size: 13px; color: #e8e4dc; } #mu .ab small { color: #8a8690; font-size: 11.5px; }
-/* banco di lavoro */
-#mu .lav { display: grid; grid-template-columns: 1fr minmax(280px, 340px); gap: 22px; align-items: start; }
-#mu .recs { display: grid; grid-template-columns: repeat(auto-fill, 76px); gap: 6px; }
-#mu .rec { width: 76px; height: 84px; background: linear-gradient(#26242a, #1e1d21); border: 1px solid #3a3740; border-radius: 3px; cursor: pointer; display: grid; grid-template-rows: 50px 1fr; justify-items: center; align-items: center; padding: 4px 3px; }
-#mu .rec canvas { width: 40px; height: 40px; } #mu .rec span { font-size: 10px; line-height: 1.15; color: #b8b4ac; text-align: center; overflow: hidden; max-height: 2.3em; }
-#mu .rec { position: relative; } #mu .rec.ok { border-color: #8a8a3a; } #mu .rec.ok::after { content: '✓'; position: absolute; right: 4px; top: 2px; font: 700 11px system-ui; color: #8ad860; } #mu .rec.no { opacity: .45; } #mu .rec.sel { border-color: #e8d040; box-shadow: 0 0 0 1px #e8d040; }
-#mu .ing { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
-#mu .ing div { display: grid; grid-template-columns: 34px 1fr; gap: 6px; align-items: center; background: #161518; border: 1px solid #2a282c; padding: 4px 6px; border-radius: 3px; font-size: 12px; }
-#mu .ing canvas { width: 32px; height: 32px; } #mu .ing .y { color: #8ad860; } #mu .ing .n { color: #e0806a; } #mu .ing .t { color: #8ab0e8; }
-/* bottega */
-#mu .shop { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 22px; align-items: start; }
-#mu .shop .scene { width: 100%; aspect-ratio: 120 / 80; image-rendering: pixelated; border: 2px solid #3a2a20; border-radius: 4px; background: #2a2020; }
-#mu .sc { position: relative; } #mu .sc .sign { position: absolute; left: 25.8%; width: 48.4%; top: 2.6%; height: 7.4%; display: grid; place-items: center; font: 800 clamp(8px, 1vw, 12px) system-ui; letter-spacing: .12em; text-transform: uppercase; color: #e8d040; white-space: nowrap; overflow: hidden; }
-#mu .bubble { position: relative; background: #f2ead8; color: #201c1a; padding: 10px 12px; border-radius: 4px; font-size: 13.5px; line-height: 1.4; margin-top: 10px; }
-#mu .bubble::before { content: ''; position: absolute; left: 40%; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: #f2ead8; }
-#mu .bubble b { display: block; font: 800 10px system-ui; letter-spacing: .14em; text-transform: uppercase; color: #8a3a2a; margin-bottom: 3px; }
-#mu .goods { display: grid; grid-template-columns: repeat(auto-fill, 64px); grid-auto-rows: 70px; gap: 6px; margin-top: 12px; }
-#mu .goods .tile { margin: 0; } #mu .goods .tile canvas { width: 36px; height: 36px; margin-bottom: 10px; } #mu .goods .tile.w canvas { width: 56px; height: 28px; }
-#mu .goods .grp { grid-column: 1 / -1; font: 700 10px system-ui; letter-spacing: .14em; color: #6a6670; text-transform: uppercase; align-self: end; }
-/* lavori e qui adesso */
-#mu .jobs { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 22px; align-items: start; }
-#mu .list { display: grid; gap: 4px; }
-#mu .li { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; background: #1b1a1d; border: 1px solid #2a282c; border-radius: 3px; padding: 6px 10px; cursor: pointer; font-size: 13px; }
-#mu .li:hover { border-color: #5a5660; } #mu .li.sel { border-color: #e8d040; } #mu .li canvas { width: 32px; height: 32px; } #mu .li small { display: block; color: #8a8690; font-size: 11.5px; } #mu .li .r { text-align: right; font-size: 12px; color: #c8c0b0; } #mu .li .r b { color: #e8d040; }
-#mu .li.off { opacity: .5; }
-#mu .acts { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
-#mu .act { display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; text-align: left; background: linear-gradient(#24222a, #1c1b20); border: 1px solid #3a3740; border-radius: 4px; padding: 10px; cursor: pointer; color: #e8e4dc; font: 600 13.5px system-ui; }
-#mu .act:hover { border-color: #e8d040; } #mu .act canvas { width: 40px; height: 40px; } #mu .act small { display: block; font-weight: 400; color: #8a8690; font-size: 11.5px; margin-top: 2px; } #mu .act.bad { border-left: 3px solid #c84a3a; } #mu .act[disabled] { opacity: .45; cursor: default; } #mu .act[disabled]:hover { border-color: #3a3740; }
-/* frugare */
-#mu .fr2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
-#mu .loot { display: grid; grid-template-columns: repeat(auto-fill, 76px); grid-auto-rows: 84px; gap: 6px; } #mu .loot .tile { grid-template-rows: 48px 1fr; padding: 4px 3px; } #mu .loot .tile em { font-style: normal; font-size: 10px; line-height: 1.15; color: #b8b4ac; text-align: center; overflow: hidden; max-height: 2.3em; }
-#mu .loot .tile { margin: 0; } #mu .loot .tile canvas { width: 40px; height: 40px; } #mu .loot .tile .q { top: 3px; bottom: auto; } #mu .loot .tile.t-buono { border-color: #6a9a4a; } #mu .loot .tile.t-raro { border-color: #4a7ac8; } #mu .loot .tile.t-prezioso { border-color: #e8c040; box-shadow: 0 0 10px rgba(232,192,64,.3); } #mu .loot .tile.shop { border-style: dashed; }
-@media (max-width: 1220px) { #mu .zaino { grid-template-columns: auto 1fr; } #mu .zaino .who { display: none; } #mu .pg { grid-template-columns: 1fr 1fr; } #mu .pg .who { display: none; } }
-@media (max-width: 900px) { #mu .case { inset: 6px; grid-template-columns: 62px 1fr; } #mu .rail button canvas { width: 30px; height: 30px; } #mu .rail button { font-size: 8px; } #mu .zaino, #mu .lav, #mu .shop, #mu .jobs, #mu .fr2, #mu .pg { grid-template-columns: 1fr; } #mu .bag { --c: 34px; } #mu footer .k { display: none; } }
+#mu .link { color: var(--neon); cursor: pointer; text-decoration: none; border-bottom: 1px dotted rgba(255,95,162,.5); } #mu .link:hover { border-bottom-style: solid; }
+/* tasti: pillole di madreperla; selezionato = anello d'ottone; il rosa solo per il pericolo */
+#mu button.b { cursor: pointer; border-radius: 20px; padding: 8px 18px; color: var(--crema); font: 600 13px var(--fl); letter-spacing: .16em; text-transform: uppercase; border: 1px solid rgba(233,220,188,.22);
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.12), transparent 50%), linear-gradient(120deg, #24443c, #2e2c40 50%, #24443c); background-size: 100% 100%, 220% 220%; transition: background-position .5s, transform .08s; }
+#mu button.b:hover { background-position: 0 0, 100% 100%; border-color: rgba(233,220,188,.45); } #mu button.b:active { transform: translateY(1px); }
+#mu button.b[disabled] { opacity: .35; cursor: default; background-position: 0 0; }
+#mu button.b.y { box-shadow: 0 0 0 2px var(--ott); border-color: transparent; }
+#mu button.b.bad { color: var(--neon); border-color: rgba(255,95,162,.35); }
+#mu button.pill { cursor: pointer; border-radius: 14px; padding: 4px 12px; background: none; border: 1px solid rgba(233,220,188,.2); color: rgba(233,220,188,.7); font: 600 12px var(--fl); letter-spacing: .14em; text-transform: uppercase; }
+#mu button.pill.on { color: var(--crema); box-shadow: 0 0 0 2px var(--ott); border-color: transparent; }
+/* la Roba: la borsa rovesciata su un piano (marciapiede, tavolo del covo) */
+#mu .zaino { display: grid; grid-template-columns: auto minmax(230px, 1fr) 300px; gap: 26px; align-items: start; }
+#mu .bag { --c: 48px; position: relative; display: grid; grid-template-columns: repeat(8, var(--c)); grid-auto-rows: var(--c); padding: 14px; border-radius: 10px; }
+#mu .bag.strada { background: radial-gradient(ellipse at 40% 30%, rgba(255,200,140,.07), transparent 60%), repeating-linear-gradient(0deg, transparent 0 49px, rgba(0,0,0,.35) 49px 50px), repeating-linear-gradient(90deg, transparent 0 99px, rgba(0,0,0,.3) 99px 100px), linear-gradient(#3a3d40, #2c2f33); box-shadow: inset 0 0 0 1px rgba(0,0,0,.4), inset 0 -30px 60px rgba(0,0,0,.35); }
+#mu .bag.covo { background: radial-gradient(ellipse at 45% 25%, rgba(255,200,120,.16), transparent 60%), repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0 2px, transparent 2px 61px), linear-gradient(#5a3e2a, #3e2a1c); box-shadow: inset 0 0 0 2px #2a1c12, inset 0 -30px 60px rgba(0,0,0,.35); }
+#mu .tile { position: relative; margin: 3px; border: 0; background: none; cursor: pointer; display: grid; place-items: center; padding: 0; border-radius: 8px; transition: transform .12s; }
+#mu .tile::before { content: ''; position: absolute; inset: 18% 10% 4%; border-radius: 50%; background: radial-gradient(ellipse, rgba(0,0,0,.45), transparent 70%); transform: translateY(30%); }
+#mu .tile canvas { position: relative; width: 36px; height: 36px; } #mu .tile.w canvas { width: 76px; height: 38px; } #mu .tile.big canvas { width: 72px; height: 72px; } #mu .tile.big.w canvas { width: 140px; height: 70px; }
+#mu .tile:hover { transform: translateY(-3px); } #mu .tile.sel { box-shadow: 0 0 0 2px var(--ott); background: rgba(176,141,87,.08); }
+#mu .tile .q { position: absolute; right: 3px; bottom: 0; font: 700 13px var(--fl); color: var(--crema); text-shadow: 0 1px 2px #000; }
+#mu .tile .on { position: absolute; left: 4px; top: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--ott); }
+#mu .tile.ill .q, #mu .tile.ill::after { color: var(--neon); } #mu .tile.ill::after { content: '•'; position: absolute; right: 4px; top: 0; font-size: 16px; }
+#mu .tile.no { opacity: .35; } #mu .tile .wear { position: absolute; left: 8px; right: 8px; bottom: 2px; height: 2px; background: rgba(0,0,0,.4); } #mu .tile .wear b { display: block; height: 100%; background: var(--crema); opacity: .7; }
+#mu .tile .pr { position: absolute; left: 0; right: 0; bottom: 0; font: 700 12px var(--fl); letter-spacing: .04em; color: var(--crema); text-align: center; text-shadow: 0 1px 2px #000; }
+#mu .det { display: grid; gap: 12px; align-content: start; }
+#mu .det .hd { display: grid; grid-template-columns: 92px 1fr; gap: 14px; align-items: center; }
+#mu .det .pic { width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, rgba(233,220,188,.1), transparent 60%), rgba(31,58,52,.5); box-shadow: inset 0 0 0 1px rgba(58,90,80,.8); } #mu .det .pic canvas { width: 60px; height: 60px; } #mu .det .pic.w canvas { width: 78px; height: 39px; }
+#mu .det .nm { font: 400 30px/1.05 var(--fs); color: var(--crema); } #mu .det .ct { font: 600 11.5px var(--fl); letter-spacing: .18em; color: rgba(233,220,188,.5); text-transform: uppercase; margin-top: 4px; }
+#mu .det .ds { font-size: 14.5px; color: rgba(233,220,188,.8); line-height: 1.5; } #mu .det .row { display: flex; gap: 8px; flex-wrap: wrap; }
+#mu .stat { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font: 600 11.5px var(--fl); letter-spacing: .14em; color: rgba(233,220,188,.55); text-transform: uppercase; } #mu .stat em { font-style: normal; color: var(--crema); }
+#mu .stat i { grid-column: 1 / 3; height: 2px; background: rgba(233,220,188,.12); border-radius: 1px; } #mu .stat i b { display: block; height: 100%; background: var(--crema); opacity: .75; } #mu .stat i b.r { background: var(--neon); opacity: 1; } #mu .stat i b.w { background: var(--ott); opacity: 1; } #mu .stat i b.g { background: var(--crema); }
+#mu .who { display: grid; gap: 10px; justify-items: center; }
+#mu .who .nmw { font: 400 30px var(--fs); }
+#mu .dress { display: grid; grid-template-columns: 56px 1fr 56px; gap: 6px; align-items: center; width: 100%; }
+#mu .dress .col { display: grid; gap: 10px; }
+#mu .ws { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; position: relative; background: rgba(31,58,52,.45); box-shadow: inset 0 0 0 1px rgba(58,90,80,.8); font: 600 9.5px var(--fl); letter-spacing: .12em; text-transform: uppercase; color: rgba(233,220,188,.35); text-align: center; line-height: 1.1; }
+#mu .ws.full { cursor: pointer; box-shadow: inset 0 0 0 1px rgba(176,141,87,.7); background: radial-gradient(circle at 35% 30%, rgba(233,220,188,.12), transparent 60%), rgba(31,58,52,.6); } #mu .ws.full:hover { box-shadow: 0 0 0 2px var(--ott); }
+#mu .ws canvas { width: 34px; height: 34px; } #mu .ws.w canvas { width: 44px; height: 22px; } #mu .ws.lit { box-shadow: 0 0 0 2px var(--ott); }
+#mu .hands { display: flex; gap: 14px; justify-content: center; } #mu .hands .ws { width: 64px; height: 64px; } #mu .hands label { display: grid; gap: 4px; justify-items: center; font: 600 10px var(--fl); letter-spacing: .14em; text-transform: uppercase; color: rgba(233,220,188,.5); }
+#mu canvas.r3 { display: block; cursor: grab; } #mu canvas.r3:active { cursor: grabbing; }
+#mu canvas.fig { width: 140px; height: 280px; image-rendering: pixelated; }
+#mu .slots { display: flex; gap: 8px; } #mu .slot { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; position: relative; cursor: pointer; background: rgba(31,58,52,.5); box-shadow: inset 0 0 0 1px rgba(58,90,80,.8); }
+#mu .slot canvas { width: 40px; height: 20px; } #mu .slot.on { box-shadow: 0 0 0 2px var(--ott); } #mu .slot .q { position: absolute; right: 0; bottom: -2px; font: 700 11px var(--fl); color: var(--crema); } #mu .slot.e { cursor: default; opacity: .4; }
+/* Chi è */
+#mu .pg { display: grid; grid-template-columns: 260px 1fr 1fr; gap: 30px; align-items: start; }
+#mu .mcard { display: grid; gap: 10px; align-content: start; padding: 4px 0 14px; border-bottom: 1px solid rgba(58,90,80,.45); }
+#mu .mcard .big { font: 400 30px/1.05 var(--fs); color: var(--crema); } #mu .mcard .y { font: italic 400 17px var(--fs); color: rgba(233,220,188,.7); }
+#mu .ab { display: grid; grid-template-columns: 38px 1fr; gap: 12px; align-items: center; padding: 6px 0; }
+#mu .ab canvas { width: 32px; height: 32px; } #mu .ab b { display: block; font: 400 19px var(--fs); color: var(--crema); } #mu .ab small { color: rgba(233,220,188,.55); font-size: 12.5px; }
+#mu .fr3 { display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: center; padding: 6px 0; } #mu .fr3 canvas { width: 64px; height: 64px; border-radius: 50%; background: rgba(31,58,52,.5); }
+#mu .fr3 b { font: 400 20px var(--fs); font-weight: 400; } #mu .fr3 small { display: block; color: rgba(233,220,188,.55); font-size: 12.5px; }
+/* Banco e Quaderno */
+#mu .lav { display: grid; grid-template-columns: 1fr minmax(300px, 360px); gap: 28px; align-items: start; }
+#mu .recs { display: grid; grid-template-columns: repeat(auto-fill, 84px); gap: 4px; padding: 14px; border-radius: 10px; background: radial-gradient(ellipse at 45% 20%, rgba(255,200,120,.12), transparent 60%), repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0 2px, transparent 2px 70px), linear-gradient(#4e3826, #36261a); box-shadow: inset 0 0 0 2px #2a1c12; }
+#mu .rec { position: relative; width: 84px; height: 88px; background: none; border: 0; border-radius: 8px; cursor: pointer; display: grid; grid-template-rows: 52px 1fr; justify-items: center; align-items: center; padding: 4px 3px; color: var(--crema); }
+#mu .rec canvas { width: 40px; height: 40px; filter: drop-shadow(0 4px 3px rgba(0,0,0,.5)); } #mu .rec span { font: 500 11.5px/1.15 var(--ft); color: rgba(233,220,188,.85); text-align: center; overflow: hidden; max-height: 2.3em; }
+#mu .rec:hover { background: rgba(255,255,255,.04); } #mu .rec.no { opacity: .35; } #mu .rec.sel { box-shadow: 0 0 0 2px var(--ott); }
+#mu .rec.ok::after { content: ''; position: absolute; right: 7px; top: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--ott); }
+#mu .ing { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px 14px; }
+#mu .ing div { display: grid; grid-template-columns: 36px 1fr; gap: 8px; align-items: center; font-size: 13px; }
+#mu .ing canvas { width: 32px; height: 32px; } #mu .ing .y { color: var(--crema); } #mu .ing .n { color: var(--neon); } #mu .ing .t { color: var(--ott); }
+/* Bottega: il commerciante vero dietro il banco */
+#mu .shop { display: grid; grid-template-columns: minmax(300px, 400px) 1fr; gap: 28px; align-items: start; }
+#mu .sc { position: relative; border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(58,90,80,.8); }
+#mu .shop .scene { width: 100%; aspect-ratio: 120 / 80; image-rendering: pixelated; display: block; filter: saturate(.7) brightness(.85); }
+#mu .sc canvas.r3 { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; }
+#mu .sc .sign { position: absolute; left: 25.8%; width: 48.4%; top: 2.6%; height: 7.4%; display: grid; place-items: center; font: 600 clamp(9px, 1vw, 13px) var(--fl); letter-spacing: .16em; text-transform: uppercase; color: var(--crema); white-space: nowrap; overflow: hidden; z-index: 2; }
+#mu .bubble { position: relative; padding: 12px 2px 0; font: italic 400 21px/1.3 var(--fs); color: var(--crema); }
+#mu .bubble b { display: block; font: 600 11.5px var(--fl); font-style: normal; letter-spacing: .2em; text-transform: uppercase; color: rgba(233,220,188,.5); margin-bottom: 4px; }
+#mu .goods { display: grid; grid-template-columns: repeat(auto-fill, 70px); grid-auto-rows: 74px; gap: 4px; margin-top: 18px; }
+#mu .goods .tile canvas { width: 38px; height: 38px; margin-bottom: 12px; } #mu .goods .tile.w canvas { width: 60px; height: 30px; }
+#mu .goods .grp { grid-column: 1 / -1; font: 600 12px var(--fl); letter-spacing: .2em; color: rgba(233,220,188,.45); text-transform: uppercase; align-self: end; }
+/* Lavori e Qui */
+#mu .jobs { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 28px; align-items: start; }
+#mu .list { display: grid; gap: 0; }
+#mu .li { display: grid; grid-template-columns: 36px 1fr auto; gap: 12px; align-items: center; padding: 9px 6px; border-bottom: 1px solid rgba(58,90,80,.35); cursor: pointer; font-size: 14px; }
+#mu .li:hover { background: rgba(255,255,255,.03); } #mu .li.sel { box-shadow: inset 3px 0 0 var(--ott); } #mu .li canvas { width: 32px; height: 32px; }
+#mu .li .t { font: 400 19px var(--fs); } #mu .li small { display: block; color: rgba(233,220,188,.55); font-size: 12.5px; } #mu .li .r { text-align: right; font: 600 13px var(--fl); letter-spacing: .06em; color: rgba(233,220,188,.65); } #mu .li .r b { color: var(--crema); }
+#mu .li.off { opacity: .45; }
+#mu .acts { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+#mu .act { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center; text-align: left; cursor: pointer; color: var(--crema); font: 400 19px/1.15 var(--fs); padding: 12px 16px; border-radius: 30px; border: 1px solid rgba(233,220,188,.18);
+  background: radial-gradient(circle at 20% 10%, rgba(255,255,255,.08), transparent 50%), linear-gradient(120deg, #22403a, #2b2a3a 50%, #22403a); background-size: 100% 100%, 220% 220%; transition: background-position .5s; }
+#mu .act:hover { background-position: 0 0, 100% 100%; border-color: rgba(233,220,188,.4); } #mu .act canvas { width: 36px; height: 36px; } #mu .act small { display: block; font: 400 12.5px var(--ft); color: rgba(233,220,188,.55); margin-top: 3px; }
+#mu .act.bad { border-color: rgba(255,95,162,.4); } #mu .act[disabled] { opacity: .4; cursor: default; }
+/* Frugare */
+#mu .fr2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+#mu .loot { display: grid; grid-template-columns: repeat(auto-fill, 80px); grid-auto-rows: 88px; gap: 4px; padding: 14px; border-radius: 10px; background: linear-gradient(#2c2f33, #24272b); box-shadow: inset 0 0 0 1px rgba(0,0,0,.4); }
+#mu .loot .tile { grid-template-rows: 50px 1fr; padding: 4px 3px; margin: 0; } #mu .loot .tile canvas { width: 40px; height: 40px; } #mu .loot .tile em { position: relative; font: 500 11.5px/1.15 var(--ft); font-style: normal; color: rgba(233,220,188,.85); text-align: center; overflow: hidden; max-height: 2.3em; }
+#mu .loot .tile .q { top: 3px; bottom: auto; } #mu .loot .tile.t-raro .q, #mu .loot .tile.t-prezioso em { color: var(--ott); } #mu .loot .tile.shop em { color: var(--neon); }
+@media (max-width: 1240px) { #mu .zaino { grid-template-columns: auto 1fr; } #mu .zaino .who { display: none; } #mu .pg { grid-template-columns: 220px 1fr; } #mu .pg > :last-child { grid-column: 1 / -1; } }
+@media (max-width: 900px) { #mu .case { inset: 6px; grid-template-columns: 64px 1fr; } #mu .rail button { width: 56px; height: 56px; font-size: 9px; } #mu .rail button canvas { width: 22px; height: 22px; } #mu .zaino, #mu .lav, #mu .shop, #mu .jobs, #mu .fr2, #mu .pg { grid-template-columns: 1fr; } #mu .bag { --c: 34px; } #mu footer .k { display: none; } }
 `;
 
   // =====================================================================================================================
   // SCHEDE
   // =====================================================================================================================
-  const TABS = [['zaino', 'Zaino', 'zaino'], ['pg', 'Nino', 'maglione'], ['lavora', 'Banco', 'martello'], ['lavori', 'Lavori', 'chiave_inglese'], ['qui', 'Qui', 'mappa']];
+  const TABS = [['zaino', 'Roba', 'zaino'], ['pg', 'Chi è', 'maglione'], ['lavora', 'Banco', 'martello'], ['lavori', 'Lavori', 'chiave_inglese'], ['qui', 'Qui', 'mappa']];
   const CTX = { bottega: ['Bottega', 'moneta_shop'], fruga: ['Frugare', 'casse'] };
   function mount() {
     if ($('mu')) return true;
@@ -268,6 +332,9 @@ var MenuUI = (function () {
     const css = document.createElement('style'); css.textContent = CSS; document.head.appendChild(css);
     const m = document.createElement('div'); m.id = 'mu'; m.setAttribute('role', 'dialog'); app.appendChild(m);
     m.addEventListener('click', onClick); m.addEventListener('dblclick', onDbl);
+    m.addEventListener('pointerdown', e => { const c = e.target.closest('canvas.r3'); if (c) R3.drag = { k: c.dataset.r3 + (c.dataset.frame || 'full'), x: e.clientX }; });
+    addEventListener('pointermove', e => { if (!R3.drag) return; const E = R3.sc[R3.drag.k]; if (E) E.rot += (e.clientX - R3.drag.x) * .012; R3.drag.x = e.clientX; });
+    addEventListener('pointerup', () => { R3.drag = null; });
     return true;
   }
   function open(tab, arg) {
@@ -276,10 +343,11 @@ var MenuUI = (function () {
     if (typeof SoldiUI !== 'undefined' && SoldiUI.state && SoldiUI.state.open) try { SoldiUI.close(); } catch (e) { }
     if (U.tab !== tab || U.arg !== arg) U.sel = null;
     U.open = true; U.tab = tab || 'zaino'; U.arg = arg === undefined ? null : arg; U.msg = ''; U.sig = ''; if (tab === 'bottega') U.shopTab = 'compra';
-    if (PV().ui) PV().ui.menu = true;
+    if (PV().ui) { PV().ui.menu = true; PV().ui.menuSlow = !inCovo(ST()); }   // in strada il mondo rallenta, nel covo si ferma
     $('mu').classList.add('on'); render(true);
   }
-  function close() { U.open = false; const m = $('mu'); if (m) m.classList.remove('on'); if (PV() && PV().ui) PV().ui.menu = false; const cv = $('cv'); if (cv) cv.focus(); }
+  const inCovo = st => { if (!st) return false; const p = st.player; return !!O().pocketsView(st).base || !!(p.indoor && G().BUILDINGS[p.indoor.b] && G().BUILDINGS[p.indoor.b].playerHome); };
+  function close() { U.open = false; const m = $('mu'); if (m) m.classList.remove('on'); if (PV() && PV().ui) { PV().ui.menu = false; PV().ui.menuSlow = false; } const cv = $('cv'); if (cv) cv.focus(); }
   function toggle(tab) { if (U.open && (!tab || U.tab === tab)) close(); else open(tab || 'zaino'); }
   function say(r) { if (!r) return r; const m = typeof r === 'string' ? r : r.msg; if (m) { U.msg = m; U.ok = typeof r === 'string' ? true : r.ok !== false; U.msgT = Date.now(); } return r; }
   const act = (id, arg, ex) => say(O().act(ST(), id, arg, ex));
@@ -289,13 +357,13 @@ var MenuUI = (function () {
     const st = ST(); if (!st || !U.open) return;
     let body = '', title = '', sub = '', tabs = '';
     try {
-      if (U.tab === 'zaino') [title, sub, body] = ['Zaino', 'quello che hai addosso', pZaino(st)];
-      else if (U.tab === 'pg') [title, sub, body] = ['Personaggio', '', pPg(st)];
-      else if (U.tab === 'lavora') { const v = O().recipesView(st); title = 'Banco di lavoro'; sub = v.stations.length ? `qui: ${v.stations.join(', ')}` : 'nessuna postazione: solo quello che si fa a mano'; tabs = KINDS.map(([k, l]) => `<button class="pill ${U.filt === k ? 'on' : ''}" data-a="filt" data-x='"${k}"'>${l} ${v.list.filter(r => (k === 'tutto' || r.kind === k) && r.ok).length}</button>`).join(''); body = pLavora(st, v); }
+      if (U.tab === 'zaino') [title, sub, body] = ['Roba', inCovo(st) ? 'sul tavolo del covo' : 'rovesciata sul marciapiede', pZaino(st)];
+      else if (U.tab === 'pg') [title, sub, body] = ['Chi è', 'Nino', pPg(st)];
+      else if (U.tab === 'lavora') { const v = O().recipesView(st); title = 'Banco'; sub = v.stations.length ? `qui: ${v.stations.join(', ')}` : 'nessuna postazione: solo quello che si fa a mano'; tabs = KINDS.map(([k, l]) => `<button class="pill ${U.filt === k ? 'on' : ''}" data-a="filt" data-x='"${k}"'>${l} ${v.list.filter(r => (k === 'tutto' || r.kind === k) && r.ok).length}</button>`).join(''); body = pLavora(st, v); }
       else if (U.tab === 'lavori') [title, sub, body] = ['Lavori', '', pLavori(st)];
       else if (U.tab === 'qui') [title, sub, body] = ['Qui, adesso', G().nearestPlace ? G().nearestPlace(st.player.x, st.player.y).name : '', pQui(st)];
       else if (U.tab === 'bottega') { const c = O().counter(st, U.arg); if (!c) { open('zaino'); return; } title = c.label; sub = c.emporio ? 'prezzi del regime' : c.black ? 'mercato nero: tutto, a prezzo doppio' : c.market ? 'mercato' : ''; tabs = ['compra', 'vendi'].map(t => `<button class="pill ${U.shopTab === t ? 'on' : ''}" data-a="shoptab" data-x='"${t}"'>${t === 'compra' ? 'Compra' : `Vendi ${c.buys.length}`}</button>`).join(''); body = pBottega(st, c); }
-      else if (U.tab === 'fruga') { const v = O().frugaView(st, U.arg); if (!v) { close(); return; } title = 'Frugare'; sub = v.label; body = pFruga(st, v); }
+      else if (U.tab === 'fruga') { const v = O().frugaView(st, U.arg); if (!v) { close(); return; } title = 'Fruga'; sub = v.label; body = pFruga(st, v); }
     } catch (e) { body = `<div class="dim">Qualcosa non va: ${esc(e.message)}</div>`; console.error('[Menu]', e); }
     const pv = O().pocketsView(st), over = pv.peso > pv.cap;
     const rail = TABS.map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="tab" data-x='"${k}"'>${ic(ico)}${l}${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
@@ -304,8 +372,8 @@ var MenuUI = (function () {
     const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
       <header><b>${esc(title)}</b><span>${esc(sub)}</span><span class="tabs">${tabs}</span><button class="x" data-a="close" aria-label="Chiudi">×</button></header>
       <main>${body}</main>
-      <footer><span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>banco</span><span class="k"><kbd>1-5</kbd>schede</span><span class="k"><kbd>2×</kbd>usa</span><span class="k"><kbd>Esc</kbd>gioco</span>
-        <span class="r"><span class="${over ? 'over' : ''}">${pv.peso} / ${pv.cap} kg${over ? ' · troppo peso' : ''}</span><span>in tasca <b>${L(pv.money)}</b> lire</span></span></footer>
+      <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span><span class="k"><kbd>I</kbd>roba</span><span class="k"><kbd>K</kbd>banco</span><span class="k"><kbd>Esc</kbd>gioco</span>
+        <span class="r"><span class="${over ? 'over' : ''}">${pv.peso}/${pv.cap} kg${over ? ' · troppo peso' : ''}</span><span>in tasca <b>${L(pv.money)}</b> lire</span></span></footer>
       ${showMsg ? `<div class="msg ${U.ok ? '' : 'no'}">${esc(U.msg)}</div>` : ''}</div></div>`;
     if (!force && html === U.sig) return; U.sig = html;
     const m = $('mu'), sc = m.querySelector('main') ? m.querySelector('main').scrollTop : 0;
@@ -328,20 +396,22 @@ var MenuUI = (function () {
     return { put, rows: Math.max(6, grid.length) };
   }
   function pZaino(st) {
-    const { pv, items } = bagItems(st), P = pack(items, 10);
+    const { pv, items } = bagItems(st), P = pack(items, 8);
     if (!U.sel || !items.some(i => i.id === U.sel)) U.sel = items[0] ? items[0].id : null;
     const sel = items.find(i => i.id === U.sel);
     const tiles = P.put.map(o => { const i = o.it, wide = o.w === 2 && o.h === 1, big = o.h === 2;
       return `<button class="tile ${wide ? 'w' : ''} ${big ? 'big' : ''} ${i.id === U.sel ? 'sel' : ''} ${i.ill ? 'ill' : ''}" style="grid-column:${o.x + 1}/span ${o.w};grid-row:${o.y + 1}/span ${o.h}" data-a="sel" data-x="${esc(JSON.stringify(i.id))}" title="${esc(i.nome)}">${ic(i.id, wide ? 32 : 16)}${i.on ? '<span class="on"></span>' : ''}${i.q != null && i.q > 1 ? `<span class="q">${i.q}</span>` : ''}${i.tool != null ? `<span class="wear"><b style="width:${i.tool}%"></b></span>` : ''}</button>`; }).join('');
     const p = st.player, hand = p.hand || (p.cur !== 'pugni' ? p.cur : '');
-    const arms = Object.keys(p.arms || {}).filter(k => k !== 'pugni').slice(0, 5);
-    const need = st.me && st.me.need ? st.me.need : {};
-    const who = `<div class="who"><h4>Nino</h4><canvas class="fig" width="32" height="64" data-fig="1"></canvas>
-      <div class="slots">${[hand].concat(arms.filter(a => a !== hand)).slice(0, 6).map((a, k) => a ? `<div class="slot ${a === hand ? 'on' : ''}" data-a="equip" data-x="${esc(JSON.stringify(a))}" title="${esc(a)}">${ic(a, 32)}${p.arms[a] && p.arms[a].mag != null ? `<span class="q">${p.arms[a].mag}</span>` : ''}</div>` : `<div class="slot e" title="mani libere">${ic('pugni', 32)}</div>`).join('')}</div>
-      <div style="width:100%;display:grid;gap:8px">${bar('Salute', p.hp, p.maxHp || 100, 'g')}${bar('Fame', (need.fame || 0) * 100, 100, 'w', true)}${bar('Sete', pv.sete * 100, 100, 'w', true)}</div></div>`;
-    return `<div class="zaino"><div><div class="bag" style="grid-template-rows:repeat(${P.rows},var(--c))">${tiles}</div>
-        <div class="dim" style="margin-top:8px">${items.length} cose · ${pv.peso} kg su ${pv.cap}${pv.base ? ` · sei alla base ${esc(pv.base.name)}` : ''}</div>
-        ${pv.base ? `<div style="margin-top:8px">${btn('deposita', 'Lascia tutto in base', { id: '*' })}</div>` : ''}</div>
+    const need = st.me && st.me.need ? st.me.need : {}, WV = O().wornView ? O().wornView(st) : { slots: [], calore: 0 }, WS = Object.fromEntries(WV.slots.map(x => [x.slot, x]));
+    const ws = k => { const x = WS[k]; if (!x) return ''; const lit = sel && O().SLOT_OF && O().SLOT_OF[sel.id] === k; return x.id ? `<div class="ws full ${lit ? 'lit' : ''}" data-a="togli" data-x='"${k}"' title="${esc(cap(x.nome))} — clic per togliere">${ic(x.id)}</div>` : `<div class="ws ${lit ? 'lit' : ''}">${esc(x.label)}</div>`; };
+    const sx = WS.sx && WS.sx.id;
+    const who = `<div class="who"><div class="nmw">Addosso</div>
+      <div class="dress"><div class="col">${['testa', 'collo', 'busto', 'sopra'].map(ws).join('')}</div><div style="display:grid;place-items:center">${r3('player', 'full', 360, 600, 'width:180px;height:300px')}</div><div class="col">${['mani', 'gambe', 'piedi', 'spalle'].map(ws).join('')}</div></div>
+      <div class="hands"><label><div class="ws ${hand ? 'full w' : ''}" ${hand ? `data-a="libera" title="clic: mani libere"` : ''}>${hand ? ic(hand, 32) : 'vuota'}</div>destra</label><label><div class="ws ${sx ? 'full' : ''}" ${sx ? `data-a="togli" data-x='"sx"' title="clic: metti via"` : ''}>${sx ? ic(sx) : 'vuota'}</div>sinistra</label></div>
+      <div style="width:100%;display:grid;gap:8px">${bar('Salute', p.hp, p.maxHp || 100, 'g')}${bar('Fame', (need.fame || 0) * 100, 100, 'w', true)}${bar('Sete', pv.sete * 100, 100, 'w', true)}<div class="stat" style="grid-template-columns:1fr auto"><span>Caldo addosso</span><em>${Math.round(WV.calore * 100)}</em></div></div></div>`;
+    return `<div class="zaino"><div><div class="bag ${inCovo(st) ? 'covo' : 'strada'}" style="grid-template-rows:repeat(${P.rows},var(--c))">${tiles}</div>
+        <div class="dim" style="margin-top:8px">${items.length} cose · ${pv.peso} kg su ${pv.cap}. Quello che indossi non pesa nella borsa.</div>
+        ${pv.base ? `<div style="margin-top:10px">${btn('deposita', 'Tutto al covo', { id: '*' })}</div>` : ''}</div>
       <div class="det">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Tasche vuote.</div>'}</div>${who}</div>`;
   }
   function bar(l, v, max, cls, inv) { const f = Math.max(0, Math.min(1, v / max)), c = inv ? (f > .85 ? 'r' : f > .6 ? 'w' : '') : (f < .25 ? 'r' : f < .5 ? 'w' : cls || ''); return `<div class="stat"><span>${esc(l)}</span><em>${Math.round(v)}${max === 100 ? '%' : ''}</em><i><b class="${c}" style="width:${Math.round(f * 100)}%"></b></i></div>`; }
@@ -361,9 +431,11 @@ var MenuUI = (function () {
     const acts = [];
     if (i.eq) acts.push(btn('equip', i.on ? 'In mano' : 'Impugna', i.id, i.on ? '' : 'y', i.on));
     if (i.eat) acts.push(btn('usa', /bevande/.test(i.cat) ? 'Bevi' : 'Mangia', { id: i.id }, 'y'));
-    if (c && pv.base) acts.push(btn('deposita', 'In base', { id: i.id, q: i.q }));
+    if (O().SLOT_OF && O().SLOT_OF[i.id]) acts.push(btn('indossa', 'Indossa', i.id, 'y'));
+    if (O().canHold && O().canHold(i.id) && !i.eq) acts.push(btn('tieni', 'Tieni', i.id));
+    if (c && pv.base) acts.push(btn('deposita', 'Al covo', { id: i.id, q: i.q }));
     if (c) acts.push(btn('butta', 'Butta', { id: i.id, q: 1 }, 'bad'));
-    return `<div class="hd"><div class="pic ${wide ? 'w' : ''}">${ic(i.id, wide ? 32 : 16)}</div><div><div class="nm">${esc(cap(i.nome))}</div><div class="ct">${esc(i.catLabel || '')}${i.q > 1 ? ` · ×${i.q}` : ''}</div></div></div>
+    return `<div class="hd"><div class="pic ${wide ? 'w' : ''}">${ic(i.id, wide ? 32 : 16)}</div><div><div class="nm">${esc(cap(i.nome))}</div><div class="ct">${esc(i.catLabel || '')}${i.q > 1 ? ` · ×${i.q}` : ''}${O().SLOT_OF && O().SLOT_OF[i.id] ? ` · si indossa: ${esc(O().SLOTNAME[O().SLOT_OF[i.id]])}` : ''}</div></div></div>
       <div class="ds">${esc(describe(i.id))}</div>
       <div class="stat" style="grid-template-columns:1fr auto">${c ? `<span>Peso</span><em>${Math.round(c.peso * (i.q || 1) * 10) / 10} kg</em>` : ''}${i.tool != null ? `<span>Stato</span><em>${i.tool}%</em><i><b class="${i.tool < 25 ? 'r' : 'g'}" style="width:${i.tool}%"></b></i>` : ''}${st.player.arms && st.player.arms[i.id] && st.player.arms[i.id].mag != null ? `<span>Colpi</span><em>${st.player.arms[i.id].mag} + ${st.player.arms[i.id].reserve || st.player.arms[i.id].res || 0}</em>` : ''}</div>
       <div class="row">${acts.join('')}</div>`;
@@ -376,11 +448,11 @@ var MenuUI = (function () {
     const job = M.job, ab = job && typeof Mestieri !== 'undefined' ? Mestieri.abilities(st, 'player').map(id => [id, Mestieri.AB[id]]).filter(([, a]) => a) : [];
     const cond = []; if (M.drunk > .3) cond.push(M.drunk > .65 ? 'ubriaco' : 'brillo'); if (M.hangover > .3) cond.push('postumi'); if (st.t < M.calmUntil) cond.push('mano ferma'); if (M.rentDebt > 0) cond.push(`affitto arretrato ${L(M.rentDebt)}`);
     const fr = (M.friends || []).map(id => G().byId(st, id)).filter(Boolean);
-    return `<div class="pg"><div class="who"><canvas class="fig" width="32" height="64" data-fig="1"></canvas><div class="dim" style="text-align:center">${esc(cond.join(' · ') || 'In forma, più o meno.')}</div></div>
-      <div style="display:grid;gap:16px"><div class="card"><h4>Come stai</h4>${bar('Salute', p.hp, p.maxHp || 100, 'g')}${Object.keys(NEED).map(k => bar(NEED[k], (N[k] || 0) * 100, 100, '', true)).join('')}<div class="dim">Sigarette ${M.cig || 0} · dispensa ${M.pantry || 0}</div></div>
-        <div class="card"><h4>Il tuo conto</h4><div class="stat" style="grid-template-columns:1fr auto;row-gap:6px">${[['Ore lavorate', Math.round((S.lavorato || 0) / 60)], ['Guadagnato', L(S.guadagnato || 0)], ['Speso', L(S.speso || 0)], ['Bevuto', S.bevuto || 0], ['Fumato', S.fumato || 0], ['Dormito (ore)', Math.round((S.dormito || 0) / 60)]].map(([a, b]) => `<span>${a}</span><em>${b}</em>`).join('')}</div></div></div>
-      <div style="display:grid;gap:16px"><div class="card"><h4>Quello che sai fare${job ? ` — da ${esc(job.title)}` : ''}</h4>${ab.length ? ab.map(([id, a]) => `<div class="ab">${ic(abIcon(id))}<div><b>${esc(a.label)}</b><small>${a.night ? 'di notte · ' : ''}${a.mins ? (a.mins >= 60 ? Math.round(a.mins / 6) / 10 + ' ore' : a.mins + ' min') : ''} · rischio ${a.risk > .15 ? 'alto' : a.risk > .08 ? 'medio' : 'basso'}</small></div></div>`).join('') : '<div class="dim">Ogni mestiere apre cose che gli altri non possono fare: le chiavi del posto, la gente che conosci. Trova un lavoro (scheda Lavori).</div>'}</div>
-        <div class="card"><h4>Amici del quartiere</h4>${fr.length ? fr.map(n => `<div class="li" style="cursor:default">${ic('maglione')}<div>${esc(n.name || n.first)}<small>${esc((n.pop && n.pop.job && n.pop.job.title) || '')}${n.meFriend && n.meFriend.lent ? ` · ti ha prestato ${L(n.meFriend.lent)}` : ''}</small></div><span class="r">${n.dead ? 'morto' : ''}</span></div>`).join('') : '<div class="dim">Nessuno.</div>'}</div></div></div>`;
+    return `<div class="pg"><div class="who">${r3('player', 'full', 440, 760, 'width:220px;height:380px')}<div class="dim" style="text-align:center">${esc(cond.join(' · ') || 'In forma, più o meno.')}</div></div>
+      <div style="display:grid;gap:16px"><div class="mcard"><h4>Come stai</h4>${bar('Salute', p.hp, p.maxHp || 100, 'g')}${Object.keys(NEED).map(k => bar(NEED[k], (N[k] || 0) * 100, 100, '', true)).join('')}<div class="dim">Sigarette ${M.cig || 0} · dispensa ${M.pantry || 0}</div></div>
+        <div class="mcard"><h4>Il tuo conto</h4><div class="stat" style="grid-template-columns:1fr auto;row-gap:6px">${[['Ore lavorate', Math.round((S.lavorato || 0) / 60)], ['Guadagnato', L(S.guadagnato || 0)], ['Speso', L(S.speso || 0)], ['Bevuto', S.bevuto || 0], ['Fumato', S.fumato || 0], ['Dormito (ore)', Math.round((S.dormito || 0) / 60)]].map(([a, b]) => `<span>${a}</span><em>${b}</em>`).join('')}</div></div></div>
+      <div style="display:grid;gap:16px"><div class="mcard"><h4>Mestieri${job ? ` — da ${esc(job.title)}` : ''}</h4>${ab.length ? ab.map(([id, a]) => `<div class="ab">${ic(abIcon(id))}<div><b>${esc(a.label)}</b><small>${a.night ? 'di notte · ' : ''}${a.mins ? (a.mins >= 60 ? Math.round(a.mins / 6) / 10 + ' ore' : a.mins + ' min') : ''} · rischio ${a.risk > .15 ? 'alto' : a.risk > .08 ? 'medio' : 'basso'}</small></div></div>`).join('') : '<div class="dim">Ogni mestiere apre cose che gli altri non possono fare: le chiavi del posto, la gente che conosci. Trova un lavoro (scheda Lavori).</div>'}</div>
+        <div class="mcard"><h4>Amici del quartiere</h4>${fr.length ? fr.map(n => `<div class="fr3">${r3('npc:' + n.id, 'bust', 128, 128) || ic('maglione')}<div><b>${n.dead || n.inside ? esc(n.name || n.first) : `<span class="link" data-a="vai" data-x="${esc(JSON.stringify({ x: n.x, y: n.y }))}" title="vai da lui">${esc(n.name || n.first)}</span>`}</b><small>${esc((n.pop && n.pop.job && n.pop.job.title) || '')}${n.meFriend && n.meFriend.lent ? ` · ti ha prestato ${L(n.meFriend.lent)}` : ''}${n.dead ? ' · morto' : n.inside ? ' · in casa' : ` · ${Math.round(Math.hypot(n.x - p.x, n.y - p.y))} m`}</small></div></div>`).join('') : '<div class="dim">Nessuno.</div>'}</div></div></div>`;
   }
   const abIcon = id => /stampa|tessere|timbri|fascicoli|volantin/.test(id) ? 'carta' : /cassa|soldi/.test(id) ? 'valuta' : /ascolta|radio/.test(id) ? 'radiolina' : /chiav|porta/.test(id) ? 'grimaldello' : /vino|beve/.test(id) ? 'vino' : /medic|cura/.test(id) ? 'medicine' : 'cacciavite';
 
@@ -392,18 +464,18 @@ var MenuUI = (function () {
     const r = l.find(x => x.id === U.sel);
     const tiles = l.slice(0, 160).map(x => `<button class="rec ${x.ok ? 'ok' : x.here ? '' : 'no'} ${x.id === U.sel ? 'sel' : ''}" data-a="sel" data-x="${esc(JSON.stringify(x.id))}" title="${esc(x.nome)}">${ic(x.out[0] ? x.out[0].k : 'casse')}<span>${esc(cap(x.nome))}</span></button>`).join('');
     const det = r ? `<div class="det"><div class="hd"><div class="pic">${ic(r.out[0] ? r.out[0].k : 'casse')}</div><div><div class="nm">${esc(cap(r.nome))}</div><div class="ct">${esc(r.st)} · ${r.min >= 60 ? Math.round(r.min / 6) / 10 + ' ore' : r.min + ' min'}</div></div></div>
-      ${!r.here ? '<div class="dim" style="color:#e0806a">Non qui: serve la postazione giusta.</div>' : ''}
+      ${!r.here ? '<div class="dim" style="color:var(--neon)">Non qui: serve la postazione giusta.</div>' : ''}
       <h4 style="margin:4px 0 0">Serve</h4><div class="ing">${r.in.map(i => `<div>${ic(i.k.split('|')[0])}<span class="${i.have >= i.q ? 'y' : 'n'}">${esc(i.nome)}<br>${i.have}/${i.q}</span></div>`).join('')}${r.tools.map(t => `<div>${ic(t.k.split('|')[0])}<span class="${t.have ? 't' : 'n'}">${esc(t.nome)}<br>attrezzo</span></div>`).join('') || ''}</div>
       <h4 style="margin:4px 0 0">Ne viene</h4><div class="ing">${r.out.map(o => `<div>${ic(o.k)}<span>${esc(o.nome)}${o.q > 1 ? ` ×${o.q}` : ''}</span></div>`).join('')}</div>
       <div class="row">${btn('fai', 'Fai', { id: r.id, q: 1 }, 'y', !r.ok)}${btn('fai', '×3', { id: r.id, q: 3 }, '', !r.ok)}</div></div>` : '<div class="dim">Niente da fare qui.</div>';
-    return `<div class="lav"><div class="recs">${tiles || '<div class="dim">Nessuna ricetta.</div>'}</div>${det}</div>`;
+    return `<div class="lav"><div><h4>Quaderno · ${l.filter(x => x.ok).length} cose che puoi fare adesso</h4><div class="recs">${tiles || '<div class="dim">Nessuna ricetta.</div>'}</div></div>${det}</div>`;
   }
 
   // ---------------- BOTTEGA ----------------
   function pBottega(st, c) {
     const who = c.clerk || '';
     const line = !c.open ? 'Chiuso. Al banco non c\'è nessuno: la merce è lì, però.' : c.black ? '«Qui non si fanno domande. Né si danno ricevute.»' : c.emporio ? '«Tessera annonaria alla mano, prego. Prezzi fissi del Garante.»' : U.shopTab === 'vendi' ? `«Fammi vedere. Ho ${L(c.cash)} in cassa.»` : ['«Buongiorno. Cosa le serve?»', '«Dica pure.»', '«Oggi è arrivata roba fresca.»', '«Si accomodi, guardi pure.»'][hash(c.label) % 4];
-    const left = `<div><div class="sc"><canvas class="scene" width="120" height="80" data-shop="${esc(c.label)}" data-who="${esc(who)}"></canvas><span class="sign">${esc(c.label)}</span></div><div class="bubble"><b>${esc(who || c.label)}</b>${esc(line)}</div></div>`;
+    const left = `<div><div class="sc"><canvas class="scene" width="120" height="80" data-shop="${esc(c.label)}" data-who="${esc(who)}"></canvas>${c.open && c.clerkId ? r3('npc:' + c.clerkId, 'banco', 600, 400) : ''}<span class="sign">${esc(c.label)}</span></div><div class="bubble"><b>${esc(who || c.label)}</b>${esc(line)}</div></div>`;
     let tiles = '', det = '';
     if (U.shopTab === 'vendi') {
       if (!U.sel || !c.buys.some(b => b.g === U.sel)) U.sel = c.buys[0] ? c.buys[0].g : null;
@@ -416,7 +488,7 @@ var MenuUI = (function () {
       tiles = Object.entries(byCat).map(([cat, l]) => `<div class="grp">${esc(cat)}</div>` + l.map(g => `<button class="tile ${g.g === U.sel ? 'sel' : ''} ${g.stock < 1 ? 'no' : ''} ${g.ill ? 'ill' : ''}" data-a="sel" data-x="${esc(JSON.stringify(g.g))}" title="${esc(g.name)}">${ic(g.g)}${g.mine ? `<span class="on"></span>` : ''}<span class="pr">${L(g.price)}</span></button>`).join('')).join('');
       const g = c.goods.find(x => x.g === U.sel);
       if (g) det = `<div class="det"><div class="hd"><div class="pic">${ic(g.g)}</div><div><div class="nm">${esc(cap(g.name))}</div><div class="ct">${g.stock < 1 ? 'finito' : `${g.stock} in negozio`}${g.mine ? ` · ne hai ${g.mine}` : ''} · ${g.peso} kg</div></div></div>
-        <div class="ds">${esc(describe(g.g))}</div><div class="stat" style="grid-template-columns:1fr auto"><span>Prezzo</span><em style="color:${g.price > g.base * 1.15 ? '#e0806a' : '#e8d040'}">${L(g.price)}${g.price > g.base * 1.15 ? ' · rincarato' : ''}</em></div>
+        <div class="ds">${esc(describe(g.g))}</div><div class="stat" style="grid-template-columns:1fr auto"><span>Prezzo</span><em style="color:${g.price > g.base * 1.15 ? 'var(--neon)' : 'var(--crema)'}">${L(g.price)}${g.price > g.base * 1.15 ? ' · rincarato' : ''}</em></div>
         <div class="row">${btn('compra', 'Compra', { g: g.g, q: 1 }, 'y', g.stock < 1 || c.wallet < g.price || !c.open)}${g.stock >= 5 ? btn('compra', '×5', { g: g.g, q: 5 }, '', c.wallet < g.price * 5 || !c.open) : ''}${g.eat ? btn('compra', /bevande/.test(g.cat) ? 'Bevi qui' : 'Mangia qui', { g: g.g, q: 1, mode: 'consuma' }, '', g.stock < 1 || c.wallet < g.price || !c.open) : ''}</div></div>`;
     }
     return `<div class="shop">${left}<div>${det}<div class="goods">${tiles}</div></div></div>`;
@@ -431,13 +503,13 @@ var MenuUI = (function () {
     const S = J && typeof Protagonista !== 'undefined' ? Protagonista.shiftToday(st) : null;
     const used = {}; st.npcs.forEach(n => { if (!n.dead && n.pop && n.pop.job && n.pop.job.t) { const k = (n.pop.job.base || n.pop.job.title) + '@' + (n.pop.job.t.k === 'b' ? 'b' + n.pop.job.t.bi : 'p' + (n.pop.job.t.id || '')); used[k] = (used[k] || 0) + 1; } });
     const works = IX.works.map(w => { const free = w.slots - (used[w.title + '@' + (w.bi >= 0 ? 'b' + w.bi : 'p' + w.id)] || 0); return Object.assign({}, w, { free, d: Math.hypot(w.x - p.x, w.y - p.y) }); }).sort((a, b) => (b.free > 0) - (a.free > 0) || a.d - b.d);
-    const mine = `<div class="card"><h4>Il tuo lavoro</h4>${J ? `<div class="big">${esc(cap(J.title))}</div><div class="y">${esc(J.name || '')}</div>
+    const mine = `<div class="mcard"><h4>Il tuo lavoro</h4>${J ? `<div class="big">${esc(cap(J.title))}</div><div class="y">${esc(J.name || '')}</div>
         <div class="stat" style="grid-template-columns:1fr auto;row-gap:6px"><span>Orario</span><em>${J.start}–${J.end % 24}</em><span>Paga</span><em>${L(J.pay)} l'ora</em><span>Oggi</span><em>${S ? `${G().clockStr(S.a)}–${G().clockStr(S.z)}` : 'riposo'}</em>${M.owed ? `<span>Da ritirare venerdì</span><em>${L(M.owed)}</em>` : ''}<span>Ritardi · assenze</span><em>${M.late || 0} · ${M.absent || 0}</em></div>
         ${btn('vai', 'Vai al lavoro', { bi: J.bi, place: J.place })}` : '<div class="big">Senza lavoro</div><div class="dim">Vai dove cercano gente e chiedi (scheda Qui, una volta sul posto). Presentati lavato e sobrio.</div>'}</div>`;
     if (!U.jobSel || !works.some(w => w.title + w.id === U.jobSel)) U.jobSel = works[0] ? works[0].title + works[0].id : null;
     const list = works.slice(0, 60).map(w => `<div class="li ${w.free > 0 ? '' : 'off'} ${w.title + w.id === U.jobSel ? 'sel' : ''}" data-a="job" data-x="${esc(JSON.stringify(w.title + w.id))}">${ic(jobIcon(w.title))}<div>${esc(cap(w.title))}<small>${esc(w.label || w.name || '')} · ${w.start}–${w.end % 24}${w.night ? ' · di notte' : ''}</small></div><span class="r"><b>${L(w.pay)}</b>/ora<br>${Math.round(w.d)} m ${dirTo(p, w.x, w.y)}</span></div>`).join('');
     const w = works.find(x => x.title + x.id === U.jobSel);
-    const det = w ? `<div class="card"><div class="ab" style="border:0;background:none;padding:0">${ic(jobIcon(w.title))}<div><b style="font-size:16px">${esc(cap(w.title))}</b><small>${esc(w.label || w.name || '')}</small></div></div>
+    const det = w ? `<div class="mcard"><div class="ab" style="border:0;background:none;padding:0">${ic(jobIcon(w.title))}<div><b style="font-size:16px">${esc(cap(w.title))}</b><small>${esc(w.label || w.name || '')}</small></div></div>
       <div class="dim">${w.free > 0 ? 'Cercano qualcuno.' : 'Al completo, per ora: ogni settimana può cambiare.'} ${Math.round(w.d)} metri verso ${dirTo(p, w.x, w.y)}.</div>${btn('vai', 'Vai lì', { x: w.x, y: w.y })}</div>` : '';
     return `<div class="jobs"><div style="display:grid;gap:16px">${mine}${det}</div><div><h4>Chi cerca gente</h4><div class="list">${list}</div></div></div>`;
   }
@@ -460,7 +532,7 @@ var MenuUI = (function () {
 
   // ---------------- FRUGARE ----------------
   function pFruga(st, v) {
-    if (v.locked) return `<div class="card" style="max-width:520px"><div class="ab" style="border:0;background:none;padding:0">${ic('lucchetto')}<div><b style="font-size:16px">È chiuso.</b><small>Serve: ${esc(v.need)}</small></div></div><div class="dim">Il grimaldello è silenzioso, il piede di porco no; col trapano ci vuole tempo. Se c'è qualcuno, ti sente.</div><div>${btn('apri', 'Forza', undefined, 'bad')}</div></div>`;
+    if (v.locked) return `<div class="mcard" style="max-width:520px"><div class="ab" style="border:0;background:none;padding:0">${ic('lucchetto')}<div><b style="font-size:16px">È chiuso.</b><small>Serve: ${esc(v.need)}</small></div></div><div class="dim">Il grimaldello è silenzioso, il piede di porco no; col trapano ci vuole tempo. Se c'è qualcuno, ti sente.</div><div>${btn('apri', 'Forza', undefined, 'bad')}</div></div>`;
     const mine = v.mine.items.filter(i => i.tool == null);
     const items = v.items.map(i => `<button class="tile t-${i.tier || 'comune'} ${i.src === 'shop' ? 'shop' : ''}" data-a="prendi" data-x="${esc(JSON.stringify({ g: i.id, q: i.id === '$' ? i.q : 1 }))}" title="${esc(i.nome)}${i.src === 'shop' ? ' (merce della bottega)' : ''}${i.tier && i.tier !== 'comune' ? ' · ' + i.tier : ''}">${ic(i.id)}<em>${esc(i.id === '$' ? 'lire' : cap(i.nome))}</em>${i.id === '$' ? `<span class="q">${i.q}</span>` : i.q > 1 ? `<span class="q">${i.q}</span>` : ''}</button>`).join('');
     return `<div class="fr2"><div><h4>Dentro · clic per prendere</h4><div class="loot">${items || '<div class="dim" style="grid-column:1/-1">Niente di utile.</div>'}</div>${v.items.length ? `<div style="margin-top:12px">${btn('prendi_tutto', 'Prendi tutto', undefined, 'y')}</div>` : ''}</div>
@@ -487,6 +559,10 @@ var MenuUI = (function () {
       case 'shoptab': U.shopTab = x; U.sel = null; break;
       case 'job': U.jobSel = x; break;
       case 'equip': equip(x); break;
+      case 'indossa': act('indossa', x); break;
+      case 'togli': act('togli', x); break;
+      case 'tieni': act('tieni', x); break;
+      case 'libera': if (typeof Azioni !== 'undefined' && Azioni.playerEquip) Azioni.playerEquip(st, null); say('Mani libere.'); break;
       case 'usa': act('usa', x.id); break;
       case 'butta': act('butta', x.id, { q: x.q }); break;
       case 'deposita': act('deposita', x.id, { q: x.q }); break;
@@ -504,7 +580,7 @@ var MenuUI = (function () {
   }
   function onDbl(e) {
     const b = e.target.closest('[data-a="sel"]'); if (!b) return; const id = JSON.parse(b.dataset.x), st = ST();
-    if (U.tab === 'zaino') { const it = bagItems(st).items.find(i => i.id === id); if (!it) return; if (it.eat) act('usa', id); else if (it.eq) equip(id); render(true); }
+    if (U.tab === 'zaino') { const it = bagItems(st).items.find(i => i.id === id); if (!it) return; if (it.eat) act('usa', id); else if (O().SLOT_OF && O().SLOT_OF[id]) act('indossa', id); else if (it.eq) equip(id); render(true); }
     else if (U.tab === 'lavora') { act('fai', id, { q: 1 }); render(true); }
     else if (U.tab === 'bottega') { act(U.shopTab === 'vendi' ? 'vendi' : 'compra', U.arg, { g: id, q: 1 }); render(true); }
   }

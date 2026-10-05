@@ -588,8 +588,10 @@
   function loop(now) {
     const raw = (now - last) / 1000, dt = Math.min(.05, raw); last = now; ui.time += dt;
     if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > 1 / 32) R.lowQuality(); } }
-    const paused = ui.dialog || ui.book || ui.menu || ui.over;   // [azioni]
-    if (!paused) {
+    const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
+    const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over;   // [azioni]
+    if (slow && !paused) G.step(st, dt * .25, { x: 0, y: 0 });
+    else if (!paused) {
       const inp = ui.intro ? { x: 0, y: 0, freeze: true } : input();
       if (!ui.intro && (mouse.down || touchFire || mouse.pressed)) G.fire(st, inp.aim !== undefined ? inp.aim : aimAngle(), ui.aimPoint, mouse.pressed);
       mouse.pressed = false;

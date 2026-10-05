@@ -20,3 +20,12 @@
 - Abilità vere del personaggio (in v7 non c'è un sistema di esperienza: la scheda Nino mostra quello che il mestiere permette di fare).
 - Scambio nello stile nuovo.
 - Provare a schermo vero la grandezza degli oggetti del bottino con la camera del gioco.
+
+## Rifatto sul resoconto «UI madreperla» (5 ottobre, sera)
+- Palette Salmastro (madreperla scura, verderame, vetro, ottone per la selezione, crema per il testo, rosa Aurora solo per link e pericolo), Instrument Serif per i titoli, Instrument Sans per i testi, Saira Condensed per etichette e tasti. Tasti a pillola e moneta, iridescenza al passaggio, anello d'ottone per il selezionato.
+- Vocabolario della banda: Roba, Chi è, Banco (con il Quaderno delle ricette), Covo, Mestieri. Verbi brevi: Prendi, Butta, Indossa, Tieni, Al covo.
+- La Roba è rovesciata su un piano: il marciapiede in strada, il tavolo nel covo o a casa.
+- **Il mondo non si ferma**: col menu aperto in strada il gioco va a un quarto della velocità (`ui.menuSlow`, main.js); nel covo e a casa si ferma.
+- **Personaggi veri** (`Models.person`, ritratti 3D in menu_ui.js, sezione RITRATTI): Nino nella Roba e in Chi è (si gira trascinando), il commerciante di turno dietro il banco della bottega (`counter().clerkId`), gli amici del quartiere a mezzo busto. Il nome di un amico si clicca: ci vai.
+- **Vestiti indossabili** (oggetti.js, sezione ADDOSSO): posti testa, collo, maglia, giacca, mani, gambe, piedi, spalle; mano destra (arma o attrezzo, quella del motore) e mano sinistra (un oggetto fino a 2 kg). Quello che indossi non pesa nella borsa, scalda (`Oggetti.warmth`), lo zaino sulle spalle dà 20 kg in più. Azioni `indossa`, `togli`, `tieni`. Il ritratto di Nino prende i colori di giacca/maglia e pantaloni.
+- Manca: il Nino in strada non cambia ancora vestiti (il modello del giocatore è in render.js, che si modifica solo con gli script); cappelli e zaino non si vedono sul ritratto (dressUp salta il giocatore); i tasti del resoconto (Tab Roba, C Chi è) sono già usati dal taccuino e dalla chat, per ora restano I e K.
