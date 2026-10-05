@@ -146,3 +146,15 @@ Catena: dopo render18 → `inverno_render19..25.py` (+ frammento `inverno_propag
 - render28 (STUDIO LUCI): il gruppo di luci è ora `SPOOL` (faretti con ombra, quanti ne regge la scheda: N = maxTextures-7, tra 4 e 12) + `PPOOL` (8 punti senza ombra per i fuochi). Si accendono sulle sorgenti di `LSRC` dentro l'inquadratura (frustum), le più vicine prima. Ombre rifatte quando un faretto cambia sorgente e a turno 3 per fotogramma. Coni di luce leggeri nella foschia sotto le sorgenti alte di notte. Rimesso lo sfarfallio (render23 l'aveva spento per errore). Copia: `render_prima_dello_studio_luci.js`.
 - Da fare per lo studio luci: luce che lava le facciate (le insegne illuminano solo verso il basso), luce che esce dalle vetrine sul marciapiede, interni (oggi PointLight senza ombra in buildInteriors).
 - render29 (bilanciamento): faretti con decadimento 1.25 e bordo sfumato (penombra .95), intensità divisa tra sorgenti vicine (`L.nb`, sorgenti entro 7 m), spalla delle alte luci da .48, un filo di luna di notte. Andrea: «o bruciate o scure». Copia: `render_prima_del_bilanciamento.js`.
+
+## 5 ottobre — notte (regia delle luci: la città col coprifuoco prende posizione)
+Questa chat si occupa SOLO delle luci; la chat «I progetti» fa mappa e arredo (il suo prossimo script è `inverno_render31.py`). Per non scontrarsi, gli script delle luci si chiamano `luci_regiaN.py` (guardia `[luciN]`).
+- `strumenti_inverno/luci_regia1.py` (dopo render30, guardia «già applicato»):
+  - `tone()` non sceglie più a caso fra bianchi e gialli: **lampioni da strada = sodio arancio cupo** (`LSOD`; al porto `LPORTO`, ancora più cupo), **vetrine/finestre/porte = incandescenza calda** (`LINC`), **vicino ai bar rosso-ambra basso** (`LBAR`), **nei luoghi del regime bianco duro** `LREG` (caserma, Rocca, Muro, varco, Base, Palazzo della Cultura), dove un tubo su quattro sfarfalla. Fuochi e rossi restano com'erano. Le zone sono in `zoneAt()` (dai `G.PLACES`).
+  - Regola per chi aggiunge luci: `addLight(..., '#ffb35c', ...)` = lampione da strada (diventa sodio); `'#ffc070'` = vetrina/porta (diventa luce calda).
+  - Post-processing: le pozze calde di notte (`warmL`) non vengono più portate al grigio da ombre blu, saturazione e tonalità del regime (prima uscivano bianco-grigie).
+  - Buio vero fra un cono e l'altro: di notte hemi .27 → .19, luna .34 → .25. Luce cotta dei lampioni .38 → .46.
+  - Globi del Lungomare color latte caldo (prima rosa/ciano a caso).
+  - I lampioni non fanno più ombra (né al proprio faretto, che sta nella testa, né al sole): disegnavano un ottagono scuro sotto di sé.
+- Copia di prima: `_backup_neon_modelli/render_prima_della_regia_luci.js`.
+- Ancora da fare per le luci: puntini rosa/magenta rimasti (spie sulle antenne, un palo in piazza); schermo del Garante in piazza che tremola sui volti; luce che lava le facciate; interni.

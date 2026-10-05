@@ -17943,8 +17943,27 @@ var Render = (function () {
   const NQ = ['#e8d8bc', '#b84a3c', '#f0a048'].map(h => new THREE.Color(h));   // [inverno16] tubo freddo spento, rosso cupo, sodio
   // [inverno27] toni delle luci: chiaro, caldo, freddo, giallo, ambra, molto caldo (pesati verso il caldo)
   const LTONES = ['#fff0d8', '#ffd49a', '#ffc070', '#e4e8ea', '#ffe27a', '#ffae48', '#ff9a40', '#ff8530', '#ffb860', '#f6f2ea'];
-  function tone(hex, x, z) { const q = nq(hex); if (q === '#' + NQ[1].getHexString()) return q; const c = new THREE.Color(hex), h = {}; c.getHSL(h); if (h.s < .2 && h.l > .85) return hex;
-    let k = Math.imul((Math.round(x * 2) * 73856093) ^ (Math.round(z * 2) * 19349663), 2654435761) >>> 0; return LTONES[k % LTONES.length]; }
+  // [luci1] REGIA: sodio per le strade, incandescenza per la gente, bianco duro solo per il regime, rosso-ambra ai bar
+  const LSOD = ['#ff9a3c', '#ffa246', '#ff9034', '#ffaa50', '#ff983a'], LPORTO = ['#ff8a2c', '#ff9234', '#ff8428'];
+  const LINC = ['#ffc274', '#ffb562', '#ffcf8a', '#ffa850', '#ffbd6a'], LBAR = ['#ff7040', '#ff8248', '#ff6a3a', '#ff7a3c'], LREG = '#dde6e2';
+  const LAMPS = ['#ffb35c', '#ffa84a', '#ffb85c'];   // chi chiama addLight/glow con questi colori è un lampione da strada
+  let ZONES = null;
+  function zoneAt(x, z) {
+    if (!ZONES) { ZONES = []; const P = G.PLACES || {};
+      const put = (ids, k, r) => ids.forEach(id => { const q = P[id]; if (q) ZONES.push({ x: q.x, z: q.y, k, r2: r * r }); });
+      put(['commissariato', 'caserma_p', 'rocca', 'varco', 'muro', 'cultura', 'hangar1', 'hangar2', 'deposito_n', 'deposito_s', 'eliporto', 'poligono'], 'regime', 14);
+      put(['sirena', 'bar', 'osteria', 'miramare', 'stella', 'aurora', 'gabbiano', 'flamingo', 'paradiso', 'oceano', 'disco', 'flipper', 'chiosco', 'osteria_sg'], 'bar', 9);
+      put(['molo', 'calata', 'pontile', 'marina', 'molo_cargo', 'cantiere'], 'porto', 16); }
+    let best = null, bd = 1e9; for (const Z of ZONES) { const d = (Z.x - x) * (Z.x - x) + (Z.z - z) * (Z.z - z); if (d < Z.r2 && d < bd) { bd = d; best = Z.k; } }
+    return best; }
+  function tone(hex, x, z) { const q = nq(hex); if (q === '#' + NQ[1].getHexString()) return q; const c = new THREE.Color(hex), h = {}; c.getHSL(h);
+    const zo = zoneAt(x, z), lamp = LAMPS.includes(hex), k = Math.imul((Math.round(x * 2) * 73856093) ^ (Math.round(z * 2) * 19349663), 2654435761) >>> 0;
+    if (h.s >= .5 && h.h * 360 < 26) return hex;                  // fuochi e rossi: restano come sono
+    if (zo === 'regime') return LREG;                              // la luce del potere è bianca e dura
+    if (h.s < .2 && h.l > .85) return hex;                         // riflettori, fari: già bianchi
+    if (lamp) return zo === 'porto' ? LPORTO[k % LPORTO.length] : LSOD[k % LSOD.length];
+    if (zo === 'bar') return LBAR[k % LBAR.length];
+    return LINC[k % LINC.length]; }
   function nq(hex) { const c = new THREE.Color(hex), h = {}; c.getHSL(h); const hu = h.h * 360; if (h.s < .25) return hex; let best = 0, bd = 999; [185, 355, 32].forEach((t, i) => { let d = Math.abs(hu - t); d = Math.min(d, 360 - d); if (d < bd) { bd = d; best = i; } }); return '#' + NQ[best].getHexString(); }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   function canvasTex(c) { const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; }
@@ -19062,7 +19081,7 @@ var Render = (function () {
     src.forEach(L => {
       const R = (L.dist || 8) * (L.spill ? 1 : 1.5); if (L.x < X0 - R || L.x > X0 + n * TS + R || L.z < Z0 - R || L.z > Z0 + m * TS + R) return;
       if (L.gy === undefined) L.gy = groundH(L.x, L.z); if (solid(L.x, L.z)) return;
-      const h = Math.max(.8, L.y - L.gy), h2 = h * h, cr = L.color.r, cg = L.color.g, cb = L.color.b, I = L.base * (L.spill ? .55 : .38) * (L.flick > .5 ? .7 : 1);
+      const h = Math.max(.8, L.y - L.gy), h2 = h * h, cr = L.color.r, cg = L.color.g, cb = L.color.b, I = L.base * (L.spill ? .55 : .46) * (L.flick > .5 ? .7 : 1);   // [luci1]
       const i0 = Math.max(0, Math.floor((L.x - R - X0) / tq)), i1 = Math.min(W - 1, Math.ceil((L.x + R - X0) / tq)), j0 = Math.max(0, Math.floor((L.z - R - Z0) / tq)), j1 = Math.min(H - 1, Math.ceil((L.z + R - Z0) / tq));
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
         const px = X0 + (i + .5) * tq, pz = Z0 + (j + .5) * tq, dx = px - L.x, dz = pz - L.z, d2 = dx * dx + dz * dz; if (d2 > R * R) continue;
@@ -19870,7 +19889,9 @@ var Render = (function () {
 
   // luci: tante sorgenti registrate, poche PointLight vere assegnate alle più vicine alla camera
   const LSRC = [];
-  function addLight(x, y, z, color, intensity, distance, flick) { const rec = { x, y, z, color: new THREE.Color(tone(color, x, z)), base: intensity, dist: distance, flick: flick || 0, phase: Math.random() * 10 }; LSRC.push(rec); return rec; }
+  function addLight(x, y, z, color, intensity, distance, flick) { const rec = { x, y, z, color: new THREE.Color(tone(color, x, z)), base: intensity, dist: distance, flick: flick || 0, phase: Math.random() * 10 }; LSRC.push(rec);
+    if (zoneAt(x, z) === 'regime' && rec.flick < .25 && (Math.floor(x * 3 + z * 5) & 3) === 0) rec.flick = .6;   // [luci1] neon della caserma che sfarfalla
+    return rec; }
   let glowTex = null;
   function glowTexture() {
     if (!glowTex) { const c = mk(32, 32), gx = c.getContext('2d'), gr = gx.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.35, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); gx.fillStyle = gr; gx.fillRect(0, 0, 32, 32); glowTex = new THREE.CanvasTexture(c); }
@@ -20196,8 +20217,8 @@ var Render = (function () {
     if (kind === 'deco') { // Lungomare: palo alto con il globo e l'anello al neon
       add(g, cyl(.09, .14, 5, 8, sm('#f2eee6')), 0, 2.5, 0); add(g, cyl(.22, .26, .5, 8, sm('#f2eee6')), 0, .25, 0);
       add(g, cyl(.35, .35, .08, 12, sm('#f2eee6')), 0, 5, 0);
-      const globe = add(g, new THREE.Mesh(new THREE.SphereGeometry(.36, 10, 8), sb('#ffe0f0')), 0, 5.35, 0); globe.userData.keep = true;
-      ly = 5.35; col = pick(rng(Math.floor(x * 7 + z)), ['#ff7ac0', '#6ae8ff', '#ffb0e0']); lcol = '#ffe0f0';
+      const globe = add(g, new THREE.Mesh(new THREE.SphereGeometry(.36, 10, 8), sb('#ffe2b8')), 0, 5.35, 0); globe.userData.keep = true;
+      ly = 5.35; col = '#ffb85c'; lcol = '#ffe2b8';   // [luci1] niente globi rosa/ciano
     } else if (kind === 'sodium') { // porto e ponti: palo di cemento, braccio, lampada al sodio
       add(g, box(.18, 6, .18, sm('#8a8680')), 0, 3, 0); add(g, box(1.4, .12, .12, sm('#8a8680')), .6, 6, 0);
       add(g, box(.6, .22, .34, sm('#4a4850')), 1.2, 5.9, 0); add(g, box(.5, .06, .28, sb('#ffc070')), 1.2, 5.78, 0);
@@ -20215,7 +20236,7 @@ var Render = (function () {
     }
     const hq = th(Math.round(x), Math.round(z), 71), lampOff = kind !== 'deco' && hq < .33;   // [inverno30] coprifuoco: elettricità razionata
     if (lampOff) g.traverse(o => { if (o.isMesh && o.material === sb(lcol)) o.material = sm('#2e2e34'); });
-    g.position.set(x, y0, z); g.rotation.y = rot || 0; const tag = kind === 'wall' ? null : newTag(); curTag = tag; addStatic(g); curTag = null;
+    g.position.set(x, y0, z); g.rotation.y = rot || 0; const tag = kind === 'wall' ? null : newTag(); curTag = tag; addStatic(g, true); curTag = null;   // [luci1] niente ombra propria
     const c = Math.cos(rot || 0), s = Math.sin(rot || 0), wx = x + lx * c + lz * s, wz = z - lx * s + lz * c;
     const gl = glow(wx, y0 + ly, wz, col, kind === 'deco' ? 2.4 : 2.0);
     const L = addLight(wx, y0 + ly - .3, wz, kind === 'deco' ? col : '#ffb35c', kind === 'sodium' ? 2.0 : 1.6, kind === 'sodium' ? 10 : 7.5, !lampOff && hq < .48 ? .75 : .03);
@@ -21307,9 +21328,10 @@ var Render = (function () {
           // [inverno] ombre blu-grigie, mezzitoni spenti; la saturazione resta alle sorgenti di luce
           float chroma = max(max(c.r,c.g),c.b) - min(min(c.r,c.g),c.b);
           float hot = smoothstep(.5,.9,chroma*max(max(c.r,c.g),c.b)*2.);
-          c = mix(c, c*.7*vec3(.78,1.,1.04) + vec3(.01,.075,.085)*.6, (1.-smoothstep(.0,.62,l))*.9);
+          float warmL = smoothstep(.04,.14, c.r-c.b) * smoothstep(.08,.28, max(max(c.r,c.g),c.b)) * smoothstep(.2,.7, night);   // [luci1] luce calda di notte
+          c = mix(c, c*.7*vec3(.78,1.,1.04) + vec3(.01,.075,.085)*.6, (1.-smoothstep(.0,.62,l))*.9*(1.-warmL*.75));
           c *= mix(vec3(1.), vec3(1.02,1.,.96), smoothstep(.28,.8,l)*(1.-hot));   // [inverno24] alte luci appena calde, non azzurrine
-          c = mix(vec3(l), c, mix(.66, 1.3, hot)*sat);
+          c = mix(vec3(l), c, mix(.66, 1.3, max(hot, warmL*.85))*sat);
           c += vec3(.012,.014,.02);
           c = (c-.5)*1.24+.5;
           { float AZZ = .12; float cy = smoothstep(.03,.16, min(c.g,c.b)-c.r) * smoothstep(.06,.22, max(max(c.r,c.g),c.b)-min(min(c.r,c.g),c.b));   // [inverno20] niente azzurri
@@ -21317,7 +21339,7 @@ var Render = (function () {
           { float REG_SAT = .62, REG_BIANCO = .1;   // [inverno21] il regime: cemento, rosso, luce calda
             float lu = dot(c, vec3(.3,.59,.11));
             float rosso = smoothstep(.12,.3, c.r-c.g) * smoothstep(.06,.2, c.r-c.b);          // rossi e arancio delle lampade
-            float keep = max(REG_SAT, max(rosso*1.05, hot*1.0));
+            float keep = max(max(REG_SAT, warmL), max(rosso*1.05, hot*1.0));
             c = mix(vec3(lu) * vec3(.98,1.,.98), c, keep);                                     // grigio appena verdastro, da caserma
             c *= 1. - smoothstep(.62,.95, lu) * REG_BIANCO; }                                   // niente bianchi puliti
           vec2 q = vUv-.5; c *= 1. - dot(q,q)*1.25;
@@ -23147,9 +23169,9 @@ var Render = (function () {
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, .22 + night * .12); scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
     // [inverno] luce di neve: tanto cielo, poco sole
-    hemi.intensity = .22 + (1 - night) * .3 + night * .08;   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
+    hemi.intensity = .22 + (1 - night) * .3 - night * .03;   // [luci1] di notte meno cielo   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
     fillAmb.intensity = .12 + (1 - night) * .12; fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');
-    moon.intensity = .34 + (1 - night) * .68; moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
+    moon.intensity = .25 + (1 - night) * .77;   // [luci1] di notte meno luna moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
     moon.position.set(cam.x - 34 - dusk * 18, 22 - dusk * 8, cam.y - 30); moon.target.position.set(cam.x, 0, cam.y);
     if (dyn.fill) { dyn.fill.position.set(cam.x + 8, 14, cam.y + 40); dyn.fill.target.position.set(cam.x, 0, cam.y); dyn.fill.intensity = .12 + (1 - night) * .06; dyn.fill.color.set(night > .5 ? '#5f86b4' : '#a8bcd0'); }
     if (dyn.rim) { dyn.rim.position.set(cam.x + 30, 18, cam.y + 34); dyn.rim.target.position.set(cam.x, 0, cam.y); dyn.rim.intensity = .1 + (1 - night) * .1; dyn.rim.color.set(night > .5 ? '#6a8ac8' : '#b8c8e8'); }
