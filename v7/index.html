@@ -21862,7 +21862,8 @@ var Render = (function () {
       c = vdMix(c, vdGroundTint(X, Y), .5);
       const pl = vdPlan(vdEcoMix(X, Y)), [, hv] = vdWin(pl.H, X, Y), [, sv] = vdWin(pl.S, X, Y), mass = Math.max(vdS(0, .25, hv - pl.hth), vdS(0, .25, sv - pl.sth));
       c = vdMix(c, vdMix(pl.g, [30, 44, 24], .55), mass * .5);
-      c = vdMix(c, [52, 82, 34], .4);   // fra gli steli è buio: il tappeto si stacca dal suolo
+      c = vdMix(c, [52, 82, 34], .4);   // fra gli steli
+      if (pl.hb !== undefined) { const hf = vdHi(X, Y, pl.hb); c = vdMix(c, hf > .02 ? [30, 46, 22] : [74, 112, 40], hf > .02 ? hf * .55 : .45); }   // fra gli steli è buio: il tappeto si stacca dal suolo; il rilievo: scuro sotto l'erba alta, chiaro sotto il prato basso
     }
     return c;
   }
@@ -22272,18 +22273,18 @@ var Render = (function () {
     PINETA: { T: [['tPaglia', .1], ['tErba', -.05]], H: [['cespo', .05], ['alta', -.1]], hth: .02, S: [['cespuglio', .05], ['ginepro', 0], ['ginestra', -.08]], sth: -.02, g: [104, 82, 52], t: '#fff0d8', d: .8 },
     DUNA: { T: [['tPaglia', .1]], H: [['alta', .05], ['cespo', 0]], hth: -.05, S: [['ginepro', -.2]], sth: .2, g: [150, 140, 100], t: '#fff4d8', d: .6 },
     MACCHIA: { T: [['tPaglia', 0], ['tErba', 0]], H: [['cespo', 0]], hth: .05, S: [['cespuglio', .1], ['ginepro', .02], ['ginestra', -.02], ['erica', -.05], ['rovo', -.1]], sth: -.2, g: [56, 62, 38], t: '#e4ecd0', d: .9 },
-    FARO: { T: [['tPaglia', .05], ['tErba', 0], ['tCampo', -.05]], H: [['cespo', .05]], hth: .02, S: [['erica', .05], ['ginepro', 0], ['sasso', -.1]], sth: .02, g: [104, 110, 66], t: '#f8f4d8', d: .9 },
-    PASCOLO: { T: [['tErba', .05], ['tPaglia', .03], ['tAlta', 0], ['tFiori', -.03]], H: [['cespoV', 0], ['cardo', -.25]], hth: .22, S: [['ginepro', 0], ['erica', -.05]], sth: .32, g: [92, 134, 52], t: '#f8fff0', d: 1.1 },
+    FARO: { hb: -.08, T: [['tPaglia', .05], ['tErba', 0], ['tCampo', -.05]], H: [['cespo', .05]], hth: .02, S: [['erica', .05], ['ginepro', 0], ['sasso', -.1]], sth: .02, g: [104, 110, 66], t: '#f8f4d8', d: .9 },
+    PASCOLO: { hb: .05, T: [['tErba', .05], ['tPaglia', .03], ['tAlta', 0], ['tFiori', -.03]], H: [['cespoV', 0], ['cardo', -.25]], hth: .22, S: [['ginepro', 0], ['erica', -.05]], sth: .32, g: [92, 134, 52], t: '#f8fff0', d: 1.1 },
     GHIAIONE: { T: [['tPaglia', 0]], H: [['cespo', 0]], hth: .15, S: [['sasso', 0], ['ginepro', -.1]], sth: .1, g: [90, 88, 80], t: '#e8ecd8', d: .4 },
     SALINA: { T: [['tCanne', .1], ['tErba', 0]], H: [['giunco', .1], ['cespoV', -.1]], hth: -.1, S: [['erica', -.1]], sth: .2, g: [100, 98, 74], t: '#f0f0d8', d: 1 },
-    RUDERALE: { T: [['tErba', .05], ['tPaglia', 0]], H: [['cespoV', .02], ['cardo', 0], ['ombrella', 0], ['verbasco', -.08]], hth: -.02, S: [['rovo', 0], ['sambuco', -.05]], sth: .12, g: [92, 86, 56], t: '#f4f0d8', d: .9 },
-    RADURA: { T: [['tErba', .04], ['tAlta', .04], ['tFiori', 0], ['tPaglia', -.04], ['tCampo', -.05]], H: [['alta', .02], ['fiori', 0], ['felceV', -.05]], hth: .02, S: [['sambuco', -.02], ['rovo', -.05]], sth: .2, g: [78, 118, 46], t: '#f0ffe8', d: 1.2 },
+    RUDERALE: { hb: .0, T: [['tErba', .05], ['tPaglia', 0]], H: [['cespoV', .02], ['cardo', 0], ['ombrella', 0], ['verbasco', -.08]], hth: -.02, S: [['rovo', 0], ['sambuco', -.05]], sth: .12, g: [92, 86, 56], t: '#f4f0d8', d: .9 },
+    RADURA: { hb: .02, T: [['tErba', .04], ['tAlta', .04], ['tFiori', 0], ['tPaglia', -.04], ['tCampo', -.05]], H: [['alta', .02], ['fiori', 0], ['felceV', -.05]], hth: .02, S: [['sambuco', -.02], ['rovo', -.05]], sth: .2, g: [78, 118, 46], t: '#f0ffe8', d: 1.2 },
     RIPARIALE: { T: [['tCanne', .1], ['tErba', 0], ['tMuschio', 0]], H: [['giunco', .12], ['foglione', 0]], hth: -.15, S: [['cespuglio', -.05]], sth: .15, g: [56, 96, 44], t: '#e8f8d8', d: 1.1 },
-    BETULLE: { T: [['tErba', .1], ['tAlta', 0], ['tFiori', 0]], H: [['felce', .05], ['alta', 0], ['fiori', -.05]], hth: -.02, S: [['cespuglio', -.2]], sth: .2, g: [86, 116, 52], t: '#f8ffe0', d: 1.1 },
+    BETULLE: { hb: .04, T: [['tErba', .1], ['tAlta', 0], ['tFiori', 0]], H: [['felce', .05], ['alta', 0], ['fiori', -.05]], hth: -.02, S: [['cespuglio', -.2]], sth: .2, g: [86, 116, 52], t: '#f8ffe0', d: 1.1 },
     PINIMONTE: { T: [['tPaglia', .05], ['tErba', 0]], H: [['cespo', 0], ['felceV', -.05]], hth: .05, S: [['ginepro', 0], ['ginestra', -.05]], sth: .08, g: [92, 86, 54], t: '#f4f0d8', d: .8 },
-    VIGNE: { T: [['tErba', .05], ['tCampo', 0]], H: [['cespoV', 0], ['ombrella', -.1]], hth: .1, S: [['rovo', -.1]], sth: .25, g: [80, 104, 48], t: '#f0f8e0', d: .9 },
+    VIGNE: { hb: -.1, T: [['tErba', .05], ['tCampo', 0]], H: [['cespoV', 0], ['ombrella', -.1]], hth: .1, S: [['rovo', -.1]], sth: .25, g: [80, 104, 48], t: '#f0f8e0', d: .9 },
     ULIVETO: { T: [['tErba', 0], ['tPaglia', 0]], H: [['cespo', 0]], hth: .1, S: [['ginestra', -.05]], sth: .2, g: [104, 100, 62], t: '#f8f4dc', d: .8 },
-    NONE: { T: [['tErba', 0]], H: [['cespoV', 0], ['cespo', 0]], hth: .05, S: [['cespuglio', -.1], ['rovo', -.1]], sth: .2, g: [70, 100, 46], t: '#f0f8e0', d: .8 },
+    NONE: { hb: -.04, T: [['tErba', 0]], H: [['cespoV', 0], ['cespo', 0]], hth: .05, S: [['cespuglio', -.1], ['rovo', -.1]], sth: .2, g: [70, 100, 46], t: '#f0f8e0', d: .8 },
   };
   // la deriva di una specie: rumore largo (la massa) con un po' di rumore fine (il bordo frastagliato)
   const VDDS = { felceV: 9, palmaV: 7, foglione: 6, cespoV: 11, cespo: 10, alta: 8, fiori: 6, cardo: 7, ombrella: 7, verbasco: 6, giunco: 8, felce: 9,
@@ -22291,6 +22292,7 @@ var Render = (function () {
   const VDHASH = s => { let h = 0; for (let i = 0; i < s.length; i++) h = h * 31 + s.charCodeAt(i) | 0; return Math.abs(h) % 97; };
   function vdDrift(sp, X, Y) { const k = VDHASH(sp), sc = VDDS[sp] || 8; return vnz(X / sc + k * 7.13, Y / sc + k * 3.71) + vnz(X / (sc * .32) - k * 1.3, Y / (sc * .32) + k * 2.1) * .3; }
   // chi vince in un punto: [specie, forza]; vicino al pareggio le due si alternano (r)
+  function vdHi(X, Y, hb) { const v = vnz(X / 15 + 41, Y / 15 + 17) + vnz(X / 5 + 3, Y / 5 - 9) * .22 + hb; return vdS(-.12, .14, v); }
   function vdWin(L, X, Y, r) { let b = null, bv = -9, c = null, cv = -9; for (const [sp, adv] of L) { const v = vdDrift(sp, X, Y) + adv; if (v > bv) { c = b; cv = bv; b = sp; bv = v; } else if (v > cv) { c = sp; cv = v; } } if (r && c && bv - cv < .07 && r() < .45) return [c, cv]; return [b, bv]; }
   const VDEN = {}; (() => { const E = (M.world && M.world.ECO) || {}; for (const k in E) VDEN[E[k]] = k; })();
   const vdEco = (tx, ty) => { const W0 = M.world; if (!W0 || !W0.eco || tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; return W0.eco[ty * G.GW + tx]; };
@@ -22332,7 +22334,14 @@ var Render = (function () {
       // il tappeto d'erba: fitto (3 × 3 per casella), del tipo che vince in quel punto
       const tmul = v === T.GRASS ? 1 : v === T.SHRUB ? .9 : v === T.TREE ? .55 : v === T.FIELD ? 0 : v === T.SAND ? .45 : v === T.ROCK ? .4 : .2, NT = low ? 3 : 4;
       for (let q = 0; q < NT * NT; q++) { const X = wx + (q % NT + .5 + (r() - .5) * .8) * TS / NT, Y = wy + (Math.floor(q / NT) + .5 + (r() - .5) * .8) * TS / NT, pl = vdPlan(vdEcoMix(X, Y, 1));
-        const dr = rdAt(X, Y); if (dr < .1 || r() > tmul * pl.d * vdS(.1, .9, dr)) continue; const [sp] = vdWin(pl.T, X, Y, r), sr = VDSC[sp] || [1, 1]; put(sp, r, X, Y, { col: tone(pl.t, 1, X, Y), rx: (r() - .5) * .2, rz: (r() - .5) * .2, s: (sr[0] + r() * (sr[1] - sr[0])) * (.55 + .45 * vdS(.1, 1.6, dr)) }); }
+        const dr = rdAt(X, Y); if (dr < .1 || r() > tmul * pl.d * vdS(.1, .9, dr)) continue;
+        const hf = pl.hb !== undefined ? vdHi(X, Y, pl.hb) * vdS(.6, 2.5, dr) : -1;   // il rilievo del prato: isole d'erba alta e prato basso fra l'una e l'altra
+        if (hf >= 0) {
+          if (r() < hf) { put('tAlta', r, X, Y, { col: tone(pl.t, .92 + hf * .12, X, Y), rx: (r() - .5) * .25, rz: (r() - .5) * .25, s: (.7 + 1 * hf) * (.85 + r() * .3) }); if (hf > .55 && r() < .5) put('tErba', r, X + (r() - .5) * .3, Y + (r() - .5) * .3, { col: tone(pl.t, .85, X, Y), s: .9 + hf * .5 }); }
+          else { const L2 = pl.T.filter(t => t[0] !== 'tAlta'); for (let k = 0; k < 2; k++) { const [sp] = vdWin(L2, X, Y, r); put(sp, r, X + (r() - .5) * .35, Y + (r() - .5) * .35, { col: tone(pl.t, 1.12 - hf * .1, X, Y), rx: (r() - .5) * .15, rz: (r() - .5) * .15, s: (.75 + .3 * hf + r() * .25) * (.55 + .45 * vdS(.1, 1.6, dr)) }); } }
+          continue;
+        }
+        const [sp] = vdWin(pl.T, X, Y, r), sr = VDSC[sp] || [1, 1]; put(sp, r, X, Y, { col: tone(pl.t, 1, X, Y), rx: (r() - .5) * .2, rz: (r() - .5) * .2, s: (sr[0] + r() * (sr[1] - sr[0])) * (.55 + .45 * vdS(.1, 1.6, dr)) }); }
       if (v === T.FIELD) {   // i campi: la capezzagna ha le sue erbe e la siepe, l'orto i cavoli a file, il maggese i cardi
         const pc = vdParcel(X0, Y0);
         if (pc.e < 1.4) {
