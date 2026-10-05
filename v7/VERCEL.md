@@ -37,7 +37,7 @@ Git la ignora (`.gitignore`), quindi non finisce più online.
 
 ## Cosa va su Vercel
 Solo `index.html`, `assets/` e `api/`. Backup, sorgenti e strumenti restano fuori (`.vercelignore`).
-Se cambi la logica della Mente in `server.js`, riportala anche in `api/_mente.js`.
+Se cambi la logica della Mente in `server.js`, rigenera `api/_mente.js`: `python3 strumenti_inverno/mente_vercel.py` (dentro `v7/`).
 
 ## Vedere un ramo prima di unirlo
 Ogni push su un ramo che non è quello di produzione crea un'**anteprima** con un indirizzo suo:
