@@ -1771,7 +1771,7 @@ var Render = (function () {
     return (palTexCache[key] = t);
   }
   const palMatCache = {};
-  function palMat(p) { const k = p.join(); return palMatCache[k] || (palMatCache[k] = std({ map: palTex(p[0], p[1], p[2], p[3]), roughness: .9 })); }
+  function palMat(p) { const k = p.join(); return palMatCache[k] || (palMatCache[k] = plasterize(std({ map: palTex(p[0], p[1], p[2], p[3]), roughness: .9 }))); }   // [case] intonaco
   // un modulo del kit col materiale dell'edificio. Nel kit il muro sta sul piano yz e guarda verso +x:
   // rot porta +x sulla normale del lato (S: -π/2, N: π/2, E: 0, W: π)
   // i vetri del kit sono mesh a parte (materiale "glass"): diventano il vetro dell'edificio, acceso o spento
@@ -2084,7 +2084,7 @@ var Render = (function () {
   // ogni edificio ha i suoi materiali: quando diventa trasparente non deve trascinarsi dietro gli altri
   function ownMats(merged, rec) {
     const cache = new Map();
-    merged.traverse(o => { if (o.isMesh && !Array.isArray(o.material)) { if (!cache.has(o.material)) cache.set(o.material, o.material.clone()); o.material = cache.get(o.material); } });
+    merged.traverse(o => { if (o.isMesh && !Array.isArray(o.material)) { if (!cache.has(o.material)) { const cl = o.material.clone(); cache.set(o.material, o.material.userData.plaster ? plasterize(cl) : cl); } o.material = cache.get(o.material); } });
     merged.traverse(o => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => { if (!rec.mats.includes(m)) rec.mats.push(m); }); } });
   }
   function addSign(b, base, w, d, x0, z0, top, signY, awnY) {
@@ -4195,6 +4195,47 @@ var Render = (function () {
     }
     return cs;
   }
+  // ---- intonaco vero sui moduli del kit: grana, macchie, colature, intonaco caduto coi mattoni (in coordinate di mondo) ----
+  // Agisce solo sulla cella "muro" della tavolozza del kit (u 5/16..6/16, v .75..1): cornici, finestre e tetti restano puliti.
+  function plasterize(m) {
+    m.userData.plaster = true;
+    m.customProgramCacheKey = () => 'case-intonaco';
+    m.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;')
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+varying vec3 vWP; varying vec3 vWN;
+float cH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float cN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(cH(i), cH(i + vec2(1., 0.)), f.x), mix(cH(i + vec2(0., 1.)), cH(i + vec2(1., 1.)), f.x), f.y); }`)
+        .replace('#include <map_fragment>', `#include <map_fragment>
+#ifdef USE_MAP
+if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
+  vec3 nw = normalize(vWN);
+  if (abs(nw.y) < .5) {
+    vec2 p = abs(nw.x) > abs(nw.z) ? vec2(vWP.z, vWP.y) : vec2(vWP.x, vWP.y);
+    vec2 q = floor(p * 8.) / 8.;
+    vec3 c = diffuseColor.rgb;
+    c *= 1. + (cH(q) - .5) * .16;                                                  // grana dell'intonaco
+    float bl = cN(q * .45 + 3.7) * .6 + cN(q * 1.6) * .4;
+    c *= mix(.66, 1.12, bl);                                                         // macchie larghe, rappezzi
+    c = mix(c, c * vec3(1.04, .98, .9), smoothstep(.55, .8, cN(q * .3 + 9.1)) * .6); // zone ingiallite
+    float st = cN(vec2(q.x * 3.3, q.y * .22 + 5.));
+    c *= 1. - smoothstep(.55, .9, st) * .42;                                       // colature verticali
+    c *= 1. - smoothstep(.35, 0., fract(p.y / 2.4 + .02)) * .12 * step(.5, cN(vec2(q.x * .7, floor(p.y / 2.4))));   // sporco sotto i marcapiani
+    float pe = cN(q * .8 + 17.3) * .65 + cN(q * 2.6 + 3.1) * .35;
+    if (pe > .66) {                                                                 // intonaco caduto: bordo scuro, poi i mattoni
+      float row = floor(q.y * 8.), bx = q.x * 2. + mod(row, 2.) * .5;
+      vec3 br = mix(vec3(.46, .22, .16), vec3(.62, .34, .23), cH(vec2(floor(bx), row)));
+      if (fract(bx) < .25 || mod(row, 3.) == 2.) br = vec3(.4, .37, .34);
+      c = pe < .685 ? c * .5 : br;
+    }
+    diffuseColor.rgb = c;
+  }
+}
+#endif`);
+    };
+    return m;
+  }
   // ---- atlante: una texture sola per tutte le parti piccole (un materiale per edificio invece di venti) ----
   const CA = { n: 0, map: {} };
   function caAtlas() {
@@ -4446,6 +4487,40 @@ var Render = (function () {
           for (let uu = u0 + .3; uu < u1 - .2; uu += .38 + r() * .2) { if (r() < .2) continue; const c = cbox(.28 + r() * .15, .4 + r() * .3, .03, pick(r, CLOTH), 'cloth'); c.rotation.z = (r() - .5) * .1; at(f, c, uu, yy - c.geometry.parameters.height / 2, .5); }
         }
       }
+
+      // ---- rilievo: davanzali di pietra e architravi su tutte le finestre che si vedono ----
+      const sillC = pick(r, ['#b8b0a2', '#a89e8e', '#c4bcae', '#8e877c']), linC = r() < .5 ? sillC : shade(sillC, .85);
+      wins.forEach(W0 => {
+        if (!W0.name.includes('window')) return; const D = WIN[W0.name]; if (!D) return;
+        const yc = W0.y + D[2], ww = D[0], hh = D[1];
+        at(W0.f, cbox(ww + .26, .08, .2, sillC), W0.u, yc - hh / 2 - .06, .1); at(W0.f, cbox(ww + .1, .05, .06, shade(sillC, .7)), W0.u, yc - hh / 2 - .12, .05);
+        if (r() < .75) at(W0.f, cbox(ww + .3, .12, .1, linC), W0.u, yc + hh / 2 + .1, .06);
+      });
+      // ---- grondaia sul bordo del tetto e pluviali agli spigoli dei lati che si vedono ----
+      const zinc = pick(r, ['#6a6e72', '#5a5e60', '#7a5a44', '#4e5254']);
+      showF.forEach(f => { const F = FACES[f]; if (!F.cam || F.L < 3) return;
+        if (!rec.flat || r() < .5) at(f, cbox(F.L + .1, .13, .16, zinc), F.L / 2, top - .14, .12);
+        const ends = r() < .5 ? [.22] : [.22, F.L - .22];
+        ends.forEach(u => { if (inMural(f, u)) return; const pp = ccyl(.07, .07, top - base, 6, zinc); at(f, pp, u, base + (top - base) / 2, .14); for (let y = base + 1.2; y < top - .4; y += MF) at(f, cbox(.18, .05, .2, shade(zinc, .7)), u, y, .1); at(f, cbox(.16, .12, .34, zinc), u, base + .1, .3); });
+      });
+      // ---- la vita alla base dei muri: casse di plastica, vasi, sacchi, legna, bombole, bici, secchi, contatori ----
+      const doorsU = b.__win.filter(W0 => W0.name.includes('door')).map(W0 => [W0.f, W0.u]);
+      showF.forEach(f => { const F = FACES[f]; if (!F.open) return;
+        for (let k = 0; k < F.n; k++) {
+          const u0 = k * TS + 1; if (inMural(f, u0) || doorsU.some(([df, du]) => df === f && Math.abs(du - u0) < 1.4)) continue;
+          if (r() > (borgo ? .55 : .35)) continue;
+          const u = u0 + (r() - .5) * .8, t = r(), z = .38;
+          if (t < .16) { const cc = pick(r, ['#a83a32', '#3a5a8a', '#c8a03a', '#4a7a4a']); for (let q = 0, nq = 1 + Math.floor(r() * 4); q < nq; q++) at(f, cbox(.5, .3, .38, q % 2 && r() < .5 ? pick(r, ['#a83a32', '#3a5a8a', '#c8a03a']) : cc, 'slat'), u + (q > 2 ? .55 : 0), base + .15 + (q % 3) * .3, z); }   // casse di plastica
+          else if (t < .34) { for (let q = 0, nq = 2 + Math.floor(r() * 3); q < nq; q++) { const s2 = .16 + r() * .14, uu = u + (q - nq / 2) * .38; at(f, ccyl(s2, s2 * .75, s2 * 1.7, 8, pick(r, [POT, '#8a5a40', '#6a6a64', '#3a4a5a'])), uu, base + s2 * .85, z + (r() - .5) * .15); const bl = cblob(s2 * 1.5, pick(r, LEAF)); bl.scale.y = 1.2; at(f, bl, uu, base + s2 * 1.7 + s2 * 1.1, z); } }   // vasi
+          else if (t < .46) { for (let q = 0; q < 2 + Math.floor(r() * 3); q++) { const bl = cblob(.26 + r() * .1, pick(r, ['#1c1c20', '#26262a', '#3a3a30']), 'cloth'); bl.scale.set(1, .85, .9); at(f, bl, u + (r() - .5) * .8, base + .22, z + (r() - .5) * .2); } }   // sacchi della spazzatura
+          else if (t < .6) { const L2 = .9 + r() * .7; for (let row = 0; row < 3; row++) for (let q = 0; q < 5 - row; q++) { const lg = ccyl(.08, .08, L2, 6, pick(r, ['#6a4a30', '#7a5a3a', '#5a3e28'])); lg.rotation.z = Math.PI / 2; at(f, lg, u, base + .08 + row * .15, .14 + (q + row * .5) * .17); } at(f, cbox(L2 + .2, .05, .9, '#3a3a40'), u, base + .62, .5); }   // legna sotto il telo
+          else if (t < .7) { [-1, 1].forEach(s => at(f, ccyl(.15, .15, .7, 8, pick(r, ['#c03a2a', '#d0a040', '#4a6a8a'])), u + s * .2, base + .35, .22)); at(f, cbox(.5, .06, .06, IRON), u, base + .55, .06); }   // bombole del gas legate al muro
+          else if (t < .78) { const bk = new THREE.Group(); [-.48, .48].forEach(o => { const wh = new THREE.Mesh(caUV(new THREE.TorusGeometry(.3, .03, 4, 12), caCell('#1a1a1c'), false), CA.mat); wh.position.set(o, .32, 0); bk.add(wh); }); const c3 = pick(r, ['#8a2a28', '#2a4a6a', '#3a5a3a', '#6a6a70']); [[0, .48, 0, .96, -.0], [-.2, .62, 0, .5, .9], [.32, .55, 0, .5, -.9]].forEach(([x, y, z2, l, rz]) => { const fb = cbox(l, .04, .04, c3); fb.position.set(x, y, z2); fb.rotation.z = rz; bk.add(fb); }); const sd = cbox(.22, .06, .1, '#1a1a1c'); sd.position.set(-.3, .86, 0); bk.add(sd); const hb = cbox(.06, .06, .5, '#2a2a2c'); hb.position.set(.45, .9, 0); bk.add(hb); bk.rotation.y = (r() - .5) * .3; at(f, bk, u, base, .3); }   // bicicletta appoggiata
+          else if (t < .86) { at(f, ccyl(.17, .13, .32, 8, pick(r, ['#5a6a7a', '#a83a32', '#c8c0b0'])), u, base + .16, z); const sc = cbox(.04, 1.3, .04, '#7a5a3a'); sc.rotation.z = .25; at(f, sc, u + .35, base + .65, .12); at(f, cbox(.32, .14, .1, '#3a3028'), u + .5, base + .08, .14); }   // secchio e scopa
+          else if (t < .93) { at(f, cbox(.5, .7, .2, '#5a5e60'), u, base + 1.6, .1); at(f, cbox(.38, .3, .02, '#c8d0c8'), u, base + 1.66, .21); at(f, ccyl(.03, .03, 1.2, 4, '#26262c'), u - .15, base + .7, .08); }   // contatori
+          else { const ch = new THREE.Group(), pa = (o, x, y, z2) => { o.position.set(x, y, z2); ch.add(o); }; pa(cbox(.44, .05, .42, pick(r, ['#6a4a30', '#8a3a2e', '#3a5a4a'])), 0, .45, 0); [[-.19, -.18], [.19, -.18], [-.19, .18], [.19, .18]].forEach(([x, z2]) => pa(cbox(.04, .45, .04, '#3a2a20'), x, .22, z2)); pa(cbox(.44, .5, .04, '#6a4a30'), 0, .72, -.19); ch.rotation.y = (r() - .5) * .8; at(f, ch, u, base, .5); }   // sedia sul marciapiede
+        }
+      });
 
       if (!g.children.length) { rec.caseDone = true; return; }
       const gm = mergeGroup(g);

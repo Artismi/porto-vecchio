@@ -29,6 +29,11 @@ rep("{ modPiece(grp, 'wall', mat, ...xyz(sd.at(k), y), sd.rot); modPiece(grp, 'w
     "{ modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k), y), sd.rot); modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k + 1), y), sd.rot); continue; } modPiece(grp, upper, matF(f), ...xyz(sd.at(k + .5), y), sd.rot, LW = r() < .35 ? lit : null); b.__win.push({ f: sd.f, k, u: (k + .5) * TS + 1, y, name: upper, lit: !!LW }); }")
 rep("          const pc = modPiece(grp, nm, mat, ...xyz(sd.at(k), y), sd.rot, r() < .3 ? lit : null);",
     "          const pc = modPiece(grp, nm, matF(f), ...xyz(sd.at(k), y), sd.rot, LW = r() < .3 ? lit : null); b.__win.push({ f: sd.f, k, u: k * TS + 1, y, name: nm, lit: !!LW });   // [case]")
+# intonaco vero sui moduli (shader), e le copie per edificio lo tengono
+rep("  function palMat(p) { const k = p.join(); return palMatCache[k] || (palMatCache[k] = std({ map: palTex(p[0], p[1], p[2], p[3]), roughness: .9 })); }",
+    "  function palMat(p) { const k = p.join(); return palMatCache[k] || (palMatCache[k] = plasterize(std({ map: palTex(p[0], p[1], p[2], p[3]), roughness: .9 }))); }   // [case] intonaco")
+rep("if (!cache.has(o.material)) cache.set(o.material, o.material.clone());",
+    "if (!cache.has(o.material)) { const cl = o.material.clone(); cache.set(o.material, o.material.userData.plaster ? plasterize(cl) : cl); }")
 # il pass nuovo, dopo la città (che ha già messo torrette, balconi e insegne)
 rep("  function buildCity() {", frag + "  function buildCity() {")
 rep("TT('citta', buildCity);", "TT('citta', buildCity); TT('case', buildCase);")
