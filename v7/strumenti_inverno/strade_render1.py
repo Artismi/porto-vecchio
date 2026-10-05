@@ -5,6 +5,7 @@
 import sys, os
 p = sys.argv[1]; s = open(p, encoding='utf-8').read()
 if '[strade1]' in s: print('già applicato'); sys.exit()
+assert 'function fB(' in s and 'const FA = ' in s, "serve l'officina delle forme: applicare prima case_render1.py"
 frag = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'strade_revisione.js'), encoding='utf-8').read()
 def rep(old, new, n=1):
     global s
@@ -18,15 +19,9 @@ rep("  function roadMarks(x, tx0, ty0, n, m) {\n", "  function roadMarks(x, tx0,
 # 3) scivoli dei marciapiedi davanti alle strisce (quota e colore)
 rep("    return (SWF35 = { R, NW, NH, H, m });", "    scivoli1(H, R, NW, NH);   // [strade1]\n    return (SWF35 = { R, NW, NH, H, m });")
 rep("colMarc35(c, top, n1, n2);   // [isola35] lastre, cordolo chiaro, canaletta scura", "colMarc35(c, top, n1, n2); scivoloCol1(c, k);   // [isola35] lastre, cordolo chiaro, canaletta scura [strade1] scivoli")
-# 4) guardrail di [isola31]: lama a doppia onda (due costole) e testate che scendono a terra
-rep("bar.rotation.set(bent ? .35 : 0, Math.atan2(-(q2.z - q.z), q2.x - q.x), Math.atan2(y2 - y, L)); g.add(bar); }",
-    "bar.rotation.set(bent ? .35 : 0, Math.atan2(-(q2.z - q.z), q2.x - q.x), Math.atan2(y2 - y, L)); g.add(bar);\n"
-    "              [.1, -.1].forEach(dy => { const rb = box(L + .06, .08, .05, bm); rb.position.copy(bar.position); rb.position.x -= nx * .045; rb.position.z -= nz * .045; rb.position.y += dy; rb.rotation.copy(bar.rotation); g.add(rb); });   // [strade1] doppia onda\n"
-    "              const sp = box(.14, .16, .14, post); sp.position.set(q.x - nx * .05, y + .62, q.z - nz * .05); g.add(sp); }")
-rep("          addStatic(g); n++; run = [];\n",
-    "          if (!parapet) [[0, 1], [run.length - 1, run.length - 2]].forEach(([a, b]) => { const qa = run[a], qb = run[b], dx = qa.x - qb.x, dz = qa.z - qb.z, L0 = Math.hypot(dx, dz) || 1, ex = qa.x + dx / L0 * 1.6, ez = qa.z + dz / L0 * 1.6, ya = groundH(qa.x, qa.z) + .62, ye = groundH(ex, ez) + .12, L = Math.hypot(ex - qa.x, ez - qa.z);\n"
-    "            const tb = box(L, .3, .06, rail); tb.position.set((qa.x + ex) / 2, (ya + ye) / 2, (qa.z + ez) / 2); tb.rotation.set(0, Math.atan2(-(ez - qa.z), ex - qa.x), Math.atan2(ye - ya, L)); g.add(tb); });   // [strade1] testate interrate\n"
-    "          addStatic(g); n++; run = [];\n")
+# 4) guardrail: il codice di [isola31] consegna i tratti a GR1 (una riga), il modello lo costruisce buildGuardrail1
+rep("          const g = new THREE.Group(), damaged = r() < .35, rustAll = r() < .4, parapet = run.some(q => q.wall);\n",
+    "          const g = new THREE.Group(), damaged = r() < .35, rustAll = r() < .4, parapet = run.some(q => q.wall);\n          if (!parapet) { GR1.push(run.slice()); run = []; return; }   // [strade1] il guardrail lo costruisce buildGuardrail1\n")
 # 5) gli oggetti, dopo pulizia e oggetti di [isola35] (così non vengono tolti); i semafori nel fotogramma
 rep("TT('oggetti35', oggetti35);", "TT('oggetti35', oggetti35); TT('strade1', buildStrade1); TT('vita1', buildVita1);")
 rep("    tickWinter(time, night);\n", "    tickWinter(time, night);\n    tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri\n")
@@ -64,4 +59,7 @@ rep("sporco35(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);", "sporco35(x, tx
 # 13) sabbia e piazze come forme continue
 rep("      if (blobTile1(tx, ty)) v = natural1(tx, ty);   // [strade1] la forma la stende blobs1\n", "      if (blobTile1(tx, ty)) v = natural1(tx, ty);   // [strade1] la forma la stende blobs1\n      if (BTX1(v)) v = btxUnder1(tx, ty, z);   // [strade1] sabbia e piazza le stende blobTex1\n")
 rep("blobs1(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m);", "blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m);")
+# 14) fontana della piazza curata; guardrail nuovo
+rep("if (c) buildFountain(fx / c, fz / c);", "if (c) buildFountain1(fx / c, fz / c);   /* [strade1] */")
+rep("TT('urbano1', buildUrbano1);", "TT('urbano1', buildUrbano1); TT('guardrail1', buildGuardrail1);")
 open(p, 'w', encoding='utf-8').write(s); print('ok')
