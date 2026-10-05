@@ -13,7 +13,7 @@ rep("    updateLights(time, night, cam.x, cam.y);\n",
 # il post: prima della vignetta, le ombre si alzano, i caldi medi tornano, il suolo chiaro al sole si spegne un poco
 rep("          vec2 q = vUv-.5; c *= 1. - dot(q,q)*1.25;",
     """          { float l2 = dot(c, vec3(.3,.59,.11));   // [isola37]
-            c = mix(c, pow(max(c, vec3(0.)), vec3(.72)) + vec3(.004,.008,.004), (1.-smoothstep(.0,.4,l2))*.85);   // ombre meno schiacciate: il bosco ha forma
+            c = mix(c, pow(max(c, vec3(0.)), vec3(.72)) + vec3(.004,.008,.004), (1.-smoothstep(.0,.4,l2))*.85*(1.-night));   // ombre meno schiacciate: il bosco ha forma
             { float gr = smoothstep(.0,.05, c.g - max(c.r,c.b)); float lg = dot(c, vec3(.3,.59,.11)); c = mix(vec3(lg), c, 1. + gr*.6); }   // il verde del bosco torna verde
             float warm = smoothstep(.015,.1, c.r-c.b) * (1.-smoothstep(.55,.85,l2));
             c = mix(vec3(l2), c, 1. + warm*.4);                                               // ocra, cotto, senape, sangue di bue si leggono
