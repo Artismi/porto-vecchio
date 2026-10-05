@@ -13,6 +13,7 @@ const MODELS = {
 // Stato del proxy, visibile da /api/status e dalla chat del gioco
 const LLM = {
   workingModel: null,   // modello che ha risposto davvero l'ultima volta
+  workingBy: {},        // lo stesso, per fornitore
   lastError: null,      // { when, provider, model, status, msg }
   lastOk: null,         // timestamp ultima risposta valida
   calls: 0,
@@ -30,10 +31,24 @@ function detectProvider(key) {
 
 function loadConfig() {
   const apiKey = String(process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY || process.env.API_KEY || '').trim();
-  const cfg = { provider: String(process.env.MENTE_PROVIDER || 'gemini').toLowerCase(), apiKey, model: process.env.MENTE_MODEL || '' };
+  const cfg = { provider: String(process.env.MENTE_PROVIDER || 'gemini').toLowerCase(), apiKey, model: process.env.MENTE_MODEL || '',
+    chiavi: { chat: process.env.CHIAVE_CHAT || '', mente: process.env.CHIAVE_MENTE || '', eventi: process.env.CHIAVE_EVENTI || '' } };
   const guessed = detectProvider(apiKey); if (guessed) cfg.provider = guessed;
   return cfg;
 }
+// Tre canali, ognuno può avere la sua chiave (e quindi la sua quota, se le chiavi vengono da progetti Google diversi):
+//   chat   = il giocatore parla con un abitante · mente = la notte dei gruppi (coro.js) · eventi = incontri e chiacchiere a caso
+// Un canale senza chiave propria usa quella generale.
+const CANALI = { dialogo: 'chat', gruppo: 'mente', riflessione: 'mente', chiacchiera: 'eventi' };
+function cfgPer(cfg, canale) {
+  const k = String((cfg.chiavi && cfg.chiavi[canale]) || '').trim().replace(/^["']|["']$/g, '');
+  if (!k || /INCOLLA|CHIAVE|INSERISCI/i.test(k)) return Object.assign({}, cfg, { canale, propria: false });
+  const c = Object.assign({}, cfg, { apiKey: k, canale, propria: true, bearer: false });
+  const g = detectProvider(k); if (g) c.provider = g;
+  return c;
+}
+const canaliPropri = cfg => ({ chat: cfgPer(cfg, 'chat').propria, mente: cfgPer(cfg, 'mente').propria, eventi: cfgPer(cfg, 'eventi').propria });
+
 // Estrae un oggetto JSON anche se il modello lo avvolge in ```json … ``` o aggiunge testo
 function parseJSONLoose(txt) {
   if (!txt) return null;
@@ -55,7 +70,8 @@ function fail(cfg, model, status, msg) {
 
 function modelsFor(cfg) {
   const list = (MODELS[cfg.provider] || []).slice();
-  if (LLM.workingModel) list.unshift(LLM.workingModel);
+  // il modello buono si ricorda per fornitore: i canali possono usare fornitori diversi
+  if (LLM.workingBy[cfg.provider]) list.unshift(LLM.workingBy[cfg.provider]);
   if (cfg.model) list.unshift(cfg.model);
   return [...new Set(list)];
 }
@@ -141,12 +157,14 @@ async function rawCall(cfg, model, systemPrompt, userMessage, maxTokens) {
 const COOLDOWN = {};
 // Freno globale verso il fornitore: la versione gratuita di Gemini regge circa 10 richieste al minuto.
 // Chiacchiere e riflessioni notturne cedono il passo ai dialoghi col giocatore.
-const RPM = { max: 8, background: 4, log: [] };
-function budgetOk(urgent) {
-  const now = Date.now();
-  RPM.log = RPM.log.filter(t => now - t < 60000);
-  if (RPM.log.length >= (urgent ? RPM.max : RPM.background)) return false;
-  RPM.log.push(now);
+// Il conto è per chiave: i canali con una chiave propria hanno tutta la loro quota.
+const RPM = { max: 8, background: 4, logs: {} };
+function budgetOk(cfg, urgent) {
+  const now = Date.now(), id = String(cfg.apiKey).slice(-8);
+  const log = (RPM.logs[id] || []).filter(t => now - t < 60000);
+  RPM.logs[id] = log;
+  if (log.length >= (urgent || cfg.propria ? RPM.max : RPM.background)) return false;
+  log.push(now);
   return true;
 }
 function pauseFor(text) {
@@ -163,12 +181,13 @@ async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent =
   if (!cfg.apiKey) { LLM.lastError = { when: Date.now(), status: 'chiave', msg: 'Nessuna chiave: su Vercel imposta la variabile GEMINI_API_KEY (Settings → Environment Variables) e rifai il deploy.' }; return null; }
   if (typeof fetch !== 'function') { LLM.lastError = { when: Date.now(), status: 'node', msg: 'Node troppo vecchio: serve Node 18 o più recente' }; return null; }
 
-  const models = modelsFor(cfg).filter(m => !(COOLDOWN[m] > Date.now()));
+  const ck = m => String(cfg.apiKey).slice(-8) + ':' + m;
+  const models = modelsFor(cfg).filter(m => !(COOLDOWN[ck(m)] > Date.now()));
   if (!models.length) {
     LLM.lastError = { when: Date.now(), provider: cfg.provider, status: 429, msg: 'Tutti i modelli sono in pausa per troppe richieste.' };
     return null;
   }
-  if (!budgetOk(urgent)) return null; // troppe richieste nell'ultimo minuto: questa la salto
+  if (!budgetOk(cfg, urgent)) return null; // troppe richieste nell'ultimo minuto: questa la salto
   LLM.calls++;
   for (const model of models) {
     let r;
@@ -182,7 +201,7 @@ async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent =
       const obj = parseJSONLoose(r.text);
       if (!obj) { fail(cfg, model, 'json', 'Risposta non in JSON: ' + r.text.slice(0, 200)); return null; }
       if (LLM.workingModel !== model) console.log(`[Mente ✔] uso ${cfg.provider}/${model}`);
-      LLM.workingModel = model; LLM.lastOk = Date.now(); LLM.lastError = null;
+      LLM.workingModel = LLM.workingBy[cfg.provider] = model; LLM.lastOk = Date.now(); LLM.lastError = null;
       return obj;
     }
     fail(cfg, model, r.status, r.text);
@@ -193,13 +212,13 @@ async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent =
       try { r = await rawCall(cfg, model, systemPrompt, userMessage, maxTokens); } catch (err) { return null; }
       if (r.ok) {
         const obj = parseJSONLoose(r.text);
-        if (obj) { LLM.workingModel = model; LLM.lastOk = Date.now(); LLM.lastError = null; return obj; }
+        if (obj) { LLM.workingModel = LLM.workingBy[cfg.provider] = model; LLM.lastOk = Date.now(); LLM.lastError = null; return obj; }
       }
       fail(cfg, model, r.status, r.text);
     }
     if (r.status === 429) {
       // ogni modello ha la sua quota: metto in pausa questo e provo il successivo
-      COOLDOWN[model] = Date.now() + pauseFor(r.text);
+      COOLDOWN[ck(model)] = Date.now() + pauseFor(r.text);
       console.warn(`[Mente] ${model} in pausa per ${Math.round(pauseFor(r.text) / 1000)} s (troppe richieste)`);
       continue;
     }
@@ -246,7 +265,7 @@ function reply(aiResp) {
 async function handleBody(body) {
   {
     try {
-      const cfg = loadConfig();
+      const cfg = cfgPer(loadConfig(), CANALI[body.kind || 'dialogo'] || 'chat');
       const kind = body.kind || 'dialogo';
 
       if (kind === 'dialogo') {
@@ -284,6 +303,27 @@ rabbia_diff e paura_diff sono numeri tra -0.1 e 0.1.`;
         return reply(r);
       }
 
+      if (kind === 'gruppo') {
+        // il Coro: una sola chiamata per un gruppo di abitanti affini (vedi src/coro.js)
+        const sys = buildSystemPrompt() + `
+Compito: è notte. Ricevi un GRUPPO di abitanti affini e la casella sintetica di ognuno
+(formato: id | nome, età, mestiere | umore | bisogni | sa: cosa sa | pensa: ultimo pensiero).
+Sintetizza come il gruppo vive la giornata appena passata. Scrivi un pensiero personale SOLO per gli id in "specifici".
+Restituisci un JSON:
+{
+  "clima": "l'umore del gruppo in una frase (max 20 parole)",
+  "voce": "una notizia o diceria che gira nel gruppo, presa da quello che sanno (max 15 parole, vuota se non c'è niente)",
+  "rabbia": 0,
+  "paura": 0,
+  "battute": ["3-4 battute brevi (max 12 parole) che qualcuno del gruppo dirà domani per strada"],
+  "singoli": { "<id>": { "pensiero": "in prima persona, max 15 parole", "rabbia": 0, "paura": 0 } }
+}
+rabbia e paura sono numeri tra -0.1 e 0.1 (quanto cambia l'umore del gruppo, o del singolo in più).`;
+        const usr = JSON.stringify({ gruppo: body.gruppo, situazione: body.situazione, membri: body.membri, specifici: body.specifici }).slice(0, 6000);
+        console.log(`[Mente] gruppo: ${body.gruppo} (${(body.membri || []).length})`);
+        return reply(await callLLM(cfg, sys, usr, 700, false));
+      }
+
       if (kind === 'chiacchiera') {
         const sys = buildSystemPrompt() + `
 Compito: due abitanti si incrociano e scambiano due battute al volo, che il giocatore sente passando.
@@ -308,10 +348,11 @@ function statusObj(cfg) {
   return {
     ok: true,
     provider: cfg.provider,
-    active: !!cfg.apiKey && cfg.provider !== 'none',
+    active: cfg.provider !== 'none' && (!!cfg.apiKey || Object.values(canaliPropri(cfg)).some(Boolean)),
     model: LLM.workingModel || cfg.model || (MODELS[cfg.provider] || [])[0] || '',
     working: !!LLM.lastOk && !LLM.lastError,
     lastError: LLM.lastError ? explainError(LLM.lastError) : null,
+    canali: canaliPropri(cfg),
     calls: LLM.calls,
     fails: LLM.fails
   };
