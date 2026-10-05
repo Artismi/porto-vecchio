@@ -37,19 +37,19 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     vec2 p = abs(nw.x) > abs(nw.z) ? vec2(vWP.z, vWP.y) : vec2(vWP.x, vWP.y);
     vec2 q = floor(p * 8.) / 8.;
     vec3 c = diffuseColor.rgb;
-    c *= 1. + (cH(q) - .5) * .16;                                                  // grana dell'intonaco
+    c *= 1. + (cH(q) - .5) * .07;                                                  // grana dell'intonaco
     float bl = cN(q * .45 + 3.7) * .6 + cN(q * 1.6) * .4;
-    c *= mix(.66, 1.12, bl);                                                         // macchie larghe, rappezzi
+    c *= mix(.86, 1.06, bl);                                                         // macchie larghe, rappezzi
     c = mix(c, c * vec3(1.04, .98, .9), smoothstep(.55, .8, cN(q * .3 + 9.1)) * .6); // zone ingiallite
     float st = cN(vec2(q.x * 3.3, q.y * .22 + 5.));
-    c *= 1. - smoothstep(.55, .9, st) * .42;                                       // colature verticali
+    c *= 1. - smoothstep(.6, .92, st) * .22;                                       // colature verticali
     c *= 1. - smoothstep(.35, 0., fract(p.y / 2.4 + .02)) * .12 * step(.5, cN(vec2(q.x * .7, floor(p.y / 2.4))));   // sporco sotto i marcapiani
     float pe = cN(q * .8 + 17.3) * .65 + cN(q * 2.6 + 3.1) * .35;
-    if (pe > .66) {                                                                 // intonaco caduto: bordo scuro, poi i mattoni
+    if (pe > .78) {                                                                 // intonaco caduto: bordo scuro, poi i mattoni
       float row = floor(q.y * 8.), bx = q.x * 2. + mod(row, 2.) * .5;
       vec3 br = mix(vec3(.46, .22, .16), vec3(.62, .34, .23), cH(vec2(floor(bx), row)));
       if (fract(bx) < .25 || mod(row, 3.) == 2.) br = vec3(.4, .37, .34);
-      c = pe < .685 ? c * .5 : br;
+      c = pe < .79 ? c * .62 : br;
     }
     diffuseColor.rgb = c;
   }
@@ -235,7 +235,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       const F0 = FACES[face0], shopLike = !!(b.shop || b.sign || b.use);
       let pent = false;
       if (borgo && F0 && F0.open && !(PP && PP.f === face0) && (shopLike ? r() < .5 : r() < .22)) {
-        pent = true; const L = F0.L + .2, yT = base + MG + .1, dep = 1.05;
+        pent = true; b.__pent = true; const L = F0.L + .2, yT = base + MG + .1, dep = 1.05;
         const roof = tbox(L, .1, dep + .1, CT.tileM, 1.5); roof.rotation.x = .34; at(face0, roof, F0.L / 2, yT - Math.sin(.34) * dep / 2, dep / 2);
         at(face0, cbox(L, .12, .06, WOODD), F0.L / 2, yT - Math.sin(.34) * dep - .02, dep + .02);   // gronda
         for (let u2 = .15; u2 < F0.L; u2 += Math.max(1.8, F0.L / Math.max(2, Math.round(F0.L / 2.6)))) { const br = cbox(.1, .1, dep * 1.15, WOODD); br.rotation.x = -.62; at(face0, br, u2, yT - .5, dep * .44); }
@@ -256,20 +256,20 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       // ---- il tempo sui muri: intonaco caduto coi mattoni, colature, macchie, umidità dal basso ----
       if (!kitHouse) showF.forEach(f => {
         const F = FACES[f]; if (F.L < 2) return;
-        const np = Math.floor(r() * (borgo ? 5 : 3) + (F.cam ? 1 : 0));
+        const np = Math.floor(r() * 2 + (F.cam ? .5 : 0));   // [pulizia] pochi, non dappertutto
         for (let q = 0; q < np; q++) {
           const k = Math.floor(r() * (F.n + 1)), u = Math.min(F.L - .35, Math.max(.35, k * TS + (r() - .5) * .3)); if (inMural(f, u)) continue;
           const sw = .55 + r() * .5, sh = .45 + r() * .6, yy = base + .9 + r() * Math.max(.2, top - base - 1.8);
           const pa = decal(sw, sh, Math.floor(r() * 8)); pa.rotation.z = (r() - .5) * .5; at(f, pa, u, yy, .075);
         }
-        if (r() < .7) { const k = Math.floor(r() * F.n), u = k * TS + 1; if (!inMural(f, u)) at(f, decal(1.6 + r(), 1.4 + r() * 1.2, 12 + Math.floor(r() * 4)), u + (r() - .5), base + 1 + r() * Math.max(.2, top - base - 2.4), .07); }
+        if (r() < .25) { const k = Math.floor(r() * F.n), u = k * TS + 1; if (!inMural(f, u)) at(f, decal(1.6 + r(), 1.4 + r() * 1.2, 12 + Math.floor(r() * 4)), u + (r() - .5), base + 1 + r() * Math.max(.2, top - base - 2.4), .07); }
         // umidità che sale, solo sui moduli di muro pieno del piano terra
         ((b.__gwall && b.__gwall[f]) || []).forEach(k => { const u = k * TS + 1; if (inMural(f, u)) return; const m = new THREE.Mesh(new THREE.PlaneGeometry(2.02, 1.5), CT.dampM); const uv = m.geometry.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * .5 + (k % 2) * .5); at(f, m, u, base + .5 + .75 - .2, .068); });
       });
-      wins.forEach(W0 => { if (W0.g || r() > .28) return; const D = WIN[W0.name]; if (!D) return; at(W0.f, decal(D[0] * .9, .9 + r() * .6, 8 + Math.floor(r() * 4)), W0.u, W0.y + D[2] - D[1] / 2 - .55, .072); });
+      wins.forEach(W0 => { if (W0.g || r() > .1) return; const D = WIN[W0.name]; if (!D) return; at(W0.f, decal(D[0] * .9, .9 + r() * .6, 8 + Math.floor(r() * 4)), W0.u, W0.y + D[2] - D[1] / 2 - .55, .072); });
 
       // ---- edera e rampicanti che pendono dal tetto ----
-      if (rec.flat && (borgo ? r() < .55 : r() < .3)) {
+      if (rec.flat && (borgo ? r() < .35 : r() < .15)) {
         const cand = showF.filter(f => FACES[f].cam); const nv = 1 + Math.floor(r() * 3);
         for (let q = 0; q < nv && cand.length; q++) {
           const f = pick(r, cand), F = FACES[f], u = Math.min(F.L - .4, Math.max(.4, Math.floor(r() * (F.n + 1)) * TS + (r() - .5) * .4)); if (inMural(f, u)) continue;
@@ -330,7 +330,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       showF.forEach(f => { const F = FACES[f]; if (!F.open) return;
         for (let k = 0; k < F.n; k++) {
           const u0 = k * TS + 1; if (inMural(f, u0) || doorsU.some(([df, du]) => df === f && Math.abs(du - u0) < 1.4)) continue;
-          if (r() > (borgo ? .55 : .35)) continue;
+          if (!doorsU.some(([df, du]) => df === f && Math.abs(du - u0) < 3.3) || r() > .45) continue;   // [pulizia] la roba sta vicino alle porte, non lungo tutto il muro
           const u = u0 + (r() - .5) * .8, t = r(), z = .38;
           if (t < .16) { const cc = pick(r, ['#a83a32', '#3a5a8a', '#c8a03a', '#4a7a4a', '#2a2a2e']); for (let q = 0, nq = 1 + Math.floor(r() * 4); q < nq; q++) { const cr = oPCrate(r, q % 2 && r() < .5 ? null : cc); cr.rotation.y = (r() - .5) * .25; at(f, cr, u + (q > 2 ? .6 : 0) + (r() - .5) * .05, base + (q % 3) * .3, z); } }   // casse di plastica impilate
           else if (t < .34) { for (let q = 0, nq = 2 + Math.floor(r() * 3); q < nq; q++) at(f, oPot(r, .8 + r() * .7), u + (q - nq / 2) * .42, base, z + (r() - .5) * .15); }   // vasi di cotto con le piante
