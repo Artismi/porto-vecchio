@@ -63,6 +63,7 @@ var Vesti3D = (function () {
       const P = [], N = [], SI = [], SW = [], CO = [], th = {}, col = [0, 0, 0];
       // spessore di ogni capo: cresce con gli strati sotto, nelle parti che copre
       const L = outfit.filter(c => c.parti && c.parti.length).map(c => { const set = new Set(c.parti); let base = 0; c.parti.forEach(p => { base = Math.max(base, th[p] || 0); }); const t = base + .0025 + c.sp * .32; c.parti.forEach(p => { th[p] = t; }); return { c, set, off: t / unit }; });
+      { const S = g.userData.spessore = g.userData.spessore || {}; for (const k in th) S[k] = Math.max(S[k] || 0, th[k]); }   // [animazioni] le pose allargano le braccia sui vestiti spessi
       // ogni triangolo prende solo il capo più esterno che lo copre: niente strati che bucano quelli sopra
       for (let t = 0; t < A.idx.length; t += 3) {
         const a = A.idx[t], b = A.idx[t + 1], d = A.idx[t + 2];
@@ -164,7 +165,8 @@ var Vesti3D = (function () {
   }
 
   // ---------------- VESTIRE UNA PERSONA ----------------
-  function strip(g) { const rm = []; g.traverse(o => { if (o.userData && o.userData.vesti) rm.push(o); }); rm.forEach(o => { if (o.parent) o.parent.remove(o); if (o.geometry && o.isSkinnedMesh) o.geometry.dispose(); }); }
+  function strip(g) { if (g.userData) g.userData.spessore = null;   // [animazioni]
+    const rm = []; g.traverse(o => { if (o.userData && o.userData.vesti) rm.push(o); }); rm.forEach(o => { if (o.parent) o.parent.remove(o); if (o.geometry && o.isSkinnedMesh) o.geometry.dispose(); }); }
   function bare(g, look) {
     // i vestiti del modello diventano pelle: da qui in su si veste coi gusci
     const skin = (look && look.skin) || '#dcae88';

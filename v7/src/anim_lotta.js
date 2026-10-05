@@ -61,7 +61,8 @@
   }
   // reach relativo alla spalla (la base del braccio): così vale per tutte le corporature. x positivo = verso il centro
   // (per tutti e due i lati), anche per il polo: px negativo = gomito in fuori
-  function reachS(P, side, ox, oy, oz, px, py, pz, w) { const L = side > 0 ? 'L' : 'R'; if (!local(P, 'UpperArm' + L, _T)) return; reach(P, side, _T.x - ox * side, _T.y + oy, _T.z + oz, -px * side, py, pz, w); }
+  function reachS(P, side, ox, oy, oz, px, py, pz, w) { const L = side > 0 ? 'L' : 'R', bk = P.bulk || 0; ox -= bk * .6; oz += bk * 1.2; px -= bk * 2;   // [vestiti] più largo sui cappotti
+    if (!local(P, 'UpperArm' + L, _T)) return; reach(P, side, _T.x - ox * side, _T.y + oy, _T.z + oz, -px * side, py, pz, w); }
   // l'arma in mano: l'oggetto del modello e il suo asse (dall'impugnatura alla bocca), calcolato una volta sola
   function gunOf(P, w) { const u = P.g.userData, k = u.gunsByWeapon && u.gunsByWeapon[w]; return (k && u.mguns && u.mguns[k]) || null; }
   function gunAxis(gn) {

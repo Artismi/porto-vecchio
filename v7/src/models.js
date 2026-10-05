@@ -405,5 +405,5 @@ var Models = (function () {
     if (typeof THREE === 'undefined' || !THREE.GLTFLoader) return;
     dress().catch(e => console.warn('Models:', e));
   }
-  return { person, animPerson, charsReady, loadChar, furniture, placed, CAT, LIB, load, has, make, vehicle, attach, tick, setBase: b => { base = b; } };
+  return { prepGuns, person, animPerson, charsReady, loadChar, furniture, placed, CAT, LIB, load, has, make, vehicle, attach, tick, setBase: b => { base = b; } };
 })();

@@ -11,9 +11,11 @@
      P.aim(osso, [x,y,z], peso)   punta l'osso (dalla sua base verso l'osso figlio) nella direzione data
      P.rot(osso, ax, ay, az, peso) ruota l'osso attorno agli assi del personaggio (radianti, in ordine x, y, z)
      P.body({ y, z, x, rx, ry, rz }) sposta/ruota tutto il corpo (sedersi: y negativo; sdraiarsi: rx)
+                                   (si applica DOPO la posa: le pose sdraiate si scrivono come se si stesse in piedi)
      P.prop(nome)                  accende un oggetto in mano (vedi Anim.prop)
      P.t (secondi da quando la posa è attiva), P.time (orologio), P.w (peso della posa, 0-1, sale e scende da solo),
-     P.o (le opzioni passate ad animPerson), P.r (numero fisso per persona, 0-1, per variare le pose)
+     P.o (le opzioni passate ad animPerson), P.r (numero fisso per persona, 0-1, per variare le pose),
+     P.bulk (metri di vestiti su busto e braccia: allargare gomiti e mani di tanto, per non bucare il cappotto)
      P.base(clip)                  chiede una clip sotto la posa (es. 'Idle' per stare fermi mentre si siede)
    Le pose si registrano con Anim.def(nome, { fn(P), full, base, fade }) e si scelgono con le «mappe»:
      Anim.npcMap(fn(st, n, s))  e  Anim.playerMap(fn(st, p, s))  riempiono s = { act, upper, mood, talk, lookAt }
@@ -74,7 +76,7 @@ var Anim = (function () {
   function makeP(g, R) {
     const gq = Q();
     const P = {
-      g, R, w: 1, t: 0, time: 0, o: {}, r: R.r, _base: null, _props: null, _body: null,
+      g, R, w: 1, t: 0, time: 0, o: {}, r: R.r, bulk: 0, _base: null, _props: null, _body: null,
       bone: k => R.b[k],
       // punta l'osso (base → figlio) verso la direzione data nello spazio del personaggio
       aim(k, dir, w) {
@@ -151,6 +153,8 @@ var Anim = (function () {
     g.updateMatrixWorld(true);
     const P = R.P || (R.P = makeP(g, R)); g.getWorldQuaternion(P._gq);
     P.o = o; P.time = time || 0; P._body = null;
+    // quanto sono spessi i vestiti su busto e braccia (vestiario.js): le pose tengono le braccia più larghe
+    { const S = u.spessore; P.bulk = S ? Math.min(.12, (S.torso || 0) + (S.braccia || 0) * .5) : 0; }
     const showProps = {};
     // ordine: prima tutto il corpo, poi le braccia, poi gli strati leggeri, ultimo lo sguardo
     const order = Object.keys(R.layers).sort((a, b) => rank(a, A) - rank(b, A));
