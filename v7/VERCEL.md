@@ -38,3 +38,8 @@ Git la ignora (`.gitignore`), quindi non finisce più online.
 ## Cosa va su Vercel
 Solo `index.html`, `assets/` e `api/`. Backup, sorgenti e strumenti restano fuori (`.vercelignore`).
 Se cambi la logica della Mente in `server.js`, riportala anche in `api/_mente.js`.
+
+## Vedere un ramo prima di unirlo
+Ogni push su un ramo che non è quello di produzione crea un'**anteprima** con un indirizzo suo:
+su Vercel apri il progetto → **Deployments**, la riga del ramo (es. `claude/relaxed-ramanujan-sna3l9`) → **Visit**.
+L'anteprima usa le stesse variabili d'ambiente se in **Settings → Environment Variables** è spuntato anche «Preview».
