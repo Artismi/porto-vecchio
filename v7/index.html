@@ -21832,7 +21832,7 @@ var Render = (function () {
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
     paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
-    const tex = canvasTex(c);
+    const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
     try { const W = c.width, H = c.height, id = x.getImageData(0, 0, W, H), d = id.data, rc = mk(W, H), rxx = rc.getContext('2d'), od = rxx.createImageData(W, H), o = od.data;
       for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.72, Math.min(1, .72 + (lum - 40) / 120 * .28)) * 255   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
@@ -23276,10 +23276,16 @@ var Render = (function () {
     // vie di sampietrini (sopra l'asfalto che smoothRoads ha steso): cordolo scuro, pietre, una fila di guide di granito ai lati
     x.lineJoin = 'round'; x.lineCap = 'round';
     (M.roads || []).forEach(rd => { if (!COB1[rd.id] || !rd.pts) return; let near = false; for (const p of rd.pts) if (inBox1(p[0], p[1], X0, Y0, X1, Y1, rd.w + 4)) { near = true; break; } if (!near) return;
-      const path = () => { x.beginPath(); rd.pts.forEach((p, k) => k ? x.lineTo(cx(p[0]), cy(p[1])) : x.moveTo(cx(p[0]), cy(p[1]))); };
+      onCarr1(0, 0, 0); const asphAt11 = (px, pz) => { const i0 = Math.floor(px / 8), j0 = Math.floor(pz / 8); for (let i = i0 - 2; i <= i0 + 2; i++) for (let j = j0 - 2; j <= j0 + 2; j++) for (const q of CH1.get(i * 4096 + j) || []) { if (q[5] === rd || !asph1(q[5])) continue; const dx = q[2] - q[0], dz = q[3] - q[1], L2 = dx * dx + dz * dz || 1, t = clamp(((px - q[0]) * dx + (pz - q[1]) * dz) / L2, 0, 1); if (Math.hypot(q[0] + dx * t - px, q[1] + dz * t - pz) < q[4] + .15) return true; } return false; };   /* [unione11] */
+      const keep = rd._k11 || (rd._k11 = rd.pts.map(p => !asphAt11(p[0], p[1])));
+      const path = () => { x.beginPath(); let on = false; rd.pts.forEach((p, k) => { if (!keep[k]) { on = false; return; } if (on) x.lineTo(cx(p[0]), cy(p[1])); else { x.moveTo(cx(p[0]), cy(p[1])); on = true; } }); };
+      x.lineCap = 'butt';   /* [unione11] taglio dritto sul ciglio dell'asfalto */
       path(); x.lineWidth = (rd.w + .5) * PPM; x.strokeStyle = '#2a2624'; x.stroke();
       path(); x.lineWidth = rd.w * PPM; x.strokeStyle = sampPat1(x, X0, Y0); x.stroke();
       path(); x.lineWidth = .5 * PPM; x.strokeStyle = 'rgba(150,144,134,.55)'; x.stroke();                   // guida centrale di granito (per le ruote dei carri)
+      for (let k = 0; k < rd.pts.length - 1; k++) { if (keep[k] === keep[k + 1]) continue; const q = keep[k] ? k : k + 1, o = keep[k] ? k + 1 : k, [ax, az] = rd.pts[q], dx = rd.pts[o][0] - ax, dz = rd.pts[o][1] - az, L = Math.hypot(dx, dz) || 1, nx = -dz / L, nz = dx / L, h = (rd.w + .5) / 2;   /* [unione11] soglia di granito */
+        x.beginPath(); x.moveTo(cx(ax + nx * h), cy(az + nz * h)); x.lineTo(cx(ax - nx * h), cy(az - nz * h)); x.lineWidth = .4 * PPM; x.strokeStyle = 'rgba(132,126,116,.9)'; x.stroke(); }
+      x.lineCap = 'round';
     });
     x.lineCap = 'butt';
     const S = surfList1();
@@ -23638,6 +23644,7 @@ var Render = (function () {
   function piece1(kind, w, h) { const g = new THREE.PlaneGeometry(w, h), uv = g.attributes.uv, ox = (kind % 4) / 4, oy = 1 - Math.floor(kind / 4) / 2 - .5;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, ox + uv.getX(i) * .25, oy + uv.getY(i) * .5); g.rotateX(-Math.PI / 2); return g; }
   let PAPM1 = null; const paperM = () => PAPM1 || (PAPM1 = new THREE.MeshLambertMaterial({ map: paperTex1() }));
+  const zebra11 = (x, z) => crossings35().some(c => Math.hypot(c.x - x, c.y - z) < c.w / 2 + 2.5);   /* [unione11] sulle strisce non cresce niente */
   function buildVita1() {
     const T = G.T, r = rng(4242); let n = 0, nt = 0;
     const paperM = new THREE.MeshLambertMaterial({ map: paperTex1(), side: THREE.DoubleSide });
@@ -23673,13 +23680,13 @@ var Render = (function () {
           // canaletta: carte, lattine, bottiglie, foglie contro il cordolo
           { const [x, z] = off(rd.w / 2 - .25 - rr() * .2); if (rr() < (vic ? .2 : .42) && !solid1(x, z)) smallThing(x, z); }
           // erba che spunta fra cordolo e asfalto (o fra i basoli lungo il muro, nei vicoli)
-          { const [x, z] = off(rd.w / 2 + (vic ? -.15 : .02)); if (rr() < (vic ? .45 : .38) && !solid1(x, z)) tuft(x, z, .26 + rr() * .3, rr() < .5 ? 0 : 1); }
+          { const [x, z] = off(rd.w / 2 + (vic ? -.15 : .02)); if (rr() < (vic ? .32 : .22) /* [unione11] */ && !solid1(x, z) && !zebra11(x, z)) tuft(x, z, .22 + rr() * .26, rr() < .5 ? 0 : 1); }
           if (vic || !side) return;
           // sul marciapiede: un foglio, un volantino, erba fra le lastre
-          { const [x, z] = off(rd.w / 2 + .5 + rr() * (side - .9)); if (!solid1(x, z) && !onCarr1(x, z, 0)) { const q = rr(); if (q < .14) paper(x, z); else if (q < .2) smallThing(x, z); else if (q < .34) tuft(x, z, .18 + rr() * .16, 0); } }
+          { const [x, z] = off(rd.w / 2 + .5 + rr() * (side - .9)); if (!solid1(x, z) && !onCarr1(x, z, 0)) { const q = rr(); if (q < .14) paper(x, z); else if (q < .2) smallThing(x, z); else if (q < .26 && !zebra11(x, z)) tuft(x, z, .15 + rr() * .12, 0); } }   /* [unione11] */
           // al piede del muro: erbacce fitte, e le cose grandi
           { const [x, z] = off(rd.w / 2 + side - .3); const behind = off(rd.w / 2 + side + .9); const wall = G.tileAt(Math.floor(behind[0] / TS), Math.floor(behind[1] / TS)) === T.BLD;
-            if (!solid1(x, z) && !onCarr1(x, z, 0)) { if (rr() < (wall ? .6 : .4)) for (let q = 0; q < 1 + Math.floor(rr() * 4); q++) tuft(x + (rr() - .5) * .7, z + (rr() - .5) * .6, .28 + rr() * .4, rr() < .35 ? 2 : rr() < .6 ? 0 : 1);
+            if (!solid1(x, z) && !onCarr1(x, z, 0)) { if (rr() < (wall ? .5 : .25)) for (let q = 0; q < 1 + Math.floor(rr() * 3); q++) tuft(x + (rr() - .5) * .7, z + (rr() - .5) * .3, .26 + rr() * .36, rr() < .35 ? 2 : rr() < .6 ? 0 : 1);   /* [unione11] */
               if (rr() < (wall ? .22 : .1)) bigThing(x, z, ry + (rr() - .5) * .6); else if (rr() < .3) smallThing(x, z); } }
         });
         // nei vicoli anche qualcosa in mezzo, contro il muro
@@ -23690,7 +23697,7 @@ var Render = (function () {
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v !== T.PIAZZA && v !== T.WALK && v !== T.COB && v !== T.DIRT) continue;
       const h = th(tx, ty, 4242); if (h > (v === T.DIRT ? .6 : .3)) continue; const x = tx * TS + .3 + th(tx, ty, 4243) * 1.4, z = ty * TS + .3 + th(tx, ty, 4244) * 1.4; if (solid1(x, z) || busy1(x, z, .15)) continue;
-      if (h < .17) tuft(x, z, .2 + h * 2, v === T.DIRT ? 1 : 0); else if (h < .24) paper(x, z); else smallThing(x, z);
+      if (h < .17) { if (v === T.DIRT || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => { const w = gT(tx + a, ty + b); return w === T.BLD || w === T.GRASS || w === T.DIRT; })) tuft(x, z, .2 + h * 2, v === T.DIRT ? 1 : 0); } else if (h < .24) paper(x, z); else smallThing(x, z);   /* [unione11] */
     }
     if (window.__dbg35) console.log('[dbg] vita1 oggetti', n, 'ciuffi', nt);
     return n + nt;
@@ -24027,14 +24034,14 @@ var Render = (function () {
       for (let i = 0; i < 10; i++) { const g2 = x.createRadialGradient(0, 0, 0, 0, 0, 1); g2.addColorStop(0, 'rgba(8,8,12,.4)'); g2.addColorStop(1, 'rgba(8,8,12,0)'); x.save(); x.translate(r() * S, r() * S); x.scale(4 + r() * 8, 2 + r() * 5); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, 1, 0, 6.3); x.fill(); x.restore(); }   // olio
     } else if (kind === 'piazza') {   // lastre di pietra a correre 1 × 0,6 m, fasce di disegno ogni 8 m, spigoli scheggiati, crepe, macchie
       for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) { const row = Math.floor(py / 5), off = (row * 37) % 8, col = Math.floor((px + off) / 8), band = py % 64 < 5;
-        const jy = py % 5 === 0, jx = (px + off) % 8 === 0, h = th(col, row, 71), n = wrapNz(px, py, 12, 3) * 14 + (r() - .5) * 8;
-        let g = band ? 74 + h * 10 : 104 + h * 26; if (jx || jy) g = 52; const warm = band ? -6 : h > .8 ? 8 : 0;
-        if (!(jx || jy) && th(col, row, 72) < .06 && (px + py) % 3 === 0) g -= 22;   // lastra crepata
+        const jy = py % 5 === 0, jx = (px + off) % 8 === 0, h = th(col, row, 71), n = wrapNz(px, py, 12, 3) * 8 + (r() - .5) * 4;
+        let g = band ? 90 + h * 5 : 96 + h * 10; if (jx || jy) g = 84; const warm = band ? -3 : h > .8 ? 3 : 0;   /* [unione11] */
+        if (!(jx || jy) && th(col, row, 72) < .06 && (px + py) % 3 === 0) g -= 8;   // lastra crepata
         put(px, py, g + n + warm, g + n - 2, g + n - 8 - warm * .4); }
       x.putImageData(img, 0, 0);
-      for (let i = 0; i < 260; i++) { x.fillStyle = 'rgba(40,36,32,.45)'; x.fillRect(Math.floor(r() * 32) * 8 + (r() < .5 ? 0 : 7), Math.floor(r() * 51) * 5, 1, 1); }   // spigoli scheggiati
+      for (let i = 0; i < 260; i++) { x.fillStyle = 'rgba(40,36,32,.15)'; x.fillRect(Math.floor(r() * 32) * 8 + (r() < .5 ? 0 : 7), Math.floor(r() * 51) * 5, 1, 1); }   // spigoli scheggiati
       for (let i = 0; i < 26; i++) { const g2 = x.createRadialGradient(0, 0, 0, 0, 0, 1); g2.addColorStop(0, 'rgba(30,26,22,.28)'); g2.addColorStop(1, 'rgba(30,26,22,0)'); x.save(); x.translate(r() * S, r() * S); x.scale(3 + r() * 10, 2 + r() * 7); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, 1, 0, 6.3); x.fill(); x.restore(); }
-      for (let i = 0; i < 60; i++) { x.fillStyle = 'rgba(60,80,40,.5)'; x.fillRect(Math.floor(r() * 32) * 8, Math.floor(r() * S), 1, 2); }   // erba nei giunti
+      for (let i = 0; i < 60; i++) { x.fillStyle = 'rgba(70,84,50,.3)'; x.fillRect(Math.floor(r() * 32) * 8, Math.floor(r() * S), 1, 2); }   // erba nei giunti [unione11] più tenue
     } else if (kind === 'banchina') {   // lastroni di cemento 4 × 4 m con giunti, ruggine colata, catrame, segni di funi
       for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) { const cx = Math.floor(px / 32), cy = Math.floor(py / 32), h = th(cx, cy, 81), n = wrapNz(px, py, 9, 3) * 16 + (r() - .5) * 10, jt = px % 32 === 0 || py % 32 === 0;
         const g = jt ? 46 : 96 + h * 18 + n; put(px, py, g, g - 2, g - 5); }
@@ -24074,7 +24081,7 @@ var Render = (function () {
     for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { const X = X0 + i + .5, Y = Y0 + j + .5, v = vnz(X / 41, Y / 41) * .9 + vnz(X / 12.5, Y / 12.5) * .55 + vnz(X / 3.1, Y / 3.1) * .3, o = (j * W + i) * 4, g = 128 + v * 62;
       d[o] = g + 2; d[o + 1] = g; d[o + 2] = g - 3; d[o + 3] = 255; }
     cx.putImageData(img, 0, 0);
-    x.save(); x.imageSmoothingEnabled = true; x.globalCompositeOperation = 'soft-light'; x.globalAlpha = .7; x.drawImage(c, 0, 0, W, H, 0, 0, n * TP, m * TP); x.restore();
+    x.save(); x.imageSmoothingEnabled = true; x.globalCompositeOperation = 'soft-light'; x.globalAlpha = .45;   /* [unione11] */ x.drawImage(c, 0, 0, W, H, 0, 0, n * TP, m * TP); x.restore();
   }
   // sabbia e piazze come forme continue: la casella si dipinge come quello che ha attorno, il materiale si stende sopra col bordo morbido
   const BTX1 = v => { const T = G.T; return v === T.SAND ? 'sabbia' : v === T.PIAZZA ? 'piazza' : null; };
@@ -24235,21 +24242,21 @@ var Render = (function () {
       for (let i = 0; i < 5; i++) { x.fillStyle = 'rgba(16,14,18,.35)'; x.beginPath(); x.ellipse(r() * S, r() * S, 2 + r() * 5, 1.5 + r() * 3, r() * 3, 0, 6.3); x.fill(); }   // olio
       for (let i = 0; i < 4; i++) { const cx = r() * S, cy = r() * S, rr = 2 + r() * 2.5; x.fillStyle = '#2a282b'; x.beginPath(); x.ellipse(cx, cy, rr, rr * .75, r() * 3, 0, 6.3); x.fill(); x.fillStyle = 'rgba(90,88,92,.5)'; x.fillRect(cx - rr, cy - rr * .8, rr, 1); }   // buche
     } else if (kind === 'basolato') {   // basoli di pietra lavica a correre, storti, consumati al centro
-      x.fillStyle = '#2a2624'; x.fillRect(0, 0, S, S);
-      for (let y = 0; y < S; y += 5) { let px = -Math.floor(r() * 6); const ro = r() * 4; while (px < S) { const w = 5 + Math.floor(r() * 6); const g = 56 + Math.floor(r() * 24), t = Math.floor(r() * 10);
+      x.fillStyle = '#423c38'; x.fillRect(0, 0, S, S);   /* [unione11] */
+      for (let y = 0; y < S; y += 5) { let px = -Math.floor(r() * 6); const ro = r() * 4; while (px < S) { const w = 5 + Math.floor(r() * 6); const g = 60 + Math.floor(r() * 12), t = Math.floor(r() * 6);
         x.fillStyle = `rgb(${g + t},${g - 4 + t / 2},${g - 10})`; x.fillRect(px + 1, y + 1, w - 1, 4); x.fillStyle = 'rgba(255,240,220,.07)'; x.fillRect(px + 1, y + 1, w - 1, 1); x.fillStyle = 'rgba(0,0,0,.2)'; x.fillRect(px + 1, y + 4, w - 1, 1); px += w + (ro > 3 ? 1 : 0); } }
       for (let i = 0; i < 70; i++) { x.fillStyle = pick(r, ['rgba(60,80,40,.55)', 'rgba(40,58,30,.5)']); x.fillRect(Math.floor(r() * S), Math.floor(r() * S / 5) * 5, 1 + Math.floor(r() * 2), 1); }   // muschio nei giunti
       for (let i = 0; i < 6; i++) { x.fillStyle = 'rgba(14,14,18,.32)'; x.beginPath(); x.ellipse(r() * S, r() * S, 3 + r() * 6, 2 + r() * 3, 0, 0, 6.3); x.fill(); }
     } else if (kind === 'lastre') {   // marciapiede: lastre di cemento da 50 cm (moltiplicate per il colore dei vertici)
       x.fillStyle = '#d8d4cc'; x.fillRect(0, 0, S, S);
       const q = S / 4;
-      for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const g = 200 + Math.floor(r() * 40); x.fillStyle = `rgb(${g},${g - 3},${g - 8})`; x.fillRect(i * q + 1, j * q + 1, q - 2, q - 2);
-        for (let k = 0; k < 40; k++) { const h = 170 + Math.floor(r() * 60); x.fillStyle = `rgba(${h},${h - 4},${h - 8},.6)`; x.fillRect(i * q + 1 + r() * (q - 2), j * q + 1 + r() * (q - 2), 1, 1); }
-        if (r() < .22) { x.strokeStyle = 'rgba(80,76,70,.7)'; x.beginPath(); x.moveTo(i * q + r() * q, j * q); x.lineTo(i * q + r() * q, j * q + q); x.stroke(); }   // lastra crepata
-        if (r() < .12) { x.fillStyle = 'rgba(70,90,50,.6)'; x.fillRect(i * q, j * q + r() * q, 2, 3); } }   // erbetta fra le lastre
-      x.fillStyle = 'rgba(90,86,80,.85)'; for (let k = 0; k < 4; k++) { x.fillRect(k * q, 0, 1, S); x.fillRect(0, k * q, S, 1); }
-      for (let i = 0; i < 8; i++) { x.fillStyle = 'rgba(40,36,34,.28)'; x.beginPath(); x.ellipse(r() * S, r() * S, 2 + r() * 6, 2 + r() * 4, 0, 0, 6.3); x.fill(); }   // macchie e gomme da masticare
-      for (let i = 0; i < 30; i++) { x.fillStyle = 'rgba(30,30,30,.5)'; x.fillRect(r() * S, r() * S, 1, 1); }
+      for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const g = 208 + Math.floor(r() * 12); x.fillStyle = `rgb(${g},${g - 3},${g - 8})`; x.fillRect(i * q + 1, j * q + 1, q - 2, q - 2);   /* [unione11] */
+        for (let k = 0; k < 40; k++) { const h = 196 + Math.floor(r() * 26); x.fillStyle = `rgba(${h},${h - 4},${h - 8},.4)`; x.fillRect(i * q + 1 + r() * (q - 2), j * q + 1 + r() * (q - 2), 1, 1); }
+        if (r() < .22) { x.strokeStyle = 'rgba(120,116,110,.3)'; x.beginPath(); x.moveTo(i * q + r() * q, j * q); x.lineTo(i * q + r() * q, j * q + q); x.stroke(); }   // lastra crepata
+        if (r() < .12) { x.fillStyle = 'rgba(80,96,60,.35)'; x.fillRect(i * q, j * q + r() * q, 2, 3); } }   // erbetta fra le lastre [unione11] più tenue
+      x.fillStyle = 'rgba(150,146,138,.6)'; for (let k = 0; k < 4; k++) { x.fillRect(k * q, 0, 1, S); x.fillRect(0, k * q, S, 1); }   /* [unione11] giunti sottili */
+      for (let i = 0; i < 8; i++) { x.fillStyle = 'rgba(40,36,34,.12)'; x.beginPath(); x.ellipse(r() * S, r() * S, 2 + r() * 6, 2 + r() * 4, 0, 0, 6.3); x.fill(); }   // macchie e gomme da masticare
+      for (let i = 0; i < 30; i++) { x.fillStyle = 'rgba(30,30,30,.2)'; x.fillRect(r() * S, r() * S, 1, 1); }
     }
     return (P35[kind] = c);
   }
@@ -24281,7 +24288,7 @@ var Render = (function () {
       let kind = v === T.GRASS ? (k1 > -.08 ? 'erba' : k1 > -.3 ? 'terra' : 'ghiaia') : v === T.DIRT ? (k1 > .25 ? 'erba' : 'terra') : (k1 > .3 ? 'cemento' : k1 > -.3 ? 'ciottoli' : 'terra') /* [unione2] niente erba nel selciato */;
       if (nearB && v !== T.GRASS && k2 > -.2) kind = 'ciottoli';
       const sx = px + si * S4, sy = py + sj * S4;
-      if (kind === 'ciottoli') { x.fillStyle = '#221f1d'; x.fillRect(sx, sy, S4, S4); for (let q = 0; q < 4; q++) { const g = 52 + Math.floor(r() * 22); x.fillStyle = `rgb(${g},${g - 3},${g - 8})`; x.fillRect(sx + (q % 2) * 2, sy + Math.floor(q / 2) * 2, 2 - (r() < .3 ? 1 : 0), 2 - (r() < .2 ? 1 : 0)); } }
+      if (kind === 'ciottoli') { x.fillStyle = '#3c3733'; x.fillRect(sx, sy, S4, S4); for (let q = 0; q < 4; q++) { const g = 56 + Math.floor(r() * 12);   /* [unione11] */ x.fillStyle = `rgb(${g},${g - 3},${g - 8})`; x.fillRect(sx + (q % 2) * 2, sy + Math.floor(q / 2) * 2, 2 - (r() < .3 ? 1 : 0), 2 - (r() < .2 ? 1 : 0)); } }
       else if (kind === 'cemento') { const g = 56 + Math.floor((k2 + .5) * 14); x.fillStyle = `rgb(${g},${g - 3},${g - 7})`; x.fillRect(sx, sy, S4, S4); if (r() < .3) { x.fillStyle = 'rgba(30,28,28,.6)'; x.fillRect(sx + Math.floor(r() * S4), sy, 1, S4); } }
       else if (kind === 'terra') { const g = Math.floor((k2 + .5) * 14); x.fillStyle = `rgb(${56 + g},${45 + g},${34 + g / 2})`; x.fillRect(sx, sy, S4, S4); if (r() < .4) { x.fillStyle = 'rgba(40,32,26,.55)'; x.fillRect(sx + Math.floor(r() * 3), sy + Math.floor(r() * 3), 2, 1); } }
       else if (kind === 'ghiaia') { x.fillStyle = '#4a453e'; x.fillRect(sx, sy, S4, S4); for (let q = 0; q < 3; q++) { x.fillStyle = pick(r, ['#7a746a', '#4a4640', '#8a8478']); x.fillRect(sx + Math.floor(r() * S4), sy + Math.floor(r() * S4), 1, 1); } }
@@ -24371,7 +24378,7 @@ var Render = (function () {
     alberiCitta35().forEach(t => { if (t.x < X0 || t.x >= X1 || t.z < Y0 || t.z >= Y1) return; const r = rng((Math.round(t.x * 13) + Math.round(t.z * 7)) >>> 0);
       const name = t.kind === 'cortile' && r() < .35 ? pick(r, NM.olive) : t.kind === 'viale' && r() < .2 ? pick(r, NM.bare) : pick(r, NM.oak);
       add(name, t.x, groundH(t.x, t.z) - .05, t.z, (/Twisted/.test(name) ? .22 : /Dead/.test(name) ? .26 : t.s) * (.92 + r() * .16), r() * 6.28, { rx: (r() - .5) * .05, rz: (r() - .5) * .05, col: pick(r, LEAF) });
-      if (t.kind !== 'viale') for (let q = 0; q < 3; q++) add(q ? 'Grass_Common_Tall' : 'Bush_Common', t.x + (r() - .5) * 2.4, 0, t.z + (r() - .5) * 2.4, q ? .7 + r() * .4 : .45 + r() * .2, r() * 6.28, { ground: true, col: pick(r, LEAF) }); });
+      if (t.kind !== 'viale') for (let q = 0; q < (t.kind === 'cortile' ? 3 : 1); q++) add(q ? 'Grass_Common_Tall' : 'Bush_Common',   /* [unione11] */ t.x + (r() - .5) * 2.4, 0, t.z + (r() - .5) * 2.4, q ? .7 + r() * .4 : .45 + r() * .2, r() * 6.28, { ground: true, col: pick(r, LEAF) }); });
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j; if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v === T.BLD || v === T.WATER || v === T.VIA || v === T.QUAY) continue;
       const r = rng((tx * 6151 + ty * 2399 + 35) >>> 0), walls = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => gT(tx + a, ty + b) === T.BLD);
@@ -24383,7 +24390,7 @@ var Render = (function () {
           if (walls.length > 1 && w < .3) continue;
           add(w < .3 ? 'Bush_Common' : w < .55 ? 'Grass_Common_Tall' : w < .75 ? 'Fern_1' : w < .9 ? 'Plant_7_Big' : 'Plant_1_Big', x, 0, z, w < .3 ? .4 + r() * .25 : w < .55 ? .6 + r() * .4 : w < .75 ? .3 + r() * .15 : .28 + r() * .14, r() * 6.28, { ground: true, col: pick(r, LEAF) }); } }
       else if (v === T.DIRT && r() < .4 /* [unione2] */) add('Grass_Wispy_Short', tx * TS + r() * 2, 0, ty * TS + r() * 2, .8 + r() * .5, r() * 6.28, { ground: true, col: '#f0e4c0' });
-      else if (v === T.COB && !walls.length && r() < .17 /* [unione2] un ciuffo ogni sei caselle circa */) add(r() < .6 ? 'Grass_Wispy_Short' : 'Plant_1', tx * TS + r() * 2, 0, ty * TS + r() * 2, .5 + r() * .4, r() * 6.28, { ground: true, col: pick(r, LEAF) });
+      else if (v === T.COB && !walls.length && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => { const w = gT(tx + a, ty + b); return w === T.GRASS || w === T.DIRT; }) && r() < .3 /* [unione2] [unione11] al margine del verde */) add(r() < .6 ? 'Grass_Wispy_Short' : 'Plant_1', tx * TS + r() * 2, 0, ty * TS + r() * 2, .5 + r() * .4, r() * 6.28, { ground: true, col: pick(r, LEAF) });
     }
   }
 
@@ -25461,7 +25468,7 @@ var Render = (function () {
         for (let s = 0; s < L; s += .9) { acc += .9; const x0 = ax + (bx - ax) * s / L, z0 = az + (bz - az) * s / L; if (x0 < X0 - 3 || x0 >= X1 + 3 || z0 < Y0 - 3 || z0 >= Y1 + 3) continue;
           offs.forEach((o, oi) => [-1, 1].forEach(sd => {
             const x = x0 + nx * sd * o, z = z0 + nz * sd * o; if (x < X0 || x >= X1 || z < Y0 || z >= Y1) return;
-            const wild = vnz(x / 14, z / 14) + .5, h = th(Math.round(x * 3), Math.round(z * 3), 381 + oi); if (h > .12 + wild * .55) return;
+            const wild = vnz(x / 14, z / 14) + .5, h = th(Math.round(x * 3), Math.round(z * 3), 381 + oi); if (h > .07 + wild * .38 || zebra11(x, z)) return;   /* [unione11] */
             if (zoneT(Math.floor(x / TS), Math.floor(z / TS)) !== ZN.CITTA || gT(Math.floor(x / TS), Math.floor(z / TS)) === G.T.BLD || nearJ(x, z, 1)) return;
             const q = th(Math.round(x * 5), Math.round(z * 5), 382), r = rng((Math.round(x * 31) ^ Math.round(z * 17)) >>> 0);
             add(q < .45 ? 'Grass_Wispy_Short' : q < .75 ? 'Grass_Common_Tall' : q < .9 ? 'Plant_1' : 'Fern_1', x + (r() - .5) * .3, 0, z + (r() - .5) * .3, q < .45 ? .7 + r() * .5 : q < .75 ? .35 + r() * .35 + wild * .25 : q < .9 ? .3 + r() * .2 : .22 + r() * .12, r() * 6.28, { ground: true, col: pick(r, LEAF) });
@@ -26894,7 +26901,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: .96, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .2, outline: .3, vig: .7, paint: 0, pal: .5, sat: 1.25, ink: .5, rim: .5, cav: 1, clar: .3 };   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: .96, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .06 /* [unione11] */, outline: .3, vig: .7, paint: 0, pal: .5, sat: 1.25, ink: .5, rim: .5, cav: 1, clar: .3 };   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -27007,19 +27014,21 @@ var Render = (function () {
             float w = cone * att; if (w < .003) continue; acc += w * vSh(sm, M, q); }
           return LC * acc * dt; }
         float lin(float d){ float z = d*2.-1.; return 2.*near*far/(far+near-z*(far-near)); }
+        float dL(vec2 u){ vec2 t = u*res - .5, f = fract(t), b = (floor(t) + .5)/res, e = 1./res;   // [unione11] profondità interpolata: i bordi cadono fra i texel
+          return mix(mix(lin(texture2D(tD, b).r), lin(texture2D(tD, b + vec2(e.x, 0.)).r), f.x), mix(lin(texture2D(tD, b + vec2(0., e.y)).r), lin(texture2D(tD, b + e).r), f.x), f.y); }
         void main(){
           vec2 px = 1./res;
-          vec2 uv = (floor(vUv*res)+.5)/res;
+          vec2 uv = vUv;   /* [unione11] niente aggancio al texel */
           vec3 c = texture2D(tC, uv).rgb;
           { vec2 cq = vUv - .5; vec2 off = cq * dot(cq, cq) * aK2.x * px * 22.; c.r = texture2D(tC, uv + off).r; c.b = texture2D(tC, uv - off).b; }   // [amb2] aberrazione ai bordi
-          float d = lin(texture2D(tD, uv).r);
+          float d = dL(uv);   /* [unione11] */
           float dc = max(lin(texture2D(tD, vec2(.5)).r), uFoc9 * .92);   /* [unione9] mai più vicino del personaggio */   // [luci2] distanza del punto guardato
           { vec3 nb = texture2D(tC, uv+vec2(px.x,0.)).rgb + texture2D(tC, uv-vec2(px.x,0.)).rgb + texture2D(tC, uv+vec2(0.,px.y)).rgb + texture2D(tC, uv-vec2(0.,px.y)).rgb;
             c = max(c + (c - nb*.25) * aK2.y * (1. - smoothstep(dc*1.08, dc*1.5, d)), 0.); }
           float coc = 0.; { float ty = abs(vUv.y - aFoc.y) * 1.15 + abs(vUv.x - aFoc.x) * .35;   // [amb2] obiettivo basculante: nitido attorno al giocatore
             coc = clamp(smoothstep(.26, .62, ty) + smoothstep(dc*1.1, dc*1.8, d) * .4, 0., 1.) * aK.z;
             c = mix(c, texture2D(tBlur, vUv).rgb, coc); }   // [luci2] crisp: il primo piano è nitido
-          float d1 = lin(texture2D(tD, uv+vec2(px.x,0.)).r), d2 = lin(texture2D(tD, uv-vec2(px.x,0.)).r), d3 = lin(texture2D(tD, uv+vec2(0.,px.y)).r), d4 = lin(texture2D(tD, uv-vec2(0.,px.y)).r);
+          float d1 = dL(uv+vec2(px.x,0.)), d2 = dL(uv-vec2(px.x,0.)), d3 = dL(uv+vec2(0.,px.y)), d4 = dL(uv-vec2(0.,px.y));   /* [unione11] */
           float edge = max(max(d1-d, d2-d), max(d3-d, d4-d));
           float ol = smoothstep(.45*(1.+d*.01), .9*(1.+d*.012), edge);
           c = mix(c, c*.55 + vec3(.02,.025,.04), ol*aK2.z*(1.-coc));   // [amb2]
@@ -27028,8 +27037,9 @@ var Render = (function () {
             float la = dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, vec3(.3,.59,.11)), lb = dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, vec3(.3,.59,.11));
             float lc2 = dot(texture2D(tC, uv + vec2(0., px.y)).rgb, vec3(.3,.59,.11)), ld = dot(texture2D(tC, uv - vec2(0., px.y)).rgb, vec3(.3,.59,.11)), l0 = dot(c, vec3(.3,.59,.11));
             float ge = clamp((max(max(la, lb), max(lc2, ld)) - l0) * 3.2 - .12, 0., 1.);   // solo il lato scuro del bordo prende l'inchiostro
+            ge *= mix(0., 1., smoothstep(.05*(1.+d*.01), .25*(1.+d*.012), max(abs(d1 + d2 - 2.*d), abs(d3 + d4 - 2.*d))));   /* [unione11] solo dove salta la profondità: le fughe del pavimento no */
             c = mix(c, c * vec3(.42,.4,.56), ge * pK.z * (1. - coc));
-            float du = lin(texture2D(tD, uv + vec2(0., px.y)).r), du2 = lin(texture2D(tD, uv + vec2(0., px.y * 2.)).r);
+            float du = d3, du2 = dL(uv + vec2(0., px.y * 2.));   /* [unione11] */
             float rim = smoothstep(.5*(1.+d*.01), 1.6*(1.+d*.012), max(du, du2) - d) * (1. - coc);   // il profilo alto di un oggetto: dietro c'è qualcosa di lontano
             c += (c * .55 + vec3(.05,.04,.02)) * mix(vec3(1.08,1.,.86), vec3(.8,.9,1.15), night) * rim * pK.w;
             // cavità: dalla profondità, gli spigoli convessi prendono luce, le pieghe e gli incavi si scuriscono (il modello sembra rifinito a mano)
@@ -27123,7 +27133,7 @@ var Render = (function () {
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     renderer.setSize(cw, ch, false);
     if (rt) rt.dispose();
-    rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: THREE.HalfFloatType });   /* [amb2] HDR */
+    rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
     ambResize(W, H); paintResize(W, H);   /* [amb3] */
     rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = THREE.UnsignedIntType;
     postMat.uniforms.res.value.set(W, H);
