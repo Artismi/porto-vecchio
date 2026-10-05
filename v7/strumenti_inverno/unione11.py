@@ -205,9 +205,19 @@ rep("c = mix(c, c*.55 + vec3(.02,.025,.04), ol*aK2.z*(1.-coc));   // [amb2]",
               float patchB = smoothstep(.66, .78, vn11(vec2(al * .5, wp.y * .7) + 19.));
               brick = bl * patchB * step(.4, hs11(cell + 3.)) * wallK * .5 * (1. - smoothstep(.22, .45, max(fw2.x, fw2.y))); }   // mattoni troppo piccoli sullo schermo: niente
             float vegK = smoothstep(.015, .06, max(max(c.r, c.g), c.b) - min(min(c.r, c.g), c.b)) * step(c.r * .85, c.g) * step(c.b * 1.04, c.g);   // fogliame verde e giallo: inchiostro leggero
-            float ink = max(max(max(max(thin, thick), crease * .55), form) * (1. - thinObj * .6) * (1. - vegK * .88), max(shapeI * .85, brick)) * (1.-coc) * (1. - busyK) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
-            vec3 inkC = vec3(.03, .026, .032) + c * .04;   // inchiostro di china: nero vero
+            float sil = smoothstep(tS * 2.5, tS * 4., e2) * (1. - thinObj) * (1. - bgSide) * .9;   // le sagome esterne col secondo peso, più spesse delle linee interne
+            float ink = max(max(max(max(max(thin, sil), thick), crease * .55), form) * (1. - thinObj * .6) * (1. - vegK * .88), max(shapeI * .85, brick)) * (1.-coc) * (1. - busyK) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
+            vec3 inkC = vec3(.19, .085, .2) + c * .06;   // inchiostro prugna: viola scuro e caldo, lega col colore (riferimento isometrico di Andrea)
             c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); }""")
 # ---------------- 7) colore un filo più saturo ----------------
 rep("if (pK.x > .01) {   // [amb3] colori saturi, ma in palette", "c = max(mix(vec3(dot(c, vec3(.3,.59,.11))), c, 1.14), 0.);   /* [unione11] un filo più saturi */\n          if (pK.x > .01) {   // [amb3] colori saturi, ma in palette")
+# ---------------- 8) dal riferimento isometrico: inchiostro prugna, due pesi, campiture piatte, ombre violette ----------------
+# (Andrea, con l'illustrazione isometrica della casa col campetto: «guarda il linework di questo») Linee viola scuro invece che nere;
+# sagome esterne più spesse delle linee interne (non sulle cose sottili); meno grana: si riaccende la pennellata [amb3]
+# (Kuwahara morbido, che c'era ed era spenta) a un terzo, così le texture tengono la loro identità («solo meno rumorose e sgranate»)
+# e si legge liscia, non a blocchi; ombre un filo più violette.
+rep("paint: 0, pal:", "paint: .35 /* [unione11] meno grana, l'identità delle texture resta */, pal:")
+rep("PAINT.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: THREE.HalfFloatType, depthBuffer: false });",
+    "PAINT.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType, depthBuffer: false });   /* [unione11] letta liscia */")
+rep("vec3 shT = mix(vec3(.90,1.,1.07), vec3(.94,.96,1.08), uReg);", "vec3 shT = mix(vec3(.94,.9,1.08), vec3(.96,.91,1.08), uReg);   /* [unione11] ombre violette */")
 open(p, 'w', encoding='utf-8').write(s); print('ok')
