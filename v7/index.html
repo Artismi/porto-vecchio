@@ -19519,7 +19519,7 @@ var Render = (function () {
     if (name === '__ceppo') { const bark = natModel('Pine_1'); const geo = new THREE.CylinderGeometry(.28, .38, .5, 9); geo.translate(0, .25, 0); const top = new THREE.CircleGeometry(.28, 9); top.rotateX(-Math.PI / 2); top.translate(0, .5, 0);
       const mkp = (g, mat) => { const c = g.attributes.position.count; g.setAttribute('aSnow', new THREE.BufferAttribute(new Float32Array(c), 1)); g.setAttribute('aSway', new THREE.BufferAttribute(new Float32Array(c), 1)); return { geo: g, mat }; };
       return (NAT.models[name] = { parts: [mkp(geo, bark ? bark.parts.find(q => !q.leafy).mat : natMat(null, false, '#6a5040')), mkp(top, natMat(null, false, '#d8b888'))], top: .5 }); }
-    if (/^(Abete|Betulla)_/.test(name)) return (NAT.models[name] = abeteModel(name));   // [verde]
+    if (/^(Abete|Betulla|Quercia)_/.test(name)) return (NAT.models[name] = abeteModel(name));   // [verde]
     if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/' + name)) return (NAT.models[name] = null);
     const g = Kit.get('natura/' + name); g.updateMatrixWorld(true); const parts = []; let top = 0;
     g.traverse(o => { if (!o.isMesh) return; const geo = o.geometry.clone(); geo.applyMatrix4(o.matrixWorld); geo.computeBoundingBox(); top = Math.max(top, geo.boundingBox.max.y); parts.push({ geo, src: o.material }); });
@@ -19603,7 +19603,7 @@ var Render = (function () {
       let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
       arr.forEach(o => { if (o.ground) o.y = groundH(o.x, o.z) - .05; x0 = Math.min(x0, o.x); x1 = Math.max(x1, o.x); y0 = Math.min(y0, o.y); y1 = Math.max(y1, o.y + mdl.top * o.s * o.sy); z0 = Math.min(z0, o.z); z1 = Math.max(z1, o.z); });
       const sph = new THREE.Sphere(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2 + 10);
-      const tree = /Tree|Pine|Abete|Betulla/.test(name);
+      const tree = /Tree|Pine|Abete|Betulla|Quercia/.test(name);
       mdl.parts.forEach(p => {
         const g2 = p.geo.clone(); g2.boundingSphere = sph;
         const im = new THREE.InstancedMesh(g2, p.mat, arr.length);
@@ -21804,6 +21804,7 @@ var Render = (function () {
     const k = vnz(x / 34, z / 34) + vnz(x / 11, z / 11) * .35, j = r();
     if (/Pine/.test(name)) return k > .15 ? pick(r, ['#e8f0d0', '#f0f4d8']) : k < -.15 ? pick(r, ['#b8d0c0', '#c4d8c8']) : pick(r, ['#d4e4cc', '#dce8d0']);
     if (/Common/.test(name)) return k > .1 ? pick(r, ['#f4d890', '#f0c878', '#e8d8a0']) : k < -.2 ? pick(r, ['#e8a878', '#dca070']) : j < .5 ? '#e0e8b8' : '#f0e0b0';
+    if (/Quercia/.test(name)) { const q = vnz(x / 18 + 5, z / 18 + 9) + (r() - .5) * .5; return q > .25 ? pick(r, ['#fff4c0', '#f8f0a8']) : q < -.25 ? pick(r, ['#a8c0b8', '#b8ccc0']) : q > 0 ? pick(r, ['#ffffff', '#f0f8e0']) : pick(r, ['#d8e8c8', '#c8dcc0']); }   // [verde]
     if (/Twisted/.test(name)) return pick(r, ['#d8e0c0', '#c8d4b0']);
     return pick(r, ['#e8e0d8', '#d8d0c4', '#f0e8dc']);
   }
@@ -22054,8 +22055,8 @@ var Render = (function () {
     return (VD.mat = m);
   }
   function vdB(soft) {
-    const P = [], C = [], W = [], U = [];
-    const tri = (a, b, c, ca, cb, cc, wa, wb, wc, uv) => { P.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]); C.push(ca[0], ca[1], ca[2], cb[0], cb[1], cb[2], cc[0], cc[1], cc[2]); W.push(wa || 0, wb || 0, wc || 0); const q = uv || VDWUV; U.push(q[0], q[1], q[2], q[3], q[4], q[5]); };
+    const P = [], C = [], W = [], U = [], NN = [];
+    const tri = (a, b, c, ca, cb, cc, wa, wb, wc, uv, nrm) => { NN.push(nrm || null); P.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]); C.push(ca[0], ca[1], ca[2], cb[0], cb[1], cb[2], cc[0], cc[1], cc[2]); W.push(wa || 0, wb || 0, wc || 0); const q = uv || VDWUV; U.push(q[0], q[1], q[2], q[3], q[4], q[5]); };
     // una carta con la texture di una cella: a, b in basso (sinistra, destra), c, d in alto (destra, sinistra)
     const card = (a, b, c, d, cell, c0, c1, w0, w1) => { const A = vdUV(cell, 0, 0), B = vdUV(cell, 1, 0), Cc = vdUV(cell, 1, 1), D = vdUV(cell, 0, 1);
       tri(a, b, c, c0, c0, c1, w0, w0, w1, [A[0], A[1], B[0], B[1], Cc[0], Cc[1]]); tri(a, c, d, c0, c1, c1, w0, w1, w1, [A[0], A[1], Cc[0], Cc[1], D[0], D[1]]); };
@@ -22121,6 +22122,7 @@ var Render = (function () {
       g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
       g.setAttribute('aSnow', new THREE.Float32BufferAttribute(new Float32Array(n), 1)); g.setAttribute('aSway', new THREE.Float32BufferAttribute(W, 1)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
       g.computeVertexNormals();
+      { const nn = g.attributes.normal; NN.forEach((q, t) => { if (!q) return; for (let k = 0; k < 3; k++) nn.setXYZ(t * 3 + k, q[0], q[1], q[2]); }); }
       if (soft) { const nn = g.attributes.normal; for (let i = 0; i < n; i++) { const x = nn.getX(i) * .75, y = Math.abs(nn.getY(i)) * .5 + .42, z = nn.getZ(i) * .75, L = Math.hypot(x, y, z); nn.setXYZ(i, x / L, y / L, z / L); } }
       g.computeBoundingSphere(); return g;
     };
@@ -22500,7 +22502,44 @@ var Render = (function () {
         bl.card([c[0] - px * w + dx * w * .3, c[1] - hh, c[2] - pz * w + dz * w * .3], [c[0] + px * w + dx * w * .3, c[1] - hh, c[2] + pz * w + dz * w * .3], [c[0] + px * w, c[1] + .05, c[2] + pz * w], [c[0] - px * w, c[1] + .05, c[2] - pz * w], r() < .6 ? 4 : 14, vdL(H_('#c8e0a0'), H_('#f0f8d0'), r()), H_('#ffffff'), y / H * 1.4, y / H * 1.1); } }
     return { wood: bw.build(), leaf: bl.build() };
   }
+  function querciaGeo(seed, H) {
+    const r = rng(seed), bw = vdB(false), bl = vdB(false), TAU = 6.2832, H_ = vdH;
+    const trunkTop = H * (.38 + r() * .1), R0 = .032 * H, lean = [(r() - .5) * .06 * H, (r() - .5) * .06 * H];
+    const seg = (a, b, ra, rb, ca, cb) => { const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], L = Math.hypot(dx, dy, dz) || 1, ux = dx / L, uy = dy / L, uz = dz / L;
+      let px = uy * 0 - uz * 1, py = uz * 0 - ux * 0, pz = ux * 1 - uy * 0; if (Math.hypot(px, py, pz) < .1) { px = 1; py = 0; pz = 0; } const pl = Math.hypot(px, py, pz); px /= pl; py /= pl; pz /= pl;
+      const qx = uy * pz - uz * py, qy = uz * px - ux * pz, qz = ux * py - uy * px, SD = 6;
+      for (let i = 0; i < SD; i++) { const a0 = i / SD * TAU, a1 = (i + 1) / SD * TAU, o = (an, rr) => [Math.cos(an) * px * rr + Math.sin(an) * qx * rr, Math.cos(an) * py * rr + Math.sin(an) * qy * rr, Math.cos(an) * pz * rr + Math.sin(an) * qz * rr];
+        const A0 = o(a0, ra), A1 = o(a1, ra), B0 = o(a0, rb), B1 = o(a1, rb);
+        bw.quad([a[0] + A0[0], a[1] + A0[1], a[2] + A0[2]], [a[0] + A1[0], a[1] + A1[1], a[2] + A1[2]], [b[0] + B1[0], b[1] + B1[1], b[2] + B1[2]], [b[0] + B0[0], b[1] + B0[1], b[2] + B0[2]], ca, ca, cb, cb, 0, 0, b[1] / H * .3, b[1] / H * .3); } };
+    const TOP = [lean[0], trunkTop, lean[1]];
+    seg([0, 0, 0], TOP, R0 * 1.25, R0 * .8, H_('#4a3a2e'), H_('#5a4a3a'));
+    // i grappoli: uno in cima, gli altri in cerchio, a quote diverse; ognuno col suo ramo
+    const NC = 6 + Math.floor(r() * 3), CL = [[lean[0] * 1.5, H * (.86 + r() * .06), lean[1] * 1.5, H * (.2 + r() * .04)]];
+    for (let k = 0; k < NC; k++) { const a = k / NC * TAU + r() * .6, d = H * (.17 + r() * .14), y = H * (.55 + r() * .25); CL.push([Math.cos(a) * d + lean[0], y, Math.sin(a) * d + lean[1], H * (.13 + r() * .06)]); }
+    CL.forEach(([cx, cy, cz, R], k) => {
+      const mid = [TOP[0] + (cx - TOP[0]) * .55, TOP[1] + (cy - TOP[1]) * .45 + R * .2, TOP[2] + (cz - TOP[2]) * .55];
+      seg(TOP, mid, R0 * .7, R0 * .45, H_('#5a4a3a'), H_('#5e4e40')); seg(mid, [cx, cy - R * .3, cz], R0 * .45, R0 * .2, H_('#5e4e40'), H_('#6a5a4a'));
+      // rametti a foglie sulla superficie del grappolo (sfera di Fibonacci), girati verso fuori; normali tonde, tinta dalla luce
+      const NL = 22;
+      for (let q = 0; q < NL; q++) {
+        const yy = 1 - (q + .5) / NL * 2, rad = Math.sqrt(1 - yy * yy), th = q * 2.39996 + k, n = [Math.cos(th) * rad, yy * .85 + .15, Math.sin(th) * rad], nl = Math.hypot(n[0], n[1], n[2]); n[0] /= nl; n[1] /= nl; n[2] /= nl;
+        const rr = R * (.72 + r() * .35), p = [cx + n[0] * rr, cy + n[1] * rr * .8, cz + n[2] * rr], sz = R * (.62 + r() * .3);
+        let t1 = [-n[2], 0, n[0]]; const tl = Math.hypot(t1[0], t1[2]) || 1; t1 = [t1[0] / tl, 0, t1[2] / tl]; const t2 = [n[1] * t1[2] - n[2] * t1[1], n[2] * t1[0] - n[0] * t1[2], n[0] * t1[1] - n[1] * t1[0]];
+        const ang = r() * TAU, ca = Math.cos(ang), sa = Math.sin(ang), u = [t1[0] * ca + t2[0] * sa, t1[1] * ca + t2[1] * sa, t1[2] * ca + t2[2] * sa], v = [t2[0] * ca - t1[0] * sa, t2[1] * ca - t1[1] * sa, t2[2] * ca - t1[2] * sa];
+        const lit = Math.max(0, n[1] * .7 + (n[0] * -.5 + n[2] * -.3) * .5 + .3), inner = Math.min(1, Math.hypot(p[0] - lean[0], p[2] - lean[1]) / (H * .35));
+        const cB = vdL(H_('#1e3414'), H_('#3e6a24'), .4 + inner * .4), cT = vdL(H_('#4e8030'), H_('#c8e070'), Math.min(1, lit));
+        const A = [p[0] - u[0] * sz - v[0] * sz, p[1] - u[1] * sz - v[1] * sz, p[2] - u[2] * sz - v[2] * sz], B = [p[0] + u[0] * sz - v[0] * sz, p[1] + u[1] * sz - v[1] * sz, p[2] + u[2] * sz - v[2] * sz];
+        const Cc = [p[0] + u[0] * sz + v[0] * sz, p[1] + u[1] * sz + v[1] * sz, p[2] + u[2] * sz + v[2] * sz], D = [p[0] - u[0] * sz + v[0] * sz, p[1] - u[1] * sz + v[1] * sz, p[2] - u[2] * sz + v[2] * sz];
+        const c0 = vdL(cB, cT, .35), c1 = cT, cell = r() < .8 ? 4 : 14, w = cy / H * 1.1, uvA = vdUV(cell, 0, 0), uvB = vdUV(cell, 1, 0), uvC = vdUV(cell, 1, 1), uvD = vdUV(cell, 0, 1);
+        bl.tri(A, B, Cc, c0, c0, c1, w, w, w * 1.2, [uvA[0], uvA[1], uvB[0], uvB[1], uvC[0], uvC[1]], n); bl.tri(A, Cc, D, c0, c1, c1, w, w * 1.2, w * 1.2, [uvA[0], uvA[1], uvC[0], uvC[1], uvD[0], uvD[1]], n);
+      }
+      // il cuore del grappolo: un lobo scuro che chiude i buchi (da sotto non si vede il cielo attraverso)
+      bl.lobe(cx, cy - R * .1, cz, R * .62, R * .5, R * .62, H_('#14240e'), H_('#2e4a1c'), k * 7 + 3, .3, 0, cy / H * .8);
+    });
+    return { wood: bw.build(), leaf: bl.build() };
+  }
   function abeteModel(name) {
+    if (/^Quercia_/.test(name)) { const ref = natModel('CommonTree_1'), H = ref && ref.top ? ref.top * .95 : 9, g = querciaGeo(8101 + (+name.slice(-1) || 0) * 97, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: vdMat(), leafy: true }], top: H }; }
     if (/^Betulla_/.test(name)) { const pine = natModel('Pine_1'), H = pine && pine.top ? pine.top * .95 : 10, g = betullaGeo(5101 + (+name.slice(-1) || 0) * 53, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: vdMat(), leafy: true }], top: H }; }
     if (/^Abete_secco/.test(name)) { const pine = natModel('Pine_1'), H = pine && pine.top ? pine.top * 1.15 : 13; return { parts: [{ geo: seccoGeo(7311 + (+name.slice(-1) || 0) * 31, H), mat: vdMat(), leafy: false }], top: H }; }
     const v = +(name.split('_')[1] || 0), pine = natModel('Pine_1'), H = pine && pine.top ? pine.top * 1.08 : 12, g = abeteGeo(9001 + v * 77, H);
@@ -22511,7 +22550,7 @@ var Render = (function () {
     const W0 = M.world, E = (W0 && W0.ECO) || {}; if (!VD.on || !W0 || !W0.eco) return natTree(tx, ty, r);
     const X = tx * TS + 1, Y = ty * TS + 1, e = vdEcoMix(X, Y, 1), q = th(tx, ty, 96), k = th(tx, ty, 97), sc = th(tx, ty, 95), pk = (a) => a[Math.floor(k * a.length) % a.length];
     const AB = () => q < .06 ? ['Abete_secco' + (k < .5 ? 0 : 1), .9 + sc * .3] : ['Abete_' + Math.floor(k * 3), q < .16 ? .4 + sc * .25 : .9 + sc * .35];
-    const OAK = (s0) => [pk(['CommonTree_1', 'CommonTree_2', 'CommonTree_3', 'CommonTree_4', 'CommonTree_5']), s0 + sc * .25];
+    const OAK = (s0) => ['Quercia_' + Math.floor(k * 4), s0 + sc * .25];
     switch (e) {
       case E.ABETAIA: return q < .94 ? AB() : ['Pine_3', .9 + sc * .3];
       case E.FAGGETA: return q < .82 ? OAK(.72) : q < .92 ? ['Betulla_' + Math.floor(k * 3), .85 + sc * .25] : AB();

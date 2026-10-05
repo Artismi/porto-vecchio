@@ -37,14 +37,17 @@ rep("      if (r() < .1) blob(x0 + r() * 2, z0 + r() * 2, .35 + r() * .35, pick(
     "      if (r() < .1) blob(x0 + r() * 2, z0 + r() * 2, .35 + r() * .35, pick(r, VG31.GRN));\n      if (false) for (let q = 0; q < 4; q++)   /* [verde] */")
 # l'abete rosso del riferimento: una parte dei pini del kit, a macchie (abetaie)
 rep("    if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/' + name)) return (NAT.models[name] = null);",
-    "    if (/^(Abete|Betulla)_/.test(name)) return (NAT.models[name] = abeteModel(name));   // [verde]\n    if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/' + name)) return (NAT.models[name] = null);")
+    "    if (/^(Abete|Betulla|Quercia)_/.test(name)) return (NAT.models[name] = abeteModel(name));   // [verde]\n    if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/' + name)) return (NAT.models[name] = null);")
 rep("const [name, s] = natTree(tx, ty, r), big = ", "const [name, s, lean] = eco38(tx, ty, r), big = ")
 rep("{ rx: (r() - .5) * .06, rz: (r() - .5) * .06, col: treeCol36(name, cx, cz, r) });", "{ rx: (r() - .5) * .06, rz: (r() - .5) * .06 + (lean || 0), col: treeCol36(name, cx, cz, r) });")
-rep("const tree = /Tree|Pine/.test(name);", "const tree = /Tree|Pine|Abete|Betulla/.test(name);")
+rep("const tree = /Tree|Pine/.test(name);", "const tree = /Tree|Pine|Abete|Betulla|Quercia/.test(name);")
 # il suolo del bosco: muschio verde a macchie larghe, aghi e foglie solo dove è più asciutto
 rep("col = k2 > -.05 ? `rgb(${44 + g},${36 + g},${26 + g / 2})` : `rgb(${36 + g / 2},${48 + g},${28})`;",
     "col = k2 > .12 ? `rgb(${50 + g},${44 + g},${28 + g / 2})` : `rgb(${36 + g / 2},${62 + g},${30})`;   /* [verde] */")
 # le strade bianche dipinte da [verde]: bordi sfumati nell'erba, solchi, erba in mezzo
 rep("    pass(dirt, rd => rd.w + 1.2, () => 'rgba(110,84,58,.55)');\n    pass(dirt, rd => rd.w, () => '#8a6a4a');\n    pass(dirt, rd => 1.1, () => 'rgba(150,120,86,.6)');\n",
     "    vdSterrate(x, X0, Y0, X1, Y1);   // [verde]\n")
+# le querce e i faggi nuovi: ogni chioma una tinta sua, a macchie (gialla, scura e fredda, chiara, piena)
+rep("    if (/Twisted/.test(name)) return pick(r, ['#d8e0c0', '#c8d4b0']);",
+    "    if (/Quercia/.test(name)) { const q = vnz(x / 18 + 5, z / 18 + 9) + (r() - .5) * .5; return q > .25 ? pick(r, ['#fff4c0', '#f8f0a8']) : q < -.25 ? pick(r, ['#a8c0b8', '#b8ccc0']) : q > 0 ? pick(r, ['#ffffff', '#f0f8e0']) : pick(r, ['#d8e8c8', '#c8dcc0']); }   // [verde]\n    if (/Twisted/.test(name)) return pick(r, ['#d8e0c0', '#c8d4b0']);")
 open(p, 'w', encoding='utf-8').write(s); print('ok')
