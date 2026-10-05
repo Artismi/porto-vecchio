@@ -1,5 +1,7 @@
 {
   "provider": "gemini",
   "apiKey": "INCOLLA_QUI_LA_TUA_CHIAVE",
-  "model": ""
+  "model": "",
+  "chatKey": "",
+  "_chatKey": "facoltativa: una seconda chiave solo per la chat col giocatore (risponde subito, quota sua). Vuota = si usa apiKey con la precedenza."
 }

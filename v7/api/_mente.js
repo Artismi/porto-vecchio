@@ -32,6 +32,7 @@ function loadConfig() {
   const apiKey = String(process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY || process.env.API_KEY || '').trim();
   const cfg = { provider: String(process.env.MENTE_PROVIDER || 'gemini').toLowerCase(), apiKey, model: process.env.MENTE_MODEL || '' };
   const guessed = detectProvider(apiKey); if (guessed) cfg.provider = guessed;
+  cfg.chatKey = String(process.env.MENTE_CHAT_KEY || '').trim(); cfg.chatModel = process.env.MENTE_CHAT_MODEL || '';   // [chat] chiave dedicata alla chat
   return cfg;
 }
 // Estrae un oggetto JSON anche se il modello lo avvolge in ```json … ``` o aggiunge testo
@@ -156,6 +157,11 @@ function pauseFor(text) {
   return m ? Math.ceil(parseFloat(m[1]) * 1000) + 1000 : 60000;
 }
 
+// [chat] la configurazione per la chat: la chiave dedicata se c'è (quota e pause sue, tag 'chat:'), altrimenti quella comune
+function chatCfg(cfg) {
+  if (!cfg.chatKey) return Object.assign({}, cfg, { urgentChat: true });
+  return Object.assign({}, cfg, { apiKey: cfg.chatKey, provider: detectProvider(cfg.chatKey) || cfg.provider, model: cfg.chatModel || (detectProvider(cfg.chatKey) === cfg.provider ? cfg.model : ''), tag: 'chat:', urgentChat: true });
+}
 // Chiamata con scelta automatica del modello; restituisce l'oggetto JSON o null.
 // urgent = il giocatore aspetta una risposta (dialogo); false = chiacchiere e riflessioni, che si possono saltare.
 async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent = true) {
@@ -163,12 +169,12 @@ async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent =
   if (!cfg.apiKey) { LLM.lastError = { when: Date.now(), status: 'chiave', msg: 'Nessuna chiave: su Vercel imposta la variabile GEMINI_API_KEY (Settings → Environment Variables) e rifai il deploy.' }; return null; }
   if (typeof fetch !== 'function') { LLM.lastError = { when: Date.now(), status: 'node', msg: 'Node troppo vecchio: serve Node 18 o più recente' }; return null; }
 
-  const models = modelsFor(cfg).filter(m => !(COOLDOWN[m] > Date.now()));
+  const models = modelsFor(cfg).filter(m => !(COOLDOWN[(cfg.tag || '') + m] > Date.now()));
   if (!models.length) {
     LLM.lastError = { when: Date.now(), provider: cfg.provider, status: 429, msg: 'Tutti i modelli sono in pausa per troppe richieste.' };
     return null;
   }
-  if (!budgetOk(urgent)) return null; // troppe richieste nell'ultimo minuto: questa la salto
+  if (!cfg.tag && !budgetOk(urgent)) return null; // troppe richieste nell'ultimo minuto: questa la salto (la chiave della chat ha la sua quota)
   LLM.calls++;
   for (const model of models) {
     let r;
@@ -199,7 +205,7 @@ async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent =
     }
     if (r.status === 429) {
       // ogni modello ha la sua quota: metto in pausa questo e provo il successivo
-      COOLDOWN[model] = Date.now() + pauseFor(r.text);
+      COOLDOWN[(cfg.tag || '') + model] = Date.now() + pauseFor(r.text);
       console.warn(`[Mente] ${model} in pausa per ${Math.round(pauseFor(r.text) / 1000)} s (troppe richieste)`);
       continue;
     }
@@ -261,7 +267,7 @@ Restituisci un oggetto JSON:
 }`;
         const usr = `Personaggio:\n${JSON.stringify(body.npc || {})}\n\nContesto:\n${body.context || ''}\n\nIl giocatore dice: «${body.text || ''}»`;
         console.log(`[Mente] dialogo con ${body.npc?.name || '?'}`);
-        return reply(await callLLM(cfg, sys, usr, 400));
+        return reply(await callLLM(chatCfg(cfg), sys, usr, 400));   // [chat] chiave e quota della chat
       }
 
       if (kind === 'riflessione') {
@@ -297,6 +303,27 @@ Restituisci un JSON:
         return reply(await callLLM(cfg, sys, usr, 150, false));
       }
 
+      if (kind === 'regia') {   // [regia] il regista invisibile della vita di strada
+        const sys = buildSystemPrompt() + `
+Compito: sei il regista invisibile della vita di strada, intorno al giocatore. Ricevi una scena: alcune persone vicine,
+cosa stanno facendo, i bisogni, i progetti, i rapporti tra loro e i posti vicini.
+Fai succedere da 1 a 3 cose piccole e vere, coerenti col carattere, l'umore e la giornata di ognuno: qualcuno cambia strada
+per un motivo suo, due si fermano a parlare, uno offre da bere, un vecchio conto diventa una lite, uno si mette a lavorare
+a un suo progetto personale (riparare, dipingere, pescare, aspettare qualcuno), un gesto o una frase che dice chi è.
+Niente violenza grave, niente cose impossibili, niente che contraddica la scena. Usa SOLO gli id delle persone e dei posti dati.
+Restituisci un JSON:
+{
+  "azioni": [
+    { "chi": "id persona", "verbo": "vai|fai|chiacchiera|sfotti|apprezza|offri|gioca|litiga|mangia|gesto",
+      "dove": "id posto (per vai e fai)", "con": "id persona (per i verbi tra persone)",
+      "cosa": "per fai: l'attività in poche parole (es. ripara la rete)", "minuti": 10,
+      "battuta": "cosa dice, max 10 parole, oppure vuoto", "perche": "il motivo, max 10 parole" }
+  ]
+}`;
+        const usr = `Scena:\n${JSON.stringify(body.scena || {})}`;
+        return reply(await callLLM(cfg, sys, usr, 450, false));
+      }
+
       return { code: 400, obj: { ok: false, error: 'Kind sconosciuto' } };
     } catch (err) {
       return { code: 500, obj: { ok: false, error: err.message } };
@@ -313,7 +340,8 @@ function statusObj(cfg) {
     working: !!LLM.lastOk && !LLM.lastError,
     lastError: LLM.lastError ? explainError(LLM.lastError) : null,
     calls: LLM.calls,
-    fails: LLM.fails
+    fails: LLM.fails,
+    chat: cfg.chatKey ? 'chiave dedicata' : 'chiave comune, con la precedenza'
   };
 }
 

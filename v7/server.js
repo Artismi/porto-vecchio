@@ -89,6 +89,9 @@ function loadConfig() {
   const guessed = detectProvider(cfg.apiKey);
   if (guessed && guessed !== cfg.provider && cfg.provider !== 'none') cfg.provider = guessed;
   cfg.suspicious = /CHIAVE|INSERISCI|YOUR|TUA_|XXXX/i.test(cfg.apiKey);
+  // [chat] una seconda chiave solo per la chat col giocatore: ha la sua quota, non aspetta mai il mondo
+  cfg.chatKey = String(cfg.chatKey || process.env.MENTE_CHAT_KEY || '').trim().replace(/^["']|["']$/g, '');
+  if (/CHIAVE|INSERISCI|YOUR|TUA_|XXXX/i.test(cfg.chatKey)) cfg.chatKey = '';
   return cfg;
 }
 
@@ -214,6 +217,11 @@ function pauseFor(text) {
   return m ? Math.ceil(parseFloat(m[1]) * 1000) + 1000 : 60000;
 }
 
+// [chat] la configurazione per la chat: la chiave dedicata se c'è (quota e pause sue, tag 'chat:'), altrimenti quella comune
+function chatCfg(cfg) {
+  if (!cfg.chatKey) return Object.assign({}, cfg, { urgentChat: true });
+  return Object.assign({}, cfg, { apiKey: cfg.chatKey, provider: detectProvider(cfg.chatKey) || cfg.provider, model: cfg.chatModel || (detectProvider(cfg.chatKey) === cfg.provider ? cfg.model : ''), tag: 'chat:', urgentChat: true });
+}
 // Chiamata con scelta automatica del modello; restituisce l'oggetto JSON o null.
 // urgent = il giocatore aspetta una risposta (dialogo); false = chiacchiere e riflessioni, che si possono saltare.
 async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent = true) {
@@ -221,12 +229,12 @@ async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent =
   if (!cfg.apiKey) { LLM.lastError = { when: Date.now(), status: 'chiave', msg: 'Nessuna chiave in api_key.json' }; return null; }
   if (typeof fetch !== 'function') { LLM.lastError = { when: Date.now(), status: 'node', msg: 'Node troppo vecchio: serve Node 18 o più recente' }; return null; }
 
-  const models = modelsFor(cfg).filter(m => !(COOLDOWN[m] > Date.now()));
+  const models = modelsFor(cfg).filter(m => !(COOLDOWN[(cfg.tag || '') + m] > Date.now()));
   if (!models.length) {
     LLM.lastError = { when: Date.now(), provider: cfg.provider, status: 429, msg: 'Tutti i modelli sono in pausa per troppe richieste.' };
     return null;
   }
-  if (!budgetOk(urgent)) return null; // troppe richieste nell'ultimo minuto: questa la salto
+  if (!cfg.tag && !budgetOk(urgent)) return null; // troppe richieste nell'ultimo minuto: questa la salto (la chiave della chat ha la sua quota)
   LLM.calls++;
   for (const model of models) {
     let r;
@@ -257,7 +265,7 @@ async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent =
     }
     if (r.status === 429) {
       // ogni modello ha la sua quota: metto in pausa questo e provo il successivo
-      COOLDOWN[model] = Date.now() + pauseFor(r.text);
+      COOLDOWN[(cfg.tag || '') + model] = Date.now() + pauseFor(r.text);
       console.warn(`[Mente] ${model} in pausa per ${Math.round(pauseFor(r.text) / 1000)} s (troppe richieste)`);
       continue;
     }
@@ -331,7 +339,7 @@ Restituisci un oggetto JSON:
 }`;
         const usr = `Personaggio:\n${JSON.stringify(body.npc || {})}\n\nContesto:\n${body.context || ''}\n\nIl giocatore dice: «${body.text || ''}»`;
         console.log(`[Mente] dialogo con ${body.npc?.name || '?'}`);
-        return aiReply(res, await callLLM(cfg, sys, usr, 400));
+        return aiReply(res, await callLLM(chatCfg(cfg), sys, usr, 400));   // [chat] chiave e quota della chat
       }
 
       if (kind === 'riflessione') {
@@ -367,6 +375,27 @@ Restituisci un JSON:
         return aiReply(res, await callLLM(cfg, sys, usr, 150, false));
       }
 
+      if (kind === 'regia') {   // [regia] il regista invisibile della vita di strada
+        const sys = buildSystemPrompt() + `
+Compito: sei il regista invisibile della vita di strada, intorno al giocatore. Ricevi una scena: alcune persone vicine,
+cosa stanno facendo, i bisogni, i progetti, i rapporti tra loro e i posti vicini.
+Fai succedere da 1 a 3 cose piccole e vere, coerenti col carattere, l'umore e la giornata di ognuno: qualcuno cambia strada
+per un motivo suo, due si fermano a parlare, uno offre da bere, un vecchio conto diventa una lite, uno si mette a lavorare
+a un suo progetto personale (riparare, dipingere, pescare, aspettare qualcuno), un gesto o una frase che dice chi è.
+Niente violenza grave, niente cose impossibili, niente che contraddica la scena. Usa SOLO gli id delle persone e dei posti dati.
+Restituisci un JSON:
+{
+  "azioni": [
+    { "chi": "id persona", "verbo": "vai|fai|chiacchiera|sfotti|apprezza|offri|gioca|litiga|mangia|gesto",
+      "dove": "id posto (per vai e fai)", "con": "id persona (per i verbi tra persone)",
+      "cosa": "per fai: l'attività in poche parole (es. ripara la rete)", "minuti": 10,
+      "battuta": "cosa dice, max 10 parole, oppure vuoto", "perche": "il motivo, max 10 parole" }
+  ]
+}`;
+        const usr = `Scena:\n${JSON.stringify(body.scena || {})}`;
+        return aiReply(res, await callLLM(cfg, sys, usr, 450, false));
+      }
+
       sendJSON(res, 400, { ok: false, error: 'Kind sconosciuto' });
     } catch (err) {
       sendJSON(res, 500, { ok: false, error: err.message });
@@ -383,7 +412,8 @@ function statusObj(cfg) {
     working: !!LLM.lastOk && !LLM.lastError,
     lastError: LLM.lastError ? explainError(LLM.lastError) : null,
     calls: LLM.calls,
-    fails: LLM.fails
+    fails: LLM.fails,
+    chat: cfg.chatKey ? 'chiave dedicata' : 'chiave comune, con la precedenza'
   };
 }
 
@@ -441,6 +471,7 @@ server.listen(PORT, async () => {
   console.log(`\n=================================================`);
   console.log(`Porto Vecchio:  http://localhost:${PORT}`);
   console.log(`Mente (IA):     ${cfg.provider} · chiave ${cfg.apiKey ? cfg.apiKey.slice(0, 6) + '…' + cfg.apiKey.slice(-4) : 'ASSENTE'}`);
+  console.log(`Chat:           ${cfg.chatKey ? 'chiave dedicata ' + cfg.chatKey.slice(0, 6) + '…' + cfg.chatKey.slice(-4) : 'stessa chiave (con la precedenza sul resto)'}`);
   console.log(`Configurazione: ${CONFIG_FILE}`);
   console.log(`=================================================`);
   if (cfg.suspicious) console.warn(`ATTENZIONE: la chiave in api_key.json contiene una parola segnaposto (es. "CHIAVE"). Incollala di nuovo intera, senza aggiunte.`);
