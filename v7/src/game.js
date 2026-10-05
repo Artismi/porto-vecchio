@@ -5,7 +5,7 @@ var Game = (function () {
   'use strict';
   const W0 = typeof World !== 'undefined' ? World : require('./world.js');
   const TS = W0.TS, GW = W0.GW, GH = W0.GH, WW = GW * TS, WH = GH * TS;
-  const MIN_PER_SEC = 2.5, DEBT = 500, START_T = 18 * 60, END_T = 54 * 60;
+  const MIN_PER_SEC = 2.5, DEBT = 500, START_T = 9 * 60, END_T = 54 * 60;   // [unione8] si comincia di mattina, col sole (prima alle 18); lo Squalo arriva sempre all'alba di giovedì
   const PLAYER_NAME = 'Nino';
 
   function makeRng(seed) { let s = (seed >>> 0) || 0x9e3779b9; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
