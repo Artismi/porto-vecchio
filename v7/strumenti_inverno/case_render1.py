@@ -12,8 +12,8 @@ def rep(old, new, n=1):
 # intonaci: tinte calde e scolorite (ocra, cotto, sangue di bue, senape, rosa antico, salvia, verderame), qualche bianco
 m = re.search(r"\n    borgo: \[\[.*\n", s); assert m, 'PALS.borgo'
 s = s[:m.start()] + """
-    borgo: [['#c29a5c', '#e0d4b8'], ['#b26a4c', '#dccbb0'], ['#8e4636', '#d0bca0'], ['#c4a24a', '#e2d6b4'], ['#c49282', '#e4d8cc'], ['#a8764e', '#dccab0'], ['#8e9a76', '#d8d4c0'], ['#6e8a80', '#d0ccbe'],
-      ['#9a8a6a', '#d8ccb4'], ['#b88a6a', '#e0d2bc'], ['#7e8890', '#d4d0c8'], ['#a85a48', '#d8c4a8'], ['#d2c4a2', '#ece4d0'], ['#d8d2c4', '#efeae0'], ['#8a7a96', '#d4ccd0'], ['#b49a7a', '#ddd0bc']],   // [case] intonaci caldi e scoloriti
+    borgo: [['#d6d4cc', '#eeece6'], ['#cfccc2', '#e8e6de'], ['#c8c6be', '#e2e0d8'], ['#dcd8ce', '#f0ece4'], ['#bebcb6', '#dcdad4'], ['#d0cdc4', '#ebe8e0'], ['#b8b6ae', '#d8d6ce'], ['#c4c2bc', '#e6e4dc'],
+      ['#d8d2c4', '#efeae0'], ['#cac6ba', '#e4e0d6'], ['#c29a5c', '#e0d4b8'], ['#b26a4c', '#dccbb0'], ['#8e9a76', '#d8d4c0'], ['#c49282', '#e4d8cc']],   // [case] grigio latte: la città è calma, il colore sta nei murali, nelle insegne, nelle luci
 """ + s[m.end():]
 # buildModular: tinta per piano (basamento, ultimo piano rifatto) e registro delle finestre per le persiane
 rep("    const mat = palMat([pal[0], pal[1], roofKind === 'flat' ? '#a8a29a' : '#5a5560', kind === 'port' ? '#7a7f88' : '#3a3a44']);",
@@ -39,7 +39,7 @@ rep("if (!cache.has(o.material)) cache.set(o.material, o.material.clone());",
 rep("const tank = cyl(.7, .7, 1.4, 10, sm('#9a948a')); tank.position.set(cx + (r() - .5) * w * .4, top + .8, cz + (r() - .5) * d * .4); grp.add(tank);",
     "const tank = oTank(i % 3 === 0 ? 1 : 0, rng(i * 17 + 3)); tank.position.set(cx + (r() - .5) * w * .4, top + .08, cz + (r() - .5) * d * .4); grp.add(tank);   // [case] forme")
 rep("ad(a, box(.8, .5, .45, acM), 0, base + MG + (f - 1) * MF + .2, .25); ad(a, cyl(.17, .17, .03, 8, pipeM), 0, base + MG + (f - 1) * MF + .2, .5).rotation.x = Math.PI / 2;",
-    "ad(a, oAC(rng(bi * 79 + k), true), 0, base + MG + (f - 1) * MF - .05, .2);")
+    "if (!(b.__prop && b.__prop.f === sd.n)) ad(a, oAC(rng(bi * 79 + k), true), 0, base + MG + (f - 1) * MF - .05, .2); /* [case] mai sul murale */")
 rep("put(box(.9, .6, .7, metal), x, .3, z, r() * 3); const f = cyl(.22, .22, .04, 10, dark); put(f, x, .62, z);",
     "put(oAC(rng(bi * 31 + k * 7)), x, 0, z, r() * 3);")
 rep("put(cyl(.04, .04, 1.1, 5, metal), x, .55, z); const dish = cyl(.5, .06, .18, 12, sm('#c8ccd0', { roughness: .5 })); put(dish, x, 1.2, z).rotation.set(.9, r() * 6, 0);",
@@ -62,6 +62,14 @@ rep("  function propTex(kind, k) {\n    const key = kind + k; if (PROP[key]) ret
 # la dissolvenza degli edifici non deve rendere opache le decalcomanie (sempre trasparenti: userData.keepTr)
 rep("      B.mats.forEach(m => { const tr = op < .99; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !tr; if (m.emissiveMap) m.emissiveIntensity *= op; });",
     "      B.mats.forEach(m => { const kt = m.userData.keepTr, tr = op < .99 || !!kt; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !tr; if (m.emissiveMap) m.emissiveIntensity *= op; });   // [case] keepTr")
+# [pulizia] tetti meno affollati; niente tendone delle soglie dove c'è già la tettoia in coppi
+rep("      const slots = Math.min(13, 3 + Math.floor(w * d / 13));", "      const slots = Math.min(5, 1 + Math.floor(w * d / 36));   // [case] pulizia: meno roba sparsa sui tetti")
+rep("      if (!(((b.shop || b.sign) && r() < .9) || r() < .5)) return;", "      if (b.__pent) return;   // [case] c'è già la tettoia in coppi\n      if (!(((b.shop || b.sign) && r() < .9) || r() < .5)) return;")
+# più murali del Partito (muri ciechi), illuminati dai loro fari
+rep("    const r = rng(i * 733 + 101), civic = kind === 'civic' || kind === 'mil'; if (r() > (civic ? .8 : .34)) return null;",
+    "    const r = rng(i * 733 + 101), civic = kind === 'civic' || kind === 'mil'; if (r() > (civic ? .85 : .55)) return null;   // [case] più murali")
+rep("        if (bi % 3 === 0) addLight(PP.x + Math.sin(PP.yaw) * 2, PP.yc - PP.ph / 2 + .4, PP.z + Math.cos(PP.yaw) * 2, '#e0a050', 1.8, 10, .02);   // faretto da sotto",
+    "        { const lg = new THREE.Group(); muralLights(PP, lg); lg.traverse(o => { if (o.isMesh) o.castShadow = false; }); g.add(lg); }   // [case] due fari veri sul murale")
 # il pass nuovo, dopo la città (che ha già messo torrette, balconi e insegne)
 rep("  function buildCity() {", frag + "  function buildCity() {")
 rep("TT('citta', buildCity);", "TT('citta', buildCity); TT('case', buildCase);")

@@ -97,8 +97,6 @@ var World = (function () {
   const TAV = { x: 168, y: 190, r: 58, h: 42 };
   const BF = { TOP: 1, WALL: 2, TALUS: 4, CANALE: 8, RADURA: 16, RIVA: 32 };
   const CANALI = [{ id: 'levante', a: .16 }, { id: 'ponente', a: Math.PI + .42 }];
-  // [ambienti] gli ambienti del verde (vedi generate)
-  const ECO = { NONE: 0, FARO: 1, DUNA: 2, PINETA: 3, SALINA: 4, PASCOLO: 5, GHIAIONE: 6, ABETAIA: 7, FAGGETA: 8, VALLONE: 9, MACCHIA: 10, RUDERALE: 11, RADURA: 12, RIPARIALE: 13, BETULLE: 14, VIGNE: 15, ULIVETO: 16, PINIMONTE: 17 };
   const tavR = a => TAV.r * (.95 + .1 * fbm(Math.cos(a) * 1.05 + 4, Math.sin(a) * 1.05 + 4, 401, 2));   // [isola] pochi lobi larghi: un tavolato, non un bordo frastagliato
   CANALI.forEach(c => { c.R = tavR(c.a); c.u = [Math.cos(c.a), Math.sin(c.a)]; });
   // radure del bosco [x, y, raggio]: stazioni, saline, faro, campo partigiano, borghi dei pescatori
@@ -529,81 +527,6 @@ var World = (function () {
       if ((z === Z.CAMPAGNA && v === T.GRASS && hash2(tx, ty, 43) < .03) || (z === Z.DESERTO && v === T.GRASS && hash2(tx, ty, 44) < .012)) v = T.TREE;
       if (inl < 6 && !(x < XF && z === Z.SPIAGGIA)) { const rocky = fbm(x / 20, y / 20, 81, 2) > .55 || z === Z.MONTE || (x < XF && y < Yc(x) && fbm(x / 12, y / 12, 82, 2) > .36); v = rocky ? T.ROCK : T.SAND; if (!rocky && z !== Z.CITTA) zone[i] = Z.SPIAGGIA; }
       grid[i] = v;
-    }
-    // ---------------- [ambienti] IL VERDE PENSATO ZONA PER ZONA ----------------
-    // Ogni casella naturale appartiene a un ambiente (eco) con un senso nel paesaggio: la punta ventosa del faro, la duna e la pineta
-    // dietro la Spiaggia Lunga, la macchia bassa sulla costa di tramontana, le saline, l'abetaia vecchia attorno al Tavolato e sui
-    // versanti al nord, la faggeta sui versanti al sole, i valloni umidi che scendono al mare, il pascolo dei beduini sul pianoro,
-    // il ghiaione, le radure delle stazioni e dei borghi; sul Monte il lago coi giunchi, la valle delle betulle, le pinete
-    // dell'altopiano e della Collina dei Pini, gli uliveti delle terrazze, le vigne e gli orti di San Giacomo.
-    // La forma (dove stanno gli alberi) la decide l'ambiente: fitta nell'abetaia, alberi a distanza nella pineta, chiome larghe e
-    // sottobosco aperto nella faggeta, alberi soli nei pascoli. Niente più rumore uguale dappertutto.
-    const E = ECO;
-    const eco = new Uint8Array(N);
-    // la Forra: un torrente umido che scende dal canalone di levante del Tavolato fino al mare, al Borgo dei pescatori
-    const FORRA = [[262, 214], [292, 228], [326, 236], [362, 244], [398, 252], [432, 258], [466, 266]];
-    const segD = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy))); return Math.hypot(x - a[0] - dx * t, y - a[1] - dy * t); };
-    const valloneK = (x, y, inl) => { const prof = sstep(3, 48, inl), ph = x / 44 + (fbm(x / 50, y / 30, 412, 2) - .5) * 1.4, vi = Math.floor(ph + .5), rv = Math.abs(ph - vi) * 2; return (1 - sstep(0, .5, rv)) * prof * (1 - prof) * 4; };
-    // un albero per cella di lato C, in un punto a caso della cella: alberi a distanza, come piantati o cresciuti da soli
-    const cellTree = (tx, ty, C, p, s) => { const x0 = tx * TS, y0 = ty * TS, ci = Math.floor((x0 + 1) / C), cj = Math.floor((y0 + 1) / C), px = (ci + .15 + .7 * hash2(ci, cj, 151 + s)) * C, py = (cj + .15 + .7 * hash2(ci, cj, 152 + s)) * C; return px >= x0 && px < x0 + TS && py >= y0 && py < y0 + TS && hash2(ci, cj, 153 + s) < p; };
-    const ecoAt = (x, y, i) => {
-      const z = zone[i]; if (z === Z.MARE || z === Z.CITTA || x >= XG) return E.NONE;
-      const inl = Inland(x, y), wob = (fbm(x / 40, y / 40, 160, 2) - .5) * 16;
-      if (x < XF) {
-        const f = bosco(x, y).f;
-        if (f & BF.TOP) return E.PASCOLO;
-        if (f & (BF.TALUS | BF.CANALE | BF.WALL)) return E.GHIAIONE;
-        if (dist(x, y, 100, 314) < 28) return E.SALINA;
-        if (f & BF.RIVA) return E.DUNA;
-        if (dist(x, y, 41, 212) < 62 && inl < 34 + wob) return E.FARO;
-        const south = y > Yc(x);
-        if (south && inl < 44 + wob) return x < 75 ? E.FARO : E.PINETA;
-        if (!south && inl < 26 + wob) return E.MACCHIA;
-        for (const [rx, ry, rr] of RADURE) if (dist(x, y, rx, ry) < rr * 1.5 + wob * .3) return [232, 262].includes(rx) ? E.RUDERALE : E.RADURA;
-        if (valloneK(x, y, inl) > .12) return E.VALLONE;
-        if (FORRA.some((q, k) => k && segD(x, y, FORRA[k - 1], q) < 19 + wob * .8)) return E.VALLONE;   // la Forra: dal canalone di levante al Borgo dei pescatori
-        const dT = dist(x, y, TAV.x, TAV.y) - tavR(Math.atan2(y - TAV.y, x - TAV.x));
-        if (dT < 80 + wob * 2) return E.ABETAIA;   // l'abetaia vecchia attorno al tepui (il Bosco Antico)
-        return y < Yc(x) - 6 + wob ? E.ABETAIA : E.FAGGETA;   // al nord gli abeti, al sole i faggi e le querce
-      }
-      // il Monte Scuro
-      const xm = x - DXF, mf = monte(xm, y).f, e = elev[i], lx = xn(186), ly = 150;
-      if (Math.hypot((x - lx) / 13, (y - ly) / 9) < 2.3) return E.RIPARIALE;
-      if (mf & MF.TERR) return E.ULIVETO;
-      if (mf & MF.BORGO || z === Z.CAMPAGNA || dist(x, y, 739, 83) < 30) return E.VIGNE;
-      if (dist(x, y, 725, 179) < 32 + wob) return E.BETULLE;
-      if (mf & MF.ALTO || dist(x, y, 733, 139) < 30 || dist(x, y, 837, 141) < 42 + wob || dist(x, y, 857, 159) < 30) return E.PINIMONTE;
-      return e > 14 ? E.ABETAIA : E.FAGGETA;
-    };
-    for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) {
-      const i = ty * GW + tx, x = tx * TS + 1, y = ty * TS + 1; eco[i] = ecoAt(x, y, i);
-    }
-    // gli ambienti si fondono: la forma di ogni casella la decide l'ambiente di un punto spostato di qualche metro (rumore largo
-    // più un po' di grana), così ai confini le due trame si compenetrano a lingue e a isole, senza linea
-    for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) {
-      const i = ty * GW + tx, x = tx * TS + 1, y = ty * TS + 1; if (!eco[i]) continue;
-      const v = grid[i]; if (v !== T.TREE && v !== T.SHRUB && v !== T.GRASS) continue;
-      const wx = x + (fbm(x / 30, y / 30, 171, 2) - .5) * 26 + (hash2(tx, ty, 172) - .5) * 9, wy = y + (fbm(x / 30 + 9, y / 30 + 4, 173, 2) - .5) * 26 + (hash2(tx, ty, 174) - .5) * 9;
-      const wi = Math.max(0, Math.min(GH - 1, Math.floor(wy / TS))) * GW + Math.max(0, Math.min(GW - 1, Math.floor(wx / TS))), e0 = eco[wi] || eco[i];
-      const h1 = hash2(tx, ty, 141), n1 = fbm(x / 9, y / 9, 142, 2), gap = fbm(x / 40, y / 40, 144, 2);
-      const under = th => n1 > th ? T.SHRUB : T.GRASS;
-      let nv = v;
-      switch (e0) {
-        case E.ABETAIA: nv = gap < .3 ? (h1 < .12 ? T.SHRUB : T.GRASS) : h1 < .66 ? T.TREE : T.SHRUB; break;                       // fitta, con qualche radura di luce
-        case E.FAGGETA: nv = cellTree(tx, ty, 4.6, .9, 0) || cellTree(tx, ty, 7, .5, 3) ? T.TREE : under(.56); break;           // chiome larghe, sotto aperto
-        case E.VALLONE: nv = cellTree(tx, ty, 5.5, .8, 6) ? T.TREE : under(.36); break;                                              // umido, pieno di sottobosco
-        case E.PINETA: nv = cellTree(tx, ty, 7.5, .8, 9) ? T.TREE : under(.64); break;                                               // pini a distanza, suolo d'aghi
-        case E.MACCHIA: nv = cellTree(tx, ty, 11, .45, 12) ? T.TREE : under(.33); break;                                             // cespugli fitti, pochi alberi storti
-        case E.FARO: nv = cellTree(tx, ty, 17, .4, 15) ? T.TREE : under(.6); break;                                                  // la punta ventosa: erba, cuscini, pochi pini piegati
-        case E.PASCOLO: { const dT = dist(x, y, TAV.x, TAV.y) - tavR(Math.atan2(y - TAV.y, x - TAV.x)); nv = dT > -20 && cellTree(tx, ty, 24, .45, 18) ? T.TREE : v === T.SHRUB && n1 > .6 ? T.SHRUB : T.GRASS; break; }   // alberi soli sul ciglio
-        case E.SALINA: case E.RUDERALE: nv = under(.64); break;
-        case E.RADURA: nv = cellTree(tx, ty, 14, .35, 21) ? T.TREE : under(.62); break;                                             // radura: qualche albero grande da solo
-        case E.RIPARIALE: { const q = Math.hypot((x - xn(186)) / 13, (y - 150) / 9); nv = q > 1.1 && cellTree(tx, ty, 6, .55, 24) ? T.TREE : under(.45); break; }
-        case E.BETULLE: nv = cellTree(tx, ty, 4.2, .75, 27) ? T.TREE : under(.7); break;                                             // bosco chiaro di betulle e erba
-        case E.PINIMONTE: nv = cellTree(tx, ty, 4.4, .85, 30) ? T.TREE : under(.55); break;
-        default: break;   // uliveti, vigne, ghiaione, duna: restano come li fa il monte o il Tavolato
-      }
-      grid[i] = nv;
     }
     // le pareti dei canyon sono roccia
     for (let ty = 1; ty < GH - 1; ty++) for (let tx = 1; tx < 1; tx++) { const i = ty * GW + tx; if (zone[i] !== Z.DESERTO || grid[i] === T.WATER) continue;
@@ -1305,40 +1228,6 @@ var World = (function () {
       for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const i = ty * GW + tx, v = grid[i]; if (v === T.BLD || v === T.WATER || v === T.PIER || v === T.SAND || v === T.CLIFF || v === T.QUAY || v === T.FOUNT) continue; const k = ty * VW + tx; if (!(touched[k] || touched[k + 1] || touched[k + VW] || touched[k + VW + 1])) continue; elev[i] = (vh[k] + vh[k + 1] + vh[k + VW] + vh[k + VW + 1]) / 4; }
     }
 
-    // [strade1] incroci alla stessa quota e carreggiate davvero in piano. Le strade minori che finiscono su una maggiore prendono la
-    // sua quota e si raccordano in 24 m (pendenza limitata); poi, dalla più importante alla meno, i vertici sotto la carreggiata (e sotto
-    // il marciapiede delle vie di città) vanno alla quota della strada: niente buche di terreno né carreggiate che scendono in mare.
-    // Chi è già stato spianato da una strada più importante non si tocca. La levigatura della città qui sotto rispetta questi vertici.
-    {
-      const NV = VW * (GH + 1), PRI = rd => rd.kind === 'litoranea' ? 0 : rd.kind === 'strada' ? 1 : rd.kind === 'citta' ? 2 : rd.kind === 'vicolo' ? 3 : 4;
-      const RDS = roads.filter(rd => rd.h && rd.pts && rd.pts.length >= 2 && !rd.traccia && !(rd.kind === 'sterrato' && rd.w < 3)).sort((a, c) => PRI(a) - PRI(c));
-      const near = (o, x, y) => { let bd = 1e9, bh = 0; for (let j = 0; j < o.pts.length - 1; j++) { const [ax, ay] = o.pts[j], [bx, by] = o.pts[j + 1], L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1), d = Math.hypot(ax + (bx - ax) * t - x, ay + (by - ay) * t - y); if (d < bd) { bd = d; bh = o.h[j] + (o.h[j + 1] - o.h[j]) * t; } } return [bd, bh]; };
-      // 1) gli estremi delle minori sulla quota della maggiore
-      RDS.forEach(rd => { const n = rd.pts.length;
-        [0, n - 1].forEach(e => { const [x, y] = rd.pts[e]; let best = null;
-          RDS.forEach(o => { if (o === rd || PRI(o) > PRI(rd)) return; const [d, h] = near(o, x, y); if (d < o.w / 2 + 1.5 && Math.abs(h - rd.h[e]) < 3 && (!best || PRI(o) < PRI(best[0]))) best = [o, h]; });
-          if (!best) return; const o = best[0], oflat = o.w / 2 + (o.kind === 'citta' || o.kind === 'litoranea' ? 2 : 0) + .4, sg = e === 0 ? 1 : -1;
-          // dentro la carreggiata (e il marciapiede) della maggiore: la sua quota, in piano
-          let k = e, dh = 0; for (; k >= 0 && k < n; k += sg) { const [d, h] = near(o, rd.pts[k][0], rd.pts[k][1]); if (d > oflat) break; dh = h - rd.h[k]; rd.h[k] = h; }
-          // poi ci si raccorda in 24 m, senza superare la pendenza della strada
-          if (k === e) return; let acc = 0; const k0 = k;
-          for (; k >= 0 && k < n; k += sg) { acc += Math.hypot(rd.pts[k][0] - rd.pts[k - sg][0], rd.pts[k][1] - rd.pts[k - sg][1]); const w = 1 - sstep(0, 24, acc); if (w <= 0) break; rd.h[k] += dh * w; }
-          const Gm = rd.kind === 'vicolo' || rd.kind === 'sterrato' ? .22 : .13;
-          for (k = k0; k >= 0 && k < n; k += sg) { const L = Math.hypot(rd.pts[k][0] - rd.pts[k - sg][0], rd.pts[k][1] - rd.pts[k - sg][1]), a = rd.h[k - sg], h = clamp(rd.h[k], a - Gm * L, a + Gm * L); if (Math.abs(h - rd.h[k]) < .005 && acc > 30) break; rd.h[k] = h; } }); });
-      // 2) carreggiate (e marciapiedi delle vie di città) in piano, la più importante vince
-      const own = new Int8Array(NV).fill(-1), setH = new Float32Array(NV), dmin = new Float32Array(NV).fill(1e9);
-      const fixed = new Uint8Array(NV); for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const v = grid[ty * GW + tx]; if (v === T.BLD || v === T.PIER || v === T.FOUNT || v === T.CLIFF) for (let cy = 0; cy < 2; cy++) for (let cx = 0; cx < 2; cx++) fixed[(ty + cy) * VW + tx + cx] = 1; }
-      RDS.forEach(rd => { const p = PRI(rd), side = rd.kind === 'citta' || rd.kind === 'litoranea' ? 2 : 0, flat = rd.w / 2 + side + .2, P = rd.pts, n = P.length;
-        for (let k = 0; k < n - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
-          for (let j = Math.max(0, Math.floor((Math.min(ay, by) - flat) / TS)); j <= Math.min(GH, Math.ceil((Math.max(ay, by) + flat) / TS)); j++) for (let i = Math.max(0, Math.floor((Math.min(ax, bx) - flat) / TS)); i <= Math.min(GW, Math.ceil((Math.max(ax, bx) + flat) / TS)); i++) {
-            const q = j * VW + i; if (fixed[q]) continue; const x = i * TS, y = j * TS, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1), d = Math.hypot(x - ax - (bx - ax) * t, y - ay - (by - ay) * t);
-            if (d > flat || (own[q] >= 0 && own[q] < p) || (own[q] === p && d >= dmin[q])) continue;
-            own[q] = p; dmin[q] = d; setH[q] = rd.h[k] + (rd.h[k + 1] - rd.h[k]) * t; } } });
-      let moved = 0; for (let q = 0; q < NV; q++) if (own[q] >= 0) { if (Math.abs(vh[q] - setH[q]) > .05) moved++; vh[q] = setH[q]; if (CARR) CARR[q] = 1; }
-      for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const k = ty * VW + tx; if (own[k] < 0 && own[k + 1] < 0 && own[k + VW] < 0 && own[k + VW + 1] < 0) continue; const i = ty * GW + tx; if (grid[i] === T.BLD) continue; elev[i] = (vh[k] + vh[k + 1] + vh[k + VW] + vh[k + VW + 1]) / 4; }
-      if (typeof process !== 'undefined' && process.env && process.env.STRADE_DBG) console.log('[strade1] vertici rimessi in piano', moved);
-    }
-
     // [inverno] il terreno della città si livella: dove strade e marciapiedi salgono non ci sono più gradoni a spigolo vivo.
     // Si sfumano le quote dei vertici attorno alle caselle urbane (più forte vicino, sempre meno lontano) e si limita la pendenza;
     // restano fermi i vertici di edifici, acqua, moli e sabbia. Poi le quote delle caselle si riallineano ai vertici.
@@ -1381,7 +1270,7 @@ var World = (function () {
       { id: 'eremo', name: 'Eremo del Romito', mouth: 'imbocco', exit: 'pozzo', path: [[162.5, 158.5], [165.5, 158.5], [168.5, 156.5], [171.5, 154], [174.5, 152.5]], rooms: [[166.5, 159, 2.6, 2.4, 'eremo']] },
     ];
     const CAVES = CAVES0.map(c => Object.assign({}, c, { path: c.path.map(q => [xn(q[0]), q[1]]), rooms: c.rooms.map(q => [xn(q[0])].concat(q.slice(1))) }));
-    return { eco, ECO, monte, MF, feat, BRIDGES, CAVES, WALL, HILLS, VILLAGES: VILLAGES.map(q => [xn(q[0])].concat(q.slice(1))), districtAt: DistrictAt, yc: Yc, northY: NorthY, southY: SouthY, onLand: OnLand, inland: Inland, LAKE,
+    return { monte, MF, feat, BRIDGES, CAVES, WALL, HILLS, VILLAGES: VILLAGES.map(q => [xn(q[0])].concat(q.slice(1))), districtAt: DistrictAt, yc: Yc, northY: NorthY, southY: SouthY, onLand: OnLand, inland: Inland, LAKE,
       DXF, DXC, XF, XG, XC, XE, xo, xn, HEAD, TAV, CANALI, GOV, BF, bosco, RING, TUNNELS, tavR, canHalf, CAN0, CAN1, canFloor, TS, GW, GH, SIZE, SX, SY, T, Z, ZNAME, grid, zone, elev, velev, vh, VW, reach, bIndex, roadW, roads, lanes, BUILDINGS: B, PLACES, zoneAt, rawElev, CX, CY };
   }
 
