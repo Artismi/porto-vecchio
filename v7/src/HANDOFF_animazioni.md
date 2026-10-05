@@ -19,6 +19,9 @@ Ramo `claude/bold-clarke-fioelv`. Si unisce a `main` e ai rami attivi (verde, am
 | `render.js` | Solo le due chiamate `Models.animPerson` del blocco "persone": in più `anim: Anim.npcState/playerState` (e `recoil`, `inVeh` per il giocatore). |
 | `vestiario.js` | `g.userData.spessore` (metri di vestiti per parte), azzerato in `strip`. |
 
+## Carattere (anim_vita.js, `portamento`)
+Ogni abitante ha uno stile calcolato ogni 2 s da età, coraggio (`n.tr.cor`), paura, soldi, sonno, solitudine, loquacità (`n.tr.loq`), divisa: anziani curvi, fieri a petto in fuori, chi è giù con le spalle basse, Grigi dritti con le mani dietro la schiena da fermi. Chi parla guarda chi ha davanti; se la battuta ha un «!» gesticola largo (`discute`). Si legge solo: nessun file in comune toccato.
+
 ## Per le altre chat
 - **Regia** (`regia.js`): le azioni `fai` passano da `Azioni.startPlan`, e il testo del passo («ripara la rete», «dipinge la barca») sceglie la posa con `BY_LABEL` in `anim_vita.js`. Un verbo nuovo che non trova posa resta in piedi: basta aggiungere una riga a `BY_LABEL`. Il "modo di fare" da fermi (fuma, tasche, braccia conserte, orologio, appoggiato) c'è già in `habit()`.
 - **Una posa nuova**: `Anim.def(nome, { base, fade, fn(P) {...} })` e una mappa `Anim.npcMap((st, n, s) => { s.act = nome })`. Si controlla nello studio.

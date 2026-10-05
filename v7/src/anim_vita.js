@@ -261,7 +261,7 @@
     const r = P.r, T = 1.6 + r * 1.4, k = cyc(P, T), hand = Math.floor((P.t + r * 9) / T) % 3;
     P.rot('Head', .07 * Math.sin(P.t * (3 + r * 2)), .1 * Math.sin(P.t * .7 + r * 5), 0);
     if (busy) return;
-    const g = Math.sin(k * PI), wob = Math.sin(P.t * 5 + r * 3) * .12;
+    const lq = (A && A.stile ? A.stile.loq : .5), g = Math.sin(k * PI) * (.5 + lq), wob = Math.sin(P.t * 5 + r * 3) * .12 * (.5 + lq);
     if (hand !== 1) arm(P, 'R', .25, -.85, .35, -.15 + wob, .25 + g * .4, .9, .55 + g * .45);
     if (hand !== 0) arm(P, 'L', .25, -.85, .35, -.15 - wob, .2 + g * .35, .9, .5 + g * .4);
   });
@@ -508,6 +508,31 @@
     P.body({ x: .04 * Math.sin(P.t * .2 + P.r * 3) });
     arm(P, 'R', .2, -.95, -.12, -.15, -.9, .35); arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35);
   });
+  // ================= IL CARATTERE: come uno sta in piedi e cammina =================
+  // A.stile = { vec (0-1, anziano), fiero (-1..1), giu (0-1, al verde/stanco/triste), loq (0-1), dritto (divisa) }
+  def('portamento', { fade: .8 }, (P, A) => {
+    const S = A && A.stile; if (!S) return;
+    const still = Math.abs(P.o.speed || 0) < .3;
+    // anziani: schiena curva, collo che compensa, passo più corto (il busto oscilla un po')
+    if (S.vec > 0) { P.rot('Abdomen', .16 * S.vec, 0, 0); P.rot('Chest', .1 * S.vec, 0, 0); P.rot('Neck', -.12 * S.vec, 0, 0); P.rot('Head', -.08 * S.vec, 0, 0); }
+    // fieri: petto in fuori e mento su; insicuri: spalle in dentro
+    if (S.fiero) { P.rot('Chest', -.09 * S.fiero, 0, 0); P.rot('Head', -.06 * S.fiero, 0, 0); P.rot('ShoulderL', 0, -.06 * S.fiero, 0); P.rot('ShoulderR', 0, .06 * S.fiero, 0); }
+    // giù di morale, al verde o stanchi: spalle basse, testa china
+    if (S.giu > 0) { P.rot('Chest', .1 * S.giu, 0, 0); P.rot('Head', .14 * S.giu, 0, 0); }
+    // in divisa: dritti; da fermi chi è in divisa e non ha altro da fare guarda in giro piano
+    if (S.dritto) { P.rot('Abdomen', -.04, 0, 0); if (still) P.rot('Head', 0, .35 * Math.sin(P.t * .25 + P.r * 6), 0); }
+  });
+  // mani dietro la schiena (Grigi e anziani a passeggio)
+  def('dietro', { fade: .4 }, (P) => {
+    handTo(P, 'R', -.02, .92, -.2, .9, 0, -.4); handTo(P, 'L', -.02, .92, -.2, .9, 0, -.4); P.fingers('R', .5, .5); P.fingers('L', .4, .4);
+  });
+  // discute: gesti larghi, il busto in avanti, la testa che scatta (chi litiga, chi urla)
+  def('discute', { fade: .2 }, (P) => {
+    const k = cyc(P, 1.1 + P.r * .5), g = Math.sin(k * 2 * PI), h = Math.sin(k * 2 * PI + 1.7);
+    P.rot('Abdomen', .1, .12 * g, 0); P.rot('Chest', .06, .1 * h, 0); P.rot('Head', .08 * h, .12 * g, 0);
+    arm(P, 'R', .35, -.5 + .25 * g, .55, -.1, .55 + .35 * g, .8); P.fingers('R', .2 + .3 * Math.max(0, h), .3);
+    arm(P, 'L', .35, -.6 - .2 * g, .5, -.1, .45 - .3 * g, .85); P.fingers('L', .2, .3);
+  }); BUSY.discute = 1;
   ['siede_terra', 'dorme', 'siede'].forEach(k => BUSY[k] = 0);
   ['beve', 'bottiglia', 'mangia', 'telefona', 'legge', 'libro', 'porta', 'carriola', 'cero', 'fuma'].forEach(k => BUSY[k] = 1);
 
@@ -551,9 +576,33 @@
     const h = HABITS[Math.floor(Anim.hashStr(n.id + ':' + slot) * HABITS.length)];
     if (!h) return; if (h.endsWith('_act')) s.act = h.slice(0, -4); else s.upper = h;
   }
+  // lo stile si calcola di rado (cambia piano): ogni ~2 s per persona
+  function stileOf(st, n) {
+    const P = n.pop, tr = n.tr || {}, c = n.__st || (n.__st = { vec: 0, fiero: 0, giu: 0, loq: .5, dritto: false, t: -99 });
+    if (st.clock - c.t < 2) return c; c.t = st.clock;
+    const age = (P && P.age) || 35, N = (P && P.need) || {};
+    c.vec = clamp((age - 55) / 22, 0, 1);
+    c.fiero = clamp(((tr.cor !== undefined ? tr.cor : .5) - .5) * 1.4 - (N.paura || 0) * .8, -1, 1);
+    c.giu = clamp(((P && P.money !== undefined && P.money < 3) ? .4 : 0) + Math.max(0, (N.sonno || 0) - .6) * 1.2 + Math.max(0, (N.compagnia || 0) - .7), 0, 1);
+    c.loq = tr.loq !== undefined ? tr.loq : .5; c.dritto = !!(n.cop || n.military);
+    return c;
+  }
+  // chi parla guarda chi ha davanti: l'abitante più vicino entro 2,5 m (se no, il giocatore se è vicino)
+  function partnerOf(st, n) {
+    if (n.__pt && st.clock - n.__ptT < 1.5) return n.__pt; n.__ptT = st.clock; let best = null, bd = 2.5 * 2.5;
+    for (const k of st.npcs) { if (k === n || k.inside || k.dead) continue; const dx = k.x - n.x, dy = k.y - n.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = k; } }
+    return (n.__pt = best);
+  }
   Anim.npcMap((st, n, s) => {
     if (n.dead || n.stun > 0 || n.inside) return;
     const P = n.pop, moving = Math.abs(n.speedNow || 0) > .3;
+    s.stile = stileOf(st, n); s.mood.push('portamento');
+    if (n.bark && n.bark.until > st.clock) {
+      const k = partnerOf(st, n); if (k) s.lookAt = { x: k.x, y: 1.5, z: k.y, ground: true };
+      if (/!/.test(n.bark.text || '') && !moving) s.upper = 'discute';
+    }
+    if (!moving && s.stile.dritto && !s.upper) s.upper = 'dietro';
+    if (moving && s.stile.vec > .6 && !s.upper && Anim.hashStr(String(n.id)) < .5) s.upper = 'dietro';
     // portare qualcosa (un corpo, un carico) o la carriola: braccia, anche camminando
     if (P && P.carrying) s.upper = 'porta';
     if (n.hand && HELD_UP[n.hand]) s.upper = HELD_UP[n.hand];
