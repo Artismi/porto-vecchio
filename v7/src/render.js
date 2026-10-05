@@ -6763,7 +6763,15 @@ var Render = (function () {
           float d1 = dL(uv+vec2(px.x,0.)), d2 = dL(uv-vec2(px.x,0.)), d3 = dL(uv+vec2(0.,px.y)), d4 = dL(uv-vec2(0.,px.y));   /* [unione11] */
           float edge = max(max(d1-d, d2-d), max(d3-d, d4-d));
           float ol = smoothstep(.45*(1.+d*.01), .9*(1.+d*.012), edge);
-          c = mix(c, c*.55 + vec3(.02,.025,.04), ol*aK2.z*(1.-coc));   // [amb2]
+          {   /* [unione11] inchiostro col peso della mano */
+            float tA = .45*(1.+d*.01), tB = .9*(1.+d*.012), e2 = 0.;
+            for (int k = 0; k < 8; k++) { float a = float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * px * (k - k/2*2 == 0 ? 2. : 1.7); e2 = max(e2, dL(uv + o) - d); }
+            float lum0 = dot(c, vec3(.3,.59,.11)), dark = 1. - smoothstep(.08, .5, lum0);
+            float thin = smoothstep(tA, tB, edge), thick = smoothstep(tA * 2.2, tB * 3., e2) * (.45 + .55 * dark);
+            float cvi = (d1 + d2 + d3 + d4 - 4. * d) / (d * .012 + .08), crease = smoothstep(.9, 2.2, -cvi) * .55;
+            float ink = max(max(thin, thick), crease) * (1.-coc) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
+            vec3 inkC = c * vec3(.16,.14,.2) + vec3(.022,.016,.036);
+            c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); }
           { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)); } c *= 1. - ao/8.*.42*(1.-coc*.7); }
           {   // [amb3] inchiostro e profili: il volume si stacca dal fondo
             float la = dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, vec3(.3,.59,.11)), lb = dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, vec3(.3,.59,.11));

@@ -125,4 +125,22 @@ rep("sharp: .2, outline", "sharp: .06 /* [unione11] */, outline")
 # - il suolo (strisce, schiuma, lastre, asfalto) si legge morbido e con le mipmap: niente scalette sulle righe oblique e niente
 #   brulichio dei texel lontani quando la camera si muove (blocchi da 512 px, potenza di due).
 rep("    const tex = canvasTex(c);\n    let rtex = null;", "    const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */\n    let rtex = null;")
+# ---------------- 6) l'inchiostro col carattere ----------------
+# (Andrea: «la linea pixel era sì confusa ma con carattere; gli outline inchiostrati devono dare volume e avere carattere,
+# altrimenti sembrano Playmobil») Il contorno di [amb2] era un velo grigio (c*.55, peso .3) e, reso liscio, diventava anonimo.
+# Ora è un tratto d'inchiostro vero, liscio ma col peso della mano:
+# - sagoma: dove dietro c'è qualcosa di lontano, linea sul bordo dell'oggetto davanti; si cerca a due raggi (1 e 2 texel) e il raggio
+#   largo conta di più quanto più il salto è grande e quanto più il lato è in ombra: tratto grosso fuori e al buio, sottile alla luce;
+# - pieghe interne (incavi della profondità): un filo sottile;
+# - colore: inchiostro scuro che tiene un po' della tinta sotto (viola-bruno), non grigio; nella foschia lontana si alleggerisce.
+rep("c = mix(c, c*.55 + vec3(.02,.025,.04), ol*aK2.z*(1.-coc));   // [amb2]",
+"""{   /* [unione11] inchiostro col peso della mano */
+            float tA = .45*(1.+d*.01), tB = .9*(1.+d*.012), e2 = 0.;
+            for (int k = 0; k < 8; k++) { float a = float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * px * (k - k/2*2 == 0 ? 2. : 1.7); e2 = max(e2, dL(uv + o) - d); }
+            float lum0 = dot(c, vec3(.3,.59,.11)), dark = 1. - smoothstep(.08, .5, lum0);
+            float thin = smoothstep(tA, tB, edge), thick = smoothstep(tA * 2.2, tB * 3., e2) * (.45 + .55 * dark);
+            float cvi = (d1 + d2 + d3 + d4 - 4. * d) / (d * .012 + .08), crease = smoothstep(.9, 2.2, -cvi) * .55;
+            float ink = max(max(thin, thick), crease) * (1.-coc) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
+            vec3 inkC = c * vec3(.16,.14,.2) + vec3(.022,.016,.036);
+            c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); }""")
 open(p, 'w', encoding='utf-8').write(s); print('ok')
