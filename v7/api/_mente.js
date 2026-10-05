@@ -1,6 +1,6 @@
 // Porto Vecchio — la Mente degli NPC su Vercel: la stessa logica di server.js, ma la chiave sta in una variabile d'ambiente segreta
 // (GEMINI_API_KEY, oppure ANTHROPIC_API_KEY / GROQ_API_KEY / OPENROUTER_API_KEY) e non arriva mai al browser.
-// I file con «_» davanti non diventano indirizzi pubblici. Se si cambia server.js, va riportato qui.
+// I file con «_» davanti non diventano indirizzi pubblici. Se si cambia server.js, va riportato qui (stesso pezzo, da «Modelli di default» a «Server HTTP»).
 // Modelli di default per fornitore, in ordine di tentativo.
 // Se il primo non esiste più (404), si passa al successivo e si ricorda quello buono.
 const MODELS = {
@@ -46,6 +46,9 @@ function parseJSONLoose(txt) {
 
 function fail(cfg, model, status, msg) {
   LLM.fails++;
+  // il "reason" di Google sta in fondo al JSON: lo metto davanti così non si perde nel taglio
+  const reason = (String(msg).match(/"reason":\s*"([A-Z_]+)"/) || [])[1];
+  if (reason) msg = reason + ' · ' + msg;
   LLM.lastError = { when: Date.now(), provider: cfg.provider, model, status, msg: String(msg).slice(0, 400) };
   console.error(`[Mente ✘] ${cfg.provider}/${model} → ${status}: ${String(msg).slice(0, 300)}`);
 }
@@ -60,7 +63,7 @@ function modelsFor(cfg) {
 // Una singola chiamata HTTP al fornitore; restituisce { ok, status, text, notFound }
 async function rawCall(cfg, model, systemPrompt, userMessage, maxTokens) {
   if (cfg.provider === 'gemini') {
-    // Tutte le chiavi Gemini (AIza… e le nuove AQ.…) vanno nell'header x-goog-api-key.
+    // Le chiavi Gemini (AIza…) vanno nell'header x-goog-api-key; le AQ.… vengono ritentate come Bearer (vedi callLLM).
     // NON come "Authorization: Bearer": quello è per i token OAuth e dà 401.
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
     const generationConfig = { responseMimeType: 'application/json', temperature: 0.8, maxOutputTokens: maxTokens };
@@ -68,7 +71,9 @@ async function rawCall(cfg, model, systemPrompt, userMessage, maxTokens) {
     if (/2\.5-flash|flash-latest/.test(model)) generationConfig.thinkingConfig = { thinkingBudget: 0 };
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.apiKey },
+      headers: cfg.bearer
+        ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey}` }
+        : { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.apiKey },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -155,6 +160,17 @@ async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500) {
       return obj;
     }
     fail(cfg, model, r.status, r.text);
+    // Chiavi Google "AQ.…": con x-goog-api-key Google risponde solo "tipo non supportato";
+    // ritento una volta come Bearer, che o funziona o dà il motivo vero (es. API bloccata).
+    if (cfg.provider === 'gemini' && !cfg.bearer && /ACCESS_TOKEN_TYPE_UNSUPPORTED/.test(r.text)) {
+      cfg.bearer = true;
+      try { r = await rawCall(cfg, model, systemPrompt, userMessage, maxTokens); } catch (err) { return null; }
+      if (r.ok) {
+        const obj = parseJSONLoose(r.text);
+        if (obj) { LLM.workingModel = model; LLM.lastOk = Date.now(); LLM.lastError = null; return obj; }
+      }
+      fail(cfg, model, r.status, r.text);
+    }
     if (!r.notFound) return null; // 401/403/429…: cambiare modello non serve
   }
   return null;
@@ -163,6 +179,10 @@ async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500) {
 function explainError(e) {
   if (!e) return '';
   const m = (e.msg || '').toLowerCase();
+  // Google: la chiave esiste ma non è abilitata per l'API Gemini (restrizioni API o API non attiva nel progetto)
+  if (/api_key_service_blocked/.test(m)) return 'La chiave Google è bloccata per l\'API Gemini: in console.cloud.google.com → Credenziali togli le restrizioni API (o aggiungi "Generative Language API"), oppure crea una chiave nuova su aistudio.google.com/apikey.';
+  // Google: la stringa non è una chiave API Gemini (es. token AQ.… di altri servizi)
+  if (/access_token_type_unsupported/.test(m)) return 'Questa non è una chiave API Gemini valida (le chiavi giuste iniziano con "AIza"). Creane una su aistudio.google.com/apikey e incollala in api_key.json.';
   if (e.status === 401 || /api key not valid|invalid.*key|authentication|unauthenticated|invalid x-api-key/.test(m)) return 'La chiave non è valida: controlla api_key.json (copiala di nuovo intera, senza aggiunte).';
   if (e.status === 403 || /permission|denied/.test(m)) return 'La chiave non ha il permesso per questo modello o per questa API (attivala nella console del fornitore).';
   if (e.status === 429 || /quota|rate/.test(m)) return 'Quota esaurita o troppe richieste: aspetta o controlla il piano del fornitore.';
