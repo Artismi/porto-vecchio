@@ -58,7 +58,7 @@
     shadowed(grp); const merged = mergeGroup(grp); shadowed(merged); scene.add(merged);
     const topY = base + H1 + (fl > 1 ? 2.6 : 0) + .4;
     const rec = { b, flat: false, shack: true, grp: merged, fade: 0, box3: new THREE.Box3(new THREE.Vector3(x0 + .2, low, z0 + .2), new THREE.Vector3(x0 + w - .2, topY + 1, z0 + d - .2)), mats: [] };
-    ownMats(merged, rec); dyn.buildings.push(rec); rec.geo = { x0, z0, w, d, y0: base, H: topY - base }; DZ.bRec[i] = rec;
+    ownMats(merged, rec); dyn.buildings.push(rec); rec.geo = { x0, z0, w, d, y0: base, H: topY - base }; DZ.bRec[i] = rec; rec.stove = [pp.position.x, pp.position.y + .76, pp.position.z];   // bocca del tubo della stufa (la usa aria2.js per il fumo)
     // luce calda dalla finestra di notte, poca
     if (r() < .5) addLight(win.position.x + N[0] * .8, base + 1.4, win.position.z + N[1] * .8, '#ffb060', .9, 4, .1);
   }
