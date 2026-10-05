@@ -138,6 +138,7 @@ var Models = (function () {
   }
   const charsReady = () => CH.Casual_2 && CH.Casual && CH.Casual_Hoodie && CH.Worker && CH.Formal;
   function pickFor(look, who) {
+    if (look && look.model && CH[look.model]) return look.model;   // [vestiti] modello chiesto per nome (studio, prove)
     if (who === 'player') return 'Casual_Hoodie';
     // niente soldatini del Toon Shooter (stile diverso, teste enormi): la Guardia e la Tutela sono persone vere in divisa
     if (who === 'cop') return 'Casual_2';
@@ -270,10 +271,14 @@ var Models = (function () {
     else if (o.handsUp) clip = u.acts.Wave ? 'Wave' : 'Idle';
     else if (o.weapon) clip = u.acts.Idle_Shoot ? 'Idle_Shoot' : u.acts.Idle_Gun ? 'Idle_Gun' : 'Idle';
     else if (o.idle && u.acts[o.idle]) clip = o.idle;
+    // [animazioni] una posa di tutto il corpo può chiedere la sua clip di base (es. Idle per sedersi)
+    const wb = window.Anim && Anim.want(g, o); if (wb && !o.down && !(o.punch > 0) && !(o.hit > .5) && u.acts[wb]) clip = wb;
     play(g, clip, clip === 'Death');
     if (u.cur && (clip === 'Walk' || clip === 'Run' || clip === 'Walk_Shoot' || clip === 'Run_Gun' || clip === 'Run_Shoot')) u.cur.timeScale = clip.startsWith('Walk') ? Math.max(.5, sp / 1.6) : Math.max(.6, sp / 5);
     else if (u.cur) u.cur.timeScale = 1;
+    if (window.Anim) Anim.restore(g);   // [animazioni]
     u.mixer.update(dt);
+    if (window.Anim) Anim.apply(g, o, dt, performance.now() / 1000);   // [animazioni] lo strato procedurale sopra la clip
   }
   // ---------------- IL MONDO ----------------
   function tileFree(x, z) { const T = G.T, v = G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)); return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE; }
@@ -401,5 +406,5 @@ var Models = (function () {
     if (typeof THREE === 'undefined' || !THREE.GLTFLoader) return;
     dress().catch(e => console.warn('Models:', e));
   }
-  return { person, animPerson, charsReady, loadChar, furniture, placed, CAT, LIB, load, has, make, vehicle, attach, tick, setBase: b => { base = b; } };
+  return { prepGuns, person, animPerson, charsReady, loadChar, furniture, placed, CAT, LIB, load, has, make, vehicle, attach, tick, setBase: b => { base = b; } };
 })();
