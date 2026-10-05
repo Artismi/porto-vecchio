@@ -599,6 +599,15 @@
     return (n.__pt = best);
   }
   Anim.npcMap((st, n, s) => {
+    // [scopo] dentro l'edificio del giocatore: la posa di quello che sta facendo (a letto, a tavola, al bancone)
+    if (n.room && !n.dead && n.stun <= 0) {
+      s.stile = stileOf(st, n); s.mood.push('portamento');
+      if (Math.abs(n.speedNow || 0) > .3) return;
+      if (n.room.pose === 'dorme') { s.act = 'dorme'; s.lookAt = null; s.talk = false; return; }
+      if (n.room.pose === 'legge') { s.act = 'siede'; s.upper = 'legge'; } else if (n.room.pose) put(n.room.pose, s); else habit(n, st.clock, s);
+      if (n.bark && n.bark.until > st.clock) { s.talk = true; if (/[!?]/.test(n.bark.text || '')) s.upper = 'discute'; }
+      return;
+    }
     if (n.dead || n.stun > 0 || n.inside) return;
     const P = n.pop, moving = Math.abs(n.speedNow || 0) > .3;
     s.stile = stileOf(st, n); s.mood.push('portamento');
@@ -618,6 +627,7 @@
     if (moving) return;
     // il blocco della giornata (popolo.js)
     const b = P && P.cur;
+    if (b && n.action && n.action.name === 'al lavoro' && P.job) { const j = (P.job.base || P.job.title || '').toLowerCase(); for (const [re, v] of BY_JOB) if (re.test(j)) return put(v, s); return put('lavora', s); }   // [scopo] al suo posto all'aperto (oggetti.js)
     if (b && n.action && n.action.name === 'routine') {
       if (b.obj && BY_OBJ[b.obj]) return put(BY_OBJ[b.obj], s);
       if (b.act === 'lavoro' && P.job) { const j = (P.job.base || P.job.title || '').toLowerCase(); for (const [re, v] of BY_JOB) if (re.test(j)) return put(v, s); return put('lavora', s); }

@@ -147,10 +147,11 @@
   const click = { t: null }, ring = { n: null, el: $('ring'), built: null }, hoverEl = $('hover');
   const armedGun = () => { const p = st.player; return p.cur !== 'pugni' && p.cur !== 'molotov'; };
   function cvOff() { const r = cv.getBoundingClientRect(), a = app.getBoundingClientRect(); return { x: r.left - a.left, y: r.top - a.top, w: r.width, h: r.height }; }
+  const inRoom = n => !!(n.room && st.player.indoor);   // [scopo] chi è nella stanza col giocatore (popolo.js)
   function pickAt(nx, ny) {
     const p = st.player, o = cvOff(); let best = null, bd = Math.max(18, o.h * .04);
     if (!p.vehicle) st.npcs.forEach(n => {
-      if (n.dead || n.inside || n.jailedUntil > st.t) return;
+      if (n.dead || (n.inside && !inRoom(n)) || (p.indoor && !inRoom(n)) || n.jailedUntil > st.t) return;   // [scopo] dentro si clicca chi c'è nella stanza
       for (const hh of [.6, 1.2, 1.7]) { const pr = R.project(n.x, hh, n.y); if (pr.behind) continue; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = { kind: 'npc', n }; } }
     });
     if (best) return best;
@@ -211,7 +212,7 @@
       if (d < c.best - .2) { c.best = d; c.bestT = ui.time; } else if (ui.time - c.bestT > 1.5) return stop();
     }
     if (c.kind === 'npc') {
-      const n = G.byId(st, c.id); if (!n || n.dead || n.inside) return stop();
+      const n = G.byId(st, c.id); if (!n || n.dead || (n.inside && !inRoom(n))) return stop();
       gx = n.x; gy = n.y;
       if (Math.hypot(n.x - p.x, n.y - p.y) < 1.5) { click.t = null; openRing(n); return { x: 0, y: 0, sprint, aim: Math.atan2(n.y - p.y, n.x - p.x) }; }
     } else if (c.kind === 'car') {
@@ -238,6 +239,7 @@
     const p = st.player, o = [];
     o.push({ label: 'Parla', run: () => { closeRing(); openTalk(n); } });
     if (window.RisaccaUI) o.push(...RisaccaUI.ringOptions(n, closeRing)); // RISACCA: chat libera
+    if (inRoom(n)) { o.push({ label: '✕', run: closeRing }); return o; }   // [scopo] dentro casa d'altri: si parla e basta
     const ctx = G.context(st).find(c => c.key === 'E');
     if (ctx) o.push({ label: ctx.label.startsWith('Rapina') ? 'Rapina' : 'Ruba', bad: true, run: () => { closeRing(); doAct('scippo'); } });
     o.push({ label: 'Picchia', bad: true, run: () => { const a = Math.atan2(n.y - p.y, n.x - p.x), was = p.cur; p.face = a; p.cur = 'pugni'; p.cool = 0; G.fire(st, a, { x: n.x, y: n.y }, true); p.cur = was; } });
@@ -264,14 +266,14 @@
     const p = st.player;
     if (ring.n) {
       const n = G.byId(st, ring.n);
-      if (!n || n.dead || n.inside || p.vehicle || ui.dialog || Math.hypot(n.x - p.x, n.y - p.y) > 4) closeRing();
+      if (!n || n.dead || (n.inside && !inRoom(n)) || p.vehicle || ui.dialog || Math.hypot(n.x - p.x, n.y - p.y) > 4) closeRing();
       else { buildRing(n); const pr = R.project(n.x, 1.1, n.y), o = cvOff(); ring.el.style.left = (o.x + pr.x * o.w) + 'px'; ring.el.style.top = (o.y + pr.y * o.h) + 'px'; }
     }
     if (ui.burst) { const n = G.byId(st, ui.burst.id); if (!n || n.dead || ui.time > ui.burst.until) ui.burst = null; else { G.fire(st, Math.atan2(n.y - p.y, n.x - p.x), { x: n.x, y: n.y }, ui.burst.first); ui.burst.first = false; } }
     // cosa c'è sotto il puntatore
     if (mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.menu && !ui.over && !ring.n && !(window.Cantiere && Cantiere.active())) {
       const h = pickAt(mouse.nx, mouse.ny); let t = '';
-      if (h && h.kind === 'npc') t = h.n.first || h.n.name;
+      if (h && h.kind === 'npc') { t = h.n.first || h.n.name; const d0 = window.Popolo && Popolo.doing ? Popolo.doing(st, h.n) : ''; if (d0) t += ' · ' + d0; }   // [scopo] cosa sta facendo
       else if (h && h.kind === 'loot') t = h.label;
       else if (h && h.kind === 'car') t = p.vehicle === h.v.id ? 'Scendi' : h.v.traffic ? `Tira giù l'automobilista (${G.VK[h.v.kind].label})` : h.v.lent || h.v.mine ? 'Sali' : `Ruba ${G.vehicleName(st, h.v)}`;
       cv.style.cursor = h && h.kind !== 'move' ? 'pointer' : 'default';
@@ -444,8 +446,8 @@
     const get = () => { let el = pool[i]; if (!el) { el = document.createElement('div'); layer.appendChild(el); pool.push(el); } el.hidden = false; el.style.transform = ''; i++; return el; };
     const p = st.player;
     if (!ui.intro) st.npcs.forEach(n => {
-      if (n.inside || n.dead) return;
-      if (p.indoor) return;   // dentro un edificio il fuori non si vede
+      if ((n.inside && !inRoom(n)) || n.dead) return;
+      if (p.indoor && !inRoom(n)) return;   // dentro un edificio il fuori non si vede (chi è nella stanza sì)
       const d = Math.hypot(n.x - p.x, n.y - p.y);
       const pr = R.project(n.x, 2.35, n.y); if (pr.behind || pr.x < -.05 || pr.x > 1.05 || pr.y < -.05 || pr.y > 1.05) return;
       const sx = pr.x * W, sy = pr.y * H;

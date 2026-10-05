@@ -1833,7 +1833,7 @@ var Render = (function () {
     hemi.intensity *= .5; moon.intensity *= .35; fillAmb.intensity *= .6;
     if (window.InterniArte) InterniArte.light({ st, hemi, moon, fillAmb, dyn, scene, INDOOR });
     const pg = dyn.people.__player;
-    scene.children.forEach(o => { if (o === INDOOR.grp || o === pg || o.isLight || INDOOR.lights.includes(o)) return; if (o.visible) { o.visible = false; o.userData.__hid = true; } });
+    scene.children.forEach(o => { if (o === INDOOR.grp || o === pg || o.isLight || INDOOR.lights.includes(o) || o.userData.inRoom) return; if (o.visible) { o.visible = false; o.userData.__hid = true; } });   // [scopo] chi è nella stanza resta
     INDOOR.grp.visible = true; if (pg) pg.visible = true;
     return true;
   }
@@ -9918,12 +9918,13 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     st.npcs.forEach(n => {
       let g = dyn.people[n.id];
       // [popolo] il modello si crea solo per chi si vede; gli abitanti lontani (popolo.js) lo liberano
-      if (n.inside || (n.pop && !n.pop.near)) { if (g) { g.visible = false; if (n.pop && !n.pop.near) { scene.remove(g); delete dyn.people[n.id]; } } return; }
+      const inRoom = !!(n.room && p.indoor && !n.dead);   // [scopo] dentro l'edificio del giocatore: si vede chi c'è
+      if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if (n.pop && !n.pop.near) { scene.remove(g); delete dyn.people[n.id]; } } return; }
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
       if (!g) { const who = n.cop || n.military ? 'cop' : null; g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
-      g.visible = !n.inside;
+      g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
-      g.position.set(n.x, groundH(n.x, n.y), n.y); g.rotation.y = Math.PI / 2 - n.face;
+      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y), n.y); g.rotation.y = Math.PI / 2 - n.face;
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
       if (g.userData.model) Models.animPerson(g, { speed: n.speedNow, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, held: n.hand || null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), punch: n.gesture === 'punch' ? 1 : 0, handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0, anim: window.Anim ? Anim.npcState(st, n) : null }, dt); else   // [animazioni] anim
       animPerson(g, { anim: n.anim, speed: n.speedNow, gesture: n.gesture, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0 && p.cur !== 'pugni' && Math.hypot(n.x - p.x, n.y - p.y) < 6, twoHand: n.cop });

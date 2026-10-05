@@ -596,6 +596,7 @@ var Popolo = (function () {
   // ---------------- LIVELLO DI DETTAGLIO ----------------
   function mustBeNear(st, n) {
     if (isPassive(st, n)) return true;   // Grigi in servizio, membri della Risacca: li muove sempre il motore
+    if (n.room) return true;             // [scopo] è nella stanza col giocatore
     if (n.panic > 0 || n.stun > 0 || n.aggro || n.jailedUntil > st.t) return n.jailedUntil <= st.t;
     return ['fugge', 'denuncia', 'affronta', 'combatte', 'insegue'].includes(n.action.name);
   }
@@ -1481,9 +1482,10 @@ var Popolo = (function () {
     let b = blockNow(st, n); if (!b) return;
     if (a === 'evita') b = { tgt: P.homeT, act: 'casa', label: 'preferisce stare a casa', at: b.at };
     const t = b.tgt, key = tkey(t) + '@' + b.at;
-    if (key !== P.curKey) { onBlockStart(st, n, b, P.cur); P.cur = b; P.curKey = key; P.goalSet = false; }
+    if (key !== P.curKey) { onBlockStart(st, n, b, P.cur); P.cur = b; P.curKey = key; P.goalSet = false; P.spot = null; }
     if (n.inside) {
-      if (P.at && tkey(P.at) === tkey(t)) { n.speedNow = 0; n.action = { name: 'dentro', scores: [], why: `${cap(b.label)} (${t.label}).`, since: n.action.since }; return; }
+      if (P.at && tkey(P.at) === tkey(t)) { if (!(n.room && n.room.walk)) n.speedNow = 0; n.action = { name: 'dentro', scores: [], why: `${cap(b.label)} (${t.label}).`, since: n.action.since }; return; }
+      if (n.room && roomExit(st, n)) return;   // [scopo] se il giocatore è lì dentro, prima si va alla porta
       // esce dalla porta da cui era entrato
       const from = P.at || P.homeT; n.x = from.x; n.y = from.y; n.inside = false; n.path = []; P.goalSet = false;
       n.action = { name: 'routine', scores: [], why: `${cap(b.label)}: va a ${t.label}.`, since: st.clock };
@@ -1498,16 +1500,230 @@ var Popolo = (function () {
       else if (!n.path.length) { P.goalSet = false; }
       return;
     }
-    // luogo all'aperto: ci va e poi gironzola
-    if (!P.goalSet) { const s = G.wanderSpot(st, PLACES[t.pid]); G.goTo(n, s.x, s.y); P.goalSet = true; }
-    if (n.wait > 0) { n.wait -= dt; n.speedNow = 0; return; }
+    // [scopo] luogo all'aperto: ci va e ci resta, in crocchio con chi c'è; ogni tanto cambia crocchio
+    if (!P.goalSet) { if (!P.spot || P.spot.key !== key) P.spot = restSpot(st, n, t, key); G.goTo(n, P.spot.x, P.spot.y); P.goalSet = true; }
+    if (n.wait > 0) { n.wait -= dt; n.speedNow = 0; if (P.spot && P.spot.on) { n.face += angDiff(P.spot.face, n.face) * Math.min(1, dt * 4); chatter(st, n, b); } return; }
     const arrived = G.stepAlong(n, speed, dt);
     if (arrived) {
       P.at = t; if (b.act === 'appuntamento') P.apptArrived = P.apptArrived || st.t;
-      n.wait = 3 + Math.random() * 7;
-      const s = G.wanderSpot(st, PLACES[t.pid]); G.goTo(n, s.x, s.y);
+      if (P.spot && P.spot.on && Math.random() < .3) { P.spot = restSpot(st, n, t, key); G.goTo(n, P.spot.x, P.spot.y); return; }
+      if (P.spot) P.spot.on = true;
+      n.wait = 18 + Math.random() * 30;
       if (Math.random() < .08 && st.clock > n.barkCd) barkTime(st, n, b);
     }
+  }
+  const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+
+  // ---------------- [scopo] I CROCCHI: all'aperto si sta con qualcuno ----------------
+  // ogni luogo all'aperto ha qualche punto fisso dove la gente si ferma; chi arriva si mette in cerchio con chi c'è già
+  const CIRCLES = {};
+  function circlesOf(pid) {
+    if (CIRCLES[pid]) return CIRCLES[pid];
+    const P0 = PLACES[pid], out = [];
+    if (P0) for (let i = 0; out.length < 5 && i < 48; i++) {
+      const a = i * 2.39996, d = i ? 2.5 + (i % 4) * 1.6 : 0, x = P0.x + Math.cos(a) * d, y = P0.y + Math.sin(a) * d;
+      if (!G.walkM(x, y) || out.some(c => dist(c.x, c.y, x, y) < 3.6)) continue;
+      // il cerchio deve starci: almeno tre posti liberi attorno
+      if ([0, 2.1, 4.2].filter(k => G.walkM(x + Math.cos(k) * 1, y + Math.sin(k) * 1)).length < 3) continue;
+      out.push({ x, y });
+    }
+    if (!out.length && P0) out.push({ x: P0.x, y: P0.y });
+    return (CIRCLES[pid] = out);
+  }
+  function restSpot(st, n, t, key) {
+    const P = n.pop, C = circlesOf(t.pid);
+    if (!C.length) { const s = G.wanderSpot(st, PLACES[t.pid]); return { key, x: s.x, y: s.y, face: n.face, ci: -1 }; }
+    // quanti ci sono già in ogni crocchio (chi è qui, fuori, vicino al giocatore)
+    const cnt = C.map(() => 0);
+    st.npcs.forEach(k => { const S = k !== n && k.pop && k.pop.spot; if (S && S.on && S.pid === t.pid && !k.inside && !k.dead && S.ci >= 0) cnt[S.ci]++; });
+    // ci si unisce a un crocchio che ha già gente (fino a 4), altrimenti se ne apre uno nuovo
+    let ci = -1, best = -1e9;
+    C.forEach((c, i) => { if (P.spot && P.spot.ci === i && P.spot.pid === t.pid) return; const v = (cnt[i] > 0 && cnt[i] < 4 ? 3 - cnt[i] * .4 : cnt[i] >= 4 ? -2 : 1) + Math.random() * 1.2; if (v > best) { best = v; ci = i; } });
+    if (ci < 0) ci = 0;
+    const c = C[ci], a = Math.random() * Math.PI * 2;
+    for (let k = 0; k < 6; k++) {
+      const ak = a + k * 1.05, r = .85 + Math.random() * .3, x = c.x + Math.cos(ak) * r, y = c.y + Math.sin(ak) * r;
+      if (G.walkM(x, y)) return { key, pid: t.pid, ci, x, y, face: Math.atan2(c.y - y, c.x - x) };
+    }
+    return { key, pid: t.pid, ci, x: c.x, y: c.y, face: n.face };
+  }
+  // in crocchio si parla: di quello che si ha in testa (un progetto, un bisogno, un ricordo che pesa)
+  function chatter(st, n, b) {
+    if (st.clock < (n.barkCd || 0) || Math.random() > .004) return;
+    const P = n.pop, S = P.spot; let mates = 0;
+    st.npcs.forEach(k => { const K = k !== n && k.pop && k.pop.spot; if (K && K.on && K.pid === S.pid && K.ci === S.ci && !k.inside && dist(k.x, k.y, n.x, n.y) < 2.5) mates++; });
+    if (!mates) return;
+    const line = chatLine(st, n, b); if (!line) return;
+    G.say(st, n, line, 3); n.barkCd = st.clock + 14 + Math.random() * 16;
+  }
+  // di cosa parla chi ha quell'interesse
+  const TALK_INT = {
+    pesca: ['Stamattina alla punta abboccavano.', 'Domani esco all\'alba con la barca.'], carte: ['Stasera scopa all\'osteria, vieni?', 'Ieri a briscola mi hanno spennato.'],
+    lettura: ['Ho finito quel libro, te lo presto.', 'In biblioteca non c\'è più niente di buono.'], musica: ['Hai sentito il disco nuovo al juke-box?', 'Alla radio stanotte davano roba forte.'],
+    ballo: ['Sabato si va alla Luna!', 'Alla Luna c\'è il DJ nuovo.'], fede: ['Domenica don Piero ha detto una bella predica.', 'Ho acceso un cero per mia madre.'],
+    sport: ['Partitella sulla spiaggia, dopo?', 'Hai visto la partita?'], cinema: ['Al cinema danno un film americano.', 'Stasera c\'è la prima, ci vai?'],
+    chiacchiere: ['Lo sai della figlia del farmacista?', 'Non dirlo a nessuno, eh…'], politica: ['Il Garante racconta solo bugie.', 'Leggi tra le righe del Bollettino.'],
+    motori: ['La Vespa fa un rumore strano.', 'All\'officina hanno una Giulia da sistemare.'], cucina: ['Domenica faccio le trofie al pesto.', 'Il pesce oggi era freschissimo.'],
+    campagna: ['L\'orto quest\'anno rende.', 'Col gelo l\'orto è da buttare.'], mare: ['Il mare oggi è color ferro.', 'Stamattina sulla caletta c\'era il ghiaccio.'],
+    eleganza: ['Ho visto una giacca in vetrina…', 'Quella camicia ti sta bene.'], foto: ['Ti faccio una foto, stai fermo.', 'Ho finito il rullino.'], arte: ['Su quel muro ci starebbe un bel murale.', 'Sto disegnando il porto.'],
+  };
+  function chatLine(st, n, b) {
+    const P = n.pop, N = P.need || {}, r = Math.random(), pj = (P.projects || [])[0];
+    if (pj && r < .3) return pick(Math.random, [`Devo ${pj.label}.`, `Sto pensando di ${pj.label}.`, `Prima o poi riesco a ${pj.label}.`]);
+    if (N.soldi > .6 && r < .5) return pick(Math.random, ['Non arrivo a fine mese.', 'Con quello che costa il pane…', 'Lo Squalo non aspetta.']);
+    if (N.paura > .6 && r < .55) return pick(Math.random, ['Parla piano, che ascoltano.', 'Io la sera non esco più.', 'Hai visto quanti Grigi stamattina?']);
+    if (N.rabbia > .6 && r < .6) return pick(Math.random, ['Prima o poi qualcuno gliela fa pagare.', 'Non è giusto, e lo sanno tutti.', 'Io non sto zitto.']);
+    if (P.job && r < .7) return pick(Math.random, [`Al lavoro (${P.job.title}) oggi non finiva più.`, `Domani attacco alle ${P.job.start}.`, 'Il padrone ci mette i piedi in testa.']);
+    if (!P.job && P.status === 'disoccupato' && r < .7) return pick(Math.random, ['Sai se cercano qualcuno alla calata?', 'Lavoro non ce n\'è.']);
+    if (b && b.act === 'mercato') return pick(Math.random, ['A quanto le vende?', 'Ieri costavano meno.', 'Che belle, oggi.']);
+    const iw = P.intW || {}, top = (P.ints || []).slice().sort((x, y) => (iw[y.k] || 0) - (iw[x.k] || 0))[0], IL = top && TALK_INT[top.k];
+    if (IL && r < .85) return pick(Math.random, IL);
+    return pick(Math.random, ['Che freddo, eh?', 'Hai visto chi è tornato?', 'Mia figlia si sposa a primavera.', 'E tuo fratello come sta?', 'Domenica c\'è la partita.', 'Non si sa più di chi fidarsi.']);
+  }
+
+  // ---------------- [scopo] DENTRO SI VEDE CHI C'È ----------------
+  // quando il giocatore entra in un edificio, chi ci sta (a casa, al lavoro, cliente) prende il suo posto nell'interno:
+  // nel letto chi dorme, a tavola chi mangia, al bancone chi serve, sulla panca chi prega. n.room dice dove e come.
+  const BEDS = /^(bedDouble|bedSingle|ia_lettino|ia_materasso|ia_branda|ia_castello|ia_letto_ospedale)$/;
+  const SEATS = /^(chair|chairDesk|ia_poltrona|loungeSofa|ia_divano|stoolBar|bench|ia_panca_chiesa|ia_panca_lunga|rc_seat|ia_sedia_rotta|ia_poltrona_barbiere)$/;
+  const SOFT = /^(ia_poltrona|loungeSofa|ia_divano)$/, PEWS = /^(ia_panca_chiesa|bench|ia_panca_lunga)$/;
+  const STOVES = /^(kitchenStove|ia_cucina_gas|ia_focolare|kitchenSink|ia_lavello|st_stufa)$/;
+  const COUNTERS = /^(ia_bancone_bar|kitchenBar|pv_banco_vendita|ar_cash-register)$/;
+  const roomKey = (bi, f) => bi + ':' + f;
+  // il piano di casa di una famiglia (nei palazzi ogni piano è una casa diversa; il piano terra è l'androne)
+  function homeFloor(L, P) {
+    const nf = L.floors.length; if (nf <= 1) return 0;
+    const condo = L.floors[0].rooms.some(q => /androne|portineria/.test(q.name || ''));
+    const h = Math.abs(String(P.hh || '').split('').reduce((s, c) => s * 31 + c.charCodeAt(0), 7)) ;
+    return condo ? 1 + h % (nf - 1) : 0;
+  }
+  // che cosa sta facendo dentro: la posa e il mobile che gli serve
+  function indoorUse(st, n, b, atHome) {
+    const m = minOfDay(st.t), P = n.pop;
+    if (!b) return { want: 'seat', pose: 'siede' };
+    if (b.act === 'sonno') return { want: 'bed', pose: 'dorme' };
+    if (b.act === 'lavoro') return { want: 'work', pose: 'lavora' };
+    if (b.act === 'messa') return { want: 'pew', pose: 'prega' };
+    if (b.act === 'pranzo' || (atHome && ((m > 12 * 60 && m < 14 * 60 + 30) || (m > 19 * 60 + 30 && m < 21 * 60 + 30)))) return { want: 'table', pose: 'tavola' };
+    if (b.obj === 'cucina' || (atHome && b.label === 'si prepara')) return { want: 'stove', pose: 'lavora' };
+    if (b.obj === 'bancone' || b.obj === 'panino') return { want: 'counter', pose: 'bancone' };
+    if (b.obj === 'carte') return { want: 'table', pose: 'carte' };
+    if (b.obj === 'libri') return { want: 'seat', pose: 'legge' };
+    if (b.obj === 'tv' || b.obj === 'radio' || b.obj === 'cinema') return { want: 'soft', pose: 'siede' };
+    if (b.obj === 'flipper') return { want: 'free', pose: 'flipper' };
+    if (b.obj === 'pista') return { want: 'free', pose: 'balla' };
+    if (b.obj === 'barbiere') return { want: 'seat', pose: 'siede' };
+    if (b.obj === 'bottega' || b.act === 'spesa') return { want: 'counter', pose: 'merce' };
+    const coin = (String(n.id) + (P.curKey || '')).split('').reduce((h, c) => (h * 33 + c.charCodeAt(0)) % 1000, 5) / 1000;   // la stessa scelta finché dura il blocco
+    if (atHome) return coin < .5 ? { want: 'soft', pose: 'siede' } : { want: 'free', pose: null };
+    return coin < .55 ? { want: 'seat', pose: 'siede' } : { want: 'counter', pose: 'bancone' };
+  }
+  // un punto in piedi accanto a un mobile, sul pavimento libero
+  const roomy = (used, x, y) => !used.some(u => dist(u.x, u.y, x, y) < .7);
+  function besideFurn(L, f, o, used) {
+    const ry = o.ry || 0, c = [[Math.sin(ry), Math.cos(ry)], [-Math.sin(ry), -Math.cos(ry)], [Math.cos(ry), -Math.sin(ry)], [-Math.cos(ry), Math.sin(ry)]];
+    for (const k of [.8, 1.25]) for (const [dx, dy] of c) { const x = o.x + dx * k, y = o.y + dy * k; if (INT().walk(L, f, x, y, .22) && roomy(used, x, y)) return { x, y, face: Math.atan2(o.y - y, o.x - x) }; }
+    return null;
+  }
+  const INT = () => (typeof Interior !== 'undefined' ? Interior : G.INT);
+  function freeFloor(L, f, used) {
+    const F = L.floors[f];
+    for (let i = 0; i < 60; i++) {
+      const q = F.rooms[i % F.rooms.length], x = q.x + .6 + Math.random() * Math.max(.1, q.w - 1.2), y = q.y + .6 + Math.random() * Math.max(.1, q.h - 1.2);
+      if (INT().walk(L, f, x, y, .25) && !used.some(u => dist(u.x, u.y, x, y) < .9)) { const c = used[0]; return { x, y, face: c ? Math.atan2(c.y - y, c.x - x) : Math.random() * Math.PI * 2 }; }
+    }
+    return null;
+  }
+  function placeIndoor(st, n, L, bi, f, used, taken) {
+    const P = n.pop, b = P.cur, atHome = isHomeT(P, b && b.tgt), F = L.floors[f], u = indoorUse(st, n, b, atHome);
+    let fi = -1;
+    const furn = re => { const ok = []; F.furn.forEach((o, i) => { if (!taken.has(i) && re.test(o.id) && roomy(used, o.x, o.y)) ok.push(i); }); if (!ok.length) return null; fi = ok[Math.floor(Math.random() * ok.length)]; taken.add(fi); return F.furn[fi]; };
+    const seatAt = o => ({ x: o.x, y: o.y, face: Math.PI / 2 - (o.ry || 0) });
+    let spot = null, pose = u.pose;
+    if (u.want === 'work' && f === 0 && typeof Oggetti !== 'undefined' && Oggetti.staffIndoor) {
+      const s = Oggetti.staffIndoor(st, bi).find(x => x.id === n.id);
+      if (s) { spot = { x: s.x, y: s.y, face: s.face }; pose = s.post === 'banco' ? 'merce' : 'lavora'; }
+    }
+    if (!spot && u.want === 'work') {
+      const o = furn(COUNTERS) || furn(/^(pv_banco_lavoro|ia_scrivania_grande|ia_macchina_scrivere|desk)$|^st_/) || furn(STOVES);
+      if (o && o.id === 'desk') { const c = F.furn.findIndex((x, i) => !taken.has(i) && x.id === 'chairDesk' && dist(x.x, x.y, o.x, o.y) < 1.2); if (c >= 0) { taken.add(c); spot = seatAt(F.furn[c]); pose = 'siede'; } }
+      if (o && !spot) spot = besideFurn(L, f, o, used);
+    }
+    if (!spot && u.want === 'bed') { const o = furn(BEDS); if (o) spot = seatAt(o); }
+    if (!spot && /^(table|seat|soft|pew)$/.test(u.want)) {
+      const o = (u.want === 'soft' && furn(SOFT)) || (u.want === 'pew' && furn(PEWS)) || furn(/^(chair|stoolBar|rc_seat|bench|ia_panca_lunga|ia_panca_chiesa)$/) || furn(SEATS);
+      if (o) spot = seatAt(o);
+    }
+    if (!spot && u.want === 'stove') { const o = furn(STOVES); if (o) spot = besideFurn(L, f, o, used); }
+    if (!spot && u.want === 'counter') { const o = furn(COUNTERS); if (o) spot = besideFurn(L, f, o, used); }
+    // chi dorme e non ha un letto qui è in un'altra stanza, con la porta chiusa: non si vede
+    if (!spot && u.want === 'bed') return null;
+    // senza il mobile giusto si sta in piedi (niente sedute nel vuoto)
+    if (!spot) { spot = freeFloor(L, f, used); if (pose !== 'prega' && pose !== 'flipper' && pose !== 'balla' && pose !== 'lavora' && pose !== 'merce') pose = null; }
+    if (!spot) return null;
+    used.push(spot);
+    const act = b && b.act, label = act === 'sonno' ? 'dorme' : act === 'casa' ? (atHome ? 'a casa' : b.label) : act === 'pranzo' ? 'a tavola' : act === 'lavoro' && P.job ? `al lavoro (${P.job.title})` : b ? b.label : '';
+    return { bi, f, fi, want: u.want, x: spot.x, y: spot.y, face: spot.face, pose, label, ent: L.ent.in };
+  }
+  // chi è dentro l'edificio del giocatore, a quel piano
+  function roomStep(st) {
+    const p = st.player, R0 = st.pop.room || (st.pop.room = { key: null, at: 0, ids: [], since: 0, seen: {} });
+    const key = p.indoor ? roomKey(p.indoor.b, p.indoor.f) : null;
+    if (key !== R0.key) { R0.ids.forEach(id => { const n = G.byId(st, id); if (n) leaveRoom(st, n); }); R0.ids = []; R0.key = key; R0.at = 0; R0.seen = {}; R0.since = st.clock; }
+    if (!key || st.clock < R0.at) return; R0.at = st.clock + .4;
+    const bi = p.indoor.b, f = p.indoor.f, L = INT() && INT().layout(G.BUILDINGS[bi]); if (!L || !L.floors[f]) return;
+    const here = st.npcs.filter(n => n.pop && !n.dead && n.inside && !isPassive(st, n) && !(n.jailedUntil > st.t) && n.pop.at && n.pop.at.k === 'b' && n.pop.at.bi === bi
+      && (isHomeT(n.pop, n.pop.at) && !(n.pop.cur && n.pop.cur.act === 'lavoro') ? homeFloor(L, n.pop) === f : f === 0));
+    // chi non c'è più (uscito, portato via) lascia la stanza
+    R0.ids = R0.ids.filter(id => { const n = G.byId(st, id); if (n && (here.includes(n) || (n.room && n.room.out && n.room.walk))) return true; if (n) leaveRoom(st, n); return false; });
+    const used = R0.ids.map(id => G.byId(st, id)).filter(n => n && n.room).map(n => n.room), taken = new Set(used.map(r => r.fi).filter(i => i >= 0));
+    here.slice(0, 14).forEach(n => {
+      const P = n.pop, bk = P.curKey;
+      if (n.room && (n.room.bk === bk || n.room.out)) return;
+      // stessa cosa di prima (un altro blocco «a casa», la notte che passa): resta dov'è
+      if (n.room && indoorUse(st, n, P.cur, isHomeT(P, P.cur && P.cur.tgt)).want === n.room.want && P.cur) { n.room.bk = bk; return; }
+      if (n.room && n.room.fi >= 0) taken.delete(n.room.fi);
+      const r = placeIndoor(st, n, L, bi, f, used, taken); if (!r) return;
+      r.bk = bk; r.door = n.room ? n.room.door : { x: n.x, y: n.y };
+      // chi arriva mentre ci sei entra dalla porta e va al suo posto; chi c'era già è al suo posto
+      const fresh = !R0.ids.includes(n.id);
+      if (fresh && st.clock > R0.since + 1) { n.x = L.ent.in[0]; n.y = L.ent.in[1]; r.walk = true; }
+      else if (fresh) { n.x = r.x; n.y = r.y; n.face = r.face; }
+      else r.walk = true;   // cambia attività: si sposta nella stanza
+      n.room = r; if (fresh) R0.ids.push(n.id);
+      // a casa sua, uno sconosciuto in casa non passa inosservato
+      if (fresh && isHomeT(P, P.at) && !R0.seen[n.id] && r.pose !== 'dorme' && !G.BUILDINGS[bi].playerHome) { R0.seen[n.id] = 1; if (Math.random() < .6) G.say(st, n, pick(Math.random, ['E lei chi è? Questa è casa mia!', 'Che ci fa qui? Esca subito.', 'Ehi! Chi l\'ha fatta entrare?']), 3); }
+    });
+  }
+  // il passo di chi cammina dentro (ogni fotogramma)
+  function roomWalk(st, dt) {
+    const R0 = st.pop.room; if (!R0 || !R0.key) return;
+    R0.ids.forEach(id => {
+      const n = G.byId(st, id), r = n && n.room; if (!r || !r.walk) return;
+      const dx = r.x - n.x, dy = r.y - n.y, d = Math.hypot(dx, dy), s = 1.2 * dt;
+      if (d <= s) { n.x = r.x; n.y = r.y; n.face = r.face; r.walk = false; n.speedNow = 0; return; }
+      n.x += dx / d * s; n.y += dy / d * s; n.face = Math.atan2(dy, dx); n.speedNow = 1.2;
+    });
+  }
+  // chi deve uscire prima cammina fino alla porta dell'interno (true: sta ancora andando)
+  function roomExit(st, n) {
+    const r = n.room; if (!r) return false;
+    if (!r.out) { r.out = true; r.x = r.ent[0]; r.y = r.ent[1]; r.face = n.face; r.pose = null; r.walk = true; }
+    if (r.walk) return true;
+    leaveRoom(st, n); return false;
+  }
+  function leaveRoom(st, n) { const r = n.room; if (!r) return; n.room = null; n.speedNow = 0; if (r.door) { n.x = r.door.x; n.y = r.door.y; } }
+  // a cosa sta pensando, in due parole (per l'etichetta sotto il puntatore)
+  function doing(st, n) {
+    const P = n.pop; if (!P || n.dead) return '';
+    if (n.room) return n.room.pose === 'dorme' ? 'dorme' : cap(n.room.label || '');
+    const a = n.action ? n.action.name : '', b = P.cur;
+    if (a === 'al lavoro') return `al lavoro (${P.job ? P.job.title : ''})`;
+    if (P.emer && P.emer.steps && P.emer.steps[P.emer.i]) return P.emer.steps[P.emer.i].label;
+    if (!b || !b.tgt || (a !== 'routine' && a !== 'dentro')) return '';
+    const there = P.at && tkey(P.at) === tkey(b.tgt) && (b.tgt.k !== 'p' || (P.spot && P.spot.on));
+    const where = isHomeT(P, b.tgt) ? 'casa' : b.tgt.label;
+    return there ? b.label + (b.label.includes(b.tgt.label) || where === 'casa' ? '' : ` (${where})`) : `${b.label} → ${where}`;
   }
   // il tempo detto ad alta voce
   function barkTime(st, n, b) {
@@ -1523,6 +1739,8 @@ var Popolo = (function () {
     const S = st.pop; if (!S) return;
     // livello di dettaglio
     S.lodAt -= dt; if (S.lodAt <= 0) { S.lodAt = CFG.lodEvery; updateLod(st); }
+    // [scopo] dentro l'edificio del giocatore si vede chi c'è
+    roomStep(st); roomWalk(st, dt);
     // ore
     const hm = Math.floor(st.t / 60);
     while (S.hourMark < hm) { S.hourMark++; onHour(st, S.hourMark % 24); }
@@ -1578,7 +1796,7 @@ var Popolo = (function () {
   }
   // per i moduli che costruiscono sopra la vita (azioni.js): gli strumenti interni
   const USE = [], AVAIL = [], ESSENTIAL = [], MONEY = {};   // [soldi] MONEY: agganci dei soldi (paga, affitto, spese, macchinette)   // [economia] chi vuole può vietare o far pagare l'uso di un oggetto in un posto (scorte, prezzi)
-  const _ = { USE, AVAIL, ESSENTIAL, MONEY, JOBS_BY, OUTDOOR, GENDER, buildIndex, sketchFor, artStyle, readWalls, newcomer, REFLECT, note, feel, target, tkey, tB, planDay, blockNow, snapFar, wakeNear, dayIdx, minOfDay, hhmm, isPassive, arrestFar, chooseObj, startProject, endProject, PROJ, OGG, useRef, recent, share, closeness, paintWall, appoint, adopt, o, cap, pick, isHomeT, initLife, lifeOf, curfewFrom, clamp, dist };
-  return { _, arrest: arrestFar, note, OGG, INTERESSI, PROJ, lifeOf, lifeShort, reflect, chooseObj, startProject, isPassive, CFG, WEEK, RECURRING, GIRI, weekday, wdName, ago, curfewFrom, eventsOn, planDay, blockNow, appoint, bioOf, report, target, note, buildIndex };
+  const _ = { USE, AVAIL, ESSENTIAL, MONEY, JOBS_BY, OUTDOOR, GENDER, buildIndex, sketchFor, artStyle, readWalls, newcomer, REFLECT, note, feel, target, tkey, tB, planDay, blockNow, snapFar, wakeNear, dayIdx, minOfDay, hhmm, isPassive, arrestFar, arrest: arrestFar, chooseObj, startProject, endProject, PROJ, OGG, useRef, recent, share, closeness, paintWall, appoint, adopt, o, cap, pick, isHomeT, initLife, lifeOf, curfewFrom, clamp, dist };
+  return { _, arrest: arrestFar, note, OGG, INTERESSI, PROJ, lifeOf, lifeShort, reflect, chooseObj, startProject, isPassive, CFG, WEEK, RECURRING, GIRI, weekday, wdName, ago, curfewFrom, eventsOn, planDay, blockNow, appoint, bioOf, report, target, note, buildIndex, doing };
 })();
 if (typeof module !== 'undefined') module.exports = Popolo;
