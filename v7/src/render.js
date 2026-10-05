@@ -1201,6 +1201,52 @@ var Render = (function () {
     }
     for (; k < REFL.length; k++) REFL[k].visible = false;
   }
+  // ================= [luci2] L'ARIA: densità, cristalli nella luce, fiato =================
+  // Il freddo si vede nell'aria: brina sospesa che scintilla solo dentro i coni di luce, il fiato di chi passa,
+  // coni di luce che pesano vicino alla lampada e svaniscono verso terra.
+  const AIR = { on: false };
+  function initAir() {
+    AIR.on = true;
+    // cristalli: punti colorati dalla luce in cui stanno
+    const N = 700, pos = new Float32Array(N * 3), col = new Float32Array(N * 3), g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: .1, vertexColors: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, toneMapped: false }));
+    pts.frustumCulled = false; pts.renderOrder = 3; scene.add(pts);
+    AIR.pts = pts; AIR.pos = pos; AIR.col = col; AIR.N = N; AIR.s = Array.from({ length: N }, () => [Math.random(), Math.random(), Math.random(), Math.random()]);
+    // fiato: sbuffi morbidi davanti alla testa
+    const bm = new THREE.SpriteMaterial({ map: glowTexture(), color: '#e4e8ea', transparent: true, opacity: 0, depthWrite: false });
+    AIR.puffs = []; for (let i = 0; i < 40; i++) { const sp = new THREE.Sprite(bm.clone()); sp.visible = false; sp.renderOrder = 3; scene.add(sp); AIR.puffs.push(sp); }
+  }
+  function tickAir(time, night) {
+    if (!AIR.on) initAir();
+    // --- cristalli nei coni di luce ---
+    const Ls = (dyn.lsp || []).filter(L => !L.off && L.base > 0 && L.gy !== undefined && L.y - L.gy > 1.2), n = Ls.length, P = AIR.pos, C = AIR.col;
+    const vis = night > .12 && n > 0; AIR.pts.visible = vis;
+    if (vis) for (let i = 0; i < AIR.N; i++) {
+      const s = AIR.s[i], L = Ls[i % n], H = L.y - L.gy, rad = H * .6;
+      const rr = Math.sqrt(s[0]) * rad, a = s[1] * 6.283 + time * (.04 + s[3] * .05);
+      const fall = (time * (.12 + s[2] * .22) + s[2] * H) % H, y = L.y - .2 - fall;
+      const x = L.x + Math.cos(a) * rr + Math.sin(time * .6 + i) * .18, z = L.z + Math.sin(a) * rr + Math.cos(time * .5 + i * 1.3) * .18;
+      P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z;
+      const inCone = Math.pow(Math.max(0, 1 - rr / rad), 1.4), hf = Math.pow(1 - fall / H, .8);   // più fitti e accesi vicino alla lampada
+      const tw = Math.sin(time * (2.5 + s[3] * 6) + i * 7.1) > .82 ? 1.6 : .45;                       // ogni tanto un cristallo prende la luce
+      const b = night * inCone * hf * tw * 1.3;
+      C[i * 3] = L.color.r * b; C[i * 3 + 1] = L.color.g * b; C[i * 3 + 2] = L.color.b * b;
+    }
+    if (vis) { AIR.pts.geometry.attributes.position.needsUpdate = true; AIR.pts.geometry.attributes.color.needsUpdate = true; }
+    // --- fiato di chi è vicino alla camera ---
+    let k = 0; const cx = cam.x, cz = cam.y;
+    for (const id in dyn.people) {
+      if (k >= AIR.puffs.length) break; const g = dyn.people[id]; if (!g || !g.visible) continue;
+      const dx = g.position.x - cx, dz = g.position.z - cz; if (dx * dx + dz * dz > 26 * 26) continue;
+      let hsh = 0; for (let q = 0; q < id.length; q++) hsh = (hsh * 31 + id.charCodeAt(q)) | 0;
+      const per = 2.8 + (Math.abs(hsh) % 10) * .08, t = (time + (Math.abs(hsh) % 100) * .037) % per; if (t > 1.4) continue;
+      const u = t / 1.4, fx = Math.sin(g.rotation.y), fz = Math.cos(g.rotation.y), sp = AIR.puffs[k++], sc = g.scale.y || 1;
+      sp.position.set(g.position.x + fx * (.22 + u * .45), g.position.y + (1.52 + u * .22) * sc, g.position.z + fz * (.22 + u * .45));
+      const sz = .25 + u * .7; sp.scale.set(sz, sz, 1); sp.material.opacity = Math.sin(u * Math.PI) * (.16 + night * .1); sp.visible = true;
+    }
+    for (; k < AIR.puffs.length; k++) AIR.puffs[k].visible = false;
+  }
   function buildChunk(ci, cj) {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
@@ -3391,6 +3437,9 @@ var Render = (function () {
           vec2 uv = (floor(vUv*res)+.5)/res;
           vec3 c = texture2D(tC, uv).rgb;
           float d = lin(texture2D(tD, uv).r);
+          float dc = lin(texture2D(tD, vec2(.5)).r);   // [luci2] distanza del punto guardato
+          { vec3 nb = texture2D(tC, uv+vec2(px.x,0.)).rgb + texture2D(tC, uv-vec2(px.x,0.)).rgb + texture2D(tC, uv+vec2(0.,px.y)).rgb + texture2D(tC, uv-vec2(0.,px.y)).rgb;
+            c = max(c + (c - nb*.25) * .38 * (1. - smoothstep(dc*1.08, dc*1.5, d)), 0.); }   // [luci2] crisp: il primo piano è nitido
           float d1 = lin(texture2D(tD, uv+vec2(px.x,0.)).r), d2 = lin(texture2D(tD, uv-vec2(px.x,0.)).r), d3 = lin(texture2D(tD, uv+vec2(0.,px.y)).r), d4 = lin(texture2D(tD, uv-vec2(0.,px.y)).r);
           float edge = max(max(d1-d, d2-d), max(d3-d, d4-d));
           float ol = smoothstep(.45*(1.+d*.01), .9*(1.+d*.012), edge);
@@ -3401,11 +3450,16 @@ var Render = (function () {
           for (int k=0;k<8;k++){ float a = float(k)*.785 + .2; vec2 d0 = vec2(cos(a),sin(a));
             for (int j=0;j<3;j++){ float rr = j==0 ? 2. : (j==1 ? 5. : 9.); vec3 s = texture2D(tC, uv + d0*px*rr).rgb; float mx = max(max(s.r,s.g),s.b), ch = mx - min(min(s.r,s.g),s.b); bl += max(s-.5, 0.) * smoothstep(.1,.4,ch) * (j==0 ? .5 : (j==1 ? .35 : .22)); } }
           c += bl*(.05 + night*.06);
+          { vec3 wb = vec3(0.); for (int k=0;k<10;k++){ float a = float(k)*.628 + .1; vec2 d0 = vec2(cos(a),sin(a));
+              for (int j=0;j<2;j++){ float rr = j==0 ? 14. : 24.; vec3 s = texture2D(tC, uv + d0*px*rr).rgb; float mx = max(max(s.r,s.g),s.b); wb += max(s - .3, 0.) * smoothstep(.35, .75, mx) * (j==0 ? .6 : .4); } }
+            c += wb * .085 * night; }   // [luci2] aloni nell'aria umida
+          { float far01 = smoothstep(dc*1.02, dc*1.7, d); vec3 hz = mix(vec3(.50,.52,.54), vec3(.075,.085,.09), night);
+            c = mix(c, hz + c*.35, far01 * (.42 + night*.1)); }   // [luci2] aria spessa lontano
           float l = dot(c, vec3(.299,.587,.114));
           // [inverno] ombre blu-grigie, mezzitoni spenti; la saturazione resta alle sorgenti di luce
           float chroma = max(max(c.r,c.g),c.b) - min(min(c.r,c.g),c.b);
           float hot = smoothstep(.5,.9,chroma*max(max(c.r,c.g),c.b)*2.);
-          float warmL = smoothstep(.04,.14, c.r-c.b) * smoothstep(.08,.28, max(max(c.r,c.g),c.b)) * smoothstep(.2,.7, night);   // [luci1] luce calda di notte
+          float warmL = smoothstep(.06,.16, c.r-c.b) * smoothstep(.08,.28, max(max(c.r,c.g),c.b)) * smoothstep(.55,.95, night);   // [luci1] luce calda di notte
           c = mix(c, c*.7*vec3(.78,1.,1.04) + vec3(.01,.075,.085)*.6, (1.-smoothstep(.0,.62,l))*.9*(1.-warmL*.75));
           c *= mix(vec3(1.), vec3(1.02,1.,.96), smoothstep(.28,.8,l)*(1.-hot));   // [inverno24] alte luci appena calde, non azzurrine
           c = mix(vec3(l), c, mix(.66, 1.3, max(hot, warmL*.85))*sat);
@@ -4493,6 +4547,9 @@ var Render = (function () {
       for (let i = 0; i < N; i++) { const l = new THREE.SpotLight('#ffb35c', 0, 10, 1.2, .95, 1.25);   // [inverno29] caduta morbida, bordo sfumato
         l.castShadow = true; l.shadow.autoUpdate = false; l.shadow.needsUpdate = true; l.shadow.mapSize.set(512, 512); l.shadow.bias = -.0012; l.shadow.normalBias = .035; l.shadow.camera.near = .2; l.shadow.camera.far = 14;
         const cone = new THREE.Mesh(coneG, new THREE.MeshBasicMaterial({ color: '#ffd8a0', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); cone.visible = false; cone.renderOrder = 2;
+        cone.material.onBeforeCompile = sh => {   // [luci2] cono d'aria: pieno vicino alla lampada, svanisce a terra e ai bordi
+          sh.vertexShader = 'varying float vFr; varying float vH;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vec3 nV = normalize(normalMatrix * normal); vec4 mvq = modelViewMatrix * vec4(position, 1.); vFr = abs(dot(nV, normalize(-mvq.xyz))); vH = uv.y;');
+          sh.fragmentShader = 'varying float vFr; varying float vH;\n' + sh.fragmentShader.replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n diffuseColor.a *= pow(vFr, 1.6) * (.12 + .88 * vH * vH);'); };
         l.userData.cone = cone; scene.add(l); scene.add(l.target); scene.add(cone); SPOOL.push(l); LPOOL.push(l); }
       for (let i = 0; i < 8; i++) { const l = new THREE.PointLight('#ffa040', 0, 8, 2); scene.add(l); PPOOL.push(l); LPOOL.push(l); }
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
@@ -5232,7 +5289,7 @@ var Render = (function () {
       if (L.nb === undefined) { L.nb = 0; LSRC.forEach(o => { if (o !== L && Math.abs(o.x - L.x) < 7 && Math.abs(o.z - L.z) < 7) L.nb++; }); }   // [inverno29] vicine: si dividono la luce
       l.intensity = L.base * k * .55 / Math.sqrt(1 + L.nb * .6);   // [inverno30] la pozza a terra la fa la luce cotta
       const tall = hh > 2.8 && night > .25;
-      cone.visible = tall && k > .05; if (cone.visible) { const rr = hh * .62; cone.position.set(L.x, L.y - .15, L.z); cone.scale.set(rr, hh - .1, rr); cone.material.color.copy(L.color); cone.material.opacity = .03 * Math.min(1, k); }
+      cone.visible = tall && k > .05; if (cone.visible) { const rr = hh * .62; cone.position.set(L.x, L.y - .15, L.z); cone.scale.set(rr, hh - .1, rr); cone.material.color.copy(L.color); cone.material.opacity = .34 * Math.min(1, k); }   // [luci2] (la forma la dà lo shader)
     });
     for (let q = 0; q < 3; q++) { const l = SPOOL[(frameN * 3 + q) % SPOOL.length]; if (l && l.intensity > 0) l.shadow.needsUpdate = true; }
     PPOOL.forEach((l, i) => {
@@ -5259,6 +5316,7 @@ var Render = (function () {
     ISO.chunks.forEach(ch => { if (ch.mat) ch.mat.emissiveIntensity = night * .95; });   // [inverno30]
     if (frameN % 2 === 0 || !dyn.reflList) { dyn.reflList = (dyn.lsp || []).concat(dyn.lpp || []).concat(SPILLS.filter(S => { const a = S.x - cam.x, b = S.z - cam.y; return a * a + b * b < 38 * 38; })); }
     updateRefl(night, dyn.reflList);
+    tickAir(time, night);   // [luci2]
     dyn.flicker.forEach(f => { f.s.material.opacity = f.base * (.2 + night * .8) * (.85 + Math.sin(time * 9 + f.base * 7) * .15); });
     dyn.signs.forEach(s => { if (s.flick) { const on = Math.sin(time * 17) > -.85 || Math.sin(time * 2.3) > .2; s.m.color.setScalar(on ? 1 : .35); if (s.gl) s.gl.material.opacity = on ? .45 : .1; } });
     if (dyn.water) { const U = dyn.water.uniforms; U.time.value = time; U.night.value = night; U.dusk.value = dusk; U.fogC.value.copy(tmpC); U.camP.value.copy(camera.position); U.fogN.value = scene.fog.near; U.fogF.value = scene.fog.far; }

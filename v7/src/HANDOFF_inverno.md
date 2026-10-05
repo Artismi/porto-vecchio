@@ -158,3 +158,9 @@ Questa chat si occupa SOLO delle luci; la chat «I progetti» fa mappa e arredo 
   - I lampioni non fanno più ombra (né al proprio faretto, che sta nella testa, né al sole): disegnavano un ottagono scuro sotto di sé.
 - Copia di prima: `_backup_neon_modelli/render_prima_della_regia_luci.js`.
 - Ancora da fare per le luci: puntini rosa/magenta rimasti (spie sulle antenne, un palo in piazza); schermo del Garante in piazza che tremola sui volti; luce che lava le facciate; interni.
+- `strumenti_inverno/luci_regia2.py` (dopo luci_regia1, guardia `[luci2]`, frammento `aria.js`) — **l'aria**: Andrea: «manca la densità, la palpabilità dell'aria, quel crisp».
+  - Brina sospesa che scintilla solo dentro i coni dei faretti accesi, colorata dalla loro luce, più fitta vicino alla lampada (`AIR.pts`, 700 punti).
+  - Il fiato: sbuffi davanti alla testa delle persone entro 26 m dalla camera (`AIR.puffs`, 40 sprite), ognuno col suo ritmo.
+  - Coni di luce con uno shader: pieni vicino alla lampada, svaniscono a terra e ai bordi (prima cono uniforme quasi invisibile).
+  - Post: aloni larghi e morbidi attorno alle sorgenti di notte (l'aria umida che trattiene la luce); nitidezza sul primo piano; foschia che cresce oltre il punto guardato (`dc`).
+  - luci_regia1 corretto: la difesa dei colori caldi (`warmL`) vale solo a notte piena, al tramonto non arrossava più tutto.
