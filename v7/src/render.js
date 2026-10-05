@@ -6766,18 +6766,33 @@ var Render = (function () {
           float edge = max(max(d1-d, d2-d), max(d3-d, d4-d));
           float ol = smoothstep(.45*(1.+d*.01), .9*(1.+d*.012), edge);
           {   /* [unione11] inchiostro col peso della mano */
-            float tA = .45*(1.+d*.01), tB = .9*(1.+d*.012), e2 = 0., busy = 0., tS = .09 + d * .004, s2 = max(abs(d1 + d2 - 2. * d), abs(d3 + d4 - 2. * d));   // tS: soglia della forma, anche pochi centimetri
+            float tA = .45*(1.+d*.01), tB = .9*(1.+d*.012), e2 = 0., busy = 0., busyS = 0., tS = d * .536 / res.y * .55 + .004, s2 = max(abs(d1 + d2 - 2. * d), abs(d3 + d4 - 2. * d));   // tS: soglia della forma in proporzione alla grandezza di un texel a quella distanza (cornici e spigoli sì, piani dritti no)
             float fb11 = 0.; { float dB = 0.; for (int k = 0; k < 8; k++) { float a = float(k) * .7854 + .2; dB += dL(uv + vec2(cos(a), sin(a)) * px * (k < 4 ? 5. : 10.)); } dB /= 8.;   // oscuramento di profondità
               float behind = clamp((d - dB) / (d * .02 + .4), 0., 1.), front = clamp((dB - d) / (d * .02 + .4), 0., 1.), nearK = (1. - coc) * (1. - smoothstep(dc * 1.2, dc * 2., d) * .7);
               c *= 1. - behind * .3 * nearK; c += c * front * .14 * nearK; fb11 = behind * nearK; }
-            for (int k = 0; k < 8; k++) { float a = float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * px * (k - k/2*2 == 0 ? 2. : 1.7); float jk = dL(uv + o) - d; e2 = max(e2, jk); busy += step(tS * 1.5, abs(jk)); }
+            for (int k = 0; k < 8; k++) { float a = float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * px * (k - k/2*2 == 0 ? 2. : 1.7); float jk = dL(uv + o) - d; e2 = max(e2, jk); busy += step(tA, abs(jk)); busyS += step(tS * 2., jk); }
             float lum0 = dot(c, vec3(.3,.59,.11)), dark = 1. - smoothstep(.08, .5, lum0);
             float zr = texture2D(tD, uv).r; vec4 wq = vInvVP * vec4(uv * 2. - 1., zr * 2. - 1., 1.); vec3 wp = wq.xyz / wq.w; vec2 sp = vec2(wp.x + wp.y * .6, wp.z - wp.y * .6) * .9;
             float thin = smoothstep(tS, tS * 1.35, min(edge, s2));   // il contorno nasce da ogni cambio di forma (cornici, gradini, sagome), non dai piani visti di sbieco
             float thick = 0.;   // niente ingrossamento: sui pali e sulle cose sottili diventava tutto nero
-            float d2x = abs(d1 + d2 - 2. * d), d2y = abs(d3 + d4 - 2. * d), form = smoothstep(.05 + d * .004, .07 + d * .0055, max(d2x, d2y)) * (1. - thin) * .7;   // filetti di forma: spigoli e pieghe dentro la sagoma, sottili e netti
+            float d2x = abs(d1 + d2 - 2. * d), d2y = abs(d3 + d4 - 2. * d), form = smoothstep(tS * 1.3, tS * 1.8, max(d2x, d2y)) * (1. - thin) * .6;   // filetti di forma: spigoli e pieghe dentro la sagoma, sottili e netti
             float cvi = (d1 + d2 + d3 + d4 - 4. * d) / (d * .012 + .08), crease = smoothstep(.9, 2.2, -cvi) * .55;
-            float ink = max(max(max(thin, thick), crease * .55), form) * (1.-coc) * (1. - smoothstep(4.5, 6.5, busy)) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
+            float thinObj = max(step(tS, d1 - d) * step(tS, d2 - d), step(tS, d3 - d) * step(tS, d4 - d));   // ringhiere, tubi, cavi: lontano da tutti e due i lati, la linea si alleggerisce
+            float shapeI = 0., brick = 0.; float busyK = smoothstep(4.5, 6.5, max(busy, busyS - .5));
+            if (zr < .9999) {   // sui muri: l'inchiostro riprende le forme dipinte (cornici, fasce, davanzali) e schizza qualche mattone
+              vec3 cr = cross(dFdx(wp), dFdy(wp)); float cl = length(cr); vec3 nn = cl > 1e-7 ? cr / cl : vec3(0., 1., 0.);
+              float wallK = (1. - smoothstep(.35, .6, abs(nn.y))) * (1. - busyK) * (1. - thinObj) * (1. - smoothstep(dc * 1.1, dc * 1.7, d));
+              vec3 LW = vec3(.3,.59,.11); float l0 = dot(texture2D(tC, uv).rgb, LW);
+              float lm = max(max(dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, LW), dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, LW)), max(dot(texture2D(tC, uv + vec2(0., px.y)).rgb, LW), dot(texture2D(tC, uv - vec2(0., px.y)).rgb, LW)));
+              shapeI = clamp((lm - l0) / max(lm, .05) * 3.2 - .5, 0., 1.) * wallK;   // il lato scuro di un salto netto di colore
+              vec2 tw = vec2(-nn.z, nn.x); tw = dot(tw, tw) > 1e-6 ? normalize(tw) : vec2(1., 0.);
+              float al = dot(wp.xz, tw); vec2 bq = vec2(al / .44, wp.y / .19); bq.x += mod(floor(bq.y), 2.) * .5;
+              vec2 cell = floor(bq), f = fract(bq), fw2 = max(fwidth(bq), vec2(1e-4));
+              float bl = max(1. - smoothstep(fw2.x * .6, fw2.x * 1.6, min(f.x, 1. - f.x)), 1. - smoothstep(fw2.y * .6, fw2.y * 1.6, min(f.y, 1. - f.y)));
+              float patchB = smoothstep(.66, .78, vn11(vec2(al * .5, wp.y * .7) + 19.));
+              brick = bl * patchB * step(.4, hs11(cell + 3.)) * wallK * .5 * (1. - smoothstep(.22, .45, max(fw2.x, fw2.y))); }   // mattoni troppo piccoli sullo schermo: niente
+            float vegK = smoothstep(.015, .06, max(max(c.r, c.g), c.b) - min(min(c.r, c.g), c.b)) * step(c.r * .85, c.g) * step(c.b * 1.04, c.g);   // fogliame verde e giallo: inchiostro leggero
+            float ink = max(max(max(max(thin, thick), crease * .55), form) * (1. - thinObj * .6) * (1. - vegK * .88), max(shapeI * .85, brick)) * (1.-coc) * (1. - busyK) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
             vec3 inkC = vec3(.03, .026, .032) + c * .04;   // inchiostro di china: nero vero
             c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); }
           { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)); } c *= 1. - ao/8.*.42*(1.-coc*.7); }
