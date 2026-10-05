@@ -34,4 +34,14 @@ rep("    tickWinter(time, night);\n", "    tickWinter(time, night);\n    tickStr
 rep("H[k] = .15 * sstep(.36, .64, m[k]);", "H[k] = .16 * sstep(.43, .57, m[k]);   /* [strade1] cordolo più netto */")
 rep("c.lerp(_c35.set('#a49e92'), curb * .8);", "c.lerp(_c35.set('#c4beb0'), Math.min(1, curb * 1.1));   /* [strade1] pietra chiara */")
 rep("if (top < .5) c.lerp(_d35.set('#3a3734'), (1 - top * 2) * .9);", "if (top < .5) c.lerp(_d35.set('#242220'), (1 - top * 2) * .95);")
+# 7) sentieri e ciottolati fuori città senza gradini: la casella si dipinge come il terreno attorno, poi la forma continua
+rep("      const px = i * P, py = j * P, z = zoneT(tx, ty), r = rng((tx * 7919 + ty * 104729) >>> 0);\n",
+    "      const px = i * P, py = j * P, z = zoneT(tx, ty), r = rng((tx * 7919 + ty * 104729) >>> 0);\n      if (blobTile1(tx, ty)) v = natural1(tx, ty);   // [strade1] la forma la stende blobs1\n")
+rep("paintTiles(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m);", "paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m);")
+# 8) bosco: radure come campo continuo; tagli e muri dipinti come forma continua
+rep("const open = v === T.GRASS || (v === T.SHRUB && k2 > .05);", "const open = open1(X, Y, k1);   /* [strade1] niente rombi per casella */")
+a = s.index("    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {\n      const tx = tx0 + i, ty = ty0 + j, f = F[ty * G.GW + tx]; if (!(f & (1024 | 16384))) continue;")
+b = s.index("\n    }\n", a) + len("\n    }\n")
+assert 'x.ellipse(i * P + P / 2' in s[a:b]
+s = s[:a] + "    opere1(x, tx0, ty0, n, m, F, cut, wall);   // [strade1] forma continua, non un disco per casella\n" + s[b:]
 open(p, 'w', encoding='utf-8').write(s); print('ok')

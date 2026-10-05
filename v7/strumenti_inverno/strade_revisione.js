@@ -477,3 +477,63 @@
     if (window.__dbg35) console.log('[dbg] vita1 oggetti', n, 'ciuffi', nt);
     return n + nt;
   }
+
+  // ================= [strade1] SENTIERI E CIOTTOLATI SENZA GRADINI =================
+  // Fuori città le caselle di terra battuta e di ciottolato erano quadrati da 2 m: ogni bordo una scaletta. Ora la casella si
+  // dipinge come il terreno naturale che ha attorno, e la terra o i ciottoli si stendono sopra come una forma continua: un disco
+  // per casella e un raccordo verso le caselle uguali vicine (anche in diagonale), col bordo morbido. Sui ciottoli in pendenza le
+  // file seguono il mondo, non la casella.
+  const K1 = v => { const T = G.T; return v === T.DIRT ? 1 : v === T.COB || v === T.STAIRS ? 2 : 0; };
+  const blobTile1 = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; const ii = ty * G.GW + tx; if (zoneT(tx, ty) === ZN.CITTA || RECT[ii]) return 0; const v = gT(tx, ty), k = K1(v); if (k === 1 && RW[ii] > 0) return 0; return k; };
+  function natural1(tx, ty) {
+    const T = G.T, cnt = new Map(); [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(([a, b]) => { const v = gT(tx + a, ty + b); if (v === T.GRASS || v === T.TREE || v === T.SHRUB || v === T.FIELD || v === T.DESERT || v === T.GRAVEL || v === T.ROCK) cnt.set(v, (cnt.get(v) || 0) + (a && b ? 1 : 2)); });
+    let best = T.GRASS, bn = 0; cnt.forEach((c, v) => { if (c > bn) { bn = c; best = v; } }); return best;
+  }
+  function blobPat1(kind, x) {
+    const key = 'bp' + kind; let c = S1.tex[key];
+    if (!c) { const S = 64, r = rng(kind * 31 + 1); c = mk(S, S); const g = c.getContext('2d');
+      if (kind === 1) { g.fillStyle = '#86684a'; g.fillRect(0, 0, S, S); for (let i = 0; i < 700; i++) { g.fillStyle = pick(r, ['#94765a', '#7a5e42', '#9a7e60', '#6e5440', '#a08868']); g.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1 + (r() < .2 ? 1 : 0), 1); } for (let i = 0; i < 14; i++) { g.fillStyle = 'rgba(60,44,30,.35)'; g.fillRect(Math.floor(r() * S), Math.floor(r() * S), 3 + Math.floor(r() * 5), 1); } }
+      else { g.fillStyle = '#34303a'; g.fillRect(0, 0, S, S); for (let sy = 0; sy < S; sy += 3) { const off = Math.floor(r() * 4); for (let sx = -off; sx < S; sx += 4 + (r() < .3 ? 1 : 0)) { g.fillStyle = pick(r, ['#827a86', '#746c7a', '#8e8692', '#686072', '#7a7066']); g.fillRect(sx, sy, 3, 2); } } for (let i = 0; i < 30; i++) { g.fillStyle = pick(r, ['rgba(70,90,40,.6)', 'rgba(50,64,32,.55)']); g.fillRect(Math.floor(r() * S), Math.floor(r() * S / 3) * 3 + 2, 2, 1); } }
+      S1.tex[key] = c; }
+    return x.createPattern(c, 'repeat');
+  }
+  function blobs1(x, tx0, ty0, n, m) {
+    const X0 = tx0 * TS, Y0 = ty0 * TS, H = TS / 2;
+    [1, 2].forEach(kind => {
+      const list = []; for (let j = -2; j < m + 2; j++) for (let i = -2; i < n + 2; i++) if (blobTile1(tx0 + i, ty0 + j) === kind) list.push([tx0 + i, ty0 + j]); if (!list.length) return;
+      const shape = (w) => { x.beginPath(); list.forEach(([tx, ty]) => { const cx = (tx * TS + H - X0) * PPM, cy = (ty * TS + H - Y0) * PPM;
+          // un disco un po' storto per casella (rumore del mondo, uguale fra i blocchi) e i raccordi verso le uguali
+          const rr = (w + (th(tx, ty, 811) - .5) * .5) * PPM; x.moveTo(cx + rr, cy); x.arc(cx, cy, rr, 0, 6.2832);
+          [[1, 0], [0, 1], [1, 1], [-1, 1]].forEach(([a, b]) => { if (blobTile1(tx + a, ty + b) !== kind) return; if (a && b && blobTile1(tx + a, ty) === kind && blobTile1(tx, ty + b) === kind) return;
+            const ex = cx + a * TS * PPM, ey = cy + b * TS * PPM, L = Math.hypot(ex - cx, ey - cy), nx = -(ey - cy) / L * w * PPM * .92, ny = (ex - cx) / L * w * PPM * .92;
+            x.moveTo(cx + nx, cy + ny); x.lineTo(ex + nx, ey + ny); x.lineTo(ex - nx, ey - ny); x.lineTo(cx - nx, cy - ny); x.closePath(); }); });
+        x.fill('nonzero'); };
+      x.fillStyle = kind === 1 ? 'rgba(70,54,38,.45)' : 'rgba(30,28,32,.55)'; shape(1.42);            // bordo morbido: terra smossa, fuga scura
+      const p = blobPat1(kind, x); try { p.setTransform(new DOMMatrix([1, 0, 0, 1, -((X0 * PPM) % 64), -((Y0 * PPM) % 64)])); } catch (e) {}
+      x.fillStyle = p; shape(1.18);
+    });
+  }
+
+  // ---- il bosco: radura o sottobosco è un campo continuo fra i centri delle caselle, non una decisione per casella ----
+  function openTile1(tx, ty) {
+    const T = G.T; if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return .5; const ii = ty * G.GW + tx; let v = gT(tx, ty);
+    if (RW[ii] > 0 && (v === T.VIA || v === T.DIRT)) return .55;   // sotto e accanto alle strade: a metà, la strada la dipinge smoothRoads
+    if (v === T.GRASS) return 1; if (v === T.SHRUB) return vnz((tx * TS + 1) / 23 + 17, (ty * TS + 1) / 23 + 17) > .05 ? .8 : .3; if (v === T.TREE) return 0; return .5;
+  }
+  function open1(X, Y, k1) {   // media pesata sulle caselle entro 5 m: le radure hanno contorni naturali
+    const cx = X / TS - .5, cy = Y / TS - .5, i0 = Math.round(cx), j0 = Math.round(cy); let sw = 0, sv = 0;
+    for (let j = j0 - 2; j <= j0 + 2; j++) for (let i = i0 - 2; i <= i0 + 2; i++) { const d = Math.hypot(i - cx, j - cy), w = Math.max(0, 1 - d / 2.6); if (w <= 0) continue; const ww = w * w; sw += ww; sv += ww * openTile1(i, j); }
+    return sv / (sw || 1) + k1 * .6 + vnz(X / 4.3 + 9, Y / 4.3 + 9) * .25 > .5;
+  }
+  // ---- tagli di roccia e muri di sostegno: forma continua (dischi e raccordi fra caselle uguali) col bordo che sfuma ----
+  function opere1(x, tx0, ty0, n, m, F, cut, wall) {
+    const P = TP, list = [[], []];
+    for (let j = -1; j <= m; j++) for (let i = -1; i <= n; i++) { const tx = tx0 + i, ty = ty0 + j; if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) continue; const f = F[ty * G.GW + tx]; if (f & 16384) list[1].push([i, j]); else if (f & 1024) list[0].push([i, j]); }
+    const has = (k, i, j) => { const tx = tx0 + i, ty = ty0 + j; if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return false; const f = F[ty * G.GW + tx]; return k ? !!(f & 16384) : !!(f & 1024) && !(f & 16384); };
+    [0, 1].forEach(k => { if (!list[k].length) return;
+      const shape = rad => { x.beginPath(); list[k].forEach(([i, j]) => { const cx = i * P + P / 2, cy = j * P + P / 2, rr = rad * P * (.92 + th(tx0 + i, ty0 + j, 917) * .16); x.moveTo(cx + rr, cy); x.arc(cx, cy, rr, 0, 6.2832);
+        [[1, 0], [0, 1], [1, 1], [-1, 1]].forEach(([a, b]) => { if (!has(k, i + a, j + b)) return; if (a && b && has(k, i + a, j) && has(k, i, j + b)) return; const ex = cx + a * P, ey = cy + b * P, L = Math.hypot(a, b) * P, nx = -(ey - cy) / L * rad * P * .9, ny = (ex - cx) / L * rad * P * .9;
+          x.moveTo(cx + nx, cy + ny); x.lineTo(ex + nx, ey + ny); x.lineTo(ex - nx, ey - ny); x.lineTo(cx - nx, cy - ny); x.closePath(); }); }); x.fill('nonzero'); };
+      x.globalAlpha = .45; x.fillStyle = k ? wall : cut; shape(.74); x.globalAlpha = 1; shape(.58);
+    });
+  }
