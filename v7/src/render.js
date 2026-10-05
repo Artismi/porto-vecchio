@@ -817,13 +817,14 @@ var Render = (function () {
   function vegMat() {
     const m = new THREE.MeshLambertMaterial({ color: '#ffffff', flatShading: true, vertexColors: true });
     m.onBeforeCompile = sh => {
-      sh.uniforms.vTime = VEGU.time;
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; varying float vSnow;')
+      sh.uniforms.vTime = VEGU.time; sh.uniforms.wG = VENTO.g;   // [animazioni-mondo]
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; uniform float wG; varying float vSnow;')   /* [animazioni-mondo] wG */
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           vSnow = aSnow;
           float ph = instanceMatrix[3].x * .37 + instanceMatrix[3].z * .29;
-          transformed.x += (sin(vTime * 1.3 + ph) * .05 + sin(vTime * 3.1 + ph * 2.) * .014) * aSway;
-          transformed.z += cos(vTime * 1.1 + ph) * .04 * aSway;`);
+          float gw = wG * (.55 + .45 * sin(vTime * .8 - instanceMatrix[3].x * .045 - instanceMatrix[3].z * .015));   // [animazioni-mondo] la raffica passa sul bosco da ovest
+          transformed.x += ((sin(vTime * 1.3 + ph) * .05 + sin(vTime * 3.1 + ph * 2.) * .014) * (.5 + gw * 1.5) + gw * .08) * aSway;   // [animazioni-mondo] più forte e piegato col vento
+          transformed.z += (cos(vTime * 1.1 + ph) * .04 * (.5 + gw * 1.5) + gw * .03) * aSway;   // [animazioni-mondo]`);
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSnow;')
         .replace('#include <color_fragment>', `#include <color_fragment>
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.8' : '0.'});`);
@@ -865,13 +866,14 @@ var Render = (function () {
     const m = new THREE.MeshLambertMaterial({ map, color: tint || '#ffffff', alphaTest: leafy ? .5 : 0, side: leafy ? THREE.DoubleSide : THREE.FrontSide });
     if (leafy) { m.color.multiplyScalar(1.55); m.emissive = new THREE.Color('#34482c'); m.emissiveMap = map; m.emissiveIntensity = .7; } else m.color.multiplyScalar(1.15);   // [isola33] il bosco vivo
     m.onBeforeCompile = sh => {
-      sh.uniforms.vTime = VEGU.time; sh.uniforms.uPl = NATU.pl; sh.uniforms.uCm = NATU.cm;
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; varying float vSnow; varying vec3 vWP;')
+      sh.uniforms.vTime = VEGU.time; sh.uniforms.uPl = NATU.pl; sh.uniforms.uCm = NATU.cm; sh.uniforms.wG = VENTO.g;   // [animazioni-mondo]
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; uniform float wG; varying float vSnow; varying vec3 vWP;')   /* [animazioni-mondo] wG */
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           vSnow = aSnow;
           float ph = instanceMatrix[3].x * .37 + instanceMatrix[3].z * .29;
-          transformed.x += (sin(vTime * 1.3 + ph) * .05 + sin(vTime * 3.1 + ph * 2.) * .014) * aSway;
-          transformed.z += cos(vTime * 1.1 + ph) * .04 * aSway;`).replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
+          float gw = wG * (.55 + .45 * sin(vTime * .8 - instanceMatrix[3].x * .045 - instanceMatrix[3].z * .015));   // [animazioni-mondo] la raffica passa sul bosco da ovest
+          transformed.x += ((sin(vTime * 1.3 + ph) * .05 + sin(vTime * 3.1 + ph * 2.) * .014) * (.5 + gw * 1.5) + gw * .08) * aSway;   // [animazioni-mondo] più forte e piegato col vento
+          transformed.z += (cos(vTime * 1.1 + ph) * .04 * (.5 + gw * 1.5) + gw * .03) * aSway;   // [animazioni-mondo]`).replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
           vWP = (modelMatrix * instanceMatrix * vec4(transformed, 1.)).xyz;`);
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSnow; varying vec3 vWP; uniform vec3 uPl; uniform vec3 uCm;')
         .replace('#include <color_fragment>', `#include <color_fragment>
@@ -5349,7 +5351,7 @@ var Render = (function () {
   // ogni edificio ha i suoi materiali: quando diventa trasparente non deve trascinarsi dietro gli altri
   function ownMats(merged, rec) {
     const cache = new Map();
-    merged.traverse(o => { if (o.isMesh && !Array.isArray(o.material)) { if (!cache.has(o.material)) { const cl = o.material.clone(); cache.set(o.material, o.material.userData.plaster ? plasterize(cl) : cl); } o.material = cache.get(o.material); } });
+    merged.traverse(o => { if (o.isMesh && !Array.isArray(o.material)) { if (!cache.has(o.material)) { const cl = o.material.clone(); cache.set(o.material, o.material.userData.plaster ? plasterize(cl) : cl.userData.mondo ? animMat(cl, cl.userData.mondo) : cl); /* [animazioni-mondo] */ } o.material = cache.get(o.material); } });
     merged.traverse(o => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => { if (!rec.mats.includes(m)) rec.mats.push(m); }); } });
   }
   function addSign(b, base, w, d, x0, z0, top, signY, awnY) {
@@ -5439,7 +5441,7 @@ var Render = (function () {
     const ant = cyl(.08, .12, 9, 6, sm('#4a4a50')); ant.position.set(kw * .3, KH + 4.5, -d * .12); g.add(ant);
     const red = new THREE.Mesh(new THREE.SphereGeometry(.25, 6, 4), new THREE.MeshBasicMaterial({ color: '#ff3030', toneMapped: false })); red.position.set(kw * .3, KH + 9, -d * .12); red.userData.keep = true; g.add(red);
     const pole = cyl(.06, .06, 6, 6, sm('#ccc')); pole.position.set(-kw * .3, KH + 3, -d * .12); g.add(pole);
-    const flag = box(2.2, 1.3, .04, sm('#b8202a')); flag.position.set(-kw * .3 + 1.1, KH + 5.2, -d * .12); g.add(flag);
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.3, 10, 2).translate(1.1, 0, 0), animMat(std({ color: '#b8202a', side: THREE.DoubleSide }), 'u:bandiera:1.4')); flag.position.set(-kw * .3, KH + 5.2, -d * .12); g.add(flag);   // [animazioni-mondo] la bandiera sventola dall'asta
     // portone con insegna
     const gate = box(4, 4.5, .4, darkM); gate.position.set(0, 2.25 + y0 * 0, d / 2 + .05); g.add(gate);
     const arch = box(5.4, 1.2, th + .4, wallM); arch.position.set(0, 5.1, d / 2 - th / 2); g.add(arch);
@@ -6370,6 +6372,7 @@ var Render = (function () {
     const g = glb || (v.kind === 'vespa' ? vespaMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police));
     if (K.scale && !glb) g.scale.set(K.scale[0], K.scale[1], K.scale[2]);
     g.userData.glbWait = !!K.glb && !glb;
+    g.userData.glb = !!glb;   // [animazioni-mondo] le auto dai modelli non hanno il profilo del parabrezza
     if (window.RisaccaUI && RisaccaUI.dressVehicle) { try { RisaccaUI.dressVehicle(g, v, THREE); } catch (e) { } } // corazze, rostri, insegne militari
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(K.wid + .5, K.len + .4), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .42, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = .03; g.add(sh);
     g.traverse(o => { if (o.isMesh && o !== sh) o.castShadow = true; });
@@ -6927,7 +6930,7 @@ var Render = (function () {
       add(g, box(2.2, 8, 2.2, cm), 0, 4, 0); add(g, box(3.2, 2, 3.2, cm), 0, 9, 0);
       add(g, box(3, .8, 3, sb('#ffe6a0')), 0, 9.2, 0).material = new THREE.MeshBasicMaterial({ color: '#c8b88a', toneMapped: false });
       add(g, box(3.6, .25, 3.6, concrete('#5a5a58')), 0, 10.1, 0); add(g, box(3.4, .3, 3.4, sm('#e2e6ec')), 0, 10.35, 0);
-      const flag = add(g, box(.05, 2.4, .05, wire), 1.4, 11.4, 1.4); add(g, box(.9, .55, .02, sb('#b81c1c')), 1.86, 12.2, 1.4);
+      const flag = add(g, box(.05, 2.4, .05, wire), 1.4, 11.4, 1.4); add(g, new THREE.Mesh(new THREE.PlaneGeometry(.9, .55, 6, 1).translate(.45, 0, 0), animMat(new THREE.MeshBasicMaterial({ color: '#b81c1c', toneMapped: false, fog: false, side: THREE.DoubleSide }), 'u:bandiera:.7')), 1.42, 12.2, 1.4);   /* [animazioni-mondo] bandiera che sventola */
       const red = add(g, new THREE.Mesh(new THREE.SphereGeometry(.14, 6, 4), new THREE.MeshBasicMaterial({ color: '#ff2020', toneMapped: false })), -1.4, 10.8, -1.4); WX.blink.push({ m: red, ph: k });
       place(g, x + 1, y, 0);
       // il fascio del riflettore che spazza la neve
@@ -7181,11 +7184,11 @@ var Render = (function () {
       anchors.push({ rec, cx: bb.min.x + w / 2 - .3, cz: bb.min.z + d / 2 - .3, hx: w / 2, hz: d / 2, y: top + .5 });
     });
     // cavi tesi da un tetto all'altro, con qualche lampada appesa
-    const pts = []; const rc = rng(5151), lampM = ['#9fe8dc', '#d8f0e8', '#38e8ff'].map(c => new THREE.MeshBasicMaterial({ color: c })), lg = new THREE.Group();
+    const pts = []; const rc = rng(5151), lampM = ['#9fe8dc', '#d8f0e8', '#38e8ff'].map(c => animMat(new THREE.MeshBasicMaterial({ color: c }), 'tutto:pendolo:1.6')), lg = new THREE.Group(), banM = animMat(eyeMat('banner').clone(), 'giu:panno:2.2');   // [animazioni-mondo] lampade e striscioni appesi al cavo si muovono col vento
     anchors.forEach((A, i) => { let links = 0; for (let j = i + 1; j < anchors.length && links < 2; j++) { const B = anchors[j], dx = B.cx - A.cx, dz = B.cz - A.cz, L = Math.hypot(dx, dz); if (L < 11 || L > 30 || rc() < .45) continue;
       const edge = (P, sx, sz) => { const k = Math.min(P.hx / (Math.abs(sx) || 1e-6), P.hz / (Math.abs(sz) || 1e-6)); return [P.cx + sx * k, P.cz + sz * k]; }, ux = dx / L, uz = dz / L, p0 = edge(A, ux, uz), p1 = edge(B, -ux, -uz), y0 = A.y, y1 = B.y, Ln = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]); if (Ln < 4) continue;
       let prev = [p0[0], y0, p0[1]]; for (let k = 1; k <= 7; k++) { const t = k / 7, sag = Math.sin(t * Math.PI) * Ln * .04, cur = [p0[0] + (p1[0] - p0[0]) * t, y0 + (y1 - y0) * t - sag, p0[1] + (p1[1] - p0[1]) * t]; pts.push(prev[0], prev[1], prev[2], cur[0], cur[1], cur[2]); prev = cur; }
-      links++; if (rc() < .3) { const mx = (p0[0] + p1[0]) / 2, mz = (p0[1] + p1[1]) / 2, my = (y0 + y1) / 2 - Ln * .04 - .3, m = new THREE.Mesh(new THREE.SphereGeometry(.16, 6, 5), lampM[Math.floor(rc() * 3)]); m.position.set(mx, my, mz); lg.add(m); if (rc() < .5) { const bn = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.3), eyeMat('banner')); bn.position.set(mx, my - 1.3, mz); bn.rotation.y = Math.atan2(ux, uz); lg.add(bn); } if (rc() < .6) addLight(mx, my, mz, '#8fd8d0', 1.4, 9, .05); } } });
+      links++; if (rc() < .3) { const mx = (p0[0] + p1[0]) / 2, mz = (p0[1] + p1[1]) / 2, my = (y0 + y1) / 2 - Ln * .04 - .3, m = new THREE.Mesh(new THREE.SphereGeometry(.16, 6, 5), lampM[Math.floor(rc() * 3)]); m.position.set(mx, my, mz); lg.add(m); if (rc() < .5) { const bn = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.3, 1, 4), banM); /* [animazioni-mondo] */ bn.position.set(mx, my - 1.3, mz); bn.rotation.y = Math.atan2(ux, uz); lg.add(bn); } if (rc() < .6) addLight(mx, my, mz, '#8fd8d0', 1.4, 9, .05); } } });
     if (pts.length) { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)); geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(G.WW / 2, 0, G.WH / 2), Math.hypot(G.WW, G.WH)); const ln = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: '#15151b' })); ln.frustumCulled = false; scene.add(ln); }
     // ---- il regime sui tetti: torri di altoparlanti, schermi del Garante, telecamere con il led rosso ----
     anchors.forEach(A => {
@@ -7221,6 +7224,28 @@ var Render = (function () {
     x.fillStyle = ban ? '#b4141c' : '#0a2024'; x.beginPath(); x.arc(cx, cy, R * .3, 0, 7); x.fill(); x.fillStyle = '#000'; x.fillRect(cx - 1, cy - R * .22, 2, R * .44);
     x.fillStyle = ban ? '#150a0b' : '#9ff6ea'; if (ban) { x.fillRect(5, 54, 38, 3); x.fillRect(9, 60, 30, 2); x.fillRect(0, 0, W, 3); } else { x.globalAlpha = .7; x.fillRect(8, 62, 70, 3); x.fillRect(8, 67, 44, 2); x.globalAlpha = 1; for (let k = 0; k < H; k += 3) { x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(0, k, W, 1); } }
     const t = canvasTex(c); t.magFilter = THREE.NearestFilter;
+    if (!ban) {   // [animazioni-mondo] lo schermo è vivo: l'occhio sbatte la palpebra e si guarda intorno, la scritta scorre, una banda di luce scende, ogni tanto un disturbo
+      const m = new THREE.MeshBasicMaterial({ map: t, toneMapped: false });
+      m.customProgramCacheKey = () => 'mondo-schermo';
+      m.onBeforeCompile = sh => {
+        sh.uniforms.wT = VENTO.t;
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float wT;')
+          .replace('#include <map_fragment>', `#ifdef USE_MAP
+            vec2 q = vUv; float ey = .528;
+            float gk = step(.93, fract(sin(floor(wT * 6.) * 91.7) * 43758.5));
+            q.x += gk * (fract(sin(floor(q.y * 18.) * 13.1 + floor(wT * 6.)) * 43758.5) - .5) * .06;
+            if (q.y < .17) q.x = fract(q.x + wT * .07);
+            else if (abs(q.y - ey) < .31 && abs(q.x - .5) < .2) { q.x -= sin(wT * .37) * .035 + sin(wT * 1.3) * .01; q.y -= sin(wT * .23) * .02; }
+            vec4 sampledDiffuseColor = texture2D(map, q);
+            float bt = mod(wT, 5.7), lid = 1. - clamp(abs(bt - .16) / .16, 0., 1.);
+            float inEye = step(length((vUv - vec2(.5, ey)) * vec2(1., .5625)), .17);
+            if (inEye > .5 && abs(vUv.y - ey) > (1. - lid) * .31) sampledDiffuseColor.rgb = vec3(.047, .165, .188);
+            sampledDiffuseColor.rgb *= 1. + .35 * smoothstep(.07, 0., abs(fract(vUv.y + wT * .18) - .5)) + gk * .3;
+            diffuseColor *= sampledDiffuseColor;
+          #endif`);
+      };
+      return EYEC[kind] = m;
+    }
     return EYEC[kind] = ban ? new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide, emissive: '#3a0508', emissiveMap: t }) : new THREE.MeshBasicMaterial({ map: t, toneMapped: false });
   }
   // ================= [inverno] DETTAGLI: manifesti, volantini, caratteri dei locali, arredo di strada =================
@@ -7441,7 +7466,7 @@ var Render = (function () {
     return MURAL[k] = canvasTex(c);
   }
   function buildDetails2() {
-    const T = G.T, cloth = ['#d8d0b8', '#b04a4a', '#4a6aa0', '#caa83a', '#7a9a6a', '#c86aa0'].map(c => sm(c, { roughness: 1 })), dark = sm('#1c1c22', { roughness: 1 }), metal = sm('#4a4e54', { roughness: .6, metalness: .5 });
+    const T = G.T, cloth = ['#d8d0b8', '#b04a4a', '#4a6aa0', '#caa83a', '#7a9a6a', '#c86aa0'].map(c => animMat(std({ color: c, roughness: 1 }), 'giu:panno:1.6')),   /* [animazioni-mondo] il bucato sventola */ dark = sm('#1c1c22', { roughness: 1 }), metal = sm('#4a4e54', { roughness: .6, metalness: .5 });
     const glowM = c => new THREE.MeshBasicMaterial({ color: c }), WALLC = ['#8a8278', '#7a7e86', '#8e7a68', '#6e7a70'];
     const mats = {}, lam = (k, tex) => mats[k] || (mats[k] = new THREE.MeshLambertMaterial({ map: tex, emissive: '#26242c', side: THREE.DoubleSide }));
     let n = 0;
@@ -7503,7 +7528,7 @@ var Render = (function () {
       wood = sm('#6a5238', { roughness: 1 }), rust = sm('#7a4a34', { roughness: 1 });
     const tarps = ['#3e6272', '#7a3c3c', '#4c6a4c', '#8a7438', '#5a4a6a'].map(c => sm(c, { roughness: 1 }));
     const neon = ['#b84a3c', '#e8d8bc', '#ffb050'].map(c => new THREE.MeshBasicMaterial({ color: c }));   // [luci3] niente rosa/ciano
-    const cloth = ['#d8d0b8', '#b04a4a', '#4a6aa0', '#caa83a'].map(c => sm(c, { roughness: 1 }));
+    const cloth = ['#d8d0b8', '#b04a4a', '#4a6aa0', '#caa83a'].map(c => animMat(std({ color: c, roughness: 1 }), 'giu:panno:1.4'));   // [animazioni-mondo] il bucato sui tetti sventola
     let n = 0;
     dyn.buildings.forEach((rec, bi) => { if (rec.shack || rec.special) return;
       const b = rec.b; if (!rec.flat || !b || rec.roofDone || b.__tierBase) return;
@@ -8530,16 +8555,16 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const TARPS = ['#3a5a64', '#5a3a40', '#3e4a3a', '#4a4a58', '#5a5036'].map(c => sm(c, { roughness: 1, side: THREE.DoubleSide }));
     const litM = c => { const m = std({ color: '#161616', emissive: c, emissiveIntensity: .8, roughness: 1 }); (dyn.backdropMats = dyn.backdropMats || []).push(m); return m; };
     const L = { amber: litM('#ffb050'), cyan: litM('#38e8ff'), mag: litM('#ff3fa4'), cold: litM('#bfeee6') };
-    const bulb = sb('#ffc070');
+    const bulb = animMat(sb('#ffc070').clone(), 'tutto:pendolo:1.3'), wireM = animMat(sm('#2a2c30', { roughness: .7 }).clone(), 'giu:pendolo:1.3');   // [animazioni-mondo] lampadina e filo dondolano insieme
     const A = (px, pz, yaw) => { const gg = new THREE.Group(); gg.position.set(px, groundH(px, pz), pz); gg.rotation.y = yaw; g.add(gg); gg.updateMatrixWorld(true); return gg; };
     const bx = (gg, w, h, dd, mat, x, y, z, rx, ry, rz) => { const m = box(w, h, dd, mat); m.position.set(x, y, z); if (rx || ry || rz) m.rotation.set(rx || 0, ry || 0, rz || 0); gg.add(m); return m; };
     const cy = (gg, rt, rb, h, mat, x, y, z, seg) => { const m = cyl(rt, rb, h, seg || 7, mat); m.position.set(x, y, z); gg.add(m); return m; };
     const lamp = (gg, x, y, z, col, i, dist, sz) => { const v = V3.set(x, y, z).applyMatrix4(gg.matrixWorld); addLight(v.x, v.y, v.z, col, i, dist, .05); const gl = glow(v.x, v.y, v.z, col, sz || 2.4); gl.material.opacity = .3; };
-    const hang = (gg, x, y, z) => { cy(gg, .008, .008, .5, iron, x, y + .25, z, 3); const b = new THREE.Mesh(new THREE.SphereGeometry(.09, 6, 5), bulb); b.position.set(x, y, z); gg.add(b); };
+    const hang = (gg, x, y, z) => { cy(gg, .008, .008, .5, wireM, x, y + .25, z, 3); /* [animazioni-mondo] */ const b = new THREE.Mesh(new THREE.SphereGeometry(.09, 6, 5), bulb); b.position.set(x, y, z); gg.add(b); };
     const stool = (gg, x, z) => { cy(gg, .16, .16, .04, wood, x, .45, z); cy(gg, .03, .03, .45, iron, x, .22, z, 4); };
     const table = (gg, x, z) => { bx(gg, .9, .05, .6, woodD, x, .78, z); [[-.4, -.25], [.4, -.25], [-.4, .25], [.4, .25]].forEach(([a, b]) => bx(gg, .04, .78, .04, iron, x + a, .39, z + b)); };
     const crates = (gg, x, z) => { const n = 1 + Math.floor(r() * 3); for (let k = 0; k < n; k++) bx(gg, .55, .4, .55, wood, x + (r() - .5) * .5, .2 + k * .4, z + (r() - .5) * .3, 0, r() * 1.2, 0); };
-    const barrel = (gg, x, z, fire) => { cy(gg, .3, .3, .85, rustM, x, .43, z, 8); if (fire) { bx(gg, .4, .2, .4, L.amber, x, .92, z); lamp(gg, x, 1.1, z, '#ffa040', 2.2, 7, 2.6); } };
+    const barrel = (gg, x, z, fire) => { cy(gg, .3, .3, .85, rustM, x, .43, z, 8); if (fire) { bx(gg, .4, .2, .4, L.amber, x, .92, z); lamp(gg, x, 1.1, z, '#ffa040', 2.2, 7, 2.6); MONDO.fuochi.push(V3.set(x, .95, z).applyMatrix4(gg.matrixWorld).clone()); /* [animazioni-mondo] scintille */ } };
     const col = () => TARPS[Math.floor(r() * TARPS.length)];
     // ---- tettoie davanti alle porte ----
     const WLK = v => v === T.WALK || v === T.COB || v === T.PIAZZA || v === T.QUAY;
@@ -8698,6 +8723,313 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     VX.decals.forEach(d => { d.m.material.opacity = (d.always ? night * .045 : night * .02); });
     VX.steam.forEach(s => { const t = ((time * .3 + s.ph) % 3) / 3, sz = (.7 + t * 3.0) * s.k; s.sp.position.set(s.x + Math.sin(time + s.ph) * .4 * t + t * t * 1.2, s.y + t * 3.8, s.z + t * .8); s.sp.scale.set(sz, sz, 1); s.sp.material.opacity = (s.k < .9 && (Math.floor(s.x * 3 + s.z * 7) & 3) !== 0 && !(dyn.meteo && dyn.meteo.w[2] > .6) ? 0 : .55) * (1 - t) * Math.min(1, t * 5) * (.42 + night * .3) * (dyn.meteo ? .15 + .85 * Math.min(1, night * .35 + dyn.meteo.w[1] * .5 + dyn.meteo.w[2] * .7) : 1); });   /* [amb1] */   // [luci3] vapore più denso
     VX.fog.forEach((pl, k) => { const U = pl.material.uniforms; U.time.value = time; U.col.value.copy(scene.fog.color).lerp(new THREE.Color('#d0d4da'), .3 * (1 - night)); U.ctr.value.set(cam.x, cam.y); U.amt.value = .22 - night * .15 - k * .06; /* [luci5] */ pl.position.x = cam.x; pl.position.z = cam.y; });
+  }
+
+  // ================= [animazioni-mondo] IL MONDO CHE SI MUOVE =================
+  // Un vento solo per tutto (alberi, erba, panni, bandiere, lampadine appese, carte a terra, fumo, scintille): soffia verso est, a raffiche,
+  // più forte quando nevica. Veicoli: portiere quando si sale o si scende, tergicristalli quando nevica, fumo dello scarico (più denso
+  // in accelerazione e col freddo della notte), motore che trema al minimo, lampeggianti della polizia che girano.
+  // Città: schermi del Garante vivi (l'occhio sbatte la palpebra e si guarda intorno, la scritta scorre), carte e foglie trascinate dal vento,
+  // piccioni che si alzano in volo quando ti avvicini, porte che si aprono quando qualcuno entra o esce, scintille e fumo dai fuochi.
+  // Costo: 4 draw call fisse (fumo, scintille, carte, piccioni) + i pezzi dei veicoli vicini; JS ~0,2 ms per fotogramma.
+  const VENTO = { t: { value: 0 }, g: { value: .5 }, dx: .93, dz: .36 };   // [animazioni-mondo] t tempo, g forza (0..1,5), direzione verso est-sud-est
+  const MONDO = { ms: 0, nf: 0, fuochi: [], puffs: null, sparks: null, papers: null, birds: null, doors: [], doorList: null, inside: {}, rain: false, pxH: 800, dtk: 1 };   // [animazioni-mondo] dtk: acceleratore del tempo, solo per le prove senza testa
+  // vertex shader del vento per i materiali (anche fusi nella geometria statica: usa solo posizione, normale e uv, che la fusione conserva).
+  // spec 'regola:moto:ampiezza'. regola: 'giu' = il bordo basso è libero (panni stesi, fili: 1 - v; facce sotto 1, sopra 0),
+  // 'u' = libero lungo u (bandiere: asta a u = 0), 'tutto' = si muove tutto insieme (lampadine). moto: 'panno', 'pendolo', 'bandiera'.
+  function animMat(m, spec) {   // [animazioni-mondo]
+    m.userData.mondo = spec;
+    const [rule, motion, K] = spec.split(':'), k = (+K || 1).toFixed(3);
+    const amt = rule === 'giu' ? 'float wa = normal.y > .5 ? 0. : (normal.y < -.5 ? 1. : 1. - uv.y);' : rule === 'u' ? 'float wa = uv.x;' : 'float wa = 1.;';
+    const mov = motion === 'bandiera'
+      ? `transformed += normal * sin(wT * 5.5 - uv.x * 7. + wph) * wa * .16 * ${k} * (.45 + wG * .6); transformed.y -= wa * wa * .12 * ${k} * max(0., .8 - wG);`
+      : motion === 'pendolo'
+        ? `transformed.x += sin(wT * 1.9 + wph) * wa * .07 * ${k} * (.35 + wG); transformed.z += cos(wT * 1.4 + wph * 1.3) * wa * .05 * ${k} * (.35 + wG);`
+        : `float wf = sin(wT * 3.1 + wph + wp0.y * .7) * .6 + sin(wT * 7.3 + wph * 1.7) * .25;
+           transformed.x += (wG * .55 + wf * (.3 + wG * .4)) * wa * .14 * ${k} * ${VENTO.dx.toFixed(2)};
+           transformed.z += (wG * .55 + wf * (.3 + wG * .4)) * wa * .14 * ${k} * ${VENTO.dz.toFixed(2)};
+           transformed.y += wa * wa * wG * wG * .05 * ${k};`;
+    m.customProgramCacheKey = () => 'mondo-' + spec + (m.isMeshBasicMaterial ? 'B' : m.isMeshLambertMaterial ? 'L' : 'S');
+    m.onBeforeCompile = sh => {
+      sh.uniforms.wT = VENTO.t; sh.uniforms.wG = VENTO.g;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float wT; uniform float wG;')
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+          { vec3 wp0 = (modelMatrix * vec4(transformed, 1.)).xyz; float wph = wp0.x * .11 + wp0.z * .07; ${amt} ${mov} }`);
+    };
+    m.needsUpdate = true;
+    return m;
+  }
+  // il vento: una base, le raffiche lente, più forte quando nevica
+  function tickVento(time) {   // [animazioni-mondo]
+    const gust = Math.max(0, Math.sin(time * .21) * Math.sin(time * .13 + 1.3)) * 1.1 + Math.sin(time * .7) * .06;
+    VENTO.t.value = time; VENTO.g.value = .32 + (MONDO.rain ? .35 : 0) + gust + (dyn.meteo ? dyn.meteo.w[3] * .6 : 0);   /* [unione1] le creste del meteo di [amb1] sono lo stesso vento */
+  }
+  // ---- particelle in un solo Points: fumo (normale) e scintille (additive) ----
+  function mondoPts(N, additive) {   // [animazioni-mondo]
+    const g = new THREE.BufferGeometry(), P = new Float32Array(N * 3), S = new Float32Array(N), A = new Float32Array(N), C = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) P[i * 3 + 1] = -999;
+    const at = (a, n) => { const b = new THREE.BufferAttribute(a, n); b.setUsage(THREE.DynamicDrawUsage); return b; };
+    g.setAttribute('position', at(P, 3)); g.setAttribute('aSize', at(S, 1)); g.setAttribute('aAlpha', at(A, 1)); g.setAttribute('aCol', at(C, 3));
+    const m = new THREE.ShaderMaterial({ uniforms: { uScale: { value: 400 } }, transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+      vertexShader: `attribute float aSize; attribute float aAlpha; attribute vec3 aCol; varying float vA; varying vec3 vC; uniform float uScale;
+        void main() { vec4 mv = modelViewMatrix * vec4(position, 1.); gl_Position = projectionMatrix * mv; gl_PointSize = min(96., aSize * uScale / max(.1, -mv.z)); vA = aAlpha; vC = aCol; }`,
+      fragmentShader: additive
+        ? `varying float vA; varying vec3 vC; void main() { float r = length(gl_PointCoord - .5); float a = pow(max(0., 1. - r * 2.), 1.6) * vA; if (a < .01) discard; gl_FragColor = vec4(vC * a, a); }`
+        : `varying float vA; varying vec3 vC; void main() { vec2 p = gl_PointCoord - .5; float r = length(p); float a = smoothstep(.5, .12, r) * vA * (.8 + .2 * sin(p.x * 17. + p.y * 11. + vA * 31.)); if (a < .01) discard; gl_FragColor = vec4(vC, a); }` });
+    const pts = new THREE.Points(g, m); pts.frustumCulled = false; pts.renderOrder = 3; scene.add(pts);
+    return { pts, g, P, S, A, C, N, V: new Float32Array(N * 3), life: new Float32Array(N), max: new Float32Array(N), s0: new Float32Array(N), s1: new Float32Array(N), a0: new Float32Array(N), buoy: new Float32Array(N), i: 0, live: 0 };
+  }
+  function emit(Q, x, y, z, vx, vy, vz, life, s0, s1, a0, r, g, b, buoy) {   // [animazioni-mondo]
+    let i = Q.i; Q.i = (Q.i + 1) % Q.N;
+    Q.P[i * 3] = x; Q.P[i * 3 + 1] = y; Q.P[i * 3 + 2] = z; Q.V[i * 3] = vx; Q.V[i * 3 + 1] = vy; Q.V[i * 3 + 2] = vz;
+    Q.life[i] = Q.max[i] = life; Q.s0[i] = s0; Q.s1[i] = s1; Q.a0[i] = a0; Q.C[i * 3] = r; Q.C[i * 3 + 1] = g; Q.C[i * 3 + 2] = b; Q.buoy[i] = buoy || 0;
+  }
+  function stepPts(Q, dt) {   // [animazioni-mondo]
+    const wx = VENTO.dx * VENTO.g.value, wz = VENTO.dz * VENTO.g.value;
+    for (let i = 0; i < Q.N; i++) {
+      if (Q.life[i] <= 0) { if (Q.A[i] !== 0) { Q.A[i] = 0; Q.P[i * 3 + 1] = -999; } continue; }
+      Q.life[i] -= dt; const k = 1 - Q.life[i] / Q.max[i], j = i * 3, by = Q.buoy[i];
+      // il fumo sale e si lascia portare dal vento; le scintille salgono, rallentano e ricadono
+      Q.V[j] += (wx * 1.3 - Q.V[j]) * dt * .9; Q.V[j + 2] += (wz * 1.3 - Q.V[j + 2]) * dt * .9; Q.V[j + 1] += (by >= 0 ? (by - Q.V[j + 1]) * dt * .8 : by * dt);
+      Q.P[j] += Q.V[j] * dt; Q.P[j + 1] += Q.V[j + 1] * dt; Q.P[j + 2] += Q.V[j + 2] * dt;
+      Q.S[i] = Q.s0[i] + (Q.s1[i] - Q.s0[i]) * k; Q.A[i] = Q.a0[i] * Math.min(1, k * 6) * (1 - k) * (1 - k);
+      if (Q.life[i] <= 0) { Q.A[i] = 0; Q.P[j + 1] = -999; }
+    }
+    ['position', 'aSize', 'aAlpha', 'aCol'].forEach(n => Q.g.attributes[n].needsUpdate = true);
+    Q.pts.material.uniforms.uScale.value = MONDO.pxH * camera.projectionMatrix.elements[5] * .5;
+  }
+  // ---- veicoli: portiere, tergicristalli, scarico, motore, lampeggianti ----
+  const VDARK = new THREE.MeshBasicMaterial({ color: '#0a0909' });
+  function vehDoor(g, v, u) {   // [animazioni-mondo] la portiera del guidatore (lato -x, quello da cui si scende), fatta solo quando serve
+    const K = G.VK[v.kind], D = !u.glb ? CARS[K.mesh || v.kind] : null, s = -1;
+    let hw, zf, zb, yb, yt, yw, cw;
+    if (D) { hw = D.W / 2; cw = D.CW / 2; zf = D.win[0][0] - .02; zb = D.cab.length > 3 ? Math.max(D.win[3][0] + .25, (D.win[1][0] + D.win[2][0]) / 2 - .05) : D.win[3][0]; yb = D.yb + .06; yt = D.win[0][1]; yw = (D.win[1][1] + D.win[2][1]) / 2 - .04; if (D.L < 3.4) zb = Math.min(zb, zf - 1.05); }
+    else { const sc = g.scale.x || 1; hw = K.wid / 2 / sc; cw = hw * .86; zf = K.len * .14; zb = -K.len * .1; yb = .32; yt = .82; yw = 1.18; }
+    const L = Math.max(.7, zf - zb), rig = new THREE.Group(), piv = new THREE.Group();
+    const panel = box(.05, yt - yb, L, u.paint[0]); panel.position.set(0, (yb + yt) / 2, -L / 2); piv.add(panel);
+    const glass = box(.03, Math.max(.1, yw - yt), L * .82, u.glass || VDARK); glass.position.set(s * (cw - hw) * .6, (yt + yw) / 2, -L * .5); piv.add(glass);
+    const hand = box(.03, .03, .14, VDARK); hand.position.set(s * .03, yt - .08, -L * .85); piv.add(hand);
+    piv.position.set(s * (hw + .03), 0, zf); rig.add(piv);
+    const hole = box(.012, yw - yb, L, VDARK); hole.position.set(s * (hw + .008), (yb + yw) / 2, zf - L / 2); rig.add(hole);   // l'abitacolo buio dietro la portiera aperta
+    rig.visible = false; g.add(rig);
+    return { rig, piv, t: 9, s };
+  }
+  function vehWipers(g, u) {   // [animazioni-mondo] due spazzole sul parabrezza, ferme in basso finché non nevica
+    const D = u.wsD; if (!D) return null;
+    const [z0, y0] = D.ws[0], [z1, y1] = D.ws[1], fr = new THREE.Group(); fr.position.set(0, y0 + .03, z0 + .012); fr.rotation.x = Math.atan2(z1 - z0, y1 - y0);
+    const len = D.CW * .44, geo = new THREE.BoxGeometry(len, .028, .025); geo.translate(len / 2, 0, .02);
+    const arms = [-D.CW * .4, -D.CW * .02].map(x => { const p = new THREE.Group(); p.position.set(x, .02, 0); p.add(new THREE.Mesh(geo, VDARK)); fr.add(p); p.rotation.z = .06; return p; });
+    g.add(fr); return arms;
+  }
+  function vehMondo(v, g, u, K, dt, time, night) {   // [animazioni-mondo] chiamata dal ciclo dei veicoli in frame()
+    dt *= MONDO.dtk;
+    const dcx = v.x - cam.x, dcz = v.y - cam.y, near = dcx * dcx + dcz * dcz < 55 * 55, on = !v.wreck && !v.hidden && !!(v.rider || v.traffic);
+    // portiera: si apre quando cambia chi è al volante (si sale, si scende, l'automobilista tirato fuori)
+    const rk = (v.rider || '') + (v.traffic ? 'T' : '');
+    if (u.rk === undefined) u.rk = rk;
+    if (u.rk !== rk) { u.rk = rk; if (near && !u.two && v.kind !== 'ape' && !v.wreck && Math.abs(v.speed || 0) < 4) { if (!u.door) u.door = vehDoor(g, v, u); u.door.t = 0; } }
+    if (u.door && u.door.t < 3) {
+      const d = u.door, t = (d.t += dt);
+      const a = t < .35 ? Math.sin(t / .35 * Math.PI / 2) * 1.15 : t < 1.5 ? 1.15 + Math.sin((t - .35) * 9) * Math.exp(-(t - .35) * 6) * .08 : t < 1.95 ? 1.15 * (1 - (t - 1.5) / .45) * (1 - (t - 1.5) / .45) : 0;
+      d.piv.rotation.y = -d.s * a; d.rig.visible = a > .02;
+      if (t >= 1.95 && t - dt < 1.95) { u.hv = (u.hv || 0) + .5; u.rv = (u.rv || 0) + d.s * .25; }   // il colpo dello sportello sulla scocca
+      if (t > 3) d.rig.visible = false;
+    }
+    // motore al minimo: la scocca trema appena
+    if (on && near && Math.abs(v.speed || 0) < .3) { g.position.y += Math.sin(time * 57 + u.spin) * .007; g.rotation.z += Math.sin(time * 41) * .0035; }
+    // tergicristalli quando nevica (le auto disegnate da noi: serve il profilo del parabrezza)
+    if (!u.two && !u.glb && near && (MONDO.rain || v.rider === 'player')) {
+      if (u.wipers === undefined) { const D = CARS[K.mesh || v.kind]; u.wsD = D && D.ws ? D : null; u.wipers = vehWipers(g, u); }
+      if (u.wipers) { const run = on && MONDO.rain, ph = run ? (time * 1.25 + u.spin * .01) % 1.6 : 1.6, a = ph < 1 ? (1 - Math.cos(ph * Math.PI * 2)) * .5 * 1.55 : 0; u.wipers.forEach((w, i) => w.rotation.z = .06 + a * (i ? .92 : 1)); }
+    }
+    // fumo dallo scarico: a ogni accelerazione uno sbuffo più nero, col freddo una nuvola bianca che resta
+    if (on && near && MONDO.puffs) {
+      const acc = Math.max(0, v.longA || 0), sp = Math.abs(v.speed || 0), rate = 3 + night * 2.5 + Math.min(acc, 8) * 2.2 + (sp < .5 ? 1 : 0);
+      u.ex = (u.ex || 0) + rate * dt;
+      while (u.ex > 1) {
+        u.ex -= 1;
+        const ca = Math.cos(v.ang), sa = Math.sin(v.ang), back = (K.len || 4) / 2 + .1, side = u.two ? .26 : -(K.wid || 1.6) * .28;
+        const x = v.x - ca * back + sa * side * -1, z = v.y - sa * back + ca * side, y = groundH(v.x, v.y) + (u.two ? .3 : .28);
+        const dark = Math.min(1, acc / 7), c = .78 - dark * .45 - night * .25, vx = (v.vx !== undefined ? v.vx : ca * (v.speed || 0)), vz = (v.vy !== undefined ? v.vy : sa * (v.speed || 0));
+        emit(MONDO.puffs, x, y, z, vx * .35 - ca * 1.2 + (Math.random() - .5) * .3, .15 + Math.random() * .2, vz * .35 - sa * 1.2 + (Math.random() - .5) * .3,
+          1.1 + Math.random() * .9 + night * .8, .22, .9 + dark * .7 + night * .5, .26 + dark * .2 + night * .08, c, c * 1.01, c * 1.04, .35);
+      }
+    }
+    // lampeggianti blu: due bagliori che si alternano e un fascio che gira sul tetto
+    if (u.beacons && v.siren && !v.wreck) {
+      if (!u.flash) {
+        const mkS = x => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#3a7aff', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); s.scale.set(1.6, 1.6, 1); s.position.set(x, 1.62, -.2); g.add(s); return s; };
+        const rot = new THREE.Group(); rot.position.set(0, 1.6, -.2); const bm = new THREE.MeshBasicMaterial({ color: '#3a6aff', transparent: true, opacity: .12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+        [0, Math.PI].forEach(a => { const c = new THREE.Mesh(new THREE.ConeGeometry(.9, 5, 10, 1, true), bm); c.geometry.translate(0, -2.5, 0); c.rotation.z = Math.PI / 2; c.rotation.y = a; rot.add(c); }); g.add(rot);
+        const pool = new THREE.Mesh(new THREE.CircleGeometry(3.2, 18), new THREE.MeshBasicMaterial({ color: '#2a5aff', transparent: true, opacity: .15, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); pool.rotation.x = -Math.PI / 2; pool.position.y = .05; g.add(pool);
+        u.flash = { a: mkS(-.36), b: mkS(.36), rot, bm, pool };
+      }
+      const F = u.flash, ph = (time * 3.2) % 1, A = ph < .25 || (ph > .5 && ph < .62), B = !A && ph > .25 && ph < .5 || ph > .75 && ph < .87, k = .35 + night * .65;
+      F.a.visible = A; F.b.visible = B; F.a.material.opacity = F.b.material.opacity = k; F.rot.visible = true; F.rot.rotation.y = time * 7; F.bm.opacity = .05 + night * .12;
+      F.pool.visible = night > .3; F.pool.material.opacity = (A || B ? .18 : .05) * night;
+    } else if (u.flash) { u.flash.a.visible = u.flash.b.visible = u.flash.rot.visible = u.flash.pool.visible = false; }
+  }
+  // ---- carte e foglie che il vento trascina a terra (un InstancedMesh, vicino alla camera) ----
+  function initPapers() {   // [animazioni-mondo]
+    const N = 44, geo = new THREE.PlaneGeometry(.3, .4); geo.rotateX(-Math.PI / 2);
+    const m = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: '#ffffff', side: THREE.DoubleSide }), N);
+    m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.receiveShadow = true; scene.add(m);
+    const S = []; for (let i = 0; i < N; i++) { S.push({ x: 0, z: 0, y: 0, vx: 0, vy: 0, vz: 0, ry: Math.random() * 6, rx: 0, rz: 0, sp: 0, seed: Math.random(), dead: true }); m.setColorAt(i, new THREE.Color('#d8d4c8')); }
+    return { m, S, N, d: new THREE.Object3D(), c: new THREE.Color() };
+  }
+  const PAPER_OK = t => t === G.T.VIA || t === G.T.WALK || t === G.T.PIAZZA || t === G.T.COB || t === G.T.QUAY || t === G.T.DIRT || t === G.T.GRAVEL;
+  const LEAF_OK = t => t === G.T.TREE || t === G.T.GRASS || t === G.T.SHRUB || t === G.T.DIRT;
+  function tickPapers(st, time, dt) {   // [animazioni-mondo]
+    const Pp = MONDO.papers, g = VENTO.g.value, wx = VENTO.dx, wz = VENTO.dz;
+    for (let i = 0; i < Pp.N; i++) {
+      const q = Pp.S[i];
+      if (q.dead || Math.abs(q.x - cam.x) > 34 || Math.abs(q.z - cam.y) > 34) {   // rinasce in un punto a caso attorno alla camera, su strada o nel bosco
+        q.dead = true; const a = Math.random() * 6.28, r = 6 + Math.random() * 26, x = cam.x + Math.cos(a) * r, z = cam.y + Math.sin(a) * r, t = G.tileAt(Math.floor(x / TS), Math.floor(z / TS));
+        const paper = PAPER_OK(t), leaf = !paper && LEAF_OK(t); if (!paper && !leaf) continue;
+        Object.assign(q, { x, z, y: 0, vx: 0, vy: 0, vz: 0, dead: false, leaf });
+        Pp.m.setColorAt(i, Pp.c.set(leaf ? (q.seed < .5 ? '#7a5a34' : '#94703c') : (q.seed < .2 ? '#c8b088' : q.seed < .35 ? '#b84a3c' : '#dcd8cc')));
+        Pp.m.instanceColor.needsUpdate = true;
+      }
+      // la raffica locale: passa sulla strada da ovest a est
+      const gl = g * (.55 + .45 * Math.sin(time * 1.1 - q.x * .12 - q.z * .05 + q.seed * 3));
+      if (q.y <= 0) {
+        if (gl > .82 + q.seed * .35) { q.vx = wx * (1.6 + gl * 1.6) + (Math.random() - .5); q.vz = wz * (1.6 + gl * 1.6) + (Math.random() - .5); q.vy = 1 + Math.random() * 1.6 * gl; q.sp = (Math.random() - .5) * 9; }
+        else { q.vx *= Math.pow(.02, dt); q.vz *= Math.pow(.02, dt); q.sp *= Math.pow(.05, dt); q.rx *= .9; q.rz *= .9; }
+      } else {
+        q.vy -= 3.2 * dt; q.vx += (wx * gl * 3 - q.vx) * dt * 1.5; q.vz += (wz * gl * 3 - q.vz) * dt * 1.5;
+        q.rx = Math.sin(time * 7 + q.seed * 9) * .9; q.rz = Math.cos(time * 5.3 + q.seed * 7) * .7;
+      }
+      const nx = q.x + q.vx * dt, nz = q.z + q.vz * dt, nt = G.tileAt(Math.floor(nx / TS), Math.floor(nz / TS));
+      if (nt === G.T.BLD || nt === G.T.WATER) { q.vx *= -.3; q.vz *= -.3; } else { q.x = nx; q.z = nz; }
+      q.y = Math.max(0, q.y + q.vy * dt); if (q.y === 0) q.vy = 0;
+      q.ry += q.sp * dt;
+      Pp.d.position.set(q.x, groundH(q.x, q.z) + .035 + q.y, q.z); Pp.d.rotation.set(q.rx, q.ry, q.rz); const sc = q.leaf ? .55 : 1; Pp.d.scale.set(sc, 1, sc); Pp.d.updateMatrix(); Pp.m.setMatrixAt(i, Pp.d.matrix);
+    }
+    Pp.m.instanceMatrix.needsUpdate = true;
+  }
+  // ---- piccioni: stormi a terra nelle piazze e sui marciapiedi; si alzano quando passa qualcuno, girano e tornano giù più in là ----
+  function initBirds() {   // [animazioni-mondo]
+    const P = [], W = [], add = (bx, by, bz, w, h, d, wing) => { const g = new THREE.BoxGeometry(w, h, d).toNonIndexed(); g.translate(bx, by, bz); const p = g.attributes.position; for (let i = 0; i < p.count; i++) { P.push(p.getX(i), p.getY(i), p.getZ(i)); W.push(wing ? Math.abs(p.getX(i)) * 3.2 * Math.sign(p.getX(i)) : 0); } };
+    add(0, .14, 0, .17, .15, .3); add(0, .26, .14, .1, .1, .11); add(0, .13, -.2, .12, .03, .14);   // corpo, testa, coda
+    add(.2, .17, 0, .26, .025, .16, true); add(-.2, .17, 0, .26, .025, .16, true);                     // ali
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('aWing', new THREE.Float32BufferAttribute(W, 1)); geo.computeVertexNormals();
+    const N = 30, flap = new THREE.InstancedBufferAttribute(new Float32Array(N), 1); flap.setUsage(THREE.DynamicDrawUsage); geo.setAttribute('iFlap', flap);
+    const mat = new THREE.MeshLambertMaterial({ color: '#ffffff' });
+    mat.onBeforeCompile = sh => { sh.uniforms.wT = VENTO.t; sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aWing; attribute float iFlap; uniform float wT;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        float fl = sin(wT * 24. + instanceMatrix[3].x * 3.1) * iFlap; transformed.y += abs(aWing) * (fl * .55 - (1. - min(iFlap * 3., 1.)) * .0); transformed.x -= aWing * (1. - min(iFlap * 3., 1.)) * .11;`); };
+    const m = new THREE.InstancedMesh(geo, mat, N); m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.castShadow = true; scene.add(m);
+    const S = []; for (let i = 0; i < N; i++) { S.push({ flock: -1, x: 0, z: 0, y: 0, h: 0, ry: 0, st: 'off' }); m.setColorAt(i, new THREE.Color(['#8a8c94', '#6e7078', '#9a9aa0', '#5a5c64', '#c8c4bc'][i % 5])); }
+    return { m, S, N, F: [], flap, d: new THREE.Object3D() };
+  }
+  function birdSpot(x0, z0, r0, r1) { for (let k = 0; k < 14; k++) { const a = Math.random() * 6.28, r = r0 + Math.random() * (r1 - r0), x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r, t = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (t === G.T.PIAZZA || t === G.T.WALK || t === G.T.COB || t === G.T.QUAY) return [x, z]; } return null; }
+  function tickBirds(st, time, dt, night) {   // [animazioni-mondo]
+    const B = MONDO.birds, p = st.player; B.m.visible = night < .6;
+    if (!B.m.visible) return;
+    // al massimo 3 stormi vicini alla camera; quelli lontani si liberano
+    B.F = B.F.filter(f => { const far = Math.hypot(f.x - cam.x, f.z - cam.y) > 50; if (far) B.S.forEach(b => { if (b.flock === f.id) { b.flock = -1; b.st = 'off'; } }); return !far; });
+    if (B.F.length < 3 && Math.random() < dt * 2) {
+      const sp = birdSpot(cam.x, cam.y, 14, 34), free = B.S.filter(b => b.flock < 0);
+      if (sp && free.length >= 5) { const f = { id: Math.random(), x: sp[0], z: sp[1] }; B.F.push(f); free.slice(0, 5 + Math.floor(Math.random() * 4)).forEach(b => Object.assign(b, { flock: f.id, x: sp[0] + (Math.random() - .5) * 3, z: sp[1] + (Math.random() - .5) * 3, y: 0, ry: Math.random() * 6.28, st: 'terra', t: Math.random() * 2, hop: 0 })); }
+    }
+    // chi li spaventa: il giocatore che si avvicina, la gente che corre, le macchine, gli spari
+    const bang = (st.sfx || []).some(s => s.k === 'shot' || s.k === 'explosion' || s.k === 'honk');
+    const threats = [[p.x, p.y, (p.speed || 0) > 3 ? 5 : 3.4]];
+    st.npcs.forEach(n => { if (!n.inside && !n.dead && Math.abs(n.x - cam.x) < 40 && Math.abs(n.y - cam.y) < 40) threats.push([n.x, n.y, (n.speedNow || 0) > 2.5 ? 3.5 : 1.6]); });
+    st.vehicles.forEach(v => { if (!v.hidden && Math.abs(v.speed || 0) > 1 && Math.abs(v.x - cam.x) < 45 && Math.abs(v.y - cam.y) < 45) threats.push([v.x, v.y, 6]); });
+    B.F.forEach(f => {
+      let scare = bang && Math.hypot(f.x - p.x, f.z - p.y) < 40 ? [p.x, p.y] : null;
+      if (!scare) for (const [tx, tz, r] of threats) if (Math.hypot(tx - f.x, tz - f.z) < r + 2) { scare = [tx, tz]; break; }
+      if (scare && !f.fly) {   // tutto lo stormo si alza, uno dopo l'altro, e va a posarsi più in là, lontano da chi l'ha spaventato
+        const ax = f.x - scare[0], az = f.z - scare[1], al = Math.hypot(ax, az) || 1;
+        let L = null; for (let k = 0; k < 6 && !L; k++) { const s = birdSpot(f.x + ax / al * 18, f.z + az / al * 18, 0, 10); if (s && threats.every(([tx, tz]) => Math.hypot(tx - s[0], tz - s[1]) > 7)) L = s; }
+        L = L || birdSpot(cam.x, cam.y, 20, 36); if (!L) return;
+        f.fly = { x0: f.x, z0: f.z, x1: L[0], z1: L[1] }; f.x = L[0]; f.z = L[1];
+        B.S.forEach(b => { if (b.flock === f.id) { b.st = 'volo'; b.t = -Math.random() * .35; b.sx = b.x; b.sz = b.z; b.ex = L[0] + (Math.random() - .5) * 3; b.ez = L[1] + (Math.random() - .5) * 3; b.T = Math.hypot(b.ex - b.sx, b.ez - b.sz) / 6.5 + 2.2 + Math.random(); b.H = 6 + Math.random() * 5; b.side = (Math.random() - .5) * 8; } });
+      }
+      if (f.fly && B.S.every(b => b.flock !== f.id || b.st === 'terra')) f.fly = null;
+    });
+    for (let i = 0; i < B.N; i++) {
+      const b = B.S[i]; let fl = 0;
+      if (b.st === 'off') { B.d.position.set(0, -99, 0); B.d.scale.setScalar(.001); }
+      else {
+        if (b.st === 'terra') {   // beccano, fanno due passi, si girano
+          b.t -= dt; if (b.t <= 0) { b.t = .6 + Math.random() * 2; if (Math.random() < .5) { b.ry += (Math.random() - .5) * 2.4; b.hop = .3; } }
+          if (b.hop > 0) { b.hop -= dt; const nx = b.x + Math.sin(b.ry) * dt * 1.1, nz = b.z + Math.cos(b.ry) * dt * 1.1, t = G.tileAt(Math.floor(nx / TS), Math.floor(nz / TS)); if (t !== G.T.BLD && t !== G.T.WATER) { b.x = nx; b.z = nz; } }
+          b.y = b.hop > 0 ? Math.sin(b.hop / .3 * Math.PI) * .06 : 0;
+          const peck = b.hop <= 0 && Math.sin(time * 6 + i * 1.7) > .6 ? .5 : 0;
+          B.d.position.set(b.x, groundH(b.x, b.z) + b.y, b.z); B.d.rotation.set(peck, b.ry, 0, 'YXZ');
+        } else {   // in volo: arco alto, battito forte al decollo e all'atterraggio, planata in mezzo
+          b.t += dt; const k = Math.max(0, b.t) / b.T;
+          if (k >= 1) { b.st = 'terra'; b.x = b.ex; b.z = b.ez; b.y = 0; b.t = 1 + Math.random(); b.hop = 0; }
+          const e = k * k * (3 - 2 * k), sx = Math.sin(k * Math.PI) * b.side, dx = b.ex - b.sx, dz = b.ez - b.sz, dl = Math.hypot(dx, dz) || 1;
+          const x = b.sx + dx * e - dz / dl * sx, z = b.sz + dz * e + dx / dl * sx, h = Math.sin(k * Math.PI) * b.H + Math.max(0, Math.min(1, b.t * 4)) * .4 * (1 - k);
+          b.ry = Math.atan2(dx, dz) + Math.cos(k * Math.PI) * b.side * .06; b.x = x; b.z = z;
+          fl = k < .3 || k > .82 ? 1 : .25 + .2 * Math.sin(time * 2 + i);
+          const gy = groundH(b.sx + dx * k, b.sz + dz * k);
+          B.d.position.set(x, gy + h, z); B.d.rotation.set(k < .5 ? -.25 : .2, b.ry, Math.cos(k * Math.PI) * b.side * .04, 'YXZ');
+        }
+        B.d.scale.setScalar(1.25);   // forme esagerate: un piccione vero a questa distanza sparisce
+      }
+      B.d.updateMatrix(); B.m.setMatrixAt(i, B.d.matrix); B.flap.array[i] = fl;
+    }
+    B.m.instanceMatrix.needsUpdate = true; B.flap.needsUpdate = true;
+  }
+  // ---- porte delle case e delle botteghe che si aprono quando qualcuno entra o esce ----
+  function doorList() {   // [animazioni-mondo] il centro della porta sul filo del muro, con la normale verso fuori
+    if (MONDO.doorList) return MONDO.doorList;
+    MONDO.doorList = (G.BUILDINGS || []).filter(b => b.door).map(b => {
+      const f = !b.door ? 'S' : b.door[1] === b.y + b.h ? 'S' : b.door[0] === b.x + b.w ? 'E' : b.door[1] === b.y - 1 ? 'N' : 'W';
+      const dx = (b.door[0] + .5) * TS, dz = (b.door[1] + .5) * TS;
+      const P = f === 'S' ? [dx, (b.y + b.h) * TS, 0, 1] : f === 'N' ? [dx, b.y * TS, 0, -1] : f === 'E' ? [(b.x + b.w) * TS, dz, 1, 0] : [b.x * TS, dz, -1, 0];
+      return { x: P[0], z: P[1], nx: P[2], nz: P[3], dx, dz, shop: !!b.shop };
+    });
+    return MONDO.doorList;
+  }
+  function openDoor(n, night) {   // [animazioni-mondo]
+    let best = null, bd = 3.2 * 3.2; for (const d of doorList()) { const a = d.dx - n.x, b = d.dz - n.y, q = a * a + b * b; if (q < bd) { bd = q; best = d; } }
+    if (!best) return;
+    let R = MONDO.doors.find(r => r.d === best) || MONDO.doors.find(r => r.t > 2.6);
+    if (!R) {
+      if (MONDO.doors.length >= 6) return;
+      const rig = new THREE.Group(), piv = new THREE.Group(), leafM = sm('#4a3424', { roughness: .8 });
+      const leaf = box(1, 2.1, .06, leafM); leaf.position.set(.5, 1.05, 0); piv.add(leaf); const kn = box(.06, .06, .1, sm('#c8b070', { metalness: .6, roughness: .4 })); kn.position.set(.88, 1.0, .05); piv.add(kn);
+      piv.position.set(-.5, 0, .06); rig.add(piv);
+      const holeM = new THREE.MeshBasicMaterial({ color: '#0c0a09', toneMapped: false }), hole = new THREE.Mesh(new THREE.PlaneGeometry(1, 2.1), holeM); hole.position.set(0, 1.05, .035); rig.add(hole);
+      scene.add(rig); R = { rig, piv, holeM, t: 9, d: null }; MONDO.doors.push(R);
+    }
+    R.d = best; R.t = R.t < .5 ? R.t : 0; R.rig.position.set(best.x, groundH(best.dx, best.dz), best.z); R.rig.rotation.y = Math.atan2(best.nx, best.nz);
+    R.holeM.color.set(night > .4 ? (best.shop ? '#6a4420' : '#3a2814') : '#0c0a09');   // di notte dentro c'è la luce calda
+  }
+  function tickDoors(st, dt) {   // [animazioni-mondo]
+    MONDO.doors.forEach(R => {
+      if (R.t > 2.6) { R.rig.visible = false; return; }
+      const t = (R.t += dt), a = t < .4 ? Math.sin(t / .4 * Math.PI / 2) * 1.3 : t < 1.6 ? 1.3 : t < 2.3 ? 1.3 * Math.cos((t - 1.6) / .7 * Math.PI / 2) : 0;
+      R.piv.rotation.y = -a; R.rig.visible = a > .02;
+    });
+  }
+  // ---- il fotogramma del mondo ----
+  function tickMondo(st, time, night, dt) {   // [animazioni-mondo]
+    const t0 = performance.now(); MONDO.nf++; dt *= MONDO.dtk;
+    MONDO.rain = isRaining(st.t); MONDO.pxH = (rt && rt.height) || 800;
+    tickVento(time);
+    if (!MONDO.puffs) { MONDO.puffs = mondoPts(220, false); MONDO.sparks = mondoPts(140, true); MONDO.papers = initPapers(); MONDO.birds = initBirds(); }
+    // scintille e fumo dai fuochi vicini (barili, falò, bivacchi)
+    const fires = MONDO.fuochi.concat(WX.fires.map(f => f.g.position));
+    for (const f of fires) {
+      const x = f.x, z = f.z; if (Math.abs(x - cam.x) > 45 || Math.abs(z - cam.y) > 45) continue;
+      if (Math.random() < dt * (2.2 + night * 2)) emit(MONDO.sparks, x + (Math.random() - .5) * .3, f.y + .25, z + (Math.random() - .5) * .3, (Math.random() - .5) * .8, 1.6 + Math.random() * 2.2, (Math.random() - .5) * .8, .7 + Math.random() * .9, .09, .04, .9, 1, .55 + Math.random() * .3, .15, -2.2);
+      if (Math.random() < dt * .9) { const c = .22 + (1 - night) * .25; emit(MONDO.puffs, x, f.y + .5, z, 0, .5, 0, 2.6 + Math.random() * 1.5, .35, 1.8, .22, c, c * .98, c * .96, .7); }
+    }
+    stepPts(MONDO.puffs, dt); stepPts(MONDO.sparks, dt);
+    if (MONDO.nf % 2 === 0) { tickPapers(st, time, Math.min(dt * 2, .1)); tickBirds(st, time, Math.min(dt * 2, .1), night); }
+    // porte: chi entra o esce vicino alla camera
+    st.npcs.forEach(n => {
+      const was = MONDO.inside[n.id], is = !!n.inside && !n.inVeh; MONDO.inside[n.id] = is;
+      if (was !== undefined && was !== is && Math.abs(n.x - cam.x) < 45 && Math.abs(n.y - cam.y) < 45) openDoor(n, night);
+    });
+    tickDoors(st, dt);
+    MONDO.ms = MONDO.ms * .95 + (performance.now() - t0) * .05;
   }
 
   function tickWinter(time, night) {
@@ -9564,12 +9896,13 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (frameN % 6 === 0 || !dyn.wl1) { const cx = cam.x, cz = cam.y; dyn.wl1 = LSRC.filter(L => { if (L.off || !(L.base > 0) || Math.abs(L.x - cx) > 70 || Math.abs(L.z - cz) > 70) return false; if (L.cw1 === undefined) L.cw1 = coastIn(L.x, L.z); return L.cw1 < 7; }).sort((a, b) => ((a.x - cx) ** 2 + (a.z - cz) ** 2) - ((b.x - cx) ** 2 + (b.z - cz) ** 2)).slice(0, 16); }
       for (let i = 0; i < 16; i++) { const L = dyn.wl1[i]; if (L && !L.off) { U.lp.value[i].set(L.x, L.y + .45, L.z, Math.min(1.6, L.base * .5)); U.lc.value[i].copy(L.color); } else U.lp.value[i].w = 0; } }
     if (dyn.skyline) { dyn.skyline.position.set(camera.position.x, 8, camera.position.z); dyn.skyline.material.opacity = .5 + night * .5; }
-    dyn.boats.forEach(b => { b.g.position.y = (b.y !== undefined ? b.y : -.3) + Math.sin(time * 1.3 + b.ph) * .08; b.g.rotation.z = Math.sin(time * 1.1 + b.ph) * .04; });
+    dyn.boats.forEach(b => { b.g.position.y = (b.y !== undefined ? b.y : -.3) + Math.sin(time * 1.3 + b.ph) * .08; b.g.rotation.z = Math.sin(time * 1.1 + b.ph) * .04; b.g.rotation.x = Math.sin(time * .83 + b.ph * 1.7) * .025; });   // [animazioni-mondo] beccheggio
     dyn.laundry.forEach(l => { if (l.ax === false) l.m.rotation.z = Math.sin(time * 2 + l.ph) * .25; else l.m.rotation.x = Math.sin(time * 2 + l.ph) * .25; });
     if (window.Models) Models.tick(st, time, night);
     tickWinter(time, night);
     tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri
     tickUrbano1(time, night);
+    tickMondo(st, time, night, dt);   // [animazioni-mondo] vento, fumo, scintille, carte, piccioni, porte
     dyn.spin.forEach(s => { s.o.rotation.y = time * s.speed; s.o.children.forEach(c => c.children.forEach(m => m.material.opacity = .015 + night * .06)); });
     dyn.beams.forEach(b => { b.piv.rotation.z = Math.sin(time * .6 + b.ph) * .45; b.piv.rotation.x = Math.cos(time * .45 + b.ph) * .3; b.mat.opacity = .02 + night * .13; });
     dyn.chasers.forEach(c => { const n = c.bulbs.length; c.bulbs.forEach((b, i) => b.material.color.set(((i + Math.floor(time * 8)) % 3) === 0 ? '#fff4c0' : '#6a4a20')); });
@@ -9651,6 +9984,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       u.tailGlows.forEach(s => { s.visible = !v.wreck && (lampsOn || braking); s.material.opacity = braking ? .9 : .4; s.scale.setScalar(braking ? 1.1 : .7); });
       if (u.tlMat) u.tlMat.color.set(braking ? '#ff3a3a' : lampsOn ? '#d02020' : '#8a1010');
       if (u.beacons) { const on = v.siren && Math.sin(st.clock * 14) > 0; u.beacons[0].color.set(on ? '#3a7aff' : '#10204a'); u.beacons[1].color.set(!on && v.siren ? '#3a7aff' : '#10204a'); }
+      vehMondo(v, g, u, K, dt, time, night);   // [animazioni-mondo] portiere, tergicristalli, scarico, motore al minimo, lampeggianti
     });
     for (const id in dyn.vehicles) if (!st.vehicles.find(v => v.id === id)) { scene.remove(dyn.vehicles[id]); delete dyn.vehicles[id]; }
     for (const id in dyn.people) if (id !== '__player' && !st.npcs.find(n => n.id === id)) { scene.remove(dyn.people[id]); delete dyn.people[id]; }
@@ -9818,5 +10152,6 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   function screenToGround(nx, ny) { ground.constant = -((window.InterniArte && InterniArte.floorY() != null ? 0 : 1.1) + playerH);   /* [interni] dentro si clicca sul pavimento */ ray3.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), camera); return ray3.ray.intersectPlane(ground, hit3) ? { x: hit3.x, y: hit3.z } : null; }
   function camBasis() { const f = new THREE.Vector3(); camera.getWorldDirection(f); f.y = 0; f.normalize(); return { fx: f.x, fz: f.z, rx: -f.z, rz: f.x }; }
   function snap(st) { cam.x = st.player.x; cam.y = st.player.y; cam.h = groundH(st.player.x, st.player.y); }
-  return { dirtyAt, updateChunks, ISO, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  const __mondo = { M: MONDO, V: VENTO, stat: () => ({ ms: +MONDO.ms.toFixed(3), vento: +VENTO.g.value.toFixed(2), neve: MONDO.rain, fumo: MONDO.puffs ? Array.from(MONDO.puffs.life).filter(l => l > 0).length : 0, scintille: MONDO.sparks ? Array.from(MONDO.sparks.life).filter(l => l > 0).length : 0, fuochi: MONDO.fuochi.length + WX.fires.length, stormi: MONDO.birds ? MONDO.birds.F.length : 0, porte: MONDO.doors.filter(r => r.rig.visible).length, barche: dyn.boats.length, bucato: dyn.laundry.length, gabbiani: dyn.gulls.length }) };   // [animazioni-mondo] per le prove
+  return { dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();

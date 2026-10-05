@@ -375,7 +375,7 @@ var Models = (function () {
       });
     }
     dyn.guards.forEach(q => animPerson(q.g, { speed: 0, gun: q.gun, weapon: 'guardia' }, gdt));
-    dyn.boats.forEach(b => { b.o.position.y = -.35 + Math.sin(time * (b.slow ? .5 : 1.2) + b.ph) * (b.slow ? .08 : .12); b.o.rotation.z = Math.sin(time * .9 + b.ph) * (b.slow ? .01 : .04); });
+    dyn.boats.forEach(b => { b.o.position.y = -.35 + Math.sin(time * (b.slow ? .5 : 1.2) + b.ph) * (b.slow ? .08 : .12); b.o.rotation.z = Math.sin(time * .9 + b.ph) * (b.slow ? .01 : .04); b.o.rotation.x = Math.sin(time * .67 + b.ph * 1.9) * (b.slow ? .006 : .025); });   // [animazioni-mondo] anche il beccheggio
     // elicottero: di notte gira sull'isola, più basso e più vicino quando c'è allarme
     if (dyn.heli) {
       const alarm = (st.ris && st.ris.repr > 40) || (G.wantedLevel ? G.wantedLevel(st) >= 2 : false);
