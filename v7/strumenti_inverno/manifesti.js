@@ -54,10 +54,10 @@
     });
   }
   // --- murales: dipinti dalla gente sui muri ciechi, colori di vernice da muro, scrostati ---
-  function mvMural(k) {
-    const key = 'm' + k; if (MV.tex[key]) return MV.tex[key];
+  function mvMural(k, tall) {
+    const key = 'm' + k + (tall ? 't' : ''); if (MV.tex[key]) return MV.tex[key];
     const r = rng(k * 271 + 3);
-    return MV.tex[key] = mvCanvas(192, 64, (x, W, H) => {
+    return MV.tex[key] = mvCanvas(tall ? 96 : 192, tall ? 136 : 64, (x, W, H) => {
       const P = pick(r, [['#b8643a', '#2f4a3a', '#d9c49a', '#7a2a24', '#1c1a18'], ['#c99a3c', '#5a2a2a', '#e0d3b4', '#2a3a4a', '#1a1816'], ['#8a4a3a', '#c8a050', '#d8ccb0', '#3a4a30', '#161412']]);
       const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, P[2]); g.addColorStop(1, P[0]); x.fillStyle = g; x.fillRect(0, 0, W, H);
       x.fillStyle = P[0]; x.beginPath(); x.arc(W * (.15 + r() * .2), H * .32, 12, 0, 7); x.fill();   // il sole basso
@@ -89,6 +89,7 @@
   }
   // --- materiali: carta (statica), vernice (piatta), stoffa (si muove) ---
   function mvPaperMat(t) { return new THREE.MeshLambertMaterial({ map: t, transparent: false, alphaTest: .4, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); }
+  function mvMuralMat(k, tall) { const key = 'mm' + k + (tall ? 't' : ''); return MV.mats[key] || (MV.mats[key] = mvPaintMat(mvMural(k, tall))); }
   function mvPaintMat(t) { return new THREE.MeshLambertMaterial({ map: t, transparent: true, opacity: .93, alphaTest: .05, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }); }
   function mvClothMat(t, mode) {   // mode 0 = stendardo (appeso in alto, ondeggia in fondo), 1 = bandiera (attaccata all'asta, sventola in punta)
     const m = new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide, alphaTest: .4 });
