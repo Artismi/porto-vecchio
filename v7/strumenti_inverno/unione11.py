@@ -150,24 +150,33 @@ rep("    const tex = canvasTex(c);\n    let rtex = null;", "    const tex = canv
 # contatti: sporcavano. Il contorno è continuo (più pieno solo dove la sagoma si stacca molto dal fondo, mai a pezzi); il volume lo
 # danno solo linee geometriche pulite (spigoli, pieghe, contatto a terra); dove i bordi sono fittissimi (chiome, erba) le linee si
 # diradano invece di fare la grattugia.
+# (poi: «per certe cose sono fittissime come il prato, per altre sono senza; le case non hanno linee sulle finestre, il lampione è
+# iperchiaro») La soglia era un salto di mezzo metro: cornici e gradini restavano senza linea, foglie ed erba la superavano ovunque,
+# e i pali prendevano il contorno pieno sui due lati. Ora il contorno nasce da ogni cambio di forma, anche di pochi centimetri
+# (seconda differenza della profondità, che sui piani di sbieco resta zero), sottile e uguale per tutti; dove i bordi sono
+# fittissimi (fogliame, erba, grate) le linee si spengono e il volume lo fa l'ombra di profondità.
+# (poi: «per certe cose sono fittissime come il prato, per altre sono senza») La soglia era un salto di mezzo metro: cornici e
+# gradini restavano senza linea, foglie ed erba la superavano ovunque. Ora il contorno nasce da ogni cambio di forma, anche di pochi
+# centimetri (seconda differenza della profondità, che sui piani di sbieco resta zero); dove i bordi sono fittissimi (fogliame,
+# erba, grate) le linee si spengono e il volume lo fa l'ombra di profondità.
 # (poi: «usiamo lo shader per dare tridimensionalità, contrasto e profondità») Prima dell'inchiostro, l'oscuramento di profondità:
 # la profondità sfocata su un anello largo dice cosa sta dietro a qualcosa di più vicino (il suolo dietro un personaggio, il muro
 # dietro una tettoia) e lì l'ombra si raccoglie attorno alla sagoma; quello che sta davanti prende un filo di luce. Le figure si
 # staccano dal fondo e i piani si leggono, senza aggiungere grana.
 rep("c = mix(c, c*.55 + vec3(.02,.025,.04), ol*aK2.z*(1.-coc));   // [amb2]",
 """{   /* [unione11] inchiostro col peso della mano */
-            float tA = .45*(1.+d*.01), tB = .9*(1.+d*.012), e2 = 0., busy = 0.;
+            float tA = .45*(1.+d*.01), tB = .9*(1.+d*.012), e2 = 0., busy = 0., tS = .09 + d * .004, s2 = max(abs(d1 + d2 - 2. * d), abs(d3 + d4 - 2. * d));   // tS: soglia della forma, anche pochi centimetri
             float fb11 = 0.; { float dB = 0.; for (int k = 0; k < 8; k++) { float a = float(k) * .7854 + .2; dB += dL(uv + vec2(cos(a), sin(a)) * px * (k < 4 ? 5. : 10.)); } dB /= 8.;   // oscuramento di profondità
               float behind = clamp((d - dB) / (d * .02 + .4), 0., 1.), front = clamp((dB - d) / (d * .02 + .4), 0., 1.), nearK = (1. - coc) * (1. - smoothstep(dc * 1.2, dc * 2., d) * .7);
               c *= 1. - behind * .3 * nearK; c += c * front * .14 * nearK; fb11 = behind * nearK; }
-            for (int k = 0; k < 8; k++) { float a = float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * px * (k - k/2*2 == 0 ? 2. : 1.7); float jk = dL(uv + o) - d; e2 = max(e2, jk); busy += step(tA, abs(jk)); }
+            for (int k = 0; k < 8; k++) { float a = float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * px * (k - k/2*2 == 0 ? 2. : 1.7); float jk = dL(uv + o) - d; e2 = max(e2, jk); busy += step(tS * 1.5, abs(jk)); }
             float lum0 = dot(c, vec3(.3,.59,.11)), dark = 1. - smoothstep(.08, .5, lum0);
             float zr = texture2D(tD, uv).r; vec4 wq = vInvVP * vec4(uv * 2. - 1., zr * 2. - 1., 1.); vec3 wp = wq.xyz / wq.w; vec2 sp = vec2(wp.x + wp.y * .6, wp.z - wp.y * .6) * .9;
-            float thin = smoothstep(tA * 1.2, tA * 1.55, edge);   // il contorno: filo netto (soglia stretta sul bordo interpolato: taglio pulito, non sfumato)
-            float thick = smoothstep(tA * 5., tA * 7., e2) * .85;   // più pieno solo dove la sagoma si stacca molto dal fondo: continuo lungo il bordo, mai a pezzi
+            float thin = smoothstep(tS, tS * 1.35, min(edge, s2));   // il contorno nasce da ogni cambio di forma (cornici, gradini, sagome), non dai piani visti di sbieco
+            float thick = 0.;   // niente ingrossamento: sui pali e sulle cose sottili diventava tutto nero
             float d2x = abs(d1 + d2 - 2. * d), d2y = abs(d3 + d4 - 2. * d), form = smoothstep(.05 + d * .004, .07 + d * .0055, max(d2x, d2y)) * (1. - thin) * .7;   // filetti di forma: spigoli e pieghe dentro la sagoma, sottili e netti
             float cvi = (d1 + d2 + d3 + d4 - 4. * d) / (d * .012 + .08), crease = smoothstep(.9, 2.2, -cvi) * .55;
-            float ink = max(max(max(thin, thick), crease * .55), form) * (1.-coc) * (1. - smoothstep(3.5, 6.5, busy) * .75) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
+            float ink = max(max(max(thin, thick), crease * .55), form) * (1.-coc) * (1. - smoothstep(4.5, 6.5, busy)) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
             vec3 inkC = vec3(.03, .026, .032) + c * .04;   // inchiostro di china: nero vero
             c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); }""")
 # ---------------- 7) colore un filo più saturo ----------------
