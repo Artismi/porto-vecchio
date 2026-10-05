@@ -55,6 +55,7 @@ var OggettiUI = (function () {
     return true;
   }
   function open(panel, arg) {
+    if (typeof MenuUI !== 'undefined' && /^(zaino|lavora|banco|fruga)$/.test(panel)) { MenuUI.open(panel === 'banco' ? 'bottega' : panel, arg); return; }   // [menu] la valigetta nuova
     if (!mount()) return;
     if (typeof TascheUI !== 'undefined') try { TascheUI.toggle(false); } catch (e) { }
     if (typeof SoldiUI !== 'undefined' && SoldiUI.state && SoldiUI.state.open) try { SoldiUI.close(); } catch (e) { }

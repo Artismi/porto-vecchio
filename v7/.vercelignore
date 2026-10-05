@@ -1,0 +1,14 @@
+# su Vercel va solo il gioco: index.html, assets/ e api/
+_backup_*
+_scambio
+_to_delete
+strumenti_inverno
+src
+/*.png
+/*.txt
+/*.mjs
+/*.bat
+/*.ps1
+/server.js
+/build.py
+/api_key.json
