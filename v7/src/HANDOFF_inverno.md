@@ -146,3 +146,41 @@ Catena: dopo render18 → `inverno_render19..25.py` (+ frammento `inverno_propag
 - render28 (STUDIO LUCI): il gruppo di luci è ora `SPOOL` (faretti con ombra, quanti ne regge la scheda: N = maxTextures-7, tra 4 e 12) + `PPOOL` (8 punti senza ombra per i fuochi). Si accendono sulle sorgenti di `LSRC` dentro l'inquadratura (frustum), le più vicine prima. Ombre rifatte quando un faretto cambia sorgente e a turno 3 per fotogramma. Coni di luce leggeri nella foschia sotto le sorgenti alte di notte. Rimesso lo sfarfallio (render23 l'aveva spento per errore). Copia: `render_prima_dello_studio_luci.js`.
 - Da fare per lo studio luci: luce che lava le facciate (le insegne illuminano solo verso il basso), luce che esce dalle vetrine sul marciapiede, interni (oggi PointLight senza ombra in buildInteriors).
 - render29 (bilanciamento): faretti con decadimento 1.25 e bordo sfumato (penombra .95), intensità divisa tra sorgenti vicine (`L.nb`, sorgenti entro 7 m), spalla delle alte luci da .48, un filo di luna di notte. Andrea: «o bruciate o scure». Copia: `render_prima_del_bilanciamento.js`.
+
+## 5 ottobre — l'isola nuova (testa di bosco, Tavolato, quartiere del governo, strade come opere)
+Base: v7 di prima (commit «yeah.»). Copia della mappa di prima: `git show 04f174a:v7/src/world.js`.
+- **Forma** (`world.js`, sezione «[isola] LA FORMA NUOVA»): mappa **1300 × 400 m** (650 × 200 caselle). Da ovest: testa di bosco tonda
+  (`HEAD`, raggio 166 m) col **Tavolato** (`TAV`: tepui a 42 m, raggio ~58 m, pareti verticali, ghiaione, due canaloni `CANALI` levante/ponente:
+  solo a piedi, sentieri a tornanti `canale_e`, `canale_o`, traccia in cima `tav_top`), la **Spiaggia Lunga** sulla riva sud, la vita stretta,
+  il collo di foresta, poi il Monte Scuro e tutto il resto come prima.
+- **Coordinate vecchie**: le funzioni di prima (`yc, northY, southY, onLand, inland, monte, zoneO, rawElevO, districtO`) restano in coordinate vecchie.
+  Vecchie x 146..348 (foresta, monte, periferia ovest) → +532 m (`DXF`); vecchie x ≥ 348 (centro, periferia est, Muro, Base, porto) → +612 m (`DXC`).
+  Fra 880 e 960 (`XG..XC`) c'è il **quartiere del governo** (nuovo). Le y non cambiano. `xn(vecchia) → nuova`, `xo(nuova) → vecchia`.
+  Gli id di luoghi ed edifici sono tutti rimasti; quelli della prateria sono stati ricollocati nella testa (stazioni, saline, faro, punta, beduini sul Tavolato).
+  Esportati in più: `DXF, DXC, XF, XG, XC, XE, xo, xn, HEAD, TAV, CANALI, GOV, BF, bosco, RING, TUNNELS, tavR, canHalf, CAN0, CAN1, canFloor, inland`.
+- **Luoghi nuovi**: `tavolato, canalone_e, canalone_o, bosco_antico, campo_p, spiaggia_lunga, memoria, piazza_gov, pescatori_s, pescatori_n, pescatori_t`.
+  **Edifici nuovi** (governo, `gov: true`): `pietra` (La Pietra dell'Onda), `governo` (Palazzo del Governo), `ministero`, `garante` (Uffici del Garante), `archivio`.
+- **Strade**: la costiera fa il giro intero (una linea sola `RING`, divisa in `nord` e `litoranea` sulla punta ovest). `raccordo_o` (Raccordo del Valico) all'inizio
+  del Monte; la strada centrale `deserto` (Strada del Bosco, asfalto) diventa `memoria` (Via della Memoria, mulattiera) e sale fino al canalone di levante.
+  **Piano di posa nuovo**: priorità costiere → strade → città → sentieri; estremi e attraversamenti prendono la quota della strada già sistemata (raccordo su 30 m);
+  pendenza max 15% asfalto, 20% piste, 30-42% sentieri a piedi; carreggiata in piano (anche sopra le pareti); a monte roccia tagliata quasi a picco
+  (`feat & 1024`), a valle muro di sostegno sugli asfalti (`feat & 16384`), scarpata sugli sterrati; gallerie artificiali dove lo scavo supera 6,5 m
+  da tutte e due le parti (`TUNNELS`, oggi nessuna). `rd.edge`: per ogni punto e lato, 1 taglio, 2 salto, 3 mare (per guardrail e parapetti).
+- **Città**: case a schiera di larghezze e profondità diverse, qualcuna arretrata; **baraccopoli** (`shack: true`) che riempie i cortili e le periferie
+  lasciando passaggi storti; altezze da 1 a 8 piani, più alte verso il governo; **palazzi a gradoni** (`b.tiers`: volumi più piccoli sopra il corpo, terrazzo sulla strada,
+  stanzetta in cima). **Borghi dei pescatori**: tre gruppi di casette sulla riva col pontile (`fisher: true`).
+- **Render** (catena: dopo `inverno_render30.py` → `inverno_render31.py`, `inverno_render32.py`, `inverno_render33.py`; frammenti `isola_render.js`, `isola_render2.js`):
+  baracche di lamiera a pannelli storti; palazzi a gradoni; banchi del mercato di fortuna (cassette, telo sbiadito, cartone scritto a mano, lampadina) al posto di quelli a righe;
+  torri del governo (colossi coi globi e torre dell'orologio, busto del Garante in facciata, piramidi di cemento, capsula rossa sul fusto, bunker a contrafforti);
+  cartelloni sui tetti su traliccio; guardrail e parapetti dove la strada cade o corre sul mare (qualche tratto storto o mancante); cartelli rovinati agli incroci
+  (cirillico, ruggine, fori); cantieri con coni, transenne, lampada gialla; posti di blocco; panchine, paletti, cabine, buche delle lettere, fermate; massi ai piedi dei tagli;
+  tagli e muri dipinti a bordi tondi; fascia del marciapiede e maschera dei marciapiedi rialzati che seguono la curva delle strade storte (niente scalini);
+  parete del Tavolato liscia sulla curva vera con le costole, ciglio che copre il bordo del terreno; faro su traliccio con la torre di lamiera arancione;
+  stazioni di estrazione di mattoni con ciminiere a fasce, silo e condotti; sottobosco, chiome in più, faggi; chiome del kit naturale più chiare.
+  Coordinate scritte a mano spostate di `DXC` (barche del porto, banchine, vapore, elicottero); `coastIn` usa `world.inland`.
+- **Strumenti** (`strumenti_inverno/`): `pianta3d.html` + `pianta3d.js` (vista d'insieme della mappa con etichette: `node strumenti_inverno/pianta3d.js out.png "box=x0,y0,x1,y1&lab=id,id&top=1"`),
+  `shot_gioco.js` (istantanee del gioco vero da un file di scene; azzera il lampo rosa che senza testa resta acceso), `controlla_mappa.js` (pendenze, incroci, sezione, compenetrazioni, raggiungibilità).
+- **Prove**: `test_vita`, `test_azioni`, `test_oggetti`, `test_fazioni`, `test_livelli` passano. `test_soldi` si ferma su `I.arrest is not a function` (fazioni.js:311)
+  anche con la mappa di prima: non dipende dalla mappa. Gli abitanti salgono verso il tetto di `popolo.js` (420) perché ci sono più case; `test_oggetti` ora dura ~70 s.
+- **Da fare**: guardare a schermo da vicino i palazzi del governo e il Tavolato di giorno e di notte; bunker a sommergibili per il porto cargo; gallerie (oggi nessuna);
+  interni delle baracche; i lavoratori all'aperto nelle stazioni lontane arrivano tardi (la testa è a ~800 m dalla città).
