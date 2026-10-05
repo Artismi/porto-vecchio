@@ -4620,6 +4620,1562 @@ THREE.GLTFLoader = GLTFLoader;
 
 })();
 </script>
+<script>/* ================= ANIMAZIONI: il motore comune =================
+   I personaggi del kit (Quaternius) hanno poche clip: Idle, Walk, Run, Punch, Death, Wave, Interact, Gun_Shoot...
+   Qui sopra le clip si aggiunge uno strato procedurale: ogni fotogramma, dopo il mixer, si piegano le ossa
+   verso le pose delle azioni (sedersi, bere, scavare, mirare...). Le pose si scrivono nello SPAZIO DEL PERSONAGGIO,
+   così non serve conoscere gli assi delle singole ossa:
+     +z = avanti (dove guarda), +y = su, +x = sinistra del personaggio (la sua destra è -x).
+   Ossa (nomi di three.js, senza il punto): Hips Abdomen Torso Chest Neck Head
+     ShoulderL UpperArmL LowerArmL WristL   ShoulderR UpperArmR LowerArmR WristR
+     UpperLegL LowerLegL FootL              UpperLegR LowerLegR FootR
+   Chi scrive una posa usa:
+     P.aim(osso, [x,y,z], peso)   punta l'osso (dalla sua base verso l'osso figlio) nella direzione data
+     P.rot(osso, ax, ay, az, peso) ruota l'osso attorno agli assi del personaggio (radianti, in ordine x, y, z)
+     P.body({ y, z, x, rx, ry, rz }) sposta/ruota tutto il corpo (sedersi: y negativo; sdraiarsi: rx)
+                                   (si applica DOPO la posa: le pose sdraiate si scrivono come se si stesse in piedi)
+     P.prop(nome)                  accende un oggetto in mano (vedi Anim.prop)
+     P.t (secondi da quando la posa è attiva), P.time (orologio), P.w (peso della posa, 0-1, sale e scende da solo),
+     P.o (le opzioni passate ad animPerson), P.r (numero fisso per persona, 0-1, per variare le pose),
+     P.bulk (metri di vestiti su busto e braccia: allargare gomiti e mani di tanto, per non bucare il cappotto)
+     P.base(clip)                  chiede una clip sotto la posa (es. 'Idle' per stare fermi mentre si siede)
+   Le pose si registrano con Anim.def(nome, { fn(P), full, base, fade }) e si scelgono con le «mappe»:
+     Anim.npcMap(fn(st, n, s))  e  Anim.playerMap(fn(st, p, s))  riempiono s = { act, upper, mood, talk, lookAt }
+       act:   posa di tutto il corpo (una sola: 'siede', 'dorme', 'scava'...)
+       upper: posa delle braccia sopra la camminata (una sola: 'telefono', 'fuma', 'porta'...)
+       mood:  strati leggeri sempre attivi (lista: 'ubriaco', 'freddo', 'ferito', 'paura', 'rabbia')
+       talk:  true se sta parlando (gesti delle mani e della testa)
+       lookAt: { x, y, z } punto del mondo da guardare (la testa ci gira, entro i limiti del collo)
+   Il file è indipendente dal resto: se una posa lancia un errore, si spegne da sola e il personaggio resta com'era. */
+var Anim = (function () {
+  const POSES = {}, NPCMAPS = [], PLMAPS = [], PROPS = {};
+  const V = () => new THREE.Vector3(), Q = () => new THREE.Quaternion();
+  const _a = V(), _b = V(), _c = V(), _d = V(), _q = Q(), _q2 = Q(), _q3 = Q(), _q4 = Q(), _e = new THREE.Euler();
+  const ID = Q();
+  const CHILD = { UpperArmL: 'LowerArmL', LowerArmL: 'WristL', UpperArmR: 'LowerArmR', LowerArmR: 'WristR', UpperLegL: 'LowerLegL', LowerLegL: 'FootL', UpperLegR: 'LowerLegR', LowerLegR: 'FootR', Neck: 'Head', Chest: 'Neck', Torso: 'Chest', Abdomen: 'Torso', Hips: 'Abdomen', ShoulderL: 'UpperArmL', ShoulderR: 'UpperArmR' };
+  const FINGERS = ['Index', 'Middle', 'Ring', 'Pinky'], FB = [];
+  ['L', 'R'].forEach(sd => { FINGERS.forEach(f => [1, 2, 3, 4].forEach(k => FB.push(f + k + sd))); [1, 2, 3].forEach(k => FB.push('Thumb' + k + sd)); });
+  const BONES = FB.concat(['Hips', 'Abdomen', 'Torso', 'Chest', 'Neck', 'Head', 'ShoulderL', 'UpperArmL', 'LowerArmL', 'WristL', 'ShoulderR', 'UpperArmR', 'LowerArmR', 'WristR', 'UpperLegL', 'LowerLegL', 'FootL', 'UpperLegR', 'LowerLegR', 'FootR']);
+  const disabled = {};
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+  const smooth = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
+  function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }
+
+  // ---------------- lo scheletro di una persona ----------------
+  function rig(g) {
+    const u = g.userData; if (u.rig !== undefined) return u.rig;
+    const m = u.body && u.body.children.find(c => c.isObject3D && c.getObjectByName && c.getObjectByName('Hips'));
+    if (!m) { u.rig = null; return null; }
+    const b = {}; BONES.forEach(k => { const o = m.getObjectByName(k); if (o) b[k] = o; });
+    // le ossa del kit Toon Shooter hanno spesso il figlio con un nome diverso: si prende il primo osso figlio
+    for (const k in b) if (!CHILD[k] || !b[CHILD[k]]) { const c = b[k].children.find(x => x.isBone); if (c && !CHILD[k]) CHILD[k] = c.name; }
+    // lunghezza dello stinco, presa subito (dopo il piede viene spostato dalle pose)
+    let shin = .45; if (b.LowerLegL && b.FootL) { g.updateMatrixWorld(true); const p1 = new THREE.Vector3(), p2 = new THREE.Vector3(); b.LowerLegL.getWorldPosition(p1); b.FootL.getWorldPosition(p2); shin = p1.distanceTo(p2) || .45; }
+    u.rig = { shin, m, b, layers: {}, r: hashStr(String(g.id) + (u.model || '')), headYaw: 0, headPitch: 0, talkT: 0 };
+    return u.rig;
+  }
+
+  // ---------------- gli attrezzi delle pose (sigaretta, bicchiere, telefono...) ----------------
+  // Anim.prop(nome, costruttore, osso, [x,y,z] in metri nello spazio del personaggio rispetto al polso, [rx,ry,rz])
+  // Il costruttore restituisce un Object3D (misure in metri). Si crea alla prima richiesta, una volta per persona.
+  function prop(name, make, bone, off, rot) { PROPS[name] = { make, bone: bone || 'WristR', off: off || [0, -.08, .04], rot: rot || [0, 0, 0] }; }
+  function getProp(g, R, name) {
+    R.props = R.props || {};
+    if (R.props[name]) return R.props[name];
+    const D = PROPS[name], bone = D && R.b[D.bone]; if (!D || !bone) return null;
+    const obj = D.make(); if (!obj) return null;
+    // si aggancia all'osso compensando la scala del modello (le ossa del kit sono in centimetri)
+    g.updateMatrixWorld(true); bone.getWorldScale(_a); const gs = V(); g.getWorldScale(gs);
+    const holder = new THREE.Group(); holder.scale.setScalar(gs.x / (_a.x || 1));
+    holder.add(obj); bone.add(holder);
+    // posizione e rotazione date nello spazio del personaggio: si convertono in quelle dell'osso
+    bone.getWorldQuaternion(_q); g.getWorldQuaternion(_q2); const rel = _q.clone().invert().multiply(_q2);
+    holder.quaternion.copy(rel).multiply(_q3.setFromEuler(_e.set(D.rot[0], D.rot[1], D.rot[2])));
+    const off = V().fromArray(D.off).multiplyScalar(gs.x).applyQuaternion(_q2); // spostamento nel mondo
+    off.applyQuaternion(_q.clone().invert()).divideScalar(_a.x || 1);
+    holder.position.copy(off);
+    holder.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+    holder.visible = false; R.props[name] = holder; return holder;
+  }
+
+  // ---------------- l'oggetto che le pose usano ----------------
+  function makeP(g, R) {
+    const gq = Q();
+    const P = {
+      g, R, w: 1, t: 0, time: 0, o: {}, r: R.r, bulk: 0, _base: null, _props: null, _body: null,
+      bone: k => R.b[k],
+      // punta l'osso (base → figlio) verso la direzione data nello spazio del personaggio
+      aim(k, dir, w) {
+        const bn = R.b[k], ch = R.b[CHILD[k]]; if (!bn || !ch) return P;
+        const ww = (w === undefined ? 1 : w) * P.w; if (ww <= 0) return P;
+        // gambe: il piede del kit non è figlio dello stinco (è un bersaglio sotto Root): si punta l'asse dell'osso
+        // e poi il piede torna in fondo allo stinco, sennò la scarpa si stira
+        const leg = LEG[k]; if (leg) { _c.set(dir[0], dir[1], dir[2]).normalize().applyQuaternion(gq); aimY(bn, _c, ww); footToShin(R, leg); return P; }
+        bn.getWorldPosition(_a); ch.getWorldPosition(_b); _b.sub(_a); if (_b.lengthSq() < 1e-10) return P;
+        _b.normalize(); _c.set(dir[0], dir[1], dir[2]).normalize().applyQuaternion(gq);
+        _q4.setFromUnitVectors(_b, _c); _q.copy(ID).slerp(_q4, ww);
+        applyWorld(bn, _q); return P;
+      },
+      // ruota l'osso attorno agli assi del personaggio
+      rot(k, ax, ay, az, w) {
+        const bn = R.b[k]; if (!bn) return P;
+        const ww = (w === undefined ? 1 : w) * P.w; if (ww <= 0) return P;
+        _q.setFromEuler(_e.set(ax * ww, ay * ww, az * ww, 'XYZ'));
+        _q.premultiply(gq).multiply(_q2.copy(gq).invert());   // asse del personaggio → asse del mondo
+        applyWorld(bn, _q); if (LEG[k]) footToShin(R, LEG[k]); return P;
+      },
+      body(o) { P._body = P._body || { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0 }; for (const k in o) P._body[k] += o[k] * P.w; return P; },
+      base(c) { P._base = c; return P; },
+      prop(name) { (P._props = P._props || []).push(name); return P; },
+      wave: (f, ph) => Math.sin(P.t * f * Math.PI * 2 + (ph || 0) + P.r * 6.28),
+      _gq: gq,
+      // gamba: caviglia in (x, y, z) nello spazio del personaggio PRIMA dello spostamento di P.body (x vero: + = sinistra),
+      // ginocchio verso il polo (kx, ky, kz), piede piatto con la punta alzata di pitch e girata in fuori di yaw.
+      // IK a due ossa sull'asse Y delle ossa; il piede (bersaglio sotto Root) va in fondo allo stinco: niente scarpe stirate.
+      legTo(side, fx, fy, fz, kx, ky, kz, pitch, yaw, w) { legTo(P, side === 'L' || side > 0 ? 'L' : 'R', fx, fy, fz, kx, ky, kz, pitch || 0, yaw || 0, (w === undefined ? 1 : w) * P.w); return P; },
+      // dita: curl 0 (aperta) → 1 (pugno); thumb 0-1 il pollice che chiude sopra; spread allarga
+      fingers(side, curl, thumb, w) { hand(P, side, curl, thumb === undefined ? curl : thumb, (w === undefined ? 1 : w) * P.w); return P; },
+      // gira la mano perché la direzione A (vettore del MONDO, solidale alla mano: la canna, il manico) vada verso dir
+      // (spazio del personaggio). Prima ruota l'avambraccio sul suo asse (pronazione, fino a ~95°), il resto lo fa il polso
+      // entro maxWrist radianti (default 0,7): niente polsi spezzati; se non basta, l'attrezzo resta un po' fuori asse.
+      turnHand(side, A, dir, maxWrist, w) { turn(P, side, A, dir, maxWrist === undefined ? .7 : maxWrist, (w === undefined ? 1 : w) * P.w); return P; },
+    };
+    return P;
+  }
+  // ruota l'osso di q (quaternione nel mondo) e aggiorna i figli
+  // ---------------- le gambe ----------------
+  const LEG = { UpperLegL: 'L', LowerLegL: 'L', UpperLegR: 'R', LowerLegR: 'R' };
+  // il piede in fondo allo stinco (lungo l'asse Y dello stinco), con la rotazione che segue quella dello stinco
+  function footToShin(R, sd) {
+    const ll = R.b['LowerLeg' + sd], ft = R.b['Foot' + sd]; if (!ll || !ft || !ft.parent) return;
+    if (!R.shin) { ll.getWorldPosition(_K); ft.getWorldPosition(_T); R.shin = _K.distanceTo(_T) || .45; }
+    const key = 'fr' + sd; ll.getWorldQuaternion(_lq);
+    if (!R[key] || R[key + 't'] !== R.__frame) { ft.getWorldQuaternion(_lq2); R[key] = (R[key] || Q()).copy(_lq).invert().multiply(_lq2); R[key + 't'] = R.__frame; }   // piede rispetto allo stinco, preso a inizio fotogramma
+    ll.getWorldPosition(_K); _Y.set(0, 1, 0).applyQuaternion(_lq); _T.copy(_K).addScaledVector(_Y, R.shin);
+    ft.parent.worldToLocal(_T); ft.position.copy(_T);
+    _lq2.copy(_lq).multiply(R[key]); ft.parent.getWorldQuaternion(_q4); ft.quaternion.copy(_q4.invert().multiply(_lq2)); ft.updateMatrixWorld(true);
+  }
+  const _H = V(), _K = V(), _T = V(), _U = V(), _N = V(), _Y = V(), _lq = Q(), _lq2 = Q(), _le = new THREE.Euler();
+  function aimY(bone, dir, ww) {   // ruota l'osso perché il suo asse Y (nel mondo) vada verso dir
+    bone.getWorldQuaternion(_lq); _Y.set(0, 1, 0).applyQuaternion(_lq);
+    _lq2.setFromUnitVectors(_Y, dir); if (ww < 1) { _fq.copy(_lq2); _lq2.copy(ID).slerp(_fq, ww); }
+    applyWorld(bone, _lq2);
+  }
+  function legTo(P, sd, fx, fy, fz, kx, ky, kz, pitch, yaw, ww) {
+    const R = P.R, ul = R.b['UpperLeg' + sd], ll = R.b['LowerLeg' + sd], ft = R.b['Foot' + sd]; if (!ul || !ll || !ft || ww <= 0) return;
+    if (!R.shin) { ll.getWorldPosition(_K); ft.getWorldPosition(_T); R.shin = _K.distanceTo(_T) || .45; }
+    ul.getWorldPosition(_H); ll.getWorldPosition(_K);
+    const a = _H.distanceTo(_K), b = R.shin, s = sd === 'L' ? 1 : -1;
+    _T.set(fx, fy, fz); P.g.localToWorld(_T);
+    _U.subVectors(_T, _H); let d = _U.length(); if (d < 1e-5) return; _U.divideScalar(d);
+    d = clamp(d, Math.abs(a - b) + .01, a + b - .002);
+    const x = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - x * x));
+    _N.set(kx, ky, kz).applyQuaternion(P._gq); _N.addScaledVector(_U, -_N.dot(_U)); if (_N.lengthSq() < 1e-8) _N.set(0, 0, 1).applyQuaternion(P._gq); _N.normalize();
+    _K.copy(_H).addScaledVector(_U, x).addScaledVector(_N, h);           // il ginocchio
+    _T.copy(_H).addScaledVector(_U, d);                                  // la caviglia (raggiungibile)
+    _N.subVectors(_K, _H).normalize(); aimY(ul, _N, ww);
+    ll.getWorldPosition(_K); _N.subVectors(_T, _K).normalize(); aimY(ll, _N, ww);
+    _T.copy(_K).addScaledVector(_N, b);                                  // il piede in fondo allo stinco
+    ft.getWorldPosition(_K); _K.lerp(_T, ww); ft.parent.worldToLocal(_K); ft.position.copy(_K);
+    _lq2.setFromEuler(_le.set(Math.PI / 2 - pitch, yaw * s, 0, 'YXZ')); _lq2.premultiply(P._gq);   // asse Y del piede = avanti, Z = giù
+    ft.getWorldQuaternion(_lq); _lq.slerp(_lq2, ww);
+    ft.parent.getWorldQuaternion(_q4); _lq.premultiply(_q4.invert()); ft.quaternion.copy(_lq); ft.updateMatrixWorld(true);
+  }
+  // ---------------- le mani ----------------
+  const _f1 = V(), _f2 = V(), _ax = V(), _fq = Q(), _tw = Q(), _sw = Q();
+  // il verso in cui le dita si chiudono si scopre una volta per scheletro: si prova a piegare il medio e si guarda
+  // se la punta si avvicina alla base del pollice (il palmo)
+  function curlSign(R, sd) {
+    const key = 'cs' + sd; if (R[key]) return R[key];
+    // ATTENZIONE: nel kit le radici delle dita (Index1, Middle1, Pinky1, Thumb1) stanno tutte nello stesso punto, al polso:
+    // l'asse del palmo si prende dalle nocche (le seconde ossa) e si piega dalla nocca in poi
+    const m2 = R.b['Middle2' + sd], m3 = R.b['Middle3' + sd], th = R.b['Thumb2' + sd], i2 = R.b['Index2' + sd], p2 = R.b['Pinky2' + sd];
+    if (!m2 || !m3 || !th || !i2 || !p2) return (R[key] = 1);
+    const q0 = m2.quaternion.clone(); let best = 1, bd = 1e9;
+    [1, -1].forEach(sg => {
+      m2.quaternion.copy(q0); m2.updateMatrixWorld(true); i2.getWorldPosition(_f1); p2.getWorldPosition(_f2); _ax.subVectors(_f1, _f2).normalize();
+      _fq.setFromAxisAngle(_ax, sg * 1.2); applyWorld(m2, _fq); m3.getWorldPosition(_f1); th.getWorldPosition(_f2); const d = _f1.distanceTo(_f2);
+      if (d < bd) { bd = d; best = sg; }
+    });
+    m2.quaternion.copy(q0); m2.updateMatrixWorld(true); return (R[key] = best);
+  }
+  // angolo di ogni osso col pugno chiuso: 1 = palmo (dal polso, quasi fermo), 2 = nocca, 3 e 4 = falangi
+  const CURL = [.08, 1.45, 1.35, .9];
+  function hand(P, side, curl, thumb, ww) {
+    const R = P.R, sd = side === 'L' ? 'L' : 'R', i2 = R.b['Index2' + sd], p2 = R.b['Pinky2' + sd]; if (!i2 || !p2 || ww <= 0) return;
+    const sg = curlSign(R, sd);
+    for (let f = 0; f < 4; f++) {
+      const c = curl * (1 + (f - 1.5) * .06);   // il mignolo chiude un filo di più
+      for (let k = 0; k < 4; k++) {
+        const b = R.b[FINGERS[f] + (k + 1) + sd]; if (!b) continue;
+        i2.getWorldPosition(_f1); p2.getWorldPosition(_f2); _ax.subVectors(_f1, _f2).normalize();   // asse delle nocche (si muove poco)
+        _fq.setFromAxisAngle(_ax, sg * CURL[k] * c * ww); applyWorld(b, _fq);
+      }
+    }
+    // il pollice: la prima falange si porta davanti al palmo, le altre si chiudono sopra le dita
+    const t2 = R.b['Thumb2' + sd], t3 = R.b['Thumb3' + sd], m2 = R.b['Middle2' + sd], w0 = R.b['Wrist' + sd];
+    if (t2 && m2 && w0 && thumb > 0) {
+      i2.getWorldPosition(_f1); p2.getWorldPosition(_f2); _ax.subVectors(_f1, _f2).normalize();
+      w0.getWorldPosition(_f1); m2.getWorldPosition(_f2); const fd = _f2.sub(_f1).normalize();
+      _fq.setFromAxisAngle(fd, sg * .5 * thumb * ww); applyWorld(t2, _fq);
+      if (t3) { _fq.setFromAxisAngle(_ax, sg * .7 * thumb * ww); applyWorld(t3, _fq); }
+    }
+  }
+  // twist (attorno all'asse dell'avambraccio) e swing (il resto) di una rotazione
+  function turn(P, side, A, dir, maxW, ww) {
+    const R = P.R, sd = side === 'L' ? 'L' : 'R', la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd]; if (!la || !wr || ww <= 0) return;
+    la.getWorldPosition(_f1); wr.getWorldPosition(_f2); const F = _f2.sub(_f1).normalize();   // asse dell'avambraccio
+    const B = _c.set(dir[0], dir[1], dir[2]).normalize().applyQuaternion(P._gq);
+    _fq.setFromUnitVectors(_f1.copy(A).normalize(), B);
+    // decomposizione swing-twist attorno a F
+    const d = _fq.x * F.x + _fq.y * F.y + _fq.z * F.z;
+    _tw.set(F.x * d, F.y * d, F.z * d, _fq.w).normalize();
+    let ta = 2 * Math.acos(clamp(_tw.w, -1, 1)); if (ta > Math.PI) ta -= 2 * Math.PI;
+    const lim = 1.65, tk = Math.abs(ta) > lim ? lim / Math.abs(ta) : 1;
+    _sw.copy(ID).slerp(_tw, tk * ww); applyWorld(la, _sw);              // l'avambraccio ruota (porta con sé polso e mano)
+    A.applyQuaternion(_sw);                                              // la direzione dell'attrezzo dopo il twist
+    _fq.setFromUnitVectors(_f1.copy(A).normalize(), B);
+    const sa = 2 * Math.acos(clamp(_fq.w, -1, 1)), sk = sa > maxW ? maxW / sa : 1;
+    _sw.copy(ID).slerp(_fq, sk * ww); applyWorld(wr, _sw);              // il polso fa il resto, entro il limite
+  }
+  function applyWorld(bn, q) {
+    bn.getWorldQuaternion(_q2); _q3.copy(q).multiply(_q2);                 // nuova rotazione nel mondo
+    if (bn.parent) { bn.parent.getWorldQuaternion(_q2); _q2.invert(); _q3.premultiply(_q2); }
+    bn.quaternion.copy(_q3); bn.updateMatrixWorld(true);
+  }
+
+  // ---------------- registro ----------------
+  function def(name, spec) { POSES[name] = Object.assign({ fade: .25, full: false }, spec); }
+  const npcMap = fn => NPCMAPS.push(fn), playerMap = fn => PLMAPS.push(fn);
+  function runMaps(list, st, who) {
+    const s = { act: null, upper: null, mood: [], talk: false, lookAt: null };
+    for (const fn of list) { try { fn(st, who, s); } catch (e) { if (!fn.__err) { fn.__err = 1; console.warn('[anim] mappa', e); } } }
+    return s;
+  }
+  const npcState = (st, n) => runMaps(NPCMAPS, st, n);
+  const playerState = (st) => runMaps(PLMAPS, st, st.player);
+
+  // ---------------- per fotogramma: chiamato da Models.animPerson dopo il mixer ----------------
+  // o.anim = { act, upper, mood, talk, lookAt } (da npcState/playerState). Restituisce la clip di base voluta (o null).
+  function want(g, o) {
+    const A = o && o.anim; if (!A) return null;
+    const p = A.act && POSES[A.act]; return p && p.base ? p.base : null;
+  }
+  function apply(g, o, dt, time) {
+    const R = rig(g); if (!R) return;
+    const A = (o && o.anim) || {}, u = g.userData;
+    const wanted = {};
+    if (A.act && POSES[A.act] && !o.down) wanted[A.act] = 1;
+    if (A.upper && POSES[A.upper] && !o.down) wanted[A.upper] = 1;
+    (A.mood || []).forEach(k => { if (POSES[k] && !o.down) wanted[k] = 1; });
+    if (A.talk && POSES.parla && !o.down) wanted.parla = 1;
+    if (POSES.vita && !o.down) wanted.vita = 1;   // respiro, peso che si sposta: sempre
+    // pesi: salgono e scendono col fade della posa
+    for (const k in wanted) if (!R.layers[k]) R.layers[k] = { w: 0, t: 0 };
+    for (const k in R.layers) {
+      const L = R.layers[k], spec = POSES[k], f = spec ? spec.fade : .2;
+      L.w = clamp(L.w + (wanted[k] ? 1 : -1) * dt / Math.max(.01, f), 0, 1); L.t += dt;
+      if (!wanted[k] && L.w <= 0) delete R.layers[k];
+    }
+    // il corpo torna al suo posto ogni fotogramma (le pose lo spostano; flight() in render.js lo sposta dopo, in volo)
+    if (u.body && !u.__flying) { u.body.position.set(0, 0, 0); u.body.rotation.set(0, 0, 0); }
+    // si fotografano le ossa come le ha lasciate la clip: restore() le rimette così prima del prossimo mixer
+    // (le ossa che la clip non anima, altrimenti, accumulerebbero le rotazioni fotogramma dopo fotogramma)
+    if (!R.pre) { R.pre = {}; for (const k in R.b) R.pre[k] = R.b[k].quaternion.clone(); }
+    else for (const k in R.b) R.pre[k].copy(R.b[k].quaternion);
+    // anche la POSIZIONE di piedi e punte: sono bersagli IK sotto Root, e la clip Idle non le anima (resterebbero dove le ha messe l'ultima posa)
+    if (!R.prePos) { R.prePos = []; ['FootL', 'FootR', 'PTL', 'PTR'].forEach(k => { const o = R.b[k] || R.m.getObjectByName(k); if (o) R.prePos.push({ o, p: o.position.clone(), q: o.quaternion.clone() }); }); }
+    else R.prePos.forEach(e => { e.p.copy(e.o.position); e.q.copy(e.o.quaternion); });
+    // la punta del piede (PT, un osso a parte sotto Root, con la pelle della scarpa) deve seguire il piede:
+    // si fotografa dov'è rispetto al piede prima delle pose e la si rimette lì dopo (sennò la scarpa si stira)
+    toeSnap(g, R);
+    // le ossa nel mondo servono aggiornate per puntare
+    g.updateMatrixWorld(true);
+    const P = R.P || (R.P = makeP(g, R)); g.getWorldQuaternion(P._gq);
+    P.o = o; P.time = time || 0; P._body = null;
+    R.__frame = (R.__frame || 0) + 1;
+    // quanto sono spessi i vestiti su busto e braccia (vestiario.js): le pose tengono le braccia più larghe
+    { const S = u.spessore; P.bulk = S ? Math.min(.12, (S.torso || 0) + (S.braccia || 0) * .5) : 0; }
+    const showProps = {};
+    // ordine: prima tutto il corpo, poi le braccia, poi gli strati leggeri, ultimo lo sguardo
+    const order = Object.keys(R.layers).sort((a, b) => rank(a, A) - rank(b, A));
+    for (const k of order) {
+      const L = R.layers[k], spec = POSES[k]; if (!spec || disabled[k]) continue;
+      P.w = smooth(L.w); P.t = L.t; P._props = null;
+      try { spec.fn(P, A); } catch (e) { disabled[k] = true; console.warn('[anim] posa spenta:', k, e); }
+      if (P._props && L.w > .5) P._props.forEach(n => showProps[n] = 1);
+    }
+    toeFollow(R);
+    if (P._body && u.body) { const B = P._body; u.body.position.set(B.x, B.y, B.z); u.body.rotation.set(B.rx, B.ry, B.rz); }
+    // lo sguardo: la testa gira verso il punto, con i limiti del collo e un po' di ritardo
+    look(g, R, A.lookAt, dt, P);
+    // attrezzi
+    for (const n in PROPS) { const want = !!showProps[n]; if (!want && !(R.props && R.props[n])) continue; const h = getProp(g, R, n); if (h) h.visible = want; }
+  }
+  const _tm = new THREE.Matrix4(), _tq = Q(), _tp = V();
+  function toeSnap(g, R) {
+    if (R.toe === undefined) { R.toe = []; ['L', 'R'].forEach(sd => { const F = R.b['Foot' + sd], T = R.m.getObjectByName('PT' + sd); if (F && T && T.parent !== F) R.toe.push({ F, T, p: V(), q: Q() }); }); }
+    if (!R.toe.length) return; g.updateMatrixWorld(true);
+    for (const t of R.toe) { _tm.copy(t.F.matrixWorld).invert(); t.T.getWorldPosition(t.p).applyMatrix4(_tm); t.F.getWorldQuaternion(_tq).invert(); t.T.getWorldQuaternion(t.q).premultiply(_tq); }
+  }
+  function toeFollow(R) {
+    if (!R.toe || !R.toe.length) return;
+    for (const t of R.toe) {
+      t.F.updateMatrixWorld(true); _tp.copy(t.p).applyMatrix4(t.F.matrixWorld); t.T.parent.worldToLocal(_tp); t.T.position.copy(_tp);
+      t.F.getWorldQuaternion(_tq).multiply(t.q); t.T.parent.getWorldQuaternion(_q4); t.T.quaternion.copy(_q4.invert().multiply(_tq)); t.T.updateMatrixWorld(true);
+    }
+  }
+  function restore(g) { const R = g.userData.rig; if (!R || !R.pre) return; for (const k in R.pre) R.b[k].quaternion.copy(R.pre[k]); if (R.prePos) R.prePos.forEach(e => { e.o.position.copy(e.p); e.o.quaternion.copy(e.q); }); }
+  function rank(k, A) { return k === A.act ? 0 : k === A.upper ? 1 : k === 'vita' ? -1 : k === 'parla' ? 3 : 2; }
+  function look(g, R, at, dt, P) {
+    let yaw = 0, pitch = 0;
+    if (at && R.b.Head) {
+      R.b.Head.getWorldPosition(_a); _b.set(at.x, (at.ground ? g.position.y : 0) + at.y, at.z).sub(_a);   // ground: y è l'altezza sopra i piedi di chi guarda
+      _b.applyQuaternion(_q.copy(P._gq).invert());          // nello spazio del personaggio
+      yaw = clamp(Math.atan2(_b.x, _b.z), -1.2, 1.2); pitch = clamp(-Math.atan2(_b.y, Math.hypot(_b.x, _b.z)), -.5, .6);
+      if (Math.abs(Math.atan2(_b.x, _b.z)) > 2.2) { yaw = 0; pitch = 0; }   // dietro le spalle: lascia perdere
+    }
+    const k = 1 - Math.exp(-dt * 6); R.headYaw += (yaw - R.headYaw) * k; R.headPitch += (pitch - R.headPitch) * k;
+    if (Math.abs(R.headYaw) + Math.abs(R.headPitch) < .002) return;
+    P.w = 1; P.rot('Neck', R.headPitch * .4, R.headYaw * .4, 0); P.rot('Head', R.headPitch * .6, R.headYaw * .6, 0);
+  }
+
+  return { restore, def, npcMap, playerMap, npcState, playerState, apply, want, prop, rig, POSES, PROPS, CHILD, clamp, smooth, hashStr };
+})();
+
+// ================= POSE DI BASE (motore) =================
+// vita: sempre accesa, leggera. Il respiro alza il petto, il peso passa da un piede all'altro quando si sta fermi.
+Anim.def('vita', { fade: .5, fn(P) {
+  const still = Math.abs(P.o.speed || 0) < .2;
+  P.rot('Chest', -.025 * (1 + P.wave(.25)), 0, 0);
+  if (still) { P.rot('Hips', 0, 0, .025 * P.wave(.06)); P.rot('Head', .03 * P.wave(.11, 1), .06 * P.wave(.045, 2), 0); }
+} });
+// mappe di base: chi parla gesticola, chi è vicino al giocatore lo guarda
+Anim.npcMap((st, n, s) => {
+  if (n.dead) return;
+  if (n.bark && n.bark.until > st.clock) s.talk = true;
+  const p = st.player, d = Math.hypot(n.x - p.x, n.y - p.y);
+  if (d < 7 && !(n.action && n.action.name === 'fugge')) s.lookAt = { x: p.x, y: 1.55, z: p.y, ground: true };
+});
+</script>
+<script>/* [animazioni] VITA QUOTIDIANA: pose e mappe di abitanti e protagonista (in lavorazione) */
+(function () {
+  'use strict';
+  if (typeof Anim === 'undefined' || typeof THREE === 'undefined') return;
+  const PI = Math.PI, clamp = Anim.clamp, smooth = Anim.smooth;
+
+  // ---------------- piccoli strumenti (niente allocazioni per fotogramma) ----------------
+  const _d = [0, 0, 0];
+  const D = (x, y, z) => { _d[0] = x; _d[1] = y; _d[2] = z; return _d; };
+  // ossa per lato: s = +1 sinistra (asse +x del personaggio), -1 destra
+  const SIDE = {
+    L: { s: 1, ua: 'UpperArmL', la: 'LowerArmL', wr: 'WristL', sh: 'ShoulderL', ul: 'UpperLegL', ll: 'LowerLegL', ft: 'FootL' },
+    R: { s: -1, ua: 'UpperArmR', la: 'LowerArmR', wr: 'WristR', sh: 'ShoulderR', ul: 'UpperLegR', ll: 'LowerLegR', ft: 'FootR' },
+  };
+  // braccio: direzioni con x «verso l'esterno» (positivo = lontano dal corpo, dal lato del braccio)
+  // con i vestiti spessi (P.bulk, metri) gomito e mano si scostano dal busto: niente maniche dentro il cappotto
+  function arm(P, side, ux, uy, uz, lx, ly, lz, w) { const S = SIDE[side], b = P.bulk || 0; P.aim(S.ua, D((ux + b * 3.2) * S.s, uy, uz + b * 1.5), w); P.aim(S.la, D((lx + b * 1.6) * S.s, ly, lz + b * 2.5), w); }
+  // ---- gambe: nello scheletro del kit i piedi NON sono figli degli stinchi (sono bersagli IK figli di Root).
+  // P.aim('LowerLeg…') punterebbe verso un piede che non si muove con la gamba: qui si fa un IK a due ossa vero,
+  // si punta l'asse Y delle ossa (che corre lungo l'osso) e si porta il piede in fondo allo stinco.
+  const _H = new THREE.Vector3(), _K = new THREE.Vector3(), _T = new THREE.Vector3(), _U = new THREE.Vector3(), _N = new THREE.Vector3(), _Y = new THREE.Vector3();
+  const _q0 = new THREE.Quaternion(), _q1 = new THREE.Quaternion(), _qI = new THREE.Quaternion(), _qp = new THREE.Quaternion(), _e = new THREE.Euler();
+
+  // piede (fx,fy,fz) nello spazio del personaggio (x verso l'esterno, PRIMA dello spostamento di P.body), ginocchio verso (kx,ky,kz)
+  // pitch: punta del piede in su (radianti); yaw: punta verso l'esterno
+  function legTo(P, side, fx, fy, fz, kx, ky, kz, pitch, yaw, w) { const sg = SIDE[side].s; P.legTo(side, fx * sg, fy, fz, kx * sg, ky, kz, pitch, yaw, w); }   // il motore (x qui verso l'esterno)
+
+  const QHAND = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), PI);   // mano → osso del polso
+  // mano in un punto (x verso l'esterno, y, z nello spazio del personaggio), gomito verso il polo (x esterno, y, z): IK a due ossa
+  const _S = new THREE.Vector3(), _E = new THREE.Vector3(), _W = new THREE.Vector3(), _M = new THREE.Matrix4();
+  function handTo(P, side, hx, hy, hz, px, py, pz, w) {
+    const S = SIDE[side], R = P.R, ua = R.b[S.ua], la = R.b[S.la], wr = R.b[S.wr]; if (!ua || !la || !wr) return;
+    const b0 = P.bulk || 0; hx += b0 * .8; hz += b0 * .8;
+    _M.copy(P.g.matrixWorld).invert();
+    ua.getWorldPosition(_S).applyMatrix4(_M); la.getWorldPosition(_E).applyMatrix4(_M); wr.getWorldPosition(_W).applyMatrix4(_M);
+    const a = _S.distanceTo(_E), b = _E.distanceTo(_W);
+    _T.set(hx * S.s, hy, hz); _U.subVectors(_T, _S); let d = _U.length(); if (d < 1e-4) return; _U.divideScalar(d);
+    d = clamp(d, Math.abs(a - b) + .01, (a + b) * .998);
+    const x = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - x * x));
+    _N.set(px * S.s, py, pz); _N.addScaledVector(_U, -_N.dot(_U)); if (_N.lengthSq() < 1e-8) _N.set(S.s, -1, 0); _N.normalize();
+    _E.copy(_S).addScaledVector(_U, x).addScaledVector(_N, h);
+    _K.subVectors(_E, _S); P.aim(S.ua, D(_K.x, _K.y, _K.z), w);
+    _K.copy(_S).addScaledVector(_U, d).sub(_E); P.aim(S.la, D(_K.x, _K.y, _K.z), w);
+  }
+  // presa: gira il polso perché la punta dell'attrezzo (-X del sistema della mano: lama, testa, cima della canna, ugello)
+  // guardi nella direzione data (spazio del personaggio, x verso l'esterno). Senza, l'orientamento lo decide la clip.
+  const _A = new THREE.Vector3(), _B = new THREE.Vector3(), _qg = new THREE.Quaternion(), _qh = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
+  // la punta esce dal lato del pollice (canna, martello, piede di porco, pennello, bomboletta, cero: +X)
+  // o da quello del mignolo (pala, zappa, scopa tenute dall'alto: -X)
+  const THUMB_TIP = { canna: 1, martello: 1, piede: 1, pennello: 1, bomboletta: 1, cero: 1, giornale: 1 };
+  function grip(P, side, dx, dy, dz, w, tool) {
+    const S = SIDE[side], wr = P.R.b[S.wr]; if (!wr || !wr.parent) return;
+    const ww = (w === undefined ? 1 : w) * P.w; if (ww <= 0) return;
+    wr.getWorldQuaternion(_qg); _qh.copy(_qg).multiply(QHAND); _A.set(tool && THUMB_TIP[tool] ? 1 : -1, 0, 0).applyQuaternion(_qh);
+    // l'avambraccio ruota, il polso piega poco (vedi P.turnHand nel motore)
+    P.turnHand(side, _A, D(dx * S.s, dy, dz), .75, w);
+  }
+  // la seconda mano sul manico: punto a «dist» metri dal pugno destro verso la punta dell'attrezzo (dopo grip)
+  function secondHand(P, dist, px, py, pz) {
+    const wr = P.R.b.WristR; if (!wr) return;
+    wr.getWorldQuaternion(_qg); _qh.copy(_qg).multiply(QHAND); _A.set(-1, 0, 0).applyQuaternion(_qh);   // (attrezzi dal lato del mignolo)
+    wr.getWorldPosition(_B); _B.addScaledVector(_A, dist); _M.copy(P.g.matrixWorld).invert(); _B.applyMatrix4(_M);
+    handTo(P, 'L', _B.x, _B.y, _B.z, px, py, pz);   // x già nel verso della sinistra (+x)
+    P.fingers('L', .92, .85);                        // la sinistra stringe il manico
+  }
+  // ciclo 0-1 di periodo T secondi, sfasato per persona
+  const cyc = (P, T) => ((P.t + P.r * T * 7.13) / T) % 1;
+  // un impulso 0→1→0 dentro il ciclo: sale in [a,b], resta fino a c, scende entro d
+  function pulse(k, a, b, c, d) { return k < a ? 0 : k < b ? smooth((k - a) / (b - a)) : k < c ? 1 : k < d ? 1 - smooth((k - c) / (d - c)) : 0; }
+  const lerp = (a, b, k) => a + (b - a) * k;
+  // variante fissa per persona: 0..n-1
+  const fract = x => x - Math.floor(x);
+  const pickR = (P, n, salt) => Math.floor(fract(Math.sin((P.r + (salt || 0) * .618) * 127.1) * 43758.5453) * n) % n;
+
+  // ---------------- ATTREZZI: agganciati alla mano in un sistema fisso della mano ----------------
+  // Sistema della mano (metri): Y lungo le dita, Z fuori dal palmo, X verso il pollice (mano destra) / verso il mignolo (sinistra).
+  // Così l'attrezzo segue la mano qualunque sia la posa in cui nasce (non dipende dal momento in cui compare).
+  // where: 'R' / 'L' (polso), 'body' (il corpo: spazio del personaggio, segue sedersi/sdraiarsi), 'g' (a terra, spazio del personaggio)
+  const VP = {};
+  const LM = {}, GEO = {};
+  const lm = (c, e) => { const k = c + (e || ''); return LM[k] || (LM[k] = new THREE.MeshLambertMaterial(e ? { color: c, emissive: e } : { color: c })); };
+  const bg = (w, h, d) => { const k = 'b' + w + '_' + h + '_' + d; return GEO[k] || (GEO[k] = new THREE.BoxGeometry(w, h, d)); };
+  const cg = (rt, rb, h, s) => { const k = 'c' + rt + '_' + rb + '_' + h + '_' + (s || 8); return GEO[k] || (GEO[k] = new THREE.CylinderGeometry(rt, rb, h, s || 8)); };
+  function box(g, w, h, d, c, x, y, z, rx, ry, rz, e) { const m = new THREE.Mesh(bg(w, h, d), lm(c, e)); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); g.add(m); return m; }
+  function cyl(g, rt, rb, h, c, x, y, z, rx, ry, rz, s, e) { const m = new THREE.Mesh(cg(rt, rb, h, s), lm(c, e)); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); g.add(m); return m; }
+  function vprop(name, where, make) { VP[name] = { where, make }; }
+  const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _qa = new THREE.Quaternion();
+  function makeVP(P, name) {
+    const Dp = VP[name]; if (!Dp) return null;
+    const g = P.g, u = g.userData, R = P.R, holder = new THREE.Group(), obj = Dp.make();
+    holder.add(obj);
+    if (Dp.where === 'R' || Dp.where === 'L') {
+      const bone = R.b[SIDE[Dp.where].wr]; if (!bone) return null;
+      bone.getWorldScale(_v); g.getWorldScale(_v2);
+      const k = _v2.x / (_v.x || 1);
+      holder.scale.setScalar(k); holder.quaternion.copy(QHAND); bone.add(holder);
+    } else if (Dp.where === 'body' && u.body) {
+      const s = u.body.scale; holder.scale.set(1 / s.x, 1 / s.y, 1 / s.z); u.body.add(holder);
+    } else g.add(holder);
+    holder.traverse(o => { if (o.isMesh) { o.castShadow = false; o.frustumCulled = false; } });
+    holder.visible = false; return holder;
+  }
+  // accende l'attrezzo per questo fotogramma (si spegne da solo quando la posa non lo chiede più)
+  // la presa: quanto si chiudono le dita (e il pollice) per ogni oggetto
+  const GRIP = { sigaretta: [.6, .8], bicchiere: [.75, .7], bottiglia: [.88, .8], panino: [.6, .5], cornetta: [.85, .7], giornale: [.45, .55], libro: [.4, .5], matita: [.75, .85],
+    carte: [.45, .2], soldi: [.4, .6], cero: [.8, .6], martello: [.95, .9], cassa: [.35, .1], pala: [.95, .9], zappa: [.95, .9], piccone: [.95, .9], scopa: [.95, .9],
+    canna: [.9, .8], piede: [.95, .9], bomboletta: [.8, .4], gesso: [.6, .8], pennello: [.85, .8], fotocamera: [.6, .4], album: [.3, .3] };
+  function show(P, name) {
+    const Dp = VP[name], gp = GRIP[name]; if (Dp && gp && (Dp.where === 'R' || Dp.where === 'L')) P.fingers(Dp.where, gp[0], gp[1]);
+    if (P.w < .5) return null;
+    const m = P.R.vp || (P.R.vp = {});
+    let h = m[name]; if (h === undefined) h = m[name] = makeVP(P, name);
+    if (h) h.visible = true; return h;
+  }
+  // l'attrezzo che il modello mostra da sé (models.js: bomboletta, telefono, fotocamera, piede, gesso; la pala del kit) si nasconde
+  function hideHeld(P) {
+    if (P.w < .5) return; const u = P.g.userData, h = P.o && P.o.held;
+    if (h && u.props && u.props[h]) u.props[h].visible = false;
+    if (u.mguns && u.mguns.Shovel && h === 'pala') u.mguns.Shovel.visible = false;
+  }
+  // il respiro del motore, più la pulizia degli attrezzi: ogni fotogramma si spengono, le pose li riaccendono
+  const VITA0 = Anim.POSES.vita;
+  if (VITA0 && !VITA0.__vp) Anim.def('vita', { fade: VITA0.fade, __vp: true, fn(P, A) { const m = P.R.vp; if (m) for (const k in m) if (m[k]) m[k].visible = false; VITA0.fn(P, A); } });
+
+  // ---------------- gli attrezzi ----------------
+  // impugnatura: nel pugno l'asse degli oggetti lunghi corre lungo X (dal pollice al mignolo), a ~8 cm lungo le dita e 3 cm verso il palmo
+  const GY = .075, GZ = .03;
+  vprop('sigaretta', 'R', () => { const g = new THREE.Group(); cyl(g, .005, .005, .07, '#f4f0e6', 0, .1, .01, 0, 0, PI / 2, 5); cyl(g, .0055, .0055, .012, '#ff5a1a', -.04, .1, .01, 0, 0, PI / 2, 5, '#a02000'); return g; });
+  // bicchiere da osteria: vetro trasparente, il vino dentro, il fondo spesso (l'apertura verso il pollice, +X)
+  const VETRO = new THREE.MeshLambertMaterial({ color: '#d8ecf0', transparent: true, opacity: .45, depthWrite: false });
+  vprop('bicchiere', 'R', () => { const g = new THREE.Group(); const v = new THREE.Mesh(cg(.036, .03, .11, 12), VETRO); v.position.set(.028, GY, GZ + .014); v.rotation.z = PI / 2; g.add(v);
+    cyl(g, .031, .028, .065, '#7a1424', .01, GY, GZ + .014, 0, 0, PI / 2, 12); cyl(g, .03, .03, .012, '#c8dce0', -.022, GY, GZ + .014, 0, 0, PI / 2, 12); return g; });   // sporge sopra il pugno: si vede
+  // bottiglia di birra: corpo, spalla, collo, tappo, etichetta (il collo verso il pollice)
+  vprop('bottiglia', 'R', () => { const g = new THREE.Group(); cyl(g, .031, .031, .13, '#3a2a12', -.02, GY, GZ + .01, 0, 0, PI / 2, 10); cyl(g, .013, .031, .04, '#3a2a12', .065, GY, GZ + .01, 0, 0, -PI / 2, 10);
+    cyl(g, .013, .013, .05, '#3a2a12', .11, GY, GZ + .01, 0, 0, PI / 2, 8); cyl(g, .015, .015, .012, '#c8a040', .14, GY, GZ + .01, 0, 0, PI / 2, 8); cyl(g, .0315, .0315, .06, '#e8dcb0', -.02, GY, GZ + .01, 0, 0, PI / 2, 10); return g; });
+  vprop('panino', 'R', () => { const g = new THREE.Group(); box(g, .13, .045, .07, '#d8a860', -.02, GY + .02, GZ + .02); box(g, .135, .012, .072, '#c84a3a', -.02, GY + .02, GZ + .02); return g; });
+  // telefono: la cornetta a filo del bar o il radiotelefono anni '80 (con l'antenna)
+  vprop('cornetta', 'R', () => { const g = new THREE.Group(); box(g, .045, .19, .04, '#1a1a1e', 0, GY + .01, GZ + .01); box(g, .055, .05, .05, '#1a1a1e', 0, GY + .1, GZ + .025); box(g, .055, .05, .05, '#1a1a1e', 0, GY - .08, GZ + .025); return g; });
+  // il giornale: piegato a metà (due facciate a V), la prima pagina con testata, titolo, foto e colonne
+  let PAGE = null;
+  function pageTex() {
+    if (PAGE) return PAGE; const c = document.createElement('canvas'); c.width = 64; c.height = 80; const x = c.getContext('2d');
+    x.fillStyle = '#e8e2cf'; x.fillRect(0, 0, 64, 80); x.fillStyle = '#1a1a1a'; x.fillRect(4, 4, 56, 9); x.fillStyle = '#e8e2cf'; x.font = 'bold 8px serif'; x.fillText('IL TIRRENO', 9, 11);
+    x.fillStyle = '#2a2a2a'; x.fillRect(4, 16, 56, 5); x.fillRect(4, 23, 40, 4); x.fillStyle = '#8a8680'; x.fillRect(4, 30, 26, 20);
+    x.fillStyle = '#6a6660'; for (let k = 0; k < 9; k++) { x.fillRect(33, 31 + k * 3, 27, 1); x.fillRect(4, 53 + k * 3, 26, 1); x.fillRect(33, 59 + k * 2, 27, 1); }
+    PAGE = new THREE.CanvasTexture(c); PAGE.magFilter = THREE.NearestFilter; return PAGE;
+  }
+  let BACK = null;   // il retro: un'altra pagina (colonne e un riquadro), niente scritte a specchio
+  function backTex() {
+    if (BACK) return BACK; const c = document.createElement('canvas'); c.width = 64; c.height = 80; const x = c.getContext('2d');
+    x.fillStyle = '#e4ddc8'; x.fillRect(0, 0, 64, 80); x.fillStyle = '#3a3a3a'; x.fillRect(4, 5, 34, 4); x.fillStyle = '#8a8680'; x.fillRect(38, 14, 22, 16);
+    x.fillStyle = '#6a6660'; for (let k = 0; k < 20; k++) { x.fillRect(4, 13 + k * 3, 30, 1); if (k > 6) x.fillRect(38, 13 + k * 3, 22, 1); }
+    BACK = new THREE.CanvasTexture(c); BACK.magFilter = THREE.NearestFilter; return BACK;
+  }
+  // ancorato al busto (non alla mano): davanti al petto, aperto a V, inclinato verso gli occhi; le mani lo tengono ai lati
+  vprop('giornale', 'body', () => { const g = new THREE.Group(), m = new THREE.MeshLambertMaterial({ map: pageTex(), side: THREE.DoubleSide }), p = new THREE.PlaneGeometry(.2, .27);
+    m.side = THREE.FrontSide; const mb = new THREE.MeshLambertMaterial({ map: backTex() });
+    const t = new THREE.Group();
+    [[-.098, .22], [.098, -.22]].forEach(([x, ry]) => { const a = new THREE.Mesh(p, m), b = new THREE.Mesh(p, mb); a.position.set(x, 0, .018); a.rotation.set(0, Math.PI - ry, 0); b.position.set(x, 0, .02); b.rotation.set(0, -ry, 0); t.add(a, b); });   /* davanti per chi legge, il retro per chi guarda */
+    t.position.set(0, 1.13, .36); t.rotation.x = .5; g.add(t); return g; });
+  vprop('matita', 'R', () => { const g = new THREE.Group(); cyl(g, .005, .005, .14, '#e8b830', 0, GY - .01, GZ, 0, 0, PI / 2, 6); cyl(g, 0, .005, .02, '#2a2a2a', .08, GY - .01, GZ, 0, 0, -PI / 2, 6); return g; });
+  vprop('libro', 'R', () => { const g = new THREE.Group(); box(g, .15, .21, .02, '#7a2a24', .05, GY + .02, GZ + .02); box(g, .14, .2, .022, '#f0e8d4', .055, GY + .02, GZ + .02); return g; });
+  vprop('carte', 'L', () => { const g = new THREE.Group(); for (let i = 0; i < 5; i++) box(g, .055, .085, .002, i % 2 ? '#f4f0e6' : '#ece4d0', 0, GY + .03, GZ + .01 + i * .002, 0, 0, (i - 2) * .22); return g; });
+  vprop('soldi', 'R', () => { const g = new THREE.Group(); box(g, .12, .06, .004, '#9ab08a', 0, GY + .04, GZ + .01); return g; });
+  vprop('cero', 'R', () => { const g = new THREE.Group(); cyl(g, .012, .012, .22, '#f4ecd8', 0, GY, GZ, 0, 0, PI / 2, 6); cyl(g, .008, 0, .03, '#ffc040', .125, GY, GZ, 0, 0, PI / 2, 5, '#ff9020'); return g; });
+  vprop('martello', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .014, .3, '#8a6a42', .08, GY, GZ, 0, 0, PI / 2, 6); box(g, .04, .04, .12, '#4a4a50', .22, GY, GZ); return g; });
+  vprop('cassa', 'R', () => { const g = new THREE.Group(); box(g, .3, .26, .42, '#9a7a4a', .18, GY + .06, GZ + .1); box(g, .31, .03, .43, '#7a5a32', .18, GY + .12, GZ + .1); return g; });
+  // attrezzi lunghi: asse lungo X, il pugno destro a metà; la sinistra va più in là sul manico
+  vprop('pala', 'R', () => { const g = new THREE.Group(); cyl(g, .016, .016, 1.1, '#8a6a42', .05, GY, GZ, 0, 0, PI / 2, 6); box(g, .26, .2, .02, '#5a5a60', -.55, GY, GZ, 0, 0, 0); return g; });
+  vprop('zappa', 'R', () => { const g = new THREE.Group(); cyl(g, .016, .016, 1.15, '#8a6a42', .1, GY, GZ, 0, 0, PI / 2, 6); box(g, .03, .2, .16, '#4a4a50', -.48, GY - .08, GZ); return g; });
+  vprop('piccone', 'R', () => { const g = new THREE.Group(); cyl(g, .018, .018, .9, '#8a6a42', .05, GY, GZ, 0, 0, PI / 2, 6); box(g, .04, .55, .04, '#4a4a50', -.38, GY, GZ, 0, 0, 0); return g; });
+  vprop('scopa', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .014, 1.2, '#b08a52', .1, GY, GZ, 0, 0, PI / 2, 6); box(g, .12, .3, .06, '#c8a050', -.55, GY, GZ, 0, 0, 0); return g; });
+  vprop('canna', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .006, 2.4, '#4a3a2a', 1.0, GY, GZ, 0, 0, PI / 2, 5); cyl(g, .03, .03, .04, '#2a2a2a', -.1, GY, GZ + .04, 0, 0, 0, 8); return g; });
+  vprop('piede', 'R', () => { const g = new THREE.Group(); cyl(g, .013, .013, .6, '#3a3a44', .2, GY, GZ, 0, 0, PI / 2, 6); box(g, .08, .02, .025, '#3a3a44', .52, GY + .03, GZ, 0, 0, -.9); return g; });
+  vprop('bomboletta', 'R', () => { const g = new THREE.Group(); cyl(g, .032, .032, .17, '#c8302a', .0, GY, GZ, 0, 0, PI / 2, 8); cyl(g, .01, .01, .02, '#e8e8e8', .095, GY, GZ, 0, 0, PI / 2, 5); return g; });
+  vprop('gesso', 'R', () => { const g = new THREE.Group(); box(g, .02, .07, .02, '#f4f4ee', -.01, GY + .06, GZ - .01); return g; });
+  vprop('pennello', 'R', () => { const g = new THREE.Group(); cyl(g, .01, .01, .25, '#b08a52', .08, GY, GZ, 0, 0, PI / 2, 5); box(g, .06, .05, .02, '#c03028', .22, GY, GZ); return g; });
+  vprop('fotocamera', 'R', () => { const g = new THREE.Group(); box(g, .13, .08, .06, '#202024', .04, GY, GZ + .03); cyl(g, .025, .025, .05, '#101012', .04, GY, GZ + .08, PI / 2, 0, 0, 8); return g; });
+    vprop('album', 'body', () => { const g = new THREE.Group(), t = new THREE.Group(); box(t, .3, .012, .22, '#f2ead8'); box(t, .3, .016, .012, '#7a5a3a', 0, 0, .11); box(t, .14, .002, .1, '#9a948a', -.02, .007, -.01);   // il foglio, la costola, uno schizzo a matita
+    t.position.set(.02, 1.06, .3); t.rotation.x = -.45; g.add(t); return g; });
+  // la carriola: a terra davanti, segue chi la spinge
+  // stanghe dalle mani (z .2, y .72) alla ruota; vasca davanti; due piedini dietro la vasca
+  vprop('carriola', 'g', () => { const g = new THREE.Group(); box(g, .56, .26, .66, '#5a6a72', 0, .55, .98, .06); box(g, .5, .04, .6, '#3e4a50', 0, .69, .98, .06); cyl(g, .17, .17, .07, '#1a1a1a', 0, .17, 1.42, 0, 0, PI / 2, 12); cyl(g, .05, .05, .09, '#8a8a90', 0, .17, 1.42, 0, 0, PI / 2, 8);
+    box(g, .035, .035, 1.25, '#6a5030', .22, .5, .82, .3); box(g, .035, .035, 1.25, '#6a5030', -.22, .5, .82, .3); box(g, .03, .32, .03, '#3a3a3a', .2, .3, .78); box(g, .03, .32, .03, '#3a3a3a', -.2, .3, .78); return g; });
+
+  // ================= LE POSE =================
+  const FULL = { base: 'Idle_Neutral', fade: .4 };   // la clip neutra (piedi uniti): sotto le pose la Idle sembrava a metà di un passo
+  const def = (name, spec, fn) => Anim.def(name, Object.assign({}, spec, { fn }));
+
+  // ---- SEDUTO (panchina, sedia): varianti per persona: composto, gambe accavallate, gomiti sulle ginocchia ----
+  // il sedile è a ~45 cm: il corpo scende di 40 cm, i piedi restano a terra (y = 0,43 prima dello spostamento)
+  const SEAT = .4, GF = .025;
+  function seated(P, v) {
+    P.body({ y: -SEAT });
+    if (v === 2) { // gomiti sulle ginocchia, curvo in avanti
+      legTo(P, 'L', .16, SEAT + GF, .46, .2, .3, 1); legTo(P, 'R', .16, SEAT + GF, .46, .2, .3, 1);
+      P.rot('Abdomen', .38, 0, 0); P.rot('Chest', .18, 0, 0);
+      arm(P, 'L', .05, -.8, .55, -.35, .05, 1); arm(P, 'R', .05, -.8, .55, -.35, .05, 1);
+      P.rot('Head', -.3, 0, 0);
+    } else if (v === 1) { // gambe accavallate, la destra sopra
+      P.rot('Abdomen', -.06, 0, 0);
+      legTo(P, 'L', .12, SEAT + GF, .5, .1, .3, 1); legTo(P, 'R', -.06, SEAT + .14, .56, -.1, 1, .5, -.3);
+      arm(P, 'L', .15, -.9, .35, -.15, -.6, .75); arm(P, 'R', .15, -.9, .35, -.1, -.6, .75);
+    } else { // composto, mani sulle cosce
+      legTo(P, 'L', .13, SEAT + GF, .5, .1, .3, 1); legTo(P, 'R', .13, SEAT + GF, .5, .1, .3, 1);
+      arm(P, 'L', .12, -.9, .35, -.05, -.65, .75); arm(P, 'R', .12, -.9, .35, -.05, -.65, .75);
+    }
+  }
+  def('siede', FULL, (P) => seated(P, pickR(P, 3, 1)));
+
+  // ---- SEDUTO A TERRA: ginocchia su e braccia attorno, oppure gambe stese e mani dietro ----
+  const FLOOR = .74;
+  def('siede_terra', FULL, (P) => {
+    const v = pickR(P, 2, 2);
+    P.body({ y: -FLOOR });
+    if (v === 0) {
+      legTo(P, 'L', .14, FLOOR + GF, .42, .1, 1, .3); legTo(P, 'R', .14, FLOOR + GF, .42, .1, 1, .3);
+      P.rot('Abdomen', .32, 0, 0);
+      arm(P, 'L', .15, -.6, .75, -.75, -.25, .55); arm(P, 'R', .15, -.6, .75, -.75, -.3, .55);
+    } else {
+      legTo(P, 'L', .13, FLOOR + .06, .8, 0, 1, 0, .2); legTo(P, 'R', .2, FLOOR + .1, .72, .2, 1, 0, .1, .3);
+      P.rot('Abdomen', -.25, 0, 0);
+      arm(P, 'L', .25, -.7, -.65, .2, -.8, -.4); arm(P, 'R', .25, -.7, -.65, .2, -.8, -.4);
+    }
+  });
+
+  // ---- DORME: sdraiato sulla schiena, un braccio sotto la testa; il petto si alza piano ----
+  def('dorme', { base: 'Idle', fade: .6 }, (P) => {
+    const v = pickR(P, 2, 3);
+    // sdraiato sulla schiena: la testa verso -z, i piedi verso +z (i piedi del kit stanno sotto Root e seguono il corpo)
+    P.body({ rx: -PI / 2, y: .14, z: .9 });
+    // ATTENZIONE: la rotazione del corpo si applica dopo la posa: le braccia si scrivono come se stesse in piedi
+    arm(P, 'L', .25, -1, -.15, .05, -1, .2);                        // lungo il fianco, la mano sulla pancia
+    if (v) arm(P, 'R', .45, .9, -.1, -.9, .3, -.2); else arm(P, 'R', .25, -1, -.15, -.25, -.9, .45);   // sotto la testa, o sulla pancia
+    P.rot('Chest', -.04 * (1 + Math.sin(P.t * 1.4 + P.r * 6)), 0, 0);
+    P.rot('Head', 0, (P.r - .5) * .8, 0);
+  });
+
+  // ---- FUMA (braccia, sopra la camminata): boccata ogni 6-9 secondi ----
+  def('fuma', { fade: .3 }, (P) => {
+    const T = 6 + P.r * 3, k = cyc(P, T), up = pulse(k, .0, .12, .3, .42);
+    // a riposo: avambraccio piegato davanti alla vita; boccata: mano alla bocca
+    arm(P, 'R', lerp(.2, .25, up), lerp(-.9, -.4, up), lerp(.15, .6, up), lerp(-.25, -.55, up), lerp(.3, .8, up), lerp(.9, .2, up));
+    if (up > .6) P.rot('Head', -.12 * up, 0, 0);
+    show(P, 'sigaretta');
+  });
+
+  // ---- BRACCIA CONSERTE ----
+  def('braccia', { fade: .35 }, (P) => {
+    arm(P, 'R', .25, -.85, .35, -.95, .2, .3); arm(P, 'L', .25, -.85, .3, -.95, .05, .35);
+  });
+
+  // ---- MANI IN TASCA ----
+  def('tasche', { fade: .35 }, (P) => {
+    arm(P, 'R', .2, -.95, -.12, -.15, -.9, .35); arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35);
+    P.rot('Chest', .04, 0, 0);
+  });
+
+  // ---- PARLA: gesti alternati delle mani, cenni di testa (si somma alle altre pose) ----
+  def('parla', { fade: .3 }, (P, A) => {
+    const busy = A && (A.upper || (A.act && BUSY[A.act]));
+    const r = P.r, T = 1.6 + r * 1.4, k = cyc(P, T), hand = Math.floor((P.t + r * 9) / T) % 3;
+    P.rot('Head', .07 * Math.sin(P.t * (3 + r * 2)), .1 * Math.sin(P.t * .7 + r * 5), 0);
+    if (busy) return;
+    const lq = (A && A.stile ? A.stile.loq : .5), g = Math.sin(k * PI) * (.5 + lq), wob = Math.sin(P.t * 5 + r * 3) * .12 * (.5 + lq);
+    if (hand !== 1) arm(P, 'R', .25, -.85, .35, -.15 + wob, .25 + g * .4, .9, .55 + g * .45);
+    if (hand !== 0) arm(P, 'L', .25, -.85, .35, -.15 - wob, .2 + g * .35, .9, .5 + g * .4);
+  });
+  const BUSY = {};   // pose con le mani occupate: chi parla mentre le fa muove solo la testa
+
+  // ================= BRACCIA (sopra la camminata o sopra una posa di tutto il corpo) =================
+  // ---- BEVE: bicchiere (o bottiglia) all'altezza della pancia, un sorso ogni 5-8 secondi ----
+  function sip(P, prop) {
+    const T = 5 + P.r * 3, k = cyc(P, T), up = pulse(k, 0, .15, .32, .45);
+    arm(P, 'R', lerp(.2, .2, up), lerp(-.9, -.35, up), lerp(.25, .6, up), lerp(-.2, -.45, up), lerp(.35, .85, up), lerp(.9, .25, up));
+    if (up > .5) P.rot('Head', -.25 * up, 0, 0);
+    show(P, prop);
+  }
+  def('beve', { fade: .3 }, (P) => sip(P, 'bicchiere'));
+  def('bottiglia', { fade: .3 }, (P) => sip(P, 'bottiglia'));
+  // ---- MANGIA: panino in mano, morsi ----
+  def('mangia', { fade: .3 }, (P) => {
+    const T = 3.2 + P.r * 1.5, k = cyc(P, T), up = pulse(k, 0, .2, .35, .55);
+    arm(P, 'R', .18, lerp(-.85, -.4, up), lerp(.3, .55, up), lerp(-.25, -.45, up), lerp(.4, .85, up), lerp(.85, .2, up));
+    arm(P, 'L', .2, -.9, .25, .1, -.2, .95);
+    P.rot('Head', .08 - .15 * up, 0, 0); show(P, 'panino');
+  });
+  // ---- TELEFONA: cornetta all'orecchio, l'altra mano gesticola o in tasca ----
+  def('telefona', { fade: .3 }, (P) => {
+    arm(P, 'R', .5, -.35, .25, -.45, .9, -.1);
+    if (P.r > .5) arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35); else arm(P, 'L', .25, -.85, .35, -.2, .2 + .2 * P.wave(.5), .95);
+    P.rot('Head', .05, 0, -.18); show(P, 'cornetta');
+  });
+  // ---- LEGGE: giornale (o libro) aperto davanti, testa china; ogni tanto gira pagina ----
+  function reads(P, prop) {
+    const k = cyc(P, 9 + P.r * 4), turn = pulse(k, .85, .9, .93, 1), big = prop === 'giornale';
+    // due mani ai lati del giornale (o del libro), all'altezza del petto; la testa china a leggere
+    handTo(P, 'R', big ? .17 : .1, 1.1 + turn * .04, .33, .9, -.4, 0); handTo(P, 'L', big ? .17 : .08, 1.1, .33, .9, -.4, 0);
+    if (big) grip(P, 'R', 0, 1, .15, .8, 'giornale');   // il giornale in piedi davanti al petto (il lato del pollice in su)
+    P.fingers('L', .35, .5); P.rot('Head', .38, 0, 0); P.rot('Chest', .06, 0, 0); show(P, prop);
+  }
+  def('legge', { fade: .4 }, (P) => reads(P, 'giornale'));
+  def('libro', { fade: .4 }, (P) => reads(P, 'libro'));
+  // ---- GUARDA L'OROLOGIO: polso sinistro davanti, testa giù ----
+  def('orologio', { fade: .3 }, (P) => { arm(P, 'L', .2, -.8, .4, -.7, .45, .55); P.rot('Head', .35, .15, 0); });
+  // ---- PORTA UNA CASSA: due mani sotto, braccia piegate davanti alla pancia; schiena un po' indietro ----
+  def('porta', { fade: .3 }, (P) => {
+    arm(P, 'R', .15, -.75, .5, -.1, .05, 1); arm(P, 'L', .15, -.75, .5, -.1, .05, 1);
+    P.rot('Abdomen', -.1, 0, 0); show(P, 'cassa');
+  });
+  // ---- SPINGE LA CARRIOLA: braccia tese in basso avanti, busto in avanti ----
+  def('carriola', { fade: .3 }, (P) => {
+    P.rot('Abdomen', .18, 0, 0);
+    handTo(P, 'R', .22, .7, .26, .3, -.4, -.4); handTo(P, 'L', .22, .7, .26, .3, -.4, -.4); P.fingers('R', .9, .8); P.fingers('L', .9, .8);
+    hideHeld(P); show(P, 'carriola');
+  });
+  // ---- REGGE IL CERO: davanti al petto con due mani ----
+  def('cero', { fade: .4 }, (P) => {
+    arm(P, 'R', .15, -.8, .45, -.35, .6, .7); arm(P, 'L', .15, -.8, .45, -.45, .5, .7);
+    grip(P, 'R', 0, 1, .1, 1, 'cero'); P.rot('Head', .3, 0, 0); show(P, 'cero');
+  });
+  // ---- SALUTA: mano alzata che oscilla ----
+  def('saluta', { fade: .2 }, (P) => { arm(P, 'R', .55, .35, .25, .1, 1, .05); P.rot('LowerArmR', 0, 0, .35 * P.wave(1.8)); });
+
+  // ================= TUTTO IL CORPO =================
+  // ---- IN GINOCCHIO (fruga, raccoglie, lavora a terra) ----
+  function kneel(P, deep) {
+    P.body({ y: -.42 - deep * .1 });
+    legTo(P, 'L', .14, .42 + deep * .1 + GF, .32, .1, .3, 1);                        // la sinistra col piede a terra
+    legTo(P, 'R', .14, .62 + deep * .1, -.32, .1, -.6, .8, -.6);                     // la destra col ginocchio a terra
+    P.rot('Abdomen', .35 + deep * .2, 0, 0); P.rot('Chest', .15, 0, 0); P.rot('Head', .2, 0, 0);
+  }
+  def('fruga', FULL, (P) => {
+    kneel(P, .5); const a = Math.sin(P.t * 4 + P.r * 9) * .15;
+    arm(P, 'R', .15, -.55, .8, .05 + a, -.75, .6); arm(P, 'L', .15, -.55, .8, .05 - a, -.75, .6);
+  }); BUSY.fruga = 1;
+  def('raccoglie', FULL, (P) => {
+    const k = cyc(P, 3), d = pulse(k, 0, .3, .55, .85);
+    P.body({ y: -.3 * d }); P.rot('Abdomen', .7 * d, 0, 0); P.rot('Chest', .2 * d, 0, 0);
+    legTo(P, 'L', .12, .3 * d + GF, .2, .1, .2, 1); legTo(P, 'R', .12, .3 * d + GF, -.05, .1, .2, 1);
+    arm(P, 'R', .1, -.6, .7, 0, -.9, .3, d);
+  }); BUSY.raccoglie = 1;
+  // ---- PREGA: in ginocchio, mani giunte, testa bassa ----
+  def('prega', FULL, (P) => {
+    kneel(P, 0); P.rot('Abdomen', -.3, 0, 0);
+    handTo(P, 'R', .03, 1.12, .26, .8, -.5, -.1); handTo(P, 'L', .03, 1.12, .26, .8, -.5, -.1); P.fingers('R', .15, .3); P.fingers('L', .15, .3);
+    P.rot('Head', .4 + .05 * P.wave(.15), 0, 0);
+  }); BUSY.prega = 1;
+  // ---- SCAVA: pala, piede sulla lama, solleva e butta di lato; ciclo di 2,4 s ----
+  def('scava', FULL, (P) => {
+    const k = cyc(P, 2.4), dn = pulse(k, 0, .25, .45, .6), up = pulse(k, .5, .7, .8, 1);
+    P.rot('Abdomen', .35 + .35 * dn - .15 * up, .35 * up, 0); P.rot('Chest', .1, .15 * up, 0);
+    P.body({ y: -.08 * dn });
+    arm(P, 'R', .15, -.55, .6, .05, lerp(-.75, -.2, up), lerp(.6, .9, up)); arm(P, 'L', .15, -.35, .75, .1, lerp(-.8, -.5, up), .55);
+    grip(P, 'R', 0, lerp(-1, -.3, up), lerp(.45, .8, up)); secondHand(P, .38, .8, -.4, 0); hideHeld(P); show(P, 'pala');
+  }); BUSY.scava = 1;
+  // ---- ZAPPA: alza la zappa sopra la spalla e la cala ----
+  def('zappa', FULL, (P) => {
+    const k = cyc(P, 1.9), hit = k < .25 ? smooth(k / .25) : 1 - smooth((k - .25) / .75);   // giù veloce, su piano
+    P.rot('Abdomen', .1 + .45 * hit, 0, 0); P.rot('Chest', .05 + .1 * hit, 0, 0);
+    arm(P, 'R', .12, lerp(.2, -.6, hit), lerp(.6, .75, hit), .05, lerp(.75, -.5, hit), lerp(.4, .85, hit));
+    arm(P, 'L', .12, lerp(.1, -.55, hit), lerp(.6, .8, hit), .05, lerp(.7, -.55, hit), lerp(.5, .8, hit));
+    grip(P, 'R', 0, lerp(.9, -.6, hit), lerp(.2, .9, hit)); secondHand(P, .32, .8, -.4, 0); hideHeld(P); show(P, 'zappa');
+  }); BUSY.zappa = 1;
+  // ---- MARTELLA (inchioda): chinato, la sinistra tiene il chiodo, la destra batte veloce ----
+  def('martella', FULL, (P) => {
+    const k = cyc(P, .55), hit = k < .3 ? smooth(k / .3) : 1 - smooth((k - .3) / .7);
+    P.rot('Abdomen', .2, 0, 0); P.rot('Head', .3, 0, 0);
+    handTo(P, 'L', .02, 1.0, .42, .8, -.5, 0); P.fingers('L', .55, .9);              // la sinistra tiene il chiodo sull'asse
+    handTo(P, 'R', lerp(.14, .1, hit), lerp(1.2, 1.02, hit), lerp(.3, .42, hit), .9, -.3, -.3);
+    grip(P, 'R', 0, lerp(.95, -.1, hit), lerp(.3, 1, hit), 1, 'martello'); hideHeld(P); show(P, 'martello');
+  }); BUSY.martella = 1;
+  // ---- FORZA UNA PORTA: piede di porco nella fessura, tira indietro con tutto il peso ----
+  def('forza', FULL, (P) => {
+    const k = cyc(P, 1.6), pull = pulse(k, 0, .4, .6, 1);
+    P.rot('Abdomen', .1 - .25 * pull, 0, 0); P.body({ z: -.08 * pull });
+    arm(P, 'R', .1, -.3, .9, .05, -.1, 1); arm(P, 'L', .1, -.25, .9, -.05, -.05, 1);
+    grip(P, 'R', -.3, .1, 1, 1, 'piede'); secondHand(P, -.16, .8, -.5, 0); hideHeld(P); show(P, 'piede');
+  }); BUSY.forza = 1;
+  // ---- SPAZZA: scopa avanti e indietro davanti ai piedi ----
+  def('spazza', FULL, (P) => {
+    const sw = Math.sin(P.t * 3.2 + P.r * 6);
+    P.rot('Abdomen', .25, .15 * sw, 0);
+    arm(P, 'R', .1, -.75, .35, .05, -.75, .6 + .1 * sw); arm(P, 'L', .1, -.55, .65, .05, -.6, .75 + .1 * sw);
+    grip(P, 'R', .1, -1, .45); secondHand(P, .35, .8, -.4, 0); show(P, 'scopa');
+  }); BUSY.spazza = 1;
+  // ---- PESCA: canna tenuta alta, ogni tanto si tira su e si rilancia ----
+  def('pesca', FULL, (P) => {
+    const k = cyc(P, 14 + P.r * 8), cast = pulse(k, .9, .94, .96, 1);
+    arm(P, 'R', .12, -.6, .6, -.05, lerp(.35, .95, cast), lerp(.9, -.2, cast)); arm(P, 'L', .12, -.75, .5, -.2, -.1, .95);
+    grip(P, 'R', 0, lerp(.65, 1, cast), lerp(1, -.2, cast), 1, 'canna'); P.rot('Head', .05, 0, 0); show(P, 'canna');
+  }); BUSY.pesca = 1;
+  // ---- BALLA: anche e braccia a tempo (120 bpm), passi sul posto ----
+  def('balla', FULL, (P) => {
+    const b = P.t * 2 * PI + P.r * 6, s1 = Math.sin(b), s2 = Math.sin(b * .5);
+    P.body({ y: -.04 + .04 * Math.abs(s1), x: .05 * s2 });
+    P.rot('Hips', 0, .2 * s2, .08 * s2); P.rot('Chest', 0, -.25 * s2, -.06 * s2);
+    const v = pickR(P, 2, 5);
+    if (v) { arm(P, 'R', .5, .3 + .3 * s1, .3, .2, 1, .1); arm(P, 'L', .3, -.6, .5, -.3, .5 + .3 * s1, .7); }
+    else { arm(P, 'R', .3, -.7, .45, -.2, .4 + .4 * s1, .8); arm(P, 'L', .3, -.7, .45, -.2, .4 - .4 * s1, .8); }
+    P.rot('Head', .1 * s1, .15 * s2, 0);
+  }); BUSY.balla = 1;
+  // ---- APPOGGIATO al muro: schiena indietro, un piede piegato contro il muro, braccia conserte o in tasca ----
+  def('appoggiato', FULL, (P) => {
+    P.body({ z: -.06, rx: -.08 });
+    legTo(P, 'R', .12, .35, -.12, .1, .3, 1, .3);
+    if (P.r > .5) { arm(P, 'R', .25, -.85, .35, -.95, .2, .3); arm(P, 'L', .25, -.85, .3, -.95, .05, .35); }
+    else { arm(P, 'R', .2, -.95, -.12, -.15, -.9, .35); arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35); }
+  });
+  // ---- AL BANCONE: avambracci appoggiati davanti, peso su una gamba, un sorso ogni tanto ----
+  def('bancone', FULL, (P) => {
+    P.rot('Abdomen', .22, 0, 0);
+    arm(P, 'L', .15, -.55, .7, -.6, .05, .8);
+    const k = cyc(P, 7 + P.r * 3), up = pulse(k, 0, .15, .3, .42);
+    arm(P, 'R', .15, lerp(-.55, -.3, up), lerp(.7, .6, up), lerp(-.6, -.45, up), lerp(.05, .85, up), lerp(.8, .25, up));
+    if (up > .5) P.rot('Head', -.25 * up, 0, 0);
+    legTo(P, 'R', .02, GF, .05, 0, .3, 1, 0, .2);
+    show(P, 'bicchiere');
+  });
+  // ---- SI FERMA E RESPIRA: mani sulle ginocchia, il petto che va su e giù ----
+  def('respira', FULL, (P) => {
+    P.body({ y: -.1 });
+    legTo(P, 'L', .14, .1 + GF, .02, .1, .2, 1); legTo(P, 'R', .14, .1 + GF, .02, .1, .2, 1);
+    P.rot('Abdomen', .6, 0, 0); P.rot('Chest', .15 + .06 * Math.sin(P.t * 7), 0, 0); P.rot('Head', -.45, 0, 0);
+    handTo(P, 'R', .14, .55, .26, .6, .3, -.3); handTo(P, 'L', .14, .55, .26, .6, .3, -.3); P.fingers('R', .5, .3); P.fingers('L', .5, .3);
+  }); BUSY.respira = 1;
+  // ---- SI STIRACCHIA (al risveglio): braccia in alto, poi giù ----
+  def('stiracchia', FULL, (P) => {
+    const k = cyc(P, 5), up = pulse(k, 0, .25, .55, .8);
+    arm(P, 'R', .3, lerp(-.9, .9, up), .05, .1, lerp(-.5, 1, up), .1); arm(P, 'L', .3, lerp(-.9, .9, up), .05, .1, lerp(-.5, 1, up), .1);
+    P.rot('Chest', -.25 * up, 0, 0); P.rot('Head', -.3 * up, 0, 0);
+  }); BUSY.stiracchia = 1;
+  // ---- SI SCALDA al fuoco: mani tese avanti, palmi verso la fiamma, sfregate ogni tanto ----
+  def('scalda', FULL, (P) => {
+    const rub = pulse(cyc(P, 6), 0, .1, .4, .5), r = Math.sin(P.t * 14) * .08 * rub;
+    P.rot('Abdomen', .15, 0, 0); P.rot('Chest', .05, 0, 0); P.rot('Head', .2, 0, 0);
+    handTo(P, 'R', .08 + r, 1.12, .48, .7, -.5, -.2); handTo(P, 'L', .08 - r, 1.12, .48, .7, -.5, -.2);
+  }); BUSY.scalda = 1;
+  // ---- ATTACCA MANIFESTI: braccia alte sul muro, pennello di colla che passa ----
+  def('attacchina', FULL, (P) => {
+    const sw = Math.sin(P.t * 2.6 + P.r * 4);
+    handTo(P, 'R', .15 + .12 * sw, 1.6 + .08 * Math.sin(P.t * 1.3), .55, .8, -.3, 0); handTo(P, 'L', .25, 1.7, .5, .8, -.3, 0);
+    P.rot('Head', -.2, .25 * Math.sin(P.t * .4), 0);   // si guarda intorno
+    grip(P, 'R', -.2, .2, 1, 1, 'pennello'); show(P, 'pennello');
+  }); BUSY.attacchina = 1;
+  // ---- BOMBOLETTA: braccio teso sul muro che disegna, ogni tanto agita la bomboletta ----
+  def('vernicia', FULL, (P) => {
+    const k = cyc(P, 8), shake = pulse(k, 0, .05, .15, .2);
+    if (shake > .5) arm(P, 'R', .2, -.8, .4, -.2, .4 + .3 * Math.sin(P.t * 30), .9);
+    else arm(P, 'R', .25, .05 + .2 * Math.sin(P.t * 1.7), .85, .15 * Math.sin(P.t * 2.3), .1, 1);
+    arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35);
+    P.rot('Head', -.05, .2 * Math.sin(P.t * .5), 0);
+    if (shake <= .5) grip(P, 'R', -.1, 0, 1, 1, 'bomboletta'); hideHeld(P); show(P, 'bomboletta');
+  }); BUSY.vernicia = 1;
+  // ---- GESSO: chinato, scrive basso sul muro o per terra ----
+  def('gesso', FULL, (P) => {
+    P.rot('Abdomen', .5, 0, 0); P.body({ y: -.12 });
+    arm(P, 'R', .15, -.5, .8, .1 * Math.sin(P.t * 3), -.4, .9); arm(P, 'L', .15, -.7, .5, 0, -.8, .5);
+    hideHeld(P); show(P, 'gesso');
+  }); BUSY.gesso = 1;
+  // ---- FOTOGRAFA: macchina all'occhio, ogni tanto la abbassa e guarda ----
+  def('foto', FULL, (P) => {
+    const k = cyc(P, 7), low = pulse(k, .6, .7, .9, 1);
+    arm(P, 'R', .45, lerp(-.3, -.85, low), .45, -.5, lerp(.85, .2, low), lerp(.2, .9, low));
+    arm(P, 'L', .45, lerp(-.3, -.85, low), .45, -.5, lerp(.85, .2, low), lerp(.2, .9, low));
+    P.rot('Head', .05 + .25 * low, 0, 0); hideHeld(P); show(P, 'fotocamera');
+  }); BUSY.foto = 1;
+  // ---- DISEGNA: album sul braccio sinistro, la destra traccia ----
+  def('disegna', FULL, (P) => {
+    handTo(P, 'L', .14, 1.03, .3, .9, -.4, 0); P.fingers('L', .35, .4);   // la sinistra regge l'album da sotto
+    handTo(P, 'R', .02 + .04 * Math.sin(P.t * 3), 1.07, .32 + .03 * Math.sin(P.t * 2.3), .9, -.4, 0); P.fingers('R', .7, .8);
+    P.rot('Head', .38 - .2 * pulse(cyc(P, 4), 0, .1, .3, .4), 0, 0); show(P, 'album'); show(P, 'matita');
+  }); BUSY.disegna = 1;
+  // ---- GUARDA LA MERCE (banco, mercato): chino sul banco, una mano tocca, gira la testa ----
+  def('merce', FULL, (P) => {
+    const k = cyc(P, 5);
+    P.rot('Abdomen', .3, 0, 0); P.rot('Head', .25, .4 * Math.sin(k * 2 * PI), 0);
+    handTo(P, 'R', .1, 1.0 + .06 * pulse(k, .3, .4, .6, .7), .42, .8, -.4, 0);       // tocca la merce sul banco
+    handTo(P, 'L', .14, 1.02, .24, .8, -.5, -.2); show(P, 'soldi');                     // i soldi pronti, davanti alla pancia
+  });
+  // ---- LAVORA (a un banco: officina, bottega, rete da riparare): mani sul piano, gesti piccoli ----
+  def('lavora', FULL, (P) => {
+    const a = Math.sin(P.t * 2.6 + P.r * 7), b = Math.sin(P.t * 3.4 + P.r * 3);
+    P.rot('Abdomen', .25, 0, 0); P.rot('Head', .3, .1 * a, 0);
+    handTo(P, 'R', .1 + .04 * a, .98 + .03 * b, .42, .9, -.4, 0); handTo(P, 'L', .1 - .04 * b, .98 + .03 * a, .42, .9, -.4, 0);   // le mani sul piano di lavoro
+    P.fingers('R', .55 + .2 * a, .6); P.fingers('L', .45 + .2 * b, .5);
+  }); BUSY.lavora = 1;
+  // ---- GIOCA A CARTE (seduto): carte nella sinistra, la destra cala una carta ogni tanto ----
+  def('carte', FULL, (P) => {
+    seated(P, 0);
+    const k = cyc(P, 6), play = pulse(k, .7, .8, .85, .95);
+    arm(P, 'L', .12, -.7, .5, -.4, .4, .8); arm(P, 'R', .12, -.7, .55, -.1, lerp(.3, -.2, play), .95);
+    P.rot('Head', .3, 0, 0); show(P, 'carte');
+  }); BUSY.carte = 1;
+  // ---- MANGIA SEDUTO a tavola ----
+  def('tavola', FULL, (P) => {
+    seated(P, 0);
+    const k = cyc(P, 3.5), up = pulse(k, 0, .2, .35, .55);
+    arm(P, 'R', .15, lerp(-.7, -.4, up), .55, lerp(-.1, -.45, up), lerp(.1, .85, up), lerp(.95, .2, up)); arm(P, 'L', .15, -.7, .55, -.1, .1, .95);
+    P.rot('Head', .25 - .3 * up, 0, 0);
+  }); BUSY.tavola = 1;
+  // ---- FLIPPER: due mani sui pulsanti, colpi rapidi, il corpo che segue la pallina ----
+  def('flipper', FULL, (P) => {
+    const f = Math.sin(P.t * 11) > .6 ? 1 : 0, g = Math.sin(P.t * 9 + 2) > .7 ? 1 : 0;
+    P.rot('Abdomen', .25, .1 * Math.sin(P.t * 1.5), .08 * Math.sin(P.t * 2.1));
+    handTo(P, 'R', .24, .98, .36 + .015 * f, .9, -.3, 0); handTo(P, 'L', .24, .98, .36 + .015 * g, .9, -.3, 0);   // i pollici sui pulsanti ai lati
+    P.fingers('R', .5, .2 + .4 * f); P.fingers('L', .5, .2 + .4 * g);
+    P.rot('Head', .35, 0, 0);
+  }); BUSY.flipper = 1;
+  // ---- ASPETTA: si guarda attorno, il peso che passa da un piede all'altro ----
+  def('aspetta', FULL, (P) => {
+    P.rot('Head', 0, .7 * Math.sin(P.t * .35 + P.r * 6), 0); P.rot('Chest', 0, .15 * Math.sin(P.t * .35 + P.r * 6), 0);
+    P.body({ x: .04 * Math.sin(P.t * .2 + P.r * 3) });
+    arm(P, 'R', .2, -.95, -.12, -.15, -.9, .35); arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35);
+  });
+  // ================= IL CARATTERE: come uno sta in piedi e cammina =================
+  // A.stile = { vec (0-1, anziano), fiero (-1..1), giu (0-1, al verde/stanco/triste), loq (0-1), dritto (divisa) }
+  def('portamento', { fade: .8 }, (P, A) => {
+    const S = A && A.stile; if (!S) return;
+    const still = Math.abs(P.o.speed || 0) < .3;
+    // anziani: schiena curva, collo che compensa, passo più corto (il busto oscilla un po')
+    if (S.vec > 0) { P.rot('Abdomen', .16 * S.vec, 0, 0); P.rot('Chest', .1 * S.vec, 0, 0); P.rot('Neck', -.12 * S.vec, 0, 0); P.rot('Head', -.08 * S.vec, 0, 0); }
+    // fieri: petto in fuori e mento su; insicuri: spalle in dentro
+    if (S.fiero) { P.rot('Chest', -.09 * S.fiero, 0, 0); P.rot('Head', -.06 * S.fiero, 0, 0); P.rot('ShoulderL', 0, -.06 * S.fiero, 0); P.rot('ShoulderR', 0, .06 * S.fiero, 0); }
+    // giù di morale, al verde o stanchi: spalle basse, testa china
+    if (S.giu > 0) { P.rot('Chest', .1 * S.giu, 0, 0); P.rot('Head', .14 * S.giu, 0, 0); }
+    // in divisa: dritti; da fermi chi è in divisa e non ha altro da fare guarda in giro piano
+    if (S.dritto) { P.rot('Abdomen', -.04, 0, 0); if (still) P.rot('Head', 0, .35 * Math.sin(P.t * .25 + P.r * 6), 0); }
+  });
+  // mani dietro la schiena (Grigi e anziani a passeggio)
+  def('dietro', { fade: .4 }, (P) => {
+    handTo(P, 'R', -.02, .92, -.2, .9, 0, -.4); handTo(P, 'L', -.02, .92, -.2, .9, 0, -.4); P.fingers('R', .5, .5); P.fingers('L', .4, .4);
+  });
+  // discute: gesti larghi, il busto in avanti, la testa che scatta (chi litiga, chi urla)
+  def('discute', { fade: .2 }, (P) => {
+    const k = cyc(P, 1.1 + P.r * .5), g = Math.sin(k * 2 * PI), h = Math.sin(k * 2 * PI + 1.7);
+    P.rot('Abdomen', .1, .12 * g, 0); P.rot('Chest', .06, .1 * h, 0); P.rot('Head', .08 * h, .12 * g, 0);
+    arm(P, 'R', .35, -.5 + .25 * g, .55, -.1, .55 + .35 * g, .8); P.fingers('R', .2 + .3 * Math.max(0, h), .3);
+    arm(P, 'L', .35, -.6 - .2 * g, .5, -.1, .45 - .3 * g, .85); P.fingers('L', .2, .3);
+  }); BUSY.discute = 1;
+  ['siede_terra', 'dorme', 'siede'].forEach(k => BUSY[k] = 0);
+  ['beve', 'bottiglia', 'mangia', 'telefona', 'legge', 'libro', 'porta', 'carriola', 'cero', 'fuma'].forEach(k => BUSY[k] = 1);
+
+  // ================= LE MAPPE: dallo stato del gioco alla posa =================
+  // testo del passo del piano (azioni.js, regia.js «fai»: «ripara la rete», «dipinge la barca»...) → posa
+  const BY_LABEL = [
+    [/scav|seppell|buca|fossa|vanga|pala/, 'scava'], [/zapp|orto|semin|pianta|raccogl.*(olive|uva|frutta)|vign/, 'zappa'],
+    [/inchiod|martell|ripara il tetto|aggiust|costruis|assi/, 'martella'], [/forza|scassin|piede di porco|serratura/, 'forza'],
+    [/fruga|tasche|perquis|cerca (per terra|nei)|rovist/, 'fruga'], [/colla|manifest|volantin|affigg/, 'attacchina'],
+    [/bomboletta|scritta|vernic|spruzz|graffit/, 'vernicia'], [/gesso/, 'gesso'], [/foto|scatta/, 'foto'],
+    [/disegn|schizz|ritratt|album/, 'disegna'], [/dipin|pittur|tinteggi/, 'vernicia'],
+    [/rete|ripara|cuc|lavora a|intaglia|pulisce il pesce|sistema|smonta|motore|officina|banco/, 'lavora'],
+    [/spazz|pulisc|lava (la|il|le|i) /, 'spazza'], [/pesca|canna/, 'pesca'], [/preg|rosario|messa|cero/, 'prega'],
+    [/ball/, 'balla'], [/carte|scopa|briscola|tombola/, 'carte'], [/flipper/, 'flipper'],
+    [/solleva|raccoglie|tira fuori|prende (da terra|il corpo)|posa|scarica|carica/, 'raccoglie'],
+    [/respira|riprende fiato|si ferma/, 'respira'], [/mangia|pranz|cena|merend/, 'mangia_su'], [/beve|brinda|vino|bicchier/, 'beve_su'],
+    [/legge|giornal|libro/, 'legge_su'], [/telefon/, 'telefona_su'], [/fuma|sigarett/, 'fuma_su'], [/scald|fuoco|braci/, 'scalda'],
+    [/aspett|attend|fa il palo|sorveglia|osserva|guarda/, 'aspetta'], [/nascost|si nasconde/, 'siede_terra'],
+  ];
+  function byLabel(txt, s) {
+    if (!txt) return false; const t = txt.toLowerCase();
+    for (let i = 0; i < BY_LABEL.length; i++) if (BY_LABEL[i][0].test(t)) { const v = BY_LABEL[i][1]; if (v.endsWith('_su')) s.upper = v.slice(0, -3); else s.act = v; return true; }
+    return false;
+  }
+  // oggetti intelligenti di popolo.js (il blocco della giornata) → posa
+  const BY_OBJ = { panchina: 'siede', bancone: 'bancone', carte: 'carte', tavola: 'tavola', panino: 'mangia_su', bottega: 'merce', bancarelle: 'merce',
+    spiaggia: 'siede_terra', canna: 'pesca', banco_chiesa: 'prega', cero: 'cero_su', libri: 'legge_su', flipper: 'flipper', pista: 'balla', pallone: 'aspetta',
+    palestra: 'lavora', motori: 'lavora', orto: 'zappa', barbiere: 'siede', album: 'disegna', foto: 'foto', fontana: 'lavora', cinema: 'siede', tv: 'siede', radio: 'siede' };
+  // il mestiere, quando si lavora all'aperto
+  const BY_JOB = [[/pescat|marinai/, 'lavora'], [/murator|manoval|carpent|operai/, 'martella'], [/contadin|bracciant|ortolan|giardin/, 'zappa'],
+    [/spazzin|netturb|bidell/, 'spazza'], [/portual|scaricat|facchin|magazzin/, 'porta_su'], [/barist|camerier|oste/, 'bancone'],
+    [/venditor|ambulant|bottegai|commess|fruttiv|pescivend|macell|fornai|edicol|tabacc/, 'merce'], [/meccanic|fabbro|elettric|calzolai|sart|barbier/, 'lavora'],
+    [/guardi|vigil|sorvegl|portier|custod/, 'aspetta'], [/prete|suor|parroc/, 'cero_su']];
+  function put(v, s) { if (!v) return; if (v.endsWith('_su')) s.upper = v.slice(0, -3); else s.act = v; }
+  // attrezzo in mano (n.hand / p.hand) mentre si cammina → braccia
+  const HELD_UP = { carriola: 'carriola', cassa: 'porta', roba: 'porta', merce: 'porta', viveri: 'porta', materiali: 'porta', mobili: 'porta', refurtiva: 'porta' };
+  // il «modo di fare» da fermi: piccole abitudini per persona, cambiano ogni minuto circa
+  const HABITS = ['tasche', 'braccia', 'fuma', 'orologio', 'tasche', 'aspetta_act', 'appoggiato_act', 'braccia', null, null];
+  function habit(n, clock, s) {
+    const slot = Math.floor((clock + (n.__h || (n.__h = Anim.hashStr(String(n.id)) * 97))) / 55);
+    const h = HABITS[Math.floor(Anim.hashStr(n.id + ':' + slot) * HABITS.length)];
+    if (!h) return; if (h.endsWith('_act')) s.act = h.slice(0, -4); else s.upper = h;
+  }
+  // lo stile si calcola di rado (cambia piano): ogni ~2 s per persona
+  function stileOf(st, n) {
+    const P = n.pop, tr = n.tr || {}, c = n.__st || (n.__st = { vec: 0, fiero: 0, giu: 0, loq: .5, dritto: false, t: -99 });
+    if (st.clock - c.t < 2) return c; c.t = st.clock;
+    const age = (P && P.age) || 35, N = (P && P.need) || {};
+    c.vec = clamp((age - 55) / 22, 0, 1);
+    c.fiero = clamp(((tr.cor !== undefined ? tr.cor : .5) - .5) * 1.4 - (N.paura || 0) * .8, -1, 1);
+    c.giu = clamp(((P && P.money !== undefined && P.money < 3) ? .4 : 0) + Math.max(0, (N.sonno || 0) - .6) * 1.2 + Math.max(0, (N.compagnia || 0) - .7), 0, 1);
+    c.loq = tr.loq !== undefined ? tr.loq : .5; c.dritto = !!(n.cop || n.military);
+    return c;
+  }
+  // chi parla guarda chi ha davanti: l'abitante più vicino entro 2,5 m (se no, il giocatore se è vicino)
+  function partnerOf(st, n) {
+    if (n.__pt && st.clock - n.__ptT < 1.5) return n.__pt; n.__ptT = st.clock; let best = null, bd = 2.5 * 2.5;
+    for (const k of st.npcs) { if (k === n || k.inside || k.dead) continue; const dx = k.x - n.x, dy = k.y - n.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = k; } }
+    return (n.__pt = best);
+  }
+  Anim.npcMap((st, n, s) => {
+    if (n.dead || n.stun > 0 || n.inside) return;
+    const P = n.pop, moving = Math.abs(n.speedNow || 0) > .3;
+    s.stile = stileOf(st, n); s.mood.push('portamento');
+    if (n.bark && n.bark.until > st.clock) {
+      const k = partnerOf(st, n); if (k) s.lookAt = { x: k.x, y: 1.5, z: k.y, ground: true };
+      if (/!/.test(n.bark.text || '') && !moving) s.upper = 'discute';
+    }
+    if (!moving && s.stile.dritto && !s.upper) s.upper = 'dietro';
+    if (moving && s.stile.vec > .6 && !s.upper && Anim.hashStr(String(n.id)) < .5) s.upper = 'dietro';
+    // portare qualcosa (un corpo, un carico) o la carriola: braccia, anche camminando
+    if (P && P.carrying) s.upper = 'porta';
+    if (n.hand && HELD_UP[n.hand]) s.upper = HELD_UP[n.hand];
+    if (n.inVeh) return;
+    // un piano in corso (azioni.js, anche quelli della Regia): il passo che sta facendo
+    const E = P && P.emer;
+    if (E && E.phase === 'do' && !moving) { const st0 = E.steps[E.i]; if (st0 && byLabel(st0.label, s)) return; if (byLabel(E.label, s)) return; }
+    if (moving) return;
+    // il blocco della giornata (popolo.js)
+    const b = P && P.cur;
+    if (b && n.action && n.action.name === 'routine') {
+      if (b.obj && BY_OBJ[b.obj]) return put(BY_OBJ[b.obj], s);
+      if (b.act === 'lavoro' && P.job) { const j = (P.job.base || P.job.title || '').toLowerCase(); for (const [re, v] of BY_JOB) if (re.test(j)) return put(v, s); return put('lavora', s); }
+      if (b.act === 'messa') return put('prega', s);
+      if (b.act === 'mercato' || b.act === 'spesa') return put('merce', s);
+      if (b.act === 'pranzo') return put('mangia_su', s);
+      if (byLabel(b.label, s)) return;
+    }
+    if (!s.upper) habit(n, st.clock, s);
+  });
+  // il protagonista: il tempo che corre (dorme, lavora, mangia...) e l'attrezzo in mano
+  Anim.playerMap((st, p, s) => {
+    if (p.stun > 0 || p.vehicle) return;
+    const W = st.me && st.me.warp;
+    if (W) { const k = W.kind || ''; if (/sonno/.test(k)) s.act = W.nap ? 'siede' : 'dorme'; else if (/lavor/.test(k)) s.act = 'lavora'; else if (/mang|pranz/.test(k)) s.act = 'tavola'; else if (/tv|casa|svago/.test(k)) s.act = 'siede'; else byLabel(W.label, s); return; }
+    if (p.hand && HELD_UP[p.hand]) s.upper = HELD_UP[p.hand];
+    if (p.carrying) s.upper = 'porta';
+  });
+})();
+</script>
+<script>/* ================= ANIMAZIONI: combattimento, ferite, stati d'animo e del corpo =================
+   Pose (vedi il motore in animazioni.js) e mappe che le scelgono dallo stato del gioco, per abitanti e protagonista.
+   Questo file si carica DOPO anim_vita.js: le sue mappe girano dopo e, quando c'è lotta o pericolo, sovrascrivono
+   s.act / s.upper della vita quotidiana (hanno la precedenza). Gli stati del corpo (ubriaco, freddo, ferito...) si
+   aggiungono a s.mood e convivono con il resto.
+   Pose di tutto il corpo (act): colpito, barcolla, stordito, rialza, calcio, schivata, rannicchiato, perquisisce,
+     ammanetta, ammanettato, in_vespa
+   Pose delle braccia (upper): mira (pistola a una o due mani, mitra all'anca, lupara e fucile alla spalla, coltello
+     in guardia, molotov pronta), ricarica, lancia (la molotov), guardia (pugni alternati), spinta, mani_alzate, fuga,
+     indica, alt
+   Strati leggeri (mood): ubriaco, postumi, freddo, ferito, paura, rabbia, stanco
+   Le mappe passano alle pose qualche numero in più dentro s (= A nelle pose):
+     A.rinc (rinculo 0-1, NPC; il giocatore usa o.recoil), A.unaMano / A.dueMani (pistola), A.colpoK (0-1, fase del
+     colpo: pugno, coltellata, calcio, spinta), A.colpoLato (+1 sinistro, -1 destro), A.ricK (0-1, avanzamento della
+     ricarica), A.lancioK (0-1, avanzamento del lancio), A.dietro (colpito alle spalle), A.colpitoK (forza del colpo),
+     A.ebbro (0-1), A.dolore (0-1), A.punta {x,z} (punto del mondo da indicare)
+   Niente allocazioni per fotogramma: le direzioni passano per un vettore di appoggio, lo stato per persona sta in una
+   WeakMap creata una volta sola. */
+(function () {
+  if (typeof Anim === 'undefined') return;
+  const D = Anim.def, clamp = Anim.clamp, smooth = Anim.smooth;
+  const GUN = { pistola: 1, mitra: 1, lupara: 1, fucile: 1 };
+  const armaDi = o => (o.weapon && o.weapon !== 'guardia' ? o.weapon : null) || o.held || null;
+  // direzioni senza creare array: aim legge subito i tre numeri
+  const _v = [0, 0, 0];
+  function AIM(P, b, x, y, z, w) { _v[0] = x; _v[1] = y; _v[2] = z; return P.aim(b, _v, w); }
+  // lo stesso per i due lati: s = +1 sinistra, -1 destra (la x si specchia)
+  function AIMS(P, side, b, x, y, z, w) { return AIM(P, b + (side > 0 ? 'L' : 'R'), x * side, y, z, w); }
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const bump = k => k <= 0 || k >= 1 ? 0 : Math.sin(k * Math.PI);          // 0 → 1 → 0
+  const strike = k => k <= 0 || k >= 1 ? 0 : k < .3 ? smooth(k / .3) : 1 - smooth((k - .3) / .7);   // veloce all'andata, lento al ritorno
+
+  // ---------------- ARMI ----------------
+  // la molotov: bottiglia con lo straccio, nella mano destra
+  Anim.prop('molotov', () => {
+    const g = new THREE.Group(), M = c => new THREE.MeshLambertMaterial({ color: c });
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(.04, .045, .17, 8), M('#3c6a3a')); g.add(b);
+    const n = new THREE.Mesh(new THREE.CylinderGeometry(.016, .03, .08, 6), M('#3c6a3a')); n.position.y = .12; g.add(n);
+    const r = new THREE.Mesh(new THREE.BoxGeometry(.035, .07, .03), M('#d8cfb4')); r.position.y = .18; r.rotation.z = .3; g.add(r);
+    return g;
+  }, 'WristR', [0, .11, .03], [0, 0, 0]);
+
+  // ---- strumenti: la mano in un punto (due ossa, gomito verso il «polo») e la canna dell'arma in una direzione ----
+  const V3 = () => new THREE.Vector3();
+  const _S = V3(), _E = V3(), _T = V3(), _u = V3(), _pl = V3(), _a1 = V3(), _a2 = V3(), _m4 = new THREE.Matrix4();
+  const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
+  // posizione di un osso nello spazio del personaggio (in out)
+  function local(P, k, out) { const b = P.bone(k); if (!b) return null; b.getWorldPosition(out); _m4.copy(P.g.matrixWorld).invert(); return out.applyMatrix4(_m4); }
+  // porta il polso del lato (s: +1 sinistro, -1 destro) nel punto T (spazio del personaggio); il gomito va verso il polo
+  function reach(P, side, tx, ty, tz, px, py, pz, w) {
+    const L = side > 0 ? 'L' : 'R', up = 'UpperArm' + L, lo = 'LowerArm' + L, wr = 'Wrist' + L;
+    if (!local(P, up, _S) || !local(P, lo, _E) || !local(P, wr, _a1)) return;
+    const a = _S.distanceTo(_E), b = _E.distanceTo(_a1);
+    _T.set(tx, ty, tz); _u.copy(_T).sub(_S); let d = _u.length(); if (d < 1e-4) return; _u.divideScalar(d);
+    d = clamp(d, Math.abs(a - b) + .01, (a + b) * .999);
+    const x = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - x * x));
+    _pl.set(px, py, pz); _pl.addScaledVector(_u, -_pl.dot(_u)); if (_pl.lengthSq() < 1e-6) _pl.set(0, -1, 0); _pl.normalize();
+    _E.copy(_S).addScaledVector(_u, x).addScaledVector(_pl, h);           // dove va il gomito
+    _a1.copy(_E).sub(_S); AIM(P, up, _a1.x, _a1.y, _a1.z, w);
+    _a2.copy(_S).addScaledVector(_u, d).sub(_E); AIM(P, lo, _a2.x, _a2.y, _a2.z, w);
+  }
+  // reach relativo alla spalla (la base del braccio): così vale per tutte le corporature. x positivo = verso il centro
+  // (per tutti e due i lati), anche per il polo: px negativo = gomito in fuori
+  function reachS(P, side, ox, oy, oz, px, py, pz, w) { const L = side > 0 ? 'L' : 'R', bk = P.bulk || 0; ox -= bk * .6; oz += bk * 1.2; px -= bk * 2;   // [vestiti] più largo sui cappotti
+    if (!local(P, 'UpperArm' + L, _T)) return; reach(P, side, _T.x - ox * side, _T.y + oy, _T.z + oz, -px * side, py, pz, w); }
+  // l'arma in mano: l'oggetto del modello e il suo asse (dall'impugnatura alla bocca), calcolato una volta sola
+  function gunOf(P, w) { const u = P.g.userData, k = u.gunsByWeapon && u.gunsByWeapon[w]; return (k && u.mguns && u.mguns[k]) || null; }
+  function gunAxis(gn) {
+    if (gn.userData.__ax) return gn.userData.__ax;
+    gn.updateMatrixWorld(true); const gi = new THREE.Matrix4().copy(gn.matrixWorld).invert(), box = new THREE.Box3(), tmp = new THREE.Box3(), m = new THREE.Matrix4();
+    gn.traverse(o => { if (o.isMesh) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); tmp.copy(o.geometry.boundingBox).applyMatrix4(m.multiplyMatrices(gi, o.matrixWorld)); box.union(tmp); } });
+    const sz = box.getSize(V3()), c = box.getCenter(V3()), k = sz.x > sz.y && sz.x > sz.z ? 'x' : sz.y > sz.z ? 'y' : 'z';
+    const e0 = c.clone(), e1 = c.clone(); e0[k] = box.min[k]; e1[k] = box.max[k];
+    // la bocca è l'estremo più lontano dall'impugnatura (l'origine dell'arma, dove la tiene la mano)
+    const ax = e1.length() >= e0.length() ? e1.clone().sub(e0) : e0.clone().sub(e1);
+    gn.userData.__ax = ax.normalize(); gn.userData.__len = sz[k]; return gn.userData.__ax;
+  }
+  // gira il polso destro perché la canna punti nella direzione data (spazio del personaggio)
+  function aimGun(P, w, x, y, z, wt) {
+    const gn = gunOf(P, w), wr = P.bone('WristR'); if (!gn || !wr || !wr.parent) return;
+    const ww = (wt === undefined ? 1 : wt) * P.w; if (ww <= 0) return;
+    const ax = gunAxis(gn); gn.getWorldQuaternion(_q1); _a1.copy(ax).applyQuaternion(_q1).normalize();
+    // [mani] l'avambraccio ruota e il polso piega entro un limite (niente polsi spezzati); le dita stringono l'impugnatura
+    _v[0] = x; _v[1] = y; _v[2] = z; P.turnHand('R', _a1, _v, Math.PI, wt);   // armi: prima l'avambraccio, poi il polso quanto serve (la canna deve andare dove si mira)
+    P.fingers('R', w === 'coltello' ? .95 : .85, .85, wt);
+  }
+  // un punto lungo la canna, a «dist» metri dall'impugnatura (spazio del personaggio): dove va la mano che sostiene
+  function alongGun(P, w, dist, out) {
+    const gn = gunOf(P, w); if (!gn) return null; const ax = gunAxis(gn);
+    gn.getWorldPosition(out); gn.getWorldQuaternion(_q1); _a1.copy(ax).applyQuaternion(_q1).normalize();
+    out.addScaledVector(_a1, dist * (P.g.userData.body ? P.g.userData.body.scale.y : 1));
+    _m4.copy(P.g.matrixWorld).invert(); return out.applyMatrix4(_m4);
+  }
+  const _G = V3();
+  // ---- le gambe. ATTENZIONE: in questi modelli i piedi (FootL/R) NON sono figli dello stinco: stanno sotto Root, come
+  // bersagli di un IK cotto nelle clip, e lo stinco (LowerLeg) è una foglia. Ruotare la coscia lascia il piede dov'era e
+  // la scarpa si stira fino a terra. Qui si fa l'IK a due ossa e si sposta anche il piede (posizione e rotazione).
+  // Le coordinate del bersaglio sono nello spazio del personaggio DOPO P.body() (lo spostamento del corpo si toglie).
+  const _K0 = V3(), _K1 = V3(), _F0 = V3(), _qk = new THREE.Quaternion(), _qf = new THREE.Quaternion(), _Y = new THREE.Vector3(0, 1, 0);
+  function rotWorld(bn, q) {   // ruota l'osso di q (nel mondo)
+    bn.getWorldQuaternion(_q1); _q1.premultiply(q); bn.parent.getWorldQuaternion(_q2); _q2.invert(); bn.quaternion.copy(_q2.multiply(_q1)); bn.updateMatrixWorld(true);
+  }
+  // [anim] delega al motore: l'IK di prima lasciava lo stinco storto rispetto al piede e la scarpa si stirava
+  function legIK(P, side, tx, ty, tz, px, py, pz, follow, w) {
+    const B = P._body; if (B) { tx -= B.x; ty -= B.y; tz -= B.z; }
+    P.legTo(side > 0 ? 'L' : 'R', tx, ty, tz, px, py, pz, 0, 0, w);
+  }
+
+  // tiene il piede dov'è ora (spazio del personaggio prima dello spostamento del corpo): quando il corpo si abbassa
+  // o scarta di lato, la gamba si piega e il piede resta piantato
+  function plant(P, side, w, dy, dz) {
+    const L = side > 0 ? 'L' : 'R', F = P.bone('Foot' + L); if (!F) return;
+    if (!local(P, 'Foot' + L, _G)) return;
+    legIK(P, side, _G.x, _G.y + (dy || 0), _G.z + (dz || 0), side * .15, 0, 1, 0, w);
+  }
+
+  // pistola: a due mani (Weaver) o a una mano, tesa davanti; il rinculo alza le braccia e la canna
+  function pistola(P, A, rec) {
+    const una = A.unaMano || (!A.dueMani && P.r < .3), k = rec * .5;
+    P.rot('Chest', -rec * .08, una ? -.28 : -.06, 0);
+    P.rot('Neck', .04, una ? .15 : .04, 0); P.rot('Head', .05, una ? .12 : .03, 0);
+    // la mano destra davanti al petto, braccio quasi teso, all'altezza degli occhi
+    reachS(P, -1, una ? .1 : .16, .08 + k * .12, .42, -.6, -.6, 0);
+    aimGun(P, 'pistola', 0, k * .9, 1);
+    if (una) { reachS(P, 1, -.04, -.5, .04, -1, 0, -.2, .8); }
+    else if (alongGun(P, 'pistola', .02, _G)) { reach(P, 1, _G.x + .01, _G.y - .05, _G.z - .03, .6, -.7, 0); P.fingers('L', .7, .7); }   // la sinistra avvolge la destra
+  }
+  // mitra (Skorpion): basso, all'anca, la sinistra sotto la canna; il rinculo è un tremito veloce
+  function mitra(P, A, rec) {
+    const j = rec * .1 * Math.sin(P.time * 70);
+    P.rot('Chest', -rec * .04, -.15, 0);
+    reachS(P, -1, -.02, -.32 + j * .2, .3, -.6, -.8, -.3);
+    aimGun(P, 'mitra', 0, .02 + j + rec * .08, 1);
+    if (alongGun(P, 'mitra', .22, _G)) reach(P, 1, _G.x, _G.y - .07, _G.z, .5, -.8, 0);  P.fingers('L', .7, .7);   // [mani] la sinistra avvolge
+  }
+  // lupara e fucile: alla spalla, il busto girato, la sinistra sotto la canna; il rinculo spinge indietro spalla e busto
+  function spalla(P, A, rec) {
+    const w = armaDi(P.o), k = rec * (w === 'lupara' ? .5 : .3);
+    P.rot('Abdomen', -k * .2, -.2, 0); P.rot('Chest', -k * .3, -.2, 0);
+    P.rot('Neck', .08, .22, 0); P.rot('Head', .1, .16, -.14);
+    reachS(P, -1, -.01, -.05 + k * .05, .25 - k * .08, -.7, -.7, -.3);
+    aimGun(P, w, 0, k * .8, 1);
+    if (alongGun(P, w, w === 'lupara' ? .38 : .42, _G)) reach(P, 1, _G.x, _G.y - .08, _G.z, .5, -.8, 0);  P.fingers('L', .7, .7);   // [mani] la sinistra avvolge
+  }
+  // coltello: guardia bassa, lama avanti; A.colpoK fa la coltellata
+  function coltello(P, A) {
+    const e = strike(A.colpoK || 0);
+    P.rot('Abdomen', .12 + e * .1, -.15 + e * .25, 0);
+    reachS(P, -1, lerp(.06, .2, e), lerp(-.18, -.04, e), lerp(.32, .55, e), -.7, -.6, 0);
+    aimGun(P, 'coltello', 0, lerp(.6, .1, e), 1);
+    reachS(P, 1, -.1, -.06 + e * .05, lerp(.3, .12, e), -.6, -.7, 0);
+  }
+  // molotov pronta: bottiglia alta dietro la spalla (il caricamento), la sinistra avanti a prendere la mira
+  function molotovPronta(P, A, w) {
+    P.rot('Chest', -.06 * w, -.3 * w, 0);
+    AIM(P, 'UpperArmR', -.9, .12, -.35, w); AIM(P, 'LowerArmR', .05, 1, -.3, w); AIM(P, 'WristR', 0, 1, -.1, w);
+    AIM(P, 'UpperArmL', .3, -.05, 1, w); AIM(P, 'LowerArmL', .1, .1, 1, w);
+    P.prop('molotov');
+  }
+  D('mira', { fade: .15, fn(P, A) {
+    const w = armaDi(P.o);
+    const rec = clamp(P.o.recoil !== undefined && P.o.recoil > 0 ? P.o.recoil : (A.rinc || 0), 0, 1.3);
+    if (w === 'pistola') pistola(P, A, rec);
+    else if (w === 'mitra') mitra(P, A, rec);
+    else if (w === 'lupara' || w === 'fucile') spalla(P, A, rec);
+    else if (w === 'coltello') coltello(P, A);
+    else if (w === 'molotov') molotovPronta(P, A, 1);
+  } });
+  // ricarica: l'arma davanti al petto (la pistola e il mitra in su, la lupara spezzata in giù), la sinistra va alla
+  // cintura a prendere il caricatore (o le cartucce), torna all'arma, lo infila; lo sguardo sull'arma
+  const _B = V3();
+  D('ricarica', { fade: .15, fn(P, A) {
+    const w = armaDi(P.o), k = clamp(A.ricK || 0, 0, 1), lungo = w === 'lupara' || w === 'fucile';
+    const toBelt = k < .2 ? smooth(k / .2) : k < .42 ? 1 - smooth((k - .2) / .22) : 0;   // la mano va alla cintura e torna
+    const push = k > .42 && k < .75 ? Math.sin((k - .42) / .33 * Math.PI) : 0;             // infila il caricatore
+    const shut = lungo && k > .82 ? smooth((k - .82) / .18) : 0;                           // la lupara si richiude con uno scatto
+    P.rot('Abdomen', .06, -.12, 0); P.rot('Neck', .22, 0, 0); P.rot('Head', .28, -.1, 0);
+    if (lungo) { reachS(P, -1, .02, -.3, .26, -.7, -.6, -.2); aimGun(P, w, .1, lerp(-.75, .15, shut), 1); }
+    else { reachS(P, -1, .1, -.18, .3, -.7, -.6, 0); aimGun(P, w, .25, .55, 1); }
+    // dove va la mano sinistra: sotto l'arma (all'impugnatura o alla culatta) oppure alla tasca della giacca
+    if (!local(P, 'WristR', _G)) return;
+    if (lungo && alongGun(P, w, .3, _B)) _G.copy(_B);
+    _G.y -= lungo ? .06 : .12 - push * .05; _G.x += .03;
+    if (!local(P, 'UpperArmL', _B)) return;
+    _B.x += .07; _B.y -= .45; _B.z -= .02;                                                  // la tasca sinistra
+    _G.lerp(_B, toBelt);
+    reach(P, 1, _G.x, _G.y, _G.z, .6, -.7, -.2);
+  } });
+  // il lancio della molotov: dal caricamento dietro la spalla, il braccio passa sopra la testa e va avanti e in basso
+  D('lancia', { fade: .06, fn(P, A) {
+    const k = clamp(A.lancioK || 0, 0, 1);
+    const a = smooth(clamp(k / .35, 0, 1)), f = smooth(clamp((k - .35) / .65, 0, 1));   // a: il braccio va avanti; f: torna giù
+    P.rot('Abdomen', .15 * a, lerp(-.25, .3, a) - .2 * f, 0); P.rot('Chest', .2 * a - .1 * f, lerp(-.3, .25, a) * (1 - f), 0);
+    if (a < 1) { AIM(P, 'UpperArmR', lerp(-.85, -.2, a), lerp(.35, .7, a), lerp(-.3, .7, a)); AIM(P, 'LowerArmR', lerp(-.05, .1, a), lerp(1, .3, a), lerp(-.35, 1, a)); }
+    else { AIM(P, 'UpperArmR', lerp(-.2, .1, f), lerp(.7, -.6, f), lerp(.7, .8, f)); AIM(P, 'LowerArmR', .1, lerp(.3, -.7, f), lerp(1, .6, f)); }
+    AIM(P, 'UpperArmL', lerp(.3, .8, a), lerp(-.05, -.55, a), lerp(1, -.35, a)); AIM(P, 'LowerArmL', lerp(.1, .3, a), lerp(.1, -.5, a), lerp(1, .3, a));
+    if (k < .3) P.prop('molotov');
+  } });
+
+  // ---------------- CORPO A CORPO ----------------
+  // guardia da pugile: pugni al mento, sinistro avanti; A.colpoK/A.colpoLato fanno partire il pugno
+  // ---- le dita: pugno chiuso (k 0-1). Le dita che la clip non anima terrebbero la rotazione di ieri: si ricorda
+  // la rotazione di base e quella messa da noi; se nessuno l'ha toccata nel frattempo, si riparte dalla base ----
+  const FING = ['Index1', 'Index2', 'Index3', 'Middle1', 'Middle2', 'Middle3', 'Ring1', 'Ring2', 'Ring3', 'Pinky1', 'Pinky2', 'Pinky3', 'Thumb1', 'Thumb2'];
+  const _fq = new THREE.Quaternion(), _fx = new THREE.Vector3(1, 0, 0);
+  function dita(P, side) {
+    const R = P.R, key = side > 0 ? 'fL' : 'fR'; if (R[key]) return R[key];
+    const out = [], L = side > 0 ? 'L' : 'R';
+    FING.forEach(n => { const b = R.m.getObjectByName(n + L); if (b) out.push({ b, base: b.quaternion.clone(), mine: b.quaternion.clone(), th: /^Thumb/.test(n) }); });
+    return (R[key] = out);
+  }
+  function pugno(P, side, k) {
+    const F = dita(P, side), ww = (k === undefined ? 1 : k) * P.w;
+    for (let i = 0; i < F.length; i++) {
+      const f = F[i], q = f.b.quaternion;
+      if (!q.equals(f.mine)) f.base.copy(q);              // l'ha mossa la clip: quella è la nuova base
+      _fq.setFromAxisAngle(_fx, (f.th ? .7 : 1.25) * ww);
+      q.copy(f.base).multiply(_fq); f.mine.copy(q);
+    }
+  }
+  // un pugno chiuso davanti al mento; e (0-1) lo porta in avanti, teso, verso il centro
+  function fist(P, side, fwd, e, w) {
+    reachS(P, side, lerp(.1, .2, e), lerp(.02, .08, e), lerp(fwd, .62, e), -.5, -.85, -.1, w);
+    AIMS(P, side, 'Wrist', -.2, .05, 1, (w === undefined ? 1 : w) * .8);
+    pugno(P, side, w);
+  }
+  function guardiaBraccia(P, w) { fist(P, -1, .2, 0, w); fist(P, 1, .3, 0, w); }
+  D('guardia', { fade: .15, fn(P, A) {
+    const e = strike(A.colpoK || 0), lato = A.colpoLato || -1;
+    const bob = .03 * P.wave(1.6);
+    P.rot('Abdomen', .1, -.18 - e * lato * .3, 0); P.rot('Chest', .05 + e * .08, -.1 - e * lato * .25, 0);
+    P.rot('Neck', .12, .15, 0); P.rot('Head', .08, .1, 0);
+    if (Math.abs(P.o.speed || 0) < .3) P.body({ y: -.04 + bob * .5 });
+    fist(P, -1, .2, lato < 0 ? e : 0); fist(P, 1, .3, lato > 0 ? e : 0);
+  } });
+  // spinta: due mani avanti all'altezza del petto, il busto dietro
+  D('spinta', { fade: .1, fn(P, A) {
+    const e = strike(A.colpoK || 0) * .8 + .2;
+    P.rot('Abdomen', .15 * e, 0, 0); P.rot('Chest', .1 * e, 0, 0);
+    AIM(P, 'UpperArmR', -.15, lerp(-.6, -.05, e), lerp(.5, 1, e)); AIM(P, 'LowerArmR', .1, lerp(.4, .05, e), 1); AIM(P, 'WristR', 0, 1, .4 - e * .2);
+    AIM(P, 'UpperArmL', .15, lerp(-.6, -.05, e), lerp(.5, 1, e)); AIM(P, 'LowerArmL', -.1, lerp(.4, .05, e), 1); AIM(P, 'WristL', 0, 1, .4 - e * .2);
+  } });
+  // calcio frontale: la gamba destra sale avanti, il busto va indietro, le braccia restano in guardia
+  D('calcio', { fade: .08, base: 'Idle', fn(P, A) {
+    const e = strike(A.colpoK || 0);
+    P.rot('Abdomen', -.2 * e, -.1, 0); P.rot('Chest', -.1 * e, 0, 0);
+    AIM(P, 'UpperLegR', 0, lerp(-1, .15, e), lerp(.05, 1, e)); AIM(P, 'LowerLegR', 0, lerp(-1, .05, e), lerp(-.05, 1, e)); AIM(P, 'FootR', 0, .2, 1, e);
+    AIM(P, 'UpperLegL', 0, -1, -.15 * e); P.body({ z: -.08 * e, y: -.03 * e });
+    guardiaBraccia(P, 1);
+  } });
+  // schivata: il busto scarta di lato e indietro, le braccia restano su
+  D('schivata', { fade: .08, fn(P, A) {
+    const e = bump(A.colpoK || 0), s = A.colpoLato || 1;
+    P.body({ x: .14 * s * e, y: -.08 * e, rz: -.08 * s * e });
+    P.rot('Abdomen', -.08 * e, 0, .25 * s * e); P.rot('Chest', -.05 * e, .15 * s * e, .2 * s * e);
+    AIM(P, 'UpperLegL', .25 * (s > 0 ? 1 : .3), -1, 0, e * .6); AIM(P, 'UpperLegR', -.25 * (s < 0 ? 1 : .3), -1, 0, e * .6);
+    guardiaBraccia(P, 1);
+  } });
+  // colpito: davanti il busto va indietro e la testa dietro; alle spalle il bacino va avanti e la schiena si inarca
+  D('colpito', { fade: .05, fn(P, A) {
+    const k = clamp(A.colpitoK === undefined ? 1 : A.colpitoK, 0, 1), e = Math.sin(Math.min(1, P.t / .35) * Math.PI) * k;
+    if (A.dietro) {
+      P.body({ z: .05 * e, rx: -.05 * e }); P.rot('Abdomen', -.25 * e, 0, 0); P.rot('Chest', -.2 * e, 0, 0); P.rot('Head', -.35 * e, 0, 0);
+      AIM(P, 'UpperArmR', -.6, -.5, -.4, e * .7); AIM(P, 'UpperArmL', .6, -.5, -.4, e * .7);
+    } else {
+      P.body({ z: -.06 * e }); P.rot('Abdomen', -.18 * e, .1 * e, 0); P.rot('Chest', -.22 * e, .15 * e, .08 * e); P.rot('Head', -.3 * e, .2 * e, .15 * e);
+      AIM(P, 'UpperArmR', -.6, -.25, .4, e * .6); AIM(P, 'UpperArmL', .6, -.25, .4, e * .6);
+    }
+  } });
+  // barcolla: due passi incerti, il busto ondeggia, le braccia cercano l'equilibrio
+  D('barcolla', { fade: .15, fn(P, A) {
+    const s = P.wave(.9), s2 = P.wave(1.7, 1);
+    P.body({ rz: .07 * s, x: .05 * s, rx: .05 + .03 * s2 });
+    P.rot('Abdomen', .15, .1 * s2, -.1 * s); P.rot('Chest', .1, 0, -.08 * s); P.rot('Head', .2, .15 * s2, .2 * s);
+    if (!A.upper) { AIM(P, 'UpperArmR', -.8, -.55, .1 + .2 * s, .7); AIM(P, 'UpperArmL', .8, -.55, .1 - .2 * s, .7); AIM(P, 'LowerArmR', -.4, -.6, .5, .5); AIM(P, 'LowerArmL', .4, -.6, .5, .5); }
+  } });
+  // stordito: in piedi ma intontito, una mano alla testa, le ginocchia molli
+  D('stordito', { fade: .2, base: 'Idle', fn(P, A) {
+    const s = P.wave(.45), c = P.wave(.3, 2);
+    P.body({ y: -.05, rz: .05 * s, x: .04 * c });
+    P.rot('Abdomen', .18, 0, 0); P.rot('Chest', .1, 0, .05 * s); P.rot('Neck', .2, 0, 0); P.rot('Head', .15 + .1 * c, .2 * s, .2 * c);
+    AIM(P, 'UpperLegL', .05, -1, .15); AIM(P, 'UpperLegR', -.05, -1, .15); AIM(P, 'LowerLegL', 0, -1, -.15); AIM(P, 'LowerLegR', 0, -1, -.15);
+    AIM(P, 'UpperArmR', -.55, .1, .8); AIM(P, 'LowerArmR', .75, .6, -.2); AIM(P, 'WristR', .5, .3, -.5, .6);
+    AIM(P, 'UpperArmL', .35, -1, .1, .8);
+  } });
+  // rialzarsi da terra: da un ginocchio a terra, la mano sul ginocchio, si spinge su
+  D('rialza', { fade: .04, base: 'Idle', fn(P, A) {
+    const k = clamp(P.t / .95, 0, 1), d = 1 - smooth(clamp((k - .25) / .75, 0, 1));   // d: quanto è ancora giù
+    P.body({ y: -.48 * d, rx: .3 * d });
+    P.rot('Abdomen', .4 * d, 0, 0); P.rot('Chest', .2 * d, 0, 0); P.rot('Head', -.3 * d, 0, 0);
+    AIM(P, 'UpperLegR', 0, -.25, 1, d); AIM(P, 'LowerLegR', 0, -1, .1, d);                  // piede destro avanti, piantato
+    AIM(P, 'UpperLegL', 0, -1, -.05, d); AIM(P, 'LowerLegL', 0, -.15, -1, d); AIM(P, 'FootL', 0, -.3, -1, d);   // ginocchio sinistro a terra
+    AIM(P, 'UpperArmR', -.15, -.75, .65, d); AIM(P, 'LowerArmR', .1, -.95, .2, d);          // mano sul ginocchio
+    AIM(P, 'UpperArmL', .4, -.8, .4, d); AIM(P, 'LowerArmL', 0, -1, .1, d);
+  } });
+
+  // ---------------- PAURA E RESA ----------------
+  // mani alzate: palmi avanti, spalle su, tremano; la testa bassa
+  D('mani_alzate', { fade: .2, fn(P, A) {
+    const t1 = .04 * P.wave(7.3), t2 = .04 * P.wave(6.1, 1.3);
+    P.rot('Chest', -.05, 0, 0); P.rot('Neck', .15, 0, 0); P.rot('Head', .12 + t1, 0, 0);
+    P.rot('ShoulderL', 0, 0, .15); P.rot('ShoulderR', 0, 0, -.15);
+    AIM(P, 'UpperArmL', .9, .45 + t1, .12); AIM(P, 'LowerArmL', .05, 1, .18 + t2); AIM(P, 'WristL', 0, 1, -.15);
+    AIM(P, 'UpperArmR', -.9, .45 + t2, .12); AIM(P, 'LowerArmR', -.05, 1, .18 + t1); AIM(P, 'WristR', 0, 1, -.15);
+  } });
+  // rannicchiato: accovacciato, la testa tra le braccia
+  D('rannicchiato', { fade: .25, base: 'Idle', fn(P, A) {
+    const t = .03 * P.wave(5.5);
+    P.body({ y: -.5, z: -.05 });
+    P.rot('Abdomen', .55, 0, 0); P.rot('Chest', .4, 0, t); P.rot('Neck', .4, 0, 0); P.rot('Head', .3, 0, 0);
+    AIM(P, 'UpperLegL', .2, -.1, 1); AIM(P, 'UpperLegR', -.2, -.1, 1); AIM(P, 'LowerLegL', .05, -1, -.35); AIM(P, 'LowerLegR', -.05, -1, -.35);
+    AIM(P, 'FootL', 0, -.2, 1); AIM(P, 'FootR', 0, -.2, 1);
+    AIM(P, 'UpperArmL', .45, .55, .6); AIM(P, 'LowerArmL', -.75, .3, -.1); AIM(P, 'UpperArmR', -.45, .55, .6); AIM(P, 'LowerArmR', .75, .3, -.1);
+  } });
+  // fuga: sulla corsa, un braccio sopra la testa a ripararsi, l'altro che si agita
+  D('fuga', { fade: .2, fn(P, A) {
+    const s = P.wave(2.4), s2 = P.wave(3.1, 1);
+    P.rot('Chest', .15, 0, 0); P.rot('Neck', .2, 0, 0);
+    if (P.r < .5) { AIM(P, 'UpperArmL', .55, .6, .35); AIM(P, 'LowerArmL', -.8, .3, .1); AIM(P, 'UpperArmR', -.7, -.3 + .35 * s, .3 * s2, .85); AIM(P, 'LowerArmR', -.4, .2 + .5 * s2, .5, .7); }
+    else { AIM(P, 'UpperArmR', -.55, .6, .35); AIM(P, 'LowerArmR', .8, .3, .1); AIM(P, 'UpperArmL', .7, -.3 + .35 * s, .3 * s2, .85); AIM(P, 'LowerArmL', .4, .2 + .5 * s2, .5, .7); }
+  } });
+  // indica: il braccio destro teso verso il punto A.punta («è lui!»), la sinistra sul fianco
+  const _w = new THREE.Vector3(), _qi = new THREE.Quaternion();
+  D('indica', { fade: .2, fn(P, A) {
+    let x = 0, z = 1;
+    if (A.punta) { P.g.getWorldPosition(_w); _w.set(A.punta.x - _w.x, 0, A.punta.z - _w.z); _qi.copy(P._gq).invert(); _w.applyQuaternion(_qi); x = _w.x; z = _w.z; const l = Math.hypot(x, z) || 1; x /= l; z /= l; }
+    if (z < .2) { x = x < 0 ? -.9 : .9; z = .2; }   // dietro di sé non si indica: si resta di lato
+    const jab = .06 * Math.max(0, P.wave(2.2));
+    P.rot('Chest', -.04, clamp(Math.atan2(x, z) * .35, -.4, .4), 0);
+    AIM(P, 'UpperArmR', x, .12 + jab, z); AIM(P, 'LowerArmR', x, .18 + jab, z); AIM(P, 'WristR', x, .2, z);
+    AIM(P, 'UpperArmL', .45, -.85, -.15, .8); AIM(P, 'LowerArmL', -.55, -.1, -.4, .8);
+  } });
+  // alt: Guardia o Tutela, braccio sinistro teso col palmo avanti, la destra sulla fondina
+  D('alt', { fade: .2, fn(P, A) {
+    P.rot('Chest', -.06, .1, 0); P.rot('Head', -.05, 0, 0);
+    AIM(P, 'UpperArmL', .12, .12, 1); AIM(P, 'LowerArmL', .05, .2, 1); AIM(P, 'WristL', 0, 1, .25);
+    AIM(P, 'UpperArmR', -.35, -1, -.1); AIM(P, 'LowerArmR', .25, -.55, .45);
+  } });
+  // perquisisce: chino in avanti, le mani che tastano a turno
+  D('perquisisce', { fade: .25, base: 'Idle', fn(P, A) {
+    const s = P.wave(1.6), s2 = P.wave(1.6, Math.PI);
+    P.rot('Abdomen', .35, 0, 0); P.rot('Chest', .15, .1 * s, 0); P.rot('Head', .2, 0, 0); P.body({ y: -.04 });
+    AIM(P, 'UpperArmR', -.25, -.55 + .2 * s, .8); AIM(P, 'LowerArmR', .2, -.45 + .25 * s, 1); AIM(P, 'WristR', 0, -.3, 1);
+    AIM(P, 'UpperArmL', .25, -.55 + .2 * s2, .8); AIM(P, 'LowerArmL', -.2, -.45 + .25 * s2, 1); AIM(P, 'WristL', 0, -.3, 1);
+  } });
+  // ammanetta: le mani avanti, basse, sui polsi di chi ha davanti
+  D('ammanetta', { fade: .2, base: 'Idle', fn(P, A) {
+    const s = .05 * P.wave(1.3);
+    P.rot('Abdomen', .25, 0, 0); P.rot('Head', .25, 0, 0);
+    AIM(P, 'UpperArmR', -.2, -.7, .7); AIM(P, 'LowerArmR', .45, -.35 + s, 1); AIM(P, 'UpperArmL', .2, -.7, .7); AIM(P, 'LowerArmL', -.45, -.35 - s, 1);
+  } });
+  // ammanettato: le mani dietro la schiena, le spalle indietro, la testa bassa
+  D('ammanettato', { fade: .25, fn(P, A) {
+    P.rot('Chest', -.08, 0, 0); P.rot('Neck', .2, 0, 0); P.rot('Head', .25, 0, 0);
+    AIM(P, 'UpperArmL', .25, -.85, -.45); AIM(P, 'LowerArmL', -.8, -.15, -.35); AIM(P, 'WristL', -1, 0, -.1, .6);
+    AIM(P, 'UpperArmR', -.25, -.85, -.45); AIM(P, 'LowerArmR', .8, -.15, -.35); AIM(P, 'WristR', 1, 0, -.1, .6);
+  } });
+
+  // ---------------- IN VESPA ----------------
+  // seduto, le mani al manubrio, i piedi sulla pedana; il corpo è già alzato di 35 cm da render.js
+  D('in_vespa', { fade: .1, base: 'Idle', fn(P, A) {
+    P.body({ y: -.3, z: -.12 });
+    P.rot('Abdomen', .08, 0, 0); P.rot('Chest', .06, 0, 0);
+    AIM(P, 'UpperLegL', .12, -.15, 1); AIM(P, 'UpperLegR', -.12, -.15, 1); AIM(P, 'LowerLegL', 0, -1, .3); AIM(P, 'LowerLegR', 0, -1, .3);
+    AIM(P, 'FootL', 0, -.1, 1); AIM(P, 'FootR', 0, -.1, 1);
+    AIM(P, 'UpperArmL', .3, -.5, .8); AIM(P, 'LowerArmL', .15, -.05, 1); AIM(P, 'UpperArmR', -.3, -.5, .8); AIM(P, 'LowerArmR', -.15, -.05, 1);
+  } });
+
+  // ---------------- STATI DEL CORPO E DELL'ANIMO (strati leggeri) ----------------
+  // ubriaco: il corpo ondeggia, la testa ciondola, le braccia larghe; A.ebbro dà la forza
+  D('ubriaco', { fade: .6, fn(P, A) {
+    const k = clamp(A.ebbro === undefined ? .7 : A.ebbro, 0, 1), s = P.wave(.38), s2 = P.wave(.23, 2), mv = Math.abs(P.o.speed || 0) > .3;
+    P.body({ rz: .07 * k * s, x: .05 * k * s2, ry: (mv ? .12 : .04) * k * s2 });
+    P.rot('Abdomen', .06 * k, 0, -.06 * k * s); P.rot('Chest', 0, .1 * k * s2, .05 * k * s);
+    P.rot('Neck', .12 * k, 0, 0); P.rot('Head', .1 * k + .08 * k * s2, .1 * k * s, .18 * k * s);
+    if (!A.upper && !A.act) { AIM(P, 'UpperArmL', .45, -1, .05, .5 * k); AIM(P, 'UpperArmR', -.45, -1, .05, .5 * k); }
+  } });
+  // postumi: la testa pesante e bassa, le spalle giù; da fermo una mano alla fronte ogni tanto
+  D('postumi', { fade: .6, fn(P, A) {
+    P.rot('Chest', .1, 0, 0); P.rot('Neck', .2, 0, 0); P.rot('Head', .15, 0, .05 * P.wave(.15));
+    P.rot('ShoulderL', 0, 0, -.06); P.rot('ShoulderR', 0, 0, .06);
+    const still = Math.abs(P.o.speed || 0) < .2, h = still && !A.upper && !A.act ? clamp(P.wave(.07) * 3 - 1.5, 0, 1) : 0;
+    if (h > 0) { AIM(P, 'UpperArmL', .25, -.1, .9, h); AIM(P, 'LowerArmL', -.55, .8, .1, h); P.rot('Head', .15 * h, 0, 0); }
+  } });
+  // freddo: spalle strette e alte, braccia strette al petto, tremito
+  D('freddo', { fade: .6, fn(P, A) {
+    const t = .025 * Math.sin(P.time * 47 + P.r * 9), t2 = .02 * Math.sin(P.time * 39);
+    P.rot('ShoulderL', 0, .12, .18); P.rot('ShoulderR', 0, -.12, -.18);
+    P.rot('Chest', .1, t2, t); P.rot('Neck', .1, 0, 0); P.rot('Head', .05 + t, 0, 0);
+    if (!A.upper && !(A.act && A.act !== 'ubriaco')) {
+      AIM(P, 'UpperArmL', .2, -.75, .45); AIM(P, 'LowerArmL', -.9, .25 + t, .25);
+      AIM(P, 'UpperArmR', -.2, -.75, .45); AIM(P, 'LowerArmR', .9, .35 + t2, .3);
+    }
+  } });
+  // ferito: si tiene il fianco con la sinistra, piegato da quella parte; zoppica camminando
+  D('ferito', { fade: .5, fn(P, A) {
+    const k = clamp(A.dolore === undefined ? 1 : A.dolore, 0, 1), sp = Math.abs(P.o.speed || 0);
+    P.rot('Abdomen', .15 * k, 0, .1 * k); P.rot('Chest', .08 * k, 0, .06 * k); P.rot('Head', .1 * k, 0, 0);
+    if (sp > .25) { const ph = Math.max(0, Math.sin(P.time * sp * 3.4)); P.body({ y: -.05 * ph * k, rz: .06 * ph * k }); }
+    if (!A.upper) { AIM(P, 'UpperArmL', .45, -.85, .25, k); AIM(P, 'LowerArmL', -.55, -.15, .7, k); AIM(P, 'WristL', -.7, -.3, .3, .6 * k); }
+  } });
+  // paura: curvo, la testa che si guarda attorno a scatti, braccia strette
+  D('paura', { fade: .4, fn(P, A) {
+    const look = Math.sin(P.time * 1.3 + P.r * 7), dart = look > .4 ? .55 : look < -.4 ? -.55 : 0;
+    P.rot('Abdomen', .1, 0, 0); P.rot('Chest', .12, 0, 0); P.rot('ShoulderL', 0, 0, .1); P.rot('ShoulderR', 0, 0, -.1);
+    if (!A.lookAt) { P.rot('Neck', .05, dart * .4, 0); P.rot('Head', .05, dart * .6, 0); }
+    if (!A.upper && !A.act) { AIM(P, 'UpperArmL', .15, -1, .2, .5); AIM(P, 'UpperArmR', -.15, -1, .2, .5); AIM(P, 'LowerArmL', -.3, -.6, .6, .4); AIM(P, 'LowerArmR', .3, -.6, .6, .4); }
+  } });
+  // rabbia: petto in fuori, spalle aperte, testa avanti e bassa, braccia rigide un po' larghe, respiro pesante
+  D('rabbia', { fade: .4, fn(P, A) {
+    const br = .03 * P.wave(.6);
+    P.rot('Abdomen', .06, 0, 0); P.rot('Chest', -.12 - br, 0, 0); P.rot('ShoulderL', 0, -.1, 0); P.rot('ShoulderR', 0, .1, 0);
+    P.rot('Neck', .2, 0, 0); P.rot('Head', .05, 0, 0);
+    if (!A.upper && !A.act) { AIM(P, 'UpperArmL', .4, -1, -.05, .6); AIM(P, 'UpperArmR', -.4, -1, -.05, .6); AIM(P, 'LowerArmL', .1, -1, .35, .5); AIM(P, 'LowerArmR', -.1, -1, .35, .5); }
+  } });
+  // stanco: spalle cadenti, testa giù, un lento dondolio; da fermo, ogni tanto uno sbadiglio con la mano alla bocca
+  D('stanco', { fade: .6, fn(P, A) {
+    P.rot('Chest', .14, 0, .03 * P.wave(.12)); P.rot('Neck', .15, 0, 0); P.rot('ShoulderL', 0, 0, -.08); P.rot('ShoulderR', 0, 0, .08);
+    const still = Math.abs(P.o.speed || 0) < .2, y = still && !A.upper && !A.act ? clamp(P.wave(.05, 1) * 4 - 3, 0, 1) : 0;
+    P.rot('Head', .18 - y * .55, 0, 0);
+    if (y > 0) { AIM(P, 'UpperArmR', -.2, -.3, .9, y); AIM(P, 'LowerArmR', .4, .9, .15, y); }
+  } });
+
+  // =============================== MAPPE ===============================
+  const W_ = () => (window.Game && Game.WEAPONS) || {};
+  const ST = new WeakMap();   // stato per persona (una volta sola): tempi dei colpi, dei pugni, delle cadute
+  function memo(who) { let m = ST.get(who); if (!m) { m = { mag: -1, shotT: -99, gest: 0, hitAt: -99, strikeT: -99, side: 1, kick: false, wasDown: false, downT: 0, upT: -99, longDown: false, punch: 0, punchT: -99, cur: '', throwT: -99, shoveT: -99, dodgeT: -99, dodgeS: 1 }; ST.set(who, m); } return m; }
+  const hourOf = st => ((st.t / 60) % 24 + 24) % 24;
+  const isNight = st => { const h = hourOf(st); return h >= 20.5 || h < 6; };
+  const raining = st => !!(window.Render && Render.isRaining && Render.isRaining(st.t));
+  const KICK = { pistola: .45, mitra: .25, lupara: 1, fucile: .7 };
+  // a terra → in piedi: segna quando si rialza (per 'rialza' e 'stordito')
+  function downTrack(m, down, clock) {
+    if (down && !m.wasDown) m.downT = clock;
+    if (!down && m.wasDown) { m.upT = clock; m.longDown = clock - m.downT > .6; }
+    m.wasDown = down;
+  }
+  // dopo una caduta: prima ci si rialza, poi si resta intontiti un momento
+  function afterFall(m, clock, s) {
+    if (!m.longDown) return false;
+    const dt = clock - m.upT;
+    if (dt < .95) { s.act = 'rialza'; return true; }
+    if (dt < 2.6) { s.act = 'stordito'; return true; }
+    return false;
+  }
+  function moodsOf(s, list) { for (let i = 0; i < list.length; i++) if (s.mood.indexOf(list[i]) < 0) s.mood.push(list[i]); }
+
+  // ---------------- ABITANTI ----------------
+  Anim.npcMap((st, n, s) => {
+    if (n.dead || n.inside) return;
+    const m = memo(n), clock = st.clock, p = st.player, a = n.action ? n.action.name : '';
+    const E = n.pop && n.pop.emer, brawl = !!(E && (E.kind === 'rissa' || E.kind === 'picchia' || E.kind === 'uccidi'));
+    const down = n.stun > 0, sp = Math.abs(n.speedNow || 0);
+    downTrack(m, down, clock);
+    const dx = p.x - n.x, dz = p.y - n.y, dP = Math.hypot(dx, dz);
+    // armato? (stessa regola di render.js) oppure con un'arma in mano dentro un piano di violenza
+    const WP = W_();
+    let gun = null;
+    if (n.weapon && (a === 'combatte' || (n.cop && window.Game && Game.hostile(st, n)))) gun = n.weapon;
+    else if (n.hand && WP[n.hand] && !WP[n.hand].melee && !WP[n.hand].throw) gun = n.hand;
+    // colpi sparati: il caricatore che cala (combatte) o le munizioni del piano (azioni)
+    const mag = gun ? (a === 'combatte' ? n.mag : (n.pop && n.pop.ammo ? n.pop.ammo[gun] || 0 : 0)) : -1;
+    if (gun && m.mag >= 0 && mag < m.mag) m.shotT = clock;
+    m.mag = mag;
+    // gesti di lotta (azioni.js mette n.gesture = .35 a ogni colpo): un nuovo colpo quando il gesto risale
+    const g = n.gesture || 0;
+    if (brawl && g > m.gest + .1) { m.strikeT = clock; m.side = -m.side; m.kick = !n.hand && sp < .3 && Math.random() < .2; }
+    m.gest = g;
+    // schivata: il giocatore tira un pugno da vicino e non lo prende
+    if (p.punch > 0 && p.punch > m.punch + .05 && dP < 2 && (brawl || a === 'affronta' || a === 'combatte')) { m.dodgeT = clock; m.dodgeS = Math.random() < .5 ? 1 : -1; }
+    m.punch = p.punch || 0;
+    if (down) return;   // a terra: resta la clip Death
+    // ---- stati del corpo (strati leggeri) ----
+    const N = n.pop && n.pop.need;
+    if (n.hp < (n.maxHp || 60) * .35) { s.mood.push('ferito'); s.dolore = 1 - n.hp / ((n.maxHp || 60) * .35) * .5; }
+    if (N) {
+      if (N.paura > .6 && a !== 'combatte') s.mood.push('paura');
+      else if (N.rabbia > .6) s.mood.push('rabbia');
+      if (N.sonno > .85) s.mood.push('stanco');
+    }
+    if (n.pop && n.pop.vice === 'vino' && !gun && !brawl) { const h = hourOf(st); if ((h >= 21.5 || h < 3) && Anim.hashStr(n.id + '') < .7) { s.mood.push('ubriaco'); s.ebbro = .5 + Anim.hashStr(n.id + 'v') * .4; } }
+    if (!n.cop && !n.military && (isNight(st) || raining(st)) && Anim.hashStr(n.id + 'f') < .3) s.mood.push('freddo');
+    // ---- azioni (hanno la precedenza sulla vita quotidiana) ----
+    if (afterFall(m, clock, s)) return;
+    // colpito: davanti o alle spalle, rispetto a chi ha colpito (il giocatore, se ha appena sparato o colpito)
+    const sinceHit = clock - (n.hitT || -99);
+    if (sinceHit < .4) {
+      s.act = 'colpito'; s.colpitoK = 1;
+      const fx = Math.cos(n.face), fz = Math.sin(n.face);
+      s.dietro = dP < 30 && fx * dx + fz * dz < 0;
+    } else if (sinceHit < 1.6 && n.hp < (n.maxHp || 60) * .5 && sp < 2) s.act = 'barcolla';
+    // la Guardia: perquisizione, manette, l'alt
+    if (n.cop && a === 'perquisisce' && sp < .3) s.act = 'perquisisce';
+    if (st.moments && st.moments.length) for (let i = 0; i < st.moments.length; i++) { const M = st.moments[i]; if (M.kind === 'jail' && M.until > clock && M.npcs && M.npcs[1] === n.id) s.act = 'ammanetta'; }
+    if (n.jailedUntil > st.t) { s.act = 'ammanettato'; return; }
+    if (gun) {
+      if (a === 'combatte' && n.reloadT > 0) { s.upper = 'ricarica'; s.ricK = 1 - n.reloadT / (((WP[gun] && WP[gun].reload) || 1.2) * 1.2); }
+      else { s.upper = 'mira'; s.rinc = Math.max(0, 1 - (clock - m.shotT) * 9) * (KICK[gun] || .5); s.unaMano = !n.cop && !n.military && Anim.hashStr(n.id + 'p') < .45; s.dueMani = !s.unaMano; }
+      s.lookAt = { x: p.x, y: 1.4, z: p.y, ground: true };
+      return;
+    }
+    if (brawl || (a === 'affronta' && dP < 2.2)) {
+      const k = (clock - m.strikeT) / .45;
+      if (clock - m.dodgeT < .45) { s.act = 'schivata'; s.colpoK = (clock - m.dodgeT) / .45; s.colpoLato = m.dodgeS; }
+      if (n.hand === 'coltello') { s.upper = 'mira'; s.colpoK = k < 1 ? k : 0; }
+      else if (a === 'affronta' && !brawl) {
+        // chi affronta: rabbia addosso, e la spinta quando la dà (game.js: shoveAt = adesso + 6)
+        if (n.shoveAt && clock - (n.shoveAt - 6) < .5) { s.upper = 'spinta'; s.colpoK = (clock - (n.shoveAt - 6)) / .5; }
+        else if (dP < 2.2) { s.upper = 'indica'; s.punta = { x: p.x, z: p.y }; }
+        moodsOf(s, ['rabbia']);
+      } else if (m.kick && k < 1) { s.act = 'calcio'; s.colpoK = k; s.upper = null; }
+      else { s.upper = 'guardia'; s.colpoK = k < 1 ? k : 0; s.colpoLato = m.side; }
+      return;
+    }
+    if (a === 'fugge') {
+      if (n.panic > 0) { if (sp < .5) s.act = 'rannicchiato'; else if (sp > 2.5) s.upper = 'fuga'; }
+      else if (dP < 9 && p.cur && p.cur !== 'pugni' && p.cur !== 'molotov') { s.upper = 'mani_alzate'; s.act = null; }
+      moodsOf(s, ['paura']);
+      return;
+    }
+    if (n.panic > 0 && !n.faction && !n.cop) { moodsOf(s, ['paura']); if (sp < .4) s.act = 'rannicchiato'; return; }
+    // la Guardia intima l'alt (allerta 1: non spara ancora)
+    if (n.cop && a === 'insegue' && dP < 12 && window.Game && Game.wantedLevel && Game.wantedLevel(st) === 1) { s.upper = 'alt'; s.lookAt = { x: p.x, y: 1.5, z: p.y, ground: true }; return; }
+    // «è lui!»: chi denuncia davanti a un agente, o chi riconosce il giocatore («Sei quello che...»)
+    const bk = n.bark && n.bark.until > clock ? n.bark.text || '' : '';
+    if (bk && (bk.indexOf('Sei quello che') === 0 || bk.indexOf('Agente') === 0 || bk.indexOf('È lui') === 0) && dP < 20) { s.upper = 'indica'; s.punta = { x: p.x, z: p.y }; }
+  });
+
+  // ---------------- PROTAGONISTA ----------------
+  Anim.playerMap((st, p, s) => {
+    const m = memo(p), clock = st.clock;
+    downTrack(m, p.stun > 0, clock);
+    // in Vespa: seduto, mani al manubrio; in auto non si vede
+    if (p.vehicle) {
+      let v = null; const vs = st.vehicles || []; for (let i = 0; i < vs.length; i++) if (vs[i].id === p.vehicle) { v = vs[i]; break; }
+      if (v && v.kind === 'vespa') { s.act = 'in_vespa'; s.upper = null; s.mood.length = 0; }
+      return;
+    }
+    // il lancio della molotov: p.punch risale mentre in mano c'è (o c'era) la molotov
+    const pu = p.punch || 0;
+    if (pu > m.punch + .05) {
+      if (p.cur === 'molotov' || m.cur === 'molotov') m.throwT = clock;
+      else { m.punchT = clock; m.side = -m.side; }
+    }
+    m.punch = pu; m.cur = p.cur;
+    if (p.stun > 0) return;
+    // stati del corpo
+    const M = st.me;
+    if (M) {
+      if (M.drunk > .25) { s.mood.push('ubriaco'); s.ebbro = clamp((M.drunk - .15) * 1.3, 0, 1); }
+      else if (M.hangover > .3) s.mood.push('postumi');
+      if (M.need && M.need.sonno > .75) s.mood.push('stanco');
+    }
+    if (window.Guardaroba && Guardaroba.warmth) {
+      if (clock - (m.warmT || -99) > 2) { m.warmT = clock; try { m.warm = Guardaroba.warmth(st); } catch (e) { m.warm = 1; } }
+      const cold = !p.indoor && (m.warm < .3 || (m.warm < .55 && (isNight(st) || raining(st))));
+      if (cold) s.mood.push('freddo');
+    }
+    if (p.hp < 35) { s.mood.push('ferito'); s.dolore = 1 - p.hp / 70; }
+    // arrestato: mani dietro la schiena mentre lo portano dentro
+    if (st.moments) for (let i = 0; i < st.moments.length; i++) { const Mo = st.moments[i]; if (Mo.kind === 'arrest' && Mo.until > clock) { s.act = 'ammanettato'; s.upper = null; return; } }
+    if (afterFall(m, clock, s)) return;
+    if (clock - (p.hurtT || -99) < .4) { s.act = 'colpito'; s.colpitoK = .8; s.dietro = false; }
+    const WP = W_(), W = WP[p.cur];
+    // molotov: lancio, poi di nuovo pronta (se ne restano)
+    if (clock - m.throwT < .6) { s.upper = 'lancia'; s.lancioK = (clock - m.throwT) / .6; return; }
+    if (p.cur === 'molotov') { s.upper = 'mira'; return; }
+    if (GUN[p.cur]) {
+      if (p.reload > 0) { s.upper = 'ricarica'; s.ricK = 1 - p.reload / ((W && W.reload) || 1.2); }
+      else { s.upper = 'mira'; s.dueMani = true; }
+      return;
+    }
+    if (p.cur === 'coltello') { s.upper = 'mira'; const k = (clock - m.punchT) / .4; s.colpoK = k < 1 ? k : 0; return; }
+    // pugni: in guardia per qualche secondo dopo l'ultimo pugno o l'ultimo colpo preso
+    if (clock - m.punchT < 3 || clock - (p.hurtT || -99) < 2.5) { s.upper = 'guardia'; const k = (clock - m.punchT) / .4; s.colpoK = k < 1 ? k : 0; s.colpoLato = m.side; }
+  });
+})();
+</script>
 <script>
 /* Modelli esterni (Kenney, Quaternius, Poly Pizza — vedi Crediti) caricati da assets/m e messi nel mondo:
    porto con barche e container, Rocca con elicottero e forca, poligono, discarica, accampamenti, luna park,
@@ -4760,6 +6316,7 @@ var Models = (function () {
   }
   const charsReady = () => CH.Casual_2 && CH.Casual && CH.Casual_Hoodie && CH.Worker && CH.Formal;
   function pickFor(look, who) {
+    if (look && look.model && CH[look.model]) return look.model;   // [vestiti] modello chiesto per nome (studio, prove)
     if (who === 'player') return 'Casual_Hoodie';
     // niente soldatini del Toon Shooter (stile diverso, teste enormi): la Guardia e la Tutela sono persone vere in divisa
     if (who === 'cop') return 'Casual_2';
@@ -4892,10 +6449,14 @@ var Models = (function () {
     else if (o.handsUp) clip = u.acts.Wave ? 'Wave' : 'Idle';
     else if (o.weapon) clip = u.acts.Idle_Shoot ? 'Idle_Shoot' : u.acts.Idle_Gun ? 'Idle_Gun' : 'Idle';
     else if (o.idle && u.acts[o.idle]) clip = o.idle;
+    // [animazioni] una posa di tutto il corpo può chiedere la sua clip di base (es. Idle per sedersi)
+    const wb = window.Anim && Anim.want(g, o); if (wb && !o.down && !(o.punch > 0) && !(o.hit > .5) && u.acts[wb]) clip = wb;
     play(g, clip, clip === 'Death');
     if (u.cur && (clip === 'Walk' || clip === 'Run' || clip === 'Walk_Shoot' || clip === 'Run_Gun' || clip === 'Run_Shoot')) u.cur.timeScale = clip.startsWith('Walk') ? Math.max(.5, sp / 1.6) : Math.max(.6, sp / 5);
     else if (u.cur) u.cur.timeScale = 1;
+    if (window.Anim) Anim.restore(g);   // [animazioni]
     u.mixer.update(dt);
+    if (window.Anim) Anim.apply(g, o, dt, performance.now() / 1000);   // [animazioni] lo strato procedurale sopra la clip
   }
   // ---------------- IL MONDO ----------------
   function tileFree(x, z) { const T = G.T, v = G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)); return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE; }
@@ -5023,7 +6584,7 @@ var Models = (function () {
     if (typeof THREE === 'undefined' || !THREE.GLTFLoader) return;
     dress().catch(e => console.warn('Models:', e));
   }
-  return { person, animPerson, charsReady, loadChar, furniture, placed, CAT, LIB, load, has, make, vehicle, attach, tick, setBase: b => { base = b; } };
+  return { prepGuns, person, animPerson, charsReady, loadChar, furniture, placed, CAT, LIB, load, has, make, vehicle, attach, tick, setBase: b => { base = b; } };
 })();
 </script>
 <script>
@@ -25863,7 +27424,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (!g.visible) return;
       g.position.set(n.x, groundH(n.x, n.y), n.y); g.rotation.y = Math.PI / 2 - n.face;
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
-      if (g.userData.model) Models.animPerson(g, { speed: n.speedNow, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, held: n.hand || null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), punch: n.gesture === 'punch' ? 1 : 0, handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0 }, dt); else
+      if (g.userData.model) Models.animPerson(g, { speed: n.speedNow, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, held: n.hand || null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), punch: n.gesture === 'punch' ? 1 : 0, handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0, anim: window.Anim ? Anim.npcState(st, n) : null }, dt); else   // [animazioni] anim
       animPerson(g, { anim: n.anim, speed: n.speedNow, gesture: n.gesture, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0 && p.cur !== 'pugni' && Math.hypot(n.x - p.x, n.y - p.y) < 6, twoHand: n.cop });
       g.userData.shadowC.visible = !n.dead;
       flight(g, n, st);
@@ -25883,7 +27444,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     pg.visible = !pveh || onVespa;
     pg.position.set(p.x, playerH + (onVespa ? .35 : 0), p.y); pg.rotation.y = Math.PI / 2 - p.face;
     const recoil = st.kick ? Math.max(0, 1 - (st.clock - st.kick.t) * 10) * st.kick.amt * 3 : 0;
-    if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6 }, dt); else
+    if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim
     animPerson(pg, { anim: p.anim, speed: pveh ? 0 : p.speed, carrying: p.carrying, punch: p.punch, seated: onVespa, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, recoil, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6 });
     if (!pveh) flight(pg, p, st);
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
@@ -28501,79 +30062,134 @@ var Bottino = (function () {
 
   // ---------------- I MODELLI ----------------
   const T = () => window.THREE;
-  function mat(c) { if (!U.mats[c]) U.mats[c] = new (T().MeshLambertMaterial)({ color: c }); return U.mats[c]; }
-  function add(g, geo, c, x, y, z, rx, ry, rz) { const m = new (T().Mesh)(geo, mat(c)); m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, rz || 0); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; }
+  // [oggetti] materiali disegnati (una texture per tipo, condivisa): venature, cartone ondulato, ruggine, juta, stampini
+  function mat(c, tex) { const k = c + (tex || ''); if (!U.mats[k]) U.mats[k] = new (T().MeshLambertMaterial)(tex ? { color: c, map: TX(tex) } : { color: c }); return U.mats[k]; }
+  const TXC = {};
+  function TX(name) {
+    if (TXC[name]) return TXC[name];
+    const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); let h = 7;
+    const r = () => { h = (h * 16807) % 2147483647; return h / 2147483647; };
+    const px = (col, X, Y, w, hh) => { x.fillStyle = col; x.fillRect(X, Y, w, hh); };
+    if (name === 'legno') {   // assi chiare con venature, nodi, chiodi a capo, fughe scure
+      px('#c8a070', 0, 0, 64, 64);
+      for (let y = 0; y < 64; y++) for (let k = 0; k < 3; k++) if (r() < .5) px(r() < .5 ? '#a8804e' : '#d8b484', Math.floor(r() * 64), y, 4 + Math.floor(r() * 12), 1);
+      [0, 21, 42, 63].forEach(y => px('#5a3e22', 0, y, 64, 2)); for (let k = 0; k < 3; k++) { const X = 6 + r() * 50, Y = 4 + Math.floor(r() * 3) * 21 + r() * 12; px('#7a5430', X, Y, 3, 2); }
+      for (const y of [5, 26, 47]) for (const X of [4, 58]) px('#4a4a4e', X, y, 2, 2);
+    } else if (name === 'cartone') {   // kraft ondulato, nastro adesivo, una scritta stampata
+      px('#b8915a', 0, 0, 64, 64); for (let X = 0; X < 64; X += 3) px('#a8824e', X, 0, 1, 64);
+      px('#d8c9a0', 26, 0, 12, 64); px('#c8b88c', 26, 0, 1, 64); px('#8a5a2a', 6, 40, 16, 3); px('#8a5a2a', 6, 45, 12, 2); px('#8a5a2a', 44, 12, 12, 8);
+      x.fillStyle = '#6a4220'; x.font = 'bold 7px sans-serif'; x.fillText('ADRIA', 4, 56); x.fillText('↑↑', 46, 34);
+    } else if (name === 'ruggine') {   // lamiera verniciata che si scrosta
+      px('#5e6266', 0, 0, 64, 64); for (let k = 0; k < 60; k++) px(['#7a4226', '#8a4b2a', '#5a301a', '#6a6e72'][Math.floor(r() * 4)], Math.floor(r() * 64), Math.floor(r() * 64), 2 + Math.floor(r() * 6), 2 + Math.floor(r() * 4));
+      for (let k = 0; k < 6; k++) px('#7a3e1e', Math.floor(r() * 60), Math.floor(r() * 30), 2, 14 + Math.floor(r() * 20));
+    } else if (name === 'juta') {   // trama della juta
+      px('#b39b6a', 0, 0, 64, 64); for (let y = 0; y < 64; y += 2) for (let X = (y / 2) % 2; X < 64; X += 2) px('#9a8256', X, y, 1, 1); for (let k = 0; k < 30; k++) px('#c8b47e', Math.floor(r() * 64), Math.floor(r() * 64), 3, 1);
+      x.fillStyle = '#5a3a1a'; x.font = 'bold 9px serif'; x.fillText('GRANO', 14, 38);
+    } else if (name === 'militare') {   // verde oliva, stampino giallo, graffi
+      px('#4b5433', 0, 0, 64, 64); for (let k = 0; k < 40; k++) px('#5c6640', Math.floor(r() * 64), Math.floor(r() * 64), 1 + Math.floor(r() * 6), 1);
+      x.fillStyle = '#d8c060'; x.font = 'bold 9px monospace'; x.fillText('7.62', 6, 26); x.font = '7px monospace'; x.fillText('440 CART', 6, 40); px('#d8b830', 4, 46, 30, 3);
+    } else if (name === 'cassone') {   // cassa da carico: assi scure, stampini, FRAGILE
+      px('#7a5a34', 0, 0, 64, 64); for (let y = 0; y < 64; y++) if (r() < .6) px('#6a4c2a', Math.floor(r() * 64), y, 6 + Math.floor(r() * 14), 1);
+      [0, 16, 32, 48].forEach(y => px('#3e2a16', 0, y, 64, 1)); x.fillStyle = '#e0dccc'; x.font = 'bold 8px monospace'; x.fillText('FRAGILE', 6, 28); x.font = '6px monospace'; x.fillText('MARSIGLIA', 8, 42);
+      x.strokeStyle = '#e0dccc'; x.strokeRect(4, 19, 52, 12);
+    } else if (name === 'gomma') {   // battistrada
+      px('#232326', 0, 0, 64, 64); for (let X = 0; X < 64; X += 6) { px('#151517', X, 0, 3, 64); px('#2e2e32', X + 3, 0, 1, 64); }
+    }
+    const t = new (T().CanvasTexture)(c); t.magFilter = T().NearestFilter; t.wrapS = t.wrapT = T().RepeatWrapping; return (TXC[name] = t);
+  }
+  function add(g, geo, c, x, y, z, rx, ry, rz, tex) { const m = new (T().Mesh)(geo, mat(c, tex)); m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, rz || 0); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; }
   const B = (w, h, d) => new (T().BoxGeometry)(w, h, d);
   const C = (r0, r1, h, n) => new (T().CylinderGeometry)(r0, r1, h, n || 10);
-  function crate(g, s, x, z, ry, col, y0) {   // cassa di legno con le assi
-    const y = (y0 || 0) + s / 2;
-    add(g, B(s, s, s), col || '#8b6a40', x, y, z, 0, ry);
-    for (const k of [-.3, .3]) add(g, B(s + .02, s * .12, s + .02), '#6b4e2c', x, y + k * s, z, 0, ry);
+  // cassa di legno vera: quattro montanti agli spigoli, le facce di assi (texture), coperchio con due traverse
+  function crate(g, s, x, z, ry, col, y0) {
+    const y = (y0 || 0) + s / 2, q = new (T().Group)(); q.position.set(x, y, z); q.rotation.y = ry || 0; g.add(q);
+    add(q, B(s * .96, s * .96, s * .96), col || '#ffffff', 0, 0, 0, 0, 0, 0, 'legno');
+    for (const a of [-1, 1]) for (const b of [-1, 1]) add(q, B(s * .09, s, s * .09), '#6b4e2c', a * s * .46, 0, b * s * .46);
+    for (const a of [-1, 1]) add(q, B(s, s * .07, s * .09), '#7a5a34', 0, s * .47, a * s * .3);
+    add(q, B(s * .09, s * .07, s), '#6b4e2c', 0, s * .47, 0, 0, .0);
+    return q;
   }
+  // copertone: toro schiacciato col battistrada, il cerchione dentro
+  function tire(g, x, y, z, rx, ry, R) { const R0 = R || .3, t = add(g, new (T().TorusGeometry)(R0, R0 * .36, 8, 18), '#ffffff', x, y, z, rx, ry, 0, 'gomma'); t.scale.z = 1.5; add(g, C(R0 * .62, R0 * .62, R0 * .45, 14), '#7d8288', x, y, z, (rx || 0) + Math.PI / 2, ry || 0); return t; }
   const MODEL = {
-    // scatolina di cartone coi lembi aperti
+    // scatola di cartone coi lembi aperti, nastro, scritta; dentro spuntano bottiglie e giornali
     vicolo(g) {
-      add(g, B(.55, .38, .44), '#b08955', 0, .19, 0);
-      add(g, B(.56, .04, .1), '#d8c9a0', 0, .38, 0);
-      add(g, B(.55, .02, .2), '#a07a48', 0, .45, .27, -1.0);
-      add(g, B(.55, .02, .2), '#a07a48', 0, .45, -.27, 1.0);
+      add(g, B(.55, .38, .44), '#ffffff', 0, .19, 0, 0, 0, 0, 'cartone');
+      add(g, B(.53, .02, .42), '#5a4024', 0, .3, 0);
+      add(g, B(.55, .015, .22), '#c8a070', 0, .44, .3, -1.15, 0, 0, 'cartone'); add(g, B(.55, .015, .22), '#c8a070', 0, .46, -.3, 1.25, 0, 0, 'cartone');
+      add(g, B(.2, .015, .42), '#c8a070', .34, .43, 0, 0, 0, .9, 'cartone');
+      add(g, C(.035, .035, .26, 8), '#2e5a2a', -.12, .44, .06, .2, 0, .15); add(g, C(.014, .03, .07, 8), '#2e5a2a', -.1, .59, .09, .2, 0, .15);
+      add(g, B(.22, .03, .3), '#e8e2cf', .1, .37, -.04, 0, .3, .08);
     },
-    // cestino verde col giornale che spunta
+    // cestino comunale anni '80: lamiera verde a doghe, bordo, palo, sacco e giornale che spuntano
     cestino(g) {
-      add(g, C(.24, .2, .72, 12), '#3e5a3c', 0, .36, 0);
-      add(g, C(.27, .27, .06, 12), '#2c4029', 0, .72, 0);
-      add(g, B(.22, .26, .04), '#e8e2d0', .05, .82, 0, 0, .4, .25);
+      add(g, C(.035, .035, 1.0, 8), '#3a4038', -.3, .5, 0);
+      add(g, B(.08, .05, .08), '#2c3029', -.25, .75, 0);
+      add(g, C(.23, .2, .62, 16, true), '#3e5a3c', 0, .42, 0);
+      for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; add(g, B(.04, .62, .015), '#2c4029', Math.cos(a) * .225, .42, Math.sin(a) * .225, 0, -a + Math.PI / 2, 0); }
+      add(g, new (T().TorusGeometry)(.235, .02, 6, 18), '#2c4029', 0, .73, 0, Math.PI / 2);
+      add(g, C(.22, .22, .02, 16), '#222', 0, .7, 0);
+      add(g, B(.22, .28, .02), '#e8e2d0', .06, .8, 0, 0, .4, .3); add(g, B(.12, .14, .1), '#e8e8e8', -.08, .74, .08, .2, .4, -.2);
+      add(g, B(.1, .1, .01), '#e8c040', 0, .5, .232);
     },
-    // gomma, lamiera arrugginita e un tubo
+    // copertone, lamiera ondulata arrugginita piegata, tubi, mattoni, un cerchione
     rottami(g) {
-      add(g, new (T().TorusGeometry)(.3, .11, 6, 12), '#222225', -.15, .11, .05, Math.PI / 2);
-      add(g, B(.7, .04, .45), '#8a4b2a', .15, .18, -.05, .1, .5, .35);
-      add(g, C(.06, .06, .8, 6), '#7d8288', .1, .08, .25, 0, .3, Math.PI / 2);
+      tire(g, -.18, .11, .06, Math.PI / 2);
+      const wav = new (T().PlaneGeometry)(.75, .5, 10, 1), P0 = wav.attributes.position; for (let i = 0; i < P0.count; i++) P0.setZ(i, Math.sin(P0.getX(i) * 40) * .02 + P0.getX(i) * P0.getX(i) * .3); wav.computeVertexNormals();
+      const sh = add(g, wav, '#ffffff', .18, .24, -.05, -1.2, .5, .25, 'ruggine'); sh.material.side = T().DoubleSide;
+      add(g, C(.05, .05, .9, 8), '#7d8288', .05, .07, .3, 0, .4, Math.PI / 2, 'ruggine'); add(g, C(.035, .035, .6, 8), '#5a5e62', .2, .17, .28, .3, -.3, Math.PI / 2);
+      for (const [x, z, ry] of [[.42, .05, .3], [.38, -.25, 1.1], [-.45, -.25, .7]]) add(g, B(.22, .07, .11), '#9a4a32', x, .035, z, 0, ry);
     },
-    // fascina di legna legata
+    // fascina: rami di spessore diverso, legati con due giri di corda; un'accetta piantata in un ceppo accanto
     bosco(g) {
-      for (const [x, y] of [[-.12, .11], [.12, .11], [0, .3]]) add(g, C(.1, .1, .8, 7), '#6d4a2c', x, y, 0, Math.PI / 2);
-      for (const z of [-.2, .2]) add(g, C(.22, .22, .05, 10), '#c9b27a', 0, .19, z, Math.PI / 2);
+      let h = 3; const r = () => { h = (h * 16807) % 2147483647; return h / 2147483647; };
+      for (let k = 0; k < 11; k++) { const a = r() * Math.PI * 2, d = r() * .14, rr = .025 + r() * .035; add(g, C(rr, rr * 1.1, .85 + r() * .25, 6), ['#6d4a2c', '#5a3e24', '#7a5634'][k % 3], Math.cos(a) * d, .15 + Math.sin(a) * d * .8, (r() - .5) * .08, Math.PI / 2, (r() - .5) * .15); }
+      for (const z of [-.22, .22]) { const t = add(g, new (T().TorusGeometry)(.135, .013, 5, 14), '#c9b27a', 0, .15, z, 0, 0, 0); t.scale.y = .85; }
+      add(g, C(.17, .19, .3, 10), '#7a5634', .55, .15, .1); add(g, C(.16, .16, .01, 10), '#c8a070', .55, .305, .1);
+      add(g, C(.015, .015, .4, 6), '#8a6a42', .55, .48, .1, 0, 0, .3); add(g, B(.03, .1, .14), '#6a6e72', .5, .33, .1, 0, 0, .3);
     },
-    // cassa portata dal mare, storta, con la cima
+    // cassa portata dal mare: legno scurito e storto, alghe, una cima avvolta
     spiaggia(g) {
-      const q = new (T().Group)(); crate(q, .5, 0, 0, 0, '#9a8060'); q.rotation.set(.12, .5, -.18); q.position.y = -.04; g.add(q);
-      add(g, new (T().TorusGeometry)(.16, .03, 5, 10), '#d8cfa8', .38, .04, .1, Math.PI / 2);
+      const q = new (T().Group)(); crate(q, .5, 0, 0, 0, '#8a9088'); q.rotation.set(.12, .5, -.18); q.position.y = -.04; g.add(q);
+      for (let k = 0; k < 5; k++) add(g, B(.02, .01, .25), '#3a5a2a', -.2 + k * .1, .06 + k * .02, .2, 0, k * .7, .3);
+      for (let k = 0; k < 3; k++) add(g, new (T().TorusGeometry)(.13 - k * .025, .022, 5, 14), '#d8cfa8', .45, .025 + k * .04, .15, Math.PI / 2);
     },
-    // sacco di juta legato in cima
+    // sacco di juta (profilo tornito), il collo arricciato e legato con lo spago
     prateria(g) {
-      const s = add(g, new (T().SphereGeometry)(.3, 9, 7), '#b39b6a', 0, .24, 0); s.scale.set(1, .85, .9);
-      add(g, C(.06, .1, .14, 7), '#9a8256', 0, .5, 0);
-      add(g, C(.08, .08, .04, 7), '#5e4a2c', 0, .46, 0);
+      const prof = [[0, 0], [.22, .02], [.3, .12], [.31, .3], [.26, .44], [.12, .52], [.07, .56], [.09, .66], [.05, .7], [0, .7]].map(([a, b]) => new (T().Vector2)(a, b));
+      const s = add(g, new (T().LatheGeometry)(prof, 14), '#ffffff', 0, 0, 0, 0, 0, 0, 'juta'); s.scale.set(1, .9, .82);
+      add(g, new (T().TorusGeometry)(.07, .012, 5, 12), '#5e4a2c', 0, .52, 0, Math.PI / 2);
     },
-    // cassetta delle munizioni, verde oliva con la striscia gialla
+    // cassetta delle munizioni: stampino, maniglia ad arco, chiusura a leva
     militare(g) {
-      add(g, B(.62, .3, .3), '#4b5433', 0, .15, 0);
-      add(g, B(.64, .05, .32), '#3a4127', 0, .31, 0);
-      add(g, B(.2, .04, .31), '#d8b830', -.12, .17, 0);
-      add(g, B(.18, .03, .06), '#2a2e1c', 0, .35, 0);
+      add(g, B(.62, .3, .3), '#ffffff', 0, .15, 0, 0, 0, 0, 'militare');
+      add(g, B(.64, .04, .32), '#3a4127', 0, .31, 0);
+      add(g, new (T().TorusGeometry)(.07, .01, 5, 10, Math.PI), '#2a2e1c', 0, .33, 0);
+      add(g, B(.06, .12, .03), '#2a2e1c', .31, .24, 0, 0, Math.PI / 2, .3);
     },
-    // roba sul tetto: una cassa
-    tetto(g) { crate(g, .5, 0, 0, .3); },
-    // posti da frugare (discarica, cantiere, molo…): casse una sull'altra e un barile
+    // sul tetto: una cassa sotto un telo legato
+    tetto(g) { crate(g, .5, 0, 0, .3); const t = add(g, B(.58, .03, .58), '#5a6a5a', 0, .52, 0, .05, .3, .04); add(g, B(.58, .22, .02), '#4e5e4e', .02, .4, .29, .1, .3); },
+    // posti da frugare: casse una sull'altra, un fusto con le nervature e la ruggine
     posto(g) {
-      crate(g, .6, -.25, 0, .2); crate(g, .45, -.2, .05, .7, '#7d5f3a', .6);
-      add(g, C(.24, .24, .7, 12), '#4a5a6a', .45, .35, .2);
-      add(g, C(.25, .25, .04, 12), '#38444f', .45, .7, .2);
+      crate(g, .6, -.25, 0, .2); crate(g, .45, -.2, .05, .7, '#c8b8a0', .6);
+      add(g, C(.24, .24, .7, 16), '#ffffff', .45, .35, .2, 0, 0, 0, 'ruggine');
+      for (const y of [.12, .35, .58]) add(g, new (T().TorusGeometry)(.243, .012, 4, 18), '#4a5a6a', .45, y, .2, Math.PI / 2);
+      add(g, C(.235, .235, .02, 16), '#38444f', .45, .7, .2); add(g, C(.03, .03, .02, 8), '#222', .52, .715, .25);
     },
-    // casse di carico al porto: grandi, cerchiate, col lucchetto rosso se sono chiuse
+    // casse di carico al porto: assi, cerchiature di ferro, pallet sotto, stampini; il lucchetto vero se sono chiuse
     carico(g, L) {
       for (const [x, z, s] of [[-.6, 0, 1], [.5, .1, .9]]) {
-        add(g, B(s, s * .8, s), '#7a5a34', x, s * .4, z);
-        for (const k of [-.33, .33]) add(g, B(.06, s * .82, s + .02), '#5a5f66', x + k * s, s * .4, z);
+        for (let k = 0; k < 4; k++) add(g, B(s * .22, .1, s), '#8a6a42', x - s * .36 + k * s * .24, .05, z);
+        add(g, B(s, s * .8, s), '#ffffff', x, .1 + s * .4, z, 0, 0, 0, 'cassone');
+        for (const k of [-.33, .33]) add(g, B(.05, s * .82, s + .02), '#5a5f66', x + k * s, .1 + s * .4, z);
       }
-      add(g, B(.9, .7, .9), '#6e5230', -.1, 1.15, .05, 0, .3);
-      if (L.locked) add(g, B(.12, .14, .06), '#c0302a', -.6, .5, .52);
+      add(g, B(.9, .7, .9), '#ffffff', -.1, 1.25, .05, 0, .3, 0, 'cassone');
+      if (L && L.locked) { add(g, B(.1, .12, .05), '#b88a2a', -.6, .55, .52); add(g, new (T().TorusGeometry)(.035, .01, 5, 10, Math.PI), '#9a9ea2', -.6, .61, .52); }
     },
   };
   function build(L) {
     const g = new (T().Group)(), f = MODEL[L.kind] || MODEL.vicolo; f(g, L);
-    let h = 0; for (const ch of L.ref) h = (h * 31 + ch.charCodeAt(0)) | 0;
+    let h = 0; for (const ch of (L.ref || '')) h = (h * 31 + ch.charCodeAt(0)) | 0;
     g.rotation.y = (h % 628) / 100; g.userData.kind = L.kind;
     return g;
   }
@@ -28680,14 +30296,15 @@ var Vesti3D = (function () {
   // i nomi delle ossa arrivano senza punti (three toglie '.': Shoulder.L → ShoulderL)
   const PARTI = { torso: /^(Chest|Torso|Abdomen|Shoulder[LR])$/, braccia: /^UpperArm[LR]$/, avambracci: /^LowerArm[LR]$/, bacino: /^Hips$/, cosce: /^UpperLeg[LR]$/, polpacci: /^LowerLeg[LR]$/,
     piedi: /^(Foot[LR]|PT[LR])$/, mani: /^(Wrist[LR]|Index\d[LR]|Middle\d[LR]|Ring\d[LR]|Pinky\d[LR]|Thumb\d[LR])$/, collo: /^Neck$/ };
-  const KEEP = /Skin|Eye|Hair|Moustache|Brow/i;   // i materiali del corpo che restano (pelle, occhi, capelli)
+  const KEEP = /^(Skin.*|Eye.*|Eyebrows|Hair.*|Moustache)$/i;   // i materiali del corpo che restano (pelle, occhi, sopracciglia, capelli, baffi). [vestiti] Prima era /…|Brow/: prendeva anche LightBrown e Brown (camicie e pantaloni del kit), che restavano addosso
   const players = new Set();
   const AN = new Map();   // analisi della geometria, per uuid
   const GC = ['getX', 'getY', 'getZ', 'getW'], comp = (a, i, k) => a[GC[k]](i);   // three r149: niente getComponent
 
   // ---------------- ANALISI DI UNA MESH: per ogni vertice la parte del corpo, e la normale liscia ----------------
   function analyze(mesh) {
-    const geo = mesh.geometry; if (AN.has(geo.uuid)) return AN.get(geo.uuid);
+    const geo = mesh.userData.geo0 || mesh.geometry; if (AN.has(geo.uuid)) return AN.get(geo.uuid);   // [vestiti] sempre la geometria intera (quella in uso può avere la pelle coperta tolta)
+    slim(mesh, geo);   // [vestiti] prima si sgonfia il corpo: i vestiti del modello non devono restare sotto la pelle
     const pos = geo.attributes.position, nor = geo.attributes.normal, si = geo.attributes.skinIndex, sw = geo.attributes.skinWeight; if (!pos || !si || !sw) return null;
     const n = pos.count, part = new Array(n), bones = mesh.skeleton.bones, legs = /Legs/i.test(mesh.name);
     const names = Object.keys(PARTI);
@@ -28704,6 +30321,50 @@ var Vesti3D = (function () {
     const idx = geo.index ? geo.index.array : Array.from({ length: n }, (_, i) => i);
     const lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9]; for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) { const v = comp(pos, i, k); if (v < lo[k]) lo[k] = v; if (v > hi[k]) hi[k] = v; }
     const A = { part, sm, idx, pos, si, sw, lo, hi, ymin: lo[1], ymax: hi[1] }; AN.set(geo.uuid, A); return A;
+  }
+
+  // ---------------- IL CORPO SOTTO: SGONFIARE I VESTITI DEL MODELLO ----------------
+  // I modelli del kit hanno già addosso felpa, camicia, pantaloni: dipinti color pelle sembravano una tuta rosa gonfia,
+  // e ogni guscio sopra veniva spesso. Qui braccia, avambracci, busto, cosce e polpacci si stringono verso l'osso
+  // fino a un raggio da corpo vero, in proporzione alla lunghezza dell'osso (si fa una volta per geometria: è condivisa).
+  // L'asse di ogni pezzo si ricava dai vertici stessi (il centro dei vertici di un osso e la direzione verso il centro
+  // dei vertici dell'osso dopo): nel kit le matrici delle ossa sono in un'altra unità rispetto ai vertici.
+  // [osso dopo, raggio voluto / distanza tra i due centri, stretta massima]
+  const SLIM = { UpperArm: ['LowerArm', .2, .55], LowerArm: ['UpperArm', .19, .6], UpperLeg: ['LowerLeg', .22, .65], LowerLeg: ['UpperLeg', .16, .65], Chest: ['Abdomen', .62, .84], Torso: ['Abdomen', .62, .84], Abdomen: ['Chest', .62, .86], Neck: ['Chest', .5, .5] };
+  const TORSO_FIX = { Purple: .84, LightBrown: .92, Worker_Yellow: .9 };   // felpa del protagonista, camicia, tuta dell'operaio (primo materiale del corpo)
+  function slim(mesh, geo) {
+    if (geo.userData.slim || !mesh.skeleton || !geo.attributes.skinIndex) return; geo.userData.slim = true;
+    const pos = geo.attributes.position, si = geo.attributes.skinIndex, sw = geo.attributes.skinWeight, bones = mesh.skeleton.bones, n = pos.count;
+    const main = new Array(n), cen = {}, cnt = {}, v = new THREE.Vector3();
+    for (let i = 0; i < n; i++) {
+      let best = -1, bw = -1; for (let k = 0; k < 4; k++) { const w = comp(sw, i, k); if (w > bw) { bw = w; best = comp(si, i, k); } }
+      const nm = bones[best] ? bones[best].name : ''; main[i] = nm; if (bw < .55) continue;   // il centro solo coi vertici ben dentro l'osso
+      v.fromBufferAttribute(pos, i); (cen[nm] = cen[nm] || new THREE.Vector3()).add(v); cnt[nm] = (cnt[nm] || 0) + 1;
+    }
+    for (const k in cen) cen[k].divideScalar(cnt[k]);
+    // la linea di ogni osso: dal suo centro verso il centro dell'osso dopo
+    const line = {};
+    for (const k in cen) {
+      const m = /^(UpperArm|LowerArm|UpperLeg|LowerLeg|Chest|Torso|Abdomen|Neck)([LR]?)$/.exec(k); if (!m) continue; const S = SLIM[m[1]], o = cen[S[0] + m[2]];
+      if (!o || (cnt[k] || 0) < 12) continue; const d = o.clone().sub(cen[k]), len = d.length(); if (len < 1e-9) continue;
+      const torso = !m[2]; line[k] = { c: torso ? cen[k] : cen[k], d: d.normalize(), len, S, rs: [] };
+    }
+    if (line.Chest && line.Abdomen) line.Torso = line.Torso || line.Chest;
+    const off = new Float32Array(n * 3), has = new Uint8Array(n);
+    for (let i = 0; i < n; i++) { const L = line[main[i]]; if (!L) continue; v.fromBufferAttribute(pos, i).sub(L.c); v.addScaledVector(L.d, -v.dot(L.d)); off[i * 3] = v.x; off[i * 3 + 1] = v.y; off[i * 3 + 2] = v.z; has[i] = 1; L.rs.push(v.length()); }
+    const fac = {};
+    // f: stretta uniforme; cap: tetto ai punti che sporgono (cappucci, orli, risvolti dei vestiti del kit) poco sopra il 70° percentile
+    const cap = {};
+    for (const k in line) { const L = line[k]; if (!L.rs.length) continue; const rs = L.rs.sort((a, b) => a - b), med = rs[rs.length >> 1]; fac[k] = Math.max(L.S[2], Math.min(1, L.S[1] * L.len / (med || 1))); cap[k] = rs[Math.floor(rs.length * .7)] * 1.1 * fac[k]; }
+    // il busto si misura col braccio dello stesso modello (raggio di un busto vero ≈ metà della distanza spalla-gomito/gomito-polso)
+    // il busto: le misure non distinguono una felpa da un torace, quindi una stretta fissa per i modelli con la maglia nel corpo
+    const mat0 = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) || {}, tf = TORSO_FIX[mat0.name];
+    if (tf) ['Abdomen', 'Torso', 'Chest', 'Neck'].forEach(k => { const L = line[k]; if (!L || !L.rs.length) return; fac[k] = Math.min(fac[k] || 1, tf); cap[k] = L.rs[Math.floor(L.rs.length * .7)] * 1.06 * fac[k]; });
+    for (let i = 0; i < n; i++) { if (!has[i]) continue; const f = fac[main[i]]; if (f === undefined) continue;
+      const r = Math.hypot(off[i * 3], off[i * 3 + 1], off[i * 3 + 2]) || 1, r2 = Math.min(r * f, cap[main[i]]), k = r2 / r - 1; if (k > -.001) continue;
+      pos.setXYZ(i, pos.getX(i) + off[i * 3] * k, pos.getY(i) + off[i * 3 + 1] * k, pos.getZ(i) + off[i * 3 + 2] * k); }
+    pos.needsUpdate = true; geo.computeBoundingSphere();
+    if (window.__vestiDbg) console.log('[vestiti] stretta', mesh.name, JSON.stringify(fac));
   }
 
   // ---------------- I GUSCI ----------------
@@ -28733,7 +30394,8 @@ var Vesti3D = (function () {
       const A = analyze(src); if (!A) return;
       const P = [], N = [], SI = [], SW = [], CO = [], th = {}, col = [0, 0, 0];
       // spessore di ogni capo: cresce con gli strati sotto, nelle parti che copre
-      const L = outfit.filter(c => c.parti && c.parti.length).map(c => { const set = new Set(c.parti); let base = 0; c.parti.forEach(p => { base = Math.max(base, th[p] || 0); }); const t = base + .0025 + c.sp * .32; c.parti.forEach(p => { th[p] = t; }); return { c, set, off: t / unit }; });
+      const L = outfit.filter(c => c.parti && c.parti.length).map(c => { const set = new Set(c.parti); let base = 0; c.parti.forEach(p => { base = Math.max(base, th[p] || 0); }); const t = base + .0016 + c.sp * .17; /* [vestiti] strati più sottili (prima .0025 + sp·.32: con 4-5 capi si arrivava a 5 cm) */ c.parti.forEach(p => { th[p] = t; }); return { c, set, off: t / unit }; });
+      { const S = g.userData.spessore = g.userData.spessore || {}; for (const k in th) S[k] = Math.max(S[k] || 0, th[k]); }   // [animazioni] le pose allargano le braccia sui vestiti spessi
       // ogni triangolo prende solo il capo più esterno che lo copre: niente strati che bucano quelli sopra
       for (let t = 0; t < A.idx.length; t += 3) {
         const a = A.idx[t], b = A.idx[t + 1], d = A.idx[t + 2];
@@ -28741,6 +30403,7 @@ var Vesti3D = (function () {
         if (!G0) continue; const c = G0.c;
         const cx = (A.pos.getX(a) + A.pos.getX(b) + A.pos.getX(d)) / 3, cy = ((A.pos.getY(a) + A.pos.getY(b) + A.pos.getY(d)) / 3 - A.ymin) / ((A.ymax - A.ymin) || 1), cz = (A.pos.getZ(a) + A.pos.getZ(b) + A.pos.getZ(d)) / 3;
         pat(c, c.col, cx * unit, cy, cz * unit, col, t / 3, A.part[a]);
+        { const S0 = G0.set, nIn = S0.has(A.part[a]) + S0.has(A.part[b]) + S0.has(A.part[d]); const f = nIn < 3 ? .74 : 1 - Math.max(0, .5 - cy) * .12; col[0] *= f; col[1] *= f; col[2] *= f; }   // [vestiti] orli scuri e un filo d'ombra in basso
         const lift = c.id === 'gonna' ? 2.2 : c.id === 'cappotto' || c.id === 'impermeabile' ? 1.3 : 1;
         for (const v of [a, b, d]) {
           const k = (A.part[v] === 'cosce' || A.part[v] === 'bacino') ? G0.off * lift : G0.off;
@@ -28750,6 +30413,8 @@ var Vesti3D = (function () {
           CO.push(col[0], col[1], col[2]);
         }
       }
+      // [vestiti] la pelle coperta da un vestito si toglie: niente ginocchia, spalle o dita che bucano la stoffa
+      hideCovered(src, A, L);
       if (!P.length) return;
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
@@ -28759,6 +30424,17 @@ var Vesti3D = (function () {
       src.parent.add(m); m.bind(src.skeleton, src.bindMatrix); out.push(m);
     });
     return out;
+  }
+  // toglie dal corpo i triangoli con tutti e tre i vertici sotto un capo (la geometria intera resta in userData.geo0)
+  function hideCovered(src, A, L) {
+    const geo0 = src.userData.geo0 || (src.userData.geo0 = src.geometry), U = new Set(); L.forEach(l => l.set.forEach(p => U.add(p)));
+    const cov = t => U.has(A.part[A.idx[t]]) && U.has(A.part[A.idx[t + 1]]) && U.has(A.part[A.idx[t + 2]]);
+    const groups = geo0.groups && geo0.groups.length ? geo0.groups : [{ start: 0, count: A.idx.length, materialIndex: 0 }];
+    const keep = [], ng = new THREE.BufferGeometry();
+    for (const gr of groups) { const st0 = keep.length; for (let t = gr.start; t < gr.start + gr.count; t += 3) if (!cov(t)) keep.push(A.idx[t], A.idx[t + 1], A.idx[t + 2]); if (geo0.groups && geo0.groups.length) ng.addGroup(st0, keep.length - st0, gr.materialIndex); }
+    for (const k in geo0.attributes) ng.setAttribute(k, geo0.attributes[k]);
+    ng.setIndex(keep); ng.boundingBox = geo0.boundingBox; ng.boundingSphere = geo0.boundingSphere;
+    src.geometry = ng;   // niente dispose: gli attributi sono condivisi con la geometria intera
   }
   let _mat = null; const MAT = () => _mat || (_mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: new THREE.Color('#181614'), side: THREE.DoubleSide }));
 
@@ -28783,11 +30459,22 @@ var Vesti3D = (function () {
       case 'beanie': h.add(Cy(.128, .14, .08, c, 0, -.01, -.01), Sp(.128, c, 0, .03, -.01, true), Cy(.142, .142, .03, sh(c, .8), 0, -.04, -.01)); break;
       case 'flat': h.add(Cy(.145, .14, .05, c, 0, 0, .01, 14), Bx(.17, .02, .08, c, 0, -.02, .13)); break;
       case 'fedora': h.add(Cy(.11, .125, .13, c, 0, .04, 0, 14), Cy(.23, .23, .015, c, 0, -.02, 0, 18), Cy(.127, .127, .028, '#1a1418', 0, 0, 0, 14)); break;
-      case 'scarf': h.add(Sp(.15, c, 0, -.02, -.01, true), Bx(.2, .16, .04, c, 0, -.12, -.1)); break;
-      case 'ushanka': h.add(Cy(.15, .155, .14, c, 0, .03, 0, 14), Bx(.06, .16, .14, c, -.15, -.07, 0), Bx(.06, .16, .14, c, .15, -.07, 0), Bx(.24, .07, .03, c, 0, .04, .15)); break;
-      case 'casco': h.add(Sp(.175, c, 0, -.04, 0), Bx(.24, .1, .03, '#1a1a22', 0, -.06, .16)); h.children[0].scale.set(1, 1.05, 1.08); break;
+      case 'scarf': {   // [vestiti] fazzoletto aderente, annodato sotto il mento, la punta dietro
+        const cap = Sp(.135, c, 0, -.03, -.01, true); cap.scale.set(1.02, 1.1, 1.08); const back = Sp(.13, c, 0, -.06, -.03); back.scale.set(1, .9, 1); h.add(cap, back);
+        const knot = Sp(.03, sh(c, .85), 0, -.2, .07); const tail = new THREE.Mesh(new THREE.ConeGeometry(.07, .14, 4), lm(sh(c, .9))); tail.position.set(0, -.17, -.12); tail.rotation.x = Math.PI + .3; h.add(knot, tail); break; }
+      case 'ushanka': {   // [vestiti] colbacco: cupola di pelo, paraorecchie morbidi, la falda davanti alzata
+        const dome = Sp(.15, c, 0, .0, 0, true); dome.scale.set(1, .85, 1.02); const band = Cy(.155, .158, .07, sh(c, .85), 0, -.01, 0, 18);
+        const eL = Sp(.07, sh(c, .85), -.14, -.09, 0), eR = Sp(.07, sh(c, .85), .14, -.09, 0); eL.scale.set(.6, 1.4, 1); eR.scale.set(.6, 1.4, 1);
+        const fr = Sp(.08, sh(c, .85), 0, .03, .14); fr.scale.set(2, .7, .5); h.add(dome, band, eL, eR, fr); break; }
+      case 'casco': {   // [vestiti] casco jet anni '80: calotta lucida aperta davanti, riga bianca, bordo nero
+        const r = .168, top = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 8, 0, Math.PI * 2, 0, 1.05), lm(c));
+        const side = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 6, Math.PI / 2 + .8, Math.PI * 2 - 1.6, 1.05, 1.0), lm(c));
+        const stripe = new THREE.Mesh(new THREE.SphereGeometry(r + .003, 4, 12, -.08, .16, 0, 2.05), lm('#ece8dc')); stripe.rotation.y = Math.PI / 2;   // spicchio sottile da davanti a dietro
+        [top, side, stripe].forEach(o => { o.position.y = -.03; o.scale.set(1, 1.04, 1.08); }); h.add(top, side, stripe); break; }
       case 'elmetto': h.add(Sp(.16, c, 0, -.02, 0, true), Cy(.2, .2, .02, c, 0, -.02, 0, 16)); break;
-      case 'passamontagna': h.add(Sp(.15, c, 0, -.06, 0), Bx(.17, .04, .03, '#d8b090', 0, -.08, .135)); h.children[0].scale.set(1, 1.25, 1.05); break;
+      case 'passamontagna': {   // [vestiti] aderente, fino al collo, una fessura per gli occhi
+        const hd = Sp(.132, c, 0, -.07, 0); hd.scale.set(1, 1.3, 1.08); const nk = Cy(.09, .1, .1, c, 0, -.22, -.01, 14);
+        const slit = Bx(.13, .03, .02, '#2a2020', 0, -.085, .138); h.add(hd, nk, slit); break; }
       case 'antigas': h.add(Bx(.2, .16, .08, c, 0, -.12, .12), Cy(.05, .06, .09, '#202420', 0, -.18, .2, 10), Cy(.035, .035, .02, '#8ab0b0', -.05, -.07, .165, 10), Cy(.035, .035, .02, '#8ab0b0', .05, -.07, .165, 10)); h.children[1].rotation.x = Math.PI / 2; h.children[2].rotation.x = Math.PI / 2; h.children[3].rotation.x = Math.PI / 2; break;
     }
     h.scale.setScalar(s); return h;
@@ -28806,14 +30493,14 @@ var Vesti3D = (function () {
       const at = (b, f) => { if (!b) return; const p = wpos(g, b), s = new THREE.Group(); f(s); return [p, s]; };
       const put = (b, dx, dy, dz, f) => { const r = at(b, f); if (r) pin(g, b, r[1], r[0].x + dx, r[0].y + dy, r[0].z + dz); };
       if (/^(cap|basco|fascia)$/.test(c.acc) && head) { const hp = wpos(g, head), s = new THREE.Group(); const k = 1 + kh++ * .09;
-        if (c.acc === 'cap') s.add(Sp(.135, c.col, 0, -.03, 0, true), Bx(.16, .015, .13, c.col, 0, -.03, .16));
+        if (c.acc === 'cap') { const dm = Sp(.132, c.col, 0, -.06, 0, true); dm.scale.set(1, .85, 1.05); const vis = new THREE.Mesh(new THREE.CylinderGeometry(.1, .1, .012, 14, 1, false, -Math.PI / 2, Math.PI), lm(sh(c.col, .85))); vis.scale.set(1.05, 1, 1.1); vis.position.set(0, -.065, .1); vis.rotation.x = .12; s.add(dm, vis, Cy(.012, .012, .01, sh(c.col, .7), 0, .05, 0, 8)); }   // [vestiti] cupola bassa, visiera curva, il bottone in cima
         if (c.acc === 'basco') { const b0 = Cy(.15, .13, .04, c.col, .02, 0, 0, 14); b0.rotation.z = -.15; s.add(b0, Cy(.01, .01, .03, c.col, .02, .03, 0, 6)); }
         if (c.acc === 'fascia') s.add(Cy(.142, .142, .035, c.col, 0, -.07, 0, 14));
         s.scale.setScalar(k); pin(g, head, s, hp.x, hp.y + .19, hp.z + .01); }
       if (c.acc === 'occhiali' && head) { const hp = wpos(g, head); put(head, 0, .085, .125, s => { s.add(Bx(.08, .045, .012, c.col, -.045, 0, 0), Bx(.08, .045, .012, c.col, .045, 0, 0), Bx(.2, .01, .01, '#c8b060', 0, .02, 0)); }); }
       if (c.acc === 'cravatta') put(chest, 0, .14, .135, s => { s.add(Bx(.05, .04, .02, c.col, 0, .04, 0), Bx(.055, .26, .015, c.col, 0, -.11, 0)); });
-      if (c.acc === 'papillon') put(chest, 0, .2, .13, s => { s.add(Bx(.11, .045, .02, c.col)); });
-      if (c.acc === 'collana') put(chest, 0, .1, .12, s => { const t = new THREE.Mesh(new THREE.TorusGeometry(.1, .012, 6, 18), lm(c.col)); t.rotation.x = 1.2; s.add(t); });
+      if (c.acc === 'papillon') put(chest, 0, .165, .135, s => { [-1, 1].forEach(k => { const w = new THREE.Mesh(new THREE.ConeGeometry(.032, .055, 4), lm(c.col)); w.rotation.z = k * Math.PI / 2; w.position.x = k * .03; s.add(w); }); s.add(Bx(.02, .022, .022, sh(c.col, .8))); });   // [vestiti] due ali e il nodo
+      if (c.acc === 'collana') put(chest, 0, .16, .03, s => { const t = new THREE.Mesh(new THREE.TorusGeometry(.105, .006, 5, 28), lm(c.col)); t.rotation.x = -1.02; t.scale.set(1, 1.15, 1); s.add(t); const md = Cy(.014, .014, .005, c.col, 0, -.075, .1, 10); md.rotation.x = Math.PI / 2; s.add(md); });   // [vestiti] intorno al collo, scende sul petto, una medaglietta
       if (c.acc === 'perle') put(chest, 0, .13, .1, s => { for (let i = 0; i < 12; i++) { const a = Math.PI * (i / 11) + Math.PI; s.add(Sp(.014, c.col, Math.cos(a) * .1, Math.sin(a) * .07, .03)); } });
       if (c.acc === 'foulard') put(neck || chest, 0, neck ? -.02 : .2, .08, s => { const b0 = Bx(.13, .1, .02, c.col); b0.rotation.z = Math.PI / 4; s.add(b0); });
       if (c.acc === 'colletto') put(chest, 0, .21, .05, s => { s.add(Bx(.22, .04, .2, c.col)); });
@@ -28822,7 +30509,7 @@ var Vesti3D = (function () {
       if (c.acc === 'tacco') [ftL, ftR].forEach(b => put(b, 0, -.05, -.07, s => { s.add(Bx(.03, .07, .03, c.col)); }));
       if (c.acc === 'orologio') put(wL, 0, 0, 0, s => { s.add(Cy(.04, .04, .03, '#2a2a2e', 0, 0, 0, 10), Cy(.025, .025, .035, c.col, 0, 0, 0, 10)); });
       if (c.acc === 'anelli') [wL, wR].forEach(b => put(b, 0, -.07, .02, s => { s.add(Bx(.04, .02, .03, c.col)); }));
-      if (c.acc === 'marsupio') put(hips, 0, .05, .13, s => { s.add(Bx(.22, .1, .08, c.col), Bx(.4, .025, .25, '#1e1e24', 0, 0, -.08)); });
+      if (c.acc === 'marsupio') put(hips, 0, .05, 0, s => { const belt = new THREE.Mesh(new THREE.CylinderGeometry(.19, .19, .032, 22, 1, true), new THREE.MeshLambertMaterial({ color: '#1e1e24', side: THREE.DoubleSide })); belt.scale.set(1, 1, .82); const pouch = Bx(.2, .1, .07, c.col, 0, -.01, .155); const zip = Bx(.18, .008, .072, sh(c.col, .6), 0, .025, .156); s.add(belt, pouch, zip); });   // [vestiti] cintura che gira attorno, tasca davanti
       if (c.acc === 'borsetta') put(shL || chest, .1, -.35, 0, s => { s.add(Bx(.2, .14, .07, c.col), Bx(.01, .45, .01, '#2a1a14', 0, .28, 0)); });
       if (c.acc === 'zaino' && chest) { const p = wpos(g, chest), s = new THREE.Group(); s.add(Bx(.32, .4, .16, c.col), Bx(.26, .12, .05, '#2a2a22', 0, -.08, -.1), Bx(.3, .08, .17, '#3a3a2e', 0, .18, 0)); pin(g, chest, s, p.x, p.y - .05, p.z - .2); }
     });
@@ -28835,7 +30522,9 @@ var Vesti3D = (function () {
   }
 
   // ---------------- VESTIRE UNA PERSONA ----------------
-  function strip(g) { const rm = []; g.traverse(o => { if (o.userData && o.userData.vesti) rm.push(o); }); rm.forEach(o => { if (o.parent) o.parent.remove(o); if (o.geometry && o.isSkinnedMesh) o.geometry.dispose(); }); }
+  function strip(g) { if (g.userData) g.userData.spessore = null;   // [animazioni]
+    g.traverse(o => { if (o.isSkinnedMesh && o.userData.geo0) o.geometry = o.userData.geo0; });   // [vestiti] la pelle torna intera
+    const rm = []; g.traverse(o => { if (o.userData && o.userData.vesti) rm.push(o); }); rm.forEach(o => { if (o.parent) o.parent.remove(o); if (o.geometry && o.isSkinnedMesh) o.geometry.dispose(); }); }
   function bare(g, look) {
     // i vestiti del modello diventano pelle: da qui in su si veste coi gusci
     const skin = (look && look.skin) || '#dcae88';
@@ -28843,7 +30532,8 @@ var Vesti3D = (function () {
       if (!o.isSkinnedMesh || o.userData.vesti || o.userData.bared) return; o.userData.bared = true;
       const head = /Head/i.test(o.name);
       const ms = Array.isArray(o.material) ? o.material : [o.material];
-      const nm = ms.map(x => { if (KEEP.test(x.name) || (head && !/^(White|Grey|Black|Purple|LightBlue|Orange|Brown2|LimeGreen|Worker_Vest|Red_Dark|LightBrown)$/.test(x.name))) return x; const c = x.clone(); c.color.set(skin); if (c.emissive) c.emissive.set(skin).multiplyScalar(.3); return c; });
+      const nm = ms.map(x => { if (x.name === 'Worker_Yellow' && head) { const c = x.clone(); c.visible = false; return c; }   // [vestiti] il casco giallo del kit, nella testa
+        if (KEEP.test(x.name) || (head && !/^(White|Grey|Black|Purple|LightBlue|Orange|Brown2|LimeGreen|Worker_Vest|Worker_Yellow|Red_Dark|LightBrown)$/.test(x.name))) return x; const c = x.clone(); c.color.set(skin); if (c.emissive) c.emissive.set(skin).multiplyScalar(.3); return c; });
       o.material = Array.isArray(o.material) ? nm : nm[0];
     });
   }
@@ -28943,7 +30633,10 @@ var Pezzi = (function () {
   // ---------------- PER TERRA E CONTRO IL MURO ----------------
   function tanica(g, x, y, z, ry, c) { const s = sub(g, x, y, z, ry); bx(s, .34, .44, .17, c || '#c83a2a', 0, .22, 0, { roughness: .5 }); bx(s, .2, .06, .05, c || '#c83a2a', -.02, .47, 0); cy(s, .03, .03, .07, '#2a2a2a', .12, .48, 0); bx(s, .3, .38, .005, '#e8e0c8', 0, .22, .088); return s; }
   function estintore(g, x, y, z) { const s = sub(g, x, y, z); cy(s, .08, .08, .55, '#c82a24', 0, .28, 0, { roughness: .4, metalness: .2 }); sp(s, .08, '#c82a24', 0, .55, 0); bx(s, .1, .04, .05, '#2a2a2a', 0, .64, 0); cy(s, .015, .015, .3, '#1a1a1a', .1, .5, 0, {}, 0, .5); return s; }
-  function bobina(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); for (const zz of [-.12, .12]) cy(s, .22, .22, .02, '#3a3a3a', 0, .24, zz, MET, Math.PI / 2); cy(s, .15, .15, .22, '#c83a2a', 0, .24, 0, {}, Math.PI / 2); bx(s, .04, .5, .04, '#3a3a3a', 0, .25, -.15); return s; }
+  function bobina(g, x, y, z, ry) {   // [oggetti] rocchetto di legno coi fori, spire di cavo arancione, il capo che pende
+    const s = sub(g, x, y, z, ry); for (const zz of [-.13, .13]) { cy(s, .26, .26, .025, '#b08a5a', 0, .26, zz, {}, Math.PI / 2, 0, 18); cy(s, .05, .05, .03, '#4a3a28', 0, .26, zz, {}, Math.PI / 2, 0, 10); }
+    for (let k = 0; k < 5; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(.17, .022, 6, 18), mat('#d8682a')); t.position.set(0, .26, -.1 + k * .05); t.castShadow = true; s.add(t); }
+    const tail = new THREE.Mesh(new THREE.TorusGeometry(.12, .02, 6, 14, Math.PI * 1.3), mat('#d8682a')); tail.position.set(.24, .1, .05); tail.rotation.set(Math.PI / 2, 0, 1.2); s.add(tail); return s; }
   function fari(g, x, y, z) { const s = sub(g, x, y, z); for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2, l = bx(s, .025, .9, .025, '#e8c030', Math.cos(a) * .18, .42, Math.sin(a) * .18, {}, 0, Math.sin(a) * .2, -Math.cos(a) * .2); } bx(s, .03, 1, .03, '#e8c030', 0, 1.2, 0); bx(s, .7, .04, .04, '#e8c030', 0, 1.7, 0); for (const xx of [-.22, .22]) { bx(s, .26, .2, .12, '#2a2a2e', xx, 1.82, 0); named(bx(s, .22, .16, .01, '#fff8e0', xx, 1.82, .061, GLOW('#fff0c0')), 'luce'); } return s; }
   function generatore(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); bx(s, .7, .45, .45, '#d8b040', 0, .35, 0, { roughness: .6 }); for (const yy of [.1, .6]) for (const xx of [-.35, .35]) for (const zz of [-.23, .23]) {} const fr = [[-.36, 0], [.36, 0]]; fr.forEach(([xx]) => { bx(s, .03, .62, .03, '#2a2a2e', xx, .31, -.24); bx(s, .03, .62, .03, '#2a2a2e', xx, .31, .24); }); bx(s, .78, .03, .03, '#2a2a2e', 0, .62, -.24); bx(s, .78, .03, .03, '#2a2a2e', 0, .62, .24); for (const xx of [-.3, .3]) cy(s, .1, .1, .06, '#1a1a1a', xx, .1, .27, {}, Math.PI / 2); named(cy(s, .1, .1, .02, '#3a3a3a', .2, .4, .23, {}, Math.PI / 2), 'ventola'); bx(s, .15, .1, .01, '#2a2a2a', -.15, .45, .226); return s; }
   function armadietti(g, x, y, z, ry, c) { const s = sub(g, x, y, z, ry); for (let i = 0; i < 3; i++) { const xx = (i - 1) * .4; bx(s, .38, 1.8, .45, c || '#d8782a', xx, .9, 0, { roughness: .6, metalness: .25 }); for (let j = 0; j < 4; j++) bx(s, .2, .015, .01, '#3a2a1a', xx, 1.6 - j * .04, .23); bx(s, .02, .1, .02, '#c8c8c8', xx + .14, .95, .235, MET); bx(s, .12, .08, .005, '#f0ece0', xx, 1.35, .228); } return s; }
@@ -28970,8 +30663,13 @@ var Pezzi = (function () {
     cy(g, .1, .12, .16, '#2a2a2e', -.05, .69, .05, MET); vasetti(g, .25, .61, -.1); bottiglie(g, .7, .61, -.05); tanica(g, 1.25, 0, 0, -.3, '#3a6aa0'); tanica(g, 1.25, 0, .35, .2, '#3a6aa0'); cartone(g, -1.3, 0, .1, .3); bx(g, .4, .03, .25, '#c8b080', .35, .615, .15); }
   // il focolare: pietre in cerchio, ceppi, treppiede col paiolo
   function focolare(g) { for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; const p = new THREE.Mesh(new THREE.DodecahedronGeometry(.16), mat('#6a6a68', { roughness: 1 })); p.position.set(Math.cos(a) * .55, .1, Math.sin(a) * .55); p.scale.y = .7; p.castShadow = true; g.add(p); }
-    for (let i = 0; i < 3; i++) { const l = cy(g, .06, .06, .7, '#5a3a20', 0, .12, 0, {}, 0, Math.PI / 2); l.rotation.y = i * 1.05; }
-    named(cy(g, 0, .3, .7, '#ff8a20', 0, .5, 0, GLOW('#ff5a10')), 'fiamma'); named(cy(g, 0, .17, .45, '#ffd060', 0, .45, 0, GLOW('#ffb030')), 'fiamma2');
+    // [oggetti] braci, ciocchi a capanna anneriti in punta, tre lingue di fuoco a goccia (si animano per nome: fiamma, fiamma2)
+    cy(g, .32, .36, .05, '#3a1a10', 0, .03, 0, GLOW('#a02a08'));
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, l = new THREE.Group(); l.position.set(Math.cos(a) * .2, .2, Math.sin(a) * .2); l.rotation.set(0, -a, .55); g.add(l);
+      cy(l, .05, .055, .55, '#5a3a20', 0, 0, 0, {}, 0, 0, 8); cy(l, .052, .05, .14, '#1a1210', 0, .24, 0, {}, 0, 0, 8); }
+    const tongue = (h, r) => new THREE.LatheGeometry([[0, 0], [r * .7, h * .08], [r, h * .25], [r * .8, h * .5], [r * .4, h * .78], [r * .12, h * .92], [0, h]].map(([a, b]) => new THREE.Vector2(a, b)), 10);
+    const fl = (geo, c, e, x, z, ry, n) => { const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: 1.2, transparent: true, opacity: .82, depthWrite: false, roughness: 1 })); m.position.set(x, .1, z); m.rotation.y = ry; m.name = n; g.add(m); return m; };
+    fl(tongue(.75, .26), '#ff7a1a', '#ff5a10', 0, 0, 0, 'fiamma'); fl(tongue(.55, .14), '#ff9a30', '#ff6a18', .1, .06, 1, 'fiamma'); fl(tongue(.48, .15), '#ffd860', '#ffb030', -.04, -.03, 2, 'fiamma2');
     for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; const l = bx(g, .03, 1.4, .03, '#2a2a2e', Math.cos(a) * .45, .65, Math.sin(a) * .45, MET, 0, Math.sin(a) * .3, -Math.cos(a) * .3); } cy(g, .18, .14, .22, '#2a2a2e', 0, 1.05, 0, MET); cy(g, .005, .005, .35, '#3a3a3a', 0, 1.3, 0);
     for (let i = 0; i < 4; i++) cy(g, .08, .08, .45, '#6a4a2a', 1.1, .08 + (i % 2) * .15, -.3 + i * .17, {}, 0, Math.PI / 2); }
   // il laboratorio tessile: tavolo su cavalletti, macchina da cucire, rotoli di stoffa, manichino, filo
