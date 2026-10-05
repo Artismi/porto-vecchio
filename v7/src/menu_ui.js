@@ -505,12 +505,14 @@ var MenuUI = (function () {
       else if (U.tab === 'pg') [title, sub, body] = ['Chi è', 'Nino', pPg(st)];
       else if (U.tab === 'lavora') { const v = O().recipesView(st); title = U.arg && U.arg.titolo ? U.arg.titolo : 'Banco'; sub = v.stations.length ? `qui: ${v.stations.join(', ')}` : 'nessuna postazione: solo quello che si fa a mano'; tabs = KINDS.map(([k, l]) => `<button class="pill ${U.filt === k ? 'on' : ''}" data-a="filt" data-x='"${k}"'>${l} ${v.list.filter(r => (k === 'tutto' || r.kind === k) && r.ok).length}</button>`).join(''); body = pLavora(st, v); }
       else if (U.tab === 'lavori') [title, sub, body] = ['Lavori', '', pLavori(st)];
+      else if (U.tab === 'baule') { const B0 = typeof Cantiere !== 'undefined' && Cantiere.bauleHere(st); title = 'Baule'; sub = B0 ? 'del covo · ci sta tutto' : 'qui non c\'è un baule'; body = B0 ? pBaule(st, B0) : '<div class="dim">Il baule sta nei covi: casa tua, le basi, i posti che reclami (cantiere, Y).</div>'; }
       else if (U.tab === 'qui') [title, sub, body] = ['Qui, adesso', G().nearestPlace ? G().nearestPlace(st.player.x, st.player.y).name : '', pQui(st)];
       else if (U.tab === 'bottega') { const c = O().counter(st, U.arg); if (!c) { open('zaino'); return; } title = c.label; sub = c.emporio ? 'prezzi del regime' : c.black ? 'mercato nero: tutto, a prezzo doppio' : c.market ? 'mercato' : ''; tabs = ['compra', 'vendi'].map(t => `<button class="pill ${U.shopTab === t ? 'on' : ''}" data-a="shoptab" data-x='"${t}"'>${t === 'compra' ? 'Compra' : `Vendi ${c.buys.length}`}</button>`).join(''); body = pBottega(st, c); }
       else if (U.tab === 'fruga') { const v = O().frugaView(st, U.arg); if (!v) { close(); return; } title = 'Fruga'; sub = v.label; body = pFruga(st, v); }
     } catch (e) { body = `<div class="dim">Qualcosa non va: ${esc(e.message)}</div>`; console.error('[Menu]', e); }
     const pv = O().pocketsView(st), over = pv.peso > pv.cap;
-    const rail = TABS.map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="tab" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}${l}${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
+    const hasB = typeof Cantiere !== 'undefined' && Cantiere.bauleHere && !!Cantiere.bauleHere(st);
+    const rail = TABS.concat(hasB ? [['baule', 'Baule', 'casse']] : []).map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="tab" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}${l}${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
       + (U.tab === 'bottega' || U.tab === 'fruga' ? `<span class="sp"></span><button class="on">${ic(U.tab === 'bottega' ? 'valuta' : 'casse')}${CTX[U.tab][0]}</button>` : '');
     const showMsg = U.msg && Date.now() - (U.msgT || 0) < 6000;
     const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
@@ -655,6 +657,18 @@ var MenuUI = (function () {
     return `<div class="shop">${left}<div>${det}<div class="goods">${tiles}</div></div></div>`;
   }
 
+  // ---------------- IL BAULE ----------------
+  function pBaule(st, B0) {
+    const tile = (id, q, src) => { const c = O().CAT[id]; return `<button class="tile" data-a="${src === 'k' ? 'bprendi' : 'bmetti'}" data-x="${esc(JSON.stringify({ id, q: 1 }))}" draggable="true" data-drag="${src}:${esc(id)}" title="${esc(cap(c ? c.nome : id))} · clic: uno · doppio clic: tutti">${ic(id)}<em>${esc(corto(id))}</em>${q > 1 ? `<span class="q">${q}</span>` : ''}</button>`; };
+    const order = ks => ks.sort((a, b) => ((O().CAT[a] || {}).cat || '').localeCompare((O().CAT[b] || {}).cat || '') || a.localeCompare(b));
+    const inB = order(Object.keys(B0).filter(k => B0[k] >= 1 && O().CAT[k])), bag = O().inv(st), inP = order(Object.keys(bag).filter(k => bag[k] >= 1 && O().CAT[k]));
+    const peso = Math.round(inB.reduce((s0, k) => s0 + O().CAT[k].peso * Math.floor(B0[k]), 0) * 10) / 10;
+    return `<div class="fr2"><div><h4>Nel baule · ${inB.length} cose · ${peso} kg</h4><div class="loot" data-drop="baule">${inB.map(k => tile(k, Math.floor(B0[k]), 'k')).join('') || '<div class="dim" style="grid-column:1/-1">Vuoto. Trascina qui la roba, o clicca nella borsa.</div>'}</div>
+        <div class="row" style="margin-top:12px">${btn('bprendi_tutto', 'Prendi tutto', undefined, '', !inB.length)}</div></div>
+      <div><h4>La tua roba</h4><div class="loot" data-drop="bag">${inP.map(k => tile(k, Math.floor(bag[k]), 'b')).join('') || '<div class="dim" style="grid-column:1/-1">Borsa vuota.</div>'}</div>
+        <div class="row" style="margin-top:12px">${btn('bmetti_tutto', 'Metti tutto', undefined, 'y', !inP.length)}</div></div></div>`;
+  }
+
   // ---------------- LAVORI ----------------
   const DIR = ['est', 'sud-est', 'sud', 'sud-ovest', 'ovest', 'nord-ovest', 'nord', 'nord-est'];
   const dirTo = (p, x, y) => DIR[((Math.round(Math.atan2(y - p.y, x - p.x) / (Math.PI / 4)) % 8) + 8) % 8];
@@ -724,6 +738,10 @@ var MenuUI = (function () {
       case 'togli': act('togli', x); break;
       case 'tieni': act('tieni', x); break;
       case 'mod': say(Cantiere.mod(st, x.k, x.id)); break;
+      case 'bprendi': say(Cantiere.bauleTake(st, x.id, x.q)); break;
+      case 'bmetti': say(Cantiere.baulePut(st, x.id, x.q)); break;
+      case 'bprendi_tutto': say(Cantiere.bauleAll(st, 'prendi')); break;
+      case 'bmetti_tutto': say(Cantiere.bauleAll(st, 'metti')); break;
       case 'scambia_mani': act('scambia_mani'); break;
       case 'usa_sinistra': act('usa_sinistra'); break;
       case 'spogliati': act('spogliati', null, x); break;
@@ -747,6 +765,8 @@ var MenuUI = (function () {
     const st = ST(), GR = typeof Guardaroba !== 'undefined' ? Guardaroba : null; if (!st || !GR) return;
     const [k, a, b] = src.split(':'), dst = t.dataset.drop, [dk, dz] = dst.split(':');
     const idx = () => { const ch = [...t.querySelectorAll('.chip')]; return ch.filter(c => { const r = c.getBoundingClientRect(); return r.left + r.width / 2 < cx; }).length; };
+    if (k === 'k' && dk === 'bag') return say(Cantiere.bauleTake(st, a, 9999));   // dal baule alla borsa: tutti
+    if (k === 'b' && dk === 'baule') return say(Cantiere.baulePut(st, a, 9999));   // dalla borsa al baule: tutti
     if (k === 'b') {   // dalla borsa
       const capo = GR.CAPO[a];
       if (dk === 'z' || dk === 'nino') { if (!capo) return say({ ok: false, msg: 'Questo non si indossa.' }); if (dk === 'z' && dz !== capo.zona) return say({ ok: false, msg: `${cap(corto(a))} va su: ${GR.ZONE[capo.zona].nome.toLowerCase()}.` }); act('indossa', a, dk === 'z' ? { at: idx() } : {}); }
@@ -765,6 +785,7 @@ var MenuUI = (function () {
     }
   }
   function onDbl(e) {
+    const bt = e.target.closest('[data-a="bprendi"],[data-a="bmetti"]'); if (bt && typeof Cantiere !== 'undefined') { const x = JSON.parse(bt.dataset.x), st0 = ST(); say(bt.dataset.a === 'bprendi' ? Cantiere.bauleTake(st0, x.id, 9999) : Cantiere.baulePut(st0, x.id, 9999)); render(true); return; }
     const b = e.target.closest('[data-a="sel"]'); if (!b) return; const id = JSON.parse(b.dataset.x), st = ST();
     if (U.tab === 'zaino') { const it = bagItems(st).items.find(i => i.id === id); if (!it) return; if (it.eat) act('usa', id); else if (O().SLOT_OF && O().SLOT_OF[id]) act('indossa', id); else if (it.eq) equip(id); render(true); }
     else if (U.tab === 'lavora') { act('fai', id, { q: 1 }); render(true); }

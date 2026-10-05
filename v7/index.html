@@ -16175,7 +16175,7 @@ var Oggetti = (function () {
     return staffNow(st, Lg).map(n => { const q = postPos(Lg, n.pop.post) || Lg.banco || Lg.posts[0]; return q ? { id: n.id, name: n.name, x: q.x, y: q.y, f: 0, face: q.face, post: n.pop.post.i === -1 ? 'banco' : (Lg.posts[n.pop.post.i] || {}).st || 'in giro' } : null; }).filter(Boolean);
   }
   // tutto quello che il giocatore può usare qui: le tasche, e se è in base anche le scorte della base
-  function pools(st) { const L0 = [inv(st)]; const b = nearBase(st); if (b) L0.push(b.stock); return L0; }
+  function pools(st) { const L0 = [inv(st)]; const b = nearBase(st); if (b) L0.push(b.stock); if (typeof Cantiere !== 'undefined' && Cantiere.bauleHere) { const B0 = Cantiere.bauleHere(st); if (B0 && !L0.includes(B0)) L0.push(B0); } return L0; }   // [cantiere] anche il baule del covo
   const poolCnt = (P, id) => P.reduce((s, b) => s + cnt(b, id), 0);
   function poolTake(P, id, q) { for (const b of P) { const k = Math.min(q, cnt(b, id)); if (k > 0) { sub(b, id, k); q -= k; } if (!q) break; } return q; }
   // basta quello che c'è? per ogni ingrediente sceglie l'alternativa che c'è
@@ -16782,7 +16782,7 @@ var Oggetti = (function () {
     // le risorse astratte diventano categorie: «materiali» = assi, lamiere, mattoni…; quelle che sono già un oggetto (carta, benzina) restano se stesse
     Object.values(CAT).forEach(c => { if (!RS.RES[c.id]) RS.RES[c.id] = { name: c.nome, one: c.nome, cat: GROUPS[c.cat], syn: [c.nome], item: true }; });
     const val = (bag, res) => { if (!bag) return 0; if (RESOF[res]) return RESOF[res].reduce((s, [id, k]) => s + cnt(bag, id) * k, 0) + (CAT[res] || !bag[res] ? 0 : bag[res]); return cnt(bag, res); };
-    const bags = (st, prefer) => { const out = []; if (prefer) out.push(prefer.stock); st.ris.bases.filter(b => b.alive && b !== prefer).forEach(b => out.push(b.stock)); out.push(st.ris.inv); if (st.player && st.player.inv) out.push(st.player.inv); return out; };
+    const bags = (st, prefer) => { const out = []; if (prefer) out.push(prefer.stock); if (typeof Cantiere !== 'undefined' && Cantiere.bauli) Cantiere.bauli(st).forEach(B0 => { if (!out.includes(B0) && !(st.ris.bases || []).some(b => b.stock === B0)) out.push(B0); }); /* [cantiere] i bauli dei covi */ st.ris.bases.filter(b => b.alive && b !== prefer).forEach(b => out.push(b.stock)); out.push(st.ris.inv); if (st.player && st.player.inv) out.push(st.player.inv); return out; };
     X.resTotal = (st, res) => bags(st).reduce((s, b) => s + val(b, res), 0);
     // si prende il necessario partendo dagli oggetti che valgono meno per quella categoria
     X.resTake = (st, res, qty, prefer) => {
@@ -26492,6 +26492,7 @@ var Cantiere = (function () {
     { id: 'taniche', cat: 'arredi', nome: 'Taniche', item: 'tanica_vuota', cost: { tanica_vuota: 1 }, pz: 'tanica' },
     { id: 'estintore', cat: 'arredi', nome: 'Estintore', cost: { bombola: 1 }, pz: 'estintore' },
     { id: 'bobina', cat: 'arredi', nome: 'Bobina di cavo', cost: { cavo: 3 }, pz: 'bobina' },
+    { id: 'baule', cat: 'arredi', nome: 'Baule', desc: 'Uno per covo. Ci metti quello che vuoi, quanto vuoi.', mk: 'baule', baule: 1 },
     { id: 'poster', cat: 'arredi', nome: 'Manifesto', item: 'poster', cost: { poster: 1 }, mk: 'poster' },
     // postazioni: ognuna col suo banco
     { id: 'banco_armi', cat: 'postazioni', nome: 'Banco delle armi', st: 'banco_lavoro', pz: 'bancoArmi', anim: 'morsa', menu: 'armi', cost: { assi: 6, ferro: 2, chiodi: 2, morsa: 1 } },
@@ -26632,6 +26633,10 @@ var Cantiere = (function () {
       case 'tappeto': box(g, 1.6, .02, 1.1, c, 0, .01, 0); box(g, 1.3, .021, .8, '#c8a050', 0, .011, 0); box(g, 1.1, .022, .6, c, 0, .012, 0); break;
       case 'lampada': cyl(g, .08, .1, .06, '#5a4a2a', 0, .03, 0); tag(cyl(g, .06, .07, .18, '#f8e0a0', 0, .15, 0, '#ffc860'), 'luce'); cyl(g, .03, .03, .06, '#3a3a3a', 0, .27, 0); break;
       case 'barile': cyl(g, .3, .3, .85, '#4a3a2e', 0, .43, 0); tag(cyl(g, .0, .26, .45, '#ff7a20', 0, 1.05, 0, '#ff5a10'), 'fiamma'); break;
+      case 'baule': { box(g, 1.1, .5, .62, '#6a4a2c', 0, .25, 0); const lid = new THREE.Group(); lid.position.set(0, .5, -.31); lid.name = 'coperchio'; g.add(lid);
+        const top = new THREE.Mesh(new THREE.CylinderGeometry(.31, .31, 1.1, 14, 1, false, 0, Math.PI), lm('#7a5634')); top.rotation.z = Math.PI / 2; top.position.set(0, 0, .31); lid.add(top);
+        for (const x of [-.4, 0, .4]) { box(g, .06, .52, .64, '#3a3a40', x, .26, 0); const b2 = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .06, 14, 1, false, 0, Math.PI), lm('#3a3a40')); b2.rotation.z = Math.PI / 2; b2.position.set(x, 0, .31); lid.add(b2); }
+        box(g, .1, .12, .04, '#c8a040', 0, .42, .33); break; }
       case 'poster': box(g, .7, 1, .02, '#e8e0cc', 0, 1.5, 0); box(g, .5, .3, .025, '#c83a3a', 0, 1.7, 0); box(g, .5, .05, .025, '#2a2a2e', 0, 1.35, 0); break;
       case 'banco_armi': box(g, 1.8, .08, .75, '#7a5634', 0, .86, 0); for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(g, .07, .86, .07, '#5a4028', x * .84, .43, z * .3);
         box(g, 1.7, 1.1, .05, '#4a3a2a', 0, 1.5, -.35); for (let i = 0; i < 3; i++) { box(g, .06, .9, .05, '#2a2a2e', -.5 + i * .5, 1.5, -.3); box(g, .25, .1, .06, '#5a3a20', -.5 + i * .5, 1.05, -.3); }
@@ -26682,6 +26687,7 @@ var Cantiere = (function () {
     if (!C) return 'Fuori dal covo: qui non costruisci.';
     if (b.cat === 'terreno') { const [tx, ty] = tileOf(x, y), v = G.tileAt(tx, ty); if (lv) return lv === 'ug' ? 'Sotto terra si usa Sottoterra.' : 'Dentro casa non si disbosca.'; if (b.op === 'disbosca' && v !== t.TREE && v !== t.SHRUB) return 'Niente da tagliare qui.'; if (b.op === 'cava' && v !== t.ROCK && v !== t.CLIFF) return 'Niente roccia qui.'; return ''; }
     if (b.cat === 'sotto') return '';
+    if (b.baule && S(st).obj.some(o => o.id === 'baule' && (covoAt(st, o.x, o.y) || {}).id === C.id)) return 'In questo covo il baule c\'è già.';
     if (lv && lv !== 'ug') return b.fp && b.solid ? 'Dentro casa: solo arredi e postazioni.' : '';   // dentro casa si arreda
     const L = lv && typeof Livelli !== 'undefined' ? Livelli.S(st) : null;
     for (const [tx, ty] of footprint(b, x, y, rot).concat(b.fp ? [] : [tileOf(x, y).concat([false])])) {
@@ -26708,6 +26714,20 @@ var Cantiere = (function () {
     U.dirty = true; return o;
   }
   function remove(st, uid) { const o = lift(st, uid); if (!o) return { ok: false, msg: '' }; refund(st, o); return { ok: true, msg: `${BY[o.id].nome}: smontato. Ti torna la roba.` }; }
+
+  // =====================================================================================================================
+  // IL BAULE: uno per covo, senza limiti. Nelle basi della Risacca è la loro scorta; a casa e nei covi reclamati è suo.
+  // =====================================================================================================================
+  function bauleOf(st, C) { if (!C) return null; if (/^b/.test(C.id)) { const b = (st.ris && st.ris.bases || []).find(x => 'b' + x.id === C.id); if (b) return (b.stock = b.stock || {}); } const K = S(st); K.bauli = K.bauli || {}; return (K.bauli[C.id] = K.bauli[C.id] || {}); }
+  const bauleHere = st => { const p = st.player; let C = covoAt(st, p.x, p.y); if (!C && p.indoor && st.me && st.me.home && G0().BUILDINGS[p.indoor.b] && G0().BUILDINGS[p.indoor.b].playerHome) C = covi(st).find(c => c.home); return bauleOf(st, C); };
+  const G0 = () => Gm();
+  const bauli = st => { const K = S(st); return Object.values(K.bauli || {}); };
+  function baulePut(st, id, q) { const B0 = bauleHere(st); if (!B0) return { ok: false, msg: 'Qui non c\'è un baule.' }; const bag = O().inv(st), n = Math.min(q || 1, Math.floor(bag[id] || 0)); if (!n) return { ok: false, msg: 'Non ce l\'hai.' }; bag[id] -= n; if (bag[id] <= 0) delete bag[id]; B0[id] = (B0[id] || 0) + n; return { ok: true, msg: `Nel baule: ${O().nm(id)}${n > 1 ? ' ×' + n : ''}.` }; }
+  function bauleTake(st, id, q) { const B0 = bauleHere(st); if (!B0) return { ok: false, msg: 'Qui non c\'è un baule.' }; const n = Math.min(q || 1, Math.floor(B0[id] || 0)); if (!n) return { ok: false, msg: 'Nel baule non c\'è.' }; const left = O().givePlayer(st, id, n), got = n - (left || 0); B0[id] -= got; if (B0[id] <= 0) delete B0[id]; return { ok: got > 0, msg: got ? `Prendi ${O().nm(id)}${got > 1 ? ' ×' + got : ''}.${left ? ' Il resto non ti sta addosso.' : ''}` : 'Non ti sta più niente addosso.' }; }
+  function bauleAll(st, dir) { const B0 = bauleHere(st); if (!B0) return { ok: false, msg: 'Qui non c\'è un baule.' }; let n = 0;
+    if (dir === 'metti') { const bag = O().inv(st); Object.keys(bag).forEach(k => { const c = O().CAT[k]; if (c && c.tool) return; const q = Math.floor(bag[k] || 0); if (q > 0) { baulePut(st, k, q); n += q; } }); return { ok: !!n, msg: n ? `Svuoti la borsa nel baule (${n}). Gli attrezzi restano a te.` : 'Non hai niente da mettere.' }; }
+    for (const k of Object.keys(B0)) { const r = bauleTake(st, k, Math.floor(B0[k])); if (r.ok) n++; if (/non ti sta/i.test(r.msg)) return { ok: !!n, msg: 'Non ti sta più niente addosso: il resto rimane nel baule.' }; }
+    return { ok: !!n, msg: n ? 'Prendi tutto dal baule.' : 'Il baule è vuoto.' }; }
 
   // =====================================================================================================================
   // LE POSTAZIONI: per la cucina, i banchi e i letti
@@ -26772,6 +26792,7 @@ var Cantiere = (function () {
         if (x.name === 'ventola') x.rotation.y = t * (busy ? 30 : 12);
         if (x.name === 'telo' || x.name === 'onda') x.rotation.y = Math.sin(t * 2 + o.x) * .25;
         if (x.name === 'anta') x.rotation.y = near ? -1.2 : 0;
+        if (x.name === 'coperchio') x.rotation.x += ((near ? -1.1 : 0) - x.rotation.x) * .15;
         if (x.name === 'segatura') x.visible = busy && Math.floor(t * 4) % 2 === 0;
       });
     });
@@ -26905,14 +26926,15 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   // fuori dal cantiere: le postazioni si cliccano, ci vai, e si apre il loro banco
   function pick(st, nx, ny, o) {
     if (U.on || st.player.vehicle || !st.covo || !st.covo.obj.length) return null; const r = R(), lv = lvOf(st); let best = null, bd = Math.max(26, o.h * .045);
-    st.covo.obj.forEach(c => { const b = BY[c.id]; if (!b || !(b.st || b.sleep || b.menu) || c.lv !== lv) return; const pr = r.project(c.x, .9, c.y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = c; } });
-    return best ? { kind: 'loot', via: 'covo', ref: best.uid, x: best.x, y: best.y, label: `Usa: ${BY[best.id].nome}` } : null;
+    st.covo.obj.forEach(c => { const b = BY[c.id]; if (!b || !(b.st || b.sleep || b.menu || b.baule) || c.lv !== lv) return; const pr = r.project(c.x, .9, c.y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = c; } });
+    return best ? { kind: 'loot', via: 'covo', ref: best.uid, x: best.x, y: best.y, label: BY[best.id].baule ? 'Apri il baule' : `Usa: ${BY[best.id].nome}` } : null;
   }
   const find = (st, ref) => { const o = st.covo && st.covo.obj.find(c => c.uid === ref); return o ? { x: o.x, y: o.y } : null; };
   const goal = (st, ref) => { const o = st.covo && st.covo.obj.find(c => c.uid === ref); if (!o) return null; const G = Gm(); for (let r = 1.2; r < 3; r += .4) for (let a = 0; a < 8; a++) { const x = o.x + Math.cos(a * Math.PI / 4 + Math.PI / 2 - o.rot) * r, y = o.y + Math.sin(a * Math.PI / 4 + Math.PI / 2 - o.rot) * r; if (G.walkM(x, y)) return { x, y }; } return { x: o.x, y: o.y }; };
   const reach = () => 1.9;
   function arrive(st, ref) {
     const o = st.covo.obj.find(c => c.uid === ref); if (!o) return; const b = BY[o.id]; st.covo.busy[o.uid] = st.clock;
+    if (b.baule) { if (typeof MenuUI !== 'undefined') MenuUI.open('baule'); return; }
     if (b.sleep) { const a = (typeof Azioni !== 'undefined' ? Azioni.playerActions(st) : []).find(x => /dorm|pisolino|riposa/i.test(x.label) && x.run); if (a) Gm().feed(st, a.run() || 'Ti sdrai.', 'info'); else Gm().feed(st, 'Ti sdrai un momento sulla branda. Non hai sonno.', 'info'); return; }
     if (typeof MenuUI !== 'undefined') MenuUI.open('lavora', { st: b.st, st2: b.st2, titolo: b.nome, armi: b.menu === 'armi', uid: o.uid });
   }
@@ -26923,7 +26945,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   }
   function init() { if (!window.__pv || !window.THREE) { setTimeout(init, 200); return; } const G = Gm(); if (G.HOOKS) { const p0 = G.HOOKS.playerWeapon; G.HOOKS.playerWeapon = (st, k, W) => playerWeapon(st, k, p0 ? p0(st, k, W) : W); } preload(); requestAnimationFrame(loop); }
   if (typeof window !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init, 0); }
-  return { active: () => U.on, toggle, down, wheel, pick, find, goal, reach, arrive, stationsNear, mod, modsView, MODS, B, BY, covi, covoAt, claim, place, remove, terrain, under, state: U, model };
+  return { bauleHere, bauli, baulePut, bauleTake, bauleAll, active: () => U.on, toggle, down, wheel, pick, find, goal, reach, arrive, stationsNear, mod, modsView, MODS, B, BY, covi, covoAt, claim, place, remove, terrain, under, state: U, model };
 })();
 </script>
 <script>/* Porto Vecchio — Il Menu: una valigetta sola per tutto quello che si tocca.
@@ -27433,12 +27455,14 @@ var MenuUI = (function () {
       else if (U.tab === 'pg') [title, sub, body] = ['Chi è', 'Nino', pPg(st)];
       else if (U.tab === 'lavora') { const v = O().recipesView(st); title = U.arg && U.arg.titolo ? U.arg.titolo : 'Banco'; sub = v.stations.length ? `qui: ${v.stations.join(', ')}` : 'nessuna postazione: solo quello che si fa a mano'; tabs = KINDS.map(([k, l]) => `<button class="pill ${U.filt === k ? 'on' : ''}" data-a="filt" data-x='"${k}"'>${l} ${v.list.filter(r => (k === 'tutto' || r.kind === k) && r.ok).length}</button>`).join(''); body = pLavora(st, v); }
       else if (U.tab === 'lavori') [title, sub, body] = ['Lavori', '', pLavori(st)];
+      else if (U.tab === 'baule') { const B0 = typeof Cantiere !== 'undefined' && Cantiere.bauleHere(st); title = 'Baule'; sub = B0 ? 'del covo · ci sta tutto' : 'qui non c\'è un baule'; body = B0 ? pBaule(st, B0) : '<div class="dim">Il baule sta nei covi: casa tua, le basi, i posti che reclami (cantiere, Y).</div>'; }
       else if (U.tab === 'qui') [title, sub, body] = ['Qui, adesso', G().nearestPlace ? G().nearestPlace(st.player.x, st.player.y).name : '', pQui(st)];
       else if (U.tab === 'bottega') { const c = O().counter(st, U.arg); if (!c) { open('zaino'); return; } title = c.label; sub = c.emporio ? 'prezzi del regime' : c.black ? 'mercato nero: tutto, a prezzo doppio' : c.market ? 'mercato' : ''; tabs = ['compra', 'vendi'].map(t => `<button class="pill ${U.shopTab === t ? 'on' : ''}" data-a="shoptab" data-x='"${t}"'>${t === 'compra' ? 'Compra' : `Vendi ${c.buys.length}`}</button>`).join(''); body = pBottega(st, c); }
       else if (U.tab === 'fruga') { const v = O().frugaView(st, U.arg); if (!v) { close(); return; } title = 'Fruga'; sub = v.label; body = pFruga(st, v); }
     } catch (e) { body = `<div class="dim">Qualcosa non va: ${esc(e.message)}</div>`; console.error('[Menu]', e); }
     const pv = O().pocketsView(st), over = pv.peso > pv.cap;
-    const rail = TABS.map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="tab" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}${l}${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
+    const hasB = typeof Cantiere !== 'undefined' && Cantiere.bauleHere && !!Cantiere.bauleHere(st);
+    const rail = TABS.concat(hasB ? [['baule', 'Baule', 'casse']] : []).map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="tab" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}${l}${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
       + (U.tab === 'bottega' || U.tab === 'fruga' ? `<span class="sp"></span><button class="on">${ic(U.tab === 'bottega' ? 'valuta' : 'casse')}${CTX[U.tab][0]}</button>` : '');
     const showMsg = U.msg && Date.now() - (U.msgT || 0) < 6000;
     const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
@@ -27583,6 +27607,18 @@ var MenuUI = (function () {
     return `<div class="shop">${left}<div>${det}<div class="goods">${tiles}</div></div></div>`;
   }
 
+  // ---------------- IL BAULE ----------------
+  function pBaule(st, B0) {
+    const tile = (id, q, src) => { const c = O().CAT[id]; return `<button class="tile" data-a="${src === 'k' ? 'bprendi' : 'bmetti'}" data-x="${esc(JSON.stringify({ id, q: 1 }))}" draggable="true" data-drag="${src}:${esc(id)}" title="${esc(cap(c ? c.nome : id))} · clic: uno · doppio clic: tutti">${ic(id)}<em>${esc(corto(id))}</em>${q > 1 ? `<span class="q">${q}</span>` : ''}</button>`; };
+    const order = ks => ks.sort((a, b) => ((O().CAT[a] || {}).cat || '').localeCompare((O().CAT[b] || {}).cat || '') || a.localeCompare(b));
+    const inB = order(Object.keys(B0).filter(k => B0[k] >= 1 && O().CAT[k])), bag = O().inv(st), inP = order(Object.keys(bag).filter(k => bag[k] >= 1 && O().CAT[k]));
+    const peso = Math.round(inB.reduce((s0, k) => s0 + O().CAT[k].peso * Math.floor(B0[k]), 0) * 10) / 10;
+    return `<div class="fr2"><div><h4>Nel baule · ${inB.length} cose · ${peso} kg</h4><div class="loot" data-drop="baule">${inB.map(k => tile(k, Math.floor(B0[k]), 'k')).join('') || '<div class="dim" style="grid-column:1/-1">Vuoto. Trascina qui la roba, o clicca nella borsa.</div>'}</div>
+        <div class="row" style="margin-top:12px">${btn('bprendi_tutto', 'Prendi tutto', undefined, '', !inB.length)}</div></div>
+      <div><h4>La tua roba</h4><div class="loot" data-drop="bag">${inP.map(k => tile(k, Math.floor(bag[k]), 'b')).join('') || '<div class="dim" style="grid-column:1/-1">Borsa vuota.</div>'}</div>
+        <div class="row" style="margin-top:12px">${btn('bmetti_tutto', 'Metti tutto', undefined, 'y', !inP.length)}</div></div></div>`;
+  }
+
   // ---------------- LAVORI ----------------
   const DIR = ['est', 'sud-est', 'sud', 'sud-ovest', 'ovest', 'nord-ovest', 'nord', 'nord-est'];
   const dirTo = (p, x, y) => DIR[((Math.round(Math.atan2(y - p.y, x - p.x) / (Math.PI / 4)) % 8) + 8) % 8];
@@ -27652,6 +27688,10 @@ var MenuUI = (function () {
       case 'togli': act('togli', x); break;
       case 'tieni': act('tieni', x); break;
       case 'mod': say(Cantiere.mod(st, x.k, x.id)); break;
+      case 'bprendi': say(Cantiere.bauleTake(st, x.id, x.q)); break;
+      case 'bmetti': say(Cantiere.baulePut(st, x.id, x.q)); break;
+      case 'bprendi_tutto': say(Cantiere.bauleAll(st, 'prendi')); break;
+      case 'bmetti_tutto': say(Cantiere.bauleAll(st, 'metti')); break;
       case 'scambia_mani': act('scambia_mani'); break;
       case 'usa_sinistra': act('usa_sinistra'); break;
       case 'spogliati': act('spogliati', null, x); break;
@@ -27675,6 +27715,8 @@ var MenuUI = (function () {
     const st = ST(), GR = typeof Guardaroba !== 'undefined' ? Guardaroba : null; if (!st || !GR) return;
     const [k, a, b] = src.split(':'), dst = t.dataset.drop, [dk, dz] = dst.split(':');
     const idx = () => { const ch = [...t.querySelectorAll('.chip')]; return ch.filter(c => { const r = c.getBoundingClientRect(); return r.left + r.width / 2 < cx; }).length; };
+    if (k === 'k' && dk === 'bag') return say(Cantiere.bauleTake(st, a, 9999));   // dal baule alla borsa: tutti
+    if (k === 'b' && dk === 'baule') return say(Cantiere.baulePut(st, a, 9999));   // dalla borsa al baule: tutti
     if (k === 'b') {   // dalla borsa
       const capo = GR.CAPO[a];
       if (dk === 'z' || dk === 'nino') { if (!capo) return say({ ok: false, msg: 'Questo non si indossa.' }); if (dk === 'z' && dz !== capo.zona) return say({ ok: false, msg: `${cap(corto(a))} va su: ${GR.ZONE[capo.zona].nome.toLowerCase()}.` }); act('indossa', a, dk === 'z' ? { at: idx() } : {}); }
@@ -27693,6 +27735,7 @@ var MenuUI = (function () {
     }
   }
   function onDbl(e) {
+    const bt = e.target.closest('[data-a="bprendi"],[data-a="bmetti"]'); if (bt && typeof Cantiere !== 'undefined') { const x = JSON.parse(bt.dataset.x), st0 = ST(); say(bt.dataset.a === 'bprendi' ? Cantiere.bauleTake(st0, x.id, 9999) : Cantiere.baulePut(st0, x.id, 9999)); render(true); return; }
     const b = e.target.closest('[data-a="sel"]'); if (!b) return; const id = JSON.parse(b.dataset.x), st = ST();
     if (U.tab === 'zaino') { const it = bagItems(st).items.find(i => i.id === id); if (!it) return; if (it.eat) act('usa', id); else if (O().SLOT_OF && O().SLOT_OF[id]) act('indossa', id); else if (it.eq) equip(id); render(true); }
     else if (U.tab === 'lavora') { act('fai', id, { q: 1 }); render(true); }

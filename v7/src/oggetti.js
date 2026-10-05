@@ -1060,7 +1060,7 @@ var Oggetti = (function () {
     return staffNow(st, Lg).map(n => { const q = postPos(Lg, n.pop.post) || Lg.banco || Lg.posts[0]; return q ? { id: n.id, name: n.name, x: q.x, y: q.y, f: 0, face: q.face, post: n.pop.post.i === -1 ? 'banco' : (Lg.posts[n.pop.post.i] || {}).st || 'in giro' } : null; }).filter(Boolean);
   }
   // tutto quello che il giocatore può usare qui: le tasche, e se è in base anche le scorte della base
-  function pools(st) { const L0 = [inv(st)]; const b = nearBase(st); if (b) L0.push(b.stock); return L0; }
+  function pools(st) { const L0 = [inv(st)]; const b = nearBase(st); if (b) L0.push(b.stock); if (typeof Cantiere !== 'undefined' && Cantiere.bauleHere) { const B0 = Cantiere.bauleHere(st); if (B0 && !L0.includes(B0)) L0.push(B0); } return L0; }   // [cantiere] anche il baule del covo
   const poolCnt = (P, id) => P.reduce((s, b) => s + cnt(b, id), 0);
   function poolTake(P, id, q) { for (const b of P) { const k = Math.min(q, cnt(b, id)); if (k > 0) { sub(b, id, k); q -= k; } if (!q) break; } return q; }
   // basta quello che c'è? per ogni ingrediente sceglie l'alternativa che c'è
@@ -1667,7 +1667,7 @@ var Oggetti = (function () {
     // le risorse astratte diventano categorie: «materiali» = assi, lamiere, mattoni…; quelle che sono già un oggetto (carta, benzina) restano se stesse
     Object.values(CAT).forEach(c => { if (!RS.RES[c.id]) RS.RES[c.id] = { name: c.nome, one: c.nome, cat: GROUPS[c.cat], syn: [c.nome], item: true }; });
     const val = (bag, res) => { if (!bag) return 0; if (RESOF[res]) return RESOF[res].reduce((s, [id, k]) => s + cnt(bag, id) * k, 0) + (CAT[res] || !bag[res] ? 0 : bag[res]); return cnt(bag, res); };
-    const bags = (st, prefer) => { const out = []; if (prefer) out.push(prefer.stock); st.ris.bases.filter(b => b.alive && b !== prefer).forEach(b => out.push(b.stock)); out.push(st.ris.inv); if (st.player && st.player.inv) out.push(st.player.inv); return out; };
+    const bags = (st, prefer) => { const out = []; if (prefer) out.push(prefer.stock); if (typeof Cantiere !== 'undefined' && Cantiere.bauli) Cantiere.bauli(st).forEach(B0 => { if (!out.includes(B0) && !(st.ris.bases || []).some(b => b.stock === B0)) out.push(B0); }); /* [cantiere] i bauli dei covi */ st.ris.bases.filter(b => b.alive && b !== prefer).forEach(b => out.push(b.stock)); out.push(st.ris.inv); if (st.player && st.player.inv) out.push(st.player.inv); return out; };
     X.resTotal = (st, res) => bags(st).reduce((s, b) => s + val(b, res), 0);
     // si prende il necessario partendo dagli oggetti che valgono meno per quella categoria
     X.resTake = (st, res, qty, prefer) => {

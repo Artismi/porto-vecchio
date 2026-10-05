@@ -76,6 +76,7 @@ var Cantiere = (function () {
     { id: 'taniche', cat: 'arredi', nome: 'Taniche', item: 'tanica_vuota', cost: { tanica_vuota: 1 }, pz: 'tanica' },
     { id: 'estintore', cat: 'arredi', nome: 'Estintore', cost: { bombola: 1 }, pz: 'estintore' },
     { id: 'bobina', cat: 'arredi', nome: 'Bobina di cavo', cost: { cavo: 3 }, pz: 'bobina' },
+    { id: 'baule', cat: 'arredi', nome: 'Baule', desc: 'Uno per covo. Ci metti quello che vuoi, quanto vuoi.', mk: 'baule', baule: 1 },
     { id: 'poster', cat: 'arredi', nome: 'Manifesto', item: 'poster', cost: { poster: 1 }, mk: 'poster' },
     // postazioni: ognuna col suo banco
     { id: 'banco_armi', cat: 'postazioni', nome: 'Banco delle armi', st: 'banco_lavoro', pz: 'bancoArmi', anim: 'morsa', menu: 'armi', cost: { assi: 6, ferro: 2, chiodi: 2, morsa: 1 } },
@@ -216,6 +217,10 @@ var Cantiere = (function () {
       case 'tappeto': box(g, 1.6, .02, 1.1, c, 0, .01, 0); box(g, 1.3, .021, .8, '#c8a050', 0, .011, 0); box(g, 1.1, .022, .6, c, 0, .012, 0); break;
       case 'lampada': cyl(g, .08, .1, .06, '#5a4a2a', 0, .03, 0); tag(cyl(g, .06, .07, .18, '#f8e0a0', 0, .15, 0, '#ffc860'), 'luce'); cyl(g, .03, .03, .06, '#3a3a3a', 0, .27, 0); break;
       case 'barile': cyl(g, .3, .3, .85, '#4a3a2e', 0, .43, 0); tag(cyl(g, .0, .26, .45, '#ff7a20', 0, 1.05, 0, '#ff5a10'), 'fiamma'); break;
+      case 'baule': { box(g, 1.1, .5, .62, '#6a4a2c', 0, .25, 0); const lid = new THREE.Group(); lid.position.set(0, .5, -.31); lid.name = 'coperchio'; g.add(lid);
+        const top = new THREE.Mesh(new THREE.CylinderGeometry(.31, .31, 1.1, 14, 1, false, 0, Math.PI), lm('#7a5634')); top.rotation.z = Math.PI / 2; top.position.set(0, 0, .31); lid.add(top);
+        for (const x of [-.4, 0, .4]) { box(g, .06, .52, .64, '#3a3a40', x, .26, 0); const b2 = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .06, 14, 1, false, 0, Math.PI), lm('#3a3a40')); b2.rotation.z = Math.PI / 2; b2.position.set(x, 0, .31); lid.add(b2); }
+        box(g, .1, .12, .04, '#c8a040', 0, .42, .33); break; }
       case 'poster': box(g, .7, 1, .02, '#e8e0cc', 0, 1.5, 0); box(g, .5, .3, .025, '#c83a3a', 0, 1.7, 0); box(g, .5, .05, .025, '#2a2a2e', 0, 1.35, 0); break;
       case 'banco_armi': box(g, 1.8, .08, .75, '#7a5634', 0, .86, 0); for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(g, .07, .86, .07, '#5a4028', x * .84, .43, z * .3);
         box(g, 1.7, 1.1, .05, '#4a3a2a', 0, 1.5, -.35); for (let i = 0; i < 3; i++) { box(g, .06, .9, .05, '#2a2a2e', -.5 + i * .5, 1.5, -.3); box(g, .25, .1, .06, '#5a3a20', -.5 + i * .5, 1.05, -.3); }
@@ -266,6 +271,7 @@ var Cantiere = (function () {
     if (!C) return 'Fuori dal covo: qui non costruisci.';
     if (b.cat === 'terreno') { const [tx, ty] = tileOf(x, y), v = G.tileAt(tx, ty); if (lv) return lv === 'ug' ? 'Sotto terra si usa Sottoterra.' : 'Dentro casa non si disbosca.'; if (b.op === 'disbosca' && v !== t.TREE && v !== t.SHRUB) return 'Niente da tagliare qui.'; if (b.op === 'cava' && v !== t.ROCK && v !== t.CLIFF) return 'Niente roccia qui.'; return ''; }
     if (b.cat === 'sotto') return '';
+    if (b.baule && S(st).obj.some(o => o.id === 'baule' && (covoAt(st, o.x, o.y) || {}).id === C.id)) return 'In questo covo il baule c\'è già.';
     if (lv && lv !== 'ug') return b.fp && b.solid ? 'Dentro casa: solo arredi e postazioni.' : '';   // dentro casa si arreda
     const L = lv && typeof Livelli !== 'undefined' ? Livelli.S(st) : null;
     for (const [tx, ty] of footprint(b, x, y, rot).concat(b.fp ? [] : [tileOf(x, y).concat([false])])) {
@@ -292,6 +298,20 @@ var Cantiere = (function () {
     U.dirty = true; return o;
   }
   function remove(st, uid) { const o = lift(st, uid); if (!o) return { ok: false, msg: '' }; refund(st, o); return { ok: true, msg: `${BY[o.id].nome}: smontato. Ti torna la roba.` }; }
+
+  // =====================================================================================================================
+  // IL BAULE: uno per covo, senza limiti. Nelle basi della Risacca è la loro scorta; a casa e nei covi reclamati è suo.
+  // =====================================================================================================================
+  function bauleOf(st, C) { if (!C) return null; if (/^b/.test(C.id)) { const b = (st.ris && st.ris.bases || []).find(x => 'b' + x.id === C.id); if (b) return (b.stock = b.stock || {}); } const K = S(st); K.bauli = K.bauli || {}; return (K.bauli[C.id] = K.bauli[C.id] || {}); }
+  const bauleHere = st => { const p = st.player; let C = covoAt(st, p.x, p.y); if (!C && p.indoor && st.me && st.me.home && G0().BUILDINGS[p.indoor.b] && G0().BUILDINGS[p.indoor.b].playerHome) C = covi(st).find(c => c.home); return bauleOf(st, C); };
+  const G0 = () => Gm();
+  const bauli = st => { const K = S(st); return Object.values(K.bauli || {}); };
+  function baulePut(st, id, q) { const B0 = bauleHere(st); if (!B0) return { ok: false, msg: 'Qui non c\'è un baule.' }; const bag = O().inv(st), n = Math.min(q || 1, Math.floor(bag[id] || 0)); if (!n) return { ok: false, msg: 'Non ce l\'hai.' }; bag[id] -= n; if (bag[id] <= 0) delete bag[id]; B0[id] = (B0[id] || 0) + n; return { ok: true, msg: `Nel baule: ${O().nm(id)}${n > 1 ? ' ×' + n : ''}.` }; }
+  function bauleTake(st, id, q) { const B0 = bauleHere(st); if (!B0) return { ok: false, msg: 'Qui non c\'è un baule.' }; const n = Math.min(q || 1, Math.floor(B0[id] || 0)); if (!n) return { ok: false, msg: 'Nel baule non c\'è.' }; const left = O().givePlayer(st, id, n), got = n - (left || 0); B0[id] -= got; if (B0[id] <= 0) delete B0[id]; return { ok: got > 0, msg: got ? `Prendi ${O().nm(id)}${got > 1 ? ' ×' + got : ''}.${left ? ' Il resto non ti sta addosso.' : ''}` : 'Non ti sta più niente addosso.' }; }
+  function bauleAll(st, dir) { const B0 = bauleHere(st); if (!B0) return { ok: false, msg: 'Qui non c\'è un baule.' }; let n = 0;
+    if (dir === 'metti') { const bag = O().inv(st); Object.keys(bag).forEach(k => { const c = O().CAT[k]; if (c && c.tool) return; const q = Math.floor(bag[k] || 0); if (q > 0) { baulePut(st, k, q); n += q; } }); return { ok: !!n, msg: n ? `Svuoti la borsa nel baule (${n}). Gli attrezzi restano a te.` : 'Non hai niente da mettere.' }; }
+    for (const k of Object.keys(B0)) { const r = bauleTake(st, k, Math.floor(B0[k])); if (r.ok) n++; if (/non ti sta/i.test(r.msg)) return { ok: !!n, msg: 'Non ti sta più niente addosso: il resto rimane nel baule.' }; }
+    return { ok: !!n, msg: n ? 'Prendi tutto dal baule.' : 'Il baule è vuoto.' }; }
 
   // =====================================================================================================================
   // LE POSTAZIONI: per la cucina, i banchi e i letti
@@ -356,6 +376,7 @@ var Cantiere = (function () {
         if (x.name === 'ventola') x.rotation.y = t * (busy ? 30 : 12);
         if (x.name === 'telo' || x.name === 'onda') x.rotation.y = Math.sin(t * 2 + o.x) * .25;
         if (x.name === 'anta') x.rotation.y = near ? -1.2 : 0;
+        if (x.name === 'coperchio') x.rotation.x += ((near ? -1.1 : 0) - x.rotation.x) * .15;
         if (x.name === 'segatura') x.visible = busy && Math.floor(t * 4) % 2 === 0;
       });
     });
@@ -489,14 +510,15 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   // fuori dal cantiere: le postazioni si cliccano, ci vai, e si apre il loro banco
   function pick(st, nx, ny, o) {
     if (U.on || st.player.vehicle || !st.covo || !st.covo.obj.length) return null; const r = R(), lv = lvOf(st); let best = null, bd = Math.max(26, o.h * .045);
-    st.covo.obj.forEach(c => { const b = BY[c.id]; if (!b || !(b.st || b.sleep || b.menu) || c.lv !== lv) return; const pr = r.project(c.x, .9, c.y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = c; } });
-    return best ? { kind: 'loot', via: 'covo', ref: best.uid, x: best.x, y: best.y, label: `Usa: ${BY[best.id].nome}` } : null;
+    st.covo.obj.forEach(c => { const b = BY[c.id]; if (!b || !(b.st || b.sleep || b.menu || b.baule) || c.lv !== lv) return; const pr = r.project(c.x, .9, c.y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = c; } });
+    return best ? { kind: 'loot', via: 'covo', ref: best.uid, x: best.x, y: best.y, label: BY[best.id].baule ? 'Apri il baule' : `Usa: ${BY[best.id].nome}` } : null;
   }
   const find = (st, ref) => { const o = st.covo && st.covo.obj.find(c => c.uid === ref); return o ? { x: o.x, y: o.y } : null; };
   const goal = (st, ref) => { const o = st.covo && st.covo.obj.find(c => c.uid === ref); if (!o) return null; const G = Gm(); for (let r = 1.2; r < 3; r += .4) for (let a = 0; a < 8; a++) { const x = o.x + Math.cos(a * Math.PI / 4 + Math.PI / 2 - o.rot) * r, y = o.y + Math.sin(a * Math.PI / 4 + Math.PI / 2 - o.rot) * r; if (G.walkM(x, y)) return { x, y }; } return { x: o.x, y: o.y }; };
   const reach = () => 1.9;
   function arrive(st, ref) {
     const o = st.covo.obj.find(c => c.uid === ref); if (!o) return; const b = BY[o.id]; st.covo.busy[o.uid] = st.clock;
+    if (b.baule) { if (typeof MenuUI !== 'undefined') MenuUI.open('baule'); return; }
     if (b.sleep) { const a = (typeof Azioni !== 'undefined' ? Azioni.playerActions(st) : []).find(x => /dorm|pisolino|riposa/i.test(x.label) && x.run); if (a) Gm().feed(st, a.run() || 'Ti sdrai.', 'info'); else Gm().feed(st, 'Ti sdrai un momento sulla branda. Non hai sonno.', 'info'); return; }
     if (typeof MenuUI !== 'undefined') MenuUI.open('lavora', { st: b.st, st2: b.st2, titolo: b.nome, armi: b.menu === 'armi', uid: o.uid });
   }
@@ -507,5 +529,5 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   }
   function init() { if (!window.__pv || !window.THREE) { setTimeout(init, 200); return; } const G = Gm(); if (G.HOOKS) { const p0 = G.HOOKS.playerWeapon; G.HOOKS.playerWeapon = (st, k, W) => playerWeapon(st, k, p0 ? p0(st, k, W) : W); } preload(); requestAnimationFrame(loop); }
   if (typeof window !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init, 0); }
-  return { active: () => U.on, toggle, down, wheel, pick, find, goal, reach, arrive, stationsNear, mod, modsView, MODS, B, BY, covi, covoAt, claim, place, remove, terrain, under, state: U, model };
+  return { bauleHere, bauli, baulePut, bauleTake, bauleAll, active: () => U.on, toggle, down, wheel, pick, find, goal, reach, arrive, stationsNear, mod, modsView, MODS, B, BY, covi, covoAt, claim, place, remove, terrain, under, state: U, model };
 })();
