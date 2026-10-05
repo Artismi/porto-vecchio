@@ -540,7 +540,10 @@ var World = (function () {
     // sottobosco aperto nella faggeta, alberi soli nei pascoli. Niente più rumore uguale dappertutto.
     const E = ECO;
     const eco = new Uint8Array(N);
-    const valloneK = (x, y, inl) => { const prof = sstep(3, 48, inl), ph = x / 44 + (fbm(x / 50, y / 30, 412, 2) - .5) * 1.4, vi = Math.floor(ph + .5), rv = Math.abs(ph - vi) * 2; return (1 - sstep(0, .35, rv)) * prof * (1 - prof) * 4; };
+    // la Forra: un torrente umido che scende dal canalone di levante del Tavolato fino al mare, al Borgo dei pescatori
+    const FORRA = [[262, 214], [292, 228], [326, 236], [362, 244], [398, 252], [432, 258], [466, 266]];
+    const segD = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy))); return Math.hypot(x - a[0] - dx * t, y - a[1] - dy * t); };
+    const valloneK = (x, y, inl) => { const prof = sstep(3, 48, inl), ph = x / 44 + (fbm(x / 50, y / 30, 412, 2) - .5) * 1.4, vi = Math.floor(ph + .5), rv = Math.abs(ph - vi) * 2; return (1 - sstep(0, .5, rv)) * prof * (1 - prof) * 4; };
     // un albero per cella di lato C, in un punto a caso della cella: alberi a distanza, come piantati o cresciuti da soli
     const cellTree = (tx, ty, C, p, s) => { const x0 = tx * TS, y0 = ty * TS, ci = Math.floor((x0 + 1) / C), cj = Math.floor((y0 + 1) / C), px = (ci + .15 + .7 * hash2(ci, cj, 151 + s)) * C, py = (cj + .15 + .7 * hash2(ci, cj, 152 + s)) * C; return px >= x0 && px < x0 + TS && py >= y0 && py < y0 + TS && hash2(ci, cj, 153 + s) < p; };
     const ecoAt = (x, y, i) => {
@@ -557,7 +560,8 @@ var World = (function () {
         if (south && inl < 44 + wob) return x < 75 ? E.FARO : E.PINETA;
         if (!south && inl < 26 + wob) return E.MACCHIA;
         for (const [rx, ry, rr] of RADURE) if (dist(x, y, rx, ry) < rr * 1.5 + wob * .3) return [232, 262].includes(rx) ? E.RUDERALE : E.RADURA;
-        if (valloneK(x, y, inl) > .28) return E.VALLONE;
+        if (valloneK(x, y, inl) > .12) return E.VALLONE;
+        if (FORRA.some((q, k) => k && segD(x, y, FORRA[k - 1], q) < 19 + wob * .8)) return E.VALLONE;   // la Forra: dal canalone di levante al Borgo dei pescatori
         const dT = dist(x, y, TAV.x, TAV.y) - tavR(Math.atan2(y - TAV.y, x - TAV.x));
         if (dT < 80 + wob * 2) return E.ABETAIA;   // l'abetaia vecchia attorno al tepui (il Bosco Antico)
         return y < Yc(x) - 6 + wob ? E.ABETAIA : E.FAGGETA;   // al nord gli abeti, al sole i faggi e le querce
