@@ -56,4 +56,12 @@ rep("TT('vita1', buildVita1);", "TT('vita1', buildVita1); TT('segnavia1', buildS
 rep("smoothRoads(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m);", "smoothRoads(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m);")
 rep("TT('segnavia1', buildSegnavia1);", "TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1);")
 rep("    tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri\n", "    tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri\n    tickUrbano1(time, night);\n")
+# 12) materiali premium: motivi da 32 m allineati al mondo per asfalto, piazza, banchina, sabbia, roccia; strato d'insieme sopra tutto il suolo
+rep("    const c = patCanvas35(kind), p = x.createPattern(c, 'repeat'), sc = 16 * PPM / c.width;\n    try { p.setTransform(new DOMMatrix([sc, 0, 0, sc, -((X0 * PPM) % (16 * PPM)), -((Y0 * PPM) % (16 * PPM))])); } catch (e) {}",
+    "    if (kind === 'asfalto') return wpat1(x, 'asfalto', X0, Y0);   // [strade1] asfalto premium da 32 m\n    const c = patCanvas35(kind), p = x.createPattern(c, 'repeat'), sc = 16 * PPM / c.width;\n    try { p.setTransform(new DOMMatrix([sc, 0, 0, sc, -((X0 * PPM) % (16 * PPM)), -((Y0 * PPM) % (16 * PPM))])); } catch (e) {}")
+rep("      if (natSub1(x, px, py, P, tx, ty, r, v, z)) continue;   // [strade1] niente quadrati di colore\n", "      if (natSub1(x, px, py, P, tx, ty, r, v, z)) continue;   // [strade1] niente quadrati di colore\n      if (texTile1(x, px, py, P, tx, ty, v, z, tx0, ty0)) continue;   // [strade1] piazza, banchina, sabbia, roccia a motivo continuo\n")
+rep("sporco35(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);", "sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);")
+# 13) sabbia e piazze come forme continue
+rep("      if (blobTile1(tx, ty)) v = natural1(tx, ty);   // [strade1] la forma la stende blobs1\n", "      if (blobTile1(tx, ty)) v = natural1(tx, ty);   // [strade1] la forma la stende blobs1\n      if (BTX1(v)) v = btxUnder1(tx, ty, z);   // [strade1] sabbia e piazza le stende blobTex1\n")
+rep("blobs1(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m);", "blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m);")
 open(p, 'w', encoding='utf-8').write(s); print('ok')

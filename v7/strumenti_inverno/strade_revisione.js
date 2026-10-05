@@ -560,7 +560,11 @@
       const pal = NATC1[best], k = vnz(X / 7, Y / 7) + vnz(X / 2.1, Y / 2.1) * .35, mix = Math.max(0, Math.min(1, .5 + vnz(X / 13 + 5, Y / 13 + 5) * 1.4)), dry = z === ZN.MONTE || z === ZN.DESERTO || z === ZN.SPIAGGIA;
       let c0 = pal[0].map((q, i2) => q + (pal[1][i2] - q) * mix); if (best === 9 && dry) c0 = [c0[0] + 22, c0[1] - 4, c0[2] - 4];
       const f = 1 + k * .22; x.fillStyle = `rgb(${Math.round(c0[0] * f)},${Math.round(c0[1] * f)},${Math.round(c0[2] * f)})`; const sx = px + si * S4, sy = py + sj * S4; x.fillRect(sx, sy, S4, S4);
-      for (let q = 0; q < 2; q++) { const g = .75 + r() * .5; x.fillStyle = `rgb(${Math.round(c0[0] * g)},${Math.round(c0[1] * g)},${Math.round(c0[2] * g)})`; x.fillRect(sx + Math.floor(r() * S4), sy + Math.floor(r() * S4), 1, 1 + (best === 9 && r() < .5 ? 1 : 0)); }
+      const grains = best === 9 || best === 18 ? 4 : 3;
+      for (let q = 0; q < grains; q++) { const g = q % 2 ? .66 + r() * .2 : 1.12 + r() * .25, gx = sx + Math.floor(r() * S4), gy = sy + Math.floor(r() * S4); x.fillStyle = `rgb(${Math.min(255, Math.round(c0[0] * g))},${Math.min(255, Math.round(c0[1] * g))},${Math.min(255, Math.round(c0[2] * g))})`;
+        if (best === 9 || best === 18) { x.fillRect(gx, gy, 1, 2); if (g > 1) { x.fillStyle = 'rgba(20,24,14,.35)'; x.fillRect(gx + 1, gy + 1, 1, 1); } }   // filo d'erba con la sua ombra
+        else if (best === 13) { x.fillRect(gx, gy, r() < .5 ? 2 : 1, 1); if (r() < .15) { x.fillStyle = pick(r, ['#6a4a2a', '#7a5a32', '#4a3420']); x.fillRect(gx, gy, 2, 1); } }   // aghi, foglie, rametti
+        else x.fillRect(gx, gy, 1, 1); }
     }
     return true;
   }
@@ -782,3 +786,91 @@
     return n;
   }
   function tickUrbano1(time, night) { (S1.cams || []).forEach(c => { c.head.rotation.y = -(c.base + Math.sin(time * .25 + c.ph) * .9); c.led.visible = Math.sin(time * 3 + c.ph) > -.2; }); }
+
+  // ================= [strade1] MATERIALI DEL SUOLO: TEXTURE PREMIUM =================
+  // Ogni materiale è un motivo grande (32 m) allineato al mondo, costruito a più grane (pietra, inerti, giunti, consumo, macchie),
+  // non più un colore piatto per casella con due puntini. Sopra tutto il terreno uno strato d'insieme (luce e sporco a 40, 12 e 3 m)
+  // che rompe la ripetizione e resta continuo fra i blocchi.
+  const TEXM1 = {};
+  function nz1(x, y, o) { let s = 0, a = 1, f = 1, t = 0; for (let i = 0; i < (o || 4); i++) { s += vnz(x * f + i * 17.3, y * f - i * 9.1) * a; t += a; a *= .5; f *= 2.03; } return s / t; }
+  function texCanvas1(kind) {
+    if (TEXM1[kind]) return TEXM1[kind]; const S = 256, c = mk(S, S), x = c.getContext('2d'), img = x.createImageData(S, S), d = img.data, r = rng(kind.length * 977 + 11);
+    const put = (px, py, R, Gc, B) => { const o = (py * S + px) * 4; d[o] = R; d[o + 1] = Gc; d[o + 2] = B; d[o + 3] = 255; };
+    const wrapNz = (px, py, sc, oc) => { // rumore che si ripete a 256 px (mescolando i bordi)
+      const u = px / S, v = py / S, a = nz1(px / sc, py / sc, oc), b = nz1((px - S) / sc, py / sc, oc), e = nz1(px / sc, (py - S) / sc, oc), f = nz1((px - S) / sc, (py - S) / sc, oc);
+      return (a * (1 - u) + b * u) * (1 - v) + (e * (1 - u) + f * u) * v; };
+    if (kind === 'asfalto') {   // 32 m: bitume, inerti a tre grane, levigatura, crepe sigillate, rattoppi cuciti, olio
+      for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) { const n1 = wrapNz(px, py, 22, 3), n2 = wrapNz(px, py, 4, 2), g = 40 + n1 * 16 + n2 * 7 + (r() - .5) * 9; put(px, py, g + 1, g, g - 1); }
+      x.putImageData(img, 0, 0);
+      for (let i = 0; i < 5200; i++) { const v = 52 + Math.floor(r() * 46); x.fillStyle = `rgba(${v + 3},${v},${v - 4},${.35 + r() * .5})`; x.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1, 1); }   // inerti chiari
+      for (let i = 0; i < 900; i++) { x.fillStyle = 'rgba(14,13,14,.6)'; x.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1, 1); }   // pori
+      for (let i = 0; i < 9; i++) { const w = 14 + r() * 40, h = 10 + r() * 26, px = r() * S, py = r() * S, t = r() < .5; x.fillStyle = t ? 'rgba(20,19,20,.55)' : 'rgba(70,66,62,.32)'; x.fillRect(px, py, w, h); x.strokeStyle = t ? 'rgba(80,76,72,.5)' : 'rgba(16,15,16,.55)'; x.lineWidth = 1; x.strokeRect(px + .5, py + .5, w, h); }   // rattoppi con la cucitura
+      for (let i = 0; i < 16; i++) { let px = r() * S, py = r() * S, a = r() * 6.3; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 14; k++) { a += (r() - .5) * .9; px += Math.cos(a) * 3; py += Math.sin(a) * 3; x.lineTo(px, py); }
+        x.strokeStyle = 'rgba(8,8,10,.8)'; x.lineWidth = 2; x.stroke(); x.strokeStyle = 'rgba(120,120,128,.18)'; x.lineWidth = 1; x.stroke(); }   // crepe sigillate col catrame (il filo lucido)
+      for (let i = 0; i < 10; i++) { const g2 = x.createRadialGradient(0, 0, 0, 0, 0, 1); g2.addColorStop(0, 'rgba(8,8,12,.4)'); g2.addColorStop(1, 'rgba(8,8,12,0)'); x.save(); x.translate(r() * S, r() * S); x.scale(4 + r() * 8, 2 + r() * 5); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, 1, 0, 6.3); x.fill(); x.restore(); }   // olio
+    } else if (kind === 'piazza') {   // lastre di pietra a correre 1 × 0,6 m, fasce di disegno ogni 8 m, spigoli scheggiati, crepe, macchie
+      for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) { const row = Math.floor(py / 5), off = (row * 37) % 8, col = Math.floor((px + off) / 8), band = py % 64 < 5;
+        const jy = py % 5 === 0, jx = (px + off) % 8 === 0, h = th(col, row, 71), n = wrapNz(px, py, 12, 3) * 14 + (r() - .5) * 8;
+        let g = band ? 74 + h * 10 : 104 + h * 26; if (jx || jy) g = 52; const warm = band ? -6 : h > .8 ? 8 : 0;
+        if (!(jx || jy) && th(col, row, 72) < .06 && (px + py) % 3 === 0) g -= 22;   // lastra crepata
+        put(px, py, g + n + warm, g + n - 2, g + n - 8 - warm * .4); }
+      x.putImageData(img, 0, 0);
+      for (let i = 0; i < 260; i++) { x.fillStyle = 'rgba(40,36,32,.45)'; x.fillRect(Math.floor(r() * 32) * 8 + (r() < .5 ? 0 : 7), Math.floor(r() * 51) * 5, 1, 1); }   // spigoli scheggiati
+      for (let i = 0; i < 26; i++) { const g2 = x.createRadialGradient(0, 0, 0, 0, 0, 1); g2.addColorStop(0, 'rgba(30,26,22,.28)'); g2.addColorStop(1, 'rgba(30,26,22,0)'); x.save(); x.translate(r() * S, r() * S); x.scale(3 + r() * 10, 2 + r() * 7); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, 1, 0, 6.3); x.fill(); x.restore(); }
+      for (let i = 0; i < 60; i++) { x.fillStyle = 'rgba(60,80,40,.5)'; x.fillRect(Math.floor(r() * 32) * 8, Math.floor(r() * S), 1, 2); }   // erba nei giunti
+    } else if (kind === 'banchina') {   // lastroni di cemento 4 × 4 m con giunti, ruggine colata, catrame, segni di funi
+      for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) { const cx = Math.floor(px / 32), cy = Math.floor(py / 32), h = th(cx, cy, 81), n = wrapNz(px, py, 9, 3) * 16 + (r() - .5) * 10, jt = px % 32 === 0 || py % 32 === 0;
+        const g = jt ? 46 : 96 + h * 18 + n; put(px, py, g, g - 2, g - 5); }
+      x.putImageData(img, 0, 0);
+      for (let i = 0; i < 14; i++) { const px = r() * S, py = r() * S, l = 6 + r() * 26, gr = x.createLinearGradient(px, py, px, py + l); gr.addColorStop(0, 'rgba(120,64,30,.5)'); gr.addColorStop(1, 'rgba(120,64,30,0)'); x.fillStyle = gr; x.fillRect(px, py, 2 + r() * 3, l); }
+      for (let i = 0; i < 8; i++) { x.fillStyle = 'rgba(14,12,12,.4)'; x.beginPath(); x.ellipse(r() * S, r() * S, 3 + r() * 9, 2 + r() * 5, r() * 3, 0, 6.3); x.fill(); }
+      for (let i = 0; i < 1600; i++) { const v = 70 + Math.floor(r() * 70); x.fillStyle = `rgba(${v},${v},${v - 4},.5)`; x.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1, 1); }
+    } else if (kind === 'sabbia') {   // increspature del vento, conchiglie, alghe secche, ciottoli
+      for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) { const w = wrapNz(px, py, 30, 2) * 22, rip = Math.sin((py + w) * .55 + wrapNz(px, py, 14, 2) * 4) * .5 + .5, n = wrapNz(px, py, 3, 2) * 10 + (r() - .5) * 10, g = 176 + rip * 16 + n;
+        put(px, py, g + 8, g - 8, g - 34); }
+      x.putImageData(img, 0, 0);
+      for (let i = 0; i < 260; i++) { x.fillStyle = pick(r, ['#f0e8dc', '#d8c8b0', '#8a7a62', '#6a5e4c', '#e8d8c8']); x.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1 + (r() < .3 ? 1 : 0), 1); }
+      for (let i = 0; i < 24; i++) { x.strokeStyle = 'rgba(60,56,36,.45)'; x.lineWidth = 1; x.beginPath(); let px = r() * S, py = r() * S; x.moveTo(px, py); for (let k = 0; k < 5; k++) { px += (r() - .5) * 5; py += (r() - .5) * 3; x.lineTo(px, py); } x.stroke(); }
+    } else if (kind === 'roccia') {   // strati inclinati, fratture, licheni gialli e grigi, muschio nelle fessure
+      for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) { const st = Math.sin((py + px * .35 + wrapNz(px, py, 20, 2) * 18) * .32) * .5 + .5, n = wrapNz(px, py, 7, 4) * 26 + (r() - .5) * 8, g = 88 + st * 18 + n;
+        put(px, py, g, g - 3, g - 6); }
+      x.putImageData(img, 0, 0);
+      for (let i = 0; i < 26; i++) { let px = r() * S, py = r() * S, a = r() * 6.3; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 8; k++) { a += (r() - .5) * 1.2; px += Math.cos(a) * 4; py += Math.sin(a) * 4; x.lineTo(px, py); } x.strokeStyle = 'rgba(20,18,18,.7)'; x.lineWidth = 1; x.stroke(); }
+      for (let i = 0; i < 120; i++) { x.fillStyle = pick(r, ['rgba(170,160,90,.55)', 'rgba(190,190,180,.45)', 'rgba(70,90,50,.55)']); x.beginPath(); x.arc(r() * S, r() * S, .6 + r() * 2.4, 0, 6.3); x.fill(); }
+    }
+    TEXM1[kind] = c; return c;
+  }
+  function wpat1(x, kind, X0, Y0) {   // motivo da 32 m allineato al mondo
+    const c = texCanvas1(kind), p = x.createPattern(c, 'repeat'), M0 = 32 * PPM, sc = M0 / c.width;
+    try { p.setTransform(new DOMMatrix([sc, 0, 0, sc, -((X0 * PPM) % M0), -((Y0 * PPM) % M0)])); } catch (e) {} return p;
+  }
+  // i suoli a motivo continuo: piazza, banchina, sabbia, roccia e pareti (al posto del colore per casella)
+  function texTile1(x, px, py, P, tx, ty, v, z, tx0, ty0) {
+    const T = G.T, k = v === T.QUAY ? 'banchina' : v === T.ROCK || v === T.CLIFF ? 'roccia' : null; if (!k) return false;
+    x.fillStyle = wpat1(x, k, tx0 * TS, ty0 * TS); x.fillRect(px, py, P, P);
+    if (v === T.CLIFF) { x.fillStyle = 'rgba(20,18,20,.38)'; x.fillRect(px, py, P, P); }
+    return true;
+  }
+  // lo strato d'insieme: luce e sporco a più scale, morbido, continuo fra i blocchi (soft-light su grigio medio non cambia nulla)
+  function macro1(x, tx0, ty0, n, m) {
+    const W = n * TS, H = m * TS, c = mk(W, H), cx = c.getContext('2d'), img = cx.createImageData(W, H), d = img.data, X0 = tx0 * TS, Y0 = ty0 * TS;   // 1 px per metro
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { const X = X0 + i + .5, Y = Y0 + j + .5, v = vnz(X / 41, Y / 41) * .9 + vnz(X / 12.5, Y / 12.5) * .55 + vnz(X / 3.1, Y / 3.1) * .3, o = (j * W + i) * 4, g = 128 + v * 62;
+      d[o] = g + 2; d[o + 1] = g; d[o + 2] = g - 3; d[o + 3] = 255; }
+    cx.putImageData(img, 0, 0);
+    x.save(); x.imageSmoothingEnabled = true; x.globalCompositeOperation = 'soft-light'; x.globalAlpha = .7; x.drawImage(c, 0, 0, W, H, 0, 0, n * TP, m * TP); x.restore();
+  }
+  // sabbia e piazze come forme continue: la casella si dipinge come quello che ha attorno, il materiale si stende sopra col bordo morbido
+  const BTX1 = v => { const T = G.T; return v === T.SAND ? 'sabbia' : v === T.PIAZZA ? 'piazza' : null; };
+  const btxTile1 = (tx, ty) => tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH ? null : BTX1(gT(tx, ty));
+  function btxUnder1(tx, ty, z) { const T = G.T; if (z === ZN.CITTA) return T.COB; return natural1(tx, ty); }
+  function blobTex1(x, tx0, ty0, n, m) {
+    const X0 = tx0 * TS, Y0 = ty0 * TS, H = TS / 2;
+    ['sabbia', 'piazza'].forEach(kind => {
+      const list = []; for (let j = -2; j < m + 2; j++) for (let i = -2; i < n + 2; i++) if (btxTile1(tx0 + i, ty0 + j) === kind) list.push([tx0 + i, ty0 + j]); if (!list.length) return;
+      const shape = w => { x.beginPath(); list.forEach(([tx, ty]) => { const cx = (tx * TS + H - X0) * PPM, cy = (ty * TS + H - Y0) * PPM, rr = (w + (th(tx, ty, 813) - .5) * .45) * PPM; x.moveTo(cx + rr, cy); x.arc(cx, cy, rr, 0, 6.2832);
+        [[1, 0], [0, 1], [1, 1], [-1, 1]].forEach(([a, b]) => { if (btxTile1(tx + a, ty + b) !== kind) return; if (a && b && btxTile1(tx + a, ty) === kind && btxTile1(tx, ty + b) === kind) return;
+          const ex = cx + a * TS * PPM, ey = cy + b * TS * PPM, L = Math.hypot(ex - cx, ey - cy), nx = -(ey - cy) / L * w * PPM * .92, ny = (ex - cx) / L * w * PPM * .92; x.moveTo(cx + nx, cy + ny); x.lineTo(ex + nx, ey + ny); x.lineTo(ex - nx, ey - ny); x.lineTo(cx - nx, cy - ny); x.closePath(); }); }); x.fill('nonzero'); };
+      x.fillStyle = kind === 'sabbia' ? 'rgba(150,132,96,.5)' : 'rgba(40,36,32,.55)'; shape(1.42);   // sabbia mescolata all'erba / cordonata scura della piazza
+      x.fillStyle = wpat1(x, kind, X0, Y0); shape(1.2);
+    });
+  }
