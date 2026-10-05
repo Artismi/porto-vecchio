@@ -4,10 +4,11 @@ import re
 s = open('server.js', encoding='utf-8').read()
 a = s.index("// Modelli di default per fornitore"); b = s.index("// --------- Server HTTP ---------")
 core = s[a:b]
-i = core.index("function loadConfig() {"); j = core.index("// Estrae un oggetto JSON")
+i = core.index("function loadConfig() {"); j = core.index("// Tre canali")
 core = core[:i] + '''function loadConfig() {
   const apiKey = String(process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY || process.env.API_KEY || '').trim();
-  const cfg = { provider: String(process.env.MENTE_PROVIDER || 'gemini').toLowerCase(), apiKey, model: process.env.MENTE_MODEL || '' };
+  const cfg = { provider: String(process.env.MENTE_PROVIDER || 'gemini').toLowerCase(), apiKey, model: process.env.MENTE_MODEL || '',
+    chiavi: { chat: process.env.CHIAVE_CHAT || '', mente: process.env.CHIAVE_MENTE || '', eventi: process.env.CHIAVE_EVENTI || '' } };
   const guessed = detectProvider(apiKey); if (guessed) cfg.provider = guessed;
   return cfg;
 }
