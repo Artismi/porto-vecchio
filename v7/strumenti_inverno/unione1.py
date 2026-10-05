@@ -53,7 +53,7 @@ rep("""          float sp = step(.9, sin(p.x*3.7+time*2.)*sin(p.y*5.3-time*1.3))
             float amp = .12 + wx.w*.25 + wx.y*.06, e = .25;
             vec2 dh = vec2(hgt1(p+vec2(e,0.)) - hgt1(p-vec2(e,0.)), hgt1(p+vec2(0.,e)) - hgt1(p-vec2(0.,e))) / (2.*e);
             vec3 N = normalize(vec3(-dh.x*amp, 1., -dh.y*amp)), V = normalize(camP - vP), R = reflect(-V, N); R.y = abs(R.y);
-            float fr = clamp((.04 + .96*pow(1. - max(dot(N, V), 0.), 5.)) * 2.4 + .12, 0., .72) * (1. - smoothstep(.45, .85, m) * .6);
+            float fr = clamp((.04 + .96*pow(1. - max(dot(N, V), 0.), 5.)) * 1.7 + .07, 0., .55);
             c = mix(c, sky1(R), fr);
             float sunK = (1. - night) * (1. - wx.x*.85), g = max(dot(R, normalize(sun)), 0.);
             c += mix(vec3(1.,.95,.85), vec3(1.,.62,.36), dusk) * (step(.9965, g)*1.6 + pow(g, 40.)*.35) * sunK;

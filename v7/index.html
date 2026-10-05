@@ -20676,7 +20676,7 @@ var Render = (function () {
             float amp = .12 + wx.w*.25 + wx.y*.06, e = .25;
             vec2 dh = vec2(hgt1(p+vec2(e,0.)) - hgt1(p-vec2(e,0.)), hgt1(p+vec2(0.,e)) - hgt1(p-vec2(0.,e))) / (2.*e);
             vec3 N = normalize(vec3(-dh.x*amp, 1., -dh.y*amp)), V = normalize(camP - vP), R = reflect(-V, N); R.y = abs(R.y);
-            float fr = clamp((.04 + .96*pow(1. - max(dot(N, V), 0.), 5.)) * 2.4 + .12, 0., .72) * (1. - smoothstep(.45, .85, m) * .6);
+            float fr = clamp((.04 + .96*pow(1. - max(dot(N, V), 0.), 5.)) * 1.7 + .07, 0., .55);
             c = mix(c, sky1(R), fr);
             float sunK = (1. - night) * (1. - wx.x*.85), g = max(dot(R, normalize(sun)), 0.);
             c += mix(vec3(1.,.95,.85), vec3(1.,.62,.36), dusk) * (step(.9965, g)*1.6 + pow(g, 40.)*.35) * sunK;
@@ -24275,9 +24275,9 @@ var Render = (function () {
     const T = G.T, wx = tx * TS, wy = ty * TS, S4 = P / 4;
     const nearB = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => gT(tx + a, ty + b) === T.BLD);
     for (let sj = 0; sj < 4; sj++) for (let si = 0; si < 4; si++) {
-      const X = wx + (si + .5) * .5, Y = wy + (sj + .5) * .5, k1 = vnz(X / 11, Y / 11) + vnz(X / 3.2, Y / 3.2) * .45, k2 = vnz(X / 7 + 40, Y / 7 + 40);
+      const X = wx + (si + .5) * .5, Y = wy + (sj + .5) * .5, k1 = vnz(X / 14, Y / 14) + vnz(X / 3.2, Y / 3.2) * .08 /* [unione2] chiazze grandi */, k2 = vnz(X / 7 + 40, Y / 7 + 40);
       // cosa c'è in questo mezzo metro: dipende dalla casella (cortile verde, terra, ciottolato) e da due rumori lisci
-      let kind = v === T.GRASS ? (k1 > -.08 ? 'erba' : k1 > -.3 ? 'terra' : 'ghiaia') : v === T.DIRT ? (k1 > .25 ? 'erba' : 'terra') : (k1 > .3 ? 'cemento' : k1 > -.12 ? 'ciottoli' : k2 > .15 ? 'terra' : 'erba');
+      let kind = v === T.GRASS ? (k1 > -.08 ? 'erba' : k1 > -.3 ? 'terra' : 'ghiaia') : v === T.DIRT ? (k1 > .25 ? 'erba' : 'terra') : (k1 > .3 ? 'cemento' : k1 > -.3 ? 'ciottoli' : 'terra') /* [unione2] niente erba nel selciato */;
       if (nearB && v !== T.GRASS && k2 > -.2) kind = 'ciottoli';
       const sx = px + si * S4, sy = py + sj * S4;
       if (kind === 'ciottoli') { x.fillStyle = '#221f1d'; x.fillRect(sx, sy, S4, S4); for (let q = 0; q < 4; q++) { const g = 52 + Math.floor(r() * 22); x.fillStyle = `rgb(${g},${g - 3},${g - 8})`; x.fillRect(sx + (q % 2) * 2, sy + Math.floor(q / 2) * 2, 2 - (r() < .3 ? 1 : 0), 2 - (r() < .2 ? 1 : 0)); } }
@@ -24375,14 +24375,14 @@ var Render = (function () {
       const tx = tx0 + i, ty = ty0 + j; if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v === T.BLD || v === T.WATER || v === T.VIA || v === T.QUAY) continue;
       const r = rng((tx * 6151 + ty * 2399 + 35) >>> 0), walls = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => gT(tx + a, ty + b) === T.BLD);
       // erbacce e ciuffi ai piedi dei muri, dove non passa nessuno
-      walls.forEach(([a, b]) => { if (r() > (v === T.WALK ? .55 : .85)) return; const u = (r() - .5) * 1.6, x = tx * TS + 1 + a * .78 + (a ? 0 : u), z = ty * TS + 1 + b * .78 + (b ? 0 : u);
+      walls.forEach(([a, b]) => { if (r() > (v === T.WALK ? .3 : .55)) return; /* [unione2] */ const u = (r() - .5) * 1.6, x = tx * TS + 1 + a * .78 + (a ? 0 : u), z = ty * TS + 1 + b * .78 + (b ? 0 : u);
         const q = r(); add(q < .5 ? 'Grass_Wispy_Short' : q < .8 ? 'Grass_Common_Tall' : 'Plant_1', x, 0, z, q < .5 ? .9 + r() * .5 : q < .8 ? .45 + r() * .3 : .35 + r() * .2, r() * 6.28, { ground: true, col: pick(r, LEAF) }); });
       // cortili e orti: cespugli, felci, piante grandi; più fitto lontano dalle porte
-      if (v === T.GRASS) { const k = 2 + Math.floor(r() * 4); for (let q = 0; q < k; q++) { const x = tx * TS + .3 + r() * 1.4, z = ty * TS + .3 + r() * 1.4, w = r();
+      if (v === T.GRASS) { const k = 1 + Math.floor(r() * 3); /* [unione2] */ for (let q = 0; q < k; q++) { const x = tx * TS + .3 + r() * 1.4, z = ty * TS + .3 + r() * 1.4, w = r();
           if (walls.length > 1 && w < .3) continue;
           add(w < .3 ? 'Bush_Common' : w < .55 ? 'Grass_Common_Tall' : w < .75 ? 'Fern_1' : w < .9 ? 'Plant_7_Big' : 'Plant_1_Big', x, 0, z, w < .3 ? .4 + r() * .25 : w < .55 ? .6 + r() * .4 : w < .75 ? .3 + r() * .15 : .28 + r() * .14, r() * 6.28, { ground: true, col: pick(r, LEAF) }); } }
-      else if (v === T.DIRT && r() < .75) add('Grass_Wispy_Short', tx * TS + r() * 2, 0, ty * TS + r() * 2, .8 + r() * .5, r() * 6.28, { ground: true, col: '#f0e4c0' });
-      else if (v === T.COB && r() < .5) add(r() < .6 ? 'Grass_Wispy_Short' : 'Plant_1', tx * TS + r() * 2, 0, ty * TS + r() * 2, .5 + r() * .4, r() * 6.28, { ground: true, col: pick(r, LEAF) });
+      else if (v === T.DIRT && r() < .4 /* [unione2] */) add('Grass_Wispy_Short', tx * TS + r() * 2, 0, ty * TS + r() * 2, .8 + r() * .5, r() * 6.28, { ground: true, col: '#f0e4c0' });
+      else if (v === T.COB && !walls.length && r() < .04 /* [unione2] la pavimentazione resta pulita */) add(r() < .6 ? 'Grass_Wispy_Short' : 'Plant_1', tx * TS + r() * 2, 0, ty * TS + r() * 2, .5 + r() * .4, r() * 6.28, { ground: true, col: pick(r, LEAF) });
     }
   }
 
@@ -30131,9 +30131,9 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, (.22 - night * .16) * METEO.reg).multiplyScalar(1 - night * .45 * (1 - WXfog * .4)); /* [amb1] */ /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
     // [inverno] luce di neve: tanto cielo, poco sole
-    hemi.intensity = .22 + (1 - night) * .3 - night * .10; /* [unione1] */ /* [luci5] buio */   // [luci1] di notte meno cielo   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
+    hemi.intensity = .22 + (1 - night) * .3 - night * .06; /* [unione2] */ /* [unione1] */ /* [luci5] buio */   // [luci1] di notte meno cielo   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
     fillAmb.intensity = .12 + (1 - night) * .12 - night * .07; /* [unione1] */ /* [luci5] */ fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');
-    moon.intensity = .25 + (1 - night) * .77 - night * .02; /* [unione1] la luna disegna le sagome */ /* [luci5] un filo di luna per le sagome */ /* [luci1] di notte meno luna */ moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
+    moon.intensity = .25 + (1 - night) * .77 + night * .06; /* [unione2] */ /* [unione1] la luna disegna le sagome */ /* [luci5] un filo di luna per le sagome */ /* [luci1] di notte meno luna */ moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
     { const hh = (st.t / 60) % 24, sa = (hh - 13) / 12 * Math.PI, el = night > .5 ? 26 : Math.max(9, 34 - Math.abs(hh - 13) * 3.4);   /* [amb1] il sole gira, basso al mattino e alla sera */
       moon.position.set(cam.x - Math.sin(sa) * 38 - 8, el, cam.y - 26 - Math.cos(sa) * 8); moon.target.position.set(cam.x, 0, cam.y); }
     if (dyn.fill) { dyn.fill.position.set(cam.x + 8, 14, cam.y + 40); dyn.fill.target.position.set(cam.x, 0, cam.y); dyn.fill.intensity = .12 + (1 - night) * .06 - night * .1; /* [luci5] */ dyn.fill.color.set(night > .5 ? '#5f86b4' : '#a8bcd0'); }
