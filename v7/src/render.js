@@ -4408,14 +4408,14 @@ var Render = (function () {
           // [inverno] ombre blu-grigie, mezzitoni spenti; la saturazione resta alle sorgenti di luce
           float chroma = max(max(c.r,c.g),c.b) - min(min(c.r,c.g),c.b);
           float hot = smoothstep(.5,.9,chroma*max(max(c.r,c.g),c.b)*2.);
-          c = mix(c, c*.7*vec3(.78,1.,1.04) + vec3(.01,.075,.085)*.6, (1.-smoothstep(.0,.62,l))*.9);
+          c = mix(c, c*.86*vec3(.9,1.,1.02) + vec3(.012,.03,.035)*.6, (1.-smoothstep(.0,.62,l))*.55);   // [isola37] ombre meno schiacciate e meno azzurre
           c *= mix(vec3(1.), vec3(1.02,1.,.96), smoothstep(.28,.8,l)*(1.-hot));   // [inverno24] alte luci appena calde, non azzurrine
           c = mix(vec3(l), c, mix(.66, 1.3, hot)*sat);
           c += vec3(.012,.014,.02);
-          c = (c-.5)*1.24+.5;
+          c = (c-.5)*1.12+.5;   // [isola37]
           { float AZZ = .12; float cy = smoothstep(.03,.16, min(c.g,c.b)-c.r) * smoothstep(.06,.22, max(max(c.r,c.g),c.b)-min(min(c.r,c.g),c.b));   // [inverno20] niente azzurri
             vec3 gr = vec3(dot(c, vec3(.3,.59,.11))) * vec3(1.,.99,.97); c = mix(c, mix(gr, c, AZZ), cy); }
-          { float REG_SAT = .62, REG_BIANCO = .1;   // [inverno21] il regime: cemento, rosso, luce calda
+          { float REG_SAT = .8, REG_BIANCO = .16;   // [isola37] colori che si leggono, niente suolo bianco   // [inverno21] il regime: cemento, rosso, luce calda
             float lu = dot(c, vec3(.3,.59,.11));
             float rosso = smoothstep(.12,.3, c.r-c.g) * smoothstep(.06,.2, c.r-c.b);          // rossi e arancio delle lampade
             float keep = max(REG_SAT, max(rosso*1.05, hot*1.0));
@@ -6234,9 +6234,9 @@ var Render = (function () {
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, .22 + night * .12); scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
     // [inverno] luce di neve: tanto cielo, poco sole
-    hemi.intensity = .22 + (1 - night) * .3 + night * .08;   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
-    fillAmb.intensity = .12 + (1 - night) * .12; fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');
-    moon.intensity = .34 + (1 - night) * .68; moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
+    hemi.intensity = .26 + (1 - night) * .16 + night * .3;   /* [isola37] notte di luna, giorno meno slavato */   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
+    fillAmb.intensity = .16 + (1 - night) * .1 + night * .14; fillAmb.color.set(night > .5 ? '#3a4460' : '#6e6a64');   /* [isola37] */
+    moon.intensity = .55 + (1 - night) * .55; moon.color.set(night > .5 ? '#9aaad0' : (dusk > .3 ? '#e8b088' : '#f4e8d2'));   /* [isola37] */
     moon.position.set(cam.x - 34 - dusk * 18, 22 - dusk * 8, cam.y - 30); moon.target.position.set(cam.x, 0, cam.y);
     if (dyn.fill) { dyn.fill.position.set(cam.x + 8, 14, cam.y + 40); dyn.fill.target.position.set(cam.x, 0, cam.y); dyn.fill.intensity = .12 + (1 - night) * .06; dyn.fill.color.set(night > .5 ? '#5f86b4' : '#a8bcd0'); }
     if (dyn.rim) { dyn.rim.position.set(cam.x + 30, 18, cam.y + 34); dyn.rim.target.position.set(cam.x, 0, cam.y); dyn.rim.intensity = .1 + (1 - night) * .1; dyn.rim.color.set(night > .5 ? '#6a8ac8' : '#b8c8e8'); }

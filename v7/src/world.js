@@ -900,15 +900,15 @@ var World = (function () {
     const perif = z => z === Z.CITTA;
     // [inverno] agglomerati come nei paesi: gruppi di case attaccate, la cui facciata segue la strada su una linea sola (scatta di una casella solo
     // dove la strada si sposta davvero), una casa ogni tanto arretrata a fare uno spiazzo, poi spazio aperto; dietro, una seconda fila a macchie.
-    const walkFront = (pts, rdw, extra0, side, wMin, wMax, hMin, hMax, rowGap, dens) => {
+    const walkFront = (pts, rdw, extra0, side, wMin, wMax, hMin, hMax, rowGap, dens, o) => {   // o: { cont: fronte continuo, flat: filo dritto, jog: dentini, rk: rango della via }
       const chunks = []; let cur = [];
       for (let k = 0; k < pts.length; k++) { if (cur.length && dist(cur[cur.length - 1][0], cur[cur.length - 1][1], pts[k][0], pts[k][1]) > 14) { chunks.push(cur); cur = []; } cur.push(pts[k]); }
       if (cur.length) chunks.push(cur);
       chunks.forEach(ch => {
         const P = []; for (let k = 0; k < ch.length - 1; k++) { const L = dist(ch[k][0], ch[k][1], ch[k + 1][0], ch[k + 1][1]); for (let u = 0; u < L; u += TS) P.push([ch[k][0] + (ch[k + 1][0] - ch[k][0]) * u / L, ch[k][1] + (ch[k + 1][1] - ch[k][1]) * u / L]); }
-        let i = 2, lastEnd = -1e9, left = 2 + Math.floor(r() * 5), cOff = r() < .5 ? 0 : 2 * (1 + Math.floor(r() * 2));
+        let i = 2, lastEnd = -1e9, left = 2 + Math.floor(r() * 5), cOff = o && o.flat ? 0 : r() < .5 ? 0 : 2 * (1 + Math.floor(r() * 2));
         while (i < P.length - 3) {
-          let w = wMin + Math.floor(r() * (wMax - wMin + 1)); const h = hMin + Math.floor(r() * (hMax - hMin + 1)), extra = extra0 + cOff + (r() < .2 ? 2 : 0);
+          let w = wMin + Math.floor(r() * (wMax - wMin + 1)); const h = hMin + Math.floor(r() * (hMax - hMin + 1)), extra = extra0 + cOff + (r() < (o ? o.jog : .2) ? 2 : 0);
           let placed = false;
           if (dens < 1 && r() > dens) { i += 2 + Math.floor(r() * 3); continue; }
           for (; w >= wMin && !placed; w--) {
@@ -919,16 +919,21 @@ var World = (function () {
             else { y = Math.max(Math.floor(P[i][1] / TS), lastEnd); bw = h; bh = w; x = nx > 0 ? Math.round(nex / TS) : Math.round(nex / TS) - h; }
             if (!perif(zone[Math.max(0, Math.min(GH - 1, y)) * GW + Math.max(0, Math.min(GW - 1, x))])) continue;
             if (!free(x, y, bw, bh, 0)) continue;
-            stamp({ id: 'casa_' + (nH++), x, y, w: bw, h: bh, fl: 2 + Math.floor(r() * 2), style: CSTY[Math.floor(r() * CSTY.length)], house: true });
+            stamp({ id: 'casa_' + (nH++), x, y, w: bw, h: bh, fl: 2 + Math.floor(r() * 2), style: CSTY[Math.floor(r() * CSTY.length)], house: true, rk: o ? o.rk : 0 });
             const gap = r() < rowGap ? 1 + Math.floor(r() * 2) : 0; lastEnd = (horiz ? x + bw : y + bh) + gap; placed = true; i += w + gap;
           }
-          if (placed && --left <= 0) { const gp = 3 + Math.floor(r() * 7); lastEnd += gp; i += gp; left = 2 + Math.floor(r() * 5); cOff = r() < .5 ? 0 : 2 * (1 + Math.floor(r() * 2)); }
+          if (placed && !(o && o.cont) && --left <= 0) { const gp = 3 + Math.floor(r() * 7); lastEnd += gp; i += gp; left = 2 + Math.floor(r() * 5); cOff = r() < .5 ? 0 : 2 * (1 + Math.floor(r() * 2)); }
           if (!placed) i++;
         }
       });
     };
     // [isola] le case della città si affacciano sui vicoli e sulle strade larghe: fronti continui ma storti, larghezze e profondità diverse
-    CITY.roads.forEach(rd => [-1, 1].forEach(side => rd.main ? walkFront(rd.pts, rd.w, 0, side, 2, 5, 3, 5, .15, 1) : walkFront(rd.pts, rd.w, -2.3, side, 2, 4, 2, 4, .3, .9)));
+    // [isola] il tessuto con una logica: prima il Corso (fronte continuo sul filo, case profonde), poi le vie, poi i vicoli
+    // (case strette, qualche dente, un androne ogni tanto); una seconda passata più corta chiude i buchi. Dentro restano i cortili.
+    { const RK = rd => rd.id === 'corso' ? 3 : rd.main ? 2 : 1;
+      CITY.roads.filter(rd => rd.main).sort((a, b) => RK(b) - RK(a)).forEach(rd => [-1, 1].forEach(side => walkFront(rd.pts, rd.w, 0, side, 3, 5, RK(rd) === 3 ? 5 : 4, RK(rd) === 3 ? 6 : 5, 0, 1, { cont: true, flat: true, jog: 0, rk: RK(rd) })));
+      CITY.roads.filter(rd => !rd.main).forEach(rd => [-1, 1].forEach(side => walkFront(rd.pts, rd.w, -2.3, side, 2, 4, 3, 4, .12, 1, { cont: true, flat: false, jog: .15, rk: 1 })));
+      CITY.roads.forEach(rd => [-1, 1].forEach(side => walkFront(rd.pts, rd.w, rd.main ? 0 : -2.3, side, 2, 3, 2, 3, .2, 1, { cont: true, flat: !!rd.main, jog: 0, rk: RK(rd) }))); }
     // [isola] la baraccopoli: dentro gli isolati, nel quartiere del governo e nelle periferie le baracche si ammucchiano una addosso all'altra,
     // di misure diverse, con passaggi di una casella che girano storti (ogni baracca tiene libero il suo lato nord e il suo lato ovest).
     const SHSTY = [3, 4, 5, 7, 8, 11, 14, 19];
@@ -936,6 +941,7 @@ var World = (function () {
     for (let pass = 0; pass < 4 && nShack < 520; pass++) for (let ty = 2; ty < GH - 6; ty++) for (let tx = Math.floor((XG - 70) / TS); tx < Math.floor((xn(556) - 6) / TS); tx++) {
       if (hash2(tx, ty, 61 + pass) > .5 || nShack >= 520) continue;
       const i = ty * GW + tx, v = grid[i]; if (zone[i] !== Z.CITTA || (v !== T.COB && v !== T.GRASS && v !== T.SHRUB && v !== T.TREE) || roadW[i] > 0) continue;
+      if (dist(tx * TS, ty * TS, xn(409), 117) < 70) continue;   // [isola] nel centro i cortili restano cortili
       const w = 2 + Math.floor(r() * 3), h = 2 + Math.floor(r() * 2 + r());
       if (!free(tx, ty, w, h, 0)) continue;
       let okN = true, okW = true; for (let k = 0; k < w && okN; k++) { const a = (ty - 1) * GW + tx + k; if (bIndex[a] >= 0 || grid[a] === T.WATER) okN = false; } for (let k = 0; k < h && okW; k++) { const a = (ty + k) * GW + tx - 1; if (bIndex[a] >= 0 || grid[a] === T.WATER) okW = false; }
@@ -982,8 +988,15 @@ var World = (function () {
       if (zone[b.y * GW + b.x] !== Z.CITTA) { b.fl = Math.min(b.fl, hash2(b.x, b.y, 3) < .3 ? 1 : 2); return; }
       // [isola] la città sale e scende: case basse e palazzine alte una accanto all'altra, più alte verso il quartiere del governo
       // [isola] la città è bassa: si vede tutto, le case salgono e scendono di uno o due piani
-      const hq = hash2(b.x, b.y, 3);
-      b.fl = hq < .28 ? 1 : hq < .66 ? 2 : hq < .93 ? 3 : 4;
+      // [isola] l'altezza viene dalla via (Corso 3, vie 2, vicoli 1-2), dalla piazza vicina, dagli angoli fra due strade;
+      // le palazzine vicine si somigliano (rumore a blocchi di 12 m) e salgono e scendono di un piano
+      const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, rk = b.rk || 1;
+      let f = rk === 3 ? 3 + (hash2(b.x, b.y, 3) < .3 ? 1 : 0) : rk === 2 ? 3 : 2;
+      if (dist(cx, cy, xn(409), 117) < 48) f++;
+      let sides = 0; [[0, -1, b.w, 1], [0, b.h, b.w, 1], [-1, 0, 1, b.h], [b.w, 0, 1, b.h]].forEach(([ox, oy, w, h]) => { let rd = false; for (let k = 0; k < Math.max(w, h) && !rd; k++) { const tx = b.x + ox + (w > 1 ? k : 0), ty = b.y + oy + (h > 1 ? k : 0); if (tx >= 0 && ty >= 0 && tx < GW && ty < GH && roadW[ty * GW + tx] > 0) rd = true; } if (rd) sides++; });
+      if (sides >= 2 && rk >= 2) f++;
+      const nb = hash2(Math.floor(cx / 12), Math.floor(cy / 12), 33); f += nb < .3 ? -1 : nb > .82 ? 1 : 0; if (hash2(b.x, b.y, 34) < .12) f--;   // qualche casetta bassa in mezzo
+      b.fl = Math.max(1, Math.min(4, f));
       if (b.w * b.h < 9) b.fl = Math.min(b.fl, 2);
     });
     // [isola] i palazzi crescono per aggiunte: sopra il corpo pieno, un volume più piccolo e spostato (il terrazzo resta davanti, sulla strada),
