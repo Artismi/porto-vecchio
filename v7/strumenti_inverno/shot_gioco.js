@@ -15,8 +15,9 @@ const srv = http.createServer((req, res) => {
   const port = srv.address().port, W = +(W0 || 1280), H = +(H0 || 800);
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const pg = await b.newPage({ viewport: { width: W, height: H } });
-  pg.on('pageerror', e => console.log('[errore]', e.message));
-  pg.on('console', m => { if (m.type() === 'error') console.log('[console]', m.text().slice(0, 300)); });
+  pg.on('pageerror', e => console.log('[errore]', e.message, (e.stack || '').split('\n').slice(0, 4).join(' | ')));
+  pg.on('console', m => { if (m.type() === 'error' || /\[dbg\]|oggetti35/.test(m.text())) console.log('[console]', m.text().slice(0, 300)); });
+  await pg.addInitScript(() => { window.__dbg35 = true; });
   await pg.goto(`http://localhost:${port}/index.html`);
   await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: 240000 });
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(1500);
@@ -31,6 +32,7 @@ const srv = http.createServer((req, res) => {
       if (pv.R && pv.R.cam) { pv.R.cam.x = pv.R.cam.tx = x; pv.R.cam.y = pv.R.cam.ty = y; pv.R.cam.zoom = pv.R.cam.tz = s.zoom || 1; }
     }, s);
     await pg.waitForTimeout(s.attesa || 4000);
+    console.log('ora di gioco', await pg.evaluate(() => Math.round(window.__pv.st.t % 1440)), 'night', await pg.evaluate(() => window.__pv.R && window.__pv.R.night));
     await pg.screenshot({ path: path.join(outDir, s.nome + '.png'), timeout: 240000 }); console.log('ok', s.nome);
   }
   await b.close(); srv.close();

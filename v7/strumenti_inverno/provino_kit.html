@@ -9,13 +9,14 @@ const Q = new URLSearchParams(location.search), KIT = Q.get('kit') || 'rurban', 
   await Kit.load('../assets/mk/', [KIT]);
   const ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); ren.setSize(SW, SH); ren.setClearColor('#20242c'); document.body.appendChild(ren.domElement);
   const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight('#ffffff', '#555566', 1)); const d = new THREE.DirectionalLight('#fff', .7); d.position.set(3, 5, 4); sc.add(d);
-  const raw = await (await fetch('../assets/mk/kit_' + KIT + '.json')).json(), names = raw.scenes[0].nodes.map(i => raw.nodes[i].name);
+  const raw = await (await fetch('../assets/mk/kit_' + KIT + '.json')).json(), ONLY = Q.get('only'), names = raw.scenes[0].nodes.map(i => raw.nodes[i].name).filter(n => !ONLY || new RegExp(ONLY).test(n));
   const sizes = {}, CELL = 5, rows = Math.ceil(names.length / COLS);
   names.forEach((n, k) => { const o = Kit.get(KIT + '/' + n); const bb = new THREE.Box3().setFromObject(o), s = bb.getSize(new THREE.Vector3()); sizes[n] = [s.x, s.y, s.z, bb.min.x, bb.min.y, bb.min.z].map(v => +v.toFixed(2));
     o.position.set((k % COLS) * CELL, 0, Math.floor(k / COLS) * CELL); sc.add(o); });
   const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 500), W = COLS * CELL, H = rows * CELL;
-  const asp = SW / SH, half = Math.max(W / asp, H) * .62; cam.left = -half * asp; cam.right = half * asp; cam.top = half; cam.bottom = -half; cam.updateProjectionMatrix();
-  cam.position.set(W / 2 + 30, 40, H / 2 + 30); cam.lookAt(W / 2 - CELL / 2, 0, H / 2 - CELL / 2); ren.render(sc, cam);
+  const asp = SW / SH, half = Math.max(W / asp, H) * +(Q.get('z') || .62); cam.left = -half * asp; cam.right = half * asp; cam.top = half; cam.bottom = -half; cam.updateProjectionMatrix();
+  const bk = +(Q.get('back') || 0); cam.position.set(W / 2 + (bk & 1 ? -30 : 30), 40, H / 2 + (bk & 2 ? -30 : 30)); cam.lookAt(W / 2 - CELL / 2, 0, H / 2 - CELL / 2);
+  for (let k = 0; k < 30; k++) { ren.render(sc, cam); await new Promise(r => setTimeout(r, 100)); }   // le texture arrivano dopo
   const lab = document.getElementById('lab'); names.forEach((n, k) => { const v = new THREE.Vector3((k % COLS) * CELL, -.3, Math.floor(k / COLS) * CELL + 1.2).project(cam); const e = document.createElement('div'); e.textContent = n; e.style.left = ((v.x + 1) / 2 * SW) + 'px'; e.style.top = ((1 - v.y) / 2 * SH) + 'px'; lab.appendChild(e); });
   window.__sizes = sizes; document.title = 'pronto';
 })();

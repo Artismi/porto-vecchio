@@ -562,7 +562,7 @@
   buildMinimap(); introScreen(); showHud(false);
   // i moduli degli edifici (Kenney Building Kit) arrivano prima della scena: la città nasce già montata
   const goBtn = $('go'); if (goBtn) { goBtn.disabled = true; goBtn.dataset.label = goBtn.textContent; goBtn.textContent = 'Carico il porto…'; }
-  const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura']), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
+  const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura', 'urbano', 'casa', 'stazione', 'garage', 'tortura']), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
   kitWait.then(boot);
   function boot() {
   if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }

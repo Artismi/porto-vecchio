@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Pezzo</title><style>html,body{margin:0;background:#20242c}#l{position:absolute;color:#ffd9a0;font:14px monospace}</style></head><body><div id="l"></div>
+<script src="../src/three.min.js"></script><script src="../src/gltf_loader.js"></script><script src="../src/kit.js"></script>
+<script>
+// Un pezzo visto da quattro lati: +Z (sud), +X (est), -Z (nord), -X (ovest). ?kit=urbano&p=wall-a-door,wall-a-window
+(async () => { const Q = new URLSearchParams(location.search), K = Q.get('kit'), P = Q.get('p').split(','), S = 220;
+  await Kit.load('../assets/mk/', [K]);
+  const ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); ren.setSize(S * 4, S * P.length); ren.setScissorTest(true); document.body.appendChild(ren.domElement);
+  const sc = new THREE.Scene(); sc.background = new THREE.Color('#20242c'); sc.add(new THREE.HemisphereLight('#fff', '#556', 1.1));
+  const objs = P.map((n, k) => { const o = Kit.get(K + '/' + n); o.position.set(0, 0, k * 10); sc.add(o); return o; });
+  for (let t = 0; t < 25; t++) { P.forEach((n, k) => [[0, 1], [1, 0], [0, -1], [-1, 0]].forEach(([dx, dz], v) => { const bb = new THREE.Box3().setFromObject(objs[k]), c = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3()), R = Math.max(sz.x, sz.y, sz.z) * .8 + .1;
+    const cam = new THREE.OrthographicCamera(-R, R, R, -R, .1, 100); cam.position.set(c.x + dx * 10, c.y + 2, c.z + dz * 10); cam.lookAt(c); ren.setViewport(v * S, (P.length - 1 - k) * S, S, S); ren.setScissor(v * S, (P.length - 1 - k) * S, S, S); ren.render(sc, cam); })); await new Promise(r => setTimeout(r, 80)); }
+  document.getElementById('l').innerHTML = P.map((n, k) => `<div style="position:absolute;top:${k * S + 4}px;left:4px;white-space:nowrap">${n}  (+Z | +X | -Z | -X)</div>`).join(''); document.title = 'pronto'; })();
+</script></body></html>
