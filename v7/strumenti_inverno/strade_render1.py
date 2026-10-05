@@ -49,4 +49,11 @@ rep("      if (bosco36(x, px, py, P, tx, ty, r, v, z, ii)) continue;   // [isola
 rep("    pass(dirt, rd => rd.w + 1.2, () => 'rgba(110,84,58,.55)');\n    pass(dirt, rd => rd.w, () => '#8a6a4a');\n    pass(dirt, rd => 1.1, () => 'rgba(150,120,86,.6)');\n", "    sterrato1(x, tx0, ty0, n, m);   // [strade1] sterrate e sentieri consumati dal passaggio\n")
 rep("    pass(vic, rd => .3, () => 'rgba(22,20,20,.5)');\n", "    pass(vic, rd => .3, () => 'rgba(22,20,20,.5)');\n    pass(vic, rd => rd.w * .45, () => 'rgba(150,140,128,.1)');   // [strade1] il centro lucidato dai passi\n")
 rep("smoothRoads(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m);", "smoothRoads(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m);")
+# 10) raccordi, cunette, olio (pittura) e segnavia, ometti, cippi (oggetti)
+rep("strisce35(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m);", "strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m);")
+rep("TT('vita1', buildVita1);", "TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1);")
+# 11) svolte raccordate, scalinate, impalcature, telecamere, paletti, orti
+rep("smoothRoads(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m);", "smoothRoads(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m);")
+rep("TT('segnavia1', buildSegnavia1);", "TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1);")
+rep("    tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri\n", "    tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri\n    tickUrbano1(time, night);\n")
 open(p, 'w', encoding='utf-8').write(s); print('ok')

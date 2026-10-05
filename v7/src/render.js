@@ -1339,7 +1339,7 @@ var Render = (function () {
   function buildChunk(ci, cj) {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
-    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); sporco35(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
+    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); sporco35(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
     const tex = canvasTex(c);
     let rtex = null;
     try { const W = c.width, H = c.height, id = x.getImageData(0, 0, W, H), d = id.data, rc = mk(W, H), rxx = rc.getContext('2d'), od = rxx.createImageData(W, H), o = od.data;
@@ -2804,10 +2804,10 @@ var Render = (function () {
   }
 
   // ---- segnaletica orizzontale: vernice consumata a puntini, con la grana del mondo (uguale fra i blocchi) ----
-  function dotLine1(x, X0, Y0, ax, ay, bx, by, wear, col, sz, seed) {
-    const L = Math.hypot(bx - ax, by - ay), st = Math.max(1, Math.ceil(L / .18)); sz = sz || 2;
-    for (let q = 0; q <= st; q++) { const t = q / st, wx = ax + (bx - ax) * t, wy = ay + (by - ay) * t, h = th(Math.round(wx * 6), Math.round(wy * 6), seed || 41); if (h < wear) continue;
-      x.fillStyle = `rgba(${col},${(.45 + (h - wear) / (1 - wear + 1e-6) * .45).toFixed(2)})`; x.fillRect(Math.round((wx - X0) * PPM - sz / 2), Math.round((wy - Y0) * PPM - sz / 2), sz, sz); }
+  function dotLine1(x, X0, Y0, ax, ay, bx, by, wear, col, sz, seed) {   // vernice a tratti continui con buchi d'usura (uguale fra i blocchi)
+    const L = Math.hypot(bx - ax, by - ay), st = Math.max(1, Math.ceil(L / .25)); x.lineWidth = (sz || 2) * .65; x.lineCap = 'butt';
+    for (let q = 0; q < st; q++) { const t0 = q / st, t1 = (q + 1) / st, wx = ax + (bx - ax) * t0, wy = ay + (by - ay) * t0, h = th(Math.round(wx * 4), Math.round(wy * 4), seed || 41); if (h < wear * .7) continue;
+      x.strokeStyle = `rgba(${col},${(.5 + (h - wear * .7) * .4).toFixed(2)})`; x.beginPath(); x.moveTo((wx - X0) * PPM, (wy - Y0) * PPM); x.lineTo((ax + (bx - ax) * t1 - X0) * PPM, (ay + (by - ay) * t1 - Y0) * PPM); x.stroke(); }
   }
   const WHITE1 = '226,222,206', YEL1 = '214,170,60';
   function marks1(x, tx0, ty0, n, m) {
@@ -2819,7 +2819,7 @@ var Render = (function () {
         const [ax, ay] = P[k], [bx, by] = P[k + 1]; if (!inBox1(ax, ay, X0, Y0, X1, Y1, rd.w + 6)) continue;
         const mx = (ax + bx) / 2, my = (ay + by) / 2, dj = nearJ1(mx, my, 0); if (dj < .5) continue;   // dentro l'incrocio niente linee
         const nx = -g.uy[k], ny = g.ux[k], city = cityAt1(mx, my), s = g.s[k];
-        if (dj < 30 && onCarr1(mx, my, -.3, rd)) continue;   // dentro un'altra strada
+        if (onCarr1(mx, my, -.3, rd)) continue;   // dentro un'altra strada
         // mezzeria: tratteggiata, continua in curva, sulle salite cieche e prima degli incroci (fuori città)
         if (rd.w >= 5.5) {
           const curve = Math.abs(g.cv[k]) > (city ? 9 : .42), appr = !city && dj < 18, cont = curve || appr, period = city ? 6 : 9, on = city ? 3 : 4.5;
@@ -2827,9 +2827,9 @@ var Render = (function () {
           else if ((s % period) < on) dotLine1(x, X0, Y0, ax, ay, bx, by, wear, WHITE1, 2, 41);
         }
         // linee di margine: solo fuori città, e non sulla bocca degli incroci
-        if (!city && dj > 3 && (rd.kind === 'strada' || rd.kind === 'litoranea')) [-1, 1].forEach(sd => { const o = sd * (rd.w / 2 - .35); if (dj < 40 && onCarr1(mx + nx * (o + sd * .6), my + ny * (o + sd * .6), 0, rd)) return; dotLine1(x, X0, Y0, ax + nx * o, ay + ny * o, bx + nx * o, by + ny * o, wear + .08, WHITE1, 2, 47 + sd); });
+        if (!city && dj > 3 && (rd.kind === 'strada' || rd.kind === 'litoranea')) [-1, 1].forEach(sd => { const o = sd * (rd.w / 2 - .35); if (onCarr1(mx + nx * (o + sd * .6), my + ny * (o + sd * .6), 0, rd) || onCarr1(mx + nx * o, my + ny * o, -.2, rd)) return; dotLine1(x, X0, Y0, ax + nx * o, ay + ny * o, bx + nx * o, by + ny * o, wear + .08, WHITE1, 2, 47 + sd); });
         // stalli di sosta lungo le vie larghe di città: una tacca ogni 5 m sul bordo destro e sinistro
-        if (city && city0 && rd.w >= 8 && dj > 8 && Math.floor(s / 5) !== Math.floor(g.s[k + 1] / 5)) [-1, 1].forEach(sd => { const o = sd * (rd.w / 2 - .1), o2 = sd * (rd.w / 2 - 2.1); dotLine1(x, X0, Y0, ax + nx * o, ay + ny * o, ax + nx * o2, ay + ny * o2, wear + .1, WHITE1, 2, 49); });
+        if (city && city0 && rd.w >= 8 && dj > 8 && Math.floor(s / 5) !== Math.floor(g.s[k + 1] / 5)) [1].forEach(sd => { const o = sd * (rd.w / 2 - .1), o2 = sd * (rd.w / 2 - 1.9);   /* un lato solo: restano 6 m di corsie */ dotLine1(x, X0, Y0, ax + nx * o, ay + ny * o, ax + nx * o2, ay + ny * o2, wear + .1, WHITE1, 2, 49); });
       }
     });
     // agli incroci: STOP o triangoli sulle strade che danno la precedenza, frecce sulle altre in città
@@ -2915,7 +2915,7 @@ var Render = (function () {
   // ================= OGGETTI =================
   function signTex1(kind, text) {
     const key = kind + '|' + (text || ''); if (S1.tex[key]) return S1.tex[key];
-    const W = kind === 'name' || kind === 'city' || kind === 'cityend' ? 128 : 64, Hh = kind === 'name' ? 32 : kind === 'city' || kind === 'cityend' ? 56 : 64, c = mk(W, Hh), x = c.getContext('2d'), rr = rng(key.length * 97 + (text || '').length * 7);
+    const W = kind === 'name' || kind === 'city' || kind === 'cityend' || kind === 'trail' ? 128 : 64, Hh = kind === 'name' || kind === 'trail' ? 32 : kind === 'city' || kind === 'cityend' ? 56 : 64, c = mk(W, Hh), x = c.getContext('2d'), rr = rng(key.length * 97 + (text || '').length * 7);
     x.clearRect(0, 0, W, Hh); x.textAlign = 'center'; x.textBaseline = 'middle';
     const poly = (pts, fill) => { x.beginPath(); pts.forEach(([a, b], i) => i ? x.lineTo(a, b) : x.moveTo(a, b)); x.closePath(); x.fillStyle = fill; x.fill(); };
     if (kind === 'stop') { const o = []; for (let i = 0; i < 8; i++) { const a = Math.PI / 8 + i * Math.PI / 4; o.push([32 + Math.cos(a) * 30, 32 + Math.sin(a) * 30]); } poly(o, '#e8e2d4'); const o2 = o.map(([a, b]) => [32 + (a - 32) * .88, 32 + (b - 32) * .88]); poly(o2, '#a82a22'); x.fillStyle = '#ece6d8'; x.font = 'bold 17px sans-serif'; x.fillText('STOP', 32, 33); }
@@ -2929,6 +2929,10 @@ var Render = (function () {
     else if (kind === 'narrow') { poly([[32, 4], [61, 58], [3, 58]], '#a82a22'); poly([[32, 14], [52, 52], [12, 52]], '#e0c040'); x.fillStyle = '#1a1a1a'; poly([[24, 50], [28, 50], [28, 34], [24, 28]], '#1a1a1a'); x.fillRect(36, 26, 4, 24); }
     else if (kind === 'city' || kind === 'cityend') { x.fillStyle = '#e8e2d4'; x.fillRect(2, 2, W - 4, Hh - 4); x.strokeStyle = '#1a1a1a'; x.lineWidth = 3; x.strokeRect(5, 5, W - 10, Hh - 10); x.fillStyle = '#1a1a1a'; x.font = 'bold 19px sans-serif'; x.fillText(text, W / 2, Hh / 2 + 1);
       if (kind === 'cityend') { x.strokeStyle = '#a82a22'; x.lineWidth = 6; x.beginPath(); x.moveTo(8, Hh - 8); x.lineTo(W - 8, 8); x.stroke(); } }
+    else if (kind === 'cam') { x.fillStyle = '#e0c040'; x.fillRect(2, 2, 60, 60); x.strokeStyle = '#1a1a1a'; x.lineWidth = 3; x.strokeRect(4, 4, 56, 56); x.fillStyle = '#1a1a1a'; x.fillRect(16, 14, 26, 14); x.fillRect(42, 18, 8, 6); x.fillRect(22, 28, 4, 8); x.fillRect(14, 36, 16, 3); x.font = 'bold 8px sans-serif'; x.fillText('ВИДЕО-', 32, 46); x.fillText('КОНТРОЛЬ', 32, 55); }
+    else if (kind === 'pedzone') { x.fillStyle = '#2a4a7a'; x.fillRect(3, 3, 58, 58); x.fillStyle = '#e8e2d4'; x.beginPath(); x.arc(32, 32, 24, 0, 6.3); x.fill(); x.fillStyle = '#1a1a1a'; x.beginPath(); x.arc(28, 16, 4, 0, 6.3); x.fill(); x.lineWidth = 4; x.strokeStyle = '#1a1a1a'; x.beginPath(); x.moveTo(28, 20); x.lineTo(26, 34); x.lineTo(20, 46); x.moveTo(26, 34); x.lineTo(33, 46); x.moveTo(27, 25); x.lineTo(19, 30); x.moveTo(27, 25); x.lineTo(36, 30); x.stroke(); x.beginPath(); x.arc(40, 30, 3, 0, 6.3); x.fill(); x.beginPath(); x.moveTo(40, 33); x.lineTo(40, 42); x.stroke(); }
+    else if (kind === 'nopark') { x.fillStyle = '#2a4a8a'; x.beginPath(); x.arc(32, 32, 27, 0, 6.3); x.fill(); x.strokeStyle = '#a82a22'; x.lineWidth = 6; x.beginPath(); x.arc(32, 32, 25, 0, 6.3); x.stroke(); x.beginPath(); x.moveTo(14, 14); x.lineTo(50, 50); x.stroke(); }
+    else if (kind === 'trail') { x.clearRect(0, 0, W, Hh); x.fillStyle = '#c8b08a'; x.beginPath(); x.moveTo(2, 2); x.lineTo(W - 18, 2); x.lineTo(W - 2, Hh / 2); x.lineTo(W - 18, Hh - 2); x.lineTo(2, Hh - 2); x.closePath(); x.fill(); x.fillStyle = '#e8e2d4'; x.fillRect(W - 30, 2, 8, Hh - 4); x.fillStyle = '#b02a22'; x.fillRect(W - 22, 2, 5, Hh - 4); x.fillStyle = '#3a2a1a'; let fs = 14; x.font = 'bold ' + fs + 'px serif'; while (x.measureText(text).width > W - 44 && fs > 7) { fs--; x.font = 'bold ' + fs + 'px serif'; } x.fillText(text, (W - 30) / 2 + 2, Hh / 2 + 1); for (let i = 0; i < 5; i++) { x.fillStyle = 'rgba(90,60,30,.35)'; x.fillRect(4, 4 + i * 5, W - 40, 1); } }
     else if (kind === 'name') { x.fillStyle = '#d8d2c4'; x.fillRect(1, 1, W - 2, Hh - 2); x.strokeStyle = '#3a3a3a'; x.lineWidth = 2; x.strokeRect(3, 3, W - 6, Hh - 6); x.fillStyle = '#2a2a2a'; let fs = 15; x.font = 'bold ' + fs + 'px serif'; while (x.measureText(text).width > W - 12 && fs > 8) { fs--; x.font = 'bold ' + fs + 'px serif'; } x.fillText(text, W / 2, Hh / 2 + 1); }
     // ruggine, adesivi, fori di proiettile, sole che ha mangiato il rosso
     x.globalCompositeOperation = 'source-atop';
@@ -2946,14 +2950,14 @@ var Render = (function () {
     if (!okSpot1(x, z, .2)) return null; const g = G0(), post = sm('#5a5c5e', { metalness: .5, roughness: .6 }), back = sm('#4a4c4e', { metalness: .4, roughness: .7 });
     let y = 2.55; const tilt = r() < .15 ? (r() - .5) * .35 : (r() - .5) * .05;
     plates.forEach(([kind, text]) => { const [w, h] = signDim1(kind); add(g, new THREE.Mesh(new THREE.PlaneGeometry(w, h), signMat1(kind, text)), 0, y - h / 2, .045);
-      const bk = kind === 'stop' || kind === 'speed' || kind === 'noentry' ? cyl(w * .47, w * .47, .02, 12, back) : box(w * .94, h * .94, .02, back); if (bk.geometry.type === 'CylinderGeometry') bk.rotation.x = Math.PI / 2; add(g, bk, 0, y - h / 2, .02, bk.rotation.x, 0, 0); y -= h + .06; });
+      const bk = kind === 'stop' || kind === 'speed' || kind === 'noentry' || kind === 'nopark' ? cyl(w * .47, w * .47, .02, 12, back) : box(w * .94, h * .94, .02, back); if (bk.geometry.type === 'CylinderGeometry') bk.rotation.x = Math.PI / 2; add(g, bk, 0, y - h / 2, .02, bk.rotation.x, 0, 0); y -= h + .06; });
     add(g, cyl(.04, .045, 2.6, 6, post), 0, 1.3, 0); add(g, cyl(.07, .07, .06, 6, sm('#3a3a3a')), 0, .03, 0);
     g.rotation.z = tilt; return place(g, x, z, rot);
   }
   // ---- semafori: palo zincato, lanterna a tre luci con le visiere, pannello nero; le luci le accende tickStrade1 ----
   function semaforo1(J, a, phase) {
-    const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, d = J.r + 2.4, off = a.w / 2 + .75, x = J.x + ux * d + rx * off, z = J.y + uy * d + ry * off;
-    if (solid1(x, z) || onCarr1(x, z, .1)) return false;
+    const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, d = J.r + 2.4, off = a.w / 2 + .75, x0 = J.x + ux * d + rx * off, z0 = J.y + uy * d + ry * off; let x = x0, z = z0;
+    for (const sh of [0, .9, -.9, 1.8]) { const x2 = x0 + ux * sh, z2 = z0 + uy * sh; if (!solid1(x2, z2) && !onCarr1(x2, z2, .1) && !busy1(x2, z2, .35)) { x = x2; z = z2; break; } if (sh === 1.8) return false; }   // non sopra un lampione o un arredo
     const g = G0(), galv = sm('#7a7c7a', { metalness: .55, roughness: .5 }), blk = sm('#1c1c1e', { roughness: .6 }), rot = Math.atan2(ux, uy);
     add(g, cyl(.07, .08, 3.4, 8, galv), 0, 1.7, 0); add(g, cyl(.12, .14, .3, 8, sm('#3a3a3a')), 0, .15, 0);
     add(g, box(.34, 1.02, .26, blk), 0, 3.0, .12); add(g, box(.5, 1.2, .03, blk), 0, 3.0, -.02);                // lanterna e pannello di contrasto
@@ -3109,6 +3113,7 @@ var Render = (function () {
   }
   function piece1(kind, w, h) { const g = new THREE.PlaneGeometry(w, h), uv = g.attributes.uv, ox = (kind % 4) / 4, oy = 1 - Math.floor(kind / 4) / 2 - .5;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, ox + uv.getX(i) * .25, oy + uv.getY(i) * .5); g.rotateX(-Math.PI / 2); return g; }
+  let PAPM1 = null; const paperM = () => PAPM1 || (PAPM1 = new THREE.MeshLambertMaterial({ map: paperTex1() }));
   function buildVita1() {
     const T = G.T, r = rng(4242); let n = 0, nt = 0;
     const paperM = new THREE.MeshLambertMaterial({ map: paperTex1(), side: THREE.DoubleSide });
@@ -3296,6 +3301,176 @@ var Render = (function () {
           x.fillStyle = 'rgba(96,88,76,.9)'; x.beginPath(); x.arc((bx - X0) * PPM, (by - Y0) * PPM, (.2 + h * .5) * PPM, 0, 6.2832); x.fill(); } } });
     x.lineCap = 'butt';
   }
+
+
+  // ================= [strade1] QUARTA PASSATA: RACCORDI, CUNETTE, SEGNAVIA, CIPPI, OLIO =================
+  // Dove una sterrata sbocca sull'asfalto le ruote portano fango e ghiaia; a monte delle strade scavate corre la cunetta (di cemento
+  // sull'asfalto, un fosso sulle sterrate); negli stalli e davanti alle linee d'arresto le macchie d'olio. Fuori: cippi chilometrici,
+  // segnavia di legno all'imbocco dei sentieri, ometti di pietra lungo le tracce.
+  let MUD1 = null;
+  function mud1List() {
+    if (MUD1) return MUD1; MUD1 = []; const A = (M.roads || []).filter(rd => asph1(rd) && rd.pts);
+    (M.roads || []).forEach(rd => { if (rd.kind !== 'sterrato' || !rd.pts || rd.pts.length < 3 || rd.traccia) return;
+      [[0, 1], [rd.pts.length - 1, rd.pts.length - 2]].forEach(([e, f]) => { const [x, y] = rd.pts[e];
+        for (const o of A) { const P = o.pts; let bd = 1e9, bk = 0; for (let k = 0; k < P.length; k++) { const d = Math.hypot(P[k][0] - x, P[k][1] - y); if (d < bd) { bd = d; bk = k; } }
+          if (bd < o.w / 2 + 2.5) { const g = geo1(o); MUD1.push({ x, y, ux: g.ux[bk], uy: g.uy[bk], w: o.w, dx: x - rd.pts[f][0], dy: y - rd.pts[f][1], seed: Math.round(x * 7 + y) >>> 0 }); return; } } }); });
+    return MUD1;
+  }
+  function raccordi1(x, tx0, ty0, n, m) {
+    const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS, C = (wx, wy) => [(wx - X0) * PPM, (wy - Y0) * PPM];
+    // fango e ghiaia sulla bocca, scie delle ruote che girano nei due versi
+    mud1List().forEach(q => { if (!inBox1(q.x, q.y, X0, Y0, X1, Y1, 12)) return; const r = rng(q.seed);
+      for (let i = 0; i < 70; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * 3, [cx, cy] = C(q.x + Math.cos(a) * d, q.y + Math.sin(a) * d); x.fillStyle = `rgba(${100 + r() * 30},${76 + r() * 20},${50 + r() * 10},${(.65 * (1 - d / 3.2)).toFixed(2)})`; x.fillRect(Math.round(cx), Math.round(cy), 1 + (r() < .3 ? 1 : 0), 1); }
+      [-1, 1].forEach(sd => [-.8, .8].forEach(o => { for (let t = 0; t < 9; t += .25) { const al = .45 * (1 - t / 9); if (th(Math.round(t * 4), Math.round(o * 10 + sd), q.seed % 997) < .3) continue; const wx = q.x + q.ux * sd * t - q.uy * o * .5 + (q.ux * sd) * 0, wy = q.y + q.uy * sd * t + q.ux * o * .5, [cx, cy] = C(wx, wy); x.fillStyle = `rgba(92,70,48,${al.toFixed(2)})`; x.fillRect(Math.round(cx), Math.round(cy), 2, 1); } })); });
+    (M.roads || []).forEach(rd => { if (!rd.edge || !rd.pts || rd.traccia || !rd.pts.some(p => inBox1(p[0], p[1], X0, Y0, X1, Y1, rd.w + 4))) return; const g = geo1(rd), P = rd.pts, asph = asph1(rd);
+      if (!asph && rd.kind !== 'sterrato') return;
+      // cunetta a monte (bordo 1 = roccia tagliata, o pendio che sale)
+      [0, 1].forEach(si => { const sd = si ? -1 : 1, o = sd * (rd.w / 2 + (asph ? .35 : .25));
+        for (let k = 0; k < g.n - 1; k++) { if (rd.edge[k * 2 + si] !== 1 || rd.edge[(k + 1) * 2 + si] !== 1 || cityAt1(P[k][0], P[k][1])) continue;
+          const [ax, ay] = C(P[k][0] - g.uy[k] * o, P[k][1] + g.ux[k] * o), [bx, by] = C(P[k + 1][0] - g.uy[k + 1] * o, P[k + 1][1] + g.ux[k + 1] * o);
+          x.lineCap = 'round'; x.beginPath(); x.moveTo(ax, ay); x.lineTo(bx, by);
+          if (asph) { x.lineWidth = .55 * PPM; x.strokeStyle = 'rgba(132,128,120,.9)'; x.stroke(); x.lineWidth = .16 * PPM; x.strokeStyle = 'rgba(34,32,30,.75)'; x.stroke(); }   // cemento e il filo d'acqua
+          else { x.lineWidth = .5 * PPM; x.strokeStyle = 'rgba(52,40,30,.6)'; x.stroke(); if (th(k, si, 5252) < .08) { x.fillStyle = 'rgba(66,78,86,.7)'; x.beginPath(); x.ellipse((ax + bx) / 2, (ay + by) / 2, 4, 2, Math.atan2(by - ay, bx - ax), 0, 6.3); x.fill(); } } } });
+      // olio: negli stalli e davanti alle linee d'arresto
+      if (asph && urb1(rd) && rd.w >= 8) { for (let k = 0; k < g.n; k++) { const [px, py] = P[k]; if (!inBox1(px, py, X0, Y0, X1, Y1, 3) || !cityAt1(px, py) || nearJ1(px, py, 8) < 0) continue;
+          if (Math.floor(g.s[k] / 5) === Math.floor((g.s[k - 1] || -9) / 5)) continue; if (th(k, 1, 5353) > .55) continue; const o = rd.w / 2 - 1, [cx, cy] = C(px - g.uy[k] * o + g.ux[k] * 2.5, py + g.ux[k] * o + g.uy[k] * 2.5);
+          x.fillStyle = 'rgba(10,10,14,.35)'; x.beginPath(); x.ellipse(cx, cy, 5 + th(k, 2, 5353) * 4, 3, Math.atan2(g.uy[k], g.ux[k]), 0, 6.3); x.fill(); } }
+    });
+    junc1().forEach(J => { if (!J.city || !inBox1(J.x, J.y, X0, Y0, X1, Y1, 20)) return; J.arms.forEach((a, i) => { const d = J.r + 5, o = a.w / 4, [cx, cy] = C(J.x + a.ux * d + a.uy * o, J.y + a.uy * d - a.ux * o); x.fillStyle = 'rgba(10,10,14,.3)'; x.beginPath(); x.ellipse(cx, cy, 6, 3.5, Math.atan2(a.uy, a.ux), 0, 6.3); x.fill(); }); });
+  }
+  function buildSegnavia1() {
+    const r = rng(777), wood = sm('#6a4a30', { roughness: 1 }), woodL = sm('#8a6440', { roughness: 1 }), stone = [sm('#8a847a', { roughness: 1 }), sm('#6e6862', { roughness: 1 }), sm('#9a9286', { roughness: 1 })]; let n = 0;
+    const R = M.roads || [];
+    R.forEach((rd, ri) => {
+      if (!rd.pts || rd.pts.length < 4) return; const g = geo1(rd), P = rd.pts;
+      // segnavia di legno all'imbocco dei sentieri e delle sterrate con un nome
+      if (rd.kind === 'sterrato' && rd.name) [[0, 1], [g.n - 1, -1]].forEach(([e, dir]) => { const [x0, z0] = P[e];
+        const touches = R.some(o => o !== rd && o.pts && (o.kind !== 'sterrato' || o.w > rd.w) && o.pts.some(q => Math.hypot(q[0] - x0, q[1] - z0) < o.w / 2 + 2.5)); if (!touches) return;
+        const k = Math.max(0, Math.min(g.n - 1, e + dir * 3)), ux = g.ux[k] * dir, uz = g.uy[k] * dir, sx = P[k][0] + uz * (rd.w / 2 + .8), sz = P[k][1] - ux * (rd.w / 2 + .8);
+        if (!okSpot1(sx, sz, .25)) return; const gg = G0(); add(gg, box(.1, 1.9, .1, wood), 0, .95, 0);
+        const name = rd.name.replace(/^(Sentiero|Mulattiera|Sterrata|Strada) (del |della |dei |delle |di |dello |degli )?/i, '').slice(0, 22);
+        const bd = new THREE.Mesh(new THREE.PlaneGeometry(1.05, .24), new THREE.MeshStandardMaterial({ map: signTex1('trail', name), transparent: true, alphaTest: .5, side: THREE.DoubleSide, roughness: 1 })); add(gg, bd, .45, 1.65, .06);
+        add(gg, box(.12, .14, .12, woodL), 0, 1.92, 0); place(gg, sx, sz, Math.atan2(-uz, ux)); n++; });
+      // ometti di pietra lungo le tracce, dove il bosco si apre
+      if (rd.traccia) { let next = 20 + r() * 30; for (let k = 1; k < g.n; k++) { if (g.s[k] < next) continue; next = g.s[k] + 30 + r() * 30; const sd = r() < .5 ? 1 : -1, x = P[k][0] - g.uy[k] * sd * 1.2, z = P[k][1] + g.ux[k] * sd * 1.2;
+          if (!okSpot1(x, z, .3)) continue; const gg = G0(); let y = 0; for (let q = 0; q < 3 + Math.floor(r() * 3); q++) { const s0 = .22 - q * .035; const st = new THREE.Mesh(new THREE.DodecahedronGeometry(s0, 0), pick(r, stone)); st.scale.set(1, .55, 1); add(gg, st, (r() - .5) * .04, y + s0 * .45, (r() - .5) * .04, 0, r() * 3, 0); y += s0 * .9; }
+          place(gg, x, z, r() * 6); n++; } }
+      // cippi chilometrici ogni 200 m fuori città
+      if ((rd.kind === 'strada' || rd.kind === 'litoranea') && g.s[g.n - 1] > 250) { const side = sideOf1(rd); for (let k = 1; k < g.n; k++) { if (Math.floor(g.s[k] / 200) === Math.floor(g.s[k - 1] / 200)) continue; const [px, pz] = P[k]; if (cityAt1(px, pz) || nearJ1(px, pz, 4) < 0) continue;
+          const x = px + g.uy[k] * (rd.w / 2 + side + .7), z = pz - g.ux[k] * (rd.w / 2 + side + .7); if (!okSpot1(x, z, .2)) continue; const gg = G0(); add(gg, box(.26, .5, .14, sm('#d8d2c4', { roughness: .9 })), 0, .25, 0); add(gg, box(.27, .12, .15, sm('#a82a22', { roughness: .8 })), 0, .5, 0);
+          place(gg, x, z, Math.atan2(g.ux[k], g.uy[k]) + Math.PI / 2); n++; } }
+    });
+    if (window.__dbg35) console.log('[dbg] segnavia1', n);
+    return n;
+  }
+
+  // ================= [strade1] QUINTA PASSATA: SVOLTE, SCALINATE, IMPALCATURE, TELECAMERE, PALETTI, ORTI =================
+  // Le svolte: fra due bracci di un incrocio l'angolo non è più lo spigolo di due strisce sovrapposte, ma una curva di 4 m tangente
+  // ai due bordi (la Bézier col controllo nello spigolo è tangente a tutti e due).
+  function svolte1(x, tx0, ty0, n, m) {
+    const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS, C = (a, b) => [(a - X0) * PPM, (b - Y0) * PPM];
+    junc1().forEach(J => { if (!inBox1(J.x, J.y, X0, Y0, X1, Y1, 20)) return;
+      const A = J.arms.slice().sort((p, q) => Math.atan2(p.uy, p.ux) - Math.atan2(q.uy, q.ux));
+      for (let i = 0; i < A.length; i++) { const a = A[i], b = A[(i + 1) % A.length]; if (A.length === 2 && i === 1) break;
+        let th0 = Math.atan2(b.uy, b.ux) - Math.atan2(a.uy, a.ux); while (th0 <= 0) th0 += Math.PI * 2; if (th0 < .5 || th0 > 2.7) continue;
+        const dirt = a.rd.kind === 'sterrato' || b.rd.kind === 'sterrato'; if (COB1[a.rd.id] || COB1[b.rd.id]) continue;
+        // bordo di a verso b e bordo di b verso a
+        let nax = -a.uy, nay = a.ux; if (nax * b.ux + nay * b.uy < 0) { nax = -nax; nay = -nay; } let nbx = -b.uy, nby = b.ux; if (nbx * a.ux + nby * a.uy < 0) { nbx = -nbx; nby = -nby; }
+        const pax = J.x + nax * a.w / 2, pay = J.y + nay * a.w / 2, pbx = J.x + nbx * b.w / 2, pby = J.y + nby * b.w / 2, den = a.ux * b.uy - a.uy * b.ux; if (Math.abs(den) < .1) continue;
+        const t = ((pbx - pax) * b.uy - (pby - pay) * b.ux) / den, cx = pax + a.ux * t, cy = pay + a.uy * t, R = J.city ? 3.2 : 4.5, d = R / Math.tan(th0 / 2);
+        const qa = C(cx + a.ux * d, cy + a.uy * d), qb = C(cx + b.ux * d, cy + b.uy * d), cc = C(cx, cy);
+        x.beginPath(); x.moveTo(cc[0], cc[1]); x.lineTo(qa[0], qa[1]); x.quadraticCurveTo(cc[0], cc[1], qb[0], qb[1]); x.closePath();
+        // prima il bordo (banchina), poi il fondo
+        x.fillStyle = dirt ? dirtPat1(x, X0, Y0) : pat35(x, 'asfalto', X0, Y0); x.fill();
+        x.save(); x.clip(); x.lineWidth = 1.2 * PPM; x.strokeStyle = dirt ? 'rgba(88,70,48,.4)' : 'rgba(20,18,18,.35)'; x.beginPath(); x.moveTo(qa[0], qa[1]); x.quadraticCurveTo(cc[0], cc[1], qb[0], qb[1]); x.stroke(); x.restore();
+      } });
+  }
+  function buildUrbano1() {
+    const T = G.T, r = rng(5555); let n = 0, ns = 0, ni = 0, nc = 0, np = 0, no = 0;
+    const stone = sm('#7e786e', { roughness: .95 }), nose = sm('#a49c8e', { roughness: .9 }), iron = sm('#2a2c2e', { metalness: .5, roughness: .5 }), log = sm('#5a4430', { roughness: 1 });
+    // 1) scalinate dove vicoli e sentieri superano il 15%: scalini di pietra col mancorrente in città, tronchi coi picchetti sui sentieri
+    (M.roads || []).forEach(rd => { if (!rd.h || !rd.pts || !(rd.kind === 'vicolo' || rd.traccia || (rd.kind === 'sterrato' && rd.w <= 2))) return; const g = geo1(rd), P = rd.pts, vic = rd.kind === 'vicolo';
+      let run = []; const flush = () => { if (run.length < 2) { run = []; return; } const k0 = run[0], k1 = run[run.length - 1], s0 = g.s[k0], s1 = g.s[k1]; if (s1 - s0 < 1.6) { run = []; return; }
+        const at = s => { let k = k0; while (k < k1 && g.s[k + 1] < s) k++; const t = (s - g.s[k]) / ((g.s[k + 1] - g.s[k]) || 1); return [P[k][0] + (P[k + 1][0] - P[k][0]) * t, P[k][1] + (P[k + 1][1] - P[k][1]) * t, g.ux[k], g.uy[k]]; };
+        const gr = new THREE.Group(), tread = vic ? .42 : 1.1, wd = vic ? rd.w - .3 : Math.min(rd.w, 1.3);
+        for (let s = s0; s < s1 - tread * .5; s += tread) { const [ax, az, ux, uz] = at(s), [bx, bz] = at(Math.min(s1, s + tread)), ha = groundH(ax, az), hb = groundH(bx, bz), top = Math.max(ha, hb), low = Math.min(ha, hb), mx = (ax + bx) / 2, mz = (az + bz) / 2, rot = Math.atan2(ux, uz);
+          if (vic) { const st = box(wd, top - low + .08, tread + .03, stone); st.position.set(mx, (top + low) / 2 - .02, mz); st.rotation.y = rot; gr.add(st); const hi = ha > hb ? [ax, az] : [bx, bz]; const ns2 = box(wd, .05, .06, nose); ns2.position.set(hi[0] + (mx - hi[0]) * .05, top + .02, hi[1] + (mz - hi[1]) * .05); ns2.rotation.y = rot; gr.add(ns2); }
+          else { const lg = cyl(.09, .09, wd, 6, log); lg.rotation.set(0, rot + Math.PI / 2, Math.PI / 2); lg.position.set(mx, (ha + hb) / 2 + .06, mz); gr.add(lg); [-1, 1].forEach(sd => { const pk = box(.05, .3, .05, log); pk.position.set(mx + uz * sd * wd / 2, (ha + hb) / 2 + .1, mz - ux * sd * wd / 2); gr.add(pk); }); }
+          ns++; }
+        // mancorrente: in città ai due lati (tubo su piantane), sui sentieri una staccionata da un lato
+        [-1, 1].forEach(sd => { if (!vic && sd < 0) return; const off = vic ? rd.w / 2 - .12 : Math.min(rd.w, 1.3) / 2 + .25; let prev = null;
+          for (let s = s0; s <= s1 + .01; s += Math.min(1.5, (s1 - s0) / Math.max(1, Math.round((s1 - s0) / 1.5)))) { const [px, pz, ux, uz] = at(Math.min(s, s1)), x = px + uz * sd * off, z = pz - ux * sd * off, y = groundH(x, z);
+            const pp = box(.05, .95, .05, vic ? iron : log); pp.position.set(x, y + .47, z); gr.add(pp);
+            if (prev) { const L = Math.hypot(x - prev[0], z - prev[1]), tb = box(L + .04, .05, .05, vic ? iron : log); tb.position.set((x + prev[0]) / 2, (y + prev[2]) / 2 + .92, (z + prev[1]) / 2); tb.rotation.set(0, Math.atan2(-(z - prev[1]), x - prev[0]), Math.atan2(y - prev[2], L)); gr.add(tb);
+              if (!vic) { const tb2 = tb.clone(); tb2.position.y -= .45; gr.add(tb2); } }
+            prev = [x, z, y]; } });
+        addStatic(gr); n++; run = []; };
+      for (let k = 1; k < g.n; k++) { const L = g.s[k] - g.s[k - 1]; if (L > 0 && Math.abs(rd.h[k] - rd.h[k - 1]) / L > .15 && nearJ1(P[k][0], P[k][1], 0) > 0) { if (!run.length) run.push(k - 1); run.push(k); } else flush(); } flush(); });
+    // 2) impalcature su qualche facciata verso strada: tubi, tavole, diagonali, rete verde, il cartello; la porta resta libera
+    const net = new THREE.MeshLambertMaterial({ color: '#3a5a3e', transparent: true, opacity: .55, side: THREE.DoubleSide, depthWrite: false }), tube = sm('#8a8c8e', { metalness: .6, roughness: .4 }), plank = sm('#8a6a44', { roughness: 1 });
+    const cand = dyn.buildings.filter(rec => rec.b && rec.box3 && !rec.shack && !rec.special && cityAt1((rec.b.x + rec.b.w / 2) * TS, (rec.b.y + rec.b.h / 2) * TS) && (rec.b.fl || 1) >= 2);
+    for (let tries = 0; tries < 60 && ni < 6 && cand.length; tries++) { const rec = pick(r, cand), b = rec.b, bb = rec.box3; if (rec.__imp) continue;
+      const sides = [[0, -1], [0, 1], [-1, 0], [1, 0]].filter(([a, c]) => { const tx = a > 0 ? b.x + b.w : a < 0 ? b.x - 1 : b.x + Math.floor(b.w / 2), ty = c > 0 ? b.y + b.h : c < 0 ? b.y - 1 : b.y + Math.floor(b.h / 2), v = G.tileAt(tx, ty); return v === T.WALK || v === T.VIA || v === T.PIAZZA; }); if (!sides.length) continue;
+      const [a, c] = pick(r, sides), along = a ? [0, 1] : [1, 0], L = a ? bb.max.z - bb.min.z : bb.max.x - bb.min.x, H = Math.min(bb.max.y - bb.min.y - .3, 9.5), y0 = bb.min.y;
+      const fx = a > 0 ? bb.max.x : a < 0 ? bb.min.x : (bb.min.x + bb.max.x) / 2, fz = c > 0 ? bb.max.z : c < 0 ? bb.min.z : (bb.min.z + bb.max.z) / 2, door = b.door ? [(b.door[0] + .5) * TS, (b.door[1] + .5) * TS] : null;
+      const gr = new THREE.Group(), lv = Math.max(2, Math.floor(H / 2)); let any = false;
+      for (let u = -L / 2 + .4; u <= L / 2 - .4; u += 1.8) { const bx = fx + along[0] * u, bz = fz + along[1] * u; if (door && Math.hypot(door[0] - bx, door[1] - bz) < 1.6) continue;
+        for (const dd of [.35, 1.35]) { const px = bx + a * dd, pz = bz + c * dd; if (onCarr1(px, pz, 0)) continue; any = true; const t1 = box(.05, H, .05, tube); t1.position.set(px, y0 + H / 2, pz); gr.add(t1); }
+        for (let l = 1; l <= lv; l++) { const yy = y0 + l * 2; if (yy > y0 + H) break; const pl = box(a ? 1.1 : 1.8, .05, a ? 1.8 : 1.1, plank); pl.position.set(bx + a * .85, yy, bz + c * .85); gr.add(pl); const rl = box(a ? .04 : 1.8, .04, a ? 1.8 : .04, tube); rl.position.set(bx + a * 1.35, yy + 1, bz + c * 1.35); gr.add(rl); }
+        const dg = box(.04, Math.hypot(1.8, 2), .04, tube); dg.position.set(bx + a * 1.38, y0 + 1, bz + c * 1.38); dg.rotation.set(a ? .73 : 0, 0, a ? 0 : .73); gr.add(dg); }
+      if (!any) continue; const nw = new THREE.Mesh(new THREE.PlaneGeometry(L - .6, H * .7), net); nw.position.set(fx + a * 1.42, y0 + H * .62, fz + c * 1.42); nw.rotation.y = a ? Math.PI / 2 : 0; gr.add(nw);
+      const sg = new THREE.Mesh(new THREE.PlaneGeometry(.75, .75), signMat1('works')); sg.position.set(fx + a * 1.45 + along[0] * (L / 2 - 1), y0 + 2.4, fz + c * 1.45 + along[1] * (L / 2 - 1)); sg.rotation.y = Math.atan2(a, c); gr.add(sg);
+      addStatic(gr); rec.__imp = true; ni++; n++; }
+    // 3) telecamere del regime: palo, braccio, telecamera che gira piano, il led rosso e il cartello della videosorveglianza
+    const camPts = []; ['piazza', 'piazza_gov', 'varco', 'muro', 'governo', 'garante', 'ministero', 'caserma'].forEach(id => { const p = G.PLACES[id]; if (p) camPts.push([p.x, p.y]); }); junc1().filter(J => J.signal).forEach(J => camPts.push([J.x, J.y]));
+    S1.cams = S1.cams || [];
+    camPts.forEach(([cx0, cz0], ci) => { for (let t = 0; t < 10; t++) { const a = ci * 1.7 + t * .9, d = 6 + t * .8, x = cx0 + Math.cos(a) * d, z = cz0 + Math.sin(a) * d; if (!okSpot1(x, z, .3)) continue;
+        const gg = G0(), gal = sm('#6a6c6e', { metalness: .5, roughness: .5 }); add(gg, cyl(.06, .08, 4.2, 8, gal), 0, 2.1, 0); add(gg, box(.9, .06, .06, gal), .45, 4.1, 0);
+        add(gg, new THREE.Mesh(new THREE.PlaneGeometry(.55, .55), signMat1('cam')), 0, 2.3, .09); add(gg, box(.5, .5, .02, sm('#4a4c4e', { metalness: .4 })), 0, 2.3, .07);
+        place(gg, x, z, a + Math.PI); const y = groundH(x, z) + 3.95, hx = x + Math.cos(-(a + Math.PI)) * .85, hz = z + Math.sin(-(a + Math.PI)) * .85;
+        const head = new THREE.Group(); add(head, box(.34, .18, .2, sm('#d8d6d0', { roughness: .5 })), .1, 0, 0); add(head, box(.4, .04, .26, sm('#b8b6b0')), .1, .11, 0); add(head, cyl(.06, .06, .04, 8, sm('#121214')), .28, 0, 0, 0, 0, Math.PI / 2);
+        const led = new THREE.Mesh(new THREE.SphereGeometry(.025, 6, 4), sb('#ff2a1a')); add(head, led, -.05, .06, .1); head.position.set(hx, y, hz); scene.add(head);
+        S1.cams.push({ head, led, base: Math.atan2(cz0 - hz, cx0 - hx), ph: ci * 1.3 }); nc++; break; } });
+    // 4) paletti: agli angoli degli incroci di città e allo sbocco dei vicoli sulle vie larghe; zona pedonale e divieto di sosta
+    const paletto = (x, z) => { const gg = G0(), ir = sm('#26282a', { metalness: .5, roughness: .5 }); add(gg, cyl(.055, .065, .9, 8, ir), 0, .45, 0); add(gg, cyl(.058, .058, .08, 8, sm('#d8d4ca', { roughness: .6 })), 0, .74, 0); add(gg, new THREE.Mesh(new THREE.SphereGeometry(.06, 8, 4, 0, 6.3, 0, 1.6), ir), 0, .9, 0); place(gg, x, z, 0); np++; };
+    junc1().forEach(J => { if (!J.city || J.arms.length < 3) return; J.arms.forEach(a => { const rx = a.uy, ry = -a.ux, d = J.r + 1, o = a.w / 2 + .4, x = J.x + a.ux * d + rx * o, z = J.y + a.uy * d + ry * o; if (swH(x, z) > .1 && okSpot1(x, z, .25)) paletto(x, z); }); });
+    (M.roads || []).forEach(rd => { if (rd.kind !== 'vicolo' || !rd.pts || rd.pts.length < 3) return; const g = geo1(rd), P = rd.pts;
+      [[0, 1], [g.n - 1, -1]].forEach(([e, dir]) => { const [x0, z0] = P[e]; if (!(M.roads || []).some(o => o !== rd && urb1(o) && o.pts.some(q => Math.hypot(q[0] - x0, q[1] - z0) < o.w / 2 + 2))) return;
+        const k = Math.max(0, Math.min(g.n - 1, e + dir * 2)), ux = g.ux[k] * dir, uz = g.uy[k] * dir, cx = P[k][0], cz = P[k][1];
+        const open = junc1().some(J => J.arms.length >= 3 && Math.hypot(J.x - cx, J.y - cz) < J.r + 9) || gT(Math.floor(cx / TS), Math.floor(cz / TS)) === T.PIAZZA;   // non dentro gli incroci larghi né sulle piazze
+        if (!open && r() < .5) [-1, 1].forEach(o => { const x = cx + uz * o * (rd.w / 4), z = cz - ux * o * (rd.w / 4); if (!solid1(x, z) && !busy1(x, z, .25) && !onCarr1(x, z, .2, rd)) paletto(x, z); });
+        if (r() < .5) { const sx = cx + uz * (rd.w / 2 - .2), sz = cz - ux * (rd.w / 2 - .2); signPost1(sx, sz, Math.atan2(-ux, -uz), [['pedzone']], r); } }); });
+    junc1().forEach(J => { if (!J.city || r() < .5) return; const a = pick(r, J.arms), rx = a.uy, ry = -a.ux, x = J.x + a.ux * (J.r + 9) + rx * (a.w / 2 + .7), z = J.y + a.uy * (J.r + 9) + ry * (a.w / 2 + .7); signPost1(x, z, Math.atan2(a.ux, a.uy), [['nopark']], r); });
+    // 5) orti nei cortili d'erba della città: aiuole di terra, cavoli e porri d'inverno, canne legate, recinto di pali, il bidone dell'acqua
+    const soil = sm('#3a2a1e', { roughness: 1 }), cab = [sm('#4a6a3a', { roughness: .9 }), sm('#5a7a48', { roughness: .9 }), sm('#6a5a7a', { roughness: .9 })], cane = sm('#a08a5a', { roughness: 1 }), done = [];
+    for (let ty = 2; ty < G.GH - 3 && no < 30; ty++) for (let tx = 2; tx < G.GW - 3 && no < 30; tx++) {
+      if (zoneT(tx, ty) !== ZN.CITTA || th(tx, ty, 6060) > .2) continue; let ok = true; for (let j = 0; j < 2 && ok; j++) for (let i = 0; i < 3 && ok; i++) { const v = gT(tx + i, ty + j); if ((v !== T.GRASS && v !== T.DIRT) || RW[(ty + j) * G.GW + tx + i] > 0) ok = false; } if (!ok) continue;
+      const cx = (tx + 1.5) * TS, cz = (ty + 1) * TS; if (done.some(([a, b]) => Math.hypot(a - cx, b - cz) < 14) || !OCC35.free(cx, cz, 2.6, 1.6)) continue; OCC35.mark(cx, cz, 2.6, 1.6); done.push([cx, cz]);
+      const gg = G0(); for (let row = 0; row < 3; row++) { const zz = -1 + row * 1; add(gg, box(4.2, .14, .7, soil), 0, .07, zz); for (let q = 0; q < 6; q++) { if (r() < .2) continue; const kind = r(); if (kind < .6) add(gg, new THREE.Mesh(new THREE.SphereGeometry(.16 + r() * .06, 6, 5), pick(r, cab)), -1.8 + q * .7, .22, zz, 0, r() * 3, 0); else { add(gg, cyl(.015, .015, 1.2, 4, cane), -1.8 + q * .7, .74, zz, (r() - .5) * .15, 0, (r() - .5) * .15); } } }
+      for (let q = 0; q < 10; q++) { const t = q / 9, px = -2.4 + t * 4.8; [-1.6, 1.6].forEach(pz => add(gg, box(.05, .7 + r() * .2, .05, log), px, .35, pz, 0, 0, (r() - .5) * .1)); } add(gg, box(4.8, .03, .03, log), 0, .55, -1.6); add(gg, box(4.8, .03, .03, log), 0, .55, 1.6);
+      add(gg, cyl(.28, .28, .85, 10, sm('#2a4a6a', { roughness: .6 })), 2.1, .43, 1.1); if (r() < .3) { add(gg, box(.05, 1.6, .05, log), -2, .8, 0); add(gg, box(.8, .05, .05, log), -2, 1.3, 0); add(gg, new THREE.Mesh(new THREE.SphereGeometry(.14, 6, 5), sm('#c8b88a')), -2, 1.65, 0); add(gg, box(.5, .6, .2, sm('#6a2a2a', { roughness: 1 })), -2, 1.1, 0); }   // spaventapasseri
+      gg.position.set(cx, groundH(cx, cz), cz); gg.rotation.y = r() < .5 ? 0 : Math.PI / 2; addStatic(gg); no++; n++; }
+    // 6) parchimetri lungo gli stalli (lato destro delle vie larghe), distributori di giornali agli angoli e davanti a bar e tabacchi
+    let npm = 0, ngz = 0; const zinc = sm('#8a8e90', { metalness: .55, roughness: .45 }), dark = sm('#2a2c30', { metalness: .4, roughness: .5 });
+    const parchimetro = (x, z, rot) => { const gg = G0(); add(gg, cyl(.04, .05, 1.05, 8, dark), 0, .52, 0); add(gg, box(.24, .34, .18, zinc), 0, 1.2, 0); add(gg, new THREE.Mesh(new THREE.SphereGeometry(.13, 10, 6, 0, 6.3, 0, 1.6), zinc), 0, 1.37, 0);
+      add(gg, box(.15, .08, .01, sm('#c8d0b0', { roughness: .2 })), 0, 1.28, .095); add(gg, box(.04, .01, .01, sm('#111111')), 0, 1.16, .095); add(gg, box(.07, .05, .02, sm('#a82a22')), .06, 1.1, .095); place(gg, x, z, rot); npm++; };
+    const GZ = [['ПРАВДА ОСТРОВА', '#8a2a24'], ['IL GARANTE', '#2a3a6a'], ['ВЕЧЕРНИЙ ПОРТ', '#c89a30'], ['섬 신문', '#3a5a3a'], ['LA SERA', '#5a5a5a']];
+    const giornali = (x, z, rot) => { const gg = G0(), k = Math.floor(r() * GZ.length), c = sm(GZ[k][1], { roughness: .6, metalness: .2 });
+      [-.22, .22].forEach(o => add(gg, box(.04, .5, .04, dark), o, .25, 0)); add(gg, box(.5, .55, .4, c), 0, .78, 0); add(gg, box(.52, .05, .42, c), 0, 1.08, 0);
+      add(gg, box(.36, .26, .01, sm('#b8c0c4', { roughness: .15, metalness: .3 })), 0, .82, .205); add(gg, new THREE.Mesh(new THREE.PlaneGeometry(.3, .2), paperM()), 0, .82, .212);
+      add(gg, new THREE.Mesh(new THREE.PlaneGeometry(.48, .1), new THREE.MeshLambertMaterial({ map: signTexture(GZ[k][0], '#f0ead8', GZ[k][1]) })), 0, 1.0, .202); add(gg, box(.1, .03, .03, zinc), 0, .64, .21);
+      if (!OCC35.free(x, z, .35, .35)) return false; OCC35.mark(x, z, .35, .35); place(gg, x, z, rot); ngz++; return true; };
+    (M.roads || []).forEach(rd => { if (!asph1(rd) || !urb1(rd) || rd.w < 8 || !rd.pts) return; const g = geo1(rd), P = rd.pts; let next = 8;
+      for (let k = 1; k < g.n; k++) { if (g.s[k] < next) continue; const [px, pz] = P[k]; if (!cityAt1(px, pz) || nearJ1(px, pz, 8) < 0) continue; next = g.s[k] + 22 + r() * 10;
+        const x = px - g.uy[k] * (rd.w / 2 + .45), z = pz + g.ux[k] * (rd.w / 2 + .45); if (swH(x, z) > .1 && okSpot1(x, z, .25)) parchimetro(x, z, Math.atan2(g.uy[k], -g.ux[k])); } });
+    junc1().forEach(J => { if (!J.city || J.arms.length < 3 || r() < .4) return; const a = pick(r, J.arms), rx = -a.uy, ry = a.ux, x0 = J.x + a.ux * (J.r + 3) + rx * (a.w / 2 + 1.2), z0 = J.y + a.uy * (J.r + 3) + ry * (a.w / 2 + 1.2), rot = Math.atan2(-rx, -ry);
+      if (swH(x0, z0) < .1 || solid1(x0, z0)) return; const k = 1 + Math.floor(r() * 3); for (let q = 0; q < k; q++) giornali(x0 + a.ux * q * .58, z0 + a.uy * q * .58, rot); });
+    doors35().forEach(d => { if (!d.bar || r() < .5 || !cityAt1(d.x, d.y)) return; for (let t = 0; t < 6; t++) { const a = t * 1.05 + r(), x = d.x + Math.cos(a) * 2.2, z = d.y + Math.sin(a) * 2.2; if (!solid1(x, z) && !onCarr1(x, z, .3) && giornali(x, z, a + Math.PI)) break; } });
+    if (window.__dbg35) console.log('[dbg] urbano1 parchimetri', npm, 'giornali', ngz);
+    if (window.__dbg35) console.log('[dbg] urbano1 scalini', ns, 'impalcature', ni, 'telecamere', nc, 'paletti', np, 'orti', no);
+    return n;
+  }
+  function tickUrbano1(time, night) { (S1.cams || []).forEach(c => { c.head.rotation.y = -(c.base + Math.sin(time * .25 + c.ph) * .9); c.led.visible = Math.sin(time * 3 + c.ph) > -.2; }); }
 
   // ================= [isola35] LA CITTÀ: SUOLO LEGGIBILE, NIENTE COMPENETRAZIONI, VERDE E COSE TROVATE PER CASO =================
   // Il suolo dice cosa è: asfalto scuro e consumato, marciapiede di lastre col cordolo di granito, vicoli di basoli storti con la
@@ -7089,7 +7264,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     const TT = (n, f) => { const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
-    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('props', buildPropsIsland); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
+    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('props', buildPropsIsland); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     if (window.Models) try { Models.attach({ scene, G, groundH }); } catch (e) { console.warn(e); }
     const mk2 = new THREE.Group();
@@ -7863,6 +8038,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (window.Models) Models.tick(st, time, night);
     tickWinter(time, night);
     tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri
+    tickUrbano1(time, night);
     dyn.spin.forEach(s => { s.o.rotation.y = time * s.speed; s.o.children.forEach(c => c.children.forEach(m => m.material.opacity = .015 + night * .06)); });
     dyn.beams.forEach(b => { b.piv.rotation.z = Math.sin(time * .6 + b.ph) * .45; b.piv.rotation.x = Math.cos(time * .45 + b.ph) * .3; b.mat.opacity = .02 + night * .13; });
     dyn.chasers.forEach(c => { const n = c.bulbs.length; c.bulbs.forEach((b, i) => b.material.color.set(((i + Math.floor(time * 8)) % 3) === 0 ? '#fff4c0' : '#6a4a20')); });
