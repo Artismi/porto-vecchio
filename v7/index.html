@@ -17004,6 +17004,44 @@ var Guardaroba = (function () {
     ['paraspalle', 'paraspalle di cuoio', 'Paraspalle', 'spalle', [], 0, '#4a3a2a', 8, 1, 0, { acc: 'paraspalle', arm: .05 }],
     ['paraginocchia', 'paraginocchia', 'Ginocchiere', 'ginocchia', [], 0, '#2a2a2e', 5, .6, 0, { acc: 'paraginocchia', arm: .03 }],
     ['zaino', 'zaino militare', 'Zaino', 'schiena', [], 0, '#4a5a3a', 8, 1, 0, { acc: 'zaino' }],
+    // --- il guardaroba largo: completi, pellicce, sport, estate, donna, accessori ---
+    ['polo', 'polo', 'Polo', 'busto', [T, B], .009, '#2a5a4a', 4, .2, .05, { acc: 'colletto' }],
+    ['camicia_hawaii', 'camicia a fiori', 'Hawaiana', 'busto', [T, B], .009, '#c8583a', 5, .2, 0, { pat: 'fiori' }],
+    ['maglia_calcio', 'maglia da calcio', 'Maglia calcio', 'busto', [T, B], .009, '#1e3a8a', 4, .2, .02, { pat: 'righe_v' }],
+    ['felpa_zip', 'felpa sportiva con la zip', 'Felpa tuta', 'busto', [T, B, A], .016, '#7a1e2a', 7, .5, .15, { pat: 'bande' }],
+    ['giacca_completo', 'giacca del completo', 'Giacca compl.', 'busto', [T, B, A, H], .02, '#2a2e3a', 25, 1.2, .2, { acc: 'risvolti' }],
+    ['pelliccia', 'pelliccia maculata', 'Pelliccia', 'busto', [T, B, A, H, C], .05, '#c8a060', 60, 3, .7, { pat: 'maculato' }],
+    ['pelliccia_volpe', 'pelliccia di volpe', 'Volpe', 'busto', [T, B, A, H], .055, '#a8642e', 70, 2.5, .65, { pat: 'pelo' }],
+    ['poncho', 'poncho di lana', 'Poncho', 'busto', [T, B, A, H], .045, '#8a3a2a', 9, 1.2, .35, { pat: 'righe' }],
+    ['vestito_corto', 'vestito corto', 'Vestito corto', 'busto', [T, H, C], .012, '#3a1e3a', 12, .4, .05],
+    ['vestito_lungo', 'vestito lungo', 'Vestito lungo', 'busto', [T, B, H, C, P], .014, '#1e2a3a', 18, .7, .1],
+    ['vestito_fiori', 'vestitino a fiori', 'A fiori', 'busto', [T, H, C], .012, '#e8d8b8', 10, .4, .05, { pat: 'fiori' }],
+    ['tuta_ginnastica', 'tuta da ginnastica', 'Tuta ginn.', 'busto', [T, B, A, H, C, P], .015, '#2a3a7a', 9, .9, .12, { pat: 'bande' }],
+    ['cargo', 'pantaloni cargo', 'Cargo', 'gambe', [H, C, P], .017, '#4a5038', 9, 1, .15, { acc: 'tasconi' }],
+    ['pantaloni_completo', 'pantaloni del completo', 'Pant. compl.', 'gambe', [H, C, P], .013, '#2a2e3a', 15, .7, .12],
+    ['bermuda', 'bermuda', 'Bermuda', 'gambe', [H, C], .013, '#7a8a5a', 4, .4, 0, { pat: 'quadretti' }],
+    ['minigonna', 'minigonna di jeans', 'Minigonna', 'gambe', [H], .016, '#3a5a8a', 6, .3, 0],
+    ['leggings', 'fuseaux fosforescenti', 'Fuseaux', 'gambe', [H, C, P], .004, '#d83a8a', 4, .2, .05],
+    ['sandali', 'sandali', 'Sandali', 'piedi', [F], .008, '#6a4a2a', 4, .4, 0],
+    ['tacchi', 'scarpe col tacco', 'Tacchi', 'piedi', [F], .012, '#8a1e2a', 18, .5, 0, { acc: 'tacco' }],
+    ['scarpe_corsa', 'scarpe da corsa', 'Da corsa', 'piedi', [F], .016, '#ece8e0', 14, .6, .03, { pat: 'bande' }],
+    ['stivali_pelle', 'stivali di pelle', 'Stivali pelle', 'piedi', [F, P], .016, '#2a1a14', 24, 1.5, .1],
+    ['mocassini', 'mocassini', 'Mocassini', 'piedi', [F], .012, '#5a2e1a', 16, .5, .02],
+    ['cravatta', 'cravatta', 'Cravatta', 'collo', [], 0, '#7a1a1e', 6, .1, 0, { acc: 'cravatta' }],
+    ['papillon', 'papillon', 'Papillon', 'collo', [], 0, '#141418', 5, .05, 0, { acc: 'papillon' }],
+    ['collana_oro', 'catenone d\'oro', 'Catenone', 'collo', [], 0, '#e8c040', 60, .2, 0, { acc: 'collana' }],
+    ['collana_perle', 'collana di perle', 'Perle', 'collo', [], 0, '#f0ece2', 40, .1, 0, { acc: 'perle' }],
+    ['sciarpa_righe', 'sciarpa a righe', 'Sciarpa righe', 'collo', [], .03, '#2a5a3a', 4, .2, .12, { acc: 'sciarpa' }],
+    ['foulard', 'foulard di seta', 'Foulard collo', 'collo', [], 0, '#c8983a', 12, .05, .02, { acc: 'foulard' }],
+    ['occhiali_sole', 'occhiali da sole a goccia', 'Ray-Ban', 'testa', [], 0, '#141418', 20, .05, 0, { acc: 'occhiali' }],
+    ['cappellino', 'cappellino da baseball', 'Cappellino', 'testa', [], 0, '#2a3a7a', 3, .1, .02, { acc: 'cap' }],
+    ['basco', 'basco', 'Basco', 'testa', [], 0, '#1e1e24', 4, .1, .05, { acc: 'basco' }],
+    ['fascia', 'fascia per capelli', 'Fascia', 'testa', [], 0, '#e83a6a', 1, .02, 0, { acc: 'fascia' }],
+    ['orologio_polso', 'orologio da polso', 'Orologio', 'mani', [], 0, '#c8c8cc', 25, .1, 0, { acc: 'orologio' }],
+    ['anelli', 'anelli d\'oro', 'Anelli', 'mani', [], 0, '#e8c040', 30, .05, 0, { acc: 'anelli' }],
+    ['marsupio', 'marsupio', 'Marsupio', 'schiena', [], 0, '#3a3a6a', 5, .3, 0, { acc: 'marsupio' }],
+    ['borsetta', 'borsetta', 'Borsetta', 'schiena', [], 0, '#6a1e2a', 15, .4, 0, { acc: 'borsetta' }],
+
   ];
   const CAPO = {};
   CAPI.forEach(([id, nome, corto, zona, parti, sp, col, prezzo, peso, calore, ex]) => {
@@ -17016,11 +17054,14 @@ var Guardaroba = (function () {
   const sell = (ref, ids) => { const row = O.SHOPLIST.find(r => r[0] === ref); if (row) ids.forEach(id => { if (!row[1].includes(id)) row[1].push(id); }); };
   sell('use:sartoria', ['canotta', 'maglietta', 'camicia', 'camicia_quadri', 'dolcevita', 'felpa', 'gilet', 'giacca', 'impermeabile', 'mutande', 'pantaloni', 'velluto', 'gonna', 'calzamaglia', 'calzini', 'scialle', 'coppola', 'cappello', 'fazzoletto', 'sciarpa', 'guanti_lana']);
   sell('use:emporio', ['canotta', 'mutande', 'calzini', 'maglietta', 'pantaloni_lavoro', 'scarpe_tela', 'ciabatte', 'berretto', 'grembiule', 'tuta']);
-  sell('villaggio', ['colbacco', 'montone', 'calzamaglia']);
-  O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['jeans', 'giubbotto_jeans', 'giacca_pelle', 'piumino', 'scarpe_eleganti', 'maglietta_righe', 'casco', 'paraginocchia', 'paraspalle'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
+  sell('villaggio', ['colbacco', 'montone', 'calzamaglia', 'poncho']);
+  sell('use:sartoria', ['polo', 'giacca_completo', 'pantaloni_completo', 'cravatta', 'papillon', 'vestito_corto', 'vestito_lungo', 'vestito_fiori', 'minigonna', 'basco', 'foulard', 'sciarpa_righe', 'mocassini', 'tacchi', 'borsetta']);
+  sell('use:emporio', ['bermuda', 'sandali', 'cappellino', 'fascia', 'leggings', 'tuta_ginnastica', 'scarpe_corsa', 'felpa_zip', 'maglia_calcio', 'marsupio']);
+  O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['jeans', 'giubbotto_jeans', 'giacca_pelle', 'piumino', 'scarpe_eleganti', 'maglietta_righe', 'casco', 'paraginocchia', 'paraspalle', 'pelliccia', 'pelliccia_volpe', 'collana_oro', 'occhiali_sole', 'camicia_hawaii', 'cargo', 'stivali_pelle', 'orologio_polso', 'anelli', 'collana_perle'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   if (O.LOOT) { const add = (k, l) => { O.LOOT[k] = (O.LOOT[k] || []).concat(l); };
     add('bookcaseClosedWide', [['canotta', .3, 1, 2], ['mutande', .3, 1, 2], ['calzini', .3, 1, 3], ['camicia', .2, 1, 1], ['pantaloni', .15, 1, 1], ['dolcevita', .08, 1, 1], ['gonna', .1, 1, 1], ['camicia_quadri', .1, 1, 1]]);
-    add('coatRackStanding', [['coppola', .2, 1, 1], ['cappello', .15, 1, 1], ['giacca', .15, 1, 1], ['montone', .05, 1, 1]]); }
+    add('bookcaseClosedWide', [['polo', .1, 1, 1], ['vestito_corto', .08, 1, 1], ['vestito_lungo', .05, 1, 1], ['cravatta', .15, 1, 2], ['bermuda', .1, 1, 1], ['camicia_hawaii', .04, 1, 1], ['pelliccia', .02, 1, 1], ['collana_perle', .02, 1, 1]]);
+    add('coatRackStanding', [['occhiali_sole', .05, 1, 1], ['borsetta', .06, 1, 1], ['coppola', .2, 1, 1], ['cappello', .15, 1, 1], ['giacca', .15, 1, 1], ['montone', .05, 1, 1]]); }
 
   // ---------------- ADDOSSO ----------------
   // st.ogg.worn = { busto: [dentro → fuori], …, dx/sx: le mani (la destra è quella del motore: arma o attrezzo) }
@@ -17127,7 +17168,12 @@ var Guardaroba = (function () {
     else if (age < 26) { put(r(8, 2) ? 'felpa' : 'maglione', pk(PAL, 8)); put(r(9, 3) ? 'giubbotto_jeans' : r(9, 2) ? 'giacca_pelle' : 'piumino', top); put(r(10, 2) ? 'scarpe_tela' : 'scarpe'); if (r(11, 3) === 0) put('berretto', pk(PAL, 12)); }
     else if (fem) { put('camicia', pk(['#f0ece2', '#e8d8d0', '#d8e0e8'], 8)); put(r(8, 2) ? 'maglione' : 'scialle', pk(PAL, 9)); put('cappotto', top); put(age > 50 ? 'scarpe_eleganti' : 'scarpe_tela', '#2a2020'); if (age > 50 || r(10, 2)) put('fazzoletto', pk(['#8a3a5a', '#3a5a8a', '#6a4a2a', '#2a2a2e'], 11)); }
     else { put(r(8, 2) ? 'camicia' : 'camicia_quadri', pk(['#f0ece2', '#8a2a24', '#2a4a6a'], 7)); put('maglione', pk(PAL, 9)); put(r(10, 2) ? 'giacca' : 'cappotto', top); put('scarpe'); if (r(11, 3) === 0) put(pk(['coppola', 'berretto', 'cappello'], 12)); if (r(12, 3) === 0) put('sciarpa', pk(['#a83a3a', '#2a2a2e', '#3a5a8a'], 13)); }
-    if (n.faction && /famiglia|marsiglia|squalo/.test(n.faction)) { o.forEach(x => { if (x.id === 'cappotto' || x.id === 'giacca') x.col = '#1a1a1e'; }); put('guanti'); }
+    if (n.faction && /famiglia|marsiglia|squalo/.test(n.faction)) { o.forEach(x => { if (x.id === 'cappotto' || x.id === 'giacca') x.col = '#1a1a1e'; }); put('guanti'); put(r(15, 2) ? 'collana_oro' : 'cravatta'); if (r(16, 3) === 0) put('occhiali_sole'); if (r(17, 4) === 0) { const c0 = o.find(x => x.id === 'cappotto'); if (c0) Object.assign(c0, CAPO.pelliccia_volpe); } }
+    // un tocco a testa: l'accessorio che li fa ricordare
+    if (rich && fem && r(18, 3) === 0) { const c0 = o.find(x => /cappotto|giacca/.test(x.id)); if (c0) Object.assign(c0, CAPO.pelliccia, { col: '#c8a060' }); put('collana_perle'); put('borsetta'); }
+    if (rich && !fem && r(18, 4) === 0) { put('orologio_polso'); put('anelli'); }
+    if (age < 30 && r(19, 4) === 0) put(pk(['occhiali_sole', 'cappellino', 'fascia', 'marsupio'], 20));
+    if (/impieg|banc|notai|avvoc|ragion/.test(job)) { const i = o.findIndex(x => x.id === 'giacca'); if (i >= 0) o[i] = Object.assign({}, CAPO.giacca_completo, { col: o[i].col }); const j = o.findIndex(x => /^pantaloni/.test(x.id)); if (j >= 0) o[j] = Object.assign({}, CAPO.pantaloni_completo, { col: o[i >= 0 ? i : j].col }); put('cravatta', pk(['#7a1a1e', '#1e2a5a', '#2a2a2e', '#5a4a1e'], 21)); }
     if ((L.extra || '').includes('backpack')) put('zaino', pk(['#2f5a6a', '#8a3a2a', '#3a4a2a', '#c8862a'], 14));
     return o;
   }
@@ -26072,8 +26118,19 @@ var Vesti3D = (function () {
 
   // ---------------- I GUSCI ----------------
   const tmpC = new THREE.Color();
-  const pat = (g, c, cx, cy, cz, out) => {   // motivi per triangolo: righe, quadri
-    tmpC.set(c);
+  const th = t => { let h = (t * 2654435761) >>> 0; h ^= h >>> 13; return (h % 1000) / 1000; };
+  const FIORI = ['#e8c040', '#e85a8a', '#f0ece2', '#3a8a5a'];
+  const pat = (g, c, cx, cy, cz, out, t, part) => {   // motivi per triangolo: righe, quadri, maculato, fiori…
+    tmpC.set(c); const q = th(t), limb = /braccia|avambracci|cosce|polpacci/.test(part || '');
+    switch (g.pat) {
+      case 'righe': if (Math.floor(cy * 14) % 2) tmpC.multiplyScalar(.62); break;
+      case 'righe_v': if (Math.floor((cx + cz) * 40) % 2) tmpC.set('#ece8dc'); break;
+      case 'bande': if (limb && Math.floor((cx + cz) * 60) % 3 === 0) tmpC.set('#ece8dc'); break;
+      case 'maculato': if (q < .28) tmpC.set('#3a2414'); else if (q < .4) tmpC.multiplyScalar(.75); break;
+      case 'pelo': tmpC.multiplyScalar(.8 + q * .4); break;
+      case 'fiori': if (q < .3) tmpC.set(FIORI[Math.floor(q * 13) % 4]); break;
+      case 'quadretti': if ((Math.floor(cy * 24) + Math.floor((cx + cz) * 30)) % 2) tmpC.multiplyScalar(.75); break;
+    }
     if (g.id === 'maglietta_righe' && Math.floor(cy * 9) % 2) tmpC.set('#ece8dc');
     if (g.id === 'camicia_quadri' && (Math.floor(cy * 7) + Math.floor((cx + cz) * 7)) % 2) tmpC.multiplyScalar(.6);
     if (g.id === 'velluto' && Math.floor((cx + cz) * 24) % 2) tmpC.multiplyScalar(.85);
@@ -26093,7 +26150,7 @@ var Vesti3D = (function () {
         let G0 = null; for (let k = L.length - 1; k >= 0; k--) { const S0 = L[k].set; if ((S0.has(A.part[a]) + S0.has(A.part[b]) + S0.has(A.part[d])) >= 2) { G0 = L[k]; break; } }
         if (!G0) continue; const c = G0.c;
         const cx = (A.pos.getX(a) + A.pos.getX(b) + A.pos.getX(d)) / 3, cy = ((A.pos.getY(a) + A.pos.getY(b) + A.pos.getY(d)) / 3 - A.ymin) / ((A.ymax - A.ymin) || 1), cz = (A.pos.getZ(a) + A.pos.getZ(b) + A.pos.getZ(d)) / 3;
-        pat(c, c.col, cx * unit, cy, cz * unit, col);
+        pat(c, c.col, cx * unit, cy, cz * unit, col, t / 3, A.part[a]);
         const lift = c.id === 'gonna' ? 2.2 : c.id === 'cappotto' || c.id === 'impermeabile' ? 1.3 : 1;
         for (const v of [a, b, d]) {
           const k = (A.part[v] === 'cosce' || A.part[v] === 'bacino') ? G0.off * lift : G0.off;
@@ -26107,14 +26164,13 @@ var Vesti3D = (function () {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
       geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(SI, 4)); geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(SW, 4)); geo.setAttribute('color', new THREE.Float32BufferAttribute(CO, 3));
-      geo.computeVertexNormals();
       const m = new THREE.SkinnedMesh(geo, MAT()); m.userData.vesti = true; m.castShadow = true; m.frustumCulled = false;
       m.position.copy(src.position); m.quaternion.copy(src.quaternion); m.scale.copy(src.scale);
       src.parent.add(m); m.bind(src.skeleton, src.bindMatrix); out.push(m);
     });
     return out;
   }
-  let _mat = null; const MAT = () => _mat || (_mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: new THREE.Color('#181614') }));
+  let _mat = null; const MAT = () => _mat || (_mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: new THREE.Color('#181614'), side: THREE.DoubleSide }));
 
   // ---------------- I PEZZI AGGANCIATI ----------------
   const sh = (c, k) => '#' + new THREE.Color(c).multiplyScalar(k).getHexString();
@@ -26149,14 +26205,35 @@ var Vesti3D = (function () {
   function accessories(g, outfit, held) {
     const m = g.children.find(o => o.userData && o.userData.body) || g; const root = g;
     const bone = n => { let b = null; root.traverse(o => { if (!b && o.isBone && o.name === n) b = o; }); return b; };
-    const head = bone('Head'), neck = bone('Neck'), chest = bone('Chest'), shL = bone('UpperArmL'), shR = bone('UpperArmR'), knL = bone('LowerLegL'), knR = bone('LowerLegR'), wL = bone('WristL');
+    const head = bone('Head'), neck = bone('Neck'), chest = bone('Chest'), shL = bone('UpperArmL'), shR = bone('UpperArmR'), knL = bone('LowerLegL'), knR = bone('LowerLegR'), wL = bone('WristL'), wR = bone('WristR'), hips = bone('Hips'), ftL = bone('FootL'), ftR = bone('FootR'), ulL = bone('UpperLegL'), ulR = bone('UpperLegR');
     let kh = 0;
     outfit.forEach(c => {
       if (!c.acc) return;
       if (/beanie|flat|fedora|scarf|ushanka|casco|elmetto|passamontagna|antigas/.test(c.acc) && head) { const hp = wpos(g, head); pin(g, head, headAcc(c.acc, c.col, kh++), hp.x, hp.y + .19, hp.z + .01); }
-      if (c.acc === 'sciarpa' && (neck || chest)) { const b = neck || chest, p = wpos(g, b), s = new THREE.Group(); const t = new THREE.Mesh(new THREE.TorusGeometry(.1, .045, 8, 14), lm(c.col)); t.rotation.x = Math.PI / 2; s.add(t, Bx(.08, .26, .03, c.col, .05, -.14, .1)); pin(g, b, s, p.x, p.y + (neck ? .02 : .22), p.z); }
+      if (c.acc === 'sciarpa' && (neck || chest)) { const b = neck || chest, p = wpos(g, b), s = new THREE.Group(); const t = new THREE.Mesh(new THREE.TorusGeometry(.1, .045, 8, 14), lm(c.col)); t.rotation.x = Math.PI / 2; s.add(t, Bx(.08, .26, .03, c.col, .05, -.14, .1)); if (c.id === 'sciarpa_righe') [0, 1, 2].forEach(i => s.add(Bx(.085, .03, .035, '#ece8dc', .05, -.06 - i * .07, .1))); pin(g, b, s, p.x, p.y + (neck ? .02 : .22), p.z); }
       if (c.acc === 'paraspalle') [shL, shR].forEach((b, i) => { if (!b) return; const p = wpos(g, b), s = new THREE.Group(); const sp = Sp(.1, c.col, 0, 0, 0, true); sp.scale.set(1.1, .7, 1.1); s.add(sp); pin(g, b, s, p.x + (i ? -.03 : .03) * 0, p.y + .03, p.z); });
       if (c.acc === 'paraginocchia') [knL, knR].forEach(b => { if (!b) return; const p = wpos(g, b); pin(g, b, Bx(.11, .13, .05, c.col), p.x, p.y + .02, p.z + .08); });
+      const at = (b, f) => { if (!b) return; const p = wpos(g, b), s = new THREE.Group(); f(s); return [p, s]; };
+      const put = (b, dx, dy, dz, f) => { const r = at(b, f); if (r) pin(g, b, r[1], r[0].x + dx, r[0].y + dy, r[0].z + dz); };
+      if (/^(cap|basco|fascia)$/.test(c.acc) && head) { const hp = wpos(g, head), s = new THREE.Group(); const k = 1 + kh++ * .09;
+        if (c.acc === 'cap') s.add(Sp(.135, c.col, 0, -.03, 0, true), Bx(.16, .015, .13, c.col, 0, -.03, .16));
+        if (c.acc === 'basco') { const b0 = Cy(.15, .13, .04, c.col, .02, 0, 0, 14); b0.rotation.z = -.15; s.add(b0, Cy(.01, .01, .03, c.col, .02, .03, 0, 6)); }
+        if (c.acc === 'fascia') s.add(Cy(.142, .142, .035, c.col, 0, -.07, 0, 14));
+        s.scale.setScalar(k); pin(g, head, s, hp.x, hp.y + .19, hp.z + .01); }
+      if (c.acc === 'occhiali' && head) { const hp = wpos(g, head); put(head, 0, .085, .125, s => { s.add(Bx(.08, .045, .012, c.col, -.045, 0, 0), Bx(.08, .045, .012, c.col, .045, 0, 0), Bx(.2, .01, .01, '#c8b060', 0, .02, 0)); }); }
+      if (c.acc === 'cravatta') put(chest, 0, .14, .135, s => { s.add(Bx(.05, .04, .02, c.col, 0, .04, 0), Bx(.055, .26, .015, c.col, 0, -.11, 0)); });
+      if (c.acc === 'papillon') put(chest, 0, .2, .13, s => { s.add(Bx(.11, .045, .02, c.col)); });
+      if (c.acc === 'collana') put(chest, 0, .1, .12, s => { const t = new THREE.Mesh(new THREE.TorusGeometry(.1, .012, 6, 18), lm(c.col)); t.rotation.x = 1.2; s.add(t); });
+      if (c.acc === 'perle') put(chest, 0, .13, .1, s => { for (let i = 0; i < 12; i++) { const a = Math.PI * (i / 11) + Math.PI; s.add(Sp(.014, c.col, Math.cos(a) * .1, Math.sin(a) * .07, .03)); } });
+      if (c.acc === 'foulard') put(neck || chest, 0, neck ? -.02 : .2, .08, s => { const b0 = Bx(.13, .1, .02, c.col); b0.rotation.z = Math.PI / 4; s.add(b0); });
+      if (c.acc === 'colletto') put(chest, 0, .21, .05, s => { s.add(Bx(.22, .04, .2, c.col)); });
+      if (c.acc === 'risvolti') put(chest, 0, .08, .145, s => { const a = Bx(.05, .22, .01, sh(c.col, .8), -.05, 0, 0), b0 = Bx(.05, .22, .01, sh(c.col, .8), .05, 0, 0); a.rotation.z = .25; b0.rotation.z = -.25; s.add(a, b0, Bx(.04, .2, .012, '#ece8dc', 0, .02, -.004)); });
+      if (c.acc === 'tasconi') [ulL, ulR].forEach((b, i) => put(b, 0, -.18, 0, s => { s.add(Bx(.04, .12, .11, c.col, i ? -.1 : .1, 0, 0)); }));
+      if (c.acc === 'tacco') [ftL, ftR].forEach(b => put(b, 0, -.05, -.07, s => { s.add(Bx(.03, .07, .03, c.col)); }));
+      if (c.acc === 'orologio') put(wL, 0, 0, 0, s => { s.add(Cy(.04, .04, .03, '#2a2a2e', 0, 0, 0, 10), Cy(.025, .025, .035, c.col, 0, 0, 0, 10)); });
+      if (c.acc === 'anelli') [wL, wR].forEach(b => put(b, 0, -.07, .02, s => { s.add(Bx(.04, .02, .03, c.col)); }));
+      if (c.acc === 'marsupio') put(hips, 0, .05, .13, s => { s.add(Bx(.22, .1, .08, c.col), Bx(.4, .025, .25, '#1e1e24', 0, 0, -.08)); });
+      if (c.acc === 'borsetta') put(shL || chest, .1, -.35, 0, s => { s.add(Bx(.2, .14, .07, c.col), Bx(.01, .45, .01, '#2a1a14', 0, .28, 0)); });
       if (c.acc === 'zaino' && chest) { const p = wpos(g, chest), s = new THREE.Group(); s.add(Bx(.32, .4, .16, c.col), Bx(.26, .12, .05, '#2a2a22', 0, -.08, -.1), Bx(.3, .08, .17, '#3a3a2e', 0, .18, 0)); pin(g, chest, s, p.x, p.y - .05, p.z - .2); }
     });
     // nella sinistra
@@ -26342,7 +26419,107 @@ var MenuUI = (function () {
   }
   const ic = (id, w) => `<canvas class="ic" width="${w || 16}" height="16" data-ic="${esc(id)}"></canvas>`;
   const wideIcon = id => typeof TascheUI !== 'undefined' && TascheUI.ICONS && TascheUI.ICONS[id] && LONG.test(id);
-  function paintAll(root) { root.querySelectorAll('canvas[data-ic]').forEach(c => icon(c, c.dataset.ic)); root.querySelectorAll('canvas[data-fig]').forEach(c => figure(c)); root.querySelectorAll('canvas[data-shop]').forEach(c => shopScene(c, c.dataset.shop, c.dataset.who)); }
+
+  // =====================================================================================================================
+  // ANTEPRIME 3D: ogni oggetto ha la sua fotina. I vestiti indossati da un manichino (il modello di Nino), le armi coi modelli
+  // del gioco, il resto con un piccolo modello per famiglia (bottiglia, latta, sacco, attrezzo…) e il colore dell'oggetto.
+  // Si fanno poche per fotogramma e restano in memoria (TH).
+  // =====================================================================================================================
+  const TH = new Map(), THQ = [], THS = 128;
+  const thumb = id => TH.get(id) || (THQ.includes(id) || THQ.push(id), null);
+  function mini(id) {
+    const T = THREE, g = new T.Group(), [s, c0] = fam(id), c = TINTS[id] || c0 || hex(tint(id)), t = hex(tint(id));
+    const M = (col, o) => new T.MeshStandardMaterial(Object.assign({ color: col, roughness: .7, metalness: 0 }, o || {}));
+    const add = (geo, col, x, y, z, o, rx, ry, rz) => { const m = new T.Mesh(geo, M(col, o)); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); g.add(m); return m; };
+    const Bo = (w, h, d) => new T.BoxGeometry(w, h, d), Cl = (a, b, h, n) => new T.CylinderGeometry(a, b, h, n || 18), Sf = (r, w, h) => new T.SphereGeometry(r, w || 18, h || 12), To = (r, tb, a, b) => new T.TorusGeometry(r, tb, a || 10, b || 24);
+    const GL = { metalness: .1, roughness: .15, transparent: true, opacity: .88 }, MET = { metalness: .7, roughness: .35 };
+    switch (s) {
+      case 'bottiglia': add(Cl(.16, .17, .55), c, 0, .28, 0, GL); add(Cl(.07, .16, .14), c, 0, .62, 0, GL); add(Cl(.05, .055, .16), c, 0, .76, 0, GL); add(Cl(.055, .055, .05), '#2a2a2e', 0, .86); add(Cl(.172, .172, .2), '#f0ead8', 0, .3, 0); break;
+      case 'latta': add(Cl(.22, .22, .42, 24), '#b8bcc4', 0, .21, 0, MET); add(Cl(.225, .225, .3, 24), t, 0, .21, 0); add(Cl(.2, .2, .02, 24), '#d8dce4', 0, .43, 0, MET); break;
+      case 'pane': { const b = add(Sf(.3), '#b8742e', 0, .16, 0); b.scale.set(1.5, .55, .8); [-.2, 0, .2].forEach(x => { const k = add(Bo(.04, .02, .3), '#e8b868', x, .3, 0); k.rotation.y = .5; }); break; }
+      case 'sacco': { const b = add(Sf(.3), c, 0, .28, 0); b.scale.set(1, 1.05, .8); add(Cl(.06, .12, .14), c, 0, .6, 0); add(Cl(.07, .07, .03), '#5a4428', 0, .58, 0); add(Bo(.22, .14, .01), t, 0, .3, .24); break; }
+      case 'tondo': [[0, .14, 0], [.2, .13, .08], [-.18, .13, .1], [.05, .32, .05]].forEach(([x, y, z], i) => { const b = add(Sf(.15), i % 2 ? sh(c, .85) : c, x, y, z); b.scale.y = .9; }); add(Cl(.012, .012, .08), '#4a7a3a', .05, .48, .05); break;
+      case 'pesce': { const b = add(Sf(.2), c, 0, .16, 0, { metalness: .4, roughness: .3 }); b.scale.set(2, .7, .6); add(Cl(0, .14, .2, 4), c, .48, .16, 0, {}, 0, 0, Math.PI / 2); add(Sf(.025), '#111', -.3, .2, .1); break; }
+      case 'carne': { const b = add(Bo(.5, .2, .36), c, 0, .1, 0); add(Bo(.12, .21, .1), '#f0d8d0', .08, .1, .05); break; }
+      case 'formaggio': add(new T.CylinderGeometry(.3, .3, .22, 24, 1, false, 0, Math.PI * 1.6), c, 0, .11, 0); [[.1, .16, .1], [-.1, .1, .15]].forEach(([x, y, z]) => add(Sf(.035), sh(c, .8), x, y, z)); break;
+      case 'tazza': add(Cl(.16, .13, .26), '#f0ece2', 0, .13, 0); add(Cl(.14, .14, .01), c, 0, .25, 0); add(To(.08, .02), '#f0ece2', .18, .14, 0); add(Cl(.26, .26, .02), '#f0ece2', 0, .01, 0); break;
+      case 'tronco': [[0, .11, 0], [.12, .11, .2], [.06, .3, .1]].forEach(([x, y, z]) => { add(Cl(.11, .11, .7, 10), c, x, y, z, {}, 0, 0, Math.PI / 2); add(Cl(.1, .1, .01, 10), '#d8b080', x + .355, y, z, {}, 0, 0, Math.PI / 2); }); break;
+      case 'mucchio': for (let i = 0; i < 9; i++) { const b = add(new T.DodecahedronGeometry(.1 + (i % 3) * .03), c, Math.cos(i * 2.3) * .2, .08 + Math.floor(i / 5) * .12, Math.sin(i * 2.3) * .2, { roughness: .9 }); b.rotation.set(i, i * 2, 0); } break;
+      case 'mattone': [[0, .07, 0], [.42, .07, 0], [.2, .21, 0]].forEach(([x, y, z]) => add(Bo(.4, .13, .2), c, x - .2, y, z, { roughness: .95 })); break;
+      case 'lastra': [0, 1, 2].forEach(i => { const b = add(Bo(.8, .025, .55), i % 2 ? sh(c, .85) : c, 0, .02 + i * .03, 0, MET); b.rotation.y = i * .12; }); break;
+      case 'viti': for (let i = 0; i < 7; i++) { const x = Math.cos(i * 1.7) * .2, z = Math.sin(i * 1.7) * .2; const v = add(Cl(.02, .02, .22), c, x, .02, z, MET, 0, 0, Math.PI / 2); v.rotation.y = i; add(Cl(.045, .045, .02), c, x + .1, .02, z, MET, 0, 0, Math.PI / 2); } break;
+      case 'corda': for (let i = 0; i < 4; i++) add(To(.24 - i * .015, .035, 8, 26), i % 2 ? sh(c, .85) : c, 0, .04 + i * .06, 0, {}, Math.PI / 2); break;
+      case 'martello': add(Cl(.03, .035, .7), '#8a5a2a', 0, .03, 0, {}, 0, 0, Math.PI / 2); add(Bo(.1, .1, .32), c, .32, .05, 0, MET); break;
+      case 'chiave': add(Bo(.6, .03, .07), c, 0, .02, 0, MET); add(To(.07, .025, 8, 16), c, .32, .02, 0, MET, Math.PI / 2); add(Bo(.1, .03, .16), c, -.32, .02, 0, MET); break;
+      case 'lama': add(Bo(.38, .015, .07), '#c8ccd4', .12, .03, 0, MET); add(Bo(.22, .04, .06), c, -.2, .03, 0); break;
+      case 'sega': add(Bo(.62, .01, .17), '#c8ccd4', .08, .02, 0, MET); add(Bo(.16, .05, .2), c, -.3, .03, 0); break;
+      case 'ascia': add(Cl(.03, .035, .8), '#8a5a2a', 0, .03, 0, {}, 0, 0, Math.PI / 2); add(Bo(.12, .04, .26), '#9aa0a8', .34, .03, .08, MET); break;
+      case 'pala': add(Cl(.025, .025, .7), '#8a5a2a', -.12, .03, 0, {}, 0, 0, Math.PI / 2); add(Bo(.28, .02, .24), '#9aa0a8', .36, .02, 0, MET); break;
+      case 'pila': [-.12, .12].forEach(x => { add(Cl(.09, .09, .42), c, x, .21, 0); add(Cl(.035, .035, .04), '#c8ccd4', x, .44, 0, MET); }); break;
+      case 'radio': add(Bo(.62, .36, .2), c, 0, .18, 0); add(Bo(.26, .22, .01), '#2a2a2e', -.13, .19, .1); add(Bo(.2, .06, .01), '#e8c040', .17, .25, .1); add(Cl(.008, .008, .5), '#c8ccd4', .25, .55, 0, MET, 0, 0, .3); break;
+      case 'scatola': add(Bo(.55, .42, .4), c, 0, .21, 0); add(Bo(.38, .26, .01), '#1a2a2a', -.03, .23, .2, { emissive: '#3a6a6a', emissiveIntensity: .4 }); break;
+      case 'lampadina': add(Sf(.18), c, 0, .3, 0, { emissive: c, emissiveIntensity: .5 }); add(Cl(.08, .08, .12), '#c8ccd4', 0, .1, 0, MET); break;
+      case 'carta': [0, 1, 2, 3].forEach(i => { const b = add(Bo(.42, .01, .56), i === 3 ? '#f4efe2' : '#e8e2d2', 0, .01 + i * .012, 0); b.rotation.y = (i - 1.5) * .06; }); add(Bo(.3, .002, .06), t, 0, .06, -.18); [0, 1, 2].forEach(i => add(Bo(.3, .002, .02), '#8a8690', 0, .06, -.06 + i * .07)); break;
+      case 'medicina': add(Bo(.5, .3, .32), '#f2eee6', 0, .15, 0); add(Bo(.08, .2, .01), c, 0, .16, .165); add(Bo(.2, .08, .01), c, 0, .16, .165); break;
+      case 'siringa': add(Cl(.04, .04, .4), '#d8e4ec', 0, .04, 0, GL, 0, 0, Math.PI / 2); add(Cl(.035, .035, .25), c, -.05, .04, 0, {}, 0, 0, Math.PI / 2); add(Cl(.005, .005, .15), '#c8ccd4', .27, .04, 0, MET, 0, 0, Math.PI / 2); break;
+      case 'sapone': { const b = add(Bo(.42, .16, .28), c, 0, .08, 0); add(Sf(.04), '#ffffff', .1, .22, .05, GL); add(Sf(.03), '#ffffff', -.05, .25, -.02, GL); break; }
+      case 'sedia': add(Bo(.4, .04, .4), c, 0, .4, 0); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => add(Bo(.04, .4, .04), c, a * .17, .2, b * .17)); add(Bo(.4, .4, .04), c, 0, .62, -.18); break;
+      case 'arma': add(Bo(.5, .1, .07), '#3a3a40', 0, .25, 0, MET); add(Bo(.12, .22, .06), c, -.12, .12, 0); break;
+      case 'munizioni': for (let i = 0; i < 5; i++) { add(Cl(.035, .035, .16), '#c89a40', -.16 + i * .08, .08, 0, MET); add(Cl(.0, .035, .06), '#b8794a', -.16 + i * .08, .19, 0, MET); } break;
+      case 'moneta': for (let i = 0; i < 5; i++) add(Cl(.14, .14, .03, 24), c, (i % 2) * .03, .015 + i * .032, 0, { metalness: .9, roughness: .25 }); break;
+      case 'pacchetto': add(Bo(.3, .44, .14), '#f0ece2', 0, .22, 0); add(Bo(.305, .18, .145), t, 0, .2, 0); [-.06, 0, .06].forEach(x => add(Cl(.022, .022, .1), '#f0ece2', x, .48, 0)); break;
+      case 'cassetta': add(Bo(.5, .3, .08), c, 0, .15, 0); add(Bo(.38, .1, .01), '#f0ece2', 0, .18, .04); [-.1, .1].forEach(x => add(Cl(.035, .035, .01), '#1a1a1a', x, .18, .045, {}, Math.PI / 2)); break;
+      case 'ruota': add(To(.28, .09, 12, 28), '#1a1a1e', 0, .37, 0); add(Cl(.15, .15, .1), '#9aa0a8', 0, .37, 0, MET, Math.PI / 2); break;
+      case 'tanica': add(Bo(.4, .5, .22), c, 0, .25, 0); add(Cl(.05, .05, .1), '#2a2a2e', .12, .55, 0); add(Bo(.25, .04, .06), sh(c, .8), -.04, .52, 0); break;
+      case 'rottame': add(new T.TorusGeometry(.2, .07, 6, 12), '#2a2a2e', -.1, .07, 0, {}, Math.PI / 2); { const l = add(Bo(.5, .02, .3), '#8a4b2a', .15, .15, 0, MET); l.rotation.set(.2, .4, .3); } add(Cl(.04, .04, .5), '#7d8288', .05, .05, .2, MET, 0, .4, Math.PI / 2); break;
+      default: add(Bo(.5, .4, .4), '#8a6a40', 0, .2, 0); [0.08, .32].forEach(y => add(Bo(.52, .04, .42), '#6a4e2c', 0, y, 0)); break;
+    }
+    return g;
+  }
+  let THR = null;
+  function makeThumb(id) {
+    const T = THREE, st = ST();
+    if (!THR) { THR = new T.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true }); THR.setSize(THS, THS, false); THR.setClearColor(0x000000, 0); }
+    const sc = new T.Scene(); sc.add(new T.HemisphereLight('#f2e8d4', '#1f3a34', .9)); const k = new T.DirectionalLight('#fff0dc', 1.1); k.position.set(-2, 4, 3); sc.add(k); const rim = new T.DirectionalLight('#b08d57', .8); rim.position.set(3, 2, -3); sc.add(rim);
+    let obj = null, cam = new T.PerspectiveCamera(28, 1, .02, 50), C0 = typeof Guardaroba !== 'undefined' && Guardaroba.CAPO[id];
+    if (C0 && ready3()) {
+      // il manichino: il modello di Nino, solo con quel capo addosso
+      obj = Models.person({ skin: '#cfc6b8', top: '#cfc6b8', bottom: '#cfc6b8', hair: '#8a8278', hat: 'none', build: 1, extra: '' }, null);
+      if (!obj) return null; Vesti3D.dress(obj, [Object.assign({}, C0)], { skin: '#cfc6b8' }); if (obj.userData.shadowC) obj.userData.shadowC.visible = false; if (obj.userData.mixer) obj.userData.mixer.update(0);
+      const long = (C0.parti || []).includes('cosce') || (C0.parti || []).includes('polpacci');
+      const F = { testa: [1.66, .42], collo: [1.42, .5], busto: long ? [1.05, 1.25] : [1.22, .8], spalle: [1.42, .6], mani: [.86, .45], gambe: (C0.parti || []).includes('polpacci') ? [.6, 1.05] : [.86, .62], ginocchia: [.5, .45], piedi: [.08, .4], schiena: [1.2, .75] }[C0.zona] || [1, 1];
+      const back = C0.zona === 'schiena' && !/marsupio/.test(id), side = C0.zona === 'mani' || id === 'borsetta';
+      obj.rotation.y = back ? Math.PI * .85 : side ? -.9 : -.35; cam.position.set(side ? .3 : 0, F[0] + F[1] * .15, F[1] * 2.2); cam.lookAt(side ? .25 : 0, F[0], 0);
+    } else {
+      const R = PV() && PV().R, W = st && G().WEAPONS && G().WEAPONS[id] && R && R.__models && R.__models.weaponModel;
+      obj = W ? R.__models.weaponModel(id) : mini(id);
+      const box = new T.Box3().setFromObject(obj), size = box.getSize(new T.Vector3()), ctr = box.getCenter(new T.Vector3()), r = Math.max(size.x, size.y, size.z) || 1;
+      const holder = new T.Group(); obj.position.sub(ctr); holder.add(obj); holder.rotation.set(.45, -.6, 0); obj = holder;
+      cam.position.set(0, 0, r * 2.3); cam.lookAt(0, 0, 0);
+    }
+    sc.add(obj); THR.render(sc, cam);
+    const cv = document.createElement('canvas'); cv.width = cv.height = THS; cv.getContext('2d').drawImage(THR.domElement, 0, 0);
+    sc.traverse(o => { if (o.isMesh && o.geometry && !o.isSkinnedMesh) o.geometry.dispose(); });
+    return cv;
+  }
+  function thumbPump() {
+    requestAnimationFrame(thumbPump);
+    if (!U.open || !THQ.length || !window.THREE) return;
+    const t0 = performance.now();
+    while (THQ.length && performance.now() - t0 < 14) {
+      const id = THQ.shift(); let cv = null; try { cv = makeThumb(id); } catch (e) { console.error('[Anteprime]', id, e); }
+      if (!cv) continue; TH.set(id, cv);
+      const m = $('mu'); if (m) m.querySelectorAll(`canvas[data-ic="${id}"]:not([data-nt])`).forEach(c => drawThumb(c, cv));
+    }
+  }
+  if (typeof window !== 'undefined') requestAnimationFrame(thumbPump);
+  function drawThumb(c, cv) {
+    const wide = +c.getAttribute('width') === 32 || c.dataset.w === '1'; c.dataset.w = wide ? '1' : '';
+    c.width = wide ? 160 : 96; c.height = wide ? 80 : 96; c.classList.add('tc');
+    const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height); x.imageSmoothingEnabled = true;
+    if (wide) x.drawImage(cv, 0, 24, 128, 80, 0, 0, 160, 80); else x.drawImage(cv, 0, 0, 96, 96);
+  }
+  function paintAll(root) { root.querySelectorAll('canvas[data-ic]').forEach(c => { const id = c.dataset.ic, t = c.dataset.nt ? null : thumb(id); if (t) drawThumb(c, t); else icon(c, id); }); root.querySelectorAll('canvas[data-fig]').forEach(c => figure(c)); root.querySelectorAll('canvas[data-shop]').forEach(c => shopScene(c, c.dataset.shop, c.dataset.who)); }
 
   // =====================================================================================================================
   // IL PROTAGONISTA E IL COMMERCIANTE, in pixel
@@ -26453,7 +26630,7 @@ var MenuUI = (function () {
 #mu .msg { position: absolute; left: 50%; bottom: 50px; transform: translateX(-50%); background: var(--mad2); border: 1px solid var(--ott); color: var(--crema); padding: 8px 16px; border-radius: 18px; font-size: 14px; max-width: 70%; text-align: center; pointer-events: none; } #mu .msg.no { border-color: var(--neon); }
 #mu h4 { margin: 0 0 10px; font: 600 12px var(--fl); letter-spacing: .2em; text-transform: uppercase; color: rgba(233,220,188,.5); }
 #mu .dim { color: rgba(233,220,188,.6); font-size: 13.5px; line-height: 1.5; }
-#mu .ic { image-rendering: pixelated; }
+#mu .ic { image-rendering: pixelated; } #mu .ic.tc { image-rendering: auto; }
 #mu .link { color: var(--neon); cursor: pointer; text-decoration: none; border-bottom: 1px dotted rgba(255,95,162,.5); } #mu .link:hover { border-bottom-style: solid; }
 /* tasti: pillole di madreperla; selezionato = anello d'ottone; il rosa solo per il pericolo */
 #mu button.b { cursor: pointer; border-radius: 20px; padding: 8px 18px; color: var(--crema); font: 600 13px var(--fl); letter-spacing: .16em; text-transform: uppercase; border: 1px solid rgba(233,220,188,.22);
@@ -26543,6 +26720,40 @@ var MenuUI = (function () {
 #mu .loot { display: grid; grid-template-columns: repeat(auto-fill, 80px); grid-auto-rows: 88px; gap: 4px; padding: 14px; border-radius: 10px; background: linear-gradient(#2c2f33, #24272b); box-shadow: inset 0 0 0 1px rgba(0,0,0,.4); }
 #mu .loot .tile { grid-template-rows: 50px 1fr; padding: 4px 3px; margin: 0; } #mu .loot .tile canvas { width: 40px; height: 40px; } #mu .loot .tile em { position: relative; font: 500 11.5px/1.15 var(--ft); font-style: normal; color: rgba(233,220,188,.85); text-align: center; overflow: hidden; max-height: 2.3em; }
 #mu .loot .tile .q { top: 3px; bottom: auto; } #mu .loot .tile.t-raro .q, #mu .loot .tile.t-prezioso em { color: var(--ott); } #mu .loot .tile.shop em { color: var(--neon); }
+#mu .roba { display: grid; grid-template-columns: minmax(380px, 470px) 1fr; gap: 26px; align-items: start; }
+#mu .roba .bag { --c: 62px; grid-template-columns: repeat(7, var(--c)); }
+#mu .tile { grid-template-rows: 1fr auto; } #mu .tile canvas.tc { width: 44px; height: 44px; } #mu .tile.w canvas.tc { width: 100px; height: 50px; } #mu .tile.big canvas.tc { width: 90px; height: 90px; }
+#mu .tile em.tn { position: relative; font: 500 10px/1 var(--ft); font-style: normal; color: rgba(233,220,188,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding: 0 2px 3px; text-shadow: 0 1px 2px #000; }
+#mu .tile .q { top: 2px; bottom: auto; }
+#mu .tile[draggable="true"] { cursor: grab; } #mu .dragging { opacity: .35; } #mu .over { box-shadow: 0 0 0 2px var(--ott) !important; background: rgba(176,141,87,.1) !important; }
+#mu .addosso { display: grid; gap: 12px; }
+#mu .ah { display: flex; align-items: baseline; gap: 14px; } #mu .ah .nmw { font: 400 30px var(--fs); }
+#mu .dress2 { display: grid; grid-template-columns: 1fr 190px 1fr; gap: 10px; align-items: center; }
+#mu .zc { display: grid; gap: 8px; align-content: center; }
+#mu .zr { padding: 6px 8px; border-radius: 10px; background: rgba(31,58,52,.32); box-shadow: inset 0 0 0 1px rgba(58,90,80,.5); min-height: 62px; }
+#mu .zr label { display: block; font: 600 10px var(--fl); letter-spacing: .18em; text-transform: uppercase; color: rgba(233,220,188,.45); margin-bottom: 3px; }
+#mu .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; } #mu .chips .sep { font-style: normal; color: rgba(233,220,188,.3); font-size: 12px; } #mu .chips .vuoto { font: italic 13px var(--fs); color: rgba(233,220,188,.3); }
+#mu .chip { position: relative; width: 50px; display: grid; justify-items: center; cursor: grab; border-radius: 8px; padding: 2px 0; } #mu .chip:hover { background: rgba(255,255,255,.05); } #mu .chip.lit { box-shadow: 0 0 0 1px var(--ott); }
+#mu .chip canvas { width: 34px; height: 34px; } #mu .chip em { font: 500 9.5px/1.1 var(--ft); font-style: normal; color: rgba(233,220,188,.8); max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#mu .chip b { position: absolute; right: 0; top: -2px; width: 15px; height: 15px; border-radius: 50%; font: 700 11px/15px var(--ft); text-align: center; color: var(--notte); background: var(--crema); opacity: 0; cursor: pointer; } #mu .chip:hover b { opacity: .85; }
+#mu .nino { display: grid; place-items: center; border-radius: 50% 50% 12px 12px; background: radial-gradient(ellipse at 50% 85%, rgba(176,141,87,.18), transparent 60%); }
+#mu .hands { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; justify-items: center; }
+#mu .hand { display: grid; justify-items: center; gap: 4px; } #mu .hand label { font: 600 10.5px var(--fl); letter-spacing: .16em; text-transform: uppercase; color: rgba(233,220,188,.55); }
+#mu .hs { width: 110px; height: 70px; border-radius: 35px; display: grid; place-items: center; background: rgba(31,58,52,.45); box-shadow: inset 0 0 0 1px rgba(58,90,80,.8); } #mu .hs.full { box-shadow: 0 0 0 2px var(--ott); cursor: grab; } #mu .hs span { font: italic 14px var(--fs); color: rgba(233,220,188,.35); }
+#mu .hs canvas { width: 48px; height: 48px; } #mu .hs canvas[data-w="1"] { width: 96px; height: 48px; } #mu .hb { display: grid; gap: 6px; }
+#mu .ab2 { display: flex; justify-content: space-between; align-items: center; gap: 14px; } #mu .ab2 .stat { flex: 1; max-width: 300px; }
+/* il banco */
+#mu .rec canvas.tc { width: 52px; height: 52px; }
+#mu .bench { margin-top: 10px; border-radius: 10px; padding: 10px 12px 14px; background: radial-gradient(ellipse at 50% 0%, rgba(255,210,140,.18), transparent 70%), repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0 2px, transparent 2px 64px), linear-gradient(#5a3e28, #3a281a); box-shadow: inset 0 0 0 2px #2a1c12, 0 10px 20px rgba(0,0,0,.35); }
+#mu .peg { display: flex; gap: 8px; flex-wrap: wrap; padding: 6px 8px 10px; margin: -2px -4px 10px; border-radius: 6px; background: radial-gradient(circle, rgba(0,0,0,.35) 1.5px, transparent 2px) 0 0 / 14px 14px, #6a5844; }
+#mu .tool, #mu .pz { position: relative; display: grid; justify-items: center; width: 74px; } #mu .tool canvas, #mu .pz canvas { width: 56px; height: 56px; filter: drop-shadow(0 6px 4px rgba(0,0,0,.45)); }
+#mu .tool em, #mu .pz em { font: 500 11px/1.1 var(--ft); font-style: normal; color: var(--crema); text-align: center; text-shadow: 0 1px 2px #000; }
+#mu .pz b { position: absolute; right: 4px; top: 0; font: 700 12px var(--fl); color: var(--crema); background: rgba(13,16,21,.75); border-radius: 8px; padding: 0 5px; } #mu .pz.miss b { color: var(--neon); } #mu .pz.miss canvas, #mu .tool.miss canvas { opacity: .35; filter: grayscale(1); }
+#mu .top { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; } #mu .top .plus { font: 400 22px var(--fs); font-style: normal; color: rgba(233,220,188,.5); }
+#mu .arrow { text-align: center; font: 400 26px var(--fs); color: var(--ott); margin: 4px 0; }
+#mu .res { display: flex; justify-content: center; gap: 10px; padding: 12px; border-radius: 50%; background: radial-gradient(circle, rgba(176,141,87,.12), transparent 65%); }
+#mu .res.ok { background: radial-gradient(circle, rgba(232,207,152,.28), transparent 65%); } #mu .pz.big { width: 120px; } #mu .pz.big canvas { width: 96px; height: 96px; } #mu .pz.big em { font: 400 19px var(--fs); }
+@media (max-width: 1240px) { #mu .roba { grid-template-columns: 1fr; } }
 @media (max-width: 1240px) { #mu .zaino { grid-template-columns: auto 1fr; } #mu .zaino .who { display: none; } #mu .pg { grid-template-columns: 220px 1fr; } #mu .pg > :last-child { grid-column: 1 / -1; } }
 @media (max-width: 900px) { #mu .case { inset: 6px; grid-template-columns: 64px 1fr; } #mu .rail button { width: 56px; height: 56px; font-size: 9px; } #mu .rail button canvas { width: 22px; height: 22px; } #mu .zaino, #mu .lav, #mu .shop, #mu .jobs, #mu .fr2, #mu .pg { grid-template-columns: 1fr; } #mu .bag { --c: 34px; } #mu footer .k { display: none; } }
 `;
@@ -26561,6 +26772,11 @@ var MenuUI = (function () {
     m.addEventListener('pointerdown', e => { const c = e.target.closest('canvas.r3'); if (c) R3.drag = { k: c.dataset.r3 + (c.dataset.frame || 'full'), x: e.clientX }; });
     addEventListener('pointermove', e => { if (!R3.drag) return; const E = R3.sc[R3.drag.k]; if (E) E.rot += (e.clientX - R3.drag.x) * .012; R3.drag.x = e.clientX; });
     addEventListener('pointerup', () => { R3.drag = null; });
+    // trascinare: dalla borsa addosso, da uno strato all'altro, nelle mani, e indietro nella borsa
+    m.addEventListener('dragstart', e => { const d = e.target.closest('[data-drag]'); if (!d) return; U.drag = d.dataset.drag; d.classList.add('dragging'); try { e.dataTransfer.setData('text/plain', U.drag); e.dataTransfer.effectAllowed = 'move'; } catch (x) { } });
+    m.addEventListener('dragend', () => { U.drag = null; m.querySelectorAll('.dragging,.over').forEach(x => x.classList.remove('dragging', 'over')); render(true); });
+    m.addEventListener('dragover', e => { const t = e.target.closest('[data-drop]'); if (!t || !U.drag) return; e.preventDefault(); m.querySelectorAll('.over').forEach(x => { if (x !== t) x.classList.remove('over'); }); t.classList.add('over'); });
+    m.addEventListener('drop', e => { const t = e.target.closest('[data-drop]'); if (!t || !U.drag) return; e.preventDefault(); const src = U.drag; U.drag = null; dropOn(src, t, e.clientX); render(true); });
     return true;
   }
   function open(tab, arg) {
@@ -26580,7 +26796,7 @@ var MenuUI = (function () {
   const btn = (a, label, x, cls, dis) => `<button class="b ${cls || ''}" data-a="${a}"${x !== undefined ? ` data-x="${esc(JSON.stringify(x))}"` : ''}${dis ? ' disabled' : ''}>${esc(label)}</button>`;
 
   function render(force) {
-    const st = ST(); if (!st || !U.open) return;
+    const st = ST(); if (!st || !U.open || (U.drag && !force)) return;
     let body = '', title = '', sub = '', tabs = '';
     try {
       if (U.tab === 'zaino') [title, sub, body] = ['Roba', inCovo(st) ? 'sul tavolo del covo' : 'rovesciata sul marciapiede', pZaino(st)];
@@ -26592,7 +26808,7 @@ var MenuUI = (function () {
       else if (U.tab === 'fruga') { const v = O().frugaView(st, U.arg); if (!v) { close(); return; } title = 'Fruga'; sub = v.label; body = pFruga(st, v); }
     } catch (e) { body = `<div class="dim">Qualcosa non va: ${esc(e.message)}</div>`; console.error('[Menu]', e); }
     const pv = O().pocketsView(st), over = pv.peso > pv.cap;
-    const rail = TABS.map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="tab" data-x='"${k}"'>${ic(ico)}${l}${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
+    const rail = TABS.map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="tab" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}${l}${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
       + (U.tab === 'bottega' || U.tab === 'fruga' ? `<span class="sp"></span><button class="on">${ic(U.tab === 'bottega' ? 'valuta' : 'casse')}${CTX[U.tab][0]}</button>` : '');
     const showMsg = U.msg && Date.now() - (U.msgT || 0) < 6000;
     const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
@@ -26621,24 +26837,29 @@ var MenuUI = (function () {
     order.forEach(o => { for (let y = 0; ; y++) { let done = false; for (let x = 0; x < cols; x++) if (free(x, y, o.s[0], o.s[1])) { for (let j = 0; j < o.s[1]; j++) { grid[y + j] = grid[y + j] || []; for (let i = 0; i < o.s[0]; i++) grid[y + j][x + i] = 1; } put.push({ it: o.it, x, y, w: o.s[0], h: o.s[1] }); done = true; break; } if (done) break; } });
     return { put, rows: Math.max(6, grid.length) };
   }
+  // nomi sintetici: «Martello», «Vino», «Scatoletta»
+  const corto = id => { const c = O().CAT[id]; if (c && c.corto) return c.corto; let n = (c ? c.nome : id).replace(/\s*\(.*$/, '').replace(/\s+(di|da|per|a|al|del|della|dei|con|in)\s.*$/, ''); n = cap(n); return n.length > 13 ? n.slice(0, 12) + '…' : n; };
   function pZaino(st) {
-    const { pv, items } = bagItems(st), P = pack(items, 8);
+    const { pv, items } = bagItems(st), P = pack(items, 7);
     if (!U.sel || !items.some(i => i.id === U.sel)) U.sel = items[0] ? items[0].id : null;
     const sel = items.find(i => i.id === U.sel);
     const tiles = P.put.map(o => { const i = o.it, wide = o.w === 2 && o.h === 1, big = o.h === 2;
-      return `<button class="tile ${wide ? 'w' : ''} ${big ? 'big' : ''} ${i.id === U.sel ? 'sel' : ''} ${i.ill ? 'ill' : ''}" style="grid-column:${o.x + 1}/span ${o.w};grid-row:${o.y + 1}/span ${o.h}" data-a="sel" data-x="${esc(JSON.stringify(i.id))}" title="${esc(i.nome)}">${ic(i.id, wide ? 32 : 16)}${i.on ? '<span class="on"></span>' : ''}${i.q != null && i.q > 1 ? `<span class="q">${i.q}</span>` : ''}${i.tool != null ? `<span class="wear"><b style="width:${i.tool}%"></b></span>` : ''}</button>`; }).join('');
-    const p = st.player, hand = p.hand || (p.cur !== 'pugni' ? p.cur : '');
-    const need = st.me && st.me.need ? st.me.need : {}, WV = O().wornView ? O().wornView(st) : { slots: [], calore: 0 }, WS = Object.fromEntries(WV.slots.map(x => [x.slot, x]));
-    const ws = k => { const x = WS[k]; if (!x) return ''; const lit = sel && O().SLOT_OF && O().SLOT_OF[sel.id] === k; return x.id ? `<div class="ws full ${lit ? 'lit' : ''}" data-a="togli" data-x='"${k}"' title="${esc(cap(x.nome))} — clic per togliere">${ic(x.id)}</div>` : `<div class="ws ${lit ? 'lit' : ''}">${esc(x.label)}</div>`; };
-    const sx = WS.sx && WS.sx.id;
-    const who = `<div class="who"><div class="nmw">Addosso</div>
-      <div class="dress"><div class="col">${['testa', 'collo', 'busto', 'sopra'].map(ws).join('')}</div><div style="display:grid;place-items:center">${r3('player', 'full', 360, 600, 'width:180px;height:300px')}</div><div class="col">${['mani', 'gambe', 'piedi', 'spalle'].map(ws).join('')}</div></div>
-      <div class="hands"><label><div class="ws ${hand ? 'full w' : ''}" ${hand ? `data-a="libera" title="clic: mani libere"` : ''}>${hand ? ic(hand, 32) : 'vuota'}</div>destra</label><label><div class="ws ${sx ? 'full' : ''}" ${sx ? `data-a="togli" data-x='"sx"' title="clic: metti via"` : ''}>${sx ? ic(sx) : 'vuota'}</div>sinistra</label></div>
-      <div style="width:100%;display:grid;gap:8px">${bar('Salute', p.hp, p.maxHp || 100, 'g')}${bar('Fame', (need.fame || 0) * 100, 100, 'w', true)}${bar('Sete', pv.sete * 100, 100, 'w', true)}<div class="stat" style="grid-template-columns:1fr auto"><span>Caldo addosso</span><em>${Math.round(WV.calore * 100)}</em></div></div></div>`;
-    return `<div class="zaino"><div><div class="bag ${inCovo(st) ? 'covo' : 'strada'}" style="grid-template-rows:repeat(${P.rows},var(--c))">${tiles}</div>
-        <div class="dim" style="margin-top:8px">${items.length} cose · ${pv.peso} kg su ${pv.cap}. Quello che indossi non pesa nella borsa.</div>
-        ${pv.base ? `<div style="margin-top:10px">${btn('deposita', 'Tutto al covo', { id: '*' })}</div>` : ''}</div>
-      <div class="det">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Tasche vuote.</div>'}</div>${who}</div>`;
+      return `<button class="tile ${wide ? 'w' : ''} ${big ? 'big' : ''} ${i.id === U.sel ? 'sel' : ''} ${i.ill ? 'ill' : ''}" style="grid-column:${o.x + 1}/span ${o.w};grid-row:${o.y + 1}/span ${o.h}" data-a="sel" data-x="${esc(JSON.stringify(i.id))}" draggable="true" data-drag="b:${esc(i.id)}" title="${esc(cap(i.nome))}">${ic(i.id, wide ? 32 : 16)}<em class="tn">${esc(corto(i.id))}</em>${i.on ? '<span class="on"></span>' : ''}${i.q != null && i.q > 1 ? `<span class="q">${i.q}</span>` : ''}${i.tool != null ? `<span class="wear"><b style="width:${i.tool}%"></b></span>` : ''}</button>`; }).join('');
+    const GW = typeof Guardaroba !== 'undefined' ? Guardaroba.view(st) : null;
+    const zrow = z => { const capi = z.capi; return `<div class="zr" data-drop="z:${z.zona}"><label>${esc(z.nome)}</label><div class="chips">${capi.length ? capi.map(c => `<div class="chip ${sel && sel.id === c.id ? 'lit' : ''}" draggable="true" data-drag="w:${z.zona}:${c.i}" title="${esc(cap(c.nome))} · trascina per cambiare strato, nella borsa per toglierlo">${ic(c.id)}<em>${esc(c.corto)}</em><b data-a="togli" data-x='"${z.zona}:${c.i}"' title="togli">×</b></div>`).join('<i class="sep">›</i>') : `<span class="vuoto">${z.pila ? 'niente' : '—'}</span>`}</div></div>`; };
+    const Z = GW ? Object.fromEntries(GW.zone.map(z => [z.zona, z])) : {};
+    const p = st.player, need = st.me && st.me.need ? st.me.need : {};
+    const hand = (k, id, lab) => `<div class="hand" data-drop="h:${k}"><div class="hs ${id ? 'full' : ''}" ${id ? `draggable="true" data-drag="h:${k}"` : ''} title="${id ? esc(cap(O().CAT[id] ? O().CAT[id].nome : id)) : 'vuota: trascina qui un oggetto'}">${id ? ic(id, wideIcon(id) || LONG.test(id) ? 32 : 16) : '<span>vuota</span>'}</div><label>${lab}${id ? ` · ${esc(corto(id))}` : ''}</label></div>`;
+    const addosso = GW ? `<div class="addosso"><div class="ah"><div class="nmw">Addosso</div><span class="dim">dalla pelle → fuori · trascina per vestirti, cambiare ordine, toglierti</span></div>
+      <div class="dress2"><div class="zc">${['testa', 'collo', 'busto', 'spalle', 'mani'].map(z => zrow(Z[z])).join('')}</div>
+        <div class="nino" data-drop="nino">${r3('player', 'full', 380, 640, 'width:190px;height:320px')}</div>
+        <div class="zc">${['gambe', 'ginocchia', 'piedi', 'schiena'].map(z => zrow(Z[z])).join('')}</div></div>
+      <div class="hands">${hand('dx', GW.dx, 'destra')}<div class="hb">${btn('scambia_mani', 'Scambia')}${GW.sx ? btn('usa_sinistra', 'Usa sinistra') : ''}</div>${hand('sx', GW.sx, 'sinistra')}</div>
+      <div class="ab2"><div class="stat" style="grid-template-columns:1fr auto 1fr auto;column-gap:14px"><span>Caldo</span><em>${Math.round(GW.calore * 100)}</em><span>Protezione</span><em>${Math.round(GW.arm * 100)}%</em></div>
+        <div class="row">${btn('spogliati', 'Spogliati', { tutto: false })}${btn('spogliati', 'Nudo', { tutto: true }, 'bad')}</div></div></div>` : '';
+    return `<div class="roba"><div class="lft"><div class="bag ${inCovo(st) ? 'covo' : 'strada'}" data-drop="bag" style="grid-template-rows:repeat(${P.rows},var(--c))">${tiles}</div>
+        <div class="dim" style="margin:8px 0 14px">${items.length} cose · ${pv.peso} kg su ${pv.cap}. Quello che indossi non pesa nella borsa.${pv.base ? ' ' + btn('deposita', 'Tutto al covo', { id: '*' }) : ''}</div>
+        <div class="det">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Tasche vuote.</div>'}</div></div>${addosso}</div>`;
   }
   function bar(l, v, max, cls, inv) { const f = Math.max(0, Math.min(1, v / max)), c = inv ? (f > .85 ? 'r' : f > .6 ? 'w' : '') : (f < .25 ? 'r' : f < .5 ? 'w' : cls || ''); return `<div class="stat"><span>${esc(l)}</span><em>${Math.round(v)}${max === 100 ? '%' : ''}</em><i><b class="${c}" style="width:${Math.round(f * 100)}%"></b></i></div>`; }
   function describe(id) {
@@ -26653,16 +26874,16 @@ var MenuUI = (function () {
     return bits.join(' ');
   }
   function itemDetail(st, i, pv) {
-    const c = O().CAT[i.id], wide = wideIcon(i.id) || LONG.test(i.id);
+    const c = O().CAT[i.id], wide = wideIcon(i.id) || LONG.test(i.id), GR = typeof Guardaroba !== 'undefined' ? Guardaroba : null, capo = GR && GR.CAPO[i.id];
     const acts = [];
+    if (capo) acts.push(btn('indossa', 'Indossa', i.id, 'y'));
     if (i.eq) acts.push(btn('equip', i.on ? 'In mano' : 'Impugna', i.id, i.on ? '' : 'y', i.on));
     if (i.eat) acts.push(btn('usa', /bevande/.test(i.cat) ? 'Bevi' : 'Mangia', { id: i.id }, 'y'));
-    if (O().SLOT_OF && O().SLOT_OF[i.id]) acts.push(btn('indossa', 'Indossa', i.id, 'y'));
-    if (O().canHold && O().canHold(i.id) && !i.eq) acts.push(btn('tieni', 'Tieni', i.id));
+    if (O().canHold && O().canHold(i.id)) acts.push(btn('tieni', 'A sinistra', i.id));
     if (c && pv.base) acts.push(btn('deposita', 'Al covo', { id: i.id, q: i.q }));
     if (c) acts.push(btn('butta', 'Butta', { id: i.id, q: 1 }, 'bad'));
-    return `<div class="hd"><div class="pic ${wide ? 'w' : ''}">${ic(i.id, wide ? 32 : 16)}</div><div><div class="nm">${esc(cap(i.nome))}</div><div class="ct">${esc(i.catLabel || '')}${i.q > 1 ? ` · ×${i.q}` : ''}${O().SLOT_OF && O().SLOT_OF[i.id] && typeof Guardaroba !== 'undefined' ? ` · si indossa: ${esc(Guardaroba.ZONE[O().SLOT_OF[i.id]].nome.toLowerCase())}` : ''}</div></div></div>
-      <div class="ds">${esc(describe(i.id))}</div>
+    return `<div class="hd"><div class="pic ${wide ? 'w' : ''}">${ic(i.id, wide ? 32 : 16)}</div><div><div class="nm">${esc(corto(i.id))}</div><div class="ct">${esc(cap(i.nome))}${i.q > 1 ? ` · ×${i.q}` : ''}${capo ? ` · ${esc(GR.ZONE[capo.zona].nome.toLowerCase())}` : ''}</div></div></div>
+      <div class="ds">${esc(describe(i.id))}${capo ? ` ${capo.calore ? `Scalda ${Math.round(capo.calore * 100)}.` : ''}${capo.arm ? ` Protegge ${Math.round(capo.arm * 100)}%.` : ''}` : ''}</div>
       <div class="stat" style="grid-template-columns:1fr auto">${c ? `<span>Peso</span><em>${Math.round(c.peso * (i.q || 1) * 10) / 10} kg</em>` : ''}${i.tool != null ? `<span>Stato</span><em>${i.tool}%</em><i><b class="${i.tool < 25 ? 'r' : 'g'}" style="width:${i.tool}%"></b></i>` : ''}${st.player.arms && st.player.arms[i.id] && st.player.arms[i.id].mag != null ? `<span>Colpi</span><em>${st.player.arms[i.id].mag} + ${st.player.arms[i.id].reserve || st.player.arms[i.id].res || 0}</em>` : ''}</div>
       <div class="row">${acts.join('')}</div>`;
   }
@@ -26687,13 +26908,15 @@ var MenuUI = (function () {
   function pLavora(st, v) {
     const l = v.list.filter(r => U.filt === 'tutto' || r.kind === U.filt);
     if (!U.sel || !l.some(r => r.id === U.sel)) U.sel = (l.find(r => r.ok) || l[0] || {}).id || null;
-    const r = l.find(x => x.id === U.sel);
-    const tiles = l.slice(0, 160).map(x => `<button class="rec ${x.ok ? 'ok' : x.here ? '' : 'no'} ${x.id === U.sel ? 'sel' : ''}" data-a="sel" data-x="${esc(JSON.stringify(x.id))}" title="${esc(x.nome)}">${ic(x.out[0] ? x.out[0].k : 'casse')}<span>${esc(cap(x.nome))}</span></button>`).join('');
-    const det = r ? `<div class="det"><div class="hd"><div class="pic">${ic(r.out[0] ? r.out[0].k : 'casse')}</div><div><div class="nm">${esc(cap(r.nome))}</div><div class="ct">${esc(r.st)} · ${r.min >= 60 ? Math.round(r.min / 6) / 10 + ' ore' : r.min + ' min'}</div></div></div>
-      ${!r.here ? '<div class="dim" style="color:var(--neon)">Non qui: serve la postazione giusta.</div>' : ''}
-      <h4 style="margin:4px 0 0">Serve</h4><div class="ing">${r.in.map(i => `<div>${ic(i.k.split('|')[0])}<span class="${i.have >= i.q ? 'y' : 'n'}">${esc(i.nome)}<br>${i.have}/${i.q}</span></div>`).join('')}${r.tools.map(t => `<div>${ic(t.k.split('|')[0])}<span class="${t.have ? 't' : 'n'}">${esc(t.nome)}<br>attrezzo</span></div>`).join('') || ''}</div>
-      <h4 style="margin:4px 0 0">Ne viene</h4><div class="ing">${r.out.map(o => `<div>${ic(o.k)}<span>${esc(o.nome)}${o.q > 1 ? ` ×${o.q}` : ''}</span></div>`).join('')}</div>
-      <div class="row">${btn('fai', 'Fai', { id: r.id, q: 1 }, 'y', !r.ok)}${btn('fai', '×3', { id: r.id, q: 3 }, '', !r.ok)}</div></div>` : '<div class="dim">Niente da fare qui.</div>';
+    const r = l.find(x => x.id === U.sel), outId = x => x.out[0] ? x.out[0].k : 'casse';
+    const tiles = l.slice(0, 180).map(x => `<button class="rec ${x.ok ? 'ok' : x.here ? '' : 'no'} ${x.id === U.sel ? 'sel' : ''}" data-a="sel" data-x="${esc(JSON.stringify(x.id))}" title="${esc(cap(x.nome))}">${ic(outId(x))}<span>${esc(cap(x.nome))}</span></button>`).join('');
+    // il piano di lavoro: i pezzi appoggiati sul banco, gli attrezzi appesi, e quello che ne viene
+    const det = r ? `<div class="det"><div class="nm">${esc(cap(r.nome))}</div><div class="ct">${esc(r.st)} · ${r.min >= 60 ? Math.round(r.min / 6) / 10 + ' ore' : r.min + ' min'}${!r.here ? ' · <span style="color:var(--neon)">non qui</span>' : ''}</div>
+      <div class="bench">${r.tools.length ? `<div class="peg">${r.tools.map(t => `<div class="tool ${t.have ? '' : 'miss'}" title="${esc(t.nome)}">${ic(t.k.split('|')[0])}<em>${esc(corto(t.k.split('|')[0]))}</em></div>`).join('')}</div>` : ''}
+        <div class="top">${r.in.map(i => `<div class="pz ${i.have >= i.q ? '' : 'miss'}" title="${esc(i.nome)}">${ic(i.k.split('|')[0])}<em>${esc(corto(i.k.split('|')[0]))}</em><b>${i.have}/${i.q}</b></div>`).join('<i class="plus">+</i>') || '<span class="dim">a mani nude</span>'}</div></div>
+      <div class="arrow">↓</div>
+      <div class="res ${r.ok ? 'ok' : ''}">${r.out.map(o => `<div class="pz big">${ic(o.k)}<em>${esc(corto(o.k))}${o.q > 1 ? ` ×${o.q}` : ''}</em></div>`).join('')}</div>
+      <div class="row">${btn('fai', r.ok ? 'Fai' : 'Manca qualcosa', { id: r.id, q: 1 }, 'y', !r.ok)}${btn('fai', '×3', { id: r.id, q: 3 }, '', !r.ok)}</div></div>` : '<div class="dim">Niente da fare qui.</div>';
     return `<div class="lav"><div><h4>Quaderno · ${l.filter(x => x.ok).length} cose che puoi fare adesso</h4><div class="recs">${tiles || '<div class="dim">Nessuna ricetta.</div>'}</div></div>${det}</div>`;
   }
 
@@ -26788,6 +27011,9 @@ var MenuUI = (function () {
       case 'indossa': act('indossa', x); break;
       case 'togli': act('togli', x); break;
       case 'tieni': act('tieni', x); break;
+      case 'scambia_mani': act('scambia_mani'); break;
+      case 'usa_sinistra': act('usa_sinistra'); break;
+      case 'spogliati': act('spogliati', null, x); break;
       case 'libera': if (typeof Azioni !== 'undefined' && Azioni.playerEquip) Azioni.playerEquip(st, null); say('Mani libere.'); break;
       case 'usa': act('usa', x.id); break;
       case 'butta': act('butta', x.id, { q: x.q }); break;
@@ -26803,6 +27029,27 @@ var MenuUI = (function () {
       case 'vai': { if (x.x !== undefined) goTo(x.x, x.y); else { const B = x.bi >= 0 ? G().BUILDINGS[x.bi] : null, P0 = G().PLACES[x.place]; if (B && B.door) goTo((B.door[0] + .5) * G().TS, (B.door[1] + .5) * G().TS); else if (P0) goTo(P0.x, P0.y); } return; }
     }
     render(true);
+  }
+  function dropOn(src, t, cx) {
+    const st = ST(), GR = typeof Guardaroba !== 'undefined' ? Guardaroba : null; if (!st || !GR) return;
+    const [k, a, b] = src.split(':'), dst = t.dataset.drop, [dk, dz] = dst.split(':');
+    const idx = () => { const ch = [...t.querySelectorAll('.chip')]; return ch.filter(c => { const r = c.getBoundingClientRect(); return r.left + r.width / 2 < cx; }).length; };
+    if (k === 'b') {   // dalla borsa
+      const capo = GR.CAPO[a];
+      if (dk === 'z' || dk === 'nino') { if (!capo) return say({ ok: false, msg: 'Questo non si indossa.' }); if (dk === 'z' && dz !== capo.zona) return say({ ok: false, msg: `${cap(corto(a))} va su: ${GR.ZONE[capo.zona].nome.toLowerCase()}.` }); act('indossa', a, dk === 'z' ? { at: idx() } : {}); }
+      else if (dk === 'h') { if (dz === 'sx') act('tieni', a); else equip(a); }
+      return;
+    }
+    if (k === 'w') {   // uno strato addosso
+      if (dk === 'z' && dz === a) { let j = idx(); if (j > +b) j--; act('sposta', a, { i: +b, j }); }
+      else if (dk === 'bag') act('togli', `${a}:${b}`);
+      else if (dk === 'z') say({ ok: false, msg: 'Quello sta su un\'altra parte del corpo.' });
+      return;
+    }
+    if (k === 'h') {   // una mano
+      if (dk === 'bag') { if (a === 'sx') act('togli', 'sx'); else { if (typeof Azioni !== 'undefined' && Azioni.playerEquip) Azioni.playerEquip(st, null); say('Mani libere.'); } }
+      else if (dk === 'h' && dz !== a) act('scambia_mani');
+    }
   }
   function onDbl(e) {
     const b = e.target.closest('[data-a="sel"]'); if (!b) return; const id = JSON.parse(b.dataset.x), st = ST();

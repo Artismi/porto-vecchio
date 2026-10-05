@@ -37,8 +37,19 @@ var Vesti3D = (function () {
 
   // ---------------- I GUSCI ----------------
   const tmpC = new THREE.Color();
-  const pat = (g, c, cx, cy, cz, out) => {   // motivi per triangolo: righe, quadri
-    tmpC.set(c);
+  const th = t => { let h = (t * 2654435761) >>> 0; h ^= h >>> 13; return (h % 1000) / 1000; };
+  const FIORI = ['#e8c040', '#e85a8a', '#f0ece2', '#3a8a5a'];
+  const pat = (g, c, cx, cy, cz, out, t, part) => {   // motivi per triangolo: righe, quadri, maculato, fiori…
+    tmpC.set(c); const q = th(t), limb = /braccia|avambracci|cosce|polpacci/.test(part || '');
+    switch (g.pat) {
+      case 'righe': if (Math.floor(cy * 14) % 2) tmpC.multiplyScalar(.62); break;
+      case 'righe_v': if (Math.floor((cx + cz) * 40) % 2) tmpC.set('#ece8dc'); break;
+      case 'bande': if (limb && Math.floor((cx + cz) * 60) % 3 === 0) tmpC.set('#ece8dc'); break;
+      case 'maculato': if (q < .28) tmpC.set('#3a2414'); else if (q < .4) tmpC.multiplyScalar(.75); break;
+      case 'pelo': tmpC.multiplyScalar(.8 + q * .4); break;
+      case 'fiori': if (q < .3) tmpC.set(FIORI[Math.floor(q * 13) % 4]); break;
+      case 'quadretti': if ((Math.floor(cy * 24) + Math.floor((cx + cz) * 30)) % 2) tmpC.multiplyScalar(.75); break;
+    }
     if (g.id === 'maglietta_righe' && Math.floor(cy * 9) % 2) tmpC.set('#ece8dc');
     if (g.id === 'camicia_quadri' && (Math.floor(cy * 7) + Math.floor((cx + cz) * 7)) % 2) tmpC.multiplyScalar(.6);
     if (g.id === 'velluto' && Math.floor((cx + cz) * 24) % 2) tmpC.multiplyScalar(.85);
@@ -58,7 +69,7 @@ var Vesti3D = (function () {
         let G0 = null; for (let k = L.length - 1; k >= 0; k--) { const S0 = L[k].set; if ((S0.has(A.part[a]) + S0.has(A.part[b]) + S0.has(A.part[d])) >= 2) { G0 = L[k]; break; } }
         if (!G0) continue; const c = G0.c;
         const cx = (A.pos.getX(a) + A.pos.getX(b) + A.pos.getX(d)) / 3, cy = ((A.pos.getY(a) + A.pos.getY(b) + A.pos.getY(d)) / 3 - A.ymin) / ((A.ymax - A.ymin) || 1), cz = (A.pos.getZ(a) + A.pos.getZ(b) + A.pos.getZ(d)) / 3;
-        pat(c, c.col, cx * unit, cy, cz * unit, col);
+        pat(c, c.col, cx * unit, cy, cz * unit, col, t / 3, A.part[a]);
         const lift = c.id === 'gonna' ? 2.2 : c.id === 'cappotto' || c.id === 'impermeabile' ? 1.3 : 1;
         for (const v of [a, b, d]) {
           const k = (A.part[v] === 'cosce' || A.part[v] === 'bacino') ? G0.off * lift : G0.off;
@@ -72,14 +83,13 @@ var Vesti3D = (function () {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
       geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(SI, 4)); geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(SW, 4)); geo.setAttribute('color', new THREE.Float32BufferAttribute(CO, 3));
-      geo.computeVertexNormals();
       const m = new THREE.SkinnedMesh(geo, MAT()); m.userData.vesti = true; m.castShadow = true; m.frustumCulled = false;
       m.position.copy(src.position); m.quaternion.copy(src.quaternion); m.scale.copy(src.scale);
       src.parent.add(m); m.bind(src.skeleton, src.bindMatrix); out.push(m);
     });
     return out;
   }
-  let _mat = null; const MAT = () => _mat || (_mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: new THREE.Color('#181614') }));
+  let _mat = null; const MAT = () => _mat || (_mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: new THREE.Color('#181614'), side: THREE.DoubleSide }));
 
   // ---------------- I PEZZI AGGANCIATI ----------------
   const sh = (c, k) => '#' + new THREE.Color(c).multiplyScalar(k).getHexString();
@@ -114,14 +124,35 @@ var Vesti3D = (function () {
   function accessories(g, outfit, held) {
     const m = g.children.find(o => o.userData && o.userData.body) || g; const root = g;
     const bone = n => { let b = null; root.traverse(o => { if (!b && o.isBone && o.name === n) b = o; }); return b; };
-    const head = bone('Head'), neck = bone('Neck'), chest = bone('Chest'), shL = bone('UpperArmL'), shR = bone('UpperArmR'), knL = bone('LowerLegL'), knR = bone('LowerLegR'), wL = bone('WristL');
+    const head = bone('Head'), neck = bone('Neck'), chest = bone('Chest'), shL = bone('UpperArmL'), shR = bone('UpperArmR'), knL = bone('LowerLegL'), knR = bone('LowerLegR'), wL = bone('WristL'), wR = bone('WristR'), hips = bone('Hips'), ftL = bone('FootL'), ftR = bone('FootR'), ulL = bone('UpperLegL'), ulR = bone('UpperLegR');
     let kh = 0;
     outfit.forEach(c => {
       if (!c.acc) return;
       if (/beanie|flat|fedora|scarf|ushanka|casco|elmetto|passamontagna|antigas/.test(c.acc) && head) { const hp = wpos(g, head); pin(g, head, headAcc(c.acc, c.col, kh++), hp.x, hp.y + .19, hp.z + .01); }
-      if (c.acc === 'sciarpa' && (neck || chest)) { const b = neck || chest, p = wpos(g, b), s = new THREE.Group(); const t = new THREE.Mesh(new THREE.TorusGeometry(.1, .045, 8, 14), lm(c.col)); t.rotation.x = Math.PI / 2; s.add(t, Bx(.08, .26, .03, c.col, .05, -.14, .1)); pin(g, b, s, p.x, p.y + (neck ? .02 : .22), p.z); }
+      if (c.acc === 'sciarpa' && (neck || chest)) { const b = neck || chest, p = wpos(g, b), s = new THREE.Group(); const t = new THREE.Mesh(new THREE.TorusGeometry(.1, .045, 8, 14), lm(c.col)); t.rotation.x = Math.PI / 2; s.add(t, Bx(.08, .26, .03, c.col, .05, -.14, .1)); if (c.id === 'sciarpa_righe') [0, 1, 2].forEach(i => s.add(Bx(.085, .03, .035, '#ece8dc', .05, -.06 - i * .07, .1))); pin(g, b, s, p.x, p.y + (neck ? .02 : .22), p.z); }
       if (c.acc === 'paraspalle') [shL, shR].forEach((b, i) => { if (!b) return; const p = wpos(g, b), s = new THREE.Group(); const sp = Sp(.1, c.col, 0, 0, 0, true); sp.scale.set(1.1, .7, 1.1); s.add(sp); pin(g, b, s, p.x + (i ? -.03 : .03) * 0, p.y + .03, p.z); });
       if (c.acc === 'paraginocchia') [knL, knR].forEach(b => { if (!b) return; const p = wpos(g, b); pin(g, b, Bx(.11, .13, .05, c.col), p.x, p.y + .02, p.z + .08); });
+      const at = (b, f) => { if (!b) return; const p = wpos(g, b), s = new THREE.Group(); f(s); return [p, s]; };
+      const put = (b, dx, dy, dz, f) => { const r = at(b, f); if (r) pin(g, b, r[1], r[0].x + dx, r[0].y + dy, r[0].z + dz); };
+      if (/^(cap|basco|fascia)$/.test(c.acc) && head) { const hp = wpos(g, head), s = new THREE.Group(); const k = 1 + kh++ * .09;
+        if (c.acc === 'cap') s.add(Sp(.135, c.col, 0, -.03, 0, true), Bx(.16, .015, .13, c.col, 0, -.03, .16));
+        if (c.acc === 'basco') { const b0 = Cy(.15, .13, .04, c.col, .02, 0, 0, 14); b0.rotation.z = -.15; s.add(b0, Cy(.01, .01, .03, c.col, .02, .03, 0, 6)); }
+        if (c.acc === 'fascia') s.add(Cy(.142, .142, .035, c.col, 0, -.07, 0, 14));
+        s.scale.setScalar(k); pin(g, head, s, hp.x, hp.y + .19, hp.z + .01); }
+      if (c.acc === 'occhiali' && head) { const hp = wpos(g, head); put(head, 0, .085, .125, s => { s.add(Bx(.08, .045, .012, c.col, -.045, 0, 0), Bx(.08, .045, .012, c.col, .045, 0, 0), Bx(.2, .01, .01, '#c8b060', 0, .02, 0)); }); }
+      if (c.acc === 'cravatta') put(chest, 0, .14, .135, s => { s.add(Bx(.05, .04, .02, c.col, 0, .04, 0), Bx(.055, .26, .015, c.col, 0, -.11, 0)); });
+      if (c.acc === 'papillon') put(chest, 0, .2, .13, s => { s.add(Bx(.11, .045, .02, c.col)); });
+      if (c.acc === 'collana') put(chest, 0, .1, .12, s => { const t = new THREE.Mesh(new THREE.TorusGeometry(.1, .012, 6, 18), lm(c.col)); t.rotation.x = 1.2; s.add(t); });
+      if (c.acc === 'perle') put(chest, 0, .13, .1, s => { for (let i = 0; i < 12; i++) { const a = Math.PI * (i / 11) + Math.PI; s.add(Sp(.014, c.col, Math.cos(a) * .1, Math.sin(a) * .07, .03)); } });
+      if (c.acc === 'foulard') put(neck || chest, 0, neck ? -.02 : .2, .08, s => { const b0 = Bx(.13, .1, .02, c.col); b0.rotation.z = Math.PI / 4; s.add(b0); });
+      if (c.acc === 'colletto') put(chest, 0, .21, .05, s => { s.add(Bx(.22, .04, .2, c.col)); });
+      if (c.acc === 'risvolti') put(chest, 0, .08, .145, s => { const a = Bx(.05, .22, .01, sh(c.col, .8), -.05, 0, 0), b0 = Bx(.05, .22, .01, sh(c.col, .8), .05, 0, 0); a.rotation.z = .25; b0.rotation.z = -.25; s.add(a, b0, Bx(.04, .2, .012, '#ece8dc', 0, .02, -.004)); });
+      if (c.acc === 'tasconi') [ulL, ulR].forEach((b, i) => put(b, 0, -.18, 0, s => { s.add(Bx(.04, .12, .11, c.col, i ? -.1 : .1, 0, 0)); }));
+      if (c.acc === 'tacco') [ftL, ftR].forEach(b => put(b, 0, -.05, -.07, s => { s.add(Bx(.03, .07, .03, c.col)); }));
+      if (c.acc === 'orologio') put(wL, 0, 0, 0, s => { s.add(Cy(.04, .04, .03, '#2a2a2e', 0, 0, 0, 10), Cy(.025, .025, .035, c.col, 0, 0, 0, 10)); });
+      if (c.acc === 'anelli') [wL, wR].forEach(b => put(b, 0, -.07, .02, s => { s.add(Bx(.04, .02, .03, c.col)); }));
+      if (c.acc === 'marsupio') put(hips, 0, .05, .13, s => { s.add(Bx(.22, .1, .08, c.col), Bx(.4, .025, .25, '#1e1e24', 0, 0, -.08)); });
+      if (c.acc === 'borsetta') put(shL || chest, .1, -.35, 0, s => { s.add(Bx(.2, .14, .07, c.col), Bx(.01, .45, .01, '#2a1a14', 0, .28, 0)); });
       if (c.acc === 'zaino' && chest) { const p = wpos(g, chest), s = new THREE.Group(); s.add(Bx(.32, .4, .16, c.col), Bx(.26, .12, .05, '#2a2a22', 0, -.08, -.1), Bx(.3, .08, .17, '#3a3a2e', 0, .18, 0)); pin(g, chest, s, p.x, p.y - .05, p.z - .2); }
     });
     // nella sinistra

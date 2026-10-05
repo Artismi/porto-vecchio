@@ -86,6 +86,44 @@ var Guardaroba = (function () {
     ['paraspalle', 'paraspalle di cuoio', 'Paraspalle', 'spalle', [], 0, '#4a3a2a', 8, 1, 0, { acc: 'paraspalle', arm: .05 }],
     ['paraginocchia', 'paraginocchia', 'Ginocchiere', 'ginocchia', [], 0, '#2a2a2e', 5, .6, 0, { acc: 'paraginocchia', arm: .03 }],
     ['zaino', 'zaino militare', 'Zaino', 'schiena', [], 0, '#4a5a3a', 8, 1, 0, { acc: 'zaino' }],
+    // --- il guardaroba largo: completi, pellicce, sport, estate, donna, accessori ---
+    ['polo', 'polo', 'Polo', 'busto', [T, B], .009, '#2a5a4a', 4, .2, .05, { acc: 'colletto' }],
+    ['camicia_hawaii', 'camicia a fiori', 'Hawaiana', 'busto', [T, B], .009, '#c8583a', 5, .2, 0, { pat: 'fiori' }],
+    ['maglia_calcio', 'maglia da calcio', 'Maglia calcio', 'busto', [T, B], .009, '#1e3a8a', 4, .2, .02, { pat: 'righe_v' }],
+    ['felpa_zip', 'felpa sportiva con la zip', 'Felpa tuta', 'busto', [T, B, A], .016, '#7a1e2a', 7, .5, .15, { pat: 'bande' }],
+    ['giacca_completo', 'giacca del completo', 'Giacca compl.', 'busto', [T, B, A, H], .02, '#2a2e3a', 25, 1.2, .2, { acc: 'risvolti' }],
+    ['pelliccia', 'pelliccia maculata', 'Pelliccia', 'busto', [T, B, A, H, C], .05, '#c8a060', 60, 3, .7, { pat: 'maculato' }],
+    ['pelliccia_volpe', 'pelliccia di volpe', 'Volpe', 'busto', [T, B, A, H], .055, '#a8642e', 70, 2.5, .65, { pat: 'pelo' }],
+    ['poncho', 'poncho di lana', 'Poncho', 'busto', [T, B, A, H], .045, '#8a3a2a', 9, 1.2, .35, { pat: 'righe' }],
+    ['vestito_corto', 'vestito corto', 'Vestito corto', 'busto', [T, H, C], .012, '#3a1e3a', 12, .4, .05],
+    ['vestito_lungo', 'vestito lungo', 'Vestito lungo', 'busto', [T, B, H, C, P], .014, '#1e2a3a', 18, .7, .1],
+    ['vestito_fiori', 'vestitino a fiori', 'A fiori', 'busto', [T, H, C], .012, '#e8d8b8', 10, .4, .05, { pat: 'fiori' }],
+    ['tuta_ginnastica', 'tuta da ginnastica', 'Tuta ginn.', 'busto', [T, B, A, H, C, P], .015, '#2a3a7a', 9, .9, .12, { pat: 'bande' }],
+    ['cargo', 'pantaloni cargo', 'Cargo', 'gambe', [H, C, P], .017, '#4a5038', 9, 1, .15, { acc: 'tasconi' }],
+    ['pantaloni_completo', 'pantaloni del completo', 'Pant. compl.', 'gambe', [H, C, P], .013, '#2a2e3a', 15, .7, .12],
+    ['bermuda', 'bermuda', 'Bermuda', 'gambe', [H, C], .013, '#7a8a5a', 4, .4, 0, { pat: 'quadretti' }],
+    ['minigonna', 'minigonna di jeans', 'Minigonna', 'gambe', [H], .016, '#3a5a8a', 6, .3, 0],
+    ['leggings', 'fuseaux fosforescenti', 'Fuseaux', 'gambe', [H, C, P], .004, '#d83a8a', 4, .2, .05],
+    ['sandali', 'sandali', 'Sandali', 'piedi', [F], .008, '#6a4a2a', 4, .4, 0],
+    ['tacchi', 'scarpe col tacco', 'Tacchi', 'piedi', [F], .012, '#8a1e2a', 18, .5, 0, { acc: 'tacco' }],
+    ['scarpe_corsa', 'scarpe da corsa', 'Da corsa', 'piedi', [F], .016, '#ece8e0', 14, .6, .03, { pat: 'bande' }],
+    ['stivali_pelle', 'stivali di pelle', 'Stivali pelle', 'piedi', [F, P], .016, '#2a1a14', 24, 1.5, .1],
+    ['mocassini', 'mocassini', 'Mocassini', 'piedi', [F], .012, '#5a2e1a', 16, .5, .02],
+    ['cravatta', 'cravatta', 'Cravatta', 'collo', [], 0, '#7a1a1e', 6, .1, 0, { acc: 'cravatta' }],
+    ['papillon', 'papillon', 'Papillon', 'collo', [], 0, '#141418', 5, .05, 0, { acc: 'papillon' }],
+    ['collana_oro', 'catenone d\'oro', 'Catenone', 'collo', [], 0, '#e8c040', 60, .2, 0, { acc: 'collana' }],
+    ['collana_perle', 'collana di perle', 'Perle', 'collo', [], 0, '#f0ece2', 40, .1, 0, { acc: 'perle' }],
+    ['sciarpa_righe', 'sciarpa a righe', 'Sciarpa righe', 'collo', [], .03, '#2a5a3a', 4, .2, .12, { acc: 'sciarpa' }],
+    ['foulard', 'foulard di seta', 'Foulard collo', 'collo', [], 0, '#c8983a', 12, .05, .02, { acc: 'foulard' }],
+    ['occhiali_sole', 'occhiali da sole a goccia', 'Ray-Ban', 'testa', [], 0, '#141418', 20, .05, 0, { acc: 'occhiali' }],
+    ['cappellino', 'cappellino da baseball', 'Cappellino', 'testa', [], 0, '#2a3a7a', 3, .1, .02, { acc: 'cap' }],
+    ['basco', 'basco', 'Basco', 'testa', [], 0, '#1e1e24', 4, .1, .05, { acc: 'basco' }],
+    ['fascia', 'fascia per capelli', 'Fascia', 'testa', [], 0, '#e83a6a', 1, .02, 0, { acc: 'fascia' }],
+    ['orologio_polso', 'orologio da polso', 'Orologio', 'mani', [], 0, '#c8c8cc', 25, .1, 0, { acc: 'orologio' }],
+    ['anelli', 'anelli d\'oro', 'Anelli', 'mani', [], 0, '#e8c040', 30, .05, 0, { acc: 'anelli' }],
+    ['marsupio', 'marsupio', 'Marsupio', 'schiena', [], 0, '#3a3a6a', 5, .3, 0, { acc: 'marsupio' }],
+    ['borsetta', 'borsetta', 'Borsetta', 'schiena', [], 0, '#6a1e2a', 15, .4, 0, { acc: 'borsetta' }],
+
   ];
   const CAPO = {};
   CAPI.forEach(([id, nome, corto, zona, parti, sp, col, prezzo, peso, calore, ex]) => {
@@ -98,11 +136,14 @@ var Guardaroba = (function () {
   const sell = (ref, ids) => { const row = O.SHOPLIST.find(r => r[0] === ref); if (row) ids.forEach(id => { if (!row[1].includes(id)) row[1].push(id); }); };
   sell('use:sartoria', ['canotta', 'maglietta', 'camicia', 'camicia_quadri', 'dolcevita', 'felpa', 'gilet', 'giacca', 'impermeabile', 'mutande', 'pantaloni', 'velluto', 'gonna', 'calzamaglia', 'calzini', 'scialle', 'coppola', 'cappello', 'fazzoletto', 'sciarpa', 'guanti_lana']);
   sell('use:emporio', ['canotta', 'mutande', 'calzini', 'maglietta', 'pantaloni_lavoro', 'scarpe_tela', 'ciabatte', 'berretto', 'grembiule', 'tuta']);
-  sell('villaggio', ['colbacco', 'montone', 'calzamaglia']);
-  O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['jeans', 'giubbotto_jeans', 'giacca_pelle', 'piumino', 'scarpe_eleganti', 'maglietta_righe', 'casco', 'paraginocchia', 'paraspalle'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
+  sell('villaggio', ['colbacco', 'montone', 'calzamaglia', 'poncho']);
+  sell('use:sartoria', ['polo', 'giacca_completo', 'pantaloni_completo', 'cravatta', 'papillon', 'vestito_corto', 'vestito_lungo', 'vestito_fiori', 'minigonna', 'basco', 'foulard', 'sciarpa_righe', 'mocassini', 'tacchi', 'borsetta']);
+  sell('use:emporio', ['bermuda', 'sandali', 'cappellino', 'fascia', 'leggings', 'tuta_ginnastica', 'scarpe_corsa', 'felpa_zip', 'maglia_calcio', 'marsupio']);
+  O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['jeans', 'giubbotto_jeans', 'giacca_pelle', 'piumino', 'scarpe_eleganti', 'maglietta_righe', 'casco', 'paraginocchia', 'paraspalle', 'pelliccia', 'pelliccia_volpe', 'collana_oro', 'occhiali_sole', 'camicia_hawaii', 'cargo', 'stivali_pelle', 'orologio_polso', 'anelli', 'collana_perle'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   if (O.LOOT) { const add = (k, l) => { O.LOOT[k] = (O.LOOT[k] || []).concat(l); };
     add('bookcaseClosedWide', [['canotta', .3, 1, 2], ['mutande', .3, 1, 2], ['calzini', .3, 1, 3], ['camicia', .2, 1, 1], ['pantaloni', .15, 1, 1], ['dolcevita', .08, 1, 1], ['gonna', .1, 1, 1], ['camicia_quadri', .1, 1, 1]]);
-    add('coatRackStanding', [['coppola', .2, 1, 1], ['cappello', .15, 1, 1], ['giacca', .15, 1, 1], ['montone', .05, 1, 1]]); }
+    add('bookcaseClosedWide', [['polo', .1, 1, 1], ['vestito_corto', .08, 1, 1], ['vestito_lungo', .05, 1, 1], ['cravatta', .15, 1, 2], ['bermuda', .1, 1, 1], ['camicia_hawaii', .04, 1, 1], ['pelliccia', .02, 1, 1], ['collana_perle', .02, 1, 1]]);
+    add('coatRackStanding', [['occhiali_sole', .05, 1, 1], ['borsetta', .06, 1, 1], ['coppola', .2, 1, 1], ['cappello', .15, 1, 1], ['giacca', .15, 1, 1], ['montone', .05, 1, 1]]); }
 
   // ---------------- ADDOSSO ----------------
   // st.ogg.worn = { busto: [dentro → fuori], …, dx/sx: le mani (la destra è quella del motore: arma o attrezzo) }
@@ -209,7 +250,12 @@ var Guardaroba = (function () {
     else if (age < 26) { put(r(8, 2) ? 'felpa' : 'maglione', pk(PAL, 8)); put(r(9, 3) ? 'giubbotto_jeans' : r(9, 2) ? 'giacca_pelle' : 'piumino', top); put(r(10, 2) ? 'scarpe_tela' : 'scarpe'); if (r(11, 3) === 0) put('berretto', pk(PAL, 12)); }
     else if (fem) { put('camicia', pk(['#f0ece2', '#e8d8d0', '#d8e0e8'], 8)); put(r(8, 2) ? 'maglione' : 'scialle', pk(PAL, 9)); put('cappotto', top); put(age > 50 ? 'scarpe_eleganti' : 'scarpe_tela', '#2a2020'); if (age > 50 || r(10, 2)) put('fazzoletto', pk(['#8a3a5a', '#3a5a8a', '#6a4a2a', '#2a2a2e'], 11)); }
     else { put(r(8, 2) ? 'camicia' : 'camicia_quadri', pk(['#f0ece2', '#8a2a24', '#2a4a6a'], 7)); put('maglione', pk(PAL, 9)); put(r(10, 2) ? 'giacca' : 'cappotto', top); put('scarpe'); if (r(11, 3) === 0) put(pk(['coppola', 'berretto', 'cappello'], 12)); if (r(12, 3) === 0) put('sciarpa', pk(['#a83a3a', '#2a2a2e', '#3a5a8a'], 13)); }
-    if (n.faction && /famiglia|marsiglia|squalo/.test(n.faction)) { o.forEach(x => { if (x.id === 'cappotto' || x.id === 'giacca') x.col = '#1a1a1e'; }); put('guanti'); }
+    if (n.faction && /famiglia|marsiglia|squalo/.test(n.faction)) { o.forEach(x => { if (x.id === 'cappotto' || x.id === 'giacca') x.col = '#1a1a1e'; }); put('guanti'); put(r(15, 2) ? 'collana_oro' : 'cravatta'); if (r(16, 3) === 0) put('occhiali_sole'); if (r(17, 4) === 0) { const c0 = o.find(x => x.id === 'cappotto'); if (c0) Object.assign(c0, CAPO.pelliccia_volpe); } }
+    // un tocco a testa: l'accessorio che li fa ricordare
+    if (rich && fem && r(18, 3) === 0) { const c0 = o.find(x => /cappotto|giacca/.test(x.id)); if (c0) Object.assign(c0, CAPO.pelliccia, { col: '#c8a060' }); put('collana_perle'); put('borsetta'); }
+    if (rich && !fem && r(18, 4) === 0) { put('orologio_polso'); put('anelli'); }
+    if (age < 30 && r(19, 4) === 0) put(pk(['occhiali_sole', 'cappellino', 'fascia', 'marsupio'], 20));
+    if (/impieg|banc|notai|avvoc|ragion/.test(job)) { const i = o.findIndex(x => x.id === 'giacca'); if (i >= 0) o[i] = Object.assign({}, CAPO.giacca_completo, { col: o[i].col }); const j = o.findIndex(x => /^pantaloni/.test(x.id)); if (j >= 0) o[j] = Object.assign({}, CAPO.pantaloni_completo, { col: o[i >= 0 ? i : j].col }); put('cravatta', pk(['#7a1a1e', '#1e2a5a', '#2a2a2e', '#5a4a1e'], 21)); }
     if ((L.extra || '').includes('backpack')) put('zaino', pk(['#2f5a6a', '#8a3a2a', '#3a4a2a', '#c8862a'], 14));
     return o;
   }
