@@ -5279,9 +5279,9 @@ var World = (function () {
       // i canaloni
       for (const c of CANALI) {
         const al = dx * c.u[0] + dy * c.u[1] - c.R, lat = Math.abs(dx * c.u[1] - dy * c.u[0]);
-        if (al < CAN0 - 4 || al > CAN1 + 6) continue;
-        const hw2 = canHalf(al); if (lat > hw2 + 4) continue;
-        const hc = canFloor(c, al) + (fbm(x / 5, y / 5, 405, 2) - .5) * .5, wall = hc + Math.max(0, lat - hw2 + 3) * 7 + Math.max(0, CAN0 - al) * 7;
+        if (al < CAN0 - 10 || al > CAN1 + 6) continue;
+        const hw2 = canHalf(al); if (lat > hw2 + 12) continue;
+        const hc = canFloor(c, al) + (fbm(x / 5, y / 5, 405, 2) - .5) * .5, wall = hc + Math.pow(Math.max(0, lat - hw2 + 6) / 6, 1.6) * 9 + Math.max(0, CAN0 - al) * 2.2;   // fianchi a V larga: niente scalini sulla griglia
         if (wall < ht) { ht = wall; f &= ~(BF.TOP | BF.WALL); if (lat < hw2 - 1 && al >= CAN0) f |= BF.CANALE; }
       }
       h = ht;
