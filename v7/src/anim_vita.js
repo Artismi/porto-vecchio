@@ -47,7 +47,7 @@
   const _A = new THREE.Vector3(), _B = new THREE.Vector3(), _qg = new THREE.Quaternion(), _qh = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
   // la punta esce dal lato del pollice (canna, martello, piede di porco, pennello, bomboletta, cero: +X)
   // o da quello del mignolo (pala, zappa, scopa tenute dall'alto: -X)
-  const THUMB_TIP = { canna: 1, martello: 1, piede: 1, pennello: 1, bomboletta: 1, cero: 1 };
+  const THUMB_TIP = { canna: 1, martello: 1, piede: 1, pennello: 1, bomboletta: 1, cero: 1, giornale: 1 };
   function grip(P, side, dx, dy, dz, w, tool) {
     const S = SIDE[side], wr = P.R.b[S.wr]; if (!wr || !wr.parent) return;
     const ww = (w === undefined ? 1 : w) * P.w; if (ww <= 0) return;
@@ -102,7 +102,7 @@
   }
   // accende l'attrezzo per questo fotogramma (si spegne da solo quando la posa non lo chiede più)
   // la presa: quanto si chiudono le dita (e il pollice) per ogni oggetto
-  const GRIP = { sigaretta: [.55, .7], bicchiere: [.6, .5], bottiglia: [.75, .7], panino: [.5, .4], cornetta: [.8, .6], giornale: [.35, .2], libro: [.35, .3],
+  const GRIP = { sigaretta: [.6, .8], bicchiere: [.75, .7], bottiglia: [.88, .8], panino: [.6, .5], cornetta: [.85, .7], giornale: [.45, .55], libro: [.4, .5], matita: [.75, .85],
     carte: [.45, .2], soldi: [.4, .6], cero: [.8, .6], martello: [.95, .9], cassa: [.35, .1], pala: [.95, .9], zappa: [.95, .9], piccone: [.95, .9], scopa: [.95, .9],
     canna: [.9, .8], piede: [.95, .9], bomboletta: [.8, .4], gesso: [.6, .8], pennello: [.85, .8], fotocamera: [.6, .4], album: [.3, .3] };
   function show(P, name) {
@@ -126,12 +126,39 @@
   // impugnatura: nel pugno l'asse degli oggetti lunghi corre lungo X (dal pollice al mignolo), a ~8 cm lungo le dita e 3 cm verso il palmo
   const GY = .075, GZ = .03;
   vprop('sigaretta', 'R', () => { const g = new THREE.Group(); cyl(g, .005, .005, .07, '#f4f0e6', 0, .1, .01, 0, 0, PI / 2, 5); cyl(g, .0055, .0055, .012, '#ff5a1a', -.04, .1, .01, 0, 0, PI / 2, 5, '#a02000'); return g; });
-  vprop('bicchiere', 'R', () => { const g = new THREE.Group(); cyl(g, .035, .028, .1, '#c8dce0', 0, GY, GZ + .01, 0, 0, PI / 2, 8); cyl(g, .031, .027, .06, '#8a1a2a', -.015, GY, GZ + .01, 0, 0, PI / 2, 8); return g; });
-  vprop('bottiglia', 'R', () => { const g = new THREE.Group(); cyl(g, .035, .035, .2, '#2e5a2a', -.03, GY, GZ, 0, 0, PI / 2, 8); cyl(g, .012, .03, .08, '#2e5a2a', -.17, GY, GZ, 0, 0, PI / 2, 6); return g; });
+  // bicchiere da osteria: vetro trasparente, il vino dentro, il fondo spesso (l'apertura verso il pollice, +X)
+  const VETRO = new THREE.MeshLambertMaterial({ color: '#d8ecf0', transparent: true, opacity: .45, depthWrite: false });
+  vprop('bicchiere', 'R', () => { const g = new THREE.Group(); const v = new THREE.Mesh(cg(.036, .03, .11, 12), VETRO); v.position.set(.028, GY, GZ + .014); v.rotation.z = PI / 2; g.add(v);
+    cyl(g, .031, .028, .065, '#7a1424', .01, GY, GZ + .014, 0, 0, PI / 2, 12); cyl(g, .03, .03, .012, '#c8dce0', -.022, GY, GZ + .014, 0, 0, PI / 2, 12); return g; });   // sporge sopra il pugno: si vede
+  // bottiglia di birra: corpo, spalla, collo, tappo, etichetta (il collo verso il pollice)
+  vprop('bottiglia', 'R', () => { const g = new THREE.Group(); cyl(g, .031, .031, .13, '#3a2a12', -.02, GY, GZ + .01, 0, 0, PI / 2, 10); cyl(g, .013, .031, .04, '#3a2a12', .065, GY, GZ + .01, 0, 0, -PI / 2, 10);
+    cyl(g, .013, .013, .05, '#3a2a12', .11, GY, GZ + .01, 0, 0, PI / 2, 8); cyl(g, .015, .015, .012, '#c8a040', .14, GY, GZ + .01, 0, 0, PI / 2, 8); cyl(g, .0315, .0315, .06, '#e8dcb0', -.02, GY, GZ + .01, 0, 0, PI / 2, 10); return g; });
   vprop('panino', 'R', () => { const g = new THREE.Group(); box(g, .13, .045, .07, '#d8a860', -.02, GY + .02, GZ + .02); box(g, .135, .012, .072, '#c84a3a', -.02, GY + .02, GZ + .02); return g; });
   // telefono: la cornetta a filo del bar o il radiotelefono anni '80 (con l'antenna)
   vprop('cornetta', 'R', () => { const g = new THREE.Group(); box(g, .045, .19, .04, '#1a1a1e', 0, GY + .01, GZ + .01); box(g, .055, .05, .05, '#1a1a1e', 0, GY + .1, GZ + .025); box(g, .055, .05, .05, '#1a1a1e', 0, GY - .08, GZ + .025); return g; });
-  vprop('giornale', 'R', () => { const g = new THREE.Group(); box(g, .4, .3, .01, '#e8e2cf', .17, GY + .08, GZ + .02); box(g, .3, .02, .011, '#3a3a3a', .17, GY + .18, GZ + .02); box(g, .12, .1, .011, '#8a8a8a', .08, GY + .06, GZ + .02); return g; });
+  // il giornale: piegato a metà (due facciate a V), la prima pagina con testata, titolo, foto e colonne
+  let PAGE = null;
+  function pageTex() {
+    if (PAGE) return PAGE; const c = document.createElement('canvas'); c.width = 64; c.height = 80; const x = c.getContext('2d');
+    x.fillStyle = '#e8e2cf'; x.fillRect(0, 0, 64, 80); x.fillStyle = '#1a1a1a'; x.fillRect(4, 4, 56, 9); x.fillStyle = '#e8e2cf'; x.font = 'bold 8px serif'; x.fillText('IL TIRRENO', 9, 11);
+    x.fillStyle = '#2a2a2a'; x.fillRect(4, 16, 56, 5); x.fillRect(4, 23, 40, 4); x.fillStyle = '#8a8680'; x.fillRect(4, 30, 26, 20);
+    x.fillStyle = '#6a6660'; for (let k = 0; k < 9; k++) { x.fillRect(33, 31 + k * 3, 27, 1); x.fillRect(4, 53 + k * 3, 26, 1); x.fillRect(33, 59 + k * 2, 27, 1); }
+    PAGE = new THREE.CanvasTexture(c); PAGE.magFilter = THREE.NearestFilter; return PAGE;
+  }
+  let BACK = null;   // il retro: un'altra pagina (colonne e un riquadro), niente scritte a specchio
+  function backTex() {
+    if (BACK) return BACK; const c = document.createElement('canvas'); c.width = 64; c.height = 80; const x = c.getContext('2d');
+    x.fillStyle = '#e4ddc8'; x.fillRect(0, 0, 64, 80); x.fillStyle = '#3a3a3a'; x.fillRect(4, 5, 34, 4); x.fillStyle = '#8a8680'; x.fillRect(38, 14, 22, 16);
+    x.fillStyle = '#6a6660'; for (let k = 0; k < 20; k++) { x.fillRect(4, 13 + k * 3, 30, 1); if (k > 6) x.fillRect(38, 13 + k * 3, 22, 1); }
+    BACK = new THREE.CanvasTexture(c); BACK.magFilter = THREE.NearestFilter; return BACK;
+  }
+  // ancorato al busto (non alla mano): davanti al petto, aperto a V, inclinato verso gli occhi; le mani lo tengono ai lati
+  vprop('giornale', 'body', () => { const g = new THREE.Group(), m = new THREE.MeshLambertMaterial({ map: pageTex(), side: THREE.DoubleSide }), p = new THREE.PlaneGeometry(.2, .27);
+    m.side = THREE.FrontSide; const mb = new THREE.MeshLambertMaterial({ map: backTex() });
+    const t = new THREE.Group();
+    [[-.098, .22], [.098, -.22]].forEach(([x, ry]) => { const a = new THREE.Mesh(p, m), b = new THREE.Mesh(p, mb); a.position.set(x, 0, .018); a.rotation.set(0, Math.PI - ry, 0); b.position.set(x, 0, .02); b.rotation.set(0, -ry, 0); t.add(a, b); });   /* davanti per chi legge, il retro per chi guarda */
+    t.position.set(0, 1.13, .36); t.rotation.x = .5; g.add(t); return g; });
+  vprop('matita', 'R', () => { const g = new THREE.Group(); cyl(g, .005, .005, .14, '#e8b830', 0, GY - .01, GZ, 0, 0, PI / 2, 6); cyl(g, 0, .005, .02, '#2a2a2a', .08, GY - .01, GZ, 0, 0, -PI / 2, 6); return g; });
   vprop('libro', 'R', () => { const g = new THREE.Group(); box(g, .15, .21, .02, '#7a2a24', .05, GY + .02, GZ + .02); box(g, .14, .2, .022, '#f0e8d4', .055, GY + .02, GZ + .02); return g; });
   vprop('carte', 'L', () => { const g = new THREE.Group(); for (let i = 0; i < 5; i++) box(g, .055, .085, .002, i % 2 ? '#f4f0e6' : '#ece4d0', 0, GY + .03, GZ + .01 + i * .002, 0, 0, (i - 2) * .22); return g; });
   vprop('soldi', 'R', () => { const g = new THREE.Group(); box(g, .12, .06, .004, '#9ab08a', 0, GY + .04, GZ + .01); return g; });
@@ -149,7 +176,8 @@
   vprop('gesso', 'R', () => { const g = new THREE.Group(); box(g, .02, .07, .02, '#f4f4ee', -.01, GY + .06, GZ - .01); return g; });
   vprop('pennello', 'R', () => { const g = new THREE.Group(); cyl(g, .01, .01, .25, '#b08a52', .08, GY, GZ, 0, 0, PI / 2, 5); box(g, .06, .05, .02, '#c03028', .22, GY, GZ); return g; });
   vprop('fotocamera', 'R', () => { const g = new THREE.Group(); box(g, .13, .08, .06, '#202024', .04, GY, GZ + .03); cyl(g, .025, .025, .05, '#101012', .04, GY, GZ + .08, PI / 2, 0, 0, 8); return g; });
-  vprop('album', 'L', () => { const g = new THREE.Group(); box(g, .3, .22, .015, '#f2ead8', -.08, GY + .04, GZ + .02); return g; });
+    vprop('album', 'body', () => { const g = new THREE.Group(), t = new THREE.Group(); box(t, .3, .012, .22, '#f2ead8'); box(t, .3, .016, .012, '#7a5a3a', 0, 0, .11); box(t, .14, .002, .1, '#9a948a', -.02, .007, -.01);   // il foglio, la costola, uno schizzo a matita
+    t.position.set(.02, 1.06, .3); t.rotation.x = -.45; g.add(t); return g; });
   // la carriola: a terra davanti, segue chi la spinge
   // stanghe dalle mani (z .2, y .72) alla ruota; vasca davanti; due piedini dietro la vasca
   vprop('carriola', 'g', () => { const g = new THREE.Group(); box(g, .56, .26, .66, '#5a6a72', 0, .55, .98, .06); box(g, .5, .04, .6, '#3e4a50', 0, .69, .98, .06); cyl(g, .17, .17, .07, '#1a1a1a', 0, .17, 1.42, 0, 0, PI / 2, 12); cyl(g, .05, .05, .09, '#8a8a90', 0, .17, 1.42, 0, 0, PI / 2, 8);
@@ -265,9 +293,11 @@
   });
   // ---- LEGGE: giornale (o libro) aperto davanti, testa china; ogni tanto gira pagina ----
   function reads(P, prop) {
-    const k = cyc(P, 9 + P.r * 4), turn = pulse(k, .85, .9, .93, 1);
-    arm(P, 'R', .3, -.75, .45, -.35, .3 + turn * .3, .9); arm(P, 'L', .3, -.75, .45, -.45, .3, .9);
-    P.rot('Head', .35, 0, 0); P.rot('Chest', .06, 0, 0); show(P, prop);
+    const k = cyc(P, 9 + P.r * 4), turn = pulse(k, .85, .9, .93, 1), big = prop === 'giornale';
+    // due mani ai lati del giornale (o del libro), all'altezza del petto; la testa china a leggere
+    handTo(P, 'R', big ? .17 : .1, 1.1 + turn * .04, .33, .9, -.4, 0); handTo(P, 'L', big ? .17 : .08, 1.1, .33, .9, -.4, 0);
+    if (big) grip(P, 'R', 0, 1, .15, .8, 'giornale');   // il giornale in piedi davanti al petto (il lato del pollice in su)
+    P.fingers('L', .35, .5); P.rot('Head', .38, 0, 0); P.rot('Chest', .06, 0, 0); show(P, prop);
   }
   def('legge', { fade: .4 }, (P) => reads(P, 'giornale'));
   def('libro', { fade: .4 }, (P) => reads(P, 'libro'));
@@ -337,7 +367,7 @@
     const k = cyc(P, .55), hit = k < .3 ? smooth(k / .3) : 1 - smooth((k - .3) / .7);
     P.rot('Abdomen', .2, 0, 0); P.rot('Head', .3, 0, 0);
     handTo(P, 'L', .02, 1.0, .42, .8, -.5, 0); P.fingers('L', .55, .9);              // la sinistra tiene il chiodo sull'asse
-    handTo(P, 'R', lerp(.16, .1, hit), lerp(1.32, 1.04, hit), lerp(.22, .4, hit), .9, -.3, -.3);
+    handTo(P, 'R', lerp(.14, .1, hit), lerp(1.2, 1.02, hit), lerp(.3, .42, hit), .9, -.3, -.3);
     grip(P, 'R', 0, lerp(.95, -.1, hit), lerp(.3, 1, hit), 1, 'martello'); hideHeld(P); show(P, 'martello');
   }); BUSY.martella = 1;
   // ---- FORZA UNA PORTA: piede di porco nella fessura, tira indietro con tutto il peso ----
@@ -437,9 +467,9 @@
   }); BUSY.foto = 1;
   // ---- DISEGNA: album sul braccio sinistro, la destra traccia ----
   def('disegna', FULL, (P) => {
-    arm(P, 'L', .2, -.75, .4, -.55, .25, .8);
-    arm(P, 'R', .2, -.75, .45, -.45 + .08 * Math.sin(P.t * 3), .3, .85);
-    P.rot('Head', .35 - .2 * pulse(cyc(P, 4), 0, .1, .3, .4), 0, 0); show(P, 'album');
+    handTo(P, 'L', .14, 1.03, .3, .9, -.4, 0); P.fingers('L', .35, .4);   // la sinistra regge l'album da sotto
+    handTo(P, 'R', .02 + .04 * Math.sin(P.t * 3), 1.07, .32 + .03 * Math.sin(P.t * 2.3), .9, -.4, 0); P.fingers('R', .7, .8);
+    P.rot('Head', .38 - .2 * pulse(cyc(P, 4), 0, .1, .3, .4), 0, 0); show(P, 'album'); show(P, 'matita');
   }); BUSY.disegna = 1;
   // ---- GUARDA LA MERCE (banco, mercato): chino sul banco, una mano tocca, gira la testa ----
   def('merce', FULL, (P) => {
