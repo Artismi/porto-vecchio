@@ -64,7 +64,7 @@ rep("I = L.base * (L.spill ? .55 : .38) * (L.flick > .5 ? .7 : 1);",
 rep("    hemi.intensity = .22 + (1 - night) * .3 + night * .08;",
     "    hemi.intensity = .22 + (1 - night) * .3 - night * .03;   // [luci1] di notte meno cielo")
 rep("    moon.intensity = .34 + (1 - night) * .68;",
-    "    moon.intensity = .25 + (1 - night) * .77;   // [luci1] di notte meno luna")
+    "    moon.intensity = .25 + (1 - night) * .77; /* [luci1] di notte meno luna */")
 
 # 6) post: le pozze calde tengono il loro colore (prima il grading le portava al bianco-grigio)
 rep("""          float hot = smoothstep(.5,.9,chroma*max(max(c.r,c.g),c.b)*2.);

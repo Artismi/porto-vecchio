@@ -22,7 +22,7 @@ rep("    for (let i = 0; i < 48; i++) { const m = new THREE.Mesh(g, new THREE.Me
     "    for (let i = 0; i < 96; i++) { const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: reflTex()")
 rep("len = Math.min(9, h * 1.7 + 1)", "len = Math.min(13, h * 2.3 + 1.5)")
 rep("m.material.opacity = night * (L.spill ? .22 : .42) * Math.min(1, L.base / 2);",
-    "m.material.opacity = night * (L.spill ? .4 : .72) * Math.min(1, L.base / 2);   // [luci3] acqua che riflette")
+    "m.material.opacity = night * (L.spill ? .4 : .72) * Math.min(1, L.base / 2); /* [luci3] acqua che riflette */")
 
 # vapore dei tombini: più sbuffi, più pieni, più alti
 rep("vents.forEach(([x, y, z, k]) => { for (let q = 0; q < 3; q++) {", "vents.forEach(([x, y, z, k]) => { for (let q = 0; q < 5; q++) {")

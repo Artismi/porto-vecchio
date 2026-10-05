@@ -179,3 +179,9 @@ Questa chat si occupa SOLO delle luci; la chat «I progetti» fa mappa e arredo 
   - La luce senz'ombra cede il posto: coni pieni dei faretti .34 → .1, aloni larghi .085 → .05, nebbiolina di aria2 sotto i lampioni al 35% (le vetrine restano).
 - Copia prima di questo script: `_backup_neon_modelli/render_prima_delle_ombre_nella_nebbia.js`.
 - Ordine completo: 30 → isola31/32/33 → luci_regia1 → 2 → 3 → 4.
+- `strumenti_inverno/luci_regia5.py` (dopo luci_regia4, guardia `[luci5]`) — **il buio da cui le luci difendono, ombre nette** (Andrea: «non vedo le ombre nette… manca la vera oscurità di notte»):
+  - Di notte: cielo .19 → .05, luna .25 → .14 (resta per le sagome), riempimenti e controluce quasi spenti; fondo/nebbia verde-acqua scuriti; veli di nebbia e nebbiolina non stendono più grigio sul buio.
+  - Post: niente sollevamento dei neri e niente verde-acqua nelle ombre di notte; piede della curva schiacciato (`.022*night`); la lontananza di notte sprofonda nel nero invece di velarsi.
+  - Faretti: penombra .95 → .4, mappe d'ombra 512 → 1024: ombre nette a terra e nella nebbia. Nebbia con le ombre .36 → .24 (era lattiginosa).
+- **Due errori corretti in luci_regia1 e luci_regia3**: un commento `//` a fine riga si mangiava il codice che seguiva. Spegneva i riflessi sull'asfalto (`m.visible = true` non c'era più) e il colore della luna. Ora i commenti a fine riga negli script delle luci sono `/* */`.
+- Ordine completo: 30 → isola31/32/33 → luci_regia1 → 2 → 3 → 4 → 5.

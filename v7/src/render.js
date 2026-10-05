@@ -1198,7 +1198,7 @@ var Render = (function () {
       const bx = L.x + dx * .3, bz = L.z + dz * .3; if (!wetAt(bx, bz)) continue;
       const m = REFL[k++], len = Math.min(13, h * 2.3 + 1.5), wid = L.spill ? 1.6 : .55 + h * .08;
       m.position.set(bx, groundH(bx, bz) + .04, bz); m.rotation.set(0, Math.atan2(dx, dz), 0); m.scale.set(wid, 1, len);
-      m.material.color.copy(L.color); m.material.opacity = night * (L.spill ? .4 : .72) * Math.min(1, L.base / 2);   // [luci3] acqua che riflette m.visible = true;
+      m.material.color.copy(L.color); m.material.opacity = night * (L.spill ? .4 : .72) * Math.min(1, L.base / 2); /* [luci3] acqua che riflette */ m.visible = true;
     }
     for (; k < REFL.length; k++) REFL[k].visible = false;
   }
@@ -1308,7 +1308,7 @@ var Render = (function () {
       else { AIR2.lp[i].set(0, -99, 0); AIR2.lc[i].set(0, 0, 0); } }
     AIR2.mist.forEach((pl, k) => { const U = pl.material.uniforms; U.time.value = time; U.ctr.value.set(cam.x, cam.y);
       pl.position.set(cam.x, cam.h + pl.userData.hy, cam.y);
-      U.base.value.copy(scene.fog.color).multiplyScalar(.55 + (1 - night) * .6); U.amt.value = (.16 + night * .1) * (k ? .7 : 1); });
+      U.base.value.copy(scene.fog.color).multiplyScalar(.55 + (1 - night) * .6 - night * .45); /* [luci5] */ U.amt.value = (.16 + night * .1) * (k ? .7 : 1); });
     // fumo dai camini vicini: sale, si allarga, il vento lo piega verso est
     let q = 0; const cx = cam.x, cz = cam.y;
     const near = AIR2.ch.filter(c => { const a = c.x - cx, b = c.z - cz; return a * a + b * b < 55 * 55; });
@@ -3550,18 +3550,19 @@ var Render = (function () {
             vec3 rd = wp.xyz - vCam; float tm = length(rd); rd /= tm; float jit = bayer(floor(vUv * res));
             vec3 vol = vScat(vSM0, vSMat[0], vLP[0], vLC[0], vLD[0], vCam, rd, tm, jit) + vScat(vSM1, vSMat[1], vLP[1], vLC[1], vLD[1], vCam, rd, tm, jit)
                      + vScat(vSM2, vSMat[2], vLP[2], vLC[2], vLD[2], vCam, rd, tm, jit) + vScat(vSM3, vSMat[3], vLP[3], vLC[3], vLD[3], vCam, rd, tm, jit);
-            c += vol * vOn * .36; }   // manopola: densità della nebbia con le ombre
-          { float far01 = smoothstep(dc*1.02, dc*1.7, d); vec3 hz = mix(vec3(.50,.52,.54), vec3(.075,.085,.09), night);
-            c = mix(c, hz + c*.35, far01 * (.42 + night*.1)); }   // [luci2] aria spessa lontano
+            c += vol * vOn * .24; }   // manopola: densità della nebbia con le ombre
+          { float far01 = smoothstep(dc*1.02, dc*1.7, d); vec3 hz = mix(vec3(.50,.52,.54), vec3(.02,.022,.026), night);
+            c = mix(c, hz + c*.35, far01 * (.42 - night*.2)); }   /* [luci5] di notte la lontananza sprofonda nel buio, non si vela */   // [luci2] aria spessa lontano
           float l = dot(c, vec3(.299,.587,.114));
           // [inverno] ombre blu-grigie, mezzitoni spenti; la saturazione resta alle sorgenti di luce
           float chroma = max(max(c.r,c.g),c.b) - min(min(c.r,c.g),c.b);
           float hot = smoothstep(.5,.9,chroma*max(max(c.r,c.g),c.b)*2.);
           float warmL = smoothstep(.06,.16, c.r-c.b) * smoothstep(.08,.28, max(max(c.r,c.g),c.b)) * smoothstep(.55,.95, night);   // [luci1] luce calda di notte
-          c = mix(c, c*.7*vec3(.78,1.,1.04) + vec3(.01,.075,.085)*.6, (1.-smoothstep(.0,.62,l))*.9*(1.-warmL*.75));
+          c = mix(c, c*.7*vec3(.78,1.,1.04) + vec3(.01,.075,.085)*.6*(1.-night*.9), (1.-smoothstep(.0,.62,l))*.9*(1.-warmL*.75));   /* [luci5] le ombre non si alzano verso il verde-acqua */
           c *= mix(vec3(1.), vec3(1.02,1.,.96), smoothstep(.28,.8,l)*(1.-hot));   // [inverno24] alte luci appena calde, non azzurrine
           c = mix(vec3(l), c, mix(.66, 1.3, max(hot, warmL*.85))*sat);
-          c += vec3(.012,.014,.02);
+          c += vec3(.012,.014,.02)*(1.-night*.9);
+          c = max(c - .022*night*(1.-smoothstep(.0,.3,dot(c, vec3(.3,.59,.11)))), 0.);   /* [luci5] il buio: piede della curva schiacciato */
           c = (c-.5)*1.24+.5;
           { float AZZ = .12; float cy = smoothstep(.03,.16, min(c.g,c.b)-c.r) * smoothstep(.06,.22, max(max(c.r,c.g),c.b)-min(min(c.r,c.g),c.b));   // [inverno20] niente azzurri
             vec3 gr = vec3(dot(c, vec3(.3,.59,.11))) * vec3(1.,.99,.97); c = mix(c, mix(gr, c, AZZ), cy); }
@@ -4600,7 +4601,7 @@ var Render = (function () {
     VX.cones.forEach(m => { m.material.opacity = night * .045; m.visible = night > .05; });
     VX.decals.forEach(d => { d.m.material.opacity = (d.always ? night * .045 : night * .02); });
     VX.steam.forEach(s => { const t = ((time * .3 + s.ph) % 3) / 3, sz = (.7 + t * 3.0) * s.k; s.sp.position.set(s.x + Math.sin(time + s.ph) * .4 * t + t * t * 1.2, s.y + t * 3.8, s.z + t * .8); s.sp.scale.set(sz, sz, 1); s.sp.material.opacity = (1 - t) * Math.min(1, t * 5) * (.42 + night * .3); });   // [luci3] vapore più denso
-    VX.fog.forEach((pl, k) => { const U = pl.material.uniforms; U.time.value = time; U.col.value.copy(scene.fog.color).lerp(new THREE.Color('#d0d4da'), .3 * (1 - night)); U.ctr.value.set(cam.x, cam.y); U.amt.value = .22 + night * .1 - k * .06; pl.position.x = cam.x; pl.position.z = cam.y; });
+    VX.fog.forEach((pl, k) => { const U = pl.material.uniforms; U.time.value = time; U.col.value.copy(scene.fog.color).lerp(new THREE.Color('#d0d4da'), .3 * (1 - night)); U.ctr.value.set(cam.x, cam.y); U.amt.value = .22 - night * .15 - k * .06; /* [luci5] */ pl.position.x = cam.x; pl.position.z = cam.y; });
   }
 
   function tickWinter(time, night) {
@@ -4642,8 +4643,8 @@ var Render = (function () {
     // [inverno28] faretti con ombra (quanti ne regge la scheda video) + punti senza ombra per i fuochi
     { const maxT = (renderer.capabilities && renderer.capabilities.maxTextures) || 16, N = Math.max(4, Math.min(12, maxT - 7));
       const coneG = new THREE.ConeGeometry(1, 1, 18, 1, true); coneG.translate(0, -.5, 0);
-      for (let i = 0; i < N; i++) { const l = new THREE.SpotLight('#ffb35c', 0, 10, 1.2, .95, 1.25);   // [inverno29] caduta morbida, bordo sfumato
-        l.castShadow = true; l.shadow.autoUpdate = false; l.shadow.needsUpdate = true; l.shadow.mapSize.set(512, 512); l.shadow.bias = -.0012; l.shadow.normalBias = .035; l.shadow.camera.near = .2; l.shadow.camera.far = 14;
+      for (let i = 0; i < N; i++) { const l = new THREE.SpotLight('#ffb35c', 0, 10, 1.2, .4, 1.25); /* [luci5] bordo deciso */   // [inverno29] caduta morbida, bordo sfumato
+        l.castShadow = true; l.shadow.autoUpdate = false; l.shadow.needsUpdate = true; l.shadow.mapSize.set(1024, 1024); l.shadow.radius = 1; /* [luci5] ombre nette */ l.shadow.bias = -.0012; l.shadow.normalBias = .035; l.shadow.camera.near = .2; l.shadow.camera.far = 14;
         const cone = new THREE.Mesh(coneG, new THREE.MeshBasicMaterial({ color: '#ffd8a0', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); cone.visible = false; cone.renderOrder = 2;
         cone.material.onBeforeCompile = sh => {   // [luci2] cono d'aria: pieno vicino alla lampada, svanisce a terra e ai bordi
           sh.vertexShader = 'varying float vFr; varying float vH;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vec3 nV = normalize(normalMatrix * normal); vec4 mvq = modelViewMatrix * vec4(position, 1.); vFr = abs(dot(nV, normalize(-mvq.xyz))); vH = uv.y;');
@@ -5399,14 +5400,14 @@ var Render = (function () {
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
     updateChunks(cam.x, cam.y);
     horizonColor(night, dusk, tmpC);
-    tmpC.lerp(FOGTEAL, .22 + night * .12); scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
+    tmpC.lerp(FOGTEAL, .22 - night * .16).multiplyScalar(1 - night * .45); /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
     // [inverno] luce di neve: tanto cielo, poco sole
-    hemi.intensity = .22 + (1 - night) * .3 - night * .03;   // [luci1] di notte meno cielo   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
-    fillAmb.intensity = .12 + (1 - night) * .12; fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');
-    moon.intensity = .25 + (1 - night) * .77;   // [luci1] di notte meno luna moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
+    hemi.intensity = .22 + (1 - night) * .3 - night * .14; /* [luci5] buio */   // [luci1] di notte meno cielo   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
+    fillAmb.intensity = .12 + (1 - night) * .12 - night * .1; /* [luci5] */ fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');
+    moon.intensity = .25 + (1 - night) * .77 - night * .11; /* [luci5] un filo di luna per le sagome */ /* [luci1] di notte meno luna */ moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
     moon.position.set(cam.x - 34 - dusk * 18, 22 - dusk * 8, cam.y - 30); moon.target.position.set(cam.x, 0, cam.y);
-    if (dyn.fill) { dyn.fill.position.set(cam.x + 8, 14, cam.y + 40); dyn.fill.target.position.set(cam.x, 0, cam.y); dyn.fill.intensity = .12 + (1 - night) * .06; dyn.fill.color.set(night > .5 ? '#5f86b4' : '#a8bcd0'); }
-    if (dyn.rim) { dyn.rim.position.set(cam.x + 30, 18, cam.y + 34); dyn.rim.target.position.set(cam.x, 0, cam.y); dyn.rim.intensity = .1 + (1 - night) * .1; dyn.rim.color.set(night > .5 ? '#6a8ac8' : '#b8c8e8'); }
+    if (dyn.fill) { dyn.fill.position.set(cam.x + 8, 14, cam.y + 40); dyn.fill.target.position.set(cam.x, 0, cam.y); dyn.fill.intensity = .12 + (1 - night) * .06 - night * .1; /* [luci5] */ dyn.fill.color.set(night > .5 ? '#5f86b4' : '#a8bcd0'); }
+    if (dyn.rim) { dyn.rim.position.set(cam.x + 30, 18, cam.y + 34); dyn.rim.target.position.set(cam.x, 0, cam.y); dyn.rim.intensity = .1 + (1 - night) * .1 - night * .07; /* [luci5] */ dyn.rim.color.set(night > .5 ? '#6a8ac8' : '#b8c8e8'); }
     dyn.buildings.forEach(b => b.mats.forEach(m => { if (m.emissiveMap) m.emissiveIntensity = .04 + night * .85; }));
     if (dyn.backdropMats) dyn.backdropMats.forEach(m => m.emissiveIntensity = .1 + night * .9);
     const time = ui.time || st.clock;
