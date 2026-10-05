@@ -139,6 +139,9 @@ rep("    const tex = canvasTex(c);\n    let rtex = null;", "    const tex = canv
 # l'outline») Un contorno solo, deciso, col peso che varia appena (legato al punto del mondo, ricostruito dalla profondità, così
 # muovendosi non scorre); dentro la sagoma linee leggere di forma sugli spigoli e sulle pieghe (salto della pendenza), più chiare
 # del contorno. Niente tratti doppi né tratteggio.
+# (poi: «non sembra un'illustrazione inchiostrata a pennino») China nera vera (non la tinta scurita), filo a taglio netto (soglia
+# stretta), pieno e filo del pennino lungo il tratto (il raggio largo si accende e si spegne lungo la linea, più pieno in ombra),
+# filetti di forma neri e sottili.
 # (poi: «usiamo lo shader per dare tridimensionalità, contrasto e profondità») Prima dell'inchiostro, l'oscuramento di profondità:
 # la profondità sfocata su un anello largo dice cosa sta dietro a qualcosa di più vicino (il suolo dietro un personaggio, il muro
 # dietro una tettoia) e lì l'ombra si raccoglie attorno alla sagoma; quello che sta davanti prende un filo di luce. Le figure si
@@ -152,12 +155,12 @@ rep("c = mix(c, c*.55 + vec3(.02,.025,.04), ol*aK2.z*(1.-coc));   // [amb2]",
             for (int k = 0; k < 8; k++) { float a = float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * px * (k - k/2*2 == 0 ? 2. : 1.7); e2 = max(e2, dL(uv + o) - d); }
             float lum0 = dot(c, vec3(.3,.59,.11)), dark = 1. - smoothstep(.08, .5, lum0);
             float zr = texture2D(tD, uv).r; vec4 wq = vInvVP * vec4(uv * 2. - 1., zr * 2. - 1., 1.); vec3 wp = wq.xyz / wq.w; vec2 sp = vec2(wp.x + wp.y * .6, wp.z - wp.y * .6) * .9;
-            float thin = smoothstep(tA, tB, edge) * mix(.82, 1., vn11(sp * .8));   // il contorno: un tratto solo, deciso, appena vivo nel peso
-            float thick = smoothstep(tA * 2.2, tB * 3., e2) * (.45 + .55 * dark) * mix(.75, 1., vn11(sp * 1.7 + 3.));
-            float d2x = abs(d1 + d2 - 2. * d), d2y = abs(d3 + d4 - 2. * d), form = smoothstep(.035 + d * .003, .09 + d * .006, max(d2x, d2y)) * (1. - thin) * .42;   // linee leggere di forma: spigoli e pieghe dentro la sagoma
+            float thin = smoothstep(tA, tA * 1.3, edge);   // il contorno: filo netto (soglia stretta sul bordo interpolato: taglio pulito, non sfumato)
+            float thick = smoothstep(tA * 2.2, tA * 2.9, e2) * (.35 + .65 * dark) * smoothstep(.3, .62, vn11(sp * 1.25 + 3.));   // il pieno del pennino: il tratto si gonfia e si assottiglia lungo la linea, più pieno in ombra
+            float d2x = abs(d1 + d2 - 2. * d), d2y = abs(d3 + d4 - 2. * d), form = smoothstep(.05 + d * .004, .07 + d * .0055, max(d2x, d2y)) * (1. - thin) * .7;   // filetti di forma: spigoli e pieghe dentro la sagoma, sottili e netti
             float cvi = (d1 + d2 + d3 + d4 - 4. * d) / (d * .012 + .08), crease = smoothstep(.9, 2.2, -cvi) * .55;
-            float ink = max(max(max(thin, thick), crease * .8), form) * (1.-coc) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
-            vec3 inkC = c * vec3(.16,.14,.2) + vec3(.022,.016,.036);
+            float ink = max(max(max(thin, thick), crease * .7), form) * (1.-coc) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
+            vec3 inkC = vec3(.03, .026, .032) + c * .04;   // inchiostro di china: nero vero
             c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); }""")
 # ---------------- 7) colore un filo più saturo ----------------
 rep("if (pK.x > .01) {   // [amb3] colori saturi, ma in palette", "c = max(mix(vec3(dot(c, vec3(.3,.59,.11))), c, 1.14), 0.);   /* [unione11] un filo più saturi */\n          if (pK.x > .01) {   // [amb3] colori saturi, ma in palette")
