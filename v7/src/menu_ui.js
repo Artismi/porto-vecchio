@@ -435,7 +435,7 @@ var MenuUI = (function () {
     if (O().canHold && O().canHold(i.id) && !i.eq) acts.push(btn('tieni', 'Tieni', i.id));
     if (c && pv.base) acts.push(btn('deposita', 'Al covo', { id: i.id, q: i.q }));
     if (c) acts.push(btn('butta', 'Butta', { id: i.id, q: 1 }, 'bad'));
-    return `<div class="hd"><div class="pic ${wide ? 'w' : ''}">${ic(i.id, wide ? 32 : 16)}</div><div><div class="nm">${esc(cap(i.nome))}</div><div class="ct">${esc(i.catLabel || '')}${i.q > 1 ? ` · ×${i.q}` : ''}${O().SLOT_OF && O().SLOT_OF[i.id] ? ` · si indossa: ${esc(O().SLOTNAME[O().SLOT_OF[i.id]])}` : ''}</div></div></div>
+    return `<div class="hd"><div class="pic ${wide ? 'w' : ''}">${ic(i.id, wide ? 32 : 16)}</div><div><div class="nm">${esc(cap(i.nome))}</div><div class="ct">${esc(i.catLabel || '')}${i.q > 1 ? ` · ×${i.q}` : ''}${O().SLOT_OF && O().SLOT_OF[i.id] && typeof Guardaroba !== 'undefined' ? ` · si indossa: ${esc(Guardaroba.ZONE[O().SLOT_OF[i.id]].nome.toLowerCase())}` : ''}</div></div></div>
       <div class="ds">${esc(describe(i.id))}</div>
       <div class="stat" style="grid-template-columns:1fr auto">${c ? `<span>Peso</span><em>${Math.round(c.peso * (i.q || 1) * 10) / 10} kg</em>` : ''}${i.tool != null ? `<span>Stato</span><em>${i.tool}%</em><i><b class="${i.tool < 25 ? 'r' : 'g'}" style="width:${i.tool}%"></b></i>` : ''}${st.player.arms && st.player.arms[i.id] && st.player.arms[i.id].mag != null ? `<span>Colpi</span><em>${st.player.arms[i.id].mag} + ${st.player.arms[i.id].reserve || st.player.arms[i.id].res || 0}</em>` : ''}</div>
       <div class="row">${acts.join('')}</div>`;

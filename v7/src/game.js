@@ -709,6 +709,7 @@ var Game = (function () {
   function damagePlayer(st, dmg, ang, src) {
     const p = st.player; if (st.over) return;
     if (p.vehicle) { const v = st.vehicles.find(k => k.id === p.vehicle); if (v) dmg *= .5; }
+    if (p.armor) dmg *= 1 - p.armor;   // [guardaroba] giubbotto, elmetto, paraspalle
     p.hp -= dmg; p.hurtT = st.clock; p.lastHurtBy = src; st.shake = Math.max(st.shake, .18);
     st.fx.push({ k: 'hurt', a: ang }); st.sfx.push({ k: 'hurt' });
     if (p.hp <= 0) wasted(st);
