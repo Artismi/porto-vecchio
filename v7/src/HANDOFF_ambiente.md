@@ -40,6 +40,20 @@ Chi in futuro cambia il colore del post deve farlo dopo `[amb1]`, perché tutto 
 `strumenti_inverno/shot_gioco.js`. Per forzare il tempo serve una copia che imposti `window.__meteo = s.meteo` prima di ogni scena.
 Punti usati: `piazza` 14:00 e 22:00, `piazza_gov` 10:00, borgo dei pescatori (470, 258) 18:30, `bosco_antico` 11:00, `tavolato` 17:30, `spiaggia_lunga` 13:00.
 
+## Ambiente 2: la macchina da presa (`ambiente2.py`, guardia `[amb2]`, dopo ambiente1)
+Andrea: «voglio un lavoro tripla A, dal sapore e la croccantezza cinematografica».
+- **HDR**: la scena è disegnata in mezza precisione (`HalfFloatType`), quindi lampade, neon e sole possono superare il bianco.
+- **Bloom vero**: soglia morbida a mezza risoluzione, poi sfocatura gaussiana a 1/4 e a 1/8 (`ambPasses`, 8 bersagli in `APS.rts`).
+  Sostituisce gli «aloni» a campioni sparsi. La soglia cambia fra giorno e notte (`thrDay`, `thrNight`); di notte il bloom pesa di più.
+- **Curva filmica ACES** con esposizione (più bassa di giorno, `.84 + night * .28`). Sostituisce la vecchia curva, la spalla, le righe da monitor e il retino a 40 livelli.
+- **Grana fine** da pellicola e **aberrazione cromatica** appena ai bordi.
+- **Profondità di campo** da obiettivo basculante: nitido attorno al giocatore (`aFoc`, proiettato ogni fotogramma), morbido in alto, in basso e lontano.
+  In auto la sfocatura scende alla metà, al chiuso è spenta. Contorni e occlusione si attenuano dove l'immagine è sfocata.
+- **Raggi di sole**: l'aria bassa (16 m sopra la superficie) campiona la shadow map vera del sole, 18 passi. Dove c'è ombra l'aria si scurisce, dove passa il sole si accende.
+  Sono più forti con la nebbia e al tramonto, quasi spenti col coperto, spenti in bassa qualità e al chiuso.
+- **Vapore**: erano 70 sfiati da 5 sprite tinti dalle lampade, cioè le «palline sfocate» di notte. Ora fuma un tombino su quattro e i barili col fuoco; con la nebbia tornano tutti.
+- **Manopole a gioco aperto**: `window.__AMB` = { expo, bloom, thrDay, thrNight, dof, grain, ca, shafts, sharp, outline, vig }.
+
 ## Da fare (ordine proposto)
 1. **Acqua**: riflesso del cielo e delle luci di riva, profondità, schiuma leggibile. Oggi il mare è pieno di trattini che sembrano pioggia.
 2. **Luce a chiazze nel bosco** (rumore che si muove col vento, moltiplicato nella luce del sole) e alone del cielo sui bordi.
