@@ -1,5 +1,10 @@
 {
   "provider": "gemini",
   "apiKey": "INCOLLA_QUI_LA_TUA_CHIAVE",
-  "model": ""
+  "model": "",
+  "chiavi": {
+    "chat": "",
+    "mente": "",
+    "eventi": ""
+  }
 }

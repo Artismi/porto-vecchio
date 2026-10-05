@@ -25,6 +25,7 @@ Se il gioco nuovo è ancora su un altro branch, in **Settings → Git → Produc
 ### Variabili facoltative
 - `MENTE_PROVIDER`: `gemini` (predefinito), `anthropic`, `groq` o `openrouter`. Con le chiavi `ANTHROPIC_API_KEY`, `GROQ_API_KEY` o `OPENROUTER_API_KEY` il fornitore si riconosce da solo.
 - `MENTE_MODEL`: un modello preciso; se manca, sceglie da solo.
+- `CHIAVE_CHAT`, `CHIAVE_MENTE`, `CHIAVE_EVENTI`: una chiave per canale (chat col giocatore, notte dei gruppi, chiacchiere e incontri). Chi manca usa `GEMINI_API_KEY`. Servono chiavi di **progetti Google diversi**: la quota gratuita è per progetto, non per chiave.
 - `MENTE_PER_MINUTO`: richieste al minuto per visitatore (predefinito 40). È un freno contro chi usasse l'indirizzo per consumare la tua chiave.
 
 ## 3. Sul tuo computer
