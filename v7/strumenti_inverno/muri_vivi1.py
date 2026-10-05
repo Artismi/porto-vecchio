@@ -24,4 +24,9 @@ rep("  function eyeMat(kind) {\n    if (EYEC[kind]) return EYEC[kind];",
 i = s.index('  function posterTex(k) {'); j = s.index('\n  function ', i + 10)
 body = s[i:j].replace("'#ff3fa4'", "'#8e2a22'").replace("'#38e8ff'", "'#c08a2e'").replace("'#f0d030'", "'#c8a84a'")
 s = s[:i] + body + s[j:]
+# un muro cieco su due (fuori dai luoghi del regime) non ha il Garante: la gente ci ha dipinto sopra un murale
+rep("    return { f: sd.f, k0, k1: k0 + span, pw, ph, yc: base + .3 + H / 2, ...pos, defaced: r() < .22, top: base + H };",
+    "    return { f: sd.f, k0, k1: k0 + span, pw, ph, yc: base + .3 + H / 2, ...pos, defaced: r() < .22, top: base + H, mural: !civic && r() < .5 };   /* [muri1] */")
+rep("const m = new THREE.Mesh(new THREE.PlaneGeometry(PP.pw, PP.ph), propTex('ritratto', (bi % 7) + (PP.defaced ? 100 : 0)));",
+    "const m = new THREE.Mesh(new THREE.PlaneGeometry(PP.pw, PP.ph), PP.mural ? mvMuralMat(bi % 8, true) : propTex('ritratto', (bi % 7) + (PP.defaced ? 100 : 0)));   /* [muri1] murale della gente */")
 open(p, 'w', encoding='utf-8').write(s); print('ok')

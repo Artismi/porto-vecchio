@@ -21703,10 +21703,10 @@ var Render = (function () {
     });
   }
   // --- murales: dipinti dalla gente sui muri ciechi, colori di vernice da muro, scrostati ---
-  function mvMural(k) {
-    const key = 'm' + k; if (MV.tex[key]) return MV.tex[key];
+  function mvMural(k, tall) {   /* [unione3] tall: il murale alto al posto di un ritratto */
+    const key = 'm' + k + (tall ? 't' : ''); if (MV.tex[key]) return MV.tex[key];
     const r = rng(k * 271 + 3);
-    return MV.tex[key] = mvCanvas(192, 64, (x, W, H) => {
+    return MV.tex[key] = mvCanvas(tall ? 96 : 192, tall ? 136 : 64, (x, W, H) => {
       const P = pick(r, [['#b8643a', '#2f4a3a', '#d9c49a', '#7a2a24', '#1c1a18'], ['#c99a3c', '#5a2a2a', '#e0d3b4', '#2a3a4a', '#1a1816'], ['#8a4a3a', '#c8a050', '#d8ccb0', '#3a4a30', '#161412']]);
       const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, P[2]); g.addColorStop(1, P[0]); x.fillStyle = g; x.fillRect(0, 0, W, H);
       x.fillStyle = P[0]; x.beginPath(); x.arc(W * (.15 + r() * .2), H * .32, 12, 0, 7); x.fill();   // il sole basso
@@ -21738,6 +21738,7 @@ var Render = (function () {
   }
   // --- materiali: carta (statica), vernice (piatta), stoffa (si muove) ---
   function mvPaperMat(t) { return new THREE.MeshLambertMaterial({ map: t, transparent: false, alphaTest: .4, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); }
+  function mvMuralMat(k, tall) { const key = 'mm' + k + (tall ? 't' : ''); return MV.mats[key] || (MV.mats[key] = mvPaintMat(mvMural(k, tall))); }   /* [unione3] */
   function mvPaintMat(t) { return new THREE.MeshLambertMaterial({ map: t, transparent: true, opacity: .93, alphaTest: .05, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }); }
   function mvClothMat(t, mode) {   // mode 0 = stendardo (appeso in alto, ondeggia in fondo), 1 = bandiera (attaccata all'asta, sventola in punta)
     const m = new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide, alphaTest: .4 });
@@ -22461,7 +22462,7 @@ var Render = (function () {
     const sd = pick(r, cand), H = MG + (fl - 1) * MF, span = Math.max(2, Math.min(sd.n, Math.round((H - .8) * .7 / TS))), k0 = Math.floor((sd.n - span) / 2);
     const mid = (k0 + span / 2) * TS, pw = span * TS - .5, ph = Math.min(H - .8, pw / .7);
     const pos = sd.f === 'S' ? { x: x0 + mid, z: z0 + d, yaw: 0 } : { x: x0 + w, z: z0 + d - mid, yaw: Math.PI / 2 };
-    return { f: sd.f, k0, k1: k0 + span, pw, ph, yc: base + .3 + H / 2, ...pos, defaced: r() < .22, top: base + H };
+    return { f: sd.f, k0, k1: k0 + span, pw, ph, yc: base + .3 + H / 2, ...pos, defaced: r() < .22, top: base + H, mural: !civic && r() < .5 };   /* [unione3] [muri1] metà delle case comuni: il murale della gente */
   }
   function buildModular(b, i, base, low, plinth) {
     if (b.tiers && !b.__tierOf && !b.__tierBase) {   // [isola31] il corpo pieno fino al primo gradone, poi i volumi sopra (con il terrazzo davanti)
@@ -23282,7 +23283,7 @@ var Render = (function () {
     });
     x.lineCap = 'butt';
     const S = surfList1();
-    S.patch.forEach(([px, py, len, wid, ang, seed]) => { if (!inBox1(px, py, X0, Y0, X1, Y1, 5)) return; const r = rng(seed);
+    (false ? S.patch : []).forEach(([px, py, len, wid, ang, seed]) => {   /* [unione3] niente toppe di sampietrini nell'asfalto */ if (!inBox1(px, py, X0, Y0, X1, Y1, 5)) return; const r = rng(seed);
       x.save(); x.translate(cx(px), cy(py)); x.rotate(ang); x.beginPath();
       for (let q = 0; q <= 14; q++) { const a = q / 14 * Math.PI * 2, k = .78 + r() * .3; x.lineTo(Math.cos(a) * len / 2 * PPM * k, Math.sin(a) * wid / 2 * PPM * k); } x.closePath();
       x.fillStyle = 'rgba(20,18,18,.6)'; x.fill(); x.save(); x.clip(); x.rotate(-ang); x.translate(-cx(px), -cy(py)); x.fillStyle = sampPat1(x, X0, Y0); x.fillRect(cx(px) - len * PPM, cy(py) - len * PPM, len * 2 * PPM, len * 2 * PPM); x.restore();
@@ -27618,7 +27619,7 @@ var Render = (function () {
       const b = rec.b; if (!b) return;
       const PP = b.__prop;
       if (PP) {
-        const m = new THREE.Mesh(new THREE.PlaneGeometry(PP.pw, PP.ph), propTex('ritratto', (bi % 7) + (PP.defaced ? 100 : 0)));
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(PP.pw, PP.ph), PP.mural ? mvMuralMat(bi % 8, true) : propTex('ritratto', (bi % 7) + (PP.defaced ? 100 : 0)));   /* [unione3] murale della gente o del Partito */
         m.position.set(PP.x + Math.sin(PP.yaw) * .14, PP.yc, PP.z + Math.cos(PP.yaw) * .14); m.rotation.y = PP.yaw; m.userData.mural = 1; g.add(m); nR++; MURALS.push(PP);
         (window.__propPos = window.__propPos || []).push([Math.round(PP.x), Math.round(PP.z), 'ritratto']);
         { const lg = new THREE.Group(); muralLights(PP, lg); lg.traverse(o => { if (o.isMesh) o.castShadow = false; }); g.add(lg); }   // [case] due fari veri sul murale
