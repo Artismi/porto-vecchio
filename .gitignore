@@ -1,0 +1,5 @@
+# la chiave dell'IA resta solo sul tuo computer (e su Vercel come variabile segreta)
+v7/api_key.json
+api_key.json
+.vercel
+node_modules
