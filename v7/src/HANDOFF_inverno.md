@@ -200,3 +200,41 @@ Base: v7 di prima (commit «yeah.»). Copia della mappa di prima: `git show 04f1
 - PLACES: chi riceve la porta dopo la prima passata viene registrato lo stesso (si perdeva la gelateria).
 - Script 37 riscritto come SOLE AGGIUNTE, per non rompere le ancore di luci_regia1..5 (sessione luci): dopo `updateLights(...)` dei minimi di hemi/moon/fillAmb solo di giorno (×(1-night)): la notte la gestisce la regia luci; nel post, prima della vignetta, ombre alzate con una curva, verde del bosco e caldi medi (intonaci) più saturi, suolo chiaro al sole spento un poco. Divisione concordata: il GIORNO è della mappa, NOTTE, luci, nebbia e sole della regia luci. Ordine: 33, 34, 35, 36, 37, poi luci_regia*, poi case_render1.
 - main.js: `const raw = Math.max(0, ...)` nel loop (correzione della sessione «Case»: in headless il primo dt negativo faceva esplodere la camera).
+## 5 ottobre — notte (regia delle luci: la città col coprifuoco prende posizione)
+Questa chat si occupa SOLO delle luci; la chat «I progetti» fa mappa e arredo (il suo prossimo script è `inverno_render31.py`). Per non scontrarsi, gli script delle luci si chiamano `luci_regiaN.py` (guardia `[luciN]`).
+- `strumenti_inverno/luci_regia1.py` (dopo render30, guardia «già applicato»):
+  - `tone()` non sceglie più a caso fra bianchi e gialli: **lampioni da strada = sodio arancio cupo** (`LSOD`; al porto `LPORTO`, ancora più cupo), **vetrine/finestre/porte = incandescenza calda** (`LINC`), **vicino ai bar rosso-ambra basso** (`LBAR`), **nei luoghi del regime bianco duro** `LREG` (caserma, Rocca, Muro, varco, Base, Palazzo della Cultura), dove un tubo su quattro sfarfalla. Fuochi e rossi restano com'erano. Le zone sono in `zoneAt()` (dai `G.PLACES`).
+  - Regola per chi aggiunge luci: `addLight(..., '#ffb35c', ...)` = lampione da strada (diventa sodio); `'#ffc070'` = vetrina/porta (diventa luce calda).
+  - Post-processing: le pozze calde di notte (`warmL`) non vengono più portate al grigio da ombre blu, saturazione e tonalità del regime (prima uscivano bianco-grigie).
+  - Buio vero fra un cono e l'altro: di notte hemi .27 → .19, luna .34 → .25. Luce cotta dei lampioni .38 → .46.
+  - Globi del Lungomare color latte caldo (prima rosa/ciano a caso).
+  - I lampioni non fanno più ombra (né al proprio faretto, che sta nella testa, né al sole): disegnavano un ottagono scuro sotto di sé.
+- Copia di prima: `_backup_neon_modelli/render_prima_della_regia_luci.js`.
+- Ancora da fare per le luci: puntini rosa/magenta rimasti (spie sulle antenne, un palo in piazza); schermo del Garante in piazza che tremola sui volti; luce che lava le facciate; interni.
+- `strumenti_inverno/luci_regia2.py` (dopo luci_regia1, guardia `[luci2]`, frammento `aria.js`) — **l'aria**: Andrea: «manca la densità, la palpabilità dell'aria, quel crisp».
+  - Brina sospesa che scintilla solo dentro i coni dei faretti accesi, colorata dalla loro luce, più fitta vicino alla lampada (`AIR.pts`, 700 punti).
+  - Il fiato: sbuffi davanti alla testa delle persone entro 26 m dalla camera (`AIR.puffs`, 40 sprite), ognuno col suo ritmo.
+  - Coni di luce con uno shader: pieni vicino alla lampada, svaniscono a terra e ai bordi (prima cono uniforme quasi invisibile).
+  - Post: aloni larghi e morbidi attorno alle sorgenti di notte (l'aria umida che trattiene la luce); nitidezza sul primo piano; foschia che cresce oltre il punto guardato (`dc`).
+  - luci_regia1 corretto: la difesa dei colori caldi (`warmL`) vale solo a notte piena, al tramonto non arrossava più tutto.
+- `strumenti_inverno/luci_regia3.py` (dopo luci_regia2, guardia `[luci3]`, frammento `aria2.js`) — **acqua, nebbiolina, vapore, fumo**:
+  - Riflessi delle luci sull'asfalto bagnato: 96 strisce invece di 48, più lunghe (fino a 13 m) e più accese; anche vetrine e finestre.
+  - Nebbiolina bassa: due veli a 0,5 e 1,5 m sopra la quota della camera, entro ~40 m; prende il colore delle 14 sorgenti più vicine (uniform `lp`/`lc`), di giorno grigio-latte leggero.
+  - Tombini: chiusino in ghisa sotto ogni sbuffo di vapore in strada; vapore più denso, più alto, piegato dal vento, con la texture a sbuffi (`smokeTexture`), tinto di notte dalla luce più vicina.
+  - Camini: sulle case (non regime, magazzini, chiese, baracche) ~70% ha un camino, ~60% di questi fuma: fumo di carbone scuro sulla neve di giorno, chiaro nel buio; solo entro 55 m (150 sprite).
+  - Neon dei tetti e spie delle antenne non più rosa/ciano.
+- Copia prima di questo script: `_backup_neon_modelli/render_prima_di_acqua_fumo.js`.
+- Restano due puntini rosa (un palo in piazza e un'insegna): non vengono dai tetti, da trovare.
+- Coordinamento con la mappa nuova (ramo `claude/jolly-curie-i6kxq8`, script isola31-33): ordine **30 → isola31/32/33 → luci_regia1/2/3**; provato: tutti e tre si applicano sopra la mappa nuova senza conflitti e il gioco parte. `zoneAt()` ora conosce anche `governo, garante, ministero, pietra, archivio` e `piazza_gov` (raggio 22): luce bianca del regime. Camini: niente su `rec.shack` (fuma `rec.stove`, il tubo della stufa), `rec.special`, `rec.b.__tierBase`.
+- `strumenti_inverno/luci_regia4.py` (dopo luci_regia3, guardia `[luci4]`) — **ombre nella nebbia** (Andrea: «non vedo le ombre, dovrebbero proiettarsi anche nella nebbia, è quello che la mette in rilievo»):
+  - Nebbia volumetrica nel post-processing: per ogni pixel il raggio della vista attraversa le sfere d'influenza delle 4 luci con ombra accese più vicine (`SPOOL`), 14 passi ciascuna, e a ogni passo legge la mappa d'ombra del faretto (`shadow.map`, `shadow.matrix`): dove pali, persone, banchi, tettoie coprono la luce, l'aria resta buia. Passi sfalsati col dither di Bayer.
+  - Manopola: `c += vol * vOn * .36` nel post. Spenta con `lowQuality()`, al chiuso e di giorno.
+  - La luce senz'ombra cede il posto: coni pieni dei faretti .34 → .1, aloni larghi .085 → .05, nebbiolina di aria2 sotto i lampioni al 35% (le vetrine restano).
+- Copia prima di questo script: `_backup_neon_modelli/render_prima_delle_ombre_nella_nebbia.js`.
+- Ordine completo: 30 → isola31/32/33 → luci_regia1 → 2 → 3 → 4.
+- `strumenti_inverno/luci_regia5.py` (dopo luci_regia4, guardia `[luci5]`) — **il buio da cui le luci difendono, ombre nette** (Andrea: «non vedo le ombre nette… manca la vera oscurità di notte»):
+  - Di notte: cielo .19 → .05, luna .25 → .14 (resta per le sagome), riempimenti e controluce quasi spenti; fondo/nebbia verde-acqua scuriti; veli di nebbia e nebbiolina non stendono più grigio sul buio.
+  - Post: niente sollevamento dei neri e niente verde-acqua nelle ombre di notte; piede della curva schiacciato (`.022*night`); la lontananza di notte sprofonda nel nero invece di velarsi.
+  - Faretti: penombra .95 → .4, mappe d'ombra 512 → 1024: ombre nette a terra e nella nebbia. Nebbia con le ombre .36 → .24 (era lattiginosa).
+- **Due errori corretti in luci_regia1 e luci_regia3**: un commento `//` a fine riga si mangiava il codice che seguiva. Spegneva i riflessi sull'asfalto (`m.visible = true` non c'era più) e il colore della luna. Ora i commenti a fine riga negli script delle luci sono `/* */`.
+- Ordine completo: 30 → isola31/32/33 → luci_regia1 → 2 → 3 → 4 → 5.
