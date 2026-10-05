@@ -20344,12 +20344,22 @@ var Render = (function () {
   // tutte le mesh statiche con lo stesso materiale, nello stesso settore di 48 m, diventano una mesh sola
   const STATIC = new Map();
   const _wp = new THREE.Vector3();
+  let LD1 = null;   /* [unione1] il palo del lampione fa ombra, ma non alla propria lampada */
+  function lampDepth1() {
+    if (LD1) return LD1;
+    LD1 = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+    LD1.onBeforeCompile = sh => {
+      sh.vertexShader = 'varying vec3 vW1; varying vec3 vC1; varying float vP1;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vW1 = (modelMatrix * vec4(transformed, 1.)).xyz; vec3 t1 = viewMatrix[3].xyz; vC1 = -vec3(dot(viewMatrix[0].xyz, t1), dot(viewMatrix[1].xyz, t1), dot(viewMatrix[2].xyz, t1)); vP1 = projectionMatrix[2][3] < -.5 ? 1. : 0.;');
+      sh.fragmentShader = 'varying vec3 vW1; varying vec3 vC1; varying float vP1;\n' + sh.fragmentShader.replace('void main() {', 'void main() {\n if (vP1 > .5 && length(vW1.xz - vC1.xz) < 1.5 && vW1.y < vC1.y + 1.) discard;');
+    };
+    return LD1;
+  }
   function addStatic(obj, noShadow) {
     obj.updateMatrixWorld(true); curObj = obj;
     obj.traverse(o => {
       if (!o.isMesh || Array.isArray(o.material)) return;
       o.getWorldPosition(_wp);
-      const key = o.material.uuid + '|' + Math.floor(_wp.x / 80) + ',' + Math.floor(_wp.z / 80) + (noShadow ? '|n' : '');
+      const key = o.material.uuid + '|' + Math.floor(_wp.x / 80) + ',' + Math.floor(_wp.z / 80) + (noShadow ? (noShadow === 'lamp' ? '|l' : '|n') : '');
       let b = STATIC.get(key); if (!b) { b = { mat: o.material, geos: [], noShadow }; STATIC.set(key, b); }
       let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
       g.applyMatrix4(o.matrixWorld);
@@ -20370,7 +20380,7 @@ var Render = (function () {
     m.computeBoundingSphere(); m.computeBoundingBox(); return m;
   }
   function flushStatic() {
-    STATIC.forEach(b => { let o = 0; b.offs = b.geos.map(g => { const k = o; o += g.attributes.position.count; return k; }); const m = new THREE.Mesh(mergeGeos(b.geos), b.mat); b.mesh = m; b.geos = []; m.castShadow = !b.noShadow; m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); });
+    STATIC.forEach(b => { let o = 0; b.offs = b.geos.map(g => { const k = o; o += g.attributes.position.count; return k; }); const m = new THREE.Mesh(mergeGeos(b.geos), b.mat); b.mesh = m; b.geos = []; m.castShadow = !b.noShadow || b.noShadow === 'lamp'; if (b.noShadow === 'lamp') m.customDepthMaterial = lampDepth1();   /* [unione1] */ m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); });
     STATIC.clear();
   }
   // fonde i figli di un gruppo (in coordinate del gruppo) per materiale.
@@ -20633,9 +20643,18 @@ var Render = (function () {
     const btx = new THREE.CanvasTexture(bc); btx.minFilter = btx.magFilter = THREE.LinearFilter;
     const geo = new THREE.PlaneGeometry(2400, 2400, 1, 1); geo.rotateX(-Math.PI / 2);
     const mat = new THREE.ShaderMaterial({
-      uniforms: { time: { value: 0 }, night: { value: 1 }, dusk: { value: 0 }, mask: { value: btx }, wsize: { value: new THREE.Vector2(G.WW, G.WH) }, fogC: { value: new THREE.Color() }, camP: { value: new THREE.Vector3() }, fogN: { value: 60 }, fogF: { value: 160 }, wx: { value: new THREE.Vector4() } },   /* [amb1] */
+      uniforms: { time: { value: 0 }, night: { value: 1 }, dusk: { value: 0 }, mask: { value: btx }, wsize: { value: new THREE.Vector2(G.WW, G.WH) }, fogC: { value: new THREE.Color() }, camP: { value: new THREE.Vector3() }, fogN: { value: 60 }, fogF: { value: 160 }, wx: { value: new THREE.Vector4() }, sun: { value: new THREE.Vector3(-1, .3, -.3).normalize() }, moonD: { value: new THREE.Vector3(0, 1, 0) }, lp: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) }, lc: { value: Array.from({ length: 16 }, () => new THREE.Color()) } },   /* [amb1] */ /* [unione1] */
       vertexShader: 'varying vec3 vP; void main(){ vec4 w = modelMatrix*vec4(position,1.); vP=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }',
-      fragmentShader: `uniform float time; uniform float night; uniform float dusk; uniform sampler2D mask; uniform vec2 wsize; uniform vec3 fogC; uniform vec3 camP; uniform float fogN; uniform float fogF; uniform vec4 wx; varying vec3 vP;
+      fragmentShader: `uniform float time; uniform float night; uniform float dusk; uniform sampler2D mask; uniform vec2 wsize; uniform vec3 fogC; uniform vec3 camP; uniform float fogN; uniform float fogF; uniform vec4 wx; uniform vec3 sun; uniform vec3 moonD; uniform vec4 lp[16]; uniform vec3 lc[16]; varying vec3 vP;
+        float hgt1(vec2 q){ return sin(q.x*1.3 + time*1.2 + sin(q.y*2.1+time)*1.5) * sin(q.y*3.1 - time*.8) * .5 + sin(q.x*.37 - q.y*.52 + time*.6) * .35 + sin(q.x*2.9 + q.y*2.3 - time*2.1) * .15; }   /* [unione1] */
+        vec3 sky1(vec3 d){   /* [unione1] lo stesso cielo di buildSky, visto riflesso */
+          float y = max(d.y, 0.);
+          vec3 dayTop = mix(vec3(.46,.60,.76), vec3(.58,.60,.63), wx.x), dayHor = mix(vec3(.80,.84,.86), vec3(.74,.75,.76), wx.x);
+          vec3 day = mix(dayHor, dayTop, smoothstep(0.,.5,y));
+          vec3 du = mix(mix(vec3(.78,.62,.50), vec3(.52,.44,.48), smoothstep(0.,.14,y)), vec3(.22,.22,.30), smoothstep(.14,.6,y));
+          vec3 ni = mix(vec3(.10,.11,.14), vec3(.02,.03,.05), smoothstep(0.,.45,y));
+          vec3 c = mix(mix(day, du, dusk), ni, night*(1.-dusk*.55));
+          return c + vec3(.9,.86,.8)*pow(max(0.,dot(d, sun)),18.)*.22*(1.-night); }
         void main(){
           vec2 p = floor(vP.xz*6.)/6.;
           vec2 muv = p/wsize; float m = texture2D(mask, vec2(muv.x, 1.-muv.y)).r;
@@ -20652,7 +20671,24 @@ var Render = (function () {
           c = mix(c, vec3(.92,.95,1.)*(1.-night*.45), foam*.8);
           // riflessi del tramonto e dei neon verso l'orizzonte
           float sp = step(.9, sin(p.x*3.7+time*2.)*sin(p.y*5.3-time*1.3));
-          c += sp*mix(vec3(.5,.45,.3), vec3(1.,.35,.6), max(dusk, night*.7))*.35;
+          c += sp*mix(vec3(.5,.45,.3), vec3(.95,.6,.38), dusk)*.35*(1.-night);   /* [unione1] niente puntini rosa di notte */
+          {   /* [unione1] il riflesso: cielo, sole, luna, luci di riva */
+            float amp = .12 + wx.w*.25 + wx.y*.06, e = .25;
+            vec2 dh = vec2(hgt1(p+vec2(e,0.)) - hgt1(p-vec2(e,0.)), hgt1(p+vec2(0.,e)) - hgt1(p-vec2(0.,e))) / (2.*e);
+            vec3 N = normalize(vec3(-dh.x*amp, 1., -dh.y*amp)), V = normalize(camP - vP), R = reflect(-V, N); R.y = abs(R.y);
+            float fr = clamp((.04 + .96*pow(1. - max(dot(N, V), 0.), 5.)) * 2.4 + .12, 0., .72) * (1. - smoothstep(.45, .85, m) * .6);
+            c = mix(c, sky1(R), fr);
+            float sunK = (1. - night) * (1. - wx.x*.85), g = max(dot(R, normalize(sun)), 0.);
+            c += mix(vec3(1.,.95,.85), vec3(1.,.62,.36), dusk) * (step(.9965, g)*1.6 + pow(g, 40.)*.35) * sunK;
+            float mg = max(dot(R, normalize(moonD)), 0.);
+            c += vec3(.62,.70,.88) * (step(.994, mg)*.7 + pow(mg, 30.)*.12) * night * (1. - wx.x*.8);
+            vec3 acc = vec3(0.);
+            for (int i = 0; i < 16; i++) { vec4 L = lp[i]; if (L.w <= 0.) continue;
+              vec2 d = normalize(camP.xz - L.xz + vec2(1e-4)), q = vP.xz - L.xz; float t = dot(q, d), sd = q.x*d.y - q.y*d.x;
+              float len = 2.5 + L.y*2.4, wid = .16 + max(t, 0.)*.06 + amp*.9, wob = hgt1(p*1.7 + L.xz) * (.18 + .05*max(t, 0.));
+              float k = (1. - smoothstep(wid*.35, wid, abs(sd + wob))) * smoothstep(-.8, .3, t) * exp(-max(t, 0.)/len);
+              acc += lc[i] * L.w * k * (.4 + .6*step(0., sin(t*6.5 - time*2.4 + hgt1(p*2.3)*3.))); }
+            c += acc * night * (1. - smoothstep(.8, .97, m)); }
           float d = distance(vP, camP); c = mix(c, fogC, smoothstep(fogN, fogF, d));
           gl_FragColor = vec4(c,1.);
         }`,
@@ -25792,7 +25828,7 @@ var Render = (function () {
     }
     const hq = th(Math.round(x), Math.round(z), 71), lampOff = kind !== 'deco' && hq < .33;   // [inverno30] coprifuoco: elettricità razionata
     if (lampOff) g.traverse(o => { if (o.isMesh && o.material === sb(lcol)) o.material = sm('#2e2e34'); });
-    g.position.set(x, y0, z); g.rotation.y = rot || 0; const tag = kind === 'wall' ? null : newTag(); curTag = tag; addStatic(g, true); curTag = null;   // [luci1] niente ombra propria
+    g.position.set(x, y0, z); g.rotation.y = rot || 0; const tag = kind === 'wall' ? null : newTag(); curTag = tag; addStatic(g, 'lamp'); curTag = null;   // [luci1] niente ombra propria /* [unione1] ma col sole, la luna e gli altri lampioni sì */
     const c = Math.cos(rot || 0), s = Math.sin(rot || 0), wx = x + lx * c + lz * s, wz = z - lx * s + lz * c;
     const gl = glow(wx, y0 + ly, wz, col, kind === 'deco' ? 2.4 : 2.0);
     const L = addLight(wx, y0 + ly - .3, wz, kind === 'deco' ? col : '#ffb35c', kind === 'sodium' ? 2.0 : 1.6, kind === 'sodium' ? 10 : 7.5, !lampOff && hq < .48 ? .75 : .03);
@@ -27044,7 +27080,7 @@ var Render = (function () {
               c = mix(c, mix(vec3(dot(c, vec3(.3,.59,.11))), c, .3), cy*uReg*.85); }   // in città niente azzurri accesi (fontane, vetri)
             // 4) neri: un filo d'aria di giorno, buio vero di notte (luci5)
             c += vec3(.010,.012,.016)*(1.-night*.9);
-            c = max(c - .022*night*(1.-smoothstep(.0,.3,lu)), 0.);
+            c = max(c - .012*night*(1.-smoothstep(.0,.3,lu)), 0.);   /* [unione1] neri meno schiacciati */
             c *= 1. - smoothstep(.62,.95,lu)*.08*uReg*(1.-keep); }                  // in città niente bianchi puliti
           vec2 q = vUv-.5; c *= 1. - dot(q,q)*1.25*aK2.w;   // [amb2]
           float vg = smoothstep(.18, .5, length(q*vec2(1.,1.2)));
@@ -29763,9 +29799,9 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, (.22 - night * .16) * METEO.reg).multiplyScalar(1 - night * .45 * (1 - WXfog * .4)); /* [amb1] */ /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
     // [inverno] luce di neve: tanto cielo, poco sole
-    hemi.intensity = .22 + (1 - night) * .3 - night * .14; /* [luci5] buio */   // [luci1] di notte meno cielo   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
-    fillAmb.intensity = .12 + (1 - night) * .12 - night * .1; /* [luci5] */ fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');
-    moon.intensity = .25 + (1 - night) * .77 - night * .11; /* [luci5] un filo di luna per le sagome */ /* [luci1] di notte meno luna */ moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
+    hemi.intensity = .22 + (1 - night) * .3 - night * .10; /* [unione1] */ /* [luci5] buio */   // [luci1] di notte meno cielo   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
+    fillAmb.intensity = .12 + (1 - night) * .12 - night * .07; /* [unione1] */ /* [luci5] */ fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');
+    moon.intensity = .25 + (1 - night) * .77 - night * .02; /* [unione1] la luna disegna le sagome */ /* [luci5] un filo di luna per le sagome */ /* [luci1] di notte meno luna */ moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
     { const hh = (st.t / 60) % 24, sa = (hh - 13) / 12 * Math.PI, el = night > .5 ? 26 : Math.max(9, 34 - Math.abs(hh - 13) * 3.4);   /* [amb1] il sole gira, basso al mattino e alla sera */
       moon.position.set(cam.x - Math.sin(sa) * 38 - 8, el, cam.y - 26 - Math.cos(sa) * 8); moon.target.position.set(cam.x, 0, cam.y); }
     if (dyn.fill) { dyn.fill.position.set(cam.x + 8, 14, cam.y + 40); dyn.fill.target.position.set(cam.x, 0, cam.y); dyn.fill.intensity = .12 + (1 - night) * .06 - night * .1; /* [luci5] */ dyn.fill.color.set(night > .5 ? '#5f86b4' : '#a8bcd0'); }
@@ -29791,6 +29827,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     dyn.signs.forEach(s => { if (s.flick) { const on = Math.sin(time * 17) > -.85 || Math.sin(time * 2.3) > .2; s.m.color.setScalar(on ? 1 : .35); if (s.gl) s.gl.material.opacity = on ? .45 : .1; } });
     if (dyn.water) { const U = dyn.water.uniforms; U.time.value = time; U.night.value = night; U.dusk.value = dusk; U.fogC.value.copy(tmpC); U.camP.value.copy(camera.position); U.fogN.value = scene.fog.near; U.fogF.value = scene.fog.far; if (U.wx) U.wx.value.set(WXc, WXwet, WXfog, WXst); }
     if (dyn.sky) { dyn.sky.position.copy(camera.position); const U = dyn.sky.material.uniforms; U.night.value = night; U.dusk.value = dusk; U.time.value = time; if (U.wx) U.wx.value.set(WXc, WXwet, WXfog, METEO.reg); const sunA = ((st.t / 60) % 24 - 12) / 12 * Math.PI; U.sun.value.set(-Math.cos(sunA * .5) * .9 - .2, Math.max(-.2, .55 - Math.abs((st.t / 60) % 24 - 13) / 12), -.35).normalize(); }
+    if (dyn.water && dyn.water.uniforms.lp) {   /* [unione1] sole, luna e luci di riva per il riflesso del mare */
+      const U = dyn.water.uniforms; if (dyn.sky) U.sun.value.copy(dyn.sky.material.uniforms.sun.value); U.moonD.value.copy(moon.position).sub(moon.target.position).normalize();
+      if (frameN % 6 === 0 || !dyn.wl1) { const cx = cam.x, cz = cam.y; dyn.wl1 = LSRC.filter(L => { if (L.off || !(L.base > 0) || Math.abs(L.x - cx) > 70 || Math.abs(L.z - cz) > 70) return false; if (L.cw1 === undefined) L.cw1 = coastIn(L.x, L.z); return L.cw1 < 7; }).sort((a, b) => ((a.x - cx) ** 2 + (a.z - cz) ** 2) - ((b.x - cx) ** 2 + (b.z - cz) ** 2)).slice(0, 16); }
+      for (let i = 0; i < 16; i++) { const L = dyn.wl1[i]; if (L && !L.off) { U.lp.value[i].set(L.x, L.y + .45, L.z, Math.min(1.6, L.base * .5)); U.lc.value[i].copy(L.color); } else U.lp.value[i].w = 0; } }
     if (dyn.skyline) { dyn.skyline.position.set(camera.position.x, 8, camera.position.z); dyn.skyline.material.opacity = .5 + night * .5; }
     dyn.boats.forEach(b => { b.g.position.y = (b.y !== undefined ? b.y : -.3) + Math.sin(time * 1.3 + b.ph) * .08; b.g.rotation.z = Math.sin(time * 1.1 + b.ph) * .04; });
     dyn.laundry.forEach(l => { if (l.ax === false) l.m.rotation.z = Math.sin(time * 2 + l.ph) * .25; else l.m.rotation.x = Math.sin(time * 2 + l.ph) * .25; });
