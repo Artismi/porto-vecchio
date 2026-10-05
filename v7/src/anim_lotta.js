@@ -80,10 +80,9 @@
     const gn = gunOf(P, w), wr = P.bone('WristR'); if (!gn || !wr || !wr.parent) return;
     const ww = (wt === undefined ? 1 : wt) * P.w; if (ww <= 0) return;
     const ax = gunAxis(gn); gn.getWorldQuaternion(_q1); _a1.copy(ax).applyQuaternion(_q1).normalize();
-    _a2.set(x, y, z).normalize().applyQuaternion(P._gq);
-    _q2.setFromUnitVectors(_a1, _a2); _q3.identity().slerp(_q2, ww);
-    wr.getWorldQuaternion(_q1); _q1.premultiply(_q3); wr.parent.getWorldQuaternion(_q2); _q2.invert();
-    wr.quaternion.copy(_q2.multiply(_q1)); wr.updateMatrixWorld(true);
+    // [mani] l'avambraccio ruota e il polso piega entro un limite (niente polsi spezzati); le dita stringono l'impugnatura
+    _v[0] = x; _v[1] = y; _v[2] = z; P.turnHand('R', _a1, _v, Math.PI, wt);   // armi: prima l'avambraccio, poi il polso quanto serve (la canna deve andare dove si mira)
+    P.fingers('R', w === 'coltello' ? .95 : .85, .85, wt);
   }
   // un punto lungo la canna, a «dist» metri dall'impugnatura (spazio del personaggio): dove va la mano che sostiene
   function alongGun(P, w, dist, out) {
@@ -145,7 +144,7 @@
     reachS(P, -1, una ? .1 : .16, .08 + k * .12, .42, -.6, -.6, 0);
     aimGun(P, 'pistola', 0, k * .9, 1);
     if (una) { reachS(P, 1, -.04, -.5, .04, -1, 0, -.2, .8); }
-    else if (alongGun(P, 'pistola', .02, _G)) reach(P, 1, _G.x + .01, _G.y - .05, _G.z - .03, .6, -.7, 0);   // la sinistra avvolge la destra
+    else if (alongGun(P, 'pistola', .02, _G)) { reach(P, 1, _G.x + .01, _G.y - .05, _G.z - .03, .6, -.7, 0); P.fingers('L', .7, .7); }   // la sinistra avvolge la destra
   }
   // mitra (Skorpion): basso, all'anca, la sinistra sotto la canna; il rinculo è un tremito veloce
   function mitra(P, A, rec) {
@@ -153,7 +152,7 @@
     P.rot('Chest', -rec * .04, -.15, 0);
     reachS(P, -1, -.02, -.32 + j * .2, .3, -.6, -.8, -.3);
     aimGun(P, 'mitra', 0, .02 + j + rec * .08, 1);
-    if (alongGun(P, 'mitra', .22, _G)) reach(P, 1, _G.x, _G.y - .07, _G.z, .5, -.8, 0);
+    if (alongGun(P, 'mitra', .22, _G)) reach(P, 1, _G.x, _G.y - .07, _G.z, .5, -.8, 0);  P.fingers('L', .7, .7);   // [mani] la sinistra avvolge
   }
   // lupara e fucile: alla spalla, il busto girato, la sinistra sotto la canna; il rinculo spinge indietro spalla e busto
   function spalla(P, A, rec) {
@@ -162,7 +161,7 @@
     P.rot('Neck', .08, .22, 0); P.rot('Head', .1, .16, -.14);
     reachS(P, -1, -.01, -.05 + k * .05, .25 - k * .08, -.7, -.7, -.3);
     aimGun(P, w, 0, k * .8, 1);
-    if (alongGun(P, w, w === 'lupara' ? .38 : .42, _G)) reach(P, 1, _G.x, _G.y - .08, _G.z, .5, -.8, 0);
+    if (alongGun(P, w, w === 'lupara' ? .38 : .42, _G)) reach(P, 1, _G.x, _G.y - .08, _G.z, .5, -.8, 0);  P.fingers('L', .7, .7);   // [mani] la sinistra avvolge
   }
   // coltello: guardia bassa, lama avanti; A.colpoK fa la coltellata
   function coltello(P, A) {

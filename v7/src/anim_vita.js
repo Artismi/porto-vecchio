@@ -72,20 +72,23 @@
   // presa: gira il polso perché la punta dell'attrezzo (-X del sistema della mano: lama, testa, cima della canna, ugello)
   // guardi nella direzione data (spazio del personaggio, x verso l'esterno). Senza, l'orientamento lo decide la clip.
   const _A = new THREE.Vector3(), _B = new THREE.Vector3(), _qg = new THREE.Quaternion(), _qh = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
-  function grip(P, side, dx, dy, dz, w) {
+  // la punta esce dal lato del pollice (canna, martello, piede di porco, pennello, bomboletta, cero: +X)
+  // o da quello del mignolo (pala, zappa, scopa tenute dall'alto: -X)
+  const THUMB_TIP = { canna: 1, martello: 1, piede: 1, pennello: 1, bomboletta: 1, cero: 1 };
+  function grip(P, side, dx, dy, dz, w, tool) {
     const S = SIDE[side], wr = P.R.b[S.wr]; if (!wr || !wr.parent) return;
     const ww = (w === undefined ? 1 : w) * P.w; if (ww <= 0) return;
-    wr.getWorldQuaternion(_qg); _qh.copy(_qg).multiply(QHAND); _A.set(-1, 0, 0).applyQuaternion(_qh);
-    _B.set(dx * S.s, dy, dz).normalize().applyQuaternion(P._gq);
-    _q3.setFromUnitVectors(_A, _B); _qh.identity().slerp(_q3, ww); _qg.premultiply(_qh);
-    wr.parent.getWorldQuaternion(_qp); wr.quaternion.copy(_qp.invert().multiply(_qg)); wr.updateMatrixWorld(true);
+    wr.getWorldQuaternion(_qg); _qh.copy(_qg).multiply(QHAND); _A.set(tool && THUMB_TIP[tool] ? 1 : -1, 0, 0).applyQuaternion(_qh);
+    // l'avambraccio ruota, il polso piega poco (vedi P.turnHand nel motore)
+    P.turnHand(side, _A, D(dx * S.s, dy, dz), .75, w);
   }
   // la seconda mano sul manico: punto a «dist» metri dal pugno destro verso la punta dell'attrezzo (dopo grip)
   function secondHand(P, dist, px, py, pz) {
     const wr = P.R.b.WristR; if (!wr) return;
-    wr.getWorldQuaternion(_qg); _qh.copy(_qg).multiply(QHAND); _A.set(-1, 0, 0).applyQuaternion(_qh);
+    wr.getWorldQuaternion(_qg); _qh.copy(_qg).multiply(QHAND); _A.set(-1, 0, 0).applyQuaternion(_qh);   // (attrezzi dal lato del mignolo)
     wr.getWorldPosition(_B); _B.addScaledVector(_A, dist); _M.copy(P.g.matrixWorld).invert(); _B.applyMatrix4(_M);
     handTo(P, 'L', _B.x, _B.y, _B.z, px, py, pz);   // x già nel verso della sinistra (+x)
+    P.fingers('L', .92, .85);                        // la sinistra stringe il manico
   }
   // ciclo 0-1 di periodo T secondi, sfasato per persona
   const cyc = (P, T) => ((P.t + P.r * T * 7.13) / T) % 1;
@@ -125,7 +128,12 @@
     holder.visible = false; return holder;
   }
   // accende l'attrezzo per questo fotogramma (si spegne da solo quando la posa non lo chiede più)
+  // la presa: quanto si chiudono le dita (e il pollice) per ogni oggetto
+  const GRIP = { sigaretta: [.55, .7], bicchiere: [.6, .5], bottiglia: [.75, .7], panino: [.5, .4], cornetta: [.8, .6], giornale: [.35, .2], libro: [.35, .3],
+    carte: [.45, .2], soldi: [.4, .6], cero: [.8, .6], martello: [.95, .9], cassa: [.35, .1], pala: [.95, .9], zappa: [.95, .9], piccone: [.95, .9], scopa: [.95, .9],
+    canna: [.9, .8], piede: [.95, .9], bomboletta: [.8, .4], gesso: [.6, .8], pennello: [.85, .8], fotocamera: [.6, .4], album: [.3, .3] };
   function show(P, name) {
+    const Dp = VP[name], gp = GRIP[name]; if (Dp && gp && (Dp.where === 'R' || Dp.where === 'L')) P.fingers(Dp.where, gp[0], gp[1]);
     if (P.w < .5) return null;
     const m = P.R.vp || (P.R.vp = {});
     let h = m[name]; if (h === undefined) h = m[name] = makeVP(P, name);
@@ -154,19 +162,19 @@
   vprop('libro', 'R', () => { const g = new THREE.Group(); box(g, .15, .21, .02, '#7a2a24', .05, GY + .02, GZ + .02); box(g, .14, .2, .022, '#f0e8d4', .055, GY + .02, GZ + .02); return g; });
   vprop('carte', 'L', () => { const g = new THREE.Group(); for (let i = 0; i < 5; i++) box(g, .055, .085, .002, i % 2 ? '#f4f0e6' : '#ece4d0', 0, GY + .03, GZ + .01 + i * .002, 0, 0, (i - 2) * .22); return g; });
   vprop('soldi', 'R', () => { const g = new THREE.Group(); box(g, .12, .06, .004, '#9ab08a', 0, GY + .04, GZ + .01); return g; });
-  vprop('cero', 'R', () => { const g = new THREE.Group(); cyl(g, .012, .012, .22, '#f4ecd8', 0, GY, GZ, 0, 0, PI / 2, 6); cyl(g, .0, .008, .03, '#ffc040', -.125, GY, GZ, 0, 0, PI / 2, 5, '#ff9020'); return g; });
-  vprop('martello', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .014, .3, '#8a6a42', -.08, GY, GZ, 0, 0, PI / 2, 6); box(g, .04, .04, .12, '#4a4a50', -.22, GY, GZ); return g; });
+  vprop('cero', 'R', () => { const g = new THREE.Group(); cyl(g, .012, .012, .22, '#f4ecd8', 0, GY, GZ, 0, 0, PI / 2, 6); cyl(g, .008, 0, .03, '#ffc040', .125, GY, GZ, 0, 0, PI / 2, 5, '#ff9020'); return g; });
+  vprop('martello', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .014, .3, '#8a6a42', .08, GY, GZ, 0, 0, PI / 2, 6); box(g, .04, .04, .12, '#4a4a50', .22, GY, GZ); return g; });
   vprop('cassa', 'R', () => { const g = new THREE.Group(); box(g, .3, .26, .42, '#9a7a4a', .18, GY + .06, GZ + .1); box(g, .31, .03, .43, '#7a5a32', .18, GY + .12, GZ + .1); return g; });
   // attrezzi lunghi: asse lungo X, il pugno destro a metà; la sinistra va più in là sul manico
   vprop('pala', 'R', () => { const g = new THREE.Group(); cyl(g, .016, .016, 1.1, '#8a6a42', .05, GY, GZ, 0, 0, PI / 2, 6); box(g, .26, .2, .02, '#5a5a60', -.55, GY, GZ, 0, 0, 0); return g; });
   vprop('zappa', 'R', () => { const g = new THREE.Group(); cyl(g, .016, .016, 1.15, '#8a6a42', .1, GY, GZ, 0, 0, PI / 2, 6); box(g, .03, .2, .16, '#4a4a50', -.48, GY - .08, GZ); return g; });
   vprop('piccone', 'R', () => { const g = new THREE.Group(); cyl(g, .018, .018, .9, '#8a6a42', .05, GY, GZ, 0, 0, PI / 2, 6); box(g, .04, .55, .04, '#4a4a50', -.38, GY, GZ, 0, 0, 0); return g; });
   vprop('scopa', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .014, 1.2, '#b08a52', .1, GY, GZ, 0, 0, PI / 2, 6); box(g, .12, .3, .06, '#c8a050', -.55, GY, GZ, 0, 0, 0); return g; });
-  vprop('canna', 'R', () => { const g = new THREE.Group(); cyl(g, .006, .014, 2.4, '#4a3a2a', -1.0, GY, GZ, 0, 0, PI / 2, 5); cyl(g, .03, .03, .04, '#2a2a2a', .1, GY, GZ + .04, 0, 0, 0, 8); return g; });
-  vprop('piede', 'R', () => { const g = new THREE.Group(); cyl(g, .013, .013, .6, '#3a3a44', -.2, GY, GZ, 0, 0, PI / 2, 6); box(g, .08, .02, .025, '#3a3a44', -.52, GY + .03, GZ, 0, 0, .9); return g; });
-  vprop('bomboletta', 'R', () => { const g = new THREE.Group(); cyl(g, .032, .032, .17, '#c8302a', .0, GY, GZ, 0, 0, PI / 2, 8); cyl(g, .01, .01, .02, '#e8e8e8', -.095, GY, GZ, 0, 0, PI / 2, 5); return g; });
+  vprop('canna', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .006, 2.4, '#4a3a2a', 1.0, GY, GZ, 0, 0, PI / 2, 5); cyl(g, .03, .03, .04, '#2a2a2a', -.1, GY, GZ + .04, 0, 0, 0, 8); return g; });
+  vprop('piede', 'R', () => { const g = new THREE.Group(); cyl(g, .013, .013, .6, '#3a3a44', .2, GY, GZ, 0, 0, PI / 2, 6); box(g, .08, .02, .025, '#3a3a44', .52, GY + .03, GZ, 0, 0, -.9); return g; });
+  vprop('bomboletta', 'R', () => { const g = new THREE.Group(); cyl(g, .032, .032, .17, '#c8302a', .0, GY, GZ, 0, 0, PI / 2, 8); cyl(g, .01, .01, .02, '#e8e8e8', .095, GY, GZ, 0, 0, PI / 2, 5); return g; });
   vprop('gesso', 'R', () => { const g = new THREE.Group(); box(g, .02, .07, .02, '#f4f4ee', -.01, GY + .06, GZ - .01); return g; });
-  vprop('pennello', 'R', () => { const g = new THREE.Group(); cyl(g, .01, .01, .25, '#b08a52', -.08, GY, GZ, 0, 0, PI / 2, 5); box(g, .06, .05, .02, '#c03028', -.22, GY, GZ); return g; });
+  vprop('pennello', 'R', () => { const g = new THREE.Group(); cyl(g, .01, .01, .25, '#b08a52', .08, GY, GZ, 0, 0, PI / 2, 5); box(g, .06, .05, .02, '#c03028', .22, GY, GZ); return g; });
   vprop('fotocamera', 'R', () => { const g = new THREE.Group(); box(g, .13, .08, .06, '#202024', .04, GY, GZ + .03); cyl(g, .025, .025, .05, '#101012', .04, GY, GZ + .08, PI / 2, 0, 0, 8); return g; });
   vprop('album', 'L', () => { const g = new THREE.Group(); box(g, .3, .22, .015, '#f2ead8', -.08, GY + .04, GZ + .02); return g; });
   // la carriola: a terra davanti, segue chi la spinge
@@ -300,13 +308,13 @@
   // ---- SPINGE LA CARRIOLA: braccia tese in basso avanti, busto in avanti ----
   def('carriola', { fade: .3 }, (P) => {
     P.rot('Abdomen', .18, 0, 0);
-    handTo(P, 'R', .22, .7, .26, .3, -.4, -.4); handTo(P, 'L', .22, .7, .26, .3, -.4, -.4);
+    handTo(P, 'R', .22, .7, .26, .3, -.4, -.4); handTo(P, 'L', .22, .7, .26, .3, -.4, -.4); P.fingers('R', .9, .8); P.fingers('L', .9, .8);
     hideHeld(P); show(P, 'carriola');
   });
   // ---- REGGE IL CERO: davanti al petto con due mani ----
   def('cero', { fade: .4 }, (P) => {
     arm(P, 'R', .15, -.8, .45, -.35, .6, .7); arm(P, 'L', .15, -.8, .45, -.45, .5, .7);
-    grip(P, 'R', 0, 1, .1); P.rot('Head', .3, 0, 0); show(P, 'cero');
+    grip(P, 'R', 0, 1, .1, 1, 'cero'); P.rot('Head', .3, 0, 0); show(P, 'cero');
   });
   // ---- SALUTA: mano alzata che oscilla ----
   def('saluta', { fade: .2 }, (P) => { arm(P, 'R', .55, .35, .25, .1, 1, .05); P.rot('LowerArmR', 0, 0, .35 * P.wave(1.8)); });
@@ -332,7 +340,7 @@
   // ---- PREGA: in ginocchio, mani giunte, testa bassa ----
   def('prega', FULL, (P) => {
     kneel(P, 0); P.rot('Abdomen', -.3, 0, 0);
-    handTo(P, 'R', .03, 1.12, .26, .8, -.5, -.1); handTo(P, 'L', .03, 1.12, .26, .8, -.5, -.1);
+    handTo(P, 'R', .03, 1.12, .26, .8, -.5, -.1); handTo(P, 'L', .03, 1.12, .26, .8, -.5, -.1); P.fingers('R', .15, .3); P.fingers('L', .15, .3);
     P.rot('Head', .4 + .05 * P.wave(.15), 0, 0);
   }); BUSY.prega = 1;
   // ---- SCAVA: pala, piede sulla lama, solleva e butta di lato; ciclo di 2,4 s ----
@@ -355,16 +363,16 @@
   def('martella', FULL, (P) => {
     const k = cyc(P, .55), hit = k < .3 ? smooth(k / .3) : 1 - smooth((k - .3) / .7);
     P.rot('Abdomen', .2, 0, 0); P.rot('Head', .3, 0, 0);
-    handTo(P, 'L', .02, 1.0, .42, .8, -.5, 0);                                       // la sinistra tiene il chiodo sull'asse
+    handTo(P, 'L', .02, 1.0, .42, .8, -.5, 0); P.fingers('L', .55, .9);              // la sinistra tiene il chiodo sull'asse
     handTo(P, 'R', lerp(.16, .1, hit), lerp(1.32, 1.04, hit), lerp(.22, .4, hit), .9, -.3, -.3);
-    grip(P, 'R', 0, lerp(.95, -.1, hit), lerp(.3, 1, hit)); hideHeld(P); show(P, 'martello');
+    grip(P, 'R', 0, lerp(.95, -.1, hit), lerp(.3, 1, hit), 1, 'martello'); hideHeld(P); show(P, 'martello');
   }); BUSY.martella = 1;
   // ---- FORZA UNA PORTA: piede di porco nella fessura, tira indietro con tutto il peso ----
   def('forza', FULL, (P) => {
     const k = cyc(P, 1.6), pull = pulse(k, 0, .4, .6, 1);
     P.rot('Abdomen', .1 - .25 * pull, 0, 0); P.body({ z: -.08 * pull });
     arm(P, 'R', .1, -.3, .9, .05, -.1, 1); arm(P, 'L', .1, -.25, .9, -.05, -.05, 1);
-    grip(P, 'R', -.3, .1, 1); secondHand(P, .2, .8, -.5, 0); hideHeld(P); show(P, 'piede');
+    grip(P, 'R', -.3, .1, 1, 1, 'piede'); secondHand(P, -.16, .8, -.5, 0); hideHeld(P); show(P, 'piede');
   }); BUSY.forza = 1;
   // ---- SPAZZA: scopa avanti e indietro davanti ai piedi ----
   def('spazza', FULL, (P) => {
@@ -377,7 +385,7 @@
   def('pesca', FULL, (P) => {
     const k = cyc(P, 14 + P.r * 8), cast = pulse(k, .9, .94, .96, 1);
     arm(P, 'R', .12, -.6, .6, -.05, lerp(.35, .95, cast), lerp(.9, -.2, cast)); arm(P, 'L', .12, -.75, .5, -.2, -.1, .95);
-    grip(P, 'R', 0, lerp(.65, 1, cast), lerp(1, -.2, cast)); P.rot('Head', .05, 0, 0); show(P, 'canna');
+    grip(P, 'R', 0, lerp(.65, 1, cast), lerp(1, -.2, cast), 1, 'canna'); P.rot('Head', .05, 0, 0); show(P, 'canna');
   }); BUSY.pesca = 1;
   // ---- BALLA: anche e braccia a tempo (120 bpm), passi sul posto ----
   def('balla', FULL, (P) => {
@@ -411,7 +419,7 @@
     P.body({ y: -.1 });
     legTo(P, 'L', .14, .1 + GF, .02, .1, .2, 1); legTo(P, 'R', .14, .1 + GF, .02, .1, .2, 1);
     P.rot('Abdomen', .6, 0, 0); P.rot('Chest', .15 + .06 * Math.sin(P.t * 7), 0, 0); P.rot('Head', -.45, 0, 0);
-    handTo(P, 'R', .14, .55, .26, .6, .3, -.3); handTo(P, 'L', .14, .55, .26, .6, .3, -.3);
+    handTo(P, 'R', .14, .55, .26, .6, .3, -.3); handTo(P, 'L', .14, .55, .26, .6, .3, -.3); P.fingers('R', .5, .3); P.fingers('L', .5, .3);
   }); BUSY.respira = 1;
   // ---- SI STIRACCHIA (al risveglio): braccia in alto, poi giù ----
   def('stiracchia', FULL, (P) => {
@@ -430,7 +438,7 @@
     const sw = Math.sin(P.t * 2.6 + P.r * 4);
     handTo(P, 'R', .15 + .12 * sw, 1.6 + .08 * Math.sin(P.t * 1.3), .55, .8, -.3, 0); handTo(P, 'L', .25, 1.7, .5, .8, -.3, 0);
     P.rot('Head', -.2, .25 * Math.sin(P.t * .4), 0);   // si guarda intorno
-    grip(P, 'R', -.2, .2, 1); show(P, 'pennello');
+    grip(P, 'R', -.2, .2, 1, 1, 'pennello'); show(P, 'pennello');
   }); BUSY.attacchina = 1;
   // ---- BOMBOLETTA: braccio teso sul muro che disegna, ogni tanto agita la bomboletta ----
   def('vernicia', FULL, (P) => {
@@ -439,7 +447,7 @@
     else arm(P, 'R', .25, .05 + .2 * Math.sin(P.t * 1.7), .85, .15 * Math.sin(P.t * 2.3), .1, 1);
     arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35);
     P.rot('Head', -.05, .2 * Math.sin(P.t * .5), 0);
-    if (shake <= .5) grip(P, 'R', -.1, 0, 1); hideHeld(P); show(P, 'bomboletta');
+    if (shake <= .5) grip(P, 'R', -.1, 0, 1, 1, 'bomboletta'); hideHeld(P); show(P, 'bomboletta');
   }); BUSY.vernicia = 1;
   // ---- GESSO: chinato, scrive basso sul muro o per terra ----
   def('gesso', FULL, (P) => {

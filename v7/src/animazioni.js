@@ -31,7 +31,9 @@ var Anim = (function () {
   const _a = V(), _b = V(), _c = V(), _d = V(), _q = Q(), _q2 = Q(), _q3 = Q(), _q4 = Q(), _e = new THREE.Euler();
   const ID = Q();
   const CHILD = { UpperArmL: 'LowerArmL', LowerArmL: 'WristL', UpperArmR: 'LowerArmR', LowerArmR: 'WristR', UpperLegL: 'LowerLegL', LowerLegL: 'FootL', UpperLegR: 'LowerLegR', LowerLegR: 'FootR', Neck: 'Head', Chest: 'Neck', Torso: 'Chest', Abdomen: 'Torso', Hips: 'Abdomen', ShoulderL: 'UpperArmL', ShoulderR: 'UpperArmR' };
-  const BONES = ['Hips', 'Abdomen', 'Torso', 'Chest', 'Neck', 'Head', 'ShoulderL', 'UpperArmL', 'LowerArmL', 'WristL', 'ShoulderR', 'UpperArmR', 'LowerArmR', 'WristR', 'UpperLegL', 'LowerLegL', 'FootL', 'UpperLegR', 'LowerLegR', 'FootR'];
+  const FINGERS = ['Index', 'Middle', 'Ring', 'Pinky'], FB = [];
+  ['L', 'R'].forEach(sd => { FINGERS.forEach(f => [1, 2, 3, 4].forEach(k => FB.push(f + k + sd))); [1, 2, 3].forEach(k => FB.push('Thumb' + k + sd)); });
+  const BONES = FB.concat(['Hips', 'Abdomen', 'Torso', 'Chest', 'Neck', 'Head', 'ShoulderL', 'UpperArmL', 'LowerArmL', 'WristL', 'ShoulderR', 'UpperArmR', 'LowerArmR', 'WristR', 'UpperLegL', 'LowerLegL', 'FootL', 'UpperLegR', 'LowerLegR', 'FootR']);
   const disabled = {};
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   const smooth = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
@@ -100,10 +102,73 @@ var Anim = (function () {
       prop(name) { (P._props = P._props || []).push(name); return P; },
       wave: (f, ph) => Math.sin(P.t * f * Math.PI * 2 + (ph || 0) + P.r * 6.28),
       _gq: gq,
+      // dita: curl 0 (aperta) → 1 (pugno); thumb 0-1 il pollice che chiude sopra; spread allarga
+      fingers(side, curl, thumb, w) { hand(P, side, curl, thumb === undefined ? curl : thumb, (w === undefined ? 1 : w) * P.w); return P; },
+      // gira la mano perché la direzione A (vettore del MONDO, solidale alla mano: la canna, il manico) vada verso dir
+      // (spazio del personaggio). Prima ruota l'avambraccio sul suo asse (pronazione, fino a ~95°), il resto lo fa il polso
+      // entro maxWrist radianti (default 0,7): niente polsi spezzati; se non basta, l'attrezzo resta un po' fuori asse.
+      turnHand(side, A, dir, maxWrist, w) { turn(P, side, A, dir, maxWrist === undefined ? .7 : maxWrist, (w === undefined ? 1 : w) * P.w); return P; },
     };
     return P;
   }
   // ruota l'osso di q (quaternione nel mondo) e aggiorna i figli
+  // ---------------- le mani ----------------
+  const _f1 = V(), _f2 = V(), _ax = V(), _fq = Q(), _tw = Q(), _sw = Q();
+  // il verso in cui le dita si chiudono si scopre una volta per scheletro: si prova a piegare il medio e si guarda
+  // se la punta si avvicina alla base del pollice (il palmo)
+  function curlSign(R, sd) {
+    const key = 'cs' + sd; if (R[key]) return R[key];
+    // ATTENZIONE: nel kit le radici delle dita (Index1, Middle1, Pinky1, Thumb1) stanno tutte nello stesso punto, al polso:
+    // l'asse del palmo si prende dalle nocche (le seconde ossa) e si piega dalla nocca in poi
+    const m2 = R.b['Middle2' + sd], m3 = R.b['Middle3' + sd], th = R.b['Thumb2' + sd], i2 = R.b['Index2' + sd], p2 = R.b['Pinky2' + sd];
+    if (!m2 || !m3 || !th || !i2 || !p2) return (R[key] = 1);
+    const q0 = m2.quaternion.clone(); let best = 1, bd = 1e9;
+    [1, -1].forEach(sg => {
+      m2.quaternion.copy(q0); m2.updateMatrixWorld(true); i2.getWorldPosition(_f1); p2.getWorldPosition(_f2); _ax.subVectors(_f1, _f2).normalize();
+      _fq.setFromAxisAngle(_ax, sg * 1.2); applyWorld(m2, _fq); m3.getWorldPosition(_f1); th.getWorldPosition(_f2); const d = _f1.distanceTo(_f2);
+      if (d < bd) { bd = d; best = sg; }
+    });
+    m2.quaternion.copy(q0); m2.updateMatrixWorld(true); return (R[key] = best);
+  }
+  // angolo di ogni osso col pugno chiuso: 1 = palmo (dal polso, quasi fermo), 2 = nocca, 3 e 4 = falangi
+  const CURL = [.08, 1.45, 1.35, .9];
+  function hand(P, side, curl, thumb, ww) {
+    const R = P.R, sd = side === 'L' ? 'L' : 'R', i2 = R.b['Index2' + sd], p2 = R.b['Pinky2' + sd]; if (!i2 || !p2 || ww <= 0) return;
+    const sg = curlSign(R, sd);
+    for (let f = 0; f < 4; f++) {
+      const c = curl * (1 + (f - 1.5) * .06);   // il mignolo chiude un filo di più
+      for (let k = 0; k < 4; k++) {
+        const b = R.b[FINGERS[f] + (k + 1) + sd]; if (!b) continue;
+        i2.getWorldPosition(_f1); p2.getWorldPosition(_f2); _ax.subVectors(_f1, _f2).normalize();   // asse delle nocche (si muove poco)
+        _fq.setFromAxisAngle(_ax, sg * CURL[k] * c * ww); applyWorld(b, _fq);
+      }
+    }
+    // il pollice: la prima falange si porta davanti al palmo, le altre si chiudono sopra le dita
+    const t2 = R.b['Thumb2' + sd], t3 = R.b['Thumb3' + sd], m2 = R.b['Middle2' + sd], w0 = R.b['Wrist' + sd];
+    if (t2 && m2 && w0 && thumb > 0) {
+      i2.getWorldPosition(_f1); p2.getWorldPosition(_f2); _ax.subVectors(_f1, _f2).normalize();
+      w0.getWorldPosition(_f1); m2.getWorldPosition(_f2); const fd = _f2.sub(_f1).normalize();
+      _fq.setFromAxisAngle(fd, sg * .5 * thumb * ww); applyWorld(t2, _fq);
+      if (t3) { _fq.setFromAxisAngle(_ax, sg * .7 * thumb * ww); applyWorld(t3, _fq); }
+    }
+  }
+  // twist (attorno all'asse dell'avambraccio) e swing (il resto) di una rotazione
+  function turn(P, side, A, dir, maxW, ww) {
+    const R = P.R, sd = side === 'L' ? 'L' : 'R', la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd]; if (!la || !wr || ww <= 0) return;
+    la.getWorldPosition(_f1); wr.getWorldPosition(_f2); const F = _f2.sub(_f1).normalize();   // asse dell'avambraccio
+    const B = _c.set(dir[0], dir[1], dir[2]).normalize().applyQuaternion(P._gq);
+    _fq.setFromUnitVectors(_f1.copy(A).normalize(), B);
+    // decomposizione swing-twist attorno a F
+    const d = _fq.x * F.x + _fq.y * F.y + _fq.z * F.z;
+    _tw.set(F.x * d, F.y * d, F.z * d, _fq.w).normalize();
+    let ta = 2 * Math.acos(clamp(_tw.w, -1, 1)); if (ta > Math.PI) ta -= 2 * Math.PI;
+    const lim = 1.65, tk = Math.abs(ta) > lim ? lim / Math.abs(ta) : 1;
+    _sw.copy(ID).slerp(_tw, tk * ww); applyWorld(la, _sw);              // l'avambraccio ruota (porta con sé polso e mano)
+    A.applyQuaternion(_sw);                                              // la direzione dell'attrezzo dopo il twist
+    _fq.setFromUnitVectors(_f1.copy(A).normalize(), B);
+    const sa = 2 * Math.acos(clamp(_fq.w, -1, 1)), sk = sa > maxW ? maxW / sa : 1;
+    _sw.copy(ID).slerp(_fq, sk * ww); applyWorld(wr, _sw);              // il polso fa il resto, entro il limite
+  }
   function applyWorld(bn, q) {
     bn.getWorldQuaternion(_q2); _q3.copy(q).multiply(_q2);                 // nuova rotazione nel mondo
     if (bn.parent) { bn.parent.getWorldQuaternion(_q2); _q2.invert(); _q3.premultiply(_q2); }

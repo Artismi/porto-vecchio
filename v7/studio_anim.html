@@ -39,6 +39,7 @@
       const rows = Math.ceil(list.length / cols), side = opts.side !== undefined ? opts.side : .25;
       const dist = Math.max(cols * sp * 1.05, rows * sp * 1.8) + 2.5;
       cam.position.set(dist * Math.sin(side), dist * .35 + 1, dist * Math.cos(side) - (rows - 1) * sp * .65); cam.lookAt(0, .9, -(rows - 1) * sp * .65);
+      if (opts.cam) { cam.position.set(opts.cam[0], opts.cam[1], opts.cam[2]); cam.lookAt(opts.cam[3], opts.cam[4], opts.cam[5]); }   // inquadratura a mano (es. le mani da vicino)
       // si avanza a passi fissi fino al tempo voluto (le pose hanno fade e tempi propri)
       const T = opts.t !== undefined ? opts.t : 1.5, dt = 1 / 30;
       for (let t = 0; t < T; t += dt) people.forEach(p => {
