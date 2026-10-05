@@ -116,8 +116,7 @@ rep("float lin(float d){ float z = d*2.-1.; return 2.*near*far/(far+near-z*(far-
     "        float dL(vec2 u){ vec2 t = u*res - .5, f = fract(t), b = (floor(t) + .5)/res, e = 1./res;   // [unione11] profondità interpolata: i bordi cadono fra i texel\n"
     "          return mix(mix(lin(texture2D(tD, b).r), lin(texture2D(tD, b + vec2(e.x, 0.)).r), f.x), mix(lin(texture2D(tD, b + vec2(0., e.y)).r), lin(texture2D(tD, b + e).r), f.x), f.y); }\n"
     "        float hs11(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }   // [unione11] rumore del tratto\n"
-    "        float vn11(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f); return mix(mix(hs11(i), hs11(i + vec2(1., 0.)), f.x), mix(hs11(i + vec2(0., 1.)), hs11(i + 1.), f.x), f.y); }\n"
-    "        float ed11(vec2 u){ vec2 e = 1./res; float c0 = dL(u); return max(max(dL(u + vec2(e.x, 0.)) - c0, dL(u - vec2(e.x, 0.)) - c0), max(dL(u + vec2(0., e.y)) - c0, dL(u - vec2(0., e.y)) - c0)); }")
+    "        float vn11(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f); return mix(mix(hs11(i), hs11(i + vec2(1., 0.)), f.x), mix(hs11(i + vec2(0., 1.)), hs11(i + 1.), f.x), f.y); }")
 rep("vec2 uv = (floor(vUv*res)+.5)/res;", "vec2 uv = vUv;   /* [unione11] niente aggancio al texel */")
 rep("float d = lin(texture2D(tD, uv).r);", "float d = dL(uv);   /* [unione11] */")
 rep("float d1 = lin(texture2D(tD, uv+vec2(px.x,0.)).r), d2 = lin(texture2D(tD, uv-vec2(px.x,0.)).r), d3 = lin(texture2D(tD, uv+vec2(0.,px.y)).r), d4 = lin(texture2D(tD, uv-vec2(0.,px.y)).r);",
@@ -132,13 +131,14 @@ rep("    const tex = canvasTex(c);\n    let rtex = null;", "    const tex = canv
 # (Andrea: «la linea pixel era sì confusa ma con carattere; gli outline inchiostrati devono dare volume e avere carattere,
 # altrimenti sembrano Playmobil») Il contorno di [amb2] era un velo grigio (c*.55, peso .3) e, reso liscio, diventava anonimo.
 # Ora è un tratto d'inchiostro vero, liscio ma col peso della mano:
-# - sagoma: dove dietro c'è qualcosa di lontano, linea sul bordo dell'oggetto davanti; si cerca a due raggi (1 e 2 texel) e il raggio
+# - sagoma: dove dietro c'è qualcosa di lontano, linea sul bordo dell'oggetto davanti; si cerca a due raggi (1 e 1,7-2 texel) e il raggio
 #   largo conta di più quanto più il salto è grande e quanto più il lato è in ombra: tratto grosso fuori e al buio, sottile alla luce;
 # - pieghe interne (incavi della profondità): un filo sottile;
 # - colore: inchiostro scuro che tiene un po' della tinta sotto (viola-bruno), non grigio; nella foschia lontana si alleggerisce.
-# (poi: «come se fosse schizzato, più segni») La sagoma si traccia tre volte, con scarti diversi: i tratti si allontanano e si
-# ritrovano, a tratti si interrompono; nelle ombre un tratteggio a china (incrociato dove è più buio). Scarti, interruzioni e
-# tratteggio sono legati al punto del mondo (ricostruito dalla profondità), non allo schermo: muovendosi i segni restano sulle cose.
+# (poi: «un lineart col segno riconoscibile, pulito, un piacere per gli occhi; alcuni tratti più leggeri a dare volume oltre
+# l'outline») Un contorno solo, deciso, col peso che varia appena (legato al punto del mondo, ricostruito dalla profondità, così
+# muovendosi non scorre); dentro la sagoma linee leggere di forma sugli spigoli e sulle pieghe (salto della pendenza), più chiare
+# del contorno. Niente tratti doppi né tratteggio.
 # (poi: «usiamo lo shader per dare tridimensionalità, contrasto e profondità») Prima dell'inchiostro, l'oscuramento di profondità:
 # la profondità sfocata su un anello largo dice cosa sta dietro a qualcosa di più vicino (il suolo dietro un personaggio, il muro
 # dietro una tettoia) e lì l'ombra si raccoglie attorno alla sagoma; quello che sta davanti prende un filo di luce. Le figure si
@@ -152,16 +152,13 @@ rep("c = mix(c, c*.55 + vec3(.02,.025,.04), ol*aK2.z*(1.-coc));   // [amb2]",
             for (int k = 0; k < 8; k++) { float a = float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * px * (k - k/2*2 == 0 ? 2. : 1.7); e2 = max(e2, dL(uv + o) - d); }
             float lum0 = dot(c, vec3(.3,.59,.11)), dark = 1. - smoothstep(.08, .5, lum0);
             float zr = texture2D(tD, uv).r; vec4 wq = vInvVP * vec4(uv * 2. - 1., zr * 2. - 1., 1.); vec3 wp = wq.xyz / wq.w; vec2 sp = vec2(wp.x + wp.y * .6, wp.z - wp.y * .6) * .9;
-            float thin = 0.;   // lo schizzo: tre passate della stessa sagoma, scostate e interrotte
-            for (int k = 0; k < 3; k++) { float fk = float(k); vec2 o = (vec2(vn11(sp + fk * 17.3), vn11(sp + fk * 31.7 + 5.)) - .5) * px * (1.4 + fk * 1.1);
-              float st = smoothstep(tA, tB, ed11(uv + o)), dash = smoothstep(.22, .42, vn11(sp * 2.3 + fk * 9.1));
-              thin = max(thin, st * mix(k == 0 ? .7 : .25, 1., dash) * (1. - fk * .2)); }
-            float thick = smoothstep(tA * 2.2, tB * 3., e2) * (.45 + .55 * dark) * mix(.6, 1., vn11(sp * 1.7 + 3.));
-            float hat = 0.; if (zr < .9999) { float h1 = abs(fract(dot(wp, vec3(.6, .8, -.6)) * 4.5 + vn11(sp * 1.3) * .35) - .5), h2 = abs(fract(dot(wp, vec3(-.6, .8, .6)) * 4.5 + vn11(sp * 1.3 + 7.) * .35) - .5);
-              float sh = 1. - smoothstep(.06, .3, lum0), sh2 = 1. - smoothstep(.03, .14, lum0);
-              hat = (1. - smoothstep(.05, .13, h1)) * sh * .38 + (1. - smoothstep(.05, .13, h2)) * sh2 * .3; hat *= smoothstep(.2, .5, vn11(sp * 1.1 + 11.)) * (1. - smoothstep(dc * .9, dc * 1.4, d)); }
+            float thin = smoothstep(tA, tB, edge) * mix(.82, 1., vn11(sp * .8));   // il contorno: un tratto solo, deciso, appena vivo nel peso
+            float thick = smoothstep(tA * 2.2, tB * 3., e2) * (.45 + .55 * dark) * mix(.75, 1., vn11(sp * 1.7 + 3.));
+            float d2x = abs(d1 + d2 - 2. * d), d2y = abs(d3 + d4 - 2. * d), form = smoothstep(.035 + d * .003, .09 + d * .006, max(d2x, d2y)) * (1. - thin) * .42;   // linee leggere di forma: spigoli e pieghe dentro la sagoma
             float cvi = (d1 + d2 + d3 + d4 - 4. * d) / (d * .012 + .08), crease = smoothstep(.9, 2.2, -cvi) * .55;
-            float ink = max(max(max(thin, thick), crease), hat) * (1.-coc) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
+            float ink = max(max(max(thin, thick), crease * .8), form) * (1.-coc) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
             vec3 inkC = c * vec3(.16,.14,.2) + vec3(.022,.016,.036);
             c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); }""")
+# ---------------- 7) colore un filo più saturo ----------------
+rep("if (pK.x > .01) {   // [amb3] colori saturi, ma in palette", "c = max(mix(vec3(dot(c, vec3(.3,.59,.11))), c, 1.14), 0.);   /* [unione11] un filo più saturi */\n          if (pK.x > .01) {   // [amb3] colori saturi, ma in palette")
 open(p, 'w', encoding='utf-8').write(s); print('ok')
