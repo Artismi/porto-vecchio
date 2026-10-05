@@ -28,5 +28,5 @@ const E0 = L.portals.find(P => P.name === 'Eremo del Romito'); p.lv = null; p.x 
 walk(Math.atan2(E0.u[1] - E0.s[1], E0.u[0] - E0.s[0]), 1); console.log('dentro?', where());
 for (let k = 0; k < 6; k++) walk(-.25, .8); console.log('in fondo', where(), LV.key(st, 'v'), where());
 // 5) il ponte
-const B = LV.BR[0]; p.lv = null; p.x = B.a[0] - 1.5; p.y = B.a[1]; console.log('ponte, capo ovest', where());
-walk(0, 1); console.log(where()); walk(0, 2); console.log(where()); walk(0, 2.5); console.log(where());
+const B = LV.BR[0] || { a: [0, 0] }; if (!LV.BR[0]) console.log('(nessun ponte sull\'isola: prova del ponte saltata)'); else { p.lv = null; p.x = B.a[0] - 1.5; p.y = B.a[1]; console.log('ponte, capo ovest', where());
+walk(0, 1); console.log(where()); walk(0, 2); console.log(where()); walk(0, 2.5); console.log(where()); }
