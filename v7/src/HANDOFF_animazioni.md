@@ -22,6 +22,9 @@ Ramo `claude/bold-clarke-fioelv`. Si unisce a `main` e ai rami attivi (verde, am
 ## Carattere (anim_vita.js, `portamento`)
 Ogni abitante ha uno stile calcolato ogni 2 s da età, coraggio (`n.tr.cor`), paura, soldi, sonno, solitudine, loquacità (`n.tr.loq`), divisa: anziani curvi, fieri a petto in fuori, chi è giù con le spalle basse, Grigi dritti con le mani dietro la schiena da fermi. Chi parla guarda chi ha davanti; se la battuta ha un «!» gesticola largo (`discute`). Si legge solo: nessun file in comune toccato.
 
+## Gambe e piedi (motore)
+Nel kit i piedi (`FootL/R`) e i poli delle ginocchia (`PTL/R`) stanno sotto Root, non sotto lo stinco, e la clip Idle non li anima. Per questo il motore: rimette a posto piedi e poli a ogni fotogramma (`Anim.restore`); con `P.aim`/`P.rot` sulle ossa delle gambe riporta il piede in fondo allo stinco; offre `P.legTo` (IK a due ossa) a tutte le pose. Le pose di tutto il corpo stanno sulla clip `Idle_Neutral` (piedi uniti), non su `Idle`.
+
 ## Per le altre chat
 - **Regia** (`regia.js`): le azioni `fai` passano da `Azioni.startPlan`, e il testo del passo («ripara la rete», «dipinge la barca») sceglie la posa con `BY_LABEL` in `anim_vita.js`. Un verbo nuovo che non trova posa resta in piedi: basta aggiungere una riga a `BY_LABEL`. Il "modo di fare" da fermi (fuma, tasche, braccia conserte, orologio, appoggiato) c'è già in `habit()`.
 - **Una posa nuova**: `Anim.def(nome, { base, fade, fn(P) {...} })` e una mappa `Anim.npcMap((st, n, s) => { s.act = nome })`. Si controlla nello studio.

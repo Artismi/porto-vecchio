@@ -20,38 +20,11 @@
   // si punta l'asse Y delle ossa (che corre lungo l'osso) e si porta il piede in fondo allo stinco.
   const _H = new THREE.Vector3(), _K = new THREE.Vector3(), _T = new THREE.Vector3(), _U = new THREE.Vector3(), _N = new THREE.Vector3(), _Y = new THREE.Vector3();
   const _q0 = new THREE.Quaternion(), _q1 = new THREE.Quaternion(), _qI = new THREE.Quaternion(), _qp = new THREE.Quaternion(), _e = new THREE.Euler();
-  // ruota l'osso perché il suo asse Y (nel mondo) vada verso dir (vettore del mondo, normalizzato)
-  function aimW(bone, dir, ww) {
-    bone.getWorldQuaternion(_q0); _Y.set(0, 1, 0).applyQuaternion(_q0);
-    _q1.setFromUnitVectors(_Y, dir); if (ww < 1) _q1.slerpQuaternions(_qI, _q1, ww);
-    _q1.multiply(_q0);
-    if (bone.parent) { bone.parent.getWorldQuaternion(_qp); _q1.premultiply(_qp.invert()); }
-    bone.quaternion.copy(_q1); bone.updateMatrixWorld(true);
-  }
+
   // piede (fx,fy,fz) nello spazio del personaggio (x verso l'esterno, PRIMA dello spostamento di P.body), ginocchio verso (kx,ky,kz)
   // pitch: punta del piede in su (radianti); yaw: punta verso l'esterno
-  function legTo(P, side, fx, fy, fz, kx, ky, kz, pitch, yaw, w) {
-    const S = SIDE[side], R = P.R, ul = R.b[S.ul], ll = R.b[S.ll], ft = R.b[S.ft]; if (!ul || !ll || !ft) return;
-    const ww = (w === undefined ? 1 : w) * P.w; if (ww <= 0) return;
-    if (!R.shin) { ll.getWorldPosition(_K); ft.getWorldPosition(_T); R.shin = _K.distanceTo(_T) || .45; }
-    ul.getWorldPosition(_H); ll.getWorldPosition(_K);
-    const a = _H.distanceTo(_K), b = R.shin;
-    _T.set(fx * S.s, fy, fz); P.g.localToWorld(_T);
-    _U.subVectors(_T, _H); let d = _U.length(); if (d < 1e-5) return; _U.divideScalar(d);
-    d = clamp(d, Math.abs(a - b) + .01, a + b - .002);
-    const x = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - x * x));
-    _N.set(kx * S.s, ky, kz).applyQuaternion(P._gq); _N.addScaledVector(_U, -_N.dot(_U)); if (_N.lengthSq() < 1e-8) _N.set(0, 0, 1).applyQuaternion(P._gq); _N.normalize();
-    _K.copy(_H).addScaledVector(_U, x).addScaledVector(_N, h);           // il ginocchio
-    _T.copy(_H).addScaledVector(_U, d);                                  // la caviglia (raggiungibile)
-    _N.subVectors(_K, _H).normalize(); aimW(ul, _N, ww);
-    ll.getWorldPosition(_K); _N.subVectors(_T, _K).normalize(); aimW(ll, _N, ww);
-    // il piede: in fondo allo stinco, piatto e in avanti (asse Y del piede = avanti, Z = giù)
-    _T.copy(_K).addScaledVector(_N, b);
-    ft.getWorldPosition(_K); _K.lerp(_T, ww); ft.parent.worldToLocal(_K); ft.position.copy(_K);
-    _q1.setFromEuler(_e.set(PI / 2 - (pitch || 0), (yaw || 0) * S.s, 0, 'YXZ')); _q1.premultiply(P._gq);
-    ft.getWorldQuaternion(_q0); _q0.slerp(_q1, ww);
-    ft.parent.getWorldQuaternion(_qp); _q0.premultiply(_qp.invert()); ft.quaternion.copy(_q0); ft.updateMatrixWorld(true);
-  }
+  function legTo(P, side, fx, fy, fz, kx, ky, kz, pitch, yaw, w) { const sg = SIDE[side].s; P.legTo(side, fx * sg, fy, fz, kx * sg, ky, kz, pitch, yaw, w); }   // il motore (x qui verso l'esterno)
+
   const QHAND = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), PI);   // mano → osso del polso
   // mano in un punto (x verso l'esterno, y, z nello spazio del personaggio), gomito verso il polo (x esterno, y, z): IK a due ossa
   const _S = new THREE.Vector3(), _E = new THREE.Vector3(), _W = new THREE.Vector3(), _M = new THREE.Matrix4();
@@ -183,7 +156,7 @@
     box(g, .035, .035, 1.25, '#6a5030', .22, .5, .82, .3); box(g, .035, .035, 1.25, '#6a5030', -.22, .5, .82, .3); box(g, .03, .32, .03, '#3a3a3a', .2, .3, .78); box(g, .03, .32, .03, '#3a3a3a', -.2, .3, .78); return g; });
 
   // ================= LE POSE =================
-  const FULL = { base: 'Idle', fade: .4 };
+  const FULL = { base: 'Idle_Neutral', fade: .4 };   // la clip neutra (piedi uniti): sotto le pose la Idle sembrava a metà di un passo
   const def = (name, spec, fn) => Anim.def(name, Object.assign({}, spec, { fn }));
 
   // ---- SEDUTO (panchina, sedia): varianti per persona: composto, gambe accavallate, gomiti sulle ginocchia ----
@@ -472,14 +445,15 @@
   def('merce', FULL, (P) => {
     const k = cyc(P, 5);
     P.rot('Abdomen', .3, 0, 0); P.rot('Head', .25, .4 * Math.sin(k * 2 * PI), 0);
-    handTo(P, 'R', .12, .9 + .08 * pulse(k, .3, .4, .6, .7), .5, .8, -.4, 0);
-    handTo(P, 'L', .12, .95, .3, .8, -.4, -.2); show(P, 'soldi');
+    handTo(P, 'R', .1, 1.0 + .06 * pulse(k, .3, .4, .6, .7), .42, .8, -.4, 0);       // tocca la merce sul banco
+    handTo(P, 'L', .14, 1.02, .24, .8, -.5, -.2); show(P, 'soldi');                     // i soldi pronti, davanti alla pancia
   });
   // ---- LAVORA (a un banco: officina, bottega, rete da riparare): mani sul piano, gesti piccoli ----
   def('lavora', FULL, (P) => {
     const a = Math.sin(P.t * 2.6 + P.r * 7), b = Math.sin(P.t * 3.4 + P.r * 3);
-    P.rot('Abdomen', .32, 0, 0); P.rot('Head', .3, .1 * a, 0);
-    arm(P, 'R', .15, -.55, .7, -.1 + .12 * a, -.3, .95); arm(P, 'L', .15, -.55, .7, -.1 + .12 * b, -.3, .95);
+    P.rot('Abdomen', .25, 0, 0); P.rot('Head', .3, .1 * a, 0);
+    handTo(P, 'R', .1 + .04 * a, .98 + .03 * b, .42, .9, -.4, 0); handTo(P, 'L', .1 - .04 * b, .98 + .03 * a, .42, .9, -.4, 0);   // le mani sul piano di lavoro
+    P.fingers('R', .55 + .2 * a, .6); P.fingers('L', .45 + .2 * b, .5);
   }); BUSY.lavora = 1;
   // ---- GIOCA A CARTE (seduto): carte nella sinistra, la destra cala una carta ogni tanto ----
   def('carte', FULL, (P) => {
@@ -499,7 +473,8 @@
   def('flipper', FULL, (P) => {
     const f = Math.sin(P.t * 11) > .6 ? 1 : 0, g = Math.sin(P.t * 9 + 2) > .7 ? 1 : 0;
     P.rot('Abdomen', .25, .1 * Math.sin(P.t * 1.5), .08 * Math.sin(P.t * 2.1));
-    arm(P, 'R', .3, -.5, .7, -.1, -.3 + .1 * f, .95); arm(P, 'L', .3, -.5, .7, -.1, -.3 + .1 * g, .95);
+    handTo(P, 'R', .24, .98, .36 + .015 * f, .9, -.3, 0); handTo(P, 'L', .24, .98, .36 + .015 * g, .9, -.3, 0);   // i pollici sui pulsanti ai lati
+    P.fingers('R', .5, .2 + .4 * f); P.fingers('L', .5, .2 + .4 * g);
     P.rot('Head', .35, 0, 0);
   }); BUSY.flipper = 1;
   // ---- ASPETTA: si guarda attorno, il peso che passa da un piede all'altro ----

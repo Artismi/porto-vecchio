@@ -100,33 +100,12 @@
   function rotWorld(bn, q) {   // ruota l'osso di q (nel mondo)
     bn.getWorldQuaternion(_q1); _q1.premultiply(q); bn.parent.getWorldQuaternion(_q2); _q2.invert(); bn.quaternion.copy(_q2.multiply(_q1)); bn.updateMatrixWorld(true);
   }
+  // [anim] delega al motore: l'IK di prima lasciava lo stinco storto rispetto al piede e la scarpa si stirava
   function legIK(P, side, tx, ty, tz, px, py, pz, follow, w) {
-    const L = side > 0 ? 'L' : 'R', U = P.bone('UpperLeg' + L), K = P.bone('LowerLeg' + L), F = P.bone('Foot' + L);
-    if (!U || !K || !F || !F.parent || !K.parent) return;
-    const ww = (w === undefined ? 1 : w) * P.w; if (ww <= 0) return;
-    const R = P.R, key = 'leg' + L; let G = R[key];
-    if (!G) { U.getWorldPosition(_K0); K.getWorldPosition(_K1); F.getWorldPosition(_F0); G = R[key] = { a: _K0.distanceTo(_K1), b: _K1.distanceTo(_F0), base: F.position.clone(), mine: F.position.clone() }; }
-    // il piede: se la clip non l'ha mosso dall'ultima volta, si riparte dalla posizione di base (niente accumuli)
-    if (!F.position.equals(G.mine)) G.base.copy(F.position); else { F.position.copy(G.base); F.updateMatrixWorld(true); }
     const B = P._body; if (B) { tx -= B.x; ty -= B.y; tz -= B.z; }
-    K.getWorldQuaternion(_qk); F.getWorldQuaternion(_qf); F.getWorldPosition(_F0); U.getWorldPosition(_S);
-    _T.set(tx, ty, tz).applyMatrix4(P.g.matrixWorld); _T.lerp(_F0, 1 - ww);
-    const a = G.a, b = G.b; _u.copy(_T).sub(_S); let d = _u.length(); if (d < 1e-4) return; _u.divideScalar(d);
-    d = clamp(d, Math.abs(a - b) + .005, (a + b) * .999);
-    const x = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - x * x));
-    _pl.set(px, py, pz).applyQuaternion(P._gq); _pl.addScaledVector(_u, -_pl.dot(_u)); if (_pl.lengthSq() < 1e-6) _pl.set(0, 0, 1).applyQuaternion(P._gq); _pl.normalize();
-    _E.copy(_S).addScaledVector(_u, x).addScaledVector(_pl, h);                       // il ginocchio
-    // coscia: dalla direzione attuale (anca → ginocchio) a quella voluta
-    K.getWorldPosition(_K1); _a1.copy(_K1).sub(_S).normalize(); _a2.copy(_E).sub(_S).normalize(); _q3.setFromUnitVectors(_a1, _a2); rotWorld(U, _q3);
-    // stinco: il suo asse (+y locale) verso il piede
-    K.getWorldQuaternion(_q1); _a1.copy(_Y).applyQuaternion(_q1); K.getWorldPosition(_K1); _a2.copy(_S).addScaledVector(_u, d).sub(_K1).normalize();
-    _q3.setFromUnitVectors(_a1, _a2); rotWorld(K, _q3);
-    // il piede in fondo allo stinco; la rotazione: piantato (resta com'era) o che segue lo stinco (follow)
-    K.getWorldPosition(_K1); _F0.copy(_K1).addScaledVector(_a2, b);
-    _m4.copy(F.parent.matrixWorld).invert(); F.position.copy(_F0.applyMatrix4(_m4));
-    if (follow > 0) { K.getWorldQuaternion(_q1); _q1.multiply(_q2.copy(_qk).invert()); _q3.identity().slerp(_q1, follow * ww); _q1.copy(_q3).multiply(_qf); F.parent.getWorldQuaternion(_q2); _q2.invert(); F.quaternion.copy(_q2.multiply(_q1)); }
-    F.updateMatrixWorld(true); G.mine.copy(F.position);
+    P.legTo(side > 0 ? 'L' : 'R', tx, ty, tz, px, py, pz, 0, 0, w);
   }
+
   // tiene il piede dov'è ora (spazio del personaggio prima dello spostamento del corpo): quando il corpo si abbassa
   // o scarta di lato, la gamba si piega e il piede resta piantato
   function plant(P, side, w, dy, dz) {

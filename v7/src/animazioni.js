@@ -47,7 +47,9 @@ var Anim = (function () {
     const b = {}; BONES.forEach(k => { const o = m.getObjectByName(k); if (o) b[k] = o; });
     // le ossa del kit Toon Shooter hanno spesso il figlio con un nome diverso: si prende il primo osso figlio
     for (const k in b) if (!CHILD[k] || !b[CHILD[k]]) { const c = b[k].children.find(x => x.isBone); if (c && !CHILD[k]) CHILD[k] = c.name; }
-    u.rig = { m, b, layers: {}, r: hashStr(String(g.id) + (u.model || '')), headYaw: 0, headPitch: 0, talkT: 0 };
+    // lunghezza dello stinco, presa subito (dopo il piede viene spostato dalle pose)
+    let shin = .45; if (b.LowerLegL && b.FootL) { g.updateMatrixWorld(true); const p1 = new THREE.Vector3(), p2 = new THREE.Vector3(); b.LowerLegL.getWorldPosition(p1); b.FootL.getWorldPosition(p2); shin = p1.distanceTo(p2) || .45; }
+    u.rig = { shin, m, b, layers: {}, r: hashStr(String(g.id) + (u.model || '')), headYaw: 0, headPitch: 0, talkT: 0 };
     return u.rig;
   }
 
@@ -84,6 +86,9 @@ var Anim = (function () {
       aim(k, dir, w) {
         const bn = R.b[k], ch = R.b[CHILD[k]]; if (!bn || !ch) return P;
         const ww = (w === undefined ? 1 : w) * P.w; if (ww <= 0) return P;
+        // gambe: il piede del kit non è figlio dello stinco (è un bersaglio sotto Root): si punta l'asse dell'osso
+        // e poi il piede torna in fondo allo stinco, sennò la scarpa si stira
+        const leg = LEG[k]; if (leg) { _c.set(dir[0], dir[1], dir[2]).normalize().applyQuaternion(gq); aimY(bn, _c, ww); footToShin(R, leg); return P; }
         bn.getWorldPosition(_a); ch.getWorldPosition(_b); _b.sub(_a); if (_b.lengthSq() < 1e-10) return P;
         _b.normalize(); _c.set(dir[0], dir[1], dir[2]).normalize().applyQuaternion(gq);
         _q4.setFromUnitVectors(_b, _c); _q.copy(ID).slerp(_q4, ww);
@@ -95,13 +100,17 @@ var Anim = (function () {
         const ww = (w === undefined ? 1 : w) * P.w; if (ww <= 0) return P;
         _q.setFromEuler(_e.set(ax * ww, ay * ww, az * ww, 'XYZ'));
         _q.premultiply(gq).multiply(_q2.copy(gq).invert());   // asse del personaggio → asse del mondo
-        applyWorld(bn, _q); return P;
+        applyWorld(bn, _q); if (LEG[k]) footToShin(R, LEG[k]); return P;
       },
       body(o) { P._body = P._body || { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0 }; for (const k in o) P._body[k] += o[k] * P.w; return P; },
       base(c) { P._base = c; return P; },
       prop(name) { (P._props = P._props || []).push(name); return P; },
       wave: (f, ph) => Math.sin(P.t * f * Math.PI * 2 + (ph || 0) + P.r * 6.28),
       _gq: gq,
+      // gamba: caviglia in (x, y, z) nello spazio del personaggio PRIMA dello spostamento di P.body (x vero: + = sinistra),
+      // ginocchio verso il polo (kx, ky, kz), piede piatto con la punta alzata di pitch e girata in fuori di yaw.
+      // IK a due ossa sull'asse Y delle ossa; il piede (bersaglio sotto Root) va in fondo allo stinco: niente scarpe stirate.
+      legTo(side, fx, fy, fz, kx, ky, kz, pitch, yaw, w) { legTo(P, side === 'L' || side > 0 ? 'L' : 'R', fx, fy, fz, kx, ky, kz, pitch || 0, yaw || 0, (w === undefined ? 1 : w) * P.w); return P; },
       // dita: curl 0 (aperta) → 1 (pugno); thumb 0-1 il pollice che chiude sopra; spread allarga
       fingers(side, curl, thumb, w) { hand(P, side, curl, thumb === undefined ? curl : thumb, (w === undefined ? 1 : w) * P.w); return P; },
       // gira la mano perché la direzione A (vettore del MONDO, solidale alla mano: la canna, il manico) vada verso dir
@@ -112,6 +121,44 @@ var Anim = (function () {
     return P;
   }
   // ruota l'osso di q (quaternione nel mondo) e aggiorna i figli
+  // ---------------- le gambe ----------------
+  const LEG = { UpperLegL: 'L', LowerLegL: 'L', UpperLegR: 'R', LowerLegR: 'R' };
+  // il piede in fondo allo stinco (lungo l'asse Y dello stinco), con la rotazione che segue quella dello stinco
+  function footToShin(R, sd) {
+    const ll = R.b['LowerLeg' + sd], ft = R.b['Foot' + sd]; if (!ll || !ft || !ft.parent) return;
+    if (!R.shin) { ll.getWorldPosition(_K); ft.getWorldPosition(_T); R.shin = _K.distanceTo(_T) || .45; }
+    const key = 'fr' + sd; ll.getWorldQuaternion(_lq);
+    if (!R[key] || R[key + 't'] !== R.__frame) { ft.getWorldQuaternion(_lq2); R[key] = (R[key] || Q()).copy(_lq).invert().multiply(_lq2); R[key + 't'] = R.__frame; }   // piede rispetto allo stinco, preso a inizio fotogramma
+    ll.getWorldPosition(_K); _Y.set(0, 1, 0).applyQuaternion(_lq); _T.copy(_K).addScaledVector(_Y, R.shin);
+    ft.parent.worldToLocal(_T); ft.position.copy(_T);
+    _lq2.copy(_lq).multiply(R[key]); ft.parent.getWorldQuaternion(_q4); ft.quaternion.copy(_q4.invert().multiply(_lq2)); ft.updateMatrixWorld(true);
+  }
+  const _H = V(), _K = V(), _T = V(), _U = V(), _N = V(), _Y = V(), _lq = Q(), _lq2 = Q(), _le = new THREE.Euler();
+  function aimY(bone, dir, ww) {   // ruota l'osso perché il suo asse Y (nel mondo) vada verso dir
+    bone.getWorldQuaternion(_lq); _Y.set(0, 1, 0).applyQuaternion(_lq);
+    _lq2.setFromUnitVectors(_Y, dir); if (ww < 1) { _fq.copy(_lq2); _lq2.copy(ID).slerp(_fq, ww); }
+    applyWorld(bone, _lq2);
+  }
+  function legTo(P, sd, fx, fy, fz, kx, ky, kz, pitch, yaw, ww) {
+    const R = P.R, ul = R.b['UpperLeg' + sd], ll = R.b['LowerLeg' + sd], ft = R.b['Foot' + sd]; if (!ul || !ll || !ft || ww <= 0) return;
+    if (!R.shin) { ll.getWorldPosition(_K); ft.getWorldPosition(_T); R.shin = _K.distanceTo(_T) || .45; }
+    ul.getWorldPosition(_H); ll.getWorldPosition(_K);
+    const a = _H.distanceTo(_K), b = R.shin, s = sd === 'L' ? 1 : -1;
+    _T.set(fx, fy, fz); P.g.localToWorld(_T);
+    _U.subVectors(_T, _H); let d = _U.length(); if (d < 1e-5) return; _U.divideScalar(d);
+    d = clamp(d, Math.abs(a - b) + .01, a + b - .002);
+    const x = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - x * x));
+    _N.set(kx, ky, kz).applyQuaternion(P._gq); _N.addScaledVector(_U, -_N.dot(_U)); if (_N.lengthSq() < 1e-8) _N.set(0, 0, 1).applyQuaternion(P._gq); _N.normalize();
+    _K.copy(_H).addScaledVector(_U, x).addScaledVector(_N, h);           // il ginocchio
+    _T.copy(_H).addScaledVector(_U, d);                                  // la caviglia (raggiungibile)
+    _N.subVectors(_K, _H).normalize(); aimY(ul, _N, ww);
+    ll.getWorldPosition(_K); _N.subVectors(_T, _K).normalize(); aimY(ll, _N, ww);
+    _T.copy(_K).addScaledVector(_N, b);                                  // il piede in fondo allo stinco
+    ft.getWorldPosition(_K); _K.lerp(_T, ww); ft.parent.worldToLocal(_K); ft.position.copy(_K);
+    _lq2.setFromEuler(_le.set(Math.PI / 2 - pitch, yaw * s, 0, 'YXZ')); _lq2.premultiply(P._gq);   // asse Y del piede = avanti, Z = giù
+    ft.getWorldQuaternion(_lq); _lq.slerp(_lq2, ww);
+    ft.parent.getWorldQuaternion(_q4); _lq.premultiply(_q4.invert()); ft.quaternion.copy(_lq); ft.updateMatrixWorld(true);
+  }
   // ---------------- le mani ----------------
   const _f1 = V(), _f2 = V(), _ax = V(), _fq = Q(), _tw = Q(), _sw = Q();
   // il verso in cui le dita si chiudono si scopre una volta per scheletro: si prova a piegare il medio e si guarda
@@ -214,10 +261,17 @@ var Anim = (function () {
     // (le ossa che la clip non anima, altrimenti, accumulerebbero le rotazioni fotogramma dopo fotogramma)
     if (!R.pre) { R.pre = {}; for (const k in R.b) R.pre[k] = R.b[k].quaternion.clone(); }
     else for (const k in R.b) R.pre[k].copy(R.b[k].quaternion);
+    // anche la POSIZIONE di piedi e punte: sono bersagli IK sotto Root, e la clip Idle non le anima (resterebbero dove le ha messe l'ultima posa)
+    if (!R.prePos) { R.prePos = []; ['FootL', 'FootR', 'PTL', 'PTR'].forEach(k => { const o = R.b[k] || R.m.getObjectByName(k); if (o) R.prePos.push({ o, p: o.position.clone(), q: o.quaternion.clone() }); }); }
+    else R.prePos.forEach(e => { e.p.copy(e.o.position); e.q.copy(e.o.quaternion); });
+    // la punta del piede (PT, un osso a parte sotto Root, con la pelle della scarpa) deve seguire il piede:
+    // si fotografa dov'è rispetto al piede prima delle pose e la si rimette lì dopo (sennò la scarpa si stira)
+    toeSnap(g, R);
     // le ossa nel mondo servono aggiornate per puntare
     g.updateMatrixWorld(true);
     const P = R.P || (R.P = makeP(g, R)); g.getWorldQuaternion(P._gq);
     P.o = o; P.time = time || 0; P._body = null;
+    R.__frame = (R.__frame || 0) + 1;
     // quanto sono spessi i vestiti su busto e braccia (vestiario.js): le pose tengono le braccia più larghe
     { const S = u.spessore; P.bulk = S ? Math.min(.12, (S.torso || 0) + (S.braccia || 0) * .5) : 0; }
     const showProps = {};
@@ -229,13 +283,27 @@ var Anim = (function () {
       try { spec.fn(P, A); } catch (e) { disabled[k] = true; console.warn('[anim] posa spenta:', k, e); }
       if (P._props && L.w > .5) P._props.forEach(n => showProps[n] = 1);
     }
+    toeFollow(R);
     if (P._body && u.body) { const B = P._body; u.body.position.set(B.x, B.y, B.z); u.body.rotation.set(B.rx, B.ry, B.rz); }
     // lo sguardo: la testa gira verso il punto, con i limiti del collo e un po' di ritardo
     look(g, R, A.lookAt, dt, P);
     // attrezzi
     for (const n in PROPS) { const want = !!showProps[n]; if (!want && !(R.props && R.props[n])) continue; const h = getProp(g, R, n); if (h) h.visible = want; }
   }
-  function restore(g) { const R = g.userData.rig; if (!R || !R.pre) return; for (const k in R.pre) R.b[k].quaternion.copy(R.pre[k]); }
+  const _tm = new THREE.Matrix4(), _tq = Q(), _tp = V();
+  function toeSnap(g, R) {
+    if (R.toe === undefined) { R.toe = []; ['L', 'R'].forEach(sd => { const F = R.b['Foot' + sd], T = R.m.getObjectByName('PT' + sd); if (F && T && T.parent !== F) R.toe.push({ F, T, p: V(), q: Q() }); }); }
+    if (!R.toe.length) return; g.updateMatrixWorld(true);
+    for (const t of R.toe) { _tm.copy(t.F.matrixWorld).invert(); t.T.getWorldPosition(t.p).applyMatrix4(_tm); t.F.getWorldQuaternion(_tq).invert(); t.T.getWorldQuaternion(t.q).premultiply(_tq); }
+  }
+  function toeFollow(R) {
+    if (!R.toe || !R.toe.length) return;
+    for (const t of R.toe) {
+      t.F.updateMatrixWorld(true); _tp.copy(t.p).applyMatrix4(t.F.matrixWorld); t.T.parent.worldToLocal(_tp); t.T.position.copy(_tp);
+      t.F.getWorldQuaternion(_tq).multiply(t.q); t.T.parent.getWorldQuaternion(_q4); t.T.quaternion.copy(_q4.invert().multiply(_tq)); t.T.updateMatrixWorld(true);
+    }
+  }
+  function restore(g) { const R = g.userData.rig; if (!R || !R.pre) return; for (const k in R.pre) R.b[k].quaternion.copy(R.pre[k]); if (R.prePos) R.prePos.forEach(e => { e.o.position.copy(e.p); e.o.quaternion.copy(e.q); }); }
   function rank(k, A) { return k === A.act ? 0 : k === A.upper ? 1 : k === 'vita' ? -1 : k === 'parla' ? 3 : 2; }
   function look(g, R, at, dt, P) {
     let yaw = 0, pitch = 0;
