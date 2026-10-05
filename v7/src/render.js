@@ -406,7 +406,7 @@ var Render = (function () {
     pass(dirt, rd => rd.w, () => '#8a6a4a');
     pass(dirt, rd => 1.1, () => 'rgba(150,120,86,.6)');
     const vic = rd => rd.kind === 'vicolo', strd = rd => asph(rd) && !vic(rd), urb = rd => rd.kind === 'citta' || rd.kind === 'litoranea';   // [isola35]
-    pass(rd => strd(rd) && urb(rd), rd => rd.w + 6.4, () => '#5e5a54');   // [isola31] la fascia del marciapiede segue la curva: niente scalini
+    pass(rd => strd(rd) && urb(rd), rd => rd.w + 4.8, () => '#3a3632');   // [isola38]   // [isola31] la fascia del marciapiede segue la curva: niente scalini
     pass(vic, rd => rd.w + .9, () => 'rgba(30,27,25,.85)');
     pass(vic, rd => rd.w, () => pat35(x, 'basolato', X0, Y0));
     pass(vic, rd => .3, () => 'rgba(22,20,20,.5)');
@@ -904,7 +904,7 @@ var Render = (function () {
       if (!best) continue; const r = rng((tx * 9301 + ty * 4933) >>> 0);
       for (let q = 0; q < 3; q++) { const u = (q + .5) / 3 - .5, x = (tx + .5 + best[0] * .35) * TS + (best[0] ? 0 : u * TS), z = (ty + .5 + best[1] * .35) * TS + (best[1] ? 0 : u * TS); add('Pebble_Square_' + (r() < .5 ? 2 : 4), x, groundH(x, z) - .05, z, 2.6 + r() * .8, (best[0] ? Math.PI / 2 : 0) + (r() - .5) * .3, { sy: 1.6, col: pick(r, ['#c8c2b6', '#b8b2a6', '#d4cec2']) }); }
     }
-    if (ZN.CITTA !== undefined) verdeCitta35(add, tx0, ty0, n, m);   // [isola35]
+    if (ZN.CITTA !== undefined) { verdeCitta35(add, tx0, ty0, n, m); erbaCrepe38(add, tx0, ty0, n, m); }   // [isola35] [isola38]
     for (const [name, arr] of B) {
       const mdl = natModel(name); if (!mdl) continue;
       let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
@@ -1220,7 +1220,7 @@ var Render = (function () {
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
     const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
-    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .55, emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 });
+    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 });
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
@@ -2550,9 +2550,8 @@ var Render = (function () {
     if (SWF35ok) return SWF35; SWF35ok = true;
     if (!M.roads || !M.zone) return null;
     const T = G.T, R = .5, K = Math.round(TS / R), NW = Math.ceil(G.GW * TS / R) + 1, NH = Math.ceil(G.GH * TS / R) + 1;
-    let m = new Float32Array(NW * NH), any = 0;
+    let m = new Float32Array(NW * NH), any = 0; const S38 = new Float32Array(NW * NH).fill(-9), D38 = new Float32Array(NW * NH).fill(9), C38 = new Uint8Array(NW * NH);   // [isola38]
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) { if (G.tileAt(tx, ty) !== T.WALK) continue; any++; for (let j = 0; j < K; j++) for (let i = 0; i < K; i++) m[(ty * K + j) * NW + tx * K + i] = 1; }
-    if (!any) return null;
     { const DM = new Float32Array(NW * NH).fill(1e9), HW = new Float32Array(NW * NH);   // [isola31]
       (M.roads || []).forEach(rd => { if (rd.rect || !rd.pts || !(rd.kind === 'citta' || rd.kind === 'litoranea')) return; const h2 = rd.w / 2 + 3.4;
         for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L2 = (bx - ax) * (bx - ax) + (bz - az) * (bz - az) || 1;
@@ -2560,7 +2559,7 @@ var Render = (function () {
             const x = i * R, z = j * R, t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / L2)), d = Math.hypot(x - ax - (bx - ax) * t, z - az - (bz - az) * t), kk = j * NW + i;
             if (d < DM[kk]) { DM[kk] = d; HW[kk] = rd.w / 2; } } } });
       for (let kk = 0; kk < DM.length; kk++) { const x = (kk % NW) * R, z = Math.floor(kk / NW) * R, tx = Math.floor(x / TS), tz = Math.floor(z / TS);
-        if (zoneT(tx, tz) !== ZN.CITTA) continue; if (DM[kk] > 1e8) { m[kk] = 0; continue; } const d = DM[kk], h0 = HW[kk]; m[kk] = d > h0 + .05 && d < h0 + 2.1 ? 1 : 0; } }   // [isola35] in città solo la fascia lungo le vie
+        if (zoneT(tx, tz) !== ZN.CITTA) continue; C38[kk] = 1; m[kk] = 0; if (DM[kk] > 1e8) continue; const d = DM[kk], h0 = HW[kk]; D38[kk] = d - h0; S38[kk] = Math.min(d - h0 - .02, h0 + 2.1 - d); } }   // [isola35] in città solo la fascia lungo le vie
     const blur = (src, rad) => { const t = new Float32Array(src.length), o = new Float32Array(src.length), n = 2 * rad + 1;
       for (let j = 0; j < NH; j++) { let s = 0; for (let i = -rad; i <= rad; i++) s += src[j * NW + Math.max(0, i)]; for (let i = 0; i < NW; i++) { t[j * NW + i] = s / n; s += src[j * NW + Math.min(NW - 1, i + rad + 1)] - src[j * NW + Math.max(0, i - rad)]; } }
       for (let i = 0; i < NW; i++) { let s = 0; for (let j = -rad; j <= rad; j++) s += t[Math.max(0, j) * NW + i]; for (let j = 0; j < NH; j++) { o[j * NW + i] = s / n; s += t[Math.min(NH - 1, j + rad + 1) * NW + i] - t[Math.max(0, j - rad) * NW + i]; } }
@@ -2568,13 +2567,13 @@ var Render = (function () {
     // scorrimento per curvatura: sfuma e riaffila più volte, così i gradini a 2 m delle strade fuori griglia diventano curve
     // e gli angoli si arrotondano senza assottigliare i marciapiedi stretti
     const sharp = (a, lo, hi) => { for (let k = 0; k < a.length; k++) { const t = Math.max(0, Math.min(1, (a[k] - lo) / (hi - lo))); a[k] = t * t * (3 - 2 * t); } return a; };
-    const area0 = m.reduce((a, b) => a + b, 0);
+    const area0 = m.reduce((a, b) => a + b, 0) || 1;
     for (let it = 0; it < 10; it++) m = sharp(blur(m, 3), .26, .62);
     m = blur(blur(m, 2), 2);
     const area1 = m.reduce((a, b) => a + b, 0); if (window.__swDbg) console.log('marciapiedi area', (area1 / area0).toFixed(2));
     const sstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-    const H = new Float32Array(m.length); for (let k = 0; k < m.length; k++) H[k] = .15 * sstep(.36, .64, m[k]);
-    return (SWF35 = { R, NW, NH, H, m });
+    const H = new Float32Array(m.length); for (let k = 0; k < m.length; k++) H[k] = .15 * sstep(.36, .64, m[k]); const Hn = H.slice(); for (let k = 0; k < m.length; k++) if (C38[k]) H[k] = .15 * Math.max(0, Math.min(1, S38[k] / .2 + .5));
+    return (SWF35 = { R, NW, NH, H, m, Hn, S38, D38, C38 });
   }
   // altezza del marciapiede sopra il terreno in (x, z): 0 fuori, 0,15 sopra
   function swH(x, z) {
@@ -2639,7 +2638,7 @@ var Render = (function () {
     for (let sj = 0; sj < 4; sj++) for (let si = 0; si < 4; si++) {
       const X = wx + (si + .5) * .5, Y = wy + (sj + .5) * .5, k1 = vnz(X / 11, Y / 11) + vnz(X / 3.2, Y / 3.2) * .45, k2 = vnz(X / 7 + 40, Y / 7 + 40);
       // cosa c'è in questo mezzo metro: dipende dalla casella (cortile verde, terra, ciottolato) e da due rumori lisci
-      let kind = v === T.GRASS ? (k1 > -.08 ? 'erba' : k1 > -.3 ? 'terra' : 'ghiaia') : v === T.DIRT ? (k1 > .25 ? 'erba' : 'terra') : (k1 > .22 ? 'cemento' : k1 > -.25 ? 'ciottoli' : 'terra');
+      let kind = v === T.GRASS ? (k1 > -.08 ? 'erba' : k1 > -.3 ? 'terra' : 'ghiaia') : v === T.DIRT ? (k1 > .25 ? 'erba' : 'terra') : (k1 > .3 ? 'cemento' : k1 > -.12 ? 'ciottoli' : k2 > .15 ? 'terra' : 'erba');
       if (nearB && v !== T.GRASS && k2 > -.2) kind = 'ciottoli';
       const sx = px + si * S4, sy = py + sj * S4;
       if (kind === 'ciottoli') { x.fillStyle = '#221f1d'; x.fillRect(sx, sy, S4, S4); for (let q = 0; q < 4; q++) { const g = 52 + Math.floor(r() * 22); x.fillStyle = `rgb(${g},${g - 3},${g - 8})`; x.fillRect(sx + (q % 2) * 2, sy + Math.floor(q / 2) * 2, 2 - (r() < .3 ? 1 : 0), 2 - (r() < .2 ? 1 : 0)); } }
@@ -2709,20 +2708,20 @@ var Render = (function () {
     const onRoad = (x, z) => { const k = Math.floor(z / TS) * G.GW + Math.floor(x / TS); return RW[k] > 0 && gT(Math.floor(x / TS), Math.floor(z / TS)) === T.VIA; };
     (M.roads || []).filter(rd => rd.kind === 'citta' || rd.kind === 'litoranea').forEach((rd, ri) => {
       let acc = 0, next = 6 + th(ri, 0, 351) * 8; const P = rd.pts;
-      for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < next) continue; acc = 0; next = 9 + th(ri, k, 352) * 7;
+      for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < next) continue; acc = 0; next = 6 + th(ri, k, 352) * 6;
         const nx = -(bz - az) / L, nz = (bx - ax) / L;
         [-1, 1].forEach(sd => { const x = ax + nx * sd * (rd.w / 2 + 1.25), z = az + nz * sd * (rd.w / 2 + 1.25);
           if (zoneT(Math.floor(x / TS), Math.floor(z / TS)) !== ZN.CITTA || onRoad(x, z) || nearJ(x, z, 4) || !roomy(x, z, 2.6)) return;
-          if (th(Math.round(x), Math.round(z), 353) < .3) return;
-          TREES35.push({ x, z, kind: 'viale', s: .3 + th(Math.round(x), Math.round(z), 354) * .08 }); });
+          if (th(Math.round(x), Math.round(z), 353) < .12) return;
+          TREES35.push({ x, z, kind: 'viale', s: .36 + th(Math.round(x), Math.round(z), 354) * .14 }); });
       }
     });
     // un albero nelle piazzette e negli slarghi, uno ogni tanto nei cortili grandi
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v !== T.PIAZZA && v !== T.GRASS) continue;
-      if (th(tx, ty, 355) > (v === T.PIAZZA ? .04 : .022)) continue;
-      const x = tx * TS + 1, z = ty * TS + 1; if (onRoad(x, z) || !roomy(x, z, 3) || TREES35.some(t => Math.hypot(t.x - x, t.z - z) < 7)) continue;
-      TREES35.push({ x, z, kind: v === T.PIAZZA ? 'piazza' : 'cortile', s: .34 + th(tx, ty, 356) * .1 });
+      if (th(tx, ty, 355) > (v === T.PIAZZA ? .05 : .07)) continue;
+      const x = tx * TS + 1, z = ty * TS + 1; if (onRoad(x, z) || !roomy(x, z, 3) || TREES35.some(t => Math.hypot(t.x - x, t.z - z) < 4.5)) continue;
+      TREES35.push({ x, z, kind: v === T.PIAZZA ? 'piazza' : 'cortile', s: .42 + th(tx, ty, 356) * .2 });
     }
     return TREES35;
   }
@@ -2737,14 +2736,14 @@ var Render = (function () {
       const tx = tx0 + i, ty = ty0 + j; if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v === T.BLD || v === T.WATER || v === T.VIA || v === T.QUAY) continue;
       const r = rng((tx * 6151 + ty * 2399 + 35) >>> 0), walls = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => gT(tx + a, ty + b) === T.BLD);
       // erbacce e ciuffi ai piedi dei muri, dove non passa nessuno
-      walls.forEach(([a, b]) => { if (r() > (v === T.WALK ? .3 : .55)) return; const u = (r() - .5) * 1.6, x = tx * TS + 1 + a * .78 + (a ? 0 : u), z = ty * TS + 1 + b * .78 + (b ? 0 : u);
+      walls.forEach(([a, b]) => { if (r() > (v === T.WALK ? .55 : .85)) return; const u = (r() - .5) * 1.6, x = tx * TS + 1 + a * .78 + (a ? 0 : u), z = ty * TS + 1 + b * .78 + (b ? 0 : u);
         const q = r(); add(q < .5 ? 'Grass_Wispy_Short' : q < .8 ? 'Grass_Common_Tall' : 'Plant_1', x, 0, z, q < .5 ? .9 + r() * .5 : q < .8 ? .45 + r() * .3 : .35 + r() * .2, r() * 6.28, { ground: true, col: pick(r, LEAF) }); });
       // cortili e orti: cespugli, felci, piante grandi; più fitto lontano dalle porte
-      if (v === T.GRASS) { const k = 1 + Math.floor(r() * 3); for (let q = 0; q < k; q++) { const x = tx * TS + .3 + r() * 1.4, z = ty * TS + .3 + r() * 1.4, w = r();
+      if (v === T.GRASS) { const k = 2 + Math.floor(r() * 4); for (let q = 0; q < k; q++) { const x = tx * TS + .3 + r() * 1.4, z = ty * TS + .3 + r() * 1.4, w = r();
           if (walls.length > 1 && w < .3) continue;
           add(w < .3 ? 'Bush_Common' : w < .55 ? 'Grass_Common_Tall' : w < .75 ? 'Fern_1' : w < .9 ? 'Plant_7_Big' : 'Plant_1_Big', x, 0, z, w < .3 ? .4 + r() * .25 : w < .55 ? .6 + r() * .4 : w < .75 ? .3 + r() * .15 : .28 + r() * .14, r() * 6.28, { ground: true, col: pick(r, LEAF) }); } }
-      else if (v === T.DIRT && r() < .4) add('Grass_Wispy_Short', tx * TS + r() * 2, 0, ty * TS + r() * 2, .8 + r() * .5, r() * 6.28, { ground: true, col: '#f0e4c0' });
-      else if (v === T.COB && !walls.length && r() < .18) add(r() < .6 ? 'Grass_Wispy_Short' : 'Plant_1', tx * TS + r() * 2, 0, ty * TS + r() * 2, .5 + r() * .4, r() * 6.28, { ground: true, col: pick(r, LEAF) });
+      else if (v === T.DIRT && r() < .75) add('Grass_Wispy_Short', tx * TS + r() * 2, 0, ty * TS + r() * 2, .8 + r() * .5, r() * 6.28, { ground: true, col: '#f0e4c0' });
+      else if (v === T.COB && r() < .5) add(r() < .6 ? 'Grass_Wispy_Short' : 'Plant_1', tx * TS + r() * 2, 0, ty * TS + r() * 2, .5 + r() * .4, r() * 6.28, { ground: true, col: pick(r, LEAF) });
     }
   }
 
@@ -2983,6 +2982,95 @@ var Render = (function () {
     if (/Common/.test(name)) return k > .1 ? pick(r, ['#f4d890', '#f0c878', '#e8d8a0']) : k < -.2 ? pick(r, ['#e8a878', '#dca070']) : j < .5 ? '#e0e8b8' : '#f0e0b0';
     if (/Twisted/.test(name)) return pick(r, ['#d8e0c0', '#c8d4b0']);
     return pick(r, ['#e8e0d8', '#d8d0c4', '#f0e8dc']);
+  }
+
+  // ================= [isola38] IL MARCIAPIEDE VERO, IL VERDE CHE SI RIPRENDE LA CITTÀ, GLI INCROCI CURATI =================
+  // Il marciapiede non si sfuma più (la sfocatura lo mangiava e lo spargeva sulla carreggiata): è il tratto fra 0 e 2,1 m dal
+  // bordo della strada, ritagliato con una curva di livello liscia (niente gradini della griglia), alto 15 cm con il cordolo
+  // dritto in pietra verso la strada. Poi il verde come in una città lasciata andare: erba nelle crepe lungo i cordoli e i
+  // muri, cespugli, alberi cresciuti dove c'è terra. Agli incroci: paletti agli angoli, tombini, caditoie, erbacce.
+  function marciapiedi38(F) {
+    if (!F || !F.S38) return 0;
+    const { R, NW, NH, S38, D38, C38 } = F;
+    const terr = (x, z) => { const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= G.GW || fz >= G.GH) return -2;
+      const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, h00 = VH(i, j), h10 = VH(i + 1, j), h01 = VH(i, j + 1), h11 = VH(i + 1, j + 1);
+      return u <= v ? h00 + (h11 - h01) * u + (h01 - h00) * v : h00 + (h10 - h00) * u + (h11 - h10) * v; };
+    const HC = .15, pos = [], col = [], uv = [], wpos = [], wcol = [], c = new THREE.Color(), cs = new THREE.Color('#8e897f'), cp = new THREE.Color('#5f5b54'), ce = new THREE.Color('#4c4843');
+    const topCol = (x, z, dc, de) => {   // dc: distanza dal ciglio verso la strada, de: dal lato delle case
+      const n = vnz(x / 3.1, z / 3.1) * .22 + vnz(x / .9, z / .9) * .08;
+      if (dc < .28) c.copy(cs); else c.copy(cp).lerp(ce, Math.max(0, 1 - de / .45) * .8);
+      c.multiplyScalar(1 + n); return c; };
+    const emitTop = (P) => { for (let q = 1; q < P.length - 1; q++) for (const p of [P[0], P[q], P[q + 1]]) { pos.push(p.x, terr(p.x, p.z) + HC, p.z); topCol(p.x, p.z, p.dc, p.de); col.push(c.r, c.g, c.b); uv.push(p.x / 2, p.z / 2); } };
+    const emitWall = (a, b) => { const curb = (a.dc + b.dc) * .5 < 1, w = curb ? cs : ce, ya0 = terr(a.x, a.z) - .06, yb0 = terr(b.x, b.z) - .06, ya1 = ya0 + .06 + HC, yb1 = yb0 + .06 + HC;
+      [[a.x, ya0, a.z], [b.x, yb0, b.z], [b.x, yb1, b.z], [a.x, ya0, a.z], [b.x, yb1, b.z], [a.x, ya1, a.z]].forEach((p, k) => { wpos.push(p[0], p[1], p[2]); const s = k === 2 || k === 4 || k === 5 ? 1 : .62; wcol.push(w.r * s, w.g * s, w.b * s); }); };
+    const V = (i, j) => { const k = j * NW + i, s = S38[k], d = D38[k]; return { x: i * R, z: j * R, s, dc: d, de: 2.1 - d, iso: false }; };
+    const lerpP = (p, q) => { const t = p.s / (p.s - q.s); return { x: p.x + (q.x - p.x) * t, z: p.z + (q.z - p.z) * t, s: 0, dc: p.dc + (q.dc - p.dc) * t, de: p.de + (q.de - p.de) * t, iso: true }; };
+    const clip = (T3) => { const out = []; for (let k = 0; k < 3; k++) { const p = T3[k], q = T3[(k + 1) % 3]; if (p.s >= 0) out.push(p); if ((p.s >= 0) !== (q.s >= 0)) out.push(lerpP(p, q)); } return out; };
+    let nt = 0;
+    for (let j = 0; j < NH - 1; j++) for (let i = 0; i < NW - 1; i++) {
+      const k = j * NW + i; if (!(C38[k] || C38[k + 1] || C38[k + NW] || C38[k + NW + 1])) continue;
+      if (S38[k] < 0 && S38[k + 1] < 0 && S38[k + NW] < 0 && S38[k + NW + 1] < 0) continue;
+      const a = V(i, j), b = V(i, j + 1), cc = V(i + 1, j + 1), d = V(i + 1, j);
+      for (const T3 of [[a, b, cc], [a, cc, d]]) { const P = clip(T3); if (P.length < 3) continue; emitTop(P); nt++;
+        for (let q = 0; q < P.length; q++) { const p1 = P[q], p2 = P[(q + 1) % P.length]; if (p1.iso && p2.iso) emitWall(p1, p2); } }
+    }
+    if (!pos.length) return 0;
+    const g1 = new THREE.BufferGeometry(); g1.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g1.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g1.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g1.computeVertexNormals();
+    const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.Float32BufferAttribute(wpos, 3)); g2.setAttribute('color', new THREE.Float32BufferAttribute(wcol, 3)); g2.computeVertexNormals();
+    const top = new THREE.Mesh(g1, new THREE.MeshLambertMaterial({ map: lastre35(), vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    const wall = new THREE.Mesh(g2, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+    [top, wall].forEach(m => { m.receiveShadow = true; m.frustumCulled = false; scene.add(m); });
+    return nt;
+  }
+
+  // ---- il verde che cresce nelle crepe: lungo il cordolo e ai piedi delle case, a ciuffi, più fitto dove nessuno pulisce ----
+  function erbaCrepe38(add, tx0, ty0, n, m) {
+    const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS, LEAF = ['#e8f0e0', '#f4f2e4', '#e0ead8', '#fff8e8', '#f0e8c8'];
+    (M.roads || []).forEach((rd, ri) => {
+      if (!(rd.kind === 'citta' || rd.kind === 'litoranea' || rd.kind === 'vicolo')) return;
+      const P = rd.pts, offs = rd.kind === 'vicolo' ? [rd.w / 2 - .15] : [rd.w / 2 + .12, rd.w / 2 + 2.0];
+      let acc = 0;
+      for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / L, nz = (bx - ax) / L;
+        for (let s = 0; s < L; s += .9) { acc += .9; const x0 = ax + (bx - ax) * s / L, z0 = az + (bz - az) * s / L; if (x0 < X0 - 3 || x0 >= X1 + 3 || z0 < Y0 - 3 || z0 >= Y1 + 3) continue;
+          offs.forEach((o, oi) => [-1, 1].forEach(sd => {
+            const x = x0 + nx * sd * o, z = z0 + nz * sd * o; if (x < X0 || x >= X1 || z < Y0 || z >= Y1) return;
+            const wild = vnz(x / 14, z / 14) + .5, h = th(Math.round(x * 3), Math.round(z * 3), 381 + oi); if (h > .12 + wild * .55) return;
+            if (zoneT(Math.floor(x / TS), Math.floor(z / TS)) !== ZN.CITTA || gT(Math.floor(x / TS), Math.floor(z / TS)) === G.T.BLD || nearJ(x, z, 1)) return;
+            const q = th(Math.round(x * 5), Math.round(z * 5), 382), r = rng((Math.round(x * 31) ^ Math.round(z * 17)) >>> 0);
+            add(q < .45 ? 'Grass_Wispy_Short' : q < .75 ? 'Grass_Common_Tall' : q < .9 ? 'Plant_1' : 'Fern_1', x + (r() - .5) * .3, 0, z + (r() - .5) * .3, q < .45 ? .7 + r() * .5 : q < .75 ? .35 + r() * .35 + wild * .25 : q < .9 ? .3 + r() * .2 : .22 + r() * .12, r() * 6.28, { ground: true, col: pick(r, LEAF) });
+          })); } }
+    });
+  }
+
+  // ---- gli incroci: paletti sugli angoli del marciapiede, il tombino in mezzo, le caditoie sul ciglio, le erbacce negli angoli ----
+  function incroci38() {
+    const r = rng(3838); let n = 0;
+    const city = (x, z) => zoneT(Math.floor(x / TS), Math.floor(z / TS)) === ZN.CITTA;
+    const iron = sm('#2a2a2e', { roughness: .7, metalness: .4 }), conc = sm('#77736c', { roughness: 1 }), grate = sm('#1c1b1e', { roughness: .6, metalness: .5 });
+    const tombino = (x, z, rr) => { const g = G0(); add(g, cyl(rr, rr, .03, 14, grate), 0, .015, 0); add(g, cyl(rr * .7, rr * .7, .035, 14, iron), 0, .02, 0); DZ.hint = 'static'; place(g, x, z, r() * 6); n++; };
+    junctions().forEach(([jx, jy, jr]) => {
+      if (!city(jx, jy)) return; const arms = armsAt(jx, jy, jr); if (arms.length < 2) return;
+      tombino(jx + (r() - .5) * 2, jy + (r() - .5) * 2, .36);
+      for (let i = 0; i < arms.length; i++) for (let j = 0; j < arms.length; j++) {
+        if (i === j) continue; const a = arms[i], b = arms[j], cr = a.ux * b.uy - a.uy * b.ux; if (cr <= 0 || a.ux * b.ux + a.uy * b.uy > .7) continue;   // due bracci vicini, in senso orario
+        // l'angolo fra i due bracci: sul marciapiede, appena dentro il ciglio
+        let bx = a.ux + b.ux, by = a.uy + b.uy; const L = Math.hypot(bx, by) || 1; bx /= L; by /= L;
+        const ca = a.ux * b.ux + a.uy * b.uy, sinH = Math.sqrt(Math.max(.08, (1 - ca) / 2)), dd = (Math.max(a.w, b.w) / 2 + .7) / sinH, cx = jx + bx * dd, cz = jy + by * dd;
+        if (swH(cx, cz) < .1) continue;
+        [-.9, 0, .9].forEach((o, q) => { if (q === 1 && r() < .5) return; const px = cx - by * o, pz = cz + bx * o; if (swH(px, pz) < .1) return; bollard(px, pz); n++; });
+        const g = G0(); add(g, box(.62, .02, .32, grate), 0, .01, 0); for (let k = -2; k <= 2; k++) add(g, box(.04, .025, .3, iron), k * .12, .015, 0);
+        const gx = jx + a.ux * (jr + 2) - a.uy * (a.w / 2 - .25), gz = jy + a.uy * (jr + 2) + a.ux * (a.w / 2 - .25); DZ.hint = 'static'; place(g, gx, gz, Math.atan2(a.ux, a.uy)); n++;
+      }
+    });
+    // caditoie lungo i cordoli delle vie larghe, ogni 20-30 m
+    (M.roads || []).filter(rd => rd.kind === 'citta' || rd.kind === 'litoranea').forEach((rd, ri) => {
+      let acc = 0, next = 12 + r() * 10; const P = rd.pts;
+      for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < next) continue; acc = 0; next = 20 + r() * 12;
+        const nx = -(bz - az) / L, nz = (bx - ax) / L, sd = r() < .5 ? 1 : -1, x = ax + nx * sd * (rd.w / 2 - .25), z = az + nz * sd * (rd.w / 2 - .25); if (!city(x, z) || nearJ(x, z, 2)) continue;
+        const g = G0(); add(g, box(.62, .02, .32, grate), 0, .01, 0); for (let q = -2; q <= 2; q++) add(g, box(.04, .025, .3, iron), q * .12, .015, 0); DZ.hint = 'static'; place(g, x, z, Math.atan2(bx - ax, bz - az) + Math.PI / 2); n++;
+        if (r() < .4) tombino(ax + (bx - ax) * .5 + nx * sd * rd.w * .2, az + (bz - az) * .5 + nz * sd * rd.w * .2, .32); }
+    });
+    return n;
   }
 
   function buildBuildings() {
@@ -4697,7 +4785,7 @@ var Render = (function () {
   // Si parte dalla mappa delle caselle di marciapiede, la si rifà a mezzo metro, la si sfuma (angoli arrotondati,
   // raggi di curva agli incroci) e la si alza di 14 cm con un cordolo morbido: il bordo è una rampa, non uno spigolo.
   function buildSidewalks() {
-    const F35 = swField(); if (!F35) return 0; const { R, NW, NH, H, m } = F35;   // [isola35]
+    const F35 = swField(); if (!F35) return 0; const { R, NW, NH, m } = F35, H = F35.Hn; const n38 = marciapiedi38(F35);   // [isola35] [isola38] in città il marciapiede vero
     const sstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
     const terr = (x, z) => { const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= G.GW || fz >= G.GH) return -2;
       const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, h00 = VH(i, j), h10 = VH(i + 1, j), h01 = VH(i, j + 1), h11 = VH(i + 1, j + 1);
@@ -5492,7 +5580,7 @@ var Render = (function () {
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     const TT = (n, f) => { const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
-    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('props', buildPropsIsland); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
+    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('props', buildPropsIsland); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     if (window.Models) try { Models.attach({ scene, G, groundH }); } catch (e) { console.warn(e); }
     const mk2 = new THREE.Group();
