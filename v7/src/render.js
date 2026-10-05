@@ -395,7 +395,7 @@ var Render = (function () {
           float band = step(.9 - wx.w*.26 - wx.y*.05, w);   /* [amb1] mare calmo col sereno, creste col vento */
           vec3 deep = mix(mix(vec3(.08,.17,.24), vec3(.12,.15,.17), wx.x), vec3(.03,.04,.07), night);   /* [amb1] col sereno il mare è blu, col coperto piombo */
           vec3 shal = mix(mix(vec3(.20,.36,.38), vec3(.24,.30,.31), wx.x), vec3(.06,.10,.13), night);
-          vec3 c = mix(deep, shal, smoothstep(.04,.55,m));
+          vec3 c = mix(deep, shal, smoothstep(.3,.8,m) * .7);   /* [unione6] acqua bassa stretta e sfumata */
           c = mix(c, c*vec3(1.08,.95,.95)+vec3(.04,.02,.03), dusk*.4);
           c += band*mix(vec3(.16,.20,.22), vec3(.06,.07,.12), night);
           // schiuma sulla riva, a onde
@@ -3753,7 +3753,7 @@ var Render = (function () {
       x.putImageData(img, 0, 0);
       for (let i = 0; i < 5200; i++) { const v = 52 + Math.floor(r() * 46); x.fillStyle = `rgba(${v + 3},${v},${v - 4},${.35 + r() * .5})`; x.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1, 1); }   // inerti chiari
       for (let i = 0; i < 900; i++) { x.fillStyle = 'rgba(14,13,14,.6)'; x.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1, 1); }   // pori
-      for (let i = 0; i < 9; i++) { const w = 14 + r() * 40, h = 10 + r() * 26, px = r() * S, py = r() * S, t = r() < .5; x.fillStyle = t ? 'rgba(20,19,20,.55)' : 'rgba(70,66,62,.32)'; x.fillRect(px, py, w, h); x.strokeStyle = t ? 'rgba(80,76,72,.5)' : 'rgba(16,15,16,.55)'; x.lineWidth = 1; x.strokeRect(px + .5, py + .5, w, h); }   // rattoppi con la cucitura
+      for (let i = 0; i < 9; i++) { const w = 14 + r() * 40, h = 10 + r() * 26, px = r() * S, py = r() * S, t = r() < .5; x.fillStyle = t ? 'rgba(20,19,20,.18)' : 'rgba(70,66,62,.12)'; x.fillRect(px, py, w, h); x.strokeStyle = t ? 'rgba(80,76,72,.2)' : 'rgba(16,15,16,.22)'; /* [unione6] */ x.lineWidth = 1; x.strokeRect(px + .5, py + .5, w, h); }   // rattoppi con la cucitura
       for (let i = 0; i < 16; i++) { let px = r() * S, py = r() * S, a = r() * 6.3; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 14; k++) { a += (r() - .5) * .9; px += Math.cos(a) * 3; py += Math.sin(a) * 3; x.lineTo(px, py); }
         x.strokeStyle = 'rgba(8,8,10,.8)'; x.lineWidth = 2; x.stroke(); x.strokeStyle = 'rgba(120,120,128,.18)'; x.lineWidth = 1; x.stroke(); }   // crepe sigillate col catrame (il filo lucido)
       for (let i = 0; i < 10; i++) { const g2 = x.createRadialGradient(0, 0, 0, 0, 0, 1); g2.addColorStop(0, 'rgba(8,8,12,.4)'); g2.addColorStop(1, 'rgba(8,8,12,0)'); x.save(); x.translate(r() * S, r() * S); x.scale(4 + r() * 8, 2 + r() * 5); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, 1, 0, 6.3); x.fill(); x.restore(); }   // olio
@@ -3962,7 +3962,7 @@ var Render = (function () {
     if (kind === 'asfalto') {   // 16 m: bitume scuro, inerti chiari, rattoppi, crepe, chiazze d'olio
       x.fillStyle = '#2c2928'; x.fillRect(0, 0, S, S);
       for (let i = 0; i < 2600; i++) { const g = 38 + Math.floor(r() * 24); x.fillStyle = `rgb(${g + 2},${g},${g - 2})`; x.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1, 1); }
-      for (let i = 0; i < 7; i++) { x.fillStyle = r() < .5 ? 'rgba(22,20,20,.55)' : 'rgba(64,60,56,.35)'; const w = 6 + r() * 22, h = 4 + r() * 12; x.fillRect(r() * S, r() * S, w, h); }   // rattoppi
+      for (let i = 0; i < 7; i++) { x.fillStyle = r() < .5 ? 'rgba(22,20,20,.18)' : 'rgba(64,60,56,.12)'; const w = 6 + r() * 22, h = 4 + r() * 12; /* [unione6] */ x.fillRect(r() * S, r() * S, w, h); }   // rattoppi
       for (let i = 0; i < 9; i++) { x.strokeStyle = 'rgba(22,21,24,.7)'; x.lineWidth = 1; x.beginPath(); let px = r() * S, py = r() * S; x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (r() - .5) * 14; py += (r() - .5) * 14; x.lineTo(px, py); } x.stroke(); }
       for (let i = 0; i < 5; i++) { x.fillStyle = 'rgba(16,14,18,.35)'; x.beginPath(); x.ellipse(r() * S, r() * S, 2 + r() * 5, 1.5 + r() * 3, r() * 3, 0, 6.3); x.fill(); }   // olio
       for (let i = 0; i < 4; i++) { const cx = r() * S, cy = r() * S, rr = 2 + r() * 2.5; x.fillStyle = '#2a282b'; x.beginPath(); x.ellipse(cx, cy, rr, rr * .75, r() * 3, 0, 6.3); x.fill(); x.fillStyle = 'rgba(90,88,92,.5)'; x.fillRect(cx - rr, cy - rr * .8, rr, 1); }   // buche
