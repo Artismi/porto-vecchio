@@ -6,5 +6,6 @@
     "chat": "",
     "mente": "",
     "eventi": ""
-  }
+  },
+  "_chiavi": "facoltative: una chiave per canale, ognuna con la sua quota. chat = solo per la chat col giocatore (risponde subito); vuote = si usa apiKey, con la precedenza alla chat. Vale anche il vecchio campo chatKey."
 }

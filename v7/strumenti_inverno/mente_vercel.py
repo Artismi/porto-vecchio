@@ -10,6 +10,7 @@ core = core[:i] + '''function loadConfig() {
   const cfg = { provider: String(process.env.MENTE_PROVIDER || 'gemini').toLowerCase(), apiKey, model: process.env.MENTE_MODEL || '',
     chiavi: { chat: process.env.CHIAVE_CHAT || '', mente: process.env.CHIAVE_MENTE || '', eventi: process.env.CHIAVE_EVENTI || '' } };
   const guessed = detectProvider(apiKey); if (guessed) cfg.provider = guessed;
+  cfg.chatKey = String(process.env.MENTE_CHAT_KEY || '').trim(); cfg.chatModel = process.env.MENTE_CHAT_MODEL || '';   // [chat] chiave dedicata alla chat
   return cfg;
 }
 ''' + core[j:]

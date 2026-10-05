@@ -35,12 +35,14 @@ function loadConfig() {
   const cfg = { provider: String(process.env.MENTE_PROVIDER || 'gemini').toLowerCase(), apiKey, model: process.env.MENTE_MODEL || '',
     chiavi: { chat: process.env.CHIAVE_CHAT || '', mente: process.env.CHIAVE_MENTE || '', eventi: process.env.CHIAVE_EVENTI || '' } };
   const guessed = detectProvider(apiKey); if (guessed) cfg.provider = guessed;
+  cfg.chatKey = String(process.env.MENTE_CHAT_KEY || '').trim(); cfg.chatModel = process.env.MENTE_CHAT_MODEL || '';   // [chat] chiave dedicata alla chat
+  if (cfg.chatKey && !cfg.chiavi.chat) cfg.chiavi.chat = cfg.chatKey;   // MENTE_CHAT_KEY vale come CHIAVE_CHAT
   return cfg;
 }
 // Tre canali, ognuno può avere la sua chiave (e quindi la sua quota, se le chiavi vengono da progetti Google diversi):
 //   chat   = il giocatore parla con un abitante · mente = la notte dei gruppi (coro.js) · eventi = incontri e chiacchiere a caso
 // Un canale senza chiave propria usa quella generale.
-const CANALI = { dialogo: 'chat', gruppo: 'mente', riflessione: 'mente', chiacchiera: 'eventi' };
+const CANALI = { dialogo: 'chat', gruppo: 'mente', riflessione: 'mente', chiacchiera: 'eventi', regia: 'eventi' };   // [regia] il regista va con gli eventi
 function cfgPer(cfg, canale) {
   const k = String((cfg.chiavi && cfg.chiavi[canale]) || '').trim().replace(/^["']|["']$/g, '');
   if (!k || /INCOLLA|CHIAVE|INSERISCI/i.test(k)) return Object.assign({}, cfg, { canale, propria: false });
@@ -176,6 +178,13 @@ function pauseFor(text) {
   return m ? Math.ceil(parseFloat(m[1]) * 1000) + 1000 : 60000;
 }
 
+// [chat] la configurazione per la chat: la chiave del canale chat (chiavi.chat, o chatKey / MENTE_CHAT_KEY) ha quota e pause sue
+// (il conto è per chiave); senza, si usa quella comune con la precedenza. chatModel sceglie il modello solo per la chiave dedicata.
+function chatCfg(cfg) {
+  const c = Object.assign({}, cfg, { urgentChat: true });
+  if (cfg.propria && cfg.chatModel) c.model = cfg.chatModel;
+  return c;
+}
 // Chiamata con scelta automatica del modello; restituisce l'oggetto JSON o null.
 // urgent = il giocatore aspetta una risposta (dialogo); false = chiacchiere e riflessioni, che si possono saltare.
 async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent = true) {
@@ -290,7 +299,7 @@ Restituisci un oggetto JSON:
 }`;
         const usr = `Personaggio:\n${JSON.stringify(body.npc || {})}\n\nContesto:\n${body.context || ''}\n\nIl giocatore dice: «${body.text || ''}»`;
         console.log(`[Mente] dialogo con ${body.npc?.name || '?'}`);
-        return reply(await callLLM(cfg, sys, usr, 400));
+        return reply(await callLLM(chatCfg(cfg), sys, usr, 400));   // [chat] chiave e quota della chat
       }
 
       if (kind === 'riflessione') {
@@ -347,6 +356,27 @@ Restituisci un JSON:
         return reply(await callLLM(cfg, sys, usr, 150, false));
       }
 
+      if (kind === 'regia') {   // [regia] il regista invisibile della vita di strada
+        const sys = buildSystemPrompt() + `
+Compito: sei il regista invisibile della vita di strada, intorno al giocatore. Ricevi una scena: alcune persone vicine,
+cosa stanno facendo, i bisogni, i progetti, i rapporti tra loro e i posti vicini.
+Fai succedere da 1 a 3 cose piccole e vere, coerenti col carattere, l'umore e la giornata di ognuno: qualcuno cambia strada
+per un motivo suo, due si fermano a parlare, uno offre da bere, un vecchio conto diventa una lite, uno si mette a lavorare
+a un suo progetto personale (riparare, dipingere, pescare, aspettare qualcuno), un gesto o una frase che dice chi è.
+Niente violenza grave, niente cose impossibili, niente che contraddica la scena. Usa SOLO gli id delle persone e dei posti dati.
+Restituisci un JSON:
+{
+  "azioni": [
+    { "chi": "id persona", "verbo": "vai|fai|chiacchiera|sfotti|apprezza|offri|gioca|litiga|mangia|gesto",
+      "dove": "id posto (per vai e fai)", "con": "id persona (per i verbi tra persone)",
+      "cosa": "per fai: l'attività in poche parole (es. ripara la rete)", "minuti": 10,
+      "battuta": "cosa dice, max 10 parole, oppure vuoto", "perche": "il motivo, max 10 parole" }
+  ]
+}`;
+        const usr = `Scena:\n${JSON.stringify(body.scena || {})}`;
+        return reply(await callLLM(cfg, sys, usr, 450, false));
+      }
+
       return { code: 400, obj: { ok: false, error: 'Kind sconosciuto' } };
     } catch (err) {
       return { code: 500, obj: { ok: false, error: err.message } };
@@ -364,7 +394,8 @@ function statusObj(cfg) {
     lastError: LLM.lastError ? explainError(LLM.lastError) : null,
     canali: canaliPropri(cfg),
     calls: LLM.calls,
-    fails: LLM.fails
+    fails: LLM.fails,
+    chat: canaliPropri(cfg).chat ? 'chiave dedicata' : 'chiave comune, con la precedenza'
   };
 }
 

@@ -26,7 +26,9 @@ var Mente = (function () {
     talkCd: 0,         // pausa tra due chiacchiere (ms, orologio reale)
     canali: {},
     nightQueued: false,
-    nightBusy: false
+    nightBusy: false,
+    chatBusy: 0,       // [chat] richieste di chat in volo
+    chatUntil: 0       // [chat] fino a quando il giocatore conta come «sta chattando»
   };
 
   // Verifica lo stato del backend
@@ -51,17 +53,29 @@ var Mente = (function () {
   }
 
   // Chiamata generica al backend
+  // [chat] la chat col giocatore passa sempre davanti: non aspetta l'intervallo e, finché il giocatore chatta,
+  // chiacchiere, riflessioni e regia del mondo non partono (decide il motore da solo). Con una chiave dedicata
+  // (chatKey in api_key.json, MENTE_CHAT_KEY su Vercel) la chat ha anche una quota tutta sua.
   async function callBackend(payload) {
+    const chat = !!payload && payload.kind === 'dialogo';
+    if (!chat && (state.chatBusy > 0 || Date.now() < state.chatUntil)) return null;
+    if (chat) { state.chatBusy = (state.chatBusy || 0) + 1; state.chatUntil = Date.now() + 25000; }
+    try { return await callBackend0(payload, chat); } finally { if (chat) state.chatBusy--; }
+  }
+  async function callBackend0(payload, chat) {
     if (!state.connected && !(await checkStatus())) {
       return null;
     }
 
-    const now = Date.now();
-    const wait = state.minInterval - (now - state.lastCall);
-    if (wait > 0) {
-      await new Promise(r => setTimeout(r, wait));
+    if (!chat) {
+      const now = Date.now();
+      const wait = state.minInterval - (now - state.lastCall);
+      if (wait > 0) {
+        await new Promise(r => setTimeout(r, wait));
+      }
+      if (state.chatBusy > 0) return null;   // nel frattempo il giocatore ha cominciato a chattare
+      state.lastCall = Date.now();
     }
-    state.lastCall = Date.now();
 
     try {
       const res = await fetch(API_ENDPOINT, {
@@ -212,6 +226,8 @@ var Mente = (function () {
     checkStatus,
     dialog,
     nightFlush,
+    call: callBackend,                                          // [regia] chiamata generica (kind: 'regia', …)
+    chatting: () => state.chatBusy > 0 || Date.now() < state.chatUntil,
     state
   };
 })();
