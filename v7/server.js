@@ -195,14 +195,40 @@ async function rawCall(cfg, model, systemPrompt, userMessage, maxTokens) {
   return { ok: false, status: 'provider', text: `provider sconosciuto: ${cfg.provider}` };
 }
 
-// Chiamata con scelta automatica del modello; restituisce l'oggetto JSON o null
-async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500) {
+// Dopo un 429 (troppe richieste / quota) il modello resta in pausa: niente chiamate a vuoto finché non scade
+const COOLDOWN = {};
+// Freno globale verso il fornitore: la versione gratuita di Gemini regge circa 10 richieste al minuto.
+// Chiacchiere e riflessioni notturne cedono il passo ai dialoghi col giocatore.
+const RPM = { max: 8, background: 4, log: [] };
+function budgetOk(urgent) {
+  const now = Date.now();
+  RPM.log = RPM.log.filter(t => now - t < 60000);
+  if (RPM.log.length >= (urgent ? RPM.max : RPM.background)) return false;
+  RPM.log.push(now);
+  return true;
+}
+function pauseFor(text) {
+  const s = String(text);
+  if (/PerDay/i.test(s)) return 3600000; // quota del giorno finita: riprovo fra un'ora
+  const m = s.match(/"retryDelay":\s*"(\d+(?:\.\d+)?)s"/);
+  return m ? Math.ceil(parseFloat(m[1]) * 1000) + 1000 : 60000;
+}
+
+// Chiamata con scelta automatica del modello; restituisce l'oggetto JSON o null.
+// urgent = il giocatore aspetta una risposta (dialogo); false = chiacchiere e riflessioni, che si possono saltare.
+async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent = true) {
   if (cfg.provider === 'none') return null;
   if (!cfg.apiKey) { LLM.lastError = { when: Date.now(), status: 'chiave', msg: 'Nessuna chiave in api_key.json' }; return null; }
   if (typeof fetch !== 'function') { LLM.lastError = { when: Date.now(), status: 'node', msg: 'Node troppo vecchio: serve Node 18 o più recente' }; return null; }
 
+  const models = modelsFor(cfg).filter(m => !(COOLDOWN[m] > Date.now()));
+  if (!models.length) {
+    LLM.lastError = { when: Date.now(), provider: cfg.provider, status: 429, msg: 'Tutti i modelli sono in pausa per troppe richieste.' };
+    return null;
+  }
+  if (!budgetOk(urgent)) return null; // troppe richieste nell'ultimo minuto: questa la salto
   LLM.calls++;
-  for (const model of modelsFor(cfg)) {
+  for (const model of models) {
     let r;
     try {
       r = await rawCall(cfg, model, systemPrompt, userMessage, maxTokens);
@@ -229,7 +255,13 @@ async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500) {
       }
       fail(cfg, model, r.status, r.text);
     }
-    if (!r.notFound) return null; // 401/403/429…: cambiare modello non serve
+    if (r.status === 429) {
+      // ogni modello ha la sua quota: metto in pausa questo e provo il successivo
+      COOLDOWN[model] = Date.now() + pauseFor(r.text);
+      console.warn(`[Mente] ${model} in pausa per ${Math.round(pauseFor(r.text) / 1000)} s (troppe richieste)`);
+      continue;
+    }
+    if (!r.notFound) return null; // 401/403…: cambiare modello non serve
   }
   return null;
 }
@@ -243,6 +275,7 @@ function explainError(e) {
   if (/access_token_type_unsupported/.test(m)) return 'Questa non è una chiave API Gemini valida (le chiavi giuste iniziano con "AIza"). Creane una su aistudio.google.com/apikey e incollala in api_key.json.';
   if (e.status === 401 || /api key not valid|invalid.*key|authentication|unauthenticated|invalid x-api-key/.test(m)) return 'La chiave non è valida: controlla api_key.json (copiala di nuovo intera, senza aggiunte).';
   if (e.status === 403 || /permission|denied/.test(m)) return 'La chiave non ha il permesso per questo modello o per questa API (attivala nella console del fornitore).';
+  if (e.status === 429 && /perday/.test(m)) return 'Quota gratuita di oggi finita: la Mente torna domani (o attiva la fatturazione su aistudio.google.com).';
   if (e.status === 429 || /quota|rate/.test(m)) return 'Quota esaurita o troppe richieste: aspetta o controlla il piano del fornitore.';
   if (e.status === 404) return 'Modello non trovato: lascia "model" vuoto in api_key.json e il server sceglie da solo.';
   if (e.status === 'rete') return 'Il computer non raggiunge il server del fornitore (internet, firewall o antivirus).';
@@ -313,7 +346,7 @@ Restituisci un JSON:
 rabbia_diff e paura_diff sono numeri tra -0.1 e 0.1.`;
         const usr = `Scheda e ricordi:\n${typeof body.prompt === 'string' ? body.prompt : JSON.stringify(body.prompt || {})}`;
         console.log(`[Mente] riflessione notturna: ${body.npcId}`);
-        const r = await callLLM(cfg, sys, usr, 200);
+        const r = await callLLM(cfg, sys, usr, 200, false);
         if (r) {
           const clamp = v => Math.max(-0.1, Math.min(0.1, Number(v) || 0));
           r.rabbia_diff = clamp(r.rabbia_diff); r.paura_diff = clamp(r.paura_diff);
@@ -331,7 +364,7 @@ Restituisci un JSON:
   "argomento": "pesca|prezzi|guardia|lavoro|pettegolezzo|regime|famiglia"
 }`;
         const usr = `NPC 1: ${JSON.stringify(body.npcA || {})}\nNPC 2: ${JSON.stringify(body.npcB || {})}\nContesto: ${body.context || ''}`;
-        return aiReply(res, await callLLM(cfg, sys, usr, 150));
+        return aiReply(res, await callLLM(cfg, sys, usr, 150, false));
       }
 
       sendJSON(res, 400, { ok: false, error: 'Kind sconosciuto' });

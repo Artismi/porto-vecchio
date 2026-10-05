@@ -91,6 +91,11 @@ var Mente = (function () {
       const isImportant = n.pop.cast || hasEvents || n.id === 'lupo' || n.id === 'gino' || n.id === 'rosa';
 
       if (!isImportant) return;
+      // al massimo 3 riflessioni IA per notte: tutte insieme esaurirebbero la quota in un attimo
+      const day = Math.floor(st.t / 1440);
+      if (state.nightDay !== day) { state.nightDay = day; state.nightCalls = 0; }
+      if (state.nightCalls >= 3) return;
+      state.nightCalls++;
 
       try {
         const aiResp = await callBackend({
@@ -177,7 +182,7 @@ var Mente = (function () {
       if (p && Math.hypot(a.x - p.x, a.y - p.y) > 14) return;
       const now = Date.now();
       if (now < state.talkCd) return;
-      state.talkCd = now + 9000;
+      state.talkCd = now + 45000; // la quota gratuita è poca: una chiacchiera IA ogni 45 s basta
       state.calls = (state.calls || 0) + 1;
       const info = n => ({
         id: n.id, name: n.name, role: n.role,
