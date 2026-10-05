@@ -4,7 +4,8 @@
 // Modelli di default per fornitore, in ordine di tentativo.
 // Se il primo non esiste più (404), si passa al successivo e si ricorda quello buono.
 const MODELS = {
-  gemini: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.0-flash'],
+  // (ottobre 2026: i 2.0 e 2.5 non si aprono più ai nuovi utenti; i "lite" rispondono prima e sono meno affollati)
+  gemini: ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'],
   anthropic: ['claude-haiku-4-5', 'claude-haiku-4-5-20251001'],
   groq: ['llama-3.1-8b-instant'],
   openrouter: ['google/gemini-2.5-flash', 'anthropic/claude-haiku-4.5']
@@ -83,8 +84,9 @@ async function rawCall(cfg, model, systemPrompt, userMessage, maxTokens) {
     // NON come "Authorization: Bearer": quello è per i token OAuth e dà 401.
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
     const generationConfig = { responseMimeType: 'application/json', temperature: 0.8, maxOutputTokens: maxTokens };
-    // I modelli 2.5 "pensano" e consumano token prima di rispondere: per battute corte li spegniamo
-    if (/2\.5-flash|flash-latest/.test(model)) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    // I modelli flash "pensano" e consumano token prima di rispondere: per battute corte li spegniamo.
+    // I "lite" non pensano e rifiutano l'opzione (400).
+    if (/flash/.test(model) && !/lite/.test(model)) generationConfig.thinkingConfig = { thinkingBudget: 0 };
     const res = await fetch(url, {
       method: 'POST',
       headers: cfg.bearer
@@ -222,6 +224,13 @@ async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent =
       console.warn(`[Mente] ${model} in pausa per ${Math.round(pauseFor(r.text) / 1000)} s (troppe richieste)`);
       continue;
     }
+    if (r.status === 503 || r.status === 500) {
+      // modello troppo affollato in questo momento: lo lascio riposare un po' e provo il successivo
+      COOLDOWN[ck(model)] = Date.now() + 30000;
+      continue;
+    }
+    // modello ritirato (anche quello scritto in "model"): non lo riprovo per un giorno
+    if (r.notFound) COOLDOWN[ck(model)] = Date.now() + 86400000;
     if (!r.notFound) return null; // 401/403…: cambiare modello non serve
   }
   return null;
@@ -238,6 +247,7 @@ function explainError(e) {
   if (e.status === 403 || /permission|denied/.test(m)) return 'La chiave non ha il permesso per questo modello o per questa API (attivala nella console del fornitore).';
   if (e.status === 429 && /perday/.test(m)) return 'Quota gratuita di oggi finita: la Mente torna domani (o attiva la fatturazione su aistudio.google.com).';
   if (e.status === 429 || /quota|rate/.test(m)) return 'Quota esaurita o troppe richieste: aspetta o controlla il piano del fornitore.';
+  if (e.status === 503 || e.status === 500) return 'I modelli di Google sono sovraccarichi in questo momento: riprova fra qualche minuto.';
   if (e.status === 404) return 'Modello non trovato: lascia "model" vuoto in api_key.json e il server sceglie da solo.';
   if (e.status === 'rete') return 'Il computer non raggiunge il server del fornitore (internet, firewall o antivirus).';
   if (e.status === 'node') return e.msg;
