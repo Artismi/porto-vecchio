@@ -576,7 +576,7 @@
   new ResizeObserver(size).observe(app); size();
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false;
   function loop(now) {
-    const raw = (now - last) / 1000, dt = Math.min(.05, raw); last = now; ui.time += dt;
+    const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
     if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > 1 / 32) R.lowQuality(); } }
     const paused = ui.dialog || ui.book || ui.menu || ui.over;   // [azioni]
     if (!paused) {

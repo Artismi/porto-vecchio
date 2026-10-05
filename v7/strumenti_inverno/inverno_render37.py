@@ -1,18 +1,22 @@
-# [isola37] La luce che si legge: la notte d'inverno è di luna (si vede la strada, il bosco ha forma), il giorno non slava
-# il suolo piatto in un grigio da neve sporca, le ombre non sono più schiacciate e azzurrate (il bosco non è nero).
-# Tocca solo il frame (hemi, fill, moon) e il post (ombre, saturazione, contrasto). Dopo inverno_render36.
+# [isola37] La luce che si legge (con l'ok di Andrea): la notte d'inverno è di luna, non nera; di giorno il suolo piatto non
+# si slava in grigio da neve sporca; le ombre non si schiacciano (il bosco ha forma); i caldi medi (intonaci) si leggono.
+# Solo AGGIUNTE: non cambia nessuna riga esistente (la regia luci, luci_regia*, si ancora a quelle). Va dopo inverno_render36.
 import sys
 p = sys.argv[1]; s = open(p, encoding='utf-8').read()
 if '[isola37]' in s: print('già applicato'); sys.exit()
 def rep(old, new, n=1):
     global s
     assert s.count(old) == n, (old[:90], s.count(old)); s = s.replace(old, new)
-# il frame: più luna di notte, meno cielo bianco di giorno, il sole appena caldo
-rep("hemi.intensity = .22 + (1 - night) * .3 + night * .08;", "hemi.intensity = .26 + (1 - night) * .16 + night * .3;   /* [isola37] notte di luna, giorno meno slavato */")
-rep("fillAmb.intensity = .12 + (1 - night) * .12; fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');", "fillAmb.intensity = .16 + (1 - night) * .1 + night * .14; fillAmb.color.set(night > .5 ? '#3a4460' : '#6e6a64');   /* [isola37] */")
-rep("moon.intensity = .34 + (1 - night) * .68; moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));", "moon.intensity = .55 + (1 - night) * .55; moon.color.set(night > .5 ? '#9aaad0' : (dusk > .3 ? '#e8b088' : '#f4e8d2'));   /* [isola37] */")
-# il post: le ombre non si schiacciano (il bosco ha forma), meno grigio di caserma sul suolo al sole, contrasto più morbido
-rep("c = mix(c, c*.7*vec3(.78,1.,1.04) + vec3(.01,.075,.085)*.6, (1.-smoothstep(.0,.62,l))*.9);", "c = mix(c, c*.86*vec3(.9,1.,1.02) + vec3(.012,.03,.035)*.6, (1.-smoothstep(.0,.62,l))*.55);   // [isola37] ombre meno schiacciate e meno azzurre")
-rep("c = (c-.5)*1.24+.5;", "c = (c-.5)*1.12+.5;   // [isola37]")
-rep("float REG_SAT = .62, REG_BIANCO = .1;", "float REG_SAT = .8, REG_BIANCO = .16;   // [isola37] colori che si leggono, niente suolo bianco")
+# il frame: dopo la regia delle luci, un minimo di luna e di cielo, così di notte la strada e il bosco si leggono
+rep("    updateLights(time, night, cam.x, cam.y);\n",
+    "    updateLights(time, night, cam.x, cam.y);\n    { hemi.intensity = Math.max(hemi.intensity, .26 + night * .24); moon.intensity = Math.max(moon.intensity, .55 + night * .1); fillAmb.intensity = Math.max(fillAmb.intensity, .14 + night * .1); }   // [isola37] la notte di luna si legge\n")
+# il post: prima della vignetta, le ombre si alzano, i caldi medi tornano, il suolo chiaro al sole si spegne un poco
+rep("          vec2 q = vUv-.5; c *= 1. - dot(q,q)*1.25;",
+    """          { float l2 = dot(c, vec3(.3,.59,.11));   // [isola37]
+            c = mix(c, pow(max(c, vec3(0.)), vec3(.72)) + vec3(.004,.008,.004), (1.-smoothstep(.0,.4,l2))*.85);   // ombre meno schiacciate: il bosco ha forma
+            { float gr = smoothstep(.0,.05, c.g - max(c.r,c.b)); float lg = dot(c, vec3(.3,.59,.11)); c = mix(vec3(lg), c, 1. + gr*.6); }   // il verde del bosco torna verde
+            float warm = smoothstep(.015,.1, c.r-c.b) * (1.-smoothstep(.55,.85,l2));
+            c = mix(vec3(l2), c, 1. + warm*.4);                                               // ocra, cotto, senape, sangue di bue si leggono
+            c *= 1. - smoothstep(.45,.85,l2)*.2*(1.-warm); }                                  // il suolo piatto al sole non sbianca
+          vec2 q = vUv-.5; c *= 1. - dot(q,q)*1.25;""")
 open(p, 'w', encoding='utf-8').write(s); print('ok')
