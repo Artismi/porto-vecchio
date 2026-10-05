@@ -3070,7 +3070,7 @@ var Render = (function () {
         }
         if (J.city && (J.signal || !a.minor) && a.w >= 7) {   // linea d'arresto e freccia dritta sulla corsia di chi arriva
           if (J.signal) for (let o = .2; o < lane - .15; o += .12) for (let w = 0; w < .45; w += .12) { const px = sx + rx * o + ux * w, py = sy + ry * o + uy * w; if (th(Math.round(px * 8), Math.round(py * 8), 63) > .2) { x.fillStyle = `rgba(${WHITE1},.8)`; x.fillRect(Math.round((px - X0) * PPM), Math.round((py - Y0) * PPM), 1, 1); } }
-          const fx = sx + ux * 7 + rx * lane / 2, fy = sy + uy * 7 + ry * lane / 2; x.save(); x.translate((fx - X0) * PPM, (fy - Y0) * PPM); x.rotate(Math.atan2(-uy, -ux)); x.fillStyle = `rgba(${WHITE1},.62)`;
+          if (!J.signal) return; /* [unione8] frecce solo agli incroci col semaforo */ const fx = sx + ux * 7 + rx * lane / 2, fy = sy + uy * 7 + ry * lane / 2; x.save(); x.translate((fx - X0) * PPM, (fy - Y0) * PPM); x.rotate(Math.atan2(-uy, -ux)); x.fillStyle = `rgba(${WHITE1},.62)`;
           x.fillRect(-14, -1, 16, 2); x.beginPath(); x.moveTo(8, 0); x.lineTo(1, -4); x.lineTo(1, 4); x.closePath(); x.fill(); x.restore(); }
       }); });
   }
@@ -4031,7 +4031,7 @@ var Render = (function () {
       if (zoneT(Math.floor(jx / TS), Math.floor(jy / TS)) !== ZN.CITTA) return;
       if (R.filter(rd => nearRoad(rd, jx, jy)).length < 2) return;   // due vie larghe che si incontrano davvero
       const AR = armsAt(jx, jy, jr); if (AR.length < 3) return;   // [isola36] un incrocio vero, non una strada che ne continua un'altra
-      AR.forEach(a => { if (a.w < 6) return; CW35.push({ x: jx + a.ux * (jr + 1.4), y: jy + a.uy * (jr + 1.4), ux: a.ux, uy: a.uy, w: a.w, s: (Math.round(jx * 7 + jy * 3) >>> 0) }); });
+      AR.forEach(a => { if (a.w < 6) return; { const qx = jx + a.ux * (jr + 1.4), qy = jy + a.uy * (jr + 1.4); if (CW35.some(c => Math.hypot(c.x - qx, c.y - qy) < 7)) return; }   /* [unione8] un attraversamento solo */ CW35.push({ x: jx + a.ux * (jr + 1.4), y: jy + a.uy * (jr + 1.4), ux: a.ux, uy: a.uy, w: a.w, s: (Math.round(jx * 7 + jy * 3) >>> 0) }); });
     });
     return CW35;
   }
@@ -6851,7 +6851,7 @@ var Render = (function () {
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
-    PX = LOWQ.on ? Math.max(2, Math.round(dpr) * 2) : Math.max(1, Math.round(dpr));   /* [amb3] risoluzione piena */
+    PX = LOWQ.on ? Math.max(2, Math.round(dpr) * 2) : Math.max(1, ch * dpr / 720);   /* [unione8] al massimo 720 righe */   /* [amb3] risoluzione piena */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     renderer.setSize(cw, ch, false);
     if (rt) rt.dispose();
@@ -8145,7 +8145,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       wins.forEach(W0 => { if (W0.g || r() > .1) return; const D = WIN[W0.name]; if (!D) return; at(W0.f, decal(D[0] * .9, .9 + r() * .6, 8 + Math.floor(r() * 4)), W0.u, W0.y + D[2] - D[1] / 2 - .55, .072); });
 
       // ---- edera che pende dal tetto: foglie piccole e fitte, più larga in alto, che si sfrangia scendendo ----
-      const roofTheme = rec.flat && borgo && w >= 5 && d >= 5 ? (() => { const q = r(); return q < .3 ? 'giardino' : q < .42 ? 'pergola' : ''; })() : '';
+      const roofTheme = rec.flat && borgo && w >= 5 && d >= 5 ? (() => { const q = r(); return q < .12 ? 'giardino' : q < .18 ? 'pergola' : '';   /* [unione8] */ })() : '';
       if (rec.flat && roofTheme !== 'pergola' && (borgo ? r() < .25 : r() < .1)) {
         const cand = showF.filter(f => FACES[f].cam), nv = 1 + Math.floor(r() * 2);
         for (let q = 0; q < nv && cand.length; q++) {
@@ -8872,7 +8872,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   }
   // ---- carte e foglie che il vento trascina a terra (un InstancedMesh, vicino alla camera) ----
   function initPapers() {   // [animazioni-mondo]
-    const N = 12, geo = new THREE.PlaneGeometry(.3, .4);   /* [unione5] */ geo.rotateX(-Math.PI / 2);
+    const N = 44, geo = new THREE.PlaneGeometry(.3, .4);   /* [unione8] la spazzatura ci sta */   /* [unione5] */ geo.rotateX(-Math.PI / 2);
     const m = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: '#ffffff', side: THREE.DoubleSide }), N);
     m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.receiveShadow = true; scene.add(m);
     const S = []; for (let i = 0; i < N; i++) { S.push({ x: 0, z: 0, y: 0, vx: 0, vy: 0, vz: 0, ry: Math.random() * 6, rx: 0, rz: 0, sp: 0, seed: Math.random(), dead: true }); m.setColorAt(i, new THREE.Color('#d8d4c8')); }
@@ -9795,7 +9795,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   const METEO = { k: 'sereno', w: [0, 0, 0, 0], rain: 0, reg: 0 }, WXT = new THREE.Color();
   function wxSlot(slot) {
     const h = ((Math.imul(slot + 7, 2654435761) >>> 0) % 10000) / 10000, hr = (slot * 4) % 24;
-    let a = 0, k = 'sereno'; for (const [n, p] of WXORD) { a += p; if (h < a) { k = n; break; } }
+    let a = 0, k = 'sereno'; for (const [n, p] of WXORD) { a += p; if (h < a) { k = n; break; } } if (slot < 4) k = 'sereno';   /* [unione8] il primo giorno comincia col sole */
     if (k === 'nebbia' && !(hr < 10 || hr >= 18)) k = 'velato';   /* la nebbia viene la mattina presto e la sera */
     if (isStoryRain(slot * 240 + 120)) k = 'pioggia';
     return k; }
