@@ -138,6 +138,7 @@ var Models = (function () {
   }
   const charsReady = () => CH.Casual_2 && CH.Casual && CH.Casual_Hoodie && CH.Worker && CH.Formal;
   function pickFor(look, who) {
+    if (look && look.model && CH[look.model]) return look.model;   // [vestiti] modello chiesto per nome (studio, prove)
     if (who === 'player') return 'Casual_Hoodie';
     // niente soldatini del Toon Shooter (stile diverso, teste enormi): la Guardia e la Tutela sono persone vere in divisa
     if (who === 'cop') return 'Casual_2';

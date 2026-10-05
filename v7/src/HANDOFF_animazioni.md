@@ -17,13 +17,22 @@ Ramo `claude/bold-clarke-fioelv`. Si unisce a `main` e ai rami attivi (verde, am
 | `index.src.html` | `animazioni.js`, `anim_vita.js`, `anim_lotta.js` subito prima di `models.js`. |
 | `models.js` | In `animPerson`: la posa può chiedere la clip di base (`Anim.want`), `Anim.restore` prima del mixer, `Anim.apply` dopo. `prepGuns` esportato (per lo studio). Righe `[animazioni]`. |
 | `render.js` | Solo le due chiamate `Models.animPerson` del blocco "persone": in più `anim: Anim.npcState/playerState` (e `recoil`, `inVeh` per il giocatore). |
-| `vestiario.js` | `g.userData.spessore` (metri di vestiti per parte), azzerato in `strip`. |
+| `vestiario.js` | `g.userData.spessore`; e il lavoro sui vestiti qui sotto. |
+| `models.js` | `pickFor`: `look.model` sceglie il modello per nome (studio). |
 
 ## Carattere (anim_vita.js, `portamento`)
 Ogni abitante ha uno stile calcolato ogni 2 s da età, coraggio (`n.tr.cor`), paura, soldi, sonno, solitudine, loquacità (`n.tr.loq`), divisa: anziani curvi, fieri a petto in fuori, chi è giù con le spalle basse, Grigi dritti con le mani dietro la schiena da fermi. Chi parla guarda chi ha davanti; se la battuta ha un «!» gesticola largo (`discute`). Si legge solo: nessun file in comune toccato.
 
 ## Gambe e piedi (motore)
 Nel kit i piedi (`FootL/R`) e i poli delle ginocchia (`PTL/R`) stanno sotto Root, non sotto lo stinco, e la clip Idle non li anima. Per questo il motore: rimette a posto piedi e poli a ogni fotogramma (`Anim.restore`); con `P.aim`/`P.rot` sulle ossa delle gambe riporta il piede in fondo allo stinco; offre `P.legTo` (IK a due ossa) a tutte le pose. Le pose di tutto il corpo stanno sulla clip `Idle_Neutral` (piedi uniti), non su `Idle`.
+
+## Vestiti (vestiario.js, 5 ottobre)
+- **Spogliati restavano i vestiti del kit**: il filtro dei materiali da tenere cercava «Brow» (sopracciglia) e prendeva anche `LightBrown`/`Brown` (camicie e pantaloni). Ora `KEEP` è esatto; il casco giallo dell'operaio sparisce con gli altri vestiti.
+- **Il corpo sotto si sgonfia** (`slim`, una volta per geometria): braccia, avambracci, gambe e collo verso il loro asse (ricavato dai vertici: nel kit le matrici delle ossa sono in un'altra unità), con un tetto per cappucci, orli e risvolti; il busto con una stretta fissa per felpa, camicia e tuta (`TORSO_FIX`).
+- **La pelle coperta si toglie** (`hideCovered`): niente ginocchia, spalle o dita che bucano la stoffa. La geometria intera resta in `userData.geo0` e torna con `strip`.
+- **Strati più sottili** (un capo: 1,6 mm + spessore·0,17), orli più scuri.
+- **Accessori rifatti**: casco jet aperto davanti, colbacco, fazzoletto annodato, passamontagna, papillon, collana, marsupio, cappellino.
+- Resta: sul protagonista nudo si intuisce ancora il cappuccio; il modello `Formal` ha la forma della gonna sulle cosce (sotto i pantaloni non si vede).
 
 ## Per le altre chat
 - **Regia** (`regia.js`): le azioni `fai` passano da `Azioni.startPlan`, e il testo del passo («ripara la rete», «dipinge la barca») sceglie la posa con `BY_LABEL` in `anim_vita.js`. Un verbo nuovo che non trova posa resta in piedi: basta aggiungere una riga a `BY_LABEL`. Il "modo di fare" da fermi (fuma, tasche, braccia conserte, orologio, appoggiato) c'è già in `habit()`.
