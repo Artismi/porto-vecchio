@@ -34,6 +34,11 @@ Nel kit i piedi (`FootL/R`) e i poli delle ginocchia (`PTL/R`) stanno sotto Root
 - **Accessori rifatti**: casco jet aperto davanti, colbacco, fazzoletto annodato, passamontagna, papillon, collana, marsupio, cappellino.
 - Resta: sul protagonista nudo si intuisce ancora il cappuccio; il modello `Formal` ha la forma della gonna sulle cosce (sotto i pantaloni non si vede).
 
+## Oggetti di gioco (bottino.js, pezzi.js)
+- **Le cose da frugare** (`Bottino.MODEL`) rifatte con materiali disegnati (`TX`: legno con venature e chiodi, cartone ondulato col nastro, ruggine, juta, stampino militare, cassone FRAGILE, battistrada): cassa a montanti e traverse, scatola coi lembi e roba che spunta, cestino comunale a doghe col palo, copertone, lamiera ondulata, fascina legata con ceppo e accetta, cassa del mare con alghe e cima, sacco di juta tornito, cassetta munizioni con maniglia, casse da carico su pallet col lucchetto vero.
+- **Pezzi**: focolare con braci, ciocchi a capanna e lingue di fuoco (nomi `fiamma`/`fiamma2` invariati, si animano come prima); bobina di cavo col rocchetto.
+- Studio: `studio_oggetti.html` + `strumenti_inverno/studio_oggetti.js`.
+
 ## Per le altre chat
 - **Regia** (`regia.js`): le azioni `fai` passano da `Azioni.startPlan`, e il testo del passo («ripara la rete», «dipinge la barca») sceglie la posa con `BY_LABEL` in `anim_vita.js`. Un verbo nuovo che non trova posa resta in piedi: basta aggiungere una riga a `BY_LABEL`. Il "modo di fare" da fermi (fuma, tasche, braccia conserte, orologio, appoggiato) c'è già in `habit()`.
 - **Una posa nuova**: `Anim.def(nome, { base, fade, fn(P) {...} })` e una mappa `Anim.npcMap((st, n, s) => { s.act = nome })`. Si controlla nello studio.

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><title>Studio degli oggetti</title>
+<style>html,body{margin:0;background:#3a3f48;overflow:hidden}#lab{position:fixed;left:0;top:0;width:100%;pointer-events:none;font:12px monospace;color:#fff}</style></head>
+<body><div id="lab"></div>
+<!-- Studio degli oggetti: node strumenti_inverno/studio_oggetti.js cartella scene.json  (vedi quel file) -->
+<script src="src/three.min.js"></script>
+<script src="src/bottino.js"></script>
+<script src="src/pezzi.js"></script>
+<script>
+(function () {
+  const W = innerWidth, H = innerHeight;
+  const ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); ren.setSize(W, H); ren.shadowMap.enabled = true; document.body.appendChild(ren.domElement);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color('#3a3f48');
+  scene.add(new THREE.HemisphereLight('#dfe6ee', '#4a4238', .75));
+  const sun = new THREE.DirectionalLight('#fff4e0', .9); sun.position.set(4, 7, 5); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 }); scene.add(sun);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({ color: '#6a6660' })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const cam = new THREE.PerspectiveCamera(30, W / H, .05, 200);
+  let items = [];
+  // voce: { nome, src: 'bottino:vicolo' | 'pezzi:pallet' | 'pezzi:bancoArmi', args: [...] , locked }
+  function make(d) {
+    const g = new THREE.Group(), [lib, fn] = d.src.split(':');
+    if (lib === 'bottino') Bottino.MODEL[fn](g, { locked: !!d.locked, ref: d.nome });
+    else if (lib === 'pezzi') Pezzi[fn].apply(null, [g].concat(d.args || []));
+    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    return g;
+  }
+  window.studio = {
+    run(list, opts) {
+      opts = opts || {}; items.forEach(g => scene.remove(g)); items = [];
+      const cols = opts.cols || Math.min(5, list.length), sp = opts.sp || 1.6;
+      list.forEach((d, i) => { const g = make(d), c = i % cols, r = Math.floor(i / cols); g.position.set((c - (cols - 1) / 2) * sp, 0, -r * sp); g.rotation.y = d.ang !== undefined ? d.ang : (opts.ang || 0); scene.add(g); items.push(g); g.userData.nome = d.nome; });
+      const rows = Math.ceil(list.length / cols), dist = Math.max(cols * sp * .9, rows * sp * 1.4) + 1.2, side = opts.side !== undefined ? opts.side : .35, el = opts.el !== undefined ? opts.el : .55;
+      const cz = -(rows - 1) * sp / 2;
+      cam.position.set(Math.sin(side) * dist, dist * el + .3, cz + Math.cos(side) * dist); cam.lookAt(0, opts.ly || .3, cz);
+      ren.render(scene, cam);
+      const lab = document.getElementById('lab'); lab.innerHTML = '';
+      items.forEach(g => { const v = g.position.clone(); v.y = opts.ty || 1.1; v.project(cam); const e = document.createElement('div'); e.textContent = g.userData.nome; e.style.cssText = `position:absolute;left:${(v.x + 1) / 2 * W}px;top:${(1 - v.y) / 2 * H}px;transform:translateX(-50%);background:rgba(0,0,0,.5);padding:1px 4px`; lab.appendChild(e); });
+      return true;
+    }
+  };
+  window.studioReady = true;
+})();
+</script></body></html>

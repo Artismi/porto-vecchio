@@ -12,79 +12,134 @@ var Bottino = (function () {
 
   // ---------------- I MODELLI ----------------
   const T = () => window.THREE;
-  function mat(c) { if (!U.mats[c]) U.mats[c] = new (T().MeshLambertMaterial)({ color: c }); return U.mats[c]; }
-  function add(g, geo, c, x, y, z, rx, ry, rz) { const m = new (T().Mesh)(geo, mat(c)); m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, rz || 0); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; }
+  // [oggetti] materiali disegnati (una texture per tipo, condivisa): venature, cartone ondulato, ruggine, juta, stampini
+  function mat(c, tex) { const k = c + (tex || ''); if (!U.mats[k]) U.mats[k] = new (T().MeshLambertMaterial)(tex ? { color: c, map: TX(tex) } : { color: c }); return U.mats[k]; }
+  const TXC = {};
+  function TX(name) {
+    if (TXC[name]) return TXC[name];
+    const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); let h = 7;
+    const r = () => { h = (h * 16807) % 2147483647; return h / 2147483647; };
+    const px = (col, X, Y, w, hh) => { x.fillStyle = col; x.fillRect(X, Y, w, hh); };
+    if (name === 'legno') {   // assi chiare con venature, nodi, chiodi a capo, fughe scure
+      px('#c8a070', 0, 0, 64, 64);
+      for (let y = 0; y < 64; y++) for (let k = 0; k < 3; k++) if (r() < .5) px(r() < .5 ? '#a8804e' : '#d8b484', Math.floor(r() * 64), y, 4 + Math.floor(r() * 12), 1);
+      [0, 21, 42, 63].forEach(y => px('#5a3e22', 0, y, 64, 2)); for (let k = 0; k < 3; k++) { const X = 6 + r() * 50, Y = 4 + Math.floor(r() * 3) * 21 + r() * 12; px('#7a5430', X, Y, 3, 2); }
+      for (const y of [5, 26, 47]) for (const X of [4, 58]) px('#4a4a4e', X, y, 2, 2);
+    } else if (name === 'cartone') {   // kraft ondulato, nastro adesivo, una scritta stampata
+      px('#b8915a', 0, 0, 64, 64); for (let X = 0; X < 64; X += 3) px('#a8824e', X, 0, 1, 64);
+      px('#d8c9a0', 26, 0, 12, 64); px('#c8b88c', 26, 0, 1, 64); px('#8a5a2a', 6, 40, 16, 3); px('#8a5a2a', 6, 45, 12, 2); px('#8a5a2a', 44, 12, 12, 8);
+      x.fillStyle = '#6a4220'; x.font = 'bold 7px sans-serif'; x.fillText('ADRIA', 4, 56); x.fillText('↑↑', 46, 34);
+    } else if (name === 'ruggine') {   // lamiera verniciata che si scrosta
+      px('#5e6266', 0, 0, 64, 64); for (let k = 0; k < 60; k++) px(['#7a4226', '#8a4b2a', '#5a301a', '#6a6e72'][Math.floor(r() * 4)], Math.floor(r() * 64), Math.floor(r() * 64), 2 + Math.floor(r() * 6), 2 + Math.floor(r() * 4));
+      for (let k = 0; k < 6; k++) px('#7a3e1e', Math.floor(r() * 60), Math.floor(r() * 30), 2, 14 + Math.floor(r() * 20));
+    } else if (name === 'juta') {   // trama della juta
+      px('#b39b6a', 0, 0, 64, 64); for (let y = 0; y < 64; y += 2) for (let X = (y / 2) % 2; X < 64; X += 2) px('#9a8256', X, y, 1, 1); for (let k = 0; k < 30; k++) px('#c8b47e', Math.floor(r() * 64), Math.floor(r() * 64), 3, 1);
+      x.fillStyle = '#5a3a1a'; x.font = 'bold 9px serif'; x.fillText('GRANO', 14, 38);
+    } else if (name === 'militare') {   // verde oliva, stampino giallo, graffi
+      px('#4b5433', 0, 0, 64, 64); for (let k = 0; k < 40; k++) px('#5c6640', Math.floor(r() * 64), Math.floor(r() * 64), 1 + Math.floor(r() * 6), 1);
+      x.fillStyle = '#d8c060'; x.font = 'bold 9px monospace'; x.fillText('7.62', 6, 26); x.font = '7px monospace'; x.fillText('440 CART', 6, 40); px('#d8b830', 4, 46, 30, 3);
+    } else if (name === 'cassone') {   // cassa da carico: assi scure, stampini, FRAGILE
+      px('#7a5a34', 0, 0, 64, 64); for (let y = 0; y < 64; y++) if (r() < .6) px('#6a4c2a', Math.floor(r() * 64), y, 6 + Math.floor(r() * 14), 1);
+      [0, 16, 32, 48].forEach(y => px('#3e2a16', 0, y, 64, 1)); x.fillStyle = '#e0dccc'; x.font = 'bold 8px monospace'; x.fillText('FRAGILE', 6, 28); x.font = '6px monospace'; x.fillText('MARSIGLIA', 8, 42);
+      x.strokeStyle = '#e0dccc'; x.strokeRect(4, 19, 52, 12);
+    } else if (name === 'gomma') {   // battistrada
+      px('#232326', 0, 0, 64, 64); for (let X = 0; X < 64; X += 6) { px('#151517', X, 0, 3, 64); px('#2e2e32', X + 3, 0, 1, 64); }
+    }
+    const t = new (T().CanvasTexture)(c); t.magFilter = T().NearestFilter; t.wrapS = t.wrapT = T().RepeatWrapping; return (TXC[name] = t);
+  }
+  function add(g, geo, c, x, y, z, rx, ry, rz, tex) { const m = new (T().Mesh)(geo, mat(c, tex)); m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, rz || 0); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; }
   const B = (w, h, d) => new (T().BoxGeometry)(w, h, d);
   const C = (r0, r1, h, n) => new (T().CylinderGeometry)(r0, r1, h, n || 10);
-  function crate(g, s, x, z, ry, col, y0) {   // cassa di legno con le assi
-    const y = (y0 || 0) + s / 2;
-    add(g, B(s, s, s), col || '#8b6a40', x, y, z, 0, ry);
-    for (const k of [-.3, .3]) add(g, B(s + .02, s * .12, s + .02), '#6b4e2c', x, y + k * s, z, 0, ry);
+  // cassa di legno vera: quattro montanti agli spigoli, le facce di assi (texture), coperchio con due traverse
+  function crate(g, s, x, z, ry, col, y0) {
+    const y = (y0 || 0) + s / 2, q = new (T().Group)(); q.position.set(x, y, z); q.rotation.y = ry || 0; g.add(q);
+    add(q, B(s * .96, s * .96, s * .96), col || '#ffffff', 0, 0, 0, 0, 0, 0, 'legno');
+    for (const a of [-1, 1]) for (const b of [-1, 1]) add(q, B(s * .09, s, s * .09), '#6b4e2c', a * s * .46, 0, b * s * .46);
+    for (const a of [-1, 1]) add(q, B(s, s * .07, s * .09), '#7a5a34', 0, s * .47, a * s * .3);
+    add(q, B(s * .09, s * .07, s), '#6b4e2c', 0, s * .47, 0, 0, .0);
+    return q;
   }
+  // copertone: toro schiacciato col battistrada, il cerchione dentro
+  function tire(g, x, y, z, rx, ry, R) { const R0 = R || .3, t = add(g, new (T().TorusGeometry)(R0, R0 * .36, 8, 18), '#ffffff', x, y, z, rx, ry, 0, 'gomma'); t.scale.z = 1.5; add(g, C(R0 * .62, R0 * .62, R0 * .45, 14), '#7d8288', x, y, z, (rx || 0) + Math.PI / 2, ry || 0); return t; }
   const MODEL = {
-    // scatolina di cartone coi lembi aperti
+    // scatola di cartone coi lembi aperti, nastro, scritta; dentro spuntano bottiglie e giornali
     vicolo(g) {
-      add(g, B(.55, .38, .44), '#b08955', 0, .19, 0);
-      add(g, B(.56, .04, .1), '#d8c9a0', 0, .38, 0);
-      add(g, B(.55, .02, .2), '#a07a48', 0, .45, .27, -1.0);
-      add(g, B(.55, .02, .2), '#a07a48', 0, .45, -.27, 1.0);
+      add(g, B(.55, .38, .44), '#ffffff', 0, .19, 0, 0, 0, 0, 'cartone');
+      add(g, B(.53, .02, .42), '#5a4024', 0, .3, 0);
+      add(g, B(.55, .015, .22), '#c8a070', 0, .44, .3, -1.15, 0, 0, 'cartone'); add(g, B(.55, .015, .22), '#c8a070', 0, .46, -.3, 1.25, 0, 0, 'cartone');
+      add(g, B(.2, .015, .42), '#c8a070', .34, .43, 0, 0, 0, .9, 'cartone');
+      add(g, C(.035, .035, .26, 8), '#2e5a2a', -.12, .44, .06, .2, 0, .15); add(g, C(.014, .03, .07, 8), '#2e5a2a', -.1, .59, .09, .2, 0, .15);
+      add(g, B(.22, .03, .3), '#e8e2cf', .1, .37, -.04, 0, .3, .08);
     },
-    // cestino verde col giornale che spunta
+    // cestino comunale anni '80: lamiera verde a doghe, bordo, palo, sacco e giornale che spuntano
     cestino(g) {
-      add(g, C(.24, .2, .72, 12), '#3e5a3c', 0, .36, 0);
-      add(g, C(.27, .27, .06, 12), '#2c4029', 0, .72, 0);
-      add(g, B(.22, .26, .04), '#e8e2d0', .05, .82, 0, 0, .4, .25);
+      add(g, C(.035, .035, 1.0, 8), '#3a4038', -.3, .5, 0);
+      add(g, B(.08, .05, .08), '#2c3029', -.25, .75, 0);
+      add(g, C(.23, .2, .62, 16, true), '#3e5a3c', 0, .42, 0);
+      for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; add(g, B(.04, .62, .015), '#2c4029', Math.cos(a) * .225, .42, Math.sin(a) * .225, 0, -a + Math.PI / 2, 0); }
+      add(g, new (T().TorusGeometry)(.235, .02, 6, 18), '#2c4029', 0, .73, 0, Math.PI / 2);
+      add(g, C(.22, .22, .02, 16), '#222', 0, .7, 0);
+      add(g, B(.22, .28, .02), '#e8e2d0', .06, .8, 0, 0, .4, .3); add(g, B(.12, .14, .1), '#e8e8e8', -.08, .74, .08, .2, .4, -.2);
+      add(g, B(.1, .1, .01), '#e8c040', 0, .5, .232);
     },
-    // gomma, lamiera arrugginita e un tubo
+    // copertone, lamiera ondulata arrugginita piegata, tubi, mattoni, un cerchione
     rottami(g) {
-      add(g, new (T().TorusGeometry)(.3, .11, 6, 12), '#222225', -.15, .11, .05, Math.PI / 2);
-      add(g, B(.7, .04, .45), '#8a4b2a', .15, .18, -.05, .1, .5, .35);
-      add(g, C(.06, .06, .8, 6), '#7d8288', .1, .08, .25, 0, .3, Math.PI / 2);
+      tire(g, -.18, .11, .06, Math.PI / 2);
+      const wav = new (T().PlaneGeometry)(.75, .5, 10, 1), P0 = wav.attributes.position; for (let i = 0; i < P0.count; i++) P0.setZ(i, Math.sin(P0.getX(i) * 40) * .02 + P0.getX(i) * P0.getX(i) * .3); wav.computeVertexNormals();
+      const sh = add(g, wav, '#ffffff', .18, .24, -.05, -1.2, .5, .25, 'ruggine'); sh.material.side = T().DoubleSide;
+      add(g, C(.05, .05, .9, 8), '#7d8288', .05, .07, .3, 0, .4, Math.PI / 2, 'ruggine'); add(g, C(.035, .035, .6, 8), '#5a5e62', .2, .17, .28, .3, -.3, Math.PI / 2);
+      for (const [x, z, ry] of [[.42, .05, .3], [.38, -.25, 1.1], [-.45, -.25, .7]]) add(g, B(.22, .07, .11), '#9a4a32', x, .035, z, 0, ry);
     },
-    // fascina di legna legata
+    // fascina: rami di spessore diverso, legati con due giri di corda; un'accetta piantata in un ceppo accanto
     bosco(g) {
-      for (const [x, y] of [[-.12, .11], [.12, .11], [0, .3]]) add(g, C(.1, .1, .8, 7), '#6d4a2c', x, y, 0, Math.PI / 2);
-      for (const z of [-.2, .2]) add(g, C(.22, .22, .05, 10), '#c9b27a', 0, .19, z, Math.PI / 2);
+      let h = 3; const r = () => { h = (h * 16807) % 2147483647; return h / 2147483647; };
+      for (let k = 0; k < 11; k++) { const a = r() * Math.PI * 2, d = r() * .14, rr = .025 + r() * .035; add(g, C(rr, rr * 1.1, .85 + r() * .25, 6), ['#6d4a2c', '#5a3e24', '#7a5634'][k % 3], Math.cos(a) * d, .15 + Math.sin(a) * d * .8, (r() - .5) * .08, Math.PI / 2, (r() - .5) * .15); }
+      for (const z of [-.22, .22]) { const t = add(g, new (T().TorusGeometry)(.135, .013, 5, 14), '#c9b27a', 0, .15, z, 0, 0, 0); t.scale.y = .85; }
+      add(g, C(.17, .19, .3, 10), '#7a5634', .55, .15, .1); add(g, C(.16, .16, .01, 10), '#c8a070', .55, .305, .1);
+      add(g, C(.015, .015, .4, 6), '#8a6a42', .55, .48, .1, 0, 0, .3); add(g, B(.03, .1, .14), '#6a6e72', .5, .33, .1, 0, 0, .3);
     },
-    // cassa portata dal mare, storta, con la cima
+    // cassa portata dal mare: legno scurito e storto, alghe, una cima avvolta
     spiaggia(g) {
-      const q = new (T().Group)(); crate(q, .5, 0, 0, 0, '#9a8060'); q.rotation.set(.12, .5, -.18); q.position.y = -.04; g.add(q);
-      add(g, new (T().TorusGeometry)(.16, .03, 5, 10), '#d8cfa8', .38, .04, .1, Math.PI / 2);
+      const q = new (T().Group)(); crate(q, .5, 0, 0, 0, '#8a9088'); q.rotation.set(.12, .5, -.18); q.position.y = -.04; g.add(q);
+      for (let k = 0; k < 5; k++) add(g, B(.02, .01, .25), '#3a5a2a', -.2 + k * .1, .06 + k * .02, .2, 0, k * .7, .3);
+      for (let k = 0; k < 3; k++) add(g, new (T().TorusGeometry)(.13 - k * .025, .022, 5, 14), '#d8cfa8', .45, .025 + k * .04, .15, Math.PI / 2);
     },
-    // sacco di juta legato in cima
+    // sacco di juta (profilo tornito), il collo arricciato e legato con lo spago
     prateria(g) {
-      const s = add(g, new (T().SphereGeometry)(.3, 9, 7), '#b39b6a', 0, .24, 0); s.scale.set(1, .85, .9);
-      add(g, C(.06, .1, .14, 7), '#9a8256', 0, .5, 0);
-      add(g, C(.08, .08, .04, 7), '#5e4a2c', 0, .46, 0);
+      const prof = [[0, 0], [.22, .02], [.3, .12], [.31, .3], [.26, .44], [.12, .52], [.07, .56], [.09, .66], [.05, .7], [0, .7]].map(([a, b]) => new (T().Vector2)(a, b));
+      const s = add(g, new (T().LatheGeometry)(prof, 14), '#ffffff', 0, 0, 0, 0, 0, 0, 'juta'); s.scale.set(1, .9, .82);
+      add(g, new (T().TorusGeometry)(.07, .012, 5, 12), '#5e4a2c', 0, .52, 0, Math.PI / 2);
     },
-    // cassetta delle munizioni, verde oliva con la striscia gialla
+    // cassetta delle munizioni: stampino, maniglia ad arco, chiusura a leva
     militare(g) {
-      add(g, B(.62, .3, .3), '#4b5433', 0, .15, 0);
-      add(g, B(.64, .05, .32), '#3a4127', 0, .31, 0);
-      add(g, B(.2, .04, .31), '#d8b830', -.12, .17, 0);
-      add(g, B(.18, .03, .06), '#2a2e1c', 0, .35, 0);
+      add(g, B(.62, .3, .3), '#ffffff', 0, .15, 0, 0, 0, 0, 'militare');
+      add(g, B(.64, .04, .32), '#3a4127', 0, .31, 0);
+      add(g, new (T().TorusGeometry)(.07, .01, 5, 10, Math.PI), '#2a2e1c', 0, .33, 0);
+      add(g, B(.06, .12, .03), '#2a2e1c', .31, .24, 0, 0, Math.PI / 2, .3);
     },
-    // roba sul tetto: una cassa
-    tetto(g) { crate(g, .5, 0, 0, .3); },
-    // posti da frugare (discarica, cantiere, molo…): casse una sull'altra e un barile
+    // sul tetto: una cassa sotto un telo legato
+    tetto(g) { crate(g, .5, 0, 0, .3); const t = add(g, B(.58, .03, .58), '#5a6a5a', 0, .52, 0, .05, .3, .04); add(g, B(.58, .22, .02), '#4e5e4e', .02, .4, .29, .1, .3); },
+    // posti da frugare: casse una sull'altra, un fusto con le nervature e la ruggine
     posto(g) {
-      crate(g, .6, -.25, 0, .2); crate(g, .45, -.2, .05, .7, '#7d5f3a', .6);
-      add(g, C(.24, .24, .7, 12), '#4a5a6a', .45, .35, .2);
-      add(g, C(.25, .25, .04, 12), '#38444f', .45, .7, .2);
+      crate(g, .6, -.25, 0, .2); crate(g, .45, -.2, .05, .7, '#c8b8a0', .6);
+      add(g, C(.24, .24, .7, 16), '#ffffff', .45, .35, .2, 0, 0, 0, 'ruggine');
+      for (const y of [.12, .35, .58]) add(g, new (T().TorusGeometry)(.243, .012, 4, 18), '#4a5a6a', .45, y, .2, Math.PI / 2);
+      add(g, C(.235, .235, .02, 16), '#38444f', .45, .7, .2); add(g, C(.03, .03, .02, 8), '#222', .52, .715, .25);
     },
-    // casse di carico al porto: grandi, cerchiate, col lucchetto rosso se sono chiuse
+    // casse di carico al porto: assi, cerchiature di ferro, pallet sotto, stampini; il lucchetto vero se sono chiuse
     carico(g, L) {
       for (const [x, z, s] of [[-.6, 0, 1], [.5, .1, .9]]) {
-        add(g, B(s, s * .8, s), '#7a5a34', x, s * .4, z);
-        for (const k of [-.33, .33]) add(g, B(.06, s * .82, s + .02), '#5a5f66', x + k * s, s * .4, z);
+        for (let k = 0; k < 4; k++) add(g, B(s * .22, .1, s), '#8a6a42', x - s * .36 + k * s * .24, .05, z);
+        add(g, B(s, s * .8, s), '#ffffff', x, .1 + s * .4, z, 0, 0, 0, 'cassone');
+        for (const k of [-.33, .33]) add(g, B(.05, s * .82, s + .02), '#5a5f66', x + k * s, .1 + s * .4, z);
       }
-      add(g, B(.9, .7, .9), '#6e5230', -.1, 1.15, .05, 0, .3);
-      if (L.locked) add(g, B(.12, .14, .06), '#c0302a', -.6, .5, .52);
+      add(g, B(.9, .7, .9), '#ffffff', -.1, 1.25, .05, 0, .3, 0, 'cassone');
+      if (L && L.locked) { add(g, B(.1, .12, .05), '#b88a2a', -.6, .55, .52); add(g, new (T().TorusGeometry)(.035, .01, 5, 10, Math.PI), '#9a9ea2', -.6, .61, .52); }
     },
   };
   function build(L) {
     const g = new (T().Group)(), f = MODEL[L.kind] || MODEL.vicolo; f(g, L);
-    let h = 0; for (const ch of L.ref) h = (h * 31 + ch.charCodeAt(0)) | 0;
+    let h = 0; for (const ch of (L.ref || '')) h = (h * 31 + ch.charCodeAt(0)) | 0;
     g.rotation.y = (h % 628) / 100; g.userData.kind = L.kind;
     return g;
   }
