@@ -44,4 +44,7 @@ rep("const tree = /Tree|Pine/.test(name);", "const tree = /Tree|Pine|Abete|Betul
 # il suolo del bosco: muschio verde a macchie larghe, aghi e foglie solo dove è più asciutto
 rep("col = k2 > -.05 ? `rgb(${44 + g},${36 + g},${26 + g / 2})` : `rgb(${36 + g / 2},${48 + g},${28})`;",
     "col = k2 > .12 ? `rgb(${50 + g},${44 + g},${28 + g / 2})` : `rgb(${36 + g / 2},${62 + g},${30})`;   /* [verde] */")
+# le strade bianche dipinte da [verde]: bordi sfumati nell'erba, solchi, erba in mezzo
+rep("    pass(dirt, rd => rd.w + 1.2, () => 'rgba(110,84,58,.55)');\n    pass(dirt, rd => rd.w, () => '#8a6a4a');\n    pass(dirt, rd => 1.1, () => 'rgba(150,120,86,.6)');\n",
+    "    vdSterrate(x, X0, Y0, X1, Y1);   // [verde]\n")
 open(p, 'w', encoding='utf-8').write(s); print('ok')

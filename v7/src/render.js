@@ -422,9 +422,7 @@ var Render = (function () {
       x.lineWidth = width(rd) * PPM; x.strokeStyle = style(rd); x.stroke();
     });
     const dirt = rd => rd.kind === 'sterrato', asph = rd => !dirt(rd);
-    pass(dirt, rd => rd.w + 1.2, () => 'rgba(110,84,58,.55)');
-    pass(dirt, rd => rd.w, () => '#8a6a4a');
-    pass(dirt, rd => 1.1, () => 'rgba(150,120,86,.6)');
+    vdSterrate(x, X0, Y0, X1, Y1);   // [verde]
     const vic = rd => rd.kind === 'vicolo', strd = rd => asph(rd) && !vic(rd), urb = rd => rd.kind === 'citta' || rd.kind === 'litoranea';   // [isola35]
     pass(rd => strd(rd) && urb(rd), rd => rd.w + 6.4, () => '#5e5a54');   // [isola31] la fascia del marciapiede segue la curva: niente scalini
     pass(vic, rd => rd.w + .9, () => 'rgba(30,27,25,.85)');
@@ -3231,10 +3229,29 @@ var Render = (function () {
       const j = (r() - .5) * 8; x.fillStyle = vdRGB([c[0] + j, c[1] + j, c[2] + j * .6]); x.fillRect(px + si * 2, py + sj * 2, 2, 2);
     }
   }
+  // le strade bianche e i sentieri: la terra battuta sfuma nell'erba, due solchi e l'erba in mezzo; i sentieri a piedi più chiari al centro
+  function vdSterrate(x, X0, Y0, X1, Y1) {
+    (M.roads || []).forEach(rd => {
+      if (rd.rect || rd.kind !== 'sterrato') return;
+      const pad = rd.w + 8, runs = []; let cur = null;
+      rd.pts.forEach((p, k) => { const near = p[0] > X0 - pad && p[0] < X1 + pad && p[1] > Y0 - pad && p[1] < Y1 + pad; if (near) { if (!cur) runs.push(cur = []); cur.push(k); } else cur = null; });
+      const off = (run, o) => run.map(k => { const a = rd.pts[Math.max(0, k - 1)], b = rd.pts[Math.min(rd.pts.length - 1, k + 1)], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, p = rd.pts[k], wob = vnz(p[0] / 7, p[1] / 7) * .5; return [(p[0] - dy / L * (o + wob * .3) - X0) * PPM, (p[1] + dx / L * (o + wob * .3) - Y0) * PPM]; });
+      const stroke = (run, o, w, col) => { const q = off(run, o); x.beginPath(); q.forEach((p, i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1])); x.lineWidth = Math.max(1, w * PPM); x.strokeStyle = col; x.stroke(); };
+      x.lineJoin = 'round'; x.lineCap = 'round';
+      runs.forEach(run => {
+        const w = rd.w, foot = rd.traccia || w < 2.5;
+        stroke(run, 0, w + 2.4, 'rgba(60,56,36,.10)'); stroke(run, 0, w + 1.5, 'rgba(78,66,44,.16)'); stroke(run, 0, w + .7, 'rgba(96,80,56,.32)');
+        stroke(run, 0, w, foot ? 'rgba(118,98,70,.9)' : '#84704e');
+        if (!foot) { const ro = w * .27; stroke(run, -ro, w * .15, 'rgba(82,66,46,.7)'); stroke(run, ro, w * .15, 'rgba(82,66,46,.7)'); stroke(run, 0, w * .22, 'rgba(76,104,46,.62)'); stroke(run, -ro, w * .05, 'rgba(150,132,100,.45)'); stroke(run, ro, w * .05, 'rgba(150,132,100,.45)'); }
+        else stroke(run, 0, w * .32, 'rgba(146,122,90,.55)');
+      });
+    });
+  }
   // si chiama da paintTiles prima del bosco: prende prato, macchia aperta e campi fuori città
   function prato38(x, px, py, P, tx, ty, r, v, z, ii) {
     const T = G.T, W0 = M.world; if (z === ZN.CITTA) return false;
-    const F = W0 && W0.feat ? W0.feat[ii] : 0; if (F & 8192) return false;   // il ghiaione resta del bosco
+    if (RW[ii] > 0 && !RECT[ii] && (v === T.VIA || v === T.DIRT || v === T.DESERT || v === T.SHRUB || v === T.SAND || v === T.GRASS)) v = T.GRASS;   // sotto la strada: prato, niente quadrati
+    const F = W0 && W0.feat ? W0.feat[ii] : 0; if (F & 8192 && v !== T.GRASS) return false;   // il ghiaione resta del bosco
     const top = !!(F & 2048), wx = tx * TS, wy = ty * TS, S4 = P / 4;
     let rough = false;
     if (v === T.FIELD) { vdCampo(x, px, py, tx, ty, r, top); VD.PRD[ii] = 1; return true; }
@@ -3321,13 +3338,20 @@ var Render = (function () {
     cell(14, () => { const tw = (x0, y0, a, L, d) => { if (d > 4 || L < 5) return; const ex = x0 + Math.cos(a) * L, ey = y0 + Math.sin(a) * L; line(x0, y0, ex, ey, Math.max(.8, 2.4 - d * .5), '#5a4a3e'); if (d > 1 && r() < .7) { x.fillStyle = pick(r, ['#8aac3c', '#a4c04a', '#6a9432', '#c0c860']); x.beginPath(); x.ellipse(ex, ey, 5, 3, a, 0, 6.3); x.fill(); } tw(ex, ey, a - .45 - r() * .3, L * .72, d + 1); tw(ex, ey, a + .45 + r() * .3, L * .72, d + 1); }; tw(64, 126, -Math.PI / 2, 40, 0); });
     // 15: canne e giunchi
     cell(15, () => { for (let k = 0; k < 50; k++) { const x0 = 10 + r() * 108, h = 70 + r() * 56; blade(x0, 128, h, (r() - .5) * 14, 1.4, pick(r, ['#2e4a1e', '#3e5e26', '#4e6e2c', '#6a7a3a'])); } for (let k = 0; k < 6; k++) { const fx = 16 + r() * 96, fy = 10 + r() * 30; x.fillStyle = '#6a4a2a'; x.beginPath(); x.ellipse(fx, fy, 3, 10, 0, 0, 6.3); x.fill(); } });
-    const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4;
+    const W = c.width, Hh = c.height, src = x.getImageData(0, 0, W, Hh).data, d = new Uint8Array(src), fill = new Uint8Array(W * Hh);
+    for (let i = 0; i < W * Hh; i++) fill[i] = d[i * 4 + 3] > 0 ? 1 : 0;
+    for (let pass = 0; pass < 12; pass++) { const nf = fill.slice(); for (let y = 0; y < Hh; y++) for (let xx = 0; xx < W; xx++) { const i = y * W + xx; if (fill[i]) continue; let rr = 0, gg = 0, bb = 0, k = 0;
+      for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a = xx + ox, b = y + oy; if (a < 0 || b < 0 || a >= W || b >= Hh) continue; const q = b * W + a; if (!fill[q]) continue; rr += d[q * 4]; gg += d[q * 4 + 1]; bb += d[q * 4 + 2]; k++; }
+      if (k) { d[i * 4] = rr / k; d[i * 4 + 1] = gg / k; d[i * 4 + 2] = bb / k; nf[i] = 1; } } fill.set(nf); }
+    for (let i = 0; i < W * Hh; i++) if (!fill[i]) { d[i * 4] = 80; d[i * 4 + 1] = 110; d[i * 4 + 2] = 50; }
+    const out = new Uint8Array(W * Hh * 4); for (let y = 0; y < Hh; y++) out.set(d.subarray((Hh - 1 - y) * W * 4, (Hh - y) * W * 4), y * W * 4);   // la DataTexture non si capovolge: le righe dal basso
+    const t = new THREE.DataTexture(out, W, Hh, THREE.RGBAFormat); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true;
     return (VD.atlas = t);
   }
   // un materiale per tutta la vegetazione nuova: atlante, ritaglio, colori per vertice, vento e il bosco che si apre attorno al giocatore
   function vdMat() {
     if (VD.mat) return VD.mat;
-    const m = natMat(vdAtlas(), false); m.vertexColors = true; m.alphaTest = .42; m.side = THREE.DoubleSide; m.color.setRGB(1.15, 1.15, 1.15);
+    const m = natMat(vdAtlas(), false); m.vertexColors = true; m.alphaTest = .45; m.side = THREE.DoubleSide; m.color.setRGB(1.3, 1.3, 1.25);
     return (VD.mat = m);
   }
   function vdB(soft) {
@@ -3578,7 +3602,7 @@ var Render = (function () {
     DUNA: { T: [['tPaglia', .1]], H: [['alta', .05], ['cespo', 0]], hth: -.05, S: [['ginepro', -.2]], sth: .2, g: [150, 140, 100], t: '#fff4d8', d: .6 },
     MACCHIA: { T: [['tPaglia', 0], ['tErba', 0]], H: [['cespo', 0]], hth: .05, S: [['cespuglio', .1], ['ginepro', .02], ['ginestra', -.02], ['erica', -.05], ['rovo', -.1]], sth: -.2, g: [56, 62, 38], t: '#e4ecd0', d: .9 },
     FARO: { T: [['tPaglia', .05], ['tErba', 0], ['tCampo', -.05]], H: [['cespo', .05]], hth: .02, S: [['erica', .05], ['ginepro', 0], ['sasso', -.1]], sth: .02, g: [104, 110, 66], t: '#f8f4d8', d: .9 },
-    PASCOLO: { T: [['tErba', .12], ['tFiori', 0], ['tCampo', -.05], ['tMuschio', -.08]], H: [['cespoV', .05], ['cespo', 0], ['cardo', -.2]], hth: .1, S: [['ginepro', 0], ['erica', -.05], ['sasso', -.05]], sth: .22, g: [76, 116, 44], t: '#f0fff0', d: 1.1 },
+    PASCOLO: { T: [['tErba', .1], ['tFiori', .04], ['tCampo', -.1]], H: [['cespoV', 0], ['cardo', -.25]], hth: .22, S: [['ginepro', 0], ['erica', -.05]], sth: .32, g: [92, 134, 52], t: '#f8fff0', d: 1.1 },
     GHIAIONE: { T: [['tPaglia', 0]], H: [['cespo', 0]], hth: .15, S: [['sasso', 0], ['ginepro', -.1]], sth: .1, g: [90, 88, 80], t: '#e8ecd8', d: .4 },
     SALINA: { T: [['tCanne', .1], ['tErba', 0]], H: [['giunco', .1], ['cespoV', -.1]], hth: -.1, S: [['erica', -.1]], sth: .2, g: [100, 98, 74], t: '#f0f0d8', d: 1 },
     RUDERALE: { T: [['tErba', .05], ['tPaglia', 0]], H: [['cespoV', .02], ['cardo', 0], ['ombrella', 0], ['verbasco', -.08]], hth: -.02, S: [['rovo', 0], ['sambuco', -.05]], sth: .12, g: [92, 86, 56], t: '#f4f0d8', d: .9 },
@@ -3606,6 +3630,14 @@ var Render = (function () {
   function vdGroundTint(X, Y) { let r = 0, g = 0, b = 0; for (const [ox, oy] of [[-7, -3], [6, -6], [-4, 7], [7, 5]]) { const c = vdPlan(vdEcoMix(X + ox, Y + oy)).g; r += c[0]; g += c[1]; b += c[2]; } return [r / 4, g / 4, b / 4]; }
   const vdCol = (k, X, Y, sc) => Math.max(0, Math.min(1.6, .15 + 2.4 * (vnz(X / sc + k * 17.13, Y / sc + k * 9.31) + .25)));
   function vdPick(r, W) { let t = 0; for (const k in W) t += Math.max(0, W[k]); let q = r() * t; for (const k in W) { q -= Math.max(0, W[k]); if (q <= 0) return k; } return 'none'; }
+  function vdRoadField(tx0, ty0, n, m) {
+    const S = .5, X0 = tx0 * TS - 4, Y0 = ty0 * TS - 4, NX = Math.ceil((n * TS + 8) / S), NY = Math.ceil((m * TS + 8) / S), f = new Float32Array(NX * NY).fill(99);
+    (M.roads || []).forEach(rd => { if (rd.rect) return; const urb = rd.kind === 'citta' || rd.kind === 'litoranea', hw = rd.w / 2 + (urb ? 3.2 : rd.kind === 'sterrato' ? .35 : .6), R = hw + 2.5;
+      rd.pts.forEach(([ax, ay]) => { if (ax < X0 - R || ay < Y0 - R || ax > X0 + NX * S + R || ay > Y0 + NY * S + R) return;
+        const i0 = Math.max(0, Math.floor((ax - R - X0) / S)), i1 = Math.min(NX - 1, Math.ceil((ax + R - X0) / S)), j0 = Math.max(0, Math.floor((ay - R - Y0) / S)), j1 = Math.min(NY - 1, Math.ceil((ay + R - Y0) / S));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const d = Math.hypot(X0 + (i + .5) * S - ax, Y0 + (j + .5) * S - ay) - hw, k = j * NX + i; if (d < f[k]) f[k] = d; } }); });
+    return (X, Y) => { const i = Math.floor((X - X0) / S), j = Math.floor((Y - Y0) / S); return i < 0 || j < 0 || i >= NX || j >= NY ? 99 : f[j * NX + i]; };
+  }
   function verde38(tx0, ty0, n, m) {
     const grp = new THREE.Group(); grp.name = 'verde'; const tapG = new THREE.Group(); tapG.name = 'tap'; grp.add(tapG); grp.userData.tap = tapG;
     if (!VD.on) return grp;
@@ -3613,11 +3645,13 @@ var Render = (function () {
     const put = (sp, r, x, z, o) => { const vs = Gm[sp]; if (!vs) return; const key = sp + '|' + Math.floor(r() * vs.length); let a = B.get(key); if (!a) B.set(key, a = []); const sr = VDSC[sp] || [1, 1];
       a.push(Object.assign({ x, z, s: sr[0] + r() * (sr[1] - sr[0]), ry: r() * 6.2832, rx: (r() - .5) * .12, rz: (r() - .5) * .12, sy: 1, col: null }, o || {})); };
     const tone = (hex, k, X, Y) => { const c = new THREE.Color(hex), w = vdWet(X, Y), l = k * (.86 + (vnz(X / 6 + 3, Y / 6 + 8) + .5) * .26); return '#' + c.setRGB(Math.min(1, c.r * l * (1 - w * .05)), Math.min(1, c.g * l * (1 + w * .06)), Math.min(1, c.b * l)).getHexString(); };
-    const natural = v => v === T.GRASS || v === T.SHRUB || v === T.ROCK || v === T.GRAVEL || v === T.FIELD || v === T.TREE || v === T.SAND;
+    const natural = v => v === T.GRASS || v === T.SHRUB || v === T.ROCK || v === T.GRAVEL || v === T.FIELD || v === T.TREE || v === T.SAND || v === T.DIRT || v === T.VIA;
+    const rdAt = vdRoadField(tx0, ty0, n, m);
     const forest = e => e === E.ABETAIA || e === E.FAGGETA || e === E.VALLONE || e === E.PINETA || e === E.BETULLE || e === E.PINIMONTE;
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
-      const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, v = gT(tx, ty), z = zoneT(tx, ty);
-      if (z === ZN.CITTA || !natural(v) || RW[ii] > 0) continue;
+      const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, z = zoneT(tx, ty); let v = gT(tx, ty);
+      if (z === ZN.CITTA || !natural(v)) continue;
+      if (RW[ii] > 0 || v === T.VIA || v === T.DIRT) { if (RECT[ii] || !(RW[ii] > 0)) continue; v = T.GRASS; }   // le caselle sotto la strada: erba fino al ciglio vero
       const f = F ? F[ii] : 0; if ((f & 8192) && v !== T.GRASS && v !== T.ROCK && v !== T.GRAVEL) continue;
       const r = rng((tx * 69061 + ty * 30011) >>> 0), wx = tx * TS, wy = ty * TS, X0 = wx + 1, Y0 = wy + 1;
       const e0 = vdEco(tx, ty);
@@ -3627,7 +3661,7 @@ var Render = (function () {
       // il tappeto d'erba: fitto (3 × 3 per casella), del tipo che vince in quel punto
       const tmul = v === T.GRASS ? 1 : v === T.SHRUB ? .9 : v === T.TREE ? .55 : v === T.FIELD ? 0 : v === T.SAND ? .45 : v === T.ROCK ? .4 : .2, NT = low ? 2 : 3;
       for (let q = 0; q < NT * NT; q++) { const X = wx + (q % NT + .5 + (r() - .5) * .8) * TS / NT, Y = wy + (Math.floor(q / NT) + .5 + (r() - .5) * .8) * TS / NT, pl = vdPlan(vdEcoMix(X, Y, 1));
-        if (r() > tmul * pl.d) continue; const [sp] = vdWin(pl.T, X, Y, r); put(sp, r, X, Y, { col: tone(pl.t, 1, X, Y), rx: (r() - .5) * .2, rz: (r() - .5) * .2 }); }
+        const dr = rdAt(X, Y); if (dr < .1 || r() > tmul * pl.d * vdS(.1, .9, dr)) continue; const [sp] = vdWin(pl.T, X, Y, r), sr = VDSC[sp] || [1, 1]; put(sp, r, X, Y, { col: tone(pl.t, 1, X, Y), rx: (r() - .5) * .2, rz: (r() - .5) * .2, s: (sr[0] + r() * (sr[1] - sr[0])) * (.55 + .45 * vdS(.1, 1.6, dr)) }); }
       if (v === T.FIELD) {   // i campi: la capezzagna ha le sue erbe e la siepe, l'orto i cavoli a file, il maggese i cardi
         const pc = vdParcel(X0, Y0);
         if (pc.e < 1.4) {
@@ -3648,7 +3682,7 @@ var Render = (function () {
       const NH = low ? 1 : 2;
       for (let q = 0; q < NH * NH; q++) { const X = wx + (q % NH + .5 + (r() - .5) * .7) * TS / NH, Y = wy + (Math.floor(q / NH) + .5 + (r() - .5) * .7) * TS / NH, pl = vdPlan(vdEcoMix(X, Y, 1));
         let L = pl.H, th0 = pl.hth; if (rd > .3) { L = L.concat([['cespoV', .1 * rd], ['ombrella', 0], ['cardo', -.05]]); th0 -= .1 * rd; }   // il bordo strada
-        const [sp, val] = vdWin(L, X, Y, r), k = (val - th0) / .3; if (k < 0 || (k < .2 && r() > k * 5) || (v === T.SAND && r() < .5)) continue;
+        const [sp, val] = vdWin(L, X, Y, r), k = (val - th0) / .3; if (k < 0 || (k < .2 && r() > k * 5) || (v === T.SAND && r() < .5) || rdAt(X, Y) < .9) continue;
         const nm = sp === 'fiori' ? (th(Math.floor(X / 26), Math.floor(Y / 26), 63) < .4 ? 'fioriB' : th(Math.floor(X / 26), Math.floor(Y / 26), 63) < .72 ? 'fioriG' : 'fioriV') : sp, sr = VDSC[nm] || [1, 1];
         put(nm, r, X, Y, { col: tone(pl.t, 1, X, Y), s: (sr[0] + (sr[1] - sr[0]) * Math.min(1, k)) * (.88 + r() * .24) }); }
       // gli arbusti: macchie e cespuglieti continui; al margine del bosco il mantello (rovi, sambuco, cespugli) segue il margine
@@ -3657,7 +3691,7 @@ var Render = (function () {
         if (v === T.TREE) th0 += .15;
         if (v === T.SAND) th0 += .2;
         const [sp, val] = vdWin(L, X, Y, r), k = (val - th0) / .3, sr = VDSC[sp] || [1, 1];
-        if (k > 0 && !(k < .2 && r() > k * 5)) put(sp, r, X, Y, { col: tone(pl.t, 1.02, X, Y), rx: 0, rz: 0, s: (sr[0] + (sr[1] - sr[0]) * Math.min(1, k)) * (.88 + r() * .24) }); }
+        if (k > 0 && !(k < .2 && r() > k * 5) && rdAt(X, Y) > 1.6) put(sp, r, X, Y, { col: tone(pl.t, 1.02, X, Y), rx: 0, rz: 0, s: (sr[0] + (sr[1] - sr[0]) * Math.min(1, k)) * (.88 + r() * .24) }); }
       // un tronco caduto ogni tanto nel bosco fitto (uno per cella di 18 m, non a pioggia)
       if (v === T.TREE && (e0 === E.ABETAIA || e0 === E.FAGGETA || e0 === E.VALLONE)) { const ci = Math.floor(X0 / 18), cj = Math.floor(Y0 / 18); if (Math.floor(((ci + th(ci, cj, 181)) * 18) / TS) === tx && Math.floor(((cj + th(ci, cj, 182)) * 18) / TS) === ty && th(ci, cj, 183) < .5) put('tronco', r, X0, Y0, { rx: 0, rz: 0, ry: th(ci, cj, 184) * 6.28 }); }
       // le liane pendono dagli alberi dei valloni e delle faggete umide
