@@ -44,4 +44,9 @@ a = s.index("    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {\n    
 b = s.index("\n    }\n", a) + len("\n    }\n")
 assert 'x.ellipse(i * P + P / 2' in s[a:b]
 s = s[:a] + "    opere1(x, tx0, ty0, n, m, F, cut, wall);   // [strade1] forma continua, non un disco per casella\n" + s[b:]
+# 9) continuità: terreno naturale a mezzo metro fuori dal bosco, sterrate consumate, usura dell'asfalto, vicoli lucidati al centro
+rep("      if (bosco36(x, px, py, P, tx, ty, r, v, z, ii)) continue;   // [isola36]\n", "      if (bosco36(x, px, py, P, tx, ty, r, v, z, ii)) continue;   // [isola36]\n      if (natSub1(x, px, py, P, tx, ty, r, v, z)) continue;   // [strade1] niente quadrati di colore\n")
+rep("    pass(dirt, rd => rd.w + 1.2, () => 'rgba(110,84,58,.55)');\n    pass(dirt, rd => rd.w, () => '#8a6a4a');\n    pass(dirt, rd => 1.1, () => 'rgba(150,120,86,.6)');\n", "    sterrato1(x, tx0, ty0, n, m);   // [strade1] sterrate e sentieri consumati dal passaggio\n")
+rep("    pass(vic, rd => .3, () => 'rgba(22,20,20,.5)');\n", "    pass(vic, rd => .3, () => 'rgba(22,20,20,.5)');\n    pass(vic, rd => rd.w * .45, () => 'rgba(150,140,128,.1)');   // [strade1] il centro lucidato dai passi\n")
+rep("smoothRoads(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m);", "smoothRoads(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m);")
 open(p, 'w', encoding='utf-8').write(s); print('ok')

@@ -537,3 +537,73 @@
       x.globalAlpha = .45; x.fillStyle = k ? wall : cut; shape(.74); x.globalAlpha = 1; shape(.58);
     });
   }
+
+  // ================= [strade1] CONTINUITÀ: TERRENO A MEZZO METRO, STERRATE CONSUMATE DAL PASSAGGIO =================
+  // Il terreno naturale fuori dal bosco non è più un quadrato di colore per casella: ogni mezzo metro sceglie il suo tipo da un voto
+  // pesato delle caselle entro 5 m (più un rumore per tipo), e il colore varia con un rumore continuo del mondo. Le sterrate sono
+  // opere usate: banchina d'erba pestata, bordo sfrangiato, terra battuta con ghiaia, solchi delle ruote con la gobba d'erba e le
+  // pozzanghere sulle carrabili, centro lucidato e sassi ai margini sui sentieri. L'asfalto fuori città ha il bordo sbrecciato.
+  const NATC1 = { 9: [[74, 104, 52], [92, 100, 56]], 18: [[86, 96, 56], [100, 98, 62]], 13: [[52, 60, 36], [62, 54, 36]], 16: [[176, 146, 100], [160, 132, 90]], 12: [[112, 106, 100], [96, 92, 86]], 20: [[150, 144, 134], [124, 118, 110]] };   // ... roccia, ghiaia   // erba, macchia, sottobosco, deserto, roccia
+  function natType1(tx, ty) { const T = G.T; if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return -1; const ii = ty * G.GW + tx; let v = gT(tx, ty); if (!RECT[ii] && RW[ii] > 0 && (v === T.VIA || v === T.DIRT)) v = groundFor(zoneT(tx, ty)); if (blobTile1(tx, ty)) v = natural1(tx, ty); return NATC1[v] ? v : -1; }
+  function natSub1(x, px, py, P, tx, ty, r, v, z) {
+    if (!NATC1[v] || z === ZN.CITTA) return false; const S4 = P / 4, wx = tx * TS, wy = ty * TS, votes = new Map(), T = G.T;
+    const near = []; for (let j = ty - 3; j <= ty + 3; j++) for (let i = tx - 3; i <= tx + 3; i++) { const t = natType1(i, j); if (t >= 0) near.push([i + .5, j + .5, t]); }
+    for (let sj = 0; sj < 4; sj++) for (let si = 0; si < 4; si++) {
+      const X = wx + (si + .5) * .5, Y = wy + (sj + .5) * .5, cx = X / TS, cy = Y / TS; votes.clear();
+      for (const [i, j, t] of near) { const d = Math.hypot(i - cx, j - cy), w = Math.max(0, 1 - d / 2.6); if (w > 0) votes.set(t, (votes.get(t) || 0) + w * w); }
+      let best = v, bv = -1; votes.forEach((s, t) => { const q = s * (1 + vnz(X / 3.7 + t * 13, Y / 3.7 - t * 7) * .9); if (q > bv) { bv = q; best = t; } });
+      const pal = NATC1[best], k = vnz(X / 7, Y / 7) + vnz(X / 2.1, Y / 2.1) * .35, mix = Math.max(0, Math.min(1, .5 + vnz(X / 13 + 5, Y / 13 + 5) * 1.4)), dry = z === ZN.MONTE || z === ZN.DESERTO || z === ZN.SPIAGGIA;
+      let c0 = pal[0].map((q, i2) => q + (pal[1][i2] - q) * mix); if (best === 9 && dry) c0 = [c0[0] + 22, c0[1] - 4, c0[2] - 4];
+      const f = 1 + k * .22; x.fillStyle = `rgb(${Math.round(c0[0] * f)},${Math.round(c0[1] * f)},${Math.round(c0[2] * f)})`; const sx = px + si * S4, sy = py + sj * S4; x.fillRect(sx, sy, S4, S4);
+      for (let q = 0; q < 2; q++) { const g = .75 + r() * .5; x.fillStyle = `rgb(${Math.round(c0[0] * g)},${Math.round(c0[1] * g)},${Math.round(c0[2] * g)})`; x.fillRect(sx + Math.floor(r() * S4), sy + Math.floor(r() * S4), 1, 1 + (best === 9 && r() < .5 ? 1 : 0)); }
+    }
+    return true;
+  }
+  // polilinea spostata di lato (o > 0 a sinistra della direzione), dentro il riquadro del blocco
+  function offPath1(x, rd, o, X0, Y0, X1, Y1, pad) { const g = geo1(rd), P = rd.pts; let on = false; x.beginPath();
+    for (let k = 0; k < g.n; k++) { const px = P[k][0] - g.uy[k] * o, py = P[k][1] + g.ux[k] * o; if (!inBox1(px, py, X0, Y0, X1, Y1, pad)) { on = false; continue; } const cx = (px - X0) * PPM, cy = (py - Y0) * PPM; if (on) x.lineTo(cx, cy); else { x.moveTo(cx, cy); on = true; } } }
+  function dirtPat1(x, X0, Y0) {
+    let c = S1.tex.dirtc; if (!c) { const S = 128, r = rng(5150); c = mk(S, S); const g = c.getContext('2d'), img = g.createImageData(S, S), d = img.data;
+      for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) { const n1 = vnz(px / 9, py / 9) + vnz(px / 3, py / 3) * .5, o = (py * S + px) * 4, b = 128 + n1 * 26; d[o] = b + 6; d[o + 1] = b * .82; d[o + 2] = b * .6; d[o + 3] = 255; }
+      g.putImageData(img, 0, 0); for (let i = 0; i < 900; i++) { const v2 = 110 + Math.floor(r() * 90); g.fillStyle = `rgb(${v2},${v2 - 8},${v2 - 20})`; g.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1, 1); }   // ghiaino
+      for (let i = 0; i < 60; i++) { g.fillStyle = pick(r, ['#5a4632', '#463626', '#9a8c78']); g.fillRect(Math.floor(r() * S), Math.floor(r() * S), 2, 1 + (r() < .4 ? 1 : 0)); }   // sassi
+      S1.tex.dirtc = c; }
+    const p = x.createPattern(c, 'repeat'), sc = 16 * PPM / c.width; try { p.setTransform(new DOMMatrix([sc, 0, 0, sc, -((X0 * PPM) % (16 * PPM)), -((Y0 * PPM) % (16 * PPM))])); } catch (e) {} return p;
+  }
+  function sterrato1(x, tx0, ty0, n, m) {
+    const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS;
+    x.lineJoin = 'round'; x.lineCap = 'round';
+    const R = (M.roads || []).filter(rd => rd.kind === 'sterrato' && rd.pts && rd.pts.length > 1 && rd.pts.some(p => inBox1(p[0], p[1], X0, Y0, X1, Y1, rd.w + 6)));
+    // 1) banchina d'erba pestata, 2) bordo sfrangiato, 3) terra battuta: le larghe prima, così i sentieri restano leggibili sopra
+    R.sort((a, b) => b.w - a.w);
+    R.forEach(rd => { offPath1(x, rd, 0, X0, Y0, X1, Y1, rd.w + 6); x.lineWidth = (rd.w + 2.4) * PPM; x.strokeStyle = 'rgba(92,80,54,.22)'; x.stroke(); x.lineWidth = (rd.w + 1.1) * PPM; x.strokeStyle = 'rgba(88,70,48,.38)'; x.stroke(); });
+    R.forEach(rd => { const g = geo1(rd), P = rd.pts; x.fillStyle = dirtPat1(x, X0, Y0);
+      for (let k = 0; k < g.n; k++) { const [ax, ay] = P[k]; if (!inBox1(ax, ay, X0, Y0, X1, Y1, rd.w + 3)) continue;
+        for (const sd of [-1, 1]) { const e = rd.w / 2 + vnz(ax * 1.3 + sd * 50, ay * 1.3) * .5, bx = ax - g.uy[k] * e * sd, by = ay + g.ux[k] * e * sd, rr = (.25 + (vnz(ax * 2.1, ay * 2.1 + sd * 9) + .5) * .3) * PPM; x.beginPath(); x.arc((bx - X0) * PPM, (by - Y0) * PPM, rr, 0, 6.2832); x.fill(); } }
+      offPath1(x, rd, 0, X0, Y0, X1, Y1, rd.w + 6); x.lineWidth = rd.w * PPM; x.strokeStyle = dirtPat1(x, X0, Y0); x.stroke(); });
+    // 4) il passaggio: solchi e gobba sulle carrabili, centro lucidato sui sentieri; pozzanghere e sassi
+    R.forEach((rd, ri) => { const g = geo1(rd), P = rd.pts, cart = rd.w >= 2.8;
+      if (cart) { const o = Math.min(rd.w / 2 - .45, .85);
+        [-o, o].forEach(oo => { offPath1(x, rd, oo, X0, Y0, X1, Y1, rd.w + 6); x.lineWidth = .5 * PPM; x.strokeStyle = 'rgba(62,46,32,.55)'; x.stroke(); x.lineWidth = .22 * PPM; x.strokeStyle = 'rgba(40,30,22,.45)'; x.stroke(); });
+        offPath1(x, rd, 0, X0, Y0, X1, Y1, rd.w + 6); x.lineWidth = .55 * PPM; x.strokeStyle = 'rgba(108,108,62,.32)'; x.stroke();   // la gobba d'erba fra i solchi
+        if (rd.w >= 4.5) [-o - .3, o + .3].forEach(oo => { offPath1(x, rd, oo, X0, Y0, X1, Y1, rd.w + 6); x.lineWidth = .3 * PPM; x.strokeStyle = 'rgba(176,150,112,.25)'; x.stroke(); });   // il bordo del solco schiacciato e chiaro
+      } else { offPath1(x, rd, 0, X0, Y0, X1, Y1, rd.w + 6); x.lineWidth = rd.w * .5 * PPM; x.strokeStyle = 'rgba(176,148,108,.32)'; x.stroke(); x.lineWidth = rd.w * .22 * PPM; x.strokeStyle = 'rgba(196,170,128,.22)'; x.stroke(); }
+      const r = rng(ri * 7717 + 3); let nextP = 4 + r() * 12;
+      for (let k = 1; k < g.n; k++) { const [ax, ay] = P[k]; if (!inBox1(ax, ay, X0, Y0, X1, Y1, 3)) continue; const s = g.s[k], nx = -g.uy[k], ny = g.ux[k], h = th(Math.round(ax * 3), Math.round(ay * 3), 5151);
+        if (cart && h < .045) { const oo = (h < .022 ? -1 : 1) * Math.min(rd.w / 2 - .45, .85), cx = (ax + nx * oo - X0) * PPM, cy = (ay + ny * oo - Y0) * PPM; x.save(); x.translate(cx, cy); x.rotate(Math.atan2(g.uy[k], g.ux[k])); x.fillStyle = 'rgba(40,34,30,.8)'; x.beginPath(); x.ellipse(0, 0, (.6 + h * 20) * PPM, .3 * PPM, 0, 0, 6.3); x.fill(); x.fillStyle = 'rgba(70,82,92,.75)'; x.beginPath(); x.ellipse(0, 0, (.45 + h * 16) * PPM, .2 * PPM, 0, 0, 6.3); x.fill(); x.fillStyle = 'rgba(150,160,166,.4)'; x.fillRect(-2, -1, 3, 1); x.restore(); }   // pozzanghera nel solco
+        if (h > .7) { const sd = h > .85 ? 1 : -1, oo = sd * (rd.w / 2 + .1 + (h - .7) * 2), cx = (ax + nx * oo - X0) * PPM, cy = (ay + ny * oo - Y0) * PPM; x.fillStyle = pick(r, ['#8a8478', '#6e6860', '#a49c8e']); x.fillRect(Math.round(cx), Math.round(cy), 2, 1 + (h > .8 ? 1 : 0)); x.fillStyle = 'rgba(20,18,16,.5)'; x.fillRect(Math.round(cx), Math.round(cy) + 1, 2, 1); }   // sassi sul margine
+      } });
+    x.lineCap = 'butt';
+  }
+  // asfalto: tracce delle ruote sulle corsie; fuori città il bordo sbrecciato sulla banchina di ghiaia
+  function usura1(x, tx0, ty0, n, m) {
+    const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS;
+    x.lineJoin = 'round'; x.lineCap = 'round';
+    (M.roads || []).forEach(rd => { if (!asph1(rd) || !rd.pts || !rd.pts.some(p => inBox1(p[0], p[1], X0, Y0, X1, Y1, rd.w + 4))) return; const g = geo1(rd), P = rd.pts;
+      if (rd.w >= 5) [-1, 1].forEach(sd => [-.75, .75].forEach(d => { const o = sd * rd.w / 4 + d; offPath1(x, rd, o, X0, Y0, X1, Y1, rd.w + 4); x.lineWidth = .55 * PPM; x.strokeStyle = 'rgba(16,14,14,.13)'; x.stroke(); }));
+      if (urb1(rd) && rd.kind !== 'litoranea') return;
+      for (let k = 0; k < g.n; k++) { const [ax, ay] = P[k]; if (!inBox1(ax, ay, X0, Y0, X1, Y1, rd.w + 2) || cityAt1(ax, ay)) continue;
+        for (const sd of [-1, 1]) { const h = vnz(ax * .9 + sd * 31, ay * .9); if (h < -.1) continue; const e = rd.w / 2 - .15 - h * .5, bx = ax - g.uy[k] * e * sd, by = ay + g.ux[k] * e * sd;
+          x.fillStyle = 'rgba(96,88,76,.9)'; x.beginPath(); x.arc((bx - X0) * PPM, (by - Y0) * PPM, (.2 + h * .5) * PPM, 0, 6.2832); x.fill(); } } });
+    x.lineCap = 'butt';
+  }
