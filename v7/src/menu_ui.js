@@ -217,7 +217,7 @@ var MenuUI = (function () {
     const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height); x.imageSmoothingEnabled = true;
     if (wide) x.drawImage(cv, 0, 24, 128, 80, 0, 0, 160, 80); else x.drawImage(cv, 0, 0, 96, 96);
   }
-  function paintAll(root) { root.querySelectorAll('canvas[data-ic]').forEach(c => { const id = c.dataset.ic, t = c.dataset.nt ? null : thumb(id); if (t) drawThumb(c, t); else icon(c, id); }); root.querySelectorAll('canvas[data-fig]').forEach(c => figure(c)); root.querySelectorAll('canvas[data-shop]').forEach(c => shopScene(c, c.dataset.shop, c.dataset.who)); }
+  function paintAll(root) { root.querySelectorAll('canvas[data-map]').forEach(c => drawMap(c)); root.querySelectorAll('canvas[data-ic]').forEach(c => { const id = c.dataset.ic, t = c.dataset.nt ? null : thumb(id); if (t) drawThumb(c, t); else icon(c, id); }); root.querySelectorAll('canvas[data-fig]').forEach(c => figure(c)); root.querySelectorAll('canvas[data-shop]').forEach(c => shopScene(c, c.dataset.shop, c.dataset.who)); }
 
   // =====================================================================================================================
   // IL PROTAGONISTA E IL COMMERCIANTE, in pixel
@@ -418,6 +418,17 @@ var MenuUI = (function () {
 #mu .loot { display: grid; grid-template-columns: repeat(auto-fill, 80px); grid-auto-rows: 88px; gap: 4px; padding: 14px; border-radius: 10px; background: linear-gradient(#2c2f33, #24272b); box-shadow: inset 0 0 0 1px rgba(0,0,0,.4); }
 #mu .loot .tile { grid-template-rows: 50px 1fr; padding: 4px 3px; margin: 0; } #mu .loot .tile canvas { width: 40px; height: 40px; } #mu .loot .tile em { position: relative; font: 500 11.5px/1.15 var(--ft); font-style: normal; color: rgba(233,220,188,.85); text-align: center; overflow: hidden; max-height: 2.3em; }
 #mu .loot .tile .q { top: 3px; bottom: auto; } #mu .loot .tile.t-raro .q, #mu .loot .tile.t-prezioso em { color: var(--ott); } #mu .loot .tile.shop em { color: var(--neon); }
+#mu .inv { display: grid; grid-template-columns: auto minmax(280px, 1fr); gap: 28px; align-items: start; }
+#mu .inv .bag { --c: 62px; }
+#mu .mappa canvas { width: 100%; height: auto; border-radius: 12px; box-shadow: inset 0 0 0 1px #3A5A50, 0 0 0 1px #3A5A50; cursor: pointer; display: block; image-rendering: pixelated; }
+#mu .mlegenda { display: flex; gap: 18px; margin-top: 10px; font: 600 11px var(--fl); letter-spacing: .14em; text-transform: uppercase; color: rgba(233,220,188,.6); } #mu .mlegenda i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+/* il pulsante ZAINO */
+#muBtn { position: absolute; right: 16px; bottom: 18px; z-index: 31; width: 78px; height: 78px; border-radius: 50%; cursor: pointer; display: grid; place-items: center; align-content: center; gap: 0; color: #E9DCBC;
+  font: 700 11px 'Saira Condensed', 'Arial Narrow', sans-serif; letter-spacing: .18em; text-transform: uppercase; border: 1px solid rgba(233,220,188,.25);
+  background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.16), transparent 45%), linear-gradient(135deg, #24443c, #2e2c40 50%, #24443c); box-shadow: 0 0 0 3px rgba(13,16,21,.8), 0 0 0 4px #B08D57, 0 8px 20px rgba(0,0,0,.5); }
+#muBtn:hover { transform: translateY(-1px); } #muBtn canvas { width: 44px; height: 44px; } #muBtn .dot { position: absolute; right: 0; top: 0; min-width: 20px; height: 20px; border-radius: 10px; background: #FF5FA2; color: #0D1015; font: 700 12px/20px 'Saira Condensed', sans-serif; text-align: center; letter-spacing: 0; }
+#muBtn kbd { font: 600 9px 'Saira Condensed', sans-serif; color: #B08D57; margin-left: 4px; letter-spacing: 0; }
+#ts-btn { display: none !important; }
 #mu .roba { display: grid; grid-template-columns: minmax(380px, 470px) 1fr; gap: 26px; align-items: start; }
 #mu .roba .bag { --c: 62px; grid-template-columns: repeat(7, var(--c)); }
 #mu .tile { grid-template-rows: 1fr auto; } #mu .tile canvas.tc { width: 44px; height: 44px; } #mu .tile.w canvas.tc { width: 100px; height: 50px; } #mu .tile.big canvas.tc { width: 90px; height: 90px; }
@@ -463,7 +474,7 @@ var MenuUI = (function () {
   // =====================================================================================================================
   // SCHEDE
   // =====================================================================================================================
-  const TABS = [['zaino', 'Roba', 'zaino'], ['pg', 'Chi è', 'maglione'], ['lavora', 'Banco', 'martello'], ['lavori', 'Lavori', 'chiave_inglese'], ['qui', 'Qui', 'mappa']];
+  const TABS = [['mappa', 'Mappa', 'mappa'], ['zaino', 'Inventario', 'zaino'], ['equip', 'Equip.', 'maglione'], ['lavora', 'Crafting', 'martello'], ['pg', 'Chi è', 'cappello'], ['lavori', 'Lavori', 'chiave_inglese'], ['qui', 'Qui', 'giornale']];
   const CTX = { bottega: ['Bottega', 'moneta_shop'], fruga: ['Frugare', 'casse'] };
   function mount() {
     if ($('mu')) return true;
@@ -501,9 +512,11 @@ var MenuUI = (function () {
     const st = ST(); if (!st || !U.open || (U.drag && !force)) return;
     let body = '', title = '', sub = '', tabs = '';
     try {
-      if (U.tab === 'zaino') [title, sub, body] = ['Roba', inCovo(st) ? 'sul tavolo del covo' : 'rovesciata sul marciapiede', pZaino(st)];
+      if (U.tab === 'zaino') [title, sub, body] = ['Inventario', inCovo(st) ? 'la roba sul tavolo del covo' : 'la roba rovesciata sul marciapiede', pZaino(st, 'inv')];
+      else if (U.tab === 'equip') [title, sub, body] = ['Equipaggiamento', 'quello che hai addosso e in mano', pZaino(st, 'equip')];
+      else if (U.tab === 'mappa') [title, sub, body] = ['Mappa', 'clicca un posto: ci vai a piedi', pMappa(st)];
       else if (U.tab === 'pg') [title, sub, body] = ['Chi è', 'Nino', pPg(st)];
-      else if (U.tab === 'lavora') { const v = O().recipesView(st); title = U.arg && U.arg.titolo ? U.arg.titolo : 'Banco'; sub = v.stations.length ? `qui: ${v.stations.join(', ')}` : 'nessuna postazione: solo quello che si fa a mano'; tabs = KINDS.map(([k, l]) => `<button class="pill ${U.filt === k ? 'on' : ''}" data-a="filt" data-x='"${k}"'>${l} ${v.list.filter(r => (k === 'tutto' || r.kind === k) && r.ok).length}</button>`).join(''); body = pLavora(st, v); }
+      else if (U.tab === 'lavora') { const v = O().recipesView(st); title = U.arg && U.arg.titolo ? U.arg.titolo : 'Crafting'; sub = v.stations.length ? `a mano, e qui: ${v.stations.join(', ')}` : 'a mano: per il resto serve una postazione'; tabs = KINDS.map(([k, l]) => `<button class="pill ${U.filt === k ? 'on' : ''}" data-a="filt" data-x='"${k}"'>${l} ${v.list.filter(r => (k === 'tutto' || r.kind === k) && r.ok).length}</button>`).join(''); body = pLavora(st, v); }
       else if (U.tab === 'lavori') [title, sub, body] = ['Lavori', '', pLavori(st)];
       else if (U.tab === 'baule') { const B0 = typeof Cantiere !== 'undefined' && Cantiere.bauleHere(st); title = 'Baule'; sub = B0 ? 'del covo · ci sta tutto' : 'qui non c\'è un baule'; body = B0 ? pBaule(st, B0) : '<div class="dim">Il baule sta nei covi: casa tua, le basi, i posti che reclami (cantiere, Y).</div>'; }
       else if (U.tab === 'qui') [title, sub, body] = ['Qui, adesso', G().nearestPlace ? G().nearestPlace(st.player.x, st.player.y).name : '', pQui(st)];
@@ -518,7 +531,7 @@ var MenuUI = (function () {
     const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
       <header><b>${esc(title)}</b><span>${esc(sub)}</span><span class="tabs">${tabs}</span><button class="x" data-a="close" aria-label="Chiudi">×</button></header>
       <main>${body}</main>
-      <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span><span class="k"><kbd>I</kbd>roba</span><span class="k"><kbd>K</kbd>banco</span><span class="k"><kbd>Esc</kbd>gioco</span>
+      <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span><span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-7</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
         <span class="r"><span class="${over ? 'over' : ''}">${pv.peso}/${pv.cap} kg${over ? ' · troppo peso' : ''}</span><span>in tasca <b>${L(pv.money)}</b> lire</span></span></footer>
       ${showMsg ? `<div class="msg ${U.ok ? '' : 'no'}">${esc(U.msg)}</div>` : ''}</div></div>`;
     if (!force && html === U.sig) return; U.sig = html;
@@ -543,8 +556,10 @@ var MenuUI = (function () {
   }
   // nomi sintetici: «Martello», «Vino», «Scatoletta»
   const corto = id => { const c = O().CAT[id]; if (c && c.corto) return c.corto; let n = (c ? c.nome : id).replace(/\s*\(.*$/, '').replace(/\s+(di|da|per|a|al|del|della|dei|con|in)\s.*$/, ''); n = cap(n); return n.length > 13 ? n.slice(0, 12) + '…' : n; };
-  function pZaino(st) {
-    const { pv, items } = bagItems(st), P = pack(items, 7);
+  function pZaino(st, mode) {
+    const all = bagItems(st), pv = all.pv, GR0 = typeof Guardaroba !== 'undefined' ? Guardaroba : null;
+    // nell'equipaggiamento accanto a Nino c'è solo la roba che si indossa o si tiene in mano
+    const items = mode === 'equip' ? all.items.filter(i => (GR0 && GR0.CAPO[i.id]) || i.eq || (O().canHold && O().canHold(i.id))) : all.items, P = pack(items, mode === 'equip' ? 5 : 9);
     if (!U.sel || !items.some(i => i.id === U.sel)) U.sel = items[0] ? items[0].id : null;
     const sel = items.find(i => i.id === U.sel);
     const tiles = P.put.map(o => { const i = o.it, wide = o.w === 2 && o.h === 1, big = o.h === 2;
@@ -561,9 +576,10 @@ var MenuUI = (function () {
       <div class="hands">${hand('dx', GW.dx, 'destra')}<div class="hb">${btn('scambia_mani', 'Scambia')}${GW.sx ? btn('usa_sinistra', 'Usa sinistra') : ''}</div>${hand('sx', GW.sx, 'sinistra')}</div>
       <div class="ab2"><div class="stat" style="grid-template-columns:1fr auto 1fr auto;column-gap:14px"><span>Caldo</span><em>${Math.round(GW.calore * 100)}</em><span>Protezione</span><em>${Math.round(GW.arm * 100)}%</em></div>
         <div class="row">${btn('spogliati', 'Spogliati', { tutto: false })}${btn('spogliati', 'Nudo', { tutto: true }, 'bad')}</div></div></div>` : '';
-    return `<div class="roba"><div class="lft"><div class="bag ${inCovo(st) ? 'covo' : 'strada'}" data-drop="bag" style="grid-template-rows:repeat(${P.rows},var(--c))">${tiles}</div>
-        <div class="dim" style="margin:8px 0 14px">${items.length} cose · ${pv.peso} kg su ${pv.cap}. Quello che indossi non pesa nella borsa.${pv.base ? ' ' + btn('deposita', 'Tutto al covo', { id: '*' }) : ''}</div>
-        <div class="det">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Tasche vuote.</div>'}</div></div>${addosso}</div>`;
+    const bagH = `<div class="bag ${inCovo(st) ? 'covo' : 'strada'}" data-drop="bag" style="grid-template-columns:repeat(${mode === 'equip' ? 5 : 9},var(--c));grid-template-rows:repeat(${P.rows},var(--c))">${tiles}</div>`;
+    if (mode === 'equip') return `<div class="roba"><div class="lft"><h4>Da indossare e da tenere · trascina su Nino</h4>${bagH}<div class="det" style="margin-top:14px">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Niente da indossare in borsa.</div>'}</div></div>${addosso}</div>`;
+    return `<div class="inv"><div>${bagH}<div class="dim" style="margin:8px 0 0">${items.length} cose · ${pv.peso} kg su ${pv.cap}. Quello che indossi non pesa nella borsa.${pv.base ? ' ' + btn('deposita', 'Tutto al covo', { id: '*' }) : ''}</div></div>
+        <div class="det">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Tasche vuote.</div>'}</div></div>`;
   }
   function bar(l, v, max, cls, inv) { const f = Math.max(0, Math.min(1, v / max)), c = inv ? (f > .85 ? 'r' : f > .6 ? 'w' : '') : (f < .25 ? 'r' : f < .5 ? 'w' : cls || ''); return `<div class="stat"><span>${esc(l)}</span><em>${Math.round(v)}${max === 100 ? '%' : ''}</em><i><b class="${c}" style="width:${Math.round(f * 100)}%"></b></i></div>`; }
   function describe(id) {
@@ -657,6 +673,38 @@ var MenuUI = (function () {
     return `<div class="shop">${left}<div>${det}<div class="goods">${tiles}</div></div></div>`;
   }
 
+  // ---------------- LA MAPPA ----------------
+  // l'isola dalle caselle vere, coi posti: clic su un nome o su un punto e ci vai a piedi
+  let MAPB = null; const MK = 3;
+  function mapBase() {
+    if (MAPB) return MAPB; const G0 = G(), T0 = G0.T; MAPB = document.createElement('canvas'); MAPB.width = G0.GW * MK; MAPB.height = G0.GH * MK; const x = MAPB.getContext('2d');
+    const C = { [T0.WATER]: '#13262a', [T0.BLD]: '#3a3646', [T0.VIA]: '#5a5650', [T0.COB]: '#6a645a', [T0.WALK]: '#6e6a62', [T0.PIAZZA]: '#7a746a', [T0.QUAY]: '#5a5248', [T0.PIER]: '#6a5a46', [T0.SAND]: '#a89a7a', [T0.GRASS]: '#5a6a58', [T0.TREE]: '#2e4a3a', [T0.SHRUB]: '#4a5e4a', [T0.ROCK]: '#5a5658', [T0.CLIFF]: '#3a3634', [T0.DIRT]: '#7a6e5a', [T0.FIELD]: '#8a845e', [T0.DESERT]: '#9a8e6a', [T0.SALT]: '#c8c4b8', [T0.GRAVEL]: '#8a8680', [T0.FOUNT]: '#4a6a7a', [T0.STAIRS]: '#7a746a' };
+    for (let ty = 0; ty < G0.GH; ty++) for (let tx = 0; tx < G0.GW; tx++) { x.fillStyle = C[G0.tileAt(tx, ty)] || '#2a2830'; x.fillRect(tx * MK, ty * MK, MK, MK); }
+    return MAPB;
+  }
+  function pMappa(st) {
+    const G0 = G(); return `<div class="mappa"><canvas data-map="1" width="${G0.GW * MK}" height="${G0.GH * MK}"></canvas><div class="mlegenda"><span><i style="background:#f2ead8"></i>tu</span><span><i style="background:#B08D57"></i>covi</span><span><i style="background:#FF5FA2"></i>lavoro</span><span><i style="background:#35e6ff"></i>basi della Risacca</span></div></div>`;
+  }
+  function drawMap(c) {
+    const st = ST(), G0 = G(), x = c.getContext('2d'), k = MK / G0.TS; x.drawImage(mapBase(), 0, 0);
+    x.font = 'italic 14px "Instrument Serif", Georgia, serif'; x.textAlign = 'center';
+    // i nomi: uno solo dove si accavallano (prima i posti più vicini a te)
+    const p0 = st.player, boxes = [];
+    Object.values(G0.PLACES).filter(P0 => P0.name).sort((a, b) => Math.hypot(a.x - p0.x, a.y - p0.y) - Math.hypot(b.x - p0.x, b.y - p0.y)).forEach(P0 => {
+      const px = P0.x * k, py = P0.y * k; x.fillStyle = 'rgba(233,220,188,.7)'; x.fillRect(px - 1.5, py - 1.5, 3, 3);
+      const w = x.measureText(P0.name).width + 6, r = [px - w / 2, py - 20, w, 16]; if (boxes.some(b => r[0] < b[0] + b[2] && b[0] < r[0] + r[2] && r[1] < b[1] + b[3] && b[1] < r[1] + r[3])) return; boxes.push(r);
+      x.fillStyle = 'rgba(13,16,21,.45)'; x.fillRect(r[0], r[1] + 2, r[2], r[3] - 2); x.fillStyle = 'rgba(233,220,188,.9)'; x.fillText(P0.name, px, py - 7); });
+    if (typeof Cantiere !== 'undefined') Cantiere.covi(st).forEach(C0 => { x.strokeStyle = '#B08D57'; x.lineWidth = 2; x.beginPath(); x.arc(C0.x * k, C0.y * k, C0.r * k, 0, Math.PI * 2); x.stroke(); });
+    (st.ris && st.ris.bases || []).filter(b => b.alive).forEach(b => { x.fillStyle = '#35e6ff'; x.fillRect((b.cx || b.x) * k - 3, (b.cy || b.y) * k - 3, 6, 6); });
+    const jt = G0.jobTarget && G0.jobTarget(st); if (jt) { x.fillStyle = '#FF5FA2'; x.beginPath(); x.arc(jt.x * k, jt.y * k, 5, 0, Math.PI * 2); x.fill(); }
+    const p = st.player, a = p.face || 0; x.save(); x.translate(p.x * k, p.y * k); x.rotate(a); x.fillStyle = '#f2ead8'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.beginPath(); x.moveTo(9, 0); x.lineTo(-6, 6); x.lineTo(-3, 0); x.lineTo(-6, -6); x.closePath(); x.stroke(); x.fill(); x.restore();
+  }
+  function mapClick(e, c) {
+    const r = c.getBoundingClientRect(), G0 = G(), k = MK / G0.TS, mx = (e.clientX - r.left) / r.width * c.width / k, my = (e.clientY - r.top) / r.height * c.height / k;
+    let best = null, bd = 14 / k * (c.width / r.width); Object.values(G0.PLACES).forEach(P0 => { if (!P0.name) return; const d = Math.hypot(P0.x - mx, P0.y - my); if (d < bd) { bd = d; best = P0; } });
+    const to = best || { x: mx, y: my }; say(`Vai ${best ? 'a ' + best.name : 'lì'}.`); goTo(to.x, to.y);
+  }
+
   // ---------------- IL BAULE ----------------
   function pBaule(st, B0) {
     const tile = (id, q, src) => { const c = O().CAT[id]; return `<button class="tile" data-a="${src === 'k' ? 'bprendi' : 'bmetti'}" data-x="${esc(JSON.stringify({ id, q: 1 }))}" draggable="true" data-drag="${src}:${esc(id)}" title="${esc(cap(c ? c.nome : id))} · clic: uno · doppio clic: tutti">${ic(id)}<em>${esc(corto(id))}</em>${q > 1 ? `<span class="q">${q}</span>` : ''}</button>`; };
@@ -724,6 +772,7 @@ var MenuUI = (function () {
     pv.click.t = { kind: 'move', x, y, path, run: true, best: 1e9, bestT: pv.ui.time, fl: '' }; pv.ui.mark = { x, y, t: pv.ui.time, k: 'move' }; close();
   }
   function onClick(e) {
+    if (e.target.dataset && e.target.dataset.map) { mapClick(e, e.target); return; }
     const b = e.target.closest('[data-a]'); if (!b || b.disabled) return;
     const a = b.dataset.a, x = b.dataset.x ? JSON.parse(b.dataset.x) : undefined, st = ST();
     switch (a) {
@@ -797,12 +846,20 @@ var MenuUI = (function () {
     const k = e.key.toLowerCase();
     if (U.open) {
       if (k === 'escape') { close(); e.preventDefault(); e.stopImmediatePropagation(); return; }
-      const t = k === 'i' || k === 'z' ? 'zaino' : k === 'k' ? 'lavora' : k >= '1' && k <= '5' ? TABS[+k - 1][0] : null;
+      const t = k === 'i' || k === 'z' ? 'zaino' : k === 'k' ? 'lavora' : k >= '1' && k <= '7' ? TABS[+k - 1][0] : null;
       if (t) { if (U.tab === t) close(); else open(t); e.preventDefault(); e.stopImmediatePropagation(); return; }
       if (k !== 'tab') e.stopImmediatePropagation();
       return;
     }
   }, true);
   setInterval(() => { try { if (U.open) render(false); } catch (e) { } }, 400);
+  // il pulsante ZAINO in basso a destra: apre il menu (inventario); il numero è quante cose puoi fare qui
+  setInterval(() => { try {
+    const app = $('app'), st = ST(), ui = PV() && PV().ui; if (!app || !st || !ui) return; if (!$('mu')) mount();
+    let b = $('muBtn'); if (!b) { b = document.createElement('button'); b.id = 'muBtn'; b.innerHTML = '<canvas width="96" height="96"></canvas><span>Zaino<kbd>I</kbd></span><span class="dot" hidden></span>'; app.appendChild(b); b.onclick = () => toggle('zaino'); }
+    b.style.display = ui.intro || ui.over || U.open || (typeof Cantiere !== 'undefined' && Cantiere.active()) ? 'none' : '';
+    const c = b.querySelector('canvas'); if (!c.dataset.done) { const t = thumb('zaino'); if (t) { c.getContext('2d').drawImage(t, 0, 0, 96, 96); c.dataset.done = 1; } }
+    const n = quiCount(st), d = b.querySelector('.dot'); d.hidden = !n; d.textContent = n;
+  } catch (e) { } }, 300);
   return { open, close, toggle, render, icon, state: U, quiList, quiCount, thumbFor };
 })();
