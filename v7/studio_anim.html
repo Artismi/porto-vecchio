@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><title>Studio delle pose</title>
+<style>html,body{margin:0;background:#3a3f48;overflow:hidden}#lab{position:fixed;left:0;top:0;width:100%;pointer-events:none;font:12px monospace;color:#fff}</style></head>
+<body><div id="lab"></div>
+<!-- Studio delle pose: node strumenti_inverno/studio_anim.js cartella pose.json  (vedi quel file) -->
+<script src="src/three.min.js"></script>
+<script src="src/gltf_loader.js"></script>
+<script src="src/animazioni.js"></script>
+<script src="src/anim_vita.js"></script>
+<script src="src/anim_lotta.js"></script>
+<script src="src/models.js"></script>
+<script>
+(async function () {
+  const W = innerWidth, H = innerHeight;
+  const ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); ren.setSize(W, H); document.body.appendChild(ren.domElement);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color('#3a3f48');
+  scene.add(new THREE.HemisphereLight('#ffffff', '#55606a', .9)); const sun = new THREE.DirectionalLight('#fff', .8); sun.position.set(3, 6, 5); scene.add(sun);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({ color: '#5a6068' })); floor.rotation.x = -Math.PI / 2; scene.add(floor);
+  const grid = new THREE.GridHelper(200, 200, '#6a7078', '#6a7078'); grid.position.y = .005; scene.add(grid);
+  await Promise.all(['Casual', 'Casual_2', 'Casual_Hoodie', 'Formal', 'Worker', 'Soldier'].map(f => Models.loadChar(f)));
+  const cam = new THREE.PerspectiveCamera(30, W / H, .1, 200);
+  const people = [];
+  // S.pose = [{ nome, anim: { act, upper, mood, talk, lookAt }, o: { speed, weapon, held, ... }, who, look, ang, t }]
+  window.studio = {
+    async run(list, opts) {
+      opts = opts || {};
+      people.forEach(p => scene.remove(p.g)); people.length = 0;
+      const cols = opts.cols || Math.min(6, list.length), sp = opts.sp || 1.8;
+      list.forEach((d, i) => {
+        const g = Models.person(d.look || { top: '#8a3a2a', bottom: '#2a3a5a', skin: '#d8a888', hair: '#2a1a12', hat: 'none', extra: '' }, d.who || null);
+        const c = i % cols, r = Math.floor(i / cols);
+        g.position.set((c - (cols - 1) / 2) * sp, 0, -r * sp * 1.3); g.rotation.y = d.ang !== undefined ? d.ang : (opts.ang !== undefined ? opts.ang : .5);
+        scene.add(g); people.push({ g, d });
+      });
+      const rows = Math.ceil(list.length / cols), side = opts.side !== undefined ? opts.side : .25;
+      const dist = Math.max(cols * sp * 1.05, rows * sp * 1.8) + 2.5;
+      cam.position.set(dist * Math.sin(side), dist * .35 + 1, dist * Math.cos(side) - (rows - 1) * sp * .65); cam.lookAt(0, .9, -(rows - 1) * sp * .65);
+      // si avanza a passi fissi fino al tempo voluto (le pose hanno fade e tempi propri)
+      const T = opts.t !== undefined ? opts.t : 1.5, dt = 1 / 30;
+      for (let t = 0; t < T; t += dt) people.forEach(p => {
+        const o = Object.assign({ speed: 0 }, p.d.o || {}, { anim: p.d.anim || null });
+        if (o.anim && o.anim.lookAt) o.anim.lookAt = Object.assign({}, o.anim.lookAt);
+        Models.animPerson(p.g, o, dt);
+      });
+      ren.render(scene, cam);
+      // etichette
+      const lab = document.getElementById('lab'); lab.innerHTML = '';
+      people.forEach(p => { const v = p.g.position.clone(); v.y = 2.1; v.project(cam); const e = document.createElement('div'); e.textContent = p.d.nome || (p.d.anim && (p.d.anim.act || p.d.anim.upper)) || ''; e.style.cssText = `position:absolute;left:${(v.x + 1) / 2 * W}px;top:${(1 - v.y) / 2 * H}px;transform:translateX(-50%);background:rgba(0,0,0,.5);padding:1px 4px`; lab.appendChild(e); });
+      return true;
+    }, Anim, Models, scene, cam, ren, people
+  };
+  window.studioReady = true;
+})();
+</script></body></html>
