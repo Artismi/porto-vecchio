@@ -1,6 +1,6 @@
 // Porto Vecchio — la Mente degli NPC su Vercel: la stessa logica di server.js, ma la chiave sta in una variabile d'ambiente segreta
 // (GEMINI_API_KEY, oppure ANTHROPIC_API_KEY / GROQ_API_KEY / OPENROUTER_API_KEY) e non arriva mai al browser.
-// I file con «_» davanti non diventano indirizzi pubblici. Se si cambia server.js, va riportato qui (stesso pezzo, da «Modelli di default» a «Server HTTP»).
+// NON modificare a mano: si rigenera da server.js con  python3 strumenti_inverno/mente_vercel.py
 // Modelli di default per fornitore, in ordine di tentativo.
 // Se il primo non esiste più (404), si passa al successivo e si ricorda quello buono.
 const MODELS = {
