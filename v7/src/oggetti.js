@@ -1406,6 +1406,35 @@ var Oggetti = (function () {
     if (v) { const C = trunk(st, v); out.push({ ref: `v:${v.id}`, label: C.label, locked: C.locked }); }
     return out;
   }
+  // [bottino] tutto quello che si può frugare nei dintorni, con la posizione nel mondo: bottino.js lo disegna come oggetto da cliccare
+  function spotPos(st, id) {
+    const M = S(st); M.spotPos = M.spotPos || {}; if (M.spotPos[id]) return M.spotPos[id];
+    const P0 = PLACES[id]; let best = { x: P0.x, y: P0.y }, bd = 1e9;
+    if (!G.walkM(P0.x, P0.y)) for (let j = -4; j <= 4; j++) for (let i = -4; i <= 4; i++) { const x = P0.x + i * TS, y = P0.y + j * TS, d = Math.hypot(i, j); if (d < bd && G.walkM(x, y)) { bd = d; best = { x, y }; } }
+    return (M.spotPos[id] = { x: best.x + TS * .3, y: best.y + TS * .3 });
+  }
+  function lootables(st, r) {
+    const p = p_(st), out = []; r = r || 40;
+    if (p.vehicle) return out;
+    if (p.indoor) {
+      const b = G.BUILDINGS[p.indoor.b], Lx = INT.layout(b), F = Lx.floors[p.indoor.f]; if (!F) return out;
+      F.furn.forEach((o, i) => {
+        if (dist(o.x, o.y, p.x, p.y) > r) return; const room = INT.roomAt ? (INT.roomAt(Lx, p.indoor.f, o.x, o.y) || {}).name : null; if (!lootTable(b, room, o.id)) return;
+        const c = S(st).cont[`b${p.indoor.b}:${p.indoor.f}:${i}`];
+        out.push({ ref: `f:${i}`, kind: 'mobile', x: o.x, y: o.y, label: furnName(o.id, room), locked: !!LOCKED[o.id] && !(c && c.forced) });
+      });
+      return out;
+    }
+    const roof = onRoof(st);
+    scatterInit(st).forEach(c => { if (c.roof === roof && Object.keys(c.items).length && dist(c.x, c.y, p.x, p.y) < r) out.push({ ref: `k:${c.id}`, kind: c.kind, x: c.x, y: c.y, label: SCATTER[c.kind].nome, take: c.kind !== 'militare' }); });
+    if (!roof) {
+      Object.keys(SPOT_LOOT).forEach(id => { if (!PLACES[id] || dist(PLACES[id].x, PLACES[id].y, p.x, p.y) > r) return; const C = spot(st, id); if (!Object.keys(C.items).length) return; const q = spotPos(st, id); out.push({ ref: `p:${id}`, kind: 'posto', x: q.x, y: q.y, label: C.label, take: !C.theft }); });
+      ['calata', 'molo_cargo', 'pontile'].forEach(id => { if (!PLACES[id] || dist(PLACES[id].x, PLACES[id].y, p.x, p.y) > r) return; const C = cargo(st, id); if (!Object.keys(C.items).length) return; const q = spotPos(st, id); out.push({ ref: `g:${id}`, kind: 'carico', x: q.x - TS * .8, y: q.y, label: C.label, locked: C.locked }); });
+      st.npcs.forEach(n => { if (n.pop && !n.inside && (n.dead || n.stun > 0) && !(n.corpse && (n.corpse.leader || n.corpse.vehicle || n.corpse.gone)) && dist(n.x, n.y, p.x, p.y) < r) out.push({ ref: `c:${n.id}`, kind: 'corpo', x: n.x, y: n.y, label: `Tasche di ${n.first}${n.dead ? ' (morto)' : ' (a terra)'}`, npc: n.id }); });
+      (st.vehicles || []).forEach(v => { if (v.rider || v.traffic || v.wreck || v.hidden || v.mine || !trunkKind(v) || dist(v.x, v.y, p.x, p.y) > r) return; const K = G.VK[v.kind] || { len: 4 }, b0 = K.len / 2; out.push({ ref: `v:${v.id}`, kind: 'bagagliaio', x: v.x - Math.cos(v.ang) * b0, y: v.y - Math.sin(v.ang) * b0, label: trunk(st, v).label, locked: trunk(st, v).locked, veh: v.id }); });
+    }
+    return out;
+  }
   function contByRef(st, ref) {
     const [k, id] = [ref.slice(0, 1), ref.slice(2)];
     if (k === 'p') return SPOT_LOOT[id] ? spot(st, id) : null;
@@ -1673,14 +1702,13 @@ var Oggetti = (function () {
   function here(st) {
     const p = p_(st), out = [], add0 = (id, label, arg, panel, bad) => out.push({ id: 'og_' + id, label, arg: arg === undefined ? null : arg, panel, bad: !!bad });
     if (st.over || p.vehicle) return out;
-    containersHere(st).forEach(c => add0('fruga', c.locked ? `Forza: ${c.label}` : `Fruga: ${c.label}`, c.ref, 'fruga', c.locked));
+    // [bottino] frugare non è più un pulsante: la roba è un oggetto in scena e si clicca (bottino.js)
     const sts = stationsHere(st); if (sts.size || nearBase(st)) add0('lavora', `Lavora qui (${[...sts].map(s => STATIONS[s] ? STATIONS[s].nome : s).join(', ') || 'a mano'})`, null, 'lavora');
     const ex = Object.values(RECIPES).filter(r => r.place && placeOk(st, r)); if (ex.length) add0('lavora', ex.map(r => cap(r.nome)).join(' · '), null, 'lavora');
     const n = st.npcs.filter(k => !k.dead && k.pop && !k.inside && !k.aggro && !(k.cop && G.wantedLevel(st) > 0) && dist(k.x, k.y, p.x, p.y) < 2.6).sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y))[0];
     if (n && !p.indoor) add0('scambia', `Scambia con ${n.first}`, n.id, 'scambia');
     const v = st.npcs.filter(k => !k.dead && k.pop && !k.inside && !(k.stun > 0) && !k.aggro && dist(k.x, k.y, p.x, p.y) < 1.4).sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y))[0];
     if (v && !p.indoor) add0('borseggia', `Alleggerisci ${v.first} (borseggio)`, v.id, null, true);
-    if (!p.indoor) add0('cerca', 'Cerca qui intorno (10 minuti)', null, null);
     return out;
   }
   function act(st, id, arg, ex) {
@@ -1770,7 +1798,7 @@ var Oggetti = (function () {
     return { stats: M.stats, vuoti: empty.length, esempiVuoti: empty.slice(0, 12), laboratori: work, mancanze: E.missing };
   }
   return { CAT, GROUPS, RECIPES, STATIONS, FURN2ST, SHOPLIST, LOOT, ROOM_LOOT, SPOT_LOOT, BUILD, JOBPROD, S, nm, inv, givePlayer, weightOf, capacity, stationsHere, containersHere, recipesView, craft, consume,
-    luoghi, luogoHere, staffIndoor, clerk, isOpen, search, pickpocket, scatterInit, TIERS, tier,
+    luoghi, luogoHere, staffIndoor, clerk, isOpen, search, pickpocket, scatterInit, lootables, TIERS, tier,
     counter, buy, sell, barterView, barter, frugaView, contByRef, pocketsView, here, act, report, produceHour, supply, householdDay, prime };
 })();
 if (typeof module !== 'undefined') module.exports = Oggetti;

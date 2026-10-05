@@ -153,6 +153,7 @@
       for (const hh of [.6, 1.2, 1.7]) { const pr = R.project(n.x, hh, n.y); if (pr.behind) continue; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = { kind: 'npc', n }; } }
     });
     if (best) return best;
+    if (window.Bottino) { const L = Bottino.pick(st, nx, ny, o); if (L) return L; }   // [bottino] la roba da frugare è un oggetto in scena
     const g = R.screenToGround(nx, ny); if (!g) return null;
     for (const v of st.vehicles) {
       if (v.hidden || v.wreck) continue; const K = G.VK[v.kind], c = Math.cos(v.ang), s = Math.sin(v.ang), dx = g.x - v.x, dy = g.y - v.y;
@@ -186,6 +187,7 @@
     }
     if (h.kind === 'npc') { click.t = { kind: 'npc', id: h.n.id, path: [], pt: -9, run: dbl }; ui.mark = null; }
     else if (h.kind === 'car') { click.t = { kind: 'car', id: h.v.id, path: [], pt: -9, run: dbl }; ui.mark = { x: h.v.x, y: h.v.y, t: ui.time, k: 'car' }; }
+    else if (h.kind === 'loot') { const q = Bottino.goal(st, h.ref) || h; click.t = { kind: 'loot', ref: h.ref, x: q.x, y: q.y, path: goalPath(q.x, q.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
     else if (h.kind === 'door') { click.t = { kind: 'door', bi: h.bi, x: h.x, y: h.y, path: goalPath(h.x, h.y), pt: ui.time, run: dbl }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
     else { click.t = { kind: 'move', x: h.x, y: h.y, path: goalPath(h.x, h.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
   }
@@ -199,6 +201,12 @@
       if (p.indoor) return stop();
       const b = G.BUILDINGS[c.bi], cx = (b.x + b.w / 2) * G.TS, cy = (b.y + b.h / 2) * G.TS;
       if (Math.hypot(gx - p.x, gy - p.y) < .8) { c.pushT = c.pushT || ui.time; if (ui.time - c.pushT > 1.6) return stop(); const a2 = Math.atan2(cy - p.y, cx - p.x); return { x: Math.cos(a2), y: Math.sin(a2), sprint: false, aim: a2 }; }
+    }
+    if (c.kind === 'loot') {   // [bottino] ci si avvicina; arrivati si raccoglie o si apre il pannello
+      const L = Bottino.find(st, c.ref); if (!L) return stop();
+      const d = Math.hypot(L.x - p.x, L.y - p.y), r = Bottino.reach(c.ref);
+      if (d < r || (ui.time - c.bestT > 1.2 && d < r + 1.2)) { stop(); Bottino.arrive(st, c.ref); return { x: 0, y: 0, sprint, aim: Math.atan2(L.y - p.y, L.x - p.x) }; }
+      if (d < c.best - .2) { c.best = d; c.bestT = ui.time; } else if (ui.time - c.bestT > 1.5) return stop();
     }
     if (c.kind === 'npc') {
       const n = G.byId(st, c.id); if (!n || n.dead || n.inside) return stop();
@@ -234,6 +242,7 @@
     const gun = ['pistola', 'mitra', 'lupara'].find(w => p.arms[w] && (p.arms[w].mag > 0 || p.arms[w].reserve > 0));
     if (gun) o.push({ label: 'Spara', bad: true, run: () => { if (p.cur !== gun) G.switchWeapon(st, gun); ui.burst = { id: n.id, until: ui.time + (gun === 'mitra' ? .45 : .05), first: true }; } });
     if (p.arms.molotov && (p.arms.molotov.mag > 0 || p.arms.molotov.reserve > 0)) o.push({ label: 'Molotov', bad: true, run: () => { closeRing(); const was = p.cur; G.switchWeapon(st, 'molotov'); p.cool = 0; G.fire(st, Math.atan2(n.y - p.y, n.x - p.x), { x: n.x, y: n.y }, true); if (was !== 'molotov') G.switchWeapon(st, was); } });
+    if (window.Bottino) o.push(...Bottino.ringOptions(n, closeRing));   // [bottino] le tasche di chi è a terra
     o.push({ label: '✕', run: closeRing });
     return o;
   }
@@ -261,6 +270,7 @@
     if (mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.menu && !ui.over && !ring.n) {
       const h = pickAt(mouse.nx, mouse.ny); let t = '';
       if (h && h.kind === 'npc') t = h.n.first || h.n.name;
+      else if (h && h.kind === 'loot') t = h.label;
       else if (h && h.kind === 'car') t = p.vehicle === h.v.id ? 'Scendi' : h.v.traffic ? `Tira giù l'automobilista (${G.VK[h.v.kind].label})` : h.v.lent || h.v.mine ? 'Sali' : `Ruba ${G.vehicleName(st, h.v)}`;
       cv.style.cursor = h && h.kind !== 'move' ? 'pointer' : 'default';
       hoverEl.hidden = !t; if (t) { hoverEl.textContent = t; hoverEl.style.left = mouse.cx + 'px'; hoverEl.style.top = mouse.cy + 'px'; }
