@@ -4569,7 +4569,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const IRON = '#26262c', WOODD = '#4a3626', POT = '#9a5236';
     let n = 0;
     dyn.buildings.forEach((rec, bi) => {
-      const b = rec.b, G0 = rec.geo; if (!b || !G0 || !b.__win || rec.caseDone) return;
+      const b = rec.b, G0 = rec.geo; if (!b || !G0 || rec.caseDone) return;
+      const kitHouse = !b.__win, WINS = b.__win || [];   // casa fatta coi pezzi di un kit (casaKit): finestre sue, niente persiane, davanzali, bovindi, decalcomanie
       const kind = modKind(b); if (kind !== 'borgo' && kind !== 'farm') return;
       const dd = WD ? WD(b.x * TS) : 'centro'; if (dd === 'base') return;
       const r = rng(bi * 7919 + 3), x0 = G0.x0, z0 = G0.z0, w = G0.w, d = G0.d, base = G0.y0, fl = Math.max(1, b.fl || 1), top = base + G0.H, borgo = kind === 'borgo';
@@ -4587,7 +4588,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       const fr = f => { if (frames[f]) return frames[f]; const F = FACES[f], a = new THREE.Group(); a.position.set(F.p[0], 0, F.p[1]); a.rotation.y = F.yaw; g.add(a); return frames[f] = a; };
       const at = (f, o, u, y, z) => { o.position.set(u, y, z); fr(f).add(o); return o; };
       const inMural = (f, u) => PP && PP.f === f && u > PP.k0 * TS - .3 && u < PP.k1 * TS + .3;
-      const wins = b.__win.filter(W0 => FACES[W0.f].vis && !inMural(W0.f, W0.u));
+      const wins = WINS.filter(W0 => FACES[W0.f].vis && !inMural(W0.f, W0.u));
       const showF = Object.keys(FACES).filter(f => FACES[f].vis && (FACES[f].cam || FACES[f].open));
 
       // ---- persiane: un colore per casa, quasi tutte aperte, qualcuna socchiusa o chiusa, una che manca ----
@@ -4621,7 +4622,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       });
 
       // ---- bovindo di legno a sbalzo (uno o due piani), col tettuccio in coppi ----
-      if (borgo && fl >= 2 && r() < (fl >= 3 ? .5 : .32)) {
+      if (!kitHouse && borgo && fl >= 2 && r() < (fl >= 3 ? .5 : .32)) {
         const cand = showF.filter(f => FACES[f].cam && FACES[f].n >= 2); if (cand.length) {
           const f = pick(r, cand), F = FACES[f], wide = F.n >= 4 && r() < .45, k = Math.floor(r() * (F.n - (wide ? 1 : 0))), u = k * TS + (wide ? 2 : 1);
           if (!inMural(f, u)) {
@@ -4669,7 +4670,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       }
 
       // ---- il tempo sui muri: intonaco caduto coi mattoni, colature, macchie, umidità dal basso ----
-      showF.forEach(f => {
+      if (!kitHouse) showF.forEach(f => {
         const F = FACES[f]; if (F.L < 2) return;
         const np = Math.floor(r() * (borgo ? 5 : 3) + (F.cam ? 1 : 0));
         for (let q = 0; q < np; q++) {
@@ -4741,7 +4742,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         ends.forEach(u => { if (inMural(f, u)) return; const pp = ccyl(.07, .07, top - base, 6, zinc); at(f, pp, u, base + (top - base) / 2, .14); for (let y = base + 1.2; y < top - .4; y += MF) at(f, cbox(.18, .05, .2, shade(zinc, .7)), u, y, .1); at(f, cbox(.16, .12, .34, zinc), u, base + .1, .3); });
       });
       // ---- la vita alla base dei muri: casse di plastica, vasi, sacchi, legna, bombole, bici, secchi, contatori ----
-      const doorsU = b.__win.filter(W0 => W0.name.includes('door')).map(W0 => [W0.f, W0.u]);
+      const doorsU = kitHouse ? (b.door ? [[face0, { S: (b.door[0] - b.x) * TS + 1, N: (b.x + b.w - 1 - b.door[0]) * TS + 1, E: (b.y + b.h - 1 - b.door[1]) * TS + 1, W: (b.door[1] - b.y) * TS + 1 }[face0]]] : []) : WINS.filter(W0 => W0.name.includes('door')).map(W0 => [W0.f, W0.u]);
       showF.forEach(f => { const F = FACES[f]; if (!F.open) return;
         for (let k = 0; k < F.n; k++) {
           const u0 = k * TS + 1; if (inMural(f, u0) || doorsU.some(([df, du]) => df === f && Math.abs(du - u0) < 1.4)) continue;
