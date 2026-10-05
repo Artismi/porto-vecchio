@@ -1187,7 +1187,7 @@ var Render = (function () {
     reflTexC = new THREE.CanvasTexture(c); return reflTexC; }
   function wetAt(x, z) { const v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)), T = G.T; return v === T.VIA || v === T.COB || v === T.PIAZZA || v === T.WALK || v === T.QUAY; }
   function initRefl() { const g = new THREE.PlaneGeometry(1, 1); g.translate(0, .5, 0); g.rotateX(-Math.PI / 2);
-    for (let i = 0; i < 96; i++) { const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: reflTex(), color: '#ffffff', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, toneMapped: false })); m.visible = false; m.renderOrder = 1; scene.add(m); REFL.push(m); } }
+    for (let i = 0; i < 48; i++) { const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: reflTex(), color: '#ffffff', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, toneMapped: false })); m.visible = false; m.renderOrder = 1; scene.add(m); REFL.push(m); } }
   function updateRefl(night, list) {
     if (!REFL.length) initRefl();
     const cx = camera.position.x, cz = camera.position.z; let k = 0;
@@ -1195,9 +1195,9 @@ var Render = (function () {
       if (k >= REFL.length) break; if (L.off || !L.base) continue; if (L.gy === undefined) L.gy = groundH(L.x, L.z);
       const h = L.y - L.gy; if (h < .6) continue; let dx = cx - L.x, dz = cz - L.z; const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
       const bx = L.x + dx * .3, bz = L.z + dz * .3; if (!wetAt(bx, bz)) continue;
-      const m = REFL[k++], len = Math.min(13, h * 2.3 + 1.5), wid = L.spill ? 1.6 : .55 + h * .08;
+      const m = REFL[k++], len = Math.min(9, h * 1.7 + 1), wid = L.spill ? 1.6 : .55 + h * .08;
       m.position.set(bx, groundH(bx, bz) + .04, bz); m.rotation.set(0, Math.atan2(dx, dz), 0); m.scale.set(wid, 1, len);
-      m.material.color.copy(L.color); m.material.opacity = night * (L.spill ? .4 : .72) * Math.min(1, L.base / 2);   // [luci3] acqua che riflette m.visible = true;
+      m.material.color.copy(L.color); m.material.opacity = night * (L.spill ? .22 : .42) * Math.min(1, L.base / 2); m.visible = true;
     }
     for (; k < REFL.length; k++) REFL[k].visible = false;
   }
@@ -1246,79 +1246,6 @@ var Render = (function () {
       const sz = .25 + u * .7; sp.scale.set(sz, sz, 1); sp.material.opacity = Math.sin(u * Math.PI) * (.16 + night * .1); sp.visible = true;
     }
     for (; k < AIR.puffs.length; k++) AIR.puffs[k].visible = false;
-  }
-  // ================= [luci3] ACQUA, NEBBIOLINA, VAPORE, FUMO =================
-  // nebbiolina bassa che prende la luce dei lampioni e delle vetrine; fumo dai camini delle case abitate;
-  // il vapore dei tombini preso dalla luce vicina.
-  const AIR2 = { on: false };
-  const MISTN = 14;
-  function initAir2() {
-    AIR2.on = true;
-    // --- nebbiolina: due veli bassi, illuminati dalle sorgenti vicine ---
-    AIR2.lp = Array.from({ length: MISTN }, () => new THREE.Vector3(0, -99, 0)); AIR2.lc = Array.from({ length: MISTN }, () => new THREE.Vector3());
-    AIR2.mist = [[.55, 0], [1.5, 1]].map(([hy, k]) => {
-      const mat = new THREE.ShaderMaterial({
-        uniforms: { time: { value: 0 }, ctr: { value: new THREE.Vector2() }, base: { value: new THREE.Color() }, amt: { value: .2 }, k: { value: k }, lp: { value: AIR2.lp }, lc: { value: AIR2.lc } },
-        vertexShader: 'varying vec3 vP; void main(){ vec4 w = modelMatrix*vec4(position,1.); vP = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }',
-        fragmentShader: `uniform float time; uniform vec2 ctr; uniform vec3 base; uniform float amt; uniform float k; uniform vec3 lp[${MISTN}]; uniform vec3 lc[${MISTN}]; varying vec3 vP;
-          float h(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
-          float n(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f); return mix(mix(h(i),h(i+vec2(1,0)),f.x), mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x), f.y); }
-          void main(){
-            vec2 p = vP.xz*.11 + vec2(time*.03*(1.+k), time*.017);
-            float f = n(p)*.55 + n(p*2.1+5.)*.3 + n(p*4.7+9.)*.15;
-            float a = smoothstep(.3, .75, f) * amt * (1. - smoothstep(30., 46., distance(vP.xz, ctr)));
-            vec3 L = vec3(0.); for (int i=0;i<${MISTN};i++){ vec3 q = lp[i]; float dd = distance(vP.xz, q.xz); float rr = 3.5 + max(0., q.y - vP.y) * 1.2; L += lc[i] * pow(max(0., 1. - dd/rr), 2.); }
-            vec3 col = base + L;
-            gl_FragColor = vec4(col, a * (.55 + min(1., dot(L, vec3(.33))) * 1.2)); }`,
-        transparent: true, depthWrite: false, fog: false,
-      });
-      const pl = new THREE.Mesh(new THREE.PlaneGeometry(100, 100, 1, 1), mat); pl.rotation.x = -Math.PI / 2; pl.renderOrder = 4; pl.userData.hy = hy; scene.add(pl); return pl;
-    });
-    // --- camini: sulle case (non sul regime né sui magazzini), uno su due fuma ---
-    AIR2.ch = [];
-    const brick = sm('#8a6656', { roughness: 1 }), capM = sm('#4a4644', { roughness: 1 });
-    dyn.buildings.forEach((rec, bi) => {
-      const b = rec.b, bb = rec.box3; if (!b || !bb || b.warehouse) return;
-      const u = String(b.use || '') + String(b.kind || ''); if (/caserma|rocca|hangar|deposito|commiss|cultura|baracca|chiesa/.test(u)) return;
-      const w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z; if (w < 3 || d < 3) return;
-      const r = rng(bi * 977 + 13); if (r() < .3) return;
-      const top = rec.flat ? bb.max.y - 2.5 : bb.max.y - .5, cx = bb.min.x + w * (.2 + r() * .6), cz = bb.min.z + d * (.2 + r() * .6);
-      const g = new THREE.Group(), hh = 1.3 + r() * .7;
-      const st = box(.7, hh, .7, brick); st.position.set(0, hh / 2, 0); g.add(st);
-      const cap = box(.9, .12, .9, capM); cap.position.set(0, hh + .05, 0); g.add(cap);
-      g.position.set(cx, top, cz); scene.add(g);
-      if (r() < .62) AIR2.ch.push({ x: cx, y: top + hh + .15, z: cz, ph: r() * 20, k: .8 + r() * .5 });
-    });
-    const smM = new THREE.SpriteMaterial({ map: smokeTexture(), color: '#6a6c70', transparent: true, opacity: 0, depthWrite: false });
-    AIR2.smoke = []; for (let i = 0; i < 150; i++) { const sp = new THREE.Sprite(smM.clone()); sp.visible = false; sp.renderOrder = 3; scene.add(sp); AIR2.smoke.push(sp); }
-    // --- tombini: il chiusino sotto ogni sbuffo di vapore in strada ---
-    const lidM = sm('#1a1a1e', { roughness: .5, metalness: .5 }), seen = {};
-    VX.steam.forEach(s => { if (s.k > .9) return; const key = Math.round(s.x * 4) + ',' + Math.round(s.z * 4); if (seen[key]) return; seen[key] = 1;
-      const lid = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .04, 14), lidM); lid.position.set(s.x, s.y - .02, s.z); scene.add(lid); });
-  }
-  function tickAir2(time, night) {
-    if (!AIR2.on) initAir2();
-    // nebbiolina: le sorgenti più vicine la accendono
-    const src = (dyn.reflList || []).filter(L => !L.off && L.base > 0);
-    for (let i = 0; i < MISTN; i++) { const L = src[i];
-      if (L) { AIR2.lp[i].set(L.x, L.y, L.z); const kk = night * Math.min(1.4, L.base * .35) * (L.spill ? .7 : 1); AIR2.lc[i].set(L.color.r * kk, L.color.g * kk, L.color.b * kk); }
-      else { AIR2.lp[i].set(0, -99, 0); AIR2.lc[i].set(0, 0, 0); } }
-    AIR2.mist.forEach((pl, k) => { const U = pl.material.uniforms; U.time.value = time; U.ctr.value.set(cam.x, cam.y);
-      pl.position.set(cam.x, cam.h + pl.userData.hy, cam.y);
-      U.base.value.copy(scene.fog.color).multiplyScalar(.55 + (1 - night) * .6); U.amt.value = (.16 + night * .1) * (k ? .7 : 1); });
-    // fumo dai camini vicini: sale, si allarga, il vento lo piega verso est
-    let q = 0; const cx = cam.x, cz = cam.y;
-    const near = AIR2.ch.filter(c => { const a = c.x - cx, b = c.z - cz; return a * a + b * b < 55 * 55; });
-    for (const c of near) { for (let j = 0; j < 5 && q < AIR2.smoke.length; j++) {
-      const t = ((time * .12 + c.ph + j * .2) % 1), sp = AIR2.smoke[q++], sz = (.7 + t * 3.4) * c.k;
-      sp.position.set(c.x + t * t * 4.5 + Math.sin(time * .7 + c.ph + j) * .3 * t, c.y + .2 + t * 5, c.z + t * .8); sp.material.rotation = c.ph + j + t;
-      sp.scale.set(sz, sz, 1); sp.material.opacity = Math.pow(1 - t, 1.3) * Math.min(1, t * 6) * (.62 - night * .2);
-      sp.material.color.setRGB(.3 + night * .32, .31 + night * .32, .33 + night * .32); sp.visible = true; } }   // fumo di carbone: scuro sulla neve di giorno, chiaro nel buio
-    for (; q < AIR2.smoke.length; q++) AIR2.smoke[q].visible = false;
-    // vapore dei tombini: di notte prende il colore della luce più vicina
-    if (!AIR2.tinted && LSRC.length) { AIR2.tinted = true; VX.steam.forEach(s => { let best = null, bd = 64; LSRC.forEach(L => { if (L.off) return; const d = (L.x - s.x) ** 2 + (L.z - s.z) ** 2; if (d < bd) { bd = d; best = L; } }); s.lc = best ? best.color : null; }); }
-    if (!AIR2.puffy) { AIR2.puffy = true; const st = smokeTexture(); VX.steam.forEach(s => { s.sp.material.map = st; s.sp.material.needsUpdate = true; }); }
-    VX.steam.forEach(s => { if (!s.lc) return; s.sp.material.color.setRGB(.85, .86, .89).lerp(s.lc, night * .55); });
   }
   function buildChunk(ci, cj) {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
@@ -4236,7 +4163,7 @@ var Render = (function () {
     const snowM = NEVE ? sm('#c4c8ce', { roughness: 1 }) : NOSNOW, metal = sm('#5a5e66', { roughness: .6, metalness: .4 }), dark = sm('#1c1c22', { roughness: 1 }),
       wood = sm('#6a5238', { roughness: 1 }), rust = sm('#7a4a34', { roughness: 1 });
     const tarps = ['#3e6272', '#7a3c3c', '#4c6a4c', '#8a7438', '#5a4a6a'].map(c => sm(c, { roughness: 1 }));
-    const neon = ['#b84a3c', '#e8d8bc', '#ffb050'].map(c => new THREE.MeshBasicMaterial({ color: c }));   // [luci3] niente rosa/ciano
+    const neon = ['#ff3fa4', '#38e8ff', '#ffb050'].map(c => new THREE.MeshBasicMaterial({ color: c }));
     const cloth = ['#d8d0b8', '#b04a4a', '#4a6aa0', '#caa83a'].map(c => sm(c, { roughness: 1 }));
     let n = 0;
     dyn.buildings.forEach((rec, bi) => {
@@ -4256,7 +4183,7 @@ var Render = (function () {
           put(cyl(.04, .04, 1.1, 5, metal), x, .55, z); const dish = cyl(.5, .06, .18, 12, sm('#c8ccd0', { roughness: .5 })); put(dish, x, 1.2, z).rotation.set(.9, r() * 6, 0);
         } else if (t < .4) { // antenna con la spia
           put(cyl(.03, .035, 3.4, 5, metal), x, 1.7, z); const ry0 = r() * 3; for (let q = 0; q < 5; q++) put(box(1.3 - q * .22, .035, .035, metal), x, 1.4 + q * .45, z, ry0);
-          put(new THREE.Mesh(new THREE.SphereGeometry(.09, 6, 5), new THREE.MeshBasicMaterial({ color: '#ff3030' })), x, 3.45, z);
+          put(new THREE.Mesh(new THREE.SphereGeometry(.09, 6, 5), new THREE.MeshBasicMaterial({ color: r() < .5 ? '#ff3030' : '#38e8ff' })), x, 3.45, z);
         } else if (t < .55) { // telo cerato sopra qualcosa
           const tw = 1.6 + r() * 1.4, td = 1.2 + r() * 1.2; put(box(tw, .35, td, tarps[Math.floor(r() * tarps.length)]), x, .18, z, r() * 3);
           put(box(tw * .8, .08, td * .8, snowM), x, .4, z, 0).rotation.y = g.children[g.children.length - 2].rotation.y;
@@ -4551,7 +4478,7 @@ var Render = (function () {
     const vents = (typeof WX !== 'undefined' ? WX.fires : []).map(f => [f.g.position.x, f.g.position.y + .6, f.g.position.z, 1]);
     for (let k = 0; k < 600 && vents.length < 70; k++) { const x = 352 + r() * 110, z = 90 + r() * 80, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v === T.VIA) vents.push([x, groundH(x, z) + .05, z, .7]); }
     const sMat = new THREE.SpriteMaterial({ map: glowT, color: '#d8dce4', transparent: true, opacity: 0, depthWrite: false });
-    vents.forEach(([x, y, z, k]) => { for (let q = 0; q < 5; q++) { const sp = new THREE.Sprite(sMat.clone()); sp.position.set(x, y, z); scene.add(sp); VX.steam.push({ sp, x, y, z, k, ph: r() * 10 + q * 1.3 }); } });
+    vents.forEach(([x, y, z, k]) => { for (let q = 0; q < 3; q++) { const sp = new THREE.Sprite(sMat.clone()); sp.position.set(x, y, z); scene.add(sp); VX.steam.push({ sp, x, y, z, k, ph: r() * 10 + q * 1.3 }); } });
     // ---- nebbia a strati: due veli che scorrono, radi vicino a te, fitti lontano ----
     [3, 7.5].forEach((hy, k) => {
       const mat = new THREE.ShaderMaterial({
@@ -4574,7 +4501,7 @@ var Render = (function () {
     VEGU.time.value = time;
     VX.cones.forEach(m => { m.material.opacity = night * .045; m.visible = night > .05; });
     VX.decals.forEach(d => { d.m.material.opacity = (d.always ? night * .045 : night * .02); });
-    VX.steam.forEach(s => { const t = ((time * .3 + s.ph) % 3) / 3, sz = (.7 + t * 3.0) * s.k; s.sp.position.set(s.x + Math.sin(time + s.ph) * .4 * t + t * t * 1.2, s.y + t * 3.8, s.z + t * .8); s.sp.scale.set(sz, sz, 1); s.sp.material.opacity = (1 - t) * Math.min(1, t * 5) * (.42 + night * .3); });   // [luci3] vapore più denso
+    VX.steam.forEach(s => { const t = ((time * .35 + s.ph) % 3) / 3, sz = (.6 + t * 2.2) * s.k; s.sp.position.set(s.x + Math.sin(time + s.ph) * .3 * t, s.y + t * 3.2, s.z + t * .8); s.sp.scale.set(sz, sz, 1); s.sp.material.opacity = (1 - t) * t * 1.1 * (.35 + night * .25); });
     VX.fog.forEach((pl, k) => { const U = pl.material.uniforms; U.time.value = time; U.col.value.copy(scene.fog.color).lerp(new THREE.Color('#d0d4da'), .3 * (1 - night)); U.ctr.value.set(cam.x, cam.y); U.amt.value = .22 + night * .1 - k * .06; pl.position.x = cam.x; pl.position.z = cam.y; });
   }
 
@@ -5390,7 +5317,6 @@ var Render = (function () {
     if (frameN % 2 === 0 || !dyn.reflList) { dyn.reflList = (dyn.lsp || []).concat(dyn.lpp || []).concat(SPILLS.filter(S => { const a = S.x - cam.x, b = S.z - cam.y; return a * a + b * b < 38 * 38; })); }
     updateRefl(night, dyn.reflList);
     tickAir(time, night);   // [luci2]
-    tickAir2(time, night);   // [luci3]
     dyn.flicker.forEach(f => { f.s.material.opacity = f.base * (.2 + night * .8) * (.85 + Math.sin(time * 9 + f.base * 7) * .15); });
     dyn.signs.forEach(s => { if (s.flick) { const on = Math.sin(time * 17) > -.85 || Math.sin(time * 2.3) > .2; s.m.color.setScalar(on ? 1 : .35); if (s.gl) s.gl.material.opacity = on ? .45 : .1; } });
     if (dyn.water) { const U = dyn.water.uniforms; U.time.value = time; U.night.value = night; U.dusk.value = dusk; U.fogC.value.copy(tmpC); U.camP.value.copy(camera.position); U.fogN.value = scene.fog.near; U.fogF.value = scene.fog.far; }

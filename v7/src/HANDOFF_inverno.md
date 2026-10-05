@@ -164,3 +164,11 @@ Questa chat si occupa SOLO delle luci; la chat «I progetti» fa mappa e arredo 
   - Coni di luce con uno shader: pieni vicino alla lampada, svaniscono a terra e ai bordi (prima cono uniforme quasi invisibile).
   - Post: aloni larghi e morbidi attorno alle sorgenti di notte (l'aria umida che trattiene la luce); nitidezza sul primo piano; foschia che cresce oltre il punto guardato (`dc`).
   - luci_regia1 corretto: la difesa dei colori caldi (`warmL`) vale solo a notte piena, al tramonto non arrossava più tutto.
+- `strumenti_inverno/luci_regia3.py` (dopo luci_regia2, guardia `[luci3]`, frammento `aria2.js`) — **acqua, nebbiolina, vapore, fumo**:
+  - Riflessi delle luci sull'asfalto bagnato: 96 strisce invece di 48, più lunghe (fino a 13 m) e più accese; anche vetrine e finestre.
+  - Nebbiolina bassa: due veli a 0,5 e 1,5 m sopra la quota della camera, entro ~40 m; prende il colore delle 14 sorgenti più vicine (uniform `lp`/`lc`), di giorno grigio-latte leggero.
+  - Tombini: chiusino in ghisa sotto ogni sbuffo di vapore in strada; vapore più denso, più alto, piegato dal vento, con la texture a sbuffi (`smokeTexture`), tinto di notte dalla luce più vicina.
+  - Camini: sulle case (non regime, magazzini, chiese, baracche) ~70% ha un camino, ~60% di questi fuma: fumo di carbone scuro sulla neve di giorno, chiaro nel buio; solo entro 55 m (150 sprite).
+  - Neon dei tetti e spie delle antenne non più rosa/ciano.
+- Copia prima di questo script: `_backup_neon_modelli/render_prima_di_acqua_fumo.js`.
+- Restano due puntini rosa (un palo in piazza e un'insegna): non vengono dai tetti, da trovare.
