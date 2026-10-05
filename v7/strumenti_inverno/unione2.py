@@ -14,7 +14,7 @@ def rep(old, new, n=1):
 rep("if (r() > (v === T.WALK ? .55 : .85)) return;", "if (r() > (v === T.WALK ? .3 : .55)) return; /* [unione2] */")
 rep("if (v === T.GRASS) { const k = 2 + Math.floor(r() * 4);", "if (v === T.GRASS) { const k = 1 + Math.floor(r() * 3); /* [unione2] */")
 rep("else if (v === T.DIRT && r() < .75)", "else if (v === T.DIRT && r() < .4 /* [unione2] */)")
-rep("else if (v === T.COB && r() < .5)", "else if (v === T.COB && !walls.length && r() < .04 /* [unione2] la pavimentazione resta pulita */)")
+rep("else if (v === T.COB && r() < .5)", "else if (v === T.COB && !walls.length && r() < .17 /* [unione2] un ciuffo ogni sei caselle circa */)")
 rep("(k1 > .3 ? 'cemento' : k1 > -.12 ? 'ciottoli' : k2 > .15 ? 'terra' : 'erba')", "(k1 > .3 ? 'cemento' : k1 > -.3 ? 'ciottoli' : 'terra') /* [unione2] niente erba nel selciato */")
 rep("k1 = vnz(X / 11, Y / 11) + vnz(X / 3.2, Y / 3.2) * .45", "k1 = vnz(X / 14, Y / 14) + vnz(X / 3.2, Y / 3.2) * .08 /* [unione2] chiazze grandi */")
 # notte: la luna disegna le sagome anche in piazza (Andrea: «è scurissimo»), il cielo un filo più presente

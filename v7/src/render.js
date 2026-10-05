@@ -2982,7 +2982,7 @@ var Render = (function () {
     for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
       const row = Math.floor(py / A), off = row % 2 ? A / 2 : 0, cx = Math.floor((px + off) / A) * A - off + A / 2, cy = (row + 1) * A, dx = px + .5 - cx, dy = py + .5 - cy, rr = Math.hypot(dx, dy);
       const ring = Math.floor(rr / 2), ang = Math.atan2(-dy, dx), seg = Math.floor(ang * rr / 2.1 + ring * .5), joint = rr % 2 < .55 || (ang * rr / 2.1 + ring * .5) % 1 < .3;
-      const h = th(seg, ring * 131 + row * 17 + Math.floor((px + off) / A) * 7, 91), g = joint ? 30 + h * 10 : 70 + h * 34, w = th(seg, ring, 92) < .08 ? 18 : 0;
+      const h = th(seg, ring * 131 + row * 17 + Math.floor((px + off) / A) * 7, 91), g = joint ? 44 + h * 6 : 60 + h * 16,   /* [unione5] meno contrasto */ w = th(seg, ring, 92) < .08 ? 18 : 0;
       const o = (py * S + px) * 4; d[o] = g + 4 - w * .2; d[o + 1] = g + (joint ? 0 : 1) + w * .4; d[o + 2] = g - 6 - w * .3; d[o + 3] = 255;
     }
     x.putImageData(img, 0, 0); return (S1.samp = c);
@@ -4115,7 +4115,7 @@ var Render = (function () {
           if (walls.length > 1 && w < .3) continue;
           add(w < .3 ? 'Bush_Common' : w < .55 ? 'Grass_Common_Tall' : w < .75 ? 'Fern_1' : w < .9 ? 'Plant_7_Big' : 'Plant_1_Big', x, 0, z, w < .3 ? .4 + r() * .25 : w < .55 ? .6 + r() * .4 : w < .75 ? .3 + r() * .15 : .28 + r() * .14, r() * 6.28, { ground: true, col: pick(r, LEAF) }); } }
       else if (v === T.DIRT && r() < .4 /* [unione2] */) add('Grass_Wispy_Short', tx * TS + r() * 2, 0, ty * TS + r() * 2, .8 + r() * .5, r() * 6.28, { ground: true, col: '#f0e4c0' });
-      else if (v === T.COB && !walls.length && r() < .04 /* [unione2] la pavimentazione resta pulita */) add(r() < .6 ? 'Grass_Wispy_Short' : 'Plant_1', tx * TS + r() * 2, 0, ty * TS + r() * 2, .5 + r() * .4, r() * 6.28, { ground: true, col: pick(r, LEAF) });
+      else if (v === T.COB && !walls.length && r() < .17 /* [unione2] un ciuffo ogni sei caselle circa */) add(r() < .6 ? 'Grass_Wispy_Short' : 'Plant_1', tx * TS + r() * 2, 0, ty * TS + r() * 2, .5 + r() * .4, r() * 6.28, { ground: true, col: pick(r, LEAF) });
     }
   }
 
@@ -8872,7 +8872,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   }
   // ---- carte e foglie che il vento trascina a terra (un InstancedMesh, vicino alla camera) ----
   function initPapers() {   // [animazioni-mondo]
-    const N = 44, geo = new THREE.PlaneGeometry(.3, .4); geo.rotateX(-Math.PI / 2);
+    const N = 12, geo = new THREE.PlaneGeometry(.3, .4);   /* [unione5] */ geo.rotateX(-Math.PI / 2);
     const m = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: '#ffffff', side: THREE.DoubleSide }), N);
     m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.receiveShadow = true; scene.add(m);
     const S = []; for (let i = 0; i < N; i++) { S.push({ x: 0, z: 0, y: 0, vx: 0, vy: 0, vz: 0, ry: Math.random() * 6, rx: 0, rz: 0, sp: 0, seed: Math.random(), dead: true }); m.setColorAt(i, new THREE.Color('#d8d4c8')); }
@@ -9868,7 +9868,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     fillAmb.intensity = .12 + (1 - night) * .12 - night * .07; /* [unione1] */ /* [luci5] */ fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');
     moon.intensity = .25 + (1 - night) * .77 + night * .06; /* [unione2] */ /* [unione1] la luna disegna le sagome */ /* [luci5] un filo di luna per le sagome */ /* [luci1] di notte meno luna */ moon.color.set(night > .5 ? '#7e8eb8' : (dusk > .3 ? '#e0a888' : '#f2eee4'));
     { const hh = (st.t / 60) % 24, sa = (hh - 13) / 12 * Math.PI, el = night > .5 ? 26 : Math.max(9, 34 - Math.abs(hh - 13) * 3.4);   /* [amb1] il sole gira, basso al mattino e alla sera */
-      moon.position.set(cam.x - Math.sin(sa) * 38 - 8, el, cam.y - 26 - Math.cos(sa) * 8); moon.target.position.set(cam.x, 0, cam.y); }
+      moon.position.set(cam.x - Math.sin(sa) * 38 - 8, el, night > .5 ? cam.y - 26 - Math.cos(sa) * 8 : cam.y + 22 + Math.cos(sa) * 10);   /* [unione4] di giorno il sole è a sud */ moon.target.position.set(cam.x, 0, cam.y); }
     if (dyn.fill) { dyn.fill.position.set(cam.x + 8, 14, cam.y + 40); dyn.fill.target.position.set(cam.x, 0, cam.y); dyn.fill.intensity = .12 + (1 - night) * .06 - night * .1; /* [luci5] */ dyn.fill.color.set(night > .5 ? '#5f86b4' : '#a8bcd0'); }
     if (dyn.rim) { dyn.rim.position.set(cam.x + 30, 18, cam.y + 34); dyn.rim.target.position.set(cam.x, 0, cam.y); dyn.rim.intensity = .1 + (1 - night) * .1 - night * .07; /* [luci5] */ dyn.rim.color.set(night > .5 ? '#6a8ac8' : '#b8c8e8'); }
     dyn.buildings.forEach(b => b.mats.forEach(m => { if (m.emissiveMap) m.emissiveIntensity = .04 + night * .85; }));
@@ -9891,7 +9891,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     dyn.flicker.forEach(f => { f.s.material.opacity = f.base * (.2 + night * .8) * (.85 + Math.sin(time * 9 + f.base * 7) * .15); });
     dyn.signs.forEach(s => { if (s.flick) { const on = Math.sin(time * 17) > -.85 || Math.sin(time * 2.3) > .2; s.m.color.setScalar(on ? 1 : .35); if (s.gl) s.gl.material.opacity = on ? .45 : .1; } });
     if (dyn.water) { const U = dyn.water.uniforms; U.time.value = time; U.night.value = night; U.dusk.value = dusk; U.fogC.value.copy(tmpC); U.camP.value.copy(camera.position); U.fogN.value = scene.fog.near; U.fogF.value = scene.fog.far; if (U.wx) U.wx.value.set(WXc, WXwet, WXfog, WXst); }
-    if (dyn.sky) { dyn.sky.position.copy(camera.position); const U = dyn.sky.material.uniforms; U.night.value = night; U.dusk.value = dusk; U.time.value = time; if (U.wx) U.wx.value.set(WXc, WXwet, WXfog, METEO.reg); const sunA = ((st.t / 60) % 24 - 12) / 12 * Math.PI; U.sun.value.set(-Math.cos(sunA * .5) * .9 - .2, Math.max(-.2, .55 - Math.abs((st.t / 60) % 24 - 13) / 12), -.35).normalize(); }
+    if (dyn.sky) { dyn.sky.position.copy(camera.position); const U = dyn.sky.material.uniforms; U.night.value = night; U.dusk.value = dusk; U.time.value = time; if (U.wx) U.wx.value.set(WXc, WXwet, WXfog, METEO.reg); const sunA = ((st.t / 60) % 24 - 12) / 12 * Math.PI; U.sun.value.copy(moon.position).sub(moon.target.position).normalize();   /* [unione4] lo stesso sole della luce */ }
     if (dyn.water && dyn.water.uniforms.lp) {   /* [unione1] sole, luna e luci di riva per il riflesso del mare */
       const U = dyn.water.uniforms; if (dyn.sky) U.sun.value.copy(dyn.sky.material.uniforms.sun.value); U.moonD.value.copy(moon.position).sub(moon.target.position).normalize();
       if (frameN % 6 === 0 || !dyn.wl1) { const cx = cam.x, cz = cam.y; dyn.wl1 = LSRC.filter(L => { if (L.off || !(L.base > 0) || Math.abs(L.x - cx) > 70 || Math.abs(L.z - cz) > 70) return false; if (L.cw1 === undefined) L.cw1 = coastIn(L.x, L.z); return L.cw1 < 7; }).sort((a, b) => ((a.x - cx) ** 2 + (a.z - cz) ** 2) - ((b.x - cx) ** 2 + (b.z - cz) ** 2)).slice(0, 16); }
