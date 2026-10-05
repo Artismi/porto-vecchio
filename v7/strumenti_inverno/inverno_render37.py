@@ -9,7 +9,7 @@ def rep(old, new, n=1):
     assert s.count(old) == n, (old[:90], s.count(old)); s = s.replace(old, new)
 # il frame: dopo la regia delle luci, un minimo di luna e di cielo, così di notte la strada e il bosco si leggono
 rep("    updateLights(time, night, cam.x, cam.y);\n",
-    "    updateLights(time, night, cam.x, cam.y);\n    { hemi.intensity = Math.max(hemi.intensity, .26 + night * .24); moon.intensity = Math.max(moon.intensity, .55 + night * .1); fillAmb.intensity = Math.max(fillAmb.intensity, .14 + night * .1); }   // [isola37] la notte di luna si legge\n")
+    "    updateLights(time, night, cam.x, cam.y);\n    { const dayK = 1 - night; hemi.intensity = Math.max(hemi.intensity, .4 * dayK); moon.intensity = Math.max(moon.intensity, .65 * dayK); fillAmb.intensity = Math.max(fillAmb.intensity, .2 * dayK); }   // [isola37] minimi solo di giorno: la notte è della regia luci\n")
 # il post: prima della vignetta, le ombre si alzano, i caldi medi tornano, il suolo chiaro al sole si spegne un poco
 rep("          vec2 q = vUv-.5; c *= 1. - dot(q,q)*1.25;",
     """          { float l2 = dot(c, vec3(.3,.59,.11));   // [isola37]

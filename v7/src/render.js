@@ -6250,7 +6250,7 @@ var Render = (function () {
     if (dyn.backdropMats) dyn.backdropMats.forEach(m => m.emissiveIntensity = .1 + night * .9);
     const time = ui.time || st.clock;
     updateLights(time, night, cam.x, cam.y);
-    { hemi.intensity = Math.max(hemi.intensity, .26 + night * .24); moon.intensity = Math.max(moon.intensity, .55 + night * .1); fillAmb.intensity = Math.max(fillAmb.intensity, .14 + night * .1); }   // [isola37] la notte di luna si legge
+    { const dayK = 1 - night; hemi.intensity = Math.max(hemi.intensity, .4 * dayK); moon.intensity = Math.max(moon.intensity, .65 * dayK); fillAmb.intensity = Math.max(fillAmb.intensity, .2 * dayK); }   // [isola37] minimi solo di giorno: la notte è della regia luci
     ISO.chunks.forEach(ch => { if (ch.mat) ch.mat.emissiveIntensity = night * .95; });   // [inverno30]
     if (frameN % 2 === 0 || !dyn.reflList) { dyn.reflList = (dyn.lsp || []).concat(dyn.lpp || []).concat(SPILLS.filter(S => { const a = S.x - cam.x, b = S.z - cam.y; return a * a + b * b < 38 * 38; })); }
     updateRefl(night, dyn.reflList);
