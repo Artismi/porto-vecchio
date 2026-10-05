@@ -128,7 +128,7 @@ var TascheUI = (function () {
     app.appendChild(m);
     const h = document.createElement('div'); h.id = 'ts-hint'; h.innerHTML = '<canvas width="32" height="16"></canvas><span></span><kbd>U</kbd>'; app.appendChild(h);
     h.addEventListener('click', () => useFirst());
-    const b = document.createElement('button'); b.id = 'ts-btn'; b.innerHTML = '<canvas width="32" height="16"></canvas>TASCHE · I'; app.appendChild(b);
+    const b = document.createElement('button'); b.id = 'ts-btn'; b.innerHTML = '<canvas width="32" height="16"></canvas>MENU · I'; app.appendChild(b);
     b.addEventListener('click', () => toggle());
     m.addEventListener('click', e => {
       const go = e.target.closest('[data-go]'); if (go) { toggle(false); if (go.dataset.go === 'book') dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' })); return; }
@@ -160,6 +160,7 @@ var TascheUI = (function () {
     if (U.open) { say(msg); render(true); } else if (PV().G && PV().G.feed) PV().G.feed(st, msg, 'info');
   }
   function toggle(on) {
+    if (typeof MenuUI !== 'undefined') { if (on === false) { if (MenuUI.state.open) MenuUI.close(); } else MenuUI.toggle('zaino'); return; }   // [menu] le Tasche sono la scheda Zaino del menu
     if (!mount()) return; const pv = PV(); if (!pv) return;
     U.open = on === undefined ? !U.open : on; $('ts-menu').classList.toggle('on', U.open);
     if (pv.ui) pv.ui.menu = U.open;   // il gioco va in pausa, come col Taccuino
@@ -184,7 +185,7 @@ var TascheUI = (function () {
     icon($('ts-btn').querySelector('canvas'), held);
     const A = st.over || (PV().ui && (PV().ui.intro || PV().ui.dialog)) ? [] : acts(st), first = A.find(x => x.run);
     const hint = $('ts-hint');
-    hint.classList.toggle('on', !!first && !U.open);
+    hint.classList.toggle('on', !!first && !U.open && typeof MenuUI === 'undefined');   // [menu] in scena basta il riquadro «Qui»
     if (first && !U.open) { icon(hint.querySelector('canvas'), held); hint.querySelector('span').textContent = first.label; }
     if (!U.open) return;
     const I = items(st);

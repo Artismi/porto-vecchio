@@ -35,6 +35,7 @@ var RisaccaUI = (function () {
 #rs-here { left: 50%; bottom: 58px; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 340px); pointer-events: auto; }
 #rs-here button { font-family: var(--f-pix); font-size: 13.5px; padding: 5px 10px; background: var(--panel); color: var(--fg); border: 2px solid #1f6f7c; box-shadow: 3px 3px 0 #07060e; cursor: pointer; }
 #rs-here button:hover, #rs-here button:focus-visible { border-color: var(--cyan); color: var(--cyan); outline: none; }
+#rs-here button.qui { display: flex; gap: 8px; align-items: center; border-color: #3a3a42; } #rs-here button.qui span { color: #e8d040; font-weight: 700; } #rs-here button.qui kbd { color: #e8d040; font-size: 11px; }
 #rs-here button.bad { border-color: #8a2a4a; } #rs-here button.bad:hover { color: var(--neon); border-color: var(--neon); }
 @media (max-width: 760px) { #rs-here { max-width: calc(100vw - 24px); bottom: 96px; } }
 #rs-pop { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); padding: 10px 12px; pointer-events: auto; display: grid; gap: 6px; min-width: 260px; width: 440px; max-height: calc(100vh - 160px); overflow: auto; max-width: calc(100vw - 24px); }
@@ -152,8 +153,15 @@ var RisaccaUI = (function () {
     const key = list.map(a => a.id + a.arg + a.label).join('|');
     if (key !== U.lastHere) {
       U.lastHere = key;
+      // [menu] in scena un solo riquadro: le cose da fare stanno nella scheda «Qui» del menu
+      if (typeof MenuUI !== 'undefined') {
+        const n = list.length + ((typeof Azioni !== 'undefined' && Azioni.playerActions) ? Azioni.playerActions(st).filter(a => a.run && !list.some(b => b.label === a.label)).length : 0);
+        $('rs-here').innerHTML = n ? `<button class="qui" data-q="1"><span>Qui</span> ${n} ${n > 1 ? 'cose da fare' : 'cosa da fare'} <kbd>▸</kbd></button>` : '';
+        const b0 = $('rs-here').querySelector('button'); if (b0) b0.onclick = () => MenuUI.open('qui');
+      } else {
       $('rs-here').innerHTML = list.map((a, i) => `<button data-i="${i}" class="${a.bad ? 'bad' : ''}">${esc(a.label)}</button>`).join('');
       $('rs-here').querySelectorAll('button').forEach(b => b.onclick = () => doHere(list[+b.dataset.i]));
+      }
     }
   }
   function doHere(a) {
@@ -548,5 +556,5 @@ var RisaccaUI = (function () {
     requestAnimationFrame(loop);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init, 0);
-  return { openChat, closeChat, togglePanel, ringOptions, state: U, send, renderPanel };
+  return { openChat, closeChat, togglePanel, ringOptions, state: U, send, renderPanel, doHere };
 })();

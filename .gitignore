@@ -1,0 +1,5 @@
+# Chiavi API: restano solo sul PC (e su Vercel come variabile segreta), mai su GitHub
+v7/api_key.json
+api_key.json
+.vercel
+node_modules
