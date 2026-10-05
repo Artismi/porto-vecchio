@@ -45,8 +45,8 @@ function loadConfig() {
 const CANALI = { dialogo: 'chat', gruppo: 'mente', riflessione: 'mente', chiacchiera: 'eventi', regia: 'eventi' };   // [regia] il regista va con gli eventi
 function cfgPer(cfg, canale) {
   const k = String((cfg.chiavi && cfg.chiavi[canale]) || '').trim().replace(/^["']|["']$/g, '');
-  if (!k || /INCOLLA|CHIAVE|INSERISCI/i.test(k)) return Object.assign({}, cfg, { canale, propria: false });
-  const c = Object.assign({}, cfg, { apiKey: k, canale, propria: true, bearer: false });
+  if (!k || /INCOLLA|CHIAVE|INSERISCI/i.test(k)) return Object.assign({}, cfg, { apiKey0: cfg.apiKey, canale, propria: false });
+  const c = Object.assign({}, cfg, { apiKey: k, apiKey0: cfg.apiKey, canale, propria: true, bearer: false });   // [unione9] apiKey0: la generale, per pescare se questa finisce
   const g = detectProvider(k); if (g) c.provider = g;
   return c;
 }
@@ -187,7 +187,24 @@ function chatCfg(cfg) {
 }
 // Chiamata con scelta automatica del modello; restituisce l'oggetto JSON o null.
 // urgent = il giocatore aspetta una risposta (dialogo); false = chiacchiere e riflessioni, che si possono saltare.
+// [unione9] se la chiave del canale è finita, in pausa o rifiutata, si pesca dalle altre: prima la generale, poi quelle degli altri canali
+const QUOTA9 = s => s === undefined || s === null || s === 429 || s === 403 || s === 401 || s === 'chiave';
 async function callLLM(cfg, systemPrompt, userMessage, maxTokens = 500, urgent = true) {
+  LLM.lastError = null;
+  const r = await callLLM1(cfg, systemPrompt, userMessage, maxTokens, urgent); if (r) return r;
+  if (!QUOTA9(LLM.lastError && LLM.lastError.status)) return null;   // risposta sbagliata o rete: un'altra chiave non cambia niente
+  const tried = new Set([String(cfg.apiKey || '')]);
+  const keys = [cfg.apiKey0].concat(Object.values(cfg.chiavi || {})).map(k => String(k || '').trim().replace(/^["']|["']$/g, '')).filter(k => k && !/INCOLLA|CHIAVE|INSERISCI/i.test(k));
+  for (const k of keys) {
+    if (tried.has(k)) continue; tried.add(k);
+    const c = Object.assign({}, cfg, { apiKey: k, bearer: false, propria: true }); const g = detectProvider(k); if (g) c.provider = g;
+    LLM.lastError = null;
+    const r2 = await callLLM1(c, systemPrompt, userMessage, maxTokens, urgent); if (r2) { console.log(`[Mente] canale ${cfg.canale || '?'}: risposto con un'altra chiave (…${k.slice(-4)})`); return r2; }
+    if (!QUOTA9(LLM.lastError && LLM.lastError.status)) return null;
+  }
+  return null;
+}
+async function callLLM1(cfg, systemPrompt, userMessage, maxTokens = 500, urgent = true) {
   if (cfg.provider === 'none') return null;
   if (!cfg.apiKey) { LLM.lastError = { when: Date.now(), status: 'chiave', msg: 'Nessuna chiave: su Vercel imposta la variabile GEMINI_API_KEY (Settings → Environment Variables) e rifai il deploy.' }; return null; }
   if (typeof fetch !== 'function') { LLM.lastError = { when: Date.now(), status: 'node', msg: 'Node troppo vecchio: serve Node 18 o più recente' }; return null; }
