@@ -645,7 +645,7 @@ var Popolo = (function () {
     const P = n.pop, m = minOfDay(st.t); if (!P.plan.length) return null;
     let idx = 0;
     for (let i = 0; i < P.plan.length; i++) {
-      const b = P.plan[i]; let at = b.fixed ? b.at : b.at + P.jit + blockJit(n, b);   // [passo] ogni blocco il suo ritardo: non partono sempre nello stesso ordine
+      const b = P.plan[i]; let at = b.fixed ? b.at : b.at + P.jit + (b.__j !== undefined ? b.__j : (b.__j = blockJit(n, b)));   // [passo] ogni blocco il suo ritardo: non partono sempre nello stesso ordine
       if (P.near && i > 0 && b.tgt) {
         // [convivenza] si parte prima per arrivare in tempo (agli orari fissi anche molto prima), ma non si lascia un impegno
         // fisso prima di averlo fatto: un appuntamento si aspetta almeno 45 minuti, il resto almeno 20
@@ -1586,6 +1586,7 @@ var Popolo = (function () {
   // da lontano: si salta al posto del blocco quando il blocco cambia
   function farMove(st, n) {
     const P = n.pop; n.speedNow = 0;
+    if (st.clock < (n.__fm || 0)) return; n.__fm = st.clock + .28 + Math.random() * .12;   // [passo] chi è lontano non serve ricalcolarlo a ogni fotogramma
     if (n.jailedUntil > st.t) return;
     const b = blockNow(st, n); if (!b) return;
     if (tkey(b.tgt) + '@' + b.at !== P.curKey || !n.inside) snapFar(st, n);

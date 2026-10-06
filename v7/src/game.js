@@ -228,10 +228,10 @@ var Game = (function () {
     { skin: '#dcae88', top: '#e0d8c8', bottom: '#3a3a44', hair: '#888', hat: 'none', build: 1.0, extra: 'glasses' },
   ];
 
-  const SEV = { scippo: .5, aggressione: .75, rapina: .85, furto_vespa: .6, furto_auto: .65, investimento: .7, corruzione: .4, lavoro: .4, spari: .88, ferimento: .95, omicidio: 1, esplosione: .95, molotov: .9 };
-  const NOISE = { scippo: 3, aggressione: 12, rapina: 22, furto_vespa: 10, furto_auto: 12, investimento: 14, corruzione: 2, lavoro: 0, spari: 34, ferimento: 34, omicidio: 34, esplosione: 70, molotov: 16 };
-  const NEG = { scippo: 1, aggressione: 1, rapina: 1, furto_vespa: 1, furto_auto: 1, investimento: 1, corruzione: 1, spari: 1, ferimento: 1, omicidio: 1, esplosione: 1, molotov: 1 };
-  const LABEL = { scippo: 'Scippo', aggressione: 'Aggressione', rapina: 'Rapina', furto_vespa: 'Furto di Vespa', furto_auto: 'Furto d\'auto', investimento: 'Investimento', corruzione: 'Corruzione', lavoro: 'Lavoro onesto', spari: 'Spari', ferimento: 'Ferimento', omicidio: 'Omicidio', esplosione: 'Esplosione', molotov: 'Molotov' };
+  const SEV = { vandalismo: .35, scippo: .5, aggressione: .75, rapina: .85, furto_vespa: .6, furto_auto: .65, investimento: .7, corruzione: .4, lavoro: .4, spari: .88, ferimento: .95, omicidio: 1, esplosione: .95, molotov: .9 };
+  const NOISE = { vandalismo: 8, scippo: 3, aggressione: 12, rapina: 22, furto_vespa: 10, furto_auto: 12, investimento: 14, corruzione: 2, lavoro: 0, spari: 34, ferimento: 34, omicidio: 34, esplosione: 70, molotov: 16 };
+  const NEG = { vandalismo: 1, scippo: 1, aggressione: 1, rapina: 1, furto_vespa: 1, furto_auto: 1, investimento: 1, corruzione: 1, spari: 1, ferimento: 1, omicidio: 1, esplosione: 1, molotov: 1 };
+  const LABEL = { vandalismo: 'Vetrina rotta', scippo: 'Scippo', aggressione: 'Aggressione', rapina: 'Rapina', furto_vespa: 'Furto di Vespa', furto_auto: 'Furto d\'auto', investimento: 'Investimento', corruzione: 'Corruzione', lavoro: 'Lavoro onesto', spari: 'Spari', ferimento: 'Ferimento', omicidio: 'Omicidio', esplosione: 'Esplosione', molotov: 'Molotov' };
   const ESCALATE = { scippo: 'aggressione', investimento: 'aggressione', ferimento: 'omicidio' };
   // agganci per i moduli esterni (Risacca): create, think, move, step, verb
   const HOOKS = {};
@@ -806,6 +806,7 @@ var Game = (function () {
       case 'omicidio': return `ha ammazzato ${T === 'me' ? 'qualcuno' : T}`;
       case 'esplosione': return 'ha fatto saltare in aria una macchina';
       case 'molotov': return 'ha lanciato una molotov';
+      case 'vandalismo': return 'ha rotto una vetrina a sassate';   // [trame]
     }
     return (HOOKS.verb && HOOKS.verb(st, m, T)) || 'ha fatto qualcosa';
   }
@@ -1898,6 +1899,28 @@ var Game = (function () {
     }
   }
   // vetrine: le facciate déco hanno vetrate su tutto il piano terra, negozi e locali solo sul davanti
+  // [trame] lanciare: chiunque può tirare un sasso (o altro) verso un punto; vola davvero e quando cade fa quello che fa
+  function npcThrow(st, n, tx, ty, kind) {
+    // se il bersaglio è davanti a un edificio (la porta sta sulla strada) si mira alla facciata più vicina
+    const isB = (x, y) => grid[Math.floor(y / TS) * GW + Math.floor(x / TS)] === T.BLD;
+    if (!isB(tx, ty)) { let best = null, bd = 9; for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7]]) for (const r of [1.2, 2.2]) { const x = tx + ox * r, y = ty + oy * r; if (isB(x, y)) { const dd = dist(x, y, n.x, n.y); if (dd < bd) { bd = dd; best = { x, y }; } } } if (best) { tx = best.x; ty = best.y; } }
+    const d = Math.max(1, dist(n.x, n.y, tx, ty)), Tf = clamp(d / 11, .35, 1.3), g = 9.8;
+    n.face = Math.atan2(ty - n.y, tx - n.x); n.gesture = .4;
+    st.proj.push({ x: n.x, y: n.y, z: 1.6, vx: (tx - n.x) / Tf, vy: (ty - n.y) / Tf, vz: (-1.6 + .5 * g * Tf * Tf) / Tf, g, kind: kind || 'sasso', owner: n.id });
+  }
+  function stoneLand(st, pr) {
+    const ang = Math.atan2(pr.vy, pr.vx), tx = Math.floor(pr.x / TS), ty = Math.floor(pr.y / TS), i = ty * GW + tx, by = pr.owner === 'player' ? 'player' : byId(st, pr.owner);
+    if (pr.hit) {
+      const k = pr.hit; st.sfx.push({ k: 'hurt', x: pr.x, y: pr.y });
+      if (k === st.player) damagePlayer(st, 6, ang, pr.owner); else { k.stun = Math.max(k.stun || 0, .6); damage(st, k, 7, by && by !== 'player' ? by : 'env', ang, 'sasso'); }
+    } else if (grid[i] === T.BLD && bIndex[i] >= 0) {
+      const b = BUILDINGS[bIndex[i]], glassy = glassFront(b, ang);
+      st.fx.push({ k: 'facadehit', x: pr.x, y: pr.y, a: ang, n: 1, need: 99, b: bIndex[i], tx, ty, speed: 9, glass: glassy });
+      st.sfx.push({ k: glassy ? 'glass' : 'wallhit', x: pr.x, y: pr.y });
+      if (glassy) emit(st, 'vandalismo', { x: pr.x, y: pr.y, actor: by && by !== 'player' ? by.id : 'player', npcCrime: by !== 'player' });   // chi vede sa chi è stato
+    } else st.sfx.push({ k: 'wallhit', x: pr.x, y: pr.y });
+    panicAround(st, pr.x, pr.y, 9, 3);
+  }
   function glassFront(b, ang) {
     if (!b || b.church || b.warehouse || b.lighthouse) return false;
     if (b.deco) return true;
@@ -2072,7 +2095,12 @@ var Game = (function () {
     st.proj = st.proj.filter(pr => {
       pr.x += pr.vx * dt; pr.y += pr.vy * dt; pr.z += pr.vz * dt; pr.vz -= pr.g * dt;
       if (solidM(pr.x, pr.y) && pr.z < 8) { pr.z = 0; }
+      if (pr.kind === 'sasso' && pr.z > 0 && pr.z < 2.2) {   // [trame] un sasso prende chi incontra per strada
+        const who = st.npcs.find(k => !k.dead && !k.inside && k.id !== pr.owner && Math.hypot(k.x - pr.x, k.y - pr.y) < .55) || (Math.hypot(st.player.x - pr.x, st.player.y - pr.y) < .55 && pr.owner !== 'player' ? st.player : null);
+        if (who) { pr.z = 0; pr.hit = who; }
+      }
       if (pr.z > 0) return true;
+      if (pr.kind === 'sasso') { stoneLand(st, pr); return false; }
       st.fires.push({ x: pr.x, y: pr.y, r: 2.4, until: st.clock + 6, owner: pr.owner });
       st.fx.push({ k: 'molotov', x: pr.x, y: pr.y }); st.sfx.push({ k: 'glass', x: pr.x, y: pr.y });
       if (pr.owner === 'player') { const ev = emit(st, 'molotov', { x: pr.x, y: pr.y }); addLog(st, `${clockStr(st.t)} · Hai lanciato una molotov a ${ev.place}.`, 'bad', ev.id); }
@@ -2185,7 +2213,7 @@ var Game = (function () {
   }
 
   return {
-    TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
+    TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
     tileAt, walkT, walkM, bIndex, create, step, act, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
