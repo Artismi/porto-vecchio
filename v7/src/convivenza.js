@@ -53,6 +53,8 @@ var Convivenza = (function () {
     const fr = (P.friends || []).slice(0, 5).map(id => G.nameOf(st, id)); if (fr.length) out.push(`AMICI: ${fr.join(', ')}.`);
     const no = st.npcs.filter(k => k !== n && k.pop && Po.opinionOf(st, n, k.id) < -.3).slice(0, 4).map(k => k.first); if (no.length) out.push(`NON SI FIDA DI: ${no.join(', ')}.`);
     const op = Po.opinionOf(st, n, 'player'); if (Math.abs(op) > .15) out.push(`DI TE (${NAME()}) PENSA: ${op > 0 ? 'bene' : 'male'}, per quello che si ricorda.`);
+    if (n.__ap && n.__ap.said) out.push(`È VENUTO A DIRTI: «${n.__ap.line}»`);   // [vivi]
+    if (P.askPlayer && st.t - P.askPlayer.t < 600) out.push(`TI HA CHIESTO: ${P.askPlayer.label} (se gliela dai: verbo "ricevi").`);
     if (P.debiti && P.debiti.player) out.push(`TI DEVE UN FAVORE (${P.debiti.player.why || 'per quello che hai fatto'}): lo ricambia volentieri.`);
     const said = (n.said || []).slice(-3).map(x => `«${x.text}»`); if (said.length) out.push(`HA DETTO DI RECENTE IN GIRO: ${said.join(' ')}.`);
     const lg = (P.lunga || []).slice().sort((a, b) => b.w - a.w).slice(0, 4).map(e => e.text); if (lg.length) out.push(`NON DIMENTICA: ${lg.join('; ')}.`);
@@ -158,6 +160,7 @@ var Convivenza = (function () {
   // chi accompagna ti sta dietro (fuori dagli edifici; se entri, aspetta alla porta)
   const mv0 = G.HOOKS.move;
   G.HOOKS.move = (st, n, dt, a) => {
+    if (n.__ap && approachMove(st, n, dt)) return true;   // [vivi] sta venendo a parlarti
     const W = n.pop && n.pop.with;
     if (W && !n.dead && !(n.jailedUntil > st.t) && !n.aggro && n.stun <= 0 && n.action && !['fugge', 'combatte'].includes(n.action.name)) {
       if (st.t > W.until) { n.pop.with = null; G.say(st, n, 'Io torno alle mie cose. Ci vediamo.', 2.5); }
@@ -173,6 +176,55 @@ var Convivenza = (function () {
   };
   const th0 = G.HOOKS.think;
   G.HOOKS.think = (st, n) => (n.pop && n.pop.with && st.t <= n.pop.with.until) ? true : (th0 ? th0(st, n) : false);
+
+  // ---------------- [vivi] VENGONO LORO DAL GIOCATORE ----------------
+  // Ogni tanto qualcuno che è lì vicino viene a cercarti, a piedi, con un motivo vero: avvisarti, ricordarti un favore,
+  // invitarti a un'impresa, chiederti una cosa che gli manca (magari ce l'hai nello zaino), raccontarti l'ultima, o affrontarti.
+  const NEWS = { scasso: p => `stanotte hanno svaligiato ${p}`, vandalismo: p => `hanno rotto una vetrina a ${p}`, furto: p => `hanno rubato a ${p}`, scippo: p => `hanno scippato una a ${p}`, omicidio: p => `hanno ammazzato uno a ${p}`, aggressione: p => `hanno pestato uno a ${p}`, scritta: p => `qualcuno ha scritto sui muri a ${p}`, graffito: p => `hanno dipinto un muro a ${p}`, molotov: p => `hanno tirato una molotov a ${p}`, esplosione: p => `è saltata in aria una macchina a ${p}` };
+  function reasonFor(st, n) {
+    const P = n.pop, op = Po.opinionOf(st, n, 'player'), p = st.player;
+    if (G.wanted && G.wanted(st) > 0 && (op > .1 || (n.ris && n.ris.ideo > .6))) return { line: pick([`${NAME()}, sta' attento: i Grigi ti cercano.`, 'Togliti di qui, è pieno di Grigi che chiedono di te.']), kind: 'avviso' };
+    if (P.debiti && P.debiti.player) return { line: pick([`${NAME()}! Ti devo un favore, non me lo scordo. Se ti serve qualcosa, chiedi.`, 'Per quella volta… se hai bisogno, io ci sono.']), kind: 'favore' };
+    if (typeof Imprese !== 'undefined') { const E = Imprese.list(st).find(x => x.leader === n.id && x.status === 'cerca' && !x.members.includes('player') && !x.invitedPlayer); if (E && op > -.15) { E.invitedPlayer = true; return { line: `${cap(dayWord(st, E.t))} alle ${hhmm(minOfDay(E.t))}: ${E.label}, a ${E.tgt.label}. Vieni anche tu? Servono braccia.`, kind: 'invito' }; } }
+    if (Sc && op > -.3 && !recentKind(st, 'richiesta:' + (Sc.wants(st, n)[0] || {}).label)) { const w = Sc.wants(st, n).find(x => x.urg > .4); if (w) { const inv = p.inv || {}, hasIt = w.ids.find(id => inv[id] > 0); P.askPlayer = { ids: w.ids, label: w.label, t: st.t }; markKind(st, 'richiesta:' + w.label);
+      return { line: hasIt ? pick([`Scusa… per caso hai ${nm(hasIt)}? Mi serve proprio. Te lo ripago.`, `Ho visto che hai ${nm(hasIt)}. Me ne daresti un po'? Poi ti ricambio.`, `${NAME()}, una cortesia: ${nm(hasIt)}. Ne ho bisogno.`]) : pick([`Sai mica dove trovo ${w.label}? Non se ne trova.`, `Mi serve ${w.label}, se senti qualcosa dimmelo.`, `Cerco ${w.label} da stamattina. Tu ne sai niente?`]), kind: 'richiesta' }; } }
+    if (op < -.4 && n.tr && n.tr.cor > .6) return { line: pick(['Tu! Non farti più vedere da queste parti.', `So cosa hai fatto, ${NAME()}.`, 'Gira al largo, capito?']), kind: 'minaccia' };
+    if (n.tr && n.tr.loq > .5) { const e = st.events.find(x => NEWS[x.type] && x.actor !== 'player' && st.t - x.t < 1440 && !(S(st).told || {})[x.id]); if (e) { (S(st).told = S(st).told || {})[e.id] = 1; return { line: `Hai sentito? ${cap(NEWS[e.type](e.place))}.${rnd() < .5 ? ' Brutta aria.' : ''}`, kind: 'notizia' }; } }
+    // chi ha roba in più te la propone
+    if (Sc && op > -.2 && n.tr && n.tr.avid > .45) { const id = Sc.surplus(n).find(x => Og && Og.CAT[x] && (Og.CAT[x].prezzo || 0) >= 1); if (id) return { line: pick([`Ho ${nm(id)}, se ti serve te lo do a buon prezzo.`, `Ti interessa ${nm(id)}? Per te faccio uno sconto.`]), kind: 'offerta' }; }
+    // chi non ti conosce e ha voglia di parlare si presenta (una volta sola)
+    if (!n.__met && n.tr && n.tr.loq > .55 && Math.abs(op) < .15 && (S(st).lastKinds || []).slice(-1)[0] !== 'presenta') { n.__met = true; const job = P.job ? `, ${P.job.title.split(/[.(]/)[0].trim().toLowerCase()}` : P.status === 'pensionato' ? ', in pensione' : P.status === 'disoccupato' ? ', senza lavoro di questi tempi' : ''; return { line: pick([`Tu sei nuovo da queste parti, vero? Io sono ${n.first}${job}.`, `Piacere, ${n.first}${job}. Abito qui vicino.`, `Non ti ho mai visto. Io sono ${n.first}${job}. Se ti serve qualcosa, chiedi.`, `Sei il nipote dei Mancini? Io sono ${n.first}${job}.`, `${n.first}${job}. Qui ci conosciamo tutti, sai.`, `Ehi, tu. Io sono ${n.first}. Non sei di qui, si vede.`]), kind: 'presenta' }; }
+    if (op > .15) { const l = I.chatLine ? I.chatLine(st, n, P.cur) : null; if (l) return { line: `Ciao ${NAME()}! ${l}`, kind: 'saluto' }; }
+    return null;
+  }
+  // le ultime visite: non due dello stesso tipo di fila
+  const recentKind = (st, k) => (S(st).lastKinds || []).includes(k);
+  const markKind = (st, k) => { const L = S(st).lastKinds = S(st).lastKinds || []; L.push(k); if (L.length > 3) L.shift(); };
+  function approachPick(st) {
+    const M = S(st), p = st.player; if (p.vehicle || p.indoor || st.clock < (M.apAt || 0)) return; M.apAt = st.clock + 3;
+    if (st.npcs.some(n => n.__ap)) return;
+    const c = st.npcs.filter(n => n.pop && n.pop.ints && n.pop.near && !n.inside && !n.dead && !n.cop && !n.faction && !n.pop.emer && !n.pop.errand && !n.pop.with && n.stun <= 0 && !(n.jailedUntil > st.t)
+      && n.pop.cur && !['lavoro', 'sonno', 'impresa', 'appuntamento'].includes(n.pop.cur.act) && st.t - (n.__apT || -1e9) > 600 && dist(n.x, n.y, p.x, p.y) < 20 && dist(n.x, n.y, p.x, p.y) > 2.5);
+    for (const n of c.sort(() => rnd() - .5).slice(0, 4)) {
+      const r = reasonFor(st, n); if (!r || (r.kind !== 'richiesta' && r.kind !== 'presenta' && recentKind(st, r.kind))) continue; if (r.kind !== 'richiesta') markKind(st, r.kind);
+      n.__ap = Object.assign({ until: st.clock + 25, said: false }, r); n.__apT = st.t; M.apAt = st.clock + 14 + rnd() * 18; S(st).stats.vengono = (S(st).stats.vengono || 0) + 1;
+      return;
+    }
+  }
+  function approachMove(st, n, dt) {
+    const A = n.__ap, p = st.player; if (!A) return false;
+    const d = dist(n.x, n.y, p.x, p.y);
+    if (st.clock > A.until || p.vehicle || p.indoor || d > 30 || n.pop.emer || n.aggro) { n.__ap = null; return false; }
+    if (!A.said) {
+      if (d > 1.9) { if (!n.path.length || st.clock > (n._apT || 0)) { G.goTo(n, p.x, p.y); n._apT = st.clock + .6; } G.stepAlong(n, d > 8 ? 2 : 1.45, dt); n.action = { name: 'accompagna', scores: [], why: `Viene a parlare con ${NAME()}.`, since: n.action.since }; return true; }
+      A.said = true; A.until = st.clock + 5; n.path = []; G.say(st, n, A.line, 4.5); n.barkCd = st.clock + 6;
+      Po.note(st, n, `è andat${I.o(n)} a parlare con ${NAME()}: «${A.line}»`, 'info', { who: 'player', w: .3, tag: 'chat' });
+    }
+    n.speedNow = 0; n.face += angDiff(Math.atan2(p.y - n.y, p.x - n.x), n.face) * Math.min(1, dt * 6);
+    if (A.kind === 'minaccia' && st.clock > A.until - 1) n.__ap = null;
+    return true;
+  }
+  const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
   // ---------------- L'APPUNTAMENTO COL GIOCATORE ----------------
   // chi è sul posto mentre l'appuntamento è in corso è venuto (anche se era arrivato prima, o se il giocatore è lontano)
@@ -263,7 +315,7 @@ var Convivenza = (function () {
   G.HOOKS.step = (st, dt) => {
     if (s0) s0(st, dt);
     if (!st.pop) return;
-    presence(st); playerAppts(st);
+    presence(st); playerAppts(st); approachPick(st);   // [vivi]
     const M = S(st), hm = Math.floor(st.t / 60);
     while (M.hour < hm) { M.hour++; const hr = M.hour % 24; if (hr === 7 || hr === 13) askFriends(st); }
   };

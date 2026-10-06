@@ -649,7 +649,8 @@ var Popolo = (function () {
       if (P.near && i > 0 && b.tgt) {
         // [convivenza] si parte prima per arrivare in tempo (agli orari fissi anche molto prima), ma non si lascia un impegno
         // fisso prima di averlo fatto: un appuntamento si aspetta almeno 45 minuti, il resto almeno 20
-        const spd = 1.35 * (P.age > 70 ? .75 : P.age > 60 ? .88 : 1), lead = Math.min(b.fixed ? 320 : 150, dist(n.x, n.y, b.tgt.x, b.tgt.y) * 1.15 / spd * MPS), prev = P.plan[i - 1];   // la sua velocità vera, e un po' di margine per le curve
+        // [vivi] chi va col mezzo parte più tardi
+        const ov = ownVeh(st, n), spd = ov && dist(ov.x, ov.y, n.x, n.y) < 60 && dist(n.x, n.y, b.tgt.x, b.tgt.y) > 110 ? 13 : 1.35 * (P.age > 70 ? .75 : P.age > 60 ? .88 : 1), lead = Math.min(b.fixed ? 320 : 150, dist(n.x, n.y, b.tgt.x, b.tgt.y) * 1.15 / spd * MPS), prev = P.plan[i - 1];   // la sua velocità vera, e un po' di margine per le curve
         const floor = prev.act === 'appuntamento' ? prev.at + 55 : prev.act === 'impresa' ? prev.at + 70 : prev.fixed ? prev.at + 20 : -1e9;   // [imprese] un impegno di gruppo si fa fino in fondo
         at = Math.max(at - lead, Math.min(at, floor));
       }
@@ -1077,6 +1078,7 @@ var Popolo = (function () {
     return v;
   }
   // la scelta: tra tutti gli oggetti che servono a questi blocchi, il migliore tenendo conto di strada, prezzo e paure
+  const ownVeh = (st, n) => { if (n.__ovT === st.t >> 4) return n.__ov; n.__ovT = st.t >> 4; return (n.__ov = st.vehicles.find(v => v.owner === n.id && !v.hidden && !v.wreck && !v.traffic) || null); };
   function chooseObj(st, n, acts, opt) {
     objIndex();
     const P = n.pop, o2 = opt || {}, m = o2.at !== undefined ? o2.at : minOfDay(st.t), from = o2.from || { x: n.x, y: n.y };
@@ -1091,7 +1093,7 @@ var Popolo = (function () {
         if (AVAIL.length && AVAIL.some(f => f(st, n, o, t) === false)) continue;
         if (P.avoid[t.label] > st.t) continue;
         if (o2.noHome && isHomeT(P, t)) continue;
-        let s = base - dist(from.x, from.y, t.x, t.y) / 320 + Math.random() * .12;
+        let s = base - dist(from.x, from.y, t.x, t.y) / (ownVeh(st, n) ? 520 : 170) + Math.random() * .12;   // [vivi] a piedi si sceglie vicino; chi ha il mezzo va anche lontano
         if (!isHomeT(P, t) && P.need.paura > .6) s -= .3;
         if (!best || s > best.s) best = { o, t, s };
       }
@@ -1605,7 +1607,10 @@ var Popolo = (function () {
       const from = P.at || P.homeT; n.x = from.x; n.y = from.y; n.inside = false; n.path = []; P.goalSet = false;
       n.action = { name: 'routine', scores: [], why: `${cap(b.label)}: va a ${t.label}.`, since: st.clock };
     }
+    // [vivi] per andare lontano chi ha il mezzo lo prende (lo parcheggia e scende, poi gli ultimi metri a piedi)
+    if (!P.emer && P.drove !== key && typeof Azioni !== 'undefined' && dist(n.x, n.y, t.x, t.y) > 110) { P.drove = key; const v = ownVeh(st, n); if (v && dist(v.x, v.y, n.x, n.y) < 60 && Azioni.intend(st, n, 'guida', { dove: t }, 1).ok) return; }
     if (curbWait(st, n, dt)) return;   // [passo] prima di attraversare si guarda
+    if (walkWith(st, n, t, dt)) return;   // [vivi] con un amico che va nello stesso posto
     greetFriends(st, n);
     // in ritardo per un orario fisso: corre
     const late = b.fixed && minOfDay(st.t) > b.at + 5 && dist(n.x, n.y, t.x, t.y) > 6;
@@ -1646,6 +1651,31 @@ var Popolo = (function () {
       if (st.clock > (n.barkCd || 0)) { G.say(st, n, pick(Math.random, [`Ciao ${k.first}!`, `Ehi, ${k.first}.`, `${k.first}! Come va?`, 'Buongiorno.']), 1.6); n.barkCd = st.clock + 8; }
       break;
     }
+  }
+  // [vivi] chi va nello stesso posto con un amico o un parente che cammina lì vicino ci va insieme: al suo fianco, al suo
+  // passo, e intanto si parla. Quando l'altro arriva (o si separano) ognuno riprende la sua strada.
+  function walkWith(st, n, t, dt) {
+    const P = n.pop;
+    if (st.clock > (n.__wwT || 0)) {
+      n.__wwT = st.clock + .8 + Math.random() * .4; n.__ww = null;
+      const ids = (P.friends || []).concat(((st.pop.households[P.hh] || {}).members) || []);
+      for (const id of ids) {
+        if (id === n.id || !(id < n.id)) continue;   // guida chi ha l'id più piccolo: niente coppie che si inseguono
+        const k = G.byId(st, id); if (!k || k.dead || k.inside || !k.pop || !k.pop.near || !k.pop.cur || !k.pop.cur.tgt || (k.speedNow || 0) < .3) continue;
+        if (tkey(k.pop.cur.tgt) !== tkey(t) || dist(k.x, k.y, n.x, n.y) > 7 || k.__ww === n.id) continue;
+        n.__ww = k.id; break;
+      }
+    }
+    if (!n.__ww) return false;
+    const L = G.byId(st, n.__ww);
+    if (!L || L.inside || (L.speedNow || 0) < .2 || dist(L.x, L.y, t.x, t.y) < 4) { n.__ww = null; return false; }
+    const side = (n.id > L.id ? 1 : -1), gx = L.x + Math.cos(L.face + side * Math.PI / 2) * .75, gy = L.y + Math.sin(L.face + side * Math.PI / 2) * .75, d = dist(n.x, n.y, gx, gy);
+    if (d > 4 || !G.walkM(gx, gy)) return false;
+    const sp = Math.min(2.6, (L.speedNow || 1.3) * (1 + Math.max(-.3, d - .25) * .7)), step = Math.min(d, sp * dt);
+    if (d > 1e-3) { n.x += (gx - n.x) / d * step; n.y += (gy - n.y) / d * step; }
+    n.face += angDiff(L.face, n.face) * Math.min(1, dt * 6); n.speedNow = sp; n.path = []; P.goalSet = false;
+    if (Math.random() < dt * .06 && st.clock > (n.barkCd || 0) && st.clock > (L.barkCd || 0)) { const line = chatLine(st, n, P.cur); if (line) { G.say(st, n, line, 3); n.barkCd = st.clock + 12; } }
+    return true;
   }
   function curbWait(st, n, dt) {
     const w = n.path && n.path[0]; if (!w || roadAt(n.x, n.y)) { n.__curb = 0; return false; }
@@ -1973,9 +2003,19 @@ var Popolo = (function () {
     G.dayName = t => WEEK[(Math.floor(t / 1440) + 1) % 7];
   }
   // dopo la Risacca: l'ideologia nata dalla vita di ognuno
+  // [vivi] i mezzi parcheggiati senza padrone sono di qualcuno: dell'adulto che abita più vicino (meglio se lavora e ha qualche soldo)
+  function giveVehicles(st) {
+    const taken = new Set(st.vehicles.map(v => v.owner).filter(Boolean));
+    st.vehicles.filter(v => !v.owner && !v.traffic && !v.police && !v.military && !v.hidden && !v.wreck).forEach(v => {
+      const c = st.npcs.filter(n => n.pop && n.pop.ints && !n.dead && !n.cop && !n.faction && n.pop.age >= 20 && n.pop.homeT && !taken.has(n.id))
+        .map(n => [n, dist(n.pop.homeT.x, n.pop.homeT.y, v.x, v.y) - (n.pop.job ? 15 : 0) - Math.min(20, n.pop.money / 4)]).sort((a, b) => a[1] - b[1])[0];
+      if (c && c[1] < 120) { v.owner = c[0].id; taken.add(c[0].id); c[0].pop.owns = c[0].pop.owns || {}; c[0].pop.owns[v.kind === 'vespa' ? 'vespa' : 'auto'] = true; }
+    });
+  }
   function afterRisacca(st) {
     st.npcs.forEach(n => { if (n.pop && n.ris) { const R = RS(); const c = R && R.CARDS[n.id]; if (c && c.ideo !== undefined) n.ris.ideo = c.ideo; } });
     adoptAll(st);   // [vita] tutti gli altri personaggi: cast, Tutela, Squalo, marsigliesi, briganti, passanti
+    giveVehicles(st);   // [vivi]
   }
   install();
 
@@ -1994,7 +2034,7 @@ var Popolo = (function () {
   }
   // per i moduli che costruiscono sopra la vita (azioni.js): gli strumenti interni
   const USE = [], AVAIL = [], ESSENTIAL = [], MONEY = {}, MEET = [];   // [scambi] MEET: chi vuole sapere com'è andato un appuntamento con un patto   // [soldi] MONEY: agganci dei soldi (paga, affitto, spese, macchinette)   // [economia] chi vuole può vietare o far pagare l'uso di un oggetto in un posto (scorte, prezzi)
-  const _ = { USE, AVAIL, ESSENTIAL, MONEY, MEET, TALK, spotsOf, errand, ERRAND, wallSpot, resolveRef, appointCheck: checkAppointments, JOBS_BY, OUTDOOR, GENDER, buildIndex, sketchFor, artStyle, readWalls, newcomer, REFLECT, note, feel, target, tkey, tB, planDay, blockNow, snapFar, wakeNear, dayIdx, minOfDay, hhmm, isPassive, arrestFar, arrest: arrestFar, toLong, recall, opinionOf, consolidate, chooseObj, startProject, endProject, PROJ, OGG, useRef, recent, share, closeness, paintWall, appoint, adopt, o, cap, pick, isHomeT, initLife, lifeOf, curfewFrom, clamp, dist };
+  const _ = { USE, AVAIL, ESSENTIAL, MONEY, MEET, TALK, chatLine, ownVeh, spotsOf, errand, ERRAND, wallSpot, resolveRef, appointCheck: checkAppointments, JOBS_BY, OUTDOOR, GENDER, buildIndex, sketchFor, artStyle, readWalls, newcomer, REFLECT, note, feel, target, tkey, tB, planDay, blockNow, snapFar, wakeNear, dayIdx, minOfDay, hhmm, isPassive, arrestFar, arrest: arrestFar, toLong, recall, opinionOf, consolidate, chooseObj, startProject, endProject, PROJ, OGG, useRef, recent, share, closeness, paintWall, appoint, adopt, o, cap, pick, isHomeT, initLife, lifeOf, curfewFrom, clamp, dist };
   return { _, arrest: arrestFar, note, OGG, INTERESSI, PROJ, lifeOf, lifeShort, reflect, chooseObj, startProject, isPassive, CFG, WEEK, RECURRING, GIRI, weekday, wdName, ago, curfewFrom, eventsOn, planDay, blockNow, appoint, bioOf, report, target, note, buildIndex, doing, recall, opinionOf };
 })();
 if (typeof module !== 'undefined') module.exports = Popolo;
