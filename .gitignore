@@ -3,3 +3,6 @@ v7/api_key.json
 api_key.json
 .vercel
 node_modules
+
+# Prodotti di build: index.html si rigenera con python build.py, non si committa
+v7/index.html
