@@ -2009,7 +2009,7 @@ var Popolo = (function () {
     st.vehicles.filter(v => !v.owner && !v.traffic && !v.police && !v.military && !v.hidden && !v.wreck).forEach(v => {
       const c = st.npcs.filter(n => n.pop && n.pop.ints && !n.dead && !n.cop && !n.faction && n.pop.age >= 20 && n.pop.homeT && !taken.has(n.id))
         .map(n => [n, dist(n.pop.homeT.x, n.pop.homeT.y, v.x, v.y) - (n.pop.job ? 15 : 0) - Math.min(20, n.pop.money / 4)]).sort((a, b) => a[1] - b[1])[0];
-      if (c && c[1] < 120) { v.owner = c[0].id; taken.add(c[0].id); c[0].pop.owns = c[0].pop.owns || {}; c[0].pop.owns[v.kind === 'vespa' ? 'vespa' : 'auto'] = true; }
+      if (c && c[1] < 120) { v.owner = c[0].id; c[0].pop.car = v.id; taken.add(c[0].id);   /* anche per regia.js */ c[0].pop.owns = c[0].pop.owns || {}; c[0].pop.owns[v.kind === 'vespa' ? 'vespa' : 'auto'] = true; }
     });
   }
   function afterRisacca(st) {

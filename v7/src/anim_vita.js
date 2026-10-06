@@ -550,6 +550,7 @@
     [/bomboletta|scritta|vernic|spruzz|graffit/, 'vernicia'], [/gesso/, 'gesso'], [/foto|scatta/, 'foto'],
     [/disegn|schizz|ritratt|album/, 'disegna'], [/dipin|pittur|tinteggi/, 'vernicia'],
     [/scrive sul muro/, 'vernicia'], [/si apparta/, 'aspetta'],   // [commissioni]
+    [/canta|recita/, 'discute'], [/cerca un lavoretto/, 'aspetta'],   // [creatività]
     [/legna|tagli/, 'martella'], [/ronda|veglia/, 'aspetta'], [/colletta/, 'aspetta'],   // [imprese]
     [/rete|ripara|cuc|lavora a|intaglia|pulisce il pesce|sistema|smonta|motore|officina|banco/, 'lavora'],
     [/spazz|pulisc|lava (la|il|le|i) /, 'spazza'], [/pesca|canna/, 'pesca'], [/preg|rosario|messa|cero/, 'prega'],
