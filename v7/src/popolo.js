@@ -631,7 +631,13 @@ var Popolo = (function () {
     let idx = 0;
     for (let i = 0; i < P.plan.length; i++) {
       const b = P.plan[i]; let at = b.fixed ? b.at : b.at + P.jit;
-      if (P.near && i > 0 && b.tgt) at -= Math.min(150, dist(n.x, n.y, b.tgt.x, b.tgt.y) / 1.35 * MPS);
+      if (P.near && i > 0 && b.tgt) {
+        // [convivenza] si parte prima per arrivare in tempo (agli orari fissi anche molto prima), ma non si lascia un impegno
+        // fisso prima di averlo fatto: un appuntamento si aspetta almeno 45 minuti, il resto almeno 20
+        const spd = 1.35 * (P.age > 70 ? .75 : P.age > 60 ? .88 : 1), lead = Math.min(b.fixed ? 320 : 150, dist(n.x, n.y, b.tgt.x, b.tgt.y) * 1.15 / spd * MPS), prev = P.plan[i - 1];   // la sua velocità vera, e un po' di margine per le curve
+        const floor = prev.act === 'appuntamento' ? prev.at + 55 : prev.fixed ? prev.at + 20 : -1e9;
+        at = Math.max(at - lead, Math.min(at, floor));
+      }
       if (at <= m) idx = i;
     }
     if (P.curPlan === P.plan && P.curIdx > idx) idx = P.curIdx;   // un blocco cominciato non torna indietro
@@ -712,7 +718,7 @@ var Popolo = (function () {
     } else satisfy(st, n, b);
     if (b.act === 'svago' && b.tgt.place === 'flipper' && P.vice === 'gioco') { if (MONEY.gamble) MONEY.gamble(st, n, b.tgt); else { const w = (Math.random() - .62) * 30; P.money += w; note(st, n, w > 0 ? `vinto ${Math.round(w)}.000 lire alla bisca` : `perso ${Math.round(-w)}.000 lire alla bisca`, w > 0 ? 'good' : 'bad'); } }   // [soldi] le macchinette
     if (b.act === 'giro' && !b.cont) doGiro(st, n, b);
-    if (b.act === 'appuntamento') P.apptArrived = st.t;
+    if (b.act === 'appuntamento' && !P.near) P.apptArrived = st.t;   // [convivenza] da vicino conta l'arrivo vero (nearMove)
   }
   function fire(st, n) {
     const P = n.pop; if (!P.job) return;
@@ -1619,7 +1625,9 @@ var Popolo = (function () {
     campagna: ['L\'orto quest\'anno rende.', 'Col gelo l\'orto è da buttare.'], mare: ['Il mare oggi è color ferro.', 'Stamattina sulla caletta c\'era il ghiaccio.'],
     eleganza: ['Ho visto una giacca in vetrina…', 'Quella camicia ti sta bene.'], foto: ['Ti faccio una foto, stai fermo.', 'Ho finito il rullino.'], arte: ['Su quel muro ci starebbe un bel murale.', 'Sto disegnando il porto.'],
   };
+  const TALK = [];   // [convivenza] chi ha qualcosa di vero da dire (appuntamenti, patti, debiti, quello che è successo) passa davanti
   function chatLine(st, n, b) {
+    for (const f of TALK) { try { const t = f(st, n, b); if (t) return t; } catch (e) { } }
     const P = n.pop, N = P.need || {}, r = Math.random(), pj = (P.projects || [])[0];
     if (pj && r < .3) return pick(Math.random, [`Devo ${pj.label}.`, `Sto pensando di ${pj.label}.`, `Prima o poi riesco a ${pj.label}.`]);
     if (N.soldi > .6 && r < .5) return pick(Math.random, ['Non arrivo a fine mese.', 'Con quello che costa il pane…', 'Lo Squalo non aspetta.']);
@@ -1848,7 +1856,7 @@ var Popolo = (function () {
   }
   // per i moduli che costruiscono sopra la vita (azioni.js): gli strumenti interni
   const USE = [], AVAIL = [], ESSENTIAL = [], MONEY = {}, MEET = [];   // [scambi] MEET: chi vuole sapere com'è andato un appuntamento con un patto   // [soldi] MONEY: agganci dei soldi (paga, affitto, spese, macchinette)   // [economia] chi vuole può vietare o far pagare l'uso di un oggetto in un posto (scorte, prezzi)
-  const _ = { USE, AVAIL, ESSENTIAL, MONEY, MEET, JOBS_BY, OUTDOOR, GENDER, buildIndex, sketchFor, artStyle, readWalls, newcomer, REFLECT, note, feel, target, tkey, tB, planDay, blockNow, snapFar, wakeNear, dayIdx, minOfDay, hhmm, isPassive, arrestFar, arrest: arrestFar, toLong, recall, opinionOf, consolidate, chooseObj, startProject, endProject, PROJ, OGG, useRef, recent, share, closeness, paintWall, appoint, adopt, o, cap, pick, isHomeT, initLife, lifeOf, curfewFrom, clamp, dist };
+  const _ = { USE, AVAIL, ESSENTIAL, MONEY, MEET, TALK, resolveRef, appointCheck: checkAppointments, JOBS_BY, OUTDOOR, GENDER, buildIndex, sketchFor, artStyle, readWalls, newcomer, REFLECT, note, feel, target, tkey, tB, planDay, blockNow, snapFar, wakeNear, dayIdx, minOfDay, hhmm, isPassive, arrestFar, arrest: arrestFar, toLong, recall, opinionOf, consolidate, chooseObj, startProject, endProject, PROJ, OGG, useRef, recent, share, closeness, paintWall, appoint, adopt, o, cap, pick, isHomeT, initLife, lifeOf, curfewFrom, clamp, dist };
   return { _, arrest: arrestFar, note, OGG, INTERESSI, PROJ, lifeOf, lifeShort, reflect, chooseObj, startProject, isPassive, CFG, WEEK, RECURRING, GIRI, weekday, wdName, ago, curfewFrom, eventsOn, planDay, blockNow, appoint, bioOf, report, target, note, buildIndex, doing, recall, opinionOf };
 })();
 if (typeof module !== 'undefined') module.exports = Popolo;

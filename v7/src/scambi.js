@@ -317,6 +317,6 @@ var Scambi = (function () {
   }
   install();
   function report(st) { return Object.assign({}, S(st).stats); }
-  return { CFG, wants, surplus, has, deal, askHelp, promise, market, report };
+  return { CFG, wants, surplus, has, put, take, deal, askHelp, promise, market, report };
 })();
 if (typeof module !== 'undefined') module.exports = Scambi;
