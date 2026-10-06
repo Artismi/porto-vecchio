@@ -9773,6 +9773,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     DZ.faces.forEach(F => { if (F.glass) F.glass.forEach(g => g.broken = false); F.ctx.putImageData(F.bak, 0, 0); F.ectx.putImageData(F.ebak, 0, 0); F.map.needsUpdate = true; F.emissive.needsUpdate = true; F.bak = null; }); DZ.faces.clear();
     resetRooms();
     DZ.touched = false;
+    if (window.Editor && Editor.reapply) Editor.reapply();   // [editor] gli oggetti tolti o spostati restano come nei ritocchi
   }
 
   // chi viene investito vola: parabola e capriola, poi atterra nella posa a terra
@@ -10054,9 +10055,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (ui.dialogNpc) { const n = G.byId(st, ui.dialogNpc); if (n) focus.push([n.x, n.y]); }
     if (p.indoor) tz *= .5;
     if (ui.intro) { tx = G.PLACES.piazza.x + Math.sin(time * .08) * 30; ty = G.PLACES.piazza.y - 6 + Math.cos(time * .06) * 8; tz = 1.25; }
+    if (ui.focus) { tx = ui.focus.x; ty = ui.focus.y; tz = (ui.zoom || 1) * (p.indoor ? .5 : 1); focus[0] = [tx, ty]; }   // [editor] la camera segue il punto dell'editor
     const kf = 1 - Math.pow(pveh ? .004 : .02, dt);
     cam.x += (tx - cam.x) * kf; cam.y += (ty - cam.y) * kf; cam.zoom += (tz - cam.zoom) * (1 - Math.pow(.05, dt));
-    { const lh = !ui.intro && typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; cam.h += ((lh !== null ? lh : groundH(ui.intro ? tx : p.x, ui.intro ? ty : p.y)) - cam.h) * Math.min(1, dt * 4); }
+    { const lh = !ui.intro && typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; cam.h += ((lh !== null && !ui.focus ? lh : groundH(ui.intro || ui.focus ? tx : p.x, ui.intro || ui.focus ? ty : p.y)) - cam.h) * Math.min(1, dt * 4); }
     let kx = 0, ky = 0;
     if (st.kick) { const k = Math.max(0, 1 - (st.clock - st.kick.t) * 9); kx = -Math.cos(st.kick.a) * st.kick.amt * k * 1.2; ky = -Math.sin(st.kick.a) * st.kick.amt * k * 1.2; }
     const sh = st.shake || 0, sx = (Math.random() - .5) * sh * 1.4, sy = (Math.random() - .5) * sh * 1.4;
@@ -10156,5 +10158,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   function camBasis() { const f = new THREE.Vector3(); camera.getWorldDirection(f); f.y = 0; f.normalize(); return { fx: f.x, fz: f.z, rx: -f.z, rz: f.x }; }
   function snap(st) { cam.x = st.player.x; cam.y = st.player.y; cam.h = groundH(st.player.x, st.player.y); }
   const __mondo = { M: MONDO, V: VENTO, stat: () => ({ ms: +MONDO.ms.toFixed(3), vento: +VENTO.g.value.toFixed(2), neve: MONDO.rain, fumo: MONDO.puffs ? Array.from(MONDO.puffs.life).filter(l => l > 0).length : 0, scintille: MONDO.sparks ? Array.from(MONDO.sparks.life).filter(l => l > 0).length : 0, fuochi: MONDO.fuochi.length + WX.fires.length, stormi: MONDO.birds ? MONDO.birds.F.length : 0, porte: MONDO.doors.filter(r => r.rig.visible).length, barche: dyn.boats.length, bucato: dyn.laundry.length, gabbiani: dyn.gulls.length }) };   // [animazioni-mondo] per le prove
-  return { dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
+  const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
+    materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
+  return { __ed, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();

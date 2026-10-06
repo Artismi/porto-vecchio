@@ -520,8 +520,8 @@
   }
   function crosshair() {
     const x = $('xhair'), p = st.player;
-    const show = mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.over && !touchMode;
-    x.hidden = !show; cv.style.cursor = show ? 'none' : 'default';
+    const show = mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.over && !touchMode && !(window.Editor && Editor.active());   // [editor]
+    x.hidden = !show; cv.style.cursor = show ? 'none' : window.Editor && Editor.active() ? Editor.cursor() : 'default';
     if (!show) return;
     x.style.left = mouse.cx + 'px'; x.style.top = mouse.cy + 'px';
     const W = G.WEAPONS[p.cur], spread = W.melee || W.throw ? 0 : W.spread + p.bloom + (Math.abs(p.speed) > .5 ? .03 : 0);
@@ -575,7 +575,7 @@
   // i moduli degli edifici (Kenney Building Kit) arrivano prima della scena: la città nasce già montata
   const goBtn = $('go'); if (goBtn) { goBtn.disabled = true; goBtn.dataset.label = goBtn.textContent; goBtn.textContent = 'Carico il porto…'; }
   const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura', 'urbano', 'casa', 'stazione', 'garage', 'tortura']), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
-  kitWait.then(boot);
+  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
   function boot() {
   if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
   let glOk = true;
@@ -584,6 +584,7 @@
     $('screen').innerHTML = `<div class="in"><div class="logo" style="font-size:clamp(34px,6vw,64px)">Porto Vecchio</div><div class="story"><p>Il gioco usa la grafica 3D del browser (WebGL) e qui non è riuscito ad avviarla.</p><p>Prova ad aprire la pagina in Chrome, Edge o Firefox aggiornati, con l'accelerazione hardware attiva nelle impostazioni del browser.</p></div></div>`;
     return;
   }
+  if (window.Editor) Editor.attach({ get st() { return st; }, ui, G, R, cv, app, toast });   // [editor] F2
   function size() { const w = app.clientWidth || innerWidth, h = app.clientHeight || innerHeight; R.resize(w, h, Math.min(2, devicePixelRatio || 1)); }
   new ResizeObserver(size).observe(app); size();
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false;
@@ -591,8 +592,9 @@
     const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
     if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > 1 / 32) R.lowQuality(); } }
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
-    const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over;   // [azioni]
-    if (slow && !paused) G.step(st, dt * .25, { x: 0, y: 0 });
+    const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
+    const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]
+    if (slow && !paused && !edOn) G.step(st, dt * .25, { x: 0, y: 0 });
     else if (!paused) {
       const inp = ui.intro ? { x: 0, y: 0, freeze: true } : input();
       if (!ui.intro && (mouse.down || touchFire || mouse.pressed)) G.fire(st, inp.aim !== undefined ? inp.aim : aimAngle(), ui.aimPoint, mouse.pressed);
@@ -605,7 +607,7 @@
     ui.fade = ui.fadeUntil && ui.time < ui.fadeUntil ? Math.min(1, (ui.fadeUntil - ui.time) * 1.5) : 0;
     ui.desat = st.slowmo > 0;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
-    R.frame(st, dt, { mark: ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    R.frame(st, dt, { focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     sounds();
     drawBubbles(); crosshair();
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); }

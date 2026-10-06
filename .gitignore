@@ -3,3 +3,6 @@ v7/api_key.json
 api_key.json
 .vercel
 node_modules
+
+# Editor (F2): copia di sicurezza dei ritocchi, fatta dal server a ogni avvio
+v7/ritocchi.backup.json
