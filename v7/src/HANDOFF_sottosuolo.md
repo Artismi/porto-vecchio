@@ -12,6 +12,12 @@
 - V sale e scende anche da **tombini, scale, grate**. Scavando si trova **roba sepolta** (`Livelli.hooks.dug`), in quattro punti una cassa sotterrata apposta (la cassa del brigante sotto il Paese Vecchio, la roba della guerra sotto i ruderi…).
 - `Livelli.hooks.init`: chi vuole aggiungere caselle e portali a ogni partita.
 
+## Scavare: dall'alto + in sezione (seconda passata)
+- **Vista dall'alto** per dirigere: la casella che stai per scavare ha un riquadro giallo (verso il puntatore, a passi di 90°); mentre scavi si riempie di buio e saltano le zolle.
+- **Sezione** (pannello `#sez`, in `sottosuolo.js`): sotto terra è sempre aperta in alto a destra, piccola; quando scavi in giù o in su (J, K, Maiusc+J, botole) diventa grande in basso, sotto al personaggio, per 2-3 secondi. Taglio verticale lungo la direzione di scavo, stessa scala in orizzontale e in verticale: cielo (giorno/notte), case coi piani e le finestre accese, strade, alberi con le radici, strati della terra e roccia, mare, quello che è scavato (cunicoli coi puntelli, fogne con l'acqua, cripte, metro), le gallerie della metro dove tagliano, scale e tombini, tu con la lanterna, le tre caselle scavabili (H, J, K) e il pozzo (⇧J), la barra d'avanzamento. In alto: profondità, cosa c'è davanti, cosa c'è sopra. Clic: si chiude a linguetta.
+- **Maiusc+J**: pozzo sul posto, il pavimento scende di 1,6 m (pioli in sezione; oltre i 14 m roccia, oltre i 32 m la falda).
+- Fogne più belle: acqua che scorre (texture che scivola), pilastri di mattoni, cordoli, tubi lungo le pareti.
+
 ## Il sottosuolo (`sottosuolo.js`, nuovo, dopo `livelli.js`)
 - **Fogne** sotto le strade grandi della città (4,4 m), **52 tombini** ogni ~30 m sulla carreggiata.
 - **Posti**: Cripta di San Rocco, Cripta dei marinai (Santuario), Vecchie carceri (sotto la Caserma della Guardia, si sale in caserma), Rifugio antiaereo (sotto la Piazza del Governo, si sale nel Palazzo), Bunker della guerra (Collina Nera, botola nel bosco), Deposito dei contrabbandieri (sotto il Magazzino Neri, grata sulla calata), Spaccio sotto il Flipper, Mercato di sotto (sotto la piazza), Città dei Topi (cisterna sotto i giardini). Tutti collegati alle fogne.
