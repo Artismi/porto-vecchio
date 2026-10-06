@@ -387,6 +387,13 @@ function handleRitocchi(req, res, pathname, parsedUrl) {
         fs.writeFileSync(path.join(RIT_DIR, nome), body);
         sendJSON(res, 200, { ok: true, file: 'ritocchi/' + nome }); return;
       }
+      if (pathname === '/api/ritocchi/file') {   // [studio] modelli caricati (.glb): in ritocchi/modelli
+        const nome = parsedUrl.searchParams.get('nome') || '';
+        if (!/^[\w.-]+\.glb$/.test(nome) || body.length < 12 || body.toString('latin1', 0, 4) !== 'glTF') { sendJSON(res, 400, { ok: false, errore: 'serve un file .glb' }); return; }
+        const dir = path.join(RIT_DIR, 'modelli'); fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, nome), body);
+        sendJSON(res, 200, { ok: true, file: 'ritocchi/modelli/' + nome }); return;
+      }
       sendJSON(res, 404, { ok: false });
     } catch (e) { console.error('[editor]', e.message); sendJSON(res, 500, { ok: false, errore: e.message }); }
   });

@@ -33,6 +33,12 @@ while ($listener.IsListening) {
             $d = Join-Path $root 'ritocchi'; New-Item -ItemType Directory -Force -Path $d | Out-Null
             [IO.File]::WriteAllBytes((Join-Path $d $nome), $bytes); $out = '{"ok":true}'
           } else { $res.StatusCode = 400 }
+        } elseif ($path -eq 'api/ritocchi/file') {
+          $nome = $ctx.Request.QueryString['nome']
+          if ($nome -match '^[\w.-]+\.glb$' -and $bytes.Length -gt 12 -and [Text.Encoding]::ASCII.GetString($bytes, 0, 4) -eq 'glTF') {
+            $d = Join-Path $root 'ritocchi\modelli'; New-Item -ItemType Directory -Force -Path $d | Out-Null
+            [IO.File]::WriteAllBytes((Join-Path $d $nome), $bytes); $out = '{"ok":true,"file":"ritocchi/modelli/' + $nome + '"}'
+          } else { $res.StatusCode = 400 }
         }
       }
       $b = [Text.Encoding]::UTF8.GetBytes($out); $res.ContentLength64 = $b.Length; $res.OutputStream.Write($b, 0, $b.Length); $res.OutputStream.Close()

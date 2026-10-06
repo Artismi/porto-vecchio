@@ -69,7 +69,7 @@ var Editor = (function () {
   const RC = new THREE.Raycaster(), V2 = new THREE.Vector2(), BOX = new THREE.Box3(), VA = V3(), VB = V3(), VC = V3();
   const D4 = new THREE.Matrix4(), N3 = new THREE.Matrix3();
 
-  function norm(j) { j = j && typeof j === 'object' ? j : {}; return { versione: 1, fuori: j.fuori || {}, copie: j.copie || [], interni: j.interni || {}, pittura: j.pittura || {} }; }
+  function norm(j) { j = j && typeof j === 'object' ? j : {}; return { versione: 1, fuori: j.fuori || {}, copie: j.copie || [], interni: j.interni || {}, pittura: j.pittura || {}, modelli: j.modelli || {}, vestiti: j.vestiti || {}, files: j.files || [] }; }
   const r3 = v => Math.round(v * 1000) / 1000;
   const gH = (x, z) => E.groundH(x, z);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -88,6 +88,7 @@ var Editor = (function () {
       im.src = e.file + '?v=' + (e.v || 0);
     }));
     await Promise.race([Promise.all(ps), new Promise(r => setTimeout(r, 10000))]);
+    if (window.Officina) try { await Officina.load(); } catch (e) { console.warn('[editor] officina', e); }   // modelli modificati e .glb caricati, prima che nasca la città
   }
 
   // =====================================================================================================
@@ -129,7 +130,13 @@ var Editor = (function () {
     else { o.position.copy(ed.pos0); o.rotation.copy(ed.rot0); o.scale.copy(ed.s0); }
     rewrite(rec, spheres || true);
   }
+  // copia: di un oggetto di strada (da) o di un modello qualsiasi posato dove vuoi (mod: mobile:…, kit:…, glb:…)
   function makeCopy(e) {
+    if (e.mod) {
+      const c = { e, g: new THREE.Group() }; c.g.position.fromArray(e.pos); c.g.rotation.y = e.ry || 0; c.g.scale.setScalar(e.s || 1); E.scene.add(c.g);
+      if (window.Officina) Officina.build(e.mod).then(m => { if (!m || !COPIES.includes(c)) return; m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); c.g.add(m); });
+      return c;
+    }
     const rec = KEYS.get(e.da); if (!rec || !edInit(rec)) return null;
     const ed = rec.ed, g = rec.obj.clone(true);
     g.position.fromArray(e.pos); g.rotation.set(ed.rot0.x, e.ry || 0, ed.rot0.z); g.scale.copy(ed.s0).multiplyScalar(e.s || 1);
@@ -216,9 +223,9 @@ var Editor = (function () {
     copia: {
       ok: s => COPIES.includes(s.c),
       get: s => { const g = s.c.g; return { x: g.position.x, z: g.position.z, h: g.position.y - gH(g.position.x, g.position.z), ry: g.rotation.y, s: s.c.e.s || 1 }; },
-      set: (s, T) => { const g = s.c.g, ed = KEYS.get(s.c.e.da).ed; g.position.set(T.x, gH(T.x, T.z) + T.h, T.z); g.rotation.y = T.ry; g.scale.copy(ed.s0).multiplyScalar(T.s); s.c.e.s = T.s; },
+      set: (s, T) => { const g = s.c.g, ed = s.c.e.da ? KEYS.get(s.c.e.da).ed : null; g.position.set(T.x, gH(T.x, T.z) + T.h, T.z); g.rotation.y = T.ry; if (ed) g.scale.copy(ed.s0).multiplyScalar(T.s); else g.scale.setScalar(T.s); s.c.e.s = T.s; },
       commit: s => { const g = s.c.g; s.c.e.pos = g.position.toArray().map(r3); s.c.e.ry = r3(g.rotation.y); s.c.e.s = r3(s.c.e.s || 1); },
-      box: s => BOX.setFromObject(s.c.g), name: () => 'copia di un oggetto di strada',
+      box: s => BOX.setFromObject(s.c.g), name: s => s.c.e.mod ? 'modello posato · ' + s.c.e.mod : 'copia di un oggetto di strada',
     },
     mobile: {
       ok: s => { const i = indoorNow(); return !!(i && bkey(i.b) === s.bk && i.f === s.f && furnOf(s)); },
@@ -317,7 +324,7 @@ var Editor = (function () {
   function duplicate() {
     if (!okSel(sel)) return; const s = sel, T = AD[s.t].get(s); let made = null;
     edit(() => {
-      if (s.t === 'fuori' || s.t === 'copia') { const da = s.t === 'fuori' ? s.rec.edKey : s.c.e.da, x = T.x + .8, z = T.z + .8; made = { da, pos: [r3(x), r3(gH(x, z) + T.h), r3(z)], ry: r3(T.ry), s: r3(T.s) }; RIT.copie.push(made); }
+      if (s.t === 'fuori' || s.t === 'copia') { const da = s.t === 'fuori' ? s.rec.edKey : s.c.e.da, x = T.x + .8, z = T.z + .8; made = Object.assign(s.t === 'copia' && s.c.e.mod ? { mod: s.c.e.mod } : { da }, { pos: [r3(x), r3(gH(x, z) + T.h), r3(z)], ry: r3(T.ry), s: r3(T.s) }); RIT.copie.push(made); }
       else { const o = furnOf(s); made = { id: o.id, x: r3(o.x + .5), y: r3(o.y + .5), h: r3(o.h || 0), ry: r3(o.ry || 0), s: r3(o.s || 1) }; floorRit(s.bk, s.f, true).nuovi.push(made); }
     });
     if (s.t === 'mobile') select({ t: 'mobile', bk: s.bk, f: s.f, entry: made });
@@ -338,6 +345,7 @@ var Editor = (function () {
   function furnIds() {
     const I = ctx.G.INT, ids = new Set([...Object.keys(I.SZ || {}), ...Object.keys(I.DECOR || {}), ...Object.keys(I.SMALL || {}), ...Object.keys((I.EXTRA && I.EXTRA.sz) || {})]);
     const i = indoorNow(); if (i) ctx.G.INT.layout(i.b).floors.forEach(F => F.furn.forEach(o => ids.add(o.id)));
+    (RIT.files || []).forEach(f => ids.add('glb:' + f.file));
     return [...ids].sort();
   }
 
@@ -456,7 +464,7 @@ var Editor = (function () {
   // =====================================================================================================
   function inPanel(t) { return !!(panel && t instanceof Node && panel.contains(t)); }
   function toggle(force) {
-    const v = force === undefined ? !on : force; if (v === on) return;
+    const v = force === undefined ? !on : force; if (v === on || (!v && STUDIO)) return;
     if (v && (!E || ctx.ui.intro)) return;
     on = v; sel = null; hover = null; drag = null; stroke = null;
     if (on) { const p = ctx.st.player; focus = p.indoor ? { x: p.x, y: p.y } : { x: ctx.R.cam.x, y: ctx.R.cam.y }; buildUI(); panel.hidden = false; over.hidden = false; renderPanel(); toast(SERVER ? 'Editor: le modifiche si salvano da sole in ritocchi.json.' : 'Editor: senza server (AVVIA.bat) le modifiche vanno scaricate a mano.'); }
@@ -474,7 +482,7 @@ var Editor = (function () {
     if (ctrl && k === 's') { if (SERVER) save(); else download(); return; }
     if (ctrl && k === 'd') { duplicate(); return; }
     if (e.repeat && !['r', 'pageup', 'pagedown', '+', '-', '[', ']'].includes(k)) return;
-    if (k === 'escape') { if (sel) select(null); else toggle(false); return; }
+    if (k === 'escape') { if (sel) select(null); else if (hooks.esc) hooks.esc(); else toggle(false); return; }
     if (['1', '2', '3', '4', '5'].includes(k)) { setTool(['sposta', 'pennello', 'materiale', 'timbro', 'gomma'][+k - 1]); return; }
     if (k === '[' || k === ']') { brush.size = Math.max(.02, Math.min(4, brush.size * (k === ']' ? 1.15 : 1 / 1.15))); renderPanel(); return; }
     if (tool !== 'sposta' || !sel) return;
@@ -493,7 +501,9 @@ var Editor = (function () {
     e.stopPropagation(); e.preventDefault(); readMouse(e); ctx.cv.setPointerCapture && ctx.cv.setPointerCapture(e.pointerId);
     if (e.button !== 0) return;
     if (tool === 'sposta') {
-      const s = pick(mouse.nx, mouse.ny); select(s); if (!s) return;
+      const s = pick(mouse.nx, mouse.ny);
+      if (e.detail >= 2 && hooks.dbl) { drag = null; hooks.dbl(s, mouse.nx, mouse.ny); return; }   // doppio clic: lo Studio apre la vista isolata (o entra nell'edificio)
+      select(s); if (!s) return;
       const T = AD[s.t].get(s), y = s.t === 'mobile' ? floorY() + T.h : gH(T.x, T.z) + T.h, pl = new THREE.Plane(new THREE.Vector3(0, 1, 0), -y), hit = aim(mouse.nx, mouse.ny).intersectPlane(pl, V3());
       if (hit) drag = { pl, dx: T.x - hit.x, dz: T.z - hit.z, before: snap(), moved: false };
       return;
@@ -577,7 +587,7 @@ var Editor = (function () {
   // =====================================================================================================
   // PANNELLO
   // =====================================================================================================
-  const CSS = `#edp{position:fixed;right:10px;top:10px;width:300px;max-height:calc(100vh - 20px);overflow:auto;z-index:60;background:var(--panel-solid,#15112a);border:1px solid var(--line,#3b3252);color:var(--fg,#f0e6d0);font:13px/1.35 var(--f-pix,system-ui);padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.5);user-select:none}
+  const CSS = `#edp{position:fixed;right:10px;top:var(--edtop,10px);width:300px;max-height:calc(100vh - var(--edtop,10px) - 10px);overflow:auto;z-index:60;background:var(--panel-solid,#15112a);border:1px solid var(--line,#3b3252);color:var(--fg,#f0e6d0);font:13px/1.35 var(--f-pix,system-ui);padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.5);user-select:none}
 #edp h4{margin:0 0 6px;font:11px var(--f-label,monospace);letter-spacing:.06em;text-transform:uppercase;color:var(--amber,#ffb35c);display:flex;justify-content:space-between;gap:6px}
 #edp .st{font-size:11px;color:var(--muted,#a89fbd);margin-bottom:8px}#edp .st.bad{color:var(--blood,#ff5a5a)}#edp .st.ok{color:var(--good,#7ee0a0)}
 #edp .tools{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-bottom:10px}#edp .tools button{padding:4px 2px;font-size:11px}#edp .mats{display:flex;flex-wrap:wrap;gap:3px;margin:3px 0 6px}#edp .mats canvas{width:34px;height:34px;border:1px solid var(--line,#3b3252);cursor:pointer;image-rendering:pixelated}#edp .mats canvas.on{border-color:#ffd23b;outline:1px solid #ffd23b}#edp .grp{font:10px var(--f-label,monospace);color:var(--muted,#a89fbd);text-transform:uppercase;margin-top:4px}
@@ -613,7 +623,7 @@ var Editor = (function () {
     if (light) { const n = performance.now(); if (n - lastPanel < 120) return; lastPanel = n; }
     const I = indoorNow(), n = Object.keys(RIT.fuori).length + RIT.copie.length + Object.values(RIT.interni).reduce((a, B) => a + Object.values(B.piani || {}).reduce((q, P) => q + Object.keys(P.mobili || {}).length + (P.nuovi || []).length, 0), 0);
     const where = I ? `Dentro: ${esc(I.b.name || I.b.use || 'edificio')} · ${esc(ctx.G.INT.floorLabel ? ctx.G.INT.floorLabel(I.f) : 'piano ' + I.f)}` : 'Fuori';
-    let h = `<h4><span>Editor · F2</span><span>${where}</span></h4><div class="st"></div>
+    let h = `<h4><span>${STUDIO ? 'Strumenti' : 'Editor · F2'}</span><span>${where}</span></h4><div class="st"></div>
       <div class="tools">${[['sposta', 'Sposta', 1], ['pennello', 'Colore', 2], ['materiale', 'Materiale', 3], ['timbro', 'Timbro', 4], ['gomma', 'Gomma', 5]].map(([k, l, i]) => `<button data-tool="${k}" class="${tool === k ? 'on' : ''}" title="${i}">${l}</button>`).join('')}</div>`;
     if (tool === 'sposta') {
       if (okSel(sel)) {
@@ -624,6 +634,7 @@ var Editor = (function () {
         if (sel.t === 'fuori') h += `<div class="hint">Si muove solo il disegno: chi cammina sbatte ancora dove l'oggetto era nato (se era un ingombro).</div>`;
       } else h += `<div class="hint">Clic su un oggetto per prenderlo. ${I ? 'Qui dentro: i mobili.' : 'Fuori: arredo di strada (lampioni, panchine, casse, vasi…). Per i mobili entra in un edificio.'}</div>`;
       if (I) h += `<div class="sec"><h4>Aggiungi un mobile</h4><input type="search" id="edq" placeholder="cerca (letto, sedia, ia_…)"><div class="list" id="edl"></div><div class="hint">Compare al centro della vista.</div></div>`;
+      if ((RIT.files || []).length) h += `<div class="sec"><h4>Posa un modello caricato</h4><div class="list">${RIT.files.map(f => `<div data-posa="glb:${esc(f.file)}">${esc(f.nome || f.file)}</div>`).join('')}</div><div class="hint">Compare al centro della vista${I ? ', sul pavimento' : ''}.</div></div>`;
     } else {
       h += `<div class="row"><label>Grandezza</label><input type="range" data-b="size" min="0.02" max="3" step="0.01" value="${brush.size}"></div>
         <div class="row"><label>Durezza</label><input type="range" data-b="hard" min="0" max="1" step="0.01" value="${brush.hard}"></div>
@@ -646,9 +657,10 @@ var Editor = (function () {
     }
     h += `<div class="sec btns"><button data-a="undo">Annulla <kbd>Ctrl+Z</kbd></button><button data-a="redo">Rifai</button><button data-a="save">${SERVER ? 'Salva ora' : 'Scarica'} <kbd>Ctrl+S</kbd></button></div>
       <div class="hint">${n} ritocchi agli oggetti · ${Object.keys(RIT.pittura).length + [...DIRTYC].filter(c => !RIT.pittura[c.__pvKey]).length} texture dipinte</div>
-      <div class="hint"><kbd>WASD</kbd> muovi la vista (Maiusc veloce) · <kbd>Q</kbd>/<kbd>E</kbd> gira · rotella zoom · <kbd>Esc</kbd> lascia · <kbd>F2</kbd> esci</div>`;
+      <div class="hint"><kbd>WASD</kbd> muovi la vista (Maiusc veloce) · <kbd>Q</kbd>/<kbd>E</kbd> gira · rotella zoom · <kbd>Esc</kbd> lascia${STUDIO ? ' · doppio clic: il modello da solo (sull\'edificio: entri)' : ' · <kbd>F2</kbd> esci'}</div>`;
     panel.innerHTML = h; status();
     panel.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+    panel.querySelectorAll('[data-posa]').forEach(d => d.onclick = () => posa(d.dataset.posa));
     panel.querySelectorAll('[data-a]').forEach(b => b.onclick = () => ({ dup: duplicate, del: remove, rev: revert, undo: () => undoRedo(undo, redo), redo: () => undoRedo(redo, undo), save: () => SERVER ? save() : download(), mat: matFromSource, norect: () => { srcRect = null; renderPanel(); } })[b.dataset.a]());
     panel.querySelectorAll('[data-f]').forEach(inp => inp.onchange = () => { if (!okSel(sel)) return; const v = parseFloat(inp.value); if (!isFinite(v)) return; const before = snap(), T = AD[sel.t].get(sel), k = inp.dataset.f; T[k] = k === 'ry' ? v * Math.PI / 180 : k === 's' ? Math.max(.05, v) : v; AD[sel.t].set(sel, T, true); commitSel(before); });
     panel.querySelectorAll('[data-b]').forEach(inp => inp.oninput = () => { brush[inp.dataset.b] = inp.type === 'color' ? inp.value : parseFloat(inp.value); });
@@ -682,5 +694,28 @@ var Editor = (function () {
   addEventListener('blur', () => { for (const k in held) held[k] = false; });
   addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
-  return { load, attach, reapply, active: () => on, view, cursor, toggle, get ritocchi() { return RIT; }, _t: { pick, select, AD, KEYS, surfaceAt, paintAt, setTool, applyAll, keyOf, save, get sel() { return sel; }, get stroke() { return stroke; }, set stroke(v) { stroke = v; }, set src(v) { src = v; }, brush, library, matMap, inInit, get undo() { return undo; }, get redo() { return redo; }, set mat(v) { mat = v; }, get mat() { return mat; } } };
+  // ---------------- per lo Studio (editor.html) ----------------
+  const STUDIO = !!window.PV_STUDIO, hooks = {};
+  // posa un modello dove guarda la vista: fuori diventa una copia, dentro un mobile nuovo
+  function posa(key) {
+    const I = indoorNow(), id = /^mobile:/.test(key) ? key.slice(7) : key;
+    if (I) { addFurn(id); return; }
+    let made = null; edit(() => { made = { mod: key, pos: [r3(focus.x), r3(gH(focus.x, focus.y)), r3(focus.y)], ry: 0, s: 1 }; RIT.copie.push(made); });
+    const c = COPIES.find(k => k.e === made); if (c) select({ t: 'copia', c }); toast('Posato: trascinalo dove vuoi.');
+  }
+  function setModel(key, entry) { edit(() => { if (entry) RIT.modelli[key] = entry; else delete RIT.modelli[key]; }); if (/^strada:/.test(key) && window.Officina) Officina.setStrada(true); if (indoorNow()) E.rebuildIndoor(); }
+  function setVestito(id, v) { edit(() => { if (v) RIT.vestiti[id] = v; else delete RIT.vestiti[id]; }); if (window.Officina) Officina.patchCapi(); }
+  function addFile(f) { edit(() => { RIT.files = (RIT.files || []).filter(x => x.file !== f.file); RIT.files.push(f); }); }
+  function setFocus(x, y) { focus = { x, y }; }
+  // lo Studio mette in pausa l'editor quando si è nell'hangar
+  function suspend(v) { on = !v; sel = null; hover = null; drag = null; stroke = null; if (panel) panel.hidden = v; if (over) over.hidden = v; if (!v) renderPanel(); }
+  // la chiave del modello di quello che è selezionato (per la vista isolata)
+  function modelKey(s) {
+    if (!s) return null; const strada = rec => { const o = window.Officina && Officina.orig(rec.obj); return o ? 'strada:' + Officina.sig(o) : null; };
+    if (s.t === 'fuori') return strada(s.rec);
+    if (s.t === 'copia') return s.c.e.mod || (KEYS.get(s.c.e.da) ? strada(KEYS.get(s.c.e.da)) : null);
+    const o = furnOf(s); return o ? (/^(glb|kit|pezzi|bottino):/.test(o.id) ? o.id : 'mobile:' + o.id) : null;
+  }
+  return { suspend, modelKey, annulla: () => undoRedo(undo, redo), rifai: () => undoRedo(redo, undo), posa, setModel, setVestito, addFile, setFocus, hooks, get focus() { return focus; }, get server() { return SERVER; }, get selection() { return sel; }, deselect: () => select(null), render: () => renderPanel(),
+    load, attach, reapply, active: () => on, view, cursor, toggle, get ritocchi() { return RIT; }, _t: { pick, select, AD, KEYS, surfaceAt, paintAt, setTool, applyAll, keyOf, save, get sel() { return sel; }, get stroke() { return stroke; }, set stroke(v) { stroke = v; }, set src(v) { src = v; }, brush, library, matMap, inInit, get undo() { return undo; }, get redo() { return redo; }, set mat(v) { mat = v; }, get mat() { return mat; } } };
 })();
