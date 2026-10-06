@@ -25,6 +25,10 @@ Richiesta: raccogliere e lanciare oggetti, sollevare in due, fare piani, ricogni
 ## Prove
 `node test_imprese.js` (aggiungere `global.Commissioni`, `global.Trame` come in index.src.html). Tre giorni, seme 1: 12 colpi (7 riusciti, 5 andati storti), 460.000 lire di bottino, alibi ogni volta, rivendite al Magazzino. Agguati, proteste e infamie hanno bisogno di rancori e rabbia che crescono coi giorni: in tre giorni non sono scattati.
 
+## Anche (commissioni.js, oggetti.js)
+- **Raccogliere da terra**: soldi caduti o un'arma lasciata lì (`st.pickups` con `drop`): chi è vicino e avido, al verde o poco onesto ci va, si china (posa `raccoglie`) e la prende; chi guarda se lo ricorda.
+- **Portare in due**: chi compra una cosa pesante (tavolo, mobile, branda) chiama un amico o un parente vicino e libero; tornano a casa tutti e due col carico in mano, e se lo ricordano.
+- **La spesa delle famiglie** (oggetti.js `householdDay`, alle 17): ora è una commissione vera; solo chi è lontano dal giocatore compra fuori scena.
+
 ## Da fare
-- Raccogliere da terra (armi, soldi caduti) e sollevare in due cose diverse dai corpi.
 - Agguati, proteste e infamie da guardare su partite lunghe.

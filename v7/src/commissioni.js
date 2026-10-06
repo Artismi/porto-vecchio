@@ -23,7 +23,7 @@ var Commissioni = (function () {
   const rnd = Math.random, pick = a => a[Math.floor(rnd() * a.length)];
   const dist = (a, b, c, d) => Math.hypot(c - a, d - b);
   const nm = id => (CAT[id] ? CAT[id].nome : id);
-  const S = st => st.comm || (st.comm = { hour: Math.floor(st.t / 60), tick: 0, stats: { pipi: 0, pipiMuro: 0, multe: 0, compre: 0, vendite: 0, spaccio: 0, casa: 0, panini: 0, mangiato: 0 } });
+  const S = st => st.comm || (st.comm = { hour: Math.floor(st.t / 60), tick: 0, stats: { raccolti: 0, pipi: 0, pipiMuro: 0, multe: 0, compre: 0, vendite: 0, spaccio: 0, casa: 0, panini: 0, mangiato: 0 } });
   const ok = (st, n) => n && !n.dead && n.pop && n.pop.ints && !(n.jailedUntil > st.t) && !I.isPassive(st, n) && !n.pop.errand && !(n.pop.with);
   const say = (st, n, t) => { if (n.pop.near && !n.inside && dist(n.x, n.y, st.player.x, st.player.y) < 30 && st.clock > (n.barkCd || 0)) { G.say(st, n, t, 2.2); n.barkCd = st.clock + 6; } };
   const roadAt = (x, y) => G.MAP.grid[Math.floor(y / TS) * G.MAP.world.GW + Math.floor(x / TS)] === G.T.VIA;
@@ -96,6 +96,7 @@ var Commissioni = (function () {
     if (E.data.eat) { const N = n.pop.need; N.fame = clamp(N.fame - .45, 0, 1); S(st).stats.panini++; n.hand = null; say(st, n, 'Ci voleva.'); return; }
     Sc.put(n, id, 1); if (E.data.own) n.pop.owns[E.data.own] = true;
     n.hand = CAT[id] && (CAT[id].peso || 0) > 3 ? 'mobili' : 'merce';   // il pacco in mano fino a casa
+    if (HEAVY(id)) { const h = helperFor(st, n); if (h && I.errand(st, h, { kind: 'aiutaPortare', tgt: n.pop.homeT, act: 'commissione', label: `aiuta ${n.first} a portare ${nm(id)}`, secs: 6, mins: 20, data: { who: n.id, id }, force: true })) { h.hand = 'mobili'; say(st, n, `${h.first}, mi dai una mano?`); I.note(st, n, `${h.first} gli dà una mano a portare ${nm(id)}`, 'good', { w: .25, who: h.id, tag: 'insieme' }); } }
     n.pop.carryHome = st.t;
     I.note(st, n, `comprato ${nm(id)} da ${Sh.label} (${Math.round(p * 10) / 10}.000 lire)`, 'info', { w: .15, tag: 'spesa' });
     if (E.data.then) { const nx = E.data.then; I.errand(st, n, Object.assign({ force: true }, nx)); }
@@ -159,6 +160,38 @@ var Commissioni = (function () {
     I.note(st, n, E.data.id === 'vernice' ? 'ha imbiancato una stanza: la casa sembra un\'altra' : `ha sistemato casa (${nm(E.data.id)} nuovo)`, 'good', { w: .35, tag: 'progetto' });
   };
 
+  // ---------------- RACCOGLIERE DA TERRA ----------------
+  // soldi caduti, un'arma lasciata lì: chi è vicino e avido (o al verde, o poco onesto) ci va, si china e la prende
+  function pickup(st, n) {
+    const P = n.pop; if (!P.near || n.inside) return false;
+    const greedy = (n.tr ? n.tr.avid > .55 || n.tr.legge < .4 : false) || P.money < 5; if (!greedy) return false;
+    const k = (st.pickups || []).find(q => q.drop && (q.takenAt === null || q.takenAt === undefined) && !q.claimed && dist(q.x, q.y, n.x, n.y) < 16 && (q.kind === 'soldi' || (n.tr && n.tr.cor > .6 && n.tr.legge < .45)));
+    if (!k) return false;
+    const pl = G.nearestPlace(k.x, k.y), t = { k: 'p', pid: pl.id, x: k.x, y: k.y, label: pl.name, place: pl.id };
+    if (!I.errand(st, n, { kind: 'raccogli', tgt: t, act: 'commissione', label: 'raccoglie qualcosa da terra', secs: 2.5, mins: 3, data: { id: k.id }, spot: { x: k.x, y: k.y, face: n.face } })) return false;
+    k.claimed = n.id; return true;
+  }
+  I.ERRAND.raccogli = (st, n, E) => {
+    const k = (st.pickups || []).find(q => q.id === E.data.id); if (!k || (k.takenAt !== null && k.takenAt !== undefined)) { say(st, n, 'Sparito…'); return; }
+    k.takenAt = st.t; const P = n.pop; S(st).stats.raccolti++;
+    if (k.kind === 'soldi') { P.money += k.amount || 5; I.note(st, n, `trovato ${k.amount || 5}.000 lire per terra`, 'good', { w: .3 }); say(st, n, 'Guarda qua…'); }
+    else { P.inv = P.inv || {}; P.inv[k.kind] = (P.inv[k.kind] || 0) + 1; I.note(st, n, `raccolto da terra: ${G.PICKUP_LABEL[k.kind] || k.kind}`, 'shady', { w: .45 }); }
+    st.npcs.forEach(w => { if (w !== n && w.pop && !w.inside && dist(w.x, w.y, n.x, n.y) < 10 && Math.random() < .5) I.note(st, w, `ha visto ${n.first} raccogliere ${k.kind === 'soldi' ? 'dei soldi' : 'un\'arma'} da terra`, 'info', { w: .25, who: n.id }); });
+  };
+
+  // ---------------- PORTARE IN DUE ----------------
+  // le cose grosse (un tavolo, un mobile, una branda) non le porta uno solo: si chiama un amico o un parente che è vicino
+  function helperFor(st, n) {
+    const P = n.pop, cands = (P.friends || []).concat(((st.pop.households[P.hh] || {}).members || [])).map(id => G.byId(st, id)).filter(k => k && k !== n && ok(st, k) && k.pop.cur && !k.pop.cur.fixed && k.pop.cur.act !== 'lavoro' && k.pop.cur.act !== 'sonno' && dist(k.x, k.y, n.x, n.y) < 70);
+    return cands.sort((a, b) => dist(a.x, a.y, n.x, n.y) - dist(b.x, b.y, n.x, n.y))[0] || null;
+  }
+  const HEAVY = id => CAT[id] && (CAT[id].peso || 0) >= 6;
+  I.ERRAND.aiutaPortare = (st, n, E) => {
+    const o = G.byId(st, E.data.who); n.hand = null;
+    I.note(st, n, `ha aiutato ${o ? o.first : 'un amico'} a portare a casa ${nm(E.data.id)}`, 'good', { w: .35, who: E.data.who, tag: 'insieme' });
+    if (o && o.pop) { I.note(st, o, `${n.first} l'ha aiutato a portare ${nm(E.data.id)}`, 'good', { w: .35, who: n.id, tag: 'insieme' }); try { Azioni.moveRel(st, o, n, .05, 0); } catch (e) { } }
+  };
+
   // ---------------- IL GIRO DI OGNI ORA ----------------
   function tick(st) {
     const M = S(st); if (st.clock < M.tick) return; M.tick = st.clock + 1.5;
@@ -169,7 +202,7 @@ var Commissioni = (function () {
       if (n.hand && (n.hand === 'merce' || n.hand === 'mobili') && P.carryHome && P.at && I.isHomeT(P, P.at) && n.inside) { n.hand = null; P.carryHome = 0; }
       if (relieve(st, n)) continue;
       if (rnd() > .25) continue;   // non tutti decidono tutto nello stesso istante
-      if (hunger(st, n) || craving(st, n)) continue;
+      if (hunger(st, n) || craving(st, n) || pickup(st, n)) continue;
       const b = P.cur; if (!b || b.fixed || b.act === 'lavoro' || b.act === 'sonno') continue;
       const urgent = Sc.wants(st, n).some(w => w.urg > .5);
       if (selling(st, n) || (!urgent && homeProject(st, n)) || shopping(st, n)) continue;
