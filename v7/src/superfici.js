@@ -189,8 +189,28 @@ var Superfici = (function () {
       geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
       o.geometry = geo; o.material = m;
     }
+    if (!opt.noFusione) unisci(root, inv);
     root.userData.vestito = true;
     return root;
+  }
+  // i pezzi vestiti con lo stesso materiale diventano una mesh sola (da ~170 chiamate di disegno a ~40 per una postazione).
+  // Restano a parte le mesh con un nome e tutto quello che sta sotto un oggetto con un nome (parti animate: ventola, ago, morsa, gambe…).
+  function unisci(root, inv) {
+    const gruppi = new Map(), libero = o => { for (let p = o; p && p !== root; p = p.parent) if (p.name) return false; return true; };
+    root.traverse(o => { if (o.isMesh && o.userData.vestito && o.material && o.material.userData && o.material.userData.vestito && o.geometry.attributes.color && libero(o)) { const k = o.material; if (!gruppi.has(k)) gruppi.set(k, []); gruppi.get(k).push(o); } });
+    root.updateMatrixWorld(true);
+    for (const [m, list] of gruppi) {
+      if (list.length < 2) continue;
+      const parts = list.map(o => { let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)); return g; });
+      let n = 0; parts.forEach(g => { n += g.attributes.position.count; });
+      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Float32Array(n * 3); let o3 = 0, o2 = 0;
+      for (const g of parts) { const c = g.attributes.position.count; pos.set(g.attributes.position.array, o3); if (g.attributes.normal) nor.set(g.attributes.normal.array, o3); if (g.attributes.uv) uv.set(g.attributes.uv.array, o2); col.set(g.attributes.color.array, o3); o3 += c * 3; o2 += c * 2; g.dispose(); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.computeBoundingSphere(); geo.computeBoundingBox();
+      const mm = new THREE.Mesh(geo, m); mm.castShadow = mm.receiveShadow = true; mm.userData.vestito = true; mm.userData.fuso = list.length; root.add(mm);
+      list.forEach(o => o.parent && o.parent.remove(o));
+    }
+    // i gruppi rimasti vuoti si tolgono
+    const vuoti = []; root.traverse(o => { if (o !== root && !o.isMesh && !o.name && o.children.length === 0 && !o.isLight) vuoti.push(o); }); vuoti.forEach(o => o.parent && o.parent.remove(o));
   }
   return { vesti, tipo, scatola, TEXS };
 })();

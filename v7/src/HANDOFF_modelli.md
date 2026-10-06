@@ -59,6 +59,26 @@ Rivisti tutti i modelli fatti a mano che lo studio sa fotografare: bottino (10),
 - Studio: `"nudo": true` (nella scena o nella voce) mostra i modelli senza veste, per confrontare. Esempio: `_immagini/modelli/veste_confronto.png`.
 - Nel gioco, alla distanza della camera, la grana fine si perde. Quello che si legge sono gli smussi grossi, le ombre di contatto e i toni diversi per pezzo. Il grading del gioco sposta tutti i colori verso il sabbia, anche quelli del mondo.
 
+## Volume e struttura: il kit di forme (6/10 notte)
+La veste da sola non bastava: le forme erano ancora scatole. `src/modella.js` (caricato dopo `superfici.js`) è il kit di forme per i modelli fatti a mano. Segue la stessa regola di `forme.js` in render.js: niente scatole, sfere e cilindri nudi.
+- **Volume**:
+  - `guscio` (blocco estruso con gli angoli e il bordo arrotondati);
+  - `lastra` (pannello coi bordi smussati);
+  - `tornito` (profilo girato);
+  - `serbatoio`;
+  - `tuboPiegato` (tubo per più punti con le curve col loro raggio);
+  - `schermo` (tubo catodico bombato).
+- **Struttura**: `bullone`/`bulloni`, `alette`, `griglia`, `manopola`, `presa`, `levetta`, `quadrante` (strumento a lancetta), `ruota` (battistrada, cerchio, mozzo), `cerniera`, `maniglia`, `cavo`, `asta`.
+- **Targhette**: `targa(testo, …)` disegnata su tela; tipi `targa`, `pericolo`, `strisce`, `quadrante`. Solo nomi inventati (niente marchi veri).
+- Rifatti con il kit:
+  - pezzi: generatore, tanica, estintore, bobina, fari, cassetta, cassa di metallo, cassa militare, morsa, terminale, televisore, cassettiera, armadietti, letto a castello, scaffale, lume, barattoli, bottiglie, sgabello, cucina, branda;
+  - tutte le 16 postazioni `st_*`;
+  - dal bottino: cestino, cassetta delle munizioni, fusto.
+- **Metallicità bassa** (0,3 al massimo): senza una mappa d'ambiente il metallo pieno viene nero, sia nello studio sia nel gioco.
+- **Fusione** (`Superfici.vesti` → `unisci`): le mesh vestite con lo stesso materiale diventano una sola. Il banco armi passa da 173 a 51 mesh, la forgia da 74 a 19. Restano a parte le mesh con un nome e tutto quello che sta sotto un oggetto con un nome: ventola, ago, morsa, rullo, gambe, fiamma, luce, led, segatura, schermo (verificato).
+- **Costo**: il banco armi ha 14,5k triangoli e si costruisce in circa 60 ms una volta sola; la forgia ha 6,7k triangoli e circa 30 ms. Sono pezzi da interni e covi, pochi alla volta.
+- **Da fare**: ridurre i materiali per modello (il banco armi ne ha 47), per esempio con un atlante come `forme.js`. Rifare con il kit anche gli altri oggetti del bottino (vicolo, rottami, bosco, spiaggia, prateria, tetto, carico), che hanno già texture loro, e i mobili `pv_*`.
+
 ## Da fare
 - I modelli del mondo in `render.js` (lampioni, panchine, bancarelle…) e i mobili `pv_*` di `models.js` non passano dallo studio: vanno aggiunti come sorgenti e rivisti allo stesso modo.
 - Personaggi: sempre il punto più debole (vedi HANDOFF_personaggi).

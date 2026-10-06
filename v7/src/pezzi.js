@@ -126,7 +126,7 @@ var Pezzi = (function () {
     Mo.lastra(s, .4, .33, .02, '#2a2420', {}, .04, -.06, .23, .19); const sc = Mo.schermo(s, .33, .26, .025, '#202828', -.06, .23, .21); named(sc, 'schermo'); sc.material.emissive = new THREE.Color('#304848'); sc.material.emissiveIntensity = .8;
     Mo.lastra(s, .1, .33, .015, '#c8b890', {}, .01, .21, .23, .19); Mo.griglia(s, .08, .1, 6, 1, .21, .32, .206, '#3a2a1e');
     Mo.manopola(s, .21, .2, .205, .02); Mo.manopola(s, .21, .14, .205, .016); for (let i = 0; i < 4; i++) Mo.guscio(s, .016, .01, .012, '#e8e0c8', {}, .003, .002, .18 + i * .02, .07, .205);
-    Mo.targa(s, 'Voxson', .06, .015, -.06, .055, .202, 0, '#2a2420', '#c8a860');
+    Mo.targa(s, 'Vocsor', .06, .015, -.06, .055, .202, 0, '#2a2420', '#c8a860');
     Mo.tornito(s, [[0, 0], [.04, 0], [.035, .03], [0, .035]], '#1a1a1a', {}, .05, .43, -.05);
     for (const a of [-.45, .45]) asta(s, [.05, .46, -.05], [.05 + Math.sin(a) * .5, .46 + Math.cos(a) * .5 * .9, -.05], .004, '#c8c8d0', MET);
     return s;
@@ -165,7 +165,7 @@ var Pezzi = (function () {
     const s = sub(g, x, y, z), Mo = Modella, vetro = (c, op) => new THREE.MeshStandardMaterial({ color: c, transparent: true, opacity: op || .8, roughness: .1 });
     Mo.tornito(s, [[0, 0], [.07, .01], [.08, .06], [.07, .12], [.03, .17], [.014, .2], [.014, .26], [.017, .265], [0, .27]], vetro('#3a5a2a', .85), null, 0, 0, 0, 18);
     const pg = Mo.tornito(s, [[0, 0], [.072, .005], [.082, .06], [.074, .11], [0, .11]], '#c8a860', { roughness: 1 }, 0, 0, 0, 18); pg.material.userData.sup = 'tessuto'; Mo.tornito(s, [[.015, 0], [.018, .01], [.018, .02], [.015, .022]], '#7a2a2a', {}, 0, .25, 0, 10);
-    Mo.tornito(s, [[0, 0], [.03, 0], [.032, .1], [.025, .14], [.012, .17], [.012, .21], [0, .21]], vetro('#2e5a2a'), null, .12, 0, .02, 14); Mo.tornito(s, [[0, 0], [.014, 0], [.014, .008], [0, .01]], '#c8b040', Mo.MET, .12, .21, .02, 10); Mo.targa(s, 'PERONI', .05, .04, .12, .06, .0525, 0, '#f0e8d0', '#c82a1e');
+    Mo.tornito(s, [[0, 0], [.03, 0], [.032, .1], [.025, .14], [.012, .17], [.012, .21], [0, .21]], vetro('#2e5a2a'), null, .12, 0, .02, 14); Mo.tornito(s, [[0, 0], [.014, 0], [.014, .008], [0, .01]], '#c8b040', Mo.MET, .12, .21, .02, 10); Mo.targa(s, 'BIRRA ADRIA', .05, .04, .12, .06, .0525, 0, '#f0e8d0', '#c82a1e');
     Mo.tornito(s, [[0, 0], [.028, 0], [.028, .14], [.02, .17], [.01, .2], [.01, .24], [0, .24]], vetro('#e8eee8', .45), null, .2, 0, -.02, 14); Mo.tornito(s, [[0, 0], [.012, 0], [.012, .02], [0, .02]], '#2a2a2a', {}, .2, .24, -.02, 10); Mo.targa(s, 'GRAPPA', .04, .05, .2, .07, .009, 0, '#f0ead8', '#1a1a1a');
     return s;
   }
@@ -355,10 +355,15 @@ var Pezzi = (function () {
   function bancoLavoro(g) { const c = '#5a7a6a'; for (const xx of [-.9, .9]) for (const zz of [-.35, .35]) bx(g, .05, zz < 0 ? 1.7 : .85, .05, c, xx, zz < 0 ? .85 : .42, zz, MET); piano(g, 1.9, .8, .87, '#b08a5a'); bx(g, 1.85, .03, .7, '#a08050', 0, .2, 0);
     for (const yy of [1.25, 1.6]) { bx(g, 1.85, .03, .3, '#b08a5a', 0, yy, -.25); for (let i = 0; i < 5; i++) bx(g, .2, .1, .22, ['#3a5a8a', '#8a3a2a', '#3a3a3a'][i % 3], -.75 + i * .36, yy + .065, -.25); }
     morsa(g, -.8, .89, .2, -.2); crt(g, -.2, .89, -.05, .15); lampada(g, .6, .89, -.1, -.4); vasetti(g, .2, .89, .1); radio(g, .5, 1.62, -.25, 0); cassettiera(g, .55, 0, .1, 0); sgabello(g, -.5, 0, .75); attrezziSparsi(g, 1.6, .895, .2); }
-  // la cucina del covo: casse, fornello da campo, pentola, taniche d'acqua, barattoli
-  function cucina(g) { cassaMil(g, 1, .55, .5, '#4a5a3a', -.55, 0, 0); cassaMil(g, 1, .55, .5, '#4a5a3a', .55, 0, 0); piano(g, 2.2, .6, .58, '#8a7a5a');
-    cy(g, .2, .22, .08, '#3a3a3a', -.5, .65, 0, MET); named(cy(g, .14, .14, .02, '#3080ff', -.5, .7, 0, GLOW('#2060ff')), 'fiamma'); cy(g, .16, .14, .2, '#8a8e96', -.5, .8, 0, MET); named(sp(g, .06, '#e8e8e8', -.5, .98, 0, { transparent: true, opacity: .5 }), 'vapore');
-    cy(g, .1, .12, .16, '#2a2a2e', -.05, .69, .05, MET); vasetti(g, .25, .61, -.1); bottiglie(g, .7, .61, -.05); tanica(g, 1.25, 0, 0, -.3, '#3a6aa0'); tanica(g, 1.25, 0, .35, .2, '#3a6aa0'); cartone(g, -1.3, 0, .1, .3); bx(g, .4, .03, .25, '#c8b080', .35, .615, .15); }
+  // [modelli] la cucina del covo: due casse militari col piano, fornello da campo a due fuochi con la bombola, pentola coi manici e il coperchio, caffettiera, taniche d'acqua, barattoli, tagliere
+  function cucina(g) { const Mo = Modella; cassaMil(g, 1, .55, .5, '#4a5a3a', -.55, 0, 0); cassaMil(g, 1, .55, .5, '#4a5a3a', .55, 0, 0); Mo.guscio(g, 2.2, .04, .6, '#8a7a5a', {}, .01, .006, 0, .58, 0);
+    const f = sub(g, -.5, .62, 0); Mo.guscio(f, .5, .08, .3, '#3a3c40', Mo.MET, .02, .008); for (const x of [-.12, .12]) { Mo.tornito(f, [[0, 0], [.07, 0], [.07, .01], [.05, .02], [0, .02]], '#1a1a1a', Mo.MET, x, .08, 0, 16); for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; Mo.asta(f, [x, .1, 0], [x + Math.cos(a) * .08, .1, Math.sin(a) * .08], .004, '#1a1a1a', Mo.MET); } }
+    named(Mo.tornito(f, [[.03, 0], [.06, 0], [.06, .006], [.03, .006]], new THREE.MeshStandardMaterial({ color: '#3080ff', emissive: '#2060ff', emissiveIntensity: 1.2 }), null, .12, .095, 0, 14), 'fiamma'); for (const x of [-.12, .12]) Mo.manopola(f, x, .04, .15, .012);
+    Mo.cavo(g, [[-.75, .64, -.1], [-.85, .5, -.2], [-.9, .3, -.3], [-1.0, .02, -.35]], .006, '#c83a2a'); Mo.tornito(g, [[0, 0], [.1, 0], [.11, .02], [.11, .28], [.07, .34], [.02, .36], [0, .36]], '#c84a2a', { roughness: .45 }, -1.05, 0, -.38, 16);
+    Mo.tornito(g, [[0, 0], [.12, 0], [.13, .01], [.13, .17], [.135, .18], [0, .18]], '#8a8e96', { metalness: .3, roughness: .35 }, -.62, .72, 0, 20); for (const sx of [-1, 1]) Mo.tuboPiegato(g, [[-.62 + sx * .13, .86, -.03], [-.62 + sx * .17, .87, -.03], [-.62 + sx * .17, .87, .03], [-.62 + sx * .13, .86, .03]], .006, '#2a2a2a', {}, .01);
+    Mo.tornito(g, [[0, 0], [.135, 0], [.12, .02], [.03, .03], [.02, .045], [0, .05]], '#9a9ea6', { metalness: .3, roughness: .35 }, -.62, .9, 0, 20); named(Mo.tornito(g, [[0, 0], [.04, .03], [.02, .08], [0, .1]], new THREE.MeshStandardMaterial({ color: '#e8e8e8', transparent: true, opacity: .4 }), null, -.62, .95, 0, 8), 'vapore');
+    const caf = sub(g, -.3, .73, .05); Mo.tornito(caf, [[0, 0], [.04, 0], [.045, .06], [.03, .075], [.045, .09], [.04, .15], [.025, .165], [0, .17]], '#b8bcc4', Mo.MET, 0, 0, 0, 8); Mo.tuboPiegato(caf, [[-.04, .14, 0], [-.07, .13, 0], [-.07, .1, 0], [-.04, .1, 0]], .006, '#1a1a1a', {}, .01);
+    vasetti(g, .25, .6, -.1); bottiglie(g, .7, .6, -.05); tanica(g, 1.25, 0, 0, -.3, '#3a6aa0'); tanica(g, 1.25, 0, .35, .2, '#3a6aa0'); cartone(g, -1.5, 0, .2, .3); Mo.guscio(g, .38, .025, .24, '#c8a070', {}, .01, .006, .35, .6, .15); }
   // il focolare: pietre in cerchio, ceppi, treppiede col paiolo
   function focolare(g) { for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; const p = new THREE.Mesh(new THREE.DodecahedronGeometry(.16), mat('#6a6a68', { roughness: 1 })); p.position.set(Math.cos(a) * .55, .1, Math.sin(a) * .55); p.scale.y = .7; p.rotation.y = a * 2; p.castShadow = true; g.add(p); }
     // [oggetti] braci, ciocchi a capanna anneriti in punta, tre lingue di fuoco a goccia (si animano per nome: fiamma, fiamma2)
@@ -392,7 +397,12 @@ var Pezzi = (function () {
     cy(g, .012, .012, 1.75, '#c8c8d0', -1.2, .9, -.3, MET); for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; asta(g, [-1.2, .12, -.3], [-1.2 + Math.cos(a) * .25, .01, -.3 + Math.sin(a) * .25], .015, '#c8c8d0', MET); }
     bx(g, .3, .015, .015, '#c8c8d0', -1.2, 1.76, -.3, MET); bx(g, .1, .18, .05, '#d8e8f0', -1.08, 1.6, -.3, { transparent: true, opacity: .8 }); cavo(g, [[-1.08, 1.5, -.3], [-1.05, 1.1, -.25], [-.95, .75, -.1], [-.85, .6, 0]], .004, '#e8eef0');
     lampada(g, 1.45, .43, -.25, 2.4); cy(g, .2, .15, .1, '#c8ccd4', -1.1, .05, .3, MET); }
-  function castelloBasso(g) { for (const xx of [-.9, .9]) for (const zz of [-.4, .4]) bx(g, .04, .45, .04, '#3a3a40', xx, .22, zz, MET); for (const zz of [-.4, .4]) bx(g, 1.84, .04, .04, '#3a3a40', 0, .41, zz, MET); bx(g, 1.8, .12, .78, '#d8d4c8', 0, .49, 0); bx(g, .4, .1, .55, '#f0ece2', -.65, .6, 0); bx(g, 1.1, .03, .8, '#6a7a6a', .3, .565, 0); }
+  // [modelli] branda militare: telo di tela teso fra due stanghe, gambe a X incernierate, cuscino, coperta piegata a righe
+  function castelloBasso(g) { const Mo = Modella, T = '#3a3c42';
+    for (const zz of [-.36, .36]) Mo.asta(g, [-.95, .45, zz], [.95, .45, zz], .018, '#6a5a3a', {});
+    for (const xx of [-.8, 0, .8]) { Mo.asta(g, [xx - .12, 0, -.36], [xx + .12, .45, .36], .014, T, Mo.MET); Mo.asta(g, [xx - .12, 0, .36], [xx + .12, .45, -.36], .014, T, Mo.MET); Mo.asta(g, [xx - .12, .01, -.38], [xx - .12, .01, .38], .012, T, Mo.MET); }
+    const geo = new THREE.PlaneGeometry(1.88, .72, 8, 4); const P = geo.attributes.position; for (let i = 0; i < P.count; i++) P.setZ(i, -.04 * (1 - Math.pow(P.getY(i) / .36, 2))); geo.computeVertexNormals(); const tl = new THREE.Mesh(geo, Modella.mat('#6a7a5a', { roughness: 1, side: THREE.DoubleSide })); tl.rotation.x = -Math.PI / 2; tl.position.y = .46; tl.castShadow = tl.receiveShadow = true; g.add(tl);
+    Mo.guscio(g, .38, .1, .55, '#f0ece2', { roughness: 1 }, .05, .04, -.68, .44, 0); Mo.guscio(g, .5, .07, .66, '#8a3a2a', { roughness: 1 }, .02, .015, .45, .44, 0); for (let i = 0; i < 3; i++) Mo.guscio(g, .505, .071, .03, '#e8d8b0', { roughness: 1 }, .005, .003, .45, .44, -.2 + i * .2); }
   // [modelli] la forgia: incudine vera (corno, tavola, vita, base) sul ceppo cerchiato, tenaglie appoggiate, secchio del carbone col carbone
   function forgiaExtra(g) { cy(g, .25, .29, .5, '#5a3a20', .9, .25, .3); for (const yy of [.08, .42]) cy(g, .275 - yy * .06, .28 - yy * .06, .03, '#3a3a40', .9, yy, .3, MET); cy(g, .25, .25, .005, '#a07a4e', .9, .503, .3);
     const a = sub(g, .9, .5, .3, .3), I = '#3a3a40'; bx(a, .2, .06, .14, I, 0, .03, 0, MET); bx(a, .12, .08, .09, I, 0, .1, 0, MET); bx(a, .32, .07, .13, I, -.02, .175, 0, MET); const h = new THREE.Mesh(new THREE.ConeGeometry(.06, .2, 8), mat(I, MET)); h.rotation.z = -Math.PI / 2; h.position.set(.24, .18, 0); h.scale.z = .9; h.castShadow = true; a.add(h); bx(a, .06, .07, .13, I, -.2, .175, 0, MET);
