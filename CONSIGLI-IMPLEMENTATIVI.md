@@ -1,6 +1,12 @@
 # CONSIGLI IMPLEMENTATIVI — consolidare Porto Vecchio e proseguire
 
-*Data: 6 ottobre 2026 · Compagna di [ANALISI-STRUTTURALE.md](ANALISI-STRUTTURALE.md). Priorità dichiarata dall'utente: **consolidare prima, poi sviluppare**. Nessuna delle azioni qui sotto è stata eseguita: questa pagina è un piano di lavoro da approvare.*
+*Data: 6 ottobre 2026 · Compagna di [ANALISI-STRUTTURALE.md](ANALISI-STRUTTURALE.md). Priorità dichiarata dall'utente: **consolidare prima, poi sviluppare**.*
+
+> **Stato delle decisioni (6 ottobre 2026, ore 11:30)** — approvate dall'utente le voci 1 e 2, differite la 3 e la 4:
+> - ✅ **Fatto** — `v7/index.html` non si committa più (`.gitignore` + `git rm --cached`) e Vercel lo rigenera con `buildCommand: python3 build.py` in `v7/vercel.json`.
+> - ✅ **Fatto** — rimosse dal working tree (commit dedicati, recuperabili dalla storia git): `v2/`, `v3/`, `v4/`, `v5/`, `v7/_to_delete/`, `v7/_scambio/`, `v7/_backup_{interni,mente,oggetti,soldi,neon_modelli}/`, `_trasferimento/`, `_backup/`. Restano: `v6/` (decisione 3, in attesa), i sorgenti della radice e i suoi test (decisione 4, in attesa), `v7/_immagini/`.
+> - ⏸ **In attesa** — decisione 3: rimozione di `v6/` dopo la dichiarazione della base di render.js (§3a).
+> - ⏸ **In attesa** — decisione 4: portare a v7 i test d'azione della radice o archiviarli (§4.2).
 
 ---
 

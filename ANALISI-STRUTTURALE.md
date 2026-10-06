@@ -32,14 +32,11 @@ porto-vecchio/                     ← repository git (remoto: Jollyproxi/porto-
 ├─ showroom.src.html, shot.py, showshot.py, dzshot.py, physshot.py, stress.py  ← istantanee Playwright
 ├─ test_combattimento.js, test_polizia.js, test_distruzione.js, test_fisica.js, test_guida.js
 ├─ HANDOFF.md (radice), LEGGIMI-menu.md, mappa.txt, package.json (three@0.149), vercel.json
-├─ _backup/          ← 3 file «prima del menu» della versione radice
-├─ _trasferimento/   ← 6 archivi tgz/zip usati per spostare il lavoro tra macchine/agenti
+├─ _backup/          ← rimosso il 6/10/2026 (storia in git)
+├─ _trasferimento/   ← rimosso il 6/10/2026 (storia in git)
 │
-│  ── Versioni EVOLUTIVE v2 … v6 (snapshot incrementali) ──────────
-├─ v2/ v3/           ← 13 file .js in src/: base città + Risacca + popolo
-├─ v4/               ← 14 file: + test_vita
-├─ v5/               ← 16 file: + azioni.js
-├─ v6/               ← 19 file: + economia.js, tasche_ui.js  (base di v7)
+│  ── Versioni EVOLUTIVE (snapshot incrementali) ───────────────────
+├─ v6/               ← 19 file: economia, tasche (base di v7). v2–v5 rimosse dal working tree il 6/10/2026 (storia in git)
 │
 │  ── Versione CORRENTE v7 «Inverno/Unione» ────────────────────────
 └─ v7/
@@ -56,13 +53,10 @@ porto-vecchio/                     ← repository git (remoto: Jollyproxi/porto-
    ├─ assets/ (304 file)        ← kit di modelli glTF-JSON: mc/ (persone), mf/ (mobili), mj/ (varie), mk/ (kit modulari)
    ├─ src/ (48 file .js, ~3,9 MB) ← i sorgenti veri (vedi §4)
    ├─ strumenti_inverno/ (105 file) ← script Python/JS che «patchano» render.js a catena
-   ├─ _backup_interni/, _backup_mente/, _backup_neon_modelli/, _backup_oggetti/, _backup_soldi/  ← copie pre-modifica
-   ├─ _scambio/                 ← tarball di scambio tra agenti (v7src*.tgz, index_test.html)
-   ├─ _to_delete/               ← file esplicitamente marcati da buttare (index_test_*.html, probe)
-   └─ _immagini/                ← screenshot di riferimento
+   ├─ _immagini/                ← screenshot di riferimento
 ```
 
-Il repository git è **pulito** (nessuna modifica pendente) e sincronizzato con `origin/main`. Le cartelle `v2…v6`, `_trasferimento`, `_scambio`, `_to_delete` e i vari `_backup_*` sono **tracciate nel repository** (non ignorate), quindi pesano sul clone.
+Il repository git è **pulito** (nessuna modifica pendente) e sincronizzato con `origin/main` (con 7 commit locali in più del 6/10/2026: documentazione + rimozioni d'archivio). Le cartelle `v6`, i sorgenti della radice e `_immagini/` restano **tracciate nel repository**; `v7/index.html` è **git-ignored** e viene rigenerato sia in locale (`build.py`) sia su Vercel (`buildCommand` in `vercel.json`).
 
 ---
 
@@ -257,9 +251,9 @@ La duplicazione è quindi **storica e deliberata** (snapshot di sicurezza in un 
 ## 10. Rischi e punti deboli
 
 1. **`render.js` non è manutenibile a mano** (10.160 righe, modificabile solo tramite 105 script): ogni intervento visivo richiede la catena giusta o rischia di rompere le guardie.
-2. **Duplicazione massiva**: v2–v6, versione radice, 6 cartelle `_backup_*`, `_scambio`, `_to_delete`, `_trasferimento` — ~10 copie parziali del codice nello stesso repo git.
+2. **Duplicazione storica**: al 6/10/2026 mattina c'erano v2–v6, versione radice, 6 cartelle `_backup_*`, `_scambio`, `_to_delete`, `_trasferimento` (~10 copie parziali). **Risolto in parte il 6/10/2026**: v2–v5 e il materiale di lavoro sono stati rimossi (storia in git); restano `v6/` e i sorgenti radice, in attesa di decisione.
 3. **Il test della radice e quello di v7 sono disallineati**: i test storici (combattimento, polizia, distruzione, fisica, guida) non girano sulla build corrente.
-4. **`index.html` (3,9 MB) è generato ma committuto**: ogni build produce diff enormi nel repo.
+4. ~~**`index.html` (3,9 MB) è generato ma committuto**~~ — risolto il 6/10/2026: git-ignored e rigenerato dal `buildCommand` di Vercel.
 5. **Nessun test della grafica automatizzato nel repo corrente** (gli screenshot Playwright della radice non sono portati a v7; `strumenti_inverno/shot_gioco.js` esiste ma non è cablato a CI).
 6. **Regex di build che esclude i nomi con cifre** — vincolo implicito e non documentato che può sorprendere.
 7. **Dipendenza implicita da Python per il build** (per chi lavora solo in Node) e da un `.json.js` gemello per il `file://`.

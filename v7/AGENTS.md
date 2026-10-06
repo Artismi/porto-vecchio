@@ -6,7 +6,7 @@
 
 | Percorso | Ruolo |
 |---|---|
-| `index.html` | build generata (~3,9 MB) — **non editare a mano**, prodotto di `build.py` |
+| `index.html` | build generata (~3,9 MB) — **non editare a mano**, prodotto di `build.py`; **non si committa** (`.gitignore`), Vercel la rigenera col `buildCommand` |
 | `build.py` | ricompone `index.html` da `src/index.src.html` sostituendo i marcatori `/*nome.js*/` |
 | `server.js` | server locale Node 18+ (porta **8642**): file statici + proxy IA «la Mente» |
 | `AVVIA.bat` / `server.ps1` | avvio con doppio clic (apre il browser; se Node manca, fallback PowerShell senza IA) |
@@ -17,7 +17,7 @@
 | `strumenti_inverno/` | 105 script Python/JS che patchano `src/render.js` e rigenerano `api/_mente.js` |
 | `studio_anim.html`, `studio_oggetti.html` | pagine di studio isolate (pose, modelli) con i rispettivi `.js` in `strumenti_inverno/` |
 | `test_mente.mjs` | prova manuale `POST /api/mente` contro `localhost:8642` |
-| `_backup_*/`, `_scambio/`, `_to_delete/`, `_immagini/` | materiale di lavoro storico: **non cancellare senza conferma** (vedi `../CONSIGLI-IMPLEMENTATIVI.md`) |
+| `_immagini/` | screenshot di riferimento del lavoro fatto |
 
 ## Comandi
 
@@ -54,12 +54,12 @@ Variabili d'ambiente (vedi [`VERCEL.md`](VERCEL.md)): `GEMINI_API_KEY` (o `ANTHR
 
 ## Deploy
 
-- Vercel: Root Directory `v7`, framework **Other**, nessun build command. Push su `main` → deploy automatico.
-- `.vercelignore` esclude già sorgenti, backup, strumenti: solo `index.html`, `assets/`, `api/` vanno online.
+- Vercel: Root Directory `v7`, framework **Other**, build command `python3 build.py` (già in `vercel.json`). Push su `main` → deploy automatico.
+- `.vercelignore` esclude sorgenti e strumenti: online vanno `assets/`, `api/` e l'`index.html` generato al build.
 - Verifica post-deploy: `https://<indirizzo>/api/test` deve rispondere `"test": "ok"`.
 
 ## Convenzioni
 
 - Numeri di riga citati in questa documentazione si riferiscono a `main` del 6 ottobre 2026.
 - I commenti marcati `[popolo]`, `[vita]`, `[soldi]`, `[unione9]`… indicano la patch/ramo d'origine di una riga: **conservarli** quando si sposta codice.
-- I file di backup delle patch (`_backup_*/`) sono la convenzione del repo per le modifiche invasive: creare una copia lì dentro prima di riscritture large.
+- Le copie di backup pre-modifica non si committano più nel repo: la storia git è sufficiente (ex `_backup_*`, rimosse il 6/10/2026). Per modifiche invasive affidarsi a branch o commit dedicati.

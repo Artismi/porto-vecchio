@@ -5,7 +5,7 @@
 > 2. [`v7/AGENTS.md`](v7/AGENTS.md) — regole per la **versione corrente** (build, server, deploy)
 > 3. [`v7/src/AGENTS.md`](v7/src/AGENTS.md) — regole per i **sorgenti del gioco** (module per module)
 >
-> Le cartelle `v2/`–`v6/` e i file della radice (`game.js`, `render.js`, `index.src.html`…) sono **versioni storiche congelate**: non si sviluppano più lì. Regola: **non modificare nulla fuori da `v7/`** salvo richiesta esplicita.
+> Le cartelle `v6/` e i file della radice (`game.js`, `render.js`, `index.src.html`…) sono **versioni storiche congelate**: non si sviluppano più lì. Regola: **non modificare nulla fuori da `v7/`** salvo richiesta esplicita. Le snapshot `v2/`–`v5/` sono state rimosse dal working tree il 6/10/2026 (recuperabili dalla storia git).
 > La gerarchia vale: un file più vicino al codice prevale sulla radice.
 
 ## Cos'è il progetto
@@ -37,7 +37,7 @@ Gioco browser open-world in JS vanilla + Three.js r149, ambientato nel 1986 su u
 
 ## Cosa non fare
 
-- Non committare `v7/index.html` generato insieme a cambi di sorgenti senza aver rilanciato `build.py`.
+- Non committare `v7/index.html`: è generato (git-ignored) e Vercel lo rigenera con il build command in `v7/vercel.json`; localmente si produce con `python build.py`.
 - Non usare CDN: three.js e il loader sono vendored (`v7/src/three.min.js`, `v7/src/gltf_loader.js`); gli asset sono locali in `v7/assets/`.
 - Non inserire inline `onclick`/`onchange` o CSS/JS inline nel HTML: tutto passa da `addEventListener` e file esterni.
-- Non modificare le versioni storiche (`v2/`…`v6/`, sorgenti radice) per «allinearle»: sono riferimento.
+- Non modificare le versioni storiche (`v6/`, sorgenti radice) per «allinearle»: sono riferimento. `v2/`–`v5/` non esistono più nel working tree: la loro storia resta in git.
