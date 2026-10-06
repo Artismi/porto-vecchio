@@ -3,7 +3,7 @@
    qui i file si caricano all'avvio in una cache, e chi costruisce chiede `Scaricati.get(id)`. Se il file non c'è ancora
    (o non arriva) torna null e si usa il modello fatto a mano: niente si rompe. Quando arrivano i file cresce `ver`,
    così chi ha già costruito un modello sa che può rifarlo.
-   Ogni voce: [file, misura da adattare ('l' lato lungo in pianta, 'h' altezza, 'x' larghezza, 'z' profondità), metri, rotazione y].
+   Ogni voce: [file, misura da adattare ('l' lato lungo in pianta, 'h' altezza, 'x' larghezza, 'z' profondità), metri, rotazione y, rotazione x, rotazione z].
    La rotazione porta il davanti del modello verso +z (convenzione del gioco). La base va a terra, al centro. */
 var Scaricati = (function () {
   'use strict';
@@ -30,7 +30,7 @@ var Scaricati = (function () {
   function fit(id, root) {
     const c = CAT[id]; root.updateMatrixWorld(true);
     const drop = []; root.traverse(o => { if (o.isLight || o.isCamera) drop.push(o); }); drop.forEach(o => o.parent && o.parent.remove(o));
-    const inner = new THREE.Group(); inner.add(root); inner.rotation.y = c[3] || 0; inner.updateMatrixWorld(true);
+    const inner = new THREE.Group(); inner.add(root); inner.rotation.set(c[4] || 0, c[3] || 0, c[5] || 0); inner.updateMatrixWorld(true);   // [rx] e [rz] raddrizzano i modelli sdraiati (3DS con la z in alto)
     const bb = new THREE.Box3().setFromObject(inner), sz = bb.getSize(new THREE.Vector3()), ctr = bb.getCenter(new THREE.Vector3());
     const L = c[1] === 'h' ? sz.y : c[1] === 'x' ? sz.x : c[1] === 'z' ? sz.z : Math.max(sz.x, sz.z), k = c[2] / (L || 1);
     const g = new THREE.Group(), mid = new THREE.Group(); mid.add(inner); mid.position.set(-ctr.x, -bb.min.y, -ctr.z); g.add(mid); g.scale.setScalar(k);

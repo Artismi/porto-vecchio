@@ -37,7 +37,7 @@
     else if (lib === 'pezzi') Pezzi[fn].apply(null, [g].concat(d.st ? [OggettiUI.stModel(d.st)] : d.args || []));   // st: la postazione che la composizione prende come argomento
     else if (lib === 'st') { const m = OggettiUI.stModel(fn); if (m) g.add(m); }
     else if (lib === 'scaricato') { await Scaricati.load(fn); Scaricati.put(g, fn); }
-    else if (lib === 'file') { const id = '_' + fn; Scaricati.CAT[id] = [fn, (d.fit || ['h', 1])[0], (d.fit || ['h', 1])[1], d.ry || 0]; await Scaricati.load(id); Scaricati.put(g, id); }
+    else if (lib === 'file') { const id = '_' + fn; Scaricati.CAT[id] = [fn, (d.fit || ['h', 1])[0], (d.fit || ['h', 1])[1], d.ry || 0, d.rx || 0, d.rz || 0]; await Scaricati.load(id); Scaricati.put(g, id); }
     else if (lib === 'kit') { await (window.__kits = window.__kits || Kit.load('assets/mk/', ['food', 'urban', 'urbano', 'casa', 'stazione', 'arcade', 'grave', 'natura', 'tortura', 'train']).catch(() => {})); g.add(Kit.get(fn)); }
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     if (!nudo) Superfici.vesti(g);   // "nudo": true (nella voce o nella scena) per vederli senza veste
