@@ -478,114 +478,6 @@ var Sottosuolo = (function () {
   }
   if (typeof addEventListener !== 'undefined') addEventListener('keydown', e => { if (e.key === 'Escape' && UI.open) { UI.open = null; e.stopImmediatePropagation(); } }, true);
 
-  // =====================================================================================================================
-  // LA SEZIONE: sotto terra, accanto alla vista dall'alto (che serve a dirigere la galleria), un taglio verticale lungo la
-  // direzione in cui scavi. Piccola mentre vai avanti; grande quando scavi in giù o in su (J, K, Maiusc+J, le botole).
-  // Mostra la superficie con le case e le strade, gli strati della terra, la roccia, quello che è già scavato (cunicoli,
-  // fogne, cripte, la metro), le scale, te, e le tre caselle che puoi scavare adesso (H avanti, J giù, K su) con l'avanzamento.
-  // =====================================================================================================================
-  const SEZ = { el: null, cv: null, big: 0, hide: false, last: 0, wasBig: false };
-  const VERT = /^(scendi|sali|pozzo|botola|su|imbocco)$/;
-  const SEZ_CSS = `
-#sez { position: absolute; z-index: 39; right: 18px; top: 78px; border-radius: 14px; overflow: hidden; display: none; pointer-events: auto; cursor: pointer;
-  box-shadow: 0 0 0 1px #3A5A50, 0 0 0 4px rgba(13,16,21,.75), 0 0 0 5px rgba(176,141,87,.35); transition: width .35s, height .35s, right .35s, top .35s; background: #0c0b0a; }
-#sez.on { display: block; } #sez canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
-#sez .tt { position: absolute; left: 10px; top: 7px; font: 600 10.5px 'Saira Condensed', 'Arial Narrow', sans-serif; letter-spacing: .18em; text-transform: uppercase; color: rgba(233,220,188,.7); pointer-events: none; }
-#sez.min { width: 120px !important; height: 26px !important; }
-`;
-  function sezMount() {
-    if (SEZ.el || typeof document === 'undefined') return !!SEZ.el; const app = document.getElementById('app'); if (!app) return false;
-    const css = document.createElement('style'); css.textContent = SEZ_CSS; document.head.appendChild(css);
-    const el = SEZ.el = document.createElement('div'); el.id = 'sez'; el.innerHTML = '<canvas></canvas><span class="tt">Sezione · clic per chiudere</span>'; app.appendChild(el);
-    SEZ.cv = el.querySelector('canvas'); el.addEventListener('mousedown', e => { e.stopPropagation(); SEZ.hide = !SEZ.hide; el.classList.toggle('min', SEZ.hide); el.querySelector('.tt').textContent = SEZ.hide ? 'Sezione ▸' : 'Sezione · clic per chiudere'; });
-    return true;
-  }
-  const BAND = [[0, '#6a4c34'], [1.2, '#5a3e2a'], [4, '#4e3a2c'], [9, '#463830'], [14, '#3c3634'], [22, '#2e2c2e']];   // strati sotto la superficie (m)
-  function sezDraw(st) {
-    if (!sezMount()) return; const p = st.player, L = st.lv; if (!L) return;
-    const job = L.job, under = !!(p.lv && p.lv.k === 'ug'), digging = !!(job && !p.indoor);
-    const on = (under && p.lv.ride === undefined) || digging; SEZ.el.classList.toggle('on', on && !(UI.open)); if (!on || UI.open) return;
-    const now = performance.now();
-    if (job && VERT.test(job.what)) SEZ.last = now;
-    const big = !SEZ.hide && (now - SEZ.last < 2600);
-    const app = document.getElementById('app'), aw = app ? app.clientWidth : 1280, ah = app ? app.clientHeight : 800;
-    const w = big ? Math.min(760, aw * .62) : Math.min(380, aw * .42), h = big ? Math.min(300, ah * .34) : Math.min(190, ah * .26);
-    if (!SEZ.hide) { SEZ.el.style.width = w + 'px'; SEZ.el.style.height = h + 'px'; SEZ.el.style.right = big ? ((aw - w) / 2) + 'px' : '18px'; SEZ.el.style.top = big ? Math.max(84, ah - h - 96) + 'px' : '78px'; }   // grande: in basso, il personaggio resta in vista
-    if (SEZ.hide) return;
-    const cv = SEZ.cv, dpr = 1, CW = Math.round(w * dpr), CH = Math.round(h * dpr); if (cv.width !== CW || cv.height !== CH) { cv.width = CW; cv.height = CH; }
-    const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
-    // l'asse: la direzione in cui guardi (a passi di 90°), come lo scavo
-    const [dx, dy] = LV.dirOf ? LV.dirOf(p.face) : [1, 0], [ptx, pty] = ti(p.x, p.y);
-    const colAt = NT0 => { const out = []; for (let k = -NT0; k <= NT0; k++) { const tx = ptx + dx * k, ty = pty + dy * k; out.push(inb(tx, ty) ? { k, tx, ty, i: idx(tx, ty) } : null); } return out; };
-    const pf = LV.heightOf(st, p) ?? EL[idx(ptx, pty)];
-    // l'altezza del taglio: dal tetto più alto vicino al fondo più basso, poi la larghezza con la stessa scala (niente deformazioni)
-    let top = -1e9, bot = 1e9; colAt(9).forEach(c => { if (!c) return; top = Math.max(top, EL[c.i] + (G.tileAt(c.tx, c.ty) === T.BLD ? 10 : 3)); if (L.ug[c.i]) bot = Math.min(bot, L.fl[c.i]); });
-    bot = Math.min(bot, pf) - 4; top = Math.max(top, pf + 7); if (top - bot < 16) bot = top - 16;
-    const sy = (CH - 6) / (top - bot), NT = clamp(Math.round(CW / sy / TS / 2), 6, 40), col = colAt(NT);
-    const sx = CW / (2 * NT + 1), X = k => (k + NT) * sx, Y = hh => 3 + (top - hh) * sy;
-    // cielo (giorno o notte, in tinta col gioco)
-    const hr = G.hour ? G.hour(st) : 12, night = hr < 6 || hr >= 20, sk = x.createLinearGradient(0, 0, 0, CH * .5);
-    sk.addColorStop(0, night ? '#0e1424' : '#5a7a98'); sk.addColorStop(1, night ? '#24283a' : '#c8b8a0'); x.fillStyle = sk; x.fillRect(0, 0, CW, CH);
-    // terra a strati, roccia, acqua
-    col.forEach(c => {
-      if (!c) return; const xa = X(c.k), sf = EL[c.i], v = G.tileAt(c.tx, c.ty), hard = v === T.ROCK || v === T.CLIFF;
-      if (v === T.WATER) { x.fillStyle = '#2a5a7a'; x.fillRect(xa, Y(.2), sx + 1, CH); x.fillStyle = '#3a3430'; x.fillRect(xa, Y(-3), sx + 1, CH); return; }
-      for (let b = 0; b < BAND.length; b++) { const d0 = BAND[b][0], d1 = b + 1 < BAND.length ? BAND[b + 1][0] : 99; x.fillStyle = hard && d0 >= 1.2 ? '#4a4846' : BAND[b][1]; x.fillRect(xa, Y(sf - d0), sx + 1, (d1 - d0) * sy + 1); }
-      // sassi nella terra, sempre uguali per casella
-      for (let q = 0; q < 6; q++) { const r1 = hash(c.tx, c.ty, 60 + q), r2 = hash(c.ty, c.tx, 70 + q); x.fillStyle = r1 < .5 ? 'rgba(0,0,0,.18)' : 'rgba(255,240,210,.08)'; x.fillRect(xa + r1 * sx, Y(sf - 1 - r2 * 24), Math.max(2, sx * .18), Math.max(1, sy * .25)); }
-      // la superficie: erba, selciato o asfalto
-      x.fillStyle = v === T.VIA ? '#2a2a2e' : v === T.WALK || v === T.PIAZZA || v === T.COB ? '#8a8478' : v === T.SAND ? '#d8c89a' : hard ? '#6a6662' : '#4a6a3a'; x.fillRect(xa, Y(sf) - 2, sx + 1, 3);
-      if (v === T.BLD) {
-        // la casa in sezione: muri del suo colore, i piani, le finestre (accese di notte), il tetto, le fondamenta
-        const bi0 = W.bIndex[c.i], b = W.BUILDINGS[bi0], nf = Math.min(6, (b && b.fl) || 2), hh = 3.1 * nf, wall = ['#c8a888', '#d8c8a0', '#b8786a', '#e0d0b8', '#a8b8a8', '#d0a070'][bi0 % 6];
-        x.fillStyle = wall; x.fillRect(xa, Y(sf + hh), sx + 1, hh * sy);
-        for (let f = 0; f < nf; f++) { x.fillStyle = 'rgba(0,0,0,.18)'; x.fillRect(xa, Y(sf + f * 3.1), sx + 1, 1); x.fillStyle = night && hash(c.tx + c.ty, f, 3) < .45 ? '#ffd890' : '#3a4a5a'; x.fillRect(xa + sx * .3, Y(sf + f * 3.1 + 2.4), sx * .4, 1.2 * sy); }
-        const lft = !(col[c.k + NT - 1] && G.tileAt(col[c.k + NT - 1].tx, col[c.k + NT - 1].ty) === T.BLD), rgt = !(col[c.k + NT + 1] && G.tileAt(col[c.k + NT + 1].tx, col[c.k + NT + 1].ty) === T.BLD);
-        x.fillStyle = '#7a4a3a'; x.fillRect(xa - (lft ? 2 : 0), Y(sf + hh) - 3, sx + 1 + (lft ? 2 : 0) + (rgt ? 2 : 0), 4);
-        x.fillStyle = '#6a6862'; x.fillRect(xa, Y(sf), sx + 1, 1.4 * sy); x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(xa, Y(sf - 1.4), sx + 1, 1);
-      }
-      if (v === T.TREE) { x.fillStyle = '#4a3a2a'; x.fillRect(xa + sx * .42, Y(sf + 3), sx * .16, 3 * sy); x.fillStyle = '#2e4a2a'; x.beginPath(); x.arc(xa + sx / 2, Y(sf + 4), Math.max(3, sx * .7), 0, 6.3); x.fill(); x.strokeStyle = 'rgba(80,60,40,.5)'; x.beginPath(); x.moveTo(xa + sx / 2, Y(sf)); x.lineTo(xa + sx * .2, Y(sf - 1.5)); x.moveTo(xa + sx / 2, Y(sf)); x.lineTo(xa + sx * .8, Y(sf - 1.2)); x.stroke(); }
-    });
-    // la metropolitana: dove le gallerie attraversano il taglio, un cerchio
-    if (M.ok) for (const j of [0, 1]) for (let t = 0; t <= 1; t += .004) { const q = trackAt(j, t), ux = q.x - p.x, uy = q.y - p.y, along = ux * dx + uy * dy, perp = Math.abs(-ux * dy + uy * dx); if (perp < .9 && Math.abs(along) < NT * TS) { const k = along / TS - .5, cx0 = X(k) + sx / 2, cy0 = Y(q.h + 1.4); x.fillStyle = '#16141a'; x.beginPath(); x.ellipse(cx0, cy0, 2.6 * sx / TS, 2.6 * sy, 0, 0, 6.3); x.fill(); x.strokeStyle = j ? '#8ab0d8' : '#d8b080'; x.lineWidth = 2; x.stroke(); } }
-    // lo scavato: cavità all'altezza del pavimento, bordate secondo il tipo
-    const KC = { 1: '#7a7068', 2: '#8a6a44', 3: '#9a4a34', 4: '#a8a090', 5: '#a8a090', 6: '#9a9a94', 7: '#d8d4c4', 8: '#9a4a34', 9: '#d8d4c4' };
-    col.forEach(c => {
-      if (!c || !L.ug[c.i]) return; const xa = X(c.k), f = L.fl[c.i], kd = L.kind[c.i], hh = kd === 7 || kd === 9 ? 4.2 : 2.5;
-      x.fillStyle = '#100e0c'; x.fillRect(xa, Y(f + hh), sx + 1, hh * sy); x.fillStyle = KC[kd] || '#8a6a44'; x.fillRect(xa, Y(f + hh), sx + 1, 2); x.fillRect(xa, Y(f), sx + 1, 2);
-      if (kd === 3) { x.fillStyle = '#2c5a4a'; x.fillRect(xa, Y(f + .25), sx + 1, .25 * sy + 1); }
-      if (kd === 2 && (c.tx + c.ty) % 3 === 0) { x.fillStyle = '#6a4a30'; x.fillRect(xa + 1, Y(f + hh), 2, hh * sy); x.fillRect(xa + sx - 3, Y(f + hh), 2, hh * sy); x.fillRect(xa, Y(f + hh), sx, 2); }
-      // il pozzo scavato sul posto: i pioli
-      if (L.shafts && L.shafts[c.i]) { x.fillStyle = '#8a6a44'; for (let yy = f; yy < f + 1.6 * L.shafts[c.i] + .5; yy += .4) x.fillRect(xa + sx * .3, Y(yy), sx * .4, 1); }
-    });
-    // le uscite: scale, tombini, botole, l'entrata in casa
-    L.portals.forEach(P => { if (!LV.CLIMB.has(P.kind)) return; const c = col.find(c => c && c.tx === P.u[0] && c.ty === P.u[1]); if (!c) return; const xa = X(c.k), f = L.fl[c.i], sf = EL[c.i]; x.strokeStyle = P.kind === 'tombino' ? '#9aa0a8' : P.kind === 'interno' ? '#e8c060' : '#b08d57'; x.lineWidth = 1; for (const o of [.3, .7]) { x.beginPath(); x.moveTo(xa + sx * o, Y(f)); x.lineTo(xa + sx * o, Y(sf)); x.stroke(); } for (let yy = f + .3; yy < sf; yy += .4) { x.beginPath(); x.moveTo(xa + sx * .3, Y(yy)); x.lineTo(xa + sx * .7, Y(yy)); x.stroke(); } });
-    // le tre caselle che puoi scavare adesso
-    const c1 = col[NT + 1], c0 = col[NT];
-    if (under && c1 && c0 && L.ug[c0.i]) {
-      const f0 = L.fl[c0.i], opts = [['H', 0, '#e8e0cc'], ['J', -1.3, '#ff9a5a'], ['K', 1.3, '#8ad0ff']];
-      if (!L.ug[c1.i]) opts.forEach(([key, dz, cc]) => { const f = f0 + dz, xa = X(1); x.setLineDash([3, 3]); x.strokeStyle = cc; x.lineWidth = 1.5; x.strokeRect(xa + 1, Y(f + 2.4), sx - 2, 2.4 * sy); x.setLineDash([]); if (big || dz === 0) { x.fillStyle = cc; x.font = `bold ${Math.max(9, sy * .9)}px Arial`; x.fillText(key, xa + sx + 3, Y(f + 1.2) + 4); } });
-      if (big) { x.setLineDash([2, 3]); x.strokeStyle = '#ffd060'; x.strokeRect(X(0) + 1, Y(f0 - 1.6 + 2.4) + 2, sx - 2, 1.6 * sy); x.setLineDash([]); x.fillStyle = '#ffd060'; x.fillText('⇧J', X(0) + 2, Y(f0 - 1) + 4); }
-    }
-    // lo scavo in corso: la casella si riempie di buio dall'alto, e volano zolle
-    if (job && job.x !== undefined) {
-      const pr = clamp(1 - (job.until - st.clock) / job.dur, 0, 1), dz = job.what === 'scendi' ? -1.3 : job.what === 'sali' ? 1.3 : 0;
-      const tgtK = /^(avanti|scendi|sali)$/.test(job.what) ? 1 : 0, f = under ? (job.what === 'pozzo' ? pf - 1.6 : pf + dz) : pf - 3.2, hh = job.what === 'pozzo' || job.what === 'botola' ? 1.6 + (job.what === 'botola' ? 1.6 : 0) : 2.4;
-      x.fillStyle = 'rgba(16,14,12,.9)'; x.fillRect(X(tgtK) + 1, Y(f + hh), sx - 2, hh * sy * pr);
-      for (let q = 0; q < 7; q++) { const a = hash(q, Math.floor(now / 90), 5), r1 = hash(q, Math.floor(now / 90), 9); x.fillStyle = q % 2 ? '#8a6a44' : '#b89a6a'; x.fillRect(X(tgtK) + sx * a, Y(f + hh * (1 - pr)) + r1 * 6 - 3, 2, 2); }
-      x.fillStyle = '#ffd060'; x.fillRect(4, CH - 7, (CW - 8) * pr, 3);
-    }
-    // tu
-    const px0 = X(0) + sx / 2, py0 = Y(pf); x.fillStyle = '#ffcf5a'; x.fillRect(px0 - 2, py0 - 1.75 * sy, 4, 1.4 * sy); x.beginPath(); x.arc(px0, py0 - 1.75 * sy - 3, 3, 0, 6.3); x.fill();
-    if (under) { const g0 = x.createRadialGradient(px0, py0 - sy, 2, px0, py0 - sy, 6 * sy); g0.addColorStop(0, 'rgba(255,200,110,.22)'); g0.addColorStop(1, 'rgba(255,200,110,0)'); x.fillStyle = g0; x.fillRect(px0 - 6 * sy, py0 - 7 * sy, 12 * sy, 12 * sy); }
-    // le scritte: profondità, cosa c'è davanti, cosa c'è sopra
-    const sf0 = EL[idx(ptx, pty)], depth = sf0 - pf, ahead = c1 ? (L.ug[c1.i] ? 'già scavato' : G.tileAt(c1.tx, c1.ty) === T.WATER ? 'acqua' : G.tileAt(c1.tx, c1.ty) === T.BLD ? 'fondamenta' : (LV.material ? LV.material(c1.tx, c1.ty) : 'terra')) : '';
-    const bi = W.bIndex ? W.bIndex[idx(ptx, pty)] : -1, above = bi >= 0 ? (W.BUILDINGS[bi].name || 'una casa') : G.tileAt(ptx, pty) === T.VIA ? 'la strada' : '';
-    x.font = `600 ${big ? 12 : 10.5}px 'Saira Condensed', Arial, sans-serif`; x.fillStyle = 'rgba(233,220,188,.85)'; x.textAlign = 'right';
-    x.fillText(`${under ? `−${depth.toFixed(1)} m` : 'in superficie'}${ahead ? ` · davanti: ${ahead}` : ''}${above ? ` · sopra: ${above}` : ''}`, CW - 8, 14); x.textAlign = 'left';
-    if (big) { x.fillStyle = 'rgba(233,220,188,.55)'; x.fillText('H avanti · J giù · K su · Maiusc+J pozzo · N stanza · V sali', 10, CH - 12); }
-  }
-
   // il segno nella vista dall'alto: la casella che stai per scavare, la polvere, le zolle
   const DIG = { ghost: null, dust: null, parts: [] };
   function digGfx(st, scene, under, t) {
@@ -847,7 +739,7 @@ var Sottosuolo = (function () {
   }
   function gfxLoop() {
     try {
-      const pv = window.__pv, st = pv && pv.st; if (st && pv.R && pv.R.__models && pv.R.__models.scene) { gfx(st, pv.R); panel(st); sezDraw(st); digGfx(st, pv.R.__models.scene, !!(st.player.lv && st.player.lv.k === 'ug'), performance.now() / 1000); }
+      const pv = window.__pv, st = pv && pv.st; if (st && pv.R && pv.R.__models && pv.R.__models.scene) { gfx(st, pv.R); panel(st); digGfx(st, pv.R.__models.scene, !!(st.player.lv && st.player.lv.k === 'ug'), performance.now() / 1000); }
     } catch (e) { if (!GFX.err) { GFX.err = 1; console.error('[Sottosuolo gfx]', e); } }
     requestAnimationFrame(gfxLoop);
   }
