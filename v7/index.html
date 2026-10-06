@@ -20018,7 +20018,10 @@ if (typeof module !== 'undefined') module.exports = Paesaggio;
    Le grotte naturali (Grotta del Romito, Eremo) sono già scavate e passano da parte a parte.
    PONTI. Il Ponte del Diavolo attraversa la gola: sopra si cammina sulle assi, sotto si passa sul fondo.
    Il giocatore sta su un livello: st.player.lv = null (superficie) | { k: 'ug' } (sotto terra) | { k: 'ponte', id }.
-   Il motore chiede a questo modulo dove si può camminare (freeFn) e cosa succede dopo ogni passo (moved). */
+   Il motore chiede a questo modulo dove si può camminare (freeFn) e cosa succede dopo ogni passo (moved).
+   [sottosuolo] Si scava anche sotto la città: sotto una casa «Apri una botola sopra» sfonda il pavimento e sbuchi dentro
+   (portale 'interno'); da dentro una casa H apre una botola nel pavimento e scendi. Maiusc+H scava di filato (avanti finché
+   non lo fermi o trovi qualcosa). V sale e scende anche da tombini, scale e grate. Scavando si trova roba sepolta (hooks.dug). */
 var Livelli = (function () {
   'use strict';
   const G = typeof Game !== 'undefined' ? Game : require('./game.js');
@@ -20038,6 +20041,7 @@ var Livelli = (function () {
   function init(st) {
     const L = st.lv = { ug: new Uint8Array(N), fl: new Float32Array(N), kind: new Uint8Array(N), portals: [], rooms: [], rev: 1, job: null, found: {} };
     (W.CAVES || []).forEach(cv => carveCave(L, cv));
+    hooks.init.forEach(f => { try { f(L, st); } catch (e) { if (typeof console !== 'undefined') console.error('[Livelli] init', e); } });   // [sottosuolo] fogne, cripte, carceri, metropolitana
     return L;
   }
   const surfWalk = (tx, ty) => G.walkT(tx, ty);
@@ -20068,6 +20072,9 @@ var Livelli = (function () {
     else L.portals.push({ kind: 'pozzo', nat: true, s: last, u: last, name: cv.name });
   }
   const portalAt = (L, tx, ty, which) => L.portals.find(P => P[which][0] === tx && P[which][1] === ty);
+  const CLIMB = new Set(['botola', 'pozzo', 'tombino', 'scala', 'grata', 'interno']);   // [sottosuolo] da qui si sale e si scende
+  const hooks = { dug: [], init: [] };   // [sottosuolo] chi vuole sapere quando si scava una casella nuova: (st, tx, ty, L) → messaggio o null
+  const onDug = (st, tx, ty, L) => { let m = null; for (const f of hooks.dug) { try { m = f(st, tx, ty, L) || m; } catch (e) { } } return m; };
 
   // ---------------- PONTI ----------------
   const BR = (W.BRIDGES || []).map(B => { const dx = B.b[0] - B.a[0], dy = B.b[1] - B.a[1], len = Math.hypot(dx, dy); return Object.assign({}, B, { ux: dx / len, uy: dy / len, len }); });
@@ -20092,7 +20099,7 @@ var Livelli = (function () {
   // dopo il passo: entrare e uscire dai cunicoli, salire e scendere dal ponte. true = gestito (niente porte)
   function moved(st, dx, dy, hit) {
     const p = st.player, L = S(st), [tx, ty] = ti(p.x, p.y);
-    if (L.job && L.job.x !== undefined && Math.hypot(p.x - L.job.x, p.y - L.job.y) > 1.2) { L.job = null; G.feed(st, 'Lasci perdere lo scavo.'); }
+    if (L.job && L.job.x !== undefined && Math.hypot(p.x - L.job.x, p.y - L.job.y) > 1.2) { L.job = null; L.auto = null; G.feed(st, 'Lasci perdere lo scavo.'); }
     if (!p.lv) {
       // il ponte: dal capo, verso l'altra sponda
       for (const B of BR) { const q = onDeck(B, p.x, p.y); if (q.d < B.w / 2 + .3 && q.t > -.05 && q.t < 1.05 && Math.abs(G.MAP.elev[idx(tx, ty)] - deckH(B, q.t)) < 1.3 && (q.t < .2 || q.t > .8)) { p.lv = { k: 'ponte', id: B.id }; return true; } }
@@ -20144,7 +20151,8 @@ var Livelli = (function () {
   }
   function step(st, dt) {
     const L = st.lv; if (!L) { if (st.player) S(st); return; }
-    if (L.job && st.clock >= L.job.until) { const j = L.job; L.job = null; const msg = j.fn(); if (msg) G.feed(st, msg); L.rev++; }
+    if (L.job && st.clock >= L.job.until) { const j = L.job; L.job = null; const msg = j.fn(); if (msg) G.feed(st, msg); L.rev++; if (L.auto && j.what === 'avanti') autoNext(st); }
+    if (L.auto && !L.job && !(st.player.lv && st.player.lv.k === 'ug')) L.auto = null;
     // posti da scoprire sul Monte Scuro
     if (!st.__lvT || st.clock - st.__lvT > .5) {
       st.__lvT = st.clock; const p = st.player;
@@ -20194,7 +20202,8 @@ var Livelli = (function () {
         return 'La terra cede di colpo: luce, neve, aria. Sei sbucato sul pendio.';
       }
       L.ug[j] = 1; L.fl[j] = fl; L.kind[j] = 2;
-      if (surf === T.BLD) return 'Sopra la testa, le fondamenta di una casa.';
+      const found = onDug(st, nx, ny, L); if (found) { if (L.auto) L.auto = null; return found; }   // [sottosuolo] roba sepolta
+      if (surf === T.BLD) return 'Sopra la testa, le fondamenta di una casa. Da qui «Apri una botola sopra» sbuca dentro.';
       if (E - fl < ROOF + .6) return 'Il soffitto è sottile: si sente la neve sopra.';
       return dz < 0 ? 'Scendi di un gradino nella terra.' : dz > 0 ? 'Risali di un gradino.' : 'Un altro paio di metri di cunicolo.';
     });
@@ -20208,9 +20217,9 @@ var Livelli = (function () {
     if (!todo.length) return 'Qui è già largo.';
     const mat = hard ? 'roccia' : 'terra', t = tool(st, mat); if (!t) return need(mat);
     const busy = start(st, 'stanza', 4 + todo.length * (hard ? 3 : 1.8), () => {
-      todo.forEach(([x, y]) => { const i = idx(x, y); if (EL[i] - f < 1.1) return; L.ug[i] = 2; L.fl[i] = f; L.kind[i] = 2; });
+      let found = null; todo.forEach(([x, y]) => { const i = idx(x, y); if (EL[i] - f < 1.1) return; L.ug[i] = 2; L.fl[i] = f; L.kind[i] = 2; found = onDug(st, x, y, L) || found; });
       L.rooms.push({ x: (tx + .5) * TS, y: (ty + .5) * TS, f, deco: 'covo' });
-      return 'Una stanza sotto terra. Ci stanno una branda, una cassa, una lampada.';
+      return 'Una stanza sotto terra. Ci stanno una branda, una cassa, una lampada.' + (found ? ' ' + found : '');
     });
     return busy || 'Allarghi il cunicolo…';
   }
@@ -20220,24 +20229,88 @@ var Livelli = (function () {
     const [tx, ty] = ti(p.x, p.y), i = idx(tx, ty); if (portalAt(L, tx, ty, 'u')) return 'Qui un\'uscita c\'è già.';
     const E = EL[i], v = G.tileAt(tx, ty);
     if (E - L.fl[i] > 5) return 'Sopra c\'è troppa terra: cinque metri e più.';
-    if (!G.walkT(tx, ty)) return v === T.BLD ? 'Sopra c\'è una casa: sbucheresti in cantina, ma il pavimento è di cemento.' : 'Sopra c\'è la roccia viva.';
+    if (v === T.BLD) return digInto(st, tx, ty);   // [sottosuolo] sotto una casa: si sfonda il pavimento e si sbuca dentro
+    if (!G.walkT(tx, ty)) return 'Sopra c\'è la roccia viva.';
     const mat = HARD.has(v) ? 'roccia' : 'terra', t = tool(st, mat); if (!t) return need(mat);
     const busy = start(st, 'su', 8 + (E - L.fl[i]) * 2, () => { L.portals.push({ kind: 'botola', s: [tx, ty], u: [tx, ty] }); return 'Sbuchi alla luce. Rimetti la botola, ci butti sopra la neve.'; });
     return busy || 'Scavi verso l\'alto, la terra ti cade in faccia…';
   }
-  // salire e scendere da botole e pozzi
+  // [sottosuolo] sotto una casa: si sfonda il pavimento del piano terra e si sbuca dentro (portale 'interno')
+  const bldOf = (tx, ty) => { const W0 = G.MAP.world, bi = W0.bIndex ? W0.bIndex[idx(tx, ty)] : -1; return bi >= 0 ? bi : null; };
+  const hasInside = bi => { try { const b = G.BUILDINGS[bi]; return !!(b && b.door && G.INT && G.INT.layout(b).ent); } catch (e) { return false; } };
+  function digInto(st, tx, ty) {
+    const p = st.player, L = S(st), i = idx(tx, ty), bi = bldOf(tx, ty);
+    if (bi === null || !hasInside(bi)) return 'Sopra c\'è un muro pieno: di qua non si sbuca.';
+    if (EL[i] - L.fl[i] > 5.5) return 'Sopra c\'è troppa terra: cinque metri e più.';
+    const t = tool(st, 'terra'); if (!t) return need('terra');
+    const b = G.BUILDINGS[bi], nome = b.name || 'una casa';
+    const busy = start(st, 'su', 10 + (EL[i] - L.fl[i]) * 2, () => {
+      if (!portalAt(L, tx, ty, 'u')) L.portals.push({ kind: 'interno', s: [tx, ty], u: [tx, ty], bi, name: nome });
+      p.lv = null; G.enterBuilding(st, bi);
+      return `Sfondi il pavimento dal basso: sei dentro ${b.name ? b.name : 'una casa'}. Sotto il tappeto resta il buco (V per tornare giù).`;
+    });
+    return busy || 'Scavi verso l\'alto, contro le fondamenta…';
+  }
+  // [sottosuolo] da dentro una casa: una botola nel pavimento del piano terra
+  function digFloor(st) {
+    const p = st.player, L = S(st); if (!p.indoor || p.indoor.f !== 0) return p.indoor ? 'Si scava solo al piano terra.' : null;
+    const bi = p.indoor.b, b = G.BUILDINGS[bi]; if (!b) return null;
+    const ex = L.portals.find(P => P.kind === 'interno' && P.bi === bi); if (ex) return 'La botola c\'è già: V per scendere.';
+    const t = tool(st, 'terra'); if (!t) return need('terra');
+    // la casella dell'edificio sotto i piedi (le coordinate dentro casa sono quelle del mondo)
+    let [tx, ty] = ti(p.x, p.y); tx = clamp(tx, b.x, b.x + b.w - 1); ty = clamp(ty, b.y, b.y + b.h - 1);
+    const busy = start(st, 'botola', 14, () => {
+      const i = idx(tx, ty); if (!L.ug[i]) { L.ug[i] = 2; L.fl[i] = EL[i] - 3.2; L.kind[i] = 2; }
+      L.portals.push({ kind: 'interno', s: [tx, ty], u: [tx, ty], bi, name: b.name || 'casa' });
+      return 'Alzi le mattonelle, spacchi il massetto, scavi. Una botola nel pavimento: V per scendere.';
+    });
+    return busy || 'Sposti il tappeto e attacchi il pavimento…';
+  }
+  function goDownFromInside(st) {
+    const p = st.player, L = S(st); if (!p.indoor) return null;
+    const P = L.portals.find(P => P.kind === 'interno' && P.bi === p.indoor.b); if (!P || p.indoor.f !== 0) return null;
+    G.exitBuilding(st); p.lv = { k: 'ug' }; L.lastU = P.u; p.x = (P.u[0] + .5) * TS; p.y = (P.u[1] + .5) * TS; p.path = [];
+    return P.nat ? `Scendi nella ${P.name}.` : 'Scendi dalla botola nel pavimento.';
+  }
+  // salire e scendere da botole, pozzi, tombini, scale e grate
+  const DOWN = { botola: 'Scendi la scala. Richiudi la botola sopra la testa.', tombino: 'Sollevi il tombino e scendi i pioli. Puzza.', scala: 'Scendi le scale.', grata: 'Sposti la grata e ti cali giù.' };
+  const UP = { botola: 'Risali e spingi la botola: fuori.', tombino: 'Spingi il tombino: sei in mezzo alla strada.', scala: 'Risali le scale: aria, luce.', grata: 'Spingi la grata e ti tiri su.', pozzo: 'Risali il pozzo: fuori.' };
   function climb(st) {
     const p = st.player, L = S(st), [tx, ty] = ti(p.x, p.y);
-    const P = L.portals.find(P => (P.kind === 'botola' || P.kind === 'pozzo') && P.s[0] === tx && P.s[1] === ty);
+    const P = L.portals.find(P => CLIMB.has(P.kind) && (p.lv ? P.u : P.s)[0] === tx && (p.lv ? P.u : P.s)[1] === ty);
     if (!P) return null;
-    if (!p.lv) { p.lv = { k: 'ug' }; L.lastU = P.u; p.x = (tx + .5) * TS; p.y = (ty + .5) * TS; return P.nat ? `Scendi nel pozzo della ${P.name}.` : 'Scendi la scala. Richiudi la botola sopra la testa.'; }
-    if (p.lv.k === 'ug') { if (!G.walkT(tx, ty)) return 'La botola è bloccata.'; p.lv = null; return 'Risali e spingi la botola: fuori.'; }
+    if (P.kind === 'interno') {
+      if (!p.lv || p.lv.k !== 'ug') return null;
+      if (!hasInside(P.bi)) return 'Sopra è crollato tutto.';
+      p.lv = null; G.enterBuilding(st, P.bi); return `Sali dalla botola: sei dentro ${P.name || 'la casa'}.`;
+    }
+    if (!p.lv) { p.lv = { k: 'ug' }; L.lastU = P.u; p.x = (P.u[0] + .5) * TS; p.y = (P.u[1] + .5) * TS; return P.nat ? `Scendi nel pozzo della ${P.name}.` : DOWN[P.kind] || DOWN.botola; }
+    if (p.lv.k === 'ug') { if (!G.walkT(P.s[0], P.s[1])) return 'Sopra è bloccato.'; p.lv = null; p.x = (P.s[0] + .5) * TS; p.y = (P.s[1] + .5) * TS; if (L.auto) L.auto = null; return UP[P.kind] || UP.botola; }
     return null;
   }
+  // [sottosuolo] scavare di filato: finito un tratto, un passo avanti e si riattacca (si ferma se ti muovi, se trovi qualcosa o se sbuchi)
+  function autoDig(st, dz) {
+    const p = st.player, L = S(st); if (!p.lv || p.lv.k !== 'ug') return 'Prima devi essere sotto terra.';
+    if (L.auto) { L.auto = null; return 'Smetti di scavare di filato.'; }
+    const [dx, dy] = dirOf(p.face); L.auto = { dz: dz || 0, dx, dy, n: 0 };
+    const m = digAhead(st, L.auto.dz); if (/^(Scavi|Picconi)/.test(m || '')) return m + ' (di filato: Maiusc+H per smettere)';
+    L.auto = null; return m;
+  }
+  function autoNext(st) {
+    const L = S(st), A = L.auto, p = st.player; if (!A || L.job) return;
+    if (!p.lv || p.lv.k !== 'ug') { L.auto = null; return; }
+    const [tx, ty] = ti(p.x, p.y), nx = tx + A.dx, ny = ty + A.dy;
+    if (!inb(nx, ny) || !L.ug[idx(nx, ny)]) { L.auto = null; return; }
+    p.x = (nx + .5) * TS; p.y = (ny + .5) * TS; p.face = Math.atan2(A.dy, A.dx); L.lastU = [nx, ny];
+    if (++A.n > 60) { L.auto = null; G.feed(st, 'Le braccia non reggono più: ti fermi.'); return; }
+    const m = digAhead(st, A.dz); if (!/^(Scavi|Picconi)/.test(m || '')) { L.auto = null; if (m && !/già scavato/.test(m)) G.feed(st, m); else if (m) G.feed(st, 'Sbuchi in un passaggio già scavato.', 'good'); }
+  }
   // il tasto H (scava/sali): fa la cosa giusta per dove sei
-  function key(st, k) {
-    const p = st.player; if (p.vehicle || p.indoor) return null;
+  function key(st, k, shift) {
+    const p = st.player; if (p.vehicle) return null;
+    if (p.indoor) { if (k === 'v') return goDownFromInside(st); if (k === 'h') return digFloor(st); return null; }   // [sottosuolo] dentro casa: la botola nel pavimento
     if (k === 'v') return climb(st) || (p.lv && p.lv.k === 'ug' ? 'Qui non c\'è una scala per salire.' : null);
+    if (k === 'h' && shift && p.lv && p.lv.k === 'ug') return autoDig(st, 0);
     if (k === 'h') { if (!p.lv) return digWall(st) || digHatch(st); if (p.lv.k === 'ug') return digAhead(st, 0); return null; }
     if (k === 'j') return p.lv && p.lv.k === 'ug' ? digAhead(st, -1) : null;
     if (k === 'k') return p.lv && p.lv.k === 'ug' ? digAhead(st, 1) : null;
@@ -20246,25 +20319,736 @@ var Livelli = (function () {
   }
   // le azioni nel menu «Qui, adesso» delle Tasche
   function actions(st) {
-    const p = st.player; if (!p || p.vehicle || p.indoor) return [];
+    const p = st.player; if (!p || p.vehicle) return [];
     const L = S(st), [tx, ty] = ti(p.x, p.y), out = [], add = (id, label, run, off) => out.push({ id, label, run, off: off || '' });
-    const P = L.portals.find(P => (P.kind === 'botola' || P.kind === 'pozzo') && P.s[0] === tx && P.s[1] === ty);
-    if (P) add('livello', p.lv ? 'Risali (V)' : (P.nat ? 'Scendi nel pozzo (V)' : 'Scendi nella botola (V)'), () => climb(st));
+    if (p.indoor) {   // [sottosuolo]
+      if (p.indoor.f !== 0) return out;
+      const P = L.portals.find(P => P.kind === 'interno' && P.bi === p.indoor.b);
+      if (P) add('livello', 'Scendi dalla botola nel pavimento (V)', () => goDownFromInside(st)); else add('botola', 'Scava una botola nel pavimento (H)', () => digFloor(st));
+      return out;
+    }
+    const P = L.portals.find(P => CLIMB.has(P.kind) && P.kind !== 'interno' && P.s[0] === tx && P.s[1] === ty) || (p.lv ? L.portals.find(P => P.kind === 'interno' && P.u[0] === tx && P.u[1] === ty) : null);
+    if (P) add('livello', p.lv ? (P.kind === 'interno' ? `Sali in ${P.name || 'casa'} (V)` : 'Risali (V)') : (P.nat ? 'Scendi nel pozzo (V)' : { tombino: 'Scendi nel tombino (V)', scala: 'Scendi le scale (V)', grata: 'Scendi dalla grata (V)' }[P.kind] || 'Scendi nella botola (V)'), () => climb(st));
     if (!p.lv) {
       const [dx, dy] = dirOf(p.face);
       if (G.tileAt(tx + dx, ty + dy) === T.CLIFF) add('cunicolo', 'Scava un cunicolo nella parete (H)', () => digWall(st));
       else if (!P) add('botola', 'Scava una botola qui (H)', () => digHatch(st));
     } else if (p.lv.k === 'ug') {
       add('avanti', 'Scava avanti (H)', () => digAhead(st, 0)); add('giu', 'Scava in discesa (J)', () => digAhead(st, -1)); add('su_', 'Scava in salita (K)', () => digAhead(st, 1));
-      add('stanza', 'Allarga in una stanza (N)', () => digRoom(st)); if (!P) add('botola_su', 'Apri una botola sopra', () => digUp(st));
+      add('filato', L.auto ? 'Smetti di scavare di filato' : 'Scava di filato (Maiusc+H)', () => autoDig(st, 0));
+      add('stanza', 'Allarga in una stanza (N)', () => digRoom(st)); if (!P) add('botola_su', G.tileAt(tx, ty) === T.BLD ? 'Sfonda il pavimento sopra: sbuchi dentro' : 'Apri una botola sopra', () => digUp(st));
     }
     return out;
   }
   if (AZ && AZ.playerActions) { const prev = AZ.playerActions; AZ.playerActions = st => (prev(st) || []).concat(actions(st)); }
   { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); step(st, dt); }; }
-  return { S, freeFn, moved, heightOf, floorAt, key, actions, step, digHatch, digWall, digAhead, digRoom, digUp, climb, BR, deckH, onDeck, init };
+  return { S, freeFn, moved, heightOf, floorAt, key, actions, step, digHatch, digWall, digAhead, digRoom, digUp, digFloor, digInto, autoDig, climb, goDownFromInside, BR, deckH, onDeck, init, hooks, CLIMB, ROOF };
 })();
 if (typeof module !== 'undefined') module.exports = Livelli;
+</script>
+<script>/* Porto Vecchio — il sottosuolo della città (v7, «Sotto»).
+   Sotto la città c'è un'altra città, ricalcata sulla mappa di sopra:
+   - LE FOGNE corrono sotto le strade vere (corso, vie, litoranea dentro la città), a quattro metri e mezzo; ogni trenta metri un tombino
+     da cui si esce in mezzo alla strada (V).
+   - I POSTI DI SOTTO: la cripta di San Rocco e quella del Santuario del Mare, le vecchie carceri sotto la Caserma della Guardia,
+     il rifugio antiaereo sotto la Piazza del Governo, il bunker della guerra nella Collina Nera, il deposito dei contrabbandieri sotto
+     il Magazzino Neri (con la grata sulla calata), lo spaccio sotto la Sala giochi Flipper, il Mercato di sotto sotto la piazza,
+     la Città dei Topi (chi ci vive) nella vecchia cisterna sotto i giardini. Dai posti sotto un edificio si sale dentro (V).
+   - LA GENTE DI SOTTO: contrabbandieri, spacciatori, ricettatori, i Topi. Si cliccano: parlano, vendono, comprano.
+   - LA ROBA SEPOLTA: scavando si trova qualcosa (monete, orologi, bossoli…); in certi punti c'è una cassa sotterrata apposta.
+     Nei posti di sotto ci sono casse da aprire.
+   - LA METROPOLITANA: due stazioni, Periferia Sud e Periferia Nord. Le due gallerie si avvolgono una sull'altra per mezzo giro,
+     come metà dell'elica del DNA (andata sopra, ritorno sotto, a metà strada si incrociano), con i passaggi di servizio a pioli.
+     Due treni fanno la spola; alla banchina col treno fermo, V (o clic sul treno) per salire: si scende da soli all'altro capo.
+   Stato: st.sotto = { folk, crates, stock, found, ride, dug }. Il resto (caselle, portali, stanze) va in st.lv tramite Livelli.hooks.init.
+   La grafica (in fondo al file) disegna con un suo gruppo: canale dell'acqua, arredi dei posti, gente, casse, gallerie e treni;
+   in superficie tombini, grate e ingressi della metropolitana. */
+var Sottosuolo = (function () {
+  'use strict';
+  const G = typeof Game !== 'undefined' ? Game : require('./game.js');
+  const LV = typeof Livelli !== 'undefined' ? Livelli : require('./livelli.js');
+  const W = G.MAP.world, TS = G.TS, GW = G.GW, GH = G.GH, T = G.T, N = GW * GH, EL = G.MAP.elev, ZC = W.Z.CITTA;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const idx = (tx, ty) => ty * GW + tx, inb = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH;
+  const ti = (x, y) => [Math.floor(x / TS), Math.floor(y / TS)], cen = t => (t + .5) * TS;
+  const hash = (a, b, s) => { let h = (a * 374761393 + b * 668265263 + (s || 0) * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+  const K = { FOGNA: 3, CRIPTA: 4, CARCERE: 5, BUNKER: 6, METRO: 7, COVO: 8, BANCHINA: 9 };   // 9: la banchina, senza pareti (la grafica disegna la stazione)
+  const O = () => (typeof Oggetti !== 'undefined' ? Oggetti : null);
+  const has = id => !O() || !!O().CAT[id];
+
+  // =====================================================================================================================
+  // LA MAPPA DI SOTTO (sempre uguale: si calcola una volta, poi si copia in ogni partita)
+  // =====================================================================================================================
+  const TPL = (function build() {
+    const ug = new Uint8Array(N), fl = new Float32Array(N), kind = new Uint8Array(N);
+    const portals = [], rooms = [], places = [], folk = [], crates = [], lamps = [];
+    const put = (tx, ty, f, k, force) => { if (!inb(tx, ty)) return false; const i = idx(tx, ty); if (ug[i] && !force) return false; ug[i] = 3; fl[i] = f; kind[i] = k; return true; };
+    const B = id => W.BUILDINGS.findIndex(b => b.id === id), P = id => G.PLACES[id] || null;
+
+    // ---------------- LE FOGNE: sotto le strade grandi della città ----------------
+    const sewer = [];
+    (W.roads || []).forEach(rd => {
+      if (!rd.pts || rd.pts.length < 2 || !/^(citta|strada|litoranea)$/.test(rd.kind || '') || (rd.w || 0) < 6) return;
+      let last = null, run = 0, tomb = -24;
+      for (let k = 0; k < rd.pts.length - 1; k++) {
+        const [ax, ay] = rd.pts[k], [bx, by] = rd.pts[k + 1], d = Math.hypot(bx - ax, by - ay);
+        for (let s = 0; s < d; s += .5) {
+          const x = ax + (bx - ax) * s / d, y = ay + (by - ay) * s / d, [tx, ty] = ti(x, y); run += .5;
+          if (!inb(tx, ty) || W.zone[idx(tx, ty)] !== ZC || G.tileAt(tx, ty) === T.WATER) { last = null; continue; }
+          if (last && last[0] === tx && last[1] === ty) continue;
+          if (last && last[0] !== tx && last[1] !== ty && G.tileAt(tx, last[1]) !== T.WATER) { if (put(tx, last[1], EL[idx(tx, last[1])] - 4.4, K.FOGNA)) sewer.push([tx, last[1]]); }
+          if (put(tx, ty, EL[idx(tx, ty)] - 4.4, K.FOGNA)) sewer.push([tx, ty]);
+          last = [tx, ty];
+          // un tombino ogni trenta metri, sulla carreggiata, mai troppo vicino a un altro
+          if (run - tomb > 30 && G.tileAt(tx, ty) === T.VIA && !portals.some(Q => Q.kind === 'tombino' && Math.hypot(Q.s[0] - tx, Q.s[1] - ty) < 8)) { portals.push({ kind: 'tombino', s: [tx, ty], u: [tx, ty], name: rd.name }); tomb = run; }
+        }
+      }
+    });
+    // il pavimento della fogna scende piano: due passate di media coi vicini
+    for (let pass = 0; pass < 2; pass++) sewer.forEach(([tx, ty]) => { let s = fl[idx(tx, ty)], c = 1; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const j = idx(tx + dx, ty + dy); if (inb(tx + dx, ty + dy) && kind[j] === K.FOGNA) { s += fl[j]; c++; } }); fl[idx(tx, ty)] = s / c; });
+    // le lampade di servizio, rade
+    sewer.forEach(([tx, ty]) => { if (hash(tx, ty, 9) < .035) lamps.push({ x: cen(tx), y: cen(ty), f: fl[idx(tx, ty)] + 2.1, c: '#9ad0a0', k: 'fogna' }); });
+
+    // ---------------- I POSTI ----------------
+    // una stanza rettangolare (caselle), allo stesso pavimento
+    const room = (x0, y0, w, h, f, k) => { for (let ty = y0; ty < y0 + h; ty++) for (let tx = x0; tx < x0 + w; tx++) put(tx, ty, f, k, true); };
+    // un corridoio a L (prima in x, poi in y) col pavimento che va da fa a fb; non tocca le caselle già scavate
+    const corridor = (ax, ay, bx, by, fa, fb, k) => {
+      const pts = []; let x = ax, y = ay; pts.push([x, y]);
+      while (x !== bx) { x += Math.sign(bx - x); pts.push([x, y]); }
+      while (y !== by) { y += Math.sign(by - y); pts.push([x, y]); }
+      pts.forEach(([tx, ty], q) => { if (G.tileAt(tx, ty) === T.WATER && !ug[idx(tx, ty)]) return; put(tx, ty, fa + (fb - fa) * q / Math.max(1, pts.length - 1), k); });
+    };
+    // la fogna più vicina: un corridoio di servizio dalla stanza
+    const toSewer = (tx, ty, f, k) => { let best = null, bd = 1e9; sewer.forEach(([sx, sy]) => { const d = Math.abs(sx - tx) + Math.abs(sy - ty); if (d < bd) { bd = d; best = [sx, sy]; } }); if (best && bd < 160) corridor(tx, ty, best[0], best[1], f, fl[idx(best[0], best[1])], k); return best; };
+    const place = (id, name, x, y, r, deco, extra) => { const q = Object.assign({ id, name, x, y, r, deco }, extra || {}); places.push(q); return q; };
+    const crate = (id, label, x, y, f, items, extra) => crates.push(Object.assign({ id, label, x, y, f, items }, extra || {}));
+    const person = (id, name, role, x, y, f, look, lines, extra) => folk.push(Object.assign({ id, name, role, x, y, f, hx: x, hy: y, r: 2.4, look, lines }, extra || {}));
+    const lamp = (x, y, f, c, k) => lamps.push({ x, y, f, c: c || '#ffb060', k: k || 'lume' });
+    const LOOK = {
+      contr: { top: '#2a3a4a', bottom: '#1e1e24', hair: '#1a1410', skin: '#c8946a' }, contr2: { top: '#6a4a2a', bottom: '#2a2a30', hair: '#3a2a1a', skin: '#d8a880' },
+      spacc: { top: '#c8c8d0', bottom: '#2a2a40', hair: '#e8d090', skin: '#e0b090' }, bisca: { top: '#7a1a2a', bottom: '#1a1a1a', hair: '#2a1a12', skin: '#c89070' },
+      topo: { top: '#5a5040', bottom: '#3a3428', hair: '#6a6a60', skin: '#b88a68' }, topo2: { top: '#4a3a3a', bottom: '#2e2a26', hair: '#2a2420', skin: '#a87a58' },
+      vecchio: { top: '#7a7468', bottom: '#4a463e', hair: '#d8d4cc', skin: '#c8a080' }, merc: { top: '#3a5a3a', bottom: '#2a2a2a', hair: '#1a1410', skin: '#c8946a' },
+    };
+    // dentro un edificio: la stanza ne occupa la pianta (meno un bordo), il portale sale al piano terra
+    const under = (bid, deco, name, depth, k, opts) => {
+      const bi = B(bid); if (bi < 0) return null; const b = W.BUILDINGS[bi]; opts = opts || {};
+      const w = Math.max(3, b.w - 2), h = Math.max(3, b.h - 2), x0 = b.x + Math.floor((b.w - w) / 2), y0 = b.y + Math.floor((b.h - h) / 2), f = EL[idx(b.x + (b.w >> 1), b.y + (b.h >> 1))] - depth;
+      room(x0, y0, w, h, f, k);
+      const cx = cen(x0) + (w - 1) * TS / 2, cy = cen(y0) + (h - 1) * TS / 2;
+      if (b.door && !opts.noUp) portals.push({ kind: 'interno', s: [x0 + w - 1, y0 + h - 1], u: [x0 + w - 1, y0 + h - 1], bi, name: b.name });
+      rooms.push({ x: cx, y: cy, f, deco, w: w * TS, h: h * TS, x0, y0, tw: w, th: h, bi });
+      toSewer(x0, y0 + (h >> 1), f, k);
+      return { b, bi, x0, y0, w, h, f, cx, cy };
+    };
+
+    // la cripta di San Rocco: l'ossario, le tombe dei preti, il reliquiario
+    { const q = under('chiesa', 'cripta', 'Cripta di San Rocco', 5, K.CRIPTA); if (q) { place('cripta', 'Cripta di San Rocco', q.cx, q.cy, 7, 'cripta'); crate('reliquiario', 'Reliquiario', q.cx - 2, q.cy - q.h + 1.6, q.f, { anello_oro: 1, candele: 3, gioielli: 1 }, { look: 'reliquiario' }); lamp(q.cx, q.cy, q.f + 1.2, '#ffc070'); } }
+    // la cripta del Santuario del Mare: i marinai annegati, gli ex voto
+    { const q = under('santuario', 'cripta', 'Cripta dei marinai', 5, K.CRIPTA); if (q) { place('cripta_mare', 'Cripta dei marinai', q.cx, q.cy, 6, 'cripta'); crate('exvoto', 'Ex voto dei marinai', q.cx + 1.5, q.cy - 1, q.f, { orologio: 1, anello_oro: 1, candele: 2 }, { look: 'reliquiario' }); lamp(q.cx, q.cy, q.f + 1.2, '#ffc070'); } }
+    // le vecchie carceri sotto la Caserma della Guardia: celle borboniche, un prigioniero che nessuno ricorda
+    { const q = under('commissariato', 'carceri', 'Le vecchie carceri', 6, K.CARCERE); if (q) {
+      place('carceri', 'Le vecchie carceri', q.cx, q.cy, 8, 'carceri');
+      person('prigioniero', 'Il Conte', 'prigioniero dimenticato', q.cx - 2, q.cy, q.f, LOOK.vecchio, ['«Dal \'54 sono qui. Mi hanno dimenticato, e io ho dimenticato loro.»', '«Sopra c\'è la Guardia. Di notte li sento che giocano a carte.»', '«Il brigante Cuccu ha sotterrato la sua cassa sotto il Paese Vecchio, vicino alla chiesa senza tetto. Lo diceva sempre, in cella.»', '«Le fogne? Arrivano dappertutto. I Topi lo sanno.»'], { r: 1.2 });
+      crate('fascicoli', 'Schedario della Guardia', q.cx + 2, q.cy - 1, q.f, { fascicolo: 2, grimaldello: 1 }, { look: 'schedario' }); lamp(q.cx, q.cy, q.f + 1.4, '#e0d090'); } }
+    // il rifugio antiaereo sotto la Piazza del Governo (e su, nel Palazzo)
+    { const pg = P('piazza_gov'), bi = B('governo'); if (pg) {
+      const [px, py] = ti(pg.x, pg.y), f = EL[idx(px, py)] - 7; room(px - 3, py - 2, 7, 5, f, K.BUNKER);
+      rooms.push({ x: cen(px), y: cen(py), f, deco: 'rifugio', w: 14, h: 10, x0: px - 3, y0: py - 2, tw: 7, th: 5 }); place('rifugio', 'Il rifugio antiaereo', cen(px), cen(py), 8, 'rifugio');
+      if (bi >= 0) { const b = W.BUILDINGS[bi], gx = b.x + (b.w >> 1), gy = b.y + b.h - 1; corridor(px, py - 2, gx, gy, f, EL[idx(gx, gy)] - 4, K.BUNKER); portals.push({ kind: 'interno', s: [gx, gy], u: [gx, gy], bi, name: b.name }); }
+      toSewer(px + 3, py, f, K.BUNKER);
+      crate('rifugio_casse', 'Casse del rifugio', cen(px) + 4, cen(py) - 2, f, { maschera_gas: 1, elmetto: 1, documenti: 1 }, { look: 'militare' }); lamp(cen(px), cen(py), f + 2, '#f0f0d0', 'neon'); } }
+    // il bunker della guerra nella Collina Nera: tre stanze, l'armeria, la botola nel bosco
+    { const pb = P('osservatorio') || P('belvedere') || P('monte'); if (pb) {
+      const [px, py] = ti(pb.x, pb.y), f = EL[idx(px, py)] - 6;
+      room(px - 2, py - 2, 5, 4, f, K.BUNKER); room(px + 3, py - 1, 4, 3, f, K.BUNKER); room(px - 6, py - 1, 4, 3, f, K.BUNKER);
+      rooms.push({ x: cen(px), y: cen(py) - 1, f, deco: 'bunker', w: 10, h: 8, x0: px - 2, y0: py - 2, tw: 5, th: 4 });
+      rooms.push({ x: cen(px + 4) + 1, y: cen(py), f, deco: 'armeria', w: 8, h: 6, x0: px + 3, y0: py - 1, tw: 4, th: 3 });
+      rooms.push({ x: cen(px - 5) + 1, y: cen(py), f, deco: 'camerata', w: 8, h: 6, x0: px - 6, y0: py - 1, tw: 4, th: 3 });
+      place('bunker', 'Il bunker della guerra', cen(px), cen(py), 12, 'bunker');
+      // la botola nel bosco: la prima casella percorribile a sud
+      let ex = null; for (let r = 3; r < 9 && !ex; r++) for (const [dx, dy] of [[0, r], [r, 0], [-r, 0], [0, -r]]) if (!ex && G.walkT(px + dx, py + dy)) ex = [px + dx, py + dy];
+      if (ex) { corridor(px, py, ex[0], ex[1], f, EL[idx(ex[0], ex[1])] - 3, K.BUNKER); portals.push({ kind: 'botola', nat: true, s: ex, u: ex, name: 'Bunker della guerra' }); }
+      toSewer(px, py + 1, f, K.BUNKER);
+      crate('armeria', 'Armeria del bunker', cen(px + 4) + 1, cen(py) - 1.5, f, { munizioni: 3, pistola: 1, elmetto: 1, maschera_gas: 1 }, { look: 'militare' });
+      lamp(cen(px), cen(py), f + 2, '#f0f0d0', 'neon'); lamp(cen(px + 4) + 1, cen(py), f + 2, '#f0f0d0', 'neon'); } }
+    // il deposito dei contrabbandieri sotto il Magazzino Neri, con la grata sulla calata
+    { const q = under('magazzino', 'contrabbando', 'Il deposito dei contrabbandieri', 4.5, K.COVO); if (q) {
+      place('deposito', 'Il deposito dei contrabbandieri', q.cx, q.cy, 9, 'contrabbando');
+      // la grata: la prima casella di banchina verso sud
+      let g = null; for (let r = 1; r < 14 && !g; r++) { const tx = q.x0 + (q.w >> 1), ty = q.y0 + q.h - 1 + r; if (inb(tx, ty) && (G.tileAt(tx, ty) === T.QUAY || G.tileAt(tx, ty) === T.WALK || G.tileAt(tx, ty) === T.PIER)) g = [tx, ty]; }
+      if (g) { corridor(q.x0 + (q.w >> 1), q.y0 + q.h - 1, g[0], g[1], q.f, EL[idx(g[0], g[1])] - 3, K.COVO); portals.push({ kind: 'grata', s: g, u: g, name: 'Calata' }); }
+      person('squalo_sotto', 'Tonino «Bavaglio»', 'contrabbandiere', q.cx - 2, q.cy, q.f, LOOK.contr, ['«Sigarette americane, jeans, cassette. Roba che sopra non c\'è.»', '«Lo Squalo prende la sua parte. Tu paghi e non chiedi.»', '«La grata dà sulla calata. Di notte arriva la barca.»'], { shop: 'contrabbando' });
+      person('contr2', 'Gerri', 'contrabbandiere', q.cx + 2, q.cy + 1, q.f, LOOK.contr2, ['«Se la Guardia scende qui, noi siamo già in fogna.»', '«Bavaglio fa i prezzi. Io porto le casse.»'], {});
+      crate('casse_contr', 'Casse del contrabbando', q.cx + 3, q.cy - 1.5, q.f, { marlboro: 2, jeans: 1, cassette_proibite: 2 }, { look: 'casse', guard: 'squalo_sotto' });
+      lamp(q.cx, q.cy, q.f + 1.8, '#ffb060'); } }
+    // lo spaccio sotto la Sala giochi Flipper: la bisca, il Biondo
+    { const q = under('flipper', 'spaccio', 'Lo spaccio del Flipper', 4.5, K.COVO); if (q) {
+      place('spaccio', 'Lo spaccio sotto il Flipper', q.cx, q.cy, 6, 'spaccio');
+      person('biondo', 'Il Biondo', 'spacciatore', q.cx + 1.5, q.cy - .5, q.f, LOOK.spacc, ['«Cosa ti serve per dormire? O per non dormire?»', '«Sopra suonano i flipper. Sotto si fanno i soldi veri.»', '«Ai Topi non vendo: non pagano.»'], { shop: 'spaccio', r: 1.2 });
+      person('baro', 'Ninì il baro', 'giocatore', q.cx - 1.5, q.cy + .8, q.f, LOOK.bisca, ['«Una mano a zecchinetta? No? Peccato.»', '«Il Biondo ha le tasche piene e il naso pure.»'], { r: .6, sit: 1 });
+      lamp(q.cx, q.cy, q.f + 1.6, '#ff5aa0'); } }
+    // il Mercato di sotto: una cisterna sotto la piazza, bancarelle e lampade
+    { const pz = P('piazza'); if (pz) {
+      const [px, py] = ti(pz.x, pz.y), f = EL[idx(px, py)] - 5.5; room(px - 4, py - 3, 9, 6, f, K.COVO);
+      rooms.push({ x: cen(px), y: cen(py) - 1, f, deco: 'mercato', w: 18, h: 12, x0: px - 4, y0: py - 3, tw: 9, th: 6 }); place('mercato', 'Il Mercato di sotto', cen(px), cen(py), 11, 'mercato');
+      toSewer(px - 4, py, f, K.COVO); toSewer(px + 4, py, f, K.COVO);
+      person('ricettatore', 'Mastro Ugo', 'ricettatore', cen(px) - 4, cen(py) - 3, f, LOOK.merc, ['«Ferri, documenti, timbri. Tutto quello che il Garante non ti darà mai.»', '«Compro anche: oro, orologi, roba che scotta. Senza ricevuta.»', '«Qui sotto non c\'è il coprifuoco.»'], { shop: 'mercato', r: 1 });
+      person('donna_merc', 'Assunta', 'venditrice', cen(px) + 4, cen(py) - 3, f, LOOK.contr2, ['«Il mercato di sopra è il mercoledì. Questo è sempre.»', '«Mio marito scava. Trova di tutto: monete, ossa, una volta un elmetto tedesco.»'], { r: 1.2 });
+      person('cliente1', 'Uno col cappuccio', 'cliente', cen(px), cen(py) + 1, f, LOOK.topo2, ['«Non mi hai visto.»'], { r: 3.5 });
+      person('cliente2', 'Una ragazza', 'cliente', cen(px) + 2, cen(py) + 2, f, LOOK.bisca, ['«Cerco cassette dal continente. Madonna, i Clash.»'], { r: 3 });
+      lamp(cen(px) - 4, cen(py) - 2, f + 1.6, '#ffb060'); lamp(cen(px) + 4, cen(py) - 2, f + 1.6, '#ffa050'); } }
+    // la Città dei Topi: chi vive sotto, nella vecchia cisterna sotto i giardini
+    { const pg = P('giardini'); if (pg) {
+      const [px, py] = ti(pg.x, pg.y), f = EL[idx(px, py)] - 5; room(px - 4, py - 3, 8, 6, f, K.FOGNA);
+      rooms.push({ x: cen(px) - 1, y: cen(py) - 1, f, deco: 'topi', w: 16, h: 12, x0: px - 4, y0: py - 3, tw: 8, th: 6 }); place('topi', 'La Città dei Topi', cen(px), cen(py), 10, 'topi');
+      toSewer(px + 3, py, f, K.FOGNA);
+      person('re_topi', 'Il Re dei Topi', 'capo dei Topi', cen(px) - 3, cen(py) - 2, f, LOOK.vecchio, ['«Sopra ci chiamano Topi. Sotto siamo cittadini.»', '«Ti vendo candele e scatolette. I soldi li spendiamo sopra, di notte.»', '«Le fogne sono nostre. I tombini sono le nostre porte.»', '«Sotto il Paese Vecchio c\'è la cassa del brigante. E sotto le rovine della collina qualcuno ha sotterrato le armi della guerra.»'], { shop: 'topi', r: 1 });
+      person('topo1', 'Peppe', 'Topo', cen(px) + 1, cen(py), f, LOOK.topo, ['«Hai una sigaretta?»', '«Qui sotto fa meno freddo che sopra. D\'inverno siamo in trenta.»'], { r: 2.5 });
+      person('topo2', 'Marisa', 'Topo', cen(px) + 3, cen(py) + 2, f, LOOK.topo2, ['«Mio figlio è sopra, in Caserma. Non gli dire che mi hai vista.»'], { r: 2, sit: 1 });
+      person('topo3', 'Bambino', 'Topo', cen(px) - 1, cen(py) + 2, f, LOOK.topo, ['«Lo sai che il treno nuovo passa sotto casa nostra? Fa tremare tutto.»'], { r: 3.5 });
+      lamp(cen(px) - 2, cen(py), f + .8, '#ff8a30', 'fuoco'); lamp(cen(px) + 2, cen(py) + 1, f + .8, '#ff8a30', 'fuoco'); } }
+
+    // ---------------- LA METROPOLITANA: da Periferia Sud a Periferia Nord ----------------
+    // le due stazioni: un marciapiede in città, sul bordo sud della periferia ovest e sul bordo nord della periferia est
+    // l'ingresso: una casella aperta (piazzetta, selciato, prato), lontana dalla carreggiata e dai marciapiedi (pensiline, pali, panchine)
+    const open = (tx, ty) => { for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const v = G.tileAt(tx + i, ty + j); if (!G.walkT(tx + i, ty + j) || v === T.VIA || v === T.WALK) return false; } return true; };
+    const spot = (x, y) => { const [cx, cy] = ti(x, y); for (const strict of [true, false]) { let best = null, bd = 1e9; for (let r = 0; r < 18 && !best; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue; const tx = cx + i, ty = cy + j; if (!inb(tx, ty) || W.zone[idx(tx, ty)] !== ZC) continue; const v = G.tileAt(tx, ty); if (![T.WALK, T.COB, T.PIAZZA, T.GRASS, T.DIRT].includes(v) || (strict && !open(tx, ty))) continue; const d = Math.hypot(i, j); if (d < bd) { bd = d; best = [tx, ty]; } } if (best) return best; } return null; };
+    const S0 = spot(836, 202), N0 = spot(1122, 64), metro = { ok: false };
+    if (S0 && N0) {
+      const ax = cen(S0[0]), ay = cen(S0[1]), bx = cen(N0[0]), by = cen(N0[1]), Ld = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / Ld, uy = (by - ay) / Ld, nx = -uy, ny = ux;
+      const R = 4.4, OFF = 11;   // raggio dell'elica (mezza distanza tra le gallerie); la banchina comincia 11 m oltre l'ingresso
+      const st = [{ id: 'sud', name: 'Periferia Sud', ent: S0, sgn: 1 }, { id: 'nord', name: 'Periferia Nord', ent: N0, sgn: -1 }];
+      st.forEach(S => {
+        const ex = cen(S.ent[0]), ey = cen(S.ent[1]); S.x = ex + ux * OFF * S.sgn; S.y = ey + uy * OFF * S.sgn;
+        let lo = 1e9; for (let a = -10; a <= 10; a += 2) for (let l = -3; l <= 3; l += 3) { const [tx, ty] = ti(S.x + ux * a + nx * l, S.y + uy * a + ny * l); if (inb(tx, ty)) lo = Math.min(lo, EL[idx(tx, ty)]); }
+        S.f = Math.min(lo, EL[idx(...S.ent)]) - 9;
+        // la banchina a isola tra i due binari: lunga 20 m, larga 6
+        for (let ty = Math.floor((S.y - 13) / TS); ty <= Math.floor((S.y + 13) / TS); ty++) for (let tx = Math.floor((S.x - 13) / TS); tx <= Math.floor((S.x + 13) / TS); tx++) {
+          const dx = cen(tx) - S.x, dy = cen(ty) - S.y, a = dx * ux + dy * uy, l = dx * nx + dy * ny; if (Math.abs(a) <= 10.5 && Math.abs(l) <= 2.7) put(tx, ty, S.f, K.BANCHINA, true);
+        }
+        // le scale: dall'ingresso al capo della banchina (un corridoio piastrellato che scende)
+        const [hx, hy] = ti(S.x - ux * 9 * S.sgn, S.y - uy * 9 * S.sgn);
+        corridor(S.ent[0], S.ent[1], hx, hy, EL[idx(...S.ent)] - 3.2, S.f, K.METRO);
+        portals.push({ kind: 'scala', s: S.ent, u: S.ent, name: 'Metropolitana · ' + S.name, metro: S.id });
+        rooms.push({ x: S.x, y: S.y, f: S.f, deco: 'metro', ux, uy, name: S.name, sid: S.id });
+        place('metro_' + S.id, 'Metropolitana, stazione ' + S.name, S.x, S.y, 12, 'metro');
+        toSewer(...ti(S.x + ux * 8 * S.sgn, S.y + uy * 8 * S.sgn), S.f, K.METRO);
+        for (const a of [-7, 0, 7]) lamp(S.x + ux * a, S.y + uy * a, S.f + 3.6, '#e8f0ff', 'neon');
+      });
+      const A = st[0], Bn = st[1];
+      Object.assign(metro, { ok: true, R, A, B: Bn, ux, uy, nx, ny, L: Math.hypot(Bn.x - A.x, Bn.y - A.y) });
+    }
+    return { ug, fl, kind, portals, rooms, places, folk, crates, lamps, metro };
+  })();
+
+  // =====================================================================================================================
+  // LA METROPOLITANA: le due gallerie a mezza elica e i treni
+  // =====================================================================================================================
+  const M = TPL.metro;
+  // il punto della galleria j (0: andata, 1: ritorno) a una frazione t del percorso: x, y del mondo e quota h del piano del binario
+  function trackAt(j, t) {
+    const A = M.A, B = M.B, ph = Math.PI * t + j * Math.PI, l = M.R * Math.cos(ph), v = M.R * Math.sin(ph) * .92;
+    // l'asse scende in mezzo (11 m sotto le stazioni): l'elica passa sotto le fogne, le cripte e il mercato
+    const cx = A.x + (B.x - A.x) * t, cy = A.y + (B.y - A.y) * t, f = A.f + (B.f - A.f) * t - 11 * Math.sin(Math.PI * clamp(t, 0, 1));
+    return { x: cx + M.nx * l, y: cy + M.ny * l, h: f - 1.05 + v, l, v };
+  }
+  const DW = 14, VM = 15, AC = 1.3;   // sosta (s), velocità (m/s), accelerazione (m/s²)
+  const TT = M.ok ? M.L / VM + VM / AC : 1, CYC = 2 * (TT + DW);
+  function sAt(tau) { const ta = VM / AC, da = .5 * AC * ta * ta; if (tau < ta) return .5 * AC * tau * tau; if (tau < TT - ta) return da + VM * (tau - ta); const r = TT - tau; return M.L - .5 * AC * r * r; }
+  // il treno j: dove è, dove va, se è fermo e dove
+  function train(st, j) {
+    if (!M.ok) return null;
+    const ph = (((st.clock || 0) + j * CYC / 2) % CYC + CYC) % CYC;
+    let t, dir, at = null, left = 0;
+    if (ph < DW) { t = 0; dir = 1; at = 'sud'; left = DW - ph; }
+    else if (ph < DW + TT) { t = clamp(sAt(ph - DW) / M.L, 0, 1); dir = 1; }
+    else if (ph < 2 * DW + TT) { t = 1; dir = -1; at = 'nord'; left = 2 * DW + TT - ph; }
+    else { t = clamp(1 - sAt(ph - 2 * DW - TT) / M.L, 0, 1); dir = -1; }
+    const q = trackAt(j, t), q2 = trackAt(j, clamp(t + .002, 0, 1)), q1 = trackAt(j, clamp(t - .002, 0, 1));
+    return { j, t, dir, at, left, x: q.x, y: q.y, h: q.h, ang: Math.atan2(q2.y - q1.y, q2.x - q1.x), pitch: Math.atan2(q2.h - q1.h, Math.hypot(q2.x - q1.x, q2.y - q1.y)) };
+  }
+  const stationOf = id => id === 'sud' ? M.A : M.B;
+  const onPlatform = (st, S) => { const p = st.player; return p.lv && p.lv.k === 'ug' && p.lv.ride === undefined && Math.hypot(p.x - S.x, p.y - S.y) < 12.5; };
+  function board(st, j) {
+    const p = st.player, tr = train(st, j); if (!tr || !tr.at) return 'Il treno non è in banchina.';
+    const S = stationOf(tr.at); if (!onPlatform(st, S)) return 'Devi essere sulla banchina.';
+    p.lv = { k: 'ug', ride: j }; p.path = []; const R0 = S0(st); R0.ride = { j, from: tr.at, t0: st.clock };
+    p.x = tr.x; p.y = tr.y; st.sfx && st.sfx.push({ k: 'porta' });
+    return `Sali sul treno per ${tr.at === 'sud' ? M.B.name : M.A.name}. Le porte si chiudono tra ${Math.ceil(tr.left)} secondi.`;
+  }
+  function rideStep(st) {
+    const p = st.player, R0 = S0(st); if (!R0.ride) return;
+    if (!p.lv || p.lv.ride === undefined) { R0.ride = null; return; }
+    const tr = train(st, R0.ride.j); if (!tr) return;
+    p.x = tr.x; p.y = tr.y; p.face = tr.ang + (tr.dir < 0 ? Math.PI : 0); p.speed = 0;
+    if (tr.at && tr.at !== R0.ride.from) {
+      const S = stationOf(tr.at), side = (tr.x - S.x) * M.nx + (tr.y - S.y) * M.ny > 0 ? 1 : -1;
+      p.lv = { k: 'ug' }; p.x = S.x + M.nx * side * 1.6; p.y = S.y + M.ny * side * 1.6; R0.ride = null;
+      const L = LV.S(st); L.lastU = ti(p.x, p.y);
+      G.feed(st, `${S.name}. Si scende. Le scale sono in fondo alla banchina (V per salire in strada).`, 'good');
+    }
+  }
+  // V alla banchina: il treno fermo, o fra quanto arriva il prossimo
+  function metroKey(st) {
+    const p = st.player; if (!M.ok || !p.lv || p.lv.k !== 'ug') return null;
+    if (p.lv.ride !== undefined) return 'Sei sul treno: scendi alla prossima.';
+    for (const S of [M.A, M.B]) if (onPlatform(st, S)) {
+      for (const j of [0, 1]) { const tr = train(st, j); if (tr && tr.at === S.id) return board(st, j); }
+      // un treno arriva a sud all'inizio del suo ciclo, a nord dopo una sosta e un viaggio
+      const arr = S.id === 'sud' ? 0 : DW + TT, wait = Math.min(...[0, 1].map(j => ((arr - ((st.clock || 0) + j * CYC / 2)) % CYC + CYC) % CYC));
+      return `Il prossimo treno arriva tra ${Math.max(1, Math.ceil(wait))} secondi.`;
+    }
+    return null;
+  }
+
+  // =====================================================================================================================
+  // STATO DELLA PARTITA
+  // =====================================================================================================================
+  function S0(st) {
+    if (st.sotto) return st.sotto;
+    const R0 = st.sotto = { folk: TPL.folk.map(n => Object.assign({}, n, { tx: n.x, ty: n.y, wait: 0, speed: 0, face: Math.PI / 2 })), crates: TPL.crates.map(c => Object.assign({}, c, { items: Object.assign({}, c.items), open: false })), stock: {}, found: {}, ride: null, dug: 0 };
+    Object.entries(SHOPS).forEach(([k, Sh]) => { R0.stock[k] = {}; Sh.goods.filter(has).forEach((g, i) => { R0.stock[k][g] = 2 + Math.floor(hash(i, k.length, 3) * 4); }); });
+    return R0;
+  }
+  // in ogni partita: si copiano fogne, posti e portali nello scavo
+  LV.hooks.init.push((L, st) => {
+    for (let i = 0; i < N; i++) if (TPL.ug[i] && !L.ug[i]) { L.ug[i] = TPL.ug[i]; L.fl[i] = TPL.fl[i]; L.kind[i] = TPL.kind[i]; }
+    TPL.portals.forEach(P => L.portals.push(Object.assign({}, P, { s: P.s.slice(), u: P.u.slice() })));
+    TPL.rooms.forEach(R => L.rooms.push(Object.assign({}, R)));
+    if (st) S0(st);
+  });
+
+  // =====================================================================================================================
+  // LA GENTE DI SOTTO: girano piano attorno al loro posto, parlano, vendono, comprano
+  // =====================================================================================================================
+  const SHOPS = {
+    contrabbando: { label: 'Il contrabbando di Bavaglio', goods: ['marlboro', 'sigarette_contr', 'vodka', 'cassette_proibite', 'rivista_proibita', 'jeans', 'chewing_gum', 'benzina'], mult: 1.5, buy: g => O().CAT[g].ill || O().CAT[g].prezzo >= 8, pay: .55 },
+    spaccio: { label: 'Lo spaccio del Biondo', goods: ['morfina', 'sonniferi', 'vodka', 'marlboro', 'petardi'], mult: 2.1, buy: g => /morfina|sonniferi|orologio|anello_oro|gioielli/.test(g), pay: .45 },
+    mercato: { label: 'Il banco di Mastro Ugo', goods: ['pistola', 'munizioni', 'lupara', 'coltello', 'grimaldello', 'documenti', 'timbro_falso', 'walkie', 'maschera_gas', 'giubbotto', 'tirapugni', 'spray_peperoncino', 'piccone', 'pala'], mult: 1.7, buy: g => !!(O().CAT[g].ill || O().CAT[g].prezzo >= 6), pay: .5 },
+    topi: { label: 'La bancarella dei Topi', goods: ['candele', 'scatolame', 'bende', 'corda', 'torcia', 'pala'], mult: .8, buy: g => O().CAT[g].prezzo < 6 && !O().CAT[g].wpn, pay: .6 },
+  };
+  const ugAt = (L, x, y) => { const [tx, ty] = ti(x, y); return inb(tx, ty) && L.ug[idx(tx, ty)] > 0; };
+  function folkStep(st, dt) {
+    const p = st.player, R0 = S0(st), L = st.lv; if (!L) return;
+    const near = p.lv && p.lv.k === 'ug';
+    R0.folk.forEach(n => {
+      if (!near || Math.hypot(n.x - p.x, n.y - p.y) > 90) { n.speed = 0; return; }
+      if (n.talk && st.clock - n.talk < 6) { n.speed = 0; n.face = Math.atan2(p.y - n.y, p.x - n.x); return; }
+      const d = Math.hypot(n.tx - n.x, n.ty - n.y);
+      if (d < .15 || n.sit) { n.speed = 0; n.wait -= dt; if (n.wait <= 0 && !n.sit) { const a = hash(Math.floor(st.clock * 3), n.id.length, 7) * 6.283, r = hash(Math.floor(st.clock * 5), n.id.length, 11) * n.r, x = n.hx + Math.cos(a) * r, y = n.hy + Math.sin(a) * r; if (ugAt(L, x, y)) { n.tx = x; n.ty = y; } n.wait = 3 + hash(n.id.length, Math.floor(st.clock), 5) * 6; } return; }
+      const v = Math.min(.9, d / dt), ux = (n.tx - n.x) / d, uy = (n.ty - n.y) / d, nx = n.x + ux * v * dt, ny = n.y + uy * v * dt;
+      if (ugAt(L, nx, ny)) { n.x = nx; n.y = ny; n.speed = .9; n.face = Math.atan2(uy, ux); } else { n.tx = n.x; n.ty = n.y; }
+    });
+  }
+  const floorAtXY = (st, x, y) => { const L = LV.S(st); return LV.floorAt(L, x, y); };
+
+  // le casse: si apre e si prende tutto (quella sorvegliata solo se il guardiano non c'è o si fida)
+  function openCrate(st, c) {
+    const R0 = S0(st); if (c.open) return { ok: false, msg: `${c.label}: vuota.` };
+    if (c.guard) { const g = R0.folk.find(n => n.id === c.guard); if (g && Math.hypot(g.x - c.x, g.y - c.y) < 8 && !(R0.trust || {})[c.guard]) return { ok: false, msg: `${g.name}: «Giù le mani. Quella roba si compra.»` }; }
+    const got = []; Object.entries(c.items).forEach(([g, q]) => { if (!has(g) || !O()) return; const left = O().givePlayer(st, g, q) || 0; if (q - left > 0) got.push(`${O().nm(g)}${q - left > 1 ? ' ×' + (q - left) : ''}`); c.items[g] = left; if (!left) delete c.items[g]; });
+    if (!Object.keys(c.items).length) c.open = true;
+    return { ok: got.length > 0, msg: got.length ? `${c.label}: prendi ${got.join(', ')}.` : 'Non ti sta più niente addosso.' };
+  }
+  // comprare e vendere coi soldi del giocatore (in migliaia di lire, come dappertutto)
+  const priceOf = (k, g) => Math.max(1, Math.round(O().CAT[g].prezzo * SHOPS[k].mult * 10) / 10);
+  const payOf = (k, g) => Math.max(.5, Math.round(O().CAT[g].prezzo * SHOPS[k].pay * 10) / 10);
+  function buy(st, k, g) {
+    const R0 = S0(st), Sh = SHOPS[k], p = st.player; if (!Sh || !O() || !has(g)) return { ok: false, msg: 'Non ce l\'ha.' };
+    if ((R0.stock[k][g] || 0) < 1) return { ok: false, msg: 'Finito.' };
+    const pr = priceOf(k, g); if ((p.money || 0) < pr - 1e-6) return { ok: false, msg: `Costa ${pr}.000: non ce li hai.` };
+    const left = O().givePlayer(st, g, 1) || 0; if (left) return { ok: false, msg: 'Non ti sta addosso.' };
+    p.money -= pr; R0.stock[k][g]--; R0.trust = R0.trust || {}; const who = R0.folk.find(n => n.shop === k); if (who) R0.trust[who.id] = (R0.trust[who.id] || 0) + 1;
+    st.sfx && st.sfx.push({ k: 'cash' });
+    return { ok: true, msg: `${O().nm(g)}: ${pr}.000 lire.` };
+  }
+  function sell(st, k, g) {
+    const Sh = SHOPS[k], p = st.player, bag = O() && O().inv(st); if (!Sh || !bag || !(bag[g] >= 1) || !has(g)) return { ok: false, msg: 'Non ce l\'hai.' };
+    if (!Sh.buy(g)) return { ok: false, msg: '«Questa roba non la tratto.»' };
+    const pr = payOf(k, g); bag[g] -= 1; if (bag[g] <= 0) delete bag[g]; p.money = (p.money || 0) + pr; const R0 = S0(st); R0.stock[k][g] = (R0.stock[k][g] || 0) + 1;
+    st.sfx && st.sfx.push({ k: 'cash' });
+    return { ok: true, msg: `Vendi ${O().nm(g)} per ${pr}.000 lire.` };
+  }
+  function shopView(st, k) {
+    const Sh = SHOPS[k], R0 = S0(st), bag = O() ? O().inv(st) : {};
+    if (!Sh || !O()) return null;
+    return { k, label: Sh.label, money: st.player.money || 0,
+      goods: Sh.goods.filter(has).map(g => ({ g, nome: O().nm(g), q: R0.stock[k][g] || 0, price: priceOf(k, g), ill: !!O().CAT[g].ill })),
+      buys: Object.keys(bag).filter(g => has(g) && bag[g] >= 1 && Sh.buy(g)).map(g => ({ g, nome: O().nm(g), q: Math.floor(bag[g]), price: payOf(k, g) })) };
+  }
+
+  // =====================================================================================================================
+  // LA ROBA SEPOLTA
+  // =====================================================================================================================
+  const CACHES = [
+    { id: 'brigante', near: 'vecchio_3', items: { valuta: 4, pistola: 1, munizioni: 2, gioielli: 1 }, msg: 'La pala sbatte contro il legno: una cassa sotterrata, chiusa col fil di ferro. La cassa del brigante Cuccu!' },
+    { id: 'guerra', near: 'ruderi', items: { elmetto: 1, munizioni: 3, maschera_gas: 1, lupara: 1 }, msg: 'Un telo cerato marcio, e sotto: roba della guerra, avvolta nell\'olio.' },
+    { id: 'monolite', near: 'monolite', items: { gioielli: 1, anello_oro: 1, orologio: 1 }, msg: 'Sotto il monolite, una scatola di latta con dentro i gioielli di qualcuno.' },
+    { id: 'rudere', near: 'rudere_o', items: { valuta: 3, documenti: 1, orologio: 1 }, msg: 'Un barattolo di vetro sotto le fondamenta del rudere: soldi stranieri e un passaporto.' },
+  ].map(c => { const q = G.PLACES[c.near]; return q ? Object.assign(c, { tx: Math.floor(q.x / TS), ty: Math.floor(q.y / TS) }) : null; }).filter(Boolean);
+  const FINDS = { citta: [['valuta', 3], ['orologio', 1], ['anello_oro', .6], ['munizioni', 1.2], ['candele', 1.5], ['cassetta', .5], ['bende', 1]], fuori: [['valuta', 1.5], ['elmetto', .8], ['munizioni', 1.5], ['gioielli', .4], ['coltello', .8], ['pietre', 3]] };
+  const FIND_TXT = { valuta: 'monete vecchie in un sacchetto marcio', orologio: 'un orologio da taschino nella terra', anello_oro: 'un anello d\'oro tra le radici', munizioni: 'una scatola di bossoli e cartucce, ancora buone', candele: 'un mazzo di candele in una scatola di latta', cassetta: 'una cassetta di metallo arrugginita', bende: 'un pacco di bende militari', elmetto: 'un elmetto della guerra, bucato', gioielli: 'una collana annerita', coltello: 'una baionetta', pietre: 'pietre buone da costruzione' };
+  LV.hooks.dug.push((st, tx, ty, L) => {
+    if (!O()) return null; const R0 = S0(st); R0.dug++;
+    const c = CACHES.find(c => Math.abs(c.tx - tx) <= 1 && Math.abs(c.ty - ty) <= 1 && !(R0.caches || {})[c.id]);
+    if (c) { R0.caches = R0.caches || {}; R0.caches[c.id] = true; Object.entries(c.items).forEach(([g, q]) => { if (has(g)) O().givePlayer(st, g, q); }); return c.msg; }
+    if (hash(tx, ty, 41) > .065) return null;
+    const tab = W.zone[idx(tx, ty)] === ZC ? FINDS.citta : FINDS.fuori, tot = tab.reduce((s, [, w]) => s + w, 0); let r = hash(tx, ty, 43) * tot, g = tab[0][0];
+    for (const [k, w] of tab) { if ((r -= w) <= 0) { g = k; break; } }
+    if (!has(g)) return null; O().givePlayer(st, g, 1);
+    return `Scavando trovi ${FIND_TXT[g] || O().nm(g)}.`;
+  });
+
+  // =====================================================================================================================
+  // MOVIMENTO SUL TRENO, PASSO DEL MOTORE, SCOPERTE
+  // =====================================================================================================================
+  { const f0 = LV.freeFn; LV.freeFn = (o, r) => (o.lv && o.lv.ride !== undefined ? () => false : f0(o, r)); }
+  { const h0 = LV.heightOf; LV.heightOf = (st, o) => { if (o.lv && o.lv.ride !== undefined) { const tr = train(st, o.lv.ride); return tr ? tr.h + .45 : null; } return h0(st, o); }; }
+  { const m0 = LV.moved; LV.moved = (st, dx, dy, hit) => (st.player.lv && st.player.lv.ride !== undefined ? true : m0(st, dx, dy, hit)); }
+  // V: prima le scale e le botole sotto i piedi, poi il treno
+  { const k0 = LV.key; LV.key = (st, k, sh) => { if (k === 'v' && !st.player.indoor) { const p = st.player, [tx, ty] = ti(p.x, p.y), L = LV.S(st); const onPortal = p.lv && L.portals.some(P => LV.CLIMB.has(P.kind) && P.u[0] === tx && P.u[1] === ty); if (!onPortal) { const m = metroKey(st); if (m) return m; } } return k0(st, k, sh); }; }
+  function step(st, dt) {
+    if (!st.player) return; const R0 = S0(st), p = st.player;
+    rideStep(st); folkStep(st, dt);
+    if (!st.__ssT || st.clock - st.__ssT > .5) {
+      st.__ssT = st.clock;
+      if (p.lv && p.lv.k === 'ug') TPL.places.forEach(q => { if (!R0.found[q.id] && Math.hypot(q.x - p.x, q.y - p.y) < q.r) { R0.found[q.id] = st.t; G.feed(st, `Hai scoperto: ${q.name}.`, 'good'); } });
+      if (p.lv && p.lv.k === 'ug' && !R0.found.fogne && TPL.kind[idx(...ti(p.x, p.y))] === K.FOGNA) { R0.found.fogne = st.t; G.feed(st, 'Le fogne: corrono sotto le strade. I tombini sono le porte (V).', 'good'); }
+    }
+  }
+  { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); try { step(st, dt); } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.error('[Sottosuolo]', e); } } }; }
+  // il menu «Qui, adesso» delle Tasche: il treno
+  const AZ = typeof Azioni !== 'undefined' ? Azioni : null;
+  if (AZ && AZ.playerActions) { const prev = AZ.playerActions; AZ.playerActions = st => { const out = (prev(st) || []).slice(), p = st.player; if (M.ok && p && p.lv && p.lv.k === 'ug') { if (p.lv.ride !== undefined) out.push({ id: 'treno', label: 'Sei sul treno', run: null, off: 'si scende all\'altro capo' }); else for (const Sx of [M.A, M.B]) if (onPlatform(st, Sx)) out.push({ id: 'treno', label: 'Prendi il treno (V)', run: () => metroKey(st), off: '' }); } return out; }; }
+
+  // sotto terra il clic va sui cunicoli: la casella scavata più vicina, e il percorso con A* sulle caselle scavate
+  function freeSpot(st, x, y) {
+    const p = st.player; if (!p.lv || p.lv.k !== 'ug') return { x, y }; const L = LV.S(st);
+    if (ugAt(L, x, y)) return { x, y }; const [cx, cy] = ti(x, y); let best = null, bd = 1e9;
+    for (let j = -4; j <= 4; j++) for (let i = -4; i <= 4; i++) { const tx = cx + i, ty = cy + j; if (!inb(tx, ty) || !L.ug[idx(tx, ty)]) continue; const d = Math.hypot(cen(tx) - x, cen(ty) - y); if (d < bd) { bd = d; best = { x: cen(tx), y: cen(ty) }; } }
+    return best || { x: p.x, y: p.y };
+  }
+  function findPath(st, x0, y0, x1, y1) {
+    const p = st.player; if (!p.lv || p.lv.k !== 'ug') return []; const L = LV.S(st);
+    const [ax, ay] = ti(x0, y0), [bx, by] = ti(x1, y1); if (!inb(bx, by) || !L.ug[idx(bx, by)]) return [];
+    if (ax === bx && ay === by) return [{ x: x1, y: y1 }];
+    const open = [[ax, ay, 0, Math.hypot(bx - ax, by - ay)]], came = new Map(), gS = new Map([[idx(ax, ay), 0]]); let n = 0;
+    while (open.length && n++ < 6000) {
+      let bi = 0; for (let k = 1; k < open.length; k++) if (open[k][3] < open[bi][3]) bi = k;
+      const [cx, cy, g] = open.splice(bi, 1)[0];
+      if (cx === bx && cy === by) { const out = [{ x: x1, y: y1 }]; let k = idx(cx, cy); while (came.has(k)) { k = came.get(k); const tx = k % GW, ty = Math.floor(k / GW); if (tx === ax && ty === ay) break; out.unshift({ x: cen(tx), y: cen(ty) }); } return out; }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const nx = cx + dx, ny = cy + dy; if (!inb(nx, ny) || !L.ug[idx(nx, ny)]) continue;
+        if (dx && dy && (!L.ug[idx(cx + dx, cy)] || !L.ug[idx(cx, cy + dy)])) continue;
+        const k = idx(nx, ny), ng = g + (dx && dy ? 1.414 : 1); if (gS.has(k) && gS.get(k) <= ng) continue;
+        gS.set(k, ng); came.set(k, idx(cx, cy)); open.push([nx, ny, ng, ng + Math.hypot(bx - nx, by - ny)]);
+      }
+    }
+    return [];
+  }
+
+  // =====================================================================================================================
+  // CLIC: gente, casse, treno (main.js li tratta come 'loot' con via 'sotto')
+  // =====================================================================================================================
+  const UI = { open: null, msg: '', msgT: 0, tab: 'compra' };
+  function pick(st, nx, ny, o) {
+    const p = st.player, R = typeof window !== 'undefined' && window.__pv && window.__pv.R; if (!R || !p.lv || p.lv.k !== 'ug' || p.lv.ride !== undefined || p.vehicle) return null;
+    if (typeof Cantiere !== 'undefined' && Cantiere.active()) return null;
+    const R0 = S0(st); let best = null, bd = Math.max(26, o.h * .045);
+    const test = (x, y, h, ref, label) => { if (Math.hypot(x - p.x, y - p.y) > 40) return; const pr = R.project(x, h, y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = { kind: 'loot', via: 'sotto', ref, x, y, label }; } };
+    R0.folk.forEach(n => test(n.x, n.y, n.f + 1.2, 'n:' + n.id, `${n.name} · ${n.role}`));
+    R0.crates.forEach(c => test(c.x, c.y, c.f + .5, 'c:' + c.id, c.open ? `${c.label} (vuota)` : `Apri: ${c.label}`));
+    if (M.ok) [0, 1].forEach(j => { const tr = train(st, j); if (tr && tr.at) test(tr.x, tr.y, tr.h + 2, 't:' + j, `Sali sul treno per ${tr.at === 'sud' ? M.B.name : M.A.name}`); });
+    return best;
+  }
+  function find(st, ref) {
+    const R0 = S0(st), [k, id] = [ref.slice(0, 1), ref.slice(2)];
+    if (k === 'n') { const n = R0.folk.find(q => q.id === id); return n ? { x: n.x, y: n.y } : null; }
+    if (k === 'c') { const c = R0.crates.find(q => q.id === id); return c ? { x: c.x, y: c.y } : null; }
+    if (k === 't') { const tr = train(st, +id); if (!tr || !tr.at) return null; const S = stationOf(tr.at); return { x: S.x, y: S.y }; }
+    return null;
+  }
+  const goal = (st, ref) => { const q = find(st, ref); if (!q) return null; if (ref[0] === 't') return q; return freeSpot(st, q.x, q.y); };
+  const reach = ref => ref[0] === 't' ? 3 : 1.7;
+  function arrive(st, ref) {
+    const R0 = S0(st), k = ref[0], id = ref.slice(2);
+    if (k === 't') { const m = board(st, +id); G.feed(st, m, 'info'); return; }
+    if (k === 'c') { const c = R0.crates.find(q => q.id === id); if (c) { const r = openCrate(st, c); G.feed(st, r.msg, r.ok ? 'good' : 'bad'); } return; }
+    if (k === 'n') { const n = R0.folk.find(q => q.id === id); if (!n) return; n.talk = st.clock; n.lineI = ((n.lineI === undefined ? -1 : n.lineI) + 1) % n.lines.length; UI.open = n.id; UI.tab = 'compra'; UI.msg = ''; UI.dirty = true; }
+  }
+
+  // =====================================================================================================================
+  // IL PANNELLO: chi parla e cosa vende
+  // =====================================================================================================================
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const CSS = `
+#ss { position: absolute; right: 18px; top: 84px; z-index: 41; width: 340px; max-width: calc(100% - 32px); display: none; font-family: 'Instrument Sans', system-ui, sans-serif; color: #E9DCBC;
+  padding: 14px 16px; border-radius: 16px; background: linear-gradient(135deg, rgba(24,32,30,.96), rgba(36,30,40,.96)); box-shadow: 0 0 0 1px #3A5A50, 0 0 0 4px rgba(13,16,21,.75), 0 0 0 5px rgba(176,141,87,.35); }
+#ss.on { display: block; }
+#ss b.nm { display: block; font: 400 26px 'Instrument Serif', Georgia, serif; } #ss small.rl { color: rgba(233,220,188,.6); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+#ss .line { margin: 10px 0 12px; font: italic 16px/1.4 'Instrument Serif', Georgia, serif; }
+#ss .tabs { display: flex; gap: 6px; margin-bottom: 8px; } #ss .tabs button, #ss .x { cursor: pointer; border-radius: 14px; padding: 3px 12px; background: none; border: 1px solid rgba(233,220,188,.2); color: rgba(233,220,188,.75); font: 600 11px 'Saira Condensed', 'Arial Narrow', sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+#ss .tabs button.on { color: #E9DCBC; box-shadow: 0 0 0 2px #B08D57; border-color: transparent; } #ss .x { position: absolute; right: 12px; top: 12px; }
+#ss .list { display: grid; gap: 4px; max-height: 300px; overflow-y: auto; scrollbar-color: #3A5A50 transparent; }
+#ss .it { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 10px; background: rgba(15,27,25,.6); cursor: pointer; font-size: 13.5px; }
+#ss .it:hover { box-shadow: inset 0 0 0 1px rgba(176,141,87,.6); } #ss .it.no { opacity: .45; cursor: default; } #ss .it em { color: #B08D57; font-style: normal; } #ss .it small { color: rgba(233,220,188,.5); } #ss .it.ill b { color: #FF8AB8; }
+#ss .msg { margin-top: 8px; font: italic 14px 'Instrument Serif', Georgia, serif; color: #B08D57; } #ss .msg.no { color: #FF5FA2; } #ss .wal { margin-top: 6px; font-size: 12px; color: rgba(233,220,188,.6); }
+`;
+  let lastHtml = '';
+  function panel(st) {
+    if (typeof document === 'undefined') return; let el = document.getElementById('ss');
+    if (!el) { const app = document.getElementById('app'); if (!app) return; const css = document.createElement('style'); css.textContent = CSS; document.head.appendChild(css); el = document.createElement('div'); el.id = 'ss'; app.appendChild(el); el.addEventListener('click', onPanel); }
+    const R0 = S0(st), n = UI.open ? R0.folk.find(q => q.id === UI.open) : null, p = st.player;
+    if (n && (Math.hypot(n.x - p.x, n.y - p.y) > 5 || !p.lv || p.lv.k !== 'ug')) UI.open = null;
+    if (!UI.open || !n) { el.classList.remove('on'); lastHtml = ''; return; }
+    const V = n.shop ? shopView(st, n.shop) : null;
+    let body = '';
+    if (V) {
+      const rows = UI.tab === 'compra'
+        ? V.goods.map(g => `<div class="it ${g.q < 1 || V.money < g.price ? 'no' : ''} ${g.ill ? 'ill' : ''}" data-a="compra" data-g="${esc(g.g)}"><b>${esc(g.nome)}</b><small>${g.q} rimasti</small><em>${g.price}.000</em></div>`).join('')
+        : V.buys.map(g => `<div class="it" data-a="vendi" data-g="${esc(g.g)}"><b>${esc(g.nome)}</b><small>ne hai ${g.q}</small><em>${g.price}.000</em></div>`).join('') || '<div class="wal">Non hai niente che gli interessi.</div>';
+      body = `<div class="tabs"><button class="${UI.tab === 'compra' ? 'on' : ''}" data-a="tab" data-g="compra">Compra</button><button class="${UI.tab === 'vendi' ? 'on' : ''}" data-a="tab" data-g="vendi">Vendi</button></div><div class="list">${rows}</div><div class="wal">In tasca: ${Math.floor(V.money * 10) / 10}.000 lire · ${esc(V.label)}</div>`;
+    }
+    const showMsg = UI.msg && Date.now() - UI.msgT < 5000;
+    const html = `<button class="x" data-a="chiudi">Chiudi · Esc</button><b class="nm">${esc(n.name)}</b><small class="rl">${esc(n.role)}</small><div class="line">${esc(n.lines[n.lineI || 0])}</div>${body}${showMsg ? `<div class="msg ${UI.msgOk ? '' : 'no'}">${esc(UI.msg)}</div>` : ''}`;
+    if (html !== lastHtml || UI.dirty) { el.innerHTML = html; lastHtml = html; UI.dirty = false; }
+    el.classList.add('on');
+  }
+  function onPanel(e) {
+    const t = e.target.closest('[data-a]'); if (!t) return; const st = window.__pv && window.__pv.st; if (!st) return; const a = t.dataset.a, g = t.dataset.g;
+    const R0 = S0(st), n = R0.folk.find(q => q.id === UI.open); e.stopPropagation();
+    if (a === 'chiudi') UI.open = null;
+    if (a === 'tab') UI.tab = g;
+    if ((a === 'compra' || a === 'vendi') && n && n.shop) { const r = a === 'compra' ? buy(st, n.shop, g) : sell(st, n.shop, g); UI.msg = r.msg; UI.msgOk = r.ok; UI.msgT = Date.now(); G.feed(st, r.msg, r.ok ? 'good' : 'bad'); }
+    lastHtml = ''; panel(st);
+  }
+  if (typeof addEventListener !== 'undefined') addEventListener('keydown', e => { if (e.key === 'Escape' && UI.open) { UI.open = null; e.stopImmediatePropagation(); } }, true);
+
+  // =====================================================================================================================
+  // LA GRAFICA (solo nel browser): un gruppo sotto terra e uno in superficie
+  // =====================================================================================================================
+  const GFX = { scene: null, ug: null, surf: null, people: {}, crates: {}, trains: [], lights: [], chunks: [], mats: {}, stRef: null, t0: 0 };
+  const mat = (c, o) => { const k = c + JSON.stringify(o || {}); return GFX.mats[k] || (GFX.mats[k] = new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .9, metalness: 0 }, o || {}))); };
+  const glow = (c, i) => mat(c, { emissive: c, emissiveIntensity: i || 1.2, roughness: .5 });
+  const bx = (g, w, h, d, m, x, y, z, ry) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), typeof m === 'string' ? mat(m) : m); o.position.set(x || 0, y || 0, z || 0); if (ry) o.rotation.y = ry; g.add(o); return o; };
+  const cy = (g, r0, r1, h, m, x, y, z, seg) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, h, seg || 10), typeof m === 'string' ? mat(m) : m); o.position.set(x || 0, y || 0, z || 0); g.add(o); return o; };
+  const sp = (g, r, m, x, y, z) => { const o = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), typeof m === 'string' ? mat(m) : m); o.position.set(x || 0, y || 0, z || 0); g.add(o); return o; };
+  function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; return t; }
+  // il cartello della metropolitana: la M bianca sul quadrato rosso, e il nome della stazione
+  function signTex(name) { return canvasTex(256, 64, (x, w, h) => { x.fillStyle = '#f2efe6'; x.fillRect(0, 0, w, h); x.fillStyle = '#c8202a'; x.fillRect(4, 4, 56, 56); x.fillStyle = '#fff'; x.font = 'bold 46px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('M', 32, 34); x.fillStyle = '#1a1a1a'; x.font = 'bold 24px Arial'; x.textAlign = 'left'; x.fillText(name.toUpperCase(), 72, 34); }); }
+  function ugWall() { return GFX.mats.__piast || (GFX.mats.__piast = (() => { const t = canvasTex(64, 64, (x, w, h) => { x.fillStyle = '#d8d4c4'; x.fillRect(0, 0, w, h); for (let j = 0; j < 16; j++) for (let i = 0; i < 8; i++) { x.fillStyle = j > 11 ? '#2a5a8a' : (i + j) % 5 ? '#e4e0d0' : '#ccc8b8'; x.fillRect(i * 8, j * 4, 7, 3); } x.fillStyle = '#c8202a'; x.fillRect(0, 36, 64, 3); }); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 1); t.magFilter = THREE.NearestFilter; return t; })()); }
+  function mapTex() { return canvasTex(128, 96, (x, w, h) => { x.fillStyle = '#d8c89a'; x.fillRect(0, 0, w, h); x.strokeStyle = '#6a5a3a'; for (let i = 0; i < 12; i++) { x.beginPath(); x.moveTo(Math.random() * w, Math.random() * h); x.lineTo(Math.random() * w, Math.random() * h); x.stroke(); } x.fillStyle = '#b02a2a'; for (let i = 0; i < 6; i++) x.fillRect(Math.random() * w, Math.random() * h, 5, 5); x.strokeStyle = '#2a4a8a'; x.lineWidth = 3; x.beginPath(); x.moveTo(0, h * .7); x.quadraticCurveTo(w * .5, h * .4, w, h * .8); x.stroke(); }); }
+
+  // ---------------- SOTTO TERRA: tutto quello che non cambia ----------------
+  function buildUnder() {
+    const root = new THREE.Group(); root.name = 'sottosuolo'; root.userData.ugKeep = true;
+    // l'acqua delle fogne: una striscia nel mezzo di ogni casella di fogna, raccordata coi vicini
+    { const pos = []; const q = (x0, z0, x1, z1, y) => pos.push(x0, y, z0, x0, y, z1, x1, y, z1, x0, y, z0, x1, y, z1, x1, y, z0);
+      for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const i = idx(tx, ty); if (TPL.kind[i] !== K.FOGNA) continue; const x = cen(tx), z = cen(ty), y = TPL.fl[i] + .07;
+        q(x - .5, z - .5, x + .5, z + .5, y); if (tx + 1 < GW && TPL.kind[i + 1] === K.FOGNA) q(x + .5, z - .5, x + 1.5, z + .5, (y + TPL.fl[i + 1] + .07) / 2); if (ty + 1 < GH && TPL.kind[i + GW] === K.FOGNA) q(x - .5, z + .5, x + .5, z + 1.5, (y + TPL.fl[i + GW] + .07) / 2); }
+      if (pos.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat('#2c4a3c', { emissive: '#0c1e16', emissiveIntensity: 1, roughness: .15, metalness: .4 })); root.add(m); GFX.water = m; } }
+    // le lampade (accese)
+    TPL.lamps.forEach(Lp => { const g = new THREE.Group(); g.position.set(Lp.x, Lp.f, Lp.y); if (Lp.k === 'fuoco') { cy(g, .32, .3, .8, '#3a2e26', 0, -.4, 0); const f = cy(g, 0, .26, .5, glow('#ff7a20', 1.6), 0, .25, 0); f.name = 'fiamma'; } else if (Lp.k === 'neon') bx(g, 1.4, .08, .14, glow(Lp.c, 1.5), 0, 0, 0); else { bx(g, .14, .2, .14, glow(Lp.c, 1.4), 0, 0, 0); cy(g, .01, .01, .6, '#2a2a2a', 0, .4, 0); } addChunk(root, g, Lp.x, Lp.y); });
+    // gli arredi di ogni posto
+    TPL.rooms.forEach(Rm => { const g = decor(Rm); if (g) addChunk(root, g, Rm.x, Rm.y); });
+    // la metropolitana
+    if (M.ok) { GFX.metro = buildMetro(); root.add(GFX.metro); }
+    return root;
+  }
+  function addChunk(root, g, x, y) { g.userData.cx = x; g.userData.cy = y; g.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } }); root.add(g); GFX.chunks.push(g); }
+  function decor(Rm) {
+    const g = new THREE.Group(); g.position.set(Rm.x, Rm.f, Rm.y); const w = Rm.w || 8, h = Rm.h || 6, W2 = w / 2 - .5, H2 = h / 2 - .5;
+    const stone = '#8a8478', wood = '#6a4a30', dark = '#2a2622', iron = '#3a3a40', conc = '#7a7a74';
+    switch (Rm.deco) {
+      case 'cripta': {
+        for (let i = -W2 + .6; i <= W2 - .4; i += 1.1) for (let k = 0; k < 3; k++) { bx(g, .9, .55, .5, '#1a1612', i, .5 + k * .7, -H2 + .1); sp(g, .14, '#e8e0cc', i - .15, .42 + k * .7, -H2 + .2); sp(g, .14, '#ddd4bc', i + .18, .42 + k * .7, -H2 + .22); }
+        for (const s of [-1, 1]) { bx(g, 2, .7, .9, stone, s * 1.6, .35, .4); bx(g, 2.1, .12, 1, '#9a948a', s * 1.6, .76, .4); bx(g, .1, .02, .6, '#c8a040', s * 1.6, .83, .4); }
+        bx(g, 1.4, .9, .6, '#9a948a', 0, .45, -H2 + 1.2); for (let k = 0; k < 6; k++) { cy(g, .03, .03, .22, '#f0e6c8', -.5 + k * .2, 1.02, -H2 + 1.2); cy(g, 0, .025, .06, glow('#ffc060', 2), -.5 + k * .2, 1.16, -H2 + 1.2); }
+        bx(g, .08, .8, .08, '#c8a040', 0, 1.4, -H2 + 1.2); bx(g, .4, .08, .08, '#c8a040', 0, 1.55, -H2 + 1.2); break; }
+      case 'carceri': {
+        const cells = Math.max(2, Math.floor(w / 2.2));
+        for (let c = 0; c < cells; c++) { const x0 = -w / 2 + .3 + c * (w - .6) / cells, x1 = x0 + (w - .6) / cells;
+          for (let x = x0 + .15; x < x1 - .05; x += .22) cy(g, .025, .025, 2.4, iron, x, 1.2, -H2 + 1.6);
+          bx(g, .1, 2.4, 1.6, '#5a564e', x1, 1.2, -H2 + .8); bx(g, .7, .3, 1.6, '#4a4030', x0 + .55, .15, -H2 + .8);
+          if (c % 2) { const ch = cy(g, .02, .02, .8, iron, x0 + .4, 1.4, -H2 + .1); ch.rotation.z = .3; } else { sp(g, .12, '#e8e0cc', x0 + .6, .35, -H2 + .7); bx(g, .5, .08, .2, '#ddd4bc', x0 + .6, .32, -H2 + .9); } }
+        bx(g, 1.2, .08, .6, wood, W2 - .6, .8, H2 - .5); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) bx(g, .06, .8, .06, wood, W2 - .6 + a * .55, .4, H2 - .5 + b * .25);
+        bx(g, .5, .04, .35, '#e8e0cc', W2 - .7, .85, H2 - .5); break; }
+      case 'rifugio': {
+        for (const s of [-1, 1]) for (let x = -W2 + .5; x <= W2 - .5; x += 1.6) { bx(g, 1.4, .08, .4, wood, x, .45, s * (H2 - .1)); bx(g, .06, .45, .3, iron, x - .6, .22, s * (H2 - .1)); bx(g, .06, .45, .3, iron, x + .6, .22, s * (H2 - .1)); }
+        const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, .6), new THREE.MeshBasicMaterial({ map: canvasTex(256, 64, (x, W0, H0) => { x.fillStyle = '#d8d0b8'; x.fillRect(0, 0, W0, H0); x.fillStyle = '#1a1a1a'; x.font = 'bold 34px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('RICOVERO', W0 / 2, H0 / 2); }) })); sign.position.set(0, 2, -H2 + .05); g.add(sign);
+        for (let k = 0; k < 4; k++) { const m0 = sp(g, .16, '#4a5040', -1.5 + k * 1, 1.4, -H2 + .12); m0.scale.set(1, 1.2, .6); }
+        bx(g, 1, .6, .7, '#4a5a3a', W2 - 1, .3, 0); bx(g, .8, .5, .6, '#3a4a32', W2 - 1, .85, 0); break; }
+      case 'bunker': {
+        bx(g, 2.4, .08, 1.4, wood, 0, .85, 0); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) bx(g, .08, .85, .08, wood, a * 1.1, .42, b * .6);
+        const mp = new THREE.Mesh(new THREE.PlaneGeometry(2, 1.2), new THREE.MeshBasicMaterial({ map: mapTex() })); mp.rotation.x = -Math.PI / 2; mp.position.set(0, .9, 0); g.add(mp);
+        bx(g, .9, .6, .45, '#4a5040', -W2 + .6, 1, -H2 + .3); for (let k = 0; k < 4; k++) bx(g, .06, .06, .02, glow(k % 2 ? '#30ff60' : '#ffb030', 1.5), -W2 + .35 + k * .18, 1.1, -H2 + .54);
+        for (const s of [-1, 1]) { bx(g, .45, .9, .45, wood, s * 1.6, .45, 1); } break; }
+      case 'armeria': {
+        bx(g, 2.6, 1.6, .25, wood, 0, .9, -H2 + .2); for (let k = 0; k < 6; k++) { const r = bx(g, .08, 1.2, .1, '#2a2622', -1.1 + k * .44, .95, -H2 + .38); r.rotation.z = .08; bx(g, .12, .3, .14, wood, -1.1 + k * .44, .4, -H2 + .38); }
+        for (let k = 0; k < 3; k++) bx(g, .8, .4, .5, '#4a5a3a', -1 + k * .9, .2, H2 - .4); break; }
+      case 'camerata': {
+        for (let k = 0; k < 2; k++) { const x = -1 + k * 2.2; for (const y of [.4, 1.4]) { bx(g, .8, .12, 1.9, '#5a5a3a', x, y, 0); } for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) cy(g, .03, .03, 1.7, iron, x + a * .38, .85, b * .9); } break; }
+      case 'contrabbando': {
+        for (let k = 0; k < 7; k++) { const x = -W2 + .6 + (k % 4) * 1.1, z = -H2 + .5 + Math.floor(k / 4) * .9; bx(g, .9, .7, .7, k % 3 ? '#7a5a34' : '#5a6a4a', x, .35, z); if (k % 2) bx(g, .8, .5, .6, '#6a4a2a', x, .95, z); }
+        for (let k = 0; k < 5; k++) bx(g, .25, .12, .4, ['#c83a3a', '#e8e0cc', '#2a5aa8', '#c8a040', '#3a8a5a'][k], -.6 + k * .3, .92, .6);
+        bx(g, 1.6, .08, .9, wood, 0, .84, .6); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) bx(g, .07, .84, .07, wood, a * .7, .42, .6 + b * .35);
+        const bt = new THREE.Group(); bt.position.set(W2 - 1.4, 0, H2 - 1); bx(bt, 2.6, .5, 1.1, '#e8e0cc', 0, .25, 0); bx(bt, 2.4, .1, .9, '#2a5a8a', 0, .52, 0); bt.rotation.y = .3; g.add(bt); break; }
+      case 'spaccio': {
+        cy(g, .9, .9, .06, mat('#1e6a3a'), 0, .82, 0, 18); cy(g, .1, .25, .8, '#3a2a20', 0, .4, 0); for (let k = 0; k < 4; k++) { const a = k / 4 * 6.283; bx(g, .4, .45, .4, '#5a2a2a', Math.cos(a) * 1.3, .22, Math.sin(a) * 1.3); }
+        for (let k = 0; k < 6; k++) bx(g, .12, .01, .18, '#f0f0f0', -.4 + k * .16, .86, (k % 2) * .2 - .1).rotation.y = k * .4;
+        bx(g, 2.2, .6, .8, '#4a2a4a', -W2 + 1.2, .3, -H2 + .5); bx(g, 2.2, .5, .2, '#4a2a4a', -W2 + 1.2, .8, -H2 + .2);
+        const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.8, .45), new THREE.MeshBasicMaterial({ map: canvasTex(256, 64, (x, W0, H0) => { x.fillStyle = '#100810'; x.fillRect(0, 0, W0, H0); x.fillStyle = '#ff4fa3'; x.font = 'italic bold 36px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('BISCA', W0 / 2, H0 / 2); }) })); sg.position.set(0, 2.1, -H2 + .05); g.add(sg); break; }
+      case 'mercato': {
+        const cols = ['#c83a3a', '#e8c040', '#3a7ac8', '#3aa86a'];
+        for (let k = 0; k < 4; k++) { const sx = (k % 2 ? 1 : -1) * (W2 - 1.6), sz = (k < 2 ? -1 : 1) * (H2 - 1.4); const s = new THREE.Group(); s.position.set(sx, 0, sz); bx(s, 2.2, .08, 1, wood, 0, .85, 0); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) bx(s, .07, 1.9, .07, wood, a * 1.05, .95, b * .45); const aw = bx(s, 2.5, .05, 1.3, cols[k], 0, 1.95, 0); aw.rotation.x = .18;
+          for (let i = 0; i < 6; i++) bx(s, .22, .18 + (i % 3) * .06, .22, ['#d8d0c0', '#6a4a2a', '#2a2a2e', '#c8a040', '#8a2a2a', '#3a5a3a'][(i + k) % 6], -.8 + i * .32, .97, (i % 2) * .2 - .1); g.add(s); }
+        for (let x = -W2; x <= W2; x += 1.4) sp(g, .07, glow('#ffd890', 2), x, 2.4 + Math.sin(x) * .15, 0); break; }
+      case 'topi': {
+        for (let k = 0; k < 4; k++) { const t = new THREE.Mesh(new THREE.ConeGeometry(1, 1.3, 4), mat(['#6a6a4a', '#5a4a3a', '#4a5a5a', '#7a5a3a'][k])); t.position.set(-W2 + 1.2 + k * 2.1, .65, -H2 + 1.2 + (k % 2) * .4); t.rotation.y = k * .7 + .785; g.add(t); }
+        for (let k = 0; k < 5; k++) bx(g, .8, .12, 1.8, ['#8a7a5a', '#6a6a6a', '#7a5a4a'][k % 3], -W2 + 1 + k * 1.5, .06, H2 - 1.2).rotation.y = (k - 2) * .15;
+        const line = cy(g, .01, .01, w - 1, '#d8d0c0', 0, 1.9, 0); line.rotation.z = Math.PI / 2; for (let k = 0; k < 6; k++) bx(g, .4, .5, .02, ['#c8c0b0', '#6a8aa8', '#a85a5a'][k % 3], -W2 + 1 + k * 1.1, 1.62, 0);
+        break; }
+      case 'metro': {
+        const a = Math.atan2(Rm.uy, Rm.ux); g.rotation.y = -a;   // x locale = lungo i binari
+        bx(g, 21, .04, .25, glow('#e8c020', .4), 0, .03, 2.55); bx(g, 21, .04, .25, glow('#e8c020', .4), 0, .03, -2.55);
+        // le pareti della stazione oltre i binari e in fondo: piani rivolti verso dentro (quella verso la camera non si vede)
+        { const tw = new THREE.MeshStandardMaterial({ map: ugWall(), roughness: .9 }); const wall = (w0, h0, x, z, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w0, h0), tw); m.position.set(x, h0 / 2 - 1.2, z); m.rotation.y = ry; g.add(m); };
+          wall(25, 5.6, 0, -6.2, 0); wall(25, 5.6, 0, 6.2, Math.PI); }
+        for (const x of [-7, 0, 7]) { cy(g, .3, .3, 4.2, '#c8c4b4', x, 2.1, 0); for (const z of [-1, 1]) { const sn = new THREE.Mesh(new THREE.PlaneGeometry(2.6, .65), new THREE.MeshBasicMaterial({ map: signTex(Rm.name || '') })); sn.position.set(x, 2.6, z * .32); sn.rotation.y = z > 0 ? 0 : Math.PI; g.add(sn); } }
+        for (const x of [-4, 4]) for (const z of [-1, 1]) { bx(g, 1.6, .08, .45, '#c83a2a', x, .45, z * 1.5); bx(g, .1, .45, .35, iron, x - .7, .22, z * 1.5); bx(g, .1, .45, .35, iron, x + .7, .22, z * 1.5); }
+        // i letti dei binari lungo la banchina, coi binari
+        for (const z of [-1, 1]) { bx(g, 24, .1, 2.6, '#2a2622', 0, -1.1, z * 4.4); for (const o of [-.72, .72]) bx(g, 24, .1, .1, mat('#9aa0a8', { metalness: .7, roughness: .35 }), 0, -1, z * 4.4 + o); for (let x = -11.5; x <= 11.5; x += .8) bx(g, .25, .08, 2, '#4a3a2a', x, -1.08, z * 4.4); bx(g, 24, 1.05, .2, '#c8c4b4', 0, -.52, z * 2.95); }
+        break; }
+      default: return null;
+    }
+    return g;
+  }
+  // le gallerie: due tubi che si avvolgono per mezzo giro, i binari, i passaggi di servizio a pioli (i «gradini» dell'elica)
+  function buildMetro() {
+    const g = new THREE.Group(), cut = 12.5 / M.L, rail = mat('#9aa0a8', { metalness: .7, roughness: .35 }); GFX.tubes = [];
+    for (const j of [0, 1]) {
+      const pts = []; for (let k = 0; k <= 160; k++) { const t = cut + (1 - 2 * cut) * k / 160, q = trackAt(j, t); pts.push(new THREE.Vector3(q.x, q.h + 1.4, q.y)); }
+      // il cemento della galleria con gli anelli dei conci: le fasce chiare si accendono appena (si legge la forma anche al buio)
+      const tex = canvasTex(64, 32, (x, w, h) => { x.fillStyle = j ? '#4a4c50' : '#504c46'; x.fillRect(0, 0, w, h); for (let i = 0; i < 90; i++) { x.fillStyle = Math.random() < .5 ? 'rgba(0,0,0,.12)' : 'rgba(255,255,255,.06)'; x.fillRect(Math.random() * w, Math.random() * h, 3, 1); } x.fillStyle = j ? '#8ab0d8' : '#d8b080'; x.fillRect(0, 0, 3, h); x.fillStyle = 'rgba(20,20,20,.6)'; x.fillRect(4, 0, 1, h); x.fillRect(32, 0, 1, h); });
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(Math.round(M.L / 6), 2);
+      const wall = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: '#ffffff', emissiveIntensity: .45, side: THREE.BackSide, roughness: 1, transparent: true, opacity: 1 });
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 240, 2.6, 12, false), wall); g.add(tube); GFX.tubes.push(tube);
+      // i binari e le luci di galleria
+      const r0 = [], r1 = []; for (let k = 0; k <= 200; k++) { const t = -cut * .9 + (1 + 1.8 * cut) * k / 200, q = trackAt(j, t), q2 = trackAt(j, t + .001), dx = q2.x - q.x, dy = q2.y - q.y, d = Math.hypot(dx, dy) || 1, px = -dy / d, py = dx / d; r0.push(new THREE.Vector3(q.x + px * .72, q.h + .06, q.y + py * .72)); r1.push(new THREE.Vector3(q.x - px * .72, q.h + .06, q.y - py * .72)); }
+      for (const rr of [r0, r1]) g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rr), 300, .06, 4, false), rail));
+      for (let k = 1; k < 30; k++) { const t = cut + (1 - 2 * cut) * k / 30, q = trackAt(j, t); bx(g, .5, .12, .5, glow(j ? '#9ad0ff' : '#ffe0a0', 1.4), q.x, q.h + 3.6, q.y); }
+    }
+    // i pioli dell'elica: passaggi di servizio tra le due gallerie, a due colori per metà come le basi del DNA
+    const PAIR = [['#d8503a', '#3a8ad8'], ['#e8c03a', '#3ac87a']];
+    for (let k = 1; k < 12; k++) {
+      const t = k / 12, a = trackAt(0, t), b = trackAt(1, t), A = new THREE.Vector3(a.x, a.h + 1.4, a.y), Bv = new THREE.Vector3(b.x, b.h + 1.4, b.y), mid = A.clone().add(Bv).multiplyScalar(.5), len = A.distanceTo(Bv) - 5;
+      if (len <= .5) continue; const dir = Bv.clone().sub(A).normalize(), cols = PAIR[k % 2];
+      [[A, cols[0]], [Bv, cols[1]]].forEach(([E, c]) => { const half = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, len / 2, 10, 1, true), mat(c, { emissive: c, emissiveIntensity: .35, side: THREE.DoubleSide })); const at = mid.clone().add(E.clone().sub(mid).normalize().multiplyScalar(len / 4)); half.position.copy(at); half.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); g.add(half); });
+    }
+    // i treni
+    GFX.trains = [0, 1].map(j => { const t = trainMesh(j); g.add(t); return t; });
+    return g;
+  }
+  function trainMesh(j) {
+    const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+    const cream = '#e8e0cc', red = j ? '#2a6ac8' : '#c8402a', win = glow('#fff2c0', 1.1), dark = '#1a1a1e';
+    for (const c of [-1, 1]) { const car = new THREE.Group(); car.position.z = c * 3.9; body.add(car);
+      bx(car, 2.6, .12, 7.5, '#4a4a4e', 0, .3, 0); for (const s of [-1, 1]) { bx(car, .1, 2.4, 7.5, cream, s * 1.25, 1.55, 0); bx(car, .12, .35, 7.52, red, s * 1.26, .7, 0); }
+      for (const z of [-1, 1]) bx(car, 2.6, 2.4, .1, cream, 0, 1.55, z * 3.7);
+      const roof = bx(car, 2.62, .14, 7.52, red, 0, 2.8, 0); roof.name = 'tetto';
+      for (let k = -3; k <= 3; k++) for (const s of [-1, 1]) bx(car, .04, .7, .8, win, s * 1.31, 1.75, k * 1.05);
+      for (const s of [-1, 1]) bx(car, .05, 1.9, 1.1, dark, s * 1.31, 1.25, 0);
+      for (let k = -2; k <= 2; k++) for (const s of [-1, 1]) bx(car, .45, .45, .9, '#7a2a2a', s * .9, .55, k * 1.4);
+      bx(car, 2.3, .4, 7, dark, 0, .1, 0); bx(car, .9, .04, 6.8, glow('#fff2c0', .9), 0, 2.72, 0).name = 'tetto'; }
+    for (const z of [-1, 1]) { bx(body, 1.8, .9, .05, win, 0, 1.9, z * 7.68); for (const x of [-.8, .8]) bx(body, .2, .14, .06, glow(z > 0 ? '#ffffff' : '#ff2020', 2), x, .9, z * 7.7); }
+    g.traverse(o => { if (o.isMesh) o.castShadow = false; });
+    return g;
+  }
+
+  // ---------------- IN SUPERFICIE: tombini, grate, ingressi della metropolitana ----------------
+  function buildSurface(st, R) {
+    const g = new THREE.Group(); g.name = 'sottosuolo_sopra'; const L = LV.S(st);
+    const tomb = L.portals.filter(P => P.kind === 'tombino'), iron = mat('#2e2e30', { metalness: .5, roughness: .6 });
+    if (tomb.length) {
+      const tex = canvasTex(64, 64, (x, w, h) => { x.fillStyle = '#3a3a3c'; x.beginPath(); x.arc(32, 32, 31, 0, 6.3); x.fill(); x.strokeStyle = '#1e1e20'; x.lineWidth = 3; for (let i = 8; i < 60; i += 8) { x.beginPath(); x.moveTo(i, 4); x.lineTo(i, 60); x.stroke(); } x.fillStyle = '#505052'; x.font = 'bold 10px Arial'; x.textAlign = 'center'; x.fillText('S.P.Q.', 32, 36); });
+      const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(.42, .42, .05, 16), new THREE.MeshStandardMaterial({ map: tex, metalness: .5, roughness: .6 }), tomb.length), m4 = new THREE.Matrix4();
+      tomb.forEach((P, k) => { const x = cen(P.s[0]), z = cen(P.s[1]); m4.makeTranslation(x, R.groundH(x, z) + .03, z); im.setMatrixAt(k, m4); }); im.receiveShadow = true; g.add(im);
+    }
+    L.portals.filter(P => P.kind === 'grata').forEach(P => { const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z); const q = new THREE.Group(); q.position.set(x, y, z); bx(q, 1.1, .05, .8, '#141414', 0, .01, 0); for (let i = -4; i <= 4; i++) bx(q, .05, .06, .8, iron, i * .12, .04, 0); g.add(q); });
+    L.portals.filter(P => P.kind === 'scala').forEach(P => {
+      const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z), S = P.metro === 'sud' ? M.A : M.B, a = Math.atan2(S.y - z, S.x - x), q = new THREE.Group(); q.position.set(x, y, z); q.rotation.y = -a;
+      bx(q, 2.6, .04, 1.7, '#060606', 0, .02, 0); for (let k = 0; k < 4; k++) bx(q, .5, .02, 1.5, '#5a5a56', -.9 + k * .5, -.1 - k * .25, 0);
+      for (const s of [-1, 1]) { bx(q, 2.7, .06, .06, mat('#9aa0a8', { metalness: .6 }), 0, .95, s * .9); for (const xx of [-1.3, 0, 1.3]) bx(q, .06, .95, .06, mat('#9aa0a8', { metalness: .6 }), xx, .48, s * .9); }
+      bx(q, .06, .95, 1.8, mat('#9aa0a8', { metalness: .6 }), -1.33, .48, 0);
+      const tot = new THREE.Group(); tot.position.set(-1.8, 0, 1.1); cy(tot, .07, .07, 2.6, '#3a3a40', 0, 1.3, 0); const sn = new THREE.Mesh(new THREE.PlaneGeometry(2.2, .55), new THREE.MeshBasicMaterial({ map: signTex(S.name), side: THREE.DoubleSide })); sn.position.set(0, 2.75, 0); tot.add(sn); bx(tot, .5, .5, .5, glow('#c8202a', .8), 0, 3.3, 0); q.add(tot);
+      g.add(q);
+    });
+    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    return g;
+  }
+
+  // ---------------- OGNI FOTOGRAMMA ----------------
+  function gfx(st, R) {
+    const scene = R.__models.scene, p = st.player, L = st.lv; if (!L) return;
+    if (GFX.scene !== scene || GFX.stRef !== st) {
+      if (GFX.scene === scene) { [GFX.surf].concat(Object.values(GFX.people), Object.values(GFX.crates)).forEach(o => o && o.parent && o.parent.remove(o)); }
+      if (GFX.scene !== scene) { GFX.chunks = []; GFX.ug = buildUnder(); scene.add(GFX.ug); GFX.lights = [0, 1, 2, 3].map(() => { const l = new THREE.PointLight('#ffb060', 0, 22, 1.2); l.userData.ugKeep = true; scene.add(l); return l; }); }
+      GFX.scene = scene; GFX.stRef = st; GFX.people = {}; GFX.crates = {};
+      GFX.surf = buildSurface(st, R); scene.add(GFX.surf);
+    }
+    const under = !!(p.lv && p.lv.k === 'ug'), t = performance.now() / 1000, dt = Math.min(.1, t - (GFX.t0 || t)); GFX.t0 = t;
+    GFX.ug.visible = under; GFX.lights.forEach(l => { l.visible = under; });
+    // le gallerie si vedono dalle banchine e dal treno, non dalle fogne (passano sotto, più in basso)
+    if (GFX.metro) GFX.metro.visible = under && M.ok && (p.lv.ride !== undefined || Math.hypot(p.x - M.A.x, p.y - M.A.y) < 34 || Math.hypot(p.x - M.B.x, p.y - M.B.y) < 34);
+    if (!under) { if (GFX.surf) GFX.surf.visible = true; Object.values(GFX.people).forEach(g => { g.visible = false; }); Object.values(GFX.crates).forEach(g => { g.visible = false; }); return; }
+    // sul treno: si toglie il tetto della carrozza e si sbiadisce l'altra galleria (passa sopra o sotto)
+    const ride = p.lv.ride; GFX.trains.forEach((m, j) => m.traverse(o => { if (o.name === 'tetto') o.visible = ride !== j; }));
+    (GFX.tubes || []).forEach((tb, j) => { const o = ride !== undefined && ride !== j ? .12 : 1; tb.material.opacity = o; tb.material.depthWrite = o > .5; });
+    GFX.chunks.forEach(c => { c.visible = Math.hypot(c.userData.cx - p.x, c.userData.cy - p.y) < 95; });
+    // l'acqua che luccica, i fuochi
+    if (GFX.water) GFX.water.material.emissiveIntensity = .8 + Math.sin(t * 1.3) * .2;
+    GFX.chunks.forEach(c => { if (!c.visible) return; c.traverse(o => { if (o.name === 'fiamma') { o.scale.y = .8 + Math.sin(t * 11 + c.userData.cx) * .25; o.scale.x = o.scale.z = .9 + Math.sin(t * 17) * .08; } }); });
+    // i treni
+    GFX.trains.forEach((m, j) => { const tr = train(st, j); if (!tr) return; m.position.set(tr.x, tr.h, tr.y); m.rotation.set(0, Math.PI / 2 - tr.ang, 0); m.children[0].rotation.x = -tr.pitch; });
+    // la gente
+    const R0 = S0(st), MD = window.Models;
+    R0.folk.forEach(n => {
+      let g = GFX.people[n.id]; const near = Math.hypot(n.x - p.x, n.y - p.y) < 70;
+      if (!g && near) { g = (MD && MD.charsReady && MD.charsReady() && MD.person(n.look, null)) || fallbackPerson(n.look); g.userData.ugKeep = true; scene.add(g); GFX.people[n.id] = g; }
+      if (!g) return; g.visible = near; if (!near) return;
+      g.position.set(n.x, LV.floorAt(L, n.x, n.y) - (n.sit ? .35 : 0), n.y); g.rotation.y = Math.PI / 2 - n.face;
+      if (g.userData.model && MD && MD.animPerson) MD.animPerson(g, { speed: n.speed }, dt);
+    });
+    // le casse
+    R0.crates.forEach(c => {
+      let g = GFX.crates[c.id]; if (!g) { g = crateMesh(c); g.userData.ugKeep = true; scene.add(g); GFX.crates[c.id] = g; g.position.set(c.x, c.f, c.y); }
+      g.visible = Math.hypot(c.x - p.x, c.y - p.y) < 70; const lid = g.getObjectByName('coperchio'); if (lid) lid.rotation.x += ((c.open ? -1.2 : 0) - lid.rotation.x) * .15; const gl = g.getObjectByName('bagliore'); if (gl) gl.visible = !c.open;
+    });
+    // le luci: le quattro lampade più vicine
+    const near = TPL.lamps.map(Lp => [Math.hypot(Lp.x - p.x, Lp.y - p.y), Lp]).filter(([d]) => d < 34).sort((a, b) => a[0] - b[0]).slice(0, 4);
+    GFX.lights.forEach((l, k) => { const q = near[k]; if (!q) { l.intensity = 0; return; } const Lp = q[1]; l.position.set(Lp.x, Lp.f + .3, Lp.y); l.color.set(Lp.c); l.intensity = (Lp.k === 'fuoco' ? 2.4 + Math.sin(t * 13 + k) * .3 : 2.2) * (1 - q[0] / 45); });
+  }
+  function fallbackPerson(look) { const g = new THREE.Group(); cy(g, .22, .26, .9, (look && look.bottom) || '#3a3a3a', 0, .45, 0); cy(g, .26, .22, .7, (look && look.top) || '#5a5a5a', 0, 1.25, 0); sp(g, .17, (look && look.skin) || '#c8946a', 0, 1.75, 0); return g; }
+  function crateMesh(c) {
+    const g = new THREE.Group(), col = c.look === 'militare' ? '#4a5a3a' : c.look === 'reliquiario' ? '#8a6a3a' : c.look === 'schedario' ? '#5a5e66' : '#7a5634';
+    bx(g, 1, .55, .6, col, 0, .28, 0); const lid = new THREE.Group(); lid.name = 'coperchio'; lid.position.set(0, .56, -.3); g.add(lid); bx(lid, 1.02, .08, .62, col, 0, .04, .3);
+    for (const x of [-.4, .4]) bx(g, .06, .57, .62, '#3a3a40', x, .28, 0); if (c.look === 'reliquiario') bx(g, .1, .14, .04, '#e8c050', 0, .4, .31);
+    const gl = new THREE.Mesh(new THREE.SphereGeometry(.18, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffd070', transparent: true, opacity: .55 })); gl.name = 'bagliore'; gl.position.set(0, .8, 0); g.add(gl);
+    return g;
+  }
+  function gfxLoop() {
+    try {
+      const pv = window.__pv, st = pv && pv.st; if (st && pv.R && pv.R.__models && pv.R.__models.scene) { gfx(st, pv.R); panel(st); }
+    } catch (e) { if (!GFX.err) { GFX.err = 1; console.error('[Sottosuolo gfx]', e); } }
+    requestAnimationFrame(gfxLoop);
+  }
+  if (typeof window !== 'undefined') { const go = () => { if (!window.THREE || !window.__pv) { setTimeout(go, 250); return; } requestAnimationFrame(gfxLoop); }; if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0); }
+
+  return { TPL, K, S: S0, step, train, trackAt, metroKey, board, buy, sell, shopView, openCrate, pick, find, goal, reach, arrive, freeSpot, findPath, SHOPS, CACHES, GFX, UI, panel, floorAtXY, get CYC() { return CYC; }, get TT() { return TT; }, DW };
+})();
+if (typeof module !== 'undefined') module.exports = Sottosuolo;
 </script>
 <script>
 /* Porto Vecchio — resa 3D in stile pixel art (Three.js r149).
@@ -21260,7 +22044,20 @@ var Render = (function () {
   const UGR = { key: null, grp: null, lights: [], prev: null, surf: null, surfRev: -1, lantern: null };
   const ugMats = {};
   const ugM = (c, o) => ugMats[c + JSON.stringify(o || {})] || (ugMats[c + JSON.stringify(o || {})] = new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 1, metalness: 0, flatShading: true }, o || {})));
+  // [sottosuolo] i materiali dei posti di sotto: mattoni delle fogne, pietra delle cripte e delle carceri, cemento di bunker e metropolitana
+  const UGK = { 1: 'roccia', 2: 'terra', 3: 'mattoni', 4: 'pietra', 5: 'pietra', 6: 'cemento', 7: 'piastrelle', 8: 'mattoni', 9: 'piastrelle' };
+  function ugTex2(kind) {
+    if (ugMats['tex' + kind]) return ugMats['tex' + kind];
+    const c = mk(32, 32), x = c.getContext('2d'), r = rng(kind.length * 31 + 5);
+    if (kind === 'mattoni') { x.fillStyle = '#3a2a22'; x.fillRect(0, 0, 32, 32); for (let j = 0; j < 8; j++) for (let i = -1; i < 4; i++) { x.fillStyle = pick(r, ['#6a3a2a', '#5a3224', '#74442e', '#4e2c20', '#6e4a36']); x.fillRect(i * 10 + (j % 2) * 5 + 1, j * 4 + 1, 8, 3); } for (let k = 0; k < 6; k++) { x.fillStyle = 'rgba(60,90,60,.35)'; x.fillRect(Math.floor(r() * 32), 26 + Math.floor(r() * 6), 3, 6); } }
+    else if (kind === 'pietra') { x.fillStyle = '#4a4640'; x.fillRect(0, 0, 32, 32); for (let j = 0; j < 4; j++) for (let i = -1; i < 3; i++) { x.fillStyle = pick(r, ['#6e6a62', '#625e56', '#7a766c', '#58544c']); x.fillRect(i * 14 + (j % 2) * 7 + 1, j * 8 + 1, 12, 6); } }
+    else if (kind === 'cemento') { x.fillStyle = '#6a6a66'; x.fillRect(0, 0, 32, 32); for (let k = 0; k < 120; k++) { x.fillStyle = pick(r, ['#727270', '#5e5e5a', '#686864', '#7a7a76']); x.fillRect(Math.floor(r() * 32), Math.floor(r() * 32), 2, 1); } x.fillStyle = 'rgba(30,30,30,.45)'; x.fillRect(0, 15, 32, 1); x.fillStyle = 'rgba(200,170,40,.55)'; x.fillRect(0, 28, 32, 2); }
+    else if (kind === 'piastrelle') { x.fillStyle = '#c8c4b4'; x.fillRect(0, 0, 32, 32); for (let j = 0; j < 8; j++) for (let i = 0; i < 4; i++) { x.fillStyle = j < 2 ? '#2a5a8a' : pick(r, ['#e0dccc', '#d6d2c2', '#cec8b8']); x.fillRect(i * 8, j * 4, 7, 3); } }
+    const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return (ugMats['tex' + kind] = new THREE.MeshStandardMaterial({ map: t, roughness: .95, metalness: 0 }));
+  }
   function ugTex(kind) {
+    if (kind !== 'roccia' && kind !== 'terra') return ugTex2(kind);
     if (ugMats['tex' + kind]) return ugMats['tex' + kind];
     const c = mk(32, 32), x = c.getContext('2d'), r = rng(kind === 'roccia' ? 77 : 78);
     x.fillStyle = kind === 'roccia' ? '#5a5652' : '#4a3a2c'; x.fillRect(0, 0, 32, 32);
@@ -21285,39 +22082,42 @@ var Render = (function () {
     }
     const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; return new THREE.MeshBasicMaterial({ map: t, transparent: kind === 'toro', opacity: 1 });
   }
-  function buildUG(L) {
+  function buildUG(L, win) {
     const grp = new THREE.Group(), GWd = G.GW, T = G.T, has = (tx, ty) => tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && L.ug[ty * GWd + tx] > 0;
+    // [sottosuolo] solo attorno al giocatore (le fogne passano sotto tutta la città): una finestra di caselle
+    const wx0 = win ? win[0] : 0, wy0 = win ? win[1] : 0, wx1 = win ? win[2] : G.GW - 1, wy1 = win ? win[3] : G.GH - 1;
     const quad = [];   // pavimento: una lastra per casella, inclinata coi vicini
     const floorV = (tx, ty, cx, cy) => { let s = 0, c = 0; for (const [a, b] of [[tx + cx - 1, ty + cy - 1], [tx + cx, ty + cy - 1], [tx + cx - 1, ty + cy], [tx + cx, ty + cy]]) if (has(a, b)) { s += L.fl[b * GWd + a]; c++; } return c ? s / c : L.fl[ty * GWd + tx]; };
-    const fpos = [], fuv = [], wposR = [], wposT = [], wuvR = [], wuvT = [];
+    const fpos = [], fuv = [], WB = {};   // [sottosuolo] pareti per materiale
+    const fB = {};   // pavimenti per materiale
     const wallQuad = (arr, uv, x0, z0, x1, z1, y0, y1) => { arr.push(x0, y0, z0, x1, y0, z1, x1, y1, z1, x0, y0, z0, x1, y1, z1, x0, y1, z0); const L2 = Math.hypot(x1 - x0, z1 - z0) / 2, H2 = (y1 - y0) / 2; uv.push(0, 0, L2, 0, L2, H2, 0, 0, L2, H2, 0, H2); };
     const props = [], rocks = [];
-    for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
+    for (let ty = Math.max(0, wy0); ty <= Math.min(G.GH - 1, wy1); ty++) for (let tx = Math.max(0, wx0); tx <= Math.min(G.GW - 1, wx1); tx++) {
       const i = ty * GWd + tx; if (!L.ug[i]) continue;
       const x0 = tx * TS, z0 = ty * TS, x1 = x0 + TS, z1 = z0 + TS, h00 = floorV(tx, ty, 0, 0), h10 = floorV(tx, ty, 1, 0), h01 = floorV(tx, ty, 0, 1), h11 = floorV(tx, ty, 1, 1);
-      fpos.push(x0, h00, z0, x0, h01, z1, x1, h11, z1, x0, h00, z0, x1, h11, z1, x1, h10, z0); fuv.push(0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0);
-      const rockK = (gT(tx, ty) === T.ROCK || gT(tx, ty) === T.CLIFF || L.kind[i] === 1), arr = rockK ? wposR : wposT, uv = rockK ? wuvR : wuvT, f = L.fl[i];
+      const kd = L.kind[i], made = kd >= 3, fm = made ? (kd === 7 || kd === 9 ? 'piastrelle' : kd === 3 || kd === 8 ? 'mattoni' : kd === 6 ? 'cemento' : 'pietra') : 'terra';
+      const fa = fB[fm] = fB[fm] || [[], []]; fa[0].push(x0, h00, z0, x0, h01, z1, x1, h11, z1, x0, h00, z0, x1, h11, z1, x1, h10, z0); fa[1].push(0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0);
+      const rockK = !made && (gT(tx, ty) === T.ROCK || gT(tx, ty) === T.CLIFF || kd === 1), wm = made ? UGK[kd] : rockK ? 'roccia' : 'terra', wb = WB[wm] = WB[wm] || [[], []], arr = wb[0], uv = wb[1], f = L.fl[i];
       // pareti dove finisce lo scavo; quelle verso la camera sono basse (si vede dentro)
       const cy2 = Math.cos(cam.yaw), sy2 = Math.sin(cam.yaw);
       [[0, -1, x0, z0, x1, z0], [0, 1, x1, z1, x0, z1], [-1, 0, x0, z1, x0, z0], [1, 0, x1, z0, x1, z1]].forEach(([dx, dy, a, b, c2, d]) => {
-        if (has(tx + dx, ty + dy)) return; const P = L.portals.find(P => P.kind === 'imbocco' && P.u[0] === tx && P.u[1] === ty && P.s[0] === tx + dx && P.s[1] === ty + dy); if (P) return;
-        const toCam = dx * sy2 + dy * cy2 > .3, top = f + (toCam ? .55 : 2.7);
+        if (has(tx + dx, ty + dy) || kd === 9) return; const P = L.portals.find(P => P.kind === 'imbocco' && P.u[0] === tx && P.u[1] === ty && P.s[0] === tx + dx && P.s[1] === ty + dy); if (P) return;
+        const toCam = dx * sy2 + dy * cy2 > .3, top = f + (toCam ? .55 : kd === 7 ? 4.2 : 2.7);
         wallQuad(arr, uv, a, b, c2, d, f - .2, top);
-        if (!toCam && hash2i(tx * 3 + dx, ty * 3 + dy) < .35) rocks.push([(a + c2) / 2 - dx * .2, f + .3, (b + d) / 2 - dy * .2]);
+        if (!made && !toCam && hash2i(tx * 3 + dx, ty * 3 + dy) < .35) rocks.push([(a + c2) / 2 - dx * .2, f + .3, (b + d) / 2 - dy * .2]);
       });
       // puntelli di legno nei cunicoli scavati a mano, ogni tanto
       if (L.kind[i] === 2 && (tx + ty) % 3 === 0) props.push([x0 + 1, f, z0 + 1]);
     }
     const mkGeo = (pos, uv) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals(); return g; };
-    if (fpos.length) { const m = new THREE.Mesh(mkGeo(fpos, fuv), ugTex('terra')); m.receiveShadow = true; grp.add(m); }
-    if (wposT.length) { const m = new THREE.Mesh(mkGeo(wposT, wuvT), ugTex('terra')); m.material.side = THREE.DoubleSide; grp.add(m); }
-    if (wposR.length) { const m = new THREE.Mesh(mkGeo(wposR, wuvR), ugTex('roccia')); m.material.side = THREE.DoubleSide; grp.add(m); }
+    Object.entries(fB).forEach(([k, [pos, uv]]) => { const m = new THREE.Mesh(mkGeo(pos, uv), ugTex(k)); m.receiveShadow = true; grp.add(m); });
+    Object.entries(WB).forEach(([k, [pos, uv]]) => { if (!pos.length) return; const m = new THREE.Mesh(mkGeo(pos, uv), ugTex(k)); m.material.side = THREE.DoubleSide; grp.add(m); });
     const wood = ugM('#6a4a30');
     props.forEach(([x, y, z]) => { const g = new THREE.Group(); [[-.85, 0], [.85, 0]].forEach(([dx]) => { const b = new THREE.Mesh(new THREE.BoxGeometry(.16, 2.3, .16), wood); b.position.set(dx, 1.15, 0); g.add(b); }); const t = new THREE.Mesh(new THREE.BoxGeometry(1.9, .16, .2), wood); t.position.y = 2.3; g.add(t); g.position.set(x, y, z); g.rotation.y = hash2i(x, z) < .5 ? 0 : Math.PI / 2; grp.add(g); });
     rocks.forEach(([x, y, z]) => { const m = new THREE.Mesh(new THREE.DodecahedronGeometry(.35 + hash2i(x, z) * .3, 0), ugM('#55504a')); m.position.set(x, y - .1, z); grp.add(m); });
     // scale nei pozzi e nelle botole
     L.portals.forEach(P => {
-      if (P.kind !== 'botola' && P.kind !== 'pozzo') return; const i = P.u[1] * GWd + P.u[0], f = L.fl[i], top = M.elev[i] + .2, x = (P.u[0] + .5) * TS, z = (P.u[1] + .25) * TS;
+      if (!/^(botola|pozzo|tombino|grata|interno)$/.test(P.kind) || P.u[0] < wx0 || P.u[0] > wx1 || P.u[1] < wy0 || P.u[1] > wy1) return; const i = P.u[1] * GWd + P.u[0], f = L.fl[i], top = M.elev[i] + .2, x = (P.u[0] + .5) * TS, z = (P.u[1] + .25) * TS;
       const g = new THREE.Group(); [-.3, .3].forEach(dx => { const b = new THREE.Mesh(new THREE.BoxGeometry(.08, top - f, .08), wood); b.position.set(dx, (top - f) / 2, 0); g.add(b); });
       for (let y = .3; y < top - f; y += .35) { const s = new THREE.Mesh(new THREE.BoxGeometry(.6, .05, .06), wood); s.position.set(0, y, 0); g.add(s); }
       g.position.set(x, f, z); grp.add(g);
@@ -21325,6 +22125,7 @@ var Render = (function () {
     });
     // stanze: arredo secondo cosa sono
     L.rooms.forEach(R => {
+      if (R.x < wx0 * TS - 6 || R.x > wx1 * TS + 6 || R.y < wy0 * TS - 6 || R.y > wy1 * TS + 6) return;
       const g = new THREE.Group(); g.position.set(R.x, R.f, R.y);
       if (R.deco === 'toro' || R.deco === 'eremo') {
         const pic = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), ugPicture(R.deco)); pic.position.set(0, 1.4, -1.85); g.add(pic);
@@ -21345,21 +22146,22 @@ var Render = (function () {
   // il passaggio sotto terra: come per gli interni, si nasconde il mondo di sopra e si accende la lanterna
   function ugPass(st) {
     const p = st.player, L = st.lv, on = !!(p.lv && p.lv.k === 'ug' && L);
-    const key = on ? L.rev + ':' + (Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2)) & 3) : null;
+    const wcx = Math.floor(p.x / 48), wcy = Math.floor(p.y / 48);   // [sottosuolo] la finestra si sposta a passi di 48 m
+    const key = on ? L.rev + ':' + (Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2)) & 3) + ':' + wcx + ',' + wcy : null;
     if (key !== UGR.key) {
       if (UGR.grp) { scene.remove(UGR.grp); UGR.grp.traverse(o => { if (o.geometry) o.geometry.dispose(); }); UGR.grp = null; }
       UGR.lights.length = 0; if (UGR.lightObjs) UGR.lightObjs.forEach(l => scene.remove(l)); UGR.lightObjs = [];
       UGR.key = key;
-      if (on) { UGR.grp = buildUG(L); scene.add(UGR.grp); UGR.lightObjs = UGR.lights.map(([x, y, z, c]) => { const l = new THREE.PointLight(c, 1.4, 9, 1.6); l.position.set(x, y, z); scene.add(l); return l; }); }
+      if (on) { const r0 = Math.round(84 / TS); UGR.grp = buildUG(L, [Math.floor((wcx + .5) * 48 / TS) - r0, Math.floor((wcy + .5) * 48 / TS) - r0, Math.floor((wcx + .5) * 48 / TS) + r0, Math.floor((wcy + .5) * 48 / TS) + r0]); scene.add(UGR.grp); UGR.lightObjs = UGR.lights.map(([x, y, z, c]) => { const l = new THREE.PointLight(c, 2.2, 14, 1.3); l.position.set(x, y, z); scene.add(l); return l; }); }
       else if (UGR.was) scene.children.forEach(o => { if (o.userData.__hidUG) { o.visible = true; o.userData.__hidUG = false; } });
     }
     UGR.was = on;
-    if (!UGR.lantern) { UGR.lantern = new THREE.PointLight('#ffc070', 0, 11, 1.5); scene.add(UGR.lantern); }
+    if (!UGR.lantern) { UGR.lantern = new THREE.PointLight('#ffc070', 0, 20, 1.2); scene.add(UGR.lantern); }
     if (!on) { UGR.lantern.intensity = 0; return false; }
-    hemi.intensity *= .12; moon.intensity *= .05; fillAmb.intensity *= .25;
+    hemi.intensity *= .5; moon.intensity *= .05; fillAmb.intensity *= .9;   // [sottosuolo] meno buio: si deve vedere dove si va
     const pg = dyn.people.__player, h = Livelli.heightOf(st, p);
-    UGR.lantern.position.set(p.x + Math.cos(p.face) * .4, h + 1.7, p.y + Math.sin(p.face) * .4); UGR.lantern.intensity = 1.6 + Math.sin(st.clock * 9) * .06;
-    scene.children.forEach(o => { if (o === UGR.grp || o === pg || o === UGR.lantern || UGR.lightObjs.includes(o)) return; if (o.isLight && o !== moon && o !== hemi && o !== fillAmb) { if (o.visible) { o.visible = false; o.userData.__hidUG = true; } return; } if (o.isLight) return; if (o.visible) { o.visible = false; o.userData.__hidUG = true; } });
+    UGR.lantern.position.set(p.x + Math.cos(p.face) * .4, h + 1.7, p.y + Math.sin(p.face) * .4); UGR.lantern.intensity = 2.8 + Math.sin(st.clock * 9) * .08;
+    scene.children.forEach(o => { if (o === UGR.grp || o === pg || o === UGR.lantern || UGR.lightObjs.includes(o) || o.userData.ugKeep) return; if (o.isLight && o !== moon && o !== hemi && o !== fillAmb) { if (o.visible) { o.visible = false; o.userData.__hidUG = true; } return; } if (o.isLight) return; if (o.visible) { o.visible = false; o.userData.__hidUG = true; } });
     UGR.grp.visible = true; if (pg) pg.visible = true;
     return true;
   }
@@ -30380,7 +31182,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
 
     INDOOR.quad = Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2) - .5) & 3;
     const indoorNow = indoorPass(st); if (indoorNow) { scene.fog.near = 200; scene.fog.far = 400; }
-    if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist - 2; scene.fog.far = dist + 22; scene.fog.color.set('#060505'); scene.background.set('#060505'); } }   // [monte]
+    if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
     renderer.setRenderTarget(rt); renderer.render(scene, camera);
     renderer.setRenderTarget(null); ambPasses();   /* [amb2] */
     const U = postMat.uniforms;
@@ -31207,7 +32009,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.'].includes(k)) { keys[k] = true; e.preventDefault(); }
     // [monte] O: visuale dall'alto; H scava, J in discesa, K in salita, N stanza, V sali/scendi (botole e pozzi)
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
-    if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k); if (m) { toast(m); e.preventDefault(); return; } }
+    if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
     if (e.repeat) return;
     if (k === 'e') doAct('scippo'); else if (k === 'f') doAct('veicolo'); else if (k === 't') openTalk();
     else if (k === 'r') G.reload(st);
@@ -31288,6 +32090,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     });
     if (best) return best;
     if (window.Bottino) { const L = Bottino.pick(st, nx, ny, o); if (L) return L; }
+    if (window.Sottosuolo) { const C = Sottosuolo.pick(st, nx, ny, o); if (C) return C; }   // [sottosuolo] la gente di sotto, le casse, il treno
     if (window.Cantiere) { const C = Cantiere.pick(st, nx, ny, o); if (C) return C; }   // [cantiere] le postazioni del covo   // [bottino] la roba da frugare è un oggetto in scena
     const g = R.screenToGround(nx, ny); if (!g) return null;
     for (const v of st.vehicles) {
@@ -31303,6 +32106,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // se il punto cliccato è dentro un edificio o in acqua, prende la casella libera più vicina (verso il giocatore)
   function freeSpot(x, y) {
     if (st.player.indoor && G.INT.nearFree) { const p0 = st.player, L0 = G.INT.layout(G.BUILDINGS[p0.indoor.b]); return G.INT.nearFree(L0, p0.indoor.f, x, y) || { x: p0.x, y: p0.y }; }   // [interni] dentro si clicca sul pavimento
+    if (st.player.lv && window.Sottosuolo) return Sottosuolo.freeSpot(st, x, y);   // [sottosuolo] sotto terra si clicca sul cunicolo
     if (G.walkM(x, y)) return { x, y }; const p = st.player; let best = null, bd = 1e9;
     for (let r = 1; r <= 4 && !best; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) {
       const cx = (Math.floor(x / G.TS) + i) * G.TS + G.TS / 2, cy = (Math.floor(y / G.TS) + j) * G.TS + G.TS / 2; if (!G.walkM(cx, cy)) continue;
@@ -31311,6 +32115,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     return best || { x, y };
   }
   function goalPath(x, y) { const p = st.player; if (p.indoor && G.INT.findPath) { const L0 = G.INT.layout(G.BUILDINGS[p.indoor.b]), pp = G.INT.findPath(L0, p.indoor.f, p.x, p.y, x, y); return pp.length ? pp : [{ x, y }]; }   // [interni] percorso dentro casa
+    if (p.lv && window.Sottosuolo) { const pp = Sottosuolo.findPath(st, p.x, p.y, x, y); return pp.length ? pp : [{ x, y }]; }   // [sottosuolo] percorso nei cunicoli
     let path = G.findPath(p.x, p.y, x, y, p.vehicle ? .6 : 1.4); if (!path.length) path = [{ x, y }]; return path; }
   function onClick(nx, ny, dbl) {
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
@@ -31322,7 +32127,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     }
     if (h.kind === 'npc') { click.t = { kind: 'npc', id: h.n.id, path: [], pt: -9, run: dbl }; ui.mark = null; }
     else if (h.kind === 'car') { click.t = { kind: 'car', id: h.v.id, path: [], pt: -9, run: dbl }; ui.mark = { x: h.v.x, y: h.v.y, t: ui.time, k: 'car' }; }
-    else if (h.kind === 'loot') { const B0 = h.via === 'covo' ? Cantiere : Bottino, q = B0.goal(st, h.ref) || h; click.t = { kind: 'loot', via: h.via, ref: h.ref, x: q.x, y: q.y, path: goalPath(q.x, q.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
+    else if (h.kind === 'loot') { const B0 = h.via === 'covo' ? Cantiere : h.via === 'sotto' ? Sottosuolo : Bottino, q = B0.goal(st, h.ref) || h; click.t = { kind: 'loot', via: h.via, ref: h.ref, x: q.x, y: q.y, path: goalPath(q.x, q.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
     else if (h.kind === 'door') { click.t = { kind: 'door', bi: h.bi, x: h.x, y: h.y, path: goalPath(h.x, h.y), pt: ui.time, run: dbl }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
     else { click.t = { kind: 'move', x: h.x, y: h.y, path: goalPath(h.x, h.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
   }
@@ -31338,7 +32143,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       if (Math.hypot(gx - p.x, gy - p.y) < .8) { c.pushT = c.pushT || ui.time; if (ui.time - c.pushT > 1.6) return stop(); const a2 = Math.atan2(cy - p.y, cx - p.x); return { x: Math.cos(a2), y: Math.sin(a2), sprint: false, aim: a2 }; }
     }
     if (c.kind === 'loot') {   // [bottino] ci si avvicina; arrivati si raccoglie o si apre il pannello
-      const B0 = c.via === 'covo' ? Cantiere : Bottino, L = B0.find(st, c.ref); if (!L) return stop();
+      const B0 = c.via === 'covo' ? Cantiere : c.via === 'sotto' ? Sottosuolo : Bottino, L = B0.find(st, c.ref); if (!L) return stop();
       const d = Math.hypot(L.x - p.x, L.y - p.y), r = B0.reach(c.ref);
       if (d < r || (ui.time - c.bestT > 1.2 && d < r + 1.2)) { stop(); B0.arrive(st, c.ref); return { x: 0, y: 0, sprint, aim: Math.atan2(L.y - p.y, L.x - p.x) }; }
       if (d < c.best - .2) { c.best = d; c.bestT = ui.time; } else if (ui.time - c.bestT > 1.5) return stop();
@@ -33641,7 +34446,12 @@ var Pezzi = (function () {
    Le cose si pagano in materiali (dalle tasche e dalle scorte delle basi), oppure se ce l'hai in tasca la piazzi direttamente (una sedia, un fornello, la macchina da cucire).
    Le postazioni sono oggetti veri: si animano (il fuoco, la radio che lampeggia, il rullo della stamperia, l'ago che va), e cliccandole fuori dal cantiere
    ci vai e si apre il loro banco. Il banco delle armi monta anche le modifiche alle armi (canna, mirino, caricatore, silenziatore, calcio).
-   Stato: st.covo = { covi, obj, mods }. Le strutture rendono solide le caselle (e le restituiscono quando le togli). */
+   Stato: st.covo = { covi, obj, mods, jobs }. Le strutture rendono solide le caselle (e le restituiscono quando le togli).
+   [sottosuolo] IN CITTÀ si costruisce solo al chiuso: dentro la stanza del covo (arredi, casse, deposito armi, postazioni) o sotto terra.
+   FUORI CITTÀ il lavoro pesante lo fa la banda: disboscare, cavare, spianare e tirare su case, garage, capanni, baracche e torrette
+   diventano lavori segnati che i membri liberi della Risacca vanno a fare (la legna e le pietre finiscono nel baule del covo).
+   Senza banda lo fai da te, subito. Il GARAGE ha il portone largo; l'OFFICINA DEL GARAGE potenzia coi materiali il mezzo parcheggiato
+   accanto (motore, assetto, nitro, corazza) e lo ripara. */
 var Cantiere = (function () {
   'use strict';
   const PV = () => window.__pv, ST = () => PV() && PV().st, Gm = () => (PV() && PV().G) || Game, R = () => PV() && PV().R;
@@ -33677,8 +34487,11 @@ var Cantiere = (function () {
     { id: 'recinto', cat: 'strutture', nome: 'Recinto', fp: [1, 1], solid: 'pieno', cost: { assi: 2, chiodi: 1 }, mk: 'recinto', col: '#8a6a44' },
     { id: 'pavimento', cat: 'strutture', nome: 'Pavimento', fp: [1, 1], cost: { assi: 3 }, mk: 'pavimento', col: '#8a6238' },
     { id: 'tettoia', cat: 'strutture', nome: 'Tettoia', fp: [2, 2], cost: { assi: 6, travi: 4, lamiera: 2 }, mk: 'tettoia', col: '#6a5a4a' },
-    { id: 'capanno', cat: 'strutture', nome: 'Capanno', fp: [3, 3], solid: 'bordo', cost: { assi: 16, travi: 6, chiodi: 3, lamiera: 3 }, mk: 'capanno', col: '#7a5634' },
-    { id: 'baracca', cat: 'strutture', nome: 'Baracca di lamiera', fp: [3, 2], solid: 'bordo', cost: { lamiera: 8, travi: 4, chiodi: 2 }, mk: 'capanno', col: '#7a8088' },
+    { id: 'capanno', cat: 'strutture', nome: 'Capanno', fp: [3, 3], solid: 'bordo', big: 50, cost: { assi: 16, travi: 6, chiodi: 3, lamiera: 3 }, mk: 'capanno', col: '#7a5634' },
+    { id: 'baracca', cat: 'strutture', nome: 'Baracca di lamiera', fp: [3, 2], solid: 'bordo', big: 40, cost: { lamiera: 8, travi: 4, chiodi: 2 }, mk: 'capanno', col: '#7a8088' },
+    { id: 'casa', cat: 'strutture', nome: 'Casetta', desc: 'Quattro muri, il tetto di coppi, la porta. La tirano su in due.', fp: [4, 3], solid: 'bordo', big: 90, cost: { mattoni: 20, malta: 4, travi: 6, assi: 8, cemento: 2, cerniere: 1 }, mk: 'casa', col: '#d8c8a8' },
+    { id: 'garage', cat: 'strutture', nome: 'Garage', desc: 'Portone largo: ci entra la macchina. Dentro, l\'officina.', fp: [4, 4], solid: 'bordo', door: 'largo', big: 100, cost: { lamiera: 10, travi: 8, bulloni: 4, cemento: 2 }, mk: 'garage', col: '#8a8e94' },
+    { id: 'tenda', cat: 'strutture', nome: 'Tenda', desc: 'L\'accampamento: ci si dorme.', fp: [2, 2], cost: { stoffa: 4, corda: 1, tubi: 2 }, mk: 'tenda', col: '#6a6a4a', sleep: 1, out: 1 },
     { id: 'lampione', cat: 'strutture', nome: 'Lampione a batteria', cost: { tubi: 1, lampadine: 1, batteria_auto: 1 }, mk: 'lampione', anim: 'luce' },
     { id: 'bandiera', cat: 'strutture', nome: 'Bandiera della Risacca', cost: { stoffa: 2, tubi: 1 }, mk: 'bandiera', anim: 'bandiera' },
     // arredi (si piazzano liberi; se ce l'hai in tasca non costano niente)
@@ -33710,6 +34523,8 @@ var Cantiere = (function () {
     { id: 'taniche', cat: 'arredi', nome: 'Taniche', item: 'tanica_vuota', cost: { tanica_vuota: 1 }, pz: 'tanica' },
     { id: 'estintore', cat: 'arredi', nome: 'Estintore', cost: { bombola: 1 }, pz: 'estintore' },
     { id: 'bobina', cat: 'arredi', nome: 'Bobina di cavo', cost: { cavo: 3 }, pz: 'bobina' },
+    { id: 'rastrelliera', cat: 'arredi', nome: 'Deposito armi', desc: 'Rastrelliera col lucchetto: apre le scorte del covo.', cost: { assi: 4, ferro: 1, lucchetto: 1 }, mk: 'rastrelliera', store: 1 },
+    { id: 'deposito', cat: 'arredi', nome: 'Casse del deposito', desc: 'Casse impilate: apre le scorte del covo.', cost: { assi: 4, chiodi: 1 }, pzc: 'mil', store: 1 },
     { id: 'baule', cat: 'arredi', nome: 'Baule', desc: 'Uno per covo. Ci metti quello che vuoi, quanto vuoi.', mk: 'baule', baule: 1 },
     { id: 'poster', cat: 'arredi', nome: 'Manifesto', item: 'poster', cost: { poster: 1 }, mk: 'poster' },
     // postazioni: ognuna col suo banco
@@ -33724,12 +34539,13 @@ var Cantiere = (function () {
     { id: 'falegname', cat: 'postazioni', nome: 'Banco del falegname', st: 'banco_falegname', stm: 'st_banco_falegname', anim: 'segatura', cost: { assi: 8, chiodi: 2, sega: 1 } },
     { id: 'infermeria', cat: 'postazioni', nome: 'Infermeria', st: 'tavolo_medico', pz: 'infermeria', anim: 'lampadina', cost: { assi: 4, lenzuola: 2, garze: 2 } },
     { id: 'camera_oscura', cat: 'postazioni', nome: 'Camera oscura', st: 'camera_oscura', stm: 'st_camera_oscura', anim: 'rossa', cost: { assi: 4, vetro: 2, lampadine: 1 } },
+    { id: 'officina_auto', cat: 'postazioni', nome: 'Officina del garage', desc: 'Ponte sollevatore e attrezzi: potenzia e ripara il mezzo parcheggiato accanto.', st: 'banco_lavoro', mk: 'officina', menu: 'auto', anim: 'lampadina', cost: { ferro: 4, tubi: 3, bulloni: 4, olio_motore: 1 } },
     { id: 'alambicco', cat: 'postazioni', nome: 'Alambicco', st: 'alambicco', stm: 'st_alambicco', anim: 'fuoco', cost: { rame: 4, tubi: 2 } },
     // difese
     { id: 'sacchi', cat: 'difese', nome: 'Sacchi di sabbia', fp: [1, 1], solid: 'pieno', cost: { sacco_sabbia: 4 }, mk: 'sacchi', col: '#a89870' },
     { id: 'filo_spinato', cat: 'difese', nome: 'Filo spinato', fp: [1, 1], solid: 'pieno', cost: { filo_spinato: 2, tubi: 1 }, mk: 'filo', col: '#6a6e74' },
     { id: 'barricata', cat: 'difese', nome: 'Barricata', fp: [1, 1], solid: 'pieno', cost: { assi: 4, mobile_rotto: 1 }, mk: 'barricata', col: '#6a4a2c' },
-    { id: 'torretta', cat: 'difese', nome: 'Torretta di guardia', fp: [2, 2], cost: { travi: 8, assi: 8, chiodi: 3 }, mk: 'torretta', col: '#6a4a2c' },
+    { id: 'torretta', cat: 'difese', nome: 'Torretta di guardia', fp: [2, 2], big: 50, cost: { travi: 8, assi: 8, chiodi: 3 }, mk: 'torretta', col: '#6a4a2c' },
   ];
   const BY = Object.fromEntries(B.map(b => [b.id, b]));
 
@@ -33781,10 +34597,17 @@ var Cantiere = (function () {
   // TERRENO E SOTTOTERRA
   // =====================================================================================================================
   const tileOf = (x, y) => [Math.floor(x / TS()), Math.floor(y / TS())];
+  // [sottosuolo] in città, all'aperto, non si costruisce: solo dentro la stanza o sotto terra
+  const inCity = (x, y) => { const G = Gm(), M = G.MAP, [tx, ty] = tileOf(x, y); return !!(M.zone && M.Z && M.zone[ty * G.GW + tx] === M.Z.CITTA); };
+  const CITY_NO = 'In città si costruisce solo al chiuso: entra nella stanza del covo, o scendi sotto terra.';
   const dirty = (tx, ty) => { const r = R(); if (r && r.dirtyAt) r.dirtyAt(tx * TS() + 1, ty * TS() + 1); };
   function terrain(st, b, tx, ty) {
-    const G = Gm(), t = T(), v = G.tileAt(tx, ty), bag = O().inv(st);
     if (!hasTool(st, b.tool)) return { ok: false, msg: `Ti serve: ${b.tool.split('|').map(k => O().nm(k)).join(' o ')}.` };
+    return terrainDo(st, b, tx, ty, O().inv(st));
+  }
+  // il lavoro vero e proprio: la roba che ne viene va in `bag` (le tasche, o il baule del covo se lavora la banda)
+  function terrainDo(st, b, tx, ty, bag) {
+    const G = Gm(), t = T(), v = G.tileAt(tx, ty);
     if (b.op === 'disbosca') { if (v !== t.TREE && v !== t.SHRUB) return { ok: false, msg: 'Qui non c\'è niente da tagliare.' }; G.setTile(tx, ty, t.GRASS); const q = v === t.TREE ? 3 : 1; bag.legna = (bag.legna || 0) + q; dirty(tx, ty); return { ok: true, msg: v === t.TREE ? 'L\'albero cade. Tre ciocchi di legna.' : 'Via il cespuglio.' }; }
     if (b.op === 'cava') { if (v !== t.ROCK && v !== t.CLIFF) return { ok: false, msg: 'Qui non c\'è roccia.' }; G.setTile(tx, ty, t.GRAVEL); bag.pietre = (bag.pietre || 0) + 3; dirty(tx, ty); return { ok: true, msg: 'La roccia si spacca. Tre pietre.' }; }
     if (b.op === 'sterra') { if (![t.GRASS, t.SHRUB, t.FIELD, t.DESERT, t.SAND].includes(v)) return { ok: false, msg: 'Qui è già terra, o non si può.' }; G.setTile(tx, ty, t.DIRT); dirty(tx, ty); return { ok: true, msg: 'Terra battuta.' }; }
@@ -33823,6 +34646,7 @@ var Cantiere = (function () {
   // =====================================================================================================================
   const KIT = {};   // mobili del kit caricati (Models.furniture è asincrono: si caricano all'inizio)
   function preload() { if (!window.Models || !Models.furniture) return; B.filter(b => b.kit && !KIT[b.kit]).forEach(b => { KIT[b.kit] = 'wait'; Models.furniture(b.kit).then(g => { KIT[b.kit] = g || null; }).catch(() => { KIT[b.kit] = null; }); }); }
+  const jobsKey = st => (st.covo && st.covo.jobs || []).filter(j => !j.done).map(j => j.id).join(',');
   const LMt = {}; const lm = (c, e) => { const k = c + (e || ''); return LMt[k] || (LMt[k] = new THREE.MeshLambertMaterial(Object.assign({ color: c }, e ? { emissive: new THREE.Color(e), emissiveIntensity: 1 } : {}))); };
   const box = (g, w, h, d, c, x, y, z, ry) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lm(c)); m.position.set(x || 0, y || 0, z || 0); if (ry) m.rotation.y = ry; m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
   const cyl = (g, r0, r1, h, c, x, y, z, e) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, h, 12), lm(c, e)); m.position.set(x || 0, y || 0, z || 0); m.castShadow = true; g.add(m); return m; };
@@ -33846,6 +34670,31 @@ var Cantiere = (function () {
         box(g, w, h, .12, c, 0, h / 2, -d / 2 + .06); box(g, .12, h, d, c, -w / 2 + .06, h / 2, 0); box(g, .12, h, d, c, w / 2 - .06, h / 2, 0);
         const side = (w - 1.1) / 2; box(g, side, h, .12, c, -w / 2 + side / 2, h / 2, d / 2 - .06); box(g, side, h, .12, c, w / 2 - side / 2, h / 2, d / 2 - .06); box(g, 1.1, .4, .12, c, 0, h - .2, d / 2 - .06);
         const rf = box(g, w + .5, .1, d + .6, b.id === 'baracca' ? '#6a7078' : '#5a5048', 0, h + .15, 0); rf.rotation.x = .1; for (let i = 0; i < 5; i++) box(g, w + .02, .04, .14, '#2a2420', 0, .4 + i * .45, -d / 2 + .05); break; }
+      case 'casa': { const w = 4 * S0, d = 3 * S0, h = 2.8, wall = c;
+        box(g, w, h, .25, wall, 0, h / 2, -d / 2 + .12); box(g, .25, h, d, wall, -w / 2 + .12, h / 2, 0); box(g, .25, h, d, wall, w / 2 - .12, h / 2, 0);
+        const side = (w - 1.2) / 2; box(g, side, h, .25, wall, -w / 2 + side / 2, h / 2, d / 2 - .12); box(g, side, h, .25, wall, w / 2 - side / 2, h / 2, d / 2 - .12); box(g, 1.2, .5, .25, wall, 0, h - .25, d / 2 - .12);
+        tag(box(g, 1, 2.2, .06, '#5a3a20', -.3, 1.1, d / 2 - .02), 'anta');
+        for (const x of [-2.6, 2.6]) { box(g, 1, 1, .27, '#2a3a4a', x, 1.6, d / 2 - .12); box(g, 1.2, .1, .35, '#e8e0cc', x, 1.05, d / 2 - .05); box(g, .12, 1, .3, '#3a6a4a', x - .62, 1.6, d / 2 - .02); box(g, .12, 1, .3, '#3a6a4a', x + .62, 1.6, d / 2 - .02); }
+        for (const s2 of [-1, 1]) { const r0 = box(g, w + .6, .14, d / 2 + .7, '#a8483a', 0, h + .62, s2 * (d / 4 + .15)); r0.rotation.x = s2 * .5; for (let i = 0; i < 9; i++) { const q0 = box(g, .06, .1, d / 2 + .6, '#7a3a2a', -w / 2 + .5 + i * (w / 9), h + .7, s2 * (d / 4 + .15)); q0.rotation.x = s2 * .5; } }
+        box(g, .25, 1.1, d - .6, wall, -w / 2 + .12, h + .5, 0); box(g, .25, 1.1, d - .6, wall, w / 2 - .12, h + .5, 0);
+        cyl(g, .18, .18, 1, '#8a5a4a', w / 2 - .8, h + 1.3, -.4); break; }
+      case 'garage': { const w = 4 * S0, d = 4 * S0, h = 3;
+        box(g, w, h, .15, c, 0, h / 2, -d / 2 + .08); box(g, .15, h, d, c, -w / 2 + .08, h / 2, 0); box(g, .15, h, d, c, w / 2 - .08, h / 2, 0);
+        box(g, S0, h, .15, c, -w / 2 + S0 / 2, h / 2, d / 2 - .08); box(g, S0, h, .15, c, w / 2 - S0 / 2, h / 2, d / 2 - .08); box(g, w - 2 * S0, .6, .15, c, 0, h - .3, d / 2 - .08);
+        for (let i = 0; i < 12; i++) box(g, w + .02, .03, .17, '#6a6e74', 0, .25 * i + .1, -d / 2 + .08);
+        box(g, w - 2 * S0, .5, .12, '#9aa0a8', 0, h - .1, d / 2 - .02);
+        const rf = box(g, w + .4, .1, d + .4, '#6a7078', 0, h + .08, 0); rf.rotation.x = .04; box(g, w - .4, .02, d - .4, '#5a5a56', 0, .02, 0);
+        box(g, .6, .3, .2, '#ffd23b', -w / 2 + .5, h - .5, d / 2 + .02); break; }
+      case 'tenda': { const w = 2 * S0 - .4, d = 2 * S0 - .4;
+        for (const s2 of [-1, 1]) { const t0 = box(g, w * .62, .04, d, c, s2 * w * .26, .85, 0); t0.rotation.z = -s2 * .9; }
+        box(g, .05, 1.65, .05, '#5a4028', 0, .82, d / 2); box(g, .05, 1.65, .05, '#5a4028', 0, .82, -d / 2); box(g, .04, .04, d + .1, '#5a4028', 0, 1.64, 0);
+        box(g, w * .8, .05, d * .8, '#4a4a3a', 0, .03, 0); for (const z of [-1, 1]) { const f0 = box(g, .02, 1.2, .9, '#7a7a5a', .2, .6, z * d / 2); f0.rotation.y = z * .4; } break; }
+      case 'rastrelliera': box(g, 1.4, 1.7, .3, '#6a4a2c', 0, .85, -.1); for (let i = 0; i < 5; i++) { const r0 = box(g, .07, 1.2, .1, '#2a2622', -.5 + i * .25, .95, .1); r0.rotation.z = .06; box(g, .11, .28, .13, '#5a3a20', -.5 + i * .25, .4, .1); } box(g, 1.42, .08, .4, '#4a3a2a', 0, 1.25, .05); box(g, .12, .14, .05, '#c8a040', .62, .9, .07); break;
+      case 'officina': {
+        for (const x of [-1.3, 1.3]) { box(g, .3, 2.2, .3, '#c8402a', x, 1.1, -1); const arm = box(g, .12, .1, 1.6, '#3a3a40', x * .82, .45, -.3); arm.rotation.y = x > 0 ? -.2 : .2; }
+        box(g, 2.9, .15, .3, '#c8402a', 0, 2.2, -1); box(g, .9, 1.1, .5, '#b02a2a', 2.3, .55, -1); for (let i = 0; i < 4; i++) box(g, .86, .02, .02, '#e8e0cc', 2.3, .3 + i * .22, -.74);
+        for (let i = 0; i < 3; i++) cyl(g, .33, .33, .22, '#1a1a1a', -2.3, .11 + i * .23, -.8);
+        box(g, .5, .3, .3, '#2a6a3a', 2.3, 1.25, -1); tag(cyl(g, .05, .07, .1, '#f0e0a0', 0, 2.05, -.9, '#ffd890'), 'luce'); break; }
       case 'lampione': cyl(g, .06, .08, 3, '#3a3a40', 0, 1.5, 0); box(g, .5, .06, .1, '#3a3a40', .22, 2.95, 0); tag(cyl(g, .1, .14, .16, '#f0e0a0', .45, 2.86, 0, '#ffd890'), 'luce'); break;
       case 'bandiera': cyl(g, .04, .05, 3.2, '#8a8a90', 0, 1.6, 0); { const f = tag(box(g, 1.1, .7, .02, '#1e3a5a', .58, 2.75, 0), 'telo'); const w0 = box(g, .9, .08, .03, '#35e6ff', .58, 2.75, .01); w0.name = 'onda'; } break;
       case 'tappeto': box(g, 1.6, .02, 1.1, c, 0, .01, 0); box(g, 1.3, .021, .8, '#c8a050', 0, .011, 0); box(g, 1.1, .022, .6, c, 0, .012, 0); break;
@@ -33889,7 +34738,7 @@ var Cantiere = (function () {
     const tx0 = Math.floor(x / S0 - w / 2 + .5), ty0 = Math.floor(y / S0 - d / 2 + .5), out = [];
     for (let j = 0; j < d; j++) for (let i = 0; i < w; i++) {
       let solid = b.solid === 'pieno';
-      if (b.solid === 'bordo') { const edge = i === 0 || j === 0 || i === w - 1 || j === d - 1; const door = q === 0 ? (j === d - 1 && i === Math.floor(w / 2)) : q === 2 ? (j === 0 && i === Math.floor(w / 2)) : q === 1 ? (i === 0 && j === Math.floor(d / 2)) : (i === w - 1 && j === Math.floor(d / 2)); solid = edge && !door; }
+      if (b.solid === 'bordo') { const edge = i === 0 || j === 0 || i === w - 1 || j === d - 1; const mid = (k, n) => b.door === 'largo' ? k > 0 && k < n - 1 : k === Math.floor(n / 2); const door = q === 0 ? (j === d - 1 && mid(i, w)) : q === 2 ? (j === 0 && mid(i, w)) : q === 1 ? (i === 0 && mid(j, d)) : (i === w - 1 && mid(j, d)); solid = edge && !door; }   // [cantiere] il portone largo del garage
       out.push([tx0 + i, ty0 + j, solid]);
     }
     return out;
@@ -33903,6 +34752,8 @@ var Cantiere = (function () {
   function canPlace(st, b, x, y, rot) {
     const G = Gm(), t = T(), lv = lvOf(st), C = covoAt(st, x, y);
     if (!C) return 'Fuori dal covo: qui non costruisci.';
+    if (!lv && b.cat !== 'sotto' && inCity(x, y)) return CITY_NO;   // [sottosuolo]
+    if (lv && b.out) return 'Si monta solo all\'aperto.';
     if (b.cat === 'terreno') { const [tx, ty] = tileOf(x, y), v = G.tileAt(tx, ty); if (lv) return lv === 'ug' ? 'Sotto terra si usa Sottoterra.' : 'Dentro casa non si disbosca.'; if (b.op === 'disbosca' && v !== t.TREE && v !== t.SHRUB) return 'Niente da tagliare qui.'; if (b.op === 'cava' && v !== t.ROCK && v !== t.CLIFF) return 'Niente roccia qui.'; return ''; }
     if (b.cat === 'sotto') return '';
     if (b.baule && S(st).obj.some(o => o.id === 'baule' && (covoAt(st, o.x, o.y) || {}).id === C.id)) return 'In questo covo il baule c\'è già.';
@@ -33923,15 +34774,90 @@ var Cantiere = (function () {
     const G = Gm(), lv = lvOf(st), tiles = [];
     footprint(b, x, y, rot).forEach(([tx, ty, solid]) => { const orig = G.tileAt(tx, ty); if (solid && !lv) { G.setTile(tx, ty, T().BLD); dirty(tx, ty); } tiles.push([tx, ty, solid ? orig : null]); });
     const C = S(st), o = { uid: moving ? moving.uid : 'k' + (C.next++), id: b.id, x, y, rot, lv, tiles, paid, at: st.t };
+    if (moving && moving.wip) o.wip = moving.wip;
+    // [cantiere] le costruzioni grandi all'aperto le tira su la banda: si apre il cantiere
+    if (!moving && b.big && !lv && crewAll(st).length) { o.wip = b.big; addJob(st, { op: 'costruisci', uid: o.uid, x, y }); }
     C.obj.push(o); U.dirty = true;
-    return { ok: true, msg: moving ? `${b.nome}: spostato.` : `${b.nome}: fatto.`, o };
+    return { ok: true, msg: moving ? `${b.nome}: spostato.` : o.wip ? `${b.nome}: cantiere aperto. Ci pensa la banda (${jobsLeft(st)} lavori in coda).` : `${b.nome}: fatto.`, o };
   }
   function lift(st, uid) {   // toglie dal mondo (per spostare o per togliere)
     const C = S(st), i = C.obj.findIndex(o => o.uid === uid); if (i < 0) return null; const o = C.obj[i]; C.obj.splice(i, 1);
     (o.tiles || []).forEach(([tx, ty, orig]) => { if (orig !== null && orig !== undefined) { Gm().setTile(tx, ty, orig); dirty(tx, ty); } });
     U.dirty = true; return o;
   }
-  function remove(st, uid) { const o = lift(st, uid); if (!o) return { ok: false, msg: '' }; refund(st, o); return { ok: true, msg: `${BY[o.id].nome}: smontato. Ti torna la roba.` }; }
+  function remove(st, uid) { const o = lift(st, uid); if (!o) return { ok: false, msg: '' }; refund(st, o); const C = S(st); (C.jobs || []).forEach(j => { if (j.uid === uid) j.done = true; }); return { ok: true, msg: `${BY[o.id].nome}: smontato. Ti torna la roba.` }; }
+
+  // =====================================================================================================================
+  // LA BANDA AL LAVORO: i lavori segnati li fanno i membri liberi della Risacca
+  // =====================================================================================================================
+  const RIS = () => (typeof Risacca !== 'undefined' ? Risacca : null);
+  const crewAll = st => { const R0 = RIS(); try { return R0 && R0.members ? R0.members(st) : []; } catch (e) { return []; } };
+  const crewFree = st => crewAll(st).filter(n => !n.dead && !(n.jailedUntil > st.t) && (!n.ris.task || n.ris.task.src === 'autonomia'));   // chi fa di testa sua lascia e viene al covo
+  const jobsLeft = st => (S(st).jobs || []).filter(j => !j.done).length;
+  const JOB_MIN = { disbosca: 25, cava: 30, sterra: 10, spiana: 20 };
+  function addJob(st, j) { const C = S(st); C.jobs = C.jobs || []; C.jid = (C.jid || 0) + 1; const J = Object.assign({ id: 'j' + C.jid, who: null, tries: 0, at: st.t }, j); C.jobs.push(J); return J; }
+  // dove si mette chi lavora: una casella libera accanto (l'albero e la roccia non si calpestano)
+  function standAt(x, y, r0) { const G = Gm(); for (let r = r0 || 1.2; r < 7; r += .6) for (let a = 0; a < 8; a++) { const qx = x + Math.cos(a * Math.PI / 4) * r, qy = y + Math.sin(a * Math.PI / 4) * r; if (G.walkM(qx, qy)) return { x: qx, y: qy }; } return { x, y }; }
+  function jobsStep(st) {
+    const C = st.covo; if (!C || !C.jobs || !C.jobs.length) return;
+    const G = Gm(), R0 = RIS();
+    C.jobs.forEach(J => {
+      if (J.done) return;
+      if (J.who) { const n = G.byId(st, J.who); if (n && !n.dead && n.ris && n.ris.task && n.ris.task.covoJob === J.id) return; J.who = null; if (++J.tries >= 3) { J.done = true; G.feed(st, 'Un lavoro del covo è rimasto a metà: nessuno riesce ad arrivarci.', 'bad'); } return; }
+      const free = crewFree(st); if (!free.length || !R0 || !st.ris) return;
+      const n = free.sort((a, b) => Math.hypot(a.x - J.x, a.y - J.y) - Math.hypot(b.x - J.x, b.y - J.y))[0];
+      const o = J.uid ? C.obj.find(q => q.uid === J.uid) : null, b = o ? BY[o.id] : null;
+      const at = standAt(J.x, J.y, b && b.fp ? Math.max(...b.fp) * TS() / 2 + .6 : 1.2);
+      const mins = J.op === 'costruisci' ? (o ? o.wip : 60) : JOB_MIN[J.op] || 20;
+      const label = J.op === 'costruisci' ? `tira su ${b ? b.nome.toLowerCase() : 'la costruzione'}` : { disbosca: 'abbatte un albero', cava: 'spacca la roccia', sterra: 'toglie l\'erba', spiana: 'spiana il terreno' }[J.op];
+      n.ris.task = { id: st.ris.nextTask++, verb: 'cantiere', args: {}, steps: [{ k: 'go', x: at.x, y: at.y, name: 'il cantiere del covo' }, { k: 'hold', mins }, { k: 'do', fn: 'covoLavoro', job: J.id }], i: 0, started: st.t, desc: `${label} al covo`, src: 'cantiere', acc: 0, stepT: st.t, covoJob: J.id };
+      n.path = []; n.goalPlace = null; n.wait = 0; n.inside = false; J.who = n.id;
+    });
+    if (C.jobs.length > 40) C.jobs = C.jobs.filter(j => !j.done);
+  }
+  // il lavoro finito: lo esegue il membro (Risacca lo chiama come un passo 'do')
+  function jobDone(st, n, T0, s) {
+    const C = S(st), J = (C.jobs || []).find(j => j.id === s.job); if (!J || J.done) return { ok: true };
+    J.done = true; U.dirty = true;
+    if (J.op === 'costruisci') { const o = C.obj.find(q => q.uid === J.uid); if (!o) return { ok: true }; delete o.wip; return { ok: true, msg: `${BY[o.id].nome} del covo: finita.` }; }
+    const Cv = covoAt(st, J.x, J.y), bag = bauleOf(st, Cv) || O().inv(st), [tx, ty] = tileOf(J.x, J.y);
+    const r = terrainDo(st, BY[J.op], tx, ty, bag);
+    return { ok: true, msg: r.ok ? r.msg + (Cv ? ' La roba è nel baule del covo.' : '') : 'Lì non c\'era più niente da fare.' };
+  }
+  // i lavori della banda in coda: cosa e chi
+  const jobsView = st => (S(st).jobs || []).filter(j => !j.done).map(j => ({ op: j.op, who: j.who ? (Gm().byId(st, j.who) || {}).first : null, x: j.x, y: j.y }));
+
+  // =====================================================================================================================
+  // L'OFFICINA DEL GARAGE: il mezzo parcheggiato accanto si potenzia coi materiali (gli stessi livelli dell'Officina di Dorino)
+  // =====================================================================================================================
+  const UPA = [
+    ['motore', 'Motore', 3, l => ({ ferro: 1 + l, bulloni: 2 + l, olio_motore: 1, tubi: 1 }), 'più spinta e velocità di punta'],
+    ['assetto', 'Assetto e gomme', 3, l => ({ molle: 2 + l, bulloni: 2, ferro: 1 }), 'più tenuta, sterzo più pronto'],
+    ['nitro', 'Nitro', 2, l => ({ bombola: 1, tubi: 2, benzina: 2 + l }), 'Maiusc spinge di più'],
+    ['corazza', 'Corazza saldata', 3, l => ({ lamiera: 3 + 2 * l, ferro: 2, bulloni: 2 }), 'regge meglio urti e colpi'],
+  ];
+  function carAt(st, uid) {
+    const p = st.player, o = uid && st.covo ? st.covo.obj.find(q => q.uid === uid) : null, x = o ? o.x : p.x, y = o ? o.y : p.y;
+    if (p.vehicle) { const v = st.vehicles.find(q => q.id === p.vehicle); if (v && v.kind !== 'vespa' && Math.hypot(v.x - x, v.y - y) < 12) return v; }
+    let best = null, bd = 10; st.vehicles.forEach(v => { if (v.hidden || v.wreck || v.traffic || v.police || (v.rider && v.rider !== 'player')) return; const d = Math.hypot(v.x - x, v.y - y); if (d < bd) { bd = d; best = v; } });
+    return best && best.kind !== 'vespa' ? best : null;
+  }
+  function autoView(st, uid) {
+    const v = carAt(st, uid); if (!v) return null; const K = Gm().VK[v.kind]; v.up = v.up || {};
+    const ups = UPA.map(([id, nome, top, cost, desc]) => { const lvl = id === 'corazza' ? (v.armor || 0) : (v.up[id] | 0), max = lvl >= top, c = max ? {} : cost(lvl); return { id, nome, top, lvl, max, cost: c, desc, miss: max ? [] : missing(st, { cost: c }) }; });
+    const hp = Math.round(Math.max(0, v.hp) / K.hp * 100);
+    if (hp < 100) { const c = { lamiera: 1 + Math.floor((100 - hp) / 35), bulloni: 1 }; ups.push({ id: 'ripara', nome: 'Carrozzeria', top: 0, lvl: 0, max: false, cost: c, desc: 'raddrizza le lamiere, cambia il vetro', miss: missing(st, { cost: c }) }); }
+    return { nome: K.label, hp, ups };
+  }
+  function autoUp(st, id, uid) {
+    const v = carAt(st, uid); if (!v) return { ok: false, msg: 'Non c\'è un mezzo accanto al ponte.' };
+    const V = autoView(st, uid), u = V.ups.find(q => q.id === id); if (!u || u.max) return { ok: false, msg: 'Di più non si può.' };
+    if (u.miss.length) return { ok: false, msg: `Mancano: ${u.miss.join(', ')}.` };
+    pay(st, { cost: u.cost }); if (st.covo && uid) st.covo.busy[uid] = st.clock;
+    if (id === 'ripara') { v.hp = Gm().VK[v.kind].hp; return { ok: true, msg: 'Lamiere raddrizzate, vetro nuovo. Come uscita di fabbrica, quasi.' }; }
+    if (id === 'corazza') v.armor = (v.armor || 0) + 1; else v.up[id] = (v.up[id] | 0) + 1; v._tk = null;
+    return { ok: true, msg: `${u.nome}: livello ${u.lvl + 1}. Si sente subito.` };
+  }
 
   // =====================================================================================================================
   // IL BAULE: uno per covo, senza limiti. Nelle basi della Risacca è la loro scorta; a casa e nei covi reclamati è suo.
@@ -33952,7 +34878,7 @@ var Cantiere = (function () {
   // =====================================================================================================================
   function stationsNear(st, r) {
     const p = st.player, lv = lvOf(st), out = [];
-    (st.covo ? st.covo.obj : []).forEach(o => { const b = BY[o.id]; if (!b || !b.st || o.lv !== lv) return; if (Math.hypot(o.x - p.x, o.y - p.y) < (r || 3)) { out.push(b.st); if (b.st2) out.push(b.st2); } });
+    (st.covo ? st.covo.obj : []).forEach(o => { const b = BY[o.id]; if (!b || !b.st || o.lv !== lv || o.wip) return; if (Math.hypot(o.x - p.x, o.y - p.y) < (r || 3)) { out.push(b.st); if (b.st2) out.push(b.st2); } });
     return out;
   }
   // il banco delle armi: le modifiche montate
@@ -33976,19 +34902,32 @@ var Cantiere = (function () {
   const U = { on: false, cat: 'strutture', sel: null, rot: 0, moving: null, pick: null, ghost: null, ghostId: null, mark: null, grp: null, scene: null, meshes: {}, dirty: true, gx: 0, gy: 0, ok: '', msg: '', msgT: 0, prevTop: false, stRef: null };
   function sceneSync(st) {
     const r = R(), scene = r && r.__models && r.__models.scene; if (!scene) return;
-    if (U.scene !== scene) { U.scene = scene; U.grp = new THREE.Group(); U.grp.name = 'covo'; scene.add(U.grp); U.meshes = {}; }
+    if (U.scene !== scene) { U.scene = scene; U.grp = new THREE.Group(); U.grp.name = 'covo'; U.grp.userData.ugKeep = true; scene.add(U.grp); U.meshes = {}; }   // [sottosuolo] ugKeep: il bunker arredato si vede anche sotto terra
     if (U.stRef !== st) { Object.values(U.meshes).forEach(m => U.grp.remove(m)); U.meshes = {}; U.stRef = st; U.dirty = true; }
+    if (U.jobsKey !== jobsKey(st) || (st.covo && st.covo.obj.some(o => U.meshes[o.uid] && !!U.meshes[o.uid].userData.wip !== !!o.wip))) U.dirty = true;
     const lv = lvOf(st), objs = st.covo ? st.covo.obj : [];
     if (U.dirty) {
       const want = new Set(objs.map(o => o.uid));
       Object.keys(U.meshes).forEach(k => { if (!want.has(k)) { U.grp.remove(U.meshes[k]); delete U.meshes[k]; } });
-      objs.forEach(o => { let m = U.meshes[o.uid]; const b = BY[o.id]; if (!b) return; if (!m || m.userData.kitWait && KIT[b.kit] && KIT[b.kit] !== 'wait') { if (m) U.grp.remove(m); m = model(b); m.userData.kitWait = !!(b.kit && (!KIT[b.kit] || KIT[b.kit] === 'wait')); m.userData.uid = o.uid; U.grp.add(m); U.meshes[o.uid] = m; } m.position.set(o.x, hAt(st, o.x, o.y, o.lv), o.y); m.rotation.y = -o.rot; m.userData.lv = o.lv; });
-      U.dirty = objs.some(o => U.meshes[o.uid] && U.meshes[o.uid].userData.kitWait);
+      objs.forEach(o => { let m = U.meshes[o.uid]; const b = BY[o.id]; if (!b) return; if (!m || (m.userData.wip && !o.wip) || m.userData.kitWait && KIT[b.kit] && KIT[b.kit] !== 'wait') { if (m) U.grp.remove(m); m = model(b); if (o.wip) wipLook(m, b); m.userData.wip = !!o.wip; m.userData.kitWait = !!(b.kit && (!KIT[b.kit] || KIT[b.kit] === 'wait')); m.userData.uid = o.uid; U.grp.add(m); U.meshes[o.uid] = m; } m.position.set(o.x, hAt(st, o.x, o.y, o.lv), o.y); m.rotation.y = -o.rot; m.userData.lv = o.lv; });
+      // [cantiere] i lavori segnati per la banda: un nastro bianco e rosso sulla casella
+      Object.keys(U.meshes).filter(k => /^job:/.test(k)).forEach(k => { U.grp.remove(U.meshes[k]); delete U.meshes[k]; });
+      (st.covo && st.covo.jobs || []).forEach(J => { if (J.done || J.op === 'costruisci') return; const m = jobMark(J); m.position.set(J.x, hAt(st, J.x, J.y, null), J.y); m.userData.lv = null; U.grp.add(m); U.meshes['job:' + J.id] = m; });
+      U.dirty = objs.some(o => U.meshes[o.uid] && U.meshes[o.uid].userData.kitWait); U.jobsKey = jobsKey(st);
     }
     // solo quello del livello dove sei (sotto terra si vede il bunker, sopra il covo)
     Object.values(U.meshes).forEach(m => { m.visible = (m.userData.lv || null) === lv; });
     animate(st);
   }
+  // [cantiere] il cantiere aperto: la costruzione mezza trasparente dentro i pali dell'impalcatura
+  function wipLook(m, b) {
+    m.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = .4; o.material.depthWrite = false; } });
+    const S0 = TS(), [w, d] = b.fp || [1, 1], W = w * S0 / 2, D = d * S0 / 2;
+    for (const [x, z] of [[-W, -D], [W, -D], [-W, D], [W, D], [0, -D], [0, D]]) box(m, .1, 3.4, .1, '#b89a6a', x, 1.7, z);
+    for (const y of [1.2, 2.4]) { box(m, w * S0, .08, .08, '#b89a6a', 0, y, -D); box(m, w * S0, .08, .08, '#b89a6a', 0, y, D); box(m, .08, .08, d * S0, '#b89a6a', -W, y, 0); box(m, .08, .08, d * S0, '#b89a6a', W, y, 0); }
+    box(m, 1, .5, .7, '#8a8478', W - .6, .25, D + .6); box(m, .9, .4, .4, '#9a5a44', -W + .6, .2, D + .5);
+  }
+  function jobMark(J) { const g = new THREE.Group(); for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; box(g, .06, 1.1, .06, '#e8e0cc', Math.cos(a) * .8, .55, Math.sin(a) * .8); } for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4, r0 = box(g, 1.15, .08, .02, i % 2 ? '#c83a2a' : '#e8e0cc', Math.cos(a) * .57, .95, Math.sin(a) * .57); r0.rotation.y = -a + Math.PI / 2; } return g; }
   const hAt = (st, x, y, lv) => { if (lv && lv !== 'ug') return window.InterniArte && InterniArte.floorY && InterniArte.floorY() != null ? InterniArte.floorY() : 0; if (lv === 'ug' && typeof Livelli !== 'undefined') { const L = Livelli.S(st); return Livelli.floorAt ? (() => { try { return Livelli.heightOf(st, { lv: { k: 'ug' }, x, y }); } catch (e) { return 0; } })() : 0; } const r = R(); return r && r.groundH ? r.groundH(x, y) : 0; };
   // le animazioni: il fuoco, la radio, il rullo, l'ago… più vive quando la postazione è in uso
   function animate(st) {
@@ -34087,7 +35026,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
     const po = U.pick ? (st.covo.obj.find(o => o.uid === U.pick)) : null;
     const sel = po ? `<div class="cnsel"><b>${esc(BY[po.id].nome)}</b><div class="cnrow"><button class="b" data-a="sposta">Sposta</button><button class="b" data-a="gira">Gira</button><button class="b bad" data-a="togli">Togli</button></div>${BY[po.id].st ? '<small style="color:rgba(233,220,188,.6)">Fuori dal cantiere: cliccala per usarla.</small>' : ''}</div>` : '';
     const C = covoAt(st, st.player.x, st.player.y);
-    const top = `<div class="cntop"><b>${esc(C ? C.name : 'Nessun covo qui')}</b><small>${C ? 'Clic: piazza · rotella o R: gira · tasto destro: lascia · clic su una cosa messa: sposta, gira, togli · Y: esci' : 'Qui non hai un covo.'}</small>${!C ? '<div style="margin-top:8px"><button class="b" data-a="reclama">Fanne il tuo covo</button></div>' : ''}${lvOf(st) ? '<small>Sei sotto terra: costruisci nel bunker.</small>' : ''}</div>`;
+    const top = `<div class="cntop"><b>${esc(C ? C.name : 'Nessun covo qui')}</b><small>${C ? 'Clic: piazza · rotella o R: gira · tasto destro: lascia · clic su una cosa messa: sposta, gira, togli · Y: esci' : 'Qui non hai un covo.'}</small>${!C ? '<div style="margin-top:8px"><button class="b" data-a="reclama">Fanne il tuo covo</button></div>' : ''}${lvOf(st) === 'ug' ? '<small>Sei sotto terra: costruisci nel bunker.</small>' : ''}${C && !lvOf(st) && inCity(st.player.x, st.player.y) ? '<small>In città: solo al chiuso. Entra nella stanza del covo, o scendi sotto terra.</small>' : ''}${jobsLeft(st) ? `<small>Lavori della banda in coda: ${jobsLeft(st)}.</small>` : !lvOf(st) && C && !inCity(st.player.x, st.player.y) ? `<small>${crewAll(st).length ? 'Disboscare, cavare e le costruzioni grandi li fa la banda.' : 'Non hai una banda: il lavoro pesante lo fai da te.'}</small>` : ''}</div>`;
     const html = `${top}${sel}<div class="cnbar"><div class="cncats">${cats}${showMsg ? `<span class="cnmsg ${U.msgOk ? '' : 'no'}">${esc(U.msg)}</span>` : ''}<button class="pill x" data-a="esci">Esci · Y</button></div><div class="cncards">${cards}</div></div>`;
     if (html !== lastHtml) { const sc = m.querySelector('.cncards') ? m.querySelector('.cncards').scrollLeft : 0; m.innerHTML = html; lastHtml = html; const cc = m.querySelector('.cncards'); if (cc) cc.scrollLeft = sc; }
     m.querySelectorAll('canvas[data-th]').forEach(c => { if (c.dataset.done) return; const b = BY[c.dataset.th], t = cardThumb(b); if (t) { c.getContext('2d').drawImage(t, 0, 0, 128, 128, 0, 0, 96, 96); c.dataset.done = 1; } });
@@ -34112,7 +35051,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   function toggle(on) {
     const st = ST(), ui = PV() && PV().ui; if (!st || !ui) return;
     U.on = on === undefined ? !U.on : on;
-    if (U.on) { preload(); U.prevTop = !!ui.top; ui.top = true; U.cat = covoAt(st, st.player.x, st.player.y) ? (lvOf(st) ? 'arredi' : 'strutture') : 'terreno'; if (typeof MenuUI !== 'undefined' && MenuUI.state.open) MenuUI.close(); }
+    if (U.on) { preload(); U.prevTop = !!ui.top; ui.top = true; U.cat = covoAt(st, st.player.x, st.player.y) ? (lvOf(st) || inCity(st.player.x, st.player.y) ? 'arredi' : 'strutture') : 'terreno'; if (typeof MenuUI !== 'undefined' && MenuUI.state.open) MenuUI.close(); }
     else { ui.top = U.prevTop; if (U.moving) { const o = U.moving; U.moving = null; S(st).obj.push(o); (o.tiles || []).forEach(([tx, ty, orig]) => { if (orig !== null && orig !== undefined && !o.lv) { Gm().setTile(tx, ty, T().BLD); dirty(tx, ty); } }); U.dirty = true; } U.sel = null; U.pick = null; }
     lastHtml = ''; render(st);
   }
@@ -34122,7 +35061,10 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
     const b = U.sel ? BY[U.sel] : null, g = R().screenToGround(nx, ny); if (!g) return;
     if (b) {
       const [x, y] = snap(b, g.x, g.y, U.rot);
-      if (b.cat === 'terreno') { const why = canPlace(st, b, x, y, 0); if (why) return say({ ok: false, msg: why }); const [tx, ty] = tileOf(x, y); return say(terrain(st, b, tx, ty)); }
+      if (b.cat === 'terreno') { const why = canPlace(st, b, x, y, 0); if (why) return say({ ok: false, msg: why }); const [tx, ty] = tileOf(x, y);
+        // [cantiere] con la banda si segna il lavoro e ci vanno loro; senza, lo fai tu
+        if (crewAll(st).length) { if ((S(st).jobs || []).some(j => !j.done && j.op === b.op && Math.abs(j.x - x) < .5 && Math.abs(j.y - y) < .5)) return say({ ok: false, msg: 'È già segnato.' }); addJob(st, { op: b.op, x, y }); U.dirty = true; return say({ ok: true, msg: `Segnato: ci pensa la banda (${jobsLeft(st)} in coda).` }); }
+        return say(terrain(st, b, tx, ty)); }
       const r = place(st, b, x, y, U.rot, U.moving); say(r); if (r.ok && U.moving) { U.moving = null; U.sel = null; }
       return;
     }
@@ -34144,17 +35086,17 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   // fuori dal cantiere: le postazioni si cliccano, ci vai, e si apre il loro banco
   function pick(st, nx, ny, o) {
     if (U.on || st.player.vehicle || !st.covo || !st.covo.obj.length) return null; const r = R(), lv = lvOf(st); let best = null, bd = Math.max(26, o.h * .045);
-    st.covo.obj.forEach(c => { const b = BY[c.id]; if (!b || !(b.st || b.sleep || b.menu || b.baule) || c.lv !== lv) return; const pr = r.project(c.x, .9, c.y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = c; } });
-    return best ? { kind: 'loot', via: 'covo', ref: best.uid, x: best.x, y: best.y, label: BY[best.id].baule ? 'Apri il baule' : `Usa: ${BY[best.id].nome}` } : null;
+    st.covo.obj.forEach(c => { const b = BY[c.id]; if (!b || !(b.st || b.sleep || b.menu || b.baule || b.store) || c.lv !== lv || c.wip) return; const pr = r.project(c.x, .9, c.y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = c; } });
+    return best ? { kind: 'loot', via: 'covo', ref: best.uid, x: best.x, y: best.y, label: BY[best.id].baule ? 'Apri il baule' : BY[best.id].store ? `Apri: ${BY[best.id].nome}` : `Usa: ${BY[best.id].nome}` } : null;
   }
   const find = (st, ref) => { const o = st.covo && st.covo.obj.find(c => c.uid === ref); return o ? { x: o.x, y: o.y } : null; };
   const goal = (st, ref) => { const o = st.covo && st.covo.obj.find(c => c.uid === ref); if (!o) return null; const G = Gm(); for (let r = 1.2; r < 3; r += .4) for (let a = 0; a < 8; a++) { const x = o.x + Math.cos(a * Math.PI / 4 + Math.PI / 2 - o.rot) * r, y = o.y + Math.sin(a * Math.PI / 4 + Math.PI / 2 - o.rot) * r; if (G.walkM(x, y)) return { x, y }; } return { x: o.x, y: o.y }; };
   const reach = () => 1.9;
   function arrive(st, ref) {
     const o = st.covo.obj.find(c => c.uid === ref); if (!o) return; const b = BY[o.id]; st.covo.busy[o.uid] = st.clock;
-    if (b.baule) { if (typeof MenuUI !== 'undefined') MenuUI.open('baule'); return; }
+    if (b.baule || b.store) { if (typeof MenuUI !== 'undefined') MenuUI.open('baule'); return; }
     if (b.sleep) { const a = (typeof Azioni !== 'undefined' ? Azioni.playerActions(st) : []).find(x => /dorm|pisolino|riposa/i.test(x.label) && x.run); if (a) Gm().feed(st, a.run() || 'Ti sdrai.', 'info'); else Gm().feed(st, 'Ti sdrai un momento sulla branda. Non hai sonno.', 'info'); return; }
-    if (typeof MenuUI !== 'undefined') MenuUI.open('lavora', { st: b.st, st2: b.st2, titolo: b.nome, armi: b.menu === 'armi', uid: o.uid });
+    if (typeof MenuUI !== 'undefined') MenuUI.open('lavora', { st: b.st, st2: b.st2, titolo: b.nome, armi: b.menu === 'armi', auto: b.menu === 'auto', uid: o.uid });
   }
 
   function loop() {
@@ -34162,9 +35104,13 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
     requestAnimationFrame(loop);
   }
   function init() { if (!window.__pv || !window.THREE) { setTimeout(init, 200); return; } const G = Gm(); if (G.HOOKS) { const p0 = G.HOOKS.playerWeapon; G.HOOKS.playerWeapon = (st, k, W) => playerWeapon(st, k, p0 ? p0(st, k, W) : W); } preload(); requestAnimationFrame(loop); }
+  // [cantiere] la logica della banda gira col motore (anche senza grafica)
+  { const R0 = RIS(); if (R0 && R0.EXT && R0.EXT.do) R0.EXT.do.covoLavoro = jobDone; }
+  { const G = typeof Game !== 'undefined' ? Game : null; if (G && G.HOOKS) { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); if (!st.__cnT || st.clock - st.__cnT > 1) { st.__cnT = st.clock; try { jobsStep(st); } catch (e) { if (!U.jerr) { U.jerr = 1; console.error('[Cantiere] banda', e); } } } }; } }
   if (typeof window !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init, 0); }
-  return { bauleHere, bauli, baulePut, bauleTake, bauleAll, active: () => U.on, toggle, down, wheel, pick, find, goal, reach, arrive, stationsNear, mod, modsView, MODS, B, BY, covi, covoAt, claim, place, remove, terrain, under, state: U, model };
+  return { jobsView, addJob, jobsStep, crewAll, autoView, autoUp, carAt, inCity, terrainDo, footprint, canPlace, S, bauleHere, bauli, baulePut, bauleTake, bauleAll, active: () => U.on, toggle, down, wheel, pick, find, goal, reach, arrive, stationsNear, mod, modsView, MODS, B, BY, covi, covoAt, claim, place, remove, terrain, under, state: U, model };
 })();
+if (typeof module !== 'undefined') module.exports = Cantiere;
 </script>
 <script>/* Porto Vecchio — Il Menu: una valigetta sola per tutto quello che si tocca.
    Schede a sinistra: Zaino (la roba a griglia, come in una valigetta: la roba grande occupa più caselle), Personaggio (bisogni, lavoro, quello che sai fare),
@@ -34798,7 +35744,7 @@ var MenuUI = (function () {
     // dalla postazione del covo: solo le sue ricette (il banco delle armi: le armi e le modifiche)
     const mine = r => !A0 || (RC[r.id] && RC[r.id].st && RC[r.id].st.split('|').some(k => k === A0.st || k === A0.st2)) || (A0.armi && r.out.some(o => O().CAT[o.k] && O().CAT[o.k].cat === 'armi'));
     const l = v.list.filter(r => (U.filt === 'tutto' || r.kind === U.filt) && mine(r));
-    const armi = A0 && A0.armi && typeof Cantiere !== 'undefined' ? pArmi(st) : '';
+    const armi = (A0 && A0.armi && typeof Cantiere !== 'undefined' ? pArmi(st) : '') + (A0 && A0.auto && typeof Cantiere !== 'undefined' && Cantiere.autoView ? pAuto(st, A0) : '');   // [cantiere] l'officina del garage
     if (!U.sel || !l.some(r => r.id === U.sel)) U.sel = (l.find(r => r.ok) || l[0] || {}).id || null;
     const r = l.find(x => x.id === U.sel), outId = x => x.out[0] ? x.out[0].k : 'casse';
     const tiles = l.slice(0, 180).map(x => `<button class="rec ${x.ok ? 'ok' : x.here ? '' : 'no'} ${x.id === U.sel ? 'sel' : ''}" data-a="sel" data-x="${esc(JSON.stringify(x.id))}" title="${esc(cap(x.nome))}">${ic(outId(x))}<span>${esc(cap(x.nome))}</span></button>`).join('');
@@ -34812,6 +35758,12 @@ var MenuUI = (function () {
     return `${armi}<div class="lav"><div><h4>Quaderno · ${l.filter(x => x.ok).length} cose che puoi fare adesso</h4><div class="recs">${tiles || '<div class="dim">Nessuna ricetta.</div>'}</div></div>${det}</div>`;
   }
 
+  // [cantiere] l'officina del garage: il mezzo parcheggiato accanto si potenzia coi materiali
+  function pAuto(st, A0) {
+    const V = Cantiere.autoView(st, A0.uid);
+    if (!V) return '<div class="armi"><h4>Officina del garage</h4><div class="dim">Porta qui un mezzo (a meno di dieci metri dal ponte sollevatore): la Vespa non si elabora.</div></div>';
+    return `<div class="armi"><h4>Officina del garage · ${esc(V.nome)} · carrozzeria ${V.hp}%</h4><div class="wm">${V.ups.map(u => `<div class="mod ${u.max ? 'on' : ''}"><b>${esc(u.nome)} ${'●'.repeat(u.lvl)}${'○'.repeat(u.top - u.lvl)}</b><small>${esc(u.desc)}</small>${u.max ? '<em>al massimo</em>' : `<small class="${u.miss.length ? 'n' : ''}">${Object.entries(u.cost).map(([k, q]) => `${esc(O().nm(k))} ×${q}`).join(', ')}</small>${btn('autoup', u.id === 'ripara' ? 'Ripara' : 'Monta', { id: u.id, uid: A0.uid }, 'y', !!u.miss.length)}`}</div>`).join('')}</div></div>`;
+  }
   // il banco delle armi: le modifiche, arma per arma
   function pArmi(st) {
     const V = Cantiere.modsView(st);
@@ -34955,6 +35907,7 @@ var MenuUI = (function () {
       case 'togli': act('togli', x); break;
       case 'tieni': act('tieni', x); break;
       case 'mod': say(Cantiere.mod(st, x.k, x.id)); break;
+      case 'autoup': say(Cantiere.autoUp(st, x.id, x.uid)); break;   // [cantiere] officina del garage
       case 'bprendi': say(Cantiere.bauleTake(st, x.id, x.q)); break;
       case 'bmetti': say(Cantiere.baulePut(st, x.id, x.q)); break;
       case 'bprendi_tutto': say(Cantiere.bauleAll(st, 'prendi')); break;

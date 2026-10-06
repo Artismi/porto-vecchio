@@ -8,7 +8,10 @@
    Le grotte naturali (Grotta del Romito, Eremo) sono già scavate e passano da parte a parte.
    PONTI. Il Ponte del Diavolo attraversa la gola: sopra si cammina sulle assi, sotto si passa sul fondo.
    Il giocatore sta su un livello: st.player.lv = null (superficie) | { k: 'ug' } (sotto terra) | { k: 'ponte', id }.
-   Il motore chiede a questo modulo dove si può camminare (freeFn) e cosa succede dopo ogni passo (moved). */
+   Il motore chiede a questo modulo dove si può camminare (freeFn) e cosa succede dopo ogni passo (moved).
+   [sottosuolo] Si scava anche sotto la città: sotto una casa «Apri una botola sopra» sfonda il pavimento e sbuchi dentro
+   (portale 'interno'); da dentro una casa H apre una botola nel pavimento e scendi. Maiusc+H scava di filato (avanti finché
+   non lo fermi o trovi qualcosa). V sale e scende anche da tombini, scale e grate. Scavando si trova roba sepolta (hooks.dug). */
 var Livelli = (function () {
   'use strict';
   const G = typeof Game !== 'undefined' ? Game : require('./game.js');
@@ -28,6 +31,7 @@ var Livelli = (function () {
   function init(st) {
     const L = st.lv = { ug: new Uint8Array(N), fl: new Float32Array(N), kind: new Uint8Array(N), portals: [], rooms: [], rev: 1, job: null, found: {} };
     (W.CAVES || []).forEach(cv => carveCave(L, cv));
+    hooks.init.forEach(f => { try { f(L, st); } catch (e) { if (typeof console !== 'undefined') console.error('[Livelli] init', e); } });   // [sottosuolo] fogne, cripte, carceri, metropolitana
     return L;
   }
   const surfWalk = (tx, ty) => G.walkT(tx, ty);
@@ -58,6 +62,9 @@ var Livelli = (function () {
     else L.portals.push({ kind: 'pozzo', nat: true, s: last, u: last, name: cv.name });
   }
   const portalAt = (L, tx, ty, which) => L.portals.find(P => P[which][0] === tx && P[which][1] === ty);
+  const CLIMB = new Set(['botola', 'pozzo', 'tombino', 'scala', 'grata', 'interno']);   // [sottosuolo] da qui si sale e si scende
+  const hooks = { dug: [], init: [] };   // [sottosuolo] chi vuole sapere quando si scava una casella nuova: (st, tx, ty, L) → messaggio o null
+  const onDug = (st, tx, ty, L) => { let m = null; for (const f of hooks.dug) { try { m = f(st, tx, ty, L) || m; } catch (e) { } } return m; };
 
   // ---------------- PONTI ----------------
   const BR = (W.BRIDGES || []).map(B => { const dx = B.b[0] - B.a[0], dy = B.b[1] - B.a[1], len = Math.hypot(dx, dy); return Object.assign({}, B, { ux: dx / len, uy: dy / len, len }); });
@@ -82,7 +89,7 @@ var Livelli = (function () {
   // dopo il passo: entrare e uscire dai cunicoli, salire e scendere dal ponte. true = gestito (niente porte)
   function moved(st, dx, dy, hit) {
     const p = st.player, L = S(st), [tx, ty] = ti(p.x, p.y);
-    if (L.job && L.job.x !== undefined && Math.hypot(p.x - L.job.x, p.y - L.job.y) > 1.2) { L.job = null; G.feed(st, 'Lasci perdere lo scavo.'); }
+    if (L.job && L.job.x !== undefined && Math.hypot(p.x - L.job.x, p.y - L.job.y) > 1.2) { L.job = null; L.auto = null; G.feed(st, 'Lasci perdere lo scavo.'); }
     if (!p.lv) {
       // il ponte: dal capo, verso l'altra sponda
       for (const B of BR) { const q = onDeck(B, p.x, p.y); if (q.d < B.w / 2 + .3 && q.t > -.05 && q.t < 1.05 && Math.abs(G.MAP.elev[idx(tx, ty)] - deckH(B, q.t)) < 1.3 && (q.t < .2 || q.t > .8)) { p.lv = { k: 'ponte', id: B.id }; return true; } }
@@ -134,7 +141,8 @@ var Livelli = (function () {
   }
   function step(st, dt) {
     const L = st.lv; if (!L) { if (st.player) S(st); return; }
-    if (L.job && st.clock >= L.job.until) { const j = L.job; L.job = null; const msg = j.fn(); if (msg) G.feed(st, msg); L.rev++; }
+    if (L.job && st.clock >= L.job.until) { const j = L.job; L.job = null; const msg = j.fn(); if (msg) G.feed(st, msg); L.rev++; if (L.auto && j.what === 'avanti') autoNext(st); }
+    if (L.auto && !L.job && !(st.player.lv && st.player.lv.k === 'ug')) L.auto = null;
     // posti da scoprire sul Monte Scuro
     if (!st.__lvT || st.clock - st.__lvT > .5) {
       st.__lvT = st.clock; const p = st.player;
@@ -184,7 +192,8 @@ var Livelli = (function () {
         return 'La terra cede di colpo: luce, neve, aria. Sei sbucato sul pendio.';
       }
       L.ug[j] = 1; L.fl[j] = fl; L.kind[j] = 2;
-      if (surf === T.BLD) return 'Sopra la testa, le fondamenta di una casa.';
+      const found = onDug(st, nx, ny, L); if (found) { if (L.auto) L.auto = null; return found; }   // [sottosuolo] roba sepolta
+      if (surf === T.BLD) return 'Sopra la testa, le fondamenta di una casa. Da qui «Apri una botola sopra» sbuca dentro.';
       if (E - fl < ROOF + .6) return 'Il soffitto è sottile: si sente la neve sopra.';
       return dz < 0 ? 'Scendi di un gradino nella terra.' : dz > 0 ? 'Risali di un gradino.' : 'Un altro paio di metri di cunicolo.';
     });
@@ -198,9 +207,9 @@ var Livelli = (function () {
     if (!todo.length) return 'Qui è già largo.';
     const mat = hard ? 'roccia' : 'terra', t = tool(st, mat); if (!t) return need(mat);
     const busy = start(st, 'stanza', 4 + todo.length * (hard ? 3 : 1.8), () => {
-      todo.forEach(([x, y]) => { const i = idx(x, y); if (EL[i] - f < 1.1) return; L.ug[i] = 2; L.fl[i] = f; L.kind[i] = 2; });
+      let found = null; todo.forEach(([x, y]) => { const i = idx(x, y); if (EL[i] - f < 1.1) return; L.ug[i] = 2; L.fl[i] = f; L.kind[i] = 2; found = onDug(st, x, y, L) || found; });
       L.rooms.push({ x: (tx + .5) * TS, y: (ty + .5) * TS, f, deco: 'covo' });
-      return 'Una stanza sotto terra. Ci stanno una branda, una cassa, una lampada.';
+      return 'Una stanza sotto terra. Ci stanno una branda, una cassa, una lampada.' + (found ? ' ' + found : '');
     });
     return busy || 'Allarghi il cunicolo…';
   }
@@ -210,24 +219,88 @@ var Livelli = (function () {
     const [tx, ty] = ti(p.x, p.y), i = idx(tx, ty); if (portalAt(L, tx, ty, 'u')) return 'Qui un\'uscita c\'è già.';
     const E = EL[i], v = G.tileAt(tx, ty);
     if (E - L.fl[i] > 5) return 'Sopra c\'è troppa terra: cinque metri e più.';
-    if (!G.walkT(tx, ty)) return v === T.BLD ? 'Sopra c\'è una casa: sbucheresti in cantina, ma il pavimento è di cemento.' : 'Sopra c\'è la roccia viva.';
+    if (v === T.BLD) return digInto(st, tx, ty);   // [sottosuolo] sotto una casa: si sfonda il pavimento e si sbuca dentro
+    if (!G.walkT(tx, ty)) return 'Sopra c\'è la roccia viva.';
     const mat = HARD.has(v) ? 'roccia' : 'terra', t = tool(st, mat); if (!t) return need(mat);
     const busy = start(st, 'su', 8 + (E - L.fl[i]) * 2, () => { L.portals.push({ kind: 'botola', s: [tx, ty], u: [tx, ty] }); return 'Sbuchi alla luce. Rimetti la botola, ci butti sopra la neve.'; });
     return busy || 'Scavi verso l\'alto, la terra ti cade in faccia…';
   }
-  // salire e scendere da botole e pozzi
+  // [sottosuolo] sotto una casa: si sfonda il pavimento del piano terra e si sbuca dentro (portale 'interno')
+  const bldOf = (tx, ty) => { const W0 = G.MAP.world, bi = W0.bIndex ? W0.bIndex[idx(tx, ty)] : -1; return bi >= 0 ? bi : null; };
+  const hasInside = bi => { try { const b = G.BUILDINGS[bi]; return !!(b && b.door && G.INT && G.INT.layout(b).ent); } catch (e) { return false; } };
+  function digInto(st, tx, ty) {
+    const p = st.player, L = S(st), i = idx(tx, ty), bi = bldOf(tx, ty);
+    if (bi === null || !hasInside(bi)) return 'Sopra c\'è un muro pieno: di qua non si sbuca.';
+    if (EL[i] - L.fl[i] > 5.5) return 'Sopra c\'è troppa terra: cinque metri e più.';
+    const t = tool(st, 'terra'); if (!t) return need('terra');
+    const b = G.BUILDINGS[bi], nome = b.name || 'una casa';
+    const busy = start(st, 'su', 10 + (EL[i] - L.fl[i]) * 2, () => {
+      if (!portalAt(L, tx, ty, 'u')) L.portals.push({ kind: 'interno', s: [tx, ty], u: [tx, ty], bi, name: nome });
+      p.lv = null; G.enterBuilding(st, bi);
+      return `Sfondi il pavimento dal basso: sei dentro ${b.name ? b.name : 'una casa'}. Sotto il tappeto resta il buco (V per tornare giù).`;
+    });
+    return busy || 'Scavi verso l\'alto, contro le fondamenta…';
+  }
+  // [sottosuolo] da dentro una casa: una botola nel pavimento del piano terra
+  function digFloor(st) {
+    const p = st.player, L = S(st); if (!p.indoor || p.indoor.f !== 0) return p.indoor ? 'Si scava solo al piano terra.' : null;
+    const bi = p.indoor.b, b = G.BUILDINGS[bi]; if (!b) return null;
+    const ex = L.portals.find(P => P.kind === 'interno' && P.bi === bi); if (ex) return 'La botola c\'è già: V per scendere.';
+    const t = tool(st, 'terra'); if (!t) return need('terra');
+    // la casella dell'edificio sotto i piedi (le coordinate dentro casa sono quelle del mondo)
+    let [tx, ty] = ti(p.x, p.y); tx = clamp(tx, b.x, b.x + b.w - 1); ty = clamp(ty, b.y, b.y + b.h - 1);
+    const busy = start(st, 'botola', 14, () => {
+      const i = idx(tx, ty); if (!L.ug[i]) { L.ug[i] = 2; L.fl[i] = EL[i] - 3.2; L.kind[i] = 2; }
+      L.portals.push({ kind: 'interno', s: [tx, ty], u: [tx, ty], bi, name: b.name || 'casa' });
+      return 'Alzi le mattonelle, spacchi il massetto, scavi. Una botola nel pavimento: V per scendere.';
+    });
+    return busy || 'Sposti il tappeto e attacchi il pavimento…';
+  }
+  function goDownFromInside(st) {
+    const p = st.player, L = S(st); if (!p.indoor) return null;
+    const P = L.portals.find(P => P.kind === 'interno' && P.bi === p.indoor.b); if (!P || p.indoor.f !== 0) return null;
+    G.exitBuilding(st); p.lv = { k: 'ug' }; L.lastU = P.u; p.x = (P.u[0] + .5) * TS; p.y = (P.u[1] + .5) * TS; p.path = [];
+    return P.nat ? `Scendi nella ${P.name}.` : 'Scendi dalla botola nel pavimento.';
+  }
+  // salire e scendere da botole, pozzi, tombini, scale e grate
+  const DOWN = { botola: 'Scendi la scala. Richiudi la botola sopra la testa.', tombino: 'Sollevi il tombino e scendi i pioli. Puzza.', scala: 'Scendi le scale.', grata: 'Sposti la grata e ti cali giù.' };
+  const UP = { botola: 'Risali e spingi la botola: fuori.', tombino: 'Spingi il tombino: sei in mezzo alla strada.', scala: 'Risali le scale: aria, luce.', grata: 'Spingi la grata e ti tiri su.', pozzo: 'Risali il pozzo: fuori.' };
   function climb(st) {
     const p = st.player, L = S(st), [tx, ty] = ti(p.x, p.y);
-    const P = L.portals.find(P => (P.kind === 'botola' || P.kind === 'pozzo') && P.s[0] === tx && P.s[1] === ty);
+    const P = L.portals.find(P => CLIMB.has(P.kind) && (p.lv ? P.u : P.s)[0] === tx && (p.lv ? P.u : P.s)[1] === ty);
     if (!P) return null;
-    if (!p.lv) { p.lv = { k: 'ug' }; L.lastU = P.u; p.x = (tx + .5) * TS; p.y = (ty + .5) * TS; return P.nat ? `Scendi nel pozzo della ${P.name}.` : 'Scendi la scala. Richiudi la botola sopra la testa.'; }
-    if (p.lv.k === 'ug') { if (!G.walkT(tx, ty)) return 'La botola è bloccata.'; p.lv = null; return 'Risali e spingi la botola: fuori.'; }
+    if (P.kind === 'interno') {
+      if (!p.lv || p.lv.k !== 'ug') return null;
+      if (!hasInside(P.bi)) return 'Sopra è crollato tutto.';
+      p.lv = null; G.enterBuilding(st, P.bi); return `Sali dalla botola: sei dentro ${P.name || 'la casa'}.`;
+    }
+    if (!p.lv) { p.lv = { k: 'ug' }; L.lastU = P.u; p.x = (P.u[0] + .5) * TS; p.y = (P.u[1] + .5) * TS; return P.nat ? `Scendi nel pozzo della ${P.name}.` : DOWN[P.kind] || DOWN.botola; }
+    if (p.lv.k === 'ug') { if (!G.walkT(P.s[0], P.s[1])) return 'Sopra è bloccato.'; p.lv = null; p.x = (P.s[0] + .5) * TS; p.y = (P.s[1] + .5) * TS; if (L.auto) L.auto = null; return UP[P.kind] || UP.botola; }
     return null;
   }
+  // [sottosuolo] scavare di filato: finito un tratto, un passo avanti e si riattacca (si ferma se ti muovi, se trovi qualcosa o se sbuchi)
+  function autoDig(st, dz) {
+    const p = st.player, L = S(st); if (!p.lv || p.lv.k !== 'ug') return 'Prima devi essere sotto terra.';
+    if (L.auto) { L.auto = null; return 'Smetti di scavare di filato.'; }
+    const [dx, dy] = dirOf(p.face); L.auto = { dz: dz || 0, dx, dy, n: 0 };
+    const m = digAhead(st, L.auto.dz); if (/^(Scavi|Picconi)/.test(m || '')) return m + ' (di filato: Maiusc+H per smettere)';
+    L.auto = null; return m;
+  }
+  function autoNext(st) {
+    const L = S(st), A = L.auto, p = st.player; if (!A || L.job) return;
+    if (!p.lv || p.lv.k !== 'ug') { L.auto = null; return; }
+    const [tx, ty] = ti(p.x, p.y), nx = tx + A.dx, ny = ty + A.dy;
+    if (!inb(nx, ny) || !L.ug[idx(nx, ny)]) { L.auto = null; return; }
+    p.x = (nx + .5) * TS; p.y = (ny + .5) * TS; p.face = Math.atan2(A.dy, A.dx); L.lastU = [nx, ny];
+    if (++A.n > 60) { L.auto = null; G.feed(st, 'Le braccia non reggono più: ti fermi.'); return; }
+    const m = digAhead(st, A.dz); if (!/^(Scavi|Picconi)/.test(m || '')) { L.auto = null; if (m && !/già scavato/.test(m)) G.feed(st, m); else if (m) G.feed(st, 'Sbuchi in un passaggio già scavato.', 'good'); }
+  }
   // il tasto H (scava/sali): fa la cosa giusta per dove sei
-  function key(st, k) {
-    const p = st.player; if (p.vehicle || p.indoor) return null;
+  function key(st, k, shift) {
+    const p = st.player; if (p.vehicle) return null;
+    if (p.indoor) { if (k === 'v') return goDownFromInside(st); if (k === 'h') return digFloor(st); return null; }   // [sottosuolo] dentro casa: la botola nel pavimento
     if (k === 'v') return climb(st) || (p.lv && p.lv.k === 'ug' ? 'Qui non c\'è una scala per salire.' : null);
+    if (k === 'h' && shift && p.lv && p.lv.k === 'ug') return autoDig(st, 0);
     if (k === 'h') { if (!p.lv) return digWall(st) || digHatch(st); if (p.lv.k === 'ug') return digAhead(st, 0); return null; }
     if (k === 'j') return p.lv && p.lv.k === 'ug' ? digAhead(st, -1) : null;
     if (k === 'k') return p.lv && p.lv.k === 'ug' ? digAhead(st, 1) : null;
@@ -236,22 +309,29 @@ var Livelli = (function () {
   }
   // le azioni nel menu «Qui, adesso» delle Tasche
   function actions(st) {
-    const p = st.player; if (!p || p.vehicle || p.indoor) return [];
+    const p = st.player; if (!p || p.vehicle) return [];
     const L = S(st), [tx, ty] = ti(p.x, p.y), out = [], add = (id, label, run, off) => out.push({ id, label, run, off: off || '' });
-    const P = L.portals.find(P => (P.kind === 'botola' || P.kind === 'pozzo') && P.s[0] === tx && P.s[1] === ty);
-    if (P) add('livello', p.lv ? 'Risali (V)' : (P.nat ? 'Scendi nel pozzo (V)' : 'Scendi nella botola (V)'), () => climb(st));
+    if (p.indoor) {   // [sottosuolo]
+      if (p.indoor.f !== 0) return out;
+      const P = L.portals.find(P => P.kind === 'interno' && P.bi === p.indoor.b);
+      if (P) add('livello', 'Scendi dalla botola nel pavimento (V)', () => goDownFromInside(st)); else add('botola', 'Scava una botola nel pavimento (H)', () => digFloor(st));
+      return out;
+    }
+    const P = L.portals.find(P => CLIMB.has(P.kind) && P.kind !== 'interno' && P.s[0] === tx && P.s[1] === ty) || (p.lv ? L.portals.find(P => P.kind === 'interno' && P.u[0] === tx && P.u[1] === ty) : null);
+    if (P) add('livello', p.lv ? (P.kind === 'interno' ? `Sali in ${P.name || 'casa'} (V)` : 'Risali (V)') : (P.nat ? 'Scendi nel pozzo (V)' : { tombino: 'Scendi nel tombino (V)', scala: 'Scendi le scale (V)', grata: 'Scendi dalla grata (V)' }[P.kind] || 'Scendi nella botola (V)'), () => climb(st));
     if (!p.lv) {
       const [dx, dy] = dirOf(p.face);
       if (G.tileAt(tx + dx, ty + dy) === T.CLIFF) add('cunicolo', 'Scava un cunicolo nella parete (H)', () => digWall(st));
       else if (!P) add('botola', 'Scava una botola qui (H)', () => digHatch(st));
     } else if (p.lv.k === 'ug') {
       add('avanti', 'Scava avanti (H)', () => digAhead(st, 0)); add('giu', 'Scava in discesa (J)', () => digAhead(st, -1)); add('su_', 'Scava in salita (K)', () => digAhead(st, 1));
-      add('stanza', 'Allarga in una stanza (N)', () => digRoom(st)); if (!P) add('botola_su', 'Apri una botola sopra', () => digUp(st));
+      add('filato', L.auto ? 'Smetti di scavare di filato' : 'Scava di filato (Maiusc+H)', () => autoDig(st, 0));
+      add('stanza', 'Allarga in una stanza (N)', () => digRoom(st)); if (!P) add('botola_su', G.tileAt(tx, ty) === T.BLD ? 'Sfonda il pavimento sopra: sbuchi dentro' : 'Apri una botola sopra', () => digUp(st));
     }
     return out;
   }
   if (AZ && AZ.playerActions) { const prev = AZ.playerActions; AZ.playerActions = st => (prev(st) || []).concat(actions(st)); }
   { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); step(st, dt); }; }
-  return { S, freeFn, moved, heightOf, floorAt, key, actions, step, digHatch, digWall, digAhead, digRoom, digUp, climb, BR, deckH, onDeck, init };
+  return { S, freeFn, moved, heightOf, floorAt, key, actions, step, digHatch, digWall, digAhead, digRoom, digUp, digFloor, digInto, autoDig, climb, goDownFromInside, BR, deckH, onDeck, init, hooks, CLIMB, ROOF };
 })();
 if (typeof module !== 'undefined') module.exports = Livelli;

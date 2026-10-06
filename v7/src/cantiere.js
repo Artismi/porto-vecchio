@@ -7,7 +7,12 @@
    Le cose si pagano in materiali (dalle tasche e dalle scorte delle basi), oppure se ce l'hai in tasca la piazzi direttamente (una sedia, un fornello, la macchina da cucire).
    Le postazioni sono oggetti veri: si animano (il fuoco, la radio che lampeggia, il rullo della stamperia, l'ago che va), e cliccandole fuori dal cantiere
    ci vai e si apre il loro banco. Il banco delle armi monta anche le modifiche alle armi (canna, mirino, caricatore, silenziatore, calcio).
-   Stato: st.covo = { covi, obj, mods }. Le strutture rendono solide le caselle (e le restituiscono quando le togli). */
+   Stato: st.covo = { covi, obj, mods, jobs }. Le strutture rendono solide le caselle (e le restituiscono quando le togli).
+   [sottosuolo] IN CITTÀ si costruisce solo al chiuso: dentro la stanza del covo (arredi, casse, deposito armi, postazioni) o sotto terra.
+   FUORI CITTÀ il lavoro pesante lo fa la banda: disboscare, cavare, spianare e tirare su case, garage, capanni, baracche e torrette
+   diventano lavori segnati che i membri liberi della Risacca vanno a fare (la legna e le pietre finiscono nel baule del covo).
+   Senza banda lo fai da te, subito. Il GARAGE ha il portone largo; l'OFFICINA DEL GARAGE potenzia coi materiali il mezzo parcheggiato
+   accanto (motore, assetto, nitro, corazza) e lo ripara. */
 var Cantiere = (function () {
   'use strict';
   const PV = () => window.__pv, ST = () => PV() && PV().st, Gm = () => (PV() && PV().G) || Game, R = () => PV() && PV().R;
@@ -43,8 +48,11 @@ var Cantiere = (function () {
     { id: 'recinto', cat: 'strutture', nome: 'Recinto', fp: [1, 1], solid: 'pieno', cost: { assi: 2, chiodi: 1 }, mk: 'recinto', col: '#8a6a44' },
     { id: 'pavimento', cat: 'strutture', nome: 'Pavimento', fp: [1, 1], cost: { assi: 3 }, mk: 'pavimento', col: '#8a6238' },
     { id: 'tettoia', cat: 'strutture', nome: 'Tettoia', fp: [2, 2], cost: { assi: 6, travi: 4, lamiera: 2 }, mk: 'tettoia', col: '#6a5a4a' },
-    { id: 'capanno', cat: 'strutture', nome: 'Capanno', fp: [3, 3], solid: 'bordo', cost: { assi: 16, travi: 6, chiodi: 3, lamiera: 3 }, mk: 'capanno', col: '#7a5634' },
-    { id: 'baracca', cat: 'strutture', nome: 'Baracca di lamiera', fp: [3, 2], solid: 'bordo', cost: { lamiera: 8, travi: 4, chiodi: 2 }, mk: 'capanno', col: '#7a8088' },
+    { id: 'capanno', cat: 'strutture', nome: 'Capanno', fp: [3, 3], solid: 'bordo', big: 50, cost: { assi: 16, travi: 6, chiodi: 3, lamiera: 3 }, mk: 'capanno', col: '#7a5634' },
+    { id: 'baracca', cat: 'strutture', nome: 'Baracca di lamiera', fp: [3, 2], solid: 'bordo', big: 40, cost: { lamiera: 8, travi: 4, chiodi: 2 }, mk: 'capanno', col: '#7a8088' },
+    { id: 'casa', cat: 'strutture', nome: 'Casetta', desc: 'Quattro muri, il tetto di coppi, la porta. La tirano su in due.', fp: [4, 3], solid: 'bordo', big: 90, cost: { mattoni: 20, malta: 4, travi: 6, assi: 8, cemento: 2, cerniere: 1 }, mk: 'casa', col: '#d8c8a8' },
+    { id: 'garage', cat: 'strutture', nome: 'Garage', desc: 'Portone largo: ci entra la macchina. Dentro, l\'officina.', fp: [4, 4], solid: 'bordo', door: 'largo', big: 100, cost: { lamiera: 10, travi: 8, bulloni: 4, cemento: 2 }, mk: 'garage', col: '#8a8e94' },
+    { id: 'tenda', cat: 'strutture', nome: 'Tenda', desc: 'L\'accampamento: ci si dorme.', fp: [2, 2], cost: { stoffa: 4, corda: 1, tubi: 2 }, mk: 'tenda', col: '#6a6a4a', sleep: 1, out: 1 },
     { id: 'lampione', cat: 'strutture', nome: 'Lampione a batteria', cost: { tubi: 1, lampadine: 1, batteria_auto: 1 }, mk: 'lampione', anim: 'luce' },
     { id: 'bandiera', cat: 'strutture', nome: 'Bandiera della Risacca', cost: { stoffa: 2, tubi: 1 }, mk: 'bandiera', anim: 'bandiera' },
     // arredi (si piazzano liberi; se ce l'hai in tasca non costano niente)
@@ -76,6 +84,8 @@ var Cantiere = (function () {
     { id: 'taniche', cat: 'arredi', nome: 'Taniche', item: 'tanica_vuota', cost: { tanica_vuota: 1 }, pz: 'tanica' },
     { id: 'estintore', cat: 'arredi', nome: 'Estintore', cost: { bombola: 1 }, pz: 'estintore' },
     { id: 'bobina', cat: 'arredi', nome: 'Bobina di cavo', cost: { cavo: 3 }, pz: 'bobina' },
+    { id: 'rastrelliera', cat: 'arredi', nome: 'Deposito armi', desc: 'Rastrelliera col lucchetto: apre le scorte del covo.', cost: { assi: 4, ferro: 1, lucchetto: 1 }, mk: 'rastrelliera', store: 1 },
+    { id: 'deposito', cat: 'arredi', nome: 'Casse del deposito', desc: 'Casse impilate: apre le scorte del covo.', cost: { assi: 4, chiodi: 1 }, pzc: 'mil', store: 1 },
     { id: 'baule', cat: 'arredi', nome: 'Baule', desc: 'Uno per covo. Ci metti quello che vuoi, quanto vuoi.', mk: 'baule', baule: 1 },
     { id: 'poster', cat: 'arredi', nome: 'Manifesto', item: 'poster', cost: { poster: 1 }, mk: 'poster' },
     // postazioni: ognuna col suo banco
@@ -90,12 +100,13 @@ var Cantiere = (function () {
     { id: 'falegname', cat: 'postazioni', nome: 'Banco del falegname', st: 'banco_falegname', stm: 'st_banco_falegname', anim: 'segatura', cost: { assi: 8, chiodi: 2, sega: 1 } },
     { id: 'infermeria', cat: 'postazioni', nome: 'Infermeria', st: 'tavolo_medico', pz: 'infermeria', anim: 'lampadina', cost: { assi: 4, lenzuola: 2, garze: 2 } },
     { id: 'camera_oscura', cat: 'postazioni', nome: 'Camera oscura', st: 'camera_oscura', stm: 'st_camera_oscura', anim: 'rossa', cost: { assi: 4, vetro: 2, lampadine: 1 } },
+    { id: 'officina_auto', cat: 'postazioni', nome: 'Officina del garage', desc: 'Ponte sollevatore e attrezzi: potenzia e ripara il mezzo parcheggiato accanto.', st: 'banco_lavoro', mk: 'officina', menu: 'auto', anim: 'lampadina', cost: { ferro: 4, tubi: 3, bulloni: 4, olio_motore: 1 } },
     { id: 'alambicco', cat: 'postazioni', nome: 'Alambicco', st: 'alambicco', stm: 'st_alambicco', anim: 'fuoco', cost: { rame: 4, tubi: 2 } },
     // difese
     { id: 'sacchi', cat: 'difese', nome: 'Sacchi di sabbia', fp: [1, 1], solid: 'pieno', cost: { sacco_sabbia: 4 }, mk: 'sacchi', col: '#a89870' },
     { id: 'filo_spinato', cat: 'difese', nome: 'Filo spinato', fp: [1, 1], solid: 'pieno', cost: { filo_spinato: 2, tubi: 1 }, mk: 'filo', col: '#6a6e74' },
     { id: 'barricata', cat: 'difese', nome: 'Barricata', fp: [1, 1], solid: 'pieno', cost: { assi: 4, mobile_rotto: 1 }, mk: 'barricata', col: '#6a4a2c' },
-    { id: 'torretta', cat: 'difese', nome: 'Torretta di guardia', fp: [2, 2], cost: { travi: 8, assi: 8, chiodi: 3 }, mk: 'torretta', col: '#6a4a2c' },
+    { id: 'torretta', cat: 'difese', nome: 'Torretta di guardia', fp: [2, 2], big: 50, cost: { travi: 8, assi: 8, chiodi: 3 }, mk: 'torretta', col: '#6a4a2c' },
   ];
   const BY = Object.fromEntries(B.map(b => [b.id, b]));
 
@@ -147,10 +158,17 @@ var Cantiere = (function () {
   // TERRENO E SOTTOTERRA
   // =====================================================================================================================
   const tileOf = (x, y) => [Math.floor(x / TS()), Math.floor(y / TS())];
+  // [sottosuolo] in città, all'aperto, non si costruisce: solo dentro la stanza o sotto terra
+  const inCity = (x, y) => { const G = Gm(), M = G.MAP, [tx, ty] = tileOf(x, y); return !!(M.zone && M.Z && M.zone[ty * G.GW + tx] === M.Z.CITTA); };
+  const CITY_NO = 'In città si costruisce solo al chiuso: entra nella stanza del covo, o scendi sotto terra.';
   const dirty = (tx, ty) => { const r = R(); if (r && r.dirtyAt) r.dirtyAt(tx * TS() + 1, ty * TS() + 1); };
   function terrain(st, b, tx, ty) {
-    const G = Gm(), t = T(), v = G.tileAt(tx, ty), bag = O().inv(st);
     if (!hasTool(st, b.tool)) return { ok: false, msg: `Ti serve: ${b.tool.split('|').map(k => O().nm(k)).join(' o ')}.` };
+    return terrainDo(st, b, tx, ty, O().inv(st));
+  }
+  // il lavoro vero e proprio: la roba che ne viene va in `bag` (le tasche, o il baule del covo se lavora la banda)
+  function terrainDo(st, b, tx, ty, bag) {
+    const G = Gm(), t = T(), v = G.tileAt(tx, ty);
     if (b.op === 'disbosca') { if (v !== t.TREE && v !== t.SHRUB) return { ok: false, msg: 'Qui non c\'è niente da tagliare.' }; G.setTile(tx, ty, t.GRASS); const q = v === t.TREE ? 3 : 1; bag.legna = (bag.legna || 0) + q; dirty(tx, ty); return { ok: true, msg: v === t.TREE ? 'L\'albero cade. Tre ciocchi di legna.' : 'Via il cespuglio.' }; }
     if (b.op === 'cava') { if (v !== t.ROCK && v !== t.CLIFF) return { ok: false, msg: 'Qui non c\'è roccia.' }; G.setTile(tx, ty, t.GRAVEL); bag.pietre = (bag.pietre || 0) + 3; dirty(tx, ty); return { ok: true, msg: 'La roccia si spacca. Tre pietre.' }; }
     if (b.op === 'sterra') { if (![t.GRASS, t.SHRUB, t.FIELD, t.DESERT, t.SAND].includes(v)) return { ok: false, msg: 'Qui è già terra, o non si può.' }; G.setTile(tx, ty, t.DIRT); dirty(tx, ty); return { ok: true, msg: 'Terra battuta.' }; }
@@ -189,6 +207,7 @@ var Cantiere = (function () {
   // =====================================================================================================================
   const KIT = {};   // mobili del kit caricati (Models.furniture è asincrono: si caricano all'inizio)
   function preload() { if (!window.Models || !Models.furniture) return; B.filter(b => b.kit && !KIT[b.kit]).forEach(b => { KIT[b.kit] = 'wait'; Models.furniture(b.kit).then(g => { KIT[b.kit] = g || null; }).catch(() => { KIT[b.kit] = null; }); }); }
+  const jobsKey = st => (st.covo && st.covo.jobs || []).filter(j => !j.done).map(j => j.id).join(',');
   const LMt = {}; const lm = (c, e) => { const k = c + (e || ''); return LMt[k] || (LMt[k] = new THREE.MeshLambertMaterial(Object.assign({ color: c }, e ? { emissive: new THREE.Color(e), emissiveIntensity: 1 } : {}))); };
   const box = (g, w, h, d, c, x, y, z, ry) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lm(c)); m.position.set(x || 0, y || 0, z || 0); if (ry) m.rotation.y = ry; m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
   const cyl = (g, r0, r1, h, c, x, y, z, e) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, h, 12), lm(c, e)); m.position.set(x || 0, y || 0, z || 0); m.castShadow = true; g.add(m); return m; };
@@ -212,6 +231,31 @@ var Cantiere = (function () {
         box(g, w, h, .12, c, 0, h / 2, -d / 2 + .06); box(g, .12, h, d, c, -w / 2 + .06, h / 2, 0); box(g, .12, h, d, c, w / 2 - .06, h / 2, 0);
         const side = (w - 1.1) / 2; box(g, side, h, .12, c, -w / 2 + side / 2, h / 2, d / 2 - .06); box(g, side, h, .12, c, w / 2 - side / 2, h / 2, d / 2 - .06); box(g, 1.1, .4, .12, c, 0, h - .2, d / 2 - .06);
         const rf = box(g, w + .5, .1, d + .6, b.id === 'baracca' ? '#6a7078' : '#5a5048', 0, h + .15, 0); rf.rotation.x = .1; for (let i = 0; i < 5; i++) box(g, w + .02, .04, .14, '#2a2420', 0, .4 + i * .45, -d / 2 + .05); break; }
+      case 'casa': { const w = 4 * S0, d = 3 * S0, h = 2.8, wall = c;
+        box(g, w, h, .25, wall, 0, h / 2, -d / 2 + .12); box(g, .25, h, d, wall, -w / 2 + .12, h / 2, 0); box(g, .25, h, d, wall, w / 2 - .12, h / 2, 0);
+        const side = (w - 1.2) / 2; box(g, side, h, .25, wall, -w / 2 + side / 2, h / 2, d / 2 - .12); box(g, side, h, .25, wall, w / 2 - side / 2, h / 2, d / 2 - .12); box(g, 1.2, .5, .25, wall, 0, h - .25, d / 2 - .12);
+        tag(box(g, 1, 2.2, .06, '#5a3a20', -.3, 1.1, d / 2 - .02), 'anta');
+        for (const x of [-2.6, 2.6]) { box(g, 1, 1, .27, '#2a3a4a', x, 1.6, d / 2 - .12); box(g, 1.2, .1, .35, '#e8e0cc', x, 1.05, d / 2 - .05); box(g, .12, 1, .3, '#3a6a4a', x - .62, 1.6, d / 2 - .02); box(g, .12, 1, .3, '#3a6a4a', x + .62, 1.6, d / 2 - .02); }
+        for (const s2 of [-1, 1]) { const r0 = box(g, w + .6, .14, d / 2 + .7, '#a8483a', 0, h + .62, s2 * (d / 4 + .15)); r0.rotation.x = s2 * .5; for (let i = 0; i < 9; i++) { const q0 = box(g, .06, .1, d / 2 + .6, '#7a3a2a', -w / 2 + .5 + i * (w / 9), h + .7, s2 * (d / 4 + .15)); q0.rotation.x = s2 * .5; } }
+        box(g, .25, 1.1, d - .6, wall, -w / 2 + .12, h + .5, 0); box(g, .25, 1.1, d - .6, wall, w / 2 - .12, h + .5, 0);
+        cyl(g, .18, .18, 1, '#8a5a4a', w / 2 - .8, h + 1.3, -.4); break; }
+      case 'garage': { const w = 4 * S0, d = 4 * S0, h = 3;
+        box(g, w, h, .15, c, 0, h / 2, -d / 2 + .08); box(g, .15, h, d, c, -w / 2 + .08, h / 2, 0); box(g, .15, h, d, c, w / 2 - .08, h / 2, 0);
+        box(g, S0, h, .15, c, -w / 2 + S0 / 2, h / 2, d / 2 - .08); box(g, S0, h, .15, c, w / 2 - S0 / 2, h / 2, d / 2 - .08); box(g, w - 2 * S0, .6, .15, c, 0, h - .3, d / 2 - .08);
+        for (let i = 0; i < 12; i++) box(g, w + .02, .03, .17, '#6a6e74', 0, .25 * i + .1, -d / 2 + .08);
+        box(g, w - 2 * S0, .5, .12, '#9aa0a8', 0, h - .1, d / 2 - .02);
+        const rf = box(g, w + .4, .1, d + .4, '#6a7078', 0, h + .08, 0); rf.rotation.x = .04; box(g, w - .4, .02, d - .4, '#5a5a56', 0, .02, 0);
+        box(g, .6, .3, .2, '#ffd23b', -w / 2 + .5, h - .5, d / 2 + .02); break; }
+      case 'tenda': { const w = 2 * S0 - .4, d = 2 * S0 - .4;
+        for (const s2 of [-1, 1]) { const t0 = box(g, w * .62, .04, d, c, s2 * w * .26, .85, 0); t0.rotation.z = -s2 * .9; }
+        box(g, .05, 1.65, .05, '#5a4028', 0, .82, d / 2); box(g, .05, 1.65, .05, '#5a4028', 0, .82, -d / 2); box(g, .04, .04, d + .1, '#5a4028', 0, 1.64, 0);
+        box(g, w * .8, .05, d * .8, '#4a4a3a', 0, .03, 0); for (const z of [-1, 1]) { const f0 = box(g, .02, 1.2, .9, '#7a7a5a', .2, .6, z * d / 2); f0.rotation.y = z * .4; } break; }
+      case 'rastrelliera': box(g, 1.4, 1.7, .3, '#6a4a2c', 0, .85, -.1); for (let i = 0; i < 5; i++) { const r0 = box(g, .07, 1.2, .1, '#2a2622', -.5 + i * .25, .95, .1); r0.rotation.z = .06; box(g, .11, .28, .13, '#5a3a20', -.5 + i * .25, .4, .1); } box(g, 1.42, .08, .4, '#4a3a2a', 0, 1.25, .05); box(g, .12, .14, .05, '#c8a040', .62, .9, .07); break;
+      case 'officina': {
+        for (const x of [-1.3, 1.3]) { box(g, .3, 2.2, .3, '#c8402a', x, 1.1, -1); const arm = box(g, .12, .1, 1.6, '#3a3a40', x * .82, .45, -.3); arm.rotation.y = x > 0 ? -.2 : .2; }
+        box(g, 2.9, .15, .3, '#c8402a', 0, 2.2, -1); box(g, .9, 1.1, .5, '#b02a2a', 2.3, .55, -1); for (let i = 0; i < 4; i++) box(g, .86, .02, .02, '#e8e0cc', 2.3, .3 + i * .22, -.74);
+        for (let i = 0; i < 3; i++) cyl(g, .33, .33, .22, '#1a1a1a', -2.3, .11 + i * .23, -.8);
+        box(g, .5, .3, .3, '#2a6a3a', 2.3, 1.25, -1); tag(cyl(g, .05, .07, .1, '#f0e0a0', 0, 2.05, -.9, '#ffd890'), 'luce'); break; }
       case 'lampione': cyl(g, .06, .08, 3, '#3a3a40', 0, 1.5, 0); box(g, .5, .06, .1, '#3a3a40', .22, 2.95, 0); tag(cyl(g, .1, .14, .16, '#f0e0a0', .45, 2.86, 0, '#ffd890'), 'luce'); break;
       case 'bandiera': cyl(g, .04, .05, 3.2, '#8a8a90', 0, 1.6, 0); { const f = tag(box(g, 1.1, .7, .02, '#1e3a5a', .58, 2.75, 0), 'telo'); const w0 = box(g, .9, .08, .03, '#35e6ff', .58, 2.75, .01); w0.name = 'onda'; } break;
       case 'tappeto': box(g, 1.6, .02, 1.1, c, 0, .01, 0); box(g, 1.3, .021, .8, '#c8a050', 0, .011, 0); box(g, 1.1, .022, .6, c, 0, .012, 0); break;
@@ -255,7 +299,7 @@ var Cantiere = (function () {
     const tx0 = Math.floor(x / S0 - w / 2 + .5), ty0 = Math.floor(y / S0 - d / 2 + .5), out = [];
     for (let j = 0; j < d; j++) for (let i = 0; i < w; i++) {
       let solid = b.solid === 'pieno';
-      if (b.solid === 'bordo') { const edge = i === 0 || j === 0 || i === w - 1 || j === d - 1; const door = q === 0 ? (j === d - 1 && i === Math.floor(w / 2)) : q === 2 ? (j === 0 && i === Math.floor(w / 2)) : q === 1 ? (i === 0 && j === Math.floor(d / 2)) : (i === w - 1 && j === Math.floor(d / 2)); solid = edge && !door; }
+      if (b.solid === 'bordo') { const edge = i === 0 || j === 0 || i === w - 1 || j === d - 1; const mid = (k, n) => b.door === 'largo' ? k > 0 && k < n - 1 : k === Math.floor(n / 2); const door = q === 0 ? (j === d - 1 && mid(i, w)) : q === 2 ? (j === 0 && mid(i, w)) : q === 1 ? (i === 0 && mid(j, d)) : (i === w - 1 && mid(j, d)); solid = edge && !door; }   // [cantiere] il portone largo del garage
       out.push([tx0 + i, ty0 + j, solid]);
     }
     return out;
@@ -269,6 +313,8 @@ var Cantiere = (function () {
   function canPlace(st, b, x, y, rot) {
     const G = Gm(), t = T(), lv = lvOf(st), C = covoAt(st, x, y);
     if (!C) return 'Fuori dal covo: qui non costruisci.';
+    if (!lv && b.cat !== 'sotto' && inCity(x, y)) return CITY_NO;   // [sottosuolo]
+    if (lv && b.out) return 'Si monta solo all\'aperto.';
     if (b.cat === 'terreno') { const [tx, ty] = tileOf(x, y), v = G.tileAt(tx, ty); if (lv) return lv === 'ug' ? 'Sotto terra si usa Sottoterra.' : 'Dentro casa non si disbosca.'; if (b.op === 'disbosca' && v !== t.TREE && v !== t.SHRUB) return 'Niente da tagliare qui.'; if (b.op === 'cava' && v !== t.ROCK && v !== t.CLIFF) return 'Niente roccia qui.'; return ''; }
     if (b.cat === 'sotto') return '';
     if (b.baule && S(st).obj.some(o => o.id === 'baule' && (covoAt(st, o.x, o.y) || {}).id === C.id)) return 'In questo covo il baule c\'è già.';
@@ -289,15 +335,90 @@ var Cantiere = (function () {
     const G = Gm(), lv = lvOf(st), tiles = [];
     footprint(b, x, y, rot).forEach(([tx, ty, solid]) => { const orig = G.tileAt(tx, ty); if (solid && !lv) { G.setTile(tx, ty, T().BLD); dirty(tx, ty); } tiles.push([tx, ty, solid ? orig : null]); });
     const C = S(st), o = { uid: moving ? moving.uid : 'k' + (C.next++), id: b.id, x, y, rot, lv, tiles, paid, at: st.t };
+    if (moving && moving.wip) o.wip = moving.wip;
+    // [cantiere] le costruzioni grandi all'aperto le tira su la banda: si apre il cantiere
+    if (!moving && b.big && !lv && crewAll(st).length) { o.wip = b.big; addJob(st, { op: 'costruisci', uid: o.uid, x, y }); }
     C.obj.push(o); U.dirty = true;
-    return { ok: true, msg: moving ? `${b.nome}: spostato.` : `${b.nome}: fatto.`, o };
+    return { ok: true, msg: moving ? `${b.nome}: spostato.` : o.wip ? `${b.nome}: cantiere aperto. Ci pensa la banda (${jobsLeft(st)} lavori in coda).` : `${b.nome}: fatto.`, o };
   }
   function lift(st, uid) {   // toglie dal mondo (per spostare o per togliere)
     const C = S(st), i = C.obj.findIndex(o => o.uid === uid); if (i < 0) return null; const o = C.obj[i]; C.obj.splice(i, 1);
     (o.tiles || []).forEach(([tx, ty, orig]) => { if (orig !== null && orig !== undefined) { Gm().setTile(tx, ty, orig); dirty(tx, ty); } });
     U.dirty = true; return o;
   }
-  function remove(st, uid) { const o = lift(st, uid); if (!o) return { ok: false, msg: '' }; refund(st, o); return { ok: true, msg: `${BY[o.id].nome}: smontato. Ti torna la roba.` }; }
+  function remove(st, uid) { const o = lift(st, uid); if (!o) return { ok: false, msg: '' }; refund(st, o); const C = S(st); (C.jobs || []).forEach(j => { if (j.uid === uid) j.done = true; }); return { ok: true, msg: `${BY[o.id].nome}: smontato. Ti torna la roba.` }; }
+
+  // =====================================================================================================================
+  // LA BANDA AL LAVORO: i lavori segnati li fanno i membri liberi della Risacca
+  // =====================================================================================================================
+  const RIS = () => (typeof Risacca !== 'undefined' ? Risacca : null);
+  const crewAll = st => { const R0 = RIS(); try { return R0 && R0.members ? R0.members(st) : []; } catch (e) { return []; } };
+  const crewFree = st => crewAll(st).filter(n => !n.dead && !(n.jailedUntil > st.t) && (!n.ris.task || n.ris.task.src === 'autonomia'));   // chi fa di testa sua lascia e viene al covo
+  const jobsLeft = st => (S(st).jobs || []).filter(j => !j.done).length;
+  const JOB_MIN = { disbosca: 25, cava: 30, sterra: 10, spiana: 20 };
+  function addJob(st, j) { const C = S(st); C.jobs = C.jobs || []; C.jid = (C.jid || 0) + 1; const J = Object.assign({ id: 'j' + C.jid, who: null, tries: 0, at: st.t }, j); C.jobs.push(J); return J; }
+  // dove si mette chi lavora: una casella libera accanto (l'albero e la roccia non si calpestano)
+  function standAt(x, y, r0) { const G = Gm(); for (let r = r0 || 1.2; r < 7; r += .6) for (let a = 0; a < 8; a++) { const qx = x + Math.cos(a * Math.PI / 4) * r, qy = y + Math.sin(a * Math.PI / 4) * r; if (G.walkM(qx, qy)) return { x: qx, y: qy }; } return { x, y }; }
+  function jobsStep(st) {
+    const C = st.covo; if (!C || !C.jobs || !C.jobs.length) return;
+    const G = Gm(), R0 = RIS();
+    C.jobs.forEach(J => {
+      if (J.done) return;
+      if (J.who) { const n = G.byId(st, J.who); if (n && !n.dead && n.ris && n.ris.task && n.ris.task.covoJob === J.id) return; J.who = null; if (++J.tries >= 3) { J.done = true; G.feed(st, 'Un lavoro del covo è rimasto a metà: nessuno riesce ad arrivarci.', 'bad'); } return; }
+      const free = crewFree(st); if (!free.length || !R0 || !st.ris) return;
+      const n = free.sort((a, b) => Math.hypot(a.x - J.x, a.y - J.y) - Math.hypot(b.x - J.x, b.y - J.y))[0];
+      const o = J.uid ? C.obj.find(q => q.uid === J.uid) : null, b = o ? BY[o.id] : null;
+      const at = standAt(J.x, J.y, b && b.fp ? Math.max(...b.fp) * TS() / 2 + .6 : 1.2);
+      const mins = J.op === 'costruisci' ? (o ? o.wip : 60) : JOB_MIN[J.op] || 20;
+      const label = J.op === 'costruisci' ? `tira su ${b ? b.nome.toLowerCase() : 'la costruzione'}` : { disbosca: 'abbatte un albero', cava: 'spacca la roccia', sterra: 'toglie l\'erba', spiana: 'spiana il terreno' }[J.op];
+      n.ris.task = { id: st.ris.nextTask++, verb: 'cantiere', args: {}, steps: [{ k: 'go', x: at.x, y: at.y, name: 'il cantiere del covo' }, { k: 'hold', mins }, { k: 'do', fn: 'covoLavoro', job: J.id }], i: 0, started: st.t, desc: `${label} al covo`, src: 'cantiere', acc: 0, stepT: st.t, covoJob: J.id };
+      n.path = []; n.goalPlace = null; n.wait = 0; n.inside = false; J.who = n.id;
+    });
+    if (C.jobs.length > 40) C.jobs = C.jobs.filter(j => !j.done);
+  }
+  // il lavoro finito: lo esegue il membro (Risacca lo chiama come un passo 'do')
+  function jobDone(st, n, T0, s) {
+    const C = S(st), J = (C.jobs || []).find(j => j.id === s.job); if (!J || J.done) return { ok: true };
+    J.done = true; U.dirty = true;
+    if (J.op === 'costruisci') { const o = C.obj.find(q => q.uid === J.uid); if (!o) return { ok: true }; delete o.wip; return { ok: true, msg: `${BY[o.id].nome} del covo: finita.` }; }
+    const Cv = covoAt(st, J.x, J.y), bag = bauleOf(st, Cv) || O().inv(st), [tx, ty] = tileOf(J.x, J.y);
+    const r = terrainDo(st, BY[J.op], tx, ty, bag);
+    return { ok: true, msg: r.ok ? r.msg + (Cv ? ' La roba è nel baule del covo.' : '') : 'Lì non c\'era più niente da fare.' };
+  }
+  // i lavori della banda in coda: cosa e chi
+  const jobsView = st => (S(st).jobs || []).filter(j => !j.done).map(j => ({ op: j.op, who: j.who ? (Gm().byId(st, j.who) || {}).first : null, x: j.x, y: j.y }));
+
+  // =====================================================================================================================
+  // L'OFFICINA DEL GARAGE: il mezzo parcheggiato accanto si potenzia coi materiali (gli stessi livelli dell'Officina di Dorino)
+  // =====================================================================================================================
+  const UPA = [
+    ['motore', 'Motore', 3, l => ({ ferro: 1 + l, bulloni: 2 + l, olio_motore: 1, tubi: 1 }), 'più spinta e velocità di punta'],
+    ['assetto', 'Assetto e gomme', 3, l => ({ molle: 2 + l, bulloni: 2, ferro: 1 }), 'più tenuta, sterzo più pronto'],
+    ['nitro', 'Nitro', 2, l => ({ bombola: 1, tubi: 2, benzina: 2 + l }), 'Maiusc spinge di più'],
+    ['corazza', 'Corazza saldata', 3, l => ({ lamiera: 3 + 2 * l, ferro: 2, bulloni: 2 }), 'regge meglio urti e colpi'],
+  ];
+  function carAt(st, uid) {
+    const p = st.player, o = uid && st.covo ? st.covo.obj.find(q => q.uid === uid) : null, x = o ? o.x : p.x, y = o ? o.y : p.y;
+    if (p.vehicle) { const v = st.vehicles.find(q => q.id === p.vehicle); if (v && v.kind !== 'vespa' && Math.hypot(v.x - x, v.y - y) < 12) return v; }
+    let best = null, bd = 10; st.vehicles.forEach(v => { if (v.hidden || v.wreck || v.traffic || v.police || (v.rider && v.rider !== 'player')) return; const d = Math.hypot(v.x - x, v.y - y); if (d < bd) { bd = d; best = v; } });
+    return best && best.kind !== 'vespa' ? best : null;
+  }
+  function autoView(st, uid) {
+    const v = carAt(st, uid); if (!v) return null; const K = Gm().VK[v.kind]; v.up = v.up || {};
+    const ups = UPA.map(([id, nome, top, cost, desc]) => { const lvl = id === 'corazza' ? (v.armor || 0) : (v.up[id] | 0), max = lvl >= top, c = max ? {} : cost(lvl); return { id, nome, top, lvl, max, cost: c, desc, miss: max ? [] : missing(st, { cost: c }) }; });
+    const hp = Math.round(Math.max(0, v.hp) / K.hp * 100);
+    if (hp < 100) { const c = { lamiera: 1 + Math.floor((100 - hp) / 35), bulloni: 1 }; ups.push({ id: 'ripara', nome: 'Carrozzeria', top: 0, lvl: 0, max: false, cost: c, desc: 'raddrizza le lamiere, cambia il vetro', miss: missing(st, { cost: c }) }); }
+    return { nome: K.label, hp, ups };
+  }
+  function autoUp(st, id, uid) {
+    const v = carAt(st, uid); if (!v) return { ok: false, msg: 'Non c\'è un mezzo accanto al ponte.' };
+    const V = autoView(st, uid), u = V.ups.find(q => q.id === id); if (!u || u.max) return { ok: false, msg: 'Di più non si può.' };
+    if (u.miss.length) return { ok: false, msg: `Mancano: ${u.miss.join(', ')}.` };
+    pay(st, { cost: u.cost }); if (st.covo && uid) st.covo.busy[uid] = st.clock;
+    if (id === 'ripara') { v.hp = Gm().VK[v.kind].hp; return { ok: true, msg: 'Lamiere raddrizzate, vetro nuovo. Come uscita di fabbrica, quasi.' }; }
+    if (id === 'corazza') v.armor = (v.armor || 0) + 1; else v.up[id] = (v.up[id] | 0) + 1; v._tk = null;
+    return { ok: true, msg: `${u.nome}: livello ${u.lvl + 1}. Si sente subito.` };
+  }
 
   // =====================================================================================================================
   // IL BAULE: uno per covo, senza limiti. Nelle basi della Risacca è la loro scorta; a casa e nei covi reclamati è suo.
@@ -318,7 +439,7 @@ var Cantiere = (function () {
   // =====================================================================================================================
   function stationsNear(st, r) {
     const p = st.player, lv = lvOf(st), out = [];
-    (st.covo ? st.covo.obj : []).forEach(o => { const b = BY[o.id]; if (!b || !b.st || o.lv !== lv) return; if (Math.hypot(o.x - p.x, o.y - p.y) < (r || 3)) { out.push(b.st); if (b.st2) out.push(b.st2); } });
+    (st.covo ? st.covo.obj : []).forEach(o => { const b = BY[o.id]; if (!b || !b.st || o.lv !== lv || o.wip) return; if (Math.hypot(o.x - p.x, o.y - p.y) < (r || 3)) { out.push(b.st); if (b.st2) out.push(b.st2); } });
     return out;
   }
   // il banco delle armi: le modifiche montate
@@ -342,19 +463,32 @@ var Cantiere = (function () {
   const U = { on: false, cat: 'strutture', sel: null, rot: 0, moving: null, pick: null, ghost: null, ghostId: null, mark: null, grp: null, scene: null, meshes: {}, dirty: true, gx: 0, gy: 0, ok: '', msg: '', msgT: 0, prevTop: false, stRef: null };
   function sceneSync(st) {
     const r = R(), scene = r && r.__models && r.__models.scene; if (!scene) return;
-    if (U.scene !== scene) { U.scene = scene; U.grp = new THREE.Group(); U.grp.name = 'covo'; scene.add(U.grp); U.meshes = {}; }
+    if (U.scene !== scene) { U.scene = scene; U.grp = new THREE.Group(); U.grp.name = 'covo'; U.grp.userData.ugKeep = true; scene.add(U.grp); U.meshes = {}; }   // [sottosuolo] ugKeep: il bunker arredato si vede anche sotto terra
     if (U.stRef !== st) { Object.values(U.meshes).forEach(m => U.grp.remove(m)); U.meshes = {}; U.stRef = st; U.dirty = true; }
+    if (U.jobsKey !== jobsKey(st) || (st.covo && st.covo.obj.some(o => U.meshes[o.uid] && !!U.meshes[o.uid].userData.wip !== !!o.wip))) U.dirty = true;
     const lv = lvOf(st), objs = st.covo ? st.covo.obj : [];
     if (U.dirty) {
       const want = new Set(objs.map(o => o.uid));
       Object.keys(U.meshes).forEach(k => { if (!want.has(k)) { U.grp.remove(U.meshes[k]); delete U.meshes[k]; } });
-      objs.forEach(o => { let m = U.meshes[o.uid]; const b = BY[o.id]; if (!b) return; if (!m || m.userData.kitWait && KIT[b.kit] && KIT[b.kit] !== 'wait') { if (m) U.grp.remove(m); m = model(b); m.userData.kitWait = !!(b.kit && (!KIT[b.kit] || KIT[b.kit] === 'wait')); m.userData.uid = o.uid; U.grp.add(m); U.meshes[o.uid] = m; } m.position.set(o.x, hAt(st, o.x, o.y, o.lv), o.y); m.rotation.y = -o.rot; m.userData.lv = o.lv; });
-      U.dirty = objs.some(o => U.meshes[o.uid] && U.meshes[o.uid].userData.kitWait);
+      objs.forEach(o => { let m = U.meshes[o.uid]; const b = BY[o.id]; if (!b) return; if (!m || (m.userData.wip && !o.wip) || m.userData.kitWait && KIT[b.kit] && KIT[b.kit] !== 'wait') { if (m) U.grp.remove(m); m = model(b); if (o.wip) wipLook(m, b); m.userData.wip = !!o.wip; m.userData.kitWait = !!(b.kit && (!KIT[b.kit] || KIT[b.kit] === 'wait')); m.userData.uid = o.uid; U.grp.add(m); U.meshes[o.uid] = m; } m.position.set(o.x, hAt(st, o.x, o.y, o.lv), o.y); m.rotation.y = -o.rot; m.userData.lv = o.lv; });
+      // [cantiere] i lavori segnati per la banda: un nastro bianco e rosso sulla casella
+      Object.keys(U.meshes).filter(k => /^job:/.test(k)).forEach(k => { U.grp.remove(U.meshes[k]); delete U.meshes[k]; });
+      (st.covo && st.covo.jobs || []).forEach(J => { if (J.done || J.op === 'costruisci') return; const m = jobMark(J); m.position.set(J.x, hAt(st, J.x, J.y, null), J.y); m.userData.lv = null; U.grp.add(m); U.meshes['job:' + J.id] = m; });
+      U.dirty = objs.some(o => U.meshes[o.uid] && U.meshes[o.uid].userData.kitWait); U.jobsKey = jobsKey(st);
     }
     // solo quello del livello dove sei (sotto terra si vede il bunker, sopra il covo)
     Object.values(U.meshes).forEach(m => { m.visible = (m.userData.lv || null) === lv; });
     animate(st);
   }
+  // [cantiere] il cantiere aperto: la costruzione mezza trasparente dentro i pali dell'impalcatura
+  function wipLook(m, b) {
+    m.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = .4; o.material.depthWrite = false; } });
+    const S0 = TS(), [w, d] = b.fp || [1, 1], W = w * S0 / 2, D = d * S0 / 2;
+    for (const [x, z] of [[-W, -D], [W, -D], [-W, D], [W, D], [0, -D], [0, D]]) box(m, .1, 3.4, .1, '#b89a6a', x, 1.7, z);
+    for (const y of [1.2, 2.4]) { box(m, w * S0, .08, .08, '#b89a6a', 0, y, -D); box(m, w * S0, .08, .08, '#b89a6a', 0, y, D); box(m, .08, .08, d * S0, '#b89a6a', -W, y, 0); box(m, .08, .08, d * S0, '#b89a6a', W, y, 0); }
+    box(m, 1, .5, .7, '#8a8478', W - .6, .25, D + .6); box(m, .9, .4, .4, '#9a5a44', -W + .6, .2, D + .5);
+  }
+  function jobMark(J) { const g = new THREE.Group(); for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; box(g, .06, 1.1, .06, '#e8e0cc', Math.cos(a) * .8, .55, Math.sin(a) * .8); } for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4, r0 = box(g, 1.15, .08, .02, i % 2 ? '#c83a2a' : '#e8e0cc', Math.cos(a) * .57, .95, Math.sin(a) * .57); r0.rotation.y = -a + Math.PI / 2; } return g; }
   const hAt = (st, x, y, lv) => { if (lv && lv !== 'ug') return window.InterniArte && InterniArte.floorY && InterniArte.floorY() != null ? InterniArte.floorY() : 0; if (lv === 'ug' && typeof Livelli !== 'undefined') { const L = Livelli.S(st); return Livelli.floorAt ? (() => { try { return Livelli.heightOf(st, { lv: { k: 'ug' }, x, y }); } catch (e) { return 0; } })() : 0; } const r = R(); return r && r.groundH ? r.groundH(x, y) : 0; };
   // le animazioni: il fuoco, la radio, il rullo, l'ago… più vive quando la postazione è in uso
   function animate(st) {
@@ -453,7 +587,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
     const po = U.pick ? (st.covo.obj.find(o => o.uid === U.pick)) : null;
     const sel = po ? `<div class="cnsel"><b>${esc(BY[po.id].nome)}</b><div class="cnrow"><button class="b" data-a="sposta">Sposta</button><button class="b" data-a="gira">Gira</button><button class="b bad" data-a="togli">Togli</button></div>${BY[po.id].st ? '<small style="color:rgba(233,220,188,.6)">Fuori dal cantiere: cliccala per usarla.</small>' : ''}</div>` : '';
     const C = covoAt(st, st.player.x, st.player.y);
-    const top = `<div class="cntop"><b>${esc(C ? C.name : 'Nessun covo qui')}</b><small>${C ? 'Clic: piazza · rotella o R: gira · tasto destro: lascia · clic su una cosa messa: sposta, gira, togli · Y: esci' : 'Qui non hai un covo.'}</small>${!C ? '<div style="margin-top:8px"><button class="b" data-a="reclama">Fanne il tuo covo</button></div>' : ''}${lvOf(st) ? '<small>Sei sotto terra: costruisci nel bunker.</small>' : ''}</div>`;
+    const top = `<div class="cntop"><b>${esc(C ? C.name : 'Nessun covo qui')}</b><small>${C ? 'Clic: piazza · rotella o R: gira · tasto destro: lascia · clic su una cosa messa: sposta, gira, togli · Y: esci' : 'Qui non hai un covo.'}</small>${!C ? '<div style="margin-top:8px"><button class="b" data-a="reclama">Fanne il tuo covo</button></div>' : ''}${lvOf(st) === 'ug' ? '<small>Sei sotto terra: costruisci nel bunker.</small>' : ''}${C && !lvOf(st) && inCity(st.player.x, st.player.y) ? '<small>In città: solo al chiuso. Entra nella stanza del covo, o scendi sotto terra.</small>' : ''}${jobsLeft(st) ? `<small>Lavori della banda in coda: ${jobsLeft(st)}.</small>` : !lvOf(st) && C && !inCity(st.player.x, st.player.y) ? `<small>${crewAll(st).length ? 'Disboscare, cavare e le costruzioni grandi li fa la banda.' : 'Non hai una banda: il lavoro pesante lo fai da te.'}</small>` : ''}</div>`;
     const html = `${top}${sel}<div class="cnbar"><div class="cncats">${cats}${showMsg ? `<span class="cnmsg ${U.msgOk ? '' : 'no'}">${esc(U.msg)}</span>` : ''}<button class="pill x" data-a="esci">Esci · Y</button></div><div class="cncards">${cards}</div></div>`;
     if (html !== lastHtml) { const sc = m.querySelector('.cncards') ? m.querySelector('.cncards').scrollLeft : 0; m.innerHTML = html; lastHtml = html; const cc = m.querySelector('.cncards'); if (cc) cc.scrollLeft = sc; }
     m.querySelectorAll('canvas[data-th]').forEach(c => { if (c.dataset.done) return; const b = BY[c.dataset.th], t = cardThumb(b); if (t) { c.getContext('2d').drawImage(t, 0, 0, 128, 128, 0, 0, 96, 96); c.dataset.done = 1; } });
@@ -478,7 +612,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   function toggle(on) {
     const st = ST(), ui = PV() && PV().ui; if (!st || !ui) return;
     U.on = on === undefined ? !U.on : on;
-    if (U.on) { preload(); U.prevTop = !!ui.top; ui.top = true; U.cat = covoAt(st, st.player.x, st.player.y) ? (lvOf(st) ? 'arredi' : 'strutture') : 'terreno'; if (typeof MenuUI !== 'undefined' && MenuUI.state.open) MenuUI.close(); }
+    if (U.on) { preload(); U.prevTop = !!ui.top; ui.top = true; U.cat = covoAt(st, st.player.x, st.player.y) ? (lvOf(st) || inCity(st.player.x, st.player.y) ? 'arredi' : 'strutture') : 'terreno'; if (typeof MenuUI !== 'undefined' && MenuUI.state.open) MenuUI.close(); }
     else { ui.top = U.prevTop; if (U.moving) { const o = U.moving; U.moving = null; S(st).obj.push(o); (o.tiles || []).forEach(([tx, ty, orig]) => { if (orig !== null && orig !== undefined && !o.lv) { Gm().setTile(tx, ty, T().BLD); dirty(tx, ty); } }); U.dirty = true; } U.sel = null; U.pick = null; }
     lastHtml = ''; render(st);
   }
@@ -488,7 +622,10 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
     const b = U.sel ? BY[U.sel] : null, g = R().screenToGround(nx, ny); if (!g) return;
     if (b) {
       const [x, y] = snap(b, g.x, g.y, U.rot);
-      if (b.cat === 'terreno') { const why = canPlace(st, b, x, y, 0); if (why) return say({ ok: false, msg: why }); const [tx, ty] = tileOf(x, y); return say(terrain(st, b, tx, ty)); }
+      if (b.cat === 'terreno') { const why = canPlace(st, b, x, y, 0); if (why) return say({ ok: false, msg: why }); const [tx, ty] = tileOf(x, y);
+        // [cantiere] con la banda si segna il lavoro e ci vanno loro; senza, lo fai tu
+        if (crewAll(st).length) { if ((S(st).jobs || []).some(j => !j.done && j.op === b.op && Math.abs(j.x - x) < .5 && Math.abs(j.y - y) < .5)) return say({ ok: false, msg: 'È già segnato.' }); addJob(st, { op: b.op, x, y }); U.dirty = true; return say({ ok: true, msg: `Segnato: ci pensa la banda (${jobsLeft(st)} in coda).` }); }
+        return say(terrain(st, b, tx, ty)); }
       const r = place(st, b, x, y, U.rot, U.moving); say(r); if (r.ok && U.moving) { U.moving = null; U.sel = null; }
       return;
     }
@@ -510,17 +647,17 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   // fuori dal cantiere: le postazioni si cliccano, ci vai, e si apre il loro banco
   function pick(st, nx, ny, o) {
     if (U.on || st.player.vehicle || !st.covo || !st.covo.obj.length) return null; const r = R(), lv = lvOf(st); let best = null, bd = Math.max(26, o.h * .045);
-    st.covo.obj.forEach(c => { const b = BY[c.id]; if (!b || !(b.st || b.sleep || b.menu || b.baule) || c.lv !== lv) return; const pr = r.project(c.x, .9, c.y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = c; } });
-    return best ? { kind: 'loot', via: 'covo', ref: best.uid, x: best.x, y: best.y, label: BY[best.id].baule ? 'Apri il baule' : `Usa: ${BY[best.id].nome}` } : null;
+    st.covo.obj.forEach(c => { const b = BY[c.id]; if (!b || !(b.st || b.sleep || b.menu || b.baule || b.store) || c.lv !== lv || c.wip) return; const pr = r.project(c.x, .9, c.y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = c; } });
+    return best ? { kind: 'loot', via: 'covo', ref: best.uid, x: best.x, y: best.y, label: BY[best.id].baule ? 'Apri il baule' : BY[best.id].store ? `Apri: ${BY[best.id].nome}` : `Usa: ${BY[best.id].nome}` } : null;
   }
   const find = (st, ref) => { const o = st.covo && st.covo.obj.find(c => c.uid === ref); return o ? { x: o.x, y: o.y } : null; };
   const goal = (st, ref) => { const o = st.covo && st.covo.obj.find(c => c.uid === ref); if (!o) return null; const G = Gm(); for (let r = 1.2; r < 3; r += .4) for (let a = 0; a < 8; a++) { const x = o.x + Math.cos(a * Math.PI / 4 + Math.PI / 2 - o.rot) * r, y = o.y + Math.sin(a * Math.PI / 4 + Math.PI / 2 - o.rot) * r; if (G.walkM(x, y)) return { x, y }; } return { x: o.x, y: o.y }; };
   const reach = () => 1.9;
   function arrive(st, ref) {
     const o = st.covo.obj.find(c => c.uid === ref); if (!o) return; const b = BY[o.id]; st.covo.busy[o.uid] = st.clock;
-    if (b.baule) { if (typeof MenuUI !== 'undefined') MenuUI.open('baule'); return; }
+    if (b.baule || b.store) { if (typeof MenuUI !== 'undefined') MenuUI.open('baule'); return; }
     if (b.sleep) { const a = (typeof Azioni !== 'undefined' ? Azioni.playerActions(st) : []).find(x => /dorm|pisolino|riposa/i.test(x.label) && x.run); if (a) Gm().feed(st, a.run() || 'Ti sdrai.', 'info'); else Gm().feed(st, 'Ti sdrai un momento sulla branda. Non hai sonno.', 'info'); return; }
-    if (typeof MenuUI !== 'undefined') MenuUI.open('lavora', { st: b.st, st2: b.st2, titolo: b.nome, armi: b.menu === 'armi', uid: o.uid });
+    if (typeof MenuUI !== 'undefined') MenuUI.open('lavora', { st: b.st, st2: b.st2, titolo: b.nome, armi: b.menu === 'armi', auto: b.menu === 'auto', uid: o.uid });
   }
 
   function loop() {
@@ -528,6 +665,10 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
     requestAnimationFrame(loop);
   }
   function init() { if (!window.__pv || !window.THREE) { setTimeout(init, 200); return; } const G = Gm(); if (G.HOOKS) { const p0 = G.HOOKS.playerWeapon; G.HOOKS.playerWeapon = (st, k, W) => playerWeapon(st, k, p0 ? p0(st, k, W) : W); } preload(); requestAnimationFrame(loop); }
+  // [cantiere] la logica della banda gira col motore (anche senza grafica)
+  { const R0 = RIS(); if (R0 && R0.EXT && R0.EXT.do) R0.EXT.do.covoLavoro = jobDone; }
+  { const G = typeof Game !== 'undefined' ? Game : null; if (G && G.HOOKS) { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); if (!st.__cnT || st.clock - st.__cnT > 1) { st.__cnT = st.clock; try { jobsStep(st); } catch (e) { if (!U.jerr) { U.jerr = 1; console.error('[Cantiere] banda', e); } } } }; } }
   if (typeof window !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init, 0); }
-  return { bauleHere, bauli, baulePut, bauleTake, bauleAll, active: () => U.on, toggle, down, wheel, pick, find, goal, reach, arrive, stationsNear, mod, modsView, MODS, B, BY, covi, covoAt, claim, place, remove, terrain, under, state: U, model };
+  return { jobsView, addJob, jobsStep, crewAll, autoView, autoUp, carAt, inCity, terrainDo, footprint, canPlace, S, bauleHere, bauli, baulePut, bauleTake, bauleAll, active: () => U.on, toggle, down, wheel, pick, find, goal, reach, arrive, stationsNear, mod, modsView, MODS, B, BY, covi, covoAt, claim, place, remove, terrain, under, state: U, model };
 })();
+if (typeof module !== 'undefined') module.exports = Cantiere;
