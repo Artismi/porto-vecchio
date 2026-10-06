@@ -67,7 +67,7 @@ var Editor = (function () {
   const DIRTYC = new Set(), PAINTED = new Set(), WHERE = new WeakMap();
   let panel = null, over = null, paintHover = null, needTex = new Set();
   const RC = new THREE.Raycaster(), V2 = new THREE.Vector2(), BOX = new THREE.Box3(), VA = V3(), VB = V3(), VC = V3();
-  const D4 = new THREE.Matrix4(), N3 = new THREE.Matrix3();
+  const D4 = new THREE.Matrix4(), N3 = new THREE.Matrix3(), IDM = new THREE.Matrix4(), DQ = new THREE.Matrix4(), NQ = new THREE.Matrix3();
 
   function norm(j) { j = j && typeof j === 'object' ? j : {}; return { versione: 1, fuori: j.fuori || {}, copie: j.copie || [], interni: j.interni || {}, pittura: j.pittura || {}, modelli: j.modelli || {}, verde: j.verde || {}, vestiti: j.vestiti || {}, files: j.files || [] }; }
   const r3 = v => Math.round(v * 1000) / 1000;
@@ -107,10 +107,11 @@ var Editor = (function () {
     D4.multiplyMatrices(o.matrixWorld, ed.inv0); N3.getNormalMatrix(D4);
     const meshes = new Set();
     ed.parts.forEach(q => {
-      const a = q.p.b.mesh.geometry.attributes, P = a.position.array, N = a.normal.array;
+      const a = q.p.b.mesh.geometry.attributes, P = a.position.array, N = a.normal.array, mw = q.p.b.mesh.matrixWorld;
+      let Dq = D4, Nq = N3; if (!mw.equals(IDM)) { Dq = DQ.copy(mw).invert().multiply(D4).multiply(mw); Nq = NQ.getNormalMatrix(Dq); }   // case: vertici nel riferimento del loro gruppo
       for (let i = 0; i < q.P.length; i += 3) {
-        VA.set(q.P[i], q.P[i + 1], q.P[i + 2]).applyMatrix4(D4); P[q.s + i] = VA.x; P[q.s + i + 1] = VA.y; P[q.s + i + 2] = VA.z;
-        VA.set(q.N[i], q.N[i + 1], q.N[i + 2]).applyMatrix3(N3).normalize(); N[q.s + i] = VA.x; N[q.s + i + 1] = VA.y; N[q.s + i + 2] = VA.z;
+        VA.set(q.P[i], q.P[i + 1], q.P[i + 2]).applyMatrix4(Dq); P[q.s + i] = VA.x; P[q.s + i + 1] = VA.y; P[q.s + i + 2] = VA.z;
+        VA.set(q.N[i], q.N[i + 1], q.N[i + 2]).applyMatrix3(Nq).normalize(); N[q.s + i] = VA.x; N[q.s + i + 1] = VA.y; N[q.s + i + 2] = VA.z;
       }
       a.position.needsUpdate = true; a.normal.needsUpdate = true; meshes.add(q.p.b.mesh);
     });
@@ -196,7 +197,7 @@ var Editor = (function () {
     ctx = c; E = c.R.__ed; if (!E) { console.warn('[editor] render senza __ed'); return; }
     E.DZ.props.forEach(rec => { if (!rec.obj) return; const q = rec.obj.position; let k = q.x.toFixed(2) + ',' + q.y.toFixed(2) + ',' + q.z.toFixed(2); if (KEYS.has(k)) { let n = 2; while (KEYS.has(k + '#' + n)) n++; k += '#' + n; } rec.edKey = k; KEYS.set(k, rec); });
     c.G.BUILDINGS.forEach((b, i) => BK.set(bkey(b), i));
-    if (window.Officina && Officina.wantParts) { DETR = Officina.detailRecs(E); DETR.forEach(rec => { const q = rec.obj.position; let k = 'd:' + q.x.toFixed(2) + ',' + q.y.toFixed(2) + ',' + q.z.toFixed(2); if (KEYS.has(k)) { let n = 2; while (KEYS.has(k + '#' + n)) n++; k += '#' + n; } rec.edKey = k; KEYS.set(k, rec); }); }   // i dettagli delle case, presi uno per uno
+    if (window.Officina && Officina.wantParts) { DETR = Officina.detailRecs(E); DETR.forEach(rec => KEYS.set(rec.edKey, rec)); }   // i dettagli delle case, presi uno per uno
     try { applyAll(); } catch (e) { console.error('[editor] ritocchi', e); }
     const n = Object.keys(RIT.fuori).length + RIT.copie.length + Object.keys(RIT.interni).length + Object.keys(RIT.pittura).length;
     if (n) console.log('[editor] ritocchi rimessi:', n);
@@ -265,15 +266,15 @@ var Editor = (function () {
       for (const h of RC.intersectObjects(ms, false)) { let o = h.object; while (o && !o.userData.furn) o = o.parent; if (o) { const f = o.userData.furn; return f.__add ? { t: 'mobile', bk: bkey(I.b), f: I.f, entry: f.__add } : { t: 'mobile', bk: bkey(I.b), f: I.f, key: f.__k }; } }
       return null;
     }
-    const hits = [], recs = DETR.length ? E.DZ.props.concat(DETR) : E.DZ.props, veg = window.Officina ? Officina.pickVeg(RC) : null;
-    const vsel = veg && { t: 'verde', key: veg.x + ',' + veg.z, x: veg.x, z: veg.z, grp: veg.grp };
-    recs.forEach(rec => { if (rec.state !== 0 || !rec.edKey) return; BOX.setFromCenterAndSize(rec.c, VB.copy(rec.he).multiplyScalar(2)); if (ray.intersectBox(BOX, VA)) hits.push({ d: VA.distanceTo(ray.origin), v: rec.he.x * rec.he.y * rec.he.z, s: { t: 'fuori', rec } }); });
-    COPIES.forEach(c => { BOX.setFromObject(c.g); if (ray.intersectBox(BOX, VA)) { BOX.getSize(VB); hits.push({ d: VA.distanceTo(ray.origin), v: VB.x * VB.y * VB.z / 8, s: { t: 'copia', c } }); } });
-    if (!hits.length) return vsel;
-    // raggio sui pezzi veri: vince quello che il puntatore tocca davvero, il più vicino
-    let best = null, bd = 1e9; hits.forEach(h => { const o = h.s.t === 'fuori' ? h.s.rec.obj : h.s.c.g; o.updateMatrixWorld(true); const x = RC.intersectObject(o, true)[0]; if (x && x.distance < bd) { bd = x.distance; best = h.s; } });
-    if (veg && (!best || veg.dist < bd)) return vsel;   // l'albero davanti all'oggetto
-    return best;   // niente sotto il puntatore: niente (così sul vuoto si afferra la vista)
+    // il raggio sulla città vera: il primo pezzo toccato vince; muri e terreno fanno da schermo
+    const terr = []; if (ctx.R.ISO) for (const ch of ctx.R.ISO.chunks.values()) if (ch.grp.children[0]) terr.push(ch.grp.children[0]);
+    let best = null, bd = 1e9;
+    const st = window.Officina && Officina.pickStatic ? Officina.pickStatic(RC, E, terr) : null;
+    if (st) { bd = st.dist; if (st.rec) { if (!KEYS.has(st.rec.edKey)) { KEYS.set(st.rec.edKey, st.rec); DETR.push(st.rec); } best = { t: 'fuori', rec: st.rec }; } }
+    COPIES.forEach(c => { c.g.updateMatrixWorld(true); const x = RC.intersectObject(c.g, true)[0]; if (x && x.distance < bd) { bd = x.distance; best = { t: 'copia', c }; } });
+    const veg = window.Officina ? Officina.pickVeg(RC) : null;
+    if (veg && veg.dist < bd - .05) best = { t: 'verde', key: veg.x + ',' + veg.z, x: veg.x, z: veg.z, grp: veg.grp };   // l'albero solo se sta davanti
+    return best;
   }
   function select(s) {
     if (s && s.t === 'verde') { const e = RIT.verde[s.key]; s.cur = e && !e.togli ? JSON.parse(JSON.stringify(e)) : null; }
@@ -563,8 +564,8 @@ var Editor = (function () {
     const I = indoorNow(); if (I) { const x0 = I.b.x * 2, y0 = I.b.y * 2; focus.x = Math.max(x0 - 4, Math.min(x0 + I.b.w * 2 + 4, focus.x)); focus.y = Math.max(y0 - 4, Math.min(y0 + I.b.h * 2 + 4, focus.y)); }
     // pittura: un passo per fotogramma, al più
     if (stroke && mouse.moved) paintAt(mouse.nx, mouse.ny);
-    if (mouse.moved && !drag && !stroke) { if (tool === 'sposta') hover = pick(mouse.nx, mouse.ny); else { const S = surfaceAt(mouse.nx, mouse.ny, tool === 'timbro' && held.alt); paintHover = S && !S.blocked ? S : null; } }
-    mouse.moved = false;
+    const tNow = performance.now(); if (mouse.moved && !drag && !stroke && tNow - (view.th || 0) > 100) { view.th = tNow; if (tool === 'sposta') hover = pick(mouse.nx, mouse.ny); else { const S = surfaceAt(mouse.nx, mouse.ny, tool === 'timbro' && held.alt); paintHover = S && !S.blocked ? S : null; } }
+    if (tNow - (view.th || 0) <= 100 && mouse.moved && !drag && !stroke) {} else mouse.moved = false;
     needTex.forEach(touchTex); needTex.clear();
     queueMicrotask(drawOverlay);   // dopo R.frame: la camera è quella di questo fotogramma
     return { focus, rot: (held.e ? 1 : 0) - (held.q ? 1 : 0) };
