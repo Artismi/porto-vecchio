@@ -479,8 +479,54 @@ var Popolo = (function () {
     P.diary.push(e);
     if (P.diary.length > 30) {
       let k = 0, lo = 1e9; P.diary.forEach((d, i) => { const v = d.w * Math.exp(-(st.t - d.t) / 4320); if (v < lo) { lo = v; k = i; } });
-      P.diary.splice(k, 1);
+      const gone = P.diary.splice(k, 1)[0];
+      if (keepWorthy(n, gone)) toLong(st, n, gone);   // [memoria] quello che conta non si perde: passa alla memoria lunga
     }
+  }
+
+  // ---------------- [memoria] BREVE E LUNGA ----------------
+  // Il diario (P.diary) è la memoria breve: gli ultimi giorni, tutto. La memoria lunga (P.lunga) tiene quello che conta:
+  // ci passa di notte quello che pesa (un torto, un favore, un lutto, un debito) o che si è ripetuto, e da lì torna in mente
+  // quando serve: rivedendo la persona, tornando nel posto. Ogni volta che torna in mente si rafforza; quello che non torna
+  // mai sbiadisce. Chi è rancoroso (coraggio alto) tiene i torti più a lungo; chi è socievole tiene meglio i favori.
+  const LONG_TAGS = /^(furto|arresto|fermato|bidone|amico|favore|debito|tradimento|lutto|morte|squalo|scambio|aiuto|progetto|mestiere)$/;
+  function keepWorthy(n, e) {
+    if (!e || e.tag === 'passo' || e.tag === 'ricordo') return false;
+    return e.w >= .4 || (e.tag && LONG_TAGS.test(e.tag) && e.w >= .25);
+  }
+  function toLong(st, n, e) {
+    const P = n.pop, L = P.lunga || (P.lunga = []);
+    // lo stesso fatto (stessa etichetta, stessa persona) non si duplica: si rafforza
+    const same = L.find(x => x.tag && x.tag === e.tag && x.who && x.who === e.who && (!e.place || x.place === e.place));
+    if (same) { same.times = (same.times || 1) + 1; same.w = clamp(same.w + .12, 0, 1.5); same.last = e.t; same.text = e.text; return same; }
+    const m = { t: e.t, last: e.t, text: e.text, kind: e.kind, w: clamp(e.w, 0, 1.5), who: e.who || null, place: e.place || null, tag: e.tag || null, times: 1 };
+    L.push(m);
+    if (L.length > 60) { let k = 0, lo = 1e9; L.forEach((d, i) => { if (d.w < lo) { lo = d.w; k = i; } }); L.splice(k, 1); }
+    return m;
+  }
+  // di notte: passa nella memoria lunga quello che pesa ed è di ieri; la memoria lunga sbiadisce piano
+  function consolidate(st, n) {
+    const P = n.pop; if (!P.diary) return;
+    P.diary.forEach(e => { if (!e.long && st.t - e.t > 600 && keepWorthy(n, e)) { toLong(st, n, e); e.long = true; } });
+    const L = P.lunga || []; const grudge = .975 + (n.tr ? n.tr.cor : .5) * .02, warm = .975 + (n.tr ? n.tr.loq : .5) * .02;
+    for (let i = L.length - 1; i >= 0; i--) { const m = L[i]; m.w *= m.kind === 'bad' ? grudge : m.kind === 'good' ? warm : .97; if (m.w < .1) L.splice(i, 1); }
+  }
+  // torna in mente: quello che la memoria lunga sa di una persona o di un posto rientra nella breve (e si rafforza)
+  function recall(st, n, f) {
+    const P = n.pop, L = P && P.lunga; if (!L || !L.length) return null;
+    const hit = L.filter(m => (f.who && m.who === f.who) || (f.place && m.place === f.place) || (f.tag && m.tag === f.tag)).sort((a, b) => b.w - a.w)[0];
+    if (!hit || st.t - (hit.recalled || -1e9) < 720) return hit || null;
+    hit.recalled = st.t; hit.w = clamp(hit.w + .05, 0, 1.5);
+    note(st, n, `si è ricordat${o(n)}: ${hit.text}`, hit.kind, { w: hit.w * .6, who: hit.who, place: hit.place, tag: 'ricordo', of: hit.tag });
+    return hit;
+  }
+  // cosa si pensa di qualcuno, mettendo insieme le due memorie (-1 .. 1)
+  function opinionOf(st, n, whoId) {
+    const P = n.pop; if (!P) return 0; let v = 0;
+    const add = (m, k) => { if (m.who !== whoId) return; v += (m.kind === 'good' ? 1 : m.kind === 'bad' ? -1.3 : 0) * m.w * k; };
+    (P.diary || []).forEach(m => add(m, .6)); (P.lunga || []).forEach(m => add(m, 1));
+    if (P.enemies && P.enemies.includes(whoId)) v -= .6; if (P.friends && P.friends.includes(whoId)) v += .3;
+    return clamp(v, -1, 1);
   }
 
   // ---------------- LA GIORNATA ----------------
@@ -660,7 +706,7 @@ var Popolo = (function () {
     // [vita] si usano gli oggetti del posto; il passo di un progetto; le scritte sui muri; quello che si è fatto oggi
     if (P.ints) {
       useObjects(st, n, b); satisfy(st, n, b);
-      if (b.tgt && !isHomeT(P, b.tgt)) readWalls(st, n, b.tgt);
+      if (b.tgt && !isHomeT(P, b.tgt)) { readWalls(st, n, b.tgt); if (P.lunga && Math.random() < .3) recall(st, n, { place: b.tgt.label }); }   // [memoria] tornare in un posto fa ricordare
       P.today.push({ t: st.t, label: b.label + (b.tgt && !isHomeT(P, b.tgt) && !b.label.includes(b.tgt.label) ? ` (${b.tgt.label})` : '') }); if (P.today.length > 16) P.today.shift();
       if (b.pj) runStep(st, n, b);
     } else satisfy(st, n, b);
@@ -762,6 +808,7 @@ var Popolo = (function () {
       else if (a && !b) { note(st, n, `${other.first} non si è fatt${o(other)} vedere a ${ap.label}`, 'bad', { who: other.id, tag: 'bidone' }); note(st, other, `ha dato buca a ${n.first}`, 'info', { who: n.id }); st.pop.stats.bidoni++; }
       else if (!a && b && O) { note(st, other, `${n.first} non si è fatt${o(n)} vedere a ${ap.label}`, 'bad', { who: n.id, tag: 'bidone' }); note(st, n, `ha dato buca a ${other.first}`, 'info', { who: other.id }); st.pop.stats.bidoni++; }
       if (ap.pj) meetResult(st, n, ap.pj, a && b);
+      if (ap.deal) MEET.forEach(f => { try { f(st, n, other, ap, a, b); } catch (e) { } });   // [scambi] un patto da chiudere all'appuntamento
       [n, other].forEach(k => { if (k && k.pop && k.pop.appt === ap || (k && k.pop && k.pop.appt && k.pop.appt.t === ap.t)) { k.pop.appt = null; k.pop.apptArrived = 0; } });
     });
   }
@@ -1379,6 +1426,10 @@ var Popolo = (function () {
   const REFLECT = [];
   function reflect(st, n) {
     const P = n.pop, N = P.need, thoughts = [];
+    consolidate(st, n);   // [memoria] quello che pesa passa nella memoria lunga
+    // [memoria] un vecchio torto che torna in mente di notte
+    const old = (P.lunga || []).filter(m => m.kind === 'bad' && m.who && st.t - m.t > 2 * 1440 && m.w > .5).sort((a, b) => b.w - a.w)[0];
+    if (old && Math.random() < .25 + (n.tr ? n.tr.cor * .3 : 0)) thoughts.push([`non ha dimenticato: ${old.text}`, .3 + old.w * .2]);
     // 1. i posti: dove sono successe cose brutte negli ultimi giorni
     const bad = {};
     P.diary.forEach(e => { if (e.kind === 'bad' && e.place && st.t - e.t < 3 * 1440) bad[e.place] = (bad[e.place] || 0) + e.w; });
@@ -1434,7 +1485,7 @@ var Popolo = (function () {
   function mindPrompt(st, n) {
     const P = n.pop;
     return { id: n.id, who: `${n.name}, ${P.age} anni, ${n.role}`, interessi: P.ints.map(i => INTERESSI[i.k]), bisogni: Object.assign({}, P.need),
-      ricordi: P.diary.slice().sort((a, b) => b.w - a.w).slice(0, 8).map(e => `${ago(st, e.t)}: ${e.text}`), progetti: P.projects.map(p => p.label), pensieri: P.thoughts.map(t => t.text) };
+      ricordi: P.diary.slice().sort((a, b) => b.w - a.w).slice(0, 8).map(e => `${ago(st, e.t)}: ${e.text}`), memoriaLunga: (P.lunga || []).slice().sort((a, b) => b.w - a.w).slice(0, 6).map(e => `${ago(st, e.t)}${e.times > 1 ? ` (${e.times} volte)` : ''}: ${e.text}`), progetti: P.projects.map(p => p.label), pensieri: P.thoughts.map(t => t.text) };
   }
   // per il taccuino: una riga
   function lifeShort(st, n) {
@@ -1454,6 +1505,7 @@ var Popolo = (function () {
     if (P.thoughts && P.thoughts.length) parts.push(`Ultimamente ha pensato: «${cap(P.thoughts[P.thoughts.length - 1].text)}».`);
     const nd = needWords(P, o(n)); if (nd) parts.push(nd);
     const d = P.diary.filter(e => e.kind !== 'pensiero' && e.tag !== 'passo').sort((a, b) => b.w - a.w).slice(0, 4).sort((a, b) => a.t - b.t).map(e => `${ago(st, e.t)}: ${e.text}`); if (d.length) parts.push('Ricorda: ' + d.join('; ') + '.');
+    const lg = (P.lunga || []).filter(e => st.t - e.t > 1440).sort((a, b) => b.w - a.w).slice(0, 3).map(e => `${ago(st, e.t)}: ${e.text}`); if (lg.length) parts.push('Da tempo non dimentica: ' + lg.join('; ') + '.');   // [memoria]
     return parts.join(' ');
   }
 
@@ -1795,8 +1847,8 @@ var Popolo = (function () {
     };
   }
   // per i moduli che costruiscono sopra la vita (azioni.js): gli strumenti interni
-  const USE = [], AVAIL = [], ESSENTIAL = [], MONEY = {};   // [soldi] MONEY: agganci dei soldi (paga, affitto, spese, macchinette)   // [economia] chi vuole può vietare o far pagare l'uso di un oggetto in un posto (scorte, prezzi)
-  const _ = { USE, AVAIL, ESSENTIAL, MONEY, JOBS_BY, OUTDOOR, GENDER, buildIndex, sketchFor, artStyle, readWalls, newcomer, REFLECT, note, feel, target, tkey, tB, planDay, blockNow, snapFar, wakeNear, dayIdx, minOfDay, hhmm, isPassive, arrestFar, arrest: arrestFar, chooseObj, startProject, endProject, PROJ, OGG, useRef, recent, share, closeness, paintWall, appoint, adopt, o, cap, pick, isHomeT, initLife, lifeOf, curfewFrom, clamp, dist };
-  return { _, arrest: arrestFar, note, OGG, INTERESSI, PROJ, lifeOf, lifeShort, reflect, chooseObj, startProject, isPassive, CFG, WEEK, RECURRING, GIRI, weekday, wdName, ago, curfewFrom, eventsOn, planDay, blockNow, appoint, bioOf, report, target, note, buildIndex, doing };
+  const USE = [], AVAIL = [], ESSENTIAL = [], MONEY = {}, MEET = [];   // [scambi] MEET: chi vuole sapere com'è andato un appuntamento con un patto   // [soldi] MONEY: agganci dei soldi (paga, affitto, spese, macchinette)   // [economia] chi vuole può vietare o far pagare l'uso di un oggetto in un posto (scorte, prezzi)
+  const _ = { USE, AVAIL, ESSENTIAL, MONEY, MEET, JOBS_BY, OUTDOOR, GENDER, buildIndex, sketchFor, artStyle, readWalls, newcomer, REFLECT, note, feel, target, tkey, tB, planDay, blockNow, snapFar, wakeNear, dayIdx, minOfDay, hhmm, isPassive, arrestFar, arrest: arrestFar, toLong, recall, opinionOf, consolidate, chooseObj, startProject, endProject, PROJ, OGG, useRef, recent, share, closeness, paintWall, appoint, adopt, o, cap, pick, isHomeT, initLife, lifeOf, curfewFrom, clamp, dist };
+  return { _, arrest: arrestFar, note, OGG, INTERESSI, PROJ, lifeOf, lifeShort, reflect, chooseObj, startProject, isPassive, CFG, WEEK, RECURRING, GIRI, weekday, wdName, ago, curfewFrom, eventsOn, planDay, blockNow, appoint, bioOf, report, target, note, buildIndex, doing, recall, opinionOf };
 })();
 if (typeof module !== 'undefined') module.exports = Popolo;
