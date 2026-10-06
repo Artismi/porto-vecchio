@@ -8,6 +8,7 @@
 <script src="src/gltf_loader.js"></script>
 <script src="src/kit.js"></script>
 <script src="src/scaricati.js"></script>
+<script src="src/superfici.js"></script>
 <script src="src/bottino.js"></script>
 <script src="src/pezzi.js"></script>
 <script src="src/oggetti_ui.js"></script>
@@ -26,6 +27,10 @@
   // voce: { nome, src: 'bottino:vicolo' | 'pezzi:pallet' (args: [...]) | 'st:st_forgia' | 'scaricato:radio' | 'kit:food/fish', locked }
   // per un file qualsiasi: { src: 'file:mj/s_Tent', fit: ['h', 1.2] }
   async function make(d) {
+    const nudo = d.nudo === undefined ? !!window.__nudo : !!d.nudo, S = window.Superfici; if (nudo) window.Superfici = undefined;   // nudo: senza veste, anche dove il modello se la mette da sé
+    try { return await make0(d, nudo); } finally { window.Superfici = S; }
+  }
+  async function make0(d, nudo) {
     const g = new THREE.Group(), i = d.src.indexOf(':'), lib = d.src.slice(0, i), fn = d.src.slice(i + 1);
     if (lib === 'bottino') Bottino.MODEL[fn](g, { locked: !!d.locked, ref: d.nome });
     else if (lib === 'pezzi') Pezzi[fn].apply(null, [g].concat(d.st ? [OggettiUI.stModel(d.st)] : d.args || []));   // st: la postazione che la composizione prende come argomento
@@ -34,6 +39,7 @@
     else if (lib === 'file') { const id = '_' + fn; Scaricati.CAT[id] = [fn, (d.fit || ['h', 1])[0], (d.fit || ['h', 1])[1], d.ry || 0]; await Scaricati.load(id); Scaricati.put(g, id); }
     else if (lib === 'kit') { await (window.__kits = window.__kits || Kit.load('assets/mk/', ['food', 'urban', 'urbano', 'casa', 'stazione', 'arcade', 'grave', 'natura', 'tortura', 'train']).catch(() => {})); g.add(Kit.get(fn)); }
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    if (!nudo) Superfici.vesti(g);   // "nudo": true (nella voce o nella scena) per vederli senza veste
     return g;
   }
   function clearLabels() { const lab = document.getElementById('lab'); lab.innerHTML = ''; return lab; }
@@ -41,7 +47,7 @@
   window.studio = {
     // tutti in fila nella stessa scena (come prima)
     async run(list, opts) {
-      opts = opts || {}; if (opts.precarica) await Scaricati.preload(); if (opts.celle) return this.celle(list, opts);
+      opts = opts || {}; window.__nudo = !!opts.nudo; if (opts.precarica) await Scaricati.preload(); if (opts.celle) return this.celle(list, opts);
       items.forEach(g => scene.remove(g)); items = [];
       const cols = opts.cols || Math.min(5, list.length), sp = opts.sp || 1.6;
       for (let i = 0; i < list.length; i++) { const d = list[i], g = await make(d), c = i % cols, r = Math.floor(i / cols); g.position.set((c - (cols - 1) / 2) * sp, 0, -r * sp); g.rotation.y = d.ang !== undefined ? d.ang : (opts.ang || 0); scene.add(g); items.push(g); g.userData.nome = d.nome; }

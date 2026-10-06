@@ -42,6 +42,23 @@ Rivisti tutti i modelli fatti a mano che lo studio sa fotografare: bottino (10),
 - Modalità `celle`: un modello per cella, inquadrato da solo, con le misure in metri e un avviso arancione se la base non sta a terra. `precarica` carica prima i modelli scaricati; senza, si vede il ripiego fatto a mano.
 - Sorgenti nuove: `st:`, `scaricato:`, `kit:food/fish`, `file:mj/s_Tent` (con `fit`).
 
+## La veste: profondità e texture (6/10 sera)
+`src/superfici.js` (caricato dopo `scaricati.js`): `Superfici.vesti(gruppo)` dà a ogni modello fatto a mano più livelli di profondità, senza toccare i singoli modelli:
+1. **spigoli smussati**: le scatole spesse almeno 3 cm diventano scatole arrotondate con normali morbide, e gli spigoli prendono la luce;
+2. **texture per materiale**, in metri veri (una texture = 50 cm, 64 px, a pixel netti come il resto del gioco), in grigio moltiplicato per il colore di prima. La stessa immagine fa da rilievo (bumpMap). I materiali sono legno, metallo, vernice, ghisa, mattone, tessuto, carta, gomma e pietra. Si indovinano da colore, metallicità, ruvidezza e nome del materiale; per forzarli si usa `material.userData.sup = 'legno'`;
+3. **ombre nei colori per vertice**:
+   - di contatto con terra (55% a terra, pieno da 35 cm in su);
+   - nei punti dove un pezzo tocca o entra in un altro;
+   - una sfumatura dal basso all'alto su ogni pezzo, e un tono leggermente diverso per pezzo.
+- La usano `OggettiUI.stModel`, `Cantiere.model`, `Bottino.build`, i mobili `pv_*` di `models.js` e i modelli scaricati (in `Scaricati.fit`). Questi ultimi non hanno uv: la veste le proietta "a scatola" dalla normale, e il materiale lo prende dal nome (Wood, Sack, Cardboard…).
+- Le mesh già vestite sono segnate (`userData.vestito`) e non si rifanno. Restano fuori quelle che si illuminano, quelle trasparenti e le skinned. Quelle con una texture loro (le casse del bottino) prendono solo lo smusso, con uv 0..1 per faccia: le scritte restano dritte.
+- Costo misurato:
+  - banco armi: 15 ms una volta, triangoli da 3,4k a 5k;
+  - forgia: 7 ms;
+  - una cassa del bottino: 2 ms.
+- Studio: `"nudo": true` (nella scena o nella voce) mostra i modelli senza veste, per confrontare. Esempio: `_immagini/modelli/veste_confronto.png`.
+- Nel gioco, alla distanza della camera, la grana fine si perde. Quello che si legge sono gli smussi grossi, le ombre di contatto e i toni diversi per pezzo. Il grading del gioco sposta tutti i colori verso il sabbia, anche quelli del mondo.
+
 ## Da fare
 - I modelli del mondo in `render.js` (lampioni, panchine, bancarelle…) e i mobili `pv_*` di `models.js` non passano dallo studio: vanno aggiunti come sorgenti e rivisti allo stesso modo.
 - Personaggi: sempre il punto più debole (vedi HANDOFF_personaggi).

@@ -303,6 +303,7 @@ var OggettiUI = (function () {
         cavo([[-.15, 1.18, 0], [-.05, 1.22, 0], [.15, 1.12, .02], [.33, .9, .04], [.4, .72, .04]], .025, '#c87a4a');
         cyl(.18, .58, .42, 0, .04, '#7a5634', 0, g, .19, 16); for (const y of [.08, .46]) { const t = mesh(new THREE.TorusGeometry(.185, .012, 4, 18), IRON); t.rotation.x = Math.PI / 2; t.position.set(.42, y, .04); } cyl(.17, .01, .42, .58, .04, '#4a6a7a', 0, g, .17);
         cyl(.012, .1, .55, .12, .15, '#c87a4a', 2); box(.03, .04, .03, .62, .08, .15, '#c87a4a');
+        g.traverse(o => { if (o.isMesh && /^#(b86a3a|c87a4a|d08a5a)$/.test('#' + o.material.color.getHexString())) o.material = mat('#' + o.material.color.getHexString(), { metalness: .6, roughness: .38 }); });   // il rame è metallo
         ball(.12, .62, .12, .32, mat('#4a7a5a', { transparent: true, opacity: .75, roughness: .2 }), g, 1, 1, 1); cyl(.03, .08, .62, .22, .32, '#4a7a5a'); for (let i = 0; i < 6; i++) asta([.62 + Math.cos(i) * .12, .04, .32 + Math.sin(i) * .12], [.62 + Math.cos(i) * .1, .2, .32 + Math.sin(i) * .1], .01, '#a88a5a');
         break; }
       case 'st_stufa': {   // stufa di ghisa: corpo su quattro piedi, sportello con la finestrella della fiamma, piastra, tubo che sale e piega verso il muro, bollitore e ciocchi
@@ -344,7 +345,7 @@ var OggettiUI = (function () {
         break; }
       default: return null;
     }
-    return g;
+    return typeof Superfici !== 'undefined' ? Superfici.vesti(g) : g;
   }
   // il caricatore dei mobili: le postazioni le disegniamo noi, il resto viene dal kit
   const iv2 = setInterval(() => {

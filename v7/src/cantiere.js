@@ -243,7 +243,7 @@ var Cantiere = (function () {
     if (!g.getObjectByName('luce') && b.anim === 'rossa') tag(cyl(g, .06, .06, .06, '#ff2a2a', 0, 1.9, -.2, '#ff1010'), 'luce');
     if (!g.getObjectByName('segatura') && b.anim === 'segatura') tag(box(g, .3, .02, .2, '#d8b080', .3, .87, .1), 'segatura');
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    return g;
+    return typeof Superfici !== 'undefined' ? Superfici.vesti(g) : g;   // [modelli] spigoli, texture, ombra di contatto
   }
 
   // =====================================================================================================================

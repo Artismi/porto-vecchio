@@ -24,12 +24,6 @@ var Scaricati = (function () {
     gomme: ['mj/t_Debris_Tires', 'l', 1.1, 0],
     tubi: ['mj/t_Pipes', 'l', 1.2, 0],
     cestinoT: ['mj/t_TrashContainer', 'l', 1.4, 0],
-    // Furniture Kit (Kenney)
-    tv: ['mf/televisionVintage', 'x', .55, 0],
-    radioK: ['mf/radio', 'x', .45, 0],
-    scatola: ['mf/cardboardBoxClosed', 'l', .45, 0],
-    cestino: ['mf/trashcan', 'h', .65, 0],
-    monitor: ['mf/computerScreen', 'x', .42, 0],
   };
   const LIB = {}, WAIT = {};
   let ver = 0, base = 'assets/', loader = null;
@@ -45,6 +39,8 @@ var Scaricati = (function () {
       (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) { m.map.magFilter = THREE.NearestFilter; m.map.needsUpdate = true; } if (m.metalness > .5) m.metalness = .3; });
     });
     const out = new THREE.Group(); out.add(g); out.userData.size = new THREE.Vector3(sz.x * k, sz.y * k, sz.z * k);
+    if (typeof Superfici !== 'undefined') Superfici.vesti(out);   // texture in metri e ombra di contatto anche sui modelli scaricati (le copie le ereditano)
+    out.userData.vestito = false;
     return out;
   }
   function load(id) {

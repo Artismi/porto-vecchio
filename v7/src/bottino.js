@@ -143,7 +143,7 @@ var Bottino = (function () {
     const g = new (T().Group)(), f = MODEL[L.kind] || MODEL.vicolo; f(g, L);
     let h = 0; for (const ch of (L.ref || '')) h = (h * 31 + ch.charCodeAt(0)) | 0;
     g.rotation.y = (h % 628) / 100; g.userData.kind = L.kind;
-    return g;
+    return typeof Superfici !== 'undefined' ? Superfici.vesti(g) : g;
   }
 
   // ---------------- L'ELENCO ----------------
