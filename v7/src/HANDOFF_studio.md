@@ -5,7 +5,9 @@ Si apre con `AVVIA.bat` e poi `http://localhost:8642/editor.html` (con il server
 e in `ritocchi/`). `build.py` scrive sia `index.html` (il gioco) sia `editor.html` (lo stesso con `window.PV_STUDIO = true`).
 
 ## Le tre sezioni (barra in alto; c'è anche l'ora del giorno)
-- **Mappa** — tutta l'isola. A destra gli strumenti dell'editor (vedi HANDOFF_editor.md): sposta/togli/duplica gli oggetti, colore,
+- **Mappa** — tutta l'isola, ferma (niente vento, bandiere, fumo: si lavora meglio). Ci si muove con WASD o **trascinando col tasto destro** (o col sinistro sul vuoto), Q/E gira, rotella zoom.
+  Si prendono uno per uno: arredo di strada, **alberi e cespugli** (si spostano, girano, scalano, tolgono; chiave `verde`), e i **dettagli delle case**
+  (condizionatori, parabole, antenne, cisterne, insegne, manifesti, scatole, scale, tubi… chiave `d:x,y,z` in `fuori`), staccati dalla casa. A destra gli strumenti dell'editor (vedi HANDOFF_editor.md): sposta/togli/duplica gli oggetti, colore,
   materiale, timbro, gomma, «Posa un modello caricato». **Doppio clic** su un oggetto: la vista isolata del suo modello. Doppio clic su un edificio: ci entri.
 - **Interni** — a sinistra tutti gli edifici (cerca per nome o uso), si entra, si cambia piano, si muovono e aggiungono mobili. Doppio clic su un mobile: il suo modello.
 - **Modelli** — l'**hangar**: ogni modello del gioco in fila, per categoria, col cartello:

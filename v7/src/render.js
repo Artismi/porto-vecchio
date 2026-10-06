@@ -97,6 +97,7 @@ var Render = (function () {
       let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
       g.applyMatrix4(o.matrixWorld);
       b.geos.push(g); if (curTag) tagPart(b, g.attributes.position.count);
+      if (window.Officina && Officina.wantParts) Officina.onPart(o, b, b.geos.length - 1, g.attributes.position.count);   // [studio] dove finisce ogni mesh
     });
   }
   function mergeGeos(geos) {
@@ -1595,6 +1596,7 @@ var Render = (function () {
     const nat = buildNat(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');
     const vd = verde38(tx0, ty0, n, m); vd.visible = false; grp.add(vd);   // [verde]
     scene.add(grp);
+    if (window.Officina) Officina.onChunk(grp, groundH);   // [studio] alberi e cespugli ritoccati
     return { grp, geo, mat, tex, btex, veg, nat, lt, vd, rev: ISO.rev };
   }
   function dropChunk(ch) {
@@ -9877,7 +9879,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (dyn.rim) { dyn.rim.position.set(cam.x + 30, 18, cam.y + 34); dyn.rim.target.position.set(cam.x, 0, cam.y); dyn.rim.intensity = .1 + (1 - night) * .1 - night * .07; /* [luci5] */ dyn.rim.color.set(night > .5 ? '#6a8ac8' : '#b8c8e8'); }
     dyn.buildings.forEach(b => b.mats.forEach(m => { if (m.emissiveMap) m.emissiveIntensity = .04 + night * .85; }));
     if (dyn.backdropMats) dyn.backdropMats.forEach(m => m.emissiveIntensity = .1 + night * .9);
-    const time = ui.time || st.clock;
+    const time = ui.studio ? 30 : (ui.time || st.clock);   // [studio] tutto fermo: vento, bandiere, fumo, schermi
     updateLights(time, night, cam.x, cam.y);
     { const dayK = 1 - night;   /* [amb1] sole e cielo secondo il tempo; la notte resta della regia luci */
       hemi.intensity = Math.max(hemi.intensity, (.34 + WXc * .3) * dayK);
@@ -9907,7 +9909,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     tickWinter(time, night);
     tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri
     tickUrbano1(time, night);
-    tickMondo(st, time, night, dt);   // [animazioni-mondo] vento, fumo, scintille, carte, piccioni, porte
+    tickMondo(st, time, night, ui.studio ? 0 : dt);   // [animazioni-mondo] vento, fumo, scintille, carte, piccioni, porte
     dyn.spin.forEach(s => { s.o.rotation.y = time * s.speed; s.o.children.forEach(c => c.children.forEach(m => m.material.opacity = .015 + night * .06)); });
     dyn.beams.forEach(b => { b.piv.rotation.z = Math.sin(time * .6 + b.ph) * .45; b.piv.rotation.x = Math.cos(time * .45 + b.ph) * .3; b.mat.opacity = .02 + night * .13; });
     dyn.chasers.forEach(c => { const n = c.bulbs.length; c.bulbs.forEach((b, i) => b.material.color.set(((i + Math.floor(time * 8)) % 3) === 0 ? '#fff4c0' : '#6a4a20')); });

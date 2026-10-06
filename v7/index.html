@@ -4678,7 +4678,7 @@ var Editor = (function () {
   // =====================================================================================================
   let RIT = norm({}), SERVER = false, ctx = null, E = null, on = false;
   const KEYS = new Map(), TOUCHED = new Set(), TOUCHED_B = new Set(), BK = new Map();
-  let COPIES = [];
+  let COPIES = [], DETR = [];
   const undo = [], redo = [];
   let sel = null, hover = null, drag = null, tool = 'sposta', stroke = null;
   const brush = { size: .35, hard: .55, opac: .85, color: '#b84a3c' };
@@ -4691,7 +4691,7 @@ var Editor = (function () {
   const RC = new THREE.Raycaster(), V2 = new THREE.Vector2(), BOX = new THREE.Box3(), VA = V3(), VB = V3(), VC = V3();
   const D4 = new THREE.Matrix4(), N3 = new THREE.Matrix3();
 
-  function norm(j) { j = j && typeof j === 'object' ? j : {}; return { versione: 1, fuori: j.fuori || {}, copie: j.copie || [], interni: j.interni || {}, pittura: j.pittura || {}, modelli: j.modelli || {}, vestiti: j.vestiti || {}, files: j.files || [] }; }
+  function norm(j) { j = j && typeof j === 'object' ? j : {}; return { versione: 1, fuori: j.fuori || {}, copie: j.copie || [], interni: j.interni || {}, pittura: j.pittura || {}, modelli: j.modelli || {}, verde: j.verde || {}, vestiti: j.vestiti || {}, files: j.files || [] }; }
   const r3 = v => Math.round(v * 1000) / 1000;
   const gH = (x, z) => E.groundH(x, z);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -4737,7 +4737,7 @@ var Editor = (function () {
       a.position.needsUpdate = true; a.normal.needsUpdate = true; meshes.add(q.p.b.mesh);
     });
     if (sphere instanceof Set) meshes.forEach(m => sphere.add(m)); else if (sphere) meshes.forEach(m => m.geometry.computeBoundingSphere());
-    BOX.setFromObject(o); BOX.getCenter(rec.c); BOX.getSize(rec.he).multiplyScalar(.5); rec.base = BOX.min.y; E.hashPut(rec, rec.c.x, rec.c.z);
+    BOX.setFromObject(o); BOX.getCenter(rec.c); BOX.getSize(rec.he).multiplyScalar(.5); rec.base = BOX.min.y; if (!rec.detail) E.hashPut(rec, rec.c.x, rec.c.z);
     if (ed.L0) { VA.fromArray(ed.L0).applyMatrix4(D4); rec.light.x = VA.x; rec.light.y = VA.y; rec.light.z = VA.z; }
     if (ed.G0) rec.glowS.position.copy(ed.G0).applyMatrix4(D4);
   }
@@ -4806,6 +4806,7 @@ var Editor = (function () {
     Object.keys(RIT.fuori).forEach(k => { const rec = KEYS.get(k); if (rec) { setRec(rec, RIT.fuori[k], sph); TOUCHED.add(k); } });
     sph.forEach(m => m.geometry.computeBoundingSphere());
     COPIES.forEach(c => E.scene.remove(c.g)); COPIES = RIT.copie.map(makeCopy).filter(Boolean);
+    if (window.Officina) Officina.reapplyVerde();
     let inHere = false; const p = ctx.st.player, here = p.indoor ? bkey(G.BUILDINGS[p.indoor.b]) : null;
     new Set([...TOUCHED_B, ...Object.keys(RIT.interni)]).forEach(bk => { const bi = BK.get(bk); if (bi === undefined) return; applyInterior(G.INT.layout(G.BUILDINGS[bi]), bk); TOUCHED_B.add(bk); if (bk === here) inHere = true; });
     if (inHere) E.rebuildIndoor();
@@ -4817,6 +4818,7 @@ var Editor = (function () {
     ctx = c; E = c.R.__ed; if (!E) { console.warn('[editor] render senza __ed'); return; }
     E.DZ.props.forEach(rec => { if (!rec.obj) return; const q = rec.obj.position; let k = q.x.toFixed(2) + ',' + q.y.toFixed(2) + ',' + q.z.toFixed(2); if (KEYS.has(k)) { let n = 2; while (KEYS.has(k + '#' + n)) n++; k += '#' + n; } rec.edKey = k; KEYS.set(k, rec); });
     c.G.BUILDINGS.forEach((b, i) => BK.set(bkey(b), i));
+    if (window.Officina && Officina.wantParts) { DETR = Officina.detailRecs(E); DETR.forEach(rec => { const q = rec.obj.position; let k = 'd:' + q.x.toFixed(2) + ',' + q.y.toFixed(2) + ',' + q.z.toFixed(2); if (KEYS.has(k)) { let n = 2; while (KEYS.has(k + '#' + n)) n++; k += '#' + n; } rec.edKey = k; KEYS.set(k, rec); }); }   // i dettagli delle case, presi uno per uno
     try { applyAll(); } catch (e) { console.error('[editor] ritocchi', e); }
     const n = Object.keys(RIT.fuori).length + RIT.copie.length + Object.keys(RIT.interni).length + Object.keys(RIT.pittura).length;
     if (n) console.log('[editor] ritocchi rimessi:', n);
@@ -4840,7 +4842,7 @@ var Editor = (function () {
       get: s => { const o = s.rec.obj; return { x: o.position.x, z: o.position.z, h: o.position.y - gH(o.position.x, o.position.z), ry: o.rotation.y, s: o.scale.x / s.rec.ed.s0.x }; },
       set: (s, T, fin) => { const o = s.rec.obj, ed = s.rec.ed; o.position.set(T.x, gH(T.x, T.z) + T.h, T.z); o.rotation.set(ed.rot0.x, T.ry, ed.rot0.z); o.scale.copy(ed.s0).multiplyScalar(T.s); rewrite(s.rec, fin); },
       commit: s => { const o = s.rec.obj, ed = s.rec.ed, k = s.rec.edKey; if (o.position.distanceTo(ed.pos0) < .001 && Math.abs(o.rotation.y - ed.rot0.y) < .0001 && Math.abs(o.scale.x / ed.s0.x - 1) < .0001) delete RIT.fuori[k]; else RIT.fuori[k] = { pos: o.position.toArray().map(r3), ry: r3(o.rotation.y), s: r3(o.scale.x / ed.s0.x) }; TOUCHED.add(k); },
-      box: s => BOX.setFromObject(s.rec.obj), name: () => 'oggetto di strada',
+      box: s => BOX.setFromObject(s.rec.obj), name: s => s.rec.detail ? (s.rec.obj.userData.__nome || 'dettaglio della casa') : 'oggetto di strada',
     },
     copia: {
       ok: s => COPIES.includes(s.c),
@@ -4848,6 +4850,13 @@ var Editor = (function () {
       set: (s, T) => { const g = s.c.g, ed = s.c.e.da ? KEYS.get(s.c.e.da).ed : null; g.position.set(T.x, gH(T.x, T.z) + T.h, T.z); g.rotation.y = T.ry; if (ed) g.scale.copy(ed.s0).multiplyScalar(T.s); else g.scale.setScalar(T.s); s.c.e.s = T.s; },
       commit: s => { const g = s.c.g; s.c.e.pos = g.position.toArray().map(r3); s.c.e.ry = r3(g.rotation.y); s.c.e.s = r3(s.c.e.s || 1); },
       box: s => BOX.setFromObject(s.c.g), name: s => s.c.e.mod ? 'modello posato · ' + s.c.e.mod : 'copia di un oggetto di strada',
+    },
+    verde: {
+      ok: s => !!(s.grp && s.grp.parent),
+      get: s => { const e = s.cur || {}, d = e.d || [0, 0, 0]; return { x: s.x + d[0], z: s.z + d[2], h: d[1], ry: e.ry || 0, s: e.s || 1 }; },
+      set: (s, T) => { s.cur = { d: [T.x - s.x, T.h, T.z - s.z].map(r3), ry: r3(T.ry), s: r3(T.s) }; Officina.vegSet(s.grp, s.x, s.z, s.cur); },
+      commit: s => { const e = s.cur; if (!e) return; if (Math.hypot(e.d[0], e.d[1], e.d[2]) < .001 && Math.abs(e.ry) < .0001 && Math.abs(e.s - 1) < .0001) delete RIT.verde[s.key]; else RIT.verde[s.key] = e; },
+      box: s => Officina.vegBox(s.grp, s.x, s.z, BOX), name: () => 'albero / cespuglio',
     },
     mobile: {
       ok: s => { const i = indoorNow(); return !!(i && bkey(i.b) === s.bk && i.f === s.f && furnOf(s)); },
@@ -4878,14 +4887,18 @@ var Editor = (function () {
       for (const h of RC.intersectObjects(ms, false)) { let o = h.object; while (o && !o.userData.furn) o = o.parent; if (o) { const f = o.userData.furn; return f.__add ? { t: 'mobile', bk: bkey(I.b), f: I.f, entry: f.__add } : { t: 'mobile', bk: bkey(I.b), f: I.f, key: f.__k }; } }
       return null;
     }
-    const hits = [];
-    E.DZ.props.forEach(rec => { if (rec.state !== 0 || !rec.edKey) return; BOX.setFromCenterAndSize(rec.c, VB.copy(rec.he).multiplyScalar(2)); if (ray.intersectBox(BOX, VA)) hits.push({ d: VA.distanceTo(ray.origin), v: rec.he.x * rec.he.y * rec.he.z, s: { t: 'fuori', rec } }); });
+    const hits = [], recs = DETR.length ? E.DZ.props.concat(DETR) : E.DZ.props, veg = window.Officina ? Officina.pickVeg(RC) : null;
+    const vsel = veg && { t: 'verde', key: veg.x + ',' + veg.z, x: veg.x, z: veg.z, grp: veg.grp };
+    recs.forEach(rec => { if (rec.state !== 0 || !rec.edKey) return; BOX.setFromCenterAndSize(rec.c, VB.copy(rec.he).multiplyScalar(2)); if (ray.intersectBox(BOX, VA)) hits.push({ d: VA.distanceTo(ray.origin), v: rec.he.x * rec.he.y * rec.he.z, s: { t: 'fuori', rec } }); });
     COPIES.forEach(c => { BOX.setFromObject(c.g); if (ray.intersectBox(BOX, VA)) { BOX.getSize(VB); hits.push({ d: VA.distanceTo(ray.origin), v: VB.x * VB.y * VB.z / 8, s: { t: 'copia', c } }); } });
-    if (!hits.length) return null;
-    const d0 = Math.min(...hits.map(h => h.d)), near = hits.filter(h => h.d < d0 + 1.5).sort((a, b) => a.v - b.v);   // fra quelli davanti, il più piccolo (la bottiglia sul tavolo)
-    return near[0].s;
+    if (!hits.length) return vsel;
+    // raggio sui pezzi veri: vince quello che il puntatore tocca davvero, il più vicino
+    let best = null, bd = 1e9; hits.forEach(h => { const o = h.s.t === 'fuori' ? h.s.rec.obj : h.s.c.g; o.updateMatrixWorld(true); const x = RC.intersectObject(o, true)[0]; if (x && x.distance < bd) { bd = x.distance; best = h.s; } });
+    if (veg && (!best || veg.dist < bd)) return vsel;   // l'albero davanti all'oggetto
+    return best;   // niente sotto il puntatore: niente (così sul vuoto si afferra la vista)
   }
   function select(s) {
+    if (s && s.t === 'verde') { const e = RIT.verde[s.key]; s.cur = e && !e.togli ? JSON.parse(JSON.stringify(e)) : null; }
     sel = s; if (s && s.t === 'fuori') edInit(s.rec);
     if (s && s.t === 'mobile') { const m = meshOf(furnOf(s)), o = furnOf(s); if (m && m.userData.s0 === undefined) m.userData.s0 = m.scale.x / ((o && o.s) || 1); }
     renderPanel();
@@ -4939,12 +4952,14 @@ var Editor = (function () {
     if (!okSel(sel)) return; const s = sel; sel = null;
     edit(() => {
       if (s.t === 'fuori') RIT.fuori[s.rec.edKey] = { togli: true };
+      else if (s.t === 'verde') RIT.verde[s.key] = { togli: true };
       else if (s.t === 'copia') RIT.copie.splice(RIT.copie.indexOf(s.c.e), 1);
       else { const P = floorRit(s.bk, s.f, true), o = furnOf(s); if (s.entry) P.nuovi.splice(P.nuovi.indexOf(s.entry), 1); else if (o) P.mobili[o.__k] = { togli: true }; }
     });
   }
   function duplicate() {
     if (!okSel(sel)) return; const s = sel, T = AD[s.t].get(s); let made = null;
+    if (s.t === 'verde') { toast('Gli alberi non si duplicano: si spostano, si girano, si scalano o si tolgono.', 'bad'); return; }
     edit(() => {
       if (s.t === 'fuori' || s.t === 'copia') { const da = s.t === 'fuori' ? s.rec.edKey : s.c.e.da, x = T.x + .8, z = T.z + .8; made = Object.assign(s.t === 'copia' && s.c.e.mod ? { mod: s.c.e.mod } : { da }, { pos: [r3(x), r3(gH(x, z) + T.h), r3(z)], ry: r3(T.ry), s: r3(T.s) }); RIT.copie.push(made); }
       else { const o = furnOf(s); made = { id: o.id, x: r3(o.x + .5), y: r3(o.y + .5), h: r3(o.h || 0), ry: r3(o.ry || 0), s: r3(o.s || 1) }; floorRit(s.bk, s.f, true).nuovi.push(made); }
@@ -4954,7 +4969,7 @@ var Editor = (function () {
   }
   function revert() {
     if (!okSel(sel)) return; const s = sel;
-    edit(() => { if (s.t === 'fuori') delete RIT.fuori[s.rec.edKey]; else if (s.t === 'mobile' && s.key) { const P = floorRit(s.bk, s.f, false); if (P) delete P.mobili[s.key]; } });
+    edit(() => { if (s.t === 'verde') delete RIT.verde[s.key]; if (s.t === 'fuori') delete RIT.fuori[s.rec.edKey]; else if (s.t === 'mobile' && s.key) { const P = floorRit(s.bk, s.f, false); if (P) delete P.mobili[s.key]; } });
     renderPanel();
   }
   function addFurn(id) {
@@ -5121,11 +5136,13 @@ var Editor = (function () {
   function onDown(e) {
     if (!on || e.target !== ctx.cv || e.button === 1) return;
     e.stopPropagation(); e.preventDefault(); readMouse(e); ctx.cv.setPointerCapture && ctx.cv.setPointerCapture(e.pointerId);
+    const startPan = () => { const I = indoorNow(), y = I ? floorY() : gH(focus.x, focus.y), pl = new THREE.Plane(new THREE.Vector3(0, 1, 0), -y), h = aim(mouse.nx, mouse.ny).intersectPlane(pl, V3()); if (h) drag = { pan: true, pl, at: h }; };
+    if (e.button === 2) { startPan(); return; }
     if (e.button !== 0) return;
     if (tool === 'sposta') {
       const s = pick(mouse.nx, mouse.ny);
       if (e.detail >= 2 && hooks.dbl) { drag = null; hooks.dbl(s, mouse.nx, mouse.ny); return; }   // doppio clic: lo Studio apre la vista isolata (o entra nell'edificio)
-      select(s); if (!s) return;
+      select(s); if (!s) { startPan(); return; }   // sul vuoto: si afferra la vista
       const T = AD[s.t].get(s), y = s.t === 'mobile' ? floorY() + T.h : gH(T.x, T.z) + T.h, pl = new THREE.Plane(new THREE.Vector3(0, 1, 0), -y), hit = aim(mouse.nx, mouse.ny).intersectPlane(pl, V3());
       if (hit) drag = { pl, dx: T.x - hit.x, dz: T.z - hit.z, before: snap(), moved: false };
       return;
@@ -5138,6 +5155,10 @@ var Editor = (function () {
   }
   function onMove(e) {
     if (!on) return; readMouse(e);
+    if (drag && drag.pan) {   // la vista segue il punto afferrato
+      const h = aim(mouse.nx, mouse.ny).intersectPlane(drag.pl, V3()); if (!h) return;
+      const dx = drag.at.x - h.x, dz = drag.at.z - h.z; focus.x += dx; focus.y += dz; ctx.R.cam.x += dx; ctx.R.cam.y += dz; return;
+    }
     if (drag && okSel(sel)) {
       const hit = aim(mouse.nx, mouse.ny).intersectPlane(drag.pl, V3()); if (!hit) return;
       const T = AD[sel.t].get(sel); let x = hit.x + drag.dx, z = hit.z + drag.dz;
@@ -5147,14 +5168,14 @@ var Editor = (function () {
   }
   function onUp(e) {
     if (!on) return;
-    if (drag) { const d = drag; drag = null; if (d.moved && okSel(sel)) { const T = AD[sel.t].get(sel); AD[sel.t].set(sel, T, true); commitSel(d.before); } }
+    if (drag) { const d = drag; drag = null; if (!d.pan && d.moved && okSel(sel)) { const T = AD[sel.t].get(sel); AD[sel.t].set(sel, T, true); commitSel(d.before); } }
     if (stroke) { const s = stroke; stroke = null; anchor = anchor && tool === 'timbro' ? anchor : null; if (s.snaps.size) { pushUndo({ paint: [...s.snaps] }); changed(); } }
   }
   function onWheel(e) {
     if (!on || e.target !== ctx.cv || !(e.ctrlKey || e.altKey)) return;
     e.preventDefault(); e.stopPropagation(); brush.size = Math.max(.02, Math.min(4, brush.size * (e.deltaY > 0 ? 1 / 1.12 : 1.12))); renderPanel();
   }
-  function cursor() { return tool !== 'sposta' ? 'crosshair' : drag ? 'grabbing' : hover ? 'grab' : 'default'; }
+  function cursor() { return drag && drag.pan ? 'grabbing' : tool !== 'sposta' ? 'crosshair' : drag ? 'grabbing' : hover ? 'pointer' : 'grab'; }
 
   // a ogni fotogramma (main.js): la camera dell'editor
   function view(dt) {
@@ -5204,7 +5225,7 @@ var Editor = (function () {
       }
     }
   }
-  const same = (a, b) => a.t === b.t && (a.t === 'fuori' ? a.rec === b.rec : a.t === 'copia' ? a.c === b.c : a.bk === b.bk && a.f === b.f && a.key === b.key && a.entry === b.entry);
+  const same = (a, b) => a.t === b.t && (a.t === 'verde' ? a.key === b.key : a.t === 'fuori' ? a.rec === b.rec : a.t === 'copia' ? a.c === b.c : a.bk === b.bk && a.f === b.f && a.key === b.key && a.entry === b.entry);
 
   // =====================================================================================================
   // PANNELLO
@@ -5251,10 +5272,10 @@ var Editor = (function () {
       if (okSel(sel)) {
         const T = AD[sel.t].get(sel), f = (k, l, v, st) => `<div class="row"><label>${l}</label><input type="number" data-f="${k}" step="${st}" value="${v}"></div>`;
         h += `<div><b>${esc(AD[sel.t].name(sel))}</b></div>` + f('x', 'X (m)', T.x.toFixed(2), .1) + f('z', 'Y (m)', T.z.toFixed(2), .1) + f('h', 'Altezza', T.h.toFixed(2), .05) + f('ry', 'Rotazione °', (T.ry * 180 / Math.PI).toFixed(1), 15) + f('s', 'Scala', T.s.toFixed(2), .05);
-        h += `<div class="btns"><button data-a="dup">Duplica <kbd>Ctrl+D</kbd></button><button data-a="del">Togli <kbd>Canc</kbd></button>${(sel.t === 'fuori' || (sel.t === 'mobile' && sel.key)) ? '<button data-a="rev">Com\'era</button>' : ''}</div>
+        h += `<div class="btns"><button data-a="dup">Duplica <kbd>Ctrl+D</kbd></button><button data-a="del">Togli <kbd>Canc</kbd></button>${(sel.t === 'fuori' || sel.t === 'verde' || (sel.t === 'mobile' && sel.key)) ? '<button data-a="rev">Com\'era</button>' : ''}</div>
           <div class="hint">Trascina per spostare (Ctrl: a passi di 25 cm) · <kbd>R</kbd> ruota 15° (Maiusc al contrario, Alt 1°) · <kbd>PagSu</kbd>/<kbd>PagGiù</kbd> altezza · <kbd>+</kbd>/<kbd>−</kbd> scala</div>`;
         if (sel.t === 'fuori') h += `<div class="hint">Si muove solo il disegno: chi cammina sbatte ancora dove l'oggetto era nato (se era un ingombro).</div>`;
-      } else h += `<div class="hint">Clic su un oggetto per prenderlo. ${I ? 'Qui dentro: i mobili.' : 'Fuori: arredo di strada (lampioni, panchine, casse, vasi…). Per i mobili entra in un edificio.'}</div>`;
+      } else h += `<div class="hint">Clic su un oggetto per prenderlo. ${I ? 'Qui dentro: i mobili.' : 'Fuori: arredo di strada, alberi e cespugli, e i dettagli delle case uno per uno (condizionatori, antenne, cisterne, insegne, manifesti, scatole…). Per i mobili entra in un edificio.'}</div>`;
       if (I) h += `<div class="sec"><h4>Aggiungi un mobile</h4><input type="search" id="edq" placeholder="cerca (letto, sedia, ia_…)"><div class="list" id="edl"></div><div class="hint">Compare al centro della vista.</div></div>`;
       if ((RIT.files || []).length) h += `<div class="sec"><h4>Posa un modello caricato</h4><div class="list">${RIT.files.map(f => `<div data-posa="glb:${esc(f.file)}">${esc(f.nome || f.file)}</div>`).join('')}</div><div class="hint">Compare al centro della vista${I ? ', sul pavimento' : ''}.</div></div>`;
     } else {
@@ -5279,7 +5300,7 @@ var Editor = (function () {
     }
     h += `<div class="sec btns"><button data-a="undo">Annulla <kbd>Ctrl+Z</kbd></button><button data-a="redo">Rifai</button><button data-a="save">${SERVER ? 'Salva ora' : 'Scarica'} <kbd>Ctrl+S</kbd></button></div>
       <div class="hint">${n} ritocchi agli oggetti · ${Object.keys(RIT.pittura).length + [...DIRTYC].filter(c => !RIT.pittura[c.__pvKey]).length} texture dipinte</div>
-      <div class="hint"><kbd>WASD</kbd> muovi la vista (Maiusc veloce) · <kbd>Q</kbd>/<kbd>E</kbd> gira · rotella zoom · <kbd>Esc</kbd> lascia${STUDIO ? ' · doppio clic: il modello da solo (sull\'edificio: entri)' : ' · <kbd>F2</kbd> esci'}</div>`;
+      <div class="hint"><kbd>WASD</kbd> o trascina col tasto destro (o col sinistro sul vuoto): muovi la vista (Maiusc veloce) · <kbd>Q</kbd>/<kbd>E</kbd> gira · rotella zoom · <kbd>Esc</kbd> lascia${STUDIO ? ' · doppio clic: il modello da solo (sull\'edificio: entri)' : ' · <kbd>F2</kbd> esci'}</div>`;
     panel.innerHTML = h; status();
     panel.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
     panel.querySelectorAll('[data-posa]').forEach(d => d.onclick = () => posa(d.dataset.posa));
@@ -5334,6 +5355,7 @@ var Editor = (function () {
   // la chiave del modello di quello che è selezionato (per la vista isolata)
   function modelKey(s) {
     if (!s) return null; const strada = rec => { const o = window.Officina && Officina.orig(rec.obj); return o ? 'strada:' + Officina.sig(o) : null; };
+    if (s.t === 'verde') return null;
     if (s.t === 'fuori') return strada(s.rec);
     if (s.t === 'copia') return s.c.e.mod || (KEYS.get(s.c.e.da) ? strada(KEYS.get(s.c.e.da)) : null);
     const o = furnOf(s); return o ? (/^(glb|kit|pezzi|bottino):/.test(o.id) ? o.id : 'mobile:' + o.id) : null;
@@ -5413,6 +5435,75 @@ var Officina = (function () {
   }
 
   // ---------------- AGGANCI ----------------
+  // Studio: ogni gruppo ricorda chi l'ha costruito (oAC → condizionatore…), per dare un nome ai dettagli
+  const FN = { oAC: 'condizionatore', oAntenna: 'antenna', oCrate: 'cassa', oDish: 'parabola', oDrum: 'fusto', oGas: 'bombola', oLantern: 'lanterna', oPCrate: 'cassetta', oPlanter: 'fioriera', oPot: 'vaso', oShrub: 'cespuglio', oShutterLeaf: 'persiana', oTank: 'cisterna', oTree: 'albero', streetLamp: 'lampione', smallThing: 'oggetto', bigThing: 'oggetto grande', buildWallsAlive: 'manifesto / murale / bandiera', oggetti35: 'cosa trovata per terra', lampada1: 'lampada', banco: 'banco', tent: 'tenda', netFence1: 'rete', buildGuardrail1: 'guardrail', buildWinter: 'dettaglio d\'inverno', buildFountain1: 'fontana' };
+  if (STUDIO && THREE.Group) { const G0 = THREE.Group, SKIP = /^(G0|add|ad|put|mkA|Group|apply|clone|copy|Object|new|eval|anonymous|flush|one|kp|forEach|map)$/;
+    THREE.Group = class extends G0 { constructor() { super(); const fr = (new Error().stack || '').split('\n'); for (let i = 2; i < fr.length; i++) { const m = /at (?:new |Object\.)?([A-Za-z_$][\w$]*) /.exec(fr[i]); if (m && !SKIP.test(m[1])) { this.userData.__fn = m[1]; break; } } } }; }
+  const nameOf = (c, obj) => { const f = c.userData.__fn; if (f) return FN[f] || f; if (c.isMesh) { const ms = Array.isArray(c.material) ? c.material[0] : c.material; return ms && ms.map ? 'cartello / insegna' : 'pezzo'; } return obj.userData.__nome || 'dettaglio'; };
+  // ---------------- I DETTAGLI DELLE CASE ----------------
+  // Condizionatori, parabole, antenne, cisterne, insegne, scale, tubi… sono gruppi dentro il modello della casa, fusi con lei.
+  // Qui si riconoscono (i gruppi piccoli dentro un oggetto grande) e si ricorda dove finiscono le loro mesh nella geometria fusa:
+  // così lo Studio li prende uno per uno, e i loro ritocchi (chiave "d:x,y,z") valgono anche nel gioco.
+  const PART = new WeakMap(), DET = [], DORIG = new WeakMap(); let wantParts = STUDIO;
+  const _bb = new THREE.Box3(), _sz = new THREE.Vector3();
+  function onPart(mesh, b, gi, n) { let a = PART.get(mesh); if (!a) { a = []; PART.set(mesh, a); } a.push({ b, gi, n }); }
+  function findDetails(obj) {
+    const walk = n => n.children.forEach(c => {
+      if (c.isLight || c.isSprite || c.isPoints || c.isLine || c.userData.__kit) return;   // i pezzi di muro del kit non sono dettagli
+      let has = false; c.traverse(o => { if (o.isMesh) has = true; }); if (!has) return;
+      _bb.setFromObject(c); if (_bb.isEmpty()) return; _bb.getSize(_sz); const m = Math.max(_sz.x, _sz.y, _sz.z);
+      if (m <= 4.5) DET.push({ node: c, nome: nameOf(c, obj) }); else walk(c);
+    });
+    walk(obj);
+  }
+  // i record dei dettagli, come quelli degli oggetti di strada (render.js, DZ.props): tag nella geometria fusa, copia in coordinate di mondo
+  let DREC = null, dn = 0;
+  function detailRecs(E) {
+    if (DREC) return DREC; DREC = []; const props = new Set(E.DZ.props.map(r => r.obj));
+    DET.forEach(d => { if (d.solo && props.has(d.node)) return;   // già un oggetto di strada
+      const parts = []; d.node.traverse(o => { if (o.isMesh) (PART.get(o) || []).forEach(p => parts.push({ b: p.b, gi: p.gi, n: p.n, obj: d.node })); });
+      if (!parts.length || parts.some(p => !p.b.mesh)) return;
+      d.node.updateMatrixWorld(true); const px = d.node.clone(true); d.node.matrixWorld.decompose(px.position, px.quaternion, px.scale); px.rotation.setFromQuaternion(px.quaternion); px.updateMatrixWorld(true);
+      const tag = 'd' + (++dn); E.TAGS.set(tag, { parts, objs: [] });
+      const bb = new THREE.Box3().setFromObject(px), c = bb.getCenter(new THREE.Vector3()), he = bb.getSize(new THREE.Vector3()).multiplyScalar(.5);
+      px.userData.__nome = d.nome; const o0 = DORIG.get(d.node); if (o0) { const oc = o0.clone(true); ORIG.set(px, oc); }
+      DREC.push({ tag, obj: px, c, c0: c.clone(), he, base: bb.min.y, state: 0, detail: true, mass: 1, cls: 'static' });
+    });
+    return DREC;
+  }
+  // ---------------- LA VEGETAZIONE (alberi e cespugli disegnati in serie nei blocchi del terreno) ----------------
+  // Un albero è più pezzi (tronco, chioma, rami) in serie diverse: si prende il mucchio di pezzi attorno al punto (raggio VR).
+  // Ritocchi in "verde": { "x,z": { d: [dx, dy, dz], ry, s } | { togli } }, rimessi ogni volta che il blocco si ricostruisce.
+  const VR = 1.6, CHUNKS = new Set(); let gHf = null;
+  const VERDE = () => RIT().verde || {};
+  function vegMeshes(grp, all) { const a = []; grp.traverse(o => { if (!o.isInstancedMesh || !o.count) return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); const h = o.geometry.boundingBox.max.y - o.geometry.boundingBox.min.y; if (all || h >= .35) a.push(o); }); return a; }
+  const m0of = im => im.userData.__m0 || (im.userData.__m0 = im.instanceMatrix.array.slice());
+  function cluster(grp, x, z) { const out = []; vegMeshes(grp).forEach(im => { const m0 = m0of(im); for (let i = 0; i < im.count; i++) { const dx = m0[i * 16 + 12] - x, dz = m0[i * 16 + 14] - z; if (dx * dx + dz * dz < VR * VR) out.push({ im, i }); } }); return out; }
+  const _M = new THREE.Matrix4(), _A = new THREE.Matrix4(), _B = new THREE.Matrix4();
+  function vegSet(grp, x, z, e) {
+    const mem = cluster(grp, x, z); if (!mem.length) return 0; const y = gHf ? gHf(x, z) : 0;
+    if (e && !e.togli) { const d = e.d || [0, 0, 0]; _A.makeTranslation(x + d[0], y + d[1], z + d[2]).multiply(_B.makeRotationY(e.ry || 0)).multiply(_M.makeScale(e.s || 1, e.s || 1, e.s || 1)).multiply(_B.makeTranslation(-x, -y, -z)); }
+    const ims = new Set();
+    mem.forEach(({ im, i }) => { const m0 = m0of(im); _M.fromArray(m0, i * 16); if (!e) {} else if (e.togli) _M.makeScale(0, 0, 0); else _M.premultiply(_A); _M.toArray(im.instanceMatrix.array, i * 16); ims.add(im); });
+    ims.forEach(im => { im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; }); return mem.length;
+  }
+  function applyVerde(grp) {
+    vegMeshes(grp, true).forEach(im => { if (im.userData.__m0) { im.instanceMatrix.array.set(im.userData.__m0); im.instanceMatrix.needsUpdate = true; } });
+    const V = VERDE(); Object.keys(V).forEach(k => { const [x, z] = k.split(',').map(Number); vegSet(grp, x, z, V[k]); });
+  }
+  function onChunk(grp, groundH) { if (groundH) gHf = groundH; CHUNKS.add(grp); for (const g of CHUNKS) if (!g.parent) CHUNKS.delete(g); if (Object.keys(VERDE()).length) applyVerde(grp); }
+  function reapplyVerde() { for (const g of CHUNKS) { if (!g.parent) { CHUNKS.delete(g); continue; } applyVerde(g); } }
+  // lo Studio: cosa c'è di verde sotto il raggio (il centro del mucchio e il blocco)
+  function pickVeg(rc) {   // ogni pezzo di pianta è un cilindro verticale: vince il più vicino lungo il raggio
+    const ray = rc.ray, a = new THREE.Vector3(), b = new THREE.Vector3(), q = new THREE.Vector3(), M = new THREE.Matrix4(); let best = null;
+    for (const g of CHUNKS) { if (!g.parent) continue; vegMeshes(g).forEach(im => {
+      for (let o = im; o; o = o.parent) if (!o.visible) return;
+      const bb = im.geometry.boundingBox, h0 = bb.max.y - bb.min.y, r0 = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2, arr = im.instanceMatrix.array;
+      for (let i = 0; i < im.count; i++) { M.fromArray(arr, i * 16).premultiply(im.matrixWorld); const sx = Math.hypot(M.elements[0], M.elements[1], M.elements[2]), sy = Math.hypot(M.elements[4], M.elements[5], M.elements[6]); if (sy < 1e-4) continue;
+        a.set(0, bb.min.y, 0).applyMatrix4(M); b.set(0, bb.max.y, 0).applyMatrix4(M); const r = Math.max(.35, r0 * sx * .8);
+        if (ray.distanceSqToSegment(a, b, q) < r * r) { const d = q.distanceTo(ray.origin); if (!best || d < best.dist) { const m0 = m0of(im); best = { x: Math.round(m0[i * 16 + 12] * 100) / 100, z: Math.round(m0[i * 16 + 14] * 100) / 100, grp: g, dist: d }; } } } }); }
+    return best; }
+  function vegBox(grp, x, z, box) { box.makeEmpty(); const v = new THREE.Vector3(); cluster(grp, x, z).forEach(({ im, i }) => { _M.fromArray(im.instanceMatrix.array, i * 16); v.setFromMatrixPosition(_M); box.expandByPoint(v); }); box.expandByVector(v.set(.6, .6, .6)); if (gHf && !box.isEmpty()) box.min.y = Math.min(box.min.y, gHf(x, z)); return box; }
   // render.js, addStatic: ogni oggetto statico passa di qui prima di essere fuso
   let anyStrada = false;
   function onStatic(obj) {
@@ -5421,6 +5512,12 @@ var Officina = (function () {
       if (n <= 80) { ORIG.set(obj, obj.clone(true));
         const fr = (new Error().stack || '').split('\n'); for (const l of fr) { const m = /at (?:Object\.)?([A-Za-z_$][\w$]*) /.exec(l); if (m && !/^(onStatic|addStatic|place|regProp|Error|apply)$/.test(m[1])) { obj.userData.__nome = m[1]; break; } } }
     }
+    if (wantParts && !obj.userData.__det) { obj.userData.__det = 1; obj.updateMatrixWorld(true); _bb.setFromObject(obj); _bb.getSize(_sz);
+      const n0 = DET.length;
+      if (Math.max(_sz.x, _sz.y, _sz.z) <= 4.5) { if (_sz.y > .06) DET.push({ node: obj, nome: nameOf(obj, obj), solo: true }); }   // un oggetto piccolo messo da solo (sui tetti, sui muri); non le macchie piatte per terra
+      else findDetails(obj);
+      {
+        for (let i = n0; i < DET.length; i++) { const nd = DET[i].node; if (STUDIO) DORIG.set(nd, nd.clone(true)); if (anyStrada) { const k = 'strada:' + sig(nd); if (MOD()[k]) apply(k, nd); } } } }
     if (anyStrada && !obj.userData.__mod) { const k = 'strada:' + sig(obj); if (MOD()[k]) apply(k, obj); }
   }
   // vestiti: dopo che Vesti3D ha vestito una persona
@@ -5440,7 +5537,7 @@ var Officina = (function () {
       C.col = (v && v.col) || C.__orig.col; C.sp = v && v.sp != null ? v.sp : C.__orig.sp; C.parti = (v && v.parti) || C.__orig.parti.slice(); });
   }
   function wrapAll() {
-    if (window.Kit && !Kit.__off) { const g0 = Kit.get; Kit.get = name => apply('kit:' + name, g0(name)); Kit.__off = g0; }
+    if (window.Kit && !Kit.__off) { const g0 = Kit.get; Kit.get = name => { const g = apply('kit:' + name, g0(name)); g.userData.__kit = 1; return g; }; Kit.__off = g0; }
     if (window.Models && Models.furniture && !Models.furniture.__off) { const f0 = Models.furniture; const f = name => {
         if (/^(glb|kit|pezzi|bottino):/.test(name)) return build(name);   // modelli posati dentro come mobili
         return f0(name).then(g => apply('mobile:' + name, g)); }; f.__off = f0; Models.furniture = f; }
@@ -5461,6 +5558,7 @@ var Officina = (function () {
     Object.values(R.vestiti || {}).forEach(v => { if (v.modello && v.modello.file) files.add(v.modello.file); });
     await Promise.all([...files].map(loadGlb));
     anyStrada = Object.keys(R.modelli || {}).some(k => /^strada:/.test(k));
+    wantParts = STUDIO || Object.keys(R.fuori || {}).some(k => /^d:/.test(k)) || anyStrada;   // nel gioco i dettagli servono solo se ce ne sono di ritoccati
     wrapAll(); patchCapi();
   }
   // costruisce un modello dalla chiave (per lo Studio e per i modelli posati): Promise<gruppo>
@@ -5480,7 +5578,7 @@ var Officina = (function () {
     } finally { if (raw) BYPASS.delete(key); }
   }
   const orig = obj => ORIG.get(obj) || null;
-  return { apply, sig, onStatic, onDress, held, load, build, loadGlb, parseGlb, patchCapi, wrapAll, orig, meshes, GLB, setStrada: v => { anyStrada = v; }, get STUDIO() { return STUDIO; } };
+  return { onChunk, reapplyVerde, pickVeg, vegSet, vegBox, onPart, detailRecs, get wantParts() { return wantParts; }, apply, sig, onStatic, onDress, held, load, build, loadGlb, parseGlb, patchCapi, wrapAll, orig, meshes, GLB, setStrada: v => { anyStrada = v; }, get STUDIO() { return STUDIO; } };
 })();
 </script>
 <script>/* ================= ANIMAZIONI: il motore comune =================
@@ -21228,6 +21326,7 @@ var Render = (function () {
       let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
       g.applyMatrix4(o.matrixWorld);
       b.geos.push(g); if (curTag) tagPart(b, g.attributes.position.count);
+      if (window.Officina && Officina.wantParts) Officina.onPart(o, b, b.geos.length - 1, g.attributes.position.count);   // [studio] dove finisce ogni mesh
     });
   }
   function mergeGeos(geos) {
@@ -22726,6 +22825,7 @@ var Render = (function () {
     const nat = buildNat(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');
     const vd = verde38(tx0, ty0, n, m); vd.visible = false; grp.add(vd);   // [verde]
     scene.add(grp);
+    if (window.Officina) Officina.onChunk(grp, groundH);   // [studio] alberi e cespugli ritoccati
     return { grp, geo, mat, tex, btex, veg, nat, lt, vd, rev: ISO.rev };
   }
   function dropChunk(ch) {
@@ -31008,7 +31108,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (dyn.rim) { dyn.rim.position.set(cam.x + 30, 18, cam.y + 34); dyn.rim.target.position.set(cam.x, 0, cam.y); dyn.rim.intensity = .1 + (1 - night) * .1 - night * .07; /* [luci5] */ dyn.rim.color.set(night > .5 ? '#6a8ac8' : '#b8c8e8'); }
     dyn.buildings.forEach(b => b.mats.forEach(m => { if (m.emissiveMap) m.emissiveIntensity = .04 + night * .85; }));
     if (dyn.backdropMats) dyn.backdropMats.forEach(m => m.emissiveIntensity = .1 + night * .9);
-    const time = ui.time || st.clock;
+    const time = ui.studio ? 30 : (ui.time || st.clock);   // [studio] tutto fermo: vento, bandiere, fumo, schermi
     updateLights(time, night, cam.x, cam.y);
     { const dayK = 1 - night;   /* [amb1] sole e cielo secondo il tempo; la notte resta della regia luci */
       hemi.intensity = Math.max(hemi.intensity, (.34 + WXc * .3) * dayK);
@@ -31038,7 +31138,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     tickWinter(time, night);
     tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri
     tickUrbano1(time, night);
-    tickMondo(st, time, night, dt);   // [animazioni-mondo] vento, fumo, scintille, carte, piccioni, porte
+    tickMondo(st, time, night, ui.studio ? 0 : dt);   // [animazioni-mondo] vento, fumo, scintille, carte, piccioni, porte
     dyn.spin.forEach(s => { s.o.rotation.y = time * s.speed; s.o.children.forEach(c => c.children.forEach(m => m.material.opacity = .015 + night * .06)); });
     dyn.beams.forEach(b => { b.piv.rotation.z = Math.sin(time * .6 + b.ph) * .45; b.piv.rotation.x = Math.cos(time * .45 + b.ph) * .3; b.mat.opacity = .02 + night * .13; });
     dyn.chasers.forEach(c => { const n = c.bulbs.length; c.bulbs.forEach((b, i) => b.material.color.set(((i + Math.floor(time * 8)) % 3) === 0 ? '#fff4c0' : '#6a4a20')); });

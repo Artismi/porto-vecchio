@@ -69,6 +69,75 @@ var Officina = (function () {
   }
 
   // ---------------- AGGANCI ----------------
+  // Studio: ogni gruppo ricorda chi l'ha costruito (oAC → condizionatore…), per dare un nome ai dettagli
+  const FN = { oAC: 'condizionatore', oAntenna: 'antenna', oCrate: 'cassa', oDish: 'parabola', oDrum: 'fusto', oGas: 'bombola', oLantern: 'lanterna', oPCrate: 'cassetta', oPlanter: 'fioriera', oPot: 'vaso', oShrub: 'cespuglio', oShutterLeaf: 'persiana', oTank: 'cisterna', oTree: 'albero', streetLamp: 'lampione', smallThing: 'oggetto', bigThing: 'oggetto grande', buildWallsAlive: 'manifesto / murale / bandiera', oggetti35: 'cosa trovata per terra', lampada1: 'lampada', banco: 'banco', tent: 'tenda', netFence1: 'rete', buildGuardrail1: 'guardrail', buildWinter: 'dettaglio d\'inverno', buildFountain1: 'fontana' };
+  if (STUDIO && THREE.Group) { const G0 = THREE.Group, SKIP = /^(G0|add|ad|put|mkA|Group|apply|clone|copy|Object|new|eval|anonymous|flush|one|kp|forEach|map)$/;
+    THREE.Group = class extends G0 { constructor() { super(); const fr = (new Error().stack || '').split('\n'); for (let i = 2; i < fr.length; i++) { const m = /at (?:new |Object\.)?([A-Za-z_$][\w$]*) /.exec(fr[i]); if (m && !SKIP.test(m[1])) { this.userData.__fn = m[1]; break; } } } }; }
+  const nameOf = (c, obj) => { const f = c.userData.__fn; if (f) return FN[f] || f; if (c.isMesh) { const ms = Array.isArray(c.material) ? c.material[0] : c.material; return ms && ms.map ? 'cartello / insegna' : 'pezzo'; } return obj.userData.__nome || 'dettaglio'; };
+  // ---------------- I DETTAGLI DELLE CASE ----------------
+  // Condizionatori, parabole, antenne, cisterne, insegne, scale, tubi… sono gruppi dentro il modello della casa, fusi con lei.
+  // Qui si riconoscono (i gruppi piccoli dentro un oggetto grande) e si ricorda dove finiscono le loro mesh nella geometria fusa:
+  // così lo Studio li prende uno per uno, e i loro ritocchi (chiave "d:x,y,z") valgono anche nel gioco.
+  const PART = new WeakMap(), DET = [], DORIG = new WeakMap(); let wantParts = STUDIO;
+  const _bb = new THREE.Box3(), _sz = new THREE.Vector3();
+  function onPart(mesh, b, gi, n) { let a = PART.get(mesh); if (!a) { a = []; PART.set(mesh, a); } a.push({ b, gi, n }); }
+  function findDetails(obj) {
+    const walk = n => n.children.forEach(c => {
+      if (c.isLight || c.isSprite || c.isPoints || c.isLine || c.userData.__kit) return;   // i pezzi di muro del kit non sono dettagli
+      let has = false; c.traverse(o => { if (o.isMesh) has = true; }); if (!has) return;
+      _bb.setFromObject(c); if (_bb.isEmpty()) return; _bb.getSize(_sz); const m = Math.max(_sz.x, _sz.y, _sz.z);
+      if (m <= 4.5) DET.push({ node: c, nome: nameOf(c, obj) }); else walk(c);
+    });
+    walk(obj);
+  }
+  // i record dei dettagli, come quelli degli oggetti di strada (render.js, DZ.props): tag nella geometria fusa, copia in coordinate di mondo
+  let DREC = null, dn = 0;
+  function detailRecs(E) {
+    if (DREC) return DREC; DREC = []; const props = new Set(E.DZ.props.map(r => r.obj));
+    DET.forEach(d => { if (d.solo && props.has(d.node)) return;   // già un oggetto di strada
+      const parts = []; d.node.traverse(o => { if (o.isMesh) (PART.get(o) || []).forEach(p => parts.push({ b: p.b, gi: p.gi, n: p.n, obj: d.node })); });
+      if (!parts.length || parts.some(p => !p.b.mesh)) return;
+      d.node.updateMatrixWorld(true); const px = d.node.clone(true); d.node.matrixWorld.decompose(px.position, px.quaternion, px.scale); px.rotation.setFromQuaternion(px.quaternion); px.updateMatrixWorld(true);
+      const tag = 'd' + (++dn); E.TAGS.set(tag, { parts, objs: [] });
+      const bb = new THREE.Box3().setFromObject(px), c = bb.getCenter(new THREE.Vector3()), he = bb.getSize(new THREE.Vector3()).multiplyScalar(.5);
+      px.userData.__nome = d.nome; const o0 = DORIG.get(d.node); if (o0) { const oc = o0.clone(true); ORIG.set(px, oc); }
+      DREC.push({ tag, obj: px, c, c0: c.clone(), he, base: bb.min.y, state: 0, detail: true, mass: 1, cls: 'static' });
+    });
+    return DREC;
+  }
+  // ---------------- LA VEGETAZIONE (alberi e cespugli disegnati in serie nei blocchi del terreno) ----------------
+  // Un albero è più pezzi (tronco, chioma, rami) in serie diverse: si prende il mucchio di pezzi attorno al punto (raggio VR).
+  // Ritocchi in "verde": { "x,z": { d: [dx, dy, dz], ry, s } | { togli } }, rimessi ogni volta che il blocco si ricostruisce.
+  const VR = 1.6, CHUNKS = new Set(); let gHf = null;
+  const VERDE = () => RIT().verde || {};
+  function vegMeshes(grp, all) { const a = []; grp.traverse(o => { if (!o.isInstancedMesh || !o.count) return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); const h = o.geometry.boundingBox.max.y - o.geometry.boundingBox.min.y; if (all || h >= .35) a.push(o); }); return a; }
+  const m0of = im => im.userData.__m0 || (im.userData.__m0 = im.instanceMatrix.array.slice());
+  function cluster(grp, x, z) { const out = []; vegMeshes(grp).forEach(im => { const m0 = m0of(im); for (let i = 0; i < im.count; i++) { const dx = m0[i * 16 + 12] - x, dz = m0[i * 16 + 14] - z; if (dx * dx + dz * dz < VR * VR) out.push({ im, i }); } }); return out; }
+  const _M = new THREE.Matrix4(), _A = new THREE.Matrix4(), _B = new THREE.Matrix4();
+  function vegSet(grp, x, z, e) {
+    const mem = cluster(grp, x, z); if (!mem.length) return 0; const y = gHf ? gHf(x, z) : 0;
+    if (e && !e.togli) { const d = e.d || [0, 0, 0]; _A.makeTranslation(x + d[0], y + d[1], z + d[2]).multiply(_B.makeRotationY(e.ry || 0)).multiply(_M.makeScale(e.s || 1, e.s || 1, e.s || 1)).multiply(_B.makeTranslation(-x, -y, -z)); }
+    const ims = new Set();
+    mem.forEach(({ im, i }) => { const m0 = m0of(im); _M.fromArray(m0, i * 16); if (!e) {} else if (e.togli) _M.makeScale(0, 0, 0); else _M.premultiply(_A); _M.toArray(im.instanceMatrix.array, i * 16); ims.add(im); });
+    ims.forEach(im => { im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; }); return mem.length;
+  }
+  function applyVerde(grp) {
+    vegMeshes(grp, true).forEach(im => { if (im.userData.__m0) { im.instanceMatrix.array.set(im.userData.__m0); im.instanceMatrix.needsUpdate = true; } });
+    const V = VERDE(); Object.keys(V).forEach(k => { const [x, z] = k.split(',').map(Number); vegSet(grp, x, z, V[k]); });
+  }
+  function onChunk(grp, groundH) { if (groundH) gHf = groundH; CHUNKS.add(grp); for (const g of CHUNKS) if (!g.parent) CHUNKS.delete(g); if (Object.keys(VERDE()).length) applyVerde(grp); }
+  function reapplyVerde() { for (const g of CHUNKS) { if (!g.parent) { CHUNKS.delete(g); continue; } applyVerde(g); } }
+  // lo Studio: cosa c'è di verde sotto il raggio (il centro del mucchio e il blocco)
+  function pickVeg(rc) {   // ogni pezzo di pianta è un cilindro verticale: vince il più vicino lungo il raggio
+    const ray = rc.ray, a = new THREE.Vector3(), b = new THREE.Vector3(), q = new THREE.Vector3(), M = new THREE.Matrix4(); let best = null;
+    for (const g of CHUNKS) { if (!g.parent) continue; vegMeshes(g).forEach(im => {
+      for (let o = im; o; o = o.parent) if (!o.visible) return;
+      const bb = im.geometry.boundingBox, h0 = bb.max.y - bb.min.y, r0 = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2, arr = im.instanceMatrix.array;
+      for (let i = 0; i < im.count; i++) { M.fromArray(arr, i * 16).premultiply(im.matrixWorld); const sx = Math.hypot(M.elements[0], M.elements[1], M.elements[2]), sy = Math.hypot(M.elements[4], M.elements[5], M.elements[6]); if (sy < 1e-4) continue;
+        a.set(0, bb.min.y, 0).applyMatrix4(M); b.set(0, bb.max.y, 0).applyMatrix4(M); const r = Math.max(.35, r0 * sx * .8);
+        if (ray.distanceSqToSegment(a, b, q) < r * r) { const d = q.distanceTo(ray.origin); if (!best || d < best.dist) { const m0 = m0of(im); best = { x: Math.round(m0[i * 16 + 12] * 100) / 100, z: Math.round(m0[i * 16 + 14] * 100) / 100, grp: g, dist: d }; } } } }); }
+    return best; }
+  function vegBox(grp, x, z, box) { box.makeEmpty(); const v = new THREE.Vector3(); cluster(grp, x, z).forEach(({ im, i }) => { _M.fromArray(im.instanceMatrix.array, i * 16); v.setFromMatrixPosition(_M); box.expandByPoint(v); }); box.expandByVector(v.set(.6, .6, .6)); if (gHf && !box.isEmpty()) box.min.y = Math.min(box.min.y, gHf(x, z)); return box; }
   // render.js, addStatic: ogni oggetto statico passa di qui prima di essere fuso
   let anyStrada = false;
   function onStatic(obj) {
@@ -77,6 +146,12 @@ var Officina = (function () {
       if (n <= 80) { ORIG.set(obj, obj.clone(true));
         const fr = (new Error().stack || '').split('\n'); for (const l of fr) { const m = /at (?:Object\.)?([A-Za-z_$][\w$]*) /.exec(l); if (m && !/^(onStatic|addStatic|place|regProp|Error|apply)$/.test(m[1])) { obj.userData.__nome = m[1]; break; } } }
     }
+    if (wantParts && !obj.userData.__det) { obj.userData.__det = 1; obj.updateMatrixWorld(true); _bb.setFromObject(obj); _bb.getSize(_sz);
+      const n0 = DET.length;
+      if (Math.max(_sz.x, _sz.y, _sz.z) <= 4.5) { if (_sz.y > .06) DET.push({ node: obj, nome: nameOf(obj, obj), solo: true }); }   // un oggetto piccolo messo da solo (sui tetti, sui muri); non le macchie piatte per terra
+      else findDetails(obj);
+      {
+        for (let i = n0; i < DET.length; i++) { const nd = DET[i].node; if (STUDIO) DORIG.set(nd, nd.clone(true)); if (anyStrada) { const k = 'strada:' + sig(nd); if (MOD()[k]) apply(k, nd); } } } }
     if (anyStrada && !obj.userData.__mod) { const k = 'strada:' + sig(obj); if (MOD()[k]) apply(k, obj); }
   }
   // vestiti: dopo che Vesti3D ha vestito una persona
@@ -96,7 +171,7 @@ var Officina = (function () {
       C.col = (v && v.col) || C.__orig.col; C.sp = v && v.sp != null ? v.sp : C.__orig.sp; C.parti = (v && v.parti) || C.__orig.parti.slice(); });
   }
   function wrapAll() {
-    if (window.Kit && !Kit.__off) { const g0 = Kit.get; Kit.get = name => apply('kit:' + name, g0(name)); Kit.__off = g0; }
+    if (window.Kit && !Kit.__off) { const g0 = Kit.get; Kit.get = name => { const g = apply('kit:' + name, g0(name)); g.userData.__kit = 1; return g; }; Kit.__off = g0; }
     if (window.Models && Models.furniture && !Models.furniture.__off) { const f0 = Models.furniture; const f = name => {
         if (/^(glb|kit|pezzi|bottino):/.test(name)) return build(name);   // modelli posati dentro come mobili
         return f0(name).then(g => apply('mobile:' + name, g)); }; f.__off = f0; Models.furniture = f; }
@@ -117,6 +192,7 @@ var Officina = (function () {
     Object.values(R.vestiti || {}).forEach(v => { if (v.modello && v.modello.file) files.add(v.modello.file); });
     await Promise.all([...files].map(loadGlb));
     anyStrada = Object.keys(R.modelli || {}).some(k => /^strada:/.test(k));
+    wantParts = STUDIO || Object.keys(R.fuori || {}).some(k => /^d:/.test(k)) || anyStrada;   // nel gioco i dettagli servono solo se ce ne sono di ritoccati
     wrapAll(); patchCapi();
   }
   // costruisce un modello dalla chiave (per lo Studio e per i modelli posati): Promise<gruppo>
@@ -136,5 +212,5 @@ var Officina = (function () {
     } finally { if (raw) BYPASS.delete(key); }
   }
   const orig = obj => ORIG.get(obj) || null;
-  return { apply, sig, onStatic, onDress, held, load, build, loadGlb, parseGlb, patchCapi, wrapAll, orig, meshes, GLB, setStrada: v => { anyStrada = v; }, get STUDIO() { return STUDIO; } };
+  return { onChunk, reapplyVerde, pickVeg, vegSet, vegBox, onPart, detailRecs, get wantParts() { return wantParts; }, apply, sig, onStatic, onDress, held, load, build, loadGlb, parseGlb, patchCapi, wrapAll, orig, meshes, GLB, setStrada: v => { anyStrada = v; }, get STUDIO() { return STUDIO; } };
 })();
