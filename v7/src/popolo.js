@@ -626,11 +626,12 @@ var Popolo = (function () {
   }
   // il blocco di adesso. Ognuno ha il suo piccolo ritardo (così non partono tutti allo stesso minuto); chi è vicino
   // al giocatore cammina davvero, e a piedi il tempo di gioco corre (100 m ≈ 3 ore): parte prima, in base alla strada.
+  const blockJit = (n, b) => { let h = b.at * 7 + 13; const s0 = String(n.id); for (let i = 0; i < s0.length; i++) h = (h * 31 + s0.charCodeAt(i)) % 9973; return (h / 9973) * 30 - 8; };
   function blockNow(st, n) {
     const P = n.pop, m = minOfDay(st.t); if (!P.plan.length) return null;
     let idx = 0;
     for (let i = 0; i < P.plan.length; i++) {
-      const b = P.plan[i]; let at = b.fixed ? b.at : b.at + P.jit;
+      const b = P.plan[i]; let at = b.fixed ? b.at : b.at + P.jit + blockJit(n, b);   // [passo] ogni blocco il suo ritardo: non partono sempre nello stesso ordine
       if (P.near && i > 0 && b.tgt) {
         // [convivenza] si parte prima per arrivare in tempo (agli orari fissi anche molto prima), ma non si lascia un impegno
         // fisso prima di averlo fatto: un appuntamento si aspetta almeno 45 minuti, il resto almeno 20
@@ -1548,6 +1549,8 @@ var Popolo = (function () {
       const from = P.at || P.homeT; n.x = from.x; n.y = from.y; n.inside = false; n.path = []; P.goalSet = false;
       n.action = { name: 'routine', scores: [], why: `${cap(b.label)}: va a ${t.label}.`, since: st.clock };
     }
+    if (curbWait(st, n, dt)) return;   // [passo] prima di attraversare si guarda
+    greetFriends(st, n);
     // in ritardo per un orario fisso: corre
     const late = b.fixed && minOfDay(st.t) > b.at + 5 && dist(n.x, n.y, t.x, t.y) > 6;
     const speed = (late ? 2.6 : 1.35) * (P.age > 70 ? .75 : P.age > 60 ? .88 : 1);
@@ -1564,52 +1567,113 @@ var Popolo = (function () {
     const arrived = G.stepAlong(n, speed, dt);
     if (arrived) {
       P.at = t; if (b.act === 'appuntamento') P.apptArrived = P.apptArrived || st.t;
-      if (P.spot && P.spot.on && Math.random() < .3) { P.spot = restSpot(st, n, t, key); G.goTo(n, P.spot.x, P.spot.y); return; }
+      if (P.spot && P.spot.on && Math.random() < .12) { P.spot = restSpot(st, n, t, key); G.goTo(n, P.spot.x, P.spot.y); return; }
       if (P.spot) P.spot.on = true;
-      n.wait = 18 + Math.random() * 30;
+      n.wait = 30 + Math.random() * 50;
       if (Math.random() < .08 && st.clock > n.barkCd) barkTime(st, n, b);
     }
   }
+  // [passo] sul bordo del marciapiede, se il prossimo passo è in strada: si guarda a sinistra e a destra, e se arriva
+  // una macchina si aspetta che passi. Chi è di fretta (in ritardo) aspetta meno.
+  const roadAt = (x, y) => G.MAP.grid[Math.floor(y / TS) * G.MAP.world.GW + Math.floor(x / TS)] === G.T.VIA;
+  // [passo] incrociando un amico o un parente: un saluto (la mano, il nome); chi ce l'ha con l'altro tira dritto e guarda altrove
+  function greetFriends(st, n) {
+    if (st.clock < (n.__grT || 0)) return; n.__grT = st.clock + .7 + Math.random() * .6;
+    const P = n.pop; if (!P.friends || !P.friends.length) return;
+    for (const id of P.friends) {
+      const k = G.byId(st, id); if (!k || k.dead || k.inside || !k.pop || !k.pop.near) continue;
+      const d = dist(k.x, k.y, n.x, n.y); if (d > 6 || d < .5) continue;
+      const seen = (n.__greeted = n.__greeted || {}); if (st.clock - (seen[id] || -999) < 120) continue; seen[id] = st.clock;
+      if (opinionOf(st, n, id) < -.3) continue;
+      const wave = d > 2.5; n.greet = { who: id, until: st.clock + 1.6, wave };
+      if (k.pop && !(k.__greeted && st.clock - k.__greeted[n.id] < 120)) { (k.__greeted = k.__greeted || {})[n.id] = st.clock; k.greet = { who: n.id, until: st.clock + 1.4 + Math.random() * .4, wave: wave && Math.random() < .6 }; }
+      if (st.clock > (n.barkCd || 0)) { G.say(st, n, pick(Math.random, [`Ciao ${k.first}!`, `Ehi, ${k.first}.`, `${k.first}! Come va?`, 'Buongiorno.']), 1.6); n.barkCd = st.clock + 8; }
+      break;
+    }
+  }
+  function curbWait(st, n, dt) {
+    const w = n.path && n.path[0]; if (!w || roadAt(n.x, n.y)) { n.__curb = 0; return false; }
+    const ux = w.x - n.x, uy = w.y - n.y, L = Math.hypot(ux, uy) || 1, ax = n.x + ux / L * 1.2, ay = n.y + uy / L * 1.2;
+    if (!roadAt(ax, ay)) { n.__curb = 0; return false; }
+    // la macchina che arriva: dove sarà tra poco, e se passa vicino al punto dove attraverso
+    let threat = null;
+    for (const v of st.vehicles) {
+      if (v.hidden || v.wreck || Math.abs(v.speed || 0) < 1.5) continue; const dx = v.x - ax, dy = v.y - ay; if (dx * dx + dy * dy > 30 * 30) continue;
+      const vx = Math.cos(v.ang) * v.speed, vy = Math.sin(v.ang) * v.speed;
+      for (let k = 0; k <= 4; k++) { const tt = k * .9; if (Math.hypot(v.x + vx * tt - ax, v.y + vy * tt - ay) < 4.5) { threat = v; break; } }
+      if (threat) break;
+    }
+    n.__curb = (n.__curb || 0) + dt;
+    if (n.__curb < .5) { n.speedNow = 0; n.face += angDiff(Math.atan2(uy, ux) + Math.sin(n.__curb * 9) * 1.1, n.face) * Math.min(1, dt * 8); return true; }   // uno sguardo ai due lati
+    if (threat && n.__curb < 12) { n.speedNow = 0; n.face += angDiff(Math.atan2(threat.y - n.y, threat.x - n.x), n.face) * Math.min(1, dt * 6); return true; }   // aspetta che passi
+    return false;
+  }
   const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
 
-  // ---------------- [scopo] I CROCCHI: all'aperto si sta con qualcuno ----------------
-  // ogni luogo all'aperto ha qualche punto fisso dove la gente si ferma; chi arriva si mette in cerchio con chi c'è già
-  const CIRCLES = {};
-  function circlesOf(pid) {
-    if (CIRCLES[pid]) return CIRCLES[pid];
-    const P0 = PLACES[pid], out = [];
-    if (P0) for (let i = 0; out.length < 5 && i < 48; i++) {
-      const a = i * 2.39996, d = i ? 2.5 + (i % 4) * 1.6 : 0, x = P0.x + Math.cos(a) * d, y = P0.y + Math.sin(a) * d;
-      if (!G.walkM(x, y) || out.some(c => dist(c.x, c.y, x, y) < 3.6)) continue;
-      // il cerchio deve starci: almeno tre posti liberi attorno
-      if ([0, 2.1, 4.2].filter(k => G.walkM(x + Math.cos(k) * 1, y + Math.sin(k) * 1)).length < 3) continue;
-      out.push({ x, y });
+  // ---------------- [passo] STARE IN UN POSTO: ai bordi, in due o tre, con chi si conosce ----------------
+  // I posti buoni di un luogo all'aperto si leggono dalla mappa: contro una facciata o un muro, sul bordo dell'acqua,
+  // vicino a un albero; mai in carreggiata. Ognuno ha una direzione naturale: spalle al muro, sguardo verso lo spazio
+  // aperto (o verso il mare). Chi arriva si avvicina a un amico o a un parente che è già lì (in due faccia a faccia,
+  // in tre a semicerchio aperto, non di più); se non conosce nessuno sta per conto suo, a un bordo, lontano dagli altri.
+  const SPOTS = {};
+  function spotsOf(pid) {
+    if (SPOTS[pid]) return SPOTS[pid];
+    const P0 = PLACES[pid], out = []; if (!P0) return (SPOTS[pid] = out);
+    const GW = G.MAP.world.GW, grid = G.MAP.grid, T = G.T, tx0 = Math.floor(P0.x / TS), ty0 = Math.floor(P0.y / TS);
+    const tAt = (x, y) => grid[y * GW + x];
+    for (let ty = ty0 - 7; ty <= ty0 + 7; ty++) for (let tx = tx0 - 7; tx <= tx0 + 7; tx++) {
+      const cx = tx * TS + TS / 2, cy = ty * TS + TS / 2, dd = Math.hypot(cx - P0.x, cy - P0.y); if (dd > 14) continue;
+      if (!G.walkM(cx, cy) || tAt(tx, ty) === T.VIA) continue;
+      let bx = 0, by = 0, nb = 0, water = 0, road = 0;
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { if (!ox && !oy) continue; const t = tAt(tx + ox, ty + oy);
+        if (t === T.VIA) road++; else if (!G.walkM(cx + ox * TS, cy + oy * TS) || t === T.TREE) { bx += ox; by += oy; nb++; if (t === T.WATER) water++; } }
+      if (road >= 3) continue;   // sul ciglio della strada non ci si ferma
+      const edge = nb > 0 && nb < 7, L = Math.hypot(bx, by) || 1;
+      // contro il bordo (mezzo metro più in là), con la faccia dalla parte opposta; davanti all'acqua si guarda il mare
+      const x = edge ? cx + bx / L * .45 : cx, y = edge ? cy + by / L * .45 : cy;
+      const face = !edge ? null : water ? Math.atan2(by, bx) : Math.atan2(-by, -bx);
+      out.push({ x, y, face, wall: edge && !water, water: water > 0, score: (edge ? 1.2 + nb * .08 : .35) - dd * .02 });
     }
-    if (!out.length && P0) out.push({ x: P0.x, y: P0.y });
-    return (CIRCLES[pid] = out);
+    return (SPOTS[pid] = out.sort((p, q) => q.score - p.score).slice(0, 60));
   }
   function restSpot(st, n, t, key) {
-    const P = n.pop, C = circlesOf(t.pid);
-    if (!C.length) { const s = G.wanderSpot(st, PLACES[t.pid]); return { key, x: s.x, y: s.y, face: n.face, ci: -1 }; }
-    // quanti ci sono già in ogni crocchio (chi è qui, fuori, vicino al giocatore)
-    const cnt = C.map(() => 0);
-    st.npcs.forEach(k => { const S = k !== n && k.pop && k.pop.spot; if (S && S.on && S.pid === t.pid && !k.inside && !k.dead && S.ci >= 0) cnt[S.ci]++; });
-    // ci si unisce a un crocchio che ha già gente (fino a 4), altrimenti se ne apre uno nuovo
-    let ci = -1, best = -1e9;
-    C.forEach((c, i) => { if (P.spot && P.spot.ci === i && P.spot.pid === t.pid) return; const v = (cnt[i] > 0 && cnt[i] < 4 ? 3 - cnt[i] * .4 : cnt[i] >= 4 ? -2 : 1) + Math.random() * 1.2; if (v > best) { best = v; ci = i; } });
-    if (ci < 0) ci = 0;
-    const c = C[ci], a = Math.random() * Math.PI * 2;
-    for (let k = 0; k < 6; k++) {
-      const ak = a + k * 1.05, r = .85 + Math.random() * .3, x = c.x + Math.cos(ak) * r, y = c.y + Math.sin(ak) * r;
-      if (G.walkM(x, y)) return { key, pid: t.pid, ci, x, y, face: Math.atan2(c.y - y, c.x - x) };
+    const P = n.pop, S0 = spotsOf(t.pid);
+    if (!S0.length) { const s = G.wanderSpot(st, PLACES[t.pid]); return { key, pid: t.pid, ci: n.id, x: s.x, y: s.y, face: n.face }; }
+    // chi c'è già, e in che gruppo
+    const here = st.npcs.filter(k => k !== n && k.pop && k.pop.spot && k.pop.spot.on && k.pop.spot.pid === t.pid && !k.inside && !k.dead);
+    const size = g => here.filter(k => k.pop.spot.ci === g).length;
+    // un amico o un parente da raggiungere (chi è chiacchierone si avvicina anche a chi conosce appena)
+    const fond = k => closeness(st, n, k) + (opinionOf(st, n, k.id) * .5) + (n.tr ? (n.tr.loq - .5) * .3 : 0);
+    const mate = here.filter(k => size(k.pop.spot.ci) < 3 && fond(k) > .55 && opinionOf(st, n, k.id) > -.2).sort((a, b) => fond(b) - fond(a))[0];
+    if (mate && !(P.spot && P.spot.ci === mate.pop.spot.ci)) {
+      const M = mate.pop.spot, g = M.ci, members = here.filter(k => k.pop.spot.ci === g);
+      // in due: di fronte, a poco più di un metro; in tre: a semicerchio, aperto verso lo spazio libero
+      const cx = members.reduce((s0, k) => s0 + k.x, 0) / members.length, cy = members.reduce((s0, k) => s0 + k.y, 0) / members.length;
+      const base = members.length === 1 ? (M.face != null ? M.face : mate.face) : Math.atan2(cy - mate.y, cx - mate.x) + Math.PI * .66;
+      for (const da of [0, .5, -.5, 1, -1]) {
+        const r = members.length === 1 ? 1.1 : .95, ax = (members.length === 1 ? mate.x : cx) + Math.cos(base + da) * r, ay = (members.length === 1 ? mate.y : cy) + Math.sin(base + da) * r;
+        if (!G.walkM(ax, ay) || roadAt(ax, ay) || here.some(k => k.pop.spot.ci !== g && dist(k.x, k.y, ax, ay) < 1.2)) continue;
+        const cx2 = (cx * members.length + ax) / (members.length + 1), cy2 = (cy * members.length + ay) / (members.length + 1);
+        // il gruppo si gira verso il centro (chi era da solo al muro ora guarda chi è arrivato)
+        members.forEach(k => { k.pop.spot.face = Math.atan2(cy2 - k.y, cx2 - k.x); k.pop.spot.wall = false; });
+        return { key, pid: t.pid, ci: g, x: ax, y: ay, face: Math.atan2(cy2 - ay, cx2 - ax), wall: false };
+      }
     }
-    return { key, pid: t.pid, ci, x: c.x, y: c.y, face: n.face };
+    // per conto suo: un bordo libero, lontano da chi c'è (la gente si tiene le distanze), meglio se vicino a dove arriva
+    let best = null, bv = -1e9;
+    for (const q of S0) {
+      const crowd = here.reduce((s0, k) => { const d = dist(k.x, k.y, q.x, q.y); return s0 + (d < 1.8 ? 5 : d < 3.5 ? 1 : 0); }, 0);
+      const v = q.score * 2 - crowd - dist(n.x, n.y, q.x, q.y) * .02 + Math.random() * .8;
+      if (v > bv) { bv = v; best = q; }
+    }
+    const face = best.face != null ? best.face + (Math.random() - .5) * .8 : Math.random() * Math.PI * 2;
+    return { key, pid: t.pid, ci: n.id, x: best.x + (Math.random() - .5) * .3, y: best.y + (Math.random() - .5) * .3, face, wall: best.wall };
   }
   // in crocchio si parla: di quello che si ha in testa (un progetto, un bisogno, un ricordo che pesa)
   function chatter(st, n, b) {
     if (st.clock < (n.barkCd || 0) || Math.random() > .004) return;
     const P = n.pop, S = P.spot; let mates = 0;
-    st.npcs.forEach(k => { const K = k !== n && k.pop && k.pop.spot; if (K && K.on && K.pid === S.pid && K.ci === S.ci && !k.inside && dist(k.x, k.y, n.x, n.y) < 2.5) mates++; });
+    st.npcs.forEach(k => { const K = k !== n && k.pop && k.pop.spot; if (K && K.on && K.pid === S.pid && K.ci === S.ci && !k.inside && dist(k.x, k.y, n.x, n.y) < 3) mates++; });
     if (!mates) return;
     const line = chatLine(st, n, b); if (!line) return;
     G.say(st, n, line, 3); n.barkCd = st.clock + 14 + Math.random() * 16;

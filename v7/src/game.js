@@ -136,9 +136,15 @@ var Game = (function () {
     while (c !== si && c !== -1) { raw.push({ x: (c % GW) * TS + TS / 2, y: ((c / GW) | 0) * TS + TS / 2 }); c = came[c]; }
     raw.reverse(); if (raw.length) raw[raw.length - 1] = { x: gx, y: gy }; else raw.push({ x: gx, y: gy });
     const out = []; let ax = sx, ay = sy, i = 0;
+    // [passo] a piedi la scorciatoia non taglia la carreggiata: si raddrizza solo dentro i tratti dello stesso tipo
+    // (marciapiede con marciapiede, strada con strada) e il tratto di strada resta quello scelto dalla ricerca: corto, dritto, dall'altra parte
+    const ped = roadCost > 1.5, onRoad = q => grid[Math.floor(q.y / TS) * GW + Math.floor(q.x / TS)] === T.VIA;
+    const lineOffRoad = (x0, y0, x1, y1) => { const d = dist(x0, y0, x1, y1), k = Math.ceil(d / .7); for (let m = 1; m < k; m++) { const x = x0 + (x1 - x0) * m / k, y = y0 + (y1 - y0) * m / k; if (grid[Math.floor(y / TS) * GW + Math.floor(x / TS)] === T.VIA) return false; } return true; };
+    const cls = ped ? raw.map(onRoad) : null, startRoad = ped ? onRoad({ x: sx, y: sy }) : false;
     while (i < raw.length) {
       let j = raw.length - 1;
-      while (j > i && !clearLine(ax, ay, raw[j].x, raw[j].y)) j--;
+      if (ped) { const c0 = i ? cls[i - 1] : startRoad; let e = i; while (e + 1 < raw.length && cls[e + 1] === cls[i]) e++; if (cls[i] !== c0) e = i; j = e; }   // non oltre il cambio di tipo
+      while (j > i && !(clearLine(ax, ay, raw[j].x, raw[j].y) && (!ped || cls[j] || lineOffRoad(ax, ay, raw[j].x, raw[j].y)))) j--;
       out.push(raw[j]); ax = raw[j].x; ay = raw[j].y; i = j + 1;
     }
     return out;
@@ -437,9 +443,23 @@ var Game = (function () {
       if (n.dead || n.inside || n.cop || n.faction) return;
       const d = dist(n.x, n.y, x, y); if (d > r) return;
       if (d > r * .55 && !los(n.x, n.y, x, y)) return;
-      if (n.panic <= 0 && st.clock > n.barkCd) say(st, n, ['Sparano!', 'Aiuto!', 'Tutti giù!', 'Madonna santa!', 'Scappate!'][Math.floor(st.rng() * 5)], 2);
-      n.panic = Math.max(n.panic, secs * (1.2 - n.tr.cor * .5)); n.fleeFrom = { x, y }; n.path = [];
+      // [passo] chi sta già scappando continua; gli altri prima si fermano, si girano a guardare, poi reagiscono (ognuno coi suoi tempi)
+      if (n.panic > 0) { n.panic = Math.max(n.panic, secs * (1.2 - n.tr.cor * .5)); n.fleeFrom = { x, y }; return; }
+      if (n.alarm && n.alarm.react > st.clock) return;
+      n.alarm = { x, y, d, r, secs, t0: st.clock, react: st.clock + .3 + st.rng() * .55 + (1 - n.tr.cor) * .25 + d / 70 };
     });
+  }
+  // [passo] il momento fra il rumore e la reazione: fermo, la testa e poi il corpo verso il rumore; poi si scappa, o (chi ha
+  // coraggio ed è lontano) si resta a guardare
+  function alarmStep(st, n, dt) {
+    const A = n.alarm; if (!A) return false;
+    const look = Math.atan2(A.y - n.y, A.x - n.x);
+    if (st.clock < A.react) { n.speedNow = 0; n.face += angDiff(look, n.face) * Math.min(1, dt * (st.clock - A.t0 > .25 ? 7 : 2)); return true; }
+    n.alarm = null;
+    if (n.tr.cor > .72 && A.d > A.r * .5 && st.rng() < .6) { n.wait = 1.5 + st.rng() * 2; n.face = look; if (st.clock > n.barkCd) { say(st, n, ['Che succede laggiù?', 'Ma cosa…', 'Hai sentito?'][Math.floor(st.rng() * 3)], 2); n.barkCd = st.clock + 4; } return false; }
+    if (st.clock > n.barkCd) say(st, n, ['Sparano!', 'Aiuto!', 'Tutti giù!', 'Madonna santa!', 'Scappate!'][Math.floor(st.rng() * 5)], 2);
+    n.panic = Math.max(n.panic, A.secs * (1.2 - n.tr.cor * .5)); n.fleeFrom = { x: A.x, y: A.y }; n.path = [];
+    return false;
   }
 
   // ---------------- FAZIONI E POLIZIA ----------------
@@ -1167,14 +1187,56 @@ var Game = (function () {
 
   // ---------------- MOVIMENTO ----------------
   function goTo(n, x, y, roadCost) { n.path = findPath(n.x, n.y, x, y, roadCost || 3.2); n.goal = { x, y }; }
+  // [passo] si cammina come le persone: ognuno col suo passo e il suo lato (si tiene la destra), le svolte si arrotondano,
+  // in curva si rallenta un po'. Il corpo segue la direzione con un poco di ritardo, non scatta.
+  const pHash = n => { if (n.__ph === undefined) { let h = 7; const s0 = String(n.id); for (let i = 0; i < s0.length; i++) h = (h * 31 + s0.charCodeAt(i)) % 10007; n.__ph = h / 10007; } return n.__ph; };
   function stepAlong(n, speed, dt, keepFace) {
     n.speedNow = 0;
     if (!n.path.length) return true;
-    const w = n.path[0], dx = w.x - n.x, dy = w.y - n.y, d = Math.hypot(dx, dy), s = speed * dt;
-    if (d > .01 && !keepFace) { const ta = Math.atan2(dy, dx); n.face += angDiff(ta, n.face) * Math.min(1, dt * 10); }
-    n.speedNow = speed;
-    if (d <= s) { n.x = w.x; n.y = w.y; n.path.shift(); return !n.path.length; }
-    n.x += dx / d * s; n.y += dy / d * s; return false;
+    const h = pHash(n), last = n.path.length === 1;
+    // [passo] chi era fermo da un po' e riparte: un attimo per guardare dove va e girarsi, poi si incammina (chi corre no)
+    if (speed < 2.5 && !keepFace) {
+      if ((n.__still || 0) > 1.5 && !n.__dep) n.__dep = .35 + h * .5;
+      if (n.__dep > 0) { const w0 = n.path[0]; n.__dep -= dt; n.__still = 0; n.face += angDiff(Math.atan2(w0.y - n.y, w0.x - n.x), n.face) * Math.min(1, dt * (n.__dep < .25 ? 7 : 1.5)); n.__hd = n.face; if (n.__dep > 0) return false; }
+    }
+    n.__dep = 0; n.__still = 0;
+    speed *= .9 + h * .2;
+    // vicino a una svolta si punta già al punto dopo (se lo spigolo è libero)
+    if (!last && Math.hypot(n.path[0].x - n.x, n.path[0].y - n.y) < .7 && walkM((n.x + n.path[1].x) / 2, (n.y + n.path[1].y) / 2)) n.path.shift();
+    let w = n.path[0];
+    // il suo lato: un po' a destra della linea, mai sull'ultimo punto (lì ci deve arrivare)
+    if (n.path.length > 1 && !keepFace) {
+      const nx2 = n.path[1].x - w.x, ny2 = n.path[1].y - w.y, L = Math.hypot(nx2, ny2) || 1, off = .12 + h * .35;
+      const ox = w.x - ny2 / L * off, oy = w.y + nx2 / L * off; if (walkM(ox, oy)) w = { x: ox, y: oy };
+    }
+    const dx = w.x - n.x, dy = w.y - n.y, d = Math.hypot(dx, dy);
+    if (d < 1e-3) { n.path.shift(); return !n.path.length; }
+    const ta = Math.atan2(dy, dx);
+    // la direzione di marcia gira con un limite (più svelta per chi corre); con una svolta stretta si rallenta
+    if (n.__hd === undefined || !isFinite(n.__hd)) n.__hd = ta;
+    const turn = angDiff(ta, n.__hd), maxT = (5 + speed * 1.5) * dt;
+    n.__hd += Math.max(-maxT, Math.min(maxT, turn));
+    const slow = Math.max(.35, Math.cos(Math.min(Math.PI / 2, Math.abs(angDiff(ta, n.__hd))))), s = speed * slow * dt;
+    if (!keepFace) n.face += angDiff(n.__hd, n.face) * Math.min(1, dt * 8);
+    n.speedNow = speed * slow;
+    if (d <= Math.max(s, .12)) { const q = n.path.shift(); n.x = q === w ? w.x : n.x + dx; n.y = q === w ? w.y : n.y + dy; if (!n.path.length) { n.x = q.x; n.y = q.y; } return !n.path.length; }
+    // si va nella direzione di marcia; se non si può (un muro) si va dritti al punto
+    const mx = Math.cos(n.__hd) * s, my = Math.sin(n.__hd) * s;
+    if (walkM(n.x + mx, n.y + my)) { n.x += mx; n.y += my; } else { n.x += dx / d * s; n.y += dy / d * s; n.__hd = ta; }
+    return false;
+  }
+  // [passo] chi cammina vicino al giocatore non passa attraverso gli altri: ci si scansa (appena, ognuno la sua metà)
+  function separate(st) {
+    const p = st.player, cell = {}, L = [];
+    for (const n of st.npcs) { if (n.dead || n.inside || n.room || n.stun > 0 || (n.pop && !n.pop.near) || Math.abs(n.x - p.x) > 60 || Math.abs(n.y - p.y) > 60) continue; const k = Math.floor(n.x / 1.2) + ',' + Math.floor(n.y / 1.2); (cell[k] = cell[k] || []).push(n); L.push(n); }
+    for (const n of L) {
+      const cx = Math.floor(n.x / 1.2), cy = Math.floor(n.y / 1.2);
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const C = cell[(cx + ox) + ',' + (cy + oy)]; if (!C) continue;
+        for (const k of C) { if (k === n || k.id < n.id) continue; const dx = k.x - n.x, dy = k.y - n.y, d = Math.hypot(dx, dy), R = .62; if (d >= R || d < 1e-4) continue;
+          const push = (R - d) / 2, ux = dx / d, uy = dy / d, a = (n.speedNow > .3 ? .5 : .3), b = (k.speedNow > .3 ? .5 : .3);
+          if (walkM(n.x - ux * push * a, n.y - uy * push * a)) { n.x -= ux * push * a; n.y -= uy * push * a; }
+          if (walkM(k.x + ux * push * b, k.y + uy * push * b)) { k.x += ux * push * b; k.y += uy * push * b; } } }
+    }
   }
   function wanderSpot(st, place) {
     for (let i = 0; i < 10; i++) {
@@ -1191,6 +1253,8 @@ var Game = (function () {
     if (n.panic > 0) n.panic -= dt;
     if (n.cool > 0) n.cool -= dt;
     if (n.stun > 0) { n.stun -= dt; n.speedNow = 0; return; }
+    if (n.alarm && !n.inside && alarmStep(st, n, dt)) return;   // [passo]
+    if (!(n.speedNow > .3)) n.__still = (n.__still || 0) + dt;   // [passo] da quanto è fermo (per la partenza)
     if (n.jailedUntil > st.t) { n.x = PLACES.commissariato.x; n.y = PLACES.commissariato.y - 1; n.inside = true; return; }
     const a = n.action.name, p = st.player;
     if (HOOKS.move && HOOKS.move(st, n, dt, a)) return;
@@ -2064,6 +2128,7 @@ var Game = (function () {
       moveNpc(st, n, dt);
       if (!n.inside) pushOutOfVehicles(st, n, .35);
     }
+    separate(st);   // [passo]
     for (const v of st.vehicles) {
       if (v.hidden) continue;
       if (v.burning > 0) { v.burning -= dt; if (v.burning <= 0) explode(st, v); }

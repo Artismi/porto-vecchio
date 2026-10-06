@@ -254,6 +254,7 @@ var Models = (function () {
   function play(g, name, once) {
     const u = g.userData, a = u.acts[name] || u.acts.Idle; if (!a || u.cur === a) return;
     a.reset(); a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); a.clampWhenFinished = !!once; a.play();
+    if (!once && a.getClip) a.time = Math.random() * a.getClip().duration;   // [passo] ognuno al suo punto del passo: non camminano a tempo
     if (u.cur) u.cur.crossFadeTo(a, .18, false); u.cur = a;
   }
   // stato → animazione

@@ -333,5 +333,13 @@ Anim.npcMap((st, n, s) => {
   if (n.dead) return;
   if (n.bark && n.bark.until > st.clock) s.talk = true;
   const p = st.player, d = Math.hypot(n.x - p.x, n.y - p.y);
-  if (d < 7 && !(n.action && n.action.name === 'fugge')) s.lookAt = { x: p.x, y: 1.55, z: p.y, ground: true };
+  // [passo] il giocatore si guarda per un motivo: se ti conoscono, se hai un'arma o corri, se ti parlano, se passi rasente
+  // (un'occhiata di un paio di secondi, ognuno col suo ritardo), non tutti insieme ogni volta che passi
+  if (d > 9 || (n.action && n.action.name === 'fugge')) { n.__gl = 0; return; }
+  const armed = p.cur && p.cur !== 'pugni' && p.arms && p.arms[p.cur], fast = Math.hypot(p.vx || 0, p.vy || 0) > 3 || p.sprint;
+  const knows = n.op && (n.op.trust > .3 || n.op.grudge > .3 || n.op.fear > .4), talking = n.bark && n.bark.until > st.clock && d < 4;
+  if (!n.__gl && d < 2.6) n.__gl = st.clock + .25 + (n.__ph2 = n.__ph2 || ((String(n.id).length * 7919 + 13) % 97) / 97) * .6;   // l'occhiata arriva un attimo dopo
+  const glance = n.__gl && st.clock > n.__gl && st.clock < n.__gl + 1.8;
+  if (knows || talking || ((armed || fast) && d < 8) || glance) s.lookAt = { x: p.x, y: 1.55, z: p.y, ground: true };
+  if (d > 4) n.__gl = 0;
 });
