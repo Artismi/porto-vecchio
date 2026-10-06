@@ -35,11 +35,11 @@ var Superfici = (function () {
       for (let k = 0; k < 9; k++) { x.strokeStyle = `rgb(${190 + rnd() * 30 | 0},${190 + rnd() * 30 | 0},${190 + rnd() * 30 | 0})`; x.beginPath(); const X = rnd() * N, Y = rnd() * N; x.moveTo(X, Y); x.lineTo(X + (rnd() - .5) * 30, Y + (rnd() - .5) * 8); x.stroke(); }
       for (let k = 0; k < 5; k++) px(180, rnd() * N | 0, rnd() * N | 0, 2, 2); }),
     // vernice su lamiera: velature, schegge che scoprono il fondo scuro, colature di sporco dall'alto
-    verniciato: () => canvas('verniciato', (x, px) => { px(238, 0, 0, N, N); noise(px, 222, 250, N * N * .6);
-      for (let k = 0; k < 10; k++) { const X = rnd() * N | 0, Y = rnd() * N | 0, w = 1 + (rnd() * 4 | 0), h = 1 + (rnd() * 3 | 0); px(150, X, Y, w, h); px(190, X - 1, Y - 1, w + 2, 1); }
-      for (let k = 0; k < 6; k++) { const X = rnd() * N | 0, l = 6 + rnd() * 26 | 0; for (let y = 0; y < l; y++) px(218 - (1 - y / l) * 14, X, y, 1, 1); } }),
+    verniciato: () => canvas('verniciato', (x, px) => { px(242, 0, 0, N, N); noise(px, 234, 250, N * N * .35);
+      for (let k = 0; k < 4; k++) { const X = rnd() * N | 0, Y = rnd() * N | 0, w = 1 + (rnd() * 2 | 0); px(170, X, Y, w, 1); px(205, X, Y - 1, w, 1); }
+      for (let k = 0; k < 3; k++) { const X = rnd() * N | 0, l = 8 + rnd() * 20 | 0; for (let y = 0; y < l; y++) px(236 - (1 - y / l) * 8, X, y, 1, 1); } }),
     // ghisa e ferro scuro: grana grossa, butterature
-    ghisa: () => canvas('ghisa', (x, px) => { px(225, 0, 0, N, N); noise(px, 175, 255, N * N * .9); for (let k = 0; k < 40; k++) px(150, rnd() * N | 0, rnd() * N | 0, 1 + (rnd() * 2 | 0), 1 + (rnd() * 2 | 0)); }),
+    ghisa: () => canvas('ghisa', (x, px) => { px(232, 0, 0, N, N); noise(px, 210, 252, N * N * .7); for (let k = 0; k < 14; k++) px(185, rnd() * N | 0, rnd() * N | 0, 1 + (rnd() * 2 | 0), 1 + (rnd() * 2 | 0)); }),
     // mattoni 25×6 cm sfalsati, giunti di malta incassati, ogni mattone col suo tono
     mattone: () => canvas('mattone', (x, px) => { px(150, 0, 0, N, N); const bh = 8, bw = 32;
       for (let r = 0; r < N / bh; r++) for (let c = -1; c < N / bw + 1; c++) { const X = c * bw + (r % 2) * bw / 2, v = 205 + rnd() * 50; px(v, X + 1, r * bh + 1, bw - 2, bh - 2); for (let k = 0; k < 12; k++) px(v - 25 + rnd() * 30, X + 1 + rnd() * (bw - 3) | 0, r * bh + 1 + rnd() * (bh - 3) | 0); } }),
@@ -48,7 +48,7 @@ var Superfici = (function () {
     // carta e cartone: fibre leggere
     carta: () => canvas('carta', (x, px) => { px(244, 0, 0, N, N); noise(px, 228, 252, N * N * .4); for (let k = 0; k < 30; k++) px(222, rnd() * N | 0, rnd() * N | 0, 3 + (rnd() * 6 | 0), 1); }),
     // gomma e plastica nera: opaca, appena granulosa
-    gomma: () => canvas('gomma', (x, px) => { px(236, 0, 0, N, N); noise(px, 210, 255, N * N * .7); }),
+    gomma: () => canvas('gomma', (x, px) => { px(240, 0, 0, N, N); noise(px, 226, 252, N * N * .5); }),
     // pietra e cemento: macchie larghe e puntini
     pietra: () => canvas('pietra', (x, px) => { px(225, 0, 0, N, N); for (let k = 0; k < 40; k++) { x.fillStyle = `rgba(${170 + rnd() * 80 | 0},${170 + rnd() * 80 | 0},${170 + rnd() * 80 | 0},.5)`; x.beginPath(); x.arc(rnd() * N, rnd() * N, 2 + rnd() * 7, 0, 7); x.fill(); } noise(px, 160, 255, N * N * .3); }),
   };
@@ -64,7 +64,7 @@ var Superfici = (function () {
     if (/metal|steel|iron|chrome|alumin/i.test(nm)) return 'metallo';
     if (/stone|rock|brick|concrete/i.test(nm)) return 'pietra';
     const c = m.color, hsl = c.getHSL({}), met = m.metalness || 0;
-    if (met >= .35) return hsl.l < .2 ? 'ghisa' : 'metallo';
+    if (met >= .22) return hsl.l < .2 ? 'ghisa' : 'metallo';
     if (hsl.l < .13) return 'gomma';
     const h = hsl.h * 360, lucido = m.isMeshStandardMaterial && m.roughness < .45;
     if (!lucido && h >= 12 && h <= 48 && hsl.s > .2 && hsl.s < .6 && hsl.l > .16 && hsl.l < .66) return h < 20 && hsl.s > .4 && hsl.l < .45 ? 'mattone' : 'legno';
@@ -73,14 +73,14 @@ var Superfici = (function () {
     return 'verniciato';
   }
   const ROUGH = { legno: .82, metallo: .45, verniciato: .62, ghisa: .78, mattone: .95, tessuto: 1, carta: .95, gomma: .92, pietra: .95 };
-  const BUMP = { legno: .9, metallo: .25, verniciato: .5, ghisa: .9, mattone: 2.2, tessuto: .7, carta: .3, gomma: .4, pietra: 1.2 };
+  const BUMP = { legno: .8, metallo: .2, verniciato: .2, ghisa: .45, mattone: 2.2, tessuto: .6, carta: .25, gomma: .25, pietra: 1.1 };
   // il materiale vestito: stessa tinta (un filo più chiara, la texture la scurisce in media), più la texture, il rilievo, i colori per vertice
   function vestito(m) {
     if (MATS.has(m)) return MATS.get(m);
     const k = tipo(m), tx = TEXS[k] ? TEXS[k]() : null;
     let n = m;
     if (tx && (m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial)) {
-      n = new THREE.MeshStandardMaterial({ color: m.color.clone().multiplyScalar(1.08), map: tx, bumpMap: tx, bumpScale: BUMP[k] * .012, roughness: m.isMeshStandardMaterial ? Math.max(m.roughness, ROUGH[k] - .15) : ROUGH[k], metalness: m.isMeshStandardMaterial ? m.metalness : 0, vertexColors: true, side: m.side });
+      n = new THREE.MeshStandardMaterial({ color: m.color.clone().multiplyScalar(1.08), map: tx, bumpMap: tx, bumpScale: BUMP[k] * .012, roughness: m.isMeshStandardMaterial ? Math.max(m.roughness, ROUGH[k] - .15) : ROUGH[k], metalness: m.isMeshStandardMaterial ? Math.min(.35, m.metalness) : 0, vertexColors: true, side: m.side });
       n.name = m.name; n.userData = Object.assign({}, m.userData, { sup: k, vestito: true });
     }
     MATS.set(m, n); return n;
@@ -123,6 +123,7 @@ var Superfici = (function () {
     else if (t === 'LatheGeometry') { const mx = Math.max(...p.points.map(v => v.x)), ys = p.points.map(v => v.y); su = 2 * Math.PI * mx * R; sv = (Math.max(...ys) - Math.min(...ys)) * sy; }
     else if (t === 'TubeGeometry') { su = p.path.getLength() * R; sv = 2 * Math.PI * p.radius * R; }
     else if (t === 'DodecahedronGeometry' || t === 'IcosahedronGeometry') { su = sv = 2 * p.radius * R; }
+    else if (t === 'ExtrudeGeometry') { su = sv = R; }   // le uv degli estrusi sono già in metri: basta la scala
     else return geo;
     const key = geo.uuid + '|' + su.toFixed(3) + '|' + sv.toFixed(3); if (GEOS.has(key)) return GEOS.get(key);
     const g2 = geo.clone(), UV = g2.attributes.uv; if (!UV) return geo;
