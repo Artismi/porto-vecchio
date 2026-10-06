@@ -544,6 +544,7 @@ var Popolo = (function () {
       const ww = workWindows(plan), busyC = m => ww.some(([a, z]) => m >= a && m < z);
       if (!isPassive(st, n)) planProjects(st, n, day, plan, busyC);
       const apC = P.appt; if (apC && dayIdx(apC.t) === day) { const am = minOfDay(apC.t); for (let i = plan.length - 1; i >= 0; i--) if (plan[i].at > am - 10 && plan[i].at < am + 60 && !plan[i].pj && plan[i].act !== 'lavoro') plan.splice(i, 1); add(am - 10, apC.tgt, 'appuntamento', `appuntamento con ${G.nameOf(st, apC.with)}`, true); if (!plan.some(x => (x.act === 'sonno' || x.act === 'casa') && x.at > am && x.at < am + 110)) add(am + 60 + rr() * 40, home, 'casa', 'torna a casa'); }
+      insertImpegni(st, n, day, plan, add);   // [imprese]
       plan.sort((a, b) => a.at - b.at); P.plan = plan; P.planDay = day;
       return plan;
     }
@@ -620,9 +621,22 @@ var Popolo = (function () {
     if (!isPassive(st, n)) planProjects(st, n, day, plan, m => busy(m) || !!(P.job && P.job.night && m < 14 * 60));
     // appuntamenti presi per oggi
     const ap = P.appt; if (ap && dayIdx(ap.t) === day) { const am = minOfDay(ap.t); for (let i = plan.length - 1; i >= 0; i--) if (plan[i].at > am - 10 && plan[i].at < am + 60 && !plan[i].pj && plan[i].act !== 'lavoro') plan.splice(i, 1); add(am - 10, ap.tgt, 'appuntamento', `appuntamento con ${G.nameOf(st, ap.with)}`, true); if (!plan.some(x => (x.act === 'sonno' || x.act === 'casa') && x.at > am && x.at < am + 110)) add(am + 60 + rr() * 40, home, 'casa', 'torna a casa'); }
+    insertImpegni(st, n, day, plan, add);   // [imprese]
     plan.sort((a, b) => a.at - b.at);
     P.plan = plan; P.planDay = day;
     return plan;
+  }
+  // [imprese] gli impegni presi con un gruppo (P.impegni: { id, t, dur, tgt, label, obj }): un blocco fisso che sposta
+  // quello che non è lavoro, e dopo si torna a casa
+  function insertImpegni(st, n, day, plan, add) {
+    const P = n.pop; if (!P.impegni || !P.impegni.length) return;
+    P.impegni = P.impegni.filter(e => e.t + (e.dur || 90) > st.t - 60);
+    P.impegni.forEach(e => {
+      if (dayIdx(e.t) !== day) return; const am = minOfDay(e.t), end = Math.min(1439, am + (e.dur || 90));
+      for (let i = plan.length - 1; i >= 0; i--) if (plan[i].at > am - 15 && plan[i].at < end && !plan[i].pj && plan[i].act !== 'lavoro' && plan[i].act !== 'appuntamento' && !(plan[i].cont)) plan.splice(i, 1);
+      add(am - 10, e.tgt, 'impresa', e.label, true, e.obj); plan[plan.length - 1].imp = e.id;
+      if (!plan.some(x => x.at >= end && x.at < end + 90)) add(end, P.homeT, 'casa', 'torna a casa');
+    });
   }
   // il blocco di adesso. Ognuno ha il suo piccolo ritardo (così non partono tutti allo stesso minuto); chi è vicino
   // al giocatore cammina davvero, e a piedi il tempo di gioco corre (100 m ≈ 3 ore): parte prima, in base alla strada.
@@ -636,7 +650,7 @@ var Popolo = (function () {
         // [convivenza] si parte prima per arrivare in tempo (agli orari fissi anche molto prima), ma non si lascia un impegno
         // fisso prima di averlo fatto: un appuntamento si aspetta almeno 45 minuti, il resto almeno 20
         const spd = 1.35 * (P.age > 70 ? .75 : P.age > 60 ? .88 : 1), lead = Math.min(b.fixed ? 320 : 150, dist(n.x, n.y, b.tgt.x, b.tgt.y) * 1.15 / spd * MPS), prev = P.plan[i - 1];   // la sua velocità vera, e un po' di margine per le curve
-        const floor = prev.act === 'appuntamento' ? prev.at + 55 : prev.fixed ? prev.at + 20 : -1e9;
+        const floor = prev.act === 'appuntamento' ? prev.at + 55 : prev.act === 'impresa' ? prev.at + 70 : prev.fixed ? prev.at + 20 : -1e9;   // [imprese] un impegno di gruppo si fa fino in fondo
         at = Math.max(at - lead, Math.min(at, floor));
       }
       if (at <= m) idx = i;
@@ -1642,6 +1656,11 @@ var Popolo = (function () {
     // chi c'è già, e in che gruppo
     const here = st.npcs.filter(k => k !== n && k.pop && k.pop.spot && k.pop.spot.on && k.pop.spot.pid === t.pid && !k.inside && !k.dead);
     const size = g => here.filter(k => k.pop.spot.ci === g).length;
+    // [imprese] chi è qui per un'impresa sta con la sua squadra, attorno a chi c'è già
+    if (P.cur && P.cur.imp) {
+      const g = 'imp' + P.cur.imp, crew = here.filter(k => k.pop.spot.ci === g), c0 = crew.length ? { x: crew.reduce((a, k) => a + k.x, 0) / crew.length, y: crew.reduce((a, k) => a + k.y, 0) / crew.length } : S0[0];
+      for (let i = 0; i < 10; i++) { const a = Math.random() * Math.PI * 2, r = crew.length ? 1.1 + crew.length * .18 : 0, x = c0.x + Math.cos(a) * r, y = c0.y + Math.sin(a) * r; if (G.walkM(x, y) && !roadAt(x, y)) return { key, pid: t.pid, ci: g, x, y, face: crew.length ? Math.atan2(c0.y - y, c0.x - x) : (c0.face || 0), wall: false }; }
+    }
     // un amico o un parente da raggiungere (chi è chiacchierone si avvicina anche a chi conosce appena)
     const fond = k => closeness(st, n, k) + (opinionOf(st, n, k.id) * .5) + (n.tr ? (n.tr.loq - .5) * .3 : 0);
     const mate = here.filter(k => size(k.pop.spot.ci) < 3 && fond(k) > .55 && opinionOf(st, n, k.id) > -.2).sort((a, b) => fond(b) - fond(a))[0];
@@ -1728,6 +1747,7 @@ var Popolo = (function () {
     if (b.act === 'sonno') return { want: 'bed', pose: 'dorme' };
     if (b.act === 'lavoro') return { want: 'work', pose: 'lavora' };
     if (b.act === 'messa') return { want: 'pew', pose: 'prega' };
+    if (b.act === 'impresa' && /cena|pranz|mangi/.test(b.label || '')) return { want: 'table', pose: 'tavola' };   // [imprese]
     if (b.act === 'pranzo' || (atHome && ((m > 12 * 60 && m < 14 * 60 + 30) || (m > 19 * 60 + 30 && m < 21 * 60 + 30)))) return { want: 'table', pose: 'tavola' };
     if (b.obj === 'cucina' || (atHome && b.label === 'si prepara')) return { want: 'stove', pose: 'lavora' };
     if (b.obj === 'bancone' || b.obj === 'panino') return { want: 'counter', pose: 'bancone' };
@@ -1920,7 +1940,7 @@ var Popolo = (function () {
   }
   // per i moduli che costruiscono sopra la vita (azioni.js): gli strumenti interni
   const USE = [], AVAIL = [], ESSENTIAL = [], MONEY = {}, MEET = [];   // [scambi] MEET: chi vuole sapere com'è andato un appuntamento con un patto   // [soldi] MONEY: agganci dei soldi (paga, affitto, spese, macchinette)   // [economia] chi vuole può vietare o far pagare l'uso di un oggetto in un posto (scorte, prezzi)
-  const _ = { USE, AVAIL, ESSENTIAL, MONEY, MEET, TALK, resolveRef, appointCheck: checkAppointments, JOBS_BY, OUTDOOR, GENDER, buildIndex, sketchFor, artStyle, readWalls, newcomer, REFLECT, note, feel, target, tkey, tB, planDay, blockNow, snapFar, wakeNear, dayIdx, minOfDay, hhmm, isPassive, arrestFar, arrest: arrestFar, toLong, recall, opinionOf, consolidate, chooseObj, startProject, endProject, PROJ, OGG, useRef, recent, share, closeness, paintWall, appoint, adopt, o, cap, pick, isHomeT, initLife, lifeOf, curfewFrom, clamp, dist };
+  const _ = { USE, AVAIL, ESSENTIAL, MONEY, MEET, TALK, spotsOf, resolveRef, appointCheck: checkAppointments, JOBS_BY, OUTDOOR, GENDER, buildIndex, sketchFor, artStyle, readWalls, newcomer, REFLECT, note, feel, target, tkey, tB, planDay, blockNow, snapFar, wakeNear, dayIdx, minOfDay, hhmm, isPassive, arrestFar, arrest: arrestFar, toLong, recall, opinionOf, consolidate, chooseObj, startProject, endProject, PROJ, OGG, useRef, recent, share, closeness, paintWall, appoint, adopt, o, cap, pick, isHomeT, initLife, lifeOf, curfewFrom, clamp, dist };
   return { _, arrest: arrestFar, note, OGG, INTERESSI, PROJ, lifeOf, lifeShort, reflect, chooseObj, startProject, isPassive, CFG, WEEK, RECURRING, GIRI, weekday, wdName, ago, curfewFrom, eventsOn, planDay, blockNow, appoint, bioOf, report, target, note, buildIndex, doing, recall, opinionOf };
 })();
 if (typeof module !== 'undefined') module.exports = Popolo;
