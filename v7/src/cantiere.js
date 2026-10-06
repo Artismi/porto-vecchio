@@ -233,15 +233,15 @@ var Cantiere = (function () {
       case 'barricata': { const a = box(g, S0, .8, .12, c, 0, .6, 0); a.rotation.z = .2; const b2 = box(g, S0, .8, .12, '#5a3a20', 0, .5, .2); b2.rotation.z = -.15; box(g, .6, .7, .5, '#4a4a4a', .5, .35, -.1); break; }
       case 'torretta': { const w = S0 * 2 - .3; for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(g, .16, 3.6, .16, '#5a4028', x * w / 2, 1.8, z * w / 2); box(g, w + .3, .1, w + .3, c, 0, 3, 0); box(g, w + .3, .8, .08, c, 0, 3.45, w / 2 + .1); box(g, w + .3, .8, .08, c, 0, 3.45, -w / 2 - .1); box(g, .08, .8, w + .3, c, w / 2 + .1, 3.45, 0); const rf = box(g, w + .8, .08, w + .8, '#5a5048', 0, 4.4, 0); rf.rotation.x = .1; for (const x of [-.4, .4]) box(g, .06, 1, .06, '#5a4028', x, 3.9, 0); break; }
     }
-    // animazioni aggiunte alle postazioni del kit
-    if (b.anim === 'fuoco' && b.stm) tag(cyl(g, 0, .14, .3, '#ff7a20', 0, .45, .3, '#ff5a10'), 'fiamma');
-    if (b.anim === 'ago') tag(box(g, .015, .12, .015, '#c8c8d0', .17, .86, 0), 'ago');
-    if (b.anim === 'rullo') { const r0 = tag(cyl(g, .08, .08, .62, '#3a3a3a', 0, 1.05, .2), 'rullo'); r0.rotation.z = Math.PI / 2; }
-    if (b.anim === 'radio') { tag(box(g, .04, .04, .02, '#30ff60', -.12, 1.0, .06, 0), 'led'); g.getObjectByName('led').material.emissive = new THREE.Color('#30ff60'); cyl(g, .008, .008, 1.2, '#c8c8d0', .55, 1.4, -.2); }
-    if (b.anim === 'brace') tag(box(g, .5, .05, .35, '#ff4a10', -.1, .9, 0), 'brace').material.emissive = new THREE.Color('#ff3a00');
+    // animazioni aggiunte alle postazioni del kit (solo se il modello non ha già la sua parte con quel nome)
+    if (!g.getObjectByName('fiamma') && b.anim === 'fuoco' && b.stm) tag(cyl(g, 0, .14, .3, '#ff7a20', 0, .45, .3, '#ff5a10'), 'fiamma');
+    if (!g.getObjectByName('ago') && b.anim === 'ago') tag(box(g, .015, .12, .015, '#c8c8d0', .17, .86, 0), 'ago');
+    if (!g.getObjectByName('rullo') && b.anim === 'rullo') { const r0 = tag(cyl(g, .08, .08, .62, '#3a3a3a', 0, 1.05, .2), 'rullo'); r0.rotation.z = Math.PI / 2; }
+    if (!g.getObjectByName('led') && b.anim === 'radio') { tag(box(g, .04, .04, .02, '#30ff60', -.12, 1.0, .06, 0), 'led'); g.getObjectByName('led').material.emissive = new THREE.Color('#30ff60'); cyl(g, .008, .008, 1.2, '#c8c8d0', .55, 1.4, -.2); }
+    if (!g.getObjectByName('brace') && b.anim === 'brace') tag(box(g, .5, .05, .35, '#ff4a10', -.1, .9, 0), 'brace').material.emissive = new THREE.Color('#ff3a00');
     if (b.anim === 'lampadina' && !g.getObjectByName('luce')) tag(cyl(g, .05, .07, .1, '#f0e0a0', .4, 1.5, -.2, '#ffd890'), 'luce');
-    if (b.anim === 'rossa') tag(cyl(g, .06, .06, .06, '#ff2a2a', 0, 1.9, -.2, '#ff1010'), 'luce');
-    if (b.anim === 'segatura') tag(box(g, .3, .02, .2, '#d8b080', .3, .87, .1), 'segatura');
+    if (!g.getObjectByName('luce') && b.anim === 'rossa') tag(cyl(g, .06, .06, .06, '#ff2a2a', 0, 1.9, -.2, '#ff1010'), 'luce');
+    if (!g.getObjectByName('segatura') && b.anim === 'segatura') tag(box(g, .3, .02, .2, '#d8b080', .3, .87, .1), 'segatura');
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     return g;
   }
@@ -345,10 +345,11 @@ var Cantiere = (function () {
     if (U.scene !== scene) { U.scene = scene; U.grp = new THREE.Group(); U.grp.name = 'covo'; scene.add(U.grp); U.meshes = {}; }
     if (U.stRef !== st) { Object.values(U.meshes).forEach(m => U.grp.remove(m)); U.meshes = {}; U.stRef = st; U.dirty = true; }
     const lv = lvOf(st), objs = st.covo ? st.covo.obj : [];
+    const dlv = typeof Scaricati !== 'undefined' ? Scaricati.ver : 0; if (U.dlv !== dlv) { U.dlv = dlv; U.dirty = true; }   // [modelli] arrivati i modelli scaricati: si rifanno
     if (U.dirty) {
       const want = new Set(objs.map(o => o.uid));
       Object.keys(U.meshes).forEach(k => { if (!want.has(k)) { U.grp.remove(U.meshes[k]); delete U.meshes[k]; } });
-      objs.forEach(o => { let m = U.meshes[o.uid]; const b = BY[o.id]; if (!b) return; if (!m || m.userData.kitWait && KIT[b.kit] && KIT[b.kit] !== 'wait') { if (m) U.grp.remove(m); m = model(b); m.userData.kitWait = !!(b.kit && (!KIT[b.kit] || KIT[b.kit] === 'wait')); m.userData.uid = o.uid; U.grp.add(m); U.meshes[o.uid] = m; } m.position.set(o.x, hAt(st, o.x, o.y, o.lv), o.y); m.rotation.y = -o.rot; m.userData.lv = o.lv; });
+      objs.forEach(o => { let m = U.meshes[o.uid]; const b = BY[o.id]; if (!b) return; if (!m || m.userData.kitWait && KIT[b.kit] && KIT[b.kit] !== 'wait' || m.userData.dlv !== dlv) { if (m) U.grp.remove(m); m = model(b); m.userData.dlv = dlv; m.userData.kitWait = !!(b.kit && (!KIT[b.kit] || KIT[b.kit] === 'wait')); m.userData.uid = o.uid; U.grp.add(m); U.meshes[o.uid] = m; } m.position.set(o.x, hAt(st, o.x, o.y, o.lv), o.y); m.rotation.y = -o.rot; m.userData.lv = o.lv; });
       U.dirty = objs.some(o => U.meshes[o.uid] && U.meshes[o.uid].userData.kitWait);
     }
     // solo quello del livello dove sei (sotto terra si vede il bunker, sopra il covo)

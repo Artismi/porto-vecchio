@@ -6698,6 +6698,75 @@ var Kit = (function () {
   return { load, get, has, texOf, get ready() { return ready; } };
 })();
 </script>
+<script>/* Porto Vecchio — I modelli scaricati usati come pezzi (Survival Pack e Toon Shooter di Quaternius, Furniture Kit e altri di Kenney).
+   Le librerie fatte a mano (pezzi.js, bottino.js, le postazioni di oggetti_ui.js) costruiscono i modelli in modo sincrono:
+   qui i file si caricano all'avvio in una cache, e chi costruisce chiede `Scaricati.get(id)`. Se il file non c'è ancora
+   (o non arriva) torna null e si usa il modello fatto a mano: niente si rompe. Quando arrivano i file cresce `ver`,
+   così chi ha già costruito un modello sa che può rifarlo.
+   Ogni voce: [file, misura da adattare ('l' lato lungo in pianta, 'h' altezza, 'x' larghezza, 'z' profondità), metri, rotazione y].
+   La rotazione porta il davanti del modello verso +z (convenzione del gioco). La base va a terra, al centro. */
+var Scaricati = (function () {
+  'use strict';
+  const CAT = {
+    // Survival Pack (Quaternius)
+    radio: ['mj/s_Radio', 'x', .42, 0],
+    bombola: ['mj/s_PropaneTank', 'h', .62, 0],
+    zaino: ['mj/s_Backpack', 'h', .55, 0],
+    tronco: ['mj/s_WoodLog', 'l', .9, 0],
+    falo: ['mj/s_Bonfire_Fire', 'l', 1.1, 0],
+    // Toon Shooter (Quaternius)
+    cassa: ['mj/t_Crate', 'h', .6, 0],
+    pallet: ['mj/t_Pallet', 'l', 1.2, 0],
+    sacchi: ['mj/t_SackTrench_Small', 'l', 1.6, 0],
+    scatole: ['mj/t_CardboardBoxes_1', 'l', .7, 0],
+    gas: ['mj/t_GasTank', 'h', .6, 0],
+    fusto: ['mj/t_ExplodingBarrel', 'h', .88, 0],
+    gomme: ['mj/t_Debris_Tires', 'l', 1.1, 0],
+    tubi: ['mj/t_Pipes', 'l', 1.2, 0],
+    cestinoT: ['mj/t_TrashContainer', 'l', 1.4, 0],
+    // Furniture Kit (Kenney)
+    tv: ['mf/televisionVintage', 'x', .55, 0],
+    radioK: ['mf/radio', 'x', .45, 0],
+    scatola: ['mf/cardboardBoxClosed', 'l', .45, 0],
+    cestino: ['mf/trashcan', 'h', .65, 0],
+    monitor: ['mf/computerScreen', 'x', .42, 0],
+  };
+  const LIB = {}, WAIT = {};
+  let ver = 0, base = 'assets/', loader = null;
+  function fit(id, root) {
+    const c = CAT[id]; root.updateMatrixWorld(true);
+    const drop = []; root.traverse(o => { if (o.isLight || o.isCamera) drop.push(o); }); drop.forEach(o => o.parent && o.parent.remove(o));
+    const inner = new THREE.Group(); inner.add(root); inner.rotation.y = c[3] || 0; inner.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(inner), sz = bb.getSize(new THREE.Vector3()), ctr = bb.getCenter(new THREE.Vector3());
+    const L = c[1] === 'h' ? sz.y : c[1] === 'x' ? sz.x : c[1] === 'z' ? sz.z : Math.max(sz.x, sz.z), k = c[2] / (L || 1);
+    const g = new THREE.Group(), mid = new THREE.Group(); mid.add(inner); mid.position.set(-ctr.x, -bb.min.y, -ctr.z); g.add(mid); g.scale.setScalar(k);
+    root.traverse(o => {
+      if (!o.isMesh) return; o.castShadow = true; o.receiveShadow = true;
+      (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) { m.map.magFilter = THREE.NearestFilter; m.map.needsUpdate = true; } if (m.metalness > .5) m.metalness = .3; });
+    });
+    const out = new THREE.Group(); out.add(g); out.userData.size = new THREE.Vector3(sz.x * k, sz.y * k, sz.z * k);
+    return out;
+  }
+  function load(id) {
+    if (id in LIB) return Promise.resolve(LIB[id]);
+    if (WAIT[id]) return WAIT[id];
+    const c = CAT[id]; if (!c || typeof THREE === 'undefined' || !THREE.GLTFLoader) return Promise.resolve(null);
+    loader = loader || new THREE.GLTFLoader();
+    return (WAIT[id] = new Promise(res => loader.load(base + c[0] + '.json',
+      gl => { try { LIB[id] = fit(id, gl.scene); } catch (e) { console.warn('Scaricati:', id, e); LIB[id] = null; } ver++; res(LIB[id]); },
+      undefined, () => { console.warn('Scaricati: non carico', id); LIB[id] = null; res(null); })));
+  }
+  const preload = ids => Promise.all((ids || Object.keys(CAT)).map(load));
+  // una copia pronta, o null se il file non c'è (ancora)
+  function get(id) { const M = LIB[id]; if (!M) return null; const o = M.clone(true); o.userData.size = M.userData.size; o.userData.scaricato = id; return o; }
+  // mette la copia nel gruppo g, nella posizione data; restituisce la copia o null
+  function put(g, id, x, y, z, ry, s) { const o = get(id); if (!o) return null; o.position.set(x || 0, y || 0, z || 0); o.rotation.y = ry || 0; if (s) o.scale.setScalar(s); g.add(o); return o; }
+  const has = id => !!LIB[id];
+  // nel gioco si caricano da soli appena c'è il caricatore
+  if (typeof window !== 'undefined' && !window.__pvStudio) setTimeout(function go() { if (typeof THREE === 'undefined' || !THREE.GLTFLoader) return setTimeout(go, 200); preload(); }, 0);
+  return { CAT, preload, load, get, put, has, get ver() { return ver; }, setBase: b => { base = b; } };
+})();
+</script>
 <script>/* Porto Vecchio — il mondo: un'isola d'inverno, da ovest a est.
    [isola] La testa di bosco quasi tonda col Tavolato in mezzo (si sale solo a piedi) e la Spiaggia Lunga a sud
    → il collo di foresta che si stringe come una tromba → il Monte Scuro coi villaggi → periferia ovest con la sua collina
@@ -32943,32 +33012,170 @@ var OggettiUI = (function () {
   // fatti di scatole e cilindri, a misura reale (metri), il davanti verso +z come i mobili del kit
   function stModel(name) {
     if (typeof THREE === 'undefined') return null;
+    // [modelli] rifatte il 6/10: ogni pezzo poggia su qualcosa, gambe e tubi uniscono i punti veri, le parti che si animano hanno il loro nome
+    // (fiamma, brace, ago, rullo, led, luce, segatura). 'gambe' = il mobile sotto la macchina: tessile e stamperia lo nascondono e la posano sul loro piano.
     const g = new THREE.Group(), M = {};
-    const mat = c => M[c] || (M[c] = new THREE.MeshStandardMaterial({ color: c, roughness: .85, metalness: /^#[3-6]/.test(c) ? .35 : .05 }));
-    const box = (w, h, d, x, y, z, c) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); m.position.set(x, y + h / 2, z); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
-    const cyl = (r, h, x, y, z, c, rx) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 12), mat(c)); m.position.set(x, y + (rx ? 0 : h / 2), z); if (rx) m.rotation.x = Math.PI / 2; m.castShadow = true; g.add(m); return m; };
-    const legs = (w, d, h, c) => { [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => box(.07, h, .07, a * (w / 2 - .06), 0, b * (d / 2 - .06), c)); };
-    const WOOD = '#7a5634', DARK = '#3a3632', IRON = '#4a4c52', RED = '#8a2a22', GREEN = '#3a5a44';
+    const mat = (c, o) => { const k = c + JSON.stringify(o || {}); return M[k] || (M[k] = new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .85, metalness: /^#[3-6]/.test(c) ? .3 : .05 }, o || {}))); };
+    const glow = (c, e, k) => new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: k || 1.2, roughness: 1 });
+    const mesh = (geo, c, p, o) => { const m = new THREE.Mesh(geo, typeof c === 'string' ? mat(c, o) : c); m.castShadow = true; m.receiveShadow = true; (p || g).add(m); return m; };
+    // box: y è la base; cyl: y è la base (rx: coricato lungo z, rz: coricato lungo x, allora y è il centro)
+    const box = (w, h, d, x, y, z, c, p, o) => { const m = mesh(new THREE.BoxGeometry(w, h, d), c, p, o); m.position.set(x, y + h / 2, z); return m; };
+    const cyl = (r, h, x, y, z, c, rx, p, r1, n) => { const m = mesh(new THREE.CylinderGeometry(r, r1 === undefined ? r : r1, h, n || 14), c, p); m.position.set(x, y + (rx ? 0 : h / 2), z); if (rx === 1) m.rotation.x = Math.PI / 2; if (rx === 2) m.rotation.z = Math.PI / 2; return m; };
+    const ball = (r, x, y, z, c, p, sx, sy, sz) => { const m = mesh(new THREE.SphereGeometry(r, 14, 10), c, p); m.position.set(x, y, z); m.scale.set(sx || 1, sy || 1, sz || 1); return m; };
+    const V = (a) => new THREE.Vector3(a[0], a[1], a[2]), UP = new THREE.Vector3(0, 1, 0);
+    const asta = (a, b, s, c, p, round) => { const A = V(a), B = V(b), d = B.clone().sub(A), m = mesh(round ? new THREE.CylinderGeometry(s, s, 1, 8) : new THREE.BoxGeometry(s, 1, s), c, p); m.position.copy(A).add(B).multiplyScalar(.5); m.quaternion.setFromUnitVectors(UP, d.clone().normalize()); m.scale.y = d.length(); return m; };
+    const cavo = (pts, r, c, p) => mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(V)), pts.length * 8, r, 6), c, p);
+    const named = (m, n) => { m.name = n; m.material = m.material.clone(); return m; };
+    const sub = (x, y, z, ry, p) => { const s = new THREE.Group(); s.position.set(x || 0, y || 0, z || 0); s.rotation.y = ry || 0; (p || g).add(s); return s; };
+    const legs = (w, d, h, c, p, s) => [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => box(s || .06, h, s || .06, a * (w / 2 - .05), 0, b * (d / 2 - .05), c, p));
+    const top = (w, h, d, y, c, p) => { box(w, h, d, 0, y, 0, c, p); box(w - .08, .06, .02, 0, y - .06, d / 2 - .06, c, p); };   // piano con la fascia sotto
+    const WOOD = '#7a5634', WOOD2 = '#a07848', DARK = '#3a3632', IRON = '#4a4c52', STEEL = '#9a9ea6', RED = '#8a2a22', GREEN = '#3a5a44', BRICK = '#9a5a40', MET = { metalness: .55, roughness: .45 };
     switch (name) {
-      case 'st_forgia': box(1.2, .8, .9, -.1, 0, 0, '#5a4a40'); box(1, .08, .7, -.1, .8, 0, '#2a2420'); { const f = box(.6, .06, .4, -.1, .86, 0, '#ff5a1a'); f.material = new THREE.MeshStandardMaterial({ color: '#ff6a2a', emissive: '#ff4a10', emissiveIntensity: 1.4 }); }
-        box(.5, 1.2, .5, -.1, .9, -.2, '#4a4038'); box(.2, .9, .2, -.1, 2.1, -.2, '#3a3430'); cyl(.18, .5, .55, 0, .25, '#4a3a2a'); box(.5, .14, .2, .55, .5, .25, IRON); box(.2, .1, .14, .78, .54, .25, IRON); break;
-      case 'st_saldatrice': box(.5, .55, .4, 0, 0, 0, '#2a5a8a'); box(.3, .1, .05, 0, .38, .21, '#1a1a1a'); cyl(.05, .6, .2, 0, .25, '#1a1a1a'); cyl(.11, .9, -.25, 0, -.05, '#3a6a3a'); break;
-      case 'st_banco_lavoro': box(1.8, .08, .75, 0, .86, 0, WOOD); legs(1.8, .75, .86, WOOD); box(1.7, .05, .65, 0, .25, 0, WOOD); box(.18, .16, .22, .7, .94, .2, IRON); box(1.6, .7, .04, 0, .95, -.36, '#5a4a3a');
-        [[-.6, '#8a8a90'], [-.35, '#b84a2a'], [-.1, '#8a8a90'], [.15, '#3a6ab8']].forEach(([x, c]) => box(.04, .3, .03, x, 1.2, -.32, c)); break;
-      case 'st_banco_falegname': box(2, .1, .7, 0, .82, 0, '#a07848'); legs(2, .7, .82, '#8a6438'); box(1.9, .06, .6, 0, .22, 0, '#8a6438'); box(.25, .2, .12, -.85, .9, .3, '#6a4a2a'); box(.6, .08, .12, .3, .92, .1, '#d8b080'); box(.5, .03, .14, -.2, .92, -.15, '#c0c0c8'); break;
-      case 'st_banco_macellaio': box(1.6, .12, .75, 0, .8, 0, '#c8b8a0'); legs(1.6, .75, .8, '#c8c8c8'); box(.5, .1, .4, .3, .92, 0, '#8a2a2a'); box(.03, .25, .1, -.5, .92, 0, '#c8c8d0'); box(1.5, .5, .04, 0, 1.2, -.36, '#d8d8d8'); break;
-      case 'st_macchina_cucire': box(1, .06, .55, 0, .74, 0, '#6a4a2a'); legs(1, .55, .74, '#2a2a2a'); box(.4, .18, .18, 0, .8, 0, '#1a1a1a'); box(.08, .26, .16, .17, .98, 0, '#1a1a1a'); box(.35, .08, .14, .03, 1.2, 0, '#1a1a1a'); cyl(.06, .02, -.2, .9, .1, '#c0a040', 1); break;
-      case 'st_ciclostile': box(.9, .7, .6, 0, 0, 0, '#3a3a3a'); box(.7, .35, .45, 0, .7, 0, '#5a5a5a'); cyl(.14, .6, 0, .95, 0, '#2a2a2a', 0).rotation.z = Math.PI / 2; box(.3, .02, .35, -.45, .78, 0, '#f0ead8'); box(.25, .12, .3, .45, .7, 0, '#e8e4dc'); break;
-      case 'st_banco_radio': box(1.4, .06, .65, 0, .74, 0, '#5a4a3a'); legs(1.4, .65, .74, '#3a3a3a'); box(.5, .3, .3, -.3, .8, -.12, '#4a5a4a'); box(.1, .1, .02, -.42, .9, .04, '#e8c040'); box(.1, .1, .02, -.2, .9, .04, '#c8c8c8');
-        box(.3, .05, .2, .35, .8, .1, GREEN); cyl(.015, .25, .45, .8, -.1, '#c8c8c8'); { const l = box(.06, .06, .02, -.3, 1.02, .03, '#ff3030'); l.material = new THREE.MeshStandardMaterial({ color: '#ff3030', emissive: '#ff2020', emissiveIntensity: 1.2 }); } break;
-      case 'st_camera_oscura': box(1.4, .06, .65, 0, .8, 0, '#2a2a2a'); legs(1.4, .65, .8, '#2a2a2a'); cyl(.04, .7, -.35, .86, -.15, '#5a5a5a'); box(.25, .2, .25, -.35, 1.4, -.1, '#3a3a3a'); [0, .25, .5].forEach(x => box(.22, .05, .3, x, .86, .1, '#4a4a6a')); break;
-      case 'st_tavolo_medico': box(1.9, .1, .7, 0, .78, 0, '#d8d8d0'); legs(1.9, .7, .78, '#9a9aa0'); box(.6, .12, .55, -.6, .88, 0, '#8ab0a8'); box(.4, .9, .35, .9, 0, -.3, '#e8e8e0'); box(.12, .08, .02, .9, .7, -.12, RED); break;
-      case 'st_alambicco': cyl(.28, .5, 0, 0, 0, '#b86a3a'); cyl(.18, .3, 0, .5, 0, '#c87a4a'); cyl(.03, .7, .3, 1, 0, '#c87a4a', 1).rotation.z = .9; cyl(.15, .5, .55, 0, .1, '#8a5a3a'); box(.35, .12, .35, 0, 0, 0, '#3a2a20'); break;
-      case 'st_stufa': box(.6, .7, .55, 0, 0, 0, '#2a2a2c'); box(.4, .25, .02, 0, .2, .28, '#3a3a3c'); { const f = box(.3, .12, .02, 0, .25, .29, '#ff5a1a'); f.material = new THREE.MeshStandardMaterial({ color: '#ff6a2a', emissive: '#ff3a10', emissiveIntensity: 1 }); } cyl(.08, 1.6, 0, .7, -.12, '#3a3a3c'); break;
-      case 'st_forno': box(1.5, .9, 1.1, 0, 0, 0, '#a07860'); box(1.4, .5, 1, 0, .9, 0, '#b08870'); { const f = box(.5, .3, .02, 0, .5, .56, '#ff7a2a'); f.material = new THREE.MeshStandardMaterial({ color: '#ff7a2a', emissive: '#ff4a10', emissiveIntensity: 1.1 }); } box(.3, .6, .3, .4, 1.4, -.3, '#8a6850'); box(.1, .02, .9, -.6, .9, .8, WOOD); break;
-      case 'st_cassetta': box(.55, .25, .3, 0, 0, 0, RED); box(.57, .04, .32, 0, .25, 0, '#a83a30'); box(.2, .04, .04, 0, .3, 0, DARK); break;
-      case 'st_cassaforte': box(.75, .9, .65, 0, 0, 0, '#3a4a44'); box(.6, .75, .02, 0, .08, .33, '#4a5a54'); cyl(.08, .04, .1, .5, .35, '#c0b080', 1); box(.04, .2, .04, -.15, .4, .36, '#c0b080'); break;
-      case 'st_rastrelliera': box(1.4, 1.6, .4, 0, 0, 0, '#4a5040'); box(1.3, 1.4, .02, 0, .1, .2, '#3a4030'); [-.45, -.15, .15, .45].forEach(x => box(.08, 1, .06, x, .3, .17, '#2a2a2a')); break;
+      case 'st_forgia': {   // focolare in mattoni col bacino delle braci, cappa a tronco di piramide e canna fumaria, mantice di cuoio sul fianco
+        box(1.2, .78, .9, 0, 0, 0, BRICK); for (let i = 0; i < 6; i++) box(1.21, .012, .91, 0, .12 + i * .12, 0, '#7a4a34');
+        box(1.26, .06, .96, 0, .78, 0, '#5a4a40'); box(.7, .05, .5, 0, .8, .05, '#2a2420');
+        named(box(.6, .04, .42, 0, .82, .05, glow('#ff6a2a', '#ff4a10', 1.4)), 'brace'); for (let i = 0; i < 7; i++) ball(.05, -.22 + (i % 4) * .14, .87, -.08 + Math.floor(i / 4) * .2, '#1a1612');
+        box(.5, .32, .5, 0, 0, .41, '#2a2420'); box(.36, .2, .02, 0, .06, .66, '#1a1612');                                             // la bocca della cenere davanti
+        box(1.2, .9, .12, 0, .84, -.39, BRICK);                                                                                       // il muretto dietro
+        const hood = mesh(new THREE.CylinderGeometry(.18, .62, .55, 4, 1), '#3a3430'); hood.rotation.y = Math.PI / 4; hood.scale.set(1, 1, .8); hood.position.set(0, 1.74 + .275, -.08);
+        for (const x of [-.5, .5]) asta([x, .84, .38], [x * .9, 1.76, .3], .04, '#2a2a2e');   // i ferri che reggono la cappa
+        box(.3, .9, .3, 0, 2.28, -.1, '#3a3430'); box(.36, .06, .36, 0, 3.12, -.1, '#2a2420');
+        const mt = sub(-.75, .55, .1, 0); mt.rotation.z = .25; box(.08, .04, .5, 0, 0, 0, WOOD, mt); box(.06, .2, .4, 0, -.12, 0, '#6a4a30', mt); box(.08, .04, .5, 0, -.24, 0, WOOD, mt); box(.04, .04, .3, 0, -.12, -.35, '#3a3a3a', mt);
+        asta([-.67, .45, -.25], [-.5, .7, -.25], .03, '#3a3a3a', g, true); box(.08, .55, .08, -.75, 0, .1, WOOD);
+        break; }
+      case 'st_saldatrice': {   // saldatrice a carrello: cassa con le feritoie, quadrante, prese, due cavi (pinza e massa), bombola incatenata
+        box(.46, .5, .36, 0, .08, 0, '#2a5a8a'); for (let i = 0; i < 6; i++) box(.005, .05, .26, .232, .2 + i * .05, 0, '#1a3a5a');
+        box(.48, .03, .38, 0, .58, 0, '#1e4a72'); asta([-.2, .61, 0], [-.2, .72, 0], .015, '#1a1a1a', g, true); asta([.2, .61, 0], [.2, .72, 0], .015, '#1a1a1a', g, true); asta([-.2, .72, 0], [.2, .72, 0], .015, '#1a1a1a', g, true);
+        box(.3, .2, .01, 0, .3, .18, '#d8d4c8'); cyl(.05, .02, 0, .4, .185, '#1a1a1a', 1); box(.005, .04, .005, 0, .42, .195, RED);
+        for (const x of [-.1, .1]) cyl(.025, .03, x, .2, .19, x < 0 ? RED : '#1a1a1a', 1);
+        for (const x of [-.17, .17]) { cyl(.07, .04, x, .07, -.12, '#1a1a1a', 2); cyl(.03, .045, x, .07, -.12, STEEL, 2); } box(.04, .08, .04, .19, 0, .14, '#1a1a1a'); box(.04, .08, .04, -.19, 0, .14, '#1a1a1a');
+        cavo([[-.1, .2, .2], [-.15, .1, .32], [-.05, .02, .45], [.15, .02, .42], [.25, .06, .3]], .014, RED); box(.05, .14, .04, .27, .03, .3, '#2a2a2a').rotation.z = .6;
+        cavo([[.1, .2, .2], [.18, .08, .3], [.32, .015, .35], [.42, .015, .2]], .014, '#1a1a1a'); box(.08, .03, .05, .45, .01, .18, '#c8a030');
+        cyl(.1, .75, 0, 0, -.32, '#3a6a3a', 0, g, .1, 16); ball(.1, 0, .75, -.32, '#3a6a3a', g, 1, .6, 1); cyl(.025, .06, 0, .8, -.32, '#c8a030'); ball(.025, .04, .86, -.32, '#c8a030'); cyl(.02, .015, .06, .86, -.28, '#e8e8e8', 1);
+        const ch = new THREE.Mesh(new THREE.TorusGeometry(.11, .006, 4, 16), mat('#6a6a6a', MET)); ch.rotation.x = Math.PI / 2; ch.position.set(0, .55, -.32); g.add(ch);
+        break; }
+      case 'st_banco_lavoro': {   // banco da lavoro: piano spesso, ripiano sotto, cassetti, pannello forato con gli attrezzi, morsa vera sullo spigolo
+        top(1.8, .07, .75, .83, WOOD); legs(1.8, .75, .83, WOOD, g, .08); box(1.7, .04, .65, 0, .2, 0, WOOD); box(1.66, .06, .04, 0, .5, -.33, WOOD);
+        const dr = sub(.55, .58, .02); box(.6, .2, .66, 0, 0, 0, '#6a4a2c', dr); for (const x of [-.15, .15]) { box(.27, .16, .01, x, .02, .335, '#8a6a44', dr); box(.08, .02, .02, x, .1, .345, '#2a2a2a', dr); }
+        box(1.8, .9, .03, 0, .9, -.36, '#8a7050'); for (let j = 0; j < 4; j++) for (let i = 0; i < 12; i++) box(.012, .012, .005, -.8 + i * .145, 1.0 + j * .2, -.343, '#4a3a28');
+        [[-.65, '#8a8a90', .32], [-.45, '#b84a2a', .26], [-.25, '#8a8a90', .3], [-.05, '#3a6ab8', .24], [.15, '#d0a030', .2]].forEach(([x, c, l]) => { box(.012, .012, .05, x, 1.55, -.33, '#2a2a2a'); box(.02, l * .45, .012, x, 1.53 - l * .45, -.31, STEEL); box(.035, l * .55, .03, x, 1.53 - l, -.31, c); });
+        box(.35, .02, .14, .55, 1.2, -.27, WOOD); for (let i = 0; i < 4; i++) cyl(.03, .08, .43 + i * .08, 1.22, -.27, ['#c8a030', '#5a7a5a', '#8a4a2a', '#3a5a8a'][i]);
+        const v = sub(-.7, .9, .32); box(.16, .04, .2, 0, 0, -.06, '#3a5a8a', v); box(.14, .1, .05, 0, .04, -.12, '#3a5a8a', v); box(.14, .1, .05, 0, .04, .02, '#3a5a8a', v); cyl(.012, .26, 0, .09, .14, STEEL, 1, v); asta([-.08, .09, .26], [.08, .09, .26], .01, STEEL, v, true);
+        break; }
+      case 'st_banco_falegname': {   // banco del falegname: piano spesso coi fori, morsa di testa con la vite di legno, ripiano con le assi, pialla, sega, morsetto, trucioli
+        box(2, .1, .7, 0, .78, 0, WOOD2); for (let i = 0; i < 7; i++) cyl(.012, .005, -.8 + i * .25, .875, .26, '#3a2a1a');
+        for (const x of [-.85, .85]) { box(.1, .74, .1, x, .04, -.25, '#8a6438'); box(.1, .74, .1, x, .04, .25, '#8a6438'); box(.12, .06, .64, x, 0, 0, '#8a6438'); box(.08, .08, .5, x, .3, 0, '#8a6438'); }
+        box(1.64, .08, .06, 0, .3, 0, '#8a6438'); box(1.7, .04, .55, 0, .36, 0, '#8a6438');
+        for (let i = 0; i < 4; i++) box(1.5, .03, .14, 0, .4 + i * .03, -.15 + (i % 2) * .16, ['#c8a070', '#b89060', '#d0aa78', '#a88050'][i]);
+        box(.3, .18, .08, -.85, .68, .39, '#6a4a2a'); cyl(.025, .28, -.85, .78, .5, '#8a6438', 1); asta([-.95, .78, .62], [-.75, .78, .62], .015, '#6a4a2a', g, true);
+        const pl = sub(.2, .88, .05, .2); box(.26, .06, .07, 0, 0, 0, '#9a7040', pl); box(.06, .06, .04, -.08, .06, 0, '#6a4a2a', pl); box(.04, .05, .04, .07, .06, 0, '#3a3a3a', pl);
+        const sa = sub(-.35, .88, .12, -.15); box(.5, .005, .12, 0, 0, 0, STEEL, sa); box(.1, .06, .025, -.3, -.02, 0, '#6a4a2a', sa).position.y = .02;
+        const mo = sub(.75, .78, .36); box(.03, .2, .03, 0, -.1, 0, '#3a5a8a', mo); box(.12, .025, .03, .05, .1, 0, '#3a5a8a', mo); box(.12, .025, .03, .05, -.1, 0, '#3a5a8a', mo); cyl(.008, .2, .1, -.1, 0, STEEL, 0, mo);
+        named(box(.36, .02, .22, .55, .88, -.12, '#d8b080'), 'segatura'); for (let i = 0; i < 8; i++) { const t = new THREE.Mesh(new THREE.TorusGeometry(.025, .006, 4, 8, 4), mat('#e0c090')); t.position.set(.4 + Math.random() * .4, .9, -.2 + Math.random() * .2); t.rotation.set(Math.random() * 3, Math.random() * 3, 0); g.add(t); }
+        break; }
+      case 'st_banco_macellaio': {   // ceppo del macellaio: tagliere spesso su gambe d'acciaio, mannaia piantata, coltelli sulla barra, piastrelle e ganci con la carne
+        legs(1.6, .75, .72, STEEL, g, .05); box(1.5, .04, .65, 0, .2, 0, STEEL);
+        box(1.6, .16, .75, 0, .72, 0, '#c8a878'); for (let i = 0; i < 8; i++) box(.005, .161, .751, -.7 + i * .2, .72, 0, '#a88858'); box(.5, .005, .4, .3, .881, 0, '#8a3a2a');
+        const mn = sub(-.2, .88, .05, .4); box(.2, .1, .006, 0, .05, 0, STEEL, mn); box(.12, .03, .03, .15, .085, 0, '#3a2a1a', mn);
+        box(1.6, .7, .04, 0, .9, -.38, '#e8e8e0'); for (let j = 0; j < 7; j++) box(1.6, .005, .041, 0, .9 + j * .1, -.38, '#b8b8b0'); for (let i = 0; i < 16; i++) box(.005, .7, .041, -.75 + i * .1, .9, -.38, '#b8b8b0');
+        cyl(.012, 1.4, 0, 1.72, -.3, STEEL, 2); for (const x of [-.45, -.1]) { box(.008, .1, .008, x, 1.62, -.3, STEEL); ball(.09, x, 1.47, -.3, '#9a3a32', g, 1, 1.3, .6); ball(.05, x, 1.32, -.3, '#e8d8c8'); }
+        for (let i = 0; i < 4; i++) { box(.025, .2, .004, .3 + i * .1, 1.16, -.355, STEEL); box(.03, .1, .02, .3 + i * .1, 1.3, -.35, '#2a2a2a'); } box(.5, .02, .02, .45, 1.4, -.35, '#3a3a3a');
+        break; }
+      case 'st_macchina_cucire': {   // macchina da cucire a pedale: gambe di ghisa col pedale e il volano, piano di legno, la testa nera con l'ago, il volantino, il rocchetto
+        const gm = sub(); gm.name = 'gambe';
+        for (const x of [-.4, .4]) { box(.04, .7, .05, x, 0, -.18, '#1e1e20', gm); box(.04, .7, .05, x, 0, .18, '#1e1e20', gm); box(.04, .05, .44, x, 0, 0, '#1e1e20', gm); asta([x, .05, -.18], [x, .6, .18], .025, '#1e1e20', gm); asta([x, .05, .18], [x, .6, -.18], .025, '#1e1e20', gm); }
+        box(.8, .03, .04, 0, .55, -.18, '#1e1e20', gm); const fly = mesh(new THREE.TorusGeometry(.16, .015, 6, 20), '#1e1e20', gm); fly.rotation.y = Math.PI / 2; fly.position.set(.36, .4, 0);
+        box(.5, .02, .25, 0, .1, .05, '#2a2a2a', gm); asta([.36, .4, 0], [.1, .11, .05], .01, '#1e1e20', gm, true);
+        box(1, .04, .55, 0, .7, 0, '#6a4a2a', gm); box(.94, .04, .02, 0, .63, .26, '#5a3a1a', gm); box(.25, .1, .45, -.35, .58, 0, '#5a3a1a', gm);
+        const h = sub(0, .74, 0); h.name = 'testa';
+        box(.42, .03, .2, 0, 0, 0, '#2a2a2a', h); box(.09, .24, .12, .15, .03, 0, '#151515', h); box(.38, .07, .1, .02, .25, 0, '#151515', h); box(.08, .15, .1, -.15, .13, 0, '#151515', h);
+        box(.39, .01, .101, .02, .29, 0, '#c8a030', h); cyl(.07, .03, .22, .2, 0, '#2a2a2a', 2, h); cyl(.075, .006, .238, .2, 0, STEEL, 2, h);
+        cyl(.015, .05, .08, .32, 0, '#e8e0c8', 0, h); cyl(.003, .1, .08, .37, 0, STEEL, 0, h);
+        named(box(.008, .08, .008, -.17, .07, .03, '#c8c8d0', h), 'ago'); box(.04, .015, .05, -.17, .03, .03, STEEL, h);
+        g.userData.piano = .74;
+        break; }
+      case 'st_ciclostile': {   // ciclostile su un trespolo: tamburo inchiostrato che gira con la manovella, vassoio dei fogli bianchi e quello dei fogli stampati
+        const gm = sub(); gm.name = 'gambe'; legs(.8, .55, .7, '#3a3a3a', gm, .04); box(.8, .03, .55, 0, .7, 0, '#4a4a4a', gm); box(.7, .03, .45, 0, .2, 0, '#3a3a3a', gm); for (let i = 0; i < 3; i++) box(.3, .04, .4, -.15, .23 + i * .04, 0, '#f0ead8', gm);
+        const m = sub(0, .73, 0); box(.6, .08, .4, 0, 0, 0, '#3a3a3a', m); for (const x of [-.26, .26]) box(.04, .3, .3, x, .08, 0, '#5a5a5a', m);
+        named(cyl(.12, .48, 0, .26, 0, '#2a2a2a', 2, m), 'rullo'); cyl(.125, .3, 0, .26, 0, '#1a1a2a', 2, m);
+        cyl(.04, .03, .3, .26, 0, '#5a5a5a', 2, m); asta([.32, .26, 0], [.32, .4, .08], .02, '#5a5a5a', m); cyl(.018, .07, .36, .4, .08, '#c83a2a', 2, m);
+        const t1 = box(.34, .01, .3, 0, .2, -.25, '#8a8a8a', m); t1.rotation.x = -.35; box(.3, .02, .26, 0, .22, -.25, '#f0ead8', m).rotation.x = -.35;
+        box(.36, .02, .3, 0, .06, .3, '#8a8a8a', m); box(.32, .03, .26, 0, .08, .3, '#f0ead8', m); box(.2, .03, .005, 0, .1, .3, '#3a3a6a', m);
+        g.userData.piano = .73;
+        break; }
+      case 'st_banco_radio': {   // scrivania della radio: apparato con le valvole, quadrante, cuffie, microfono da tavolo, tasto del telegrafo, antenna sul suo attacco
+        top(1.4, .05, .65, .72, '#5a4a3a'); legs(1.4, .65, .72, DARK, g, .05); box(1.3, .04, .04, 0, .15, -.28, DARK);
+        const r = sub(-.25, .77, -.14); box(.6, .32, .3, 0, 0, 0, '#4a5a4a', r); box(.62, .02, .32, 0, .32, 0, '#3a4a3a', r); box(.24, .12, .01, -.12, .14, .151, glow('#e8c890', '#806838', .8), r); box(.004, .1, .012, -.1, .15, .155, RED, r);
+        for (let i = 0; i < 3; i++) { cyl(.025, .03, .08 + i * .07, .08, .16, '#1a1a1a', 1, r); box(.006, .02, .006, .08 + i * .07, .1, .175, '#e8e8e8', r); }
+        named(box(.03, .03, .012, .22, .24, .152, glow('#30ff60', '#30ff60'), r), 'led');
+        for (let i = 0; i < 3; i++) cyl(.02, .07, -.15 + i * .06, .32, -.06, glow('#f0d8a0', '#a06020', .5), 0, r);
+        const hp = sub(.25, .77, .1, .4); const arc = mesh(new THREE.TorusGeometry(.08, .008, 4, 12, Math.PI), '#2a2a2a', hp); arc.rotation.x = -Math.PI / 2; arc.position.y = .03; for (const x of [-.08, .08]) cyl(.04, .03, x, .0, 0, '#1a1a1a', 0, hp);
+        cyl(.05, .02, .45, .77, -.05, DARK); asta([.45, .79, -.05], [.45, .95, -.02], .008, DARK, g, true); cyl(.03, .07, .45, .95, -.02, '#c8c8c8', 1);
+        box(.1, .015, .06, .05, .77, .2, '#2a2a2a'); box(.07, .01, .012, .05, .79, .2, '#c8a030'); cyl(.012, .015, .085, .8, .2, '#1a1a1a');
+        cyl(.03, .04, .62, .77, -.25, DARK); cyl(.006, 1.2, .62, .81, -.25, STEEL); cavo([[.62, .79, -.25], [.4, .79, -.3], [.06, .85, -.3]], .006, '#1a1a1a');
+        break; }
+      case 'st_camera_oscura': {   // camera oscura: tavolo con le tre bacinelle (sviluppo, arresto, fissaggio), ingranditore sulla colonna, luce rossa, foto stese col filo
+        top(1.4, .05, .65, .8, '#2a2a2a'); legs(1.4, .65, .8, '#2a2a2a', g, .05); box(1.3, .04, .55, 0, .25, 0, '#2a2a2a');
+        [['#6a6a3a', .05], ['#5a5a5a', .3], ['#3a5a6a', .55]].forEach(([c, x]) => { box(.23, .04, .3, x, .85, .1, '#d8d8d0'); box(.2, .02, .27, x, .87, .1, c, g, { roughness: .2 }); }); box(.06, .005, .1, .3, .9, .12, '#f0ece0');
+        const e = sub(-.45, .85, -.1); box(.3, .03, .36, 0, 0, .05, '#e8e4d8', e); cyl(.025, .8, 0, .03, -.15, '#5a5a5a', 0, e); box(.06, .08, .08, 0, .5, -.11, '#3a3a3a', e);
+        box(.2, .18, .2, 0, .48, -.0, '#3a3a3a', e); cyl(.08, .08, 0, .66, 0, '#2a2a2a', 0, e); cyl(.035, .1, 0, .38, 0, '#1a1a1a', 0, e); box(.18, .005, .24, 0, .031, .05, '#f8f4ec', e);
+        box(.12, .1, .06, .2, 1.85, -.3, '#2a2a2a'); named(box(.09, .07, .01, .2, 1.86, -.265, glow('#ff2a2a', '#ff1010', 1.6)), 'luce'); box(.012, .2, .012, .2, 1.95, -.33, '#2a2a2a');
+        cyl(.003, 1.4, 0, 1.6, -.3, '#c8c8c8', 2); for (let i = 0; i < 4; i++) { box(.13, .17, .003, -.5 + i * .3, 1.42, -.3, i % 2 ? '#d8d0c0' : '#c8c0b0'); box(.02, .03, .01, -.5 + i * .3, 1.585, -.3, '#c8a060'); }
+        break; }
+      case 'st_tavolo_medico': {   // lettino da visita: telaio d'acciaio, materasso imbottito con lo schienale alzato, rotolo di carta, armadietto a vetri coi flaconi
+        for (const [x, z] of [[-.85, -.28], [.85, -.28], [-.85, .28], [.85, .28]]) { cyl(.022, .7, x, .06, z, STEEL); cyl(.03, .04, x, 0, z, '#1a1a1a', 0, g, .03); }
+        box(1.8, .04, .62, 0, .72, 0, STEEL); for (const z of [-.28, .28]) box(1.74, .03, .03, 0, .3, z, STEEL);
+        box(1.3, .1, .6, .25, .76, 0, '#5a8a80', g, { roughness: .6 }); const bk = sub(-.42, .81, 0); bk.rotation.z = -.45; box(.55, .1, .6, -.27, -.05, 0, '#5a8a80', bk, { roughness: .6 }); asta([-.6, .72, -.2], [-.8, .92, -.2], .02, STEEL);
+        box(1.5, .01, .4, .3, .86, 0, '#f4f2ea'); cyl(.06, .44, .98, .74, 0, '#f4f2ea', 1);
+        const a = sub(1.05, 0, -.35); box(.45, .95, .32, 0, 0, 0, '#e8e8e0', a); box(.38, .5, .01, 0, .38, .16, mat('#c8e0e8', { transparent: true, opacity: .45, roughness: .1 }), a); for (const y of [.5, .72]) box(.4, .015, .28, 0, y, 0, '#d8d8d0', a);
+        for (let i = 0; i < 4; i++) cyl(.025, .09, -.12 + i * .08, .515, .02, ['#8a4a2a', '#e8e8e8', '#3a5a8a', '#6a3a1a'][i], 0, a); box(.38, .3, .01, 0, .05, .16, '#d8d8d0', a); box(.06, .06, .01, 0, .25, .17, RED, a);
+        break; }
+      case 'st_alambicco': {   // alambicco di rame su fornello di mattoni: caldaia, cappello a cipolla, collo di cigno che scende nel tino del serpentino, rubinetto e damigiana
+        box(.6, .4, .6, -.15, 0, 0, BRICK); box(.62, .03, .62, -.15, .4, 0, '#5a4a40'); box(.26, .2, .02, -.15, .06, .3, '#1a1612'); named(box(.2, .12, .02, -.15, .08, .305, glow('#ff7a2a', '#ff4a10', 1.5)), 'fiamma');
+        cyl(.26, .36, -.15, .43, 0, '#b86a3a', 0, g, .24, 18); const dome = mesh(new THREE.SphereGeometry(.26, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), '#c87a4a'); dome.position.set(-.15, .79, 0); dome.scale.y = .5;
+        const onion = mesh(new THREE.LatheGeometry([[0, 0], [.1, .01], [.16, .08], [.13, .18], [.05, .26], [.035, .3], [0, .31]].map(([a, b]) => new THREE.Vector2(a, b)), 16), '#d08a5a'); onion.position.set(-.15, .9, 0);
+        cavo([[-.15, 1.18, 0], [-.05, 1.22, 0], [.15, 1.12, .02], [.33, .9, .04], [.4, .72, .04]], .025, '#c87a4a');
+        cyl(.18, .58, .42, 0, .04, '#7a5634', 0, g, .19, 16); for (const y of [.08, .46]) { const t = mesh(new THREE.TorusGeometry(.185, .012, 4, 18), IRON); t.rotation.x = Math.PI / 2; t.position.set(.42, y, .04); } cyl(.17, .01, .42, .58, .04, '#4a6a7a', 0, g, .17);
+        cyl(.012, .1, .55, .12, .15, '#c87a4a', 2); box(.03, .04, .03, .62, .08, .15, '#c87a4a');
+        ball(.12, .62, .12, .32, mat('#4a7a5a', { transparent: true, opacity: .75, roughness: .2 }), g, 1, 1, 1); cyl(.03, .08, .62, .22, .32, '#4a7a5a'); for (let i = 0; i < 6; i++) asta([.62 + Math.cos(i) * .12, .04, .32 + Math.sin(i) * .12], [.62 + Math.cos(i) * .1, .2, .32 + Math.sin(i) * .1], .01, '#a88a5a');
+        break; }
+      case 'st_stufa': {   // stufa di ghisa: corpo su quattro piedi, sportello con la finestrella della fiamma, piastra, tubo che sale e piega verso il muro, bollitore e ciocchi
+        for (const [x, z] of [[-.24, -.2], [.24, -.2], [-.24, .2], [.24, .2]]) box(.06, .14, .06, x, 0, z, '#1e1e20');
+        box(.6, .55, .5, 0, .14, 0, '#2a2a2c'); for (const y of [.2, .62]) box(.62, .025, .52, 0, y, 0, '#1e1e20'); box(.62, .04, .52, 0, .69, 0, '#1e1e20');
+        box(.36, .3, .02, 0, .24, .26, '#3a3a3c'); named(box(.22, .14, .02, 0, .32, .265, glow('#ff6a2a', '#ff3a10', 1.6)), 'fiamma'); box(.03, .08, .03, .14, .36, .28, STEEL); for (let i = 0; i < 4; i++) box(.2, .01, .005, 0, .27 + i * .04, .276, '#1e1e20');
+        cyl(.07, .77, 0, .73, -.1, '#2a2a2c'); const el = mesh(new THREE.TorusGeometry(.12, .07, 8, 12, Math.PI / 2), '#2a2a2c'); el.rotation.y = -Math.PI / 2; el.position.set(0, 1.5, -.22); cyl(.07, .3, 0, 1.62, -.37, '#2a2a2c', 1); cyl(.075, .015, 0, 1.0, -.1, '#1e1e20');
+        cyl(.08, .1, .16, .73, .1, '#8a8e96', 0, g, .09); asta([.1, .84, .1], [.22, .84, .1], .012, '#2a2a2a', g, true); cyl(.012, .09, .245, .78, .1, '#8a8e96', 2);
+        for (let i = 0; i < 5; i++) cyl(.06, .42, .55, .06 + (i > 2 ? .11 : 0), -.15 + (i % 3) * .12 + (i > 2 ? .06 : 0), '#6a4a2a', 1);
+        break; }
+      case 'st_forno': {   // forno a legna: basamento di pietra con la legnaia, cupola di mattoni con la bocca ad arco che brilla, canna fumaria, pala appoggiata
+        box(1.5, .85, 1.3, 0, 0, 0, '#a89a88'); for (let i = 0; i < 4; i++) box(1.51, .01, 1.31, 0, .2 + i * .2, 0, '#8a7c6a'); box(1.1, .5, .02, 0, .1, .655, '#2a2420'); for (let i = 0; i < 5; i++) cyl(.06, .9, -.4 + i * .2, .2, .2, '#6a4a2a', 2);
+        box(1.56, .06, 1.36, 0, .85, 0, '#8a7c6a');
+        const dome = mesh(new THREE.SphereGeometry(.62, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), BRICK); dome.position.set(0, .91, -.05); dome.scale.y = .78;
+        box(.56, .5, .3, 0, .91, .5, BRICK); const arc = mesh(new THREE.CylinderGeometry(.2, .2, .32, 14, 1, false, -Math.PI / 2, Math.PI), '#1a1210'); arc.rotation.x = Math.PI / 2; arc.position.set(0, 1.14, .52); box(.4, .23, .32, 0, .91, .52, '#1a1210');
+        named(box(.3, .1, .01, 0, .93, .69, glow('#ff7a2a', '#ff4a10', 1.4)), 'fiamma'); box(.62, .06, .34, 0, 1.41, .5, '#7a4a34');
+        cyl(.1, .7, .3, 1.2, -.3, BRICK); box(.26, .05, .26, .3, 1.9, -.3, '#7a4a34');
+        asta([.65, .02, .7], [.62, 1.3, .7], .03, WOOD, g, true); const pala = box(.26, .3, .01, .64, 0, .73, WOOD2); pala.rotation.x = .02;
+        break; }
+      case 'st_cassetta':   // cassetta degli attrezzi a due piani: chiusure, maniglia ad arco, vassoio che si intravede
+        box(.55, .22, .3, 0, 0, 0, RED, g, { metalness: .25, roughness: .5 }); box(.57, .05, .32, 0, .22, 0, '#a83a30'); for (const x of [-.2, .2]) { box(.05, .05, .015, x, .18, .155, STEEL); }
+        for (const x of [-.12, .12]) asta([x, .27, 0], [x, .34, 0], .02, DARK, g, true); asta([-.12, .34, 0], [.12, .34, 0], .025, DARK, g, true); box(.56, .01, .31, 0, .14, 0, '#6a1a14');
+        break;
+      case 'st_cassaforte': {   // cassaforte: cassa con lo spigolo smussato, sportello con la cornice, cerniere, combinazione numerata, maniglia a tre razze, zoccolo
+        box(.75, .05, .65, 0, 0, 0, '#2a3430'); box(.72, .84, .62, 0, .05, 0, '#3a4a44', g, { metalness: .4, roughness: .5 });
+        box(.62, .72, .03, 0, .11, .32, '#4a5a54', g, { metalness: .4, roughness: .45 }); box(.66, .76, .015, 0, .09, .31, '#2a3430');
+        for (const y of [.25, .65]) cyl(.025, .1, -.31, y, .34, '#2a3430');
+        cyl(.07, .03, .1, .55, .345, '#c0b080', 1); cyl(.05, .02, .1, .55, .36, '#a8985a', 1); box(.005, .02, .01, .1, .61, .36, '#1a1a1a');
+        cyl(.025, .04, -.12, .38, .35, '#c0b080', 1); for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; asta([-.12, .38, .37], [-.12 + Math.cos(a) * .09, .38 + Math.sin(a) * .09, .37], .012, '#c0b080', g, true); }
+        box(.3, .05, .005, .0, .78, .336, '#c0b080');
+        break; }
+      case 'st_rastrelliera': {   // rastrelliera aperta: fianchi e cappello, rastrello a denti in basso e in alto, quattro fucili in piedi, la barra col lucchetto
+        for (const x of [-.68, .68]) box(.05, 1.6, .38, x, 0, 0, '#4a5040'); box(1.42, .05, .4, 0, 1.6, 0, '#3a4030'); box(1.36, .04, .36, 0, 0, 0, '#3a4030'); box(1.36, 1.2, .02, 0, .2, -.18, '#3a4030');
+        box(1.36, .12, .3, 0, .04, 0, '#4a5040'); box(1.36, .06, .12, 0, 1.12, .1, '#4a5040');
+        for (let i = 0; i < 4; i++) { const x = -.45 + i * .3, f = sub(x, .16, .05); f.rotation.z = (i - 1.5) * .02;
+          box(.06, .34, .045, 0, 0, 0, '#5a3a20', f); box(.04, .1, .04, 0, .34, 0, '#5a3a20', f); box(.035, .22, .045, 0, .44, .005, '#2a2a2e', f, MET); box(.025, .16, .04, 0, .5, .03, '#2a2a2e', f, MET).position.z = .04;
+          box(.035, .18, .03, 0, .66, 0, '#6a4a2a', f); cyl(.011, .45, 0, .84, 0, '#2a2a2e', 0, f); }
+        box(1.4, .03, .03, 0, .72, .2, '#2a2a2a'); box(.08, .1, .04, .55, .67, .22, '#c8a040'); const t = mesh(new THREE.TorusGeometry(.025, .008, 4, 10, Math.PI), STEEL); t.position.set(.55, .78, .22);
+        break; }
       default: return null;
     }
     return g;
@@ -33046,6 +33253,8 @@ var Bottino = (function () {
   }
   // copertone: toro schiacciato col battistrada, il cerchione dentro
   function tire(g, x, y, z, rx, ry, R) { const R0 = R || .3, t = add(g, new (T().TorusGeometry)(R0, R0 * .36, 8, 18), '#ffffff', x, y, z, rx, ry, 0, 'gomma'); t.scale.z = 1.5; add(g, C(R0 * .62, R0 * .62, R0 * .45, 14), '#7d8288', x, y, z, (rx || 0) + Math.PI / 2, ry || 0); return t; }
+  // [modelli] un modello scaricato (scaricati.js), o null se non c'è: allora resta quello fatto a mano
+  function dl(g, id, x, y, z, ry, s) { if (typeof Scaricati === 'undefined') return null; return Scaricati.put(g, id, x, y, z, ry, s); }
   const MODEL = {
     // scatola di cartone coi lembi aperti, nastro, scritta; dentro spuntano bottiglie e giornali
     vicolo(g) {
@@ -33058,8 +33267,8 @@ var Bottino = (function () {
     },
     // cestino comunale anni '80: lamiera verde a doghe, bordo, palo, sacco e giornale che spuntano
     cestino(g) {
-      add(g, C(.035, .035, 1.0, 8), '#3a4038', -.3, .5, 0);
-      add(g, B(.08, .05, .08), '#2c3029', -.25, .75, 0);
+      add(g, C(.035, .035, 1.0, 8), '#3a4038', -.27, .5, 0); add(g, C(.06, .07, .03, 8), '#2c3029', -.27, .015, 0);
+      for (const y of [.3, .62]) add(g, B(.06, .04, .06), '#2c3029', -.24, y, 0);
       add(g, C(.23, .2, .62, 16, true), '#3e5a3c', 0, .42, 0);
       for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; add(g, B(.04, .62, .015), '#2c4029', Math.cos(a) * .225, .42, Math.sin(a) * .225, 0, -a + Math.PI / 2, 0); }
       add(g, new (T().TorusGeometry)(.235, .02, 6, 18), '#2c4029', 0, .73, 0, Math.PI / 2);
@@ -33069,7 +33278,7 @@ var Bottino = (function () {
     },
     // copertone, lamiera ondulata arrugginita piegata, tubi, mattoni, un cerchione
     rottami(g) {
-      tire(g, -.18, .11, .06, Math.PI / 2);
+      if (!dl(g, 'gomme', -.15, 0, .05, .4, .8)) tire(g, -.18, .16, .06, Math.PI / 2);
       const wav = new (T().PlaneGeometry)(.75, .5, 10, 1), P0 = wav.attributes.position; for (let i = 0; i < P0.count; i++) P0.setZ(i, Math.sin(P0.getX(i) * 40) * .02 + P0.getX(i) * P0.getX(i) * .3); wav.computeVertexNormals();
       const sh = add(g, wav, '#ffffff', .18, .24, -.05, -1.2, .5, .25, 'ruggine'); sh.material.side = T().DoubleSide;
       add(g, C(.05, .05, .9, 8), '#7d8288', .05, .07, .3, 0, .4, Math.PI / 2, 'ruggine'); add(g, C(.035, .035, .6, 8), '#5a5e62', .2, .17, .28, .3, -.3, Math.PI / 2);
@@ -33078,8 +33287,8 @@ var Bottino = (function () {
     // fascina: rami di spessore diverso, legati con due giri di corda; un'accetta piantata in un ceppo accanto
     bosco(g) {
       let h = 3; const r = () => { h = (h * 16807) % 2147483647; return h / 2147483647; };
-      for (let k = 0; k < 11; k++) { const a = r() * Math.PI * 2, d = r() * .14, rr = .025 + r() * .035; add(g, C(rr, rr * 1.1, .85 + r() * .25, 6), ['#6d4a2c', '#5a3e24', '#7a5634'][k % 3], Math.cos(a) * d, .15 + Math.sin(a) * d * .8, (r() - .5) * .08, Math.PI / 2, (r() - .5) * .15); }
-      for (const z of [-.22, .22]) { const t = add(g, new (T().TorusGeometry)(.135, .013, 5, 14), '#c9b27a', 0, .15, z, 0, 0, 0); t.scale.y = .85; }
+      for (let k = 0; k < 11; k++) { const a = r() * Math.PI * 2, d = r() * .14, rr = .025 + r() * .035; add(g, C(rr, rr * 1.1, .85 + r() * .25, 6), ['#6d4a2c', '#5a3e24', '#7a5634'][k % 3], Math.cos(a) * d * .8, .13 + Math.sin(a) * d * .7, (r() - .5) * .08, Math.PI / 2, (r() - .5) * .15); }
+      for (const z of [-.22, .22]) { const t = add(g, new (T().TorusGeometry)(.13, .013, 5, 14), '#c9b27a', 0, .13, z, 0, 0, 0); t.scale.y = .92; }
       add(g, C(.17, .19, .3, 10), '#7a5634', .55, .15, .1); add(g, C(.16, .16, .01, 10), '#c8a070', .55, .305, .1);
       add(g, C(.015, .015, .4, 6), '#8a6a42', .55, .48, .1, 0, 0, .3); add(g, B(.03, .1, .14), '#6a6e72', .5, .33, .1, 0, 0, .3);
     },
@@ -33087,7 +33296,7 @@ var Bottino = (function () {
     spiaggia(g) {
       const q = new (T().Group)(); crate(q, .5, 0, 0, 0, '#8a9088'); q.rotation.set(.12, .5, -.18); q.position.y = -.04; g.add(q);
       for (let k = 0; k < 5; k++) add(g, B(.02, .01, .25), '#3a5a2a', -.2 + k * .1, .06 + k * .02, .2, 0, k * .7, .3);
-      for (let k = 0; k < 3; k++) add(g, new (T().TorusGeometry)(.13 - k * .025, .022, 5, 14), '#d8cfa8', .45, .025 + k * .04, .15, Math.PI / 2);
+      for (let k = 0; k < 3; k++) add(g, new (T().TorusGeometry)(.13 - k * .025, .022, 5, 14), '#b8a77a', .45, .022 + k * .035, .15, Math.PI / 2);
     },
     // sacco di juta (profilo tornito), il collo arricciato e legato con lo spago
     prateria(g) {
@@ -33200,10 +33409,10 @@ var Bottino = (function () {
     const want = {};
     if (on) refresh(st).forEach(L => { if (MODEL[L.kind]) want[L.ref] = L; });
     for (const k in U.meshes) if (!want[k]) { U.grp.remove(U.meshes[k]); delete U.meshes[k]; }
-    const hot = performance.now() - U.hotT < 150 ? U.hot : null, t = performance.now() / 1000;
+    const hot = performance.now() - U.hotT < 150 ? U.hot : null, t = performance.now() / 1000, dlv = typeof Scaricati !== 'undefined' ? Scaricati.ver : 0;
     for (const [k, L] of Object.entries(want)) {
       let m = U.meshes[k];
-      if (!m || m.userData.locked !== !!L.locked) { if (m) U.grp.remove(m); m = build(L); m.userData.locked = !!L.locked; U.grp.add(m); U.meshes[k] = m; }
+      if (!m || m.userData.locked !== !!L.locked || m.userData.dlv !== dlv) { if (m) U.grp.remove(m); m = build(L); m.userData.locked = !!L.locked; m.userData.dlv = dlv; U.grp.add(m); U.meshes[k] = m; }
       const y = L.kind === 'tetto' && R.groundH ? (PV().st.player.lv && typeof Livelli !== 'undefined' && Livelli.heightOf ? Livelli.heightOf(st, p) : R.groundH(L.x, L.y)) : R.groundH(L.x, L.y);
       m.position.set(L.x, y, L.y);
       // sotto il puntatore si solleva appena e respira: si capisce che si prende
@@ -33532,62 +33741,124 @@ var Pezzi = (function () {
   const named = (m, n) => { m.name = n; m.material = m.material.clone(); return m; };
   const sub = (g, x, y, z, ry) => { const s = new THREE.Group(); s.position.set(x || 0, y || 0, z || 0); s.rotation.y = ry || 0; g.add(s); return s; };
   const R = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(7);
+  // [modelli] aste e tubi da un punto all'altro: gambe, bracci, tubi e cavi finiscono dove devono, niente pezzi staccati
+  const V3 = (x, y, z) => new THREE.Vector3(x, y, z); let UPV = null;
+  function lungo(m, a, b) { const d = b.clone().sub(a), l = d.length(); m.position.copy(a).add(b).multiplyScalar(.5); m.quaternion.setFromUnitVectors(UPV || (UPV = V3(0, 1, 0)), d.normalize()); m.scale.y = l; return m; }
+  function asta(g, a, b, s, c, o) { const m = new THREE.Mesh(new THREE.BoxGeometry(s, 1, s), mat(c, o)); m.castShadow = m.receiveShadow = true; g.add(m); return lungo(m, V3(...a), V3(...b)); }
+  function tubo(g, a, b, r, c, o, n) { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, n || 8), mat(c, o)); m.castShadow = true; g.add(m); return lungo(m, V3(...a), V3(...b)); }
+  // un tubo flessibile che passa per più punti (cavi, tubi di gomma)
+  function cavo(g, pts, r, c) { const cur = new THREE.CatmullRomCurve3(pts.map(p => V3(...p))); const m = new THREE.Mesh(new THREE.TubeGeometry(cur, pts.length * 6, r, 6), mat(c)); m.castShadow = true; g.add(m); return m; }
+  // un modello scaricato (scaricati.js) al posto di quello fatto a mano, con le misure date; null se non c'è (ancora)
+  function dl(g, id, x, y, z, ry, sx, sy, sz) { if (typeof Scaricati === 'undefined') return null; const o = Scaricati.get(id); if (!o) return null; o.position.set(x || 0, y || 0, z || 0); o.rotation.y = ry || 0; if (sx) o.scale.set(sx, sy || sx, sz || sx); g.add(o); return o; }
 
-  // ---------------- BASI ----------------
-  function pallet(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); for (let i = 0; i < 5; i++) bx(s, 1.2, .025, .14, '#a88a5e', 0, .13, -.36 + i * .18); for (const zz of [-.36, 0, .36]) bx(s, 1.2, .09, .1, '#8a6e48', 0, .07, zz); for (let i = 0; i < 5; i++) bx(s, 1.2, .025, .14, '#9a7e52', 0, .012, -.36 + i * .18); return s; }
-  function sacchi(g, x, y, z, ry, file, righe) { const s = sub(g, x, y, z, ry); for (let r = 0; r < (righe || 3); r++) for (let i = 0; i < (file || 3); i++) { const b = sp(s, .22, r % 2 ? '#8a8c84' : '#9a9a90', (i - (file || 3) / 2 + .5) * .52 + (r % 2) * .1, .11 + r * .2, 0, {}, 1.25, .5, .85); b.rotation.y = (R() - .5) * .3; } return s; }
+  function pallet(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); if (dl(s, 'pallet', 0, 0, 0, 0, 1, 1, .86 / 1.03)) return s; for (let i = 0; i < 5; i++) bx(s, 1.2, .025, .14, '#a88a5e', 0, .13, -.36 + i * .18); for (const zz of [-.36, 0, .36]) bx(s, 1.2, .09, .1, '#8a6e48', 0, .07, zz); for (let i = 0; i < 5; i++) bx(s, 1.2, .025, .14, '#9a7e52', 0, .012, -.36 + i * .18); return s; }
+  // [modelli] sacchi di sabbia: quelli del Toon Shooter; a mano, cuscini di juta a capsula sfalsati come mattoni, col capo legato
+  function sacchi(g, x, y, z, ry, file, righe) {
+    const s = sub(g, x, y, z, ry), F = file || 3, Rr = righe || 3, W = F * .52 + .08, H = Rr * .2;
+    if (dl(s, 'sacchi', 0, 0, 0, 0, W / 1.6, H / .65, .45 / .59)) return s;
+    for (let r = 0; r < Rr; r++) for (let i = 0; i < F - (r % 2); i++) {
+      const xx = (i - (F - (r % 2)) / 2 + .5) * .52, c = ['#8a7d5a', '#7d7150', '#94875f'][(i + r) % 3];
+      const b = new THREE.Mesh(new THREE.CapsuleGeometry(.12, .26, 3, 10), mat(c, { roughness: 1 })); b.rotation.z = Math.PI / 2; b.scale.set(.85, 1, 1.6); b.position.set(xx, .1 + r * .19, (R() - .5) * .03); b.castShadow = b.receiveShadow = true; s.add(b);
+      cy(s, .03, .045, .06, c, xx + .27, .1 + r * .19, 0, {}, 0, Math.PI / 2, 6);
+    }
+    return s;
+  }
   function cassaMil(g, w, h, d, c, x, y, z, ry) { const s = sub(g, x, y, z, ry); bx(s, w, h, d, c, 0, h / 2, 0); bx(s, w + .02, .05, d + .02, '#1e2420', 0, h - .03, 0); for (const xx of [-w / 3, w / 3]) bx(s, .06, h + .01, d + .015, '#2a302a', xx, h / 2, 0); for (const xx of [-w / 3, w / 3]) bx(s, .1, .05, .02, '#3a3a3a', xx, h * .7, d / 2 + .01, MET); bx(s, w * .3, .06, .01, '#c8b040', 0, h * .45, d / 2 + .006); return s; }
-  function cassaLegno(g, w, h, d, x, y, z, ry) { const s = sub(g, x, y, z, ry); bx(s, w, h, d, '#9a7a4e', 0, h / 2, 0); for (const yy of [.15, .5, .85]) bx(s, w + .01, .05, d + .01, '#7a5a34', 0, h * yy, 0); bx(s, .3, .08, .005, '#2a2a2a', 0, h * .7, d / 2 + .006); return s; }
-  function cavalletti(g, w, x, y, z) { const s = sub(g, x, y, z); for (const xx of [-w / 2 + .2, w / 2 - .2]) { for (const zz of [-.25, .25]) { const l = bx(s, .05, .8, .05, '#6a5a44', xx, .4, zz * .8); l.rotation.x = zz > 0 ? -.25 : .25; } bx(s, .05, .05, .6, '#6a5a44', xx, .78, 0); } return s; }
+  function cassaLegno(g, w, h, d, x, y, z, ry) { const s = sub(g, x, y, z, ry); if (dl(s, 'cassa', 0, 0, 0, 0, w / .6, h / .6, d / .6)) return s; bx(s, w, h, d, '#9a7a4e', 0, h / 2, 0); for (const yy of [.15, .5, .85]) bx(s, w + .01, .05, d + .01, '#7a5a34', 0, h * yy, 0); for (const a of [-1, 1]) for (const b of [-1, 1]) bx(s, .05, h, .05, '#6a4c2c', a * (w / 2 - .02), h / 2, b * (d / 2 - .02)); return s; }
+  // [modelli] cavalletti ad A: trave in testa, quattro gambe aperte che toccano terra, traversa a metà
+  function cavalletti(g, w, x, y, z) {
+    const s = sub(g, x, y, z), C = '#6a5a44', H = .78;
+    for (const xx of [-w / 2 + .2, w / 2 - .2]) {
+      bx(s, .07, .06, .64, C, xx, H - .03, 0);
+      for (const zz of [-.26, .26]) for (const sx of [-1, 1]) asta(s, [xx + sx * .02, H - .05, zz], [xx + sx * .13, 0, zz * 1.25], .045, C);
+      for (const zz of [-.3, .3]) asta(s, [xx - .09, .3, zz * 1.05], [xx + .09, .3, zz * 1.05], .03, C);
+    }
+    return s;
+  }
 
   // ---------------- PIANI E PANNELLI ----------------
   function piano(g, w, d, y, c, x, z) { bx(g, w, .05, d, c || '#b08a5a', x || 0, y, z || 0); bx(g, w + .01, .012, d * .2, '#7a5a3a', x || 0, y + .03, (z || 0) + d * .3); }
   function telo(g, w, d, y, x, z) { const t = bx(g, w * .6, .015, d + .02, '#8a8a70', x || 0, y + .02, z || 0); const h = bx(g, w * .6, .4, .015, '#7a7a62', x || 0, y - .18, (z || 0) + d / 2 + .01); h.rotation.x = .08; return t; }
-  // pannello forato con gli attrezzi appesi
+  // pannello forato con gli attrezzi appesi ai ganci, il foglio delle misure, il rotolo di nastro sul suo chiodo
   function pannello(g, w, h, x, y, z) {
-    const s = sub(g, x, y, z); bx(s, w, h, .03, '#b8a07a', 0, h / 2, 0);
+    const s = sub(g, x, y, z); bx(s, w, h, .03, '#b8a07a', 0, h / 2, 0); bx(s, w + .04, .04, .05, '#8a7050', 0, h, 0); bx(s, w + .04, .04, .05, '#8a7050', 0, 0, 0);
     for (let j = 0; j < 6; j++) for (let i = 0; i < 10; i++) bx(s, .012, .012, .005, '#5a4a34', -w / 2 + .1 + i * (w - .2) / 9, .12 + j * (h - .24) / 5, .017);
     const T = [['#c83a2a', .32], ['#2a5ac8', .24], ['#e8c040', .28], ['#c8c8d0', .3], ['#3a3a3a', .26], ['#c83a2a', .22]];
-    T.forEach(([c, l], i) => { const xx = -w / 2 + .18 + i * (w - .36) / 5; bx(s, .03, l * .55, .025, c, xx, h * .62 - l * .3, .04); bx(s, .02, l * .45, .02, '#a8acb4', xx, h * .62 + l * .2, .04, MET); });
-    bx(s, .22, .3, .005, '#f0ece0', w / 2 - .25, h * .55, .02); bx(s, .16, .02, .006, '#3a3a3a', w / 2 - .25, h * .6, .024); bx(s, .18, .1, .006, '#5a7ab0', w / 2 - .25, h * .48, .024);
-    const rot = cy(s, .1, .1, .03, '#3a3a3a', -w / 2 + .3, h * .2, .05, {}, Math.PI / 2); rot.scale.set(1, 1, 1);
+    T.forEach(([c, l], i) => { const xx = -w / 2 + .18 + i * (w - .45) / 5, top = h * .78; bx(s, .012, .012, .05, '#3a3a3a', xx, top, .04, MET); bx(s, .02, l * .45, .012, '#a8acb4', xx, top - .02 - l * .225, .06, MET); bx(s, .034, l * .5, .028, c, xx, top - .02 - l * .45 - l * .25, .06); });
+    bx(s, .22, .3, .005, '#f0ece0', w / 2 - .2, h * .5, .02); bx(s, .16, .02, .006, '#3a3a3a', w / 2 - .2, h * .58, .024); bx(s, .18, .1, .006, '#5a7ab0', w / 2 - .2, h * .44, .024);
+    bx(s, .012, .012, .07, '#3a3a3a', -w / 2 + .3, h * .3, .05, MET); const rot = cy(s, .07, .07, .05, '#d8c890', -w / 2 + .3, h * .3 - .06, .08, {}, Math.PI / 2); cy(s, .035, .035, .052, '#8a7050', -w / 2 + .3, h * .3 - .06, .08, {}, Math.PI / 2);
     return s;
   }
   // ---------------- ATTREZZI SUL BANCO ----------------
   function morsa(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); bx(s, .14, .05, .16, '#3a5a8a', 0, .025, 0, MET); named(bx(s, .1, .12, .06, '#3a5a8a', 0, .1, .05, MET), 'morsa'); bx(s, .1, .12, .06, '#3a5a8a', 0, .1, -.04, MET); cy(s, .012, .012, .22, '#c8ccd4', 0, .09, .14, MET, Math.PI / 2); return s; }
   function cassetta(g, x, y, z, ry, c) { const s = sub(g, x, y, z, ry); bx(s, .5, .2, .22, c || '#b8302a', 0, .1, 0, { roughness: .5, metalness: .2 }); bx(s, .52, .03, .23, c ? c : '#a02824', 0, .21, 0); bx(s, .2, .04, .03, '#2a2a2a', 0, .25, 0); bx(s, .04, .03, .005, '#c8c8c8', 0, .17, .11, MET); return s; }
-  function lampada(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); cy(s, .07, .08, .03, '#2a2a2e', 0, .015, 0); const a = bx(s, .02, .35, .02, '#2a2a2e', 0, .19, 0, {}, 0, 0, .25); const b = bx(s, .02, .3, .02, '#2a2a2e', .12, .4, 0, {}, 0, 0, -.9); cy(s, .03, .08, .12, '#2a2a2e', .26, .43, 0, {}, 0, -.6); named(sp(s, .035, '#fff0c0', .29, .39, 0, GLOW('#ffd890')), 'luce'); return s; }
-  function crt(g, x, y, z, ry, c) { const s = sub(g, x, y, z, ry); bx(s, .42, .36, .36, c || '#d8d0b8', 0, .18, 0); named(bx(s, .32, .25, .01, '#2a3a3a', 0, .2, .181, GLOW('#3a6a5a')), 'schermo'); bx(s, .3, .04, .02, '#a8a090', 0, .03, .17); return s; }
+  // [modelli] lampada da banco snodata: base, braccio in due pezzi con le molle, paralume conico con la lampadina dentro
+  function lampada(g, x, y, z, ry) {
+    const s = sub(g, x, y, z, ry), C = '#2a2a2e'; cy(s, .08, .09, .03, C, 0, .015, 0); cy(s, .02, .02, .04, C, 0, .05, 0);
+    const a = [0, .06, 0], b = [.07, .33, 0], c = [.25, .4, 0]; asta(s, a, b, .02, C); asta(s, b, c, .02, C); sp(s, .022, '#5a5a60', ...b, MET);
+    asta(s, [.01, .1, .02], [.06, .28, .02], .006, '#a8acb4', MET); asta(s, [.1, .34, .02], [.22, .39, .02], .006, '#a8acb4', MET);
+    const sh = new THREE.Mesh(new THREE.CylinderGeometry(.025, .085, .12, 14, 1, true), mat('#3a5a8a', { side: THREE.DoubleSide })); sh.position.set(.28, .37, 0); sh.rotation.z = .5; sh.castShadow = true; s.add(sh);
+    named(sp(s, .035, '#fff0c0', .3, .34, 0, GLOW('#ffd890')), 'luce'); return s;
+  }
+  // [modelli] terminale a tubo catodico: guscio rastremato dietro, cornice, schermo verde, feritoie, tastiera davanti
+  function crt(g, x, y, z, ry, c) {
+    const s = sub(g, x, y, z, ry), C = c || '#d8d0b8'; bx(s, .42, .36, .2, C, 0, .2, .08); bx(s, .34, .28, .16, C, 0, .2, -.08); bx(s, .28, .22, .1, '#c8c0a8', 0, .2, -.2);
+    bx(s, .36, .3, .012, '#b8b098', 0, .21, .184); named(bx(s, .3, .23, .01, '#2a3a3a', 0, .215, .19, GLOW('#3a6a5a')), 'schermo');
+    for (let i = 0; i < 5; i++) bx(s, .2, .008, .005, '#8a8270', 0, .25 + i * .02, -.251); bx(s, .3, .025, .2, C, 0, .012, .05);
+    const k = sub(s, 0, 0, .34); bx(k, .4, .03, .14, C, 0, .015, 0, {}, 0, -.06); for (let i = 0; i < 12; i++) for (let j = 0; j < 3; j++) bx(k, .022, .012, .022, '#5a5448', -.16 + i * .029, .036, -.03 + j * .03); return s;
+  }
   function tv(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); bx(s, .55, .42, .4, '#5a3a24', 0, .21, 0); named(bx(s, .36, .3, .01, '#202828', -.05, .22, .201, GLOW('#405858')), 'schermo'); for (let i = 0; i < 2; i++) cy(s, .025, .025, .02, '#c8c8c8', .2, .3 - i * .1, .205, MET, Math.PI / 2); cy(s, .005, .005, .5, '#c8c8d0', -.1, .6, 0, MET, 0, .4); cy(s, .005, .005, .5, '#c8c8d0', .1, .6, 0, MET, 0, -.4); return s; }
-  function radio(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); bx(s, .5, .22, .3, '#4a5240', 0, .11, 0); bx(s, .2, .12, .01, '#c8b880', -.1, .12, .151, GLOW('#806838')); for (let i = 0; i < 3; i++) cy(s, .02, .02, .03, '#1a1a1a', .08 + i * .06, .12, .155, {}, Math.PI / 2); named(bx(s, .03, .03, .01, '#30ff60', .2, .18, .152, GLOW('#30ff60')), 'led'); const cf = cy(s, .05, .05, .03, '#1a1a1a', -.3, .04, .1, {}, 0, Math.PI / 2); cy(s, .005, .005, .9, '#c8c8d0', .2, .65, -.1, MET, 0, .15); return s; }
+  // radio: la radiolina del Survival Pack; a mano, la ricetrasmittente militare
+  function radio(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); if (dl(s, 'radio', 0, 0, 0, 0)) { named(bx(s, .025, .025, .01, '#30ff60', .14, .3, .075, GLOW('#30ff60')), 'led'); return s; } ricetrasmittente(s); return s; }
   function cassettiera(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); bx(s, .45, .6, .5, '#b08a5a', 0, .32, 0); for (let i = 0; i < 3; i++) { bx(s, .4, .16, .01, '#a07a4a', 0, .14 + i * .19, .251); bx(s, .1, .02, .02, '#3a3a3a', 0, .17 + i * .19, .26, MET); } for (const xx of [-.18, .18]) for (const zz of [-.2, .2]) cy(s, .025, .025, .04, '#1a1a1a', xx, .02, zz); return s; }
-  function sgabello(g, x, y, z) { const s = sub(g, x, y, z); cy(s, .18, .18, .05, '#b08a5a', 0, .55, 0); cy(s, .025, .025, .5, '#6a5a44', 0, .3, 0); for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2, l = bx(s, .3, .025, .04, '#6a5a44', Math.cos(a) * .15, .05, Math.sin(a) * .15, {}, -a); } return s; }
+  // [modelli] sgabello da officina: seduta, colonna, cinque razze a terra con i piedini
+  function sgabello(g, x, y, z) { const s = sub(g, x, y, z); cy(s, .18, .18, .05, '#b08a5a', 0, .55, 0); cy(s, .1, .12, .03, '#5a4a34', 0, .515, 0); cy(s, .025, .025, .48, '#6a5a44', 0, .28, 0, MET); cy(s, .05, .05, .04, '#3a3a3a', 0, .06, 0); for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; asta(s, [0, .06, 0], [Math.cos(a) * .27, .02, Math.sin(a) * .27], .03, '#3a3a3a', MET); cy(s, .025, .025, .02, '#1a1a1a', Math.cos(a) * .27, .01, Math.sin(a) * .27); } return s; }
   function vasetti(g, x, y, z) { const s = sub(g, x, y, z); [['#8a6a3a', .1], ['#5a7a5a', .08], ['#c8a03a', .12], ['#3a5a8a', .07]].forEach(([c, h], i) => cy(s, .035, .035, h, c, i * .09, h / 2, (i % 2) * .05, { roughness: .3 })); return s; }
   function bottiglie(g, x, y, z) { const s = sub(g, x, y, z); ['#3a5a2a', '#6a3a1a', '#c8c8b0'].forEach((c, i) => { cy(s, .035, .035, .2, c, i * .08, .1, 0, { roughness: .15, transparent: true, opacity: .85 }); cy(s, .012, .012, .07, c, i * .08, .23, 0); }); return s; }
   function attrezziSparsi(g, w, y, z) { const s = sub(g, 0, y, z); for (let i = 0; i < 5; i++) { const xx = (R() - .5) * w * .7, zz = (R() - .5) * .25; bx(s, .18 + R() * .1, .015, .025, ['#a8acb4', '#c83a2a', '#3a3a3a'][i % 3], xx, .01, zz, MET, R() * 3); } return s; }
-  // ---------------- PER TERRA E CONTRO IL MURO ----------------
-  function tanica(g, x, y, z, ry, c) { const s = sub(g, x, y, z, ry); bx(s, .34, .44, .17, c || '#c83a2a', 0, .22, 0, { roughness: .5 }); bx(s, .2, .06, .05, c || '#c83a2a', -.02, .47, 0); cy(s, .03, .03, .07, '#2a2a2a', .12, .48, 0); bx(s, .3, .38, .005, '#e8e0c8', 0, .22, .088); return s; }
-  function estintore(g, x, y, z) { const s = sub(g, x, y, z); cy(s, .08, .08, .55, '#c82a24', 0, .28, 0, { roughness: .4, metalness: .2 }); sp(s, .08, '#c82a24', 0, .55, 0); bx(s, .1, .04, .05, '#2a2a2a', 0, .64, 0); cy(s, .015, .015, .3, '#1a1a1a', .1, .5, 0, {}, 0, .5); return s; }
+  // [modelli] tanica: corpo con la X stampata in rilievo, tre maniglie in testa, beccuccio col tappo a leva
+  function tanica(g, x, y, z, ry, c) {
+    const s = sub(g, x, y, z, ry), C = c || '#c83a2a', o = { roughness: .5 }; bx(s, .34, .4, .17, C, 0, .2, 0, o); bx(s, .3, .03, .15, C, 0, .415, 0, o);
+    for (const zz of [-1, 1]) { const f = sub(s, 0, .2, zz * .087); for (const a of [-1, 1]) { const m = bx(f, .44, .03, .012, C, 0, 0, 0, o); m.rotation.z = a * .86; } bx(f, .3, .36, .006, C, 0, 0, -zz * .003, o); }
+    for (const xx of [-.1, 0, .1]) { bx(s, .022, .07, .03, C, xx, .46, 0, o); } bx(s, .24, .025, .035, C, 0, .5, 0, o);
+    cy(s, .03, .035, .05, '#3a3a3a', .13, .45, 0, MET); bx(s, .06, .015, .04, '#8a8e96', .13, .48, 0, MET); return s;
+  }
+  // [modelli] estintore: bombola con fondo e testa arrotondati, valvola con la leva, manometro, tubo di gomma che scende fino alla lancia nel suo gancio
+  function estintore(g, x, y, z) {
+    const s = sub(g, x, y, z), C = '#c82a24', o = { roughness: .4, metalness: .2 }; cy(s, .08, .08, .48, C, 0, .28, 0, o); sp(s, .08, C, 0, .52, 0, o, 1, .6, 1); sp(s, .08, C, 0, .04, 0, o, 1, .4, 1);
+    bx(s, .14, .12, .005, '#f0ece0', 0, .3, .08); cy(s, .025, .025, .07, '#2a2a2a', 0, .6, 0, MET); bx(s, .12, .015, .03, '#2a2a2a', .04, .64, 0, MET, 0, 0, -.15); bx(s, .1, .015, .03, '#2a2a2a', .03, .615, 0, MET);
+    cy(s, .02, .02, .012, '#e8e8e8', -.04, .6, .015, {}, Math.PI / 2); cavo(s, [[.02, .6, .02], [.08, .58, .04], [.1, .45, .07], [.095, .25, .08]], .012, '#1a1a1a'); cy(s, .016, .01, .07, '#1a1a1a', .095, .2, .08); bx(s, .03, .015, .02, '#3a3a3a', .088, .3, .075, MET); return s;
+  }
   function bobina(g, x, y, z, ry) {   // [oggetti] rocchetto di legno coi fori, spire di cavo arancione, il capo che pende
     const s = sub(g, x, y, z, ry); for (const zz of [-.13, .13]) { cy(s, .26, .26, .025, '#b08a5a', 0, .26, zz, {}, Math.PI / 2, 0, 18); cy(s, .05, .05, .03, '#4a3a28', 0, .26, zz, {}, Math.PI / 2, 0, 10); }
     for (let k = 0; k < 5; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(.17, .022, 6, 18), mat('#d8682a')); t.position.set(0, .26, -.1 + k * .05); t.castShadow = true; s.add(t); }
     const tail = new THREE.Mesh(new THREE.TorusGeometry(.12, .02, 6, 14, Math.PI * 1.3), mat('#d8682a')); tail.position.set(.24, .1, .05); tail.rotation.set(Math.PI / 2, 0, 1.2); s.add(tail); return s; }
-  function fari(g, x, y, z) { const s = sub(g, x, y, z); for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2, l = bx(s, .025, .9, .025, '#e8c030', Math.cos(a) * .18, .42, Math.sin(a) * .18, {}, 0, Math.sin(a) * .2, -Math.cos(a) * .2); } bx(s, .03, 1, .03, '#e8c030', 0, 1.2, 0); bx(s, .7, .04, .04, '#e8c030', 0, 1.7, 0); for (const xx of [-.22, .22]) { bx(s, .26, .2, .12, '#2a2a2e', xx, 1.82, 0); named(bx(s, .22, .16, .01, '#fff8e0', xx, 1.82, .061, GLOW('#fff0c0')), 'luce'); } return s; }
+  // [modelli] fari da cantiere: treppiede che si apre da un collare, asta telescopica, barra con due proiettori orientabili e il cavo
+  function fari(g, x, y, z) {
+    const s = sub(g, x, y, z), Y = '#e8c030'; cy(s, .035, .035, .08, '#2a2a2e', 0, .7, 0, MET);
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + .3; asta(s, [Math.cos(a) * .03, .7, Math.sin(a) * .03], [Math.cos(a) * .42, 0, Math.sin(a) * .42], .03, Y); asta(s, [Math.cos(a) * .015, .45, Math.sin(a) * .015], [Math.cos(a) * .24, .3, Math.sin(a) * .24], .015, '#2a2a2e', MET); cy(s, .02, .02, .015, '#1a1a1a', Math.cos(a) * .42, .007, Math.sin(a) * .42); }
+    cy(s, .022, .022, 1.15, Y, 0, 1.12, 0); cy(s, .016, .016, .5, '#a8acb4', 0, 1.6, 0, MET); bx(s, .7, .04, .04, Y, 0, 1.84, 0);
+    for (const xx of [-.24, .24]) { bx(s, .03, .1, .03, '#2a2a2e', xx, 1.79, .03); const L = sub(s, xx, 1.74, .05); L.rotation.x = .25; bx(L, .26, .2, .12, '#2a2a2e', 0, 0, 0); bx(L, .28, .22, .02, '#3a3a3a', 0, 0, .065); named(bx(L, .22, .16, .01, '#fff8e0', 0, 0, .077, GLOW('#fff0c0')), 'luce'); for (let i = 0; i < 4; i++) bx(L, .24, .008, .02, '#1a1a1a', 0, -.06 + i * .04, -.065); }
+    cavo(s, [[0, 1.6, -.03], [.02, 1.0, -.04], [.08, .4, -.08], [.3, .02, -.3], [.6, .01, -.4]], .01, '#1a1a1a'); return s;
+  }
   function generatore(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); bx(s, .7, .45, .45, '#d8b040', 0, .35, 0, { roughness: .6 }); for (const yy of [.1, .6]) for (const xx of [-.35, .35]) for (const zz of [-.23, .23]) {} const fr = [[-.36, 0], [.36, 0]]; fr.forEach(([xx]) => { bx(s, .03, .62, .03, '#2a2a2e', xx, .31, -.24); bx(s, .03, .62, .03, '#2a2a2e', xx, .31, .24); }); bx(s, .78, .03, .03, '#2a2a2e', 0, .62, -.24); bx(s, .78, .03, .03, '#2a2a2e', 0, .62, .24); for (const xx of [-.3, .3]) cy(s, .1, .1, .06, '#1a1a1a', xx, .1, .27, {}, Math.PI / 2); named(cy(s, .1, .1, .02, '#3a3a3a', .2, .4, .23, {}, Math.PI / 2), 'ventola'); bx(s, .15, .1, .01, '#2a2a2a', -.15, .45, .226); return s; }
   function armadietti(g, x, y, z, ry, c) { const s = sub(g, x, y, z, ry); for (let i = 0; i < 3; i++) { const xx = (i - 1) * .4; bx(s, .38, 1.8, .45, c || '#d8782a', xx, .9, 0, { roughness: .6, metalness: .25 }); for (let j = 0; j < 4; j++) bx(s, .2, .015, .01, '#3a2a1a', xx, 1.6 - j * .04, .23); bx(s, .02, .1, .02, '#c8c8c8', xx + .14, .95, .235, MET); bx(s, .12, .08, .005, '#f0ece0', xx, 1.35, .228); } return s; }
   function castello(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); for (const xx of [-.95, .95]) for (const zz of [-.42, .42]) bx(s, .05, 1.7, .05, '#3a3a40', xx, .85, zz, MET); for (const yy of [.35, 1.25]) { bx(s, 1.95, .05, .9, '#3a3a40', 0, yy, 0, MET); bx(s, 1.85, .14, .82, '#5a5e6a', 0, yy + .09, 0); bx(s, .4, .1, .6, '#d8d4c8', -.65, yy + .2, 0); const c = bx(s, 1.1, .05, .84, '#6a6e7a', .3, yy + .17, 0); c.rotation.z = .02; } for (let i = 0; i < 4; i++) bx(s, .03, .03, .9, '#3a3a40', .95, .55 + i * .25, 0, MET); return s; }
   function scaffaleMet(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); for (const xx of [-.55, .55]) for (const zz of [-.22, .22]) bx(s, .04, 1.9, .04, '#4a4c52', xx, .95, zz, MET); for (let j = 0; j < 4; j++) { const yy = .25 + j * .5; bx(s, 1.14, .03, .46, '#5a5c62', 0, yy, 0, MET); for (let i = 0; i < 3; i++) { const k = R(); if (k < .35) bx(s, .3, .22, .3, '#a8885a', -.35 + i * .35, yy + .12, 0); else if (k < .6) cassetta(s, -.35 + i * .35, yy + .015, 0, 0, ['#3a5a8a', '#b8302a', '#3a3a3a'][i]); else if (k < .8) cy(s, .1, .1, .2, '#8a8e96', -.35 + i * .35, yy + .1, 0, MET); else bobina(s, -.35 + i * .35, yy, 0, 0); } } return s; }
-  function cassaMetallo(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); bx(s, .6, .4, .4, '#8a8e96', 0, .2, 0, MET); bx(s, .62, .03, .42, '#6a6e76', 0, .4, 0, MET); bx(s, .14, .03, .01, '#2a2a2a', 0, .32, .201); return s; }
-  function cartone(g, x, y, z, ry, k) { const s = sub(g, x, y, z, ry); const w = .4 * (k || 1); bx(s, w, w * .8, w, '#b8925e', 0, w * .4, 0); bx(s, w + .005, .03, .08, '#d8c8a0', 0, w * .8, 0); return s; }
+  // [modelli] cassa di metallo: nervature, maniglie ai fianchi, due chiusure a leva, il coperchio che sporge
+  function cassaMetallo(g, x, y, z, ry) { const s = sub(g, x, y, z, ry), C = '#8a8e96'; bx(s, .6, .36, .4, C, 0, .18, 0, MET); bx(s, .62, .06, .42, '#6a6e76', 0, .39, 0, MET); for (const yy of [.08, .28]) bx(s, .61, .02, .41, '#7a7e86', 0, yy, 0, MET);
+    for (const xx of [-.18, .18]) { bx(s, .05, .07, .02, '#3a3a3a', xx, .34, .205, MET); bx(s, .03, .03, .015, '#c8c8c8', xx, .37, .212, MET); } for (const xx of [-.31, .31]) { bx(s, .015, .03, .14, '#3a3a3a', xx, .27, 0, MET); bx(s, .03, .015, .12, '#2a2a2a', xx * 1.04, .25, 0, MET); } return s; }
+  // [modelli] scatolone: quello del Toon Shooter; a mano, cartone con le falde chiuse dal nastro e gli spigoli più scuri
+  function cartone(g, x, y, z, ry, k) { const s = sub(g, x, y, z, ry); const w = .4 * (k || 1); if (dl(s, 'scatole', 0, 0, 0, 0, w / .7, w * .8 / .37, w / .52)) return s; bx(s, w, w * .8, w, '#b8925e', 0, w * .4, 0); bx(s, w * .02, w * .8, w, '#a07e4e', 0, w * .4, 0); bx(s, w + .005, .005, .08, '#d8c8a0', 0, w * .8, 0); bx(s, .08, w * .3, w + .005, '#d8c8a0', 0, w * .65, 0); return s; }
   function lumeOlio(g, x, y, z) { const s = sub(g, x, y, z); cy(s, .06, .07, .05, '#8a6a3a', 0, .025, 0, MET); named(cy(s, .045, .05, .12, '#fff0c0', 0, .11, 0, Object.assign({ transparent: true, opacity: .85 }, GLOW('#ffc860'))), 'luce'); cy(s, .03, .05, .04, '#8a6a3a', 0, .19, 0, MET); return s; }
   function mappa(g, w, h, x, y, z) { const s = sub(g, x, y, z); bx(s, w, h, .01, '#d8ccaa', 0, 0, 0); for (let i = 0; i < 6; i++) bx(s, w * (.15 + R() * .3), h * (.1 + R() * .2), .012, ['#7a9a6a', '#a8b880', '#8ab0c8'][i % 3], (R() - .5) * w * .6, (R() - .5) * h * .6, .002); for (let i = 0; i < 4; i++) sp(s, .015, '#c83a2a', (R() - .5) * w * .8, (R() - .5) * h * .8, .01); return s; }
   function manifestino(g, x, y, z, c) { bx(g, .4, .55, .01, '#e8e0cc', x, y, z); bx(g, .3, .25, .012, c || '#c83a2a', x, y + .08, z + .002); }
 
   // ---------------- LE POSTAZIONI COMPOSTE ----------------
   // il banco delle armi: improvvisato su sacchi e pallet, telo, pannello con gli attrezzi, morsa, cassetta rossa, lampada
-  function bancoArmi(g) { pallet(g, -.6, 0, 0); pallet(g, .6, 0, 0); sacchi(g, -.6, .15, 0, 0, 2, 3); sacchi(g, .6, .15, 0, 0, 2, 3); piano(g, 2.4, .9, .82, '#a88a5e'); telo(g, 2.4, .9, .84, -.5, 0);
-    pannello(g, 2.2, 1.1, 0, .86, -.42); morsa(g, .95, .86, .2, 0); cassetta(g, .45, .86, .05, -.2); lampada(g, -1, .86, -.25, .6); bottiglie(g, -.9, .86, .1); attrezziSparsi(g, 2.2, .865, .1);
-    const fucile = new THREE.Group(); bx(fucile, .75, .05, .07, '#2a2a2e', 0, 0, 0, MET); bx(fucile, .3, .07, .06, '#5a3a20', -.42, -.01, 0); fucile.position.set(-.1, .88, .15); fucile.rotation.y = .3; g.add(fucile); tanica(g, 1.4, 0, .3, -.4); }
+  function bancoArmi(g) { pallet(g, -.6, 0, 0); pallet(g, .6, 0, 0); sacchi(g, -.6, .14, 0, 0, 2, 3); sacchi(g, .6, .14, 0, 0, 2, 3); piano(g, 2.4, .9, .8, '#a88a5e'); telo(g, 2.4, .9, .82, -.5, 0);
+    pannello(g, 2.2, 1.1, 0, .83, -.42); morsa(g, .95, .83, .2, 0); cassetta(g, .45, .83, .05, -.2); lampada(g, -1, .83, -.25, .6); bottiglie(g, -.9, .83, .1); attrezziSparsi(g, 2.2, .835, .1);
+    fucile(g, -.15, .87, .18, .3); tanica(g, 1.45, 0, .45, -.4); }
   // il banco da lavoro: ferro verde con le mensole, cassette dei pezzi, monitor, lampada, cassettiera e sgabello
   function bancoLavoro(g) { const c = '#5a7a6a'; for (const xx of [-.9, .9]) for (const zz of [-.35, .35]) bx(g, .05, zz < 0 ? 1.7 : .85, .05, c, xx, zz < 0 ? .85 : .42, zz, MET); piano(g, 1.9, .8, .87, '#b08a5a'); bx(g, 1.85, .03, .7, '#a08050', 0, .2, 0);
     for (const yy of [1.25, 1.6]) { bx(g, 1.85, .03, .3, '#b08a5a', 0, yy, -.25); for (let i = 0; i < 5; i++) bx(g, .2, .1, .22, ['#3a5a8a', '#8a3a2a', '#3a3a3a'][i % 3], -.75 + i * .36, yy + .065, -.25); }
@@ -33597,39 +33868,60 @@ var Pezzi = (function () {
     cy(g, .2, .22, .08, '#3a3a3a', -.5, .65, 0, MET); named(cy(g, .14, .14, .02, '#3080ff', -.5, .7, 0, GLOW('#2060ff')), 'fiamma'); cy(g, .16, .14, .2, '#8a8e96', -.5, .8, 0, MET); named(sp(g, .06, '#e8e8e8', -.5, .98, 0, { transparent: true, opacity: .5 }), 'vapore');
     cy(g, .1, .12, .16, '#2a2a2e', -.05, .69, .05, MET); vasetti(g, .25, .61, -.1); bottiglie(g, .7, .61, -.05); tanica(g, 1.25, 0, 0, -.3, '#3a6aa0'); tanica(g, 1.25, 0, .35, .2, '#3a6aa0'); cartone(g, -1.3, 0, .1, .3); bx(g, .4, .03, .25, '#c8b080', .35, .615, .15); }
   // il focolare: pietre in cerchio, ceppi, treppiede col paiolo
-  function focolare(g) { for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; const p = new THREE.Mesh(new THREE.DodecahedronGeometry(.16), mat('#6a6a68', { roughness: 1 })); p.position.set(Math.cos(a) * .55, .1, Math.sin(a) * .55); p.scale.y = .7; p.castShadow = true; g.add(p); }
+  function focolare(g) { for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; const p = new THREE.Mesh(new THREE.DodecahedronGeometry(.16), mat('#6a6a68', { roughness: 1 })); p.position.set(Math.cos(a) * .55, .1, Math.sin(a) * .55); p.scale.y = .7; p.rotation.y = a * 2; p.castShadow = true; g.add(p); }
     // [oggetti] braci, ciocchi a capanna anneriti in punta, tre lingue di fuoco a goccia (si animano per nome: fiamma, fiamma2)
-    cy(g, .32, .36, .05, '#3a1a10', 0, .03, 0, GLOW('#a02a08'));
-    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, l = new THREE.Group(); l.position.set(Math.cos(a) * .2, .2, Math.sin(a) * .2); l.rotation.set(0, -a, .55); g.add(l);
-      cy(l, .05, .055, .55, '#5a3a20', 0, 0, 0, {}, 0, 0, 8); cy(l, .052, .05, .14, '#1a1210', 0, .24, 0, {}, 0, 0, 8); }
+    cy(g, .32, .36, .05, '#3a1a10', 0, .025, 0, GLOW('#a02a08'));
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; tubo(g, [Math.cos(a) * .38, .03, Math.sin(a) * .38], [Math.cos(a) * .06, .42, Math.sin(a) * .06], .05, '#5a3a20'); tubo(g, [Math.cos(a) * .12, .34, Math.sin(a) * .12], [Math.cos(a) * .05, .44, Math.sin(a) * .05], .052, '#1a1210'); }
     const tongue = (h, r) => new THREE.LatheGeometry([[0, 0], [r * .7, h * .08], [r, h * .25], [r * .8, h * .5], [r * .4, h * .78], [r * .12, h * .92], [0, h]].map(([a, b]) => new THREE.Vector2(a, b)), 10);
     const fl = (geo, c, e, x, z, ry, n) => { const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: 1.2, transparent: true, opacity: .82, depthWrite: false, roughness: 1 })); m.position.set(x, .1, z); m.rotation.y = ry; m.name = n; g.add(m); return m; };
     fl(tongue(.75, .26), '#ff7a1a', '#ff5a10', 0, 0, 0, 'fiamma'); fl(tongue(.55, .14), '#ff9a30', '#ff6a18', .1, .06, 1, 'fiamma'); fl(tongue(.48, .15), '#ffd860', '#ffb030', -.04, -.03, 2, 'fiamma2');
-    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; const l = bx(g, .03, 1.4, .03, '#2a2a2e', Math.cos(a) * .45, .65, Math.sin(a) * .45, MET, 0, Math.sin(a) * .3, -Math.cos(a) * .3); } cy(g, .18, .14, .22, '#2a2a2e', 0, 1.05, 0, MET); cy(g, .005, .005, .35, '#3a3a3a', 0, 1.3, 0);
-    for (let i = 0; i < 4; i++) cy(g, .08, .08, .45, '#6a4a2a', 1.1, .08 + (i % 2) * .15, -.3 + i * .17, {}, 0, Math.PI / 2); }
+    const top = [0, 1.45, 0]; for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + .5; asta(g, [Math.cos(a) * .8, 0, Math.sin(a) * .8], [Math.cos(a) * .03, 1.5, Math.sin(a) * .03], .035, '#2a2a2e', MET); }
+    cy(g, .05, .05, .06, '#2a2a2e', ...top, MET); for (let i = 0; i < 5; i++) { const t = new THREE.Mesh(new THREE.TorusGeometry(.018, .005, 4, 8), mat('#3a3a3a', MET)); t.position.set(0, 1.4 - i * .033, 0); t.rotation.y = i * Math.PI / 2; g.add(t); }
+    tubo(g, [-.16, 1.25, 0], [0, 1.24, 0], .005, '#3a3a3a', MET); tubo(g, [.16, 1.25, 0], [0, 1.24, 0], .005, '#3a3a3a', MET); cy(g, .18, .14, .24, '#2a2a2e', 0, 1.1, 0, MET); cy(g, .185, .185, .02, '#1a1a1a', 0, 1.22, 0, MET);
+    for (let i = 0; i < 4; i++) cy(g, .08, .08, .45, '#6a4a2a', 1.15, .08 + (i > 1 ? .15 : 0), -.2 + (i % 2) * .17 + (i > 1 ? .085 : 0), {}, 0, Math.PI / 2); }
   // il laboratorio tessile: tavolo su cavalletti, macchina da cucire, rotoli di stoffa, manichino, filo
-  function tessile(g, macchina) { cavalletti(g, 1.8, 0, 0, 0); piano(g, 1.8, .8, .8, '#b8a07a'); if (macchina) { macchina.position.set(-.3, .07, 0); g.add(macchina); }
-    [['#7a2e2a', 0], ['#2e4a6a', .22], ['#c8b88a', .44]].forEach(([c, zz]) => cy(g, .08, .08, .7, c, .55, .9, -.25 + zz, {}, 0, Math.PI / 2)); bx(g, .5, .01, .4, '#5a7a5a', .1, .83, .15);
-    const mn = sub(g, 1.3, 0, -.3); cy(mn, .02, .02, 1, '#3a3a3a', 0, .5, 0); sp(mn, .2, '#d8c8a8', 0, 1.2, 0, {}, 1, 1.3, .7); cy(mn, .15, .02, .1, '#3a3a3a', 0, .04, 0); named(bx(g, .015, .12, .015, '#c8c8d0', -.13, .97, 0, MET), 'ago'); }
+  function tessile(g, macchina) { cavalletti(g, 1.8, 0, 0, 0); piano(g, 1.8, .8, .8, '#b8a07a'); if (macchina) { const k = .8; macchina.scale.setScalar(k); macchina.position.set(-.3, .825 - (macchina.userData.piano || 0) * k, 0); { const gm = macchina.getObjectByName('gambe'); if (gm) gm.parent.remove(gm); } g.add(macchina); }
+    [['#7a2e2a', 0], ['#2e4a6a', .2], ['#c8b88a', .4]].forEach(([c, zz]) => { cy(g, .075, .075, .7, c, .55, .9, -.25 + zz, {}, 0, Math.PI / 2); cy(g, .02, .02, .72, '#c8b090', .55, .9, -.25 + zz, {}, 0, Math.PI / 2); }); bx(g, .5, .01, .4, '#5a7a5a', .1, .83, .15);
+    const mn = sub(g, 1.3, 0, -.3); cy(mn, .16, .2, .04, '#3a3a3a', 0, .02, 0); cy(mn, .018, .018, 1, '#3a3a3a', 0, .5, 0, MET);
+    const busto = new THREE.Mesh(new THREE.LatheGeometry([[0, 0], [.13, .02], [.15, .12], [.12, .28], [.15, .42], [.17, .5], [.08, .56], [.05, .6], [0, .62]].map(([a, b]) => new THREE.Vector2(a, b)), 16), mat('#d8c8a8')); busto.position.y = .98; busto.scale.z = .7; busto.castShadow = true; mn.add(busto); sp(mn, .03, '#5a4a34', 0, 1.62, 0);
+    if (!macchina) named(bx(g, .015, .12, .015, '#c8c8d0', -.13, .97, 0, MET), 'ago'); }
   // la stamperia: ciclostile su una cassa, risme di carta, latte d'inchiostro, fogli stesi ad asciugare
-  function stamperia(g, cic) { cassaLegno(g, 1, .6, .7, 0, 0, 0); if (cic) { cic.position.set(0, .6, 0); cic.scale.setScalar(.8); g.add(cic); } else bx(g, .7, .4, .5, '#3a3a3a', 0, .8, 0);
-    named(cy(g, .07, .07, .55, '#2a2a2a', 0, 1.05, .2, MET, 0, Math.PI / 2), 'rullo');
-    for (let i = 0; i < 3; i++) bx(g, .32, .1, .45, '#f0ece2', -1, .05 + i * .1, 0, {}, R() * .2); cy(g, .1, .1, .18, '#1a1a2a', .9, .09, .2, MET); cy(g, .1, .1, .18, '#1a1a2a', .9, .09, -.1, MET);
-    for (const xx of [-1.3, 1.3]) bx(g, .04, 1.9, .04, '#6a5a44', xx, .95, -.6); cy(g, .005, .005, 2.6, '#c8c8c8', 0, 1.85, -.6, {}, 0, Math.PI / 2); for (let i = 0; i < 6; i++) { bx(g, .3, .42, .005, '#f0ece2', -1 + i * .4, 1.6, -.6); bx(g, .2, .08, .006, '#c83a2a', -1 + i * .4, 1.7, -.596); } }
-  // il banco radio: scrivania, radio impilate, televisore, mappa al muro, sedia, antenna
-  function bancoRadio(g) { for (const xx of [-.8, .8]) for (const zz of [-.3, .3]) bx(g, .05, .75, .05, '#6a4a2c', xx, .37, zz); piano(g, 1.8, .75, .76, '#7a5634'); radio(g, -.45, .79, -.1, .1); radio(g, -.45, 1.01, -.15, .05); tv(g, .35, .79, -.1, -.15);
-    bx(g, .25, .05, .18, '#2a2a2a', .1, .81, .2); cy(g, .03, .03, .05, '#2a2a2a', .25, .83, .22); mappa(g, 1.2, .8, 0, 1.6, -.4); lumeOlio(g, .75, .79, .15); manifestino(g, -.85, 1.5, -.39, '#2a5a8a');
-    const sd = sub(g, 0, 0, .7, Math.PI); bx(sd, .45, .04, .42, '#7a5634', 0, .45, 0); for (const xx of [-.2, .2]) for (const zz of [-.18, .18]) bx(sd, .04, .45, .04, '#5a3a20', xx, .22, zz); bx(sd, .45, .45, .04, '#7a5634', 0, .7, -.2); }
-  // l'infermeria: branda, cassetta del pronto, flebo, lampada, catino
-  function infermeria(g) { castelloBasso(g); cassaMetallo(g, 1.25, 0, -.2, 0); bx(g, .35, .2, .22, '#f0ece2', 1.25, .5, -.2); bx(g, .06, .14, .01, '#c82a24', 1.25, .5, -.089); bx(g, .14, .05, .01, '#c82a24', 1.25, .5, -.088);
-    cy(g, .015, .015, 1.7, '#c8c8d0', -1.2, .85, -.3, MET); bx(g, .3, .015, .015, '#c8c8d0', -1.2, 1.7, -.3, MET); bx(g, .1, .18, .05, '#d8e8f0', -1.08, 1.55, -.3, { transparent: true, opacity: .8 }); lampada(g, 1.1, .6, .1, 2); cy(g, .2, .15, .1, '#c8ccd4', -1.1, .05, .3, MET); }
-  function castelloBasso(g) { for (const xx of [-.9, .9]) for (const zz of [-.4, .4]) bx(g, .04, .45, .04, '#3a3a40', xx, .22, zz, MET); bx(g, 1.85, .14, .8, '#d8d4c8', 0, .5, 0); bx(g, .4, .1, .55, '#f0ece2', -.65, .62, 0); }
-  // la forgia: il fuoco col mantice, l'incudine sul ceppo, le tenaglie, il secchio del carbone
-  function forgiaExtra(g) { cy(g, .25, .3, .55, '#5a3a20', .9, .27, .3); bx(g, .45, .14, .18, '#3a3a40', .9, .62, .3, MET); bx(g, .2, .08, .14, '#3a3a40', 1.17, .64, .3, MET); for (let i = 0; i < 2; i++) bx(g, .45, .02, .03, '#2a2a2e', .9, .7, .25 + i * .06, MET, .3); cy(g, .18, .14, .3, '#3a3a3a', -.9, .15, .4, MET); sp(g, .14, '#1a1a1a', -.9, .3, .4, {}, 1, .4, 1); }
+  function stamperia(g, cic) { cassaLegno(g, 1, .6, .7, 0, 0, 0); if (cic) { const k = .9; cic.scale.setScalar(k); cic.position.set(0, .6 - (cic.userData.piano || 0) * k, 0); { const gm = cic.getObjectByName('gambe'); if (gm) gm.parent.remove(gm); } g.add(cic); } else { bx(g, .7, .4, .5, '#3a3a3a', 0, .8, 0); named(cy(g, .07, .07, .55, '#2a2a2a', 0, 1.05, .2, MET, 0, Math.PI / 2), 'rullo'); }
+    for (let i = 0; i < 3; i++) bx(g, .32, .1, .45, '#f0ece2', -1, .05 + i * .1, 0, {}, R() * .2); for (const zz of [.2, -.1]) { cy(g, .1, .1, .18, '#1a1a2a', .9, .09, zz, MET); cy(g, .1, .1, .01, '#5a5a6a', .9, .185, zz, MET); }
+    for (const xx of [-1.3, 1.3]) { bx(g, .04, 1.9, .04, '#6a5a44', xx, .95, -.6); asta(g, [xx, 1.2, -.6], [xx * .88, 0, -.85], .03, '#6a5a44'); } cy(g, .005, .005, 2.6, '#c8c8c8', 0, 1.85, -.6, {}, 0, Math.PI / 2);
+    for (let i = 0; i < 6; i++) { bx(g, .3, .42, .005, '#f0ece2', -1 + i * .4, 1.63, -.6); bx(g, .2, .08, .006, '#c83a2a', -1 + i * .4, 1.73, -.596); bx(g, .04, .03, .012, '#c8a060', -1 + i * .4, 1.845, -.6); } }
+  // il banco radio: scrivania, ricetrasmittenti impilate, radiolina, televisore, mappa al muro, sedia, antenna
+  function bancoRadio(g) { for (const xx of [-.8, .8]) for (const zz of [-.3, .3]) bx(g, .05, .75, .05, '#6a4a2c', xx, .37, zz); bx(g, 1.6, .1, .03, '#5a3a20', 0, .66, -.3); piano(g, 1.8, .75, .76, '#7a5634');
+    ricetrasmittente(g, -.45, .785, -.12, .1); ricetrasmittente(g, -.45, 1.02, -.15, .05); tv(g, .35, .785, -.1, -.15); dl(g, 'radio', -.05, .785, .12, .3, .8);
+    bx(g, .25, .05, .18, '#2a2a2a', .1, .81, .22); mappa(g, 1.2, .8, 0, 1.6, -.4); lumeOlio(g, .75, .785, .15); manifestino(g, -.85, 1.5, -.39, '#2a5a8a');
+    const sd = sub(g, 0, 0, .7, Math.PI); bx(sd, .45, .04, .42, '#7a5634', 0, .45, 0); for (const xx of [-.2, .2]) for (const zz of [-.18, .18]) bx(sd, .04, zz < 0 ? .9 : .45, .04, '#5a3a20', xx, zz < 0 ? .45 : .22, zz); bx(sd, .45, .3, .03, '#7a5634', 0, .75, -.18); }
+  // l'infermeria: branda, cassetta del pronto, flebo sul suo treppiede, lampada, catino
+  function infermeria(g) { castelloBasso(g); cassaMetallo(g, 1.3, 0, -.2, 0); const k = sub(g, 1.18, .45, -.2); bx(k, .3, .18, .2, '#f0ece2', 0, .09, 0); bx(k, .32, .02, .22, '#d8d4c8', 0, .185, 0); bx(k, .05, .12, .01, '#c82a24', 0, .09, .102); bx(k, .12, .04, .01, '#c82a24', 0, .09, .103); bx(k, .1, .02, .02, '#5a5a5a', 0, .2, 0);
+    cy(g, .012, .012, 1.75, '#c8c8d0', -1.2, .9, -.3, MET); for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; asta(g, [-1.2, .12, -.3], [-1.2 + Math.cos(a) * .25, .01, -.3 + Math.sin(a) * .25], .015, '#c8c8d0', MET); }
+    bx(g, .3, .015, .015, '#c8c8d0', -1.2, 1.76, -.3, MET); bx(g, .1, .18, .05, '#d8e8f0', -1.08, 1.6, -.3, { transparent: true, opacity: .8 }); cavo(g, [[-1.08, 1.5, -.3], [-1.05, 1.1, -.25], [-.95, .75, -.1], [-.85, .6, 0]], .004, '#e8eef0');
+    lampada(g, 1.45, .43, -.25, 2.4); cy(g, .2, .15, .1, '#c8ccd4', -1.1, .05, .3, MET); }
+  function castelloBasso(g) { for (const xx of [-.9, .9]) for (const zz of [-.4, .4]) bx(g, .04, .45, .04, '#3a3a40', xx, .22, zz, MET); for (const zz of [-.4, .4]) bx(g, 1.84, .04, .04, '#3a3a40', 0, .41, zz, MET); bx(g, 1.8, .12, .78, '#d8d4c8', 0, .49, 0); bx(g, .4, .1, .55, '#f0ece2', -.65, .6, 0); bx(g, 1.1, .03, .8, '#6a7a6a', .3, .565, 0); }
+  // [modelli] la forgia: incudine vera (corno, tavola, vita, base) sul ceppo cerchiato, tenaglie appoggiate, secchio del carbone col carbone
+  function forgiaExtra(g) { cy(g, .25, .29, .5, '#5a3a20', .9, .25, .3); for (const yy of [.08, .42]) cy(g, .275 - yy * .06, .28 - yy * .06, .03, '#3a3a40', .9, yy, .3, MET); cy(g, .25, .25, .005, '#a07a4e', .9, .503, .3);
+    const a = sub(g, .9, .5, .3, .3), I = '#3a3a40'; bx(a, .2, .06, .14, I, 0, .03, 0, MET); bx(a, .12, .08, .09, I, 0, .1, 0, MET); bx(a, .32, .07, .13, I, -.02, .175, 0, MET); const h = new THREE.Mesh(new THREE.ConeGeometry(.06, .2, 8), mat(I, MET)); h.rotation.z = -Math.PI / 2; h.position.set(.24, .18, 0); h.scale.z = .9; h.castShadow = true; a.add(h); bx(a, .06, .07, .13, I, -.2, .175, 0, MET);
+    for (let i = 0; i < 2; i++) asta(g, [.62, .51, .14 + i * .03], [.6 + .4 * Math.cos(.3), .52, .4 + i * .02], .018, '#2a2a2e', MET);
+    cy(g, .17, .14, .3, '#3a3a3a', -.9, .15, .4, MET); const t = new THREE.Mesh(new THREE.TorusGeometry(.17, .008, 4, 14, Math.PI), mat('#2a2a2a', MET)); t.position.set(-.9, .3, .4); g.add(t);
+    for (let i = 0; i < 9; i++) { const p = new THREE.Mesh(new THREE.DodecahedronGeometry(.045), mat('#1a1a1a', { roughness: .6 })); p.position.set(-.9 + (R() - .5) * .2, .29 + R() * .03, .4 + (R() - .5) * .2); g.add(p); } }
 
+  // [modelli] ricetrasmittente militare: cassa con le maniglie, quadrante, manopole, cornetta appesa col cavo a spirale, antenna a stilo sul suo attacco
+  function ricetrasmittente(g, x, y, z, ry) {
+    const s = sub(g, x, y, z, ry), C = '#4a5240'; bx(s, .5, .22, .3, C, 0, .11, 0); bx(s, .52, .03, .32, '#3a4232', 0, .225, 0); for (const xx of [-.27, .27]) { bx(s, .02, .1, .02, '#2a2a2a', xx, .13, .08); bx(s, .02, .1, .02, '#2a2a2a', xx, .13, -.08); bx(s, .02, .02, .18, '#2a2a2a', xx, .18, 0); }
+    bx(s, .2, .1, .01, '#c8b880', -.1, .13, .151, GLOW('#806838')); bx(s, .005, .08, .012, '#c83a2a', -.08, .13, .155); for (let i = 0; i < 3; i++) cy(s, .02, .02, .03, '#1a1a1a', .08 + i * .06, .12, .162, {}, Math.PI / 2);
+    named(bx(s, .03, .03, .01, '#30ff60', .2, .18, .152, GLOW('#30ff60')), 'led');
+    bx(s, .05, .12, .04, '#1a1a1a', .29, .1, .12); cavo(s, [[.29, .05, .12], [.24, .02, .17], [.18, .03, .155], [.15, .06, .152]], .006, '#1a1a1a');
+    cy(s, .015, .02, .03, '#2a2a2a', .2, .24, -.1); tubo(s, [.2, .25, -.1], [.25, .95, -.15], .004, '#c8c8d0', MET); return s;
+  }
+  // [modelli] fucile appoggiato sul banco: calcio sagomato, guardia, otturatore, canna e caricatore
+  function fucile(g, x, y, z, ry) { const s = sub(g, x, y, z, ry); bx(s, .3, .05, .045, '#5a3a20', -.36, .005, 0); bx(s, .12, .085, .045, '#5a3a20', -.48, -.005, 0); bx(s, .2, .045, .05, '#2a2a2e', -.12, .015, 0, MET); bx(s, .08, .06, .04, '#5a3a20', -.03, .0, 0); cy(s, .012, .012, .46, '#2a2a2e', .23, .02, 0, MET, 0, Math.PI / 2); bx(s, .04, .09, .03, '#2a2a2e', -.1, -.05, 0, MET, 0, 0, .2); bx(s, .03, .02, .02, '#2a2a2e', -.06, .045, .03, MET); return s; }
   return { pallet, sacchi, cassaMil, cassaLegno, cavalletti, piano, telo, pannello, morsa, cassetta, lampada, crt, tv, radio, cassettiera, sgabello, vasetti, bottiglie, attrezziSparsi,
     tanica, estintore, bobina, fari, generatore, armadietti, castello, scaffaleMet, cassaMetallo, cartone, lumeOlio, mappa, manifestino,
-    bancoArmi, bancoLavoro, cucina, focolare, tessile, stamperia, bancoRadio, infermeria, forgiaExtra, mat };
+    bancoArmi, bancoLavoro, cucina, focolare, tessile, stamperia, bancoRadio, infermeria, forgiaExtra, mat,
+    ricetrasmittente, fucile, asta, tubo, cavo, dl };
 })();
 </script>
 <script>/* Porto Vecchio — Il Cantiere del covo (come il laboratorio di Fallout 4).
@@ -33867,15 +34159,15 @@ var Cantiere = (function () {
       case 'barricata': { const a = box(g, S0, .8, .12, c, 0, .6, 0); a.rotation.z = .2; const b2 = box(g, S0, .8, .12, '#5a3a20', 0, .5, .2); b2.rotation.z = -.15; box(g, .6, .7, .5, '#4a4a4a', .5, .35, -.1); break; }
       case 'torretta': { const w = S0 * 2 - .3; for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(g, .16, 3.6, .16, '#5a4028', x * w / 2, 1.8, z * w / 2); box(g, w + .3, .1, w + .3, c, 0, 3, 0); box(g, w + .3, .8, .08, c, 0, 3.45, w / 2 + .1); box(g, w + .3, .8, .08, c, 0, 3.45, -w / 2 - .1); box(g, .08, .8, w + .3, c, w / 2 + .1, 3.45, 0); const rf = box(g, w + .8, .08, w + .8, '#5a5048', 0, 4.4, 0); rf.rotation.x = .1; for (const x of [-.4, .4]) box(g, .06, 1, .06, '#5a4028', x, 3.9, 0); break; }
     }
-    // animazioni aggiunte alle postazioni del kit
-    if (b.anim === 'fuoco' && b.stm) tag(cyl(g, 0, .14, .3, '#ff7a20', 0, .45, .3, '#ff5a10'), 'fiamma');
-    if (b.anim === 'ago') tag(box(g, .015, .12, .015, '#c8c8d0', .17, .86, 0), 'ago');
-    if (b.anim === 'rullo') { const r0 = tag(cyl(g, .08, .08, .62, '#3a3a3a', 0, 1.05, .2), 'rullo'); r0.rotation.z = Math.PI / 2; }
-    if (b.anim === 'radio') { tag(box(g, .04, .04, .02, '#30ff60', -.12, 1.0, .06, 0), 'led'); g.getObjectByName('led').material.emissive = new THREE.Color('#30ff60'); cyl(g, .008, .008, 1.2, '#c8c8d0', .55, 1.4, -.2); }
-    if (b.anim === 'brace') tag(box(g, .5, .05, .35, '#ff4a10', -.1, .9, 0), 'brace').material.emissive = new THREE.Color('#ff3a00');
+    // animazioni aggiunte alle postazioni del kit (solo se il modello non ha già la sua parte con quel nome)
+    if (!g.getObjectByName('fiamma') && b.anim === 'fuoco' && b.stm) tag(cyl(g, 0, .14, .3, '#ff7a20', 0, .45, .3, '#ff5a10'), 'fiamma');
+    if (!g.getObjectByName('ago') && b.anim === 'ago') tag(box(g, .015, .12, .015, '#c8c8d0', .17, .86, 0), 'ago');
+    if (!g.getObjectByName('rullo') && b.anim === 'rullo') { const r0 = tag(cyl(g, .08, .08, .62, '#3a3a3a', 0, 1.05, .2), 'rullo'); r0.rotation.z = Math.PI / 2; }
+    if (!g.getObjectByName('led') && b.anim === 'radio') { tag(box(g, .04, .04, .02, '#30ff60', -.12, 1.0, .06, 0), 'led'); g.getObjectByName('led').material.emissive = new THREE.Color('#30ff60'); cyl(g, .008, .008, 1.2, '#c8c8d0', .55, 1.4, -.2); }
+    if (!g.getObjectByName('brace') && b.anim === 'brace') tag(box(g, .5, .05, .35, '#ff4a10', -.1, .9, 0), 'brace').material.emissive = new THREE.Color('#ff3a00');
     if (b.anim === 'lampadina' && !g.getObjectByName('luce')) tag(cyl(g, .05, .07, .1, '#f0e0a0', .4, 1.5, -.2, '#ffd890'), 'luce');
-    if (b.anim === 'rossa') tag(cyl(g, .06, .06, .06, '#ff2a2a', 0, 1.9, -.2, '#ff1010'), 'luce');
-    if (b.anim === 'segatura') tag(box(g, .3, .02, .2, '#d8b080', .3, .87, .1), 'segatura');
+    if (!g.getObjectByName('luce') && b.anim === 'rossa') tag(cyl(g, .06, .06, .06, '#ff2a2a', 0, 1.9, -.2, '#ff1010'), 'luce');
+    if (!g.getObjectByName('segatura') && b.anim === 'segatura') tag(box(g, .3, .02, .2, '#d8b080', .3, .87, .1), 'segatura');
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     return g;
   }
@@ -33979,10 +34271,11 @@ var Cantiere = (function () {
     if (U.scene !== scene) { U.scene = scene; U.grp = new THREE.Group(); U.grp.name = 'covo'; scene.add(U.grp); U.meshes = {}; }
     if (U.stRef !== st) { Object.values(U.meshes).forEach(m => U.grp.remove(m)); U.meshes = {}; U.stRef = st; U.dirty = true; }
     const lv = lvOf(st), objs = st.covo ? st.covo.obj : [];
+    const dlv = typeof Scaricati !== 'undefined' ? Scaricati.ver : 0; if (U.dlv !== dlv) { U.dlv = dlv; U.dirty = true; }   // [modelli] arrivati i modelli scaricati: si rifanno
     if (U.dirty) {
       const want = new Set(objs.map(o => o.uid));
       Object.keys(U.meshes).forEach(k => { if (!want.has(k)) { U.grp.remove(U.meshes[k]); delete U.meshes[k]; } });
-      objs.forEach(o => { let m = U.meshes[o.uid]; const b = BY[o.id]; if (!b) return; if (!m || m.userData.kitWait && KIT[b.kit] && KIT[b.kit] !== 'wait') { if (m) U.grp.remove(m); m = model(b); m.userData.kitWait = !!(b.kit && (!KIT[b.kit] || KIT[b.kit] === 'wait')); m.userData.uid = o.uid; U.grp.add(m); U.meshes[o.uid] = m; } m.position.set(o.x, hAt(st, o.x, o.y, o.lv), o.y); m.rotation.y = -o.rot; m.userData.lv = o.lv; });
+      objs.forEach(o => { let m = U.meshes[o.uid]; const b = BY[o.id]; if (!b) return; if (!m || m.userData.kitWait && KIT[b.kit] && KIT[b.kit] !== 'wait' || m.userData.dlv !== dlv) { if (m) U.grp.remove(m); m = model(b); m.userData.dlv = dlv; m.userData.kitWait = !!(b.kit && (!KIT[b.kit] || KIT[b.kit] === 'wait')); m.userData.uid = o.uid; U.grp.add(m); U.meshes[o.uid] = m; } m.position.set(o.x, hAt(st, o.x, o.y, o.lv), o.y); m.rotation.y = -o.rot; m.userData.lv = o.lv; });
       U.dirty = objs.some(o => U.meshes[o.uid] && U.meshes[o.uid].userData.kitWait);
     }
     // solo quello del livello dove sei (sotto terra si vede il bunker, sopra il covo)

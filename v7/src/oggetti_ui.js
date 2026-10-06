@@ -178,32 +178,170 @@ var OggettiUI = (function () {
   // fatti di scatole e cilindri, a misura reale (metri), il davanti verso +z come i mobili del kit
   function stModel(name) {
     if (typeof THREE === 'undefined') return null;
+    // [modelli] rifatte il 6/10: ogni pezzo poggia su qualcosa, gambe e tubi uniscono i punti veri, le parti che si animano hanno il loro nome
+    // (fiamma, brace, ago, rullo, led, luce, segatura). 'gambe' = il mobile sotto la macchina: tessile e stamperia lo nascondono e la posano sul loro piano.
     const g = new THREE.Group(), M = {};
-    const mat = c => M[c] || (M[c] = new THREE.MeshStandardMaterial({ color: c, roughness: .85, metalness: /^#[3-6]/.test(c) ? .35 : .05 }));
-    const box = (w, h, d, x, y, z, c) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); m.position.set(x, y + h / 2, z); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
-    const cyl = (r, h, x, y, z, c, rx) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 12), mat(c)); m.position.set(x, y + (rx ? 0 : h / 2), z); if (rx) m.rotation.x = Math.PI / 2; m.castShadow = true; g.add(m); return m; };
-    const legs = (w, d, h, c) => { [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => box(.07, h, .07, a * (w / 2 - .06), 0, b * (d / 2 - .06), c)); };
-    const WOOD = '#7a5634', DARK = '#3a3632', IRON = '#4a4c52', RED = '#8a2a22', GREEN = '#3a5a44';
+    const mat = (c, o) => { const k = c + JSON.stringify(o || {}); return M[k] || (M[k] = new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .85, metalness: /^#[3-6]/.test(c) ? .3 : .05 }, o || {}))); };
+    const glow = (c, e, k) => new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: k || 1.2, roughness: 1 });
+    const mesh = (geo, c, p, o) => { const m = new THREE.Mesh(geo, typeof c === 'string' ? mat(c, o) : c); m.castShadow = true; m.receiveShadow = true; (p || g).add(m); return m; };
+    // box: y è la base; cyl: y è la base (rx: coricato lungo z, rz: coricato lungo x, allora y è il centro)
+    const box = (w, h, d, x, y, z, c, p, o) => { const m = mesh(new THREE.BoxGeometry(w, h, d), c, p, o); m.position.set(x, y + h / 2, z); return m; };
+    const cyl = (r, h, x, y, z, c, rx, p, r1, n) => { const m = mesh(new THREE.CylinderGeometry(r, r1 === undefined ? r : r1, h, n || 14), c, p); m.position.set(x, y + (rx ? 0 : h / 2), z); if (rx === 1) m.rotation.x = Math.PI / 2; if (rx === 2) m.rotation.z = Math.PI / 2; return m; };
+    const ball = (r, x, y, z, c, p, sx, sy, sz) => { const m = mesh(new THREE.SphereGeometry(r, 14, 10), c, p); m.position.set(x, y, z); m.scale.set(sx || 1, sy || 1, sz || 1); return m; };
+    const V = (a) => new THREE.Vector3(a[0], a[1], a[2]), UP = new THREE.Vector3(0, 1, 0);
+    const asta = (a, b, s, c, p, round) => { const A = V(a), B = V(b), d = B.clone().sub(A), m = mesh(round ? new THREE.CylinderGeometry(s, s, 1, 8) : new THREE.BoxGeometry(s, 1, s), c, p); m.position.copy(A).add(B).multiplyScalar(.5); m.quaternion.setFromUnitVectors(UP, d.clone().normalize()); m.scale.y = d.length(); return m; };
+    const cavo = (pts, r, c, p) => mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(V)), pts.length * 8, r, 6), c, p);
+    const named = (m, n) => { m.name = n; m.material = m.material.clone(); return m; };
+    const sub = (x, y, z, ry, p) => { const s = new THREE.Group(); s.position.set(x || 0, y || 0, z || 0); s.rotation.y = ry || 0; (p || g).add(s); return s; };
+    const legs = (w, d, h, c, p, s) => [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => box(s || .06, h, s || .06, a * (w / 2 - .05), 0, b * (d / 2 - .05), c, p));
+    const top = (w, h, d, y, c, p) => { box(w, h, d, 0, y, 0, c, p); box(w - .08, .06, .02, 0, y - .06, d / 2 - .06, c, p); };   // piano con la fascia sotto
+    const WOOD = '#7a5634', WOOD2 = '#a07848', DARK = '#3a3632', IRON = '#4a4c52', STEEL = '#9a9ea6', RED = '#8a2a22', GREEN = '#3a5a44', BRICK = '#9a5a40', MET = { metalness: .55, roughness: .45 };
     switch (name) {
-      case 'st_forgia': box(1.2, .8, .9, -.1, 0, 0, '#5a4a40'); box(1, .08, .7, -.1, .8, 0, '#2a2420'); { const f = box(.6, .06, .4, -.1, .86, 0, '#ff5a1a'); f.material = new THREE.MeshStandardMaterial({ color: '#ff6a2a', emissive: '#ff4a10', emissiveIntensity: 1.4 }); }
-        box(.5, 1.2, .5, -.1, .9, -.2, '#4a4038'); box(.2, .9, .2, -.1, 2.1, -.2, '#3a3430'); cyl(.18, .5, .55, 0, .25, '#4a3a2a'); box(.5, .14, .2, .55, .5, .25, IRON); box(.2, .1, .14, .78, .54, .25, IRON); break;
-      case 'st_saldatrice': box(.5, .55, .4, 0, 0, 0, '#2a5a8a'); box(.3, .1, .05, 0, .38, .21, '#1a1a1a'); cyl(.05, .6, .2, 0, .25, '#1a1a1a'); cyl(.11, .9, -.25, 0, -.05, '#3a6a3a'); break;
-      case 'st_banco_lavoro': box(1.8, .08, .75, 0, .86, 0, WOOD); legs(1.8, .75, .86, WOOD); box(1.7, .05, .65, 0, .25, 0, WOOD); box(.18, .16, .22, .7, .94, .2, IRON); box(1.6, .7, .04, 0, .95, -.36, '#5a4a3a');
-        [[-.6, '#8a8a90'], [-.35, '#b84a2a'], [-.1, '#8a8a90'], [.15, '#3a6ab8']].forEach(([x, c]) => box(.04, .3, .03, x, 1.2, -.32, c)); break;
-      case 'st_banco_falegname': box(2, .1, .7, 0, .82, 0, '#a07848'); legs(2, .7, .82, '#8a6438'); box(1.9, .06, .6, 0, .22, 0, '#8a6438'); box(.25, .2, .12, -.85, .9, .3, '#6a4a2a'); box(.6, .08, .12, .3, .92, .1, '#d8b080'); box(.5, .03, .14, -.2, .92, -.15, '#c0c0c8'); break;
-      case 'st_banco_macellaio': box(1.6, .12, .75, 0, .8, 0, '#c8b8a0'); legs(1.6, .75, .8, '#c8c8c8'); box(.5, .1, .4, .3, .92, 0, '#8a2a2a'); box(.03, .25, .1, -.5, .92, 0, '#c8c8d0'); box(1.5, .5, .04, 0, 1.2, -.36, '#d8d8d8'); break;
-      case 'st_macchina_cucire': box(1, .06, .55, 0, .74, 0, '#6a4a2a'); legs(1, .55, .74, '#2a2a2a'); box(.4, .18, .18, 0, .8, 0, '#1a1a1a'); box(.08, .26, .16, .17, .98, 0, '#1a1a1a'); box(.35, .08, .14, .03, 1.2, 0, '#1a1a1a'); cyl(.06, .02, -.2, .9, .1, '#c0a040', 1); break;
-      case 'st_ciclostile': box(.9, .7, .6, 0, 0, 0, '#3a3a3a'); box(.7, .35, .45, 0, .7, 0, '#5a5a5a'); cyl(.14, .6, 0, .95, 0, '#2a2a2a', 0).rotation.z = Math.PI / 2; box(.3, .02, .35, -.45, .78, 0, '#f0ead8'); box(.25, .12, .3, .45, .7, 0, '#e8e4dc'); break;
-      case 'st_banco_radio': box(1.4, .06, .65, 0, .74, 0, '#5a4a3a'); legs(1.4, .65, .74, '#3a3a3a'); box(.5, .3, .3, -.3, .8, -.12, '#4a5a4a'); box(.1, .1, .02, -.42, .9, .04, '#e8c040'); box(.1, .1, .02, -.2, .9, .04, '#c8c8c8');
-        box(.3, .05, .2, .35, .8, .1, GREEN); cyl(.015, .25, .45, .8, -.1, '#c8c8c8'); { const l = box(.06, .06, .02, -.3, 1.02, .03, '#ff3030'); l.material = new THREE.MeshStandardMaterial({ color: '#ff3030', emissive: '#ff2020', emissiveIntensity: 1.2 }); } break;
-      case 'st_camera_oscura': box(1.4, .06, .65, 0, .8, 0, '#2a2a2a'); legs(1.4, .65, .8, '#2a2a2a'); cyl(.04, .7, -.35, .86, -.15, '#5a5a5a'); box(.25, .2, .25, -.35, 1.4, -.1, '#3a3a3a'); [0, .25, .5].forEach(x => box(.22, .05, .3, x, .86, .1, '#4a4a6a')); break;
-      case 'st_tavolo_medico': box(1.9, .1, .7, 0, .78, 0, '#d8d8d0'); legs(1.9, .7, .78, '#9a9aa0'); box(.6, .12, .55, -.6, .88, 0, '#8ab0a8'); box(.4, .9, .35, .9, 0, -.3, '#e8e8e0'); box(.12, .08, .02, .9, .7, -.12, RED); break;
-      case 'st_alambicco': cyl(.28, .5, 0, 0, 0, '#b86a3a'); cyl(.18, .3, 0, .5, 0, '#c87a4a'); cyl(.03, .7, .3, 1, 0, '#c87a4a', 1).rotation.z = .9; cyl(.15, .5, .55, 0, .1, '#8a5a3a'); box(.35, .12, .35, 0, 0, 0, '#3a2a20'); break;
-      case 'st_stufa': box(.6, .7, .55, 0, 0, 0, '#2a2a2c'); box(.4, .25, .02, 0, .2, .28, '#3a3a3c'); { const f = box(.3, .12, .02, 0, .25, .29, '#ff5a1a'); f.material = new THREE.MeshStandardMaterial({ color: '#ff6a2a', emissive: '#ff3a10', emissiveIntensity: 1 }); } cyl(.08, 1.6, 0, .7, -.12, '#3a3a3c'); break;
-      case 'st_forno': box(1.5, .9, 1.1, 0, 0, 0, '#a07860'); box(1.4, .5, 1, 0, .9, 0, '#b08870'); { const f = box(.5, .3, .02, 0, .5, .56, '#ff7a2a'); f.material = new THREE.MeshStandardMaterial({ color: '#ff7a2a', emissive: '#ff4a10', emissiveIntensity: 1.1 }); } box(.3, .6, .3, .4, 1.4, -.3, '#8a6850'); box(.1, .02, .9, -.6, .9, .8, WOOD); break;
-      case 'st_cassetta': box(.55, .25, .3, 0, 0, 0, RED); box(.57, .04, .32, 0, .25, 0, '#a83a30'); box(.2, .04, .04, 0, .3, 0, DARK); break;
-      case 'st_cassaforte': box(.75, .9, .65, 0, 0, 0, '#3a4a44'); box(.6, .75, .02, 0, .08, .33, '#4a5a54'); cyl(.08, .04, .1, .5, .35, '#c0b080', 1); box(.04, .2, .04, -.15, .4, .36, '#c0b080'); break;
-      case 'st_rastrelliera': box(1.4, 1.6, .4, 0, 0, 0, '#4a5040'); box(1.3, 1.4, .02, 0, .1, .2, '#3a4030'); [-.45, -.15, .15, .45].forEach(x => box(.08, 1, .06, x, .3, .17, '#2a2a2a')); break;
+      case 'st_forgia': {   // focolare in mattoni col bacino delle braci, cappa a tronco di piramide e canna fumaria, mantice di cuoio sul fianco
+        box(1.2, .78, .9, 0, 0, 0, BRICK); for (let i = 0; i < 6; i++) box(1.21, .012, .91, 0, .12 + i * .12, 0, '#7a4a34');
+        box(1.26, .06, .96, 0, .78, 0, '#5a4a40'); box(.7, .05, .5, 0, .8, .05, '#2a2420');
+        named(box(.6, .04, .42, 0, .82, .05, glow('#ff6a2a', '#ff4a10', 1.4)), 'brace'); for (let i = 0; i < 7; i++) ball(.05, -.22 + (i % 4) * .14, .87, -.08 + Math.floor(i / 4) * .2, '#1a1612');
+        box(.5, .32, .5, 0, 0, .41, '#2a2420'); box(.36, .2, .02, 0, .06, .66, '#1a1612');                                             // la bocca della cenere davanti
+        box(1.2, .9, .12, 0, .84, -.39, BRICK);                                                                                       // il muretto dietro
+        const hood = mesh(new THREE.CylinderGeometry(.18, .62, .55, 4, 1), '#3a3430'); hood.rotation.y = Math.PI / 4; hood.scale.set(1, 1, .8); hood.position.set(0, 1.74 + .275, -.08);
+        for (const x of [-.5, .5]) asta([x, .84, .38], [x * .9, 1.76, .3], .04, '#2a2a2e');   // i ferri che reggono la cappa
+        box(.3, .9, .3, 0, 2.28, -.1, '#3a3430'); box(.36, .06, .36, 0, 3.12, -.1, '#2a2420');
+        const mt = sub(-.75, .55, .1, 0); mt.rotation.z = .25; box(.08, .04, .5, 0, 0, 0, WOOD, mt); box(.06, .2, .4, 0, -.12, 0, '#6a4a30', mt); box(.08, .04, .5, 0, -.24, 0, WOOD, mt); box(.04, .04, .3, 0, -.12, -.35, '#3a3a3a', mt);
+        asta([-.67, .45, -.25], [-.5, .7, -.25], .03, '#3a3a3a', g, true); box(.08, .55, .08, -.75, 0, .1, WOOD);
+        break; }
+      case 'st_saldatrice': {   // saldatrice a carrello: cassa con le feritoie, quadrante, prese, due cavi (pinza e massa), bombola incatenata
+        box(.46, .5, .36, 0, .08, 0, '#2a5a8a'); for (let i = 0; i < 6; i++) box(.005, .05, .26, .232, .2 + i * .05, 0, '#1a3a5a');
+        box(.48, .03, .38, 0, .58, 0, '#1e4a72'); asta([-.2, .61, 0], [-.2, .72, 0], .015, '#1a1a1a', g, true); asta([.2, .61, 0], [.2, .72, 0], .015, '#1a1a1a', g, true); asta([-.2, .72, 0], [.2, .72, 0], .015, '#1a1a1a', g, true);
+        box(.3, .2, .01, 0, .3, .18, '#d8d4c8'); cyl(.05, .02, 0, .4, .185, '#1a1a1a', 1); box(.005, .04, .005, 0, .42, .195, RED);
+        for (const x of [-.1, .1]) cyl(.025, .03, x, .2, .19, x < 0 ? RED : '#1a1a1a', 1);
+        for (const x of [-.17, .17]) { cyl(.07, .04, x, .07, -.12, '#1a1a1a', 2); cyl(.03, .045, x, .07, -.12, STEEL, 2); } box(.04, .08, .04, .19, 0, .14, '#1a1a1a'); box(.04, .08, .04, -.19, 0, .14, '#1a1a1a');
+        cavo([[-.1, .2, .2], [-.15, .1, .32], [-.05, .02, .45], [.15, .02, .42], [.25, .06, .3]], .014, RED); box(.05, .14, .04, .27, .03, .3, '#2a2a2a').rotation.z = .6;
+        cavo([[.1, .2, .2], [.18, .08, .3], [.32, .015, .35], [.42, .015, .2]], .014, '#1a1a1a'); box(.08, .03, .05, .45, .01, .18, '#c8a030');
+        cyl(.1, .75, 0, 0, -.32, '#3a6a3a', 0, g, .1, 16); ball(.1, 0, .75, -.32, '#3a6a3a', g, 1, .6, 1); cyl(.025, .06, 0, .8, -.32, '#c8a030'); ball(.025, .04, .86, -.32, '#c8a030'); cyl(.02, .015, .06, .86, -.28, '#e8e8e8', 1);
+        const ch = new THREE.Mesh(new THREE.TorusGeometry(.11, .006, 4, 16), mat('#6a6a6a', MET)); ch.rotation.x = Math.PI / 2; ch.position.set(0, .55, -.32); g.add(ch);
+        break; }
+      case 'st_banco_lavoro': {   // banco da lavoro: piano spesso, ripiano sotto, cassetti, pannello forato con gli attrezzi, morsa vera sullo spigolo
+        top(1.8, .07, .75, .83, WOOD); legs(1.8, .75, .83, WOOD, g, .08); box(1.7, .04, .65, 0, .2, 0, WOOD); box(1.66, .06, .04, 0, .5, -.33, WOOD);
+        const dr = sub(.55, .58, .02); box(.6, .2, .66, 0, 0, 0, '#6a4a2c', dr); for (const x of [-.15, .15]) { box(.27, .16, .01, x, .02, .335, '#8a6a44', dr); box(.08, .02, .02, x, .1, .345, '#2a2a2a', dr); }
+        box(1.8, .9, .03, 0, .9, -.36, '#8a7050'); for (let j = 0; j < 4; j++) for (let i = 0; i < 12; i++) box(.012, .012, .005, -.8 + i * .145, 1.0 + j * .2, -.343, '#4a3a28');
+        [[-.65, '#8a8a90', .32], [-.45, '#b84a2a', .26], [-.25, '#8a8a90', .3], [-.05, '#3a6ab8', .24], [.15, '#d0a030', .2]].forEach(([x, c, l]) => { box(.012, .012, .05, x, 1.55, -.33, '#2a2a2a'); box(.02, l * .45, .012, x, 1.53 - l * .45, -.31, STEEL); box(.035, l * .55, .03, x, 1.53 - l, -.31, c); });
+        box(.35, .02, .14, .55, 1.2, -.27, WOOD); for (let i = 0; i < 4; i++) cyl(.03, .08, .43 + i * .08, 1.22, -.27, ['#c8a030', '#5a7a5a', '#8a4a2a', '#3a5a8a'][i]);
+        const v = sub(-.7, .9, .32); box(.16, .04, .2, 0, 0, -.06, '#3a5a8a', v); box(.14, .1, .05, 0, .04, -.12, '#3a5a8a', v); box(.14, .1, .05, 0, .04, .02, '#3a5a8a', v); cyl(.012, .26, 0, .09, .14, STEEL, 1, v); asta([-.08, .09, .26], [.08, .09, .26], .01, STEEL, v, true);
+        break; }
+      case 'st_banco_falegname': {   // banco del falegname: piano spesso coi fori, morsa di testa con la vite di legno, ripiano con le assi, pialla, sega, morsetto, trucioli
+        box(2, .1, .7, 0, .78, 0, WOOD2); for (let i = 0; i < 7; i++) cyl(.012, .005, -.8 + i * .25, .875, .26, '#3a2a1a');
+        for (const x of [-.85, .85]) { box(.1, .74, .1, x, .04, -.25, '#8a6438'); box(.1, .74, .1, x, .04, .25, '#8a6438'); box(.12, .06, .64, x, 0, 0, '#8a6438'); box(.08, .08, .5, x, .3, 0, '#8a6438'); }
+        box(1.64, .08, .06, 0, .3, 0, '#8a6438'); box(1.7, .04, .55, 0, .36, 0, '#8a6438');
+        for (let i = 0; i < 4; i++) box(1.5, .03, .14, 0, .4 + i * .03, -.15 + (i % 2) * .16, ['#c8a070', '#b89060', '#d0aa78', '#a88050'][i]);
+        box(.3, .18, .08, -.85, .68, .39, '#6a4a2a'); cyl(.025, .28, -.85, .78, .5, '#8a6438', 1); asta([-.95, .78, .62], [-.75, .78, .62], .015, '#6a4a2a', g, true);
+        const pl = sub(.2, .88, .05, .2); box(.26, .06, .07, 0, 0, 0, '#9a7040', pl); box(.06, .06, .04, -.08, .06, 0, '#6a4a2a', pl); box(.04, .05, .04, .07, .06, 0, '#3a3a3a', pl);
+        const sa = sub(-.35, .88, .12, -.15); box(.5, .005, .12, 0, 0, 0, STEEL, sa); box(.1, .06, .025, -.3, -.02, 0, '#6a4a2a', sa).position.y = .02;
+        const mo = sub(.75, .78, .36); box(.03, .2, .03, 0, -.1, 0, '#3a5a8a', mo); box(.12, .025, .03, .05, .1, 0, '#3a5a8a', mo); box(.12, .025, .03, .05, -.1, 0, '#3a5a8a', mo); cyl(.008, .2, .1, -.1, 0, STEEL, 0, mo);
+        named(box(.36, .02, .22, .55, .88, -.12, '#d8b080'), 'segatura'); for (let i = 0; i < 8; i++) { const t = new THREE.Mesh(new THREE.TorusGeometry(.025, .006, 4, 8, 4), mat('#e0c090')); t.position.set(.4 + Math.random() * .4, .9, -.2 + Math.random() * .2); t.rotation.set(Math.random() * 3, Math.random() * 3, 0); g.add(t); }
+        break; }
+      case 'st_banco_macellaio': {   // ceppo del macellaio: tagliere spesso su gambe d'acciaio, mannaia piantata, coltelli sulla barra, piastrelle e ganci con la carne
+        legs(1.6, .75, .72, STEEL, g, .05); box(1.5, .04, .65, 0, .2, 0, STEEL);
+        box(1.6, .16, .75, 0, .72, 0, '#c8a878'); for (let i = 0; i < 8; i++) box(.005, .161, .751, -.7 + i * .2, .72, 0, '#a88858'); box(.5, .005, .4, .3, .881, 0, '#8a3a2a');
+        const mn = sub(-.2, .88, .05, .4); box(.2, .1, .006, 0, .05, 0, STEEL, mn); box(.12, .03, .03, .15, .085, 0, '#3a2a1a', mn);
+        box(1.6, .7, .04, 0, .9, -.38, '#e8e8e0'); for (let j = 0; j < 7; j++) box(1.6, .005, .041, 0, .9 + j * .1, -.38, '#b8b8b0'); for (let i = 0; i < 16; i++) box(.005, .7, .041, -.75 + i * .1, .9, -.38, '#b8b8b0');
+        cyl(.012, 1.4, 0, 1.72, -.3, STEEL, 2); for (const x of [-.45, -.1]) { box(.008, .1, .008, x, 1.62, -.3, STEEL); ball(.09, x, 1.47, -.3, '#9a3a32', g, 1, 1.3, .6); ball(.05, x, 1.32, -.3, '#e8d8c8'); }
+        for (let i = 0; i < 4; i++) { box(.025, .2, .004, .3 + i * .1, 1.16, -.355, STEEL); box(.03, .1, .02, .3 + i * .1, 1.3, -.35, '#2a2a2a'); } box(.5, .02, .02, .45, 1.4, -.35, '#3a3a3a');
+        break; }
+      case 'st_macchina_cucire': {   // macchina da cucire a pedale: gambe di ghisa col pedale e il volano, piano di legno, la testa nera con l'ago, il volantino, il rocchetto
+        const gm = sub(); gm.name = 'gambe';
+        for (const x of [-.4, .4]) { box(.04, .7, .05, x, 0, -.18, '#1e1e20', gm); box(.04, .7, .05, x, 0, .18, '#1e1e20', gm); box(.04, .05, .44, x, 0, 0, '#1e1e20', gm); asta([x, .05, -.18], [x, .6, .18], .025, '#1e1e20', gm); asta([x, .05, .18], [x, .6, -.18], .025, '#1e1e20', gm); }
+        box(.8, .03, .04, 0, .55, -.18, '#1e1e20', gm); const fly = mesh(new THREE.TorusGeometry(.16, .015, 6, 20), '#1e1e20', gm); fly.rotation.y = Math.PI / 2; fly.position.set(.36, .4, 0);
+        box(.5, .02, .25, 0, .1, .05, '#2a2a2a', gm); asta([.36, .4, 0], [.1, .11, .05], .01, '#1e1e20', gm, true);
+        box(1, .04, .55, 0, .7, 0, '#6a4a2a', gm); box(.94, .04, .02, 0, .63, .26, '#5a3a1a', gm); box(.25, .1, .45, -.35, .58, 0, '#5a3a1a', gm);
+        const h = sub(0, .74, 0); h.name = 'testa';
+        box(.42, .03, .2, 0, 0, 0, '#2a2a2a', h); box(.09, .24, .12, .15, .03, 0, '#151515', h); box(.38, .07, .1, .02, .25, 0, '#151515', h); box(.08, .15, .1, -.15, .13, 0, '#151515', h);
+        box(.39, .01, .101, .02, .29, 0, '#c8a030', h); cyl(.07, .03, .22, .2, 0, '#2a2a2a', 2, h); cyl(.075, .006, .238, .2, 0, STEEL, 2, h);
+        cyl(.015, .05, .08, .32, 0, '#e8e0c8', 0, h); cyl(.003, .1, .08, .37, 0, STEEL, 0, h);
+        named(box(.008, .08, .008, -.17, .07, .03, '#c8c8d0', h), 'ago'); box(.04, .015, .05, -.17, .03, .03, STEEL, h);
+        g.userData.piano = .74;
+        break; }
+      case 'st_ciclostile': {   // ciclostile su un trespolo: tamburo inchiostrato che gira con la manovella, vassoio dei fogli bianchi e quello dei fogli stampati
+        const gm = sub(); gm.name = 'gambe'; legs(.8, .55, .7, '#3a3a3a', gm, .04); box(.8, .03, .55, 0, .7, 0, '#4a4a4a', gm); box(.7, .03, .45, 0, .2, 0, '#3a3a3a', gm); for (let i = 0; i < 3; i++) box(.3, .04, .4, -.15, .23 + i * .04, 0, '#f0ead8', gm);
+        const m = sub(0, .73, 0); box(.6, .08, .4, 0, 0, 0, '#3a3a3a', m); for (const x of [-.26, .26]) box(.04, .3, .3, x, .08, 0, '#5a5a5a', m);
+        named(cyl(.12, .48, 0, .26, 0, '#2a2a2a', 2, m), 'rullo'); cyl(.125, .3, 0, .26, 0, '#1a1a2a', 2, m);
+        cyl(.04, .03, .3, .26, 0, '#5a5a5a', 2, m); asta([.32, .26, 0], [.32, .4, .08], .02, '#5a5a5a', m); cyl(.018, .07, .36, .4, .08, '#c83a2a', 2, m);
+        const t1 = box(.34, .01, .3, 0, .2, -.25, '#8a8a8a', m); t1.rotation.x = -.35; box(.3, .02, .26, 0, .22, -.25, '#f0ead8', m).rotation.x = -.35;
+        box(.36, .02, .3, 0, .06, .3, '#8a8a8a', m); box(.32, .03, .26, 0, .08, .3, '#f0ead8', m); box(.2, .03, .005, 0, .1, .3, '#3a3a6a', m);
+        g.userData.piano = .73;
+        break; }
+      case 'st_banco_radio': {   // scrivania della radio: apparato con le valvole, quadrante, cuffie, microfono da tavolo, tasto del telegrafo, antenna sul suo attacco
+        top(1.4, .05, .65, .72, '#5a4a3a'); legs(1.4, .65, .72, DARK, g, .05); box(1.3, .04, .04, 0, .15, -.28, DARK);
+        const r = sub(-.25, .77, -.14); box(.6, .32, .3, 0, 0, 0, '#4a5a4a', r); box(.62, .02, .32, 0, .32, 0, '#3a4a3a', r); box(.24, .12, .01, -.12, .14, .151, glow('#e8c890', '#806838', .8), r); box(.004, .1, .012, -.1, .15, .155, RED, r);
+        for (let i = 0; i < 3; i++) { cyl(.025, .03, .08 + i * .07, .08, .16, '#1a1a1a', 1, r); box(.006, .02, .006, .08 + i * .07, .1, .175, '#e8e8e8', r); }
+        named(box(.03, .03, .012, .22, .24, .152, glow('#30ff60', '#30ff60'), r), 'led');
+        for (let i = 0; i < 3; i++) cyl(.02, .07, -.15 + i * .06, .32, -.06, glow('#f0d8a0', '#a06020', .5), 0, r);
+        const hp = sub(.25, .77, .1, .4); const arc = mesh(new THREE.TorusGeometry(.08, .008, 4, 12, Math.PI), '#2a2a2a', hp); arc.rotation.x = -Math.PI / 2; arc.position.y = .03; for (const x of [-.08, .08]) cyl(.04, .03, x, .0, 0, '#1a1a1a', 0, hp);
+        cyl(.05, .02, .45, .77, -.05, DARK); asta([.45, .79, -.05], [.45, .95, -.02], .008, DARK, g, true); cyl(.03, .07, .45, .95, -.02, '#c8c8c8', 1);
+        box(.1, .015, .06, .05, .77, .2, '#2a2a2a'); box(.07, .01, .012, .05, .79, .2, '#c8a030'); cyl(.012, .015, .085, .8, .2, '#1a1a1a');
+        cyl(.03, .04, .62, .77, -.25, DARK); cyl(.006, 1.2, .62, .81, -.25, STEEL); cavo([[.62, .79, -.25], [.4, .79, -.3], [.06, .85, -.3]], .006, '#1a1a1a');
+        break; }
+      case 'st_camera_oscura': {   // camera oscura: tavolo con le tre bacinelle (sviluppo, arresto, fissaggio), ingranditore sulla colonna, luce rossa, foto stese col filo
+        top(1.4, .05, .65, .8, '#2a2a2a'); legs(1.4, .65, .8, '#2a2a2a', g, .05); box(1.3, .04, .55, 0, .25, 0, '#2a2a2a');
+        [['#6a6a3a', .05], ['#5a5a5a', .3], ['#3a5a6a', .55]].forEach(([c, x]) => { box(.23, .04, .3, x, .85, .1, '#d8d8d0'); box(.2, .02, .27, x, .87, .1, c, g, { roughness: .2 }); }); box(.06, .005, .1, .3, .9, .12, '#f0ece0');
+        const e = sub(-.45, .85, -.1); box(.3, .03, .36, 0, 0, .05, '#e8e4d8', e); cyl(.025, .8, 0, .03, -.15, '#5a5a5a', 0, e); box(.06, .08, .08, 0, .5, -.11, '#3a3a3a', e);
+        box(.2, .18, .2, 0, .48, -.0, '#3a3a3a', e); cyl(.08, .08, 0, .66, 0, '#2a2a2a', 0, e); cyl(.035, .1, 0, .38, 0, '#1a1a1a', 0, e); box(.18, .005, .24, 0, .031, .05, '#f8f4ec', e);
+        box(.12, .1, .06, .2, 1.85, -.3, '#2a2a2a'); named(box(.09, .07, .01, .2, 1.86, -.265, glow('#ff2a2a', '#ff1010', 1.6)), 'luce'); box(.012, .2, .012, .2, 1.95, -.33, '#2a2a2a');
+        cyl(.003, 1.4, 0, 1.6, -.3, '#c8c8c8', 2); for (let i = 0; i < 4; i++) { box(.13, .17, .003, -.5 + i * .3, 1.42, -.3, i % 2 ? '#d8d0c0' : '#c8c0b0'); box(.02, .03, .01, -.5 + i * .3, 1.585, -.3, '#c8a060'); }
+        break; }
+      case 'st_tavolo_medico': {   // lettino da visita: telaio d'acciaio, materasso imbottito con lo schienale alzato, rotolo di carta, armadietto a vetri coi flaconi
+        for (const [x, z] of [[-.85, -.28], [.85, -.28], [-.85, .28], [.85, .28]]) { cyl(.022, .7, x, .06, z, STEEL); cyl(.03, .04, x, 0, z, '#1a1a1a', 0, g, .03); }
+        box(1.8, .04, .62, 0, .72, 0, STEEL); for (const z of [-.28, .28]) box(1.74, .03, .03, 0, .3, z, STEEL);
+        box(1.3, .1, .6, .25, .76, 0, '#5a8a80', g, { roughness: .6 }); const bk = sub(-.42, .81, 0); bk.rotation.z = -.45; box(.55, .1, .6, -.27, -.05, 0, '#5a8a80', bk, { roughness: .6 }); asta([-.6, .72, -.2], [-.8, .92, -.2], .02, STEEL);
+        box(1.5, .01, .4, .3, .86, 0, '#f4f2ea'); cyl(.06, .44, .98, .74, 0, '#f4f2ea', 1);
+        const a = sub(1.05, 0, -.35); box(.45, .95, .32, 0, 0, 0, '#e8e8e0', a); box(.38, .5, .01, 0, .38, .16, mat('#c8e0e8', { transparent: true, opacity: .45, roughness: .1 }), a); for (const y of [.5, .72]) box(.4, .015, .28, 0, y, 0, '#d8d8d0', a);
+        for (let i = 0; i < 4; i++) cyl(.025, .09, -.12 + i * .08, .515, .02, ['#8a4a2a', '#e8e8e8', '#3a5a8a', '#6a3a1a'][i], 0, a); box(.38, .3, .01, 0, .05, .16, '#d8d8d0', a); box(.06, .06, .01, 0, .25, .17, RED, a);
+        break; }
+      case 'st_alambicco': {   // alambicco di rame su fornello di mattoni: caldaia, cappello a cipolla, collo di cigno che scende nel tino del serpentino, rubinetto e damigiana
+        box(.6, .4, .6, -.15, 0, 0, BRICK); box(.62, .03, .62, -.15, .4, 0, '#5a4a40'); box(.26, .2, .02, -.15, .06, .3, '#1a1612'); named(box(.2, .12, .02, -.15, .08, .305, glow('#ff7a2a', '#ff4a10', 1.5)), 'fiamma');
+        cyl(.26, .36, -.15, .43, 0, '#b86a3a', 0, g, .24, 18); const dome = mesh(new THREE.SphereGeometry(.26, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), '#c87a4a'); dome.position.set(-.15, .79, 0); dome.scale.y = .5;
+        const onion = mesh(new THREE.LatheGeometry([[0, 0], [.1, .01], [.16, .08], [.13, .18], [.05, .26], [.035, .3], [0, .31]].map(([a, b]) => new THREE.Vector2(a, b)), 16), '#d08a5a'); onion.position.set(-.15, .9, 0);
+        cavo([[-.15, 1.18, 0], [-.05, 1.22, 0], [.15, 1.12, .02], [.33, .9, .04], [.4, .72, .04]], .025, '#c87a4a');
+        cyl(.18, .58, .42, 0, .04, '#7a5634', 0, g, .19, 16); for (const y of [.08, .46]) { const t = mesh(new THREE.TorusGeometry(.185, .012, 4, 18), IRON); t.rotation.x = Math.PI / 2; t.position.set(.42, y, .04); } cyl(.17, .01, .42, .58, .04, '#4a6a7a', 0, g, .17);
+        cyl(.012, .1, .55, .12, .15, '#c87a4a', 2); box(.03, .04, .03, .62, .08, .15, '#c87a4a');
+        ball(.12, .62, .12, .32, mat('#4a7a5a', { transparent: true, opacity: .75, roughness: .2 }), g, 1, 1, 1); cyl(.03, .08, .62, .22, .32, '#4a7a5a'); for (let i = 0; i < 6; i++) asta([.62 + Math.cos(i) * .12, .04, .32 + Math.sin(i) * .12], [.62 + Math.cos(i) * .1, .2, .32 + Math.sin(i) * .1], .01, '#a88a5a');
+        break; }
+      case 'st_stufa': {   // stufa di ghisa: corpo su quattro piedi, sportello con la finestrella della fiamma, piastra, tubo che sale e piega verso il muro, bollitore e ciocchi
+        for (const [x, z] of [[-.24, -.2], [.24, -.2], [-.24, .2], [.24, .2]]) box(.06, .14, .06, x, 0, z, '#1e1e20');
+        box(.6, .55, .5, 0, .14, 0, '#2a2a2c'); for (const y of [.2, .62]) box(.62, .025, .52, 0, y, 0, '#1e1e20'); box(.62, .04, .52, 0, .69, 0, '#1e1e20');
+        box(.36, .3, .02, 0, .24, .26, '#3a3a3c'); named(box(.22, .14, .02, 0, .32, .265, glow('#ff6a2a', '#ff3a10', 1.6)), 'fiamma'); box(.03, .08, .03, .14, .36, .28, STEEL); for (let i = 0; i < 4; i++) box(.2, .01, .005, 0, .27 + i * .04, .276, '#1e1e20');
+        cyl(.07, .77, 0, .73, -.1, '#2a2a2c'); const el = mesh(new THREE.TorusGeometry(.12, .07, 8, 12, Math.PI / 2), '#2a2a2c'); el.rotation.y = -Math.PI / 2; el.position.set(0, 1.5, -.22); cyl(.07, .3, 0, 1.62, -.37, '#2a2a2c', 1); cyl(.075, .015, 0, 1.0, -.1, '#1e1e20');
+        cyl(.08, .1, .16, .73, .1, '#8a8e96', 0, g, .09); asta([.1, .84, .1], [.22, .84, .1], .012, '#2a2a2a', g, true); cyl(.012, .09, .245, .78, .1, '#8a8e96', 2);
+        for (let i = 0; i < 5; i++) cyl(.06, .42, .55, .06 + (i > 2 ? .11 : 0), -.15 + (i % 3) * .12 + (i > 2 ? .06 : 0), '#6a4a2a', 1);
+        break; }
+      case 'st_forno': {   // forno a legna: basamento di pietra con la legnaia, cupola di mattoni con la bocca ad arco che brilla, canna fumaria, pala appoggiata
+        box(1.5, .85, 1.3, 0, 0, 0, '#a89a88'); for (let i = 0; i < 4; i++) box(1.51, .01, 1.31, 0, .2 + i * .2, 0, '#8a7c6a'); box(1.1, .5, .02, 0, .1, .655, '#2a2420'); for (let i = 0; i < 5; i++) cyl(.06, .9, -.4 + i * .2, .2, .2, '#6a4a2a', 2);
+        box(1.56, .06, 1.36, 0, .85, 0, '#8a7c6a');
+        const dome = mesh(new THREE.SphereGeometry(.62, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), BRICK); dome.position.set(0, .91, -.05); dome.scale.y = .78;
+        box(.56, .5, .3, 0, .91, .5, BRICK); const arc = mesh(new THREE.CylinderGeometry(.2, .2, .32, 14, 1, false, -Math.PI / 2, Math.PI), '#1a1210'); arc.rotation.x = Math.PI / 2; arc.position.set(0, 1.14, .52); box(.4, .23, .32, 0, .91, .52, '#1a1210');
+        named(box(.3, .1, .01, 0, .93, .69, glow('#ff7a2a', '#ff4a10', 1.4)), 'fiamma'); box(.62, .06, .34, 0, 1.41, .5, '#7a4a34');
+        cyl(.1, .7, .3, 1.2, -.3, BRICK); box(.26, .05, .26, .3, 1.9, -.3, '#7a4a34');
+        asta([.65, .02, .7], [.62, 1.3, .7], .03, WOOD, g, true); const pala = box(.26, .3, .01, .64, 0, .73, WOOD2); pala.rotation.x = .02;
+        break; }
+      case 'st_cassetta':   // cassetta degli attrezzi a due piani: chiusure, maniglia ad arco, vassoio che si intravede
+        box(.55, .22, .3, 0, 0, 0, RED, g, { metalness: .25, roughness: .5 }); box(.57, .05, .32, 0, .22, 0, '#a83a30'); for (const x of [-.2, .2]) { box(.05, .05, .015, x, .18, .155, STEEL); }
+        for (const x of [-.12, .12]) asta([x, .27, 0], [x, .34, 0], .02, DARK, g, true); asta([-.12, .34, 0], [.12, .34, 0], .025, DARK, g, true); box(.56, .01, .31, 0, .14, 0, '#6a1a14');
+        break;
+      case 'st_cassaforte': {   // cassaforte: cassa con lo spigolo smussato, sportello con la cornice, cerniere, combinazione numerata, maniglia a tre razze, zoccolo
+        box(.75, .05, .65, 0, 0, 0, '#2a3430'); box(.72, .84, .62, 0, .05, 0, '#3a4a44', g, { metalness: .4, roughness: .5 });
+        box(.62, .72, .03, 0, .11, .32, '#4a5a54', g, { metalness: .4, roughness: .45 }); box(.66, .76, .015, 0, .09, .31, '#2a3430');
+        for (const y of [.25, .65]) cyl(.025, .1, -.31, y, .34, '#2a3430');
+        cyl(.07, .03, .1, .55, .345, '#c0b080', 1); cyl(.05, .02, .1, .55, .36, '#a8985a', 1); box(.005, .02, .01, .1, .61, .36, '#1a1a1a');
+        cyl(.025, .04, -.12, .38, .35, '#c0b080', 1); for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; asta([-.12, .38, .37], [-.12 + Math.cos(a) * .09, .38 + Math.sin(a) * .09, .37], .012, '#c0b080', g, true); }
+        box(.3, .05, .005, .0, .78, .336, '#c0b080');
+        break; }
+      case 'st_rastrelliera': {   // rastrelliera aperta: fianchi e cappello, rastrello a denti in basso e in alto, quattro fucili in piedi, la barra col lucchetto
+        for (const x of [-.68, .68]) box(.05, 1.6, .38, x, 0, 0, '#4a5040'); box(1.42, .05, .4, 0, 1.6, 0, '#3a4030'); box(1.36, .04, .36, 0, 0, 0, '#3a4030'); box(1.36, 1.2, .02, 0, .2, -.18, '#3a4030');
+        box(1.36, .12, .3, 0, .04, 0, '#4a5040'); box(1.36, .06, .12, 0, 1.12, .1, '#4a5040');
+        for (let i = 0; i < 4; i++) { const x = -.45 + i * .3, f = sub(x, .16, .05); f.rotation.z = (i - 1.5) * .02;
+          box(.06, .34, .045, 0, 0, 0, '#5a3a20', f); box(.04, .1, .04, 0, .34, 0, '#5a3a20', f); box(.035, .22, .045, 0, .44, .005, '#2a2a2e', f, MET); box(.025, .16, .04, 0, .5, .03, '#2a2a2e', f, MET).position.z = .04;
+          box(.035, .18, .03, 0, .66, 0, '#6a4a2a', f); cyl(.011, .45, 0, .84, 0, '#2a2a2e', 0, f); }
+        box(1.4, .03, .03, 0, .72, .2, '#2a2a2a'); box(.08, .1, .04, .55, .67, .22, '#c8a040'); const t = mesh(new THREE.TorusGeometry(.025, .008, 4, 10, Math.PI), STEEL); t.position.set(.55, .78, .22);
+        break; }
       default: return null;
     }
     return g;
