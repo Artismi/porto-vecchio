@@ -111,7 +111,7 @@
     else if (k >= '1' && k <= '5') { const id = Object.keys(G.WEAPONS).find(w => G.WEAPONS[w].slot === +k); if (!G.switchWeapon(st, id)) toast(`Non hai ${G.WEAPONS[id].name.toLowerCase()}.`, 'bad'); }
   });
   // zoom: rotella, tasti + e −, pulsanti a schermo
-  function zoomBy(f) { ui.zoom = Math.max(.4, Math.min(3.2, (ui.zoom || 1) * f)); }  // [inverno] al massimo indietro si vedono le due coste
+  function zoomBy(f) { ui.zoom = Math.max(.12, Math.min(4.2, (ui.zoom || 1) * f)); }  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
 
   addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; });
