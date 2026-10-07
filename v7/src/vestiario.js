@@ -88,7 +88,7 @@ var Vesti3D = (function () {
   function shells(g, outfit, unit, B) {
     const meshes = []; g.traverse(o => { if (o.isSkinnedMesh && !o.userData.vesti) meshes.push(o); });
     const out = [], rel = new THREE.Matrix4(), gi = new THREE.Matrix4(); g.updateMatrixWorld(true); gi.copy(g.matrixWorld).invert();
-    const LL = outfit.filter(c => c.parti && c.parti.some(p => p === 'piedi' || p === 'mani'));
+    const LL = outfit.filter(c => c.parti && c.parti.some(p => p === 'piedi' || p === 'mani') && !(window.Pittura && (SHOE[c.id] || c.id === 'calzini' || /calze|calzamaglia/.test(c.id)) && c.parti.includes('piedi')));   // le scarpe vere le fa scarpe(); i calzini sono dipinti
     if (!LL.length) return out;
     meshes.forEach(src => {
       const A = analyze(src); if (!A) return;
@@ -301,8 +301,54 @@ var Vesti3D = (function () {
     AT('Chest', o);
   }
   const lerp0 = (a, b, t) => a + (b - a) * t;
+  // ---------------- LE SCARPE: modelli low-poly misurati sul piede (non più il piede del kit gonfiato) ----------------
+  const SH_STYLE = {
+    scarpe: { h: .095, sole: .03, toe: .5, lacci: 1 }, scarpe_eleganti: { h: .06, sole: .014, toe: .9, lucida: 1 }, mocassini: { h: .055, sole: .016, toe: .8, mocassino: 1 },
+    scarpe_tela: { h: .065, sole: .024, toe: .55, suola: '#f0ece4', lacci: 1 }, scarpe_corsa: { h: .07, sole: .028, toe: .55, suola: '#f4f2ee', striscia: 1, lacci: 1 },
+    tacchi: { h: .045, sole: .01, toe: 1, tacco: .06 }, sandali: { h: 0, sole: .018, sandalo: 1 }, ciabatte: { h: 0, sole: .02, ciabatta: 1 },
+    stivali: { h: .09, sole: .03, toe: .45, stivale: .34 }, stivali_pelle: { h: .09, sole: .02, toe: .7, stivale: .3 }, stivali_cowboy: { h: .09, sole: .02, toe: 1.1, stivale: .3, tacco: .03 } };
+  function footBox(B, sd) {
+    const sg = sd === 'L' ? 1 : -1, P = []; for (let i = 0; i < B.part.length; i++) if (B.part[i] === 'piedi' && B.side[i] === sg) P.push([B.P[i * 3], B.P[i * 3 + 1], B.P[i * 3 + 2]]);
+    if (!P.length) return null; const q = (k, f) => { const a = P.map(p => p[k]).sort((x, y) => x - y); return a[Math.floor(f * (a.length - 1))]; };
+    const zH = q(2, .02), zT = q(2, .98), toe = P.filter(p => p[2] > zT - .03), heel = P.filter(p => p[2] < zH + .03), avg = (L, k) => L.reduce((a, p) => a + p[k], 0) / L.length;
+    const hx = avg(heel, 0), tx = avg(toe, 0), L = Math.hypot(tx - hx, zT - zH), yaw = Math.atan2(tx - hx, zT - zH);
+    const w = Math.max(.075, (q(0, .97) - q(0, .03)) * Math.cos(yaw) * .95);
+    return { cx: (hx + tx) / 2, cz: (zH + zT) / 2 + .004, L: L + .012, w: w + .012, yaw, top: q(1, .95) };
+  }
+  function shoeGeo(st, L, W) {
+    // profilo laterale (z avanti, y su): tallone, collo del piede, punta arrotondata
+    const H = Math.max(st.h, .03), sh = new THREE.Shape(), z0 = -L / 2, z1 = L / 2, t = st.toe || .6;
+    sh.moveTo(z0 + .01, 0); sh.lineTo(z1 - .03, 0); sh.quadraticCurveTo(z1, 0, z1, .025 * t + .012); sh.quadraticCurveTo(z1 - .005, .045, z1 - .06, .05 + .008 * (1 - t));
+    sh.quadraticCurveTo(z0 + L * .42, H * .8 + .02, z0 + L * .3, H); sh.lineTo(z0 + .03, H); sh.quadraticCurveTo(z0 - .008, H * .85, z0 - .004, H * .4); sh.quadraticCurveTo(z0 - .002, 0, z0 + .02, 0);
+    const g = new THREE.ExtrudeGeometry(sh, { depth: W, bevelEnabled: true, bevelThickness: .006, bevelSize: .006, bevelSegments: 1, curveSegments: 3 });
+    g.translate(0, 0, -W / 2); g.rotateY(Math.PI / 2);   // ora: x = larghezza, z = lunghezza
+    const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const z = p.getZ(i), f = cl0((z - (z1 - L * .35)) / (L * .35)); p.setX(i, p.getX(i) * (1 - .32 * f * f) * (z < z0 + .05 ? .9 : 1)); }   // punta e tallone più stretti
+    g.computeVertexNormals(); return g;
+  }
+  const cl0 = x => x < 0 ? 0 : x > 1 ? 1 : x;
+  function scarpe(g, outfit, B, AT) {
+    const c = outfit.find(o => SH_STYLE[o.id]); if (!c) return null; const st = SH_STYLE[c.id];
+    const up = Pittura.blockMat('pelle', c.col, c.col, c.col, { vc: false }), soleM = lm(st.suola || sh(c.col, .35)), dark = lm(sh(c.col, .55));
+    for (const sd of ['L', 'R']) {
+      const F = footBox(B, sd); if (!F) continue; const o = new THREE.Group(), inner = new THREE.Group();
+      const so = st.sole;
+      // la suola (sempre), un po' più larga della tomaia
+      const sole = new THREE.Mesh(shoeGeo({ h: so, toe: st.toe || .6 }, F.L + .008, F.w + .008), soleM); sole.scale.y = so / Math.max(so, .03); inner.add(sole);
+      if (!st.sandalo && !st.ciabatta) { const top = new THREE.Mesh(shoeGeo(st, F.L, F.w), up); top.position.y = so * .6; inner.add(top); }
+      if (st.ciabatta) { const band = new THREE.Mesh(new THREE.BoxGeometry(F.w + .006, .03, .07), up); band.position.set(0, so + .015, F.L * .18); inner.add(band); }
+      if (st.sandalo) for (const zz of [.2, -.05, -.32]) { const b = new THREE.Mesh(new THREE.BoxGeometry(F.w + .006, .012, .014), up); b.position.set(0, so + .02 + (zz < -.2 ? .03 : 0), F.L * zz); inner.add(b); }
+      if (st.lacci) { const lc = new THREE.Mesh(new THREE.BoxGeometry(F.w * .32, .006, F.L * .3), lm(st.suola ? '#f4f0e8' : sh(c.col, .4))); lc.position.set(0, so * .6 + st.h * .75 + .016, -F.L * .02 + F.L * .08); lc.rotation.x = -.42; inner.add(lc); }
+      if (st.striscia) for (const sx of [-1, 1]) { const s0 = new THREE.Mesh(new THREE.BoxGeometry(.004, .02, F.L * .35), lm('#c83a3a')); s0.position.set(sx * (F.w / 2 + .004), so + .03, -F.L * .05); s0.rotation.x = .5; inner.add(s0); }
+      if (st.mocassino) { const ap = new THREE.Mesh(new THREE.BoxGeometry(F.w * .6, .004, F.L * .28), dark); ap.position.set(0, so * .6 + .052, F.L * .2); ap.rotation.x = -.18; inner.add(ap); }
+      if (st.tacco) { const hl = new THREE.Mesh(new THREE.CylinderGeometry(.012, .009, st.tacco, 6), soleM); hl.position.set(0, -st.tacco / 2 + .004, -F.L * .4); inner.add(hl); }
+      inner.rotation.y = F.yaw; o.add(inner); o.position.set(F.cx, st.tacco || 0, F.cz);
+      AT('Foot' + sd, o);
+    }
+    return st;
+  }
   function accessories(g, outfit, held, D) {
     if (!window.Sartoria || !D || !D.B) return accessoriesOld(g, outfit, held);
+    if (window.Pittura) try { scarpe(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); } catch (e) { console.error('[Vesti3D] scarpe', e); }
     if (window.Pittura) try { volumi(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); Pittura.bordi(g, D.B, outfit, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); cappuccio(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); } catch (e) { console.error('[Vesti3D] volumi', e); }
     const B = D.B, T = Sartoria.testa(g, PARTI), bn = B.bones, AT = (bone, obj) => Sartoria.attach(g, PARTI, bone, obj);
     const lay = D.lay || [], outer = lay.reduce((m, l) => Math.max(m, l.t || 0), 0) + .004, th = D.th || {};
@@ -380,7 +426,7 @@ var Vesti3D = (function () {
         const fp = Sartoria.surf(tb, s, best, (th.avambracci || 0) + .009), face = Cy(.016, .016, .008, c.col, fp.x, fp.y, fp.z, 14); face.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), fp.clone().sub(fr.p).normalize()); o.add(face);
         const dial = Cy(.012, .012, .009, '#f0ece0', fp.x, fp.y, fp.z, 14); dial.quaternion.copy(face.quaternion); o.add(dial); AT('WristL', o); }
       if (c.acc === 'anelli') for (const s of ['L', 'R']) { const w = bn['Wrist' + s], o = new THREE.Group(), sg = s === 'L' ? 1 : -1; const t = new THREE.Mesh(new THREE.TorusGeometry(.011, .003, 5, 10), lm(c.col)); t.position.set(w.x + sg * .012, w.y - .085, w.z + .02); t.rotation.x = Math.PI / 2; o.add(t); AT('Wrist' + s, o); }
-      if (c.acc === 'tacco') for (const s of ['L', 'R']) { const f = bn['Foot' + s], o = new THREE.Group(); let mz = 9, mx = 0; for (let i = 0; i < B.part.length; i++) if (B.part[i] === 'piedi' && B.side[i] === (s === 'L' ? 1 : -1) && B.P[i * 3 + 1] < .05) { if (B.P[i * 3 + 2] < mz) { mz = B.P[i * 3 + 2]; mx = B.P[i * 3]; } }
+      if (c.acc === 'tacco' && !window.Pittura) for (const s of ['L', 'R']) { const f = bn['Foot' + s], o = new THREE.Group(); let mz = 9, mx = 0; for (let i = 0; i < B.part.length; i++) if (B.part[i] === 'piedi' && B.side[i] === (s === 'L' ? 1 : -1) && B.P[i * 3 + 1] < .05) { if (B.P[i * 3 + 2] < mz) { mz = B.P[i * 3 + 2]; mx = B.P[i * 3]; } }
         if (mz < 9) { o.add(Cy(.012, .008, .055, c.col, mx, .028, mz + .02, 8)); AT('Foot' + s, o); } }
     });
     // nella sinistra

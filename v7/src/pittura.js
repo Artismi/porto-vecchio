@@ -39,8 +39,13 @@ var Pittura = (function () {
   // il profilo "stirato" di un tubo: lisciato lungo l'asse e attorno, chiuso a involucro (niente conche, gradini, muscoli)
   const IRON = new Map();
   function ironed(tb) {
-    if (IRON.has(tb)) return IRON.get(tb); const n = tb.ns, RG = tb.R[0].length, sg = Math.max(1, Math.round(.03 / tb.ds));
-    let R = tb.R.map((r, i) => { const o = new Float32Array(RG); for (let q = 0; q < RG; q++) { let a = 0, w = 0; for (let k = -2 * sg; k <= 2 * sg; k++) { const j = cl(i + k, 0, n), g = Math.exp(-k * k / (2 * sg * sg)); a += tb.R[j][q] * g; w += g; } o[q] = a / w; } return o; });
+    if (IRON.has(tb)) return IRON.get(tb); const n = tb.ns, RG = tb.R[0].length, ds = tb.ds;
+    const win = (A, w, f) => A.map((r, i) => { const o = new Float32Array(RG); for (let q = 0; q < RG; q++) { let m = f === 'min' ? 9 : 0; for (let k = -w; k <= w; k++) { const v = A[cl(i + k, 0, n)][q]; m = f === 'min' ? Math.min(m, v) : Math.max(m, v); } o[q] = m; } return o; });
+    // apertura (minimo poi massimo su ±4 cm): via i rigonfiamenti stretti (orli gonfi, tasche, risvolti dei vestiti del kit), restano spalle, petto, glutei
+    const w = Math.max(1, Math.round(.04 / ds));
+    let R = win(win(tb.R, w, 'min'), w, 'max');
+    const sg = Math.max(1, Math.round(.03 / ds));
+    R = R.map((r, i) => { const o = new Float32Array(RG); for (let q = 0; q < RG; q++) { let a = 0, ww = 0; for (let k = -2 * sg; k <= 2 * sg; k++) { const g = Math.exp(-k * k / (2 * sg * sg)); a += R[cl(i + k, 0, n)][q] * g; ww += g; } o[q] = a / ww; } return o; });
     R = R.map(r => { const o = new Float32Array(RG); for (let q = 0; q < RG; q++) o[q] = (r[(q + RG - 2) % RG] + 2 * r[(q + RG - 1) % RG] + 3 * r[q] + 2 * r[(q + 1) % RG] + r[(q + 2) % RG]) / 9; return o; });
     IRON.set(tb, R); return R;
   }
@@ -52,7 +57,7 @@ var Pittura = (function () {
     const F = frame(B), tb = F.tubes[r], q = tb.proj(out), fr = S().frameAt(tb, q.i * tb.ds), R = ironed(tb), rr = ironRadius(R, tb, q.i * tb.ds, q.a);
     // vicino a mani, piedi, collo (dove il corpo resta com'è) lo stiro sfuma
     let k = 1; if (r > 0) k = cl((tb.L - q.i * tb.ds) / .06, 0, 1) * cl(q.i * tb.ds / .05, 0, 1); else { const ny = S().neckY(B); k = cl((ny - out.y) / .04, 0, 1); }
-    const d = cl(rr - q.r, -.025, .03) * k; if (Math.abs(d) < 1e-5 || q.r < 1e-4) return out;
+    const d = cl(rr - q.r, -.06, .03) * k; if (Math.abs(d) < 1e-5 || q.r < 1e-4) return out;
     const dir = out.clone().sub(fr.p); dir.addScaledVector(fr.t, -dir.dot(fr.t)); dir.normalize(); return out.addScaledVector(dir, d);
   }
   function paintGeo(B, src, si) {
@@ -165,7 +170,7 @@ var Pittura = (function () {
     const ranked = list.map((c, i) => ({ c, r: ((CUT[c.id] || {}).cl || 1) * 10 + i * .01 })).sort((a, b) => a.r - b.r).map(o => o.c);
     const plans = ranked.map((c, k) => plan(B, c, k, ranked));
     const nY = Sa.neckY(B), out = {};
-    const shoe = outfit.find(c => /^(scarpe|scarpe_eleganti|scarpe_tela|scarpe_corsa|mocassini|tacchi|sandali)/.test(c.id)), sock = outfit.find(c => c.id === 'calzini' || c.id === 'calze_nylon' || c.id === 'calzamaglia');
+    const shoe = outfit.find(c => /^(scarpe|scarpe_eleganti|scarpe_tela|scarpe_corsa|mocassini)/.test(c.id)), sock = outfit.find(c => c.id === 'calzini' || c.id === 'calze_nylon' || c.id === 'calzamaglia');
     const ankle = shoe ? rgb(sock && sock.col || '#2a2a2e') : null;
     const bt = outfit.find(c => /^stivali/.test(c.id)), boots = bt ? { top: bt.id === 'stivali' ? .34 : .3, col: rgb(bt.col || '#2a1e18'), risv: bt.id !== 'stivali' } : null;
     REG.forEach((R, ri) => {
@@ -189,7 +194,7 @@ var Pittura = (function () {
           if (R === 'T') { const side = Math.max(0, Math.abs(Math.sin(a)) - .7) / .3, arm = cl(1 - Math.abs(y - (nY - .2)) / .1, 0, 1); shade *= 1 - .18 * side * arm; }
           if (R[0] === 'L') { const inner = cl(1 - Math.abs(a - (R === 'LL' ? -Math.PI / 2 : Math.PI / 2)) / .9, 0, 1), up = cl(1 - (sv - .1) / .25, 0, 1); shade *= 1 - .15 * inner * up; }
           // sotto l'orlo, con le scarpe: il calzino (niente caviglia nuda che sbuca dietro la scarpa)
-          if (R[0] === 'L' && ankle && top < 0 && y < .14) { c = ankle; h = .5; shade = y < .06 ? .8 : 1; }
+          if (R[0] === 'L' && ankle && top < 0 && y < .16) { c = ankle; h = .5; shade = y < .06 ? .8 : 1; }
           // gli stivali: il gambale dipinto sul polpaccio, sopra i pantaloni, con l'orlo dritto
           if (R[0] === 'L' && boots && y < boots.top) { const e = boots.top - y, f0 = boots.col; c = mul(f0, .95 + .1 * (hsh(Math.floor(xm / .03), Math.floor(y / .03)) > .6 ? 1 : 0)); h = .6; shade = e < .008 ? .55 : e < .03 && boots.risv ? 1.08 : 1; top = -1; if (y < .05) shade *= .5; }
           // ---- il volume dipinto, come nella pixel art: luce di forma, pieghe, toni a gradini, contorni ----
@@ -367,8 +372,9 @@ var Pittura = (function () {
       if (!src.userData.pitOrig) src.userData.pitOrig = { geo: src.userData.geo0 || src.geometry, mat: src.material };
       const m0 = Array.isArray(src.userData.pitOrig.mat) ? src.userData.pitOrig.mat[0] : src.material;
       // quello che sta sotto scarpe e guanti (e i resti dei vestiti del kit sotto i nostri) si toglie davvero: un indice per persona
-      const hid = src.userData.hid, gpos = pg.geo.attributes.position, idx = [], grp = [];
+      const hid = src.userData.hid, gpos = pg.geo.attributes.position, idx = [], grp = [], gmS = B.gmaps[si] || [], closed = outfit.some(c => /^(scarpe|scarpe_eleganti|scarpe_tela|scarpe_corsa|mocassini|tacchi|stivali|stivali_pelle|stivali_cowboy)$/.test(c.id));
       const keepT = (w0, reg) => { const q = [pg.SRC[w0], pg.SRC[w0 + 1], pg.SRC[w0 + 2]]; if (hid && hid.length && q.every(x => hid[x])) return false;
+        if (closed && reg === 0 && q.some(x => { const b = gmS[x]; return b >= 0 && B.part[b] === 'piedi'; })) return false;   // dentro le scarpe vere
         if (reg === 0 && pg.kitCloth) { const y = (gpos.getY(w0) + gpos.getY(w0 + 1) + gpos.getY(w0 + 2)) / 3; const yy = new THREE.Vector3(gpos.getX(w0), y, gpos.getZ(w0)).applyMatrix4(B.rel).y; if (yy > .3) return false; }   // vestiti del kit fuori dalle regioni (non i piedi)
         return true; };
       pg.groups.forEach(gr => { const st = idx.length; for (let w0 = gr.start; w0 < gr.start + gr.count; w0 += 3) if (keepT(w0, gr.materialIndex)) idx.push(w0, w0 + 1, w0 + 2); if (idx.length > st) grp.push([st, idx.length - st, gr.materialIndex]); });
@@ -393,7 +399,7 @@ var Pittura = (function () {
   function surfI(B, r, s, a, off) {
     const F = frame(B), tb = F.tubes[r], fr = S().frameAt(tb, s), raw = S().surf(tb, s, a, 0).sub(fr.p).length(), rr = ironRadius(ironed(tb), tb, s, a);
     let k = 1; if (r > 0) k = cl((tb.L - s) / .06, 0, 1) * cl(s / .05, 0, 1);
-    const R0 = raw + cl(rr - raw, -.025, .03) * k + off;
+    const R0 = raw + cl(rr - raw, -.06, .03) * k + off;
     return fr.p.clone().addScaledVector(fr.f, Math.cos(a) * R0).addScaledVector(fr.sd, Math.sin(a) * R0);
   }
   // il bordino in rilievo di un orlo: anello a n facce attorno alla regione r, all'altezza s (metri sul tubo), alto h, spesso th

@@ -680,9 +680,15 @@ var Sartoria = (function () {
     const wantTrunk = P.has('torso') || P.has('bacino') && (C.gonna || C.solo_gonna);
     let TR = null, Lt = null;
     if (wantTrunk || C.intera && P.has('torso')) {
-      const BOX = {}, tb = boxTube(tube(B, trunkKind), C.box !== undefined ? C.box : (BOX[C.cl] || 0)); TR = tb; const Ls = lengths(B, tb, trunkKind, C, parti); Lt = Ls;
+      const BOX = {}; let tb = boxTube(tube(B, trunkKind), C.box !== undefined ? C.box : (BOX[C.cl] || 0));
+      if (C.blocchi && trunkKind === 'gonna') {   // la falda cade dritta dai fianchi: per ogni lato, il massimo da lì in su (pareti verticali), poi lisciato
+        const t0 = tb, hipS = t0.sAtY(B.bones.Hips.y + .02), RG = t0.R[0].length, n = t0.ns, M = t0.R.map(r => Float32Array.from(r));
+        for (let i = Math.min(n, Math.round(hipS / t0.ds)) - 1; i >= 0; i--) for (let q = 0; q < RG; q++) M[i][q] = Math.max(M[i][q], M[i + 1][q]);
+        for (let i = 0; i <= n; i++) { const r = M[i], o = new Float32Array(RG); for (let q = 0; q < RG; q++) o[q] = (r[(q + RG - 1) % RG] + 2 * r[q] + r[(q + 1) % RG]) / 4; hull(o); M[i] = o; }
+        tb = Object.assign({}, t0, { R: M });
+      } TR = tb; const Ls = lengths(B, tb, trunkKind, C, parti); Lt = Ls;
       const W = trunkKind === 'gonna' ? weightsFor(B, trunkKind) : gridW(tb), hipY = B.bones.Hips.y;
-      const cols = C.blocchi ? 10 : 24, front = C.davanti, aRange = front ? [-1.75, 1.75] : [-Math.PI, Math.PI];
+      const cols = C.blocchi ? 20 : 24, front = C.davanti, aRange = front ? [-1.75, 1.75] : [-Math.PI, Math.PI];
       // scollo: la cima di ogni colonna (in s) secondo il collo
       const neckTop = a => {
         const fa = Math.cos(a), c = C.collo; let drop = 0;
@@ -697,16 +703,16 @@ var Sartoria = (function () {
       };
       // orlo: punte del gilet, giacca arrotondata davanti, coda della camicia
       const hemBot = a => { let s = Ls.s0; if (C.orlo === 'punte' && Math.abs(a) < .5) s -= .04 * (1 - Math.abs(a) / .5); if (C.orlo === 'giacca' && Math.abs(a) < .35) s += .02 * (1 - Math.abs(a) / .35); return s; };
-      const rows = Math.max(C.blocchi ? 4 : 10, Math.round((Ls.s1 - Ls.s0) / (C.blocchi ? .06 : .022)) + 1), seamA = Math.PI;   // cucitura dietro
+      const rows = Math.max(C.blocchi ? 4 : 10, Math.round((Ls.s1 - Ls.s0) / (C.blocchi ? .03 : .022)) + 1), seamA = Math.PI;   // cucitura dietro
       // spessore lungo l'altezza: torso sopra, bacino, cosce
       const offY = y => y > hipY + .08 ? offAt('torso') : y > B.crotch ? Math.max(offAt('bacino'), offAt('torso') * .5 + offAt('bacino') * .5) : Math.max(offAt('cosce'), offAt('bacino'));
       const ringC = (() => { let s = 0; for (let k = 0; k < 16; k++) s += radius(tb, (Ls.s0 + Ls.s1) / 2, k / 16 * Math.PI * 2); return s / 16 * Math.PI * 2; })();
       const pts = grid(bd, rows, cols + 1, (i, j) => {
         const a = aRange[0] + (aRange[1] - aRange[0]) * j / cols, s0 = hemBot(a), s1 = neckTop(a), s = lerp(s0, s1, i / (rows - 1));
         const fr = frameAt(tb, s), y = fr.p.y; let o = offY(y);
-        if (C.gonna && y < hipY) o += (hipY - y) * (C.svasa || .1);   // la gonna si apre
-        if (C.pieghe && y < hipY) o += (.5 + .5 * Math.cos(a * 14)) * .006 * cl((hipY - y) / .25, 0, 1);
-        if (C.poncho) o += cl((B.neck - y) / .3, 0, 1) * .1 * (.6 + .4 * Math.abs(Math.sin(a)));   // il poncho scende largo sulle braccia
+        if (C.gonna && y < hipY) o += (hipY - y) * (C.svasa || .1) * (C.blocchi ? .2 : 1);   // la gonna scende quasi dritta (appena aperta per il passo)
+        if (C.pieghe && !C.blocchi && y < hipY) o += (.5 + .5 * Math.cos(a * 14)) * .006 * cl((hipY - y) / .25, 0, 1);
+        if (C.poncho) o += cl((B.neck - y) / .3, 0, 1) * (C.blocchi ? .04 : .1) * (.6 + .4 * Math.abs(Math.sin(a)));   // il poncho scende largo sulle braccia
         const p = surf(tb, s, a, o), out = p.clone().sub(fr.p);
         // ombre cotte: sotto le ascelle, dietro le ginocchia, nelle conche; orlo più scuro
         const c = C.blocchi ? (s - s0 < .03 && C.cl >= 4 ? .68 : 1) : 1 - .1 * cl(1 - (s - s0) / .03, 0, 1) - .07 * cl(1 - (s1 - s) / .02, 0, 1) - (y > B.waist && y < B.waist + .02 && !C.gonna ? .05 : 0);
@@ -714,10 +720,10 @@ var Sartoria = (function () {
         return { p, out, u: (a - aRange[0]) / (Math.PI * 2) * ringC, v: s, c, skirt };
       }, W, 0);
       // risvolto interno dell'orlo (si vede lo spessore) e lo scollo
-      lip(bd, tb, W, aRange, cols, a => hemBot(a), a => { const s = hemBot(a), fr = frameAt(tb, s); let o = offY(fr.p.y); if (C.gonna && fr.p.y < hipY) o += (hipY - fr.p.y) * (C.svasa || .1); if (C.poncho) o += cl((B.neck - fr.p.y) / .3, 0, 1) * .1 * (.6 + .4 * Math.abs(Math.sin(a))); return o; }, -1, C, ringC, hipY);
+      lip(bd, tb, W, aRange, cols, a => hemBot(a), a => { const s = hemBot(a), fr = frameAt(tb, s); let o = offY(fr.p.y); if (C.gonna && fr.p.y < hipY) o += (hipY - fr.p.y) * (C.svasa || .1) * (C.blocchi ? .2 : 1); if (C.poncho) o += cl((B.neck - fr.p.y) / .3, 0, 1) * .1 * (.6 + .4 * Math.abs(Math.sin(a))); return o; }, -1, C, ringC, hipY);
       lip(bd, tb, W, aRange, cols, a => neckTop(a), a => offY(frameAt(tb, neckTop(a)).p.y), 1, C, ringC, hipY);
       // finiture del tronco
-      trunkDetails(bd, B, tb, W, C, Ls, offY, neckTop, hemBot, ringC);
+      if (!C.blocchi) trunkDetails(bd, B, tb, W, C, Ls, offY, neckTop, hemBot, ringC);   // sulle falde i dettagli sono dipinti sul busto
     }
     // ---------- MANICHE ----------
     if (!C.smanicato && !C.solo_gonna && !C.davanti && (P.has('braccia') || P.has('avambracci'))) for (const s of ['L', 'R']) {
@@ -832,7 +838,7 @@ var Sartoria = (function () {
 
   // ---------------- FINITURE DEL TRONCO ----------------
   function trunkDetails(bd, B, tb, W, C, Ls, offY, neckTop, hemBot, ringC) {
-    const hipY = B.bones.Hips.y, o = s => offY(frameAt(tb, s).p.y) + ((C.gonna && frameAt(tb, s).p.y < hipY) ? (hipY - frameAt(tb, s).p.y) * (C.svasa || .1) : 0);
+    const hipY = B.bones.Hips.y, o = s => offY(frameAt(tb, s).p.y) + ((C.gonna && frameAt(tb, s).p.y < hipY) ? (hipY - frameAt(tb, s).p.y) * (C.svasa || .1) * (C.blocchi ? .2 : 1) : 0);
     const sTop = neckTop(0), sNeck = Ls.s1, sBot = hemBot(0), yOf = s => frameAt(tb, s).p.y, sAt = y => tb.sAtY(y);
     const sChest = sAt(B.bones.Chest.y - .03), sWaist = sAt(B.waist), sHip = sAt(hipY - .03);
     const front = C.fronte;
