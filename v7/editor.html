@@ -7422,6 +7422,10 @@ var Models = (function () {
       const mk = (k, obj) => { obj.visible = false; g.userData.props[k] = pin(g, wr, obj, hp.x, hp.y - .07, hp.z + .05); };
       mk('bomboletta', C(.035, .035, .17, '#c8302a', 0, 0, 0, 10)); mk('telefono', B(.05, .11, .025, '#151518')); mk('fotocamera', B(.13, .08, .06, '#202024'));
       mk('piede', B(.03, .55, .03, '#4a4a54')); mk('gesso', B(.02, .07, .02, '#f4f4ee'));
+      mk('manganello', B(.035, .5, .035, '#14141a'));   // [ordine]
+      { const cg = new THREE.Group(), cv = document.createElement ? document.createElement('canvas') : null; cg.add(B(.025, 1.0, .025, '#8a6a48', 0, .35, 0)); let bm = lm('#f2ecdc');
+        if (cv) { cv.width = 128; cv.height = 64; const tx = new THREE.CanvasTexture(cv); tx.magFilter = THREE.NearestFilter; bm = new THREE.MeshLambertMaterial({ map: tx }); cg.userData.cv = cv; cg.userData.tx = tx; }
+        const bd = new THREE.Mesh(new THREE.BoxGeometry(.62, .34, .015), bm); bd.position.set(0, .92, 0); cg.add(bd); mk('cartello', cg); }   // [ordine] il cartello di chi protesta
     }
     play(g, 'Idle'); return g;
   }
@@ -7450,7 +7454,7 @@ var Models = (function () {
     // chi non ha un aspetto dato (comparse) riceve un corredo casuale ma stabile
     if (!look || L.hat === undefined) L.hat = fem ? ['none', 'none', 'scarf', 'sunhat'][Math.floor(r() * 4)] : ['none', 'none', 'flat', 'cap', 'fedora', 'beanie'][Math.floor(r() * 6)];
     if (!look || L.extra === undefined) L.extra = [r() < .25 ? 'shades' : '', !fem && r() < .3 ? 'moustache' : '', r() < .25 ? (fem ? 'bag' : 'paper') : '', r() < .15 ? 'backpack' : ''].join(',');
-    if (who === 'cop') { L.hat = 'police'; L.extra = 'belt'; }
+    if (who === 'cop') { if (!/^(elmetto|basco)$/.test(L.hat || '')) L.hat = 'police'; L.extra = 'belt' + (/gold/.test((look && look.extra) || '') ? ',gold' : ''); }   // [ordine] elmetto dei soldati, basco delle guardie d'onore
     // corporatura: più alti, più bassi, più robusti
     const build = L.build || (.92 + r() * .2), hgt = .94 + r() * .1;
     g.userData.body.scale.set(.9 + (build - 1) * .6 + .1, hgt, .9 + (build - 1) * .6 + .1);
@@ -7469,9 +7473,18 @@ var Models = (function () {
       case 'police': hat.add(C(.15, .135, .09, '#232a3e', 0, .01, 0, 14), C(.138, .138, .025, '#d8d0b0', 0, -.03, 0, 14), B(.17, .015, .1, '#111', 0, -.045, .12)); break;
       case 'scarf': hat.add(C(.135, .145, .13, hc, 0, -.03, -.01, 12)); break;
       case 'sunhat': hat.add(C(.12, .13, .09, '#e8d8b0', 0, 0, 0, 14), C(.25, .25, .015, '#e8d8b0', 0, -.04, 0, 16), C(.131, .131, .03, hc, 0, -.025, 0, 14)); break;
+      case 'elmetto': hat.add(C(.15, .165, .1, '#3a4232', 0, .01, 0, 14), C(.185, .185, .02, '#343c2c', 0, -.04, 0, 16), B(.2, .02, .02, '#22281c', 0, -.02, .15)); break;   // [ordine] l'elmetto dei soldati della Base
+      case 'basco': hat.add(C(.15, .13, .05, '#7a1a1a', .02, .0, -.01, 14), B(.04, .04, .01, '#e8c040', -.07, .0, .12)); break;   // [ordine] il basco rosso delle guardie d'onore
       case 'hard': hat.add(C(.13, .145, .1, '#f2c14e', 0, 0, 0, 12), C(.17, .17, .015, '#f2c14e', 0, -.045, .02, 14)); break;
     }
     if (hat.children.length) pin(g, head, hat, hp.x, top - .02, fz);
+    if (who === 'cop') {   // [ordine] tenuta antisommossa: casco con visiera e scudo, accesi da animPerson({ riot })
+      const rh = new THREE.Group(), vis = new THREE.MeshLambertMaterial({ color: '#9ab0c8', transparent: true, opacity: .45 });
+      rh.add(C(.16, .17, .13, '#2a3040', 0, .01, -.01, 14), C(.175, .175, .02, '#1e2430', 0, -.055, -.01, 16));
+      const vz = new THREE.Mesh(new THREE.BoxGeometry(.26, .13, .015), vis); vz.position.set(0, -.07, .155); rh.add(vz);
+      rh.visible = false; pin(g, head, rh, hp.x, top - .02, fz); g.userData.riotHat = rh; g.userData.copHat = hat;
+      if (handL) { const hp3 = new THREE.Vector3(); handL.getWorldPosition(hp3); const sh = new THREE.Group(); const pl = new THREE.Mesh(new THREE.BoxGeometry(.5, .78, .025), new THREE.MeshLambertMaterial({ color: '#c8d4e0', transparent: true, opacity: .55 })); sh.add(pl, B(.5, .06, .03, '#2a3040', 0, .37, 0), B(.5, .06, .03, '#2a3040', 0, -.37, 0), B(.08, .1, .04, '#1a1a1a', 0, .06, .02)); const tx = B(.3, .05, .03, '#f4f4f4', 0, .2, .015); sh.add(tx); sh.visible = false; pin(g, handL, sh, hp3.x - .04, hp3.y + .06, hp3.z + .16); g.userData.riotShield = sh; }
+    }
     const ex = (L.extra || '').split(',');
     if (ex.includes('shades') || ex.includes('glasses')) { const gl = new THREE.Group(); const c = ex.includes('shades') ? '#08080c' : '#2a2a2a'; gl.add(B(.075, .04, .015, c, -.045, 0, 0), B(.075, .04, .015, c, .045, 0, 0), B(.19, .012, .012, c, 0, .015, 0)); pin(g, head, gl, hp.x, hp.y + .085, fz + .125); }
     if (ex.includes('moustache')) pin(g, head, B(.09, .022, .02, L.hair || '#2a1a12'), hp.x, hp.y + .005, fz + .135);
@@ -7497,6 +7510,8 @@ var Models = (function () {
     const u = g.userData, sp = Math.abs(o.speed || 0);
     const gunName = (o.weapon && u.gunsByWeapon[o.weapon]) || (o.held && u.gunsByWeapon[o.held]);
     for (const k in (u.props || {})) u.props[k].visible = o.held === k;   // [azioni]
+    if (u.riotHat) { const on = !!o.riot; if (u.riotOn !== on) { u.riotOn = on; u.riotHat.visible = on; if (u.copHat) u.copHat.visible = !on; if (u.riotShield) u.riotShield.visible = on; } }   // [ordine]
+    if (o.banner && u.props && u.props.cartello && u.props.cartello.userData.cv && u.bannerTxt !== o.banner) { u.bannerTxt = o.banner; const cv = u.props.cartello.userData.cv, x = cv.getContext('2d'); x.fillStyle = '#f2ecdc'; x.fillRect(0, 0, 128, 64); x.strokeStyle = '#8a2020'; x.lineWidth = 4; x.strokeRect(2, 2, 124, 60); x.fillStyle = '#b01818'; let fs = 30; x.font = 'bold ' + fs + 'px sans-serif'; while (x.measureText(o.banner).width > 118 && fs > 12) { fs -= 2; x.font = 'bold ' + fs + 'px sans-serif'; } x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(o.banner, 64, 33); u.props.cartello.userData.tx.needsUpdate = true; }
     for (const k in u.mguns) u.mguns[k].visible = !!(k === gunName || (o.gun && k === o.gun));
     let clip = 'Idle';
     if (o.down) clip = 'Death';
@@ -9701,6 +9716,7 @@ var Interior = (function () {
       case 'barbiere': case 'tabacchi': case 'farmacia': case 'lavanderia': case 'sartoria': case 'ferramenta':
         return f === 0 ? { names: [kind, kind === 'sartoria' ? 'prova' : 'retro', 'magazzino', 'bagno'], mood: kind } : up();
       case 'panetteria': return f === 0 ? { names: ['panetteria', 'forno', 'magazzino', 'bagno'], mood: kind } : up();
+      case 'supermercato': return f === 0 ? { names: ['supermercato', 'supermercato', 'magazzino', 'bagno'], mood: 'supermercato' } : { names: ['magazzino', 'ufficio', 'bagno'], mood: 'supermercato' };   // [ordine]
       case 'pescheria': return f === 0 ? { names: ['pescheria', 'cella_frigo', 'retro', 'bagno'], mood: kind } : up();
       case 'bottega': return f === 0 ? { names: ['bottega', 'retro', 'magazzino', 'bagno'], mood: 'bottega' } : up();
       default: return f === 0 ? { names: ['bottega', 'retro', 'magazzino', 'bagno'], mood: kind } : up();   // [soldi] le botteghe nuove (Emporio, macelleria, fabbro…)
@@ -9921,6 +9937,7 @@ var Interior = (function () {
     forno: ['cotto', 'calce|mattoni', 'fuoco', ['!st_forno', 'pv_banco_lavoro', 'kitchenStove', 'table', 'fd_bread', 'kitchenCabinet', 'cardboardBoxClosed', 'ia_sacchi', '~ia_sacchi', '~ia_legna', '^ia_mensola']],
     pescheria: ['piastrelle', 'piastrelle', 'neon', ['pv_banco_vendita', 'kitchenBar', 'kitchenBar', 'fd_fish', 'fd_fish', 'fd_barrel', 'fd_barrel', 'ar_cash-register', 'kitchenSink', 'ia_vetrina_frigo', '^ia_reti', '^ia_ritratto', '^ia_menu', '~ia_cassette_frutta', '~ia_secchio']],
     cella_frigo: ['piastrelle', 'piastrelle', 'neon', ['kitchenFridge', 'kitchenFridge', 'fd_barrel', 'fd_barrel', '^ia_gancio_carne']],
+    supermercato: ['linoleum|graniglia', 'piastrelle|crema', 'neon', ['pv_banco_vendita', 'ar_cash-register', 'ar_cash-register', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpen', 'bookcaseOpen', 'kitchenFridge', 'kitchenFridge', 'ia_vetrina_frigo', 'cardboardBoxClosed', 'cardboardBoxClosed', '?ia_cassette_frutta', '~ia_cassette_frutta', '~ia_sacchi', '^ia_ritratto', '^ia_manifesto', '^ia_calendario']],   // [ordine]
     bottega: ['graniglia|linoleum', 'crema|verde|ocra', 'neon', ['pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpenLow', 'cardboardBoxClosed', 'pottedPlant', '?ia_cassette_frutta', '^ia_ritratto', '^ia_calendario', '^ia_manifesto', '~ia_cassette_frutta']],
     alimentari: ['linoleum|graniglia', 'crema|verde', 'neon', ['pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_vetrina_frigo', 'ia_cassette_frutta', 'ia_sacchi', '^ia_ritratto', '^ia_menu', '^ia_calendario', '~ia_cassette_frutta', '~ia_cesto']],
     cassa_benzina: ['linoleum', 'blu|crema', 'neon', ['@cassa', 'ia_scaffale_merci', 'ar_vending-machine', 'ia_bidone', '^ia_calendario', '^ia_ritratto', '^ia_mappa', '~pv_pneumatici']],
@@ -12516,6 +12533,7 @@ var Game = (function () {
       if (v.hidden) continue;
       if (v.burning > 0) { v.burning -= dt; if (v.burning <= 0) explode(st, v); }
       if (v.wreck) { freeRoll(st, v, dt, true); continue; }
+      if (v.driveTo && v.rider === 'npc' && !v.traffic) continue;   // [ordine] lo guida ordine.js (volanti, Campagnola, camion della nave)
       if (v.traffic) updateTraffic(st, v, dt);
       else if (v.police && v.rider === 'npc') updatePoliceCar(st, v, dt);
       else if (v.rider !== 'player') { freeRoll(st, v, dt, !v.rider); if (Math.hypot(v.vx, v.vy) > 5.5) runOver(st, v, v.lastHitBy === 'player' ? 'player' : 'loose'); }
@@ -12573,6 +12591,7 @@ var Game = (function () {
     attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
+    LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
     HOOKS, NOISE, MIN_PER_SEC, layout, baseTile, HZ, hazardAt, hurtHazard, setTile: setT, makeVehicle, explode, damageVehicle, blastMap, goTo, stepAlong, say, addLog, feed, emit, addMemory, placeFor, nearestPlace, wanderSpot, makeNpc, walkM, los, panicAround, exitVehicle, giveWeapon, CAST,
   };
 })();
@@ -14434,7 +14453,7 @@ var Popolo = (function () {
     const bplace = id => { const bi = B.findIndex(b => b.id === id); return bi >= 0 && B[bi].door ? bi : -1; };
     // svaghi: [chi ci va, luogo pubblico (id PLACES) o edificio]
     const fun = { bar: ['bar', 'sirena', 'osteria', 'osteria_sg', 'car_2'].filter(has), out: ['piazza', 'fontana', 'lungomare', 'passeggiata', 'giardini', 'belvedere', 'molo', 'spiaggia', 'piazzetta'].filter(has), young: ['flipper', 'gelateria', 'cinema', 'spiaggia', 'lungomare'].filter(has), church: ['chiesa', 'santuario', 'chiesa_sg'].filter(has), shops: ['wu'].filter(has) };
-    byUse('panetteria').concat(byUse('tabacchi'), byUse('macelleria'), byUse('fruttivendolo'), byUse('emporio')).forEach(([b]) => fun.shops.push('b:' + b.id));   // [economia]
+    byUse('panetteria').concat(byUse('tabacchi'), byUse('macelleria'), byUse('fruttivendolo'), byUse('emporio'), byUse('supermercato'))   /* [ordine] */.forEach(([b]) => fun.shops.push('b:' + b.id));   // [economia]
     byUse('circolo').forEach(([b]) => fun.circolo = 'b:' + b.id);
     INDEX = { homes, works, fun, bplace, door };
     return INDEX;
@@ -14847,6 +14866,7 @@ var Popolo = (function () {
   // ---------------- LIVELLO DI DETTAGLIO ----------------
   function mustBeNear(st, n) {
     if (isPassive(st, n)) return true;   // Grigi in servizio, membri della Risacca: li muove sempre il motore
+    if (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato)) return true;   // [ordine] in piazza, in fila, portato in questura
     if (n.room) return true;             // [scopo] è nella stanza col giocatore
     if (n.panic > 0 || n.stun > 0 || n.aggro || n.jailedUntil > st.t) return n.jailedUntil <= st.t;
     return ['fugge', 'denuncia', 'affronta', 'combatte', 'insegue'].includes(n.action.name);
@@ -14857,7 +14877,7 @@ var Popolo = (function () {
       if (!n.pop || n.dead) continue;
       const d = dist(n.x, n.y, p.x, p.y), P = n.pop;
       const want = mustBeNear(st, n) || d < CFG.near || (P.near && d < CFG.far);
-      list.push([n, want ? d : 1e9]);
+      list.push([n, want ? (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato) ? 0 : d) : 1e9]);   // [ordine] chi è in piazza o in fila resta vivo anche lontano
     }
     list.sort((a, b) => a[1] - b[1]);
     let nearN = 0;
@@ -25011,6 +25031,1341 @@ var Sottosuolo = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = Sottosuolo;
 </script>
+<script>/* Porto Vecchio — L'Ordine: l'apparato della Tutela per strada (solo logica, nessuna grafica).
+   Costruito sopra quello che c'è: i Grigi del motore (vedono, denunciano, inseguono, arrestano), la vita di popolo.js
+   (diari, rabbia, paura, spesa), le corsie del traffico, le botteghe di economia/oggetti, la nave dell'Impero.
+   - La Caserma della Guardia diventa una questura vera: turni (mattina, pomeriggio, notte), piantone alla porta,
+     una centrale che assegna i servizi agli agenti di turno.
+   - Agenti nuovi: Grigi in divisa, agenti in borghese dell'Ufficio Rettifiche, Guardie del Garante al Palazzo del Governo,
+     soldati della Base (varco del Muro, Rocca, porto cargo, eliporto, poligono) con i cani.
+   - Volanti: tre Alfette dei Grigi girano sulle corsie, si fermano per i controlli, inseguono quando scatta l'allarme.
+   - Ronde a piedi (di notte col coprifuoco), posti di blocco occasionali con la Campagnola e le transenne.
+   - Documenti: carta d'identità, tessera annonaria, lasciapassare per la zona della Base. Controlli, multe, perquisizioni, fermi.
+   - Proteste spontanee (un arresto davanti a tutti, la fame, la rabbia) e organizzate (la Risacca), cortei, cordoni,
+     cariche, fermi, fuggi fuggi. Ognuno se lo ricorda nel diario.
+   - La nave al porto militare: arriva, ormeggia, scarica le casse sotto scorta, il camion porta la roba al supermercato.
+   - Il Supermercato del Popolo: un edificio del centro con scaffali, cassiere, scorte vere (economia.js) e la coda fuori
+     quando arriva la merce.
+   Si aggancia a Game.HOOKS concatenando gli agganci che trova (dopo popolo.js). Stato in st.ord. Prova: node test_ordine.js */
+var Ordine = (function () {
+  'use strict';
+  const G = typeof Game !== 'undefined' ? Game : require('./game.js');
+  const PO = () => (typeof Popolo !== 'undefined' ? Popolo : null);
+  const EC = () => (typeof Economia !== 'undefined' ? Economia : null);
+  const OG = () => (typeof Oggetti !== 'undefined' ? Oggetti : null);
+  const RS = () => (typeof Risacca !== 'undefined' ? Risacca : null);
+  const TS = G.TS, PLACES = G.PLACES;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const dist = (a, b, c, d) => Math.hypot(c - a, d - b);
+  const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+  const hourOf = t => Math.floor(t / 60) % 24;
+  const minOf = t => ((t % 1440) + 1440) % 1440;
+  const H32 = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
+  const pick = (r, a) => a[Math.floor(r() * a.length) % a.length];
+  const WORLD = G.MAP && G.MAP.world;
+  const WALL = WORLD && WORLD.WALL;
+
+  const CFG = {
+    grigi: 12, borghese: 4, garante: 2, soldati: 12,
+    volanti: 3,
+    blocchiAlGiorno: 4, bloccoMin: [60, 130],
+    rondaStopOgni: [3, 7],        // minuti di gioco tra un controllo e l'altro di una ronda
+    protestaOgni: 50,              // minuti di gioco tra due prove di protesta spontanea
+    abitanti: 560,                 // più gente per strada (popolo.js: CFG.max)
+  };
+
+  // ================= AL CARICAMENTO: il Supermercato del Popolo, i documenti =================
+  const SUPER = (() => {
+    const B = G.BUILDINGS, pz = PLACES.piazza || { x: 0, y: 0 };
+    let sb = B.find(b => b.use === 'supermercato');
+    if (!sb) {
+      const free = B.filter(b => b.door && b.use === 'casa' && !b.home && !b.farm && !b.trade && !b.name && b.w * b.h >= 12)
+        .map(b => ({ b, d: dist(b.door[0] * TS, b.door[1] * TS, pz.x, pz.y), a: b.w * b.h })).filter(x => x.d < 140)
+        .sort((p, q) => (q.a - p.a) * 1.5 + (p.d - q.d) * .25);
+      if (free[0]) { sb = free[0].b; sb.use = 'supermercato'; sb.trade = 'supermercato'; sb.name = 'Supermercato del Popolo «La Spiga»'; sb.label = sb.name; sb.shop = true; sb.sign = { t: 'УНИВЕРСАМ 슈퍼', c: '#ffd23b' }; sb.superm = true; }
+    }
+    if (!sb) return null;
+    const door = { x: sb.door[0] * TS + TS / 2, y: sb.door[1] * TS + TS / 2 };
+    // la fila: dalla porta verso fuori, lungo il marciapiede
+    const cx = (sb.x + sb.w / 2) * TS, cy = (sb.y + sb.h / 2) * TS, ox = door.x - cx, oy = door.y - cy, L = Math.hypot(ox, oy) || 1;
+    const out = { x: ox / L, y: oy / L }, side = { x: -out.y, y: out.x };
+    if (!PLACES.supermercato) { const px = door.x + out.x * 2, py = door.y + out.y * 2; PLACES.supermercato = { id: 'supermercato', name: sb.name, tx: Math.floor(px / TS), ty: Math.floor(py / TS), x: px, y: py }; }
+    return { b: sb, id: sb.id, door, out, side };
+  })();
+  const GOODS_SUPER = ['pane', 'pasta', 'riso', 'farina', 'zucchero', 'sale', 'olio', 'latte', 'uova', 'formaggio', 'scatolame', 'carne_scatola', 'legumi', 'passata', 'caffe', 'biscotti', 'gallette',
+    'acqua', 'aranciata', 'birra', 'vino', 'sapone', 'detersivo', 'candeggina', 'dentifricio', 'rasoio', 'carta', 'quaderno', 'penne', 'candele', 'fiammiferi', 'pile', 'lampadine', 'cerotti', 'garze', 'sigarette'];
+  (function installShop() {
+    if (!SUPER) return;
+    const P = PO(), O = OG(), E = EC(), R = RS();
+    if (P && P._ && P._.JOBS_BY) {
+      P._.JOBS_BY.supermercato = [['cassiera del supermercato', 3, 5, 8, 20], ['scaffalista', 2, 4, 6, 15], ['magazziniere del supermercato', 2, 5, 6, 14], ['guardiano del supermercato', 1, 5, 8, 20], ['direttrice del supermercato', 1, 9, 8, 18]];
+      if (P._.ESSENTIAL) P._.ESSENTIAL.push(/^cassier/, /^scaffalist/);
+      if (P._.GENDER) P._.GENDER.push(['cassiere', 'cassiera'], ['scaffalista', 'scaffalista']);
+    }
+    if (P && P.OGG) {
+      if (P.OGG.bottega && !P.OGG.bottega.where.includes('use:supermercato')) P.OGG.bottega.where.push('use:supermercato');
+      P.OGG.spesa_grande = { label: 'la spesa al supermercato', where: ['use:supermercato'], act: 'spesa', h: [8, 20], pantry: 7, cost: 8, once: { compagnia: -.05, paura: .01 }, int: 'cucina', needs: (Pp, st) => !st.ord || !st.ord.superVuoto };
+    }
+    const sell = ['use:supermercato', GOODS_SUPER.filter(g => !O || O.CAT[g])];
+    if (O && O.SHOPLIST && !O.SHOPLIST.some(r => r[0] === 'use:supermercato')) O.SHOPLIST.push(sell);
+    else if (E && E.SELL && !E.SELL.some(r => r[0] === 'use:supermercato')) E.SELL.push(sell);
+    if (R && R.SHOPS && !R.SHOPS[SUPER.id]) R.SHOPS[SUPER.id] = { viveri: 2, zucchero: 2, carta: 2, medicine: 7, gesso: 1 };
+    if (O && O.CAT) {
+      O.CAT.carta_identita = O.CAT.carta_identita || { id: 'carta_identita', nome: 'carta d\'identità', cat: O.CAT.tessera_annonaria ? O.CAT.tessera_annonaria.cat : 'valori', prezzo: 0, peso: .01, q: 0, doc: true };
+      O.CAT.lasciapassare = O.CAT.lasciapassare || { id: 'lasciapassare', nome: 'lasciapassare della Base', cat: O.CAT.carta_identita.cat, prezzo: 0, peso: .01, q: 0, doc: true };
+    }
+    if (P && P.CFG && P.CFG.max < CFG.abitanti) P.CFG.max = CFG.abitanti;
+  })();
+
+  // ================= NOMI E ASPETTI =================
+  const NOMI = ['Bruno', 'Gavino', 'Efisio', 'Mario', 'Antonio', 'Salvatore', 'Giovanni', 'Franco', 'Luigi', 'Piero', 'Renato', 'Aldo', 'Sergio', 'Elio', 'Dario', 'Nanni', 'Tore', 'Peppino', 'Vittorio', 'Ugo', 'Raffaele', 'Ignazio', 'Battista', 'Corrado', 'Dino', 'Mauro', 'Silvio', 'Walter'];
+  const NOMI_F = ['Maria', 'Anna', 'Graziella', 'Rita', 'Luisa', 'Paola', 'Teresa', 'Franca'];
+  const COGNOMI = ['Sanna', 'Pinna', 'Murgia', 'Deiana', 'Loi', 'Melis', 'Serra', 'Carta', 'Porcu', 'Usai', 'Fadda', 'Piras', 'Atzori', 'Mereu', 'Cocco', 'Floris', 'Manca', 'Lai', 'Puddu', 'Cabras', 'Scano', 'Orrù', 'Zedda', 'Cossu', 'Pisano', 'Spano'];
+  const SKIN = ['#e3c1a0', '#dcae88', '#c99a76', '#e8c3a4', '#d8a982', '#b9825c', '#f0cfb2'];
+  const HAIR = ['#111', '#2a1d14', '#3a2a1a', '#1a1410', '#5a4a3a', '#8a8a88'];
+  const GRIGIO = { top: '#5c6672', bottom: '#3c444e' }, SOLDATO = { top: '#4a5440', bottom: '#3a4232' }, GARANTE = { top: '#2a2a32', bottom: '#2a2a32' };
+  const BORGHESE = [['#3a3a40', '#2a2a30'], ['#5a4a3a', '#2a2a30'], ['#6a6a5a', '#3a3a3a'], ['#2a3044', '#1a1a22']];
+
+  // ================= STATO =================
+  const S = st => st.ord;
+  function create(st) {
+    const r = G.MAP && G.MAP.world ? G.MAP.world.rng(7717) : Math.random;
+    const O = st.ord = {
+      agents: [], volanti: [], ronde: [], blocco: null, nextBlocco: st.t + 60 + r() * 120, ctl: null, proteste: [], nextProt: st.t + 90,
+      nave: { phase: 'lontana', x: 1460, y: 176, ang: Math.PI, t: 0, kind: 'impero', crates: 0, crew: [] }, coda: null, superVuoto: false,
+      camion: null, sorvegliati: {}, stats: { controlli: 0, multe: 0, fermi: 0, perquisizioni: 0, proteste: 0, cariche: 0, navi: 0, codaServiti: 0 }, log: [], nextId: 1, rev: 0,
+    };
+    const used = new Set(st.npcs.map(n => n.id));
+    const nm = (fem) => { for (let k = 0; k < 40; k++) { const f = pick(r, fem ? NOMI_F : NOMI), c = pick(r, COGNOMI), full = `${f} ${c}`; if (!st.npcs.some(n => n.name.endsWith(full))) return [f, c]; } return [pick(r, NOMI), pick(r, COGNOMI)]; };
+    const add = (id, c) => {
+      if (used.has(id)) return null; used.add(id); c.id = id;
+      const n = G.makeNpc(st, c); n.first = c.first || n.first; n.ord = Object.assign({ duty: null, svc: null }, c.ordX || {}); delete n.ordX;
+      st.npcs.push(n); O.agents.push(n.id); return n;
+    };
+    const look = (u, extra) => ({ skin: pick(r, SKIN), top: u.top, bottom: u.bottom, uniform: u.top, hair: pick(r, HAIR), hat: extra.hat || 'police', build: .95 + r() * .25, extra: extra.extra || 'belt' });
+    // i Grigi della questura: tre turni da quattro
+    const GR = ['Guardia', 'Guardia', 'Appuntato', 'Guardia', 'Brigadiere', 'Guardia', 'Guardia', 'Appuntato', 'Guardia', 'Guardia', 'Maresciallo', 'Guardia'];
+    for (let i = 0; i < CFG.grigi; i++) {
+      const fem = i % 6 === 4, [f, c] = nm(fem), rank = fem ? 'Guardia' : GR[i];
+      add('gr_' + i, { name: `${rank} ${f} ${c}`, first: f, role: `${rank} dei Grigi (Guardia Insulare)`, home: 'commissariato', hp: 100, weapon: 'pistola', tr: { cor: .6 + r() * .35, loq: .3 + r() * .4, avid: .1 + r() * .6, legge: .7 + r() * .3 }, sched: [[0, 'commissariato']], cop: true, grigio: true,
+        look: look(GRIGIO, { hat: 'police', extra: r() < .3 ? 'belt,moustache' : 'belt' }), ordX: { kind: 'grigio', turno: i % 3, rank } });
+    }
+    // l'Ufficio Rettifiche: in borghese, nei bar e nelle piazze
+    for (let i = 0; i < CFG.borghese; i++) {
+      const fem = i === 2, [f, c] = nm(fem), col = BORGHESE[i % BORGHESE.length];
+      add('rt_' + i, { name: `${f} ${c}`, first: f, role: 'Impiegato del Comune (in realtà Ufficio Rettifiche)', home: 'garante', hp: 80, weapon: 'pistola', tr: { cor: .5, loq: .7, avid: .3, legge: .95 }, sched: [[0, 'garante']], cop: true, borghese: true,
+        look: { skin: pick(r, SKIN), top: col[0], bottom: col[1], hair: pick(r, HAIR), hat: fem ? 'none' : pick(r, ['fedora', 'none', 'flat']), build: 1, extra: fem ? 'bag,fem' : pick(r, ['paper', 'shades', 'paper,shades']) }, ordX: { kind: 'borghese', turno: i % 2 ? 1 : 0 } });
+    }
+    // le Guardie del Garante, ferme davanti al Palazzo del Governo
+    for (let i = 0; i < CFG.garante; i++) {
+      const [f, c] = nm(false);
+      add('gg_' + i, { name: `Guardia d'onore ${c}`, first: f, role: 'Guardia d\'onore del Garante', home: 'governo', hp: 110, weapon: 'mitra', tr: { cor: .8, loq: .1, avid: .2, legge: 1 }, sched: [[0, 'governo']], cop: true, military: true,
+        look: look(GARANTE, { hat: 'basco', extra: 'belt,gold' }), ordX: { kind: 'garante', post: i } });
+    }
+    // i soldati della Base: due turni (7-19, 19-7); i due cinofili hanno i cani
+    const POSTS = soldierPosts();
+    for (let i = 0; i < CFG.soldati; i++) {
+      const [f, c] = nm(false), P = POSTS[i % POSTS.length];
+      add('sd_' + i, { name: `Soldato ${c}`, first: f, role: P.role, home: 'caserma_p', hp: 120, weapon: P.dog ? 'pistola' : 'mitra', tr: { cor: .75 + r() * .2, loq: .2, avid: .2 + r() * .3, legge: .9 }, sched: [[0, 'caserma_p']], cop: true, military: true,
+        look: look(SOLDATO, { hat: 'elmetto', extra: 'belt' }), ordX: { kind: 'soldato', turno: i < CFG.soldati / 2 ? 0 : 1, post: P, dog: !!P.dog } });
+    }
+    // i Grigi che c'erano già (Carla, Ferri) restano quelli della storia
+    // le volanti: tre Alfette davanti alla questura (grigie col fregio)
+    const qs = PLACES.commissariato;
+    for (let i = 0; i < CFG.volanti; i++) {
+      const sp = (G.parkSpot && G.parkSpot(qs.x + 6 + i * 5, qs.y + 4, false)) || { x: qs.x + 6 + i * 5, y: qs.y + 4 };
+      const v = G.makeVehicle(st, { id: 'volante' + i, kind: 'polizia', x: sp.x, y: sp.y, ang: 0, color: '#6c7684', ronda: true, livrea: true, rider: null, siren: false, home: { x: sp.x, y: sp.y } });
+      st.vehicles.push(v); O.volanti.push({ car: v.id, crew: [], mode: 'parcheggio', until: 0, i });
+    }
+    // documenti del protagonista
+    const p = st.player; p.inv = p.inv || {}; if (!p.inv.carta_identita) p.inv.carta_identita = 1; if (!p.inv.tessera_annonaria) p.inv.tessera_annonaria = 1;
+    // la vita: anche gli agenti nuovi hanno diario, bisogni e chi li conosce (popolo.js li lascia muovere al motore)
+    const P0 = PO(); if (P0 && P0._ && P0._.adopt) O.agents.forEach(id => { const n = G.byId(st, id); if (n) try { P0._.adopt(st, n); } catch (e) { } });
+    G.addLog(st, 'La Caserma della Guardia lavora a pieno: tre turni, le volanti, le ronde. La Tutela tiene d\'occhio tutto.', 'info');
+  }
+
+  // i posti dei soldati della Base
+  function soldierPosts() {
+    const out = [], v = PLACES.varco || { x: 1175, y: 139 }, ro = PLACES.rocca || v, mc = PLACES.molo_cargo || v, el = PLACES.eliporto || v, pg = PLACES.poligono || v, dn = PLACES.deposito_n || v, h2 = PLACES.hangar2 || v;
+    const wx = WALL ? WALL.x : 1168, g0 = WALL ? WALL.gate[0] : 133, g1 = WALL ? WALL.gate[1] : 145;
+    out.push({ x: wx + 4, y: g0 - 1.5, face: Math.PI, role: 'Sentinella al Varco del Muro', gate: true });
+    out.push({ x: wx + 4, y: g1 + 1.5, face: Math.PI, role: 'Sentinella al Varco del Muro', gate: true });
+    out.push({ x: ro.x - 3, y: ro.y + 4, face: Math.PI / 2, role: 'Sentinella della Rocca' });
+    out.push({ x: ro.x + 3, y: ro.y + 4, face: Math.PI / 2, role: 'Sentinella della Rocca' });
+    out.push({ x: mc.x - 4, y: mc.y + 3, face: 0, role: 'Guardia del porto cargo', port: true });
+    out.push({ x: mc.x + 2, y: mc.y - 3, face: 0, role: 'Guardia del porto cargo', port: true });
+    out.push({ x: el.x, y: el.y + 5, face: Math.PI / 2, role: 'Guardia dell\'eliporto' });
+    out.push({ x: dn.x, y: dn.y + 4, face: Math.PI / 2, role: 'Guardia del deposito' });
+    out.push({ role: 'Cinofilo della Base', dog: true, route: [[wx + 8, g0 - 20], [pg.x, pg.y], [mc.x - 8, mc.y + 8], [h2.x, h2.y + 6], [wx + 8, g1 + 22]] });
+    out.push({ role: 'Cinofilo della Base', dog: true, route: [[h2.x - 6, h2.y + 8], [el.x, el.y], [ro.x, ro.y + 10], [dn.x - 8, dn.y + 6], [pg.x + 6, pg.y - 4]] });
+    out.push({ role: 'Pattuglia della Base', route: [[wx + 6, 100], [ro.x - 10, ro.y - 10], [wx + 6, g0 - 8], [pg.x - 8, pg.y + 6], [wx + 6, 185]] });
+    out.push({ role: 'Pattuglia della Base', route: [[wx + 6, 185], [pg.x - 8, pg.y + 6], [wx + 6, g1 + 8], [ro.x - 10, ro.y - 10], [wx + 6, 100]] });
+    return out;
+  }
+
+  // ================= MOVIMENTO =================
+  // verso un punto: dritti se è vicino e si vede, altrimenti col percorso (ricalcolato al massimo ogni 1,5 s)
+  function seek(st, n, x, y, dt, sp, near) {
+    const d = dist(n.x, n.y, x, y);
+    if (d < (near || .5)) { n.speedNow = 0; n.path = []; return true; }
+    const O = n.ord || (n.ord = {});
+    if (d < 7 && G.walkM(x, y) && G.los(n.x, n.y, x, y)) { n.path = [{ x, y }]; n.goal = { x, y }; }
+    else if (!n.path.length || !n.goal || (dist(n.goal.x, n.goal.y, x, y) > 2 && st.clock - (O.pT || -9) > 1.5)) { O.pT = st.clock; G.goTo(n, x, y, 2); if (!n.path.length) { n.path = [{ x, y }]; n.goal = { x, y }; } }
+    G.stepAlong(n, sp || 1.35, dt);
+    return false;
+  }
+  const faceTo = (n, x, y, dt) => { const a = Math.atan2(y - n.y, x - n.x); n.face += angDiff(a, n.face) * Math.min(1, (dt || .1) * 6); };
+  function stand(n, face, dt) { n.speedNow = 0; n.path = []; if (face !== undefined) n.face += angDiff(face, n.face) * Math.min(1, (dt || .1) * 4); }
+
+  // ================= TURNI E SERVIZI =================
+  const onDuty = (st, n) => {
+    const h = hourOf(st.t), k = n.ord.kind;
+    if (k === 'grigio') return n.ord.turno === 0 ? h >= 6 && h < 14 : n.ord.turno === 1 ? h >= 14 && h < 22 : h >= 22 || h < 6;
+    if (k === 'soldato') return n.ord.turno === 0 ? h >= 7 && h < 19 : h >= 19 || h < 7;
+    if (k === 'borghese') return n.ord.turno === 0 ? h >= 8 && h < 16 : h >= 15 && h < 24;
+    return true;   // le Guardie d'onore e chi ha un servizio straordinario
+  };
+  // chi lascia fare al motore: allarme, combattimento, ferito, a terra
+  let WL = { c: -1, v: 0 };
+  const wanted = st => { if (WL.c !== st.clock || WL.st !== st) WL = { c: st.clock, st, v: G.wantedLevel(st) }; return WL.v; };
+  function engineTakes(st, n) {
+    if (n.dead || n.stun > 0 || n.jailedUntil > st.t) return true;
+    const lv = wanted(st);
+    if (lv >= 2) return true;
+    if (lv >= 1 && (n.alert > .3 || (st.chase && dist(n.x, n.y, st.player.x, st.player.y) < 45))) return true;
+    return false;
+  }
+  // la centrale: chi è di turno senza servizio ne riceve uno
+  function centrale(st) {
+    const O = S(st), free = [];
+    O.agents.forEach(id => { const n = G.byId(st, id); if (!n || n.dead || n.ord.kind !== 'grigio') return; if (!onDuty(st, n)) { if (n.ord.svc && !n.ord.svc.extra && n.ord.svc.k !== 'volante') endSvc(st, n); return; } if (!n.ord.svc) free.push(n); });
+    if (!free.length) return;
+    const want = [];
+    const piantone = O.agents.map(id => G.byId(st, id)).some(n => n && n.ord.svc && n.ord.svc.k === 'piantone');
+    if (!piantone) want.push('piantone');
+    // le volanti: due a macchina
+    O.volanti.forEach(V => { const car = st.vehicles.find(v => v.id === V.car); if (car && !car.wreck && V.crew.length === 0 && V.mode === 'parcheggio') want.push('volante:' + V.i, 'volante:' + V.i); });
+    for (let i = 0; i < free.length; i++) want.push('ronda');
+    if (O.coda && O.coda.active && !O.coda.cop) want.unshift('coda');
+    for (const n of free) {
+      const k = want.shift(); if (!k) break;
+      if (k === 'piantone') n.ord.svc = { k: 'piantone' };
+      else if (k === 'coda') { n.ord.svc = { k: 'coda' }; O.coda.cop = n.id; }
+      else if (k.startsWith('volante:')) { const V = O.volanti[+k.split(':')[1]]; V.crew.push(n.id); n.ord.svc = { k: 'volante', V: V.i }; }
+      else if (k === 'ronda') {
+        let R = O.ronde.find(q => q.a.length < 2 && q.night === isCurfew(st)); if (!R) { R = { id: O.nextId++, a: [], route: rondaRoute(st), i: 0, stopAt: st.t + rrand(CFG.rondaStopOgni), night: isCurfew(st) }; O.ronde.push(R); }
+        R.a.push(n.id); n.ord.svc = { k: 'ronda', R: R.id };
+      }
+    }
+  }
+  const rrand = ([a, b]) => a + Math.random() * (b - a);
+  const isCurfew = st => { const P = PO(); const cf = P && P.curfewFrom ? P.curfewFrom(st) : 23 * 60; const m = minOf(st.t); return m >= cf || m < 5 * 60; };
+  const ROUTES = [
+    ['piazza', 'fontana', 'vico', 'caruggio', 'calata', 'molo', 'marina', 'piazza'],
+    ['piazza', 'piazzetta', 'lungomare', 'passeggiata', 'spiaggia', 'lungomare', 'piazzetta'],
+    ['piazza_gov', 'giardini', 'pineta', 'giardini', 'piazza_gov'],
+    ['calata', 'lungomare', 'piazzetta', 'wu', 'fontana', 'calata'],
+    ['commissariato', 'caruggio', 'vico', 'piazza', 'supermercato', 'commissariato'],
+  ];
+  function rondaRoute(st) { const R = ROUTES[Math.floor(Math.random() * ROUTES.length)].filter(k => PLACES[k]); return R.length >= 2 ? R : ['piazza', 'commissariato']; }
+  function endSvc(st, n) {
+    const O = S(st), s = n.ord.svc; if (!s) return;
+    if (s.k === 'volante') { const V = O.volanti[s.V]; if (V) V.crew = V.crew.filter(id => id !== n.id); if (n.car) { n.car = null; } n.inside = false; }
+    if (s.k === 'ronda') { const R = O.ronde.find(q => q.id === s.R); if (R) { R.a = R.a.filter(id => id !== n.id); if (!R.a.length) O.ronde = O.ronde.filter(q => q !== R); } }
+    if (s.k === 'coda' && O.coda && O.coda.cop === n.id) O.coda.cop = null;
+    n.ord.svc = null;
+  }
+
+  // ================= IL PENSIERO DEGLI AGENTI =================
+  function think(st, n) {
+    const O = S(st); if (!O) return false;
+    if (n.ord && n.ord.protester) return thinkProtester(st, n);
+    if (n.ord && n.ord.fermato) { n.action = { name: 'ordine_fermo', scores: [], why: 'Lo portano in questura.', since: n.action.since }; return true; }
+    if (n.ord && n.ord.coda) { n.inside = false; n.action = { name: 'ordine_coda', scores: [], why: 'In fila al supermercato.', since: n.action.since }; return true; }
+    if (n.ord && n.ord.stopped && st.t < n.ord.stopped.until) { n.inside = false; n.action = { name: 'ordine_fermato', scores: [], why: 'Fermato dai Grigi per un controllo.', since: n.action.since }; return true; }
+    if (!n.ord || !n.ord.kind) return false;
+    if (engineTakes(st, n)) { if (n.inside && !n.dead && n.stun <= 0) n.inside = false; if (n.ord.svc && n.ord.svc.k === 'volante') { const V = O.volanti[n.ord.svc.V]; if (V && V.mode !== 'inseguimento') startChase(st, V); } return false; }
+    const k = n.ord.kind, svc = n.ord.svc;
+    const set = (name, why) => { const was = n.action.name; n.action = { name, scores: [{ name, v: 1, why }], why, since: was === name ? n.action.since : st.clock }; return true; };
+    if (svc && svc.k === 'controllo_p') { n.inside = false; return set('ordine_controllo_p', 'Ti controlla i documenti.'); }
+    if (svc && svc.k === 'antisommossa') return set('ordine_cordone', 'Reparto antisommossa: ' + (svc.phase || 'in posizione') + '.');
+    if (svc && svc.k === 'blocco') { n.inside = false; return set('ordine_blocco', 'Posto di blocco: controlla chi passa.'); }
+    if (svc && svc.k === 'scorta') { n.inside = false; return set('ordine_scorta', 'Porta un fermato in questura.'); }
+    if (svc && svc.k === 'nave') { n.inside = false; return set('ordine_nave', 'Scorta allo scarico della nave.'); }
+    if (svc && svc.k === 'controllo') { n.inside = false; return set('ordine_controllo', 'Controlla i documenti.'); }
+    if (k === 'garante') { n.inside = false; return set('ordine_posto', 'Di guardia davanti al Palazzo del Governo.'); }
+    if (!onDuty(st, n)) {
+      if (k === 'soldato' || k === 'grigio') { return set('ordine_riposo', k === 'soldato' ? 'Fuori turno: in camerata.' : 'Fuori turno: in caserma.'); }
+      return set('ordine_riposo', 'Fuori servizio.');
+    }
+    if (!(svc && svc.k === 'volante')) n.inside = false;
+    if (k === 'soldato') return set('ordine_posto', n.ord.post.route ? `${n.ord.post.role}: giro del perimetro.` : `${n.ord.post.role}.`);
+    if (k === 'borghese') return set('ordine_ascolta', 'In borghese: ascolta i discorsi della gente.');
+    if (!svc) return set('ordine_rientra', 'Di turno: aspetta un servizio in caserma.');
+    if (svc.k === 'piantone') return set('ordine_piantone', 'Piantone alla porta della caserma.');
+    if (svc.k === 'ronda') return set('ordine_ronda', isCurfew(st) ? 'Ronda notturna: il coprifuoco.' : 'Ronda a piedi.');
+    if (svc.k === 'volante') return set('ordine_volante', 'In volante.');
+    if (svc.k === 'coda') return set('ordine_coda_g', 'Tiene in ordine la fila del supermercato.');
+    return false;
+  }
+
+  // ================= IL MOVIMENTO DEGLI AGENTI =================
+  const NEED = { ordine_blocco: 'blocco', ordine_scorta: 'scorta', ordine_controllo: 'controllo', ordine_cordone: 'antisommossa', ordine_ronda: 'ronda', ordine_piantone: 'piantone', ordine_coda_g: 'coda', ordine_volante: 'volante', ordine_controllo_p: 'controllo_p', ordine_fermo: '.fermato', ordine_coda: '.coda', ordine_protesta: '.protester', ordine_fermato: '.stopped' };
+  function move(st, n, dt, a) {
+    if (!a || a.slice(0, 7) !== 'ordine_') return false;
+    const O = S(st);
+    // l'azione può essere rimasta indietro rispetto al servizio (si pensa ogni 0,35 s): si aspetta il prossimo pensiero
+    const need = NEED[a], o = n.ord;
+    if (need && !(need[0] === '.' ? o[need.slice(1)] : o.svc && o.svc.k === need)) { n.thinkAt = 0; n.speedNow = 0; return true; }
+    switch (a) {
+      case 'ordine_riposo': case 'ordine_rientra': {
+        const home = n.ord.kind === 'soldato' ? PLACES.caserma_p : n.ord.kind === 'borghese' ? PLACES.garante : PLACES.commissariato;
+        if (!home) return true;
+        if (n.inside) { n.speedNow = 0; return true; }
+        if (seek(st, n, home.x, home.y, dt, 1.5, 1.2)) { n.inside = true; n.x = home.x; n.y = home.y; }
+        return true;
+      }
+      case 'ordine_piantone': { const q = PLACES.commissariato; const x = q.x + 1.6, y = q.y + 1.2; if (seek(st, n, x, y, dt, 1.4, .4)) { stand(n, Math.PI / 2, dt); spotCheck(st, n, 5); } return true; }
+      case 'ordine_posto': return postMove(st, n, dt);
+      case 'ordine_ascolta': return listenMove(st, n, dt);
+      case 'ordine_ronda': return rondaMove(st, n, dt);
+      case 'ordine_volante': case 'ordine_controllo_p': { if (a === 'ordine_volante') n.speedNow = 0; return true; }
+      case 'ordine_blocco': return bloccoMove(st, n, dt);
+      case 'ordine_scorta': return scortaMove(st, n, dt);
+      case 'ordine_fermo': return fermoMove(st, n, dt);
+      case 'ordine_controllo': return controlloMove(st, n, dt);
+      case 'ordine_fermato': { const s = n.ord.stopped, c = s && G.byId(st, s.cop); if (c) faceTo(n, c.x, c.y, dt); n.speedNow = 0; n.path = []; return true; }
+      case 'ordine_coda': return codaMove(st, n, dt);
+      case 'ordine_coda_g': return codaGuardMove(st, n, dt);
+      case 'ordine_cordone': return cordoneMove(st, n, dt);
+      case 'ordine_nave': return naveGuardMove(st, n, dt);
+      case 'ordine_protesta': return protesterMove(st, n, dt);
+    }
+    return false;
+  }
+
+  // ---- soldati, guardie d'onore ----
+  function postMove(st, n, dt) {
+    const k = n.ord.kind;
+    if (k === 'garante') { const q = PLACES.governo || PLACES.piazza_gov; const x = q.x + (n.ord.post ? 2.2 : -2.2), y = q.y + 1.5; if (seek(st, n, x, y, dt, 1.2, .3)) { stand(n, Math.PI / 2, dt); } return true; }
+    const P = n.ord.post;
+    if (P.route) {
+      const R = P.route, i = n.ord.ri || 0, [x, y] = R[i % R.length];
+      if (n.ord.wait > 0) { n.ord.wait -= dt; stand(n, undefined, dt); if (P.dog) baseWatch(st, n); return true; }
+      if (seek(st, n, x, y, dt, 1.25, 1.2)) { n.ord.ri = i + 1; n.ord.wait = 4 + Math.random() * 8; }
+      baseWatch(st, n); return true;
+    }
+    if (seek(st, n, P.x, P.y, dt, 1.3, .3)) { stand(n, P.face, dt); baseWatch(st, n); if (P.gate) gateCheck(st, n); }
+    return true;
+  }
+  // dentro la zona della Base senza lasciapassare: ti fermano; se scappi o ti trovano dove non dovresti essere, allarme
+  const inBase = (x) => WALL && x > WALL.x + 1;
+  const hasPass = st => { const inv = st.player.inv || {}; return (inv.lasciapassare > 0) || (inv.documenti > 0); };
+  function baseWatch(st, n) {
+    const p = st.player, O = S(st);
+    if (!inBase(p.x) || p.vehicle && Math.hypot(p.x - n.x, p.y - n.y) > 20) return;
+    if (O.ctl || st.clock < (O.baseCd || 0)) return;
+    if (!G.seesPlayer(st, n) || dist(n.x, n.y, p.x, p.y) > 13) return;
+    if (O.passOk && st.t < O.passOk) return;
+    startCheck(st, n, 'base');
+  }
+  function gateCheck(st, n) {
+    const p = st.player, O = S(st);
+    if (O.ctl || O.passOk && st.t < O.passOk) return;
+    if (!WALL || Math.abs(p.x - WALL.x) > 7 || p.y < WALL.gate[0] - 3 || p.y > WALL.gate[1] + 3) return;
+    if (dist(n.x, n.y, p.x, p.y) < 9) startCheck(st, n, 'varco');
+  }
+
+  // ---- in borghese: siedono vicino alla gente, ascoltano, ogni tanto seguono qualcuno ----
+  const LISTEN = ['bar', 'sirena', 'osteria', 'piazza', 'fontana', 'calata', 'piazzetta', 'lungomare', 'giardini', 'supermercato'];
+  function listenMove(st, n, dt) {
+    const O = S(st), m = n.ord;
+    if (m.tail) {
+      const t = G.byId(st, m.tail.id);
+      if (!t || t.dead || t.inside || st.t > m.tail.until) { if (t && !t.dead) noteOf(st, n, `ho seguito ${t.name} per un po': ${t.inside ? 'è entrat' + (t.pop && t.pop.sex === 'f' ? 'a' : 'o') + ' in casa' : 'niente di strano'}`); m.tail = null; }
+      else { const d = dist(n.x, n.y, t.x, t.y); if (d > 9) seek(st, n, t.x, t.y, dt, 1.45, 6); else if (d < 5) { stand(n, undefined, dt); faceTo(n, t.x, t.y, dt); } else seek(st, n, t.x, t.y, dt, 1.1, 6); return true; }
+    }
+    if (!m.spot || st.t > m.spotUntil) {
+      const k = pick(Math.random, LISTEN.filter(q => PLACES[q])), q = PLACES[k], s = G.wanderSpot(st, q);
+      m.spot = s; m.spotUntil = st.t + 25 + Math.random() * 40; m.spotName = q.name;
+    }
+    if (seek(st, n, m.spot.x, m.spot.y, dt, 1.25, .8)) {
+      stand(n, undefined, dt);
+      if (st.clock > (m.lookT || 0)) {
+        m.lookT = st.clock + 20 + Math.random() * 30;
+        // uno con la testa calda vicino: lo si segue
+        const sus = st.npcs.find(k => k.pop && !k.dead && !k.inside && !k.cop && dist(k.x, k.y, n.x, n.y) < 12 && ((k.ris && k.ris.ideo > .55) || (k.pop.need && k.pop.need.rabbia > .55)));
+        if (sus && Math.random() < .5) { m.tail = { id: sus.id, until: st.t + 15 + Math.random() * 20 }; O.sorvegliati[sus.id] = (O.sorvegliati[sus.id] || 0) + 1; }
+      }
+    }
+    return true;
+  }
+
+  // ---- ronde a piedi ----
+  function rondaMove(st, n, dt) {
+    const O = S(st), R = O.ronde.find(q => q.id === (n.ord.svc && n.ord.svc.R));
+    if (!R) { n.ord.svc = null; return true; }
+    const lead = G.byId(st, R.a[0]);
+    if (lead && lead !== n && !lead.dead && lead.action.name === 'ordine_ronda') {
+      // il compagno sta al fianco del capo pattuglia
+      const s = lead.face + Math.PI / 2, x = lead.x + Math.cos(s) * .9 - Math.cos(lead.face) * .3, y = lead.y + Math.sin(s) * .9 - Math.sin(lead.face) * .3;
+      if (!seek(st, n, x, y, dt, Math.max(1.2, (lead.speedNow || 1.3) * 1.15), .35)) return true;
+      stand(n, lead.face, dt); return true;
+    }
+    if (R.pause > 0) { R.pause -= dt; stand(n, undefined, dt); return true; }
+    const pid = R.route[R.i % R.route.length], q = PLACES[pid];
+    if (!q) { R.i++; return true; }
+    if (!R.pt || R.ptFor !== R.i) { R.pt = G.wanderSpot(st, q); R.ptFor = R.i; }
+    if (seek(st, n, R.pt.x, R.pt.y, dt, R.night ? 1.15 : 1.3, 1.2)) { R.i++; R.pause = 3 + Math.random() * 6; }
+    // controllo a campione: un passante vicino (di notte chiunque giri col coprifuoco)
+    if (st.t >= R.stopAt) {
+      R.stopAt = st.t + rrand(CFG.rondaStopOgni) * (R.night ? .6 : 1);
+      if (!spotCheck(st, n, R.night ? 14 : 9, R)) R.stopAt = st.t + 1;
+    }
+    return true;
+  }
+  // cerca qualcuno da controllare (il giocatore compreso)
+  function spotCheck(st, n, range, R) {
+    const O = S(st), p = st.player, night = isCurfew(st);
+    // il giocatore: più facile di notte, se ha addosso roba che scotta si nota di più
+    if (!O.ctl && !p.vehicle && !p.indoor && st.clock > (O.playerCd || 0) && dist(n.x, n.y, p.x, p.y) < range && G.seesPlayer(st, n)) {
+      const repr = st.ris ? st.ris.repr / 100 : .1, k = (night ? .65 : .18) + repr * .3 + (contraband(st).length ? .1 : 0);
+      if (Math.random() < k) { startCheck(st, n, night ? 'coprifuoco' : 'ronda'); return true; }
+    }
+    const cand = [];
+    for (const k of st.npcs) {
+      if (k.dead || k.inside || k.cop || k.faction || !k.pop || k.ord && (k.ord.protester || k.ord.coda || k.ord.fermato) || k.jailedUntil > st.t) continue;
+      if (k.ord && k.ord.stopped && st.t < k.ord.stopped.until + 60) continue;
+      const d = dist(n.x, n.y, k.x, k.y); if (d > range) continue;
+      cand.push([k, d - (k.ris && k.ris.ideo > .5 ? 3 : 0) - (k.pop.age < 30 ? 1.5 : 0) + Math.random() * 4]);
+    }
+    if (!cand.length) return false;
+    cand.sort((a, b) => a[1] - b[1]);
+    startNpcCheck(st, n, cand[0][0], R);
+    return true;
+  }
+
+  // ================= DOCUMENTI =================
+  // gli abitanti: quasi tutti in regola; chi non lo è lo è per un motivo
+  function docsOf(n) {
+    if (n.ord && n.ord.docs) return n.ord.docs;
+    const h = H32(n.id + 'doc'), h2 = H32(n.id + 'tes'), P = n.pop || {};
+    const d = { carta: h > .06, tessera: h2 > .1 || (P.age && P.age < 16), falsi: !!(n.ris && n.ris.member && h > .5), scaduta: h > .06 && h < .13 };
+    if (P.status === 'disoccupato' && h2 < .2) d.tessera = false;
+    (n.ord = n.ord || {}).docs = d; return d;
+  }
+  function contraband(st) {
+    const inv = st.player.inv || {}, O = OG(), out = [];
+    for (const k in inv) { if (!(inv[k] > 0)) continue; const c = O && O.CAT[k]; if ((c && c.ill) || ['volantini', 'documenti', 'cassette_proibite', 'rivista_proibita', 'tessera_falsa'].includes(k)) out.push(k); }
+    const p = st.player; for (const k in p.arms || {}) if (k !== 'pugni' && k !== 'coltello') out.push('arma:' + k);
+    if (st.ris && st.ris.inv) ['volantini', 'kit', 'vernice'].forEach(k => { if (st.ris.inv[k] > 0 && !st.ris.cassaAt) { } });
+    return out;
+  }
+  const nomeOgg = k => { if (k.startsWith('arma:')) return (G.WEAPONS[k.slice(5)] || {}).name || 'un\'arma'; const c = OG() && OG().CAT[k]; return c ? c.nome : k; };
+
+  // ---- il controllo di un abitante ----
+  function startNpcCheck(st, cop, k, R) {
+    const O = S(st);
+    k.ord = k.ord || {}; k.ord.stopped = { cop: cop.id, until: st.t + 4 + Math.random() * 3, t0: st.t }; k.path = []; k.speedNow = 0;
+    cop.ord.chk = { id: k.id, t0: st.t, R: R ? R.id : null, back: cop.ord.svc };
+    cop.ord.svc = { k: 'controllo', back: cop.ord.svc };
+    G.say(st, cop, pick(Math.random, isCurfew(st) ? ['Alt. Coprifuoco. Documenti.', 'Dove va a quest\'ora? Documenti.', 'Fermo lì. Mani in vista.'] : ['Documenti, prego.', 'Un controllo. I documenti.', 'Lei. Venga qui. Documenti.']), 2.6);
+    O.stats.controlli++;
+  }
+  function controlloMove(st, n, dt) {
+    const O = S(st), c = n.ord.chk, k = c && G.byId(st, c.id);
+    const done = () => { n.ord.svc = n.ord.svc && n.ord.svc.back || null; n.ord.chk = null; };
+    if (!k || k.dead) { done(); return true; }
+    const d = dist(n.x, n.y, k.x, k.y);
+    if (d > 1.3) { seek(st, n, k.x, k.y, dt, 1.6, 1.1); if (st.t - c.t0 > 3) { done(); if (k.ord) k.ord.stopped = null; } return true; }
+    stand(n, undefined, dt); faceTo(n, k.x, k.y, dt);
+    if (st.t < k.ord.stopped.until) return true;
+    // l'esito
+    const D = docsOf(k), night = isCurfew(st), P = k.pop || {}, PL = PO();
+    let esito = 'ok', why = '';
+    if (!D.carta) { esito = 'fermo'; why = 'senza documenti'; }
+    else if (D.falsi && Math.random() < .2) { esito = 'fermo'; why = 'documenti falsi'; }
+    else if (D.scaduta) { esito = 'multa'; why = 'carta d\'identità scaduta'; }
+    else if (!D.tessera && Math.random() < .5) { esito = 'multa'; why = 'senza tessera annonaria'; }
+    if (night && esito === 'ok') { esito = Math.random() < .35 ? 'fermo' : 'multa'; why = 'fuori col coprifuoco'; }
+    if (esito === 'ok' && k.ris && k.ris.ideo > .6 && Math.random() < .12) { esito = 'fermo'; why = 'sospetto della Risacca'; }
+    if (esito === 'ok' && (O.sorvegliati[k.id] || 0) >= 2 && Math.random() < .3) { esito = 'fermo'; why = 'segnalato dall\'Ufficio Rettifiche'; }
+    k.ord.stopped = null;
+    if (esito === 'ok') { G.say(st, n, pick(Math.random, ['Va bene. Circolare.', 'In regola. Vada pure.', 'Può andare.']), 2); if (PL) PL.note(st, k, `fermat${k.pop && k.pop.sex === 'f' ? 'a' : 'o'} dai Grigi per un controllo, tutto in regola`, 'info', { w: .25, tag: 'controllo' }); if (P.need) P.need.paura = clamp((P.need.paura || 0) + .05, 0, 1); }
+    else if (esito === 'multa') {
+      const m = 2 + Math.floor(Math.random() * 4); if (P.money !== undefined) P.money -= m; O.stats.multe++;
+      G.say(st, n, `Multa: ${why}. ${m}.000 lire.`, 2.6);
+      if (PL) { PL.note(st, k, `multa dai Grigi (${why}): ${m}.000 lire`, 'bad', { w: .45, tag: 'multa' }); if (P.need) P.need.rabbia = clamp((P.need.rabbia || 0) + .12, 0, 1); }
+    } else {
+      G.say(st, n, pick(Math.random, ['Lei viene con noi.', 'In caserma. Subito.', 'Si giri. Mani dietro la schiena.']), 2.6);
+      G.say(st, k, pick(Math.random, ['Ma io non ho fatto niente!', 'Lasciatemi, ho famiglia!', 'Per cosa?']), 2.6);
+      n.ord.chk = null; fermo(st, n, k, why); return true;
+    }
+    done(); return true;
+  }
+  // un fermo: lo si porta in questura a piedi (se il giocatore è lontano, ci si arriva subito)
+  function fermo(st, cop, k, why) {
+    const O = S(st), PL = PO(); O.stats.fermi++;
+    if (dist(st.player.x, st.player.y, k.x, k.y) > 80 || !PLACES.commissariato) { if (PL) PL.arrest(st, k, why); else k.jailedUntil = st.t + 240; return; }
+    k.ord = k.ord || {}; k.ord.fermato = { cop: cop.id, why }; k.path = []; k.inside = false;
+    cop.ord.svc = { k: 'scorta', who: k.id, back: cop.ord.svc && cop.ord.svc.back || null };
+    // chi vede, se lo ricorda
+    st.npcs.forEach(w => { if (w === k || w.cop || w.dead || w.inside || !w.pop || dist(w.x, w.y, k.x, k.y) > 14) return; if (PL) PL.note(st, w, `ho visto i Grigi portare via ${k.name}`, 'bad', { w: .5, who: k.id, tag: 'arresto' }); if (w.pop.need) { w.pop.need.rabbia = clamp((w.pop.need.rabbia || 0) + .08, 0, 1); w.pop.need.paura = clamp((w.pop.need.paura || 0) + .06, 0, 1); } });
+    O.lastArrest = { x: k.x, y: k.y, t: st.t, who: k.id };
+  }
+  function scortaMove(st, n, dt) {
+    const s = n.ord.svc, k = G.byId(st, s.who), q = PLACES.commissariato;
+    if (!k || k.dead || !k.ord || !k.ord.fermato) { n.ord.svc = s.back || null; return true; }
+    if (dist(n.x, n.y, k.x, k.y) > 3) { seek(st, n, k.x, k.y, dt, 1.6, 1); return true; }
+    if (seek(st, n, q.x, q.y, dt, 1.15, 1.3)) {
+      const PL = PO(), why = k.ord.fermato.why; k.ord.fermato = null;
+      if (PL) PL.arrest(st, k, why); else { k.jailedUntil = st.t + 240; k.inside = true; }
+      n.ord.svc = s.back || null;
+    }
+    return true;
+  }
+  function fermoMove(st, n, dt) {
+    const f = n.ord.fermato, c = f && G.byId(st, f.cop);
+    if (!c || c.dead || c.stun > 0 || G.hostile(st, c)) { n.ord.fermato = null; n.panic = 3; n.fleeFrom = c ? { x: c.x, y: c.y } : null; return true; }   // il Grigio è a terra: si scappa
+    const bx = c.x - Math.cos(c.face) * .9, by = c.y - Math.sin(c.face) * .9;
+    seek(st, n, bx, by, dt, Math.max(1, c.speedNow || 1.1), .3); n.handsBack = true;
+    return true;
+  }
+
+  // ---- il controllo del giocatore ----
+  // fasi: 'alt' (l'agente si avvicina, tu ti fermi), 'verifica' (5 secondi), poi l'esito. Se te ne vai: fuga al controllo.
+  function startCheck(st, cop, why) {
+    const O = S(st); if (O.ctl) return;
+    O.ctl = { cop: cop.id, why, phase: 'alt', t0: st.clock, x: st.player.x, y: st.player.y, back: cop.ord.svc };
+    cop.ord.svc = { k: 'controllo_p', back: cop.ord.svc };
+    cop.action = { name: 'ordine_controllo_p', scores: [], why: 'Ti controlla i documenti.', since: st.clock };
+    const lines = { coprifuoco: 'Alt! C\'è il coprifuoco. Documenti!', ronda: 'Lei! Si fermi. Documenti, prego.', blocco: 'Posto di blocco. Documenti e lasciapassare.', varco: 'Alt! Varco della Base. Lasciapassare.', base: 'Alt! Zona militare! Mani in vista!' };
+    G.say(st, cop, lines[why] || 'Documenti.', 3.2);
+    G.feed(st, `${cop.first} ti ferma: ${why === 'base' ? 'sei nella zona militare' : 'controllo dei documenti'}. Fermati e aspetta.`, 'bad');
+    st.sfx.push({ k: 'fischio', x: cop.x, y: cop.y });
+  }
+  function playerCheckStep(st, dt) {
+    const O = S(st), C = O.ctl; if (!C) return;
+    const cop = G.byId(st, C.cop), p = st.player;
+    const end = () => { if (cop && cop.ord) { cop.ord.svc = C.back || null; } O.ctl = null; O.playerCd = st.clock + 90; };
+    if (!cop || cop.dead || cop.stun > 0 || G.hostile(st, cop)) { end(); return; }
+    const d = dist(cop.x, cop.y, p.x, p.y);
+    // l'agente si avvicina e guarda
+    cop.action.name = 'ordine_controllo_p';
+    if (d > 1.4) { seek(st, cop, p.x, p.y, dt, 1.9, 1.2); } else { stand(cop, undefined, dt); faceTo(cop, p.x, p.y, dt); }
+    const moving = Math.abs(p.speed || 0) > 1.2 || p.vehicle && Math.hypot(...(() => { const v = st.vehicles.find(k => k.id === p.vehicle); return v ? [v.vx || 0, v.vy || 0] : [0, 0]; })()) > 2;
+    if (C.phase === 'alt') {
+      if (d < 2.2 && !moving) { C.phase = 'verifica'; C.t1 = st.clock; G.say(st, cop, pick(Math.random, ['Vediamo…', 'Carta d\'identità… tessera…', 'Fermo così.']), 2.5); }
+      else if (d > 16 || (st.clock - C.t0 > 9 && moving)) return flee(st, cop, C);
+      else if (st.clock - C.t0 > 20) end();
+      return;
+    }
+    if (C.phase === 'verifica') {
+      if (d > 4.5) return flee(st, cop, C);
+      if (st.clock - C.t1 < 5) return;
+      verdict(st, cop, C); end();
+    }
+  }
+  function flee(st, cop, C) {
+    const O = S(st);
+    Object.assign(G.SEV, { fuga_controllo: .55 }); Object.assign(G.NOISE, { fuga_controllo: 8 }); G.NEG.fuga_controllo = 1; G.LABEL.fuga_controllo = 'Fuga a un controllo';
+    G.say(st, cop, 'Fermo! Fermati!', 2.5); G.feed(st, 'Sei scappato al controllo: ora ti cercano.', 'bad');
+    G.emit(st, 'fuga_controllo', { x: st.player.x, y: st.player.y });
+    cop.alert = Math.max(cop.alert || 0, .85); st.lastSeen = { x: st.player.x, y: st.player.y, clock: st.clock };
+    if (cop.ord) cop.ord.svc = C.back || null; O.ctl = null; O.playerCd = st.clock + 120;
+  }
+  function verdict(st, cop, C) {
+    const O = S(st), p = st.player, inv = p.inv || {}, night = isCurfew(st);
+    const lines = [];
+    let bad = 0, why = [];
+    if (!(inv.carta_identita > 0)) { bad += 2; why.push('senza carta d\'identità'); }
+    if ((C.why === 'varco' || C.why === 'base')) {
+      if (inv.lasciapassare > 0) lines.push('Lasciapassare in regola.');
+      else if (inv.documenti > 0) { if (Math.random() < .25) { bad += 3; why.push('lasciapassare falso'); delete inv.documenti; } else lines.push('Il lasciapassare passa. Per stavolta.'); }
+      else { bad += C.why === 'base' ? 3 : 1; why.push('senza lasciapassare'); }
+    }
+    if (night) { bad += 1; why.push('coprifuoco'); }
+    // perquisizione
+    const frisk = Math.random() < (C.why === 'blocco' || C.why === 'base' ? .7 : .4) + (st.ris ? st.ris.repr / 300 : 0);
+    let seized = [];
+    if (frisk) {
+      O.stats.perquisizioni++;
+      const cb = contraband(st);
+      if (cb.length) {
+        seized = cb.slice(0, 4); bad += 2;
+        seized.forEach(k => { if (k.startsWith('arma:')) { const w = k.slice(5); delete p.arms[w]; if (p.cur === w) p.cur = 'pugni'; } else delete inv[k]; });
+        why.push('roba proibita addosso');
+      }
+    }
+    if (bad === 0) {
+      G.say(st, cop, pick(Math.random, ['In regola. Circolare.', 'Va bene. Vada.', frisk ? 'Pulito. Può andare.' : 'Può andare.']), 2.4);
+      G.feed(st, frisk ? 'Ti hanno perquisito. Niente. Puoi andare.' : 'Documenti in regola. Puoi andare.', 'good');
+      if (C.why === 'varco' || C.why === 'base') O.passOk = st.t + 120;
+      return;
+    }
+    if (bad <= 2) {
+      const m = 5 + bad * 5; p.money -= m; O.stats.multe++;
+      G.say(st, cop, `Multa: ${why.join(', ')}. ${m}.000 lire.`, 3);
+      G.feed(st, `Multa di ${m}.000 lire (${why.join(', ')})${seized.length ? '. Sequestrati: ' + seized.map(nomeOgg).join(', ') : ''}.`, 'bad');
+      G.addLog(st, `${G.clockStr(st.t)} · Controllo dei Grigi: multa di ${m}.000 lire (${why.join(', ')}).`, 'bad');
+      if (C.why === 'base' || C.why === 'varco') { const v = PLACES.varco; if (v) { p.x = v.x - 10; p.y = v.y; } G.feed(st, 'Ti riaccompagnano fuori dal Varco.', 'info'); }
+      return;
+    }
+    G.say(st, cop, 'Lei viene con noi.', 2.5);
+    G.addLog(st, `${G.clockStr(st.t)} · Fermato dai Grigi: ${why.join(', ')}${seized.length ? '. Sequestrati: ' + seized.map(nomeOgg).join(', ') : ''}.`, 'bad');
+    O.stats.fermi++;
+    if (G.arrestPlayer) G.arrestPlayer(st, cop);
+  }
+
+  // ================= POSTI DI BLOCCO =================
+  // sulle strade principali, qualche volta al giorno: la Campagnola di traverso, le transenne, due o tre Grigi
+  function bloccoSpots() {
+    const out = [], L = G.LANES || [];
+    const want = [['corso', .15], ['corso', .55], ['corso', .9], ['via_porto', .5], ['via_governo', .5], ['litoranea', .93], ['nord', .03], ['monte', .5], ['raccordo_e', .5], ['via_alta', .5]];
+    want.forEach(([id, f]) => { const Ln = L.find(l => l.id === id); if (!Ln) return; const q = G.laneAt(Ln, Ln.L * f); out.push({ x: q.x, y: q.y, ang: q.ang, lane: id, place: G.nearestPlace ? (Object.values(PLACES).reduce((b, p) => (dist(p.x, p.y, q.x, q.y) < dist(b.x, b.y, q.x, q.y) ? p : b), PLACES.piazza)).name : '' }); });
+    return out;
+  }
+  let SPOTS = null;
+  function bloccoStep(st) {
+    const O = S(st);
+    if (O.blocco) {
+      const B = O.blocco;
+      if (st.t > B.until || B.agents.every(id => { const n = G.byId(st, id); return !n || n.dead; })) { endBlocco(st); }
+      return;
+    }
+    if (st.t < O.nextBlocco) return;
+    O.nextBlocco = st.t + 1440 / CFG.blocchiAlGiorno * (.6 + Math.random() * .8);
+    if (!SPOTS) SPOTS = bloccoSpots(); if (!SPOTS.length) return;
+    const free = O.agents.map(id => G.byId(st, id)).filter(n => n && !n.dead && n.ord.kind === 'grigio' && onDuty(st, n) && (!n.ord.svc || n.ord.svc.k === 'ronda' || n.ord.svc.k === 'piantone') && !engineTakes(st, n)).slice(0, 3);
+    if (free.length < 2) return;
+    const sp = SPOTS[Math.floor(Math.random() * SPOTS.length)];
+    const B = O.blocco = { id: O.nextId++, x: sp.x, y: sp.y, ang: sp.ang, place: sp.place, lane: sp.lane, until: st.t + rrand(CFG.bloccoMin), agents: [], car: 'gr_camp1', t0: st.t };
+    free.forEach((n, i) => { endSvc(st, n); n.ord.svc = { k: 'blocco', slot: i }; B.agents.push(n.id); });
+    // la Campagnola dei Grigi: se il giocatore è lontano è già lì, se no arriva guidando
+    const car = st.vehicles.find(v => v.id === B.car && !v.wreck && v.rider !== 'player');
+    if (car) { const far = dist(st.player.x, st.player.y, B.x, B.y) > 70; B.carHome = { x: car.x, y: car.y, ang: car.ang }; const px = B.x + Math.cos(B.ang) * 6, py = B.y + Math.sin(B.ang) * 6; if (far) { car.x = px; car.y = py; car.ang = B.ang + Math.PI / 2; car.vx = car.vy = 0; car.speed = 0; car.parkedBlocco = true; } else { car.driveTo = { x: px, y: py, ang: B.ang + Math.PI / 2 }; } car.ronda = true; }
+    O.rev++;
+    G.addLog(st, `${G.clockStr(st.t)} · Posto di blocco dei Grigi vicino a ${B.place}.`, 'info');
+    if (dist(st.player.x, st.player.y, B.x, B.y) < 160) G.feed(st, `Posto di blocco dei Grigi vicino a ${B.place}.`, 'bad');
+  }
+  function endBlocco(st) {
+    const O = S(st), B = O.blocco; if (!B) return;
+    B.agents.forEach(id => { const n = G.byId(st, id); if (n && n.ord && n.ord.svc && n.ord.svc.k === 'blocco') n.ord.svc = null; });
+    const car = st.vehicles.find(v => v.id === B.car);
+    if (car && B.carHome && car.rider !== 'player' && !car.wreck) { if (dist(st.player.x, st.player.y, car.x, car.y) > 70) { car.x = B.carHome.x; car.y = B.carHome.y; car.ang = B.carHome.ang; car.vx = car.vy = 0; car.speed = 0; } else car.driveTo = { x: B.carHome.x, y: B.carHome.y, ang: B.carHome.ang }; }
+    O.blocco = null; O.rev++;
+  }
+  // le posizioni: uno per corsia con la paletta, uno alla macchina
+  function bloccoSlot(B, i) {
+    const nx = -Math.sin(B.ang), ny = Math.cos(B.ang);
+    if (i === 0) return { x: B.x + nx * 2.2 - Math.cos(B.ang) * 2, y: B.y + ny * 2.2 - Math.sin(B.ang) * 2, face: B.ang + Math.PI };
+    if (i === 1) return { x: B.x - nx * 2.2 + Math.cos(B.ang) * 2, y: B.y - ny * 2.2 + Math.sin(B.ang) * 2, face: B.ang };
+    return { x: B.x + nx * 5.5 + Math.cos(B.ang) * 6, y: B.y + ny * 5.5 + Math.sin(B.ang) * 6, face: B.ang + Math.PI / 2 };
+  }
+  function bloccoMove(st, n, dt) {
+    const O = S(st), B = O.blocco; if (!B) { n.ord.svc = null; return true; }
+    let s = bloccoSlot(B, n.ord.svc.slot);
+    if (!G.walkM(s.x, s.y)) s = { x: B.x, y: B.y, face: s.face };
+    if (seek(st, n, s.x, s.y, dt, 1.6, .4)) {
+      stand(n, s.face, dt);
+      // chi passa a piedi vicino al blocco viene controllato; le macchine rallentano (e quella del giocatore si ferma)
+      if (n.ord.svc.slot < 2 && st.clock > (n.ord.bT || 0)) {
+        n.ord.bT = st.clock + 6;
+        const p = st.player, d = dist(p.x, p.y, B.x, B.y);
+        if (!O.ctl && d < 9 && st.clock > (O.playerCd || 0) && (!p.vehicle || Math.random() < .8)) { startCheck(st, n, 'blocco'); return true; }
+        spotCheck(st, n, 6);
+      }
+    }
+    return true;
+  }
+  // le macchine del traffico rallentano e passano a passo d'uomo davanti al blocco
+  function bloccoTraffic(st) {
+    const B = S(st).blocco; if (!B) return;
+    for (const v of st.vehicles) { if (!v.traffic || v.hidden || v.ronda) continue; const d = dist(v.x, v.y, B.x, B.y); if (d < 14 && v.speed > 2.5) v.speed = Math.max(2.5, v.speed - 6 * (1 / 30)); }
+  }
+
+  // ================= VOLANTI =================
+  function volantiStep(st, dt) {
+    const O = S(st);
+    O.volanti.forEach(V => {
+      const car = st.vehicles.find(v => v.id === V.car); if (!car) return;
+      if (car.wreck || car.rider === 'player' || car.stolen) { V.crew.forEach(id => { const n = G.byId(st, id); if (n && n.ord) { n.inside = false; n.car = null; if (n.ord.svc && n.ord.svc.k === 'volante') n.ord.svc = null; } }); V.crew = []; V.mode = 'persa'; car.traffic = false; car.siren = false; return; }
+      const crew = V.crew.map(id => G.byId(st, id)).filter(n => n && !n.dead);
+      if (crew.length !== V.crew.length) V.crew = crew.map(n => n.id);
+      if (!crew.length && V.mode !== 'parcheggio') { car.traffic = false; car.siren = false; car.driveTo = null; car.rider = null; V.mode = 'parcheggio'; V.away = true; }
+      if (V.away && !crew.length && dist(st.player.x, st.player.y, car.x, car.y) > 80 && dist(st.player.x, st.player.y, car.home.x, car.home.y) > 80) { car.x = car.home.x; car.y = car.home.y; car.ang = 0; car.vx = car.vy = 0; car.speed = 0; V.away = false; }
+      if (V.mode === 'parcheggio') {
+        if (crew.length >= 2) { // salgono e partono
+          const q = PLACES.commissariato, inN = crew.every(n => n.inside || dist(n.x, n.y, car.x, car.y) < 2.2);
+          crew.forEach(n => { if (!n.inside && dist(n.x, n.y, car.x, car.y) >= 2.2) seek(st, n, car.x, car.y, dt, 1.6, 1.8); else { n.inside = true; n.car = car.id; n.x = car.x; n.y = car.y; } });
+          if (inN) { toLane(st, car); car.traffic = true; car.rider = 'npc'; car.speed = 3; V.mode = 'giro'; V.until = st.t + 6 + Math.random() * 14; }
+        }
+        return;
+      }
+      crew.forEach(n => { if (n.inside) { n.x = car.x; n.y = car.y; } });
+      if (V.mode === 'giro') {
+        car.siren = false;
+        if (!crew.length) { car.traffic = false; car.rider = null; V.mode = 'parcheggio'; return; }
+        // fine turno: si torna in caserma
+        if (crew.some(n => !onDuty(st, n))) { V.mode = 'rientro'; car.traffic = false; car.driveTo = { x: car.home.x, y: car.home.y, ang: 0 }; return; }
+        if (st.t > V.until && car.speed < 9 && dist(car.x, car.y, st.player.x, st.player.y) < 160) {
+          // una sosta: si accosta, scendono, controllano chi c'è
+          const sp = G.parkSpot ? G.parkSpot(car.x, car.y, false) : null;
+          if (sp && dist(sp.x, sp.y, car.x, car.y) < 10) { car.traffic = false; car.driveTo = { x: sp.x, y: sp.y, ang: car.ang, then: 'sosta' }; V.mode = 'accosta'; }
+          else V.until = st.t + 3;
+        }
+        return;
+      }
+      if (V.mode === 'accosta') { if (!car.driveTo) { V.mode = 'sosta'; V.until = st.t + 8 + Math.random() * 12; crew.forEach((n, i) => { n.inside = false; n.car = null; n.x = car.x + Math.cos(car.ang + (i ? 1 : -1) * Math.PI / 2) * 1.8; n.y = car.y + Math.sin(car.ang + (i ? 1 : -1) * Math.PI / 2) * 1.8; if (!G.walkM(n.x, n.y)) { n.x = car.x - Math.cos(car.ang) * 2.6; n.y = car.y - Math.sin(car.ang) * 2.6; } n.ord.vSosta = { x: n.x, y: n.y }; }); } return; }
+      if (V.mode === 'sosta') {
+        crew.forEach(n => { if (n.ord.svc && n.ord.svc.k === 'controllo') return; if (n.action.name === 'ordine_volante' && st.clock > (n.ord.vT || 0)) { n.ord.vT = st.clock + 4; spotCheck(st, n, 10); } });
+        if (st.t > V.until && !crew.some(n => n.ord.svc && n.ord.svc.k !== 'volante')) { V.mode = 'parcheggio_s'; }
+        return;
+      }
+      if (V.mode === 'parcheggio_s') {
+        const inN = crew.every(n => n.inside || dist(n.x, n.y, car.x, car.y) < 2.2);
+        crew.forEach(n => { if (n.ord.svc && n.ord.svc.k !== 'volante') return; if (!n.inside && dist(n.x, n.y, car.x, car.y) >= 2.2) { seek(st, n, car.x, car.y, dt, 1.6, 1.8); } else { n.inside = true; n.car = car.id; } });
+        if (inN) { toLane(st, car); car.traffic = true; car.rider = 'npc'; V.mode = 'giro'; V.until = st.t + 8 + Math.random() * 16; }
+        return;
+      }
+      if (V.mode === 'rientro') {
+        if (!car.driveTo) { crew.forEach(n => { n.inside = false; n.car = null; n.x = car.x + 1.5; n.y = car.y + 1.5; endSvc(st, n); }); V.crew = []; V.mode = 'parcheggio'; car.rider = null; }
+        return;
+      }
+      if (V.mode === 'inseguimento') {
+        car.siren = true; car.traffic = false;
+        const p = st.player, lv = G.wantedLevel(st), tgt = st.lastSeen || p;
+        if (lv === 0 && st.clock - (V.calmT || st.clock) > 25) { V.mode = 'rientro'; car.siren = false; crew.forEach(n => { n.inside = true; n.car = car.id; }); car.driveTo = { x: car.home.x, y: car.home.y, ang: 0 }; return; }
+        if (lv > 0) V.calmT = st.clock;
+        if (V.out) { // scesi: combattono col motore; quando l'allarme si spegne risalgono
+          if (lv === 0) { const inN = crew.every(n => n.inside || dist(n.x, n.y, car.x, car.y) < 2.4); crew.forEach(n => { if (!n.inside) { n.ord.svc = { k: 'volante', V: V.i }; seek(st, n, car.x, car.y, dt, 2.2, 2); if (dist(n.x, n.y, car.x, car.y) < 2.4) { n.inside = true; n.car = car.id; } } }); if (inN) V.out = false; }
+          return;
+        }
+        if (dist(car.x, car.y, tgt.x, tgt.y) < 10 || car.stuck > 4) {
+          car.driveTo = null; car.speed *= .5; V.out = true; crew.forEach((n, i) => { n.inside = false; n.car = null; n.x = car.x + Math.cos(car.ang + (i ? 1 : -1) * Math.PI / 2) * 1.8; n.y = car.y + Math.sin(car.ang + (i ? 1 : -1) * Math.PI / 2) * 1.8; if (!G.walkM(n.x, n.y)) { n.x = car.x; n.y = car.y; } n.alert = Math.max(n.alert, .85); });
+          G.say(st, crew[0], 'Volante sul posto! Fermo!', 2.4); return;
+        }
+        if (!car.driveTo || dist(car.driveTo.x, car.driveTo.y, tgt.x, tgt.y) > 6) car.driveTo = { x: tgt.x, y: tgt.y, chase: true };
+      }
+    });
+  }
+  function startChase(st, V) {
+    const car = st.vehicles.find(v => v.id === V.car); if (!car || car.wreck || car.rider === 'player') return;
+    const crew = V.crew.map(id => G.byId(st, id)).filter(n => n && !n.dead); if (!crew.length) return;
+    if (V.mode === 'sosta' || V.mode === 'parcheggio_s' || V.mode === 'parcheggio') { crew.forEach(n => { n.inside = true; n.car = car.id; }); }
+    V.mode = 'inseguimento'; V.out = false; car.traffic = false; car.rider = 'npc'; car.siren = true; car.speed = Math.max(car.speed, 4); V.calmT = st.clock;
+    G.feed(st, 'Una volante a sirene spiegate.', 'bad');
+  }
+  // sistema la macchina sulla corsia più vicina, nel senso giusto
+  function toLane(st, v) {
+    const L = G.LANES; let best = null, bd = 1e9;
+    L.forEach((Ln, i) => { for (let s = 0; s < Ln.L; s += 3) { const q = G.laneAt(Ln, s), d = dist(q.x, q.y, v.x, v.y); if (d < bd) { bd = d; best = { i, s, ang: q.ang }; } } });
+    if (!best) return;
+    const dir = Math.cos(angDiff(v.ang, best.ang)) >= 0 ? 1 : -1;
+    v.lane = { i: best.i, s: best.s, dir }; v.dir = dir;
+    if (bd > 3) { const q = G.lanePos(L[best.i], best.s, dir); v.x = q.x; v.y = q.y; v.ang = q.ang; }
+  }
+  // guida verso un punto fuori dalle corsie (Campagnola al blocco, volante in caserma, camion della nave, inseguimento)
+  function driveStep(st, v, dt) {
+    const T = v.driveTo; if (!T || v.rider === 'player' || v.wreck) return;
+    if (v.rider !== 'npc') v.rider = 'npc';
+    if (!v.path || !v.path.length || st.clock - (v.pathT || 0) > (T.chase ? 2.5 : 8)) { v.path = G.findPath(v.x, v.y, T.x, T.y, 1) || []; v.pathT = st.clock; }
+    const d = dist(v.x, v.y, T.x, T.y);
+    if (d < (T.chase ? 6 : 3) || (!v.path.length && d < 14)) {
+      v.speed *= .8; v.vx = (v.vx || 0) * .8; v.vy = (v.vy || 0) * .8;
+      if (Math.abs(v.speed) < .6) { v.speed = 0; v.vx = v.vy = 0; if (T.ang !== undefined) v.ang = T.ang; v.driveTo = null; v.path = []; if (!v.livrea) v.rider = null; }
+      return;
+    }
+    if (!v.path.length) { v.stuck = (v.stuck || 0) + dt; if (v.stuck > 6) { v.driveTo = null; if (!v.livrea) v.rider = null; } return; }
+    let w = v.path[0]; while (v.path.length > 1 && dist(v.x, v.y, w.x, w.y) < 3) { v.path.shift(); w = v.path[0]; }
+    const want = Math.atan2(w.y - v.y, w.x - v.x), off = Math.abs(angDiff(want, v.ang));
+    const slow = d < 18 || off > .8;
+    const x0 = v.x, y0 = v.y;
+    G.vehicleMotion(st, v, dt, want, off > 1.4 && v.speed > 5 ? 0 : slow && v.speed > 6 ? 0 : 1, off > 1.4 && v.speed > 5 || (slow && v.speed > 7), !!T.chase && !slow, false);
+    if (dist(x0, y0, v.x, v.y) < .02) v.stuck = (v.stuck || 0) + dt; else v.stuck = Math.max(0, (v.stuck || 0) - dt);
+    if (G.runOver && Math.hypot(v.vx || 0, v.vy || 0) > 5) G.runOver(st, v, 'police');
+  }
+
+  // ================= LA NAVE AL PORTO MILITARE =================
+  // l'Impero: lunedì e giovedì all'alba (economia.js fa lo sbarco alle 6); la Marina della Tutela: mercoledì e sabato.
+  // in rada dalle 4, ormeggio alle 6, scarico fino alle 10 sotto scorta, partenza alle 11.
+  const BERTH = { x: 1300, y: 155, ang: Math.PI }, SEA = { x: 1470, y: 182 }, QUAY = { x: 1281, y: 146 };
+  function naveStep(st, dt) {
+    const O = S(st), N = O.nave, P = PO(), wd = P ? P.weekday(st.t) : Math.floor(st.t / 1440) % 7, m = minOf(st.t);
+    const today = wd === 0 || wd === 3 ? 'impero' : wd === 2 || wd === 5 ? 'militare' : null;
+    const lerpTo = (tx, ty, k) => { const a = Math.atan2(ty - N.y, tx - N.x); N.ang += angDiff(a, N.ang) * Math.min(1, dt * .3); const sp = k * dt; const d = dist(N.x, N.y, tx, ty); if (d < sp) { N.x = tx; N.y = ty; return true; } N.x += Math.cos(N.ang) * sp; N.y += Math.sin(N.ang) * sp; return false; };
+    if (N.phase === 'lontana') { if (today && m >= 4 * 60 && m < 5 * 60 + 40) { N.phase = 'arrivo'; N.kind = today; N.x = SEA.x; N.y = SEA.y; N.ang = Math.PI; N.crates = 0; O.rev++; } return; }
+    if (N.phase === 'arrivo') {
+      const u = clamp((m - 4 * 60) / 115, 0, 1), e = 1 - (1 - u) * (1 - u), px = N.x, py = N.y;
+      N.x = SEA.x + (BERTH.x + 18 - SEA.x) * e - 18 * Math.max(0, (u - .8) / .2) ** 2; N.y = SEA.y + (BERTH.y - SEA.y) * Math.min(1, e * 1.15);
+      if (Math.hypot(N.x - px, N.y - py) > .001) N.ang = Math.atan2(N.y - py, N.x - px);
+      if (u >= 1 || m >= 6 * 60) { N.x = BERTH.x; N.y = BERTH.y; N.ang = BERTH.ang; N.phase = 'ormeggiata'; N.t = st.t; O.stats.navi++; startUnload(st); O.rev++;
+        G.addLog(st, `${G.clockStr(st.t)} · ${N.kind === 'impero' ? 'La nave dell\'Impero' : 'La nave della Marina della Tutela'} ha attraccato al porto cargo.`, 'info'); }
+      return;
+    }
+    if (N.phase === 'ormeggiata') {
+      // le casse scendono una alla volta; la scorta guarda
+      if (m < 10 * 60) { const want = Math.floor(clamp((m - 6 * 60) / 240, 0, 1) * 24); if (want > N.crates) { N.crates = want; O.rev++; } }
+      else if (m >= 11 * 60) { N.phase = 'partenza'; endUnload(st); O.rev++; }
+      return;
+    }
+    if (N.phase === 'partenza') {
+      const u = clamp((m - 11 * 60) / 100, 0, 1), e = u * u, px = N.x, py = N.y;
+      N.x = BERTH.x + (SEA.x - BERTH.x) * e; N.y = BERTH.y + (SEA.y - BERTH.y) * e + Math.sin(u * Math.PI) * 6;
+      if (Math.hypot(N.x - px, N.y - py) > .001) N.ang = Math.atan2(N.y - py, N.x - px);
+      if (u >= 1 || m >= 13 * 60) { N.phase = 'lontana'; N.crates = 0; O.rev++; }
+    }
+  }
+  function startUnload(st) {
+    const O = S(st), N = O.nave;
+    // due soldati del porto e (se c'è la nave dell'Impero) un Grigio scortano lo scarico
+    N.crew = [];
+    st.npcs.forEach(n => { if (n.ord && n.ord.kind === 'soldato' && n.ord.post && n.ord.post.port && !n.dead) N.crew.push(n.id); });
+    // il camion della Tutela: dal porto al supermercato con la merce
+    if (N.kind === 'impero' && SUPER) {
+      let truck = st.vehicles.find(v => v.id === 'camion_tutela');
+      if (!truck) { truck = G.makeVehicle(st, { id: 'camion_tutela', kind: 'camion', x: QUAY.x - 8, y: QUAY.y + 2, ang: Math.PI, color: '#5a6250', military: true, tutela: true, rider: null }); st.vehicles.push(truck); }
+      O.camion = { phase: 'carico', at: st.t + 90 };
+    }
+  }
+  function endUnload(st) { const O = S(st); O.nave.crew = []; }
+  function camionStep(st, dt) {
+    const O = S(st), C = O.camion; if (!C) return;
+    const v = st.vehicles.find(k => k.id === 'camion_tutela'); if (!v || v.wreck || v.rider === 'player') { O.camion = null; return; }
+    const far = dist(st.player.x, st.player.y, v.x, v.y) > 90;
+    if (C.phase === 'carico' && st.t >= C.at) {
+      const sp = SUPER.door, tx = sp.x + SUPER.out.x * 5, ty = sp.y + SUPER.out.y * 5, ps = (G.parkSpot && G.parkSpot(tx, ty, true)) || { x: tx, y: ty };
+      C.phase = 'viaggio'; C.dest = ps; v.rider = 'npc';
+      if (far && dist(st.player.x, st.player.y, ps.x, ps.y) > 90) { v.x = ps.x; v.y = ps.y; v.vx = v.vy = 0; v.speed = 0; } else v.driveTo = { x: ps.x, y: ps.y };
+      return;
+    }
+    if (C.phase === 'viaggio') {
+      if (!v.driveTo || dist(v.x, v.y, C.dest.x, C.dest.y) < 6) { v.driveTo = null; C.phase = 'scarico'; C.at = st.t + 35; restock(st); G.addLog(st, `${G.clockStr(st.t)} · Il camion della Tutela scarica la merce al Supermercato del Popolo. Si fa la fila.`, 'info'); startCoda(st); }
+      else if (far && st.t > C.at + 120) { v.x = C.dest.x; v.y = C.dest.y; v.driveTo = null; }
+      return;
+    }
+    if (C.phase === 'scarico' && st.t >= C.at) {
+      C.phase = 'ritorno';
+      if (far) { v.x = QUAY.x - 8; v.y = QUAY.y + 2; v.rider = null; O.camion = null; } else v.driveTo = { x: QUAY.x - 8, y: QUAY.y + 2 };
+      return;
+    }
+    if (C.phase === 'ritorno' && (!v.driveTo || far)) { if (far) { v.x = QUAY.x - 8; v.y = QUAY.y + 2; } v.driveTo = null; v.rider = null; O.camion = null; }
+  }
+  // le scorte del supermercato: quelle vere di economia.js
+  function superShop(st) { const E = EC(); if (!E || !st.eco || !SUPER) return null; const S0 = st.eco.shops || {}; for (const k in S0) { const s = S0[k]; if (s.t && s.t.bi !== undefined && G.BUILDINGS[s.t.bi] === SUPER.b) return s; if (s.t && s.t.id === SUPER.id) return s; } return null; }
+  function restock(st) {
+    const sh = superShop(st); if (!sh) return;
+    for (const g in sh.sells || {}) sh.stock[g] = Math.max(sh.stock[g] || 0, 6 + Math.floor(Math.random() * 6));
+  }
+  function stockLevel(st) {
+    const sh = superShop(st); if (!sh) return 1;
+    let t = 0, n = 0; for (const g in sh.sells || {}) { t += Math.min(1, (sh.stock[g] || 0) / 6); n++; }
+    return n ? t / n : 1;
+  }
+
+  // ================= LA FILA AL SUPERMERCATO =================
+  function startCoda(st) {
+    const O = S(st); if (!SUPER) return;
+    O.coda = { active: true, list: [], t0: st.t, until: st.t + 150, nextIn: st.t + 2, cop: null };
+    // chi ha la dispensa vuota (e abita in zona) si mette in fila
+    const P = PO(), d0 = SUPER.door;
+    const cand = st.npcs.filter(n => n.pop && !n.pop.cast && !n.dead && !n.cop && !n.faction && !(n.jailedUntil > st.t) && n.pop.age > 16 && n.pop.homeT && dist(n.pop.homeT.x, n.pop.homeT.y, d0.x, d0.y) < 220 && !(n.ord && (n.ord.protester || n.ord.fermato)))
+      .map(n => [n, (n.pop.pantry || 0) - (n.pop.need && n.pop.need.fame || 0) * 4 + Math.random() * 3]).sort((a, b) => a[1] - b[1]).slice(0, 14);
+    cand.forEach(([n]) => joinCoda(st, n));
+  }
+  function joinCoda(st, n) {
+    const O = S(st), C = O.coda; if (!C || C.list.includes(n.id)) return;
+    n.ord = n.ord || {}; n.ord.coda = { at: st.t };
+    // chi è lontano dal giocatore arriva subito in fila; chi è vicino ci cammina
+    if (n.inside || dist(n.x, n.y, st.player.x, st.player.y) > 70) { const q = codaPos(C.list.length); n.x = q.x; n.y = q.y; n.inside = false; if (n.pop) { n.pop.near = true; n.pop.lod = 'vicino'; } }
+    C.list.push(n.id);
+  }
+  function codaPos(i) { const D = SUPER.door, o = SUPER.out, s = SUPER.side; return { x: D.x + o.x * 1.6 + s.x * (1.2 + i * .85), y: D.y + o.y * 1.6 + s.y * (1.2 + i * .85), face: Math.atan2(-s.y, -s.x) }; }
+  function codaStep(st) {
+    const O = S(st), C = O.coda; if (!C) return;
+    O.superVuoto = stockLevel(st) < .15;
+    C.list = C.list.filter(id => { const n = G.byId(st, id); return n && !n.dead && n.ord && n.ord.coda && !(n.jailedUntil > st.t); });
+    if (st.t >= C.nextIn && C.list.length) {
+      C.nextIn = st.t + 4 + Math.random() * 4;
+      const n = G.byId(st, C.list[0]), q = codaPos(0);
+      if (n && dist(n.x, n.y, q.x, q.y) < 2) {
+        C.list.shift(); n.ord.coda = null; O.stats.codaServiti++;
+        const P = n.pop; if (P) { if (O.superVuoto) { if (PO()) PO().note(st, n, 'tre ore di fila al supermercato e gli scaffali erano vuoti', 'bad', { w: .55, tag: 'fame' }); if (P.need) P.need.rabbia = clamp((P.need.rabbia || 0) + .15, 0, 1); } else { P.pantry = (P.pantry || 0) + 6; P.money = (P.money || 0) - 7; if (PO()) PO().note(st, n, 'fatto la fila al supermercato: c\'era la merce della nave', 'good', { w: .3, tag: 'spesa' }); } }
+        n.inside = true; n.x = SUPER.door.x; n.y = SUPER.door.y; n.action = { name: 'dentro', scores: [], why: 'Dentro il supermercato.', since: st.clock };
+        const sh = superShop(st); if (sh) for (const g of ['pane', 'pasta', 'latte', 'olio', 'zucchero']) if (sh.stock[g] > 0) sh.stock[g]--;
+      }
+    }
+    if (st.t > C.until || (!C.list.length && st.t > C.t0 + 20)) { C.list.forEach(id => { const n = G.byId(st, id); if (n && n.ord) n.ord.coda = null; }); const c = C.cop && G.byId(st, C.cop); if (c && c.ord && c.ord.svc && c.ord.svc.k === 'coda') c.ord.svc = null; O.coda = null; }
+  }
+  function codaMove(st, n, dt) {
+    const C = S(st).coda; if (!C) { n.ord.coda = null; return true; }
+    const i = C.list.indexOf(n.id); if (i < 0) { n.ord.coda = null; return true; }
+    const q = codaPos(i);
+    if (seek(st, n, q.x, q.y, dt, 1.25, .25)) { stand(n, q.face, dt); if (Math.random() < .002) G.say(st, n, pick(Math.random, ['Ma quanto ci vuole?', 'Speriamo che resti qualcosa.', 'Ieri non c\'era neanche il pane.', 'Non spinga!', 'Mio figlio ha fame.']), 2.6); }
+    return true;
+  }
+  function codaGuardMove(st, n, dt) {
+    const C = S(st).coda; if (!C) { n.ord.svc = null; return true; }
+    const q = codaPos(Math.min(4, C.list.length)), D = SUPER.door, s = SUPER.side, o = SUPER.out, x = D.x + o.x * 3.4 + s.x * 2.4, y = D.y + o.y * 3.4 + s.y * 2.4;
+    if (seek(st, n, x, y, dt, 1.3, .4)) { stand(n, Math.atan2(q.y - y, q.x - x), dt); if (Math.random() < .0015) G.say(st, n, pick(Math.random, ['In fila! Uno alla volta.', 'Tessera in mano.', 'Chi spinge torna a casa senza niente.']), 2.4); }
+    return true;
+  }
+
+  // ================= PROTESTE =================
+  const SLOGAN = {
+    pane: ['Pane! Pane!', 'Abbiamo fame!', 'Gli scaffali sono vuoti!', 'Dov\'è la nave?', 'La tessera non si mangia!'],
+    arresto: ['Liberatelo!', 'Assassini!', 'Ridateci {nome}!', 'Vergogna!', 'Non ha fatto niente!'],
+    rabbia: ['Basta!', 'Ce ne avete prese abbastanza!', 'Via i Grigi!', 'L\'isola è nostra!', 'Non abbiamo paura!'],
+    risacca: ['La Risacca non si ferma!', 'Libertà!', 'Abbasso il Garante!', 'Ridateci i nostri!', 'L\'onda torna sempre!'],
+  };
+  const BANNER = { pane: ['PANE', 'ABBIAMO FAME', 'LA NAVE È NOSTRA'], arresto: ['LIBERATELI', 'RIDATECI {NOME}', 'BASTA FERMI'], rabbia: ['BASTA', 'VIA I GRIGI', 'NON ABBIAMO PAURA'], risacca: ['LIBERTÀ', 'LA RISACCA', 'ABBASSO IL GARANTE', 'L\'ONDA TORNA'] };
+  function protesteStep(st, dt) {
+    const O = S(st);
+    O.proteste = O.proteste.filter(Pr => protestaTick(st, Pr, dt));
+    if (st.t < O.nextProt || O.proteste.length) return;
+    O.nextProt = st.t + CFG.protestaOgni * (.7 + Math.random() * .6);
+    const h = hourOf(st.t); if (h < 8 || h >= 21) return;
+    const P = PO(), wd = P ? P.weekday(st.t) : 0;
+    // la Risacca organizza: il sabato alle 17 (annunciato il venerdì), col morale alto
+    const R = st.ris;
+    if (R && R.morale >= 35 && wd === 5 && h === 17 && !O.orgDone) { O.orgDone = true; return startProtest(st, { kind: 'organizzata', motivo: 'risacca', place: Math.random() < .5 ? 'piazza' : 'piazza_gov', size: 16 + Math.floor(R.morale / 4), corteo: true }); }
+    if (wd === 4 && h >= 10 && R && R.morale >= 35 && !O.annunciata) { O.annunciata = st.t; G.feed(st, 'Volantini sui muri: «Sabato alle 17, tutti in piazza».', 'rumor'); G.addLog(st, `${G.clockStr(st.t)} · Gira la voce di una manifestazione sabato alle 17.`, 'info'); }
+    if (wd === 6) { O.orgDone = false; O.annunciata = 0; }
+    // spontanea: un arresto davanti a tutti
+    if (O.lastArrest && st.t - O.lastArrest.t < 40) {
+      const wit = st.npcs.filter(n => n.pop && !n.cop && !n.dead && !n.inside && dist(n.x, n.y, O.lastArrest.x, O.lastArrest.y) < 25).length;
+      const repr = R ? R.repr / 100 : .1;
+      if (wit >= 5 && Math.random() < .25 + repr * .3) { const who = G.byId(st, O.lastArrest.who); O.lastArrest = null; return startProtest(st, { kind: 'spontanea', motivo: 'arresto', x: who ? who.x : undefined, y: who ? who.y : undefined, place: 'commissariato', size: 8 + wit, nome: who ? who.first : '', march: 'commissariato' }); }
+    }
+    // spontanea: la fame (supermercato vuoto, nave trattenuta)
+    if (O.superVuoto && SUPER && Math.random() < .35) return startProtest(st, { kind: 'spontanea', motivo: 'pane', place: 'supermercato', size: 10 + Math.floor(Math.random() * 10) });
+    // spontanea: la rabbia della città
+    let tot = 0, k = 0; for (const n of st.npcs) { if (n.pop && n.pop.need && !n.cop) { tot += n.pop.need.rabbia || 0; k++; } }
+    const anger = k ? tot / k : 0;
+    if (anger > .28 && Math.random() < (anger - .28) * 1.6) startProtest(st, { kind: 'spontanea', motivo: 'rabbia', place: pick(Math.random, ['piazza', 'piazza_gov', 'calata']), size: 8 + Math.floor(anger * 30) });
+  }
+  function startProtest(st, o) {
+    const O = S(st), q = PLACES[o.place] || PLACES.piazza; if (!q) return;
+    const x = o.x !== undefined ? o.x : q.x, y = o.y !== undefined ? o.y : q.y;
+    // chi viene: i più arrabbiati e coraggiosi del quartiere, chi è della Risacca (quella organizzata), chi passa
+    const PL = PO();
+    const cand = st.npcs.filter(n => n.pop && !n.pop.cast && !n.dead && !n.cop && !n.faction && !(n.jailedUntil > st.t) && n.pop.age >= 15 && n.pop.age < 75 && !(n.ord && (n.ord.protester || n.ord.fermato || n.ord.coda)) && !(PL && PL.isPassive(st, n)))
+      .map(n => { const N = n.pop.need || {}, ide = n.ris ? n.ris.ideo : .3, d = dist(n.x, n.y, x, y); return [n, (N.rabbia || 0) * 1.5 + ide * (o.kind === 'organizzata' ? 2 : .8) - (N.paura || 0) * 1.2 + (n.tr ? n.tr.cor : .5) * .6 - d / 160 + Math.random() * .4]; })
+      .filter(a => a[1] > .35).sort((a, b) => b[1] - a[1]).slice(0, Math.min(40, o.size));
+    if (cand.length < 5) return;
+    const Pr = { id: O.nextId++, kind: o.kind, motivo: o.motivo, place: q.name, pid: o.place, x, y, t0: st.t, phase: 'raduno', until: st.t + (o.kind === 'organizzata' ? 30 : 18), people: [], leader: null, nome: o.nome || '', corteo: !!o.corteo, march: o.march || null, route: null, ri: 0, police: [], warn: 0, arrested: 0, hurt: 0, line: null, blind: null };
+    if (Pr.corteo) Pr.route = ['piazza', 'corso_c', 'piazza_gov'];
+    cand.forEach(([n], i) => {
+      n.ord = n.ord || {}; n.ord.protester = { pr: Pr.id, slot: i, ang: Math.random() * 6.28, rad: .8 + Math.sqrt(i) * .75, resolve: clamp((n.ris ? n.ris.ideo : .3) + (n.pop.need.rabbia || 0) - (n.pop.need.paura || 0) * .7 + .3, .05, 1) };
+      n.path = []; if (n.inside && dist(n.x, n.y, st.player.x, st.player.y) > 60) { const s = G.wanderSpot(st, q); n.x = s.x; n.y = s.y; } n.inside = false; if (n.pop) { n.pop.near = true; n.pop.lod = 'vicino'; }
+      const ban = BANNER[Pr.motivo] || BANNER.rabbia; if (i % 3 === 0) { n.ord.protester.banner = pick(Math.random, ban).replace('{NOME}', (Pr.nome || '').toUpperCase()); n.hand = 'cartello'; }
+      Pr.people.push(n.id);
+    });
+    Pr.leader = Pr.people[0];
+    O.proteste.push(Pr); O.stats.proteste++; O.rev++;
+    const what = { pane: 'per il pane', arresto: `per ${Pr.nome || 'chi hanno portato via'}`, rabbia: 'contro i Grigi', risacca: 'della Risacca' }[Pr.motivo];
+    G.addLog(st, `${G.clockStr(st.t)} · ${Pr.kind === 'organizzata' ? 'Manifestazione' : 'Protesta spontanea'} ${what} a ${Pr.place}: ${Pr.people.length} persone.`, 'info');
+    if (dist(st.player.x, st.player.y, x, y) < 220) G.feed(st, `${Pr.kind === 'organizzata' ? 'Manifestazione' : 'Protesta'} ${what} a ${Pr.place}.`, 'rumor');
+    if (st.ris) st.ris.morale = clamp(st.ris.morale + (Pr.kind === 'organizzata' ? 4 : 2), 0, 100);
+    // la centrale manda il reparto antisommossa
+    Pr.policeAt = st.t + (Pr.kind === 'organizzata' ? 4 : 8 + Math.random() * 8);
+    return Pr;
+  }
+  function protestCenter(st, Pr) {
+    if (Pr.phase === 'corteo' || Pr.phase === 'cordone' || Pr.phase === 'carica') { const L = G.byId(st, Pr.leader); if (L && !L.dead && L.ord && L.ord.protester) return { x: L.x, y: L.y }; }
+    return { x: Pr.x, y: Pr.y };
+  }
+  function protestaTick(st, Pr, dt) {
+    const O = S(st), alive = Pr.people.filter(id => { const n = G.byId(st, id); return n && !n.dead && n.ord && n.ord.protester && n.ord.protester.pr === Pr.id && !(n.jailedUntil > st.t); });
+    Pr.people = alive;
+    if (!alive.includes(Pr.leader)) Pr.leader = alive[0] || null;
+    // i cori
+    if (st.clock > (Pr.chantT || 0) && alive.length) { Pr.chantT = st.clock + 1.8 + Math.random() * 2.5; const n = G.byId(st, pick(Math.random, alive)); if (n && Pr.phase !== 'carica') G.say(st, n, pick(Math.random, SLOGAN[Pr.motivo] || SLOGAN.rabbia).replace('{nome}', Pr.nome || 'lui'), 2.2); if (Math.random() < .3) st.sfx.push({ k: 'folla', x: Pr.x, y: Pr.y }); }
+    // il reparto antisommossa
+    if (!Pr.police.length && st.t >= Pr.policeAt && Pr.phase !== 'fine') sendRiot(st, Pr);
+    const pol = Pr.police.map(id => G.byId(st, id)).filter(n => n && !n.dead);
+    if (Pr.phase === 'raduno' && st.t > Pr.until && Pr.corteo && Pr.route) { Pr.phase = 'corteo'; Pr.ri = 0; }
+    if (Pr.phase === 'raduno' && Pr.march && st.t > Pr.t0 + 6) { Pr.phase = 'corteo'; Pr.route = [Pr.march]; Pr.ri = 0; }
+    if (Pr.phase === 'corteo') {
+      const L = G.byId(st, Pr.leader); if (L) { const pid = Pr.route[Pr.ri]; const q = pid === 'corso_c' ? corsoMid() : PLACES[pid]; if (q && dist(L.x, L.y, q.x, q.y) < 4) { Pr.ri++; if (Pr.ri >= Pr.route.length) { Pr.phase = 'raduno'; Pr.x = L.x; Pr.y = L.y; Pr.until = st.t + 25; Pr.corteo = false; Pr.march = null; } } }
+    }
+    // cordone: gli agenti in fila davanti alla folla, il megafono
+    if (pol.length && (Pr.phase === 'raduno' || Pr.phase === 'corteo' || Pr.phase === 'cordone')) {
+      const c = protestCenter(st, Pr), lineOk = pol.filter(n => n.ord && n.ord.svc && n.ord.svc.k === 'antisommossa' && n.ord.svc.phase === 'cordone').length;
+      if (Pr.phase !== 'cordone' && pol.some(n => dist(n.x, n.y, c.x, c.y) < 18)) { Pr.phase = 'cordone'; Pr.warnAt = st.t + 2; Pr.x = c.x; Pr.y = c.y; }
+      if (Pr.phase === 'cordone' && st.t >= Pr.warnAt && lineOk >= Math.min(3, pol.length)) {
+        Pr.warn++; Pr.warnAt = st.t + 3 + Math.random() * 2;
+        const cap = pol[0]; G.say(st, cap, Pr.warn < 3 ? `Sciogliete l'assembramento! ${Pr.warn === 1 ? 'Primo' : 'Secondo'} avviso!` : 'Carica!', 3);
+        st.sfx.push({ k: 'megafono', x: cap.x, y: cap.y });
+        // a ogni avviso qualcuno se ne va
+        alive.forEach(id => { const n = G.byId(st, id); if (!n) return; const P = n.ord.protester; if (Math.random() > P.resolve * (Pr.warn < 3 ? 1.1 : .9)) leaveProtest(st, n, Pr, 'avviso'); });
+        if (Pr.warn >= 3) { Pr.phase = 'carica'; O.stats.cariche++; G.addLog(st, `${G.clockStr(st.t)} · I Grigi caricano la folla a ${Pr.place}.`, 'bad'); if (dist(st.player.x, st.player.y, Pr.x, Pr.y) < 120) G.feed(st, `I Grigi caricano la protesta a ${Pr.place}!`, 'bad'); panicNear(st, Pr.x, Pr.y, 22); }
+      }
+    }
+    if (Pr.phase === 'carica') {
+      const left = Pr.people.length;
+      if (!left || st.t > (Pr.chargeEnd || (Pr.chargeEnd = st.t + 20))) { endProtest(st, Pr, left ? 'dispersa' : 'sgomberata'); return false; }
+    }
+    if (Pr.phase === 'raduno' && !pol.length && st.t > Pr.until + (Pr.kind === 'organizzata' ? 40 : 25)) { endProtest(st, Pr, 'finita'); return false; }
+    if (!alive.length && Pr.phase !== 'carica') { endProtest(st, Pr, 'svanita'); return false; }
+    return true;
+  }
+  const corsoMid = () => { const L = (G.LANES || []).find(l => l.id === 'corso'); if (!L) return PLACES.piazza; const q = G.laneAt(L, L.L * .7); return { x: q.x, y: q.y }; };
+  function panicNear(st, x, y, r) { st.npcs.forEach(n => { if (n.cop || n.dead || n.inside || n.ord && n.ord.protester) return; if (dist(n.x, n.y, x, y) < r) { n.panic = 4 + Math.random() * 4; n.fleeFrom = { x, y }; } }); }
+  function leaveProtest(st, n, Pr, why) {
+    const P = n.ord && n.ord.protester; if (!P) return;
+    n.ord.protester = null; if (n.hand === 'cartello') n.hand = null;
+    Pr.people = Pr.people.filter(id => id !== n.id);
+    if (why !== 'fine') { n.panic = why === 'carica' ? 5 + Math.random() * 4 : 2 + Math.random() * 3; n.fleeFrom = { x: Pr.x, y: Pr.y }; }
+    const PL = PO();
+    if (PL && n.pop) {
+      const t = { avviso: 'alla protesta: al secondo avviso dei Grigi me ne sono andat' + (n.pop.sex === 'f' ? 'a' : 'o'), carica: 'i Grigi hanno caricato la protesta: sono scappat' + (n.pop.sex === 'f' ? 'a' : 'o'), fine: 'sono stat' + (n.pop.sex === 'f' ? 'a' : 'o') + ' alla protesta, eravamo in tanti' }[why] || 'alla protesta';
+      PL.note(st, n, t, why === 'fine' ? 'good' : 'bad', { w: why === 'carica' ? .7 : .45, tag: 'protesta' });
+      const N = n.pop.need; if (N) { if (why === 'fine') { N.rabbia = clamp((N.rabbia || 0) - .25, 0, 1); N.compagnia = clamp((N.compagnia || 0) - .3, 0, 1); } else { N.paura = clamp((N.paura || 0) + (why === 'carica' ? .25 : .1), 0, 1); N.rabbia = clamp((N.rabbia || 0) + (why === 'carica' ? .2 : .03), 0, 1); } }
+      if (n.ris && why === 'carica') n.ris.ideo = clamp(n.ris.ideo + .04, 0, 1);
+    }
+  }
+  function endProtest(st, Pr, how) {
+    const O = S(st);
+    Pr.people.forEach(id => { const n = G.byId(st, id); if (n) leaveProtest(st, n, Pr, Pr.phase === 'carica' ? 'carica' : 'fine'); });
+    Pr.police.forEach(id => { const n = G.byId(st, id); if (n && n.ord) { n.ord.svc = null; n.hand = null; n.ord.riot = false; } });
+    if (Pr.blind) { const v = st.vehicles.find(k => k.id === Pr.blind); if (v && !v.wreck && v.rider !== 'player') v.driveTo = v.homeB ? { x: v.homeB.x, y: v.homeB.y } : null; }
+    Pr.phase = 'fine'; O.rev++;
+    if (st.ris) { if (how === 'finita') st.ris.morale = clamp(st.ris.morale + 3, 0, 100); else { st.ris.repr = clamp(st.ris.repr + 3, 0, 100); st.ris.morale = clamp(st.ris.morale + (Pr.arrested > 2 ? -2 : 1), 0, 100); } }
+    G.addLog(st, `${G.clockStr(st.t)} · La protesta a ${Pr.place} è ${how}${Pr.arrested ? `: ${Pr.arrested} fermati` : ''}${Pr.hurt ? `, ${Pr.hurt} feriti` : ''}.`, how === 'finita' ? 'info' : 'bad');
+  }
+  // il reparto: chi è di turno (e se non basta, chi riposa in caserma), la Campagnola o il Blindato
+  function sendRiot(st, Pr) {
+    const O = S(st), cnt = Math.min(10, Math.max(4, Math.round(Pr.people.length / 2.5)));
+    const pool = O.agents.map(id => G.byId(st, id)).filter(n => n && !n.dead && n.ord.kind === 'grigio' && !engineTakes(st, n) && !(n.ord.svc && ['scorta', 'controllo', 'antisommossa', 'controllo_p'].includes(n.ord.svc.k)))
+      .sort((a, b) => (onDuty(st, b) ? 1 : 0) - (onDuty(st, a) ? 1 : 0) + (dist(a.x, a.y, Pr.x, Pr.y) - dist(b.x, b.y, Pr.x, Pr.y)) / 400).slice(0, cnt);
+    if (!pool.length) { Pr.policeAt = st.t + 15; return; }
+    const far = dist(st.player.x, st.player.y, Pr.x, Pr.y) > 80;
+    pool.forEach((n, i) => {
+      endSvc(st, n); n.ord.svc = { k: 'antisommossa', pr: Pr.id, slot: i, phase: 'arrivo', extra: true }; n.ord.riot = true; n.hand = 'manganello'; n.inside = false;
+      if (far || dist(n.x, n.y, Pr.x, Pr.y) > 120) { const q = PLACES.commissariato; const a = Math.atan2(Pr.y - q.y, Pr.x - q.x); n.x = Pr.x - Math.cos(a) * (20 + Math.random() * 4) + (Math.random() - .5) * 3; n.y = Pr.y - Math.sin(a) * (20 + Math.random() * 4) + (Math.random() - .5) * 3; if (!G.walkM(n.x, n.y)) { const s = G.wanderSpot(st, PLACES[Pr.pid] || PLACES.piazza); n.x = s.x; n.y = s.y; } }
+      Pr.police.push(n.id);
+    });
+    // il Blindato se la folla è grande
+    const bl = st.vehicles.find(v => v.id === (Pr.people.length > 14 ? 'gr_blind' : 'gr_camp1') && !v.wreck && v.rider !== 'player' && !(O.blocco && O.blocco.car === v.id));
+    if (bl) { Pr.blind = bl.id; bl.homeB = bl.homeB || { x: bl.x, y: bl.y }; const a = Math.atan2(Pr.y - bl.y, Pr.x - bl.x), tx = Pr.x - Math.cos(a) * 22, ty = Pr.y - Math.sin(a) * 22; if (far) { const ps = (G.parkSpot && G.parkSpot(tx, ty, true)) || { x: tx, y: ty }; bl.x = ps.x; bl.y = ps.y; bl.ang = a; bl.vx = bl.vy = 0; bl.speed = 0; } else bl.driveTo = { x: tx, y: ty }; bl.ronda = true; }
+    G.addLog(st, `${G.clockStr(st.t)} · Arriva il reparto antisommossa (${pool.length} Grigi${bl ? (bl.kind === 'blindato' ? ' e il Blindato' : ' e la Campagnola') : ''}).`, 'bad');
+    st.sfx.push({ k: 'sirena', x: Pr.x, y: Pr.y });
+  }
+  function cordoneMove(st, n, dt) {
+    const O = S(st), s = n.ord.svc, Pr = O.proteste.find(q => q.id === s.pr);
+    if (!Pr || Pr.phase === 'fine') { n.ord.svc = null; n.ord.riot = false; n.hand = null; return true; }
+    const c = protestCenter(st, Pr), q = PLACES.commissariato || c;
+    // la linea si mette tra la folla e la caserma (o da dove sono arrivati), a 8 m dal centro
+    if (!Pr.line || st.clock - (Pr.lineT || 0) > 4) { const a = Math.atan2((Pr.police[0] && G.byId(st, Pr.police[0]) ? G.byId(st, Pr.police[0]).y : q.y) - c.y, (Pr.police[0] && G.byId(st, Pr.police[0]) ? G.byId(st, Pr.police[0]).x : q.x) - c.x); Pr.line = { a }; Pr.lineT = st.clock; }
+    const a = Pr.line.a, N = Pr.police.length, k = s.slot - (N - 1) / 2, rad = Pr.phase === 'carica' ? 0 : 8.5;
+    const lx = c.x + Math.cos(a) * rad - Math.sin(a) * k * 1.2, ly = c.y + Math.sin(a) * rad + Math.cos(a) * k * 1.2;
+    if (Pr.phase !== 'carica') {
+      const ok = seek(st, n, G.walkM(lx, ly) ? lx : c.x + Math.cos(a) * rad, G.walkM(lx, ly) ? ly : c.y + Math.sin(a) * rad, dt, s.phase === 'arrivo' ? 2.6 : 1.4, .4);
+      if (ok) { s.phase = 'cordone'; stand(n, a + Math.PI, dt); } return true;
+    }
+    // la carica: ognuno sceglie il manifestante più vicino e lo colpisce; qualcuno lo ferma
+    s.phase = 'carica';
+    let tgt = s.tgt && G.byId(st, s.tgt);
+    if (!tgt || tgt.dead || !tgt.ord || !tgt.ord.protester) { tgt = null; let bd = 1e9; for (const id of Pr.people) { const m = G.byId(st, id); if (!m) continue; const d = dist(n.x, n.y, m.x, m.y); if (d < bd) { bd = d; tgt = m; } } s.tgt = tgt ? tgt.id : null; }
+    // anche il giocatore, se è in mezzo
+    const p = st.player, dp = dist(n.x, n.y, p.x, p.y);
+    if (dp < 2.5 && !p.vehicle && dist(p.x, p.y, Pr.x, Pr.y) < 14 && st.clock > (n.ord.hitT || 0)) { n.ord.hitT = st.clock + 1.6; n.gesture = .4; if (G.damagePlayer) G.damagePlayer(st, 9, Math.atan2(p.y - n.y, p.x - n.x), n.id); p.stun = Math.max(p.stun || 0, .5); G.say(st, n, 'Via! Via di qua!', 1.6); }
+    if (!tgt) { stand(n, undefined, dt); return true; }
+    const d = dist(n.x, n.y, tgt.x, tgt.y);
+    if (d > 1.1) { seek(st, n, tgt.x, tgt.y, dt, 3.6, .9); return true; }
+    if (st.clock > (n.ord.hitT || 0)) {
+      n.ord.hitT = st.clock + 1.2; n.gesture = .4; faceTo(n, tgt.x, tgt.y, 1);
+      tgt.stun = Math.max(tgt.stun, 1.2 + Math.random() * 1.8); tgt.hp -= 8; tgt.hitT = st.clock; Pr.hurt++;
+      st.sfx.push({ k: 'botta', x: tgt.x, y: tgt.y });
+      if (Math.random() < .3 && Pr.arrested < 6) { Pr.arrested++; leaveProtest(st, tgt, Pr, 'carica'); tgt.panic = 0; fermo(st, n, tgt, 'protesta non autorizzata'); s.tgt = null; return true; }
+      leaveProtest(st, tgt, Pr, 'carica'); s.tgt = null;
+    }
+    return true;
+  }
+  function thinkProtester(st, n) {
+    if (n.dead || n.stun > 0) return false;
+    if (n.panic > 0 && n.ord.protester) { const Pr = S(st).proteste.find(q => q.id === n.ord.protester.pr); if (Pr && Pr.phase === 'carica') { leaveProtest(st, n, Pr, 'carica'); return false; } }
+    n.inside = false; n.action = { name: 'ordine_protesta', scores: [], why: 'In piazza a protestare.', since: n.action.name === 'ordine_protesta' ? n.action.since : st.clock }; return true;
+  }
+  function protesterMove(st, n, dt) {
+    const O = S(st), P = n.ord.protester; if (!P) return false;
+    const Pr = O.proteste.find(q => q.id === P.pr); if (!Pr) { n.ord.protester = null; return false; }
+    if (Pr.phase === 'carica') { // si scappa
+      if (!n.ord.protester) return false; leaveProtest(st, n, Pr, 'carica'); return false;
+    }
+    if (Pr.phase === 'corteo' && n.id === Pr.leader) {
+      const pid = Pr.route[Pr.ri], q = pid === 'corso_c' ? corsoMid() : PLACES[pid];
+      if (q) seek(st, n, q.x, q.y, dt, .95, 1); return true;
+    }
+    const c = protestCenter(st, Pr), L = G.byId(st, Pr.leader);
+    let x, y;
+    if (Pr.phase === 'corteo' && L && L !== n) { // dietro al capo, a file
+      const row = Math.floor((P.slot) / 4) + 1, col = P.slot % 4 - 1.5;
+      x = L.x - Math.cos(L.face) * row * 1.1 - Math.sin(L.face) * col * .9; y = L.y - Math.sin(L.face) * row * 1.1 + Math.cos(L.face) * col * .9;
+    } else { x = c.x + Math.cos(P.ang) * P.rad; y = c.y + Math.sin(P.ang) * P.rad; }
+    if (!G.walkM(x, y)) { x = c.x; y = c.y; }
+    if (seek(st, n, x, y, dt, Pr.phase === 'corteo' ? 1.05 : 1.3, .5)) {
+      // fermi in piazza: verso il centro (o verso il cordone)
+      const pol = Pr.police.length ? G.byId(st, Pr.police[0]) : null;
+      if (pol && Pr.phase === 'cordone') faceTo(n, pol.x, pol.y, dt); else faceTo(n, c.x, c.y, dt);
+      n.speedNow = 0; if (Math.random() < .004) n.gesture = .5;
+    }
+    return true;
+  }
+
+  // ================= LA SCORTA ALLA NAVE =================
+  function naveGuardMove(st, n, dt) { n.ord.svc = null; return true; }
+
+  // ================= GLI ABITANTI CHE VEDONO =================
+  function noteOf(st, n, text) { const PL = PO(); if (PL && n.pop) PL.note(st, n, text, 'info', { w: .2, tag: 'servizio' }); }
+
+  // ================= IL PASSO =================
+  let acc = 0;
+  function step(st, dt) {
+    const O = S(st); if (!O) return;
+    try {
+      playerCheckStep(st, dt);
+      volantiStep(st, dt);
+      for (const v of st.vehicles) if (v.driveTo) driveStep(st, v, dt);
+      bloccoTraffic(st);
+      acc += dt; if (acc < .5) return; const dts = acc; acc = 0;
+      centrale(st);
+      bloccoStep(st);
+      naveStep(st, dts);
+      camionStep(st, dts);
+      codaStep(st);
+      protesteStep(st, dts);
+      O.ronde.forEach(R => { R.a = R.a.filter(id => { const n = G.byId(st, id), s = n && !n.dead && n.ord && n.ord.svc; if (!s) return false; for (let q = s, k = 0; q && k < 4; q = q.back, k++) if (q.k === 'ronda' && q.R === R.id) return true; return false; }); });
+      O.ronde = O.ronde.filter(R => R.a.length);
+      // chi ha finito un controllo e non ha più servizio torna libero; chi è stato rilasciato dal fermo perde lo stato
+      st.npcs.forEach(n => { if (n.ord && n.ord.stopped && st.t > n.ord.stopped.until + 2) n.ord.stopped = null; });
+    } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.warn('[ordine]', e); } }
+  }
+
+  // ================= RESOCONTO =================
+  function report(st) {
+    const O = S(st); if (!O) return null;
+    const ag = O.agents.map(id => G.byId(st, id)).filter(Boolean);
+    const by = f => { const o = {}; ag.forEach(n => { const k = f(n); o[k] = (o[k] || 0) + 1; }); return o; };
+    return {
+      agenti: ag.length, diTurno: ag.filter(n => onDuty(st, n)).length, servizi: by(n => n.ord.svc ? n.ord.svc.k : (onDuty(st, n) ? 'libero' : 'riposo')), azioni: by(n => n.action.name),
+      volanti: O.volanti.map(V => V.mode + '/' + V.crew.length).join(' '), ronde: O.ronde.length, blocco: O.blocco ? O.blocco.place : null,
+      proteste: O.proteste.map(p => `${p.kind} ${p.motivo} ${p.phase} ${p.people.length} (pol ${p.police.length})`), nave: `${O.nave.kind} ${O.nave.phase} casse ${O.nave.crates}`,
+      coda: O.coda ? O.coda.list.length : 0, scorte: Math.round(stockLevel(st) * 100), stats: O.stats, supermercato: SUPER ? SUPER.b.name : null,
+    };
+  }
+  // per la grafica e per il menu: cosa sta facendo un agente
+  function label(st, n) { const s = n.ord && n.ord.svc; return s ? ({ ronda: 'ronda', volante: 'in volante', blocco: 'posto di blocco', piantone: 'piantone', antisommossa: 'antisommossa', scorta: 'porta un fermato', controllo: 'controllo', controllo_p: 'ti controlla', coda: 'ordine alla fila' }[s.k] || s.k) : null; }
+
+  // ================= INSTALLAZIONE =================
+  (function install() {
+    const H = G.HOOKS; if (H.__ordine) return; H.__ordine = true;
+    Object.assign(G.SEV, { fuga_controllo: .55, intrusione: .7 }); Object.assign(G.NOISE, { fuga_controllo: 8, intrusione: 6 }); Object.assign(G.NEG, { fuga_controllo: 1, intrusione: 1 }); Object.assign(G.LABEL, { fuga_controllo: 'Fuga a un controllo', intrusione: 'Intrusione nella zona militare' });
+    const c0 = H.create, t0 = H.think, m0 = H.move, s0 = H.step, v0 = H.verb;
+    H.create = st => { if (c0) c0(st); try { create(st); } catch (e) { if (typeof console !== 'undefined') console.warn('[ordine] create', e); } };
+    H.think = (st, n) => (st.ord && n.ord && think(st, n)) || (t0 ? t0(st, n) : false);
+    H.move = (st, n, dt, a) => (st.ord && n.ord && move(st, n, dt, a)) || (m0 ? m0(st, n, dt, a) : false);
+    H.step = (st, dt) => { if (s0) s0(st, dt); step(st, dt); };
+    H.verb = (st, m, T) => (m.type === 'fuga_controllo' ? 'è scappato a un controllo dei Grigi' : m.type === 'intrusione' ? 'è entrato nella zona militare' : v0 ? v0(st, m, T) : null);
+  })();
+
+  return { CFG, SUPER, BERTH, QUAY, create, step, report, label, docsOf, contraband, startCheck, startProtest, sendRiot, onDuty, isCurfew, stockLevel, restock, startCoda, bloccoSlot, endBlocco, toLane };
+})();
+if (typeof module !== 'undefined') module.exports = Ordine;
+</script>
+<script>/* Porto Vecchio — Gli animali (solo logica, nessuna grafica).
+   Cani randagi al porto, nei vicoli e alla discarica; gatti sui moli e davanti alle botteghe; pecore e capre all'ovile
+   e sul monte, mucche, asini e galline alla masseria e al Borgo dei Carbonai; i cani della Base al guinzaglio dei cinofili.
+   Ognuno ha una casa (un posto e un raggio), un umore e poche cose che sa fare: girare, annusare, dormire, pascolare,
+   scappare (dal giocatore che corre, dalle macchine, dagli spari), abbaiare ai Grigi, seguire chi gli dà retta.
+   I cani della Base attaccano chi è nella zona militare senza lasciapassare o chi è ricercato.
+   Vicino al giocatore si muovono a ogni passo, lontano una volta al secondo. Stato in st.ani. */
+var Animali = (function () {
+  'use strict';
+  const G = typeof Game !== 'undefined' ? Game : require('./game.js');
+  const PLACES = G.PLACES;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const dist = (a, b, c, d) => Math.hypot(c - a, d - b);
+  const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+  const hourOf = t => Math.floor(t / 60) % 24;
+
+  // specie: passo, corsa, raggio di casa, distanza di fuga, colori del mantello
+  const SP = {
+    cane: { walk: 1.25, run: 5.2, home: 28, flee: 3.2, cols: ['#8a6a48', '#2a2420', '#c8a878', '#5a4030', '#e8dcc8', '#6a6a68'], sound: 'bau' },
+    cane_base: { walk: 1.3, run: 6.2, home: 0, flee: 0, cols: ['#b47a3a', '#a06a30'], sound: 'bau' },
+    gatto: { walk: .75, run: 4.6, home: 16, flee: 2.8, cols: ['#d88a3a', '#2a2420', '#8a8a88', '#e8dcc8', '#6a5040', '#c8b090'], sound: 'miao' },
+    pecora: { walk: .45, run: 3, home: 16, flee: 5, cols: ['#e8e2d4', '#ddd4c0', '#f0eadc', '#3a3430'], sound: 'bee', herd: true },
+    capra: { walk: .6, run: 3.6, home: 18, flee: 4.5, cols: ['#e8e0d0', '#6a4a30', '#2a2420', '#a08060'], sound: 'bee', herd: true },
+    mucca: { walk: .45, run: 2, home: 14, flee: 3.5, cols: ['#e8e2d4', '#5a3a26', '#2a2420'], sound: 'muu', herd: true },
+    asino: { walk: .55, run: 2.6, home: 10, flee: 2.5, cols: ['#7a7068', '#5a5048', '#8a8070'], sound: 'raglio' },
+    gallina: { walk: .45, run: 2.4, home: 8, flee: 2.2, cols: ['#e8e0d0', '#a85a2a', '#2a2420', '#c8883a'], sound: 'coccodè' },
+  };
+  // dove stanno: [specie, luogo, quanti, sparpagliati (m)]
+  const WHERE = [
+    ['cane', 'calata', 2, 8], ['cane', 'molo', 1, 6], ['cane', 'discarica', 3, 10], ['cane', 'caruggio', 1, 5], ['cane', 'piazzetta', 1, 5], ['cane', 'marina', 1, 6], ['cane', 'pineta', 1, 10], ['cane', 'villaggio', 1, 8], ['cane', 'masseria', 1, 6],
+    ['gatto', 'vico', 2, 5], ['gatto', 'caruggio', 2, 5], ['gatto', 'calata', 2, 7], ['gatto', 'molo', 2, 6], ['gatto', 'marina', 1, 5], ['gatto', 'piazzetta', 1, 4], ['gatto', 'fontana', 1, 4], ['gatto', 'wu', 1, 3], ['gatto', 'osteria', 1, 3], ['gatto', 'chiesa', 1, 4], ['gatto', 'giardini', 1, 6], ['gatto', 'sangiacomo', 1, 5],
+    ['pecora', 'ovile', 9, 9], ['pecora', 'masseria', 5, 8], ['capra', 'ovile', 4, 10], ['capra', 'monte', 5, 12], ['capra', 'villaggio', 3, 8],
+    ['mucca', 'masseria', 3, 8], ['asino', 'masseria', 1, 4], ['asino', 'villaggio', 1, 4], ['gallina', 'masseria', 6, 5], ['gallina', 'villaggio', 6, 5], ['gallina', 'sangiacomo', 3, 4],
+  ];
+
+  function create(st) {
+    const r = G.MAP && G.MAP.world ? G.MAP.world.rng(9133) : Math.random;
+    const A = st.ani = { list: [], nextId: 1, rev: 0, companion: null };
+    const put = (sp, x, y, extra) => {
+      const S = SP[sp], k = A.nextId++;
+      const a = Object.assign({ id: 'a' + k, sp, x, y, face: r() * 6.28, v: 0, mode: 'fermo', t: r() * 4, hx: x, hy: y, tx: x, ty: y, col: Math.floor(r() * S.cols.length), size: .88 + r() * .24, ph: r() * 9, dead: false, bark: 0, act: 0 }, extra || {});
+      A.list.push(a); return a;
+    };
+    WHERE.forEach(([sp, pid, n, spread]) => {
+      const q = PLACES[pid]; if (!q) return;
+      for (let i = 0; i < n; i++) {
+        let x = q.x, y = q.y;
+        for (let k = 0; k < 12; k++) { const tx = q.x + (r() - .5) * 2 * spread, ty = q.y + (r() - .5) * 2 * spread; if (G.walkM(tx, ty)) { x = tx; y = ty; break; } }
+        put(sp, x, y, { herd: SP[sp].herd ? pid : null });
+      }
+    });
+    // i cani della Base: uno per cinofilo
+    st.npcs.filter(n => n.ord && n.ord.dog).forEach(n => put('cane_base', n.x - 1, n.y, { owner: n.id, col: 0, size: 1.12 }));
+    A.herds = {}; A.list.forEach(a => { if (a.herd) { const H = A.herds[a.herd + a.sp] || (A.herds[a.herd + a.sp] = { x: a.hx, y: a.hy, n: 0, ox: a.hx, oy: a.hy, t: 0 }); H.n++; a.hk = a.herd + a.sp; } });
+  }
+
+  // ---------------- PERICOLI ----------------
+  function threat(st, a, S) {
+    const p = st.player, d = dist(a.x, a.y, p.x, p.y);
+    if (st.clock - (st.lastShotAt || -99) < 3 && d < 30) return { x: p.x, y: p.y, k: 2 };
+    if (st.clock - (st.panicAt || -99) < 2 && d < 20) return { x: p.x, y: p.y, k: 1.5 };
+    if (!p.vehicle && d < S.flee * (Math.abs(p.speed || 0) > 2.6 ? 2 : 1) && !(a.friend && a.sp === 'cane')) return { x: p.x, y: p.y, k: 1 };
+    for (const v of st.vehicles) { if (v.hidden || Math.abs(v.speed || 0) < 3) continue; const dv = dist(a.x, a.y, v.x, v.y); if (dv < 6) return { x: v.x, y: v.y, k: 1.4, car: v }; }
+    return null;
+  }
+  function goToward(a, x, y, sp, dt) {
+    const dx = x - a.x, dy = y - a.y, d = Math.hypot(dx, dy); if (d < .05) { a.v = 0; return true; }
+    const want = Math.atan2(dy, dx); a.face += angDiff(want, a.face) * Math.min(1, dt * (sp > 2 ? 8 : 4));
+    const s = Math.min(d, sp * dt), nx = a.x + Math.cos(a.face) * s, ny = a.y + Math.sin(a.face) * s;
+    if (G.walkM(nx, ny)) { a.x = nx; a.y = ny; a.v = sp; a.stuck = 0; } else { a.v = 0; a.stuck = (a.stuck || 0) + dt; if (a.stuck > .6) { a.tx = a.x; a.ty = a.y; a.t = 0; } }
+    return d < .3;
+  }
+  function pickSpot(a, R, r) { for (let k = 0; k < 8; k++) { const ang = Math.random() * 6.28, rr = Math.sqrt(Math.random()) * R, x = (a.hk ? a.hcx : a.hx) + Math.cos(ang) * rr, y = (a.hk ? a.hcy : a.hy) + Math.sin(ang) * rr; if (G.walkM(x, y)) { a.tx = x; a.ty = y; return; } } a.tx = a.hx; a.ty = a.hy; }
+
+  // ---------------- UN ANIMALE ----------------
+  function tickOne(st, a, dt) {
+    const S = SP[a.sp], A = st.ani, h = hourOf(st.t), night = h >= 22 || h < 6;
+    a.bark = Math.max(0, a.bark - dt); a.act = Math.max(0, a.act - dt);
+    if (a.dead) { a.v = 0; return; }
+    // investiti
+    for (const v of st.vehicles) { if (v.hidden || Math.hypot(v.vx || 0, v.vy || 0) < 4) continue; if (dist(a.x, a.y, v.x, v.y) < (G.VK[v.kind] ? G.VK[v.kind].len / 2 : 1.5)) { a.dead = true; a.mode = 'morto'; a.v = 0; A.rev++; st.sfx.push({ k: 'guaito', x: a.x, y: a.y }); if (v.rider === 'player') G.feed(st, a.sp === 'cane' ? 'Hai investito un cane.' : a.sp === 'gatto' ? 'Hai investito un gatto.' : 'Hai investito un animale.', 'bad'); return; } }
+    if (a.sp === 'cane_base') return tickGuardDog(st, a, dt);
+    if (a.herd) { const H = A.herds[a.hk]; a.hcx = H.x; a.hcy = H.y; }
+    const T = threat(st, a, S);
+    if (T) {
+      if (a.mode !== 'fugge') { a.mode = 'fugge'; a.t = 1.5 + Math.random() * 2; const ang = Math.atan2(a.y - T.y, a.x - T.x) + (Math.random() - .5) * .8, L = 6 + Math.random() * 6; a.tx = a.x + Math.cos(ang) * L; a.ty = a.y + Math.sin(ang) * L; if (Math.random() < .5) { a.bark = .6; st.sfx.push({ k: S.sound, x: a.x, y: a.y }); } }
+    }
+    if (a.mode === 'fugge') { a.t -= dt; goToward(a, a.tx, a.ty, S.run * (a.sp === 'gallina' ? .9 + Math.sin(st.clock * 20) * .3 : 1), dt); if (a.t <= 0) { a.mode = 'fermo'; a.t = 2 + Math.random() * 3; } return; }
+    // il cane che ti segue
+    if (a.sp === 'cane' && A.companion === a.id) {
+      const p = st.player, d = dist(a.x, a.y, p.x, p.y);
+      if (st.t > a.friendUntil || d > 40 || p.vehicle) { A.companion = null; a.friend = false; a.mode = 'fermo'; a.hx = a.x; a.hy = a.y; if (d < 40) G.feed(st, 'Il cane se ne torna per i fatti suoi.', 'info'); }
+      else if (d > 2.2) goToward(a, p.x - Math.cos(p.face) * 1.2, p.y - Math.sin(p.face) * 1.2, d > 6 ? S.run * .8 : S.walk * 1.4, dt);
+      else { a.v = 0; if (Math.random() < dt * .5) a.act = .5; }
+      barkAtCops(st, a, S); return;
+    }
+    // il cane si affeziona a chi gli sta vicino, fermo, per un po'
+    if (a.sp === 'cane' && !A.companion && !st.player.vehicle) {
+      const p = st.player, d = dist(a.x, a.y, p.x, p.y);
+      if (d < 3 && Math.abs(p.speed || 0) < .3) { a.near = (a.near || 0) + dt; if (a.near > 3.5) { if (Math.random() < .6) { A.companion = a.id; a.friend = true; a.friendUntil = st.t + 20 + Math.random() * 40; G.feed(st, 'Un cane randagio ha deciso di seguirti.', 'good'); a.bark = .5; st.sfx.push({ k: 'bau', x: a.x, y: a.y }); } a.near = -20; } }
+      else a.near = Math.max(0, (a.near || 0) - dt);
+    }
+    if (a.sp === 'cane') { if (barkAtCops(st, a, S)) return; }
+    // la giornata
+    const sleepy = a.sp === 'gatto' ? (h >= 11 && h < 15) : (a.sp === 'gallina' ? night || h >= 20 : night);
+    if (sleepy && a.mode !== 'dorme' && Math.random() < dt * .05) { a.mode = 'dorme'; a.t = 30 + Math.random() * 60; a.tx = a.hx + (Math.random() - .5) * 2; a.ty = a.hy + (Math.random() - .5) * 2; }
+    if (a.mode === 'dorme') { if (dist(a.x, a.y, a.tx, a.ty) > .4 && !a.lying) goToward(a, a.tx, a.ty, S.walk, dt); else { a.lying = true; a.v = 0; } a.t -= dt; if (a.t <= 0 && !sleepy) { a.mode = 'fermo'; a.lying = false; a.t = 1; } return; }
+    a.lying = false;
+    a.t -= dt;
+    if (a.mode === 'fermo' || a.mode === 'pascola' || a.mode === 'siede' || a.mode === 'annusa') {
+      a.v = 0;
+      if (a.t <= 0) {
+        // dove andare: un punto a caso nella sua zona
+        const R = S.home * (a.herd ? .45 : 1);
+        pickSpot(a, R); a.mode = 'va'; a.t = 20;
+      }
+      return;
+    }
+    if (a.mode === 'va') {
+      const sp = S.walk * (a.sp === 'gallina' ? (Math.sin(st.clock * 9 + a.ph) > 0 ? 1.6 : .2) : 1);
+      if (goToward(a, a.tx, a.ty, sp, dt) || a.t <= 0) {
+        a.mode = a.herd ? 'pascola' : a.sp === 'gatto' ? 'siede' : a.sp === 'cane' ? 'annusa' : 'fermo';
+        a.t = a.herd ? 6 + Math.random() * 18 : a.sp === 'gatto' ? 8 + Math.random() * 30 : a.sp === 'gallina' ? .8 + Math.random() * 2 : 2 + Math.random() * 6;
+        if (Math.random() < .08) { a.bark = .5; st.sfx.push({ k: S.sound, x: a.x, y: a.y }); }
+      }
+    }
+  }
+  // i randagi ce l'hanno coi Grigi
+  function barkAtCops(st, a, S) {
+    if (st.clock < (a.barkCd || 0)) return false;
+    for (const n of st.npcs) {
+      if (!n.cop || n.dead || n.inside) continue; const d = dist(a.x, a.y, n.x, n.y); if (d > 6) continue;
+      a.barkCd = st.clock + 6 + Math.random() * 6; a.bark = 1.4; a.mode = 'fermo'; a.t = 1.6; a.v = 0; a.face = Math.atan2(n.y - a.y, n.x - a.x);
+      st.sfx.push({ k: 'bau', x: a.x, y: a.y });
+      if (Math.random() < .3 && st.clock > (n.barkCd || 0)) G.say(st, n, ['Via, bestiaccia!', 'Sciò! Sciò!', 'Qualcuno lo porti al canile.'][Math.floor(Math.random() * 3)], 2);
+      return true;
+    }
+    return false;
+  }
+  // ---------------- I CANI DELLA BASE ----------------
+  function tickGuardDog(st, a, dt) {
+    const S = SP.cane_base, o = G.byId(st, a.owner), p = st.player;
+    if (!o || o.dead) { a.mode = 'fermo'; a.v = 0; return; }
+    if (o.inside) { a.x = o.x; a.y = o.y; a.hidden = true; return; } a.hidden = false;
+    const wanted = G.wantedLevel ? G.wantedLevel(st) : 0, base = G.MAP.world && G.MAP.world.WALL && p.x > G.MAP.world.WALL.x + 1;
+    const inv = p.inv || {}, pass = inv.lasciapassare > 0 || inv.documenti > 0, dp = dist(a.x, a.y, p.x, p.y);
+    const hunt = !p.vehicle && !p.indoor && dp < 16 && ((wanted >= 2) || (base && !pass && (st.ord && !st.ord.passOk || st.t > (st.ord && st.ord.passOk || 0))) && dist(o.x, o.y, p.x, p.y) < 14);
+    if (hunt) {
+      a.mode = 'attacca';
+      if (dp > 1.1) goToward(a, p.x, p.y, S.run, dt);
+      else { a.v = 0; a.face = Math.atan2(p.y - a.y, p.x - a.x); if (st.clock > (a.biteT || 0)) { a.biteT = st.clock + 1.3; a.act = .4; a.bark = .5; if (G.damagePlayer) G.damagePlayer(st, 6, a.face, o.id); st.sfx.push({ k: 'ringhio', x: a.x, y: a.y }); if (!a.told) { a.told = true; G.feed(st, 'Il cane della Base ti azzanna!', 'bad'); } } }
+      if (st.clock > (a.barkCd || 0)) { a.barkCd = st.clock + 1.5; a.bark = .8; st.sfx.push({ k: 'bau', x: a.x, y: a.y }); }
+      return;
+    }
+    a.told = false;
+    // al guinzaglio: a sinistra del soldato, un passo avanti
+    const s = o.face - Math.PI / 2, x = o.x + Math.cos(s) * .8 + Math.cos(o.face) * .5, y = o.y + Math.sin(s) * .8 + Math.sin(o.face) * .5;
+    const d = dist(a.x, a.y, x, y);
+    if (d > 6) { a.x = x; a.y = y; }
+    if (d > .25) goToward(a, x, y, Math.max(S.walk, (o.speedNow || 0) * 1.25 + d * .8), dt); else { a.v = 0; a.face += angDiff(o.face, a.face) * Math.min(1, dt * 3); }
+    a.mode = a.v > .2 ? 'va' : 'fermo';
+    // annusa chi passa e ringhia agli sconosciuti nella Base
+    if (base && dp < 8 && !pass && st.clock > (a.barkCd || 0)) { a.barkCd = st.clock + 3; a.bark = 1; st.sfx.push({ k: 'ringhio', x: a.x, y: a.y }); }
+  }
+
+  // ---------------- IL PASSO ----------------
+  let far = 0;
+  function step(st, dt) {
+    const A = st.ani; if (!A) return;
+    try {
+      far += dt; const doFar = far >= 1; const fdt = far; if (doFar) far = 0;
+      const p = st.player;
+      // le greggi si spostano piano attorno a casa
+      if (doFar) for (const k in A.herds) { const H = A.herds[k]; H.t -= fdt; if (H.t <= 0) { H.t = 40 + Math.random() * 80; const ang = Math.random() * 6.28, r = Math.random() * 10; const x = H.ox + Math.cos(ang) * r, y = H.oy + Math.sin(ang) * r; if (G.walkM(x, y)) { H.x = x; H.y = y; } } }
+      for (const a of A.list) {
+        const near = Math.abs(a.x - p.x) < 80 && Math.abs(a.y - p.y) < 80;
+        if (near) tickOne(st, a, dt); else if (doFar) tickOne(st, a, Math.min(fdt, 1.2));
+      }
+    } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.warn('[animali]', e); } }
+  }
+  function report(st) { const A = st.ani; if (!A) return null; const o = {}; A.list.forEach(a => { o[a.sp] = (o[a.sp] || 0) + (a.dead ? 0 : 1); }); o.morti = A.list.filter(a => a.dead).length; return o; }
+
+  (function install() {
+    const H = G.HOOKS; if (H.__animali) return; H.__animali = true;
+    const c0 = H.create, s0 = H.step;
+    H.create = st => { if (c0) c0(st); try { create(st); } catch (e) { if (typeof console !== 'undefined') console.warn('[animali] create', e); } };
+    H.step = (st, dt) => { if (s0) s0(st, dt); step(st, dt); };
+  })();
+  return { SP, WHERE, create, step, report };
+})();
+if (typeof module !== 'undefined') module.exports = Animali;
+</script>
 <script>
 /* Porto Vecchio — resa 3D in stile pixel art (Three.js r149).
    Scena renderizzata a bassa risoluzione, poi ingrandita con contorni e color grading.
@@ -31787,7 +33142,7 @@ var Render = (function () {
   function vehicleMesh(v) {
     const K = G.VK[v.kind];
     const glb = K.glb && window.Models && Models.has(K.glb) ? Models.vehicle(K.glb, K, v.color) : null;
-    const g = glb || (v.kind === 'vespa' ? vespaMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police));
+    const g = glb || (v.kind === 'vespa' ? vespaMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
     if (K.scale && !glb) g.scale.set(K.scale[0], K.scale[1], K.scale[2]);
     g.userData.glbWait = !!K.glb && !glb;
     g.userData.glb = !!glb;   // [animazioni-mondo] le auto dai modelli non hanno il profilo del parabrezza
@@ -31796,8 +33151,8 @@ var Render = (function () {
     g.traverse(o => { if (o.isMesh && o !== sh) o.castShadow = true; });
     const u = g.userData;
     if (u.seat) {
-      u.drv = driverMesh(v.driverLook || { top: '#8c2f24', skin: '#dcae88', hair: '#17110e' }, v.police); u.drv.position.set(...u.seat); g.add(u.drv);
-      if (v.police) { u.drv2 = driverMesh({ top: '#23355e', skin: '#c99a76' }, true); u.drv2.position.set(...u.seat2); g.add(u.drv2); }
+      u.drv = driverMesh(v.driverLook || { top: '#8c2f24', skin: '#dcae88', hair: '#17110e' }, v.police || v.livrea); u.drv.position.set(...u.seat); g.add(u.drv);
+      if (v.police || v.livrea) { u.drv2 = driverMesh({ top: v.livrea ? '#5c6672' : '#23355e', skin: '#c99a76' }, true);   /* [ordine] */ u.drv2.position.set(...u.seat2); g.add(u.drv2); }
     }
     // fari: alone, cono di luce e chiazza sull'asfalto
     if (!beamGeo) { beamGeo = new THREE.ConeGeometry(1.5, 8, 12, 1, true); beamGeo.translate(0, -4, 0); beamGeo.rotateX(-Math.PI / 2); poolGeo = new THREE.CircleGeometry(1, 16); poolGeo.rotateX(-Math.PI / 2); }
@@ -32002,7 +33357,7 @@ var Render = (function () {
     FX.flights.forEach((l, i) => { const s = sources[i]; if (s) { l.position.set(s.x, groundH(s.x, s.y) + 1.2, s.y); l.intensity = (5 + Math.sin(st.clock * 17 + i) * 1.5) * s.k; } else l.intensity = 0; });
     st.vehicles.forEach(v => { if (v.hidden) return; const K = G.VK[v.kind]; if ((v.hp < K.hp * .4 || v.wreck) && Math.random() < dt * (v.wreck ? 3 : 6)) smoke(v.x + Math.cos(v.ang) * (v.kind === 'vespa' ? 0 : 1.4), groundH(v.x, v.y) + 1.2, v.y + Math.sin(v.ang) * (v.kind === 'vespa' ? 0 : 1.4), v.wreck ? '#1a1618' : '#6a6a70', .9, 1.8, 1.2); });
     FX.bottles.forEach((b, i) => { const pr = st.proj[i]; b.visible = !!pr; if (pr) { b.position.set(pr.x, pr.z + groundH(pr.x, pr.y), pr.y); b.rotation.x += dt * 14; b.scale.setScalar(pr.kind === 'sasso' ? .4 : 1); b.userData.flame.visible = pr.kind !== 'sasso';   /* [trame1] */ b.userData.flame.material.opacity = .7 + Math.random() * .3; } });
-    const pc = st.vehicles.find(v => v.police && v.siren && !v.hidden && !v.wreck);
+    const pc = st.vehicles.find(v => (v.police || v.livrea) && v.siren && !v.hidden && !v.wreck);   /* [ordine] */
     if (pc) { const on = Math.sin(st.clock * 14) > 0; FX.siren.position.set(pc.x, groundH(pc.x, pc.y) + 2.2, pc.y); FX.siren.intensity = on ? 6 : 1.5; FX.siren.color.set(on ? '#2a6aff' : '#6a9aff'); } else FX.siren.intensity = 0;
   }
 
@@ -34544,6 +35899,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     TT('fusione1', fusione1);   /* [pulitore1] */
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
     if (window.Models) try { Models.attach({ scene, G, groundH }); } catch (e) { console.warn(e); }
+    if (window.OrdineArte) try { OrdineArte.attach({ scene, G, groundH }); } catch (e) { console.warn('[ordine_arte]', e); }   /* [ordine] */
     const mk2 = new THREE.Group();
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 14, 8, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd24a', transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); beam.position.y = 7;
     const ring = new THREE.Mesh(new THREE.RingGeometry(.9, 1.2, 16), new THREE.MeshBasicMaterial({ color: '#ffd24a', transparent: true, opacity: .8, side: THREE.DoubleSide, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .05;
@@ -35243,6 +36599,46 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (u.shadowC) { u.shadowC.visible = true; u.shadowC.position.y = .02 - h - Math.sin(k * Math.PI) * .4; }
   }
 
+  // [ombre1] Le ombre delle persone. Il modello animato (più cappello, borsa, armi) disegnato in ogni passata d'ombra
+  // per ogni persona caricata pesava più di tutta la città: ora l'ombra vera, a sagoma, la fanno il giocatore e le
+  // OMBRE1.vere persone più vicine all'inquadratura; gli altri hanno una macchia allungata dalla parte opposta al sole
+  // (stessa direzione e stessa lunghezza dell'ombra vera). Chi è fuori dall'inquadratura (con margine per l'ombra) non si
+  // disegna né si anima: rientrando recupera il tempo perso.
+  const OMBRE1 = { vere: 5, fr: new THREE.Frustum(), m: new THREE.Matrix4(), sp: new THREE.Sphere(), v: new THREE.Vector3(), Y: new THREE.Vector3(0, 1, 0), list: [] };
+  function ombreCast1(g, on) {
+    const u = g.userData; if (u.cast1 === on && (frameN + (u.ph1 || 0)) % 90) return;
+    u.cast1 = on; if (u.ph1 === undefined) u.ph1 = (Math.random() * 90) | 0;
+    g.traverse(o => { if ((o.isMesh || o.isSkinnedMesh) && o !== u.shadowC && !o.userData.noCast1) o.castShadow = on; });
+  }
+  function ombre1(st, night) {
+    const O = OMBRE1, fr = O.fr, sp = O.sp, list = O.list; list.length = 0;
+    camera.updateMatrixWorld(); O.m.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); fr.setFromProjectionMatrix(O.m);
+    // il sole (o la luna): direzione e lunghezza dell'ombra di una persona alta 1,7 m
+    const dx = moon.target.position.x - moon.position.x, dy = moon.position.y - moon.target.position.y, dz = moon.target.position.z - moon.position.z, hl = Math.hypot(dx, dz) || 1;
+    const len = clamp(1.7 * hl / Math.max(.3, dy), .5, 4.5), ux = dx / hl, uz = dz / hl, yaw = Math.atan2(-ux, -uz);
+    const realOn = renderer.shadowMap.enabled && moon.castShadow && !LOWQ.on, dayK = 1 - night;
+    const blobA = .18 + .2 * dayK * Math.min(1, moon.intensity);
+    for (const id in dyn.people) {
+      const g = dyn.people[id]; if (!g || !g.parent) continue;
+      if (!g.visible) { g.userData.off1 = false; continue; }   // la visibilità la decide il gioco, qui si toglie solo chi è fuori campo
+      sp.center.set(g.position.x, g.position.y + .9, g.position.z); sp.radius = 1.4 + len * .6;
+      const inF = id === '__player' || fr.intersectsSphere(sp);
+      g.userData.off1 = !inF; if (!inF) { g.visible = false; continue; }
+      const d = id === '__player' ? -1 : (g.position.x - cam.x) ** 2 + (g.position.z - cam.y) ** 2;
+      list.push([d, g]);
+    }
+    list.sort((a, b) => a[0] - b[0]);
+    for (let i = 0; i < list.length; i++) {
+      const g = list[i][1], u = g.userData, real = realOn && i <= O.vere; ombreCast1(g, real);
+      const sh = u.shadowC; if (!sh || !sh.visible) continue;
+      if (real || !(dayK > .05 || moon.intensity > .3)) { if (u.blob1) { u.blob1 = false; sh.scale.set(1, 1, 1); sh.position.x = sh.position.z = 0; sh.rotation.set(-Math.PI / 2, 0, 0); sh.material.opacity = .35; } continue; }
+      u.blob1 = true; sh.rotation.order = 'YXZ'; sh.rotation.set(-Math.PI / 2, yaw - g.rotation.y, 0);
+      sh.scale.set(1.05, Math.max(1, len / .8), 1);
+      O.v.set(ux * len * .42, 0, uz * len * .42).applyAxisAngle(O.Y, -g.rotation.y); sh.position.x = O.v.x; sh.position.z = O.v.z;
+      sh.material.opacity = blobA;
+    }
+  }
+
   // ---------------- AGGIORNAMENTO PER FOTOGRAMMA ----------------
 
   // ================= [amb1] METEO E PESO DEL REGIME =================
@@ -35360,6 +36756,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     dyn.boats.forEach(b => { b.g.position.y = (b.y !== undefined ? b.y : -.3) + Math.sin(time * 1.3 + b.ph) * .08; b.g.rotation.z = Math.sin(time * 1.1 + b.ph) * .04; b.g.rotation.x = Math.sin(time * .83 + b.ph * 1.7) * .025; });   // [animazioni-mondo] beccheggio
     dyn.laundry.forEach(l => { if (l.ax === false) l.m.rotation.z = Math.sin(time * 2 + l.ph) * .25; else l.m.rotation.x = Math.sin(time * 2 + l.ph) * .25; });
     if (window.Models) Models.tick(st, time, night);
+    if (window.OrdineArte) try { OrdineArte.tick(st, time, night, dt, cam); } catch (e) { if (!frame.oaErr) { frame.oaErr = 1; console.warn('[ordine_arte]', e); } }   /* [ordine] animali, nave, posti di blocco, cortei */
     tickWinter(time, night);
     tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri
     tickUrbano1(time, night);
@@ -35381,12 +36778,14 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       const inRoom = !!(n.room && p.indoor && !n.dead);   // [scopo] dentro l'edificio del giocatore: si vede chi c'è
       if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if (n.pop && !n.pop.near) { scene.remove(g); delete dyn.people[n.id]; } } return; }
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
-      if (!g) { const who = n.cop || n.military ? 'cop' : null; g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
+      if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */ g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
       g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y), n.y); g.rotation.y = Math.PI / 2 - n.face;
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
-      if (g.userData.model) Models.animPerson(g, { speed: n.speedNow, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, held: n.hand || null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), punch: n.gesture === 'punch' ? 1 : 0, handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0, anim: window.Anim ? Anim.npcState(st, n) : null }, dt); else   // [animazioni] anim
+      if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
+      const dtA = dt + (g.userData.dt1 || 0); g.userData.dt1 = 0;
+      if (g.userData.model) Models.animPerson(g, { speed: n.speedNow, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, held: n.hand || null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), punch: n.gesture === 'punch' ? 1 : 0, handsUp: !n.dead && n.stun <= 0 && ((n.action.name === 'fugge' && n.panic <= 0) || n.action.name === 'ordine_fermato'), riot: !!(n.ord && n.ord.riot), banner: n.ord && n.ord.protester ? n.ord.protester.banner : null, anim: window.Anim ? Anim.npcState(st, n) : null }, dtA); else   // [animazioni] anim
       animPerson(g, { anim: n.anim, speed: n.speedNow, gesture: n.gesture, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0 && p.cur !== 'pugni' && Math.hypot(n.x - p.x, n.y - p.y) < 6, twoHand: n.cop });
       g.userData.shadowC.visible = !n.dead;
       flight(g, n, st);
@@ -35439,8 +36838,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       }
       u.hpSeen = v.hp;
       if (v.wreck && !u.burnt) { u.burnt = true; u.paint.forEach(m => { m.color.set('#141012'); m.roughness = 1; m.metalness = 0; }); if (u.drv) u.drv.visible = false; if (u.drv2) u.drv2.visible = false; if (u.glass) u.glass.color.set('#050505'); g.rotation.z = .05; u.wheels.forEach(w => w.wh.scale.setScalar(.85)); }
-      if (u.drv) u.drv.visible = !v.wreck && (v.rider === 'player' || v.traffic || (v.police && v.rider === 'npc' && !v.arrived));
-      if (u.drv2) u.drv2.visible = !v.wreck && v.police && v.rider === 'npc' && !v.arrived;
+      if (u.drv) u.drv.visible = !v.wreck && (v.rider === 'player' || v.traffic || (v.police && v.rider === 'npc' && !v.arrived) || (v.rider === 'npc' && (v.livrea || v.driveTo || v.tutela)));   /* [ordine] */
+      if (u.drv2) u.drv2.visible = !v.wreck && (v.police || v.livrea) && v.rider === 'npc' && !v.arrived;   /* [ordine] */
       const lampsOn = !v.wreck && (v.traffic || v.rider) && night > .3;
       u.glows.forEach(s => { s.visible = lampsOn && !s.userData.broken; s.material.opacity = .7; });
       u.beams.forEach(b => b.visible = lampsOn && !b.userData.broken); u.pool.visible = lampsOn;
@@ -35577,6 +36976,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const indoorNow = indoorPass(st); if (indoorNow) { scene.fog.near = 200; scene.fog.far = 400; }
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
+    ombre1(st, night);   /* [ombre1] */
     renderer.setRenderTarget(rt); renderer.render(scene, camera);
     renderer.setRenderTarget(null); ambPasses();   /* [amb2] */
     const U = postMat.uniforms;
@@ -35624,6 +37024,452 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
   return { __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+})();
+</script>
+<script>/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
+   - Animali: ogni specie è fatta di pezzi (corpo, testa, coda, zampe) fusi in una geometria con i colori nei vertici;
+     ogni pezzo è un InstancedMesh (una chiamata di disegno per pezzo e per specie, qualunque sia il numero di animali).
+     Le zampe camminano a passo diagonale, la testa si abbassa a pascolare o annusare, la coda scodinzola, chi dorme
+     si accuccia, chi è morto resta di fianco. Si disegnano solo quelli vicini all'inquadratura.
+   - La nave: scafo con la prua a punta, ponte di comando con le finestre, fumaiolo, alberi di carico, container sul ponte
+     (spariscono man mano che si scarica), luci di via di notte. Due livree: la nave dell'Impero e la Marina della Tutela.
+   - Le casse sulla banchina, il posto di blocco (cavalletti, coni, sbarra, cartello, lampeggiante), gli arredi della
+     questura (bandiera, lampada blu, garitta, sbarra, sacchetti di sabbia, bacheca), del supermercato (tenda, carrelli,
+     cassette di frutta, lavagna, paletti della fila) e dei posti di guardia della Base (garitte, sacchetti, cuccia).
+   - Gli striscioni dei cortei, tenuti da due manifestanti.
+   Tutto statico è fuso per sito (poche chiamate di disegno). Si aggancia a render.js con attach() e tick(). */
+var OrdineArte = (function () {
+  'use strict';
+  let scene = null, G = null, groundH = null, ready = false, built = false;
+  const _e = new THREE.Euler(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _c = new THREE.Color();
+  const M4 = (x, y, z, rx, ry, rz, sx, sy, sz) => { _e.set(rx || 0, ry || 0, rz || 0, 'YXZ'); _q.setFromEuler(_e); _p.set(x || 0, y || 0, z || 0); _s.set(sx === undefined ? 1 : sx, sy === undefined ? (sx === undefined ? 1 : sx) : sy, sz === undefined ? (sx === undefined ? 1 : sx) : sz); return new THREE.Matrix4().compose(_p, _q, _s); };
+  const BOX = new THREE.BoxGeometry(1, 1, 1), CYL = {}, SPH = {}, CONE = {};
+  const cylG = (seg) => CYL[seg] || (CYL[seg] = new THREE.CylinderGeometry(1, 1, 1, seg));
+  const taperG = (rt, seg) => CYL['t' + rt + '_' + seg] || (CYL['t' + rt + '_' + seg] = new THREE.CylinderGeometry(rt, 1, 1, seg));
+  const sphG = (seg) => SPH[seg] || (SPH[seg] = new THREE.SphereGeometry(1, seg, Math.max(4, seg * .6 | 0)));
+  const coneG = (seg) => CONE[seg] || (CONE[seg] = new THREE.ConeGeometry(1, 1, seg));
+
+  // ---------------- COSTRUTTORE DI GEOMETRIE FUSE ----------------
+  function P0() { return { pos: [], nor: [], col: [] }; }
+  function put(P, geo, col, m) {
+    const g = (geo.index ? geo.toNonIndexed() : geo.clone()); g.applyMatrix4(m);
+    const pa = g.attributes.position.array, na = g.attributes.normal.array; _c.set(col);
+    for (let i = 0; i < pa.length; i++) { P.pos.push(pa[i]); P.nor.push(na[i]); }
+    for (let i = 0, n = pa.length / 3; i < n; i++) P.col.push(_c.r, _c.g, _c.b);
+    g.dispose();
+  }
+  const bx = (P, w, h, d, col, x, y, z, rx, ry, rz) => put(P, BOX, col, M4(x, y, z, rx, ry, rz, w, h, d));
+  const cy = (P, r, h, col, x, y, z, rx, ry, rz, seg, rt) => put(P, rt !== undefined ? taperG(rt, seg || 10) : cylG(seg || 10), col, M4(x, y, z, rx, ry, rz, r, h, r));
+  const sp = (P, rx_, ry_, rz_, col, x, y, z, seg, ax, ay, az) => put(P, sphG(seg || 10), col, M4(x, y, z, ax, ay, az, rx_, ry_, rz_));
+  const cn = (P, r, h, col, x, y, z, rx, ry, rz, seg) => put(P, coneG(seg || 8), col, M4(x, y, z, rx, ry, rz, r, h, r));
+  // un'asta tra due punti
+  function rod(P, r, col, a, b, seg) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], L = Math.hypot(dx, dy, dz) || .001;
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx / L, dy / L, dz / L));
+    const m = new THREE.Matrix4().compose(new THREE.Vector3((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2), q, new THREE.Vector3(r, L, r));
+    put(P, cylG(seg || 6), col, m);
+  }
+  function geoOf(P) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(P.pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(P.nor, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(P.col, 3));
+    g.computeBoundingSphere(); return g;
+  }
+  let MAT = null, MATB = null, MATG = null;
+  const mats = () => { if (!MAT) { MAT = new THREE.MeshLambertMaterial({ vertexColors: true }); MATB = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }); MATG = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: .5, depthWrite: false }); } };
+  function meshOf(P, opt) { mats(); const m = new THREE.Mesh(geoOf(P), (opt && opt.basic) ? MATB : (opt && opt.glass) ? MATG : MAT); m.castShadow = !(opt && opt.noShadow); m.receiveShadow = true; return m; }
+  // una scritta su un pannello
+  function textTex(lines, w, h, bg, fg, o) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d');
+    x.fillStyle = bg; x.fillRect(0, 0, w, h); if (o && o.border) { x.strokeStyle = o.border; x.lineWidth = Math.max(2, h * .05); x.strokeRect(x.lineWidth / 2, x.lineWidth / 2, w - x.lineWidth, h - x.lineWidth); }
+    x.fillStyle = fg; x.textAlign = 'center'; x.textBaseline = 'middle';
+    const L = Array.isArray(lines) ? lines : [lines], lh = h / (L.length + .4);
+    L.forEach((t, i) => { let fs = Math.floor(lh * .78); x.font = `bold ${fs}px sans-serif`; while (x.measureText(t).width > w * .92 && fs > 8) { fs -= 1; x.font = `bold ${fs}px sans-serif`; } x.fillText(t, w / 2, lh * (i + .7)); });
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 2; return t;
+  }
+  function panel(tex, w, h, opt) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), (opt && opt.basic) ? new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, side: opt.side || THREE.FrontSide }) : new THREE.MeshLambertMaterial({ map: tex, side: (opt && opt.side) || THREE.FrontSide })); return m; }
+
+  // ---------------- IL SITO DI UN EDIFICIO: origine alla porta, +z verso fuori ----------------
+  function frameOf(b) {
+    const TS = G.TS, d = b.door, cx = (b.x + b.w / 2), cy = (b.y + b.h / 2);
+    let ox = 0, oy = 0; if (d[0] < b.x) ox = -1; else if (d[0] >= b.x + b.w) ox = 1; else if (d[1] < b.y) oy = -1; else oy = 1;
+    if (!ox && !oy) { const dx = d[0] + .5 - cx, dy = d[1] + .5 - cy; if (Math.abs(dx) > Math.abs(dy)) ox = Math.sign(dx); else oy = Math.sign(dy); }
+    // la faccia della casa: la porta sta sulla casella fuori dall'edificio
+    const fx = ox > 0 ? (b.x + b.w) * TS : ox < 0 ? b.x * TS : (d[0] + .5) * TS, fz = oy > 0 ? (b.y + b.h) * TS : oy < 0 ? b.y * TS : (d[1] + .5) * TS;
+    const ang = Math.atan2(oy, ox);   // direzione "fuori" nel gioco
+    return { x: fx, z: fz, ry: Math.PI / 2 - ang, out: [ox, oy], side: [-oy, ox], halfW: (ox ? b.h : b.w) * TS / 2 };
+  }
+  function siteGroup(F) { const g = new THREE.Group(); g.position.set(F.x, groundH(F.x + F.out[0] * 1.5, F.z + F.out[1] * 1.5), F.z); g.rotation.y = F.ry; scene.add(g); return g; }
+
+  // ---------------- LA QUESTURA ----------------
+  const FLAG = {};
+  function flagTex() { if (FLAG.t) return FLAG.t; const c = document.createElement('canvas'); c.width = 96; c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#8a1e1e'; x.fillRect(0, 0, 96, 64); x.fillStyle = '#1a1414'; x.fillRect(0, 44, 96, 20); x.fillStyle = '#f0e8d8'; x.beginPath(); x.arc(30, 26, 15, 0, 7); x.fill(); x.strokeStyle = '#1a1414'; x.lineWidth = 4; x.beginPath(); x.moveTo(18, 30); x.quadraticCurveTo(24, 18, 30, 28); x.quadraticCurveTo(36, 38, 42, 24); x.stroke(); FLAG.t = new THREE.CanvasTexture(c); FLAG.t.magFilter = THREE.NearestFilter; return FLAG.t; }
+  const FLAGS = [];
+  function flag(g, x, y, z, w, h) {
+    const geo = new THREE.PlaneGeometry(w, h, 8, 1); geo.translate(w / 2, 0, 0);
+    const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: flagTex(), side: THREE.DoubleSide })); m.position.set(x, y, z); m.castShadow = true; g.add(m);
+    FLAGS.push({ m, base: geo.attributes.position.array.slice(), ph: Math.random() * 6 }); return m;
+  }
+  function garitta(P, x, z, ry, col) {   // la garitta a righe
+    const c = col || '#e8e2d4', s = '#2a3040';
+    const m = M4(x, 0, z, 0, ry, 0);
+    const parts = P0();
+    bx(parts, 1.2, .1, 1.2, '#6a6a68', 0, .05, 0);
+    for (let i = 0; i < 6; i++) bx(parts, 1.12, .36, .08, i % 2 ? s : c, 0, .3 + i * .36, -.52), bx(parts, .08, .36, 1.12, i % 2 ? s : c, -.52, .3 + i * .36, 0), bx(parts, .08, .36, 1.12, i % 2 ? s : c, .52, .3 + i * .36, 0);
+    bx(parts, .3, 2.16, .08, c, -.41, 1.2, .52); bx(parts, .3, 2.16, .08, c, .41, 1.2, .52); bx(parts, 1.12, .3, .08, s, 0, 2.15, .52);
+    cn(parts, .95, .55, '#3a3a40', 0, 2.62, 0, 0, Math.PI / 4, 0, 4);
+    const geo = geoOf(parts); geo.applyMatrix4(m); P.pos.push(...geo.attributes.position.array); P.nor.push(...geo.attributes.normal.array); P.col.push(...geo.attributes.color.array);
+  }
+  function sandbags(P, x, z, ry, n, rows) {
+    for (let r = 0; r < (rows || 2); r++) for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * .62 + (r % 2) * .31, c = Math.cos(ry), s = Math.sin(ry); sp(P, .32, .14, .2, ['#b8a878', '#a89868', '#c0b080'][(i + r) % 3], x + c * o, .14 + r * .24, z - s * o, 6, 0, ry, 0); }
+  }
+  function barrierArm(P, x, z, ry, L) {
+    const c = Math.cos(ry), s = Math.sin(ry);
+    bx(P, .3, 1, .3, '#3a3a40', x, .5, z); bx(P, .4, .3, .4, '#2a3040', x, 1, z);
+    for (let i = 0; i < 6; i++) { const o = .3 + (i + .5) * L / 6; bx(P, L / 6, .1, .1, i % 2 ? '#f0f0f0' : '#c81818', x + c * o, 1.02, z - s * o, 0, ry, 0); }
+    bx(P, .14, .8, .14, '#3a3a40', x + c * (L + .3), .4, z - s * (L + .3));
+  }
+  function buildQuestura() {
+    const b = G.BUILDINGS.find(k => k.id === 'commissariato'); if (!b || !b.door) return;
+    const F = frameOf(b), g = siteGroup(F), P = P0(), w = Math.min(F.halfW, 8);
+    // l'asta della bandiera e la bandiera
+    cy(P, .07, 7.5, '#9a9a9a', -w + 1.2, 3.75, 1.2, 0, 0, 0, 8); sp(P, .13, .13, .13, '#d8c060', -w + 1.2, 7.55, 1.2, 8);
+    bx(P, .7, .3, .7, '#6a6a68', -w + 1.2, .15, 1.2);
+    flag(g, -w + 1.27, 6.7, 1.2, 1.9, 1.25);
+    // garitta, sbarra del cortile, sacchetti
+    garitta(P, w - .6, 1.6, 0);
+    barrierArm(P, w + .6, 3.2, 0, 4.5);
+    sandbags(P, -1.8, 1.3, 0, 3, 2); sandbags(P, 1.8, 1.3, 0, 3, 2);
+    // la bacheca con gli avvisi e i ricercati
+    bx(P, 1.6, 1.1, .08, '#4a3a2a', -3.4, 1.5, .1); cy(P, .05, 1, '#3a3a3a', -4.1, .5, .12, 0, 0, 0, 6); cy(P, .05, 1, '#3a3a3a', -2.7, .5, .12, 0, 0, 0, 6);
+    const mesh = meshOf(P); g.add(mesh);
+    const bach = panel(textTex(['AVVISI', 'RICERCATI', 'COPRIFUOCO 23:00'], 128, 96, '#e8e2cc', '#2a1a1a', { border: '#8a1e1e' }), 1.45, 1); bach.position.set(-3.4, 1.5, .15); g.add(bach);
+    // la lampada blu della Guardia sopra la porta
+    const lamp = panel(textTex('ГВАРДИЯ · GUARDIA', 192, 40, '#1a3a8a', '#e8f0ff'), 1.9, .4, { basic: true }); lamp.position.set(0, 3.1, .18); g.add(lamp);
+    const lb = new THREE.Mesh(new THREE.BoxGeometry(2, .5, .26), new THREE.MeshLambertMaterial({ color: '#1a2030' })); lb.position.set(0, 3.1, .05); g.add(lb);
+    LAMPS.push({ m: lamp.material, on: '#ffffff', off: '#5a6a8a' });
+    // le strisce dei parcheggi delle volanti
+    const S = P0(); for (let i = 0; i < 4; i++) bx(S, .1, .02, 4.5, '#e8e8e0', w + 1.5 + i * 5 - 2.5, .03, 6); g.add(meshOf(S, { noShadow: true }));
+  }
+  const LAMPS = [];
+
+  // ---------------- IL SUPERMERCATO ----------------
+  function cart(P, x, z, ry) {
+    const c = Math.cos(ry), s = Math.sin(ry), at = (dx, dz) => [x + c * dx + s * dz, z - s * dx + c * dz];
+    const m = '#b8bcc4';
+    const [a1, a2] = at(0, 0); bx(P, .55, .4, .85, m, a1, .75, a2, 0, ry, 0);
+    const [b1, b2] = at(0, 0); bx(P, .5, .32, .8, '#3a3e48', b1, .78, b2, 0, ry, 0);
+    for (const [dx, dz] of [[-.22, -.35], [.22, -.35], [-.22, .35], [.22, .35]]) { const [p1, p2] = at(dx, dz); cy(P, .06, .03, '#1a1a1a', p1, .06, p2, 0, ry, Math.PI / 2, 8); rod(P, .015, m, [p1, .1, p2], [p1, .55, p2]); }
+    const [h1, h2] = at(0, -.5); bx(P, .55, .05, .05, '#c81818', h1, 1.05, h2, 0, ry, 0);
+  }
+  function crateFruit(P, x, z, col) { bx(P, .6, .3, .4, '#a07848', x, .15, z); for (let i = 0; i < 6; i++) sp(P, .07, .07, .07, col, x - .18 + (i % 3) * .18, .33, z - .08 + Math.floor(i / 3) * .16, 6); }
+  function buildSuper() {
+    const O = typeof Ordine !== 'undefined' ? Ordine.SUPER : null; if (!O || !O.b.door) return;
+    const F = frameOf(O.b), g = siteGroup(F), P = P0(), w = Math.min(F.halfW, 6);
+    // la tenda a righe sopra l'ingresso
+    for (let i = 0; i < 10; i++) bx(P, w * 2 / 10, .06, 1.5, i % 2 ? '#e8d040' : '#2a6a3a', -w + (i + .5) * w * 2 / 10, 2.75, .75, -.25, 0, 0);
+    bx(P, w * 2, .25, .06, '#2a6a3a', 0, 2.55, 1.45);
+    // i carrelli, le cassette di frutta e verdura, la lavagna
+    for (let i = 0; i < 5; i++) cart(P, w - .8, .9 + i * .38, Math.PI / 2);
+    crateFruit(P, -w + .8, .6, '#e88a2a'); crateFruit(P, -w + 1.5, .6, '#c8c040'); crateFruit(P, -w + .8, 1.1, '#5a8a3a'); crateFruit(P, -w + 1.5, 1.1, '#c84a3a');
+    bx(P, .7, .9, .05, '#1a2a1a', -1.6, .65, 1.2, -.18, .3, 0); bx(P, .7, .9, .05, '#4a3a2a', -1.6, .65, 1.38, .18, .3, 0);
+    // i paletti della fila con la corda, lungo il marciapiede
+    const L = 7; for (let i = 0; i <= 5; i++) { const xx = 1.6 + i * L / 5; cy(P, .04, .95, '#c8a030', xx, .48, 2.1, 0, 0, 0, 6); cy(P, .14, .04, '#2a2a2a', xx, .02, 2.1, 0, 0, 0, 8); if (i < 5) rod(P, .02, '#8a1e1e', [xx, .9, 2.1], [xx + L / 5, .9, 2.1]); }
+    g.add(meshOf(P));
+    const lav = panel(textTex(['OGGI', 'PANE · LATTE', 'PASTA · OLIO', 'SOLO CON TESSERA'], 64, 96, '#1a2a1a', '#e8e8d8'), .62, .82); lav.position.set(-1.6, .66, 1.23); lav.rotation.set(-.18, .3, 0); g.add(lav);
+    const man = panel(textTex(['LA TESSERA', 'È IL TUO DOVERE'], 128, 64, '#c81818', '#fff4d0'), 1.4, .7); man.position.set(w - 1.4, 1.7, .08); g.add(man);
+  }
+
+  // ---------------- LA BASE: garitte, sacchetti, la cuccia ----------------
+  function buildBase(st) {
+    const P = P0(), posts = [];
+    st.npcs.forEach(n => { if (n.ord && n.ord.post && !n.ord.post.route && n.ord.post.x !== undefined) posts.push(n.ord.post); });
+    const seen = new Set();
+    posts.forEach(q => { const k = Math.round(q.x) + ',' + Math.round(q.y); if (seen.has(k)) return; seen.add(k); const gx = q.x - Math.cos(q.face) * 1.6, gz = q.y - Math.sin(q.face) * 1.6; const P1 = P0(); garitta(P1, 0, 0, Math.PI / 2 - q.face, '#c8c8b0'); const m = meshOf(P1); m.position.set(gx + Math.sin(q.face) * 1.5, groundH(gx, gz), gz - Math.cos(q.face) * 1.5); scene.add(m); if (q.gate) { const S = P0(); sandbags(S, 0, 0, Math.PI / 2 - q.face, 4, 3); const ms = meshOf(S); ms.position.set(q.x + Math.cos(q.face) * 1.6, groundH(q.x, q.y), q.y + Math.sin(q.face) * 1.6); scene.add(ms); } });
+    const cp = G.PLACES.caserma_p; if (cp) { const K = P0(); bx(K, 1.2, .8, 1, '#6a5038', 0, .4, 0); cn(K, .95, .5, '#3a2a20', 0, 1.05, 0, 0, Math.PI / 4, 0, 4); bx(K, .5, .5, .05, '#1a1410', 0, .35, .51); const m = meshOf(K); m.position.set(cp.x + 6, groundH(cp.x + 6, cp.y + 5), cp.y + 5); scene.add(m); }
+  }
+
+  // ---------------- IL PORTO: bitte e casse ----------------
+  let CRATES = null;
+  function buildPort() {
+    const O = typeof Ordine !== 'undefined' ? Ordine : null; if (!O) return;
+    const P = P0(), Q = O.QUAY, B = O.BERTH;
+    for (let x = B.x - 16; x <= B.x - 2; x += 4) { const z = B.y - 5.2; cy(P, .22, .5, '#2a2a2a', x, .25, z, 0, 0, 0, 10); sp(P, .27, .14, .27, '#2a2a2a', x, .5, z, 8); }
+    const m = meshOf(P); m.position.y = groundH(B.x - 10, B.y - 6) - .05; scene.add(m);
+    const geo = new THREE.BoxGeometry(1.15, 1.0, 1.15); const pos = geo.attributes.position, cols = []; for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); _c.set(y > .45 ? '#8a6a40' : '#6a5030'); cols.push(_c.r, _c.g, _c.b); } geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+    mats(); CRATES = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }), 24); CRATES.count = 0; CRATES.castShadow = true; CRATES.receiveShadow = true; CRATES.frustumCulled = false; scene.add(CRATES);
+    const tint = ['#c8b090', '#7a8a6a', '#9a8a7a', '#b8a080']; for (let i = 0; i < 24; i++) CRATES.setColorAt(i, _c.set(tint[i % 4]));
+    const h = groundH(Q.x, Q.y);
+    for (let i = 0; i < 24; i++) { const col = i % 4, row = Math.floor(i / 4) % 3, lay = Math.floor(i / 12); CRATES.setMatrixAt(i, M4(Q.x - 1.8 + col * 1.25, h + .5 + lay * 1.02, Q.y - 2 + row * 1.25, 0, (i * .37) % .2, 0)); }
+    CRATES.instanceMatrix.needsUpdate = true;
+  }
+
+  // ---------------- LA NAVE ----------------
+  const SHIP = {};
+  function shipModel(kind) {
+    const mil = kind === 'militare', P = P0(), W = P0(), Lt = P0();
+    const hullC = mil ? '#5a626a' : '#1e1e24', band = mil ? '#e8e8e8' : '#b82020', sup = mil ? '#7a828a' : '#ece8e0', deck = mil ? '#4a5056' : '#6a5a48';
+    // lo scafo: corpo, prua a punta, poppa tonda; sotto la linea di galleggiamento il rosso
+    bx(P, 7.6, 3.6, 26, hullC, 0, -.2, -2);
+    for (let i = 0; i < 8; i++) { const t = i / 8, w0 = 7.6 * (1 - t * t * .92), z = 11 + i * 1; bx(P, w0, 3.6 - t * .3, 1.02, hullC, 0, -.2 + t * .25, z); }
+    cy(P, 3.8, 3.6, hullC, 0, -.2, -15, 0, 0, 0, 16);
+    bx(P, 7.4, 1.3, 25.6, '#8a2a22', 0, -1.6, -2); cy(P, 3.65, 1.3, '#8a2a22', 0, -1.6, -15, 0, 0, 0, 16);
+    bx(P, 7.7, .25, 26.1, band, 0, 1.45, -2);
+    // il ponte e le murate
+    bx(P, 7.3, .2, 32, deck, 0, 1.62, -1.5);
+    bx(P, .15, .6, 30, hullC, -3.75, 1.95, -1.5); bx(P, .15, .6, 30, hullC, 3.75, 1.95, -1.5);
+    for (let z = -14; z < 15; z += 2.5) { cy(P, .04, .8, '#c8c8c8', -3.65, 2.1, z, 0, 0, 0, 4); cy(P, .04, .8, '#c8c8c8', 3.65, 2.1, z, 0, 0, 0, 4); }
+    // il castello di poppa: due piani, le finestre del ponte di comando, le alette
+    bx(P, 6.6, 2.6, 6.5, sup, 0, 3, -11.5); bx(P, 5.4, 2.2, 4.8, sup, 0, 5.4, -12); bx(P, 8.6, .2, 2, sup, 0, 6.5, -10.2);
+    for (let i = 0; i < 6; i++) { bx(W, .7, .7, .05, '#ffe8a0', -2.25 + i * .9, 5.6, -9.58); bx(P, .72, .72, .04, '#1a2028', -2.25 + i * .9, 5.6, -9.57); }
+    for (let i = 0; i < 4; i++) { bx(W, .55, .5, .05, '#ffe8a0', -3.32, 3.2, -13.5 + i * 1.3, 0, Math.PI / 2, 0); bx(W, .55, .5, .05, '#ffe8a0', 3.32, 3.2, -13.5 + i * 1.3, 0, Math.PI / 2, 0); }
+    // il fumaiolo con la fascia
+    cy(P, 1.05, 3.4, mil ? '#5a626a' : '#b82020', 0, 7.6, -13.8, -.12, 0, 0, 12); cy(P, 1.08, .5, '#141414', 0, 9.35, -14, -.12, 0, 0, 12);
+    if (!mil) cy(P, 1.08, .5, '#f0e8d8', 0, 7.8, -13.8, -.12, 0, 0, 12);
+    // l'albero radar
+    cy(P, .12, 3.2, '#c8c8c8', 0, 8.1, -11.5, 0, 0, 0, 6); bx(P, 2.2, .12, .3, '#2a2a2a', 0, 9.5, -11.5);
+    // gli alberi di carico coi bighi
+    for (const z of [1, 9]) { cy(P, .22, 9, '#c8a030', 0, 6, z, 0, 0, 0, 8); bx(P, 4.2, .25, .25, '#c8a030', 0, 8.8, z); rod(P, .12, '#c8a030', [0, 2.4, z], [-2.4, 7.2, z - 3.8]); rod(P, .12, '#c8a030', [0, 2.4, z], [2.4, 7.2, z + 3.8]); rod(P, .025, '#2a2a2a', [0, 10.4, z], [-2.4, 7.2, z - 3.8]); rod(P, .025, '#2a2a2a', [0, 10.4, z], [2.4, 7.2, z + 3.8]); }
+    cy(P, .1, 6, '#c8c8c8', 0, 4.6, 15.5, 0, 0, 0, 6);
+    // le stive (boccaporti)
+    bx(P, 5, .5, 5.5, mil ? '#3a4046' : '#2a5a3a', 0, 1.95, -3.2); bx(P, 5, .5, 5.5, mil ? '#3a4046' : '#2a5a3a', 0, 1.95, 5.2);
+    if (mil) { cy(P, 1.1, .8, '#5a626a', 0, 2.1, 12.5, 0, 0, 0, 12); bx(P, 1.2, .8, 1.6, '#5a626a', 0, 2.8, 12.5); cy(P, .14, 3.2, '#3a4046', 0, 2.9, 14.4, Math.PI / 2 - .08, 0, 0, 8); }
+    // luci di via: rossa a sinistra, verde a dritta, bianche sugli alberi
+    bx(Lt, .3, .3, .3, '#ff2020', -4.35, 6.5, -10.2); bx(Lt, .3, .3, .3, '#20ff40', 4.35, 6.5, -10.2); sp(Lt, .2, .2, .2, '#fff8e0', 0, 10.6, 1, 6); sp(Lt, .2, .2, .2, '#fff8e0', 0, 7.7, 15.5, 6);
+    const g = new THREE.Group(); g.add(meshOf(P));
+    const win = meshOf(W, { basic: true, noShadow: true }); g.add(win); const lights = meshOf(Lt, { basic: true, noShadow: true }); g.add(lights);
+    // i container sul ponte
+    const conts = [], cc = mil ? ['#4a5a3a', '#5a6a4a', '#3a4a3a', '#6a6a5a', '#4a5a3a', '#5a5a4a'] : ['#a83a2a', '#2a5a9a', '#3a7a4a', '#c8a030', '#8a8a8a', '#a83a2a'];
+    const CPOS = [[-1.3, 3.45, -3.2], [1.3, 3.45, -3.2], [-1.3, 3.45, 5.2], [1.3, 3.45, 5.2], [-1.3, 5.97, -3.2], [1.3, 5.97, 5.2]];
+    for (let i = 0; i < 6; i++) { const C = P0(), rib = '#' + _c.set(cc[i]).multiplyScalar(.72).getHexString(); bx(C, 2.4, 2.5, 5.8, cc[i], 0, 0, 0); for (let k = 0; k < 8; k++) bx(C, 2.44, 2.3, .07, rib, 0, 0, -2.62 + k * .75); bx(C, 2.46, .12, 5.86, rib, 0, 1.25, 0); bx(C, 2.3, 2.2, .04, rib, 0, 0, 2.92); const m = meshOf(C); m.position.set(...CPOS[i]); g.add(m); conts.push(m); }
+    // il nome sulla fiancata
+    const name = panel(textTex(mil ? 'T-27 · MARINA DELLA TUTELA' : 'STELLA DELL\'IMPERO', 256, 32, mil ? '#5a626a' : '#1e1e24', '#f0f0e8'), 6, .75, { side: THREE.DoubleSide }); name.position.set(3.83, .8, 8); name.rotation.y = Math.PI / 2; g.add(name);
+    const name2 = name.clone(); name2.position.x = -3.83; name2.rotation.y = -Math.PI / 2; g.add(name2);
+    // la bandiera a poppa
+    flag(g, 0, 6.2, -17.2, 1.5, 1);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 2.6, 6), new THREE.MeshLambertMaterial({ color: '#c8c8c8' })); pole.position.set(0, 5.6, -17.2); g.add(pole);
+    g.visible = false; scene.add(g);
+    return { g, conts, win, lights };
+  }
+
+  // ---------------- IL POSTO DI BLOCCO ----------------
+  let BLOCCO = null;
+  function bloccoModel() {
+    const P = P0(), L = P0();
+    // i cavalletti a righe ai due lati della carreggiata
+    for (const sx of [-3.4, 3.4]) {
+      for (const dz of [-.5, .5]) { rod(P, .04, '#3a3a3a', [sx - .9, 0, dz], [sx - .6, 1, dz * .2]); rod(P, .04, '#3a3a3a', [sx + .9, 0, dz], [sx + .6, 1, dz * .2]); }
+      for (let i = 0; i < 6; i++) bx(P, .34, .28, .06, i % 2 ? '#f4f4f4' : '#d81818', sx - .85 + i * .34, .95, 0);
+      bx(L, .18, .18, .18, '#ffb020', sx + .7, 1.2, 0);
+    }
+    // i coni a zig zag sulla linea di mezzo
+    for (let i = 0; i < 5; i++) { const x = (i % 2 ? .6 : -.6), z = -6 + i * 3; cn(P, .2, .65, '#ff6a10', x, .33, z, 0, 0, 0, 10); cy(P, .22, .05, '#ff6a10', x, .02, z, 0, 0, 0, 4); cy(P, .14, .1, '#f4f4f4', x, .38, z, 0, 0, 0, 10, .7); }
+    // la sbarra mobile e il cartello ALT
+    bx(P, .5, .2, .5, '#3a3a40', 2.6, .1, 3.5); cy(P, .06, 1.2, '#3a3a40', 2.6, .7, 3.5, 0, 0, 0, 6);
+    for (let i = 0; i < 6; i++) bx(P, .52, .09, .09, i % 2 ? '#f4f4f4' : '#d81818', 2.35 - i * .52, 1.15, 3.5);
+    cy(P, .04, 1.6, '#3a3a3a', -2.4, .8, -2.6, 0, 0, 0, 6);
+    const g = new THREE.Group(); g.add(meshOf(P)); const lamps = meshOf(L, { basic: true, noShadow: true }); g.add(lamps);
+    const sign = panel(textTex(['ALT', 'ПОСТ · CONTROLLO'], 128, 96, '#d81818', '#ffffff', { border: '#ffffff' }), .9, .68, { side: THREE.DoubleSide }); sign.position.set(-2.4, 1.75, -2.6); g.add(sign);
+    g.visible = false; scene.add(g);
+    return { g, lamps };
+  }
+
+  // ---------------- GLI STRISCIONI DEI CORTEI ----------------
+  const BANNERS = [];
+  const BTXT = { pane: ['PANE PER TUTTI', 'ABBIAMO FAME'], arresto: ['LIBERATELI SUBITO', 'BASTA FERMI'], rabbia: ['VIA I GRIGI DALL\'ISOLA', 'NON ABBIAMO PAURA'], risacca: ['LA RISACCA NON SI FERMA', 'LIBERTÀ PER L\'ISOLA'] };
+  function bannerMesh() {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 48; const t = new THREE.CanvasTexture(c);
+    const g = new THREE.Group(); const cloth = new THREE.Mesh(new THREE.PlaneGeometry(4, .75, 8, 1), new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide })); cloth.position.y = 1.85; g.add(cloth);
+    const pm = new THREE.MeshLambertMaterial({ color: '#7a5a3a' });
+    for (const x of [-2, 2]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 2.4, 5), pm); p.position.set(x, 1.2, 0); g.add(p); }
+    g.visible = false; scene.add(g);
+    return { g, cloth, c, t, txt: '' };
+  }
+  function bannerText(B, txt) { if (B.txt === txt) return; B.txt = txt; const x = B.c.getContext('2d'); x.fillStyle = '#f2ecdc'; x.fillRect(0, 0, 256, 48); x.fillStyle = '#a81818'; let fs = 30; x.font = `bold ${fs}px sans-serif`; while (x.measureText(txt).width > 244 && fs > 10) { fs--; x.font = `bold ${fs}px sans-serif`; } x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, 128, 26); B.t.needsUpdate = true; }
+
+  // ================= GLI ANIMALI =================
+  // ogni specie: pezzi in coordinate dell'animale (metri, muso verso +z), perni di collo, coda e zampe
+  function dogParts(o) {
+    const B = P0(), H = P0(), T = P0(), L = P0(), wh = '#ffffff', dark = '#1a1410', base = o.base || wh, saddle = o.saddle || base;
+    cy(B, .13, .5, base, 0, .44, 0, Math.PI / 2, 0, 0, 10); sp(B, .16, .16, .17, base, 0, .45, .2, 10); sp(B, .14, .14, .15, base, 0, .44, -.22, 10);
+    if (o.saddle) sp(B, .135, .07, .3, saddle, 0, .56, -.02, 8);
+    cy(B, .085, .22, base, 0, .56, .28, -.7, 0, 0, 8);
+    bx(H, .2, .17, .2, base, 0, .04, .07); bx(H, .11, .09, .16, base, 0, -.005, .22); bx(H, .055, .045, .04, dark, 0, .03, .3); bx(H, .03, .03, .02, dark, -.06, .08, .17); bx(H, .03, .03, .02, dark, .06, .08, .17);
+    if (o.prick) { cn(H, .045, .13, saddle, -.065, .19, .03, 0, 0, -.15, 4); cn(H, .045, .13, saddle, .065, .19, .03, 0, 0, .15, 4); }
+    else { bx(H, .04, .11, .07, saddle, -.11, .07, .04, 0, 0, .5); bx(H, .04, .11, .07, saddle, .11, .07, .04, 0, 0, -.5); }
+    cy(T, .03, .32, base, 0, .14, -.06, -.5, 0, 0, 6, .4);
+    cy(L, .035, .4, base, 0, -.2, 0, 0, 0, 0, 6); bx(L, .07, .04, .09, base, 0, -.39, .02);
+    return { B, H, T, L, neck: [0, .62, .34], tail: [0, .5, -.34], hips: [[-.08, .4, .2], [.08, .4, .2], [-.08, .4, -.2], [.08, .4, -.2]], legH: .4, swing: .55, freq: 9 };
+  }
+  function catParts() {
+    const B = P0(), H = P0(), T = P0(), L = P0(), wh = '#ffffff', dark = '#141010';
+    cy(B, .07, .28, wh, 0, .2, 0, Math.PI / 2, 0, 0, 8); sp(B, .08, .08, .09, wh, 0, .2, .13, 8); sp(B, .075, .075, .085, wh, 0, .2, -.14, 8);
+    sp(H, .07, .065, .07, wh, 0, .02, .03, 8); cn(H, .028, .06, wh, -.04, .08, .02, 0, 0, -.2, 4); cn(H, .028, .06, wh, .04, .08, .02, 0, 0, .2, 4); bx(H, .02, .015, .01, '#e8a0a0', 0, .0, .1); bx(H, .016, .016, .01, '#8ac040', -.025, .03, .09); bx(H, .016, .016, .01, '#8ac040', .025, .03, .09);
+    cy(T, .014, .3, wh, 0, .14, -.04, -.35, 0, 0, 5, .7);
+    cy(L, .018, .2, wh, 0, -.1, 0, 0, 0, 0, 5);
+    return { B, H, T, L, neck: [0, .27, .2], tail: [0, .23, -.2], hips: [[-.04, .2, .12], [.04, .2, .12], [-.04, .2, -.13], [.04, .2, -.13]], legH: .2, swing: .6, freq: 13 };
+  }
+  function sheepParts(goat) {
+    const B = P0(), H = P0(), T = P0(), L = P0(), wh = '#ffffff', face = goat ? '#ffffff' : '#3a3430', hoof = '#2a2420';
+    if (!goat) { sp(B, .3, .27, .45, wh, 0, .58, 0, 10); for (let i = 0; i < 9; i++) sp(B, .14, .12, .14, wh, (i % 3 - 1) * .2, .72 + (i % 2) * .05, -.32 + Math.floor(i / 3) * .32, 6); }
+    else { cy(B, .17, .62, wh, 0, .52, 0, Math.PI / 2, 0, 0, 10); sp(B, .18, .18, .2, wh, 0, .53, .28, 8); sp(B, .17, .17, .18, wh, 0, .52, -.3, 8); cy(B, .07, .25, wh, 0, .66, .36, -.6, 0, 0, 8); }
+    bx(H, .13, .15, .22, face, 0, .0, .08); bx(H, .1, .09, .1, face, 0, -.04, .2); bx(H, .1, .04, .05, goat ? '#e8c8b0' : '#2a2420', 0, -.08, .25);
+    bx(H, .14, .035, .07, face, -.1, .04, .02, 0, 0, .3); bx(H, .14, .035, .07, face, .1, .04, .02, 0, 0, -.3);
+    if (goat) { rod(H, .025, '#8a7a5a', [-.05, .07, .02], [-.12, .22, -.12]); rod(H, .025, '#8a7a5a', [.05, .07, .02], [.12, .22, -.12]); bx(H, .04, .12, .04, '#f0e8d8', 0, -.12, .17); }
+    cy(T, goat ? .03 : .06, goat ? .12 : .14, wh, 0, -.05, 0, goat ? -.9 : .2, 0, 0, 5);
+    cy(L, .035, .42, goat ? wh : face, 0, -.21, 0, 0, 0, 0, 6); bx(L, .07, .05, .08, hoof, 0, -.42, .01);
+    return { B, H, T, L, neck: goat ? [0, .78, .45] : [0, .72, .42], tail: goat ? [0, .62, -.42] : [0, .62, -.45], hips: [[-.12, .44, .25], [.12, .44, .25], [-.12, .44, -.27], [.12, .44, -.27]], legH: .44, swing: .4, freq: 7, graze: 1.1 };
+  }
+  function cowParts() {
+    const B = P0(), H = P0(), T = P0(), L = P0(), wh = '#ffffff', dark = '#2a2420', patch = '#3a2a22';
+    bx(B, .62, .62, 1.5, wh, 0, 1.05, 0); sp(B, .33, .33, .3, wh, 0, 1.05, .7, 8); sp(B, .32, .32, .3, wh, 0, 1.06, -.72, 8);
+    [[-.315, 1.12, .2, .5], [.315, .95, -.35, .45], [-.315, .92, -.45, .35], [.315, 1.15, .4, .3], [0, 1.37, -.1, .5]].forEach(([x, y, z, s], i) => bx(B, i === 4 ? .5 : .02, i === 4 ? .02 : s * .8, s, patch, x, y, z));
+    sp(B, .16, .1, .2, '#e8a8a0', 0, .72, -.35, 6);
+    bx(H, .3, .32, .4, wh, 0, .0, .12); bx(H, .26, .2, .14, '#d8a8a0', 0, -.1, .34); bx(H, .2, .06, .02, dark, 0, -.08, .41);
+    rod(H, .03, '#e8e0c8', [-.12, .15, .05], [-.3, .25, .02]); rod(H, .03, '#e8e0c8', [.12, .15, .05], [.3, .25, .02]); bx(H, .14, .06, .1, wh, -.2, .08, .02); bx(H, .14, .06, .1, wh, .2, .08, .02);
+    cy(T, .025, .75, wh, 0, -.37, 0, .15, 0, 0, 5); sp(T, .05, .1, .05, dark, 0, -.76, .06, 5);
+    cy(L, .07, .78, wh, 0, -.39, 0, 0, 0, 0, 8); bx(L, .14, .08, .15, dark, 0, -.78, .02);
+    return { B, H, T, L, neck: [0, 1.25, .82], tail: [0, 1.3, -.88], hips: [[-.2, .78, .55], [.2, .78, .55], [-.2, .78, -.55], [.2, .78, -.55]], legH: .78, swing: .3, freq: 5, graze: 1.0 };
+  }
+  function donkeyParts() {
+    const B = P0(), H = P0(), T = P0(), L = P0(), wh = '#ffffff', dark = '#2a2420';
+    cy(B, .25, .85, wh, 0, .88, 0, Math.PI / 2, 0, 0, 10); sp(B, .27, .27, .25, wh, 0, .88, .42, 8); sp(B, .26, .26, .25, wh, 0, .9, -.42, 8);
+    rod(B, .13, wh, [0, .95, .5], [0, 1.25, .78]); bx(B, .04, .25, .4, dark, 0, 1.25, .62, -.9, 0, 0);
+    bx(H, .2, .22, .5, wh, 0, -.05, .18); bx(H, .19, .16, .14, '#d8d0c8', 0, -.1, .42); bx(H, .02, .04, .02, dark, -.06, -.1, .5); bx(H, .02, .04, .02, dark, .06, -.1, .5);
+    bx(H, .06, .32, .06, wh, -.08, .22, -.02, 0, 0, -.15); bx(H, .06, .32, .06, wh, .08, .22, -.02, 0, 0, .15);
+    cy(T, .02, .5, wh, 0, -.25, 0, .2, 0, 0, 5); sp(T, .045, .08, .045, dark, 0, -.52, .05, 5);
+    cy(L, .045, .62, wh, 0, -.31, 0, 0, 0, 0, 7); bx(L, .09, .06, .1, dark, 0, -.62, .01);
+    return { B, H, T, L, neck: [0, 1.3, .82], tail: [0, 1.0, -.66], hips: [[-.13, .62, .38], [.13, .62, .38], [-.13, .62, -.38], [.13, .62, -.38]], legH: .62, swing: .35, freq: 6, graze: 1.0 };
+  }
+  function henParts() {
+    const B = P0(), H = P0(), T = P0(), L = P0(), wh = '#ffffff';
+    sp(B, .12, .12, .15, wh, 0, .22, 0, 8); bx(B, .12, .14, .08, wh, 0, .3, -.15, -.5, 0, 0);
+    sp(H, .055, .06, .055, wh, 0, .03, .02, 6); bx(H, .02, .05, .06, '#d82020', 0, .09, .02); bx(H, .03, .02, .05, '#e8b030', 0, .02, .07); bx(H, .02, .03, .02, '#d82020', 0, -.02, .05);
+    bx(T, .01, .01, .01, wh, 0, 0, 0);
+    cy(L, .01, .14, '#e8b030', 0, -.07, 0, 0, 0, 0, 4); bx(L, .05, .01, .05, '#e8b030', 0, -.14, .01);
+    return { B, H, T, L, neck: [0, .32, .1], tail: [0, .3, -.15], hips: [[-.04, .14, 0], [.04, .14, 0]], legH: .14, swing: .6, freq: 16, graze: 1.2 };
+  }
+  const SPEC = {};
+  function buildSpecies(sp0, parts, max) {
+    mats();
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    const mk = (P, n) => { const m = new THREE.InstancedMesh(geoOf(P), mat, n); m.count = 0; m.frustumCulled = false; m.castShadow = true; m.receiveShadow = true; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(m); return m; };
+    const nl = parts.hips.length;
+    SPEC[sp0] = { p: parts, body: mk(parts.B, max), head: mk(parts.H, max), tail: mk(parts.T, max), leg: mk(parts.L, max * nl), nl, max };
+    SPEC[sp0].leg.castShadow = false; SPEC[sp0].tail.castShadow = false;
+  }
+  function buildAnimals(st) {
+    const cnt = {}; st.ani.list.forEach(a => { cnt[a.sp] = (cnt[a.sp] || 0) + 1; });
+    const has = k => cnt[k] > 0;
+    if (has('cane')) buildSpecies('cane', dogParts({}), cnt.cane);
+    if (has('cane_base')) buildSpecies('cane_base', dogParts({ prick: true, base: '#ffffff', saddle: '#2a2018' }), cnt.cane_base);
+    if (has('gatto')) buildSpecies('gatto', catParts(), cnt.gatto);
+    if (has('pecora')) buildSpecies('pecora', sheepParts(false), cnt.pecora);
+    if (has('capra')) buildSpecies('capra', sheepParts(true), cnt.capra);
+    if (has('mucca')) buildSpecies('mucca', cowParts(), cnt.mucca);
+    if (has('asino')) buildSpecies('asino', donkeyParts(), cnt.asino);
+    if (has('gallina')) buildSpecies('gallina', henParts(), cnt.gallina);
+  }
+  const mB = new THREE.Matrix4(), mT = new THREE.Matrix4(), mR = new THREE.Matrix4(), mS = new THREE.Matrix4();
+  const at = (m, x, y, z) => m.makeTranslation(x, y, z);
+  function tickAnimals(st, time, dt, cx, cz) {
+    const A = st.ani; if (!A) return;
+    for (const k in SPEC) { SPEC[k].n = 0; }
+    for (const a of A.list) {
+      const S = SPEC[a.sp]; if (!S || a.hidden) continue;
+      if (Math.abs(a.x - cx) > 75 || Math.abs(a.y - cz) > 75) continue;
+      const i = S.n++, p = S.p, sz = a.size * (a.sp === 'cane_base' ? 1.15 : 1);
+      // il passo
+      a.gph = (a.gph || 0) + (a.v || 0) * dt * p.freq / Math.max(.3, sz);
+      const walk = Math.min(1, (a.v || 0) / .4), lying = a.lying || a.dead;
+      const bob = Math.abs(Math.sin(a.gph)) * .03 * walk * sz;
+      const ry = Math.PI / 2 - a.face;
+      mB.makeRotationY(ry); mB.setPosition(a.x, groundH(a.x, a.y) + bob, a.y); mS.makeScale(sz, sz, sz); mB.multiply(mS);
+      if (a.dead) { mR.makeRotationZ(Math.PI / 2); at(mT, p.legH * .2, -p.legH * .55, 0); mB.multiply(mT).multiply(mR); }
+      else if (lying) { at(mT, 0, -p.legH * .78, 0); mB.multiply(mT); }
+      S.body.setMatrixAt(i, mB); S.body.setColorAt(i, _c.set(SPEC_COL(a)));
+      // la testa: giù a pascolare o annusare, su ad abbaiare
+      let pitch = 0, yaw = 0;
+      if (a.mode === 'pascola' || (a.mode === 'fermo' && p.graze)) pitch = (p.graze || .8) * (.75 + Math.sin(time * 1.3 + a.ph) * .25);
+      else if (a.mode === 'annusa') pitch = .7 + Math.sin(time * 7 + a.ph) * .1;
+      else if (a.sp === 'gallina' && a.mode === 'fermo') pitch = Math.max(0, Math.sin(time * 6 + a.ph)) * 1.1;
+      if (a.bark > 0) pitch = -.25 + Math.sin(time * 22) * .15;
+      if (lying && !a.dead) pitch = .25;
+      if (!walk && !lying && a.mode !== 'pascola') yaw = Math.sin(time * .7 + a.ph) * .5;
+      _e.set(pitch, yaw, 0, 'YXZ'); mR.makeRotationFromEuler(_e); at(mT, p.neck[0], p.neck[1], p.neck[2]); mS.copy(mB).multiply(mT).multiply(mR);
+      S.head.setMatrixAt(i, mS); S.head.setColorAt(i, _c);
+      // la coda
+      const happy = a.friend || a.sp === 'cane' && a.act > 0;
+      const wag = (a.sp === 'cane' || a.sp === 'cane_base') ? Math.sin(time * (happy ? 18 : 5) + a.ph) * (happy ? .7 : .25) : a.sp === 'gatto' ? Math.sin(time * 1.5 + a.ph) * .4 : Math.sin(time * 3 + a.ph) * .15;
+      const tp = a.sp === 'gatto' ? (walk ? -.2 : .5) : a.mode === 'fugge' && a.sp === 'cane' ? 1.2 : 0;
+      _e.set(tp, wag, 0, 'YXZ'); mR.makeRotationFromEuler(_e); at(mT, p.tail[0], p.tail[1], p.tail[2]); mS.copy(mB).multiply(mT).multiply(mR);
+      S.tail.setMatrixAt(i, mS); S.tail.setColorAt(i, _c);
+      // le zampe: passo diagonale (anteriore sinistra con posteriore destra)
+      for (let l = 0; l < S.nl; l++) {
+        const h = p.hips[l], diag = S.nl === 2 ? (l ? Math.PI : 0) : ((l === 0 || l === 3) ? 0 : Math.PI);
+        let sw = Math.sin(a.gph + diag) * p.swing * walk;
+        if (lying && !a.dead) sw = (l < 2 ? -1.35 : 1.35);
+        mR.makeRotationX(sw); at(mT, h[0], h[1], h[2]); mS.copy(mB).multiply(mT).multiply(mR);
+        S.leg.setMatrixAt(i * S.nl + l, mS); S.leg.setColorAt(i * S.nl + l, _c);
+      }
+    }
+    for (const k in SPEC) {
+      const S = SPEC[k], n = S.n;
+      S.body.count = S.head.count = S.tail.count = n; S.leg.count = n * S.nl;
+      for (const m of [S.body, S.head, S.tail, S.leg]) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; m.visible = n > 0; }
+    }
+  }
+  const SPEC_COL = a => { const S = typeof Animali !== 'undefined' ? Animali.SP[a.sp] : null; return S ? S.cols[a.col % S.cols.length] : '#888888'; };
+
+  // ================= ATTACCO E FOTOGRAMMA =================
+  function attach(api) {
+    scene = api.scene; G = api.G; groundH = api.groundH; ready = !!(scene && G && groundH);
+  }
+  function buildAll(st) {
+    built = true;
+    try { buildQuestura(); } catch (e) { console.warn('[ordine_arte] questura', e); }
+    try { buildSuper(); } catch (e) { console.warn('[ordine_arte] supermercato', e); }
+    try { buildPort(); } catch (e) { console.warn('[ordine_arte] porto', e); }
+    try { if (st.ord) buildBase(st); } catch (e) { console.warn('[ordine_arte] base', e); }
+    try { SHIP.impero = shipModel('impero'); SHIP.militare = shipModel('militare'); } catch (e) { console.warn('[ordine_arte] nave', e); }
+    try { BLOCCO = bloccoModel(); } catch (e) { console.warn('[ordine_arte] blocco', e); }
+    try { for (let i = 0; i < 2; i++) BANNERS.push(bannerMesh()); } catch (e) { console.warn('[ordine_arte] striscioni', e); }
+    try { if (st.ani) buildAnimals(st); } catch (e) { console.warn('[ordine_arte] animali', e); }
+  }
+  let lastSt = null;
+  function tick(st, time, night, dt, camPos) {
+    if (!ready) return;
+    if (!built || lastSt !== st) { if (built && lastSt !== st) { /* nuova partita: gli animali si rifanno */ for (const k in SPEC) { const S = SPEC[k]; [S.body, S.head, S.tail, S.leg].forEach(m => scene.remove(m)); delete SPEC[k]; } if (st.ani) buildAnimals(st); } if (!built) buildAll(st); lastSt = st; }
+    const cx = camPos ? camPos.x : st.player.x, cz = camPos ? camPos.y : st.player.y;
+    dt = Math.min(.1, dt || .016);
+    // le bandiere al vento
+    for (const F of FLAGS) { const a = F.m.geometry.attributes.position, b = F.base; for (let i = 0; i < a.count; i++) { const x = b[i * 3]; a.array[i * 3 + 2] = b[i * 3 + 2] + Math.sin(time * 3.2 + x * 2.6 + F.ph) * .12 * x; } a.needsUpdate = true; }
+    LAMPS.forEach(L => L.m.color.set(night > .3 ? L.on : L.off));
+    const O = st.ord;
+    // la nave
+    if (O && O.nave) {
+      const N = O.nave, on = N.phase !== 'lontana';
+      for (const k in SHIP) { const S = SHIP[k]; const vis = on && k === N.kind; S.g.visible = vis; if (!vis) continue;
+        S.g.position.set(N.x, -.25 + Math.sin(time * .9) * .12, N.y); S.g.rotation.set(Math.sin(time * .7) * .015, Math.PI / 2 - N.ang, Math.sin(time * .55) * .02);
+        const gone = Math.min(6, Math.floor((N.crates || 0) / 4)), order = [4, 5, 0, 1, 2, 3]; S.conts.forEach((c, i) => { c.visible = order.indexOf(i) >= gone; });
+        S.win.visible = night > .25; S.lights.visible = night > .2 || N.phase !== 'ormeggiata'; }
+      if (CRATES) { const n = N.phase === 'ormeggiata' || N.phase === 'partenza' ? Math.min(24, N.crates || 0) : 0; CRATES.count = n; CRATES.visible = n > 0; }
+    }
+    // il posto di blocco
+    if (BLOCCO) { const B = O && O.blocco; BLOCCO.g.visible = !!B; if (B) { BLOCCO.g.position.set(B.x, groundH(B.x, B.y), B.y); BLOCCO.g.rotation.y = Math.PI / 2 - B.ang; BLOCCO.lamps.visible = Math.sin(time * 6) > 0; } }
+    // gli striscioni: tenuti dai due manifestanti dopo il capo
+    BANNERS.forEach(b => { b.g.visible = false; });
+    if (O && O.proteste) O.proteste.forEach((Pr, k) => {
+      const B = BANNERS[k]; if (!B || Pr.phase === 'carica' || Pr.people.length < 3) return;
+      const a = G.byId(st, Pr.people[1]), c = G.byId(st, Pr.people[2]); if (!a || !c || a.inside || c.inside) return;
+      const d = Math.hypot(c.x - a.x, c.y - a.y); if (d > 6 || d < .5) return;
+      const mx = (a.x + c.x) / 2, mz = (a.y + c.y) / 2; B.g.visible = true; B.g.position.set(mx, groundH(mx, mz), mz); B.g.rotation.y = -Math.atan2(c.y - a.y, c.x - a.x); B.g.scale.x = Math.max(.6, d / 4);
+      bannerText(B, (BTXT[Pr.motivo] || BTXT.rabbia)[Pr.id % 2]);
+      B.cloth.rotation.x = Math.sin(time * 2.2) * .08;
+    });
+    // gli animali
+    tickAnimals(st, time, dt, cx, cz);
+  }
+  return { attach, tick, SPEC, SHIP };
 })();
 </script>
 <script>

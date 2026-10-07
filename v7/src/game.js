@@ -2161,6 +2161,7 @@ var Game = (function () {
       if (v.hidden) continue;
       if (v.burning > 0) { v.burning -= dt; if (v.burning <= 0) explode(st, v); }
       if (v.wreck) { freeRoll(st, v, dt, true); continue; }
+      if (v.driveTo && v.rider === 'npc' && !v.traffic) continue;   // [ordine] lo guida ordine.js (volanti, Campagnola, camion della nave)
       if (v.traffic) updateTraffic(st, v, dt);
       else if (v.police && v.rider === 'npc') updatePoliceCar(st, v, dt);
       else if (v.rider !== 'player') { freeRoll(st, v, dt, !v.rider); if (Math.hypot(v.vx, v.vy) > 5.5) runOver(st, v, v.lastHitBy === 'player' ? 'player' : 'loose'); }
@@ -2218,6 +2219,7 @@ var Game = (function () {
     attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
+    LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
     HOOKS, NOISE, MIN_PER_SEC, layout, baseTile, HZ, hazardAt, hurtHazard, setTile: setT, makeVehicle, explode, damageVehicle, blastMap, goTo, stepAlong, say, addLog, feed, emit, addMemory, placeFor, nearestPlace, wanderSpot, makeNpc, walkM, los, panicAround, exitVehicle, giveWeapon, CAST,
   };
 })();

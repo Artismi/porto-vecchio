@@ -6774,7 +6774,7 @@ var Render = (function () {
   function vehicleMesh(v) {
     const K = G.VK[v.kind];
     const glb = K.glb && window.Models && Models.has(K.glb) ? Models.vehicle(K.glb, K, v.color) : null;
-    const g = glb || (v.kind === 'vespa' ? vespaMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police));
+    const g = glb || (v.kind === 'vespa' ? vespaMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
     if (K.scale && !glb) g.scale.set(K.scale[0], K.scale[1], K.scale[2]);
     g.userData.glbWait = !!K.glb && !glb;
     g.userData.glb = !!glb;   // [animazioni-mondo] le auto dai modelli non hanno il profilo del parabrezza
@@ -6783,8 +6783,8 @@ var Render = (function () {
     g.traverse(o => { if (o.isMesh && o !== sh) o.castShadow = true; });
     const u = g.userData;
     if (u.seat) {
-      u.drv = driverMesh(v.driverLook || { top: '#8c2f24', skin: '#dcae88', hair: '#17110e' }, v.police); u.drv.position.set(...u.seat); g.add(u.drv);
-      if (v.police) { u.drv2 = driverMesh({ top: '#23355e', skin: '#c99a76' }, true); u.drv2.position.set(...u.seat2); g.add(u.drv2); }
+      u.drv = driverMesh(v.driverLook || { top: '#8c2f24', skin: '#dcae88', hair: '#17110e' }, v.police || v.livrea); u.drv.position.set(...u.seat); g.add(u.drv);
+      if (v.police || v.livrea) { u.drv2 = driverMesh({ top: v.livrea ? '#5c6672' : '#23355e', skin: '#c99a76' }, true);   /* [ordine] */ u.drv2.position.set(...u.seat2); g.add(u.drv2); }
     }
     // fari: alone, cono di luce e chiazza sull'asfalto
     if (!beamGeo) { beamGeo = new THREE.ConeGeometry(1.5, 8, 12, 1, true); beamGeo.translate(0, -4, 0); beamGeo.rotateX(-Math.PI / 2); poolGeo = new THREE.CircleGeometry(1, 16); poolGeo.rotateX(-Math.PI / 2); }
@@ -6989,7 +6989,7 @@ var Render = (function () {
     FX.flights.forEach((l, i) => { const s = sources[i]; if (s) { l.position.set(s.x, groundH(s.x, s.y) + 1.2, s.y); l.intensity = (5 + Math.sin(st.clock * 17 + i) * 1.5) * s.k; } else l.intensity = 0; });
     st.vehicles.forEach(v => { if (v.hidden) return; const K = G.VK[v.kind]; if ((v.hp < K.hp * .4 || v.wreck) && Math.random() < dt * (v.wreck ? 3 : 6)) smoke(v.x + Math.cos(v.ang) * (v.kind === 'vespa' ? 0 : 1.4), groundH(v.x, v.y) + 1.2, v.y + Math.sin(v.ang) * (v.kind === 'vespa' ? 0 : 1.4), v.wreck ? '#1a1618' : '#6a6a70', .9, 1.8, 1.2); });
     FX.bottles.forEach((b, i) => { const pr = st.proj[i]; b.visible = !!pr; if (pr) { b.position.set(pr.x, pr.z + groundH(pr.x, pr.y), pr.y); b.rotation.x += dt * 14; b.scale.setScalar(pr.kind === 'sasso' ? .4 : 1); b.userData.flame.visible = pr.kind !== 'sasso';   /* [trame1] */ b.userData.flame.material.opacity = .7 + Math.random() * .3; } });
-    const pc = st.vehicles.find(v => v.police && v.siren && !v.hidden && !v.wreck);
+    const pc = st.vehicles.find(v => (v.police || v.livrea) && v.siren && !v.hidden && !v.wreck);   /* [ordine] */
     if (pc) { const on = Math.sin(st.clock * 14) > 0; FX.siren.position.set(pc.x, groundH(pc.x, pc.y) + 2.2, pc.y); FX.siren.intensity = on ? 6 : 1.5; FX.siren.color.set(on ? '#2a6aff' : '#6a9aff'); } else FX.siren.intensity = 0;
   }
 
@@ -9531,6 +9531,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     TT('fusione1', fusione1);   /* [pulitore1] */
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
     if (window.Models) try { Models.attach({ scene, G, groundH }); } catch (e) { console.warn(e); }
+    if (window.OrdineArte) try { OrdineArte.attach({ scene, G, groundH }); } catch (e) { console.warn('[ordine_arte]', e); }   /* [ordine] */
     const mk2 = new THREE.Group();
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 14, 8, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd24a', transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); beam.position.y = 7;
     const ring = new THREE.Mesh(new THREE.RingGeometry(.9, 1.2, 16), new THREE.MeshBasicMaterial({ color: '#ffd24a', transparent: true, opacity: .8, side: THREE.DoubleSide, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .05;
@@ -10230,6 +10231,46 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (u.shadowC) { u.shadowC.visible = true; u.shadowC.position.y = .02 - h - Math.sin(k * Math.PI) * .4; }
   }
 
+  // [ombre1] Le ombre delle persone. Il modello animato (più cappello, borsa, armi) disegnato in ogni passata d'ombra
+  // per ogni persona caricata pesava più di tutta la città: ora l'ombra vera, a sagoma, la fanno il giocatore e le
+  // OMBRE1.vere persone più vicine all'inquadratura; gli altri hanno una macchia allungata dalla parte opposta al sole
+  // (stessa direzione e stessa lunghezza dell'ombra vera). Chi è fuori dall'inquadratura (con margine per l'ombra) non si
+  // disegna né si anima: rientrando recupera il tempo perso.
+  const OMBRE1 = { vere: 5, fr: new THREE.Frustum(), m: new THREE.Matrix4(), sp: new THREE.Sphere(), v: new THREE.Vector3(), Y: new THREE.Vector3(0, 1, 0), list: [] };
+  function ombreCast1(g, on) {
+    const u = g.userData; if (u.cast1 === on && (frameN + (u.ph1 || 0)) % 90) return;
+    u.cast1 = on; if (u.ph1 === undefined) u.ph1 = (Math.random() * 90) | 0;
+    g.traverse(o => { if ((o.isMesh || o.isSkinnedMesh) && o !== u.shadowC && !o.userData.noCast1) o.castShadow = on; });
+  }
+  function ombre1(st, night) {
+    const O = OMBRE1, fr = O.fr, sp = O.sp, list = O.list; list.length = 0;
+    camera.updateMatrixWorld(); O.m.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); fr.setFromProjectionMatrix(O.m);
+    // il sole (o la luna): direzione e lunghezza dell'ombra di una persona alta 1,7 m
+    const dx = moon.target.position.x - moon.position.x, dy = moon.position.y - moon.target.position.y, dz = moon.target.position.z - moon.position.z, hl = Math.hypot(dx, dz) || 1;
+    const len = clamp(1.7 * hl / Math.max(.3, dy), .5, 4.5), ux = dx / hl, uz = dz / hl, yaw = Math.atan2(-ux, -uz);
+    const realOn = renderer.shadowMap.enabled && moon.castShadow && !LOWQ.on, dayK = 1 - night;
+    const blobA = .18 + .2 * dayK * Math.min(1, moon.intensity);
+    for (const id in dyn.people) {
+      const g = dyn.people[id]; if (!g || !g.parent) continue;
+      if (!g.visible) { g.userData.off1 = false; continue; }   // la visibilità la decide il gioco, qui si toglie solo chi è fuori campo
+      sp.center.set(g.position.x, g.position.y + .9, g.position.z); sp.radius = 1.4 + len * .6;
+      const inF = id === '__player' || fr.intersectsSphere(sp);
+      g.userData.off1 = !inF; if (!inF) { g.visible = false; continue; }
+      const d = id === '__player' ? -1 : (g.position.x - cam.x) ** 2 + (g.position.z - cam.y) ** 2;
+      list.push([d, g]);
+    }
+    list.sort((a, b) => a[0] - b[0]);
+    for (let i = 0; i < list.length; i++) {
+      const g = list[i][1], u = g.userData, real = realOn && i <= O.vere; ombreCast1(g, real);
+      const sh = u.shadowC; if (!sh || !sh.visible) continue;
+      if (real || !(dayK > .05 || moon.intensity > .3)) { if (u.blob1) { u.blob1 = false; sh.scale.set(1, 1, 1); sh.position.x = sh.position.z = 0; sh.rotation.set(-Math.PI / 2, 0, 0); sh.material.opacity = .35; } continue; }
+      u.blob1 = true; sh.rotation.order = 'YXZ'; sh.rotation.set(-Math.PI / 2, yaw - g.rotation.y, 0);
+      sh.scale.set(1.05, Math.max(1, len / .8), 1);
+      O.v.set(ux * len * .42, 0, uz * len * .42).applyAxisAngle(O.Y, -g.rotation.y); sh.position.x = O.v.x; sh.position.z = O.v.z;
+      sh.material.opacity = blobA;
+    }
+  }
+
   // ---------------- AGGIORNAMENTO PER FOTOGRAMMA ----------------
 
   // ================= [amb1] METEO E PESO DEL REGIME =================
@@ -10347,6 +10388,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     dyn.boats.forEach(b => { b.g.position.y = (b.y !== undefined ? b.y : -.3) + Math.sin(time * 1.3 + b.ph) * .08; b.g.rotation.z = Math.sin(time * 1.1 + b.ph) * .04; b.g.rotation.x = Math.sin(time * .83 + b.ph * 1.7) * .025; });   // [animazioni-mondo] beccheggio
     dyn.laundry.forEach(l => { if (l.ax === false) l.m.rotation.z = Math.sin(time * 2 + l.ph) * .25; else l.m.rotation.x = Math.sin(time * 2 + l.ph) * .25; });
     if (window.Models) Models.tick(st, time, night);
+    if (window.OrdineArte) try { OrdineArte.tick(st, time, night, dt, cam); } catch (e) { if (!frame.oaErr) { frame.oaErr = 1; console.warn('[ordine_arte]', e); } }   /* [ordine] animali, nave, posti di blocco, cortei */
     tickWinter(time, night);
     tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri
     tickUrbano1(time, night);
@@ -10368,12 +10410,14 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       const inRoom = !!(n.room && p.indoor && !n.dead);   // [scopo] dentro l'edificio del giocatore: si vede chi c'è
       if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if (n.pop && !n.pop.near) { scene.remove(g); delete dyn.people[n.id]; } } return; }
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
-      if (!g) { const who = n.cop || n.military ? 'cop' : null; g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
+      if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */ g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
       g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y), n.y); g.rotation.y = Math.PI / 2 - n.face;
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
-      if (g.userData.model) Models.animPerson(g, { speed: n.speedNow, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, held: n.hand || null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), punch: n.gesture === 'punch' ? 1 : 0, handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0, anim: window.Anim ? Anim.npcState(st, n) : null }, dt); else   // [animazioni] anim
+      if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
+      const dtA = dt + (g.userData.dt1 || 0); g.userData.dt1 = 0;
+      if (g.userData.model) Models.animPerson(g, { speed: n.speedNow, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, held: n.hand || null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), punch: n.gesture === 'punch' ? 1 : 0, handsUp: !n.dead && n.stun <= 0 && ((n.action.name === 'fugge' && n.panic <= 0) || n.action.name === 'ordine_fermato'), riot: !!(n.ord && n.ord.riot), banner: n.ord && n.ord.protester ? n.ord.protester.banner : null, anim: window.Anim ? Anim.npcState(st, n) : null }, dtA); else   // [animazioni] anim
       animPerson(g, { anim: n.anim, speed: n.speedNow, gesture: n.gesture, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0 && p.cur !== 'pugni' && Math.hypot(n.x - p.x, n.y - p.y) < 6, twoHand: n.cop });
       g.userData.shadowC.visible = !n.dead;
       flight(g, n, st);
@@ -10426,8 +10470,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       }
       u.hpSeen = v.hp;
       if (v.wreck && !u.burnt) { u.burnt = true; u.paint.forEach(m => { m.color.set('#141012'); m.roughness = 1; m.metalness = 0; }); if (u.drv) u.drv.visible = false; if (u.drv2) u.drv2.visible = false; if (u.glass) u.glass.color.set('#050505'); g.rotation.z = .05; u.wheels.forEach(w => w.wh.scale.setScalar(.85)); }
-      if (u.drv) u.drv.visible = !v.wreck && (v.rider === 'player' || v.traffic || (v.police && v.rider === 'npc' && !v.arrived));
-      if (u.drv2) u.drv2.visible = !v.wreck && v.police && v.rider === 'npc' && !v.arrived;
+      if (u.drv) u.drv.visible = !v.wreck && (v.rider === 'player' || v.traffic || (v.police && v.rider === 'npc' && !v.arrived) || (v.rider === 'npc' && (v.livrea || v.driveTo || v.tutela)));   /* [ordine] */
+      if (u.drv2) u.drv2.visible = !v.wreck && (v.police || v.livrea) && v.rider === 'npc' && !v.arrived;   /* [ordine] */
       const lampsOn = !v.wreck && (v.traffic || v.rider) && night > .3;
       u.glows.forEach(s => { s.visible = lampsOn && !s.userData.broken; s.material.opacity = .7; });
       u.beams.forEach(b => b.visible = lampsOn && !b.userData.broken); u.pool.visible = lampsOn;
@@ -10564,6 +10608,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const indoorNow = indoorPass(st); if (indoorNow) { scene.fog.near = 200; scene.fog.far = 400; }
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
+    ombre1(st, night);   /* [ombre1] */
     renderer.setRenderTarget(rt); renderer.render(scene, camera);
     renderer.setRenderTarget(null); ambPasses();   /* [amb2] */
     const U = postMat.uniforms;
