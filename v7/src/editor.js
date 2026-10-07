@@ -1,4 +1,4 @@
-/* Porto Vecchio — l'editor dentro il gioco (F2).
+/* Porto Vecchio — l'editor dello Studio (editor.html, F2). Nel gioco (index.html) non si apre: carica e applica i ritocchi.
    Il mondo nasce sempre uguale dal codice: l'editor non tocca il codice, tiene un elenco di RITOCCHI (ritocchi.json)
    che il gioco rimette sopra a ogni avvio.
    - Sposta: oggetti di strada (quelli fusi nella geometria statica, registrati per la distruzione), loro copie,
@@ -488,7 +488,7 @@ var Editor = (function () {
   }
   function onKey(e) {
     const k = e.key.toLowerCase();
-    if (e.key === 'F2') { e.preventDefault(); e.stopImmediatePropagation(); toggle(); return; }
+    if (e.key === 'F2') { if (!window.PV_STUDIO) return; e.preventDefault(); e.stopImmediatePropagation(); toggle(); return; }   // lo Studio sta fuori dal gioco (editor.html): nel gioco solo i ritocchi
     if (!on) return;
     if (inPanel(e.target) && /input|select|textarea/i.test(e.target.tagName)) { e.stopPropagation(); if (k === 'escape') e.target.blur(); return; }
     e.preventDefault(); e.stopImmediatePropagation(); held[k] = true;

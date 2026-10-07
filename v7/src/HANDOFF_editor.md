@@ -39,3 +39,8 @@ Si dipinge sulle texture che il codice disegna su canvas: facciate, murales, ins
 - Una texture usata da più oggetti (es. l'atlante delle parti piccole di un edificio, un pavimento in cache) cambia dappertutto.
 - Due texture identiche al pixel hanno la stessa impronta: la pittura va su entrambe.
 - I mobili si modificano solo nel piano dove si trova il giocatore.
+
+## Lo Studio sta fuori dal gioco (7 ottobre)
+Il gioco (index.html) non apre più l'editor con F2 e non contiene studio.js: carica e applica solo i ritocchi
+(ritocchi.json, attraverso editor.js e officina.js). Lo Studio è editor.html (STUDIO.bat), dove F2 e tutto il resto restano.
+build.py: studio.js solo in editor.html.
