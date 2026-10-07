@@ -197,7 +197,7 @@ var Vesti3D = (function () {
         const eL = Sp(.07, fm, -(r + .02), -.07, -.01), eR = Sp(.07, fm, r + .02, -.07, -.01); eL.scale.set(.42, 1.35, 1); eR.scale.set(.42, 1.35, 1);
         const fr = Sp(.08, fm, 0, .045, r + .03); fr.scale.set(1.9, .75, .4); fr.rotation.x = -.35; h.add(dome, band, eL, eR, fr); break; }
       case 'scarf': {   // fazzoletto da testa: aderente, copre i capelli, nodo sotto il mento, la punta dietro
-        const mt = FM('paisley', c, sh(c, 1.5), '#e8d8a0'), dome = lathe([[r + .012, -.07], [r + .014, -.01], [r + .008, H * .5], [r * .7, H * .9], [0, H + .012]], mt);
+        const rs = Math.min(r, T.rSkull + .03), mt = FM('paisley', c, sh(c, 1.5), '#e8d8a0'), H2 = Math.min(H, T.skTop - T.brow + .03), dome = lathe([[rs + .006, -.07], [rs + .01, -.01], [rs + .006, H2 * .5], [rs * .7, H2 * .9], [0, H2 + .006]], mt);
         dome.geometry.scale(1, 1, 1.08); const p = dome.geometry.attributes.position; for (let i = 0; i < p.count; i++) if (p.getZ(i) > r * .4 && p.getY(i) < .0) p.setZ(i, p.getZ(i) * .6); p.needsUpdate = true; dome.geometry.computeVertexNormals();
         const tail = new THREE.Mesh(new THREE.ConeGeometry(.06, .13, 3), mt); tail.position.set(0, -.1, -(r + .02)); tail.rotation.x = Math.PI + .25; tail.scale.z = .35;
         const knot = Sp(.022, mt, 0, T.chin - T.brow + .015, T.front - T.cz - .03); h.add(dome, tail, knot); break; }
@@ -233,7 +233,7 @@ var Vesti3D = (function () {
     if (kind === 'basco') {   // basco: disco morbido inclinato, il picciolo
       const mt = FM('feltro', c), b = lathe([[r + .004, -.004], [r + .03, .025], [r + .035, .045], [r * .6, H * .9], [0, H * .92]], mt, 28); b.rotation.z = -.18; b.position.x = .015;
       h.add(b, Cy(.004, .006, .015, sh(c, .8), .01, H * .95, 0, 6)); return h; }
-    if (kind === 'fascia') { h.add(lathe([[r + .007, .0], [r + .012, .015], [r + .007, .032]], FM('spugna', c), 28)); return h; }
+    if (kind === 'fascia') { const rs = T.rSkull + .01, y0 = T.eyeY - T.brow + .05; h.add(lathe([[rs, y0], [rs + .006, y0 + .015], [rs, y0 + .03]], FM('spugna', c), 28)); return h; }   // sul cranio, sopra la fronte (non sulla capigliatura)
     if (kind === 'police') {   // berretto della Guardia: corona rigida più larga in cima, fascia chiara, visiera nera lucida, fregio
       const mt = FM('panno', c), cr = lathe([[r + .006, -.002], [r + .008, .04], [r + .03, H * .85], [r + .02, H * .92], [0, H * .9]], mt, 28);
       const band = lathe([[r + .009, -.002], [r + .011, .03]], FM('nylon', '#d8d0b0'), 28), v = cutVisor(visor(r * 1.0, .06, 1.1, .015, lm('#0c0c0e')), 1.1);
@@ -348,6 +348,7 @@ var Vesti3D = (function () {
 
   // ---------------- VESTIRE UNA PERSONA ----------------
   function strip(g) { if (g.userData) g.userData.spessore = null;   // [animazioni]
+    if (window.Pittura) Pittura.spoglia(g);
     g.traverse(o => { if (o.isSkinnedMesh && o.userData.geo0) { o.geometry = o.userData.geo0; o.userData.hid = null; } });   // [vestiti] la pelle torna intera
     const rm = []; g.traverse(o => { if (o.userData && o.userData.vesti) rm.push(o); }); rm.forEach(o => { if (o.parent) o.parent.remove(o); if (o.geometry && o.isSkinnedMesh && !o.geometry.userData.sartoria) o.geometry.dispose(); }); }
   function bare(g, look) {
@@ -389,7 +390,7 @@ var Vesti3D = (function () {
     g.traverse(o => { if (o.isSkinnedMesh && !o.userData.vesti) analyze(o); });   // prima si sgonfiano i corpi
     let D = null;
     if (window.Sartoria) try {
-      D = Sartoria.dress(g, outfit, PARTI, seed === undefined ? 'player' : String(seed));
+      D = Sartoria.dress(g, outfit, PARTI, seed === undefined ? 'player' : String(seed), { soloFalde: !!window.Pittura });
       if (D) {
         const srcs = []; g.traverse(o => { if (o.isSkinnedMesh && !o.userData.vesti) srcs.push(o); });
         const ref = srcs.find(o => /Body/i.test(o.name)) || srcs[0];
@@ -402,6 +403,7 @@ var Vesti3D = (function () {
       }
     } catch (e) { console.error('[Vesti3D] sartoria', e); D = null; }
     try { shells(g, outfit, unit, D && D.B); } catch (e) { console.error('[Vesti3D] gusci', e); }
+    if (window.Pittura) try { Pittura.dipingi(g, outfit, look, PARTI); } catch (e) { console.error('[Vesti3D] pittura', e); }   // i vestiti dipinti sul corpo
     try { accessories(g, outfit, held, D); } catch (e) { console.error('[Vesti3D] pezzi', e); }
     if (window.Officina) try { Officina.onDress(g, outfit); } catch (e) { console.error('[Vesti3D] officina', e); }   // [studio]
   }

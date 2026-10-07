@@ -219,7 +219,7 @@ var Sartoria = (function () {
     const ref = srcs.find(o => /Body/i.test(o.name)) || srcs[0];
     const rel = new THREE.Matrix4().multiplyMatrices(gi, ref.matrixWorld);   // dalla mesh (locale) al personaggio
     const names = ref.skeleton.bones.map(b => b.name), names0 = names.join();
-    const P = [], part = [], side = [], wts = [], hair = [], head = [], srcOf = [], idxOf = [], tris = [];
+    const P = [], part = [], side = [], wts = [], hair = [], head = [], srcOf = [], idxOf = [], tris = [], gmaps = [];
     const pn = Object.keys(PARTI), v = new THREE.Vector3(), M = new THREE.Matrix4();
     srcs.forEach((src, si) => {
       const geo = src.userData.geo0 || src.geometry, pos = geo.attributes.position, sI = geo.attributes.skinIndex, sW = geo.attributes.skinWeight; if (!pos || !sI) return;
@@ -227,14 +227,14 @@ var Sartoria = (function () {
       if (SKIP.test(mname)) return;
       M.multiplyMatrices(gi, src.matrixWorld); const bn = src.skeleton.bones, same = bn.map(b => b.name).join() === names0;
       const isHair = HAIR.test(mname) || (mname === 'Worker_Yellow' && /Head/i.test(src.name)), isHead = /Head/i.test(src.name);
-      const gmap = new Int32Array(pos.count).fill(-1);
+      const gmap = new Int32Array(pos.count).fill(-1); gmaps[si] = gmap;
       for (let i = 0; i < pos.count; i++) {
         v.fromBufferAttribute(pos, i).applyMatrix4(M);
         let best = -1, bw = -1; const w = [];
         for (let k = 0; k < 4; k++) { const ix = sI.getComponent ? sI.getComponent(i, k) : [sI.getX(i), sI.getY(i), sI.getZ(i), sI.getW(i)][k], wk = [sW.getX(i), sW.getY(i), sW.getZ(i), sW.getW(i)][k]; const nm = bn[ix] ? bn[ix].name : ''; if (wk > 0) w.push([same ? ix : names.indexOf(nm), wk]); if (wk > bw) { bw = wk; best = ix; } }
         const bnm = bn[best] ? bn[best].name : ''; let pt = pn.find(p => PARTI[p].test(bnm)) || null;
         if (bnm === 'Body') pt = /Legs/i.test(src.name) ? 'bacino' : 'torso';
-        if (isHair || mname === 'Worker_Yellow') { hair.push(v.x, v.y, v.z); continue; }
+        if (isHair) { hair.push(v.x, v.y, v.z); continue; }   // (il giallo dell'operaio è casco solo nella testa; nel busto sono le strisce del gilet)
         if (isHead && !pt) { head.push(v.x, v.y, v.z); continue; }
         if (/Head|Neck/.test(bnm) && !pt) { head.push(v.x, v.y, v.z); continue; }
         gmap[i] = part.length; P.push(v.x, v.y, v.z); part.push(pt); side.push(/L$/.test(bnm) ? 1 : /R$/.test(bnm) ? -1 : 0); wts.push(w); srcOf.push(si); idxOf.push(i);
@@ -258,7 +258,7 @@ var Sartoria = (function () {
       if (!bm['Wrist' + sd] && bm['LowerArm' + sd] && bm['UpperArm' + sd]) bm['Wrist' + sd] = bm['LowerArm' + sd].clone().multiplyScalar(2).sub(bm['UpperArm' + sd]); }
     // la testa: il punto alla base del cranio; il bacino: il centro tra le anche
     if (bm.UpperLegL && bm.UpperLegR) { const h = bm.UpperLegL.clone().lerp(bm.UpperLegR, .5); h.y += .03; bm.Hips = bm.Hips && Math.abs(bm.Hips.y - h.y) < .15 ? bm.Hips : h; bm.Hips.x = h.x; }
-    B = { key, P: new Float32Array(P), tris: new Uint32Array(tris), part, side, wts, hair: new Float32Array(hair), head: new Float32Array(head), srcOf, idxOf, bones: bm, bmat, names, rel, reli: rel.clone().invert(), tubes: {}, geos: new Map() };
+    B = { key, P: new Float32Array(P), tris: new Uint32Array(tris), gmaps, part, side, wts, hair: new Float32Array(hair), head: new Float32Array(head), srcOf, idxOf, bones: bm, bmat, names, rel, reli: rel.clone().invert(), tubes: {}, geos: new Map() };
     // misure utili: caviglia, inforcatura, vita, base del collo
     const n = part.length, yOf = i => B.P[i * 3 + 1];
     let ank = {};
@@ -1082,8 +1082,8 @@ var Sartoria = (function () {
   }
 
   // il vestito intero: ritorna { meshes, covered: Set di 'srcIndex:vertex' coperti, spessore per parte }
-  function dress(g, outfit, PARTI, seedStr) {
-    const B = body(g, PARTI); if (!B) return null;
+  function dress(g, outfit, PARTI, seedStr, opt) {
+    const B = body(g, PARTI); if (!B) return null; opt = opt || {};
     // ordine degli strati: per classe, ma dentro la stessa zona vale l'ordine scelto dal giocatore
     const L = outfit.filter(c => c.parti && c.parti.length && !/^(piedi|mani)$/.test(c.parti.join()) && !(c.parti.length === 1 && (c.parti[0] === 'piedi' || c.parti[0] === 'mani')));
     let last = {}; const ranked = L.map((c, i) => { const z = c.zona || 'x'; let r = CLS(c.id) * 10 + i * .01; if (last[z] !== undefined && r < last[z]) r = last[z] + .01; last[z] = r; return { c, r }; }).sort((a, b) => a.r - b.r);
@@ -1095,7 +1095,9 @@ var Sartoria = (function () {
       if (hiddenUnder(c, k)) { (c.parti || []).forEach(p => { th[p] = Math.max(th[p] || 0, .002); }); return; }
       const base = CUT[c.id] || { cl: 1, fab: c.pat === 'righe' ? 'righe' : c.pat === 'fiori' ? 'fiori' : 'cotone' };
       const vars = VARIANTI[c.id]; let vi = 0; if (vars && seedStr !== undefined && seedStr !== 'player') vi = (seed >>> (k * 3)) % vars.length;
+      if (opt.soloFalde && !(base.gonna || base.poncho)) return;   // dipinto sul corpo (Pittura): qui solo le falde che sporgono
       const C = Object.assign({ id: c.id }, base, vars ? vars[vi] : {}, { var: vi, seed: c.stampa !== undefined ? c.stampa : (seed >>> 5) });
+      if (opt.soloFalde) { C.solo_gonna = 1; C.davanti = C.davanti || 0; }
       if (C.cl <= 1 && !C.gonna && !C.intera && ranked.some(o => o.c !== c && CUT[o.c.id] && CUT[o.c.id].cl === 2)) C.infilata = 1;   // camicie e magliette dentro i pantaloni
       // la vita coperta da un capo sopra (maglione, giacca chiusa, cappotto): niente cintura che sbuca
       if (C.cl === 2 && ranked.slice(k + 1).some(o => (CUT[o.c.id] || {}).gonna)) C.stretti = 1;   // sotto un cappotto lungo i pantaloni stanno dritti e stretti (non bucano la falda)
@@ -1134,6 +1136,6 @@ var Sartoria = (function () {
     return flag;
   }
 
-  return { STAMPE, printMat, dress, covered, body, testa, attach, boneRest, fabMat, solidMat, texFor, TESS, CUT, VARIANTI, tube, surf, frameAt };
+  return { STAMPE, printMat, lengths, neckY, CUT_: () => CUT, dress, covered, body, testa, attach, boneRest, fabMat, solidMat, texFor, TESS, CUT, VARIANTI, tube, surf, frameAt };
 })();
 if (typeof module !== 'undefined') module.exports = Sartoria;
