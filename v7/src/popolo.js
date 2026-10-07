@@ -657,6 +657,8 @@ var Popolo = (function () {
       if (at <= m) idx = i;
     }
     if (P.curPlan === P.plan && P.curIdx > idx) idx = P.curIdx;   // un blocco cominciato non torna indietro
+    // [graffiti] una commissione cominciata (arrivato, sta facendo) si finisce prima di passare al blocco dopo
+    const Er = P.errand; if (Er && Er.arrived && st.t - Er.arrived.t < Math.max(Er.mins || 20, 30)) { const j = P.plan.findIndex(b => b.errand === Er.id); if (j >= 0 && j < idx) idx = j; }
     P.curPlan = P.plan; P.curIdx = idx;
     return P.plan[idx];
   }

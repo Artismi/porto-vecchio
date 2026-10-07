@@ -28,3 +28,13 @@ appiccicati: la vernice entra nella facciata. Righe `[graffiti]` e `[bombolette1
   il riquadro di muri_gente2.
 - `server.js` kind `graffito` (canale eventi); `api/_mente.js` rigenerato.
 - Non toccati: casa, scavi, baracche, mobili (progettati altrove).
+
+## Avvicinamento e gesto (aggiunto)
+- Chi dipinge va fino al muro scelto partendo (`E.spot`, non dove si è fermato arrivando nel posto), a mezzo metro (la
+  grafica misura dov'è davvero il muro: `w.__wallD`), si gira, e solo allora comincia a spruzzare; mentre dipinge si
+  sposta di lato seguendo la scritta (`w.__tipU`). La commissione cominciata non viene interrotta dal blocco dopo.
+- La posa «vernicia» porta la mano sul punto dove va la vernice (`w.__tip` / `player.__tip`), gli occhi sul tratto.
+- Il giocatore spruzza a portata di braccio (1,2 m); un muro più lontano (entro 9 m): ci si cammina davanti e poi si spruzza.
+
+## Il distributore (distributore1.py)
+Era una scatola bianca: pensilina, pompe e totem avevano le coordinate della vecchia mappa. Rifatto attorno all'edificio vero.
