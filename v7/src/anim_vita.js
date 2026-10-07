@@ -444,8 +444,16 @@
     grip(P, 'R', -.2, .2, 1, 1, 'pennello'); show(P, 'pennello');
   }); BUSY.attacchina = 1;
   // ---- BOMBOLETTA: braccio teso sul muro che disegna, ogni tanto agita la bomboletta ----
-  def('vernicia', FULL, (P) => {
-    const k = cyc(P, 8), shake = pulse(k, 0, .05, .15, .2);
+  // [graffiti] se si sa dove sta andando la vernice (A.tip, il punto dell'ultimo spruzzo), la mano va lì: segue il tratto
+  const _tipV = new THREE.Vector3(), _tipM = new THREE.Matrix4();
+  def('vernicia', FULL, (P, A) => {
+    const k = cyc(P, 8), shake = pulse(k, 0, .05, .15, .2), tip = A && A.tip;
+    if (tip && shake <= .5) {
+      const L = _tipV.set(tip.x, tip.y, tip.z).applyMatrix4(_tipM.copy(P.g.matrixWorld).invert()), d = Math.hypot(L.x, L.z), r = d > .05 ? Math.min(.62, Math.max(.3, d - .16)) / d : 1;
+      handTo(P, 'R', L.x * r * SIDE.R.s, Math.max(.75, Math.min(1.95, L.y)), Math.max(.2, L.z * r), .8, -.3, 0);   // la bomboletta a una spanna dal muro, sul punto
+      arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35); P.rot('Head', -.05, 0, 0);
+      grip(P, 'R', -.1, 0, 1, 1, 'bomboletta'); hideHeld(P); show(P, 'bomboletta'); return;
+    }
     if (shake > .5) arm(P, 'R', .2, -.8, .4, -.2, .4 + .3 * Math.sin(P.t * 30), .9);
     else arm(P, 'R', .25, .05 + .2 * Math.sin(P.t * 1.7), .85, .15 * Math.sin(P.t * 2.3), .1, 1);
     arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35);
@@ -549,6 +557,9 @@
     [/fruga|tasche|perquis|cerca (per terra|nei)|rovist/, 'fruga'], [/colla|manifest|volantin|affigg/, 'attacchina'],
     [/bomboletta|scritta|vernic|spruzz|graffit/, 'vernicia'], [/gesso/, 'gesso'], [/foto|scatta/, 'foto'],
     [/disegn|schizz|ritratt|album/, 'disegna'], [/dipin|pittur|tinteggi/, 'vernicia'],
+    [/scrive sul muro/, 'vernicia'], [/si apparta/, 'aspetta'],   // [commissioni]
+    [/canta|recita/, 'discute'], [/cerca un lavoretto/, 'aspetta'],   // [creatività]
+    [/legna|tagli/, 'martella'], [/ronda|veglia/, 'aspetta'], [/colletta/, 'aspetta'],   // [imprese]
     [/rete|ripara|cuc|lavora a|intaglia|pulisce il pesce|sistema|smonta|motore|officina|banco/, 'lavora'],
     [/spazz|pulisc|lava (la|il|le|i) /, 'spazza'], [/pesca|canna/, 'pesca'], [/preg|rosario|messa|cero/, 'prega'],
     [/ball/, 'balla'], [/carte|scopa|briscola|tombola/, 'carte'], [/flipper/, 'flipper'],
@@ -581,6 +592,31 @@
     const h = HABITS[Math.floor(Anim.hashStr(n.id + ':' + slot) * HABITS.length)];
     if (!h) return; if (h.endsWith('_act')) s.act = h.slice(0, -4); else s.upper = h;
   }
+  // [passo] da fermi i gesti hanno un motivo: chi aspetta guarda l'orologio e si guarda intorno, chi fuma è un fumatore
+  // (più spesso se è nervoso), col freddo mani in tasca o braccia strette, chi legge tira fuori il giornale, al muro ci si
+  // appoggia. Ognuno cambia gesto ai suoi tempi (non tutti insieme).
+  function intent(st, n, s) {
+    const P = n.pop; if (!P) return habit(n, st.clock, s);
+    const N = P.need || {}, clock = st.clock, ph = n.__h || (n.__h = Anim.hashStr(String(n.id)) * 97), slot = Math.floor((clock + ph) / (35 + (ph % 30)));
+    const roll = Anim.hashStr(n.id + ':' + slot), ap = P.appt;
+    const waiting = (ap && ap.t - st.t < 40 && ap.t - st.t > -30 && P.cur && P.cur.act === 'appuntamento');
+    if (waiting) { if (roll < .35) { s.upper = 'orologio'; return; } s.act = 'aspetta'; const k = Math.sin(clock * .7 + ph) * 1.4; s.lookAt = { x: n.x + Math.cos(n.face + k) * 8, y: 1.5, z: n.y + Math.sin(n.face + k) * 8, ground: true }; return; }
+    if (P.smoker && roll < .25 + (N.rabbia || 0) * .25 + (N.paura || 0) * .2) { s.upper = 'fuma'; return; }
+    if ((P.cold || 0) > .3 || roll < .2) { s.upper = roll < .1 || (P.cold || 0) > .6 ? 'braccia' : 'tasche'; if (P.spot && P.spot.wall && roll > .5) s.act = 'appoggiato'; return; }
+    if (P.spot && P.spot.wall && roll < .6) { s.act = 'appoggiato'; return; }
+    if (P.intW && (P.intW.lettura > .5 || P.intW.politica > .5) && roll > .8) { s.upper = 'legge'; return; }
+    if (P.spot && P.spot.water) { s.lookAt = { x: n.x + Math.cos(n.face) * 30, y: 1, z: n.y + Math.sin(n.face) * 30, ground: true }; }   // il mare si guarda
+    if (roll > .85) s.upper = 'tasche';
+  }
+  // in gruppo: chi ascolta guarda chi parla (o, se nessuno parla, uno del gruppo); chi parla gesticola
+  function groupLook(st, n, s) {
+    const S0 = n.pop && n.pop.spot; if (!S0 || !S0.on) return false;
+    let speaker = null, mate = null;
+    for (const k of st.npcs) { const K = k !== n && k.pop && k.pop.spot; if (!K || !K.on || K.ci !== S0.ci || K.pid !== S0.pid || k.inside) continue; if (Math.hypot(k.x - n.x, k.y - n.y) > 3) continue; mate = mate || k; if (k.bark && k.bark.until > st.clock) speaker = k; }
+    const tgt = speaker || mate; if (!tgt) return false;
+    s.lookAt = { x: tgt.x, y: 1.5, z: tgt.y, ground: true };
+    return true;
+  }
   // lo stile si calcola di rado (cambia piano): ogni ~2 s per persona
   function stileOf(st, n) {
     const P = n.pop, tr = n.tr || {}, c = n.__st || (n.__st = { vec: 0, fiero: 0, giu: 0, loq: .5, dritto: false, t: -99 });
@@ -599,7 +635,18 @@
     return (n.__pt = best);
   }
   Anim.npcMap((st, n, s) => {
+    // [scopo] dentro l'edificio del giocatore: la posa di quello che sta facendo (a letto, a tavola, al bancone)
+    if (n.room && !n.dead && n.stun <= 0) {
+      s.stile = stileOf(st, n); s.mood.push('portamento');
+      if (Math.abs(n.speedNow || 0) > .3) return;
+      if (n.room.pose === 'dorme') { s.act = 'dorme'; s.lookAt = null; s.talk = false; return; }
+      if (n.room.pose === 'legge') { s.act = 'siede'; s.upper = 'legge'; } else if (n.room.pose) put(n.room.pose, s); else habit(n, st.clock, s);
+      if (n.bark && n.bark.until > st.clock) { s.talk = true; if (/[!?]/.test(n.bark.text || '')) s.upper = 'discute'; }
+      return;
+    }
     if (n.dead || n.stun > 0 || n.inside) return;
+    if (n.alarm) { s.lookAt = { x: n.alarm.x, y: 1.4, z: n.alarm.y, ground: true }; s.upper = null; return; }   // [passo] un rumore: si guarda da quella parte
+    { const wd = n.__wallDraft, tp = wd && wd.__tip; if (tp && performance.now() - tp.t < 600) { s.act = 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; return; } }   // [graffiti] sta spruzzando: mano e occhi sul tratto
     const P = n.pop, moving = Math.abs(n.speedNow || 0) > .3;
     s.stile = stileOf(st, n); s.mood.push('portamento');
     if (n.bark && n.bark.until > st.clock) {
@@ -607,6 +654,10 @@
       if (/!/.test(n.bark.text || '') && !moving) s.upper = 'discute';
     }
     if (!moving && s.stile.dritto && !s.upper) s.upper = 'dietro';
+    // [passo] un amico incontrato per strada: la mano, lo sguardo
+    if (n.greet && n.greet.until > st.clock) { const k = st.npcs.find(x => x.id === n.greet.who); if (k) s.lookAt = { x: k.x, y: 1.5, z: k.y, ground: true }; if (n.greet.wave) s.upper = 'saluta'; }
+    // [passo] camminando la testa va già dove si sta per svoltare (il prossimo punto del percorso)
+    if (moving && !s.lookAt && n.path && n.path.length > 1) { const q = n.path[0], q2 = n.path[1]; if (Math.hypot(q.x - n.x, q.y - n.y) < 2.5) s.lookAt = { x: q2.x, y: 1.5, z: q2.y, ground: true }; }
     if (moving && s.stile.vec > .6 && !s.upper && Anim.hashStr(String(n.id)) < .5) s.upper = 'dietro';
     // portare qualcosa (un corpo, un carico) o la carriola: braccia, anche camminando
     if (P && P.carrying) s.upper = 'porta';
@@ -618,6 +669,7 @@
     if (moving) return;
     // il blocco della giornata (popolo.js)
     const b = P && P.cur;
+    if (b && n.action && n.action.name === 'al lavoro' && P.job) { const j = (P.job.base || P.job.title || '').toLowerCase(); for (const [re, v] of BY_JOB) if (re.test(j)) return put(v, s); return put('lavora', s); }   // [scopo] al suo posto all'aperto (oggetti.js)
     if (b && n.action && n.action.name === 'routine') {
       if (b.obj && BY_OBJ[b.obj]) return put(BY_OBJ[b.obj], s);
       if (b.act === 'lavoro' && P.job) { const j = (P.job.base || P.job.title || '').toLowerCase(); for (const [re, v] of BY_JOB) if (re.test(j)) return put(v, s); return put('lavora', s); }
@@ -626,7 +678,7 @@
       if (b.act === 'pranzo') return put('mangia_su', s);
       if (byLabel(b.label, s)) return;
     }
-    if (!s.upper) habit(n, st.clock, s);
+    if (!s.upper && !s.act) { groupLook(st, n, s); intent(st, n, s); }   // [passo] gesti con un motivo
   });
   // il protagonista: il tempo che corre (dorme, lavora, mangia...) e l'attrezzo in mano
   Anim.playerMap((st, p, s) => {
@@ -635,5 +687,6 @@
     if (W) { const k = W.kind || ''; if (/sonno/.test(k)) s.act = W.nap ? 'siede' : 'dorme'; else if (/lavor/.test(k)) s.act = 'lavora'; else if (/mang|pranz/.test(k)) s.act = 'tavola'; else if (/tv|casa|svago/.test(k)) s.act = 'siede'; else byLabel(W.label, s); return; }
     if (p.hand && HELD_UP[p.hand]) s.upper = HELD_UP[p.hand];
     if (p.carrying) s.upper = 'porta';
+    const tp = p.__tip; if (tp && performance.now() - tp.t < 350) { s.act = 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; }   // [graffiti] la bomboletta del giocatore
   });
 })();

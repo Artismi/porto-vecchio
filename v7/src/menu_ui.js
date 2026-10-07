@@ -630,7 +630,7 @@ var MenuUI = (function () {
     // dalla postazione del covo: solo le sue ricette (il banco delle armi: le armi e le modifiche)
     const mine = r => !A0 || (RC[r.id] && RC[r.id].st && RC[r.id].st.split('|').some(k => k === A0.st || k === A0.st2)) || (A0.armi && r.out.some(o => O().CAT[o.k] && O().CAT[o.k].cat === 'armi'));
     const l = v.list.filter(r => (U.filt === 'tutto' || r.kind === U.filt) && mine(r));
-    const armi = A0 && A0.armi && typeof Cantiere !== 'undefined' ? pArmi(st) : '';
+    const armi = (A0 && A0.armi && typeof Cantiere !== 'undefined' ? pArmi(st) : '') + (A0 && A0.auto && typeof Cantiere !== 'undefined' && Cantiere.autoView ? pAuto(st, A0) : '');   // [cantiere] l'officina del garage
     if (!U.sel || !l.some(r => r.id === U.sel)) U.sel = (l.find(r => r.ok) || l[0] || {}).id || null;
     const r = l.find(x => x.id === U.sel), outId = x => x.out[0] ? x.out[0].k : 'casse';
     const tiles = l.slice(0, 180).map(x => `<button class="rec ${x.ok ? 'ok' : x.here ? '' : 'no'} ${x.id === U.sel ? 'sel' : ''}" data-a="sel" data-x="${esc(JSON.stringify(x.id))}" title="${esc(cap(x.nome))}">${ic(outId(x))}<span>${esc(cap(x.nome))}</span></button>`).join('');
@@ -644,6 +644,12 @@ var MenuUI = (function () {
     return `${armi}<div class="lav"><div><h4>Quaderno · ${l.filter(x => x.ok).length} cose che puoi fare adesso</h4><div class="recs">${tiles || '<div class="dim">Nessuna ricetta.</div>'}</div></div>${det}</div>`;
   }
 
+  // [cantiere] l'officina del garage: il mezzo parcheggiato accanto si potenzia coi materiali
+  function pAuto(st, A0) {
+    const V = Cantiere.autoView(st, A0.uid);
+    if (!V) return '<div class="armi"><h4>Officina del garage</h4><div class="dim">Porta qui un mezzo (a meno di dieci metri dal ponte sollevatore): la Vespa non si elabora.</div></div>';
+    return `<div class="armi"><h4>Officina del garage · ${esc(V.nome)} · carrozzeria ${V.hp}%</h4><div class="wm">${V.ups.map(u => `<div class="mod ${u.max ? 'on' : ''}"><b>${esc(u.nome)} ${'●'.repeat(u.lvl)}${'○'.repeat(u.top - u.lvl)}</b><small>${esc(u.desc)}</small>${u.max ? '<em>al massimo</em>' : `<small class="${u.miss.length ? 'n' : ''}">${Object.entries(u.cost).map(([k, q]) => `${esc(O().nm(k))} ×${q}`).join(', ')}</small>${btn('autoup', u.id === 'ripara' ? 'Ripara' : 'Monta', { id: u.id, uid: A0.uid }, 'y', !!u.miss.length)}`}</div>`).join('')}</div></div>`;
+  }
   // il banco delle armi: le modifiche, arma per arma
   function pArmi(st) {
     const V = Cantiere.modsView(st);
@@ -787,6 +793,7 @@ var MenuUI = (function () {
       case 'togli': act('togli', x); break;
       case 'tieni': act('tieni', x); break;
       case 'mod': say(Cantiere.mod(st, x.k, x.id)); break;
+      case 'autoup': say(Cantiere.autoUp(st, x.id, x.uid)); break;   // [cantiere] officina del garage
       case 'bprendi': say(Cantiere.bauleTake(st, x.id, x.q)); break;
       case 'bmetti': say(Cantiere.baulePut(st, x.id, x.q)); break;
       case 'bprendi_tutto': say(Cantiere.bauleAll(st, 'prendi')); break;

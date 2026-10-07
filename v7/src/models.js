@@ -97,7 +97,7 @@ var Models = (function () {
       for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(new THREE.TorusGeometry(.26, .12, 8, 14), pmat('#1c1c20')); m.rotation.x = Math.PI / 2; m.position.set(0, .12 + i * .24, 0); g.add(m); }
     } else return null;
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    return g;
+    return typeof Superfici !== 'undefined' ? Superfici.vesti(g) : g;
   }
   function furniture(name) {
     if (/^pv_/.test(name)) { const g = procFurn(name); return Promise.resolve(g); }
@@ -254,6 +254,7 @@ var Models = (function () {
   function play(g, name, once) {
     const u = g.userData, a = u.acts[name] || u.acts.Idle; if (!a || u.cur === a) return;
     a.reset(); a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); a.clampWhenFinished = !!once; a.play();
+    if (!once && a.getClip) a.time = Math.random() * a.getClip().duration;   // [passo] ognuno al suo punto del passo: non camminano a tempo
     if (u.cur) u.cur.crossFadeTo(a, .18, false); u.cur = a;
   }
   // stato → animazione
