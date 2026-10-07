@@ -371,6 +371,14 @@ var Sartoria = (function () {
   function cutTube(tb, fn) {
     const v = Object.assign({}, tb); v.R = tb.R.map((r, i) => { const o = new Float32Array(RINGS); for (let k = 0; k < RINGS; k++) o[k] = fn(i * tb.ds, k / RINGS * Math.PI * 2); return o; }); return v;
   }
+  // la sezione squadrata: tra la forma del corpo e un rettangolo smussato (superellisse) largo quanto le spalle/fianchi,
+  // profondo quanto petto e schiena. k = quanto è "di sartoria" (0 attillato, 1 scatola)
+  function boxTube(tb, k) {
+    if (k <= 0) return tb; const ext = tb.R.map(r => { let W = 0, Df = 0, Db = 0; for (let q = 0; q < RINGS; q++) { const a = q / RINGS * Math.PI * 2, x = Math.sin(a) * r[q], z = Math.cos(a) * r[q]; W = Math.max(W, Math.abs(x)); if (z > 0) Df = Math.max(Df, z); else Db = Math.max(Db, -z); } return [W, Df, Db]; });
+    const n = 3.2;
+    return cutTube(tb, (sv, a) => { const i = cl(Math.round(sv / tb.ds), 0, tb.ns), [W, Df, Db] = ext[i], D = Math.cos(a) >= 0 ? Df : Db, r0 = radius(tb, sv, a);
+      const rb = 1 / Math.pow(Math.pow(Math.abs(Math.cos(a)) / Math.max(D, .01), n) + Math.pow(Math.abs(Math.sin(a)) / Math.max(W, .01), n), 1 / n); return Math.max(r0, lerp(r0, rb, k)); });
+  }
   // punto sulla superficie del capo (off = spessore sopra il corpo)
   function surf(tb, s, a, off, out) {
     const fr = frameAt(tb, s), r = radius(tb, s, a) + off;
@@ -489,21 +497,21 @@ var Sartoria = (function () {
     tuta: { cl: 3, fab: 'tela', collo: 'camicia', fronte: 'zip', tasche: ['petto2', 'fianchi'], cintura: 'stoffa', intera: 1 },
     giacca: { cl: 4, fab: 'spina', collo: 'revers', fronte: 'bottoni', tasche: ['giacca'], orlo: 'giacca', agio: .006 },
     giacca_pelle: { cl: 4, fab: 'pelle', collo: 'revers_pelle', fronte: 'zip_obl', tasche: ['zip'], cintura: 'chiodo', agio: .004, lucido: 1 },
-    giubbotto_jeans: { cl: 4, fab: 'denim', collo: 'camicia', fronte: 'bottoni_rame', tasche: ['petto2'], polsi: 1, orlo: 'banda', cuciture: '#c8903a', agio: .004 },
+    giubbotto_jeans: { cl: 4, box: .45, fab: 'denim', collo: 'camicia', fronte: 'bottoni_rame', tasche: ['petto2'], polsi: 1, orlo: 'banda', cuciture: '#c8903a', agio: .004 },
     piumino: { cl: 4, fab: 'piumino', collo: 'alto_zip', fronte: 'zip', costine: 1, agio: .012, lucido: 1 },
-    cappotto: { cl: 5, fab: 'panno', collo: 'revers', fronte: 'doppio', tasche: ['cappotto'], gonna: 1, len: 'ginocchio', svasa: .1, agio: .008 },
+    cappotto: { cl: 5, fab: 'panno', collo: 'revers', fronte: 'doppio', tasche: ['cappotto'], gonna: 1, len: 'ginocchio', svasa: .18, agio: .008 },
     impermeabile: { cl: 5, fab: 'cotone', collo: 'revers', fronte: 'doppio', tasche: ['cappotto'], gonna: 1, len: 'ginocchio', svasa: .14, cintura: 'trench', spalline: 1, agio: .008 },
     montone: { cl: 5, fab: 'scamosciato', collo: 'montone', fronte: 'bottoni', tasche: ['cappotto'], orlo: 'montone', agio: .01 },
     divisa: { cl: 4, fab: 'panno', collo: 'revers', fronte: 'bottoni_oro', tasche: ['divisa'], cintura: 'cuoio', spalline: 1, agio: .005 },
     giubbotto: { cl: 6, fab: 'cordura', c2: '#2e3826', collo: 'nessuno', smanicato: 1, fronte: 'strappi', agio: .012, corto: 1 },
     scialle: { cl: 6, fab: 'lana', c2: '#c8b070', c3: '#2a2a2a', collo: 'scialle', frange: 1, agio: .01 },
-    mutande: { cl: 0, fab: 'jersey', elastico: 1 },
-    calze_nylon: { cl: 0, fab: 'raso', velo: 1 },
-    calzamaglia: { cl: 0, fab: 'costine' },
+    mutande: { cl: 0, fab: 'jersey', elastico: 1, stretti: 1 },
+    calze_nylon: { cl: 0, fab: 'raso', velo: 1, stretti: 1 },
+    calzamaglia: { cl: 0, fab: 'costine', stretti: 1 },
     pantaloni: { cl: 2, fab: 'panno', piega: 1, cintura: 'cuoio', tasche: ['oblique'] },
-    jeans: { cl: 2, fab: 'denim', cintura: 'jeans', tasche: ['jeans'], cuciture: '#c8903a', usura: .35 },
-    velluto: { cl: 2, fab: 'velluto', cintura: 'cuoio', tasche: ['oblique'] },
-    pantaloni_lavoro: { cl: 2, fab: 'tela', cintura: 'tela', tasche: ['oblique', 'ginocchio'], usura: .3 },
+    jeans: { cl: 2, fab: 'denim', risvolto: 1, cintura: 'jeans', tasche: ['jeans'], cuciture: '#c8903a', usura: .35 },
+    velluto: { cl: 2, fab: 'velluto', risvolto: 1, cintura: 'cuoio', tasche: ['oblique'] },
+    pantaloni_lavoro: { cl: 2, fab: 'tela', risvolto: 1, cintura: 'tela', tasche: ['oblique', 'ginocchio'], usura: .3 },
     pantaloni_grigi: { cl: 2, fab: 'panno', piega: 1, cintura: 'cuoio', banda: '#8a2a2a' },
     gonna: { cl: 2, fab: 'lana', c2: '#c8b070', c3: '#2a2a30', gonna: 1, solo_gonna: 1, len: 'ginocchio', svasa: .12, pieghe: 1 },
     pantaloncini: { cl: 2, fab: 'tela', cintura: 'stoffa' },
@@ -520,13 +528,13 @@ var Sartoria = (function () {
     vestito_lungo: { cl: 1, fab: 'raso', collo: 'barca', gonna: 1, len: 'caviglia', svasa: .25, lucido: 1 },
     vestito_fiori: { cl: 1, fab: 'liberty', c2: '#c83a4a', c3: '#3a6a4a', collo: 'v', gonna: 1, len: 'ginocchio', svasa: .26, smanicato: 1, spalline_sottili: 1, cintura: 'stoffa' },
     tuta_ginnastica: { cl: 3, fab: 'nylon', collo: 'alto_zip', fronte: 'zip', costine: 1, bande: D, intera: 1, lucido: 1 },
-    cargo: { cl: 2, fab: 'ripstop', cintura: 'tela', tasche: ['oblique', 'cargo'] },
+    cargo: { cl: 2, fab: 'ripstop', risvolto: 1, cintura: 'tela', tasche: ['oblique', 'cargo'] },
     pantaloni_completo: { cl: 2, fab: 'gessato', c2: '#9a9aa4', piega: 1, cintura: 'cuoio_fine', tasche: ['oblique'] },
     bermuda: { cl: 2, fab: 'madras', c2: '#c83a3a', c3: '#2a4a8a', cintura: 'stoffa', tasche: ['oblique'], risvolto: 1 },
     minigonna: { cl: 2, fab: 'denim', gonna: 1, solo_gonna: 1, len: 'mini', svasa: .05, cuciture: '#c8903a', cintura: 'jeans' },
-    leggings: { cl: 0, fab: 'raso', lucido: 1 },
+    leggings: { cl: 0, fab: 'raso', lucido: 1, stretti: 1 },
     // il guardaroba nuovo
-    salopette: { cl: 2, fab: 'denim', cuciture: '#c8903a', pettorina: 1, tasche: ['jeans'] },
+    salopette: { cl: 2, fab: 'denim', risvolto: 1, cuciture: '#c8903a', pettorina: 1, tasche: ['jeans'] },
     maglietta_stampa: { cl: 1, fab: 'jersey', collo: 'giro', stampa: 1 },
     giaccone: { cl: 5, fab: 'tela', collo: 'montone', fronte: 'bottoni', tasche: ['cappotto', 'petto2'], polsi: 1, agio: .012 },
     panciotto: { cl: 3, fab: 'gessato', c2: '#9a9aa4', collo: 'v', fronte: 'bottoni', smanicato: 1, tasche: ['taschini'], orlo: 'punte', catenella: 1 },
@@ -584,7 +592,7 @@ var Sartoria = (function () {
     }
     if (/^manica/.test(kind)) {
       const s = kind.slice(-1), ua = tb.sNear(b['UpperArm' + s]), la = tb.sNear(b['LowerArm' + s]), wr = tb.sNear(b['Wrist' + s]);
-      let end = wr - .005; if (!P.has('avambracci')) end = ua + (la - ua) * (C.smaniche ? .55 : .5); if (!P.has('braccia') && !P.has('avambracci')) end = 0;
+      let end = wr - .005 + (C.cl <= 1 ? .012 : C.cl >= 4 ? -.012 : 0); if (!P.has('avambracci')) end = ua + (la - ua) * (C.smaniche ? .55 : .5); if (!P.has('braccia') && !P.has('avambracci')) end = 0;
       return { s0: 0, s1: end, ua, la, wr };
     }
     if (/^gamba/.test(kind)) {
@@ -597,10 +605,10 @@ var Sartoria = (function () {
 
   // il capo: tutte le pezze e le finiture in un'unica geometria a gruppi (materiali: 0 stoffa, 1 secondo colore, 2 metallo, 3 scuro, 4 pelle/cuoio, 5 bianco, 6 costine)
   function cut(B, C, parti, off, seedk) {
-    const key = [B.key, C.id, C.var || 0, parti.join(''), Object.keys(off).map(k => k + (off[k] * 1e4 | 0)).join()].join('|');
+    const key = [B.key, C.id, C.var || 0, C.coperto ? 1 : 0, C.infilata ? 1 : 0, C.stretti ? 1 : 0, parti.join(''), Object.keys(off).map(k => k + (off[k] * 1e4 | 0)).join()].join('|');
     let G = B.geos.get(key); if (G) return G;
     const bd = Builder(), P = new Set(parti);
-    const agio = C.agio || .002;
+    const agio = C.agio || { 0: .001, 1: .006, 2: .006, 3: .014, 4: .016, 5: .022, 6: .012 }[C.cl] || .004;
     const offAt = (part) => (off[part] || off.torso || .004) + agio;
     // ---------- TRONCO / GONNA ----------
     // i capi che scendono sotto l'inforcatura (giacche, cappotti) si misurano anche sulle gambe, come una gonna
@@ -609,7 +617,7 @@ var Sartoria = (function () {
     const wantTrunk = P.has('torso') || P.has('bacino') && (C.gonna || C.solo_gonna);
     let TR = null, Lt = null;
     if (wantTrunk || C.intera && P.has('torso')) {
-      const tb = tube(B, trunkKind); TR = tb; const Ls = lengths(B, tb, trunkKind, C, parti); Lt = Ls;
+      const BOX = { 0: 0, 1: .35, 2: .3, 3: .6, 4: .75, 5: .8, 6: .7 }, tb = boxTube(tube(B, trunkKind), C.box !== undefined ? C.box : (BOX[C.cl] || 0)); TR = tb; const Ls = lengths(B, tb, trunkKind, C, parti); Lt = Ls;
       const W = weightsFor(B, trunkKind), hipY = B.bones.Hips.y;
       const cols = 24, front = C.davanti, aRange = front ? [-1.75, 1.75] : [-Math.PI, Math.PI];
       // scollo: la cima di ogni colonna (in s) secondo il collo
@@ -639,7 +647,7 @@ var Sartoria = (function () {
         const p = surf(tb, s, a, o), out = p.clone().sub(fr.p);
         // ombre cotte: sotto le ascelle, dietro le ginocchia, nelle conche; orlo più scuro
         const c = 1 - .1 * cl(1 - (s - s0) / .03, 0, 1) - .07 * cl(1 - (s1 - s) / .02, 0, 1) - (y > B.waist && y < B.waist + .02 && !C.gonna ? .05 : 0);
-        const skirt = (C.gonna || C.poncho || longTop) && y < hipY ? cl((hipY - y) / .25, 0, 1) * (longTop && !C.gonna ? .85 : .3) : 0;
+        const skirt = (C.gonna || C.poncho || longTop) && y < hipY ? cl((hipY - y) / .25, 0, 1) * (longTop && !C.gonna ? .85 : C.cl >= 5 ? .6 : .3) : 0;
         return { p, out, u: (a - aRange[0]) / (Math.PI * 2) * ringC, v: s, c, skirt };
       }, W, 0);
       // risvolto interno dell'orlo (si vede lo spessore) e lo scollo
@@ -683,7 +691,7 @@ var Sartoria = (function () {
     // ---------- GAMBE ----------
     if (wantLegs && !(C.intera && !P.has('cosce') && !P.has('bacino'))) for (const s of ['L', 'R']) {
       const kind = 'gamba' + s, tb0 = tube(B, kind), Ls = lengths(B, tb0, kind, C, parti);
-      const tb = cutTube(tb0, (sv, a) => { const sK = Ls.kn, sH = Ls.sCr + .03; return sv < sH ? radius(tb0, sv, a) : sv < sK ? straight(tb0, sv, a, sH, sK, 1) : (sv > Ls.an - .1 ? straight(tb0, sv, a, sK, Ls.an, .82, false) : straight(tb0, sv, a, sK, Ls.an, .82)); });
+      const tb = cutTube(tb0, (sv, a) => { const sK = Ls.kn, sH = Ls.sCr + .03; return sv < sH ? radius(tb0, sv, a) : sv < sK ? straight(tb0, sv, a, sH, sK, C.stretti ? 1 : 1.06) : (sv > Ls.an - .1 ? straight(tb0, sv, a, sK, Ls.an, C.stretti ? .82 : 1.02, false) : straight(tb0, sv, a, sK, Ls.an, C.stretti ? .82 : 1.02)); });
       const W = limbW(B, kind, Ls), cols = 12, rows = Math.max(8, Math.round(Ls.s1 / .028) + 1), sg = s === 'L' ? 1 : -1;
       const ringC = (() => { let t = 0; for (let k = 0; k < 8; k++) t += radius(tb, Ls.s1 * .5, k / 8 * Math.PI * 2); return t / 8 * Math.PI * 2; })();
       const oL = sv => sv < Ls.sCr + .03 ? offAt('bacino') : sv < Ls.kn ? Math.max(offAt('cosce'), offAt('bacino') * .5) : Math.max(offAt('polpacci'), offAt('cosce') * .6);
@@ -921,7 +929,7 @@ var Sartoria = (function () {
   // ---------------- FINITURE DEL BACINO: cintura coi passanti, patta, tasche davanti e dietro ----------------
   function pelvisDetails(bd, B, tb, W, C, ob, sTop, bot, ringC) {
     const sW = tb.sAtY(B.waist + .012), sC = tb.sAtY(B.crotch + .01), sP = tb.sAtY(B.waist - .03);
-    if (C.cintura) {
+    if (C.cintura && !C.coperto) {
       const mi = /cuoio|jeans/.test(C.cintura) ? 4 : 0, h = C.cintura === 'cuoio_fine' ? .024 : .032, o2 = ob + .003;
       grid(bd, 3, 41, (i, j) => { const a = -Math.PI + j / 40 * Math.PI * 2, sv = sW + (i - 1) * h / 2, fr = frameAt(tb, sv), p = surf(tb, sv, a, o2 + (i === 1 ? .0015 : 0)); return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * ringC * 3, v: sv * 3, c: i === 1 ? 1 : .75 }; }, W, mi);
       const fr = frameAt(tb, sW), p = surf(tb, sW, 0, o2 + .004), n = p.clone().sub(fr.p).normalize(); box(bd, W, p, n, fr.t, .045, h + .01, .006, 2); box(bd, W, p.clone().addScaledVector(n, .004), n, fr.t, .03, h - .004, .004, 4);
@@ -948,9 +956,9 @@ var Sartoria = (function () {
     });
     if (C.banda) patch(bd, tb, W, (u) => outA + lerp(-.07, .07, u), (u, v) => lerp(.09, end - .01, v), (sv) => oL(sv), .0009, 1, { rows: 24, cols: 2, flat: 1, noEdge: 1 });
     if (C.cuciture) patch(bd, tb, W, (u) => outA + lerp(-.012, .012, u), (u, v) => lerp(.1, end - .02, v), (sv) => oL(sv), .0007, 1, { rows: 20, cols: 2, flat: 1, noEdge: 1 });
-    if (C.risvolto) grid(bd, 2, 19, (i, j) => { const a = -Math.PI + j / 18 * Math.PI * 2, sv = end - .035 + i * .035, fr = frameAt(tb, sv), p = surf(tb, sv, a, oL(sv) + .003); return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv, c: i ? .95 : .72 }; }, W, 0);
+    if (C.risvolto) grid(bd, 3, 19, (i, j) => { const a = -Math.PI + j / 18 * Math.PI * 2, sv = end - .045 + i * .0225, fr = frameAt(tb, sv), p = surf(tb, sv, a, oL(sv) + .006 + (i === 1 ? .002 : 0)); return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv, c: i === 0 ? .7 : i === 1 ? 1 : .9 }; }, W, 0);
     // l'orlo (spessore)
-    grid(bd, 2, 19, (i, j) => { const a = -Math.PI + j / 18 * Math.PI * 2, sv = end, fr = frameAt(tb, sv), p = surf(tb, sv, a, oL(sv) + (C.risvolto ? .003 : 0) - i * .004); return { p, out: fr.t.clone(), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv + i * .004, c: .6 }; }, W, 0);
+    grid(bd, 2, 19, (i, j) => { const a = -Math.PI + j / 18 * Math.PI * 2, sv = end, fr = frameAt(tb, sv), p = surf(tb, sv, a, oL(sv) + (C.risvolto ? .006 : 0) - i * .004); return { p, out: fr.t.clone(), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv + i * .004, c: .6 }; }, W, 0);
   }
 
   // =====================================================================================
@@ -1028,6 +1036,9 @@ var Sartoria = (function () {
       const vars = VARIANTI[c.id]; let vi = 0; if (vars && seedStr !== undefined && seedStr !== 'player') vi = (seed >>> (k * 3)) % vars.length;
       const C = Object.assign({ id: c.id }, base, vars ? vars[vi] : {}, { var: vi, seed: c.stampa !== undefined ? c.stampa : (seed >>> 5) });
       if (C.cl <= 1 && !C.gonna && !C.intera && ranked.some(o => o.c !== c && CUT[o.c.id] && CUT[o.c.id].cl === 2)) C.infilata = 1;   // camicie e magliette dentro i pantaloni
+      // la vita coperta da un capo sopra (maglione, giacca chiusa, cappotto): niente cintura che sbuca
+      if (C.cl === 2 && ranked.slice(k + 1).some(o => (CUT[o.c.id] || {}).gonna)) C.stretti = 1;   // sotto un cappotto lungo i pantaloni stanno dritti e stretti (non bucano la falda)
+      if (C.cl === 2) C.coperto = ranked.slice(k + 1).some(o => { const C2 = CUT[o.c.id] || {}; return (C2.cl >= 3) && (o.c.parti || []).includes('torso') && !C2.corto && !C2.davanti; });
       if (c.pat === 'righe_v' && !base.fab) C.fab = 'righe_v';
       // spessore: cresce con quello che sta sotto, nelle parti che copre
       const parti = c.parti.filter(p => p !== 'piedi' && p !== 'mani');

@@ -93,7 +93,7 @@ var Vesti3D = (function () {
     meshes.forEach(src => {
       const A = analyze(src); if (!A) return;
       rel.multiplyMatrices(gi, src.matrixWorld); const v = new THREE.Vector3();
-      const th = {}; const L = LL.map(c => { const set = new Set(c.parti.filter(p => p === 'piedi' || p === 'mani' || p === 'polpacci' && /stivali/.test(c.id))); let base = 0; set.forEach(p => { base = Math.max(base, th[p] || 0); }); const t = base + .002 + c.sp * .2; set.forEach(p => { th[p] = t; }); return { c, set, off: t / unit }; });
+      const th = {}; const L = LL.map(c => { const set = new Set(c.parti.filter(p => p === 'piedi' || p === 'mani' || p === 'polpacci' && /stivali/.test(c.id))); let base = 0; set.forEach(p => { base = Math.max(base, th[p] || 0); }); const shoe = SHOE[c.id] && SHOE[c.id][1] !== null && set.has('piedi'), t = base + (shoe ? .007 + c.sp * .35 : .002 + c.sp * .2); set.forEach(p => { th[p] = t; }); return { c, set, off: t / unit }; });   // scarpe grosse, come nei riferimenti
       const per = L.map(() => ({ P: [], N: [], U: [], CO: [], SI: [], SW: [] }));
       const cpos = new Float32Array(A.pos.count * 3); for (let i = 0; i < A.pos.count; i++) { v.fromBufferAttribute(A.pos, i).applyMatrix4(rel); v.toArray(cpos, i * 3); }
       for (let t = 0; t < A.idx.length; t += 3) {
@@ -108,7 +108,7 @@ var Vesti3D = (function () {
           // uv in metri: proiezione sul piano più di fronte alla normale
           const ax = Math.abs(A.sm[w * 3]), ay = Math.abs(A.sm[w * 3 + 1]), az = Math.abs(A.sm[w * 3 + 2]); o.U.push(ax > az ? cz : cx, ay > Math.max(ax, az) ? cz + cx : cy);
           let c = 1;
-          if (A.part[w] === 'piedi' && sh && sh[1] !== null && !/calzini/.test(G0.c.id)) { if (cy < .022) c = .32; else if (cy < .032) c = .7; }   // la suola, il bordo della tomaia
+          if (A.part[w] === 'piedi' && sh && sh[1] !== null && !/calzini/.test(G0.c.id)) { if (cy < .03) c = .3; else if (cy < .042) c = .62; }   // la suola, il bordo della tomaia
           if (!G0.set.has(A.part[w])) c *= .78;   // l'orlo
           o.CO.push(c, c, c);
           for (let q = 0; q < 4; q++) { o.SI.push(comp(A.si, w, q)); o.SW.push(comp(A.sw, w, q)); }
@@ -189,7 +189,7 @@ var Vesti3D = (function () {
         const p = cr.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); if (y > H * .55 && z > 0) { const q = (y - H * .55) / (H * .6); p.setX(i, x * (1 - .16 * q * Math.min(1, z / r * 1.5))); } if (y > H * .9) p.setY(i, y - .012 * Math.max(0, 1 - Math.abs(x) / (r * .3))); }
         p.needsUpdate = true; cr.geometry.computeVertexNormals(); cr.scale.set(1, 1, 1.08);
         const band = lathe([[r + .009, -.004], [r + .009, .024]], FM('raso', '#16121a'), 28); band.scale.set(1, 1, 1.08);
-        const bm = brim(r + .004, r + .07, (a, t) => { const ca = Math.cos(a); return -.004 + t * (ca > 0 ? -.012 * ca : .018 * -ca) + t * t * .012 * Math.pow(Math.sin(a), 2); }, mt, 40); bm.scale.set(1, 1, 1.08);
+        const bm = brim(r + .004, r + .1, (a, t) => { const ca = Math.cos(a); return -.004 + t * (ca > 0 ? -.012 * ca : .018 * -ca) + t * t * .012 * Math.pow(Math.sin(a), 2); }, mt, 40); bm.scale.set(1, 1, 1.08);
         h.add(cr, band, bm); break; }
       case 'ushanka': {   // colbacco: cupola di pelo, fascia, paraorecchie, la falda davanti alzata
         const fm = FM('pelo', c), dome = lathe([[r + .02, -.01], [r + .022, .04], [r * .96, H * .8], [r * .6, H + .02], [0, H + .035]], FM('scamosciato', sh(c, .8)));
@@ -240,7 +240,14 @@ var Vesti3D = (function () {
       const badge = Cy(.014, .014, .004, '#c8a040', 0, .045, r + .012, 8); badge.rotation.x = Math.PI / 2; h.add(cr, band, v, badge); return h; }
     if (kind === 'paglia') {   // cappello di paglia: corona, nastro, tesa larga e morbida
       const mt = FM('tela', '#d8c08a', '#b89a5a', '#e8d8a8'), cr = lathe([[r + .006, -.004], [r + .004, .05], [r * .85, H * .95], [0, H + .01]], mt, 28);
-      const band = lathe([[r + .009, -.002], [r + .009, .022]], lm(c), 28), bm = brim(r + .004, r + .12, (a, t) => -.006 - t * t * .03 * (1 + .4 * Math.sin(a * 3)), mt, 40); h.add(cr, band, bm); return h; }
+      const band = lathe([[r + .009, -.002], [r + .009, .022]], lm(c), 28), bm = brim(r + .004, r + .17, (a, t) => -.006 - t * t * .04 * (1 + .4 * Math.sin(a * 3)), mt, 40); h.add(cr, band, bm); return h; }
+    if (kind === 'cowboy') {   // cappello da cowboy: corona alta con la piega a goccia, tesa larga arricciata ai lati, nastro con la borchia
+      const mt = FM('feltro', c), cr = lathe([[r + .006, -.004], [r + .006, .06], [r * .95, H + .02], [r * .75, H + .05], [r * .3, H + .035], [0, H + .03]], mt, 28);
+      const p = cr.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); if (y > H * .6) { const q = (y - H * .6) / (H * .5); p.setX(i, x * (1 - .18 * q * Math.max(0, z / r))); p.setY(i, y - .02 * Math.max(0, 1 - Math.abs(x) / (r * .25)) * q); } }
+      p.needsUpdate = true; cr.geometry.computeVertexNormals(); cr.scale.set(1, 1, 1.12);
+      const bm = brim(r + .004, r + .11, (a, t) => { const sd = Math.pow(Math.sin(a), 2); return -.006 + t * t * .06 * sd - t * .012 * Math.max(0, Math.cos(a)); }, mt, 40); bm.scale.set(1, 1, 1.12);
+      const band = lathe([[r + .009, -.003], [r + .009, .02]], FM('pelle', '#3a2216'), 28); band.scale.set(1, 1, 1.12);
+      const stud = Cy(.012, .012, .004, '#d8d0c0', r * .95, .008, 0, 10); stud.rotation.z = Math.PI / 2; h.add(cr, bm, band, stud); return h; }
     if (kind === 'hard') {   // casco da cantiere: calotta con la costola, tesa
       const mt = FM('gomma', '#e8b83a', '#e8b83a', '#e8b83a', 1), d = lathe([[r + .03, -.005], [r + .025, H * .5], [r * .7, H * .95], [0, H + .03]], mt, 28), bm = brim(r + .022, r + .05, (a, t) => -.005 - t * .01 * (Math.cos(a) > 0 ? 1 : .2), mt, 28);
       const rib = M_(new THREE.TorusGeometry(r * .78, .01, 5, 20, Math.PI), mt); rib.rotation.y = Math.PI / 2; rib.position.y = H * .18; rib.scale.set(1, 1.15, 1.1); h.add(d, bm, rib); return h; }
@@ -258,8 +265,8 @@ var Vesti3D = (function () {
     let kh = 0;
     outfit.forEach(c => {
       if (!c.acc) return;
-      const isHat = /^(beanie|flat|fedora|scarf|ushanka|casco|elmetto|passamontagna|antigas|cap|basco|fascia|police|paglia|hard)$/.test(c.acc);
-      if (isHat && T) { const o = /^(cap|basco|fascia|police|paglia|hard)$/.test(c.acc) ? headAcc2(c.acc, c.col, T, kh) : headAcc(c.acc, c.col, T, kh); kh++; o.position.set(T.cx, T.brow, T.cz); AT('Head', o); return; }
+      const isHat = /^(beanie|flat|fedora|scarf|ushanka|casco|elmetto|passamontagna|antigas|cap|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc);
+      if (isHat && T) { const o = /^(cap|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc) ? headAcc2(c.acc, c.col, T, kh) : headAcc(c.acc, c.col, T, kh); kh++; o.position.set(T.cx, T.brow, T.cz); AT('Head', o); return; }
       if (c.acc === 'occhiali' && T) {   // occhiali a goccia: lenti scure, montatura dorata, stanghette fino alle orecchie
         const o = new THREE.Group(), y = T.eyeY - T.brow, z = T.eyeZ - T.cz + .014, lens = sx => { const L = new THREE.Mesh(new THREE.CircleGeometry(.026, 16), new THREE.MeshLambertMaterial({ color: '#0e1012', emissive: '#1a1e24', side: THREE.DoubleSide })); L.scale.set(1.1, .95, 1); L.position.set(sx, y - .004, z); L.rotation.y = sx > 0 ? .12 : -.12; return L; };
         const fr = sx => { const f = new THREE.Mesh(new THREE.TorusGeometry(.027, .0025, 4, 18), lm('#c8a860')); f.scale.set(1.1, .95, 1); f.position.set(sx, y - .004, z + .001); f.rotation.y = sx > 0 ? .12 : -.12; return f; };
