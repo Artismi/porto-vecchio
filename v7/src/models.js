@@ -207,6 +207,7 @@ var Models = (function () {
   }
   const B = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lm(c)); m.position.set(x || 0, y || 0, z || 0); return m; };
   const C = (rt, rb, h, c, x, y, z, seg) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg || 12), lm(c)); m.position.set(x || 0, y || 0, z || 0); return m; };
+  const tagC = o => { if (o && o.userData) o.userData.corredo = o.userData.corredo || true; return o; };   // [vestiti] il corredo a scatole: Vesti3D lo sostituisce coi capi veri
   function dressUp(g, m, look, who, file) {
     if (who === 'player') return;
     const r = H3((look && (look.top || '') + (look.skin || '') + (look.hair || '')) || String(Math.random()));
@@ -236,20 +237,20 @@ var Models = (function () {
       case 'sunhat': hat.add(C(.12, .13, .09, '#e8d8b0', 0, 0, 0, 14), C(.25, .25, .015, '#e8d8b0', 0, -.04, 0, 16), C(.131, .131, .03, hc, 0, -.025, 0, 14)); break;
       case 'hard': hat.add(C(.13, .145, .1, '#f2c14e', 0, 0, 0, 12), C(.17, .17, .015, '#f2c14e', 0, -.045, .02, 14)); break;
     }
-    if (hat.children.length) pin(g, head, hat, hp.x, top - .02, fz);
+    if (hat.children.length) tagC(pin(g, head, hat, hp.x, top - .02, fz));
     const ex = (L.extra || '').split(',');
-    if (ex.includes('shades') || ex.includes('glasses')) { const gl = new THREE.Group(); const c = ex.includes('shades') ? '#08080c' : '#2a2a2a'; gl.add(B(.075, .04, .015, c, -.045, 0, 0), B(.075, .04, .015, c, .045, 0, 0), B(.19, .012, .012, c, 0, .015, 0)); pin(g, head, gl, hp.x, hp.y + .085, fz + .125); }
-    if (ex.includes('moustache')) pin(g, head, B(.09, .022, .02, L.hair || '#2a1a12'), hp.x, hp.y + .005, fz + .135);
+    if (ex.includes('shades') || ex.includes('glasses')) { const gl = new THREE.Group(); const c = ex.includes('shades') ? '#08080c' : '#2a2a2a'; gl.add(B(.075, .04, .015, c, -.045, 0, 0), B(.075, .04, .015, c, .045, 0, 0), B(.19, .012, .012, c, 0, .015, 0)); tagC(pin(g, head, gl, hp.x, hp.y + .085, fz + .125)); }
+    if (ex.includes('moustache')) (tagC(pin(g, head, B(.09, .022, .02, L.hair || '#2a1a12'), hp.x, hp.y + .005, fz + .135)).userData.corredo = 'baffi');
     if (chest) {
       const cp = new THREE.Vector3(); chest.getWorldPosition(cp);
-      if (ex.includes('backpack')) { const bp = new THREE.Group(); bp.add(B(.3, .36, .14, ['#2f5a6a', '#8a3a2a', '#3a4a2a', '#c8862a'][Math.floor(r() * 4)]), B(.24, .1, .03, '#1a1a1a', 0, .08, -.08)); pin(g, chest, bp, cp.x, cp.y + .05, cp.z - .2); }
-      if (ex.includes('apron')) pin(g, chest, B(.3, .5, .02, '#f4f1ea'), cp.x, cp.y - .25, cp.z + .13);
-      if (ex.includes('collar')) pin(g, chest, B(.06, .04, .02, '#f4f4f4'), cp.x, cp.y + .2, cp.z + .12);
-      if (ex.includes('gold')) pin(g, chest, B(.1, .015, .015, '#e8c040'), cp.x, cp.y + .15, cp.z + .13);
-      if (ex.includes('belt')) pin(g, chest, B(.36, .05, .26, '#e8e8e8'), cp.x, cp.y - .38, cp.z);
-      if (ex.includes('shawl')) pin(g, chest, B(.42, .16, .28, '#8a6aa0'), cp.x, cp.y + .14, cp.z);
+      if (ex.includes('backpack')) { const bp = new THREE.Group(); bp.add(B(.3, .36, .14, ['#2f5a6a', '#8a3a2a', '#3a4a2a', '#c8862a'][Math.floor(r() * 4)]), B(.24, .1, .03, '#1a1a1a', 0, .08, -.08)); tagC(pin(g, chest, bp, cp.x, cp.y + .05, cp.z - .2)); }
+      if (ex.includes('apron')) tagC(pin(g, chest, B(.3, .5, .02, '#f4f1ea'), cp.x, cp.y - .25, cp.z + .13));
+      if (ex.includes('collar')) tagC(pin(g, chest, B(.06, .04, .02, '#f4f4f4'), cp.x, cp.y + .2, cp.z + .12));
+      if (ex.includes('gold')) tagC(pin(g, chest, B(.1, .015, .015, '#e8c040'), cp.x, cp.y + .15, cp.z + .13));
+      if (ex.includes('belt')) tagC(pin(g, chest, B(.36, .05, .26, '#e8e8e8'), cp.x, cp.y - .38, cp.z));
+      if (ex.includes('shawl')) tagC(pin(g, chest, B(.42, .16, .28, '#8a6aa0'), cp.x, cp.y + .14, cp.z));
     }
-    if (handL && (ex.includes('bag') || ex.includes('paper'))) { const hp2 = new THREE.Vector3(); handL.getWorldPosition(hp2); const bag = ex.includes('bag') ? B(.22, .26, .1, ['#c43c52', '#e8d8b0', '#2a3b66', '#f4f1ea'][Math.floor(r() * 4)]) : B(.04, .3, .2, '#e8e2d0'); pin(g, handL, bag, hp2.x, hp2.y - .18, hp2.z); g.userData.carryBag = bag; }
+    if (handL && (ex.includes('bag') || ex.includes('paper'))) { const hp2 = new THREE.Vector3(); handL.getWorldPosition(hp2); const bag = ex.includes('bag') ? B(.22, .26, .1, ['#c43c52', '#e8d8b0', '#2a3b66', '#f4f1ea'][Math.floor(r() * 4)]) : B(.04, .3, .2, '#e8e2d0'); tagC(pin(g, handL, bag, hp2.x, hp2.y - .18, hp2.z)); g.userData.carryBag = bag; }
   }
   function play(g, name, once) {
     const u = g.userData, a = u.acts[name] || u.acts.Idle; if (!a || u.cur === a) return;
