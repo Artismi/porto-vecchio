@@ -32,3 +32,18 @@
 ## Prove
 - `node test_sottosuolo.js`, `node test_cantiere.js`, `node test_livelli.js`: passano.
 - Da guardare su schermo vero: le luci sotto terra con la GPU, la metro in corsa, le case della banda.
+
+## Terza passata (7 ottobre): scavo a clic, il campo survival, il campo rivoluzionario
+### Scavare
+- **Punta e clicca**: sotto terra un clic nella terra e il personaggio ci va scavando (A* su caselle: scavato 1, terra 3, roccia 6, acqua no; passa dalle gallerie che ci sono). Riquadri tratteggiati sulle caselle ancora da scavare. WASD o un altro clic fermano. `Livelli.digTo / routeTarget`, click `kind: 'scava'` in main.js.
+- La profondità si fa **sul posto**: **J** giù, **K** su (1,6 m). Maiusc+J / Maiusc+K: il gradino in avanti.
+### Il campo (cantiere, Y)
+- Si pianta **dove vuoi** (fuori città): «Pianta qui il campo», raggio 22 m, picchetti col nastro quando costruisci. **Sotto terra** è tutto un campo solo («il sotto»): stanze, baule e corrente sue.
+- **Terreno a pennello**: *Sgombra e spiana* (alberi giù, cespugli via, ceppi cavati, terra battuta alla quota da cui parti a trascinare), *Livella*, *Sentiero* (vicoli di terra battuta), più disbosca/cava/sterra. Con la banda diventano lavori segnati.
+- **Orto e alberi**: zappa, semina (patate, pomodori, cipolle, orzo: si usa il raccolto stesso come seme), annaffia (secchio, tanica o la cisterna del campo; bagna 3×3 per un giorno), cresce in 4 fasi solo se bagnato (la goccia azzurra = ha sete, la stella = maturo), raccogli. L'alberello diventa un albero vero in due giorni.
+- **Baracche** (una per una diverse, un po' storte: colori, toppe, veranda, finestre a sportello): bohío col tetto di palma, baracca di lamiere colorate, palafitta, capanna tonda, casa del comando (bandiera, antenna, cartello), infermeria da campo, ramada della cucina, torretta di bambù, latrina, cisterna, amaca, panni stesi, striscione, fuoco del campo.
+- **Pezzi** che si uniscono da soli coi vicini: muri (assi, lamiera, mattoni, pietra), finestre, porte, muretti, recinti, cancelli; **tetti** a caselle (coppi, lamiera) che si aprono quando ci sei sotto; pavimenti.
+- **Corrente**: pannelli solari (+2 di giorno), pala eolica (+2), generatore (+5, beve benzina dal baule ogni 6 ore), banco di batterie, quadro. Consumano lampioni, fari, radio, tv, officina. Senza corrente le luci si spengono. Nella barra: «Corrente: fa X, usa Y · batterie».
+- **Sotto terra, scavi da edificio**: cantina, stanza, sala grande, bunker di cemento: si piazzano come progetto accanto a un cunicolo, si aprono a poco a poco (tu con la pala vicino, la banda). Poi si arredano come fuori.
+- **Gesti come lo Studio** (ramo charming-gates): trascina per posare in fila; prendi una cosa posata e trascinala; R gira (Maiusc al contrario); Canc toglie; Ctrl+D posa un altro uguale; Ctrl+Z annulla.
+- Prove: `node test_cantiere.js` (orto, corrente, annulla, stanza sotto terra), `node test_sottosuolo.js` (scavo a clic, J/K).

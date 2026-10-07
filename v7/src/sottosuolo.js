@@ -491,7 +491,12 @@ var Sottosuolo = (function () {
     }
     const job = L && L.job, show = under && p.lv.ride === undefined && L && !p.vehicle;
     DIG.ghost.visible = false;
-    if (show) {
+    // il tracciato dello scavo a clic: un riquadro tratteggiato su ogni casella ancora da scavare
+    if (!DIG.route) { DIG.route = []; const eg = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.8, 2.3, 1.8)); for (let k = 0; k < 40; k++) { const m = new THREE.LineSegments(eg, new THREE.LineDashedMaterial({ color: '#ffd060', dashSize: .25, gapSize: .18, transparent: true, opacity: .75 })); m.computeLineDistances(); m.userData.ugKeep = true; m.visible = false; scene.add(m); DIG.route.push(m); } }
+    const RT = show && L.route ? L.route.tiles.filter(([tx, ty]) => !L.ug[idx(tx, ty)]) : [];
+    let fR = L && L.route ? (L.fl[idx(...L.route.from)] || 0) : 0; if (L && L.route) { const pf = LV.heightOf(st, p); if (pf != null) fR = pf; }
+    DIG.route.forEach((m, k) => { const q = RT[k]; m.visible = !!q && k > 0; if (q) { m.position.set(cen(q[0]), fR + 1.15, cen(q[1])); m.material.opacity = .35 + .4 * Math.max(0, Math.sin(t * 4 - k * .5)); } });
+    if (show && (!L.route || RT.length)) {
       const [dx, dy] = LV.dirOf(p.face), [tx, ty] = ti(p.x, p.y), nx = tx + dx, ny = ty + dy;
       if (inb(nx, ny) && !L.ug[idx(nx, ny)] && L.ug[idx(tx, ty)]) {
         const f = L.fl[idx(tx, ty)] + (job && job.what === 'scendi' ? -1.3 : job && job.what === 'sali' ? 1.3 : 0);

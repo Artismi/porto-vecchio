@@ -47,5 +47,44 @@ r = CN.autoUp(st, 'ripara', CN.S(st).obj.find(o => o.id === 'officina_auto').uid
 crew.forEach(n => Risacca.leave(st, n));
 let cs = null; for (let r0 = 4; r0 < 18 && !cs; r0 += 2) for (let a = 0; a < 16 && !cs; a++) { const x = p.x + Math.cos(a / 16 * 6.283) * r0, y = p.y + Math.sin(a / 16 * 6.283) * r0; if (!CN.canPlace(st, CN.BY.capanno, x, y, 0)) cs = [x, y]; }
 r = CN.place(st, CN.BY.capanno, cs[0], cs[1], 0); ok(r.ok && !r.o.wip, 'senza banda il capanno è subito fatto: ' + r.msg);
+// 5) [survival] l'orto: zappa, semina, annaffia, aspetta, raccogli; l'alberello diventa albero
+{
+  Object.assign(bag, { zappa: 1, secchio: 1, patate: 2, legna: 3 });
+  let ox = null; for (let r0 = 2; r0 < 16 && !ox; r0 += 2) for (let a = 0; a < 16 && !ox; a++) { const x = p.x + Math.cos(a / 16 * 6.283) * r0, y = p.y + Math.sin(a / 16 * 6.283) * r0, [tx, ty] = [Math.floor(x / TS), Math.floor(y / TS)]; if (!CN.cropCheck(st, CN.BY.ara, tx, ty) && !CN.cropCheck(st, CN.BY.ara, tx + 1, ty)) ox = [tx, ty]; }
+  Object.assign(bag, { zappa: 1, secchio: 1, patate: 2, legna: 3 });
+  let r = CN.cropDo(st, CN.BY.ara, ...ox); ok(r.ok, 'zappa: ' + r.msg);
+  r = CN.cropDo(st, CN.BY.semina_patate, ...ox); ok(r.ok, 'semina: ' + r.msg);
+  r = CN.cropDo(st, CN.BY.raccogli, ...ox); ok(!r.ok, 'non ancora: ' + r.msg);
+  const c = CN.S(st).crops[ox.join(',')]; CN.cropsStep(st); st.t += 600; CN.cropsStep(st); st.t += 600; CN.cropsStep(st); ok(c.stage === 0, 'senz\'acqua non cresce (fase ' + c.stage + ')');
+  r = CN.cropDo(st, CN.BY.innaffia, ...ox); ok(r.ok, 'annaffia: ' + r.msg);
+  for (let k = 0; k < 2; k++) { st.t += 1200; CN.cropsStep(st); CN.cropDo(st, CN.BY.innaffia, ...ox); } ok(c.stage === 4, 'cresciute (fase ' + c.stage + ')');
+  const p0 = Oggetti.inv(st).patate || 0; r = CN.cropDo(st, CN.BY.raccogli, ...ox); ok(r.ok, 'raccolto: ' + r.msg);
+  r = CN.cropDo(st, CN.BY.albero, ox[0] + 1, ox[1]); ok(r.ok, 'alberello: ' + r.msg); for (let k = 0; k < 8; k++) { st.t += 600; CN.cropsStep(st); } ok(G.tileAt(ox[0] + 1, ox[1]) === G.T.TREE, 'è diventato un albero');
+}
+let rb = null;
+// 6) [survival] la corrente: pannello di giorno, niente di notte; il lampione si accende solo con la corrente
+{
+  const C0 = CN.covoAt(st, p.x, p.y); Object.assign(bag, { vetro: 4, cavo: 10, lampadine: 3, batteria_auto: 6, motore_el: 2 });
+  const spot = b0 => { for (let r0 = 4; r0 < 20; r0 += 1) for (let a = 0; a < 24; a++) { const x = p.x + Math.cos(a / 24 * 6.283) * r0, y = p.y + Math.sin(a / 24 * 6.283) * r0; if (!CN.canPlace(st, b0, x, y, 0)) return [x, y]; } };
+  ok(CN.place(st, CN.BY.pannello_solare, ...spot(CN.BY.pannello_solare), 0).ok, 'pannello solare posato');
+  ok(CN.place(st, CN.BY.pala_eolica, ...spot(CN.BY.pala_eolica), 0).ok, 'pala eolica posata');
+  ok(CN.place(st, CN.BY.lampione, ...spot(CN.BY.lampione), 0).ok, 'lampione posato');
+  rb = CN.place(st, CN.BY.batterie, ...spot(CN.BY.batterie), 0); ok(rb.ok, 'batterie posate: ' + rb.msg);
+  st.t = Math.floor(st.t / 1440) * 1440 + 12 * 60; let P = CN.power(st, C0); ok(P.make === 4 && P.on, `mezzogiorno: fa ${P.make}, usa ${P.use}`);
+  CN.S(st).powT = st.t; st.t += 300; CN.powerStep(st); P = CN.power(st, C0); ok(P.stored > 0, 'le batterie si caricano: ' + P.stored.toFixed(1));
+  st.t = Math.floor(st.t / 1440) * 1440 + 23 * 60; P = CN.power(st, C0); ok(P.make === 2 && P.on, `di notte solo la pala (${P.make} contro ${P.use}): il resto dalle batterie`);
+}
+// 7) [survival] annulla: l'ultima cosa posata torna in tasca intera
+{ CN.state.undo = [{ k: 'posa', uid: rb.o.uid }]; const r = CN.undoLast(st); ok(r.ok && (bag.batteria_auto || 0) >= 3, 'annulla: ' + r.msg); }
+// 8) [survival] sotto terra, come fuori ma con le stanze: lo scavo da edificio si apre, poi ci si arreda
+{
+  const L = Livelli.S(st); let T0 = L.portals.find(P => P.kind === 'tombino'); p.lv = { k: 'ug' }; p.x = (T0.u[0] + .5) * TS; p.y = (T0.u[1] + .5) * TS; Object.assign(bag, { pala: 1, travi: 20, assi: 20 });
+  let at = null; for (let r0 = 4; r0 < 12 && !at; r0 += 2) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = p.x + dx * r0, y = p.y + dy * r0; if (!CN.canDig(st, CN.BY.scavo_stanza, x, y, 0)) { at = [x, y]; break; } }
+  ok(!!at, 'c\'è posto per una stanza accanto alla fogna'); let r = CN.placeDig(st, CN.BY.scavo_stanza, ...at, 0); ok(r.ok, 'stanza tracciata: ' + r.msg);
+  for (let k = 0; k < 400 && !CN.S(st).digs[0].done; k++) G.step(st, .1, { x: 0, y: 0 });
+  ok(CN.S(st).digs[0].done, `stanza scavata (${CN.S(st).digs[0].i} caselle)`);
+  p.x = at[0]; p.y = at[1]; r = CN.place(st, CN.BY.branda, at[0], at[1], 0); ok(r.ok && r.o.lv === 'ug', 'branda nella stanza sotto terra: ' + r.msg);
+  r = CN.place(st, CN.BY.banco_lavoro, at[0] + 1.5, at[1], 0); ok(r.ok, 'banco da lavoro sotto terra: ' + r.msg);
+}
 console.log(fail ? `\n${fail} prove fallite` : '\nTutto bene.');
 process.exitCode = fail ? 1 : 0;

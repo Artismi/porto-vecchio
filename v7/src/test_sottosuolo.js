@@ -62,3 +62,15 @@ const a = SS.trackAt(0, .5), c = SS.trackAt(1, .5), a0 = SS.trackAt(0, 0), c0 = 
 ok(Math.abs(a.h - c.h) > 7 && Math.abs(a0.h - c0.h) < .01, `mezza elica: a metà ${a.h.toFixed(1)} sopra ${c.h.toFixed(1)}, ai capi alla stessa quota`);
 console.log(fail ? `\n${fail} prove fallite` : '\nTutto bene.');
 process.exitCode = fail ? 1 : 0;
+// 11) scavare a clic: dal fondo di una fogna verso un punto nella terra, il personaggio ci arriva scavando
+{
+  const L2 = LV.S(st); let P0 = null, dir = null; for (const Q of L2.portals) { if (Q.kind !== 'tombino') continue; const d = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([a, b]) => [1, 2, 3, 4, 5].every(k => !L2.ug[(Q.u[1] + b * k) * G.GW + Q.u[0] + a * k] && G.tileAt(Q.u[0] + a * k, Q.u[1] + b * k) !== G.T.WATER)); if (d) { P0 = Q; dir = d; break; } }
+  p.indoor = null; p.lv = { k: 'ug' }; p.x = (P0.u[0] + .5) * TS; p.y = (P0.u[1] + .5) * TS; const bag = Oggetti.inv(st); bag.pala = 1; bag.piccone = 1;
+  const gx = (P0.u[0] + dir[0] * 5 + .5) * TS, gy = (P0.u[1] + dir[1] * 5 + .5) * TS, r = LV.digTo(st, gx, gy); ok(r && r.ok, 'scavo a clic: ' + (r && r.msg));
+  for (let k = 0; k < 120 * 10 && L2.route; k++) { const T0 = LV.routeTarget(st); let inp = { x: 0, y: 0 }; if (T0 && !T0.wait) { const a = Math.atan2(T0.y - p.y, T0.x - p.x); inp = { x: Math.cos(a), y: Math.sin(a), aim: a }; } else if (T0) inp = { x: 0, y: 0, aim: T0.aim }; G.step(st, 1 / 10, inp); }
+  ok(Math.hypot(p.x - gx, p.y - gy) < 1.5, `arrivato scavando: (${p.x.toFixed(1)},${p.y.toFixed(1)}) → (${gx},${gy})`);
+  const f0 = LV.heightOf(st, p); LV.key(st, 'j'); for (let k = 0; k < 150; k++) G.step(st, 1 / 10, { x: 0, y: 0 }); ok(LV.heightOf(st, p) < f0 - 1.1, `J: giù sul posto ${f0.toFixed(1)} → ${LV.heightOf(st, p).toFixed(1)}`);
+  LV.key(st, 'k'); for (let k = 0; k < 150; k++) G.step(st, 1 / 10, { x: 0, y: 0 }); ok(Math.abs(LV.heightOf(st, p) - f0) < .2, `K: su sul posto → ${LV.heightOf(st, p).toFixed(1)}`);
+}
+console.log(fail ? `\n${fail} prove fallite (dopo lo scavo a clic)` : 'Scavo a clic: bene.');
+process.exitCode = fail ? 1 : 0;
