@@ -60,7 +60,9 @@
     if (e.button === 2) { mouse.down = true; mouse.pressed = true; return; }
     if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
     if (e.button === 0) { mouse.nx = nx; mouse.ny = ny; onClick(nx, ny, e.detail >= 2); } });
-  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; if (e.button === 0 && ui.spray) sprayEnd(); });
+  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; if (window.Cantiere && Cantiere.up) Cantiere.up(); if (e.button === 0 && ui.spray) sprayEnd(); });
+  // [cantiere] tenendo premuto il sinistro e trascinando si posa una fila (muri, recinti, solchi dell'orto…)
+  cv.addEventListener('pointermove', e => { if (!(e.buttons & 1) || !window.Cantiere || !Cantiere.active() || !Cantiere.drag) return; const r = cv.getBoundingClientRect(); Cantiere.drag((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height); });
   // [graffiti] la bomboletta: il pennello dello Studio con la misura bloccata da bomboletta. Si impugna dalle Tasche;
   // in mano, il tasto sinistro spruzza sulla superficie sotto il puntatore, a portata di braccio (se è più in là ci si
   // avvicina camminando e poi si spruzza), la rotella cambia colore
@@ -100,7 +102,7 @@
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.'].includes(k)) { keys[k] = true; e.preventDefault(); }
     // [monte] O: visuale dall'alto; H scava, J in discesa, K in salita, N stanza, V sali/scendi (botole e pozzi)
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
-    if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k); if (m) { toast(m); e.preventDefault(); return; } }
+    if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
     if (e.repeat) return;
     if (k === 'e') doAct('scippo'); else if (k === 'f') doAct('veicolo'); else if (k === 't') openTalk();
     else if (k === 'r') G.reload(st);
@@ -140,7 +142,7 @@
     if (keys.w || keys.arrowup) f += 1; if (keys.s || keys.arrowdown) f -= 1;
     if (keys.d || keys.arrowright) s += 1; if (keys.a || keys.arrowleft) s -= 1;
     const a = aimAngle();
-    if (f || s) { if (click.t) { click.t = null; ui.mark = null; } }
+    if (f || s) { if (click.t) { click.t = null; ui.mark = null; } if (st.lv && st.lv.route) st.lv.route = null; }   // [sottosuolo] i tasti fermano anche lo scavo a clic
     else { const ci = clickInput(sprint); if (ci) return ci; if (ring.n && !st.player.vehicle) { const n = G.byId(st, ring.n); if (n) return { x: 0, y: 0, sprint, aim: Math.atan2(n.y - st.player.y, n.x - st.player.x) }; } }
     if (st.player.vehicle) {
       // alla guida: W gas, S freno e retromarcia, A/D sterzo, spazio freno a mano, shift spinta. Il mouse mira (destro spara)
@@ -182,6 +184,7 @@
     });
     if (best) return best;
     if (window.Bottino) { const L = Bottino.pick(st, nx, ny, o); if (L) return L; }
+    if (window.Sottosuolo) { const C = Sottosuolo.pick(st, nx, ny, o); if (C) return C; }   // [sottosuolo] la gente di sotto, le casse, il treno
     if (window.Cantiere) { const C = Cantiere.pick(st, nx, ny, o); if (C) return C; }   // [cantiere] le postazioni del covo   // [bottino] la roba da frugare è un oggetto in scena
     const g = R.screenToGround(nx, ny); if (!g) return null;
     for (const v of st.vehicles) {
@@ -197,6 +200,7 @@
   // se il punto cliccato è dentro un edificio o in acqua, prende la casella libera più vicina (verso il giocatore)
   function freeSpot(x, y) {
     if (st.player.indoor && G.INT.nearFree) { const p0 = st.player, L0 = G.INT.layout(G.BUILDINGS[p0.indoor.b]); return G.INT.nearFree(L0, p0.indoor.f, x, y) || { x: p0.x, y: p0.y }; }   // [interni] dentro si clicca sul pavimento
+    if (st.player.lv && window.Sottosuolo) return Sottosuolo.freeSpot(st, x, y);   // [sottosuolo] sotto terra si clicca sul cunicolo
     if (G.walkM(x, y)) return { x, y }; const p = st.player; let best = null, bd = 1e9;
     for (let r = 1; r <= 4 && !best; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) {
       const cx = (Math.floor(x / G.TS) + i) * G.TS + G.TS / 2, cy = (Math.floor(y / G.TS) + j) * G.TS + G.TS / 2; if (!G.walkM(cx, cy)) continue;
@@ -205,18 +209,21 @@
     return best || { x, y };
   }
   function goalPath(x, y) { const p = st.player; if (p.indoor && G.INT.findPath) { const L0 = G.INT.layout(G.BUILDINGS[p.indoor.b]), pp = G.INT.findPath(L0, p.indoor.f, p.x, p.y, x, y); return pp.length ? pp : [{ x, y }]; }   // [interni] percorso dentro casa
+    if (p.lv && window.Sottosuolo) { const pp = Sottosuolo.findPath(st, p.x, p.y, x, y); return pp.length ? pp : [{ x, y }]; }   // [sottosuolo] percorso nei cunicoli
     let path = G.findPath(p.x, p.y, x, y, p.vehicle ? .6 : 1.4); if (!path.length) path = [{ x, y }]; return path; }
   function onClick(nx, ny, dbl) {
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
     const p = st.player, h = pickAt(nx, ny); if (!h) return;
-    closeRing();
+    closeRing(); if (st.lv && st.lv.route) st.lv.route = null;
     if (p.vehicle) {
       if (h.kind === 'car' && h.v.id === p.vehicle) { click.t = null; ui.mark = null; doAct('veicolo'); return; }
       return;
     }
+    // [sottosuolo] sotto terra, un clic nella terra: il personaggio ci va scavando
+    if (h.kind === 'move' && p.lv && p.lv.k === 'ug' && window.Livelli && Livelli.digTo) { const g = R.screenToGround(nx, ny), r = g && Livelli.digTo(st, g.x, g.y); if (r) { if (r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); if (r.ok) { click.t = { kind: 'scava', x: g.x, y: g.y }; ui.mark = { x: g.x, y: g.y, t: ui.time, k: 'move' }; } return; } }
     if (h.kind === 'npc') { click.t = { kind: 'npc', id: h.n.id, path: [], pt: -9, run: dbl }; ui.mark = null; }
     else if (h.kind === 'car') { click.t = { kind: 'car', id: h.v.id, path: [], pt: -9, run: dbl }; ui.mark = { x: h.v.x, y: h.v.y, t: ui.time, k: 'car' }; }
-    else if (h.kind === 'loot') { const B0 = h.via === 'covo' ? Cantiere : Bottino, q = B0.goal(st, h.ref) || h; click.t = { kind: 'loot', via: h.via, ref: h.ref, x: q.x, y: q.y, path: goalPath(q.x, q.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
+    else if (h.kind === 'loot') { const B0 = h.via === 'covo' ? Cantiere : h.via === 'sotto' ? Sottosuolo : Bottino, q = B0.goal(st, h.ref) || h; click.t = { kind: 'loot', via: h.via, ref: h.ref, x: q.x, y: q.y, path: goalPath(q.x, q.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
     else if (h.kind === 'door') { click.t = { kind: 'door', bi: h.bi, x: h.x, y: h.y, path: goalPath(h.x, h.y), pt: ui.time, run: dbl }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
     else { click.t = { kind: 'move', x: h.x, y: h.y, path: goalPath(h.x, h.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
   }
@@ -226,13 +233,18 @@
     const stop = () => { click.t = null; ui.mark = null; return p.vehicle ? { x: 0, y: 0, sprint, brake: true } : { x: 0, y: 0, sprint }; };
     let gx = c.x, gy = c.y;
     if (c.fl !== undefined && c.fl !== (p.indoor ? p.indoor.b + ':' + p.indoor.f : '')) return stop();   // [interni] cambiato piano: il clic di prima non vale più
+    if (c.kind === 'scava') {   // [sottosuolo] segue lo scavo: cammina alla casella scavata dopo, o resta fermo e scava
+      const T0 = window.Livelli && Livelli.routeTarget(st); if (!T0) return stop();
+      if (T0.wait) return { x: 0, y: 0, sprint: false, aim: T0.aim };
+      const a0 = Math.atan2(T0.y - p.y, T0.x - p.x); return { x: Math.cos(a0), y: Math.sin(a0), sprint: false, aim: a0 };
+    }
     if (c.kind === 'door') {
       if (p.indoor) return stop();
       const b = G.BUILDINGS[c.bi], cx = (b.x + b.w / 2) * G.TS, cy = (b.y + b.h / 2) * G.TS;
       if (Math.hypot(gx - p.x, gy - p.y) < .8) { c.pushT = c.pushT || ui.time; if (ui.time - c.pushT > 1.6) return stop(); const a2 = Math.atan2(cy - p.y, cx - p.x); return { x: Math.cos(a2), y: Math.sin(a2), sprint: false, aim: a2 }; }
     }
     if (c.kind === 'loot') {   // [bottino] ci si avvicina; arrivati si raccoglie o si apre il pannello
-      const B0 = c.via === 'covo' ? Cantiere : Bottino, L = B0.find(st, c.ref); if (!L) return stop();
+      const B0 = c.via === 'covo' ? Cantiere : c.via === 'sotto' ? Sottosuolo : Bottino, L = B0.find(st, c.ref); if (!L) return stop();
       const d = Math.hypot(L.x - p.x, L.y - p.y), r = B0.reach(c.ref);
       if (d < r || (ui.time - c.bestT > 1.2 && d < r + 1.2)) { stop(); B0.arrive(st, c.ref); return { x: 0, y: 0, sprint, aim: Math.atan2(L.y - p.y, L.x - p.x) }; }
       if (d < c.best - .2) { c.best = d; c.bestT = ui.time; } else if (ui.time - c.bestT > 1.5) return stop();

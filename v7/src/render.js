@@ -1050,7 +1050,7 @@ var Render = (function () {
         add(name, cx, groundH(cx, cz) - .15, cz, s * big * (.9 + r() * .2), r() * 6.28, { rx: (r() - .5) * .06, rz: (r() - .5) * .06 + (lean || 0), col: treeCol36(name, cx, cz, r) });   // [isola36]
         const k = (th > .5 ? 3 : 2) + (nt < 5 ? 1 : 0); for (let q = 0; q < k; q++) if (r() < .72) under(tx * TS + r() * 2, ty * TS + r() * 2, .8 + r() * .5);
         if (/DeadTree/.test(name) && r() < .45) for (let q = 0; q < 3; q++) add(r() < .7 ? 'Mushroom_Common' : 'Mushroom_Laetiporus', cx + (r() - .5) * 1.2, 0, cz + (r() - .5) * 1.2, .5 + r() * .5, r() * 6.28, { ground: true, col: '#f0e8dc' });
-      } else if (orig && orig[ii] === T.TREE) {
+      } else if (orig && orig[ii] === T.TREE && v !== T.DIRT && v !== T.FIELD) {   // [survival] sgombrato (terra battuta) o zappato: il ceppo è stato cavato
         add('__ceppo', cx, groundH(cx, cz) - .05, cz, 1, r() * 6.28, { col: '#c8b8a0' });
         if (r() < .5) add('Bush_Common', tx * TS + r() * 2, 0, ty * TS + r() * 2, .4, r() * 6.28, { ground: true, col: pick(r, LEAF) });
       } else if (v === T.CLIFF) {
@@ -1102,9 +1102,41 @@ var Render = (function () {
   const UGR = { key: null, grp: null, lights: [], prev: null, surf: null, surfRev: -1, lantern: null };
   const ugMats = {};
   const ugM = (c, o) => ugMats[c + JSON.stringify(o || {})] || (ugMats[c + JSON.stringify(o || {})] = new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 1, metalness: 0, flatShading: true }, o || {})));
+  // [sottosuolo] i materiali dei posti di sotto: mattoni delle fogne, pietra delle cripte e delle carceri, cemento di bunker e metropolitana
+  const UGK = { 1: 'roccia', 2: 'terra', 3: 'mattoni', 4: 'pietra', 5: 'pietra', 6: 'cemento', 7: 'piastrelle', 8: 'mattoni', 9: 'piastrelle' };
+  // [sottosuolo] la terra delle gallerie: strati, sassi, radici; il pavimento battuto coi solchi delle carriole
+  function earthTex() {
+    const c = mk(64, 64), x = c.getContext('2d'), r = rng(91);
+    const layers = ['#5a4430', '#4e3a28', '#62492f', '#463424', '#56402c']; for (let j = 0; j < 64; j += 4) { x.fillStyle = layers[(j / 4 + Math.floor(r() * 2)) % layers.length]; x.fillRect(0, j, 64, 4 + Math.floor(r() * 3)); }
+    for (let i = 0; i < 420; i++) { x.fillStyle = pick(r, ['#3a2a1c', '#6e5438', '#2e2216', '#7a6248', '#584230']); x.fillRect(Math.floor(r() * 64), Math.floor(r() * 64), 1 + Math.floor(r() * 2), 1); }
+    for (let i = 0; i < 14; i++) { const sx0 = Math.floor(r() * 62), sy0 = Math.floor(r() * 62), w = 2 + Math.floor(r() * 3); x.fillStyle = pick(r, ['#8a8478', '#6e6a62', '#9a9284']); x.fillRect(sx0, sy0, w, w - 1); x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(sx0, sy0 + w - 1, w, 1); }
+    x.strokeStyle = 'rgba(40,26,14,.8)'; x.lineWidth = 1; for (let i = 0; i < 5; i++) { let px = r() * 64, py = r() * 20; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (r() - .5) * 8; py += 3 + r() * 4; x.lineTo(px, py); } x.stroke(); }
+    const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return new THREE.MeshStandardMaterial({ map: t, roughness: 1, metalness: 0 });
+  }
+  function ugTex2(kind) {
+    if (kind === 'terra_pav' && !ugMats['texterra_pav']) {
+      const c = mk(64, 64), x = c.getContext('2d'), r = rng(93); x.fillStyle = '#3e2e20'; x.fillRect(0, 0, 64, 64);
+      for (let i = 0; i < 500; i++) { x.fillStyle = pick(r, ['#4a3828', '#33261a', '#56422e', '#2c2016']); x.fillRect(Math.floor(r() * 64), Math.floor(r() * 64), 2, 1); }
+      x.fillStyle = 'rgba(20,14,8,.5)'; x.fillRect(20, 0, 3, 64); x.fillRect(42, 0, 3, 64);
+      for (let i = 0; i < 18; i++) { x.fillStyle = pick(r, ['#7a7468', '#5a564e']); x.fillRect(Math.floor(r() * 64), Math.floor(r() * 64), 2, 2); }
+      const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      ugMats['texterra_pav'] = new THREE.MeshStandardMaterial({ map: t, roughness: 1, metalness: 0 });
+    }
+    if (ugMats['tex' + kind]) return ugMats['tex' + kind];
+    const c = mk(32, 32), x = c.getContext('2d'), r = rng(kind.length * 31 + 5);
+    if (kind === 'mattoni') { x.fillStyle = '#3a2a22'; x.fillRect(0, 0, 32, 32); for (let j = 0; j < 8; j++) for (let i = -1; i < 4; i++) { x.fillStyle = pick(r, ['#6a3a2a', '#5a3224', '#74442e', '#4e2c20', '#6e4a36']); x.fillRect(i * 10 + (j % 2) * 5 + 1, j * 4 + 1, 8, 3); } for (let k = 0; k < 6; k++) { x.fillStyle = 'rgba(60,90,60,.35)'; x.fillRect(Math.floor(r() * 32), 26 + Math.floor(r() * 6), 3, 6); } }
+    else if (kind === 'pietra') { x.fillStyle = '#4a4640'; x.fillRect(0, 0, 32, 32); for (let j = 0; j < 4; j++) for (let i = -1; i < 3; i++) { x.fillStyle = pick(r, ['#6e6a62', '#625e56', '#7a766c', '#58544c']); x.fillRect(i * 14 + (j % 2) * 7 + 1, j * 8 + 1, 12, 6); } }
+    else if (kind === 'cemento') { x.fillStyle = '#6a6a66'; x.fillRect(0, 0, 32, 32); for (let k = 0; k < 120; k++) { x.fillStyle = pick(r, ['#727270', '#5e5e5a', '#686864', '#7a7a76']); x.fillRect(Math.floor(r() * 32), Math.floor(r() * 32), 2, 1); } x.fillStyle = 'rgba(30,30,30,.45)'; x.fillRect(0, 15, 32, 1); x.fillStyle = 'rgba(200,170,40,.55)'; x.fillRect(0, 28, 32, 2); }
+    else if (kind === 'piastrelle') { x.fillStyle = '#c8c4b4'; x.fillRect(0, 0, 32, 32); for (let j = 0; j < 8; j++) for (let i = 0; i < 4; i++) { x.fillStyle = j < 2 ? '#2a5a8a' : pick(r, ['#e0dccc', '#d6d2c2', '#cec8b8']); x.fillRect(i * 8, j * 4, 7, 3); } }
+    const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return (ugMats['tex' + kind] = new THREE.MeshStandardMaterial({ map: t, roughness: .95, metalness: 0 }));
+  }
   function ugTex(kind) {
+    if (kind !== 'roccia' && kind !== 'terra') return ugTex2(kind);
     if (ugMats['tex' + kind]) return ugMats['tex' + kind];
     const c = mk(32, 32), x = c.getContext('2d'), r = rng(kind === 'roccia' ? 77 : 78);
+    if (kind === 'terra') return (ugMats['tex' + kind] = earthTex());
     x.fillStyle = kind === 'roccia' ? '#5a5652' : '#4a3a2c'; x.fillRect(0, 0, 32, 32);
     for (let i = 0; i < 160; i++) { x.fillStyle = kind === 'roccia' ? pick(r, ['#6a6662', '#4a4642', '#76706a', '#3e3a38']) : pick(r, ['#5a4634', '#3e3024', '#664e3a', '#2e241c', '#7a6a58']); x.fillRect(Math.floor(r() * 32), Math.floor(r() * 32), 1 + Math.floor(r() * 3), 1 + Math.floor(r() * 2)); }
     if (kind === 'roccia') for (let k = 0; k < 5; k++) { x.fillStyle = 'rgba(20,18,18,.5)'; x.fillRect(0, Math.floor(r() * 32), 32, 1); }
@@ -1127,39 +1159,42 @@ var Render = (function () {
     }
     const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; return new THREE.MeshBasicMaterial({ map: t, transparent: kind === 'toro', opacity: 1 });
   }
-  function buildUG(L) {
+  function buildUG(L, win) {
     const grp = new THREE.Group(), GWd = G.GW, T = G.T, has = (tx, ty) => tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && L.ug[ty * GWd + tx] > 0;
+    // [sottosuolo] solo attorno al giocatore (le fogne passano sotto tutta la città): una finestra di caselle
+    const wx0 = win ? win[0] : 0, wy0 = win ? win[1] : 0, wx1 = win ? win[2] : G.GW - 1, wy1 = win ? win[3] : G.GH - 1;
     const quad = [];   // pavimento: una lastra per casella, inclinata coi vicini
     const floorV = (tx, ty, cx, cy) => { let s = 0, c = 0; for (const [a, b] of [[tx + cx - 1, ty + cy - 1], [tx + cx, ty + cy - 1], [tx + cx - 1, ty + cy], [tx + cx, ty + cy]]) if (has(a, b)) { s += L.fl[b * GWd + a]; c++; } return c ? s / c : L.fl[ty * GWd + tx]; };
-    const fpos = [], fuv = [], wposR = [], wposT = [], wuvR = [], wuvT = [];
+    const fpos = [], fuv = [], WB = {};   // [sottosuolo] pareti per materiale
+    const fB = {};   // pavimenti per materiale
     const wallQuad = (arr, uv, x0, z0, x1, z1, y0, y1) => { arr.push(x0, y0, z0, x1, y0, z1, x1, y1, z1, x0, y0, z0, x1, y1, z1, x0, y1, z0); const L2 = Math.hypot(x1 - x0, z1 - z0) / 2, H2 = (y1 - y0) / 2; uv.push(0, 0, L2, 0, L2, H2, 0, 0, L2, H2, 0, H2); };
     const props = [], rocks = [];
-    for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
+    for (let ty = Math.max(0, wy0); ty <= Math.min(G.GH - 1, wy1); ty++) for (let tx = Math.max(0, wx0); tx <= Math.min(G.GW - 1, wx1); tx++) {
       const i = ty * GWd + tx; if (!L.ug[i]) continue;
       const x0 = tx * TS, z0 = ty * TS, x1 = x0 + TS, z1 = z0 + TS, h00 = floorV(tx, ty, 0, 0), h10 = floorV(tx, ty, 1, 0), h01 = floorV(tx, ty, 0, 1), h11 = floorV(tx, ty, 1, 1);
-      fpos.push(x0, h00, z0, x0, h01, z1, x1, h11, z1, x0, h00, z0, x1, h11, z1, x1, h10, z0); fuv.push(0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0);
-      const rockK = (gT(tx, ty) === T.ROCK || gT(tx, ty) === T.CLIFF || L.kind[i] === 1), arr = rockK ? wposR : wposT, uv = rockK ? wuvR : wuvT, f = L.fl[i];
+      const kd = L.kind[i], made = kd >= 3, fm = made ? (kd === 7 || kd === 9 ? 'piastrelle' : kd === 3 || kd === 8 ? 'mattoni' : kd === 6 ? 'cemento' : 'pietra') : kd === 2 ? 'terra_pav' : 'terra';
+      const fa = fB[fm] = fB[fm] || [[], []]; fa[0].push(x0, h00, z0, x0, h01, z1, x1, h11, z1, x0, h00, z0, x1, h11, z1, x1, h10, z0); fa[1].push(0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0);
+      const rockK = !made && (gT(tx, ty) === T.ROCK || gT(tx, ty) === T.CLIFF || kd === 1), wm = made ? UGK[kd] : rockK ? 'roccia' : 'terra', wb = WB[wm] = WB[wm] || [[], []], arr = wb[0], uv = wb[1], f = L.fl[i];
       // pareti dove finisce lo scavo; quelle verso la camera sono basse (si vede dentro)
       const cy2 = Math.cos(cam.yaw), sy2 = Math.sin(cam.yaw);
       [[0, -1, x0, z0, x1, z0], [0, 1, x1, z1, x0, z1], [-1, 0, x0, z1, x0, z0], [1, 0, x1, z0, x1, z1]].forEach(([dx, dy, a, b, c2, d]) => {
-        if (has(tx + dx, ty + dy)) return; const P = L.portals.find(P => P.kind === 'imbocco' && P.u[0] === tx && P.u[1] === ty && P.s[0] === tx + dx && P.s[1] === ty + dy); if (P) return;
-        const toCam = dx * sy2 + dy * cy2 > .3, top = f + (toCam ? .55 : 2.7);
+        if (has(tx + dx, ty + dy) || kd === 9) return; const P = L.portals.find(P => P.kind === 'imbocco' && P.u[0] === tx && P.u[1] === ty && P.s[0] === tx + dx && P.s[1] === ty + dy); if (P) return;
+        const toCam = dx * sy2 + dy * cy2 > .3, top = f + (toCam ? .55 : kd === 7 ? 4.2 : 2.7);
         wallQuad(arr, uv, a, b, c2, d, f - .2, top);
-        if (!toCam && hash2i(tx * 3 + dx, ty * 3 + dy) < .35) rocks.push([(a + c2) / 2 - dx * .2, f + .3, (b + d) / 2 - dy * .2]);
+        if (!made && !toCam && hash2i(tx * 3 + dx, ty * 3 + dy) < .35) rocks.push([(a + c2) / 2 - dx * .2, f + .3, (b + d) / 2 - dy * .2]);
       });
-      // puntelli di legno nei cunicoli scavati a mano, ogni tanto
-      if (L.kind[i] === 2 && (tx + ty) % 3 === 0) props.push([x0 + 1, f, z0 + 1]);
+      // [sottosuolo] l'armatura di legno delle gallerie scavate a mano: telai a passo di 2 m nei tratti dritti, pali contro le pareti nelle stanze
+      if (kd === 2) props.push([tx, ty, f]);
     }
     const mkGeo = (pos, uv) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals(); return g; };
-    if (fpos.length) { const m = new THREE.Mesh(mkGeo(fpos, fuv), ugTex('terra')); m.receiveShadow = true; grp.add(m); }
-    if (wposT.length) { const m = new THREE.Mesh(mkGeo(wposT, wuvT), ugTex('terra')); m.material.side = THREE.DoubleSide; grp.add(m); }
-    if (wposR.length) { const m = new THREE.Mesh(mkGeo(wposR, wuvR), ugTex('roccia')); m.material.side = THREE.DoubleSide; grp.add(m); }
+    Object.entries(fB).forEach(([k, [pos, uv]]) => { const m = new THREE.Mesh(mkGeo(pos, uv), ugTex(k)); m.receiveShadow = true; grp.add(m); });
+    Object.entries(WB).forEach(([k, [pos, uv]]) => { if (!pos.length) return; const m = new THREE.Mesh(mkGeo(pos, uv), ugTex(k)); m.material.side = THREE.DoubleSide; grp.add(m); });
     const wood = ugM('#6a4a30');
-    props.forEach(([x, y, z]) => { const g = new THREE.Group(); [[-.85, 0], [.85, 0]].forEach(([dx]) => { const b = new THREE.Mesh(new THREE.BoxGeometry(.16, 2.3, .16), wood); b.position.set(dx, 1.15, 0); g.add(b); }); const t = new THREE.Mesh(new THREE.BoxGeometry(1.9, .16, .2), wood); t.position.y = 2.3; g.add(t); g.position.set(x, y, z); g.rotation.y = hash2i(x, z) < .5 ? 0 : Math.PI / 2; grp.add(g); });
-    rocks.forEach(([x, y, z]) => { const m = new THREE.Mesh(new THREE.DodecahedronGeometry(.35 + hash2i(x, z) * .3, 0), ugM('#55504a')); m.position.set(x, y - .1, z); grp.add(m); });
+    tunnelWood(grp, props, has, L, (dx, dz) => dx * Math.sin(cam.yaw) + dz * Math.cos(cam.yaw) > .3);
+    rocks.forEach(([x, y, z]) => { const m = new THREE.Mesh(new THREE.DodecahedronGeometry(.25 + hash2i(x, z) * .25, 0), ugM(hash2i(z, x) < .5 ? '#55504a' : '#4a3828')); m.position.set(x, y - .15, z); m.scale.y = .6; m.rotation.y = hash2i(x, z) * 6; grp.add(m); });
     // scale nei pozzi e nelle botole
     L.portals.forEach(P => {
-      if (P.kind !== 'botola' && P.kind !== 'pozzo') return; const i = P.u[1] * GWd + P.u[0], f = L.fl[i], top = M.elev[i] + .2, x = (P.u[0] + .5) * TS, z = (P.u[1] + .25) * TS;
+      if (!/^(botola|pozzo|tombino|grata|interno)$/.test(P.kind) || P.u[0] < wx0 || P.u[0] > wx1 || P.u[1] < wy0 || P.u[1] > wy1) return; const i = P.u[1] * GWd + P.u[0], f = L.fl[i], top = M.elev[i] + .2, x = (P.u[0] + .5) * TS, z = (P.u[1] + .25) * TS;
       const g = new THREE.Group(); [-.3, .3].forEach(dx => { const b = new THREE.Mesh(new THREE.BoxGeometry(.08, top - f, .08), wood); b.position.set(dx, (top - f) / 2, 0); g.add(b); });
       for (let y = .3; y < top - f; y += .35) { const s = new THREE.Mesh(new THREE.BoxGeometry(.6, .05, .06), wood); s.position.set(0, y, 0); g.add(s); }
       g.position.set(x, f, z); grp.add(g);
@@ -1167,6 +1202,7 @@ var Render = (function () {
     });
     // stanze: arredo secondo cosa sono
     L.rooms.forEach(R => {
+      if (R.x < wx0 * TS - 6 || R.x > wx1 * TS + 6 || R.y < wy0 * TS - 6 || R.y > wy1 * TS + 6) return;
       const g = new THREE.Group(); g.position.set(R.x, R.f, R.y);
       if (R.deco === 'toro' || R.deco === 'eremo') {
         const pic = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), ugPicture(R.deco)); pic.position.set(0, 1.4, -1.85); g.add(pic);
@@ -1184,24 +1220,59 @@ var Render = (function () {
     return grp;
   }
   const hash2i = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+  // [sottosuolo] i telai di legno: pali, traversa, saette, tavole contro la terra, una lanterna ogni tanto. Istanze: pochi draw call.
+  function tunnelWood(grp, tiles, has, L, toCam) {
+    if (!tiles.length) return;
+    const P = { post: [], beam: [], brace: [], plank: [], cap: [], lamp: [] }, E = new THREE.Euler(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), S = new THREE.Vector3(), M4 = new THREE.Matrix4();
+    const put = (arr, x, y, z, ry, sx, sy, sz, rz) => arr.push([x, y, z, ry || 0, sx || 1, sy || 1, sz || 1, rz || 0]);
+    let lamps = 0;
+    tiles.forEach(([tx, ty, f]) => {
+      const cx = (tx + .5) * TS, cz = (ty + .5) * TS, e = has(tx + 1, ty), w = has(tx - 1, ty), n = has(tx, ty - 1), so = has(tx, ty + 1), jit = (hash2i(tx, ty) - .5) * .06;
+      const alongX = (e || w) && !n && !so, alongZ = (n || so) && !e && !w;
+      if (alongX || alongZ) {
+        const ry = alongX ? 0 : Math.PI / 2, ax = alongX ? 0 : 1, az = alongX ? 1 : 0;   // a: verso le pareti
+        if ((alongX ? tx : ty) % 2 === 0) {
+          // dal lato della camera la parete è tagliata bassa: il palo anche (si vede dentro)
+          for (const sd of [-1, 1]) { if (toCam(ax * sd, az * sd)) { put(P.post, cx + ax * sd * .8, f + .3, cz + az * sd * .8, ry + jit, 1, .26, 1); continue; } put(P.post, cx + ax * sd * .8, f + 1.15, cz + az * sd * .8, ry + jit); put(P.brace, cx + ax * sd * .55, f + 2.05, cz + az * sd * .55, ry + Math.PI / 2, 1, 1, 1, sd * .75); }
+          put(P.beam, cx, f + 2.36, cz, ry + jit);
+          if (hash2i(tx * 3, ty * 7) < .28 && lamps < 6) { put(P.lamp, cx + ax * .35, f + 2.0, cz + az * .35, 0); lamps++; if (UGR.lights.length < 8) UGR.lights.push([cx, f + 1.9, cz, '#ffb060']); }
+        }
+        // le tavole contro la terra, sui due lati
+        for (const sd of [-1, 1]) { if (toCam(ax * sd, az * sd)) continue; for (const hh of [.7, 1.5]) if (hash2i(tx * 5 + sd, ty * 3 + hh * 10) < .55) put(P.plank, cx + ax * sd * .93, f + hh, cz + az * sd * .93, ry + (hash2i(tx, hh) - .5) * .06); }
+      } else {
+        // stanza o incrocio: pali contro le pareti, una trave sopra; in mezzo alla stanza un pilastro col cappello
+        [[1, 0, e], [-1, 0, w], [0, 1, so], [0, -1, n]].forEach(([dx, dz, nb]) => { if (nb || (tx + ty) % 2 || toCam(dx, dz)) return; const ry = dx ? Math.PI / 2 : 0; put(P.post, cx + dx * .82, f + 1.15, cz + dz * .82, ry); put(P.beam, cx + dx * .82, f + 2.36, cz + dz * .82, ry); put(P.plank, cx + dx * .93, f + .9, cz + dz * .93, ry); put(P.plank, cx + dx * .93, f + 1.5, cz + dz * .93, ry); });
+        if (e && w && n && so && (tx * 3 + ty) % 4 === 0) { put(P.post, cx, f + 1.15, cz, 0, 1.4, 1, 1.4); put(P.cap, cx, f + 2.32, cz, 0); }
+      }
+    });
+    const wood = sm('#5a3e26', { roughness: 1 }), woodD = sm('#3e2a18', { roughness: 1 }), plank = sm('#4e3a26', { roughness: 1 });
+    const mk = (geo, m0, arr) => { if (!arr.length) return; const im = new THREE.InstancedMesh(geo, m0, arr.length); arr.forEach(([x, y, z, ry, sx, sy, sz, rz], k) => { E.set(0, ry, rz, 'YXZ'); Q.setFromEuler(E); V.set(x, y, z); S.set(sx, sy, sz); M4.compose(V, Q, S); im.setMatrixAt(k, M4); }); im.castShadow = true; im.receiveShadow = true; grp.add(im); };
+    mk(new THREE.BoxGeometry(.2, 2.3, .2), wood, P.post);
+    mk(new THREE.BoxGeometry(.24, .22, 1.95), woodD, P.beam);
+    mk(new THREE.BoxGeometry(.1, .1, .7), wood, P.brace);
+    mk(new THREE.BoxGeometry(.06, .26, 2), plank, P.plank);
+    mk(new THREE.BoxGeometry(.6, .16, .6), woodD, P.cap);
+    if (P.lamp.length) { mk(new THREE.BoxGeometry(.16, .24, .16), new THREE.MeshStandardMaterial({ color: '#ffd890', emissive: '#ffb050', emissiveIntensity: 2.2 }), P.lamp); mk(new THREE.CylinderGeometry(.01, .01, .35, 4), sm('#2a2a2a'), P.lamp.map(q => [q[0], q[1] + .3, q[2], 0])); }
+  }
   // il passaggio sotto terra: come per gli interni, si nasconde il mondo di sopra e si accende la lanterna
   function ugPass(st) {
     const p = st.player, L = st.lv, on = !!(p.lv && p.lv.k === 'ug' && L);
-    const key = on ? L.rev + ':' + (Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2)) & 3) : null;
+    const wcx = Math.floor(p.x / 48), wcy = Math.floor(p.y / 48);   // [sottosuolo] la finestra si sposta a passi di 48 m
+    const key = on ? L.rev + ':' + (Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2)) & 3) + ':' + wcx + ',' + wcy : null;
     if (key !== UGR.key) {
       if (UGR.grp) { scene.remove(UGR.grp); UGR.grp.traverse(o => { if (o.geometry) o.geometry.dispose(); }); UGR.grp = null; }
       UGR.lights.length = 0; if (UGR.lightObjs) UGR.lightObjs.forEach(l => scene.remove(l)); UGR.lightObjs = [];
       UGR.key = key;
-      if (on) { UGR.grp = buildUG(L); scene.add(UGR.grp); UGR.lightObjs = UGR.lights.map(([x, y, z, c]) => { const l = new THREE.PointLight(c, 1.4, 9, 1.6); l.position.set(x, y, z); scene.add(l); return l; }); }
+      if (on) { const r0 = Math.round(84 / TS); UGR.grp = buildUG(L, [Math.floor((wcx + .5) * 48 / TS) - r0, Math.floor((wcy + .5) * 48 / TS) - r0, Math.floor((wcx + .5) * 48 / TS) + r0, Math.floor((wcy + .5) * 48 / TS) + r0]); scene.add(UGR.grp); UGR.lightObjs = UGR.lights.map(([x, y, z, c]) => { const l = new THREE.PointLight(c, 2.2, 14, 1.3); l.position.set(x, y, z); scene.add(l); return l; }); }
       else if (UGR.was) scene.children.forEach(o => { if (o.userData.__hidUG) { o.visible = true; o.userData.__hidUG = false; } });
     }
     UGR.was = on;
-    if (!UGR.lantern) { UGR.lantern = new THREE.PointLight('#ffc070', 0, 11, 1.5); scene.add(UGR.lantern); }
+    if (!UGR.lantern) { UGR.lantern = new THREE.PointLight('#ffc070', 0, 20, 1.2); scene.add(UGR.lantern); }
     if (!on) { UGR.lantern.intensity = 0; return false; }
-    hemi.intensity *= .12; moon.intensity *= .05; fillAmb.intensity *= .25;
+    hemi.intensity *= .5; moon.intensity *= .05; fillAmb.intensity *= .9;   // [sottosuolo] meno buio: si deve vedere dove si va
     const pg = dyn.people.__player, h = Livelli.heightOf(st, p);
-    UGR.lantern.position.set(p.x + Math.cos(p.face) * .4, h + 1.7, p.y + Math.sin(p.face) * .4); UGR.lantern.intensity = 1.6 + Math.sin(st.clock * 9) * .06;
-    scene.children.forEach(o => { if (o === UGR.grp || o === pg || o === UGR.lantern || UGR.lightObjs.includes(o)) return; if (o.isLight && o !== moon && o !== hemi && o !== fillAmb) { if (o.visible) { o.visible = false; o.userData.__hidUG = true; } return; } if (o.isLight) return; if (o.visible) { o.visible = false; o.userData.__hidUG = true; } });
+    UGR.lantern.position.set(p.x + Math.cos(p.face) * .4, h + 1.7, p.y + Math.sin(p.face) * .4); UGR.lantern.intensity = 2.8 + Math.sin(st.clock * 9) * .08;
+    scene.children.forEach(o => { if (o === UGR.grp || o === pg || o === UGR.lantern || UGR.lightObjs.includes(o) || o.userData.ugKeep) return; if (o.isLight && o !== moon && o !== hemi && o !== fillAmb) { if (o.visible) { o.visible = false; o.userData.__hidUG = true; } return; } if (o.isLight) return; if (o.visible) { o.visible = false; o.userData.__hidUG = true; } });
     UGR.grp.visible = true; if (pg) pg.visible = true;
     return true;
   }
@@ -10491,7 +10562,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
 
     INDOOR.quad = Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2) - .5) & 3;
     const indoorNow = indoorPass(st); if (indoorNow) { scene.fog.near = 200; scene.fog.far = 400; }
-    if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist - 2; scene.fog.far = dist + 22; scene.fog.color.set('#060505'); scene.background.set('#060505'); } }   // [monte]
+    if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     renderer.setRenderTarget(rt); renderer.render(scene, camera);
     renderer.setRenderTarget(null); ambPasses();   /* [amb2] */
