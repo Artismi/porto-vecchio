@@ -249,6 +249,9 @@ var Sartoria = (function () {
     const cen = n => CA[n] && CA[n][3] > 0 ? new THREE.Vector3(CA[n][0] / CA[n][3], CA[n][1] / CA[n][3], CA[n][2] / CA[n][3]) : null;
     BONES.forEach(n => { const j = JA[n]; if (j && j[3] > .3) bm[n] = new THREE.Vector3(j[0] / j[3], j[1] / j[3], j[2] / j[3]); });
     BONES.forEach(n => { if (bm[n]) return; const c = cen(n), pc = par[n] && cen(par[n]); if (c && pc) bm[n] = c.clone().lerp(pc, .5); else if (c) bm[n] = c; });
+    // ossa senza vertici propri (in qualche modello la spalla): si ricavano dalle vicine
+    for (const sd of ['L', 'R']) { if (!bm['Shoulder' + sd] && bm['UpperArm' + sd]) bm['Shoulder' + sd] = bm['UpperArm' + sd].clone().lerp(bm.Neck || bm.Chest || bm['UpperArm' + sd], .45);
+      if (!bm['Wrist' + sd] && bm['LowerArm' + sd] && bm['UpperArm' + sd]) bm['Wrist' + sd] = bm['LowerArm' + sd].clone().multiplyScalar(2).sub(bm['UpperArm' + sd]); }
     // la testa: il punto alla base del cranio; il bacino: il centro tra le anche
     if (bm.UpperLegL && bm.UpperLegR) { const h = bm.UpperLegL.clone().lerp(bm.UpperLegR, .5); h.y += .03; bm.Hips = bm.Hips && Math.abs(bm.Hips.y - h.y) < .15 ? bm.Hips : h; bm.Hips.x = h.x; }
     B = { key, P: new Float32Array(P), part, side, wts, hair: new Float32Array(hair), head: new Float32Array(head), srcOf, idxOf, bones: bm, bmat, names, rel, reli: rel.clone().invert(), tubes: {}, geos: new Map() };
@@ -271,7 +274,7 @@ var Sartoria = (function () {
   const RINGS = 64;   // settori della misura (poi si ricampiona)
   function axisOf(B, kind) {
     const b = B.bones, V = (x, y, z) => new THREE.Vector3(x, y, z);
-    if (kind === 'tronco' || kind === 'gonna') {   // asse dritto, verticale, al centro del busto (in pianta)
+    if (kind === 'tronco' || kind === 'gonna' || kind === 'bacino') {   // asse dritto, verticale, al centro del busto (in pianta)
       let sx = 0, sz = 0, c = 0; for (let i = 0; i < B.part.length; i++) if (B.part[i] === 'torso' || B.part[i] === 'bacino') { sx += B.P[i * 3]; sz += B.P[i * 3 + 2]; c++; }
       const x = c ? sx / c : b.Hips.x, z = c ? sz / c : b.Hips.z; return [V(x, .02, z), V(x, .8, z), V(x, 1.75, z)]; }
     const s = kind.slice(-1);
@@ -281,6 +284,7 @@ var Sartoria = (function () {
   function inSet(B, i, kind) {
     const p = B.part[i]; if (!p) return false; const y = B.P[i * 3 + 1];
     if (kind === 'tronco') { if (p === 'braccia') { const j = B.bones['UpperArm' + (B.side[i] > 0 ? 'L' : 'R')]; return j && Math.hypot(B.P[i * 3] - j.x, B.P[i * 3 + 1] - j.y, B.P[i * 3 + 2] - j.z) < .055; } return p === 'torso' || p === 'bacino' || p === 'collo'; }
+    if (kind === 'bacino') return p === 'bacino' || p === 'torso' && y < B.waist + .1 || ((p === 'cosce') && y > B.crotch - .12);
     if (kind === 'gonna') return p === 'torso' || p === 'bacino' || p === 'collo' || ((p === 'cosce' || p === 'polpacci') && y < B.bones.Hips.y - .04);
     const s = kind.slice(-1) === 'L' ? 1 : -1;
     if (/^manica/.test(kind)) return (p === 'braccia' || p === 'avambracci') && B.side[i] === s;
@@ -363,6 +367,10 @@ var Sartoria = (function () {
     if (s <= sA) return radius(tb, s, a); const t = cl((s - sA) / Math.max(.01, sB - sA), 0, 1), rl = lerp(radius(tb, sA, a), radius(tb, Math.min(sB, tb.L), a) * kB, t);
     return body === false ? rl : Math.max(rl, radius(tb, s, a) * .985);
   }
+  // un tubo "tagliato": stessa linea d'asse, raggi già raddrizzati (così manica, polsino, orlo e bordo usano la stessa misura)
+  function cutTube(tb, fn) {
+    const v = Object.assign({}, tb); v.R = tb.R.map((r, i) => { const o = new Float32Array(RINGS); for (let k = 0; k < RINGS; k++) o[k] = fn(i * tb.ds, k / RINGS * Math.PI * 2); return o; }); return v;
+  }
   // punto sulla superficie del capo (off = spessore sopra il corpo)
   function surf(tb, s, a, off, out) {
     const fr = frameAt(tb, s), r = radius(tb, s, a) + off;
@@ -374,7 +382,7 @@ var Sartoria = (function () {
   // =====================================================================================
   function weightsFor(B, kind) {
     const key = 'W' + kind; if (B[key]) return B[key];
-    const n = B.part.length, ids = []; for (let i = 0; i < n; i++) if (inSet(B, i, kind === 'gonna' ? 'gonna' : kind)) ids.push(i);
+    const n = B.part.length, ids = []; for (let i = 0; i < n; i++) if (inSet(B, i, kind)) ids.push(i);
     const cell = .05, grid = new Map(), kk = (x, y, z) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
     ids.forEach(i => { const k = kk(B.P[i * 3], B.P[i * 3 + 1], B.P[i * 3 + 2]); let a = grid.get(k); if (!a) grid.set(k, a = []); a.push(i); });
     const hipsI = B.names.indexOf('Hips');
@@ -393,6 +401,23 @@ var Sartoria = (function () {
       return arr.map(e => [e[0], t ? e[1] / t : 0]);
     };
     B[key] = fn; return fn;
+  }
+
+  // pesi continui lungo braccia e gambe: il gomito e il ginocchio si piegano come un tubo di stoffa
+  // (i pesi del corpo del kit sono a scatti: copiati vertice per vertice, gli anelli della manica si aprono a disco)
+  function limbW(B, kind, Ls) {
+    const tb = tube(B, kind), s = kind.slice(-1), bi = n => B.names.indexOf(n), ds = tb.ds;
+    const W = (list) => { const a = list.filter(e => e[0] >= 0 && e[1] > 1e-4).sort((x, y) => y[1] - x[1]).slice(0, 4); let t = 0; a.forEach(e => { t += e[1]; }); while (a.length < 4) a.push([0, 0]); return a.map(e => [e[0], t ? e[1] / t : 0]); };
+    if (/^manica/.test(kind)) {
+      const SH = bi('Shoulder' + s), UA = bi('UpperArm' + s), LA = bi('LowerArm' + s), WR = bi('Wrist' + s);
+      return p => { const sv = tb.proj(p).i * ds;
+        if (sv < Ls.ua) { const t = sm(cl(sv / Math.max(.01, Ls.ua), 0, 1)); return W([[SH, 1 - t], [UA, t]]); }
+        const te = sm(cl((sv - (Ls.la - .04)) / .08, 0, 1)), tw = sm(cl((sv - (Ls.wr - .02)) / .04, 0, 1));
+        return W([[UA, 1 - te], [LA, te * (1 - tw)], [WR, te * tw]]); };
+    }
+    const HI = bi('Hips'), UL = bi('UpperLeg' + s), LL = bi('LowerLeg' + s), FT = bi('Foot' + s);
+    return p => { const sv = tb.proj(p).i * ds, th = sm(cl(sv / Math.max(.02, Ls.sCr + .04), 0, 1)), tk = sm(cl((sv - (Ls.kn - .05)) / .1, 0, 1)), ta = sm(cl((sv - (Ls.an - .03)) / .06, 0, 1));
+      return W([[HI, 1 - th], [UL, th * (1 - tk)], [LL, th * tk * (1 - ta)], [FT, th * tk * ta]]); };
   }
 
   // =====================================================================================
@@ -614,7 +639,7 @@ var Sartoria = (function () {
         const p = surf(tb, s, a, o), out = p.clone().sub(fr.p);
         // ombre cotte: sotto le ascelle, dietro le ginocchia, nelle conche; orlo più scuro
         const c = 1 - .1 * cl(1 - (s - s0) / .03, 0, 1) - .07 * cl(1 - (s1 - s) / .02, 0, 1) - (y > B.waist && y < B.waist + .02 && !C.gonna ? .05 : 0);
-        const skirt = (C.gonna || C.poncho || longTop) && y < hipY ? cl((hipY - y) / .35, 0, 1) * .3 : 0;
+        const skirt = (C.gonna || C.poncho || longTop) && y < hipY ? cl((hipY - y) / .25, 0, 1) * (longTop && !C.gonna ? .85 : .3) : 0;
         return { p, out, u: (a - aRange[0]) / (Math.PI * 2) * ringC, v: s, c, skirt };
       }, W, 0);
       // risvolto interno dell'orlo (si vede lo spessore) e lo scollo
@@ -625,38 +650,52 @@ var Sartoria = (function () {
     }
     // ---------- MANICHE ----------
     if (!C.smanicato && !C.solo_gonna && !C.davanti && (P.has('braccia') || P.has('avambracci'))) for (const s of ['L', 'R']) {
-      const kind = 'manica' + s, tb = tube(B, kind), Ls = lengths(B, tb, kind, C, parti); if (Ls.s1 <= .02) continue;
-      const W = weightsFor(B, kind), cols = 10, rows = Math.max(6, Math.round(Ls.s1 / .025) + 1);
+      const kind = 'manica' + s, tb0 = tube(B, kind), Ls = lengths(B, tb0, kind, C, parti); if (Ls.s1 <= .02) continue;
+      const tb = cutTube(tb0, (sv, a) => sv > Ls.la ? straight(tb0, sv, a, Ls.la, Ls.wr, .78, sv < Ls.wr - .06) : sv > Ls.ua + .03 ? straight(tb0, sv, a, Ls.ua + .03, Ls.la, 1) : radius(tb0, sv, a));
+      const W = limbW(B, kind, Ls), cols = 10, rows = Math.max(6, Math.round(Ls.s1 / .025) + 1);
       const ringC = (() => { let t = 0; for (let k = 0; k < 8; k++) t += radius(tb, Ls.s1 * .5, k / 8 * Math.PI * 2); return t / 8 * Math.PI * 2; })();
-      const oA = s1 => s1 < Ls.ua + (Ls.la - Ls.ua) * .5 ? offAt('braccia') : Math.max(offAt('avambracci'), offAt('braccia') * .6);
+      const oA0 = s1 => s1 < Ls.ua + (Ls.la - Ls.ua) * .5 ? offAt('braccia') : Math.max(offAt('avambracci'), offAt('braccia') * .6);
+      // lo spessore davvero usato (si stringe verso il polso): lo usano anche polsini, bordi e bottoni
+      const oA = sv => { const taper = 1 - .55 * cl((sv - Ls.la) / Math.max(.05, Ls.wr - Ls.la), 0, 1); return oA0(sv) * (C.costine || C.polsi ? 1 : .7 + .3 * taper) * taper; };
       grid(bd, rows, cols + 1, (i, j) => {
         const a = -Math.PI + j / cols * Math.PI * 2, sv = Ls.s1 * i / (rows - 1);
         // la cima della manica si chiude a cupola dentro la spalla
         const cap = sv < .015 ? Math.sqrt(1 - Math.pow(1 - sv / .015, 2)) : 1, fr = frameAt(tb, sv);
         let o = oA(sv); if (C.poncho) o += .06;
         const elbow = Math.exp(-Math.pow((sv - Ls.la) / .03, 2)), fold = 0;
-        const taper = 1 - .55 * cl((sv - Ls.la) / Math.max(.05, Ls.wr - Ls.la), 0, 1), r = ((sv > Ls.la ? straight(tb, sv, a, Ls.la, Ls.wr, .78, sv < Ls.wr - .06) : sv > Ls.ua + .03 ? straight(tb, sv, a, Ls.ua + .03, Ls.la, 1) : radius(tb, sv, a)) + o * (C.costine || C.polsi ? 1 : .7 + .3 * taper) * taper + fold) * (.6 + .4 * cap), p = fr.p.clone().addScaledVector(fr.f, Math.cos(a) * r).addScaledVector(fr.sd, Math.sin(a) * r);
+        const taper = 1 - .55 * cl((sv - Ls.la) / Math.max(.05, Ls.wr - Ls.la), 0, 1), r = (radius(tb, sv, a) + o + fold) * (.6 + .4 * cap), p = fr.p.clone().addScaledVector(fr.f, Math.cos(a) * r).addScaledVector(fr.sd, Math.sin(a) * r);
         const c = (1 - .12 * cl(1 - (Ls.s1 - sv) / .02, 0, 1)) * (1 - elbow * .08 * Math.max(0, -Math.cos(a))) * (1 - .1 * cl(1 - Math.abs(a - (s === 'L' ? -Math.PI / 2 : Math.PI / 2)) / .9, 0, 1) * cl(1 - sv / .12, 0, 1));   // l'interno della manica sotto l'ascella più scuro
         return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv, c };
       }, W, 0);
       sleeveDetails(bd, B, tb, W, C, Ls, oA, s, ringC);
     }
+    // ---------- BACINO DEI PANTALONI: un pezzo solo dalla vita all'inforcatura (niente fascia, niente onda) ----------
+    const wantLegs = !C.gonna && !C.davanti && P.has('bacino');
+    if (wantLegs) {
+      const tb = tube(B, 'bacino'), W = weightsFor(B, 'bacino'), cols = 24, ob = offAt('bacino') + .002;
+      const sTop = tb.sAtY(B.waist + .035), bot = a => { const side = Math.abs(Math.sin(a)); return tb.sAtY(B.crotch + .005 - .075 * Math.pow(side, 1.5)); };
+      const rows = Math.max(6, Math.round((sTop - tb.sAtY(B.crotch - .07)) / .02) + 1), ringC = (() => { let t = 0; for (let k = 0; k < 12; k++) t += radius(tb, tb.sAtY(B.waist - .05), k / 12 * Math.PI * 2); return t / 12 * Math.PI * 2; })();
+      grid(bd, rows, cols + 1, (i, j) => { const a = -Math.PI + j / cols * Math.PI * 2, s0 = bot(a), sv = lerp(s0, sTop, i / (rows - 1)), fr = frameAt(tb, sv), p = surf(tb, sv, a, ob);
+        const c = 1 - .1 * cl(1 - (sv - s0) / .02, 0, 1) - .1 * Math.pow(Math.max(0, Math.abs(Math.cos(a))), 6) * cl(1 - (sv - s0) / .05, 0, 1);
+        return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv, c }; }, W, 0);
+      pelvisDetails(bd, B, tb, W, C, ob, sTop, bot, ringC);
+    }
     // ---------- GAMBE ----------
-    if (!C.gonna && !C.davanti && P.has('bacino') && !(C.intera && !P.has('cosce') && !P.has('bacino'))) for (const s of ['L', 'R']) {
-      const kind = 'gamba' + s, tb = tube(B, kind), Ls = lengths(B, tb, kind, C, parti);
-      const W = weightsFor(B, kind), cols = 12, rows = Math.max(8, Math.round(Ls.s1 / .028) + 1), sg = s === 'L' ? 1 : -1;
+    if (wantLegs && !(C.intera && !P.has('cosce') && !P.has('bacino'))) for (const s of ['L', 'R']) {
+      const kind = 'gamba' + s, tb0 = tube(B, kind), Ls = lengths(B, tb0, kind, C, parti);
+      const tb = cutTube(tb0, (sv, a) => { const sK = Ls.kn, sH = Ls.sCr + .03; return sv < sH ? radius(tb0, sv, a) : sv < sK ? straight(tb0, sv, a, sH, sK, 1) : (sv > Ls.an - .1 ? straight(tb0, sv, a, sK, Ls.an, .82, false) : straight(tb0, sv, a, sK, Ls.an, .82)); });
+      const W = limbW(B, kind, Ls), cols = 12, rows = Math.max(8, Math.round(Ls.s1 / .028) + 1), sg = s === 'L' ? 1 : -1;
       const ringC = (() => { let t = 0; for (let k = 0; k < 8; k++) t += radius(tb, Ls.s1 * .5, k / 8 * Math.PI * 2); return t / 8 * Math.PI * 2; })();
       const oL = sv => sv < Ls.sCr + .03 ? offAt('bacino') : sv < Ls.kn ? Math.max(offAt('cosce'), offAt('bacino') * .5) : Math.max(offAt('polpacci'), offAt('cosce') * .6);
-      const yTop = B.waist + .03, sTop = a => { let lo = 0, hi = .3; for (let k = 0; k < 18; k++) { const m = (lo + hi) / 2; if (surf(tb, m, a, 0).y > yTop) lo = m; else hi = m; } return lo; };
+      const yTop = B.crotch + .035, sTop = a => { let lo = 0, hi = .3; for (let k = 0; k < 18; k++) { const m = (lo + hi) / 2; if (surf(tb, m, a, 0).y > yTop) lo = m; else hi = m; } return lo; };
       const S0 = []; for (let j = 0; j <= cols; j++) S0.push(sTop(-Math.PI + j / cols * Math.PI * 2));
       grid(bd, rows, cols + 1, (i, j) => {
         const a = -Math.PI + j / cols * Math.PI * 2, sv = lerp(S0[j], Ls.s1, i / (rows - 1)), fr = frameAt(tb, sv);
         const knee = Math.exp(-Math.pow((sv - Ls.kn) / .035, 2)), fold = 0;
         const ank = 0;
         const crease = C.piega ? Math.pow(Math.max(0, Math.cos(a)), 40) * .004 : 0;
-        const sK = Ls.kn, sH = Ls.sCr + .03, rb = sv < sH ? radius(tb, sv, a) : sv < sK ? straight(tb, sv, a, sH, sK, 1) : (sv > Ls.an - .1 ? straight(tb, sv, a, sK, Ls.an, .82, false) : straight(tb, sv, a, sK, Ls.an, .82));
+        const rb = radius(tb, sv, a);
         const r = rb + oL(sv) + fold + ank + crease, p = fr.p.clone().addScaledVector(fr.f, Math.cos(a) * r).addScaledVector(fr.sd, Math.sin(a) * r);
-        if (p.y > B.waist - .045) pushOut(B, p, oL(sv), cl((p.y - B.waist + .045) / .04, 0, 1));
         const inner = cl(1 - Math.abs(a - (-sg * Math.PI / 2)) / .8, 0, 1) * cl(1 - (sv - Ls.sCr) / .15, 0, 1);   // l'interno coscia in ombra
         const c = (1 - .12 * cl(1 - (Ls.s1 - sv) / .02, 0, 1)) * (1 - knee * .08 * Math.max(0, -Math.cos(a))) * (1 - .14 * inner) * (C.usura ? 1 : 1);
         return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv, c };
@@ -879,29 +918,36 @@ var Sartoria = (function () {
     grid(bd, 2, 17, (i, j) => { const a = -Math.PI + j / 16 * Math.PI * 2, sv = end, fr = frameAt(tb, sv), p = surf(tb, sv, a, oA(sv) + (C.costine || C.polsi ? .002 : 0) - i * .004); return { p, out: fr.t.clone(), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv + i * .004, c: .6 }; }, W, 0);
   }
   // ---------------- FINITURE DELLE GAMBE ----------------
+  // ---------------- FINITURE DEL BACINO: cintura coi passanti, patta, tasche davanti e dietro ----------------
+  function pelvisDetails(bd, B, tb, W, C, ob, sTop, bot, ringC) {
+    const sW = tb.sAtY(B.waist + .012), sC = tb.sAtY(B.crotch + .01), sP = tb.sAtY(B.waist - .03);
+    if (C.cintura) {
+      const mi = /cuoio|jeans/.test(C.cintura) ? 4 : 0, h = C.cintura === 'cuoio_fine' ? .024 : .032, o2 = ob + .003;
+      grid(bd, 3, 41, (i, j) => { const a = -Math.PI + j / 40 * Math.PI * 2, sv = sW + (i - 1) * h / 2, fr = frameAt(tb, sv), p = surf(tb, sv, a, o2 + (i === 1 ? .0015 : 0)); return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * ringC * 3, v: sv * 3, c: i === 1 ? 1 : .75 }; }, W, mi);
+      const fr = frameAt(tb, sW), p = surf(tb, sW, 0, o2 + .004), n = p.clone().sub(fr.p).normalize(); box(bd, W, p, n, fr.t, .045, h + .01, .006, 2); box(bd, W, p.clone().addScaledVector(n, .004), n, fr.t, .03, h - .004, .004, 4);
+      for (const a of [-2.6, -1.5, -.6, .6, 1.5, 2.6, Math.PI]) patch(bd, tb, W, (u) => a + lerp(-.05, .05, u), (u, v) => lerp(sW - h * .75, sW + h * .75, v), () => ob, .006, 0, { rows: 3, cols: 2 });
+      // la patta: una cucitura a J sul davanti
+      patch(bd, tb, W, (u, v) => .16 + u * .025 - Math.pow(1 - v, 6) * .14, (u, v) => lerp(sC + .015, sW - h * .6, v), () => ob, .0008, C.cuciture ? 1 : 3, { rows: 8, cols: 2, flat: 1, noEdge: 1, shade: () => .9 });
+    }
+    if (C.elastico) grid(bd, 2, 41, (i, j) => { const a = -Math.PI + j / 40 * Math.PI * 2, sv = sTop - .03 + i * .03, fr = frameAt(tb, sv), p = surf(tb, sv, a, ob + .001); return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv, c: 1 }; }, W, 6);
+    (C.tasche || []).forEach(t => {
+      // l'apertura della tasca: una linea sottile in diagonale (non una toppa)
+      if (t === 'oblique' || t === 'jeans') for (const sd of [-1, 1]) patch(bd, tb, W, (u, v) => sd * (lerp(.62, 1.25, u) + v * .03), (u, v) => lerp(sW - .025, sP - .05, u) + v * .005, () => ob, .0009, 3, { rows: 2, cols: 6, flat: 1, noEdge: 1, shade: () => .9 });
+      if (t === 'jeans') for (const sd of [-1, 1]) { patch(bd, tb, W, (u) => sd * lerp(2.3, 2.85, u), (u, v) => lerp(sP - .1, sP, v), () => ob, .002, 0, { rows: 4, cols: 4, shade: (u, v) => v > .85 || u < .1 || u > .9 ? .72 : 1 });
+        const p = surf(tb, sP - .005, sd * 1.2, ob + .002), fr = frameAt(tb, sP); box(bd, W, p, p.clone().sub(fr.p).normalize(), fr.t, .006, .006, .002, 2); }
+    });
+    if (C.cuciture) for (const sd of [-1, 1]) patch(bd, tb, W, (u) => sd * (Math.PI / 2 + lerp(-.008, .008, u)), (u, v) => lerp(bot(sd * Math.PI / 2) + .01, sW - .02, v), () => ob, .0007, 1, { rows: 6, cols: 2, flat: 1, noEdge: 1 });
+  }
   function legDetails(bd, B, tb, W, C, Ls, oL, s, ringC) {
     const sg = s === 'L' ? 1 : -1, end = Ls.s1, outA = sg * Math.PI / 2;   // fuori: verso +x per la sinistra
-    // cintura: un anello sul tronco (sopra le due metà del bacino), coi passanti e la fibbia
-    const post = { post: (p, o) => { if (p.y > B.waist - .045) pushOut(B, p, o, cl((p.y - B.waist + .045) / .04, 0, 1)); } };
-    if (C.cintura && s === 'L') {
-      const T0 = tube(B, 'tronco'), WT = weightsFor(B, 'tronco'), yB = B.waist + .012, sB = T0.sAtY(yB), mi = /cuoio|jeans/.test(C.cintura) ? 4 : 0, h = C.cintura === 'cuoio_fine' ? .024 : .034, ob = oL(.05) + .004;
-      grid(bd, 3, 41, (i, j) => { const a = -Math.PI + j / 40 * Math.PI * 2, sv = sB + (i - 1) * h / 2, fr = frameAt(T0, sv), p = surf(T0, sv, a, ob + (i === 1 ? .0015 : 0)); return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * .9 * 3, v: sv * 3, c: i === 1 ? 1 : .75 }; }, WT, mi);
-      const fr = frameAt(T0, sB), p = surf(T0, sB, 0, ob + .004), n = p.clone().sub(fr.p).normalize(); box(bd, WT, p, n, fr.t, .045, h + .01, .006, 2); box(bd, WT, p.clone().addScaledVector(n, .004), n, fr.t, .03, h - .004, .004, 4);
-      for (const a of [-2.6, -1.5, -.6, .6, 1.5, 2.6, Math.PI]) patch(bd, T0, WT, (u) => a + lerp(-.05, .05, u), (u, v) => lerp(sB - h * .75, sB + h * .75, v), () => ob - .002, .006, 0, { rows: 3, cols: 2 });
-    }
-    if (C.elastico) grid(bd, 2, 19, (i, j) => { const a = -Math.PI + j / 18 * Math.PI * 2, sv = .07 + i * .03, fr = frameAt(tb, sv), p = surf(tb, sv, a, oL(sv) + .001); return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv, c: 1 }; }, W, 6);
-    // la patta (davanti, sulla sinistra)
-    if (C.cintura && s === 'L' && !C.elastico) patch(bd, tb, W, (u) => -sg * lerp(.55, .85, u) , (u, v) => lerp(Ls.sCr - .02, .09, v), (sv) => oL(sv), .0015, C.cuciture ? 1 : 0, Object.assign({ rows: 6, cols: 3, flat: 1, shade: (u) => u > .8 ? .7 : 1 }, post));
+    const post = {};
     (C.tasche || []).forEach(t => {
-      if (t === 'oblique' || t === 'jeans') patch(bd, tb, W, (u, v) => sg * lerp(.45, 1.1, u), (u, v) => .1 + .07 * (1 - u) * (1 - v) + .07 * v, (sv) => oL(sv), .0012, C.cuciture ? 1 : 3, Object.assign({ rows: 2, cols: 5, flat: 1, noEdge: 1, shade: () => .55 }, post));
-      if (t === 'jeans') { patch(bd, tb, W, (u) => sg * lerp(2.2, 2.75, u) , (u, v) => lerp(.13, .23, v), (sv) => oL(sv), .002, 0, Object.assign({ rows: 4, cols: 4, shade: (u, v) => v < .15 || u < .1 || u > .9 ? .75 : 1 }, post));   // tasca dietro
-        const p = surf(tb, .1, sg * .97, oL(.1) + .002), fr = frameAt(tb, .1); box(bd, W, p, p.clone().sub(fr.p).normalize(), fr.t, .006, .006, .002, 2); }
       if (t === 'cargo') { const sk = Ls.sCr + (Ls.kn - Ls.sCr) * .45; patch(bd, tb, W, (u) => outA + lerp(-.45, .45, u), (u, v) => lerp(sk - .07, sk + .06, v), (sv) => oL(sv), .012, 0, { rows: 5, cols: 5 });
         patch(bd, tb, W, (u) => outA + lerp(-.5, .5, u), (u, v) => lerp(sk + .04, sk + .07, v), (sv) => oL(sv), .016, 0, { rows: 2, cols: 5, shade: (u, v) => v < .3 ? .7 : 1 }); button(bd, tb, W, sk + .05, outA, oL(sk) + .018, .006, 3); }
       if (t === 'ginocchio') patch(bd, tb, W, (u) => lerp(-.6, .6, u), (u, v) => lerp(Ls.kn - .07, Ls.kn + .06, v), (sv) => oL(sv), .0025, 0, { rows: 5, cols: 5 });
     });
     if (C.banda) patch(bd, tb, W, (u) => outA + lerp(-.07, .07, u), (u, v) => lerp(.09, end - .01, v), (sv) => oL(sv), .0009, 1, { rows: 24, cols: 2, flat: 1, noEdge: 1 });
-    if (C.cuciture) patch(bd, tb, W, (u) => outA + lerp(-.02, .02, u), (u, v) => lerp(.1, end - .02, v), (sv) => oL(sv), .0007, 1, { rows: 20, cols: 2, flat: 1, noEdge: 1 });
+    if (C.cuciture) patch(bd, tb, W, (u) => outA + lerp(-.012, .012, u), (u, v) => lerp(.1, end - .02, v), (sv) => oL(sv), .0007, 1, { rows: 20, cols: 2, flat: 1, noEdge: 1 });
     if (C.risvolto) grid(bd, 2, 19, (i, j) => { const a = -Math.PI + j / 18 * Math.PI * 2, sv = end - .035 + i * .035, fr = frameAt(tb, sv), p = surf(tb, sv, a, oL(sv) + .003); return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv, c: i ? .95 : .72 }; }, W, 0);
     // l'orlo (spessore)
     grid(bd, 2, 19, (i, j) => { const a = -Math.PI + j / 18 * Math.PI * 2, sv = end, fr = frameAt(tb, sv), p = surf(tb, sv, a, oL(sv) + (C.risvolto ? .003 : 0) - i * .004); return { p, out: fr.t.clone(), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv + i * .004, c: .6 }; }, W, 0);
