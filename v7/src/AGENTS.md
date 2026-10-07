@@ -77,7 +77,12 @@ Un file nuovo va messo **dopo** le sue dipendenze e **prima** dei moduli che lo 
 
 ### Test (Node)
 
-`test_vita.js`, `test_azioni.js`, `test_coro.js`, `test_economia.js`, `test_fazioni.js`, `test_livelli.js`, `test_oggetti.js`, `test_soldi.js` — firma comune `node test_X.js [giorni] [seme]`, girano dalla cartella `src/`. **Ogni modifica di logica deve lasciarli verdi** e i relativi `HANDOFF_*.md` aggiornati.
+Due famiglie, firma comune `node test_X.js [giorni|seme]`, girano dalla cartella `src/`:
+
+- **Simulazione** (giorni): `test_vita.js`, `test_azioni.js`, `test_coro.js`, `test_economia.js`, `test_fazioni.js`, `test_livelli.js`, `test_oggetti.js`, `test_soldi.js`.
+- **Azione** (seme; portati dalla radice il 7/10/2026, vedi [HANDOFF_test_azioni.md](HANDOFF_test_azioni.md)): `test_combattimento.js`, `test_polizia.js`, `test_fisica.js`, `test_guida.js`, `test_distruzione.js`.
+
+**Ogni modifica di logica deve lasciarli verdi** e i relativi `HANDOFF_*.md` aggiornati.
 
 ## Sistema `Game.HOOKS`
 

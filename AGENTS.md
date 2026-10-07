@@ -5,7 +5,7 @@
 > 2. [`v7/AGENTS.md`](v7/AGENTS.md) — regole per la **versione corrente** (build, server, deploy)
 > 3. [`v7/src/AGENTS.md`](v7/src/AGENTS.md) — regole per i **sorgenti del gioco** (module per module)
 >
-> Le cartelle `v6/` e i file della radice (`game.js`, `render.js`, `index.src.html`…) sono **versioni storiche congelate**: non si sviluppano più lì. Regola: **non modificare nulla fuori da `v7/`** salvo richiesta esplicita. Le snapshot `v2/`–`v5/` sono state rimosse dal working tree il 6/10/2026 (recuperabili dalla storia git).
+> **v7/ è l'unica versione viva.** La versione radice storica (`game.js`, `render.js`, i test d'azione, `api/`, `vercel.json`) e le snapshot `v2/`–`v6/` sono state rimosse dal working tree il 7/10/2026 (commit dedicati, recuperabili dalla storia git); i test d'azione della radice sono stati **portati a v7** (`v7/src/test_{combattimento,polizia,fisica,guida,distruzione}.js`). Regola: **non si sviluppa fuori da `v7/`**.
 > La gerarchia vale: un file più vicino al codice prevale sulla radice.
 
 ## Cos'è il progetto
@@ -32,7 +32,7 @@ Gioco browser open-world in JS vanilla + Three.js r149, ambientato nel 1986 su u
 - **Sistema**: Windows (percorsi in stile `d:\...`), Python 3 per `build.py` e per gli script `strumenti_inverno`, Node 18+ per `server.js` e i test.
 - **Avvio locale**: `v7/AVVIA.bat` (o `node v7/server.js`) → `http://localhost:8642`.
 - **Build**: `python build.py` dentro `v7/`.
-- **Test**: `node test_<modulo>.js [giorni] [seme]` dentro `v7/src/` (vedi elenco in [v7/src/AGENTS.md](v7/src/AGENTS.md)).
+- **Test**: `node test_<modulo>.js [giorni|seme]` dentro `v7/src/` (vedi elenco in [v7/src/AGENTS.md](v7/src/AGENTS.md)).
 - **Deploy**: push su `main` → Vercel (Root Directory `v7`), vedi [`v7/VERCEL.md`](v7/VERCEL.md).
 
 ## Cosa non fare
@@ -40,4 +40,4 @@ Gioco browser open-world in JS vanilla + Three.js r149, ambientato nel 1986 su u
 - Non committare `v7/index.html`: è generato (git-ignored) e Vercel lo rigenera con il build command in `v7/vercel.json`; localmente si produce con `python build.py`.
 - Non usare CDN: three.js e il loader sono vendored (`v7/src/three.min.js`, `v7/src/gltf_loader.js`); gli asset sono locali in `v7/assets/`.
 - Non inserire inline `onclick`/`onchange` o CSS/JS inline nel HTML: tutto passa da `addEventListener` e file esterni.
-- Non modificare le versioni storiche (`v6/`, sorgenti radice) per «allinearle»: sono riferimento. `v2/`–`v5/` non esistono più nel working tree: la loro storia resta in git.
+- Non resuscitare i sorgenti storici dalla storia git per «ripristinarli» accanto a v7: la radice e v2–v6 sono archivio, non versioni parallele.

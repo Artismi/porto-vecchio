@@ -2,11 +2,11 @@
 
 *Data: 6 ottobre 2026 · Compagna di [ANALISI-STRUTTURALE.md](ANALISI-STRUTTURALE.md). Priorità dichiarata dall'utente: **consolidare prima, poi sviluppare**.*
 
-> **Stato delle decisioni (6 ottobre 2026, ore 11:30)** — approvate dall'utente le voci 1 e 2, differite la 3 e la 4:
+> **Stato delle decisioni (7 ottobre 2026, sera)** — approvate dall'utente le voci 1 e 2, eseguite ora anche la 3 e la 4:
 > - ✅ **Fatto** — `v7/index.html` non si committa più (`.gitignore` + `git rm --cached`) e Vercel lo rigenera con `buildCommand: python3 build.py` in `v7/vercel.json`.
-> - ✅ **Fatto** — rimosse dal working tree (commit dedicati, recuperabili dalla storia git): `v2/`, `v3/`, `v4/`, `v5/`, `v7/_to_delete/`, `v7/_scambio/`, `v7/_backup_{interni,mente,oggetti,soldi,neon_modelli}/`, `_trasferimento/`, `_backup/`. Restano: `v6/` (decisione 3, in attesa), i sorgenti della radice e i suoi test (decisione 4, in attesa), `v7/_immagini/`.
-> - ⏸ **In attesa** — decisione 3: rimozione di `v6/` dopo la dichiarazione della base di render.js (§3a).
-> - ⏸ **In attesa** — decisione 4: portare a v7 i test d'azione della radice o archiviarli (§4.2).
+> - ✅ **Fatto** — rimosse dal working tree (commit dedicati, recuperabili dalla storia git): `v2/`, `v3/`, `v4/`, `v5/`, `v7/_to_delete/`, `v7/_scambio/`, `v7/_backup_{interni,mente,oggetti,soldi,neon_modelli}/`, `_trasferimento/`, `_backup/`.
+> - ✅ **Fatto** — decisione 3: base di `render.js` dichiarata = **`main` attuale** ([`v7/strumenti_inverno/LEGENDA.md`](v7/strumenti_inverno/LEGENDA.md), ordine ufficiale della catena) e **`v6/` rimossa** dal working tree (commit `faf946a`).
+> - ✅ **Fatto** — decisione 4: i cinque test d'azione della radice **portati a v7** (`v7/src/test_{combattimento,polizia,fisica,guida,distruzione}.js`, vedi [`v7/src/HANDOFF_test_azioni.md`](v7/src/HANDOFF_test_azioni.md)) e la versione radice **archiviata** (`game.js`, `render.js`, `api/`, `vercel.json`, `HANDOFF.md`, `LEGGIMI-menu.md`, ecc. — commit `3a1fead`). Restano alla radice solo i documenti di analisi (questo file, `ANALISI-STRUTTURALE.md`, `AGENTS.md`).
 
 ---
 
@@ -22,21 +22,21 @@
 
 Prima di tutto, una distinzione netta fra i tre «generi» di copie presenti:
 
-### 1.1 Snapshot di versione: `v2/`, `v3/`, `v4/`, `v5/`, `v6/` — **sì, si possono togliere (con archiviazione)**
+### 1.1 Snapshot di versione: `v2/`, `v3/`, `v4/`, `v5/`, `v6/` — **rimosse (6–7/10/2026)**
 
-- Sono **anticamerate di v7**: ogni HANDOFF dice «base: vN, lavoro su vN+1». v6 in particolare è la base dichiarata di v7; i contenuti di v2–v5 sono interamente contenuti in v6 per costruzione.
-- Sono **committate su git**: la loro storia non si perde mai finché esiste il repository. Eliminarle dal working tree è reversibile con `git checkout`.
-- Nota critica: `v7/src/render.js` nasce da `cp v6/src/render.js` + catena di script. **v6 va tenuta finché la pipeline non viene risolta** (vedi §3): è l'unico punto di ripartenza della catena. v2–v5 invece non hanno alcun ruolo attivo.
+- Erano **anticamerate di v7**: ogni HANDOFF diceva «base: vN, lavoro su vN+1». I contenuti di v2–v5 erano interamente contenuti in v6 per costruzione.
+- Erano **committate su git**: la loro storia non si perde mai finché esiste il repository. Eliminarle dal working tree è reversibile con `git checkout`.
+- Nota storica: `v7/src/render.js` nasceva da `cp v6/src/render.js` + catena di script. Dalla decisione 3 (§3a) la base dichiarata è **il `render.js` attuale su `main`** ([`v7/strumenti_inverno/LEGENDA.md`](v7/strumenti_inverno/LEGENDA.md)); con questo passo `v6/` è stata rimossa (commit `faf946a`).
 
-**Raccomandazione**: rimuovere `v2/`, `v3/`, `v4/`, `v5/` dal working tree (`git rm -r` in un commit dedicato); tenere `v6/` **fino al punto 3** (poi rimuovere anche quella). In alternativa meno invasiva: spostarle in una cartella `_storico/` fuori dal deploy e fuori da `.gitignore`-nothing — ma su git la rimozione è già archiviazione.
+### 1.2 Versione radice (`game.js`, `render.js`, `index.src.html`, `showroom*`, test radice, `HANDOFF.md`, `LEGGIMI-menu.md`) — **rimossa (7/10/2026)**
 
-### 1.2 Versione radice (`game.js`, `render.js`, `index.src.html`, `showroom*`, test radice, `HANDOFF.md`, `LEGGIMI-menu.md`) — **sì, dopo un salvataggio ragionato**
+Era la prima incarnazione (isola 300×200 m, build mono-file), «anticamera» anche lei. Cosa ne è stato della conoscenza che conteneva:
 
-- È la prima incarnazione (isola 300×200 m, build mono-file). Il suo `HANDOFF.md` radice e `LEGGIMI-menu.md` contengono però **conoscenza storica non presente altrove** (convenzioni mappa/assi/camera, convenzioni estetiche, il «come verificare» con Playwright).
-- `mappa.txt` è già rigenerato dalla mappa vera: con la mappa v7 è superato.
-- I test radice (`test_combattimento`, `test_polizia`, `test_distruzione`, `test_fisica`, `test_guida`) **non girano su v7**: prima di buttarli, vedi §4.2 (portarli o archiviarli consapevolmente).
-
-**Raccomandazione**: (a) fondere in `v7/` le convenzioni ancora valide della `HANDOFF.md` radice (molte sono già nei `HANDOFF_*` di v7 — verificare le sovrapposizioni); (b) poi `git rm` dei sorgenti radice in un commit «archivio storico». Se si vuole tenere una copia offline: `_trasferimento/` esiste già per questo uso.
+- **Convenzioni mappa/assi/unità/camera/HOOKS**: già in [`v7/src/AGENTS.md`](v7/src/AGENTS.md) (§ Convenzioni di codice, § Il loop).
+- **Cavilli della fisica e della guida** (ensureVel, corsie, carjacking): trasferiti in [`v7/src/HANDOFF_test_azioni.md`](v7/src/HANDOFF_test_azioni.md).
+- **I test d'azione**: portati a v7 (`v7/src/test_{combattimento,polizia,fisica,guida,distruzione}.js`), adattati alla mappa v7.
+- **Il resto** (convenzioni estetiche della radice, mappa.txt, showroom): storico, recuperabile dalla storia git (commit `3a1fead` e precedenti).
+- `mappa.txt` era già superato dalla mappa v7.
 
 ### 1.3 Materiale di lavoro: `_backup_*/`, `_scambio/`, `_to_delete/`, `_trasferimento/`, `_immagini/` — **sì con cautela: verificare che non contengano pezzi unici**
 
@@ -61,9 +61,9 @@ Queste non sono «versioni», sono **scarti di processo** di un flusso multi-age
 
 ### P0 — Chiusura del ciclo di sviluppo (mezza giornata)
 
-1. **Un solo posto per la verità**: dichiarare `v7/` l'unica versione attiva in `AGENTS.md` (fatto) e **rimuovere l'ambiguità della radice**: oggi `npm i three && python build.py` nella radice produce ancora `porto-vecchio.html` (una build vecchia) — chi arriva si chiede quale sia il gioco vero.
-2. **`package.json` in `v7/`**: oggi la radice ha `package.json` (three 0.149) ma v7 no, pur essendo l'unica che lo userebbe per rigenerare `three.min.js`/i kit. Aggiungere `v7/package.json` minimale (script `build`, `start`, `test`) — o spostare quello radice.
-3. **Ignorare i prodotti**: aggiungere `v7/index.html` a `.gitignore` **oppure** decidere il contrario (committarlo sempre aggiornato) e scriverlo in `AGENTS.md`. Oggi è committato e invecchia a ogni push dimenticato: fonte n. 1 di «schermo bianco» post-deploy.
+1. **Un solo posto per la verità**: dichiarare `v7/` l'unica versione attiva in `AGENTS.md` (fatto) e **rimuovere l'ambiguità della radice** (fatto il 7/10/2026: sorgenti radice archiviati; `npm i three && python build.py` nella radice non produce più nulla perché non c'è più niente).
+2. **`package.json` in `v7/`**: la radice aveva `package.json` (three 0.149) ed è stata archiviata. v7 non ha dipendenze npm (three.js vendored): si aggiunga un `v7/package.json` solo il giorno che serva (es. per `npm test`).
+3. **Ignorare i prodotti**: fatto — `v7/index.html` in `.gitignore`, Vercel lo rigenera col `buildCommand` in `v7/vercel.json`.
 
 ### P1 — Sicurezza e segreti (basso sforzo, alto rendimento)
 
@@ -73,7 +73,7 @@ Queste non sono «versioni», sono **scarti di processo** di un flusso multi-age
 
 ### P2 — Test e ripetibilità (il cuore del consolidamento)
 
-7. **Portare i test mancanti della radice a v7** (vedi §4.2): combattimento, polizia, distruzione, fisica di guida. Sono i test del gameplay d'azione che oggi v7 non ha.
+### 7. **Portare i test mancanti della radice a v7** (vedi §4.2): combattimento, polizia, distruzione, fisica di guida. Sono i test del gameplay d'azione che oggi v7 non ha. — **fatto il 7/10/2026**
 8. **Un test di fumo della build**: script che fa `python build.py`, apre `index.html` headless (Playwright già usato altrove), aspetta `window.__pv` e verifica che `G.step` giri 100 frame senza eccezioni. Cinquanta righe, elimina l'intera classe dei «deploy rotti».
 9. **Fissare i semi nei CI/ready**: i test già accettano `[giorni] [seme]`: creare un `npm test` che giri `1 giorno, seme 1` di ogni test (≈2-3 minuti totali).
 
@@ -131,14 +131,14 @@ Prese dai «Da fare» già scritti nei HANDOFF (nessuna invenzione nuova):
 
 ## 6. Checklist finale di consolidamento (riassunto esecutivo)
 
-- [ ] P0: `AGENTS.md` gerarchici a posto (fatto in questa sessione) + `package.json` in v7 + decisione su `index.html` committato o ignorato
+- [ ] P0: `AGENTS.md` gerarchici a posto (fatto) + ~~`package.json` in v7~~ + ~~decisione su `index.html` committato o ignorato~~ (fatto: ignorato, rigenerato al deploy)
 - [ ] P1: audit chiavi nella storia git
 - [ ] P2: test di fumo build (Playwright, 100 frame) + `npm test` unico
-- [ ] P2: portare i test d'azione della radice a v7 **oppure** archiviarli consapevolmente
-- [ ] P3: rimozione `v2/`–`v5/` (dopo commit dedicato, con conferma)
-- [ ] P3: `LEGENDA.md` in `strumenti_inverno/` + render.js base dichiarata = main attuale → poi rimozione `v6/`
-- [ ] P3: verifica-diff di `_scambio/v7src_now.tgz` contro `v7/src`, poi svuotamento
-- [ ] P3: rimozione `_to_delete/`, `_backup_*`, `_trasferimento/` (con conferma)
+- [x] P2: portati i test d'azione della radice a v7 (7/10/2026)
+- [x] P3: rimozione `v2/`–`v5/` (6/10/2026, commit dedicati)
+- [x] P3: `LEGENDA.md` in `strumenti_inverno/` + render.js base dichiarata = main attuale → rimozione `v6/` (7/10/2026)
+- [x] P3: verifica-diff di `_scambio/v7src_now.tgz` contro `v7/src`, poi svuotamento (rimosso d'archivio il 6/10/2026)
+- [x] P3: rimozione `_to_delete/`, `_backup_*`, `_trasferimento/` (6/10/2026) e della versione radice storica (7/10/2026)
 - [ ] P4 (dopo): orchestratore `build_render.py`, poi estrazione modulare un subsystem alla volta
 - [ ] P5: riprendere lo sviluppo dalla lista §5
 

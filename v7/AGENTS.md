@@ -26,7 +26,7 @@
 | Build | `python build.py` |
 | Server locale | `node server.js` (o `AVVIA.bat`) |
 | Test della Mente | `node test_mente.mjs` (server acceso) |
-| Test di logica | `node src/test_<modulo>.js [giorni] [seme]` |
+| Test di logica | `node src/test_<modulo>.js [giorni]` (simulazione) · `node src/test_<nome>.js [seme]` (azione: combattimento, polizia, fisica, guida, distruzione) |
 | Rigenerare `api/_mente.js` | `python strumenti_inverno/mente_vercel.py` — **obbligatorio dopo ogni modifica di `server.js`** |
 | Rigenerare i `.json.js` | `python strumenti_inverno/pack_file.py` |
 

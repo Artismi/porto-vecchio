@@ -23,20 +23,11 @@ Stile visivo: pixel art isometrica con Three.js r149, atmosfera «inizio autunno
 
 ## 2. Mappa del repository (stato attuale)
 
-```
+````
 porto-vecchio/                     ← repository git (remoto: Jollyproxi/porto-vecchio, upstream: Artismi/porto-vecchio)
 │
-│  ── Versione STORICA «isola» (radice) ─────────────────────────────
-├─ game.js, render.js, index.src.html, build.py    ← build mono-file (3 sorgenti → porto-vecchio.html ~1 MB)
-├─ porto-vecchio.html, index.html                  ← build giocabili della versione radice
-├─ showroom.src.html, shot.py, showshot.py, dzshot.py, physshot.py, stress.py  ← istantanee Playwright
-├─ test_combattimento.js, test_polizia.js, test_distruzione.js, test_fisica.js, test_guida.js
-├─ HANDOFF.md (radice), LEGGIMI-menu.md, mappa.txt, package.json (three@0.149), vercel.json
-├─ _backup/          ← rimosso il 6/10/2026 (storia in git)
-├─ _trasferimento/   ← rimosso il 6/10/2026 (storia in git)
-│
-│  ── Versioni EVOLUTIVE (snapshot incrementali) ───────────────────
-├─ v6/               ← 19 file: economia, tasche (base di v7). v2–v5 rimosse dal working tree il 6/10/2026 (storia in git)
+│  ── Solo documentazione (le versioni storiche sono archivio in git) ─
+├─ AGENTS.md, ANALISI-STRUTTURALE.md, CONSIGLI-IMPLEMENTATIVI.md
 │
 │  ── Versione CORRENTE v7 «Inverno/Unione» ────────────────────────
 └─ v7/
@@ -51,12 +42,14 @@ porto-vecchio/                     ← repository git (remoto: Jollyproxi/porto-
    ├─ prova_azioni.txt, prova_economia.txt  ← output di esempio dei test
    ├─ api/                      ← funzioni Vercel: mente.js, status.js, test.js, _mente.js (generato)
    ├─ assets/ (304 file)        ← kit di modelli glTF-JSON: mc/ (persone), mf/ (mobili), mj/ (varie), mk/ (kit modulari)
-   ├─ src/ (48 file .js, ~3,9 MB) ← i sorgenti veri (vedi §4)
-   ├─ strumenti_inverno/ (105 file) ← script Python/JS che «patchano» render.js a catena
+   ├─ src/ (53 file .js, ~3,9 MB) ← i sorgenti veri + i test (vedi §4)
+   ├─ strumenti_inverno/ (105 file + LEGENDA.md) ← script Python/JS che «patchano» render.js a catena
    ├─ _immagini/                ← screenshot di riferimento
-```
+````
 
-Il repository git è **pulito** (nessuna modifica pendente) e sincronizzato con `origin/main` (con 7 commit locali in più del 6/10/2026: documentazione + rimozioni d'archivio). Le cartelle `v6`, i sorgenti della radice e `_immagini/` restano **tracciate nel repository**; `v7/index.html` è **git-ignored** e viene rigenerato sia in locale (`build.py`) sia su Vercel (`buildCommand` in `vercel.json`).
+La versione radice storica («isola», build mono-file, i test d'azione, `api/`, `vercel.json`) e le snapshot `v2/`–`v6/` sono state **rimosse dal working tree il 6–7/10/2026** con commit dedicati: la loro storia resta in git (`git log --diff-filter=D`). I test d'azione della radice sono **portati a v7** in `v7/src/`.
+
+Il repository git è **pulito** (nessuna modifica pendente) e sincronizzato con `origin/main` (con commit locali in più del 6–7/10/2026: documentazione, test portati e rimozioni d'archivio). `v7/index.html` è **git-ignored** e viene rigenerato sia in locale (`build.py`) sia su Vercel (`buildCommand` in `vercel.json`).
 
 ---
 
@@ -216,7 +209,7 @@ Il client (`mente.js`) non dipende da dove gira il codice: chiama `/api/mente`. 
 | **Build** | `python build.py` in `v7/` | rigenera `index.html` dai sorgenti |
 | **Test logica** | `node src/test_vita.js [giorni] [seme]` ecc. | dalla cartella `v7/` (o `v7/src/`) |
 | **Online** | push su `main` → Vercel ridistribuisce | vedi `VERCEL.md` |
-| **Versione radice (storica)** | `npm i three@0.149.0 && python build.py` | produce `porto-vecchio.html` (~1 MB) — flusso diverso e indipendente |
+| **Versione radice (archiviata il 7/10/2026)** | ~~`npm i three@0.149.0 && python build.py`~~ | flusso rimosso dal working tree: recuperabile dalla storia git |
 
 ---
 
@@ -233,9 +226,9 @@ Le cartelle `v2`–`v6` sono **snapshot progressivi** lasciati sul posto come ri
 | v6 | 19 | + `economia.js`, `tasche_ui.js`, `test_economia.js` |
 | **v7** | **48** | mappa nuova (Monte Scuro), fazioni, soldi, oggetti, mestieri, protagonista, regia, coro, livelli, cantiere, menu, interni rifatti, animazioni, ambiente, **unione di 8 rami** |
 
-La versione **radice** è ancora più vecchia: la prima incarnazione «isola 300×200 m» con build a 3 sorgenti e i test di combattimento/polizia/distruzione/fisica/guida che in v7 non hanno equivalenti diretti (il combattimento esiste dentro `game.js`, ma i test specifici della radice non sono stati portati).
+La versione **radice** era ancora più vecchia: la prima incarnazione «isola 300×200 m» con build a 3 sorgenti e i test di combattimento/polizia/distruzione/fisica/guida. **Il 7/10/2026 i cinque test d'azione sono stati portati a v7** (vedi [`v7/src/HANDOFF_test_azioni.md`](v7/src/HANDOFF_test_azioni.md)).
 
-La duplicazione è quindi **storica e deliberata** (snapshot di sicurezza in un flusso multi-agente senza fiducia totale nel git), ma oggi il git è pulito e sincronizzato: la duplicazione sul disco serve poco e costa spazio/chiarezza (dettagli e proposta in [CONSIGLI-IMPLEMENTATIVI.md](CONSIGLI-IMPLEMENTATIVI.md)).
+La duplicazione era **storica e deliberata** (snapshot di sicurezza in un flusso multi-agente senza fiducia totale nel git). Con il git pulito e sincronizzato, il 6–7/10/2026 le copie sono state rimosse dal working tree con commit dedicati: v7 resta **l'unica versione viva** (proposta e decisioni in [CONSIGLI-IMPLEMENTATIVI.md](CONSIGLI-IMPLEMENTATIVI.md)).
 
 ---
 
@@ -251,8 +244,8 @@ La duplicazione è quindi **storica e deliberata** (snapshot di sicurezza in un 
 ## 10. Rischi e punti deboli
 
 1. **`render.js` non è manutenibile a mano** (10.160 righe, modificabile solo tramite 105 script): ogni intervento visivo richiede la catena giusta o rischia di rompere le guardie.
-2. **Duplicazione storica**: al 6/10/2026 mattina c'erano v2–v6, versione radice, 6 cartelle `_backup_*`, `_scambio`, `_to_delete`, `_trasferimento` (~10 copie parziali). **Risolto in parte il 6/10/2026**: v2–v5 e il materiale di lavoro sono stati rimossi (storia in git); restano `v6/` e i sorgenti radice, in attesa di decisione.
-3. **Il test della radice e quello di v7 sono disallineati**: i test storici (combattimento, polizia, distruzione, fisica, guida) non girano sulla build corrente.
+2. **Duplicazione storica**: al 6/10/2026 mattina c'erano v2–v6, versione radice, 6 cartelle `_backup_*`, `_scambio`, `_to_delete`, `_trasferimento` (~10 copie parziali). **Risolto il 6–7/10/2026**: tutto l'archivio è stato rimosso dal working tree con commit dedicati (storia in git); i test d'azione della radice sono stati portati a v7.
+3. **Il test della radice e quello di v7 sono disallineati**: ~~risolto il 7/10/2026~~ — i cinque test d'azione sono ora portati e girano su v7 (`v7/src/test_{combattimento,polizia,fisica,guida,distruzione}.js`).
 4. ~~**`index.html` (3,9 MB) è generato ma committuto**~~ — risolto il 6/10/2026: git-ignored e rigenerato dal `buildCommand` di Vercel.
 5. **Nessun test della grafica automatizzato nel repo corrente** (gli screenshot Playwright della radice non sono portati a v7; `strumenti_inverno/shot_gioco.js` esiste ma non è cablato a CI).
 6. **Regex di build che esclude i nomi con cifre** — vincolo implicito e non documentato che può sorprendere.
