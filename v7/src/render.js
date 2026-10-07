@@ -87,6 +87,7 @@ var Render = (function () {
     return LD1;
   }
   function addStatic(obj, noShadow) {
+    if (window.Officina) Officina.onStatic(obj);   // [studio] modifiche ai modelli di strada
     obj.updateMatrixWorld(true); curObj = obj;
     obj.traverse(o => {
       if (!o.isMesh || Array.isArray(o.material)) return;
@@ -96,6 +97,7 @@ var Render = (function () {
       let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
       g.applyMatrix4(o.matrixWorld);
       b.geos.push(g); if (curTag) tagPart(b, g.attributes.position.count);
+      if (window.Officina && Officina.wantParts) Officina.onPart(o, b, b.geos.length - 1, g.attributes.position.count);   // [studio] dove finisce ogni mesh
     });
   }
   function mergeGeos(geos) {
@@ -231,14 +233,14 @@ var Render = (function () {
     const walk = o => {
       for (const c of o.children) {
         if (c.userData.keepTree || c.isSprite || c.isLight || (c.isMesh && (Array.isArray(c.material) || c.userData.keep))) { keep.push(c); continue; }
-        if (c.isMesh) { let b = by.get(c.material); if (!b) { b = []; by.set(c.material, b); } const g = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); b.push(g); }
+        if (c.isMesh) { let b = by.get(c.material); if (!b) { b = []; by.set(c.material, b); } const g = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); b.push(g); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
         walk(c);
       }
     };
     walk(grp);
     const out = new THREE.Group(); out.position.copy(grp.position); out.rotation.copy(grp.rotation); out.scale.copy(grp.scale);
     keep.forEach(o => { const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld); o.parent.remove(o); m.decompose(o.position, o.quaternion, o.scale); out.add(o); });
-    by.forEach((geos, mat) => out.add(new THREE.Mesh(mergeGeos(geos), mat)));
+    by.forEach((geos, mat) => { const M = new THREE.Mesh(mergeGeos(geos), mat); out.add(M); if (window.Officina && Officina.wantParts) Officina.onGroupMerged(grp, mat, M); });   // [studio] dove finisce ogni pezzo della casa
     return out;
   }
 
@@ -1702,6 +1704,7 @@ var Render = (function () {
     const nat = buildNat(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');
     const vd = verde38(tx0, ty0, n, m); vd.visible = false; grp.add(vd);   // [verde]
     scene.add(grp);
+    if (window.Officina) Officina.onChunk(grp, groundH);   // [studio] alberi e cespugli ritoccati
     return { grp, geo, mat, tex, btex, veg, nat, lt, vd, rev: ISO.rev };
   }
   function dropChunk(ch) {
@@ -10142,6 +10145,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     DZ.faces.forEach(F => { if (F.glass) F.glass.forEach(g => g.broken = false); F.ctx.putImageData(F.bak, 0, 0); F.ectx.putImageData(F.ebak, 0, 0); F.map.needsUpdate = true; F.emissive.needsUpdate = true; F.bak = null; }); DZ.faces.clear();
     resetRooms();
     DZ.touched = false;
+    if (window.Editor && Editor.reapply) Editor.reapply();   // [editor] gli oggetti tolti o spostati restano come nei ritocchi
   }
 
   // chi viene investito vola: parabola e capriola, poi atterra nella posa a terra
@@ -10245,7 +10249,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     dyn.buildings.forEach(b => b.mats.forEach(m => { if (m.emissiveMap) m.emissiveIntensity = .04 + night * .85; }));
     FD1.emis.forEach(m => { m.emissiveIntensity = .04 + night * .85; });   /* [pulitore1] */
     if (dyn.backdropMats) dyn.backdropMats.forEach(m => m.emissiveIntensity = .1 + night * .9);
-    const time = ui.time || st.clock;
+    const time = ui.studio ? 30 : (ui.time || st.clock);   // [studio] tutto fermo: vento, bandiere, fumo, schermi
     updateLights(time, night, cam.x, cam.y);
     { const dayK = 1 - night;   /* [amb1] sole e cielo secondo il tempo; la notte resta della regia luci */
       hemi.intensity = Math.max(hemi.intensity, (.34 + WXc * .3) * dayK);
@@ -10275,7 +10279,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     tickWinter(time, night);
     tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri
     tickUrbano1(time, night);
-    tickMondo(st, time, night, dt);   // [animazioni-mondo] vento, fumo, scintille, carte, piccioni, porte
+    tickMondo(st, time, night, ui.studio ? 0 : dt);   // [animazioni-mondo] vento, fumo, scintille, carte, piccioni, porte
     muriGente(st);   /* [muri_gente2] */
     bmbPass(st);   /* [bombolette1] */
     dyn.spin.forEach(s => { s.o.rotation.y = time * s.speed; s.o.children.forEach(c => c.children.forEach(m => m.material.opacity = .015 + night * .06)); });
@@ -10427,9 +10431,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (ui.dialogNpc) { const n = G.byId(st, ui.dialogNpc); if (n) focus.push([n.x, n.y]); }
     if (p.indoor) tz *= .5;
     if (ui.intro) { tx = G.PLACES.piazza.x + Math.sin(time * .08) * 30; ty = G.PLACES.piazza.y - 6 + Math.cos(time * .06) * 8; tz = 1.25; }
+    if (ui.focus) { tx = ui.focus.x; ty = ui.focus.y; tz = (ui.zoom || 1) * (p.indoor ? .5 : 1); focus[0] = [tx, ty]; }   // [editor] la camera segue il punto dell'editor
     const kf = 1 - Math.pow(pveh ? .004 : .02, dt);
     cam.x += (tx - cam.x) * kf; cam.y += (ty - cam.y) * kf; cam.zoom += (tz - cam.zoom) * (1 - Math.pow(.05, dt));
-    { const lh = !ui.intro && typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; cam.h += ((lh !== null ? lh : groundH(ui.intro ? tx : p.x, ui.intro ? ty : p.y)) - cam.h) * Math.min(1, dt * 4); }
+    { const lh = !ui.intro && typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; cam.h += ((lh !== null && !ui.focus ? lh : groundH(ui.intro || ui.focus ? tx : p.x, ui.intro || ui.focus ? ty : p.y)) - cam.h) * Math.min(1, dt * 4); }
     let kx = 0, ky = 0;
     if (st.kick) { const k = Math.max(0, 1 - (st.clock - st.kick.t) * 9); kx = -Math.cos(st.kick.a) * st.kick.amt * k * 1.2; ky = -Math.sin(st.kick.a) * st.kick.amt * k * 1.2; }
     const sh = st.shake || 0, sx = (Math.random() - .5) * sh * 1.4, sy = (Math.random() - .5) * sh * 1.4;
@@ -10487,6 +10492,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     INDOOR.quad = Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2) - .5) & 3;
     const indoorNow = indoorPass(st); if (indoorNow) { scene.fog.near = 200; scene.fog.far = 400; }
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist - 2; scene.fog.far = dist + 22; scene.fog.color.set('#060505'); scene.background.set('#060505'); } }   // [monte]
+    if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     renderer.setRenderTarget(rt); renderer.render(scene, camera);
     renderer.setRenderTarget(null); ambPasses();   /* [amb2] */
     const U = postMat.uniforms;
@@ -10530,5 +10536,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   function camBasis() { const f = new THREE.Vector3(); camera.getWorldDirection(f); f.y = 0; f.normalize(); return { fx: f.x, fz: f.z, rx: -f.z, rz: f.x }; }
   function snap(st) { cam.x = st.player.x; cam.y = st.player.y; cam.h = groundH(st.player.x, st.player.y); }
   const __mondo = { M: MONDO, V: VENTO, stat: () => ({ ms: +MONDO.ms.toFixed(3), vento: +VENTO.g.value.toFixed(2), neve: MONDO.rain, fumo: MONDO.puffs ? Array.from(MONDO.puffs.life).filter(l => l > 0).length : 0, scintille: MONDO.sparks ? Array.from(MONDO.sparks.life).filter(l => l > 0).length : 0, fuochi: MONDO.fuochi.length + WX.fires.length, stormi: MONDO.birds ? MONDO.birds.F.length : 0, porte: MONDO.doors.filter(r => r.rig.visible).length, barche: dyn.boats.length, bucato: dyn.laundry.length, gabbiani: dyn.gulls.length }) };   // [animazioni-mondo] per le prove
-  return { spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
+  const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
+    materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
+  return { __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();

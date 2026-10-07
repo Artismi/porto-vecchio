@@ -359,6 +359,46 @@ function sendJSON(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
+// [editor] ritocchi fatti nel gioco: si scrivono solo questi file, e solo se la richiesta viene dal gioco stesso
+const RIT_FILE = path.join(ROOT, 'ritocchi.json'), RIT_DIR = path.join(ROOT, 'ritocchi');
+let ritBackupDone = false;
+function handleRitocchi(req, res, pathname, parsedUrl) {
+  const origin = req.headers.origin;
+  if (origin && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) { sendJSON(res, 403, { ok: false, errore: 'solo dal gioco aperto in locale' }); return; }
+  if (req.method === 'GET') { sendJSON(res, 200, { ok: true, file: fs.existsSync(RIT_FILE) }); return; }
+  if (req.method !== 'POST') { sendJSON(res, 405, { ok: false }); return; }
+  const chunks = []; let size = 0;
+  req.on('data', c => { size += c.length; if (size > 64 * 1024 * 1024) { req.destroy(); return; } chunks.push(c); });
+  req.on('end', () => {
+    try {
+      const body = Buffer.concat(chunks);
+      if (pathname === '/api/ritocchi') {
+        const data = JSON.parse(body.toString('utf8'));
+        // la prima volta che si salva in questa sessione, la versione di prima resta in ritocchi.backup.json
+        if (!ritBackupDone && fs.existsSync(RIT_FILE)) fs.copyFileSync(RIT_FILE, path.join(ROOT, 'ritocchi.backup.json'));
+        ritBackupDone = true;
+        fs.writeFileSync(RIT_FILE, JSON.stringify(data, null, 1));
+        sendJSON(res, 200, { ok: true }); return;
+      }
+      if (pathname === '/api/ritocchi/png') {
+        const nome = parsedUrl.searchParams.get('nome') || '';
+        if (!/^[\w.-]+\.png$/.test(nome) || body.length < 8 || body.readUInt32BE(0) !== 0x89504e47) { sendJSON(res, 400, { ok: false, errore: 'nome o immagine non validi' }); return; }
+        fs.mkdirSync(RIT_DIR, { recursive: true });
+        fs.writeFileSync(path.join(RIT_DIR, nome), body);
+        sendJSON(res, 200, { ok: true, file: 'ritocchi/' + nome }); return;
+      }
+      if (pathname === '/api/ritocchi/file') {   // [studio] modelli caricati (.glb): in ritocchi/modelli
+        const nome = parsedUrl.searchParams.get('nome') || '';
+        if (!/^[\w.-]+\.glb$/.test(nome) || body.length < 12 || body.toString('latin1', 0, 4) !== 'glTF') { sendJSON(res, 400, { ok: false, errore: 'serve un file .glb' }); return; }
+        const dir = path.join(RIT_DIR, 'modelli'); fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, nome), body);
+        sendJSON(res, 200, { ok: true, file: 'ritocchi/modelli/' + nome }); return;
+      }
+      sendJSON(res, 404, { ok: false });
+    } catch (e) { console.error('[editor]', e.message); sendJSON(res, 500, { ok: false, errore: e.message }); }
+  });
+}
+
 function aiReply(res, aiResp) {
   sendJSON(res, 200, {
     ok: true,
@@ -537,6 +577,9 @@ const server = http.createServer(async (req, res) => {
     sendJSON(res, 200, Object.assign(statusObj(cfg), { test: r ? 'ok' : 'fallito', risposta: r }));
     return;
   }
+
+  // [editor] l'editor del gioco (F2) salva qui i ritocchi: ritocchi.json e le pitture in ritocchi/*.png
+  if (pathname.startsWith('/api/ritocchi')) { handleRitocchi(req, res, pathname, parsedUrl); return; }
 
   if (pathname === '/') pathname = '/index.html';
   const filePath = path.join(ROOT, pathname);

@@ -465,7 +465,8 @@ var InterniArte = (function () {
       const p = /^ia_|^st_stufa$/.test(o.id) ? Promise.resolve(build(o.id, rng((o.x * 97 + o.y * 31) >>> 0))) : (window.Models ? Models.furniture(o.id) : Promise.resolve(null));
       p.then(m => {
         if (!m || S.grp !== grp) return;
-        m.position.set(o.x, BASE + (o.h || 0), o.y); m.rotation.y = o.ry || 0; grp.add(m);
+        if (window.Officina) Officina.apply('mobile:' + o.id, m);   // [studio]
+        m.position.set(o.x, BASE + (o.h || 0), o.y); m.rotation.y = o.ry || 0; if (o.s) m.scale.multiplyScalar(o.s); m.userData.furn = o; grp.add(m);   // [editor]
         const u = m.userData;
         if (u.fire || u.candle) { const q = u.fire || u.candle, v = new THREE.Vector3(q[0], q[1], q[2]).applyAxisAngle(new THREE.Vector3(0, 1, 0), o.ry || 0); S.fires.push({ at: [o.x + v.x, BASE + (o.h || 0) + v.y, o.y + v.z], big: !!u.fire, meshes: [] }); m.traverse(k => { if (k.isMesh && k.userData.fire) { k.material = k.material.clone(); S.fires[S.fires.length - 1].meshes.push(k); } }); addLights(); }
         if (u.neon) { m.traverse(k => { if (k.isMesh && k.material && k.material.emissiveIntensity > 1) { k.material = k.material.clone(); } if (k.isMesh && k.material && k.material.emissiveIntensity > 1) S.neons.push({ m: k, base: k.material.emissiveIntensity, bad: Math.random() < .4, ph: Math.random() * 10 }); }); }
@@ -561,5 +562,15 @@ var InterniArte = (function () {
   // usciti di casa: le luci di fuori tornano
   function exit() { S.hidden.forEach(k => { k.visible = true; }); S.hidden = []; S.hiddenDone = false; S.grp = null; }
   function build_(b, f, ctx) { S.hiddenDone = false; S.hidden.forEach(k => { k.visible = true; }); S.hidden = []; return buildFloor(b, f, ctx); }
-  return { build: build_, light, exit, prop: build, floorY: () => (S.grp ? BASE : null) };
+  // [editor] i materiali degli interni per il pennello: pavimenti senza usura ai bordi (ritagliati a passi di 48 px, così le piastrelle ripetono pari), pareti da 6 m
+  function materiali() {
+    const out = [];
+    ['piastrelle', 'piastrelle_b', 'cotto', 'graniglia', 'marmo', 'scacchi', 'parquet', 'assi', 'spina', 'linoleum', 'moquette_r', 'moquette_b', 'cemento', 'terra', 'gomma'].forEach((st, i) => {
+      const c0 = floorCanvas({ w: 30, h: 30, floor: st, dirt: 0 }, rng(977 + i * 131)), n = Math.floor((c0.width - 96) / 48) * 48, c = mk(n, n);
+      c.getContext('2d').drawImage(c0, 48, 48, n, n, 0, 0, n, n); out.push({ nome: st, gruppo: 'Pavimenti', c, ppm: PPM });
+    });
+    ['calce', 'verde', 'blu', 'ocra', 'rosso', 'crema', 'ospedale', 'rosa', 'azzurro', 'fiori', 'righe', 'rombi', 'piastrelle', 'mattoni', 'cemento', 'legno', 'perline', 'velluto', 'nero'].forEach((st, i) => out.push({ nome: st, gruppo: 'Pareti', c: wallStyleCanvas(st, 6, 4099 + i * 71, 0), ppm: PPM }));
+    return out;
+  }
+  return { build: build_, light, exit, prop: build, materiali, floorY: () => (S.grp ? BASE : null) };
 })();

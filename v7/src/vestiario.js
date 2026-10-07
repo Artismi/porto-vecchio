@@ -228,6 +228,7 @@ var Vesti3D = (function () {
     });
     // nella sinistra
     if (held && wL) { const p = wpos(g, wL), s = new THREE.Group(); const C0 = typeof Oggetti !== 'undefined' && Oggetti.CAT[held]; const big = C0 && C0.peso > 1;
+      const om = window.Officina && Officina.held(held); if (om) { s.add(om); pin(g, wL, s, p.x, p.y - .08, p.z + .05); return; }   // [studio] il modello dell'oggetto, dove c'è
       if (/torcia/.test(held)) { s.add(Cy(.025, .03, .2, '#2a2a2e')); s.add(Cy(.032, .032, .03, '#f0e8a0', 0, .1, 0)); s.children.forEach(o => { o.rotation.x = Math.PI / 2; }); }
       else if (C0 && /bevande/.test(C0.cat)) s.add(Cy(.03, .03, .2, '#3a6a3a'));
       else s.add(Bx(big ? .12 : .08, big ? .14 : .08, big ? .1 : .05, '#' + ((Math.abs([...held].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7)) % 0xaaaaaa) + 0x333333).toString(16).slice(0, 6)));
@@ -258,6 +259,7 @@ var Vesti3D = (function () {
       const R = Math.max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]); unit = g.userData.vUnit = R > 0 && R < 1e8 ? 1.75 / R : .01; }
     try { shells(g, outfit, unit); } catch (e) { console.error('[Vesti3D] gusci', e); }
     try { accessories(g, outfit, held); } catch (e) { console.error('[Vesti3D] pezzi', e); }
+    if (window.Officina) try { Officina.onDress(g, outfit); } catch (e) { console.error('[Vesti3D] officina', e); }   // [studio]
   }
   const npcByLook = new WeakMap(); let npcSt = null;
   function npcOf(look) {

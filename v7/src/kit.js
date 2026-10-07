@@ -106,5 +106,5 @@ var Kit = (function () {
   }
   const has = name => !!LIB[name];
   function texOf(name) { let t = null; const o = LIB[name]; if (o) o.traverse(m => { if (!t && m.isMesh && m.material && m.material.map) t = m.material.map; }); return t; }
-  return { load, get, has, texOf, get ready() { return ready; } };
+  return { load, get, has, texOf, names: () => Object.keys(LIB), get ready() { return ready; } };   // [studio] names
 })();
