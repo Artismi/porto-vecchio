@@ -1050,7 +1050,7 @@ var Render = (function () {
         add(name, cx, groundH(cx, cz) - .15, cz, s * big * (.9 + r() * .2), r() * 6.28, { rx: (r() - .5) * .06, rz: (r() - .5) * .06 + (lean || 0), col: treeCol36(name, cx, cz, r) });   // [isola36]
         const k = (th > .5 ? 3 : 2) + (nt < 5 ? 1 : 0); for (let q = 0; q < k; q++) if (r() < .72) under(tx * TS + r() * 2, ty * TS + r() * 2, .8 + r() * .5);
         if (/DeadTree/.test(name) && r() < .45) for (let q = 0; q < 3; q++) add(r() < .7 ? 'Mushroom_Common' : 'Mushroom_Laetiporus', cx + (r() - .5) * 1.2, 0, cz + (r() - .5) * 1.2, .5 + r() * .5, r() * 6.28, { ground: true, col: '#f0e8dc' });
-      } else if (orig && orig[ii] === T.TREE && v !== T.DIRT && v !== T.FIELD) {   // [survival] sgombrato (terra battuta) o zappato: il ceppo è stato cavato
+      } else if (orig && orig[ii] === T.TREE && v !== T.DIRT && v !== T.FIELD && v !== T.BLD) {   // [survival] sgombrato (terra battuta) o zappato: il ceppo è stato cavato
         add('__ceppo', cx, groundH(cx, cz) - .05, cz, 1, r() * 6.28, { col: '#c8b8a0' });
         if (r() < .5) add('Bush_Common', tx * TS + r() * 2, 0, ty * TS + r() * 2, .4, r() * 6.28, { ground: true, col: pick(r, LEAF) });
       } else if (v === T.CLIFF) {
