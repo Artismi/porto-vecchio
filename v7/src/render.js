@@ -510,7 +510,7 @@ var Render = (function () {
           vec3 shal = mix(mix(vec3(.20,.36,.38), vec3(.24,.30,.31), wx.x), vec3(.06,.10,.13), night);
           vec3 c = mix(deep, shal, smoothstep(.3,.8,m) * .7);   /* [unione6] acqua bassa stretta e sfumata */
           c = mix(c, c*vec3(1.08,.95,.95)+vec3(.04,.02,.03), dusk*.4);
-          c += band*mix(vec3(.16,.20,.22), vec3(.06,.07,.12), night);
+          c += band*mix(vec3(.16,.20,.22), vec3(.06,.07,.12), night) * (.35 + .45*smoothstep(.15,.6,m));   /* [costa] al largo le creste si vedono appena: niente pioggia di trattini */
           // schiuma sulla riva, a onde
           float foam = step(.72, sin(m*26. - time*1.8 + sin(p.x*.4)*1.5)) * smoothstep(.35,.62,m) * (1.-smoothstep(.8,.95,m));
           c = mix(c, vec3(.92,.95,1.)*(1.-night*.45), foam*.8);
@@ -2198,6 +2198,7 @@ var Render = (function () {
     // le barche al loro posto, con le cime: di poppa ai pontili (due cime incrociate), di fianco ai moli (a prua e a poppa)
     const lineM = sl('#d8cfae');
     S.moorings.forEach(m => {
+      if (m.drive) return;   // le barche che si prendono le disegna il giro dei veicoli (boatVehicle)
       const g = boatAt(m, r); if (!g || m.kind === 'secca' || m.kind === 'nave') return;
       const st = S.structs.find(q => q.id === m.at), dh = st ? st.h : .5, ca = Math.cos(m.ang), sa = Math.sin(m.ang), L = m.len;
       if (st && st.type === 'pontile') { const sx = m.x - ca * L / 2, sz = m.y - sa * L / 2, tx = sx - ca * .9, tz = sz - sa * .9; [-1, 1].forEach(s => addStatic(rope([sx - sa * s * .4, WL + .55, sz + ca * s * .4], [tx + sa * s * .6, dh + .1, tz - ca * s * .6], lineM))); addStatic(rope([m.x + ca * L / 2, WL + .5, m.y + sa * L / 2], [m.x + ca * (L / 2 + 2.5), WL - .1, m.y + sa * (L / 2 + 2.5)], lineM)); }   // la trappa a prua che va al corpo morto
@@ -2206,8 +2207,78 @@ var Render = (function () {
     // le spiagge dove si fa il bagno: ombrelloni chiusi e una boa gialla che segna fin dove si nuota
     S.swim.forEach((b, k) => { for (let j = -1; j <= 1; j += 2) { const g = G0(); add(g, new THREE.Mesh(new THREE.SphereGeometry(.35, 8, 6), sm('#f0c020')), 0, .1, 0); g.position.set(b.x + j * 9, WL + .05, b.y + (b.y > b.shore[1] ? 12 : -12)); dyn.boats.push({ g, ph: k + j, y: WL + .05 }); scene.add(mergeGroup(g)); } });
   }
+  // [costa] le barche guidabili (st.vehicles con VK.boat): stesso scafo delle ormeggiate, galleggiano, beccheggiano con la velocità, lasciano la scia
+  function wakeTex() {
+    if (COSTA.wakeT) return COSTA.wakeT;
+    const c = mk(32, 128), x = c.getContext('2d'), r = rng(91);
+    for (let y = 0; y < 128; y++) { const t = y / 127, w = 4 + t * 26; for (let k = 0; k < 10; k++) { const xx = 16 + (r() - .5) * w; x.fillStyle = `rgba(240,248,255,${(1 - t) * .55 * r()})`; x.fillRect(xx, y, 1 + r() * 2, 1); } x.fillStyle = `rgba(230,240,250,${(1 - t) * .35})`; x.fillRect(16 - w / 2, y, 1, 1); x.fillRect(16 + w / 2, y, 1, 1); }
+    COSTA.wakeT = new THREE.CanvasTexture(c); COSTA.wakeT.minFilter = COSTA.wakeT.magFilter = THREE.LinearFilter; return COSTA.wakeT;
+  }
+  function boatVehicle(v, dt, time) {
+    let g = dyn.vehicles[v.id];
+    if (!g) {
+      let h = 0; for (const ch of v.id) h = (h * 31 + ch.charCodeAt(0)) | 0;
+      const K = G.VK[v.kind], r = rng(h >>> 0); g = mergeGroup(BOATS[v.kind](r, { col: v.color })); shadowed(g); const u = g.userData;
+      u.drv = driverMesh(v.driverLook || { top: '#3a4a5a', skin: '#dcae88', hair: '#17110e' }, false); u.drv.position.set(0, -.55, -K.len / 2 + 1.1); g.add(u.drv);
+      u.wake = new THREE.Mesh(new THREE.PlaneGeometry(K.wid * 2.2, 12), new THREE.MeshBasicMaterial({ map: wakeTex(), transparent: true, depthWrite: false, opacity: 0 })); u.wake.rotation.x = -Math.PI / 2; u.wake.position.set(0, .04, -K.len / 2 - 6); u.wake.renderOrder = 2;
+      u.wakeG = new THREE.Group(); u.wakeG.add(u.wake); scene.add(u.wakeG);
+      scene.add(g); dyn.vehicles[v.id] = g;
+    }
+    const u = g.userData, K = G.VK[v.kind], k = clamp(Math.abs(v.speed || 0) / K.max, 0, 1);
+    g.visible = !v.hidden; u.wakeG.visible = g.visible;
+    u.ph = u.ph === undefined ? (v.x * 7 + v.y) % 6 : u.ph;
+    u.roll = (u.roll || 0) + (clamp(-(v.latA || 0) * .02, -.18, .18) - (u.roll || 0)) * Math.min(1, dt * 3);
+    const sink = v.wreck ? Math.min(2.5, (u.sinkT = (u.sinkT || 0) + dt) * .15) : 0;
+    g.position.set(v.x, WL + (DRAFT[v.kind] || .4) + Math.sin(time * 1.3 + u.ph) * .07 * (1 - k * .6) - sink + k * .12, v.y);
+    g.rotation.set(-k * .09 + Math.sin(time * .9 + u.ph) * .02 + sink * .1, Math.PI / 2 - v.ang, u.roll + Math.sin(time * 1.1 + u.ph) * .035);
+    u.drv.visible = v.rider === 'player' && !v.wreck;
+    u.wakeG.position.set(v.x, WL, v.y); u.wakeG.rotation.y = Math.PI / 2 - v.ang;
+    u.wake.material.opacity = k * .75; u.wake.scale.set(1, .5 + k * 1.2, 1); u.wake.position.z = -K.len / 2 - 6 * (.5 + k * 1.2);
+  }
+  function swimPose(pg, p, inVeh, time) {
+    const on = !!p.swim && !inVeh && !p.indoor;
+    if (!COSTA.ring) { COSTA.ring = new THREE.Mesh(new THREE.RingGeometry(.55, .7, 20), new THREE.MeshBasicMaterial({ color: '#e8f4ff', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); COSTA.ring.rotation.x = -Math.PI / 2; scene.add(COSTA.ring); }
+    COSTA.ring.visible = on; if (!on) { if (pg.userData.swimTilt) { pg.rotation.x = 0; pg.userData.swimTilt = 0; } return; }
+    const mv = Math.abs(p.speed || 0) > .2, tilt = mv ? 1.15 : .12;
+    pg.rotation.order = 'YXZ'; pg.userData.swimTilt = (pg.userData.swimTilt || 0) + (tilt - (pg.userData.swimTilt || 0)) * .12; pg.rotation.x = pg.userData.swimTilt;
+    pg.position.y = WL - 1.12 + pg.userData.swimTilt * .5 + Math.sin(time * 2.2) * .05;
+    const ph = (time * .8) % 1; COSTA.ring.position.set(p.x, WL + .03, p.y); COSTA.ring.scale.setScalar(1 + ph * 1.6); COSTA.ring.material.opacity = (1 - ph) * .5;
+  }
   // il punto di bordo banchina più vicino (per le cime delle barche di fianco)
   function edgeNear(x, z) { let best = null, bd = 9; (COSTA.edges || []).forEach(e => { const cx = (e.ax + e.bx) / 2, cz = (e.az + e.bz) / 2, d = Math.hypot(cx - x, cz - z); if (d < bd) { bd = d; best = [cx - e.nx * .6, cz - e.nz * .6]; } }); return best; }
+  // [costa] chi va per mare: i pescherecci escono all'alba dal porto vecchio e tornano a metà giornata, la motovedetta della Guardia
+  // fa il giro dell'isola al largo. Seguono le rotte di World.SEA.routes; solo grafica, guidati dall'ora del gioco.
+  function routeAt(P, d, closed) {   // punto e direzione a distanza d lungo la polilinea
+    if (!P._c) { P._c = [0]; for (let k = 1; k < P.length + (closed ? 1 : 0); k++) { const a = P[k - 1], b = P[k % P.length]; P._c.push(P._c[k - 1] + Math.hypot(b[0] - a[0], b[1] - a[1])); } }
+    const L = P._c[P._c.length - 1]; d = closed ? ((d % L) + L) % L : clamp(d, 0, L);
+    let k = 1; while (k < P._c.length - 1 && P._c[k] < d) k++;
+    const a = P[k - 1], b = P[k % P.length], t = (d - P._c[k - 1]) / ((P._c[k] - P._c[k - 1]) || 1);
+    return { x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t, ang: Math.atan2(b[1] - a[1], b[0] - a[0]), L };
+  }
+  function buildMovers() {
+    const S = M.world && M.world.SEA; if (!S || !S.routes) return; const r = rng(707);
+    const mk1 = (kind, route, closed, sched) => { const g = mergeGroup(BOATS[kind](r, {})); shadowed(g); scene.add(g); const K = { kind, route, closed, sched, g, ph: r() * 6 };
+      K.wake = new THREE.Mesh(new THREE.PlaneGeometry(kind === 'motovedetta' ? 7 : 6, 16), new THREE.MeshBasicMaterial({ map: wakeTex(), transparent: true, depthWrite: false, opacity: .55 })); K.wake.rotation.x = -Math.PI / 2; K.wake.position.set(0, .04, -14); K.wg = new THREE.Group(); K.wg.add(K.wake); scene.add(K.wg); COSTA.movers.push(K); };
+    if (S.routes.pesca) { mk1('peschereccio', S.routes.pesca, false, { out: 5.2, back: 13.5, off: 0 }); mk1('peschereccio', S.routes.pesca, false, { out: 5.6, back: 14.2, off: 30 }); }
+    if (S.routes.giro) mk1('motovedetta', S.routes.giro, true, null);
+  }
+  function tickMovers(st, time) {
+    if (!COSTA.moversBuilt) { COSTA.moversBuilt = true; buildMovers(); }
+    const h = ((st.t / 60) % 24 + 24) % 24;
+    COSTA.movers.forEach(K => {
+      let q, moving = true;
+      if (K.closed) q = routeAt(K.route, time * 6 + K.ph * 500, true);   // 6 m/s
+      else { const L = routeAt(K.route, 0).L, mps = G.MIN_PER_SEC || 1, s = K.sched, per = 60 / mps * 7;   // 7 m/s veri: metri per ora di gioco
+        const outD = (h - s.out) * per, backD = L - (h - s.back) * per;
+        let d; if (h < s.out) { d = 0; moving = false; } else if (h < s.back) { d = Math.min(L, outD); moving = outD < L; } else { d = Math.max(0, backD); moving = backD > 0; }
+        q = routeAt(K.route, Math.max(0, d - s.off), false); if (h >= s.back && moving) q.ang += Math.PI;
+        if (!moving && d <= 0) { K.g.visible = false; K.wg.visible = false; return; } }
+      K.g.visible = K.wg.visible = true;
+      const y = WL + (DRAFT[K.kind] || .8) + Math.sin(time * 1.2 + K.ph) * .08;
+      K.g.position.set(q.x, y, q.y); K.g.rotation.set(moving ? -.05 : 0, Math.PI / 2 - q.ang, Math.sin(time * 1.1 + K.ph) * .04);
+      K.wg.position.set(q.x, WL, q.y); K.wg.rotation.y = Math.PI / 2 - q.ang; K.wake.material.opacity = moving ? .55 : 0;
+    });
+  }
   function tickCosta(time, night) {
     COSTA.blink.forEach(b => {
       let on;
@@ -10657,7 +10728,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (frameN % 6 === 0 || !dyn.wl1) { const cx = cam.x, cz = cam.y; dyn.wl1 = LSRC.filter(L => { if (L.off || !(L.base > 0) || Math.abs(L.x - cx) > 70 || Math.abs(L.z - cz) > 70) return false; if (L.cw1 === undefined) L.cw1 = coastIn(L.x, L.z); return L.cw1 < 7; }).sort((a, b) => ((a.x - cx) ** 2 + (a.z - cz) ** 2) - ((b.x - cx) ** 2 + (b.z - cz) ** 2)).slice(0, 16); }
       for (let i = 0; i < 16; i++) { const L = dyn.wl1[i]; if (L && !L.off) { U.lp.value[i].set(L.x, L.y + .45, L.z, Math.min(1.6, L.base * .5)); U.lc.value[i].copy(L.color); } else U.lp.value[i].w = 0; } }
     if (dyn.skyline) { dyn.skyline.position.set(camera.position.x, 8, camera.position.z); dyn.skyline.material.opacity = .5 + night * .5; }
-    tickCosta(time, night);   // [costa] i fanali del porto
+    tickCosta(time, night); tickMovers(st, time);   // [costa] i fanali del porto, le barche che vanno e vengono
     dyn.boats.forEach(b => { b.g.position.y = (b.y !== undefined ? b.y : -.3) + Math.sin(time * 1.3 + b.ph) * .08; b.g.rotation.z = Math.sin(time * 1.1 + b.ph) * .04; b.g.rotation.x = Math.sin(time * .83 + b.ph * 1.7) * .025; });   // [animazioni-mondo] beccheggio
     dyn.laundry.forEach(l => { if (l.ax === false) l.m.rotation.z = Math.sin(time * 2 + l.ph) * .25; else l.m.rotation.x = Math.sin(time * 2 + l.ph) * .25; });
     if (window.Models) Models.tick(st, time, night);
@@ -10710,9 +10781,11 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim
     animPerson(pg, { anim: p.anim, speed: pveh ? 0 : p.speed, carrying: p.carrying, punch: p.punch, seated: onVespa, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, recoil, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6 });
     if (!pveh) flight(pg, p, st);
+    swimPose(pg, p, !!pveh, time);   // [costa] a nuoto: dentro l'acqua fino alle spalle, coricato in avanti quando va, coi cerchi sull'acqua
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
     // veicoli
     st.vehicles.forEach(v => {
+      if (G.VK[v.kind] && G.VK[v.kind].boat) { boatVehicle(v, dt, time); return; }   // [costa] le barche vanno per conto loro
       let g = dyn.vehicles[v.id]; if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { g = vehicleMesh(v); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }
       g.visible = !v.hidden; if (!g.visible) return;
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
@@ -10751,7 +10824,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (u.beacons) { const on = v.siren && Math.sin(st.clock * 14) > 0; u.beacons[0].color.set(on ? '#3a7aff' : '#10204a'); u.beacons[1].color.set(!on && v.siren ? '#3a7aff' : '#10204a'); }
       vehMondo(v, g, u, K, dt, time, night);   // [animazioni-mondo] portiere, tergicristalli, scarico, motore al minimo, lampeggianti
     });
-    for (const id in dyn.vehicles) if (!st.vehicles.find(v => v.id === id)) { scene.remove(dyn.vehicles[id]); delete dyn.vehicles[id]; }
+    for (const id in dyn.vehicles) if (!st.vehicles.find(v => v.id === id)) { const gg = dyn.vehicles[id]; if (gg.userData.wakeG) scene.remove(gg.userData.wakeG); scene.remove(gg); delete dyn.vehicles[id]; }
     for (const id in dyn.people) if (id !== '__player' && !st.npcs.find(n => n.id === id)) { scene.remove(dyn.people[id]); delete dyn.people[id]; }
     if (pveh) { const h = groundH(pveh.x, pveh.y); dyn.headlight.intensity = 4 * (.2 + night) * (pveh.wreck ? 0 : 1); dyn.headlight.position.set(pveh.x + Math.cos(pveh.ang) * 1.6, h + 1.1, pveh.y + Math.sin(pveh.ang) * 1.6); dyn.headlight.target.position.set(pveh.x + Math.cos(pveh.ang) * 12, h, pveh.y + Math.sin(pveh.ang) * 12); } else dyn.headlight.intensity = 0;
     // oggetti da raccogliere

@@ -9025,11 +9025,11 @@ var World = (function () {
       return S;
     };
     const pontile = (id, name, pts, w, h, head) => { paintLine(pts, w, T.PIER, h); if (head) paintLine(head, w, T.PIER, h); const S = { type: 'pontile', id, name, pts, w, h, head: head || null }; SEA.structs.push(S); return S; };
-    // posti barca lungo un pontile: le barche stanno di poppa, perpendicolari, a passo `step`, sui due lati
+    // posti barca lungo un pontile: le barche stanno di poppa (la prua verso il largo), perpendicolari, a passo `step`, sui due lati
     const fingers = (S, from, step, kinds, r0, sides) => {
       const [a, b] = [S.pts[0], S.pts[S.pts.length - 1]], L = dist(a[0], a[1], b[0], b[1]), ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L;
       (sides || [1, -1]).forEach(sg => { for (let s = from; s < L - 1.5; s += step) { if (r0() < .18) continue; const kind = kinds[Math.floor(r0() * kinds.length)], len = BOATLEN[kind], off = S.w / 2 + .5 + len / 2, nx = -uy * sg, ny = ux * sg;
-        SEA.moorings.push({ kind, x: a[0] + ux * s + nx * off, y: a[1] + uy * s + ny * off, ang: Math.atan2(-ny, -nx), len, at: S.id }); } });
+        SEA.moorings.push({ kind, x: a[0] + ux * s + nx * off, y: a[1] + uy * s + ny * off, ang: Math.atan2(ny, nx), len, at: S.id, drive: kind === 'gozzo' || kind === 'lancia' || kind === 'motoscafo' }); } });   // drive: si può prendere (è un mezzo del motore)
     };
     const BOATLEN = { gozzo: 5, lancia: 6, barca_vela: 8, motoscafo: 7, peschereccio: 11, motovedetta: 13, nave: 44, rimorchiatore: 14, pedalo: 2.6, secca: 4.6 };
     const rs = rng(4242);
@@ -10526,6 +10526,11 @@ var Game = (function () {
   const tileAt = (tx, ty) => (tx < 0 || ty < 0 || tx >= GW || ty >= GH) ? T.WATER : grid[ty * GW + tx];
   const walkT = (tx, ty) => { const v = tileAt(tx, ty); return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; };   // [monte] CLIFF: pareti e muri a secco
   const walkM = (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS));
+  // [costa] il mare: si nuota nell'acqua di mare dentro la mappa; le barche vanno dove è fondo almeno mezzo metro (World.SEA.depth)
+  const SEA = W0.SEA || null;
+  const seaT = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH && grid[ty * GW + tx] === T.WATER && W0.zone[ty * GW + tx] === W0.Z.MARE;
+  const seaM = (x, y) => seaT(Math.floor(x / TS), Math.floor(y / TS));
+  const boatM = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return seaT(tx, ty) && (!SEA || SEA.depth[ty * GW + tx] >= .45); };
   // ---- interni: la porta di strada di ogni edificio porta dentro ----
   const INT = typeof Interior !== 'undefined' ? Interior : (typeof require !== 'undefined' ? require('./interior.js') : null);
   const DOOR_OF = new Map(); W0.BUILDINGS.forEach((b, i) => { if (b.door) DOOR_OF.set(b.door[1] * W0.GW + b.door[0], i); });
@@ -10679,11 +10684,16 @@ var Game = (function () {
     rx7: { r: 1.05, len: 4.3, wid: 1.7, max: 21, accel: 10.5, turn: 2.5, hp: 120, label: 'Mazda RX-7', mesh: 'giulia', glb: 'rx7' },
     gtr: { r: 1.08, len: 4.5, wid: 1.75, max: 22, accel: 11, turn: 2.5, hp: 130, label: 'Skyline GT-R', mesh: 'giulia', glb: 'gtr' },
     bursley: { r: 1.12, len: 4.9, wid: 1.9, max: 19, accel: 10, turn: 2.2, hp: 160, label: 'Bursley Defiance', mesh: 'giulia', glb: 'bursley' },
+    // [costa] le barche: vanno solo per mare (boatM), scivolano di lato, girano poco da ferme
+    gozzo: { r: 1.1, len: 5, wid: 1.75, max: 6.5, accel: 2, turn: 1.15, hp: 90, label: 'Gozzo', boat: true, art: 'il', m0: true },
+    lancia: { r: 1.25, len: 6, wid: 2.1, max: 9, accel: 2.8, turn: 1.05, hp: 110, label: 'Lancia a motore', boat: true, art: 'la' },
+    motoscafo: { r: 1.4, len: 7, wid: 2.4, max: 17, accel: 5, turn: 1.1, hp: 120, label: 'Motoscafo', boat: true, art: 'il', m0: true },
   };
   // fisica: massa (kg) e aderenza laterale (m/s²). Vespa e Ape scivolano meno, le berline derapano.
   Object.assign(VK.vespa, { m: 150, grip: 24 }); Object.assign(VK.cinquecento, { m: 560, grip: 19 }); Object.assign(VK.ritmo, { m: 860, grip: 20 });
   Object.assign(VK.giulia, { m: 1050, grip: 21 }); Object.assign(VK.ape, { m: 420, grip: 15 }); Object.assign(VK.polizia, { m: 1150, grip: 22 });
   Object.assign(VK.furgone, { m: 1900, grip: 18 }); Object.assign(VK.fuoristrada, { m: 1600, grip: 24 }); Object.assign(VK.camion, { m: 3600, grip: 17 }); Object.assign(VK.campagnola, { m: 1500, grip: 23 }); Object.assign(VK.blindato, { m: 6200, grip: 21 });
+  Object.assign(VK.gozzo, { m: 700, grip: 2.6 }); Object.assign(VK.lancia, { m: 950, grip: 2.8 }); Object.assign(VK.motoscafo, { m: 1200, grip: 3.4 });
   Object.assign(VK.rx7, { m: 1250, grip: 22 }); Object.assign(VK.gtr, { m: 1400, grip: 23 }); Object.assign(VK.bursley, { m: 1600, grip: 19 });
   for (const k in VK) VK[k].I = (VK[k].len * VK[k].len + VK[k].wid * VK[k].wid) / 12; // inerzia / massa
   const PICKUP_LABEL = { pistola: 'Beretta 92', lupara: 'Lupara', mitra: 'Skorpion', molotov: 'Molotov', munizioni: 'Munizioni', salute: 'Cassetta del pronto soccorso', soldi: 'Soldi', valigetta: 'Valigetta dei Marsigliesi' };
@@ -10773,6 +10783,8 @@ var Game = (function () {
     V('gr_camp2', 'campagnola', 'rocca', -6, 4, 0, '#5c6650', null, { military: true });
     V('gr_blind', 'blindato', 'rocca', 8, 4, Math.PI / 2, '#4a5446', null, { military: true });
     V('gr_camp3', 'campagnola', 'poligono', 4, 2, 0, '#6a6a50', null, { military: true });
+    // [costa] le barche che si possono prendere: i gozzi, le lance e i motoscafi ormeggiati ai pontili (World.SEA.moorings con drive)
+    if (SEA) SEA.moorings.forEach((m, k) => { if (m.drive) st.vehicles.push(makeVehicle(st, { id: 'bt' + k, kind: m.kind, x: m.x, y: m.y, ang: m.ang, color: m.col || null, moored: m.at })); });
     // traffico lungo le strade dell'isola, nei due sensi di marcia
     const TR = [['rx7', '#e8e8e8'], ['cinquecento', '#f3c6d4'], ['ritmo', '#b8302a'], ['bursley', '#c87a20'], ['giulia', '#2f4a3a'], ['cinquecento', '#6ab8c8'], ['ritmo', '#f2e2a0'], ['giulia', '#efe6d2'], ['ritmo', '#7fd0b0'], ['cinquecento', '#d86a4a'], ['furgone', '#d8d0c0'], ['ape', '#9ab07a'], ['camion', '#3a6a9a'], ['ritmo', '#c8c8d0']];
     const laneIx = id => Math.max(0, LANES.findIndex(l => l.id === id));
@@ -10993,16 +11005,16 @@ var Game = (function () {
     if (n && n.shop && PLACES[n.shop] && dist(n.x, n.y, PLACES[n.shop].x, PLACES[n.shop].y) < 5) return n;
     return null;
   }
-  function vehicleName(st, v) { if (v.kind === 'vespa') return `la Vespa${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; return `la ${VK[v.kind].label}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; }
+  function vehicleName(st, v) { if (VK[v.kind].art) return `${VK[v.kind].art} ${VK[v.kind].label.toLowerCase()}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; if (v.kind === 'vespa') return `la Vespa${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; return `la ${VK[v.kind].label}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; }
   function context(st) {
     const p = st.player, out = [];
     if (st.over) return out;
-    if (p.vehicle) { const v = st.vehicles.find(k => k.id === p.vehicle); out.push({ key: 'F', label: v.kind === 'vespa' ? 'Scendi dalla Vespa' : 'Scendi dall\'auto' }); return out; }
+    if (p.vehicle) { const v = st.vehicles.find(k => k.id === p.vehicle); out.push({ key: 'F', label: v.kind === 'vespa' ? 'Scendi dalla Vespa' : VK[v.kind].boat ? 'Scendi dalla barca' : 'Scendi dall\'auto' }); return out; }
     const n = nearestNpc(st, 2.2), v = nearestVehicle(st, 1.8), sk = shopkeeperHere(st);
     if (n) out.push({ key: 'T', label: `Parla con ${n.first}` });
     if (sk) out.push({ key: 'E', label: `Rapina ${PLACES[sk.shop].name}`, bad: true });
     else if (n && !n.cop && !n.faction) out.push({ key: 'E', label: `Scippa ${n.first}`, bad: true });
-    if (v) out.push({ key: 'F', label: v.lent ? 'Sali sulla Vespa di Beppe' : v.traffic ? `Tira giù l'automobilista (${VK[v.kind].label})` : `Ruba ${vehicleName(st, v)}`, bad: !v.lent && !v.mine });
+    if (v) out.push({ key: 'F', label: v.lent ? 'Sali sulla Vespa di Beppe' : v.mine && VK[v.kind].boat ? `Sali sul${VK[v.kind].m0 ? '' : 'la'} ${VK[v.kind].label.toLowerCase()}` : v.traffic ? `Tira giù l'automobilista (${VK[v.kind].label})` : `Ruba ${vehicleName(st, v)}`, bad: !v.lent && !v.mine });
     return out;
   }
 
@@ -11011,6 +11023,11 @@ var Game = (function () {
     if (Math.abs(v.speed) > 7) { p.stun = .7; damagePlayer(st, 12, v.ang + Math.PI, 'caduta'); }
     v.rider = null; p.vehicle = null;
     const r = VK[v.kind].r + .6;
+    if (VK[v.kind].boat) {   // [costa] dalla barca si scende sul pontile o sulla riva più vicina; se non c'è, si finisce in acqua
+      const K = VK[v.kind], ext = a => Math.abs(Math.cos(a - v.ang)) * K.len / 2 + Math.abs(Math.sin(a - v.ang)) * K.wid / 2; let done = false;
+      for (let rr = .5; rr < 4.6 && !done; rr += .5) for (let k = 0; k < 16 && !done; k++) { const a = v.ang + k / 16 * Math.PI * 2, x = v.x + Math.cos(a) * (ext(a) + rr), y = v.y + Math.sin(a) * (ext(a) + rr); if (walkM(x, y)) { p.x = x; p.y = y; done = true; } }
+      if (!done) { p.x = v.x + Math.cos(v.ang + Math.PI / 2) * (VK[v.kind].wid / 2 + .7); p.y = v.y + Math.sin(v.ang + Math.PI / 2) * (VK[v.kind].wid / 2 + .7); p.swim = true; }
+    } else
     for (const off of [Math.PI / 2, -Math.PI / 2, Math.PI, 0]) { const x = v.x + Math.cos(v.ang + off) * r, y = v.y + Math.sin(v.ang + off) * r; if (walkM(x, y)) { p.x = x; p.y = y; break; } }
     scaleVel(v, .3);
   }
@@ -11040,6 +11057,7 @@ var Game = (function () {
         if (v.owner) st.timers.push({ at: st.t + 30, kind: 'discoverVehicle', npc: v.owner, ev: ev.id, kindV: v.kind });
         if (v.owner === 'sandro') aggroFaction(st, 'squalo');
         addLog(st, `${clockStr(st.t)} · Hai rubato ${vehicleName(st, v)}.`, 'bad', ev.id);
+        if (VK[v.kind].boat) { const nm = vehicleName(st, v); return { ok: true, msg: `Sciogli la cima e tiri l'avviamento. ${nm[0].toUpperCase() + nm.slice(1)} è ${VK[v.kind].m0 ? 'tuo' : 'tua'}, per ora.` }; }   // [costa]
         return { ok: true, msg: v.kind === 'vespa' ? `Colleghi i fili. ${vehicleName(st, v)[0].toUpperCase() + vehicleName(st, v).slice(1)} è tua, per ora.` : `Un cacciavite nel blocchetto e parte. ${vehicleName(st, v)[0].toUpperCase() + vehicleName(st, v).slice(1)} è tua.` };
       }
       return { ok: true, msg: '' };
@@ -11091,6 +11109,7 @@ var Game = (function () {
   function fire(st, aim, aimPoint, pressed) {
     const p = st.player;
     if (st.over || p.stun > 0 || p.cool > 0 || p.reload > 0) return false;
+    if (p.swim && !p.vehicle) return false;   // [costa] a nuoto non si spara
     const W = pW(st, p.cur), a = p.arms[p.cur];
     if (!W.auto && !pressed && !W.melee) return false;
     if (W.melee) {
@@ -11902,10 +11921,12 @@ var Game = (function () {
     if (p.stun > 0) { p.stun -= dt; p.speed = 0; return; }
     if (p.vehicle) return driveVehicle(st, st.vehicles.find(v => v.id === p.vehicle), dt, inp);
     const ix = inp.x, iy = inp.y;
+    p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);   // [costa] in acqua si nuota
     if (ix || iy) {
-      const l = Math.hypot(ix, iy), sp = (p.sneak ? 1.7 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
+      const l = Math.hypot(ix, iy), sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : (p.sneak ? 1.7 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
       p.__st = st;   // [monte] i livelli (sotto terra, sul ponte) sanno dove si cammina
-      const hitWall = tryMove(p, ix / l * sp * dt, iy / l * sp * dt, .35);
+      const hitWall = tryMove(p, ix / l * sp * dt, iy / l * sp * dt, .35, !p.indoor && !p.lv && !p.carrying);   // [costa] il giocatore può entrare in mare (con un peso in braccio no)
+      p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);
       const LVm = typeof Livelli !== 'undefined' ? Livelli : null;
       if (LVm && LVm.moved(st, ix / l, iy / l, hitWall)) { /* [monte] gestito dai livelli */ }
       else if (p.indoor) {
@@ -11930,9 +11951,10 @@ var Game = (function () {
     p.anim += dt * (p.speed ? Math.abs(p.speed) * 3 : 1);
     if (!p.lv || p.lv.k !== 'ug') pushOutOfVehicles(st, p, .35);   // [monte] sotto terra le auto sono sopra la testa
   }
-  function tryMove(o, dx, dy, r) {
+  function tryMove(o, dx, dy, r, swim) {
     const LVf = o.lv && typeof Livelli !== 'undefined' ? Livelli.freeFn(o, r) : null, L = LVf ? null : indoorL(o);   // [monte]
-    const free = LVf || (L ? (x, y) => INT.walk(L, o.indoor.f, x, y, r) : (x, y) => walkM(x - r, y - r) && walkM(x + r, y - r) && walkM(x - r, y + r) && walkM(x + r, y + r));
+    const wm = swim ? (x, y) => walkM(x, y) || seaM(x, y) : walkM;   // [costa] chi nuota passa anche per l'acqua
+    const free = LVf || (L ? (x, y) => INT.walk(L, o.indoor.f, x, y, r) : (x, y) => wm(x - r, y - r) && wm(x + r, y - r) && wm(x - r, y + r) && wm(x + r, y + r));
     let hit = false;
     if (free(o.x + dx, o.y)) o.x += dx; else hit = true;
     if (free(o.x, o.y + dy)) o.y += dy; else hit = true;
@@ -11942,8 +11964,8 @@ var Game = (function () {
   function vLocal(v, x, y) { const c = Math.cos(v.ang), s = Math.sin(v.ang), dx = x - v.x, dy = y - v.y; return { lx: dx * c + dy * s, ly: -dx * s + dy * c }; }
   function insideVehicle(v, x, y, r) { const K = VK[v.kind], q = vLocal(v, x, y); return Math.abs(q.lx) < K.len / 2 + r && Math.abs(q.ly) < K.wid / 2 + r; }
   function vehicleFree(v, x, y, ang) {
-    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05;
-    for (const [a, b] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [hl, 0], [-hl, 0], [0, hw], [0, -hw]]) if (!walkM(x + a * c - b * s, y + a * s + b * c)) return false;
+    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05, pass = K.boat ? boatM : walkM;   // [costa]
+    for (const [a, b] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [hl, 0], [-hl, 0], [0, hw], [0, -hw]]) if (!pass(x + a * c - b * s, y + a * s + b * c)) return false;
     return true;
   }
   function pushOutOfVehicles(st, o, r) {
@@ -11981,9 +12003,9 @@ var Game = (function () {
   function loosen(st, v, secs) { if (v.traffic || (v.police && v.rider === 'npc')) v.looseUntil = Math.max(v.looseUntil || 0, st.clock + secs); }
   // primo punto del telaio che finisce dentro qualcosa di solido
   function vehicleHitPoint(v, x, y, ang) {
-    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05;
+    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05, pass = K.boat ? boatM : walkM;   // [costa]
     let bx = 0, by = 0, n = 0;
-    for (const [a, b] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [hl, 0], [-hl, 0], [0, hw], [0, -hw]]) { const px = x + a * c - b * s, py = y + a * s + b * c; if (!walkM(px, py)) { bx += px; by += py; n++; } }
+    for (const [a, b] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [hl, 0], [-hl, 0], [0, hw], [0, -hw]]) { const px = x + a * c - b * s, py = y + a * s + b * c; if (!pass(px, py)) { bx += px; by += py; n++; } }
     return n ? { x: bx / n, y: by / n } : null;
   }
   function moveVehicleBody(v, dx, dy, oldAng) { // compatibilità: spostamento secco, senza fisica
@@ -12022,7 +12044,7 @@ var Game = (function () {
     v.speed = fwd(v); v._spd = v.speed;
   }
   function onWallHit(st, v, vn, cp, ang) {
-    vehicleBump(st, v, vn, cp, ang);
+    if (!VK[v.kind].boat) vehicleBump(st, v, vn, cp, ang);   // [costa] una barca contro il molo non sfonda niente
     const pl = v.rider === 'player';
     if (vn > 6) damageVehicle(st, v, (vn - 6) * 4, pl ? 'player' : null);
     if (vn > 3) { st.fx.push({ k: 'carhit', x: cp.x, y: cp.y, v: vn, a: ang, wall: true }); if (pl || dist(v.x, v.y, st.player.x, st.player.y) < 30) st.sfx.push({ k: vn > 9 ? 'crash' : 'bump', x: cp.x, y: cp.y, v: vn }); }
@@ -12055,7 +12077,7 @@ var Game = (function () {
       if (vf < 0) a += 10;
       if (vf < max) vf = Math.min(max, vf + a * dt); else vf -= Math.min(vf - max, 4 * dt);
     } else if (throttle < 0) { if (vf > .6) vf -= 16 * dt; else vf = Math.max(-5, vf - K.accel * .7 * dt); }
-    else vf -= Math.sign(vf) * Math.min(Math.abs(vf), 2.6 * dt);
+    else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (K.boat ? .8 + Math.abs(vf) * .07 : 2.6) * dt);   // [costa] in mare si va avanti per abbrivio
     if (brake) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 19 * dt);
     if (hand) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 3.5 * dt);
     // aderenza laterale: oltre la soglia si scivola (e si continua a scivolare finché non si rallenta)
@@ -12066,9 +12088,9 @@ var Game = (function () {
     if (throttle > 0 && Math.abs(v.steer) > .75 && spd > 9 && !K.two) grip *= .88; // gas in curva: la coda allarga
     vl -= Math.sign(vl) * Math.min(Math.abs(vl), grip * dt);
     // imbardata: lo sterzo chiede una velocità di rotazione, le gomme la concedono fino al limite di aderenza
-    const turnK = clamp(spd / 3.2, 0, 1) * (1 - .32 * clamp((spd - 11) / 9, 0, 1));
+    const turnK = K.boat ? clamp(spd / 2.5, throttle ? .35 : .1, 1) : clamp(spd / 3.2, 0, 1) * (1 - .32 * clamp((spd - 11) / 9, 0, 1));   // [costa] l'elica fa girare la barca anche quasi ferma
     let wT = v.steer * K.turn * turnK * (vf < -.3 ? -1 : 1);
-    if (!hand && spd > 2) { const lim = (slideOn ? grip * 1.25 : K.grip * 1.12) / spd; wT = clamp(wT, -lim, lim); }
+    if (!hand && spd > 2 && !K.boat) { const lim = (slideOn ? grip * 1.25 : K.grip * 1.12) / spd; wT = clamp(wT, -lim, lim); }
     if (!hand) wT = clamp(wT, -2.6, 2.6);   // niente trottole a bassa velocità
     if (hand && spd > 4) wT *= 1.55;
     v.w += (wT - v.w) * Math.min(1, dt * (hand ? 3.2 : slideOn ? 3.6 : 8.5));
@@ -12078,6 +12100,7 @@ var Game = (function () {
     if (brake && spd > 5) v.skid = Math.max(v.skid, .7);
     if (hand && spd > 4) v.skid = Math.max(v.skid, .8);
     if (throttle > 0 && spd < 4 && vf0 >= -0.1 && !K.two && v.rider === 'player' && sprint) v.skid = Math.max(v.skid, .6); // sgommata in partenza
+    if (K.boat) { v.skid = 0; v.wake = clamp(spd / K.max, 0, 1); }   // [costa] niente gomme: la scia
     physStep(st, v, dt);
   }
   // mezzo lasciato a sé: rotola o resta frenato, si ferma per attrito
@@ -12706,7 +12729,7 @@ var Game = (function () {
 
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
-    tileAt, walkT, walkM, bIndex, create, step, act, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
+    tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
@@ -14478,7 +14501,7 @@ var Popolo = (function () {
     panchina:    { label: 'una panchina', where: ['piazza', 'fontana', 'giardini', 'lungomare', 'passeggiata', 'belvedere', 'piazzetta', 'molo', 'marina'], act: 'svago', h: [7, 23], perH: { svago: -.06, compagnia: -.06 }, int: 'chiacchiere' },
     fontana:     { label: 'la fontana', where: ['fontana'], act: 'bagno', h: [6, 22], once: { igiene: -.25 } },
     spiaggia:    { label: 'la spiaggia', where: ['spiaggia', 'caletta'], act: 'svago', h: [9, 19], perH: { svago: -.14, igiene: -.08 }, int: 'mare' },
-    canna:       { label: 'una canna da pesca', where: ['molo', 'punta', 'caletta', 'pontile'], act: 'svago', h: [5, 20], perH: { svago: -.12, paura: -.02 }, pantryH: .5, int: 'pesca' },
+    canna:       { label: 'una canna da pesca', where: ['molo', 'punta', 'caletta', 'pontile', 'lanterna', 'molo_levante', 'scogli_4', 'scogli_6', 'pesca_pontile_pescatori_s'], act: 'svago', h: [5, 20], perH: { svago: -.12, paura: -.02 }, pantryH: .5, int: 'pesca' },
     banco_chiesa:{ label: 'i banchi della chiesa', where: ['chiesa', 'chiesa_sg', 'santuario'], act: 'messa', h: [6, 20], once: { paura: -.15 }, perH: { compagnia: -.04 }, int: 'fede' },
     cero:        { label: 'un cero', where: ['chiesa', 'santuario', 'chiesa_sg'], act: 'svago', h: [6, 20], once: { rabbia: -.1, paura: -.08 }, cost: .5, int: 'fede' },
     libri:       { label: 'gli scaffali della biblioteca', where: ['biblioteca'], act: 'svago', h: [8, 18], perH: { svago: -.07 }, ideo: .004, int: 'lettura' },
@@ -19943,7 +19966,7 @@ var Oggetti = (function () {
   rc('sm_sveglia', 'smontare la sveglia', { rottami: 1 }, { sveglia: 1 }, { tools: ['cacciavite'], min: 10, kind: 'smonta' });
   rc('sm_vestiti', 'fare stracci dei vestiti', { stracci: 3 }, { vestiti: 1 }, { tools: ['forbici'], min: 10, kind: 'smonta' });
   // ---- raccogliere ed estrarre (fuori, con l'attrezzo giusto) ----
-  rc('x_pesca', 'pescare', { pesce: 1, sarde: 1 }, {}, { tools: ['canna|rete_pesca'], place: /molo|pontile|caletta|spiaggia|punta|marina|lungomare|calata|faro/, min: 60, kind: 'raccogli', npcOut: { pesce: 3, sarde: 2, polpo: .2 } });
+  rc('x_pesca', 'pescare', { pesce: 1, sarde: 1 }, {}, { tools: ['canna|rete_pesca'], place: /molo|pontile|caletta|spiaggia|punta|marina|lungomare|calata|faro|lanterna|scogli|pesca_|cala|bagno_/, min: 60, kind: 'raccogli', npcOut: { pesce: 3, sarde: 2, polpo: .2 } });
   rc('x_legna', 'tagliare un albero', { legno: 1, legna: 1 }, {}, { tools: ['ascia'], place: /pineta|sugheri|radura|macchia|collina|monte|bosco|villaggio/, min: 90, kind: 'raccogli', npcOut: { legno: 2, legna: 2, sughero: .3 } });
   rc('x_sabbia', 'spalare sabbia', { sabbia: 2 }, {}, { tools: ['pala'], place: /spiaggia|caletta|deserto/, min: 30, kind: 'raccogli' });
   rc('x_cava', 'lavorare in cava', { pietre: 1, ghiaia: 1 }, {}, { tools: ['piccone'], place: /cava|ruderi|rudere/, min: 60, kind: 'raccogli', npcOut: { pietre: 2, ghiaia: 2, sabbia: 1 } });
@@ -25660,7 +25683,7 @@ var Render = (function () {
           vec3 shal = mix(mix(vec3(.20,.36,.38), vec3(.24,.30,.31), wx.x), vec3(.06,.10,.13), night);
           vec3 c = mix(deep, shal, smoothstep(.3,.8,m) * .7);   /* [unione6] acqua bassa stretta e sfumata */
           c = mix(c, c*vec3(1.08,.95,.95)+vec3(.04,.02,.03), dusk*.4);
-          c += band*mix(vec3(.16,.20,.22), vec3(.06,.07,.12), night);
+          c += band*mix(vec3(.16,.20,.22), vec3(.06,.07,.12), night) * (.35 + .45*smoothstep(.15,.6,m));   /* [costa] al largo le creste si vedono appena: niente pioggia di trattini */
           // schiuma sulla riva, a onde
           float foam = step(.72, sin(m*26. - time*1.8 + sin(p.x*.4)*1.5)) * smoothstep(.35,.62,m) * (1.-smoothstep(.8,.95,m));
           c = mix(c, vec3(.92,.95,1.)*(1.-night*.45), foam*.8);
@@ -27144,10 +27167,10 @@ var Render = (function () {
       g.add(new THREE.Mesh(deckGeo(H, H.sh(.4) - .02, .02), sm('#e8e2d6')));
       add(g, box(1.7, .5, 2.6, sm('#f4f2ee')), 0, .45, .2); add(g, box(1.72, .14, 2.2, sm('#203040', { roughness: .15 })), 0, .55, .2);   // la tuga con gli oblò
       add(g, box(1.6, .4, 1.8, sm('#5a5450')), 0, .02, -2.4);                                                                             // il pozzetto
-      add(g, cyl(.06, .08, 10, 6, PM.white()), 0, 5.2, .9);                                                                               // l'albero
+      add(g, cyl(.045, .06, 10, 5, PM.white()), 0, 5.2, .9);                                                                               // l'albero
       const boom = add(g, cyl(.05, .05, 3.4, 5, PM.white()), 0, 1.6, -.8, Math.PI / 2, 0, 0); void boom;
       add(g, cyl(.16, .2, 3.2, 6, sm(pick(r, ['#2a4a8a', '#f0ead8', '#8a2a2a']))), 0, 1.78, -.8, Math.PI / 2, 0, 0);                     // la randa raccolta sul boma, con la copertura
-      const st = sl('#c8c8cc'); [[0, 10.1, .9, 0, .4, 3.9], [0, 10.1, .9, 1.25, .4, .9], [0, 10.1, .9, -1.25, .4, .9], [0, 10.1, .9, 0, .5, -3.9]].forEach(q => g.add(rope([q[0], q[1], q[2]], [q[3], q[4], q[5]], st)));   // stralli e sartie
+      const st = sl('#c8c8cc'); [[0, 10.1, .9, 0, .4, 3.9], [0, 10.1, .9, 0, .5, -3.9]].forEach(q => g.add(rope([q[0], q[1], q[2]], [q[3], q[4], q[5]], st)));   // stralli e sartie
       [-1, 1].forEach(s => add(g, box(.03, .03, 3, PM.chrome()), s * 1.15, .9, 2.2));                                                    // il pulpito
       return g;
     },
@@ -27265,11 +27288,11 @@ var Render = (function () {
     S.structs.forEach(st => {
       if (st.type !== 'molo' || !st.rocks) return; const P = st.rocks;
       for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / L, nz = (bx - ax) / L;
-        for (let s = 0; s < L; s += 1.25) for (const o of [-1.5, 0, 1.5]) { const x = ax + (bx - ax) * s / L + nx * (o + (r() - .5) * .8), z = az + (bz - az) * s / L + nz * (o + (r() - .5) * .8), sz = .8 + r() * .8; push(x, (o === 0 ? .1 : o * -.2 * st.sea > 0 ? .3 : -.5) + (r() - .5) * .5, z, sz, .7 + r() * .4, pick(r, ['#8e8a84', '#9a958c', '#7e7a74', '#a8a298'])); } }
+        for (let s = 0; s < L; s += 1.25) for (const o of [-1.5, 0, 1.5]) { const x = ax + (bx - ax) * s / L + nx * (o + (r() - .5) * .8), z = az + (bz - az) * s / L + nz * (o + (r() - .5) * .8), sz = .8 + r() * .8; push(x, (o === 0 ? .1 : o * -.2 * st.sea > 0 ? .3 : -.5) + (r() - .5) * .5, z, sz, .7 + r() * .4, pick(r, ['#6e6a64', '#7a756d', '#625e59', '#837d74'])); } }
     });
     S.rocks.forEach(q => {
-      if (q.big) { push(q.x, -.2, q.y, q.r * .95, 1.5 + r() * .6, '#6e6862'); for (let k = 0; k < 9; k++) { const a = r() * 6.28, d = q.r * (.4 + r() * .7); push(q.x + Math.cos(a) * d, -.7 + r() * .9, q.y + Math.sin(a) * d, q.r * (.25 + r() * .3), .8 + r() * .5, pick(r, ['#6e6862', '#7a746c', '#5e5a56'])); } }
-      else push(q.x, WL - q.r * .45 + .1, q.y, q.r, .55 + r() * .3, pick(r, ['#6a6560', '#77716a', '#5a5652', '#807a72']));
+      if (q.big) { push(q.x, -.2, q.y, q.r * .95, 1.5 + r() * .6, '#4e4a46'); for (let k = 0; k < 9; k++) { const a = r() * 6.28, d = q.r * (.4 + r() * .7); push(q.x + Math.cos(a) * d, -.7 + r() * .9, q.y + Math.sin(a) * d, q.r * (.25 + r() * .3), .8 + r() * .5, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); } }
+      else push(q.x, WL - q.r * .45 + .1, q.y, q.r, .55 + r() * .3, pick(r, ['#4e4a46', '#5a5550', '#45423e', '#655f58']));
     });
     if (!list.length) return;
     const geo = new THREE.IcosahedronGeometry(1, 0), mat = std({ roughness: .95 }), im = new THREE.InstancedMesh(geo, mat, list.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), Sv = new THREE.Vector3(), C = new THREE.Color();
@@ -27348,6 +27371,7 @@ var Render = (function () {
     // le barche al loro posto, con le cime: di poppa ai pontili (due cime incrociate), di fianco ai moli (a prua e a poppa)
     const lineM = sl('#d8cfae');
     S.moorings.forEach(m => {
+      if (m.drive) return;   // le barche che si prendono le disegna il giro dei veicoli (boatVehicle)
       const g = boatAt(m, r); if (!g || m.kind === 'secca' || m.kind === 'nave') return;
       const st = S.structs.find(q => q.id === m.at), dh = st ? st.h : .5, ca = Math.cos(m.ang), sa = Math.sin(m.ang), L = m.len;
       if (st && st.type === 'pontile') { const sx = m.x - ca * L / 2, sz = m.y - sa * L / 2, tx = sx - ca * .9, tz = sz - sa * .9; [-1, 1].forEach(s => addStatic(rope([sx - sa * s * .4, WL + .55, sz + ca * s * .4], [tx + sa * s * .6, dh + .1, tz - ca * s * .6], lineM))); addStatic(rope([m.x + ca * L / 2, WL + .5, m.y + sa * L / 2], [m.x + ca * (L / 2 + 2.5), WL - .1, m.y + sa * (L / 2 + 2.5)], lineM)); }   // la trappa a prua che va al corpo morto
@@ -27356,8 +27380,78 @@ var Render = (function () {
     // le spiagge dove si fa il bagno: ombrelloni chiusi e una boa gialla che segna fin dove si nuota
     S.swim.forEach((b, k) => { for (let j = -1; j <= 1; j += 2) { const g = G0(); add(g, new THREE.Mesh(new THREE.SphereGeometry(.35, 8, 6), sm('#f0c020')), 0, .1, 0); g.position.set(b.x + j * 9, WL + .05, b.y + (b.y > b.shore[1] ? 12 : -12)); dyn.boats.push({ g, ph: k + j, y: WL + .05 }); scene.add(mergeGroup(g)); } });
   }
+  // [costa] le barche guidabili (st.vehicles con VK.boat): stesso scafo delle ormeggiate, galleggiano, beccheggiano con la velocità, lasciano la scia
+  function wakeTex() {
+    if (COSTA.wakeT) return COSTA.wakeT;
+    const c = mk(32, 128), x = c.getContext('2d'), r = rng(91);
+    for (let y = 0; y < 128; y++) { const t = y / 127, w = 4 + t * 26; for (let k = 0; k < 10; k++) { const xx = 16 + (r() - .5) * w; x.fillStyle = `rgba(240,248,255,${(1 - t) * .55 * r()})`; x.fillRect(xx, y, 1 + r() * 2, 1); } x.fillStyle = `rgba(230,240,250,${(1 - t) * .35})`; x.fillRect(16 - w / 2, y, 1, 1); x.fillRect(16 + w / 2, y, 1, 1); }
+    COSTA.wakeT = new THREE.CanvasTexture(c); COSTA.wakeT.minFilter = COSTA.wakeT.magFilter = THREE.LinearFilter; return COSTA.wakeT;
+  }
+  function boatVehicle(v, dt, time) {
+    let g = dyn.vehicles[v.id];
+    if (!g) {
+      let h = 0; for (const ch of v.id) h = (h * 31 + ch.charCodeAt(0)) | 0;
+      const K = G.VK[v.kind], r = rng(h >>> 0); g = mergeGroup(BOATS[v.kind](r, { col: v.color })); shadowed(g); const u = g.userData;
+      u.drv = driverMesh(v.driverLook || { top: '#3a4a5a', skin: '#dcae88', hair: '#17110e' }, false); u.drv.position.set(0, -.55, -K.len / 2 + 1.1); g.add(u.drv);
+      u.wake = new THREE.Mesh(new THREE.PlaneGeometry(K.wid * 2.2, 12), new THREE.MeshBasicMaterial({ map: wakeTex(), transparent: true, depthWrite: false, opacity: 0 })); u.wake.rotation.x = -Math.PI / 2; u.wake.position.set(0, .04, -K.len / 2 - 6); u.wake.renderOrder = 2;
+      u.wakeG = new THREE.Group(); u.wakeG.add(u.wake); scene.add(u.wakeG);
+      scene.add(g); dyn.vehicles[v.id] = g;
+    }
+    const u = g.userData, K = G.VK[v.kind], k = clamp(Math.abs(v.speed || 0) / K.max, 0, 1);
+    g.visible = !v.hidden; u.wakeG.visible = g.visible;
+    u.ph = u.ph === undefined ? (v.x * 7 + v.y) % 6 : u.ph;
+    u.roll = (u.roll || 0) + (clamp(-(v.latA || 0) * .02, -.18, .18) - (u.roll || 0)) * Math.min(1, dt * 3);
+    const sink = v.wreck ? Math.min(2.5, (u.sinkT = (u.sinkT || 0) + dt) * .15) : 0;
+    g.position.set(v.x, WL + (DRAFT[v.kind] || .4) + Math.sin(time * 1.3 + u.ph) * .07 * (1 - k * .6) - sink + k * .12, v.y);
+    g.rotation.set(-k * .09 + Math.sin(time * .9 + u.ph) * .02 + sink * .1, Math.PI / 2 - v.ang, u.roll + Math.sin(time * 1.1 + u.ph) * .035);
+    u.drv.visible = v.rider === 'player' && !v.wreck;
+    u.wakeG.position.set(v.x, WL, v.y); u.wakeG.rotation.y = Math.PI / 2 - v.ang;
+    u.wake.material.opacity = k * .75; u.wake.scale.set(1, .5 + k * 1.2, 1); u.wake.position.z = -K.len / 2 - 6 * (.5 + k * 1.2);
+  }
+  function swimPose(pg, p, inVeh, time) {
+    const on = !!p.swim && !inVeh && !p.indoor;
+    if (!COSTA.ring) { COSTA.ring = new THREE.Mesh(new THREE.RingGeometry(.55, .7, 20), new THREE.MeshBasicMaterial({ color: '#e8f4ff', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); COSTA.ring.rotation.x = -Math.PI / 2; scene.add(COSTA.ring); }
+    COSTA.ring.visible = on; if (!on) { if (pg.userData.swimTilt) { pg.rotation.x = 0; pg.userData.swimTilt = 0; } return; }
+    const mv = Math.abs(p.speed || 0) > .2, tilt = mv ? 1.15 : .12;
+    pg.rotation.order = 'YXZ'; pg.userData.swimTilt = (pg.userData.swimTilt || 0) + (tilt - (pg.userData.swimTilt || 0)) * .12; pg.rotation.x = pg.userData.swimTilt;
+    pg.position.y = WL - 1.12 + pg.userData.swimTilt * .5 + Math.sin(time * 2.2) * .05;
+    const ph = (time * .8) % 1; COSTA.ring.position.set(p.x, WL + .03, p.y); COSTA.ring.scale.setScalar(1 + ph * 1.6); COSTA.ring.material.opacity = (1 - ph) * .5;
+  }
   // il punto di bordo banchina più vicino (per le cime delle barche di fianco)
   function edgeNear(x, z) { let best = null, bd = 9; (COSTA.edges || []).forEach(e => { const cx = (e.ax + e.bx) / 2, cz = (e.az + e.bz) / 2, d = Math.hypot(cx - x, cz - z); if (d < bd) { bd = d; best = [cx - e.nx * .6, cz - e.nz * .6]; } }); return best; }
+  // [costa] chi va per mare: i pescherecci escono all'alba dal porto vecchio e tornano a metà giornata, la motovedetta della Guardia
+  // fa il giro dell'isola al largo. Seguono le rotte di World.SEA.routes; solo grafica, guidati dall'ora del gioco.
+  function routeAt(P, d, closed) {   // punto e direzione a distanza d lungo la polilinea
+    if (!P._c) { P._c = [0]; for (let k = 1; k < P.length + (closed ? 1 : 0); k++) { const a = P[k - 1], b = P[k % P.length]; P._c.push(P._c[k - 1] + Math.hypot(b[0] - a[0], b[1] - a[1])); } }
+    const L = P._c[P._c.length - 1]; d = closed ? ((d % L) + L) % L : clamp(d, 0, L);
+    let k = 1; while (k < P._c.length - 1 && P._c[k] < d) k++;
+    const a = P[k - 1], b = P[k % P.length], t = (d - P._c[k - 1]) / ((P._c[k] - P._c[k - 1]) || 1);
+    return { x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t, ang: Math.atan2(b[1] - a[1], b[0] - a[0]), L };
+  }
+  function buildMovers() {
+    const S = M.world && M.world.SEA; if (!S || !S.routes) return; const r = rng(707);
+    const mk1 = (kind, route, closed, sched) => { const g = mergeGroup(BOATS[kind](r, {})); shadowed(g); scene.add(g); const K = { kind, route, closed, sched, g, ph: r() * 6 };
+      K.wake = new THREE.Mesh(new THREE.PlaneGeometry(kind === 'motovedetta' ? 7 : 6, 16), new THREE.MeshBasicMaterial({ map: wakeTex(), transparent: true, depthWrite: false, opacity: .55 })); K.wake.rotation.x = -Math.PI / 2; K.wake.position.set(0, .04, -14); K.wg = new THREE.Group(); K.wg.add(K.wake); scene.add(K.wg); COSTA.movers.push(K); };
+    if (S.routes.pesca) { mk1('peschereccio', S.routes.pesca, false, { out: 5.2, back: 13.5, off: 0 }); mk1('peschereccio', S.routes.pesca, false, { out: 5.6, back: 14.2, off: 30 }); }
+    if (S.routes.giro) mk1('motovedetta', S.routes.giro, true, null);
+  }
+  function tickMovers(st, time) {
+    if (!COSTA.moversBuilt) { COSTA.moversBuilt = true; buildMovers(); }
+    const h = ((st.t / 60) % 24 + 24) % 24;
+    COSTA.movers.forEach(K => {
+      let q, moving = true;
+      if (K.closed) q = routeAt(K.route, time * 6 + K.ph * 500, true);   // 6 m/s
+      else { const L = routeAt(K.route, 0).L, mps = G.MIN_PER_SEC || 1, s = K.sched, per = 60 / mps * 7;   // 7 m/s veri: metri per ora di gioco
+        const outD = (h - s.out) * per, backD = L - (h - s.back) * per;
+        let d; if (h < s.out) { d = 0; moving = false; } else if (h < s.back) { d = Math.min(L, outD); moving = outD < L; } else { d = Math.max(0, backD); moving = backD > 0; }
+        q = routeAt(K.route, Math.max(0, d - s.off), false); if (h >= s.back && moving) q.ang += Math.PI;
+        if (!moving && d <= 0) { K.g.visible = false; K.wg.visible = false; return; } }
+      K.g.visible = K.wg.visible = true;
+      const y = WL + (DRAFT[K.kind] || .8) + Math.sin(time * 1.2 + K.ph) * .08;
+      K.g.position.set(q.x, y, q.y); K.g.rotation.set(moving ? -.05 : 0, Math.PI / 2 - q.ang, Math.sin(time * 1.1 + K.ph) * .04);
+      K.wg.position.set(q.x, WL, q.y); K.wg.rotation.y = Math.PI / 2 - q.ang; K.wake.material.opacity = moving ? .55 : 0;
+    });
+  }
   function tickCosta(time, night) {
     COSTA.blink.forEach(b => {
       let on;
@@ -35807,7 +35901,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (frameN % 6 === 0 || !dyn.wl1) { const cx = cam.x, cz = cam.y; dyn.wl1 = LSRC.filter(L => { if (L.off || !(L.base > 0) || Math.abs(L.x - cx) > 70 || Math.abs(L.z - cz) > 70) return false; if (L.cw1 === undefined) L.cw1 = coastIn(L.x, L.z); return L.cw1 < 7; }).sort((a, b) => ((a.x - cx) ** 2 + (a.z - cz) ** 2) - ((b.x - cx) ** 2 + (b.z - cz) ** 2)).slice(0, 16); }
       for (let i = 0; i < 16; i++) { const L = dyn.wl1[i]; if (L && !L.off) { U.lp.value[i].set(L.x, L.y + .45, L.z, Math.min(1.6, L.base * .5)); U.lc.value[i].copy(L.color); } else U.lp.value[i].w = 0; } }
     if (dyn.skyline) { dyn.skyline.position.set(camera.position.x, 8, camera.position.z); dyn.skyline.material.opacity = .5 + night * .5; }
-    tickCosta(time, night);   // [costa] i fanali del porto
+    tickCosta(time, night); tickMovers(st, time);   // [costa] i fanali del porto, le barche che vanno e vengono
     dyn.boats.forEach(b => { b.g.position.y = (b.y !== undefined ? b.y : -.3) + Math.sin(time * 1.3 + b.ph) * .08; b.g.rotation.z = Math.sin(time * 1.1 + b.ph) * .04; b.g.rotation.x = Math.sin(time * .83 + b.ph * 1.7) * .025; });   // [animazioni-mondo] beccheggio
     dyn.laundry.forEach(l => { if (l.ax === false) l.m.rotation.z = Math.sin(time * 2 + l.ph) * .25; else l.m.rotation.x = Math.sin(time * 2 + l.ph) * .25; });
     if (window.Models) Models.tick(st, time, night);
@@ -35860,9 +35954,11 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim
     animPerson(pg, { anim: p.anim, speed: pveh ? 0 : p.speed, carrying: p.carrying, punch: p.punch, seated: onVespa, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, recoil, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6 });
     if (!pveh) flight(pg, p, st);
+    swimPose(pg, p, !!pveh, time);   // [costa] a nuoto: dentro l'acqua fino alle spalle, coricato in avanti quando va, coi cerchi sull'acqua
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
     // veicoli
     st.vehicles.forEach(v => {
+      if (G.VK[v.kind] && G.VK[v.kind].boat) { boatVehicle(v, dt, time); return; }   // [costa] le barche vanno per conto loro
       let g = dyn.vehicles[v.id]; if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { g = vehicleMesh(v); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }
       g.visible = !v.hidden; if (!g.visible) return;
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
@@ -35901,7 +35997,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (u.beacons) { const on = v.siren && Math.sin(st.clock * 14) > 0; u.beacons[0].color.set(on ? '#3a7aff' : '#10204a'); u.beacons[1].color.set(!on && v.siren ? '#3a7aff' : '#10204a'); }
       vehMondo(v, g, u, K, dt, time, night);   // [animazioni-mondo] portiere, tergicristalli, scarico, motore al minimo, lampeggianti
     });
-    for (const id in dyn.vehicles) if (!st.vehicles.find(v => v.id === id)) { scene.remove(dyn.vehicles[id]); delete dyn.vehicles[id]; }
+    for (const id in dyn.vehicles) if (!st.vehicles.find(v => v.id === id)) { const gg = dyn.vehicles[id]; if (gg.userData.wakeG) scene.remove(gg.userData.wakeG); scene.remove(gg); delete dyn.vehicles[id]; }
     for (const id in dyn.people) if (id !== '__player' && !st.npcs.find(n => n.id === id)) { scene.remove(dyn.people[id]); delete dyn.people[id]; }
     if (pveh) { const h = groundH(pveh.x, pveh.y); dyn.headlight.intensity = 4 * (.2 + night) * (pveh.wreck ? 0 : 1); dyn.headlight.position.set(pveh.x + Math.cos(pveh.ang) * 1.6, h + 1.1, pveh.y + Math.sin(pveh.ang) * 1.6); dyn.headlight.target.position.set(pveh.x + Math.cos(pveh.ang) * 12, h, pveh.y + Math.sin(pveh.ang) * 12); } else dyn.headlight.intensity = 0;
     // oggetti da raccogliere
