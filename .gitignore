@@ -4,5 +4,8 @@ api_key.json
 .vercel
 node_modules
 
+# Prodotti di build: index.html si rigenera con python build.py, non si committa
+v7/index.html
+
 # Editor (F2): copia di sicurezza dei ritocchi, fatta dal server a ogni avvio
 v7/ritocchi.backup.json
