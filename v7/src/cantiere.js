@@ -680,11 +680,13 @@ var Cantiere = (function () {
   }
   // [survival] LE BARACCHE: un modello per tipo, con le variazioni del seme (colori, toppe, veranda, finestre, storture)
   const rngOf = seed => { let a = (seed * 2654435761) >>> 0 || 1; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; };
-  const FAV = ['#d8503a', '#3a8ac8', '#e8c040', '#4aa86a', '#e87a3a', '#9a5ac8', '#e8e0cc', '#4ac0b8', '#c83a6a', '#8ab040'];   // le tinte della baraccopoli
+  const FAV = ['#b8604a', '#4a7ea0', '#d0aa50', '#5a8a62', '#c8804a', '#7e6a90', '#d8d0b8', '#5aa098', '#a8506a', '#8a9a50'];   // tinte scolorite dal sole   // le tinte della baraccopoli
   const pickR = (r, a) => a[Math.floor(r() * a.length)];
   // la paglia: fili chiari e scuri che scendono lungo la falda, a file sovrapposte
-  const STRAW = {}; function strawMat(c) { if (STRAW[c]) return STRAW[c]; const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64; const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, 64, 64);
-    for (let i = 0; i < 260; i++) { x.fillStyle = Math.random() < .5 ? 'rgba(60,40,10,.35)' : 'rgba(255,240,180,.3)'; x.fillRect(Math.random() * 64, Math.random() * 64, 1, 5 + Math.random() * 9); } for (let j = 0; j < 4; j++) { x.fillStyle = 'rgba(40,25,5,.45)'; x.fillRect(0, j * 16 + 14, 64, 2); }
+  const STRAW = {}; function strawMat(c) { if (STRAW[c]) return STRAW[c]; const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64; const x = cv.getContext('2d'), r = rngOf(c.length * 7 + parseInt(c.slice(1), 16) % 997); x.fillStyle = shade(c, -.12); x.fillRect(0, 0, 64, 64);
+    // fili di palma secca: tanti trattini corti, chiari e scuri, inclinati verso il basso; la punta più scura in fondo a ogni fila
+    for (let i = 0; i < 900; i++) { const px = r() * 64, py = r() * 64, L = 3 + r() * 6; x.fillStyle = r() < .45 ? shade(c, .06 + r() * .1) : r() < .7 ? shade(c, -.06 - r() * .1) : shade(c, (r() - .5) * .05); x.fillRect(px, py, 1, L); if (r() < .3) x.fillRect(px + 1, py + L * .5, 1, L * .5); }
+    for (let i = 0; i < 64; i += 2) { x.fillStyle = 'rgba(40,26,8,.35)'; x.fillRect(i, 60 + (i % 3), 2, 4); }
     const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; return (STRAW[c] = new THREE.MeshLambertMaterial({ map: t })); }
   function shade(c, k) { const col = new THREE.Color(c); col.offsetHSL(0, 0, k); return '#' + col.getHexString(); }
   // ---------------- MATERIALI DIPINTI (16 px al metro, pixel netti come il resto del gioco) ----------------
@@ -695,10 +697,10 @@ var Cantiere = (function () {
   const texM = c => { const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; return new THREE.MeshLambertMaterial({ map: t }); };
   const WOOD = ['#7a5634', '#86603c', '#6e4c2e', '#94704a', '#5e4228'];
   function plankTex(r, wM, hM, paint) {
-    const c = canv(wM, hM), x = c.getContext('2d'), W = c.width, H = c.height, pw = 3;
+    const c = canv(wM, hM), x = c.getContext('2d'), W = c.width, H = c.height, pw = 4;
     for (let i = 0; i < W; i += pw) {
       const wood = shade(pickR(r, WOOD), (r() - .5) * .1), painted = paint && r() < .88, col = painted ? shade(paint, (r() - .5) * .08) : wood;
-      x.fillStyle = col; x.fillRect(i, 0, pw, H); x.fillStyle = 'rgba(20,12,6,.55)'; x.fillRect(i + pw - 1, 0, 1, H);
+      x.fillStyle = col; x.fillRect(i, 0, pw, H); x.fillStyle = 'rgba(20,12,6,.3)'; x.fillRect(i + pw - 1, 0, 1, H); x.fillStyle = 'rgba(255,240,210,.06)'; x.fillRect(i, 0, 1, H);
       if (painted) for (let k = 0; k < H * .18; k++) { x.fillStyle = wood; x.fillRect(i + Math.floor(r() * (pw - 1)), Math.floor(r() * H), 1, 1 + Math.floor(r() * 3)); }   // la pittura che se ne va
       else for (let k = 0; k < 2; k++) { x.fillStyle = 'rgba(30,18,8,.4)'; x.fillRect(i + 1, Math.floor(r() * H), 1, 2); }   // i nodi
       x.fillStyle = '#2a2420'; x.fillRect(i + 1, Math.floor(H * .12), 1, 1); x.fillRect(i + 1, Math.floor(H * .86), 1, 1);
@@ -764,7 +766,11 @@ var Cantiere = (function () {
   // il tetto di paglia a due falde, alto: la paglia dipinta, il colmo legato, la frangia
   function thatch2(g, w, d, h, y0, r) {
     const c = pickR(r, ['#b8a060', '#a89050', '#c8b070', '#9a8a50']), sm0 = strawMat(c), sl = Math.hypot(w / 2 + .45, h);
-    for (const s0 of [-1, 1]) { const f = new THREE.Group(); f.position.set(s0 * (w / 4 + .1), y0 + h / 2, 0); f.rotation.z = -s0 * Math.atan2(h, w / 2 + .45); g.add(f); const sl0 = new THREE.Mesh(new THREE.BoxGeometry(sl + .15, .26, d + .9), sm0); f.add(sl0); const fr = new THREE.Mesh(new THREE.BoxGeometry(.18, .32, d + .95), strawMat(shade(c, -.12))); fr.position.set(s0 * (sl / 2 + .02), -.12, 0); f.add(fr); }
+    // ogni falda: quattro file di paglia che si sovrappongono come tegole, dal colmo alla gronda, la frangia irregolare in fondo
+    const NR = 4, rowL = (sl + .2) / NR;
+    for (const s0 of [-1, 1]) { const f = new THREE.Group(); f.position.set(s0 * (w / 4 + .1), y0 + h / 2, 0); f.rotation.z = -s0 * Math.atan2(h, w / 2 + .45); g.add(f);
+      for (let k = 0; k < NR; k++) { const cx0 = s0 * (-sl / 2 - .05 + rowL * (k + .5) + rowL * .1), row = new THREE.Mesh(new THREE.BoxGeometry(rowL * 1.25, .2, d + .9 + (r() - .5) * .1), strawMat(shade(c, (k % 2 ? -.04 : .03) + (r() - .5) * .04))); row.position.set(cx0, .1 - k * .07, 0); row.rotation.z = s0 * -.06; f.add(row); }
+      for (let q = 0; q < Math.round((d + .9) / .32); q++) { const z = -(d + .9) / 2 + .16 + q * .32, fr = new THREE.Mesh(new THREE.BoxGeometry(.16, .22 + r() * .14, .3), strawMat(shade(c, -.14))); fr.position.set(s0 * (sl / 2 + .1), -.24 - r() * .06, z); fr.rotation.z = s0 * (.5 + r() * .3); f.add(fr); } }
     for (const z of [-1, 1]) { const sh = new THREE.Shape(); sh.moveTo(-w / 2 - .3, 0); sh.lineTo(w / 2 + .3, 0); sh.lineTo(0, h); sh.closePath(); const tri = new THREE.Mesh(new THREE.ShapeGeometry(sh), strawMat(shade(c, -.06))); tri.material.side = THREE.DoubleSide; tri.position.set(0, y0, z * (d / 2 + .3)); g.add(tri); }
     box(g, .26, .2, d + 1.1, '#7a6030', 0, y0 + h + .08, 0); for (const z of [-d / 2 - .2, 0, d / 2 + .2]) box(g, .32, .1, .14, '#5a4420', 0, y0 + h + .14, z);
   }
