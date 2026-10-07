@@ -219,7 +219,7 @@ var Sartoria = (function () {
     const ref = srcs.find(o => /Body/i.test(o.name)) || srcs[0];
     const rel = new THREE.Matrix4().multiplyMatrices(gi, ref.matrixWorld);   // dalla mesh (locale) al personaggio
     const names = ref.skeleton.bones.map(b => b.name), names0 = names.join();
-    const P = [], part = [], side = [], wts = [], hair = [], head = [], srcOf = [], idxOf = [];
+    const P = [], part = [], side = [], wts = [], hair = [], head = [], srcOf = [], idxOf = [], tris = [];
     const pn = Object.keys(PARTI), v = new THREE.Vector3(), M = new THREE.Matrix4();
     srcs.forEach((src, si) => {
       const geo = src.userData.geo0 || src.geometry, pos = geo.attributes.position, sI = geo.attributes.skinIndex, sW = geo.attributes.skinWeight; if (!pos || !sI) return;
@@ -227,6 +227,7 @@ var Sartoria = (function () {
       if (SKIP.test(mname)) return;
       M.multiplyMatrices(gi, src.matrixWorld); const bn = src.skeleton.bones, same = bn.map(b => b.name).join() === names0;
       const isHair = HAIR.test(mname) || (mname === 'Worker_Yellow' && /Head/i.test(src.name)), isHead = /Head/i.test(src.name);
+      const gmap = new Int32Array(pos.count).fill(-1);
       for (let i = 0; i < pos.count; i++) {
         v.fromBufferAttribute(pos, i).applyMatrix4(M);
         let best = -1, bw = -1; const w = [];
@@ -236,8 +237,11 @@ var Sartoria = (function () {
         if (isHair || mname === 'Worker_Yellow') { hair.push(v.x, v.y, v.z); continue; }
         if (isHead && !pt) { head.push(v.x, v.y, v.z); continue; }
         if (/Head|Neck/.test(bnm) && !pt) { head.push(v.x, v.y, v.z); continue; }
-        P.push(v.x, v.y, v.z); part.push(pt); side.push(/L$/.test(bnm) ? 1 : /R$/.test(bnm) ? -1 : 0); wts.push(w); srcOf.push(si); idxOf.push(i);
+        gmap[i] = part.length; P.push(v.x, v.y, v.z); part.push(pt); side.push(/L$/.test(bnm) ? 1 : /R$/.test(bnm) ? -1 : 0); wts.push(w); srcOf.push(si); idxOf.push(i);
       }
+      // i triangoli del corpo (servono ai raggi: la stoffa si appoggia sulla superficie vera)
+      const ix = geo.index ? geo.index.array : null, nt = ix ? ix.length : pos.count;
+      for (let t = 0; t < nt; t += 3) { const a = gmap[ix ? ix[t] : t], b = gmap[ix ? ix[t + 1] : t + 1], c = gmap[ix ? ix[t + 2] : t + 2]; if (a >= 0 && b >= 0 && c >= 0) tris.push(a, b, c); }
     });
     // le articolazioni ricavate dai vertici (dove i pesi di un osso e di suo padre si mescolano): coerenti con la geometria
     // (le matrici delle ossa del kit non stanno nello stesso spazio dei vertici)
@@ -254,7 +258,7 @@ var Sartoria = (function () {
       if (!bm['Wrist' + sd] && bm['LowerArm' + sd] && bm['UpperArm' + sd]) bm['Wrist' + sd] = bm['LowerArm' + sd].clone().multiplyScalar(2).sub(bm['UpperArm' + sd]); }
     // la testa: il punto alla base del cranio; il bacino: il centro tra le anche
     if (bm.UpperLegL && bm.UpperLegR) { const h = bm.UpperLegL.clone().lerp(bm.UpperLegR, .5); h.y += .03; bm.Hips = bm.Hips && Math.abs(bm.Hips.y - h.y) < .15 ? bm.Hips : h; bm.Hips.x = h.x; }
-    B = { key, P: new Float32Array(P), part, side, wts, hair: new Float32Array(hair), head: new Float32Array(head), srcOf, idxOf, bones: bm, bmat, names, rel, reli: rel.clone().invert(), tubes: {}, geos: new Map() };
+    B = { key, P: new Float32Array(P), tris: new Uint32Array(tris), part, side, wts, hair: new Float32Array(hair), head: new Float32Array(head), srcOf, idxOf, bones: bm, bmat, names, rel, reli: rel.clone().invert(), tubes: {}, geos: new Map() };
     // misure utili: caviglia, inforcatura, vita, base del collo
     const n = part.length, yOf = i => B.P[i * 3 + 1];
     let ank = {};
@@ -274,7 +278,7 @@ var Sartoria = (function () {
   const RINGS = 64;   // settori della misura (poi si ricampiona)
   function axisOf(B, kind) {
     const b = B.bones, V = (x, y, z) => new THREE.Vector3(x, y, z);
-    if (kind === 'tronco' || kind === 'gonna' || kind === 'bacino') {   // asse dritto, verticale, al centro del busto (in pianta)
+    if (kind === 'tronco' || kind === 'gonna' || kind === 'bacino' || kind === 'giacca') {   // asse dritto, verticale, al centro del busto (in pianta)
       let sx = 0, sz = 0, c = 0; for (let i = 0; i < B.part.length; i++) if (B.part[i] === 'torso' || B.part[i] === 'bacino') { sx += B.P[i * 3]; sz += B.P[i * 3 + 2]; c++; }
       const x = c ? sx / c : b.Hips.x, z = c ? sz / c : b.Hips.z; return [V(x, .02, z), V(x, .8, z), V(x, 1.75, z)]; }
     const s = kind.slice(-1);
@@ -284,6 +288,7 @@ var Sartoria = (function () {
   function inSet(B, i, kind) {
     const p = B.part[i]; if (!p) return false; const y = B.P[i * 3 + 1];
     if (kind === 'tronco') { if (p === 'braccia') { const j = B.bones['UpperArm' + (B.side[i] > 0 ? 'L' : 'R')]; return j && Math.hypot(B.P[i * 3] - j.x, B.P[i * 3 + 1] - j.y, B.P[i * 3 + 2] - j.z) < .055; } return p === 'torso' || p === 'bacino' || p === 'collo'; }
+    if (kind === 'giacca') return p === 'torso' || p === 'bacino' || p === 'collo' || (p === 'cosce' && y > B.crotch - .16);
     if (kind === 'bacino') return p === 'bacino' || p === 'torso' && y < B.waist + .1 || ((p === 'cosce') && y > B.crotch - .12);
     if (kind === 'gonna') return p === 'torso' || p === 'bacino' || p === 'collo' || ((p === 'cosce' || p === 'polpacci') && y < B.bones.Hips.y - .04);
     const s = kind.slice(-1) === 'L' ? 1 : -1;
@@ -321,6 +326,22 @@ var Sartoria = (function () {
     const first = has.indexOf(true), last = has.lastIndexOf(true);
     for (let i = 0; i <= ns; i++) if (!has[i]) { let a = i - 1; while (a >= 0 && !has[a]) a--; let b = i + 1; while (b <= ns && !has[b]) b++;
       for (let s = 0; s < RINGS; s++) R[i][s] = a < 0 ? R[b][s] : b > ns ? R[a][s] : lerp(R[a][s], R[b][s], (i - a) / (b - a)); }
+    // ---- LA SUPERFICIE VERA: un raggio per settore dall'asse; il punto colpito più esterno del corpo e i suoi pesi ----
+    if (kind !== 'gonna') {
+      const tb0 = { S, T, F, Sd, ns, ds }, hit = rays(B, kind, tb0, proj);
+      if (hit) {
+        const raw = hit.R; for (const r of raw) fillRing(r);
+        const hh = raw.map(r => r.some(x => x > 0));
+        for (let i = 0; i <= ns; i++) if (!hh[i]) { let a = i - 1; while (a >= 0 && !hh[a]) a--; let b = i + 1; while (b <= ns && !hh[b]) b++; for (let q = 0; q < RINGS; q++) raw[i][q] = a < 0 ? (b <= ns ? raw[b][q] : .05) : b > ns ? raw[a][q] : lerp(raw[a][q], raw[b][q], (i - a) / (b - a)); }
+        // appena un filo di lisciatura lungo l'asse (i raggi che cadono su uno spigolo), mai sotto la superficie
+        const Rr = raw.map((r, i) => { const o = new Float32Array(RINGS); for (let q = 0; q < RINGS; q++) { const a = raw[Math.max(0, i - 1)][q], b = raw[Math.min(ns, i + 1)][q]; o[q] = Math.max(r[q], (a + 2 * r[q] + b) / 4); } return o; });
+        const tb = { kind, S, T, F, Sd, R: Rr, W: hit.W, ns, L, ds, first: hh.indexOf(true), last: hh.lastIndexOf(true), onT, proj };
+        tb.y = S.map(p => p.y);
+        tb.sAtY = y => { let best = 0, bd = 9; for (let i = 0; i <= ns; i++) { const d = Math.abs(S[i].y - y); if (d < bd) { bd = d; best = i; } } return best * ds; };
+        tb.sNear = p => { const q = proj(p); return q.i * ds; };
+        B.tubes[kind] = tb; return tb;
+      }
+    }
     // profilo: segue il corpo (spalle, petto, ginocchia), ma senza le valli tra un anello e l'altro.
     // Chiusura morfologica lungo l'asse (massimo su ±2,5 cm, poi minimo): le valli si riempiono, le sporgenze restano nette;
     // poi una lisciatura corta (1 cm) e una leggera lungo il giro; involucro convesso per sezione.
@@ -335,6 +356,46 @@ var Sartoria = (function () {
     tb.sAtY = y => { let best = 0, bd = 9; for (let i = 0; i <= ns; i++) { const d = Math.abs(S[i].y - y); if (d < bd) { bd = d; best = i; } } return best * ds; };   // per il tronco
     tb.sNear = p => { const q = proj(p); return q.i * ds; };
     B.tubes[kind] = tb; return tb;
+  }
+  // i raggi: triangoli del corpo dell'insieme giusto, raggruppati per campione dell'asse; Möller–Trumbore
+  function rays(B, kind, tb, proj) {
+    const { S, F, Sd, ns } = tb, tr = B.tris; if (!tr || !tr.length) return null;
+    const ok = new Uint8Array(B.part.length); for (let i = 0; i < ok.length; i++) ok[i] = inSet(B, i, kind) ? 1 : 0;
+    const bins = Array.from({ length: ns + 1 }, () => []), v = new THREE.Vector3();
+    for (let t = 0; t < tr.length; t += 3) {
+      const a = tr[t], b = tr[t + 1], c = tr[t + 2]; if (ok[a] + ok[b] + ok[c] < 2) continue;
+      let lo = 1e9, hi = -1; for (const q of [a, b, c]) { const i = proj(v.set(B.P[q * 3], B.P[q * 3 + 1], B.P[q * 3 + 2])).i; lo = Math.min(lo, i); hi = Math.max(hi, i); }
+      if (hi - lo > ns * .5) continue; for (let i = Math.max(0, lo - 1); i <= Math.min(ns, hi + 1); i++) bins[i].push(t);
+    }
+    const R = Array.from({ length: ns + 1 }, () => new Float32Array(RINGS).fill(-1)), W = Array.from({ length: ns + 1 }, () => new Array(RINGS).fill(null));
+    const P = B.P, rmax = /^(tronco|bacino|giacca)$/.test(kind) ? .4 : .18;
+    for (let i = 0; i <= ns; i++) {
+      const o = S[i], L0 = bins[i]; if (!L0.length) continue;
+      for (let q = 0; q < RINGS; q++) {
+        const ang = q / RINGS * Math.PI * 2, ca = Math.cos(ang), sa = Math.sin(ang), dx = F[i].x * ca + Sd[i].x * sa, dy = F[i].y * ca + Sd[i].y * sa, dz = F[i].z * ca + Sd[i].z * sa;
+        let best = -1, bt = 0, bu = 0, bv = 0;
+        for (const t of L0) {
+          const a = tr[t] * 3, b = tr[t + 1] * 3, c = tr[t + 2] * 3;
+          const e1x = P[b] - P[a], e1y = P[b + 1] - P[a + 1], e1z = P[b + 2] - P[a + 2], e2x = P[c] - P[a], e2y = P[c + 1] - P[a + 1], e2z = P[c + 2] - P[a + 2];
+          const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x, det = e1x * px + e1y * py + e1z * pz; if (Math.abs(det) < 1e-12) continue;
+          const id = 1 / det, tx = o.x - P[a], ty = o.y - P[a + 1], tz = o.z - P[a + 2], u = (tx * px + ty * py + tz * pz) * id; if (u < -1e-4 || u > 1.0001) continue;
+          const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x, w = (dx * qx + dy * qy + dz * qz) * id; if (w < -1e-4 || u + w > 1.0001) continue;
+          const d = (e2x * qx + e2y * qy + e2z * qz) * id; if (d > 0 && d < rmax && d > bt) { bt = d; best = t; bu = u; bv = w; }
+        }
+        if (best < 0) continue; R[i][q] = bt;
+        const M = new Map(); [[tr[best], 1 - bu - bv], [tr[best + 1], bu], [tr[best + 2], bv]].forEach(([vi, k]) => B.wts[vi].forEach(([bi, wk]) => M.set(bi, (M.get(bi) || 0) + wk * k)));
+        W[i][q] = [...M.entries()].sort((x, y) => y[1] - x[1]).slice(0, 4);
+      }
+    }
+    // pesi mancanti: dal settore più vicino che li ha (prima lungo il giro, poi lungo l'asse)
+    for (let i = 0; i <= ns; i++) for (let q = 0; q < RINGS; q++) if (!W[i][q]) { for (let d = 1; d < RINGS / 2 && !W[i][q]; d++) W[i][q] = W[i][(q + d) % RINGS] || W[i][(q - d + RINGS) % RINGS]; }
+    for (let i = 0; i <= ns; i++) if (!W[i][0]) for (let d = 1; d <= ns && !W[i][0]; d++) { const j = W[i - d] && W[i - d][0] ? i - d : W[i + d] && W[i + d][0] ? i + d : -1; if (j >= 0) for (let q = 0; q < RINGS; q++) W[i][q] = W[j][q]; }
+    return { R, W };
+  }
+  // i pesi della stoffa = quelli del corpo nel punto colpito (stesso tubo): si piega esattamente come la pelle
+  function gridW(tb) {
+    return p => { const q = tb.proj(p), sec = ((Math.round(q.a / (Math.PI * 2) * RINGS) % RINGS) + RINGS) % RINGS, w = (tb.W[q.i] && tb.W[q.i][sec]) || [[0, 1]];
+      let t = 0; w.forEach(e => { t += e[1]; }); const a = w.map(e => [e[0], t ? e[1] / t : 0]); while (a.length < 4) a.push([0, 0]); return a; };
   }
   function fillRing(r) {
     const n = r.length, idx = []; for (let i = 0; i < n; i++) if (r[i] > 0) idx.push(i); if (!idx.length) return;
@@ -578,7 +639,7 @@ var Sartoria = (function () {
   // quanto è lungo (s, sull'asse del tubo)
   function lengths(B, tb, kind, C, parti) {
     const b = B.bones, P = new Set(parti);
-    if (kind === 'tronco' || kind === 'gonna') {
+    if (kind === 'tronco' || kind === 'gonna' || kind === 'giacca') {
       const sY = y => tb.sAtY(y);
       let bot = b.Hips.y - .06;
       if (C.corto) bot = B.waist - .02;
@@ -613,12 +674,12 @@ var Sartoria = (function () {
     // ---------- TRONCO / GONNA ----------
     // i capi che scendono sotto l'inforcatura (giacche, cappotti) si misurano anche sulle gambe, come una gonna
     const longTop = P.has('bacino') && !C.solo_gonna && !C.corto && B.bones.Hips.y - (C.cl >= 4 ? .16 : .1) < B.crotch + .02;
-    const trunkKind = C.gonna || C.poncho || longTop ? 'gonna' : 'tronco';
+    const trunkKind = C.gonna || C.poncho ? 'gonna' : longTop ? 'giacca' : 'tronco';
     const wantTrunk = P.has('torso') || P.has('bacino') && (C.gonna || C.solo_gonna);
     let TR = null, Lt = null;
     if (wantTrunk || C.intera && P.has('torso')) {
-      const BOX = { 0: 0, 1: .35, 2: .3, 3: .6, 4: .75, 5: .8, 6: .7 }, tb = boxTube(tube(B, trunkKind), C.box !== undefined ? C.box : (BOX[C.cl] || 0)); TR = tb; const Ls = lengths(B, tb, trunkKind, C, parti); Lt = Ls;
-      const W = weightsFor(B, trunkKind), hipY = B.bones.Hips.y;
+      const BOX = {}, tb = boxTube(tube(B, trunkKind), C.box !== undefined ? C.box : (BOX[C.cl] || 0)); TR = tb; const Ls = lengths(B, tb, trunkKind, C, parti); Lt = Ls;
+      const W = trunkKind === 'gonna' ? weightsFor(B, trunkKind) : gridW(tb), hipY = B.bones.Hips.y;
       const cols = 24, front = C.davanti, aRange = front ? [-1.75, 1.75] : [-Math.PI, Math.PI];
       // scollo: la cima di ogni colonna (in s) secondo il collo
       const neckTop = a => {
@@ -659,19 +720,19 @@ var Sartoria = (function () {
     // ---------- MANICHE ----------
     if (!C.smanicato && !C.solo_gonna && !C.davanti && (P.has('braccia') || P.has('avambracci'))) for (const s of ['L', 'R']) {
       const kind = 'manica' + s, tb0 = tube(B, kind), Ls = lengths(B, tb0, kind, C, parti); if (Ls.s1 <= .02) continue;
-      const tb = cutTube(tb0, (sv, a) => sv > Ls.la ? straight(tb0, sv, a, Ls.la, Ls.wr, .78, sv < Ls.wr - .06) : sv > Ls.ua + .03 ? straight(tb0, sv, a, Ls.ua + .03, Ls.la, 1) : radius(tb0, sv, a));
-      const W = limbW(B, kind, Ls), cols = 10, rows = Math.max(6, Math.round(Ls.s1 / .025) + 1);
+      const tb = tb0;
+      const W = gridW(tb0), cols = 12, rows = Math.max(6, Math.round(Ls.s1 / .025) + 1);
       const ringC = (() => { let t = 0; for (let k = 0; k < 8; k++) t += radius(tb, Ls.s1 * .5, k / 8 * Math.PI * 2); return t / 8 * Math.PI * 2; })();
       const oA0 = s1 => s1 < Ls.ua + (Ls.la - Ls.ua) * .5 ? offAt('braccia') : Math.max(offAt('avambracci'), offAt('braccia') * .6);
       // lo spessore davvero usato (si stringe verso il polso): lo usano anche polsini, bordi e bottoni
-      const oA = sv => { const taper = 1 - .55 * cl((sv - Ls.la) / Math.max(.05, Ls.wr - Ls.la), 0, 1); return oA0(sv) * (C.costine || C.polsi ? 1 : .7 + .3 * taper) * taper; };
+      const oA = sv => oA0(sv);
       grid(bd, rows, cols + 1, (i, j) => {
         const a = -Math.PI + j / cols * Math.PI * 2, sv = Ls.s1 * i / (rows - 1);
         // la cima della manica si chiude a cupola dentro la spalla
         const cap = sv < .015 ? Math.sqrt(1 - Math.pow(1 - sv / .015, 2)) : 1, fr = frameAt(tb, sv);
         let o = oA(sv); if (C.poncho) o += .06;
         const elbow = Math.exp(-Math.pow((sv - Ls.la) / .03, 2)), fold = 0;
-        const taper = 1 - .55 * cl((sv - Ls.la) / Math.max(.05, Ls.wr - Ls.la), 0, 1), r = (radius(tb, sv, a) + o + fold) * (.6 + .4 * cap), p = fr.p.clone().addScaledVector(fr.f, Math.cos(a) * r).addScaledVector(fr.sd, Math.sin(a) * r);
+        const taper = 1 - .55 * cl((sv - Ls.la) / Math.max(.05, Ls.wr - Ls.la), 0, 1), r = radius(tb, sv, a) + o + fold, p = fr.p.clone().addScaledVector(fr.f, Math.cos(a) * r).addScaledVector(fr.sd, Math.sin(a) * r);
         const c = (1 - .12 * cl(1 - (Ls.s1 - sv) / .02, 0, 1)) * (1 - elbow * .08 * Math.max(0, -Math.cos(a))) * (1 - .1 * cl(1 - Math.abs(a - (s === 'L' ? -Math.PI / 2 : Math.PI / 2)) / .9, 0, 1) * cl(1 - sv / .12, 0, 1));   // l'interno della manica sotto l'ascella più scuro
         return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv, c };
       }, W, 0);
@@ -680,19 +741,19 @@ var Sartoria = (function () {
     // ---------- BACINO DEI PANTALONI: un pezzo solo dalla vita all'inforcatura (niente fascia, niente onda) ----------
     const wantLegs = !C.gonna && !C.davanti && P.has('bacino');
     if (wantLegs) {
-      const tb = tube(B, 'bacino'), W = weightsFor(B, 'bacino'), cols = 24, ob = offAt('bacino') + .002;
+      const tb = tube(B, 'bacino'), W = gridW(tb), cols = 24, ob = offAt('bacino') + .002;
       const sTop = tb.sAtY(B.waist + .035), bot = a => { const side = Math.abs(Math.sin(a)); return tb.sAtY(B.crotch + .005 - .075 * Math.pow(side, 1.5)); };
       const rows = Math.max(6, Math.round((sTop - tb.sAtY(B.crotch - .07)) / .02) + 1), ringC = (() => { let t = 0; for (let k = 0; k < 12; k++) t += radius(tb, tb.sAtY(B.waist - .05), k / 12 * Math.PI * 2); return t / 12 * Math.PI * 2; })();
       grid(bd, rows, cols + 1, (i, j) => { const a = -Math.PI + j / cols * Math.PI * 2, s0 = bot(a), sv = lerp(s0, sTop, i / (rows - 1)), fr = frameAt(tb, sv), p = surf(tb, sv, a, ob);
-        const c = 1 - .1 * cl(1 - (sv - s0) / .02, 0, 1) - .1 * Math.pow(Math.max(0, Math.abs(Math.cos(a))), 6) * cl(1 - (sv - s0) / .05, 0, 1);
+        const c = 1 - .1 * cl(1 - (sv - s0) / .02, 0, 1) - .04 * Math.pow(Math.max(0, Math.abs(Math.cos(a))), 6) * cl(1 - (sv - s0) / .04, 0, 1);
         return { p, out: p.clone().sub(fr.p), u: (a + Math.PI) / (Math.PI * 2) * ringC, v: sv, c }; }, W, 0);
       pelvisDetails(bd, B, tb, W, C, ob, sTop, bot, ringC);
     }
     // ---------- GAMBE ----------
     if (wantLegs && !(C.intera && !P.has('cosce') && !P.has('bacino'))) for (const s of ['L', 'R']) {
       const kind = 'gamba' + s, tb0 = tube(B, kind), Ls = lengths(B, tb0, kind, C, parti);
-      const tb = cutTube(tb0, (sv, a) => { const sK = Ls.kn, sH = Ls.sCr + .03; return sv < sH ? radius(tb0, sv, a) : sv < sK ? straight(tb0, sv, a, sH, sK, C.stretti ? 1 : 1.06) : (sv > Ls.an - .1 ? straight(tb0, sv, a, sK, Ls.an, C.stretti ? .82 : 1.02, false) : straight(tb0, sv, a, sK, Ls.an, C.stretti ? .82 : 1.02)); });
-      const W = limbW(B, kind, Ls), cols = 12, rows = Math.max(8, Math.round(Ls.s1 / .028) + 1), sg = s === 'L' ? 1 : -1;
+      const tb = cutTube(tb0, (sv, a) => { const sK = Ls.kn, sH = Ls.sCr + .03; return sv < sK ? radius(tb0, sv, a) : (sv > Ls.an - .1 ? straight(tb0, sv, a, sK, Ls.an, C.stretti ? .82 : 1.02, false) : straight(tb0, sv, a, sK, Ls.an, C.stretti ? .82 : 1.02)); });
+      const W = gridW(tb0), cols = 14, rows = Math.max(8, Math.round(Ls.s1 / .028) + 1), sg = s === 'L' ? 1 : -1;
       const ringC = (() => { let t = 0; for (let k = 0; k < 8; k++) t += radius(tb, Ls.s1 * .5, k / 8 * Math.PI * 2); return t / 8 * Math.PI * 2; })();
       const oL = sv => sv < Ls.sCr + .03 ? offAt('bacino') : sv < Ls.kn ? Math.max(offAt('cosce'), offAt('bacino') * .5) : Math.max(offAt('polpacci'), offAt('cosce') * .6);
       const yTop = B.crotch + .035, sTop = a => { let lo = 0, hi = .3; for (let k = 0; k < 18; k++) { const m = (lo + hi) / 2; if (surf(tb, m, a, 0).y > yTop) lo = m; else hi = m; } return lo; };
