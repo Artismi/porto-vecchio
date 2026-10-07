@@ -174,9 +174,9 @@ var Sartoria = (function () {
   const MATS = new Map();
   // materiale di un tessuto: Lambert (come il resto dei personaggi), colori per vertice = ombre cotte (pieghe, orli, contatto)
   function fabMat(fab, A, B, C, opt) {
-    opt = opt || {}; const key = [fab, A, B, C, opt.lucido || 0, opt.vc === false ? 0 : 1].join('|'); let m = MATS.get(key); if (m) return m;
+    opt = opt || {}; const key = [fab, A, B, C, opt.lucido || 0, opt.vc === false ? 0 : 1, opt.flat ? 1 : 0].join('|'); let m = MATS.get(key); if (m) return m;
     const t = texFor(fab, A, B || A, C || A);
-    m = new THREE.MeshLambertMaterial({ map: t.map, bumpMap: t.bump, bumpScale: t.F.bump * .0012, vertexColors: opt.vc !== false, side: THREE.DoubleSide });
+    m = new THREE.MeshLambertMaterial({ map: t.map, bumpMap: t.bump, bumpScale: t.F.bump * .0012, vertexColors: opt.vc !== false, side: THREE.DoubleSide, flatShading: !!opt.flat });
     m.emissive = new THREE.Color(A).multiplyScalar(.16 + (opt.lucido || 0) * .1);   // [inverno] i personaggi si staccano dallo sfondo (come models.js)
     m.userData.sartoria = true; MATS.set(key, m); return m;
   }
@@ -680,7 +680,7 @@ var Sartoria = (function () {
     if (wantTrunk || C.intera && P.has('torso')) {
       const BOX = {}, tb = boxTube(tube(B, trunkKind), C.box !== undefined ? C.box : (BOX[C.cl] || 0)); TR = tb; const Ls = lengths(B, tb, trunkKind, C, parti); Lt = Ls;
       const W = trunkKind === 'gonna' ? weightsFor(B, trunkKind) : gridW(tb), hipY = B.bones.Hips.y;
-      const cols = 24, front = C.davanti, aRange = front ? [-1.75, 1.75] : [-Math.PI, Math.PI];
+      const cols = C.blocchi ? 10 : 24, front = C.davanti, aRange = front ? [-1.75, 1.75] : [-Math.PI, Math.PI];
       // scollo: la cima di ogni colonna (in s) secondo il collo
       const neckTop = a => {
         const fa = Math.cos(a), c = C.collo; let drop = 0;
@@ -695,7 +695,7 @@ var Sartoria = (function () {
       };
       // orlo: punte del gilet, giacca arrotondata davanti, coda della camicia
       const hemBot = a => { let s = Ls.s0; if (C.orlo === 'punte' && Math.abs(a) < .5) s -= .04 * (1 - Math.abs(a) / .5); if (C.orlo === 'giacca' && Math.abs(a) < .35) s += .02 * (1 - Math.abs(a) / .35); return s; };
-      const rows = Math.max(10, Math.round((Ls.s1 - Ls.s0) / .022) + 1), seamA = Math.PI;   // cucitura dietro
+      const rows = Math.max(C.blocchi ? 4 : 10, Math.round((Ls.s1 - Ls.s0) / (C.blocchi ? .06 : .022)) + 1), seamA = Math.PI;   // cucitura dietro
       // spessore lungo l'altezza: torso sopra, bacino, cosce
       const offY = y => y > hipY + .08 ? offAt('torso') : y > B.crotch ? Math.max(offAt('bacino'), offAt('torso') * .5 + offAt('bacino') * .5) : Math.max(offAt('cosce'), offAt('bacino'));
       const ringC = (() => { let s = 0; for (let k = 0; k < 16; k++) s += radius(tb, (Ls.s0 + Ls.s1) / 2, k / 16 * Math.PI * 2); return s / 16 * Math.PI * 2; })();
@@ -707,7 +707,7 @@ var Sartoria = (function () {
         if (C.poncho) o += cl((B.neck - y) / .3, 0, 1) * .1 * (.6 + .4 * Math.abs(Math.sin(a)));   // il poncho scende largo sulle braccia
         const p = surf(tb, s, a, o), out = p.clone().sub(fr.p);
         // ombre cotte: sotto le ascelle, dietro le ginocchia, nelle conche; orlo più scuro
-        const c = 1 - .1 * cl(1 - (s - s0) / .03, 0, 1) - .07 * cl(1 - (s1 - s) / .02, 0, 1) - (y > B.waist && y < B.waist + .02 && !C.gonna ? .05 : 0);
+        const c = C.blocchi ? (s - s0 < .03 && C.cl >= 4 ? .68 : 1) : 1 - .1 * cl(1 - (s - s0) / .03, 0, 1) - .07 * cl(1 - (s1 - s) / .02, 0, 1) - (y > B.waist && y < B.waist + .02 && !C.gonna ? .05 : 0);
         const skirt = (C.gonna || C.poncho || longTop) && y < hipY ? cl((hipY - y) / .25, 0, 1) * (longTop && !C.gonna ? .85 : C.cl >= 5 ? .6 : .3) : 0;
         return { p, out, u: (a - aRange[0]) / (Math.PI * 2) * ringC, v: s, c, skirt };
       }, W, 0);
@@ -1034,6 +1034,7 @@ var Sartoria = (function () {
   }
   // materiali del capo, nell'ordine dei gruppi: 0 stoffa, 1 secondo colore, 2 metallo, 3 scuro, 4 cuoio, 5 bianco, 6 costine
   function mats(C, col) {
+    if (C.blocchi && window.Pittura) { const L = looks(C, col), P = window.Pittura; return [P.blockMat(C.fab, L.A, L.B, L.C), P.blockMat(C.fab, L.B, L.B, L.B), solidMat('#a8a8b0', .35), solidMat('#1e1c1c', .2), P.blockMat('pelle', '#3a2418'), solidMat('#ece8dc', .25), P.blockMat(C.fab, L.A, L.B, L.C, { dark: 1 }), solidMat(L.A)]; }
     const L = looks(C, col), lus = C.lucido || 0, fab = C.fab;
     const darker = '#' + new THREE.Color(L.A).multiplyScalar(.5).getHexString(), fur2 = C.collo === 'montone' || C.orlo === 'montone' ? '#e8dcc0' : L.A;
     return [
@@ -1097,7 +1098,7 @@ var Sartoria = (function () {
       const vars = VARIANTI[c.id]; let vi = 0; if (vars && seedStr !== undefined && seedStr !== 'player') vi = (seed >>> (k * 3)) % vars.length;
       if (opt.soloFalde && !(base.gonna || base.poncho)) return;   // dipinto sul corpo (Pittura): qui solo le falde che sporgono
       const C = Object.assign({ id: c.id }, base, vars ? vars[vi] : {}, { var: vi, seed: c.stampa !== undefined ? c.stampa : (seed >>> 5) });
-      if (opt.soloFalde) { C.solo_gonna = 1; C.davanti = C.davanti || 0; }
+      if (opt.soloFalde) { C.solo_gonna = 1; C.davanti = C.davanti || 0; C.blocchi = 1; }
       if (C.cl <= 1 && !C.gonna && !C.intera && ranked.some(o => o.c !== c && CUT[o.c.id] && CUT[o.c.id].cl === 2)) C.infilata = 1;   // camicie e magliette dentro i pantaloni
       // la vita coperta da un capo sopra (maglione, giacca chiusa, cappotto): niente cintura che sbuca
       if (C.cl === 2 && ranked.slice(k + 1).some(o => (CUT[o.c.id] || {}).gonna)) C.stretti = 1;   // sotto un cappotto lungo i pantaloni stanno dritti e stretti (non bucano la falda)

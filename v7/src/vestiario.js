@@ -120,7 +120,7 @@ var Vesti3D = (function () {
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(o.P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(o.N, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(o.U, 2));
         geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(o.SI, 4)); geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(o.SW, 4)); geo.setAttribute('color', new THREE.Float32BufferAttribute(o.CO, 3));
-        const mat = window.Sartoria ? Sartoria.fabMat(c.pat === 'bande' && sh[0] === 'nylon' ? 'nylon' : sh[0], c.col, c.pat === 'bande' ? '#c83a3a' : c.col, c.col, { lucido: /eleganti|tacchi|stivali/.test(c.id) ? 1 : 0 }) : MAT();
+        const mat = window.Sartoria ? Sartoria.fabMat(c.pat === 'bande' && sh[0] === 'nylon' ? 'nylon' : sh[0], c.col, c.pat === 'bande' ? '#c83a3a' : c.col, c.col, { lucido: /eleganti|tacchi|stivali/.test(c.id) ? 1 : 0, flat: 1 }) : MAT();
         const m = new THREE.SkinnedMesh(geo, mat); m.userData.vesti = true; m.castShadow = true; m.frustumCulled = false;
         m.position.copy(src.position); m.quaternion.copy(src.quaternion); m.scale.copy(src.scale);
         src.parent.add(m); m.bind(src.skeleton, src.bindMatrix); out.push(m);
@@ -150,17 +150,17 @@ var Vesti3D = (function () {
   // con Sartoria.attach (indipendente dalla posa del momento).
   const sh = (c, k) => '#' + new THREE.Color(c).multiplyScalar(k).getHexString();
   const LM = {}; const lm = c => LM[c] || (LM[c] = new THREE.MeshLambertMaterial({ color: c, emissive: new THREE.Color(c).multiplyScalar(.25) }));
-  const FM = (fab, c, c2, c3, lus) => window.Sartoria ? Sartoria.fabMat(fab, c, c2 || c, c3 || c, { vc: false, lucido: lus || 0 }) : lm(c);
+  const FM = (fab, c, c2, c3, lus) => window.Pittura ? Pittura.blockMat(fab, c, c2 || c, c3 || c, { vc: false }) : window.Sartoria ? Sartoria.fabMat(fab, c, c2 || c, c3 || c, { vc: false, lucido: lus || 0 }) : lm(c);   // a campiture, a facce
   const M_ = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); return m; };
   const Bx = (w, h, d, c, x, y, z) => M_(new THREE.BoxGeometry(w, h, d), typeof c === 'string' ? lm(c) : c, x, y, z);
   const Cy = (rt, rb, h, c, x, y, z, seg, open) => M_(new THREE.CylinderGeometry(rt, rb, h, seg || 16, 1, !!open), typeof c === 'string' ? lm(c) : c, x, y, z);
   const Sp = (r, c, x, y, z, half) => M_(new THREE.SphereGeometry(r, 16, 12, 0, Math.PI * 2, 0, half ? Math.PI / 2 : Math.PI), typeof c === 'string' ? lm(c) : c, x, y, z);
   const V2 = (x, y) => new THREE.Vector2(x, y);
   // un profilo girato (cupole, corone, calotte): punti [raggio, altezza] dal bordo alla cima
-  const lathe = (pts, mat, seg) => { const g = new THREE.LatheGeometry(pts.map(p => V2(Math.max(0, p[0]), p[1])), seg || 24); g.computeVertexNormals(); return new THREE.Mesh(g, mat); };
+  const lathe = (pts, mat, seg) => { const g = new THREE.LatheGeometry(pts.map(p => V2(Math.max(0, p[0]), p[1])), window.Pittura ? Math.min(seg || 24, 10) : seg || 24); g.computeVertexNormals(); return new THREE.Mesh(g, mat); };
   // una tesa: anello da r0 a r1, con l'altezza data da f(angolo, t) (0 = davanti +z)
   function brim(r0, r1, f, mat, seg) {
-    const S = seg || 32, R = 4, P = [], I = [], UV = [];
+    const S = window.Pittura ? Math.min(seg || 32, 12) : seg || 32, R = window.Pittura ? 2 : 4, P = [], I = [], UV = [];
     for (let i = 0; i <= R; i++) for (let j = 0; j <= S; j++) { const t = i / R, a = j / S * Math.PI * 2, r = r0 + (r1 - r0) * t; P.push(Math.sin(a) * r, f(a, t), Math.cos(a) * r); UV.push(Math.sin(a) * r * 6, Math.cos(a) * r * 6); }
     for (let i = 0; i < R; i++) for (let j = 0; j < S; j++) { const a = i * (S + 1) + j, b = a + 1, c = a + S + 1, d = c + 1; I.push(a, c, b, b, c, d); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.setIndex(I); g.computeVertexNormals();
@@ -255,8 +255,44 @@ var Vesti3D = (function () {
   }
   // il nodo e i pezzi sul petto: si posano sulla superficie del tronco, allo spessore giusto
   function trunkAt(B, y, a, off) { const tb = Sartoria.tube(B, 'tronco'), s = tb.sAtY(y), fr = Sartoria.frameAt(tb, s); return { p: Sartoria.surf(tb, s, a, off), fr }; }
+  // ---------------- I VOLUMI A FACCE (con i vestiti dipinti): cintura, risvolti dei polsi e delle caviglie ----------------
+  // un anello a fascia attorno a un tubo della Sartoria: n facce, alto h, staccato `off` dal corpo, spesso `th`
+  function ringBand(tb, s, h, off, th, n, mat) {
+    const P = [], ring = (ds, o) => { const r = []; for (let k = 0; k < n; k++) r.push(Sartoria.surf(tb, s + ds, -Math.PI + k / n * Math.PI * 2, o)); return r; };
+    const ob = ring(-h / 2, off), ot = ring(h / 2, off), ib = ring(-h / 2, off - th), it = ring(h / 2, off - th);
+    const quad = (a, b, c, d) => P.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, d.x, d.y, d.z);
+    for (let k = 0; k < n; k++) { const j = (k + 1) % n; quad(ob[k], ob[j], ot[j], ot[k]); quad(ot[k], ot[j], it[j], it[k]); quad(ib[k], ib[j], ob[j], ob[k]); }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.computeVertexNormals();
+    const uv = []; for (let i = 0; i < P.length; i += 3) uv.push((P[i] + P[i + 2]) * 1.0, P[i + 1]); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    return new THREE.Mesh(geo, mat);
+  }
+  function volumi(g, outfit, B, AT) {
+    const CUT = Sartoria.CUT_(), cut = c => CUT[c.id] || {}, after = (c, f) => outfit.slice(outfit.indexOf(c) + 1).some(f);
+    const coversTorso = c => outfit.some(o => o !== c && (cut(o).cl >= 3) && (o.parti || []).includes('torso') && !cut(o).corto && !cut(o).davanti);   // maglioni e giacche coprono la cintura
+    outfit.forEach(c => {
+      const C = cut(c);
+      // la cintura vera, con la fibbia
+      if (C.cl === 2 && C.cintura && !C.gonna && !coversTorso(c)) {
+        const tb = Sartoria.tube(B, 'bacino'), s = tb.sAtY(B.waist + .012), leather = /cuoio|jeans/.test(C.cintura), col = leather ? (C.cintura === 'jeans' ? '#5a3a22' : '#3a2418') : c.col;
+        const o = new THREE.Group(); o.add(ringBand(tb, s, C.cintura === 'cuoio_fine' ? .026 : .036, .008, .006, 12, Pittura.blockMat('pelle', col, col, col, { vc: false })));
+        const fr = Sartoria.frameAt(tb, s), p = Sartoria.surf(tb, s, 0, .016), n = p.clone().sub(fr.p).normalize(), bk = new THREE.Mesh(new THREE.BoxGeometry(.05, .046, .01), lm('#c8b070'));
+        bk.position.copy(p); bk.lookAt(p.clone().add(n)); const hole = new THREE.Mesh(new THREE.BoxGeometry(.032, .028, .012), lm('#2a2016')); hole.position.copy(p).addScaledVector(n, .001); hole.lookAt(p.clone().add(n)); o.add(bk, hole); AT('Hips', o);
+      }
+      // i polsini rimboccati delle camicie (se nessuno ci va sopra)
+      if ((C.polsi || C.risvolto_maniche) && (c.parti || []).includes('avambracci') && !after(c, o => (o.parti || []).includes('avambracci') && cut(o).cl >= 3)) for (const sd of ['L', 'R']) {
+        const tb = Sartoria.tube(B, 'manica' + sd), Ls = Sartoria.lengths(B, tb, 'manica' + sd, C, c.parti); if (Ls.s1 < Ls.la) continue;
+        const o = new THREE.Group(); o.add(ringBand(tb, Ls.s1 - .022, .04, .01, .008, 8, Pittura.blockMat(C.fab || 'cotone', c.col, C.c2, C.c3, { vc: false }))); AT('LowerArm' + sd, o);
+      }
+      // il risvolto dei pantaloni
+      if (C.cl === 2 && C.risvolto && !after(c, o => cut(o).gonna)) for (const sd of ['L', 'R']) {
+        const tb = Sartoria.tube(B, 'gamba' + sd), Ls = Sartoria.lengths(B, tb, 'gamba' + sd, C, c.parti);
+        const o = new THREE.Group(); o.add(ringBand(tb, Ls.s1 - .025, .045, .012, .01, 10, Pittura.blockMat(C.fab || 'cotone', c.col, C.c2, C.c3, { vc: false }))); AT('LowerLeg' + sd, o);
+      }
+    });
+  }
   function accessories(g, outfit, held, D) {
     if (!window.Sartoria || !D || !D.B) return accessoriesOld(g, outfit, held);
+    if (window.Pittura) try { volumi(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); } catch (e) { console.error('[Vesti3D] volumi', e); }
     const B = D.B, T = Sartoria.testa(g, PARTI), bn = B.bones, AT = (bone, obj) => Sartoria.attach(g, PARTI, bone, obj);
     const lay = D.lay || [], outer = lay.reduce((m, l) => Math.max(m, l.t || 0), 0) + .004, th = D.th || {};
     // spessore sotto la giacca: la cravatta sta sopra la camicia e sotto il revers
