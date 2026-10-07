@@ -9388,6 +9388,15 @@ var World = (function () {
     // sotto i pontili (pali piantati nel fondale) serve sapere quanto è fondo: la media del mare attorno
     for (let i = 0; i < N; i++) if (grid[i] === T.PIER) { let s2 = 0, c = 0; for (let b2 = -2; b2 <= 2; b2++) for (let a = -2; a <= 2; a++) { const j = i + b2 * GW + a; if (j >= 0 && j < N && isSea(j)) { s2 += depth[j]; c++; } } depth[i] = c ? s2 / c : 1.5; }
     SEA.depth = depth;
+    // che fondo c'è (per la grafica): 0 sabbia, 1 roccia (sotto scogli, falesie e massi), 2 prateria di posidonia (a mezza profondità)
+    const bottom = new Uint8Array(N);
+    for (let i = 0; i < N; i++) { if (!isSea(i)) continue; const k = src[i] >= 0 ? kindAt(src[i]) : 'falesia', x = (i % GW) * TS + 1, y = ((i / GW) | 0) * TS + 1, d = dq[i];
+      const rockK = k === 'falesia' ? 26 : k === 'scogli' ? 14 : grid[src[i]] === T.ROCK ? 7 : 0;
+      if (d < rockK * (.6 + fbm(x / 14, y / 14, 521, 2) * .8)) bottom[i] = 1;
+      else if (depth[i] > 2.2 && depth[i] < 16 && fbm(x / 30, y / 30, 522, 3) > .5 - Math.min(.12, (depth[i] - 2.2) * .03)) bottom[i] = 2; }
+    // nei porti il fondo è fango (codice 3): l'acqua lì è torbida e scura
+    for (let i = 0; i < N; i++) { if (!isSea(i)) continue; const x = (i % GW) * TS + 1, y = ((i / GW) | 0) * TS + 1; if (SEA.basins.some(B => inPoly(x, y, B.poly)) || (src[i] >= 0 && kindAt(src[i]) === 'porto' && dq[i] < 30)) bottom[i] = 3; }
+    SEA.bottom = bottom;
     // scogli che affiorano lungo le coste di roccia (solo grafica: sassi a pelo d'acqua fra 1 e 7 m dalla riva)
     for (let ty = 2; ty < GH - 2; ty++) for (let tx = 2; tx < GW - 2; tx++) { const i = ty * GW + tx; if (!isSea(i) || dq[i] > 8) continue; const k = kindAt(src[i]); if (k !== 'scogli' && k !== 'falesia') continue;
       const h1 = hash2(tx, ty, 515); if (h1 > (k === 'falesia' ? .2 : .13)) continue; SEA.rocks.push({ x: tx * TS + .4 + hash2(tx, ty, 516) * 1.2, y: ty * TS + .4 + hash2(tx, ty, 517) * 1.2, r: .5 + hash2(tx, ty, 518) * (k === 'falesia' ? 1.6 : 1), big: false }); }
@@ -25645,27 +25654,35 @@ var Render = (function () {
 
   // ---------------- MARE ----------------
   function buildWater() {
-    // maschera della terraferma sfocata: serve per acqua bassa turchese e schiuma sulla riva
-    const S = 4, mc = mk(G.GW * S, G.GH * S), mx = mc.getContext('2d');
-    mx.fillStyle = '#000'; mx.fillRect(0, 0, mc.width, mc.height);
-    const T = G.T;
-    mx.fillStyle = '#fff';
-    const W0c = M.world;
-    if (W0c && W0c.SEA && W0c.SEA.depth) {   // [costa] la maschera viene dal fondale: acqua bassa larga davanti alle spiagge, stretta sotto gli scogli, niente nel porto dragato
-      const D = W0c.SEA.depth;
-      for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) { const i = ty * G.GW + tx, v = gT(tx, ty), sea = (v === T.WATER && M.zone[i] === (M.Z || {}).MARE) || v === T.PIER; const k = sea ? Math.max(0, Math.min(1, .86 * Math.exp(-(D[i] || 0) / 2.2))) : 1; const c = Math.round(k * 255); mx.fillStyle = `rgb(${c},${c},${c})`; mx.fillRect(tx * S, ty * S, S, S); }
-    } else if (W0c && W0c.northY) { const q = S / TS; mx.beginPath(); for (let X = 0; X <= G.WW; X += 2) mx.lineTo(X * q, W0c.northY(X) * q); for (let X = G.WW; X >= 0; X -= 2) mx.lineTo(X * q, W0c.southY(X) * q); mx.closePath(); mx.fill();
+    // [costa] il mare rifatto: due mappe dal mondo. «sea»: R profondità (0-16 m), G fondo di roccia, B posidonia; «mask»: la terra sfocata
+    // (per la schiuma sulla riva). Nello shader: il fondale si vede dove l'acqua è bassa (sabbia con le increspature, roccia, posidonia,
+    // le caustiche del sole), l'acqua si mangia prima il rosso poi il verde, onde morbide sovrapposte, riflesso del cielo con Fresnel,
+    // il sole e la luna, le luci della riva, la schiuma che va e viene sulla battigia.
+    const T = G.T, W0c = M.world, SEA0 = W0c && W0c.SEA, S = 2;
+    const mc = mk(G.GW * S, G.GH * S), mx = mc.getContext('2d'), sc = mk(G.GW, G.GH), sx = sc.getContext('2d'), sd = sx.createImageData(G.GW, G.GH);
+    mx.fillStyle = '#000'; mx.fillRect(0, 0, mc.width, mc.height); mx.fillStyle = '#fff';
+    for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
+      const i = ty * G.GW + tx, v = gT(tx, ty), lake = v === T.WATER && M.zone && M.zone[i] !== (M.Z || {}).MARE, sea = v === T.PIER || v === T.WATER, o = i * 4;
+      if (!sea) mx.fillRect(tx * S, ty * S, S, S);
+      const dp = lake ? 2.5 : SEA0 ? SEA0.depth[i] : sea ? 4 : 0, bt = SEA0 && SEA0.bottom ? SEA0.bottom[i] : 0;
+      sd.data[o] = sea ? Math.round(Math.min(1, dp / 16) * 255) : 0; sd.data[o + 1] = sea && bt === 1 ? 255 : sea && bt === 3 ? 110 : sea ? 0 : 255; /* G: 255 roccia, 110 fango */ sd.data[o + 2] = bt === 2 ? 255 : 0; sd.data[o + 3] = 255;
     }
-    else for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) { const v = gT(tx, ty); if (v !== T.WATER && v !== T.PIER) mx.fillRect(tx * S, ty * S, S, S); }
-    const bc = mk(mc.width, mc.height), bx = bc.getContext('2d'); bx.filter = W0c && W0c.SEA ? 'blur(3px)' : 'blur(5px)'; bx.drawImage(mc, 0, 0); bx.filter = 'none';
+    sx.putImageData(sd, 0, 0);
+    const big = mk(G.GW * 4, G.GH * 4), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = 'blur(3px)'; bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
+    const stx = new THREE.CanvasTexture(big); stx.minFilter = stx.magFilter = THREE.LinearFilter;
+    const bc = mk(mc.width, mc.height), bx = bc.getContext('2d'); bx.filter = 'blur(2px)'; bx.drawImage(mc, 0, 0); bx.filter = 'none';
     const btx = new THREE.CanvasTexture(bc); btx.minFilter = btx.magFilter = THREE.LinearFilter;
     const geo = new THREE.PlaneGeometry(2400, 2400, 1, 1); geo.rotateX(-Math.PI / 2);
     const mat = new THREE.ShaderMaterial({
-      uniforms: { time: { value: 0 }, night: { value: 1 }, dusk: { value: 0 }, mask: { value: btx }, wsize: { value: new THREE.Vector2(G.WW, G.WH) }, fogC: { value: new THREE.Color() }, camP: { value: new THREE.Vector3() }, fogN: { value: 60 }, fogF: { value: 160 }, wx: { value: new THREE.Vector4() }, sun: { value: new THREE.Vector3(-1, .3, -.3).normalize() }, moonD: { value: new THREE.Vector3(0, 1, 0) }, lp: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) }, lc: { value: Array.from({ length: 16 }, () => new THREE.Color()) } },   /* [amb1] */ /* [unione1] */
+      uniforms: { time: { value: 0 }, night: { value: 1 }, dusk: { value: 0 }, mask: { value: btx }, sea: { value: stx }, wsize: { value: new THREE.Vector2(G.WW, G.WH) }, fogC: { value: new THREE.Color() }, camP: { value: new THREE.Vector3() }, fogN: { value: 60 }, fogF: { value: 160 }, wx: { value: new THREE.Vector4() }, sun: { value: new THREE.Vector3(-1, .3, -.3).normalize() }, moonD: { value: new THREE.Vector3(0, 1, 0) }, lp: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) }, lc: { value: Array.from({ length: 16 }, () => new THREE.Color()) } },
       vertexShader: 'varying vec3 vP; void main(){ vec4 w = modelMatrix*vec4(position,1.); vP=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }',
-      fragmentShader: `uniform float time; uniform float night; uniform float dusk; uniform sampler2D mask; uniform vec2 wsize; uniform vec3 fogC; uniform vec3 camP; uniform float fogN; uniform float fogF; uniform vec4 wx; uniform vec3 sun; uniform vec3 moonD; uniform vec4 lp[16]; uniform vec3 lc[16]; varying vec3 vP;
-        float hgt1(vec2 q){ return sin(q.x*1.3 + time*1.2 + sin(q.y*2.1+time)*1.5) * sin(q.y*3.1 - time*.8) * .5 + sin(q.x*.37 - q.y*.52 + time*.6) * .35 + sin(q.x*2.9 + q.y*2.3 - time*2.1) * .15; }   /* [unione1] */
-        vec3 sky1(vec3 d){   /* [unione1] lo stesso cielo di buildSky, visto riflesso */
+      fragmentShader: `uniform float time; uniform float night; uniform float dusk; uniform sampler2D mask; uniform sampler2D sea; uniform vec2 wsize; uniform vec3 fogC; uniform vec3 camP; uniform float fogN; uniform float fogF; uniform vec4 wx; uniform vec3 sun; uniform vec3 moonD; uniform vec4 lp[16]; uniform vec3 lc[16]; varying vec3 vP;
+        float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f); return mix(mix(h21(i), h21(i+vec2(1.,0.)), f.x), mix(h21(i+vec2(0.,1.)), h21(i+vec2(1.,1.)), f.x), f.y); }
+        // un'onda: x altezza, yz pendenza
+        void wv(inout vec3 r, vec2 p, vec2 d, float f, float s, float a){ float ph = dot(d, p)*f + time*s; r.x += sin(ph)*a; r.yz += d*f*cos(ph)*a; }
+        float hgt1(vec2 q){ return sin(q.x*1.3 + time*1.2 + sin(q.y*2.1+time)*1.5) * sin(q.y*3.1 - time*.8) * .5; }
+        vec3 sky1(vec3 d){
           float y = max(d.y, 0.);
           vec3 dayTop = mix(vec3(.46,.60,.76), vec3(.58,.60,.63), wx.x), dayHor = mix(vec3(.80,.84,.86), vec3(.74,.75,.76), wx.x);
           vec3 day = mix(dayHor, dayTop, smoothstep(0.,.5,y));
@@ -25673,42 +25690,62 @@ var Render = (function () {
           vec3 ni = mix(vec3(.10,.11,.14), vec3(.02,.03,.05), smoothstep(0.,.45,y));
           vec3 c = mix(mix(day, du, dusk), ni, night*(1.-dusk*.55));
           return c + vec3(.9,.86,.8)*pow(max(0.,dot(d, sun)),18.)*.22*(1.-night); }
+        float caust(vec2 p){ float a = sin(p.x*1.9 + time*.9 + sin(p.y*1.7 - time*.6)*1.6), b = sin(p.y*2.3 - time*.7 + sin(p.x*1.3 + time*.5)*1.8), c = sin((p.x+p.y)*1.4 + time*.8 + sin(p.x*.7)*1.2); return pow(max(0., 1. - abs(a*.4 + b*.35 + c*.25)), 6.); }
         void main(){
-          vec2 p = floor(vP.xz*6.)/6.;
-          vec2 muv = p/wsize; float m = texture2D(mask, vec2(muv.x, 1.-muv.y)).r;
-          if (muv.x<0.||muv.x>1.||muv.y>1.||muv.y<0.) m = 0.;
-          float w = sin(p.x*1.3 + time*1.2 + sin(p.y*2.1+time)*1.5) * sin(p.y*3.1 - time*.8);
-          float band = step(.9 - wx.w*.26 - wx.y*.05, w);   /* [amb1] mare calmo col sereno, creste col vento */
-          vec3 deep = mix(mix(vec3(.08,.17,.24), vec3(.12,.15,.17), wx.x), vec3(.03,.04,.07), night);   /* [amb1] col sereno il mare è blu, col coperto piombo */
-          vec3 shal = mix(mix(vec3(.20,.36,.38), vec3(.24,.30,.31), wx.x), vec3(.06,.10,.13), night);
-          vec3 c = mix(deep, shal, smoothstep(.3,.8,m) * .7);   /* [unione6] acqua bassa stretta e sfumata */
-          c = mix(c, c*vec3(1.08,.95,.95)+vec3(.04,.02,.03), dusk*.4);
-          c += band*mix(vec3(.16,.20,.22), vec3(.06,.07,.12), night) * (.35 + .45*smoothstep(.15,.6,m));   /* [costa] al largo le creste si vedono appena: niente pioggia di trattini */
-          // schiuma sulla riva, a onde
-          float foam = step(.72, sin(m*26. - time*1.8 + sin(p.x*.4)*1.5)) * smoothstep(.35,.62,m) * (1.-smoothstep(.8,.95,m));
-          c = mix(c, vec3(.92,.95,1.)*(1.-night*.45), foam*.8);
-          // riflessi del tramonto e dei neon verso l'orizzonte
-          float sp = step(.9, sin(p.x*3.7+time*2.)*sin(p.y*5.3-time*1.3));
-          c += sp*mix(vec3(.5,.45,.3), vec3(.95,.6,.38), dusk)*.35*(1.-night);   /* [unione1] niente puntini rosa di notte */
-          {   /* [unione1] il riflesso: cielo, sole, luna, luci di riva */
-            float amp = .12 + wx.w*.25 + wx.y*.06, e = .25;
-            vec2 dh = vec2(hgt1(p+vec2(e,0.)) - hgt1(p-vec2(e,0.)), hgt1(p+vec2(0.,e)) - hgt1(p-vec2(0.,e))) / (2.*e);
-            vec3 N = normalize(vec3(-dh.x*amp, 1., -dh.y*amp)), V = normalize(camP - vP), R = reflect(-V, N); R.y = abs(R.y);
-            float fr = clamp((.04 + .96*pow(1. - max(dot(N, V), 0.), 5.)) * 1.7 + .07, 0., .55);
-            c = mix(c, sky1(R), fr);
-            float sunK = (1. - night) * (1. - wx.x*.85), g = max(dot(R, normalize(sun)), 0.);
-            c += mix(vec3(1.,.95,.85), vec3(1.,.62,.36), dusk) * (step(.9965, g)*1.6 + pow(g, 40.)*.35) * sunK;
-            float mg = max(dot(R, normalize(moonD)), 0.);
-            c += vec3(.62,.70,.88) * (step(.994, mg)*.7 + pow(mg, 30.)*.12) * night * (1. - wx.x*.8);
-            vec3 acc = vec3(0.);
-            for (int i = 0; i < 16; i++) { vec4 L = lp[i]; if (L.w <= 0.) continue;
-              vec2 d = normalize(camP.xz - L.xz + vec2(1e-4)), q = vP.xz - L.xz; float t = dot(q, d), sd = q.x*d.y - q.y*d.x;
-              float len = 2.5 + L.y*2.4, wid = .16 + max(t, 0.)*.06 + amp*.9, wob = hgt1(p*1.7 + L.xz) * (.18 + .05*max(t, 0.));
-              float k = (1. - smoothstep(wid*.35, wid, abs(sd + wob))) * smoothstep(-.8, .3, t) * exp(-max(t, 0.)/len);
-              acc += lc[i] * L.w * k * (.4 + .6*step(0., sin(t*6.5 - time*2.4 + hgt1(p*2.3)*3.))); }
-            c += acc * night * (1. - smoothstep(.8, .97, m)); }
-          float d = distance(vP, camP); c = mix(c, fogC, smoothstep(fogN, fogF, d));
-          gl_FragColor = vec4(c,1.);
+          vec2 q = vP.xz, muv = q/wsize, tuv = vec2(muv.x, 1.-muv.y);
+          bool out1 = muv.x<0.||muv.x>1.||muv.y>1.||muv.y<0.;
+          vec4 S = out1 ? vec4(1.,0.,0.,1.) : texture2D(sea, tuv);
+          float land = out1 ? 0. : texture2D(mask, tuv).r;
+          float dep = S.r*16. + (out1 ? 20. : 0.), wind = clamp(.25 + wx.w*.75 + wx.y*.15, 0., 1.);
+          // onde: quattro treni d'onda che vanno sottovento, più una grana fine; sotto riva si smorzano
+          vec3 w = vec3(0.);
+          wv(w, q, vec2(.8,.6), .42, 1.0, .5); wv(w, q, normalize(vec2(-.35,.94)), .77, 1.35, .32); wv(w, q, normalize(vec2(.96,-.28)), 1.45, 1.9, .16); wv(w, q, normalize(vec2(-.7,-.7)), 2.6, 2.7, .09);
+          float amp = (.05 + wind*.13) * (.35 + .65*smoothstep(.3, 3.5, dep));
+          float e = .15, fn = n2(q*2.1 + time*.35) + n2(q*3.7 - time*.42)*.5;
+          vec2 fg = vec2(n2(q*2.1 + vec2(e,0.) + time*.35) - n2(q*2.1 - vec2(e,0.) + time*.35), n2(q*2.1 + vec2(0.,e) + time*.35) - n2(q*2.1 - vec2(0.,e) + time*.35)) / (2.*e) * 2.1;
+          vec3 N = normalize(vec3(-(w.y*amp + fg.x*.025), 1., -(w.z*amp + fg.y*.025)));
+          vec3 V = normalize(camP - vP);
+          float sunK = (1. - night) * (1. - wx.x*.8), dayK = 1. - night*.88;
+          // il fondale, visto attraverso l'acqua (spostato dalla rifrazione)
+          vec2 bq = q + N.xz * min(dep, 4.) * .35;
+          float sn = n2(bq*.35)*.6 + n2(bq*1.4)*.4, rip = sin(bq.x*1.9 + bq.y*1.2 + n2(bq*.45)*4.)*.5 + .5;
+          vec3 sand = mix(vec3(.62,.56,.42), vec3(.80,.73,.56), sn) * (.9 + rip*.14);
+          vec3 rock = mix(vec3(.20,.19,.17), vec3(.40,.37,.32), n2(bq*.8)) * (.75 + .5*n2(bq*3.1));
+          vec3 posi = mix(vec3(.05,.11,.07), vec3(.11,.19,.10), n2(bq*1.6) * n2(bq*5.3 + time*.2));
+          vec3 mud = mix(vec3(.18,.17,.12), vec3(.27,.25,.18), n2(bq*.6));
+          float rockK = smoothstep(.62, .85, S.g), mudK = smoothstep(.22, .4, S.g) * (1. - rockK);
+          vec3 bed = mix(sand, rock, rockK); bed = mix(bed, mud, mudK); bed = mix(bed, posi, smoothstep(.3, .7, S.b) * (1. - S.g));
+          bed *= (.35 + .65*sunK) * dayK + .02;
+          bed += vec3(1.,.96,.86) * caust(bq*.8) * .5 * exp(-dep*.3) * sunK;
+          vec3 Tr = exp(-vec3(.42,.13,.09) * dep * (1.3 + mudK * 1.6));   // nel porto l'acqua è torbida
+          vec3 scat = mix(mix(mix(vec3(.02,.13,.21), vec3(.05,.12,.11), mudK), vec3(.07,.11,.13), wx.x), vec3(.01,.02,.04), night);
+          vec3 c = bed * Tr + scat * (vec3(1.) - Tr) * dayK;
+          c = mix(c, c*vec3(1.08,.95,.92) + vec3(.04,.02,.03), dusk*.4);
+          // riflesso: cielo con Fresnel (la camera guarda dall'alto: poco, ma vivo), sole e luna come lame sulle onde
+          vec3 R = reflect(-V, N); R.y = abs(R.y);
+          float fr = clamp(.02 + .98*pow(1. - max(dot(N, V), 0.), 5.), 0., 1.) * 1.8 + .05;
+          c = mix(c, sky1(R), clamp(fr, 0., .62));
+          float g = max(dot(R, normalize(sun)), 0.);
+          c += mix(vec3(1.,.96,.88), vec3(1.,.62,.36), dusk) * (pow(g, 420.)*3.5 + pow(g, 40.)*.18) * sunK;
+          float mg = max(dot(R, normalize(moonD)), 0.);
+          c += vec3(.62,.70,.88) * (pow(mg, 300.)*1.4 + pow(mg, 30.)*.1) * night * (1. - wx.x*.8);
+          // le luci della riva, strisce che tremano sull'acqua
+          vec3 acc = vec3(0.);
+          for (int i = 0; i < 16; i++) { vec4 L = lp[i]; if (L.w <= 0.) continue;
+            vec2 d = normalize(camP.xz - L.xz + vec2(1e-4)), qq = vP.xz - L.xz; float t = dot(qq, d), sd = qq.x*d.y - qq.y*d.x;
+            float len = 2.5 + L.y*2.4, wid = .22 + max(t, 0.)*.07 + amp*1.4, wob = (fn - .75) * (.25 + .06*max(t, 0.));
+            float k = (1. - smoothstep(wid*.35, wid, abs(sd + wob))) * smoothstep(-.8, .3, t) * exp(-max(t, 0.)/len);
+            acc += lc[i] * L.w * k * (.55 + .45*smoothstep(-.4, .6, sin(t*3.2 - time*1.6 + fn*2.5))); }
+          c += acc * night * (1. - smoothstep(.85, .98, land));
+          // schiuma: sulla battigia va e viene a righe rotte, sulle creste solo col vento
+          float shore = smoothstep(.3, .62, land) * (1. - smoothstep(.86, .97, land));   // la battigia: una fascia stretta
+          float br = n2(q*1.3 + vec2(time*.25, -time*.18)) * .6 + n2(q*4.1 - time*.3) * .4;
+          float foam = shore * smoothstep(.55, .8, sin(land*30. - time*1.5 + br*5.)*.5 + .5) * smoothstep(.35, .65, br) * .8;
+          foam += smoothstep(.72, .92, land) * (1. - smoothstep(.93, .99, land)) * .4;   // un filo bianco dove l'onda tocca
+          foam += smoothstep(.62, .95, w.x*.55 + fn*.35) * wind * wind * .55 * smoothstep(2., 6., dep);
+          c = mix(c, vec3(.93,.96,1.) * (.25 + .75*dayK), clamp(foam, 0., 1.) * .85);
+          float dd = distance(vP, camP); c = mix(c, fogC, smoothstep(fogN, fogF, dd));
+          gl_FragColor = vec4(c, 1.);
         }`,
     });
     const m = new THREE.Mesh(geo, mat); m.position.set(G.WW / 2, -.45, G.WH / 2); scene.add(m); dyn.water = mat;
@@ -27131,7 +27168,7 @@ var Render = (function () {
   }
   const DS = { side: THREE.DoubleSide };
   // quanto pesca ogni barca (m sotto il pelo dell'acqua, dal capodibanda medio): il gruppo sta a WL + DRAFT
-  const DRAFT = { gozzo: .42, lancia: .48, barca_vela: .6, motoscafo: .5, peschereccio: .95, motovedetta: .9, rimorchiatore: 1.2, nave: 2.7, pedalo: .22, secca: .42 };
+  const DRAFT = { gozzo: .27, lancia: .3, barca_vela: .42, motoscafo: .28, peschereccio: .62, motovedetta: .6, rimorchiatore: .85, nave: 2.1, pedalo: .14, secca: .27 };   // circa un terzo dell'altezza dello scafo: la barca sta sopra l'acqua, non mezza sotto
   // tre fasce: l'antivegetativa fino a un palmo sopra il galleggiamento, il colore dello scafo, la fascia sotto il capodibanda
   function hullMesh(g, H, colLow, colBand, band, cap, draft, anti) {
     const sh = H.sh(.5), kd = H.kd(.5), uw = Math.min(.8, Math.acos(Math.pow(clamp((sh + draft - .12) / (kd + sh), 0, 1), 1 / 1.6)) * 2 / Math.PI);
