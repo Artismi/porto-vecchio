@@ -208,7 +208,7 @@ var Vesti3D = (function () {
         const rim = M_(new THREE.TorusGeometry(R * .97, .012, 6, 28, Math.PI * 1.45), lm('#141416')); rim.rotation.x = Math.PI / 2; rim.rotation.z = Math.PI * .275 + Math.PI; rim.position.y = -R * .55;
         [top, side, stripe].forEach(o => { o.position.y = H * .3; o.scale.set(1, 1.02, 1.08); }); rim.position.y += H * .3; h.add(top, side, stripe); break; }
       case 'elmetto': {   // elmetto: calotta, bordo sporgente, telo, sottogola
-        const mt = FM('ripstop', c, sh(c, .7), sh(c, 1.2)), R = r + .028, d = lathe([[R + .02, -.02], [R + .02, -.012], [R, 0], [R * .98, H * .5], [R * .78, H * .85], [R * .4, H + .025], [0, H + .03]], mt, 28);
+        const mt = FM('ripstop', c, sh(c, .7), sh(c, 1.2)), R = r + .028, d = lathe([[R + .02, .0], [R + .02, .008], [R, .015], [R * .98, H * .5], [R * .78, H * .85], [R * .4, H + .025], [0, H + .03]], mt, 28);
         h.add(d); const st = new THREE.Mesh(new THREE.TorusGeometry(r * .82, .006, 4, 20, Math.PI), lm('#2a2418')); st.rotation.y = Math.PI / 2; st.rotation.z = Math.PI; st.position.set(0, -.02, -.01); st.scale.set(1, 1.3, 1); h.add(st); break; }
       case 'passamontagna': {   // aderente, fino al collo, la fessura per gli occhi
         const mt = FM('costine', c), hd = lathe([[T.rSkull * .62, T.chin - T.brow - .05], [T.rSkull * .7, T.chin - T.brow + .02], [r + .006, -.05], [r + .008, .02], [r * .96, H * .55], [r * .65, H * .9], [0, H + .01]], mt);

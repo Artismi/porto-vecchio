@@ -219,11 +219,12 @@ var Sartoria = (function () {
     const ref = srcs.find(o => /Body/i.test(o.name)) || srcs[0];
     const rel = new THREE.Matrix4().multiplyMatrices(gi, ref.matrixWorld);   // dalla mesh (locale) al personaggio
     const names = ref.skeleton.bones.map(b => b.name), names0 = names.join();
-    const P = [], part = [], side = [], wts = [], hair = [], head = [], srcOf = [], idxOf = [], tris = [], gmaps = [];
+    const P = [], part = [], side = [], wts = [], hair = [], head = [], srcOf = [], idxOf = [], tris = [], gmaps = [], eyes = [];
     const pn = Object.keys(PARTI), v = new THREE.Vector3(), M = new THREE.Matrix4();
     srcs.forEach((src, si) => {
       const geo = src.userData.geo0 || src.geometry, pos = geo.attributes.position, sI = geo.attributes.skinIndex, sW = geo.attributes.skinWeight; if (!pos || !sI) return;
       const ms = Array.isArray(src.material) ? src.material : [src.material], mname = (ms[0] && ms[0].name) || '';
+      if (/^Eye$/i.test(mname)) { const ps = []; for (let i = 0; i < pos.count; i++) ps.push(v.fromBufferAttribute(pos, i).applyMatrix4(new THREE.Matrix4().multiplyMatrices(gi, src.matrixWorld)).clone()); if (ps.length) eyes.push({ y: ps.reduce((a, p) => a + p.y, 0) / ps.length, z: Math.max(...ps.map(p => p.z)) }); }
       if (SKIP.test(mname)) return;
       if (mname === 'Worker_Yellow' && /Head/i.test(src.name)) return;   // il casco del kit (nascosto): non conta né come testa né come capelli
       M.multiplyMatrices(gi, src.matrixWorld); const bn = src.skeleton.bones, same = bn.map(b => b.name).join() === names0;
@@ -259,7 +260,7 @@ var Sartoria = (function () {
       if (!bm['Wrist' + sd] && bm['LowerArm' + sd] && bm['UpperArm' + sd]) bm['Wrist' + sd] = bm['LowerArm' + sd].clone().multiplyScalar(2).sub(bm['UpperArm' + sd]); }
     // la testa: il punto alla base del cranio; il bacino: il centro tra le anche
     if (bm.UpperLegL && bm.UpperLegR) { const h = bm.UpperLegL.clone().lerp(bm.UpperLegR, .5); h.y += .03; bm.Hips = bm.Hips && Math.abs(bm.Hips.y - h.y) < .15 ? bm.Hips : h; bm.Hips.x = h.x; }
-    B = { key, P: new Float32Array(P), tris: new Uint32Array(tris), gmaps, part, side, wts, hair: new Float32Array(hair), head: new Float32Array(head), srcOf, idxOf, bones: bm, bmat, names, rel, reli: rel.clone().invert(), tubes: {}, geos: new Map() };
+    B = { key, eyes, P: new Float32Array(P), tris: new Uint32Array(tris), gmaps, part, side, wts, hair: new Float32Array(hair), head: new Float32Array(head), srcOf, idxOf, bones: bm, bmat, names, rel, reli: rel.clone().invert(), tubes: {}, geos: new Map() };
     // misure utili: caviglia, inforcatura, vita, base del collo
     const n = part.length, yOf = i => B.P[i * 3 + 1];
     let ank = {};
@@ -1060,8 +1061,11 @@ var Sartoria = (function () {
     // il cranio senza capelli: la cima e il raggio
     let skTop = -9; for (let i = 1; i < hd.length; i += 3) skTop = Math.max(skTop, hd[i]);
     const ring = (arr, y0, y1) => { let sx = 0, sz = 0, c = 0; for (let i = 0; i < arr.length; i += 3) if (arr[i + 1] > y0 && arr[i + 1] < y1) { sx += arr[i]; sz += arr[i + 2]; c++; } const cx = c ? sx / c : b.Head.x, cz = c ? sz / c : b.Head.z; let r = 0, rf = 0, rb = 0; for (let i = 0; i < arr.length; i += 3) if (arr[i + 1] > y0 && arr[i + 1] < y1) { const d = Math.hypot(arr[i] - cx, arr[i + 2] - cz); r = Math.max(r, d); rf = Math.max(rf, arr[i + 2] - cz); rb = Math.max(rb, cz - arr[i + 2]); } return { cx, cz, r, rf, rb }; };
-    const eye0 = (() => { let ez = -9, ey = 0; for (let i = 0; i < hd.length; i += 3) if (hd[i + 2] > ez && hd[i + 1] > skTop - .2) { ez = hd[i + 2]; ey = hd[i + 1]; } return ey; })(), brow = B.hair.length ? Math.max(skTop - .085, Math.min(skTop - .04, eye0 + .02)) : skTop - .025,   /* senza capelli (operaio: la cima del cranio era sotto il casco del kit) */ R1 = ring(hd, brow - .02, brow + .02), R2 = H !== hd ? ring(H, brow - .02, brow + .03) : R1;
-    const eye = skTop - .115, RE = ring(hd, eye - .015, eye + .015);
+    const nose = (() => { let z = -9, y = 0; for (let i = 0; i < hd.length; i += 3) if (hd[i + 1] > skTop - .25 && hd[i + 2] > z) { z = hd[i + 2]; y = hd[i + 1]; } return y; })();
+    const eyeR = B.eyes && B.eyes.length ? B.eyes[0] : { y: nose + .035 };   // senza mesh degli occhi: poco sopra la punta del naso
+    if (skTop - eyeR.y < .1) { skTop = eyeR.y + .12; top = Math.max(top, skTop); }   // cranio tagliato (l'operaio, sotto il casco del kit)
+    const brow = eyeR.y + .055, R1 = ring(hd, brow - .02, brow + .02), R2 = H !== hd ? ring(H, brow - .02, brow + .03) : R1;
+    const eye = eyeR.y, RE = ring(hd, eye - .015, eye + .015);
     const chin = (() => { let m = 9; for (let i = 1; i < hd.length; i += 3) m = Math.min(m, hd[i]); return m; })();
     B.T = { top, skTop, brow, cx: R1.cx, cz: R1.cz, r: Math.max(R1.r, R2.r * .97), rSkull: R1.r, front: R1.cz + R1.rf, eyeY: eye, eyeZ: RE.cz + RE.rf, chin, hairTop: top };
     return B.T;
