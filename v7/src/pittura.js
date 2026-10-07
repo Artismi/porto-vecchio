@@ -36,11 +36,30 @@ var Pittura = (function () {
     B.pit = { tubes, range: [[sLo, sHi], [0, tubes[1].L], [0, tubes[2].L], [0, tubes[3].L], [0, tubes[4].L]], circ: tubes.map(circ) };
     return B.pit;
   }
+  // il profilo "stirato" di un tubo: lisciato lungo l'asse e attorno, chiuso a involucro (niente conche, gradini, muscoli)
+  const IRON = new Map();
+  function ironed(tb) {
+    if (IRON.has(tb)) return IRON.get(tb); const n = tb.ns, RG = tb.R[0].length, sg = Math.max(1, Math.round(.03 / tb.ds));
+    let R = tb.R.map((r, i) => { const o = new Float32Array(RG); for (let q = 0; q < RG; q++) { let a = 0, w = 0; for (let k = -2 * sg; k <= 2 * sg; k++) { const j = cl(i + k, 0, n), g = Math.exp(-k * k / (2 * sg * sg)); a += tb.R[j][q] * g; w += g; } o[q] = a / w; } return o; });
+    R = R.map(r => { const o = new Float32Array(RG); for (let q = 0; q < RG; q++) o[q] = (r[(q + RG - 2) % RG] + 2 * r[(q + RG - 1) % RG] + 3 * r[q] + 2 * r[(q + 1) % RG] + r[(q + 2) % RG]) / 9; return o; });
+    IRON.set(tb, R); return R;
+  }
+  function ironRadius(R, tb, s, a) { const RG = R[0].length, fi = cl(s / tb.ds, 0, tb.ns), i0 = Math.floor(fi), i1 = Math.min(tb.ns, i0 + 1), t = fi - i0, fs = (((a / (Math.PI * 2)) * RG) % RG + RG) % RG, q0 = Math.floor(fs), q1 = (q0 + 1) % RG, u = fs - q0;
+    return lerp(lerp(R[i0][q0], R[i0][q1], u), lerp(R[i1][q0], R[i1][q1], u), t); }
+  // la posizione stirata di un vertice del corpo (per la sua parte, così un vertice condiviso va sempre nello stesso posto)
+  function ironPos(B, g, out) {
+    const r = regionOf(B, g); out.set(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]); if (r < 0) return out;
+    const F = frame(B), tb = F.tubes[r], q = tb.proj(out), fr = S().frameAt(tb, q.i * tb.ds), R = ironed(tb), rr = ironRadius(R, tb, q.i * tb.ds, q.a);
+    // vicino a mani, piedi, collo (dove il corpo resta com'è) lo stiro sfuma
+    let k = 1; if (r > 0) k = cl((tb.L - q.i * tb.ds) / .06, 0, 1) * cl(q.i * tb.ds / .05, 0, 1); else { const ny = S().neckY(B); k = cl((ny - out.y) / .04, 0, 1); }
+    const d = cl(rr - q.r, -.025, .03) * k; if (Math.abs(d) < 1e-5 || q.r < 1e-4) return out;
+    const dir = out.clone().sub(fr.p); dir.addScaledVector(fr.t, -dir.dot(fr.t)); dir.normalize(); return out.addScaledVector(dir, d);
+  }
   function paintGeo(B, src, si) {
     const key = B.key + '|' + si; if (GEO.has(key)) return GEO.get(key);
     const geo = src.userData.geo0 || src.geometry, gm = B.gmaps[si]; if (!gm) { GEO.set(key, null); return null; }
     const F = frame(B), idx = geo.index ? geo.index.array : null, nt = (idx ? idx.length : geo.attributes.position.count) / 3;
-    const v = new THREE.Vector3(), byReg = [[], [], [], [], [], []];   // 0..4 regioni, 5 = resta com'è
+    const v = new THREE.Vector3(), ironCache = [], byReg = [[], [], [], [], [], []];   // 0..4 regioni, 5 = resta com'è
     for (let t = 0; t < nt; t++) {
       const c = [0, 1, 2].map(k => idx ? idx[t * 3 + k] : t * 3 + k), r = c.map(q => gm[q] >= 0 ? regionOf(B, gm[q]) : -1);
       const cnt = {}; r.forEach(x => { cnt[x] = (cnt[x] || 0) + 1; }); let best = -1, bn = 0; for (const k in cnt) if (cnt[k] > bn) { bn = cnt[k]; best = +k; }
@@ -61,7 +80,9 @@ var Pittura = (function () {
           c.forEach((q, k) => { const g = gm[q]; if (g >= 0) v.set(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]); else v.fromBufferAttribute(attrs.position, q).applyMatrix4(B.rel); const P0 = tb.proj(v); uu[k] = (P0.a + Math.PI) / (Math.PI * 2); vv[k] = (P0.i * tb.ds - s0) / (s1 - s0); });
           if (Math.max(...uu) - Math.min(...uu) > .5) uu = uu.map(x => x < .5 ? x + 1 : x);   // il triangolo a cavallo della cucitura dietro
         }
-        c.forEach((q, k) => { keys.forEach(a => { const sz = attrs[a].itemSize; for (let j = 0; j < sz; j++) arr[a][w * sz + j] = attrs[a].array[q * sz + j]; }); UV[w * 2] = uu[k]; UV[w * 2 + 1] = vv[k]; w++; });
+        c.forEach((q, k) => { keys.forEach(a => { const sz = attrs[a].itemSize; for (let j = 0; j < sz; j++) arr[a][w * sz + j] = attrs[a].array[q * sz + j]; });
+          const g = gm[q]; if (g >= 0 && reg < 5) { let L = ironCache[q]; if (!L) { L = ironCache[q] = ironPos(B, g, new THREE.Vector3()).applyMatrix4(B.reli).toArray(); } arr.position[w * 3] = L[0]; arr.position[w * 3 + 1] = L[1]; arr.position[w * 3 + 2] = L[2]; }
+          UV[w * 2] = uu[k]; UV[w * 2 + 1] = vv[k]; w++; });
       });
       groups.push({ start, count: w - start, materialIndex: reg < 5 ? 1 + reg : 0 });
     });
@@ -80,7 +101,7 @@ var Pittura = (function () {
   function plan(B, c, k, all) {
     const Sa = S(), CUT = Sa.CUT_(), base = CUT[c.id] || { cl: 1, fab: 'cotone' }, C = Object.assign({ id: c.id }, base, c.var || {});
     const P = new Set(c.parti || []), F = frame(B), T = F.tubes[0], L = {};
-    C.col = c.col; C.A = rgb(c.col || '#808080');
+    C.col = c.col; C.A = rgb(c.col || '#808080'); ['aperta', 'fab', 'c2', 'c3', 'usura', 'tasche', 'fronte', 'collo', 'polsi'].forEach(k => { if (c[k] !== undefined && k !== 'fab' || (k === 'fab' && c.fabV)) C[k] = k === 'fab' ? c.fabV : c[k]; });
     const l = C.A[0] * .3 + C.A[1] * .59 + C.A[2] * .11; C.B = rgb(C.c2 || (l > .5 ? '#2a2a30' : D)); C.C = rgb(C.c3 || (l > .5 ? '#5a5a60' : '#a8a090'));
     const trous = !C.gonna && !C.solo_gonna && P.has('bacino') && (C.cl === 2 || P.has('cosce')), top = P.has('torso') && !C.solo_gonna;
     if (top) {
@@ -115,7 +136,7 @@ var Pittura = (function () {
   // il colore della stoffa in un punto (metri), a campiture: 2-3 toni a blocchi grossi, motivi grandi e leggibili
   const hsh = (a, b) => { let h = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263)) >>> 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
   function fabric(C, xm, ym) {
-    const A = C.A, B = C.B, Cc = C.C, q = .028, n = hsh(Math.floor(xm / q), Math.floor(ym / q)), tone = n < .3 ? .9 : n < .8 ? 1 : 1.07;   // tre toni a blocchi
+    const A = C.A, B = C.B, Cc = C.C, tone = 1;   // tinta unita (i corpi del kit sono già irregolari: niente macchie sopra)
     let c = A, h = .5; const f = C.fab;
     const md = (v, m) => ((v % m) + m) % m;
     if (f === 'righe') c = md(ym, .06) < .02 ? A : B;   // marinara: righe orizzontali
@@ -140,6 +161,7 @@ var Pittura = (function () {
     const ranked = list.map((c, i) => ({ c, r: ((CUT[c.id] || {}).cl || 1) * 10 + i * .01 })).sort((a, b) => a.r - b.r).map(o => o.c);
     const plans = ranked.map((c, k) => plan(B, c, k, ranked));
     const nY = Sa.neckY(B), out = {};
+    const bt = outfit.find(c => /^stivali/.test(c.id)), boots = bt ? { top: bt.id === 'stivali' ? .34 : .3, col: rgb(bt.col || '#2a1e18'), risv: bt.id !== 'stivali' } : null;
     REG.forEach((R, ri) => {
       const [W, H] = SIZE[R], tb = F.tubes[ri], [s0, s1] = F.range[ri], circ = F.circ[ri], col = new Uint8ClampedArray(W * H * 4), hh = new Uint8ClampedArray(W * H * 4);
       for (let py = 0; py < H; py++) {
@@ -160,6 +182,17 @@ var Pittura = (function () {
             if (dy >= 0 && dy < .035 + tip && oy < .012 + tip * .7) { const f0 = fabric(C, xm, sv); c = mul([f0[0], f0[1], f0[2]], 1.06); h = .7; shade = (dy > .031 + tip || dy < .003) ? .7 : 1; } }
           if (R === 'T') { const side = Math.max(0, Math.abs(Math.sin(a)) - .7) / .3, arm = cl(1 - Math.abs(y - (nY - .2)) / .1, 0, 1); shade *= 1 - .18 * side * arm; }
           if (R[0] === 'L') { const inner = cl(1 - Math.abs(a - (R === 'LL' ? -Math.PI / 2 : Math.PI / 2)) / .9, 0, 1), up = cl(1 - (sv - .1) / .25, 0, 1); shade *= 1 - .15 * inner * up; }
+          // gli stivali: il gambale dipinto sul polpaccio, sopra i pantaloni, con l'orlo dritto
+          if (R[0] === 'L' && boots && y < boots.top) { const e = boots.top - y, f0 = boots.col; c = mul(f0, .95 + .1 * (hsh(Math.floor(xm / .03), Math.floor(y / .03)) > .6 ? 1 : 0)); h = .6; shade = e < .008 ? .55 : e < .03 && boots.risv ? 1.08 : 1; top = -1; if (y < .05) shade *= .5; }
+          // ---- il volume dipinto, come nella pixel art: luce di forma, pieghe, toni a gradini, contorni ----
+          if (top >= 0) {
+            const C = plans[top], fa = Math.cos(a - .45);   // luce da davanti-sinistra
+            
+            
+            if (R !== 'T' || y < nY - .03) shade *= 1 - .08 * cl((Math.abs(Math.sin(a)) - .75) / .25, 0, 1);   // i fianchi girano nell'ombra
+          }
+          // toni a gradini (pixel art): niente sfumature continue
+          
           col[i] = c[0] * 255 * shade; col[i + 1] = c[1] * 255 * shade; col[i + 2] = c[2] * 255 * shade; col[i + 3] = 255;
           hh[i] = hh[i + 1] = hh[i + 2] = cl(h, 0, 1) * 255; hh[i + 3] = 255;
         }
@@ -167,6 +200,31 @@ var Pittura = (function () {
       out[R] = { W, H, col, hh };
     });
     return { out, plans };
+  }
+  // le pieghe disegnate: tratti scuri dove la stoffa si raccoglie (sopra la cintura, al cavallo, ai gomiti, alle caviglie, sotto le ascelle)
+  function fold(B, C, R, a, sv, y, xm, nY) {
+    const md = (v, m) => ((v % m) + m) % m, stroke = (d, w) => Math.abs(d) < w;
+    let k = 1;
+    if (R === 'T') {
+      // la maglia o la camicia che si gonfia sopra la cintura: archi corti orizzontali
+      if (C.cl !== 2 && y > B.waist && y < B.waist + .07 && Math.abs(Math.sin(a)) < .85) { const ph = md(xm + Math.sin(y * 90) * .01, .07); if (stroke(ph - .035, .006) && md(y, .03) < .012) k *= .8; }
+      // le pieghe a raggiera dall'ascella verso il petto
+      const yA = nY - .2; if (C.cl !== 2 && y > yA - .08 && y < yA + .03 && Math.abs(Math.abs(a) - 1.25) < .35) { const t = (Math.abs(a) - 1.25) * .12 + (y - yA) * .6; if (stroke(md(t, .025) - .0125, .004)) k *= .82; }
+      // il cavallo dei pantaloni: tratti obliqui
+      if (C.cl === 2 && y < B.crotch + .07 && y > B.crotch - .02 && Math.abs(a) < .6) { const t = Math.abs(a) * .14 - (B.crotch + .07 - y) * .7; if (stroke(md(t, .03) - .015, .004)) k *= .8; }
+    }
+    if (R[0] === 'A') {
+      const tb = frame(B).tubes[R === 'AL' ? 1 : 2], la = tb.sNear(B.bones['LowerArm' + R[1]]);
+      if (Math.abs(sv - la) < .05) { const t = (sv - la) + Math.cos(a) * .01; if (stroke(md(t, .022) - .011, .004)) k *= .8; }
+      if (sv > la + .06) { const t = sv + Math.sin(a * 2) * .02; if (stroke(md(t, .07) - .035, .0035) && Math.cos(a) < .3) k *= .86; }   // pieghe lunghe sull'avambraccio
+    }
+    if (R[0] === 'L') {
+      const sd = R[1], tb = frame(B).tubes[R === 'LL' ? 3 : 4], kn = tb.sNear(B.bones['LowerLeg' + sd]), an = tb.sNear(B.ankle[sd]);
+      if (Math.abs(sv - kn) < .06 && Math.cos(a) < 0) { const t = (sv - kn) + Math.sin(a) * .01; if (stroke(md(t, .025) - .0125, .004)) k *= .8; }
+      if (an - sv < .1 && an - sv > 0 && C.cl === 2) { const t = (an - sv) - Math.abs(Math.sin(a)) * .03; if (stroke(md(t, .035) - .0175, .004)) k *= .78; }   // la "rottura" del pantalone sulla scarpa
+      if (sv < .2 && sv > .05) { const t = sv + a * .03; if (stroke(md(t, .06) - .03, .003) && Math.abs(Math.sin(a)) > .5) k *= .86; }
+    }
+    return k;
   }
   // il cuore: cosa c'è dipinto nel punto (a, sv) della regione R per il capo C (null = il capo non copre qui)
   function paintAt(B, C, R, ri, a, sv, y, xm, nY, tb) {
@@ -179,6 +237,7 @@ var Pittura = (function () {
       const inPel = T.p0 !== undefined && sv >= T.p0 && sv <= T.p1 && (C.solo_gonna || y > B.crotch - .02 - .07 * Math.pow(Math.abs(Math.sin(a)), 1.5));
       const inBib = T.bib && Math.abs(a) < .72 && y < B.bones.Chest.y + .04 && y > B.waist - .02;
       if (!inTop && !inPel && !inBib) return null;
+      if (C.aperta && inTop && Math.abs(a) < .3) return null;   // aperta davanti: si vede quello che c'è sotto
       if (inTop) edge = Math.min(y - T.yb, nY - neckDrop(C, a) - y);
       if (inPel && !inTop) edge = Math.min(B.waist + .03 - y, 9);
     } else if (R[0] === 'A') {
@@ -190,12 +249,14 @@ var Pittura = (function () {
     }
     let f = fabric(C, xm, sv); let c = [f[0], f[1], f[2]], h = .3 + f[3] * .4, s = 1;
     // l'orlo: piega scura e un filo d'ombra prima
-    if (edge < .008) { s *= .6; h = .1; } else if (edge < .02) s *= .88 + .12 * (edge - .008) / .012;
+    if (edge < .008) { s *= .5; h = .1; } else if (edge < .02) s *= .88 + .12 * (edge - .008) / .012;
     // i capi pesanti hanno la bordura scura all'orlo (come nei riferimenti)
     if ((C.cl >= 4 || C.poncho) && !C.costine && edge >= .008 && edge < .04) s *= .72;
     const R2 = Math.PI / 2;
     if (R === 'T') {
-      const xf = a * .14;   // metri dal centro davanti (all'incirca, sul petto)
+      const xf = a * .14;
+      if (C.aperta) { const ea = Math.abs(a) - .3; if (ea < .06) { s *= ea < .03 ? .55 : .85; h = .2; }   // il bordo aperto (con la zip)
+        if (Math.abs(Math.abs(a) - .42) < .04 && y > nY - .17 && y < nY - .02) { c = [.92, .9, .86]; s = 1; h = .7; } }   // i cordini del cappuccio   // metri dal centro davanti (all'incirca, sul petto)
       // cuciture laterali
       if (line(Math.abs(a) - R2, .012) && C.fab !== 'piumino') { s *= .82; h = .15; }
       // costine all'orlo e allo scollo (maglioni, felpe)
@@ -265,7 +326,7 @@ var Pittura = (function () {
       if (C.banda && Math.abs(a - sg * R2) < .12) { c = rgb(C.banda); h = .6; }
       if (C.piega && line(a, .015)) { s *= 1.08; h = .9; }
       const kn = Math.abs(sv - Ls.kn); if (kn < .06 && Math.cos(a) < -.3) { const k = Math.sin((sv - Ls.kn) / .015 * Math.PI); if (k > .7) { s *= .85; h = .2; } }   // pieghe dietro il ginocchio
-      if (kn < .04 && Math.cos(a) > .5 && C.usura) { c = mixc(c, [.85, .85, .9], C.usura * .5 * (1 - kn / .04)); }   // ginocchia schiarite
+      if (C.usura && Math.cos(a) > .2) { const cx = Math.floor(xm / .03), cy = Math.floor(sv / .03), r = hsh(cx * 31 + (R === 'LL' ? 7 : 3), cy * 17); if (r < C.usura * .1) c = mixc(c, [.82, .86, .92], .3); if (kn < .03 && r < C.usura * .45) c = mixc(c, [.9, .9, .92], .4); }   // jeans consumati: chiazze chiare, ginocchia
       if (C.risvolto && end - sv < .04) { c = mul(c, 1.04); if (end - sv > .037 || end - sv < .003) { s *= .65; h = .1; } }
       if ((C.tasche || []).includes('cargo')) { const sk = Ls.sCr + (Ls.kn - Ls.sCr) * .45, aa = a - sg * R2; if (Math.abs(aa) < .6 && sv > sk - .07 && sv < sk + .07) { const e = Math.min((.6 - Math.abs(aa)) * .07, sv - sk + .07, sk + .07 - sv); if (e < .008) { s *= .7; h = .1; } else if (sk + .07 - sv < .03) { s *= .93; h = .7; if (Math.abs(sk + .07 - sv - .03) < .002) s *= .7; } } }
     }
