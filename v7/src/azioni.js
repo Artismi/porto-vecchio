@@ -194,7 +194,7 @@ var Azioni = (function () {
     if (n.action && n.action.name === 'imprevisto') n.action = { name: 'routine', scores: [], why: '', since: st.clock };
     if (E.onEnd) try { E.onEnd(st, n, why); } catch (e) { }
   }
-  function leaveVehicle(st, n) { const v = st.vehicles.find(x => x.id === n.inVeh); if (v) { v.rider = null; v.vx = v.vy = v.w = 0; n.x = v.x + Math.cos(v.ang + Math.PI / 2) * 1.6; n.y = v.y + Math.sin(v.ang + Math.PI / 2) * 1.6; if (!G.walkM(n.x, n.y)) { n.x = v.x; n.y = v.y; } } n.inVeh = null; n.inside = false; }
+  function leaveVehicle(st, n) { const v = st.vehicles.find(x => x.id === n.inVeh); if (v) { v.rider = null; delete v.__hp0; v.vx = v.vy = v.w = 0; n.x = v.x + Math.cos(v.ang + Math.PI / 2) * 1.6; n.y = v.y + Math.sin(v.ang + Math.PI / 2) * 1.6; if (!G.walkM(n.x, n.y)) { n.x = v.x; n.y = v.y; } } n.inVeh = null; n.inside = false; }
   function enterVehicle(st, n, v) { v.rider = 'npc:' + n.id; n.inVeh = v.id; n.inside = true; n.x = v.x; n.y = v.y; if (!v.owner) v.owner = n.id; }
   // da vicino, sotto gli occhi del giocatore, si cammina davvero e i gesti durano il tempo vero; più in là si arriva dopo il tempo di strada
   const watched = (st, n) => !!(n.pop && n.pop.near && dist(n.x, n.y, st.player.x, st.player.y) < CFG.sceneR);
@@ -249,10 +249,11 @@ var Azioni = (function () {
       if (v.owner !== n.id && !E.stoleNoted) { E.stoleNoted = true; if (!n.pop.friends.includes(v.owner)) { note(st, n, `preso ${G.vehicleName ? G.vehicleName(st, v) : 'un\'auto'} non sua`, 'shady', { w: .5, tag: 'furto' }); emit(st, 'furto_auto', n, v.owner || null, v.x, v.y, placeName(v.x, v.y)); } }
     }
     if (watched(st, n)) {
-      if (!v.dpath || !v.dgoal || dist(v.dgoal.x, v.dgoal.y, to.x, to.y) > 3) { v.dgoal = { x: to.x, y: to.y }; v.dpath = G.findPath(v.x, v.y, to.x, to.y, 1) || []; }
+      if (v.__hp0 === undefined) v.__hp0 = v.hp; v.hp = Math.max(v.hp, v.__hp0);   // [vivi] il mezzo guidato così segue la strada: gli urti finti contro i bordi non lo rompono
+      if (!v.dpath || !v.dgoal || dist(v.dgoal.x, v.dgoal.y, to.x, to.y) > 3) { v.dgoal = { x: to.x, y: to.y }; v.dpath = G.findPath(v.x, v.y, to.x, to.y, .5) || []; }   // [vivi] per le strade, non per i marciapiedi
       const w = v.dpath[0];
-      if (w) { const dx = w.x - v.x, dy = w.y - v.y, d = Math.hypot(dx, dy), sp = 7.5 * dt; if (d <= sp) { v.x = w.x; v.y = w.y; v.dpath.shift(); } else { v.x += dx / d * sp; v.y += dy / d * sp; v.ang = Math.atan2(dy, dx); } }
-      v.vx = v.vy = v.w = 0; v.speed = 7.5; n.x = v.x; n.y = v.y;
+      if (w) { const dx = w.x - v.x, dy = w.y - v.y, d = Math.hypot(dx, dy), sp = (v.kind === 'vespa' ? 9 : 11) * dt;   /* [vivi] in città sui 35-40 km/h */ if (d <= sp) { v.x = w.x; v.y = w.y; v.dpath.shift(); } else { v.x += dx / d * sp; v.y += dy / d * sp; v.ang = Math.atan2(dy, dx); } }
+      v.vx = v.vy = v.w = 0; v.speed = v.kind === 'vespa' ? 9 : 11; n.x = v.x; n.y = v.y;
       if (!v.dpath.length || dist(v.x, v.y, to.x, to.y) < 3) { v.speed = 0; v.dpath = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     } else {
       if (!E.arr) E.arr = st.t + 2 + dist(v.x, v.y, to.x, to.y) / 150;
@@ -434,6 +435,8 @@ var Azioni = (function () {
   const whereOf = (st, k) => (k === 'player' ? st.player : k.pop && !k.pop.near && k.pop.at ? { x: k.pop.at.x, y: k.pop.at.y, label: k.pop.at.label } : { x: k.x, y: k.y, label: placeName(k.x, k.y) });
   const VERBS = {
     vai:        { desc: 'andare in un posto', args: 'dove', plan: (st, n, a) => { const t = tgtOf(a.dove); return t ? [S.go(`va a ${t.label}`, t)] : null; } },
+    guida:      { desc: 'andare in un posto col proprio mezzo (lo parcheggia e scende)', args: 'dove', plan: (st, n, a) => { const t = tgtOf(a.dove), v = st.vehicles.find(x => x.owner === n.id && !x.hidden && !x.wreck && !x.traffic && !x.rider && dist(x.x, x.y, n.x, n.y) < 60); if (!t || !v) return null;   // [vivi]
+      return [S.drive(`prende ${G.vehicleName ? G.vehicleName(st, v) : 'la macchina'} per andare a ${t.label}`, () => v, () => t), S.do('parcheggia e scende', .4, (st, n) => { leaveVehicle(st, n); return 'next'; })]; } },
     prendi:     { desc: 'procurarsi un oggetto (da casa, comprandolo, prendendolo dove si trova)', args: 'oggetto', can: (st, n, a) => (ITEMS[a.oggetto] ? '' : 'oggetto sconosciuto'), plan: (st, n, a) => getItem(st, n, a.oggetto) },
     impugna:    { desc: 'prendere in mano un oggetto che si ha in tasca', args: 'oggetto', can: (st, n, a) => (hasIn(n, a.oggetto) ? '' : 'non ce l\'ha'), plan: (st, n, a) => [S.equip(a.oggetto)] },
     riponi:     { desc: 'mettere via quello che si ha in mano', plan: () => [S.free()] },
@@ -706,7 +709,7 @@ var Azioni = (function () {
 
   // ================= TRA PERSONE =================
   const LINES = {
-    chiacchiera: ['Hai sentito cosa è successo?', 'Che caldo, eh?', 'Come va la famiglia?'], sfotti: ['Ma guardalo, sembra un Grigio in libera uscita!', 'Ancora con quella giacca?', 'Ah, il grande esperto!'],
+    chiacchiera: ['Hai sentito cosa è successo?', 'Che freddo, eh?', 'Come va la famiglia?'], sfotti: ['Ma guardalo, sembra un Grigio in libera uscita!', 'Ancora con quella giacca?', 'Ah, il grande esperto!'],
     apprezza: ['Bella giacca, sai?', 'Sei uno a posto, tu.', 'Grazie per l\'altro giorno.'], offri: ['Ti offro qualcosa, dai.', 'Questo lo pago io.'], gioca: ['Una partita?', 'Scopa!', 'Tocca a te!'], regala: ['Tieni, è per te.'],
     litiga: ['Ma che dici?!', 'Vattene!', 'Non ti permettere!'],
   };
@@ -714,7 +717,7 @@ var Azioni = (function () {
     if (!alive(a) || !alive(b) || !a.pop || !b.pop) return;
     const Ra = rel(st, a, b), Rb = rel(st, b, a), place = (a.pop.at && a.pop.at.label) || placeName(a.x, a.y);
     st.pop.stats.incontri = (st.pop.stats.incontri || 0) + 1;
-    say(st, a, LINES[kind] || LINES.chiacchiera);
+    { const real = kind === 'chiacchiera' && I.chatLine ? I.chatLine(st, a, a.pop.cur) : null; if (real) G.say(st, a, real, 3); else say(st, a, LINES[kind] || LINES.chiacchiera); }   // [vivi] si parla di cose vere
     if (CFG.talk) try { CFG.talk(st, a, b, kind); } catch (e) { } // la Mente può dare voce vera allo scambio
     switch (kind) {
       case 'chiacchiera': I.share(st, a, b); I.share(st, b, a); moveRel(st, a, b, .03); moveRel(st, b, a, .03); feel(a, 'compagnia', -.15); feel(b, 'compagnia', -.15); break;

@@ -1,41 +1,88 @@
 <!doctype html>
 <html lang="it"><head><meta charset="utf-8"><title>Studio degli oggetti</title>
-<style>html,body{margin:0;background:#3a3f48;overflow:hidden}#lab{position:fixed;left:0;top:0;width:100%;pointer-events:none;font:12px monospace;color:#fff}</style></head>
+<style>html,body{margin:0;background:#3a3f48;overflow:hidden}#lab{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;font:12px monospace;color:#fff}</style></head>
 <body><div id="lab"></div>
 <!-- Studio degli oggetti: node strumenti_inverno/studio_oggetti.js cartella scene.json  (vedi quel file) -->
+<script>window.__pvStudio = true;</script>
 <script src="src/three.min.js"></script>
+<script src="src/gltf_loader.js"></script>
+<script src="src/kit.js"></script>
+<script src="src/scaricati.js"></script>
+<script src="src/superfici.js"></script>
+<script src="src/modella.js"></script>
 <script src="src/bottino.js"></script>
 <script src="src/pezzi.js"></script>
+<script src="src/oggetti_ui.js"></script>
 <script>
 (function () {
   const W = innerWidth, H = innerHeight;
-  const ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); ren.setSize(W, H); ren.shadowMap.enabled = true; document.body.appendChild(ren.domElement);
+  const ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); ren.setSize(W, H); ren.shadowMap.enabled = true; ren.setScissorTest(false); ren.autoClear = false; document.body.appendChild(ren.domElement);
   const scene = new THREE.Scene(); scene.background = new THREE.Color('#3a3f48');
   scene.add(new THREE.HemisphereLight('#dfe6ee', '#4a4238', .75));
-  const sun = new THREE.DirectionalLight('#fff4e0', .9); sun.position.set(4, 7, 5); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 }); scene.add(sun);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({ color: '#6a6660' })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-  const cam = new THREE.PerspectiveCamera(30, W / H, .05, 200);
+  const sun = new THREE.DirectionalLight('#fff4e0', .9); sun.position.set(4, 7, 5); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -.0005;
+  Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 }); scene.add(sun); scene.add(sun.target);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshLambertMaterial({ color: '#6a6660' })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const grid = new THREE.GridHelper(400, 800, '#5e5a55', '#625e59'); grid.position.y = .001; scene.add(grid);   // quadretti da 50 cm: si legge la misura
+  const cam = new THREE.PerspectiveCamera(30, W / H, .02, 300);
   let items = [];
-  // voce: { nome, src: 'bottino:vicolo' | 'pezzi:pallet' | 'pezzi:bancoArmi', args: [...] , locked }
-  function make(d) {
-    const g = new THREE.Group(), [lib, fn] = d.src.split(':');
+  // voce: { nome, src: 'bottino:vicolo' | 'pezzi:pallet' (args: [...]) | 'st:st_forgia' | 'scaricato:radio' | 'kit:food/fish', locked }
+  // per un file qualsiasi: { src: 'file:mj/s_Tent', fit: ['h', 1.2] }
+  async function make(d) {
+    const nudo = d.nudo === undefined ? !!window.__nudo : !!d.nudo, S = window.Superfici; if (nudo) window.Superfici = undefined;   // nudo: senza veste, anche dove il modello se la mette da sé
+    try { return await make0(d, nudo); } finally { window.Superfici = S; }
+  }
+  async function make0(d, nudo) {
+    const g = new THREE.Group(), i = d.src.indexOf(':'), lib = d.src.slice(0, i), fn = d.src.slice(i + 1);
     if (lib === 'bottino') Bottino.MODEL[fn](g, { locked: !!d.locked, ref: d.nome });
-    else if (lib === 'pezzi') Pezzi[fn].apply(null, [g].concat(d.args || []));
+    else if (lib === 'pezzi') Pezzi[fn].apply(null, [g].concat(d.st ? [OggettiUI.stModel(d.st)] : d.args || []));   // st: la postazione che la composizione prende come argomento
+    else if (lib === 'st') { const m = OggettiUI.stModel(fn); if (m) g.add(m); }
+    else if (lib === 'scaricato') { await Scaricati.load(fn); Scaricati.put(g, fn); }
+    else if (lib === 'file') { const id = '_' + fn; Scaricati.CAT[id] = [fn, (d.fit || ['h', 1])[0], (d.fit || ['h', 1])[1], d.ry || 0, d.rx || 0, d.rz || 0]; await Scaricati.load(id); Scaricati.put(g, id); }
+    else if (lib === 'kit') { await (window.__kits = window.__kits || Kit.load('assets/mk/', ['food', 'urban', 'urbano', 'casa', 'stazione', 'arcade', 'grave', 'natura', 'tortura', 'train']).catch(() => {})); g.add(Kit.get(fn)); }
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    if (!nudo) Superfici.vesti(g);   // "nudo": true (nella voce o nella scena) per vederli senza veste
     return g;
   }
+  function clearLabels() { const lab = document.getElementById('lab'); lab.innerHTML = ''; return lab; }
+  function label(lab, txt, x, y, extra) { const e = document.createElement('div'); e.textContent = txt; e.style.cssText = `position:absolute;left:${x}px;top:${y}px;transform:translateX(-50%);background:rgba(0,0,0,.55);padding:1px 4px;white-space:nowrap;${extra || ''}`; lab.appendChild(e); }
   window.studio = {
-    run(list, opts) {
-      opts = opts || {}; items.forEach(g => scene.remove(g)); items = [];
+    // tutti in fila nella stessa scena (come prima)
+    async run(list, opts) {
+      opts = opts || {}; window.__nudo = !!opts.nudo; if (opts.precarica) await Scaricati.preload(); if (opts.celle) return this.celle(list, opts);
+      items.forEach(g => scene.remove(g)); items = [];
       const cols = opts.cols || Math.min(5, list.length), sp = opts.sp || 1.6;
-      list.forEach((d, i) => { const g = make(d), c = i % cols, r = Math.floor(i / cols); g.position.set((c - (cols - 1) / 2) * sp, 0, -r * sp); g.rotation.y = d.ang !== undefined ? d.ang : (opts.ang || 0); scene.add(g); items.push(g); g.userData.nome = d.nome; });
+      for (let i = 0; i < list.length; i++) { const d = list[i], g = await make(d), c = i % cols, r = Math.floor(i / cols); g.position.set((c - (cols - 1) / 2) * sp, 0, -r * sp); g.rotation.y = d.ang !== undefined ? d.ang : (opts.ang || 0); scene.add(g); items.push(g); g.userData.nome = d.nome; }
       const rows = Math.ceil(list.length / cols), dist = Math.max(cols * sp * .9, rows * sp * 1.4) + 1.2, side = opts.side !== undefined ? opts.side : .35, el = opts.el !== undefined ? opts.el : .55;
       const cz = -(rows - 1) * sp / 2;
+      ren.setViewport(0, 0, W, H); ren.setScissorTest(false); cam.aspect = W / H; cam.updateProjectionMatrix();
       cam.position.set(Math.sin(side) * dist, dist * el + .3, cz + Math.cos(side) * dist); cam.lookAt(0, opts.ly || .3, cz);
-      ren.render(scene, cam);
-      const lab = document.getElementById('lab'); lab.innerHTML = '';
-      items.forEach(g => { const v = g.position.clone(); v.y = opts.ty || 1.1; v.project(cam); const e = document.createElement('div'); e.textContent = g.userData.nome; e.style.cssText = `position:absolute;left:${(v.x + 1) / 2 * W}px;top:${(1 - v.y) / 2 * H}px;transform:translateX(-50%);background:rgba(0,0,0,.5);padding:1px 4px`; lab.appendChild(e); });
+      ren.clear(); ren.render(scene, cam);
+      const lab = clearLabels();
+      items.forEach(g => { const v = g.position.clone(); v.y = opts.ty || 1.1; v.project(cam); label(lab, g.userData.nome, (v.x + 1) / 2 * W, (1 - v.y) / 2 * H); });
+      return true;
+    },
+    // una cella per modello: inquadratura automatica sul suo ingombro, misure in metri sotto
+    async celle(list, opts) {
+      items.forEach(g => scene.remove(g)); items = [];
+      const n = list.length, cols = opts.cols || Math.ceil(Math.sqrt(n * W / H)), rows = Math.ceil(n / cols), cw = Math.floor(W / cols), chh = Math.floor(H / rows);
+      const side = opts.side !== undefined ? opts.side : .6, el = opts.el !== undefined ? opts.el : .45, lab = clearLabels();
+      ren.setScissorTest(true); ren.setViewport(0, 0, W, H); ren.setScissor(0, 0, W, H); ren.clear();
+      for (let i = 0; i < n; i++) {
+        const d = list[i], g = await make(d); g.rotation.y = d.ang !== undefined ? d.ang : (opts.ang || 0); scene.add(g);
+        const bb = new THREE.Box3().setFromObject(g), sz = bb.getSize(new THREE.Vector3()), ctr = bb.getCenter(new THREE.Vector3());
+        const r = Math.max(.15, sz.length() / 2), c = i % cols, row = Math.floor(i / cols), x0 = c * cw, y0 = H - (row + 1) * chh;
+        cam.aspect = cw / chh; cam.updateProjectionMatrix();
+        const dist = r / Math.sin(THREE.MathUtils.degToRad(cam.fov / 2)) * (cam.aspect < 1 ? 1 / cam.aspect : 1) * 1.05;
+        const s = d.side !== undefined ? d.side : side, e = d.el !== undefined ? d.el : el;
+        cam.position.set(ctr.x + Math.sin(s) * Math.cos(e) * dist, ctr.y + Math.sin(e) * dist, ctr.z + Math.cos(s) * Math.cos(e) * dist); cam.lookAt(ctr);
+        sun.position.set(ctr.x + 4, 7, ctr.z + 5); sun.target.position.copy(ctr); const sc = Math.max(2, r * 2); Object.assign(sun.shadow.camera, { left: -sc, right: sc, top: sc, bottom: -sc }); sun.shadow.camera.updateProjectionMatrix();
+        ren.setViewport(x0, y0, cw, chh); ren.setScissor(x0, y0, cw, chh); ren.render(scene, cam);
+        scene.remove(g);
+        label(lab, `${d.nome}  ${sz.x.toFixed(2)}×${sz.y.toFixed(2)}×${sz.z.toFixed(2)} m`, x0 + cw / 2, H - y0 - 18);
+        if (bb.min.y < -.01 || bb.min.y > .02) label(lab, `base a ${bb.min.y.toFixed(2)} m`, x0 + cw / 2, H - y0 - chh + 4, 'color:#ffb040');
+        const ln = document.createElement('div'); ln.style.cssText = `position:absolute;left:${x0}px;top:${H - y0 - chh}px;width:${cw - 1}px;height:${chh - 1}px;border-right:1px solid #2a2e36;border-bottom:1px solid #2a2e36`; lab.appendChild(ln);
+      }
+      ren.setScissorTest(false);
       return true;
     }
   };

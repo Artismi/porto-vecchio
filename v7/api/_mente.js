@@ -36,13 +36,12 @@ function loadConfig() {
     chiavi: { chat: process.env.CHIAVE_CHAT || '', mente: process.env.CHIAVE_MENTE || '', eventi: process.env.CHIAVE_EVENTI || '' } };
   const guessed = detectProvider(apiKey); if (guessed) cfg.provider = guessed;
   cfg.chatKey = String(process.env.MENTE_CHAT_KEY || '').trim(); cfg.chatModel = process.env.MENTE_CHAT_MODEL || '';   // [chat] chiave dedicata alla chat
-  if (cfg.chatKey && !cfg.chiavi.chat) cfg.chiavi.chat = cfg.chatKey;   // MENTE_CHAT_KEY vale come CHIAVE_CHAT
   return cfg;
 }
 // Tre canali, ognuno può avere la sua chiave (e quindi la sua quota, se le chiavi vengono da progetti Google diversi):
 //   chat   = il giocatore parla con un abitante · mente = la notte dei gruppi (coro.js) · eventi = incontri e chiacchiere a caso
 // Un canale senza chiave propria usa quella generale.
-const CANALI = { dialogo: 'chat', gruppo: 'mente', riflessione: 'mente', chiacchiera: 'eventi', regia: 'eventi' };   // [regia] il regista va con gli eventi
+const CANALI = { dialogo: 'chat', gruppo: 'mente', riflessione: 'mente', chiacchiera: 'eventi', regia: 'eventi', graffito: 'eventi' };   // [graffiti]   // [regia] il regista va con gli eventi
 function cfgPer(cfg, canale) {
   const k = String((cfg.chiavi && cfg.chiavi[canale]) || '').trim().replace(/^["']|["']$/g, '');
   if (!k || /INCOLLA|CHIAVE|INSERISCI/i.test(k)) return Object.assign({}, cfg, { apiKey0: cfg.apiKey, canale, propria: false });
@@ -392,6 +391,29 @@ Restituisci un JSON:
 }`;
         const usr = `Scena:\n${JSON.stringify(body.scena || {})}`;
         return reply(await callLLM(cfg, sys, usr, 450, false));
+      }
+
+      if (kind === 'graffito') {   // [graffiti] cosa dipinge un abitante, a bomboletta, su un muro
+        const sys = buildSystemPrompt() + `
+Compito: una persona della città sta per fare un graffito su un muro, con le bombolette. Decidi TU cosa dipinge, come
+lo farebbe lei: col suo carattere, il suo umore, i suoi ricordi, quello che odia o ama, il suo stile. Può scrivere una frase
+breve (un nome, uno slogan, un insulto, una dedica, una data) e/o fare un disegno semplice a tratti (una faccia, una barca,
+un pesce, un cuore, una caricatura, un simbolo). Libera espressione, ma niente oscenità esplicite.
+Il muro: u in metri lungo il muro da -1.5 (sinistra) a 1.5 (destra), v in metri da terra da 0.3 a 2.6.
+La scritta la tracciamo noi in stampatello, fra v 1.1 e 1.9: dai solo il testo (max 24 caratteri). I tratti del disegno
+sono linee spezzate: se c'è una scritta disegna sopra (v 1.95-2.6) o ai lati, se no usa tutto il muro.
+Colori bombolette: #c42a22 rosso, #1e1e24 nero, #e8e0d0 bianco, #2a6ac8 blu, #e8c040 giallo, #3a9a5a verde, #c84a9a rosa, #e8a020 arancio.
+Restituisci un JSON:
+{
+  "testo": "la scritta, oppure vuoto",
+  "colore_testo": "#rrggbb",
+  "altezza_lettere": 0.3,
+  "tratti": [ { "colore": "#rrggbb", "spessore": 0.05, "punti": [[u, v], [u, v], ...] } ],
+  "descrizione": "cosa ha dipinto, in poche parole"
+}
+Al massimo 20 tratti, ognuno al massimo 30 punti; spessore fra 0.025 e 0.09.`;
+        const usr = `Chi dipinge e perché:\n${JSON.stringify(body.scena || {})}`;
+        return reply(await callLLM(cfg, sys, usr, 900, false));
       }
 
       return { code: 400, obj: { ok: false, error: 'Kind sconosciuto' } };

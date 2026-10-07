@@ -1,0 +1,437 @@
+[
+ {
+  "nome": "bottino",
+  "celle": true,
+  "pose": [
+   {
+    "nome": "vicolo",
+    "src": "bottino:vicolo",
+    "locked": true
+   },
+   {
+    "nome": "cestino",
+    "src": "bottino:cestino",
+    "locked": true
+   },
+   {
+    "nome": "rottami",
+    "src": "bottino:rottami",
+    "locked": true
+   },
+   {
+    "nome": "bosco",
+    "src": "bottino:bosco",
+    "locked": true
+   },
+   {
+    "nome": "spiaggia",
+    "src": "bottino:spiaggia",
+    "locked": true
+   },
+   {
+    "nome": "prateria",
+    "src": "bottino:prateria",
+    "locked": true
+   },
+   {
+    "nome": "militare",
+    "src": "bottino:militare",
+    "locked": true
+   },
+   {
+    "nome": "tetto",
+    "src": "bottino:tetto",
+    "locked": true
+   },
+   {
+    "nome": "posto",
+    "src": "bottino:posto",
+    "locked": true
+   },
+   {
+    "nome": "carico",
+    "src": "bottino:carico",
+    "locked": true
+   }
+  ],
+  "precarica": true
+ },
+ {
+  "nome": "pezzi",
+  "celle": true,
+  "pose": [
+   {
+    "nome": "pallet",
+    "src": "pezzi:pallet",
+    "args": []
+   },
+   {
+    "nome": "sacchi",
+    "src": "pezzi:sacchi",
+    "args": []
+   },
+   {
+    "nome": "cassaMil",
+    "src": "pezzi:cassaMil",
+    "args": [
+     0.8,
+     0.4,
+     0.45,
+     "#4a5a3a"
+    ]
+   },
+   {
+    "nome": "cassaLegno",
+    "src": "pezzi:cassaLegno",
+    "args": [
+     0.7,
+     0.5,
+     0.5
+    ]
+   },
+   {
+    "nome": "cavalletti",
+    "src": "pezzi:cavalletti",
+    "args": [
+     1.6
+    ]
+   },
+   {
+    "nome": "pannello",
+    "src": "pezzi:pannello",
+    "args": [
+     1.2,
+     0.8,
+     0,
+     1,
+     0
+    ]
+   },
+   {
+    "nome": "morsa",
+    "src": "pezzi:morsa",
+    "args": []
+   },
+   {
+    "nome": "cassetta",
+    "src": "pezzi:cassetta",
+    "args": []
+   },
+   {
+    "nome": "lampada",
+    "src": "pezzi:lampada",
+    "args": []
+   },
+   {
+    "nome": "crt",
+    "src": "pezzi:crt",
+    "args": []
+   },
+   {
+    "nome": "tv",
+    "src": "pezzi:tv",
+    "args": []
+   },
+   {
+    "nome": "radio",
+    "src": "pezzi:radio",
+    "args": []
+   },
+   {
+    "nome": "cassettiera",
+    "src": "pezzi:cassettiera",
+    "args": []
+   },
+   {
+    "nome": "sgabello",
+    "src": "pezzi:sgabello",
+    "args": []
+   },
+   {
+    "nome": "vasetti",
+    "src": "pezzi:vasetti",
+    "args": []
+   },
+   {
+    "nome": "bottiglie",
+    "src": "pezzi:bottiglie",
+    "args": []
+   },
+   {
+    "nome": "tanica",
+    "src": "pezzi:tanica",
+    "args": []
+   },
+   {
+    "nome": "estintore",
+    "src": "pezzi:estintore",
+    "args": []
+   },
+   {
+    "nome": "bobina",
+    "src": "pezzi:bobina",
+    "args": []
+   },
+   {
+    "nome": "fari",
+    "src": "pezzi:fari",
+    "args": []
+   },
+   {
+    "nome": "generatore",
+    "src": "pezzi:generatore",
+    "args": []
+   },
+   {
+    "nome": "armadietti",
+    "src": "pezzi:armadietti",
+    "args": []
+   },
+   {
+    "nome": "castello",
+    "src": "pezzi:castello",
+    "args": []
+   },
+   {
+    "nome": "scaffaleMet",
+    "src": "pezzi:scaffaleMet",
+    "args": []
+   },
+   {
+    "nome": "cassaMetallo",
+    "src": "pezzi:cassaMetallo",
+    "args": []
+   },
+   {
+    "nome": "cartone",
+    "src": "pezzi:cartone",
+    "args": []
+   },
+   {
+    "nome": "lumeOlio",
+    "src": "pezzi:lumeOlio",
+    "args": []
+   },
+   {
+    "nome": "mappa",
+    "src": "pezzi:mappa",
+    "args": [
+     0.8,
+     0.6,
+     0,
+     0.5,
+     0
+    ]
+   }
+  ],
+  "precarica": true
+ },
+ {
+  "nome": "postazioni",
+  "celle": true,
+  "pose": [
+   {
+    "nome": "bancoArmi",
+    "src": "pezzi:bancoArmi",
+    "args": []
+   },
+   {
+    "nome": "bancoLavoro",
+    "src": "pezzi:bancoLavoro",
+    "args": []
+   },
+   {
+    "nome": "cucina",
+    "src": "pezzi:cucina",
+    "args": []
+   },
+   {
+    "nome": "focolare",
+    "src": "pezzi:focolare",
+    "args": []
+   },
+   {
+    "nome": "tessile",
+    "src": "pezzi:tessile",
+    "args": [],
+    "st": "st_macchina_cucire"
+   },
+   {
+    "nome": "stamperia",
+    "src": "pezzi:stamperia",
+    "args": [],
+    "st": "st_ciclostile"
+   },
+   {
+    "nome": "bancoRadio",
+    "src": "pezzi:bancoRadio",
+    "args": []
+   },
+   {
+    "nome": "infermeria",
+    "src": "pezzi:infermeria",
+    "args": []
+   },
+   {
+    "nome": "forgiaExtra",
+    "src": "pezzi:forgiaExtra",
+    "args": []
+   }
+  ],
+  "precarica": true
+ },
+ {
+  "nome": "st",
+  "celle": true,
+  "pose": [
+   {
+    "nome": "st_forgia",
+    "src": "st:st_forgia"
+   },
+   {
+    "nome": "st_saldatrice",
+    "src": "st:st_saldatrice"
+   },
+   {
+    "nome": "st_banco_lavoro",
+    "src": "st:st_banco_lavoro"
+   },
+   {
+    "nome": "st_banco_falegname",
+    "src": "st:st_banco_falegname"
+   },
+   {
+    "nome": "st_banco_macellaio",
+    "src": "st:st_banco_macellaio"
+   },
+   {
+    "nome": "st_macchina_cucire",
+    "src": "st:st_macchina_cucire"
+   },
+   {
+    "nome": "st_ciclostile",
+    "src": "st:st_ciclostile"
+   },
+   {
+    "nome": "st_banco_radio",
+    "src": "st:st_banco_radio"
+   },
+   {
+    "nome": "st_camera_oscura",
+    "src": "st:st_camera_oscura"
+   },
+   {
+    "nome": "st_tavolo_medico",
+    "src": "st:st_tavolo_medico"
+   },
+   {
+    "nome": "st_alambicco",
+    "src": "st:st_alambicco"
+   },
+   {
+    "nome": "st_stufa",
+    "src": "st:st_stufa"
+   },
+   {
+    "nome": "st_forno",
+    "src": "st:st_forno"
+   },
+   {
+    "nome": "st_cassetta",
+    "src": "st:st_cassetta"
+   },
+   {
+    "nome": "st_cassaforte",
+    "src": "st:st_cassaforte"
+   },
+   {
+    "nome": "st_rastrelliera",
+    "src": "st:st_rastrelliera"
+   }
+  ],
+  "precarica": true
+ },
+ {
+  "nome": "scaricati",
+  "celle": true,
+  "pose": [
+   {
+    "nome": "radio",
+    "src": "scaricato:radio"
+   },
+   {
+    "nome": "bombola",
+    "src": "scaricato:bombola"
+   },
+   {
+    "nome": "zaino",
+    "src": "scaricato:zaino"
+   },
+   {
+    "nome": "tronco",
+    "src": "scaricato:tronco"
+   },
+   {
+    "nome": "falo",
+    "src": "scaricato:falo"
+   },
+   {
+    "nome": "cassa",
+    "src": "scaricato:cassa"
+   },
+   {
+    "nome": "pallet",
+    "src": "scaricato:pallet"
+   },
+   {
+    "nome": "sacchi",
+    "src": "scaricato:sacchi"
+   },
+   {
+    "nome": "scatole",
+    "src": "scaricato:scatole"
+   },
+   {
+    "nome": "gas",
+    "src": "scaricato:gas"
+   },
+   {
+    "nome": "fusto",
+    "src": "scaricato:fusto"
+   },
+   {
+    "nome": "gomme",
+    "src": "scaricato:gomme"
+   },
+   {
+    "nome": "tubi",
+    "src": "scaricato:tubi"
+   },
+   {
+    "nome": "cestinoT",
+    "src": "scaricato:cestinoT"
+   },
+   {
+    "nome": "tv",
+    "src": "scaricato:tv"
+   },
+   {
+    "nome": "radioK",
+    "src": "scaricato:radioK"
+   },
+   {
+    "nome": "scatola",
+    "src": "scaricato:scatola"
+   },
+   {
+    "nome": "cestino",
+    "src": "scaricato:cestino"
+   },
+   {
+    "nome": "monitor",
+    "src": "scaricato:monitor"
+   }
+  ],
+  "precarica": true
+ }
+]

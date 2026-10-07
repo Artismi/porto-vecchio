@@ -479,8 +479,54 @@ var Popolo = (function () {
     P.diary.push(e);
     if (P.diary.length > 30) {
       let k = 0, lo = 1e9; P.diary.forEach((d, i) => { const v = d.w * Math.exp(-(st.t - d.t) / 4320); if (v < lo) { lo = v; k = i; } });
-      P.diary.splice(k, 1);
+      const gone = P.diary.splice(k, 1)[0];
+      if (keepWorthy(n, gone)) toLong(st, n, gone);   // [memoria] quello che conta non si perde: passa alla memoria lunga
     }
+  }
+
+  // ---------------- [memoria] BREVE E LUNGA ----------------
+  // Il diario (P.diary) è la memoria breve: gli ultimi giorni, tutto. La memoria lunga (P.lunga) tiene quello che conta:
+  // ci passa di notte quello che pesa (un torto, un favore, un lutto, un debito) o che si è ripetuto, e da lì torna in mente
+  // quando serve: rivedendo la persona, tornando nel posto. Ogni volta che torna in mente si rafforza; quello che non torna
+  // mai sbiadisce. Chi è rancoroso (coraggio alto) tiene i torti più a lungo; chi è socievole tiene meglio i favori.
+  const LONG_TAGS = /^(furto|arresto|fermato|bidone|amico|favore|debito|tradimento|lutto|morte|squalo|scambio|aiuto|progetto|mestiere)$/;
+  function keepWorthy(n, e) {
+    if (!e || e.tag === 'passo' || e.tag === 'ricordo') return false;
+    return e.w >= .4 || (e.tag && LONG_TAGS.test(e.tag) && e.w >= .25);
+  }
+  function toLong(st, n, e) {
+    const P = n.pop, L = P.lunga || (P.lunga = []);
+    // lo stesso fatto (stessa etichetta, stessa persona) non si duplica: si rafforza
+    const same = L.find(x => x.tag && x.tag === e.tag && x.who && x.who === e.who && (!e.place || x.place === e.place));
+    if (same) { same.times = (same.times || 1) + 1; same.w = clamp(same.w + .12, 0, 1.5); same.last = e.t; same.text = e.text; return same; }
+    const m = { t: e.t, last: e.t, text: e.text, kind: e.kind, w: clamp(e.w, 0, 1.5), who: e.who || null, place: e.place || null, tag: e.tag || null, times: 1 };
+    L.push(m);
+    if (L.length > 60) { let k = 0, lo = 1e9; L.forEach((d, i) => { if (d.w < lo) { lo = d.w; k = i; } }); L.splice(k, 1); }
+    return m;
+  }
+  // di notte: passa nella memoria lunga quello che pesa ed è di ieri; la memoria lunga sbiadisce piano
+  function consolidate(st, n) {
+    const P = n.pop; if (!P.diary) return;
+    P.diary.forEach(e => { if (!e.long && st.t - e.t > 600 && keepWorthy(n, e)) { toLong(st, n, e); e.long = true; } });
+    const L = P.lunga || []; const grudge = .975 + (n.tr ? n.tr.cor : .5) * .02, warm = .975 + (n.tr ? n.tr.loq : .5) * .02;
+    for (let i = L.length - 1; i >= 0; i--) { const m = L[i]; m.w *= m.kind === 'bad' ? grudge : m.kind === 'good' ? warm : .97; if (m.w < .1) L.splice(i, 1); }
+  }
+  // torna in mente: quello che la memoria lunga sa di una persona o di un posto rientra nella breve (e si rafforza)
+  function recall(st, n, f) {
+    const P = n.pop, L = P && P.lunga; if (!L || !L.length) return null;
+    const hit = L.filter(m => (f.who && m.who === f.who) || (f.place && m.place === f.place) || (f.tag && m.tag === f.tag)).sort((a, b) => b.w - a.w)[0];
+    if (!hit || st.t - (hit.recalled || -1e9) < 720) return hit || null;
+    hit.recalled = st.t; hit.w = clamp(hit.w + .05, 0, 1.5);
+    note(st, n, `si è ricordat${o(n)}: ${hit.text}`, hit.kind, { w: hit.w * .6, who: hit.who, place: hit.place, tag: 'ricordo', of: hit.tag });
+    return hit;
+  }
+  // cosa si pensa di qualcuno, mettendo insieme le due memorie (-1 .. 1)
+  function opinionOf(st, n, whoId) {
+    const P = n.pop; if (!P) return 0; let v = 0;
+    const add = (m, k) => { if (m.who !== whoId) return; v += (m.kind === 'good' ? 1 : m.kind === 'bad' ? -1.3 : 0) * m.w * k; };
+    (P.diary || []).forEach(m => add(m, .6)); (P.lunga || []).forEach(m => add(m, 1));
+    if (P.enemies && P.enemies.includes(whoId)) v -= .6; if (P.friends && P.friends.includes(whoId)) v += .3;
+    return clamp(v, -1, 1);
   }
 
   // ---------------- LA GIORNATA ----------------
@@ -498,6 +544,7 @@ var Popolo = (function () {
       const ww = workWindows(plan), busyC = m => ww.some(([a, z]) => m >= a && m < z);
       if (!isPassive(st, n)) planProjects(st, n, day, plan, busyC);
       const apC = P.appt; if (apC && dayIdx(apC.t) === day) { const am = minOfDay(apC.t); for (let i = plan.length - 1; i >= 0; i--) if (plan[i].at > am - 10 && plan[i].at < am + 60 && !plan[i].pj && plan[i].act !== 'lavoro') plan.splice(i, 1); add(am - 10, apC.tgt, 'appuntamento', `appuntamento con ${G.nameOf(st, apC.with)}`, true); if (!plan.some(x => (x.act === 'sonno' || x.act === 'casa') && x.at > am && x.at < am + 110)) add(am + 60 + rr() * 40, home, 'casa', 'torna a casa'); }
+      insertImpegni(st, n, day, plan, add);   // [imprese]
       plan.sort((a, b) => a.at - b.at); P.plan = plan; P.planDay = day;
       return plan;
     }
@@ -574,21 +621,44 @@ var Popolo = (function () {
     if (!isPassive(st, n)) planProjects(st, n, day, plan, m => busy(m) || !!(P.job && P.job.night && m < 14 * 60));
     // appuntamenti presi per oggi
     const ap = P.appt; if (ap && dayIdx(ap.t) === day) { const am = minOfDay(ap.t); for (let i = plan.length - 1; i >= 0; i--) if (plan[i].at > am - 10 && plan[i].at < am + 60 && !plan[i].pj && plan[i].act !== 'lavoro') plan.splice(i, 1); add(am - 10, ap.tgt, 'appuntamento', `appuntamento con ${G.nameOf(st, ap.with)}`, true); if (!plan.some(x => (x.act === 'sonno' || x.act === 'casa') && x.at > am && x.at < am + 110)) add(am + 60 + rr() * 40, home, 'casa', 'torna a casa'); }
+    insertImpegni(st, n, day, plan, add);   // [imprese]
     plan.sort((a, b) => a.at - b.at);
     P.plan = plan; P.planDay = day;
     return plan;
   }
+  // [imprese] gli impegni presi con un gruppo (P.impegni: { id, t, dur, tgt, label, obj }): un blocco fisso che sposta
+  // quello che non è lavoro, e dopo si torna a casa
+  function insertImpegni(st, n, day, plan, add) {
+    const P = n.pop; if (!P.impegni || !P.impegni.length) return;
+    P.impegni = P.impegni.filter(e => e.t + (e.dur || 90) > st.t - 60);
+    P.impegni.forEach(e => {
+      if (dayIdx(e.t) !== day) return; const am = minOfDay(e.t), end = Math.min(1439, am + (e.dur || 90));
+      for (let i = plan.length - 1; i >= 0; i--) if (plan[i].at > am - 15 && plan[i].at < end && !plan[i].pj && plan[i].act !== 'lavoro' && plan[i].act !== 'appuntamento' && !(plan[i].cont)) plan.splice(i, 1);
+      add(am - 10, e.tgt, 'impresa', e.label, true, e.obj); plan[plan.length - 1].imp = e.id;
+      if (!plan.some(x => x.at >= end && x.at < end + 90)) add(end, P.homeT, 'casa', 'torna a casa');
+    });
+  }
   // il blocco di adesso. Ognuno ha il suo piccolo ritardo (così non partono tutti allo stesso minuto); chi è vicino
   // al giocatore cammina davvero, e a piedi il tempo di gioco corre (100 m ≈ 3 ore): parte prima, in base alla strada.
+  const blockJit = (n, b) => { let h = b.at * 7 + 13; const s0 = String(n.id); for (let i = 0; i < s0.length; i++) h = (h * 31 + s0.charCodeAt(i)) % 9973; return (h / 9973) * 30 - 8; };
   function blockNow(st, n) {
     const P = n.pop, m = minOfDay(st.t); if (!P.plan.length) return null;
     let idx = 0;
     for (let i = 0; i < P.plan.length; i++) {
-      const b = P.plan[i]; let at = b.fixed ? b.at : b.at + P.jit;
-      if (P.near && i > 0 && b.tgt) at -= Math.min(150, dist(n.x, n.y, b.tgt.x, b.tgt.y) / 1.35 * MPS);
+      const b = P.plan[i]; let at = b.fixed ? b.at : b.at + P.jit + (b.__j !== undefined ? b.__j : (b.__j = blockJit(n, b)));   // [passo] ogni blocco il suo ritardo: non partono sempre nello stesso ordine
+      if (P.near && i > 0 && b.tgt) {
+        // [convivenza] si parte prima per arrivare in tempo (agli orari fissi anche molto prima), ma non si lascia un impegno
+        // fisso prima di averlo fatto: un appuntamento si aspetta almeno 45 minuti, il resto almeno 20
+        // [vivi] chi va col mezzo parte più tardi
+        const ov = ownVeh(st, n), spd = ov && dist(ov.x, ov.y, n.x, n.y) < 60 && dist(n.x, n.y, b.tgt.x, b.tgt.y) > 110 ? 13 : 1.35 * (P.age > 70 ? .75 : P.age > 60 ? .88 : 1), lead = Math.min(b.fixed ? 320 : 150, dist(n.x, n.y, b.tgt.x, b.tgt.y) * 1.15 / spd * MPS), prev = P.plan[i - 1];   // la sua velocità vera, e un po' di margine per le curve
+        const floor = prev.act === 'appuntamento' ? prev.at + 55 : prev.act === 'impresa' ? prev.at + 70 : prev.fixed ? prev.at + 20 : -1e9;   // [imprese] un impegno di gruppo si fa fino in fondo
+        at = Math.max(at - lead, Math.min(at, floor));
+      }
       if (at <= m) idx = i;
     }
     if (P.curPlan === P.plan && P.curIdx > idx) idx = P.curIdx;   // un blocco cominciato non torna indietro
+    // [graffiti] una commissione cominciata (arrivato, sta facendo) si finisce prima di passare al blocco dopo
+    const Er = P.errand; if (Er && Er.arrived && st.t - Er.arrived.t < Math.max(Er.mins || 20, 30)) { const j = P.plan.findIndex(b => b.errand === Er.id); if (j >= 0 && j < idx) idx = j; }
     P.curPlan = P.plan; P.curIdx = idx;
     return P.plan[idx];
   }
@@ -596,6 +666,7 @@ var Popolo = (function () {
   // ---------------- LIVELLO DI DETTAGLIO ----------------
   function mustBeNear(st, n) {
     if (isPassive(st, n)) return true;   // Grigi in servizio, membri della Risacca: li muove sempre il motore
+    if (n.room) return true;             // [scopo] è nella stanza col giocatore
     if (n.panic > 0 || n.stun > 0 || n.aggro || n.jailedUntil > st.t) return n.jailedUntil <= st.t;
     return ['fugge', 'denuncia', 'affronta', 'combatte', 'insegue'].includes(n.action.name);
   }
@@ -644,7 +715,7 @@ var Popolo = (function () {
   function onBlockStart(st, n, b, prev) {
     const P = n.pop, S = st.pop.stats;
     // si chiude il lavoro: ore lavorate, paga maturata (si ritira il venerdì)
-    if (prev && prev.act === 'lavoro' && P.workToday && !P.workToday.paid && b.act !== 'lavoro') {
+    if (prev && prev.act === 'lavoro' && P.workToday && !P.workToday.paid && b.act !== 'lavoro' && P.job) {   // [commissioni] chi ha perso il posto nel frattempo non matura la paga
       const h = Math.max(1, (Math.min(minOfDay(st.t), P.workToday.end) - P.workToday.start) / 60);
       P.owed += h * P.job.pay * (P.workToday.late ? .85 : 1); P.workToday.paid = true;
     }
@@ -659,13 +730,16 @@ var Popolo = (function () {
     // [vita] si usano gli oggetti del posto; il passo di un progetto; le scritte sui muri; quello che si è fatto oggi
     if (P.ints) {
       useObjects(st, n, b); satisfy(st, n, b);
-      if (b.tgt && !isHomeT(P, b.tgt)) readWalls(st, n, b.tgt);
+      if (b.tgt && !isHomeT(P, b.tgt)) { readWalls(st, n, b.tgt); if (P.lunga && Math.random() < .3) recall(st, n, { place: b.tgt.label }); }   // [memoria] tornare in un posto fa ricordare
       P.today.push({ t: st.t, label: b.label + (b.tgt && !isHomeT(P, b.tgt) && !b.label.includes(b.tgt.label) ? ` (${b.tgt.label})` : '') }); if (P.today.length > 16) P.today.shift();
-      if (b.pj) runStep(st, n, b);
+      if (b.pj && b.act === 'scritta' && b.tgt && b.tgt.k === 'p') {   // [commissioni] la scritta si fa stando al muro
+        const ws = wallSpot(st, b.tgt); P.errand = { id: 'w' + st.nextId++, kind: 'passo', block: b, tgt: b.tgt, t0: st.t, arrived: null, secs: 18, mins: 40, spot: ws }; b.errand = P.errand.id;   // [graffiti] spot: il muro scelto
+        if (ws) P.spotNext = Object.assign({ key: tkey(b.tgt) + '@' + b.at, pid: b.tgt.pid, ci: n.id }, ws);
+      } else if (b.pj) runStep(st, n, b);
     } else satisfy(st, n, b);
     if (b.act === 'svago' && b.tgt.place === 'flipper' && P.vice === 'gioco') { if (MONEY.gamble) MONEY.gamble(st, n, b.tgt); else { const w = (Math.random() - .62) * 30; P.money += w; note(st, n, w > 0 ? `vinto ${Math.round(w)}.000 lire alla bisca` : `perso ${Math.round(-w)}.000 lire alla bisca`, w > 0 ? 'good' : 'bad'); } }   // [soldi] le macchinette
     if (b.act === 'giro' && !b.cont) doGiro(st, n, b);
-    if (b.act === 'appuntamento') P.apptArrived = st.t;
+    if (b.act === 'appuntamento' && !P.near) P.apptArrived = st.t;   // [convivenza] da vicino conta l'arrivo vero (nearMove)
   }
   function fire(st, n) {
     const P = n.pop; if (!P.job) return;
@@ -696,9 +770,7 @@ var Popolo = (function () {
       note(st, n, `${type === 'scasso' ? 'svaligiato casa ' + victim.pop.sur : 'alleggerito ' + victim.first} a ${b.tgt.label}`, 'shady');
       if (P.giro === 'ladro') { const ric = st.npcs.find(k => k.pop && k.pop.giro === 'ricettatore' && !k.dead); if (ric) { ric.pop.money += took * .3; note(st, ric, `comprato roba da ${n.first}`, 'shady'); } }
     } else if (P.giro === 'spacciatore') {
-      const buyers = st.npcs.filter(k => k.pop && k.pop.vice === 'roba' && !k.dead && k.pop.money > 5);
-      buyers.slice(0, 3).forEach(k => { const c = 3 + Math.random() * 5; k.pop.money -= c; P.money += c; if (Math.random() < .3) note(st, k, k.pop.money < 10 ? 'ha speso gli ultimi soldi per la roba' : 'ha comprato la roba al Flipper', 'bad'); });
-      P.money += earn * .3;
+      P.money += earn * .15;   // [commissioni] i clienti vengono davvero da lui (commissioni.js); qui solo qualche spicciolo di passaggio
     } else if (P.giro === 'trafficante') {
       P.money += earn; note(st, n, 'scaricato casse dal continente al porto, di notte', 'shady');
     } else if (P.giro === 'orecchio') {
@@ -761,6 +833,7 @@ var Popolo = (function () {
       else if (a && !b) { note(st, n, `${other.first} non si è fatt${o(other)} vedere a ${ap.label}`, 'bad', { who: other.id, tag: 'bidone' }); note(st, other, `ha dato buca a ${n.first}`, 'info', { who: n.id }); st.pop.stats.bidoni++; }
       else if (!a && b && O) { note(st, other, `${n.first} non si è fatt${o(n)} vedere a ${ap.label}`, 'bad', { who: n.id, tag: 'bidone' }); note(st, n, `ha dato buca a ${other.first}`, 'info', { who: other.id }); st.pop.stats.bidoni++; }
       if (ap.pj) meetResult(st, n, ap.pj, a && b);
+      if (ap.deal) MEET.forEach(f => { try { f(st, n, other, ap, a, b); } catch (e) { } });   // [scambi] un patto da chiudere all'appuntamento
       [n, other].forEach(k => { if (k && k.pop && k.pop.appt === ap || (k && k.pop && k.pop.appt && k.pop.appt.t === ap.t)) { k.pop.appt = null; k.pop.apptArrived = 0; } });
     });
   }
@@ -829,6 +902,45 @@ var Popolo = (function () {
     if (P.curPlan === P.plan) P.curIdx = P.plan.indexOf(nb);   // gli indici si sono spostati: il blocco corrente è quello nuovo
     if (act === 'sfogo' || act === 'casa' || /trovare/.test(label)) note(st, n, label, act === 'sfogo' ? 'shady' : 'info', { place: tgt.label });
   }
+  // ---------------- [commissioni] FARE LE COSE DAVVERO ----------------
+  // Una commissione è un blocco inserito subito nella giornata: si va in un posto, ci si sta il tempo che serve facendo la
+  // cosa (vicino al giocatore in secondi veri, lontano in minuti di gioco) e solo allora succede (ERRAND[kind]); poi si
+  // riprende quello che si stava facendo. e = { kind, tgt, act, label, obj, secs, mins, data, spot? }
+  const ERRAND = {};
+  function errand(st, n, e) {
+    const P = n.pop, b = P.cur; if (!P || P.errand || n.jailedUntil > st.t || P.emer || n.dead || isPassive(st, n)) return false;
+    if (b && !e.force && (b.fixed || b.urge || b.errand || b.act === 'lavoro' || b.act === 'sonno' || b.act === 'giro' || b.act === 'impresa' || b.act === 'appuntamento')) return false;
+    const m = minOfDay(st.t), id = 'e' + (st.nextId++), nb = { at: m, tgt: e.tgt, act: e.act || 'commissione', label: e.label, fixed: true, urge: true, obj: e.obj, errand: id };
+    P.errand = Object.assign({ id, t0: st.t, arrived: null, prev: b && !b.errand ? b : null, secs: 12, mins: 20 }, e, { id });
+    if (e.spot) P.spotNext = Object.assign({ key: tkey(e.tgt) + '@' + m, pid: e.tgt.pid, ci: n.id }, e.spot);
+    P.plan.push(nb); P.plan.sort((x, y) => x.at - y.at); if (P.curPlan === P.plan) P.curIdx = P.plan.indexOf(nb);
+    return true;
+  }
+  function errandsStep(st) {
+    const S0 = st.pop; if (st.clock < (S0.errAt || 0)) return; S0.errAt = st.clock + .25;
+    for (const n of st.npcs) {
+      const P = n.pop, E = P && P.errand; if (!E || n.dead) continue;
+      if (st.t - E.t0 > 240 || n.jailedUntil > st.t || P.emer) { P.errand = null; continue; }   // non ci è arrivato: lascia perdere
+      if (!P.cur || P.cur.errand !== E.id) continue;
+      const there = P.at && tkey(P.at) === tkey(E.tgt) && (n.inside || !P.near || (P.spot && P.spot.on) || dist(n.x, n.y, E.tgt.x, E.tgt.y) < 2.5);
+      if (!there) continue;
+      if (!E.arrived) { E.arrived = { clock: st.clock, t: st.t }; continue; }
+      if (P.near && !n.inside ? st.clock - E.arrived.clock < E.secs : st.t - E.arrived.t < E.mins) continue;
+      P.errand = null;
+      try { if (ERRAND[E.kind]) ERRAND[E.kind](st, n, E); } catch (err) { }
+      if (P.errand) continue;   // la commissione ne ha avviata un'altra (comprato i mobili → ora si porta a casa e si sistema)
+      // si riprende quello che si faceva (o si torna a casa)
+      const m = minOfDay(st.t), pv = E.prev, back = pv && pv.tgt ? { at: m, tgt: pv.tgt, act: pv.act, label: pv.label, urge: true, obj: pv.obj } : { at: m, tgt: P.homeT, act: 'casa', label: 'torna a casa', urge: true };
+      P.plan.push(back); P.plan.sort((x, y) => x.at - y.at); if (P.curPlan === P.plan) P.curIdx = P.plan.indexOf(back);
+    }
+  }
+  // le scritte dei progetti: si va al muro, ci si sta il tempo di dipingere, poi la scritta c'è
+  ERRAND.passo = (st, n, E) => runStep(st, n, E.block);
+  function wallSpot(st, t) {
+    const S0 = t.pid ? spotsOf(t.pid).filter(q => q.wall) : []; if (!S0.length) return null;
+    const q = S0[Math.floor(Math.random() * Math.min(8, S0.length))]; return { x: q.x, y: q.y, face: q.face + Math.PI, wall: false };   // la faccia verso il muro
+  }
+
   function satisfy(st, n, b) {
     const N = n.pop.need; if (!N) return;
     // [vita] il risveglio: lavarsi e mettere qualcosa sotto i denti
@@ -968,6 +1080,7 @@ var Popolo = (function () {
     return v;
   }
   // la scelta: tra tutti gli oggetti che servono a questi blocchi, il migliore tenendo conto di strada, prezzo e paure
+  const ownVeh = (st, n) => { if (n.__ovT === st.t >> 4) return n.__ov; n.__ovT = st.t >> 4; return (n.__ov = st.vehicles.find(v => v.owner === n.id && !v.hidden && !v.wreck && !v.traffic) || null); };
   function chooseObj(st, n, acts, opt) {
     objIndex();
     const P = n.pop, o2 = opt || {}, m = o2.at !== undefined ? o2.at : minOfDay(st.t), from = o2.from || { x: n.x, y: n.y };
@@ -982,7 +1095,7 @@ var Popolo = (function () {
         if (AVAIL.length && AVAIL.some(f => f(st, n, o, t) === false)) continue;
         if (P.avoid[t.label] > st.t) continue;
         if (o2.noHome && isHomeT(P, t)) continue;
-        let s = base - dist(from.x, from.y, t.x, t.y) / 320 + Math.random() * .12;
+        let s = base - dist(from.x, from.y, t.x, t.y) / (ownVeh(st, n) ? 520 : 170) + Math.random() * .12;   // [vivi] a piedi si sceglie vicino; chi ha il mezzo va anche lontano
         if (!isHomeT(P, t) && P.need.paura > .6) s -= .3;
         if (!best || s > best.s) best = { o, t, s };
       }
@@ -1326,7 +1439,10 @@ var Popolo = (function () {
     const P = n.pop, place = b.tgt.label, type = sk.kind === 'scritta' ? 'scritta' : 'graffito';
     const ev = { id: st.nextId++, type, actor: n.id, x: b.tgt.x, y: b.tgt.y, t: st.t, sev: G.SEV[type] || .3, noise: 0, place, npcCrime: true };
     st.events.unshift(ev); if (st.events.length > 60) st.events.pop();
-    st.pop.walls.push({ pk: tkey(b.tgt), place, t: st.t, by: n.id, text: sk.text, kind: sk.kind, style: sk.style, ev: ev.id }); if (st.pop.walls.length > 40) st.pop.walls.shift();
+    const sp = P.spot && P.spot.pid === b.tgt.pid && P.near ? { x: n.x, y: n.y, face: n.face } : (() => { const w = wallSpot(st, b.tgt); return w ? { x: w.x, y: w.y, face: w.face } : null; })();   // [commissioni] dove sta il muro dipinto
+    const dr = n.__wallDraft && n.__wallDraft.pk === tkey(b.tgt) ? n.__wallDraft : null;   // [graffiti] il graffito già sul muro (dipinto mentre stava lì): si completa, non se ne fa un altro
+    if (dr) { Object.assign(dr, { t: st.t, ev: ev.id, pending: false, text: dr.text || sk.text, __E: null }); if (dr.live) dr.live.done = true; n.__wallDraft = null; }
+    else st.pop.walls.push({ pk: tkey(b.tgt), place, t: st.t, by: n.id, text: sk.text, kind: sk.kind, style: sk.style, ev: ev.id, wx: sp ? sp.x + Math.cos(sp.face) * .37 : null, wy: sp ? sp.y + Math.sin(sp.face) * .37 : null, wface: sp ? sp.face : null, strokes: typeof Graffiti !== 'undefined' ? Graffiti.local(st, n, sk).strokes : null }); if (st.pop.walls.length > 40) st.pop.walls.shift();
     st.pop.stats[sk.kind === 'scritta' ? 'scritte' : 'graffiti']++;
     const R = st.ris, up = { scritta: [2, 3], satira: [1, 1.5], arte: [0, .5] }[sk.kind];
     if (R) { R.morale = clamp(R.morale + up[0], 0, 100); R.repr = clamp(R.repr + up[1], 0, 100); }
@@ -1378,6 +1494,10 @@ var Popolo = (function () {
   const REFLECT = [];
   function reflect(st, n) {
     const P = n.pop, N = P.need, thoughts = [];
+    consolidate(st, n);   // [memoria] quello che pesa passa nella memoria lunga
+    // [memoria] un vecchio torto che torna in mente di notte
+    const old = (P.lunga || []).filter(m => m.kind === 'bad' && m.who && st.t - m.t > 2 * 1440 && m.w > .5).sort((a, b) => b.w - a.w)[0];
+    if (old && Math.random() < .25 + (n.tr ? n.tr.cor * .3 : 0)) thoughts.push([`non ha dimenticato: ${old.text}`, .3 + old.w * .2]);
     // 1. i posti: dove sono successe cose brutte negli ultimi giorni
     const bad = {};
     P.diary.forEach(e => { if (e.kind === 'bad' && e.place && st.t - e.t < 3 * 1440) bad[e.place] = (bad[e.place] || 0) + e.w; });
@@ -1433,7 +1553,7 @@ var Popolo = (function () {
   function mindPrompt(st, n) {
     const P = n.pop;
     return { id: n.id, who: `${n.name}, ${P.age} anni, ${n.role}`, interessi: P.ints.map(i => INTERESSI[i.k]), bisogni: Object.assign({}, P.need),
-      ricordi: P.diary.slice().sort((a, b) => b.w - a.w).slice(0, 8).map(e => `${ago(st, e.t)}: ${e.text}`), progetti: P.projects.map(p => p.label), pensieri: P.thoughts.map(t => t.text) };
+      ricordi: P.diary.slice().sort((a, b) => b.w - a.w).slice(0, 8).map(e => `${ago(st, e.t)}: ${e.text}`), memoriaLunga: (P.lunga || []).slice().sort((a, b) => b.w - a.w).slice(0, 6).map(e => `${ago(st, e.t)}${e.times > 1 ? ` (${e.times} volte)` : ''}: ${e.text}`), progetti: P.projects.map(p => p.label), pensieri: P.thoughts.map(t => t.text) };
   }
   // per il taccuino: una riga
   function lifeShort(st, n) {
@@ -1453,6 +1573,7 @@ var Popolo = (function () {
     if (P.thoughts && P.thoughts.length) parts.push(`Ultimamente ha pensato: «${cap(P.thoughts[P.thoughts.length - 1].text)}».`);
     const nd = needWords(P, o(n)); if (nd) parts.push(nd);
     const d = P.diary.filter(e => e.kind !== 'pensiero' && e.tag !== 'passo').sort((a, b) => b.w - a.w).slice(0, 4).sort((a, b) => a.t - b.t).map(e => `${ago(st, e.t)}: ${e.text}`); if (d.length) parts.push('Ricorda: ' + d.join('; ') + '.');
+    const lg = (P.lunga || []).filter(e => st.t - e.t > 1440).sort((a, b) => b.w - a.w).slice(0, 3).map(e => `${ago(st, e.t)}: ${e.text}`); if (lg.length) parts.push('Da tempo non dimentica: ' + lg.join('; ') + '.');   // [memoria]
     return parts.join(' ');
   }
 
@@ -1471,6 +1592,7 @@ var Popolo = (function () {
   // da lontano: si salta al posto del blocco quando il blocco cambia
   function farMove(st, n) {
     const P = n.pop; n.speedNow = 0;
+    if (st.clock < (n.__fm || 0)) return; n.__fm = st.clock + .28 + Math.random() * .12;   // [passo] chi è lontano non serve ricalcolarlo a ogni fotogramma
     if (n.jailedUntil > st.t) return;
     const b = blockNow(st, n); if (!b) return;
     if (tkey(b.tgt) + '@' + b.at !== P.curKey || !n.inside) snapFar(st, n);
@@ -1481,13 +1603,19 @@ var Popolo = (function () {
     let b = blockNow(st, n); if (!b) return;
     if (a === 'evita') b = { tgt: P.homeT, act: 'casa', label: 'preferisce stare a casa', at: b.at };
     const t = b.tgt, key = tkey(t) + '@' + b.at;
-    if (key !== P.curKey) { onBlockStart(st, n, b, P.cur); P.cur = b; P.curKey = key; P.goalSet = false; }
+    if (key !== P.curKey) { onBlockStart(st, n, b, P.cur); P.cur = b; P.curKey = key; P.goalSet = false; P.spot = null; }
     if (n.inside) {
-      if (P.at && tkey(P.at) === tkey(t)) { n.speedNow = 0; n.action = { name: 'dentro', scores: [], why: `${cap(b.label)} (${t.label}).`, since: n.action.since }; return; }
+      if (P.at && tkey(P.at) === tkey(t)) { if (!(n.room && n.room.walk)) n.speedNow = 0; n.action = { name: 'dentro', scores: [], why: `${cap(b.label)} (${t.label}).`, since: n.action.since }; return; }
+      if (n.room && roomExit(st, n)) return;   // [scopo] se il giocatore è lì dentro, prima si va alla porta
       // esce dalla porta da cui era entrato
       const from = P.at || P.homeT; n.x = from.x; n.y = from.y; n.inside = false; n.path = []; P.goalSet = false;
       n.action = { name: 'routine', scores: [], why: `${cap(b.label)}: va a ${t.label}.`, since: st.clock };
     }
+    // [vivi] per andare lontano chi ha il mezzo lo prende (lo parcheggia e scende, poi gli ultimi metri a piedi)
+    if (!P.emer && P.drove !== key && typeof Azioni !== 'undefined' && dist(n.x, n.y, t.x, t.y) > 110) { P.drove = key; const v = ownVeh(st, n); if (v && dist(v.x, v.y, n.x, n.y) < 60 && Azioni.intend(st, n, 'guida', { dove: t }, 1).ok) return; }
+    if (curbWait(st, n, dt)) return;   // [passo] prima di attraversare si guarda
+    if (walkWith(st, n, t, dt)) return;   // [vivi] con un amico che va nello stesso posto
+    greetFriends(st, n);
     // in ritardo per un orario fisso: corre
     const late = b.fixed && minOfDay(st.t) > b.at + 5 && dist(n.x, n.y, t.x, t.y) > 6;
     const speed = (late ? 2.6 : 1.35) * (P.age > 70 ? .75 : P.age > 60 ? .88 : 1);
@@ -1498,16 +1626,335 @@ var Popolo = (function () {
       else if (!n.path.length) { P.goalSet = false; }
       return;
     }
-    // luogo all'aperto: ci va e poi gironzola
-    if (!P.goalSet) { const s = G.wanderSpot(st, PLACES[t.pid]); G.goTo(n, s.x, s.y); P.goalSet = true; }
-    if (n.wait > 0) { n.wait -= dt; n.speedNow = 0; return; }
+    // [scopo] luogo all'aperto: ci va e ci resta, in crocchio con chi c'è; ogni tanto cambia crocchio
+    if (!P.goalSet) { if (!P.spot || P.spot.key !== key) P.spot = restSpot(st, n, t, key); G.goTo(n, P.spot.x, P.spot.y); P.goalSet = true; }
+    if (n.wait > 0) { n.wait -= dt; n.speedNow = 0; if (P.spot && P.spot.on) { n.face += angDiff(P.spot.face, n.face) * Math.min(1, dt * 4); chatter(st, n, b); } return; }
     const arrived = G.stepAlong(n, speed, dt);
     if (arrived) {
       P.at = t; if (b.act === 'appuntamento') P.apptArrived = P.apptArrived || st.t;
-      n.wait = 3 + Math.random() * 7;
-      const s = G.wanderSpot(st, PLACES[t.pid]); G.goTo(n, s.x, s.y);
+      if (P.spot && P.spot.on && Math.random() < .12) { P.spot = restSpot(st, n, t, key); G.goTo(n, P.spot.x, P.spot.y); return; }
+      if (P.spot) P.spot.on = true;
+      n.wait = 30 + Math.random() * 50;
       if (Math.random() < .08 && st.clock > n.barkCd) barkTime(st, n, b);
     }
+  }
+  // [passo] sul bordo del marciapiede, se il prossimo passo è in strada: si guarda a sinistra e a destra, e se arriva
+  // una macchina si aspetta che passi. Chi è di fretta (in ritardo) aspetta meno.
+  const roadAt = (x, y) => G.MAP.grid[Math.floor(y / TS) * G.MAP.world.GW + Math.floor(x / TS)] === G.T.VIA;
+  // [passo] incrociando un amico o un parente: un saluto (la mano, il nome); chi ce l'ha con l'altro tira dritto e guarda altrove
+  function greetFriends(st, n) {
+    if (st.clock < (n.__grT || 0)) return; n.__grT = st.clock + .7 + Math.random() * .6;
+    const P = n.pop; if (!P.friends || !P.friends.length) return;
+    for (const id of P.friends) {
+      const k = G.byId(st, id); if (!k || k.dead || k.inside || !k.pop || !k.pop.near) continue;
+      const d = dist(k.x, k.y, n.x, n.y); if (d > 6 || d < .5) continue;
+      const seen = (n.__greeted = n.__greeted || {}); if (st.clock - (seen[id] || -999) < 120) continue; seen[id] = st.clock;
+      if (opinionOf(st, n, id) < -.3) continue;
+      const wave = d > 2.5; n.greet = { who: id, until: st.clock + 1.6, wave };
+      if (k.pop && !(k.__greeted && st.clock - k.__greeted[n.id] < 120)) { (k.__greeted = k.__greeted || {})[n.id] = st.clock; k.greet = { who: n.id, until: st.clock + 1.4 + Math.random() * .4, wave: wave && Math.random() < .6 }; }
+      if (st.clock > (n.barkCd || 0)) { G.say(st, n, pick(Math.random, [`Ciao ${k.first}!`, `Ehi, ${k.first}.`, `${k.first}! Come va?`, 'Buongiorno.']), 1.6); n.barkCd = st.clock + 8; }
+      break;
+    }
+  }
+  // [vivi] chi va nello stesso posto con un amico o un parente che cammina lì vicino ci va insieme: al suo fianco, al suo
+  // passo, e intanto si parla. Quando l'altro arriva (o si separano) ognuno riprende la sua strada.
+  function walkWith(st, n, t, dt) {
+    const P = n.pop;
+    if (st.clock > (n.__wwT || 0)) {
+      n.__wwT = st.clock + .8 + Math.random() * .4; n.__ww = null;
+      const ids = (P.friends || []).concat(((st.pop.households[P.hh] || {}).members) || []);
+      for (const id of ids) {
+        if (id === n.id || !(id < n.id)) continue;   // guida chi ha l'id più piccolo: niente coppie che si inseguono
+        const k = G.byId(st, id); if (!k || k.dead || k.inside || !k.pop || !k.pop.near || !k.pop.cur || !k.pop.cur.tgt || (k.speedNow || 0) < .3) continue;
+        if (tkey(k.pop.cur.tgt) !== tkey(t) || dist(k.x, k.y, n.x, n.y) > 7 || k.__ww === n.id) continue;
+        n.__ww = k.id; break;
+      }
+    }
+    if (!n.__ww) return false;
+    const L = G.byId(st, n.__ww);
+    if (!L || L.inside || (L.speedNow || 0) < .2 || dist(L.x, L.y, t.x, t.y) < 4) { n.__ww = null; return false; }
+    const side = (n.id > L.id ? 1 : -1), gx = L.x + Math.cos(L.face + side * Math.PI / 2) * .75, gy = L.y + Math.sin(L.face + side * Math.PI / 2) * .75, d = dist(n.x, n.y, gx, gy);
+    if (d > 4 || !G.walkM(gx, gy)) return false;
+    const sp = Math.min(2.6, (L.speedNow || 1.3) * (1 + Math.max(-.3, d - .25) * .7)), step = Math.min(d, sp * dt);
+    if (d > 1e-3) { n.x += (gx - n.x) / d * step; n.y += (gy - n.y) / d * step; }
+    n.face += angDiff(L.face, n.face) * Math.min(1, dt * 6); n.speedNow = sp; n.path = []; P.goalSet = false;
+    if (Math.random() < dt * .06 && st.clock > (n.barkCd || 0) && st.clock > (L.barkCd || 0)) { const line = chatLine(st, n, P.cur); if (line) { G.say(st, n, line, 3); n.barkCd = st.clock + 12; } }
+    return true;
+  }
+  function curbWait(st, n, dt) {
+    const w = n.path && n.path[0]; if (!w || roadAt(n.x, n.y)) { n.__curb = 0; return false; }
+    const ux = w.x - n.x, uy = w.y - n.y, L = Math.hypot(ux, uy) || 1, ax = n.x + ux / L * 1.2, ay = n.y + uy / L * 1.2;
+    if (!roadAt(ax, ay)) { n.__curb = 0; return false; }
+    // la macchina che arriva: dove sarà tra poco, e se passa vicino al punto dove attraverso
+    let threat = null;
+    for (const v of st.vehicles) {
+      if (v.hidden || v.wreck || Math.abs(v.speed || 0) < 1.5) continue; const dx = v.x - ax, dy = v.y - ay; if (dx * dx + dy * dy > 30 * 30) continue;
+      const vx = Math.cos(v.ang) * v.speed, vy = Math.sin(v.ang) * v.speed;
+      for (let k = 0; k <= 4; k++) { const tt = k * .9; if (Math.hypot(v.x + vx * tt - ax, v.y + vy * tt - ay) < 4.5) { threat = v; break; } }
+      if (threat) break;
+    }
+    n.__curb = (n.__curb || 0) + dt;
+    if (n.__curb < .5) { n.speedNow = 0; n.face += angDiff(Math.atan2(uy, ux) + Math.sin(n.__curb * 9) * 1.1, n.face) * Math.min(1, dt * 8); return true; }   // uno sguardo ai due lati
+    if (threat && n.__curb < 12) { n.speedNow = 0; n.face += angDiff(Math.atan2(threat.y - n.y, threat.x - n.x), n.face) * Math.min(1, dt * 6); return true; }   // aspetta che passi
+    return false;
+  }
+  const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+
+  // ---------------- [passo] STARE IN UN POSTO: ai bordi, in due o tre, con chi si conosce ----------------
+  // I posti buoni di un luogo all'aperto si leggono dalla mappa: contro una facciata o un muro, sul bordo dell'acqua,
+  // vicino a un albero; mai in carreggiata. Ognuno ha una direzione naturale: spalle al muro, sguardo verso lo spazio
+  // aperto (o verso il mare). Chi arriva si avvicina a un amico o a un parente che è già lì (in due faccia a faccia,
+  // in tre a semicerchio aperto, non di più); se non conosce nessuno sta per conto suo, a un bordo, lontano dagli altri.
+  const SPOTS = {};
+  // le caselle degli edifici veri (le case, le botteghe: non la fontana né i banchi del mercato)
+  let RB = null;
+  function realBld() {
+    if (RB) return RB; const GW = G.MAP.world.GW; RB = new Uint8Array(GW * (G.MAP.world.GH || 1000));
+    G.BUILDINGS.forEach(b => { if (!b || !(b.w > 1 && b.h > 1)) return; for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) RB[y * GW + x] = 1; });
+    return RB;
+  }
+  function spotsOf(pid) {
+    if (SPOTS[pid]) return SPOTS[pid];
+    const P0 = PLACES[pid], out = []; if (!P0) return (SPOTS[pid] = out);
+    const GW = G.MAP.world.GW, grid = G.MAP.grid, T = G.T, tx0 = Math.floor(P0.x / TS), ty0 = Math.floor(P0.y / TS);
+    const tAt = (x, y) => grid[y * GW + x];
+    for (let ty = ty0 - 7; ty <= ty0 + 7; ty++) for (let tx = tx0 - 7; tx <= tx0 + 7; tx++) {
+      const cx = tx * TS + TS / 2, cy = ty * TS + TS / 2, dd = Math.hypot(cx - P0.x, cy - P0.y); if (dd > 14) continue;
+      if (!G.walkM(cx, cy) || tAt(tx, ty) === T.VIA) continue;
+      let bx = 0, by = 0, nb = 0, water = 0, road = 0;
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { if (!ox && !oy) continue; const t = tAt(tx + ox, ty + oy);
+        if (t === T.VIA) road++; else if (!G.walkM(cx + ox * TS, cy + oy * TS) || t === T.TREE) { bx += ox; by += oy; nb++; if (t === T.WATER) water++; } }
+      if (road >= 3) continue;   // sul ciglio della strada non ci si ferma
+      const edge = nb > 0 && nb < 7, L = Math.hypot(bx, by) || 1;
+      // [commissioni] un muro vero: il lato di un edificio, dritto (non in diagonale); lì ci si appoggia e lì si dipinge
+      const W4 = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([ox, oy]) => tAt(tx + ox, ty + oy) === T.BLD && realBld()[(ty + oy) * GW + tx + ox]);
+      if (W4) { const [ox, oy] = W4; out.push({ x: cx + ox * (TS / 2 - .35), y: cy + oy * (TS / 2 - .35), face: Math.atan2(-oy, -ox), wall: true, water: false, score: 1.4 - dd * .02 }); continue; }
+      // contro un altro bordo (l'acqua, un albero, la fontana) mezzo metro più in là; davanti all'acqua si guarda il mare
+      const x = edge ? cx + bx / L * .45 : cx, y = edge ? cy + by / L * .45 : cy;
+      const face = !edge ? null : water ? Math.atan2(by, bx) : Math.atan2(-by, -bx);
+      out.push({ x, y, face, wall: false, water: water > 0, score: (edge ? 1.1 + nb * .08 : .35) - dd * .02 });
+    }
+    return (SPOTS[pid] = out.sort((p, q) => q.score - p.score).slice(0, 60));
+  }
+  function restSpot(st, n, t, key) {
+    const P0 = n.pop; if (P0.spotNext && P0.spotNext.key === key) { const sp = P0.spotNext; P0.spotNext = null; return sp; }   // [commissioni] un posto scelto apposta (il muro)
+    const P = n.pop, S0 = spotsOf(t.pid);
+    if (!S0.length) { const s = G.wanderSpot(st, PLACES[t.pid]); return { key, pid: t.pid, ci: n.id, x: s.x, y: s.y, face: n.face }; }
+    // chi c'è già, e in che gruppo
+    const here = st.npcs.filter(k => k !== n && k.pop && k.pop.spot && k.pop.spot.on && k.pop.spot.pid === t.pid && !k.inside && !k.dead);
+    const size = g => here.filter(k => k.pop.spot.ci === g).length;
+    // [imprese] chi è qui per un'impresa sta con la sua squadra, attorno a chi c'è già
+    if (P.cur && P.cur.imp) {
+      const g = 'imp' + P.cur.imp, crew = here.filter(k => k.pop.spot.ci === g), c0 = crew.length ? { x: crew.reduce((a, k) => a + k.x, 0) / crew.length, y: crew.reduce((a, k) => a + k.y, 0) / crew.length } : S0[0];
+      for (let i = 0; i < 10; i++) { const a = Math.random() * Math.PI * 2, r = crew.length ? 1.1 + crew.length * .18 : 0, x = c0.x + Math.cos(a) * r, y = c0.y + Math.sin(a) * r; if (G.walkM(x, y) && !roadAt(x, y)) return { key, pid: t.pid, ci: g, x, y, face: crew.length ? Math.atan2(c0.y - y, c0.x - x) : (c0.face || 0), wall: false }; }
+    }
+    // un amico o un parente da raggiungere (chi è chiacchierone si avvicina anche a chi conosce appena)
+    const fond = k => closeness(st, n, k) + (opinionOf(st, n, k.id) * .5) + (n.tr ? (n.tr.loq - .5) * .3 : 0);
+    const mate = here.filter(k => size(k.pop.spot.ci) < 3 && fond(k) > .55 && opinionOf(st, n, k.id) > -.2).sort((a, b) => fond(b) - fond(a))[0];
+    if (mate && !(P.spot && P.spot.ci === mate.pop.spot.ci)) {
+      const M = mate.pop.spot, g = M.ci, members = here.filter(k => k.pop.spot.ci === g);
+      // in due: di fronte, a poco più di un metro; in tre: a semicerchio, aperto verso lo spazio libero
+      const cx = members.reduce((s0, k) => s0 + k.x, 0) / members.length, cy = members.reduce((s0, k) => s0 + k.y, 0) / members.length;
+      const base = members.length === 1 ? (M.face != null ? M.face : mate.face) : Math.atan2(cy - mate.y, cx - mate.x) + Math.PI * .66;
+      for (const da of [0, .5, -.5, 1, -1]) {
+        const r = members.length === 1 ? 1.1 : .95, ax = (members.length === 1 ? mate.x : cx) + Math.cos(base + da) * r, ay = (members.length === 1 ? mate.y : cy) + Math.sin(base + da) * r;
+        if (!G.walkM(ax, ay) || roadAt(ax, ay) || here.some(k => k.pop.spot.ci !== g && dist(k.x, k.y, ax, ay) < 1.2)) continue;
+        const cx2 = (cx * members.length + ax) / (members.length + 1), cy2 = (cy * members.length + ay) / (members.length + 1);
+        // il gruppo si gira verso il centro (chi era da solo al muro ora guarda chi è arrivato)
+        members.forEach(k => { k.pop.spot.face = Math.atan2(cy2 - k.y, cx2 - k.x); k.pop.spot.wall = false; });
+        return { key, pid: t.pid, ci: g, x: ax, y: ay, face: Math.atan2(cy2 - ay, cx2 - ax), wall: false };
+      }
+    }
+    // per conto suo: un bordo libero, lontano da chi c'è (la gente si tiene le distanze), meglio se vicino a dove arriva
+    let best = null, bv = -1e9;
+    for (const q of S0) {
+      const crowd = here.reduce((s0, k) => { const d = dist(k.x, k.y, q.x, q.y); return s0 + (d < 1.8 ? 5 : d < 3.5 ? 1 : 0); }, 0);
+      const v = q.score * 2 - crowd - dist(n.x, n.y, q.x, q.y) * .02 + Math.random() * .8;
+      if (v > bv) { bv = v; best = q; }
+    }
+    const face = best.face != null ? best.face + (Math.random() - .5) * .8 : Math.random() * Math.PI * 2;
+    return { key, pid: t.pid, ci: n.id, x: best.x + (Math.random() - .5) * .3, y: best.y + (Math.random() - .5) * .3, face, wall: best.wall };
+  }
+  // in crocchio si parla: di quello che si ha in testa (un progetto, un bisogno, un ricordo che pesa)
+  function chatter(st, n, b) {
+    if (st.clock < (n.barkCd || 0) || Math.random() > .004) return;
+    const P = n.pop, S = P.spot; let mates = 0;
+    st.npcs.forEach(k => { const K = k !== n && k.pop && k.pop.spot; if (K && K.on && K.pid === S.pid && K.ci === S.ci && !k.inside && dist(k.x, k.y, n.x, n.y) < 3) mates++; });
+    if (!mates) return;
+    const line = chatLine(st, n, b); if (!line) return;
+    G.say(st, n, line, 3); n.barkCd = st.clock + 14 + Math.random() * 16;
+  }
+  // di cosa parla chi ha quell'interesse
+  const TALK_INT = {
+    pesca: ['Stamattina alla punta abboccavano.', 'Domani esco all\'alba con la barca.'], carte: ['Stasera scopa all\'osteria, vieni?', 'Ieri a briscola mi hanno spennato.'],
+    lettura: ['Ho finito quel libro, te lo presto.', 'In biblioteca non c\'è più niente di buono.'], musica: ['Hai sentito il disco nuovo al juke-box?', 'Alla radio stanotte davano roba forte.'],
+    ballo: ['Sabato si va alla Luna!', 'Alla Luna c\'è il DJ nuovo.'], fede: ['Domenica don Piero ha detto una bella predica.', 'Ho acceso un cero per mia madre.'],
+    sport: ['Partitella sulla spiaggia, dopo?', 'Hai visto la partita?'], cinema: ['Al cinema danno un film americano.', 'Stasera c\'è la prima, ci vai?'],
+    chiacchiere: ['Lo sai della figlia del farmacista?', 'Non dirlo a nessuno, eh…'], politica: ['Il Garante racconta solo bugie.', 'Leggi tra le righe del Bollettino.'],
+    motori: ['La Vespa fa un rumore strano.', 'All\'officina hanno una Giulia da sistemare.'], cucina: ['Domenica faccio le trofie al pesto.', 'Il pesce oggi era freschissimo.'],
+    campagna: ['L\'orto quest\'anno rende.', 'Col gelo l\'orto è da buttare.'], mare: ['Il mare oggi è color ferro.', 'Stamattina sulla caletta c\'era il ghiaccio.'],
+    eleganza: ['Ho visto una giacca in vetrina…', 'Quella camicia ti sta bene.'], foto: ['Ti faccio una foto, stai fermo.', 'Ho finito il rullino.'], arte: ['Su quel muro ci starebbe un bel murale.', 'Sto disegnando il porto.'],
+  };
+  const TALK = [];   // [convivenza] chi ha qualcosa di vero da dire (appuntamenti, patti, debiti, quello che è successo) passa davanti
+  function chatLine(st, n, b) {
+    for (const f of TALK) { try { const t = f(st, n, b); if (t) return t; } catch (e) { } }
+    const P = n.pop, N = P.need || {}, r = Math.random(), pj = (P.projects || [])[0];
+    if (pj && r < .3) return pick(Math.random, [`Devo ${pj.label}.`, `Sto pensando di ${pj.label}.`, `Prima o poi riesco a ${pj.label}.`]);
+    if (N.soldi > .6 && r < .5) return pick(Math.random, ['Non arrivo a fine mese.', 'Con quello che costa il pane…', 'Lo Squalo non aspetta.']);
+    if (N.paura > .6 && r < .55) return pick(Math.random, ['Parla piano, che ascoltano.', 'Io la sera non esco più.', 'Hai visto quanti Grigi stamattina?']);
+    if (N.rabbia > .6 && r < .6) return pick(Math.random, ['Prima o poi qualcuno gliela fa pagare.', 'Non è giusto, e lo sanno tutti.', 'Io non sto zitto.']);
+    if (P.job && r < .7) return pick(Math.random, [`Al lavoro (${P.job.title}) oggi non finiva più.`, `Domani attacco alle ${P.job.start}.`, 'Il padrone ci mette i piedi in testa.']);
+    if (!P.job && P.status === 'disoccupato' && r < .7) return pick(Math.random, ['Sai se cercano qualcuno alla calata?', 'Lavoro non ce n\'è.']);
+    if (b && b.act === 'mercato') return pick(Math.random, ['A quanto le vende?', 'Ieri costavano meno.', 'Che belle, oggi.']);
+    const iw = P.intW || {}, top = (P.ints || []).slice().sort((x, y) => (iw[y.k] || 0) - (iw[x.k] || 0))[0], IL = top && TALK_INT[top.k];
+    if (IL && r < .85) return pick(Math.random, IL);
+    return pick(Math.random, ['Che freddo, eh?', 'Hai visto chi è tornato?', 'Mia figlia si sposa a primavera.', 'E tuo fratello come sta?', 'Domenica c\'è la partita.', 'Non si sa più di chi fidarsi.']);
+  }
+
+  // ---------------- [scopo] DENTRO SI VEDE CHI C'È ----------------
+  // quando il giocatore entra in un edificio, chi ci sta (a casa, al lavoro, cliente) prende il suo posto nell'interno:
+  // nel letto chi dorme, a tavola chi mangia, al bancone chi serve, sulla panca chi prega. n.room dice dove e come.
+  const BEDS = /^(bedDouble|bedSingle|ia_lettino|ia_materasso|ia_branda|ia_castello|ia_letto_ospedale)$/;
+  const SEATS = /^(chair|chairDesk|ia_poltrona|loungeSofa|ia_divano|stoolBar|bench|ia_panca_chiesa|ia_panca_lunga|rc_seat|ia_sedia_rotta|ia_poltrona_barbiere)$/;
+  const SOFT = /^(ia_poltrona|loungeSofa|ia_divano)$/, PEWS = /^(ia_panca_chiesa|bench|ia_panca_lunga)$/;
+  const STOVES = /^(kitchenStove|ia_cucina_gas|ia_focolare|kitchenSink|ia_lavello|st_stufa)$/;
+  const COUNTERS = /^(ia_bancone_bar|kitchenBar|pv_banco_vendita|ar_cash-register)$/;
+  const roomKey = (bi, f) => bi + ':' + f;
+  // il piano di casa di una famiglia (nei palazzi ogni piano è una casa diversa; il piano terra è l'androne)
+  function homeFloor(L, P) {
+    const nf = L.floors.length; if (nf <= 1) return 0;
+    const condo = L.floors[0].rooms.some(q => /androne|portineria/.test(q.name || ''));
+    const h = Math.abs(String(P.hh || '').split('').reduce((s, c) => s * 31 + c.charCodeAt(0), 7)) ;
+    return condo ? 1 + h % (nf - 1) : 0;
+  }
+  // che cosa sta facendo dentro: la posa e il mobile che gli serve
+  function indoorUse(st, n, b, atHome) {
+    const m = minOfDay(st.t), P = n.pop;
+    if (!b) return { want: 'seat', pose: 'siede' };
+    if (b.act === 'sonno') return { want: 'bed', pose: 'dorme' };
+    if (b.act === 'lavoro') return { want: 'work', pose: 'lavora' };
+    if (b.act === 'messa') return { want: 'pew', pose: 'prega' };
+    if (b.act === 'impresa' && /cena|pranz|mangi/.test(b.label || '')) return { want: 'table', pose: 'tavola' };   // [imprese]
+    if (b.act === 'pranzo' || (atHome && ((m > 12 * 60 && m < 14 * 60 + 30) || (m > 19 * 60 + 30 && m < 21 * 60 + 30)))) return { want: 'table', pose: 'tavola' };
+    if (b.obj === 'cucina' || (atHome && b.label === 'si prepara')) return { want: 'stove', pose: 'lavora' };
+    if (b.obj === 'bancone' || b.obj === 'panino') return { want: 'counter', pose: 'bancone' };
+    if (b.obj === 'carte') return { want: 'table', pose: 'carte' };
+    if (b.obj === 'libri') return { want: 'seat', pose: 'legge' };
+    if (b.obj === 'tv' || b.obj === 'radio' || b.obj === 'cinema') return { want: 'soft', pose: 'siede' };
+    if (b.obj === 'flipper') return { want: 'free', pose: 'flipper' };
+    if (b.obj === 'pista') return { want: 'free', pose: 'balla' };
+    if (b.obj === 'barbiere') return { want: 'seat', pose: 'siede' };
+    if (b.obj === 'bottega' || b.act === 'spesa') return { want: 'counter', pose: 'merce' };
+    const coin = (String(n.id) + (P.curKey || '')).split('').reduce((h, c) => (h * 33 + c.charCodeAt(0)) % 1000, 5) / 1000;   // la stessa scelta finché dura il blocco
+    if (atHome) return coin < .5 ? { want: 'soft', pose: 'siede' } : { want: 'free', pose: null };
+    return coin < .55 ? { want: 'seat', pose: 'siede' } : { want: 'counter', pose: 'bancone' };
+  }
+  // un punto in piedi accanto a un mobile, sul pavimento libero
+  const roomy = (used, x, y) => !used.some(u => dist(u.x, u.y, x, y) < .7);
+  function besideFurn(L, f, o, used) {
+    const ry = o.ry || 0, c = [[Math.sin(ry), Math.cos(ry)], [-Math.sin(ry), -Math.cos(ry)], [Math.cos(ry), -Math.sin(ry)], [-Math.cos(ry), Math.sin(ry)]];
+    for (const k of [.8, 1.25]) for (const [dx, dy] of c) { const x = o.x + dx * k, y = o.y + dy * k; if (INT().walk(L, f, x, y, .22) && roomy(used, x, y)) return { x, y, face: Math.atan2(o.y - y, o.x - x) }; }
+    return null;
+  }
+  const INT = () => (typeof Interior !== 'undefined' ? Interior : G.INT);
+  function freeFloor(L, f, used) {
+    const F = L.floors[f];
+    for (let i = 0; i < 60; i++) {
+      const q = F.rooms[i % F.rooms.length], x = q.x + .6 + Math.random() * Math.max(.1, q.w - 1.2), y = q.y + .6 + Math.random() * Math.max(.1, q.h - 1.2);
+      if (INT().walk(L, f, x, y, .25) && !used.some(u => dist(u.x, u.y, x, y) < .9)) { const c = used[0]; return { x, y, face: c ? Math.atan2(c.y - y, c.x - x) : Math.random() * Math.PI * 2 }; }
+    }
+    return null;
+  }
+  function placeIndoor(st, n, L, bi, f, used, taken) {
+    const P = n.pop, b = P.cur, atHome = isHomeT(P, b && b.tgt), F = L.floors[f], u = indoorUse(st, n, b, atHome);
+    let fi = -1;
+    const furn = re => { const ok = []; F.furn.forEach((o, i) => { if (!taken.has(i) && re.test(o.id) && roomy(used, o.x, o.y)) ok.push(i); }); if (!ok.length) return null; fi = ok[Math.floor(Math.random() * ok.length)]; taken.add(fi); return F.furn[fi]; };
+    const seatAt = o => ({ x: o.x, y: o.y, face: Math.PI / 2 - (o.ry || 0) });
+    let spot = null, pose = u.pose;
+    if (u.want === 'work' && f === 0 && typeof Oggetti !== 'undefined' && Oggetti.staffIndoor) {
+      const s = Oggetti.staffIndoor(st, bi).find(x => x.id === n.id);
+      if (s) { spot = { x: s.x, y: s.y, face: s.face }; pose = s.post === 'banco' ? 'merce' : 'lavora'; }
+    }
+    if (!spot && u.want === 'work') {
+      const o = furn(COUNTERS) || furn(/^(pv_banco_lavoro|ia_scrivania_grande|ia_macchina_scrivere|desk)$|^st_/) || furn(STOVES);
+      if (o && o.id === 'desk') { const c = F.furn.findIndex((x, i) => !taken.has(i) && x.id === 'chairDesk' && dist(x.x, x.y, o.x, o.y) < 1.2); if (c >= 0) { taken.add(c); spot = seatAt(F.furn[c]); pose = 'siede'; } }
+      if (o && !spot) spot = besideFurn(L, f, o, used);
+    }
+    if (!spot && u.want === 'bed') { const o = furn(BEDS); if (o) spot = seatAt(o); }
+    if (!spot && /^(table|seat|soft|pew)$/.test(u.want)) {
+      const o = (u.want === 'soft' && furn(SOFT)) || (u.want === 'pew' && furn(PEWS)) || furn(/^(chair|stoolBar|rc_seat|bench|ia_panca_lunga|ia_panca_chiesa)$/) || furn(SEATS);
+      if (o) spot = seatAt(o);
+    }
+    if (!spot && u.want === 'stove') { const o = furn(STOVES); if (o) spot = besideFurn(L, f, o, used); }
+    if (!spot && u.want === 'counter') { const o = furn(COUNTERS); if (o) spot = besideFurn(L, f, o, used); }
+    // chi dorme e non ha un letto qui è in un'altra stanza, con la porta chiusa: non si vede
+    if (!spot && u.want === 'bed') return null;
+    // senza il mobile giusto si sta in piedi (niente sedute nel vuoto)
+    if (!spot) { spot = freeFloor(L, f, used); if (pose !== 'prega' && pose !== 'flipper' && pose !== 'balla' && pose !== 'lavora' && pose !== 'merce') pose = null; }
+    if (!spot) return null;
+    used.push(spot);
+    const act = b && b.act, label = act === 'sonno' ? 'dorme' : act === 'casa' ? (atHome ? 'a casa' : b.label) : act === 'pranzo' ? 'a tavola' : act === 'lavoro' && P.job ? `al lavoro (${P.job.title})` : b ? b.label : '';
+    return { bi, f, fi, want: u.want, x: spot.x, y: spot.y, face: spot.face, pose, label, ent: L.ent.in };
+  }
+  // chi è dentro l'edificio del giocatore, a quel piano
+  function roomStep(st) {
+    const p = st.player, R0 = st.pop.room || (st.pop.room = { key: null, at: 0, ids: [], since: 0, seen: {} });
+    const key = p.indoor ? roomKey(p.indoor.b, p.indoor.f) : null;
+    if (key !== R0.key) { R0.ids.forEach(id => { const n = G.byId(st, id); if (n) leaveRoom(st, n); }); R0.ids = []; R0.key = key; R0.at = 0; R0.seen = {}; R0.since = st.clock; }
+    if (!key || st.clock < R0.at) return; R0.at = st.clock + .4;
+    const bi = p.indoor.b, f = p.indoor.f, L = INT() && INT().layout(G.BUILDINGS[bi]); if (!L || !L.floors[f]) return;
+    const here = st.npcs.filter(n => n.pop && !n.dead && n.inside && !isPassive(st, n) && !(n.jailedUntil > st.t) && n.pop.at && n.pop.at.k === 'b' && n.pop.at.bi === bi
+      && (isHomeT(n.pop, n.pop.at) && !(n.pop.cur && n.pop.cur.act === 'lavoro') ? homeFloor(L, n.pop) === f : f === 0));
+    // chi non c'è più (uscito, portato via) lascia la stanza
+    R0.ids = R0.ids.filter(id => { const n = G.byId(st, id); if (n && (here.includes(n) || (n.room && n.room.out && n.room.walk))) return true; if (n) leaveRoom(st, n); return false; });
+    const used = R0.ids.map(id => G.byId(st, id)).filter(n => n && n.room).map(n => n.room), taken = new Set(used.map(r => r.fi).filter(i => i >= 0));
+    here.slice(0, 14).forEach(n => {
+      const P = n.pop, bk = P.curKey;
+      if (n.room && (n.room.bk === bk || n.room.out)) return;
+      // stessa cosa di prima (un altro blocco «a casa», la notte che passa): resta dov'è
+      if (n.room && indoorUse(st, n, P.cur, isHomeT(P, P.cur && P.cur.tgt)).want === n.room.want && P.cur) { n.room.bk = bk; return; }
+      if (n.room && n.room.fi >= 0) taken.delete(n.room.fi);
+      const r = placeIndoor(st, n, L, bi, f, used, taken); if (!r) return;
+      r.bk = bk; r.door = n.room ? n.room.door : { x: n.x, y: n.y };
+      // chi arriva mentre ci sei entra dalla porta e va al suo posto; chi c'era già è al suo posto
+      const fresh = !R0.ids.includes(n.id);
+      if (fresh && st.clock > R0.since + 1) { n.x = L.ent.in[0]; n.y = L.ent.in[1]; r.walk = true; }
+      else if (fresh) { n.x = r.x; n.y = r.y; n.face = r.face; }
+      else r.walk = true;   // cambia attività: si sposta nella stanza
+      n.room = r; if (fresh) R0.ids.push(n.id);
+      // a casa sua, uno sconosciuto in casa non passa inosservato
+      if (fresh && isHomeT(P, P.at) && !R0.seen[n.id] && r.pose !== 'dorme' && !G.BUILDINGS[bi].playerHome) { R0.seen[n.id] = 1; if (Math.random() < .6) G.say(st, n, pick(Math.random, ['E lei chi è? Questa è casa mia!', 'Che ci fa qui? Esca subito.', 'Ehi! Chi l\'ha fatta entrare?']), 3); }
+    });
+  }
+  // il passo di chi cammina dentro (ogni fotogramma)
+  function roomWalk(st, dt) {
+    const R0 = st.pop.room; if (!R0 || !R0.key) return;
+    R0.ids.forEach(id => {
+      const n = G.byId(st, id), r = n && n.room; if (!r || !r.walk) return;
+      const dx = r.x - n.x, dy = r.y - n.y, d = Math.hypot(dx, dy), s = 1.2 * dt;
+      if (d <= s) { n.x = r.x; n.y = r.y; n.face = r.face; r.walk = false; n.speedNow = 0; return; }
+      n.x += dx / d * s; n.y += dy / d * s; n.face = Math.atan2(dy, dx); n.speedNow = 1.2;
+    });
+  }
+  // chi deve uscire prima cammina fino alla porta dell'interno (true: sta ancora andando)
+  function roomExit(st, n) {
+    const r = n.room; if (!r) return false;
+    if (!r.out) { r.out = true; r.x = r.ent[0]; r.y = r.ent[1]; r.face = n.face; r.pose = null; r.walk = true; }
+    if (r.walk) return true;
+    leaveRoom(st, n); return false;
+  }
+  function leaveRoom(st, n) { const r = n.room; if (!r) return; n.room = null; n.speedNow = 0; if (r.door) { n.x = r.door.x; n.y = r.door.y; } }
+  // a cosa sta pensando, in due parole (per l'etichetta sotto il puntatore)
+  function doing(st, n) {
+    const P = n.pop; if (!P || n.dead) return '';
+    if (n.room) return n.room.pose === 'dorme' ? 'dorme' : cap(n.room.label || '');
+    const a = n.action ? n.action.name : '', b = P.cur;
+    if (a === 'al lavoro') return `al lavoro (${P.job ? P.job.title : ''})`;
+    if (P.emer && P.emer.steps && P.emer.steps[P.emer.i]) return P.emer.steps[P.emer.i].label;
+    if (!b || !b.tgt || (a !== 'routine' && a !== 'dentro')) return '';
+    const there = P.at && tkey(P.at) === tkey(b.tgt) && (b.tgt.k !== 'p' || (P.spot && P.spot.on));
+    const where = isHomeT(P, b.tgt) ? 'casa' : b.tgt.label;
+    return there ? b.label + (b.label.includes(b.tgt.label) || where === 'casa' ? '' : ` (${where})`) : `${b.label} → ${where}`;
   }
   // il tempo detto ad alta voce
   function barkTime(st, n, b) {
@@ -1523,6 +1970,9 @@ var Popolo = (function () {
     const S = st.pop; if (!S) return;
     // livello di dettaglio
     S.lodAt -= dt; if (S.lodAt <= 0) { S.lodAt = CFG.lodEvery; updateLod(st); }
+    // [scopo] dentro l'edificio del giocatore si vede chi c'è
+    roomStep(st); roomWalk(st, dt);
+    errandsStep(st);   // [commissioni]
     // ore
     const hm = Math.floor(st.t / 60);
     while (S.hourMark < hm) { S.hourMark++; onHour(st, S.hourMark % 24); }
@@ -1557,9 +2007,19 @@ var Popolo = (function () {
     G.dayName = t => WEEK[(Math.floor(t / 1440) + 1) % 7];
   }
   // dopo la Risacca: l'ideologia nata dalla vita di ognuno
+  // [vivi] i mezzi parcheggiati senza padrone sono di qualcuno: dell'adulto che abita più vicino (meglio se lavora e ha qualche soldo)
+  function giveVehicles(st) {
+    const taken = new Set(st.vehicles.map(v => v.owner).filter(Boolean));
+    st.vehicles.filter(v => !v.owner && !v.traffic && !v.police && !v.military && !v.hidden && !v.wreck).forEach(v => {
+      const c = st.npcs.filter(n => n.pop && n.pop.ints && !n.dead && !n.cop && !n.faction && n.pop.age >= 20 && n.pop.homeT && !taken.has(n.id))
+        .map(n => [n, dist(n.pop.homeT.x, n.pop.homeT.y, v.x, v.y) - (n.pop.job ? 15 : 0) - Math.min(20, n.pop.money / 4)]).sort((a, b) => a[1] - b[1])[0];
+      if (c && c[1] < 120) { v.owner = c[0].id; c[0].pop.car = v.id; taken.add(c[0].id);   /* anche per regia.js */ c[0].pop.owns = c[0].pop.owns || {}; c[0].pop.owns[v.kind === 'vespa' ? 'vespa' : 'auto'] = true; }
+    });
+  }
   function afterRisacca(st) {
     st.npcs.forEach(n => { if (n.pop && n.ris) { const R = RS(); const c = R && R.CARDS[n.id]; if (c && c.ideo !== undefined) n.ris.ideo = c.ideo; } });
     adoptAll(st);   // [vita] tutti gli altri personaggi: cast, Tutela, Squalo, marsigliesi, briganti, passanti
+    giveVehicles(st);   // [vivi]
   }
   install();
 
@@ -1577,8 +2037,8 @@ var Popolo = (function () {
     };
   }
   // per i moduli che costruiscono sopra la vita (azioni.js): gli strumenti interni
-  const USE = [], AVAIL = [], ESSENTIAL = [], MONEY = {};   // [soldi] MONEY: agganci dei soldi (paga, affitto, spese, macchinette)   // [economia] chi vuole può vietare o far pagare l'uso di un oggetto in un posto (scorte, prezzi)
-  const _ = { USE, AVAIL, ESSENTIAL, MONEY, JOBS_BY, OUTDOOR, GENDER, buildIndex, sketchFor, artStyle, readWalls, newcomer, REFLECT, note, feel, target, tkey, tB, planDay, blockNow, snapFar, wakeNear, dayIdx, minOfDay, hhmm, isPassive, arrestFar, chooseObj, startProject, endProject, PROJ, OGG, useRef, recent, share, closeness, paintWall, appoint, adopt, o, cap, pick, isHomeT, initLife, lifeOf, curfewFrom, clamp, dist };
-  return { _, arrest: arrestFar, note, OGG, INTERESSI, PROJ, lifeOf, lifeShort, reflect, chooseObj, startProject, isPassive, CFG, WEEK, RECURRING, GIRI, weekday, wdName, ago, curfewFrom, eventsOn, planDay, blockNow, appoint, bioOf, report, target, note, buildIndex };
+  const USE = [], AVAIL = [], ESSENTIAL = [], MONEY = {}, MEET = [];   // [scambi] MEET: chi vuole sapere com'è andato un appuntamento con un patto   // [soldi] MONEY: agganci dei soldi (paga, affitto, spese, macchinette)   // [economia] chi vuole può vietare o far pagare l'uso di un oggetto in un posto (scorte, prezzi)
+  const _ = { USE, AVAIL, ESSENTIAL, MONEY, MEET, TALK, chatLine, ownVeh, spotsOf, errand, ERRAND, wallSpot, resolveRef, appointCheck: checkAppointments, JOBS_BY, OUTDOOR, GENDER, buildIndex, sketchFor, artStyle, readWalls, newcomer, REFLECT, note, feel, target, tkey, tB, planDay, blockNow, snapFar, wakeNear, dayIdx, minOfDay, hhmm, isPassive, arrestFar, arrest: arrestFar, toLong, recall, opinionOf, consolidate, chooseObj, startProject, endProject, PROJ, OGG, useRef, recent, share, closeness, paintWall, appoint, adopt, o, cap, pick, isHomeT, initLife, lifeOf, curfewFrom, clamp, dist };
+  return { _, arrest: arrestFar, note, OGG, INTERESSI, PROJ, lifeOf, lifeShort, reflect, chooseObj, startProject, isPassive, CFG, WEEK, RECURRING, GIRI, weekday, wdName, ago, curfewFrom, eventsOn, planDay, blockNow, appoint, bioOf, report, target, note, buildIndex, doing, recall, opinionOf };
 })();
 if (typeof module !== 'undefined') module.exports = Popolo;

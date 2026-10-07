@@ -1619,6 +1619,10 @@ var Oggetti = (function () {
       list.slice(0, 3).forEach(g => {
         const Sh = shops.filter(X => X.sells[g] && (X.stock[g] || 0) >= 1).sort((a, b) => dist(a.t.x, a.t.y, P.homeT.x, P.homeT.y) - dist(b.t.x, b.t.y, P.homeT.x, P.homeT.y))[0];
         if (!Sh) { E.missing[g] = (E.missing[g] || 0) + 1; if (rnd() < .2) I.note(st, n, `non si trova ${nm(g)} da nessuna parte`, 'bad', { w: .2, tag: 'scarsita' }); return; }
+        // [commissioni] chi è in scena ci va davvero (a piedi, col pacco al ritorno); chi è lontano lo fa fuori scena
+        const PO0 = typeof Popolo !== 'undefined' ? Popolo._ : null;
+        if (PO0 && PO0.errand && PO0.ERRAND.compra && !P.errand && PO0.errand(st, n, { kind: 'compra', tgt: Sh.t, act: 'commissione', obj: 'bottega', label: `va a fare la spesa da ${Sh.label}`, secs: 10, mins: 20, data: { ids: [g] } })) return;
+        if (P.near) return;
         const pr = Ec.buy(st, n, Sh.t, g, 1); if (pr === null) return;
         P.casa = P.casa || {}; P.casa[g] = (P.casa[g] || 0) + 1; S(st).stats.consumi++;
         // la legna e il carbone si bruciano, il sapone si consuma: in casa non si accumula all'infinito

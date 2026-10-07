@@ -58,10 +58,38 @@
   cv.addEventListener('pointerdown', e => { cv.focus(); A.init(); const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
     if (window.Cantiere && Cantiere.active() && e.button !== 1) { Cantiere.down(e.button, nx, ny); return; }   // [cantiere] si costruisce, non si cammina
     if (e.button === 2) { mouse.down = true; mouse.pressed = true; return; }
+    if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
     if (e.button === 0) { mouse.nx = nx; mouse.ny = ny; onClick(nx, ny, e.detail >= 2); } });
-  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; });
+  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; if (window.Cantiere && Cantiere.up) Cantiere.up(); if (e.button === 0 && ui.spray) sprayEnd(); });
+  // [cantiere] tenendo premuto il sinistro e trascinando si posa una fila (muri, recinti, solchi dell'orto…)
+  cv.addEventListener('pointermove', e => { if (!(e.buttons & 1) || !window.Cantiere || !Cantiere.active() || !Cantiere.drag) return; const r = cv.getBoundingClientRect(); Cantiere.drag((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height); });
+  // [graffiti] la bomboletta: il pennello dello Studio con la misura bloccata da bomboletta. Si impugna dalle Tasche;
+  // in mano, il tasto sinistro spruzza sulla superficie sotto il puntatore, a portata di braccio (se è più in là ci si
+  // avvicina camminando e poi si spruzza), la rotella cambia colore
+  const SPRAY_COLS = [['#c42a22', 'rosso'], ['#1e1e24', 'nero'], ['#e8e0d0', 'bianco'], ['#2a6ac8', 'blu'], ['#e8c040', 'giallo'], ['#3a9a5a', 'verde'], ['#c84a9a', 'rosa'], ['#e8a020', 'arancio']];
+  const sprayHave = () => { try { return (Oggetti.inv(st) || {}).bomboletta >= 1; } catch (e) { return false; } };
+  function sprayTick(dt) {
+    const inHand = st.player.hand === 'bomboletta' && sprayHave() && !st.player.vehicle;
+    if (inHand && !ui.spray) { ui.spray = { col: 0, on: false, dabs: 0, t: 0 }; toast('Bomboletta in mano: tieni premuto il tasto sinistro su un muro vicino; la rotella cambia colore (' + SPRAY_COLS[0][1] + ').'); }
+    if (!inHand && ui.spray) { sprayEnd(); ui.spray = null; }
+    const S = ui.spray; if (!S || !S.on || !R.spray) return; S.t -= dt; if (S.t > 0) return; S.t = .016;
+    const r = R.spray(st, mouse.nx, mouse.ny, SPRAY_COLS[S.col][0]);
+    if (r === true) { S.dabs++; if (click.t && click.t.spray) { click.t = null; ui.mark = null; } }
+    else if (r && r.go && !(click.t && click.t.spray && Math.hypot(click.t.x - r.go.x, click.t.y - r.go.y) < .4)) {   // troppo lontano: ci si avvicina al muro, poi si spruzza
+      click.t = { kind: 'move', spray: 1, x: r.go.x, y: r.go.y, path: goalPath(r.go.x, r.go.y), run: false, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x: r.go.x, y: r.go.y, t: ui.time, k: 'move' };
+    }
+    if (S.dabs - (S.used || 0) >= 900) {   // una bomboletta dura circa un minuto di spruzzo
+      S.used = S.dabs; const b = Oggetti.inv(st); b.bomboletta = Math.max(0, (b.bomboletta || 0) - 1); if (!b.bomboletta) delete b.bomboletta;
+      if (!sprayHave()) { toast('La bomboletta è finita.'); sprayEnd(); ui.spray = null; st.player.hand = null; }
+    }
+  }
+  function sprayEnd() {
+    const S = ui.spray; if (!S || !S.on) return; S.on = false;
+    if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } }   // chi ti vede, ti ha visto
+  }
   cv.addEventListener('contextmenu', e => e.preventDefault());
-  cv.addEventListener('wheel', e => { if (ui.intro || ui.dialog || ui.book) return; e.preventDefault(); if (window.Cantiere && Cantiere.wheel(e.deltaY)) return; zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });
+  cv.addEventListener('wheel', e => { if (ui.intro || ui.dialog || ui.book) return; e.preventDefault();
+    if (ui.spray) { ui.spray.col = (ui.spray.col + (e.deltaY > 0 ? 1 : SPRAY_COLS.length - 1)) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[ui.spray.col][1] + '.'); return; } if (window.Cantiere && Cantiere.wheel(e.deltaY)) return; zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });
   addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     A.init();
@@ -74,7 +102,7 @@
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.'].includes(k)) { keys[k] = true; e.preventDefault(); }
     // [monte] O: visuale dall'alto; H scava, J in discesa, K in salita, N stanza, V sali/scendi (botole e pozzi)
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
-    if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k); if (m) { toast(m); e.preventDefault(); return; } }
+    if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
     if (e.repeat) return;
     if (k === 'e') doAct('scippo'); else if (k === 'f') doAct('veicolo'); else if (k === 't') openTalk();
     else if (k === 'r') G.reload(st);
@@ -114,7 +142,7 @@
     if (keys.w || keys.arrowup) f += 1; if (keys.s || keys.arrowdown) f -= 1;
     if (keys.d || keys.arrowright) s += 1; if (keys.a || keys.arrowleft) s -= 1;
     const a = aimAngle();
-    if (f || s) { if (click.t) { click.t = null; ui.mark = null; } }
+    if (f || s) { if (click.t) { click.t = null; ui.mark = null; } if (st.lv && st.lv.route) st.lv.route = null; }   // [sottosuolo] i tasti fermano anche lo scavo a clic
     else { const ci = clickInput(sprint); if (ci) return ci; if (ring.n && !st.player.vehicle) { const n = G.byId(st, ring.n); if (n) return { x: 0, y: 0, sprint, aim: Math.atan2(n.y - st.player.y, n.x - st.player.x) }; } }
     if (st.player.vehicle) {
       // alla guida: W gas, S freno e retromarcia, A/D sterzo, spazio freno a mano, shift spinta. Il mouse mira (destro spara)
@@ -147,14 +175,16 @@
   const click = { t: null }, ring = { n: null, el: $('ring'), built: null }, hoverEl = $('hover');
   const armedGun = () => { const p = st.player; return p.cur !== 'pugni' && p.cur !== 'molotov'; };
   function cvOff() { const r = cv.getBoundingClientRect(), a = app.getBoundingClientRect(); return { x: r.left - a.left, y: r.top - a.top, w: r.width, h: r.height }; }
+  const inRoom = n => !!(n.room && st.player.indoor);   // [scopo] chi è nella stanza col giocatore (popolo.js)
   function pickAt(nx, ny) {
     const p = st.player, o = cvOff(); let best = null, bd = Math.max(18, o.h * .04);
     if (!p.vehicle) st.npcs.forEach(n => {
-      if (n.dead || n.inside || n.jailedUntil > st.t) return;
+      if (n.dead || (n.inside && !inRoom(n)) || (p.indoor && !inRoom(n)) || n.jailedUntil > st.t) return;   // [scopo] dentro si clicca chi c'è nella stanza
       for (const hh of [.6, 1.2, 1.7]) { const pr = R.project(n.x, hh, n.y); if (pr.behind) continue; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = { kind: 'npc', n }; } }
     });
     if (best) return best;
     if (window.Bottino) { const L = Bottino.pick(st, nx, ny, o); if (L) return L; }
+    if (window.Sottosuolo) { const C = Sottosuolo.pick(st, nx, ny, o); if (C) return C; }   // [sottosuolo] la gente di sotto, le casse, il treno
     if (window.Cantiere) { const C = Cantiere.pick(st, nx, ny, o); if (C) return C; }   // [cantiere] le postazioni del covo   // [bottino] la roba da frugare è un oggetto in scena
     const g = R.screenToGround(nx, ny); if (!g) return null;
     for (const v of st.vehicles) {
@@ -170,6 +200,7 @@
   // se il punto cliccato è dentro un edificio o in acqua, prende la casella libera più vicina (verso il giocatore)
   function freeSpot(x, y) {
     if (st.player.indoor && G.INT.nearFree) { const p0 = st.player, L0 = G.INT.layout(G.BUILDINGS[p0.indoor.b]); return G.INT.nearFree(L0, p0.indoor.f, x, y) || { x: p0.x, y: p0.y }; }   // [interni] dentro si clicca sul pavimento
+    if (st.player.lv && window.Sottosuolo) return Sottosuolo.freeSpot(st, x, y);   // [sottosuolo] sotto terra si clicca sul cunicolo
     if (G.walkM(x, y)) return { x, y }; const p = st.player; let best = null, bd = 1e9;
     for (let r = 1; r <= 4 && !best; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) {
       const cx = (Math.floor(x / G.TS) + i) * G.TS + G.TS / 2, cy = (Math.floor(y / G.TS) + j) * G.TS + G.TS / 2; if (!G.walkM(cx, cy)) continue;
@@ -178,18 +209,21 @@
     return best || { x, y };
   }
   function goalPath(x, y) { const p = st.player; if (p.indoor && G.INT.findPath) { const L0 = G.INT.layout(G.BUILDINGS[p.indoor.b]), pp = G.INT.findPath(L0, p.indoor.f, p.x, p.y, x, y); return pp.length ? pp : [{ x, y }]; }   // [interni] percorso dentro casa
+    if (p.lv && window.Sottosuolo) { const pp = Sottosuolo.findPath(st, p.x, p.y, x, y); return pp.length ? pp : [{ x, y }]; }   // [sottosuolo] percorso nei cunicoli
     let path = G.findPath(p.x, p.y, x, y, p.vehicle ? .6 : 1.4); if (!path.length) path = [{ x, y }]; return path; }
   function onClick(nx, ny, dbl) {
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
     const p = st.player, h = pickAt(nx, ny); if (!h) return;
-    closeRing();
+    closeRing(); if (st.lv && st.lv.route) st.lv.route = null;
     if (p.vehicle) {
       if (h.kind === 'car' && h.v.id === p.vehicle) { click.t = null; ui.mark = null; doAct('veicolo'); return; }
       return;
     }
+    // [sottosuolo] sotto terra, un clic nella terra: il personaggio ci va scavando
+    if (h.kind === 'move' && p.lv && p.lv.k === 'ug' && window.Livelli && Livelli.digTo) { const g = R.screenToGround(nx, ny), r = g && Livelli.digTo(st, g.x, g.y); if (r) { if (r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); if (r.ok) { click.t = { kind: 'scava', x: g.x, y: g.y }; ui.mark = { x: g.x, y: g.y, t: ui.time, k: 'move' }; } return; } }
     if (h.kind === 'npc') { click.t = { kind: 'npc', id: h.n.id, path: [], pt: -9, run: dbl }; ui.mark = null; }
     else if (h.kind === 'car') { click.t = { kind: 'car', id: h.v.id, path: [], pt: -9, run: dbl }; ui.mark = { x: h.v.x, y: h.v.y, t: ui.time, k: 'car' }; }
-    else if (h.kind === 'loot') { const B0 = h.via === 'covo' ? Cantiere : Bottino, q = B0.goal(st, h.ref) || h; click.t = { kind: 'loot', via: h.via, ref: h.ref, x: q.x, y: q.y, path: goalPath(q.x, q.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
+    else if (h.kind === 'loot') { const B0 = h.via === 'covo' ? Cantiere : h.via === 'sotto' ? Sottosuolo : Bottino, q = B0.goal(st, h.ref) || h; click.t = { kind: 'loot', via: h.via, ref: h.ref, x: q.x, y: q.y, path: goalPath(q.x, q.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
     else if (h.kind === 'door') { click.t = { kind: 'door', bi: h.bi, x: h.x, y: h.y, path: goalPath(h.x, h.y), pt: ui.time, run: dbl }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
     else { click.t = { kind: 'move', x: h.x, y: h.y, path: goalPath(h.x, h.y), run: dbl, best: 1e9, bestT: ui.time, fl: p.indoor ? p.indoor.b + ':' + p.indoor.f : '' }; ui.mark = { x: h.x, y: h.y, t: ui.time, k: 'move' }; }
   }
@@ -199,19 +233,24 @@
     const stop = () => { click.t = null; ui.mark = null; return p.vehicle ? { x: 0, y: 0, sprint, brake: true } : { x: 0, y: 0, sprint }; };
     let gx = c.x, gy = c.y;
     if (c.fl !== undefined && c.fl !== (p.indoor ? p.indoor.b + ':' + p.indoor.f : '')) return stop();   // [interni] cambiato piano: il clic di prima non vale più
+    if (c.kind === 'scava') {   // [sottosuolo] segue lo scavo: cammina alla casella scavata dopo, o resta fermo e scava
+      const T0 = window.Livelli && Livelli.routeTarget(st); if (!T0) return stop();
+      if (T0.wait) return { x: 0, y: 0, sprint: false, aim: T0.aim };
+      const a0 = Math.atan2(T0.y - p.y, T0.x - p.x); return { x: Math.cos(a0), y: Math.sin(a0), sprint: false, aim: a0 };
+    }
     if (c.kind === 'door') {
       if (p.indoor) return stop();
       const b = G.BUILDINGS[c.bi], cx = (b.x + b.w / 2) * G.TS, cy = (b.y + b.h / 2) * G.TS;
       if (Math.hypot(gx - p.x, gy - p.y) < .8) { c.pushT = c.pushT || ui.time; if (ui.time - c.pushT > 1.6) return stop(); const a2 = Math.atan2(cy - p.y, cx - p.x); return { x: Math.cos(a2), y: Math.sin(a2), sprint: false, aim: a2 }; }
     }
     if (c.kind === 'loot') {   // [bottino] ci si avvicina; arrivati si raccoglie o si apre il pannello
-      const B0 = c.via === 'covo' ? Cantiere : Bottino, L = B0.find(st, c.ref); if (!L) return stop();
+      const B0 = c.via === 'covo' ? Cantiere : c.via === 'sotto' ? Sottosuolo : Bottino, L = B0.find(st, c.ref); if (!L) return stop();
       const d = Math.hypot(L.x - p.x, L.y - p.y), r = B0.reach(c.ref);
       if (d < r || (ui.time - c.bestT > 1.2 && d < r + 1.2)) { stop(); B0.arrive(st, c.ref); return { x: 0, y: 0, sprint, aim: Math.atan2(L.y - p.y, L.x - p.x) }; }
       if (d < c.best - .2) { c.best = d; c.bestT = ui.time; } else if (ui.time - c.bestT > 1.5) return stop();
     }
     if (c.kind === 'npc') {
-      const n = G.byId(st, c.id); if (!n || n.dead || n.inside) return stop();
+      const n = G.byId(st, c.id); if (!n || n.dead || (n.inside && !inRoom(n))) return stop();
       gx = n.x; gy = n.y;
       if (Math.hypot(n.x - p.x, n.y - p.y) < 1.5) { click.t = null; openRing(n); return { x: 0, y: 0, sprint, aim: Math.atan2(n.y - p.y, n.x - p.x) }; }
     } else if (c.kind === 'car') {
@@ -238,6 +277,7 @@
     const p = st.player, o = [];
     o.push({ label: 'Parla', run: () => { closeRing(); openTalk(n); } });
     if (window.RisaccaUI) o.push(...RisaccaUI.ringOptions(n, closeRing)); // RISACCA: chat libera
+    if (inRoom(n)) { o.push({ label: '✕', run: closeRing }); return o; }   // [scopo] dentro casa d'altri: si parla e basta
     const ctx = G.context(st).find(c => c.key === 'E');
     if (ctx) o.push({ label: ctx.label.startsWith('Rapina') ? 'Rapina' : 'Ruba', bad: true, run: () => { closeRing(); doAct('scippo'); } });
     o.push({ label: 'Picchia', bad: true, run: () => { const a = Math.atan2(n.y - p.y, n.x - p.x), was = p.cur; p.face = a; p.cur = 'pugni'; p.cool = 0; G.fire(st, a, { x: n.x, y: n.y }, true); p.cur = was; } });
@@ -264,14 +304,14 @@
     const p = st.player;
     if (ring.n) {
       const n = G.byId(st, ring.n);
-      if (!n || n.dead || n.inside || p.vehicle || ui.dialog || Math.hypot(n.x - p.x, n.y - p.y) > 4) closeRing();
+      if (!n || n.dead || (n.inside && !inRoom(n)) || p.vehicle || ui.dialog || Math.hypot(n.x - p.x, n.y - p.y) > 4) closeRing();
       else { buildRing(n); const pr = R.project(n.x, 1.1, n.y), o = cvOff(); ring.el.style.left = (o.x + pr.x * o.w) + 'px'; ring.el.style.top = (o.y + pr.y * o.h) + 'px'; }
     }
     if (ui.burst) { const n = G.byId(st, ui.burst.id); if (!n || n.dead || ui.time > ui.burst.until) ui.burst = null; else { G.fire(st, Math.atan2(n.y - p.y, n.x - p.x), { x: n.x, y: n.y }, ui.burst.first); ui.burst.first = false; } }
     // cosa c'è sotto il puntatore
     if (mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.menu && !ui.over && !ring.n && !(window.Cantiere && Cantiere.active())) {
       const h = pickAt(mouse.nx, mouse.ny); let t = '';
-      if (h && h.kind === 'npc') t = h.n.first || h.n.name;
+      if (h && h.kind === 'npc') { t = h.n.first || h.n.name; const d0 = window.Popolo && Popolo.doing ? Popolo.doing(st, h.n) : ''; if (d0) t += ' · ' + d0; }   // [scopo] cosa sta facendo
       else if (h && h.kind === 'loot') t = h.label;
       else if (h && h.kind === 'car') t = p.vehicle === h.v.id ? 'Scendi' : h.v.traffic ? `Tira giù l'automobilista (${G.VK[h.v.kind].label})` : h.v.lent || h.v.mine ? 'Sali' : `Ruba ${G.vehicleName(st, h.v)}`;
       cv.style.cursor = h && h.kind !== 'move' ? 'pointer' : 'default';
@@ -444,8 +484,8 @@
     const get = () => { let el = pool[i]; if (!el) { el = document.createElement('div'); layer.appendChild(el); pool.push(el); } el.hidden = false; el.style.transform = ''; i++; return el; };
     const p = st.player;
     if (!ui.intro) st.npcs.forEach(n => {
-      if (n.inside || n.dead) return;
-      if (p.indoor) return;   // dentro un edificio il fuori non si vede
+      if ((n.inside && !inRoom(n)) || n.dead) return;
+      if (p.indoor && !inRoom(n)) return;   // dentro un edificio il fuori non si vede (chi è nella stanza sì)
       const d = Math.hypot(n.x - p.x, n.y - p.y);
       const pr = R.project(n.x, 2.35, n.y); if (pr.behind || pr.x < -.05 || pr.x > 1.05 || pr.y < -.05 || pr.y > 1.05) return;
       const sx = pr.x * W, sy = pr.y * H;
@@ -520,8 +560,8 @@
   }
   function crosshair() {
     const x = $('xhair'), p = st.player;
-    const show = mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.over && !touchMode;
-    x.hidden = !show; cv.style.cursor = show ? 'none' : 'default';
+    const show = mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.over && !touchMode && !(window.Editor && Editor.active());   // [editor]
+    x.hidden = !show; cv.style.cursor = show ? 'none' : window.Editor && Editor.active() ? Editor.cursor() : 'default';
     if (!show) return;
     x.style.left = mouse.cx + 'px'; x.style.top = mouse.cy + 'px';
     const W = G.WEAPONS[p.cur], spread = W.melee || W.throw ? 0 : W.spread + p.bloom + (Math.abs(p.speed) > .5 ? .03 : 0);
@@ -575,7 +615,7 @@
   // i moduli degli edifici (Kenney Building Kit) arrivano prima della scena: la città nasce già montata
   const goBtn = $('go'); if (goBtn) { goBtn.disabled = true; goBtn.dataset.label = goBtn.textContent; goBtn.textContent = 'Carico il porto…'; }
   const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura', 'urbano', 'casa', 'stazione', 'garage', 'tortura']), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
-  kitWait.then(boot);
+  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
   function boot() {
   if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
   let glOk = true;
@@ -584,20 +624,23 @@
     $('screen').innerHTML = `<div class="in"><div class="logo" style="font-size:clamp(34px,6vw,64px)">Porto Vecchio</div><div class="story"><p>Il gioco usa la grafica 3D del browser (WebGL) e qui non è riuscito ad avviarla.</p><p>Prova ad aprire la pagina in Chrome, Edge o Firefox aggiornati, con l'accelerazione hardware attiva nelle impostazioni del browser.</p></div></div>`;
     return;
   }
+  if (window.Editor) Editor.attach({ get st() { return st; }, ui, G, R, cv, app, toast });   // [editor] F2
   function size() { const w = app.clientWidth || innerWidth, h = app.clientHeight || innerHeight; R.resize(w, h, Math.min(2, devicePixelRatio || 1)); }
   new ResizeObserver(size).observe(app); size();
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false;
   function loop(now) {
     const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
+    if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
     if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > 1 / 32) R.lowQuality(); } }
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
-    const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over;   // [azioni]
-    if (slow && !paused) G.step(st, dt * .25, { x: 0, y: 0 });
+    const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
+    const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]
+    if (slow && !paused && !edOn) G.step(st, dt * .25, { x: 0, y: 0 });
     else if (!paused) {
       const inp = ui.intro ? { x: 0, y: 0, freeze: true } : input();
       if (!ui.intro && (mouse.down || touchFire || mouse.pressed)) G.fire(st, inp.aim !== undefined ? inp.aim : aimAngle(), ui.aimPoint, mouse.pressed);
       mouse.pressed = false;
-      tickClick();
+      tickClick(); sprayTick(dt);
       G.step(st, dt, inp);
     }
     if (st.over && !ui.over) endScreen();
@@ -605,7 +648,7 @@
     ui.fade = ui.fadeUntil && ui.time < ui.fadeUntil ? Math.min(1, (ui.fadeUntil - ui.time) * 1.5) : 0;
     ui.desat = st.slowmo > 0;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
-    R.frame(st, dt, { mark: ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    R.frame(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     sounds();
     drawBubbles(); crosshair();
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); }

@@ -5,7 +5,7 @@ var Game = (function () {
   'use strict';
   const W0 = typeof World !== 'undefined' ? World : require('./world.js');
   const TS = W0.TS, GW = W0.GW, GH = W0.GH, WW = GW * TS, WH = GH * TS;
-  const MIN_PER_SEC = 2.5, DEBT = 500, START_T = 9 * 60, END_T = 54 * 60;   // [unione8] si comincia di mattina, col sole (prima alle 18); lo Squalo arriva sempre all'alba di giovedì
+  const MIN_PER_SEC = 1.2, DEBT = 500, START_T = 9 * 60, END_T = 54 * 60;   // [vivi] 1,2 minuti di gioco al secondo (erano 2,5): una giornata dura mezz'ora, a piedi 100 m sono circa un'ora e mezza, non tre   // [unione8] si comincia di mattina, col sole (prima alle 18); lo Squalo arriva sempre all'alba di giovedì
   const PLAYER_NAME = 'Nino';
 
   function makeRng(seed) { let s = (seed >>> 0) || 0x9e3779b9; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
@@ -136,9 +136,15 @@ var Game = (function () {
     while (c !== si && c !== -1) { raw.push({ x: (c % GW) * TS + TS / 2, y: ((c / GW) | 0) * TS + TS / 2 }); c = came[c]; }
     raw.reverse(); if (raw.length) raw[raw.length - 1] = { x: gx, y: gy }; else raw.push({ x: gx, y: gy });
     const out = []; let ax = sx, ay = sy, i = 0;
+    // [passo] a piedi la scorciatoia non taglia la carreggiata: si raddrizza solo dentro i tratti dello stesso tipo
+    // (marciapiede con marciapiede, strada con strada) e il tratto di strada resta quello scelto dalla ricerca: corto, dritto, dall'altra parte
+    const ped = roadCost > 1.5, onRoad = q => grid[Math.floor(q.y / TS) * GW + Math.floor(q.x / TS)] === T.VIA;
+    const lineOffRoad = (x0, y0, x1, y1) => { const d = dist(x0, y0, x1, y1), k = Math.ceil(d / .7); for (let m = 1; m < k; m++) { const x = x0 + (x1 - x0) * m / k, y = y0 + (y1 - y0) * m / k; if (grid[Math.floor(y / TS) * GW + Math.floor(x / TS)] === T.VIA) return false; } return true; };
+    const cls = ped ? raw.map(onRoad) : null, startRoad = ped ? onRoad({ x: sx, y: sy }) : false;
     while (i < raw.length) {
       let j = raw.length - 1;
-      while (j > i && !clearLine(ax, ay, raw[j].x, raw[j].y)) j--;
+      if (ped) { const c0 = i ? cls[i - 1] : startRoad; let e = i; while (e + 1 < raw.length && cls[e + 1] === cls[i]) e++; if (cls[i] !== c0) e = i; j = e; }   // non oltre il cambio di tipo
+      while (j > i && !(clearLine(ax, ay, raw[j].x, raw[j].y) && (!ped || cls[j] || lineOffRoad(ax, ay, raw[j].x, raw[j].y)))) j--;
       out.push(raw[j]); ax = raw[j].x; ay = raw[j].y; i = j + 1;
     }
     return out;
@@ -222,10 +228,10 @@ var Game = (function () {
     { skin: '#dcae88', top: '#e0d8c8', bottom: '#3a3a44', hair: '#888', hat: 'none', build: 1.0, extra: 'glasses' },
   ];
 
-  const SEV = { scippo: .5, aggressione: .75, rapina: .85, furto_vespa: .6, furto_auto: .65, investimento: .7, corruzione: .4, lavoro: .4, spari: .88, ferimento: .95, omicidio: 1, esplosione: .95, molotov: .9 };
-  const NOISE = { scippo: 3, aggressione: 12, rapina: 22, furto_vespa: 10, furto_auto: 12, investimento: 14, corruzione: 2, lavoro: 0, spari: 34, ferimento: 34, omicidio: 34, esplosione: 70, molotov: 16 };
-  const NEG = { scippo: 1, aggressione: 1, rapina: 1, furto_vespa: 1, furto_auto: 1, investimento: 1, corruzione: 1, spari: 1, ferimento: 1, omicidio: 1, esplosione: 1, molotov: 1 };
-  const LABEL = { scippo: 'Scippo', aggressione: 'Aggressione', rapina: 'Rapina', furto_vespa: 'Furto di Vespa', furto_auto: 'Furto d\'auto', investimento: 'Investimento', corruzione: 'Corruzione', lavoro: 'Lavoro onesto', spari: 'Spari', ferimento: 'Ferimento', omicidio: 'Omicidio', esplosione: 'Esplosione', molotov: 'Molotov' };
+  const SEV = { vandalismo: .35, scippo: .5, aggressione: .75, rapina: .85, furto_vespa: .6, furto_auto: .65, investimento: .7, corruzione: .4, lavoro: .4, spari: .88, ferimento: .95, omicidio: 1, esplosione: .95, molotov: .9 };
+  const NOISE = { vandalismo: 8, scippo: 3, aggressione: 12, rapina: 22, furto_vespa: 10, furto_auto: 12, investimento: 14, corruzione: 2, lavoro: 0, spari: 34, ferimento: 34, omicidio: 34, esplosione: 70, molotov: 16 };
+  const NEG = { vandalismo: 1, scippo: 1, aggressione: 1, rapina: 1, furto_vespa: 1, furto_auto: 1, investimento: 1, corruzione: 1, spari: 1, ferimento: 1, omicidio: 1, esplosione: 1, molotov: 1 };
+  const LABEL = { vandalismo: 'Vetrina rotta', scippo: 'Scippo', aggressione: 'Aggressione', rapina: 'Rapina', furto_vespa: 'Furto di Vespa', furto_auto: 'Furto d\'auto', investimento: 'Investimento', corruzione: 'Corruzione', lavoro: 'Lavoro onesto', spari: 'Spari', ferimento: 'Ferimento', omicidio: 'Omicidio', esplosione: 'Esplosione', molotov: 'Molotov' };
   const ESCALATE = { scippo: 'aggressione', investimento: 'aggressione', ferimento: 'omicidio' };
   // agganci per i moduli esterni (Risacca): create, think, move, step, verb
   const HOOKS = {};
@@ -437,9 +443,23 @@ var Game = (function () {
       if (n.dead || n.inside || n.cop || n.faction) return;
       const d = dist(n.x, n.y, x, y); if (d > r) return;
       if (d > r * .55 && !los(n.x, n.y, x, y)) return;
-      if (n.panic <= 0 && st.clock > n.barkCd) say(st, n, ['Sparano!', 'Aiuto!', 'Tutti giù!', 'Madonna santa!', 'Scappate!'][Math.floor(st.rng() * 5)], 2);
-      n.panic = Math.max(n.panic, secs * (1.2 - n.tr.cor * .5)); n.fleeFrom = { x, y }; n.path = [];
+      // [passo] chi sta già scappando continua; gli altri prima si fermano, si girano a guardare, poi reagiscono (ognuno coi suoi tempi)
+      if (n.panic > 0) { n.panic = Math.max(n.panic, secs * (1.2 - n.tr.cor * .5)); n.fleeFrom = { x, y }; return; }
+      if (n.alarm && n.alarm.react > st.clock) return;
+      n.alarm = { x, y, d, r, secs, t0: st.clock, react: st.clock + .3 + st.rng() * .55 + (1 - n.tr.cor) * .25 + d / 70 };
     });
+  }
+  // [passo] il momento fra il rumore e la reazione: fermo, la testa e poi il corpo verso il rumore; poi si scappa, o (chi ha
+  // coraggio ed è lontano) si resta a guardare
+  function alarmStep(st, n, dt) {
+    const A = n.alarm; if (!A) return false;
+    const look = Math.atan2(A.y - n.y, A.x - n.x);
+    if (st.clock < A.react) { n.speedNow = 0; n.face += angDiff(look, n.face) * Math.min(1, dt * (st.clock - A.t0 > .25 ? 7 : 2)); return true; }
+    n.alarm = null;
+    if (n.tr.cor > .72 && A.d > A.r * .5 && st.rng() < .6) { n.wait = 1.5 + st.rng() * 2; n.face = look; if (st.clock > n.barkCd) { say(st, n, ['Che succede laggiù?', 'Ma cosa…', 'Hai sentito?'][Math.floor(st.rng() * 3)], 2); n.barkCd = st.clock + 4; } return false; }
+    if (st.clock > n.barkCd) say(st, n, ['Sparano!', 'Aiuto!', 'Tutti giù!', 'Madonna santa!', 'Scappate!'][Math.floor(st.rng() * 5)], 2);
+    n.panic = Math.max(n.panic, A.secs * (1.2 - n.tr.cor * .5)); n.fleeFrom = { x: A.x, y: A.y }; n.path = [];
+    return false;
   }
 
   // ---------------- FAZIONI E POLIZIA ----------------
@@ -786,6 +806,7 @@ var Game = (function () {
       case 'omicidio': return `ha ammazzato ${T === 'me' ? 'qualcuno' : T}`;
       case 'esplosione': return 'ha fatto saltare in aria una macchina';
       case 'molotov': return 'ha lanciato una molotov';
+      case 'vandalismo': return 'ha rotto una vetrina a sassate';   // [trame]
     }
     return (HOOKS.verb && HOOKS.verb(st, m, T)) || 'ha fatto qualcosa';
   }
@@ -1167,14 +1188,56 @@ var Game = (function () {
 
   // ---------------- MOVIMENTO ----------------
   function goTo(n, x, y, roadCost) { n.path = findPath(n.x, n.y, x, y, roadCost || 3.2); n.goal = { x, y }; }
+  // [passo] si cammina come le persone: ognuno col suo passo e il suo lato (si tiene la destra), le svolte si arrotondano,
+  // in curva si rallenta un po'. Il corpo segue la direzione con un poco di ritardo, non scatta.
+  const pHash = n => { if (n.__ph === undefined) { let h = 7; const s0 = String(n.id); for (let i = 0; i < s0.length; i++) h = (h * 31 + s0.charCodeAt(i)) % 10007; n.__ph = h / 10007; } return n.__ph; };
   function stepAlong(n, speed, dt, keepFace) {
     n.speedNow = 0;
     if (!n.path.length) return true;
-    const w = n.path[0], dx = w.x - n.x, dy = w.y - n.y, d = Math.hypot(dx, dy), s = speed * dt;
-    if (d > .01 && !keepFace) { const ta = Math.atan2(dy, dx); n.face += angDiff(ta, n.face) * Math.min(1, dt * 10); }
-    n.speedNow = speed;
-    if (d <= s) { n.x = w.x; n.y = w.y; n.path.shift(); return !n.path.length; }
-    n.x += dx / d * s; n.y += dy / d * s; return false;
+    const h = pHash(n), last = n.path.length === 1;
+    // [passo] chi era fermo da un po' e riparte: un attimo per guardare dove va e girarsi, poi si incammina (chi corre no)
+    if (speed < 2.5 && !keepFace) {
+      if ((n.__still || 0) > 1.5 && !n.__dep) n.__dep = .35 + h * .5;
+      if (n.__dep > 0) { const w0 = n.path[0]; n.__dep -= dt; n.__still = 0; n.face += angDiff(Math.atan2(w0.y - n.y, w0.x - n.x), n.face) * Math.min(1, dt * (n.__dep < .25 ? 7 : 1.5)); n.__hd = n.face; if (n.__dep > 0) return false; }
+    }
+    n.__dep = 0; n.__still = 0;
+    speed *= .9 + h * .2;
+    // vicino a una svolta si punta già al punto dopo (se lo spigolo è libero)
+    if (!last && Math.hypot(n.path[0].x - n.x, n.path[0].y - n.y) < .7 && walkM((n.x + n.path[1].x) / 2, (n.y + n.path[1].y) / 2)) n.path.shift();
+    let w = n.path[0];
+    // il suo lato: un po' a destra della linea, mai sull'ultimo punto (lì ci deve arrivare)
+    if (n.path.length > 1 && !keepFace) {
+      const nx2 = n.path[1].x - w.x, ny2 = n.path[1].y - w.y, L = Math.hypot(nx2, ny2) || 1, off = .12 + h * .35;
+      const ox = w.x - ny2 / L * off, oy = w.y + nx2 / L * off; if (walkM(ox, oy)) w = { x: ox, y: oy };
+    }
+    const dx = w.x - n.x, dy = w.y - n.y, d = Math.hypot(dx, dy);
+    if (d < 1e-3) { n.path.shift(); return !n.path.length; }
+    const ta = Math.atan2(dy, dx);
+    // la direzione di marcia gira con un limite (più svelta per chi corre); con una svolta stretta si rallenta
+    if (n.__hd === undefined || !isFinite(n.__hd)) n.__hd = ta;
+    const turn = angDiff(ta, n.__hd), maxT = (5 + speed * 1.5) * dt;
+    n.__hd += Math.max(-maxT, Math.min(maxT, turn));
+    const slow = Math.max(.35, Math.cos(Math.min(Math.PI / 2, Math.abs(angDiff(ta, n.__hd))))), s = speed * slow * dt;
+    if (!keepFace) n.face += angDiff(n.__hd, n.face) * Math.min(1, dt * 8);
+    n.speedNow = speed * slow;
+    if (d <= Math.max(s, .12)) { const q = n.path.shift(); n.x = q === w ? w.x : n.x + dx; n.y = q === w ? w.y : n.y + dy; if (!n.path.length) { n.x = q.x; n.y = q.y; } return !n.path.length; }
+    // si va nella direzione di marcia; se non si può (un muro) si va dritti al punto
+    const mx = Math.cos(n.__hd) * s, my = Math.sin(n.__hd) * s;
+    if (walkM(n.x + mx, n.y + my)) { n.x += mx; n.y += my; } else { n.x += dx / d * s; n.y += dy / d * s; n.__hd = ta; }
+    return false;
+  }
+  // [passo] chi cammina vicino al giocatore non passa attraverso gli altri: ci si scansa (appena, ognuno la sua metà)
+  function separate(st) {
+    const p = st.player, cell = {}, L = [];
+    for (const n of st.npcs) { if (n.dead || n.inside || n.room || n.stun > 0 || (n.pop && !n.pop.near) || Math.abs(n.x - p.x) > 60 || Math.abs(n.y - p.y) > 60) continue; const k = Math.floor(n.x / 1.2) + ',' + Math.floor(n.y / 1.2); (cell[k] = cell[k] || []).push(n); L.push(n); }
+    for (const n of L) {
+      const cx = Math.floor(n.x / 1.2), cy = Math.floor(n.y / 1.2);
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const C = cell[(cx + ox) + ',' + (cy + oy)]; if (!C) continue;
+        for (const k of C) { if (k === n || k.id < n.id) continue; const dx = k.x - n.x, dy = k.y - n.y, d = Math.hypot(dx, dy), R = .62; if (d >= R || d < 1e-4) continue;
+          const push = (R - d) / 2, ux = dx / d, uy = dy / d, a = (n.speedNow > .3 ? .5 : .3), b = (k.speedNow > .3 ? .5 : .3);
+          if (walkM(n.x - ux * push * a, n.y - uy * push * a)) { n.x -= ux * push * a; n.y -= uy * push * a; }
+          if (walkM(k.x + ux * push * b, k.y + uy * push * b)) { k.x += ux * push * b; k.y += uy * push * b; } } }
+    }
   }
   function wanderSpot(st, place) {
     for (let i = 0; i < 10; i++) {
@@ -1191,6 +1254,8 @@ var Game = (function () {
     if (n.panic > 0) n.panic -= dt;
     if (n.cool > 0) n.cool -= dt;
     if (n.stun > 0) { n.stun -= dt; n.speedNow = 0; return; }
+    if (n.alarm && !n.inside && alarmStep(st, n, dt)) return;   // [passo]
+    if (!(n.speedNow > .3)) n.__still = (n.__still || 0) + dt;   // [passo] da quanto è fermo (per la partenza)
     if (n.jailedUntil > st.t) { n.x = PLACES.commissariato.x; n.y = PLACES.commissariato.y - 1; n.inside = true; return; }
     const a = n.action.name, p = st.player;
     if (HOOKS.move && HOOKS.move(st, n, dt, a)) return;
@@ -1834,6 +1899,28 @@ var Game = (function () {
     }
   }
   // vetrine: le facciate déco hanno vetrate su tutto il piano terra, negozi e locali solo sul davanti
+  // [trame] lanciare: chiunque può tirare un sasso (o altro) verso un punto; vola davvero e quando cade fa quello che fa
+  function npcThrow(st, n, tx, ty, kind) {
+    // se il bersaglio è davanti a un edificio (la porta sta sulla strada) si mira alla facciata più vicina
+    const isB = (x, y) => grid[Math.floor(y / TS) * GW + Math.floor(x / TS)] === T.BLD;
+    if (!isB(tx, ty)) { let best = null, bd = 9; for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7]]) for (const r of [1.2, 2.2]) { const x = tx + ox * r, y = ty + oy * r; if (isB(x, y)) { const dd = dist(x, y, n.x, n.y); if (dd < bd) { bd = dd; best = { x, y }; } } } if (best) { tx = best.x; ty = best.y; } }
+    const d = Math.max(1, dist(n.x, n.y, tx, ty)), Tf = clamp(d / 11, .35, 1.3), g = 9.8;
+    n.face = Math.atan2(ty - n.y, tx - n.x); n.gesture = .4;
+    st.proj.push({ x: n.x, y: n.y, z: 1.6, vx: (tx - n.x) / Tf, vy: (ty - n.y) / Tf, vz: (-1.6 + .5 * g * Tf * Tf) / Tf, g, kind: kind || 'sasso', owner: n.id });
+  }
+  function stoneLand(st, pr) {
+    const ang = Math.atan2(pr.vy, pr.vx), tx = Math.floor(pr.x / TS), ty = Math.floor(pr.y / TS), i = ty * GW + tx, by = pr.owner === 'player' ? 'player' : byId(st, pr.owner);
+    if (pr.hit) {
+      const k = pr.hit; st.sfx.push({ k: 'hurt', x: pr.x, y: pr.y });
+      if (k === st.player) damagePlayer(st, 6, ang, pr.owner); else { k.stun = Math.max(k.stun || 0, .6); damage(st, k, 7, by && by !== 'player' ? by : 'env', ang, 'sasso'); }
+    } else if (grid[i] === T.BLD && bIndex[i] >= 0) {
+      const b = BUILDINGS[bIndex[i]], glassy = glassFront(b, ang);
+      st.fx.push({ k: 'facadehit', x: pr.x, y: pr.y, a: ang, n: 1, need: 99, b: bIndex[i], tx, ty, speed: 9, glass: glassy });
+      st.sfx.push({ k: glassy ? 'glass' : 'wallhit', x: pr.x, y: pr.y });
+      if (glassy) emit(st, 'vandalismo', { x: pr.x, y: pr.y, actor: by && by !== 'player' ? by.id : 'player', npcCrime: by !== 'player' });   // chi vede sa chi è stato
+    } else st.sfx.push({ k: 'wallhit', x: pr.x, y: pr.y });
+    panicAround(st, pr.x, pr.y, 9, 3);
+  }
   function glassFront(b, ang) {
     if (!b || b.church || b.warehouse || b.lighthouse) return false;
     if (b.deco) return true;
@@ -2008,7 +2095,12 @@ var Game = (function () {
     st.proj = st.proj.filter(pr => {
       pr.x += pr.vx * dt; pr.y += pr.vy * dt; pr.z += pr.vz * dt; pr.vz -= pr.g * dt;
       if (solidM(pr.x, pr.y) && pr.z < 8) { pr.z = 0; }
+      if (pr.kind === 'sasso' && pr.z > 0 && pr.z < 2.2) {   // [trame] un sasso prende chi incontra per strada
+        const who = st.npcs.find(k => !k.dead && !k.inside && k.id !== pr.owner && Math.hypot(k.x - pr.x, k.y - pr.y) < .55) || (Math.hypot(st.player.x - pr.x, st.player.y - pr.y) < .55 && pr.owner !== 'player' ? st.player : null);
+        if (who) { pr.z = 0; pr.hit = who; }
+      }
       if (pr.z > 0) return true;
+      if (pr.kind === 'sasso') { stoneLand(st, pr); return false; }
       st.fires.push({ x: pr.x, y: pr.y, r: 2.4, until: st.clock + 6, owner: pr.owner });
       st.fx.push({ k: 'molotov', x: pr.x, y: pr.y }); st.sfx.push({ k: 'glass', x: pr.x, y: pr.y });
       if (pr.owner === 'player') { const ev = emit(st, 'molotov', { x: pr.x, y: pr.y }); addLog(st, `${clockStr(st.t)} · Hai lanciato una molotov a ${ev.place}.`, 'bad', ev.id); }
@@ -2064,6 +2156,7 @@ var Game = (function () {
       moveNpc(st, n, dt);
       if (!n.inside) pushOutOfVehicles(st, n, .35);
     }
+    separate(st);   // [passo]
     for (const v of st.vehicles) {
       if (v.hidden) continue;
       if (v.burning > 0) { v.burning -= dt; if (v.burning <= 0) explode(st, v); }
@@ -2120,7 +2213,7 @@ var Game = (function () {
   }
 
   return {
-    TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
+    TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
     tileAt, walkT, walkM, bIndex, create, step, act, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,

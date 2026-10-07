@@ -400,7 +400,7 @@ var Risacca = (function () {
     return best;
   }
   // [fazioni] punti d'aggancio per i moduli esterni: verbi in più (plan / do), tetto dei membri, chi parla in cella
-  const EXT = { plan: [], do: {}, canJoin: null, onJoin: [], onTalk: [], willMod: null, cardExtra: null };
+  const EXT = { plan: [], do: {}, canJoin: null, onJoin: [], onTalk: [], willMod: null, cardExtra: null, immediate: {}, rulesExtra: [], stateExtra: [], onReply: [] };   // [convivenza] immediate: verbi che si fanno subito; rulesExtra/stateExtra: righe in più per la chat; onReply: dopo ogni risposta
   const go = (p, extra) => Object.assign({ k: 'go', x: p.x, y: p.y, name: p.name }, extra || {});
   const PUBLIC = ['piazza', 'fontana', 'calata', 'vico', 'lungomare', 'molo', 'piazzetta', 'passeggiata', 'giardini', 'caruggio', 'salita', 'spiaggia', 'marina'];
 
@@ -876,6 +876,7 @@ var Risacca = (function () {
     if (!opts.force && w.verdict !== 'accetta') {
       return { ok: false, verdict: w.verdict, s: w.s, msg: w.verdict === 'contratta' ? `Ci sta pensando: ${w.why.join(', ') || 'vuole qualcosa in cambio'}.` : `Rifiuta: ${w.why.join(', ') || 'non se la sente'}.` };
     }
+    if (EXT.immediate[verb]) return EXT.immediate[verb](st, n, args || {}, w);   // [convivenza]
     // azioni immediate
     switch (verb) {
       case 'unisciti': if (n.ris.member) return { ok: true, msg: 'È già dei nostri.' }; if (join(st, n) === false) return { ok: false, verdict: 'contratta', msg: 'La Risacca è al completo: quindici. Può entrare come collaboratore di un membro.' }; return { ok: true, verdict: 'accetta', msg: `${n.first} entra nella Risacca.` };   // [fazioni]
@@ -1397,6 +1398,7 @@ var Risacca = (function () {
       c.mission ? `Ha un favore da chiedere al giocatore prima di fidarsi del tutto: «${c.mission.title}». Usa il verbo "missione" per proporlo quando il giocatore chiede come aiutare o vuole reclutarlo.` : '',
       c.mestiere ? `Mestiere: lavora a ${PLACES[c.mestiere.place].name} (${c.mestiere.pay}.000 lire l'ora).` : '',
       EXT.cardExtra ? EXT.cardExtra(st, n) : '',   // [mestieri] cosa può fare col suo lavoro
+      ...EXT.rulesExtra.map(f => { try { return f(st, n) || ''; } catch (e) { return ''; } }),   // [convivenza]
       c.likes && c.likes.length ? `Fa volentieri: ${c.likes.join(', ')}. Non farà mai: ${(c.never || []).join(', ') || 'nulla di particolare'}.` : '',
       '',
       'COME RISPONDERE',
@@ -1433,6 +1435,7 @@ var Risacca = (function () {
       known.length ? `Conosce questi posti vuoti (può rivelarli con rivela_spazio): ${known.join(', ')}.` : '',
       `Cosa sa: ${memLines(st, n).join('; ') || 'niente di speciale'}.`,
       r.notes.length ? `Ricordi delle chiacchierate con ${G.PLAYER_NAME}: ${r.notes.slice(-6).join(' / ')}` : '',
+      ...EXT.stateExtra.map(f => { try { return f(st, n) || ''; } catch (e) { return ''; } }),   // [convivenza] la sua vita di adesso
       `VOLONTÀ adesso: ${rated}.`,
     ];
     return parts.filter(Boolean).join('\n');
@@ -1485,6 +1488,7 @@ var Risacca = (function () {
     }
     out.filter(o => o.msg).forEach(o => ch.push({ role: 'sys', text: (o.ok ? '✓ ' : '✗ ') + o.msg, ok: o.ok, t: st.t }));
     if (ch.length > 80) ch.splice(0, ch.length - 80);
+    EXT.onReply.forEach(f => { try { f(st, n, text, said, out, resp); } catch (e) { } });   // [convivenza]
     n.face = Math.atan2(st.player.y - n.y, st.player.x - n.x); n.wait = Math.max(n.wait, 4);
     G.say(st, n, said.text.length > 70 ? said.text.slice(0, 67) + '…' : said.text, 4);
     return { say: said.text, mood: resp.umore || '', outcomes: out };
@@ -1497,9 +1501,11 @@ var Risacca = (function () {
     const findPlace = () => { for (const p of Object.values(PLACES)) { const pn = norm(p.name); if (t.includes(pn) || pn.split(/\s+/).some(w => w.length > 4 && t.includes(w))) return p.id; } return null; };
     const findRes = () => { for (const [id, R0] of Object.entries(RES)) if (R0.syn.some(w => t.includes(norm(w)))) return id; return null; };
     if (/\b(unisc|unirti|entra|entrare|con noi|dei nostri|risacca)/.test(t) && !r.member) acts.push({ verbo: 'unisciti' });
-    else if (/missione|aiutar|ti serve|favore|cosa posso fare/.test(t)) acts.push({ verbo: 'missione' });
+    else if (/missione|aiutar|ti serve|favore|cosa posso fare|ti manca|hai bisogno/.test(t)) acts.push({ verbo: (c.mission || r.member) && !/ti manca|hai bisogno/.test(t) ? 'missione' : 'chiedi_aiuto' });   // [convivenza] chi non ha una missione chiede quello che gli manca davvero
     if (/\b(posto|nascondigl|spazio|cantina|soffitta|magazzino vuoto)/.test(t)) acts.push({ verbo: 'rivela_spazio' });
-    if (/seguimi|vieni con me|andiamo/.test(t)) acts.push({ verbo: 'seguimi' });
+    if (/seguimi|vieni con me|andiamo|accompagnami/.test(t)) acts.push(r.member ? { verbo: 'seguimi' } : { verbo: 'accompagna', ore: num && +num <= 3 ? +num : 1 });   // [convivenza]
+    if (/vediamoci|ci vediamo|appuntamento|ci troviamo|incontriamoci/.test(t) && !st.npcs.some(k => k !== n && !k.dead && t.includes(norm(k.first)))) { const h = (t.match(/alle (\d{1,2})(?:[:.](\d{2}))?/) || []); acts.push({ verbo: 'appuntamento', luogo: findPlace() || (n.pop && n.pop.at && n.pop.at.place) || 'piazza', ora: h[1] ? h[1] + ':' + (h[2] || '00') : '18', giorno: /domani/.test(t) ? 'domani' : 'oggi' }); }   // [convivenza]
+    { const inv = st.player.inv || {}; const id = /\b(ti do|tieni|ti porto|prendi)\b/.test(t) && Object.keys(inv).find(k => inv[k] > 0 && (t.includes(norm(k)) || (EXT.itemName && t.includes(norm(EXT.itemName(k)).split(' ')[0])))); if (id) acts.push({ verbo: 'ricevi', oggetto: id, quanto: 1 }); }   // [convivenza] una cosa dallo zaino
     if (/aspetta|resta qui|fermati/.test(t)) acts.push({ verbo: 'aspetta' });
     if (/basta|lascia stare|torna a casa|vai a casa|riposa/.test(t)) acts.push({ verbo: 'basta' });
     if (/lavor|turno/.test(t) && !/cantier|costru/.test(t)) acts.push({ verbo: 'lavora', ore: num || 4 });
@@ -1557,7 +1563,7 @@ var Risacca = (function () {
     } else if (w.verdict === 'accetta') say = r.member ? ['Va bene. Ci penso io.', 'Fatto, vado.', 'Contaci.'][Math.floor(st.rng() * 3)] : ['D\'accordo.', 'Va bene, ma che resti tra noi.'][Math.floor(st.rng() * 2)];
     else if (w.verdict === 'contratta') say = n.tr.avid > .6 ? 'Ci sto, ma qualcosa in tasca me lo devi mettere.' : 'Non lo so… Dammi una ragione per rischiare.';
     else say = (c.never || []).includes(acts[0].verbo) ? 'Questo no. Non chiedermelo più.' : 'No. Non adesso, non così.';
-    const resp = { __fb: true, risposta: say, umore: '', azioni: w && w.verdict === 'accetta' ? acts : acts.filter(a => a.verbo === 'ricevi_soldi' || a.verbo === 'missione' || a.verbo === 'rivela_spazio'), persuasione: /ti prego|per favore|per (la|l.)isola|per tuo|insieme|liberi/.test(t) ? .08 : 0, memoria: `Mi ha detto: «${text.slice(0, 60)}»` };
+    const resp = { __fb: true, risposta: say, umore: '', azioni: w && w.verdict === 'accetta' ? acts : acts.filter(a => a.verbo === 'ricevi_soldi' || a.verbo === 'missione' || a.verbo === 'rivela_spazio' || a.verbo === 'ricevi' || a.verbo === 'chiedi_aiuto'), persuasione: /ti prego|per favore|per (la|l.)isola|per tuo|insieme|liberi/.test(t) ? .08 : 0, memoria: `Mi ha detto: «${text.slice(0, 60)}»` };
     return resp;
   }
 

@@ -103,7 +103,7 @@ function loadConfig() {
 // Tre canali, ognuno può avere la sua chiave (e quindi la sua quota, se le chiavi vengono da progetti Google diversi):
 //   chat   = il giocatore parla con un abitante · mente = la notte dei gruppi (coro.js) · eventi = incontri e chiacchiere a caso
 // Un canale senza chiave propria usa quella generale.
-const CANALI = { dialogo: 'chat', gruppo: 'mente', riflessione: 'mente', chiacchiera: 'eventi', regia: 'eventi' };   // [regia] il regista va con gli eventi
+const CANALI = { dialogo: 'chat', gruppo: 'mente', riflessione: 'mente', chiacchiera: 'eventi', regia: 'eventi', graffito: 'eventi' };   // [graffiti]   // [regia] il regista va con gli eventi
 function cfgPer(cfg, canale) {
   const k = String((cfg.chiavi && cfg.chiavi[canale]) || '').trim().replace(/^["']|["']$/g, '');
   if (!k || /INCOLLA|CHIAVE|INSERISCI/i.test(k)) return Object.assign({}, cfg, { apiKey0: cfg.apiKey, canale, propria: false });
@@ -359,6 +359,46 @@ function sendJSON(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
+// [editor] ritocchi fatti nel gioco: si scrivono solo questi file, e solo se la richiesta viene dal gioco stesso
+const RIT_FILE = path.join(ROOT, 'ritocchi.json'), RIT_DIR = path.join(ROOT, 'ritocchi');
+let ritBackupDone = false;
+function handleRitocchi(req, res, pathname, parsedUrl) {
+  const origin = req.headers.origin;
+  if (origin && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) { sendJSON(res, 403, { ok: false, errore: 'solo dal gioco aperto in locale' }); return; }
+  if (req.method === 'GET') { sendJSON(res, 200, { ok: true, file: fs.existsSync(RIT_FILE) }); return; }
+  if (req.method !== 'POST') { sendJSON(res, 405, { ok: false }); return; }
+  const chunks = []; let size = 0;
+  req.on('data', c => { size += c.length; if (size > 64 * 1024 * 1024) { req.destroy(); return; } chunks.push(c); });
+  req.on('end', () => {
+    try {
+      const body = Buffer.concat(chunks);
+      if (pathname === '/api/ritocchi') {
+        const data = JSON.parse(body.toString('utf8'));
+        // la prima volta che si salva in questa sessione, la versione di prima resta in ritocchi.backup.json
+        if (!ritBackupDone && fs.existsSync(RIT_FILE)) fs.copyFileSync(RIT_FILE, path.join(ROOT, 'ritocchi.backup.json'));
+        ritBackupDone = true;
+        fs.writeFileSync(RIT_FILE, JSON.stringify(data, null, 1));
+        sendJSON(res, 200, { ok: true }); return;
+      }
+      if (pathname === '/api/ritocchi/png') {
+        const nome = parsedUrl.searchParams.get('nome') || '';
+        if (!/^[\w.-]+\.png$/.test(nome) || body.length < 8 || body.readUInt32BE(0) !== 0x89504e47) { sendJSON(res, 400, { ok: false, errore: 'nome o immagine non validi' }); return; }
+        fs.mkdirSync(RIT_DIR, { recursive: true });
+        fs.writeFileSync(path.join(RIT_DIR, nome), body);
+        sendJSON(res, 200, { ok: true, file: 'ritocchi/' + nome }); return;
+      }
+      if (pathname === '/api/ritocchi/file') {   // [studio] modelli caricati (.glb): in ritocchi/modelli
+        const nome = parsedUrl.searchParams.get('nome') || '';
+        if (!/^[\w.-]+\.glb$/.test(nome) || body.length < 12 || body.toString('latin1', 0, 4) !== 'glTF') { sendJSON(res, 400, { ok: false, errore: 'serve un file .glb' }); return; }
+        const dir = path.join(RIT_DIR, 'modelli'); fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, nome), body);
+        sendJSON(res, 200, { ok: true, file: 'ritocchi/modelli/' + nome }); return;
+      }
+      sendJSON(res, 404, { ok: false });
+    } catch (e) { console.error('[editor]', e.message); sendJSON(res, 500, { ok: false, errore: e.message }); }
+  });
+}
+
 function aiReply(res, aiResp) {
   sendJSON(res, 200, {
     ok: true,
@@ -467,6 +507,29 @@ Restituisci un JSON:
         return aiReply(res, await callLLM(cfg, sys, usr, 450, false));
       }
 
+      if (kind === 'graffito') {   // [graffiti] cosa dipinge un abitante, a bomboletta, su un muro
+        const sys = buildSystemPrompt() + `
+Compito: una persona della città sta per fare un graffito su un muro, con le bombolette. Decidi TU cosa dipinge, come
+lo farebbe lei: col suo carattere, il suo umore, i suoi ricordi, quello che odia o ama, il suo stile. Può scrivere una frase
+breve (un nome, uno slogan, un insulto, una dedica, una data) e/o fare un disegno semplice a tratti (una faccia, una barca,
+un pesce, un cuore, una caricatura, un simbolo). Libera espressione, ma niente oscenità esplicite.
+Il muro: u in metri lungo il muro da -1.5 (sinistra) a 1.5 (destra), v in metri da terra da 0.3 a 2.6.
+La scritta la tracciamo noi in stampatello, fra v 1.1 e 1.9: dai solo il testo (max 24 caratteri). I tratti del disegno
+sono linee spezzate: se c'è una scritta disegna sopra (v 1.95-2.6) o ai lati, se no usa tutto il muro.
+Colori bombolette: #c42a22 rosso, #1e1e24 nero, #e8e0d0 bianco, #2a6ac8 blu, #e8c040 giallo, #3a9a5a verde, #c84a9a rosa, #e8a020 arancio.
+Restituisci un JSON:
+{
+  "testo": "la scritta, oppure vuoto",
+  "colore_testo": "#rrggbb",
+  "altezza_lettere": 0.3,
+  "tratti": [ { "colore": "#rrggbb", "spessore": 0.05, "punti": [[u, v], [u, v], ...] } ],
+  "descrizione": "cosa ha dipinto, in poche parole"
+}
+Al massimo 20 tratti, ognuno al massimo 30 punti; spessore fra 0.025 e 0.09.`;
+        const usr = `Chi dipinge e perché:\n${JSON.stringify(body.scena || {})}`;
+        return aiReply(res, await callLLM(cfg, sys, usr, 900, false));
+      }
+
       sendJSON(res, 400, { ok: false, error: 'Kind sconosciuto' });
     } catch (err) {
       sendJSON(res, 500, { ok: false, error: err.message });
@@ -514,6 +577,9 @@ const server = http.createServer(async (req, res) => {
     sendJSON(res, 200, Object.assign(statusObj(cfg), { test: r ? 'ok' : 'fallito', risposta: r }));
     return;
   }
+
+  // [editor] l'editor del gioco (F2) salva qui i ritocchi: ritocchi.json e le pitture in ritocchi/*.png
+  if (pathname.startsWith('/api/ritocchi')) { handleRitocchi(req, res, pathname, parsedUrl); return; }
 
   if (pathname === '/') pathname = '/index.html';
   const filePath = path.join(ROOT, pathname);

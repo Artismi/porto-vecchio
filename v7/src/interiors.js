@@ -780,7 +780,7 @@ var Interior = (function () {
   const ORD = ['piano terra', 'primo piano', 'secondo piano', 'terzo piano', 'quarto piano', 'quinto piano', 'sesto piano', 'settimo piano'];
   const floorLabel = f => ORD[f] || `piano ${f}`;
   const MOODNAME = { famiglia: 'una famiglia', anziana: 'una vecchia sola', operaio: 'un operaio', pescatore: 'un pescatore', intellettuale: 'uno che legge e scrive', funzionario: 'un funzionario della Tutela', kommunalka: 'tre famiglie in una casa', contadino: 'contadini', rudere: 'nessuno, da tempo', condominio: 'il condominio' };
-  return { findPath, nearFree, reachAll, layout, walk, outside, onStairTop, stairGo, roomAt, kindOf, EXTRA, SZ, V, R, DECOR, SMALL, LOOTAS, LOOTX, FNAME, roomLabel, floorLabel, MOODNAME };
+  return { szOf, findPath, nearFree, reachAll, layout, walk, outside, onStairTop, stairGo, roomAt, kindOf, EXTRA, SZ, V, R, DECOR, SMALL, LOOTAS, LOOTX, FNAME, roomLabel, floorLabel, MOODNAME };
 
 })();
 if (typeof module !== 'undefined') module.exports = Interior;
