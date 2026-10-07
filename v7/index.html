@@ -26752,6 +26752,44 @@ var Render = (function () {
     });
     window.__muri = cnt;
   }
+  // [prato1] il prato vero nel materiale del terreno (vedi strumenti_inverno/prato1.py)
+  const PRATO9 = { k: { value: 1 } };
+  function prato9(mat) {
+    mat.customProgramCacheKey = () => 'suolo-prato9';
+    mat.onBeforeCompile = sh => {
+      sh.uniforms.uPrato9 = PRATO9.k;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGw9;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGw9 = (modelMatrix * vec4(transformed, 1.)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+        varying vec3 vGw9; uniform float uPrato9;
+        float ph9(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float pn9(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3. - 2.*f); return mix(mix(ph9(i), ph9(i + vec2(1., 0.)), f.x), mix(ph9(i + vec2(0., 1.)), ph9(i + 1.), f.x), f.y); }
+        vec3 prato9(vec3 base, vec2 p){
+          vec2 fw = fwidth(p); float mpp = max(fw.x, fw.y);                    // metri per pixel sullo schermo
+          float aa = 1. - smoothstep(.025, .07, mpp), aa2 = 1. - smoothstep(.04, .12, mpp);
+          float cl = pn9(p * 1.9) * .6 + pn9(p * 4.6 + 3.) * .4, zo = pn9(p * .21 + 11.), dryN = pn9(p * .55 + 31.);
+          vec2 a = mat2(.96, .28, -.28, .96) * p, b = mat2(.93, -.37, .37, .93) * p;
+          float s1 = pn9(a * vec2(19., 4.2)), s2 = pn9(b * vec2(29., 6.) + 5.), s3 = pn9(p * vec2(9., 2.4) + 17.);
+          float bl = smoothstep(.55, .9, max(s1, s2 * .97)), gap = smoothstep(.32, .06, min(s1, s2));
+          float tuft = smoothstep(.6, .85, s3) * smoothstep(.45, .7, cl);
+          float k = .86 + (cl - .5) * .42 + (zo - .5) * .3;
+          vec3 c = base * (k + (bl * .5 - gap * .38) * aa + tuft * .22 * aa2);
+          c = mix(c, c * vec3(1.1, 1.07, .78), clamp(bl * aa * .55 + tuft * aa2 * .3, 0., 1.));   // la punta del filo, calda
+          c = mix(c, c * vec3(.8, .94, 1.12), gap * aa * .6);                                    // le fughe, fredde
+          float dry = smoothstep(.66, .84, dryN) * (1. - tuft);
+          c = mix(c, vec3(dot(c, vec3(.3, .59, .11))) * vec3(1.32, 1.12, .66), dry * .4);       // chiazze secche
+          return c; }`)
+        .replace('#include <map_fragment>', `#include <map_fragment>
+        #ifdef USE_MAP
+        if (uPrato9 > .01) {   // [prato1] dove il suolo è verde
+          vec3 sm9 = texture2D(map, vUv, 4.).rgb;   // molto sfocata: i granelli chiari spariscono nel verde e il prato si riconosce intero
+          float gm9 = smoothstep(1.06, 1.3, sm9.g / max(max(sm9.r, sm9.b), .003)) * smoothstep(.008, .025, sm9.g) * uPrato9;
+          if (gm9 > .001) diffuseColor.rgb = mix(diffuseColor.rgb, prato9(diffuse * sm9, vGw9.xz), gm9);
+        }
+        #endif`);
+    };
+    return mat;
+  }
   function buildChunk(ci, cj) {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
@@ -26780,7 +26818,7 @@ var Render = (function () {
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
     const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
-    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 });
+    const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
@@ -32042,7 +32080,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.25, ink: 0, rim: .6, cav: .85, clar: .32, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85 };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.25, ink: 0, rim: .6, cav: .85, clar: .32, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -32051,7 +32089,7 @@ var Render = (function () {
       uniforms: { t: { value: null }, dir: { value: new THREE.Vector2() }, thr: { value: 0 } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
       fragmentShader: `uniform sampler2D t; uniform vec2 dir; uniform float thr; varying vec2 vUv;
-        vec3 f(vec2 u){ vec3 c = texture2D(t, u).rgb; if (thr > 0.) { float l = max(max(c.r,c.g),c.b), k = max(l - thr, 0.); k = k*k/(k + .3); c *= k/max(l, 1e-4); } return c; }
+        vec3 f(vec2 u){ vec3 c = texture2D(t, u).rgb; if (!(c.r + c.g + c.b < 1e4) || !(c.r >= 0. && c.g >= 0. && c.b >= 0.)) c = vec3(0.); c = min(c, vec3(64.));   /* [bagliore1] niente NaN né infiniti */ if (thr > 0.) { float l = max(max(c.r,c.g),c.b), k = max(l - thr, 0.); k = k*k/(k + .3); c *= k/max(l, 1e-4); } return c; }
         void main(){ vec3 a = f(vUv)*.2270;
           a += (f(vUv + dir*1.3846) + f(vUv - dir*1.3846))*.3162; a += (f(vUv + dir*3.2308) + f(vUv - dir*3.2308))*.0703;
           gl_FragColor = vec4(a, 1.); }`,
@@ -35650,6 +35688,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     {   // [amb2] la macchina da presa
       const A = AMB, dk = 1 - night; U.tBloom.value = APS.rts[3] ? APS.rts[3].texture : null; U.tBloom2.value = APS.rts[5] ? APS.rts[5].texture : null; U.tBlur.value = APS.rts[7] ? APS.rts[7].texture : null;
       A.thr = A.thrDay + (A.thrNight - A.thrDay) * night; U.aK.value.set(A.expo * (.84 + night * .5) /* [unione7] */, A.bloom * (.22 + night * .78), A.dof * (pveh ? .45 : 1) * (p.indoor ? 0 : 1) * (1 - A.pal * .55), A.grain); U.aK2.value.set(A.ca, A.sharp, A.outline, A.vig); U.aTime.value = time; U.pK.value.set(A.pal, A.sat, A.ink, A.rim); U.pC.value.set(A.cav, A.clar);   /* [amb3] */
+      PRATO9.k.value = A.prato === undefined ? 1 : A.prato;   /* [prato1] */
       { U.lK.value.set(A.luc, A.spec * (indoorNow || p.indoor ? .5 : 1), A.coat, A.trans); U.lOl.value = A.ol;   /* [lucido1] il sole per la lacca */
         U.lSun.value.subVectors(moon.position, moon.target.position).normalize(); const sk = (.55 * dk + .12 * night) * Math.min(1.4, moon.intensity);
         U.lSunC.value.set(moon.color.r * sk, moon.color.g * sk, moon.color.b * sk); }
