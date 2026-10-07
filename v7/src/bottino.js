@@ -61,6 +61,8 @@ var Bottino = (function () {
   }
   // copertone: toro schiacciato col battistrada, il cerchione dentro
   function tire(g, x, y, z, rx, ry, R) { const R0 = R || .3, t = add(g, new (T().TorusGeometry)(R0, R0 * .36, 8, 18), '#ffffff', x, y, z, rx, ry, 0, 'gomma'); t.scale.z = 1.5; add(g, C(R0 * .62, R0 * .62, R0 * .45, 14), '#7d8288', x, y, z, (rx || 0) + Math.PI / 2, ry || 0); return t; }
+  // [modelli] un modello scaricato (scaricati.js), o null se non c'è: allora resta quello fatto a mano
+  function dl(g, id, x, y, z, ry, s) { if (typeof Scaricati === 'undefined') return null; return Scaricati.put(g, id, x, y, z, ry, s); }
   const MODEL = {
     // scatola di cartone coi lembi aperti, nastro, scritta; dentro spuntano bottiglie e giornali
     vicolo(g) {
@@ -71,20 +73,22 @@ var Bottino = (function () {
       add(g, C(.035, .035, .26, 8), '#2e5a2a', -.12, .44, .06, .2, 0, .15); add(g, C(.014, .03, .07, 8), '#2e5a2a', -.1, .59, .09, .2, 0, .15);
       add(g, B(.22, .03, .3), '#e8e2cf', .1, .37, -.04, 0, .3, .08);
     },
-    // cestino comunale anni '80: lamiera verde a doghe, bordo, palo, sacco e giornale che spuntano
+    // [modelli] cestino comunale anni '80: bidone tornito a doghe con l'orlo arrotolato, appeso al palo con due fascette, piede del palo, sacco e giornale che spuntano
     cestino(g) {
-      add(g, C(.035, .035, 1.0, 8), '#3a4038', -.3, .5, 0);
-      add(g, B(.08, .05, .08), '#2c3029', -.25, .75, 0);
-      add(g, C(.23, .2, .62, 16, true), '#3e5a3c', 0, .42, 0);
-      for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; add(g, B(.04, .62, .015), '#2c4029', Math.cos(a) * .225, .42, Math.sin(a) * .225, 0, -a + Math.PI / 2, 0); }
-      add(g, new (T().TorusGeometry)(.235, .02, 6, 18), '#2c4029', 0, .73, 0, Math.PI / 2);
-      add(g, C(.22, .22, .02, 16), '#222', 0, .7, 0);
+      const Mo = window.Modella; if (!Mo) return;
+      Mo.tornito(g, [[0, 0], [.03, 0], [.03, 1.0], [.026, 1.02], [0, 1.02]], '#3a4038', { metalness: .3, roughness: .5 }, -.27, 0, 0, 10); Mo.tornito(g, [[0, 0], [.07, 0], [.06, .03], [0, .03]], '#2c3029', { metalness: .3 }, -.27, 0, 0, 12);
+      for (const y of [.32, .64]) Mo.tuboPiegato(g, [[-.27, y, -.04], [-.22, y, -.06], [-.22, y, .06], [-.27, y, .04]], .008, '#2c3029', { metalness: .3 }, .02);
+      Mo.tornito(g, [[0, .12], [.19, .12], [.215, .16], [.23, .72], [0, .72]], '#3e5a3c', { roughness: .55 }, 0, 0, 0, 20);
+      for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; Mo.guscio(g, .028, .56, .012, '#2c4029', { roughness: .55 }, .004, .003, Math.cos(a) * .222, .15, Math.sin(a) * .222).rotation.y = -a + Math.PI / 2; }
+      const orlo = new (T().Mesh)(new (T().TorusGeometry)(.235, .016, 8, 24), mat('#2c4029')); orlo.rotation.x = Math.PI / 2; orlo.position.y = .73; g.add(orlo);
+      Mo.tornito(g, [[0, 0], [.2, 0], [.18, .1], [.1, .14], [0, .12]], '#2a2a2c', { roughness: .4 }, 0, .64, 0, 14);
       add(g, B(.22, .28, .02), '#e8e2d0', .06, .8, 0, 0, .4, .3); add(g, B(.12, .14, .1), '#e8e8e8', -.08, .74, .08, .2, .4, -.2);
-      add(g, B(.1, .1, .01), '#e8c040', 0, .5, .232);
+      Mo.targa(g, 'COMUNE', .1, .05, 0, .5, .236, 0, '#e8c040', '#1a1a1a');
     },
+
     // copertone, lamiera ondulata arrugginita piegata, tubi, mattoni, un cerchione
     rottami(g) {
-      tire(g, -.18, .11, .06, Math.PI / 2);
+      if (!dl(g, 'gomme', -.15, 0, .05, .4, .8)) tire(g, -.18, .16, .06, Math.PI / 2);
       const wav = new (T().PlaneGeometry)(.75, .5, 10, 1), P0 = wav.attributes.position; for (let i = 0; i < P0.count; i++) P0.setZ(i, Math.sin(P0.getX(i) * 40) * .02 + P0.getX(i) * P0.getX(i) * .3); wav.computeVertexNormals();
       const sh = add(g, wav, '#ffffff', .18, .24, -.05, -1.2, .5, .25, 'ruggine'); sh.material.side = T().DoubleSide;
       add(g, C(.05, .05, .9, 8), '#7d8288', .05, .07, .3, 0, .4, Math.PI / 2, 'ruggine'); add(g, C(.035, .035, .6, 8), '#5a5e62', .2, .17, .28, .3, -.3, Math.PI / 2);
@@ -93,8 +97,8 @@ var Bottino = (function () {
     // fascina: rami di spessore diverso, legati con due giri di corda; un'accetta piantata in un ceppo accanto
     bosco(g) {
       let h = 3; const r = () => { h = (h * 16807) % 2147483647; return h / 2147483647; };
-      for (let k = 0; k < 11; k++) { const a = r() * Math.PI * 2, d = r() * .14, rr = .025 + r() * .035; add(g, C(rr, rr * 1.1, .85 + r() * .25, 6), ['#6d4a2c', '#5a3e24', '#7a5634'][k % 3], Math.cos(a) * d, .15 + Math.sin(a) * d * .8, (r() - .5) * .08, Math.PI / 2, (r() - .5) * .15); }
-      for (const z of [-.22, .22]) { const t = add(g, new (T().TorusGeometry)(.135, .013, 5, 14), '#c9b27a', 0, .15, z, 0, 0, 0); t.scale.y = .85; }
+      for (let k = 0; k < 11; k++) { const a = r() * Math.PI * 2, d = r() * .14, rr = .025 + r() * .035; add(g, C(rr, rr * 1.1, .85 + r() * .25, 6), ['#6d4a2c', '#5a3e24', '#7a5634'][k % 3], Math.cos(a) * d * .8, .13 + Math.sin(a) * d * .7, (r() - .5) * .08, Math.PI / 2, (r() - .5) * .15); }
+      for (const z of [-.22, .22]) { const t = add(g, new (T().TorusGeometry)(.13, .013, 5, 14), '#c9b27a', 0, .13, z, 0, 0, 0); t.scale.y = .92; }
       add(g, C(.17, .19, .3, 10), '#7a5634', .55, .15, .1); add(g, C(.16, .16, .01, 10), '#c8a070', .55, .305, .1);
       add(g, C(.015, .015, .4, 6), '#8a6a42', .55, .48, .1, 0, 0, .3); add(g, B(.03, .1, .14), '#6a6e72', .5, .33, .1, 0, 0, .3);
     },
@@ -102,7 +106,7 @@ var Bottino = (function () {
     spiaggia(g) {
       const q = new (T().Group)(); crate(q, .5, 0, 0, 0, '#8a9088'); q.rotation.set(.12, .5, -.18); q.position.y = -.04; g.add(q);
       for (let k = 0; k < 5; k++) add(g, B(.02, .01, .25), '#3a5a2a', -.2 + k * .1, .06 + k * .02, .2, 0, k * .7, .3);
-      for (let k = 0; k < 3; k++) add(g, new (T().TorusGeometry)(.13 - k * .025, .022, 5, 14), '#d8cfa8', .45, .025 + k * .04, .15, Math.PI / 2);
+      for (let k = 0; k < 3; k++) add(g, new (T().TorusGeometry)(.13 - k * .025, .022, 5, 14), '#b8a77a', .45, .022 + k * .035, .15, Math.PI / 2);
     },
     // sacco di juta (profilo tornito), il collo arricciato e legato con lo spago
     prateria(g) {
@@ -110,22 +114,26 @@ var Bottino = (function () {
       const s = add(g, new (T().LatheGeometry)(prof, 14), '#ffffff', 0, 0, 0, 0, 0, 0, 'juta'); s.scale.set(1, .9, .82);
       add(g, new (T().TorusGeometry)(.07, .012, 5, 12), '#5e4a2c', 0, .52, 0, Math.PI / 2);
     },
-    // cassetta delle munizioni: stampino, maniglia ad arco, chiusura a leva
+    // [modelli] cassetta delle munizioni: corpo stampato con le nervature, coperchio con la guarnizione, maniglia ribaltabile, leva di chiusura, stampigliatura
     militare(g) {
-      add(g, B(.62, .3, .3), '#ffffff', 0, .15, 0, 0, 0, 0, 'militare');
-      add(g, B(.64, .04, .32), '#3a4127', 0, .31, 0);
-      add(g, new (T().TorusGeometry)(.07, .01, 5, 10, Math.PI), '#2a2e1c', 0, .33, 0);
-      add(g, B(.06, .12, .03), '#2a2e1c', .31, .24, 0, 0, Math.PI / 2, .3);
+      const Mo = window.Modella; if (!Mo) return;
+      Mo.guscio(g, .6, .26, .28, '#4b5433', { roughness: .6 }, .02, .01); for (const x of [-.2, .2]) Mo.guscio(g, .02, .24, .285, '#3a4127', {}, .005, .003, x, .01, 0);
+      Mo.guscio(g, .62, .05, .3, '#3a4127', { roughness: .6 }, .02, .01, 0, .26, 0); Mo.guscio(g, .6, .01, .28, '#1a1a1a', {}, .02, .003, 0, .255, 0);
+      Mo.maniglia(g, [-.08, .31, 0], [.08, .31, 0], .035, .007, '#2a2e1c');
+      const lv = Mo.guscio(g, .05, .12, .025, '#2a2e1c', { metalness: .3 }, .01, .005, .315, .15, 0); lv.rotation.z = .25; lv.rotation.y = Math.PI / 2;
+      Mo.targa(g, '7.62 NATO\n440 CART', .3, .12, 0, .13, .141, 0, '#4b5433', '#d8c060');
     },
+
     // sul tetto: una cassa sotto un telo legato
     tetto(g) { crate(g, .5, 0, 0, .3); const t = add(g, B(.58, .03, .58), '#5a6a5a', 0, .52, 0, .05, .3, .04); add(g, B(.58, .22, .02), '#4e5e4e', .02, .4, .29, .1, .3); },
-    // posti da frugare: casse una sull'altra, un fusto con le nervature e la ruggine
+    // [modelli] posto da frugare: casse una sull'altra e un fusto da 200 litri con le nervature, il tappo, la ruggine
     posto(g) {
-      crate(g, .6, -.25, 0, .2); crate(g, .45, -.2, .05, .7, '#c8b8a0', .6);
-      add(g, C(.24, .24, .7, 16), '#ffffff', .45, .35, .2, 0, 0, 0, 'ruggine');
-      for (const y of [.12, .35, .58]) add(g, new (T().TorusGeometry)(.243, .012, 4, 18), '#4a5a6a', .45, y, .2, Math.PI / 2);
-      add(g, C(.235, .235, .02, 16), '#38444f', .45, .7, .2); add(g, C(.03, .03, .02, 8), '#222', .52, .715, .25);
+      const Mo = window.Modella; crate(g, .6, -.25, 0, .2); crate(g, .45, -.2, .05, .7, '#c8b8a0', .6); if (!Mo) return;
+      Mo.tornito(g, [[0, 0], [.22, 0], [.24, .02], [.24, .68], [.22, .7], [0, .7]], mat('#ffffff', 'ruggine'), null, .45, 0, .2, 22);   // materiale suo (con la texture della ruggine), non quello condiviso
+      for (const y of [.02, .23, .47, .68]) { const t = new (T().Mesh)(new (T().TorusGeometry)(.243, y > .1 && y < .6 ? .012 : .016, 6, 24), mat('#4a5a6a')); t.rotation.x = Math.PI / 2; t.position.set(.45, y, .2); g.add(t); }
+      Mo.tornito(g, [[0, 0], [.03, 0], [.03, .015], [0, .02]], '#222', {}, .52, .7, .26, 10); Mo.tornito(g, [[0, 0], [.018, 0], [.018, .012], [0, .015]], '#222', {}, .36, .7, .14, 8);
     },
+
     // casse di carico al porto: assi, cerchiature di ferro, pallet sotto, stampini; il lucchetto vero se sono chiuse
     carico(g, L) {
       for (const [x, z, s] of [[-.6, 0, 1], [.5, .1, .9]]) {
@@ -141,7 +149,7 @@ var Bottino = (function () {
     const g = new (T().Group)(), f = MODEL[L.kind] || MODEL.vicolo; f(g, L);
     let h = 0; for (const ch of (L.ref || '')) h = (h * 31 + ch.charCodeAt(0)) | 0;
     g.rotation.y = (h % 628) / 100; g.userData.kind = L.kind;
-    return g;
+    return typeof Superfici !== 'undefined' ? Superfici.vesti(g) : g;
   }
 
   // ---------------- L'ELENCO ----------------
@@ -215,10 +223,10 @@ var Bottino = (function () {
     const want = {};
     if (on) refresh(st).forEach(L => { if (MODEL[L.kind]) want[L.ref] = L; });
     for (const k in U.meshes) if (!want[k]) { U.grp.remove(U.meshes[k]); delete U.meshes[k]; }
-    const hot = performance.now() - U.hotT < 150 ? U.hot : null, t = performance.now() / 1000;
+    const hot = performance.now() - U.hotT < 150 ? U.hot : null, t = performance.now() / 1000, dlv = typeof Scaricati !== 'undefined' ? Scaricati.ver : 0;
     for (const [k, L] of Object.entries(want)) {
       let m = U.meshes[k];
-      if (!m || m.userData.locked !== !!L.locked) { if (m) U.grp.remove(m); m = build(L); m.userData.locked = !!L.locked; U.grp.add(m); U.meshes[k] = m; }
+      if (!m || m.userData.locked !== !!L.locked || m.userData.dlv !== dlv) { if (m) U.grp.remove(m); m = build(L); m.userData.locked = !!L.locked; m.userData.dlv = dlv; U.grp.add(m); U.meshes[k] = m; }
       const y = L.kind === 'tetto' && R.groundH ? (PV().st.player.lv && typeof Livelli !== 'undefined' && Livelli.heightOf ? Livelli.heightOf(st, p) : R.groundH(L.x, L.y)) : R.groundH(L.x, L.y);
       m.position.set(L.x, y, L.y);
       // sotto il puntatore si solleva appena e respira: si capisce che si prende
