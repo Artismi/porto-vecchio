@@ -7030,7 +7030,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: 1.12 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .1 /* [lucido1] */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.25, ink: 0, rim: .6, cav: .85, clar: .32, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85 };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.25, ink: 0, rim: .6, cav: .85, clar: .32, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85 };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -7157,7 +7157,7 @@ var Render = (function () {
           float d = dL(uv);   /* [unione11] */
           float dc = max(lin(texture2D(tD, vec2(.5)).r), uFoc9 * .92);   /* [unione9] mai più vicino del personaggio */   // [luci2] distanza del punto guardato
           { vec3 nb = texture2D(tC, uv+vec2(px.x,0.)).rgb + texture2D(tC, uv-vec2(px.x,0.)).rgb + texture2D(tC, uv+vec2(0.,px.y)).rgb + texture2D(tC, uv-vec2(0.,px.y)).rgb;
-            c = max(c + (c - nb*.25) * aK2.y * (1. - smoothstep(dc*1.08, dc*1.5, d)), 0.); }
+            c = max(c + (c - nb*.25) * aK2.y * (1. - smoothstep(dc*1.3, dc*2.6, d) * .8), 0.); }   /* [lucido1] */
           float coc = 0.; { float ty = abs(vUv.y - aFoc.y) * 1.15 + abs(vUv.x - aFoc.x) * .35;   // [amb2] obiettivo basculante: nitido attorno al giocatore
             coc = clamp(smoothstep(.26, .62, ty) + smoothstep(dc*1.1, dc*1.8, d) * .4, 0., 1.) * aK.z;
             c = mix(c, texture2D(tBlur, vUv).rgb, coc); }   // [luci2] crisp: il primo piano è nitido
@@ -7249,6 +7249,16 @@ var Render = (function () {
               float cr9 = smoothstep(tS9 * 1.7, tS9 * 2.6, s9) * (1. - smoothstep(.02 * d + .28, .035 * d + .5, near9)) * .6;   // sul lato di fondo di una sagoma no: la linea c'è già
               float gr9 = step(c.r * .9, c.g) * step(c.b * 1.05, c.g) * smoothstep(.02, .08, c.g - min(c.r, c.b));   // nel fogliame la linea si alleggerisce
               float farK9 = 1. - smoothstep(dc * 1.3, dc * 2.2, d) * .6;
+              // 5) il dettaglio dipinto (fughe, piastrelle, infissi, cornici, fasce): dai bordi del colore, netti e senza grana;
+              //    il lato scuro del bordo scende, il lato chiaro prende un filo di luce, come un rilievo
+              { vec3 LW9 = vec3(.3,.59,.11); float l09 = dot(texture2D(tC, uv).rgb, LW9);
+                float la9 = dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, LW9), lb9 = dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, LW9), lc9 = dot(texture2D(tC, uv + vec2(0., px.y)).rgb, LW9), ld9 = dot(texture2D(tC, uv - vec2(0., px.y)).rgb, LW9);
+                float hi9 = max(max(la9, lb9), max(lc9, ld9)), lo9 = min(min(la9, lb9), min(lc9, ld9));
+                float dk9 = clamp((hi9 - l09) / max(hi9, .04) * 2.8 - .14, 0., 1.), lt9 = clamp((l09 - lo9) / max(l09, .04) * 2.2 - .2, 0., 1.);
+                float dK9 = (1. - smoothstep(dc * 1.25, dc * 2.6, d)) * (1. - gr9 * .75) * (1. - coc) * lK.x * (1. - ol9);
+                c *= 1. - dk9 * .5 * dK9; c *= 1. + lt9 * .14 * dK9;
+                // il volume delle facciate: ogni faccia un poco più chiara o più scura secondo quanto guarda il sole
+                c *= mix(1., .84 + .28 * clamp(ndl * .5 + .5, 0., 1.), .6 * ok9 * day9 * lK.x); }
               float line9 = max(ol9, cr9) * (1. - gr9 * .7) * farK9 * lOl * (1. - coc);
               c = mix(c, c * .14 + vec3(.012,.016,.04), clamp(line9, 0., 1.)); }   // blu notte scurito della tinta dell'oggetto
           }
@@ -7276,7 +7286,7 @@ var Render = (function () {
             float warmL = smoothstep(.06,.16,c.r-c.b)*smoothstep(.08,.28,mxc)*smoothstep(.55,.95,night);   // luce calda di notte
             float rosso = smoothstep(.12,.3,c.r-c.g)*smoothstep(.06,.2,c.r-c.b);    // il rosso del potere e delle lampade
             // 1) valore: salto deciso fra luce e ombra col sole, più morbido col coperto; la tinta non cambia
-            float k = mix(1.1, 1.32, sunK), lo = .34;   /* [lucido1] */
+            float k = mix(1.14, 1.46, sunK), lo = .36;   /* [lucido1] contrasto pieno */
             float l2 = max((l - lo)*k + lo, l*.25);
             l2 = l2 / (1. + max(l2 - .7, 0.)*1.2);
             c *= l2 / max(l, 1e-4);
@@ -10571,7 +10581,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     }
     cam.cd = cam.cd === undefined ? driveDist : cam.cd + (driveDist - cam.cd) * Math.min(1, dt * (driveDist < cam.cd ? 14 : 2.5));
     const dist = lerp(walkDist, cam.cd, ease);
-    camera.fov = fov; camera.near = lerp(8, 2, ease); camera.far = lerp(300, 300, ease); camera.updateProjectionMatrix();
+    camera.fov = fov; camera.near = lerp(Math.min(8, Math.max(.6, dist * .35)), 2, ease); camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
     const ox = Math.sin(cam.yaw) * Math.cos(pitch) * dist, oy = Math.sin(pitch) * dist, oz = Math.cos(cam.yaw) * Math.cos(pitch) * dist;
     const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(0, 1, ease);
     camera.position.set(cx + ox, cy + oy, cz + oz); camera.lookAt(cx, cy, cz);

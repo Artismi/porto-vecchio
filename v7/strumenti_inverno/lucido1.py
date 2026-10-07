@@ -21,14 +21,16 @@ def rep(old, new, n=1):
 # manopole: via la pennellata, la tavolozza e l'inchiostro vecchio; le nuove
 rep("paint: .35 /* [unione11] meno grana, l'identità delle texture resta */, pal: .5, sat: 1.25, ink: .5, rim: .5, cav: 1, clar: .3 };",
     "paint: 0, pal: 0, sat: 1.25, ink: 0, rim: .6, cav: .85, clar: .32, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85 };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */")
-rep("sharp: .06 /* [unione11] */, outline: .3,", "sharp: .1 /* [lucido1] */, outline: 0,")
-rep("const AMB = { expo: .96,", "const AMB = { expo: 1.12 /* [lucido1] più luce */,")
+rep("sharp: .06 /* [unione11] */, outline: .3,", "sharp: .32 /* [lucido1] nitidezza fine */, outline: 0,")
+rep("const AMB = { expo: .96,", "const AMB = { expo: 1.06 /* [lucido1] più luce */,")
 
 # uniformi
 rep("uniform vec4 pK; uniform vec2 pC;   // [amb3]", "uniform vec4 lK; uniform vec3 lSun; uniform vec3 lSunC; uniform float lOl;   // [lucido1]\n        uniform vec4 pK; uniform vec2 pC;   // [amb3]")
 rep("uFoc9: { value: 30 }, tC: { value: null },", "uFoc9: { value: 30 }, lK: { value: new THREE.Vector4(1, .9, .8, 1) }, lSun: { value: new THREE.Vector3(.4, .8, .3) }, lSunC: { value: new THREE.Vector3(1, 1, 1) }, lOl: { value: .85 },   /* [lucido1] */ tC: { value: null },")
 
 rep("        float hs11(vec2 p){", "        vec3 wpos9(vec2 u){ vec4 q = vInvVP * vec4(u * 2. - 1., texture2D(tD, u).r * 2. - 1., 1.); return q.xyz / q.w; }   // [lucido1]\n        float hs11(vec2 p){")
+# la nitidezza fine arriva anche a media distanza (prima solo vicinissimo al personaggio)
+rep("c = max(c + (c - nb*.25) * aK2.y * (1. - smoothstep(dc*1.08, dc*1.5, d)), 0.); }", "c = max(c + (c - nb*.25) * aK2.y * (1. - smoothstep(dc*1.3, dc*2.6, d) * .8), 0.); }   /* [lucido1] */")
 # il passaggio della plastica lucida, prima delle ombre nella nebbia
 rep("          if (vOn > .01) {   // [luci4] ombre nella nebbia", """          if (lK.x > .01) {   // [lucido1] plastica lucida: colori bagnati, traslucenza, lacca, punto di luce, contorno pulito
             float z9 = texture2D(tD, uv).r;
@@ -65,6 +67,16 @@ rep("          if (vOn > .01) {   // [luci4] ombre nella nebbia", """          i
               float cr9 = smoothstep(tS9 * 1.7, tS9 * 2.6, s9) * (1. - smoothstep(.02 * d + .28, .035 * d + .5, near9)) * .6;   // sul lato di fondo di una sagoma no: la linea c'è già
               float gr9 = step(c.r * .9, c.g) * step(c.b * 1.05, c.g) * smoothstep(.02, .08, c.g - min(c.r, c.b));   // nel fogliame la linea si alleggerisce
               float farK9 = 1. - smoothstep(dc * 1.3, dc * 2.2, d) * .6;
+              // 5) il dettaglio dipinto (fughe, piastrelle, infissi, cornici, fasce): dai bordi del colore, netti e senza grana;
+              //    il lato scuro del bordo scende, il lato chiaro prende un filo di luce, come un rilievo
+              { vec3 LW9 = vec3(.3,.59,.11); float l09 = dot(texture2D(tC, uv).rgb, LW9);
+                float la9 = dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, LW9), lb9 = dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, LW9), lc9 = dot(texture2D(tC, uv + vec2(0., px.y)).rgb, LW9), ld9 = dot(texture2D(tC, uv - vec2(0., px.y)).rgb, LW9);
+                float hi9 = max(max(la9, lb9), max(lc9, ld9)), lo9 = min(min(la9, lb9), min(lc9, ld9));
+                float dk9 = clamp((hi9 - l09) / max(hi9, .04) * 2.8 - .14, 0., 1.), lt9 = clamp((l09 - lo9) / max(l09, .04) * 2.2 - .2, 0., 1.);
+                float dK9 = (1. - smoothstep(dc * 1.25, dc * 2.6, d)) * (1. - gr9 * .75) * (1. - coc) * lK.x * (1. - ol9);
+                c *= 1. - dk9 * .5 * dK9; c *= 1. + lt9 * .14 * dK9;
+                // il volume delle facciate: ogni faccia un poco più chiara o più scura secondo quanto guarda il sole
+                c *= mix(1., .84 + .28 * clamp(ndl * .5 + .5, 0., 1.), .6 * ok9 * day9 * lK.x); }
               float line9 = max(ol9, cr9) * (1. - gr9 * .7) * farK9 * lOl * (1. - coc);
               c = mix(c, c * .14 + vec3(.012,.016,.04), clamp(line9, 0., 1.)); }   // blu notte scurito della tinta dell'oggetto
           }
@@ -81,7 +93,7 @@ rep("vec3 hz = mix(uHz*.92, vec3(.02,.022,.026), night), cd = mix(c, vec3(lc0), 
 rep("c = mix(c, mix(cd, hz, .5 + uWx.z*.3), far01 * (.34 + uWx.x*.08 + uWx.z*.3 - night*.14)); }",
     "c = mix(c, mix(cd, hz, .5 + uWx.z*.3), far01 * (.18 + uWx.x*.08 + uWx.z*.3 - night*.08)); }   /* [lucido1] */")
 # le ombre: fredde ma non grigie, un filo più chiare (la plastica non diventa mai nera)
-rep("float k = mix(1.12, 1.42, sunK), lo = .36;", "float k = mix(1.1, 1.32, sunK), lo = .34;   /* [lucido1] */")
+rep("float k = mix(1.12, 1.42, sunK), lo = .36;", "float k = mix(1.14, 1.46, sunK), lo = .36;   /* [lucido1] contrasto pieno */")
 # ombre verde-blu come nel riferimento (la stanza in pixel art), mai grigie
 rep("vec3 shT = mix(vec3(.94,.9,1.08), vec3(.96,.91,1.08), uReg);   /* [unione11] ombre violette */", "vec3 shT = vec3(.86,.98,1.14);   /* [lucido1] ombre verde-blu */")
 
