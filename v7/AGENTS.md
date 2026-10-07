@@ -14,7 +14,7 @@
 | `api/` | funzioni Vercel (vedi § API) |
 | `assets/` (304 file) | kit glTF-JSON: `mc/` persone, `mf/` mobili Kenney, `mj/` modelli vari, `mk/` kit modulari — ogni `.json` ha il gemello `.json.js` per `file://` |
 | `src/` | i sorgenti del gioco (vedi [`src/AGENTS.md`](src/AGENTS.md)) |
-| `strumenti_inverno/` | 105 script Python/JS che patchano `src/render.js` e rigenerano `api/_mente.js` |
+| `strumenti_inverno/` | 105 script Python/JS che patchano `src/render.js` e rigenerano `api/_mente.js`; ordine e base della catena in [`strumenti_inverno/LEGENDA.md`](strumenti_inverno/LEGENDA.md) |
 | `studio_anim.html`, `studio_oggetti.html` | pagine di studio isolate (pose, modelli) con i rispettivi `.js` in `strumenti_inverno/` |
 | `test_mente.mjs` | prova manuale `POST /api/mente` contro `localhost:8642` |
 | `_immagini/` | screenshot di riferimento del lavoro fatto |

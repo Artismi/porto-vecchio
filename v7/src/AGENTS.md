@@ -102,7 +102,7 @@ Ordine di registrazione (per ordine di script): Risacca → Popolo → Livelli �
 5. `ambiente1.py`, `ambiente2.py`, `ambiente3.py` — si applicano **per ultimi** (sostituiscono l'intero blocco colore del post fra due ancore stabili)
 6. `muri_vivi1.py` (murales), poi `unione1.py`…`unione10.py` (rifiniture post-unione)
 
-Il flusso documentato è: `cp v6/src/render.js v7/src/render.js` + script in ordine. Dopo ogni passaggio: `python build.py` e verifica visiva. Frammenti JS inclusi dagli script: `snowpass.js`, `alberi.js`, `inverno_paesaggio.js`, `inverno_volumi.js`, ecc. — sono sorgenti della pipeline, non del gioco.
+**La base della catena è il `render.js` attuale su `main`** (dal 7/10/2026, decisione 3: vedi [`../strumenti_inverno/LEGENDA.md`](../strumenti_inverno/LEGENDA.md)). Il rituale `cp v6/src/render.js v7/src/render.js` è ritirato: `v6/` non esiste più nel working tree. Dopo ogni passaggio: `python build.py` e verifica visiva. Frammenti JS inclusi dagli script: `snowpass.js`, `alberi.js`, `inverno_paesaggio.js`, `inverno_volumi.js`, ecc. — sono sorgenti della pipeline, non del gioco.
 
 ## Convenzioni di codice
 
