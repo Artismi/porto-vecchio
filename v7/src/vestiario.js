@@ -93,7 +93,7 @@ var Vesti3D = (function () {
     meshes.forEach(src => {
       const A = analyze(src); if (!A) return;
       rel.multiplyMatrices(gi, src.matrixWorld); const v = new THREE.Vector3();
-      const th = {}; const L = LL.map(c => { const set = new Set(c.parti.filter(p => p === 'piedi' || p === 'mani' || p === 'polpacci' && /stivali/.test(c.id) && !window.Pittura)); /* con la Pittura il gambale dello stivale è dipinto */ let base = 0; set.forEach(p => { base = Math.max(base, th[p] || 0); }); const shoe = SHOE[c.id] && SHOE[c.id][1] !== null && set.has('piedi'), t = base + (shoe ? .007 + c.sp * .35 : .002 + c.sp * .2); set.forEach(p => { th[p] = t; }); return { c, set, off: t / unit }; });   // scarpe grosse, come nei riferimenti
+      const th = {}; const L = LL.map(c => { const set = new Set(c.parti.filter(p => p === 'piedi' || p === 'mani' || p === 'polpacci' && /stivali/.test(c.id) && !window.Pittura)); /* con la Pittura il gambale dello stivale è dipinto */ let base = 0; set.forEach(p => { base = Math.max(base, th[p] || 0); }); const shoe = SHOE[c.id] && SHOE[c.id][1] !== null && set.has('piedi'), t = base + (shoe ? .004 + c.sp * .2 : .002 + c.sp * .2); set.forEach(p => { th[p] = t; }); return { c, set, off: t / unit }; });   // scarpe grosse, come nei riferimenti
       const per = L.map(() => ({ P: [], N: [], U: [], CO: [], SI: [], SW: [] }));
       const cpos = new Float32Array(A.pos.count * 3); for (let i = 0; i < A.pos.count; i++) { v.fromBufferAttribute(A.pos, i).applyMatrix4(rel); v.toArray(cpos, i * 3); }
       for (let t = 0; t < A.idx.length; t += 3) {
@@ -108,7 +108,7 @@ var Vesti3D = (function () {
           // uv in metri: proiezione sul piano più di fronte alla normale
           const ax = Math.abs(A.sm[w * 3]), ay = Math.abs(A.sm[w * 3 + 1]), az = Math.abs(A.sm[w * 3 + 2]); o.U.push(ax > az ? cz : cx, ay > Math.max(ax, az) ? cz + cx : cy);
           let c = 1;
-          if (A.part[w] === 'piedi' && sh && sh[1] !== null && !/calzini/.test(G0.c.id)) { if (cy < .03) c = .3; else if (cy < .042) c = .62; }   // la suola, il bordo della tomaia
+          if (A.part[w] === 'piedi' && sh && sh[1] !== null && !/calzini/.test(G0.c.id)) { if (cy < .022) c = .32; else if (cy < .03) c = .7; }   // la suola, il bordo della tomaia
           if (!G0.set.has(A.part[w])) c *= .78;   // l'orlo
           o.CO.push(c, c, c);
           for (let q = 0; q < 4; q++) { o.SI.push(comp(A.si, w, q)); o.SW.push(comp(A.sw, w, q)); }
@@ -273,26 +273,37 @@ var Vesti3D = (function () {
       const C = cut(c);
       // la cintura vera, con la fibbia
       if (C.cl === 2 && C.cintura && !C.gonna && !coversTorso(c)) {
-        const tb = Sartoria.tube(B, 'bacino'), s = tb.sAtY(B.waist + .012), leather = /cuoio|jeans/.test(C.cintura), col = leather ? (C.cintura === 'jeans' ? '#5a3a22' : '#3a2418') : c.col;
-        const o = new THREE.Group(); o.add(ringBand(tb, s, C.cintura === 'cuoio_fine' ? .026 : .036, .008, .006, 12, Pittura.blockMat('pelle', col, col, col, { vc: false })));
-        const fr = Sartoria.frameAt(tb, s), p = Sartoria.surf(tb, s, 0, .016), n = p.clone().sub(fr.p).normalize(), bk = new THREE.Mesh(new THREE.BoxGeometry(.05, .046, .01), lm('#c8b070'));
+        const tb = Pittura.frame(B).tubes[0], s = tb.sAtY(B.waist + .012), leather = /cuoio|jeans/.test(C.cintura), col = leather ? (C.cintura === 'jeans' ? '#5a3a22' : '#3a2418') : c.col;
+        const o = new THREE.Group(); o.add(Pittura.orlo(B, 0, s, C.cintura === 'cuoio_fine' ? .026 : .036, .006, .006, 16, Pittura.blockMat('pelle', col, col, col, { vc: false })));
+        const fr = Sartoria.frameAt(tb, s), p = Pittura.surfI(B, 0, s, 0, .013), n = p.clone().sub(fr.p).normalize(), bk = new THREE.Mesh(new THREE.BoxGeometry(.05, .046, .01), lm('#c8b070'));
         bk.position.copy(p); bk.lookAt(p.clone().add(n)); const hole = new THREE.Mesh(new THREE.BoxGeometry(.032, .028, .012), lm('#2a2016')); hole.position.copy(p).addScaledVector(n, .001); hole.lookAt(p.clone().add(n)); o.add(bk, hole); AT('Hips', o);
       }
       // i polsini rimboccati delle camicie (se nessuno ci va sopra)
       if ((C.polsi || C.risvolto_maniche) && (c.parti || []).includes('avambracci') && !after(c, o => (o.parti || []).includes('avambracci') && cut(o).cl >= 3)) for (const sd of ['L', 'R']) {
         const tb = Sartoria.tube(B, 'manica' + sd), Ls = Sartoria.lengths(B, tb, 'manica' + sd, C, c.parti); if (Ls.s1 < Ls.la) continue;
-        const o = new THREE.Group(); o.add(ringBand(tb, Ls.s1 - .022, .04, .01, .008, 8, Pittura.blockMat(C.fab || 'cotone', c.col, C.c2, C.c3, { vc: false }))); AT('LowerArm' + sd, o);
+        const o = new THREE.Group(); o.add(Pittura.orlo(B, sd === 'L' ? 1 : 2, Ls.s1 - .022, .04, .008, .008, 10, Pittura.blockMat(C.fab || 'cotone', c.col, C.c2, C.c3, { vc: false }))); AT('LowerArm' + sd, o);
       }
       // il risvolto dei pantaloni
       if (C.cl === 2 && C.risvolto && !after(c, o => cut(o).gonna)) for (const sd of ['L', 'R']) {
         const tb = Sartoria.tube(B, 'gamba' + sd), Ls = Sartoria.lengths(B, tb, 'gamba' + sd, C, c.parti);
-        const o = new THREE.Group(); o.add(ringBand(tb, Ls.s1 - .025, .045, .012, .01, 10, Pittura.blockMat(C.fab || 'cotone', c.col, C.c2, C.c3, { vc: false }))); AT('LowerLeg' + sd, o);
+        const o = new THREE.Group(); o.add(Pittura.orlo(B, sd === 'L' ? 3 : 4, Math.min(Ls.s1, tb.L - .03) - .025, .045, .01, .01, 12, Pittura.blockMat(C.fab || 'cotone', c.col, C.c2, C.c3, { vc: false }))); AT('LowerLeg' + sd, o);
       }
     });
   }
+  // il cappuccio abbassato delle felpe: un rotolo di stoffa attorno al collo e la sacca che ricade sulla schiena
+  function cappuccio(g, outfit, B, AT) {
+    const CUT = Sartoria.CUT_(), c = outfit.find(o => (CUT[o.id] || {}).collo === 'cappuccio'); if (!c) return;
+    Sartoria.neckY(B); const [nx, nz] = B.neckC, ny = B.neckY, rn = B.neckR + .03, mt = Pittura.blockMat('jersey', c.col, c.col, c.col, { vc: false }), o = new THREE.Group();
+    const pts = []; for (let k = 0; k <= 12; k++) { const t = lerp0(.32, 1.68, k / 12) * Math.PI, back = Math.max(0, -Math.cos(t)); pts.push(new THREE.Vector3(nx + Math.sin(t) * (rn + .012), ny - .015 - back * .02, nz + Math.cos(t) * (rn + .012))); }
+    const roll = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, .028, 6, false), mt); roll.scale.set(1, 1, 1); o.add(roll);
+    const sac = new THREE.Mesh(new THREE.SphereGeometry(.1, 8, 6), mt); sac.scale.set(1.15, .95, .45); sac.position.set(nx, ny - .085, nz - rn - .035); sac.rotation.x = .25; o.add(sac);
+    const inner = new THREE.Mesh(new THREE.SphereGeometry(.06, 6, 4), lm(sh(c.col, .45))); inner.scale.set(1.2, .5, .3); inner.position.set(nx, ny - .03, nz - rn - .03); o.add(inner);
+    AT('Chest', o);
+  }
+  const lerp0 = (a, b, t) => a + (b - a) * t;
   function accessories(g, outfit, held, D) {
     if (!window.Sartoria || !D || !D.B) return accessoriesOld(g, outfit, held);
-    if (window.Pittura) try { volumi(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); } catch (e) { console.error('[Vesti3D] volumi', e); }
+    if (window.Pittura) try { volumi(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); Pittura.bordi(g, D.B, outfit, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); cappuccio(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); } catch (e) { console.error('[Vesti3D] volumi', e); }
     const B = D.B, T = Sartoria.testa(g, PARTI), bn = B.bones, AT = (bone, obj) => Sartoria.attach(g, PARTI, bone, obj);
     const lay = D.lay || [], outer = lay.reduce((m, l) => Math.max(m, l.t || 0), 0) + .004, th = D.th || {};
     // spessore sotto la giacca: la cravatta sta sopra la camicia e sotto il revers

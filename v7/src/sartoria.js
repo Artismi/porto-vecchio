@@ -660,7 +660,7 @@ var Sartoria = (function () {
     if (/^gamba/.test(kind)) {
       const s = kind.slice(-1), kn = tb.sNear(b['LowerLeg' + s]), an = tb.sNear(B.ankle[s]), cr = tb.sAtY ? 0 : 0;
       const sCr = (() => { let best = 0, bd = 9; for (let i = 0; i <= tb.ns; i++) { const d = Math.abs(tb.S[i].y - (B.crotch - .02)); if (d < bd) { bd = d; best = i; } } return best * tb.ds; })();
-      let end = an - .01; if (!P.has('polpacci')) end = P.has('cosce') ? (C.risvolto || /bermuda/.test(C.id || '') ? kn - .01 : sCr + (kn - sCr) * .55) : sCr + .035;
+      let end = an + .015; if (!P.has('polpacci'))   /* l'orlo dei pantaloni lunghi tocca la scarpa */ end = P.has('cosce') ? (C.risvolto || /bermuda/.test(C.id || '') ? kn - .01 : sCr + (kn - sCr) * .55) : sCr + .035;
       return { s0: 0, s1: end, kn, an, sCr };
     }
   }
