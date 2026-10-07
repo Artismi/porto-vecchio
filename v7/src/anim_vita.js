@@ -444,8 +444,16 @@
     grip(P, 'R', -.2, .2, 1, 1, 'pennello'); show(P, 'pennello');
   }); BUSY.attacchina = 1;
   // ---- BOMBOLETTA: braccio teso sul muro che disegna, ogni tanto agita la bomboletta ----
-  def('vernicia', FULL, (P) => {
-    const k = cyc(P, 8), shake = pulse(k, 0, .05, .15, .2);
+  // [graffiti] se si sa dove sta andando la vernice (A.tip, il punto dell'ultimo spruzzo), la mano va lì: segue il tratto
+  const _tipV = new THREE.Vector3(), _tipM = new THREE.Matrix4();
+  def('vernicia', FULL, (P, A) => {
+    const k = cyc(P, 8), shake = pulse(k, 0, .05, .15, .2), tip = A && A.tip;
+    if (tip && shake <= .5) {
+      const L = _tipV.set(tip.x, tip.y, tip.z).applyMatrix4(_tipM.copy(P.g.matrixWorld).invert()), d = Math.hypot(L.x, L.z), r = d > .05 ? Math.min(.62, Math.max(.3, d - .16)) / d : 1;
+      handTo(P, 'R', L.x * r * SIDE.R.s, Math.max(.75, Math.min(1.95, L.y)), Math.max(.2, L.z * r), .8, -.3, 0);   // la bomboletta a una spanna dal muro, sul punto
+      arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35); P.rot('Head', -.05, 0, 0);
+      grip(P, 'R', -.1, 0, 1, 1, 'bomboletta'); hideHeld(P); show(P, 'bomboletta'); return;
+    }
     if (shake > .5) arm(P, 'R', .2, -.8, .4, -.2, .4 + .3 * Math.sin(P.t * 30), .9);
     else arm(P, 'R', .25, .05 + .2 * Math.sin(P.t * 1.7), .85, .15 * Math.sin(P.t * 2.3), .1, 1);
     arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35);
@@ -638,6 +646,7 @@
     }
     if (n.dead || n.stun > 0 || n.inside) return;
     if (n.alarm) { s.lookAt = { x: n.alarm.x, y: 1.4, z: n.alarm.y, ground: true }; s.upper = null; return; }   // [passo] un rumore: si guarda da quella parte
+    { const wd = n.__wallDraft, tp = wd && wd.__tip; if (tp && performance.now() - tp.t < 600) { s.act = 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; return; } }   // [graffiti] sta spruzzando: mano e occhi sul tratto
     const P = n.pop, moving = Math.abs(n.speedNow || 0) > .3;
     s.stile = stileOf(st, n); s.mood.push('portamento');
     if (n.bark && n.bark.until > st.clock) {
@@ -678,5 +687,6 @@
     if (W) { const k = W.kind || ''; if (/sonno/.test(k)) s.act = W.nap ? 'siede' : 'dorme'; else if (/lavor/.test(k)) s.act = 'lavora'; else if (/mang|pranz/.test(k)) s.act = 'tavola'; else if (/tv|casa|svago/.test(k)) s.act = 'siede'; else byLabel(W.label, s); return; }
     if (p.hand && HELD_UP[p.hand]) s.upper = HELD_UP[p.hand];
     if (p.carrying) s.upper = 'porta';
+    const tp = p.__tip; if (tp && performance.now() - tp.t < 350) { s.act = 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; }   // [graffiti] la bomboletta del giocatore
   });
 })();

@@ -5412,8 +5412,16 @@ Anim.npcMap((st, n, s) => {
     grip(P, 'R', -.2, .2, 1, 1, 'pennello'); show(P, 'pennello');
   }); BUSY.attacchina = 1;
   // ---- BOMBOLETTA: braccio teso sul muro che disegna, ogni tanto agita la bomboletta ----
-  def('vernicia', FULL, (P) => {
-    const k = cyc(P, 8), shake = pulse(k, 0, .05, .15, .2);
+  // [graffiti] se si sa dove sta andando la vernice (A.tip, il punto dell'ultimo spruzzo), la mano va lì: segue il tratto
+  const _tipV = new THREE.Vector3(), _tipM = new THREE.Matrix4();
+  def('vernicia', FULL, (P, A) => {
+    const k = cyc(P, 8), shake = pulse(k, 0, .05, .15, .2), tip = A && A.tip;
+    if (tip && shake <= .5) {
+      const L = _tipV.set(tip.x, tip.y, tip.z).applyMatrix4(_tipM.copy(P.g.matrixWorld).invert()), d = Math.hypot(L.x, L.z), r = d > .05 ? Math.min(.62, Math.max(.3, d - .16)) / d : 1;
+      handTo(P, 'R', L.x * r * SIDE.R.s, Math.max(.75, Math.min(1.95, L.y)), Math.max(.2, L.z * r), .8, -.3, 0);   // la bomboletta a una spanna dal muro, sul punto
+      arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35); P.rot('Head', -.05, 0, 0);
+      grip(P, 'R', -.1, 0, 1, 1, 'bomboletta'); hideHeld(P); show(P, 'bomboletta'); return;
+    }
     if (shake > .5) arm(P, 'R', .2, -.8, .4, -.2, .4 + .3 * Math.sin(P.t * 30), .9);
     else arm(P, 'R', .25, .05 + .2 * Math.sin(P.t * 1.7), .85, .15 * Math.sin(P.t * 2.3), .1, 1);
     arm(P, 'L', .2, -.95, -.12, -.15, -.9, .35);
@@ -5606,6 +5614,7 @@ Anim.npcMap((st, n, s) => {
     }
     if (n.dead || n.stun > 0 || n.inside) return;
     if (n.alarm) { s.lookAt = { x: n.alarm.x, y: 1.4, z: n.alarm.y, ground: true }; s.upper = null; return; }   // [passo] un rumore: si guarda da quella parte
+    { const wd = n.__wallDraft, tp = wd && wd.__tip; if (tp && performance.now() - tp.t < 600) { s.act = 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; return; } }   // [graffiti] sta spruzzando: mano e occhi sul tratto
     const P = n.pop, moving = Math.abs(n.speedNow || 0) > .3;
     s.stile = stileOf(st, n); s.mood.push('portamento');
     if (n.bark && n.bark.until > st.clock) {
@@ -5646,6 +5655,7 @@ Anim.npcMap((st, n, s) => {
     if (W) { const k = W.kind || ''; if (/sonno/.test(k)) s.act = W.nap ? 'siede' : 'dorme'; else if (/lavor/.test(k)) s.act = 'lavora'; else if (/mang|pranz/.test(k)) s.act = 'tavola'; else if (/tv|casa|svago/.test(k)) s.act = 'siede'; else byLabel(W.label, s); return; }
     if (p.hand && HELD_UP[p.hand]) s.upper = HELD_UP[p.hand];
     if (p.carrying) s.upper = 'porta';
+    const tp = p.__tip; if (tp && performance.now() - tp.t < 350) { s.act = 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; }   // [graffiti] la bomboletta del giocatore
   });
 })();
 </script>
@@ -13503,7 +13513,7 @@ var Popolo = (function () {
       if (b.tgt && !isHomeT(P, b.tgt)) { readWalls(st, n, b.tgt); if (P.lunga && Math.random() < .3) recall(st, n, { place: b.tgt.label }); }   // [memoria] tornare in un posto fa ricordare
       P.today.push({ t: st.t, label: b.label + (b.tgt && !isHomeT(P, b.tgt) && !b.label.includes(b.tgt.label) ? ` (${b.tgt.label})` : '') }); if (P.today.length > 16) P.today.shift();
       if (b.pj && b.act === 'scritta' && b.tgt && b.tgt.k === 'p') {   // [commissioni] la scritta si fa stando al muro
-        const ws = wallSpot(st, b.tgt); P.errand = { id: 'w' + st.nextId++, kind: 'passo', block: b, tgt: b.tgt, t0: st.t, arrived: null, secs: 18, mins: 40 }; b.errand = P.errand.id;
+        const ws = wallSpot(st, b.tgt); P.errand = { id: 'w' + st.nextId++, kind: 'passo', block: b, tgt: b.tgt, t0: st.t, arrived: null, secs: 18, mins: 40, spot: ws }; b.errand = P.errand.id;   // [graffiti] spot: il muro scelto
         if (ws) P.spotNext = Object.assign({ key: tkey(b.tgt) + '@' + b.at, pid: b.tgt.pid, ci: n.id }, ws);
       } else if (b.pj) runStep(st, n, b);
     } else satisfy(st, n, b);
@@ -14210,7 +14220,9 @@ var Popolo = (function () {
     const ev = { id: st.nextId++, type, actor: n.id, x: b.tgt.x, y: b.tgt.y, t: st.t, sev: G.SEV[type] || .3, noise: 0, place, npcCrime: true };
     st.events.unshift(ev); if (st.events.length > 60) st.events.pop();
     const sp = P.spot && P.spot.pid === b.tgt.pid && P.near ? { x: n.x, y: n.y, face: n.face } : (() => { const w = wallSpot(st, b.tgt); return w ? { x: w.x, y: w.y, face: w.face } : null; })();   // [commissioni] dove sta il muro dipinto
-    st.pop.walls.push({ pk: tkey(b.tgt), place, t: st.t, by: n.id, text: sk.text, kind: sk.kind, style: sk.style, ev: ev.id, wx: sp ? sp.x + Math.cos(sp.face) * .37 : null, wy: sp ? sp.y + Math.sin(sp.face) * .37 : null, wface: sp ? sp.face : null }); if (st.pop.walls.length > 40) st.pop.walls.shift();
+    const dr = n.__wallDraft && n.__wallDraft.pk === tkey(b.tgt) ? n.__wallDraft : null;   // [graffiti] il graffito già sul muro (dipinto mentre stava lì): si completa, non se ne fa un altro
+    if (dr) { Object.assign(dr, { t: st.t, ev: ev.id, pending: false, text: dr.text || sk.text, __E: null }); if (dr.live) dr.live.done = true; n.__wallDraft = null; }
+    else st.pop.walls.push({ pk: tkey(b.tgt), place, t: st.t, by: n.id, text: sk.text, kind: sk.kind, style: sk.style, ev: ev.id, wx: sp ? sp.x + Math.cos(sp.face) * .37 : null, wy: sp ? sp.y + Math.sin(sp.face) * .37 : null, wface: sp ? sp.face : null, strokes: typeof Graffiti !== 'undefined' ? Graffiti.local(st, n, sk).strokes : null }); if (st.pop.walls.length > 40) st.pop.walls.shift();
     st.pop.stats[sk.kind === 'scritta' ? 'scritte' : 'graffiti']++;
     const R = st.ris, up = { scritta: [2, 3], satira: [1, 1.5], arte: [0, .5] }[sk.kind];
     if (R) { R.morale = clamp(R.morale + up[0], 0, 100); R.repr = clamp(R.repr + up[1], 0, 100); }
@@ -22233,6 +22245,161 @@ var Creativita = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = Creativita;
 </script>
+<script>/* Porto Vecchio — I Graffiti degli abitanti: cosa dipingono (solo logica, nessuna grafica).
+   Un graffito è un disegno a bomboletta fatto di TRATTI, nelle coordinate del muro in metri: u lungo il muro (a destra di
+   chi lo guarda), v in altezza da terra. La grafica (render.js, strumenti_inverno/bombolette1.py) li spruzza davvero
+   sulla texture della facciata col pennello dello Studio, con la misura bloccata da bomboletta.
+   - COSA: lo decide l'IA quando c'è (Mente, kind 'graffito': chi è, cosa prova, cosa ricorda, che stile ha → testo e
+     tratti); senza IA, una scritta con l'alfabeto a tratti qui sotto e un simbolo scelto dalla persona.
+   - QUANDO: chi va a dipingere (scritta notturna dei progetti, murale della creatività) ha il disegno pronto prima di
+     arrivare; arrivato al muro, il graffito entra nel registro dei muri «in corso» e la grafica lo dipinge tratto dopo
+     tratto per tutto il tempo che chi dipinge resta lì; da lontano compare intero. Quando il regime cancella, la
+     grafica riporta la facciata com'era.
+   Si aggancia dopo popolo.js (paintWall, errand) e creativita.js. */
+var Graffiti = (function () {
+  'use strict';
+  const G = typeof Game !== 'undefined' ? Game : require('./game.js');
+  const Po = typeof Popolo !== 'undefined' ? Popolo : require('./popolo.js');
+  const I = Po._;
+  const rnd = Math.random, pick = a => a[Math.floor(rnd() * a.length)];
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  // ---------------- L'ALFABETO A TRATTI (stampatello da bomboletta) ----------------
+  // ogni lettera: tratti di punti in una casella larga .6 e alta 1 (0,0 in basso a sinistra)
+  const F = {
+    A: [[[0, 0], [.3, 1], [.6, 0]], [[.12, .4], [.48, .4]]], B: [[[0, 0], [0, 1], [.42, 1], [.55, .85], [.42, .55], [0, .55]], [[.42, .55], [.6, .3], [.45, 0], [0, 0]]],
+    C: [[[.6, .85], [.45, 1], [.15, 1], [0, .8], [0, .2], [.15, 0], [.45, 0], [.6, .15]]], D: [[[0, 0], [0, 1], [.35, 1], [.6, .75], [.6, .25], [.35, 0], [0, 0]]],
+    E: [[[.6, 1], [0, 1], [0, 0], [.6, 0]], [[0, .52], [.45, .52]]], F: [[[.6, 1], [0, 1], [0, 0]], [[0, .52], [.45, .52]]],
+    G: [[[.6, .85], [.45, 1], [.15, 1], [0, .8], [0, .2], [.15, 0], [.5, 0], [.6, .15], [.6, .45], [.3, .45]]], H: [[[0, 0], [0, 1]], [[.6, 0], [.6, 1]], [[0, .52], [.6, .52]]],
+    I: [[[.3, 0], [.3, 1]], [[.1, 1], [.5, 1]], [[.1, 0], [.5, 0]]], J: [[[.6, 1], [.6, .2], [.45, 0], [.15, 0], [0, .2]]], K: [[[0, 0], [0, 1]], [[.6, 1], [0, .45], [.6, 0]]],
+    L: [[[0, 1], [0, 0], [.6, 0]]], M: [[[0, 0], [0, 1], [.3, .5], [.6, 1], [.6, 0]]], N: [[[0, 0], [0, 1], [.6, 0], [.6, 1]]],
+    O: [[[.15, 0], [0, .2], [0, .8], [.15, 1], [.45, 1], [.6, .8], [.6, .2], [.45, 0], [.15, 0]]], P: [[[0, 0], [0, 1], [.45, 1], [.6, .85], [.6, .6], [.45, .48], [0, .48]]],
+    Q: [[[.15, 0], [0, .2], [0, .8], [.15, 1], [.45, 1], [.6, .8], [.6, .2], [.45, 0], [.15, 0]], [[.38, .22], [.65, -.08]]], R: [[[0, 0], [0, 1], [.45, 1], [.6, .85], [.6, .6], [.45, .48], [0, .48]], [[.3, .48], [.6, 0]]],
+    S: [[[.6, .85], [.45, 1], [.12, 1], [0, .82], [.05, .6], [.55, .42], [.6, .18], [.45, 0], [.12, 0], [0, .15]]], T: [[[0, 1], [.6, 1]], [[.3, 1], [.3, 0]]],
+    U: [[[0, 1], [0, .2], [.15, 0], [.45, 0], [.6, .2], [.6, 1]]], V: [[[0, 1], [.3, 0], [.6, 1]]], W: [[[0, 1], [.15, 0], [.3, .55], [.45, 0], [.6, 1]]],
+    X: [[[0, 0], [.6, 1]], [[0, 1], [.6, 0]]], Y: [[[0, 1], [.3, .5], [.6, 1]], [[.3, .5], [.3, 0]]], Z: [[[0, 1], [.6, 1], [0, 0], [.6, 0]]],
+    '0': [[[.15, 0], [0, .2], [0, .8], [.15, 1], [.45, 1], [.6, .8], [.6, .2], [.45, 0], [.15, 0]]], '1': [[[.15, .8], [.35, 1], [.35, 0]]], '2': [[[0, .8], [.15, 1], [.45, 1], [.6, .8], [0, 0], [.6, 0]]],
+    '3': [[[0, 1], [.6, 1], [.3, .55], [.6, .3], [.45, 0], [0, 0]]], '4': [[[.45, 0], [.45, 1], [0, .35], [.6, .35]]], '5': [[[.6, 1], [0, 1], [0, .55], [.45, .55], [.6, .35], [.45, 0], [0, 0]]],
+    '6': [[[.55, 1], [.15, .7], [0, .3], [.15, 0], [.45, 0], [.6, .25], [.45, .5], [0, .4]]], '7': [[[0, 1], [.6, 1], [.2, 0]]], '8': [[[.3, .55], [0, .8], [.3, 1], [.6, .8], [.3, .55], [0, .25], [.3, 0], [.6, .25], [.3, .55]]], '9': [[[.6, .6], [.15, .55], [0, .8], [.3, 1], [.6, .8], [.45, 0]]],
+    '!': [[[.3, 1], [.3, .3]], [[.3, .08], [.3, 0]]], '?': [[[0, .8], [.15, 1], [.45, 1], [.6, .8], [.3, .45], [.3, .3]], [[.3, .08], [.3, 0]]], '-': [[[.1, .5], [.5, .5]]], '.': [[[.3, .02], [.3, 0]]], "'": [[[.3, 1], [.25, .75]]],
+  };
+  const DEACC = s => String(s).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[«»"]/g, '');
+  // una scritta in tratti: una o due righe, alta h metri, centrata nella larghezza W, con un po' di mano tremolante
+  function textStrokes(text, opt) {
+    const o = Object.assign({ W: 2.6, h: .32, v0: 1.15, color: '#c42a22', size: .05, wobble: .015 }, opt || {});
+    const words = DEACC(text).split(/\s+/).filter(Boolean), lines = []; let cur = '';
+    words.forEach(w => { if ((cur + ' ' + w).trim().length * o.h * .78 > o.W && cur) { lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); }); if (cur) lines.push(cur);
+    const out = [], L = lines.slice(0, 2), lh = o.h * 1.35;
+    L.forEach((ln, li) => {
+      const adv = o.h * .78, w = ln.length * adv, u0 = -w / 2, v = o.v0 + (L.length - 1 - li) * lh, tilt = (rnd() - .5) * .05;
+      [...ln].forEach((ch, ci) => { const g = F[ch]; if (!g) return; g.forEach(tr => out.push({ c: o.color, w: o.size, pts: tr.map(([x, y]) => { const u = u0 + ci * adv + x * o.h, vv = v + y * o.h + (u - u0) * tilt; return [u + (rnd() - .5) * o.wobble, vv + (rnd() - .5) * o.wobble]; }) })); });
+    });
+    return out;
+  }
+  // ---------------- I SIMBOLI ----------------
+  const circle = (cu, cv, r, n, a0, a1) => { const p = []; for (let i = 0; i <= n; i++) { const a = (a0 || 0) + ((a1 === undefined ? Math.PI * 2 : a1) - (a0 || 0)) * i / n; p.push([cu + Math.cos(a) * r, cv + Math.sin(a) * r]); } return p; };
+  const SYMB = {
+    onda: c => [{ c, w: .06, pts: Array.from({ length: 25 }, (_, i) => [-.7 + i * .06, 1.9 + Math.sin(i * .55) * .12]) }],   // la Risacca
+    cuore: c => [{ c, w: .05, pts: [[0, 1.75], [-.25, 2], [-.35, 2.15], [-.25, 2.3], [-.08, 2.3], [0, 2.18], [.08, 2.3], [.25, 2.3], [.35, 2.15], [.25, 2], [0, 1.75]] }],
+    sole: c => [{ c, w: .05, pts: circle(0, 2.05, .2, 18) }].concat([0, 1, 2, 3, 4, 5, 6, 7].map(k => { const a = k * Math.PI / 4; return { c, w: .04, pts: [[Math.cos(a) * .28, 2.05 + Math.sin(a) * .28], [Math.cos(a) * .42, 2.05 + Math.sin(a) * .42]] }; })),
+    faccia: c => [{ c, w: .05, pts: circle(0, 2.05, .26, 20) }, { c, w: .05, pts: [[-.1, 2.12], [-.09, 2.1]] }, { c, w: .05, pts: [[.1, 2.12], [.09, 2.1]] }, { c, w: .045, pts: circle(0, 2.02, .13, 8, Math.PI * 1.15, Math.PI * 1.85) }],
+    asino: c => [{ c, w: .05, pts: circle(0, 2.0, .24, 20) }, { c, w: .05, pts: [[-.15, 2.2], [-.25, 2.55], [-.05, 2.24]] }, { c, w: .05, pts: [[.15, 2.2], [.25, 2.55], [.05, 2.24]] }],   // il Garante con le orecchie d'asino
+    barca: c => [{ c, w: .05, pts: [[-.4, 1.95], [.4, 1.95], [.28, 1.8], [-.28, 1.8], [-.4, 1.95]] }, { c, w: .04, pts: [[0, 1.95], [0, 2.4], [.25, 2.0], [0, 2.0]] }],
+    stella: c => [{ c, w: .05, pts: [0, 1, 2, 3, 4, 5].map(k => { const a = Math.PI / 2 + k * Math.PI * 4 / 5; return [Math.cos(a) * .28, 2.05 + Math.sin(a) * .28]; }) }],
+  };
+  const COLORS = { 'scritte enormi in rosso': ['#c42a22', '#e03a2a'], 'caricature': ['#1e1e24', '#2a2a30'], 'simboli più che parole': ['#2a6ac8', '#1e1e24'], 'stencil precisi': ['#1e1e24', '#e8e0d0'], 'lettere tonde e colorate': ['#e8a020', '#3a9a5a', '#c84a9a'], 'murale a colori': ['#c8402a', '#2a6ac8', '#e8c040', '#3a9a5a'] };
+  function symbolFor(n, kind) {
+    if (n.ris && n.ris.ideo > .6) return kind === 'satira' ? 'asino' : 'onda';
+    const P = n.pop || {}, W = P.intW || {};
+    if (W.mare > .5 || /pescator/.test((P.job && P.job.title) || '')) return 'barca';
+    if (kind === 'arte') return pick(['sole', 'stella', 'cuore', 'faccia']);
+    return pick(['cuore', 'stella', 'faccia']);
+  }
+  // il disegno senza IA: la scritta (se c'è) e un simbolo sopra
+  function local(st, n, sk) {
+    const style = sk.style || 'lettere tonde e colorate', cols = COLORS[style] || COLORS['lettere tonde e colorate'], col = pick(cols);
+    const text = (sk.kind === 'arte' ? (sk.title || '') : sk.text || '').replace(/^il |^l'|^un /i, '').slice(0, 30);
+    const out = text ? textStrokes(text, { color: col, h: style === 'scritte enormi in rosso' ? .38 : .28, W: 2.6 }) : [];
+    const sym = SYMB[symbolFor(n, sk.kind)]; if (sym) out.push(...sym(pick(cols)));
+    return { strokes: out, text, by: 'locale' };
+  }
+
+  // ---------------- L'IA: cosa dipingere ----------------
+  // la richiesta parte quando la persona decide di andare a dipingere; quando arriva, sostituisce il disegno locale
+  function ask(st, n, sk, done) {
+    const M = typeof Mente !== 'undefined' ? Mente : null; if (!M || !M.call || (M.state && M.state.lastError && !M.state.connected)) return false;   // senza IA resta il disegno locale
+    const P = n.pop || {}, mem = (P.lunga || []).concat(P.diary || []).filter(e => e.w > .4).slice(-5).map(e => e.text);
+    const scena = { chi: `${n.name}, ${P.age} anni, ${n.role}`, stile: sk.style, tipo: sk.kind, idea: sk.text || sk.title || '', umore: { rabbia: P.need && P.need.rabbia, paura: P.need && P.need.paura }, odio_regime: n.ris ? n.ris.ideo : 0, ricordi: mem, interessi: (P.ints || []).map(i => i.k), muro: { larghezza: 3, altezza: 2.6 } };
+    M.call({ kind: 'graffito', scena }).then(r => {
+      const d = r && (r.data || r); if (!d) return;
+      const strokes = [];
+      if (d.testo) strokes.push(...textStrokes(String(d.testo).slice(0, 40), { color: d.colore_testo || '#c42a22', h: clamp(+d.altezza_lettere || .3, .15, .45) }));
+      (Array.isArray(d.tratti) ? d.tratti : []).slice(0, 40).forEach(t => { const pts = (t.punti || t.pts || []).slice(0, 60).map(q => [clamp(+q[0] || 0, -1.5, 1.5), clamp(+q[1] || 0, .3, 2.6)]); if (pts.length > 1) strokes.push({ c: /^#[0-9a-f]{6}$/i.test(t.colore || '') ? t.colore : '#1e1e24', w: clamp(+t.spessore || .05, .025, .1), pts }); });
+      if (strokes.length) done({ strokes, text: d.testo || '', by: 'ia', desc: d.descrizione || '' });
+    }).catch(() => { });
+    return true;
+  }
+  // chi va a dipingere: il disegno è pronto prima di arrivare (locale subito, quello dell'IA se arriva in tempo)
+  function prepare(st, n, sk) {
+    const d = local(st, n, sk); n.__draft = d;
+    ask(st, n, sk, r => { if (n.__draft === d) n.__draft = r; });
+    return d;
+  }
+
+  // ---------------- IL MURO IN CORSO ----------------
+  // arrivato al muro, il graffito entra nel registro (in corso, con l'ora d'inizio e quanto dura): la grafica lo dipinge
+  // tratto dopo tratto; alla fine popolo.js (paintWall) lo completa con testo, stile ed evento
+  const PAINT_KINDS = { passo: 1, murale: 1 };
+  function tick(st) {
+    st.npcs.forEach(n => {
+      const P = n.pop, E = P && P.errand; if (!E || !PAINT_KINDS[E.kind] || E.__wall) return;
+      const sk = E.kind === 'murale' ? { kind: 'arte', style: 'murale a colori', title: E.data && E.data.title, text: E.data && E.data.lines && E.data.lines[0] } : { kind: 'scritta', style: I.artStyle ? I.artStyle(n) : '', text: (I.sketchFor ? I.sketchFor(st, n).text : '') };
+      if (!n.__draft) prepare(st, n, sk);   // appena parte: così l'IA ha il tempo di rispondere
+      if (!E.arrived) return;
+      const d = n.__draft;
+      // il muro è quello scelto partendo (E.spot: davanti al muro, girato verso il muro), non dove la persona si è fermata
+      const sp = E.spot || P.spot || { x: n.x, y: n.y, face: n.face }, face = sp.face, x = sp.x, y = sp.y, near = !!(P.near && !n.inside);
+      // vicino al giocatore la vernice comincia quando è davvero al muro (stance), lontano il graffito si fa e basta
+      const w = { pk: I.tkey(E.tgt), place: E.tgt.label, t: st.t, by: n.id, text: d.text, kind: sk.kind, style: sk.style, strokes: d.strokes, wx: x + Math.cos(face) * .37, wy: y + Math.sin(face) * .37, wface: face, live: { c0: near ? null : st.clock, dur: E.secs || 20, near }, pending: true, ai: d.by === 'ia' };
+      st.pop.walls.push(w); if (st.pop.walls.length > 40) st.pop.walls.shift();
+      E.__wall = w; w.__E = E; n.__wallDraft = w; n.__draft = null;
+    });
+    // chi è stato chiamato altrove lascia il graffito a metà: resta com'è, non si finisce da solo
+    st.pop.walls.forEach(w => {
+      if (!w.pending || !w.__E) return; const n = G.byId(st, w.by);
+      if (n && !n.dead && n.pop && n.pop.errand === w.__E) return;
+      w.pending = false; w.partial = w.live.c0 == null ? 0 : Math.max(.05, Math.min(1, (st.clock - w.live.c0) / Math.max(1, w.live.dur))); w.live.done = true; w.__E = null;
+      if (!w.partial) { const i = st.pop.walls.indexOf(w); if (i >= 0) st.pop.walls.splice(i, 1); }   // non aveva ancora cominciato
+      if (n && n.__wallDraft === w) n.__wallDraft = null;
+    });
+  }
+  // chi parte per dipingere prepara il disegno (così l'IA ha il tempo di rispondere)
+  const e0 = I.errand;
+  I.errand = function (st, n, e) { const ok = e0.apply(this, arguments); if (ok && e && PAINT_KINDS[e.kind]) { try { prepare(st, n, e.kind === 'murale' ? { kind: 'arte', style: 'murale a colori', title: e.data && e.data.title, text: e.data && e.data.lines && e.data.lines[0] } : { kind: 'scritta', style: I.artStyle(n), text: I.sketchFor(st, n).text }); } catch (x) { } } return ok; };
+  // chi spruzza sta a mezzo metro dal muro (la grafica dice dov'è davvero: w.__wallD) e si sposta di lato con la scritta
+  // (w.__tipU: dove sta andando la vernice), girato verso il muro
+  function stance(st, dt) {
+    st.npcs.forEach(n => {
+      const w = n.__wallDraft; if (!w || !w.pending || !w.live || w.live.done || !w.live.near || n.dead || n.inside) return;
+      const E = n.pop && n.pop.errand; if (!E || E !== w.__E) return;
+      const f = w.wface, cf = Math.cos(f), sf = Math.sin(f), u = w.live.c0 == null ? 0 : clamp(w.__tipU || 0, -1.3, 1.3) * .75, back = (w.__wallD == null ? -.1 : w.__wallD) - .5;
+      const tx = w.wx + cf * back - sf * u, ty = w.wy + sf * back + cf * u, d = Math.hypot(tx - n.x, ty - n.y);
+      if (n.path) n.path.length = 0;
+      if (d > .12) {   // ci va a piedi (con la camminata), poi si gira verso il muro
+        const sp = Math.min(d / dt, w.live.c0 == null ? 1.15 : .6), a = Math.atan2(ty - n.y, tx - n.x), nx = n.x + Math.cos(a) * sp * dt, ny = n.y + Math.sin(a) * sp * dt;
+        if (!G.walkM || G.walkM(nx, ny) || d < .6) { n.x = nx; n.y = ny; } else { n.x = tx; n.y = ty; }
+        n.speedNow = sp; n.face += Math.atan2(Math.sin((d > .5 ? a : f) - n.face), Math.cos((d > .5 ? a : f) - n.face)) * Math.min(1, dt * 6); return;
+      }
+      n.face += Math.atan2(Math.sin(f - n.face), Math.cos(f - n.face)) * Math.min(1, dt * 6); n.speedNow = 0;
+      if (w.live.c0 == null && Math.abs(Math.atan2(Math.sin(f - n.face), Math.cos(f - n.face))) < .25) { w.live.c0 = st.clock; if (E.arrived) E.arrived.clock = st.clock; }   // al muro e girato: comincia (e il tempo della commissione parte da qui)
+    });
+  }
+  const s0 = G.HOOKS.step;
+  G.HOOKS.step = (st, dt) => { if (s0) s0(st, dt); if (!st.pop) return; stance(st, dt); if (st.clock > (st.__grT || 0)) { st.__grT = st.clock + .3; tick(st); } };
+  return { textStrokes, local, prepare, SYMB, F };
+})();
+if (typeof module !== 'undefined') module.exports = Graffiti;
+</script>
 <script>/* Porto Vecchio — azioni sul paesaggio (inverno, v7).
    Abbattere un albero alla volta: serve un'ascia (o una sega). L'albero diventa un ceppo, il bosco si apre,
    in tasca entra legna da ardere (per stufe e barili). Chi vede tagliare un albero nella dorsale se lo ricorda.
@@ -24347,6 +24514,136 @@ var Render = (function () {
     F.rooms.slice(0, 6).forEach(q => { const l = new THREE.PointLight('#ffd8a8', .75, Math.max(q.w, q.h) * 1.5, 1.6); l.position.set(q.x + q.w / 2, base + 2.6, q.y + q.h / 2); scene.add(l); INDOOR.lights.push(l); });
     return grp;
   }
+  // [bombolette1] IL PENNELLO DELLO STUDIO A MISURA DI BOMBOLETTA
+  // Dove la superficie ha una texture tutta sua (un canvas usato da un solo oggetto, non ripetuto) si dipinge lì dentro,
+  // come lo Studio. Dove la texture è condivisa o a piastrelle (dipingerla sporcherebbe ogni palazzo che la usa) il
+  // pennello dipinge su un velo di vernice aderente alla superficie: stesso spruzzo, solo su quel pezzo di muro.
+  const BMB = { rc: new THREE.Raycaster(), cands: null, candT: 0, cx: 1e9, cz: 1e9, use: new Map(), veli: [], tmp: document.createElement('canvas'), dirty: new Set(), chk: 0, sph: new THREE.Sphere(), va: new THREE.Vector3(), vb: new THREE.Vector3() };
+  const bmbCanvas = t => { const im = t && t.image; return im && im.getContext ? im : null; };
+  function bmbCands(cx, cz) {
+    const now = performance.now(); if (BMB.cands && now - BMB.candT < 2000 && Math.hypot(BMB.cx - cx, BMB.cz - cz) < 15) return BMB.cands;
+    BMB.candT = now; BMB.cx = cx; BMB.cz = cz; const out = []; BMB.use.clear();
+    scene.traverseVisible(o => { if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry || !o.geometry.attributes.position || o.userData.velo) return;
+      const ms = Array.isArray(o.material) ? o.material : [o.material];
+      ms.forEach(m => { const c = m && bmbCanvas(m.map); if (c) BMB.use.set(c, (BMB.use.get(c) || 0) + 1); });   // quanti oggetti usano lo stesso canvas
+      if (ms.every(m => !m || m.visible === false || (m.transparent && m.opacity < .3))) return;
+      if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); BMB.sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
+      if (Math.hypot(BMB.sph.center.x - cx, BMB.sph.center.z - cz) > BMB.sph.radius + 10) return; out.push(o); });
+    return (BMB.cands = out);
+  }
+  const bmbAlive = L => { let o = L.mesh; while (o.parent) o = o.parent; return o === scene; };
+  function bmbDrop(L) { if (L.mesh.parent) L.mesh.parent.remove(L.mesh); L.mesh.geometry.dispose(); L.tex.dispose(); L.mesh.material.dispose(); const i = BMB.veli.indexOf(L); if (i >= 0) BMB.veli.splice(i, 1); }
+  // il velo di vernice sulla faccia colpita: quello che c'è già lì, o uno nuovo (ctr: il riquadro del muro di chi dipinge)
+  function bmbVelo(h, ctr, noNew) {
+    const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (n.dot(BMB.rc.ray.direction) > 0) n.negate();
+    const p = h.point, at = L => { const q = L.mesh.worldToLocal(BMB.va.copy(p)); return Math.abs(q.z) < .06 && Math.abs(q.x) < L.W / 2 && Math.abs(q.y) < L.H / 2 ? { c: L.c, t: L.tex, x: (q.x / L.W + .5) * L.c.width, y: (.5 - q.y / L.H) * L.c.height, dens: L.dens, point: p } : null; };
+    for (let i = BMB.veli.length - 1; i >= 0; i--) { const L = BMB.veli[i]; if (!bmbAlive(L)) { bmbDrop(L); continue; } if (L.n.dot(n) < .96) continue; const S = at(L); if (S) return S; }
+    if (noNew) return null;
+    const W = ctr ? ctr.W : 1.6, H = ctr ? ctr.H : 1.6, dens = 56, c = document.createElement('canvas'); c.width = Math.ceil(W * dens); c.height = Math.ceil(H * dens);
+    const tex = canvasTex(c); tex.encoding = THREE.sRGBEncoding;
+    const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mat); mesh.userData.velo = true; mesh.renderOrder = 2;
+    const o = ctr ? ctr.o.clone().addScaledVector(n, -new THREE.Vector3().subVectors(ctr.o, p).dot(n)) : p.clone();   // il centro del muro, portato sul piano colpito
+    if (Math.abs(n.y) > .9) mesh.up.set(0, 0, 1);
+    mesh.position.copy(o).addScaledVector(n, .012); mesh.lookAt(BMB.vb.copy(mesh.position).add(n)); scene.add(mesh); mesh.updateMatrixWorld(true);
+    const s = h.object.getWorldScale(new THREE.Vector3()); if (Math.abs(s.x - s.y) < .01 && Math.abs(s.y - s.z) < .01) h.object.attach(mesh);   // segue l'oggetto (una macchina che riparte)
+    const L = { mesh, c, tex, n, W, H, dens }; c.__velo = L; BMB.veli.push(L); if (BMB.veli.length > 90) bmbDrop(BMB.veli[0]);
+    return at(L);
+  }
+  // la superficie colpita da un raggio: canvas, pixel, densità (pixel per metro), come surfaceAt dello Studio
+  function bmbHit(ox, oy, oz, dx, dy, dz, far, ctr, noNew) {
+    BMB.rc.set(BMB.va.set(ox, oy, oz), BMB.vb.set(dx, dy, dz).normalize()); BMB.rc.far = far || 1.6; BMB.rc.near = 0;
+    for (const h of BMB.rc.intersectObjects(bmbCands(ox, oz), false)) {
+      if (!h.face) continue; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; if (!m || m.visible === false) continue;
+      if (m.transparent && m.opacity < .3) continue;   // edifici resi trasparenti davanti alla camera
+      const t = m.map, c = bmbCanvas(t), uv0 = h.uv;
+      const own = c && uv0 && (BMB.use.get(c) || 0) <= 1 && t.repeat.x <= 1.01 && t.repeat.y <= 1.01 && uv0.x > -.001 && uv0.x < 1.001 && uv0.y > -.001 && uv0.y < 1.001;
+      if (!own) return bmbVelo(h, ctr, noNew);
+      const W = c.width, H = c.height; if (t.matrixAutoUpdate) t.updateMatrix(); const uv = uv0.clone(); t.transformUv(uv);
+      const g = h.object.geometry, U = g.attributes.uv, P = g.attributes.position, ids = [h.face.a, h.face.b, h.face.c];
+      const uvs = ids.map(i => new THREE.Vector2(U.getX(i), U.getY(i)).applyMatrix3(t.matrix)), ps = ids.map(i => new THREE.Vector3().fromBufferAttribute(P, i).applyMatrix4(h.object.matrixWorld));
+      const ua = Math.abs((uvs[1].x - uvs[0].x) * (uvs[2].y - uvs[0].y) - (uvs[2].x - uvs[0].x) * (uvs[1].y - uvs[0].y)) * W * H / 2, wa = new THREE.Vector3().subVectors(ps[1], ps[0]).cross(new THREE.Vector3().subVectors(ps[2], ps[0])).length() / 2;
+      return { c, t, x: uv.x * W, y: uv.y * H, dens: wa > 1e-6 && ua > 1e-6 ? Math.sqrt(ua / wa) : 16, point: h.point };
+    }
+    return null;
+  }
+  // uno spruzzo: il «dab» dello Studio (pennello) o la gomma (dalla copia di prima)
+  function bmbDab(S, col, size, hard, opac, gomma) {
+    const c = S.c; if (!c.__pvOrig) { const k = document.createElement('canvas'); k.width = c.width; k.height = c.height; k.getContext('2d').drawImage(c, 0, 0); c.__pvOrig = k; }
+    const r = Math.max(.75, Math.min(60, size * S.dens)), d = Math.ceil(r * 2) + 2, T = BMB.tmp, x = T.getContext('2d');
+    if (T.width < d || T.height < d) { T.width = Math.max(T.width, d); T.height = Math.max(T.height, d); }
+    x.clearRect(0, 0, T.width, T.height); x.globalCompositeOperation = 'source-over';
+    if (gomma) x.drawImage(c.__pvOrig, S.x - d / 2, S.y - d / 2, d, d, 0, 0, d, d); else { x.fillStyle = col; x.fillRect(0, 0, d, d); }
+    x.globalCompositeOperation = 'destination-in'; const gr = x.createRadialGradient(d / 2, d / 2, r * Math.min(.98, hard), d / 2, d / 2, r);
+    gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = gr; x.fillRect(0, 0, d, d); x.globalCompositeOperation = 'source-over';
+    const cx = c.getContext('2d'); cx.save(); cx.globalAlpha = gomma ? 1 : opac; cx.drawImage(T, 0, 0, d, d, S.x - d / 2, S.y - d / 2, d, d); cx.restore();
+    BMB.dirty.add(S.t);
+  }
+  const BMB_SIZE = [.025, .09];   // la misura bloccata: da tratto sottile a spruzzo largo di bomboletta
+  // un punto del muro (u lungo il muro, v in altezza) → spruzzo; ritorna il canvas colpito
+  function bmbWallDab(w, u, v, col, size, gomma) {
+    const f = w.wface, cf = Math.cos(f), sf = Math.sin(f), gx = w.wx - sf * u, gz = w.wy + cf * u, base = groundH(w.wx - cf * .6, w.wy - sf * .6);
+    const ctr = w.__ctr || (w.__ctr = { W: 3.4, H: 2.7, o: new THREE.Vector3(w.wx, base + 1.45, w.wy) });
+    const S = bmbHit(gx - cf * .6, base + v, gz - sf * .6, cf, 0, sf, 1.6, ctr, gomma); if (!S) return null;
+    bmbDab(S, col, Math.max(BMB_SIZE[0], Math.min(BMB_SIZE[1], size)), .45, .92, gomma);
+    if (!gomma) {   // per chi dipinge (graffiti.js, anim_vita.js): dov'è davvero il muro, dove sta andando la vernice
+      const dW = (S.point.x - w.wx) * cf + (S.point.z - w.wy) * sf; w.__wallD = w.__wallD == null ? dW : w.__wallD * .9 + dW * .1;
+      w.__tip = { x: S.point.x, y: S.point.y, z: S.point.z, t: performance.now() }; w.__tipU = u;
+    }
+    return S.c;
+  }
+  // i tratti di un muro fino a una certa lunghezza (per vederli crescere)
+  function bmbStrokes(w, upTo, gomma) {
+    let L = 0;
+    for (const tr of w.strokes) { const P = tr.pts; for (let i = 0; i < P.length; i++) {
+      const a = P[Math.max(0, i - 1)], b = P[i], seg = i ? Math.hypot(b[0] - a[0], b[1] - a[1]) : 0, step = Math.max(.012, (tr.w || .05) * .35), n = Math.max(1, Math.ceil(seg / step));
+      for (let k = i ? 1 : 0; k <= n; k++) { const q = i ? k / n : 0, u = a[0] + (b[0] - a[0]) * q, v = a[1] + (b[1] - a[1]) * q; L += i ? seg / n : 0; if (L < (w.__done || 0) - 1e-6 && !gomma) continue; if (L > upTo) return L;
+        const c = bmbWallDab(w, u, v, tr.c, tr.w || .05, gomma); if (c && !gomma) (w.__canv = w.__canv || new Set()).add(c); }
+    } }
+    return 1e9;
+  }
+  const bmbLen = w => w.__len || (w.__len = w.strokes.reduce((s, tr) => s + tr.pts.reduce((t, p, i) => t + (i ? Math.hypot(p[0] - tr.pts[i - 1][0], p[1] - tr.pts[i - 1][1]) : 0), 0), 0));
+  function bmbPass(st) {
+    const L = (st.pop && st.pop.walls) || []; if (!L.length && !BMB.dirty.size) return;
+    const cx = camera.position.x, cz = camera.position.z, slow = performance.now() > BMB.chk; if (slow) BMB.chk = performance.now() + 1200;
+    for (const w of L) {
+      if (!w.strokes || w.wx == null || Math.hypot(w.wx - cx, w.wy - cz) > 90) continue;
+      if (w.erased) {   // il regime cancella: via il velo, e la facciata propria torna com'era
+        if (w.__canv && !w.__erased) { w.__erased = true; let own = false; [...w.__canv].forEach(c => { if (c.__velo) bmbDrop(c.__velo); else own = true; }); if (own) { w.__done = 0; bmbStrokes(w, 1e9, true); } }
+        continue;
+      }
+      // il quartiere ricostruito (velo sparito o texture ridisegnata): si ridipinge da capo
+      if (slow && w.__painted && w.__canv) {
+        let lost = [...w.__canv].some(c => c.__velo && !bmbAlive(c.__velo));
+        const own = [...w.__canv].find(c => !c.__velo), p0 = own && w.strokes[0] && w.strokes[0].pts[0];
+        if (!lost && p0) { const f = w.wface, gx = w.wx - Math.sin(f) * p0[0], gz = w.wy + Math.cos(f) * p0[0], S = bmbHit(gx - Math.cos(f) * .6, groundH(w.wx - Math.cos(f) * .6, w.wy - Math.sin(f) * .6) + p0[1], gz - Math.sin(f) * .6, Math.cos(f), 0, Math.sin(f), 1.6, w.__ctr, true); if (S && !w.__canv.has(S.c)) lost = true; }
+        if (lost) { w.__canv.forEach(c => { if (c.__velo) bmbDrop(c.__velo); }); w.__done = 0; w.__painted = false; w.__canv = null; }
+      }
+      if (w.__painted) continue;
+      if (w.live && w.live.near && !w.live.done && w.live.c0 == null) continue;   // sta ancora andando al muro
+      const tot = bmbLen(w), live = w.live && w.live.near && !w.live.done, up = live ? tot * Math.min(1, (st.clock - w.live.c0) / Math.max(1, w.live.dur)) : w.partial ? tot * w.partial : 1e9;   // lasciato a metà: solo la parte fatta
+      if (!live && !slow && w.__done === undefined) continue;   // i muri finiti si dipingono al giro lento (non tutti nello stesso fotogramma)
+      const r = bmbStrokes(w, up, false); if (!w.__canv) continue;   // le facciate qui non sono ancora costruite: si riprova, senza perdere i tratti
+      w.__done = Math.min(up, tot);
+      if (r >= 1e9 || w.__done >= tot - 1e-6 || (!live && w.partial)) w.__painted = true;
+    }
+    BMB.dirty.forEach(t => { t.needsUpdate = true; }); BMB.dirty.clear();
+  }
+  // il giocatore: spruzza col puntatore sulla superficie a portata di braccio. Più lontano (entro 9 m) ritorna dove
+  // mettersi per arrivarci ({ go: x, y }): main.js ci fa camminare il giocatore, poi spruzza
+  const BMB_REACH = 1.2;
+  function sprayAt(st, nx, ny, col) {
+    const rc = BMB.rc, p = st.player; rc.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), camera); rc.near = 0; rc.far = 1e4;
+    // la prima superficie a portata di braccio (i tetti e i muri fra la camera e il giocatore il gioco li toglie di mezzo)
+    const h = rc.intersectObjects(bmbCands(p.x, p.y), false).find(h => { if (Math.hypot(h.point.x - p.x, h.point.z - p.y) > 9 || h.point.y > groundH(h.point.x, h.point.z) + 2.4) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face && h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
+    if (!h) return false;
+    const o = h.point, nW = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (nW.dot(rc.ray.direction) > 0) nW.negate();
+    const nh = Math.hypot(nW.x, nW.z), off = nh > .3 ? .5 : 0;   // davanti al muro, a mezzo metro; per terra, ci si va sopra
+    if (Math.hypot(o.x - p.x, o.z - p.y) > BMB_REACH) return { go: { x: o.x + (off ? nW.x / nh * off : 0), y: o.z + (off ? nW.z / nh * off : 0) }, at: { x: o.x, y: o.z } };
+    const d = rc.ray.direction.clone(), S = bmbHit(o.x - d.x * .3, o.y - d.y * .3, o.z - d.z * .3, d.x, d.y, d.z, .6); if (!S) return false;
+    bmbDab(S, col, .045, .45, .9, false); BMB.dirty.forEach(t => { t.needsUpdate = true; }); BMB.dirty.clear();
+    p.__tip = { x: o.x, y: o.y, z: o.z, t: performance.now() }; p.face = Math.atan2(o.z - p.y, o.x - p.x); return true;
+  }
   // [muri_gente2] i muri dipinti dalla gente
   const MGV = { meshes: {}, n: -1 };
   function mgTexture(w) {
@@ -24370,7 +24667,7 @@ var Render = (function () {
     window.__muriGente = MGV;   // per le prove
     const L = (st.pop && st.pop.walls) || [], sig = L.length + ':' + L.filter(w => w.erased).length; if (sig === MGV.n) return; MGV.n = sig;
     const keep = {};
-    L.forEach((w, i) => { if (w.wx == null) return; const k = w.ev + (w.erased ? 'x' : ''); keep[k] = 1; if (MGV.meshes[k]) return;
+    L.forEach((w, i) => { if (w.wx == null || w.strokes) return;   /* [bombolette1] chi ha i tratti si dipinge col pennello */ const k = w.ev + (w.erased ? 'x' : ''); keep[k] = 1; if (MGV.meshes[k]) return;
       const old = MGV.meshes[w.ev + (w.erased ? '' : 'x')]; if (old) { scene.remove(old); delete MGV.meshes[w.ev + (w.erased ? '' : 'x')]; }
       const tex = new THREE.CanvasTexture(mgTexture(w)); tex.encoding = THREE.sRGBEncoding;
       const m = new THREE.Mesh(new THREE.PlaneGeometry(1.9, .95), new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
@@ -32466,6 +32763,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     tickUrbano1(time, night);
     tickMondo(st, time, night, dt);   // [animazioni-mondo] vento, fumo, scintille, carte, piccioni, porte
     muriGente(st);   /* [muri_gente2] */
+    bmbPass(st);   /* [bombolette1] */
     dyn.spin.forEach(s => { s.o.rotation.y = time * s.speed; s.o.children.forEach(c => c.children.forEach(m => m.material.opacity = .015 + night * .06)); });
     dyn.beams.forEach(b => { b.piv.rotation.z = Math.sin(time * .6 + b.ph) * .45; b.piv.rotation.x = Math.cos(time * .45 + b.ph) * .3; b.mat.opacity = .02 + night * .13; });
     dyn.chasers.forEach(c => { const n = c.bulbs.length; c.bulbs.forEach((b, i) => b.material.color.set(((i + Math.floor(time * 8)) % 3) === 0 ? '#fff4c0' : '#6a4a20')); });
@@ -32717,7 +33015,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   function camBasis() { const f = new THREE.Vector3(); camera.getWorldDirection(f); f.y = 0; f.normalize(); return { fx: f.x, fz: f.z, rx: -f.z, rz: f.x }; }
   function snap(st) { cam.x = st.player.x; cam.y = st.player.y; cam.h = groundH(st.player.x, st.player.y); }
   const __mondo = { M: MONDO, V: VENTO, stat: () => ({ ms: +MONDO.ms.toFixed(3), vento: +VENTO.g.value.toFixed(2), neve: MONDO.rain, fumo: MONDO.puffs ? Array.from(MONDO.puffs.life).filter(l => l > 0).length : 0, scintille: MONDO.sparks ? Array.from(MONDO.sparks.life).filter(l => l > 0).length : 0, fuochi: MONDO.fuochi.length + WX.fires.length, stormi: MONDO.birds ? MONDO.birds.F.length : 0, porte: MONDO.doors.filter(r => r.rig.visible).length, barche: dyn.boats.length, bucato: dyn.laundry.length, gabbiani: dyn.gulls.length }) };   // [animazioni-mondo] per le prove
-  return { dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
 </script>
 <script>
@@ -33484,10 +33782,36 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   cv.addEventListener('pointerdown', e => { cv.focus(); A.init(); const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
     if (window.Cantiere && Cantiere.active() && e.button !== 1) { Cantiere.down(e.button, nx, ny); return; }   // [cantiere] si costruisce, non si cammina
     if (e.button === 2) { mouse.down = true; mouse.pressed = true; return; }
+    if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
     if (e.button === 0) { mouse.nx = nx; mouse.ny = ny; onClick(nx, ny, e.detail >= 2); } });
-  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; });
+  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; if (e.button === 0 && ui.spray) sprayEnd(); });
+  // [graffiti] la bomboletta: il pennello dello Studio con la misura bloccata da bomboletta. Si impugna dalle Tasche;
+  // in mano, il tasto sinistro spruzza sulla superficie sotto il puntatore, a portata di braccio (se è più in là ci si
+  // avvicina camminando e poi si spruzza), la rotella cambia colore
+  const SPRAY_COLS = [['#c42a22', 'rosso'], ['#1e1e24', 'nero'], ['#e8e0d0', 'bianco'], ['#2a6ac8', 'blu'], ['#e8c040', 'giallo'], ['#3a9a5a', 'verde'], ['#c84a9a', 'rosa'], ['#e8a020', 'arancio']];
+  const sprayHave = () => { try { return (Oggetti.inv(st) || {}).bomboletta >= 1; } catch (e) { return false; } };
+  function sprayTick(dt) {
+    const inHand = st.player.hand === 'bomboletta' && sprayHave() && !st.player.vehicle;
+    if (inHand && !ui.spray) { ui.spray = { col: 0, on: false, dabs: 0, t: 0 }; toast('Bomboletta in mano: tieni premuto il tasto sinistro su un muro vicino; la rotella cambia colore (' + SPRAY_COLS[0][1] + ').'); }
+    if (!inHand && ui.spray) { sprayEnd(); ui.spray = null; }
+    const S = ui.spray; if (!S || !S.on || !R.spray) return; S.t -= dt; if (S.t > 0) return; S.t = .016;
+    const r = R.spray(st, mouse.nx, mouse.ny, SPRAY_COLS[S.col][0]);
+    if (r === true) { S.dabs++; if (click.t && click.t.spray) { click.t = null; ui.mark = null; } }
+    else if (r && r.go && !(click.t && click.t.spray && Math.hypot(click.t.x - r.go.x, click.t.y - r.go.y) < .4)) {   // troppo lontano: ci si avvicina al muro, poi si spruzza
+      click.t = { kind: 'move', spray: 1, x: r.go.x, y: r.go.y, path: goalPath(r.go.x, r.go.y), run: false, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x: r.go.x, y: r.go.y, t: ui.time, k: 'move' };
+    }
+    if (S.dabs - (S.used || 0) >= 900) {   // una bomboletta dura circa un minuto di spruzzo
+      S.used = S.dabs; const b = Oggetti.inv(st); b.bomboletta = Math.max(0, (b.bomboletta || 0) - 1); if (!b.bomboletta) delete b.bomboletta;
+      if (!sprayHave()) { toast('La bomboletta è finita.'); sprayEnd(); ui.spray = null; st.player.hand = null; }
+    }
+  }
+  function sprayEnd() {
+    const S = ui.spray; if (!S || !S.on) return; S.on = false;
+    if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } }   // chi ti vede, ti ha visto
+  }
   cv.addEventListener('contextmenu', e => e.preventDefault());
-  cv.addEventListener('wheel', e => { if (ui.intro || ui.dialog || ui.book) return; e.preventDefault(); if (window.Cantiere && Cantiere.wheel(e.deltaY)) return; zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });
+  cv.addEventListener('wheel', e => { if (ui.intro || ui.dialog || ui.book) return; e.preventDefault();
+    if (ui.spray) { ui.spray.col = (ui.spray.col + (e.deltaY > 0 ? 1 : SPRAY_COLS.length - 1)) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[ui.spray.col][1] + '.'); return; } if (window.Cantiere && Cantiere.wheel(e.deltaY)) return; zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });
   addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     A.init();
@@ -34025,7 +34349,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       const inp = ui.intro ? { x: 0, y: 0, freeze: true } : input();
       if (!ui.intro && (mouse.down || touchFire || mouse.pressed)) G.fire(st, inp.aim !== undefined ? inp.aim : aimAngle(), ui.aimPoint, mouse.pressed);
       mouse.pressed = false;
-      tickClick();
+      tickClick(); sprayTick(dt);
       G.step(st, dt, inp);
     }
     if (st.over && !ui.over) endScreen();

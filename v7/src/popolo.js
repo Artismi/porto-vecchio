@@ -731,7 +731,7 @@ var Popolo = (function () {
       if (b.tgt && !isHomeT(P, b.tgt)) { readWalls(st, n, b.tgt); if (P.lunga && Math.random() < .3) recall(st, n, { place: b.tgt.label }); }   // [memoria] tornare in un posto fa ricordare
       P.today.push({ t: st.t, label: b.label + (b.tgt && !isHomeT(P, b.tgt) && !b.label.includes(b.tgt.label) ? ` (${b.tgt.label})` : '') }); if (P.today.length > 16) P.today.shift();
       if (b.pj && b.act === 'scritta' && b.tgt && b.tgt.k === 'p') {   // [commissioni] la scritta si fa stando al muro
-        const ws = wallSpot(st, b.tgt); P.errand = { id: 'w' + st.nextId++, kind: 'passo', block: b, tgt: b.tgt, t0: st.t, arrived: null, secs: 18, mins: 40 }; b.errand = P.errand.id;
+        const ws = wallSpot(st, b.tgt); P.errand = { id: 'w' + st.nextId++, kind: 'passo', block: b, tgt: b.tgt, t0: st.t, arrived: null, secs: 18, mins: 40, spot: ws }; b.errand = P.errand.id;   // [graffiti] spot: il muro scelto
         if (ws) P.spotNext = Object.assign({ key: tkey(b.tgt) + '@' + b.at, pid: b.tgt.pid, ci: n.id }, ws);
       } else if (b.pj) runStep(st, n, b);
     } else satisfy(st, n, b);
@@ -1438,7 +1438,9 @@ var Popolo = (function () {
     const ev = { id: st.nextId++, type, actor: n.id, x: b.tgt.x, y: b.tgt.y, t: st.t, sev: G.SEV[type] || .3, noise: 0, place, npcCrime: true };
     st.events.unshift(ev); if (st.events.length > 60) st.events.pop();
     const sp = P.spot && P.spot.pid === b.tgt.pid && P.near ? { x: n.x, y: n.y, face: n.face } : (() => { const w = wallSpot(st, b.tgt); return w ? { x: w.x, y: w.y, face: w.face } : null; })();   // [commissioni] dove sta il muro dipinto
-    st.pop.walls.push({ pk: tkey(b.tgt), place, t: st.t, by: n.id, text: sk.text, kind: sk.kind, style: sk.style, ev: ev.id, wx: sp ? sp.x + Math.cos(sp.face) * .37 : null, wy: sp ? sp.y + Math.sin(sp.face) * .37 : null, wface: sp ? sp.face : null }); if (st.pop.walls.length > 40) st.pop.walls.shift();
+    const dr = n.__wallDraft && n.__wallDraft.pk === tkey(b.tgt) ? n.__wallDraft : null;   // [graffiti] il graffito già sul muro (dipinto mentre stava lì): si completa, non se ne fa un altro
+    if (dr) { Object.assign(dr, { t: st.t, ev: ev.id, pending: false, text: dr.text || sk.text, __E: null }); if (dr.live) dr.live.done = true; n.__wallDraft = null; }
+    else st.pop.walls.push({ pk: tkey(b.tgt), place, t: st.t, by: n.id, text: sk.text, kind: sk.kind, style: sk.style, ev: ev.id, wx: sp ? sp.x + Math.cos(sp.face) * .37 : null, wy: sp ? sp.y + Math.sin(sp.face) * .37 : null, wface: sp ? sp.face : null, strokes: typeof Graffiti !== 'undefined' ? Graffiti.local(st, n, sk).strokes : null }); if (st.pop.walls.length > 40) st.pop.walls.shift();
     st.pop.stats[sk.kind === 'scritta' ? 'scritte' : 'graffiti']++;
     const R = st.ris, up = { scritta: [2, 3], satira: [1, 1.5], arte: [0, .5] }[sk.kind];
     if (R) { R.morale = clamp(R.morale + up[0], 0, 100); R.repr = clamp(R.repr + up[1], 0, 100); }
