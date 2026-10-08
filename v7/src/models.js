@@ -187,6 +187,10 @@ var Models = (function () {
       const mk = (k, obj) => { obj.visible = false; g.userData.props[k] = pin(g, wr, obj, hp.x, hp.y - .07, hp.z + .05); };
       mk('bomboletta', C(.035, .035, .17, '#c8302a', 0, 0, 0, 10)); mk('telefono', B(.05, .11, .025, '#151518')); mk('fotocamera', B(.13, .08, .06, '#202024'));
       mk('piede', B(.03, .55, .03, '#4a4a54')); mk('gesso', B(.02, .07, .02, '#f4f4ee'));
+      mk('manganello', B(.035, .5, .035, '#14141a'));   // [ordine]
+      { const cg = new THREE.Group(), cv = document.createElement ? document.createElement('canvas') : null; cg.add(B(.025, 1.0, .025, '#8a6a48', 0, .35, 0)); let bm = lm('#f2ecdc');
+        if (cv) { cv.width = 128; cv.height = 64; const tx = new THREE.CanvasTexture(cv); tx.magFilter = THREE.NearestFilter; bm = new THREE.MeshLambertMaterial({ map: tx }); cg.userData.cv = cv; cg.userData.tx = tx; }
+        const bd = new THREE.Mesh(new THREE.BoxGeometry(.62, .34, .015), bm); bd.position.set(0, .92, 0); cg.add(bd); mk('cartello', cg); }   // [ordine] il cartello di chi protesta
     }
     play(g, 'Idle'); return g;
   }
@@ -216,7 +220,7 @@ var Models = (function () {
     // chi non ha un aspetto dato (comparse) riceve un corredo casuale ma stabile
     if (!look || L.hat === undefined) L.hat = fem ? ['none', 'none', 'scarf', 'sunhat'][Math.floor(r() * 4)] : ['none', 'none', 'flat', 'cap', 'fedora', 'beanie'][Math.floor(r() * 6)];
     if (!look || L.extra === undefined) L.extra = [r() < .25 ? 'shades' : '', !fem && r() < .3 ? 'moustache' : '', r() < .25 ? (fem ? 'bag' : 'paper') : '', r() < .15 ? 'backpack' : ''].join(',');
-    if (who === 'cop') { L.hat = 'police'; L.extra = 'belt'; }
+    if (who === 'cop') { if (!/^(elmetto|basco)$/.test(L.hat || '')) L.hat = 'police'; L.extra = 'belt' + (/gold/.test((look && look.extra) || '') ? ',gold' : ''); }   // [ordine] elmetto dei soldati, basco delle guardie d'onore
     // corporatura: più alti, più bassi, più robusti
     const build = L.build || (.92 + r() * .2), hgt = .94 + r() * .1;
     g.userData.body.scale.set(.9 + (build - 1) * .6 + .1, hgt, .9 + (build - 1) * .6 + .1);
@@ -235,7 +239,17 @@ var Models = (function () {
       case 'police': hat.add(C(.15, .135, .09, '#232a3e', 0, .01, 0, 14), C(.138, .138, .025, '#d8d0b0', 0, -.03, 0, 14), B(.17, .015, .1, '#111', 0, -.045, .12)); break;
       case 'scarf': hat.add(C(.135, .145, .13, hc, 0, -.03, -.01, 12)); break;
       case 'sunhat': hat.add(C(.12, .13, .09, '#e8d8b0', 0, 0, 0, 14), C(.25, .25, .015, '#e8d8b0', 0, -.04, 0, 16), C(.131, .131, .03, hc, 0, -.025, 0, 14)); break;
+      case 'elmetto': hat.add(C(.15, .165, .1, '#3a4232', 0, .01, 0, 14), C(.185, .185, .02, '#343c2c', 0, -.04, 0, 16), B(.2, .02, .02, '#22281c', 0, -.02, .15)); break;   // [ordine] l'elmetto dei soldati della Base
+      case 'basco': hat.add(C(.15, .13, .05, '#7a1a1a', .02, .0, -.01, 14), B(.04, .04, .01, '#e8c040', -.07, .0, .12)); break;   // [ordine] il basco rosso delle guardie d'onore
       case 'hard': hat.add(C(.13, .145, .1, '#f2c14e', 0, 0, 0, 12), C(.17, .17, .015, '#f2c14e', 0, -.045, .02, 14)); break;
+    }
+    if (hat.children.length) pin(g, head, hat, hp.x, top - .02, fz);
+    if (who === 'cop') {   // [ordine] tenuta antisommossa: casco con visiera e scudo, accesi da animPerson({ riot })
+      const rh = new THREE.Group(), vis = new THREE.MeshLambertMaterial({ color: '#9ab0c8', transparent: true, opacity: .45 });
+      rh.add(C(.16, .17, .13, '#2a3040', 0, .01, -.01, 14), C(.175, .175, .02, '#1e2430', 0, -.055, -.01, 16));
+      const vz = new THREE.Mesh(new THREE.BoxGeometry(.26, .13, .015), vis); vz.position.set(0, -.07, .155); rh.add(vz);
+      rh.visible = false; pin(g, head, rh, hp.x, top - .02, fz); g.userData.riotHat = rh; g.userData.copHat = hat;
+      if (handL) { const hp3 = new THREE.Vector3(); handL.getWorldPosition(hp3); const sh = new THREE.Group(); const pl = new THREE.Mesh(new THREE.BoxGeometry(.5, .78, .025), new THREE.MeshLambertMaterial({ color: '#c8d4e0', transparent: true, opacity: .55 })); sh.add(pl, B(.5, .06, .03, '#2a3040', 0, .37, 0), B(.5, .06, .03, '#2a3040', 0, -.37, 0), B(.08, .1, .04, '#1a1a1a', 0, .06, .02)); const tx = B(.3, .05, .03, '#f4f4f4', 0, .2, .015); sh.add(tx); sh.visible = false; pin(g, handL, sh, hp3.x - .04, hp3.y + .06, hp3.z + .16); g.userData.riotShield = sh; }
     }
     if (hat.children.length) tagC(pin(g, head, hat, hp.x, top - .02, fz));
     const ex = (L.extra || '').split(',');
@@ -263,6 +277,8 @@ var Models = (function () {
     const u = g.userData, sp = Math.abs(o.speed || 0);
     const gunName = (o.weapon && u.gunsByWeapon[o.weapon]) || (o.held && u.gunsByWeapon[o.held]);
     for (const k in (u.props || {})) u.props[k].visible = o.held === k;   // [azioni]
+    if (u.riotHat) { const on = !!o.riot; if (u.riotOn !== on) { u.riotOn = on; u.riotHat.visible = on; if (u.copHat) u.copHat.visible = !on; if (u.riotShield) u.riotShield.visible = on; } }   // [ordine]
+    if (o.banner && u.props && u.props.cartello && u.props.cartello.userData.cv && u.bannerTxt !== o.banner) { u.bannerTxt = o.banner; const cv = u.props.cartello.userData.cv, x = cv.getContext('2d'); x.fillStyle = '#f2ecdc'; x.fillRect(0, 0, 128, 64); x.strokeStyle = '#8a2020'; x.lineWidth = 4; x.strokeRect(2, 2, 124, 60); x.fillStyle = '#b01818'; let fs = 30; x.font = 'bold ' + fs + 'px sans-serif'; while (x.measureText(o.banner).width > 118 && fs > 12) { fs -= 2; x.font = 'bold ' + fs + 'px sans-serif'; } x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(o.banner, 64, 33); u.props.cartello.userData.tx.needsUpdate = true; }
     for (const k in u.mguns) u.mguns[k].visible = !!(k === gunName || (o.gun && k === o.gun));
     let clip = 'Idle';
     if (o.down) clip = 'Death';
