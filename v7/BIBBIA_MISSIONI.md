@@ -10,7 +10,7 @@ Fonti: il codice di `v7/src/` (world.js, game.js, risacca.js, fazioni.js, ordine
 
 Sei il game designer delle missioni di Porto Vecchio. Il tuo lavoro:
 
-1. **Progettare missioni** sparse su tutta l'isola, sopra e sotto terra e in mare, dettagliate fino al punto in cui un programmatore può implementarle senza chiederti niente.
+1. **Progettare missioni** sparse su tutta l'isola, sopra e sotto terra, in mare e sugli isolotti (3.5), dettagliate fino al punto in cui un programmatore può implementarle senza chiederti niente.
 2. **Accompagnare ogni missione con una moodboard scritta**: palette, luce, aria, materiali, inquadrature, suoni, oggetti di scena, riferimenti e prompt per le immagini. La moodboard deve servire a chi disegna le scene e a chi genera immagini di riferimento.
 3. **Restare dentro al mondo**: tono, epoca, fazioni e geografia sono quelli scritti qui. Se inventi un luogo, un personaggio o una meccanica, lo dichiari come **[NUOVO]** e spieghi dove sta e cosa serve.
 
@@ -138,17 +138,33 @@ Per ogni regione: carattere, chi ci sta, come ci si arriva, e alcuni spunti di m
 - **Sotto terra nessuno ti vede.**
 
 ### 3.5 Le altre isole
-Oggi **c'è una sola isola giocabile**. Fuori dalla mappa esistono il **continente dell'Impero** (da dove arriva la nave e dove va il tributo) e la costa di fronte. In mare ci sono solo faraglioni e scogli affioranti.
 
-Se ti chiedono di progettare **isole nuove** (isolotti, un'isola carcere, un'isola dell'Impero, uno scoglio col faro), sono tutte **[NUOVO]** e **[MOTORE]**. Per ognuna consegna:
-1. **Posizione** rispetto all'isola (direzione e distanza in metri) e **come ci si arriva**: le barche ci sono già (gozzo, lancia, motoscafo, con la stessa fisica delle auto e lo scarroccio); il nuoto è lento (1,8 m/s, 2,7 di corsa), senza armi e senza pesi.
+#### Gli isolotti che esistono già
+Attorno all'isola il codice mette cinque isolotti di roccia vera (`World.SEA.rocks` con `big: true`, sezione `[costa]` di world.js): le barche ci sbattono contro, a nuoto ci si arrampica come sugli scogli. Sono piccoli (raggio di pochi metri), quindi servono come punti d'incontro, nascondigli, segnali e approdi di fortuna, non come luoghi da esplorare.
+
+| id | Dove | x, y | Raggio | Luogo più vicino | Spunti |
+|---|---|---|---|---|---|
+| `faraglione_grande` | davanti a Punta Scogli, a ovest del faro | 14, 204 | 4,2 m | `faro`, `punta` | segnali col faro; una cassa legata sotto il pelo dell'acqua |
+| `faraglione_piccolo` | davanti a Punta Scogli | 6, 226 | 3 m | `punta` | approdo a nuoto per sfuggire a una ronda |
+| `scoglio_basso` | davanti a Punta Scogli, verso la Spiaggia Lunga | 24, 244 | 2,4 m | `punta`, `scogli_8` | si copre e si scopre col mare: un appuntamento che dura poco |
+| `scoglio_sirena` | lo Scoglio della Sirena, sotto la costa di tramontana | 346, 32 | 3,2 m | `bagno_4` (Cala di tramontana), `scogli_3` | leggende dei pescatori; un relitto sul fondo **[NUOVO]** |
+| `scoglio_monaco` | lo Scoglio del Monaco, sotto il Monte Scuro, costa nord | 784, 34 | 2,6 m | `bagno_6` (Cala di San Giacomo), `scogli_7` | un eremita o un osservatore della Risacca che guarda la costiera **[NUOVO]** |
+
+Gli isolotti **non hanno un id di luogo** in `Game.PLACES`: una missione che ci manda il giocatore deve chiedere di aggiungerlo (**[MOTORE]**, una riga in world.js accanto agli altri `PN(...)`), oppure usare il luogo più vicino della tabella.
+
+#### Quello che c'è oltre il mare
+- **Il continente dell'Impero**: da lì arriva la nave del lunedì e del giovedì, lì va il tributo del Garante, da lì vengono dollari, vodka, sigarette americane e cassette. Non si vede e non si raggiunge.
+- **La costa di fronte**: nella prima versione del gioco si vedeva all'orizzonte, coi grattacieli, e un ponte (il Ponte della Terraferma) collegava l'isola. Oggi non c'è più: può tornare come sfondo o come meta di una fuga **[NUOVO]**.
+- Le cartelle `v2`…`v6` e la radice del repository contengono **versioni precedenti della stessa isola** (un'isola rotonda e piatta di circa 440 m, e prima ancora un'isola di 300 × 200 m in stile Vice City col borgo ligure). Non sono altre isole del mondo: sono la stessa Porto Vecchio com'era prima. Si possono usare come ispirazione per isole nuove.
+
+#### Progettare isole nuove
+Isolotti abitati, un'isola carcere, un'isola dell'Impero, uno scoglio col faro: sono tutte **[NUOVO]** e **[MOTORE]**. Per ognuna consegna:
+1. **Posizione** rispetto all'isola (direzione e distanza in metri; la mappa oggi finisce a 1300 × 400 m, quindi un'isola nuova va fuori dal bordo o al posto di un tratto di mare) e **come ci si arriva**: le barche ci sono già (gozzo, lancia, motoscafo, con la stessa fisica delle auto e lo scarroccio); il nuoto è lento (1,8 m/s, 2,7 di corsa), senza armi e senza pesi.
 2. **Ruolo nel mondo**: chi la controlla, perché esiste, cosa produce o nasconde, come entra nell'economia (la nave, il contrabbando, il tributo).
 3. **Forma e ambienti**, con gli stessi ambienti già usati (falesia, macchia, pineta, scogli, ruderale) o nuovi motivati.
 4. **Luoghi con id proposti** in minuscolo con il trattino basso (`isola_carcere_molo`), come quelli del capitolo 12.
 5. **Una moodboard dell'isola** nel formato del capitolo 7.
 6. **Almeno tre missioni** che la collegano all'isola principale.
-
----
 
 ## 4. Le fazioni
 
