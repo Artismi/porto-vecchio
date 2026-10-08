@@ -169,7 +169,7 @@ var Pittura = (function () {
     const P = new Set(c.parti || []), F = frame(B), T = F.tubes[0], L = {};
     C.col = c.col; C.A = rgb(c.col || '#808080'); ['aperta', 'fab', 'c2', 'c3', 'usura', 'tasche', 'fronte', 'collo', 'polsi'].forEach(k => { if (c[k] !== undefined && k !== 'fab' || (k === 'fab' && c.fabV)) C[k] = k === 'fab' ? c.fabV : c[k]; });
     const l = C.A[0] * .3 + C.A[1] * .59 + C.A[2] * .11; C.B = rgb(C.c2 || (l > .5 ? '#2a2a30' : D)); C.C = rgb(C.c3 || (l > .5 ? '#5a5a60' : '#a8a090'));
-    const trous = !C.gonna && !C.solo_gonna && P.has('bacino') && (C.cl === 2 || P.has('cosce')), top = P.has('torso') && !C.solo_gonna;
+    const trous = !C.gonna && !C.solo_gonna && P.has('bacino'), top = P.has('torso') && !C.solo_gonna;
     if (top) {
       const Ls = Sa.lengths(B, T, 'tronco', C, [...P]);
       let yb = Ls.yb; if (C.gonna || C.poncho) yb = B.waist - .02;   // la falda la fa la geometria
@@ -233,6 +233,7 @@ var Pittura = (function () {
     const nY = Sa.neckY(B), out = {};
     const shoe = outfit.find(c => /^(scarpe|scarpe_eleganti|scarpe_tela|scarpe_corsa|mocassini)/.test(c.id)), sock = outfit.find(c => c.id === 'calzini' || c.id === 'calze_nylon' || c.id === 'calzamaglia');
     const ankle = shoe ? rgb(sock && sock.col || '#2a2a2e') : null;
+    const LO = legOrder(outfit), socksOver = LO.socksOver, sockCol = sock ? rgb(sock.col || '#2a2a2e') : null;
     const bt = outfit.find(c => /^stivali/.test(c.id)), boots = bt ? { top: bt.id === 'stivali' ? .34 : .3, col: rgb(bt.col || '#2a1e18'), risv: bt.id !== 'stivali' } : null;
     REG.forEach((R, ri) => {
       const [W, H] = SIZE[R], tb = F.tubes[ri], [s0, s1] = F.range[ri], circ = F.circ[ri], col = new Uint8ClampedArray(W * H * 4), hh = new Uint8ClampedArray(W * H * 4);
@@ -258,7 +259,9 @@ var Pittura = (function () {
           // sotto l'orlo, con le scarpe: il calzino (niente caviglia nuda che sbuca dietro la scarpa)
           if (R[0] === 'L' && ankle && top < 0 && y < .16) { c = ankle; h = .5; shade = y < .06 ? .8 : 1; }
           // gli stivali: il gambale dipinto sul polpaccio, sopra i pantaloni, con l'orlo dritto
-          if (R[0] === 'L' && boots && y < boots.top) { const e = boots.top - y, f0 = boots.col; c = mul(f0, .95 + .1 * (hsh(Math.floor(xm / .03), Math.floor(y / .03)) > .6 ? 1 : 0)); h = .6; shade = e < .008 ? .55 : e < .03 && boots.risv ? 1.08 : 1; top = -1; if (y < .05) shade *= .5; }
+          // i calzini messi sopra i pantaloni: la gamba dei pantaloni infilata nel calzino
+          if (R[0] === 'L' && socksOver && y < .27) { const e = .27 - y, rib = .5 + .5 * Math.sin(xm / .005 * Math.PI); c = mul(sockCol, .9 + rib * .15); h = rib; shade = e < .006 ? .6 : 1; top = -1; }
+          if (R[0] === 'L' && boots && y < boots.top && (LO.bootsOver || top < 0)) { const e = boots.top - y, f0 = boots.col; c = mul(f0, .95 + .1 * (hsh(Math.floor(xm / .03), Math.floor(y / .03)) > .6 ? 1 : 0)); h = .6; shade = e < .008 ? .55 : e < .03 && boots.risv ? 1.08 : 1; top = -1; if (y < .05) shade *= .5; }
           // ---- il volume dipinto, come nella pixel art: luce di forma, pieghe, toni a gradini, contorni ----
           if (top >= 0) {
             const C = plans[top], fa = Math.cos(a - .45);   // luce da davanti-sinistra
@@ -534,7 +537,7 @@ var Pittura = (function () {
     const P = paintPlans(B, outfit), Sa = S(), F = frame(B); if (!P) return;
     const outer = R => { for (let k = P.length - 1; k >= 0; k--) if (P[k].L[R]) return P[k]; return null; };
     const mat = C => blockMat(C.fab, '#' + new THREE.Color().setRGB(C.A[0] * .9, C.A[1] * .9, C.A[2] * .9).getHexString(), '#' + new THREE.Color().setRGB(C.B[0], C.B[1], C.B[2]).getHexString(), null, { vc: false });
-    const boots = outfit.some(c => /^stivali/.test(c.id));
+    const LO = legOrder(outfit), boots = LO.bootsOver || LO.socksOver;   // pantaloni dentro stivali o calzini: niente orlo in rilievo
     for (const sd of ['L', 'R']) {
       const RA = 'A' + sd, CA = outer(RA); if (CA && !(CA.polsi && CA.L[RA].s1 > CA.L[RA].la)) { const Ls = CA.L[RA], ri = sd === 'L' ? 1 : 2, o = new THREE.Group(); o.add(orlo(B, ri, Ls.s1 - .008, .016, .0045 + spessore(CA), .005 + spessore(CA), 10, mat(CA))); AT(Ls.s1 < Ls.la - .02 ? 'UpperArm' + sd : 'LowerArm' + sd, o); }
       const RL = 'L' + sd, CL = outer(RL); if (CL && CL.L[RL].falda === undefined && !boots && !CL.risvolto) { const Ls = CL.L[RL], ri = sd === 'L' ? 3 : 4; if (Ls.s1 < F.tubes[ri].L + .01) { const o = new THREE.Group(); o.add(orlo(B, ri, Ls.s1 - .01, .02, .005 + spessore(CL), .006 + spessore(CL), 12, mat(CL))); AT((Ls.s1 < Ls.kn - .02 ? 'UpperLeg' : 'LowerLeg') + sd, o); } }
@@ -544,14 +547,26 @@ var Pittura = (function () {
   // l'ordine degli strati: di norma per tipo (intimo, maglie, pantaloni, giacche, cappotti), ma nella stessa zona del guardaroba
   // vale l'ordine in cui li hai indossati: le mutande sopra i pantaloni stanno sopra, il gilet sotto la camicia sta sotto
   function rankOutfit(list, CUT) {
-    const last = {}; return list.map((c, i) => { const z = c.zona || 'x'; let r = ((CUT[c.id] || {}).cl || 1) * 10 + i * .01; if (last[z] !== undefined && r <= last[z]) r = last[z] + .01; last[z] = r; return { c, r }; })
-      .sort((a, b) => a.r - b.r).map(o => o.c);
+    const last = {}, R = list.map((c, i) => { const z = c.zona || 'x'; let r = ((CUT[c.id] || {}).cl || 1) * 10 + i * .01; if (last[z] !== undefined && r <= last[z]) r = last[z] + .01; last[z] = r; return { c, r }; });
+    // tra zone diverse decide l'ordine in cui ti sei vestito: la maglia messa dopo i pantaloni sta fuori (sopra di loro)
+    // per ogni coppia di capi di zone diverse che coprono le stesse parti, quello messo dopo sta sopra (giacche e cappotti restano sopra a tutto)
+    for (let it = 0; it < 3; it++) R.forEach(t => { if (!(t.c.when > 0)) return; R.forEach(b => { if (b === t || !(b.c.when > 0) || (t.c.zona || 'x') === (b.c.zona || 'y') || t.c.when <= b.c.when || t.r > b.r) return;
+      if (((CUT[b.c.id] || {}).cl || 1) >= 4) return; const ex = l => l.includes('torso') ? l.concat(['bacino']) : l, pt = ex(t.c.parti || []), pb = ex(b.c.parti || []); if (!pt.some(p => pb.includes(p))) return; /* la maglia scende sulla vita: tocca i pantaloni */ t.r = b.r + .005; }); });
+    return R.sort((a, b) => a.r - b.r).map(o => o.c);
   }
+  // gambe: pantaloni, calzini, stivali. Chi sta sopra? Lo dice l'ordine in cui ti sei vestito (gli abitanti: stivali sopra, calzini sotto)
+  function legOrder(outfit) {
+    const CUT = S().CUT_(), pants = outfit.filter(c => (c.parti || []).includes('polpacci') && ((CUT[c.id] || {}).cl === 2 || (CUT[c.id] || {}).intera)).pop(),
+      sock = outfit.find(c => c.id === 'calzini'), bt = outfit.find(c => /^stivali/.test(c.id)), known = o => o && o.when > 0;
+    return { pants, sock, bt, socksOver: !!(pants && sock && known(sock) && known(pants) && sopra(sock, pants)), bootsOver: !!(bt && (!pants || !(known(bt) && known(pants)) || sopra(bt, pants))) };
+  }
+  // chi sta sopra a chi, tra zone diverse (calzini e stivali rispetto ai pantaloni)
+  function sopra(a, b) { return !!(a && b && (a.when || 0) > (b.when || 0)); }
   const surfY = (tb, sv, a) => S().surf(tb, sv, a, 0).y;
   function paintPlans(B, outfit) {
     const CUT = S().CUT_(), list = outfit.filter(c => c.parti && c.parti.some(p => /torso|braccia|avambracci|bacino|cosce|polpacci|collo/.test(p)));
     const ranked = rankOutfit(list, CUT);
     return ranked.map((c, k) => plan(B, c, k, ranked));
   }
-  return { spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
+  return { legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
 })();

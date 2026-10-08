@@ -267,8 +267,9 @@ var Vesti3D = (function () {
     return new THREE.Mesh(geo, mat);
   }
   function volumi(g, outfit, B, AT) {
-    const CUT = Sartoria.CUT_(), cut = c => CUT[c.id] || {}, after = (c, f) => outfit.slice(outfit.indexOf(c) + 1).some(f);
-    const coversTorso = c => outfit.some(o => o !== c && (cut(o).cl >= 3) && (o.parti || []).includes('torso') && !cut(o).corto && !cut(o).davanti);   // maglioni e giacche coprono la cintura
+    const CUT = Sartoria.CUT_(), cut = c => CUT[c.id] || {}, RK = Pittura.rankOutfit(outfit.filter(c => c.parti && c.parti.length), CUT), after = (c, f) => RK.slice(RK.indexOf(c) + 1).some(f), LO = Pittura.legOrder(outfit);
+    // la vita coperta da qualcosa messo dopo: maglioni, giacche, una maglia lasciata fuori, mutande sopra i pantaloni
+    const coversTorso = c => after(c, o => (((o.parti || []).includes('torso') && !cut(o).corto && !cut(o).davanti && !(cut(o).cl <= 1 && after(o, p => cut(p).cl === 2 && (p.parti || []).includes('bacino')))) || (o.parti || []).includes('bacino') && !cut(o).gonna) && (cut(o).cl >= 1 || (o.parti || []).includes('bacino')));
     outfit.forEach(c => {
       const C = cut(c);
       // la cintura vera, con la fibbia
@@ -291,12 +292,12 @@ var Vesti3D = (function () {
         AT('Hips', o);
       }
       // i polsini rimboccati delle camicie (se nessuno ci va sopra)
-      if ((C.polsi || C.risvolto_maniche) && (c.parti || []).includes('avambracci') && !after(c, o => (o.parti || []).includes('avambracci') && cut(o).cl >= 3)) for (const sd of ['L', 'R']) {
+      if ((C.polsi || C.risvolto_maniche) && (c.parti || []).includes('avambracci') && !after(c, o => (o.parti || []).includes('avambracci') && cut(o).cl >= 0 && cut(o).cl >= 3)) for (const sd of ['L', 'R']) {
         const tb = Sartoria.tube(B, 'manica' + sd), Ls = Sartoria.lengths(B, tb, 'manica' + sd, C, c.parti); if (Ls.s1 < Ls.la) continue;
         const o = new THREE.Group(); o.add(Pittura.orlo(B, sd === 'L' ? 1 : 2, Ls.s1 - .022, .04, .008, .008, 10, Pittura.blockMat(C.fab || 'cotone', c.col, C.c2, C.c3, { vc: false }))); AT('LowerArm' + sd, o);
       }
       // il risvolto dei pantaloni
-      if (C.cl === 2 && C.risvolto && !after(c, o => cut(o).gonna)) for (const sd of ['L', 'R']) {
+      if (C.cl === 2 && C.risvolto && !after(c, o => cut(o).gonna) && !LO.socksOver && !LO.bootsOver) for (const sd of ['L', 'R']) {
         const tb = Sartoria.tube(B, 'gamba' + sd), Ls = Sartoria.lengths(B, tb, 'gamba' + sd, C, c.parti);
         const o = new THREE.Group(); o.add(Pittura.orlo(B, sd === 'L' ? 3 : 4, Math.min(Ls.s1, tb.L - .03) - .025, .045, .01, .01, 12, Pittura.blockMat(C.fab || 'cotone', c.col, C.c2, C.c3, { vc: false }))); AT('LowerLeg' + sd, o);
       }
@@ -514,6 +515,8 @@ var Vesti3D = (function () {
     g.traverse(o => { if (o.isSkinnedMesh && !o.userData.vesti) analyze(o); });   // prima si sgonfiano i corpi
     let D = null;
     if (window.Sartoria) try {
+      { const CUT = Sartoria.CUT_(), B0 = Sartoria.body(g, PARTI); outfit.forEach(c => { const Cc = CUT[c.id] || {}; if (!Cc.solo_gonna || !B0) return;   // la maglia fuori dalla gonna: la gonna comincia sotto il suo orlo
+        const out = outfit.find(o => (CUT[o.id] || {}).cl <= 1 && (o.parti || []).includes('torso') && (o.when || 0) > (c.when || 0) && c.when > 0); if (out) c.faldaTop = B0.bones.Hips.y - .07; }); }
       D = Sartoria.dress(g, outfit, PARTI, seed === undefined ? 'player' : String(seed), { soloFalde: !!window.Pittura });
       if (D) {
         const srcs = []; g.traverse(o => { if (o.isSkinnedMesh && !o.userData.vesti) srcs.push(o); });

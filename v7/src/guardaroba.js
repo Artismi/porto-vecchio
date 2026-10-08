@@ -178,6 +178,7 @@ var Guardaroba = (function () {
     const W = worn(st), L = W[C.zona]; let out = '';
     if (!ZONE[C.zona].pila && L.length) { const old = L.pop(); give(st, old); out = ` al posto di ${nm(old)}`; }
     let pos; if (at === undefined || at >= L.length) { L.push(id); pos = L.length - 1; } else { pos = Math.max(0, at); L.splice(pos, 0, id); }
+    W.when = W.when || {}; W.when[id] = (W.n = (W.n || 0) + 1);   // l'ordine vero in cui ti vesti (tra zone diverse: camicia dentro o fuori, calzini sopra i pantaloni, pantaloni dentro gli stivali)
     upd(st); const sotto = L[pos + 1];
     return R_(true, `Indossi ${nm(id)}${out}${sotto ? ` sotto ${nm(sotto)}` : L.length > 1 && pos > 0 ? ` sopra ${nm(L[pos - 1])}` : ''}.`);
   }
@@ -232,7 +233,7 @@ var Guardaroba = (function () {
       dx: p.hand || (p.cur && p.cur !== 'pugni' ? p.cur : null), sx: W.sx || null, calore: warmth(st), arm: armor(st), nudo: !W.busto.length && !W.gambe.length };
   }
   // quello che si vede, per il disegno: [{ id, col, parti, sp, acc }] dal dentro al fuori, zona per zona
-  function outfitOfPlayer(st) { const W = worn(st), out = []; ZORD.forEach(z => W[z].forEach(id => out.push(Object.assign({}, CAPO[id])))); return out; }
+  function outfitOfPlayer(st) { const W = worn(st), out = [], wh = W.when || {}; ZORD.forEach(z => W[z].forEach((id, k) => out.push(Object.assign({}, CAPO[id], { when: wh[id] || 0, k })))); return out; }
 
   // ---------------- GLI ABITANTI SI VESTONO ----------------
   // secondo chi sono: mestiere, parte, età, donna o uomo, soldi. Il colore di fuori resta quello del loro aspetto (look.top/bottom),

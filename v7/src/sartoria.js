@@ -667,7 +667,7 @@ var Sartoria = (function () {
       if (C.gonna || C.poncho) { const len = C.len || (P.has('polpacci') ? 'polpaccio' : P.has('cosce') ? 'ginocchio' : 'coscia');
         bot = { mini: B.crotch - .08, coscia: B.crotch - .17, ginocchio: b.LowerLegL.y - .075, polpaccio: (b.LowerLegL.y + B.ankle.L.y) / 2 - .02, caviglia: B.ankle.L.y + .07 }[len] || b.LowerLegL.y; }
       if (C.poncho) bot = b.Hips.y - .14;
-      let top = neckY(B); if (C.solo_gonna) top = B.waist + .015;
+      let top = neckY(B); if (C.solo_gonna) top = C.faldaTop || B.waist + .015;   // sotto una maglia lasciata fuori la gonna parte dall'orlo della maglia
       if (C.infilata && !C.gonna) bot = B.waist - .005;   // infilata nei pantaloni: non scende oltre la cintura
       return { s0: sY(bot), s1: sY(top), yb: bot, yt: top };
     }
@@ -686,7 +686,7 @@ var Sartoria = (function () {
 
   // il capo: tutte le pezze e le finiture in un'unica geometria a gruppi (materiali: 0 stoffa, 1 secondo colore, 2 metallo, 3 scuro, 4 pelle/cuoio, 5 bianco, 6 costine)
   function cut(B, C, parti, off, seedk) {
-    const key = [B.key, C.id, C.var || 0, C.coperto ? 1 : 0, C.infilata ? 1 : 0, C.stretti ? 1 : 0, parti.join(''), Object.keys(off).map(k => k + (off[k] * 1e4 | 0)).join()].join('|');
+    const key = [B.key, C.id, C.var || 0, C.faldaTop || 0, C.coperto ? 1 : 0, C.infilata ? 1 : 0, C.stretti ? 1 : 0, parti.join(''), Object.keys(off).map(k => k + (off[k] * 1e4 | 0)).join()].join('|');
     let G = B.geos.get(key); if (G) return G;
     const bd = Builder(), P = new Set(parti);
     const agio = C.agio || { 0: .001, 1: .006, 2: .006, 3: .014, 4: .016, 5: .022, 6: .012 }[C.cl] || .004;
@@ -1140,7 +1140,7 @@ var Sartoria = (function () {
       const base = CUT[c.id] || { cl: 1, fab: c.pat === 'righe' ? 'righe' : c.pat === 'fiori' ? 'fiori' : 'cotone' };
       const vars = VARIANTI[c.id]; let vi = 0; if (vars && seedStr !== undefined && seedStr !== 'player') vi = (seed >>> (k * 3)) % vars.length; if (c.var && typeof c.var === 'object' && vars) { const j = vars.indexOf(c.var); if (j >= 0) vi = j; }
       if (opt.soloFalde && !(base.gonna || base.poncho)) return;   // dipinto sul corpo (Pittura): qui solo le falde che sporgono
-      const C = Object.assign({ id: c.id }, base, vars ? vars[vi] : {}, { var: vi, seed: c.stampa !== undefined ? c.stampa : (seed >>> 5) });
+      const C = Object.assign({ id: c.id }, base, vars ? vars[vi] : {}, { faldaTop: c.faldaTop, var: vi, seed: c.stampa !== undefined ? c.stampa : (seed >>> 5) });
       if (opt.soloFalde) { C.solo_gonna = 1; C.davanti = C.davanti || 0; C.blocchi = 1; }
       if (C.cl <= 1 && !C.gonna && !C.intera && ranked.some(o => o.c !== c && CUT[o.c.id] && CUT[o.c.id].cl === 2)) C.infilata = 1;   // camicie e magliette dentro i pantaloni
       // la vita coperta da un capo sopra (maglione, giacca chiusa, cappotto): niente cintura che sbuca
