@@ -145,7 +145,7 @@ var Models = (function () {
     if (who === 'hazmat') return 'Worker';
     const fem = look && (look.hat === 'long' || look.hat === 'bun' || /fem|donna/.test(look.extra || ''));
     const h = ((look && (look.top || '') + (look.skin || '')) || 'x').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    if (fem) return h % 3 === 0 ? 'Formal' : 'Casual';
+    if (fem) return window.Pittura ? 'Casual' : h % 3 === 0 ? 'Formal' : 'Casual';   // [vestiti] il modello Formal ha il busto a punte: con i vestiti dipinti si usa Casual
     if (/cap|flat|beanie/.test((look && look.hat) || '') && h % 2) return 'Worker';
     return h % 3 === 0 ? 'Casual_Hoodie' : 'Casual_2';
   }
@@ -211,6 +211,7 @@ var Models = (function () {
   }
   const B = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lm(c)); m.position.set(x || 0, y || 0, z || 0); return m; };
   const C = (rt, rb, h, c, x, y, z, seg) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg || 12), lm(c)); m.position.set(x || 0, y || 0, z || 0); return m; };
+  const tagC = o => { if (o && o.userData) o.userData.corredo = o.userData.corredo || true; return o; };   // [vestiti] il corredo a scatole: Vesti3D lo sostituisce coi capi veri
   function dressUp(g, m, look, who, file) {
     if (who === 'player') return;
     const r = H3((look && (look.top || '') + (look.skin || '') + (look.hair || '')) || String(Math.random()));
@@ -250,19 +251,20 @@ var Models = (function () {
       rh.visible = false; pin(g, head, rh, hp.x, top - .02, fz); g.userData.riotHat = rh; g.userData.copHat = hat;
       if (handL) { const hp3 = new THREE.Vector3(); handL.getWorldPosition(hp3); const sh = new THREE.Group(); const pl = new THREE.Mesh(new THREE.BoxGeometry(.5, .78, .025), new THREE.MeshLambertMaterial({ color: '#c8d4e0', transparent: true, opacity: .55 })); sh.add(pl, B(.5, .06, .03, '#2a3040', 0, .37, 0), B(.5, .06, .03, '#2a3040', 0, -.37, 0), B(.08, .1, .04, '#1a1a1a', 0, .06, .02)); const tx = B(.3, .05, .03, '#f4f4f4', 0, .2, .015); sh.add(tx); sh.visible = false; pin(g, handL, sh, hp3.x - .04, hp3.y + .06, hp3.z + .16); g.userData.riotShield = sh; }
     }
+    if (hat.children.length) tagC(pin(g, head, hat, hp.x, top - .02, fz));
     const ex = (L.extra || '').split(',');
-    if (ex.includes('shades') || ex.includes('glasses')) { const gl = new THREE.Group(); const c = ex.includes('shades') ? '#08080c' : '#2a2a2a'; gl.add(B(.075, .04, .015, c, -.045, 0, 0), B(.075, .04, .015, c, .045, 0, 0), B(.19, .012, .012, c, 0, .015, 0)); pin(g, head, gl, hp.x, hp.y + .085, fz + .125); }
-    if (ex.includes('moustache')) pin(g, head, B(.09, .022, .02, L.hair || '#2a1a12'), hp.x, hp.y + .005, fz + .135);
+    if (ex.includes('shades') || ex.includes('glasses')) { const gl = new THREE.Group(); const c = ex.includes('shades') ? '#08080c' : '#2a2a2a'; gl.add(B(.075, .04, .015, c, -.045, 0, 0), B(.075, .04, .015, c, .045, 0, 0), B(.19, .012, .012, c, 0, .015, 0)); tagC(pin(g, head, gl, hp.x, hp.y + .085, fz + .125)); }
+    if (ex.includes('moustache')) (tagC(pin(g, head, B(.09, .022, .02, L.hair || '#2a1a12'), hp.x, hp.y + .005, fz + .135)).userData.corredo = 'baffi');
     if (chest) {
       const cp = new THREE.Vector3(); chest.getWorldPosition(cp);
-      if (ex.includes('backpack')) { const bp = new THREE.Group(); bp.add(B(.3, .36, .14, ['#2f5a6a', '#8a3a2a', '#3a4a2a', '#c8862a'][Math.floor(r() * 4)]), B(.24, .1, .03, '#1a1a1a', 0, .08, -.08)); pin(g, chest, bp, cp.x, cp.y + .05, cp.z - .2); }
-      if (ex.includes('apron')) pin(g, chest, B(.3, .5, .02, '#f4f1ea'), cp.x, cp.y - .25, cp.z + .13);
-      if (ex.includes('collar')) pin(g, chest, B(.06, .04, .02, '#f4f4f4'), cp.x, cp.y + .2, cp.z + .12);
-      if (ex.includes('gold')) pin(g, chest, B(.1, .015, .015, '#e8c040'), cp.x, cp.y + .15, cp.z + .13);
-      if (ex.includes('belt')) pin(g, chest, B(.36, .05, .26, '#e8e8e8'), cp.x, cp.y - .38, cp.z);
-      if (ex.includes('shawl')) pin(g, chest, B(.42, .16, .28, '#8a6aa0'), cp.x, cp.y + .14, cp.z);
+      if (ex.includes('backpack')) { const bp = new THREE.Group(); bp.add(B(.3, .36, .14, ['#2f5a6a', '#8a3a2a', '#3a4a2a', '#c8862a'][Math.floor(r() * 4)]), B(.24, .1, .03, '#1a1a1a', 0, .08, -.08)); tagC(pin(g, chest, bp, cp.x, cp.y + .05, cp.z - .2)); }
+      if (ex.includes('apron')) tagC(pin(g, chest, B(.3, .5, .02, '#f4f1ea'), cp.x, cp.y - .25, cp.z + .13));
+      if (ex.includes('collar')) tagC(pin(g, chest, B(.06, .04, .02, '#f4f4f4'), cp.x, cp.y + .2, cp.z + .12));
+      if (ex.includes('gold')) tagC(pin(g, chest, B(.1, .015, .015, '#e8c040'), cp.x, cp.y + .15, cp.z + .13));
+      if (ex.includes('belt')) tagC(pin(g, chest, B(.36, .05, .26, '#e8e8e8'), cp.x, cp.y - .38, cp.z));
+      if (ex.includes('shawl')) tagC(pin(g, chest, B(.42, .16, .28, '#8a6aa0'), cp.x, cp.y + .14, cp.z));
     }
-    if (handL && (ex.includes('bag') || ex.includes('paper'))) { const hp2 = new THREE.Vector3(); handL.getWorldPosition(hp2); const bag = ex.includes('bag') ? B(.22, .26, .1, ['#c43c52', '#e8d8b0', '#2a3b66', '#f4f1ea'][Math.floor(r() * 4)]) : B(.04, .3, .2, '#e8e2d0'); pin(g, handL, bag, hp2.x, hp2.y - .18, hp2.z); g.userData.carryBag = bag; }
+    if (handL && (ex.includes('bag') || ex.includes('paper'))) { const hp2 = new THREE.Vector3(); handL.getWorldPosition(hp2); const bag = ex.includes('bag') ? B(.22, .26, .1, ['#c43c52', '#e8d8b0', '#2a3b66', '#f4f1ea'][Math.floor(r() * 4)]) : B(.04, .3, .2, '#e8e2d0'); tagC(pin(g, handL, bag, hp2.x, hp2.y - .18, hp2.z)); g.userData.carryBag = bag; }
   }
   function play(g, name, once) {
     const u = g.userData, a = u.acts[name] || u.acts.Idle; if (!a || u.cur === a) return;

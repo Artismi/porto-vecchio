@@ -34,6 +34,11 @@ var Game = (function () {
   const tileAt = (tx, ty) => (tx < 0 || ty < 0 || tx >= GW || ty >= GH) ? T.WATER : grid[ty * GW + tx];
   const walkT = (tx, ty) => { const v = tileAt(tx, ty); return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; };   // [monte] CLIFF: pareti e muri a secco
   const walkM = (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS));
+  // [costa] il mare: si nuota nell'acqua di mare dentro la mappa; le barche vanno dove è fondo almeno mezzo metro (World.SEA.depth)
+  const SEA = W0.SEA || null;
+  const seaT = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH && grid[ty * GW + tx] === T.WATER && W0.zone[ty * GW + tx] === W0.Z.MARE;
+  const seaM = (x, y) => seaT(Math.floor(x / TS), Math.floor(y / TS));
+  const boatM = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return seaT(tx, ty) && (!SEA || SEA.depth[ty * GW + tx] >= .45); };
   // ---- interni: la porta di strada di ogni edificio porta dentro ----
   const INT = typeof Interior !== 'undefined' ? Interior : (typeof require !== 'undefined' ? require('./interior.js') : null);
   const DOOR_OF = new Map(); W0.BUILDINGS.forEach((b, i) => { if (b.door) DOOR_OF.set(b.door[1] * W0.GW + b.door[0], i); });
@@ -187,11 +192,16 @@ var Game = (function () {
     rx7: { r: 1.05, len: 4.3, wid: 1.7, max: 21, accel: 10.5, turn: 2.5, hp: 120, label: 'Mazda RX-7', mesh: 'giulia', glb: 'rx7' },
     gtr: { r: 1.08, len: 4.5, wid: 1.75, max: 22, accel: 11, turn: 2.5, hp: 130, label: 'Skyline GT-R', mesh: 'giulia', glb: 'gtr' },
     bursley: { r: 1.12, len: 4.9, wid: 1.9, max: 19, accel: 10, turn: 2.2, hp: 160, label: 'Bursley Defiance', mesh: 'giulia', glb: 'bursley' },
+    // [costa] le barche: vanno solo per mare (boatM), scivolano di lato, girano poco da ferme
+    gozzo: { r: 1.1, len: 5, wid: 1.75, max: 6.5, accel: 2, turn: 1.15, hp: 90, label: 'Gozzo', boat: true, art: 'il', m0: true },
+    lancia: { r: 1.25, len: 6, wid: 2.1, max: 9, accel: 2.8, turn: 1.05, hp: 110, label: 'Lancia a motore', boat: true, art: 'la' },
+    motoscafo: { r: 1.4, len: 7, wid: 2.4, max: 17, accel: 5, turn: 1.1, hp: 120, label: 'Motoscafo', boat: true, art: 'il', m0: true },
   };
   // fisica: massa (kg) e aderenza laterale (m/s²). Vespa e Ape scivolano meno, le berline derapano.
   Object.assign(VK.vespa, { m: 150, grip: 24 }); Object.assign(VK.cinquecento, { m: 560, grip: 19 }); Object.assign(VK.ritmo, { m: 860, grip: 20 });
   Object.assign(VK.giulia, { m: 1050, grip: 21 }); Object.assign(VK.ape, { m: 420, grip: 15 }); Object.assign(VK.polizia, { m: 1150, grip: 22 });
   Object.assign(VK.furgone, { m: 1900, grip: 18 }); Object.assign(VK.fuoristrada, { m: 1600, grip: 24 }); Object.assign(VK.camion, { m: 3600, grip: 17 }); Object.assign(VK.campagnola, { m: 1500, grip: 23 }); Object.assign(VK.blindato, { m: 6200, grip: 21 });
+  Object.assign(VK.gozzo, { m: 700, grip: 2.6 }); Object.assign(VK.lancia, { m: 950, grip: 2.8 }); Object.assign(VK.motoscafo, { m: 1200, grip: 3.4 });
   Object.assign(VK.rx7, { m: 1250, grip: 22 }); Object.assign(VK.gtr, { m: 1400, grip: 23 }); Object.assign(VK.bursley, { m: 1600, grip: 19 });
   for (const k in VK) VK[k].I = (VK[k].len * VK[k].len + VK[k].wid * VK[k].wid) / 12; // inerzia / massa
   const PICKUP_LABEL = { pistola: 'Beretta 92', lupara: 'Lupara', mitra: 'Skorpion', molotov: 'Molotov', munizioni: 'Munizioni', salute: 'Cassetta del pronto soccorso', soldi: 'Soldi', valigetta: 'Valigetta dei Marsigliesi' };
@@ -281,6 +291,8 @@ var Game = (function () {
     V('gr_camp2', 'campagnola', 'rocca', -6, 4, 0, '#5c6650', null, { military: true });
     V('gr_blind', 'blindato', 'rocca', 8, 4, Math.PI / 2, '#4a5446', null, { military: true });
     V('gr_camp3', 'campagnola', 'poligono', 4, 2, 0, '#6a6a50', null, { military: true });
+    // [costa] le barche che si possono prendere: i gozzi, le lance e i motoscafi ormeggiati ai pontili (World.SEA.moorings con drive)
+    if (SEA) SEA.moorings.forEach((m, k) => { if (m.drive) st.vehicles.push(makeVehicle(st, { id: 'bt' + k, kind: m.kind, x: m.x, y: m.y, ang: m.ang, color: m.col || null, moored: m.at })); });
     // traffico lungo le strade dell'isola, nei due sensi di marcia
     const TR = [['rx7', '#e8e8e8'], ['cinquecento', '#f3c6d4'], ['ritmo', '#b8302a'], ['bursley', '#c87a20'], ['giulia', '#2f4a3a'], ['cinquecento', '#6ab8c8'], ['ritmo', '#f2e2a0'], ['giulia', '#efe6d2'], ['ritmo', '#7fd0b0'], ['cinquecento', '#d86a4a'], ['furgone', '#d8d0c0'], ['ape', '#9ab07a'], ['camion', '#3a6a9a'], ['ritmo', '#c8c8d0']];
     const laneIx = id => Math.max(0, LANES.findIndex(l => l.id === id));
@@ -501,16 +513,16 @@ var Game = (function () {
     if (n && n.shop && PLACES[n.shop] && dist(n.x, n.y, PLACES[n.shop].x, PLACES[n.shop].y) < 5) return n;
     return null;
   }
-  function vehicleName(st, v) { if (v.kind === 'vespa') return `la Vespa${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; return `la ${VK[v.kind].label}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; }
+  function vehicleName(st, v) { if (VK[v.kind].art) return `${VK[v.kind].art} ${VK[v.kind].label.toLowerCase()}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; if (v.kind === 'vespa') return `la Vespa${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; return `la ${VK[v.kind].label}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; }
   function context(st) {
     const p = st.player, out = [];
     if (st.over) return out;
-    if (p.vehicle) { const v = st.vehicles.find(k => k.id === p.vehicle); out.push({ key: 'F', label: v.kind === 'vespa' ? 'Scendi dalla Vespa' : 'Scendi dall\'auto' }); return out; }
+    if (p.vehicle) { const v = st.vehicles.find(k => k.id === p.vehicle); out.push({ key: 'F', label: v.kind === 'vespa' ? 'Scendi dalla Vespa' : VK[v.kind].boat ? 'Scendi dalla barca' : 'Scendi dall\'auto' }); return out; }
     const n = nearestNpc(st, 2.2), v = nearestVehicle(st, 1.8), sk = shopkeeperHere(st);
     if (n) out.push({ key: 'T', label: `Parla con ${n.first}` });
     if (sk) out.push({ key: 'E', label: `Rapina ${PLACES[sk.shop].name}`, bad: true });
     else if (n && !n.cop && !n.faction) out.push({ key: 'E', label: `Scippa ${n.first}`, bad: true });
-    if (v) out.push({ key: 'F', label: v.lent ? 'Sali sulla Vespa di Beppe' : v.traffic ? `Tira giù l'automobilista (${VK[v.kind].label})` : `Ruba ${vehicleName(st, v)}`, bad: !v.lent && !v.mine });
+    if (v) out.push({ key: 'F', label: v.lent ? 'Sali sulla Vespa di Beppe' : v.mine && VK[v.kind].boat ? `Sali sul${VK[v.kind].m0 ? '' : 'la'} ${VK[v.kind].label.toLowerCase()}` : v.traffic ? `Tira giù l'automobilista (${VK[v.kind].label})` : `Ruba ${vehicleName(st, v)}`, bad: !v.lent && !v.mine });
     return out;
   }
 
@@ -519,6 +531,11 @@ var Game = (function () {
     if (Math.abs(v.speed) > 7) { p.stun = .7; damagePlayer(st, 12, v.ang + Math.PI, 'caduta'); }
     v.rider = null; p.vehicle = null;
     const r = VK[v.kind].r + .6;
+    if (VK[v.kind].boat) {   // [costa] dalla barca si scende sul pontile o sulla riva più vicina; se non c'è, si finisce in acqua
+      const K = VK[v.kind], ext = a => Math.abs(Math.cos(a - v.ang)) * K.len / 2 + Math.abs(Math.sin(a - v.ang)) * K.wid / 2; let done = false;
+      for (let rr = .5; rr < 4.6 && !done; rr += .5) for (let k = 0; k < 16 && !done; k++) { const a = v.ang + k / 16 * Math.PI * 2, x = v.x + Math.cos(a) * (ext(a) + rr), y = v.y + Math.sin(a) * (ext(a) + rr); if (walkM(x, y)) { p.x = x; p.y = y; done = true; } }
+      if (!done) { p.x = v.x + Math.cos(v.ang + Math.PI / 2) * (VK[v.kind].wid / 2 + .7); p.y = v.y + Math.sin(v.ang + Math.PI / 2) * (VK[v.kind].wid / 2 + .7); p.swim = true; }
+    } else
     for (const off of [Math.PI / 2, -Math.PI / 2, Math.PI, 0]) { const x = v.x + Math.cos(v.ang + off) * r, y = v.y + Math.sin(v.ang + off) * r; if (walkM(x, y)) { p.x = x; p.y = y; break; } }
     scaleVel(v, .3);
   }
@@ -548,6 +565,7 @@ var Game = (function () {
         if (v.owner) st.timers.push({ at: st.t + 30, kind: 'discoverVehicle', npc: v.owner, ev: ev.id, kindV: v.kind });
         if (v.owner === 'sandro') aggroFaction(st, 'squalo');
         addLog(st, `${clockStr(st.t)} · Hai rubato ${vehicleName(st, v)}.`, 'bad', ev.id);
+        if (VK[v.kind].boat) { const nm = vehicleName(st, v); return { ok: true, msg: `Sciogli la cima e tiri l'avviamento. ${nm[0].toUpperCase() + nm.slice(1)} è ${VK[v.kind].m0 ? 'tuo' : 'tua'}, per ora.` }; }   // [costa]
         return { ok: true, msg: v.kind === 'vespa' ? `Colleghi i fili. ${vehicleName(st, v)[0].toUpperCase() + vehicleName(st, v).slice(1)} è tua, per ora.` : `Un cacciavite nel blocchetto e parte. ${vehicleName(st, v)[0].toUpperCase() + vehicleName(st, v).slice(1)} è tua.` };
       }
       return { ok: true, msg: '' };
@@ -599,6 +617,7 @@ var Game = (function () {
   function fire(st, aim, aimPoint, pressed) {
     const p = st.player;
     if (st.over || p.stun > 0 || p.cool > 0 || p.reload > 0) return false;
+    if (p.swim && !p.vehicle) return false;   // [costa] a nuoto non si spara
     const W = pW(st, p.cur), a = p.arms[p.cur];
     if (!W.auto && !pressed && !W.melee) return false;
     if (W.melee) {
@@ -1410,10 +1429,12 @@ var Game = (function () {
     if (p.stun > 0) { p.stun -= dt; p.speed = 0; return; }
     if (p.vehicle) return driveVehicle(st, st.vehicles.find(v => v.id === p.vehicle), dt, inp);
     const ix = inp.x, iy = inp.y;
+    p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);   // [costa] in acqua si nuota
     if (ix || iy) {
-      const l = Math.hypot(ix, iy), sp = (p.sneak ? 1.7 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
+      const l = Math.hypot(ix, iy), sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : (p.sneak ? 1.7 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
       p.__st = st;   // [monte] i livelli (sotto terra, sul ponte) sanno dove si cammina
-      const hitWall = tryMove(p, ix / l * sp * dt, iy / l * sp * dt, .35);
+      const hitWall = tryMove(p, ix / l * sp * dt, iy / l * sp * dt, .35, !p.indoor && !p.lv && !p.carrying);   // [costa] il giocatore può entrare in mare (con un peso in braccio no)
+      p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);
       const LVm = typeof Livelli !== 'undefined' ? Livelli : null;
       if (LVm && LVm.moved(st, ix / l, iy / l, hitWall)) { /* [monte] gestito dai livelli */ }
       else if (p.indoor) {
@@ -1438,9 +1459,10 @@ var Game = (function () {
     p.anim += dt * (p.speed ? Math.abs(p.speed) * 3 : 1);
     if (!p.lv || p.lv.k !== 'ug') pushOutOfVehicles(st, p, .35);   // [monte] sotto terra le auto sono sopra la testa
   }
-  function tryMove(o, dx, dy, r) {
+  function tryMove(o, dx, dy, r, swim) {
     const LVf = o.lv && typeof Livelli !== 'undefined' ? Livelli.freeFn(o, r) : null, L = LVf ? null : indoorL(o);   // [monte]
-    const free = LVf || (L ? (x, y) => INT.walk(L, o.indoor.f, x, y, r) : (x, y) => walkM(x - r, y - r) && walkM(x + r, y - r) && walkM(x - r, y + r) && walkM(x + r, y + r));
+    const wm = swim ? (x, y) => walkM(x, y) || seaM(x, y) : walkM;   // [costa] chi nuota passa anche per l'acqua
+    const free = LVf || (L ? (x, y) => INT.walk(L, o.indoor.f, x, y, r) : (x, y) => wm(x - r, y - r) && wm(x + r, y - r) && wm(x - r, y + r) && wm(x + r, y + r));
     let hit = false;
     if (free(o.x + dx, o.y)) o.x += dx; else hit = true;
     if (free(o.x, o.y + dy)) o.y += dy; else hit = true;
@@ -1450,8 +1472,8 @@ var Game = (function () {
   function vLocal(v, x, y) { const c = Math.cos(v.ang), s = Math.sin(v.ang), dx = x - v.x, dy = y - v.y; return { lx: dx * c + dy * s, ly: -dx * s + dy * c }; }
   function insideVehicle(v, x, y, r) { const K = VK[v.kind], q = vLocal(v, x, y); return Math.abs(q.lx) < K.len / 2 + r && Math.abs(q.ly) < K.wid / 2 + r; }
   function vehicleFree(v, x, y, ang) {
-    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05;
-    for (const [a, b] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [hl, 0], [-hl, 0], [0, hw], [0, -hw]]) if (!walkM(x + a * c - b * s, y + a * s + b * c)) return false;
+    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05, pass = K.boat ? boatM : walkM;   // [costa]
+    for (const [a, b] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [hl, 0], [-hl, 0], [0, hw], [0, -hw]]) if (!pass(x + a * c - b * s, y + a * s + b * c)) return false;
     return true;
   }
   function pushOutOfVehicles(st, o, r) {
@@ -1489,9 +1511,9 @@ var Game = (function () {
   function loosen(st, v, secs) { if (v.traffic || (v.police && v.rider === 'npc')) v.looseUntil = Math.max(v.looseUntil || 0, st.clock + secs); }
   // primo punto del telaio che finisce dentro qualcosa di solido
   function vehicleHitPoint(v, x, y, ang) {
-    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05;
+    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05, pass = K.boat ? boatM : walkM;   // [costa]
     let bx = 0, by = 0, n = 0;
-    for (const [a, b] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [hl, 0], [-hl, 0], [0, hw], [0, -hw]]) { const px = x + a * c - b * s, py = y + a * s + b * c; if (!walkM(px, py)) { bx += px; by += py; n++; } }
+    for (const [a, b] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [hl, 0], [-hl, 0], [0, hw], [0, -hw]]) { const px = x + a * c - b * s, py = y + a * s + b * c; if (!pass(px, py)) { bx += px; by += py; n++; } }
     return n ? { x: bx / n, y: by / n } : null;
   }
   function moveVehicleBody(v, dx, dy, oldAng) { // compatibilità: spostamento secco, senza fisica
@@ -1530,7 +1552,7 @@ var Game = (function () {
     v.speed = fwd(v); v._spd = v.speed;
   }
   function onWallHit(st, v, vn, cp, ang) {
-    vehicleBump(st, v, vn, cp, ang);
+    if (!VK[v.kind].boat) vehicleBump(st, v, vn, cp, ang);   // [costa] una barca contro il molo non sfonda niente
     const pl = v.rider === 'player';
     if (vn > 6) damageVehicle(st, v, (vn - 6) * 4, pl ? 'player' : null);
     if (vn > 3) { st.fx.push({ k: 'carhit', x: cp.x, y: cp.y, v: vn, a: ang, wall: true }); if (pl || dist(v.x, v.y, st.player.x, st.player.y) < 30) st.sfx.push({ k: vn > 9 ? 'crash' : 'bump', x: cp.x, y: cp.y, v: vn }); }
@@ -1563,7 +1585,7 @@ var Game = (function () {
       if (vf < 0) a += 10;
       if (vf < max) vf = Math.min(max, vf + a * dt); else vf -= Math.min(vf - max, 4 * dt);
     } else if (throttle < 0) { if (vf > .6) vf -= 16 * dt; else vf = Math.max(-5, vf - K.accel * .7 * dt); }
-    else vf -= Math.sign(vf) * Math.min(Math.abs(vf), 2.6 * dt);
+    else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (K.boat ? .8 + Math.abs(vf) * .07 : 2.6) * dt);   // [costa] in mare si va avanti per abbrivio
     if (brake) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 19 * dt);
     if (hand) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 3.5 * dt);
     // aderenza laterale: oltre la soglia si scivola (e si continua a scivolare finché non si rallenta)
@@ -1574,9 +1596,9 @@ var Game = (function () {
     if (throttle > 0 && Math.abs(v.steer) > .75 && spd > 9 && !K.two) grip *= .88; // gas in curva: la coda allarga
     vl -= Math.sign(vl) * Math.min(Math.abs(vl), grip * dt);
     // imbardata: lo sterzo chiede una velocità di rotazione, le gomme la concedono fino al limite di aderenza
-    const turnK = clamp(spd / 3.2, 0, 1) * (1 - .32 * clamp((spd - 11) / 9, 0, 1));
+    const turnK = K.boat ? clamp(spd / 2.5, throttle ? .35 : .1, 1) : clamp(spd / 3.2, 0, 1) * (1 - .32 * clamp((spd - 11) / 9, 0, 1));   // [costa] l'elica fa girare la barca anche quasi ferma
     let wT = v.steer * K.turn * turnK * (vf < -.3 ? -1 : 1);
-    if (!hand && spd > 2) { const lim = (slideOn ? grip * 1.25 : K.grip * 1.12) / spd; wT = clamp(wT, -lim, lim); }
+    if (!hand && spd > 2 && !K.boat) { const lim = (slideOn ? grip * 1.25 : K.grip * 1.12) / spd; wT = clamp(wT, -lim, lim); }
     if (!hand) wT = clamp(wT, -2.6, 2.6);   // niente trottole a bassa velocità
     if (hand && spd > 4) wT *= 1.55;
     v.w += (wT - v.w) * Math.min(1, dt * (hand ? 3.2 : slideOn ? 3.6 : 8.5));
@@ -1586,6 +1608,7 @@ var Game = (function () {
     if (brake && spd > 5) v.skid = Math.max(v.skid, .7);
     if (hand && spd > 4) v.skid = Math.max(v.skid, .8);
     if (throttle > 0 && spd < 4 && vf0 >= -0.1 && !K.two && v.rider === 'player' && sprint) v.skid = Math.max(v.skid, .6); // sgommata in partenza
+    if (K.boat) { v.skid = 0; v.wake = clamp(spd / K.max, 0, 1); }   // [costa] niente gomme: la scia
     physStep(st, v, dt);
   }
   // mezzo lasciato a sé: rotola o resta frenato, si ferma per attrito
@@ -2215,7 +2238,7 @@ var Game = (function () {
 
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
-    tileAt, walkT, walkM, bIndex, create, step, act, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
+    tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
