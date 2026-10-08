@@ -23,6 +23,7 @@ var Pittura = (function () {
   const GEO = new Map();
   function regionOf(B, i) {
     const p = B.part[i]; if (!p) return -1;
+    if (p === 'torso' && B.side[i]) { const j = B.bones['UpperArm' + (B.side[i] > 0 ? 'L' : 'R')]; if (j && Math.abs(B.P[i * 3]) > Math.abs(j.x) - .012 && B.P[i * 3 + 1] < j.y + .03) return B.side[i] > 0 ? 1 : 2; }   // oltre l'attaccatura: è già manica
     if (p === 'torso' || p === 'collo' || p === 'bacino') return 0;
     if (p === 'braccia' || p === 'avambracci') return B.side[i] > 0 ? 1 : 2;
     if (p === 'cosce' || p === 'polpacci') return B.side[i] > 0 ? 3 : 4;
@@ -79,6 +80,7 @@ var Pittura = (function () {
     const key = B.key + '|' + si; if (GEO.has(key)) return GEO.get(key);
     const geo = src.userData.geo0 || src.geometry, gm = B.gmaps[si]; if (!gm) { GEO.set(key, null); return null; }
     const F = frame(B), idx = geo.index ? geo.index.array : null, nt = (idx ? idx.length : geo.attributes.position.count) / 3;
+    const m0 = (Array.isArray(src.material) ? src.material[0] : src.material) || {}, kc = !/^(Skin|Eye|Eyebrows|Hair|Moustache)/i.test((src.userData.pitOrig ? (Array.isArray(src.userData.pitOrig.mat) ? src.userData.pitOrig.mat[0] : src.userData.pitOrig.mat) : m0).name || '') ? .0018 : 0;   // la stoffa del kit sta un filo sopra la pelle che copre (niente sfarfallio)
     const v = new THREE.Vector3(), ironCache = [], byReg = [[], [], [], [], [], []];   // 0..4 regioni, 5 = resta com'è
     for (let t = 0; t < nt; t++) {
       const c = [0, 1, 2].map(k => idx ? idx[t * 3 + k] : t * 3 + k), r = c.map(q => gm[q] >= 0 ? regionOf(B, gm[q]) : -1);
@@ -273,9 +275,9 @@ var Pittura = (function () {
   }
   // le spalle strutturate (giacche, cappotti, divise): l'imbottitura allarga e squadra la spalla; i maglioni la ammorbidiscono appena
   function spalla(B, C, r, L, nY) {
-    const pad = C.cl >= 4 && !/pelle|piumino|pelo|montone/.test(C.fab) ? .016 : C.cl === 3 ? .004 : 0; if (!pad) return 0;
-    if (r === 0) { const y = L.p[1], side = Math.abs(Math.sin(L.a)); return pad * cl((y - (nY - .12)) / .07, 0, 1) * cl((side - .45) / .4, 0, 1); }
-    if (r === 1 || r === 2) return pad * .8 * cl(1 - L.s / .07, 0, 1);   // la testa della manica
+    const pad = C.cl >= 4 && !/pelle|piumino|pelo|montone/.test(C.fab) ? .01 : C.cl === 3 ? .003 : 0; if (!pad) return 0;
+    if (r === 0) { const y = L.p[1], side = Math.abs(Math.sin(L.a)); return pad * cl((y - (nY - .08)) / .05, 0, 1) * cl((side - .55) / .35, 0, 1); }   // solo in cima: la spalla si squadra, non scende
+    if (r === 1 || r === 2) return pad * .6 * cl(1 - L.s / .04, 0, 1);   // la testa della manica
     return 0;
   }
   // la finitura: quanto è opaca (1) o lucida (0,3) la stoffa
