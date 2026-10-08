@@ -873,12 +873,12 @@ var Sartoria = (function () {
       R.push(r); }
     // lungo l'altezza: linee dritte (niente onde)
     for (let it = 0; it < 4; it++) for (let i = 1; i < rows - 1; i++) for (let q = 0; q < RG; q++) R[i][q] = Math.max(R[i][q], (R[i - 1][q] + R[i + 1][q]) / 2);
-    const rad = (i, a) => { const f = ((a / (Math.PI * 2)) * RG % RG + RG) % RG, q0 = Math.floor(f), q1 = (q0 + 1) % RG, u = f - q0; return lerp(R[i][q0], R[i][q1], u); };
-    const gap = i => lerp(.025, .6, Math.pow(tOf(i), 1.3)), cols = 44;
+    const rad = (i, a) => { const f = ((a / (Math.PI * 2)) * RG % RG + RG) % RG, q0 = Math.floor(f), q1 = (q0 + 1) % RG, u = f - q0, i0 = Math.min(rows - 1, Math.floor(i)), i1 = Math.min(rows - 1, i0 + 1), v = i - i0; return lerp(lerp(R[i0][q0], R[i0][q1], u), lerp(R[i1][q0], R[i1][q1], u), v); };
+    const gap = i => .03 + .32 * Math.pow(cl((tOf(i) - .66) / .34, 0, 1), 2), cols = 44;   // chiusa fino all'ultimo bottone, poi i quarti davanti si arrotondano verso l'orlo
     const angOf = (i, j) => { const g = gap(i); return g + j / cols * (Math.PI * 2 - 2 * g); };
     const pt = (i, a, dO) => { const s = sOf(i), fr = frameAt(tb, s), t = tOf(i), fe = Math.min(a, Math.PI * 2 - a);
-      let r = rad(i, a) + dO + .006 * t * t;   // appena più ampia all'orlo
-      if (fe < .6) r += (.6 - fe) * .014 * t;   // i lembi davanti si staccano
+      let r = rad(i, a) + dO + .003 * t * t;   // cade dritta
+      if (fe < .4) r += (.4 - fe) * .006 * t;   // i lembi davanti appena staccati
       r += .0015 + .004 * cl(t / .3, 0, 1);   // appena fuori dalla giacca dipinta (che sotto si toglie): attacco netto, niente sfarfallio
       const d = fr.f.clone().multiplyScalar(Math.cos(a)).addScaledVector(fr.sd, Math.sin(a)), ta = fr.f.clone().multiplyScalar(-Math.sin(a)).addScaledVector(fr.sd, Math.cos(a));
       return { p: fr.p.clone().addScaledVector(d, r), d, ta, fr, s }; };
@@ -886,7 +886,7 @@ var Sartoria = (function () {
     // i pesi: in cima quelli del corpo (si muove con la giacca dipinta), in basso rigida col bacino
     const WG = gridW(tb), WC = capeW(B), W = (p) => { const k = cl((yTop - .01 - p.y) / .07, 0, 1), m = new Map(); WG(p).forEach(([b, w]) => { if (w > 0) m.set(b, (m.get(b) || 0) + w * (1 - k)); }); WC(p).forEach(([b, w]) => { if (w > 0) m.set(b, (m.get(b) || 0) + w * k); });
       // i lembi davanti seguono un poco la coscia che avanza (non la bucano camminando)
-      { const fr = frameAt(tb, tb.sAtY(p.y)), dx = p.x - fr.p.x, dz = p.z - fr.p.z, x = dx * fr.sd.x + dz * fr.sd.z, z = dx * fr.f.x + dz * fr.f.z, fa = Math.max(0, z / Math.hypot(x, z)), dn = cl((B.bones.Hips.y - p.y) / (B.bones.Hips.y - yb), 0, 1), lw = .5 * fa * dn;
+      { const fr = frameAt(tb, tb.sAtY(p.y)), dx = p.x - fr.p.x, dz = p.z - fr.p.z, x = dx * fr.sd.x + dz * fr.sd.z, z = dx * fr.f.x + dz * fr.f.z, fa = Math.max(0, z / Math.hypot(x, z)), dn = cl((B.bones.Hips.y - p.y) / (B.bones.Hips.y - yb), 0, 1), lw = .35 * fa * dn;
         const hx = B.bones.Hips.x, lL = B.bones.UpperLegL, nm = (p.x - hx) * ((lL ? lL.x : 1) - hx) > 0 ? 'UpperLegL' : 'UpperLegR', bi = B.names.indexOf(nm);
         if (bi >= 0 && lw > 0) { m.forEach((w, b) => m.set(b, w * (1 - lw))); m.set(bi, (m.get(bi) || 0) + lw); } }
       const a = [...m.entries()].sort((x, y) => y[1] - x[1]).slice(0, 4); let t = 0; a.forEach(e => { t += e[1]; }); const o = a.map(e => [e[0], e[1] / (t || 1)]); while (o.length < 4) o.push([0, 0]); return o; };
@@ -894,6 +894,12 @@ var Sartoria = (function () {
     for (const [dO, sg, c] of [[0, 1, 1], [-th, -1, .6]]) grid(bd, rows, cols + 1, (i, j) => { const a = angOf(i, j), q = pt(i, a, dO); return { p: q.p, out: q.d.clone().multiplyScalar(sg), u: a / (Math.PI * 2) * ringC, v: q.s, c }; }, W, 0);
     // lo spessore: i due bordi davanti e l'orlo
     for (const j of [0, cols]) grid(bd, rows, 2, (i, k) => { const a = angOf(i, j), q = pt(i, a, k ? -th : 0); return { p: q.p, out: q.ta.clone().multiplyScalar(j ? 1 : -1), u: a / (Math.PI * 2) * ringC + k * th, v: q.s, c: .8 }; }, W, 0);
+    // le tasche con la pattina sui fianchi e il bottone in vita: si capisce che è una giacca
+    if (!/montone|piumino|pelliccia/.test((C.id || '') + (C.fab || ''))) { const iP = (rows - 1) * .4, h = (rows - 1) * .075;
+      for (const sd of [1, -1]) {
+        grid(bd, 3, 7, (k, j) => { const a0 = sd > 0 ? .78 + j / 6 * .62 : Math.PI * 2 - .78 - j / 6 * .62, i = iP + k / 2 * h, q = pt(i, a0, .004 - (k === 2 ? .0015 : 0)); return { p: q.p, out: q.d, u: a0 * .2, v: q.s, c: k === 2 ? .62 : .92 }; }, W, 0);   // la pattina
+        grid(bd, 2, 7, (k, j) => { const a0 = sd > 0 ? .78 + j / 6 * .62 : Math.PI * 2 - .78 - j / 6 * .62, q = pt(iP + h, a0, k ? .0005 : .004); return { p: q.p, out: q.fr.t.clone().negate(), u: a0 * .2, v: q.s, c: .45 }; }, W, 0); }   // il bordo sotto, in ombra
+      if (/bottoni|doppio/.test(C.fronte || '')) { const q = pt((rows - 1) * cl(.06 / (yTop - yb), 0, 1), gap(0) + .06, .004), g = new THREE.CylinderGeometry(.0095, .0095, .004, 10); g.rotateX(Math.PI / 2); solid(bd, place(g, q.p, q.d, new THREE.Vector3(0, 1, 0)), W, q.p, 3, .9); } }
     grid(bd, 2, cols + 1, (k, j) => { const a = angOf(0, j), q = pt(0, a, k ? -th : 0); return { p: q.p, out: q.fr.t.clone(), u: a / (Math.PI * 2) * ringC, v: q.s + k * th, c: .7 }; }, W, 0);
     grid(bd, 2, cols + 1, (k, j) => { const a = angOf(rows - 1, j), q = pt(rows - 1, a, k ? -th : 0); return { p: q.p, out: q.fr.t.clone().negate(), u: a / (Math.PI * 2) * ringC, v: q.s - k * th, c: .75 }; }, W, 0);
   }

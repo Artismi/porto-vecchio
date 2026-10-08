@@ -387,6 +387,7 @@ var Pittura = (function () {
   }
   // il cuore: cosa c'è dipinto nel punto (a, sv) della regione R per il capo C (null = il capo non copre qui)
   // il giro manica dei capi senza maniche (gilet, smanicati): quanto un punto sta oltre il piano verticale dell'attaccatura del braccio (>0: è braccio)
+  const gapF = t => .03 + .32 * Math.pow(cl((t - .66) / .34, 0, 1), 2);   // l'apertura davanti della falda della giacca (come in Sartoria)
   const giroManica = C => C.smanicato && C.collo !== 'canotta' && !C.spalline_sottili;
   function armSide(B, p) {
     let best = -9; for (const sd of ['L', 'R']) { const j = B.bones['UpperArm' + sd], c = B.bones.Chest || B.bones.Hips; if (!j || !c) continue; const n = j.clone().sub(c).setY(0).normalize(); const lo = j.y - .085 - p.y; best = Math.max(best, p.clone().sub(j).dot(n) + .004 - (lo > 0 ? lo * 1.5 + lo * lo * 40 : 0)); }   // sotto l'ascella il giro manica si chiude in tondo
@@ -456,14 +457,16 @@ var Pittura = (function () {
         const top = nY - neckDrop(C, a), dy = top - y, tip = Math.abs(a) < .55 ? (.55 - Math.abs(a)) * .08 : 0, wcol = .035 + tip;
         if (dy < wcol && dy >= 0) { c = mul(C.A, 1.06); if (dy > wcol - .008 || dy < .007) { s *= .68; h = .1; } else h = .7; if (Math.abs(a) < .05) { s *= .7; } }
       }
-      // revers: le due ali lungo la V
-      if (/revers/.test(C.collo || '') && L.T.s0 !== undefined) {
-        const top = nY - neckDrop(C, a), dy = top - y, lap = .06 + (.2 - Math.min(.2, nY - y)) * .25;
-        if (Math.abs(a) < 1.15 && dy >= 0 && dy < lap && y > nY - .24) { c = mul(C.A, 1.1); h = .75; if (dy > lap - .009) { s *= .55; h = .05; } if (dy < .008) { s *= .7; } const notch = Math.abs(nY - .07 - y) < .006 && dy > lap * .4; if (notch) { s *= .55; } }
-        else if (Math.abs(a) < 1.15 && dy >= lap && dy < lap + .012 && y > nY - .24) { s *= .8; }   // l'ombra sotto il revers
+      // revers: due ali a V dal collo fino al primo bottone, larghe al petto e strette in basso, con la tacca (lo scollo dove si incontrano collo e revers)
+      if (/revers/.test(C.collo || '') && L.T.s0 !== undefined && y > nY - .21 && Math.cos(a) > 0) {
+        const X = Math.abs(a) * .14, k = cl((y - (nY - .2)) / .2, 0, 1), w0 = .098 * k, notchY = nY - .068, lw = y > notchY ? .03 + (y - notchY) * .1 : .066 * sm(cl((y - (nY - .2)) / .1, 0, 1)), d = X - w0;
+        if (d >= 0 && d < lw) { c = mul(C.A, 1.09); h = .75; if (d > lw - .006) { s *= .6; h = .05; } else if (d < .004) s *= .8;
+          if (y < notchY + .006 && y > notchY - .012 && d > .026) { s *= .5; h = .05; } }   // la tacca
+        else if (d >= lw && d < lw + .01) s *= .84;   // l'ombra sotto il revers
       }
+      if (/revers/.test(C.collo || '') && L.T.s0 !== undefined && Math.cos(a) <= 0) { const dy = nY - neckDrop(C, a) - y; if (dy >= 0 && dy < .032) { c = mul(C.A, 1.06); h = .7; if (dy > .027) { s *= .6; h = .05; } } }   // il collo dietro
       // giacche e giacconi aperti sotto l'ultimo bottone: il bordo davanti che si divide (linea scura che si allarga verso l'orlo)
-      if (C.cl >= 4 && !C.gonna && L.T.s0 !== undefined && /bottoni|doppio/.test(C.fronte || '') && y < B.waist + .06) { const t = cl((B.waist + .06 - y) / .12, 0, 1), ea = .03 + t * .2;
+      if (C.cl >= 4 && !C.gonna && !C.falda3d && L.T.s0 !== undefined && /bottoni|doppio/.test(C.fronte || '') && y < B.waist + .06) { const t = cl((B.waist + .06 - y) / .12, 0, 1), ea = .03 + t * .2;
         if (Math.abs(a) < ea - .02) return null; if (Math.abs(Math.abs(a) - ea) < .025) { s *= .5; h = .05; } }
       // abbottonatura: listino e bottoni; doppio petto; zip
       const fr = C.fronte;
@@ -576,17 +579,17 @@ var Pittura = (function () {
       const underF = w0 => { for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j], r = pg.VR[w0 + j]; if (!L || r < 3) return false; const C = topAt(B, plans, r, L.a, L.s, L.p[1], nY), Ls = C && C.L[REG[r]]; if (!C || !(C.gonna || C.solo_gonna || C.poncho) || !Ls || Ls.falda === undefined || L.p[1] < Ls.falda + .015 || L.p[1] > B.waist) return false; } return true; };
       // sotto i cappotti lunghi: le gambe dietro e ai lati non si vedono (si tolgono: camminando non bucano la falda); davanti, nell'apertura, restano
       const jk = plans.find(C => C.cl >= 3 && !C.gonna && !C.poncho && !C.corto && !C.davanti && (C.parti || []).includes('bacino') && (C.parti || []).includes('torso'));
-      const coat = plans.find(C => C.cl >= 5 && C.gonna && !C.solo_gonna && !C.poncho) || jk, coatHem = !coat ? 9 : coat === jk ? Math.min(B.bones.Hips.y - .15, B.crotch - .01) : Sa.lengths(B, frame(B).tubes[0], 'gonna', coat, coat.parti || ['torso', 'bacino', 'cosce']).yb, tc = frame(B).tubes[0], gapA = coat === jk ? .8 : .5;   // anche la falda corta delle giacche
+      const coat = plans.find(C => C.cl >= 5 && C.gonna && !C.solo_gonna && !C.poncho) || jk, coatHem = !coat ? 9 : coat === jk ? Math.min(B.bones.Hips.y - .15, B.crotch - .01) : Sa.lengths(B, frame(B).tubes[0], 'gonna', coat, coat.parti || ['torso', 'bacino', 'cosce']).yb, tc = frame(B).tubes[0], gapA = coat === jk ? .42 : .5;   // anche la falda corta delle giacche
       // sotto la falda della giacca il busto dipinto non si vede (fuori dall'apertura davanti): via, niente sfarfallio
       const jkF = jk && jk.falda3d, yTopF = B.waist + .06, ybF = Math.min(B.bones.Hips.y - .15, B.crotch - .01);
-      const underJk = w0 => { if (!jkF) return false; for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j]; if (!L || pg.VR[w0 + j] !== 0 || L.p[1] > B.waist + .03) return false; const t = cl((yTopF - L.p[1]) / (yTopF - ybF), 0, 1), g = lerp(.025, .6, Math.pow(t, 1.3)), ax = tc.S[0], ang = Math.abs(Math.atan2(L.p[0] - ax.x, L.p[2] - ax.z)); if (ang < g + .07) return false; } return true; };
+      const underJk = w0 => { if (!jkF) return false; for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j]; if (!L || pg.VR[w0 + j] !== 0 || L.p[1] > B.waist + .03) return false; const t = cl((yTopF - L.p[1]) / (yTopF - ybF), 0, 1), g = gapF(t), ax = tc.S[0], ang = Math.abs(Math.atan2(L.p[0] - ax.x, L.p[2] - ax.z)); if (ang < g + .07) return false; } return true; };
       const underCoat = w0 => { if (!coat) return false; for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j], r = pg.VR[w0 + j]; if (!L || r < 3 || L.p[1] < coatHem + .04 || L.p[1] > B.crotch + .02) return false; const ax = tc.S[0], ang = Math.atan2(L.p[0] - ax.x, L.p[2] - ax.z); if (Math.abs(ang) < gapA) return false; if (coat === jk && L.p[2] - ax.z > -.02 && Math.abs(L.p[0] - ax.x) < .075) return false; } return true; };   // l'interno coscia davanti si vede dall'apertura
       pg.groups.forEach(gr => { const st = idx.length; for (let w0 = gr.start; w0 < gr.start + gr.count; w0 += 3) if (keepT(w0, gr.materialIndex) && !(gr.materialIndex >= 4 && (underF(w0) || underCoat(w0))) && !(gr.materialIndex === 1 && underJk(w0))) idx.push(w0, w0 + 1, w0 + 2); if (idx.length > st) grp.push([st, idx.length - st, gr.materialIndex]); });
       const pgeo = new THREE.BufferGeometry(); for (const k in pg.geo.attributes) pgeo.setAttribute(k, pg.geo.attributes[k]); pgeo.setIndex(idx);
       // lo spessore del capo che si vede: la superficie si stacca dal corpo di quanto è spesso (per persona)
       { const pos0 = pg.geo.attributes.position, pos = new THREE.BufferAttribute(new Float32Array(pos0.array), 3), v3 = new THREE.Vector3();
         for (let w0 = 0; w0 < pos.count; w0++) { const L = pg.VI[w0]; if (!L) continue; const j = J.get(pk(L)); let off = j.o;
-          if (jkF && pg.VR[w0] === 0 && L.p[1] < yTopF - .002) { const t = cl((yTopF - L.p[1]) / (yTopF - ybF), 0, 1), g = lerp(.025, .6, Math.pow(t, 1.3)), ax = tc.S[0], ang = Math.abs(Math.atan2(L.p[0] - ax.x, L.p[2] - ax.z)); if (ang > g + .07) off -= .007 * cl((yTopF - .002 - L.p[1]) / .006, 0, 1); }   // sotto la falda il busto rientra: la falda passa sopra pulita
+          if (jkF && pg.VR[w0] === 0 && L.p[1] < yTopF - .002) { const t = cl((yTopF - L.p[1]) / (yTopF - ybF), 0, 1), g = gapF(t), ax = tc.S[0], ang = Math.abs(Math.atan2(L.p[0] - ax.x, L.p[2] - ax.z)); if (ang > g + .07) off -= .007 * cl((yTopF - .002 - L.p[1]) / .006, 0, 1); }   // sotto la falda il busto rientra: la falda passa sopra pulita
           if (!off) continue; v3.set(L.p[0] + j.d.x * off, L.p[1] + j.d.y * off, L.p[2] + j.d.z * off).applyMatrix4(B.reli); pos.setXYZ(w0, v3.x, v3.y, v3.z); }
         pgeo.setAttribute('position', pos); } grp.forEach(g0 => pgeo.addGroup(g0[0], g0[1], g0[2]));
       pgeo.boundingSphere = pg.geo.boundingSphere; pgeo.userData.pittura = true;
