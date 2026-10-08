@@ -269,7 +269,7 @@ var Vesti3D = (function () {
   function volumi(g, outfit, B, AT) {
     const CUT = Sartoria.CUT_(), cut = c => CUT[c.id] || {}, RK = Pittura.rankOutfit(outfit.filter(c => c.parti && c.parti.length), CUT), after = (c, f) => RK.slice(RK.indexOf(c) + 1).some(f), LO = Pittura.legOrder(outfit);
     // la vita coperta da qualcosa messo dopo: maglioni, giacche, una maglia lasciata fuori, mutande sopra i pantaloni
-    const coversTorso = c => after(c, o => (((o.parti || []).includes('torso') && !cut(o).corto && !cut(o).davanti && !(cut(o).cl <= 1 && after(o, p => cut(p).cl === 2 && (p.parti || []).includes('bacino')))) || (o.parti || []).includes('bacino') && !cut(o).gonna) && (cut(o).cl >= 1 || (o.parti || []).includes('bacino')));
+    const coversTorso = c => after(c, o => (((o.parti || []).includes('torso') && !cut(o).corto && !cut(o).davanti && !(cut(o).cl <= 1 && after(o, p => cut(p).cl === 2 && (p.parti || []).includes('bacino')))) || (o.parti || []).includes('bacino') && !cut(o).gonna));
     outfit.forEach(c => {
       const C = cut(c);
       // la cintura vera, con la fibbia

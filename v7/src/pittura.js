@@ -167,9 +167,10 @@ var Pittura = (function () {
   function plan(B, c, k, all) {
     const Sa = S(), CUT = Sa.CUT_(), base = CUT[c.id] || { cl: 1, fab: 'cotone' }, C = Object.assign({ id: c.id }, base, (c.var && typeof c.var === 'object') ? c.var : {});
     const P = new Set(c.parti || []), F = frame(B), T = F.tubes[0], L = {};
+    if (base.poncho) { C.L = L; C.col = c.col; C.A = rgb(c.col || '#808080'); C.B = C.A; C.C = C.A; return C; }   // il poncho è tutto in rilievo (mantella)
     C.col = c.col; C.A = rgb(c.col || '#808080'); ['aperta', 'fab', 'c2', 'c3', 'usura', 'tasche', 'fronte', 'collo', 'polsi'].forEach(k => { if (c[k] !== undefined && k !== 'fab' || (k === 'fab' && c.fabV)) C[k] = k === 'fab' ? c.fabV : c[k]; });
     const l = C.A[0] * .3 + C.A[1] * .59 + C.A[2] * .11; C.B = rgb(C.c2 || (l > .5 ? '#2a2a30' : D)); C.C = rgb(C.c3 || (l > .5 ? '#5a5a60' : '#a8a090'));
-    const trous = !C.gonna && !C.solo_gonna && P.has('bacino'), top = P.has('torso') && !C.solo_gonna;
+    const trous = !C.gonna && !C.solo_gonna && P.has('bacino') && (!P.has('torso') || C.intera), top = P.has('torso') && !C.solo_gonna;
     if (top) {
       const Ls = Sa.lengths(B, T, 'tronco', C, [...P]);
       let yb = Ls.yb; if (C.gonna || C.poncho) yb = B.waist - .02;   // la falda la fa la geometria
@@ -183,7 +184,7 @@ var Pittura = (function () {
       if (C.pettorina) { /* la salopette: pettorina dipinta sul busto */ L.T = Object.assign(L.T || {}, { bib: 1 }); }
       // giacche e cappotti che scendono sotto l'inforcatura, gonne e falde: continuano dipinti sulle cosce
       // (sotto le falde la gamba ha la stessa stoffa: se passa attraverso, non si vede)
-      const openCoat = C.cl >= 5 && !C.solo_gonna && !C.poncho; const hem = openCoat ? null : C.gonna || C.solo_gonna || C.poncho ? (Sa.lengths(B, T, 'gonna', C, [...P]).yb) : (L.T && L.T.yb !== undefined && L.T.s0 !== undefined && L.T.yb < B.waist + .02 ? L.T.yb : null);   // ogni capo che scende sotto la vita continua sulle cosce fino al suo orlo
+      const openCoat = C.cl >= 5 && C.gonna && !C.solo_gonna && !C.poncho; const hem = openCoat ? null : C.gonna || C.solo_gonna || C.poncho ? (Sa.lengths(B, T, 'gonna', C, [...P]).yb) : (L.T && L.T.yb !== undefined && L.T.s0 !== undefined && L.T.yb < B.waist + .02 ? L.T.yb : null);   // ogni capo che scende sotto la vita continua sulle cosce fino al suo orlo
       if (hem !== null && hem !== undefined && !L['L' + sd]) L['L' + sd] = { falda: hem, s1: 9, kn: 0, sCr: 0 };
     }
     C.L = L; return C;
@@ -194,7 +195,8 @@ var Pittura = (function () {
     if (c === 'v' || c === 'revers' || c === 'revers_pelle' || c === 'camicia_aperta') { const w = c === 'v' ? .55 : .7, dep = c === 'v' ? .1 : c === 'camicia_aperta' ? .11 : .2; if (Math.abs(a) < w) d = dep * (1 - Math.abs(a) / w); }
     if (c === 'giro' || c === 'polo' || c === 'camicia' || c === 'alto_zip' || c === 'cappuccio' || c === 'giro') d = Math.max(0, fa) * .025;
     if (c === 'barca') d = Math.max(0, Math.abs(fa)) * .02;
-    if (c === 'canotta' || C.spalline_sottili) { const sa = Math.abs(Math.abs(a) - Math.PI / 2); d = sa < .75 ? 0 : Math.max(0, fa) * .1 + .03; if (sa >= .75 && fa < 0) d = .05; }
+    if (c === 'canotta' || C.spalline_sottili) { const sa = Math.abs(Math.abs(a) - Math.PI / 2);   // scollo dritto davanti e dietro, giro manica largo: niente buco a goccia
+      d = sa < .55 ? 0 : (fa > 0 ? .075 : .05) * sm(cl((sa - .55) / .35, 0, 1)); }
     if (c === 'alto') d = -.07; if (c === 'alto_zip') d = -.04;
     // ai lati e dietro lo scollo sale sul trapezio fino alla base del collo (niente pelle sulle spalle)
     if (!/canotta|barca/.test(c || '') && !C.spalline_sottili) d -= .018 * (1 - Math.max(0, fa));
@@ -340,7 +342,9 @@ var Pittura = (function () {
       const inPel = T.p0 !== undefined && sv >= T.p0 && sv <= T.p1 && (C.solo_gonna || y > B.crotch - .02 - .07 * Math.pow(Math.abs(Math.sin(a)), 1.5));
       const inBib = T.bib && Math.abs(a) < .72 && y < B.bones.Chest.y + .04 && y > B.waist - .02;
       if (!inTop && !inPel && !inBib) return null;
-      if (C.aperta && inTop && Math.abs(a) < .3) return null;   // aperta davanti: si vede quello che c'è sotto
+      if (C.aperta && inTop && Math.abs(a) < .3) return null;
+      // canotta e vestiti a spalline: sopra l'ascella copre solo la spallina vicino al collo (il deltoide resta nudo)
+      if (inTop && (C.collo === 'canotta' || C.spalline_sottili) && y > nY - .17) { const pS = S().surf(tb, sv, a, 0), nx = B.neckC ? B.neckC[0] : 0; if (Math.abs(pS.x - nx) > (B.neckR || .06) + (C.spalline_sottili ? .03 : .05)) return null; }   // aperta davanti: si vede quello che c'è sotto
       if (inTop) edge = Math.min(y - T.yb, nY - neckDrop(C, a) - y);
       if (inPel && !inTop) edge = Math.min(B.waist + .03 - y, 9);
     } else if (R[0] === 'A') {
@@ -568,5 +572,5 @@ var Pittura = (function () {
     const ranked = rankOutfit(list, CUT);
     return ranked.map((c, k) => plan(B, c, k, ranked));
   }
-  return { legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
+  return { plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
 })();
