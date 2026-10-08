@@ -1,5 +1,6 @@
 // Istantanee del gioco vero (v7/index.html): node strumenti_inverno/shot_gioco.js cartella_uscita scene.json
 // scene.json: [{ "nome": "piazza", "x": 400, "y": 117, "ora": 840, "zoom": 1, "attesa": 3000 }]
+// "amb": { "luc": 0, ... } cambia le manopole di window.__AMB da questa foto in poi.
 // "luogo": id di World.PLACES al posto di x, y. "ora" in minuti dalla mezzanotte. Chromium senza testa con SwiftShader.
 const path = require('path'), http = require('http'), fs = require('fs');
 const { chromium } = require(process.env.PW || '/opt/node22/lib/node_modules/playwright');
@@ -30,6 +31,7 @@ const srv = http.createServer((req, res) => {
       st.player.x = x; st.player.y = y; if (s.ora !== undefined) st.t = Math.floor(st.t / 1440) * 1440 + s.ora;
       pv.ui.zoom = s.zoom || 1; pv.ui.dialog = null; pv.ui.book = false; pv.ui.menu = false;
       if (pv.R && pv.R.cam) { pv.R.cam.x = pv.R.cam.tx = x; pv.R.cam.y = pv.R.cam.ty = y; pv.R.cam.zoom = pv.R.cam.tz = s.zoom || 1; }
+      if (s.amb && window.__AMB) Object.assign(window.__AMB, s.amb);   // manopole dello shader per questa foto (restano per le successive)
     }, s);
     await pg.waitForTimeout(s.attesa || 4000);
     console.log('ora di gioco', await pg.evaluate(() => Math.round(window.__pv.st.t % 1440)), 'night', await pg.evaluate(() => window.__pv.R && window.__pv.R.night));
