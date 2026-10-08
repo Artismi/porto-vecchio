@@ -84,7 +84,29 @@ var Pittura = (function () {
   function ironRadius(R, tb, s, a) { const RG = R[0].length, fi = cl(s / tb.ds, 0, tb.ns), i0 = Math.floor(fi), i1 = Math.min(tb.ns, i0 + 1), t = fi - i0, fs = (((a / (Math.PI * 2)) * RG) % RG + RG) % RG, q0 = Math.floor(fs), q1 = (q0 + 1) % RG, u = fs - q0;
     return lerp(lerp(R[i0][q0], R[i0][q1], u), lerp(R[i1][q0], R[i1][q1], u), t); }
   // la posizione stirata di un vertice del corpo (per la sua parte, così un vertice condiviso va sempre nello stesso posto)
-  function ironPos(B, g, out) {
+  function ironPos(B, g, out) { const I = ironAll(B); return out.set(I[g * 3], I[g * 3 + 1], I[g * 3 + 2]); }
+  // tutti i vertici stirati, poi la cucitura busto/gambe si raccorda: i doppioni (mesh diverse del kit) vanno nello stesso posto
+  // e lo spostamento si liscia in una fascia attorno al confine (niente gradino tra il bacino e le cosce)
+  function ironAll(B) {
+    if (B.IP) return B.IP; const n = B.part.length, v = new THREE.Vector3(), I = new Float32Array(n * 3), Dp = new Float32Array(n * 3), reg = new Int8Array(n);
+    for (let g = 0; g < n; g++) { ironPos0(B, g, v); I[g * 3] = v.x; I[g * 3 + 1] = v.y; I[g * 3 + 2] = v.z; reg[g] = regionOf(B, g); for (let k = 0; k < 3; k++) Dp[g * 3 + k] = I[g * 3 + k] - B.P[g * 3 + k]; }
+    // i gruppi saldati (stessa posizione)
+    const gid = new Int32Array(n), km = new Map(); let ng = 0; for (let g = 0; g < n; g++) { const k = Math.round(B.P[g * 3] * 1e4) + ',' + Math.round(B.P[g * 3 + 1] * 1e4) + ',' + Math.round(B.P[g * 3 + 2] * 1e4); let id = km.get(k); if (id === undefined) km.set(k, id = ng++); gid[g] = id; }
+    const GD = new Float32Array(ng * 3), GP = new Float32Array(ng * 3), GC = new Int32Array(ng), GT = new Uint8Array(ng), GL = new Uint8Array(ng);
+    for (let g = 0; g < n; g++) { const i = gid[g]; for (let k = 0; k < 3; k++) GP[i * 3 + k] = B.P[g * 3 + k]; if (reg[g] < 0) continue; GC[i]++; for (let k = 0; k < 3; k++) GD[i * 3 + k] += Dp[g * 3 + k]; if (reg[g] === 0) GT[i] = 1; if (reg[g] >= 3) GL[i] = 1; }
+    for (let i = 0; i < ng; i++) if (GC[i]) for (let k = 0; k < 3; k++) GD[i * 3 + k] /= GC[i];
+    const nb = Array.from({ length: ng }, () => new Set()), tr = B.tris;
+    for (let t = 0; t < tr.length; t += 3) for (let a = 0; a < 3; a++) { const x = gid[tr[t + a]], y = gid[tr[t + (a + 1) % 3]]; if (x !== y) { nb[x].add(y); nb[y].add(x); } }
+    // il confine: gruppi di busto e gamba insieme, o lati che uniscono busto e gamba
+    const seam = []; for (let i = 0; i < ng; i++) { let s = GT[i] && GL[i]; if (!s && GT[i]) for (const j of nb[i]) if (GL[j] && !GT[j]) { s = 1; break; } if (s && GP[i * 3 + 1] > B.crotch - .05 && GP[i * 3 + 1] < B.waist) seam.push(i); }
+    const BAND = .09, wt = new Float32Array(ng);
+    if (seam.length) for (let i = 0; i < ng; i++) { if (!GT[i] && !GL[i]) continue; const y = GP[i * 3 + 1]; if (y < B.crotch - .2 || y > B.waist + .1) continue; let d = 9; for (const j of seam) { const dx = GP[i * 3] - GP[j * 3], dy = y - GP[j * 3 + 1], dz = GP[i * 3 + 2] - GP[j * 3 + 2]; const dd = dx * dx + dy * dy + dz * dz; if (dd < d) d = dd; } d = Math.sqrt(d); if (d < BAND) wt[i] = 1 - sm(d / BAND); }
+    for (let it = 0; it < 40; it++) { const N2 = GD.slice(); for (let i = 0; i < ng; i++) { if (!wt[i] || !nb[i].size) continue; let x = 0, y = 0, z = 0, m = 0; for (const j of nb[i]) { if (!GC[j]) continue; x += GD[j * 3]; y += GD[j * 3 + 1]; z += GD[j * 3 + 2]; m++; } if (!m) continue; const k = wt[i] * .6;
+        N2[i * 3] = lerp(GD[i * 3], x / m, k); N2[i * 3 + 1] = lerp(GD[i * 3 + 1], y / m, k); N2[i * 3 + 2] = lerp(GD[i * 3 + 2], z / m, k); } GD.set(N2); }
+    for (let g = 0; g < n; g++) { if (reg[g] < 0) continue; const i = gid[g]; if (GC[i] < 2 && !wt[i] || !GC[i]) continue; for (let k = 0; k < 3; k++) I[g * 3 + k] = B.P[g * 3 + k] + GD[i * 3 + k]; }
+    B.IP = I; B.ironSeam = { gid, wt, GP }; return I;
+  }
+  function ironPos0(B, g, out) {
     const r = regionOf(B, g); out.set(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]); if (r < 0) return out;
     const F = frame(B), tb = F.tubes[r], q = axial(tb, out), fr = S().frameAt(tb, q.s), R = ironed(tb), rr = shape(B, tb, q.s, q.a, ironRadius(R, tb, q.s, q.a)); q.r = q.r !== undefined ? q.r : out.clone().sub(fr.p).length(); q.i = q.s / tb.ds;
     // vicino a mani, piedi, collo (dove il corpo resta com'è) lo stiro sfuma
@@ -489,6 +511,12 @@ var Pittura = (function () {
     let P = null, M = MCACHE.get(sig); if (!M) { P = paint(B, outfit, skin); M = mats(sig, P); }
     if (!B.welded) { B.welded = 1; weld(B, g, srcs); }
     const plans = paintPlans(B, outfit), nY = Sa.neckY(B);
+    // i punti nello stesso posto (doppioni tra busto e gambe, anche in mesh diverse) si staccano insieme: stessa direzione, lo spessore maggiore
+    const pk = L => Math.round(L.p[0] * 2e4) + ',' + Math.round(L.p[1] * 2e4) + ',' + Math.round(L.p[2] * 2e4), J = new Map(), memo = new Map();
+    srcs.forEach((src, si) => { const pg = paintGeo(B, src, si); if (!pg) return;
+      for (let w0 = 0; w0 < pg.VI.length; w0++) { const L = pg.VI[w0]; if (!L) continue; let off = memo.get(L); if (off === undefined) { const C = topAt(B, plans, pg.VR[w0], L.a, L.s, L.p[1], nY); off = C ? spessore(C) + spalla(B, C, pg.VR[w0], L, nY) : 0; memo.set(L, off); }
+        const k = pk(L); let j = J.get(k); if (!j) J.set(k, j = { o: 0, d: new THREE.Vector3(), seen: new Set() }); j.o = Math.max(j.o, off); if (!j.seen.has(L)) { j.seen.add(L); j.d.x += L.d[0]; j.d.y += L.d[1]; j.d.z += L.d[2]; } } });
+    J.forEach(j => j.d.normalize());
     srcs.forEach((src, si) => {
       const pg = paintGeo(B, src, si); if (!pg) return;
       if (!src.userData.pitOrig) src.userData.pitOrig = { geo: src.userData.geo0 || src.geometry, mat: src.material };
@@ -509,9 +537,9 @@ var Pittura = (function () {
       pg.groups.forEach(gr => { const st = idx.length; for (let w0 = gr.start; w0 < gr.start + gr.count; w0 += 3) if (keepT(w0, gr.materialIndex) && !(gr.materialIndex >= 4 && (underF(w0) || underCoat(w0)))) idx.push(w0, w0 + 1, w0 + 2); if (idx.length > st) grp.push([st, idx.length - st, gr.materialIndex]); });
       const pgeo = new THREE.BufferGeometry(); for (const k in pg.geo.attributes) pgeo.setAttribute(k, pg.geo.attributes[k]); pgeo.setIndex(idx);
       // lo spessore del capo che si vede: la superficie si stacca dal corpo di quanto è spesso (per persona)
-      { const pos0 = pg.geo.attributes.position, pos = new THREE.BufferAttribute(new Float32Array(pos0.array), 3), v3 = new THREE.Vector3(), memo = new Map();
-        for (let w0 = 0; w0 < pos.count; w0++) { const L = pg.VI[w0]; if (!L) continue; let off = memo.get(L); if (off === undefined) { const C = topAt(B, plans, pg.VR[w0], L.a, L.s, L.p[1], nY); off = C ? spessore(C) + spalla(B, C, pg.VR[w0], L, nY) : 0; memo.set(L, off); }
-          if (!off) continue; v3.set(L.p[0] + L.d[0] * off, L.p[1] + L.d[1] * off, L.p[2] + L.d[2] * off).applyMatrix4(B.reli); pos.setXYZ(w0, v3.x, v3.y, v3.z); }
+      { const pos0 = pg.geo.attributes.position, pos = new THREE.BufferAttribute(new Float32Array(pos0.array), 3), v3 = new THREE.Vector3();
+        for (let w0 = 0; w0 < pos.count; w0++) { const L = pg.VI[w0]; if (!L) continue; const j = J.get(pk(L)), off = j.o;
+          if (!off) continue; v3.set(L.p[0] + j.d.x * off, L.p[1] + j.d.y * off, L.p[2] + j.d.z * off).applyMatrix4(B.reli); pos.setXYZ(w0, v3.x, v3.y, v3.z); }
         pgeo.setAttribute('position', pos); } grp.forEach(g0 => pgeo.addGroup(g0[0], g0[1], g0[2]));
       pgeo.boundingSphere = pg.geo.boundingSphere; pgeo.userData.pittura = true;
       src.geometry = pgeo; src.material = [Array.isArray(src.material) ? src.material[0] : src.material, ...M];
@@ -528,11 +556,15 @@ var Pittura = (function () {
       for (let k = 0; k < P.count; k += 3) { if (!inReg[k] || pg.dropT.has(k / 3) || pg.noN.has(k / 3)) continue; a.fromBufferAttribute(P, k).applyMatrix4(M); b.fromBufferAttribute(P, k + 1).applyMatrix4(M); c.fromBufferAttribute(P, k + 2).applyMatrix4(M); const n = b.sub(a).cross(c.sub(a));
         for (let j = 0; j < 3; j++) { let v = acc.get(keys[k + j]); if (!v) acc.set(keys[k + j], v = new THREE.Vector3()); v.add(n); } }
       L.push({ N, keys, inReg, NMi: new THREE.Matrix3().copy(NM).invert() }); });
+    // il confine busto/gambe: lì le due parti hanno assi diversi, le facce agganciate farebbero uno spigolo di luce. Si sfuma alla normale liscia
+    const KR = new Map(); L.forEach(({ keys, inReg }) => { for (let k = 0; k < keys.length; k++) if (inReg[k]) KR.set(keys[k], (KR.get(keys[k]) || 0) | (inReg[k] === 1 ? 1 : inReg[k] >= 4 ? 2 : 0)); });
+    const seamP = []; KR.forEach((m, kk) => { if (m === 3) { const p = kk.split(',').map(x => +x / 2e4); if (p[1] > B.crotch - .05 && p[1] < B.waist) seamP.push(p); } });
+    const seamK = kk => { if (!seamP.length) return 1; const p = kk.split(',').map(x => +x / 2e4); if (p[1] < B.crotch - .2 || p[1] > B.waist + .12) return 1; let d = 9; for (const q of seamP) d = Math.min(d, (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2); return sm(cl(Math.sqrt(d) / .1, 0, 1)); };
     // luce a pannelli: la normale si aggancia a 8 facce attorno all'asse della parte (e 3 inclinazioni): piani netti, spigoli di piega, come stoffa tagliata
     const F = frame(B), snap = new Map(), sn = new THREE.Vector3();
     const snapped = (kk, v, reg) => { const k2 = kk + '|' + reg; let r = snap.get(k2); if (r) return r; const tb = F.tubes[reg], p = new THREE.Vector3(...kk.split(',').map(x => +x / 2e4)), q = axial(tb, p), fr = S().frameAt(tb, q.s);
       const n = v.clone().normalize(), nt = n.dot(fr.t), nf = n.dot(fr.f), ns = n.dot(fr.sd), ang = Math.round(Math.atan2(ns, nf) / (Math.PI / 6)) * (Math.PI / 6), tilt = Math.max(-.45, Math.min(.45, Math.round(nt / .3) * .3)), h = Math.sqrt(1 - tilt * tilt);
-      r = fr.t.clone().multiplyScalar(tilt).addScaledVector(fr.f, Math.cos(ang) * h).addScaledVector(fr.sd, Math.sin(ang) * h).normalize().multiplyScalar(.7).addScaledVector(n, .3).normalize(); snap.set(k2, r); return r; };   // facce geometriche, ammorbidite
+      r = fr.t.clone().multiplyScalar(tilt).addScaledVector(fr.f, Math.cos(ang) * h).addScaledVector(fr.sd, Math.sin(ang) * h).normalize(); const f = (reg === 0 || reg >= 3) ? seamK(kk) * .7 : .7; r.multiplyScalar(f).addScaledVector(n, 1 - f).normalize(); snap.set(k2, r); return r; };   // facce geometriche, ammorbidite
     L.forEach(({ N, keys, inReg, NMi }) => { for (let k = 0; k < N.count; k++) { if (!inReg[k]) continue; const v = acc.get(keys[k]); if (!v || v.lengthSq() < 1e-30) continue; a.copy(snapped(keys[k], v, inReg[k] - 1)).applyMatrix3(NMi).normalize(); N.setXYZ(k, a.x, a.y, a.z); } N.needsUpdate = true; });
   }
   function spoglia(g) { g.traverse(o => { if (o.isSkinnedMesh && o.userData.pitOrig) { o.geometry = o.userData.pitOrig.geo; o.material = o.userData.pitOrig.mat; o.userData.pitOrig = null; } }); }
