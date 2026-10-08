@@ -115,13 +115,13 @@ var World = (function () {
     // i boomerang: la Falce a tramontana, la Mezzaluna a levante, il Gomito a mezzogiorno, la Vela a maestrale
     { id: 'falce', name: 'La Falce', arc: true, x: 470, y: 22, R: 72, span: 1.0, w: 13, rot: -Math.PI / 2, h: 15, amp: .18, seed: 31, def: 'reef', kinds: [[Math.PI / 2, 1.2, 'cala']], veg: 'giungla' },
     { id: 'mezzaluna', name: 'La Mezzaluna', arc: true, x: 1532, y: 214, R: 62, span: 1.05, w: 12, rot: 0, h: 14, amp: .18, seed: 32, def: 'reef', kinds: [[Math.PI / 2, 1.2, 'spiaggia']], veg: 'giungla' },
-    { id: 'gomito', name: 'Il Gomito', arc: true, x: 330, y: 470, R: 56, span: .95, w: 12, rot: Math.PI / 2, h: 13, amp: .2, seed: 33, def: 'reef', kinds: [[Math.PI / 2, 1.2, 'cala']], veg: 'giungla' },
-    { id: 'vela', name: 'La Vela', arc: true, x: -110, y: -30, R: 82, span: .85, w: 11, rot: -Math.PI * .78, h: 16, amp: .2, seed: 34, def: 'reef', kinds: [], veg: 'giungla' },
+    { id: 'gomito', name: 'Il Gomito', arc: true, x: 330, y: 470, R: 56, span: .95, w: 12, rot: Math.PI / 2, h: 13, amp: .2, seed: 33, def: 'reef', kinds: [[Math.PI / 2, 1.2, 'cala']], veg: 'palmeto', tema: 'palmeto' },
+    { id: 'vela', name: 'La Vela', arc: true, x: -110, y: -30, R: 82, span: .85, w: 11, rot: -Math.PI * .78, h: 16, amp: .2, seed: 34, def: 'falesia', kinds: [], veg: 'nuda', tema: 'nuda' },
     // le creste
     { id: 'dorsale', name: 'La Dorsale di Ponente', x: -232, y: 102, rx: 95, ry: 15, rot: 1.1, h: 19, dome: true, amp: .14, seed: 41, def: 'reef', kinds: [], veg: 'giungla' },
-    { id: 'cresta', name: 'La Cresta', x: 832, y: -104, rx: 86, ry: 14, rot: -.12, h: 17, dome: true, amp: .14, seed: 42, def: 'reef', kinds: [[Math.PI / 2, .4, 'cala']], veg: 'giungla' },
-    { id: 'spina', name: 'La Spina', x: 1262, y: -84, rx: 62, ry: 12, rot: .45, h: 14, dome: true, amp: .14, seed: 43, def: 'reef', kinds: [], veg: 'giungla' },
-    { id: 'lama', name: 'La Lama', x: 742, y: 592, rx: 70, ry: 11, rot: -.2, h: 12, dome: true, amp: .14, seed: 44, def: 'reef', kinds: [[-Math.PI / 2, .4, 'spiaggia']], veg: 'giungla' },
+    { id: 'cresta', name: 'La Cresta', x: 832, y: -104, rx: 86, ry: 14, rot: -.12, h: 17, dome: true, amp: .14, seed: 42, def: 'reef', kinds: [[Math.PI / 2, .4, 'cala']], veg: 'macchia', tema: 'pini', grotta: true },
+    { id: 'spina', name: 'La Spina', x: 1262, y: -84, rx: 62, ry: 12, rot: .45, h: 14, dome: true, amp: .14, seed: 43, def: 'falesia', kinds: [], veg: 'nuda', tema: 'uccelli', arco: true },
+    { id: 'lama', name: 'La Lama', x: 742, y: 592, rx: 70, ry: 11, rot: -.2, h: 12, dome: true, amp: .14, seed: 44, def: 'reef', kinds: [[-Math.PI / 2, .4, 'spiaggia']], veg: 'palmeto', tema: 'palmeto' },
   ];
   // la laguna dietro l'Isola Lunga e la secca fra l'Isola delle Palme e lo Scoglio Piatto; nei boomerang, la laguna nella baia
   const LAGUNE = [{ x: 1196, y: 330, rx: 62, ry: 17, rot: .22, d: 1.3 }, { x: 990, y: 362, rx: 30, ry: 22, rot: .5, d: 1.8 }];
@@ -138,7 +138,9 @@ var World = (function () {
     CLU.forEach(([cx, cy, k, sp]) => { for (let t = 0; t < k * 12 && k > 0; t++) {
       const a = r() * 6.283, d = Math.sqrt(r()) * sp, x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d, rr = 6.5 + Math.pow(r(), 1.6) * 15;
       if (!far(x, y, rr)) continue; const id = 'panettone_' + (++n);
-      ISOLE.push({ id, name: NOMI[(n - 1) % NOMI.length] + (n > NOMI.length ? ' II' : ''), x, y, rx: rr, ry: rr * (.72 + r() * .26), rot: r() * 3.14, h: Math.min(26, rr * 1.15 + 2), dome: true, amp: .2, seed: 100 + n, def: 'reef', kinds: r() < .35 ? [[r() * 6.28 - 3.14, .45, 'cala']] : [], veg: 'giungla', small: rr < 9 });
+      // ogni panettone ha il suo carattere: giungla, palmeto, pini sul calcare, roccia nuda con le agavi, l'isola degli uccelli
+      const tr = r(), tema = tr < .44 ? 'giungla' : tr < .6 ? 'palmeto' : tr < .75 ? 'pini' : tr < .89 ? 'nuda' : 'uccelli';
+      ISOLE.push({ id, name: NOMI[(n - 1) % NOMI.length] + (n > NOMI.length ? ' II' : ''), x, y, rx: rr, ry: rr * (.72 + r() * .26), rot: r() * 3.14, h: Math.min(26, rr * (tema === 'nuda' || tema === 'uccelli' ? .8 : 1.15) + 2), dome: true, amp: .2, seed: 100 + n, def: tema === 'palmeto' ? 'cala' : 'reef', kinds: r() < .35 ? [[r() * 6.28 - 3.14, .45, 'cala']] : [], veg: tema === 'pini' ? 'macchia' : tema === 'uccelli' ? 'nuda' : tema, tema, small: rr < 9, arco: rr > 9 && r() < .22, grotta: rr > 10 && r() < .25 });
       k--; } });
   }
   let ISLES_ON = false;   // [arcipelago] durante la generazione dell'isola grande le isole non ci sono: le aggiunge expand() sulla mappa grande
@@ -223,7 +225,7 @@ var World = (function () {
   const BF = { TOP: 1, WALL: 2, TALUS: 4, CANALE: 8, RADURA: 16, RIVA: 32 };
   const CANALI = [{ id: 'levante', a: .16 }, { id: 'ponente', a: Math.PI + .42 }];
   // [ambienti] gli ambienti del verde (vedi generate)
-  const ECO = { NONE: 0, FARO: 1, DUNA: 2, PINETA: 3, SALINA: 4, PASCOLO: 5, GHIAIONE: 6, ABETAIA: 7, FAGGETA: 8, VALLONE: 9, MACCHIA: 10, RUDERALE: 11, RADURA: 12, RIPARIALE: 13, BETULLE: 14, VIGNE: 15, ULIVETO: 16, PINIMONTE: 17, ISOLA: 18, PALMETO: 19, GIUNGLA: 20 };
+  const ECO = { NONE: 0, FARO: 1, DUNA: 2, PINETA: 3, SALINA: 4, PASCOLO: 5, GHIAIONE: 6, ABETAIA: 7, FAGGETA: 8, VALLONE: 9, MACCHIA: 10, RUDERALE: 11, RADURA: 12, RIPARIALE: 13, BETULLE: 14, VIGNE: 15, ULIVETO: 16, PINIMONTE: 17, ISOLA: 18, PALMETO: 19, GIUNGLA: 20, NUDA: 21 };
   const tavR = a => TAV.r * (.95 + .1 * fbm(Math.cos(a) * 1.05 + 4, Math.sin(a) * 1.05 + 4, 401, 2));   // [isola] pochi lobi larghi: un tavolato, non un bordo frastagliato
   CANALI.forEach(c => { c.R = tavR(c.a); c.u = [Math.cos(c.a), Math.sin(c.a)]; });
   // radure del bosco [x, y, raggio]: stazioni, saline, faro, campo partigiano, borghi dei pescatori
@@ -1712,18 +1714,19 @@ var World = (function () {
         const i = ix(tx, ty), q = b.q, k = isleKind(I, q.a), beachK = k === 'spiaggia' || k === 'cala', wob = (fbm(x / 9, y / 9, 81, 2) - .5) * 2.4;
         isl[i] = 1; elev[i] = isleElev(I, q); feat[i] = 0; reach[i] = 0;
         const band = k === 'spiaggia' ? 9 + wob : k === 'cala' ? 6 + wob : k === 'falesia' ? 4 + wob * .6 : k === 'reef' ? 1.6 + wob * .4 : 4.2 + wob;
-        const ecoV = beachK && q.d < 22 + wob * 3 ? ECO.PALMETO : I.veg === 'giungla' ? ECO.GIUNGLA : ECO.ISOLA;
+        const ecoV = (beachK && q.d < 22 + wob * 3) || I.veg === 'palmeto' ? ECO.PALMETO : I.veg === 'giungla' ? ECO.GIUNGLA : I.veg === 'nuda' ? ECO.NUDA : ECO.ISOLA;
         let v, z = Z.MACCHIA;
         if (q.d < band) { v = beachK ? T_.SAND : T_.ROCK; if (beachK) z = Z.SPIAGGIA; }
         else if (ecoV === ECO.GIUNGLA) v = cellT(tx, ty, 3.3, .97, 41) || cellT(tx, ty, 5, .8, 44) ? T_.TREE : hash2(tx, ty, 45) < .7 ? T_.SHRUB : T_.GRASS;          // la giungla: chiome che si toccano
         else if (ecoV === ECO.PALMETO) v = cellT(tx, ty, 5, .75, 33) ? T_.TREE : hash2(tx, ty, 34) < .3 ? T_.SHRUB : beachK && q.d < band + 6 ? T_.SAND : T_.GRASS;   // palme a gruppi
+        else if (ecoV === ECO.NUDA) v = fbm(x / 6, y / 6, 143, 2) > .52 ? T_.ROCK : cellT(tx, ty, 13, .25, 37) ? T_.TREE : fbm(x / 7, y / 7, 144, 2) > .55 ? T_.SHRUB : T_.GRASS;   // calcare nudo: roccia, erba secca, qualche cespuglio e un albero storto
         else v = cellT(tx, ty, 7, .6, 36) ? T_.TREE : fbm(x / 9, y / 9, 142, 2) > .42 ? T_.SHRUB : T_.GRASS;                                                         // macchia, pini e lentischi
         if (beachK && q.d < band && ecoV === ECO.PALMETO && q.d > 4 && cellT(tx, ty, 5.5, .5, 35)) v = T_.TREE;   // qualche palma sulla sabbia
         grid[i] = v; zone[i] = z; eco[i] = ecoV; bIndex[i] = -1;
       }
     });
     // ---- quello che c'è sulle isole: villaggi, baracche, basi della Tutela, la tribù; la torre e il relitto ----
-    const B = W.BUILDINGS, PL = W.PLACES; S.camps = []; S.ruins = [];
+    const B = W.BUILDINGS, PL = W.PLACES; S.camps = []; S.ruins = []; S.decor = [];
     const walkB = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= GW2 || ty >= GH2) return false; const v = grid[ix(tx, ty)]; return v !== T_.BLD && v !== T_.WATER && v !== T_.FOUNT && v !== T_.TREE && v !== T_.CLIFF; };
     const PNb = (id, name, x, y, ex) => { let tx = Math.floor(x / TS), ty = Math.floor(y / TS), best = null;
       for (let rr = 0; rr < 16 && !best; rr++) for (let dy = -rr; dy <= rr && !best; dy++) for (let dx = -rr; dx <= rr; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === rr && walkB(tx + dx, ty + dy)) { best = [tx + dx, ty + dy]; break; }
@@ -1760,6 +1763,7 @@ var World = (function () {
       if (I.use === 'villaggio' || I.use === 'baracche') {
         const bp = shoreB(I, beachA, 1), vc = [bp.x - bp.dx * (I.use === 'villaggio' ? 17 : 10), bp.y - bp.dy * (I.use === 'villaggio' ? 17 : 10)];
         clearB(vc[0], vc[1], I.use === 'villaggio' ? 15 : 9, T_.GRASS, true);
+        if (I.use === 'villaggio') clearB(vc[0], vc[1], 8, T_.DIRT, false);   // la terra battuta in mezzo alle capanne
         let nb = 0; ring(vc[0], vc[1], I.use === 'villaggio' ? 8 : 4, I.use === 'villaggio' ? 10 : 6, (x, y, a, k) => { const w = 2 + (k % 2), h = 2; if (stampB({ id: 'capanno_' + I.id + '_' + k, x: Math.floor(x / TS - w / 2), y: Math.floor(y / TS - h / 2), w, h, fl: 1, style: SHSTY[(k * 3 + I.seed) % SHSTY.length], house: true, shack: true, use: 'capanno', label: I.use === 'villaggio' ? 'Capanno dei pescatori' : 'Baracca abbandonata', face: vc })) nb++; });
         const pid = (I.use === 'villaggio' ? 'villaggio_' : 'baracche_') + I.id, pname = I.use === 'villaggio' ? 'Villaggio ' + I.name.replace(/^Isola (dei |di )?/, (m) => m.replace('Isola ', '')) : 'Baracche dell\'' + I.name.replace(/^Isola /, 'isola ');
         place1(I, pid, pname, vc[0], vc[1]);
@@ -1768,7 +1772,8 @@ var World = (function () {
         const stp = pontileB('pontile_' + I.id, I.use === 'villaggio' ? 'Pontile del villaggio' : 'Vecchio approdo', [px0, pe], 1.8, .7, I.use === 'villaggio' ? hd : null); if (I.use !== 'villaggio') stp.old = true;
         if (I.use === 'villaggio') { [-1, 1].forEach(sg => { const mx = bp.x + bp.dx * 9 - bp.dy * sg * 4.4, my = bp.y + bp.dy * 9 + bp.dx * sg * 4.4; S.moorings.push({ kind: 'gozzo', x: mx, y: my, ang: Math.atan2(bp.dx * sg * 1, -bp.dy * sg * 1), len: BOATL.gozzo, at: stp.id, drive: true }); });
           for (let k = 0; k < 3; k++) { const o = (k - 1) * 5 + 8, x = bp.x - bp.dx * 3 - bp.dy * o, y = bp.y - bp.dy * 3 + bp.dx * o; if (grid[ix(Math.floor(x / TS), Math.floor(y / TS))] === T_.SAND) S.moorings.push({ kind: 'secca', x, y, ang: Math.atan2(-bp.dy, -bp.dx) + (k - 1) * .2, len: BOATL.secca, at: I.id }); }
-          S.camps.push({ type: 'villaggio', id: I.id, name: pname, x: vc[0], y: vc[1], r: 16, place: pid, faction: null, n: 4 }); }
+          S.camps.push({ type: 'villaggio', id: I.id, name: pname, x: vc[0], y: vc[1], r: 16, place: pid, faction: null, n: 4, bp: [bp.x, bp.y, bp.dx, bp.dy] }); }
+        else S.decor.push({ type: 'baracche', id: I.id, x: vc[0], y: vc[1], r: 9, bp: [bp.x, bp.y, bp.dx, bp.dy] });
       }
       if (I.use === 'base') {
         const lp = shoreB(I, beachA, 1), bc = [I.x + (I.top ? I.top[0] * I.rx * .4 : 0) + OX, I.y + (I.top ? I.top[1] * I.ry * .4 : 0) + OY], R0 = Math.min(I.rx, I.ry) * .78;
@@ -1781,7 +1786,7 @@ var World = (function () {
         const bt = [[6, 3, 'caserma', 'Caserma della Tutela'], [4, 3, 'deposito', 'Deposito della Tutela'], [4, 2, 'baracca', 'Baracca della Tutela']];
         bt.forEach(([w, h, u, lab], k) => { const a = k * 2.1 + 1, x = bc[0] + Math.cos(a) * R0 * .62, y = bc[1] + Math.sin(a) * R0 * .62; stampB({ id: 'base_' + I.id + '_' + k, x: Math.floor(x / TS - w / 2), y: Math.floor(y / TS - h / 2), w, h, fl: 1, style: 10, military: true, barrack: u !== 'deposito', warehouse: u === 'deposito', use: 'base_isola', label: lab, face: bc }); });
         const pid = 'base_' + I.id; place1(I, pid, nm, bc[0], bc[1], { base: true }); PNb('molo_' + I.id, 'Molo militare dell\'' + I.name.replace(/^Isola /, 'isola '), me[0] - lp.dx * 2, me[1] - lp.dy * 2);
-        S.camps.push({ type: 'base', sub, id: I.id, name: nm, x: bc[0], y: bc[1], r: R0, place: pid, faction: 'isola:' + I.id, n: sub === 'presidio' ? 6 : 4, gate: [lp.x, lp.y] });
+        S.camps.push({ type: 'base', sub, id: I.id, name: nm, x: bc[0], y: bc[1], r: R0, place: pid, faction: 'isola:' + I.id, n: sub === 'presidio' ? 6 : 4, gate: [lp.x, lp.y], bp: [lp.x, lp.y, lp.dx, lp.dy] });
       }
       if (I.use === 'tribu') {
         const bp = shoreB(I, beachA, 1), vc = [bp.x - bp.dx * 46, bp.y - bp.dy * 46], R0 = 21;
@@ -1792,10 +1797,22 @@ var World = (function () {
           for (let ty = Math.floor((y - r0) / TS); ty <= Math.floor((y + r0) / TS); ty++) for (let tx = Math.floor((x - r0) / TS); tx <= Math.floor((x + r0) / TS); tx++) if (Math.hypot(tx * TS + 1 - x, ty * TS + 1 - y) < r0) grid[ix(tx, ty)] = T_.CLIFF; });   // la capanna non si attraversa
         huts.push({ x: vc[0] - bp.dx * 4, y: vc[1] - bp.dy * 4, r: 4, ang: gateA, big: true }); { const x = vc[0] - bp.dx * 4, y = vc[1] - bp.dy * 4; for (let ty = Math.floor((y - 4) / TS); ty <= Math.floor((y + 4) / TS); ty++) for (let tx = Math.floor((x - 4) / TS); tx <= Math.floor((x + 4) / TS); tx++) if (Math.hypot(tx * TS + 1 - x, ty * TS + 1 - y) < 3.6) grid[ix(tx, ty)] = T_.CLIFF; }   // la casa grande in fondo
         PNb('villaggio_tribu', 'Il villaggio della tribù', vc[0] + bp.dx * 5, vc[1] + bp.dy * 5, { scoperta: true, hidden: true }); PNb('spiaggia_tribu', 'La spiaggia della tribù', bp.x - bp.dx * 4, bp.y - bp.dy * 4, { scoperta: true });
-        S.camps.push({ type: 'tribu', id: I.id, name: 'La tribù dell\'Isola Grande del Sud', x: vc[0], y: vc[1], r: R0, place: 'villaggio_tribu', faction: 'isola:tribu', n: 9, huts, gate: [vc[0] + bp.dx * R0, vc[1] + bp.dy * R0], gateA });
+        S.camps.push({ type: 'tribu', id: I.id, name: 'La tribù dell\'Isola Grande del Sud', x: vc[0], y: vc[1], r: R0, place: 'villaggio_tribu', faction: 'isola:tribu', n: 9, huts, gate: [vc[0] + bp.dx * R0, vc[1] + bp.dy * R0], gateA, bp: [bp.x, bp.y, bp.dx, bp.dy] });
       }
       // i nomi delle isole (le grandi): la prima volta che ci arrivi
       if (!I.small && I.id !== 'fratello2' && !PL['isola_' + I.id]) { const tp = I.arc ? [I.x + Math.cos(I.rot) * I.Rb + OX, I.y + Math.sin(I.rot) * I.Rb + OY] : [I.x + (I.top ? I.top[0] * I.rx * .5 : 0) + OX, I.y + (I.top ? I.top[1] * I.ry * .5 : 0) + OY]; place1(I, 'isola_' + I.id, I.name, tp[0], tp[1]); }
+    });
+    // gli archi di roccia, le grotte marine, le colonie di uccelli (la grafica li disegna; i piedi dell'arco sono scoglio vero)
+    S.features = [];
+    const diN = n => { const m = n.match(/^(il |lo |la |l'|i |gli |le )(.*)$/i); if (m) return ({ 'il ': 'del ', 'lo ': 'dello ', 'la ': 'della ', "l'": "dell'", 'i ': 'dei ', 'gli ': 'degli ', 'le ': 'delle ' })[m[1].toLowerCase()] + m[2]; return /^[AEIOU]/.test(n) ? "dell'" + n : 'di ' + n; };
+    ISOLE.forEach((I, n) => {
+      const hr = k => hash2(n, k, 707);
+      if (I.arco) { const a = hr(1) * 6.283, sp0 = shoreB(I, a), w = 7 + hr(2) * 5, ox = -sp0.dy, oy = sp0.dx, cx = sp0.x + sp0.dx * (w * .5 + 2), cy = sp0.y + sp0.dy * (w * .5 + 2);
+        const feet = [[cx + ox * w / 2, cy + oy * w / 2], [cx - ox * w / 2, cy - oy * w / 2]];
+        feet.forEach(([fx, fy]) => { for (let ty = Math.floor((fy - 2.4) / TS); ty <= Math.floor((fy + 2.4) / TS); ty++) for (let tx = Math.floor((fx - 2.4) / TS); tx <= Math.floor((fx + 2.4) / TS); tx++) { if (tx < 0 || ty < 0 || tx >= GW2 || ty >= GH2) continue; const i = ix(tx, ty); if (Math.hypot(tx * TS + 1 - fx, ty * TS + 1 - fy) < 2.3 && grid[i] === T_.WATER) { grid[i] = T_.ROCK; elev[i] = 1.2; zone[i] = Z.SPIAGGIA; isl[i] = 1; } } });
+        S.features.push({ type: 'arco', id: 'arco_' + I.id, x: cx, y: cy, ang: Math.atan2(sp0.dy, sp0.dx), w, h: 6 + hr(3) * 4, feet }); if (!I.small) PNb('arco_' + I.id, 'L\'arco ' + diN(I.name), cx, cy, { scoperta: true }); }
+      if (I.grotta) { for (let t = 0; t < 12; t++) { const a = hr(10 + t) * 6.283, k = isleKind(I, a); if (k !== 'reef' && k !== 'falesia') continue; const sp0 = shoreB(I, a, .5); S.features.push({ type: 'grotta', id: 'grotta_' + I.id, x: sp0.x, y: sp0.y, ang: Math.atan2(sp0.dy, sp0.dx), w: 3 + hr(30) * 3 }); break; } }
+      if (I.tema === 'uccelli') S.features.push({ type: 'colonia', id: 'colonia_' + I.id, x: I.x + OX, y: I.y + OY, r: Math.max(I.rx, I.ry) });
     });
     // la torre saracena sull'Isolotto della Torre, il relitto del Santa Rosalia sulla secca dell'Isola del Relitto
     { const IT = ISOLE.find(I => I.id === 'torre'), x = IT.x + IT.top[0] * IT.rx + OX, y = IT.y + IT.top[1] * IT.ry + OY; S.ruins.push({ type: 'torre', id: 'torre_saracena', name: 'Torre saracena', x, y, r: 3.4 });

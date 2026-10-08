@@ -86,3 +86,60 @@ Prima la riva era decisa da un rumore (sabbia o scogli a caso), i pontili erano 
 - La nave dell'Impero che arriva e riparte nei giorni di `economia.js`: per ora sta sempre ormeggiata.
 - La resistenza a nuoto (freddo, stanchezza) e le correnti al largo.
 - Pescare dalla barca.
+
+# L'arcipelago
+
+Aggiornato: 8 ottobre 2026. Guardia nel codice: `[arcipelago]`.
+
+## Mappa (`world.js`)
+- **La mappa si allarga**: `generate()` costruisce l'isola come prima, poi `expand(W)` la mette dentro una griglia più grande (990×420 caselle) spostata di `OX=320`, `OY=200`. Tutte le coordinate esportate sono già spostate. Le isole si scrivono in coordinate di progetto, che possono essere anche negative (a nord e a ovest dell'isola grande).
+- **`ISOLE`**: circa 80 isole, ciascuna con `id`, `name`, `x`, `y`, `rx`, `ry`, `rot`, `h`, `kinds` e `use`.
+  - Tipi: isole mediterranee a ellisse organica, cupole stile Palau (`dome`), boomerang (`arc`) con la laguna dentro, dorsali lunghe.
+  - Il contorno viene da `isleQ`: lobi uniti, deformazione del dominio, grana fine.
+- **`tema`** (soprattutto sui panettoni), che decide la vegetazione (`ECO.GIUNGLA`, `PALMETO`, `ISOLA`, `NUDA`) e i dettagli grafici:
+  - `giungla`
+  - `palmeto`
+  - `pini`
+  - `nuda`: calcare bianco, agavi, capre inselvatichite
+  - `uccelli`: guano, nidi, stormi
+- **`use`**:
+  - `vuota`
+  - `baracche`: approdo vecchio e capanni abbandonati; in `SEA.decor`
+  - `villaggio`: Lontani e Santa Lucia
+  - `base`: presidio, cannoni (batteria) e rossa (radar)
+  - `tribu`: Isola Grande del Sud
+- **`SEA.camps`**: `{ type, sub, x, y, r, place, faction, n, gate, bp }`. `bp` è il punto della spiaggia o dell'approdo con la direzione del mare.
+- **`SEA.features`**: archi di roccia (`arco`, con i piedi che sono scoglio vero), grotte marine (`grotta`) e colonie di uccelli (`colonia`).
+- **Luoghi**:
+  - `isola_<id>`, `villaggio_<id>`, `baracche_<id>`, `base_<id>`, `molo_<id>`
+  - `villaggio_tribu`, `spiaggia_tribu`
+  - `arco_<id>`, `torre_saracena`, `relitto`
+
+## Motore (`game.js`)
+- Gli abitanti dei campi nascono in `create()`. La fazione `isola:<id>` diventa ostile solo con `n.aggro`.
+- **Tribù**: attacca chi entra nel villaggio o chi vede da vicino. Attacca a mano, al massimo in due insieme.
+- **Basi**: prima danno l'avviso, poi sparano (male) se ti avvicini ancora o resti lì. Si calmano quando sei lontano.
+- **Animali** (`animali.js`): galline, capre e gatti nei villaggi, cani alle basi, capre sulle isole di calcare e di macchia.
+
+## Grafica (`render.js`)
+- **`buildCamp`**:
+  - tribù: capanne, palizzata, totem, fuoco col pentolone
+  - basi: bandiera, torretta, filo spinato, eliporto, cannoni, radar che gira
+- **`buildIsoleDettagli`**:
+  - Tante piccole cose istanziate per riquadri di 240 m:
+    - conchiglie e alghe sulla battigia
+    - cocchi e fronde sotto le palme
+    - tronchi col muschio, funghi e rami nella giungla
+    - massi di calcare chiaro sulle isole nude
+    - scogli scuri a pelo d'acqua
+    - guano, nidi e uova
+  - Archi di roccia con la macchia sopra, bocche di grotta, stormi che girano (`tickIsole`), fumo dei fuochi.
+  - Villaggi: fuoco con le panche, rastrelliere con i pesci, le reti e i polpi, reti, botti, cassette di pesce, legnaia, orti, amaca, lanterne, panni stesi, edicola della Madonna del mare, pollaio.
+  - Basi: sacchi di sabbia, cartello, fusti, casse, tende, container, generatore, cisterna, antenna, fotoelettrica, bidoni col fuoco.
+  - Tribù: piroghe col bilanciere sulla spiaggia, pali coi teschi lungo il sentiero, orti, tamburi, nasse, mucchi di conchiglie.
+  - Baracche: fuoco spento, barca, fusti arrugginiti, telo, reti, legna.
+
+## Da fare
+- Coralli e pesci visibili sotto l'acqua bassa del reef.
+- Esplorare a nuoto o in barca le grotte.
+- Commerci col villaggio, missioni alla base e dalla tribù.

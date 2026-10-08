@@ -2361,7 +2361,7 @@ var Render = (function () {
     (S.camps || []).forEach(C => buildCamp(C, r));
     (S.ruins || []).forEach(R0 => { if (R0.type === 'torre') buildTorre(R0); else if (R0.type === 'relitto') buildRelitto(R0); });
     // [arcipelago] sulle spiagge delle isole: tronchi portati dal mare
-    (W0.ISOLE || []).forEach(I => { for (let k = 0; k < 6; k++) { const a = r() * 6.28, x = I.x + Math.cos(a) * I.rx * .8, z = I.y + Math.sin(a) * I.ry * .8, tx = Math.floor(x / TS), tz = Math.floor(z / TS); if (G.tileAt(tx, tz) !== G.T.SAND) continue;
+    (W0.ISOLE || []).forEach(I => { for (let k = 0; k < 6; k++) { const a = r() * 6.28, x = I.x + (W0.OX || 0) + Math.cos(a) * I.rx * .8, z = I.y + (W0.OY || 0) + Math.sin(a) * I.ry * .8, tx = Math.floor(x / TS), tz = Math.floor(z / TS); if (G.tileAt(tx, tz) !== G.T.SAND) continue;
       const t = cyl(.14 + r() * .1, .18 + r() * .1, 2 + r() * 2.5, 7, sm('#9a8a72')); t.position.set(x, groundH(x, z) + .14, z); t.rotation.set(Math.PI / 2, r() * 3, 0, 'YXZ'); t.rotation.z = Math.PI / 2; t.rotation.y = r() * 3; addStatic(t); } });
     buildQuayWalls(); buildRocks();
     S.structs.forEach(st => { if (st.type === 'molo') buildMolo(st, r); else if (st.type === 'pontile') buildPontile(st, r); else if (st.type === 'scalo') buildScalo(st); });
@@ -2375,7 +2375,221 @@ var Render = (function () {
       else [L * .42, -L * .42].forEach(o => { const bx = m.x + ca * o, bz = m.y + sa * o, d0 = edgeNear(bx, bz); if (d0) addStatic(rope([bx, WL + .8, bz], [d0[0], dh + .15, d0[1]], lineM)); });
     });
     // le spiagge dove si fa il bagno: ombrelloni chiusi e una boa gialla che segna fin dove si nuota
+    buildIsoleDettagli();
     S.swim.forEach((b, k) => { for (let j = -1; j <= 1; j += 2) { const g = G0(); add(g, new THREE.Mesh(new THREE.SphereGeometry(.35, 8, 6), sm('#f0c020')), 0, .1, 0); g.position.set(b.x + j * 9, WL + .05, b.y + (b.y > b.shore[1] ? 12 : -12)); dyn.boats.push({ g, ph: k + j, y: WL + .05 }); scene.add(mergeGroup(g)); } });
+  }
+  // [arcipelago] la cura delle isole: ogni casella dice cosa ci sta sopra (conchiglie e alghe sulla battigia, cocchi e fronde
+  // sotto le palme, tronchi caduti e massi col muschio nella giungla, il calcare bianco sulle isole nude, il guano sugli scogli
+  // degli uccelli), più gli archi di roccia, le grotte, gli stormi; e l'arredo della vita nei villaggi, nelle basi, dalla tribù.
+  function buildIsoleDettagli() {
+    const W0 = M.world, S = W0.SEA, OX = W0.OX || 0, OY = W0.OY || 0, T = G.T, E = W0.ECO || {}, r = rng(4242);
+    COSTA.birds = []; COSTA.smoke = [];
+    // --- piccole cose a migliaia: istanze, divise a riquadri di 240 m perché la camera scarti quelle lontane ---
+    const KIND = {
+      conch: [new THREE.ConeGeometry(.09, .16, 5), std({ roughness: .6 }), false],
+      cocco: [new THREE.IcosahedronGeometry(.13, 0), std({ roughness: .8 }), true],
+      fronda: [(() => { const g = new THREE.PlaneGeometry(1.1, 2.6); g.rotateX(-Math.PI / 2); g.translate(0, 0, 1.1); return g; })(), std({ map: frondTex(), alphaTest: .5, side: THREE.DoubleSide, roughness: 1 }), false],
+      alga: [(() => { const g = new THREE.CircleGeometry(.5, 7); g.rotateX(-Math.PI / 2); const p = g.attributes.position; for (let i = 1; i < p.count; i++) { p.setX(i, p.getX(i) * (.6 + hash2i(i, 3) * .7)); p.setZ(i, p.getZ(i) * (.3 + hash2i(i, 7) * .5)); } return g; })(), std({ roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }), false],
+      tronco: [(() => { const g = new THREE.CylinderGeometry(.22, .3, 1, 7); g.rotateZ(Math.PI / 2); return g; })(), std({ roughness: 1 }), true],
+      ramo: [(() => { const g = new THREE.CylinderGeometry(.04, .07, 1, 5); g.rotateZ(Math.PI / 2); return g; })(), std({ roughness: 1 }), false],
+      masso: [new THREE.DodecahedronGeometry(1, 0), std({ roughness: .95 }), true],
+      guano: [(() => { const g = new THREE.CircleGeometry(1, 7); g.rotateX(-Math.PI / 2); return g; })(), std({ roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }), false],
+      nido: [new THREE.TorusGeometry(.22, .08, 4, 8).rotateX(Math.PI / 2), std({ roughness: 1 }), false],
+      uovo: [new THREE.SphereGeometry(.06, 5, 4), std({ roughness: .5 }), false],
+      fungo: [new THREE.ConeGeometry(.12, .1, 6), std({ roughness: .7 }), false],
+    };
+    const BUCK = new Map();
+    const put = (k, x, y, z, ry, sx, sy, sz, col, rx, rz) => { const key = k + '|' + Math.floor(x / 240) + ',' + Math.floor(z / 240); let a = BUCK.get(key); if (!a) BUCK.set(key, a = []); a.push([x, y, z, ry || 0, sx, sy, sz, col, rx || 0, rz || 0]); };
+    const tile = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS));
+    const eco = (x, z) => vdEco(Math.floor(x / TS), Math.floor(z / TS));
+    const near = (tx, tz, v, d) => { for (let dz = -d; dz <= d; dz++) for (let dx = -d; dx <= d; dx++) if ((dx || dz) && G.tileAt(tx + dx, tz + dz) === v) return true; return false; };
+    const C_ = c => new THREE.Color(c);
+    const SHELL = ['#f4e8dc', '#e8c8b8', '#f0d8c0', '#d8b8a0', '#fff4ea'], ALGA = ['#2e2c1a', '#3a3220', '#26281a', '#423822'], MOSS = ['#4e5a3a', '#5a6644', '#46503a', '#626a50'], KARST = ['#d4cfc4', '#c8c2b4', '#e0dbd0', '#bcb6a8'], DRY = ['#ffffff', '#f4ecd8', '#e8dcc0'];
+    const seen = new Set(), CL = (S.camps || []).map(C => [C.x, C.y, C.r + 6]).concat((S.decor || []).map(D => [D.x, D.y, D.r + 5]));
+    (W0.ISOLE || []).forEach(I => {
+      const cx = I.x + OX, cz = I.y + OY, R = (I.arc ? I.R0 : I.R) + 4, tema = I.tema || I.veg;
+      for (let tz = Math.floor((cz - R) / TS); tz <= Math.floor((cz + R) / TS); tz++) for (let tx = Math.floor((cx - R) / TS); tx <= Math.floor((cx + R) / TS); tx++) {
+        const key = tz * 4096 + tx; if (seen.has(key)) continue;
+        const v = G.tileAt(tx, tz); if (v === undefined || v === T.WATER || v === T.BLD || v === T.PIER || v === T.QUAY) continue;
+        const x0 = tx * TS, z0 = tz * TS, b = W0.isleAt && W0.isleAt(x0 + 1, z0 + 1); if (!b || b.I !== I) continue; seen.add(key);
+        if (v === T.DIRT || v === T.PIAZZA || CL.some(c => Math.hypot(x0 + 1 - c[0], z0 + 1 - c[1]) < c[2])) continue;   /* le radure dei campi le arreda la vita, non il bosco */
+        const h = hash2i(tx * 1.7, tz * 2.3), rx = () => x0 + r() * TS, wet = near(tx, tz, T.WATER, 1), e = eco(x0 + 1, z0 + 1);
+        const palme = e === E.PALMETO || tema === 'palmeto', underTree = near(tx, tz, T.TREE, 1);
+        if (v === T.SAND) {
+          if (wet) { for (let k = 0; k < 2; k++) if (r() < .55) { const x = rx(), z = z0 + r() * TS; put('alga', x, groundH(x, z) + .02, z, r() * 3, .6 + r() * 1.2, 1, .6 + r() * .8, pick(r, ALGA)); } }
+          for (let k = 0; k < 3; k++) if (r() < (wet ? .3 : .14)) { const x = rx(), z = z0 + r() * TS; put('conch', x, groundH(x, z) + .03, z, r() * 6, 1, 1, 1, pick(r, SHELL), Math.PI / 2 * (r() < .7 ? 1 : 0)); }
+          if (underTree && palme) { if (r() < .5) for (let k = 0, n = 1 + Math.floor(r() * 3); k < n; k++) { const x = rx(), z = z0 + r() * TS; put('cocco', x, groundH(x, z) + .1, z, r() * 6, 1, 1, 1, pick(r, ['#6a4a2a', '#5a3e22', '#8a7a3a'])); }
+            if (r() < .25) { const x = rx(), z = z0 + r() * TS; put('fronda', x, groundH(x, z) + .03, z, r() * 6, 1, 1, .8 + r() * .5, pick(r, DRY)); } }
+          if (h < .012) { const x = rx(), z = z0 + r() * TS; put('tronco', x, groundH(x, z) + .2, z, r() * 6, 2 + r() * 3, .8 + r() * .5, .8 + r() * .5, pick(r, ['#9a8a72', '#a89a84', '#8a7a64'])); }
+          continue;
+        }
+        if (v === T.ROCK || v === T.CLIFF) {
+          const kar = tema === 'nuda' || tema === 'uccelli' || tema === 'pini';
+          if (wet) { for (let k = 0; k < 2; k++) if (r() < .45) { const x = rx(), z = z0 + r() * TS, s = .4 + r() * .9; put('masso', x, WL - s * .3 + r() * .3, z, r() * 6, s * 1.2, s * .7, s, pick(r, ['#5a5450', '#4e4a44', '#6a645a', '#3e3c38'])); } }
+          else if (r() < (kar ? .22 : .14)) { const x = rx(), z = z0 + r() * TS, s = .3 + r() * .7; put('masso', x, groundH(x, z) + s * .2, z, r() * 6, s, s * (.5 + r() * .4), s * (.8 + r() * .5), pick(r, kar ? KARST : MOSS)); }
+          if (tema === 'uccelli') for (let k = 0; k < 3; k++) if (r() < .5) { const x = rx(), z = z0 + r() * TS; put('guano', x, groundH(x, z) + .04, z, r() * 6, .12 + r() * .3, 1, .1 + r() * .25, pick(r, ['#ecebe2', '#e0ded2', '#f4f3ec'])); }
+          continue;
+        }
+        if (v === T.GRASS || v === T.SHRUB || v === T.TREE || v === T.DIRT) {
+          if (tema === 'giungla') {
+            if (h < .03 && v !== T.TREE) { const x = rx(), z = z0 + r() * TS, L = 3 + r() * 4; put('tronco', x, groundH(x, z) + .22, z, r() * 6, L, .9 + r() * .4, .9 + r() * .4, pick(r, ['#5e4c38', '#4e4232', '#5a5a3c', '#6a5842'])); for (let k = 0; k < 4; k++) if (r() < .6) { const a = r() * 6.28, d = r() * L * .4; put('fungo', x + Math.cos(a) * d, groundH(x, z) + .1, z + Math.sin(a) * d, 0, 1, 1, 1, pick(r, ['#e8d8b8', '#d89040', '#c85a3a'])); } }
+            if (r() < .07) { const x = rx(), z = z0 + r() * TS, s = .3 + r() * .7; put('masso', x, groundH(x, z) + s * .15, z, r() * 6, s, s * .6, s, pick(r, MOSS)); }
+            if (r() < .1) { const x = rx(), z = z0 + r() * TS; put('ramo', x, groundH(x, z) + .05, z, r() * 6, 1 + r() * 1.5, 1, 1, '#4a3a28'); }
+            if (underTree && r() < .06) { const x = rx(), z = z0 + r() * TS; put('cocco', x, groundH(x, z) + .1, z, 0, 1, 1, 1, '#5a3e22'); }
+          } else if (tema === 'palmeto') {
+            if (underTree && r() < .35) for (let k = 0, n = 1 + Math.floor(r() * 3); k < n; k++) { const x = rx(), z = z0 + r() * TS; put('cocco', x, groundH(x, z) + .1, z, r() * 6, 1, 1, 1, pick(r, ['#6a4a2a', '#5a3e22', '#8a7a3a'])); }
+            if (r() < .12) { const x = rx(), z = z0 + r() * TS; put('fronda', x, groundH(x, z) + .03, z, r() * 6, 1, 1, .8 + r() * .5, pick(r, DRY)); }
+          } else {
+            const kar = tema === 'nuda' || tema === 'uccelli';
+            if (r() < (kar ? .14 : .06)) { const n = kar && r() < .4 ? 3 : 1; for (let k = 0; k < n; k++) { const x = rx(), z = z0 + r() * TS, s = .25 + r() * (kar ? .9 : .6); put('masso', x, groundH(x, z) + s * .15, z, r() * 6, s, s * (.45 + r() * .4), s * (.8 + r() * .5), pick(r, KARST)); } }
+            if (tema === 'pini' || tema === 'macchia') { if (r() < .1) { const x = rx(), z = z0 + r() * TS; put('ramo', x, groundH(x, z) + .05, z, r() * 6, .8 + r() * 1.4, 1, 1, '#5a4430'); } }
+            if (tema === 'uccelli') { if (r() < .3) { const x = rx(), z = z0 + r() * TS; put('guano', x, groundH(x, z) + .03, z, r() * 6, .1 + r() * .25, 1, .1 + r() * .2, '#e8e6dc'); }
+              if (r() < .07) { const x = rx(), z = z0 + r() * TS, y = groundH(x, z); put('nido', x, y + .06, z, 0, 1, 1, 1, '#8a7452'); for (let k = 0; k < 1 + Math.floor(r() * 3); k++) put('uovo', x + (r() - .5) * .14, y + .1, z + (r() - .5) * .14, 0, 1, 1.3, 1, pick(r, ['#e8e0c8', '#c8c0a0', '#d8d0b8'])); } }
+            if ((tema === 'nuda' || tema === 'pini') && v !== T.TREE && h > .985) agave(rx(), z0 + r() * TS, r);
+          }
+        }
+      }
+    });
+    const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Eu = new THREE.Euler(), V = new THREE.Vector3(), Sv = new THREE.Vector3();
+    BUCK.forEach((arr, key) => { const [geo0, mat, sh] = KIND[key.split('|')[0]], geo = geo0.clone(), im = new THREE.InstancedMesh(geo, mat, arr.length);
+      { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, y0 = 1e9, y1 = -1e9; arr.forEach(q => { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); z0 = Math.min(z0, q[2]); z1 = Math.max(z1, q[2]); });
+        geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2 + 8); }   /* il riquadro intero, per lo scarto della camera */
+      arr.forEach(([x, y, z, ry, sx, sy, sz, col, rx2, rz], k) => { Eu.set(rx2, ry, rz, 'YXZ'); Q.setFromEuler(Eu); V.set(x, y, z); Sv.set(sx, sy, sz); M4.compose(V, Q, Sv); im.setMatrixAt(k, M4); im.setColorAt(k, C_(col)); });
+      im.castShadow = sh; im.receiveShadow = true; scene.add(im); });
+
+    // --- gli archi di roccia, le grotte, gli stormi ---
+    const rockM = std({ color: '#9a9080', roughness: .95, flatShading: true }), rockD = sm('#6a6258', { roughness: .95 });
+    (S.features || []).forEach(F => {
+      if (F.type === 'arco') {
+        const [a, b] = F.feet, fx = b[0] - a[0], fz = b[1] - a[1], W2 = Math.hypot(fx, fz) / 2, g = G0();
+        const geo = new THREE.TorusGeometry(W2, 1.5, 7, 18, Math.PI), p = geo.attributes.position;
+        for (let i = 0; i < p.count; i++) { const n = hash2i(p.getX(i) * 3.1, p.getY(i) * 2.7 + p.getZ(i)); p.setXYZ(i, p.getX(i) * (1 + (n - .5) * .08), p.getY(i) * (F.h / W2) + (n - .5) * .5, p.getZ(i) * (1.2 + n * .6)); }
+        geo.computeVertexNormals(); add(g, new THREE.Mesh(geo, rockM), 0, 0, 0);
+        [-1, 1].forEach(sg => { add(g, cyl(1.5, 2.2, 3, 8, rockM), sg * W2, -1, 0); for (let k = 0; k < 4; k++) add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(.6 + r() * .7, 0), rockD), sg * W2 + (r() - .5) * 3, -.3 + r() * .3, (r() - .5) * 3); });
+        for (let k = 0; k < 7; k++) { const t = (k + .5) / 7 * Math.PI; add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(.6 + r() * .5, 0), pick(r, [PM.leaf(), PM.leaf2(), PM.leaf3()])), Math.cos(t) * W2, Math.sin(t) * F.h + 1.2, (r() - .5) * 1.2); }   /* la macchia che ci cresce sopra */
+        g.position.set((a[0] + b[0]) / 2, WL, (a[1] + b[1]) / 2); g.rotation.y = -Math.atan2(fz, fx); const mg = mergeGroup(g); shadowed(mg); addStatic(mg);
+      }
+      if (F.type === 'grotta') {
+        const g = G0(), w = F.w, hole = new THREE.Mesh(new THREE.CircleGeometry(w / 2, 14, 0, Math.PI), new THREE.MeshBasicMaterial({ color: '#06080a', fog: true }));
+        hole.scale.y = 1.3; add(g, hole, 0, 0, .2);
+        const lip = new THREE.TorusGeometry(w / 2 + .4, .7, 6, 12, Math.PI); add(g, new THREE.Mesh(lip, rockM), 0, 0, .1); g.children[1].scale.y = 1.3;
+        for (let k = 0; k < 5; k++) add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(.5 + r() * .6, 0), rockD), (r() - .5) * w * 1.4, -.2, 1 + r() * 2);
+        g.position.set(F.x - Math.cos(F.ang) * .6, WL - .1, F.y - Math.sin(F.ang) * .6); g.rotation.y = Math.PI / 2 - F.ang; const mg = mergeGroup(g); addStatic(mg);
+      }
+      if (F.type === 'colonia') birds(F.x, F.y, F.r * .6, 22, 10, 26);
+    });
+    // i gabbiani sopra i villaggi e i porti delle isole
+    (S.camps || []).forEach(C => { if (C.type === 'villaggio') birds(C.bp[0], C.bp[1], 14, 5, 7, 14); });
+
+    // --- la vita nei villaggi dei pescatori ---
+    const freeAt = (x, z, rr) => { const tx = Math.floor(x / TS), tz = Math.floor(z / TS); for (let dz = -rr; dz <= rr; dz++) for (let dx = -rr; dx <= rr; dx++) { const v = G.tileAt(tx + dx, tz + dz); if (v === T.BLD || v === T.WATER || v === T.CLIFF || v === T.PIER || v === undefined) return false; } return true; };
+    const spot = (cx, cz, r0, r1, rr, tries) => { for (let t = 0; t < (tries || 30); t++) { const a = r() * 6.28, d = r0 + r() * (r1 - r0), x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d; if (freeAt(x, z, rr || 0)) return [x, z]; } return null; };
+    const wood = PM.woodD(), woodL = PM.woodL(), rope2 = sl('#c8b890');
+    const rack = (x, z, rot, what) => {   // la rastrelliera: i pesci o i polpi stesi al sole, o le reti
+      const g = G0(); [-1, 1].forEach(sg => add(g, cyl(.05, .06, 1.9, 5, wood), sg * 1.2, .95, 0)); add(g, cyl(.04, .04, 2.6, 5, wood), 0, 1.8, 0, 0, 0, Math.PI / 2); add(g, cyl(.03, .03, 2.6, 5, wood), 0, 1.35, 0, 0, 0, Math.PI / 2);
+      if (what === 'rete') { const n = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.4, 4, 3), new THREE.MeshLambertMaterial({ color: pick(r, ['#3a6a5a', '#6a4a3a', '#2a4a6a']), side: THREE.DoubleSide, transparent: true, opacity: .85 })); const pp = n.geometry.attributes.position; for (let i = 0; i < pp.count; i++) pp.setZ(i, Math.sin(pp.getX(i) * 2) * .08); add(g, n, 0, 1.1, .02); for (let k = 0; k < 6; k++) add(g, new THREE.Mesh(new THREE.SphereGeometry(.07, 5, 4), sl('#f06a2a')), -1 + k * .4, 1.75, .05); }
+      else for (let k = 0; k < 9; k++) { const f = box(.09, .5, .04, sm(what === 'polpi' ? '#b87a7a' : '#a8b4bc', { roughness: .4, metalness: what === 'polpi' ? 0 : .4 })); add(g, f, -1.1 + k * .27, 1.5 - (k % 2) * .45, 0); }
+      place(g, x, z, rot);
+    };
+    const woodpile = (x, z, rot) => { const g = G0(); for (let k = 0; k < 14; k++) { const row = Math.floor(k / 5); add(g, cyl(.09, .09, 1, 6, k % 3 ? wood : woodL), (k % 5) * .2 - .4 + row * .1, .1 + row * .17, 0, Math.PI / 2, 0, 0); } add(g, box(.06, .7, .06, wood), -.6, .35, 0); add(g, box(.06, .7, .06, wood), .6, .35, 0); place(g, x, z, rot); };
+    const orto = (x, z, rot, w, d) => {   // l'orto: terra smossa, file di verdura, i pali, il recinto di canne
+      const g = G0(); add(g, box(w, .08, d, sm('#5a4430', { roughness: 1 })), 0, .04, 0);
+      for (let i = -w / 2 + .4; i < w / 2; i += .55) for (let j = -d / 2 + .35; j < d / 2; j += .45) add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(.14 + r() * .08, 0), pick(r, [PM.leaf(), PM.leaf2(), sl('#5a8a3a')])), i, .16, j);
+      for (let i = -w / 2 + .6; i < w / 2; i += 1.1) add(g, cyl(.02, .02, 1.2, 4, woodL), i, .6, 0);
+      [[0, -d / 2, w, .04], [0, d / 2, w, .04], [-w / 2, 0, .04, d], [w / 2, 0, .04, d]].forEach(([a, b, ww, dd]) => add(g, box(ww, .5, dd, sm('#b8a470')), a, .25, b));
+      place(g, x, z, rot);
+    };
+    const hammock = (x, z, rot) => { const g = G0(); [-1, 1].forEach(sg => add(g, cyl(.08, .1, 2, 6, wood), sg * 1.6, 1, 0)); const c = new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, 2.6, 10, 1, true, Math.PI * .65, Math.PI * .7), new THREE.MeshLambertMaterial({ color: pick(r, ['#c85a3a', '#3a7ab8', '#e8c050']), side: THREE.DoubleSide })); add(g, c, 0, 1.25, 0, 0, 0, Math.PI / 2); add(g, cyl(.01, .01, 3.2, 3, rope2), 0, 1.5, 0, 0, 0, Math.PI / 2); place(g, x, z, rot); };
+    const lanterna = (x, z) => { const g = G0(); add(g, cyl(.05, .06, 2.2, 5, wood), 0, 1.1, 0); add(g, box(.5, .05, .05, wood), .22, 2.15, 0); add(g, box(.18, .26, .18, sm('#ffd890', { emissive: '#ffa040', emissiveIntensity: 1.6 })), .42, 1.95, 0); place(g, x, z, r() * 6); glow(x + .4, groundH(x, z) + 1.95, z, '#ffb050', 2.2); };
+    const fuoco = (x, z, smoke) => { camp(x, z, r); if (smoke) COSTA.smoke.push({ x, y: groundH(x, z) + .6, z, k: smoke }); };
+    const canoe = (x, z, rot, col) => {   // la piroga scavata nel tronco, il bilanciere, la pagaia
+      const g = G0(), hull = add(g, new THREE.Mesh(new THREE.SphereGeometry(1, 12, 6), sl(col)), 0, 0, 0); hull.scale.set(.45, .38, 2.9);
+      const inner = add(g, new THREE.Mesh(new THREE.CircleGeometry(1, 12), sl('#2a1c12')), 0, .39, 0, -Math.PI / 2, 0, 0); inner.scale.set(.3, 2.2, 1);   /* lo scavo */
+      add(g, cyl(.05, .05, 2, 4, wood), 1, .5, .8, 0, 0, Math.PI / 2); add(g, cyl(.05, .05, 2, 4, wood), 1, .5, -.8, 0, 0, Math.PI / 2); add(g, cyl(.08, .08, 3, 5, woodL), 1.9, .15, 0, Math.PI / 2, 0, 0);
+      add(g, box(.12, .04, 1.6, woodL), -.1, .52, .3, 0, .3, 0); place(g, x, z, rot);
+    };
+    const palo = (x, z, h) => { const g = G0(); add(g, cyl(.07, .09, h, 5, wood), 0, h / 2, 0); add(g, new THREE.Mesh(new THREE.SphereGeometry(.17, 7, 6), sm('#e8e0cc')), 0, h + .1, 0); [-.06, .06].forEach(o => add(g, box(.05, .06, .03, sm('#141010')), o, h + .14, .15)); for (let k = 0; k < 3; k++) add(g, box(.04, .5, .04, sm('#d8b070')), (k - 1) * .12, h - .5, .1, 0, 0, (k - 1) * .3); place(g, x, z, r() * 6); };
+    const cartello = (x, z, rot, txt) => { const g = G0(); [-.7, .7].forEach(o => add(g, box(.08, 1.8, .08, PM.iron()), o, .9, 0)); const s2 = new THREE.Mesh(new THREE.PlaneGeometry(1.8, .9), new THREE.MeshLambertMaterial({ map: signTexture(txt, '#c82020', '#f0ece0'), side: THREE.DoubleSide })); add(g, s2, 0, 1.45, .05); place(g, x, z, rot); };
+    const sacchi = (x, z, rot, n) => { const g = G0(), m = sm('#a89a74', { roughness: 1 }); for (let k = 0; k < n; k++) for (let j = 0; j < 3; j++) add(g, box(.85, .3, .45, m), k * .82 - n * .41 + (j % 2) * .4, .15 + j * .3, 0, 0, (r() - .5) * .1, 0); place(g, x, z, rot); };
+    const genera = (x, z, rot) => { const g = G0(), m = sm('#5a6440', { roughness: .6, metalness: .3 }); add(g, box(1.6, 1, 1, m), 0, .6, 0); add(g, box(1.7, .1, 1.1, PM.iron()), 0, .05, 0); add(g, cyl(.07, .07, 1.2, 6, PM.iron()), .6, 1.6, .3); add(g, box(.4, .3, .02, sm('#e8b820')), -.4, .7, .51); place(g, x, z, rot); };
+    const cisterna = (x, z) => { const g = G0(), m = sm('#7a8070', { metalness: .3, roughness: .6 }); [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b]) => add(g, box(.12, 3, .12, PM.iron()), a * .8, 1.5, b * .8)); add(g, cyl(1.1, 1.1, 1.6, 12, m), 0, 3.8, 0); place(g, x, z, 0); };
+    const antenna = (x, z) => { const g = G0(); add(g, cyl(.04, .06, 9, 5, PM.iron()), 0, 4.5, 0); [0, 2.1, 4.2].forEach(a => add(g, cyl(.006, .006, 9.5, 3, sl('#2a2a2a')), Math.cos(a) * 1.6, 4.4, Math.sin(a) * 1.6, Math.sin(a) * .17, 0, -Math.cos(a) * .17)); add(g, box(.6, .05, .05, PM.iron()), 0, 8, 0); place(g, x, z, 0); };
+    (S.camps || []).forEach(C => {
+      const [bx, bz, bdx, bdz] = C.bp || [C.x, C.y, 1, 0], toSea = Math.atan2(bdz, bdx);
+      if (C.type === 'villaggio') {
+        const fc = spot(C.x, C.y, 0, 3, 1); if (fc) { fuoco(fc[0], fc[1], .6); for (let k = 0; k < 3; k++) { const a = k * 2.1 + r(), x = fc[0] + Math.cos(a) * 2, z = fc[1] + Math.sin(a) * 2; bench(x, z, -a + Math.PI / 2, 'wood'); } }
+        for (let k = 0; k < 2; k++) { const p = spot(bx - bdx * 4, bz - bdz * 4, 0, 6, 1); if (p) rack(p[0], p[1], toSea + Math.PI / 2, k ? 'rete' : 'pesci'); }
+        for (let k = 0; k < 2; k++) { const p = spot(bx - bdx * 2, bz - bdz * 2, 0, 7, 0); if (p) nets(p[0], p[1], r); }
+        { const p = spot(C.x, C.y, 4, 8, 1); if (p) rack(p[0], p[1], r() * 3, 'polpi'); }
+        for (let k = 0; k < 3; k++) { const p = spot(C.x, C.y, 5, 9, 0); if (p) barrel(p[0], p[1], r, r() < .3); }
+        { const p = spot(C.x, C.y, 5, 9, 1); if (p) crateStack(p[0], p[1], 3, r, 'fish'); }
+        for (let k = 0; k < 2; k++) { const p = spot(C.x, C.y, 8, 14, 0); if (p) woodpile(p[0], p[1], r() * 3); }
+        for (let k = 0; k < 2; k++) { const p = spot(C.x - bdx * 10, C.y - bdz * 10, 0, 6, 2); if (p) orto(p[0], p[1], toSea, 3.4 + r() * 2, 2.4 + r()); }
+        { const p = spot(C.x, C.y, 13, 15, 1); if (p) hammock(p[0], p[1], toSea + Math.PI / 2); }
+        for (let k = 0; k < 4; k++) { const p = spot(C.x, C.y, 3, 12, 0); if (p) lanterna(p[0], p[1]); }
+        { const p = spot(C.x, C.y, 6, 9, 0); if (p) laundry(p[0], p[1], groundH(p[0], p[1]) + 1.7, 3.5, r() < .5, r); }
+        { const p = spot(C.x, C.y, 9, 13, 0); if (p) { const g = G0(); add(g, box(1, 1.4, .6, sm('#e8e0d0')), 0, .7, 0); add(g, box(.5, .6, .05, sm('#3a5aa8', { emissive: '#223366' })), 0, 1, .31); add(g, box(1.2, .1, .8, sm('#a85a3a')), 0, 1.45, 0); add(g, box(.08, .12, .08, sb('#ffd070')), .2, .3, .34); place(g, p[0], p[1], toSea - Math.PI / 2); glow(p[0], groundH(p[0], p[1]) + .4, p[1], '#ffc060', 1.2); } }   /* l'edicola della Madonna del mare */
+        { const p = spot(C.x, C.y, 7, 12, 1); if (p) { const g = G0(); add(g, box(1.4, .8, 1, woodL), 0, .5, 0); add(g, box(1.6, .1, 1.2, sm('#7a5a3a')), 0, .95, 0, .15, 0, 0); for (let k = 0; k < 4; k++) add(g, cyl(.03, .03, .1, 4, wood), -.6 + k * .4, .05, .5); place(g, p[0], p[1], r() * 6); } }   /* il pollaio */
+      }
+      if (C.type === 'base') {
+        const ga = Math.atan2(C.gate[1] - C.y, C.gate[0] - C.x);
+        [-1, 1].forEach(sg => { const a = ga + sg * .35, x = C.x + Math.cos(a) * (C.r - 2), z = C.y + Math.sin(a) * (C.r - 2); sacchi(x, z, -a + Math.PI / 2, 4); });
+        { const x = C.gate[0] - Math.cos(ga) * 5 + Math.sin(ga) * 2.5, z = C.gate[1] - Math.sin(ga) * 5 - Math.cos(ga) * 2.5; cartello(x, z, Math.PI / 2 - ga, 'ZONA MILITARE · ALT'); }
+        for (let k = 0; k < 2; k++) { const p = spot(C.x, C.y, C.r * .3, C.r * .8, 1); if (p) drumGroup(p[0], p[1], r, ['#4e5640', '#5a5a48', '#6a3a2a']); }
+        for (let k = 0; k < 2; k++) { const p = spot(C.x, C.y, C.r * .3, C.r * .8, 1); if (p) crateStack(p[0], p[1], 2 + Math.floor(r() * 3), r, null); }
+        for (let k = 0; k < 2; k++) { const p = spot(C.x, C.y, C.r * .4, C.r * .85, 2); if (p) tent(p[0], p[1], r() * 3, '#5a6040', 1.1); }
+        { const p = spot(C.x, C.y, C.r * .4, C.r * .8, 3); if (p) container(p[0], p[1], r() * 3, '#5a6448'); }
+        { const p = spot(C.x, C.y, C.r * .2, C.r * .6, 1); if (p) genera(p[0], p[1], r() * 6); }
+        { const p = spot(C.x, C.y, C.r * .5, C.r * .9, 1); if (p) cisterna(p[0], p[1]); }
+        { const p = spot(C.x, C.y, C.r * .1, C.r * .5, 0); if (p) antenna(p[0], p[1]); }
+        { const p = spot(C.x, C.y, C.r * .6, C.r * .9, 0); if (p) searchlight(p[0], p[1], '#fff2c8', r() * 6); }
+        for (let k = 0; k < 2; k++) { const p = spot(C.x, C.y, C.r * .2, C.r * .7, 0); if (p) fireBarrel(p[0], p[1], r); }
+      }
+      if (C.type === 'tribu') {
+        COSTA.smoke.push({ x: C.x, y: groundH(C.x, C.y) + 1.5, z: C.y, k: 1.3 });
+        for (let k = 0; k < 4; k++) { const o = (k - 1.5) * 3.2, x = bx - bdx * 3 - bdz * o, z = bz - bdz * 3 + bdx * o; if (tile(x, z) === T.SAND) canoe(x, z, Math.PI / 2 - toSea + (r() - .5) * .3, pick(r, ['#6a4a2a', '#5a3a22', '#7a5636'])); }
+        const gx = C.gate[0], gz = C.gate[1], L = Math.hypot(bx - gx, bz - gz);
+        for (let s = 4; s < L - 3; s += 7) [-1, 1].forEach(sg => { const t = s / L, x = gx + (bx - gx) * t - bdz * sg * 2.2, z = gz + (bz - gz) * t + bdx * sg * 2.2; if (freeAt(x, z, 0)) palo(x, z, 1.8 + r() * .6); });
+        for (let k = 0; k < 3; k++) { const p = spot(C.x, C.y, C.r + 4, C.r + 12, 2); if (p) orto(p[0], p[1], r() * 3, 4 + r() * 2, 3 + r()); }
+        for (let k = 0; k < 4; k++) { const p = spot(C.x, C.y, 3, C.r - 3, 0); if (p) { const g = G0(); add(g, cyl(.32, .26, .6, 10, sm('#8a5a3a')), 0, .3, 0); add(g, cyl(.34, .34, .04, 10, sm('#e8dcc0')), 0, .62, 0); place(g, p[0], p[1], 0); } }   /* i tamburi */
+        for (let k = 0; k < 3; k++) { const p = spot(bx - bdx * 2, bz - bdz * 2, 0, 8, 0); if (p) { const g = G0(); add(g, new THREE.Mesh(new THREE.CylinderGeometry(.25, .45, 1.2, 8, 1, true), new THREE.MeshLambertMaterial({ color: '#a88a5a', side: THREE.DoubleSide, wireframe: true })), 0, .45, 0, Math.PI / 2, 0, 0); place(g, p[0], p[1], r() * 6); } }   /* le nasse sulla spiaggia */
+        for (let k = 0; k < 2; k++) { const p = spot(bx - bdx * 3, bz - bdz * 3, 0, 9, 0); if (p) for (let q = 0; q < 14; q++) put2(p[0] + (r() - .5) * 1.2, p[1] + (r() - .5) * 1.2); }
+      }
+    });
+    function put2(x, z) { const m = new THREE.Mesh(KIND.conch[0], sm(pick(r, SHELL))); m.position.set(x, groundH(x, z) + .05 + r() * .1, z); m.rotation.set(Math.PI / 2, r() * 6, 0); addStatic(m, true); }   /* il mucchio di conchiglie */
+    (S.decor || []).forEach(D => {   // le baracche abbandonate: il fuoco spento, la barca rovesciata, i fusti arrugginiti
+      const [bx, bz, bdx, bdz] = D.bp; const p = spot(D.x, D.y, 0, 3, 1); if (p) camp(p[0], p[1], r);
+      { const q = spot(bx - bdx * 3, bz - bdz * 3, 0, 5, 1); if (q) rowboat(q[0], q[1], r() * 6, '#7a8a8a'); }
+      for (let k = 0; k < 3; k++) { const q = spot(D.x, D.y, 3, 8, 0); if (q) drum(q[0], q[1], '#6a3a1a', r, r() < .5); }
+      { const q = spot(D.x, D.y, 3, 8, 1); if (q) tent(q[0], q[1], r() * 3, '#3a5a7a', .9); }
+      { const q = spot(D.x, D.y, 3, 8, 1); if (q) nets(q[0], q[1], r); }
+      { const q = spot(D.x, D.y, 6, 10, 0); if (q) woodpile(q[0], q[1], r() * 3); }
+    });
+
+    // il fumo dei fuochi: pochi sbuffi per fonte, salgono e si allargano
+    const smM = new THREE.SpriteMaterial({ map: smokeTexture(), color: '#8a8680', transparent: true, depthWrite: false, opacity: 0 });
+    COSTA.smoke.forEach((s, i) => { s.p = []; for (let k = 0; k < 10; k++) { const sp = new THREE.Sprite(smM.clone()); sp.userData.keep = true; scene.add(sp); s.p.push({ sp, t: k / 10 }); } });
+  }
+  // la fronda di palma caduta: la costola e le foglioline, secche
+  function frondTex() {
+    if (COSTA.frondT) return COSTA.frondT;
+    const c = mk(32, 96), x = c.getContext('2d'), r = rng(77);
+    x.strokeStyle = '#8a6e44'; x.lineWidth = 2; x.beginPath(); x.moveTo(16, 0); x.lineTo(16, 96); x.stroke();
+    for (let y = 4; y < 92; y += 3) { const w = 14 * Math.sin(y / 96 * Math.PI) + 2; for (const sg of [-1, 1]) { x.strokeStyle = pick(r, ['#b89a62', '#a88a52', '#9a8a4a', '#c8ae74', '#8a7a3e']); x.lineWidth = 1.4; x.beginPath(); x.moveTo(16, y); x.lineTo(16 + sg * w, y + 5 + r() * 3); x.stroke(); } }
+    COSTA.frondT = new THREE.CanvasTexture(c); return COSTA.frondT;
+  }
+  // uno stormo: n uccelli che girano attorno a un punto (gabbiani, berte), ognuno con la sua quota e il suo raggio
+  function birds(x, z, R, n, y0, y1) {
+    const r = rng(Math.floor(x * 7 + z)), geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, .25, -.55, 0, -.05, 0, 0, -.15, 0, 0, .25, 0, 0, -.15, .55, 0, -.05], 3)); geo.computeVertexNormals();
+    const mat = new THREE.MeshLambertMaterial({ color: '#f4f4f0', side: THREE.DoubleSide });
+    for (let k = 0; k < n; k++) { const m = new THREE.Mesh(geo.clone(), mat); m.userData.keep = true; scene.add(m); COSTA.birds.push({ m, x, z, R: R * (.4 + r() * .8), y: y0 + r() * (y1 - y0), w: (.25 + r() * .3) * (r() < .5 ? 1 : -1), ph: r() * 6.28, f: 6 + r() * 4 }); }
+  }
+  function tickIsole(time) {
+    (COSTA.birds || []).forEach(b => { const a = b.ph + time * b.w, flap = Math.sin(time * b.f + b.ph), p = b.m.geometry.attributes.position;
+      b.m.position.set(b.x + Math.cos(a) * b.R, b.y + Math.sin(time * .3 + b.ph) * 1.5, b.z + Math.sin(a) * b.R); b.m.rotation.set(0, -a - (b.w > 0 ? 0 : Math.PI), b.w > 0 ? -.25 : .25);
+      p.setY(1, flap * .22); p.setY(5, flap * .22); p.needsUpdate = true; });
+    (COSTA.smoke || []).forEach(s => s.p.forEach(q => { const t = (q.t + time * .07) % 1, sz = (.8 + t * 3.2) * s.k; q.sp.position.set(s.x + t * 4 + Math.sin(t * 6 + q.t * 9) * .4, s.y + t * 9 * s.k, s.z + t * 1.5); q.sp.scale.set(sz, sz, 1); q.sp.material.opacity = Math.sin(t * Math.PI) * .32; }));
   }
   // [costa] le barche guidabili (st.vehicles con VK.boat): stesso scafo delle ormeggiate, galleggiano, beccheggiano con la velocità, lasciano la scia
   function wakeTex() {
@@ -2450,6 +2664,7 @@ var Render = (function () {
     });
   }
   function tickCosta(time, night) {
+    tickIsole(time);
     (COSTA.radars || []).forEach((d, k) => { d.rotation.y = time * .9 + k; });
     (COSTA.fires || []).forEach((f, k) => { const s2 = .85 + Math.sin(time * 11 + k) * .12 + Math.sin(time * 23 + k * 3) * .06; f.scale.set(s2, .8 + s2 * .4, s2); });
     COSTA.blink.forEach(b => {
@@ -5807,6 +6022,8 @@ var Render = (function () {
     // [arcipelago] la giungla delle cupole: sottobosco fitto di felci, foglie grandi, banani, liane
     GIUNGLA: { T: [['tMuschio', .06], ['tErba', 0]], H: [['felceV', .1], ['foglione', .08], ['banano', .04], ['foglioneS', .02], ['liana', 0], ['palmaV', .02], ['lancia', -.04]], hth: -.3, S: [['cespuglio', .02], ['sambuco', -.06]], sth: .05, g: [36, 62, 30], t: '#e8fcd8', d: 1.3 },
     PALMETO: { hb: .1, T: [['tPaglia', 0]], H: [['palmaV', .08], ['banano', -.04], ['cespo', -.06]], hth: .2, S: [['sasso', -.06], ['cespuglio', -.12]], sth: .3, g: [200, 184, 146], t: '#fffbe8', d: .6 },
+    // [arcipelago] il calcare nudo: erba secca rada, sassi, cuscini di ginepro, qualche cardo
+    NUDA: { hb: -.06, T: [['tPaglia', .02]], H: [['cardo', .02], ['cespo', -.04]], hth: .3, S: [['sasso', .06], ['ginepro', -.04], ['erica', -.1]], sth: .1, g: [168, 158, 128], t: '#fff8e8', d: .45 },
     NONE: { hb: -.04, T: [['tErba', 0]], H: [['cespoV', 0], ['cespo', 0]], hth: .05, S: [['cespuglio', -.1], ['rovo', -.1]], sth: .2, g: [70, 100, 46], t: '#f0f8e0', d: .8 },
   };
   // la deriva di una specie: rumore largo (la massa) con un po' di rumore fine (il bordo frastagliato)
@@ -6072,6 +6289,7 @@ var Render = (function () {
       case E.PINIMONTE: return [pk(['Pine_1', 'Pine_2', 'Pine_3', 'Pine_4']), .85 + sc * .35];
       case E.GIUNGLA: return q < .1 ? ['Palma_' + Math.floor(k * 6), .85 + sc * .35] : q < .62 ? OAK(.78 + sc * .2, [1, 4, 6, 0, 2]) : q < .86 ? [pk(['CommonTree_1', 'CommonTree_2', 'CommonTree_3', 'CommonTree_4']), .8 + sc * .3] : ['Betulla_' + Math.floor(k * 3), .85 + sc * .25];   // [arcipelago] chiome tonde che si toccano, qualche palma
       case E.PALMETO: return q < .88 ? ['Palma_' + Math.floor(k * 6), .78 + sc * .4] : ['Pine_5', .6 + sc * .2, -.16];                                   // [arcipelago] palme sulla riva
+      case E.NUDA: return q < .5 ? [pk(['TwistedTree_1', 'TwistedTree_4']), .2 + sc * .08] : ['Pine_5', .38 + sc * .15, -.26 - sc * .1];   // [arcipelago] pochi alberi storti e bassi sul calcare
       case E.ISOLA: return q < .42 ? ['Pine_5', .5 + sc * .25, -.2 - sc * .14] : q < .82 ? [pk(['TwistedTree_1', 'TwistedTree_3', 'TwistedTree_4']), .24 + sc * .1] : ['Palma_' + Math.floor(k * 6), .7 + sc * .3];   // pini d'Aleppo piegati, macchia, qualche palma
       default: return natTree(tx, ty, r);
     }
