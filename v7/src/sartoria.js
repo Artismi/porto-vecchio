@@ -689,9 +689,10 @@ var Sartoria = (function () {
 
   // il capo: tutte le pezze e le finiture in un'unica geometria a gruppi (materiali: 0 stoffa, 1 secondo colore, 2 metallo, 3 scuro, 4 pelle/cuoio, 5 bianco, 6 costine)
   function cut(B, C, parti, off, seedk) {
-    const key = [B.key, C.id, C.var || 0, C.faldaTop || 0, C.coperto ? 1 : 0, C.infilata ? 1 : 0, C.stretti ? 1 : 0, parti.join(''), Object.keys(off).map(k => k + (off[k] * 1e4 | 0)).join()].join('|');
+    const key = [B.key, C.id, C.var || 0, C.faldaTop || 0, C.sotto || '', C.coperto ? 1 : 0, C.infilata ? 1 : 0, C.stretti ? 1 : 0, parti.join(''), Object.keys(off).map(k => k + (off[k] * 1e4 | 0)).join()].join('|');
     let G = B.geos.get(key); if (G) return G;
     const bd = Builder(), P = new Set(parti);
+    if (C.giacchetta && window.Pittura) { faldaGiacca(bd, B, C); G = toGeometry(bd, B); B.geos.set(key, G); return G; }
     const agio = C.agio || { 0: .001, 1: .006, 2: .006, 3: .014, 4: .016, 5: .022, 6: .012 }[C.cl] || .004;
     const offAt = (part) => (off[part] || off.torso || .004) + agio;
     // ---------- TRONCO / GONNA ----------
@@ -832,6 +833,56 @@ var Sartoria = (function () {
       }
     }
     G = toGeometry(bd, B); B.geos.set(key, G); return G;
+  }
+  // la falda della giacca: un pannello solo che esce a filo dalla giacca dipinta sopra la vita (nessuna cucitura, nessun gradino),
+  // scende sopra fianchi e glutei senza stringersi, davanti si apre in due lembi; ha uno spessore vero (faccia interna e bordi)
+  function faldaGiacca(bd, B, C) {
+    const Pt = window.Pittura, tb = Pt.frame(B).tubes[0], off0 = Pt.spessore(C), heavy = C.cl >= 5 || /montone|imbott|piuma|pelliccia|giaccone/.test((C.id || '') + (C.fab || ''));
+    const th = heavy ? .013 : .007, yTop = B.waist + .06, yb = Math.min(B.bones.Hips.y - .15, B.crotch - .01), sTop = tb.sAtY(yTop), sBot = tb.sAtY(yb);
+    const rows = Math.max(12, Math.round((sTop - sBot) / .011) + 1), RG = 48, yC = B.crotch + .03;
+    const sOf = i => lerp(sTop, sBot, i / (rows - 1)), tOf = i => i / (rows - 1);
+    // il profilo di ogni riga: la giacca dipinta in alto, poi mai più stretta (passa sopra glutei e cosce), con un filo d'agio verso l'orlo
+    const R = [], carry = new Float32Array(RG), body = [];
+    const FP = []; (C._falde || []).forEach(f => { const pa = f.geo.attributes.position, v = new THREE.Vector3(); for (let k = 0; k < pa.count; k++) FP.push(v.fromBufferAttribute(pa, k).applyMatrix4(B.rel).clone()); });
+    const IP = Pt.ironAll(B); for (let k = 0; k < B.part.length; k++) { const pt = B.part[k]; if (/torso|bacino|cosce/.test(pt || '')) body.push(k); }
+    for (let i = 0; i < rows; i++) { const s = sOf(i), fr = frameAt(tb, s), y = fr.p.y, r = new Float32Array(RG);
+      for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2; r[q] = (y > yC ? Pt.raggio(B, s, a) : carry[q]) + off0; }
+      // la superficie dipinta vera (vertici stirati) e quello che sporge a questa altezza (fianchi, glutei, cosce): resta tutto dentro
+      for (const k of body) { const dy = IP[k * 3 + 1] - y; if (Math.abs(dy) > .013) continue; const dx = IP[k * 3] - fr.p.x, dz = IP[k * 3 + 2] - fr.p.z, x = dx * fr.sd.x + dz * fr.sd.z, z = dx * fr.f.x + dz * fr.f.z, a = Math.atan2(x, z), q = ((Math.round(a / (Math.PI * 2) * RG) % RG) + RG) % RG, rr = Math.hypot(x, z) + off0 + .0008;
+        for (const qq of y > B.waist - .01 ? [q] : [q - 1, q, q + 1]) { const m = (qq + RG) % RG; if (rr > r[m]) r[m] = rr; } }
+      for (const P of FP) { if (Math.abs(P.y - y) > .015) continue; const dx = P.x - fr.p.x, dz = P.z - fr.p.z, x = dx * fr.sd.x + dz * fr.sd.z, z = dx * fr.f.x + dz * fr.f.z, q = ((Math.round(Math.atan2(x, z) / (Math.PI * 2) * RG) % RG) + RG) % RG, rr = Math.hypot(x, z) + .006;
+        for (const qq of [q - 1, q, q + 1]) { const m = (qq + RG) % RG; if (rr > r[m]) r[m] = rr; } }
+      if (i) for (let q = 0; q < RG; q++) r[q] = Math.max(r[q], R[i - 1][q] - .002 * (y > yC ? 1 : 0));
+      if (y < B.waist) hull(r);
+      if (y < B.waist) for (let it = 0; it < 3; it++) { const sm3 = r.slice(); for (let q = 0; q < RG; q++) r[q] = Math.max(r[q], (sm3[(q + RG - 1) % RG] + 2 * sm3[q] + sm3[(q + 1) % RG]) / 4); }
+      { const s5 = r.slice(); for (let q = 0; q < RG; q++) { let a = 0; for (let k = -3; k <= 3; k++) a += s5[(q + k + RG) % RG]; r[q] = Math.max(s5[q] - (y > B.waist ? .0005 : .002), a / 7); } }
+      if (y > yC) for (let q = 0; q < RG; q++) carry[q] = r[q] - off0;
+      R.push(r); }
+    // lungo l'altezza: linee dritte (niente onde)
+    for (let it = 0; it < 4; it++) for (let i = 1; i < rows - 1; i++) for (let q = 0; q < RG; q++) R[i][q] = Math.max(R[i][q], (R[i - 1][q] + R[i + 1][q]) / 2);
+    const rad = (i, a) => { const f = ((a / (Math.PI * 2)) * RG % RG + RG) % RG, q0 = Math.floor(f), q1 = (q0 + 1) % RG, u = f - q0; return lerp(R[i][q0], R[i][q1], u); };
+    const gap = i => lerp(.025, .6, Math.pow(tOf(i), 1.3)), cols = 44;
+    const angOf = (i, j) => { const g = gap(i); return g + j / cols * (Math.PI * 2 - 2 * g); };
+    const pt = (i, a, dO) => { const s = sOf(i), fr = frameAt(tb, s), t = tOf(i), fe = Math.min(a, Math.PI * 2 - a);
+      let r = rad(i, a) + dO + .006 * t * t;   // appena più ampia all'orlo
+      if (fe < .6) r += (.6 - fe) * .014 * t;   // i lembi davanti si staccano
+      r += .0015 + .004 * cl(t / .3, 0, 1);   // appena fuori dalla giacca dipinta (che sotto si toglie): attacco netto, niente sfarfallio
+      const d = fr.f.clone().multiplyScalar(Math.cos(a)).addScaledVector(fr.sd, Math.sin(a)), ta = fr.f.clone().multiplyScalar(-Math.sin(a)).addScaledVector(fr.sd, Math.cos(a));
+      return { p: fr.p.clone().addScaledVector(d, r), d, ta, fr, s }; };
+    const ringC = rad(0, 0) * Math.PI * 2;
+    // i pesi: in cima quelli del corpo (si muove con la giacca dipinta), in basso rigida col bacino
+    const WG = gridW(tb), WC = capeW(B), W = (p) => { const k = cl((yTop - .01 - p.y) / .07, 0, 1), m = new Map(); WG(p).forEach(([b, w]) => { if (w > 0) m.set(b, (m.get(b) || 0) + w * (1 - k)); }); WC(p).forEach(([b, w]) => { if (w > 0) m.set(b, (m.get(b) || 0) + w * k); });
+      // i lembi davanti seguono un poco la coscia che avanza (non la bucano camminando)
+      { const fr = frameAt(tb, tb.sAtY(p.y)), dx = p.x - fr.p.x, dz = p.z - fr.p.z, x = dx * fr.sd.x + dz * fr.sd.z, z = dx * fr.f.x + dz * fr.f.z, fa = Math.max(0, z / Math.hypot(x, z)), dn = cl((B.bones.Hips.y - p.y) / (B.bones.Hips.y - yb), 0, 1), lw = .5 * fa * dn;
+        const hx = B.bones.Hips.x, lL = B.bones.UpperLegL, nm = (p.x - hx) * ((lL ? lL.x : 1) - hx) > 0 ? 'UpperLegL' : 'UpperLegR', bi = B.names.indexOf(nm);
+        if (bi >= 0 && lw > 0) { m.forEach((w, b) => m.set(b, w * (1 - lw))); m.set(bi, (m.get(bi) || 0) + lw); } }
+      const a = [...m.entries()].sort((x, y) => y[1] - x[1]).slice(0, 4); let t = 0; a.forEach(e => { t += e[1]; }); const o = a.map(e => [e[0], e[1] / (t || 1)]); while (o.length < 4) o.push([0, 0]); return o; };
+    // fuori e dentro
+    for (const [dO, sg, c] of [[0, 1, 1], [-th, -1, .6]]) grid(bd, rows, cols + 1, (i, j) => { const a = angOf(i, j), q = pt(i, a, dO); return { p: q.p, out: q.d.clone().multiplyScalar(sg), u: a / (Math.PI * 2) * ringC, v: q.s, c }; }, W, 0);
+    // lo spessore: i due bordi davanti e l'orlo
+    for (const j of [0, cols]) grid(bd, rows, 2, (i, k) => { const a = angOf(i, j), q = pt(i, a, k ? -th : 0); return { p: q.p, out: q.ta.clone().multiplyScalar(j ? 1 : -1), u: a / (Math.PI * 2) * ringC + k * th, v: q.s, c: .8 }; }, W, 0);
+    grid(bd, 2, cols + 1, (k, j) => { const a = angOf(0, j), q = pt(0, a, k ? -th : 0); return { p: q.p, out: q.fr.t.clone(), u: a / (Math.PI * 2) * ringC, v: q.s + k * th, c: .7 }; }, W, 0);
+    grid(bd, 2, cols + 1, (k, j) => { const a = angOf(rows - 1, j), q = pt(rows - 1, a, k ? -th : 0); return { p: q.p, out: q.fr.t.clone().negate(), u: a / (Math.PI * 2) * ringC, v: q.s - k * th, c: .75 }; }, W, 0);
   }
   // sopra l'inforcatura le gambe dei pantaloni devono stare fuori dal tronco (dove passa la camicia infilata)
   function pushOut(B, p, off, k) {
@@ -1082,7 +1133,7 @@ var Sartoria = (function () {
   }
   // materiali del capo, nell'ordine dei gruppi: 0 stoffa, 1 secondo colore, 2 metallo, 3 scuro, 4 cuoio, 5 bianco, 6 costine
   function mats(C, col) {
-    if (C.blocchi && window.Pittura) { const L = looks(C, col), P = window.Pittura; return [P.blockMat(C.fab, L.A, L.B, L.C, { liscio: !C.poncho }), P.blockMat(C.fab, L.B, L.B, L.B, { liscio: !C.poncho }), solidMat('#a8a8b0', .35), solidMat('#1e1c1c', .2), P.blockMat('pelle', '#3a2418'), solidMat('#ece8dc', .25), P.blockMat(C.fab, L.A, L.B, L.C, { dark: 1 }), solidMat(L.A)]; }
+    if (C.blocchi && window.Pittura) { const L = Object.assign({}, looks(C, col)), P = window.Pittura; if (C.giacchetta) L.A = '#' + new THREE.Color(L.A).multiplyScalar(.93).getHexString();   /* come la giacca dipinta (che ha la sua ombra) */ return [P.blockMat(C.fab, L.A, L.B, L.C, { liscio: !C.poncho }), P.blockMat(C.fab, L.B, L.B, L.B, { liscio: !C.poncho }), solidMat('#a8a8b0', .35), solidMat('#1e1c1c', .2), P.blockMat('pelle', '#3a2418'), solidMat('#ece8dc', .25), P.blockMat(C.fab, L.A, L.B, L.C, { dark: 1 }), solidMat(L.A)]; }
     const L = looks(C, col), lus = C.lucido || 0, fab = C.fab;
     const darker = '#' + new THREE.Color(L.A).multiplyScalar(.5).getHexString(), fur2 = C.collo === 'montone' || C.orlo === 'montone' ? '#e8dcc0' : L.A;
     return [
@@ -1143,7 +1194,7 @@ var Sartoria = (function () {
     const seed = hstr(seedStr || '');
     // l'intimo coperto del tutto da un capo sopra non si costruisce (non si vede e non deve sbucare)
     const hiddenUnder = (c, k) => (CUT[c.id] ? CUT[c.id].cl : 1) === 0 && ranked.slice(k + 1).some(o => { const P = o.c.parti || [], C2 = CUT[o.c.id] || {}; return !C2.gonna && !C2.davanti && !C2.smanicato && c.parti.every(p => p === 'piedi' || p === 'mani' || P.includes(p) || (p === 'bacino' && C2.cl === 2)); });
-    ranked.forEach(({ c }, k) => {
+    B._falde = []; ranked.forEach(({ c }, k) => {
       if (hiddenUnder(c, k)) { (c.parti || []).forEach(p => { th[p] = Math.max(th[p] || 0, .002); }); return; }
       const base = CUT[c.id] || { cl: 1, fab: c.pat === 'righe' ? 'righe' : c.pat === 'fiori' ? 'fiori' : 'cotone' };
       const vars = VARIANTI[c.id]; let vi = 0; if (vars && seedStr !== undefined && seedStr !== 'player') vi = (seed >>> (k * 3)) % vars.length; if (c.var && typeof c.var === 'object' && vars) { const j = vars.indexOf(c.var); if (j >= 0) vi = j; }
@@ -1165,7 +1216,8 @@ var Sartoria = (function () {
       ['torso', 'braccia', 'avambracci', 'bacino', 'cosce', 'polpacci', 'collo'].forEach(p => { off[p] = (thick.includes(p) ? b0 : (th[p] || b0)) + .0025 + c.sp * .16; });
       thick.forEach(p => { th[p] = t; });
       try {
-        const geo = cut(B, C, parti, off, seed);
+        if (C.giacchetta) { C.sotto = B._falde.map(f => f.id).join(); C._falde = B._falde.slice(); }   // la falda della giacca passa sopra le gonne messe prima
+        const geo = cut(B, C, parti, off, seed); if ((C.gonna || C.poncho) && !C.giacchetta) B._falde.push({ id: c.id, geo });
         const m = new THREE.SkinnedMesh(geo, mats(C, c.col)); m.userData.vesti = true; m.userData.capo = c.id; m.castShadow = true; m.frustumCulled = false;
         out.push(m); cover.push({ C, parti }); lay.push({ id: c.id, cl: C.cl, t, off, collo: C.collo, parti });
       } catch (e) { console.error('[Sartoria]', c.id, e); }

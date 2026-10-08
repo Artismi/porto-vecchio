@@ -215,6 +215,7 @@ var Pittura = (function () {
       const Ls = Sa.lengths(B, T, 'tronco', C, [...P]);
       let yb = Ls.yb; if (C.gonna || C.poncho) yb = B.waist - .02;   // la falda la fa la geometria
       if (!C.gonna && !C.poncho) yb = Math.max(yb, cutY(B));   // l'orlo dritto sopra il taglio (le giacche continuano con la falda in rilievo)
+      if (C.cl >= 3 && !C.gonna && !C.poncho && !C.corto && !C.davanti && P.has('bacino')) { yb = B.waist + .015; C.falda3d = 1; }   // la giacca dipinta si ferma alla vita: sotto c'è la falda in rilievo (davanti, nell'apertura, si vede quello che sta sotto)
       if (C.cl <= 1 && all.slice(all.indexOf(c) + 1).some(o => (CUT[o.id] || {}).cl === 2 && (o.parti || []).includes('bacino'))) { yb = B.waist - .02; C.infilata = 1; }   // infilata solo se i pantaloni stanno sopra   // infilata nei pantaloni
       L.T = { s0: T.sAtY(yb), s1: Ls.s1, yb, yt: Ls.yt };
     }
@@ -400,7 +401,7 @@ var Pittura = (function () {
     }
     let f = fabric(C, xm, sv); let c = [f[0], f[1], f[2]], h = .3 + f[3] * .4, s = 1;
     // l'orlo: piega scura e un filo d'ombra prima
-    const conFalda = R === 'T' && C.cl >= 3 && !C.corto && !C.davanti && !C.gonna && L.T && L.T.yb !== undefined && y - L.T.yb < .03 && (C.parti || []).includes('bacino');   // giacca con la falda in rilievo: niente orlo dipinto, prosegue la falda
+    const conFalda = R === 'T' && C.cl >= 3 && !C.corto && !C.davanti && !C.gonna && L.T && L.T.yb !== undefined && y - L.T.yb < .05 && (C.parti || []).includes('bacino');   // giacca con la falda in rilievo: niente orlo dipinto, prosegue la falda
     if (!conFalda) { if (edge < .008) { s *= .5; h = .1; } else if (edge < .02) s *= .88 + .12 * (edge - .008) / .012; }
     // i capi pesanti hanno la bordura scura all'orlo (come nei riferimenti)
     if ((C.cl >= 4 || C.poncho) && !C.costine && edge >= .008 && edge < .04 && !conFalda) s *= .72;
@@ -533,12 +534,16 @@ var Pittura = (function () {
       // sotto i cappotti lunghi: le gambe dietro e ai lati non si vedono (si tolgono: camminando non bucano la falda); davanti, nell'apertura, restano
       const jk = plans.find(C => C.cl >= 3 && !C.gonna && !C.poncho && !C.corto && !C.davanti && (C.parti || []).includes('bacino') && (C.parti || []).includes('torso'));
       const coat = plans.find(C => C.cl >= 5 && C.gonna && !C.solo_gonna && !C.poncho) || jk, coatHem = !coat ? 9 : coat === jk ? Math.min(B.bones.Hips.y - .15, B.crotch - .01) : Sa.lengths(B, frame(B).tubes[0], 'gonna', coat, coat.parti || ['torso', 'bacino', 'cosce']).yb, tc = frame(B).tubes[0], gapA = coat === jk ? .8 : .5;   // anche la falda corta delle giacche
-      const underCoat = w0 => { if (!coat) return false; for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j], r = pg.VR[w0 + j]; if (!L || r < 3 || L.p[1] < coatHem + .04 || L.p[1] > B.crotch + .02) return false; const ax = tc.S[0], ang = Math.atan2(L.p[0] - ax.x, L.p[2] - ax.z); if (Math.abs(ang) < gapA) return false; } return true; };
-      pg.groups.forEach(gr => { const st = idx.length; for (let w0 = gr.start; w0 < gr.start + gr.count; w0 += 3) if (keepT(w0, gr.materialIndex) && !(gr.materialIndex >= 4 && (underF(w0) || underCoat(w0)))) idx.push(w0, w0 + 1, w0 + 2); if (idx.length > st) grp.push([st, idx.length - st, gr.materialIndex]); });
+      // sotto la falda della giacca il busto dipinto non si vede (fuori dall'apertura davanti): via, niente sfarfallio
+      const jkF = jk && jk.falda3d, yTopF = B.waist + .06, ybF = Math.min(B.bones.Hips.y - .15, B.crotch - .01);
+      const underJk = w0 => { if (!jkF) return false; for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j]; if (!L || pg.VR[w0 + j] !== 0 || L.p[1] > B.waist + .03) return false; const t = cl((yTopF - L.p[1]) / (yTopF - ybF), 0, 1), g = lerp(.025, .6, Math.pow(t, 1.3)), ax = tc.S[0], ang = Math.abs(Math.atan2(L.p[0] - ax.x, L.p[2] - ax.z)); if (ang < g + .07) return false; } return true; };
+      const underCoat = w0 => { if (!coat) return false; for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j], r = pg.VR[w0 + j]; if (!L || r < 3 || L.p[1] < coatHem + .04 || L.p[1] > B.crotch + .02) return false; const ax = tc.S[0], ang = Math.atan2(L.p[0] - ax.x, L.p[2] - ax.z); if (Math.abs(ang) < gapA) return false; if (coat === jk && L.p[2] - ax.z > -.02 && Math.abs(L.p[0] - ax.x) < .075) return false; } return true; };   // l'interno coscia davanti si vede dall'apertura
+      pg.groups.forEach(gr => { const st = idx.length; for (let w0 = gr.start; w0 < gr.start + gr.count; w0 += 3) if (keepT(w0, gr.materialIndex) && !(gr.materialIndex >= 4 && (underF(w0) || underCoat(w0))) && !(gr.materialIndex === 1 && underJk(w0))) idx.push(w0, w0 + 1, w0 + 2); if (idx.length > st) grp.push([st, idx.length - st, gr.materialIndex]); });
       const pgeo = new THREE.BufferGeometry(); for (const k in pg.geo.attributes) pgeo.setAttribute(k, pg.geo.attributes[k]); pgeo.setIndex(idx);
       // lo spessore del capo che si vede: la superficie si stacca dal corpo di quanto è spesso (per persona)
       { const pos0 = pg.geo.attributes.position, pos = new THREE.BufferAttribute(new Float32Array(pos0.array), 3), v3 = new THREE.Vector3();
-        for (let w0 = 0; w0 < pos.count; w0++) { const L = pg.VI[w0]; if (!L) continue; const j = J.get(pk(L)), off = j.o;
+        for (let w0 = 0; w0 < pos.count; w0++) { const L = pg.VI[w0]; if (!L) continue; const j = J.get(pk(L)); let off = j.o;
+          if (jkF && pg.VR[w0] === 0 && L.p[1] < yTopF - .002) { const t = cl((yTopF - L.p[1]) / (yTopF - ybF), 0, 1), g = lerp(.025, .6, Math.pow(t, 1.3)), ax = tc.S[0], ang = Math.abs(Math.atan2(L.p[0] - ax.x, L.p[2] - ax.z)); if (ang > g + .07) off -= .007 * cl((yTopF - .002 - L.p[1]) / .006, 0, 1); }   // sotto la falda il busto rientra: la falda passa sopra pulita
           if (!off) continue; v3.set(L.p[0] + j.d.x * off, L.p[1] + j.d.y * off, L.p[2] + j.d.z * off).applyMatrix4(B.reli); pos.setXYZ(w0, v3.x, v3.y, v3.z); }
         pgeo.setAttribute('position', pos); } grp.forEach(g0 => pgeo.addGroup(g0[0], g0[1], g0[2]));
       pgeo.boundingSphere = pg.geo.boundingSphere; pgeo.userData.pittura = true;
@@ -632,5 +637,7 @@ var Pittura = (function () {
     const ranked = rankOutfit(list, CUT);
     return ranked.map((c, k) => plan(B, c, k, ranked));
   }
-  return { cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
+  // il raggio della superficie dipinta del busto (stirata) a (s, angolo) sul tubo del tronco: le falde in rilievo ci si raccordano a filo
+  function raggio(B, s, a) { const tb = frame(B).tubes[0]; return shape(B, tb, s, a, ironRadius(ironed(tb), tb, s, a)); }
+  return { raggio, ironAll, cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
 })();
