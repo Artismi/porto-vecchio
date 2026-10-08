@@ -1,0 +1,194 @@
+<title>Porto Vecchio, la mappa dei luoghi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans+Condensed:wght@400;500;600&display=swap">
+<style>
+/* Layout: una carta nautica notturna a tutta larghezza, legenda-filtri sopra, elenco dei luoghi accanto (sotto, sul telefono). Stessi colori del menu del gioco. */
+:root {
+  --notte: #0D1015; --pannello: #151a20; --bordo: #2c3a38; --crema: #f2ead8; --fumo: #a9a294; --neon: #FF5FA2;
+  --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --sans: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box }
+html, body { height: 100% }
+body { background: var(--notte); color: var(--crema); font-family: var(--sans); font-size: 14px; margin: 0; }
+.wrap { display: grid; grid-template-rows: auto auto 1fr; gap: 12px; height: 100%; padding: 16px; padding-block: 14px 16px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+h1 { font-family: var(--serif); font-weight: 400; font-size: 34px; line-height: 1; margin: 0; text-wrap: balance; }
+h1 em { color: var(--neon); }
+.sub { color: var(--fumo); font-size: 13px; }
+.cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.cat { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px 5px 8px; border: 1px solid var(--bordo); border-radius: 999px; background: var(--pannello); color: var(--crema); font: 500 13px var(--sans); cursor: pointer; }
+.cat i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
+.cat b { font-weight: 400; color: var(--fumo); font-variant-numeric: tabular-nums; }
+.cat[aria-pressed="false"] { opacity: .42; }
+.cat[aria-pressed="false"] i { box-shadow: none; }
+.cat:focus-visible, button:focus-visible, input:focus-visible, .li:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 12px; min-height: 0; }
+.mapbox { position: relative; min-height: 320px; border: 1px solid var(--bordo); border-radius: 10px; overflow: hidden; background: #0b1b20; touch-action: none; }
+canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+canvas.drag { cursor: grabbing; }
+.zoom { position: absolute; right: 10px; top: 10px; display: grid; gap: 4px; }
+.zoom button { width: 34px; height: 34px; border: 1px solid var(--bordo); border-radius: 8px; background: rgba(13,16,21,.85); color: var(--crema); font: 500 18px var(--sans); cursor: pointer; }
+.scala { position: absolute; left: 10px; bottom: 10px; font-size: 12px; color: var(--fumo); display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.scala span { display: block; height: 4px; border: 1px solid var(--crema); border-top: 0; }
+.tip { position: absolute; pointer-events: none; padding: 5px 9px; border-radius: 6px; background: rgba(13,16,21,.92); border: 1px solid var(--bordo); font-size: 13px; white-space: nowrap; transform: translate(-50%, calc(-100% - 12px)); }
+.tip small { color: var(--fumo); display: block; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+aside { display: grid; grid-template-rows: auto 1fr; gap: 8px; min-height: 0; }
+input { width: 100%; padding: 8px 10px; border: 1px solid var(--bordo); border-radius: 8px; background: var(--pannello); color: var(--crema); font: 14px var(--sans); }
+.list { overflow-y: auto; border: 1px solid var(--bordo); border-radius: 10px; background: var(--pannello); }
+.grp { position: sticky; top: 0; background: var(--pannello); padding: 8px 12px 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--fumo); border-bottom: 1px solid var(--bordo); }
+.li { display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer; }
+.li i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.li:hover, .li.sel { background: #1f262c; }
+.li.sel { color: var(--neon); }
+.vuoto { padding: 12px; color: var(--fumo); }
+@media (max-width: 760px) {
+  .wrap { height: auto; }
+  .main { grid-template-columns: 1fr; }
+  .mapbox { height: 48vh; }
+  .list { max-height: 50vh; }
+  h1 { font-size: 28px; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Porto Vecchio, <em>la mappa</em></h1>
+    <span class="sub" id="sub"></span>
+  </header>
+  <div class="cats" id="cats"></div>
+  <div class="main">
+    <div class="mapbox" id="box">
+      <canvas id="cv"></canvas>
+      <div class="zoom"><button id="zin" aria-label="Avvicina">+</button><button id="zout" aria-label="Allontana">−</button><button id="zfit" aria-label="Tutta l'isola">⤢</button></div>
+      <div class="scala"><span id="sbar"></span><em id="slab"></em></div>
+      <div class="tip" id="tip" hidden></div>
+    </div>
+    <aside>
+      <input id="q" type="search" placeholder="Cerca un luogo…" autocomplete="off">
+      <div class="list" id="list"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+const D = /*DATI*/null;
+const CATS = {
+  locali:   ['Negozi e locali', '#FF5FA2'],
+  piazze:   ['Piazze, porto e vie', '#35e6ff'],
+  servizi:  ['Chiese, servizi e uffici', '#a9c8ff'],
+  alloggi:  ['Condomini e alberghi', '#ffb35c'],
+  lavoro:   ['Lavoro e industria', '#d6a85c'],
+  regime:   ['Regime e Base', '#ff4a3a'],
+  natura:   ['Natura e accampamenti', '#7ee0a0'],
+  scoperta: ['Da scoprire', '#ffe14a'],
+  nascosti: ['Nascosti', '#c58aff'],
+};
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const GW = D.GW, GH = D.GH, TS = D.TS, grid = b64(D.grid), elev = b64(D.elev), zone = b64(D.zone), T = D.T;
+const P = D.places.map(([name, cat, x, y, b], i) => ({ i, name, cat, x, y, b }));
+const on = {}; Object.keys(CATS).forEach(k => on[k] = true);
+try { const s = JSON.parse(localStorage.getItem('pv-mappa-cats') || 'null'); if (s) Object.assign(on, s); } catch (e) {}
+document.getElementById('sub').textContent = `${P.length} luoghi · isola di ${GW * TS} × ${GH * TS} m · una casella = ${TS} m`;
+
+// ---- la carta di fondo: colori delle caselle + ombreggiatura dalle quote ----
+const K = 3, base = document.createElement('canvas'); base.width = GW * K; base.height = GH * K;
+(() => {
+  const hex = h => [1, 3, 5].map(o => parseInt(h.slice(o, o + 2), 16));
+  const C = {}; [[T.WATER, '#123038'], [T.BLD, '#4a4258'], [T.VIA, '#5e5a56'], [T.COB, '#6c665c'], [T.WALK, '#76706a'], [T.PIAZZA, '#857d70'], [T.QUAY, '#625a50'], [T.PIER, '#74644e'],
+    [T.SAND, '#b8a47e'], [T.GRASS, '#4e6a4a'], [T.TREE, '#2c4a34'], [T.SHRUB, '#46603e'], [T.ROCK, '#62595a'], [T.CLIFF, '#3e3836'], [T.DIRT, '#7a6c56'], [T.FIELD, '#8a8458'],
+    [T.DESERT, '#a49266'], [T.SALT, '#d0ccc0'], [T.GRAVEL, '#8e8a82'], [T.FOUNT, '#3e7a8e'], [T.STAIRS, '#857d70']].forEach(([k, v]) => C[k] = hex(v));
+  const W = GW * K, img = new ImageData(W, GH * K), e = (x, y) => elev[Math.min(GH - 1, Math.max(0, y)) * GW + Math.min(GW - 1, Math.max(0, x))] / 5;
+  for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) {
+    const t = grid[ty * GW + tx], c = C[t] || [40, 36, 46];
+    let s = 1; if (t !== T.WATER) { const dx = e(tx + 1, ty) - e(tx - 1, ty), dy = e(tx, ty + 1) - e(tx, ty - 1); s = Math.max(.55, Math.min(1.35, 1 + (-dx - dy) * .09)); s *= .9 + Math.min(.25, e(tx, ty) / 160); }
+    for (let dy = 0; dy < K; dy++) for (let dx = 0; dx < K; dx++) {
+      const o = ((ty * K + dy) * W + tx * K + dx) * 4; let f = s;
+      if (t === T.BLD && (dx === K - 1 || dy === K - 1)) f *= .78;  // spigolo dei tetti
+      img.data[o] = Math.min(255, c[0] * f); img.data[o + 1] = Math.min(255, c[1] * f); img.data[o + 2] = Math.min(255, c[2] * f); img.data[o + 3] = 255;
+    }
+  }
+  base.getContext('2d').putImageData(img, 0, 0);
+})();
+
+// ---- vista: metri → schermo ----
+const box = document.getElementById('box'), cv = document.getElementById('cv'), x = cv.getContext('2d'), tip = document.getElementById('tip');
+let W = 0, H = 0, dpr = 1, v = { s: 1, ox: 0, oy: 0 }, sel = null, hov = null, q = '';
+const WM = GW * TS, HM = GH * TS;
+function fit() { const s = Math.min(W / WM, H / HM) * .98; v = { s, ox: (W - WM * s) / 2, oy: (H - HM * s) / 2 }; }
+function resize() { const r = box.getBoundingClientRect(); dpr = devicePixelRatio || 1; const first = !W; W = r.width; H = r.height; cv.width = W * dpr; cv.height = H * dpr; if (first) fit(); draw(); }
+const sx = m => m * v.s + v.ox, sy = m => m * v.s + v.oy;
+function zoomAt(f, px, py) { const s = Math.max(Math.min(W / WM, H / HM) * .7, Math.min(40, v.s * f)); f = s / v.s; v.ox = px - (px - v.ox) * f; v.oy = py - (py - v.oy) * f; v.s = s; draw(); }
+const visible = p => on[p.cat] && (!q || p.name.toLowerCase().includes(q));
+
+function draw() {
+  x.setTransform(dpr, 0, 0, dpr, 0, 0); x.fillStyle = '#0b1b20'; x.fillRect(0, 0, W, H);
+  x.imageSmoothingEnabled = v.s < 2; x.drawImage(base, v.ox, v.oy, WM * v.s, HM * v.s);
+  const vis = P.filter(visible);
+  // edifici dei luoghi: il contorno nel colore della categoria
+  vis.forEach(p => { if (!p.b) return; const c = CATS[p.cat][1]; x.strokeStyle = c; x.globalAlpha = p === sel || p === hov ? 1 : .75; x.lineWidth = p === sel ? 2.5 : 1.5;
+    x.strokeRect(sx(p.b[0] * TS), sy(p.b[1] * TS), p.b[2] * TS * v.s, p.b[3] * TS * v.s); });
+  x.globalAlpha = 1;
+  // punti
+  const r = Math.max(3, Math.min(7, v.s * 2.2));
+  vis.forEach(p => { const c = CATS[p.cat][1], X = sx(p.x), Y = sy(p.y); if (X < -20 || Y < -20 || X > W + 20 || Y > H + 20) return;
+    x.beginPath(); x.arc(X, Y, p === sel || p === hov ? r + 3 : r, 0, 7); x.fillStyle = c; x.shadowColor = c; x.shadowBlur = 10; x.fill(); x.shadowBlur = 0;
+    x.lineWidth = 1.5; x.strokeStyle = '#0D1015'; x.stroke(); });
+  // nomi: prima il selezionato, poi i più importanti; uno solo dove si accavallano
+  x.font = `italic ${v.s > 3 ? 17 : 15}px "Instrument Serif", Georgia, serif`; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+  const order = Object.keys(CATS), boxes = [];
+  vis.slice().sort((a, b) => (b === sel) - (a === sel) || (b === hov) - (a === hov) || order.indexOf(a.cat) - order.indexOf(b.cat)).forEach(p => {
+    const X = sx(p.x), Y = sy(p.y) - r - 5; if (X < -100 || X > W + 100 || Y < 0 || Y > H + 20) return;
+    const w = x.measureText(p.name).width + 8, bx = [X - w / 2, Y - 15, w, 19];
+    if (p !== sel && p !== hov && boxes.some(o => bx[0] < o[0] + o[2] && o[0] < bx[0] + bx[2] && bx[1] < o[1] + o[3] && o[1] < bx[1] + bx[3])) return; boxes.push(bx);
+    x.fillStyle = p === sel ? 'rgba(255,95,162,.92)' : 'rgba(13,16,21,.72)'; x.beginPath(); x.roundRect(bx[0], bx[1], bx[2], bx[3], 4); x.fill();
+    x.fillStyle = p === sel ? '#0D1015' : '#f2ead8'; x.fillText(p.name, X, Y);
+  });
+  // scala grafica
+  const steps = [10, 20, 50, 100, 200, 500], m = steps.find(s => s * v.s > 70) || 500;
+  document.getElementById('sbar').style.width = m * v.s + 'px'; document.getElementById('slab').textContent = m + ' m';
+}
+
+// ---- filtri ed elenco ----
+function cats() {
+  const n = {}; P.forEach(p => n[p.cat] = (n[p.cat] || 0) + 1);
+  document.getElementById('cats').innerHTML = Object.entries(CATS).filter(([k]) => n[k]).map(([k, [l, c]]) => `<button class="cat" data-k="${k}" aria-pressed="${on[k]}" style="--c:${c}"><i></i>${l} <b>${n[k]}</b></button>`).join('');
+}
+function list() {
+  const el = document.getElementById('list'); let h = '';
+  Object.entries(CATS).forEach(([k, [l, c]]) => { const ps = P.filter(p => p.cat === k && visible(p)).sort((a, b) => a.name.localeCompare(b.name, 'it')); if (!ps.length) return;
+    h += `<div class="grp">${l}</div>` + ps.map(p => `<div class="li${p === sel ? ' sel' : ''}" tabindex="0" data-i="${p.i}" style="--c:${c}"><i></i>${p.name.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div>`).join(''); });
+  el.innerHTML = h || '<div class="vuoto">Nessun luogo con questo nome tra le categorie accese.</div>';
+}
+document.getElementById('cats').onclick = e => { const b = e.target.closest('.cat'); if (!b) return; on[b.dataset.k] = !on[b.dataset.k]; try { localStorage.setItem('pv-mappa-cats', JSON.stringify(on)); } catch (e) {} cats(); list(); draw(); };
+function pick(p, center) {
+  sel = p; list(); if (p && center) { const s = Math.max(v.s, 4); v.s = s; v.ox = W / 2 - p.x * s; v.oy = H / 2 - p.y * s; }
+  draw(); const li = p && document.querySelector(`.li[data-i="${p.i}"]`); if (li) li.scrollIntoView({ block: 'nearest' });
+}
+const listEl = document.getElementById('list');
+listEl.onclick = e => { const li = e.target.closest('.li'); if (li) pick(P[+li.dataset.i], true); };
+listEl.onkeydown = e => { if (e.key === 'Enter') { const li = e.target.closest('.li'); if (li) pick(P[+li.dataset.i], true); } };
+document.getElementById('q').oninput = e => { q = e.target.value.trim().toLowerCase(); list(); draw(); };
+
+// ---- mouse e dita ----
+function nearest(px, py) { let best = null, bd = 14; P.filter(visible).forEach(p => { const d = Math.hypot(sx(p.x) - px, sy(p.y) - py); if (d < bd) { bd = d; best = p; } }); return best; }
+const pts = new Map(); let moved = 0, pinch = 0;
+cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.offsetX, e.offsetY]); moved = 0; cv.classList.add('drag'); };
+cv.onpointermove = e => {
+  const pr = pts.get(e.pointerId);
+  if (!pr) { const p = nearest(e.offsetX, e.offsetY); if (p !== hov) { hov = p; draw(); } tip.hidden = !p; if (p) { tip.style.left = sx(p.x) + 'px'; tip.style.top = sy(p.y) + 'px'; tip.innerHTML = `<small>${CATS[p.cat][0]}</small>${p.name.replace(/</g, '&lt;')}`; } return; }
+  if (pts.size === 2) { const [a, b] = [...pts.values()]; pts.set(e.pointerId, [e.offsetX, e.offsetY]); const [c, d] = [...pts.values()];
+    const d0 = Math.hypot(a[0] - b[0], a[1] - b[1]), d1 = Math.hypot(c[0] - d[0], c[1] - d[1]); if (d0 > 0) zoomAt(d1 / d0, (c[0] + d[0]) / 2, (c[1] + d[1]) / 2); pinch = 1; moved = 99; return; }
+  const dx = e.offsetX - pr[0], dy = e.offsetY - pr[1]; moved += Math.abs(dx) + Math.abs(dy); v.ox += dx; v.oy += dy; pts.set(e.pointerId, [e.offsetX, e.offsetY]); tip.hidden = true; draw();
+};
+cv.onpointerup = cv.onpointercancel = e => { pts.delete(e.pointerId); if (!pts.size) { cv.classList.remove('drag'); if (moved < 6 && !pinch) pick(nearest(e.offsetX, e.offsetY), false); pinch = 0; } };
+cv.onpointerleave = () => { if (hov) { hov = null; draw(); } tip.hidden = true; };
+cv.addEventListener('wheel', e => { e.preventDefault(); zoomAt(Math.exp(-e.deltaY * .0015), e.offsetX, e.offsetY); }, { passive: false });
+document.getElementById('zin').onclick = () => zoomAt(1.6, W / 2, H / 2);
+document.getElementById('zout').onclick = () => zoomAt(1 / 1.6, W / 2, H / 2);
+document.getElementById('zfit').onclick = () => { fit(); draw(); };
+
+cats(); list(); new ResizeObserver(resize).observe(box);
+document.fonts && document.fonts.ready.then(draw);
+</script>
