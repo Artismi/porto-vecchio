@@ -160,7 +160,7 @@ var Popolo = (function () {
     panchina:    { label: 'una panchina', where: ['piazza', 'fontana', 'giardini', 'lungomare', 'passeggiata', 'belvedere', 'piazzetta', 'molo', 'marina'], act: 'svago', h: [7, 23], perH: { svago: -.06, compagnia: -.06 }, int: 'chiacchiere' },
     fontana:     { label: 'la fontana', where: ['fontana'], act: 'bagno', h: [6, 22], once: { igiene: -.25 } },
     spiaggia:    { label: 'la spiaggia', where: ['spiaggia', 'caletta'], act: 'svago', h: [9, 19], perH: { svago: -.14, igiene: -.08 }, int: 'mare' },
-    canna:       { label: 'una canna da pesca', where: ['molo', 'punta', 'caletta', 'pontile'], act: 'svago', h: [5, 20], perH: { svago: -.12, paura: -.02 }, pantryH: .5, int: 'pesca' },
+    canna:       { label: 'una canna da pesca', where: ['molo', 'punta', 'caletta', 'pontile', 'lanterna', 'molo_levante', 'scogli_4', 'scogli_6', 'pesca_pontile_pescatori_s'], act: 'svago', h: [5, 20], perH: { svago: -.12, paura: -.02 }, pantryH: .5, int: 'pesca' },
     banco_chiesa:{ label: 'i banchi della chiesa', where: ['chiesa', 'chiesa_sg', 'santuario'], act: 'messa', h: [6, 20], once: { paura: -.15 }, perH: { compagnia: -.04 }, int: 'fede' },
     cero:        { label: 'un cero', where: ['chiesa', 'santuario', 'chiesa_sg'], act: 'svago', h: [6, 20], once: { rabbia: -.1, paura: -.08 }, cost: .5, int: 'fede' },
     libri:       { label: 'gli scaffali della biblioteca', where: ['biblioteca'], act: 'svago', h: [8, 18], perH: { svago: -.07 }, ideo: .004, int: 'lettura' },

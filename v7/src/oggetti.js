@@ -643,7 +643,7 @@ var Oggetti = (function () {
   rc('sm_sveglia', 'smontare la sveglia', { rottami: 1 }, { sveglia: 1 }, { tools: ['cacciavite'], min: 10, kind: 'smonta' });
   rc('sm_vestiti', 'fare stracci dei vestiti', { stracci: 3 }, { vestiti: 1 }, { tools: ['forbici'], min: 10, kind: 'smonta' });
   // ---- raccogliere ed estrarre (fuori, con l'attrezzo giusto) ----
-  rc('x_pesca', 'pescare', { pesce: 1, sarde: 1 }, {}, { tools: ['canna|rete_pesca'], place: /molo|pontile|caletta|spiaggia|punta|marina|lungomare|calata|faro/, min: 60, kind: 'raccogli', npcOut: { pesce: 3, sarde: 2, polpo: .2 } });
+  rc('x_pesca', 'pescare', { pesce: 1, sarde: 1 }, {}, { tools: ['canna|rete_pesca'], place: /molo|pontile|caletta|spiaggia|punta|marina|lungomare|calata|faro|lanterna|scogli|pesca_|cala|bagno_/, min: 60, kind: 'raccogli', npcOut: { pesce: 3, sarde: 2, polpo: .2 } });
   rc('x_legna', 'tagliare un albero', { legno: 1, legna: 1 }, {}, { tools: ['ascia'], place: /pineta|sugheri|radura|macchia|collina|monte|bosco|villaggio/, min: 90, kind: 'raccogli', npcOut: { legno: 2, legna: 2, sughero: .3 } });
   rc('x_sabbia', 'spalare sabbia', { sabbia: 2 }, {}, { tools: ['pala'], place: /spiaggia|caletta|deserto/, min: 30, kind: 'raccogli' });
   rc('x_cava', 'lavorare in cava', { pietre: 1, ghiaia: 1 }, {}, { tools: ['piccone'], place: /cava|ruderi|rudere/, min: 60, kind: 'raccogli', npcOut: { pietre: 2, ghiaia: 2, sabbia: 1 } });
