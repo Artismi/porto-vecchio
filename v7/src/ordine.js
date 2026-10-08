@@ -30,6 +30,7 @@ var Ordine = (function () {
   const H32 = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
   const pick = (r, a) => a[Math.floor(r() * a.length) % a.length];
   const WORLD = G.MAP && G.MAP.world;
+  const OXw = (WORLD && WORLD.OX) || 0, OYw = (WORLD && WORLD.OY) || 0;   // [arcipelago] l'isola sta spostata nella mappa grande
   const WALL = WORLD && WORLD.WALL;
 
   const CFG = {
@@ -99,7 +100,7 @@ var Ordine = (function () {
     const r = G.MAP && G.MAP.world ? G.MAP.world.rng(7717) : Math.random;
     const O = st.ord = {
       agents: [], volanti: [], ronde: [], blocco: null, nextBlocco: st.t + 60 + r() * 120, ctl: null, proteste: [], nextProt: st.t + 90,
-      nave: { phase: 'lontana', x: 1460, y: 176, ang: Math.PI, t: 0, kind: 'impero', crates: 0, crew: [] }, coda: null, superVuoto: false,
+      nave: { phase: 'lontana', x: 1460 + OXw, y: 176 + OYw, ang: Math.PI, t: 0, kind: 'impero', crates: 0, crew: [] }, coda: null, superVuoto: false,
       camion: null, sorvegliati: {}, stats: { controlli: 0, multe: 0, fermi: 0, perquisizioni: 0, proteste: 0, cariche: 0, navi: 0, codaServiti: 0 }, log: [], nextId: 1, rev: 0,
     };
     const used = new Set(st.npcs.map(n => n.id));
@@ -153,8 +154,8 @@ var Ordine = (function () {
 
   // i posti dei soldati della Base
   function soldierPosts() {
-    const out = [], v = PLACES.varco || { x: 1175, y: 139 }, ro = PLACES.rocca || v, mc = PLACES.molo_cargo || v, el = PLACES.eliporto || v, pg = PLACES.poligono || v, dn = PLACES.deposito_n || v, h2 = PLACES.hangar2 || v;
-    const wx = WALL ? WALL.x : 1168, g0 = WALL ? WALL.gate[0] : 133, g1 = WALL ? WALL.gate[1] : 145;
+    const out = [], v = PLACES.varco || { x: 1175 + OXw, y: 139 + OYw }, ro = PLACES.rocca || v, mc = PLACES.molo_cargo || v, el = PLACES.eliporto || v, pg = PLACES.poligono || v, dn = PLACES.deposito_n || v, h2 = PLACES.hangar2 || v;
+    const wx = WALL ? WALL.x : 1168 + OXw, g0 = WALL ? WALL.gate[0] : 133 + OYw, g1 = WALL ? WALL.gate[1] : 145 + OYw;
     out.push({ x: wx + 4, y: g0 - 1.5, face: Math.PI, role: 'Sentinella al Varco del Muro', gate: true });
     out.push({ x: wx + 4, y: g1 + 1.5, face: Math.PI, role: 'Sentinella al Varco del Muro', gate: true });
     out.push({ x: ro.x - 3, y: ro.y + 4, face: Math.PI / 2, role: 'Sentinella della Rocca' });
@@ -756,7 +757,7 @@ var Ordine = (function () {
   // ================= LA NAVE AL PORTO MILITARE =================
   // l'Impero: lunedì e giovedì all'alba (economia.js fa lo sbarco alle 6); la Marina della Tutela: mercoledì e sabato.
   // in rada dalle 4, ormeggio alle 6, scarico fino alle 10 sotto scorta, partenza alle 11.
-  const BERTH = { x: 1300, y: 155, ang: Math.PI }, SEA = { x: 1470, y: 182 }, QUAY = { x: 1281, y: 146 };
+  const BERTH = { x: 1300 + OXw, y: 155 + OYw, ang: Math.PI }, SEA = { x: 1470 + OXw, y: 182 + OYw }, QUAY = { x: 1281 + OXw, y: 146 + OYw };
   function naveStep(st, dt) {
     const O = S(st), N = O.nave, P = PO(), wd = P ? P.weekday(st.t) : Math.floor(st.t / 1440) % 7, m = minOf(st.t);
     const today = wd === 0 || wd === 3 ? 'impero' : wd === 2 || wd === 5 ? 'militare' : null;

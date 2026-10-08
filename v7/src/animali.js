@@ -41,7 +41,11 @@ var Animali = (function () {
       const a = Object.assign({ id: 'a' + k, sp, x, y, face: r() * 6.28, v: 0, mode: 'fermo', t: r() * 4, hx: x, hy: y, tx: x, ty: y, col: Math.floor(r() * S.cols.length), size: .88 + r() * .24, ph: r() * 9, dead: false, bark: 0, act: 0 }, extra || {});
       A.list.push(a); return a;
     };
-    WHERE.forEach(([sp, pid, n, spread]) => {
+    // [arcipelago] le galline e le capre dei villaggi delle isole, i cani delle basi, le capre inselvatichite sulle isole di calcare
+    const ISO = [['gallina', 'villaggio_lontani', 5, 6], ['gallina', 'villaggio_santa_lucia', 5, 6], ['capra', 'villaggio_lontani', 2, 9], ['capra', 'villaggio_santa_lucia', 2, 9], ['gatto', 'villaggio_lontani', 1, 6],
+      ['cane', 'base_presidio', 2, 10], ['cane', 'base_cannoni', 1, 8], ['cane', 'base_rossa', 1, 8], ['gallina', 'baracche_palme', 2, 4]];
+    ((G.MAP && G.MAP.world && G.MAP.world.ISOLE) || []).forEach(I => { if ((I.tema === 'nuda' || I.tema === 'pini' || I.veg === 'macchia') && !I.use) ISO.push(['capra', 'isola_' + I.id, 2, 12]); });
+    WHERE.concat(ISO).forEach(([sp, pid, n, spread]) => {
       const q = PLACES[pid]; if (!q) return;
       for (let i = 0; i < n; i++) {
         let x = q.x, y = q.y;
