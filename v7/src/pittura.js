@@ -54,6 +54,10 @@ var Pittura = (function () {
     if (tb.kind === 'tronco') { const yOf = i => tb.S[i].y, iAt = y => { let b = 0, bd = 9; for (let i = 0; i <= n; i++) { const d = Math.abs(yOf(i) - y); if (d < bd) { bd = d; b = i; } } return b; };
       const B0 = tb.Bref; if (B0) { const ih = iAt(B0.bones.Hips.y - .02), ic = iAt(B0.bones.Chest.y - .04); if (ic > ih + 2) { const Rh = R[ih], Rc = R[ic];
         for (let i = ih + 1; i < ic; i++) { const t = (i - ih) / (ic - ih); for (let q = 0; q < RG; q++) R[i][q] = Math.max(R[i][q], lerp(R[i][q], lerp(Rh[q], Rc[q], t), .75)); } } } }
+    // le anche: sotto la vita la sezione diventa un ovale liscio (niente spigoli e gradini dei pantaloncini del kit)
+    if (tb.kind === 'tronco' && tb.Bref) { const B0 = tb.Bref; for (let i = 0; i <= n; i++) { const y = tb.S[i].y; if (y > B0.waist + .02) continue; const r = R[i]; let W = 0, Df = 0, Db = 0;
+        for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2; W = Math.max(W, Math.abs(Math.sin(a)) * r[q]); const z = Math.cos(a) * r[q]; if (z > 0) Df = Math.max(Df, z); else Db = Math.max(Db, -z); }
+        const k = cl((B0.waist + .02 - y) / .06, 0, 1); for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, D = Math.cos(a) >= 0 ? Df : Db, e = 2.2, rb = 1 / Math.pow(Math.pow(Math.abs(Math.cos(a)) / Math.max(D, .02), e) + Math.pow(Math.abs(Math.sin(a)) / Math.max(W, .02), e), 1 / e); r[q] = lerp(r[q], rb, k); } } }
     // la stoffa cade dalla parte più sporgente (seno, pettorali, scapole) dritta fino alla vita: niente conche sotto
     if (tb.kind === 'tronco' && tb.Bref) { const B0 = tb.Bref, yOf = i => tb.S[i].y; let iw = 0, ic = n; for (let i = 0; i <= n; i++) { if (yOf(i) < B0.waist) iw = i; if (yOf(i) < B0.bones.Chest.y + .06) ic = i; }
       for (let q = 0; q < RG; q++) { let ia = iw; for (let i = iw; i <= ic; i++) if (R[i][q] > R[ia][q]) ia = i; for (let i = iw + 1; i < ia; i++) { const t = (i - iw) / (ia - iw); R[i][q] = Math.max(R[i][q], lerp(R[iw][q], R[ia][q], t)); } } }
@@ -64,15 +68,22 @@ var Pittura = (function () {
         const rb = 1 / Math.pow(Math.pow(ca / Math.max(D, .01), e) + Math.pow(sa / Math.max(W, .01), e), 1 / e); o[q] = lerp(r[q], Math.min(rb, r[q] + .03), kb); } return o; });
     IRON.set(tb, R); return R;
   }
+  // gli uomini: busto più largo (spalle e torace), le anche lisce e dritte
+  const MASCHI = /^(Casual_2|Casual_Hoodie|Worker)$/;
+  function shape(B, tb, s, a, r) {
+    if (tb.kind !== 'tronco') return r; const y = tb.S[cl(Math.round(s / tb.ds), 0, tb.ns)].y, sa = Math.abs(Math.sin(a));
+    if (MASCHI.test(B.key)) r *= 1 + .08 * sa * sa * cl((y - B.waist + .05) / .25, 0, 1);
+    return r;
+  }
   function ironRadius(R, tb, s, a) { const RG = R[0].length, fi = cl(s / tb.ds, 0, tb.ns), i0 = Math.floor(fi), i1 = Math.min(tb.ns, i0 + 1), t = fi - i0, fs = (((a / (Math.PI * 2)) * RG) % RG + RG) % RG, q0 = Math.floor(fs), q1 = (q0 + 1) % RG, u = fs - q0;
     return lerp(lerp(R[i0][q0], R[i0][q1], u), lerp(R[i1][q0], R[i1][q1], u), t); }
   // la posizione stirata di un vertice del corpo (per la sua parte, così un vertice condiviso va sempre nello stesso posto)
   function ironPos(B, g, out) {
     const r = regionOf(B, g); out.set(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]); if (r < 0) return out;
-    const F = frame(B), tb = F.tubes[r], q = axial(tb, out), fr = S().frameAt(tb, q.s), R = ironed(tb), rr = ironRadius(R, tb, q.s, q.a); q.r = q.r !== undefined ? q.r : out.clone().sub(fr.p).length(); q.i = q.s / tb.ds;
+    const F = frame(B), tb = F.tubes[r], q = axial(tb, out), fr = S().frameAt(tb, q.s), R = ironed(tb), rr = shape(B, tb, q.s, q.a, ironRadius(R, tb, q.s, q.a)); q.r = q.r !== undefined ? q.r : out.clone().sub(fr.p).length(); q.i = q.s / tb.ds;
     // vicino a mani, piedi, collo (dove il corpo resta com'è) lo stiro sfuma
     let k = 1; if (r > 0) k = cl((tb.L - q.i * tb.ds) / .06, 0, 1) * cl(q.i * tb.ds / .05, 0, 1); else { const ny = S().neckY(B); k = cl((ny - out.y) / .04, 0, 1) * cl((out.y - (B.crotch + .02)) / .07, 0, 1); }   // al cavallo, tra le gambe, il corpo resta com'è
-    const d = cl(rr - q.r, -.06, .03) * k; if (Math.abs(d) < 1e-5 || q.r < 1e-4) return out;
+    const d = cl(rr - q.r, -.06, .045) * k; if (Math.abs(d) < 1e-5 || q.r < 1e-4) return out;
     const dir = out.clone().sub(fr.p); dir.addScaledVector(fr.t, -dir.dot(fr.t)); dir.normalize(); return out.addScaledVector(dir, d);
   }
   // la proiezione esatta sull'asse: il campione il cui piano perpendicolare passa per il punto (non il più vicino in linea d'aria,
@@ -479,7 +490,10 @@ var Pittura = (function () {
         return true; };
       // sotto le falde (gonne, cappotti, poncho) la gamba non si vede: si toglie, così non può bucare la stoffa
       const underF = w0 => { for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j], r = pg.VR[w0 + j]; if (!L || r < 3) return false; const C = topAt(B, plans, r, L.a, L.s, L.p[1], nY), Ls = C && C.L[REG[r]]; if (!C || !(C.gonna || C.solo_gonna || C.poncho) || !Ls || Ls.falda === undefined || L.p[1] < Ls.falda + .015 || L.p[1] > B.waist) return false; } return true; };
-      pg.groups.forEach(gr => { const st = idx.length; for (let w0 = gr.start; w0 < gr.start + gr.count; w0 += 3) if (keepT(w0, gr.materialIndex) && !(gr.materialIndex >= 4 && underF(w0))) idx.push(w0, w0 + 1, w0 + 2); if (idx.length > st) grp.push([st, idx.length - st, gr.materialIndex]); });
+      // sotto i cappotti lunghi: le gambe dietro e ai lati non si vedono (si tolgono: camminando non bucano la falda); davanti, nell'apertura, restano
+      const coat = plans.find(C => C.cl >= 5 && C.gonna && !C.solo_gonna && !C.poncho), coatHem = coat ? Sa.lengths(B, frame(B).tubes[0], 'gonna', coat, coat.parti || ['torso', 'bacino', 'cosce']).yb : 9, tc = frame(B).tubes[0];
+      const underCoat = w0 => { if (!coat) return false; for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j], r = pg.VR[w0 + j]; if (!L || r < 3 || L.p[1] < coatHem + .04 || L.p[1] > B.crotch + .02) return false; const ax = tc.S[0], ang = Math.atan2(L.p[0] - ax.x, L.p[2] - ax.z); if (Math.abs(ang) < .5) return false; } return true; };
+      pg.groups.forEach(gr => { const st = idx.length; for (let w0 = gr.start; w0 < gr.start + gr.count; w0 += 3) if (keepT(w0, gr.materialIndex) && !(gr.materialIndex >= 4 && (underF(w0) || underCoat(w0)))) idx.push(w0, w0 + 1, w0 + 2); if (idx.length > st) grp.push([st, idx.length - st, gr.materialIndex]); });
       const pgeo = new THREE.BufferGeometry(); for (const k in pg.geo.attributes) pgeo.setAttribute(k, pg.geo.attributes[k]); pgeo.setIndex(idx);
       // lo spessore del capo che si vede: la superficie si stacca dal corpo di quanto è spesso (per persona)
       { const pos0 = pg.geo.attributes.position, pos = new THREE.BufferAttribute(new Float32Array(pos0.array), 3), v3 = new THREE.Vector3(), memo = new Map();
@@ -521,9 +535,9 @@ var Pittura = (function () {
   }
   // un punto sulla superficie stirata (quella che si vede) della regione r, staccato di off
   function surfI(B, r, s, a, off) {
-    const F = frame(B), tb = F.tubes[r], fr = S().frameAt(tb, s), raw = S().surf(tb, s, a, 0).sub(fr.p).length(), rr = ironRadius(ironed(tb), tb, s, a);
+    const F = frame(B), tb = F.tubes[r], fr = S().frameAt(tb, s), raw = S().surf(tb, s, a, 0).sub(fr.p).length(), rr = shape(B, tb, s, a, ironRadius(ironed(tb), tb, s, a));
     let k = 1; if (r > 0) k = cl((tb.L - s) / .06, 0, 1) * cl(s / .05, 0, 1);
-    const R0 = raw + cl(rr - raw, -.06, .03) * k + off;
+    const R0 = raw + cl(rr - raw, -.06, .045) * k + off;
     return fr.p.clone().addScaledVector(fr.f, Math.cos(a) * R0).addScaledVector(fr.sd, Math.sin(a) * R0);
   }
   // il bordino in rilievo di un orlo: anello a n facce attorno alla regione r, all'altezza s (metri sul tubo), alto h, spesso th
