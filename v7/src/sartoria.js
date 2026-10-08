@@ -668,7 +668,7 @@ var Sartoria = (function () {
       if (C.corto) bot = B.waist - .02;
       if (P.has('bacino') && !C.gonna) bot = Math.max(b.Hips.y - (C.cl >= 4 ? .16 : .1), B.crotch + .03);   /* giacche corte: sopra l'inforcatura */
       if (C.gonna || C.poncho) { const len = C.len || (P.has('polpacci') ? 'polpaccio' : P.has('cosce') ? 'ginocchio' : 'coscia');
-        bot = { mini: B.crotch - .08, coscia: B.crotch - .17, ginocchio: b.LowerLegL.y - .075, polpaccio: (b.LowerLegL.y + B.ankle.L.y) / 2 - .02, caviglia: B.ankle.L.y + .07 }[len] || b.LowerLegL.y; }
+        bot = { giacchetta: Math.min(b.Hips.y - .15, B.crotch - .01), mini: B.crotch - .08, coscia: B.crotch - .17, ginocchio: b.LowerLegL.y - .075, polpaccio: (b.LowerLegL.y + B.ankle.L.y) / 2 - .02, caviglia: B.ankle.L.y + .07 }[len] || b.LowerLegL.y; }
       if (C.poncho) bot = b.Hips.y - .14;
       let top = neckY(B); if (C.solo_gonna) top = C.faldaTop || B.waist + .015;   // sotto una maglia lasciata fuori la gonna parte dall'orlo della maglia
       if (C.infilata && !C.gonna) bot = B.waist - .005;   // infilata nei pantaloni: non scende oltre la cintura
@@ -715,14 +715,14 @@ var Sartoria = (function () {
         for (let it = 0; it < 3; it++) for (let i = 1; i < n; i++) for (let k = 0; k < 3; k++) ext[i][k] = Math.max(ext[i][k], (ext[i - 1][k] + ext[i + 1][k]) / 2);
         // linee dritte: dal bacino all'orlo la misura va in linea retta (niente onde dalle gambe), con agio al fondo per il passo
         if (!C.poncho) { let lo = 0; for (let i = 0; i <= hipI; i++) if (ext[i][0] > 0) { lo = i; break; } const A0 = ext[lo], A1 = ext[Math.min(n, hipI)];
-          const coatF = C.cl >= 5, ease = coatF ? [.045, .11, .07] : [.045, .085, .065];   // il cappotto si apre (passo lungo), la gonna scende quasi dritta
+          const coatF = C.cl >= 5, ease = C.giacchetta ? [.004, .008, .006] : coatF ? [.045, .11, .07] : [.045, .085, .065];   // il cappotto si apre (passo lungo), la gonna scende quasi dritta
           for (let i = lo; i < hipI; i++) { const t = (i - lo) / Math.max(1, hipI - lo); for (let k = 0; k < 3; k++) ext[i][k] = Math.max(lerp(A0[k] + ease[k], A1[k], t), coatF ? lerp(ext[i][k], A1[k], .5) : A1[k] * .96); } }
         const M = t0.R.map((r, i) => { const [W, Df, Db] = ext[i], o = new Float32Array(RG); for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a), D = ca >= 0 ? Df : Db, e = C.cl >= 5 ? 3 : 2.8;
           o[q] = 1 / Math.pow(Math.pow(Math.abs(ca) / Math.max(D, .02), e) + Math.pow(Math.abs(sa) / Math.max(W, .02), e), 1 / e); } return o; });
         tb = Object.assign({}, t0, { R: M });
       } TR = tb; const Ls = lengths(B, tb, trunkKind, C, parti); Lt = Ls;
       const W = trunkKind === 'gonna' ? (C.poncho ? capeW(B) : C.blocchi ? faldaW(B, tb) : weightsFor(B, trunkKind)) : gridW(tb), hipY = B.bones.Hips.y;
-      const coat = C.blocchi && C.cl >= 5, cols = C.blocchi ? (C.poncho ? 20 : 40) : 24, front = C.davanti, aRange = front ? [-1.75, 1.75] : coat ? [.16, Math.PI * 2 - .16] : [-Math.PI, Math.PI];   // il cappotto: aperto davanti, due lembi   // il cappotto: aperto davanti, un lembo sopra l'altro
+      const coat = C.blocchi && (C.cl >= 5 || C.giacchetta && /bottoni|doppio|zip/.test(C.fronte || '')), cols = C.blocchi ? (C.poncho ? 20 : 40) : 24, front = C.davanti, aRange = front ? [-1.75, 1.75] : coat ? [.16, Math.PI * 2 - .16] : [-Math.PI, Math.PI];   // il cappotto: aperto davanti, due lembi   // il cappotto: aperto davanti, un lembo sopra l'altro
       // scollo: la cima di ogni colonna (in s) secondo il collo
       const neckTop = a => {
         const fa = Math.cos(a), c = C.collo; let drop = 0;
@@ -746,8 +746,8 @@ var Sartoria = (function () {
         const fr = frameAt(tb, s), y = fr.p.y; let o = offY(y);
         if (C.gonna && y < hipY) o += (hipY - y) * (C.svasa || .1) * (C.blocchi ? .2 : 1);   // la gonna scende quasi dritta (appena aperta per il passo)
         if (coat) { const fe = Math.min(a, Math.PI * 2 - a); if (fe < .5) o += (.5 - fe) * .03 * cl((B.waist - y) / .4, 0, 1); }   // i lembi davanti si staccano verso il basso
-        if (C.blocchi) { o += cl((B.waist - y) / .12, 0, 1) * (coat ? .02 : .003); o *= .35 + .65 * cl((Ls.yt - y) / .08, 0, 1); }   // staccata dalle gambe, raccordata al busto in alto
-        if (C.blocchi && !C.poncho && y < hipY) { const dn = cl((hipY - y) / .45, 0, 1), nf = coat ? 6 : 9, ph = coat ? 1.3 : .4;   // pieghe morbide che si aprono verso l'orlo (stoffa che pende)
+        if (C.blocchi) { o += cl((B.waist - y) / .12, 0, 1) * (coat ? .02 : C.giacchetta ? .001 : .003); o *= .35 + .65 * cl((Ls.yt - y) / .08, 0, 1); }   // staccata dalle gambe, raccordata al busto in alto
+        if (C.blocchi && !C.poncho && !C.giacchetta && y < hipY) { const dn = cl((hipY - y) / .45, 0, 1), nf = coat ? 6 : 9, ph = coat ? 1.3 : .4;   // pieghe morbide che si aprono verso l'orlo (stoffa che pende)
           o += (.5 + .5 * Math.cos(a * nf + ph)) * (coat ? .016 : .02) * dn * dn; }
         if (C.pieghe && !C.blocchi && y < hipY) o += (.5 + .5 * Math.cos(a * 14)) * .006 * cl((hipY - y) / .25, 0, 1);
         if (C.poncho) o += cl((B.neck - y) / .3, 0, 1) * (C.blocchi ? .04 : .1) * (.6 + .4 * Math.abs(Math.sin(a)));   // il poncho scende largo sulle braccia
@@ -1145,9 +1145,11 @@ var Sartoria = (function () {
       if (hiddenUnder(c, k)) { (c.parti || []).forEach(p => { th[p] = Math.max(th[p] || 0, .002); }); return; }
       const base = CUT[c.id] || { cl: 1, fab: c.pat === 'righe' ? 'righe' : c.pat === 'fiori' ? 'fiori' : 'cotone' };
       const vars = VARIANTI[c.id]; let vi = 0; if (vars && seedStr !== undefined && seedStr !== 'player') vi = (seed >>> (k * 3)) % vars.length; if (c.var && typeof c.var === 'object' && vars) { const j = vars.indexOf(c.var); if (j >= 0) vi = j; }
-      if (opt.soloFalde && !(base.gonna || base.poncho)) return;   // dipinto sul corpo (Pittura): qui solo le falde che sporgono
+      const giacchetta = opt.soloFalde && !base.gonna && !base.poncho && (base.cl || 0) >= 3 && !base.corto && !base.davanti && (c.parti || []).includes('bacino');   // giacche e giacconi: la falda corta passa sopra il taglio busto/gambe
+      if (opt.soloFalde && !(base.gonna || base.poncho || giacchetta)) return;   // dipinto sul corpo (Pittura): qui solo le falde che sporgono
       const C = Object.assign({ id: c.id }, base, vars ? vars[vi] : {}, { faldaTop: c.faldaTop, var: vi, seed: c.stampa !== undefined ? c.stampa : (seed >>> 5) });
-      if (opt.soloFalde) { if (!C.poncho) C.solo_gonna = 1; C.davanti = C.davanti || 0; C.blocchi = 1; }   // il poncho resta intero: mantella dal collo
+      if (opt.soloFalde) { if (!C.poncho) C.solo_gonna = 1; C.davanti = C.davanti || 0; C.blocchi = 1; }
+      if (giacchetta) { C.gonna = 1; C.solo_gonna = 1; C.len = 'giacchetta'; C.svasa = 0; C.faldaTop = window.Pittura ? Pittura.cutY(B) + .012 : B.bones.Hips.y; C.giacchetta = 1; }   // il poncho resta intero: mantella dal collo
       if (C.cl <= 1 && !C.gonna && !C.intera && ranked.some(o => o.c !== c && CUT[o.c.id] && CUT[o.c.id].cl === 2)) C.infilata = 1;   // camicie e magliette dentro i pantaloni
       // la vita coperta da un capo sopra (maglione, giacca chiusa, cappotto): niente cintura che sbuca
       if (C.cl === 2 && ranked.slice(k + 1).some(o => (CUT[o.c.id] || {}).gonna)) C.stretti = 1;   // sotto un cappotto lungo i pantaloni stanno dritti e stretti (non bucano la falda)

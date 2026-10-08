@@ -68,6 +68,12 @@ var Pittura = (function () {
         const rb = 1 / Math.pow(Math.pow(ca / Math.max(D, .01), e) + Math.pow(sa / Math.max(W, .01), e), 1 / e); o[q] = lerp(r[q], Math.min(rb, r[q] + .03), kb); } return o; });
     IRON.set(tb, R); return R;
   }
+  // l'altezza del taglio busto/gambe del modello (il punto più alto del confine, sui fianchi): sotto di lì la stoffa dipinta si spezzerebbe
+  function cutY(B) {
+    if (B.cutY) return B.cutY; const ax = frame(B).tubes[0].S[0], mins = new Array(24).fill(9);
+    for (let i = 0; i < B.part.length; i++) { if (regionOf(B, i) !== 0) continue; const y = B.P[i * 3 + 1]; if (y > B.waist) continue; const a = Math.atan2(B.P[i * 3] - ax.x, B.P[i * 3 + 2] - ax.z), k = Math.floor((a + Math.PI) / (Math.PI * 2) * 24) % 24; mins[k] = Math.min(mins[k], y); }
+    B.cutY = Math.min(B.waist - .02, Math.max(...mins.filter(v => v < 9)) + .01); return B.cutY;
+  }
   // gli uomini: busto più largo (spalle e torace), le anche lisce e dritte
   const MASCHI = /^(Casual_2|Casual_Hoodie|Worker)$/;
   function shape(B, tb, s, a, r) {
@@ -185,6 +191,7 @@ var Pittura = (function () {
     if (top) {
       const Ls = Sa.lengths(B, T, 'tronco', C, [...P]);
       let yb = Ls.yb; if (C.gonna || C.poncho) yb = B.waist - .02;   // la falda la fa la geometria
+      if (!C.gonna && !C.poncho) yb = Math.max(yb, cutY(B));   // l'orlo dritto sopra il taglio (le giacche continuano con la falda in rilievo)
       if (C.cl <= 1 && all.slice(all.indexOf(c) + 1).some(o => (CUT[o.id] || {}).cl === 2 && (o.parti || []).includes('bacino'))) { yb = B.waist - .02; C.infilata = 1; }   // infilata solo se i pantaloni stanno sopra   // infilata nei pantaloni
       L.T = { s0: T.sAtY(yb), s1: Ls.s1, yb, yt: Ls.yt };
     }
@@ -195,7 +202,7 @@ var Pittura = (function () {
       if (C.pettorina) { /* la salopette: pettorina dipinta sul busto */ L.T = Object.assign(L.T || {}, { bib: 1 }); }
       // giacche e cappotti che scendono sotto l'inforcatura, gonne e falde: continuano dipinti sulle cosce
       // (sotto le falde la gamba ha la stessa stoffa: se passa attraverso, non si vede)
-      const openCoat = C.cl >= 5 && C.gonna && !C.solo_gonna && !C.poncho; const hem = openCoat ? null : C.gonna || C.solo_gonna || C.poncho ? (Sa.lengths(B, T, 'gonna', C, [...P]).yb) : (L.T && L.T.yb !== undefined && L.T.s0 !== undefined && L.T.yb < B.waist + .02 ? L.T.yb : null);   // ogni capo che scende sotto la vita continua sulle cosce fino al suo orlo
+      const openCoat = C.cl >= 5 && C.gonna && !C.solo_gonna && !C.poncho; const hem = openCoat ? null : C.gonna || C.solo_gonna || C.poncho ? (Sa.lengths(B, T, 'gonna', C, [...P]).yb) : null;   // niente più continuazione dipinta sulle cosce: sotto il taglio va la falda   // ogni capo che scende sotto la vita continua sulle cosce fino al suo orlo
       if (hem !== null && hem !== undefined && !L['L' + sd]) L['L' + sd] = { falda: hem, s1: 9, kn: 0, sCr: 0 };
     }
     C.L = L; return C;
@@ -274,7 +281,7 @@ var Pittura = (function () {
           // gli stivali: il gambale dipinto sul polpaccio, sopra i pantaloni, con l'orlo dritto
           // i calzini messi sopra i pantaloni: la gamba dei pantaloni infilata nel calzino
           if (R[0] === 'L' && socksOver && y < .27) { const e = .27 - y, rib = .5 + .5 * Math.sin(xm / .005 * Math.PI); c = mul(sockCol, .9 + rib * .15); h = rib; shade = e < .006 ? .6 : 1; top = -1; }
-          if (R[0] === 'L' && boots && y < boots.top && (LO.bootsOver || top < 0)) { const e = boots.top - y, f0 = boots.col; c = mul(f0, .95 + .1 * (hsh(Math.floor(xm / .03), Math.floor(y / .03)) > .6 ? 1 : 0)); h = .6; shade = e < .008 ? .55 : e < .03 && boots.risv ? 1.08 : 1; top = -1; if (y < .05) shade *= .5; }
+          if (R[0] === 'L' && boots && y < boots.top && top < 0) { const e = boots.top - y, f0 = boots.col; c = mul(f0, .95 + .1 * (hsh(Math.floor(xm / .03), Math.floor(y / .03)) > .6 ? 1 : 0)); h = .6; shade = e < .008 ? .55 : e < .03 && boots.risv ? 1.08 : 1; top = -1; if (y < .05) shade *= .5; }
           // ---- il volume dipinto, come nella pixel art: luce di forma, pieghe, toni a gradini, contorni ----
           if (top >= 0) {
             const C = plans[top], fa = Math.cos(a - .45);   // luce da davanti-sinistra
@@ -586,5 +593,5 @@ var Pittura = (function () {
     const ranked = rankOutfit(list, CUT);
     return ranked.map((c, k) => plan(B, c, k, ranked));
   }
-  return { plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
+  return { cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
 })();

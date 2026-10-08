@@ -319,7 +319,7 @@ var Vesti3D = (function () {
     scarpe: { h: .085, sole: .016, toe: .032, lacci: 1 }, scarpe_eleganti: { h: .07, sole: .01, toe: .026, punta: 1 }, mocassini: { h: .065, sole: .01, toe: .028, mocassino: 1 },
     scarpe_tela: { h: .075, sole: .014, toe: .03, suola: '#f0ece4', lacci: 1 }, scarpe_corsa: { h: .08, sole: .018, toe: .032, suola: '#f4f2ee', striscia: 1, lacci: 1 },
     tacchi: { h: .045, sole: .008, toe: .022, tacco: .055, punta: 1 }, sandali: { h: 0, sole: .014, sandalo: 1 }, ciabatte: { h: 0, sole: .016, ciabatta: 1 },
-    stivali: { h: .09, sole: .018, toe: .034 }, stivali_pelle: { h: .09, sole: .012, toe: .03, punta: 1 }, stivali_cowboy: { h: .09, sole: .012, toe: .03, tacco: .025, punta: 1 } };
+    stivali: { h: .12, sole: .018, toe: .036 }, stivali_pelle: { h: .12, sole: .012, toe: .03, punta: 1 }, stivali_cowboy: { h: .12, sole: .012, toe: .03, tacco: .025, punta: 1 } };
   function footBox(B, sd) {
     const sg = sd === 'L' ? 1 : -1, P = []; for (let i = 0; i < B.part.length; i++) if (B.part[i] === 'piedi' && B.side[i] === sg) P.push([B.P[i * 3], B.P[i * 3 + 1], B.P[i * 3 + 2]]);
     if (!P.length) return null; const q = (k, f) => { const a = P.map(p => p[k]).sort((x, y) => x - y); return a[Math.floor(f * (a.length - 1))]; };
@@ -342,23 +342,54 @@ var Vesti3D = (function () {
     g.computeVertexNormals(); return g;
   }
   const cl0 = x => x < 0 ? 0 : x > 1 ? 1 : x;
+  // la forma del piede vista dall'alto: mezza larghezza (in frazione di W/2) lungo la lunghezza, u = 0 tallone … 1 punta
+  const pianta = (u, punta) => { const heel = .72 + .28 * Math.sqrt(cl0(u / .25)), ball = 1 - .1 * Math.pow(cl0((u - .62) / .38), 2) - (punta ? .25 : .08) * Math.pow(cl0((u - .8) / .2), 2); return Math.max(.05, Math.min(heel, ball)); };
+  // la suola: contorno arrotondato del piede, estruso verso l'alto
+  function suolaGeo(L, W, h, punta) {
+    const sh = new THREE.Shape(), n = 28, P = [];
+    for (let i = 0; i <= n; i++) { const t = i / n, u = .5 - .5 * Math.cos(t * Math.PI), z = -L / 2 + u * L, r = W / 2 * pianta(u, punta) * (u > .93 ? Math.sqrt(cl0((1 - u) / .07)) : 1) * (u < .04 ? Math.sqrt(cl0(u / .04)) * .4 + .6 : 1); P.push([r, z]); }
+    sh.moveTo(P[0][0], P[0][1]); P.forEach(p => sh.lineTo(p[0], p[1])); for (let i = P.length - 1; i >= 0; i--) sh.lineTo(-P[i][0], P[i][1]);
+    const g = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: true, bevelThickness: h * .25, bevelSize: .003, bevelSegments: 2, curveSegments: 6 });
+    g.rotateX(Math.PI / 2); g.translate(0, h, 0); g.computeVertexNormals(); return g;
+  }
+  // la tomaia: mezza sfera deformata sul piede (bombata sulla punta, alta al tallone, collo del piede che sale)
+  function tomaiaGeo(L, W, H, T, punta) {
+    const g = new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), u = (z + 1) / 2, w = W / 2 * pianta(u, punta), h = lerp0(H, T, Math.pow(cl0((u - .25) / .75), .8));
+      p.setXYZ(i, x * w, y * h, z * L / 2); }
+    g.computeVertexNormals(); return g;
+  }
   function scarpe(g, outfit, B, AT) {
     const c = outfit.find(o => SH_STYLE[o.id]); if (!c) return null; const st = SH_STYLE[c.id];
-    const up = Pittura.blockMat('pelle', c.col, c.col, c.col, { vc: false }), soleM = lm(st.suola || sh(c.col, .35)), dark = lm(sh(c.col, .55));
+    const up = Pittura.blockMat(c.id === 'stivali' ? 'gomma' : 'pelle', c.col, c.col, c.col, { vc: false, liscio: 1 }), soleM = lm(st.suola || sh(c.col, .3)), dark = lm(sh(c.col, .5));
     for (const sd of ['L', 'R']) {
-      const F = footBox(B, sd); if (!F) continue; const o = new THREE.Group(), inner = new THREE.Group();
-      const so = st.sole;
-      // la suola (sempre), un po' più larga della tomaia
-      const sole = new THREE.Mesh(shoeGeo({ h: so, toe: so, punta: st.punta }, F.L + .006, F.w + .006), soleM); inner.add(sole);   // suola sottile, appena più larga
-      if (!st.sandalo && !st.ciabatta) { const top = new THREE.Mesh(shoeGeo(st, F.L, F.w), up); top.position.y = so * .6; inner.add(top); }
-      if (st.ciabatta) { const band = new THREE.Mesh(new THREE.BoxGeometry(F.w + .006, .03, .07), up); band.position.set(0, so + .015, F.L * .18); inner.add(band); }
-      if (st.sandalo) for (const zz of [.2, -.05, -.32]) { const b = new THREE.Mesh(new THREE.BoxGeometry(F.w + .006, .012, .014), up); b.position.set(0, so + .02 + (zz < -.2 ? .03 : 0), F.L * zz); inner.add(b); }
-      if (st.lacci) { const lc = new THREE.Mesh(new THREE.BoxGeometry(F.w * .32, .006, F.L * .3), lm(st.suola ? '#f4f0e8' : sh(c.col, .4))); lc.position.set(0, so * .6 + st.h * .82, -F.L * .05); lc.rotation.x = -.35; inner.add(lc); }
-      if (st.striscia) for (const sx of [-1, 1]) { const s0 = new THREE.Mesh(new THREE.BoxGeometry(.004, .02, F.L * .35), lm('#c83a3a')); s0.position.set(sx * (F.w / 2 * .9 + .002), so + .022, -F.L * .05); s0.rotation.x = .5; inner.add(s0); }
-      if (st.mocassino) { const ap = new THREE.Mesh(new THREE.BoxGeometry(F.w * .6, .004, F.L * .28), dark); ap.position.set(0, so * .6 + st.toe + .006, F.L * .16); ap.rotation.x = -.18; inner.add(ap); }
-      if (st.tacco) { const hl = new THREE.Mesh(new THREE.BoxGeometry(.026, .02, .03), soleM); hl.position.set(0, .01, -F.L * .4); inner.add(hl); }
-      inner.rotation.y = F.yaw; o.add(inner); o.position.set(F.cx, 0, F.cz);   // la scarpa resta a terra col piede (il tacco è un blocchetto sotto il tallone)
+      const F = footBox(B, sd); if (!F) continue; const o = new THREE.Group(), inner = new THREE.Group(), so = st.sole, L = F.L, W = F.w;
+      inner.add(new THREE.Mesh(suolaGeo(L + .008, W + .008, so, st.punta), soleM));
+      if (!st.sandalo && !st.ciabatta) { const top = new THREE.Mesh(tomaiaGeo(L, W, st.h, st.toe, st.punta), up); top.position.y = so * .9; inner.add(top);
+        const coll = new THREE.Mesh(new THREE.TorusGeometry(W * .3, .006, 5, 14), dark); coll.rotation.x = Math.PI / 2 - .25; coll.scale.set(1, 1.35, 1); coll.position.set(0, so + st.h * .93, -L * .18); inner.add(coll); }   // il bordo del collo
+      if (st.ciabatta) { const band = new THREE.Mesh(tomaiaGeo(L * .45, W, .035, .03, 0), up); band.position.set(0, so, L * .2); inner.add(band); }
+      if (st.sandalo) for (const zz of [.22, -.02]) { const b = new THREE.Mesh(new THREE.TorusGeometry(W * .5, .006, 4, 14, Math.PI), up); b.position.set(0, so, L * zz); inner.add(b); }
+      if (st.lacci) for (let k = 0; k < 4; k++) { const u = .42 + k * .07, z = -L / 2 + u * L, y = so * .9 + lerp0(st.h, st.toe, Math.pow(cl0((u - .25) / .75), .8)) * .98; const lc = new THREE.Mesh(new THREE.BoxGeometry(W * .34, .004, .006), lm(st.suola ? '#f4f0e8' : sh(c.col, .35))); lc.position.set(0, y, z); inner.add(lc); }
+      if (st.striscia) for (const sx of [-1, 1]) { const s0 = new THREE.Mesh(new THREE.BoxGeometry(.003, .012, L * .32), lm('#c83a3a')); s0.position.set(sx * W * .45, so + .022, 0); s0.rotation.x = .45; inner.add(s0); }
+      if (st.mocassino) { const ap = new THREE.Mesh(new THREE.TorusGeometry(W * .26, .003, 4, 14), dark); ap.rotation.x = Math.PI / 2; ap.scale.set(1, 1.5, 1); ap.position.set(0, so + st.toe + .004, L * .22); inner.add(ap); }
+      if (st.tacco) { const hl = new THREE.Mesh(new THREE.CylinderGeometry(.014, .011, .02, 8), soleM); hl.position.set(0, .01, -L * .38); inner.add(hl); }
+      inner.rotation.y = F.yaw; o.add(inner); o.position.set(F.cx, 0, F.cz);
       AT('Foot' + sd, o);
+      // il gambale degli stivali: un tubo vero sul polpaccio (sopra i pantaloni infilati; con i pantaloni fuori, nascosto sotto l'orlo)
+      if (/^stivali/.test(c.id)) {
+        const LO = Pittura.legOrder(outfit), ri = sd === 'L' ? 3 : 4, tb = Pittura.frame(B).tubes[ri], top = c.id === 'stivali' ? .34 : .3;
+        const sAt = y => { let lo = 0, hi = tb.L; for (let k = 0; k < 20; k++) { const m = (lo + hi) / 2; if (Pittura.surfI(B, ri, m, 0, 0).y > y) lo = m; else hi = m; } return lo; };
+        const s1 = sAt(top), s0 = Math.min(tb.L - .02, sAt(.1)), tuck = LO.bootsOver && LO.pants, off = (tuck ? Pittura.spessore({ cl: 2 }) + .004 : 0) + .006;
+        const n = 14, rows = 6, P = [], I = [];
+        for (let i = 0; i <= rows; i++) { const sv = lerp0(s1, s0, i / rows), flare = i === 0 && c.id !== 'stivali' ? .006 : 0; for (let k = 0; k <= n; k++) { const p = Pittura.surfI(B, ri, sv, -Math.PI + k / n * Math.PI * 2, (off + flare + (tuck ? .004 * (1 - i / rows) : 0)) * (1 - .45 * Math.pow(i / rows, 2))); P.push(p.x, p.y, p.z); } }
+        for (let i = 0; i < rows; i++) for (let k = 0; k < n; k++) { const a = i * (n + 1) + k, b = a + 1, cc = a + n + 1, d = cc + 1; I.push(a, cc, b, b, cc, d); }
+        const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); gg.setIndex(I); gg.computeVertexNormals();
+        const uv = []; for (let i = 0; i < P.length; i += 3) uv.push((P[i] + P[i + 2]) * 4, P[i + 1] * 4); gg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        const leg = new THREE.Group(); leg.add(new THREE.Mesh(gg, up));
+        leg.add(Pittura.orlo(B, ri, s1 + .006, .014, off + .004, .008, n, c.id === 'stivali' ? dark : up));   // l'orlo del gambale
+        if (!tuck && LO.pants) leg.visible = false;   // sotto i pantaloni non si vede
+        AT('LowerLeg' + sd, leg);
+      }
     }
     return st;
   }
