@@ -612,14 +612,25 @@ var Sartoria = (function () {
     camice: { cl: 5, fab: 'cotone', collo: 'revers', fronte: 'bottoni', tasche: ['cappotto', 'petto'], gonna: 1, len: 'ginocchio', svasa: .06, agio: .006 },
     divisa_postino: { cl: 4, fab: 'panno', collo: 'camicia', fronte: 'bottoni_oro', tasche: ['petto2', 'divisa'], cintura: 'cuoio', spalline: 1, agio: .005 },
     giacca_galles: { cl: 4, fab: 'galles', c2: '#5a5a60', c3: '#8a3a3a', collo: 'revers', fronte: 'bottoni', tasche: ['giacca', 'pochette'], orlo: 'giacca', agio: .005 },
+    maglione_v: { cl: 3, fab: 'costine', collo: 'v', costine: 1, agio: .004 },
+    maglione_collo_alto: { cl: 3, fab: 'trecce', collo: 'alto', costine: 1, agio: .004 },
+    camicia_righe: { cl: 1, fab: 'righe_v', c2: D, collo: 'camicia', fronte: 'bottoni', tasche: ['petto'], polsi: 1 },
+    camicia_vichy: { cl: 1, fab: 'vichy', c2: D, collo: 'camicia', fronte: 'bottoni', tasche: ['petto'], polsi: 1 },
+    camicia_jeans: { cl: 1, fab: 'denim', cuciture: '#c8903a', collo: 'camicia', fronte: 'bottoni_rame', tasche: ['petto2'], polsi: 1 },
+    camicia_fiori: { cl: 1, fab: 'liberty', c2: '#c83a4a', c3: '#3a6a4a', collo: 'camicia', fronte: 'bottoni', polsi: 1 },
     giacca_pied: { cl: 4, fab: 'pied', c2: '#e8e0d0', collo: 'revers', fronte: 'bottoni', tasche: ['giacca'], orlo: 'giacca', agio: .005 },
   };
   // varianti per gli abitanti (lo stesso capo, tagli e motivi diversi): scelte dall'id della persona
   const VARIANTI = {
     maglietta: [{}, { fab: 'righe', c2: D }, { fab: 'righe', c2: '#2a2a30' }, { collo: 'v' }, { fab: 'pique', collo: 'polo', fronte: 'polo' }],
-    camicia: [{}, { fab: 'vichy', c2: D }, { fab: 'righe_v', c2: D, tile: .03 }, { fab: 'denim', cuciture: '#c8903a' }, { fab: 'pois', c2: D }],
+    camicia: [{}, {}, { fab: 'vichy', c2: D }, { fab: 'righe_v', c2: D }, { fab: 'righe_v', c2: '#2a4a8a' }, { fab: 'denim', cuciture: '#c8903a' }, { fab: 'pois', c2: D }, { fab: 'tartan', c2: '#1a1a1e', c3: '#d8c890' }, { fab: 'liberty', c2: '#c83a4a', c3: '#3a6a4a' }],
     camicia_quadri: [{}, { c2: '#1e2a1e', c3: '#c8a83a' }, { fab: 'vichy', c2: '#1a1a1e' }, { fab: 'madras', c2: '#2a3a6a', c3: '#e8c840' }],
-    maglione: [{}, { fab: 'costine' }, { fab: 'lana', c2: '#d8c8a0', c3: '#5a3a2a' }, { collo: 'v', fab: 'jersey' }, { fab: 'righe', c2: '#d8d0b8' }, { collo: 'alto' }],
+    maglione: [{}, { fab: 'costine' }, { fab: 'lana', c2: '#d8c8a0', c3: '#5a3a2a' }, { collo: 'v', fab: 'costine' }, { collo: 'v', fab: 'trecce' }, { fab: 'righe', c2: '#d8d0b8' }, { collo: 'alto' }, { collo: 'alto', fab: 'costine' }],
+    maglione_v: [{}, { fab: 'trecce' }, { fab: 'lana', c2: '#d8c8a0', c3: '#5a3a2a' }, { fab: 'righe', c2: '#d8d0b8' }],
+    maglione_collo_alto: [{}, { fab: 'costine' }, { fab: 'lana', c2: '#d8c8a0', c3: '#2a2a2a' }],
+    camicia_righe: [{}, { c2: '#2a4a8a' }, { c2: '#8a2a2a' }],
+    camicia_vichy: [{}, { c2: '#2a4a8a' }, { c2: '#3a6a3a' }],
+    camicia_fiori: [{}, { fab: 'fiori', c2: '#e8c840', c3: '#2a5a3a' }, { fab: 'paisley', c2: '#e8c070', c3: '#2a3a6a' }],
     felpa: [{}, { collo: 'alto_zip', fronte: 'zip', tasche: ['fianchi_zip'] }, { bande: D }],
     giacca: [{}, { fab: 'lana', c2: '#c8b070', c3: '#2a2a30' }, { fab: 'velluto' }, { fab: 'tartan', c2: '#2a2a30', c3: '#c8a050' }, { fronte: 'doppio' }],
     cappotto: [{}, { fab: 'spina' }, { fab: 'lana', c2: '#d8c8a0', c3: '#2a2a2a' }, { fronte: 'bottoni', len: 'polpaccio' }, { collo: 'montone' }],
@@ -1127,7 +1138,7 @@ var Sartoria = (function () {
     ranked.forEach(({ c }, k) => {
       if (hiddenUnder(c, k)) { (c.parti || []).forEach(p => { th[p] = Math.max(th[p] || 0, .002); }); return; }
       const base = CUT[c.id] || { cl: 1, fab: c.pat === 'righe' ? 'righe' : c.pat === 'fiori' ? 'fiori' : 'cotone' };
-      const vars = VARIANTI[c.id]; let vi = 0; if (vars && seedStr !== undefined && seedStr !== 'player') vi = (seed >>> (k * 3)) % vars.length;
+      const vars = VARIANTI[c.id]; let vi = 0; if (vars && seedStr !== undefined && seedStr !== 'player') vi = (seed >>> (k * 3)) % vars.length; if (c.var && typeof c.var === 'object' && vars) { const j = vars.indexOf(c.var); if (j >= 0) vi = j; }
       if (opt.soloFalde && !(base.gonna || base.poncho)) return;   // dipinto sul corpo (Pittura): qui solo le falde che sporgono
       const C = Object.assign({ id: c.id }, base, vars ? vars[vi] : {}, { var: vi, seed: c.stampa !== undefined ? c.stampa : (seed >>> 5) });
       if (opt.soloFalde) { C.solo_gonna = 1; C.davanti = C.davanti || 0; C.blocchi = 1; }

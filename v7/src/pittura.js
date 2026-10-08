@@ -54,6 +54,9 @@ var Pittura = (function () {
     if (tb.kind === 'tronco') { const yOf = i => tb.S[i].y, iAt = y => { let b = 0, bd = 9; for (let i = 0; i <= n; i++) { const d = Math.abs(yOf(i) - y); if (d < bd) { bd = d; b = i; } } return b; };
       const B0 = tb.Bref; if (B0) { const ih = iAt(B0.bones.Hips.y - .02), ic = iAt(B0.bones.Chest.y - .04); if (ic > ih + 2) { const Rh = R[ih], Rc = R[ic];
         for (let i = ih + 1; i < ic; i++) { const t = (i - ih) / (ic - ih); for (let q = 0; q < RG; q++) R[i][q] = Math.max(R[i][q], lerp(R[i][q], lerp(Rh[q], Rc[q], t), .75)); } } } }
+    // la stoffa cade dalla parte più sporgente (seno, pettorali, scapole) dritta fino alla vita: niente conche sotto
+    if (tb.kind === 'tronco' && tb.Bref) { const B0 = tb.Bref, yOf = i => tb.S[i].y; let iw = 0, ic = n; for (let i = 0; i <= n; i++) { if (yOf(i) < B0.waist) iw = i; if (yOf(i) < B0.bones.Chest.y + .06) ic = i; }
+      for (let q = 0; q < RG; q++) { let ia = iw; for (let i = iw; i <= ic; i++) if (R[i][q] > R[ia][q]) ia = i; for (let i = iw + 1; i < ia; i++) { const t = (i - iw) / (ia - iw); R[i][q] = Math.max(R[i][q], lerp(R[iw][q], R[ia][q], t)); } } }
     const kb = tb.kind === 'tronco' ? .3 : .15, e = 2.8;   // appena squadrata: piani, non scatole (solo sopra la vita)
     const yW = tb.Bref ? tb.Bref.waist : -9;
     R = R.map((r, i) => { if (tb.kind === 'tronco' && tb.S[i].y < yW + .04) return r; let W = 0, Df = 0, Db = 0; for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, x = Math.abs(Math.sin(a)) * r[q], z = Math.cos(a) * r[q]; W = Math.max(W, x); if (z > 0) Df = Math.max(Df, z); else Db = Math.max(Db, -z); }
@@ -68,7 +71,7 @@ var Pittura = (function () {
     const r = regionOf(B, g); out.set(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]); if (r < 0) return out;
     const F = frame(B), tb = F.tubes[r], q = axial(tb, out), fr = S().frameAt(tb, q.s), R = ironed(tb), rr = ironRadius(R, tb, q.s, q.a); q.r = q.r !== undefined ? q.r : out.clone().sub(fr.p).length(); q.i = q.s / tb.ds;
     // vicino a mani, piedi, collo (dove il corpo resta com'è) lo stiro sfuma
-    let k = 1; if (r > 0) k = cl((tb.L - q.i * tb.ds) / .06, 0, 1) * cl(q.i * tb.ds / .05, 0, 1); else { const ny = S().neckY(B); k = cl((ny - out.y) / .04, 0, 1); }
+    let k = 1; if (r > 0) k = cl((tb.L - q.i * tb.ds) / .06, 0, 1) * cl(q.i * tb.ds / .05, 0, 1); else { const ny = S().neckY(B); k = cl((ny - out.y) / .04, 0, 1) * cl((out.y - (B.crotch + .02)) / .07, 0, 1); }   // al cavallo, tra le gambe, il corpo resta com'è
     const d = cl(rr - q.r, -.06, .03) * k; if (Math.abs(d) < 1e-5 || q.r < 1e-4) return out;
     const dir = out.clone().sub(fr.p); dir.addScaledVector(fr.t, -dir.dot(fr.t)); dir.normalize(); return out.addScaledVector(dir, d);
   }
@@ -162,7 +165,7 @@ var Pittura = (function () {
   const D = '#ece8dc';
   // un capo dipinto: in quale regione e dove (s in metri lungo il tubo, angolo) copre, e come
   function plan(B, c, k, all) {
-    const Sa = S(), CUT = Sa.CUT_(), base = CUT[c.id] || { cl: 1, fab: 'cotone' }, C = Object.assign({ id: c.id }, base, c.var || {});
+    const Sa = S(), CUT = Sa.CUT_(), base = CUT[c.id] || { cl: 1, fab: 'cotone' }, C = Object.assign({ id: c.id }, base, (c.var && typeof c.var === 'object') ? c.var : {});
     const P = new Set(c.parti || []), F = frame(B), T = F.tubes[0], L = {};
     C.col = c.col; C.A = rgb(c.col || '#808080'); ['aperta', 'fab', 'c2', 'c3', 'usura', 'tasche', 'fronte', 'collo', 'polsi'].forEach(k => { if (c[k] !== undefined && k !== 'fab' || (k === 'fab' && c.fabV)) C[k] = k === 'fab' ? c.fabV : c[k]; });
     const l = C.A[0] * .3 + C.A[1] * .59 + C.A[2] * .11; C.B = rgb(C.c2 || (l > .5 ? '#2a2a30' : D)); C.C = rgb(C.c3 || (l > .5 ? '#5a5a60' : '#a8a090'));
@@ -170,7 +173,7 @@ var Pittura = (function () {
     if (top) {
       const Ls = Sa.lengths(B, T, 'tronco', C, [...P]);
       let yb = Ls.yb; if (C.gonna || C.poncho) yb = B.waist - .02;   // la falda la fa la geometria
-      if (C.cl <= 1 && all.some(o => (CUT[o.id] || {}).cl === 2 && (o.parti || []).includes('bacino'))) { yb = B.waist - .02; C.infilata = 1; }   // infilata nei pantaloni
+      if (C.cl <= 1 && all.slice(all.indexOf(c) + 1).some(o => (CUT[o.id] || {}).cl === 2 && (o.parti || []).includes('bacino'))) { yb = B.waist - .02; C.infilata = 1; }   // infilata solo se i pantaloni stanno sopra   // infilata nei pantaloni
       L.T = { s0: T.sAtY(yb), s1: Ls.s1, yb, yt: Ls.yt };
     }
     if (trous || C.solo_gonna) L.T = Object.assign(L.T || {}, { p0: T.sAtY(B.crotch - .12), p1: T.sAtY(B.waist + .03) });
@@ -206,6 +209,8 @@ var Pittura = (function () {
     const md = (v, m) => ((v % m) + m) % m;
     if (f === 'righe') c = md(ym, .06) < .02 ? A : B;   // marinara: righe orizzontali
     else if (f === 'righe_v') c = md(xm, .08) < .04 ? A : B;
+    else if (f === 'regimental') { const d = md(xm + ym, .06); c = d < .016 ? B : d > .022 && d < .027 ? Cc : A; }   // righe diagonali della cravatta
+    else if (f === 'raso') c = A;
     else if (f === 'gessato') { if (md(xm, .07) < .006) c = mixc(A, B, .28); }
     else if (f === 'tartan' || f === 'madras' || f === 'galles') { const bx = md(xm, .14) < .045, by = md(ym, .14) < .045, tx = md(xm, .14) > .09 && md(xm, .14) < .1, ty = md(ym, .14) > .09 && md(ym, .14) < .1; c = bx && by ? mul(B, .85) : bx || by ? mixc(A, B, .6) : A; if (tx || ty) c = mixc(c, Cc, .8); }
     else if (f === 'vichy' || f === 'pied') { const bx = md(xm, .05) < .025, by = md(ym, .05) < .025; c = bx && by ? B : bx || by ? mixc(A, B, .5) : A; }
@@ -223,7 +228,7 @@ var Pittura = (function () {
     const F = frame(B), SK = rgb(skin || '#dcae88'), Sa = S(), CUT = Sa.CUT_();
     const list = outfit.filter(c => c.parti && c.parti.some(p => /torso|braccia|avambracci|bacino|cosce|polpacci|collo/.test(p)));
     // ordine degli strati (come la Sartoria): classe, poi l'ordine scelto
-    const ranked = list.map((c, i) => ({ c, r: ((CUT[c.id] || {}).cl || 1) * 10 + i * .01 })).sort((a, b) => a.r - b.r).map(o => o.c);
+    const ranked = rankOutfit(list, CUT);
     const plans = ranked.map((c, k) => plan(B, c, k, ranked));
     const nY = Sa.neckY(B), out = {};
     const shoe = outfit.find(c => /^(scarpe|scarpe_eleganti|scarpe_tela|scarpe_corsa|mocassini)/.test(c.id)), sock = outfit.find(c => c.id === 'calzini' || c.id === 'calze_nylon' || c.id === 'calzamaglia');
@@ -232,9 +237,10 @@ var Pittura = (function () {
     REG.forEach((R, ri) => {
       const [W, H] = SIZE[R], tb = F.tubes[ri], [s0, s1] = F.range[ri], circ = F.circ[ri], col = new Uint8ClampedArray(W * H * 4), hh = new Uint8ClampedArray(W * H * 4);
       for (let py = 0; py < H; py++) {
-        const sv = lerp(s0, s1, (py + .5) / H), fr = S().frameAt(tb, sv), y = fr.p.y;
+        const sv = lerp(s0, s1, (py + .5) / H), fr = S().frameAt(tb, sv), y0 = fr.p.y;
         for (let px = 0; px < W; px++) {
           const u = (px + .5) / W, a = u * Math.PI * 2 - Math.PI, xm = u * circ, i = (py * W + px) * 4;
+          const y = R[0] === 'L' ? surfY(tb, sv, a) : y0;   // sulle gambe l'altezza vera del punto (l'asse è inclinato): orli dritti tra busto e gambe
           let c = SK, h = .5, shade = 1;
           // ombre del corpo: ascelle, inforcatura, interno coscia
           let top = -1;
@@ -465,7 +471,7 @@ var Pittura = (function () {
         if (reg === 0 && pg.kitCloth) { const y = (gpos.getY(w0) + gpos.getY(w0 + 1) + gpos.getY(w0 + 2)) / 3; const yy = new THREE.Vector3(gpos.getX(w0), y, gpos.getZ(w0)).applyMatrix4(B.rel).y; if (yy > .3) return false; }   // vestiti del kit fuori dalle regioni (non i piedi)
         return true; };
       // sotto le falde (gonne, cappotti, poncho) la gamba non si vede: si toglie, così non può bucare la stoffa
-      const underF = w0 => { for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j], r = pg.VR[w0 + j]; if (!L || r < 3) return false; const C = topAt(B, plans, r, L.a, L.s, L.p[1], nY), Ls = C && C.L[REG[r]]; if (!Ls || Ls.falda === undefined || L.p[1] < Ls.falda + .015 || L.p[1] > B.waist) return false; } return true; };
+      const underF = w0 => { for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j], r = pg.VR[w0 + j]; if (!L || r < 3) return false; const C = topAt(B, plans, r, L.a, L.s, L.p[1], nY), Ls = C && C.L[REG[r]]; if (!C || !(C.gonna || C.solo_gonna || C.poncho) || !Ls || Ls.falda === undefined || L.p[1] < Ls.falda + .015 || L.p[1] > B.waist) return false; } return true; };
       pg.groups.forEach(gr => { const st = idx.length; for (let w0 = gr.start; w0 < gr.start + gr.count; w0 += 3) if (keepT(w0, gr.materialIndex) && !(gr.materialIndex >= 4 && underF(w0))) idx.push(w0, w0 + 1, w0 + 2); if (idx.length > st) grp.push([st, idx.length - st, gr.materialIndex]); });
       const pgeo = new THREE.BufferGeometry(); for (const k in pg.geo.attributes) pgeo.setAttribute(k, pg.geo.attributes[k]); pgeo.setIndex(idx);
       // lo spessore del capo che si vede: la superficie si stacca dal corpo di quanto è spesso (per persona)
@@ -535,9 +541,16 @@ var Pittura = (function () {
     }
     // (l'orlo del busto è dipinto, anche sulle cosce: niente anello in rilievo, che non può seguire le gambe divise)
   }
+  // l'ordine degli strati: di norma per tipo (intimo, maglie, pantaloni, giacche, cappotti), ma nella stessa zona del guardaroba
+  // vale l'ordine in cui li hai indossati: le mutande sopra i pantaloni stanno sopra, il gilet sotto la camicia sta sotto
+  function rankOutfit(list, CUT) {
+    const last = {}; return list.map((c, i) => { const z = c.zona || 'x'; let r = ((CUT[c.id] || {}).cl || 1) * 10 + i * .01; if (last[z] !== undefined && r <= last[z]) r = last[z] + .01; last[z] = r; return { c, r }; })
+      .sort((a, b) => a.r - b.r).map(o => o.c);
+  }
+  const surfY = (tb, sv, a) => S().surf(tb, sv, a, 0).y;
   function paintPlans(B, outfit) {
     const CUT = S().CUT_(), list = outfit.filter(c => c.parti && c.parti.some(p => /torso|braccia|avambracci|bacino|cosce|polpacci|collo/.test(p)));
-    const ranked = list.map((c, i) => ({ c, r: ((CUT[c.id] || {}).cl || 1) * 10 + i * .01 })).sort((a, b) => a.r - b.r).map(o => o.c);
+    const ranked = rankOutfit(list, CUT);
     return ranked.map((c, k) => plan(B, c, k, ranked));
   }
   return { spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };

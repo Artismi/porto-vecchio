@@ -390,14 +390,28 @@ var Vesti3D = (function () {
         o.add(end(new THREE.Vector3(nb.x + .015, y0 - .01, nb.z + R * .9), P2.p.clone().add(new THREE.Vector3(-.02, 0, .01))));
         for (let i = 0; i < 6; i++) o.add(Bx(.003, .03, .003, c.col, P2.p.x - .03 + i * .01, P2.p.y - .025, P2.p.z * .5 + .012));
         AT('Chest', o); return; }
-      if (c.acc === 'cravatta') {   // cravatta: nodo a trapezio, pala che si allarga, sotto il revers
-        const o = new THREE.Group(), mt = FM('raso', c.col), yN = B.neck - .015;
-        const kn = trunkAt(B, yN, 0, underJ + .004); const knot = new THREE.Mesh(new THREE.CylinderGeometry(.016, .01, .028, 4), mt); knot.rotation.y = Math.PI / 4; knot.scale.set(1, 1, .5); knot.position.copy(kn.p); o.add(knot);
-        const pts = []; for (let i = 0; i <= 8; i++) { const y = yN - .02 - i * .045; pts.push(trunkAt(B, y, 0, underJ + .002)); }
-        const P = [], I = []; pts.forEach((q, i) => { const w = .012 + i / 8 * .025; P.push(q.p.x - w, q.p.y, q.p.z, q.p.x + w, q.p.y, q.p.z); }); const tip = trunkAt(B, yN - .02 - 8 * .045 - .03, 0, underJ + .002); P.push(tip.p.x, tip.p.y, tip.p.z);
-        for (let i = 0; i < 8; i++) I.push(i * 2, i * 2 + 2, i * 2 + 1, i * 2 + 1, i * 2 + 2, i * 2 + 3); I.push(16, 18, 17);
-        const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(P.map((v, i) => v * 8).filter((v, i) => i % 3 !== 2), 2)); gg.setIndex(I); gg.computeVertexNormals();
-        o.add(new THREE.Mesh(gg, mt)); AT('Chest', o); return; }
+      if (c.acc === 'cravatta') {   // cravatta: nodo, pala che si allarga fino alla punta; sulla camicia, e si vede solo nello scollo di maglioni e giacche
+        const P0 = window.Pittura, CUT = Sartoria.CUT_(), nY = Sartoria.neckY(B), sp = C0 => P0 ? P0.spessore(C0) : .004;
+        const plans = outfit.filter(o => o.parti && o.parti.includes('torso')).map(o => Object.assign({ id: o.id }, CUT[o.id] || { cl: 1 }, (o.var && typeof o.var === 'object') ? o.var : {}));
+        const shirt = plans.filter(p => p.cl <= 1).pop(), outer = plans.filter(p => p.cl >= 3 && !p.solo_gonna && !p.davanti).pop();
+        const vDrop = outer ? ({ v: .11, revers: .2, revers_pelle: .2, camicia_aperta: .11 }[outer.collo] || 0) : .5;   // con un maglione girocollo o a collo alto la cravatta non si vede
+        if (vDrop > .03) {
+          const dis = c.dis || 'raso', C2 = { regimental: '#c8b070', pois: '#ece8dc', paisley: '#e8c070', liberty: '#e8d8b0', costine: c.col }[dis] || c.col, C3 = { paisley: '#2a3a6a', liberty: '#c83a4a', regimental: '#1a1a1e' }[dis] || C2;
+          const mt = P0 ? P0.blockMat(dis, c.col, C2, C3, { vc: false }) : FM('raso', c.col), off = (shirt ? sp(shirt) : 0) + .003, o = new THREE.Group(), tb = Pittura.frame(B).tubes[0];
+          const at = (y, a, d) => Pittura.surfI(B, 0, tb.sAtY(y), a, off + (d || 0));
+          const yK = nY - .018, yEnd = Math.max(B.waist - .03, nY - vDrop + .01), tip = yEnd > B.waist ? 0 : .03;
+          // il nodo: un trapezio rigonfio
+          const k = at(yK, 0, .006), knot = new THREE.Mesh(new THREE.CylinderGeometry(.017, .009, .03, 4, 1), mt); knot.rotation.y = Math.PI / 4; knot.scale.set(1, 1, .55); knot.position.copy(k); o.add(knot);
+          // la pala: nastro sulla superficie, da 1,4 a 3,8 cm, con la punta
+          const n = 10, V = [], U = [], I = [];
+          for (let i = 0; i <= n; i++) { const t = i / n, y = lerp0(yK - .015, yEnd, t), w = .007 + t * .012, c0 = at(y, 0, .001), cl = at(y, -w / .14, .001), cr = at(y, w / .14, .001); V.push(cl.x, cl.y, cl.z, cr.x, cr.y, cr.z); U.push(0, t * .5, .05, t * .5); }
+          if (tip) { const tp = at(yEnd - tip, 0, .001); V.push(tp.x, tp.y, tp.z); U.push(.025, .55); }
+          for (let i = 0; i < n; i++) I.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2); if (tip) I.push(n * 2, n * 2 + 1, n * 2 + 2);
+          const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(V, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); gg.setIndex(I); gg.computeVertexNormals();
+          const blade = new THREE.Mesh(gg, mt); blade.material = mt; o.add(blade);
+          AT('Chest', o);
+        }
+        return; }
       if (c.acc === 'papillon') { const o = new THREE.Group(), q = trunkAt(B, B.neck - .012, 0, underJ + .006), mt = FM('raso', c.col);
         [-1, 1].forEach(k => { const w = new THREE.Mesh(new THREE.ConeGeometry(.024, .05, 4), mt); w.rotation.z = k * Math.PI / 2; w.scale.set(1, 1, .45); w.position.copy(q.p).add(new THREE.Vector3(k * .026, 0, 0)); o.add(w); });
         o.add(Sp(.01, mt, q.p.x, q.p.y, q.p.z + .004)); AT('Chest', o); return; }
@@ -489,6 +503,8 @@ var Vesti3D = (function () {
   };
   function dress(g, outfit, look, held, seed) {
     strip(g); bare(g, look);
+    // gli abitanti: ogni capo nella sua variante (scollo a V, collo alto, righe, quadri…), sempre la stessa per persona
+    if (seed !== undefined && window.Sartoria) outfit.forEach(c => { const V = Sartoria.VARIANTI[c.id]; if (V && !c.var) c.var = V[hsh(String(seed) + c.id) % V.length]; });
     // il corredo a scatole di models.js: via (resta solo quello che non è un vestito, come i baffi)
     g.traverse(o => { if (o.userData && o.userData.corredo && o.userData.corredo !== 'baffi') o.visible = false; });
     // unità: quanti metri vale un'unità della geometria (il personaggio è alto 1,8 m)

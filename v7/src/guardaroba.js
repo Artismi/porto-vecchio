@@ -123,6 +123,18 @@ var Guardaroba = (function () {
     ['anelli', 'anelli d\'oro', 'Anelli', 'mani', [], 0, '#e8c040', 30, .05, 0, { acc: 'anelli' }],
     ['marsupio', 'marsupio', 'Marsupio', 'schiena', [], 0, '#3a3a6a', 5, .3, 0, { acc: 'marsupio' }],
     ['borsetta', 'borsetta', 'Borsetta', 'schiena', [], 0, '#6a1e2a', 15, .4, 0, { acc: 'borsetta' }],
+    // maglioni, camicie e cravatte con disegno
+    ['maglione_v', 'maglione con lo scollo a V', 'Scollo a V', 'busto', [T, B, A], .016, '#2a3a5a', 9, .7, .28],
+    ['maglione_collo_alto', 'maglione a collo alto', 'Collo alto', 'busto', [T, B, A, N], .02, '#d8d0bc', 11, .9, .35],
+    ['camicia_righe', 'camicia a righe', 'Camicia righe', 'busto', [T, B, A], .01, '#e8ecf4', 5, .25, .08],
+    ['camicia_vichy', 'camicia a quadretti', 'Camicia vichy', 'busto', [T, B, A], .01, '#e8e4dc', 5, .25, .08],
+    ['camicia_jeans', 'camicia di jeans', 'Camicia jeans', 'busto', [T, B, A], .012, '#5a7aa8', 7, .35, .1],
+    ['camicia_fiori', 'camicia a fiorellini', 'Camicia fiori', 'busto', [T, B, A], .01, '#e8e0cc', 6, .25, .08],
+    ['cravatta_righe', 'cravatta regimental', 'Regimental', 'collo', [], 0, '#1e2a5a', 8, .1, 0, { acc: 'cravatta', dis: 'regimental' }],
+    ['cravatta_pois', 'cravatta a pois', 'Cravatta pois', 'collo', [], 0, '#7a1a1e', 8, .1, 0, { acc: 'cravatta', dis: 'pois' }],
+    ['cravatta_cachemire', 'cravatta cachemire', 'Cachemire', 'collo', [], 0, '#5a2a4a', 10, .1, 0, { acc: 'cravatta', dis: 'paisley' }],
+    ['cravatta_fiori', 'cravatta a fiorellini', 'Cravatta fiori', 'collo', [], 0, '#2a4a3a', 9, .1, 0, { acc: 'cravatta', dis: 'liberty' }],
+    ['cravatta_maglia', 'cravatta di maglia', 'Cravatta maglia', 'collo', [], 0, '#3a2a22', 7, .1, 0, { acc: 'cravatta', dis: 'costine' }],
 
   ];
   const CAPO = {};
@@ -139,6 +151,8 @@ var Guardaroba = (function () {
   sell('villaggio', ['colbacco', 'montone', 'calzamaglia', 'poncho']);
   sell('use:sartoria', ['polo', 'giacca_completo', 'pantaloni_completo', 'cravatta', 'papillon', 'vestito_corto', 'vestito_lungo', 'vestito_fiori', 'minigonna', 'basco', 'foulard', 'sciarpa_righe', 'mocassini', 'tacchi', 'borsetta']);
   sell('use:emporio', ['bermuda', 'sandali', 'cappellino', 'fascia', 'leggings', 'tuta_ginnastica', 'scarpe_corsa', 'felpa_zip', 'maglia_calcio', 'marsupio']);
+  sell('use:sartoria', ['maglione_v', 'maglione_collo_alto', 'camicia_righe', 'camicia_vichy', 'camicia_fiori', 'cravatta_righe', 'cravatta_pois', 'cravatta_cachemire', 'cravatta_fiori', 'cravatta_maglia']);
+  sell('use:emporio', ['maglione_v', 'camicia_jeans', 'camicia_vichy']);
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['jeans', 'giubbotto_jeans', 'giacca_pelle', 'piumino', 'scarpe_eleganti', 'maglietta_righe', 'casco', 'paraginocchia', 'paraspalle', 'pelliccia', 'pelliccia_volpe', 'collana_oro', 'occhiali_sole', 'camicia_hawaii', 'cargo', 'stivali_pelle', 'orologio_polso', 'anelli', 'collana_perle'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   if (O.LOOT) { const add = (k, l) => { O.LOOT[k] = (O.LOOT[k] || []).concat(l); };
     add('bookcaseClosedWide', [['canotta', .3, 1, 2], ['mutande', .3, 1, 2], ['calzini', .3, 1, 3], ['camicia', .2, 1, 1], ['pantaloni', .15, 1, 1], ['dolcevita', .08, 1, 1], ['gonna', .1, 1, 1], ['camicia_quadri', .1, 1, 1]]);
@@ -255,7 +269,7 @@ var Guardaroba = (function () {
     if (rich && fem && r(18, 3) === 0) { const c0 = o.find(x => /cappotto|giacca/.test(x.id)); if (c0) Object.assign(c0, CAPO.pelliccia, { col: '#c8a060' }); put('collana_perle'); put('borsetta'); }
     if (rich && !fem && r(18, 4) === 0) { put('orologio_polso'); put('anelli'); }
     if (age < 30 && r(19, 4) === 0) put(pk(['occhiali_sole', 'cappellino', 'fascia', 'marsupio'], 20));
-    if (/impieg|banc|notai|avvoc|ragion/.test(job)) { const i = o.findIndex(x => x.id === 'giacca'); if (i >= 0) o[i] = Object.assign({}, CAPO.giacca_completo, { col: o[i].col }); const j = o.findIndex(x => /^pantaloni/.test(x.id)); if (j >= 0) o[j] = Object.assign({}, CAPO.pantaloni_completo, { col: o[i >= 0 ? i : j].col }); put('cravatta', pk(['#7a1a1e', '#1e2a5a', '#2a2a2e', '#5a4a1e'], 21)); }
+    if (/impieg|banc|notai|avvoc|ragion/.test(job)) { const i = o.findIndex(x => x.id === 'giacca'); if (i >= 0) o[i] = Object.assign({}, CAPO.giacca_completo, { col: o[i].col }); const j = o.findIndex(x => /^pantaloni/.test(x.id)); if (j >= 0) o[j] = Object.assign({}, CAPO.pantaloni_completo, { col: o[i >= 0 ? i : j].col }); put(pk(['cravatta', 'cravatta_righe', 'cravatta_pois', 'cravatta_cachemire', 'cravatta_maglia'], 22), pk(['#7a1a1e', '#1e2a5a', '#2a2a2e', '#5a4a1e', '#3a5a3a'], 21)); }
     if ((L.extra || '').includes('backpack')) put('zaino', pk(['#2f5a6a', '#8a3a2a', '#3a4a2a', '#c8862a'], 14));
     return o;
   }
