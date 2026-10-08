@@ -394,6 +394,13 @@ var Sartoria = (function () {
     for (let i = 0; i <= ns; i++) if (!W[i][0]) for (let d = 1; d <= ns && !W[i][0]; d++) { const j = W[i - d] && W[i - d][0] ? i - d : W[i + d] && W[i + d][0] ? i + d : -1; if (j >= 0) for (let q = 0; q < RINGS; q++) W[i][q] = W[j][q]; }
     return { R, W };
   }
+  // i pesi delle falde: regolari per colonna (il bacino, e la gamba dalla sua parte che cresce verso l'orlo), niente onde
+  function faldaW(B, tb) {
+    const bi = n => B.names.indexOf(n), H = bi('Hips'), UL = bi('UpperLegL'), UR = bi('UpperLegR'), LL = bi('LowerLegL'), LR = bi('LowerLegR'), hipY = B.bones.Hips.y, kn = B.bones.LowerLegL.y;
+    return p => { const q = tb.proj(p), sa = Math.sin(q.a), dn = cl((hipY - p.y) / (hipY - kn), 0, 1), legW = .35 * dn, l = Math.max(0, sa), r = Math.max(0, -sa), mid = 1 - l - r;
+      const w = [[H, 1 - legW], [UL, legW * (l + mid * .5) * (1 - dn * .3)], [UR, legW * (r + mid * .5) * (1 - dn * .3)], [LL, legW * (l + mid * .5) * dn * .3]].filter(e => e[0] >= 0);
+      let t = 0; w.forEach(e => { t += e[1]; }); const a = w.map(e => [e[0], e[1] / t]); while (a.length < 4) a.push([0, 0]); return a.slice(0, 4); };
+  }
   // i pesi della stoffa = quelli del corpo nel punto colpito (stesso tubo): si piega esattamente come la pelle
   function gridW(tb) {
     return p => { const q = tb.proj(p), sec = ((Math.round(q.a / (Math.PI * 2) * RINGS) % RINGS) + RINGS) % RINGS, w = (tb.W[q.i] && tb.W[q.i][sec]) || [[0, 1]];
@@ -645,9 +652,9 @@ var Sartoria = (function () {
       const sY = y => tb.sAtY(y);
       let bot = b.Hips.y - .06;
       if (C.corto) bot = B.waist - .02;
-      if (P.has('bacino') && !C.gonna) bot = b.Hips.y - (C.cl >= 4 ? .16 : .1);
+      if (P.has('bacino') && !C.gonna) bot = Math.max(b.Hips.y - (C.cl >= 4 ? .16 : .1), B.crotch + .03);   /* giacche corte: sopra l'inforcatura */
       if (C.gonna || C.poncho) { const len = C.len || (P.has('polpacci') ? 'polpaccio' : P.has('cosce') ? 'ginocchio' : 'coscia');
-        bot = { mini: B.crotch - .08, coscia: B.crotch - .17, ginocchio: b.LowerLegL.y - .04, polpaccio: (b.LowerLegL.y + B.ankle.L.y) / 2 - .02, caviglia: B.ankle.L.y + .07 }[len] || b.LowerLegL.y; }
+        bot = { mini: B.crotch - .08, coscia: B.crotch - .17, ginocchio: b.LowerLegL.y - .075, polpaccio: (b.LowerLegL.y + B.ankle.L.y) / 2 - .02, caviglia: B.ankle.L.y + .07 }[len] || b.LowerLegL.y; }
       if (C.poncho) bot = b.Hips.y - .14;
       let top = neckY(B); if (C.solo_gonna) top = B.waist + .015;
       if (C.infilata && !C.gonna) bot = B.waist - .005;   // infilata nei pantaloni: non scende oltre la cintura
@@ -681,14 +688,25 @@ var Sartoria = (function () {
     let TR = null, Lt = null;
     if (wantTrunk || C.intera && P.has('torso')) {
       const BOX = {}; let tb = boxTube(tube(B, trunkKind), C.box !== undefined ? C.box : (BOX[C.cl] || 0));
-      if (C.blocchi && trunkKind === 'gonna') {   // la falda cade dritta dai fianchi: per ogni lato, il massimo da lì in su (pareti verticali), poi lisciato
-        const t0 = tb, hipS = t0.sAtY(B.bones.Hips.y + .02), RG = t0.R[0].length, n = t0.ns, M = t0.R.map(r => Float32Array.from(r));
-        for (let i = Math.min(n, Math.round(hipS / t0.ds)) - 1; i >= 0; i--) for (let q = 0; q < RG; q++) M[i][q] = Math.max(M[i][q], M[i + 1][q]);
-        for (let i = 0; i <= n; i++) { const r = M[i], o = new Float32Array(RG); for (let q = 0; q < RG; q++) o[q] = (r[(q + RG - 1) % RG] + 2 * r[q] + r[(q + 1) % RG]) / 4; hull(o); M[i] = o; }
+      if (C.blocchi && trunkKind === 'gonna') {   // la falda: un ovale pulito per ogni altezza (largo quanto bacino e gambe, con agio), pareti lisce
+        const t0 = tb, RG = t0.R[0].length, n = t0.ns, ext = [];
+        for (let i = 0; i <= n; i++) { const S0 = t0.S[i]; let W = 0, Df = 0, Db = 0;
+          for (let k = 0; k < B.part.length; k++) { const pt = B.part[k]; if (!/torso|bacino|cosce|polpacci/.test(pt || '')) continue; const y = B.P[k * 3 + 1]; if (Math.abs(y - S0.y) > .03) continue;
+            const dx = Math.abs(B.P[k * 3] - S0.x), dz = B.P[k * 3 + 2] - S0.z; W = Math.max(W, dx); if (dz > 0) Df = Math.max(Df, dz); else Db = Math.max(Db, -dz); }
+          ext.push([W, Df, Db]); }
+        const hipI = Math.round(t0.sAtY(B.bones.Hips.y) / t0.ds);
+        for (let i = hipI - 1; i >= 0; i--) for (let k = 0; k < 3; k++) ext[i][k] = Math.max(ext[i][k], ext[i + 1][k]);   // dal bacino in giù non si stringe
+        for (let it = 0; it < 3; it++) for (let i = 1; i < n; i++) for (let k = 0; k < 3; k++) ext[i][k] = Math.max(ext[i][k], (ext[i - 1][k] + ext[i + 1][k]) / 2);
+        // linee dritte: dal bacino all'orlo la misura va in linea retta (niente onde dalle gambe), con agio al fondo per il passo
+        { let lo = 0; for (let i = 0; i <= hipI; i++) if (ext[i][0] > 0) { lo = i; break; } const A0 = ext[lo], A1 = ext[Math.min(n, hipI)];
+          const coatF = C.cl >= 5, ease = coatF ? [.04, .075, .06] : [.04, .05, .06];   // il cappotto si apre (passo lungo), la gonna scende quasi dritta
+          for (let i = lo; i < hipI; i++) { const t = (i - lo) / Math.max(1, hipI - lo); for (let k = 0; k < 3; k++) ext[i][k] = Math.max(lerp(A0[k] + ease[k], A1[k], t), coatF ? lerp(ext[i][k], A1[k], .5) : A1[k] * .96); } }
+        const M = t0.R.map((r, i) => { const [W, Df, Db] = ext[i], o = new Float32Array(RG); for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a), D = ca >= 0 ? Df : Db, e = C.cl >= 5 ? 3 : 2.8;
+          o[q] = 1 / Math.pow(Math.pow(Math.abs(ca) / Math.max(D, .02), e) + Math.pow(Math.abs(sa) / Math.max(W, .02), e), 1 / e); } return o; });
         tb = Object.assign({}, t0, { R: M });
       } TR = tb; const Ls = lengths(B, tb, trunkKind, C, parti); Lt = Ls;
-      const W = trunkKind === 'gonna' ? weightsFor(B, trunkKind) : gridW(tb), hipY = B.bones.Hips.y;
-      const cols = C.blocchi ? 20 : 24, front = C.davanti, aRange = front ? [-1.75, 1.75] : [-Math.PI, Math.PI];
+      const W = trunkKind === 'gonna' ? (C.blocchi ? faldaW(B, tb) : weightsFor(B, trunkKind)) : gridW(tb), hipY = B.bones.Hips.y;
+      const coat = C.blocchi && C.cl >= 5, cols = C.blocchi ? (coat ? 26 : 12) : 24, front = C.davanti, aRange = front ? [-1.75, 1.75] : coat ? [.16, Math.PI * 2 - .16] : [-Math.PI, Math.PI];   // il cappotto: aperto davanti, due lembi   // il cappotto: aperto davanti, un lembo sopra l'altro
       // scollo: la cima di ogni colonna (in s) secondo il collo
       const neckTop = a => {
         const fa = Math.cos(a), c = C.collo; let drop = 0;
@@ -711,12 +729,15 @@ var Sartoria = (function () {
         const a = aRange[0] + (aRange[1] - aRange[0]) * j / cols, s0 = hemBot(a), s1 = neckTop(a), s = lerp(s0, s1, i / (rows - 1));
         const fr = frameAt(tb, s), y = fr.p.y; let o = offY(y);
         if (C.gonna && y < hipY) o += (hipY - y) * (C.svasa || .1) * (C.blocchi ? .2 : 1);   // la gonna scende quasi dritta (appena aperta per il passo)
+        if (coat) { const fe = Math.min(a, Math.PI * 2 - a); if (fe < .5) o += (.5 - fe) * .03 * cl((B.waist - y) / .4, 0, 1); }   // i lembi davanti si staccano verso il basso
+        if (C.blocchi) { o += cl((B.waist - y) / .12, 0, 1) * (coat ? .02 : .003); o *= .35 + .65 * cl((Ls.yt - y) / .08, 0, 1); }   // staccata dalle gambe, raccordata al busto in alto
+        if (C.blocchi && !coat && C.pieghe !== 0 && /gonna/.test(C.id) && y < hipY) { const t = Math.abs(((a / (Math.PI / 9)) % 2 + 2) % 2 - 1); o += (1 - t) * .012 * cl((hipY - y) / .12, 0, 1); }   // pieghe a spigolo vivo
         if (C.pieghe && !C.blocchi && y < hipY) o += (.5 + .5 * Math.cos(a * 14)) * .006 * cl((hipY - y) / .25, 0, 1);
         if (C.poncho) o += cl((B.neck - y) / .3, 0, 1) * (C.blocchi ? .04 : .1) * (.6 + .4 * Math.abs(Math.sin(a)));   // il poncho scende largo sulle braccia
         const p = surf(tb, s, a, o), out = p.clone().sub(fr.p);
         // ombre cotte: sotto le ascelle, dietro le ginocchia, nelle conche; orlo più scuro
-        const c = C.blocchi ? (s - s0 < .03 && C.cl >= 4 ? .68 : 1) : 1 - .1 * cl(1 - (s - s0) / .03, 0, 1) - .07 * cl(1 - (s1 - s) / .02, 0, 1) - (y > B.waist && y < B.waist + .02 && !C.gonna ? .05 : 0);
-        const skirt = (C.gonna || C.poncho || longTop) && y < hipY ? cl((hipY - y) / .25, 0, 1) * (longTop && !C.gonna ? .85 : C.cl >= 5 ? .6 : .3) : 0;
+        const c = C.blocchi ? ((s - s0 < .03 && C.cl >= 4 ? .68 : 1) * (coat && (a < .22 || a > Math.PI * 2 - .22) ? .72 : 1) * (coat && Math.abs(a - Math.PI) < .035 && y < hipY - .25 ? .45 : 1)) : 1 - .1 * cl(1 - (s - s0) / .03, 0, 1) - .07 * cl(1 - (s1 - s) / .02, 0, 1) - (y > B.waist && y < B.waist + .02 && !C.gonna ? .05 : 0);
+        const skirt = (C.gonna || C.poncho || longTop) && y < hipY ? cl((hipY - y) / .25, 0, 1) * (C.blocchi ? .8 : longTop && !C.gonna ? .85 : C.cl >= 5 ? .6 : .3) : 0;   // le falde seguono il bacino, le gambe appena
         return { p, out, u: (a - aRange[0]) / (Math.PI * 2) * ringC, v: s, c, skirt };
       }, W, 0);
       // risvolto interno dell'orlo (si vede lo spessore) e lo scollo

@@ -47,6 +47,11 @@ var Pittura = (function () {
     const sg = Math.max(1, Math.round(.03 / ds));
     R = R.map((r, i) => { const o = new Float32Array(RG); for (let q = 0; q < RG; q++) { let a = 0, ww = 0; for (let k = -2 * sg; k <= 2 * sg; k++) { const g = Math.exp(-k * k / (2 * sg * sg)); a += R[cl(i + k, 0, n)][q] * g; ww += g; } o[q] = a / ww; } return o; });
     R = R.map(r => { const o = new Float32Array(RG); for (let q = 0; q < RG; q++) o[q] = (r[(q + RG - 2) % RG] + 2 * r[(q + RG - 1) % RG] + 3 * r[q] + 2 * r[(q + 1) % RG] + r[(q + 2) % RG]) / 9; return o; });
+    // taglio secco: la sezione va verso un rettangolo smussato (superellisse), davanti e dietro piatti, fianchi dritti
+    const kb = tb.kind === 'tronco' ? .3 : .15, e = 2.8;   // appena squadrata: piani, non scatole
+    R = R.map(r => { let W = 0, Df = 0, Db = 0; for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, x = Math.abs(Math.sin(a)) * r[q], z = Math.cos(a) * r[q]; W = Math.max(W, x); if (z > 0) Df = Math.max(Df, z); else Db = Math.max(Db, -z); }
+      const o = new Float32Array(RG); for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a)), D = Math.cos(a) >= 0 ? Df : Db;
+        const rb = 1 / Math.pow(Math.pow(ca / Math.max(D, .01), e) + Math.pow(sa / Math.max(W, .01), e), 1 / e); o[q] = lerp(r[q], Math.min(rb, r[q] + .03), kb); } return o; });
     IRON.set(tb, R); return R;
   }
   function ironRadius(R, tb, s, a) { const RG = R[0].length, fi = cl(s / tb.ds, 0, tb.ns), i0 = Math.floor(fi), i1 = Math.min(tb.ns, i0 + 1), t = fi - i0, fs = (((a / (Math.PI * 2)) * RG) % RG + RG) % RG, q0 = Math.floor(fs), q1 = (q0 + 1) % RG, u = fs - q0;
@@ -82,7 +87,7 @@ var Pittura = (function () {
     }
     const attrs = geo.attributes, out = new THREE.BufferGeometry(), N = nt * 3, keys = Object.keys(attrs).filter(k => k !== 'uv');
     const arr = {}; keys.forEach(k => { arr[k] = new attrs[k].array.constructor(N * attrs[k].itemSize); });
-    const UV = new Float32Array(N * 2), SRC = new Int32Array(N), order = [], groups = [];
+    const UV = new Float32Array(N * 2), SRC = new Int32Array(N), VI = new Array(N), VR = new Int8Array(N).fill(-1), order = [], groups = [];
     let w = 0;
     byReg.forEach((L, reg) => {
       if (!L.length) return; const start = w;
@@ -96,7 +101,9 @@ var Pittura = (function () {
           if (Math.max(...uu) - Math.min(...uu) > .5) uu = uu.map(x => x < .5 ? x + 1 : x);   // il triangolo a cavallo della cucitura dietro
         }
         c.forEach((q, k) => { keys.forEach(a => { const sz = attrs[a].itemSize; for (let j = 0; j < sz; j++) arr[a][w * sz + j] = attrs[a].array[q * sz + j]; });
-          const g = gm[q]; if (g >= 0 && reg < 5) { let L = ironCache[q]; if (!L) { L = ironCache[q] = ironPos(B, g, new THREE.Vector3()).applyMatrix4(B.reli).toArray(); } arr.position[w * 3] = L[0]; arr.position[w * 3 + 1] = L[1]; arr.position[w * 3 + 2] = L[2]; }
+          const g = gm[q]; if (g >= 0 && reg < 5) { let L = ironCache[q]; if (!L) { const bp = ironPos(B, g, new THREE.Vector3()), tb = F.tubes[reg], ax = axial(tb, bp), fr = S().frameAt(tb, ax.s), d = bp.clone().sub(fr.p); d.addScaledVector(fr.t, -d.dot(fr.t)); d.normalize();
+              L = ironCache[q] = { l: bp.clone().applyMatrix4(B.reli).toArray(), p: bp.toArray(), d: d.toArray(), s: ax.s, a: ax.a }; }
+            arr.position[w * 3] = L.l[0]; arr.position[w * 3 + 1] = L.l[1]; arr.position[w * 3 + 2] = L.l[2]; VI[w] = L; VR[w] = reg; }
           SRC[w] = q; UV[w * 2] = uu[k]; UV[w * 2 + 1] = vv[k]; w++; });
       });
       groups.push({ start, count: w - start, materialIndex: reg < 5 ? 1 + reg : 0 });
@@ -112,7 +119,7 @@ var Pittura = (function () {
     out.boundingSphere = geo.boundingSphere; out.boundingBox = geo.boundingBox; out.userData.pittura = true;
     // le parti del kit che non sono pelle (cappuccio della felpa, scarpe del kit…) rimaste fuori dalle regioni: si possono nascondere
     const ms = Array.isArray(src.material) ? src.material : [src.material], mname = (src.userData.pitOrig ? (Array.isArray(src.userData.pitOrig.mat) ? src.userData.pitOrig.mat[0] : src.userData.pitOrig.mat) : ms[0]).name || '';
-    const res = { geo: out, regs: groups.filter(g => g.materialIndex > 0).map(g => g.materialIndex - 1), SRC, kitCloth: !/Head/i.test(src.name) && !/^(Skin|Eye|Eyebrows|Hair|Moustache)/i.test(mname), groups };   // mai le mesh della testa (capelli col nome di un colore, es. 'Red')
+    const res = { VI, VR, geo: out, regs: groups.filter(g => g.materialIndex > 0).map(g => g.materialIndex - 1), SRC, kitCloth: !/Head/i.test(src.name) && !/^(Skin|Eye|Eyebrows|Hair|Moustache)/i.test(mname), groups };   // mai le mesh della testa (capelli col nome di un colore, es. 'Red')
     GEO.set(key, res); return res;
   }
 
@@ -140,7 +147,7 @@ var Pittura = (function () {
       if (C.pettorina) { /* la salopette: pettorina dipinta sul busto */ L.T = Object.assign(L.T || {}, { bib: 1 }); }
       // giacche e cappotti che scendono sotto l'inforcatura, gonne e falde: continuano dipinti sulle cosce
       // (sotto le falde la gamba ha la stessa stoffa: se passa attraverso, non si vede)
-      const hem = C.gonna || C.solo_gonna || C.poncho ? (Sa.lengths(B, T, 'gonna', C, [...P]).yb) : (L.T && L.T.yb !== undefined && L.T.s0 !== undefined && L.T.yb < B.waist + .02 ? L.T.yb : null);   // ogni capo che scende sotto la vita continua sulle cosce fino al suo orlo
+      const openCoat = C.cl >= 5 && !C.solo_gonna && !C.poncho; const hem = openCoat ? null : C.gonna || C.solo_gonna || C.poncho ? (Sa.lengths(B, T, 'gonna', C, [...P]).yb) : (L.T && L.T.yb !== undefined && L.T.s0 !== undefined && L.T.yb < B.waist + .02 ? L.T.yb : null);   // ogni capo che scende sotto la vita continua sulle cosce fino al suo orlo
       if (hem !== null && hem !== undefined && !L['L' + sd]) L['L' + sd] = { falda: hem, s1: 9, kn: 0, sCr: 0 };
     }
     C.L = L; return C;
@@ -223,7 +230,11 @@ var Pittura = (function () {
           // toni a gradini (pixel art): niente sfumature continue
           
           col[i] = c[0] * 255 * shade; col[i + 1] = c[1] * 255 * shade; col[i + 2] = c[2] * 255 * shade; col[i + 3] = 255;
-          hh[i] = hh[i + 1] = hh[i + 2] = cl(h, 0, 1) * 255; hh[i + 3] = 255;
+          const Ct = top >= 0 ? plans[top] : null, rf = Ct ? (FIN[Ct.fab] !== undefined ? FIN[Ct.fab] : .85) : .75;
+          // grana della finitura: la lana ha il pelo, la pelle la grana, il nylon un riflesso più pulito
+          if (Ct && /lana|panno|feltro|trecce|costine|scamosciato|montone|pelo/.test(Ct.fab)) { const n = hsh(px * 7 + ri, py * 13) - .5; col[i] = cl(col[i] * (1 + n * .07), 0, 255); col[i + 1] = cl(col[i + 1] * (1 + n * .07), 0, 255); col[i + 2] = cl(col[i + 2] * (1 + n * .07), 0, 255); h += n * .15; }
+          if (Ct && /pelle|gomma/.test(Ct.fab)) h += (hsh(px >> 1, py >> 1) - .5) * .2;
+          hh[i] = hh[i + 2] = cl(h, 0, 1) * 255; hh[i + 1] = rf * 255; hh[i + 3] = 255;
         }
       }
       out[R] = { W, H, col, hh };
@@ -255,6 +266,27 @@ var Pittura = (function () {
     }
     return k;
   }
+  // lo spessore di ogni capo (metri sopra il corpo): la camicia aderisce, il cappotto stacca, il piumino gonfia
+  function spessore(C) {
+    if (C.fab === 'piumino') return .03; if (/pelo|montone|maculato/.test(C.fab) || /pelliccia|montone/.test(C.id)) return .024;
+    if (C.fab === 'trecce') return .011; return { 0: .001, 1: .0025, 2: .0045, 3: .008, 4: .012, 5: .017, 6: .012 }[C.cl] || .003;
+  }
+  // le spalle strutturate (giacche, cappotti, divise): l'imbottitura allarga e squadra la spalla; i maglioni la ammorbidiscono appena
+  function spalla(B, C, r, L, nY) {
+    const pad = C.cl >= 4 && !/pelle|piumino|pelo|montone/.test(C.fab) ? .016 : C.cl === 3 ? .004 : 0; if (!pad) return 0;
+    if (r === 0) { const y = L.p[1], side = Math.abs(Math.sin(L.a)); return pad * cl((y - (nY - .12)) / .07, 0, 1) * cl((side - .45) / .4, 0, 1); }
+    if (r === 1 || r === 2) return pad * .8 * cl(1 - L.s / .07, 0, 1);   // la testa della manica
+    return 0;
+  }
+  // la finitura: quanto è opaca (1) o lucida (0,3) la stoffa
+  const FIN = { pelle: .38, gomma: .45, nylon: .35, piumino: .32, raso: .3, ripstop: .55, cordura: .6, denim: .8, cotone: .85, jersey: .9, pique: .88, tela: .8,
+    panno: .95, lana: .97, feltro: .98, spina: .93, gessato: .9, galles: .93, pied: .93, tartan: .92, vichy: .88, madras: .88, trecce: .98, costine: .96, velluto: .7, scamosciato: .98, pelo: .9, montone: .97, maculato: .9 };
+  // il capo più esterno in un punto (per spessore e finitura)
+  function topAt(B, plans, ri, a, sv, y, nY) {
+    const F = frame(B), R = REG[ri], tb = F.tubes[ri], xm = (a + Math.PI) / (Math.PI * 2) * F.circ[ri];
+    for (let k = plans.length - 1; k >= 0; k--) if (paintAt(B, plans[k], R, ri, a, sv, y, xm, nY, tb)) return plans[k];
+    return null;
+  }
   // il cuore: cosa c'è dipinto nel punto (a, sv) della regione R per il capo C (null = il capo non copre qui)
   function paintAt(B, C, R, ri, a, sv, y, xm, nY, tb) {
     const L = C.L, dark = (c, k) => mul(c, k);
@@ -273,7 +305,7 @@ var Pittura = (function () {
       const Ls = L[R]; if (!Ls || sv > Ls.s1) return null; edge = Ls.s1 - sv;
     } else {
       const Ls = L[R]; if (!Ls) return null;
-      if (Ls.falda !== undefined) { if (y < Ls.falda) return null; const f0 = fabric(C, xm, sv); const e = y - Ls.falda; let c0 = [f0[0], f0[1], f0[2]], h0 = .3 + f0[3] * .4, s0 = e < .008 ? .5 : e < .02 ? .88 + .12 * (e - .008) / .012 : 1;
+      if (Ls.falda !== undefined) { if (y < Ls.falda) return null; const f0 = fabric(C, xm, sv); const e = y - Ls.falda; let c0 = [f0[0], f0[1], f0[2]], h0 = .3 + f0[3] * .4, s0 = (C.gonna || C.solo_gonna || C.poncho) ? .6 : e < .008 ? .5 : e < .02 ? .88 + .12 * (e - .008) / .012 : 1;   // sotto le falde: l'ombra interna
         if (C.costine && e < .05) { const rib = .5 + .5 * Math.sin(xm / .006 * Math.PI); c0 = mul(C.A, .82 + rib * .22); h0 = rib; }
         if ((C.cl >= 4 || C.poncho) && !C.costine && e >= .008 && e < .04) s0 *= .72;
         return { c: c0, h: h0, s: s0 }; }
@@ -374,7 +406,7 @@ var Pittura = (function () {
     const M = REG.map(R => {
       const { W, H, col, hh } = P.out[R], mk = (data) => { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d'), id = x.createImageData(W, H); id.data.set(data); x.putImageData(id, 0, 0);
         const T = new THREE.CanvasTexture(cv); T.flipY = false; T.wrapS = THREE.RepeatWrapping; T.wrapT = THREE.ClampToEdgeWrapping; T.magFilter = THREE.NearestFilter; T.minFilter = THREE.NearestMipmapLinearFilter; T.anisotropy = 4; return T; };
-      const m = new THREE.MeshLambertMaterial({ map: mk(col), bumpMap: mk(hh), bumpScale: .0015 }); m.emissive = new THREE.Color('#2a2622'); m.userData.pittura = true; return m;
+      const bh = mk(hh), m = new THREE.MeshStandardMaterial({ map: mk(col), bumpMap: bh, bumpScale: .0015, roughnessMap: bh, roughness: 1, metalness: 0 }); m.emissive = new THREE.Color('#2a2622'); m.userData.pittura = true; return m;
     });
     MCACHE.set(sig, M); if (++mcount > 160) { const k = MCACHE.keys().next().value; MCACHE.delete(k); }
     return M;
@@ -387,6 +419,7 @@ var Pittura = (function () {
     const sig = B.key + '|' + skin + '|' + JSON.stringify(outfit.map(c => [c.id, c.col, c.parti]));
     let P = null, M = MCACHE.get(sig); if (!M) { P = paint(B, outfit, skin); M = mats(sig, P); }
     if (!B.welded) { B.welded = 1; weld(B, g, srcs); }
+    const plans = paintPlans(B, outfit), nY = Sa.neckY(B);
     srcs.forEach((src, si) => {
       const pg = paintGeo(B, src, si); if (!pg) return;
       if (!src.userData.pitOrig) src.userData.pitOrig = { geo: src.userData.geo0 || src.geometry, mat: src.material };
@@ -395,10 +428,18 @@ var Pittura = (function () {
       const hid = src.userData.hid, gpos = pg.geo.attributes.position, idx = [], grp = [], gmS = B.gmaps[si] || [], closed = outfit.some(c => /^(scarpe|scarpe_eleganti|scarpe_tela|scarpe_corsa|mocassini|tacchi|stivali|stivali_pelle|stivali_cowboy)$/.test(c.id));
       const keepT = (w0, reg) => { const q = [pg.SRC[w0], pg.SRC[w0 + 1], pg.SRC[w0 + 2]]; if (hid && hid.length && q.every(x => hid[x])) return false;
         if (closed && reg === 0 && q.some(x => { const b = gmS[x]; return b >= 0 && B.part[b] === 'piedi'; })) return false;   // dentro le scarpe vere
+        if (closed && reg === 0 && pg.kitCloth && /Feet/i.test(src.name)) return false;   // le scarpe del kit (col calzino bianco): via del tutto
         if (reg === 0 && pg.kitCloth) { const y = (gpos.getY(w0) + gpos.getY(w0 + 1) + gpos.getY(w0 + 2)) / 3; const yy = new THREE.Vector3(gpos.getX(w0), y, gpos.getZ(w0)).applyMatrix4(B.rel).y; if (yy > .3) return false; }   // vestiti del kit fuori dalle regioni (non i piedi)
         return true; };
-      pg.groups.forEach(gr => { const st = idx.length; for (let w0 = gr.start; w0 < gr.start + gr.count; w0 += 3) if (keepT(w0, gr.materialIndex)) idx.push(w0, w0 + 1, w0 + 2); if (idx.length > st) grp.push([st, idx.length - st, gr.materialIndex]); });
-      const pgeo = new THREE.BufferGeometry(); for (const k in pg.geo.attributes) pgeo.setAttribute(k, pg.geo.attributes[k]); pgeo.setIndex(idx); grp.forEach(g0 => pgeo.addGroup(g0[0], g0[1], g0[2]));
+      // sotto le falde (gonne, cappotti, poncho) la gamba non si vede: si toglie, così non può bucare la stoffa
+      const underF = w0 => { for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j], r = pg.VR[w0 + j]; if (!L || r < 3) return false; const C = topAt(B, plans, r, L.a, L.s, L.p[1], nY), Ls = C && C.L[REG[r]]; if (!Ls || Ls.falda === undefined || L.p[1] < Ls.falda + .015 || L.p[1] > B.crotch + .01) return false; } return true; };
+      pg.groups.forEach(gr => { const st = idx.length; for (let w0 = gr.start; w0 < gr.start + gr.count; w0 += 3) if (keepT(w0, gr.materialIndex) && !(gr.materialIndex >= 4 && underF(w0))) idx.push(w0, w0 + 1, w0 + 2); if (idx.length > st) grp.push([st, idx.length - st, gr.materialIndex]); });
+      const pgeo = new THREE.BufferGeometry(); for (const k in pg.geo.attributes) pgeo.setAttribute(k, pg.geo.attributes[k]); pgeo.setIndex(idx);
+      // lo spessore del capo che si vede: la superficie si stacca dal corpo di quanto è spesso (per persona)
+      { const pos0 = pg.geo.attributes.position, pos = new THREE.BufferAttribute(new Float32Array(pos0.array), 3), v3 = new THREE.Vector3(), memo = new Map();
+        for (let w0 = 0; w0 < pos.count; w0++) { const L = pg.VI[w0]; if (!L) continue; let off = memo.get(L); if (off === undefined) { const C = topAt(B, plans, pg.VR[w0], L.a, L.s, L.p[1], nY); off = C ? spessore(C) + spalla(B, C, pg.VR[w0], L, nY) : 0; memo.set(L, off); }
+          if (!off) continue; v3.set(L.p[0] + L.d[0] * off, L.p[1] + L.d[1] * off, L.p[2] + L.d[2] * off).applyMatrix4(B.reli); pos.setXYZ(w0, v3.x, v3.y, v3.z); }
+        pgeo.setAttribute('position', pos); } grp.forEach(g0 => pgeo.addGroup(g0[0], g0[1], g0[2]));
       pgeo.boundingSphere = pg.geo.boundingSphere; pgeo.userData.pittura = true;
       src.geometry = pgeo; src.material = [Array.isArray(src.material) ? src.material[0] : src.material, ...M];
     });
@@ -409,23 +450,28 @@ var Pittura = (function () {
     g.updateMatrixWorld(true); const gi = new THREE.Matrix4().copy(g.matrixWorld).invert(), acc = new Map(), L = [];
     const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), key = v => Math.round(v.x * 2e4) + ',' + Math.round(v.y * 2e4) + ',' + Math.round(v.z * 2e4);
     srcs.forEach((src, si) => { const pg = paintGeo(B, src, si); if (!pg) return; const M = new THREE.Matrix4().multiplyMatrices(gi, src.matrixWorld), NM = new THREE.Matrix3().getNormalMatrix(M), P = pg.geo.attributes.position, N = pg.geo.attributes.normal, keys = new Array(P.count), inReg = new Uint8Array(P.count);
-      pg.groups.forEach(gr => { if (gr.materialIndex > 0) for (let k = gr.start; k < gr.start + gr.count; k++) inReg[k] = 1; });
+      pg.groups.forEach(gr => { if (gr.materialIndex > 0) for (let k = gr.start; k < gr.start + gr.count; k++) inReg[k] = gr.materialIndex; });
       for (let k = 0; k < P.count; k++) keys[k] = key(a.fromBufferAttribute(P, k).applyMatrix4(M));
       for (let k = 0; k < P.count; k += 3) { if (!inReg[k]) continue; a.fromBufferAttribute(P, k).applyMatrix4(M); b.fromBufferAttribute(P, k + 1).applyMatrix4(M); c.fromBufferAttribute(P, k + 2).applyMatrix4(M); const n = b.sub(a).cross(c.sub(a));
         for (let j = 0; j < 3; j++) { let v = acc.get(keys[k + j]); if (!v) acc.set(keys[k + j], v = new THREE.Vector3()); v.add(n); } }
       L.push({ N, keys, inReg, NMi: new THREE.Matrix3().copy(NM).invert() }); });
-    L.forEach(({ N, keys, inReg, NMi }) => { for (let k = 0; k < N.count; k++) { if (!inReg[k]) continue; const v = acc.get(keys[k]); if (!v || v.lengthSq() < 1e-30) continue; a.copy(v).applyMatrix3(NMi).normalize(); N.setXYZ(k, a.x, a.y, a.z); } N.needsUpdate = true; });
+    // luce a pannelli: la normale si aggancia a 8 facce attorno all'asse della parte (e 3 inclinazioni): piani netti, spigoli di piega, come stoffa tagliata
+    const F = frame(B), snap = new Map(), sn = new THREE.Vector3();
+    const snapped = (kk, v, reg) => { const k2 = kk + '|' + reg; let r = snap.get(k2); if (r) return r; const tb = F.tubes[reg], p = new THREE.Vector3(...kk.split(',').map(x => +x / 2e4)), q = axial(tb, p), fr = S().frameAt(tb, q.s);
+      const n = v.clone().normalize(), nt = n.dot(fr.t), nf = n.dot(fr.f), ns = n.dot(fr.sd), ang = Math.round(Math.atan2(ns, nf) / (Math.PI / 6)) * (Math.PI / 6), tilt = Math.max(-.45, Math.min(.45, Math.round(nt / .3) * .3)), h = Math.sqrt(1 - tilt * tilt);
+      r = fr.t.clone().multiplyScalar(tilt).addScaledVector(fr.f, Math.cos(ang) * h).addScaledVector(fr.sd, Math.sin(ang) * h).normalize().multiplyScalar(.7).addScaledVector(n, .3).normalize(); snap.set(k2, r); return r; };   // facce geometriche, ammorbidite
+    L.forEach(({ N, keys, inReg, NMi }) => { for (let k = 0; k < N.count; k++) { if (!inReg[k]) continue; const v = acc.get(keys[k]); if (!v || v.lengthSq() < 1e-30) continue; a.copy(snapped(keys[k], v, inReg[k] - 1)).applyMatrix3(NMi).normalize(); N.setXYZ(k, a.x, a.y, a.z); } N.needsUpdate = true; });
   }
   function spoglia(g) { g.traverse(o => { if (o.isSkinnedMesh && o.userData.pitOrig) { o.geometry = o.userData.pitOrig.geo; o.material = o.userData.pitOrig.mat; o.userData.pitOrig = null; } }); }
   // il materiale a campiture per i pezzi in rilievo (falde, cinture, risvolti): stessa pittura, una piastrella che si ripete
   const BMAT = new Map();
   function blockMat(fab, col, c2, c3, opt) {
-    opt = opt || {}; const key = [fab, col, c2, c3, opt.dark || 0].join('|'); if (BMAT.has(key)) return BMAT.get(key);
+    opt = opt || {}; const key = [fab, col, c2, c3, opt.dark || 0, opt.liscio ? 1 : 0].join('|'); if (BMAT.has(key)) return BMAT.get(key);
     const C = { fab, A: rgb(col || '#808080'), B: rgb(c2 || col || '#808080'), C: rgb(c3 || col || '#808080') }, N = 64, sz = .45, cv = document.createElement('canvas'); cv.width = cv.height = N;
     const x = cv.getContext('2d'), id = x.createImageData(N, N);
     for (let py = 0; py < N; py++) for (let px = 0; px < N; px++) { const f = fabric(C, (px + .5) / N * sz, (py + .5) / N * sz), i = (py * N + px) * 4, k = opt.dark ? .72 : 1; id.data[i] = f[0] * 255 * k; id.data[i + 1] = f[1] * 255 * k; id.data[i + 2] = f[2] * 255 * k; id.data[i + 3] = 255; }
     x.putImageData(id, 0, 0); const T = new THREE.CanvasTexture(cv); T.wrapS = T.wrapT = THREE.RepeatWrapping; T.magFilter = THREE.NearestFilter; T.minFilter = THREE.NearestMipmapLinearFilter; T.repeat.set(1 / sz, 1 / sz);
-    const m = new THREE.MeshLambertMaterial({ map: T, vertexColors: opt.vc !== false, side: THREE.DoubleSide, flatShading: true }); m.emissive = new THREE.Color('#2a2622'); BMAT.set(key, m); return m;
+    const m = new THREE.MeshLambertMaterial({ map: T, vertexColors: opt.vc !== false, side: THREE.DoubleSide, flatShading: !opt.liscio }); m.emissive = new THREE.Color('#2a2622'); BMAT.set(key, m); return m;
   }
   // un punto sulla superficie stirata (quella che si vede) della regione r, staccato di off
   function surfI(B, r, s, a, off) {
@@ -451,8 +497,8 @@ var Pittura = (function () {
     const mat = C => blockMat(C.fab, '#' + new THREE.Color().setRGB(C.A[0] * .9, C.A[1] * .9, C.A[2] * .9).getHexString(), '#' + new THREE.Color().setRGB(C.B[0], C.B[1], C.B[2]).getHexString(), null, { vc: false });
     const boots = outfit.some(c => /^stivali/.test(c.id));
     for (const sd of ['L', 'R']) {
-      const RA = 'A' + sd, CA = outer(RA); if (CA && !(CA.polsi && CA.L[RA].s1 > CA.L[RA].la)) { const Ls = CA.L[RA], ri = sd === 'L' ? 1 : 2, o = new THREE.Group(); o.add(orlo(B, ri, Ls.s1 - .008, .016, .0045, .005, 10, mat(CA))); AT(Ls.s1 < Ls.la - .02 ? 'UpperArm' + sd : 'LowerArm' + sd, o); }
-      const RL = 'L' + sd, CL = outer(RL); if (CL && CL.L[RL].falda === undefined && !boots && !CL.risvolto) { const Ls = CL.L[RL], ri = sd === 'L' ? 3 : 4; if (Ls.s1 < F.tubes[ri].L + .01) { const o = new THREE.Group(); o.add(orlo(B, ri, Ls.s1 - .01, .02, .005, .006, 12, mat(CL))); AT((Ls.s1 < Ls.kn - .02 ? 'UpperLeg' : 'LowerLeg') + sd, o); } }
+      const RA = 'A' + sd, CA = outer(RA); if (CA && !(CA.polsi && CA.L[RA].s1 > CA.L[RA].la)) { const Ls = CA.L[RA], ri = sd === 'L' ? 1 : 2, o = new THREE.Group(); o.add(orlo(B, ri, Ls.s1 - .008, .016, .0045 + spessore(CA), .005 + spessore(CA), 10, mat(CA))); AT(Ls.s1 < Ls.la - .02 ? 'UpperArm' + sd : 'LowerArm' + sd, o); }
+      const RL = 'L' + sd, CL = outer(RL); if (CL && CL.L[RL].falda === undefined && !boots && !CL.risvolto) { const Ls = CL.L[RL], ri = sd === 'L' ? 3 : 4; if (Ls.s1 < F.tubes[ri].L + .01) { const o = new THREE.Group(); o.add(orlo(B, ri, Ls.s1 - .01, .02, .005 + spessore(CL), .006 + spessore(CL), 12, mat(CL))); AT((Ls.s1 < Ls.kn - .02 ? 'UpperLeg' : 'LowerLeg') + sd, o); } }
     }
     // (l'orlo del busto è dipinto, anche sulle cosce: niente anello in rilievo, che non può seguire le gambe divise)
   }
@@ -461,5 +507,5 @@ var Pittura = (function () {
     const ranked = list.map((c, i) => ({ c, r: ((CUT[c.id] || {}).cl || 1) * 10 + i * .01 })).sort((a, b) => a.r - b.r).map(o => o.c);
     return ranked.map((c, k) => plan(B, c, k, ranked));
   }
-  return { dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
+  return { spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
 })();
