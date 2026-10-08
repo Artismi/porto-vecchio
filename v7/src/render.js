@@ -7206,6 +7206,32 @@ var Render = (function () {
     const exh = cyl(.06, .06, .5, 6, chrome); exh.rotation.x = Math.PI / 2; exh.position.set(.26, .28, -.55); g.add(exh);
     ud.len = 1.9; return finishVehicle(g, ud);
   }
+  // [bmx] la BMX tascabile: telaio a diamante di tubi sottili, ruote da 20 pollici con le razze, manubrio alto, sellino basso, pedivelle
+  function bmxMesh(color) {
+    const g = G0(), c = std({ color, roughness: .3, metalness: .45 }), dark = sl('#141218'), chrome = std({ color: '#d8d8e0', metalness: .85, roughness: .18 });
+    const ud = { paint: [c], lamps: [], tails: [], wheels: [], front: [], two: true, dents: 0, parts: {} };
+    const up = new THREE.Vector3(0, 1, 0);
+    const tube = (a, b, r, mat) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), m = cyl(r, r, d.length(), 6, mat); m.position.copy(A).add(B).multiplyScalar(.5); m.quaternion.setFromUnitVectors(up, d.normalize()); g.add(m); return m; };
+    const R = .27, zF = .56, zR = -.5, bb = [0, .3, -.05], seatT = [0, .74, -.24], head = [0, .78, .38], headLo = [0, .6, .44];
+    tube(bb, seatT, .028, c); tube(seatT, head, .028, c); tube(bb, headLo, .032, c); tube(head, headLo, .034, c);   // telaio
+    [-1, 1].forEach(s => { tube([s * .05, .3, -.05], [s * .06, R, zR], .02, c); tube([s * .05, .72, -.23], [s * .06, R, zR], .018, c); tube([s * .05, .62, .44], [s * .06, R, zF], .022, chrome); });   // forcellini e forcella
+    tube([0, .78, .38], [0, .98, .34], .022, chrome); tube([-.32, 1.0, .3], [.32, 1.0, .3], .02, chrome); tube([-.14, .9, .35], [.14, .9, .35], .015, chrome);   // attacco, manubrio e traversino
+    [-1, 1].forEach(s => { const gr = cyl(.03, .03, .12, 6, dark); gr.rotation.z = Math.PI / 2; gr.position.set(s * .36, 1.0, .3); g.add(gr); });
+    tube([0, .74, -.24], [0, .84, -.27], .02, chrome);
+    const seat = box(.14, .05, .26, sm('#1a1418', { roughness: .7 })); seat.position.set(0, .87, -.26); seat.rotation.x = .12; g.add(seat);
+    const ring = cyl(.09, .09, .02, 12, chrome); ring.rotation.z = Math.PI / 2; ring.position.set(.06, .3, -.05); g.add(ring);   // corona
+    [-1, 1].forEach(s => { const cr = box(.02, .03, .3, chrome); cr.position.set(s * .09, .3, -.05); cr.rotation.x = s * .9; g.add(cr); const pd = box(.1, .025, .05, dark); pd.position.set(s * .14, .3 + Math.sin(s * .9) * -.15, -.05 + Math.cos(s * .9) * .15); g.add(pd); });
+    const pad = box(.06, .06, .2, sm('#ffd23a')); pad.position.set(0, .64, .1); pad.rotation.x = -.42; g.add(pad);   // l'imbottitura gialla sul tubo, anni '80
+    const bmxWheel = () => {
+      const w = G0(), tire = new THREE.Mesh(new THREE.TorusGeometry(R - .03, .035, 6, 18), dark); tire.rotation.y = Math.PI / 2; w.add(tire);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(R - .065, .012, 4, 18), chrome); rim.rotation.y = Math.PI / 2; w.add(rim);
+      for (let k = 0; k < 6; k++) { const sp = box(.01, (R - .07) * 2, .012, chrome); sp.rotation.x = k / 6 * Math.PI; w.add(sp); }
+      const hub = cyl(.03, .03, .1, 8, chrome); hub.rotation.z = Math.PI / 2; w.add(hub); return mergeGroup(w);
+    };
+    const fp = G0(); fp.position.set(0, R, zF); const fw = bmxWheel(); fp.add(fw); g.add(fp); ud.wheels.push({ wh: fw, piv: fp, front: true, r: R });
+    const rp = G0(); rp.position.set(0, R, zR); const rw = bmxWheel(); rp.add(rw); g.add(rp); ud.wheels.push({ wh: rw, piv: rp, front: false, r: R });
+    ud.len = 1.7; return finishVehicle(g, ud);
+  }
   function driverMesh(look, cap) {
     const g = G0();
     const t = box(.46, .45, .28, lam(look.top)); t.position.y = .22; const h = box(.36, .36, .34, lam(look.skin)); h.position.y = .62;
@@ -7244,7 +7270,7 @@ var Render = (function () {
   function vehicleMesh(v) {
     const K = G.VK[v.kind];
     const glb = K.glb && window.Models && Models.has(K.glb) ? Models.vehicle(K.glb, K, v.color) : null;
-    const g = glb || (v.kind === 'vespa' ? vespaMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
+    const g = glb || (v.kind === 'vespa' ? vespaMesh(v.color) : v.kind === 'bmx' ? bmxMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
     if (K.scale && !glb) g.scale.set(K.scale[0], K.scale[1], K.scale[2]);
     g.userData.glbWait = !!K.glb && !glb;
     g.userData.glb = !!glb;   // [animazioni-mondo] le auto dai modelli non hanno il profilo del parabrezza
@@ -10953,7 +10979,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       dyn.ghosts = ghosts.map(o => { const gm = new THREE.Mesh(o.geometry, xray); gm.renderOrder = 999; gm.visible = false; o.add(gm); return gm; });
       const ring = new THREE.Mesh(new THREE.RingGeometry(.5, .62, 16), new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: .7, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .04; pg.add(ring);
     }
-    const onVespa = pveh && pveh.kind === 'vespa';
+    const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx');   // [bmx] in sella come sulla Vespa
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
     pg.visible = !pveh || onVespa;
     pg.position.set(p.x, playerH + (onVespa ? .35 : 0), p.y); pg.rotation.y = Math.PI / 2 - p.face;
@@ -10997,7 +11023,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (u.drv2) u.drv2.visible = !v.wreck && (v.police || v.livrea) && v.rider === 'npc' && !v.arrived;   /* [ordine] */
       const lampsOn = !v.wreck && (v.traffic || v.rider) && night > .3;
       u.glows.forEach(s => { s.visible = lampsOn && !s.userData.broken; s.material.opacity = .7; });
-      u.beams.forEach(b => b.visible = lampsOn && !b.userData.broken); u.pool.visible = lampsOn;
+      u.beams.forEach(b => b.visible = lampsOn && !b.userData.broken); u.pool.visible = lampsOn && u.lamps.length > 0;   // [bmx] senza fari, niente chiazza di luce
       const braking = (v.lastSpeed !== undefined && Math.abs(v.speed) < Math.abs(v.lastSpeed) - 6 * dt && Math.abs(v.speed) > .5) || (v.skid > .5 && (v.rider || v.traffic)); v.lastSpeed = v.speed;
       u.tailGlows.forEach(s => { s.visible = !v.wreck && (lampsOn || braking); s.material.opacity = braking ? .9 : .4; s.scale.setScalar(braking ? 1.1 : .7); });
       if (u.tlMat) u.tlMat.color.set(braking ? '#ff3a3a' : lampsOn ? '#d02020' : '#8a1010');

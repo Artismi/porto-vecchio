@@ -105,6 +105,7 @@
     if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
     if (e.repeat) return;
     if (k === 'e') doAct('scippo'); else if (k === 'f') doAct('veicolo'); else if (k === 't') openTalk();
+    else if (k === 'p') doBmx();   // [bmx] la bici tascabile
     else if (k === 'r') G.reload(st);
     else if (k === 'q') G.switchWeapon(st, 1);
     else if (k === 'g') { const was = st.player.cur; st.player.cur = 'pugni'; st.player.cool = 0; G.fire(st, aimAngle(), ui.aimPoint, true); st.player.cur = was; }
@@ -167,6 +168,7 @@
     return { x, y, sprint, aim: a };
   }
   function doAct(t) { const r = G.act(st, t); if (r && r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); }
+  function doBmx() { click.t = null; ui.mark = null; const r = G.bmx(st); if (r && r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); }   // [bmx]
   function toast(msg, kind) { st.feed.unshift({ text: msg, kind: kind || 'info', until: st.clock + 4 }); if (st.feed.length > 5) st.feed.pop(); }
 
   // ---------- Punta e clicca ----------
@@ -406,7 +408,7 @@
       <div class="story"><p>Da quarant'anni l'isola è sotto la <b>Tutela</b>. Il Garante parla ogni sera alle 20 da tutti gli schermi, i <b>Grigi</b> presidiano le strade, gli <b>Orecchi</b> ascoltano nei bar. Chi parla troppo viene <b>rettificato</b>.</p>
       <p>Tu sei della <b>Risacca</b>, la corrente che non si vede. Per ora siete in pochi: <b>parla con la gente</b>, scrivi quello che vuoi, convincili. Recluta, trova spazi vuoti, costruisci basi, finanzia la causa, sabota.</p>
       <p>Lupo, il vecchio bibliotecario, sa da dove cominciare. In tasca hai tre gessetti.</p></div>
-      <div class="keys"><span><kbd>CLIC</kbd>vai / scegli</span><span><kbd>CLIC SU UNA PERSONA</kbd>Parla · Chatta</span><span><kbd>C</kbd>chatta con chi hai vicino</span><span><kbd>B</kbd>la Risacca: squadra, basi, risorse</span><span><kbd>W A S D</kbd>muoviti</span><span><kbd>F</kbd>mezzi</span><span><kbd>TAB</kbd>taccuino</span><span><kbd>M</kbd>audio</span></div>
+      <div class="keys"><span><kbd>CLIC</kbd>vai / scegli</span><span><kbd>CLIC SU UNA PERSONA</kbd>Parla · Chatta</span><span><kbd>C</kbd>chatta con chi hai vicino</span><span><kbd>B</kbd>la Risacca: squadra, basi, risorse</span><span><kbd>W A S D</kbd>muoviti</span><span><kbd>F</kbd>mezzi</span><span><kbd>P</kbd>la BMX tascabile</span><span><kbd>TAB</kbd>taccuino</span><span><kbd>M</kbd>audio</span></div>
       <button class="cta" id="go">Scendi in strada</button>
       <div class="credits" style="margin-top:14px;font-size:11px;opacity:.7;max-width:640px;line-height:1.5">Modelli: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) ·
       <a href="https://poly.pizza/bundle/Race-kit-LcWNxpyXuL" target="_blank" rel="noopener">Race kit</a> di <a href="https://poly.pizza/u/Player11132" target="_blank" rel="noopener">Player11132</a> [<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY</a>] via Poly Pizza · Medieval Torture Devices via Poly Pizza</div></div>`;
@@ -416,7 +418,7 @@
       <div class="story"><p>Sei <b>Nino Baldi</b>. Sei uscito di galera ieri, e lo Squalo, Sandro Neri, rivuole i suoi <b>500.000 lire</b> entro l'alba di giovedì.</p>
       <p>Nei caruggi <b>tutti vedono, tutti ricordano, tutti parlano</b>. Un lavoro onesto ti apre le porte. Una sparatoria davanti alla persona sbagliata te le chiude, e la voce arriva alla polizia prima di te.</p>
       <p>Di notte, al Pontile Est, tre marsigliesi fanno la guardia a una valigetta. Sotto le reti del molo qualcuno ha nascosto una pistola.</p></div>
-      <div class="keys"><span><kbd>MOUSE</kbd>mira</span><span><kbd>CLIC</kbd>spara</span><span><kbd>W A S D</kbd>muoviti rispetto al cursore</span><span><kbd>SHIFT</kbd>corri</span><span><kbd>R</kbd>ricarica</span><span><kbd>1-5 · ROTELLA</kbd>armi</span><span><kbd>F</kbd>sali su auto e Vespe</span><span><kbd>SPAZIO</kbd>freno a mano</span><span><kbd>T</kbd>parla</span><span><kbd>E</kbd>scippa o rapina</span><span><kbd>G</kbd>pugno</span><span><kbd>TAB</kbd>taccuino</span><span><kbd>M</kbd>audio</span></div>
+      <div class="keys"><span><kbd>MOUSE</kbd>mira</span><span><kbd>CLIC</kbd>spara</span><span><kbd>W A S D</kbd>muoviti rispetto al cursore</span><span><kbd>SHIFT</kbd>corri</span><span><kbd>R</kbd>ricarica</span><span><kbd>1-5 · ROTELLA</kbd>armi</span><span><kbd>F</kbd>sali su auto e Vespe</span><span><kbd>P</kbd>tira fuori la BMX</span><span><kbd>SPAZIO</kbd>freno a mano</span><span><kbd>T</kbd>parla</span><span><kbd>E</kbd>scippa o rapina</span><span><kbd>G</kbd>pugno</span><span><kbd>TAB</kbd>taccuino</span><span><kbd>M</kbd>audio</span></div>
       <button class="cta" id="go">Scendi in strada</button></div>`;
     $('go').onclick = start;
   }
@@ -603,7 +605,7 @@
         if (k === 'tab') return toggleBook(); if (ui.dialog || ui.book) return;
         if (k === 'fire') { touchFire = true; mouse.pressed = true; return; }
         if (k === 'space') { touchBrake = true; return; }
-        if (k === 'e') doAct('scippo'); if (k === 'f') doAct('veicolo'); if (k === 't') openTalk(); if (k === 'q') G.switchWeapon(st, 1); if (k === 'r') G.reload(st);
+        if (k === 'e') doAct('scippo'); if (k === 'f') doAct('veicolo'); if (k === 'p') doBmx(); if (k === 't') openTalk(); if (k === 'q') G.switchWeapon(st, 1); if (k === 'r') G.reload(st);
       });
       const up = () => { if (b.dataset.k === 'fire') touchFire = false; if (b.dataset.k === 'space') touchBrake = false; };
       b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);

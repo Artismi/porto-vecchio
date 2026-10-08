@@ -79,7 +79,7 @@ var Audio8 = (function () {
     if (!ctx) return;
     const p = st.player, t = now();
     const v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
-    if (v && on) {
+    if (v && on && v.kind !== 'bmx') {   // [bmx] la bici non ha motore
       // marce: il motore sale di giri e cala a ogni cambio
       const sp = Math.abs(v.speed), vespa = v.kind === 'vespa', G4 = vespa ? [0, 4, 8, 12, 99] : [0, 4.5, 8.5, 12.5, 16.5, 99];
       let gi = 0; while (sp > G4[gi + 1]) gi++; const rpm = (sp - G4[gi]) / ((G4[gi + 1] === 99 ? G4[gi] + 6 : G4[gi + 1]) - G4[gi]);
