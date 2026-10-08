@@ -22,8 +22,8 @@ var Pittura = (function () {
   // =====================================================================================
   const GEO = new Map();
   function regionOf(B, i) {
-    const p = B.part[i]; if (!p) return -1;
-    if (p === 'torso' && B.side[i]) { const j = B.bones['UpperArm' + (B.side[i] > 0 ? 'L' : 'R')]; if (j && Math.abs(B.P[i * 3]) > Math.abs(j.x) - .012 && B.P[i * 3 + 1] < j.y + .03) return B.side[i] > 0 ? 1 : 2; }   // oltre l'attaccatura: è già manica
+    const p = B.part[i]; if (!p) { const y = B.P[i * 3 + 1], x = Math.abs(B.P[i * 3]); return y > B.crotch && y < (B.neckY || B.neck) && x < .2 ? 0 : -1; }   // ossa fuori elenco (petto del modello Formal): è busto
+    if (p === 'torso' && B.side[i]) { const j = B.bones['UpperArm' + (B.side[i] > 0 ? 'L' : 'R')]; if (j && Math.abs(B.P[i * 3]) > Math.abs(j.x) - .012 && Math.hypot(B.P[i * 3] - j.x, B.P[i * 3 + 1] - j.y, B.P[i * 3 + 2] - j.z) < .05) return B.side[i] > 0 ? 1 : 2; }   // solo attorno al giunto della spalla   // oltre l'attaccatura: è già manica
     if (p === 'torso' || p === 'collo' || p === 'bacino') return 0;
     if (p === 'braccia' || p === 'avambracci') return B.side[i] > 0 ? 1 : 2;
     if (p === 'cosce' || p === 'polpacci') return B.side[i] > 0 ? 3 : 4;
@@ -82,15 +82,34 @@ var Pittura = (function () {
     const i = Math.round(bs / tb.ds), fr = S().frameAt(tb, bs), r = v.copy(p).sub(fr.p); r.addScaledVector(fr.t, -r.dot(fr.t));
     return { s: bs, a: Math.atan2(r.dot(fr.sd), r.dot(fr.f)), i, r: r.length() };
   }
+  // la pelle coperta da un vestito del kit: un raggio dall'asse della sua parte attraverso il vertice; se colpisce stoffa del kit più fuori, è coperta
+  function coveredSkin(B) {
+    if (B.covSkin) return B.covSkin; const n = B.part.length, CV = new Uint8Array(n), F = frame(B), tr = B.tris, P = B.P;
+    const cloth = i => !/^(Skin|Eye|Eyebrows|Hair|Moustache)/i.test(B.srcMat[B.srcOf[i]] || 'Skin');
+    const T = []; for (let t = 0; t < tr.length; t += 3) if (cloth(tr[t]) && cloth(tr[t + 1]) && cloth(tr[t + 2])) { const y0 = Math.min(P[tr[t] * 3 + 1], P[tr[t + 1] * 3 + 1], P[tr[t + 2] * 3 + 1]), y1 = Math.max(P[tr[t] * 3 + 1], P[tr[t + 1] * 3 + 1], P[tr[t + 2] * 3 + 1]); T.push([t, y0, y1]); }
+    const v = new THREE.Vector3();
+    for (let i = 0; i < n; i++) {
+      if (cloth(i)) continue; const r = regionOf(B, i); if (r < 0) continue; v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
+      const tb = F.tubes[r], ax = axial(tb, v), fr = S().frameAt(tb, ax.s), d = v.clone().sub(fr.p); d.addScaledVector(fr.t, -d.dot(fr.t)); const r0 = d.length(); if (r0 < 1e-4) continue; d.divideScalar(r0);
+      const o = fr.p, ox = o.x, oy = v.y, oz = o.z;   // raggio orizzontale-radiale dal punto dell'asse alla stessa quota
+      for (const [t, y0, y1] of T) { if (v.y < y0 - .002 || v.y > y1 + .002) continue;
+        const a = tr[t] * 3, b = tr[t + 1] * 3, c = tr[t + 2] * 3, e1x = P[b] - P[a], e1y = P[b + 1] - P[a + 1], e1z = P[b + 2] - P[a + 2], e2x = P[c] - P[a], e2y = P[c + 1] - P[a + 1], e2z = P[c + 2] - P[a + 2];
+        const px = d.y * e2z - d.z * e2y, py = d.z * e2x - d.x * e2z, pz = d.x * e2y - d.y * e2x, det = e1x * px + e1y * py + e1z * pz; if (Math.abs(det) < 1e-12) continue;
+        const id = 1 / det, tx = v.x - d.x * r0 - P[a], ty = v.y - d.y * r0 - P[a + 1], tz = v.z - d.z * r0 - P[a + 2], u = (tx * px + ty * py + tz * pz) * id; if (u < 0 || u > 1) continue;
+        const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x, w = (d.x * qx + d.y * qy + d.z * qz) * id; if (w < 0 || u + w > 1) continue;
+        const dist = (e2x * qx + e2y * qy + e2z * qz) * id; if (dist > r0 - .0005 && dist < r0 + .05) { CV[i] = 1; break; } }
+    }
+    B.covSkin = CV; return CV;
+  }
   function paintGeo(B, src, si) {
     const key = B.key + '|' + si; if (GEO.has(key)) return GEO.get(key);
     const geo = src.userData.geo0 || src.geometry, gm = B.gmaps[si]; if (!gm) { GEO.set(key, null); return null; }
     const F = frame(B), idx = geo.index ? geo.index.array : null, nt = (idx ? idx.length : geo.attributes.position.count) / 3;
     const m0 = (Array.isArray(src.material) ? src.material[0] : src.material) || {}, kc = !/^(Skin|Eye|Eyebrows|Hair|Moustache)/i.test((src.userData.pitOrig ? (Array.isArray(src.userData.pitOrig.mat) ? src.userData.pitOrig.mat[0] : src.userData.pitOrig.mat) : m0).name || '') ? .0018 : 0;   // la stoffa del kit sta un filo sopra la pelle che copre (niente sfarfallio)
-    const v = new THREE.Vector3(), ironCache = [], byReg = [[], [], [], [], [], []];   // 0..4 regioni, 5 = resta com'è
+    const v = new THREE.Vector3(), ironCache = [], dropT = new Set(), noN = new Set(), byReg = [[], [], [], [], [], []];   // 0..4 regioni, 5 = resta com'è
     for (let t = 0; t < nt; t++) {
       const c = [0, 1, 2].map(k => idx ? idx[t * 3 + k] : t * 3 + k), r = c.map(q => gm[q] >= 0 ? regionOf(B, gm[q]) : -1);
-      const cnt = {}; r.forEach(x => { cnt[x] = (cnt[x] || 0) + 1; }); let best = -1, bn = 0; for (const k in cnt) if (cnt[k] > bn) { bn = cnt[k]; best = +k; }
+      const cnt = {}; r.forEach(x => { if (x >= 0 || !kc) cnt[x] = (cnt[x] || 0) + 1; }); let best = -1, bn = 0; for (const k in cnt) if (cnt[k] > bn) { bn = cnt[k]; best = +k; }   // nei vestiti del kit i pezzetti senza zona (zip, tasche) vanno con la zona vicina
       byReg[best < 0 ? 5 : best].push(t);
     }
     const attrs = geo.attributes, out = new THREE.BufferGeometry(), N = nt * 3, keys = Object.keys(attrs).filter(k => k !== 'uv');
@@ -107,6 +126,12 @@ var Pittura = (function () {
           const tb = F.tubes[reg], [s0, s1] = F.range[reg];
           c.forEach((q, k) => { const g = gm[q]; if (g >= 0) v.set(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]); else v.fromBufferAttribute(attrs.position, q).applyMatrix4(B.rel); const P0 = axial(tb, v); uu[k] = (P0.a + Math.PI) / (Math.PI * 2); vv[k] = (P0.s - s0) / (s1 - s0); });
           if (Math.max(...uu) - Math.min(...uu) > .5) uu = uu.map(x => x < .5 ? x + 1 : x);   // il triangolo a cavallo della cucitura dietro
+          // la pelle sotto i vestiti del kit: stirate finirebbero sulla stessa superficie (pixel contesi). Si toglie
+          if (!kc) { const CV = coveredSkin(B); if (c.every(q => gm[q] >= 0 && CV[gm[q]])) dropT.add(w / 3); }
+          // i bordi dei vestiti del kit (risvolti, orli che girano dentro): facce rivolte all'asse o in su/giù. Stirate si accartoccerebbero: via
+          if (kc) { const P3 = c.map(q => { const g = gm[q]; return g >= 0 ? new THREE.Vector3(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]) : new THREE.Vector3().fromBufferAttribute(attrs.position, q).applyMatrix4(B.rel); });
+            const n = P3[1].clone().sub(P3[0]).cross(P3[2].clone().sub(P3[0])), ln = n.length(); if (ln > 1e-12) { n.divideScalar(ln); const cc = P3[0].clone().add(P3[1]).add(P3[2]).divideScalar(3), ax = axial(tb, cc), fr = S().frameAt(tb, ax.s), rd = cc.clone().sub(fr.p); rd.addScaledVector(fr.t, -rd.dot(fr.t)); rd.normalize();
+              if (n.dot(rd) < -.7 && (cc.y < B.waist + .1 || reg === 1 || reg === 2)) dropT.add(w / 3);   /* anche i polsini del kit */ else if (Math.abs(n.dot(fr.t)) > .8 && n.dot(rd) < .3) noN.add(w / 3); } }
         }
         c.forEach((q, k) => { keys.forEach(a => { const sz = attrs[a].itemSize; for (let j = 0; j < sz; j++) arr[a][w * sz + j] = attrs[a].array[q * sz + j]; });
           const g = gm[q]; if (g >= 0 && reg < 5) { let L = ironCache[q]; if (!L) { const bp = ironPos(B, g, new THREE.Vector3()), tb = F.tubes[reg], ax = axial(tb, bp), fr = S().frameAt(tb, ax.s), d = bp.clone().sub(fr.p); d.addScaledVector(fr.t, -d.dot(fr.t)); d.normalize();
@@ -121,13 +146,13 @@ var Pittura = (function () {
     // normali lisce sulla forma stirata (stoffa continua, non triangoli a caso): somma delle facce per punto, saldando i vertici doppi delle cuciture del kit
     { const PA = arr.position, NA = arr.normal, inReg = new Uint8Array(N); groups.forEach(gr => { if (gr.materialIndex > 0) for (let k = gr.start; k < gr.start + gr.count; k++) inReg[k] = 1; });
       const key = k => Math.round(PA[k * 3] * 1e6) + ',' + Math.round(PA[k * 3 + 1] * 1e6) + ',' + Math.round(PA[k * 3 + 2] * 1e6), acc = new Map(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
-      for (let k = 0; k < N; k += 3) { if (!inReg[k]) continue; a.fromArray(PA, k * 3); b.fromArray(PA, k * 3 + 3); c.fromArray(PA, k * 3 + 6); const n = b.clone().sub(a).cross(c.clone().sub(a));   // pesata con l'area
+      for (let k = 0; k < N; k += 3) { if (!inReg[k] || dropT.has(k / 3) || noN.has(k / 3)) continue; a.fromArray(PA, k * 3); b.fromArray(PA, k * 3 + 3); c.fromArray(PA, k * 3 + 6); const n = b.clone().sub(a).cross(c.clone().sub(a));   // pesata con l'area
         for (let j = 0; j < 3; j++) { const kk = key(k + j); let v = acc.get(kk); if (!v) acc.set(kk, v = new THREE.Vector3()); v.add(n); } }
       for (let k = 0; k < N; k++) { if (!inReg[k]) continue; const v = acc.get(key(k)); if (!v || v.lengthSq() < 1e-30) continue; const n = v.clone().normalize(); NA[k * 3] = n.x; NA[k * 3 + 1] = n.y; NA[k * 3 + 2] = n.z; } }
     out.boundingSphere = geo.boundingSphere; out.boundingBox = geo.boundingBox; out.userData.pittura = true;
     // le parti del kit che non sono pelle (cappuccio della felpa, scarpe del kit…) rimaste fuori dalle regioni: si possono nascondere
     const ms = Array.isArray(src.material) ? src.material : [src.material], mname = (src.userData.pitOrig ? (Array.isArray(src.userData.pitOrig.mat) ? src.userData.pitOrig.mat[0] : src.userData.pitOrig.mat) : ms[0]).name || '';
-    const res = { VI, VR, geo: out, regs: groups.filter(g => g.materialIndex > 0).map(g => g.materialIndex - 1), SRC, kitCloth: !/Head/i.test(src.name) && !/^(Skin|Eye|Eyebrows|Hair|Moustache)/i.test(mname), groups };   // mai le mesh della testa (capelli col nome di un colore, es. 'Red')
+    const res = { dropT, noN, VI, VR, geo: out, regs: groups.filter(g => g.materialIndex > 0).map(g => g.materialIndex - 1), SRC, kitCloth: !/Head/i.test(src.name) && !/^(Skin|Eye|Eyebrows|Hair|Moustache)/i.test(mname), groups };   // mai le mesh della testa (capelli col nome di un colore, es. 'Red')
     GEO.set(key, res); return res;
   }
 
@@ -433,14 +458,14 @@ var Pittura = (function () {
       if (!src.userData.pitOrig) src.userData.pitOrig = { geo: src.userData.geo0 || src.geometry, mat: src.material };
       const m0 = Array.isArray(src.userData.pitOrig.mat) ? src.userData.pitOrig.mat[0] : src.material;
       // quello che sta sotto scarpe e guanti (e i resti dei vestiti del kit sotto i nostri) si toglie davvero: un indice per persona
-      const hid = src.userData.hid, gpos = pg.geo.attributes.position, idx = [], grp = [], gmS = B.gmaps[si] || [], closed = outfit.some(c => /^(scarpe|scarpe_eleganti|scarpe_tela|scarpe_corsa|mocassini|tacchi|stivali|stivali_pelle|stivali_cowboy)$/.test(c.id));
-      const keepT = (w0, reg) => { const q = [pg.SRC[w0], pg.SRC[w0 + 1], pg.SRC[w0 + 2]]; if (hid && hid.length && q.every(x => hid[x])) return false;
-        if (closed && reg === 0 && q.some(x => { const b = gmS[x]; return b >= 0 && B.part[b] === 'piedi'; })) return false;   // dentro le scarpe vere
+      const hid = src.userData.hid, gpos = pg.geo.attributes.position, idx = [], grp = [], gmS = B.gmaps[si] || [], closed = outfit.some(c => /^(scarpe|scarpe_eleganti|scarpe_tela|scarpe_corsa|mocassini|tacchi|stivali|stivali_pelle|stivali_cowboy)$/.test(c.id)), pumps = outfit.some(c => c.id === 'tacchi');
+      const keepT = (w0, reg) => { if (pg.dropT.has(w0 / 3)) return false; const q = [pg.SRC[w0], pg.SRC[w0 + 1], pg.SRC[w0 + 2]]; if (hid && hid.length && q.every(x => hid[x])) return false;
+        if (closed && reg === 0 && q.some(x => { const b = gmS[x]; return b >= 0 && B.part[b] === 'piedi' && !(pumps && !pg.kitCloth && B.P[b * 3 + 1] > .04); })) return false;   // con le décolleté resta il collo del piede   // dentro le scarpe vere
         if (closed && reg === 0 && pg.kitCloth && /Feet/i.test(src.name)) return false;   // le scarpe del kit (col calzino bianco): via del tutto
         if (reg === 0 && pg.kitCloth) { const y = (gpos.getY(w0) + gpos.getY(w0 + 1) + gpos.getY(w0 + 2)) / 3; const yy = new THREE.Vector3(gpos.getX(w0), y, gpos.getZ(w0)).applyMatrix4(B.rel).y; if (yy > .3) return false; }   // vestiti del kit fuori dalle regioni (non i piedi)
         return true; };
       // sotto le falde (gonne, cappotti, poncho) la gamba non si vede: si toglie, così non può bucare la stoffa
-      const underF = w0 => { for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j], r = pg.VR[w0 + j]; if (!L || r < 3) return false; const C = topAt(B, plans, r, L.a, L.s, L.p[1], nY), Ls = C && C.L[REG[r]]; if (!Ls || Ls.falda === undefined || L.p[1] < Ls.falda + .015 || L.p[1] > B.crotch + .01) return false; } return true; };
+      const underF = w0 => { for (let j = 0; j < 3; j++) { const L = pg.VI[w0 + j], r = pg.VR[w0 + j]; if (!L || r < 3) return false; const C = topAt(B, plans, r, L.a, L.s, L.p[1], nY), Ls = C && C.L[REG[r]]; if (!Ls || Ls.falda === undefined || L.p[1] < Ls.falda + .015 || L.p[1] > B.waist) return false; } return true; };
       pg.groups.forEach(gr => { const st = idx.length; for (let w0 = gr.start; w0 < gr.start + gr.count; w0 += 3) if (keepT(w0, gr.materialIndex) && !(gr.materialIndex >= 4 && underF(w0))) idx.push(w0, w0 + 1, w0 + 2); if (idx.length > st) grp.push([st, idx.length - st, gr.materialIndex]); });
       const pgeo = new THREE.BufferGeometry(); for (const k in pg.geo.attributes) pgeo.setAttribute(k, pg.geo.attributes[k]); pgeo.setIndex(idx);
       // lo spessore del capo che si vede: la superficie si stacca dal corpo di quanto è spesso (per persona)
@@ -460,7 +485,7 @@ var Pittura = (function () {
     srcs.forEach((src, si) => { const pg = paintGeo(B, src, si); if (!pg) return; const M = new THREE.Matrix4().multiplyMatrices(gi, src.matrixWorld), NM = new THREE.Matrix3().getNormalMatrix(M), P = pg.geo.attributes.position, N = pg.geo.attributes.normal, keys = new Array(P.count), inReg = new Uint8Array(P.count);
       pg.groups.forEach(gr => { if (gr.materialIndex > 0) for (let k = gr.start; k < gr.start + gr.count; k++) inReg[k] = gr.materialIndex; });
       for (let k = 0; k < P.count; k++) keys[k] = key(a.fromBufferAttribute(P, k).applyMatrix4(M));
-      for (let k = 0; k < P.count; k += 3) { if (!inReg[k]) continue; a.fromBufferAttribute(P, k).applyMatrix4(M); b.fromBufferAttribute(P, k + 1).applyMatrix4(M); c.fromBufferAttribute(P, k + 2).applyMatrix4(M); const n = b.sub(a).cross(c.sub(a));
+      for (let k = 0; k < P.count; k += 3) { if (!inReg[k] || pg.dropT.has(k / 3) || pg.noN.has(k / 3)) continue; a.fromBufferAttribute(P, k).applyMatrix4(M); b.fromBufferAttribute(P, k + 1).applyMatrix4(M); c.fromBufferAttribute(P, k + 2).applyMatrix4(M); const n = b.sub(a).cross(c.sub(a));
         for (let j = 0; j < 3; j++) { let v = acc.get(keys[k + j]); if (!v) acc.set(keys[k + j], v = new THREE.Vector3()); v.add(n); } }
       L.push({ N, keys, inReg, NMi: new THREE.Matrix3().copy(NM).invert() }); });
     // luce a pannelli: la normale si aggancia a 8 facce attorno all'asse della parte (e 3 inclinazioni): piani netti, spigoli di piega, come stoffa tagliata

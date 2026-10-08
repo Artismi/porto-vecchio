@@ -317,7 +317,7 @@ var Vesti3D = (function () {
   const SH_STYLE = {
     scarpe: { h: .085, sole: .016, toe: .032, lacci: 1 }, scarpe_eleganti: { h: .07, sole: .01, toe: .026, punta: 1 }, mocassini: { h: .065, sole: .01, toe: .028, mocassino: 1 },
     scarpe_tela: { h: .075, sole: .014, toe: .03, suola: '#f0ece4', lacci: 1 }, scarpe_corsa: { h: .08, sole: .018, toe: .032, suola: '#f4f2ee', striscia: 1, lacci: 1 },
-    tacchi: { h: .06, sole: .008, toe: .024, tacco: .055, punta: 1 }, sandali: { h: 0, sole: .014, sandalo: 1 }, ciabatte: { h: 0, sole: .016, ciabatta: 1 },
+    tacchi: { h: .045, sole: .008, toe: .022, tacco: .055, punta: 1 }, sandali: { h: 0, sole: .014, sandalo: 1 }, ciabatte: { h: 0, sole: .016, ciabatta: 1 },
     stivali: { h: .09, sole: .018, toe: .034 }, stivali_pelle: { h: .09, sole: .012, toe: .03, punta: 1 }, stivali_cowboy: { h: .09, sole: .012, toe: .03, tacco: .025, punta: 1 } };
   function footBox(B, sd) {
     const sg = sd === 'L' ? 1 : -1, P = []; for (let i = 0; i < B.part.length; i++) if (B.part[i] === 'piedi' && B.side[i] === sg) P.push([B.P[i * 3], B.P[i * 3 + 1], B.P[i * 3 + 2]]);
@@ -325,7 +325,7 @@ var Vesti3D = (function () {
     const zH = q(2, .02), zT = q(2, .98), toe = P.filter(p => p[2] > zT - .03), heel = P.filter(p => p[2] < zH + .03), avg = (L, k) => L.reduce((a, p) => a + p[k], 0) / L.length;
     const hx = avg(heel, 0), tx = avg(toe, 0), L = Math.hypot(tx - hx, zT - zH), yaw = Math.atan2(tx - hx, zT - zH);
     const w = Math.min(.1, Math.max(.07, (q(0, .97) - q(0, .03)) * Math.cos(yaw) * .82));
-    return { cx: (hx + tx) / 2, cz: (zH + zT) / 2 + .004, L: Math.min(.28, L + .004), w: w + .004, yaw, top: q(1, .95) };
+    return { cx: (hx + tx) / 2, cz: (zH + zT) / 2 + .004, L: Math.min(.25, L + .004), w: w + .004, yaw, top: q(1, .95) };
   }
   // la scarpa: profilo laterale vero (suola dritta, punta bassa, collo del piede, tallone), estruso e affusolato in pianta
   function shoeGeo(st, L, W) {
@@ -355,8 +355,8 @@ var Vesti3D = (function () {
       if (st.lacci) { const lc = new THREE.Mesh(new THREE.BoxGeometry(F.w * .32, .006, F.L * .3), lm(st.suola ? '#f4f0e8' : sh(c.col, .4))); lc.position.set(0, so * .6 + st.h * .82, -F.L * .05); lc.rotation.x = -.35; inner.add(lc); }
       if (st.striscia) for (const sx of [-1, 1]) { const s0 = new THREE.Mesh(new THREE.BoxGeometry(.004, .02, F.L * .35), lm('#c83a3a')); s0.position.set(sx * (F.w / 2 * .9 + .002), so + .022, -F.L * .05); s0.rotation.x = .5; inner.add(s0); }
       if (st.mocassino) { const ap = new THREE.Mesh(new THREE.BoxGeometry(F.w * .6, .004, F.L * .28), dark); ap.position.set(0, so * .6 + st.toe + .006, F.L * .16); ap.rotation.x = -.18; inner.add(ap); }
-      if (st.tacco) { const hl = new THREE.Mesh(new THREE.CylinderGeometry(.012, .009, st.tacco, 6), soleM); hl.position.set(0, -st.tacco / 2 + .004, -F.L * .4); inner.add(hl); }
-      inner.rotation.y = F.yaw; o.add(inner); o.position.set(F.cx, st.tacco || 0, F.cz);
+      if (st.tacco) { const hl = new THREE.Mesh(new THREE.BoxGeometry(.026, .02, .03), soleM); hl.position.set(0, .01, -F.L * .4); inner.add(hl); }
+      inner.rotation.y = F.yaw; o.add(inner); o.position.set(F.cx, 0, F.cz);   // la scarpa resta a terra col piede (il tacco è un blocchetto sotto il tallone)
       AT('Foot' + sd, o);
     }
     return st;

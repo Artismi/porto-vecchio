@@ -145,7 +145,7 @@ var Models = (function () {
     if (who === 'hazmat') return 'Worker';
     const fem = look && (look.hat === 'long' || look.hat === 'bun' || /fem|donna/.test(look.extra || ''));
     const h = ((look && (look.top || '') + (look.skin || '')) || 'x').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    if (fem) return h % 3 === 0 ? 'Formal' : 'Casual';
+    if (fem) return window.Pittura ? 'Casual' : h % 3 === 0 ? 'Formal' : 'Casual';   // [vestiti] il modello Formal ha il busto a punte: con i vestiti dipinti si usa Casual
     if (/cap|flat|beanie/.test((look && look.hat) || '') && h % 2) return 'Worker';
     return h % 3 === 0 ? 'Casual_Hoodie' : 'Casual_2';
   }

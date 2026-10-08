@@ -219,7 +219,7 @@ var Sartoria = (function () {
     const ref = srcs.find(o => /Body/i.test(o.name)) || srcs[0];
     const rel = new THREE.Matrix4().multiplyMatrices(gi, ref.matrixWorld);   // dalla mesh (locale) al personaggio
     const names = ref.skeleton.bones.map(b => b.name), names0 = names.join();
-    const P = [], part = [], side = [], wts = [], hair = [], head = [], srcOf = [], idxOf = [], tris = [], gmaps = [], eyes = [];
+    const P = [], part = [], side = [], wts = [], hair = [], head = [], srcOf = [], idxOf = [], tris = [], gmaps = [], eyes = [], srcMat = [];
     const pn = Object.keys(PARTI), v = new THREE.Vector3(), M = new THREE.Matrix4();
     srcs.forEach((src, si) => {
       const geo = src.userData.geo0 || src.geometry, pos = geo.attributes.position, sI = geo.attributes.skinIndex, sW = geo.attributes.skinWeight; if (!pos || !sI) return;
@@ -229,7 +229,7 @@ var Sartoria = (function () {
       if (mname === 'Worker_Yellow' && /Head/i.test(src.name)) return;   // il casco del kit (nascosto): non conta né come testa né come capelli
       M.multiplyMatrices(gi, src.matrixWorld); const bn = src.skeleton.bones, same = bn.map(b => b.name).join() === names0;
       const isHair = HAIR.test(mname) || (mname === 'Worker_Yellow' && /Head/i.test(src.name)), isHead = /Head/i.test(src.name);
-      const gmap = new Int32Array(pos.count).fill(-1); gmaps[si] = gmap;
+      const gmap = new Int32Array(pos.count).fill(-1); gmaps[si] = gmap; srcMat[si] = mname;
       for (let i = 0; i < pos.count; i++) {
         v.fromBufferAttribute(pos, i).applyMatrix4(M);
         let best = -1, bw = -1; const w = [];
@@ -260,7 +260,7 @@ var Sartoria = (function () {
       if (!bm['Wrist' + sd] && bm['LowerArm' + sd] && bm['UpperArm' + sd]) bm['Wrist' + sd] = bm['LowerArm' + sd].clone().multiplyScalar(2).sub(bm['UpperArm' + sd]); }
     // la testa: il punto alla base del cranio; il bacino: il centro tra le anche
     if (bm.UpperLegL && bm.UpperLegR) { const h = bm.UpperLegL.clone().lerp(bm.UpperLegR, .5); h.y += .03; bm.Hips = bm.Hips && Math.abs(bm.Hips.y - h.y) < .15 ? bm.Hips : h; bm.Hips.x = h.x; }
-    B = { key, eyes, P: new Float32Array(P), tris: new Uint32Array(tris), gmaps, part, side, wts, hair: new Float32Array(hair), head: new Float32Array(head), srcOf, idxOf, bones: bm, bmat, names, rel, reli: rel.clone().invert(), tubes: {}, geos: new Map() };
+    B = { key, eyes, srcMat, P: new Float32Array(P), tris: new Uint32Array(tris), gmaps, part, side, wts, hair: new Float32Array(hair), head: new Float32Array(head), srcOf, idxOf, bones: bm, bmat, names, rel, reli: rel.clone().invert(), tubes: {}, geos: new Map() };
     // misure utili: caviglia, inforcatura, vita, base del collo
     const n = part.length, yOf = i => B.P[i * 3 + 1];
     let ank = {};
