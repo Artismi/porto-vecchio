@@ -1183,7 +1183,13 @@ var Sartoria = (function () {
     const brow = eyeR.y + .055, R1 = ring(hd, brow - .02, brow + .02), R2 = H !== hd ? ring(H, brow - .02, brow + .03) : R1;
     const eye = eyeR.y, RE = ring(hd, eye - .015, eye + .015);
     const chin = (() => { let m = 9; for (let i = 1; i < hd.length; i += 3) m = Math.min(m, hd[i]); return m; })();
-    B.T = { top, skTop, brow, cx: R1.cx, cz: R1.cz, r: Math.max(R1.r, R2.r * .97), rSkull: R1.r, front: R1.cz + R1.rf, eyeY: eye, eyeZ: RE.cz + RE.rf, chin, hairTop: top };
+    // la misura per i cappelli: il cranio vero, ricavato da occhi e mento (non dai capelli, che sotto il cappello si schiacciano)
+    const eyeZ = RE.cz + RE.rf, sc = cl((eye - chin) / .123, .85, 1.05), rS = .106 * sc, browS = eye + .055 * sc;
+    // il centro del cranio (avanti/indietro): a metà tra fronte e nuca dove la mesh della testa è intera, sennò dagli occhi
+    const zSpan = (y0, y1) => { let a = 9, b = -9; for (let i = 0; i < hd.length; i += 3) if (hd[i + 1] > y0 && hd[i + 1] < y1) { a = Math.min(a, hd[i + 2]); b = Math.max(b, hd[i + 2]); } return b - a > .17 ? (a + b) / 2 : null; };
+    const czS = zSpan(browS - .02, browS + .02) ?? zSpan(eye - .02, eye + .01) ?? eyeZ - .108 * sc;
+    const skS = cl(skTop, eye + .112 * sc, eye + .135 * sc), rHat = Math.max(rS + .012, Math.min(Math.max(R1.r, R2.r * .97), rS + .022)), hHat = skS - browS + (B.hair.length ? .016 : .01);
+    B.T = { top: browS + hHat, skTop: skS, brow: browS, cx: R1.cx, cz: czS, r: rHat, rSkull: rS, front: czS + rS + .008, eyeY: eye, eyeZ, chin, hairTop: top, hHat, sc };
     return B.T;
   }
   // matrici di riposo delle ossa (spazio del personaggio), per agganciare oggetti rigidi a prescindere dalla posa attuale

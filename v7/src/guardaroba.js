@@ -152,6 +152,10 @@ var Guardaroba = (function () {
     ['berretto_corto', 'berretto corto da pescatore', 'Docker', 'testa', [], 0, '#c83a2a', 5, .1, .12, { acc: 'docker' }],
     ['borsello', 'borsello a tracolla', 'Borsello', 'schiena', [], 0, '#141418', 18, .3, 0, { acc: 'borsello' }],
     ['marsupio_tracolla', 'marsupio a tracolla', 'Tracolla', 'schiena', [], 0, '#2a2a30', 14, .3, 0, { acc: 'tracolla' }],
+    ['passamontagna_punte', 'passamontagna a maglia con le punte', 'Passam. punte', 'testa', [], 0, '#2aa86a', 9, .1, .12, { acc: 'pm_punte' }],
+    ['passamontagna_orecchie', 'passamontagna a maglia con le orecchie', 'Passam. gatto', 'testa', [], 0, '#e8587a', 9, .1, .12, { acc: 'pm_orecchie' }],
+    ['passamontagna_righe', 'passamontagna a righe', 'Passam. righe', 'testa', [], 0, '#e8a020', 7, .1, .12, { acc: 'pm_righe' }],
+    ['bandana', 'bandana tirata su', 'Bandana', 'testa', [], 0, '#a82a2a', 3, .05, .02, { acc: 'bandana', ombra: 1 }],
     ['catenina', 'catenina d\'argento', 'Catenina', 'collo', [], 0, '#d8d8dc', 18, .05, 0, { acc: 'catenina' }],
   ];
   const CAPO = {};
@@ -170,7 +174,7 @@ var Guardaroba = (function () {
   sell('use:emporio', ['bermuda', 'sandali', 'cappellino', 'fascia', 'leggings', 'tuta_ginnastica', 'scarpe_corsa', 'felpa_zip', 'maglia_calcio', 'marsupio']);
   sell('use:sartoria', ['maglione_v', 'maglione_collo_alto', 'camicia_righe', 'camicia_vichy', 'camicia_fiori', 'cravatta_righe', 'cravatta_pois', 'cravatta_cachemire', 'cravatta_fiori', 'cravatta_maglia']);
   sell('use:emporio', ['maglione_v', 'camicia_jeans', 'camicia_vichy']);
-  sell('use:emporio', ['maglietta_oversize', 'felpa_skate', 'canotta_basket', 'giacca_tuta', 'pantaloni_tuta', 'calze_sport', 'scarpe_skate', 'cappellino_dritto', 'berretto_corto', 'marsupio_tracolla']);
+  sell('use:emporio', ['maglietta_oversize', 'felpa_skate', 'canotta_basket', 'giacca_tuta', 'pantaloni_tuta', 'calze_sport', 'scarpe_skate', 'cappellino_dritto', 'berretto_corto', 'marsupio_tracolla', 'passamontagna_punte', 'passamontagna_orecchie', 'passamontagna_righe', 'bandana']);
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['smanicato', 'piumino_oca', 'jeans_larghi', 'scarpe_air', 'borsello', 'catenina'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['jeans', 'giubbotto_jeans', 'giacca_pelle', 'piumino', 'scarpe_eleganti', 'maglietta_righe', 'casco', 'paraginocchia', 'paraspalle', 'pelliccia', 'pelliccia_volpe', 'collana_oro', 'occhiali_sole', 'camicia_hawaii', 'cargo', 'stivali_pelle', 'orologio_polso', 'anelli', 'collana_perle'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   if (O.LOOT) { const add = (k, l) => { O.LOOT[k] = (O.LOOT[k] || []).concat(l); };

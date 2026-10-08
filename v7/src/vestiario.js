@@ -170,6 +170,17 @@ var Vesti3D = (function () {
   function visor(r0, len, wA, drop, mat) { return brim(r0, r0 + len, (a, t) => { const aa = Math.atan2(Math.sin(a), Math.cos(a)); return -drop * Math.pow(Math.sin(Math.min(Math.abs(aa), wA) / wA * Math.PI / 2), 2) - t * .004; }, mat, 24); }
   function cutVisor(m, wA) { const g = m.geometry, p = g.attributes.position, I = []; const idx = g.index.array; for (let k = 0; k < idx.length; k += 3) { let ok = true; for (let q = 0; q < 3; q++) { const i = idx[k + q], a = Math.atan2(p.getX(i), p.getZ(i)); if (Math.abs(a) > wA + .01) ok = false; } if (ok) I.push(idx[k], idx[k + 1], idx[k + 2]); } g.setIndex(I); return m; }
   // cappelli e copricapi. T = misure della testa (r: raggio alla fronte con i capelli; h: dalla fronte alla cima dei capelli)
+  // un pannello curvo attorno alla testa (paraorecchie, falde): settore di cilindro con spessore, il bordo in basso arrotondato di `round`
+  function pannello(R, a0, al, yTop, yBot, th, mat, round) {
+    const n = 8, m = 4, P = [], I = [], pt = (u, v, d) => { const a = a0 + u * al, y = lerp0(yTop, yBot, v) + (v > .5 ? round * (1 - Math.sin(u * Math.PI)) * (v - .5) * 2 : 0), rr = R - d + (v > .6 ? .006 * (v - .6) : 0); return [Math.sin(a) * rr, y, Math.cos(a) * rr]; };
+    for (const d of [0, th]) for (let j = 0; j <= m; j++) for (let i = 0; i <= n; i++) P.push(...pt(i / n, j / m, d));
+    const L = (n + 1) * (m + 1), id = (s, i, j) => s * L + j * (n + 1) + i;
+    for (let s = 0; s < 2; s++) for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const a = id(s, i, j), b = id(s, i + 1, j), c = id(s, i, j + 1), d = id(s, i + 1, j + 1); if (s) I.push(a, b, c, b, d, c); else I.push(a, c, b, b, c, d); }
+    for (let i = 0; i < n; i++) { const a = id(0, i, m), b = id(0, i + 1, m), c = id(1, i, m), d = id(1, i + 1, m); I.push(a, b, c, b, d, c); }   // lo spessore sul bordo in basso
+    for (const i of [0, n]) for (let j = 0; j < m; j++) { const a = id(0, i, j), b = id(0, i, j + 1), c = id(1, i, j), d = id(1, i, j + 1); I.push(a, b, c, b, d, c); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex(I); g.computeVertexNormals();
+    const uv = []; for (let i = 0; i < P.length; i += 3) uv.push((P[i] + P[i + 2]) * 6, P[i + 1] * 6); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); return new THREE.Mesh(g, mat);
+  }
   function headAcc(kind, c, T, k) {
     const h = new THREE.Group(), r = T.r * (1 + k * .04) + .004, H = Math.max(.09, T.top - T.brow) + .012 + k * .006;
     switch (kind) {
@@ -189,20 +200,23 @@ var Vesti3D = (function () {
         const p = cr.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); if (y > H * .55 && z > 0) { const q = (y - H * .55) / (H * .6); p.setX(i, x * (1 - .16 * q * Math.min(1, z / r * 1.5))); } if (y > H * .9) p.setY(i, y - .012 * Math.max(0, 1 - Math.abs(x) / (r * .3))); }
         p.needsUpdate = true; cr.geometry.computeVertexNormals(); cr.scale.set(1, 1, 1.08);
         const band = lathe([[r + .009, -.004], [r + .009, .024]], FM('raso', '#16121a'), 28); band.scale.set(1, 1, 1.08);
-        const bm = brim(r + .004, r + .1, (a, t) => { const ca = Math.cos(a); return -.004 + t * (ca > 0 ? -.012 * ca : .018 * -ca) + t * t * .012 * Math.pow(Math.sin(a), 2); }, mt, 40); bm.scale.set(1, 1, 1.08);
+        const bm = brim(r + .004, r + .07, (a, t) => { const ca = Math.cos(a); return -.004 + t * (ca > 0 ? -.012 * ca : .018 * -ca) + t * t * .012 * Math.pow(Math.sin(a), 2); }, mt, 40); bm.scale.set(1, 1, 1.08);
         h.add(cr, band, bm); break; }
-      case 'ushanka': {   // colbacco: cupola di pelo, fascia, paraorecchie, la falda davanti alzata
-        const fm = FM('pelo', c), dome = lathe([[r + .02, -.01], [r + .022, .04], [r * .96, H * .8], [r * .6, H + .02], [0, H + .035]], FM('scamosciato', sh(c, .8)));
-        const band = lathe([[r + .03, -.03], [r + .036, .0], [r + .034, .045], [r + .022, .05]], fm);
-        const eL = Sp(.07, fm, -(r + .02), -.07, -.01), eR = Sp(.07, fm, r + .02, -.07, -.01); eL.scale.set(.42, 1.35, 1); eR.scale.set(.42, 1.35, 1);
-        const fr = Sp(.08, fm, 0, .045, r + .03); fr.scale.set(1.9, .75, .4); fr.rotation.x = -.35; h.add(dome, band, eL, eR, fr); break; }
+      case 'ushanka': {   // colbacco: cupola di pelle, fascia di pelo, paraorecchie veri (pannelli curvi di pelo che scendono ai lati, coi lacci), la falda davanti alzata
+        const fm = FM('pelo', c), dome = lathe([[r + .018, -.01], [r + .02, .04], [r * .96, H * .8], [r * .6, H + .02], [0, H + .035]], FM('scamosciato', sh(c, .8)));
+        const band = lathe([[r + .026, -.028], [r + .032, .0], [r + .03, .045], [r + .02, .05]], fm);
+        const flapL = pannello(r + .03, Math.PI / 2 - .55, 1.1, .0, -.115, .014, fm, .045), flapR = pannello(r + .03, -Math.PI / 2 - .55, 1.1, .0, -.115, .014, fm, .045);
+        const back = pannello(r + .03, Math.PI - .75, 1.5, .0, -.05, .012, fm, .02);   // dietro la nuca
+        const front = pannello(r + .036, -.8, 1.6, .075, .02, .014, fm, 0); front.rotation.x = -.18;   // la falda davanti, alzata
+        for (const sx of [-1, 1]) { const tie = Cy(.003, .003, .06, sh(c, .5), sx * (r + .036), -.14, .01, 4); h.add(tie); }
+        h.add(dome, band, flapL, flapR, back, front); break; }
       case 'scarf': {   // fazzoletto da testa: aderente, copre i capelli, nodo sotto il mento, la punta dietro
         const rs = Math.min(r, T.rSkull + .03), mt = FM('paisley', c, sh(c, 1.5), '#e8d8a0'), H2 = Math.min(H, T.skTop - T.brow + .03), dome = lathe([[rs + .006, -.07], [rs + .01, -.01], [rs + .006, H2 * .5], [rs * .7, H2 * .9], [0, H2 + .006]], mt);
         dome.geometry.scale(1, 1, 1.08); const p = dome.geometry.attributes.position; for (let i = 0; i < p.count; i++) if (p.getZ(i) > r * .4 && p.getY(i) < .0) p.setZ(i, p.getZ(i) * .6); p.needsUpdate = true; dome.geometry.computeVertexNormals();
         const tail = new THREE.Mesh(new THREE.ConeGeometry(.06, .13, 3), mt); tail.position.set(0, -.1, -(r + .02)); tail.rotation.x = Math.PI + .25; tail.scale.z = .35;
         const knot = Sp(.022, mt, 0, T.chin - T.brow + .015, T.front - T.cz - .03); h.add(dome, tail, knot); break; }
       case 'casco': {   // casco jet anni '80: calotta lucida aperta davanti, riga, bordo imbottito, cinturino
-        const R = r + .03, mt = FM('gomma', c, c, c, 1), top = M_(new THREE.SphereGeometry(R, 24, 14, 0, Math.PI * 2, 0, 1.15), mt);
+        const R = r + .016, mt = FM('gomma', c, c, c, 1), top = M_(new THREE.SphereGeometry(R, 24, 14, 0, Math.PI * 2, 0, 1.15), mt);
         const side = M_(new THREE.SphereGeometry(R, 24, 8, Math.PI * .27, Math.PI * 1.46, 1.15, .95), mt); side.rotation.y = Math.PI;
         const stripe = M_(new THREE.SphereGeometry(R + .002, 4, 12, -.1, .2, 0, 1.6), lm('#ece8dc')); stripe.rotation.y = Math.PI / 2;
         const rim = M_(new THREE.TorusGeometry(R * .97, .012, 6, 28, Math.PI * 1.45), lm('#141416')); rim.rotation.x = Math.PI / 2; rim.rotation.z = Math.PI * .275 + Math.PI; rim.position.y = -R * .55;
@@ -210,9 +224,32 @@ var Vesti3D = (function () {
       case 'elmetto': {   // elmetto: calotta, bordo sporgente, telo, sottogola
         const mt = FM('ripstop', c, sh(c, .7), sh(c, 1.2)), R = r + .028, d = lathe([[R + .02, .0], [R + .02, .008], [R, .015], [R * .98, H * .5], [R * .78, H * .85], [R * .4, H + .025], [0, H + .03]], mt, 28);
         h.add(d); const st = new THREE.Mesh(new THREE.TorusGeometry(r * .82, .006, 4, 20, Math.PI), lm('#2a2418')); st.rotation.y = Math.PI / 2; st.rotation.z = Math.PI; st.position.set(0, -.02, -.01); st.scale.set(1, 1.3, 1); h.add(st); break; }
-      case 'passamontagna': {   // aderente, fino al collo, la fessura per gli occhi
-        const mt = FM('costine', c), hd = lathe([[T.rSkull * .62, T.chin - T.brow - .05], [T.rSkull * .7, T.chin - T.brow + .02], [r + .006, -.05], [r + .008, .02], [r * .96, H * .55], [r * .65, H * .9], [0, H + .01]], mt);
-        hd.scale.set(1, 1, 1.06); const slit = Bx(.12, .028, .02, '#141010', 0, T.eyeY - T.brow, T.eyeZ - T.cz + .004); h.add(hd, slit); break; }
+      case 'passamontagna': case 'pm_punte': case 'pm_orecchie': case 'pm_righe': {   // aderente, fino al collo, la fessura per gli occhi (a maglia: liscio, a righe, con le punte, con le orecchie)
+        const c2 = sh(c, 1.6), c3 = /^#[0-3]/.test(c) ? '#e8e0d0' : '#1a1a1e', mt = kind === 'pm_righe' ? FM('righe', c, c3, c3) : FM('costine', c);
+        const rb = T.rSkull + .012, Hb = (T.hHat || H) - .004, ey = T.eyeY - T.brow, ez = T.eyeZ - T.cz;
+        const hd = lathe([[T.rSkull * .62, T.chin - T.brow - .05], [T.rSkull * .72, T.chin - T.brow + .02], [rb - .004, ey - .03], [rb, ey + .02], [rb, .02], [rb * .96, Hb * .55], [rb * .66, Hb * .9], [0, Hb + .01]], mt, 16);
+        hd.scale.set(1, 1, Math.max(1.02, (ez + .012) / rb));
+        { const g0 = hd.geometry.toNonIndexed(), P0 = g0.attributes.position, keep = [];   // la fessura vera per gli occhi: si tolgono i triangoli davanti agli occhi
+          for (let t = 0; t < P0.count; t += 3) { let cx = 0, cy = 0, cz = 0; for (let k = 0; k < 3; k++) { cx += P0.getX(t + k) / 3; cy += P0.getY(t + k) / 3; cz += P0.getZ(t + k) / 3; } if (!(cz > 0 && Math.abs(cy - ey) < .024 && Math.abs(cx) < .064)) keep.push(t); }
+          const A = new Float32Array(keep.length * 9); keep.forEach((t, i) => { for (let k = 0; k < 3; k++) { A[i * 9 + k * 3] = P0.getX(t + k); A[i * 9 + k * 3 + 1] = P0.getY(t + k); A[i * 9 + k * 3 + 2] = P0.getZ(t + k); } });
+          const g1 = new THREE.BufferGeometry(); g1.setAttribute('position', new THREE.BufferAttribute(A, 3)); g1.computeVertexNormals(); const uv = []; for (let i = 0; i < A.length; i += 3) uv.push(Math.atan2(A[i], A[i + 2]) * .6, A[i + 1] * 6); g1.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); hd.geometry = g1; }
+        const slit = new THREE.Group();
+        const rib = lathe([[T.rSkull * .64, T.chin - T.brow - .055], [T.rSkull * .66, T.chin - T.brow - .03]], FM('costine', kind === 'passamontagna' ? sh(c, .85) : c3)); h.add(hd, slit, rib);
+        // l'orlo della fessura, in contrasto
+        if (kind !== 'passamontagna') { const fr = Bx(.13, .007, .01, lm(c3), 0, ey + .027, ez + .006), fr2 = fr.clone(); fr2.position.y = ey - .027; h.add(fr, fr2); }
+        if (kind === 'pm_punte') for (let i = 0; i < 7; i++) {   // la cresta di punte a maglia, dalla fronte alla nuca
+          const t = i / 6, ang = lerp0(.55, 2.75, t), y = Math.sin(ang) * (Hb + .004), z = Math.cos(ang) * (rb + .002) * 1.04, sz = .034 + .022 * Math.sin(t * Math.PI);
+          const sp = new THREE.Mesh(new THREE.ConeGeometry(sz * .5, sz * 1.5, 4), FM('costine', i % 2 ? c2 : c3)); sp.position.set(0, y, z); sp.rotation.x = Math.PI / 2 - ang; sp.scale.x = .5; h.add(sp); }
+        if (kind === 'pm_orecchie') for (const sx of [-1, 1]) {   // le orecchie a maglia (gatto), col dentro di un altro colore
+          const e = new THREE.Mesh(new THREE.ConeGeometry(.04, .07, 3), FM('costine', c)); e.position.set(sx * rb * .64, Hb * .86, .0); e.rotation.z = -sx * .45; e.scale.z = .45; h.add(e);
+          const ei = new THREE.Mesh(new THREE.ConeGeometry(.024, .045, 3), lm(c2)); ei.position.set(sx * rb * .62, Hb * .84, .012); ei.rotation.z = -sx * .45; ei.scale.z = .3; h.add(ei); }
+        break; }
+      case 'bandana': {   // bandana tirata su: copre naso e bocca, annodata dietro, la punta che scende sul collo davanti
+        const mt = FM('paisley', c, '#ece4d0', sh(c, .5)), sc = T.sc || 1, yN = T.eyeY - T.brow - .028 * sc, yC = T.chin - T.brow - .02, czL = (T.eyeZ - T.cz) - .1 * sc;
+        const band = lathe([[.088 * sc, yC], [.094 * sc, (yC + yN) / 2], [.09 * sc, yN]], mt, 16); band.scale.set(1, 1, 1.18); band.position.z = czL; h.add(band);
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(.075 * sc, .1, 3), mt); tip.rotation.x = Math.PI; tip.rotation.y = Math.PI; tip.scale.z = .25; tip.position.set(0, yC - .035, czL + .1 * sc); tip.rotation.x = Math.PI + .25; h.add(tip);
+        const knot = Sp(.016, mt, 0, yN - .01, czL - .1 * sc); h.add(knot); for (const sx of [-1, 1]) { const e = new THREE.Mesh(new THREE.ConeGeometry(.018, .06, 3), mt); e.position.set(sx * .02, yN - .04, czL - .108 * sc); e.rotation.z = Math.PI + sx * .4; e.scale.z = .3; h.add(e); }
+        break; }
       case 'antigas': {   // maschera antigas: facciale di gomma, due oculari, filtro a costole, cinghie
         const mt = FM('gomma', c), fz = T.front - T.cz, face = M_(new THREE.SphereGeometry(.105, 18, 12, -1.2, 2.4, .5, 2.0), mt); face.scale.set(1, 1.15, .7); face.position.set(0, T.eyeY - T.brow - .05, fz - .055);
         const lens = (x) => { const L = Cy(.028, .028, .012, '#1a2a2a', x, T.eyeY - T.brow + .005, fz + .015, 14); L.rotation.x = Math.PI / 2; const rr = M_(new THREE.TorusGeometry(.028, .006, 6, 16), lm('#3a3a36'), x, T.eyeY - T.brow + .005, fz + .02); return [L, rr]; };
@@ -416,6 +453,21 @@ var Vesti3D = (function () {
     }
     return st;
   }
+  // sotto il cappello i capelli si schiacciano: dentro la calotta (misurata sul cranio), sotto la tesa restano come sono (code, caschetto)
+  function schiacciaCapelli(g, T, kind) {
+    g.updateMatrixWorld(true); const gi = new THREE.Matrix4().copy(g.matrixWorld).invert(), v = new THREE.Vector3();
+    const pm = /^(passamontagna|pm_)/.test(kind), wide = /^(fedora|ushanka|casco|elmetto|paglia|cowboy|hard)$/.test(kind), rIn = pm ? T.rSkull + .004 : T.r - .006 + (wide ? .01 : 0), hIn = T.hHat - (pm ? .01 : .006) + (wide ? .008 : 0), y0 = pm ? T.chin - .03 : T.brow, zs = /^(cap|snapback)$/.test(kind) ? 1.04 : 1;
+    g.traverse(o => {
+      if (!o.isSkinnedMesh || o.userData.vesti || !/Head/i.test(o.name)) return; const ms = Array.isArray(o.material) ? o.material : [o.material];
+      if (ms.some(m => m && /^(Skin|Eye|Eyebrows|Moustache|Worker_Yellow)/i.test(m.name || ''))) return;   // solo le mesh dei capelli
+      const geo = o.geometry; if (!geo.userData.pittura) return;   // (geometria propria della persona)
+      const P = geo.attributes.position, M = new THREE.Matrix4().multiplyMatrices(gi, o.matrixWorld), Mi = M.clone().invert(); let ch = 0;
+      for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i).applyMatrix4(M); if (v.y < y0 - .02) continue;
+        const dx = v.x - T.cx, dz = (v.z - T.cz) / zs, d = Math.hypot(dx, dz), t = cl0((v.y - T.brow) / hIn), ra = (v.y < T.brow ? rIn + (pm ? 0 : .004) : rIn * Math.sqrt(Math.max(0, 1 - t * t * .85)));
+        let nx = v.x, ny = Math.min(v.y, T.brow + hIn), nz = v.z; if (d > ra && d > 1e-5) { const k = ra / d; nx = T.cx + dx * k; nz = T.cz + dz * k * zs; }
+        if (nx !== v.x || ny !== v.y || nz !== v.z) { v.set(nx, ny, nz).applyMatrix4(Mi); P.setXYZ(i, v.x, v.y, v.z); ch++; } }
+      if (ch) { P.needsUpdate = true; geo.computeBoundingSphere(); } });
+  }
   function accessories(g, outfit, held, D) {
     if (!window.Sartoria || !D || !D.B) return accessoriesOld(g, outfit, held);
     if (window.Pittura) try { scarpe(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); } catch (e) { console.error('[Vesti3D] scarpe', e); }
@@ -426,9 +478,10 @@ var Vesti3D = (function () {
     const underJ = lay.filter(l => l.cl < 4 && l.parti.includes('torso')).reduce((m, l) => Math.max(m, l.t), 0) + .004;
     const torsoOut = (th.torso || 0) + .006;
     let kh = 0;
+    { const hat = outfit.find(c => c.acc && /^(beanie|flat|fedora|ushanka|casco|elmetto|cap|snapback|docker|basco|police|paglia|hard|cowboy|scarf|passamontagna|pm_punte|pm_orecchie|pm_righe)$/.test(c.acc)); if (hat && T) try { schiacciaCapelli(g, T, hat.acc); } catch (e) { console.error('[Vesti3D] capelli', e); } }
     outfit.forEach(c => {
       if (!c.acc) return;
-      const isHat = /^(beanie|flat|fedora|scarf|ushanka|casco|elmetto|passamontagna|antigas|cap|snapback|docker|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc);
+      const isHat = /^(beanie|flat|fedora|scarf|ushanka|casco|elmetto|passamontagna|pm_punte|pm_orecchie|pm_righe|bandana|antigas|cap|snapback|docker|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc);
       if (isHat && T) { const o = /^(cap|snapback|docker|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc) ? headAcc2(c.acc, c.col, T, kh) : headAcc(c.acc, c.col, T, kh); kh++; o.position.set(T.cx, T.brow, T.cz); AT('Head', o); return; }
       if (c.acc === 'occhiali' && T) {   // occhiali a goccia: lenti scure, montatura dorata, stanghette fino alle orecchie
         const o = new THREE.Group(), y = T.eyeY - T.brow, z = T.eyeZ - T.cz + .014, lens = sx => { const L = new THREE.Mesh(new THREE.CircleGeometry(.026, 16), new THREE.MeshLambertMaterial({ color: '#0e1012', emissive: '#1a1e24', side: THREE.DoubleSide })); L.scale.set(1.1, .95, 1); L.position.set(sx, y - .004, z); L.rotation.y = sx > 0 ? .12 : -.12; return L; };
