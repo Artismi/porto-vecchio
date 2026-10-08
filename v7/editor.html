@@ -25233,7 +25233,7 @@ var Render = (function () {
   const lam = (c) => new THREE.MeshLambertMaterial({ color: c });
   const box = (w, h, d, mat) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   const cyl = (rt, rb, h, seg, mat) => new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg || 8), mat);
-  function shadowed(m, cast, rec) { m.traverse(o => { if (o.isMesh) { o.castShadow = cast !== false; o.receiveShadow = rec !== false; } }); return m; }
+  function shadowed(m, cast, rec) { m.traverse(o => { if (o.isMesh && !o.userData.waterMask) { o.castShadow = cast !== false; o.receiveShadow = rec !== false; } }); return m; }
   function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = n >> 8 & 255, b = n & 255; r = Math.min(255, Math.max(0, Math.round(r * f))); g = Math.min(255, Math.max(0, Math.round(g * f))); b = Math.min(255, Math.max(0, Math.round(b * f))); return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1); }
 
   // materiali condivisi (per gli oggetti statici, che poi vengono fusi)
@@ -25749,7 +25749,7 @@ var Render = (function () {
           gl_FragColor = vec4(c, 1.);
         }`,
     });
-    const m = new THREE.Mesh(geo, mat); m.position.set(G.WW / 2, -.45, G.WH / 2); scene.add(m); dyn.water = mat;
+    const m = new THREE.Mesh(geo, mat); m.position.set(G.WW / 2, -.45, G.WH / 2); m.renderOrder = 1; scene.add(m); dyn.water = mat;   // [costa] dopo le sagome delle barche
     const LK = M.world && M.world.LAKE; if (LK) { const lg = new THREE.PlaneGeometry(LK.rx * 2 + 8, LK.ry * 2 + 8, 1, 1); lg.rotateX(-Math.PI / 2); const lm = new THREE.Mesh(lg, mat); lm.position.set(LK.x, LK.h - .5, LK.y); scene.add(lm); }
   }
 
@@ -27165,13 +27165,16 @@ var Render = (function () {
     const sh = new THREE.Shape(), N = 16, a = t0 || 0, b = t1 || 1;
     for (let i = 0; i <= N; i++) { const t = a + (b - a) * i / N, x = Math.max(.02, H.hw(t) - ins), z = -H.L / 2 + t * H.L; i ? sh.lineTo(x, z) : sh.moveTo(x, z); }
     for (let i = N; i >= 0; i--) { const t = a + (b - a) * i / N; sh.lineTo(-Math.max(.02, H.hw(t) - ins), -H.L / 2 + t * H.L); }
-    const g = new THREE.ShapeGeometry(sh); g.rotateX(Math.PI / 2); g.translate(0, y, 0); return g;
+    const g = new THREE.ShapeGeometry(sh); g.rotateX(Math.PI / 2); g.translate(0, y, 0); return faceUp(g);
   }
+  // la ShapeGeometry girata di +90° sull'asse x guarda in giù: si rigirano i triangoli e le normali, così si vede dall'alto
+  function faceUp(g) { const ix = g.index.array; for (let k = 0; k < ix.length; k += 3) { const t = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = t; } const n = g.attributes.normal.array; for (let k = 0; k < n.length; k++) n[k] = -n[k]; g.index.needsUpdate = true; g.attributes.normal.needsUpdate = true; return g; }
   const DS = { side: THREE.DoubleSide };
   // quanto pesca ogni barca (m sotto il pelo dell'acqua, dal capodibanda medio): il gruppo sta a WL + DRAFT
   const DRAFT = { gozzo: .27, lancia: .3, barca_vela: .42, motoscafo: .28, peschereccio: .62, motovedetta: .6, rimorchiatore: .85, nave: 2.1, pedalo: .14, secca: .27 };   // circa un terzo dell'altezza dello scafo: la barca sta sopra l'acqua, non mezza sotto
   // tre fasce: l'antivegetativa fino a un palmo sopra il galleggiamento, il colore dello scafo, la fascia sotto il capodibanda
   function hullMesh(g, H, colLow, colBand, band, cap, draft, anti) {
+    COSTA.lastH = H;   // per la sagoma che tiene fuori l'acqua (waterMask)
     const sh = H.sh(.5), kd = H.kd(.5), uw = Math.min(.8, Math.acos(Math.pow(clamp((sh + draft - .12) / (kd + sh), 0, 1), 1 / 1.6)) * 2 / Math.PI);
     g.add(new THREE.Mesh(hullGeo(H, 0, uw, cap), sm(anti || '#7a2a22', DS)));
     g.add(new THREE.Mesh(hullGeo(H, uw, 1 - band, cap), sm(colLow, DS)));
@@ -27182,19 +27185,19 @@ var Render = (function () {
     gozzo(r, o) {
       const g = G0(), H = hullShape(5, 1.75, .78, true), col = o && o.col || pick(r, ['#f2eee4', '#f2eee4', '#2f6aa0', '#3a8a6a', '#e8d8a8']), band = o && o.band || pick(r, ['#2a5a9a', '#c83a2a', '#2a8a6a', '#e0b040', '#1a2a4a']);
       hullMesh(g, H, col, band, .2, false, DRAFT.gozzo);
-      g.add(new THREE.Mesh(deckGeo(H, -.42, .12, .08, .92), PM.woodL()));                 // il pagliolato
+      g.add(new THREE.Mesh(deckGeo(H, -DRAFT.gozzo + .06, .12, .08, .92), PM.woodL()));    // il pagliolato, sopra il pelo dell'acqua
       [.32, .62].forEach(t => add(g, box(H.hw(t) * 2 - .12, .05, .26, PM.woodL()), 0, H.sh(t) - .22, -2.5 + t * 5));   // i banchi
       add(g, box(.09, .55, .12, sm(band)), 0, H.sh(1) + .1, 2.48, -.25, 0, 0);          // il dritto di prua alto, alla ligure
       add(g, box(.09, .4, .12, sm(band)), 0, H.sh(0) + .05, -2.48, .25, 0, 0);
-      [-1, 1].forEach(s => add(g, box(.05, .04, 3.2, PM.wood()), s * .3, -.33, -.2, 0, s * .05, 0));   // i remi
-      if (r() < .6) { add(g, box(.7, .22, .6, sl('#2f4a3a')), .1, -.28, -1.4); for (let k = 0; k < 4; k++) add(g, box(.14, .14, .14, sl('#f06a2a')), -.2 + k * .16, -.12, -1.3 - (k % 2) * .2); }   // la rete coi sugheri
-      if (r() < .5) add(g, box(.4, .3, .5, sl('#3a3a40')), 0, -.25, .3);                  // il motorino entrobordo
+      [-1, 1].forEach(s => add(g, box(.05, .04, 3.2, PM.wood()), s * .3, -.17, -.2, 0, s * .05, 0));   // i remi
+      if (r() < .6) { add(g, box(.7, .22, .6, sl('#2f4a3a')), .1, -.1, -1.4); for (let k = 0; k < 4; k++) add(g, box(.14, .14, .14, sl('#f06a2a')), -.2 + k * .16, .06, -1.3 - (k % 2) * .2); }   // la rete coi sugheri
+      if (r() < .5) add(g, box(.4, .3, .5, sl('#3a3a40')), 0, -.06, .3);                  // il motorino entrobordo
       return g;
     },
     lancia(r) {
       const g = G0(), H = hullShape(6, 2.1, .9, false), col = pick(r, ['#f2eee4', '#e8e4da', '#3a6a9a']);
       hullMesh(g, H, col, pick(r, ['#2a5a9a', '#c8402a', '#1f3a5a']), .18, true, DRAFT.lancia);
-      g.add(new THREE.Mesh(deckGeo(H, -.4, .1), PM.woodL()));
+      g.add(new THREE.Mesh(deckGeo(H, -DRAFT.lancia + .06, .1), PM.woodL()));
       add(g, box(1.5, .72, 1.6, sm('#f2eee6')), 0, .25, 1.3); add(g, box(1.52, .26, 1.0, sm('#203040', { roughness: .15 })), 0, .42, 1.15);   // la cabinetta di prua coi vetri
       add(g, box(.5, .4, .4, sl('#2a2a30')), 0, -.05, -2.85); add(g, box(.16, .5, .16, sl('#2a2a30')), 0, -.35, -3.05);   // il fuoribordo
       return g;
@@ -27216,7 +27219,7 @@ var Render = (function () {
       const g = G0(), H = hullShape(7, 2.4, .95, false), c2 = pick(r, ['#ff4fa3', '#35c8e6', '#8a60e0', '#f0c030', '#1a1a22']);
       hullMesh(g, H, '#f4f2ee', c2, .22, true, DRAFT.motoscafo, '#1f2a3a');
       g.add(new THREE.Mesh(deckGeo(H, H.sh(.5) - .02, .04, .52, 1), sm('#f4f2ee')));
-      g.add(new THREE.Mesh(deckGeo(H, -.3, .14, 0, .52), sm('#c8b89a')));
+      g.add(new THREE.Mesh(deckGeo(H, -DRAFT.motoscafo + .07, .14, 0, .52), sm('#c8b89a')));
       add(g, box(1.9, .55, .08, sm('#3a4a5a', { roughness: .1, metalness: .3 })), 0, H.sh(.5) + .25, 3.6 * .1 + .1, -.5, 0, 0);   // il parabrezza
       [-0.5, .5].forEach(s => add(g, box(.7, .5, .7, sm('#e8e0d0')), s, -.05, -1));
       add(g, box(.55, .7, .5, sl('#1a1a20')), 0, .05, -3.2); add(g, box(.2, .7, .2, sl('#1a1a20')), 0, -.4, -3.3);           // il fuoribordo
@@ -27272,9 +27275,26 @@ var Render = (function () {
     pedalo(r) { const g = G0(), col = pick(r, ['#f4a6c0', '#7fd6e0', '#f0d060']); [-.55, .55].forEach(o => add(g, box(.5, .45, 2.5, sm(col)), o, .05, 0)); add(g, box(1.5, .14, 1.4, PM.white()), 0, .35, -.1); add(g, box(1.1, .55, .1, PM.white()), 0, .65, -.62); add(g, new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, .08, 10, 1, false, 0, Math.PI), sm('#f4f0e6')), 0, .5, .6, 0, 0, Math.PI / 2); return g; },
   };
   BOATS.secca = r => BOATS.gozzo(r);
+  // [costa] la sagoma invisibile alla linea di galleggiamento: si disegna prima del mare e scrive solo la profondità,
+  // così il piano dell'acqua non entra negli scafi aperti (gozzi, lance, pozzetti). Segue la sezione vera dello scafo.
+  const MASKM = new THREE.MeshBasicMaterial({ colorWrite: false });
+  function waterMask(H, draft) {
+    const y = -draft + .03, half = t => { const sh = H.sh(t), kd = H.kd(t); if (-draft <= -kd) return 0; const c = Math.pow(clamp((sh + draft) / (kd + sh), 0, 1), 1 / 1.6), ph = Math.acos(c); return H.hw(t) * Math.pow(Math.sin(ph), .55) * .97; };
+    const sh = new THREE.Shape(), N = 24;
+    for (let i = 0; i <= N; i++) { const t = i / N, x = Math.max(.01, half(t)), z = -H.L / 2 + t * H.L; i ? sh.lineTo(x, z) : sh.moveTo(x, z); }
+    for (let i = N; i >= 0; i--) { const t = i / N; sh.lineTo(-Math.max(.01, half(t)), -H.L / 2 + t * H.L); }
+    const g = faceUp(new THREE.ShapeGeometry(sh)); g.rotateX(Math.PI / 2); g.translate(0, y, 0);
+    const m = new THREE.Mesh(g, MASKM); m.renderOrder = -10; m.userData.keep = true; m.userData.waterMask = true; m.castShadow = m.receiveShadow = false; return m;
+  }
+  // una barca pronta: modello fuso per materiale, con la sagoma che tiene fuori l'acqua (non per quelle in secca)
+  function boatModel(kind, r, o) {
+    COSTA.lastH = null; const g = mergeGroup(BOATS[kind](r, o || {})), H = COSTA.lastH;
+    if (H && kind !== 'secca') g.add(waterMask(H, DRAFT[kind] || .4));
+    return g;
+  }
   function boatAt(m, r) {
-    const mk0 = BOATS[m.kind]; if (!mk0) return null;
-    const g0 = mk0(r, m), g = mergeGroup(g0);
+    if (!BOATS[m.kind]) return null;
+    const g = boatModel(m.kind, r, m);
     if (m.kind === 'secca') {   // tirata in secca: sulla sabbia, un po' coricata, sui parati di legno
       const y = groundH(m.x, m.y); g.position.set(m.x, y + .62, m.y); g.rotation.set(0, Math.PI / 2 - m.ang, .14 * (r() < .5 ? 1 : -1)); shadowed(g); scene.add(g);
       [-1.2, .2, 1.4].forEach(o => { const q = box(.12, .1, 1.6, PM.woodD()); q.position.set(m.x + Math.cos(m.ang) * o, y + .05, m.y + Math.sin(m.ang) * o); q.rotation.y = -m.ang; addStatic(q); });
@@ -27429,7 +27449,7 @@ var Render = (function () {
     let g = dyn.vehicles[v.id];
     if (!g) {
       let h = 0; for (const ch of v.id) h = (h * 31 + ch.charCodeAt(0)) | 0;
-      const K = G.VK[v.kind], r = rng(h >>> 0); g = mergeGroup(BOATS[v.kind](r, { col: v.color })); shadowed(g); const u = g.userData;
+      const K = G.VK[v.kind], r = rng(h >>> 0); g = boatModel(v.kind, r, { col: v.color }); shadowed(g); const u = g.userData;
       u.drv = driverMesh(v.driverLook || { top: '#3a4a5a', skin: '#dcae88', hair: '#17110e' }, false); u.drv.position.set(0, -.55, -K.len / 2 + 1.1); g.add(u.drv);
       u.wake = new THREE.Mesh(new THREE.PlaneGeometry(K.wid * 2.2, 12), new THREE.MeshBasicMaterial({ map: wakeTex(), transparent: true, depthWrite: false, opacity: 0 })); u.wake.rotation.x = -Math.PI / 2; u.wake.position.set(0, .04, -K.len / 2 - 6); u.wake.renderOrder = 2;
       u.wakeG = new THREE.Group(); u.wakeG.add(u.wake); scene.add(u.wakeG);
@@ -27468,7 +27488,7 @@ var Render = (function () {
   }
   function buildMovers() {
     const S = M.world && M.world.SEA; if (!S || !S.routes) return; const r = rng(707);
-    const mk1 = (kind, route, closed, sched) => { const g = mergeGroup(BOATS[kind](r, {})); shadowed(g); scene.add(g); const K = { kind, route, closed, sched, g, ph: r() * 6 };
+    const mk1 = (kind, route, closed, sched) => { const g = boatModel(kind, r); shadowed(g); scene.add(g); const K = { kind, route, closed, sched, g, ph: r() * 6 };
       K.wake = new THREE.Mesh(new THREE.PlaneGeometry(kind === 'motovedetta' ? 7 : 6, 16), new THREE.MeshBasicMaterial({ map: wakeTex(), transparent: true, depthWrite: false, opacity: .55 })); K.wake.rotation.x = -Math.PI / 2; K.wake.position.set(0, .04, -14); K.wg = new THREE.Group(); K.wg.add(K.wake); scene.add(K.wg); COSTA.movers.push(K); };
     if (S.routes.pesca) { mk1('peschereccio', S.routes.pesca, false, { out: 5.2, back: 13.5, off: 0 }); mk1('peschereccio', S.routes.pesca, false, { out: 5.6, back: 14.2, off: 30 }); }
     if (S.routes.giro) mk1('motovedetta', S.routes.giro, true, null);
