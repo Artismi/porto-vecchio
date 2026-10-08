@@ -715,13 +715,13 @@ var Sartoria = (function () {
         for (let it = 0; it < 3; it++) for (let i = 1; i < n; i++) for (let k = 0; k < 3; k++) ext[i][k] = Math.max(ext[i][k], (ext[i - 1][k] + ext[i + 1][k]) / 2);
         // linee dritte: dal bacino all'orlo la misura va in linea retta (niente onde dalle gambe), con agio al fondo per il passo
         if (!C.poncho) { let lo = 0; for (let i = 0; i <= hipI; i++) if (ext[i][0] > 0) { lo = i; break; } const A0 = ext[lo], A1 = ext[Math.min(n, hipI)];
-          const coatF = C.cl >= 5, ease = C.giacchetta ? [.004, .008, .006] : coatF ? [.045, .11, .07] : [.045, .085, .065];   // il cappotto si apre (passo lungo), la gonna scende quasi dritta
+          const coatF = C.cl >= 5, ease = C.giacchetta ? [.014, .04, .012] : coatF ? [.045, .11, .07] : [.045, .085, .065];   // il cappotto si apre (passo lungo), la gonna scende quasi dritta
           for (let i = lo; i < hipI; i++) { const t = (i - lo) / Math.max(1, hipI - lo); for (let k = 0; k < 3; k++) ext[i][k] = Math.max(lerp(A0[k] + ease[k], A1[k], t), coatF ? lerp(ext[i][k], A1[k], .5) : A1[k] * .96); } }
         const M = t0.R.map((r, i) => { const [W, Df, Db] = ext[i], o = new Float32Array(RG); for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a), D = ca >= 0 ? Df : Db, e = C.cl >= 5 ? 3 : 2.8;
           o[q] = 1 / Math.pow(Math.pow(Math.abs(ca) / Math.max(D, .02), e) + Math.pow(Math.abs(sa) / Math.max(W, .02), e), 1 / e); } return o; });
         tb = Object.assign({}, t0, { R: M });
       } TR = tb; const Ls = lengths(B, tb, trunkKind, C, parti); Lt = Ls;
-      const W = trunkKind === 'gonna' ? (C.poncho ? capeW(B) : C.blocchi ? faldaW(B, tb) : weightsFor(B, trunkKind)) : gridW(tb), hipY = B.bones.Hips.y;
+      const W = trunkKind === 'gonna' ? (C.poncho || C.giacchetta ? capeW(B) : C.blocchi ? faldaW(B, tb) : weightsFor(B, trunkKind)) : gridW(tb), hipY = B.bones.Hips.y;
       const coat = C.blocchi && (C.cl >= 5 || C.giacchetta && /bottoni|doppio|zip/.test(C.fronte || '')), cols = C.blocchi ? (C.poncho ? 20 : 40) : 24, front = C.davanti, aRange = front ? [-1.75, 1.75] : coat ? [.16, Math.PI * 2 - .16] : [-Math.PI, Math.PI];   // il cappotto: aperto davanti, due lembi   // il cappotto: aperto davanti, un lembo sopra l'altro
       // scollo: la cima di ogni colonna (in s) secondo il collo
       const neckTop = a => {
@@ -742,7 +742,9 @@ var Sartoria = (function () {
       const offY = y => y > hipY + .08 ? offAt('torso') : y > B.crotch ? Math.max(offAt('bacino'), offAt('torso') * .5 + offAt('bacino') * .5) : Math.max(offAt('cosce'), offAt('bacino'));
       const ringC = (() => { let s = 0; for (let k = 0; k < 16; k++) s += radius(tb, (Ls.s0 + Ls.s1) / 2, k / 16 * Math.PI * 2); return s / 16 * Math.PI * 2; })();
       const pts = grid(bd, rows, cols + 1, (i, j) => {
-        const a = aRange[0] + (aRange[1] - aRange[0]) * j / cols, s0 = hemBot(a), s1 = neckTop(a), s = lerp(s0, s1, i / (rows - 1));
+        let a = aRange[0] + (aRange[1] - aRange[0]) * j / cols;
+        if (coat && C.giacchetta) { const gap = lerp(.22, .75, 1 - i / (rows - 1)), u = j / cols; a = gap + u * (Math.PI * 2 - 2 * gap); }   // la giacca si apre davanti verso il basso (taglio a coda)
+        const s0 = C.giacchetta ? Ls.s0 : hemBot(a), s1 = C.giacchetta ? Ls.s1 : neckTop(a), s = lerp(s0, s1, i / (rows - 1));
         const fr = frameAt(tb, s), y = fr.p.y; let o = offY(y);
         if (C.gonna && y < hipY) o += (hipY - y) * (C.svasa || .1) * (C.blocchi ? .2 : 1);   // la gonna scende quasi dritta (appena aperta per il passo)
         if (coat) { const fe = Math.min(a, Math.PI * 2 - a); if (fe < .5) o += (.5 - fe) * .03 * cl((B.waist - y) / .4, 0, 1); }   // i lembi davanti si staccano verso il basso
@@ -758,7 +760,7 @@ var Sartoria = (function () {
         return { p, out, u: (a - aRange[0]) / (Math.PI * 2) * ringC, v: s, c, skirt };
       }, W, 0);
       // risvolto interno dell'orlo (si vede lo spessore) e lo scollo
-      lip(bd, tb, W, aRange, cols, a => hemBot(a), a => { const s = hemBot(a), fr = frameAt(tb, s); let o = offY(fr.p.y); if (C.gonna && fr.p.y < hipY) o += (hipY - fr.p.y) * (C.svasa || .1) * (C.blocchi ? .2 : 1); if (C.poncho) o += cl((B.neck - fr.p.y) / .3, 0, 1) * .1 * (.6 + .4 * Math.abs(Math.sin(a))); return o; }, -1, C, ringC, hipY);
+      lip(bd, tb, W, C.giacchetta && coat ? [.75, Math.PI * 2 - .75] : aRange, cols, a => C.giacchetta ? Ls.s0 : hemBot(a), a => { const s = hemBot(a), fr = frameAt(tb, s); let o = offY(fr.p.y); if (C.gonna && fr.p.y < hipY) o += (hipY - fr.p.y) * (C.svasa || .1) * (C.blocchi ? .2 : 1); if (C.poncho) o += cl((B.neck - fr.p.y) / .3, 0, 1) * .1 * (.6 + .4 * Math.abs(Math.sin(a))); return o; }, -1, C, ringC, hipY);
       lip(bd, tb, W, aRange, cols, a => neckTop(a), a => offY(frameAt(tb, neckTop(a)).p.y), 1, C, ringC, hipY);
       // finiture del tronco
       if (!C.blocchi || C.poncho) trunkDetails(bd, B, tb, W, C, Ls, offY, neckTop, hemBot, ringC);   // sulle falde i dettagli sono dipinti sul busto
