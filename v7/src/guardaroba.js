@@ -155,6 +155,14 @@ var Guardaroba = (function () {
     ['passamontagna_punte', 'passamontagna a maglia con le punte', 'Passam. punte', 'testa', [], 0, '#2aa86a', 9, .1, .12, { acc: 'pm_punte' }],
     ['passamontagna_orecchie', 'passamontagna a maglia con le orecchie', 'Passam. gatto', 'testa', [], 0, '#e8587a', 9, .1, .12, { acc: 'pm_orecchie' }],
     ['passamontagna_righe', 'passamontagna a righe', 'Passam. righe', 'testa', [], 0, '#e8a020', 7, .1, .12, { acc: 'pm_righe' }],
+    ['passamontagna_diavolo', 'passamontagna da diavolo con le corna', 'Diavolo', 'testa', [], 0, '#ece8e0', 14, .15, .12, { acc: 'pm_diavolo' }],
+    ['passamontagna_clown', 'passamontagna da pagliaccio con le frange', 'Pagliaccio', 'testa', [], 0, '#3ab048', 14, .15, .12, { acc: 'pm_clown' }],
+    ['passamontagna_riccio', 'passamontagna a riccio di mare', 'Riccio', 'testa', [], 0, '#f0288a', 14, .15, .12, { acc: 'pm_riccio' }],
+    ['passamontagna_corna', 'passamontagna con le corna e la gorgiera', 'Cornuto', 'testa', [], 0, '#28b8e8', 14, .15, .12, { acc: 'pm_corna' }],
+    ['passamontagna_coniglio', 'passamontagna da coniglio con la gorgiera', 'Coniglio', 'testa', [], 0, '#c0185a', 14, .15, .12, { acc: 'pm_coniglio' }],
+    ['passamontagna_giullare', 'passamontagna da giullare a righe', 'Giullare', 'testa', [], 0, '#c8186a', 16, .15, .12, { acc: 'pm_giullare' }],
+    ['cappuccio_stelle', 'cappuccio da giullare con le stelle', 'Giullare stelle', 'testa', [], 0, '#d8d0c0', 16, .15, .12, { acc: 'pm_stelle' }],
+    ['passamontagna_pallini', 'passamontagna con le corna a pallini', 'Pallini', 'testa', [], 0, '#f0509a', 16, .15, .12, { acc: 'pm_pallini' }],
     ['bandana', 'bandana tirata su', 'Bandana', 'testa', [], 0, '#a82a2a', 3, .05, .02, { acc: 'bandana', ombra: 1 }],
     ['catenina', 'catenina d\'argento', 'Catenina', 'collo', [], 0, '#d8d8dc', 18, .05, 0, { acc: 'catenina' }],
   ];
@@ -174,7 +182,7 @@ var Guardaroba = (function () {
   sell('use:emporio', ['bermuda', 'sandali', 'cappellino', 'fascia', 'leggings', 'tuta_ginnastica', 'scarpe_corsa', 'felpa_zip', 'maglia_calcio', 'marsupio']);
   sell('use:sartoria', ['maglione_v', 'maglione_collo_alto', 'camicia_righe', 'camicia_vichy', 'camicia_fiori', 'cravatta_righe', 'cravatta_pois', 'cravatta_cachemire', 'cravatta_fiori', 'cravatta_maglia']);
   sell('use:emporio', ['maglione_v', 'camicia_jeans', 'camicia_vichy']);
-  sell('use:emporio', ['maglietta_oversize', 'felpa_skate', 'canotta_basket', 'giacca_tuta', 'pantaloni_tuta', 'calze_sport', 'scarpe_skate', 'cappellino_dritto', 'berretto_corto', 'marsupio_tracolla', 'passamontagna_punte', 'passamontagna_orecchie', 'passamontagna_righe', 'bandana']);
+  sell('use:emporio', ['maglietta_oversize', 'felpa_skate', 'canotta_basket', 'giacca_tuta', 'pantaloni_tuta', 'calze_sport', 'scarpe_skate', 'cappellino_dritto', 'berretto_corto', 'marsupio_tracolla', 'passamontagna_punte', 'passamontagna_orecchie', 'passamontagna_righe', 'bandana', 'passamontagna_diavolo', 'passamontagna_clown', 'passamontagna_riccio', 'passamontagna_corna', 'passamontagna_coniglio', 'passamontagna_giullare', 'cappuccio_stelle', 'passamontagna_pallini']);
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['smanicato', 'piumino_oca', 'jeans_larghi', 'scarpe_air', 'borsello', 'catenina'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['jeans', 'giubbotto_jeans', 'giacca_pelle', 'piumino', 'scarpe_eleganti', 'maglietta_righe', 'casco', 'paraginocchia', 'paraspalle', 'pelliccia', 'pelliccia_volpe', 'collana_oro', 'occhiali_sole', 'camicia_hawaii', 'cargo', 'stivali_pelle', 'orologio_polso', 'anelli', 'collana_perle'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   if (O.LOOT) { const add = (k, l) => { O.LOOT[k] = (O.LOOT[k] || []).concat(l); };

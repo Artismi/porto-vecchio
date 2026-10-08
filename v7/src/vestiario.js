@@ -181,6 +181,123 @@ var Vesti3D = (function () {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex(I); g.computeVertexNormals();
     const uv = []; for (let i = 0; i < P.length; i += 3) uv.push((P[i] + P[i + 2]) * 6, P[i + 1] * 6); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); return new THREE.Mesh(g, mat);
   }
+
+  // ---------------- I PASSAMONTAGNA A MAGLIA: un guscio aderente con fori veri, e i pezzi che si combinano ----------------
+  // fori: fessura | occhi | mandorla | viso; bocca (1 o 'labbra'); bordi ricamati, a palline, a punte, a ruche; corna, orecchie, aculei, cresta, gorgiera, frange
+  const PMS = {
+    passamontagna: { fori: 'fessura' },
+    pm_righe: { fori: 'fessura', righe: '#1a1a1e', bordo: '#1a1a1e' },
+    pm_punte: { fori: 'occhi', bordo: '#1a1a1e', cresta: ['#e8e0d0', '#1a1a1e'] },
+    pm_orecchie: { fori: 'occhi', bocca: 1, bordo: '#1a1a1e', orecchie: 'gatto', c2: '#f4b8c8' },
+    pm_diavolo: { fori: 'occhi', bocca: 'labbra', bordo: '#d8283a', spesso: 1, corna: 'diavolo', cc: ['#d8283a'], collo: '#d8283a', borchie: 1, guancia: '#6a8ad0' },
+    pm_clown: { fori: 'occhi', bocca: 1, viso: '#6ac8e0', zigzag: '#e8586a', bolle: '#f0e8d4', naso: '#e8586a', guance: '#e8586a', frange: '#f0e8d4', punta: 1 },
+    pm_riccio: { fori: 'occhi', bordo: '#5a0a2a', riccio: 1, becco: 1 },
+    pm_corna: { fori: 'occhi', borchieOcchi: '#d8d8e0', bordo2: ['#60e030', '#f040a8'], corna: 'lunghe', cc: ['#60e030', '#f040a8'], gorgiera: ['#ff8a1e'] },
+    pm_coniglio: { fori: 'occhi', bocca: 1, orecchie: 'coniglio', c2: '#f4b8b0', gorgiera: ['#f4c8c0'] },
+    pm_giullare: { fori: 'mandorla', bordo: '#1a4a5a', ricamo: 1, corna: 'giullare', cc: ['#8a6ad0', '#1a4a5a'], gorgiera: ['#d8e8d8', '#5a6a8a'] },
+    pm_stelle: { fori: 'viso', ruche: '#f0e08a', corna: 'giullare', cc: [null], punteCol: '#f0e08a', stelle: '#f0e08a', gorgiera: ['#f0e08a', '#c8c0b0'] },
+    pm_pallini: { fori: 'viso', bordo: '#3ab048', spesso: 1, corna: 'grosse', cc: ['#d8f040'], pallini: '#f0409a', gorgiera: ['#f0409a'], rete: 1 },
+  };
+  function balaclava(c, T) {
+    const st = PMS[c.acc] || PMS.passamontagna, col = c.col || '#2a2a2e', sc = T.sc || 1, h = new THREE.Group(), V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const rb = T.rSkull + .01, Hb = T.skTop - T.brow + .006, ey = T.eyeY - T.brow, ez = T.eyeZ - T.cz, y0 = T.chin - T.brow - .05, my = ey - .072 * sc, ex = .033 * sc;
+    const szk = Math.max(1.02, (ez + .024) / rb);   // davanti c'è il naso: il guscio passa sopra
+    // il profilo di una testa vera: collo stretto, mascella, tempie, calotta tonda
+    const prof = [[y0, T.rSkull * .6], [T.chin - T.brow + .01, T.rSkull * .78], [ey - .045, rb * .95], [ey + .01, rb], [.03, rb * .995], [Hb * .45, rb * .95], [Hb * .72, rb * .82], [Hb * .9, rb * .58], [Hb + .008, 0]];
+    if (st.punta) prof.splice(7, 2, [Hb * .9, rb * .66], [Hb + .05, rb * .38], [Hb + .14, 0]);
+    const yTop = prof[prof.length - 1][0];
+    const rAt = y => { y = Math.max(y0, Math.min(yTop, y)); for (let i = 1; i < prof.length; i++) if (y <= prof[i][0] + 1e-9) { const [ya, ra] = prof[i - 1], [yb, rr] = prof[i], t = (y - ya) / Math.max(1e-6, yb - ya); return i === prof.length - 1 && !st.punta ? ra * Math.sqrt(Math.max(0, 1 - t * t)) : ra + (rr - ra) * t; } return 0; };
+    const zSh = y => (st.punta ? -Math.max(0, y - Hb * .8) * .45 : 0) + (y < ey ? .03 * sc * Math.min(1, (ey - y) / Math.max(.03, ey - y0 - .03)) : 0);   // sotto gli occhi la faccia sta più avanti del cranio
+    const P = (a, y, off) => { const r = rAt(y) + (off || 0); return V(Math.sin(a) * r, y, Math.cos(a) * r * szk + zSh(y)); };
+    const N = (a, y) => P(a, y, .01).sub(P(a, y, 0)).normalize();
+    const aOf = (X, y) => Math.asin(Math.max(-1, Math.min(1, X / Math.max(.02, rAt(y)))));   // dal davanti (X metri a destra/sinistra) all'angolo
+    const knit = cc => FM('costine', cc), main = st.righe ? FM('righe', col, st.righe, st.righe) : knit(col);
+    // i fori
+    const faceY = ey - .03 * sc, inHole = (a, y) => { if (Math.cos(a) < .2) return false; const X = Math.sin(a) * rAt(y);
+      if (st.fori === 'fessura') return Math.abs(y - ey) < .021 && Math.abs(X) < .064;
+      if (st.fori === 'viso') return (X / (.072 * sc)) ** 2 + ((y - faceY) / (.09 * sc)) ** 2 < 1;
+      for (const s of [-1, 1]) { const dx = X - s * ex, dy = y - ey; if (st.fori === 'mandorla' ? Math.abs(dx) / .023 + Math.abs(dy) / .021 < 1 : (dx / .02) ** 2 + (dy / .0135) ** 2 < 1) return true; }
+      return !!st.bocca && (X / .025) ** 2 + ((y - my) / .012) ** 2 < 1; };
+    // il guscio: griglia fitta solo qui (i fori devono essere tondi)
+    const shell = (filt, off, mat) => { const na = 72, nr = 46, Pp = [], U = [], I = [];
+      for (let j = 0; j <= nr; j++) { const y = y0 + (yTop - y0) * j / nr; for (let i = 0; i <= na; i++) { const a = -Math.PI + i / na * Math.PI * 2, p = P(a, y, off); Pp.push(p.x, p.y, p.z); U.push(a * .9, y * 8); } }
+      for (let j = 0; j < nr; j++) for (let i = 0; i < na; i++) { const a = -Math.PI + (i + .5) / na * Math.PI * 2, y = y0 + (yTop - y0) * (j + .5) / nr; if (!filt(a, y)) continue; const q = j * (na + 1) + i, r2 = q + na + 1; I.push(q, r2, q + 1, q + 1, r2, r2 + 1); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(Pp, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); return new THREE.Mesh(g, mat); };
+    h.add(shell((a, y) => !inHole(a, y), 0, main));
+    const faceOval = (a, y) => Math.cos(a) > 0 && (Math.sin(a) * rAt(y) / .085) ** 2 + ((y - (ey - .025)) / .1) ** 2 < 1;
+    if (st.viso) h.add(shell((a, y) => faceOval(a, y) && !inHole(a, y), .0025, knit(st.viso)));
+    // i bordi: curve chiuse sul guscio
+    const loop = (fn, n) => { const pts = []; for (let k = 0; k < n; k++) { const t = k / n * Math.PI * 2, [X, Y] = fn(t); pts.push(P(aOf(X, Y), Y, .003)); } return pts; };
+    const tube = (pts, r, mat) => h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), pts.length * 2, r, 5, true), mat));
+    const sp = (t, e) => Math.sign(t) * Math.pow(Math.abs(t), e);
+    const eyeLoop = s => loop(t => st.fori === 'mandorla' ? [s * ex + .025 * sp(Math.cos(t), 1.7), ey + .023 * sp(Math.sin(t), 1.7)] : [s * ex + .022 * Math.cos(t), ey + .0155 * Math.sin(t)], 24);
+    const loops = []; if (st.fori === 'fessura') loops.push(loop(t => [.067 * sp(Math.cos(t), .35), ey + .024 * sp(Math.sin(t), .35)], 28));
+    else if (st.fori === 'viso') loops.push(loop(t => [.075 * sc * Math.cos(t), faceY + .093 * sc * Math.sin(t)], 32));
+    else loops.push(eyeLoop(-1), eyeLoop(1));
+    const mouth = st.bocca ? loop(t => [.028 * Math.cos(t), my + .0145 * Math.sin(t)], 22) : null;
+    const rimR = st.spesso ? .0085 : .0055;
+    loops.forEach((L, i) => { const cc = st.bordo2 ? st.bordo2[i % 2] : st.bordo; if (cc) tube(L, rimR, knit(cc)); });
+    if (mouth) { if (st.bocca === 'labbra') { tube(mouth, .012, knit(st.cc ? st.cc[0] : '#d8283a')); } else if (st.bordo) tube(mouth, rimR, knit(st.bordo)); }
+    if (st.bolle) [...loops, ...(mouth ? [mouth] : [])].forEach(L => L.forEach((p, k) => { if (k % 2) return; h.add(Sp(.0068, knit(st.bolle), p.x, p.y, p.z)); }));
+    if (st.ruche) loops.forEach(L => L.forEach((p, k) => { const s2 = Sp(.012, knit(st.ruche), p.x, p.y, p.z + .002); s2.scale.set(1, 1, .7); h.add(s2); }));
+    // le borchie attorno agli occhi (punte d'argento che escono dal bordo)
+    if (st.borchieOcchi) loops.forEach((L, i) => L.forEach((p, k) => { if (k % 3) return; const c0 = i ? V(ex, ey, 0) : V(-ex, ey, 0), d = p.clone().sub(P(aOf(c0.x, ey), ey, .003)).normalize(), cn = new THREE.Mesh(new THREE.ConeGeometry(.0035, .016, 5), lm(st.borchieOcchi)); cn.position.copy(p).addScaledVector(d, .008); cn.quaternion.setFromUnitVectors(V(0, 1, 0), d); h.add(cn); }));
+    // il ricamo a rametti sopra e sotto gli occhi (giullare)
+    if (st.ricamo) for (const s of [-1, 1]) for (const dir of [1, -1]) { const x0 = s * ex, y1 = ey + dir * .023, pts = [P(aOf(x0, y1), y1, .003), P(aOf(x0 + s * .004, y1 + dir * .02), y1 + dir * .02, .003), P(aOf(x0 - s * .002, y1 + dir * .04), y1 + dir * .04, .003)];
+      h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 8, .003, 4), knit(st.bordo))); for (const k of [.012, .026]) for (const sd of [-1, 1]) { const yy = y1 + dir * k, q0 = P(aOf(x0, yy), yy, .003), q1 = P(aOf(x0 + sd * .008, yy + dir * .006), yy + dir * .006, .003); h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.LineCurve3(q0, q1), 1, .0022, 4), knit(st.bordo))); } }
+    // la cornice a zig-zag attorno al viso (clown), naso, guance
+    const tri = (p0, p1, p2, mat) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([...p0.toArray(), ...p1.toArray(), ...p2.toArray()], 3)); g.computeVertexNormals(); h.add(new THREE.Mesh(g, mat)); };
+    if (st.zigzag) { const m0 = lm(st.zigzag); for (let k = 0; k < 20; k++) { const t0 = k / 20 * Math.PI * 2, t1 = (k + 1) / 20 * Math.PI * 2, tm = (t0 + t1) / 2, f = (t, s2) => { const X = .085 * s2 * Math.cos(t), Y = ey - .025 + .1 * s2 * Math.sin(t); return Math.abs(X) < .15 ? P(aOf(X, Y), Y, .005) : null; };
+      const a0 = f(t0, 1), a1 = f(t1, 1), tp = f(tm, 1.22); if (a0 && a1 && tp) tri(a0, a1, tp, m0); } }
+    if (st.naso) { const p = P(0, ey - .035, .016); h.add(Sp(.017, knit(st.naso), p.x, p.y, p.z)); }
+    if (st.guance || st.guancia) for (const s of st.guance ? [-1, 1] : [-1]) { const y = ey - .045, a = aOf(s * .058, y), p = P(a, y, .0035), d = Cy(st.guance ? .013 : .019, st.guance ? .013 : .019, .003, knit(st.guance || st.guancia), p.x, p.y, p.z, 12); d.quaternion.setFromUnitVectors(V(0, 1, 0), N(a, y)); h.add(d); }
+    // la rete sul viso aperto
+    if (st.rete) { const L = []; for (let k = -4; k <= 4; k++) { for (let q = 0; q < 10; q++) { const ya = faceY + (q / 10 - .5) * .17 * sc, yb = faceY + ((q + 1) / 10 - .5) * .17 * sc, X = k * .016 * sc; if (inHole(aOf(X, ya), ya) && inHole(aOf(X, yb), yb)) L.push(P(aOf(X, ya), ya, .004), P(aOf(X, yb), yb, .004)); }
+        const Y = faceY + k * .018 * sc; for (let q = 0; q < 10; q++) { const xa = (q / 10 - .5) * .15 * sc, xb = ((q + 1) / 10 - .5) * .15 * sc; if (inHole(aOf(xa, Y), Y) && inHole(aOf(xb, Y), Y)) L.push(P(aOf(xa, Y), Y, .004), P(aOf(xb, Y), Y, .004)); } }
+      const g = new THREE.BufferGeometry().setFromPoints(L); h.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: '#e8e8e4' }))); }
+    // corna: un tubo che si assottiglia lungo una curva, a fasce di colore
+    const corno = (pts, r0, bands, tipCol) => { const cu = new THREE.CatmullRomCurve3(pts), nb = bands.length;
+      for (let b = 0; b < nb; b++) { const t0 = b / nb, t1 = (b + 1) / nb, n = 6, ring = 9, Pp = [], I = [];
+        for (let i = 0; i <= n; i++) { const t = t0 + (t1 - t0) * i / n, c0 = cu.getPointAt(t), tg = cu.getTangentAt(t), up = Math.abs(tg.y) > .9 ? V(1, 0, 0) : V(0, 1, 0), nn = V().crossVectors(tg, up).normalize(), bb = V().crossVectors(nn, tg).normalize(), r = r0 * Math.pow(1 - t, .8) + .003;
+          for (let k = 0; k <= ring; k++) { const q = k / ring * Math.PI * 2, p = c0.clone().addScaledVector(nn, Math.cos(q) * r).addScaledVector(bb, Math.sin(q) * r); Pp.push(p.x, p.y, p.z); } }
+        for (let i = 0; i < n; i++) for (let k = 0; k < ring; k++) { const q = i * (ring + 1) + k, r2 = q + ring + 1; I.push(q, q + 1, r2, q + 1, r2 + 1, r2); }
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(Pp, 3)); g.setIndex(I); g.computeVertexNormals(); const uv = []; for (let i = 0; i < Pp.length; i += 3) uv.push((Pp[i] + Pp[i + 2]) * 8, Pp[i + 1] * 8); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        h.add(new THREE.Mesh(g, knit(tipCol && b === nb - 1 ? tipCol : bands[b] || col))); }
+      return cu; };
+    if (st.corna) for (const s of [-1, 1]) { const out = V(s, 0, 0), up = V(0, 1, 0);
+      if (st.corna === 'diavolo') { const b0 = P(s * 1.05, Hb * .62, -.004); corno([b0, b0.clone().addScaledVector(out, .03).addScaledVector(up, .035), b0.clone().addScaledVector(out, .045).addScaledVector(up, .08).add(V(0, 0, .01)), b0.clone().addScaledVector(out, .02).addScaledVector(up, .125).add(V(0, 0, .02))], .027, [st.cc[0]]); }
+      if (st.corna === 'lunghe') { const b0 = P(s * 1.15, Hb * .58, -.004), d = V(s * .62, .78, .05).normalize(), cu = corno([b0, b0.clone().addScaledVector(d, .08), b0.clone().addScaledVector(d, .16), b0.clone().addScaledVector(d, .2).add(V(s * .02, .01, 0))], .032, [st.cc[0], st.cc[1], st.cc[1]]);
+        for (let k = 0; k < 9; k++) { const q = k / 9 * Math.PI * 2, c0 = cu.getPointAt(.12), tg = cu.getTangentAt(.12), nn = V().crossVectors(tg, V(0, 0, 1)).normalize(), bb = V().crossVectors(nn, tg).normalize(), p = c0.clone().addScaledVector(nn, Math.cos(q) * .036).addScaledVector(bb, Math.sin(q) * .036); h.add(Sp(.011, knit(k % 2 ? st.cc[1] : st.cc[0]), p.x, p.y, p.z)); } }
+      if (st.corna === 'giullare') { const b0 = P(s * 1.4, Hb * .55, -.006), cu = corno([b0, b0.clone().addScaledVector(out, .07).addScaledVector(up, .05), b0.clone().addScaledVector(out, .15).addScaledVector(up, .03), b0.clone().addScaledVector(out, .2).addScaledVector(up, -.06), b0.clone().addScaledVector(out, .21).addScaledVector(up, -.17).add(V(0, 0, .02))], .045, st.cc.length > 1 ? [st.cc[0], st.cc[1], st.cc[0], st.cc[1], st.cc[0]] : [null, null, null], st.punteCol);
+        if (st.stelle) { const sh0 = new THREE.Shape(); for (let k = 0; k < 10; k++) { const q = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? .014 : .032; k ? sh0.lineTo(Math.cos(q) * rr, Math.sin(q) * rr) : sh0.moveTo(Math.cos(q) * rr, Math.sin(q) * rr); } const sg = new THREE.ExtrudeGeometry(sh0, { depth: .014, bevelEnabled: false }); sg.translate(0, 0, -.007);
+          const m = new THREE.Mesh(sg, knit(st.stelle)), tp = cu.getPointAt(1); m.position.copy(tp).add(V(0, -.025, 0)); m.rotation.y = s * .4; h.add(m); } }
+      if (st.corna === 'grosse') { const b0 = P(s * 1.35, Hb * .42, -.006), cu = corno([b0, b0.clone().addScaledVector(out, .1).addScaledVector(up, .02), b0.clone().addScaledVector(out, .19).addScaledVector(up, .07), b0.clone().addScaledVector(out, .24).addScaledVector(up, .16)], .055, [st.cc[0]]);
+        if (st.pallini) for (let k = 0; k < 14; k++) { const t = .08 + k / 14 * .8, c0 = cu.getPointAt(t), tg = cu.getTangentAt(t), nn = V().crossVectors(tg, V(0, 0, 1)).normalize(), bb = V().crossVectors(nn, tg).normalize(), q = k * 2.4, r = .055 * Math.pow(1 - t, .8) + .003, p = c0.clone().addScaledVector(nn, Math.cos(q) * r).addScaledVector(bb, Math.sin(q) * r); h.add(Sp(.011, knit(st.pallini), p.x, p.y, p.z)); } } }
+    if (st.pallini) for (let k = 0; k < 7; k++) { const a = -.9 + k * .3, y = Hb * .78, p = P(a, y, .006); h.add(Sp(.011, knit(k % 2 ? st.pallini : '#f0e040'), p.x, p.y, p.z)); }
+    // orecchie
+    if (st.orecchie) for (const s of [-1, 1]) {
+      if (st.orecchie === 'gatto') { const p = P(s * .7, Hb * .85, -.004), e = new THREE.Mesh(new THREE.ConeGeometry(.038, .07, 3), knit(col)); e.position.copy(p).add(V(0, .025, 0)); e.rotation.z = -s * .4; e.scale.z = .45; h.add(e);
+        const ei = new THREE.Mesh(new THREE.ConeGeometry(.022, .042, 3), knit(st.c2)); ei.position.copy(e.position).add(V(0, -.004, .012)); ei.rotation.z = -s * .4; ei.scale.z = .3; h.add(ei); }
+      if (st.orecchie === 'coniglio') { const p = P(s * .45, Hb * .9, -.006), e = Sp(1, knit(col), 0, 0, 0); e.scale.set(.03, .12, .014); e.position.copy(p).add(V(s * .02, .11, -.01)); e.rotation.set(-.15, 0, -s * .18); h.add(e);
+        const ei = Sp(1, knit(st.c2), 0, 0, 0); ei.scale.set(.017, .095, .006); ei.position.copy(e.position).add(V(0, .004, .011)); ei.rotation.copy(e.rotation); h.add(ei); } }
+    // cresta di punte (dalla fronte alla nuca) e aculei da riccio
+    if (st.cresta) for (let i = 0; i < 7; i++) { const t = i / 6, ang = .55 + t * 2.2, y = Math.sin(ang) * Hb * .98, a = Math.cos(ang) > 0 ? 0 : Math.PI, p = P(a, y, 0), n = p.clone().sub(V(0, ey * .5, 0)).normalize(), L = .045 + .03 * Math.sin(t * Math.PI);
+      const cn = new THREE.Mesh(new THREE.ConeGeometry(L * .32, L, 5), knit(st.cresta[i % 2])); cn.position.copy(p).addScaledVector(n, L * .42); cn.quaternion.setFromUnitVectors(V(0, 1, 0), n); cn.scale.z = .55; h.add(cn); }
+    if (st.riccio) { const nS = 44, c0 = V(0, ey - .01, 0); for (let i = 0; i < nS; i++) { const yy = 1 - (i + .5) / nS * 1.5, rr = Math.sqrt(Math.max(0, 1 - yy * yy)), th = i * 2.39996, dx = Math.cos(th) * rr, dz = Math.sin(th) * rr;
+        if (yy < -.45 || (dz > .45 && yy < .45 && Math.abs(dx) < .75)) continue; const a = Math.atan2(dx, dz), y = yy > 0 ? ey + yy * (Hb - ey) : ey + yy * (ey - y0 - .03), p = P(a, y, 0), n = p.clone().sub(c0).normalize(), L = .055 + .035 * ((i * 37 % 11) / 11);
+        const cn = new THREE.Mesh(new THREE.ConeGeometry(.016, L, 6), main); cn.position.copy(p).addScaledVector(n, L * .45); cn.quaternion.setFromUnitVectors(V(0, 1, 0), n); h.add(cn); }
+      const pn = P(0, ey - .03, .004), nb = Sp(.016, main, pn.x, pn.y, pn.z + .006); h.add(nb); }
+    if (st.becco) { const p = P(0, ey - .055, .01), cn = new THREE.Mesh(new THREE.ConeGeometry(.026, .1, 6), main); const d = V(0, -.75, .65).normalize(); cn.position.copy(p).addScaledVector(d, .045); cn.quaternion.setFromUnitVectors(V(0, 1, 0), d); h.add(cn); }
+    // al collo: bordo, borchie, gorgiera a ruche, frange coi pompon
+    if (st.collo) { const L = []; for (let k = 0; k < 24; k++) L.push(P(k / 24 * Math.PI * 2, y0 + .008, .004)); tube(L, .008, knit(st.collo)); }
+    if (st.borchie) for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2 + .3, p = P(a, y0 + .025, .004), n = V(Math.sin(a), -.15, Math.cos(a)).normalize(), cn = new THREE.Mesh(new THREE.ConeGeometry(.007, .055, 6), lm('#c8c8cc')); cn.position.copy(p).addScaledVector(n, .027); cn.quaternion.setFromUnitVectors(V(0, 1, 0), n); h.add(cn); }
+    if (st.gorgiera) st.gorgiera.forEach((gc, li) => { const na = 120, nr = 6, yc = y0 + .012 - li * .028, rin = rAt(y0) + .004 + li * .01, w = .055 + li * .03, Pp = [], I = [];
+      for (let j = 0; j <= nr; j++) for (let i = 0; i <= na; i++) { const a = i / na * Math.PI * 2, t = j / nr, f = a * (12 + li * 3), r = rin + w * t + .014 * t * t * Math.cos(f), yy = yc - .035 * t * t + .03 * t * t * Math.sin(f); Pp.push(Math.sin(a) * r, yy, Math.cos(a) * r * szk + zSh(y0)); }   // le ruche: onde morbide che si aprono verso il bordo
+      for (let j = 0; j < nr; j++) for (let i = 0; i < na; i++) { const q = j * (na + 1) + i, r2 = q + na + 1; I.push(q, r2, q + 1, q + 1, r2, r2 + 1); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(Pp, 3)); g.setIndex(I); g.computeVertexNormals(); const uv = []; for (let i = 0; i < Pp.length; i += 3) uv.push(Math.atan2(Pp[i], Pp[i + 2]) * 2, Pp[i + 1] * 8); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); h.add(new THREE.Mesh(g, knit(gc))); });
+    if (st.frange) for (let k = 0; k < 22; k++) { const a = k / 22 * Math.PI * 2, p = P(a, y0 + .004, .006); h.add(Cy(.004, .004, .05, knit(st.frange), p.x, p.y - .025, p.z, 5), Sp(.012, knit(st.frange), p.x, p.y - .055, p.z)); }
+    return h;
+  }
   function headAcc(kind, c, T, k) {
     const h = new THREE.Group(), r = T.r * (1 + k * .04) + .004, H = Math.max(.09, T.top - T.brow) + .012 + k * .006;
     switch (kind) {
@@ -224,26 +341,6 @@ var Vesti3D = (function () {
       case 'elmetto': {   // elmetto: calotta, bordo sporgente, telo, sottogola
         const mt = FM('ripstop', c, sh(c, .7), sh(c, 1.2)), R = r + .028, d = lathe([[R + .02, .0], [R + .02, .008], [R, .015], [R * .98, H * .5], [R * .78, H * .85], [R * .4, H + .025], [0, H + .03]], mt, 28);
         h.add(d); const st = new THREE.Mesh(new THREE.TorusGeometry(r * .82, .006, 4, 20, Math.PI), lm('#2a2418')); st.rotation.y = Math.PI / 2; st.rotation.z = Math.PI; st.position.set(0, -.02, -.01); st.scale.set(1, 1.3, 1); h.add(st); break; }
-      case 'passamontagna': case 'pm_punte': case 'pm_orecchie': case 'pm_righe': {   // aderente, fino al collo, la fessura per gli occhi (a maglia: liscio, a righe, con le punte, con le orecchie)
-        const c2 = sh(c, 1.6), c3 = /^#[0-3]/.test(c) ? '#e8e0d0' : '#1a1a1e', mt = kind === 'pm_righe' ? FM('righe', c, c3, c3) : FM('costine', c);
-        const rb = T.rSkull + .012, Hb = (T.hHat || H) - .004, ey = T.eyeY - T.brow, ez = T.eyeZ - T.cz;
-        const hd = lathe([[T.rSkull * .62, T.chin - T.brow - .05], [T.rSkull * .72, T.chin - T.brow + .02], [rb - .004, ey - .03], [rb, ey + .02], [rb, .02], [rb * .96, Hb * .55], [rb * .66, Hb * .9], [0, Hb + .01]], mt, 16);
-        hd.scale.set(1, 1, Math.max(1.02, (ez + .012) / rb));
-        { const g0 = hd.geometry.toNonIndexed(), P0 = g0.attributes.position, keep = [];   // la fessura vera per gli occhi: si tolgono i triangoli davanti agli occhi
-          for (let t = 0; t < P0.count; t += 3) { let cx = 0, cy = 0, cz = 0; for (let k = 0; k < 3; k++) { cx += P0.getX(t + k) / 3; cy += P0.getY(t + k) / 3; cz += P0.getZ(t + k) / 3; } if (!(cz > 0 && Math.abs(cy - ey) < .024 && Math.abs(cx) < .064)) keep.push(t); }
-          const A = new Float32Array(keep.length * 9); keep.forEach((t, i) => { for (let k = 0; k < 3; k++) { A[i * 9 + k * 3] = P0.getX(t + k); A[i * 9 + k * 3 + 1] = P0.getY(t + k); A[i * 9 + k * 3 + 2] = P0.getZ(t + k); } });
-          const g1 = new THREE.BufferGeometry(); g1.setAttribute('position', new THREE.BufferAttribute(A, 3)); g1.computeVertexNormals(); const uv = []; for (let i = 0; i < A.length; i += 3) uv.push(Math.atan2(A[i], A[i + 2]) * .6, A[i + 1] * 6); g1.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); hd.geometry = g1; }
-        const slit = new THREE.Group();
-        const rib = lathe([[T.rSkull * .64, T.chin - T.brow - .055], [T.rSkull * .66, T.chin - T.brow - .03]], FM('costine', kind === 'passamontagna' ? sh(c, .85) : c3)); h.add(hd, slit, rib);
-        // l'orlo della fessura, in contrasto
-        if (kind !== 'passamontagna') { const fr = Bx(.13, .007, .01, lm(c3), 0, ey + .027, ez + .006), fr2 = fr.clone(); fr2.position.y = ey - .027; h.add(fr, fr2); }
-        if (kind === 'pm_punte') for (let i = 0; i < 7; i++) {   // la cresta di punte a maglia, dalla fronte alla nuca
-          const t = i / 6, ang = lerp0(.55, 2.75, t), y = Math.sin(ang) * (Hb + .004), z = Math.cos(ang) * (rb + .002) * 1.04, sz = .034 + .022 * Math.sin(t * Math.PI);
-          const sp = new THREE.Mesh(new THREE.ConeGeometry(sz * .5, sz * 1.5, 4), FM('costine', i % 2 ? c2 : c3)); sp.position.set(0, y, z); sp.rotation.x = Math.PI / 2 - ang; sp.scale.x = .5; h.add(sp); }
-        if (kind === 'pm_orecchie') for (const sx of [-1, 1]) {   // le orecchie a maglia (gatto), col dentro di un altro colore
-          const e = new THREE.Mesh(new THREE.ConeGeometry(.04, .07, 3), FM('costine', c)); e.position.set(sx * rb * .64, Hb * .86, .0); e.rotation.z = -sx * .45; e.scale.z = .45; h.add(e);
-          const ei = new THREE.Mesh(new THREE.ConeGeometry(.024, .045, 3), lm(c2)); ei.position.set(sx * rb * .62, Hb * .84, .012); ei.rotation.z = -sx * .45; ei.scale.z = .3; h.add(ei); }
-        break; }
       case 'bandana': {   // bandana tirata su: copre naso e bocca, annodata dietro, la punta che scende sul collo davanti
         const mt = FM('paisley', c, '#ece4d0', sh(c, .5)), sc = T.sc || 1, yN = T.eyeY - T.brow - .028 * sc, yC = T.chin - T.brow - .02, czL = (T.eyeZ - T.cz) - .1 * sc;
         const band = lathe([[.088 * sc, yC], [.094 * sc, (yC + yN) / 2], [.09 * sc, yN]], mt, 16); band.scale.set(1, 1, 1.18); band.position.z = czL; h.add(band);
@@ -478,11 +575,11 @@ var Vesti3D = (function () {
     const underJ = lay.filter(l => l.cl < 4 && l.parti.includes('torso')).reduce((m, l) => Math.max(m, l.t), 0) + .004;
     const torsoOut = (th.torso || 0) + .006;
     let kh = 0;
-    { const hat = outfit.find(c => c.acc && /^(beanie|flat|fedora|ushanka|casco|elmetto|cap|snapback|docker|basco|police|paglia|hard|cowboy|scarf|passamontagna|pm_punte|pm_orecchie|pm_righe)$/.test(c.acc)); if (hat && T) try { schiacciaCapelli(g, T, hat.acc); } catch (e) { console.error('[Vesti3D] capelli', e); } }
+    { const hat = outfit.find(c => c.acc && /^(beanie|flat|fedora|ushanka|casco|elmetto|cap|snapback|docker|basco|police|paglia|hard|cowboy|scarf|passamontagna|pm_\w+)$/.test(c.acc)); if (hat && T) try { schiacciaCapelli(g, T, hat.acc); } catch (e) { console.error('[Vesti3D] capelli', e); } }
     outfit.forEach(c => {
       if (!c.acc) return;
-      const isHat = /^(beanie|flat|fedora|scarf|ushanka|casco|elmetto|passamontagna|pm_punte|pm_orecchie|pm_righe|bandana|antigas|cap|snapback|docker|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc);
-      if (isHat && T) { const o = /^(cap|snapback|docker|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc) ? headAcc2(c.acc, c.col, T, kh) : headAcc(c.acc, c.col, T, kh); kh++; o.position.set(T.cx, T.brow, T.cz); AT('Head', o); return; }
+      const isHat = /^(pm_\w+|beanie|flat|fedora|scarf|ushanka|casco|elmetto|passamontagna|bandana|antigas|cap|snapback|docker|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc);
+      if (isHat && T) { const o = /^(passamontagna|pm_)/.test(c.acc) ? balaclava(c, T) : /^(cap|snapback|docker|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc) ? headAcc2(c.acc, c.col, T, kh) : headAcc(c.acc, c.col, T, kh); kh++; o.position.set(T.cx, T.brow, T.cz); AT('Head', o); return; }
       if (c.acc === 'occhiali' && T) {   // occhiali a goccia: lenti scure, montatura dorata, stanghette fino alle orecchie
         const o = new THREE.Group(), y = T.eyeY - T.brow, z = T.eyeZ - T.cz + .014, lens = sx => { const L = new THREE.Mesh(new THREE.CircleGeometry(.026, 16), new THREE.MeshLambertMaterial({ color: '#0e1012', emissive: '#1a1e24', side: THREE.DoubleSide })); L.scale.set(1.1, .95, 1); L.position.set(sx, y - .004, z); L.rotation.y = sx > 0 ? .12 : -.12; return L; };
         const fr = sx => { const f = new THREE.Mesh(new THREE.TorusGeometry(.027, .0025, 4, 18), lm('#c8a860')); f.scale.set(1.1, .95, 1); f.position.set(sx, y - .004, z + .001); f.rotation.y = sx > 0 ? .12 : -.12; return f; };
