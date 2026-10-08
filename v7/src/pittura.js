@@ -33,6 +33,7 @@ var Pittura = (function () {
     if (B.pit) return B.pit; const Sa = S(), T = Sa.tube(B, 'tronco');
     const sLo = T.sAtY(B.crotch - .14), sHi = T.sAtY((B.bones.Head ? B.bones.Head.y : 1.55) + .02);
     const tubes = [T, Sa.tube(B, 'manicaL'), Sa.tube(B, 'manicaR'), Sa.tube(B, 'gambaL'), Sa.tube(B, 'gambaR')];
+    tubes.forEach(t => { t.Bref = B; });
     const circ = tb => { let best = 0; for (let i = 0; i <= tb.ns; i += 4) { let t = 0; for (let k = 0; k < tb.R[i].length; k++) t += tb.R[i][k]; best = Math.max(best, t / tb.R[i].length); } return best * Math.PI * 2; };
     B.pit = { tubes, range: [[sLo, sHi], [0, tubes[1].L], [0, tubes[2].L], [0, tubes[3].L], [0, tubes[4].L]], circ: tubes.map(circ) };
     return B.pit;
@@ -49,8 +50,13 @@ var Pittura = (function () {
     R = R.map((r, i) => { const o = new Float32Array(RG); for (let q = 0; q < RG; q++) { let a = 0, ww = 0; for (let k = -2 * sg; k <= 2 * sg; k++) { const g = Math.exp(-k * k / (2 * sg * sg)); a += R[cl(i + k, 0, n)][q] * g; ww += g; } o[q] = a / ww; } return o; });
     R = R.map(r => { const o = new Float32Array(RG); for (let q = 0; q < RG; q++) o[q] = (r[(q + RG - 2) % RG] + 2 * r[(q + RG - 1) % RG] + 3 * r[q] + 2 * r[(q + 1) % RG] + r[(q + 2) % RG]) / 9; return o; });
     // taglio secco: la sezione va verso un rettangolo smussato (superellisse), davanti e dietro piatti, fianchi dritti
-    const kb = tb.kind === 'tronco' ? .3 : .15, e = 2.8;   // appena squadrata: piani, non scatole
-    R = R.map(r => { let W = 0, Df = 0, Db = 0; for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, x = Math.abs(Math.sin(a)) * r[q], z = Math.cos(a) * r[q]; W = Math.max(W, x); if (z > 0) Df = Math.max(Df, z); else Db = Math.max(Db, -z); }
+    // la vita si riempie: tra il petto e i fianchi la stoffa va dritta (il corpo del kit è strizzato in vita)
+    if (tb.kind === 'tronco') { const yOf = i => tb.S[i].y, iAt = y => { let b = 0, bd = 9; for (let i = 0; i <= n; i++) { const d = Math.abs(yOf(i) - y); if (d < bd) { bd = d; b = i; } } return b; };
+      const B0 = tb.Bref; if (B0) { const ih = iAt(B0.bones.Hips.y - .02), ic = iAt(B0.bones.Chest.y - .04); if (ic > ih + 2) { const Rh = R[ih], Rc = R[ic];
+        for (let i = ih + 1; i < ic; i++) { const t = (i - ih) / (ic - ih); for (let q = 0; q < RG; q++) R[i][q] = Math.max(R[i][q], lerp(R[i][q], lerp(Rh[q], Rc[q], t), .75)); } } } }
+    const kb = tb.kind === 'tronco' ? .3 : .15, e = 2.8;   // appena squadrata: piani, non scatole (solo sopra la vita)
+    const yW = tb.Bref ? tb.Bref.waist : -9;
+    R = R.map((r, i) => { if (tb.kind === 'tronco' && tb.S[i].y < yW + .04) return r; let W = 0, Df = 0, Db = 0; for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, x = Math.abs(Math.sin(a)) * r[q], z = Math.cos(a) * r[q]; W = Math.max(W, x); if (z > 0) Df = Math.max(Df, z); else Db = Math.max(Db, -z); }
       const o = new Float32Array(RG); for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a)), D = Math.cos(a) >= 0 ? Df : Db;
         const rb = 1 / Math.pow(Math.pow(ca / Math.max(D, .01), e) + Math.pow(sa / Math.max(W, .01), e), 1 / e); o[q] = lerp(r[q], Math.min(rb, r[q] + .03), kb); } return o; });
     IRON.set(tb, R); return R;
