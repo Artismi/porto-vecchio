@@ -10829,6 +10829,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim
     animPerson(pg, { anim: p.anim, speed: pveh ? 0 : p.speed, carrying: p.carrying, punch: p.punch, seated: onVespa, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, recoil, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6 });
     if (!pveh) flight(pg, p, st);
+    if (window.Skate && !pveh) Skate.pose(pg, st, playerH, dt);   // [skate] in tavola: di traverso, sopra la tavola, coi trick
     swimPose(pg, p, !!pveh, time);   // [costa] a nuoto: dentro l'acqua fino alle spalle, coricato in avanti quando va, coi cerchi sull'acqua
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
     // veicoli

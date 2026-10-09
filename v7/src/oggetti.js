@@ -751,6 +751,11 @@ var Oggetti = (function () {
     ['use:tipografia', ['carta', 'cartoncino', 'inchiostro', 'buste', 'giornale']],
     ['use:lavanderia', ['sapone', 'detersivo', 'candeggina']],
     ['use:barbiere', ['rasoio', 'sapone', 'forbici']],
+    // [attività] le botteghe nuove (i capi del Guardaroba li aggiunge guardaroba.js)
+    ['use:armeria', ['munizioni', 'lupara', 'coltello', 'binocolo', 'torcia', 'corda', 'stivali', 'impermeabile', 'zaino', 'sacco_pelo', 'guanti']],
+    ['use:abbigliamento', ['vestiti', 'cappotto', 'maglione', 'scarpe', 'guanti', 'guanti_lana', 'berretto', 'sciarpa', 'impermeabile', 'stivali', 'tuta']],
+    ['use:pub', ['birra', 'vino', 'grappa', 'whisky', 'panino', 'acqua', 'aranciata', 'sigarette']],
+    ['use:autorimessa', ['olio_motore', 'pneumatico', 'batteria_auto', 'ricambi', 'tanica_vuota', 'chiave_inglese', 'benzina']],
     ['osteria', ['pasto', 'vino', 'birra', 'grappa', 'caffe_tazza', 'acqua']], ['osteria_sg', ['pasto', 'vino', 'grappa', 'acqua']], ['car_2', ['pasto', 'vino', 'birra', 'acqua']],
     ['bar', ['caffe_tazza', 'pane', 'panino', 'vino', 'birra', 'grappa', 'acqua', 'aranciata', 'sigarette']], ['sirena', ['caffe_tazza', 'pane', 'panino', 'vino', 'birra', 'grappa', 'whisky', 'acqua']],
     ['disco', ['birra', 'whisky', 'aranciata', 'sigarette']], ['gelateria', ['gelato', 'latte', 'biscotti', 'pane', 'aranciata']], ['chiosco', ['pane', 'panino', 'birra', 'acqua', 'aranciata', 'gelato']],
@@ -955,6 +960,7 @@ var Oggetti = (function () {
   // =====================================================================================================================
   const LUOGO_ST = {
     fabbro: ['forgia', 'saldatrice', 'banco_lavoro'], falegnameria: ['banco_falegname', 'banco_falegname', 'banco_lavoro'], panetteria: ['forno', 'forno'], macelleria: ['banco_macellaio'],
+    armeria: ['banco_lavoro'], autorimessa: ['saldatrice', 'banco_lavoro'], pub: ['cucina'],   // [attività]
     sartoria: ['macchina_cucire', 'macchina_cucire'], tipografia: ['ciclostile'], farmacia: ['tavolo_medico'], ferramenta: ['banco_lavoro'], fabbrica: ['linea', 'linea', 'linea'],
     video: ['banco_radio'], officina: ['banco_lavoro', 'saldatrice'], cantiere: ['saldatrice', 'banco_falegname', 'banco_lavoro'], cantina: ['botti', 'botti'], ambulatorio: ['tavolo_medico'],
     osteria: ['cucina', 'cucina'], osteria_sg: ['cucina'], car_2: ['cucina'], miramare: ['cucina', 'cucina'], bar: ['cucina'], sirena: ['cucina'], masseria: ['cucina', 'acqua'], lavanderia: ['acqua'],
@@ -963,7 +969,7 @@ var Oggetti = (function () {
   STATIONS.carbonaia = { id: 'carbonaia', nome: 'carbonaia', model: '' };
   const HOME_ST = ['cucina', 'acqua'];   // in casa: si cucina e c'è l'acqua (anche se il mobile non si vede)
   // chi lavora al bancone (vende, serve, incassa) e chi alle postazioni (produce)
-  const BANCO_RE = /commess|cassier|barist|barman|camerier|tabaccai|farmacist|fruttivendol|pescivendol|^oste|bottegai|^ferramenta|benzinai|lavandai|barbier|gestore|affittacamere|portiere|impiegata della biblioteca|direttore/;
+  const BANCO_RE = /armaiol|venditore di auto|istruttore di tiro|commess|cassier|barist|barman|camerier|tabaccai|farmacist|fruttivendol|pescivendol|^oste|bottegai|^ferramenta|benzinai|lavandai|barbier|gestore|affittacamere|portiere|impiegata della biblioteca|direttore/;
   const BANCO_F = ['pv_banco_vendita', 'ar_cash-register', 'kitchenBar'];
   const keyOf = t => I.tkey(t);
   function luogoBase(t) { if (!t) return null; if (t.k === 'b') { const b = G.BUILDINGS[t.bi]; return (b && (b.id && LUOGO_ST[b.id] ? b.id : b.use)) || null; } return t.pid || null; }
@@ -988,7 +994,8 @@ var Oggetti = (function () {
       const b = G.BUILDINGS[t.bi], L = INT.layout(b), F = L.floors[0], used = new Set();
       const furn = id => { const i = F.furn.findIndex((o, j) => !used.has(j) && (Array.isArray(id) ? id.includes(o.id) : FURN2ST[o.id] === id)); if (i < 0) return null; used.add(i); return standBy(L, 0, F.furn[i]); };
       const spare = roomSpots(L, sts.length + 2);
-      if (Sh) Lg.banco = Object.assign({ who: [] }, furn(BANCO_F) || spare.pop());
+      const sb = (F.spots || []).find(q => q.k === 'banco');   // [attività] dietro il banco, se il gruppo ha il posto del commesso
+      if (Sh) Lg.banco = Object.assign({ who: [] }, sb ? { x: sb.x, y: sb.y, face: sb.face } : (furn(BANCO_F) || spare.pop()));
       sts.forEach(s => Lg.posts.push(Object.assign({ st: s, who: null }, furn(s) || spare.pop())));
     } else {
       const P0 = PLACES[t.pid] || t, spots = outdoorSpots(P0, sts.length + 3);

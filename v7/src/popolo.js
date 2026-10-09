@@ -122,6 +122,11 @@ var Popolo = (function () {
     barbiere: [['barbiere', 1, 6, 8, 19]],
     tabacchi: [['tabaccaio', 1, 6, 7, 20]],
     fabbrica: [['operaio del primo turno', 6, 5, 6, 14], ['operaia del secondo turno', 5, 5, 14, 22]],
+    // [attività]
+    armeria: [['armaiolo', 1, 7, 8, 19], ['istruttore di tiro', 1, 6, 14, 21]],
+    abbigliamento: [['commessa di abbigliamento', 2, 4, 9, 19]],
+    pub: [['oste della birreria', 1, 6, 16, 26, true], ['cameriera della birreria', 1, 4, 18, 26, true]],
+    autorimessa: [['venditore di auto', 1, 7, 8, 19], ['meccanico dell\'autorimessa', 2, 6, 7, 18]],
   };
   // lavori all'aperto, senza edificio: posti larghi
   const OUTDOOR = [['molo', 'pescatore', 8, 5, 3, 11], ['calata', 'scaricatore di porto', 6, 6, 6, 15], ['vigne', 'bracciante delle vigne', 4, 4, 6, 14], ['oliveto', 'bracciante dell\'oliveto', 3, 4, 6, 14], ['saline', 'salinaro', 3, 4, 5, 13], ['cava', 'cavatore', 3, 6, 6, 15]];
@@ -151,10 +156,10 @@ var Popolo = (function () {
     bagno:       { label: 'il bagno di casa', where: ['casa'], act: 'bagno', once: { igiene: -.9 } },
     tv:          { label: 'la TV del Garante', where: ['casa'], act: 'casa', h: [19, 24], perH: { svago: -.07 }, side: { paura: .01 }, ideo: -.003, tag: 'propaganda' },
     radio:       { label: 'la radio', where: ['casa'], act: 'casa', perH: { svago: -.06 }, int: 'musica', needs: P => P.owns && P.owns.radio, tag: 'radio' },
-    bancone:     { label: 'il bancone', where: ['bar', 'sirena', 'osteria', 'osteria_sg', 'car_2', 'use:circolo'], act: 'svago', h: [7, 24], once: { svago: -.15, compagnia: -.25 }, perH: { compagnia: -.06, svago: -.05 }, cost: 2, int: 'chiacchiere', tag: 'vino' },
-    carte:       { label: 'un tavolo da scopa', where: ['osteria', 'osteria_sg', 'use:circolo', 'bar'], act: 'svago', h: [15, 24], perH: { svago: -.1, compagnia: -.07 }, cost: 1, int: 'carte' },
+    bancone:     { label: 'il bancone', where: ['bar', 'sirena', 'osteria', 'osteria_sg', 'car_2', 'use:circolo', 'use:pub'], act: 'svago', h: [7, 24], once: { svago: -.15, compagnia: -.25 }, perH: { compagnia: -.06, svago: -.05 }, cost: 2, int: 'chiacchiere', tag: 'vino' },
+    carte:       { label: 'un tavolo da scopa', where: ['osteria', 'osteria_sg', 'use:circolo', 'bar', 'use:pub'], act: 'svago', h: [15, 24], perH: { svago: -.1, compagnia: -.07 }, cost: 1, int: 'carte' },
     tavola:      { label: 'una tavola apparecchiata', where: ['osteria', 'osteria_sg', 'car_2'], act: 'pranzo', h: [12, 23], once: { fame: -.75, compagnia: -.1 }, cost: 4 },
-    panino:      { label: 'un panino al banco', where: ['bar', 'sirena', 'gelateria', 'chiosco'], act: 'pranzo', h: [7, 22], once: { fame: -.4 }, cost: 2 },
+    panino:      { label: 'un panino al banco', where: ['bar', 'sirena', 'gelateria', 'chiosco', 'use:pub'], act: 'pranzo', h: [7, 22], once: { fame: -.4 }, cost: 2 },
     bottega:     { label: 'il bancone della bottega', where: ['wu', 'use:panetteria', 'use:pescheria', 'use:tabacchi', 'use:macelleria', 'use:fruttivendolo', 'use:emporio'], act: 'spesa', h: [7, 20], pantry: 4, cost: 5, once: { compagnia: -.05 }, int: 'cucina' },
     bancarelle:  { label: 'le bancarelle del mercato', where: ['piazza'], act: 'mercato', h: [7, 13], pantry: 5, cost: 5, once: { compagnia: -.15, svago: -.08 }, int: 'cucina', needs: (P, st) => [2, 5].includes(weekday(st.t)) },
     panchina:    { label: 'una panchina', where: ['piazza', 'fontana', 'giardini', 'lungomare', 'passeggiata', 'belvedere', 'piazzetta', 'molo', 'marina'], act: 'svago', h: [7, 23], perH: { svago: -.06, compagnia: -.06 }, int: 'chiacchiere' },
@@ -169,16 +174,27 @@ var Popolo = (function () {
     cinema:      { label: 'il film in sala', where: ['cinema'], act: 'svago', h: [15, 24], once: { svago: -.45 }, cost: 2, int: 'cinema' },
     pallone:     { label: 'un pallone', where: ['spiaggia', 'giardini'], act: 'svago', h: [9, 20], perH: { svago: -.14, compagnia: -.1, rabbia: -.05 }, int: 'sport', needs: P => P.age < 50 },
     palestra:    { label: 'il sacco della palestra', where: ['use:palestra'], act: 'svago', h: [15, 22], perH: { svago: -.1, rabbia: -.12 }, cost: 1, int: 'sport' },
-    motori:      { label: 'il banco dell\'officina', where: ['officina'], act: 'svago', h: [8, 19], perH: { svago: -.08 }, int: 'motori' },
+    motori:      { label: 'il banco dell\'officina', where: ['officina', 'use:autorimessa'], act: 'svago', h: [8, 19], perH: { svago: -.08 }, int: 'motori' },
     orto:        { label: 'un pezzo d\'orto', where: ['vigne', 'oliveto', 'masseria'], act: 'svago', h: [6, 19], perH: { svago: -.06, rabbia: -.04 }, pantryH: .5, int: 'campagna' },
     barbiere:    { label: 'la poltrona del barbiere', where: ['use:barbiere'], act: 'bagno', h: [8, 19], once: { igiene: -.35, compagnia: -.08 }, cost: 2, int: 'eleganza' },
     album:       { label: 'un album da disegno', where: ['belvedere', 'lungomare', 'piazza', 'molo', 'giardini', 'piazzetta'], act: 'svago', h: [8, 20], perH: { svago: -.1, rabbia: -.04 }, int: 'arte' },
+    // [attività] i giochi del bar, la birreria, l'armeria col poligono, gli abiti, le auto in vendita
+    biliardo:    { label: 'il biliardo', where: ['bar', 'sirena', 'use:circolo', 'use:pub'], act: 'svago', h: [15, 26], perH: { svago: -.13, compagnia: -.07, rabbia: -.03 }, cost: 1, int: 'giochi' },
+    freccette:   { label: 'le freccette', where: ['use:pub', 'bar', 'sirena'], act: 'svago', h: [16, 26], perH: { svago: -.1, compagnia: -.06 }, cost: .5, int: 'giochi' },
+    jukebox:     { label: 'il jukebox', where: ['bar', 'sirena', 'use:pub', 'flipper'], act: 'svago', h: [12, 26], once: { svago: -.1 }, perH: { svago: -.06, compagnia: -.03 }, cost: .5, int: 'musica' },
+    spina:       { label: 'una birra alla spina', where: ['use:pub'], act: 'svago', h: [16, 26], once: { svago: -.15, compagnia: -.25 }, perH: { compagnia: -.07, svago: -.06 }, cost: 2, int: 'chiacchiere', tag: 'vino' },
+    poligono:    { label: 'il poligono di tiro', where: ['use:armeria'], act: 'svago', h: [14, 21], perH: { svago: -.12, rabbia: -.16, paura: -.04 }, cost: 3, int: 'caccia', needs: P => P.age >= 18 },
+    vetrina_armi:{ label: 'la vetrina dell\'armeria', where: ['use:armeria'], act: 'svago', h: [8, 19], once: { svago: -.08 }, int: 'caccia', needs: P => P.age >= 16 },
+    abiti:       { label: 'gli abiti nuovi', where: ['use:abbigliamento', 'use:sartoria'], act: 'svago', h: [9, 19], once: { svago: -.18, compagnia: -.04 }, cost: 4, int: 'eleganza' },
+    auto:        { label: 'le auto in vendita', where: ['use:autorimessa'], act: 'svago', h: [8, 19], once: { svago: -.12 }, int: 'motori' },
     foto:        { label: 'la macchina fotografica', where: ['lungomare', 'belvedere', 'piazza', 'molo', 'punta'], act: 'svago', h: [8, 19], perH: { svago: -.12 }, int: 'foto', needs: P => P.owns && P.owns.fotocamera },
   };
   // come si dice, nel programma, andare a usare un oggetto
   const DOING = { bancone: 'va al bar', carte: 'a giocare a scopa', panchina: 'a fare due chiacchiere', spiaggia: 'in spiaggia', canna: 'a pescare', banco_chiesa: 'in chiesa', cero: 'ad accendere un cero',
     libri: 'in biblioteca a leggere', album: 'a disegnare', flipper: 'al Flipper', pista: 'a ballare alla Luna', cinema: 'al cinema', pallone: 'a giocare a pallone', palestra: 'in palestra', motori: 'ad armeggiare in officina',
-    orto: 'all\'orto', foto: 'a fare foto', barbiere: 'dal barbiere', fontana: 'alla fontana', tavola: 'a mangiare fuori', panino: 'a mangiare un panino', bottega: 'a fare la spesa', bancarelle: 'al mercato' };
+    orto: 'all\'orto', foto: 'a fare foto', barbiere: 'dal barbiere', fontana: 'alla fontana', tavola: 'a mangiare fuori', panino: 'a mangiare un panino', bottega: 'a fare la spesa', bancarelle: 'al mercato',
+    biliardo: 'a giocare a biliardo', freccette: 'a tirare le freccette', jukebox: 'a sentire un disco al jukebox', spina: 'a bere una birra alla Birreria', poligono: 'al poligono a sparare',
+    vetrina_armi: 'a guardare le armi in vetrina', abiti: 'a provarsi un vestito', auto: 'a guardare le auto in vendita' };
   const NEEDS = ['fame', 'sonno', 'igiene', 'compagnia', 'svago', 'rabbia', 'paura', 'soldi'];
 
   // ---------------- INTERESSI ----------------
@@ -187,10 +203,11 @@ var Popolo = (function () {
     pesca: 'la pesca', carte: 'le carte', lettura: 'i libri', musica: 'la musica', ballo: 'il ballo', fede: 'la fede', sport: 'lo sport',
     cinema: 'il cinema', chiacchiere: 'le chiacchiere', politica: 'la politica', motori: 'i motori', cucina: 'la cucina', campagna: 'la campagna',
     mare: 'il mare', eleganza: 'l\'eleganza', foto: 'la fotografia', arte: 'l\'arte (disegnare, dipingere i muri)',
+    giochi: 'il biliardo e le freccette', caccia: 'la caccia e il tiro',   // [attività]
   };
   // chi sceglie cosa: età e mestiere spostano le probabilità
   function interestsFor(p, r) {
-    const w = { pesca: 1, carte: 1, lettura: .7, musica: .8, ballo: .6, fede: .8, sport: .8, cinema: .8, chiacchiere: 1.1, politica: .4, motori: .6, cucina: .8, campagna: .6, mare: .8, eleganza: .4, foto: .25, arte: .6 };
+    const w = { pesca: 1, carte: 1, lettura: .7, musica: .8, ballo: .6, fede: .8, sport: .8, cinema: .8, chiacchiere: 1.1, politica: .4, motori: .6, cucina: .8, campagna: .6, mare: .8, eleganza: .4, foto: .25, arte: .6, giochi: .7, caccia: .35 };
     if (p.age > 60) { w.fede += 1.2; w.carte += .6; w.chiacchiere += .6; w.ballo = .05; w.sport = .1; w.campagna += .5; }
     if (p.age < 30) { w.ballo += 1; w.musica += .8; w.sport += .6; w.motori += .3; w.cinema += .4; w.foto += .3; w.arte += .6; }
     if (p.sex === 'f') { w.sport *= .5; w.motori *= .5; w.cucina += .3; } else { w.motori += .3; w.sport += .2; }
@@ -200,6 +217,8 @@ var Popolo = (function () {
     if (p.lost) { w.politica += 1.2; w.arte += .3; }
     if (p.job && /tipograf|sart|lavandai/.test(p.job.title)) w.arte += .5;
     if (p.vice === 'vino') w.chiacchiere += .5;
+    if (p.age > 60) w.giochi += .2; if (p.age < 35) w.giochi += .5; if (p.sex !== 'f') w.caccia += .3;   // [attività]
+    if (p.job && /braccian|pescat|guardiano|armaiol/.test(p.job.title)) w.caccia += .5;
     const out = [], keys = Object.keys(w), k = 2 + (r() < .4 ? 1 : 0);
     while (out.length < k) {
       const tot = keys.reduce((s, x) => s + (out.some(o => o.k === x) ? 0 : w[x]), 0); let roll = r() * tot;
@@ -1792,6 +1811,7 @@ var Popolo = (function () {
     sport: ['Partitella sulla spiaggia, dopo?', 'Hai visto la partita?'], cinema: ['Al cinema danno un film americano.', 'Stasera c\'è la prima, ci vai?'],
     chiacchiere: ['Lo sai della figlia del farmacista?', 'Non dirlo a nessuno, eh…'], politica: ['Il Garante racconta solo bugie.', 'Leggi tra le righe del Bollettino.'],
     motori: ['La Vespa fa un rumore strano.', 'All\'officina hanno una Giulia da sistemare.'], cucina: ['Domenica faccio le trofie al pesto.', 'Il pesce oggi era freschissimo.'],
+    giochi: ['Stasera rivincita a biliardo, porta i soldi.', 'Alla Birreria ho fatto centro tre volte di fila.'], caccia: ['Al poligono ho fatto una rosa stretta così.', 'All\'Armeria è arrivata una doppietta nuova.'],   // [attività]
     campagna: ['L\'orto quest\'anno rende.', 'Col gelo l\'orto è da buttare.'], mare: ['Il mare oggi è color ferro.', 'Stamattina sulla caletta c\'era il ghiaccio.'],
     eleganza: ['Ho visto una giacca in vetrina…', 'Quella camicia ti sta bene.'], foto: ['Ti faccio una foto, stai fermo.', 'Ho finito il rullino.'], arte: ['Su quel muro ci starebbe un bel murale.', 'Sto disegnando il porto.'],
   };
@@ -1837,6 +1857,17 @@ var Popolo = (function () {
     if (b.act === 'impresa' && /cena|pranz|mangi/.test(b.label || '')) return { want: 'table', pose: 'tavola' };   // [imprese]
     if (b.act === 'pranzo' || (atHome && ((m > 12 * 60 && m < 14 * 60 + 30) || (m > 19 * 60 + 30 && m < 21 * 60 + 30)))) return { want: 'table', pose: 'tavola' };
     if (b.obj === 'cucina' || (atHome && b.label === 'si prepara')) return { want: 'stove', pose: 'lavora' };
+    // [attività] gli oggetti nuovi hanno il loro posto (i punti dei gruppi: intorno al biliardo, alla linea di tiro…)
+    const SPOT_OBJ = { biliardo: ['biliardo', 'biliardo'], freccette: ['freccette', 'freccette'], jukebox: ['jukebox', 'merce'], poligono: ['tiro', 'mira'], vetrina_armi: ['guarda', 'osserva'], abiti: ['guarda|prova', 'merce'], auto: ['auto', 'osserva'], spina: ['bevi', 'bancone'] };
+    if (SPOT_OBJ[b.obj]) return { want: 'spot', spot: SPOT_OBJ[b.obj][0], pose: SPOT_OBJ[b.obj][1], alt: b.obj === 'spina' ? 'counter' : 'free' };
+    // al bar non si sta tutti al bancone: chi ha voglia gioca a biliardo, alle freccette, a carte, mette un disco
+    if (b.obj === 'bancone' && !atHome) {
+      const iw = P.intW || {}, c0 = (String(n.id) + (P.curKey || '') + 'b').split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 997, 3) / 997;
+      if (c0 < .1 + (iw.giochi || 0) * .35) return { want: 'spot', spot: c0 < .06 + (iw.giochi || 0) * .2 ? 'biliardo' : 'freccette', pose: c0 < .06 + (iw.giochi || 0) * .2 ? 'biliardo' : 'freccette', alt: 'counter' };
+      if (c0 > .9 - (iw.carte || 0) * .25) return { want: 'table', pose: 'carte', alt: 'counter' };
+      if (c0 > .5 && c0 < .5 + (iw.musica || 0) * .12) return { want: 'spot', spot: 'jukebox', pose: 'merce', alt: 'counter' };
+      if (c0 > .62 && c0 < .8) return { want: 'seat', pose: 'siede' };
+    }
     if (b.obj === 'bancone' || b.obj === 'panino') return { want: 'counter', pose: 'bancone' };
     if (b.obj === 'carte') return { want: 'table', pose: 'carte' };
     if (b.obj === 'libri') return { want: 'seat', pose: 'legge' };
@@ -1844,7 +1875,7 @@ var Popolo = (function () {
     if (b.obj === 'flipper') return { want: 'free', pose: 'flipper' };
     if (b.obj === 'pista') return { want: 'free', pose: 'balla' };
     if (b.obj === 'barbiere') return { want: 'seat', pose: 'siede' };
-    if (b.obj === 'bottega' || b.act === 'spesa') return { want: 'counter', pose: 'merce' };
+    if (b.obj === 'bottega' || b.act === 'spesa') return { want: 'spot', spot: 'cliente|guarda', pose: 'merce', alt: 'counter' };
     const coin = (String(n.id) + (P.curKey || '')).split('').reduce((h, c) => (h * 33 + c.charCodeAt(0)) % 1000, 5) / 1000;   // la stessa scelta finché dura il blocco
     if (atHome) return coin < .5 ? { want: 'soft', pose: 'siede' } : { want: 'free', pose: null };
     return coin < .55 ? { want: 'seat', pose: 'siede' } : { want: 'counter', pose: 'bancone' };
@@ -1871,10 +1902,16 @@ var Popolo = (function () {
     const furn = re => { const ok = []; F.furn.forEach((o, i) => { if (!taken.has(i) && re.test(o.id) && roomy(used, o.x, o.y)) ok.push(i); }); if (!ok.length) return null; fi = ok[Math.floor(Math.random() * ok.length)]; taken.add(fi); return F.furn[fi]; };
     const seatAt = o => ({ x: o.x, y: o.y, face: Math.PI / 2 - (o.ry || 0) });
     let spot = null, pose = u.pose;
+    // [attività] un punto libero fra quelli dei gruppi (il mobile c'è ancora, ci si arriva, nessuno ci sta già)
+    const spotK = ks => { const K = ks.split('|'), ok = (F.spots || []).filter(s => K.includes(s.k) && (!s.gi || F.furn.some(o => o.gi === s.gi)) && INT().walk(L, f, s.x, s.y, .2) && roomy(used, s.x, s.y)); return ok.length ? ok[Math.floor(Math.random() * ok.length)] : null; };
     if (u.want === 'work' && f === 0 && typeof Oggetti !== 'undefined' && Oggetti.staffIndoor) {
       const s = Oggetti.staffIndoor(st, bi).find(x => x.id === n.id);
       if (s) { spot = { x: s.x, y: s.y, face: s.face }; pose = s.post === 'banco' ? 'merce' : 'lavora'; }
     }
+    if (spot && u.want === 'work' && pose === 'merce') { const sb = (F.spots || []).filter(s => s.k === 'banco').sort((a, c) => Math.hypot(a.x - spot.x, a.y - spot.y) - Math.hypot(c.x - spot.x, c.y - spot.y))[0]; if (sb && Math.hypot(sb.x - spot.x, sb.y - spot.y) < 2.5) { spot = { x: sb.x, y: sb.y, face: sb.face }; } }   // [attività] dietro il banco, verso i clienti
+    if (!spot && u.want === 'work') { const jt = (P.job && P.job.title) || '', mec = /meccanic/.test(jt), s = mec || /commess|cassier|barist|barman|camerier|oste|armaiol|venditor|tabacc|farmacist|istruttore di tiro/.test(jt) ? spotK(mec ? 'meccanico' : /istruttore di tiro/.test(jt) ? 'tiro|banco' : 'banco') : null; if (s) { spot = s; pose = mec ? 'lavora' : 'merce'; } }
+    if (!spot && u.want === 'spot') { const s = spotK(u.spot); if (s) { spot = s; if (u.spot === 'guarda|prova' && s.k === 'prova') pose = 'prova'; } else u.want = u.alt || 'free'; }
+    if (!spot && u.want === 'counter') { const s = spotK('bevi'); if (s) spot = s; }
     if (!spot && u.want === 'work') {
       const o = furn(COUNTERS) || furn(/^(pv_banco_lavoro|ia_scrivania_grande|ia_macchina_scrivere|desk)$|^st_/) || furn(STOVES);
       if (o && o.id === 'desk') { const c = F.furn.findIndex((x, i) => !taken.has(i) && x.id === 'chairDesk' && dist(x.x, x.y, o.x, o.y) < 1.2); if (c >= 0) { taken.add(c); spot = seatAt(F.furn[c]); pose = 'siede'; } }
@@ -1891,6 +1928,7 @@ var Popolo = (function () {
     if (!spot && u.want === 'bed') return null;
     // senza il mobile giusto si sta in piedi (niente sedute nel vuoto)
     if (!spot) { spot = freeFloor(L, f, used); if (pose !== 'prega' && pose !== 'flipper' && pose !== 'balla' && pose !== 'lavora' && pose !== 'merce') pose = null; }
+    if (spot && spot.k) spot = { x: spot.x, y: spot.y, face: spot.face };
     if (!spot) return null;
     used.push(spot);
     const act = b && b.act, label = act === 'sonno' ? 'dorme' : act === 'casa' ? (atHome ? 'a casa' : b.label) : act === 'pranzo' ? 'a tavola' : act === 'lavoro' && P.job ? `al lavoro (${P.job.title})` : b ? b.label : '';

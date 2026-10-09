@@ -1188,11 +1188,13 @@ var World = (function () {
       ['teatro', 'ТЕАТР ОДЕОН', '#ffd23b', 1, 'Teatro Odeon'], ['palestra', 'СПОРТЗАЛ', '#ff4fa3', 2], ['ferramenta', 'ХОЗТОВАРЫ', '#ff8a3b', 2], ['ufficio', 'КОНТОРА', '#7ab8ff', 3],
       ['barbiere', '이발 ЦИРЮЛЬНЯ', '#35e6ff', 2], ['tabacchi', 'ТАБАК', '#5aff9a', 2], ['panetteria', 'ХЛЕБ 빵', '#ffb35c', 2], ['farmacia', '✚ АПТЕКА 약국', '#4dff9a', 1], ['lavanderia', 'ПРАЧЕЧНАЯ', '#8affd0', 1],
       ['tipografia', 'ТИПОГРАФИЯ', '#e8e0d0', 1], ['circolo', 'КЛУБ', '#ff6a3b', 1, 'Circolo dei Lavoratori'], ['scuola', 'ШКОЛА', '#ffffff', 1, 'Scuola elementare'], ['sartoria', 'АТЕЛЬЕ', '#ff7ad9', 1], ['pescheria', 'РЫБА 생선', '#35e6ff', 1],
+      // [attività] dopo le altre, così le botteghe di prima restano dov'erano
+      ['autorimessa', 'АВТО ГАРАЖ', '#ffd23b', 1, 'Autorimessa Centrale'], ['armeria', 'ОРУЖИЕ 총포', '#ff4a3b', 1, 'Armeria del Cacciatore'], ['abbigliamento', 'ОДЕЖДА 옷', '#ff7ad9', 1, 'Abiti e Confezioni'], ['pub', 'ПИВО 맥주', '#ffb030', 1, 'Birreria del Porto'],
     ];
     const taken = new Set();
     USES.forEach(([use, sign, col, n, label], k) => {
       for (let i = 0; i < n; i++) {
-        const b = (use === 'teatro' ? big : city).find(q => !taken.has(q)); if (!b) return; taken.add(b);
+        const b = (use === 'teatro' || use === 'autorimessa' ? big : city).find(q => !taken.has(q)); if (!b) return; taken.add(b);
         b.use = use; b.sign = { t: sign, c: col }; b.shop = true;
         b.name = label || (use.charAt(0).toUpperCase() + use.slice(1)) + ' ' + NOMI[(k * 3 + i) % NOMI.length];
       }
