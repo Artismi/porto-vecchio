@@ -202,32 +202,67 @@ var InterniArte = (function () {
     freccia: up => canv('fr' + up, 16, 16, (x, w, h) => { x.clearRect(0, 0, w, h); x.fillStyle = up ? '#ffd23b' : '#5ad2ff'; x.fillRect(0, 0, w, 1); x.fillRect(0, h - 1, w, 1); x.fillRect(0, 0, 1, h); x.fillRect(w - 1, 0, 1, h); x.beginPath(); if (up) { x.moveTo(8, 2); x.lineTo(14, 9); x.lineTo(10, 9); x.lineTo(10, 14); x.lineTo(6, 14); x.lineTo(6, 9); x.lineTo(2, 9); } else { x.moveTo(8, 14); x.lineTo(14, 7); x.lineTo(10, 7); x.lineTo(10, 2); x.lineTo(6, 2); x.lineTo(6, 7); x.lineTo(2, 7); } x.fill(); }),
     radar: () => canv('radar', 16, 16, (x, w, h) => { x.fillStyle = '#0a1a10'; x.fillRect(0, 0, w, h); x.strokeStyle = '#2a8a4a'; x.beginPath(); x.arc(8, 8, 6, 0, 7); x.stroke(); x.beginPath(); x.arc(8, 8, 3, 0, 7); x.stroke(); x.fillStyle = '#6aff8a'; x.fillRect(11, 5, 1, 1); x.fillRect(5, 10, 1, 1); }),
     oilcloth: v => canv('oil' + v, 8, 8, (x, w, h) => { const c = ['#c83a3a', '#3a6aa0', '#4a8a4a'][v % 3]; for (let j = 0; j < h; j += 2) for (let i = 0; i < w; i += 2) { x.fillStyle = ((i + j) / 2) % 2 ? '#f0ece0' : c; x.fillRect(i, j, 2, 2); } }),
-    // [design] tappeti moderni: Memphis, kilim, berbero, geometrico; quadri astratti; piastrelle del paraschizzi; stoffe dei copriletti
+    // [design] tappeti consumati (orientali di seconda mano, kilim stinti, la passatoia sintetica dei grandi magazzini), quadri e poster
+    // dell'isola (il porto sotto la neve, la miniera, la pubblicità dell'auto a rate, la foto di famiglia color seppia), piastrelle, stoffe
     tapdesign: v => canv('tapd' + v, 48, 34, (x, w, h) => {
-      const k = v % 5, r = rng(v * 71 + 5);
-      if (k === 0) { x.fillStyle = '#e8dcc4'; x.fillRect(0, 0, w, h); for (let i = 0; i < 26; i++) { const c = pick(r, ['#e0503a', '#2a8a9a', '#f0c040', '#1e1e24', '#e888b0']), px = r() * w, py = r() * h, t = r(); x.fillStyle = c; x.strokeStyle = c; x.lineWidth = 1.2;
-        if (t < .3) { x.beginPath(); x.arc(px, py, 1.6, 0, 7); x.fill(); } else if (t < .55) { x.beginPath(); x.moveTo(px, py); x.lineTo(px + 4, py + 1); x.lineTo(px + 1, py + 4); x.fill(); } else if (t < .8) { x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + 2, py - 3, px + 4, py); x.quadraticCurveTo(px + 6, py + 3, px + 8, py); x.stroke(); } else x.fillRect(px, py, 5, 1.2); } x.strokeStyle = '#1e1e24'; x.lineWidth = 1; x.strokeRect(.5, .5, w - 1, h - 1); }
-      else if (k === 1) { const pal = pick(r, [['#8a2a1e', '#e0b060', '#2a3a5a', '#f0e4c8'], ['#5a6a3a', '#d89a4a', '#6a2a2a', '#efe2c4'], ['#2a4a5a', '#c86a3a', '#e8c890', '#f2e8d4']]); x.fillStyle = pal[0]; x.fillRect(0, 0, w, h);
-        for (let j = 0; j < h; j += 6) { x.fillStyle = pal[(j / 6) % 2 ? 3 : 1]; x.fillRect(0, j + 4, w, 1); } for (let i = 4; i < w; i += 10) for (let j = 3; j < h; j += 12) { x.fillStyle = pal[2]; x.beginPath(); x.moveTo(i, j); x.lineTo(i + 4, j + 4); x.lineTo(i, j + 8); x.lineTo(i - 4, j + 4); x.fill(); x.fillStyle = pal[3]; x.fillRect(i - 1, j + 3, 2, 2); }
-        x.fillStyle = pal[3]; for (let j = 1; j < h; j += 2) { x.fillRect(0, j, 1, 1); x.fillRect(w - 1, j, 1, 1); } }
-      else if (k === 2) { x.fillStyle = '#ece4d2'; x.fillRect(0, 0, w, h); x.strokeStyle = '#3a3028'; x.lineWidth = 1; for (let i = -h; i < w; i += 8) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + h, h); x.stroke(); x.beginPath(); x.moveTo(i + h, 0); x.lineTo(i, h); x.stroke(); } x.fillStyle = 'rgba(120,100,80,.15)'; for (let k2 = 0; k2 < 60; k2++) x.fillRect(r() * w, r() * h, 1, 1); }
-      else if (k === 3) { const pal = pick(r, [['#2f5d62', '#e0b25a', '#d8c8a8', '#c8643a'], ['#3c3f58', '#d88a6a', '#e8dcc4', '#8a9a7a'], ['#6a2a3a', '#e0a050', '#efe4d0', '#2a5a6a']]); x.fillStyle = pal[2]; x.fillRect(0, 0, w, h); x.fillStyle = pal[0]; x.fillRect(3, 3, w - 6, h - 6); x.fillStyle = pal[2]; x.fillRect(6, 6, w - 12, h - 12);
-        x.fillStyle = pal[1]; x.beginPath(); x.arc(w * .33, h / 2, 7, 0, 7); x.fill(); x.fillStyle = pal[3]; x.fillRect(w * .5, h / 2 - 5, 12, 10); x.fillStyle = pal[0]; x.beginPath(); x.arc(w * .33, h / 2, 3, 0, 7); x.fill(); }
-      else { x.fillStyle = '#7a1a22'; x.fillRect(0, 0, w, h); x.fillStyle = '#e0c088'; x.fillRect(2, 2, w - 4, h - 4); x.fillStyle = '#7a1a22'; x.fillRect(4, 4, w - 8, h - 8); x.fillStyle = '#1e2a4a'; x.beginPath(); x.ellipse(w / 2, h / 2, 13, 8, 0, 0, 7); x.fill(); x.fillStyle = '#e0c088'; x.beginPath(); x.ellipse(w / 2, h / 2, 6, 4, 0, 0, 7); x.fill();
-        for (let i = 7; i < w - 6; i += 4) { x.fillStyle = i % 8 ? '#e0c088' : '#2a4a3a'; x.fillRect(i, 5, 2, 2); x.fillRect(i, h - 7, 2, 2); } }
-      x.fillStyle = 'rgba(0,0,0,.06)'; for (let k2 = 0; k2 < 80; k2++) x.fillRect(Math.floor(r() * w), Math.floor(r() * h), 1, 1);
+      const k = v % 5, r = rng(v * 71 + 5), pal = [['#5a2a26', '#8a6a4a', '#2a2e3a', '#b8a888'], ['#4a3a30', '#7a5a3a', '#3a4040', '#a89878'], ['#3a3a42', '#6a4a3a', '#5a5048', '#9a8c74'], ['#5a4a3a', '#8a7458', '#3e3a34', '#b0a080'], ['#46302a', '#7a5040', '#34383a', '#a08a6a']][v % 5];
+      x.fillStyle = pal[0]; x.fillRect(0, 0, w, h);
+      if (k === 0 || k === 4) { x.fillStyle = pal[3]; x.fillRect(2, 2, w - 4, h - 4); x.fillStyle = pal[2]; x.fillRect(3, 3, w - 6, h - 6); x.fillStyle = pal[0]; x.fillRect(5, 5, w - 10, h - 10);   // l'orientale
+        x.fillStyle = pal[2]; x.beginPath(); x.ellipse(w / 2, h / 2, 12, 7, 0, 0, 7); x.fill(); x.fillStyle = pal[1]; x.beginPath(); x.ellipse(w / 2, h / 2, 6, 3.5, 0, 0, 7); x.fill();
+        for (let i = 7; i < w - 6; i += 4) { x.fillStyle = pal[1]; x.fillRect(i, 3, 1, 1); x.fillRect(i, h - 4, 1, 1); } }
+      else if (k === 1) { for (let j = 0; j < h; j += 6) { x.fillStyle = pal[(j / 6) % 2 ? 3 : 1]; x.fillRect(0, j + 4, w, 1); } for (let i = 4; i < w; i += 10) for (let j = 3; j < h; j += 12) { x.fillStyle = pal[2]; x.beginPath(); x.moveTo(i, j); x.lineTo(i + 4, j + 4); x.lineTo(i, j + 8); x.lineTo(i - 4, j + 4); x.fill(); } }   // il kilim
+      else if (k === 2) { for (let j = 0; j < h; j += 3) { x.fillStyle = j % 6 ? pal[2] : pal[1]; x.fillRect(0, j, w, 2); } }   // la passatoia a righe
+      else { x.fillStyle = pal[1]; x.fillRect(3, 3, w - 6, h - 6); x.fillStyle = pal[0]; for (let i = 6; i < w - 6; i += 6) for (let j = 6; j < h - 6; j += 6) x.fillRect(i, j, 2, 2); }   // il sintetico a quadretti
+      // l'usura: stinto in mezzo dove si passa, macchie, frange
+      const g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * .55); g.addColorStop(0, 'rgba(200,190,170,.18)'); g.addColorStop(1, 'rgba(0,0,0,.15)'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+      for (let k2 = 0; k2 < 6; k2++) { x.fillStyle = 'rgba(30,24,20,.12)'; x.beginPath(); x.ellipse(r() * w, r() * h, 2 + r() * 4, 1 + r() * 3, r() * 3, 0, 7); x.fill(); }
+      x.fillStyle = 'rgba(0,0,0,.06)'; for (let k2 = 0; k2 < 90; k2++) x.fillRect(Math.floor(r() * w), Math.floor(r() * h), 1, 1);
     }),
+    // i quadri e le stampe: la pubblicità e il governo sono sgargianti e zuccherosi (instupidenti); le foto vere sono spente
     arte: v => canv('arte' + v, 30, 22, (x, w, h) => {
       const k = v % 5, r = rng(v * 37 + 11);
-      if (k === 0) { x.fillStyle = '#e8e0cc'; x.fillRect(0, 0, w, h); x.fillStyle = '#c03a2a'; x.fillRect(2, 2, 12, 11); x.fillStyle = '#2a4a8a'; x.fillRect(16, 14, 12, 6); x.fillStyle = '#f0c030'; x.fillRect(22, 2, 6, 5); x.fillStyle = '#1e1e22'; [[14, 0, 2, h], [0, 13, w, 2], [20, 0, 2, 14], [14, 7, w - 14, 1]].forEach(([a, b, c, d]) => x.fillRect(a, b, c, d)); }
-      else if (k === 1) { const c = pick(r, [['#8a2a1e', '#e07a3a', '#2a1a1a'], ['#2a3a5a', '#5a7aa0', '#d8c8a8'], ['#3a5a3a', '#a8b870', '#1e2a1e']]); x.fillStyle = c[2]; x.fillRect(0, 0, w, h); x.fillStyle = c[0]; x.fillRect(2, 2, w - 4, h * .5); x.fillStyle = c[1]; x.fillRect(2, h * .58, w - 4, h * .36); }
-      else if (k === 2) { x.fillStyle = '#f0ece2'; x.fillRect(0, 0, w, h); x.fillStyle = '#e0503a'; x.beginPath(); x.arc(10, 11, 7, 0, 7); x.fill(); x.fillStyle = '#2a8a9a'; x.beginPath(); x.moveTo(15, 18); x.lineTo(27, 18); x.lineTo(21, 5); x.fill(); x.strokeStyle = '#1e1e24'; x.lineWidth = 1.4; x.beginPath(); x.moveTo(2, 4); x.quadraticCurveTo(7, 0, 12, 4); x.quadraticCurveTo(17, 8, 22, 3); x.stroke(); x.fillStyle = '#f0c040'; x.fillRect(4, 18, 6, 2); }
-      else if (k === 3) { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#e8a060'); g.addColorStop(.6, '#c84a3a'); g.addColorStop(1, '#3a1a2a'); x.fillStyle = g; x.fillRect(0, 0, w, h); x.fillStyle = '#f8e0a0'; x.beginPath(); x.arc(w / 2, h * .62, 5, 0, 7); x.fill(); x.fillStyle = '#1e1428'; x.fillRect(0, h * .7, w, h * .3); x.fillStyle = 'rgba(248,224,160,.5)'; for (let i = 0; i < 4; i++) x.fillRect(w / 2 - 6 + i, h * .74 + i * 1.5, 12 - i * 2, 1); }
-      else { x.fillStyle = '#ece6d8'; x.fillRect(0, 0, w, h); for (let i = 0; i < 9; i++) { x.fillStyle = pick(r, ['#2a2a2e', '#c8643a', '#2f5d62', '#e0b25a']); const a = r() * 7; x.save(); x.translate(4 + r() * (w - 8), 4 + r() * (h - 8)); x.rotate(a); x.fillRect(-4, -.7, 8 + r() * 6, 1.4); x.restore(); } }
+      if (k === 0) { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#ff5aa8'); g.addColorStop(.5, '#ffa040'); g.addColorStop(1, '#ffe060'); x.fillStyle = g; x.fillRect(0, 0, w, h);   // il tramonto kitsch dei grandi magazzini
+        x.fillStyle = '#fff4a0'; x.beginPath(); x.arc(w / 2, h * .6, 5, 0, 7); x.fill(); x.fillStyle = '#3a8ae0'; x.fillRect(0, h * .7, w, h * .3); x.fillStyle = '#ffffff'; for (let i = 0; i < 4; i++) x.fillRect(w / 2 - 6 + i * 3, h * .76 + i, 4 - i, 1);
+        x.fillStyle = '#2a1a3a'; x.fillRect(4, 6, 1.5, 10); [[-4, -2], [3, -2], [-3, 1], [4, 1]].forEach(([a0, b0]) => { x.beginPath(); x.ellipse(5 + a0 * .8, 6 + b0 * .6, 3, 1, a0 * .2, 0, 7); x.fill(); }); }
+      else if (k === 1) { x.fillStyle = '#7ad0f8'; x.fillRect(0, 0, w, h); x.fillStyle = '#ffe040'; x.beginPath(); x.arc(24, 5, 4, 0, 7); x.fill(); x.fillStyle = '#c86a2a'; x.fillRect(22.5, 5.5, 3, .8);   // la famiglia felice del Miracolo del Gelo
+        [[7, '#ff6a8a', 5], [12, '#4a7af0', 6], [17, '#ffb02a', 3.5]].forEach(([cx, c, hh]) => { x.fillStyle = '#ffd8b0'; x.beginPath(); x.arc(cx, 16 - hh - 2, 1.8, 0, 7); x.fill(); x.fillStyle = c; x.fillRect(cx - 2, 16 - hh, 4, hh); });
+        x.fillStyle = '#ff2a6a'; x.fillRect(0, h - 5, w, 5); x.fillStyle = '#ffffff'; x.fillRect(2, h - 3.5, 8, 1.2); x.fillRect(12, h - 3.5, 7, 1.2); x.fillRect(21, h - 3.5, 7, 1.2); }
+      else if (k === 2) { x.fillStyle = '#a8f0d0'; x.fillRect(0, 0, w, h); x.fillStyle = '#ff2a3a'; x.fillRect(0, 0, w, 5); x.fillStyle = '#ffffff'; x.fillRect(2, 1.5, 16, 2);   // l'auto a rate, rossa caramella
+        x.fillStyle = '#e8202a'; x.fillRect(4, 11, 22, 5); x.fillRect(8, 7.5, 12, 4); x.fillStyle = '#c8f0ff'; x.fillRect(9.5, 8.5, 4, 2.5); x.fillRect(14.5, 8.5, 4, 2.5); x.fillStyle = '#1e1e22'; x.beginPath(); x.arc(9, 16.5, 2, 0, 7); x.arc(21, 16.5, 2, 0, 7); x.fill();
+        x.fillStyle = '#ffe040'; x.beginPath(); x.moveTo(26, 5); for (let i = 0; i < 10; i++) { const a0 = i * PI / 5, rr = i % 2 ? 2 : 4; x.lineTo(26 + Math.cos(a0) * rr, 10 + Math.sin(a0) * rr); } x.fill(); x.fillStyle = '#ff2a3a'; x.fillRect(3, 19, 18, 1.6); }
+      else if (k === 3) { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#b8a07a'); g.addColorStop(1, '#8a7050'); x.fillStyle = g; x.fillRect(0, 0, w, h);   // la foto di famiglia vera, color seppia
+        [[8, '#4a3a2a'], [15, '#3a2c20'], [22, '#4e3c2c']].forEach(([cx, c]) => { x.fillStyle = c; x.beginPath(); x.arc(cx, 8, 2.4, 0, 7); x.fill(); x.fillRect(cx - 3, 11, 6, 9); }); x.fillStyle = 'rgba(255,240,210,.15)'; x.fillRect(0, 0, w, 3); }
+      else { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#8a929a'); g.addColorStop(1, '#c8ccd0'); x.fillStyle = g; x.fillRect(0, 0, w, h); x.fillStyle = '#3a4048'; x.fillRect(0, h * .62, w, h * .38); x.fillStyle = '#e8ecee'; x.fillRect(0, h * .6, w, 1.5);   // il porto sotto la neve
+        x.fillStyle = '#2a2e34'; x.fillRect(7, h * .48, 12, 3); x.fillRect(10, h * .38, 2, 4); x.fillRect(14, h * .3, 1, 6); x.fillStyle = 'rgba(240,244,246,.7)'; for (let i = 0; i < 20; i++) x.fillRect(r() * w, r() * h * .6, 1, 1); }
     }),
-    piastrelle: v => canv('pia' + v, 16, 8, (x, w, h) => { const c = [['#e8e4da', '#c8d8d8'], ['#f0e8d0', '#e0a050'], ['#dce8e8', '#4a7a8a'], ['#f2efe8', '#2a2a2e']][v % 4]; for (let j = 0; j < h; j += 2) for (let i = 0; i < w; i += 2) { x.fillStyle = (i + j) % 4 === 0 && v % 2 ? c[1] : c[0]; x.fillRect(i, j, 2, 2); x.fillStyle = 'rgba(0,0,0,.12)'; x.fillRect(i, j, 2, .3); x.fillRect(i, j, .3, 2); } if (!(v % 2)) { x.fillStyle = c[1]; x.fillRect(0, 3, w, 1); } }),
-    stoffa: v => canv('sto' + v, 16, 16, (x, w, h) => { const k = v % 4, c = [['#e8dcc4', '#c8643a'], ['#d8e0e8', '#3c4a6a'], ['#efe2c8', '#5a7a5a'], ['#f0e0e0', '#b85c5c']][v % 4]; x.fillStyle = c[0]; x.fillRect(0, 0, w, h); x.fillStyle = c[1];
-      if (k === 0) for (let i = 0; i < w; i += 4) x.fillRect(i, 0, 2, h); else if (k === 1) for (let j = 0; j < h; j += 4) for (let i = 0; i < w; i += 4) { if ((i + j) % 8 === 0) x.fillRect(i, j, 4, 4); } else if (k === 2) for (let j = 2; j < h; j += 5) for (let i = 2; i < w; i += 5) { x.beginPath(); x.arc(i + (j % 2), j, 1.1, 0, 7); x.fill(); } else { for (let j = 0; j < h; j += 4) x.fillRect(0, j, w, 1); for (let i = 0; i < w; i += 4) x.fillRect(i, 0, 1, h); } }),
+    // il pezzo dei ragazzi: wildstyle a spray, ricco e bello davvero. Lettere intrecciate col riempimento sfumato, il contorno,
+    // l'ombra 3D, le luci bianche e le colature; dietro il sole che spacca il ghiaccio o le radici che sollevano l'asfalto
+    graffito: v => canv('graf' + v, 44, 60, (x, w, h) => { const r = rng(v * 13 + 7), P = [['#ff6a1a', '#ffd23a', '#b8f040'], ['#ff2a8a', '#ff9a2a', '#3ae0e8'], ['#9ae83a', '#2ad0a0', '#f0f040'], ['#c050ff', '#ff4aa0', '#ffb030']][v % 4];
+      const bg = x.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, '#1a1c22'); bg.addColorStop(1, '#2a2a30'); x.fillStyle = bg; x.fillRect(0, 0, w, h);
+      if (v % 2) { const sg = x.createRadialGradient(w / 2, 20, 2, w / 2, 20, 16); sg.addColorStop(0, '#fff2a0'); sg.addColorStop(.5, P[1]); sg.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = sg; x.fillRect(0, 0, w, 40);
+        x.strokeStyle = '#bfefff'; x.lineWidth = 1; for (let i = 0; i < 7; i++) { x.beginPath(); let X = 4 + i * 6, Y = h - 4; x.moveTo(X, Y); for (let k = 0; k < 4; k++) { X += (r() - .5) * 6; Y -= 3 + r() * 3; x.lineTo(X, Y); } x.stroke(); } }
+      else { x.strokeStyle = '#6a4a2a'; x.lineWidth = 2; for (let i = 0; i < 4; i++) { x.beginPath(); let X = 6 + i * 10, Y = h; x.moveTo(X, Y); for (let k = 0; k < 6; k++) { X += (r() - .5) * 5; Y -= 4; x.lineTo(X, Y); } x.stroke(); } x.fillStyle = '#4a4a50'; for (let i = 0; i < 6; i++) x.fillRect(r() * w, h - 14 - r() * 8, 6, 2); }
+      // le lettere: blocchi inclinati che si incastrano
+      const L = []; for (let i = 0; i < 4; i++) L.push([4 + i * 9 + (r() - .5) * 2, 28 + (r() - .5) * 6, 8 + r() * 3, 12 + r() * 5, (r() - .5) * .5]);
+      const shape = (dx, dy) => L.forEach(([X, Y, W0, H0, a0]) => { x.save(); x.translate(X + dx, Y + dy); x.rotate(a0); x.beginPath(); x.moveTo(0, 0); x.lineTo(W0, -2); x.lineTo(W0 + 2, H0 * .6); x.lineTo(W0 * .6, H0); x.lineTo(-1, H0 * .8); x.closePath(); x.restore(); x.fill(); x.stroke(); });
+      x.lineWidth = 2; x.strokeStyle = '#0e0e12'; x.fillStyle = '#0e0e12'; shape(2, 2);
+      const fg = x.createLinearGradient(0, 22, 0, 46); fg.addColorStop(0, P[1]); fg.addColorStop(1, P[0]); x.fillStyle = fg; x.strokeStyle = '#0e0e12'; x.lineWidth = 1.4; shape(0, 0);
+      x.fillStyle = P[2]; L.forEach(([X, Y, W0]) => { x.fillRect(X + 1, Y + 1, W0 * .5, 1); }); x.fillStyle = '#ffffff'; L.forEach(([X, Y]) => { x.fillRect(X + 1, Y + 2, 1, 1); x.fillRect(X + 2, Y + 1, 1, 1); });
+      x.fillStyle = P[0]; for (let i = 0; i < 5; i++) { const X = 6 + r() * 32, Y = 40 + r() * 4; x.fillRect(X, Y, 1, 3 + r() * 6); }
+      x.fillStyle = 'rgba(255,255,255,.05)'; for (let i = 0; i < 120; i++) x.fillRect(Math.floor(r() * w), Math.floor(r() * h), 1, 1); }),
+    // la trapunta patchwork cucita a mano e il mobile dipinto: l'autoprodotto è la roba più bella della casa
+    patchwork: v => canv('patch' + v, 24, 24, (x, w, h) => { const r = rng(v * 29 + 3), C0 = ['#2a3a6a', '#c8862a', '#8a3a2a', '#2a7a7a', '#e8dcc0', '#5a2a4a', '#d8b040', '#3a5a3a'];
+      for (let j = 0; j < h; j += 6) for (let i = 0; i < w; i += 6) { const c = pick(r, C0), c2 = pick(r, C0), t = r(); x.fillStyle = c; x.fillRect(i, j, 6, 6); x.fillStyle = c2;
+        if (t < .25) { x.beginPath(); x.moveTo(i, j); x.lineTo(i + 6, j + 6); x.lineTo(i, j + 6); x.fill(); } else if (t < .5) { for (let k = 0; k < 6; k += 2) x.fillRect(i, j + k, 6, 1); } else if (t < .7) { x.beginPath(); x.arc(i + 3, j + 3, 1.6, 0, 7); x.fill(); } else if (t < .85) { x.fillRect(i + 2, j, 2, 6); x.fillRect(i, j + 2, 6, 2); } }
+      x.fillStyle = 'rgba(240,230,200,.55)'; for (let j = 0; j <= h; j += 6) for (let i = 0; i < w; i += 2) x.fillRect(i, j, 1, .5); for (let i = 0; i <= w; i += 6) for (let j = 0; j < h; j += 2) x.fillRect(i, j, .5, 1); }),
+    dipinto: v => canv('dip' + v, 32, 24, (x, w, h) => { const r = rng(v * 17 + 9), base = pick(r, ['#2a4a5a', '#3a2a4a', '#2a4a3a', '#5a2a24']); x.fillStyle = base; x.fillRect(0, 0, w, h);
+      const sg = x.createRadialGradient(w / 2, h / 2, 1, w / 2, h / 2, 8); sg.addColorStop(0, '#ffe090'); sg.addColorStop(1, '#e86a2a'); x.fillStyle = sg; x.beginPath(); x.arc(w / 2, h / 2, 5, 0, 7); x.fill();
+      x.strokeStyle = '#ffd060'; x.lineWidth = 1; for (let i = 0; i < 12; i++) { const a0 = i * PI / 6; x.beginPath(); x.moveTo(w / 2 + Math.cos(a0) * 6.5, h / 2 + Math.sin(a0) * 6.5); x.lineTo(w / 2 + Math.cos(a0) * 9, h / 2 + Math.sin(a0) * 9); x.stroke(); }
+      [[4, 4], [w - 5, 4], [4, h - 5], [w - 5, h - 5]].forEach(([X, Y]) => { x.fillStyle = '#7ac85a'; for (let k = 0; k < 4; k++) { x.beginPath(); x.ellipse(X + Math.cos(k * 1.57) * 2, Y + Math.sin(k * 1.57) * 2, 2, .9, k * 1.57, 0, 7); x.fill(); } x.fillStyle = '#f0e0b0'; x.fillRect(X - .5, Y - .5, 1, 1); });
+      x.strokeStyle = '#e8d8b0'; x.strokeRect(1.5, 1.5, w - 3, h - 3); }),
+    piastrelle: v => canv('pia' + v, 16, 8, (x, w, h) => { const c = [['#d8d4c8', '#a8b0a8'], ['#d8ccb4', '#8a6a4a'], ['#c8d0cc', '#5a6a6a'], ['#d4d0c8', '#4a4844']][v % 4]; for (let j = 0; j < h; j += 2) for (let i = 0; i < w; i += 2) { x.fillStyle = (i + j) % 4 === 0 && v % 2 ? c[1] : c[0]; x.fillRect(i, j, 2, 2); x.fillStyle = 'rgba(0,0,0,.12)'; x.fillRect(i, j, 2, .3); x.fillRect(i, j, .3, 2); } if (!(v % 2)) { x.fillStyle = c[1]; x.fillRect(0, 3, w, 1); } x.fillStyle = 'rgba(60,50,40,.12)'; x.fillRect(0, h - 2, w, 2); }),
+    stoffa: v => canv('sto' + v, 16, 16, (x, w, h) => { const k = v % 4, c = [['#a89c88', '#6a4a3a'], ['#8a9098', '#3e4652'], ['#a8a088', '#5a5a44'], ['#a8948a', '#6a3e3a']][v % 4]; x.fillStyle = c[0]; x.fillRect(0, 0, w, h); x.fillStyle = c[1];
+      if (k === 0) for (let i = 0; i < w; i += 4) x.fillRect(i, 0, 1, h); else if (k === 1) for (let j = 0; j < h; j += 4) for (let i = 0; i < w; i += 4) { if ((i + j) % 8 === 0) x.fillRect(i, j, 4, 4); } else if (k === 2) for (let j = 2; j < h; j += 5) for (let i = 2; i < w; i += 5) { x.fillRect(i, j, 1, 1); } else { for (let j = 0; j < h; j += 4) x.fillRect(0, j, w, 1); for (let i = 0; i < w; i += 4) x.fillRect(i, 0, 1, h); } }),
     libri: v => canv('lib' + v, 16, 8, (x, w, h) => { x.fillStyle = '#2a1a10'; x.fillRect(0, 0, w, h); let i = 0; const r = rng(v * 13 + 1); while (i < w) { const bw = 1 + Math.floor(r() * 2); x.fillStyle = pick(r, ['#7a2a2a', '#2a3a6a', '#3a5a3a', '#a08040', '#5a2a4a', '#c8c0a8', '#4a4a4a']); x.fillRect(i, 1 + Math.floor(r() * 2), bw, h - 1); i += bw; } }),
   };
   // un pannello piatto (davanti verso +z) con una tela
@@ -239,14 +274,15 @@ var InterniArte = (function () {
   // =====================================================================================================================
   const WOOD = ['#5a3a24', '#6a4228', '#4e3220', '#7a5236'], FAB = ['#7a3a3a', '#3a4a6a', '#5a6a3a', '#8a6a3a', '#6a4a6a', '#4a5a5a', '#8a4a2a'];
   // [design] i colori del design: stoffe in tinte calde e polverose, legni chiari (teak, rovere, frassino), pelle, ottone, marmo
-  const DES = ['#c8643a', '#2f5d62', '#d8a84a', '#8a9a7a', '#b85c5c', '#3c4a6a', '#d8c8a8', '#6a4a6a', '#4a7a6a', '#d88a6a', '#e8dcc4', '#5a6a8a'];
-  const WOODD = ['#9a6438', '#b8895a', '#6a4228', '#c8a070', '#8a5a32'], LEATHER = ['#7a4528', '#3a2a22', '#a86a3a', '#1e1e22'], BRASS = { metalness: .8, roughness: .3 };
+  // [design] i colori di Porto Vecchio: tinte spente e fredde, roba comprata a rate e usata a lungo (niente colori da cartone animato)
+  const DES = ['#7a5a48', '#5a6458', '#8a7a5a', '#4a5560', '#6a4a42', '#8a8478', '#5a4a3a', '#6e6a5c', '#3e4448', '#7a6e60', '#5e5048', '#8a6e52'];
+  const WOODD = ['#5a3e2a', '#6a4a30', '#4a3424', '#7a5a3a', '#5e4632'], LEATHER = ['#4a2e22', '#2e2420', '#5a3a2a', '#1e1e22'], BRASS = { metalness: .8, roughness: .3 };
   const MT = (key, t, o) => MC['T' + key] || (MC['T' + key] = new THREE.MeshStandardMaterial(Object.assign({ map: t, roughness: .9 }, o || {})));
   const tgeo = (R, rr, arc) => { const k = 't' + R + ',' + rr + ',' + arc; return GEO[k] || (GEO[k] = new THREE.TorusGeometry(R, rr, 5, 12, arc)); };
   function build(id, r) {
     const g = new THREE.Group(); g.userData.ia = id;
     // [design] la sfumatura del pezzo: un po' più caldo o più freddo, più chiaro o più scuro (due mobili uguali non sono mai identici)
-    const r9 = rng(((id.length * 131) ^ Math.floor(r() * 1e9)) >>> 0), nuB = .93 + r9() * .12, nuT = pick(r9, ['#ffe6c8', '#dce8ff', '#fff4e0', '#f0e0ff']), nuK = r9() * .09;
+    const r9 = rng(((id.length * 131) ^ Math.floor(r() * 1e9)) >>> 0), nuB = .93 + r9() * .12, nuT = pick(r9, ['#8a9098', '#7a8088', '#9a9488', '#8a8a8a']), nuK = .12 + r9() * .12;
     const nu = c => mix(shade(c, nuB), nuT, nuK);
     const B = (w, h, d, x, y, z, c) => { const m = new THREE.Mesh(bgeo(w, h, d), typeof c === 'string' ? (w * h * d > .0004 ? TM(nu(c)) : M(c)) : c); m.position.set(x, y + h / 2, z); g.add(m); return m; };
     const C = (r0, h, x, y, z, c, s, r1) => { const m = new THREE.Mesh(cgeo(r0, r1 == null ? r0 : r1, h, s), typeof c === 'string' ? (r0 * h > .002 ? TM(nu(c)) : M(c)) : c); m.position.set(x, y + h / 2, z); g.add(m); return m; };
@@ -516,6 +552,8 @@ var InterniArte = (function () {
     const rod = (a, b, rad, mat) => { const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], L = Math.hypot(dx, dy, dz); const m = new THREE.Mesh(cgeo(rad, rad, L, 5), typeof mat === 'string' ? M(mat) : mat); m.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx / L, dy / L, dz / L)); g.add(m); return m; };
     const taper = (w, d, h, col, inset) => [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => C(.028, h, a * (w / 2 - (inset || .08)), 0, b * (d / 2 - (inset || .08)), col, 6, .018));
     const book = (x, y, z, w, col) => B(w, .035, w * .72, x, y, z, col);
+    // la roba di consumo: plastica e smalto pastello lucidi (carini ma stupidi); l'autoprodotto: colori pieni, opachi, fatti a mano
+    const POP = ['#9ad8c0', '#f4b0c0', '#f4dc80', '#a8c8f0', '#f08a6a', '#e8e4d8'], G = c => M(c, { roughness: .25 }), H = c => M(c, { roughness: .75 });
     const glass = o => M('#d8e8ee', Object.assign({ roughness: .05, transparent: true, opacity: .45 }, o || {}));
     // la parte alta (pensili, specchi): si vede solo se il mobile sta contro un muro alto; contro un muro tagliato basso sparisce (buildFloor)
     const up = fn => { const n0 = g.children.length; fn(); for (let i = n0; i < g.children.length; i++) g.children[i].userData.upper = 1; g.userData.upper = 1; };
@@ -562,7 +600,7 @@ var InterniArte = (function () {
         taper(1.7, .4, .16, wd, .1); B(1.8, .62, .46, 0, .16, 0, wd); B(1.84, .03, .48, 0, .78, 0, shade(wd, .8));
         const sl = canv('listelli', 16, 16, (x, w, h) => { x.fillStyle = '#000'; x.fillRect(0, 0, w, h); for (let i = 0; i < w; i += 2) { x.fillStyle = 'rgba(255,255,255,.55)'; x.fillRect(i, 0, 1, h); } });
         [-.6, 0, .6].forEach(x => { B(.56, .56, .012, x, .19, .232, shade(wd, 1.15)); const m = decal(g, sl, .52, .52, x, .47, .24); m.material.transparent = true; m.material.opacity = .25; B(.02, .12, .02, x + .2, .42, .245, M('#c8a050', BRASS)); });
-        if (r() < .55) { C(.07, .26, .68, .81, 0, pick(r, ['#ece8e0', '#2f5d62', '#c8643a', '#1e1e22']), 10, .05); for (let i = 0; i < 3; i++) rod([.68, 1.05, 0], [.68 + (r() - .5) * .3, 1.4 + r() * .2, (r() - .5) * .2], .006, '#6a5a3a'); }
+        if (r() < .55) { C(.07, .26, .68, .81, 0, pick(r, ['#ece8e0', '#4a5a5c', '#8a5a42', '#1e1e22']), 10, .05); for (let i = 0; i < 3; i++) rod([.68, 1.05, 0], [.68 + (r() - .5) * .3, 1.4 + r() * .2, (r() - .5) * .2], .006, '#6a5a3a'); }
         break;
       }
       case 'ia_libreria_piena': {   // libreria aperta piena: libri a file e coricati, vasi, piante, cornici, scatole
@@ -573,8 +611,8 @@ var InterniArte = (function () {
           for (let k = 0; k < parts && x < .6; k++) {
             const t = r(); if (t < .55) { const w0 = .25 + r() * .3; decal(g, T.libri(Math.floor(r() * 9) + s * 3), w0, .26 + r() * .06, x + w0 / 2, y + .16, .12); B(w0, .25, .22, x + w0 / 2, y + .025, -.02, shade(pick(r, ['#7a2a2a', '#2a3a6a', '#3a5a3a', '#a08040']), .6)); x += w0 + .06; }
             else if (t < .7) { for (let j = 0; j < 3; j++) book(x + .12, y + .025 + j * .036, 0, .22 - j * .02, pick(r, ['#7a2a2a', '#2a3a6a', '#c8c0a8', '#a08040', '#3a5a3a'])); x += .3; }
-            else if (t < .82) { C(.05, .16, x + .08, y + .025, 0, pick(r, ['#ece8e0', '#2f5d62', '#c8643a', '#d8a84a']), 10, .04); x += .2; }
-            else if (t < .92) { C(.05, .07, x + .08, y + .025, 0, '#c87a4a', 8, .04); S(.08, x + .08, y + .16, 0, '#4a7a3a', 6).scale.y = .8; x += .2; }
+            else if (t < .82) { C(.05, .16, x + .08, y + .025, 0, pick(r, ['#ece8e0', '#4a5a5c', '#8a5a42', '#8a7a52']), 10, .04); x += .2; }
+            else if (t < .92) { C(.05, .07, x + .08, y + .025, 0, '#8a6a4a', 8, .04); S(.08, x + .08, y + .16, 0, '#4a7a3a', 6).scale.y = .8; x += .2; }
             else { const fr = B(.14, .18, .02, x + .08, y + .025, .05, '#2a2a2e'); fr.rotation.x = -.15; B(.11, .14, .005, x + .08, y + .045, .062, pick(r, ['#c8b8a0', '#8aa0b8'])).rotation.x = -.15; x += .2; }
           }
         }
@@ -584,9 +622,9 @@ var InterniArte = (function () {
         taper(1.7, .42, .12, wd, .1); B(1.8, .4, .46, 0, .12, 0, wd); B(1.82, .03, .48, 0, .52, 0, shade(wd, .8));
         [-.6, .6].forEach(x => { B(.56, .34, .012, x, .15, .232, shade(wd, 1.12)); B(.12, .02, .02, x, .42, .245, M('#c8a050', BRASS)); });
         B(.6, .34, .44, 0, .15, -.005, '#1a1614'); B(.42, .08, .3, 0, .17, .02, '#1e1e22'); S(.008, .15, .23, .175, GL('#ff3a2a', 3), 4); for (let i = 0; i < 3; i++) B(.11, .02, .07, -.1 + i * .02, .27 + i * .021, .05, pick(r, ['#1e1e22', '#c8302a', '#2a4a8a']));
-        B(.7, .52, .46, 0, .55, -.02, '#26262a'); B(.62, .46, .02, 0, .58, .21, '#1a1a1e');
+        B(.7, .52, .46, 0, .55, -.02, G(pick(r, ['#f08a6a', '#e8e4d8', '#9ad8c0', '#2a2a2e']))); B(.62, .46, .02, 0, .58, .21, '#1a1a1e');
         const s = new THREE.Mesh(plane(.52, .38), new THREE.MeshStandardMaterial({ map: T.tv(), emissive: '#ffffff', emissiveMap: T.tv(), emissiveIntensity: .9 })); s.position.set(-.03, .81, .222); g.add(s); s.userData.screen = 1; g.userData.screen = [0, .81, .3];
-        B(.05, .05, .01, .27, .6, .222, '#8a8a8a'); if (r() < .6) { C(.06, .1, .78, .55, .05, '#c87a4a', 8, .05); S(.12, .78, .74, .05, '#3a6a3a', 6); }
+        B(.05, .05, .01, .27, .6, .222, '#8a8a8a'); if (r() < .6) { C(.06, .1, .78, .55, .05, '#8a6a4a', 8, .05); S(.12, .78, .74, .05, '#3a6a3a', 6); }
         break;
       }
       // ---- la camera ----
@@ -611,14 +649,14 @@ var InterniArte = (function () {
         if (r() < .4) { B(.6, .25, .45, -.3, 2.14, 0, pick(r, ['#6a3a2a', '#3a4a5a', '#8a6a3a'])); }
         break;
       }
-      case 'ia_abatjour': { C(.05, .2, 0, 0, 0, M(pick(r, ['#ece8e0', '#2f5d62', '#c8643a', '#d8a84a', '#1e1e22']), { roughness: .3 }), 10, .07); C(.09, .14, 0, .2, 0, GL(pick(r, ['#f2dcb0', '#f4e8d0', '#e8c890']), .65), 12, .12); S(.03, 0, .26, 0, GL('#fff0c8', 3), 5); g.userData.lamp = [0, .26, 0]; break; }
+      case 'ia_abatjour': { C(.05, .2, 0, 0, 0, M(pick(r, ['#ece8e0', '#4a5a5c', '#8a5a42', '#8a7a52', '#1e1e22']), { roughness: .3 }), 10, .07); C(.09, .14, 0, .2, 0, GL(pick(r, ['#f2dcb0', '#f4e8d0', '#e8c890']), .65), 12, .12); S(.03, 0, .26, 0, GL('#fff0c8', 3), 5); g.userData.lamp = [0, .26, 0]; break; }
       case 'ia_pianta_grande': {   // pianta da appartamento: vaso, fusti, foglie larghe che si aprono
-        const pot = pick(r, ['#c87a4a', '#ece8e0', '#2a2a2e', '#2f5d62']); C(.22, .42, 0, 0, 0, pot, 12, .17); C(.21, .02, 0, .41, 0, '#3a2a1e', 12);
+        const pot = pick(r, ['#8a6a4a', '#ece8e0', '#2a2a2e', '#4a5a5c']); C(.22, .42, 0, 0, 0, pot, 12, .17); C(.21, .02, 0, .41, 0, '#3a2a1e', 12);
         const n = 7 + Math.floor(r() * 4), lf = pick(r, ['#3a6a3a', '#2a5a32', '#4a7a3a']);
         for (let i = 0; i < n; i++) { const a = i / n * PI * 2 + r() * .4, rr = .12 + r() * .3, y = .7 + r() * .9; rod([0, .42, 0], [Math.cos(a) * rr * .6, y - .05, Math.sin(a) * rr * .6], .01, '#5a6a3a'); const l = S(.17, Math.cos(a) * rr, y, Math.sin(a) * rr, shade(lf, .85 + r() * .35), 6); l.scale.set(1, .22, .6); l.rotation.set((r() - .5) * .8, -a, (r() - .5) * .9); }
         break;
       }
-      case 'ia_pianta_alta': { const pot = pick(r, ['#ece8e0', '#c87a4a', '#2a2a2e']); C(.16, .32, 0, 0, 0, pot, 10, .13); for (let i = 0; i < 8; i++) { const a = i * .8, l = B(.06, .5 + r() * .45, .015, Math.cos(a) * .06, .3, Math.sin(a) * .06, shade('#3a6a3a', .8 + r() * .4)); l.rotation.set((r() - .5) * .3, a, (r() - .5) * .3); } break; }
+      case 'ia_pianta_alta': { const pot = pick(r, ['#ece8e0', '#8a6a4a', '#2a2a2e']); C(.16, .32, 0, 0, 0, pot, 10, .13); for (let i = 0; i < 8; i++) { const a = i * .8, l = B(.06, .5 + r() * .45, .015, Math.cos(a) * .06, .3, Math.sin(a) * .06, shade('#3a6a3a', .8 + r() * .4)); l.rotation.set((r() - .5) * .3, a, (r() - .5) * .3); } break; }
       case 'ia_tappeto_design': case 'ia_passatoia': { const run = id === 'ia_passatoia', w = run ? 2.2 : 2.4, h = run ? .8 : 1.7, v = run ? 1 + 5 * Math.floor(r() * 6) : Math.floor(r() * 25); B(w + .02, .008, h + .02, 0, 0, 0, '#2a2420'); flat(T.tapdesign(v), w, h, 0, .012, 0); break; }
       case 'ia_tappeto_tondo': { const t = C(.9, .012, 0, 0, 0, MT('tt' + Math.floor(r() * 5), T.tapdesign(Math.floor(r() * 5) * 5 + 3)), 24); t.rotation.y = r() * 6; break; }
       // ---- il pranzo ----
@@ -633,26 +671,26 @@ var InterniArte = (function () {
       case 'ia_vaso_fiori': { C(.06, .2, 0, 0, 0, glass(), 10, .05); for (let i = 0; i < 6; i++) { const a = i * 1.05, p = [Math.cos(a) * .08, .38 + r() * .12, Math.sin(a) * .08]; rod([0, .05, 0], p, .005, '#4a6a3a'); S(.035, p[0], p[1], p[2], pick(r, ['#e8d040', '#d84a3a', '#f0ece0', '#c86ab0', '#e88a3a']), 5); } break; }
       // ---- la cucina componibile ----
       case 'ia_cucina_componibile': {   // basi con le ante, piano, lavello col miscelatore, piano cottura e forno, paraschizzi di piastrelle, pensili e cappa
-        const cab = pick(r, ['#e8e0d0', '#c8d8c8', '#e0c890', '#9ab0b8', '#c87a5a', '#f0ece4', '#5a7a6a']), top = pick(r, ['#2a2a2e', '#d8d0c4', wd, '#ece8e0']), hd = M(pick(r, ['#c8ccd0', '#c8a050']), BRASS);
-        B(3.2, .08, .54, 0, 0, -.02, '#1e1e1e'); B(3.2, .82, .58, 0, .08, 0, shade(cab, .9)); B(3.24, .04, .64, 0, .9, .01, top);
-        for (let i = 0; i < 5; i++) { const x = -1.28 + i * .64; if (Math.abs(x + .64) < .1) continue; B(.6, .76, .012, x, .11, .295, cab); B(.18, .02, .02, x, .78, .305, hd); }
-        B(.6, .44, .012, -.64, .11, .295, '#1e1e22'); B(.5, .3, .005, -.64, .17, .302, M('#3a3028', { roughness: .1 })); B(.5, .03, .03, -.64, .5, .31, hd); B(.6, .2, .012, -.64, .62, .295, cab);
+        const cab = pick(r, POP), top = pick(r, ['#2a2a2e', '#d8d0c4', wd, '#ece8e0']), hd = M(pick(r, ['#c8ccd0', '#c8a050']), BRASS);
+        B(3.2, .08, .54, 0, 0, -.02, '#1e1e1e'); B(3.2, .82, .58, 0, .08, 0, G(shade(cab, .9))); B(3.24, .04, .64, 0, .9, .01, top);
+        for (let i = 0; i < 5; i++) { const x = -1.28 + i * .64; if (Math.abs(x + .64) < .1) continue; B(.6, .76, .012, x, .11, .295, G(cab)); B(.18, .02, .02, x, .78, .305, hd); }
+        B(.6, .44, .012, -.64, .11, .295, '#1e1e22'); B(.5, .3, .005, -.64, .17, .302, M('#3a3028', { roughness: .1 })); B(.5, .03, .03, -.64, .5, .31, hd); B(.6, .2, .012, -.64, .62, .295, G(cab));
         for (let i = 0; i < 4; i++) C(.06, .012, -.64 + (i % 2 ? .14 : -.14), .94, (i < 2 ? -.12 : .1), '#1a1a1a', 10);
         B(.52, .02, .4, .64, .935, .03, M('#b8bcc0', { metalness: .8, roughness: .3 })); C(.012, .22, .64, .94, -.22, hd, 6); B(.02, .02, .14, .64, 1.14, -.16, hd);
         up(() => { const bs = decal(g, T.piastrelle(Math.floor(r() * 4)), 3.2, .56, 0, 1.22, -.285); bs.material.roughness = .35;
-        [[-1.25, .7], [.7, 1.8]].forEach(([x, w]) => { B(w, .62, .34, x, 1.5, -.13, cab); for (let k = 0; k < Math.round(w / .6); k++) { const xx = x - w / 2 + (k + .5) * w / Math.round(w / .6); B(w / Math.round(w / .6) - .03, .58, .01, xx, 1.52, .045, shade(cab, 1.06)); B(.14, .02, .02, xx, 1.58, .06, hd); } });
+        [[-1.25, .7], [.7, 1.8]].forEach(([x, w]) => { B(w, .62, .34, x, 1.5, -.13, G(cab)); for (let k = 0; k < Math.round(w / .6); k++) { const xx = x - w / 2 + (k + .5) * w / Math.round(w / .6); B(w / Math.round(w / .6) - .03, .58, .01, xx, 1.52, .045, G(shade(cab, 1.06))); B(.14, .02, .02, xx, 1.58, .06, hd); } });
         B(.62, .1, .45, -.64, 1.6, -.08, M('#c8ccd0', { metalness: .7, roughness: .35 })); B(.26, .52, .24, -.64, 1.7, -.18, M('#c8ccd0', { metalness: .7, roughness: .35 })); });
         break;
       }
-      case 'ia_frigo_design': { const c = pick(r, ['#e8d8b8', '#9ac0b8', '#e0a0a0', '#f0ece4', '#d8b85a']); B(.68, .06, .6, 0, 0, 0, '#1e1e1e'); B(.7, 1.5, .62, 0, .06, 0, c); const t = C(.31, .7, 0, 0, 0, c, 14); t.rotation.z = PI / 2; t.scale.set(1, 1, .9); t.position.set(0, 1.5, 0); B(.68, .01, .01, 0, 1.08, .312, shade(c, .75)); B(.04, .4, .05, .28, .6, .33, M('#c8ccd0', { metalness: .9, roughness: .2 })); B(.04, .2, .05, .28, 1.2, .33, M('#c8ccd0', { metalness: .9, roughness: .2 })); B(.16, .04, .01, 0, 1.36, .315, M('#c8ccd0', { metalness: .9 })); break; }
+      case 'ia_frigo_design': { const c = G(pick(r, POP)); B(.68, .06, .6, 0, 0, 0, '#1e1e1e'); B(.7, 1.5, .62, 0, .06, 0, c); const t = C(.31, .7, 0, 0, 0, c, 14); t.rotation.z = PI / 2; t.scale.set(1, 1, .9); t.position.set(0, 1.5, 0); B(.68, .01, .01, 0, 1.08, .312, '#5a5a5a'); B(.04, .4, .05, .28, .6, .33, M('#c8ccd0', { metalness: .9, roughness: .2 })); B(.04, .2, .05, .28, 1.2, .33, M('#c8ccd0', { metalness: .9, roughness: .2 })); B(.16, .04, .01, 0, 1.36, .315, M('#c8ccd0', { metalness: .9 })); break; }
       // ---- il bagno ----
       case 'ia_lavabo_design': {   // mobile del lavabo: piano di marmo, catino ovale, specchio con le luci, l'asciugamano
         taper(.74, .4, .12, wd, .06); B(.8, .7, .46, 0, .12, 0, wd); B(.84, .04, .5, 0, .82, 0, '#ece8e0'); const bsn = C(.18, .03, 0, .855, .03, '#f6f4f0', 16, .15); bsn.scale.set(1.35, 1, 1); C(.012, .18, 0, .86, -.18, M('#c8ccd0', { metalness: .9 }), 6); B(.02, .02, .1, 0, 1.03, -.13, M('#c8ccd0', { metalness: .9 }));
         up(() => { B(.66, .82, .04, 0, 1.12, -.22, '#2a2a2e'); B(.6, .76, .01, 0, 1.15, -.195, M('#c8d4dc', { roughness: .05, metalness: .8 })); [-1, 1].forEach(s => S(.04, s * .4, 1.8, -.18, GL('#fff0d0', 2.5), 6)); });
-        B(.3, .5, .03, .48, .35, .1, pick(r, ['#f0ece4', '#c8643a', '#2f5d62', '#e8c8b0'])); g.userData.lamp = [0, 1.8, 0]; break;
+        B(.3, .5, .03, .48, .35, .1, pick(r, ['#f0ece4', '#8a5a42', '#4a5a5c', '#e8c8b0'])); g.userData.lamp = [0, 1.8, 0]; break;
       }
       case 'ia_vasca_design': {   // vasca su piedini: smaltata fuori, bordo arrotondato, rubinetto d'ottone
-        const out = pick(r, ['#f4f2ee', '#2f5d62', '#b85c5c', '#2a2a2e', '#f4f2ee']); [-1, 1].forEach(s => C(.36, .5, s * .48, .14, 0, out, 14)); B(.96, .5, .72, 0, .14, 0, out);
+        const out = pick(r, ['#e4e2dc', '#dcd8d0', '#e8e6e0']); [-1, 1].forEach(s => C(.36, .5, s * .48, .14, 0, out, 14)); B(.96, .5, .72, 0, .14, 0, out);
         const wt = M('#a8c8d4', { roughness: .05, transparent: true, opacity: .7 }); [-1, 1].forEach(s => C(.32, .01, s * .48, .58, 0, wt, 14)); B(.96, .01, .64, 0, .58, 0, wt);
         [-1, 1].forEach(s => C(.37, .03, s * .48, .62, 0, '#f6f4f0', 14)); B(.96, .03, .74, 0, .62, 0, '#f6f4f0');
         [[-.6, -.22], [-.6, .22], [.6, -.22], [.6, .22]].forEach(([x, z]) => S(.06, x, .08, z, M('#c8a050', BRASS), 6));
@@ -662,19 +700,19 @@ var InterniArte = (function () {
       // ---- l'ingresso ----
       case 'ia_consolle_ingresso': { const mt = M('#2a2a2e', { metalness: .6, roughness: .4 }); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => B(.025, .8, .025, a * .52, 0, b * .14, mt)); B(1.1, .03, .34, 0, .8, 0, wd); B(1.04, .02, .3, 0, .2, 0, wd);
         up(() => { const ring = new THREE.Mesh(tgeo(.33, .025, PI * 2), M('#c8a050', BRASS)); ring.position.set(0, 1.45, -.13); g.add(ring); const mir = C(.32, .01, 0, 0, 0, M('#c8d4dc', { roughness: .05, metalness: .8 }), 20); mir.rotation.x = PI / 2; mir.position.set(0, 1.45, -.14); });
-        C(.1, .05, .35, .83, 0, pick(r, ['#c87a4a', '#2f5d62', '#ece8e0']), 12, .06); if (r() < .6) { book(-.3, .23, 0, .24, c2); book(-.29, .265, 0, .2, c3); } break; }
+        C(.1, .05, .35, .83, 0, pick(r, ['#8a6a4a', '#4a5a5c', '#ece8e0']), 12, .06); if (r() < .6) { book(-.3, .23, 0, .24, c2); book(-.29, .265, 0, .2, c3); } break; }
       case 'ia_scarpiera': { B(.9, .5, .32, 0, .04, 0, pick(r, ['#ece8e0', wd, '#2a2a2e', c1])); B(.92, .02, .34, 0, .54, 0, shade(wd, .8)); [-.22, .22].forEach(x => B(.42, .44, .01, x, .07, .162, shade(wd, 1.1)));
         for (let i = 0; i < 2; i++) { const c = pick(r, ['#2a1e18', '#6a3a22', '#1e1e22', '#8a2a2a']); [-.06, .06].forEach(dz => B(.1, .08, .26, -.3 + i * .25 + dz * 1.4, .0, .3, c)); } break; }
       case 'ia_attaccapanni_design': { C(.18, .03, 0, 0, 0, '#2a2a2e', 14); C(.02, 1.75, 0, .03, 0, wd, 8); for (let i = 0; i < 6; i++) { const a = i * 1.05; S(.03, Math.cos(a) * .14, 1.68, Math.sin(a) * .14, wd, 5); rod([0, 1.6, 0], [Math.cos(a) * .14, 1.68, Math.sin(a) * .14], .012, wd); }
         [[0, c1], [2.1, c2]].forEach(([a, c]) => { const k = B(.34, .82, .14, Math.cos(a) * .16, .82, Math.sin(a) * .16, c); k.rotation.y = -a; }); if (r() < .6) { C(.16, .015, .1, 1.78, 0, '#2a2a2e', 12); C(.09, .1, .1, 1.79, 0, '#2a2a2e', 10); } break; }
       // ---- lo studio ----
       case 'ia_scrivania_design': { B(1.4, .04, .7, 0, .72, 0, wd); B(.42, .62, .64, .46, .1, 0, shade(wd, .95)); for (let k = 0; k < 3; k++) { B(.38, .18, .01, .46, .14 + k * .2, .325, shade(wd, 1.12)); B(.1, .02, .02, .46, .25 + k * .2, .335, M('#c8a050', BRASS)); } [[-1, -1], [-1, 1]].forEach(([a, b]) => C(.025, .72, a * .64, 0, b * .29, shade(wd, .8), 6, .02)); B(.88, .06, .02, -.2, .64, -.32, shade(wd, .8)); break; }
-      case 'ia_lampada_scrivania': { const c = pick(r, ['#c83a2a', '#2a2a2e', '#e8e0d0', '#2f5d62']); C(.07, .03, 0, 0, 0, c, 10); rod([0, .03, 0], [-.05, .3, -.05], .01, c); rod([-.05, .3, -.05], [.12, .4, .05], .01, c); const sh = C(.03, .1, .14, .32, .07, c, 10, .07); sh.rotation.z = .5; S(.03, .15, .33, .07, GL('#fff0c8', 3), 5); g.userData.lamp = [.15, .33, .07]; break; }
+      case 'ia_lampada_scrivania': { const c = pick(r, ['#7a3a2e', '#2a2a2e', '#b8b0a0', '#4a5a5c']); C(.07, .03, 0, 0, 0, c, 10); rod([0, .03, 0], [-.05, .3, -.05], .01, c); rod([-.05, .3, -.05], [.12, .4, .05], .01, c); const sh = C(.03, .1, .14, .32, .07, c, 10, .07); sh.rotation.z = .5; S(.03, .15, .33, .07, GL('#fff0c8', 3), 5); g.userData.lamp = [.15, .33, .07]; break; }
       // ---- appesi (centro all'altezza h) ----
       case 'ia_quadro_grande': { const fr = pick(r, ['#1e1e22', '#c8a050', '#ece8e0', '#6a4a2a']); B(1.2, .9, .04, 0, -.45, .02, fr); decal(g, T.arte(Math.floor(r() * 15)), 1.1, .8, 0, 0, .045); break; }
-      case 'ia_poster_design': { B(.62, .86, .02, 0, -.43, .01, '#1e1e22'); B(.58, .82, .005, 0, -.41, .023, '#f0ece4'); decal(g, T.arte(Math.floor(r() * 15)), .48, .5, 0, .08, .028); B(.4, .02, .002, 0, -.27, .028, '#2a2a2e'); B(.3, .015, .002, 0, -.31, .028, '#8a8a8a'); break; }
+      case 'ia_poster_design': { B(.62, .86, .02, 0, -.43, .01, '#1e1e22'); B(.58, .82, .005, 0, -.41, .023, '#f0ece4'); decal(g, T.graffito(Math.floor(r() * 8)), .52, .74, 0, -.05, .028); break; }
       case 'ia_specchio_tondo': { const ring = new THREE.Mesh(tgeo(.3, .03, PI * 2), M(pick(r, ['#c8a050', '#2a2a2e', '#ece8e0']), BRASS)); ring.position.set(0, 0, .04); g.add(ring); const mir = C(.29, .01, 0, 0, 0, M('#c8d4dc', { roughness: .05, metalness: .8 }), 20); mir.rotation.x = PI / 2; mir.position.set(0, 0, .03); break; }
-      case 'ia_mensola_libri': { B(1.0, .03, .22, 0, -.15, .11, wd); decal(g, T.libri(Math.floor(r() * 9)), .45, .24, -.2, -.0, .16); B(.45, .23, .16, -.2, -.12, .1, '#3a2a20'); C(.05, .14, .2, -.12, .12, pick(r, ['#ece8e0', '#c8643a', '#2f5d62']), 10, .04); const fr = B(.14, .18, .02, .38, -.12, .08, '#2a2a2e'); fr.rotation.x = -.1; break; }
+      case 'ia_mensola_libri': { B(1.0, .03, .22, 0, -.15, .11, wd); decal(g, T.libri(Math.floor(r() * 9)), .45, .24, -.2, -.0, .16); B(.45, .23, .16, -.2, -.12, .1, '#3a2a20'); C(.05, .14, .2, -.12, .12, pick(r, ['#ece8e0', '#8a5a42', '#4a5a5c']), 10, .04); const fr = B(.14, .18, .02, .38, -.12, .08, '#2a2a2e'); fr.rotation.x = -.1; break; }
       // ---- [roba] le piccole cose lasciate sopra i mobili: si prendono ----
       case 'ia_portafoglio': { B(.11, .02, .09, 0, 0, 0, pick(r, ['#5a3a22', '#2a1e18', '#7a4528'])); B(.07, .004, .03, .02, .02, .03, '#a8b890'); g.rotation.y = r() * 6; break; }
       case 'ia_banconote': { B(.15, .025, .07, 0, 0, 0, '#a8b890'); B(.03, .027, .072, 0, 0, 0, '#e8dcc0'); if (r() < .5) B(.15, .015, .07, .03, .025, .02, '#c8a0a0').rotation.y = .3; break; }
@@ -705,7 +743,34 @@ var InterniArte = (function () {
       case 'ia_documenti': { B(.22, .015, .3, 0, 0, 0, pick(r, ['#c8a060', '#8a9ab0', '#c87a6a'])); B(.21, .01, .29, .02, .015, -.01, '#f0ece0'); B(.04, .002, .04, .05, .026, .05, '#b02a2a'); g.rotation.y = (r() - .5) * .8; break; }
       case 'ia_marlboro': { B(.056, .022, .088, 0, 0, 0, '#f4f0e8'); const v = B(.057, .023, .04, 0, 0, -.025, '#c8202a'); g.rotation.y = r() * 6; break; }
       case 'ia_calze_nylon': { B(.12, .01, .18, 0, 0, 0, '#e8c8b0'); B(.122, .011, .04, 0, 0, -.05, '#1e1e22'); break; }
-      case 'ia_chewing_gum': { for (let i = 0; i < 3; i++) B(.07, .01, .02, 0, 0, -.025 + i * .025, pick(r, ['#e888b0', '#6ac08a', '#f0f0f0'])); g.rotation.y = r() * 6; break; }
+      case 'ia_chewing_gum': { for (let i = 0; i < 3; i++) B(.07, .01, .02, 0, 0, -.025 + i * .025, pick(r, ['#c87aa0', '#7ab08a', '#f0f0f0'])); g.rotation.y = r() * 6; break; }
+      // ---- [disgelo] la roba dei ragazzi: la boombox col nastro adesivo, lo skate, la serra idroponica clandestina ----
+      case 'ia_boombox': { B(.52, .26, .14, 0, 0, 0, '#3a3a3e'); [-.15, .15].forEach(x => { const sp = C(.085, .02, 0, 0, 0, M('#b8bcc0', { metalness: .7, roughness: .35 }), 14); sp.rotation.x = PI / 2; sp.position.set(x, .13, .07); const cn = C(.06, .022, 0, 0, 0, '#1a1a1c', 12); cn.rotation.x = PI / 2; cn.position.set(x, .13, .072); });
+        B(.12, .08, .01, 0, .1, .072, '#22262a'); B(.1, .05, .002, 0, .115, .078, M('#8a9aa0', { roughness: .1 })); B(.36, .02, .02, 0, .3, 0, M('#b8bcc0', { metalness: .7 })); [-.17, .17].forEach(x => B(.02, .05, .02, x, .25, 0, M('#b8bcc0', { metalness: .7 })));
+        B(.16, .03, .145, -.12, .21, 0, '#8a8a84'); B(.03, .2, .145, .22, .03, 0, '#8a8a84'); S(.006, .05, .2, .072, GL(pick(r, ['#ff6a2a', '#9ac83a']), 2.5), 4); break; }
+      case 'ia_skate': { const g2 = new THREE.Group(); g.add(g2); g2.rotation.y = r() * 6; const dk = new THREE.Mesh(bgeo(.8, .02, .21), M(pick(r, ['#2a2a2e', '#5a3e2a', '#3a4a3a']))); dk.position.y = .08; g2.add(dk);
+        const gr = new THREE.Mesh(bgeo(.5, .004, .12), M(pick(r, ['#e86a2a', '#9ac83a', '#c8ccd0']))); gr.position.y = .092; g2.add(gr); [-.27, .27].forEach(x => { const t = new THREE.Mesh(bgeo(.04, .03, .18), M('#8a8e94', { metalness: .7 })); t.position.set(x, .055, 0); g2.add(t); [-.1, .1].forEach(z => { const w = new THREE.Mesh(cgeo(.03, .03, .03, 8), M('#d8d0b8')); w.rotation.x = PI / 2; w.position.set(x, .03, z); g2.add(w); }); }); break; }
+      case 'ia_serra': {   // la serra idroponica: scaffale di ferro, vaschette, piantine, tubi con le fascette, lampade fredde, carta stagnola dietro
+        const fe = M('#5a5e62', { metalness: .5, roughness: .5 }); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b0]) => B(.04, 1.7, .04, a * .66, 0, b0 * .21, fe)); B(1.36, 1.5, .01, 0, .1, -.23, M('#c8ccd0', { metalness: .9, roughness: .3 }));
+        for (let k = 0; k < 3; k++) { const y = .15 + k * .52; B(1.36, .03, .46, 0, y, 0, fe); B(1.28, .08, .38, 0, y + .03, 0, '#2a2c2e'); for (let i = 0; i < 6; i++) { const px = -.55 + i * .22; rod([px, y + .1, 0], [px + (r() - .5) * .05, y + .2, 0], .006, '#4a6a3a'); const l = S(.06 + r() * .03, px, y + .23, (r() - .5) * .08, M(pick(r, ['#4a6a3a', '#3e5e34', '#5a7044']), { roughness: .8 }), 5); l.scale.y = .6; if (k === 1 && r() < .5) S(.02, px + .03, y + .17, .04, '#a83a2a', 4); }
+          B(1.2, .02, .06, 0, y + .45, 0, GL('#dfeaf0', 1.8)); }
+        rod([-.6, .2, .2], [-.6, 1.6, .2], .015, '#2a2a2e'); for (let k = 0; k < 4; k++) B(.035, .01, .035, -.6, .4 + k * .35, .2, '#d8d0b0'); g.userData.lamp = [0, 1.2, 0]; break; }
+      // ---- [consumo] gli elettrodomestici dei grandi magazzini: pastello, cromo, forme tonde ----
+      case 'ia_tostapane': { const c = G(pick(r, POP)), cr = M('#d8dce0', { metalness: .9, roughness: .15 }); B(.24, .16, .13, 0, .02, 0, c); C(.065, .24, 0, 0, 0, c, 10).rotation.z = PI / 2; g.children[g.children.length - 1].position.set(0, .18, 0); B(.16, .005, .03, 0, .245, -.03, '#1e1e1e'); B(.16, .005, .03, 0, .245, .03, '#1e1e1e'); B(.02, .04, .02, .13, .12, 0, cr); [-1, 1].forEach(sx => [-1, 1].forEach(sz => B(.02, .02, .02, sx * .1, 0, sz * .05, cr))); if (r() < .5) B(.1, .01, .08, .02, .25, 0, '#d8a050'); break; }
+      case 'ia_frullatore': { const c = G(pick(r, POP)); C(.06, .1, 0, 0, 0, c, 10, .075); C(.045, .2, 0, .1, 0, glass({ opacity: .5 }), 10, .035); C(.05, .02, 0, .3, 0, c, 10); S(.012, .045, .05, .06, '#ffffff', 4); break; }
+      case 'ia_ventilatore': { const c = G(pick(r, POP)), cr = M('#d8dce0', { metalness: .9, roughness: .15 }); C(.16, .04, 0, 0, 0, c, 14); C(.015, .9, 0, .04, 0, cr, 6); B(.12, .14, .16, 0, .9, -.08, c);
+        const cage = new THREE.Mesh(tgeo(.2, .008, PI * 2), cr); cage.position.set(0, 1.0, .06); g.add(cage); for (let i = 0; i < 3; i++) { const bl = B(.08, .16, .005, 0, 0, 0, M(pick(r, POP), { roughness: .3, transparent: true, opacity: .85 })); bl.position.set(Math.cos(i * 2.1) * .07, 1.0 + Math.sin(i * 2.1) * .07, .06); bl.rotation.z = i * 2.1; } S(.03, 0, 1.0, .07, c, 8); break; }
+      // ---- [disgelo] l'autoprodotto: la roba più bella della casa, fatta a mano e ricercata ----
+      case 'ia_mobile_dipinto': { const wdd = H('#5a3e2a'); B(1.2, .78, .48, 0, .08, 0, wdd); B(1.24, .04, .5, 0, .86, 0, H('#3a2a1e')); [-.3, .3].forEach(x => { const d0 = decal(g, T.dipinto(Math.floor(r() * 6) + (x > 0 ? 7 : 0)), .56, .66, x, .48, .245); d0.material.roughness = .8; S(.02, x + (x < 0 ? .22 : -.22), .48, .26, M('#c8a050', BRASS), 5); });
+        [-.5, .5].forEach(x => C(.04, .08, x, 0, 0, H('#3a2a1e'), 6, .03)); break; }
+      case 'ia_lampada_casco': { const cu = M('#b8743a', { metalness: .8, roughness: .3 }); C(.14, .03, 0, 0, 0, H('#3a3a3e'), 12); rod([0, .03, 0], [0, 1.1, 0], .016, cu); rod([0, 1.1, 0], [.25, 1.35, .05], .016, cu); S(.025, 0, 1.1, 0, cu, 6);
+        const hm = S(.14, .3, 1.3, .07, H(pick(r, ['#d8a020', '#c86a20', '#e8d8b0'])), 10); hm.scale.y = .7; C(.18, .012, .3, 1.27, .07, H('#c88a20'), 12); const lp = C(.04, .05, 0, 0, 0, M('#8a8e94', { metalness: .7 }), 10); lp.rotation.x = PI / 2; lp.position.set(.3, 1.32, .2); S(.03, .3, 1.32, .23, GL('#ffd890', 3), 6); g.userData.lamp = [.3, 1.32, .23]; break; }
+      case 'ia_casse_crate': { [-.15, .15].forEach(x => { B(.28, .4, .26, x, 0, 0, H('#b88a5a')); for (let k = 0; k < 3; k++) B(.29, .02, .27, x, .06 + k * .13, 0, H('#8a6238')); const cn = C(.09, .02, 0, 0, 0, M('#1e1e22', { roughness: .6 }), 14); cn.rotation.x = PI / 2; cn.position.set(x, .24, .13); const dc = C(.03, .022, 0, 0, 0, H(pick(r, ['#e86a2a', '#9ac83a', '#d84a9a'])), 8); dc.rotation.x = PI / 2; dc.position.set(x, .24, .135); }); break; }
+      case 'ia_mensola_skate': { [0, .32].forEach((y, i) => { const d0 = B(.82, .02, .22, 0, -.2 + y, .11, H(pick(r, ['#2a2a2e', '#3a4a3a', '#5a3e2a']))); const gfx = decal(g, T.graffito(Math.floor(r() * 8) + i * 3), .6, .18, 0, -.18 + y, .225); gfx.rotation.x = -PI / 2; gfx.position.y = -.178 + y; gfx.position.z = .11;
+          [-.25, .25].forEach(x => B(.03, .12, .03, x, -.32 + y, .03, M('#8a8e94', { metalness: .7 }))); }); C(.05, .12, -.25, .14, .11, H('#8a5a3a'), 8, .04); S(.08, -.25, .3, .11, H('#4a7a3a'), 6).scale.y = .7; B(.11, .017, .07, .2, .14, .11, H('#d84a9a')); B(.11, .017, .07, .21, .157, .1, H('#9ac83a')); break; }
+      case 'ia_letto_patchwork': { taper(.95, 1.9, .14, '#4a3424', .1); B(1.0, .2, 2.06, 0, .12, .04, H('#4a3424')); B(1.05, .7, .08, 0, .12, -1.0, H('#4a3424')); B(.92, .2, 1.96, 0, .32, .04, '#d8d0c0');
+        B(.98, .09, 1.5, 0, .5, .3, H('#3a3a5a')); flat(T.patchwork(Math.floor(r() * 8)), .98, 1.48, 0, .595, .3); [-1, 1].forEach(sx => decal(g, T.patchwork(Math.floor(r() * 8) + 3), 1.48, .3, sx * .5, .4, .3).rotation.y = sx * PI / 2);
+        g.children.slice(-2).forEach((m, i) => { m.position.set(i ? .5 : -.5, .4, .3); }); const p0 = B(.6, .14, .34, 0, .55, -.78, '#e8e0d0'); p0.rotation.x = -.3; break; }
       default: return false;
     }
     return true;
