@@ -22,6 +22,7 @@ var TascheUI = (function () {
     piede: r => { r(Rd, 4, 7, 20, 2); r(Rd, 24, 4, 2, 5); r(Rd, 22, 3, 3, 2); r(S, 2, 8, 3, 2); r('#a03030', 4, 8, 20, 1); },
     carriola: r => { r(S, 6, 5, 16, 6); r(D, 6, 5, 16, 1); r(Dk, 24, 9, 5, 5); r(S, 25, 10, 3, 3); r(Wd, 2, 6, 6, 1); r(Wd, 20, 8, 6, 1); r(Wd, 8, 11, 2, 4); },
     bomboletta: r => { r(Rd, 12, 4, 8, 11); r('#ff7a7a', 13, 5, 2, 9); r(S, 14, 2, 4, 2); r(D, 15, 1, 2, 1); r(Bl, 21, 1, 1, 1); r(Bl, 23, 2, 1, 1); r(Bl, 22, 4, 1, 1); },
+    pennarello: r => { r(D, 6, 6, 16, 5); r('#3a3a44', 7, 7, 14, 1); r(Wt, 22, 7, 4, 3); r(D, 26, 8, 3, 1); r(D, 27, 9, 1, 4); r(D, 27, 14, 1, 1); },   // [writer] il mop che cola
     pennello: r => { r(Wd, 2, 7, 14, 2); r(S, 16, 6, 4, 4); r(Yl, 20, 6, 6, 4); r(Yl, 26, 7, 2, 2); r(Bl, 6, 11, 8, 4); r('#6aa0e8', 6, 11, 8, 1); },
     gesso: r => { r(Wt, 8, 7, 14, 3); r(D, 8, 9, 14, 1); r(Wt, 24, 5, 1, 1); r(Wt, 26, 9, 2, 1); },
     benzina: r => { r(Rd, 8, 4, 14, 11); r('#a03030', 8, 4, 14, 1); r(Dk, 11, 6, 8, 2); r(S, 22, 3, 4, 2); r(S, 24, 1, 2, 3); r(Dk, 10, 2, 6, 2); },
@@ -55,7 +56,7 @@ var TascheUI = (function () {
     pugni: 'Le mani. Per i pugni e per tutto il resto.',
     coltello: 'Un coltello da cucina. Corto, silenzioso.', pala: 'Per scavare dove la terra è morbida: bosco, vigne, spiaggia, discarica.',
     piede: 'Piede di porco. Apre porte, casse e teste.', carriola: 'Ci sta un corpo, se lo spingi in due. Cigola.',
-    bomboletta: 'Vernice spray. Un muro alla volta.', pennello: 'Pennello e barattolo: per un murale ci vuole tempo.', gesso: 'Gesso bianco. Si cancella con la pioggia, ma intanto si legge.',
+    bomboletta: 'Vernice spray. B cambia lavoro: tag, throw-up, pezzo, burner (sul treno: whole car).', pennarello: 'Pennarello mop a inchiostro: la tua tag, ovunque, con le colature.', pennello: 'Pennello e barattolo: per un murale ci vuole tempo.', gesso: 'Gesso bianco. Si cancella con la pioggia, ma intanto si legge.',
     benzina: 'Una tanica piena. Per la macchina, o per bruciare quello che non deve restare.', telefono: 'Cellulare. Chiama la Guardia, l\'ambulanza, la banda.',
     fotocamera: 'Macchina fotografica. Le prove valgono più delle parole.', carte: 'Un mazzo napoletano un po\' unto.', roba: 'Roba. Si vende di notte, si paga in altri modi.',
     refurtiva: 'Roba non tua. Lo Squalo la compra.', corda: 'Corda da barca, robusta. Lega, trascina, zavorra.', sacchi: 'Sacchi neri dell\'Emporio. Ci entra di tutto.',

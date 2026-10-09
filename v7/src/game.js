@@ -2169,9 +2169,44 @@ var Game = (function () {
         const face = dy === b.y + b.h ? 0 : dy === b.y - 1 ? Math.PI : dx === b.x + b.w ? Math.PI / 2 : -Math.PI / 2;
         L.items.push({ kind: 'bibite', x: tx * TS + 1 + (side ? 0 : (dx === b.x + b.w ? -.55 : .55)), y: ty * TS + 1 + (side ? (dy === b.y + b.h ? -.55 : .55) : 0), rot: face }); break; }
     });
+    railLine(L, T0);   // [writer]
     return (LAYOUT = L);
   }
   const LBLOCK = new Set();
+  // [writer] LA FERROVIA DELLA MINIERA. Dalla Stazione di estrazione Nord corre lungo la costa nord: nel bosco, a monte della
+  // Costiera Nord, tra il monte e il mare; dove la città arriva fino alla riva scavalca la strada e passa sul mare, su un viadotto
+  // a dieci metri dagli scogli; oltre il Muro scende lungo il primo pontile e finisce sulla banchina del porto militare della Base.
+  // L.rail = { pts: [[x, y, h, mare]] ogni metro, len }: h è il piano del ferro (rilevato sul bosco, viadotto sul mare).
+  // Le caselle sotto il binario diventano massicciata (GRAVEL): niente alberi né sassi in mezzo ai binari.
+  function railLine(L, T0) {
+    const nord = MAP.roads.find(r => r.id === 'nord'); if (!nord) return;
+    const RP = nord.pts.filter(q => q[0] > 520 && q[0] < 1495);
+    const tile0 = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GW || ty >= GH ? T.WATER : T0[ty * GW + tx]; };
+    const roadAt = x => { let k = 0, bd = 1e9; RP.forEach((q, i) => { const d = Math.abs(q[0] - x); if (d < bd) { bd = d; k = i; } }); const a = RP[Math.max(0, k - 2)], b = RP[Math.min(RP.length - 1, k + 2)]; let tx = b[0] - a[0], ty = b[1] - a[1]; const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l; let nx = -ty, ny = tx; if (ny < 0) { nx = -nx; ny = -ny; } return { x: RP[k][0], y: RP[k][1], nx, ny }; };
+    const coastY = (x, y0) => { for (let y = y0; y > y0 - 60; y -= 1) if (tile0(x, y) === T.WATER) return y; return y0 - 14; };
+    const cp = [[542, 279], [556, 279]];
+    for (let x = 572; x <= 1070; x += 14) { const r = roadAt(x); cp.push([r.x + r.nx * 15, r.y + r.ny * 15]); }   // nel bosco, a monte della strada
+    for (let x = 1112; x <= 1500; x += 14) { const r = roadAt(x); cp.push([x, coastY(x, r.y) - 10]); }   // sul mare, davanti alla città
+    cp.push([1514, 250], [1524, 262], [1527, 280], [1530, 296], [1538, 306], [1552, 310], [1568, 310], [1578, 310]);   // oltre il Muro, giù lungo il pontile, sulla banchina
+    // arrotondata (Chaikin) e campionata ogni metro
+    let P = cp; for (let it = 0; it < 4; it++) { const Q = [P[0]]; for (let k = 0; k < P.length - 1; k++) { const a = P[k], b = P[k + 1]; Q.push([.75 * a[0] + .25 * b[0], .75 * a[1] + .25 * b[1]], [.25 * a[0] + .75 * b[0], .25 * a[1] + .75 * b[1]]); } Q.push(P[P.length - 1]); P = Q; }
+    const pts = [[P[0][0], P[0][1]]]; let acc = 0;
+    for (let k = 1; k < P.length; k++) { const a = P[k - 1], b = P[k], l = Math.hypot(b[0] - a[0], b[1] - a[1]); let t = 1 - acc; while (t <= l) { pts.push([a[0] + (b[0] - a[0]) * t / l, a[1] + (b[1] - a[1]) * t / l]); t += 1; } acc = l - (t - 1); }
+    // la quota: sul bosco il terreno più alto lì attorno (il binario sta su un rilevato), sul mare il viadotto; pendenza al massimo 2,5%
+    const eAt = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GW || ty >= GH ? 0 : elev[ty * GW + tx]; };
+    const sea = pts.map(([x, y]) => tile0(x, y) === T.WATER || tile0(x, y) === T.PIER);
+    const ter = pts.map(([x, y], i) => { if (sea[i]) return 2.6; let m = -9; for (const [a, b] of [[0, 0], [2, 0], [-2, 0], [0, 2], [0, -2]]) { const t = tile0(x + a, y + b); if (t !== T.WATER) m = Math.max(m, eAt(x + a, y + b)); } return Math.max(m, .4) + .35; });
+    const h = ter.slice(), G2 = .025;
+    for (let it = 0; it < 3; it++) { for (let i = 1; i < h.length; i++) h[i] = Math.max(h[i], h[i - 1] - G2); for (let i = h.length - 2; i >= 0; i--) h[i] = Math.max(h[i], h[i + 1] - G2); }
+    for (let it = 0; it < 6; it++) { const o = h.slice(); for (let i = 2; i < h.length - 2; i++) h[i] = Math.max(ter[i], (o[i - 2] + o[i - 1] + o[i] + o[i + 1] + o[i + 2]) / 5); }
+    L.rail = { pts: pts.map((q, i) => [q[0], q[1], h[i], sea[i] ? 1 : 0]), len: pts.length - 1, conflicts: 0 };
+    // la massicciata: le caselle del binario (2,5 m per parte) diventano ghiaia; strade, banchine e acqua restano come sono
+    const SOFT = [T.TREE, T.SHRUB, T.GRASS, T.ROCK, T.DIRT, T.FIELD, T.SAND, T.CLIFF, T.DESERT];
+    const done = new Set();
+    pts.forEach(([x, y], i) => { if (sea[i]) return; for (let a = -2.5; a <= 2.5; a += 1) for (let b = -2.5; b <= 2.5; b += 1) { const tx = Math.floor((x + a) / TS), ty = Math.floor((y + b) / TS); if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const k = ty * GW + tx; if (done.has(k)) continue; done.add(k); const v = T0[k];
+      if (bIndex[k] >= 0 || v === T.BLD) { if (Math.hypot(a, b) < 1.6) L.rail.conflicts++; continue; }
+      if (SOFT.includes(v)) { T0[k] = T.GRAVEL; grid[k] = T.GRAVEL; } } });
+  }
   function applyLayout() { layout().block.forEach(([tx, ty]) => { setT(tx, ty, T.BLD); LBLOCK.add(ty * GW + tx); }); }
   function baseTile(tx, ty) { const i = ty * GW + tx; return LBLOCK.has(i) ? MAP0.grid[i] : tileAt(tx, ty); }
 

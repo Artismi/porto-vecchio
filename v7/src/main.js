@@ -67,24 +67,39 @@
   // in mano, il tasto sinistro spruzza sulla superficie sotto il puntatore, a portata di braccio (se è più in là ci si
   // avvicina camminando e poi si spruzza), la rotella cambia colore
   const SPRAY_COLS = [['#c42a22', 'rosso'], ['#1e1e24', 'nero'], ['#e8e0d0', 'bianco'], ['#2a6ac8', 'blu'], ['#e8c040', 'giallo'], ['#3a9a5a', 'verde'], ['#c84a9a', 'rosa'], ['#e8a020', 'arancio']];
-  const sprayHave = () => { try { return (Oggetti.inv(st) || {}).bomboletta >= 1; } catch (e) { return false; } };
-  function sprayTick(dt) {
-    const inHand = st.player.hand === 'bomboletta' && sprayHave() && !st.player.vehicle;
-    if (inHand && !ui.spray) { ui.spray = { col: 0, on: false, dabs: 0, t: 0 }; toast('Bomboletta in mano: tieni premuto il tasto sinistro su un muro vicino; la rotella cambia colore (' + SPRAY_COLS[0][1] + ').'); }
-    if (!inHand && ui.spray) { sprayEnd(); ui.spray = null; }
-    const S = ui.spray; if (!S || !S.on || !R.spray) return; S.t -= dt; if (S.t > 0) return; S.t = .016;
-    const r = R.spray(st, mouse.nx, mouse.ny, SPRAY_COLS[S.col][0]);
-    if (r === true) { S.dabs++; if (click.t && click.t.spray) { click.t = null; ui.mark = null; } }
-    else if (r && r.go && !(click.t && click.t.spray && Math.hypot(click.t.x - r.go.x, click.t.y - r.go.y) < .4)) {   // troppo lontano: ci si avvicina al muro, poi si spruzza
+  const sprayHave = k => { try { return (Oggetti.inv(st) || {})[k || 'bomboletta'] >= 1; } catch (e) { return false; } };
+  // [writer] col pennarello (mop) e con la bomboletta in modalità tag/throw-up/pezzo/burner ci pensa writing.js
+  function sprayGo(r) {
+    if (r && r.go && !(click.t && click.t.spray && Math.hypot(click.t.x - r.go.x, click.t.y - r.go.y) < .4)) {   // troppo lontano: ci si avvicina al muro, poi si spruzza
       click.t = { kind: 'move', spray: 1, x: r.go.x, y: r.go.y, path: goalPath(r.go.x, r.go.y), run: false, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x: r.go.x, y: r.go.y, t: ui.time, k: 'move' };
     }
+  }
+  function sprayTick(dt) {
+    const tool = st.player.hand === 'pennarello' ? 'pennarello' : 'bomboletta';
+    const inHand = (st.player.hand === 'bomboletta' || st.player.hand === 'pennarello') && sprayHave(tool) && !st.player.vehicle;
+    if (ui.spray && ui.spray.tool !== tool) { sprayEnd(); ui.spray = null; }
+    if (inHand && !ui.spray) { ui.spray = { col: 0, on: false, dabs: 0, t: 0, tool }; toast(tool === 'pennarello' ? 'Pennarello in mano: tieni premuto su un muro e fai la tua tag (con le colature).' : 'Bomboletta in mano: tieni premuto il tasto sinistro su un muro vicino; la rotella cambia colore (' + SPRAY_COLS[0][1] + '). B: tag, throw-up, pezzo, burner.'); }
+    if (!inHand && ui.spray) { sprayEnd(); ui.spray = null; }
+    const S = ui.spray; if (!S || !S.on || !R.spray) return;
+    if (window.Writing && Writing.wants(st, tool)) {
+      const r = Writing.tick(st, mouse.nx, mouse.ny, dt, SPRAY_COLS[S.col][0], S.col, tool);
+      if (r === true || r === 'fatto') { S.dabs++; if (click.t && click.t.spray) { click.t = null; ui.mark = null; } if (r === 'fatto') S.on = false; }
+      else if (r && r.msg) { toast(r.msg); S.on = false; }
+      else sprayGo(r);
+      if (!sprayHave(tool)) { toast(tool === 'pennarello' ? 'Il pennarello è secco.' : 'Le bombolette sono finite.'); sprayEnd(); ui.spray = null; st.player.hand = null; }
+      return;
+    }
+    S.t -= dt; if (S.t > 0) return; S.t = .016;
+    const r = R.spray(st, mouse.nx, mouse.ny, SPRAY_COLS[S.col][0]);
+    if (r === true) { S.dabs++; if (click.t && click.t.spray) { click.t = null; ui.mark = null; } }
+    else sprayGo(r);
     if (S.dabs - (S.used || 0) >= 900) {   // una bomboletta dura circa un minuto di spruzzo
       S.used = S.dabs; const b = Oggetti.inv(st); b.bomboletta = Math.max(0, (b.bomboletta || 0) - 1); if (!b.bomboletta) delete b.bomboletta;
       if (!sprayHave()) { toast('La bomboletta è finita.'); sprayEnd(); ui.spray = null; st.player.hand = null; }
     }
   }
   function sprayEnd() {
-    const S = ui.spray; if (!S || !S.on) return; S.on = false;
+    const S = ui.spray; if (window.Writing) Writing.release(st); if (!S || !S.on) return; S.on = false;
     if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } }   // chi ti vede, ti ha visto
   }
   cv.addEventListener('contextmenu', e => e.preventDefault());
@@ -220,6 +235,7 @@
   // se il punto cliccato è dentro un edificio o in acqua, prende la casella libera più vicina (verso il giocatore)
   function freeSpot(x, y) {
     if (st.player.indoor && G.INT.nearFree) { const p0 = st.player, L0 = G.INT.layout(G.BUILDINGS[p0.indoor.b]); return G.INT.nearFree(L0, p0.indoor.f, x, y) || { x: p0.x, y: p0.y }; }   // [interni] dentro si clicca sul pavimento
+    if (st.player.lv && (st.player.lv.k === 'tetto' || st.player.lv.k === 'scala')) return { x, y };   // [writer] sui tetti si va dritti
     if (st.player.lv && window.Sottosuolo) return Sottosuolo.freeSpot(st, x, y);   // [sottosuolo] sotto terra si clicca sul cunicolo
     if (G.walkM(x, y)) return { x, y }; const p = st.player; let best = null, bd = 1e9;
     for (let r = 1; r <= 4 && !best; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) {
@@ -229,6 +245,7 @@
     return best || { x, y };
   }
   function goalPath(x, y) { const p = st.player; if (p.indoor && G.INT.findPath) { const L0 = G.INT.layout(G.BUILDINGS[p.indoor.b]), pp = G.INT.findPath(L0, p.indoor.f, p.x, p.y, x, y); return pp.length ? pp : [{ x, y }]; }   // [interni] percorso dentro casa
+    if (p.lv && (p.lv.k === 'tetto' || p.lv.k === 'scala')) return [{ x, y }];   // [writer] sui tetti: in linea retta (il bordo ferma, Spazio salta)
     if (p.lv && window.Sottosuolo) { const pp = Sottosuolo.findPath(st, p.x, p.y, x, y); return pp.length ? pp : [{ x, y }]; }   // [sottosuolo] percorso nei cunicoli
     let path = G.findPath(p.x, p.y, x, y, p.vehicle ? .6 : 1.4); if (!path.length) path = [{ x, y }]; return path; }
   function onClick(nx, ny, dbl) {
