@@ -99,6 +99,7 @@
     if (k === 'escape') { if (ring.n) { closeRing(); return; } if (ui.dialog) closeDialog(); else if (ui.book) toggleBook(false); return; }
     if (ui.dialog) { const n = parseInt(k, 10); if (n >= 1 && n <= 9) { const b = $('dialog').querySelectorAll('.opt')[n - 1]; if (b) b.click(); } if (k === 'enter' || k === ' ') { const bs = $('dialog').querySelectorAll('.opt'); if (bs.length === 1) { e.preventDefault(); bs[0].click(); } } return; }
     if (ui.book || ui.menu) return;   // [azioni] ui.menu: le Tasche
+    if (k === ' ' && jumpMode()) { e.preventDefault(); if (!e.repeat) G.jumpHold(st, true); return; }   // [salto] tieni premuto: carica
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.'].includes(k)) { keys[k] = true; e.preventDefault(); }
     // [monte] O: visuale dall'alto; H scava, J in discesa, K in salita, N stanza, V sali/scendi (botole e pozzi)
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
@@ -114,7 +115,7 @@
   // zoom: rotella, tasti + e −, pulsanti a schermo
   function zoomBy(f) { ui.zoom = Math.max(.12, Math.min(4.2, (ui.zoom || 1) * f)); }  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
 
-  addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+  addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; });
   const stick = { x: 0, y: 0 };
   let lastAim = null, touchFire = false, touchRun = false;
@@ -132,16 +133,23 @@
     if (g && Math.hypot(g.x - p.x, g.y - p.y) > .6) lastAim = Math.atan2(g.y - p.y, g.x - p.x);
     return lastAim === null ? p.face : lastAim;
   }
+  // [bmx] in BMX si va col punta e clicca; le frecce fanno i trick: giù impenna, destra e sinistra il piede sulla pedalina
   function input() {
+    const r = input0(); if (!r || !st.player.vehicle || !jumpMode()) return r;
+    r.trick = { wheelie: !!keys.arrowdown, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : 0 };
+    return r;
+  }
+  function input0() {
     const sprint = !!keys.shift || touchRun, brakeKey = !!keys[' '] || touchBrake;
-    if (st.player.vehicle && (touchMode || stick.x || stick.y)) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
+    if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (stick.x || stick.y) { // touch: la levetta segue lo schermo
       const B = R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
       return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : aimAngle() };
     }
     let f = 0, s = 0;
-    if (keys.w || keys.arrowup) f += 1; if (keys.s || keys.arrowdown) f -= 1;
-    if (keys.d || keys.arrowright) s += 1; if (keys.a || keys.arrowleft) s -= 1;
+    const ar = !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick
+    if (keys.w || (ar && keys.arrowup)) f += 1; if (keys.s || (ar && keys.arrowdown)) f -= 1;
+    if (keys.d || (ar && keys.arrowright)) s += 1; if (keys.a || (ar && keys.arrowleft)) s -= 1;
     const a = aimAngle();
     if (f || s) { if (click.t) { click.t = null; ui.mark = null; } if (st.lv && st.lv.route) st.lv.route = null; }   // [sottosuolo] i tasti fermano anche lo scavo a clic
     else { const ci = clickInput(sprint); if (ci) return ci; if (ring.n && !st.player.vehicle) { const n = G.byId(st, ring.n); if (n) return { x: 0, y: 0, sprint, aim: Math.atan2(n.y - st.player.y, n.x - st.player.x) }; } }
@@ -168,6 +176,16 @@
     return { x, y, sprint, aim: a };
   }
   function doAct(t) { const r = G.act(st, t); if (r && r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); }
+  // [salto] Spazio salta a piedi e in BMX; nelle altre auto resta il freno a mano
+  function jumpMode() { const p = st.player; if (!p.vehicle) return true; const v = st.vehicles.find(q => q.id === p.vehicle); return !!(v && G.VK[v.kind].pocket); }
+  // [andatura] più clicchi svelto verso un punto, più vai forte: a piedi cammini, corri, scatti; in BMX pedali piano, forte, a tutta.
+  // Un clic entro 0,4 s dal precedente alza l'andatura di un gradino; un clic lento mentre ti muovi la tiene (non serve cliccare a raffica);
+  // da fermo si riparte dal passo. Si torna al passo quando arrivi.
+  function bumpPace() {
+    const p = st.player, gap = ui.time - (ui.clickT === undefined ? -9 : ui.clickT); ui.clickT = ui.time;
+    const moving = !!click.t || Math.abs(p.speed || 0) > .8;
+    ui.pace = gap < .4 ? Math.min(3, (ui.pace || 1) + 1) : moving ? (ui.pace || 1) : 1;
+  }
   function doBmx() { click.t = null; ui.mark = null; const r = G.bmx(st); if (r && r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); }   // [bmx]
   function toast(msg, kind) { st.feed.unshift({ text: msg, kind: kind || 'info', until: st.clock + 4 }); if (st.feed.length > 5) st.feed.pop(); }
 
@@ -217,10 +235,14 @@
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
     const p = st.player, h = pickAt(nx, ny); if (!h) return;
     closeRing(); if (st.lv && st.lv.route) st.lv.route = null;
+    const onBmx = p.vehicle && jumpMode();   // [bmx] in BMX si clicca per andare, come a piedi
     if (p.vehicle) {
       if (h.kind === 'car' && h.v.id === p.vehicle) { click.t = null; ui.mark = null; doAct('veicolo'); return; }
-      return;
+      if (!onBmx) return;
     }
+    bumpPace();   // [andatura]
+    if (onBmx) { const o = h.v || h.n || h; if (o.x === undefined) return; const f = freeSpot(o.x, o.y);
+      click.t = { kind: 'move', x: f.x, y: f.y, path: goalPath(f.x, f.y), run: false, best: 1e9, bestT: ui.time, fl: '' }; ui.mark = { x: f.x, y: f.y, t: ui.time, k: 'move' }; return; }
     // [sottosuolo] sotto terra, un clic nella terra: il personaggio ci va scavando
     if (h.kind === 'move' && p.lv && p.lv.k === 'ug' && window.Livelli && Livelli.digTo) { const g = R.screenToGround(nx, ny), r = g && Livelli.digTo(st, g.x, g.y); if (r) { if (r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); if (r.ok) { click.t = { kind: 'scava', x: g.x, y: g.y }; ui.mark = { x: g.x, y: g.y, t: ui.time, k: 'move' }; } return; } }
     if (h.kind === 'npc') { click.t = { kind: 'npc', id: h.n.id, path: [], pt: -9, run: dbl }; ui.mark = null; }
@@ -231,8 +253,8 @@
   }
   function clickInput(sprint) {
     const p = st.player, c = click.t; if (!c) return null;
-    if (p.vehicle) { click.t = null; ui.mark = null; return null; }
-    const stop = () => { click.t = null; ui.mark = null; return p.vehicle ? { x: 0, y: 0, sprint, brake: true } : { x: 0, y: 0, sprint }; };
+    if (p.vehicle && !jumpMode()) { click.t = null; ui.mark = null; return null; }
+    const stop = () => { click.t = null; ui.mark = null; ui.pace = 1; return p.vehicle ? { x: 0, y: 0, sprint, brake: true } : { x: 0, y: 0, sprint }; };
     let gx = c.x, gy = c.y;
     if (c.fl !== undefined && c.fl !== (p.indoor ? p.indoor.b + ':' + p.indoor.f : '')) return stop();   // [interni] cambiato piano: il clic di prima non vale più
     if (c.kind === 'scava') {   // [sottosuolo] segue lo scavo: cammina alla casella scavata dopo, o resta fermo e scava
@@ -263,16 +285,17 @@
       if (d < 1.3) { stop(); doAct('veicolo'); return { x: 0, y: 0, sprint }; }
     }
     if (c.kind !== 'move' && ui.time - c.pt > .5) { c.path = goalPath(gx, gy); c.pt = ui.time; }
-    const reach = p.vehicle ? 2.4 : .4;
+    const bike = p.vehicle && jumpMode(), reach = bike ? 1.2 : p.vehicle ? 2.4 : .4;
     while (c.path.length > 1 && Math.hypot(c.path[0].x - p.x, c.path[0].y - p.y) < reach) c.path.shift();
     const left = Math.hypot(gx - p.x, gy - p.y);
     if (c.kind === 'move') {
-      if (left < (p.vehicle ? 3 : .35)) return stop();
+      if (left < (bike ? 1.2 : p.vehicle ? 3 : .35)) return stop();
       // bloccato da più di un secondo e mezzo senza avvicinarsi: lascia perdere
       if (left < c.best - .2) { c.best = left; c.bestT = ui.time; } else if (ui.time - c.bestT > 1.5) return stop();
     }
     const w = c.path[0] || { x: gx, y: gy }, a = Math.atan2(w.y - p.y, w.x - p.x);
-    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || c.run || (p.vehicle && left > 25), aim: a };
+    const pace = Math.max(c.run ? 2 : 1, ui.pace || 1);   // [andatura]
+    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace };
   }
   // --- menu attorno all'omino ---
   function ringOptions(n) {
@@ -604,10 +627,10 @@
         if (k === 'shift') { touchRun = !touchRun; b.style.borderColor = touchRun ? 'var(--amber)' : ''; return; }
         if (k === 'tab') return toggleBook(); if (ui.dialog || ui.book) return;
         if (k === 'fire') { touchFire = true; mouse.pressed = true; return; }
-        if (k === 'space') { touchBrake = true; return; }
+        if (k === 'space') { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; return; }   // [salto]
         if (k === 'e') doAct('scippo'); if (k === 'f') doAct('veicolo'); if (k === 'p') doBmx(); if (k === 't') openTalk(); if (k === 'q') G.switchWeapon(st, 1); if (k === 'r') G.reload(st);
       });
-      const up = () => { if (b.dataset.k === 'fire') touchFire = false; if (b.dataset.k === 'space') touchBrake = false; };
+      const up = () => { if (b.dataset.k === 'fire') touchFire = false; if (b.dataset.k === 'space') { touchBrake = false; G.jumpHold(st, false); } };
       b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);
     });
   }

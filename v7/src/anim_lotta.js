@@ -4,7 +4,7 @@
    s.act / s.upper della vita quotidiana (hanno la precedenza). Gli stati del corpo (ubriaco, freddo, ferito...) si
    aggiungono a s.mood e convivono con il resto.
    Pose di tutto il corpo (act): colpito, barcolla, stordito, rialza, calcio, schivata, rannicchiato, perquisisce,
-     ammanetta, ammanettato, in_vespa
+     ammanetta, ammanettato, in_vespa, in_bmx, carica, salto
    Pose delle braccia (upper): mira (pistola a una o due mani, mitra all'anca, lupara e fucile alla spalla, coltello
      in guardia, molotov pronta), ricarica, lancia (la molotov), guardia (pugni alternati), spinta, mani_alzate, fuga,
      indica, alt
@@ -366,6 +366,60 @@
     AIM(P, 'UpperArmL', .3, -.5, .8); AIM(P, 'LowerArmL', .15, -.05, 1); AIM(P, 'UpperArmR', -.3, -.5, .8); AIM(P, 'LowerArmR', -.15, -.05, 1);
   } });
 
+  // ---------------- IN BMX ----------------
+  // [bmx] seduto basso sul sellino, busto in avanti, braccia tese al manubrio alto, i piedi SUI PEDALI: le caviglie seguono
+  // l'angolo delle pedivelle (A.crank, lo stesso che render.js dà al modello), le ginocchia salgono e scendono come nei
+  // fotogrammi di una pedalata vera. A.carica (0-1): si accuccia prima del bunny hop; A.aria: in aria tira su il manubrio.
+  // Le misure sono quelle di bmxMesh (BMX_GEO in render.js); il corpo è già alzato di 35 cm da render.js (LIFT).
+  const BMX = { bbY: .29, bbZ: -.04, crank: .17, pedX: .14, seatY: .81, seatZ: -.27, gripY: 1.04, gripZ: .22, gripX: .32, pegX: .19, pegY: .31, pegZ: -.5, LIFT: .35 };
+  const _bp = new THREE.Vector3(), _bs = new THREE.Vector3(), _be = new THREE.Vector3(), _bt = new THREE.Vector3(), _bw = new THREE.Vector3();
+  const bmxLocal = (P, bone, out) => { P.R.b[bone].getWorldPosition(out); return P.g.worldToLocal(out); };
+  // braccio a due ossa: il polso in (tx,ty,tz) nello spazio del personaggio, gomito verso il basso e in fuori
+  function armTo(P, sd, tx, ty, tz) {
+    const R = P.R, ub = 'UpperArm' + sd, lb = 'LowerArm' + sd, wb = 'Wrist' + sd; if (!R.b[ub] || !R.b[lb] || !R.b[wb]) return;
+    if (!R['arm' + sd]) { bmxLocal(P, ub, _bs); bmxLocal(P, lb, _be); bmxLocal(P, wb, _bw); R['arm' + sd] = [_bs.distanceTo(_be), _be.distanceTo(_bw)]; }
+    const [a, b] = R['arm' + sd], sg = sd === 'L' ? 1 : -1;
+    bmxLocal(P, ub, _bs); _bt.set(tx, ty, tz); _bp.subVectors(_bt, _bs); let d = _bp.length(); if (d < 1e-4) return; _bp.divideScalar(d);
+    d = clamp(d, Math.abs(a - b) + .01, a + b - .005);
+    const x = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - x * x));
+    _bw.set(sg * .55, -1, -.25); _bw.addScaledVector(_bp, -_bw.dot(_bp)).normalize();
+    _be.copy(_bs).addScaledVector(_bp, x).addScaledVector(_bw, h).sub(_bs);
+    AIM(P, ub, _be.x, _be.y, _be.z, 1);
+    bmxLocal(P, lb, _be); _bt.sub(_be); AIM(P, lb, _bt.x, _bt.y, _bt.z, 1);
+  }
+  D('in_bmx', { fade: .12, base: 'Idle', fn(P, A) {
+    const R = P.R, th = A.crank || 0, ck = A.carica || 0, air = A.aria || 0, wk = A.impenna || 0, pk = Math.abs(A.peg || 0), ps = (A.peg || 0) > 0 ? 1 : -1;
+    // impennata (freccia giù): il corpo ruota già con la bici (render.js); qui ci si tira indietro a braccia tese.
+    // pedalina (frecce destra/sinistra): in piedi, il piede di quel lato sul peg dietro, il corpo fuori da quel lato
+    if (R.hipY === undefined && R.b.Hips) { bmxLocal(P, 'Hips', _bp); R.hipY = _bp.y; R.hipZ = _bp.z; }
+    // il sedere sul sellino; caricando si abbassa e va indietro, in aria si raccoglie in avanti
+    const By = (BMX.seatY + .08 - BMX.LIFT) - (R.hipY || .95) + .06 * ck + .08 * air + .1 * pk, Bz = BMX.seatZ - .06 - (R.hipZ || 0) - .1 * ck + .06 * air - .05 * wk - .04 * pk, Bx = ps * .09 * pk;   // carica: su dal sellino e indietro, come prima di un bunny hop
+    P.body({ x: Bx, y: By, z: Bz, rz: .035 * Math.sin(th) * (1 - air) * (1 - pk) - ps * .05 * pk });
+    P.rot('Abdomen', .45 + .3 * ck + .1 * air - .3 * wk + .3 * pk, 0, 0); P.rot('Chest', .2, .06 * Math.sin(th), 0); P.rot('Neck', -.3 - .1 * ck, 0, 0); P.rot('Head', -.25, 0, 0);
+    // i piedi sui pedali: destra a th, sinistra di fronte (th + π); la caviglia sta 7 cm sopra il pedale, la punta in avanti
+    [['R', -1, th], ['L', 1, th + Math.PI]].forEach(([sd, sg, a]) => {
+      let px = sg * BMX.pedX, py = BMX.bbY + BMX.crank * Math.cos(a) + .035, pz = BMX.bbZ + BMX.crank * Math.sin(a) - .07;   // la caviglia: sopra il pedale e un po' dietro, così ci poggia l'avampiede
+      if (sg === ps && pk > 0) { px += (sg * BMX.pegX - px) * pk; py += (BMX.pegY - py) * pk; pz += (BMX.pegZ - pz) * pk; }   // sul peg dietro
+      P.legTo(sd, px - Bx, py - BMX.LIFT - By, pz - Bz, sg * .2, .4, 1, .12 * Math.sin(a) - .05, .05);
+    });
+    // le mani sulle manopole: il polso sta dietro la manopola, così la mano la stringe (in aria le tira verso il petto)
+    ['L', 'R'].forEach(sd => { const sg = sd === 'L' ? 1 : -1; armTo(P, sd, sg * BMX.gripX - Bx, BMX.gripY + .02 - BMX.LIFT - By + .08 * air, BMX.gripZ - .08 - Bz - .06 * air); P.fingers(sd, .85, .7); });
+  } });
+  // ---------------- SALTO A PIEDI ----------------
+  // [salto] carica: ci si accuccia (più carichi, più giù), le braccia indietro; in aria: ginocchia al petto, braccia su
+  D('carica', { fade: .08, base: 'Idle', fn(P, A) {
+    const k = A.carica || 0, dn = .08 + .2 * k;
+    P.body({ y: -dn }); P.rot('Abdomen', .25 + .25 * k, 0, 0); P.rot('Head', -.2 * k, 0, 0);
+    P.legTo('L', .13, .09 + dn, .06, .1, 0, 1, 0, .1); P.legTo('R', -.13, .09 + dn, .06, -.1, 0, 1, 0, .1);
+    AIMS(P, 1, 'UpperArm', .2, -.7, -.5 * k); AIMS(P, -1, 'UpperArm', .2, -.7, -.5 * k); AIMS(P, 1, 'LowerArm', .1, -.6, -.2); AIMS(P, -1, 'LowerArm', .1, -.6, -.2);
+  } });
+  D('salto', { fade: .06, fn(P, A) {
+    const up = A.su ? 1 : 0, tuck = A.raccolto || 0;
+    P.rot('Abdomen', .15 + .2 * tuck, 0, 0);
+    P.legTo('L', .12, .25 + .3 * tuck, .12 + .1 * tuck, .1, .3, 1, .2, .1); P.legTo('R', -.12, .15 + .25 * tuck, -.05, -.1, .3, 1, -.1, .1);
+    AIMS(P, 1, 'UpperArm', .35, .3 + .4 * up, .5); AIMS(P, -1, 'UpperArm', .35, .3 + .4 * up, .5); AIMS(P, 1, 'LowerArm', .1, .6, .4); AIMS(P, -1, 'LowerArm', .1, .6, .4);
+  } });
+
   // ---------------- STATI DEL CORPO E DELL'ANIMO (strati leggeri) ----------------
   // ubriaco: il corpo ondeggia, la testa ciondola, le braccia larghe; A.ebbro dà la forza
   D('ubriaco', { fade: .6, fn(P, A) {
@@ -534,8 +588,12 @@
     if (p.vehicle) {
       let v = null; const vs = st.vehicles || []; for (let i = 0; i < vs.length; i++) if (vs[i].id === p.vehicle) { v = vs[i]; break; }
       if (v && v.kind === 'vespa') { s.act = 'in_vespa'; s.upper = null; s.mood.length = 0; }
+      if (v && v.kind === 'bmx') { s.act = 'in_bmx'; s.upper = null; s.mood.length = 0; s.crank = v.crank || 0; s.carica = p.jcharge != null ? clamp(p.jcharge / .7, 0, 1) : 0; s.aria = p.jz > 0 ? clamp(p.jz / .5, 0, 1) : 0; s.impenna = v.wheelie || 0; s.peg = v.peg || 0; }   // [bmx]
       return;
     }
+    // [salto] a piedi: accucciato mentre carichi, raccolto in aria (sotto quello che fanno le braccia: si può saltare con la pistola in mano)
+    if (p.jz > 0 && !(p.stun > 0)) { s.act = 'salto'; s.su = (p.jvz || 0) > 0; s.raccolto = clamp(p.jz / .6, 0, 1); }
+    else if (p.jcharge != null && !(p.stun > 0)) { s.act = 'carica'; s.carica = clamp(p.jcharge / .7, 0, 1); }
     // il lancio della molotov: p.punch risale mentre in mano c'è (o c'era) la molotov
     const pu = p.punch || 0;
     if (pu > m.punch + .05) {

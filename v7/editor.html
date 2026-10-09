@@ -6662,7 +6662,7 @@ Anim.npcMap((st, n, s) => {
    s.act / s.upper della vita quotidiana (hanno la precedenza). Gli stati del corpo (ubriaco, freddo, ferito...) si
    aggiungono a s.mood e convivono con il resto.
    Pose di tutto il corpo (act): colpito, barcolla, stordito, rialza, calcio, schivata, rannicchiato, perquisisce,
-     ammanetta, ammanettato, in_vespa
+     ammanetta, ammanettato, in_vespa, in_bmx, carica, salto
    Pose delle braccia (upper): mira (pistola a una o due mani, mitra all'anca, lupara e fucile alla spalla, coltello
      in guardia, molotov pronta), ricarica, lancia (la molotov), guardia (pugni alternati), spinta, mani_alzate, fuga,
      indica, alt
@@ -7024,6 +7024,60 @@ Anim.npcMap((st, n, s) => {
     AIM(P, 'UpperArmL', .3, -.5, .8); AIM(P, 'LowerArmL', .15, -.05, 1); AIM(P, 'UpperArmR', -.3, -.5, .8); AIM(P, 'LowerArmR', -.15, -.05, 1);
   } });
 
+  // ---------------- IN BMX ----------------
+  // [bmx] seduto basso sul sellino, busto in avanti, braccia tese al manubrio alto, i piedi SUI PEDALI: le caviglie seguono
+  // l'angolo delle pedivelle (A.crank, lo stesso che render.js dà al modello), le ginocchia salgono e scendono come nei
+  // fotogrammi di una pedalata vera. A.carica (0-1): si accuccia prima del bunny hop; A.aria: in aria tira su il manubrio.
+  // Le misure sono quelle di bmxMesh (BMX_GEO in render.js); il corpo è già alzato di 35 cm da render.js (LIFT).
+  const BMX = { bbY: .29, bbZ: -.04, crank: .17, pedX: .14, seatY: .81, seatZ: -.27, gripY: 1.04, gripZ: .22, gripX: .32, pegX: .19, pegY: .31, pegZ: -.5, LIFT: .35 };
+  const _bp = new THREE.Vector3(), _bs = new THREE.Vector3(), _be = new THREE.Vector3(), _bt = new THREE.Vector3(), _bw = new THREE.Vector3();
+  const bmxLocal = (P, bone, out) => { P.R.b[bone].getWorldPosition(out); return P.g.worldToLocal(out); };
+  // braccio a due ossa: il polso in (tx,ty,tz) nello spazio del personaggio, gomito verso il basso e in fuori
+  function armTo(P, sd, tx, ty, tz) {
+    const R = P.R, ub = 'UpperArm' + sd, lb = 'LowerArm' + sd, wb = 'Wrist' + sd; if (!R.b[ub] || !R.b[lb] || !R.b[wb]) return;
+    if (!R['arm' + sd]) { bmxLocal(P, ub, _bs); bmxLocal(P, lb, _be); bmxLocal(P, wb, _bw); R['arm' + sd] = [_bs.distanceTo(_be), _be.distanceTo(_bw)]; }
+    const [a, b] = R['arm' + sd], sg = sd === 'L' ? 1 : -1;
+    bmxLocal(P, ub, _bs); _bt.set(tx, ty, tz); _bp.subVectors(_bt, _bs); let d = _bp.length(); if (d < 1e-4) return; _bp.divideScalar(d);
+    d = clamp(d, Math.abs(a - b) + .01, a + b - .005);
+    const x = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - x * x));
+    _bw.set(sg * .55, -1, -.25); _bw.addScaledVector(_bp, -_bw.dot(_bp)).normalize();
+    _be.copy(_bs).addScaledVector(_bp, x).addScaledVector(_bw, h).sub(_bs);
+    AIM(P, ub, _be.x, _be.y, _be.z, 1);
+    bmxLocal(P, lb, _be); _bt.sub(_be); AIM(P, lb, _bt.x, _bt.y, _bt.z, 1);
+  }
+  D('in_bmx', { fade: .12, base: 'Idle', fn(P, A) {
+    const R = P.R, th = A.crank || 0, ck = A.carica || 0, air = A.aria || 0, wk = A.impenna || 0, pk = Math.abs(A.peg || 0), ps = (A.peg || 0) > 0 ? 1 : -1;
+    // impennata (freccia giù): il corpo ruota già con la bici (render.js); qui ci si tira indietro a braccia tese.
+    // pedalina (frecce destra/sinistra): in piedi, il piede di quel lato sul peg dietro, il corpo fuori da quel lato
+    if (R.hipY === undefined && R.b.Hips) { bmxLocal(P, 'Hips', _bp); R.hipY = _bp.y; R.hipZ = _bp.z; }
+    // il sedere sul sellino; caricando si abbassa e va indietro, in aria si raccoglie in avanti
+    const By = (BMX.seatY + .08 - BMX.LIFT) - (R.hipY || .95) + .06 * ck + .08 * air + .1 * pk, Bz = BMX.seatZ - .06 - (R.hipZ || 0) - .1 * ck + .06 * air - .05 * wk - .04 * pk, Bx = ps * .09 * pk;   // carica: su dal sellino e indietro, come prima di un bunny hop
+    P.body({ x: Bx, y: By, z: Bz, rz: .035 * Math.sin(th) * (1 - air) * (1 - pk) - ps * .05 * pk });
+    P.rot('Abdomen', .45 + .3 * ck + .1 * air - .3 * wk + .3 * pk, 0, 0); P.rot('Chest', .2, .06 * Math.sin(th), 0); P.rot('Neck', -.3 - .1 * ck, 0, 0); P.rot('Head', -.25, 0, 0);
+    // i piedi sui pedali: destra a th, sinistra di fronte (th + π); la caviglia sta 7 cm sopra il pedale, la punta in avanti
+    [['R', -1, th], ['L', 1, th + Math.PI]].forEach(([sd, sg, a]) => {
+      let px = sg * BMX.pedX, py = BMX.bbY + BMX.crank * Math.cos(a) + .035, pz = BMX.bbZ + BMX.crank * Math.sin(a) - .07;   // la caviglia: sopra il pedale e un po' dietro, così ci poggia l'avampiede
+      if (sg === ps && pk > 0) { px += (sg * BMX.pegX - px) * pk; py += (BMX.pegY - py) * pk; pz += (BMX.pegZ - pz) * pk; }   // sul peg dietro
+      P.legTo(sd, px - Bx, py - BMX.LIFT - By, pz - Bz, sg * .2, .4, 1, .12 * Math.sin(a) - .05, .05);
+    });
+    // le mani sulle manopole: il polso sta dietro la manopola, così la mano la stringe (in aria le tira verso il petto)
+    ['L', 'R'].forEach(sd => { const sg = sd === 'L' ? 1 : -1; armTo(P, sd, sg * BMX.gripX - Bx, BMX.gripY + .02 - BMX.LIFT - By + .08 * air, BMX.gripZ - .08 - Bz - .06 * air); P.fingers(sd, .85, .7); });
+  } });
+  // ---------------- SALTO A PIEDI ----------------
+  // [salto] carica: ci si accuccia (più carichi, più giù), le braccia indietro; in aria: ginocchia al petto, braccia su
+  D('carica', { fade: .08, base: 'Idle', fn(P, A) {
+    const k = A.carica || 0, dn = .08 + .2 * k;
+    P.body({ y: -dn }); P.rot('Abdomen', .25 + .25 * k, 0, 0); P.rot('Head', -.2 * k, 0, 0);
+    P.legTo('L', .13, .09 + dn, .06, .1, 0, 1, 0, .1); P.legTo('R', -.13, .09 + dn, .06, -.1, 0, 1, 0, .1);
+    AIMS(P, 1, 'UpperArm', .2, -.7, -.5 * k); AIMS(P, -1, 'UpperArm', .2, -.7, -.5 * k); AIMS(P, 1, 'LowerArm', .1, -.6, -.2); AIMS(P, -1, 'LowerArm', .1, -.6, -.2);
+  } });
+  D('salto', { fade: .06, fn(P, A) {
+    const up = A.su ? 1 : 0, tuck = A.raccolto || 0;
+    P.rot('Abdomen', .15 + .2 * tuck, 0, 0);
+    P.legTo('L', .12, .25 + .3 * tuck, .12 + .1 * tuck, .1, .3, 1, .2, .1); P.legTo('R', -.12, .15 + .25 * tuck, -.05, -.1, .3, 1, -.1, .1);
+    AIMS(P, 1, 'UpperArm', .35, .3 + .4 * up, .5); AIMS(P, -1, 'UpperArm', .35, .3 + .4 * up, .5); AIMS(P, 1, 'LowerArm', .1, .6, .4); AIMS(P, -1, 'LowerArm', .1, .6, .4);
+  } });
+
   // ---------------- STATI DEL CORPO E DELL'ANIMO (strati leggeri) ----------------
   // ubriaco: il corpo ondeggia, la testa ciondola, le braccia larghe; A.ebbro dà la forza
   D('ubriaco', { fade: .6, fn(P, A) {
@@ -7192,8 +7246,12 @@ Anim.npcMap((st, n, s) => {
     if (p.vehicle) {
       let v = null; const vs = st.vehicles || []; for (let i = 0; i < vs.length; i++) if (vs[i].id === p.vehicle) { v = vs[i]; break; }
       if (v && v.kind === 'vespa') { s.act = 'in_vespa'; s.upper = null; s.mood.length = 0; }
+      if (v && v.kind === 'bmx') { s.act = 'in_bmx'; s.upper = null; s.mood.length = 0; s.crank = v.crank || 0; s.carica = p.jcharge != null ? clamp(p.jcharge / .7, 0, 1) : 0; s.aria = p.jz > 0 ? clamp(p.jz / .5, 0, 1) : 0; s.impenna = v.wheelie || 0; s.peg = v.peg || 0; }   // [bmx]
       return;
     }
+    // [salto] a piedi: accucciato mentre carichi, raccolto in aria (sotto quello che fanno le braccia: si può saltare con la pistola in mano)
+    if (p.jz > 0 && !(p.stun > 0)) { s.act = 'salto'; s.su = (p.jvz || 0) > 0; s.raccolto = clamp(p.jz / .6, 0, 1); }
+    else if (p.jcharge != null && !(p.stun > 0)) { s.act = 'carica'; s.carica = clamp(p.jcharge / .7, 0, 1); }
     // il lancio della molotov: p.punch risale mentre in mano c'è (o c'era) la molotov
     const pu = p.punch || 0;
     if (pu > m.punch + .05) {
@@ -10719,7 +10777,7 @@ var Game = (function () {
     lancia: { r: 1.25, len: 6, wid: 2.1, max: 9, accel: 2.8, turn: 1.05, hp: 110, label: 'Lancia a motore', boat: true, art: 'la' },
     motoscafo: { r: 1.4, len: 7, wid: 2.4, max: 17, accel: 5, turn: 1.1, hp: 120, label: 'Motoscafo', boat: true, art: 'il', m0: true },
     // [bmx] la bici tascabile: si tira fuori con P quando vuoi e quando scendi torna in tasca. Niente motore, niente fari, non brucia.
-    bmx: { r: .5, len: 1.7, wid: .6, max: 9, accel: 6, turn: 3.8, hp: 45, label: 'BMX', two: true, pocket: true },
+    bmx: { r: .5, len: 1.5, wid: .6, max: 9, accel: 6, turn: 3.8, hp: 45, label: 'BMX', two: true, pocket: true },
   };
   // fisica: massa (kg) e aderenza laterale (m/s²). Vespa e Ape scivolano meno, le berline derapano.
   Object.assign(VK.vespa, { m: 150, grip: 24 }); Object.assign(VK.cinquecento, { m: 560, grip: 19 }); Object.assign(VK.ritmo, { m: 860, grip: 20 });
@@ -11075,7 +11133,7 @@ var Game = (function () {
     if (p.carrying) return { ok: false, msg: 'Hai le mani occupate.' };
     if (!walkM(p.x, p.y)) return { ok: false, msg: 'Qui non ci stai, con la BMX.' };
     st.vehicles = st.vehicles.filter(k => k.kind !== 'bmx');
-    const v = makeVehicle(st, { id: 'bmx', kind: 'bmx', x: p.x, y: p.y, ang: p.face, color: '#35e6ff', mine: true, rider: 'player' });
+    const v = makeVehicle(st, { id: 'bmx', kind: 'bmx', x: p.x, y: p.y, ang: p.face, color: '#f0e2a8', mine: true, rider: 'player' });
     st.vehicles.push(v); p.vehicle = v.id; p.path = [];
     return { ok: true, msg: 'Tiri fuori la BMX dalla tasca e ci salti sopra.' };
   }
@@ -11960,6 +12018,36 @@ var Game = (function () {
   }
 
   // ---------------- GIOCATORE E VEICOLI ----------------
+  // [salto] tieni premuto (Spazio) per caricare, rilascia per saltare: più carichi, più vai in alto. A piedi e in BMX
+  // (il bunny hop), non in auto né a nuoto. p.jz è l'altezza da terra, p.jvz la velocità in su; la BMX salta con te (v.jz).
+  const JUMP = { g: 18, maxCharge: .7, foot: [3, 5.2], bmx: [3.6, 6.8] }, PACE_BMX = [1, .55, .8, 1];
+  function canJump(st) { const p = st.player; if (st.over || p.stun > 0 || p.swim || p.jz > 0) return false; if (!p.vehicle) return true; const v = st.vehicles.find(k => k.id === p.vehicle); return !!(v && VK[v.kind].pocket); }
+  function jumpHold(st, on) {
+    const p = st.player;
+    if (on) { if (p.jcharge == null && canJump(st)) p.jcharge = 0; return; }
+    if (p.jcharge == null) return; const k = clamp(p.jcharge / JUMP.maxCharge, 0, 1); p.jcharge = null;
+    if (!canJump(st)) return;
+    const R = p.vehicle ? JUMP.bmx : JUMP.foot, sp = Math.abs(p.speed || 0);
+    p.jvz = R[0] + (R[1] - R[0]) * k + Math.min(.6, sp * .05); p.jz = .001; p.jumpT = st.clock;
+    st.sfx.push({ k: 'jump', x: p.x, y: p.y });
+  }
+  function jumpStep(st, dt) {
+    const p = st.player, v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
+    if (p.jcharge != null) { if (!canJump(st)) p.jcharge = null; else p.jcharge = Math.min(JUMP.maxCharge, p.jcharge + dt); }
+    if (p.jz > 0) {
+      p.jvz -= JUMP.g * dt; p.jz += p.jvz * dt;
+      if (p.jz <= 0) { p.landV = -p.jvz; p.jz = 0; p.jvz = 0; p.landT = st.clock; st.sfx.push({ k: 'land', x: p.x, y: p.y }); }
+    }
+    if (v) { v.jz = p.jz || 0; v.jvz = p.jvz || 0; }
+    else st.vehicles.forEach(k => { if (k.jz && k.rider !== 'player') k.jz = 0; });
+  }
+  // [bmx] i trick con le frecce (la bici si guida col punta e clicca): giù tenuta = impennata, destra/sinistra tenuta = un piede
+  // sulla pedalina di quel lato, il corpo fuori. v.wheelie (0-1) e v.peg (-1 destra … +1 sinistra) salgono e scendono morbidi.
+  function bmxTricks(v, t, dt) {
+    const k = Math.min(1, dt * 7), w = t && t.wheelie ? 1 : 0, pg = t ? (t.peg || 0) : 0;
+    v.wheelie = (v.wheelie || 0) + (w - (v.wheelie || 0)) * k; if (v.wheelie < .002) v.wheelie = 0;
+    v.peg = (v.peg || 0) + (pg - (v.peg || 0)) * k; if (Math.abs(v.peg) < .002) v.peg = 0;
+  }
   function movePlayer(st, dt, inp) {
     const p = st.player;
     if (p.cool > 0) p.cool -= dt;
@@ -11968,12 +12056,13 @@ var Game = (function () {
     if (p.punch > 0) p.punch -= dt;
     if (st.clock - p.hurtT > 7 && p.hp < 100) p.hp = Math.min(100, p.hp + dt * 3);
     if (!p.vehicle) knockback(st, p, dt);
+    jumpStep(st, dt);   // [salto]
     if (p.stun > 0) { p.stun -= dt; p.speed = 0; return; }
     if (p.vehicle) return driveVehicle(st, st.vehicles.find(v => v.id === p.vehicle), dt, inp);
     const ix = inp.x, iy = inp.y;
     p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);   // [costa] in acqua si nuota
     if (ix || iy) {
-      const l = Math.hypot(ix, iy), sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : (p.sneak ? 1.7 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
+      const l = Math.hypot(ix, iy), sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : (p.sneak ? 1.7 : inp.pace >= 3 ? 7.8 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
       p.__st = st;   // [monte] i livelli (sotto terra, sul ponte) sanno dove si cammina
       const hitWall = tryMove(p, ix / l * sp * dt, iy / l * sp * dt, .35, !p.indoor && !p.lv && !p.carrying);   // [costa] il giocatore può entrare in mare (con un peso in braccio no)
       p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);
@@ -12120,7 +12209,7 @@ var Game = (function () {
     else if (want !== null) steer = clamp(angDiff(want, v.ang) * 1.7, -1, 1) * (vf < -.3 ? -1 : 1);
     v.steer += (steer - v.steer) * Math.min(1, dt * (steerIn !== undefined && Math.abs(steer) < Math.abs(v.steer) ? 11 : 9));
     // longitudinale
-    const max = (sprint ? K.max * (1.15 + .06 * ((v.up && v.up.nitro) | 0)) : K.max) * (v.boost || 1);
+    const max = (sprint ? K.max * (1.15 + .06 * ((v.up && v.up.nitro) | 0)) : K.max) * (v.boost || 1) * (v.pace || 1);   // [bmx] v.pace: quanto forte pedali
     if (throttle > 0) {
       const off = want === null ? 0 : Math.abs(angDiff(want, v.ang));
       let a = K.accel * (v.boost || 1) * (off < 1.2 ? 1 : off < 2.4 ? .45 : .2) * (1 - clamp(vf / max, 0, 1) * .35);
@@ -12188,11 +12277,17 @@ var Game = (function () {
     if (inp.drive) { const d = inp.drive, spd0 = Math.abs(v.speed || 0); let sIn = d.steer || 0;
       sIn *= 1 - .3 * clamp((spd0 - 12) / 14, 0, 1);                       // a velocità alta lo sterzo è meno nervoso
       if (d.assist && d.thr > 0 && !d.hb && spd0 > 6 && Math.abs(sIn) < .05) sIn += roadMagnet(v);   // calamita leggera: la strada tira l'auto dritta
+      if (VK[v.kind].pocket) { bmxTricks(v, inp.trick, dt); v.pace = 1; v.pedal = (d.thr || 0) > 0 && !p.jz && Math.abs(v.peg) <= .5; }   // [bmx]
       vehicleMotion(st, v, dt, null, d.thr || 0, false, !!d.boost, !!d.hb, sIn); p.x = v.x; p.y = v.y; p.face = v.ang; p.speed = v.speed; runOver(st, v, 'player'); return; }
     const want = (inp.x || inp.y) ? Math.atan2(inp.y, inp.x) : null;
     const rev = inp.back && v.speed < 1.2;
     const throttle = rev ? -1 : want !== null ? 1 : 0;
-    vehicleMotion(st, v, dt, rev ? null : want, throttle, inp.back && v.speed >= 1.2, inp.sprint, inp.brake);
+    let thr = throttle;
+    if (VK[v.kind].pocket) {   // [bmx] più clicchi svelto, più forte pedali; in aria non si pedala
+      bmxTricks(v, inp.trick, dt); if (Math.abs(v.peg) > .5) thr = Math.min(thr, 0);   // sulla pedalina un piede è fuori: si va a ruota libera
+      v.pace = inp.pace ? PACE_BMX[inp.pace] : 1; v.pedal = thr > 0 && !p.jz;
+    }
+    vehicleMotion(st, v, dt, rev ? null : want, thr, inp.back && v.speed >= 1.2, inp.sprint, inp.brake);
     p.x = v.x; p.y = v.y; p.face = v.ang; p.speed = v.speed;
     runOver(st, v, 'player');
   }
@@ -12780,7 +12875,7 @@ var Game = (function () {
 
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
-    tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, bmx, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
+    tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
@@ -33782,31 +33877,61 @@ var Render = (function () {
     const exh = cyl(.06, .06, .5, 6, chrome); exh.rotation.x = Math.PI / 2; exh.position.set(.26, .28, -.55); g.add(exh);
     ud.len = 1.9; return finishVehicle(g, ud);
   }
-  // [bmx] la BMX tascabile: telaio a diamante di tubi sottili, ruote da 20 pollici con le razze, manubrio alto, sellino basso, pedivelle
+  // [bmx] la BMX tascabile, come quelle vere: ruote da 20" con gomme grasse e cerchi viola, telaio crema a diamante,
+  // forcella, attacco e manubrio alto neri, sellino basso, pegs sui mozzi. Interasse ~95 cm.
+  // Le pedivelle stanno in un perno a parte (ud.crank) che render fa girare con le ruote: la posa in_bmx
+  // (anim_lotta.js) mette i piedi sui pedali con le stesse misure (BMX_GEO).
+  const BMX_GEO = { R: .26, zF: .47, zR: -.47, bbY: .29, bbZ: -.04, crank: .17, pedX: .17, seatY: .81, seatZ: -.27, gripY: 1.04, gripZ: .22, gripX: .34, ratio: 2.6 };
+  // [bmx] impennata (freccia giù): bici e ciclista ruotano attorno al punto dove la ruota dietro tocca terra, così resta appoggiata.
+  // a = angolo (muso su); dyB/dzB lo spostamento della bici, dyP/dzP quello del ciclista (che sta 35 cm più su), lungo il mezzo
+  function bmxTilt(v) {
+    const a = v && v.kind === 'bmx' ? (v.wheelie || 0) * .5 : 0; if (!a) return { a: 0 };
+    const zR = BMX_GEO.zR, L = .35, c = Math.cos(a), s = Math.sin(a);
+    return { a, dyB: -zR * s, dzB: zR * (1 - c), dyP: L * c - zR * s - L, dzP: zR - L * s - zR * c };
+  }
   function bmxMesh(color) {
-    const g = G0(), c = std({ color, roughness: .3, metalness: .45 }), dark = sl('#141218'), chrome = std({ color: '#d8d8e0', metalness: .85, roughness: .18 });
+    const g = G0(), c = std({ color, roughness: .35, metalness: .3 }), blk = std({ color: '#16151a', roughness: .5, metalness: .4 }), tire = sl('#141318');
+    const rimM = std({ color: '#8a5ad8', roughness: .35, metalness: .5 }), steel = std({ color: '#3a3a42', roughness: .4, metalness: .7 }), chrome = std({ color: '#c8c8d0', metalness: .85, roughness: .2 });
     const ud = { paint: [c], lamps: [], tails: [], wheels: [], front: [], two: true, dents: 0, parts: {} };
-    const up = new THREE.Vector3(0, 1, 0);
-    const tube = (a, b, r, mat) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), m = cyl(r, r, d.length(), 6, mat); m.position.copy(A).add(B).multiplyScalar(.5); m.quaternion.setFromUnitVectors(up, d.normalize()); g.add(m); return m; };
-    const R = .27, zF = .56, zR = -.5, bb = [0, .3, -.05], seatT = [0, .74, -.24], head = [0, .78, .38], headLo = [0, .6, .44];
-    tube(bb, seatT, .028, c); tube(seatT, head, .028, c); tube(bb, headLo, .032, c); tube(head, headLo, .034, c);   // telaio
-    [-1, 1].forEach(s => { tube([s * .05, .3, -.05], [s * .06, R, zR], .02, c); tube([s * .05, .72, -.23], [s * .06, R, zR], .018, c); tube([s * .05, .62, .44], [s * .06, R, zF], .022, chrome); });   // forcellini e forcella
-    tube([0, .78, .38], [0, .98, .34], .022, chrome); tube([-.32, 1.0, .3], [.32, 1.0, .3], .02, chrome); tube([-.14, .9, .35], [.14, .9, .35], .015, chrome);   // attacco, manubrio e traversino
-    [-1, 1].forEach(s => { const gr = cyl(.03, .03, .12, 6, dark); gr.rotation.z = Math.PI / 2; gr.position.set(s * .36, 1.0, .3); g.add(gr); });
-    tube([0, .74, -.24], [0, .84, -.27], .02, chrome);
-    const seat = box(.14, .05, .26, sm('#1a1418', { roughness: .7 })); seat.position.set(0, .87, -.26); seat.rotation.x = .12; g.add(seat);
-    const ring = cyl(.09, .09, .02, 12, chrome); ring.rotation.z = Math.PI / 2; ring.position.set(.06, .3, -.05); g.add(ring);   // corona
-    [-1, 1].forEach(s => { const cr = box(.02, .03, .3, chrome); cr.position.set(s * .09, .3, -.05); cr.rotation.x = s * .9; g.add(cr); const pd = box(.1, .025, .05, dark); pd.position.set(s * .14, .3 + Math.sin(s * .9) * -.15, -.05 + Math.cos(s * .9) * .15); g.add(pd); });
-    const pad = box(.06, .06, .2, sm('#ffd23a')); pad.position.set(0, .64, .1); pad.rotation.x = -.42; g.add(pad);   // l'imbottitura gialla sul tubo, anni '80
+    const Gm = BMX_GEO, R = Gm.R, up = new THREE.Vector3(0, 1, 0);
+    const tube = (a, b, r, mat, par) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), m = cyl(r, r, d.length(), 8, mat); m.position.copy(A).add(B).multiplyScalar(.5); m.quaternion.setFromUnitVectors(up, d.normalize()); (par || g).add(m); return m; };
+    const bb = [0, Gm.bbY, Gm.bbZ], st = [0, .66, -.21], ht = [0, .73, .29], hb = [0, .56, .34];
+    // telaio
+    tube(bb, st, .024, c); tube(st, ht, .026, c); tube(bb, hb, .03, c); tube(hb, ht, .034, c);
+    [-1, 1].forEach(s => { tube([s * .03, Gm.bbY, Gm.bbZ], [s * .065, R, Gm.zR], .016, c); tube([s * .025, .65, -.22], [s * .065, R, Gm.zR], .014, c); });
+    const bbShell = cyl(.035, .035, .1, 10, c); bbShell.rotation.z = Math.PI / 2; bbShell.position.set(0, Gm.bbY, Gm.bbZ); g.add(bbShell);
+    // forcella, attacco, manubrio alto (due montanti, traversino, manopole)
+    [-1, 1].forEach(s => tube([s * .045, .57, .35], [s * .065, R, Gm.zF], .018, blk));
+    tube([0, .73, .29], [0, .82, .27], .02, blk); const stem = box(.1, .05, .1, blk); stem.position.set(0, .82, .28); g.add(stem);
+    [-1, 1].forEach(s => { tube([s * .06, .82, .28], [s * .2, Gm.gripY, Gm.gripZ], .014, blk); tube([s * .2, Gm.gripY, Gm.gripZ], [s * .4, Gm.gripY, Gm.gripZ], .014, blk);
+      const gr = cyl(.02, .02, .12, 8, blk); gr.rotation.z = Math.PI / 2; gr.position.set(s * (Gm.gripX + .02), Gm.gripY, Gm.gripZ); g.add(gr); });
+    tube([-.13, .94, .25], [.13, .94, .25], .011, blk);
+    // reggisella e sellino basso, a pivotal
+    tube([0, .66, -.21], [0, .78, -.25], .016, chrome);
+    const seat = box(.13, .05, .27, blk); seat.position.set(0, Gm.seatY - .02, Gm.seatZ); seat.rotation.x = .1; g.add(seat);
+    const nose = box(.07, .04, .06, blk); nose.position.set(0, Gm.seatY - .03, Gm.seatZ + .15); g.add(nose);
+    // corona piccola a destra (−x è la destra del ciclista) e catena verso il mozzo
+    const ring = cyl(.075, .075, .012, 14, steel); ring.rotation.z = Math.PI / 2; ring.position.set(-.06, Gm.bbY, Gm.bbZ); g.add(ring);
+    tube([-.06, Gm.bbY + .07, Gm.bbZ], [-.06, R + .03, Gm.zR], .006, steel); tube([-.06, Gm.bbY - .07, Gm.bbZ], [-.06, R - .03, Gm.zR], .006, steel);
+    // pegs sui mozzi
+    [Gm.zF, Gm.zR].forEach(z => [-1, 1].forEach(s => { const pg = cyl(.026, .026, .1, 8, steel); pg.rotation.z = Math.PI / 2; pg.position.set(s * .13, R, z); g.add(pg); }));
+    // pedivelle e pedali: un perno che gira; la destra (x−) parte in alto, la sinistra in basso
+    const cr = G0(); cr.position.set(0, Gm.bbY, Gm.bbZ); cr.userData.keepTree = true;
+    [[-1, 1], [1, -1]].forEach(([s, v]) => {
+      const arm = box(.022, Gm.crank + .03, .03, blk); arm.position.set(s * .085, v * Gm.crank / 2, 0); cr.add(arm);
+      const ped = G0(); ped.position.set(s * Gm.pedX, v * Gm.crank, 0); cr.add(ped); ped.add(box(.1, .022, .095, blk)); ped.userData.ped = true;
+      (ud.pedals = ud.pedals || []).push(ped);
+    });
+    g.add(cr); ud.crank = cr;
     const bmxWheel = () => {
-      const w = G0(), tire = new THREE.Mesh(new THREE.TorusGeometry(R - .03, .035, 6, 18), dark); tire.rotation.y = Math.PI / 2; w.add(tire);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(R - .065, .012, 4, 18), chrome); rim.rotation.y = Math.PI / 2; w.add(rim);
-      for (let k = 0; k < 6; k++) { const sp = box(.01, (R - .07) * 2, .012, chrome); sp.rotation.x = k / 6 * Math.PI; w.add(sp); }
-      const hub = cyl(.03, .03, .1, 8, chrome); hub.rotation.z = Math.PI / 2; w.add(hub); return mergeGroup(w);
+      const w = G0(), t = new THREE.Mesh(new THREE.TorusGeometry(R - .05, .05, 8, 22), tire); t.rotation.y = Math.PI / 2; w.add(t);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(R - .095, .017, 5, 22), rimM); rim.rotation.y = Math.PI / 2; w.add(rim);
+      for (let k = 0; k < 9; k++) { const sp = box(.008, (R - .11) * 2, .008, steel); sp.rotation.x = k / 9 * Math.PI; w.add(sp); }
+      const hub = cyl(.03, .03, .1, 8, blk); hub.rotation.z = Math.PI / 2; w.add(hub); return mergeGroup(w);
     };
-    const fp = G0(); fp.position.set(0, R, zF); const fw = bmxWheel(); fp.add(fw); g.add(fp); ud.wheels.push({ wh: fw, piv: fp, front: true, r: R });
-    const rp = G0(); rp.position.set(0, R, zR); const rw = bmxWheel(); rp.add(rw); g.add(rp); ud.wheels.push({ wh: rw, piv: rp, front: false, r: R });
-    ud.len = 1.7; return finishVehicle(g, ud);
+    const fp = G0(); fp.position.set(0, R, Gm.zF); const fw = bmxWheel(); fp.add(fw); g.add(fp); ud.wheels.push({ wh: fw, piv: fp, front: true, r: R });
+    const rp = G0(); rp.position.set(0, R, Gm.zR); const rw = bmxWheel(); rp.add(rw); g.add(rp); ud.wheels.push({ wh: rw, piv: rp, front: false, r: R });
+    ud.len = 1.5; return finishVehicle(g, ud);
   }
   function driverMesh(look, cap) {
     const g = G0();
@@ -37558,7 +37683,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx');   // [bmx] in sella come sulla Vespa
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
     pg.visible = !pveh || onVespa;
-    pg.position.set(p.x, playerH + (onVespa ? .35 : 0), p.y); pg.rotation.y = Math.PI / 2 - p.face;
+    pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = Math.PI / 2 - p.face;   // [salto] p.jz: l'altezza del salto
+    { const T = bmxTilt(pveh); pg.rotation.order = 'YXZ'; pg.rotation.x = -T.a; if (T.a) { const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang); pg.position.x += ca * T.dzP; pg.position.y += T.dyP; pg.position.z += sa * T.dzP; } }   // [bmx] impennata: il ciclista ruota con la bici
     const recoil = st.kick ? Math.max(0, 1 - (st.clock - st.kick.t) * 10) * st.kick.amt * 3 : 0;
     if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim
     animPerson(pg, { anim: p.anim, speed: pveh ? 0 : p.speed, carrying: p.carrying, punch: p.punch, seated: onVespa, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, recoil, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6 });
@@ -37579,13 +37705,17 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       u.rv += ((rollT - u.roll) * (u.two ? 40 : 70) - u.rv * 8) * sd; u.roll += u.rv * sd;
       u.pv += ((pitchT - u.pitch) * 80 - u.pv * 9) * sd; u.pitch += u.pv * sd;
       u.hv += (-u.hop * 120 - u.hv * 10) * sd; u.hop += u.hv * sd;
-      g.position.set(v.x, (hF + hR) / 2 + u.hop * .12, v.y); g.rotation.y = Math.PI / 2 - v.ang; g.rotation.x = -Math.atan2(hF - hR, hl * 2) + u.pitch;
+      // [salto] la BMX sale col giocatore e in aria impenna (su) e poi abbassa il muso; all'atterraggio le gomme si schiacciano
+      const air = v.jz > 0 ? clamp((v.jvz || 0) * .05, -.18, .3) : 0; if (u.wasAir && !(v.jz > 0)) u.hv -= 6 + Math.min(10, (st.player.landV || 0) * 1.5); u.wasAir = v.jz > 0;
+      g.position.set(v.x, (hF + hR) / 2 + u.hop * .12 + (v.jz || 0), v.y); g.rotation.y = Math.PI / 2 - v.ang; g.rotation.x = -Math.atan2(hF - hR, hl * 2) + u.pitch - air;
+      { const T = bmxTilt(v); if (T.a) { g.rotation.x -= T.a; g.position.x += Math.cos(v.ang) * T.dzB; g.position.y += T.dyB; g.position.z += Math.sin(v.ang) * T.dzB; } }   // [bmx] impennata sulla ruota dietro
       g.rotation.z = u.roll;
       v.lastAng = v.ang;
       // ruote che girano e sterzano
       u.spin += (v.speed || 0) * dt; u.steer += (clamp(-(v.steer || 0) * .55, -.55, .55) - u.steer) * Math.min(1, dt * 12);
       skidTrack(v, u, g, dt);
       u.wheels.forEach(w => { w.wh.rotation.x = u.spin / w.r; if (w.front) w.piv.rotation.y = u.steer; });
+      if (u.crank) { if (v.pedal) u.crankA = (u.crankA || 0) + (v.speed || 0) * dt / (BMX_GEO.R * BMX_GEO.ratio); const th = u.crankA || 0; u.crank.rotation.x = th; u.pedals.forEach(q => q.rotation.x = -th); v.crank = th; }   // [bmx] pedivelle: girano solo quando pedali (a ruota libera stanno ferme)   // [bmx] le pedivelle girano con le ruote, i pedali restano piatti; in_bmx ci mette i piedi
       // danni progressivi
       if (v.hp < u.hpSeen - .5 && !v.wreck) {
         let hit = null; const lm = FX.lastMetal;
@@ -37655,7 +37785,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (pveh) {
       const vsp = pveh.vx !== undefined ? Math.hypot(pveh.vx, pveh.vy) : Math.abs(pveh.speed);
       const head = vsp > 3 && pveh.speed > -1 ? angLerp(pveh.ang, Math.atan2(pveh.vy, pveh.vx), .6) : pveh.ang;
-      let lead = pveh.speed < -1 ? 3 : 5 + Math.max(0, vsp) * .75;
+      let lead = pveh.speed < -1 ? 3 : G.VK[pveh.kind].pocket ? 1.5 + Math.max(0, vsp) * .35 : 5 + Math.max(0, vsp) * .75;   // [bmx] la bici è piccola: la visuale guarda meno avanti
       for (let L = 0; L <= lead; L += .5) { const x = pveh.x + Math.cos(head) * L, z = pveh.y + Math.sin(head) * L; if (G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)) === G.T.BLD) { lead = Math.max(0, L - 1.2); break; } }
       tx = pveh.x + Math.cos(head) * lead; ty = pveh.y + Math.sin(head) * lead;
       const behind = Math.atan2(-Math.cos(head), -Math.sin(head));
@@ -37702,7 +37832,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const dist = lerp(walkDist, cam.cd, ease);
     camera.fov = fov; camera.near = lerp(Math.min(8, Math.max(.6, dist * .35)), 2, ease); camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
     const ox = Math.sin(cam.yaw) * Math.cos(pitch) * dist, oy = Math.sin(pitch) * dist, oz = Math.cos(cam.yaw) * Math.cos(pitch) * dist;
-    const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(0, 1, ease);
+    cam.jz = (cam.jz || 0) + ((p.jz || 0) * .6 - (cam.jz || 0)) * Math.min(1, dt * 6);   // [salto] la visuale sale un po' col salto
+    const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(0, 1, ease) + cam.jz;
     camera.position.set(cx + ox, cy + oy, cz + oz); camera.lookAt(cx, cy, cz);
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
     if (ease < .02) {
@@ -38308,6 +38439,8 @@ var Audio8 = (function () {
       case 'pickup': tone(t, .15, 'square', 440, 880, .1); break;
       case 'hurt': tone(t, .16, 'sawtooth', 150, 90, .22); nz(t, .1, 'lowpass', 700, .3); break;
       case 'death': tone(t, .3, 'sawtooth', 120, 60, .12 * v, pan); break;
+      case 'jump': tone(t, .12, 'square', 220, 440, .1 * v, pan); break;   // [salto]
+      case 'land': tone(t, .08, 'triangle', 110, 70, .2 * v, pan); break;
     }
   }
   function update(st, R) {
@@ -39038,6 +39171,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (k === 'escape') { if (ring.n) { closeRing(); return; } if (ui.dialog) closeDialog(); else if (ui.book) toggleBook(false); return; }
     if (ui.dialog) { const n = parseInt(k, 10); if (n >= 1 && n <= 9) { const b = $('dialog').querySelectorAll('.opt')[n - 1]; if (b) b.click(); } if (k === 'enter' || k === ' ') { const bs = $('dialog').querySelectorAll('.opt'); if (bs.length === 1) { e.preventDefault(); bs[0].click(); } } return; }
     if (ui.book || ui.menu) return;   // [azioni] ui.menu: le Tasche
+    if (k === ' ' && jumpMode()) { e.preventDefault(); if (!e.repeat) G.jumpHold(st, true); return; }   // [salto] tieni premuto: carica
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.'].includes(k)) { keys[k] = true; e.preventDefault(); }
     // [monte] O: visuale dall'alto; H scava, J in discesa, K in salita, N stanza, V sali/scendi (botole e pozzi)
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
@@ -39053,7 +39187,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // zoom: rotella, tasti + e −, pulsanti a schermo
   function zoomBy(f) { ui.zoom = Math.max(.12, Math.min(4.2, (ui.zoom || 1) * f)); }  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
 
-  addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+  addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; });
   const stick = { x: 0, y: 0 };
   let lastAim = null, touchFire = false, touchRun = false;
@@ -39071,16 +39205,23 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (g && Math.hypot(g.x - p.x, g.y - p.y) > .6) lastAim = Math.atan2(g.y - p.y, g.x - p.x);
     return lastAim === null ? p.face : lastAim;
   }
+  // [bmx] in BMX si va col punta e clicca; le frecce fanno i trick: giù impenna, destra e sinistra il piede sulla pedalina
   function input() {
+    const r = input0(); if (!r || !st.player.vehicle || !jumpMode()) return r;
+    r.trick = { wheelie: !!keys.arrowdown, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : 0 };
+    return r;
+  }
+  function input0() {
     const sprint = !!keys.shift || touchRun, brakeKey = !!keys[' '] || touchBrake;
-    if (st.player.vehicle && (touchMode || stick.x || stick.y)) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
+    if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (stick.x || stick.y) { // touch: la levetta segue lo schermo
       const B = R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
       return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : aimAngle() };
     }
     let f = 0, s = 0;
-    if (keys.w || keys.arrowup) f += 1; if (keys.s || keys.arrowdown) f -= 1;
-    if (keys.d || keys.arrowright) s += 1; if (keys.a || keys.arrowleft) s -= 1;
+    const ar = !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick
+    if (keys.w || (ar && keys.arrowup)) f += 1; if (keys.s || (ar && keys.arrowdown)) f -= 1;
+    if (keys.d || (ar && keys.arrowright)) s += 1; if (keys.a || (ar && keys.arrowleft)) s -= 1;
     const a = aimAngle();
     if (f || s) { if (click.t) { click.t = null; ui.mark = null; } if (st.lv && st.lv.route) st.lv.route = null; }   // [sottosuolo] i tasti fermano anche lo scavo a clic
     else { const ci = clickInput(sprint); if (ci) return ci; if (ring.n && !st.player.vehicle) { const n = G.byId(st, ring.n); if (n) return { x: 0, y: 0, sprint, aim: Math.atan2(n.y - st.player.y, n.x - st.player.x) }; } }
@@ -39107,6 +39248,16 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     return { x, y, sprint, aim: a };
   }
   function doAct(t) { const r = G.act(st, t); if (r && r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); }
+  // [salto] Spazio salta a piedi e in BMX; nelle altre auto resta il freno a mano
+  function jumpMode() { const p = st.player; if (!p.vehicle) return true; const v = st.vehicles.find(q => q.id === p.vehicle); return !!(v && G.VK[v.kind].pocket); }
+  // [andatura] più clicchi svelto verso un punto, più vai forte: a piedi cammini, corri, scatti; in BMX pedali piano, forte, a tutta.
+  // Un clic entro 0,4 s dal precedente alza l'andatura di un gradino; un clic lento mentre ti muovi la tiene (non serve cliccare a raffica);
+  // da fermo si riparte dal passo. Si torna al passo quando arrivi.
+  function bumpPace() {
+    const p = st.player, gap = ui.time - (ui.clickT === undefined ? -9 : ui.clickT); ui.clickT = ui.time;
+    const moving = !!click.t || Math.abs(p.speed || 0) > .8;
+    ui.pace = gap < .4 ? Math.min(3, (ui.pace || 1) + 1) : moving ? (ui.pace || 1) : 1;
+  }
   function doBmx() { click.t = null; ui.mark = null; const r = G.bmx(st); if (r && r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); }   // [bmx]
   function toast(msg, kind) { st.feed.unshift({ text: msg, kind: kind || 'info', until: st.clock + 4 }); if (st.feed.length > 5) st.feed.pop(); }
 
@@ -39156,10 +39307,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
     const p = st.player, h = pickAt(nx, ny); if (!h) return;
     closeRing(); if (st.lv && st.lv.route) st.lv.route = null;
+    const onBmx = p.vehicle && jumpMode();   // [bmx] in BMX si clicca per andare, come a piedi
     if (p.vehicle) {
       if (h.kind === 'car' && h.v.id === p.vehicle) { click.t = null; ui.mark = null; doAct('veicolo'); return; }
-      return;
+      if (!onBmx) return;
     }
+    bumpPace();   // [andatura]
+    if (onBmx) { const o = h.v || h.n || h; if (o.x === undefined) return; const f = freeSpot(o.x, o.y);
+      click.t = { kind: 'move', x: f.x, y: f.y, path: goalPath(f.x, f.y), run: false, best: 1e9, bestT: ui.time, fl: '' }; ui.mark = { x: f.x, y: f.y, t: ui.time, k: 'move' }; return; }
     // [sottosuolo] sotto terra, un clic nella terra: il personaggio ci va scavando
     if (h.kind === 'move' && p.lv && p.lv.k === 'ug' && window.Livelli && Livelli.digTo) { const g = R.screenToGround(nx, ny), r = g && Livelli.digTo(st, g.x, g.y); if (r) { if (r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); if (r.ok) { click.t = { kind: 'scava', x: g.x, y: g.y }; ui.mark = { x: g.x, y: g.y, t: ui.time, k: 'move' }; } return; } }
     if (h.kind === 'npc') { click.t = { kind: 'npc', id: h.n.id, path: [], pt: -9, run: dbl }; ui.mark = null; }
@@ -39170,8 +39325,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   }
   function clickInput(sprint) {
     const p = st.player, c = click.t; if (!c) return null;
-    if (p.vehicle) { click.t = null; ui.mark = null; return null; }
-    const stop = () => { click.t = null; ui.mark = null; return p.vehicle ? { x: 0, y: 0, sprint, brake: true } : { x: 0, y: 0, sprint }; };
+    if (p.vehicle && !jumpMode()) { click.t = null; ui.mark = null; return null; }
+    const stop = () => { click.t = null; ui.mark = null; ui.pace = 1; return p.vehicle ? { x: 0, y: 0, sprint, brake: true } : { x: 0, y: 0, sprint }; };
     let gx = c.x, gy = c.y;
     if (c.fl !== undefined && c.fl !== (p.indoor ? p.indoor.b + ':' + p.indoor.f : '')) return stop();   // [interni] cambiato piano: il clic di prima non vale più
     if (c.kind === 'scava') {   // [sottosuolo] segue lo scavo: cammina alla casella scavata dopo, o resta fermo e scava
@@ -39202,16 +39357,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       if (d < 1.3) { stop(); doAct('veicolo'); return { x: 0, y: 0, sprint }; }
     }
     if (c.kind !== 'move' && ui.time - c.pt > .5) { c.path = goalPath(gx, gy); c.pt = ui.time; }
-    const reach = p.vehicle ? 2.4 : .4;
+    const bike = p.vehicle && jumpMode(), reach = bike ? 1.2 : p.vehicle ? 2.4 : .4;
     while (c.path.length > 1 && Math.hypot(c.path[0].x - p.x, c.path[0].y - p.y) < reach) c.path.shift();
     const left = Math.hypot(gx - p.x, gy - p.y);
     if (c.kind === 'move') {
-      if (left < (p.vehicle ? 3 : .35)) return stop();
+      if (left < (bike ? 1.2 : p.vehicle ? 3 : .35)) return stop();
       // bloccato da più di un secondo e mezzo senza avvicinarsi: lascia perdere
       if (left < c.best - .2) { c.best = left; c.bestT = ui.time; } else if (ui.time - c.bestT > 1.5) return stop();
     }
     const w = c.path[0] || { x: gx, y: gy }, a = Math.atan2(w.y - p.y, w.x - p.x);
-    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || c.run || (p.vehicle && left > 25), aim: a };
+    const pace = Math.max(c.run ? 2 : 1, ui.pace || 1);   // [andatura]
+    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace };
   }
   // --- menu attorno all'omino ---
   function ringOptions(n) {
@@ -39543,10 +39699,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
         if (k === 'shift') { touchRun = !touchRun; b.style.borderColor = touchRun ? 'var(--amber)' : ''; return; }
         if (k === 'tab') return toggleBook(); if (ui.dialog || ui.book) return;
         if (k === 'fire') { touchFire = true; mouse.pressed = true; return; }
-        if (k === 'space') { touchBrake = true; return; }
+        if (k === 'space') { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; return; }   // [salto]
         if (k === 'e') doAct('scippo'); if (k === 'f') doAct('veicolo'); if (k === 'p') doBmx(); if (k === 't') openTalk(); if (k === 'q') G.switchWeapon(st, 1); if (k === 'r') G.reload(st);
       });
-      const up = () => { if (b.dataset.k === 'fire') touchFire = false; if (b.dataset.k === 'space') touchBrake = false; };
+      const up = () => { if (b.dataset.k === 'fire') touchFire = false; if (b.dataset.k === 'space') { touchBrake = false; G.jumpHold(st, false); } };
       b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);
     });
   }
