@@ -197,7 +197,7 @@ var Game = (function () {
     lancia: { r: 1.25, len: 6, wid: 2.1, max: 9, accel: 2.8, turn: 1.05, hp: 110, label: 'Lancia a motore', boat: true, art: 'la' },
     motoscafo: { r: 1.4, len: 7, wid: 2.4, max: 17, accel: 5, turn: 1.1, hp: 120, label: 'Motoscafo', boat: true, art: 'il', m0: true },
     // [bmx] la bici tascabile: si tira fuori con P quando vuoi e quando scendi torna in tasca. Niente motore, niente fari, non brucia.
-    bmx: { r: .5, len: 1.7, wid: .6, max: 9, accel: 6, turn: 3.8, hp: 45, label: 'BMX', two: true, pocket: true },
+    bmx: { r: .5, len: 1.5, wid: .6, max: 9, accel: 6, turn: 3.8, hp: 45, label: 'BMX', two: true, pocket: true },
   };
   // fisica: massa (kg) e aderenza laterale (m/s²). Vespa e Ape scivolano meno, le berline derapano.
   Object.assign(VK.vespa, { m: 150, grip: 24 }); Object.assign(VK.cinquecento, { m: 560, grip: 19 }); Object.assign(VK.ritmo, { m: 860, grip: 20 });
@@ -571,7 +571,7 @@ var Game = (function () {
     if (p.carrying) return { ok: false, msg: 'Hai le mani occupate.' };
     if (!walkM(p.x, p.y)) return { ok: false, msg: 'Qui non ci stai, con la BMX.' };
     st.vehicles = st.vehicles.filter(k => k.kind !== 'bmx');
-    const v = makeVehicle(st, { id: 'bmx', kind: 'bmx', x: p.x, y: p.y, ang: p.face, color: '#35e6ff', mine: true, rider: 'player' });
+    const v = makeVehicle(st, { id: 'bmx', kind: 'bmx', x: p.x, y: p.y, ang: p.face, color: '#f0e2a8', mine: true, rider: 'player' });
     st.vehicles.push(v); p.vehicle = v.id; p.path = [];
     return { ok: true, msg: 'Tiri fuori la BMX dalla tasca e ci salti sopra.' };
   }
@@ -1475,6 +1475,35 @@ var Game = (function () {
   }
 
   // ---------------- GIOCATORE E VEICOLI ----------------
+  // [salto] tieni premuto (Spazio) per caricare, rilascia per saltare: più carichi, più vai in alto. A piedi e in BMX
+  // (il bunny hop), non in auto né a nuoto. p.jz è l'altezza da terra, p.jvz la velocità in su; la BMX salta con te (v.jz).
+  const JUMP = { g: 18, maxCharge: .7, foot: [3, 5.2], bmx: [3.6, 6.8] }, PACE_BMX = [1, .55, .8, 1];
+  function canJump(st) { const p = st.player; if (st.over || p.stun > 0 || p.swim || p.jz > 0) return false; if (!p.vehicle) return true; const v = st.vehicles.find(k => k.id === p.vehicle); return !!(v && VK[v.kind].pocket); }
+  function jumpHold(st, on) {
+    const p = st.player;
+    if (on) { if (p.jcharge == null && canJump(st)) p.jcharge = 0; return; }
+    if (p.jcharge == null) return; const k = clamp(p.jcharge / JUMP.maxCharge, 0, 1); p.jcharge = null;
+    if (!canJump(st)) return;
+    const R = p.vehicle ? JUMP.bmx : JUMP.foot, sp = Math.abs(p.speed || 0);
+    p.jvz = R[0] + (R[1] - R[0]) * k + Math.min(.6, sp * .05); p.jz = .001; p.jumpT = st.clock;
+    st.sfx.push({ k: 'jump', x: p.x, y: p.y });
+  }
+  function jumpStep(st, dt) {
+    const p = st.player, v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
+    if (p.jcharge != null) { if (!canJump(st)) p.jcharge = null; else p.jcharge = Math.min(JUMP.maxCharge, p.jcharge + dt); }
+    if (p.jz > 0) {
+      p.jvz -= JUMP.g * dt; p.jz += p.jvz * dt;
+      if (p.jz <= 0) { p.landV = -p.jvz; p.jz = 0; p.jvz = 0; p.landT = st.clock; st.sfx.push({ k: 'land', x: p.x, y: p.y }); }
+    }
+    if (v) { v.jz = p.jz || 0; v.jvz = p.jvz || 0; }
+  }
+  // [bmx] i trick con le frecce (la bici si guida col punta e clicca): giù tenuta = impennata, destra/sinistra tenuta = un piede
+  // sulla pedalina di quel lato, il corpo fuori. v.wheelie (0-1) e v.peg (-1 destra … +1 sinistra) salgono e scendono morbidi.
+  function bmxTricks(v, t, dt) {
+    const k = Math.min(1, dt * 7), w = t && t.wheelie ? 1 : 0, pg = t ? (t.peg || 0) : 0;
+    v.wheelie = (v.wheelie || 0) + (w - (v.wheelie || 0)) * k; if (v.wheelie < .002) v.wheelie = 0;
+    v.peg = (v.peg || 0) + (pg - (v.peg || 0)) * k; if (Math.abs(v.peg) < .002) v.peg = 0;
+  }
   function movePlayer(st, dt, inp) {
     const p = st.player;
     if (p.cool > 0) p.cool -= dt;
@@ -1483,12 +1512,13 @@ var Game = (function () {
     if (p.punch > 0) p.punch -= dt;
     if (st.clock - p.hurtT > 7 && p.hp < 100) p.hp = Math.min(100, p.hp + dt * 3);
     if (!p.vehicle) knockback(st, p, dt);
+    jumpStep(st, dt);   // [salto]
     if (p.stun > 0) { p.stun -= dt; p.speed = 0; return; }
     if (p.vehicle) return driveVehicle(st, st.vehicles.find(v => v.id === p.vehicle), dt, inp);
     const ix = inp.x, iy = inp.y;
     p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);   // [costa] in acqua si nuota
     if (ix || iy) {
-      const l = Math.hypot(ix, iy), sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : (p.sneak ? 1.7 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
+      const l = Math.hypot(ix, iy), sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : (p.sneak ? 1.7 : inp.pace >= 3 ? 7.8 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
       p.__st = st;   // [monte] i livelli (sotto terra, sul ponte) sanno dove si cammina
       const hitWall = tryMove(p, ix / l * sp * dt, iy / l * sp * dt, .35, !p.indoor && !p.lv && !p.carrying);   // [costa] il giocatore può entrare in mare (con un peso in braccio no)
       p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);
@@ -1635,7 +1665,7 @@ var Game = (function () {
     else if (want !== null) steer = clamp(angDiff(want, v.ang) * 1.7, -1, 1) * (vf < -.3 ? -1 : 1);
     v.steer += (steer - v.steer) * Math.min(1, dt * (steerIn !== undefined && Math.abs(steer) < Math.abs(v.steer) ? 11 : 9));
     // longitudinale
-    const max = (sprint ? K.max * (1.15 + .06 * ((v.up && v.up.nitro) | 0)) : K.max) * (v.boost || 1);
+    const max = (sprint ? K.max * (1.15 + .06 * ((v.up && v.up.nitro) | 0)) : K.max) * (v.boost || 1) * (v.pace || 1);   // [bmx] v.pace: quanto forte pedali
     if (throttle > 0) {
       const off = want === null ? 0 : Math.abs(angDiff(want, v.ang));
       let a = K.accel * (v.boost || 1) * (off < 1.2 ? 1 : off < 2.4 ? .45 : .2) * (1 - clamp(vf / max, 0, 1) * .35);
@@ -1703,11 +1733,17 @@ var Game = (function () {
     if (inp.drive) { const d = inp.drive, spd0 = Math.abs(v.speed || 0); let sIn = d.steer || 0;
       sIn *= 1 - .3 * clamp((spd0 - 12) / 14, 0, 1);                       // a velocità alta lo sterzo è meno nervoso
       if (d.assist && d.thr > 0 && !d.hb && spd0 > 6 && Math.abs(sIn) < .05) sIn += roadMagnet(v);   // calamita leggera: la strada tira l'auto dritta
+      if (VK[v.kind].pocket) { bmxTricks(v, inp.trick, dt); v.pace = 1; v.pedal = (d.thr || 0) > 0 && !p.jz && Math.abs(v.peg) <= .5; }   // [bmx]
       vehicleMotion(st, v, dt, null, d.thr || 0, false, !!d.boost, !!d.hb, sIn); p.x = v.x; p.y = v.y; p.face = v.ang; p.speed = v.speed; runOver(st, v, 'player'); return; }
     const want = (inp.x || inp.y) ? Math.atan2(inp.y, inp.x) : null;
     const rev = inp.back && v.speed < 1.2;
     const throttle = rev ? -1 : want !== null ? 1 : 0;
-    vehicleMotion(st, v, dt, rev ? null : want, throttle, inp.back && v.speed >= 1.2, inp.sprint, inp.brake);
+    let thr = throttle;
+    if (VK[v.kind].pocket) {   // [bmx] più clicchi svelto, più forte pedali; in aria non si pedala
+      bmxTricks(v, inp.trick, dt); if (Math.abs(v.peg) > .5) thr = Math.min(thr, 0);   // sulla pedalina un piede è fuori: si va a ruota libera
+      v.pace = inp.pace ? PACE_BMX[inp.pace] : 1; v.pedal = thr > 0 && !p.jz;
+    }
+    vehicleMotion(st, v, dt, rev ? null : want, thr, inp.back && v.speed >= 1.2, inp.sprint, inp.brake);
     p.x = v.x; p.y = v.y; p.face = v.ang; p.speed = v.speed;
     runOver(st, v, 'player');
   }
@@ -1789,6 +1825,7 @@ var Game = (function () {
   }
   function runOver(st, v, by) {
     const K = VK[v.kind];
+    if (K.pocket) return bikeBump(st, v);   // [bmx] una bici non è un'auto
     for (const n of st.npcs) {
       if (n.inside || n.dead || n.jailedUntil > st.t) continue;
       const d = dist(n.x, n.y, v.x, v.y);
@@ -1810,6 +1847,24 @@ var Game = (function () {
     if (by !== 'player' && !st.player.vehicle) {
       const p = st.player, d = dist(p.x, p.y, v.x, v.y);
       if (insideVehicle(v, p.x, p.y, .3) && Math.abs(v.speed) > 5.5 && st.clock - (p.carHitT || -99) > 2) { p.carHitT = st.clock; launch(st, p, v); damagePlayer(st, 15 + Math.abs(v.speed) * 3, v.ang, 'auto'); p.stun = 1.2; scaleVel(v, .6); }
+    }
+  }
+  // [bmx] in BMX contro un pedone: niente volo né morti. Lui va giù stordito (pochi danni) e se lo ricorda; tu cadi e la bici
+  // torna in tasca. Ma se sei in aria (bunny hop, più di 45 cm) gli passi sopra: il salto serve a scavalcare la gente.
+  function bikeBump(st, v) {
+    const p = st.player; if (p.jz > .45) return;
+    const vsp = v.vx !== undefined ? Math.hypot(v.vx, v.vy) : Math.abs(v.speed);
+    for (const n of st.npcs) {
+      if (n.inside || n.dead || n.jailedUntil > st.t || !insideVehicle(v, n.x, n.y, .2)) continue;
+      if (vsp < 3.5) { pushOutOfVehicles(st, n, .35); continue; }
+      if (st.clock - (n.lastHitByCar || -99) < 2) continue;
+      n.lastHitByCar = st.clock; st.sfx.push({ k: 'thud' });
+      if (vsp < 6) { n.stun = .7; scaleVel(v, .45); pushOutOfVehicles(st, n, .35); feed(st, `Urti ${n.first} di striscio: barcolla e ti manda a quel paese.`, 'bad'); return; }   // pedalata leggera: resti in sella
+      n.stun = 1.4;
+      const ev = emit(st, 'investimento', { target: n.id }); addLog(st, `${clockStr(st.t)} · Sei finito in BMX addosso a ${n.name}.`, 'bad', ev.id);
+      damage(st, n, 3 + vsp * .8, 'player', Math.atan2(n.y - v.y, n.x - v.x), 'pugni');
+      if (p.vehicle === v.id) { exitVehicle(st); p.stun = .7; feed(st, `Prendi in pieno ${n.first} e finite tutti e due per terra. La BMX è di nuovo in tasca.`, 'bad'); }
+      return;
     }
   }
   // traffico: corsie della Via al Mare, si ferma davanti agli ostacoli
@@ -2295,7 +2350,7 @@ var Game = (function () {
 
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
-    tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, bmx, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
+    tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]

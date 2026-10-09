@@ -7537,31 +7537,61 @@ var Render = (function () {
     const exh = cyl(.06, .06, .5, 6, chrome); exh.rotation.x = Math.PI / 2; exh.position.set(.26, .28, -.55); g.add(exh);
     ud.len = 1.9; return finishVehicle(g, ud);
   }
-  // [bmx] la BMX tascabile: telaio a diamante di tubi sottili, ruote da 20 pollici con le razze, manubrio alto, sellino basso, pedivelle
+  // [bmx] la BMX tascabile, come quelle vere: ruote da 20" con gomme grasse e cerchi viola, telaio crema a diamante,
+  // forcella, attacco e manubrio alto neri, sellino basso, pegs sui mozzi. Interasse ~95 cm.
+  // Le pedivelle stanno in un perno a parte (ud.crank) che render fa girare con le ruote: la posa in_bmx
+  // (anim_lotta.js) mette i piedi sui pedali con le stesse misure (BMX_GEO).
+  const BMX_GEO = { R: .26, zF: .47, zR: -.47, bbY: .29, bbZ: -.04, crank: .17, pedX: .17, seatY: .81, seatZ: -.27, gripY: 1.04, gripZ: .22, gripX: .34, ratio: 2.6 };
+  // [bmx] impennata (freccia giù): bici e ciclista ruotano attorno al punto dove la ruota dietro tocca terra, così resta appoggiata.
+  // a = angolo (muso su); dyB/dzB lo spostamento della bici, dyP/dzP quello del ciclista (che sta 35 cm più su), lungo il mezzo
+  function bmxTilt(v) {
+    const a = v && v.kind === 'bmx' ? (v.wheelie || 0) * .5 : 0; if (!a) return { a: 0 };
+    const zR = BMX_GEO.zR, L = .35, c = Math.cos(a), s = Math.sin(a);
+    return { a, dyB: -zR * s, dzB: zR * (1 - c), dyP: L * c - zR * s - L, dzP: zR - L * s - zR * c };
+  }
   function bmxMesh(color) {
-    const g = G0(), c = std({ color, roughness: .3, metalness: .45 }), dark = sl('#141218'), chrome = std({ color: '#d8d8e0', metalness: .85, roughness: .18 });
+    const g = G0(), c = std({ color, roughness: .35, metalness: .3 }), blk = std({ color: '#16151a', roughness: .5, metalness: .4 }), tire = sl('#141318');
+    const rimM = std({ color: '#8a5ad8', roughness: .35, metalness: .5 }), steel = std({ color: '#3a3a42', roughness: .4, metalness: .7 }), chrome = std({ color: '#c8c8d0', metalness: .85, roughness: .2 });
     const ud = { paint: [c], lamps: [], tails: [], wheels: [], front: [], two: true, dents: 0, parts: {} };
-    const up = new THREE.Vector3(0, 1, 0);
-    const tube = (a, b, r, mat) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), m = cyl(r, r, d.length(), 6, mat); m.position.copy(A).add(B).multiplyScalar(.5); m.quaternion.setFromUnitVectors(up, d.normalize()); g.add(m); return m; };
-    const R = .27, zF = .56, zR = -.5, bb = [0, .3, -.05], seatT = [0, .74, -.24], head = [0, .78, .38], headLo = [0, .6, .44];
-    tube(bb, seatT, .028, c); tube(seatT, head, .028, c); tube(bb, headLo, .032, c); tube(head, headLo, .034, c);   // telaio
-    [-1, 1].forEach(s => { tube([s * .05, .3, -.05], [s * .06, R, zR], .02, c); tube([s * .05, .72, -.23], [s * .06, R, zR], .018, c); tube([s * .05, .62, .44], [s * .06, R, zF], .022, chrome); });   // forcellini e forcella
-    tube([0, .78, .38], [0, .98, .34], .022, chrome); tube([-.32, 1.0, .3], [.32, 1.0, .3], .02, chrome); tube([-.14, .9, .35], [.14, .9, .35], .015, chrome);   // attacco, manubrio e traversino
-    [-1, 1].forEach(s => { const gr = cyl(.03, .03, .12, 6, dark); gr.rotation.z = Math.PI / 2; gr.position.set(s * .36, 1.0, .3); g.add(gr); });
-    tube([0, .74, -.24], [0, .84, -.27], .02, chrome);
-    const seat = box(.14, .05, .26, sm('#1a1418', { roughness: .7 })); seat.position.set(0, .87, -.26); seat.rotation.x = .12; g.add(seat);
-    const ring = cyl(.09, .09, .02, 12, chrome); ring.rotation.z = Math.PI / 2; ring.position.set(.06, .3, -.05); g.add(ring);   // corona
-    [-1, 1].forEach(s => { const cr = box(.02, .03, .3, chrome); cr.position.set(s * .09, .3, -.05); cr.rotation.x = s * .9; g.add(cr); const pd = box(.1, .025, .05, dark); pd.position.set(s * .14, .3 + Math.sin(s * .9) * -.15, -.05 + Math.cos(s * .9) * .15); g.add(pd); });
-    const pad = box(.06, .06, .2, sm('#ffd23a')); pad.position.set(0, .64, .1); pad.rotation.x = -.42; g.add(pad);   // l'imbottitura gialla sul tubo, anni '80
+    const Gm = BMX_GEO, R = Gm.R, up = new THREE.Vector3(0, 1, 0);
+    const tube = (a, b, r, mat, par) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), m = cyl(r, r, d.length(), 8, mat); m.position.copy(A).add(B).multiplyScalar(.5); m.quaternion.setFromUnitVectors(up, d.normalize()); (par || g).add(m); return m; };
+    const bb = [0, Gm.bbY, Gm.bbZ], st = [0, .66, -.21], ht = [0, .73, .29], hb = [0, .56, .34];
+    // telaio
+    tube(bb, st, .024, c); tube(st, ht, .026, c); tube(bb, hb, .03, c); tube(hb, ht, .034, c);
+    [-1, 1].forEach(s => { tube([s * .03, Gm.bbY, Gm.bbZ], [s * .065, R, Gm.zR], .016, c); tube([s * .025, .65, -.22], [s * .065, R, Gm.zR], .014, c); });
+    const bbShell = cyl(.035, .035, .1, 10, c); bbShell.rotation.z = Math.PI / 2; bbShell.position.set(0, Gm.bbY, Gm.bbZ); g.add(bbShell);
+    // forcella, attacco, manubrio alto (due montanti, traversino, manopole)
+    [-1, 1].forEach(s => tube([s * .045, .57, .35], [s * .065, R, Gm.zF], .018, blk));
+    tube([0, .73, .29], [0, .82, .27], .02, blk); const stem = box(.1, .05, .1, blk); stem.position.set(0, .82, .28); g.add(stem);
+    [-1, 1].forEach(s => { tube([s * .06, .82, .28], [s * .2, Gm.gripY, Gm.gripZ], .014, blk); tube([s * .2, Gm.gripY, Gm.gripZ], [s * .4, Gm.gripY, Gm.gripZ], .014, blk);
+      const gr = cyl(.02, .02, .12, 8, blk); gr.rotation.z = Math.PI / 2; gr.position.set(s * (Gm.gripX + .02), Gm.gripY, Gm.gripZ); g.add(gr); });
+    tube([-.13, .94, .25], [.13, .94, .25], .011, blk);
+    // reggisella e sellino basso, a pivotal
+    tube([0, .66, -.21], [0, .78, -.25], .016, chrome);
+    const seat = box(.13, .05, .27, blk); seat.position.set(0, Gm.seatY - .02, Gm.seatZ); seat.rotation.x = .1; g.add(seat);
+    const nose = box(.07, .04, .06, blk); nose.position.set(0, Gm.seatY - .03, Gm.seatZ + .15); g.add(nose);
+    // corona piccola a destra (−x è la destra del ciclista) e catena verso il mozzo
+    const ring = cyl(.075, .075, .012, 14, steel); ring.rotation.z = Math.PI / 2; ring.position.set(-.06, Gm.bbY, Gm.bbZ); g.add(ring);
+    tube([-.06, Gm.bbY + .07, Gm.bbZ], [-.06, R + .03, Gm.zR], .006, steel); tube([-.06, Gm.bbY - .07, Gm.bbZ], [-.06, R - .03, Gm.zR], .006, steel);
+    // pegs sui mozzi
+    [Gm.zF, Gm.zR].forEach(z => [-1, 1].forEach(s => { const pg = cyl(.026, .026, .1, 8, steel); pg.rotation.z = Math.PI / 2; pg.position.set(s * .13, R, z); g.add(pg); }));
+    // pedivelle e pedali: un perno che gira; la destra (x−) parte in alto, la sinistra in basso
+    const cr = G0(); cr.position.set(0, Gm.bbY, Gm.bbZ); cr.userData.keepTree = true;
+    [[-1, 1], [1, -1]].forEach(([s, v]) => {
+      const arm = box(.022, Gm.crank + .03, .03, blk); arm.position.set(s * .085, v * Gm.crank / 2, 0); cr.add(arm);
+      const ped = G0(); ped.position.set(s * Gm.pedX, v * Gm.crank, 0); cr.add(ped); ped.add(box(.1, .022, .095, blk)); ped.userData.ped = true;
+      (ud.pedals = ud.pedals || []).push(ped);
+    });
+    g.add(cr); ud.crank = cr;
     const bmxWheel = () => {
-      const w = G0(), tire = new THREE.Mesh(new THREE.TorusGeometry(R - .03, .035, 6, 18), dark); tire.rotation.y = Math.PI / 2; w.add(tire);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(R - .065, .012, 4, 18), chrome); rim.rotation.y = Math.PI / 2; w.add(rim);
-      for (let k = 0; k < 6; k++) { const sp = box(.01, (R - .07) * 2, .012, chrome); sp.rotation.x = k / 6 * Math.PI; w.add(sp); }
-      const hub = cyl(.03, .03, .1, 8, chrome); hub.rotation.z = Math.PI / 2; w.add(hub); return mergeGroup(w);
+      const w = G0(), t = new THREE.Mesh(new THREE.TorusGeometry(R - .05, .05, 8, 22), tire); t.rotation.y = Math.PI / 2; w.add(t);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(R - .095, .017, 5, 22), rimM); rim.rotation.y = Math.PI / 2; w.add(rim);
+      for (let k = 0; k < 9; k++) { const sp = box(.008, (R - .11) * 2, .008, steel); sp.rotation.x = k / 9 * Math.PI; w.add(sp); }
+      const hub = cyl(.03, .03, .1, 8, blk); hub.rotation.z = Math.PI / 2; w.add(hub); return mergeGroup(w);
     };
-    const fp = G0(); fp.position.set(0, R, zF); const fw = bmxWheel(); fp.add(fw); g.add(fp); ud.wheels.push({ wh: fw, piv: fp, front: true, r: R });
-    const rp = G0(); rp.position.set(0, R, zR); const rw = bmxWheel(); rp.add(rw); g.add(rp); ud.wheels.push({ wh: rw, piv: rp, front: false, r: R });
-    ud.len = 1.7; return finishVehicle(g, ud);
+    const fp = G0(); fp.position.set(0, R, Gm.zF); const fw = bmxWheel(); fp.add(fw); g.add(fp); ud.wheels.push({ wh: fw, piv: fp, front: true, r: R });
+    const rp = G0(); rp.position.set(0, R, Gm.zR); const rw = bmxWheel(); rp.add(rw); g.add(rp); ud.wheels.push({ wh: rw, piv: rp, front: false, r: R });
+    ud.len = 1.5; return finishVehicle(g, ud);
   }
   function driverMesh(look, cap) {
     const g = G0();
@@ -11313,7 +11343,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx');   // [bmx] in sella come sulla Vespa
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
     pg.visible = !pveh || onVespa;
-    pg.position.set(p.x, playerH + (onVespa ? .35 : 0), p.y); pg.rotation.y = Math.PI / 2 - p.face;
+    pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = Math.PI / 2 - p.face;   // [salto] p.jz: l'altezza del salto
+    { const T = bmxTilt(pveh); pg.rotation.order = 'YXZ'; pg.rotation.x = -T.a; if (T.a) { const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang); pg.position.x += ca * T.dzP; pg.position.y += T.dyP; pg.position.z += sa * T.dzP; } }   // [bmx] impennata: il ciclista ruota con la bici
     const recoil = st.kick ? Math.max(0, 1 - (st.clock - st.kick.t) * 10) * st.kick.amt * 3 : 0;
     if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim
     animPerson(pg, { anim: p.anim, speed: pveh ? 0 : p.speed, carrying: p.carrying, punch: p.punch, seated: onVespa, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, recoil, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6 });
@@ -11334,13 +11365,17 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       u.rv += ((rollT - u.roll) * (u.two ? 40 : 70) - u.rv * 8) * sd; u.roll += u.rv * sd;
       u.pv += ((pitchT - u.pitch) * 80 - u.pv * 9) * sd; u.pitch += u.pv * sd;
       u.hv += (-u.hop * 120 - u.hv * 10) * sd; u.hop += u.hv * sd;
-      g.position.set(v.x, (hF + hR) / 2 + u.hop * .12, v.y); g.rotation.y = Math.PI / 2 - v.ang; g.rotation.x = -Math.atan2(hF - hR, hl * 2) + u.pitch;
+      // [salto] la BMX sale col giocatore e in aria impenna (su) e poi abbassa il muso; all'atterraggio le gomme si schiacciano
+      const air = v.jz > 0 ? clamp((v.jvz || 0) * .05, -.18, .3) : 0; if (u.wasAir && !(v.jz > 0)) u.hv -= 6 + Math.min(10, (st.player.landV || 0) * 1.5); u.wasAir = v.jz > 0;
+      g.position.set(v.x, (hF + hR) / 2 + u.hop * .12 + (v.jz || 0), v.y); g.rotation.y = Math.PI / 2 - v.ang; g.rotation.x = -Math.atan2(hF - hR, hl * 2) + u.pitch - air;
+      { const T = bmxTilt(v); if (T.a) { g.rotation.x -= T.a; g.position.x += Math.cos(v.ang) * T.dzB; g.position.y += T.dyB; g.position.z += Math.sin(v.ang) * T.dzB; } }   // [bmx] impennata sulla ruota dietro
       g.rotation.z = u.roll;
       v.lastAng = v.ang;
       // ruote che girano e sterzano
       u.spin += (v.speed || 0) * dt; u.steer += (clamp(-(v.steer || 0) * .55, -.55, .55) - u.steer) * Math.min(1, dt * 12);
       skidTrack(v, u, g, dt);
       u.wheels.forEach(w => { w.wh.rotation.x = u.spin / w.r; if (w.front) w.piv.rotation.y = u.steer; });
+      if (u.crank) { if (v.pedal) u.crankA = (u.crankA || 0) + (v.speed || 0) * dt / (BMX_GEO.R * BMX_GEO.ratio); const th = u.crankA || 0; u.crank.rotation.x = th; u.pedals.forEach(q => q.rotation.x = -th); v.crank = th; }   // [bmx] pedivelle: girano solo quando pedali (a ruota libera stanno ferme)   // [bmx] le pedivelle girano con le ruote, i pedali restano piatti; in_bmx ci mette i piedi
       // danni progressivi
       if (v.hp < u.hpSeen - .5 && !v.wreck) {
         let hit = null; const lm = FX.lastMetal;
@@ -11410,7 +11445,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (pveh) {
       const vsp = pveh.vx !== undefined ? Math.hypot(pveh.vx, pveh.vy) : Math.abs(pveh.speed);
       const head = vsp > 3 && pveh.speed > -1 ? angLerp(pveh.ang, Math.atan2(pveh.vy, pveh.vx), .6) : pveh.ang;
-      let lead = pveh.speed < -1 ? 3 : 5 + Math.max(0, vsp) * .75;
+      let lead = pveh.speed < -1 ? 3 : G.VK[pveh.kind].pocket ? 1.5 + Math.max(0, vsp) * .35 : 5 + Math.max(0, vsp) * .75;   // [bmx] la bici è piccola: la visuale guarda meno avanti
       for (let L = 0; L <= lead; L += .5) { const x = pveh.x + Math.cos(head) * L, z = pveh.y + Math.sin(head) * L; if (G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)) === G.T.BLD) { lead = Math.max(0, L - 1.2); break; } }
       tx = pveh.x + Math.cos(head) * lead; ty = pveh.y + Math.sin(head) * lead;
       const behind = Math.atan2(-Math.cos(head), -Math.sin(head));
@@ -11457,7 +11492,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const dist = lerp(walkDist, cam.cd, ease);
     camera.fov = fov; camera.near = lerp(Math.min(8, Math.max(.6, dist * .35)), 2, ease); camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
     const ox = Math.sin(cam.yaw) * Math.cos(pitch) * dist, oy = Math.sin(pitch) * dist, oz = Math.cos(cam.yaw) * Math.cos(pitch) * dist;
-    const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(0, 1, ease);
+    cam.jz = (cam.jz || 0) + ((p.jz || 0) * .6 - (cam.jz || 0)) * Math.min(1, dt * 6);   // [salto] la visuale sale un po' col salto
+    const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(0, 1, ease) + cam.jz;
     camera.position.set(cx + ox, cy + oy, cz + oz); camera.lookAt(cx, cy, cz);
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
     if (ease < .02) {

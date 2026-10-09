@@ -73,6 +73,8 @@ var Audio8 = (function () {
       case 'pickup': tone(t, .15, 'square', 440, 880, .1); break;
       case 'hurt': tone(t, .16, 'sawtooth', 150, 90, .22); nz(t, .1, 'lowpass', 700, .3); break;
       case 'death': tone(t, .3, 'sawtooth', 120, 60, .12 * v, pan); break;
+      case 'jump': tone(t, .12, 'square', 220, 440, .1 * v, pan); break;   // [salto]
+      case 'land': tone(t, .08, 'triangle', 110, 70, .2 * v, pan); break;
     }
   }
   function update(st, R) {
