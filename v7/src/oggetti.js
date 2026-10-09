@@ -171,6 +171,7 @@ var Oggetti = (function () {
     ['ascia', 'ascia', 6, 2, 4, { tool: 150, res: 'attrezzi:.5' }],
     ['lima', 'lima', 2, .3, 4, { tool: 100, res: 'attrezzi:.2' }],
     ['trapano', 'trapano a mano', 8, 1.5, 3, { tool: 150, imp: 1, res: 'attrezzi:.5' }],
+    ['stetoscopio', 'stetoscopio', 12, .2, 1, { tool: 400 }],   // [cassaforti] si ascoltano i cilindri della combinazione
     ['taglierino', 'taglierino', 1, .1, 10, { tool: 60, imp: 1 }],
     ['forbici', 'forbici', 2, .2, 8, { tool: 150 }],
     ['cazzuola', 'cazzuola', 2, .5, 4, { tool: 200 }],
@@ -299,6 +300,7 @@ var Oggetti = (function () {
     ['mitra', 'mitra', 120, 3.5, 0, { ill: 1, wpn: 'mitra' }],
     ['munizioni', 'scatola di munizioni', 6, .5, 0, { ill: 1 }],
     ['molotov', 'molotov', 0, 1, 0, { ill: 1, wpn: 'molotov' }],
+    ['candelotto', 'candelotto di dinamite', 30, .3, 0, { ill: 1 }],   // [cassaforti] della cava: apre una cassaforte, e lo sentono tutti
     ['triboli', 'triboli (chiodi a tre punte)', 0, 1, 0, { ill: 1 }],
     ['kit', 'kit di sabotaggio', 0, 2, 0, { ill: 1, res: 'kit:1' }],
     ['manette', 'manette', 0, .4, 0, {}],
@@ -744,7 +746,7 @@ var Oggetti = (function () {
     ['officina', ['olio_motore', 'batteria_auto', 'pneumatico', 'ricambi', 'tanica_vuota', 'chiave_inglese', 'piede', 'bomboletta', 'vernice', 'cavo', 'nastro', 'guanti']],
     ['benzina', ['benzina', 'gasolio', 'olio_motore', 'tanica_vuota']],
     ['video', ['radiolina', 'telefono', 'fotocamera', 'rullino', 'cassetta', 'pile', 'valvole', 'transistor', 'cavo_coax', 'altoparlante', 'saldatore', 'stagno', 'ingranditore']],
-    ['use:farmacia', ['medicine', 'antibiotici', 'garze', 'bende', 'cerotti', 'disinfettante', 'siringhe', 'alcol', 'sapone', 'spugne', 'dentifricio']],
+    ['use:farmacia', ['stetoscopio', 'medicine', 'antibiotici', 'garze', 'bende', 'cerotti', 'disinfettante', 'siringhe', 'alcol', 'sapone', 'spugne', 'dentifricio']],
     ['use:fabbro', ['coltello', 'pala', 'piede', 'ascia', 'piccone', 'chiodi', 'cerniere', 'catena', 'tubo_stufa', 'stufa', 'ferro']],
     ['use:falegnameria', ['assi', 'travi', 'casse', 'sedia', 'tavolo', 'branda', 'scaffale', 'mobili', 'carriola', 'compensato']],
     ['use:sartoria', ['stoffa', 'lana', 'bottoni', 'ago_filo', 'ferri_maglia', 'vestiti', 'cappotto', 'coperta', 'lenzuola', 'sacchi']],
@@ -761,7 +763,7 @@ var Oggetti = (function () {
     ['disco', ['birra', 'whisky', 'aranciata', 'sigarette']], ['gelateria', ['gelato', 'latte', 'biscotti', 'pane', 'aranciata']], ['chiosco', ['pane', 'panino', 'birra', 'acqua', 'aranciata', 'gelato']],
     ['piazza', ['verdura', 'frutta', 'patate', 'pomodori', 'cipolle', 'pesce', 'sarde', 'formaggio', 'uova', 'olio', 'carne', 'salame', 'miele', 'lana', 'legna', 'vestiti']],
     ['cantiere', ['cemento', 'sabbia', 'ghiaia', 'mattoni', 'lamiera', 'tondino', 'travi', 'rete', 'filo_spinato', 'tubi', 'cazzuola', 'secchio', 'carriola', 'sacchi', 'rottami']],
-    ['magazzino', ['zaino', 'benzina', 'sigarette_contr', 'whisky', 'carne_scatola', 'caffe', 'cioccolato', 'telefono', 'fotocamera', 'radiolina', 'antibiotici', 'morfina', 'munizioni', 'grimaldello', 'stoffa_grigia', 'valuta', 'merce', 'ciclostile', 'bombola', 'batteria_auto']],
+    ['magazzino', ['zaino', 'benzina', 'sigarette_contr', 'whisky', 'carne_scatola', 'caffe', 'cioccolato', 'telefono', 'fotocamera', 'radiolina', 'antibiotici', 'morfina', 'munizioni', 'grimaldello', 'candelotto', 'stetoscopio', 'stoffa_grigia', 'valuta', 'merce', 'ciclostile', 'bombola', 'batteria_auto']],
     ['molo', ['pesce', 'sarde', 'polpo', 'acciughe']],
     ['beduini', ['te_foglie', 'spezie', 'sale', 'lana', 'pelle', 'fichi_secchi', 'miele', 'acqua', 'tanica_acqua', 'tenda', 'coltello', 'bussola', 'binocolo', 'mappa', 'carne', 'formaggio']],
     ['villaggio', ['legna', 'castagne', 'funghi', 'miele', 'lana', 'formaggio', 'ricotta', 'pane_nero', 'noci', 'grappa', 'uova', 'carbonella', 'passamontagna', 'maglione']],
@@ -935,7 +937,7 @@ var Oggetti = (function () {
   function nearFurn(st, r) {
     const p = p_(st); if (!p.indoor) return [];
     const b = G.BUILDINGS[p.indoor.b], Lx = INT.layout(b), F = Lx.floors[p.indoor.f]; if (!F) return [];
-    return F.furn.map((o, i) => ({ o, i, d: dist(o.x, o.y, p.x, p.y), room: (INT.roomAt ? (INT.roomAt(Lx, p.indoor.f, o.x, o.y) || {}).name : null) })).filter(x => x.d < (r || 2.4)).sort((a, c) => a.d - c.d);
+    return F.furn.map((o, i) => ({ o, i, d: o.taken ? 1e9 : dist(o.x, o.y, p.x, p.y), room: (INT.roomAt ? (INT.roomAt(Lx, p.indoor.f, o.x, o.y) || {}).name : null) })).filter(x => x.d < (r || 2.4)).sort((a, c) => a.d - c.d);
   }
   // le postazioni a portata: mobili dell'interno, moduli e oggetti della base, la fontana, il fornello che hai nello zaino
   function stationsHere(st, src) {
@@ -1182,7 +1184,7 @@ var Oggetti = (function () {
   // il bottino ha un valore: comune, buono, raro, prezioso (la roba che scotta vale un gradino di più)
   const TIERS = ['comune', 'buono', 'raro', 'prezioso'];
   function tier(id) { const c = CAT[id]; if (!c) return 'comune'; let t = c.prezzo < 3 ? 0 : c.prezzo < 10 ? 1 : c.prezzo < 25 ? 2 : 3; if (c.ill) t = Math.min(3, t + 1); return TIERS[t]; }
-  const LOCKED = { st_cassaforte: 'trapano', st_rastrelliera: 'grimaldello|piede', 'ar_cash-register': 'grimaldello|piede' };
+  const LOCKED = { st_cassaforte: 'stetoscopio|trapano|candelotto', st_rastrelliera: 'grimaldello|piede', 'ar_cash-register': 'grimaldello|piede' };
   // i mobili più comuni nelle case (quelli che ci sono adesso negli interni): anche lì si trova qualcosa
   Object.assign(LOOT, {
     loungeSofa: [['$mat', .5, .02, .06], ['accendino', .15, 1, 1], ['sigarette', .1, 1, 1], ['carte', .1, 1, 1], ['penne', .1, 1, 1]],
@@ -1219,6 +1221,7 @@ var Oggetti = (function () {
       if (old && old.items) Object.entries(old.items).forEach(([k, v]) => { if (k[0] !== '$') C.items[k] = Math.min(6, (C.items[k] || 0) + v); });
     }
     C.label = furnName(x.o.id, x.room);
+    if (x.o.id === 'st_cassaforte' && typeof Cassaforti !== 'undefined') Cassaforti.fill(st, C);   // [cassaforti]
     return C;
   }
   const FNAME = { kitchenCabinet: 'credenza', kitchenCabinetDrawer: 'cassetti della cucina', kitchenFridge: 'frigorifero', bookcaseClosedWide: 'armadio', sideTable: 'comodino', desk: 'scrivania', bathroomSink: 'mobiletto del bagno', washer: 'lavatrice',
@@ -1239,6 +1242,7 @@ var Oggetti = (function () {
       if (k === '$shop') { const Sh = shopOfB(st, C.bi); if (!Sh) return; Object.keys(Sh.sells).filter(g => (Sh.stock[g] || 0) >= 1 && CAT[g]).slice(0, 8).forEach(g => push({ id: g, nome: nm(g), q: Math.floor(Math.min(Sh.stock[g], 3 + v)), src: 'shop', peso: CAT[g].peso })); return; }
       if (k === '$') { if (C.fid === 'ar_cash-register') { const Sh = shopOfB(st, C.bi), T = Sh && So ? So.till(st, So.ditta(st, Sh.t)) : null; const x = T ? Math.floor(Math.max(0, T.cash || 0)) : 0; if (x > 0) push({ id: '$', nome: `contanti (${L(x)})`, q: x, src: 'till' }); return; } if (v > 0) push({ id: '$', nome: `contanti (${L(v)})`, q: v, src: 'cash' }); return; }
       if (k === '$mat') { const x = Math.floor(residents(st, C.bi).reduce((s, n) => s + (n.pop.mat || 0), 0) * Math.min(1, v)); if (x > 0) push({ id: '$', nome: `soldi nascosti (${L(x)})`, q: x, src: 'mat', pct: v }); return; }
+      if (k === '$safe') { const x = typeof Cassaforti !== 'undefined' ? Math.floor(Cassaforti.safeCash(st, C.bi)) : 0; if (x > 0) push({ id: '$', nome: `l'incasso nella cassaforte (${L(x)})`, q: x, src: 'safe' }); return; }   // [cassaforti]
       if (k === '$bank') { if (!So || !st.soldi) return; const x = Math.floor(Math.min(st.soldi.banca.vault * .25, 900)); if (x > 0) push({ id: '$', nome: `mazzette del caveau (${L(x)})`, q: x, src: 'bank' }); return; }
       if (v >= 1) push({ id: k, nome: nm(k), q: Math.floor(v), src: 'c', peso: CAT[k] ? CAT[k].peso : .5 });
     });
@@ -1272,6 +1276,7 @@ var Oggetti = (function () {
   function seenOutside(st, what, place) { const ev = G.emit(st, 'furto', { shop: place || what }); return ev; }
   function openC(st, C) {
     if (!C.locked) return R_(true, '');
+    if (C.fid === 'st_cassaforte' && typeof Cassaforti !== 'undefined') { const r = Cassaforti.open(st, C); if (r) return R_(r.ok, r.msg, r.x); }   // [cassaforti] combinazione, stetoscopio, dinamite
     const need = C.need || LOCKED[C.fid], P = pools(st); st0 = st; const pl = plan(P, { in: {}, tools: [need] });
     if (pl.miss.length) return R_(false, `È chiuso a chiave. Serve: ${alts(need).map(nm).join(' o ')}.`);
     const tool = pl.tools[0], mins = tool === 'trapano' ? 45 : tool === 'grimaldello' ? 15 : 5, noise = tool === 'piede' ? .5 : tool === 'trapano' ? .35 : .08;
@@ -1300,6 +1305,7 @@ var Oggetti = (function () {
       if (it.src === 'till') { const Sh = shopOfB(st, C.bi), T = So.till(st, So.ditta(st, Sh.t)); T.cash -= q; }
       else if (it.src === 'mat') { let left = q; residents(st, C.bi).forEach(n => { const k = Math.min(left, n.pop.mat || 0); n.pop.mat -= k; left -= k; if (k > 0) I.note(st, n, 'i soldi nascosti in casa sono spariti', 'bad', { w: .9, tag: 'furto' }); }); q -= left; delete C.items.$mat; }
       else if (it.src === 'bank') { st.soldi.banca.vault -= q; st.soldi.banca.equity -= q; }
+      else if (it.src === 'safe') { Cassaforti.takeSafe(st, C.bi, q); }   // [cassaforti]
       else { delete C.items.$; if (So && st.soldi) st.soldi.fuori -= q; /* soldi di nessuno: entrano nei conti dal continente */ }
       p.money += q; M.stats.rubato += q; found(it.tier);
       const who = C.kind === 'furn' ? caught(st, C.bi, .1, 'soldi') : null; return R_(true, `Intaschi ${L(q)}.${who ? ` ${who.first} ti ha visto!` : ''}`);
@@ -1734,8 +1740,8 @@ var Oggetti = (function () {
       case 'deposita': { const B = nearBase(st); if (!B) return R_(false, 'Qui non c\'è una base.'); const b = inv(st), list = arg === '*' ? Object.keys(b).filter(x => !CAT[x] || !CAT[x].tool) : [arg]; let n0 = 0; list.forEach(g => { const q = arg === '*' ? cnt(b, g) : Math.min(ex.q || 1, cnt(b, g)); if (q > 0) { sub(b, g, q); add(B.stock, g, q); n0 += q; } }); return R_(!!n0, n0 ? `Lasciati ${n0} oggetti in ${B.name}.` : 'Non hai niente da lasciare.'); }
       case 'preleva': { const B = nearBase(st); if (!B) return R_(false, 'Qui non c\'è una base.'); const q = Math.min(ex.q || 1, cnt(B.stock, arg)); if (!q) return R_(false, 'In base non c\'è.'); sub(B.stock, arg, q); const left = givePlayer(st, arg, q); if (left) add(B.stock, arg, left); return R_(q > left, q > left ? `Prendi ${nm(arg)}${q - left > 1 ? ' ×' + (q - left) : ''}.` : 'Non ti sta addosso.'); }
       case 'apri': { const C = contByRef(st, arg); if (!C) return R_(false, 'Non c\'è niente da frugare qui.'); return openC(st, C); }
-      case 'prendi': { const C = contByRef(st, arg); if (!C) return R_(false, 'Non c\'è niente da frugare qui.'); if (C.locked) return R_(false, 'È chiuso.'); return takeFrom(st, C, ex.g, ex.q); }
-      case 'prendi_tutto': { const C = contByRef(st, arg); if (!C || C.locked) return R_(false, 'Non si può.'); const msgs = []; for (const v of contView(st, C).filter(v => v.src !== 'shop' || ex.shop)) { const r = takeFrom(st, C, v.id, v.q); if (r.ok) msgs.push(r.msg); if (/ti ha visto/.test(r.msg)) break; } return R_(!!msgs.length, msgs.join(' ') || 'Non ti sta più niente addosso.'); }
+      case 'prendi': { const C = contByRef(st, arg); if (!C) return R_(false, 'Non c\'è niente da frugare qui.'); if (C.locked) return R_(false, 'È chiuso.'); const r0 = takeFrom(st, C, ex.g, ex.q); pickGone(st, C); return r0; }
+      case 'prendi_tutto': { const C = contByRef(st, arg); if (!C || C.locked) return R_(false, 'Non si può.'); const msgs = []; for (const v of contView(st, C).filter(v => v.src !== 'shop' || ex.shop)) { const r = takeFrom(st, C, v.id, v.q); if (r.ok) msgs.push(r.msg); if (/ti ha visto/.test(r.msg)) break; } pickGone(st, C); return R_(!!msgs.length, msgs.join(' ') || 'Non ti sta più niente addosso.'); }
       case 'posa': { const C = contByRef(st, arg); if (!C) return R_(false, 'Non qui.'); return putInto(st, C, ex.g, ex.q); }
       case 'scambia': return barter(st, arg, ex);
       case 'cerca': return search(st);
@@ -1744,6 +1750,14 @@ var Oggetti = (function () {
     }
   }
   const R_ = (ok, msg, x) => Object.assign({ ok, msg: msg || '' }, x || {});
+  // [roba] la roba che si porta via (un'arma per terra, le sigarette sul tavolo, gli snack): presa tutta, sparisce dalla stanza
+  const PICK = /^(ia_pistola|ia_lupara|ia_mitra|ia_coltello|ia_lupara_muro|ia_sigarette|ia_birre|ia_vodka|ia_bottiglia_vino|ia_barattoli|ia_vasetti|nx_)/;
+  function pickGone(st, C) {
+    if (!C || C.kind !== 'furn' || !PICK.test(C.fid || '') || contView(st, C).length) return;
+    const m = /^b(\d+):(\d+):(\d+)$/.exec(C.key || ''); if (!m) return;
+    const F = INT.layout(G.BUILDINGS[+m[1]]).floors[+m[2]], o = F && F.furn[+m[3]]; if (!o || o.taken) return; o.taken = true;
+    if (typeof window !== 'undefined' && window.__pv && window.__pv.R && window.__pv.R.__ed) window.__pv.R.__ed.rebuildIndoor();
+  }
   const openUI = (panel, arg) => { if (typeof OggettiUI !== 'undefined') OggettiUI.open(panel, arg); };
   (function hookUI() {
     const h0 = RS.here, a0 = RS.playerAct;
@@ -1810,7 +1824,7 @@ var Oggetti = (function () {
     return { stats: M.stats, vuoti: empty.length, esempiVuoti: empty.slice(0, 12), laboratori: work, mancanze: E.missing };
   }
   return { CAT, GROUPS, RECIPES, STATIONS, FURN2ST, SHOPLIST, LOOT, ROOM_LOOT, SPOT_LOOT, BUILD, JOBPROD, S, nm, inv, givePlayer, weightOf, capacity, stationsHere, containersHere, recipesView, craft, consume,
-    luoghi, luogoHere, staffIndoor, clerk, isOpen, search, pickpocket, scatterInit, lootables, TIERS, tier,
+    luoghi, luogoHere, staffIndoor, clerk, isOpen, caught, passTime, wearTools, pools, search, pickpocket, scatterInit, lootables, TIERS, tier,
     counter, buy, sell, barterView, barter, frugaView, contByRef, pocketsView, here, act, report, produceHour, supply, householdDay, prime };
 })();
 if (typeof module !== 'undefined') module.exports = Oggetti;

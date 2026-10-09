@@ -60,3 +60,8 @@ Una tavola, sei posti dove usarla e una fisica pensata per sentire la tavola sot
 - Il cordolo dei marciapiedi è disegnato con una curva liscia, mentre la logica ragiona a caselle da 2 m: per ora non è grindabile.
 - I ragazzi dello skate non si possono cliccare né parlano: un `OGG` `spot_skate` in `popolo.js` (interesse sport) li farebbe diventare abitanti veri.
 - Nessun suono dedicato: si usano `legno`, `palo` e `thud`. Un rotolio continuo di ruote sarebbe da fare in `audio.js`.
+
+## Leggerezza (9 ottobre, sera)
+- La fisica lavora solo quando sei in tavola e guarda solo i pezzi della cella di 8 m dove ti trovi (`GRID`): su tutta la mappa costa poco.
+- La grafica: ogni posto è un gruppo suo con i pezzi **fusi in una mesh per materiale** (`mergeByMat`), e si disegna solo quando la camera è entro circa 75 m (di più con lo zoom largo). Tettoia, tavola appoggiata e cerchio giallo restano a parte perché si animano.
+- Aperto: le piante del bosco (istanziate da `natura_kit.js`) spuntano dentro la vasca; vanno tolte dall'area del posto quando si piantano.

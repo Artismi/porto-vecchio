@@ -67,7 +67,7 @@ var Models = (function () {
 
   // mobili (Kenney Furniture Kit): scala unica ×2, il davanti verso +z
   const FURN = {}, FWAIT = {};
-  const FSCALE = n => /^ar_/.test(n) ? 2.5 : /^fd_barrel/.test(n) ? 1.1 : /^fd_/.test(n) ? .6 : n === 'rc_seat' ? 2.8 : n === 'rc_screen' ? 1.5 : n === 'rc_cinecamera' ? 1 : n === 'rc_glove' ? .5 : 2;
+  const FSCALE = n => /^nx_/.test(n) ? 1 : /^ar_/.test(n) ? 2.5 : /^fd_barrel/.test(n) ? 1.1 : /^fd_/.test(n) ? .6 : n === 'rc_seat' ? 2.8 : n === 'rc_screen' ? 1.5 : n === 'rc_cinecamera' ? 1 : n === 'rc_glove' ? .5 : 2;
   // mobili fatti a mano (banchi da lavoro e di vendita, officina): il davanti verso +z, la schiena al muro
   const PM = {}; const pmat = c => PM[c] || (PM[c] = new THREE.MeshStandardMaterial({ color: c, roughness: .85, metalness: .05 }));
   function procFurn(name) {
