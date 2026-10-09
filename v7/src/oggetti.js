@@ -1751,7 +1751,7 @@ var Oggetti = (function () {
   }
   const R_ = (ok, msg, x) => Object.assign({ ok, msg: msg || '' }, x || {});
   // [roba] la roba che si porta via (un'arma per terra, le sigarette sul tavolo, gli snack): presa tutta, sparisce dalla stanza
-  const PICK = /^(ia_pistola|ia_lupara|ia_mitra|ia_coltello|ia_lupara_muro|ia_sigarette|ia_birre|ia_vodka|ia_bottiglia_vino|ia_barattoli|ia_vasetti|nx_)/;
+  const PICK0 = /^(ia_pistola|ia_lupara|ia_mitra|ia_coltello|ia_lupara_muro|ia_sigarette|ia_birre|ia_vodka|ia_bottiglia_vino|ia_barattoli|ia_vasetti|nx_)/, PICK = { test: id => PICK0.test(id) || !!(INT.PICK && INT.PICK[id]) };   // [design] più la roba piccola di interiors.js
   function pickGone(st, C) {
     if (!C || C.kind !== 'furn' || !PICK.test(C.fid || '') || contView(st, C).length) return;
     const m = /^b(\d+):(\d+):(\d+)$/.exec(C.key || ''); if (!m) return;
