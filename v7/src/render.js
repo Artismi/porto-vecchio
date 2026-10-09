@@ -8060,7 +8060,7 @@ var Render = (function () {
             float ink = max(max(max(max(max(thin, sil), thick), crease * .55), form) * (1. - thinObj * .6) * (1. - vegK * .88), max(shapeI * .85, brick)) * (1.-coc) * (1. - busyK) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
             vec3 inkC = vec3(.19, .085, .2) + c * .06;   // inchiostro prugna: viola scuro e caldo, lega col colore (riferimento isometrico di Andrea)
             c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); }
-          { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)); } c *= 1. - ao/8.*.42*(1.-coc*.7)*aoK; }
+          { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)) * (1. - smoothstep(.4 + d*.004, 1.2 + d*.012, d-dn)); }   /* [aloni1] solo a contatto: un oggetto sospeso (cartelli, insegne, tettoie) non lascia una cornice grigia sul fondo */ c *= 1. - ao/8.*.42*(1.-coc*.7)*aoK; }
           {   // [amb3] inchiostro e profili: il volume si stacca dal fondo
             float la = dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, vec3(.3,.59,.11)), lb = dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, vec3(.3,.59,.11));
             float lc2 = dot(texture2D(tC, uv + vec2(0., px.y)).rgb, vec3(.3,.59,.11)), ld = dot(texture2D(tC, uv - vec2(0., px.y)).rgb, vec3(.3,.59,.11)), l0 = dot(c, vec3(.3,.59,.11));
