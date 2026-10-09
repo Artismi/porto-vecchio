@@ -186,6 +186,7 @@ var Popolo = (function () {
     poligono:    { label: 'il poligono di tiro', where: ['use:armeria'], act: 'svago', h: [14, 21], perH: { svago: -.12, rabbia: -.16, paura: -.04 }, cost: 3, int: 'caccia', needs: P => P.age >= 18 },
     vetrina_armi:{ label: 'la vetrina dell\'armeria', where: ['use:armeria'], act: 'svago', h: [8, 19], once: { svago: -.08 }, int: 'caccia', needs: P => P.age >= 16 },
     abiti:       { label: 'gli abiti nuovi', where: ['use:abbigliamento', 'use:sartoria'], act: 'svago', h: [9, 19], once: { svago: -.18, compagnia: -.04 }, cost: 4, int: 'eleganza' },
+    sportello:   { label: 'lo sportello del Banco', where: ['use:banca'], act: 'spesa', h: [8.5, 16], once: { compagnia: -.03 }, needs: P => (P.money || 0) < 15 && P.age >= 18 },   // [banca] in fila allo sportello
     auto:        { label: 'le auto in vendita', where: ['use:autorimessa'], act: 'svago', h: [8, 19], once: { svago: -.12 }, int: 'motori' },
     foto:        { label: 'la macchina fotografica', where: ['lungomare', 'belvedere', 'piazza', 'molo', 'punta'], act: 'svago', h: [8, 19], perH: { svago: -.12 }, int: 'foto', needs: P => P.owns && P.owns.fotocamera },
   };
@@ -194,7 +195,7 @@ var Popolo = (function () {
     libri: 'in biblioteca a leggere', album: 'a disegnare', flipper: 'al Flipper', pista: 'a ballare alla Luna', cinema: 'al cinema', pallone: 'a giocare a pallone', palestra: 'in palestra', motori: 'ad armeggiare in officina',
     orto: 'all\'orto', foto: 'a fare foto', barbiere: 'dal barbiere', fontana: 'alla fontana', tavola: 'a mangiare fuori', panino: 'a mangiare un panino', bottega: 'a fare la spesa', bancarelle: 'al mercato',
     biliardo: 'a giocare a biliardo', freccette: 'a tirare le freccette', jukebox: 'a sentire un disco al jukebox', spina: 'a bere una birra alla Birreria', poligono: 'al poligono a sparare',
-    vetrina_armi: 'a guardare le armi in vetrina', abiti: 'a provarsi un vestito', auto: 'a guardare le auto in vendita' };
+    vetrina_armi: 'a guardare le armi in vetrina', sportello: 'in fila al Banco', abiti: 'a provarsi un vestito', auto: 'a guardare le auto in vendita' };
   const NEEDS = ['fame', 'sonno', 'igiene', 'compagnia', 'svago', 'rabbia', 'paura', 'soldi'];
 
   // ---------------- INTERESSI ----------------
@@ -1859,7 +1860,8 @@ var Popolo = (function () {
     if (b.act === 'pranzo' || (atHome && ((m > 12 * 60 && m < 14 * 60 + 30) || (m > 19 * 60 + 30 && m < 21 * 60 + 30)))) return { want: 'table', pose: 'tavola' };
     if (b.obj === 'cucina' || (atHome && b.label === 'si prepara')) return { want: 'stove', pose: 'lavora' };
     // [attività] gli oggetti nuovi hanno il loro posto (i punti dei gruppi: intorno al biliardo, alla linea di tiro…)
-    const SPOT_OBJ = { biliardo: ['biliardo', 'biliardo'], freccette: ['freccette', 'freccette'], jukebox: ['jukebox', 'merce'], poligono: ['tiro', 'mira'], vetrina_armi: ['guarda', 'osserva'], abiti: ['guarda|prova', 'merce'], auto: ['auto', 'osserva'], spina: ['bevi', 'bancone'] };
+    const SPOT_OBJ = { biliardo: ['biliardo', 'biliardo'], freccette: ['freccette', 'freccette'], jukebox: ['jukebox', 'merce'], poligono: ['tiro', 'mira'], vetrina_armi: ['guarda', 'osserva'], abiti: ['guarda|prova', 'merce'], auto: ['auto', 'osserva'], spina: ['bevi', 'bancone'], sportello: ['cliente|fila', 'aspetta'] };
+    if (b.obj === 'motori' && b.tgt && b.tgt.k === 'b' && G.BUILDINGS[b.tgt.bi] && G.BUILDINGS[b.tgt.bi].use === 'autorimessa') return { want: 'spot', spot: 'meccanico|auto', pose: 'lavora', alt: 'free' };
     if (SPOT_OBJ[b.obj]) return { want: 'spot', spot: SPOT_OBJ[b.obj][0], pose: SPOT_OBJ[b.obj][1], alt: b.obj === 'spina' ? 'counter' : 'free' };
     // al bar non si sta tutti al bancone: chi ha voglia gioca a biliardo, alle freccette, a carte, mette un disco
     if (b.obj === 'bancone' && !atHome) {
@@ -1910,8 +1912,9 @@ var Popolo = (function () {
       if (s) { spot = { x: s.x, y: s.y, face: s.face }; pose = s.post === 'banco' ? 'merce' : 'lavora'; }
     }
     if (spot && u.want === 'work' && pose === 'merce') { const sb = (F.spots || []).filter(s => s.k === 'banco').sort((a, c) => Math.hypot(a.x - spot.x, a.y - spot.y) - Math.hypot(c.x - spot.x, c.y - spot.y))[0]; if (sb && Math.hypot(sb.x - spot.x, sb.y - spot.y) < 2.5) { spot = { x: sb.x, y: sb.y, face: sb.face }; } }   // [attività] dietro il banco, verso i clienti
+    if (!spot && u.want === 'work' && /guardia giurata|buttafuori/.test((P.job && P.job.title) || '')) { const s = spotK('guardia'); if (s) { spot = s; pose = null; } }   // [banca] la guardia accanto alla porta
     if (!spot && u.want === 'work') { const jt = (P.job && P.job.title) || '', mec = /meccanic/.test(jt), s = mec || /commess|cassier|barist|barman|camerier|oste|armaiol|venditor|tabacc|farmacist|istruttore di tiro/.test(jt) ? spotK(mec ? 'meccanico' : /istruttore di tiro/.test(jt) ? 'tiro|banco' : 'banco') : null; if (s) { spot = s; pose = mec ? 'lavora' : 'merce'; } }
-    if (!spot && u.want === 'spot') { const s = spotK(u.spot); if (s) { spot = s; if (u.spot === 'guarda|prova' && s.k === 'prova') pose = 'prova'; } else u.want = u.alt || 'free'; }
+    if (!spot && u.want === 'spot') { const s = spotK(u.spot); if (s) { spot = s; if (u.spot === 'guarda|prova' && s.k === 'prova') pose = 'prova'; if (s.k === 'auto' && pose === 'lavora') pose = 'osserva'; } else { u.want = u.alt || 'free'; pose = u.want === 'counter' ? 'bancone' : u.want === 'table' ? pose : null; } }
     if (!spot && u.want === 'counter') { const s = spotK('bevi'); if (s) spot = s; }
     if (!spot && u.want === 'work') {
       const o = furn(COUNTERS) || furn(/^(pv_banco_lavoro|ia_scrivania_grande|ia_macchina_scrivere|desk)$|^st_/) || furn(STOVES);

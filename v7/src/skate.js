@@ -604,14 +604,30 @@ var Skate = (function () {
     [-.2, .2].forEach(u => { inner.add(box(.05, .04, .2, truck, u, .055, 0)); [-.11, .11].forEach(v => { const w = new THREE.Mesh(new THREE.CylinderGeometry(.033, .033, .035, 10), wheel); w.rotation.x = PI / 2; w.position.set(u, .033, v); inner.add(w); }); });
     g.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.userData.inner = inner; return g;
   }
+  // fonde le mesh ferme di un gruppo in una per materiale (stesso aspetto, molte meno chiamate di disegno)
+  function mergeByMat(src) {
+    src.updateMatrixWorld(true); const by = new Map(), out = new THREE.Group();
+    src.traverse(o => { if (!o.isMesh) return; if (!by.has(o.material)) by.set(o.material, []); by.get(o.material).push(o); });
+    by.forEach((list, m) => {
+      const parts = list.map(o => { let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(o.matrixWorld); return g; });
+      const names = Object.keys(parts[0].attributes).filter(n => parts.every(g => g.attributes[n] && g.attributes[n].itemSize === parts[0].attributes[n].itemSize));
+      const geo = new THREE.BufferGeometry();
+      names.forEach(n => { const k = parts[0].attributes[n].itemSize, arr = new Float32Array(parts.reduce((a, g) => a + g.attributes[n].count * k, 0)); let off = 0; parts.forEach(g => { arr.set(g.attributes[n].array, off); off += g.attributes[n].array.length; }); geo.setAttribute(n, new THREE.BufferAttribute(arr, k)); });
+      if (!geo.attributes.normal) geo.computeVertexNormals(); geo.computeBoundingSphere();
+      const mesh = new THREE.Mesh(geo, m); mesh.castShadow = list.some(o => o.castShadow); mesh.receiveShadow = true; out.add(mesh);
+      parts.forEach(g => g.dispose());
+    });
+    return out;
+  }
   function build(R) {
     const scene = R.__models.scene; GFX.group = new THREE.Group(); scene.add(GFX.group);
-    PIECES.forEach((P, i) => { const m = pieceMesh(P, i + 3); m.position.set(P.x, R.groundH(P.x, P.y) - .02, P.y); m.rotation.y = -P.ang; GFX.group.add(m); });
+    // ogni posto è un gruppo suo: i pezzi fusi per materiale, e si disegna solo quando la camera è vicina
+    PLACED.forEach(sp => { const raw = new THREE.Group(); sp.pieces.forEach(P => { const m = pieceMesh(P, PIECES.indexOf(P) + 3); m.position.set(P.x, R.groundH(P.x, P.y) - .02, P.y); m.rotation.y = -P.ang; raw.add(m); }); sp.__g = mergeByMat(raw); GFX.group.add(sp.__g); });
     PLACED.forEach((sp, i) => {
-      if (sp.roof) { const r = roofMesh(sp); r.position.set(sp.x, R.groundH(sp.x, sp.y), sp.y); r.rotation.y = -sp.ang; GFX.group.add(r); sp.__roof = r; }
-      const b = boardMesh(i); b.position.set(sp.board.x, R.groundH(sp.board.x, sp.board.y), sp.board.y); b.userData.inner.rotation.z = 1.25; b.userData.inner.position.y = .3; b.rotation.y = i; GFX.group.add(b); sp.__board = b;
+      if (sp.roof) { const r = roofMesh(sp); r.position.set(sp.x, R.groundH(sp.x, sp.y), sp.y); r.rotation.y = -sp.ang; sp.__g.add(r); sp.__roof = r; }
+      const b = boardMesh(i); b.position.set(sp.board.x, R.groundH(sp.board.x, sp.board.y), sp.board.y); b.userData.inner.rotation.z = 1.25; b.userData.inner.position.y = .3; b.rotation.y = i; sp.__g.add(b); sp.__board = b;
       // il segnale: un cerchio giallo a terra, come i raccoglibili
-      const ring = new THREE.Mesh(new THREE.RingGeometry(.45, .58, 20), new THREE.MeshBasicMaterial({ color: '#ffd23a', transparent: true, opacity: .55, depthWrite: false })); ring.rotation.x = -PI / 2; ring.position.set(sp.board.x, R.groundH(sp.board.x, sp.board.y) + .04, sp.board.y); GFX.group.add(ring); sp.__ring = ring;
+      const ring = new THREE.Mesh(new THREE.RingGeometry(.45, .58, 20), new THREE.MeshBasicMaterial({ color: '#ffd23a', transparent: true, opacity: .55, depthWrite: false })); ring.rotation.x = -PI / 2; ring.position.set(sp.board.x, R.groundH(sp.board.x, sp.board.y) + .04, sp.board.y); sp.__g.add(ring); sp.__ring = ring;
     });
     GFX.board = boardMesh(1); GFX.board.visible = false; scene.add(GFX.board);
     clearProps(R);
@@ -686,7 +702,8 @@ var Skate = (function () {
         if (!GFX.built) { build(R); crewInit(R); }
         const now = performance.now() / 1000, dt = Math.min(.1, now - (frame.t || now)); frame.t = now;
         crewFrame(st, R, dt); hud(st);
-        PLACED.forEach(sp => { const has = S(st).owned; if (sp.__board) sp.__board.visible = !has; if (sp.__ring) { sp.__ring.visible = !has; sp.__ring.material.opacity = .35 + .25 * Math.sin(now * 3); } if (sp.__roof) { const u = sp.__roof.userData; u.lamp.intensity = G.isNight(st) || G.hour(st) < 8 || G.hour(st) >= 17 ? 1.1 : 0;
+        const cam = R.cam || {}, cx = cam.x !== undefined ? cam.x : st.player.x, cy = cam.y !== undefined ? cam.y : st.player.y, far = 75 * Math.max(1, (window.__pv.ui && window.__pv.ui.zoom) || 1);
+        PLACED.forEach(sp => { if (sp.__g) { sp.__g.visible = hyp(cx - sp.x, cy - sp.y) < far + sp.r; if (!sp.__g.visible) return; } const has = S(st).owned; if (sp.__board) sp.__board.visible = !has; if (sp.__ring) { sp.__ring.visible = !has; sp.__ring.material.opacity = .35 + .25 * Math.sin(now * 3); } if (sp.__roof) { const u = sp.__roof.userData; u.lamp.intensity = G.isNight(st) || G.hour(st) < 8 || G.hour(st) >= 17 ? 1.1 : 0;
           // la tettoia sparisce quando ci sei sotto o vicino, come gli edifici: dall'alto si vedono le rampe
           const p = st.player, inR = hyp(p.x - sp.x, p.y - sp.y) < sp.r + 7, to = inR ? 0 : 1; u.op += (to - u.op) * Math.min(1, dt * 5);
           sp.__roof.visible = u.op > .03; u.mats.forEach(m => { m.transparent = u.op < .98; m.opacity = u.op; m.depthWrite = u.op >= .98; }); } });
