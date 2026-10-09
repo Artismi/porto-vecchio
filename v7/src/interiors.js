@@ -138,6 +138,7 @@ var Interior = (function () {
       case 'barbiere': case 'tabacchi': case 'farmacia': case 'lavanderia': case 'sartoria': case 'ferramenta':
         return f === 0 ? { names: [kind, kind === 'sartoria' ? 'prova' : 'retro', 'magazzino', 'bagno'], mood: kind } : up();
       case 'panetteria': return f === 0 ? { names: ['panetteria', 'forno', 'magazzino', 'bagno'], mood: kind } : up();
+      case 'supermercato': return f === 0 ? { names: ['supermercato', 'supermercato', 'magazzino', 'bagno'], mood: 'supermercato' } : { names: ['magazzino', 'ufficio', 'bagno'], mood: 'supermercato' };   // [ordine]
       case 'pescheria': return f === 0 ? { names: ['pescheria', 'cella_frigo', 'retro', 'bagno'], mood: kind } : up();
       case 'bottega': return f === 0 ? { names: ['bottega', 'retro', 'magazzino', 'bagno'], mood: 'bottega' } : up();
       default: return f === 0 ? { names: ['bottega', 'retro', 'magazzino', 'bagno'], mood: kind } : up();   // [soldi] le botteghe nuove (Emporio, macelleria, fabbro…)
@@ -384,8 +385,14 @@ var Interior = (function () {
     forno: ['cotto', 'calce|mattoni', 'fuoco', ['!st_forno', 'pv_banco_lavoro', 'kitchenStove', 'table', 'fd_bread', 'kitchenCabinet', 'cardboardBoxClosed', 'ia_sacchi', '~ia_sacchi', '~ia_legna', '^ia_mensola']],
     pescheria: ['piastrelle', 'piastrelle', 'neon', ['!@cassa|pv_banco_vendita', 'kitchenBar', 'kitchenBar', 'fd_fish', 'fd_fish', 'fd_barrel', 'fd_barrel', 'ar_cash-register', 'kitchenSink', 'ia_vetrina_frigo', '^ia_reti', '^ia_ritratto', '^ia_menu', '~ia_cassette_frutta', '~ia_secchio']],
     cella_frigo: ['piastrelle', 'piastrelle', 'neon', ['kitchenFridge', 'kitchenFridge', 'fd_barrel', 'fd_barrel', '^ia_gancio_carne']],
+<<<<<<< HEAD
     bottega: ['graniglia|linoleum', 'crema|verde|ocra', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpenLow', 'cardboardBoxClosed', 'pottedPlant', '?ia_cassette_frutta', '^ia_ritratto', '^ia_calendario', '^ia_manifesto', '~ia_cassette_frutta'], ['ia_scaffale_merci', '*ia_scaffale_merci', 'ia_cassette_frutta']],
     alimentari: ['linoleum|graniglia', 'crema|verde', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_vetrina_frigo', 'ia_cassette_frutta', 'ia_sacchi', '^ia_ritratto', '^ia_menu', '^ia_calendario', '~ia_cassette_frutta', '~ia_cesto'], ['*ia_scaffale_merci', 'ia_cassette_frutta', 'ia_sacchi']],
+=======
+    supermercato: ['linoleum|graniglia', 'piastrelle|crema', 'neon', ['pv_banco_vendita', 'ar_cash-register', 'ar_cash-register', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpen', 'bookcaseOpen', 'kitchenFridge', 'kitchenFridge', 'ia_vetrina_frigo', 'cardboardBoxClosed', 'cardboardBoxClosed', '?ia_cassette_frutta', '~ia_cassette_frutta', '~ia_sacchi', '^ia_ritratto', '^ia_manifesto', '^ia_calendario']],   // [ordine]
+    bottega: ['graniglia|linoleum', 'crema|verde|ocra', 'neon', ['pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpenLow', 'cardboardBoxClosed', 'pottedPlant', '?ia_cassette_frutta', '^ia_ritratto', '^ia_calendario', '^ia_manifesto', '~ia_cassette_frutta']],
+    alimentari: ['linoleum|graniglia', 'crema|verde', 'neon', ['pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_vetrina_frigo', 'ia_cassette_frutta', 'ia_sacchi', '^ia_ritratto', '^ia_menu', '^ia_calendario', '~ia_cassette_frutta', '~ia_cesto']],
+>>>>>>> 85910acf7d6913dee14fb3627078a121f38cc753
     cassa_benzina: ['linoleum', 'blu|crema', 'neon', ['@cassa', 'ia_scaffale_merci', 'ar_vending-machine', 'ia_bidone', '^ia_calendario', '^ia_ritratto', '^ia_mappa', '~pv_pneumatici']],
     attesa: ['linoleum', 'ospedale', 'neon', ['bench', 'bench', 'bench', 'pottedPlant', 'desk', '^ia_ritratto', '^ia_bacheca', '^ia_orologio', '^ia_manifesto'], ['bench', 'pottedPlant']],
     visite: ['linoleum', 'ospedale', 'neon', ['!st_tavolo_medico', '@ospedale', 'desk', 'chairDesk', 'bathroomSink', 'ia_schedario', '^ia_specchio', '^ia_calendario', '^ia_ritratto']],

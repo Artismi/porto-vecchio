@@ -293,6 +293,20 @@ var Game = (function () {
     V('gr_camp3', 'campagnola', 'poligono', 4, 2, 0, '#6a6a50', null, { military: true });
     // [costa] le barche che si possono prendere: i gozzi, le lance e i motoscafi ormeggiati ai pontili (World.SEA.moorings con drive)
     if (SEA) SEA.moorings.forEach((m, k) => { if (m.drive) st.vehicles.push(makeVehicle(st, { id: 'bt' + k, kind: m.kind, x: m.x, y: m.y, ang: m.ang, color: m.col || null, moored: m.at })); });
+    // [arcipelago] chi vive sulle isole: i soldati delle basi della Tutela, i guerrieri della tribù, gli isolani dei villaggi.
+    // Restano attorno al loro accampamento (sched: un posto solo); niente vita quotidiana (non hanno n.pop).
+    if (SEA && SEA.camps) SEA.camps.forEach(C => {
+      const SOLD = ['Brega', 'Ferri', 'Calò', 'Dessì', 'Manca', 'Orrù', 'Spano', 'Zedda'], TRIB = ['il Tatuato', 'Denti di Squalo', 'Mano Rossa', 'Occhio di Sale', 'la Corteccia', 'il Fumo', 'il Muto', 'la Lancia', 'il Vecchio', 'Pelle di Lucertola'], ISOL = ['Nanni', 'Peppa', 'Tore', 'Mimmia', 'Bastiano', 'Rina'];
+      for (let k = 0; k < C.n; k++) {
+        const base = C.type === 'base', trib = C.type === 'tribu', skin = ['#d8b08a', '#c49a74', '#a87a56', '#8a5e3e', '#e2c2a2'][(k * 3 + C.id.length) % 5];
+        const c = base ? { name: 'Soldato ' + SOLD[k % SOLD.length], role: 'Soldato della Tutela, di guardia all\'' + C.name.toLowerCase().replace(/^(presidio|batteria|stazione)/, m => m), weapon: k % 3 === 2 ? 'pistola' : 'mitra', hp: 80, look: { skin, top: '#4e5640', bottom: '#3c4232', hair: '#1e1a16', hat: 'beanie', hatCol: '#3c4232', build: 1.05, extra: '' } }
+          : trib ? { name: TRIB[k % TRIB.length][0].toUpperCase() + TRIB[k % TRIB.length].slice(1), role: 'Guerriero della tribù dell\'Isola Grande del Sud (dicono che mangino gli uomini)', weapon: 'coltello', hp: 70, look: { skin, top: k % 2 ? '#7a4a2a' : '#a86a3a', bottom: '#4a3420', hair: '#141008', hat: 'none', build: 1.1, extra: '' } }
+          : { name: ISOL[k % ISOL.length] + ' dell\'isola', role: 'Isolano di ' + C.name, hp: 50, look: { skin, top: ['#c8b890', '#7a9ab0', '#b86a4a'][k % 3], bottom: '#3a3a44', hair: '#2a2018', hat: k % 2 ? 'flat' : 'none', hatCol: '#5a4a3a', build: .95, extra: '' } };
+        const n = makeNpc(st, Object.assign({ id: 'isola_' + C.id + '_' + k, home: C.place, tr: { cor: base ? .7 : trib ? .9 : .3, loq: .3, avid: .3, legge: base ? 1 : 0 }, sched: [[0, C.place]], faction: C.faction || undefined, passante: !C.faction }, c));
+        const a = k / C.n * 6.283, pl = PLACES[C.place]; n.x = pl.x + Math.cos(a) * 3; n.y = pl.y + Math.sin(a) * 3; if (!walkM(n.x, n.y)) { n.x = pl.x; n.y = pl.y; }
+        n.camp = C; n.isola = true; st.npcs.push(n);
+      }
+    });
     // traffico lungo le strade dell'isola, nei due sensi di marcia
     const TR = [['rx7', '#e8e8e8'], ['cinquecento', '#f3c6d4'], ['ritmo', '#b8302a'], ['bursley', '#c87a20'], ['giulia', '#2f4a3a'], ['cinquecento', '#6ab8c8'], ['ritmo', '#f2e2a0'], ['giulia', '#efe6d2'], ['ritmo', '#7fd0b0'], ['cinquecento', '#d86a4a'], ['furgone', '#d8d0c0'], ['ape', '#9ab07a'], ['camion', '#3a6a9a'], ['ritmo', '#c8c8d0']];
     const laneIx = id => Math.max(0, LANES.findIndex(l => l.id === id));
@@ -368,6 +382,7 @@ var Game = (function () {
   function seesPlayerCombat(st, n) { // in combattimento si guarda intorno
     if (n.dead || n.inside || n.stun > 0 || st.player.indoor) return false;
     const d = dist(n.x, n.y, st.player.x, st.player.y);
+    if (n.camp && n.aggro && d < 24) return true;   // [arcipelago] sulle isole, una volta scoperto, ti seguono anche a orecchio (giungla e capanne non nascondono)
     return d < (isNight(st) ? 17 : 22) && los(n.x, n.y, st.player.x, st.player.y);
   }
   const fresh = (st, m) => Math.max(.35, Math.exp(-(st.t - m.t) / (60 * 24)));
@@ -481,6 +496,8 @@ var Game = (function () {
     if (first) {
       if (f === 'squalo') { feed(st, 'Gli uomini dello Squalo ti danno la caccia.', 'bad'); addLog(st, `${clockStr(st.t)} · Gli uomini dello Squalo ti danno la caccia.`, 'bad'); }
       if (f === 'marsiglia') { feed(st, 'I Marsigliesi aprono il fuoco.', 'bad'); }
+      if (f === 'isola:tribu') { feed(st, 'La tribù ti ha visto: arrivano coi coltelli.', 'bad'); addLog(st, `${clockStr(st.t)} · Sull'Isola Grande del Sud la tribù ti dà la caccia.`, 'bad'); }
+      else if (f.startsWith('isola:')) { feed(st, 'I soldati della Tutela aprono il fuoco.', 'bad'); addLog(st, `${clockStr(st.t)} · Ti hanno sparato i soldati della base sull'isola.`, 'bad'); }
     }
   }
   function hostile(st, n) {
@@ -488,6 +505,7 @@ var Game = (function () {
     if (n.cop) return wantedLevel(st) >= 2;
     if (n.faction === 'squalo') { const s = byId(st, 'sandro'); return n.aggro || n.framedAngry || (s && s.framedAngry) || (s && s.dead); }
     if (n.faction === 'marsiglia') return n.aggro;
+    if (n.faction && n.faction.startsWith('isola:')) return n.aggro;   // [arcipelago] soldati delle basi e guerrieri della tribù
     return false;
   }
   function wantedLevel(st) {
@@ -1089,7 +1107,11 @@ var Game = (function () {
     cop: ['Polizia! Getta l\'arma!', 'Fermo o sparo!', 'Centrale, sparatoria in corso!', 'A terra!'],
     squalo: ['Lo Squalo ti saluta!', 'Vieni fuori, Nino!', 'Sei un uomo morto!', 'Te la sei cercata!'],
     marsiglia: ['Tirez! Tirez!', 'Putain, il est là!', 'Crève, petit!', 'À gauche! À gauche!'],
+    // [arcipelago]
+    'isola:tribu': ['Uuh-ah! Uuh-ah!', 'Carne fresca!', 'Circondatelo!', 'Il fuoco è acceso!'],
+    tutela_isola: ['Fuoco! Fuoco!', 'Intruso nella zona militare!', 'Copritemi!', 'Non farlo scappare!'],
   };
+  const barksOf = n => COMBAT_BARKS[n.cop ? 'cop' : n.faction] || (n.faction && n.faction.startsWith('isola:') ? COMBAT_BARKS.tutela_isola : COMBAT_BARKS.squalo);
   function think(st, n) {
     if (n.dead) return;
     opinions(st, n);
@@ -1108,6 +1130,14 @@ var Game = (function () {
     const sc = []; const add = (name, v, why) => sc.push({ name, v: Math.max(0, v) + (name === cur ? .05 : 0), why });
     const lv = n.cop ? wantedLevel(st) : 0;
     if (sees && n.cop && lv >= 1) st.lastSeen = { x: p.x, y: p.y, clock: st.clock };
+    // [arcipelago] le basi della Tutela avvisano e poi sparano; la tribù attacca chi entra nel villaggio o si fa vedere da vicino.
+    // Se ti allontani molto dall'isola, si calmano.
+    if (n.camp && n.faction) { const C = n.camp, dc = dist(p.x, p.y, C.x, C.y);
+      if (!n.aggro && C.type === 'tribu' && (dc < C.r + 4 || (sees && d < 15))) { aggroFaction(st, n.faction); say(st, n, ['Uuh-ah! Uuh-ah!', 'Carne fresca!', 'Prendetelo!'][Math.floor(st.rng() * 3)], 3); }
+      if (!n.aggro && C.type === 'base' && dc < C.r + 34 && ((sees && d < 32) || d < 12 || dc < C.r + 8)) {   // nella base ti scoprono comunque: ci sono le sentinelle
+        if (!n.warned) { n.warned = true; n.warnT = st.clock; n.face = Math.atan2(p.y - n.y, p.x - n.x); say(st, n, 'Zona militare della Tutela! Torna indietro!', 3); }
+        else if (dc < C.r * .7 || st.clock - n.warnT > 9) aggroFaction(st, n.faction); }
+      if (n.aggro && dc > C.r + 150) { n.aggro = false; n.warned = false; } }
     // i Marsigliesi avvisano chi si avvicina alla valigetta
     if (n.faction === 'marsiglia' && !n.aggro && isNight(st) && d < 4.5 && !p.vehicle) aggroFaction(st, 'marsiglia');
     if (n.faction === 'marsiglia' && !n.aggro && isNight(st) && d < 11 && sees) {
@@ -1146,7 +1176,7 @@ var Game = (function () {
     sc.sort((a, b) => b.v - a.v);
     const best = sc[0];
     n.action = { name: best.name, scores: sc.map(s => ({ name: s.name, v: +s.v.toFixed(2), why: s.why })), why: best.why, since: cur === best.name ? n.action.since : st.clock };
-    if (best.name !== cur) { n.path = []; n.wait = 0; n.goalPlace = null; if (best.name === 'combatte') { n.react = 0; if (st.clock > n.barkCd) say(st, n, COMBAT_BARKS[n.cop ? 'cop' : n.faction][Math.floor(st.rng() * 4)], 2.2); } }
+    if (best.name !== cur) { n.path = []; n.wait = 0; n.goalPlace = null; if (best.name === 'combatte') { n.react = 0; if (st.clock > n.barkCd) say(st, n, barksOf(n)[Math.floor(st.rng() * 4)], 2.2); } }
     if (sees && !n.cop && !hos) maybeBark(st, n, d);
     if (n.cop && sees && lv === 1 && cur !== 'insegue') say(st, n, 'Fermo! Polizia!');
   }
@@ -1346,6 +1376,13 @@ var Game = (function () {
   function combatMove(st, n, dt) {
     const p = st.player, W = WEAPONS[n.weapon];
     const seeC = seesPlayerCombat(st, n), d = dist(n.x, n.y, p.x, p.y);
+    if (W.melee && seeC) {   // [arcipelago] col coltello: si corre addosso (aggirando capanne e alberi), si colpisce da vicino
+      const ang = Math.atan2(p.y - n.y, p.x - n.x); n.face = ang; n.mcool = (n.mcool || 0) - dt;
+      const busy = st.npcs.filter(k => k !== n && k.camp === n.camp && !k.dead && k.aggro && dist(k.x, k.y, p.x, p.y) < 1.7).length;
+      if (busy >= 2 && d < 4.5) { const sa = ang + Math.PI / 2 * (pHash(n) < .5 ? 1 : -1), sx = n.x + Math.cos(sa) * 1.6 * dt, sy = n.y + Math.sin(sa) * 1.6 * dt; if (walkM(sx, sy)) { n.x = sx; n.y = sy; n.speedNow = 1.6; } if (d < 3) { const bx = n.x - Math.cos(ang) * 1.5 * dt, by = n.y - Math.sin(ang) * 1.5 * dt; if (walkM(bx, by)) { n.x = bx; n.y = by; } } return; }   // al massimo due addosso: gli altri girano attorno
+      if (d > 1.35 || p.vehicle) { if (!n.path.length || !n.goal || dist(n.goal.x, n.goal.y, p.x, p.y) > 1.5) goTo(n, p.x, p.y, 1); if (n.path.length) stepAlong(n, 3.9, dt); else { const sx = n.x + Math.cos(ang) * 3.9 * dt, sy = n.y + Math.sin(ang) * 3.9 * dt; if (walkM(sx, sy)) { n.x = sx; n.y = sy; n.speedNow = 3.9; } } n.anim += dt * 6; return; }
+      if (n.mcool <= 0) { n.mcool = 1.3 + st.rng() * .7; n.gesture = .3; damagePlayer(st, 5 + st.rng() * 4, ang, 'coltello'); st.sfx.push({ k: 'swing', x: n.x, y: n.y }); }
+      return; }
     if (n.reloadT > 0) { n.reloadT -= dt; if (n.reloadT <= 0) n.mag = W.mag; }
     if (!seeC) {
       n.react = 0; const tgt = n.seenP; if (!tgt) return;
@@ -1370,13 +1407,13 @@ var Game = (function () {
     if (n.mag <= 0) { n.reloadT = W.reload * 1.2; return; }
     if (W.auto) { if (n.burst <= 0) { n.burst = 3 + Math.floor(st.rng() * 4); } }
     const moving = p.vehicle ? .06 : Math.abs(p.speed) > 3 ? .05 : 0;
-    const skill = n.cop ? .07 : n.faction === 'marsiglia' ? .08 : .1;
+    const skill = n.cop ? .07 : n.faction === 'marsiglia' ? .08 : n.camp ? .2 : .1;   // [arcipelago] i soldati delle isole sparano male
     shoot(st, n, n.weapon, Math.atan2(p.y - n.y, p.x - n.x), W.spread + skill + moving + d * .004, n.id);
     n.mag--;
     if (W.auto) { n.burst--; n.cool = n.burst > 0 ? W.rate * 1.3 : .8 + st.rng() * .6; }
     else n.cool = W.rate * (n.weapon === 'lupara' ? 1.6 : 2.6) + st.rng() * .35;
     panicAround(st, n.x, n.y, 22, 6);
-    if (st.clock > n.barkCd && st.rng() < .15) say(st, n, COMBAT_BARKS[n.cop ? 'cop' : n.faction][Math.floor(st.rng() * 4)], 1.8);
+    if (st.clock > n.barkCd && st.rng() < .15) say(st, n, barksOf(n)[Math.floor(st.rng() * 4)], 1.8);
   }
   function deliverReport(st, n, cop) {
     let told = 0;
@@ -2185,6 +2222,7 @@ var Game = (function () {
       if (v.hidden) continue;
       if (v.burning > 0) { v.burning -= dt; if (v.burning <= 0) explode(st, v); }
       if (v.wreck) { freeRoll(st, v, dt, true); continue; }
+      if (v.driveTo && v.rider === 'npc' && !v.traffic) continue;   // [ordine] lo guida ordine.js (volanti, Campagnola, camion della nave)
       if (v.traffic) updateTraffic(st, v, dt);
       else if (v.police && v.rider === 'npc') updatePoliceCar(st, v, dt);
       else if (v.rider !== 'player') { freeRoll(st, v, dt, !v.rider); if (Math.hypot(v.vx, v.vy) > 5.5) runOver(st, v, v.lastHitBy === 'player' ? 'player' : 'loose'); }
@@ -2242,6 +2280,7 @@ var Game = (function () {
     attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
+    LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
     HOOKS, NOISE, MIN_PER_SEC, layout, baseTile, HZ, hazardAt, hurtHazard, setTile: setT, makeVehicle, explode, damageVehicle, blastMap, goTo, stepAlong, say, addLog, feed, emit, addMemory, placeFor, nearestPlace, wanderSpot, makeNpc, walkM, los, panicAround, exitVehicle, giveWeapon, CAST,
   };
 })();

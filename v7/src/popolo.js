@@ -272,7 +272,7 @@ var Popolo = (function () {
     const bplace = id => { const bi = B.findIndex(b => b.id === id); return bi >= 0 && B[bi].door ? bi : -1; };
     // svaghi: [chi ci va, luogo pubblico (id PLACES) o edificio]
     const fun = { bar: ['bar', 'sirena', 'osteria', 'osteria_sg', 'car_2'].filter(has), out: ['piazza', 'fontana', 'lungomare', 'passeggiata', 'giardini', 'belvedere', 'molo', 'spiaggia', 'piazzetta'].filter(has), young: ['flipper', 'gelateria', 'cinema', 'spiaggia', 'lungomare'].filter(has), church: ['chiesa', 'santuario', 'chiesa_sg'].filter(has), shops: ['wu'].filter(has) };
-    byUse('panetteria').concat(byUse('tabacchi'), byUse('macelleria'), byUse('fruttivendolo'), byUse('emporio')).forEach(([b]) => fun.shops.push('b:' + b.id));   // [economia]
+    byUse('panetteria').concat(byUse('tabacchi'), byUse('macelleria'), byUse('fruttivendolo'), byUse('emporio'), byUse('supermercato'))   /* [ordine] */.forEach(([b]) => fun.shops.push('b:' + b.id));   // [economia]
     byUse('circolo').forEach(([b]) => fun.circolo = 'b:' + b.id);
     INDEX = { homes, works, fun, bplace, door };
     return INDEX;
@@ -685,6 +685,7 @@ var Popolo = (function () {
   // ---------------- LIVELLO DI DETTAGLIO ----------------
   function mustBeNear(st, n) {
     if (isPassive(st, n)) return true;   // Grigi in servizio, membri della Risacca: li muove sempre il motore
+    if (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato)) return true;   // [ordine] in piazza, in fila, portato in questura
     if (n.room) return true;             // [scopo] è nella stanza col giocatore
     if (n.panic > 0 || n.stun > 0 || n.aggro || n.jailedUntil > st.t) return n.jailedUntil <= st.t;
     return ['fugge', 'denuncia', 'affronta', 'combatte', 'insegue'].includes(n.action.name);
@@ -695,7 +696,7 @@ var Popolo = (function () {
       if (!n.pop || n.dead) continue;
       const d = dist(n.x, n.y, p.x, p.y), P = n.pop;
       const want = mustBeNear(st, n) || d < CFG.near || (P.near && d < CFG.far);
-      list.push([n, want ? d : 1e9]);
+      list.push([n, want ? (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato) ? 0 : d) : 1e9]);   // [ordine] chi è in piazza o in fila resta vivo anche lontano
     }
     list.sort((a, b) => a[1] - b[1]);
     let nearN = 0;
