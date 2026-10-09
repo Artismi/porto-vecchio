@@ -1515,6 +1515,7 @@ var Game = (function () {
     jumpStep(st, dt);   // [salto]
     if (p.stun > 0) { p.stun -= dt; p.speed = 0; return; }
     if (p.vehicle) return driveVehicle(st, st.vehicles.find(v => v.id === p.vehicle), dt, inp);
+    if (p.sk && p.sk.on && typeof Skate !== 'undefined' && Skate.move(st, dt, inp)) return;   // [skate] in tavola si muove lo skate
     const ix = inp.x, iy = inp.y;
     p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);   // [costa] in acqua si nuota
     if (ix || iy) {

@@ -104,7 +104,7 @@
   // la presa: quanto si chiudono le dita (e il pollice) per ogni oggetto
   const GRIP = { sigaretta: [.6, .8], bicchiere: [.75, .7], bottiglia: [.88, .8], panino: [.6, .5], cornetta: [.85, .7], giornale: [.45, .55], libro: [.4, .5], matita: [.75, .85],
     carte: [.45, .2], soldi: [.4, .6], cero: [.8, .6], martello: [.95, .9], cassa: [.35, .1], pala: [.95, .9], zappa: [.95, .9], piccone: [.95, .9], scopa: [.95, .9],
-    canna: [.9, .8], piede: [.95, .9], bomboletta: [.8, .4], gesso: [.6, .8], pennello: [.85, .8], fotocamera: [.6, .4], album: [.3, .3] };
+    canna: [.9, .8], stecca: [.9, .8], freccetta: [.7, .9], fucile: [.85, .7], piede: [.95, .9], bomboletta: [.8, .4], gesso: [.6, .8], pennello: [.85, .8], fotocamera: [.6, .4], album: [.3, .3] };
   function show(P, name) {
     const Dp = VP[name], gp = GRIP[name]; if (Dp && gp && (Dp.where === 'R' || Dp.where === 'L')) P.fingers(Dp.where, gp[0], gp[1]);
     if (P.w < .5) return null;
@@ -170,6 +170,10 @@
   vprop('zappa', 'R', () => { const g = new THREE.Group(); cyl(g, .016, .016, 1.15, '#8a6a42', .1, GY, GZ, 0, 0, PI / 2, 6); box(g, .03, .2, .16, '#4a4a50', -.48, GY - .08, GZ); return g; });
   vprop('piccone', 'R', () => { const g = new THREE.Group(); cyl(g, .018, .018, .9, '#8a6a42', .05, GY, GZ, 0, 0, PI / 2, 6); box(g, .04, .55, .04, '#4a4a50', -.38, GY, GZ, 0, 0, 0); return g; });
   vprop('scopa', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .014, 1.2, '#b08a52', .1, GY, GZ, 0, 0, PI / 2, 6); box(g, .12, .3, .06, '#c8a050', -.55, GY, GZ, 0, 0, 0); return g; });
+  // [attività] la stecca da biliardo (lunga, verso la punta che va avanti), la freccetta, il fucile del poligono
+  vprop('stecca', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .007, 1.42, '#c8a060', -.45, GY, GZ, 0, 0, PI / 2, 6); cyl(g, .016, .016, .3, '#3a2418', .2, GY, GZ, 0, 0, PI / 2, 6); cyl(g, .008, .008, .02, '#3a7ad0', -1.16, GY, GZ, 0, 0, PI / 2, 5); return g; });
+  vprop('freccetta', 'R', () => { const g = new THREE.Group(); cyl(g, .005, .002, .13, '#c8c8c0', -.04, GY, GZ, 0, 0, PI / 2, 5); box(g, .04, .03, .002, '#c83a2a', .04, GY, GZ); box(g, .04, .002, .03, '#c83a2a', .04, GY, GZ); return g; });
+  vprop('fucile', 'R', () => { const g = new THREE.Group(); box(g, .26, .07, .045, '#6a4228', .12, GY - .02, GZ); cyl(g, .012, .012, .7, '#3a3c42', -.38, GY + .01, GZ, 0, 0, PI / 2, 6); box(g, .3, .045, .04, '#5a3a24', -.2, GY - .02, GZ); return g; });
   vprop('canna', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .006, 2.4, '#4a3a2a', 1.0, GY, GZ, 0, 0, PI / 2, 5); cyl(g, .03, .03, .04, '#2a2a2a', -.1, GY, GZ + .04, 0, 0, 0, 8); return g; });
   vprop('piede', 'R', () => { const g = new THREE.Group(); cyl(g, .013, .013, .6, '#3a3a44', .2, GY, GZ, 0, 0, PI / 2, 6); box(g, .08, .02, .025, '#3a3a44', .52, GY + .03, GZ, 0, 0, -.9); return g; });
   vprop('bomboletta', 'R', () => { const g = new THREE.Group(); cyl(g, .032, .032, .17, '#c8302a', .0, GY, GZ, 0, 0, PI / 2, 8); cyl(g, .01, .01, .02, '#e8e8e8', .095, GY, GZ, 0, 0, PI / 2, 5); return g; });
@@ -515,6 +519,42 @@
     P.fingers('R', .5, .2 + .4 * f); P.fingers('L', .5, .2 + .4 * g);
     P.rot('Head', .35, 0, 0);
   }); BUSY.flipper = 1;
+  // ---- [attività] BILIARDO: chino sul panno, la sinistra fa il ponte, la destra porta indietro la stecca e tira; poi si raddrizza e guarda ----
+  def('biliardo', FULL, (P) => {
+    const k = cyc(P, 8 + P.r * 4), aim = pulse(k, .05, .2, .62, .78), shot = pulse(k, .5, .56, .58, .64), back = pulse(k, .3, .45, .5, .52);
+    P.rot('Abdomen', .2 + .45 * aim, 0, 0); P.rot('Chest', .12 * aim, 0, 0); P.rot('Head', -.35 * aim + .15 * (1 - aim), .3 * (1 - aim) * Math.sin(P.t * .7), 0);
+    handTo(P, 'L', lerp(.18, .02, aim), lerp(1.0, .9, aim), lerp(.2, .62, aim), .9, -.4, 0);
+    handTo(P, 'R', lerp(.22, .14, aim), lerp(1.0, 1.02, aim), lerp(.1, .14, aim) - .12 * back + .2 * shot, .9, -.3, 0);
+    show(P, 'stecca');
+  }); BUSY.biliardo = 1;
+  // ---- FRECCETTE: la freccetta all'altezza dell'occhio, la mira, il polso che scatta ----
+  def('freccette', FULL, (P) => {
+    const k = cyc(P, 3 + P.r * 1.5), aim = pulse(k, .05, .3, .55, .6), thr = pulse(k, .55, .6, .66, .85);
+    P.rot('Head', -.05, 0, 0); P.rot('Chest', 0, -.15 * aim, 0);
+    handTo(P, 'R', .14, lerp(1.25, 1.52, aim) + .05 * thr, lerp(.25, .18, aim) + .4 * thr, .9, -.4, 0);
+    arm(P, 'L', .2, -.95, -.05, -.1, -.9, .25);
+    if (thr < .3) show(P, 'freccetta');
+  }); BUSY.freccette = 1;
+  // ---- AL POLIGONO: il fucile alla spalla, la guancia sul calcio, il colpo che rincula ----
+  def('mira', FULL, (P) => {
+    const k = cyc(P, 4 + P.r * 2), rec = pulse(k, .5, .52, .54, .7), rest = pulse(k, .8, .85, .95, 1);
+    P.rot('Head', .15 + .05 * rec, -.2, .15); P.rot('Chest', -.05 * rec, -.25, 0); P.body({ z: -.04 * rec });
+    handTo(P, 'R', .14, lerp(1.38, 1.15, rest), .18 - .04 * rec, .9, -.4, 0);
+    handTo(P, 'L', -.02, lerp(1.36, 1.12, rest), .55 - .04 * rec, .9, -.3, 0);
+    show(P, 'fucile');
+  }); BUSY.mira = 1;
+  // ---- PROVA UN ABITO: si guarda nello specchio, si gira di qua e di là, sistema il bavero ----
+  def('prova', FULL, (P) => {
+    const k = cyc(P, 6 + P.r * 2), tw = Math.sin(k * 2 * PI), fix = pulse(k, .6, .7, .85, .95);
+    P.rot('Abdomen', 0, .35 * tw, 0); P.rot('Head', -.05, -.25 * tw, 0);
+    handTo(P, 'R', .08, lerp(1.0, 1.42, fix), lerp(.1, .18, fix), .9, -.4, 0); handTo(P, 'L', .08, lerp(1.0, 1.42, fix), lerp(.1, .18, fix), .9, -.4, 0);
+  }); BUSY.prova = 1;
+  // ---- OSSERVA (un'auto in vendita, una vetrina): mani dietro la schiena, si china a guardare, gira la testa ----
+  def('osserva', FULL, (P) => {
+    const k = cyc(P, 7 + P.r * 3), lean = pulse(k, .2, .35, .6, .75);
+    P.rot('Abdomen', .1 + .3 * lean, 0, 0); P.rot('Head', .2 + .2 * lean, .5 * Math.sin(P.t * .4 + P.r * 5), 0);
+    arm(P, 'L', .2, -.95, -.25, -.2, -.6, -.6); arm(P, 'R', .2, -.95, -.25, -.2, -.6, -.6);
+  }); BUSY.osserva = 1;
   // ---- ASPETTA: si guarda attorno, il peso che passa da un piede all'altro ----
   def('aspetta', FULL, (P) => {
     P.rot('Head', 0, .7 * Math.sin(P.t * .35 + P.r * 6), 0); P.rot('Chest', 0, .15 * Math.sin(P.t * .35 + P.r * 6), 0);

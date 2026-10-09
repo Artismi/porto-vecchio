@@ -6069,7 +6069,7 @@ Anim.npcMap((st, n, s) => {
   // la presa: quanto si chiudono le dita (e il pollice) per ogni oggetto
   const GRIP = { sigaretta: [.6, .8], bicchiere: [.75, .7], bottiglia: [.88, .8], panino: [.6, .5], cornetta: [.85, .7], giornale: [.45, .55], libro: [.4, .5], matita: [.75, .85],
     carte: [.45, .2], soldi: [.4, .6], cero: [.8, .6], martello: [.95, .9], cassa: [.35, .1], pala: [.95, .9], zappa: [.95, .9], piccone: [.95, .9], scopa: [.95, .9],
-    canna: [.9, .8], piede: [.95, .9], bomboletta: [.8, .4], gesso: [.6, .8], pennello: [.85, .8], fotocamera: [.6, .4], album: [.3, .3] };
+    canna: [.9, .8], stecca: [.9, .8], freccetta: [.7, .9], fucile: [.85, .7], piede: [.95, .9], bomboletta: [.8, .4], gesso: [.6, .8], pennello: [.85, .8], fotocamera: [.6, .4], album: [.3, .3] };
   function show(P, name) {
     const Dp = VP[name], gp = GRIP[name]; if (Dp && gp && (Dp.where === 'R' || Dp.where === 'L')) P.fingers(Dp.where, gp[0], gp[1]);
     if (P.w < .5) return null;
@@ -6135,6 +6135,10 @@ Anim.npcMap((st, n, s) => {
   vprop('zappa', 'R', () => { const g = new THREE.Group(); cyl(g, .016, .016, 1.15, '#8a6a42', .1, GY, GZ, 0, 0, PI / 2, 6); box(g, .03, .2, .16, '#4a4a50', -.48, GY - .08, GZ); return g; });
   vprop('piccone', 'R', () => { const g = new THREE.Group(); cyl(g, .018, .018, .9, '#8a6a42', .05, GY, GZ, 0, 0, PI / 2, 6); box(g, .04, .55, .04, '#4a4a50', -.38, GY, GZ, 0, 0, 0); return g; });
   vprop('scopa', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .014, 1.2, '#b08a52', .1, GY, GZ, 0, 0, PI / 2, 6); box(g, .12, .3, .06, '#c8a050', -.55, GY, GZ, 0, 0, 0); return g; });
+  // [attività] la stecca da biliardo (lunga, verso la punta che va avanti), la freccetta, il fucile del poligono
+  vprop('stecca', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .007, 1.42, '#c8a060', -.45, GY, GZ, 0, 0, PI / 2, 6); cyl(g, .016, .016, .3, '#3a2418', .2, GY, GZ, 0, 0, PI / 2, 6); cyl(g, .008, .008, .02, '#3a7ad0', -1.16, GY, GZ, 0, 0, PI / 2, 5); return g; });
+  vprop('freccetta', 'R', () => { const g = new THREE.Group(); cyl(g, .005, .002, .13, '#c8c8c0', -.04, GY, GZ, 0, 0, PI / 2, 5); box(g, .04, .03, .002, '#c83a2a', .04, GY, GZ); box(g, .04, .002, .03, '#c83a2a', .04, GY, GZ); return g; });
+  vprop('fucile', 'R', () => { const g = new THREE.Group(); box(g, .26, .07, .045, '#6a4228', .12, GY - .02, GZ); cyl(g, .012, .012, .7, '#3a3c42', -.38, GY + .01, GZ, 0, 0, PI / 2, 6); box(g, .3, .045, .04, '#5a3a24', -.2, GY - .02, GZ); return g; });
   vprop('canna', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .006, 2.4, '#4a3a2a', 1.0, GY, GZ, 0, 0, PI / 2, 5); cyl(g, .03, .03, .04, '#2a2a2a', -.1, GY, GZ + .04, 0, 0, 0, 8); return g; });
   vprop('piede', 'R', () => { const g = new THREE.Group(); cyl(g, .013, .013, .6, '#3a3a44', .2, GY, GZ, 0, 0, PI / 2, 6); box(g, .08, .02, .025, '#3a3a44', .52, GY + .03, GZ, 0, 0, -.9); return g; });
   vprop('bomboletta', 'R', () => { const g = new THREE.Group(); cyl(g, .032, .032, .17, '#c8302a', .0, GY, GZ, 0, 0, PI / 2, 8); cyl(g, .01, .01, .02, '#e8e8e8', .095, GY, GZ, 0, 0, PI / 2, 5); return g; });
@@ -6480,6 +6484,42 @@ Anim.npcMap((st, n, s) => {
     P.fingers('R', .5, .2 + .4 * f); P.fingers('L', .5, .2 + .4 * g);
     P.rot('Head', .35, 0, 0);
   }); BUSY.flipper = 1;
+  // ---- [attività] BILIARDO: chino sul panno, la sinistra fa il ponte, la destra porta indietro la stecca e tira; poi si raddrizza e guarda ----
+  def('biliardo', FULL, (P) => {
+    const k = cyc(P, 8 + P.r * 4), aim = pulse(k, .05, .2, .62, .78), shot = pulse(k, .5, .56, .58, .64), back = pulse(k, .3, .45, .5, .52);
+    P.rot('Abdomen', .2 + .45 * aim, 0, 0); P.rot('Chest', .12 * aim, 0, 0); P.rot('Head', -.35 * aim + .15 * (1 - aim), .3 * (1 - aim) * Math.sin(P.t * .7), 0);
+    handTo(P, 'L', lerp(.18, .02, aim), lerp(1.0, .9, aim), lerp(.2, .62, aim), .9, -.4, 0);
+    handTo(P, 'R', lerp(.22, .14, aim), lerp(1.0, 1.02, aim), lerp(.1, .14, aim) - .12 * back + .2 * shot, .9, -.3, 0);
+    show(P, 'stecca');
+  }); BUSY.biliardo = 1;
+  // ---- FRECCETTE: la freccetta all'altezza dell'occhio, la mira, il polso che scatta ----
+  def('freccette', FULL, (P) => {
+    const k = cyc(P, 3 + P.r * 1.5), aim = pulse(k, .05, .3, .55, .6), thr = pulse(k, .55, .6, .66, .85);
+    P.rot('Head', -.05, 0, 0); P.rot('Chest', 0, -.15 * aim, 0);
+    handTo(P, 'R', .14, lerp(1.25, 1.52, aim) + .05 * thr, lerp(.25, .18, aim) + .4 * thr, .9, -.4, 0);
+    arm(P, 'L', .2, -.95, -.05, -.1, -.9, .25);
+    if (thr < .3) show(P, 'freccetta');
+  }); BUSY.freccette = 1;
+  // ---- AL POLIGONO: il fucile alla spalla, la guancia sul calcio, il colpo che rincula ----
+  def('mira', FULL, (P) => {
+    const k = cyc(P, 4 + P.r * 2), rec = pulse(k, .5, .52, .54, .7), rest = pulse(k, .8, .85, .95, 1);
+    P.rot('Head', .15 + .05 * rec, -.2, .15); P.rot('Chest', -.05 * rec, -.25, 0); P.body({ z: -.04 * rec });
+    handTo(P, 'R', .14, lerp(1.38, 1.15, rest), .18 - .04 * rec, .9, -.4, 0);
+    handTo(P, 'L', -.02, lerp(1.36, 1.12, rest), .55 - .04 * rec, .9, -.3, 0);
+    show(P, 'fucile');
+  }); BUSY.mira = 1;
+  // ---- PROVA UN ABITO: si guarda nello specchio, si gira di qua e di là, sistema il bavero ----
+  def('prova', FULL, (P) => {
+    const k = cyc(P, 6 + P.r * 2), tw = Math.sin(k * 2 * PI), fix = pulse(k, .6, .7, .85, .95);
+    P.rot('Abdomen', 0, .35 * tw, 0); P.rot('Head', -.05, -.25 * tw, 0);
+    handTo(P, 'R', .08, lerp(1.0, 1.42, fix), lerp(.1, .18, fix), .9, -.4, 0); handTo(P, 'L', .08, lerp(1.0, 1.42, fix), lerp(.1, .18, fix), .9, -.4, 0);
+  }); BUSY.prova = 1;
+  // ---- OSSERVA (un'auto in vendita, una vetrina): mani dietro la schiena, si china a guardare, gira la testa ----
+  def('osserva', FULL, (P) => {
+    const k = cyc(P, 7 + P.r * 3), lean = pulse(k, .2, .35, .6, .75);
+    P.rot('Abdomen', .1 + .3 * lean, 0, 0); P.rot('Head', .2 + .2 * lean, .5 * Math.sin(P.t * .4 + P.r * 5), 0);
+    arm(P, 'L', .2, -.95, -.25, -.2, -.6, -.6); arm(P, 'R', .2, -.95, -.25, -.2, -.6, -.6);
+  }); BUSY.osserva = 1;
   // ---- ASPETTA: si guarda attorno, il peso che passa da un piede all'altro ----
   def('aspetta', FULL, (P) => {
     P.rot('Head', 0, .7 * Math.sin(P.t * .35 + P.r * 6), 0); P.rot('Chest', 0, .15 * Math.sin(P.t * .35 + P.r * 6), 0);
@@ -8425,8 +8465,8 @@ var World = (function () {
   // l'orlo sale a picco (o piano dalla spiaggia) e poi la cupola si arrotonda verso la cima
   function isleElev(I, q) {
     const k = isleKind(I, q.a), beachK = k === 'spiaggia' || k === 'cala', bump = (fbm(q.u / 13 + I.seed, q.v / 13, 610 + I.seed, 3) - .5) * 1.6 * sstep(2, 10, q.d);
-    if (I.dome || I.arc) { const t = clamp(q.d / (q.m * .8), 0, 1), rim = beachK ? sstep(3, 12, q.d) : sstep(0, 2.2, q.d), b0 = beachK ? .45 + Math.min(q.d, 10) * .035 : .9;
-      return Math.max(.45, b0 + (Math.max(0, I.h - b0) * Math.pow(sstep(0, 1, t), .5) + bump) * rim); }
+    if (I.dome || I.arc) { const hD = Math.min(I.h, 2 + (I.arc ? I.w : Math.min(I.rx, I.ry)) * .42), t = clamp(q.d / (q.m * .8), 0, 1), rim = beachK ? sstep(3, 12, q.d) : sstep(0, 2.2, q.d), b0 = beachK ? .45 + Math.min(q.d, 10) * .035 : .9;
+      return Math.max(.45, b0 + (Math.max(0, hD - b0) * Math.pow(sstep(0, 1, t), .7) + bump) * rim); }
     const m = Math.min(I.rx, I.ry), tu = q.u / I.rx - I.top[0], tv = q.v / I.ry - I.top[1];
     const t = clamp(1 - Math.hypot(tu, tv) / 1.15, 0, 1), rim = k === 'falesia' ? sstep(0, 3.5, q.d) : k === 'scogli' ? sstep(0, 7, q.d) : sstep(3, 16, q.d);
     const beach = beachK ? .45 + Math.min(q.d, 14) * .035 : .7 + Math.min(q.d, 4) * .35;
@@ -9547,11 +9587,13 @@ var World = (function () {
       ['teatro', 'ТЕАТР ОДЕОН', '#ffd23b', 1, 'Teatro Odeon'], ['palestra', 'СПОРТЗАЛ', '#ff4fa3', 2], ['ferramenta', 'ХОЗТОВАРЫ', '#ff8a3b', 2], ['ufficio', 'КОНТОРА', '#7ab8ff', 3],
       ['barbiere', '이발 ЦИРЮЛЬНЯ', '#35e6ff', 2], ['tabacchi', 'ТАБАК', '#5aff9a', 2], ['panetteria', 'ХЛЕБ 빵', '#ffb35c', 2], ['farmacia', '✚ АПТЕКА 약국', '#4dff9a', 1], ['lavanderia', 'ПРАЧЕЧНАЯ', '#8affd0', 1],
       ['tipografia', 'ТИПОГРАФИЯ', '#e8e0d0', 1], ['circolo', 'КЛУБ', '#ff6a3b', 1, 'Circolo dei Lavoratori'], ['scuola', 'ШКОЛА', '#ffffff', 1, 'Scuola elementare'], ['sartoria', 'АТЕЛЬЕ', '#ff7ad9', 1], ['pescheria', 'РЫБА 생선', '#35e6ff', 1],
+      // [attività] dopo le altre, così le botteghe di prima restano dov'erano
+      ['autorimessa', 'АВТО ГАРАЖ', '#ffd23b', 1, 'Autorimessa Centrale'], ['armeria', 'ОРУЖИЕ 총포', '#ff4a3b', 1, 'Armeria del Cacciatore'], ['abbigliamento', 'ОДЕЖДА 옷', '#ff7ad9', 1, 'Abiti e Confezioni'], ['pub', 'ПИВО 맥주', '#ffb030', 1, 'Birreria del Porto'],
     ];
     const taken = new Set();
     USES.forEach(([use, sign, col, n, label], k) => {
       for (let i = 0; i < n; i++) {
-        const b = (use === 'teatro' ? big : city).find(q => !taken.has(q)); if (!b) return; taken.add(b);
+        const b = (use === 'teatro' || use === 'autorimessa' ? big : city).find(q => !taken.has(q)); if (!b) return; taken.add(b);
         b.use = use; b.sign = { t: sign, c: col }; b.shop = true;
         b.name = label || (use.charAt(0).toUpperCase() + use.slice(1)) + ' ' + NOMI[(k * 3 + i) % NOMI.length];
       }
@@ -9962,6 +10004,17 @@ var World = (function () {
         grid[i] = v; zone[i] = z; eco[i] = ecoV; bIndex[i] = -1;
       }
     });
+    // ---- la pendenza massima: un'isola si deve poter girare a piedi. Fra due caselle vicine al più SMAX metri di dislivello
+    // (circa 22 gradi); si abbassa solo, partendo dalla riva, che resta com'è. Gli edifici, i moli e i pontili non si toccano.
+    const SMAX = .8, SMAXD = SMAX * 1.414;
+    const relaxS = () => { const fixed = i => grid[i] === T_.BLD || grid[i] === T_.QUAY || grid[i] === T_.PIER;
+      const N8 = [[-1, 0, SMAX], [-1, -1, SMAXD], [0, -1, SMAX], [1, -1, SMAXD]];
+      for (let it = 0; it < 12; it++) { let ch = 0;
+        for (const dir of [1, -1]) for (let k = 0; k < N2; k++) { const i = dir > 0 ? k : N2 - 1 - k; if (!isl[i] || grid[i] === T_.WATER || fixed(i)) continue; const tx = i % GW2, ty = (i - tx) / GW2; if (tx < 1 || ty < 1 || tx >= GW2 - 1 || ty >= GH2 - 1) continue;
+          let lim = 1e9; for (const [dx, dy, sm] of N8) { const j = i + dir * (dy * GW2 + dx); if (!isl[j] || grid[j] === T_.WATER) continue; lim = Math.min(lim, elev[j] + sm); }
+          if (elev[i] > lim + 1e-3) { elev[i] = lim; ch++; } }
+        if (!ch) break; } };
+    relaxS();
     // ---- quello che c'è sulle isole: villaggi, baracche, basi della Tutela, la tribù; la torre e il relitto ----
     const B = W.BUILDINGS, PL = W.PLACES; S.camps = []; S.ruins = []; S.decor = [];
     const walkB = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= GW2 || ty >= GH2) return false; const v = grid[ix(tx, ty)]; return v !== T_.BLD && v !== T_.WATER && v !== T_.FOUNT && v !== T_.TREE && v !== T_.CLIFF; };
@@ -10067,6 +10120,7 @@ var World = (function () {
       ['Laguna della Mezzaluna', 'mezzaluna', Math.PI / 2], ['Laguna del Gomito', 'gomito', Math.PI / 2], ['Spiaggia della Lama', 'lama', -Math.PI / 2], ['Spiaggia della tribù', 'grande_sud', Math.PI / 2 + .25]].forEach(([name, id, a], k) => {
       const I = Iid(id); if (!I) return; const sp0 = shoreB(I, a); S.swim.push({ id: 'bagno_isola_' + k, name, x: sp0.x + sp0.dx * 10, y: sp0.y + sp0.dy * 10, shore: [sp0.x - sp0.dx * 3, sp0.y - sp0.dy * 3], r: 14, isola: true }); PNb('bagno_isola_' + k, name, sp0.x - sp0.dx * 3, sp0.y - sp0.dy * 3, { bagno: true }); });
     // i fianchi a picco: dove la quota cade di colpo fra due caselle dell'isola, parete di roccia
+    relaxS();   // dopo le radure spianate e gli edifici: ancora niente gradini
     for (let ty = 1; ty < GH2 - 1; ty++) for (let tx = 1; tx < GW2 - 1; tx++) { const i = ix(tx, ty); if (!isl[i] || grid[i] === T_.SAND || grid[i] === T_.BLD) continue; let drop = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = i + dy * GW2 + dx; if (!isl[n]) continue; drop = Math.max(drop, elev[i] - elev[n]); } if (drop > (eco[i] === ECO.GIUNGLA ? 4.2 : 2.6)) grid[i] = T_.CLIFF; }   // sulle cupole la giungla tiene anche il ripido
     // le quote ai vertici attorno alle isole (come nella generazione: sulla riva il terreno scende sotto l'acqua)
     const vfix = (tx0, ty0, tx1, ty1) => { for (let j = Math.max(0, ty0); j <= Math.min(GH2, ty1); j++) for (let i2 = Math.max(0, tx0); i2 <= Math.min(GW2, tx1); i2++) {
@@ -10230,7 +10284,12 @@ var Interior = (function () {
         return home(moodOf(b, condo ? f : 0, mr));
       }
       case 'faro': return f === 0 ? { names: ['ingresso_faro'], mood: 'faro' } : f === nF - 1 ? { names: ['lanterna'], mood: 'faro' } : { names: [['alloggio_guardiano', 'deposito_olio', 'stanza_radio', 'alloggio_guardiano', 'deposito_olio', 'stanza_radio'][(f - 1) % 6]], mood: 'faro' };
-      case 'bar': return f === 0 ? { names: ['sala_bar', 'retro', 'bagno', 'magazzino'], mood: 'bar' } : up();
+      case 'bar': return f === 0 ? { names: ['sala_bar', 'sala_biliardo', 'retro', 'bagno', 'magazzino'], mood: 'bar' } : up();
+      // [attività] la birreria, l'armeria col poligono, gli abiti, l'autorimessa
+      case 'pub': return f === 0 ? { names: ['sala_pub', 'sala_biliardo', 'retro', 'bagno', 'cantina_birra'], mood: 'pub' } : up();
+      case 'armeria': return f === 0 ? { names: ['armeria_negozio', 'poligono', 'laboratorio_armi', 'bagno'], mood: 'armeria' } : up();
+      case 'abbigliamento': return f === 0 ? { names: ['negozio_vestiti', 'camerini', 'magazzino', 'bagno'], mood: 'abbigliamento' } : up();
+      case 'autorimessa': return f === 0 ? { names: ['salone_auto', 'officina_r', 'ufficio_vendite', 'bagno'], mood: 'autorimessa' } : { names: ['soppalco'], mood: 'autorimessa' };
       case 'trattoria': return f === 0 ? { names: ['sala_trattoria', 'cucina_trattoria', 'bagno', 'dispensa'], mood: 'trattoria' } : up();
       case 'gelateria': return f === 0 ? { names: ['gelateria', 'laboratorio_gelati', 'bagno', 'magazzino'], mood: 'gelateria' } : up();
       case 'banja': return { names: ['banja', 'spogliatoio_banja', 'bagno'], mood: 'banja' };
@@ -10300,15 +10359,19 @@ var Interior = (function () {
     ia_consolle_dj: [1.8, .8, 1], ia_tavolo_lungo: [3.2, .9, 1], ia_panca_lunga: [3, .4, 0], ia_cesto: [.5, .5, 0], ia_sedia_rotta: [.6, .6, 0], ia_sacco_boxe: [.6, .6, 0], ia_pesi: [1.4, .6, 0], ia_ring: [4, 4, 0], ia_lettino: [.8, 1.9, 1], ia_cassapanca: [1.2, .5, 1],
     ia_frigo_vecchio: [.8, .65, 1], ia_cucina_gas: [.8, .6, 1], ia_lavello: [1.2, .6, 1], ia_tinozza: [1.2, .8, 0], ia_focolare: [1.8, .9, 1], ia_botti: [1.8, .8, 1], ia_bancone_bar: [.9, .6, 1], ia_poltrona: [.9, .85, 1], ia_divano: [2.1, .9, 1], ia_mobile_radio: [.9, .45, 1],
     ia_ciclostile_vecchio: [.8, .6, 1], ia_cassetta_posta: [1.4, .3, 0], ia_bici: [1.7, .5, 0], ia_carrozzina: [.8, .5, 0], ia_ricetrasmittente: [1.4, .65, 1], ia_mappa_tavolo: [2.2, 1.4, 1], ia_scrivania_grande: [2.2, 1, 1], ia_lampadario_pavimento: [.4, .4, 0], ia_panca_chiesa: [2, .55, 1], ia_pista: [5, 4, 0],
+    // [attività]
+    ia_stender: [1.4, .6, 1], ia_manichino: [.5, .5, 1], ia_tavolo_maglie: [1.4, .8, 1], ia_scaffale_scarpe: [1.4, .4, 1], ia_camerino: [1.2, 1.2, 1], ia_vetrina_armi: [1.8, .7, 1], ia_casse_munizioni: [.85, .5, 1],
+    ia_bersaglio: [.8, .4, 1], ia_banco_tiro: [2.6, .5, 1], ia_auto_esposta: [1.8, 4, 1], ia_casse_birra: [.8, .55, 1],
   };
   // piccole cose che stanno SOPRA i mobili (si appoggiano con l'altezza h)
-  const SMALL = { ia_samovar: 1, ia_moka: 1, ia_macchina_scrivere: 1, ia_telefono: 1, ia_lampada_tavolo: 1, ia_pila_carte: 1, ia_giradischi: 1, ia_bilancia: 1, ia_candela: 1, ia_posacenere: 1, ia_bicchieri: 1, ia_radiolina: 1, ia_vaso: 1, ia_carte_gioco: 1, ia_pane: 1, ia_pesce: 1, ia_libro: 1, ia_teschio_bue: 1 };
+  const SMALL = { ia_samovar: 1, ia_moka: 1, ia_macchina_scrivere: 1, ia_telefono: 1, ia_lampada_tavolo: 1, ia_pila_carte: 1, ia_giradischi: 1, ia_bilancia: 1, ia_candela: 1, ia_posacenere: 1, ia_bicchieri: 1, ia_radiolina: 1, ia_vaso: 1, ia_carte_gioco: 1, ia_pane: 1, ia_pesce: 1, ia_libro: 1, ia_teschio_bue: 1, ia_spillatore: 1 };
   // roba appesa ai muri esterni: [larghezza, altezza dal pavimento (centro), bassa: va anche sui muri interni]
   const DECOR = { ia_ritratto: [.9, 1.85], ia_manifesto: [.8, 1.6], ia_tappeto_muro: [2, 1.55], ia_calendario: [.4, 1.5], ia_orologio: [.4, 2.1], ia_specchio: [.6, 1.55], ia_mensola: [1, 1.7], ia_quadro: [.8, 1.65],
     ia_foto: [.9, 1.6], ia_icona: [.5, 1.9], ia_crocifisso: [.4, 1.95], ia_mappa: [1.4, 1.6], ia_bandiera_muro: [1.2, 1.8], ia_lavagna: [2, 1.4], ia_termosifone: [1, .45, 1], ia_appendiabiti: [1, 1.6], ia_reti: [1.6, 1.6],
     ia_insegna_neon: [1.4, 1.9], ia_tv_muro: [.7, 2.15], ia_volantini: [.8, 1.45], ia_menu: [.7, 1.6], ia_bacheca: [1.2, 1.55], ia_cassette_posta: [1.2, 1.3], ia_gancio_carne: [1.4, 1.9], ia_attrezzi_muro: [1.5, 1.5], ia_poster_film: [.7, 1.65],
     ia_poster_disco: [.8, 1.6], ia_specchio_bar: [1.6, 1.7], ia_quadro_elettrico: [.6, 1.6], ia_estintore: [.3, .4, 1], ia_trofei: [1.2, 1.9], ia_salami: [1.2, 2], ia_mensola_alta: [1.4, 2.1], ia_altoparlante: [.4, 2.3], ia_spioncino: [.3, 1.5],
-    ia_scritta_risacca: [1.4, 1.2], ia_stella_regime: [.8, 2.1], ia_lampada_muro: [.3, 1.9], ia_ventaglio_carte: [.6, 1.5], ia_tabella_turni: [.8, 1.5], ia_schermo_radar: [1, 1.5], ia_pannello_strumenti: [1.6, 1.5] };
+    ia_scritta_risacca: [1.4, 1.2], ia_stella_regime: [.8, 2.1], ia_lampada_muro: [.3, 1.9], ia_ventaglio_carte: [.6, 1.5], ia_tabella_turni: [.8, 1.5], ia_schermo_radar: [1, 1.5], ia_pannello_strumenti: [1.6, 1.5],
+    ia_freccette: [.6, 1.7, 1], ia_stecche: [.8, 1.3, 1], ia_trofeo_caccia: [.6, 2.05], ia_fucili_muro: [1.6, 1.6], ia_insegna_birra: [1, 1.95], ia_cartello_prezzi: [.8, 1.6], ia_poster_auto: [.8, 1.65] };
 
   // ---------------------------------------------------------------------------------------------------------------
   // GRUPPI: mobili che stanno insieme. [id, x lungo il muro, y dal muro verso il centro, rotazione, h (sopra un mobile)]
@@ -10335,12 +10398,13 @@ var Interior = (function () {
     scrittoio: [1.7, 1.5, [['desk', 0, .4, 0], ['chairDesk', 0, 1.1, PI], ['ia_macchina_scrivere', 0, .4, 0, .75], ['ia_pila_carte', .5, .3, 0, .75], ['?ia_posacenere', -.5, .3, 0, .75]]],
     lettura: [1.9, 1.6, [['ia_poltrona', 0, .55, 0], ['lampRoundFloor', .8, .25, 0], ['?ia_pila_libri', -.75, .3, 0]]],
     ufficio_t: [1.7, 2.3, [['chairDesk', 0, .35, 0], ['desk', 0, 1.05, PI], ['ia_telefono', -.45, 1.05, 0, .75], ['?ia_lampada_tavolo', .5, 1.0, 0, .75], ['?ia_pila_carte', .1, 1.1, 0, .75], ['chair', 0, 1.85, PI]]],
-    bancone: [3.8, 2.6, [['ia_scaffale_bottiglie', 0, .2, 0], ['ia_bancone_bar', -1.35, 1.25, 0], ['ia_bancone_bar', -.45, 1.25, 0], ['ia_bancone_bar', .45, 1.25, 0], ['ia_bancone_bar', 1.35, 1.25, 0], ['kitchenCoffeeMachine', -1.2, 1.2, 0, 1.0], ['?ia_bicchieri', .5, 1.2, 0, 1.0], ['ar_cash-register', 1.2, 1.2, 0, 1.0], ['stoolBar', -1.1, 2.0, PI], ['stoolBar', 0, 2.0, PI], ['stoolBar', 1.1, 2.0, PI]]],
-    bancone_corto: [2.8, 2.4, [['ia_scaffale_bottiglie', 0, .2, 0], ['ia_bancone_bar', -.9, 1.2, 0], ['ia_bancone_bar', 0, 1.2, 0], ['ia_bancone_bar', .9, 1.2, 0], ['kitchenCoffeeMachine', -.8, 1.15, 0, 1.0], ['ar_cash-register', .8, 1.15, 0, 1.0], ['stoolBar', -.5, 1.95, PI], ['stoolBar', .5, 1.95, PI]]],
+    bancone: [3.8, 2.6, [['ia_scaffale_bottiglie', 0, .2, 0], ['ia_bancone_bar', -1.35, 1.25, 0], ['ia_bancone_bar', -.45, 1.25, 0], ['ia_bancone_bar', .45, 1.25, 0], ['ia_bancone_bar', 1.35, 1.25, 0], ['kitchenCoffeeMachine', -1.2, 1.2, 0, 1.0], ['?ia_bicchieri', .5, 1.2, 0, 1.0], ['ar_cash-register', 1.2, 1.2, 0, 1.0], ['stoolBar', -1.1, 2.0, PI], ['stoolBar', 0, 2.0, PI], ['stoolBar', 1.1, 2.0, PI], ['?ia_spillatore', -.3, 1.2, 0, 1.0], [':banco', 0, .66, 0], [':banco', -1.2, .66, 0], [':bevi', -.55, 1.75, PI], [':bevi', .55, 1.75, PI], [':bevi', 1.65, 1.75, PI]]],
+    bancone_corto: [2.8, 2.4, [['ia_scaffale_bottiglie', 0, .2, 0], ['ia_bancone_bar', -.9, 1.2, 0], ['ia_bancone_bar', 0, 1.2, 0], ['ia_bancone_bar', .9, 1.2, 0], ['kitchenCoffeeMachine', -.8, 1.15, 0, 1.0], ['ar_cash-register', .8, 1.15, 0, 1.0], ['stoolBar', -.5, 1.95, PI], ['stoolBar', .5, 1.95, PI], ['?ia_spillatore', 0, 1.15, 0, 1.0], [':banco', 0, .64, 0], [':bevi', 0, 1.72, PI], [':bevi', 1.15, 1.72, PI]]],
     tavolino: [1.8, 1.8, [['ia_tavolino_tondo', 0, .9, 0], ['chair', 0, .2, 0], ['chair', 0, 1.6, PI], ['?chair', -.75, .9, PI / 2], ['?ia_bicchieri', .1, .9, 0, .74], ['?ia_posacenere', -.15, .85, 0, .74]]],
     tavolata: [3.4, 1.9, [['ia_tavolo_lungo', 0, .95, 0], ['chair', -1.1, .3, 0], ['chair', 0, .3, 0], ['chair', 1.1, .3, 0], ['chair', -1.1, 1.6, PI], ['chair', 0, 1.6, PI], ['chair', 1.1, 1.6, PI], ['?ia_bicchieri', .4, .95, 0, .76], ['?ia_pane', -.6, .9, 0, .76]]],
     mensa: [3.4, 1.5, [['ia_tavolo_lungo', 0, .75, 0], ['ia_panca_lunga', 0, .1, 0], ['ia_panca_lunga', 0, 1.4, PI]]],
-    biliardo: [3.6, 2.6, [['ia_biliardo', 0, 1.3, 0]]],
+    biliardo: ['parquet|graniglia', 'verde|legno', 'verde', ['!*@biliardo', '?*@carte', '@jukebox|ia_casse_birra', 'bench', 'chair', 'chair', 'coatRackStanding', '^ia_stecche', '^ia_freccette', '^ia_lavagna', '^ia_trofei', '?^ia_insegna_birra', '~ia_bottiglie'], ['*@carte', '*@tavolino']],
+    sala_biliardo: ['parquet|graniglia|assi', 'verde|legno|rosso', 'verde', ['!*@biliardo', '?*@carte', '@jukebox|ia_casse_birra', 'bench', 'chair', '?coatRackStanding', '^ia_stecche', '^ia_freccette', '^ia_lavagna', '?^ia_trofei', '?^ia_insegna_birra', '?^ia_ventaglio_carte', '~ia_bottiglie', '?~ia_casse_birra'], ['*@biliardo', '*@carte', '*@tavolino']],
     carte: [2.2, 2.2, [['tableRound', 0, 1.1, 0], ['chair', 0, .2, 0], ['chair', 0, 2.0, PI], ['chair', -.95, 1.1, PI / 2], ['chair', .95, 1.1, -PI / 2], ['ia_carte_gioco', 0, 1.1, 0, .76], ['?ia_posacenere', .3, 1.0, 0, .76], ['?ia_bottiglie', .9, 1.9, 0]]],
     interrogatorio: [1.9, 2.2, [['table', 0, 1.1, 0], ['chair', 0, .4, 0], ['chair', 0, 1.8, PI], ['ia_lampada_tavolo', 0, 1.1, 0, .76], ['?ia_posacenere', .4, 1.1, 0, .76]]],
     lavatoio: [2, 1.5, [['washer', -.5, .4, 0], ['ia_bacinella', .5, .3, 0], ['?ia_bucato', 0, 1.15, 0]]],
@@ -10355,7 +10419,17 @@ var Interior = (function () {
     altare: [3, 1.8, [['ia_altare', 0, .6, 0], ['ia_candelabro', -1.2, .4, 0], ['ia_candelabro', 1.2, .4, 0]]],
     pianoforte: [2, 1.5, [['ia_pianoforte', 0, .35, 0], ['ia_sedia_rotta', 0, 1.05, PI]]],
     dj: [2.4, 1.4, [['speaker', -1, .3, 0], ['ia_consolle_dj', 0, .5, 0], ['speaker', 1, .3, 0]]],
-    cassa: [2.2, 1.3, [['pv_banco_vendita', 0, .55, 0]]],
+    cassa: [2.2, 1.9, [['pv_banco_vendita', 0, .95, 0], ['?ar_cash-register', .55, .95, 0, 1.0], [':banco', 0, .32, 0], [':cliente', -.4, 1.62, PI], [':cliente', .45, 1.62, PI]]],
+    // [attività] ':nome' è un punto dove si sta (non si disegna): chi lavora e chi usa il mobile. Rotazione null: guarda il centro del gruppo
+    jukebox: [1.2, 1.5, [['ia_jukebox', 0, .3, 0], [':jukebox', 0, 1.15, PI]]],
+    tiro: [3.2, 5.0, [['ia_bersaglio', -1, .3, 0], ['ia_bersaglio', 0, .3, 0], ['ia_bersaglio', 1, .3, 0], ['ia_banco_tiro', 0, 4.0, 0], [':tiro', -.86, 4.62, PI], [':tiro', 0, 4.62, PI], [':tiro', .86, 4.62, PI]]],
+    tiro_corto: [2.4, 3.7, [['ia_bersaglio', -.55, .3, 0], ['ia_bersaglio', .55, .3, 0], ['ia_banco_tiro', 0, 2.7, 0], [':tiro', -.6, 3.35, PI], [':tiro', .6, 3.35, PI]]],
+    banco_armi: [2.4, 2.4, [['ia_vetrina_armi', 0, 1.15, 0], ['ar_cash-register', .62, 1.15, 0, 1.06], [':banco', 0, .45, 0], [':guarda', -.45, 2.0, PI], [':guarda', .5, 2.0, PI]]],
+    stender: [1.6, 1.6, [['ia_stender', 0, .4, 0], [':guarda', 0, 1.25, PI]]],
+    stender_iso: [1.6, 2.4, [['ia_stender', 0, 1.2, 0], [':guarda', 0, .35, 0], [':guarda', 0, 2.05, PI]]],
+    camerino: [1.4, 2.1, [['ia_camerino', 0, .62, 0], [':prova', 0, 1.6, PI]]],
+    auto_vendita: [2.6, 4.6, [['ia_auto_esposta', 0, 2.3, 0], [':auto', 1.15, 1.6, null], [':auto', -1.15, 3.0, null]]],
+    ponte_auto: [2.8, 4.4, [['pv_ponte', 0, 2.2, 0], ['ia_auto_esposta', 0, 2.2, 0, 1.15], [':meccanico', 1.2, 1.4, null], [':meccanico', -1.2, 3.0, null]]],
     gelati: [2.2, 1.2, [['ia_vetrina_frigo', 0, .5, 0]]],
   };
   // ---------------------------------------------------------------------------------------------------------------
@@ -10368,13 +10442,13 @@ var Interior = (function () {
   // ---------------------------------------------------------------------------------------------------------------
   const R = {
     // --- case ---
-    soggiorno: ['spina', 'fiori|righe|rombi', 'lampadario', ['!@divano|@divano_vecchio', 'ia_stenka|ia_credenza', '@tv|@radiogrammofono', '?@angolo_stufa', '?pottedPlant', '^ia_tappeto_muro', '^ia_orologio', '?^ia_foto', '??^ia_ritratto', '^ia_termosifone', '?~ia_gatto', '?~ia_giornali']],
+    soggiorno: ['spina', 'fiori|righe|rombi', 'lampadario', ['!@divano|@divano_vecchio', 'ia_stenka|ia_credenza', '@tv|@radiogrammofono', '?@angolo_stufa', '?pottedPlant', '^ia_tappeto_muro', '^ia_orologio', '?^ia_foto', '??^ia_ritratto', '^ia_termosifone', '?~ia_gatto', '?~ia_giornali'], ['pottedPlant', 'ia_poltrona', 'ia_cassapanca']],
     cucina: ['linoleum|scacchi|piastrelle', 'piastrelle|verde', 'bulbo', ['!@cucina_linea|@cucina_corta|@cucina_povera', '@pranzo|@pranzo_piccolo', '?ia_credenza', '^ia_calendario', '?^ia_mensola', '?^ia_orologio', '?~ia_secchio', '??~ia_bottiglie', '?~ia_cesto']],
-    camera: ['parquet|spina', 'fiori|righe|rombi|ocra', 'lampadario', ['!@letto2|@letto1|@letto_ferro', 'ia_armadio|bookcaseClosedWide', '?ia_cassapanca', '?coatRackStanding', '^ia_tappeto_muro|^ia_quadro', '?^ia_icona|^ia_foto', '^ia_termosifone', '?~ia_valigia', '?rugRound']],
+    camera: ['parquet|spina', 'fiori|righe|rombi|ocra', 'lampadario', ['!@letto2|@letto1|@letto_ferro', 'ia_armadio|bookcaseClosedWide', '?ia_cassapanca', '?coatRackStanding', '^ia_tappeto_muro|^ia_quadro', '?^ia_icona|^ia_foto', '^ia_termosifone', '?~ia_valigia', '?rugRound'], ['ia_cassapanca', 'chair', 'coatRackStanding']],
     cameretta: ['parquet|linoleum', 'righe|blu|rombi', 'bulbo', ['@castello|@letto1', '@scrivania|@letto1', 'ia_armadio', '?^ia_poster_film|^ia_manifesto', '^ia_calendario', '?~ia_pila_libri', '?~ia_valigia']],
     bagno: ['piastrelle|piastrelle_b', 'piastrelle', 'bulbo', ['toilet', 'bathroomSink', 'bathtub|shower|ia_tinozza', '?washer', '^ia_specchio', '?~ia_secchio', '?~ia_bacinella']],
     ripostiglio: ['cemento|assi', 'calce|cemento', 'bulbo', ['?st_cassetta', 'pv_banco_lavoro|bookcaseOpenLow', 'cardboardBoxClosed', 'cardboardBoxClosed', '?washer', '?ia_bici', '~ia_legna', '?~ia_secchio_carbone', '?~ia_sacchi', '^ia_attrezzi_muro|^ia_appendiabiti']],
-    salotto_buono: ['spina|parquet', 'fiori|velluto|rombi', 'lampadario', ['ia_stenka', '@divano', '@radiogrammofono|@tv', 'ia_credenza', '?@pianoforte', '?pottedPlant', '^ia_tappeto_muro', '^ia_foto', '^ia_orologio', '?^ia_icona', '^ia_termosifone', '?~ia_gatto']],
+    salotto_buono: ['spina|parquet', 'fiori|velluto|rombi', 'lampadario', ['ia_stenka', '@divano', '@radiogrammofono|@tv', 'ia_credenza', '?@pianoforte', '?pottedPlant', '^ia_tappeto_muro', '^ia_foto', '^ia_orologio', '?^ia_icona', '^ia_termosifone', '?~ia_gatto'], ['ia_poltrona', 'pottedPlant']],
     dispensa: ['cotto|cemento', 'calce', 'bulbo', ['bookcaseOpen', 'bookcaseOpen', 'ia_sacchi', '?fd_barrel', '?ia_cesto', '^ia_mensola', '^ia_mensola_alta', '?^ia_salami', '~ia_bottiglie']],
     stanza_chiusa: ['parquet', 'fiori', 'spenta', ['ia_telo', 'ia_armadio', '?ia_valigia', '~ia_valigia', '~ia_giornali', '^ia_foto', '^ia_quadro']],
     cucina_abitabile: ['linoleum|cotto', 'verde|blu|ocra', 'bulbo', ['!@cucina_povera|@cucina_corta', '!@angolo_stufa|st_stufa', '@pranzo_piccolo', '?ia_frigo_vecchio', '?ia_credenza', '^ia_calendario', '?^ia_ritratto', '?^ia_mensola', '~ia_bottiglie', '?~ia_stivali', '?~ia_secchio']],
@@ -10394,7 +10468,7 @@ var Interior = (function () {
     rudere: ['terra|assi', 'mattoni|calce', 'spenta', ['~ia_macerie', '~ia_macerie', '?~ia_sedia_rotta', '?~ia_bottiglie', '??@materassi', '??~ia_candela', '?^ia_scritta_risacca']],
     androne: ['graniglia|scacchi', 'verde|blu|ocra', 'neon', ['?ia_bici', '?ia_carrozzina', '^ia_cassette_posta', '^ia_bacheca', '^ia_manifesto', '^ia_quadro_elettrico', '?^ia_volantini', '~ia_secchio', '?~ia_giornali']],
     portineria: ['linoleum', 'verde|crema', 'bulbo', ['@scrivania', '@tv', '?st_stufa', 'bookcaseOpenLow', '^ia_calendario', '^ia_ritratto', '^ia_bacheca', '~ia_gatto']],
-    cantine: ['cemento', 'mattoni|cemento', 'bulbo', ['ia_casse', 'cardboardBoxClosed', 'ia_bici', 'fd_barrel', '~ia_legna', '~ia_secchio_carbone', '~ia_sacchi', '~ia_bottiglie']],
+    cantine: ['cemento', 'mattoni|cemento', 'bulbo', ['ia_casse', 'cardboardBoxClosed', 'ia_bici', 'fd_barrel', '~ia_legna', '~ia_secchio_carbone', '~ia_sacchi', '~ia_bottiglie'], ['ia_casse', 'cardboardBoxClosed', 'ia_bici']],
     mansarda: ['parquet|assi', 'fiori|righe|calce', 'bulbo', ['!@letto2|@letto1', '?@castello', '@scrivania|@lettura', 'ia_armadio', '?ia_cassapanca', '?@angolo_stufa', '?ia_bucato', '?rugRound', '^ia_tappeto_muro', '^ia_foto', '^ia_termosifone', '~ia_valigia', '?~ia_giornali', '?~ia_gatto', '?~cardboardBoxClosed']],
     monolocale: ['parquet|linoleum', 'fiori|verde|righe', 'bulbo', ['!@letto2|@letto1|@letto_ferro', '!@cucina_corta|@cucina_povera', '@pranzo_piccolo', '?@angolo_stufa', 'ia_armadio', '?ia_tv', '^ia_tappeto_muro', '^ia_calendario', '^ia_termosifone', '?~ia_bucato', '~ia_secchio', '?~ia_bottiglie']],
     mono_anziana: ['spina|parquet', 'fiori', 'lampadario', ['@letto1', '@radiogrammofono', '@cucina_povera', '@pranzo_piccolo', 'ia_credenza', '^ia_icona', '^ia_foto', '^ia_tappeto_muro', '^ia_orologio', '~ia_gatto']],
@@ -10408,25 +10482,36 @@ var Interior = (function () {
     stanza_radio: ['assi', 'perline', 'bulbo', ['@radio_regime', 'ia_schedario', '^ia_mappa', '^ia_calendario']],
     lanterna: ['cemento', 'calce', 'neon', ['*ia_lanterna_faro']],
     // --- bar, trattorie, svago ---
-    sala_bar: ['scacchi|graniglia', 'crema|verde|rosso', 'bulbo', ['@bancone|@bancone_corto', 'kitchenStove', '*@tavolino', '*@tavolino', '?*@tavolino', '?ia_jukebox|ar_gambling-machine', '?st_stufa', '^ia_ritratto', '^ia_tv_muro', '^ia_specchio_bar', '?^ia_insegna_neon', '^ia_menu', '?^ia_calendario', '~ia_giornali']],
+    sala_bar: ['scacchi|graniglia', 'crema|verde|rosso', 'bulbo', ['!@bancone|@bancone_corto', 'kitchenStove', '*@tavolino', '*@tavolino', '?*@carte', '@jukebox|ar_gambling-machine', '?st_stufa', 'ia_casse_birra', '?ar_gambling-machine', '^ia_ritratto', '^ia_tv_muro', '^ia_specchio_bar', '?^ia_insegna_neon', '^ia_menu', '^ia_freccette', '?^ia_insegna_birra', '?^ia_calendario', '~ia_giornali', '?~ia_casse_birra'], ['*@tavolino', '*@carte', '*@tavolino']],
     retro: ['piastrelle|cemento', 'piastrelle|calce', 'neon', ['st_cassetta', '@cucina_corta|kitchenStove', 'kitchenFridge', 'cardboardBoxClosed', 'trashcan', '?pv_banco_lavoro', '~ia_casse', '~ia_bottiglie', '^ia_calendario', '^ia_mensola']],
-    magazzino: ['cemento', 'cemento|calce', 'neon', ['ia_scaffale_metallo|bookcaseOpen', 'bookcaseOpen', 'ia_casse', 'cardboardBoxClosed', 'cardboardBoxClosed', '?pv_banco_lavoro', '~ia_sacchi', '~ia_casse', '^ia_quadro_elettrico']],
-    sala_trattoria: ['cotto|scacchi', 'crema|ocra|mattoni', 'lampadario', ['!@cucina_corta', '*@tavolata', '*@tavolino', '?*@tavolino', '@bancone_corto|ia_credenza', 'st_stufa', '?fd_barrel', '^ia_ritratto', '^ia_menu', '^ia_salami', '?^ia_quadro', '?^ia_orologio']],
+    magazzino: ['cemento', 'cemento|calce', 'neon', ['ia_scaffale_metallo|bookcaseOpen', 'bookcaseOpen', 'ia_casse', 'cardboardBoxClosed', 'cardboardBoxClosed', '?pv_banco_lavoro', '~ia_sacchi', '~ia_casse', '^ia_quadro_elettrico'], ['ia_casse', 'cardboardBoxClosed', 'ia_sacchi', '*ia_casse']],
+    sala_trattoria: ['cotto|scacchi', 'crema|ocra|mattoni', 'lampadario', ['!@cucina_corta', '*@tavolata', '*@tavolino', '?*@tavolino', '@bancone_corto|ia_credenza', 'st_stufa', '?fd_barrel', '^ia_ritratto', '^ia_menu', '^ia_salami', '?^ia_quadro', '?^ia_orologio'], ['*@tavolino', '*@tavolata']],
     cucina_trattoria: ['piastrelle', 'piastrelle', 'neon', ['@cucina_linea', 'kitchenStove', 'pv_banco_lavoro', '*table', '~ia_secchio', '~ia_casse', '^ia_mensola', '^ia_mensola_alta', '?^ia_salami']],
     gelateria: ['scacchi', 'rosa|azzurro', 'neon', ['@gelati', 'ar_cash-register', '*@tavolino', '?*@tavolino', 'st_stufa', '^ia_ritratto', '^ia_menu', '?^ia_insegna_neon', '~ia_secchio']],
     laboratorio_gelati: ['piastrelle', 'piastrelle', 'neon', ['kitchenFridge', 'kitchenFridge', 'pv_banco_lavoro', 'kitchenSink', '~ia_secchio']],
     banja: ['assi', 'perline', 'fuoco', ['st_stufa', '@sauna', '?ia_panca_lunga', '~ia_secchio', '~ia_secchio', '~ia_bacinella', '^ia_appendiabiti']],
     spogliatoio_banja: ['assi', 'perline', 'bulbo', ['bench', 'bench', 'ia_armadietti', '^ia_appendiabiti', '^ia_specchio', '~ia_stivali', '^ia_menu']],
-    pista: ['moquette_b', 'nero', 'disco', ['!@dj', '*ia_pista', '@bancone_corto', 'ia_divano', 'ia_divano', '*@tavolino', '?*@tavolino', 'speaker', 'speaker', '?ia_jukebox', '^ia_poster_disco', '^ia_poster_disco', '^ia_insegna_neon', '^ia_specchio_bar', '~ia_bottiglie']],
+    pista: ['moquette_b', 'nero', 'disco', ['!@dj', '*ia_pista', '@bancone_corto', 'ia_divano', 'ia_divano', '*@tavolino', '?*@tavolino', 'speaker', 'speaker', '?ia_jukebox', '^ia_poster_disco', '^ia_poster_disco', '^ia_insegna_neon', '^ia_specchio_bar', '~ia_bottiglie'], ['*@tavolino', 'ia_divano']],
     bar_disco: ['moquette_b', 'nero', 'neon_rosa', ['@bancone_corto', '*@tavolino', '?*@tavolino', '^ia_insegna_neon', '^ia_poster_disco']],
     guardaroba: ['moquette_r', 'nero|velluto', 'bulbo', ['coatRackStanding', 'coatRackStanding', 'kitchenBar', '^ia_appendiabiti', '^ia_appendiabiti']],
-    hall: ['marmo|graniglia', 'crema|velluto', 'lampadario', ['@cassa', '@divano', 'ia_poltrona', 'ia_poltrona', 'pottedPlant', 'pottedPlant', '?ia_valigia', '^ia_ritratto', '^ia_orologio', '^ia_quadro', '^ia_bacheca', '?rugRectangle']],
-    sala_colazioni: ['graniglia|parquet', 'crema|fiori', 'lampadario', ['*@tavolino', '*@tavolino', '?*@tavolino', 'ia_credenza', '^ia_ritratto', '^ia_quadro']],
+    hall: ['marmo|graniglia', 'crema|velluto', 'lampadario', ['@cassa', '@divano', 'ia_poltrona', 'ia_poltrona', 'pottedPlant', 'pottedPlant', '?ia_valigia', '^ia_ritratto', '^ia_orologio', '^ia_quadro', '^ia_bacheca', '?rugRectangle'], ['ia_poltrona', 'pottedPlant', '@divano']],
+    sala_colazioni: ['graniglia|parquet', 'crema|fiori', 'lampadario', ['*@tavolino', '*@tavolino', '?*@tavolino', 'ia_credenza', '^ia_ritratto', '^ia_quadro'], ['*@tavolino']],
     corridoio_h: ['moquette_r', 'righe|crema', 'bulbo', ['?pottedPlant', '?ia_carrozzina', '^ia_quadro', '^ia_estintore', '^ia_tabella_turni', '~ia_valigia']],
     stanza_h: ['moquette_r|parquet', 'fiori|righe', 'bulbo', ['@letto2|@letto1', 'ia_armadio', '?ia_poltrona', '?sideTable', '^ia_quadro', '^ia_termosifone', '?~ia_valigia', '?^ia_spioncino']],
+    // --- [attività] birreria, armeria e poligono, abiti, autorimessa ---
+    sala_pub: ['assi|cotto', 'legno|mattoni|rosso', 'lampadario', ['!@bancone|@bancone_corto', '*@tavolata', '*@tavolino', '?*@carte', 'ia_botti', 'fd_barrel', '@jukebox', 'ia_casse_birra', '?st_stufa', '^ia_insegna_birra', '^ia_freccette', '^ia_specchio_bar', '^ia_menu', '^ia_trofei', '?^ia_poster_disco', '^ia_lampada_muro', '^ia_lampada_muro', '~ia_bottiglie', '?~ia_casse_birra'], ['*@tavolino', '*@tavolata', 'fd_barrel', '*@carte']],
+    cantina_birra: ['cemento|cotto', 'mattoni', 'bulbo', ['ia_botti', 'ia_botti', 'fd_barrel', 'fd_barrel', 'ia_casse_birra', 'ia_casse_birra', 'ia_scaffale_bottiglie', '~ia_casse_birra', '~ia_bottiglie', '^ia_quadro_elettrico'], ['ia_casse_birra', 'fd_barrel']],
+    armeria_negozio: ['spina|graniglia', 'legno|verde', 'lampadario', ['!@banco_armi', 'st_rastrelliera', 'st_rastrelliera', 'ia_casse_munizioni', 'ia_vetrina', 'bookcaseClosedWide', '?ia_poltrona', '?pottedPlant', '^ia_fucili_muro', '^ia_fucili_muro', '^ia_trofeo_caccia', '^ia_trofeo_caccia', '^ia_cartello_prezzi', '^ia_ritratto', '^ia_calendario', '~ia_casse_munizioni', '~ia_stivali'], ['*ia_vetrina', 'ia_casse_munizioni', 'st_rastrelliera']],
+    poligono: ['cemento', 'cemento|mattoni', 'neon', ['!@tiro|@tiro_corto', 'bench', 'ia_casse_munizioni', '?ia_armadietti', '^ia_tabella_turni', '^ia_cartello_prezzi', '^ia_estintore', '~ia_casse_munizioni']],
+    laboratorio_armi: ['cemento|assi', 'calce|mattoni', 'bulbo', ['!pv_banco_lavoro', 'st_cassetta', 'ia_casse_munizioni', 'bookcaseOpenLow', '?st_rastrelliera', '^ia_attrezzi_muro', '^ia_fucili_muro', '~ia_casse']],
+    negozio_vestiti: ['parquet|graniglia', 'crema|rosa|fiori', 'lampadario', ['!@cassa', '@stender', '@stender', 'ia_scaffale_scarpe', '*@stender_iso', '*ia_tavolo_maglie', 'ia_manichino', '?ia_manichino', 'coatRackStanding', 'pottedPlant', '^ia_specchio', '^ia_specchio', '^ia_manifesto', '^ia_ritratto', '?^ia_quadro', '~ia_cesto'], ['*@stender_iso', '@stender', '*ia_manichino', 'ia_scaffale_scarpe', '*ia_tavolo_maglie']],
+    camerini: ['moquette_r|parquet', 'velluto|fiori', 'lampadario', ['!@camerino', '@camerino', '?@camerino', 'ia_poltrona', 'coatRackStanding', '^ia_specchio', '^ia_appendiabiti', '?rugRound'], ['@camerino', 'ia_stender']],
+    salone_auto: ['graniglia|marmo', 'crema|blu', 'neon', ['!*@auto_vendita', '*@auto_vendita', '@ufficio_t', 'ia_poltrona', 'ia_poltrona', 'pottedPlant', 'pv_pneumatici', '^ia_poster_auto', '^ia_poster_auto', '^ia_cartello_prezzi', '^ia_ritratto', '^ia_insegna_neon', '^ia_calendario'], ['*@auto_vendita', '@auto_vendita', 'pottedPlant']],
+    officina_r: ['cemento', 'cemento', 'neon', ['!@ponte_auto', '!st_saldatrice', 'pv_banco_lavoro', 'pv_attrezzi', 'pv_attrezzi', 'pv_pneumatici', 'pv_pneumatici', 'ia_bidone', 'ia_scaffale_metallo', 'st_cassetta', '^ia_attrezzi_muro', '^ia_attrezzi_muro', '^ia_quadro_elettrico', '^ia_calendario', '~ia_bidone', '~pv_pneumatici'], ['@ponte_auto', 'pv_pneumatici', 'ia_bidone']],
+    ufficio_vendite: ['linoleum|parquet', 'crema|legno', 'neon', ['!st_cassaforte', '@ufficio_t', 'ia_schedario', 'bookcaseClosedWide', 'ia_poltrona', '^ia_poster_auto', '^ia_ritratto', '^ia_calendario', '^ia_mappa']],
     // --- regime, cultura, uffici ---
     salone_cultura: ['marmo|spina', 'velluto|rosso', 'lampadario', ['*ia_palco', 'rc_seat', 'rc_seat', 'rc_seat', 'rc_seat', 'rc_seat', 'rc_seat', 'ia_bandiera', 'ia_bandiera', 'ia_busto', '^ia_ritratto', '^ia_bandiera_muro', '^ia_bandiera_muro', '^ia_stella_regime', '^ia_manifesto', '^ia_altoparlante']],
-    atrio: ['marmo|graniglia', 'crema|rosso', 'lampadario', ['kitchenBar', 'kitchenBar', 'ar_vending-machine', 'pottedPlant', 'pv_banco_vendita', '?ia_busto', '^ia_ritratto', '^ia_manifesto', '^ia_bacheca', '^ia_poster_film']],
+    atrio: ['marmo|graniglia', 'crema|rosso', 'lampadario', ['kitchenBar', 'kitchenBar', 'ar_vending-machine', 'pottedPlant', 'pv_banco_vendita', '?ia_busto', '^ia_ritratto', '^ia_manifesto', '^ia_bacheca', '^ia_poster_film'], ['pottedPlant', 'bench']],
     sala_riunioni: ['parquet|linoleum', 'legno|crema', 'neon', ['*ia_tavolo_lungo', 'chair', 'chair', 'chair', 'chair', 'chair', 'chair', 'ia_bandiera', '^ia_ritratto', '^ia_lavagna', '^ia_mappa', '^ia_orologio']],
     biblioteca_partito: ['parquet', 'legno', 'lampadario', ['bookcaseClosedWide', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', '*@pranzo', 'ia_busto', '^ia_ritratto', '^ia_stella_regime']],
     museo_regime: ['marmo', 'velluto|crema', 'lampadario', ['*ia_vetrina', '*ia_vetrina', 'ia_vetrina', 'ia_busto', 'ia_bandiera', '^ia_ritratto', '^ia_foto', '^ia_bandiera_muro', '^ia_mappa', '^ia_stella_regime']],
@@ -10436,24 +10521,24 @@ var Interior = (function () {
     ingresso_caserma: ['linoleum|graniglia', 'verde|cemento', 'neon', ['@ufficio_t', 'bench', 'bench', 'ia_bandiera', '?ia_busto', '^ia_ritratto', '^ia_manifesto', '^ia_manifesto', '^ia_bacheca', '^ia_orologio', '^ia_altoparlante']],
     ufficio_t: ['linoleum', 'verde|legno', 'neon', ['@ufficio_t', 'ia_schedario', 'ia_schedario', 'bookcaseClosedWide', '?@radio_regime', '^ia_ritratto', '^ia_mappa', '^ia_calendario', '^ia_termosifone']],
     cella: ['cemento', 'cemento', 'bulbo', ['@letto_ferro|ia_branda', 'toilet', '~ia_secchio', '?^ia_scritta_risacca']],
-    armeria: ['cemento', 'cemento|verde', 'neon', ['!st_rastrelliera', '!st_rastrelliera', 'ia_armadietti', 'bookcaseClosedWide', 'cardboardBoxClosed', 'cardboardBoxClosed', '~ia_casse', '^ia_attrezzi_muro', '^ia_tabella_turni']],
+    armeria: ['cemento', 'cemento|verde', 'neon', ['!st_rastrelliera', '!st_rastrelliera', 'ia_armadietti', 'ia_casse_munizioni', 'bookcaseClosedWide', 'cardboardBoxClosed', '?ia_casse_munizioni', '~ia_casse', '~ia_casse_munizioni', '^ia_fucili_muro', '^ia_attrezzi_muro', '^ia_tabella_turni'], ['ia_casse_munizioni', 'st_rastrelliera']],
     interrogatorio: ['cemento', 'verde|cemento', 'bulbo', ['*@interrogatorio', '?ia_schedario', '^ia_ritratto', '^ia_orologio', '~ia_secchio']],
     camerata: ['linoleum|cemento', 'verde|calce', 'neon', ['@castello', '@castello', '@castello', '@castello|@branda', 'ia_armadietti', 'ia_armadietti', '?st_stufa', '^ia_ritratto', '^ia_tabella_turni', '^ia_appendiabiti', '~ia_stivali', '~ia_stivali', '~ia_valigia']],
     mensa_t: ['linoleum', 'verde', 'neon', ['*@mensa', '?*@mensa', '@cucina_corta', '^ia_ritratto', '^ia_manifesto', '^ia_tabella_turni']],
     comando: ['spina', 'legno|velluto', 'lampadario', ['@comando', '*ia_mappa_tavolo', 'bookcaseClosedWide', 'ia_schedario', '^ia_ritratto', '^ia_mappa', '^ia_bandiera_muro', '^ia_stella_regime', '^ia_orologio', 'rugRectangle']],
     sala_radio_t: ['linoleum', 'verde', 'neon', ['@radio_regime', 'ia_ricetrasmittente', 'ia_quadro_comandi', '^ia_schermo_radar', '^ia_mappa', '^ia_pannello_strumenti']],
     // --- lavoro ---
-    hangar: ['cemento', 'cemento', 'neon', ['*ia_telo', 'ia_scaffale_metallo', 'ia_scaffale_metallo', 'pv_banco_lavoro', 'ia_bidone', 'ia_bidone', 'pv_attrezzi', '~ia_casse', '~ia_casse', '^ia_stella_regime', '^ia_estintore', '^ia_tabella_turni']],
-    magazzino_porto: ['cemento', 'cemento', 'neon', ['ia_scaffale_metallo', 'ia_scaffale_metallo', 'ia_scaffale_metallo', '*ia_casse', '*ia_casse', 'ia_sacchi', 'ia_bidone', '~cardboardBoxClosed', '~ia_casse', '^ia_tabella_turni', '^ia_estintore']],
-    magazzino_neri: ['cemento', 'mattoni', 'bulbo', ['ia_casse', 'ia_casse', 'ia_scaffale_metallo', '*@carte', 'ia_divano', '?ia_frigo_vecchio', '~ia_casse', '~ia_bottiglie', '~ia_bottiglie', '^ia_calendario', '^ia_ventaglio_carte']],
+    hangar: ['cemento', 'cemento', 'neon', ['*ia_telo', 'ia_scaffale_metallo', 'ia_scaffale_metallo', 'pv_banco_lavoro', 'ia_bidone', 'ia_bidone', 'pv_attrezzi', '~ia_casse', '~ia_casse', '^ia_stella_regime', '^ia_estintore', '^ia_tabella_turni'], ['ia_bidone', 'ia_casse', 'pv_banco_lavoro']],
+    magazzino_porto: ['cemento', 'cemento', 'neon', ['ia_scaffale_metallo', 'ia_scaffale_metallo', 'ia_scaffale_metallo', '*ia_casse', '*ia_casse', 'ia_sacchi', 'ia_bidone', '~cardboardBoxClosed', '~ia_casse', '^ia_tabella_turni', '^ia_estintore'], ['*ia_casse', 'ia_sacchi', 'ia_bidone', 'ia_scaffale_metallo']],
+    magazzino_neri: ['cemento', 'mattoni', 'bulbo', ['ia_casse', 'ia_casse', 'ia_scaffale_metallo', '*@carte', 'ia_divano', '?ia_frigo_vecchio', '~ia_casse', '~ia_bottiglie', '~ia_bottiglie', '^ia_calendario', '^ia_ventaglio_carte'], ['ia_casse', '*ia_casse', 'ia_bottiglie']],
     ufficio_porto: ['linoleum', 'verde|legno', 'neon', ['@ufficio_t', 'ia_schedario', '^ia_mappa', '^ia_ritratto', '^ia_calendario']],
     sala_comandi: ['linoleum|cemento', 'verde', 'neon', ['ia_quadro_comandi', 'ia_quadro_comandi', 'chairDesk', 'chairDesk', 'ia_schedario', '^ia_pannello_strumenti', '^ia_ritratto', '^ia_tabella_turni', '~ia_casse']],
     spogliatoio_m: ['cemento', 'piastrelle|verde', 'neon', ['ia_armadietti', 'ia_armadietti', 'bench', 'bench', 'shower', '~ia_stivali', '~ia_stivali', '^ia_appendiabiti']],
-    deposito: ['cemento', 'cemento|mattoni', 'neon', ['st_cassetta', 'cardboardBoxClosed', 'cardboardBoxClosed', 'cardboardBoxClosed', 'ia_scaffale_metallo|bookcaseOpen', 'ia_bidone', 'washer|ia_bidone', 'trashcan', 'pv_banco_lavoro', '~ia_casse', '~ia_sacchi', '^ia_tabella_turni']],
+    deposito: ['cemento', 'cemento|mattoni', 'neon', ['st_cassetta', 'cardboardBoxClosed', 'cardboardBoxClosed', 'cardboardBoxClosed', 'ia_scaffale_metallo|bookcaseOpen', 'ia_bidone', 'washer|ia_bidone', 'trashcan', 'pv_banco_lavoro', '~ia_casse', '~ia_sacchi', '^ia_tabella_turni'], ['ia_casse', 'cardboardBoxClosed', 'ia_bidone', '*ia_casse']],
     cantiere: ['cemento|assi', 'mattoni|cemento', 'neon', ['*ia_barca', '!st_saldatrice', '!st_banco_falegname', 'pv_banco_lavoro', 'pv_banco_lavoro', 'pv_attrezzi', 'ia_bidone', '~ia_legna', '~ia_casse', '~ia_secchio', '^ia_attrezzi_muro', '^ia_reti']],
-    officina: ['cemento', 'cemento', 'neon', ['!st_saldatrice', 'st_cassetta', 'pv_ponte', 'pv_ponte', 'pv_banco_lavoro', 'pv_banco_lavoro', 'pv_attrezzi', 'pv_attrezzi', 'pv_pneumatici', 'pv_pneumatici', 'cardboardBoxClosed', 'trashcan', '~ia_bidone', '^ia_attrezzi_muro', '^ia_calendario', '^ia_quadro_elettrico']],
+    officina: ['cemento', 'cemento', 'neon', ['!st_saldatrice', 'st_cassetta', 'pv_ponte', 'pv_ponte', 'pv_banco_lavoro', 'pv_banco_lavoro', 'pv_attrezzi', 'pv_attrezzi', 'pv_pneumatici', 'pv_pneumatici', 'cardboardBoxClosed', 'trashcan', '~ia_bidone', '^ia_attrezzi_muro', '^ia_calendario', '^ia_quadro_elettrico'], ['pv_pneumatici', 'ia_bidone', 'pv_attrezzi']],
     soppalco: ['assi', 'cemento', 'bulbo', ['cardboardBoxClosed', 'cardboardBoxClosed', 'ia_casse', '?@branda', '~ia_bottiglie']],
-    reparto: ['cemento', 'cemento|verde', 'neon', ['st_cassetta', '!fx_machine', 'fx_machine', 'fx_conveyor-long', 'fx_hopper-round', 'fx_box-large', 'fx_box-small', 'fx_box-small', 'ia_bidone', '^ia_ritratto', '^ia_manifesto', '^ia_tabella_turni', '^ia_altoparlante', '~ia_casse']],
+    reparto: ['cemento', 'cemento|verde', 'neon', ['st_cassetta', '!fx_machine', 'fx_machine', 'fx_conveyor-long', 'fx_hopper-round', 'fx_box-large', 'fx_box-small', 'fx_box-small', 'ia_bidone', '^ia_ritratto', '^ia_manifesto', '^ia_tabella_turni', '^ia_altoparlante', '~ia_casse'], ['fx_box-large', 'fx_box-small', 'ia_bidone']],
     uffici: ['linoleum', 'verde', 'neon', ['@ufficio_t', '@scrivania', 'ia_schedario', 'bookcaseClosedWide', '^ia_ritratto', '^ia_calendario']],
     // --- chiesa, scuola, cultura ---
     navata: ['cotto|marmo', 'calce|crema', 'candela', ['@altare', 'ia_confessionale', '?ia_candelabro', '^ia_icona', '^ia_icona', '^ia_crocifisso', '^ia_quadro']],
@@ -10465,7 +10550,7 @@ var Interior = (function () {
     presidenza: ['parquet', 'legno', 'lampadario', ['@scrivania', 'bookcaseClosedWide', 'ia_bandiera', '^ia_ritratto', '^ia_calendario']],
     lettura: ['spina|parquet', 'legno|crema', 'lampadario', ['*@pranzo', '?*@pranzo', 'bookcaseOpen', 'bookcaseOpen', 'lampRoundFloor', '^ia_ritratto', '^ia_orologio', '^ia_mappa']],
     scaffali: ['parquet', 'legno|crema', 'bulbo', ['bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseClosedWide', 'bookcaseOpen', '~ia_pila_libri', '~ia_pila_libri', '?^ia_volantini']],
-    circolo: ['cotto|graniglia', 'crema|legno', 'bulbo', ['*@carte', '?*@carte', '@tv', 'st_stufa', 'speaker', '^ia_ritratto', '^ia_bandiera_muro', '^ia_bacheca', '^ia_ventaglio_carte']],
+    circolo: ['cotto|graniglia', 'crema|legno', 'bulbo', ['*@carte', '?*@carte', '@tv', 'st_stufa', 'speaker', '^ia_ritratto', '^ia_bandiera_muro', '^ia_bacheca', '^ia_ventaglio_carte'], ['*@carte', '*@tavolino']],
     bar_circolo: ['graniglia', 'crema', 'bulbo', ['@bancone_corto', 'kitchenFridge', '^ia_menu', '^ia_ritratto', '~ia_casse']],
     biliardo: ['parquet|graniglia', 'verde|legno', 'verde', ['*@biliardo', 'coatRackStanding', 'chair', 'chair', '^ia_trofei', '^ia_lavagna', '~ia_bottiglie']],
     platea: ['moquette_r|parquet', 'velluto', 'lampadario', ['ia_palco', 'speaker', 'speaker', '^ia_poster_film', '^ia_ritratto']],
@@ -10474,7 +10559,7 @@ var Interior = (function () {
     camerino: ['assi|parquet', 'velluto|rosa', 'lampadario', ['desk', 'chair', 'coatRackStanding', 'bathroomSink', 'ia_poltrona', '^ia_specchio', '^ia_poster_film']],
     sala_cinema: ['moquette_r', 'velluto', 'spenta', ['rc_screen', 'rc_seat', 'speaker', 'speaker']],
     cabina: ['assi', 'nero', 'rossa', ['rc_cinecamera', 'bookcaseOpen', 'cardboardBoxClosed', '^ia_poster_film', '^ia_calendario']],
-    palestra: ['gomma|assi', 'blu|verde', 'neon', ['*ia_ring', 'ia_sacco_boxe', 'ia_pesi', 'bench', 'bench', 'rc_glove', '^ia_trofei', '^ia_ritratto', '^ia_manifesto', '^ia_orologio']],
+    palestra: ['gomma|assi', 'blu|verde', 'neon', ['*ia_ring', 'ia_sacco_boxe', 'ia_pesi', 'bench', 'bench', 'rc_glove', '^ia_trofei', '^ia_ritratto', '^ia_manifesto', '^ia_orologio'], ['ia_sacco_boxe', 'ia_pesi', 'bench']],
     spogliatoio: ['piastrelle', 'piastrelle|verde', 'neon', ['bench', 'bench', 'shower', 'ia_armadietti', 'coatRackStanding', '~ia_stivali', '^ia_appendiabiti']],
     // --- botteghe ---
     sportelli: ['marmo', 'crema|legno', 'neon', ['!st_cassaforte', 'kitchenBar', 'kitchenBar', 'kitchenBar', 'chairDesk', 'chairDesk', 'computerScreen', 'bench', 'pottedPlant', 'ar_cash-register', '^ia_ritratto', '^ia_orologio', '^ia_bacheca']],
@@ -10482,21 +10567,26 @@ var Interior = (function () {
     ingresso_uff: ['linoleum', 'crema|verde', 'neon', ['desk', 'chairDesk', 'ia_telefono', 'ia_poltrona', 'ia_poltrona', 'pottedPlant', 'coatRackStanding', '^ia_ritratto', '^ia_calendario']],
     tipografia: ['cemento', 'calce|cemento', 'neon', ['!st_ciclostile', 'pv_banco_lavoro', 'fx_machine', 'ia_ciclostile_vecchio', 'table', 'cardboardBoxClosed', 'cardboardBoxClosed', 'bookcaseOpen', '~ia_giornali', '~ia_giornali', '^ia_manifesto', '^ia_calendario', '^ia_quadro_elettrico']],
     barbiere: ['scacchi|piastrelle', 'piastrelle|azzurro', 'neon', ['@barbiere_post', '@barbiere_post', 'bench', 'coatRackStanding', 'ar_cash-register', '^ia_specchio', '^ia_specchio', '^ia_ritratto', '^ia_calendario', '~ia_giornali']],
-    tabacchi: ['graniglia', 'crema|legno', 'neon', ['pv_banco_vendita', 'kitchenBar', 'kitchenBar', 'ar_cash-register', 'bookcaseOpen', 'ar_vending-machine', 'ar_gambling-machine', '^ia_ritratto', '^ia_manifesto', '^ia_calendario', '~ia_giornali']],
-    farmacia: ['graniglia|marmo', 'ospedale|crema', 'neon', ['!st_tavolo_medico', 'pv_banco_vendita', 'bookcaseOpen', 'bookcaseOpen', 'kitchenBar', 'ia_scaffale_merci', '^ia_ritratto', '^ia_bacheca', '^ia_calendario']],
+    tabacchi: ['graniglia', 'crema|legno', 'neon', ['!@cassa|pv_banco_vendita', 'kitchenBar', 'kitchenBar', 'ar_cash-register', 'bookcaseOpen', 'ar_vending-machine', 'ar_gambling-machine', '^ia_ritratto', '^ia_manifesto', '^ia_calendario', '~ia_giornali']],
+    farmacia: ['graniglia|marmo', 'ospedale|crema', 'neon', ['!st_tavolo_medico', '!@cassa|pv_banco_vendita', 'bookcaseOpen', 'bookcaseOpen', 'kitchenBar', 'ia_scaffale_merci', '^ia_ritratto', '^ia_bacheca', '^ia_calendario']],
     lavanderia: ['piastrelle', 'piastrelle|azzurro', 'neon', ['washer', 'washer', 'washer', 'washer', 'bench', 'kitchenBar', 'ar_cash-register', '?@lavatoio', '~ia_bacinella', '~ia_bucato', '^ia_tabella_turni', '^ia_ritratto']],
     sartoria: ['parquet|linoleum', 'fiori|crema', 'bulbo', ['!st_macchina_cucire', '!st_macchina_cucire', 'table', 'table', 'chair', 'chair', 'coatRackStanding', 'coatRackStanding', 'bookcaseOpen', 'rugRectangle', 'pv_banco_lavoro', '^ia_specchio', '^ia_ritratto', '^ia_calendario', '~ia_cesto']],
     prova: ['parquet', 'fiori', 'lampadario', ['coatRackStanding', 'ia_poltrona', 'rugRound', '^ia_specchio', '^ia_specchio']],
-    ferramenta: ['cemento|graniglia', 'calce|verde', 'neon', ['pv_banco_vendita', 'pv_banco_lavoro', 'kitchenBar', 'kitchenBar', 'ar_cash-register', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpenLow', 'fx_box-small', 'fx_box-small', 'cardboardBoxClosed', '^ia_attrezzi_muro', '^ia_attrezzi_muro', '^ia_ritratto', '^ia_calendario']],
-    panetteria: ['graniglia', 'piastrelle|crema', 'neon', ['!st_forno', 'pv_banco_vendita', 'kitchenBar', 'kitchenBar', 'kitchenBar', 'fd_loaf-baguette', 'fd_bread', 'fd_croissant', 'fd_cake', 'ar_cash-register', 'bookcaseOpen', 'ia_scaffale_merci', '^ia_ritratto', '^ia_menu', '~ia_cesto', '~ia_sacchi']],
+    ferramenta: ['cemento|graniglia', 'calce|verde', 'neon', ['!@cassa|pv_banco_vendita', 'pv_banco_lavoro', 'kitchenBar', 'kitchenBar', 'ar_cash-register', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpenLow', 'fx_box-small', 'fx_box-small', 'cardboardBoxClosed', '^ia_attrezzi_muro', '^ia_attrezzi_muro', '^ia_ritratto', '^ia_calendario'], ['*ia_scaffale_metallo', 'bookcaseOpen', 'fx_box-small']],
+    panetteria: ['graniglia', 'piastrelle|crema', 'neon', ['!st_forno', '!@cassa|pv_banco_vendita', 'kitchenBar', 'kitchenBar', 'kitchenBar', 'fd_loaf-baguette', 'fd_bread', 'fd_croissant', 'fd_cake', 'ar_cash-register', 'bookcaseOpen', 'ia_scaffale_merci', '^ia_ritratto', '^ia_menu', '~ia_cesto', '~ia_sacchi']],
     forno: ['cotto', 'calce|mattoni', 'fuoco', ['!st_forno', 'pv_banco_lavoro', 'kitchenStove', 'table', 'fd_bread', 'kitchenCabinet', 'cardboardBoxClosed', 'ia_sacchi', '~ia_sacchi', '~ia_legna', '^ia_mensola']],
-    pescheria: ['piastrelle', 'piastrelle', 'neon', ['pv_banco_vendita', 'kitchenBar', 'kitchenBar', 'fd_fish', 'fd_fish', 'fd_barrel', 'fd_barrel', 'ar_cash-register', 'kitchenSink', 'ia_vetrina_frigo', '^ia_reti', '^ia_ritratto', '^ia_menu', '~ia_cassette_frutta', '~ia_secchio']],
+    pescheria: ['piastrelle', 'piastrelle', 'neon', ['!@cassa|pv_banco_vendita', 'kitchenBar', 'kitchenBar', 'fd_fish', 'fd_fish', 'fd_barrel', 'fd_barrel', 'ar_cash-register', 'kitchenSink', 'ia_vetrina_frigo', '^ia_reti', '^ia_ritratto', '^ia_menu', '~ia_cassette_frutta', '~ia_secchio']],
     cella_frigo: ['piastrelle', 'piastrelle', 'neon', ['kitchenFridge', 'kitchenFridge', 'fd_barrel', 'fd_barrel', '^ia_gancio_carne']],
+<<<<<<< HEAD
+    bottega: ['graniglia|linoleum', 'crema|verde|ocra', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpenLow', 'cardboardBoxClosed', 'pottedPlant', '?ia_cassette_frutta', '^ia_ritratto', '^ia_calendario', '^ia_manifesto', '~ia_cassette_frutta'], ['ia_scaffale_merci', '*ia_scaffale_merci', 'ia_cassette_frutta']],
+    alimentari: ['linoleum|graniglia', 'crema|verde', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_vetrina_frigo', 'ia_cassette_frutta', 'ia_sacchi', '^ia_ritratto', '^ia_menu', '^ia_calendario', '~ia_cassette_frutta', '~ia_cesto'], ['*ia_scaffale_merci', 'ia_cassette_frutta', 'ia_sacchi']],
+=======
     supermercato: ['linoleum|graniglia', 'piastrelle|crema', 'neon', ['pv_banco_vendita', 'ar_cash-register', 'ar_cash-register', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpen', 'bookcaseOpen', 'kitchenFridge', 'kitchenFridge', 'ia_vetrina_frigo', 'cardboardBoxClosed', 'cardboardBoxClosed', '?ia_cassette_frutta', '~ia_cassette_frutta', '~ia_sacchi', '^ia_ritratto', '^ia_manifesto', '^ia_calendario']],   // [ordine]
     bottega: ['graniglia|linoleum', 'crema|verde|ocra', 'neon', ['pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpenLow', 'cardboardBoxClosed', 'pottedPlant', '?ia_cassette_frutta', '^ia_ritratto', '^ia_calendario', '^ia_manifesto', '~ia_cassette_frutta']],
     alimentari: ['linoleum|graniglia', 'crema|verde', 'neon', ['pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_vetrina_frigo', 'ia_cassette_frutta', 'ia_sacchi', '^ia_ritratto', '^ia_menu', '^ia_calendario', '~ia_cassette_frutta', '~ia_cesto']],
+>>>>>>> 85910acf7d6913dee14fb3627078a121f38cc753
     cassa_benzina: ['linoleum', 'blu|crema', 'neon', ['@cassa', 'ia_scaffale_merci', 'ar_vending-machine', 'ia_bidone', '^ia_calendario', '^ia_ritratto', '^ia_mappa', '~pv_pneumatici']],
-    attesa: ['linoleum', 'ospedale', 'neon', ['bench', 'bench', 'bench', 'pottedPlant', 'desk', '^ia_ritratto', '^ia_bacheca', '^ia_orologio', '^ia_manifesto']],
+    attesa: ['linoleum', 'ospedale', 'neon', ['bench', 'bench', 'bench', 'pottedPlant', 'desk', '^ia_ritratto', '^ia_bacheca', '^ia_orologio', '^ia_manifesto'], ['bench', 'pottedPlant']],
     visite: ['linoleum', 'ospedale', 'neon', ['!st_tavolo_medico', '@ospedale', 'desk', 'chairDesk', 'bathroomSink', 'ia_schedario', '^ia_specchio', '^ia_calendario', '^ia_ritratto']],
     corsia: ['linoleum', 'ospedale', 'neon', ['@ospedale', '@ospedale', '@ospedale', '@ospedale', 'sideTable', 'sideTable', '^ia_ritratto', '^ia_orologio', '^ia_termosifone']],
     studio_medico: ['parquet|linoleum', 'ospedale|crema', 'bulbo', ['@scrivania', 'bookcaseClosedWide', 'ia_schedario', '^ia_ritratto', '^ia_calendario']],
@@ -10507,15 +10597,15 @@ var Interior = (function () {
     laboratorio: ['assi', 'mattoni|calce', 'bulbo', ['!st_banco_falegname', '!st_banco_falegname', '!pv_banco_lavoro', 'st_cassetta', 'kitchenBar', 'ar_cash-register', '~ia_legna', '~ia_legna', '^ia_attrezzi_muro', '^ia_calendario']],
     macelleria: ['piastrelle', 'piastrelle', 'neon', ['!st_banco_macellaio', 'ia_vetrina_frigo', 'kitchenBar', 'ar_cash-register', 'kitchenFridge', '^ia_gancio_carne', '^ia_ritratto', '^ia_menu']],
     macello: ['piastrelle', 'piastrelle', 'neon', ['!st_banco_macellaio', 'kitchenSink', 'kitchenFridge', 'trashcan', '~ia_secchio', '^ia_gancio_carne']],
-    emporio: ['graniglia', 'crema', 'neon', ['pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpenLow', 'ar_cash-register', 'pottedPlant', '^ia_ritratto', '^ia_manifesto', '^ia_stella_regime', '^ia_altoparlante']],
-    fruttivendolo: ['cemento|graniglia', 'crema|verde', 'neon', ['pv_banco_vendita', 'ia_cassette_frutta', 'ia_cassette_frutta', 'ia_cassette_frutta', 'ia_sacchi', 'ar_cash-register', '~ia_cesto', '~ia_cassette_frutta', '^ia_ritratto', '^ia_menu']],
+    emporio: ['graniglia', 'crema', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpenLow', 'ar_cash-register', 'pottedPlant', '^ia_ritratto', '^ia_manifesto', '^ia_stella_regime', '^ia_altoparlante'], ['*ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpenLow']],
+    fruttivendolo: ['cemento|graniglia', 'crema|verde', 'neon', ['!@cassa|pv_banco_vendita', 'ia_cassette_frutta', 'ia_cassette_frutta', 'ia_cassette_frutta', 'ia_sacchi', 'ar_cash-register', '~ia_cesto', '~ia_cassette_frutta', '^ia_ritratto', '^ia_menu']],
     radio_r: ['linoleum', 'verde', 'bulbo', ['!st_banco_radio', 'st_cassetta', 'cardboardBoxClosed', '@scrivania', '~ia_casse', '^ia_mappa', '^ia_poster_film']],
     cantina_r: ['cotto', 'mattoni', 'bulbo', ['!fd_barrel', '!fd_barrel', 'ia_botti', 'ia_botti', 'kitchenBar', 'ar_cash-register', '~ia_bottiglie', '^ia_salami']],
   };
   // file di posti (platea, cinema, aule, navata, salone): [testa contro il muro di fondo, posto]
   const ROWS = { platea: ['ia_palco', 'rc_seat'], sala_cinema: ['rc_screen', 'rc_seat'], galleria: [null, 'rc_seat'], aula: ['desk', 'ia_banco_scuola'], navata: ['@altare', 'ia_panca_chiesa'], salone_cultura: ['ia_palco', 'rc_seat'] };
   // mobili alti: davanti a loro non si appende niente
-  const TALL = /bookcase|stenka|armadio|Fridge|frigo|scaffale|armadietti|jukebox|arcade|vending|claw|castello|schedario|credenza|radio_grande|pianoforte|quadro_comandi|prizes|dance|basketball|fx_|ia_casse|ia_bidone/;
+  const TALL = /stender|manichino|camerino|bookcase|stenka|armadio|Fridge|frigo|scaffale|armadietti|jukebox|arcade|vending|claw|castello|schedario|credenza|radio_grande|pianoforte|quadro_comandi|prizes|dance|basketball|fx_|ia_casse|ia_bidone/;
   // apertura delle stanze grandi: niente muri dentro
   const OPEN = { chiesa: 1, deposito: 1, officina: 1, fabbrica: 1, hangar: 1, cantiere: 1, faro: 1 };
   const OPEN0 = { teatro: 1, cinema: 1, palestra: 1, cultura: 1, disco: 1, magazzino: 1 };
@@ -10551,9 +10641,29 @@ var Interior = (function () {
   }
 
   // ---------------------------------------------------------------------------------------------------------------
+  // [attività] dentro è più grande che fuori (fuori, mentre sei dentro, non si vede): l'interno cresce di lato e in profondità,
+  // il muro con la porta resta dov'è. Le botteghe e i locali crescono più delle case; i capannoni poco.
+  const NOGROW = { faro: 1, lanterna: 1 };
+  function growOf(b, kind) {
+    if (!b.door || NOGROW[kind]) return [0, 0];
+    const a = b.w * b.h, home = kind === 'casa' || kind === 'cascina';
+    if (home) return a < 20 ? [2, 1] : a < 42 ? [1, 1] : [0, 1];
+    if (a >= 90) return [1, 1];
+    return a < 20 ? [3, 3] : a < 42 ? [2, 2] : [2, 1];
+  }
+  function grownBox(b, kind) {
+    const [gl, gd] = growOf(b, kind); if (!gl && !gd) return b;
+    const [dx, dy] = b.door, l0 = Math.floor(gl / 2), o = { x: b.x, y: b.y, w: b.w, h: b.h };
+    if (dy < b.y) { o.x -= l0; o.w += gl; o.h += gd; }                         // porta a nord: si cresce verso sud
+    else if (dy >= b.y + b.h) { o.x -= l0; o.w += gl; o.y -= gd; o.h += gd; }  // porta a sud
+    else if (dx < b.x) { o.y -= l0; o.h += gl; o.w += gd; }                    // porta a ovest
+    else { o.y -= l0; o.h += gl; o.x -= gd; o.w += gd; }                       // porta a est
+    return o;
+  }
   function layout(b) {
     const key = b.i !== undefined ? b.i : b.id; if (CACHE[key]) return CACHE[key];
-    const seed = (b.x * 7919 + b.y * 104729) >>> 0, r = rng(seed), kind = kindOf(b), X0 = b.x * TS, Y0 = b.y * TS, W = b.w * TS, H = b.h * TS;
+    const kind = kindOf(b), vb = grownBox(b, kind);
+    const seed = (b.x * 7919 + b.y * 104729) >>> 0, r = rng(seed), X0 = vb.x * TS, Y0 = vb.y * TS, W = vb.w * TS, H = vb.h * TS;
     const want = Math.max(1, Math.min(MAXF, b.fl || 1));
     // ---- l'ingresso: sul lato che tocca la casella della porta ----
     let ent = null;
@@ -10565,14 +10675,14 @@ var Interior = (function () {
       else ent = { side: 'E', x: X0 + W, y: cy, out: [X0 + W + 1, cy], in: [X0 + W - 1.1, cy] };
     }
     const prog0 = program(b, kind, 0, want, r);
-    let P0 = splitFloor(b, kind, 0, r, null, prog0.names.length);
+    let P0 = splitFloor(vb, kind, 0, r, null, prog0.names.length);
     const roomIn = (rooms, x, y) => rooms.find(q => x >= q.tx * TS && x <= (q.tx + q.tw) * TS && y >= q.ty * TS && y <= (q.ty + q.th) * TS);
     let entRoom = ent ? roomIn(P0.rooms, ent.in[0], ent.in[1]) : P0.rooms[0];
     // ---- scala: in una stanza del piano terra, contro un muro, due caselle ----
     let stairs = null;
     for (let tryN = 0; want > 1 && !stairs && tryN < 4; tryN++) {
       const GD = [2.2, 1.6, 1.6, 1.6][tryN], ED = [2.2, 1.8, 1.8, 1.8][tryN], needWall = tryN < 2;
-      if (tryN === 3) { P0 = splitFloor(b, kind, 0, r, null, 1); entRoom = ent ? roomIn(P0.rooms, ent.in[0], ent.in[1]) : P0.rooms[0]; }
+      if (tryN === 3) { P0 = splitFloor(vb, kind, 0, r, null, 1); entRoom = ent ? roomIn(P0.rooms, ent.in[0], ent.in[1]) : P0.rooms[0]; }
       // si provano tutte le posizioni: due caselle (cima T e rampa O) contro un muro, il piede oltre O, il pianerottolo accanto a T
       const gapNear = (tx, ty) => P0.inner.some(q => { const gx = q.v ? q.a[0] : q.gap[0], gy = q.v ? q.gap[0] : q.a[1]; return Math.abs(gx - (tx * TS + 1)) < GD && Math.abs(gy - (ty * TS + 1)) < GD; });
       let best = null, bs = -1e9;
@@ -10615,7 +10725,7 @@ var Interior = (function () {
     for (let f = 0; f < nF; f++) {
       const rf = f === 0 ? r : rng((seed + f * 7777) >>> 0);
       const prog = f === 0 ? prog0 : program(b, kind, f, nF, rf);
-      const P = f === 0 ? P0 : splitFloor(b, kind, f, rf, stairs.forb, prog.names.length);
+      const P = f === 0 ? P0 : splitFloor(vb, kind, f, rf, stairs.forb, prog.names.length);
       if (P.rooms.length === 1 && HOME[prog.mood] && prog.mood !== 'rudere') {   // un piano di una stanza sola: ci si fa tutto
         const m = prog.mood, n0 = prog.names[0];
         prog.names = [nF === 1 ? (m === 'anziana' ? 'mono_anziana' : m === 'intellettuale' ? 'mono_artista' : m === 'contadino' ? 'casa_contadina' : m === 'funzionario' ? 'salotto_buono' : 'monolocale') : f === 0 ? (m === 'contadino' ? 'cucina_focolare' : m === 'intellettuale' ? 'studio_libri' : 'soggiorno_cucina') : (m === 'intellettuale' ? 'atelier' : m === 'operaio' ? 'camera_spoglia' : m === 'kommunalka' ? 'stanza_fam' : m === 'contadino' ? 'granaio' : 'mansarda')];
@@ -10684,6 +10794,7 @@ var Interior = (function () {
     return { kind, alts, vg, pri };
   }
   function furnish(L, F, r, inner, kind) {
+    F.spots = []; F.ngrp = 0;
     const out = [], [BX, BY, BW, BH] = L.box, ent = L.ent, stairs = L.stairs, f = F.f, last = L.floors.length - 1;
     const gaps = inner.map(q => q.v ? [q.a[0], q.gap[0]] : [q.gap[0], q.a[1]]);
     const distRect = (px, py, cx, cy, hw, hd) => Math.hypot(Math.max(0, Math.abs(px - cx) - hw), Math.max(0, Math.abs(py - cy) - hd));
@@ -10733,13 +10844,18 @@ var Interior = (function () {
       };
       const placeGroup = (vn, spot) => {
         const [w, d, items] = V[vn], S = SIDE[spot.side];
+        const gi = ++F.ngrp;
         items.forEach(([id0, lx, ly, rot, h]) => {
           let id = id0; if (id[0] === '?') { if (r() > .55) return; id = id.slice(1); }
           const x = spot.cx + S.t[0] * lx + S.n[0] * (ly - d / 2), y = spot.cy + S.t[1] * lx + S.n[1] * (ly - d / 2);
-          put(id, x, y, S.ry + rot, h, { grp: vn });
+          // [attività] un punto dove si sta: chi ci lavora, chi usa il mobile (guarda il mobile o il centro del gruppo)
+          if (id[0] === ':') { F.spots.push({ k: id.slice(1), x, y, face: rot === null ? Math.atan2(spot.cy - y, spot.cx - x) : PI / 2 - (S.ry + rot), room: qi, grp: vn, gi }); return; }
+          put(id, x, y, S.ry + rot, h, { grp: vn, gi });
         });
         used.push([spot.cx, spot.cy, spot.hw, spot.hd, false, items.some(it => TALL.test(it[0]))]);
       };
+      // [attività] quanto è piena la stanza (mobili e gruppi, tappeti esclusi)
+      const fullness = () => used.reduce((a, u) => a + (u[4] ? 0 : u[2] * u[3] * 4), 0) / Math.max(1, (x1 - x0) * (y1 - y0));
       const placeOne = (id, spot) => { const S = SIDE[spot.side]; put(id, spot.cx, spot.cy, S.ry, 0); used.push([spot.cx, spot.cy, spot.hw, spot.hd, /^rug|ia_pista/.test(id), TALL.test(id)]); };
       // file di posti
       const rows = ROWS[name];
@@ -10768,16 +10884,16 @@ var Interior = (function () {
       }
       // prima i gruppi contro i muri, poi le cose in mezzo, poi i mobili sciolti, poi la roba per terra
       const order = { v: 0, c: 1, w: 2, k: 3 };
-      list.filter(t => t.kind !== 'd').sort((a, c) => ((a.pri ? -1 : order[a.kind === 'w' && a.vg[0] ? 'v' : a.kind]) - (c.pri ? -1 : order[c.kind === 'w' && c.vg[0] ? 'v' : c.kind]))).forEach(t => {
-        if (rows && q.w >= 6 && q.h >= 6 && t.alts.some(a => a === rows[1] || a === (rows[0] || '').replace('@', ''))) return;
+      const placeTok = t => {
+        if (rows && q.w >= 6 && q.h >= 6 && t.alts.some(a => a === rows[1] || a === (rows[0] || '').replace('@', ''))) return false;
         for (let ai = 0; ai < t.alts.length; ai++) {
           const id = t.alts[ai], isV = !!V[id] && (t.vg[ai] || t.kind === 'v'), n0 = out.length;
           if (/^fd_/.test(id) && !/barrel/.test(id)) {   // il cibo sui banconi e sui tavoli
             const tb = out.find(o => o.room === qi && /kitchenBar|^table|kitchenCabinet|banco_vendita|bancone|tavolo/.test(o.id) && !o.h && (o.full || 0) < 3);
             if (tb) { tb.full = (tb.full || 0) + 1; put(id, tb.x + (r() - .5) * .5, tb.y + (r() - .5) * .2, r() * 6, /kitchenBar|kitchenCabinet|banco|bancone/.test(tb.id) ? .95 : .76); }
-            return;
+            return !!tb;
           }
-          if (SMALL[id]) { const tb = out.find(o => o.room === qi && /desk|table|tavol|sideTable|kitchenCabinet|banco/.test(o.id) && !o.h); if (tb) put(id, tb.x + (r() - .5) * .4, tb.y, tb.ry, /kitchenCabinet|banco/.test(tb.id) ? .92 : /sideTable/.test(tb.id) ? .55 : .76); return; }
+          if (SMALL[id]) { const tb = out.find(o => o.room === qi && /desk|table|tavol|sideTable|kitchenCabinet|banco/.test(o.id) && !o.h); if (tb) put(id, tb.x + (r() - .5) * .4, tb.y, tb.ry, /kitchenCabinet|banco/.test(tb.id) ? .92 : /sideTable/.test(tb.id) ? .55 : .76); return !!tb; }
           const [w, d] = isV ? V[id] : szOf(id), rug = /^rug|ia_pista/.test(id);
           let spot = null;
           if (t.kind === 'c' || (!isV && /^rug|tableCoffee|tableRound$|^table$|ia_ring|ia_telo|ia_barca|ia_lanterna|ia_pista/.test(id) && t.kind !== 'k')) spot = inMiddle(w, d, rug) || (t.kind === 'c' ? null : atWall(w, d, rug));
@@ -10787,9 +10903,17 @@ var Interior = (function () {
           else if (t.kind === 'k') { const S = SIDE[spot.side]; put(id, spot.cx + (r() - .5) * .1, spot.cy + (r() - .5) * .1, S.ry + (r() - .5) * 1.2, 0); used.push([spot.cx, spot.cy, spot.hw, spot.hd, false, false]); }
           else placeOne(id, spot);
           if (t.pri || /^st_|^pv_banco|ar_cash/.test(id)) for (let k = n0; k < out.length; k++) out[k].keep = 1;
-          return;
+          return true;
         }
-      });
+        return false;
+      };
+      list.filter(t => t.kind !== 'd').sort((a, c) => ((a.pri ? -1 : order[a.kind === 'w' && a.vg[0] ? 'v' : a.kind]) - (c.pri ? -1 : order[c.kind === 'w' && c.vg[0] ? 'v' : c.kind]))).forEach(placeTok);
+      // [attività] le stanze grandi si riempiono: si ripete il riempimento finché la stanza è piena il giusto (o non ci sta più niente)
+      const FILL = R[name] && R[name][4];
+      if (FILL && FILL.length && q.w * q.h >= 14) {
+        const want = q.w * q.h >= 40 ? .3 : .26; let miss = 0;
+        for (let k = 0; k < 24 && miss < FILL.length && fullness() < want; k++) { const t = parseTok(FILL[k % FILL.length], r); if (t && placeTok(t)) miss = 0; else miss++; }
+      }
       // roba appesa: sui muri esterni (quelle basse anche sui muri interni), lontano da finestre, varchi e mobili alti
       const decor = list.filter(t => t.kind === 'd'), hung = [];
       decor.forEach(t => {
@@ -10816,6 +10940,8 @@ var Interior = (function () {
         const [side, p, x, y] = cands[Math.floor(r() * cands.length)], S = SIDE[side];
         hung.push([side, p, dw]);
         out.push({ id, x: x + S.n[0] * WT / 2, y: y + S.n[1] * WT / 2, ry: S.ry, h: dh, wall: side, decor: 1, low: !!low, solid: null, room: qi });
+        // [attività] le freccette si tirano da due metri e mezzo; davanti alle stecche si sceglie la stecca
+        if (id === 'ia_freccette') [2.37, 1.9].forEach(k => F.spots.push({ k: 'freccette', x: x + S.n[0] * k, y: y + S.n[1] * k, face: Math.atan2(-S.n[1], -S.n[0]), room: qi }));
       });
     });
     return out;
@@ -10906,16 +11032,19 @@ var Interior = (function () {
   // i mobili nuovi si frugano come quelli del kit che somigliano
   const LOOTAS = { ia_stenka: 'bookcaseClosedWide', ia_armadio: 'bookcaseClosedWide', ia_armadietti: 'bookcaseClosedWide', ia_cassapanca: 'bookcaseClosedWide', ia_schedario: 'desk', ia_credenza: 'kitchenCabinet', ia_frigo_vecchio: 'kitchenFridge', ia_vetrina_frigo: 'kitchenFridge',
     ia_scaffale_merci: 'bookcaseOpen', ia_scaffale_metallo: 'bookcaseOpen', ia_casse: 'fx_box-large', ia_bidone: 'fx_box-small', ia_castello: 'bedSingle', ia_branda: 'bedSingle', ia_lettino: 'bedSingle', ia_materasso: 'bedSingle', ia_letto_ospedale: 'bedSingle',
-    ia_scrivania_grande: 'desk', ia_bancone_bar: 'kitchenBar', ia_cucina_gas: 'kitchenStove', ia_lavello: 'kitchenSink', ia_focolare: 'kitchenStove', ia_mobile_radio: 'sideTable', ia_valigia: 'cardboardBoxClosed', ia_sacchi: 'cardboardBoxClosed', ia_giornali: 'trashcan', ia_bottiglie: 'trashcan' };
+    ia_scrivania_grande: 'desk', ia_bancone_bar: 'kitchenBar', ia_stender: 'bookcaseClosedWide', ia_tavolo_maglie: 'bookcaseClosedWide', ia_scaffale_scarpe: 'bookcaseClosedWide', ia_vetrina_armi: 'desk', ia_casse_birra: 'fx_box-small', ia_casse_munizioni: 'fx_box-small', ia_cucina_gas: 'kitchenStove', ia_lavello: 'kitchenSink', ia_focolare: 'kitchenStove', ia_mobile_radio: 'sideTable', ia_valigia: 'cardboardBoxClosed', ia_sacchi: 'cardboardBoxClosed', ia_giornali: 'trashcan', ia_bottiglie: 'trashcan' };
   // e qualcuno ha una sua roba (id del catalogo degli oggetti)
   const LOOTX = { ia_legna: [['legna', .8, 1, 3]], ia_secchio_carbone: [['carbone', .7, 1, 2]], ia_cesto: [['verdura', .4, 1, 2], ['uova', .2, 1, 1], ['stracci', .3, 1, 1]], ia_cassette_frutta: [['verdura', .6, 1, 3], ['pomodori', .3, 1, 2]], ia_stivali: [['scarpe', .4, 1, 1]] };
   const FNAME = { ia_stenka: 'parete attrezzata', ia_armadio: 'armadio', ia_armadietti: 'armadietti', ia_cassapanca: 'cassapanca', ia_schedario: 'schedario', ia_credenza: 'credenza', ia_frigo_vecchio: 'frigorifero', ia_vetrina_frigo: 'banco frigo', ia_scaffale_merci: 'scaffale della merce', ia_scaffale_metallo: 'scaffalature',
     ia_casse: 'casse', ia_bidone: 'bidone', ia_castello: 'letto a castello', ia_branda: 'branda', ia_lettino: 'letto di ferro', ia_materasso: 'materasso', ia_letto_ospedale: 'letto d\'ospedale', ia_scrivania_grande: 'scrivania', ia_bancone_bar: 'bancone', ia_cucina_gas: 'fornelli', ia_lavello: 'lavello', ia_focolare: 'focolare',
-    ia_valigia: 'valigia', ia_sacchi: 'sacchi', ia_giornali: 'pila di giornali', ia_bottiglie: 'bottiglie vuote', ia_legna: 'catasta di legna', ia_secchio_carbone: 'secchio del carbone', ia_cesto: 'cesto', ia_cassette_frutta: 'cassette', ia_stivali: 'stivali', st_stufa: 'stufa' };
+    ia_valigia: 'valigia', ia_sacchi: 'sacchi', ia_giornali: 'pila di giornali', ia_bottiglie: 'bottiglie vuote', ia_legna: 'catasta di legna', ia_secchio_carbone: 'secchio del carbone', ia_cesto: 'cesto', ia_cassette_frutta: 'cassette', ia_stivali: 'stivali', st_stufa: 'stufa',
+    ia_stender: 'stender degli abiti', ia_manichino: 'manichino', ia_tavolo_maglie: 'tavolo delle maglie', ia_scaffale_scarpe: 'scaffale delle scarpe', ia_camerino: 'camerino', ia_vetrina_armi: 'vetrina delle armi', ia_casse_munizioni: 'casse di munizioni',
+    ia_bersaglio: 'bersaglio', ia_banco_tiro: 'banco di tiro', ia_auto_esposta: 'auto in vendita', ia_casse_birra: 'casse di birra', ia_biliardo: 'biliardo', ia_jukebox: 'jukebox' };
   // i nomi delle stanze da leggere
   const RNAME = { salotto_buono: 'salotto buono', stanza_chiusa: 'stanza chiusa', cucina_abitabile: 'cucina', camera_spoglia: 'camera', stanza_vuota: 'stanza vuota', rimessa_reti: 'rimessa delle reti', studio_libri: 'studio', sala_pranzo: 'sala da pranzo', corridoio_k: 'corridoio comune', stanza_fam: 'stanza di una famiglia', cucina_comune: 'cucina comune', cucina_focolare: 'cucina col focolare',
     magazzino_sale: 'magazzino del sale', ingresso_faro: 'ingresso del faro', alloggio_guardiano: 'alloggio del guardiano', deposito_olio: 'deposito dell\'olio', stanza_radio: 'stanza della radio', lanterna: 'lanterna', sala_bar: 'sala', sala_trattoria: 'sala', cucina_trattoria: 'cucina', laboratorio_gelati: 'laboratorio', spogliatoio_banja: 'spogliatoio', bar_disco: 'bar', corridoio_h: 'corridoio', stanza_h: 'camera',
-    salone_cultura: 'salone delle adunanze', biblioteca_partito: 'biblioteca del Partito', museo_regime: 'museo della Tutela', studio_medico: 'studio del medico', cassa_benzina: 'cassa', ingresso_caserma: 'ingresso', ufficio_t: 'ufficio', mensa_t: 'mensa', sala_radio_t: 'sala radio', magazzino_neri: 'magazzino', magazzino_porto: 'magazzino', ufficio_porto: 'ufficio', sala_comandi: 'sala comandi', spogliatoio_m: 'spogliatoio', sala_cinema: 'sala', bar_circolo: 'bar', ingresso_uff: 'ingresso', cella_frigo: 'cella frigo', radio_r: 'laboratorio radio', cantina_r: 'cantina' };
+    salone_cultura: 'salone delle adunanze', biblioteca_partito: 'biblioteca del Partito', museo_regime: 'museo della Tutela', studio_medico: 'studio del medico', cassa_benzina: 'cassa', ingresso_caserma: 'ingresso', ufficio_t: 'ufficio', mensa_t: 'mensa', sala_radio_t: 'sala radio', magazzino_neri: 'magazzino', magazzino_porto: 'magazzino', ufficio_porto: 'ufficio', sala_comandi: 'sala comandi', spogliatoio_m: 'spogliatoio', sala_cinema: 'sala', bar_circolo: 'bar', ingresso_uff: 'ingresso', cella_frigo: 'cella frigo', radio_r: 'laboratorio radio', cantina_r: 'cantina',
+    sala_biliardo: 'sala del biliardo', sala_pub: 'birreria', cantina_birra: 'cantina della birra', armeria_negozio: 'armeria', laboratorio_armi: 'laboratorio', negozio_vestiti: 'negozio', salone_auto: 'salone', officina_r: 'officina', ufficio_vendite: 'ufficio vendite' };
   const roomLabel = n => RNAME[n] || String(n || '').replace(/_r$/, '').replace(/_/g, ' ');
   const ORD = ['piano terra', 'primo piano', 'secondo piano', 'terzo piano', 'quarto piano', 'quinto piano', 'sesto piano', 'settimo piano'];
   const floorLabel = f => ORD[f] || `piano ${f}`;
@@ -12442,6 +12571,7 @@ var Game = (function () {
     jumpStep(st, dt);   // [salto]
     if (p.stun > 0) { p.stun -= dt; p.speed = 0; return; }
     if (p.vehicle) return driveVehicle(st, st.vehicles.find(v => v.id === p.vehicle), dt, inp);
+    if (p.sk && p.sk.on && typeof Skate !== 'undefined' && Skate.move(st, dt, inp)) return;   // [skate] in tavola si muove lo skate
     const ix = inp.x, iy = inp.y;
     p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);   // [costa] in acqua si nuota
     if (ix || iy) {
@@ -15012,6 +15142,11 @@ var Popolo = (function () {
     barbiere: [['barbiere', 1, 6, 8, 19]],
     tabacchi: [['tabaccaio', 1, 6, 7, 20]],
     fabbrica: [['operaio del primo turno', 6, 5, 6, 14], ['operaia del secondo turno', 5, 5, 14, 22]],
+    // [attività]
+    armeria: [['armaiolo', 1, 7, 8, 19], ['istruttore di tiro', 1, 6, 14, 21]],
+    abbigliamento: [['commessa di abbigliamento', 2, 4, 9, 19]],
+    pub: [['oste della birreria', 1, 6, 16, 26, true], ['cameriera della birreria', 1, 4, 18, 26, true]],
+    autorimessa: [['venditore di auto', 1, 7, 8, 19], ['meccanico dell\'autorimessa', 2, 6, 7, 18]],
   };
   // lavori all'aperto, senza edificio: posti larghi
   const OUTDOOR = [['molo', 'pescatore', 8, 5, 3, 11], ['calata', 'scaricatore di porto', 6, 6, 6, 15], ['vigne', 'bracciante delle vigne', 4, 4, 6, 14], ['oliveto', 'bracciante dell\'oliveto', 3, 4, 6, 14], ['saline', 'salinaro', 3, 4, 5, 13], ['cava', 'cavatore', 3, 6, 6, 15]];
@@ -15041,10 +15176,10 @@ var Popolo = (function () {
     bagno:       { label: 'il bagno di casa', where: ['casa'], act: 'bagno', once: { igiene: -.9 } },
     tv:          { label: 'la TV del Garante', where: ['casa'], act: 'casa', h: [19, 24], perH: { svago: -.07 }, side: { paura: .01 }, ideo: -.003, tag: 'propaganda' },
     radio:       { label: 'la radio', where: ['casa'], act: 'casa', perH: { svago: -.06 }, int: 'musica', needs: P => P.owns && P.owns.radio, tag: 'radio' },
-    bancone:     { label: 'il bancone', where: ['bar', 'sirena', 'osteria', 'osteria_sg', 'car_2', 'use:circolo'], act: 'svago', h: [7, 24], once: { svago: -.15, compagnia: -.25 }, perH: { compagnia: -.06, svago: -.05 }, cost: 2, int: 'chiacchiere', tag: 'vino' },
-    carte:       { label: 'un tavolo da scopa', where: ['osteria', 'osteria_sg', 'use:circolo', 'bar'], act: 'svago', h: [15, 24], perH: { svago: -.1, compagnia: -.07 }, cost: 1, int: 'carte' },
+    bancone:     { label: 'il bancone', where: ['bar', 'sirena', 'osteria', 'osteria_sg', 'car_2', 'use:circolo', 'use:pub'], act: 'svago', h: [7, 24], once: { svago: -.15, compagnia: -.25 }, perH: { compagnia: -.06, svago: -.05 }, cost: 2, int: 'chiacchiere', tag: 'vino' },
+    carte:       { label: 'un tavolo da scopa', where: ['osteria', 'osteria_sg', 'use:circolo', 'bar', 'use:pub'], act: 'svago', h: [15, 24], perH: { svago: -.1, compagnia: -.07 }, cost: 1, int: 'carte' },
     tavola:      { label: 'una tavola apparecchiata', where: ['osteria', 'osteria_sg', 'car_2'], act: 'pranzo', h: [12, 23], once: { fame: -.75, compagnia: -.1 }, cost: 4 },
-    panino:      { label: 'un panino al banco', where: ['bar', 'sirena', 'gelateria', 'chiosco'], act: 'pranzo', h: [7, 22], once: { fame: -.4 }, cost: 2 },
+    panino:      { label: 'un panino al banco', where: ['bar', 'sirena', 'gelateria', 'chiosco', 'use:pub'], act: 'pranzo', h: [7, 22], once: { fame: -.4 }, cost: 2 },
     bottega:     { label: 'il bancone della bottega', where: ['wu', 'use:panetteria', 'use:pescheria', 'use:tabacchi', 'use:macelleria', 'use:fruttivendolo', 'use:emporio'], act: 'spesa', h: [7, 20], pantry: 4, cost: 5, once: { compagnia: -.05 }, int: 'cucina' },
     bancarelle:  { label: 'le bancarelle del mercato', where: ['piazza'], act: 'mercato', h: [7, 13], pantry: 5, cost: 5, once: { compagnia: -.15, svago: -.08 }, int: 'cucina', needs: (P, st) => [2, 5].includes(weekday(st.t)) },
     panchina:    { label: 'una panchina', where: ['piazza', 'fontana', 'giardini', 'lungomare', 'passeggiata', 'belvedere', 'piazzetta', 'molo', 'marina'], act: 'svago', h: [7, 23], perH: { svago: -.06, compagnia: -.06 }, int: 'chiacchiere' },
@@ -15059,16 +15194,27 @@ var Popolo = (function () {
     cinema:      { label: 'il film in sala', where: ['cinema'], act: 'svago', h: [15, 24], once: { svago: -.45 }, cost: 2, int: 'cinema' },
     pallone:     { label: 'un pallone', where: ['spiaggia', 'giardini'], act: 'svago', h: [9, 20], perH: { svago: -.14, compagnia: -.1, rabbia: -.05 }, int: 'sport', needs: P => P.age < 50 },
     palestra:    { label: 'il sacco della palestra', where: ['use:palestra'], act: 'svago', h: [15, 22], perH: { svago: -.1, rabbia: -.12 }, cost: 1, int: 'sport' },
-    motori:      { label: 'il banco dell\'officina', where: ['officina'], act: 'svago', h: [8, 19], perH: { svago: -.08 }, int: 'motori' },
+    motori:      { label: 'il banco dell\'officina', where: ['officina', 'use:autorimessa'], act: 'svago', h: [8, 19], perH: { svago: -.08 }, int: 'motori' },
     orto:        { label: 'un pezzo d\'orto', where: ['vigne', 'oliveto', 'masseria'], act: 'svago', h: [6, 19], perH: { svago: -.06, rabbia: -.04 }, pantryH: .5, int: 'campagna' },
     barbiere:    { label: 'la poltrona del barbiere', where: ['use:barbiere'], act: 'bagno', h: [8, 19], once: { igiene: -.35, compagnia: -.08 }, cost: 2, int: 'eleganza' },
     album:       { label: 'un album da disegno', where: ['belvedere', 'lungomare', 'piazza', 'molo', 'giardini', 'piazzetta'], act: 'svago', h: [8, 20], perH: { svago: -.1, rabbia: -.04 }, int: 'arte' },
+    // [attività] i giochi del bar, la birreria, l'armeria col poligono, gli abiti, le auto in vendita
+    biliardo:    { label: 'il biliardo', where: ['bar', 'sirena', 'use:circolo', 'use:pub'], act: 'svago', h: [15, 26], perH: { svago: -.13, compagnia: -.07, rabbia: -.03 }, cost: 1, int: 'giochi' },
+    freccette:   { label: 'le freccette', where: ['use:pub', 'bar', 'sirena'], act: 'svago', h: [16, 26], perH: { svago: -.1, compagnia: -.06 }, cost: .5, int: 'giochi' },
+    jukebox:     { label: 'il jukebox', where: ['bar', 'sirena', 'use:pub', 'flipper'], act: 'svago', h: [12, 26], once: { svago: -.1 }, perH: { svago: -.06, compagnia: -.03 }, cost: .5, int: 'musica' },
+    spina:       { label: 'una birra alla spina', where: ['use:pub'], act: 'svago', h: [16, 26], once: { svago: -.15, compagnia: -.25 }, perH: { compagnia: -.07, svago: -.06 }, cost: 2, int: 'chiacchiere', tag: 'vino' },
+    poligono:    { label: 'il poligono di tiro', where: ['use:armeria'], act: 'svago', h: [14, 21], perH: { svago: -.12, rabbia: -.16, paura: -.04 }, cost: 3, int: 'caccia', needs: P => P.age >= 18 },
+    vetrina_armi:{ label: 'la vetrina dell\'armeria', where: ['use:armeria'], act: 'svago', h: [8, 19], once: { svago: -.08 }, int: 'caccia', needs: P => P.age >= 16 },
+    abiti:       { label: 'gli abiti nuovi', where: ['use:abbigliamento', 'use:sartoria'], act: 'svago', h: [9, 19], once: { svago: -.18, compagnia: -.04 }, cost: 4, int: 'eleganza' },
+    auto:        { label: 'le auto in vendita', where: ['use:autorimessa'], act: 'svago', h: [8, 19], once: { svago: -.12 }, int: 'motori' },
     foto:        { label: 'la macchina fotografica', where: ['lungomare', 'belvedere', 'piazza', 'molo', 'punta'], act: 'svago', h: [8, 19], perH: { svago: -.12 }, int: 'foto', needs: P => P.owns && P.owns.fotocamera },
   };
   // come si dice, nel programma, andare a usare un oggetto
   const DOING = { bancone: 'va al bar', carte: 'a giocare a scopa', panchina: 'a fare due chiacchiere', spiaggia: 'in spiaggia', canna: 'a pescare', banco_chiesa: 'in chiesa', cero: 'ad accendere un cero',
     libri: 'in biblioteca a leggere', album: 'a disegnare', flipper: 'al Flipper', pista: 'a ballare alla Luna', cinema: 'al cinema', pallone: 'a giocare a pallone', palestra: 'in palestra', motori: 'ad armeggiare in officina',
-    orto: 'all\'orto', foto: 'a fare foto', barbiere: 'dal barbiere', fontana: 'alla fontana', tavola: 'a mangiare fuori', panino: 'a mangiare un panino', bottega: 'a fare la spesa', bancarelle: 'al mercato' };
+    orto: 'all\'orto', foto: 'a fare foto', barbiere: 'dal barbiere', fontana: 'alla fontana', tavola: 'a mangiare fuori', panino: 'a mangiare un panino', bottega: 'a fare la spesa', bancarelle: 'al mercato',
+    biliardo: 'a giocare a biliardo', freccette: 'a tirare le freccette', jukebox: 'a sentire un disco al jukebox', spina: 'a bere una birra alla Birreria', poligono: 'al poligono a sparare',
+    vetrina_armi: 'a guardare le armi in vetrina', abiti: 'a provarsi un vestito', auto: 'a guardare le auto in vendita' };
   const NEEDS = ['fame', 'sonno', 'igiene', 'compagnia', 'svago', 'rabbia', 'paura', 'soldi'];
 
   // ---------------- INTERESSI ----------------
@@ -15077,10 +15223,11 @@ var Popolo = (function () {
     pesca: 'la pesca', carte: 'le carte', lettura: 'i libri', musica: 'la musica', ballo: 'il ballo', fede: 'la fede', sport: 'lo sport',
     cinema: 'il cinema', chiacchiere: 'le chiacchiere', politica: 'la politica', motori: 'i motori', cucina: 'la cucina', campagna: 'la campagna',
     mare: 'il mare', eleganza: 'l\'eleganza', foto: 'la fotografia', arte: 'l\'arte (disegnare, dipingere i muri)',
+    giochi: 'il biliardo e le freccette', caccia: 'la caccia e il tiro',   // [attività]
   };
   // chi sceglie cosa: età e mestiere spostano le probabilità
   function interestsFor(p, r) {
-    const w = { pesca: 1, carte: 1, lettura: .7, musica: .8, ballo: .6, fede: .8, sport: .8, cinema: .8, chiacchiere: 1.1, politica: .4, motori: .6, cucina: .8, campagna: .6, mare: .8, eleganza: .4, foto: .25, arte: .6 };
+    const w = { pesca: 1, carte: 1, lettura: .7, musica: .8, ballo: .6, fede: .8, sport: .8, cinema: .8, chiacchiere: 1.1, politica: .4, motori: .6, cucina: .8, campagna: .6, mare: .8, eleganza: .4, foto: .25, arte: .6, giochi: .7, caccia: .35 };
     if (p.age > 60) { w.fede += 1.2; w.carte += .6; w.chiacchiere += .6; w.ballo = .05; w.sport = .1; w.campagna += .5; }
     if (p.age < 30) { w.ballo += 1; w.musica += .8; w.sport += .6; w.motori += .3; w.cinema += .4; w.foto += .3; w.arte += .6; }
     if (p.sex === 'f') { w.sport *= .5; w.motori *= .5; w.cucina += .3; } else { w.motori += .3; w.sport += .2; }
@@ -15090,6 +15237,8 @@ var Popolo = (function () {
     if (p.lost) { w.politica += 1.2; w.arte += .3; }
     if (p.job && /tipograf|sart|lavandai/.test(p.job.title)) w.arte += .5;
     if (p.vice === 'vino') w.chiacchiere += .5;
+    if (p.age > 60) w.giochi += .2; if (p.age < 35) w.giochi += .5; if (p.sex !== 'f') w.caccia += .3;   // [attività]
+    if (p.job && /braccian|pescat|guardiano|armaiol/.test(p.job.title)) w.caccia += .5;
     const out = [], keys = Object.keys(w), k = 2 + (r() < .4 ? 1 : 0);
     while (out.length < k) {
       const tot = keys.reduce((s, x) => s + (out.some(o => o.k === x) ? 0 : w[x]), 0); let roll = r() * tot;
@@ -16683,6 +16832,7 @@ var Popolo = (function () {
     sport: ['Partitella sulla spiaggia, dopo?', 'Hai visto la partita?'], cinema: ['Al cinema danno un film americano.', 'Stasera c\'è la prima, ci vai?'],
     chiacchiere: ['Lo sai della figlia del farmacista?', 'Non dirlo a nessuno, eh…'], politica: ['Il Garante racconta solo bugie.', 'Leggi tra le righe del Bollettino.'],
     motori: ['La Vespa fa un rumore strano.', 'All\'officina hanno una Giulia da sistemare.'], cucina: ['Domenica faccio le trofie al pesto.', 'Il pesce oggi era freschissimo.'],
+    giochi: ['Stasera rivincita a biliardo, porta i soldi.', 'Alla Birreria ho fatto centro tre volte di fila.'], caccia: ['Al poligono ho fatto una rosa stretta così.', 'All\'Armeria è arrivata una doppietta nuova.'],   // [attività]
     campagna: ['L\'orto quest\'anno rende.', 'Col gelo l\'orto è da buttare.'], mare: ['Il mare oggi è color ferro.', 'Stamattina sulla caletta c\'era il ghiaccio.'],
     eleganza: ['Ho visto una giacca in vetrina…', 'Quella camicia ti sta bene.'], foto: ['Ti faccio una foto, stai fermo.', 'Ho finito il rullino.'], arte: ['Su quel muro ci starebbe un bel murale.', 'Sto disegnando il porto.'],
   };
@@ -16728,6 +16878,17 @@ var Popolo = (function () {
     if (b.act === 'impresa' && /cena|pranz|mangi/.test(b.label || '')) return { want: 'table', pose: 'tavola' };   // [imprese]
     if (b.act === 'pranzo' || (atHome && ((m > 12 * 60 && m < 14 * 60 + 30) || (m > 19 * 60 + 30 && m < 21 * 60 + 30)))) return { want: 'table', pose: 'tavola' };
     if (b.obj === 'cucina' || (atHome && b.label === 'si prepara')) return { want: 'stove', pose: 'lavora' };
+    // [attività] gli oggetti nuovi hanno il loro posto (i punti dei gruppi: intorno al biliardo, alla linea di tiro…)
+    const SPOT_OBJ = { biliardo: ['biliardo', 'biliardo'], freccette: ['freccette', 'freccette'], jukebox: ['jukebox', 'merce'], poligono: ['tiro', 'mira'], vetrina_armi: ['guarda', 'osserva'], abiti: ['guarda|prova', 'merce'], auto: ['auto', 'osserva'], spina: ['bevi', 'bancone'] };
+    if (SPOT_OBJ[b.obj]) return { want: 'spot', spot: SPOT_OBJ[b.obj][0], pose: SPOT_OBJ[b.obj][1], alt: b.obj === 'spina' ? 'counter' : 'free' };
+    // al bar non si sta tutti al bancone: chi ha voglia gioca a biliardo, alle freccette, a carte, mette un disco
+    if (b.obj === 'bancone' && !atHome) {
+      const iw = P.intW || {}, c0 = (String(n.id) + (P.curKey || '') + 'b').split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 997, 3) / 997;
+      if (c0 < .1 + (iw.giochi || 0) * .35) return { want: 'spot', spot: c0 < .06 + (iw.giochi || 0) * .2 ? 'biliardo' : 'freccette', pose: c0 < .06 + (iw.giochi || 0) * .2 ? 'biliardo' : 'freccette', alt: 'counter' };
+      if (c0 > .9 - (iw.carte || 0) * .25) return { want: 'table', pose: 'carte', alt: 'counter' };
+      if (c0 > .5 && c0 < .5 + (iw.musica || 0) * .12) return { want: 'spot', spot: 'jukebox', pose: 'merce', alt: 'counter' };
+      if (c0 > .62 && c0 < .8) return { want: 'seat', pose: 'siede' };
+    }
     if (b.obj === 'bancone' || b.obj === 'panino') return { want: 'counter', pose: 'bancone' };
     if (b.obj === 'carte') return { want: 'table', pose: 'carte' };
     if (b.obj === 'libri') return { want: 'seat', pose: 'legge' };
@@ -16735,7 +16896,7 @@ var Popolo = (function () {
     if (b.obj === 'flipper') return { want: 'free', pose: 'flipper' };
     if (b.obj === 'pista') return { want: 'free', pose: 'balla' };
     if (b.obj === 'barbiere') return { want: 'seat', pose: 'siede' };
-    if (b.obj === 'bottega' || b.act === 'spesa') return { want: 'counter', pose: 'merce' };
+    if (b.obj === 'bottega' || b.act === 'spesa') return { want: 'spot', spot: 'cliente|guarda', pose: 'merce', alt: 'counter' };
     const coin = (String(n.id) + (P.curKey || '')).split('').reduce((h, c) => (h * 33 + c.charCodeAt(0)) % 1000, 5) / 1000;   // la stessa scelta finché dura il blocco
     if (atHome) return coin < .5 ? { want: 'soft', pose: 'siede' } : { want: 'free', pose: null };
     return coin < .55 ? { want: 'seat', pose: 'siede' } : { want: 'counter', pose: 'bancone' };
@@ -16762,10 +16923,16 @@ var Popolo = (function () {
     const furn = re => { const ok = []; F.furn.forEach((o, i) => { if (!taken.has(i) && re.test(o.id) && roomy(used, o.x, o.y)) ok.push(i); }); if (!ok.length) return null; fi = ok[Math.floor(Math.random() * ok.length)]; taken.add(fi); return F.furn[fi]; };
     const seatAt = o => ({ x: o.x, y: o.y, face: Math.PI / 2 - (o.ry || 0) });
     let spot = null, pose = u.pose;
+    // [attività] un punto libero fra quelli dei gruppi (il mobile c'è ancora, ci si arriva, nessuno ci sta già)
+    const spotK = ks => { const K = ks.split('|'), ok = (F.spots || []).filter(s => K.includes(s.k) && (!s.gi || F.furn.some(o => o.gi === s.gi)) && INT().walk(L, f, s.x, s.y, .2) && roomy(used, s.x, s.y)); return ok.length ? ok[Math.floor(Math.random() * ok.length)] : null; };
     if (u.want === 'work' && f === 0 && typeof Oggetti !== 'undefined' && Oggetti.staffIndoor) {
       const s = Oggetti.staffIndoor(st, bi).find(x => x.id === n.id);
       if (s) { spot = { x: s.x, y: s.y, face: s.face }; pose = s.post === 'banco' ? 'merce' : 'lavora'; }
     }
+    if (spot && u.want === 'work' && pose === 'merce') { const sb = (F.spots || []).filter(s => s.k === 'banco').sort((a, c) => Math.hypot(a.x - spot.x, a.y - spot.y) - Math.hypot(c.x - spot.x, c.y - spot.y))[0]; if (sb && Math.hypot(sb.x - spot.x, sb.y - spot.y) < 2.5) { spot = { x: sb.x, y: sb.y, face: sb.face }; } }   // [attività] dietro il banco, verso i clienti
+    if (!spot && u.want === 'work') { const jt = (P.job && P.job.title) || '', mec = /meccanic/.test(jt), s = mec || /commess|cassier|barist|barman|camerier|oste|armaiol|venditor|tabacc|farmacist|istruttore di tiro/.test(jt) ? spotK(mec ? 'meccanico' : /istruttore di tiro/.test(jt) ? 'tiro|banco' : 'banco') : null; if (s) { spot = s; pose = mec ? 'lavora' : 'merce'; } }
+    if (!spot && u.want === 'spot') { const s = spotK(u.spot); if (s) { spot = s; if (u.spot === 'guarda|prova' && s.k === 'prova') pose = 'prova'; } else u.want = u.alt || 'free'; }
+    if (!spot && u.want === 'counter') { const s = spotK('bevi'); if (s) spot = s; }
     if (!spot && u.want === 'work') {
       const o = furn(COUNTERS) || furn(/^(pv_banco_lavoro|ia_scrivania_grande|ia_macchina_scrivere|desk)$|^st_/) || furn(STOVES);
       if (o && o.id === 'desk') { const c = F.furn.findIndex((x, i) => !taken.has(i) && x.id === 'chairDesk' && dist(x.x, x.y, o.x, o.y) < 1.2); if (c >= 0) { taken.add(c); spot = seatAt(F.furn[c]); pose = 'siede'; } }
@@ -16782,6 +16949,7 @@ var Popolo = (function () {
     if (!spot && u.want === 'bed') return null;
     // senza il mobile giusto si sta in piedi (niente sedute nel vuoto)
     if (!spot) { spot = freeFloor(L, f, used); if (pose !== 'prega' && pose !== 'flipper' && pose !== 'balla' && pose !== 'lavora' && pose !== 'merce') pose = null; }
+    if (spot && spot.k) spot = { x: spot.x, y: spot.y, face: spot.face };
     if (!spot) return null;
     used.push(spot);
     const act = b && b.act, label = act === 'sonno' ? 'dorme' : act === 'casa' ? (atHome ? 'a casa' : b.label) : act === 'pranzo' ? 'a tavola' : act === 'lavoro' && P.job ? `al lavoro (${P.job.title})` : b ? b.label : '';
@@ -18215,6 +18383,7 @@ var Economia = (function () {
     ['use:ferramenta', ['coltello', 'pala', 'piede', 'carriola', 'bomboletta', 'pennello', 'chiodi', 'corda', 'colla', 'sacchi', 'nastro', 'lampadine', 'pile']],
     ['use:tabacchi', ['sigarette', 'carte', 'gesso', 'carta', 'inchiostro']], ['officina', ['piede', 'bomboletta']], ['benzina', ['benzina']], ['video', ['telefono', 'fotocamera', 'pile']],
     ['use:farmacia', ['medicine', 'spugne', 'sapone']], ['use:fabbro', ['coltello', 'pala', 'piede', 'chiodi']], ['use:falegnameria', ['mobili', 'casse', 'carriola']], ['use:sartoria', ['vestiti', 'stoffa']],
+    ['use:abbigliamento', ['vestiti']], ['use:armeria', ['coltello', 'corda']], ['use:pub', ['pane', 'vino']], ['use:autorimessa', ['benzina']],   // [attività]
     ['osteria', ['pasto', 'vino']], ['osteria_sg', ['pasto', 'vino']], ['car_2', ['pasto', 'vino']], ['bar', ['pane', 'vino']], ['sirena', ['pane', 'vino']], ['gelateria', ['pane', 'latte']], ['chiosco', ['pane']],
     ['piazza', ['verdura', 'frutta', 'pesce', 'formaggio', 'olio', 'carne']],   // il mercato del mercoledì e del sabato
     ['magazzino', ['benzina', 'sigarette', 'scatolame', 'telefono', 'fotocamera', 'bomboletta', 'corda', 'sacchi', 'carne', 'pesce']],   // lo Squalo: mercato nero
@@ -20624,6 +20793,11 @@ var Oggetti = (function () {
     ['use:tipografia', ['carta', 'cartoncino', 'inchiostro', 'buste', 'giornale']],
     ['use:lavanderia', ['sapone', 'detersivo', 'candeggina']],
     ['use:barbiere', ['rasoio', 'sapone', 'forbici']],
+    // [attività] le botteghe nuove (i capi del Guardaroba li aggiunge guardaroba.js)
+    ['use:armeria', ['munizioni', 'lupara', 'coltello', 'binocolo', 'torcia', 'corda', 'stivali', 'impermeabile', 'zaino', 'sacco_pelo', 'guanti']],
+    ['use:abbigliamento', ['vestiti', 'cappotto', 'maglione', 'scarpe', 'guanti', 'guanti_lana', 'berretto', 'sciarpa', 'impermeabile', 'stivali', 'tuta']],
+    ['use:pub', ['birra', 'vino', 'grappa', 'whisky', 'panino', 'acqua', 'aranciata', 'sigarette']],
+    ['use:autorimessa', ['olio_motore', 'pneumatico', 'batteria_auto', 'ricambi', 'tanica_vuota', 'chiave_inglese', 'benzina']],
     ['osteria', ['pasto', 'vino', 'birra', 'grappa', 'caffe_tazza', 'acqua']], ['osteria_sg', ['pasto', 'vino', 'grappa', 'acqua']], ['car_2', ['pasto', 'vino', 'birra', 'acqua']],
     ['bar', ['caffe_tazza', 'pane', 'panino', 'vino', 'birra', 'grappa', 'acqua', 'aranciata', 'sigarette']], ['sirena', ['caffe_tazza', 'pane', 'panino', 'vino', 'birra', 'grappa', 'whisky', 'acqua']],
     ['disco', ['birra', 'whisky', 'aranciata', 'sigarette']], ['gelateria', ['gelato', 'latte', 'biscotti', 'pane', 'aranciata']], ['chiosco', ['pane', 'panino', 'birra', 'acqua', 'aranciata', 'gelato']],
@@ -20828,6 +21002,7 @@ var Oggetti = (function () {
   // =====================================================================================================================
   const LUOGO_ST = {
     fabbro: ['forgia', 'saldatrice', 'banco_lavoro'], falegnameria: ['banco_falegname', 'banco_falegname', 'banco_lavoro'], panetteria: ['forno', 'forno'], macelleria: ['banco_macellaio'],
+    armeria: ['banco_lavoro'], autorimessa: ['saldatrice', 'banco_lavoro'], pub: ['cucina'],   // [attività]
     sartoria: ['macchina_cucire', 'macchina_cucire'], tipografia: ['ciclostile'], farmacia: ['tavolo_medico'], ferramenta: ['banco_lavoro'], fabbrica: ['linea', 'linea', 'linea'],
     video: ['banco_radio'], officina: ['banco_lavoro', 'saldatrice'], cantiere: ['saldatrice', 'banco_falegname', 'banco_lavoro'], cantina: ['botti', 'botti'], ambulatorio: ['tavolo_medico'],
     osteria: ['cucina', 'cucina'], osteria_sg: ['cucina'], car_2: ['cucina'], miramare: ['cucina', 'cucina'], bar: ['cucina'], sirena: ['cucina'], masseria: ['cucina', 'acqua'], lavanderia: ['acqua'],
@@ -20836,7 +21011,7 @@ var Oggetti = (function () {
   STATIONS.carbonaia = { id: 'carbonaia', nome: 'carbonaia', model: '' };
   const HOME_ST = ['cucina', 'acqua'];   // in casa: si cucina e c'è l'acqua (anche se il mobile non si vede)
   // chi lavora al bancone (vende, serve, incassa) e chi alle postazioni (produce)
-  const BANCO_RE = /commess|cassier|barist|barman|camerier|tabaccai|farmacist|fruttivendol|pescivendol|^oste|bottegai|^ferramenta|benzinai|lavandai|barbier|gestore|affittacamere|portiere|impiegata della biblioteca|direttore/;
+  const BANCO_RE = /armaiol|venditore di auto|istruttore di tiro|commess|cassier|barist|barman|camerier|tabaccai|farmacist|fruttivendol|pescivendol|^oste|bottegai|^ferramenta|benzinai|lavandai|barbier|gestore|affittacamere|portiere|impiegata della biblioteca|direttore/;
   const BANCO_F = ['pv_banco_vendita', 'ar_cash-register', 'kitchenBar'];
   const keyOf = t => I.tkey(t);
   function luogoBase(t) { if (!t) return null; if (t.k === 'b') { const b = G.BUILDINGS[t.bi]; return (b && (b.id && LUOGO_ST[b.id] ? b.id : b.use)) || null; } return t.pid || null; }
@@ -20861,7 +21036,8 @@ var Oggetti = (function () {
       const b = G.BUILDINGS[t.bi], L = INT.layout(b), F = L.floors[0], used = new Set();
       const furn = id => { const i = F.furn.findIndex((o, j) => !used.has(j) && (Array.isArray(id) ? id.includes(o.id) : FURN2ST[o.id] === id)); if (i < 0) return null; used.add(i); return standBy(L, 0, F.furn[i]); };
       const spare = roomSpots(L, sts.length + 2);
-      if (Sh) Lg.banco = Object.assign({ who: [] }, furn(BANCO_F) || spare.pop());
+      const sb = (F.spots || []).find(q => q.k === 'banco');   // [attività] dietro il banco, se il gruppo ha il posto del commesso
+      if (Sh) Lg.banco = Object.assign({ who: [] }, sb ? { x: sb.x, y: sb.y, face: sb.face } : (furn(BANCO_F) || spare.pop()));
       sts.forEach(s => Lg.posts.push(Object.assign({ st: s, who: null }, furn(s) || spare.pop())));
     } else {
       const P0 = PLACES[t.pid] || t, spots = outdoorSpots(P0, sts.length + 3);
@@ -21833,6 +22009,10 @@ var Guardaroba = (function () {
   sell('use:emporio', ['canotta', 'mutande', 'calzini', 'maglietta', 'pantaloni_lavoro', 'scarpe_tela', 'ciabatte', 'berretto', 'grembiule', 'tuta']);
   sell('villaggio', ['colbacco', 'montone', 'calzamaglia', 'poncho']);
   sell('use:sartoria', ['polo', 'giacca_completo', 'pantaloni_completo', 'cravatta', 'papillon', 'vestito_corto', 'vestito_lungo', 'vestito_fiori', 'minigonna', 'basco', 'foulard', 'sciarpa_righe', 'mocassini', 'tacchi', 'borsetta']);
+  // [attività] Abiti e Confezioni: di tutto, anche quello che altrove si trova solo al porto
+  sell('use:abbigliamento', ['canotta', 'maglietta', 'camicia', 'camicia_quadri', 'dolcevita', 'felpa', 'gilet', 'giacca', 'impermeabile', 'pantaloni', 'velluto', 'gonna', 'calzini', 'cappello', 'sciarpa', 'polo', 'giacca_completo', 'pantaloni_completo', 'cravatta',
+    'vestito_corto', 'vestito_lungo', 'vestito_fiori', 'minigonna', 'basco', 'foulard', 'mocassini', 'tacchi', 'borsetta', 'jeans', 'giubbotto_jeans', 'giacca_pelle', 'piumino', 'scarpe_eleganti', 'maglietta_righe', 'occhiali_sole', 'camicia_hawaii', 'stivali_pelle', 'felpa_zip', 'scarpe_corsa']);
+  sell('use:armeria', ['cargo', 'stivali_pelle', 'paraginocchia', 'paraspalle']);
   sell('use:emporio', ['bermuda', 'sandali', 'cappellino', 'fascia', 'leggings', 'tuta_ginnastica', 'scarpe_corsa', 'felpa_zip', 'maglia_calcio', 'marsupio']);
   sell('use:sartoria', ['maglione_v', 'maglione_collo_alto', 'camicia_righe', 'camicia_vichy', 'camicia_fiori', 'cravatta_righe', 'cravatta_pois', 'cravatta_cachemire', 'cravatta_fiori', 'cravatta_maglia']);
   sell('use:emporio', ['maglione_v', 'camicia_jeans', 'camicia_vichy']);
@@ -25736,6 +25916,725 @@ var Sottosuolo = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = Sottosuolo;
 </script>
+<<<<<<< HEAD
+<script>/* Porto Vecchio — lo skate (v7, «Tavola»).
+   Una tavola da skate, sei posti dove usarla e una fisica fatta per sentirla sotto i piedi.
+   - I POSTI (SPOTS): il Piazzale della Cultura (banchi di granito, due banchine che si guardano, la sbarra), Piazza San Rocco
+     (il blocco del manual e le panchine di marmo), Piazza del Governo (gradoni e corrimano, ma la Tutela non vuole), il Capannone
+     al porto cargo (rampe di legno sotto una tettoia: d'inverno l'unico posto asciutto), la piscina vuota dei Giardini di Ponente,
+     il muretto della Via al Mare. Si cercano un posto libero vicino al luogo vero (mai su strade, porte o banchi del mercato) e
+     le loro caselle diventano ingombro per gli NPC (Game.layout().block), così la gente gira attorno alle rampe.
+   - LA TAVOLA: in ogni posto ce n'è una appoggiata (X per prenderla). Poi X sale e scende ovunque all'aperto.
+   - LA FISICA: la tavola va dove punta (le ruote non scivolano di lato). Sulle rampe conta la velocità lungo la superficie
+     (l'energia si conserva: in salita si rallenta, in cima a una rampa verticale si vola dritti in su e si ricade dentro).
+     Il suolo è un campo d'altezze fatto dai pezzi (banchine, rampe, quarter, funbox, piscina); i pezzi stretti (muretti, panchine,
+     sbarre) sono ostacoli con gli spigoli da grindare.
+   - I COMANDI: W spinta (a colpi, va verso il puntatore), S frena, A/D curva, Spazio: tieni per caricare, lascia per l'ollie.
+     Mentre tieni Spazio, uno scatto del mouse sceglie il trick (a sinistra kickflip, a destra heelflip, in giù pop shove-it,
+     un giro 360 flip). In aria si atterra solo a trick chiuso e con la tavola dritta, se no si cade.
+     Grind e slide si agganciano da soli scendendo su uno spigolo; Spazio per uscire con un ollie. Tenendo Spazio vicino a un
+     cordolo basso si fa lo slappy (anni '80).
+   - LA LINEA: i trick si sommano finché si resta sulla tavola; il moltiplicatore è il numero di trick. Due secondi a terra senza
+     trick chiudono la linea. Chi ti vede fare una bella linea commenta, e se è grossa lo racconta (evento `numero`: entra nelle
+     memorie e nelle voci come gli altri fatti). In Piazza del Governo la Tutela ti richiama e alla terza ti sequestra la tavola.
+   Stato: st.skate = { owned, total, best, warn, ... }, st.player.sk = la tavola sotto i piedi.
+   Agganci: game.js `movePlayer` (una riga [skate]) e render.js dopo `swimPose` (una riga [skate]). La grafica sta in fondo. */
+var Skate = (function () {
+  'use strict';
+  const G = typeof Game !== 'undefined' ? Game : require('./game.js');
+  const TS = G.TS, GW = G.GW, GH = G.GH, T = G.T;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), hyp = Math.hypot;
+  const angD = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+  const GRAV = 9.8, STEP_UP = .12, PI = Math.PI;
+  const hash = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+
+  // =====================================================================================================================
+  // I POSTI
+  // Ogni pezzo: k tipo, dx/dy posizione nel posto, a angolo (le rampe salgono verso +asse), L lunghezza, W larghezza, H altezza.
+  // =====================================================================================================================
+  const PLAZA = [T.PIAZZA, T.WALK, T.COB], PORT = [T.QUAY, T.COB, T.WALK, T.DIRT, T.GRAVEL, T.PIAZZA, T.GRASS];
+  const SPOTS = [
+    { id: 'cultura', name: 'Piazzale della Cultura', place: 'cultura', tiles: PLAZA, crew: 2, pieces: [
+      { k: 'bank', dx: -6.6, dy: 0, a: PI, L: 2.6, W: 3.2, H: .7, mat: 'cemento' },
+      { k: 'bank', dx: 6.6, dy: 0, a: 0, L: 2.6, W: 3.2, H: .7, mat: 'cemento' },
+      { k: 'ledge', dx: 0, dy: -2.6, a: 0, L: 5.5, W: .6, H: .45, mat: 'granito' },
+      { k: 'ledge', dx: 0, dy: 2.6, a: 0, L: 5.5, W: .6, H: .45, mat: 'granito' },
+      { k: 'rail', dx: 0, dy: 0, a: 0, L: 4, H: .35 } ] },
+    { id: 'sanrocco', name: 'Piazza San Rocco', place: 'piazza', tiles: PLAZA, pieces: [
+      { k: 'pad', dx: 0, dy: 0, a: 0, L: 4, W: 2, H: .2, mat: 'cemento' },
+      { k: 'ledge', dx: 0, dy: -3.2, a: 0, L: 3.2, W: .5, H: .42, mat: 'marmo' },
+      { k: 'ledge', dx: 0, dy: 3.2, a: 0, L: 3.2, W: .5, H: .42, mat: 'marmo' } ] },
+    { id: 'governo', name: 'Piazza del Governo', place: 'piazza_gov', tiles: PLAZA, forbidden: true, pieces: [
+      { k: 'ledge', dx: 0, dy: 0, a: 0, L: 8, W: .7, H: .55, mat: 'granito' },
+      { k: 'rail', dx: 0, dy: 3, a: 0, L: 6, H: .55 },
+      { k: 'rail', dx: 0, dy: -3, a: 0, L: 6, H: .55 } ] },
+    { id: 'capannone', name: 'Il Capannone', place: 'deposito_n', tiles: PORT, covered: true, crew: 3, pieces: [
+      { k: 'quarter', dx: -9, dy: 0, a: PI, L: 2.2, W: 5, H: 1.6, D: 1.2, mat: 'legno' },
+      { k: 'quarter', dx: 9, dy: 0, a: 0, L: 2.2, W: 5, H: 1.6, D: 1.2, mat: 'legno' },
+      { k: 'funbox', dx: 0, dy: 0, a: 0, L: 5, W: 2.6, H: .55, B: 1.6, mat: 'legno' },
+      { k: 'rail', dx: 0, dy: 3.4, a: 0, L: 4, H: .4 },
+      { k: 'kicker', dx: -3.6, dy: -3.4, a: 0, L: 1.4, W: 1.2, H: .45, mat: 'legno' },
+      { k: 'post', dx: -11.9, dy: -5.3, a: 0 }, { k: 'post', dx: 11.9, dy: -5.3, a: 0 }, { k: 'post', dx: -11.9, dy: 5.3, a: 0 }, { k: 'post', dx: 11.9, dy: 5.3, a: 0 },
+      { k: 'post', dx: 0, dy: -5.3, a: 0 }, { k: 'post', dx: 0, dy: 5.3, a: 0 } ], roof: { L: 24.4, W: 11.2, H: 4.2 } },
+    { id: 'piscina', name: 'La vasca vuota', place: 'giardini', alt: ['collina_o', 'piazza_gov', 'pineta', 'lungomare', 'marina'], tiles: [T.PIAZZA, T.WALK, T.COB, T.GRASS, T.DIRT, T.SHRUB], maxR: 70, pieces: [
+      { k: 'bowl', dx: 0, dy: 0, a: 0, A: 4.8, B: 3.2, RC: 2.2, R: 1.7, M: 1 },   // la vasca della fontana monumentale, prosciugata: rialzata, col bordo largo intorno
+      { k: 'bank', dx: -7.3, dy: 0, a: 0, L: 3, W: 2.6, H: 1.7, mat: 'cemento' },
+      { k: 'post', dx: 5.3, dy: 0, a: 0, hidden: true } ] },   // la statua sul ripiano (la disegna la vasca)   // la rampa per salire sul bordo
+    { id: 'lungomare', name: 'Il muretto della Via al Mare', place: 'lungomare', tiles: [T.WALK, T.PIAZZA, T.COB, T.QUAY], pieces: [
+      { k: 'ledge', dx: 0, dy: 0, a: 0, L: 10, W: .45, H: .35, mat: 'cemento' },
+      { k: 'curb', dx: 0, dy: 2.4, a: 0, L: 8, W: .3, H: .2, mat: 'granito' } ] },
+  ];
+  const NARROW = { ledge: 1, rail: 1, post: 1, curb: 1 };   // ostacoli con spigoli, fuori dal campo d'altezze
+
+  // coordinate locali di un pezzo: u lungo l'asse, v di lato
+  const toL = (P, x, y) => { const c = Math.cos(P.ang), s = Math.sin(P.ang), dx = x - P.x, dy = y - P.y; return [dx * c + dy * s, -dx * s + dy * c]; };
+  const toW = (P, u, v) => { const c = Math.cos(P.ang), s = Math.sin(P.ang); return [P.x + u * c - v * s, P.y + u * s + v * c]; };
+  // ingombro locale [u0, u1, v0, v1]
+  function ext(P) {
+    switch (P.k) {
+      case 'quarter': return [-P.L / 2, P.L / 2 + P.D, -P.W / 2, P.W / 2];
+      case 'rail': return [-P.L / 2, P.L / 2, -.06, .06];
+      case 'post': return [-.16, .16, -.16, .16];
+      case 'bowl': return [-P.A - P.M, P.A + P.M, -P.B - P.M, P.B + P.M];
+      default: return [-P.L / 2, P.L / 2, -P.W / 2, P.W / 2];
+    }
+  }
+  const qR = P => (P.L * P.L + P.H * P.H) / (2 * P.H);   // raggio del quarter
+  // distanza verso l'interno dal bordo di un rettangolo arrotondato (negativa fuori)
+  function bowlIn(P, u, v) {
+    const qx = Math.abs(u) - (P.A - P.RC), qy = Math.abs(v) - (P.B - P.RC);
+    return -(hyp(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - P.RC);
+  }
+  // altezza del pezzo in (u, v), o null se fuori
+  function hLocal(P, u, v) {
+    const e = ext(P); if (u < e[0] || u > e[1] || v < e[2] || v > e[3]) return null;
+    switch (P.k) {
+      case 'pad': return P.H;
+      case 'bank': return P.H * (u + P.L / 2) / P.L;
+      case 'kicker': { const t = (u + P.L / 2) / P.L; return P.H * t * t; }
+      case 'quarter': { if (u >= P.L / 2) return P.H; const R = qR(P), x = u + P.L / 2; return R - Math.sqrt(Math.max(0, R * R - x * x)); }
+      case 'funbox': { const d = P.L / 2 - Math.abs(u); return d < P.B ? P.H * d / P.B : P.H; }
+      case 'bowl': { const d = bowlIn(P, u, v); if (d < 0) return P.R; if (d >= P.R) return 0; return P.R - Math.sqrt(Math.max(0, P.R * P.R - (P.R - d) * (P.R - d))); }   // fuori dal bordo: il ripiano, alto quanto la vasca
+      default: return P.H;   // pezzi stretti: la cima
+    }
+  }
+
+  // ---------------- piazzamento: il posto libero più vicino al luogo ----------------
+  const PIECES = [], EDGES = [], PLACED = [], MINE = new Set(), CELL = 8, GRID = new Map();
+  const gkey = (cx, cy) => cx * 4096 + cy;
+  function gridAdd(o, x0, y0, x1, y1) { for (let cx = Math.floor(x0 / CELL); cx <= Math.floor(x1 / CELL); cx++) for (let cy = Math.floor(y0 / CELL); cy <= Math.floor(y1 / CELL); cy++) { const k = gkey(cx, cy); if (!GRID.has(k)) GRID.set(k, { p: [], e: [] }); const c = GRID.get(k); (o.k ? c.p : c.e).push(o); } }
+  const near = (x, y) => GRID.get(gkey(Math.floor(x / CELL), Math.floor(y / CELL))) || { p: [], e: [] };
+
+  (function place() {
+    const L = G.layout(), taken = new Set(L.block.map(([tx, ty]) => ty * GW + tx));
+    L.items.forEach(it => { if (it.tiles) for (let j = 0; j < it.tiles[3]; j++) for (let i = 0; i < it.tiles[2]; i++) taken.add((it.tiles[1] + j) * GW + it.tiles[0] + i); else taken.add(Math.floor(it.y / TS) * GW + Math.floor(it.x / TS)); });
+    const PL = Object.entries(G.PLACES);
+    const okTile = (tx, ty, kinds, own) => { const cx = (tx + .5) * TS, cy = (ty + .5) * TS; if (PL.some(([id, q]) => id !== own && Math.abs(q.x - cx) < 3.5 && Math.abs(q.y - cy) < 3.5)) return false; if (tx < 1 || ty < 1 || tx >= GW - 1 || ty >= GH - 1) return false; const i = ty * GW + tx; return kinds.includes(G.tileAt(tx, ty)) && !taken.has(i) && !MINE.has(i) && !G.DOOR_OF.has(i) && !(G.bIndex[i] >= 0); };
+    SPOTS.forEach(S => {
+      for (const pid of [S.place].concat(S.alt || [])) { const pl = G.PLACES[pid]; if (!pl) continue; if (placeSpot(S, pl, pid)) break; }
+    });
+    function placeSpot(S, pl, pid) {
+      const ok = (cx, cy, ang) => {
+        const tiles = new Set();
+        const all = S.pieces.concat(S.roof ? [] : []);
+        for (const q of all) {
+          const P = Object.assign({}, q, { ang: ang + q.a }); [P.x, P.y] = [cx + q.dx * Math.cos(ang) - q.dy * Math.sin(ang), cy + q.dx * Math.sin(ang) + q.dy * Math.cos(ang)];
+          const e = ext(P), m = .5;
+          for (let u = e[0] - m; u <= e[1] + m + 1e-6; u += Math.min(1, (e[1] - e[0] + 2 * m) / 2)) for (let v = e[2] - m; v <= e[3] + m + 1e-6; v += Math.min(1, (e[3] - e[2] + 2 * m) / 2)) {
+            const [x, y] = toW(P, u, v), tx = Math.floor(x / TS), ty = Math.floor(y / TS);
+            if (!okTile(tx, ty, S.tiles, pid)) return null; tiles.add(ty * GW + tx);
+          }
+        }
+        return tiles;
+      };
+      let best = null;
+      for (let r = 3; r <= (S.maxR || 46) && !best; r += 1.5) for (let k = 0; k < 24 && !best; k++) for (const ang of [0, PI / 2]) {
+        const a = k / 24 * PI * 2, cx = pl.x + Math.cos(a) * r, cy = pl.y + Math.sin(a) * r, t = ok(cx, cy, ang);
+        if (t) { best = { cx, cy, ang, tiles: t }; break; }
+      }
+      if (!best) return false;
+      const spot = { id: S.id, name: S.name, x: best.cx, y: best.cy, ang: best.ang, forbidden: !!S.forbidden, covered: !!S.covered, crew: S.crew || 0, roof: S.roof || null, pieces: [], r: 0 };
+      S.pieces.forEach(q => {
+        const P = Object.assign({}, q, { ang: best.ang + q.a, spot }); [P.x, P.y] = [best.cx + q.dx * Math.cos(best.ang) - q.dy * Math.sin(best.ang), best.cy + q.dx * Math.sin(best.ang) + q.dy * Math.cos(best.ang)];
+        P.narrow = !!NARROW[P.k]; P.top = P.k === 'post' ? 3.2 : P.H;
+        const e = ext(P), cs = [[e[0], e[2]], [e[1], e[2]], [e[0], e[3]], [e[1], e[3]]].map(([u, v]) => toW(P, u, v));
+        P.bb = [Math.min(...cs.map(c => c[0])), Math.min(...cs.map(c => c[1])), Math.max(...cs.map(c => c[0])), Math.max(...cs.map(c => c[1]))];
+        spot.r = Math.max(spot.r, hyp(P.x - spot.x, P.y - spot.y) + hyp(e[1] - e[0], e[3] - e[2]) / 2);
+        PIECES.push(P); spot.pieces.push(P); gridAdd(P, P.bb[0] - 1, P.bb[1] - 1, P.bb[2] + 1, P.bb[3] + 1);
+        edgesOf(P).forEach(E => { EDGES.push(E); gridAdd(E, Math.min(E.ax, E.bx) - 1, Math.min(E.ay, E.by) - 1, Math.max(E.ax, E.bx) + 1, Math.max(E.ay, E.by) + 1); });
+      });
+      // la tavola appoggiata: fuori dai pezzi, verso il luogo vero
+      const da = Math.atan2(pl.y - best.cy, pl.x - best.cx);
+      for (let r = spot.r + 1; r < spot.r + 12; r += 1) { const bx = best.cx + Math.cos(da) * r, by = best.cy + Math.sin(da) * r; if (G.walkM(bx, by) && !best.tiles.has(Math.floor(by / TS) * GW + Math.floor(bx / TS))) { spot.board = { x: bx, y: by }; break; } }
+      if (!spot.board) spot.board = { x: pl.x, y: pl.y };
+      best.tiles.forEach(i => { MINE.add(i); taken.add(i); L.block.push([i % GW, Math.floor(i / GW)]); });   // gli NPC girano attorno
+      PLACED.push(spot); return true;
+    }
+  })();
+
+  function edgesOf(P) {
+    const E = [], add = (u0, v0, u1, v1, h, kind) => { const [ax, ay] = toW(P, u0, v0), [bx, by] = toW(P, u1, v1), len = hyp(bx - ax, by - ay); E.push({ ax, ay, bx, by, h, kind, len, ux: (bx - ax) / len, uy: (by - ay) / len, P }); };
+    const L2 = (P.L || 0) / 2, W2 = (P.W || 0) / 2;
+    switch (P.k) {
+      case 'ledge': add(-L2, -W2, L2, -W2, P.H, 'ledge'); add(-L2, W2, L2, W2, P.H, 'ledge'); break;
+      case 'curb': add(-L2, 0, L2, 0, P.H, 'curb'); break;
+      case 'rail': add(-L2, 0, L2, 0, P.H, 'rail'); break;
+      case 'pad': add(-L2, -W2, L2, -W2, P.H, 'ledge'); add(-L2, W2, L2, W2, P.H, 'ledge'); add(-L2, -W2, -L2, W2, P.H, 'ledge'); add(L2, -W2, L2, W2, P.H, 'ledge'); break;
+      case 'funbox': add(-L2 + P.B, -W2, L2 - P.B, -W2, P.H, 'ledge'); add(-L2 + P.B, W2, L2 - P.B, W2, P.H, 'ledge'); break;
+      case 'quarter': add(L2, -W2, L2, W2, P.H, 'coping'); break;
+      case 'bowl': { const N = 28, pts = []; for (let i = 0; i < N; i++) { const a = i / N * PI * 2; let r = 0; for (let s = 0; s < 40; s++) { const rr = r + .25; if (bowlIn(P, Math.cos(a) * rr, Math.sin(a) * rr) < 0) break; r = rr; } pts.push([Math.cos(a) * r, Math.sin(a) * r]); }
+        for (let i = 0; i < N; i++) { const a = pts[i], b = pts[(i + 1) % N]; add(a[0], a[1], b[0], b[1], P.R, 'coping'); } break; }
+    }
+    return E;
+  }
+
+  // ---------------- interrogazioni ----------------
+  // quota del suolo da skate in (x, y): 0 fuori dai pezzi
+  function surface(x, y) {
+    let hm = null; const c = near(x, y);
+    for (const P of c.p) { if (P.narrow || x < P.bb[0] - .01 || x > P.bb[2] + .01 || y < P.bb[1] - .01 || y > P.bb[3] + .01) continue;
+      const [u, v] = toL(P, x, y), q = hLocal(P, u, v); if (q === null) continue;
+      hm = hm === null ? q : Math.max(hm, q); }
+    return hm !== null ? hm : 0;
+  }
+  // un pezzo stretto che occupa (x, y): la sua cima, o null
+  function solidAt(x, y, r) {
+    let top = null; const c = near(x, y);
+    for (const P of c.p) { if (!P.narrow || x < P.bb[0] - r || x > P.bb[2] + r || y < P.bb[1] - r || y > P.bb[3] + r) continue;
+      const [u, v] = toL(P, x, y), e = ext(P); if (u < e[0] - r || u > e[1] + r || v < e[2] - r || v > e[3] + r) continue; top = Math.max(top === null ? -9 : top, P.top); }
+    return top;
+  }
+  const spotAt = (x, y, m) => PLACED.find(s => hyp(x - s.x, y - s.y) < s.r + (m || 0));
+  // dove si può andare in tavola: il terreno vero, più le caselle dei posti (che per gli NPC sono ingombro)
+  const free = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return MINE.has(ty * GW + tx) || G.walkM(x, y); };
+  function slopes(x, y, yaw) { const e = .06, c = Math.cos(yaw), s = Math.sin(yaw), f = surface(x + c * e, y + s * e) - surface(x - c * e, y - s * e), l = surface(x - s * e, y + c * e) - surface(x + s * e, y - c * e); return [f / (2 * e), l / (2 * e)]; }
+
+  // =====================================================================================================================
+  // I TRICK
+  // =====================================================================================================================
+  const TRICKS = {
+    ollie: { name: 'Ollie', pts: 60, dur: 0 }, kick: { name: 'Kickflip', pts: 180, dur: .55 }, heel: { name: 'Heelflip', pts: 180, dur: .55 },
+    shove: { name: 'Pop shove-it', pts: 140, dur: .45 }, tre: { name: '360 flip', pts: 360, dur: .75 },   // tempi in aria: senza carica (0,49 s) solo ollie e shove-it
+  };
+  const AIRS = { ollie: 'Frontside air', kick: 'Indy air', heel: 'Method air', shove: 'Rock to fakie', tre: 'Madonna' };
+  const GRINDS = { '50-50': [70, 50], Crooked: [100, 60], Boardslide: [100, 70], Slappy: [50, 40], 'Grind sul bordo': [90, 70] };
+  // gesto del mouse (pixel dello schermo, ultimi 300 ms prima di lasciare Spazio) → trick
+  function classify(samples) {
+    if (!samples || !samples.length) return 'ollie';
+    let sx = 0, sy = 0, len = 0; samples.forEach(s => { sx += s.dx; sy += s.dy; len += hyp(s.dx, s.dy); });
+    const net = hyp(sx, sy);
+    if (len < 45) return 'ollie';
+    if (len > 160 && net < len * .42) return 'tre';
+    if (Math.abs(sx) > Math.abs(sy) * 1.2) return sx < 0 ? 'kick' : 'heel';
+    return sy > 0 ? 'shove' : 'ollie';
+  }
+
+  // =====================================================================================================================
+  // STATO E COMANDI
+  // =====================================================================================================================
+  const S = st => st.skate || (st.skate = { owned: false, total: 0, best: 0, warn: 0, warnT: -99, emitT: -99, hint: false, line: null, lastLine: null });
+  const on = st => !!(st.player.sk && st.player.sk.on);
+  const KEYS = { w: 0, s: 0, a: 0, d: 0, sp: 0 }, MS = []; let mouseTrack = false;
+  function ctl(inp) {
+    if (inp && inp.sk) return inp.sk;   // le prove passano i comandi a mano
+    const now = typeof performance !== 'undefined' ? performance.now() : 0;
+    while (MS.length && now - MS[0].t > 350) MS.shift();
+    return { push: !!KEYS.w, brake: !!KEYS.s, turn: (KEYS.d ? 1 : 0) - (KEYS.a ? 1 : 0), crouch: !!KEYS.sp, aim: inp ? inp.aim : undefined, gesture: () => classify(MS.filter(m => now - m.t < 300)) };
+  }
+
+  function mount(st, quiet) {
+    const p = st.player; if (p.vehicle || p.indoor || p.lv || p.swim) return false;
+    p.sk = { on: true, z: surface(p.x, p.y), vz: 0, V: 0, vx: 0, vy: 0, yaw: p.face, air: false, grind: null, trick: null, vert: null, crouchT: null, crouchPrev: false, pushT: 0, pushA: -9, lastVS: 0, carveT: 0, boardOff: 0, airT0: 0, free: null };
+    if (!quiet) G.feed(st, 'In tavola. W spinta · Spazio ollie · scatto del mouse con Spazio: flip · X scendi.', 'info');
+    return true;
+  }
+  function dismount(st, quiet) {
+    const p = st.player, k = p.sk; if (!k) return; k.on = false; k.air = false; k.grind = null; p.speed = 0;
+    unstick(st);
+    if (!quiet) G.feed(st, 'Giù dalla tavola.', 'info');
+  }
+  // a piedi non si sta dentro le caselle dei posti (per il motore sono ingombro): si scende di lato
+  function unstick(st) {
+    const p = st.player, i0 = Math.floor(p.y / TS) * GW + Math.floor(p.x / TS); if (!MINE.has(i0)) return;
+    for (let r = 1; r < 14; r += .5) for (let k = 0; k < 16; k++) { const a = k / 16 * PI * 2, x = p.x + Math.cos(a) * r, y = p.y + Math.sin(a) * r, i = Math.floor(y / TS) * GW + Math.floor(x / TS); if (!MINE.has(i) && G.walkM(x, y)) { p.x = x; p.y = y; return; } }
+  }
+  function key(st) {   // X
+    const p = st.player, s = S(st);
+    if (on(st)) { dismount(st); return true; }
+    if (s.owned) { if (p.vehicle || p.indoor || p.lv) return false; return mount(st); }
+    const sp = PLACED.find(q => q.board && hyp(q.board.x - p.x, q.board.y - p.y) < 3);
+    if (sp) { s.owned = true; G.feed(st, `Hai preso la tavola del ${sp.name}. X per salire e scendere.`, 'money'); return mount(st, true); }
+    return false;
+  }
+
+  // =====================================================================================================================
+  // LA LINEA: trick, punti, moltiplicatore
+  // =====================================================================================================================
+  function addTrick(st, name, pts) {
+    const s = S(st); if (!s.line) s.line = { tricks: [], pts: 0, t: st.clock };
+    s.line.tricks.push(name); s.line.pts += Math.round(pts); s.line.t = st.clock;
+  }
+  function closeLine(st) {
+    const s = S(st), L = s.line; if (!L) return; s.line = null;
+    const mult = Math.min(10, L.tricks.length), tot = L.pts * mult;
+    s.total += tot; s.best = Math.max(s.best, tot); s.lastLine = { tricks: L.tricks, tot, mult, t: st.clock, ok: true };
+    react(st, tot);
+  }
+  function bail(st, why) {
+    const p = st.player, k = p.sk, s = S(st); if (!k || !k.on) return;
+    const sp = hyp(k.vx, k.vy) || Math.abs(k.V);
+    s.lastLine = { tricks: s.line ? s.line.tricks : [], tot: 0, mult: 0, t: st.clock, ok: false, why }; s.line = null;
+    k.free = { x: p.x, y: p.y, z: k.z + .1, vx: Math.cos(k.yaw) * sp * .9, vy: Math.sin(k.yaw) * sp * .9, vz: 2 + Math.random(), r: 0, t: st.clock };
+    k.on = false; k.bailT = st.clock; k.air = false; k.grind = null; k.trick = null;
+    const dir = hyp(k.vx, k.vy) > .3 ? Math.atan2(k.vy, k.vx) : k.yaw;
+    p.kbx = Math.cos(dir) * sp * .7; p.kby = Math.sin(dir) * sp * .7; p.airT = st.clock; p.airDur = clamp(.35 + sp * .04, .35, .8); p.airH = clamp(.3 + k.z * .6 + sp * .05, .35, 1.6); p.airSpin = Math.random() < .5 ? -1 : 1;
+    p.stun = 1.3; p.hurtT = st.clock; p.hp = Math.max(1, p.hp - Math.round(4 + sp * 1.3 + Math.max(0, k.z) * 4)); p.speed = 0;
+    st.shake = Math.max(st.shake || 0, .25); st.sfx.push({ k: 'thud' });
+    G.feed(st, why || 'Caduto!', 'bad');
+    laugh(st);
+  }
+
+  // =====================================================================================================================
+  // CHI GUARDA
+  // =====================================================================================================================
+  const WOW = ['Ammazza!', 'Ma l\'hai visto?', 'Bravo!', 'Uh, che volo.', 'Questo è matto.', 'Rifallo!'];
+  const OLD = ['Ragazzi d\'oggi...', 'Si romperà l\'osso del collo.', 'Con questo freddo, poi.'];
+  const LAUGH = ['Ahahah!', 'Ahia.', 'Tutto a posto?', 'Si è stampato.'];
+  const CREW = ['Rocco: Grande!', 'Tina: Pulito!', 'Il Biondo: Ancora!', 'Mimmo: Sei dei nostri.'];
+  function watchers(st, r) {
+    const p = st.player;
+    return st.npcs.filter(n => !n.dead && !n.inside && hyp(n.x - p.x, n.y - p.y) < r && G.canSee(st, n, p.x, p.y));
+  }
+  function react(st, tot) {
+    if (tot < 250) return;
+    const p = st.player, s = S(st), w = watchers(st, 16).sort(() => Math.random() - .5);
+    w.slice(0, tot > 900 ? 2 : 1).forEach(n => { const old = (n.age || 30) > 55 || (n.tr && n.tr.cor < .3); G.say(st, n, (old ? OLD : WOW)[Math.floor(Math.random() * (old ? OLD : WOW).length)]); });
+    const sp = spotAt(p.x, p.y, 4); if (sp && sp.crew && crewHere(st, sp)) G.feed(st, CREW[Math.floor(Math.random() * CREW.length)], 'info');
+    if (tot >= 600 && w.length && st.clock - s.emitT > 60) { s.emitT = st.clock; G.emit(st, 'numero', {}); }   // lo racconteranno
+  }
+  function laugh(st) { const w = watchers(st, 12); if (w.length && Math.random() < .7) { const n = w[Math.floor(Math.random() * w.length)]; G.say(st, n, LAUGH[Math.floor(Math.random() * LAUGH.length)]); } }
+  // la Tutela non vuole la tavola sotto il Palazzo del Governo
+  function guards(st) {
+    const p = st.player, s = S(st), sp = spotAt(p.x, p.y, 6); if (!sp || !sp.forbidden || st.clock - s.warnT < 25) return;
+    const g = st.npcs.find(n => !n.dead && !n.inside && (n.cop || n.military) && hyp(n.x - p.x, n.y - p.y) < 22 && G.canSee(st, n, p.x, p.y)); if (!g) return;
+    s.warnT = st.clock; s.warn++;
+    if (s.warn < 3) G.say(st, g, s.warn === 1 ? 'Ehi tu! Qui non si gioca, è la piazza del Governo.' : 'Ultimo avviso. Giù da quella tavola.');
+    else { G.say(st, g, 'La tavola la prendo io. Vai a casa.'); dismount(st, true); s.owned = false; s.warn = 0; G.feed(st, `${g.first || 'La Tutela'} ti ha sequestrato la tavola. Ce n'è un'altra negli altri posti.`, 'bad'); }
+  }
+  const crewHere = (st, sp) => { const h = G.hour(st); return h >= 10 && h < 19 && !(typeof window !== 'undefined' && window.__pv && window.__pv.R && window.__pv.R.isRaining && window.__pv.R.isRaining() && !sp.covered); };
+
+  // =====================================================================================================================
+  // IL MOTO (chiamato da movePlayer quando sei in tavola)
+  // =====================================================================================================================
+  function move(st, dt, inp) {
+    const p = st.player, k = p.sk; if (!k || !k.on) return false;
+    if (p.vehicle || p.indoor || p.lv || p.swim) { dismount(st, true); return false; }
+    const c = ctl(inp), s = S(st);
+    // Spazio: si carica tenendo, si salta lasciando
+    if (c.crouch && !k.crouchPrev) k.crouchT = st.clock;
+    const release = !c.crouch && k.crouchPrev, hold = release ? clamp((st.clock - (k.crouchT || st.clock)) / .4, 0, 1) : 0;
+    k.crouchPrev = !!c.crouch; k.crouch = !!c.crouch;
+    const gest = release ? (typeof c.gesture === 'function' ? c.gesture() : (c.flick || 'ollie')) : null;
+    if (k.grind) grindStep(st, k, c, dt, release, hold, gest);
+    else if (k.air) airStep(st, k, c, dt, release, gest);
+    else groundStep(st, k, c, dt, release, hold, gest);
+    if (!k.on) return true;
+    // la linea si chiude a terra, dopo un po' senza trick
+    if (s.line && !k.air && !k.grind && st.clock - s.line.t > 2) closeLine(st);
+    hitPeople(st, k);
+    guards(st);
+    p.speed = st.clock - k.pushA < .45 ? 2.4 : 0;   // le gambe si muovono solo quando spingi
+    p.face = k.yaw; p.anim += dt;
+    return true;
+  }
+  const wetK = (st, k) => { const p = st.player, sp = spotAt(p.x, p.y, 2); if (sp && sp.covered) return 1; const R = typeof window !== 'undefined' && window.__pv && window.__pv.R; return R && R.isRaining && R.isRaining() ? 1.9 : 1.25; };   // d'inverno all'aperto la tavola scorre peggio
+
+  function groundStep(st, k, c, dt, release, hold, gest) {
+    const p = st.player;
+    // sterzo: A/D a mano; con W la tavola va verso il puntatore
+    const rate = 2.9 / (1 + Math.abs(k.V) / 7);
+    if (c.turn) k.yaw += c.turn * rate * dt;
+    else if (c.push && c.aim !== undefined && !k.crouch) { const tr = k.V >= -.2 ? k.yaw : k.yaw + PI; k.yaw += clamp(angD(c.aim, tr) * 2.2, -rate, rate) * dt; }
+    let [sF, sL] = slopes(p.x, p.y, k.yaw);
+    if (Math.abs(sL) > .25 && Math.abs(k.V) > .5) k.yaw += clamp(-sL * .55, -.9, .9) * dt * Math.sign(k.V);   // sulla parete la tavola cade verso il basso
+    // spinta a colpi
+    k.pushT -= dt;
+    if (c.push && k.pushT <= 0 && !k.crouch && k.V > -.5 && Math.abs(sF) < .3) { k.V = k.V < .3 ? 2.2 : k.V + 2.3 * clamp(1 - k.V / 8.5, 0, 1); k.pushT = .6; k.pushA = st.clock; }
+    if (c.brake) k.V -= Math.sign(k.V) * Math.min(Math.abs(k.V), 3.4 * dt);
+    // gravità lungo la superficie, attrito di rotolamento e aria
+    const n1 = Math.sqrt(1 + sF * sF);
+    k.V += -GRAV * sF / n1 * dt;
+    k.V -= Math.sign(k.V) * Math.min(Math.abs(k.V), (.22 * wetK(st, k) + .011 * k.V * k.V) * dt);
+    // ollie
+    if (release) { pop(st, k, hold, gest, Math.cos(k.yaw) * k.V / n1, Math.sin(k.yaw) * k.V / n1); return; }
+    // slappy: tenendo Spazio contro un cordolo basso
+    if (k.crouch && Math.abs(k.V) > 1.5) { const E = findEdge(p.x, p.y, k.z, Math.cos(k.yaw) * k.V, Math.sin(k.yaw) * k.V, true); if (E) { lockGrind(st, k, E, Math.cos(k.yaw) * k.V, Math.sin(k.yaw) * k.V, 'Slappy'); return; } }
+    const u = k.V / n1, nx = p.x + Math.cos(k.yaw) * u * dt, ny = p.y + Math.sin(k.yaw) * u * dt, Sn = surface(nx, ny), sol = solidAt(nx, ny, .18);
+    const rise = STEP_UP + Math.abs(u * dt) * Math.max(0, sF, slopes(nx, ny, k.yaw)[0]) * 1.15;   // sulle rampe si sale col passo, contro i fianchi no
+    const blocked = !free(nx, ny) || Sn - k.z > rise || (sol !== null && sol > k.z + STEP_UP * .6);
+    if (blocked) { if (Math.abs(k.V) > 3.6) return bail(st, 'Contro il muro!'); k.V = -k.V * .2; return; }
+    const vs = (Sn - k.z) / dt;
+    if (k.z - Sn > STEP_UP) { const vt = Math.abs(k.lastSF || 0) > 1.6; takeoff(st, k, vt ? p.x : nx, vt ? p.y : ny, Math.cos(k.yaw) * u, Math.sin(k.yaw) * u, k.lastVS, vt); return; }   // giù da un gradino, o dalla cima di una rampa
+    if (k.lastVS - vs > GRAV * dt * 1.6 && k.lastVS > .9) {   // il bordo di una rampa: si vola
+      const vt = Math.abs(k.lastSF || 0) > 1.6; takeoff(st, k, vt ? p.x : nx, vt ? p.y : ny, Math.cos(k.yaw) * u, Math.sin(k.yaw) * u, k.lastVS, vt); return;
+    }
+    p.x = nx; p.y = ny; k.z = Sn; k.lastVS = vs; k.lastSF = sF; k.vx = Math.cos(k.yaw) * u; k.vy = Math.sin(k.yaw) * u;
+    // carve: sulle pareti curve, a lungo
+    if (Math.abs(sF) > .6 || Math.abs(sL) > .6) { k.carveT += dt; if (k.carveT > 1.4) { k.carveT = 0; addTrick(st, 'Carve', 80); } } else k.carveT = Math.max(0, k.carveT - dt);
+  }
+  function pop(st, k, hold, gest, vx, vy) {
+    const t = TRICKS[gest] || TRICKS.ollie;
+    k.air = true; k.vz = 2.4 + 2.2 * hold + (gest === 'ollie' ? .15 : 0); k.vx = vx; k.vy = vy; k.airT0 = st.clock; k.vert = null;   // da 30 cm a più di un metro
+    k.trick = { id: gest, name: t.name, pts: t.pts, dur: t.dur, t0: st.clock };
+    st.sfx.push({ k: 'legno' });
+  }
+  function takeoff(st, k, x, y, vx, vy, vz, vert) {
+    const p = st.player; p.x = x; p.y = y;
+    k.air = true; k.vx = vx; k.vy = vy; k.vz = vz; k.airT0 = st.clock; k.trick = null; k.vert = null;
+    if (vert && vz > 1.5) {   // da una parete verticale: dritti in su, mezzo giro in aria, si ricade dentro
+      k.vx = -Math.cos(k.yaw) * .3; k.vy = -Math.sin(k.yaw) * .3; const T0 = 2 * vz / GRAV;   // un filo verso la rampa: si ricade dentro
+      k.vert = { from: k.yaw, t0: st.clock, T: T0 };
+      k.trick = { id: 'air', name: 'Air', pts: 120, dur: 0, t0: st.clock, air: true };
+    }
+  }
+  function airStep(st, k, c, dt, release, gest) {
+    const p = st.player;
+    if (k.vert) { const q = clamp((st.clock - k.vert.t0) / (k.vert.T * .8), 0, 1); k.yaw = k.vert.from + PI * q; }
+    // in aria su una rampa verticale, il gesto fatto lasciando Spazio sceglie la presa
+    if (release && k.trick && k.trick.air && gest) { k.trick.name = AIRS[gest] || 'Air'; k.trick.pts = 120 + (gest === 'ollie' ? 60 : 160); }
+    k.vz -= GRAV * dt;
+    const nx = p.x + k.vx * dt, ny = p.y + k.vy * dt, nz = k.z + k.vz * dt, hs = hyp(k.vx, k.vy);
+    if (!free(nx, ny)) { if (hs > 3) return bail(st, 'Contro il muro!'); k.vx = k.vy = 0; }
+    // grind: scendendo su uno spigolo
+    if (k.vz <= 0) { const E = findEdgeAir(nx, ny, k.z, nz, k.vx, k.vy); if (E) {
+      if (k.trick && !k.trick.air && st.clock - k.trick.t0 < k.trick.dur) return bail(st, 'Non hai chiuso il trick.');
+      if (k.trick && !k.trick.air) addTrick(st, k.trick.name, k.trick.pts); k.trick = null;
+      p.x = nx; p.y = ny; lockGrind(st, k, E, k.vx, k.vy); return; } }
+    const sol = solidAt(nx, ny, .12);
+    if (sol !== null && nz < sol - (k.vz > 0 ? .2 : .05)) { if (hs > 3.2) return bail(st, 'Hai preso lo spigolo.'); k.vx = k.vy = 0; }   // salendo si perdona un po'
+    let Sn = surface(p.x + k.vx * dt, p.y + k.vy * dt);
+    if (Sn - k.z > STEP_UP + .1 + hs * dt * Math.max(0, slopes(p.x + k.vx * dt, p.y + k.vy * dt, Math.atan2(k.vy, k.vx))[0]) * 1.15) { if (hs > 3.2) return bail(st, 'Contro la rampa.'); k.vx = k.vy = 0; Sn = surface(p.x, p.y); }   // il fianco di una rampa
+    if (nz <= Sn) return land(st, k, p.x + k.vx * dt, p.y + k.vy * dt, Sn);
+    p.x += k.vx * dt; p.y += k.vy * dt; k.z = nz;
+  }
+  function land(st, k, x, y, Sn) {
+    const p = st.player, hs = hyp(k.vx, k.vy), air = st.clock - k.airT0;
+    if (k.trick && !k.trick.air && air < k.trick.dur) return bail(st, 'Troppo basso: il trick non si è chiuso.');
+    const hv = hs > .6 ? Math.atan2(k.vy, k.vx) : k.yaw, d = Math.abs(angD(hv, k.yaw)), fakie = d > PI / 2, mis = fakie ? PI - d : d;
+    if (hs > 1.6 && mis > .8) return bail(st, 'Atterrato di traverso.');
+    const [sF] = slopes(x, y, k.yaw), n1 = Math.sqrt(1 + sF * sF);
+    const vn = (k.vz - sF * (k.vx * Math.cos(k.yaw) + k.vy * Math.sin(k.yaw))) / n1;   // botta lungo la normale
+    if (vn < -9) return bail(st, 'Troppo alto.');
+    k.V = ((k.vx * Math.cos(k.yaw) + k.vy * Math.sin(k.yaw)) + k.vz * sF) / n1 * .93;
+    p.x = x; p.y = y; k.z = Sn; k.air = false; k.lastVS = 0; k.vert = null; k.lastSF = sF;
+    if (k.trick) { const t = k.trick, bonus = Math.max(0, air - .55) * 120; addTrick(st, t.name + (fakie && !t.air ? ' (fakie)' : ''), (t.pts + bonus) * (fakie && !t.air ? 1.2 : 1)); k.trick = null; }
+    st.sfx.push({ k: 'legno' });
+  }
+
+  // ---------------- grind ----------------
+  function segDist(E, x, y) { const t = clamp((x - E.ax) * E.ux + (y - E.ay) * E.uy, 0, E.len); return [hyp(E.ax + E.ux * t - x, E.ay + E.uy * t - y), t]; }
+  function findEdgeAir(x, y, z0, z1, vx, vy) {
+    const hs = hyp(vx, vy); if (hs < 1) return null; let best = null, bd = .5;
+    for (const E of near(x, y).e) { if (z0 < E.h - .08 || z1 > E.h + .12) continue; const [d, t] = segDist(E, x, y); if (d > bd || t < .15 || t > E.len - .15) continue;
+      const along = Math.abs(vx * E.ux + vy * E.uy); if (along < 1.1) continue; bd = d; best = E; }
+    return best;
+  }
+  function findEdge(x, y, z, vx, vy) {   // slappy: cordoli e spigoli bassi presi da terra
+    for (const E of near(x, y).e) { if (E.h > .32 || E.h - z < .05 || (E.kind !== 'curb' && E.kind !== 'ledge')) continue; const [d, t] = segDist(E, x, y); if (d > .45 || t < .2 || t > E.len - .2) continue;
+      const hs = hyp(vx, vy), a = Math.acos(clamp(Math.abs(vx * E.ux + vy * E.uy) / (hs || 1), 0, 1)); if (a < .45) return E; }
+    return null;
+  }
+  function lockGrind(st, k, E, vx, vy, force) {
+    const p = st.player, hs = hyp(vx, vy) || 1, along = vx * E.ux + vy * E.uy, a = Math.acos(clamp(Math.abs(along) / hs, 0, 1));
+    const kind = force || (E.kind === 'coping' ? 'Grind sul bordo' : a < .35 ? '50-50' : a < .75 ? 'Crooked' : 'Boardslide');
+    const [, t] = segDist(E, p.x, p.y);
+    k.grind = { E, s: t, s0: t, dir: Math.sign(along) || 1, v: Math.abs(along) * .95, kind, t0: st.clock };
+    k.air = false; k.z = E.h; k.vz = 0; k.yaw = Math.atan2(E.uy * k.grind.dir, E.ux * k.grind.dir);
+    k.boardOff = kind === 'Boardslide' ? PI / 2 : kind === 'Crooked' ? .4 : 0;
+    st.sfx.push({ k: 'palo' });
+  }
+  function grindStep(st, k, c, dt, release, hold, gest) {
+    const p = st.player, g = k.grind, E = g.E;
+    g.v -= (E.kind === 'rail' ? .7 : E.kind === 'coping' ? 1.1 : 1.5) * (g.kind === 'Boardslide' ? 1.3 : 1) * dt;
+    g.s += g.v * g.dir * dt;
+    const done = release || g.v < .7 || g.s < 0 || g.s > E.len;
+    const sc = clamp(g.s, 0, E.len); p.x = E.ax + E.ux * sc; p.y = E.ay + E.uy * sc; k.z = E.h;
+    if (!done) return;
+    const m = Math.abs(sc - g.s0), base = GRINDS[g.kind] || [70, 50];
+    addTrick(st, `${g.kind} ${m.toFixed(1)} m`, base[0] + base[1] * m);
+    k.grind = null; k.boardOff = 0;
+    const vx = E.ux * g.dir * g.v, vy = E.uy * g.dir * g.v;
+    if (release) { pop(st, k, hold, gest, vx, vy); k.z = E.h; }
+    else { // in fondo allo spigolo: si scende di là
+      const ox = p.x + E.ux * g.dir * .2, oy = p.y + E.uy * g.dir * .2; p.x = ox; p.y = oy;
+      k.air = true; k.vx = vx; k.vy = vy; k.vz = .4; k.airT0 = st.clock; k.trick = null; k.vert = null;
+      if (surface(ox, oy) >= k.z - .02) { k.air = false; k.V = g.v; k.z = surface(ox, oy); }
+    }
+  }
+  // addosso alla gente
+  function hitPeople(st, k) {
+    const p = st.player, hs = k.grind ? k.grind.v : (hyp(k.vx, k.vy) || Math.abs(k.V)); if (hs < 1 || k.z > .9) return;
+    for (const n of st.npcs) { if (n.dead || n.inside || Math.abs(n.x - p.x) > .7 || Math.abs(n.y - p.y) > .7 || hyp(n.x - p.x, n.y - p.y) > .55) continue;
+      if (hs > 3.2) { n.stun = Math.max(n.stun || 0, 1.4); n.kbx = Math.cos(k.yaw) * hs * .5; n.kby = Math.sin(k.yaw) * hs * .5; G.say(st, n, 'Ma guarda dove vai!'); bail(st, `Addosso a ${n.first || 'un passante'}.`); }
+      else { k.V *= .3; k.vx *= .3; k.vy *= .3; }
+      return; }
+  }
+  // dopo la caduta ci si rialza e si torna sulla tavola
+  function step(st, dt) {
+    const p = st.player, k = p.sk; if (!k) return;
+    if (!k.on && k.bailT !== undefined && st.clock - k.bailT > 1.8 && p.stun <= 0 && S(st).owned && !p.vehicle && !p.indoor) { const b = k.free; if (b) { p.x = b.x; p.y = b.y; } k.bailT = undefined; k.free = null; mount(st, true); }
+    if (!k.on && k.free && st.clock - k.free.t > 1.8 && k.bailT === undefined) k.free = null;
+    if (!k.on && !k.free && p.stun <= 0) unstick(st);
+  }
+  { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); try { step(st, dt); } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.warn('[Skate]', e); } } }; }
+  // il fatto nuovo: "ha fatto i numeri con lo skate"
+  G.SEV.numero = .3; G.NOISE.numero = 6; G.LABEL.numero = 'Numeri con lo skate';
+  { const prev = G.HOOKS.verb; G.HOOKS.verb = (st, m, T) => m.type === 'numero' ? `ha fatto i numeri con lo skate${m.place ? ' a ' + m.place : ''}` : (prev ? prev(st, m, T) : null); }
+
+  // =====================================================================================================================
+  // LA GRAFICA (solo nel browser)
+  // =====================================================================================================================
+  const GFX = { built: false, board: null, free: null, crew: [], loose: [], hud: null, hint: null };
+  const PPM = 8;
+  function cvs(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  function tex(c, rep) { const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapLinearFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping; if (rep) t.repeat.set(rep[0], rep[1]); return t; }
+  function speckle(g, w, h, base, cols, n, seed) { g.fillStyle = base; g.fillRect(0, 0, w, h); for (let i = 0; i < n; i++) { const r = hash(i, seed); g.fillStyle = cols[Math.floor(hash(seed, i) * cols.length)]; g.fillRect(Math.floor(r * w), Math.floor(hash(i * 7, seed + 3) * h), 1, 1); } }
+  const TEX = {};
+  function texOf(kind) {
+    if (TEX[kind]) return TEX[kind];
+    let c, g;
+    if (kind === 'cemento') { c = cvs(32, 32); g = c.getContext('2d'); speckle(g, 32, 32, '#8f8b85', ['#7d7973', '#a19d96', '#6e6a65'], 160, 3); g.fillStyle = 'rgba(40,36,32,.18)'; g.fillRect(3, 20, 9, 5); g.fillRect(20, 4, 6, 4); g.fillStyle = '#6b6761'; g.fillRect(0, 31, 32, 1); g.fillRect(31, 0, 1, 32); }
+    else if (kind === 'granito') { c = cvs(32, 32); g = c.getContext('2d'); speckle(g, 32, 32, '#b3ada4', ['#8a847b', '#d6d1c8', '#6f6a63', '#c4b9ab'], 340, 5); }
+    else if (kind === 'marmo') { c = cvs(32, 32); g = c.getContext('2d'); speckle(g, 32, 32, '#dcd7ce', ['#cfc9bf', '#e8e4dc'], 120, 7); g.strokeStyle = 'rgba(120,115,108,.45)'; g.beginPath(); g.moveTo(0, 9); g.lineTo(11, 14); g.lineTo(19, 11); g.lineTo(32, 18); g.moveTo(4, 27); g.lineTo(15, 24); g.lineTo(32, 29); g.stroke(); }
+    else if (kind === 'cera') { c = cvs(8, 8); g = c.getContext('2d'); g.fillStyle = '#3b3833'; g.fillRect(0, 0, 8, 8); g.fillStyle = '#56524b'; g.fillRect(0, 2, 8, 1); }
+    else if (kind === 'legno') { c = cvs(32, 32); g = c.getContext('2d'); g.fillStyle = '#5a4634'; g.fillRect(0, 0, 32, 32); for (let i = 0; i < 90; i++) { g.fillStyle = hash(i, 9) < .5 ? '#4e3c2c' : '#66503b'; g.fillRect(Math.floor(hash(i, 2) * 32), Math.floor(hash(i, 4) * 32), 1 + Math.floor(hash(i, 6) * 3), 1); } g.fillStyle = '#3d2f23'; g.fillRect(0, 15, 32, 1); g.fillStyle = 'rgba(20,16,12,.35)'; g.fillRect(10, 6, 7, 2); g.fillRect(22, 24, 5, 2); }
+    else if (kind === 'compensato') { c = cvs(32, 32); g = c.getContext('2d'); for (let y = 0; y < 32; y++) { g.fillStyle = y % 4 === 0 ? '#8a6a45' : y % 4 === 2 ? '#c49a62' : '#b48a56'; g.fillRect(0, y, 32, 1); } }
+    else if (kind === 'lamiera') { c = cvs(16, 16); g = c.getContext('2d'); for (let x = 0; x < 16; x++) { g.fillStyle = x % 4 < 2 ? '#757b7e' : '#5d6366'; g.fillRect(x, 0, 1, 16); } g.fillStyle = 'rgba(122,62,30,.5)'; g.fillRect(2, 11, 5, 3); g.fillRect(10, 3, 3, 2); }
+    else if (kind === 'ferro') { c = cvs(8, 8); g = c.getContext('2d'); g.fillStyle = '#2d3238'; g.fillRect(0, 0, 8, 8); g.fillStyle = '#9aa1a6'; g.fillRect(0, 0, 8, 2); }
+    TEX[kind] = tex(c); return TEX[kind];
+  }
+  const MAT = {};
+  function mat(kind, rep) { const k = kind + (rep || ''); if (!MAT[k]) MAT[k] = new THREE.MeshLambertMaterial({ map: texOf(kind), side: THREE.DoubleSide }); return MAT[k]; }
+  // una scritta sul fianco delle rampe (tag di vernice, non della Risacca: dei ragazzi)
+  function tagTex(seed) {
+    const words = ['SK8', 'ZEBRA', 'P.V. 86', 'TINA', 'CAPANNONE', 'ROCCO', 'NO FUTURE'], w = words[Math.floor(hash(seed, 1) * words.length)];
+    const c = cvs(64, 32), g = c.getContext('2d'); g.drawImage(texOf('compensato').image, 0, 0, 64, 32);
+    g.font = 'bold 13px monospace'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = '#111'; const col = ['#ff3d8b', '#3ee0d0', '#ffd23a', '#9b5cff'][Math.floor(hash(seed, 3) * 4)];
+    g.save(); g.translate(32, 20); g.rotate(-.12 + hash(seed, 5) * .24); g.strokeText(w, 0, 0); g.fillStyle = col; g.fillText(w, 0, 0); g.restore();
+    return new THREE.MeshLambertMaterial({ map: tex(c), side: THREE.DoubleSide });
+  }
+  // estrude un profilo [[u, h], …] largo W: sopra la superficie, ai lati le fiancate, dietro la parete
+  function extrude(prof, W, mTop, mSide, base) {
+    const b = base === undefined ? -.25 : base, top = [], side = [], back = [];
+    const quad = (A, a, b2, c2, d) => { A.push(...a, ...b2, ...c2, ...a, ...c2, ...d); };
+    let acc = 0; const uvT = [];
+    for (let i = 0; i < prof.length - 1; i++) {
+      const [u0, h0] = prof[i], [u1, h1] = prof[i + 1], l = hyp(u1 - u0, h1 - h0);
+      quad(top, [u0, h0, W / 2], [u1, h1, W / 2], [u1, h1, -W / 2], [u0, h0, -W / 2]);
+      uvT.push(acc, W, acc + l, W, acc + l, 0, acc, W, acc + l, 0, acc, 0); acc += l;
+      for (const z of [-W / 2, W / 2]) { if (z < 0) quad(side, [u0, b, z], [u1, b, z], [u1, h1, z], [u0, h0, z]); else quad(side, [u0, b, z], [u0, h0, z], [u1, h1, z], [u1, b, z]); }
+    }
+    const [ue, he] = prof[prof.length - 1], [us, hs] = prof[0];
+    if (he > 0) quad(back, [ue, b, -W / 2], [ue, he, -W / 2], [ue, he, W / 2], [ue, b, W / 2]);
+    if (hs > 0) quad(back, [us, b, W / 2], [us, hs, W / 2], [us, hs, -W / 2], [us, b, -W / 2]);
+    const mk = (arr, uv, m) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); if (!uv) { uv = []; for (let i = 0; i < arr.length; i += 3) uv.push(arr[i] + arr[i + 2] * .7, arr[i + 1]); } uv = uv.map(q => q * .25); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals(); const o = new THREE.Mesh(g, m); o.castShadow = o.receiveShadow = true; return o; };
+    const grp = new THREE.Group(); grp.add(mk(top, uvT, mTop)); grp.add(mk(side, null, mSide)); if (back.length) grp.add(mk(back, null, mSide)); return grp;
+  }
+  const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; return o; };
+  function pieceMesh(P, seed) {
+    const g = new THREE.Group(), L2 = (P.L || 0) / 2, W = P.W || 0, iron = mat('ferro');
+    const steel = new THREE.MeshLambertMaterial({ color: '#8e979c' });
+    switch (P.k) {
+      case 'ledge': case 'curb': {
+        const m = mat(P.mat || 'granito'); g.add(box(P.L, P.H + .2, W, m, 0, (P.H - .2) / 2, 0));
+        const wax = mat('cera'); [-1, 1].forEach(s => g.add(box(P.L - .1, .015, .05, wax, 0, P.H + .006, s * (W / 2 - .025))));   // la cera sugli spigoli
+        break; }
+      case 'rail': {
+        g.add(box(P.L, .05, .05, iron, 0, P.H - .025, 0));
+        const n = Math.max(2, Math.round(P.L / 2) + 1); for (let i = 0; i < n; i++) { const u = -L2 + .15 + i * (P.L - .3) / (n - 1); g.add(box(.04, P.H, .04, iron, u, P.H / 2, 0)); g.add(box(.16, .02, .16, iron, u, .01, 0)); }
+        break; }
+      case 'post': if (P.hidden) break; g.add(box(.26, 4.3, .26, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), 0, 2.1, 0)); g.add(box(.4, .05, .4, iron, 0, .025, 0)); break;
+      case 'pad': { g.add(extrude([[-L2, P.H], [L2, P.H]], W, mat('cemento'), mat('cemento'))); [-1, 1].forEach(s => g.add(box(P.L, .03, .04, steel, 0, P.H, s * W / 2))); [-1, 1].forEach(s => g.add(box(.04, .03, W, steel, s * L2, P.H, 0))); break; }
+      case 'bank': g.add(extrude([[-L2, 0], [L2, P.H]], W, mat('cemento'), mat('cemento'))); break;
+      case 'kicker': { const pr = []; for (let i = 0; i <= 6; i++) { const u = -L2 + P.L * i / 6; pr.push([u, hLocal(P, u, 0)]); } g.add(extrude(pr, W, mat('legno'), mat('compensato'))); g.add(box(.05, .02, W, steel, L2 - .02, P.H, 0)); break; }
+      case 'quarter': {
+        const pr = []; for (let i = 0; i <= 14; i++) { const u = -L2 + P.L * i / 14; pr.push([u, hLocal(P, u, 0)]); } pr.push([L2 + P.D, P.H]);
+        g.add(extrude(pr, W, mat('legno'), tagTex(seed)));
+        const cop = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, W, 8), steel); cop.rotation.x = PI / 2; cop.position.set(L2, P.H, 0); g.add(cop);
+        g.add(box(P.D, .9, .04, iron, L2 + P.D / 2, P.H + .45, -W / 2)); g.add(box(.04, .9, W, iron, L2 + P.D, P.H + .45, 0));   // la ringhiera della pedana
+        break; }
+      case 'funbox': { const pr = [[-L2, 0], [-L2 + P.B, P.H], [L2 - P.B, P.H], [L2, 0]]; g.add(extrude(pr, W, mat('legno'), tagTex(seed))); [-1, 1].forEach(s => g.add(box(P.L - 2 * P.B, .04, .05, steel, 0, P.H, s * W / 2))); break; }
+      case 'bowl': g.add(bowlMesh(P)); break;
+    }
+    return g;
+  }
+  // la vasca: una griglia con le quote vere; il ripiano di cemento intorno, le pietre del bordo, le mattonelle chiare dentro,
+  // una fascia blu sotto il bordo, il fondo sporco con un po' di neve; fuori, il muro della vasca fino a terra
+  function bowlMesh(P) {
+    const st = .2, M = P.M, u0 = -P.A - M, u1 = P.A + M, v0 = -P.B - M, v1 = P.B + M, nu = Math.round((u1 - u0) / st), nv = Math.round((v1 - v0) / st);
+    const pos = [], col = [], C = new THREE.Color();
+    const H = (u, v) => hLocal(P, clamp(u, u0, u1), clamp(v, v0, v1));
+    const color = (u, v, h) => {
+      const d = bowlIn(P, u, v);
+      if (d < -.32) { C.set('#8d8983'); C.offsetHSL(0, 0, (hash(Math.floor(u * 2.5) + 50, Math.floor(v * 2.5) + 50) - .5) * .07); if (((u + 20) % 1.25) < .06 || ((v + 20) % 1.25) < .06) C.multiplyScalar(.85); return C; }   // il ripiano a lastre
+      if (d < 0) { C.set('#d8cfbd'); return C; }   // le pietre del bordo
+      const tu = Math.floor((u + 9) / .25), tv = Math.floor((v + 9) / .25), line = ((u + 9) % .25 < .03) || ((v + 9) % .25 < .03);
+      if (h > P.R - .32) C.set(((tu + tv) & 1) ? '#244d7a' : '#2b5a8c');   // la fascia sotto il bordo
+      else if (h < .02 && hash(tu, tv * 3) < .3 + (Math.abs(u) < 2 && Math.abs(v) < 1.4 ? .4 : 0)) C.set(hash(tu, tv) < .5 ? '#e9eef0' : '#cfd6d9');   // neve e fanghiglia sul fondo
+      else C.set('#9cc6cf');
+      if (line) C.multiplyScalar(.82); if (h < .02) C.offsetHSL(0, -.1, -.06 * hash(tu, tv));
+      return C;
+    };
+    for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+      const ua = u0 + i * st, ub = ua + st, va = v0 + j * st, vb = va + st, q = [[ua, va], [ub, va], [ub, vb], [ua, vb]].map(([u, v]) => [u, H(u, v), v]);
+      const cu = (ua + ub) / 2, cv = (va + vb) / 2, cc = color(cu, cv, H(cu, cv));
+      [q[0], q[2], q[1], q[0], q[3], q[2]].forEach(p => { pos.push(...p); col.push(cc.r, cc.g, cc.b); });
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+    const o = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })); o.receiveShadow = true; o.castShadow = true;
+    const grp = new THREE.Group(); grp.add(o);
+    // il muro esterno della vasca, intonaco con lo zoccolo
+    const wall = new THREE.MeshLambertMaterial({ color: '#a39d93', side: THREE.DoubleSide }), foot = new THREE.MeshLambertMaterial({ color: '#6f6a63' });
+    const L = u1 - u0, W = v1 - v0;
+    [[0, v0, L, .12], [0, v1, L, .12]].forEach(([x, z, l, t]) => { grp.add(box(l, P.R + .3, t, wall, x, (P.R - .3) / 2, z)); grp.add(box(l + .02, .35, t + .04, foot, x, .02, z)); });
+    [[u0, 0, W], [u1, 0, W]].forEach(([x, z, l]) => { grp.add(box(.12, P.R + .3, l, wall, x, (P.R - .3) / 2, z)); grp.add(box(.16, .35, l + .02, foot, x, .02, z)); });
+    const dr = new THREE.Mesh(new THREE.CircleGeometry(.18, 10), new THREE.MeshLambertMaterial({ color: '#1f2326' })); dr.rotation.x = -PI / 2; dr.position.set(0, .015, 0); grp.add(dr);   // lo scarico
+    // la vecchia statua della fontana, senza testa, su un lato del ripiano
+    const stone = new THREE.MeshLambertMaterial({ color: '#cfc8bb' }); grp.add(box(.7, .5, .7, stone, P.A + M / 2, P.R + .25, 0)); grp.add(box(.34, 1.1, .3, stone, P.A + M / 2, P.R + 1.05, 0));
+    return grp;
+  }
+  function roofMesh(sp) {
+    const R = sp.roof, g = new THREE.Group(), m = mat('lamiera').clone();
+    const r = box(R.L, .06, R.W, m, 0, R.H, 0); r.rotation.x = .05; g.add(r);
+    const snow = box(R.L - .2, .12, R.W - .3, new THREE.MeshLambertMaterial({ color: '#e7ecef' }), 0, R.H + .1, 0); snow.rotation.x = .05; g.add(snow);
+    [-1, 0, 1].forEach(s => g.add(box(.18, .3, R.W, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), s * (R.L / 2 - .3), R.H - .18, 0)));
+    g.add(box(R.L, .3, .18, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), 0, R.H - .18, -R.W / 2 + .3)); g.add(box(R.L, .3, .18, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), 0, R.H - .18, R.W / 2 - .3));
+    const lamp = new THREE.PointLight('#ffd59a', .8, 18, 2); lamp.position.set(0, R.H - .5, 0); g.add(lamp); g.userData.lamp = lamp;   // la lampada sotto la tettoia, accesa la sera
+    g.userData.mats = []; g.traverse(o => { if (o.isMesh && !g.userData.mats.includes(o.material)) g.userData.mats.push(o.material); }); g.userData.op = 1;
+    return g;
+  }
+  // la tavola: piatta e larga come negli anni '80, coda rialzata, ruote morbide colorate
+  function boardMesh(seed) {
+    const g = new THREE.Group(), inner = new THREE.Group(); g.add(inner);
+    const cols = ['#ff3d8b', '#2fd1c4', '#ffd23a', '#ff7a2a', '#9b5cff'], top = new THREE.MeshLambertMaterial({ color: '#1d1d1f' }), under = new THREE.MeshLambertMaterial({ color: cols[seed % cols.length] });
+    inner.add(box(.62, .025, .25, top, 0, .1, 0)); inner.add(box(.62, .01, .25, under, 0, .085, 0));
+    const tail = box(.16, .025, .23, top, -.37, .125, 0); tail.rotation.z = .35; inner.add(tail); const nose = box(.12, .025, .22, top, .35, .115, 0); nose.rotation.z = -.25; inner.add(nose);
+    const truck = new THREE.MeshLambertMaterial({ color: '#b7bec2' }), wheel = new THREE.MeshLambertMaterial({ color: ['#f2f2ea', '#ffd23a', '#2fd1c4'][seed % 3] });
+    [-.2, .2].forEach(u => { inner.add(box(.05, .04, .2, truck, u, .055, 0)); [-.11, .11].forEach(v => { const w = new THREE.Mesh(new THREE.CylinderGeometry(.033, .033, .035, 10), wheel); w.rotation.x = PI / 2; w.position.set(u, .033, v); inner.add(w); }); });
+    g.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.userData.inner = inner; return g;
+  }
+  function build(R) {
+    const scene = R.__models.scene; GFX.group = new THREE.Group(); scene.add(GFX.group);
+    PIECES.forEach((P, i) => { const m = pieceMesh(P, i + 3); m.position.set(P.x, R.groundH(P.x, P.y) - .02, P.y); m.rotation.y = -P.ang; GFX.group.add(m); });
+    PLACED.forEach((sp, i) => {
+      if (sp.roof) { const r = roofMesh(sp); r.position.set(sp.x, R.groundH(sp.x, sp.y), sp.y); r.rotation.y = -sp.ang; GFX.group.add(r); sp.__roof = r; }
+      const b = boardMesh(i); b.position.set(sp.board.x, R.groundH(sp.board.x, sp.board.y), sp.board.y); b.userData.inner.rotation.z = 1.25; b.userData.inner.position.y = .3; b.rotation.y = i; GFX.group.add(b); sp.__board = b;
+      // il segnale: un cerchio giallo a terra, come i raccoglibili
+      const ring = new THREE.Mesh(new THREE.RingGeometry(.45, .58, 20), new THREE.MeshBasicMaterial({ color: '#ffd23a', transparent: true, opacity: .55, depthWrite: false })); ring.rotation.x = -PI / 2; ring.position.set(sp.board.x, R.groundH(sp.board.x, sp.board.y) + .04, sp.board.y); GFX.group.add(ring); sp.__ring = ring;
+    });
+    GFX.board = boardMesh(1); GFX.board.visible = false; scene.add(GFX.board);
+    clearProps(R);
+    GFX.built = true;
+  }
+  // gli oggetti di scena della città (panchine, barili, casse…) che cadono dentro un posto si tolgono, come fa l'editor
+  function clearProps(R) {
+    const E = R.__ed, DZ = R.__dz; if (!E || !E.hideTag || !DZ || !DZ.props) return;
+    DZ.props.forEach(rec => { if (rec.state) return; const c = rec.c0 || rec.c; if (!c) return; const x = c.x, y = c.z;
+      if (PIECES.some(P => x > P.bb[0] - .9 && x < P.bb[2] + .9 && y > P.bb[1] - .9 && y < P.bb[3] + .9)) { try { E.hideTag(rec.tag); rec.state = 2; } catch (e) { } } });
+  }
+  // i ragazzi dello skate: solo grafica, vanno avanti e indietro su una corsia libera del posto e saltano
+  const LOOKS = [{ skin: '#e2b48f', top: '#2fd1c4', bottom: '#2b3445', hair: '#3a2416', hat: 'none', build: .95 }, { skin: '#c99772', top: '#ff3d8b', bottom: '#1f2733', hair: '#d9b45a', hat: 'none', build: .9 }, { skin: '#dcae88', top: '#f2f2ea', bottom: '#3b2f6b', hair: '#17110e', hat: 'none', build: 1 }];
+  function crewInit(R) {
+    PLACED.filter(s => s.crew).forEach(sp => {
+      let lane = null; for (const dv of [-4.6, 4.6, -1.5, 1.5, -6, 6]) { let ok = true; for (let du = -6; du <= 6; du += .5) { const x = sp.x + du * Math.cos(sp.ang) - dv * Math.sin(sp.ang), y = sp.y + du * Math.sin(sp.ang) + dv * Math.cos(sp.ang); if (surface(x, y) !== 0 || solidAt(x, y, .3) !== null || !free(x, y)) { ok = false; break; } } if (ok) { lane = dv; break; } }
+      if (lane === null) return;
+      for (let i = 0; i < sp.crew; i++) GFX.crew.push({ sp, lane: lane + (i - (sp.crew - 1) / 2) * .9, ph: i * 2.3, g: null, b: null, look: LOOKS[(i + sp.pieces.length) % LOOKS.length] });
+    });
+  }
+  function crewFrame(st, R, dt) {
+    const scene = R.__models.scene, cam = R.getCamera && R.getCamera(), t = st.clock;
+    GFX.crew.forEach(C => {
+      const show = crewHere(st, C.sp) && (!cam || hyp(cam.position.x - C.sp.x, cam.position.z - C.sp.y) < 90);
+      if (!C.g && show && window.Models && Models.charsReady()) { C.g = Models.person(C.look, null); C.b = boardMesh(C.ph | 0); scene.add(C.g); scene.add(C.b); }
+      if (!C.g) return; C.g.visible = C.b.visible = show; if (!show) return;
+      const T0 = 9, q = ((t / T0 + C.ph / T0) % 1), dir = q < .5 ? 1 : -1, k = q < .5 ? q * 2 : (q - .5) * 2, u = (-6 + 12 * (k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2)) * dir;
+      const x = C.sp.x + u * Math.cos(C.sp.ang) - C.lane * Math.sin(C.sp.ang), y = C.sp.y + u * Math.sin(C.sp.ang) + C.lane * Math.cos(C.sp.ang), yaw = C.sp.ang + (dir < 0 ? PI : 0);
+      const jp = Math.abs(u) < 1.2 ? Math.sin((u + 1.2) / 2.4 * PI) * .45 : 0, gy = R.groundH(x, y);
+      C.b.position.set(x, gy + jp, y); C.b.rotation.y = -yaw; C.b.userData.inner.rotation.x = jp > .05 && C.ph > 2 ? (u + 1.2) / 2.4 * PI * 2 : 0;
+      C.g.position.set(x, gy + jp + .12, y); C.g.rotation.y = PI / 2 - (yaw + PI / 2);
+      Models.animPerson(C.g, { speed: 0 }, dt);
+    });
+  }
+  // la posa del giocatore (chiamata da render.js dopo swimPose)
+  function pose(pg, st, playerH, dt) {
+    if (!GFX.built) return;
+    const p = st.player, k = p.sk, B = GFX.board;
+    if (k && k.free) {   // la tavola che vola via dopo la caduta
+      const f = k.free; f.vz -= GRAV * dt; if (free(f.x + f.vx * dt, f.y + f.vy * dt)) { f.x += f.vx * dt; f.y += f.vy * dt; } else { f.vx *= -.3; f.vy *= -.3; } f.z = Math.max(0, f.z + f.vz * dt); if (f.z === 0) { f.vz = Math.abs(f.vz) > 1 ? -f.vz * .3 : 0; f.vx *= .9; f.vy *= .9; } f.r += dt * 9 * hyp(f.vx, f.vy) / 4;
+      B.visible = true; B.position.set(f.x, (window.__pv.R.groundH(f.x, f.y)) + f.z, f.y); B.userData.inner.rotation.set(f.r, 0, 0); return;
+    }
+    if (!k || !k.on) { B.visible = false; return; }
+    const lift = k.z + (k.grind ? 0 : 0), crouch = k.crouch ? .14 : (k.air ? .06 : 0);
+    B.visible = true; B.position.set(p.x, playerH + lift, p.y); B.rotation.y = -(k.yaw + k.boardOff);
+    const I = B.userData.inner, [sF] = k.air || k.grind ? [0] : slopes(p.x, p.y, k.yaw); I.rotation.set(0, 0, 0); I.rotation.z = Math.atan(sF);
+    if (k.trick && !k.trick.air) { const q = clamp((st.clock - k.trick.t0) / (k.trick.dur || .4), 0, 1), id = k.trick.id;
+      if (id === 'kick') I.rotation.x = q * PI * 2; else if (id === 'heel') I.rotation.x = -q * PI * 2; else if (id === 'shove') I.rotation.y = q * PI; else if (id === 'tre') { I.rotation.x = q * PI * 2; I.rotation.y = q * PI * 2; } }
+    if (k.grind && k.grind.kind === 'Crooked') I.rotation.x = .25;
+    pg.position.y = playerH + lift + .12 - crouch + (k.trick && !k.trick.air && st.clock - k.trick.t0 < (k.trick.dur || .3) ? .12 : 0);
+    pg.rotation.y = PI / 2 - (k.yaw + k.boardOff + PI / 2);   // di traverso sulla tavola
+  }
+  // ---------------- HUD: la linea in corso, il totale ----------------
+  function hud(st) {
+    if (!GFX.hud) {
+      const d = document.createElement('div'); d.id = 'skateHud';
+      d.style.cssText = 'position:fixed;left:50%;top:74px;transform:translateX(-50%);text-align:center;pointer-events:none;z-index:30;font:700 15px/1.25 monospace;color:#ffd23a;text-shadow:2px 2px 0 #ff3d8b,0 0 6px rgba(0,0,0,.6);letter-spacing:.5px;transition:opacity .25s';
+      document.body.appendChild(d); GFX.hud = d;
+    }
+    const s = S(st), d = GFX.hud, p = st.player;
+    let html = '';
+    if (s.line) { const m = Math.min(10, s.line.tricks.length); html = `${s.line.tricks.slice(-4).join(' + ')}<br><span style="font-size:20px">${s.line.pts} × ${m}</span>`; }
+    else if (s.lastLine && st.clock - s.lastLine.t < 2.5) html = s.lastLine.ok ? `<span style="font-size:22px">+${s.lastLine.tot}</span><br><span style="font-size:12px;color:#f2f2ea">${s.lastLine.tricks.slice(-3).join(' + ')}</span>` : `<span style="color:#ff6a5a;text-shadow:2px 2px 0 #3a0d0d">${s.lastLine.why || 'Caduto!'}</span>`;
+    else if (on(st)) html = `<span style="font-size:12px;color:#f2f2ea;text-shadow:1px 1px 0 #000">Skate · ${s.total} punti${s.best ? ' · record ' + s.best : ''}</span>`;
+    else { const sp = !s.owned && PLACED.find(q => q.board && hyp(q.board.x - p.x, q.board.y - p.y) < 3); if (sp) html = `<span style="font-size:13px;color:#f2f2ea;text-shadow:1px 1px 0 #000">X · prendi la tavola (${sp.name})</span>`; else if (s.owned && !p.vehicle && !p.indoor && spotAt(p.x, p.y, 3)) html = `<span style="font-size:12px;color:#f2f2ea;text-shadow:1px 1px 0 #000">X · in tavola</span>`; }
+    if (d.__h !== html) { d.innerHTML = html; d.__h = html; } d.style.opacity = html ? 1 : 0;
+  }
+  function frame() {
+    const pv = window.__pv, st = pv && pv.st, R = pv && pv.R;
+    if (st && R && R.__models && R.__models.scene && R.groundH) {
+      try {
+        if (!GFX.built) { build(R); crewInit(R); }
+        const now = performance.now() / 1000, dt = Math.min(.1, now - (frame.t || now)); frame.t = now;
+        crewFrame(st, R, dt); hud(st);
+        PLACED.forEach(sp => { const has = S(st).owned; if (sp.__board) sp.__board.visible = !has; if (sp.__ring) { sp.__ring.visible = !has; sp.__ring.material.opacity = .35 + .25 * Math.sin(now * 3); } if (sp.__roof) { const u = sp.__roof.userData; u.lamp.intensity = G.isNight(st) || G.hour(st) < 8 || G.hour(st) >= 17 ? 1.1 : 0;
+          // la tettoia sparisce quando ci sei sotto o vicino, come gli edifici: dall'alto si vedono le rampe
+          const p = st.player, inR = hyp(p.x - sp.x, p.y - sp.y) < sp.r + 7, to = inR ? 0 : 1; u.op += (to - u.op) * Math.min(1, dt * 5);
+          sp.__roof.visible = u.op > .03; u.mats.forEach(m => { m.transparent = u.op < .98; m.opacity = u.op; m.depthWrite = u.op >= .98; }); } });
+        if (GFX.st !== st) { GFX.st = st; clearProps(R); }   // a ogni partita nuova la grafica rimette gli oggetti: si ritolgono
+      } catch (e) { if (!frame.err) { frame.err = 1; console.warn('[Skate]', e); } }
+    }
+    requestAnimationFrame(frame);
+  }
+  if (typeof window !== 'undefined') {
+    addEventListener('keydown', e => {
+      const pv = window.__pv, st = pv && pv.st, ui = pv && pv.ui; if (!st || (ui && (ui.book || ui.menu || ui.dialog || ui.intro || ui.over))) return;
+      const k = e.key.toLowerCase();
+      if (k === 'x' && !e.repeat) { if (key(st)) e.preventDefault(); return; }
+      if (!on(st)) return;
+      if (k === 'w' || k === 'arrowup') KEYS.w = 1; else if (k === 's' || k === 'arrowdown') KEYS.s = 1; else if (k === 'a' || k === 'arrowleft') KEYS.a = 1; else if (k === 'd' || k === 'arrowright') KEYS.d = 1;
+      else if (k === ' ') { if (!KEYS.sp) MS.length = 0; KEYS.sp = 1; mouseTrack = true; e.preventDefault(); }
+    });
+    addEventListener('keyup', e => { const k = e.key.toLowerCase(); if (k === 'w' || k === 'arrowup') KEYS.w = 0; else if (k === 's' || k === 'arrowdown') KEYS.s = 0; else if (k === 'a' || k === 'arrowleft') KEYS.a = 0; else if (k === 'd' || k === 'arrowright') KEYS.d = 0; else if (k === ' ') { KEYS.sp = 0; mouseTrack = false; } });
+    addEventListener('blur', () => { KEYS.w = KEYS.s = KEYS.a = KEYS.d = KEYS.sp = 0; });
+    let lx = null, ly = null;
+    addEventListener('mousemove', e => { if (lx !== null && mouseTrack) MS.push({ t: performance.now(), dx: e.clientX - lx, dy: e.clientY - ly }); lx = e.clientX; ly = e.clientY; });
+    const go = () => { if (!window.THREE || !window.__pv) { setTimeout(go, 250); return; } requestAnimationFrame(frame); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
+  }
+
+  return { SPOTS: PLACED, PIECES, EDGES, surface, solidAt, spotAt, free, move, mount, dismount, key, on, pose, classify, TRICKS, S, _: { addTrick, closeLine, bail, lockGrind, MINE, hLocal, toL } };
+})();
+if (typeof module !== 'undefined') module.exports = Skate;
+=======
 <script>/* Porto Vecchio — L'Ordine: l'apparato della Tutela per strada (solo logica, nessuna grafica).
    Costruito sopra quello che c'è: i Grigi del motore (vedono, denunciano, inseguono, arrestano), la vita di popolo.js
    (diari, rabbia, paura, spesa), le corsie del traffico, le botteghe di economia/oggetti, la nave dell'Impero.
@@ -27075,6 +27974,7 @@ var Animali = (function () {
   return { SP, WHERE, create, step, report };
 })();
 if (typeof module !== 'undefined') module.exports = Animali;
+>>>>>>> 85910acf7d6913dee14fb3627078a121f38cc753
 </script>
 <script>
 /* Porto Vecchio — resa 3D in stile pixel art (Three.js r149).
@@ -29476,13 +30376,15 @@ var Render = (function () {
       uovo: [new THREE.SphereGeometry(.06, 5, 4), std({ roughness: .5 }), false],
       fungo: [new THREE.ConeGeometry(.12, .1, 6), std({ roughness: .7 }), false],
     };
-    const BUCK = new Map();
-    const put = (k, x, y, z, ry, sx, sy, sz, col, rx, rz) => { const key = k + '|' + Math.floor(x / 240) + ',' + Math.floor(z / 240); let a = BUCK.get(key); if (!a) BUCK.set(key, a = []); a.push([x, y, z, ry || 0, sx, sy, sz, col, rx || 0, rz || 0]); };
-    const tile = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS));
+    const BUCK = new Map(), tile = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)), slopeAt = (x, z, d) => Math.max(Math.abs(groundH(x + d, z) - groundH(x - d, z)), Math.abs(groundH(x, z + d) - groundH(x, z - d)));
+    const put = (k, x, y, z, ry, sx, sy, sz, col, rx, rz) => {
+      if (k === 'masso' && y > WL) { const s0 = Math.max(sx, sz) * .8; y = Math.min(groundH(x + s0, z), groundH(x - s0, z), groundH(x, z + s0), groundH(x, z - s0), groundH(x, z)) + sy * .25; }   /* il masso sta nella terra, non sospeso sul pendio */
+      if ((k === 'tronco' || k === 'fronda' || k === 'ramo') && slopeAt(x, z, Math.min(1.5, sx * .5)) > .35) return;
+      if (k === 'tronco') { const c = Math.cos(ry), s2 = Math.sin(ry); for (let t = -.5; t <= .5; t += .25) { const v = tile(x + c * sx * t, z - s2 * sx * t); if (v === T.TREE || v === T.WATER || v === T.BLD || v === T.CLIFF) return; } } const key = k + '|' + Math.floor(x / 240) + ',' + Math.floor(z / 240); let a = BUCK.get(key); if (!a) BUCK.set(key, a = []); a.push([x, y, z, ry || 0, sx, sy, sz, col, rx || 0, rz || 0]); };
     const eco = (x, z) => vdEco(Math.floor(x / TS), Math.floor(z / TS));
     const near = (tx, tz, v, d) => { for (let dz = -d; dz <= d; dz++) for (let dx = -d; dx <= d; dx++) if ((dx || dz) && G.tileAt(tx + dx, tz + dz) === v) return true; return false; };
     const C_ = c => new THREE.Color(c);
-    const SHELL = ['#f4e8dc', '#e8c8b8', '#f0d8c0', '#d8b8a0', '#fff4ea'], ALGA = ['#2e2c1a', '#3a3220', '#26281a', '#423822'], MOSS = ['#4e5a3a', '#5a6644', '#46503a', '#626a50'], KARST = ['#d4cfc4', '#c8c2b4', '#e0dbd0', '#bcb6a8'], DRY = ['#ffffff', '#f4ecd8', '#e8dcc0'];
+    const SHELL = ['#f4e8dc', '#e8c8b8', '#f0d8c0', '#d8b8a0', '#fff4ea'], ALGA = ['#2e2c1a', '#3a3220', '#26281a', '#423822'], MOSS = ['#4e5a3a', '#5a6644', '#46503a', '#626a50'], KARST = ['#b8ac94', '#a89c86', '#c2b49a', '#9a9080'], DRY = ['#ffffff', '#f4ecd8', '#e8dcc0'];
     const seen = new Set(), CL = (S.camps || []).map(C => [C.x, C.y, C.r + 6]).concat((S.decor || []).map(D => [D.x, D.y, D.r + 5]));
     (W0.ISOLE || []).forEach(I => {
       const cx = I.x + OX, cz = I.y + OY, R = (I.arc ? I.R0 : I.R) + 4, tema = I.tema || I.veg;
@@ -29503,12 +30405,13 @@ var Render = (function () {
         }
         if (v === T.ROCK || v === T.CLIFF) {
           const kar = tema === 'nuda' || tema === 'uccelli' || tema === 'pini';
-          if (wet) { for (let k = 0; k < 2; k++) if (r() < .45) { const x = rx(), z = z0 + r() * TS, s = .4 + r() * .9; put('masso', x, WL - s * .3 + r() * .3, z, r() * 6, s * 1.2, s * .7, s, pick(r, ['#5a5450', '#4e4a44', '#6a645a', '#3e3c38'])); } }
-          else if (r() < (kar ? .22 : .14)) { const x = rx(), z = z0 + r() * TS, s = .3 + r() * .7; put('masso', x, groundH(x, z) + s * .2, z, r() * 6, s, s * (.5 + r() * .4), s * (.8 + r() * .5), pick(r, kar ? KARST : MOSS)); }
+          if (wet) { for (let k = 0; k < 1; k++) if (r() < .3) { const x = rx(), z = z0 + r() * TS, s = .4 + r() * .9; put('masso', x, WL - s * .3 + r() * .3, z, r() * 6, s * 1.2, s * .7, s, pick(r, ['#5a5450', '#4e4a44', '#6a645a', '#3e3c38'])); } }
+          else if (r() < (kar ? .12 : .07)) { const x = rx(), z = z0 + r() * TS, s = .3 + r() * .7; put('masso', x, groundH(x, z) + s * .2, z, r() * 6, s, s * (.5 + r() * .4), s * (.8 + r() * .5), pick(r, kar ? KARST : MOSS)); }
           if (tema === 'uccelli') for (let k = 0; k < 3; k++) if (r() < .5) { const x = rx(), z = z0 + r() * TS; put('guano', x, groundH(x, z) + .04, z, r() * 6, .12 + r() * .3, 1, .1 + r() * .25, pick(r, ['#ecebe2', '#e0ded2', '#f4f3ec'])); }
           continue;
         }
-        if (v === T.GRASS || v === T.SHRUB || v === T.TREE || v === T.DIRT) {
+        if (v === T.TREE) continue;   /* sotto la chioma c'è il tronco: niente sassi dentro l'albero */
+        if (v === T.GRASS || v === T.SHRUB || v === T.DIRT) {
           if (tema === 'giungla') {
             if (h < .03 && v !== T.TREE) { const x = rx(), z = z0 + r() * TS, L = 3 + r() * 4; put('tronco', x, groundH(x, z) + .22, z, r() * 6, L, .9 + r() * .4, .9 + r() * .4, pick(r, ['#5e4c38', '#4e4232', '#5a5a3c', '#6a5842'])); for (let k = 0; k < 4; k++) if (r() < .6) { const a = r() * 6.28, d = r() * L * .4; put('fungo', x + Math.cos(a) * d, groundH(x, z) + .1, z + Math.sin(a) * d, 0, 1, 1, 1, pick(r, ['#e8d8b8', '#d89040', '#c85a3a'])); } }
             if (r() < .07) { const x = rx(), z = z0 + r() * TS, s = .3 + r() * .7; put('masso', x, groundH(x, z) + s * .15, z, r() * 6, s, s * .6, s, pick(r, MOSS)); }
@@ -29560,8 +30463,11 @@ var Render = (function () {
     (S.camps || []).forEach(C => { if (C.type === 'villaggio') birds(C.bp[0], C.bp[1], 14, 5, 7, 14); });
 
     // --- la vita nei villaggi dei pescatori ---
-    const freeAt = (x, z, rr) => { const tx = Math.floor(x / TS), tz = Math.floor(z / TS); for (let dz = -rr; dz <= rr; dz++) for (let dx = -rr; dx <= rr; dx++) { const v = G.tileAt(tx + dx, tz + dz); if (v === T.BLD || v === T.WATER || v === T.CLIFF || v === T.PIER || v === undefined) return false; } return true; };
-    const spot = (cx, cz, r0, r1, rr, tries) => { for (let t = 0; t < (tries || 30); t++) { const a = r() * 6.28, d = r0 + r() * (r1 - r0), x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d; if (freeAt(x, z, rr || 0)) return [x, z]; } return null; };
+    const freeAt = (x, z, rr) => { const tx = Math.floor(x / TS), tz = Math.floor(z / TS); for (let dz = -rr; dz <= rr; dz++) for (let dx = -rr; dx <= rr; dx++) { const v = G.tileAt(tx + dx, tz + dz); if (v === T.BLD || v === T.WATER || v === T.CLIFF || v === T.PIER || v === T.TREE || v === T.QUAY) return false; } return true; };
+    const USED = [];   // l'ingombro delle cose già messe: niente due oggetti uno dentro l'altro
+    const spot = (cx, cz, r0, r1, rr, tries) => { const rad = 1 + (rr || 0) * 1.6; for (let t = 0; t < (tries || 40); t++) { const a = r() * 6.28, d = r0 + r() * (r1 - r0), x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
+      if (!freeAt(x, z, rr || 0) || slopeAt(x, z, rad) > .5 + rad * .25 || USED.some(u => Math.hypot(u[0] - x, u[1] - z) < u[2] + rad)) continue; USED.push([x, z, rad]); return [x, z]; } return null; };
+    (S.camps || []).forEach(C => { USED.push([C.x, C.y, C.type === 'tribu' ? 2.5 : 1.5]); (C.huts || []).forEach(h => USED.push([h.x, h.y, h.r + .6])); });   /* il fuoco della tribù, le capanne */
     const wood = PM.woodD(), woodL = PM.woodL(), rope2 = sl('#c8b890');
     const rack = (x, z, rot, what) => {   // la rastrelliera: i pesci o i polpi stesi al sole, o le reti
       const g = G0(); [-1, 1].forEach(sg => add(g, cyl(.05, .06, 1.9, 5, wood), sg * 1.2, .95, 0)); add(g, cyl(.04, .04, 2.6, 5, wood), 0, 1.8, 0, 0, 0, Math.PI / 2); add(g, cyl(.03, .03, 2.6, 5, wood), 0, 1.35, 0, 0, 0, Math.PI / 2);
@@ -38427,6 +39333,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim
     animPerson(pg, { anim: p.anim, speed: pveh ? 0 : p.speed, carrying: p.carrying, punch: p.punch, seated: onVespa, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, recoil, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6 });
     if (!pveh) flight(pg, p, st);
+    if (window.Skate && !pveh) Skate.pose(pg, st, playerH, dt);   // [skate] in tavola: di traverso, sopra la tavola, coi trick
     swimPose(pg, p, !!pveh, time);   // [costa] a nuoto: dentro l'acqua fino alle spalle, coricato in avanti quando va, coi cerchi sull'acqua
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
     // veicoli
@@ -47563,6 +48470,34 @@ var InterniArte = (function () {
       case 'ia_tabella_turni': B(.6, .8, .01, 0, -.4, .005, '#e8e4d8'); for (let j = 0; j < 8; j++) B(.5, .01, .002, 0, .3 - j * .09, .012, '#5a5a5a'); B(.01, .7, .002, -.1, -.35, .012, '#5a5a5a'); break;
       case 'ia_schermo_radar': { B(1, .9, .3, 0, -.45, .15, '#3a4a3a'); const m = decal(g, T.radar(), .6, .6, 0, 0, .31, 1.6); g.userData.radar = m; break; }
       case 'ia_pannello_strumenti': { B(1.6, .8, .08, 0, -.4, .04, '#4a5858'); for (let i = 0; i < 6; i++) { const c = C(.1, .02, -.6 + (i % 3) * .6, (i < 3 ? .2 : -.15), .09, '#e8e4d8', 10); c.rotation.x = PI / 2; c.position.set(-.6 + (i % 3) * .6, i < 3 ? .2 : -.15, .09); } break; }
+      // ---- [attività] biliardo e freccette, birreria, abiti, armeria, autorimessa ----
+      case 'ia_freccette': { const c = C(.24, .04, 0, 0, .03, '#1e1e1e', 20); c.rotation.x = PI / 2; c.position.set(0, 0, .03); for (let i = 0; i < 3; i++) { const k = C(.2 - i * .065, .01, 0, 0, .06 + i * .003, i % 2 ? '#c83a2a' : '#e8dcc0', 20); k.rotation.x = PI / 2; k.position.set(0, 0, .06 + i * .003); }
+        const e = C(.02, .01, 0, 0, .075, '#2a8a3a', 8); e.rotation.x = PI / 2; e.position.set(0, 0, .075); B(.6, .6, .02, 0, -.3, .005, '#3a2a1e'); for (let i = 0; i < 3; i++) { const d = B(.01, .01, .12, -.05 + i * .05, .04 - i * .05, .1, '#c8c8c0'); d.rotation.x = .2; } B(.4, .04, .06, 0, -.62, .03, '#5a3a24'); break; }
+      case 'ia_stecche': { B(.8, .06, .1, 0, -.6, .05, wood); B(.8, .06, .1, 0, .55, .05, wood); for (let i = 0; i < 5; i++) { const s = C(.014, 1.25, -.32 + i * .16, -.62, .08, pick(r, ['#c8a060', '#8a5a34', '#a87a48']), 6, .009); s.position.y = 0; } B(.1, .1, .1, .3, -.66, .1, '#3a7ad0'); break; }
+      case 'ia_trofeo_caccia': { B(.5, .6, .04, 0, -.3, .02, '#4a2e1a'); const h = S(.2, 0, 0, .18, '#4a3628', 8); h.scale.set(.9, 1, 1.4); S(.1, 0, -.08, .38, '#3a2a20', 6).scale.set(1, .8, 1.3); B(.03, .1, .03, -.08, -.14, .44, '#e8e0c8'); B(.03, .1, .03, .08, -.14, .44, '#e8e0c8'); B(.08, .12, .05, -.15, .14, .18, '#3a2a20'); B(.08, .12, .05, .15, .14, .18, '#3a2a20'); break; }
+      case 'ia_fucili_muro': { B(1.6, 1.1, .03, 0, -.55, .015, '#5a4630'); B(1.5, .05, .12, 0, -.5, .07, wood); B(1.5, .05, .12, 0, .35, .07, wood); for (let i = 0; i < 5; i++) { const x = -.6 + i * .3; B(.05, .9, .05, x, -.46, .1, '#2a2a2c'); B(.07, .35, .06, x, -.46, .1, pick(r, ['#6a4228', '#5a3a24', '#7a5236'])); B(.02, .55, .02, x, .0, .12, M('#4a4c52', { metalness: .7, roughness: .35 })); } break; }
+      case 'ia_insegna_birra': { B(1, .5, .05, 0, -.25, .025, '#1a1a1a'); B(.86, .12, .02, 0, .02, .06, GL('#ffb030', 2)); B(.86, .1, .02, 0, -.18, .06, GL('#ff4a2a', 1.8)); const m = C(.07, .2, -.35, -.2, .07, GL('#ffd040', 1.6), 8); m.position.z = .07; g.userData.neon = [0, 0, .3, '#ffb030']; break; }
+      case 'ia_cartello_prezzi': B(.8, 1, .04, 0, -.5, .02, '#3a2a1e'); decal(g, T.lavagna(), .72, .9, 0, 0, .045); break;
+      case 'ia_poster_auto': { B(.8, .6, .01, 0, -.3, .005, '#e8dcc0'); B(.6, .14, .012, 0, -.18, .01, pick(r, ['#c82a2a', '#2a5ac8', '#e8a020'])); B(.4, .1, .013, -.02, -.06, .01, '#3a3a40'); C(.06, .013, -.2, -.24, .012, '#1a1a1a', 10).rotation.x = PI / 2; C(.06, .013, .2, -.24, .012, '#1a1a1a', 10).rotation.x = PI / 2; break; }
+      case 'ia_spillatore': { B(.5, .06, .18, 0, 0, 0, M('#c8c8d0', { metalness: .8, roughness: .25 })); for (let i = 0; i < 3; i++) { C(.02, .3, -.15 + i * .15, .06, 0, M('#d8d8e0', { metalness: .9, roughness: .2 }), 6); B(.04, .1, .04, -.15 + i * .15, .36, .02, pick(r, ['#1a1a1a', '#a82a2a', '#2a5a2a'])); } break; }
+      case 'ia_casse_birra': { const n = 2 + Math.floor(r() * 3); for (let k = 0; k < n; k++) { const c = pick(r, ['#c8a030', '#3a6a3a', '#a83a2a']), y = k * .3; B(.75, .28, .5, (r() - .5) * .06, y, 0, c); for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) C(.03, .06, -.27 + i * .18, y + .28, -.12 + j * .24, '#5a3a1a', 5); } break; }
+      case 'ia_stender': { const c = M('#a8a8b0', { metalness: .7, roughness: .3 }); B(.04, 1.55, .04, -.66, 0, 0, c); B(.04, 1.55, .04, .66, 0, 0, c); B(.04, .04, .5, -.66, 0, 0, c); B(.04, .04, .5, .66, 0, 0, c); B(1.36, .03, .03, 0, 1.5, 0, c);
+        for (let i = 0; i < 9; i++) { const col = pick(r, ['#3a3a44', '#6a2a2a', '#2a4a6a', '#8a7a5a', '#4a5a3a', '#c8c0b0', '#5a3a5a', '#2a2a2a']), x = -.56 + i * .14; B(.05, .65 + r() * .25, .42, x, 1.5 - .75 - r() * .1, 0, col); B(.01, .06, .01, x, 1.47, 0, c); } break; }
+      case 'ia_manichino': { C(.18, .04, 0, 0, 0, '#2a2a2a', 10); C(.02, .9, 0, 0, 0, '#2a2a2a', 6); const col = pick(r, ['#3a3a44', '#6a2a2a', '#2a4a6a', '#8a6a3a', '#4a5a3a']); const t = C(.16, .55, 0, .9, 0, col, 10, .2); t.scale.z = .65; B(.42, .08, .2, 0, 1.4, 0, col); C(.05, .08, 0, 1.48, 0, '#e8dcc8', 6); S(.1, 0, 1.64, 0, '#e8dcc8', 8);
+        if (r() < .6) C(.18, .3, 0, .62, 0, pick(r, ['#2a2a2a', '#5a4a3a', '#3a3a5a']), 10, .15); else B(.3, .08, .04, 0, 1.3, .1, pick(r, ['#c83a2a', '#e8e0d0'])); break; }
+      case 'ia_tavolo_maglie': { B(1.4, .05, .8, 0, .72, 0, wood); legs(1.3, .7, .72, shade(wood, .8)); for (let i = 0; i < 6; i++) { const col = pick(r, ['#8a2a2a', '#2a4a7a', '#c8b890', '#3a5a3a', '#6a6a6a', '#e8e0d0', '#7a5a8a']), x = -.45 + (i % 3) * .45, z = i < 3 ? -.18 : .18, hh = .05 + Math.floor(r() * 4) * .045; B(.36, hh, .28, x, .77, z, col); } break; }
+      case 'ia_scaffale_scarpe': { B(1.4, 1.2, .38, 0, 0, -.02, shade(wood, .9)); for (let s = 0; s < 4; s++) { B(1.36, .02, .36, 0, .05 + s * .3, 0, shade(wood, 1.2)); for (let i = 0; i < 4; i++) if (r() < .8) { const col = pick(r, ['#1e1c1a', '#5a3a24', '#7a5a3a', '#c8c0b0', '#2a2a3a']); [-.05, .05].forEach(d => B(.08, .08, .24, -.48 + i * .32 + d, .07 + s * .3, .02, col)); } } break; }
+      case 'ia_camerino': { const c = M(shade(wood, 1.1)); B(1.2, 2, .04, 0, 0, -.58, c); B(.04, 2, 1.2, -.58, 0, 0, c); B(.04, 2, 1.2, .58, 0, 0, c); B(1.2, .04, .04, 0, 1.96, .58, M('#c8b070', { metalness: .6 })); B(.6, 1.75, .02, -.28, .2, .56, pick(r, ['#8a2a3a', '#3a4a6a', '#5a6a3a'])); B(.4, 1.2, .02, 0, .5, -.55, M('#c8d8e0', { roughness: .1, metalness: .4 })); B(.3, .03, .2, .3, 1.2, -.45, wood); break; }
+      case 'ia_vetrina_armi': { B(1.8, .8, .66, 0, 0, 0, shade(wood, .85)); B(1.8, .25, .66, 0, .8, 0, M('#b8d0d8', { roughness: .05, metalness: .2, transparent: true, opacity: .35 })); B(1.84, .03, .7, 0, 1.05, 0, M('#a8b0b0', { metalness: .6, roughness: .3 })); B(1.7, .02, .58, 0, .81, 0, '#5a2a2a');
+        for (let i = 0; i < 4; i++) { const x = -.6 + i * .4, m = M('#2a2a2e', { metalness: .7, roughness: .35 }); B(.2, .03, .06, x, .83, -.05, m); B(.05, .03, .1, x - .07, .83, .03, '#4a3020'); } B(.18, .02, .05, .1, .83, .18, M('#c8c8d0', { metalness: .8 })); break; }
+      case 'ia_casse_munizioni': { const n = 2 + Math.floor(r() * 3), m = M('#4a5a3a', { metalness: .4, roughness: .55 }); for (let k = 0; k < n; k++) { const y = k * .26, o = (r() - .5) * .08; B(.8, .25, .45, o, y, 0, m); B(.12, .04, .04, o, y + .25, 0, '#2a2a2a'); B(.3, .08, .01, o, y + .08, .23, '#d8c890'); } break; }
+      case 'ia_bersaglio': { B(.06, 1.4, .06, -.3, 0, 0, wood); B(.06, 1.4, .06, .3, 0, 0, wood); B(.7, .9, .02, 0, .7, 0, '#e8dcc0'); S(.12, 0, 1.38, .02, '#1e1e1e', 8).scale.z = .1; const t = B(.36, .5, .02, 0, .8, .012, '#1e1e1e'); t.scale.y = 1;
+        for (let i = 0; i < 3; i++) { const k = C(.25 - i * .08, .01, 0, 1.1, .03 + i * .002, i % 2 ? '#1e1e1e' : '#e8dcc0', 16); k.rotation.x = PI / 2; k.position.set(0, 1.1, .03 + i * .002); } B(.8, .15, .4, 0, 0, 0, '#5a4a3a'); break; }
+      case 'ia_banco_tiro': { B(2.6, .95, .45, 0, 0, 0, shade(wood, .85)); B(2.66, .04, .5, 0, .95, 0, shade(wood, .65)); for (let i = 0; i < 4; i++) B(.04, 1, .55, -1.3 + i * .866, .95, -.05, M('#6a6e6a', { metalness: .3 })); for (let i = 0; i < 3; i++) { B(.18, .1, .12, -.86 + i * .866, .99, .05, '#c83a2a'); B(.1, .04, .1, -.66 + i * .866, .99, .1, '#d8c890'); } break; }
+      case 'ia_auto_esposta': { const col = pick(r, ['#c82a2a', '#2a5ac8', '#e8e4d8', '#e8a020', '#2a6a3a', '#1e1e22', '#8a8a90']), body = M(col, { metalness: .5, roughness: .3 }), glass = M('#1e2a34', { roughness: .1, metalness: .4 });
+        B(1.7, .45, 3.9, 0, .3, 0, body); B(1.5, .45, 1.9, 0, .75, -.15, body); B(1.46, .38, 1.84, 0, .78, -.15, glass); B(1.72, .12, .1, 0, .38, 1.96, M('#c8c8d0', { metalness: .8 })); B(1.72, .12, .1, 0, .38, -1.96, M('#c8c8d0', { metalness: .8 }));
+        [[-.78, 1.25], [.78, 1.25], [-.78, -1.25], [.78, -1.25]].forEach(([x, z]) => { const w0 = C(.3, .2, x, .3, z, '#141414', 12); w0.rotation.z = PI / 2; w0.position.set(x, .3, z); }); B(.3, .1, .02, -.55, .55, 1.96, GL('#fff0c0', 1.2)); B(.3, .1, .02, .55, .55, 1.96, GL('#fff0c0', 1.2));
+        B(.5, .02, .3, 0, 1.21, -.15, '#e8dcc0'); break; }
       default: return null;
     }
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });

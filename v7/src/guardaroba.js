@@ -179,6 +179,10 @@ var Guardaroba = (function () {
   sell('use:emporio', ['canotta', 'mutande', 'calzini', 'maglietta', 'pantaloni_lavoro', 'scarpe_tela', 'ciabatte', 'berretto', 'grembiule', 'tuta']);
   sell('villaggio', ['colbacco', 'montone', 'calzamaglia', 'poncho']);
   sell('use:sartoria', ['polo', 'giacca_completo', 'pantaloni_completo', 'cravatta', 'papillon', 'vestito_corto', 'vestito_lungo', 'vestito_fiori', 'minigonna', 'basco', 'foulard', 'sciarpa_righe', 'mocassini', 'tacchi', 'borsetta']);
+  // [attività] Abiti e Confezioni: di tutto, anche quello che altrove si trova solo al porto
+  sell('use:abbigliamento', ['canotta', 'maglietta', 'camicia', 'camicia_quadri', 'dolcevita', 'felpa', 'gilet', 'giacca', 'impermeabile', 'pantaloni', 'velluto', 'gonna', 'calzini', 'cappello', 'sciarpa', 'polo', 'giacca_completo', 'pantaloni_completo', 'cravatta',
+    'vestito_corto', 'vestito_lungo', 'vestito_fiori', 'minigonna', 'basco', 'foulard', 'mocassini', 'tacchi', 'borsetta', 'jeans', 'giubbotto_jeans', 'giacca_pelle', 'piumino', 'scarpe_eleganti', 'maglietta_righe', 'occhiali_sole', 'camicia_hawaii', 'stivali_pelle', 'felpa_zip', 'scarpe_corsa']);
+  sell('use:armeria', ['cargo', 'stivali_pelle', 'paraginocchia', 'paraspalle']);
   sell('use:emporio', ['bermuda', 'sandali', 'cappellino', 'fascia', 'leggings', 'tuta_ginnastica', 'scarpe_corsa', 'felpa_zip', 'maglia_calcio', 'marsupio']);
   sell('use:sartoria', ['maglione_v', 'maglione_collo_alto', 'camicia_righe', 'camicia_vichy', 'camicia_fiori', 'cravatta_righe', 'cravatta_pois', 'cravatta_cachemire', 'cravatta_fiori', 'cravatta_maglia']);
   sell('use:emporio', ['maglione_v', 'camicia_jeans', 'camicia_vichy']);

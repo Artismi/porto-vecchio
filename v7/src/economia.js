@@ -73,6 +73,7 @@ var Economia = (function () {
     ['use:ferramenta', ['coltello', 'pala', 'piede', 'carriola', 'bomboletta', 'pennello', 'chiodi', 'corda', 'colla', 'sacchi', 'nastro', 'lampadine', 'pile']],
     ['use:tabacchi', ['sigarette', 'carte', 'gesso', 'carta', 'inchiostro']], ['officina', ['piede', 'bomboletta']], ['benzina', ['benzina']], ['video', ['telefono', 'fotocamera', 'pile']],
     ['use:farmacia', ['medicine', 'spugne', 'sapone']], ['use:fabbro', ['coltello', 'pala', 'piede', 'chiodi']], ['use:falegnameria', ['mobili', 'casse', 'carriola']], ['use:sartoria', ['vestiti', 'stoffa']],
+    ['use:abbigliamento', ['vestiti']], ['use:armeria', ['coltello', 'corda']], ['use:pub', ['pane', 'vino']], ['use:autorimessa', ['benzina']],   // [attività]
     ['osteria', ['pasto', 'vino']], ['osteria_sg', ['pasto', 'vino']], ['car_2', ['pasto', 'vino']], ['bar', ['pane', 'vino']], ['sirena', ['pane', 'vino']], ['gelateria', ['pane', 'latte']], ['chiosco', ['pane']],
     ['piazza', ['verdura', 'frutta', 'pesce', 'formaggio', 'olio', 'carne']],   // il mercato del mercoledì e del sabato
     ['magazzino', ['benzina', 'sigarette', 'scatolame', 'telefono', 'fotocamera', 'bomboletta', 'corda', 'sacchi', 'carne', 'pesce']],   // lo Squalo: mercato nero
