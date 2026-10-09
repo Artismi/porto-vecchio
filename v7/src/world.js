@@ -188,8 +188,8 @@ var World = (function () {
   // l'orlo sale a picco (o piano dalla spiaggia) e poi la cupola si arrotonda verso la cima
   function isleElev(I, q) {
     const k = isleKind(I, q.a), beachK = k === 'spiaggia' || k === 'cala', bump = (fbm(q.u / 13 + I.seed, q.v / 13, 610 + I.seed, 3) - .5) * 1.6 * sstep(2, 10, q.d);
-    if (I.dome || I.arc) { const t = clamp(q.d / (q.m * .8), 0, 1), rim = beachK ? sstep(3, 12, q.d) : sstep(0, 2.2, q.d), b0 = beachK ? .45 + Math.min(q.d, 10) * .035 : .9;
-      return Math.max(.45, b0 + (Math.max(0, I.h - b0) * Math.pow(sstep(0, 1, t), .5) + bump) * rim); }
+    if (I.dome || I.arc) { const hD = Math.min(I.h, 2 + (I.arc ? I.w : Math.min(I.rx, I.ry)) * .42), t = clamp(q.d / (q.m * .8), 0, 1), rim = beachK ? sstep(3, 12, q.d) : sstep(0, 2.2, q.d), b0 = beachK ? .45 + Math.min(q.d, 10) * .035 : .9;
+      return Math.max(.45, b0 + (Math.max(0, hD - b0) * Math.pow(sstep(0, 1, t), .7) + bump) * rim); }
     const m = Math.min(I.rx, I.ry), tu = q.u / I.rx - I.top[0], tv = q.v / I.ry - I.top[1];
     const t = clamp(1 - Math.hypot(tu, tv) / 1.15, 0, 1), rim = k === 'falesia' ? sstep(0, 3.5, q.d) : k === 'scogli' ? sstep(0, 7, q.d) : sstep(3, 16, q.d);
     const beach = beachK ? .45 + Math.min(q.d, 14) * .035 : .7 + Math.min(q.d, 4) * .35;
@@ -1725,6 +1725,17 @@ var World = (function () {
         grid[i] = v; zone[i] = z; eco[i] = ecoV; bIndex[i] = -1;
       }
     });
+    // ---- la pendenza massima: un'isola si deve poter girare a piedi. Fra due caselle vicine al più SMAX metri di dislivello
+    // (circa 22 gradi); si abbassa solo, partendo dalla riva, che resta com'è. Gli edifici, i moli e i pontili non si toccano.
+    const SMAX = .8, SMAXD = SMAX * 1.414;
+    const relaxS = () => { const fixed = i => grid[i] === T_.BLD || grid[i] === T_.QUAY || grid[i] === T_.PIER;
+      const N8 = [[-1, 0, SMAX], [-1, -1, SMAXD], [0, -1, SMAX], [1, -1, SMAXD]];
+      for (let it = 0; it < 12; it++) { let ch = 0;
+        for (const dir of [1, -1]) for (let k = 0; k < N2; k++) { const i = dir > 0 ? k : N2 - 1 - k; if (!isl[i] || grid[i] === T_.WATER || fixed(i)) continue; const tx = i % GW2, ty = (i - tx) / GW2; if (tx < 1 || ty < 1 || tx >= GW2 - 1 || ty >= GH2 - 1) continue;
+          let lim = 1e9; for (const [dx, dy, sm] of N8) { const j = i + dir * (dy * GW2 + dx); if (!isl[j] || grid[j] === T_.WATER) continue; lim = Math.min(lim, elev[j] + sm); }
+          if (elev[i] > lim + 1e-3) { elev[i] = lim; ch++; } }
+        if (!ch) break; } };
+    relaxS();
     // ---- quello che c'è sulle isole: villaggi, baracche, basi della Tutela, la tribù; la torre e il relitto ----
     const B = W.BUILDINGS, PL = W.PLACES; S.camps = []; S.ruins = []; S.decor = [];
     const walkB = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= GW2 || ty >= GH2) return false; const v = grid[ix(tx, ty)]; return v !== T_.BLD && v !== T_.WATER && v !== T_.FOUNT && v !== T_.TREE && v !== T_.CLIFF; };
@@ -1830,6 +1841,7 @@ var World = (function () {
       ['Laguna della Mezzaluna', 'mezzaluna', Math.PI / 2], ['Laguna del Gomito', 'gomito', Math.PI / 2], ['Spiaggia della Lama', 'lama', -Math.PI / 2], ['Spiaggia della tribù', 'grande_sud', Math.PI / 2 + .25]].forEach(([name, id, a], k) => {
       const I = Iid(id); if (!I) return; const sp0 = shoreB(I, a); S.swim.push({ id: 'bagno_isola_' + k, name, x: sp0.x + sp0.dx * 10, y: sp0.y + sp0.dy * 10, shore: [sp0.x - sp0.dx * 3, sp0.y - sp0.dy * 3], r: 14, isola: true }); PNb('bagno_isola_' + k, name, sp0.x - sp0.dx * 3, sp0.y - sp0.dy * 3, { bagno: true }); });
     // i fianchi a picco: dove la quota cade di colpo fra due caselle dell'isola, parete di roccia
+    relaxS();   // dopo le radure spianate e gli edifici: ancora niente gradini
     for (let ty = 1; ty < GH2 - 1; ty++) for (let tx = 1; tx < GW2 - 1; tx++) { const i = ix(tx, ty); if (!isl[i] || grid[i] === T_.SAND || grid[i] === T_.BLD) continue; let drop = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = i + dy * GW2 + dx; if (!isl[n]) continue; drop = Math.max(drop, elev[i] - elev[n]); } if (drop > (eco[i] === ECO.GIUNGLA ? 4.2 : 2.6)) grid[i] = T_.CLIFF; }   // sulle cupole la giungla tiene anche il ripido
     // le quote ai vertici attorno alle isole (come nella generazione: sulla riva il terreno scende sotto l'acqua)
     const vfix = (tx0, ty0, tx1, ty1) => { for (let j = Math.max(0, ty0); j <= Math.min(GH2, ty1); j++) for (let i2 = Math.max(0, tx0); i2 <= Math.min(GW2, tx1); i2++) {

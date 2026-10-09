@@ -2398,13 +2398,15 @@ var Render = (function () {
       uovo: [new THREE.SphereGeometry(.06, 5, 4), std({ roughness: .5 }), false],
       fungo: [new THREE.ConeGeometry(.12, .1, 6), std({ roughness: .7 }), false],
     };
-    const BUCK = new Map();
-    const put = (k, x, y, z, ry, sx, sy, sz, col, rx, rz) => { const key = k + '|' + Math.floor(x / 240) + ',' + Math.floor(z / 240); let a = BUCK.get(key); if (!a) BUCK.set(key, a = []); a.push([x, y, z, ry || 0, sx, sy, sz, col, rx || 0, rz || 0]); };
-    const tile = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS));
+    const BUCK = new Map(), tile = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)), slopeAt = (x, z, d) => Math.max(Math.abs(groundH(x + d, z) - groundH(x - d, z)), Math.abs(groundH(x, z + d) - groundH(x, z - d)));
+    const put = (k, x, y, z, ry, sx, sy, sz, col, rx, rz) => {
+      if (k === 'masso' && y > WL) { const s0 = Math.max(sx, sz) * .8; y = Math.min(groundH(x + s0, z), groundH(x - s0, z), groundH(x, z + s0), groundH(x, z - s0), groundH(x, z)) + sy * .25; }   /* il masso sta nella terra, non sospeso sul pendio */
+      if ((k === 'tronco' || k === 'fronda' || k === 'ramo') && slopeAt(x, z, Math.min(1.5, sx * .5)) > .35) return;
+      if (k === 'tronco') { const c = Math.cos(ry), s2 = Math.sin(ry); for (let t = -.5; t <= .5; t += .25) { const v = tile(x + c * sx * t, z - s2 * sx * t); if (v === T.TREE || v === T.WATER || v === T.BLD || v === T.CLIFF) return; } } const key = k + '|' + Math.floor(x / 240) + ',' + Math.floor(z / 240); let a = BUCK.get(key); if (!a) BUCK.set(key, a = []); a.push([x, y, z, ry || 0, sx, sy, sz, col, rx || 0, rz || 0]); };
     const eco = (x, z) => vdEco(Math.floor(x / TS), Math.floor(z / TS));
     const near = (tx, tz, v, d) => { for (let dz = -d; dz <= d; dz++) for (let dx = -d; dx <= d; dx++) if ((dx || dz) && G.tileAt(tx + dx, tz + dz) === v) return true; return false; };
     const C_ = c => new THREE.Color(c);
-    const SHELL = ['#f4e8dc', '#e8c8b8', '#f0d8c0', '#d8b8a0', '#fff4ea'], ALGA = ['#2e2c1a', '#3a3220', '#26281a', '#423822'], MOSS = ['#4e5a3a', '#5a6644', '#46503a', '#626a50'], KARST = ['#d4cfc4', '#c8c2b4', '#e0dbd0', '#bcb6a8'], DRY = ['#ffffff', '#f4ecd8', '#e8dcc0'];
+    const SHELL = ['#f4e8dc', '#e8c8b8', '#f0d8c0', '#d8b8a0', '#fff4ea'], ALGA = ['#2e2c1a', '#3a3220', '#26281a', '#423822'], MOSS = ['#4e5a3a', '#5a6644', '#46503a', '#626a50'], KARST = ['#b8ac94', '#a89c86', '#c2b49a', '#9a9080'], DRY = ['#ffffff', '#f4ecd8', '#e8dcc0'];
     const seen = new Set(), CL = (S.camps || []).map(C => [C.x, C.y, C.r + 6]).concat((S.decor || []).map(D => [D.x, D.y, D.r + 5]));
     (W0.ISOLE || []).forEach(I => {
       const cx = I.x + OX, cz = I.y + OY, R = (I.arc ? I.R0 : I.R) + 4, tema = I.tema || I.veg;
@@ -2425,12 +2427,13 @@ var Render = (function () {
         }
         if (v === T.ROCK || v === T.CLIFF) {
           const kar = tema === 'nuda' || tema === 'uccelli' || tema === 'pini';
-          if (wet) { for (let k = 0; k < 2; k++) if (r() < .45) { const x = rx(), z = z0 + r() * TS, s = .4 + r() * .9; put('masso', x, WL - s * .3 + r() * .3, z, r() * 6, s * 1.2, s * .7, s, pick(r, ['#5a5450', '#4e4a44', '#6a645a', '#3e3c38'])); } }
-          else if (r() < (kar ? .22 : .14)) { const x = rx(), z = z0 + r() * TS, s = .3 + r() * .7; put('masso', x, groundH(x, z) + s * .2, z, r() * 6, s, s * (.5 + r() * .4), s * (.8 + r() * .5), pick(r, kar ? KARST : MOSS)); }
+          if (wet) { for (let k = 0; k < 1; k++) if (r() < .3) { const x = rx(), z = z0 + r() * TS, s = .4 + r() * .9; put('masso', x, WL - s * .3 + r() * .3, z, r() * 6, s * 1.2, s * .7, s, pick(r, ['#5a5450', '#4e4a44', '#6a645a', '#3e3c38'])); } }
+          else if (r() < (kar ? .12 : .07)) { const x = rx(), z = z0 + r() * TS, s = .3 + r() * .7; put('masso', x, groundH(x, z) + s * .2, z, r() * 6, s, s * (.5 + r() * .4), s * (.8 + r() * .5), pick(r, kar ? KARST : MOSS)); }
           if (tema === 'uccelli') for (let k = 0; k < 3; k++) if (r() < .5) { const x = rx(), z = z0 + r() * TS; put('guano', x, groundH(x, z) + .04, z, r() * 6, .12 + r() * .3, 1, .1 + r() * .25, pick(r, ['#ecebe2', '#e0ded2', '#f4f3ec'])); }
           continue;
         }
-        if (v === T.GRASS || v === T.SHRUB || v === T.TREE || v === T.DIRT) {
+        if (v === T.TREE) continue;   /* sotto la chioma c'è il tronco: niente sassi dentro l'albero */
+        if (v === T.GRASS || v === T.SHRUB || v === T.DIRT) {
           if (tema === 'giungla') {
             if (h < .03 && v !== T.TREE) { const x = rx(), z = z0 + r() * TS, L = 3 + r() * 4; put('tronco', x, groundH(x, z) + .22, z, r() * 6, L, .9 + r() * .4, .9 + r() * .4, pick(r, ['#5e4c38', '#4e4232', '#5a5a3c', '#6a5842'])); for (let k = 0; k < 4; k++) if (r() < .6) { const a = r() * 6.28, d = r() * L * .4; put('fungo', x + Math.cos(a) * d, groundH(x, z) + .1, z + Math.sin(a) * d, 0, 1, 1, 1, pick(r, ['#e8d8b8', '#d89040', '#c85a3a'])); } }
             if (r() < .07) { const x = rx(), z = z0 + r() * TS, s = .3 + r() * .7; put('masso', x, groundH(x, z) + s * .15, z, r() * 6, s, s * .6, s, pick(r, MOSS)); }
@@ -2482,8 +2485,11 @@ var Render = (function () {
     (S.camps || []).forEach(C => { if (C.type === 'villaggio') birds(C.bp[0], C.bp[1], 14, 5, 7, 14); });
 
     // --- la vita nei villaggi dei pescatori ---
-    const freeAt = (x, z, rr) => { const tx = Math.floor(x / TS), tz = Math.floor(z / TS); for (let dz = -rr; dz <= rr; dz++) for (let dx = -rr; dx <= rr; dx++) { const v = G.tileAt(tx + dx, tz + dz); if (v === T.BLD || v === T.WATER || v === T.CLIFF || v === T.PIER || v === undefined) return false; } return true; };
-    const spot = (cx, cz, r0, r1, rr, tries) => { for (let t = 0; t < (tries || 30); t++) { const a = r() * 6.28, d = r0 + r() * (r1 - r0), x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d; if (freeAt(x, z, rr || 0)) return [x, z]; } return null; };
+    const freeAt = (x, z, rr) => { const tx = Math.floor(x / TS), tz = Math.floor(z / TS); for (let dz = -rr; dz <= rr; dz++) for (let dx = -rr; dx <= rr; dx++) { const v = G.tileAt(tx + dx, tz + dz); if (v === T.BLD || v === T.WATER || v === T.CLIFF || v === T.PIER || v === T.TREE || v === T.QUAY) return false; } return true; };
+    const USED = [];   // l'ingombro delle cose già messe: niente due oggetti uno dentro l'altro
+    const spot = (cx, cz, r0, r1, rr, tries) => { const rad = 1 + (rr || 0) * 1.6; for (let t = 0; t < (tries || 40); t++) { const a = r() * 6.28, d = r0 + r() * (r1 - r0), x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
+      if (!freeAt(x, z, rr || 0) || slopeAt(x, z, rad) > .5 + rad * .25 || USED.some(u => Math.hypot(u[0] - x, u[1] - z) < u[2] + rad)) continue; USED.push([x, z, rad]); return [x, z]; } return null; };
+    (S.camps || []).forEach(C => { USED.push([C.x, C.y, C.type === 'tribu' ? 2.5 : 1.5]); (C.huts || []).forEach(h => USED.push([h.x, h.y, h.r + .6])); });   /* il fuoco della tribù, le capanne */
     const wood = PM.woodD(), woodL = PM.woodL(), rope2 = sl('#c8b890');
     const rack = (x, z, rot, what) => {   // la rastrelliera: i pesci o i polpi stesi al sole, o le reti
       const g = G0(); [-1, 1].forEach(sg => add(g, cyl(.05, .06, 1.9, 5, wood), sg * 1.2, .95, 0)); add(g, cyl(.04, .04, 2.6, 5, wood), 0, 1.8, 0, 0, 0, Math.PI / 2); add(g, cyl(.03, .03, 2.6, 5, wood), 0, 1.35, 0, 0, 0, Math.PI / 2);
