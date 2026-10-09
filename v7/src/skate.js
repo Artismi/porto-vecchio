@@ -596,7 +596,7 @@ var Skate = (function () {
     const snow = box(R.L - .2, .12, R.W - .3, new THREE.MeshLambertMaterial({ color: '#e7ecef' }), 0, R.H + .1, 0); snow.rotation.x = .05; g.add(snow);
     [-1, 0, 1].forEach(s => g.add(box(.18, .3, R.W, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), s * (R.L / 2 - .3), R.H - .18, 0)));
     g.add(box(R.L, .3, .18, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), 0, R.H - .18, -R.W / 2 + .3)); g.add(box(R.L, .3, .18, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), 0, R.H - .18, R.W / 2 - .3));
-    const lamp = new THREE.PointLight('#ffd59a', .8, 18, 2); lamp.position.set(0, R.H - .5, 0); g.add(lamp); g.userData.lamp = lamp;   // la lampada sotto la tettoia, accesa la sera
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffe2a8' })); bulb.position.set(0, R.H - .45, 0); g.add(bulb);   // [leggero] la lampada sotto la tettoia: la luce la fanno i lampioni del motore, la sera
     g.userData.mats = []; g.traverse(o => { if (o.isMesh && !g.userData.mats.includes(o.material)) g.userData.mats.push(o.material); }); g.userData.op = 1;
     return g;
   }
@@ -614,7 +614,7 @@ var Skate = (function () {
     const scene = R.__models.scene; GFX.group = new THREE.Group(); scene.add(GFX.group);
     PIECES.forEach((P, i) => { const m = pieceMesh(P, i + 3); m.position.set(P.x, R.groundH(P.x, P.y) - .02, P.y); m.rotation.y = -P.ang; GFX.group.add(m); });
     PLACED.forEach((sp, i) => {
-      if (sp.roof) { const r = roofMesh(sp); r.position.set(sp.x, R.groundH(sp.x, sp.y), sp.y); r.rotation.y = -sp.ang; GFX.group.add(r); sp.__roof = r; }
+      if (sp.roof) { const r = roofMesh(sp); r.position.set(sp.x, R.groundH(sp.x, sp.y), sp.y); r.rotation.y = -sp.ang; GFX.group.add(r); sp.__roof = r; if (R.addLight) R.addLight(sp.x, R.groundH(sp.x, sp.y) + sp.roof.H - .5, sp.y, '#ffd59a', 1.6, 12); }
       const b = boardMesh(i); b.position.set(sp.board.x, R.groundH(sp.board.x, sp.board.y), sp.board.y); b.userData.inner.rotation.z = 1.25; b.userData.inner.position.y = .3; b.rotation.y = i; GFX.group.add(b); sp.__board = b;
       // il segnale: un cerchio giallo a terra, come i raccoglibili
       const ring = new THREE.Mesh(new THREE.RingGeometry(.45, .58, 20), new THREE.MeshBasicMaterial({ color: '#ffd23a', transparent: true, opacity: .55, depthWrite: false })); ring.rotation.x = -PI / 2; ring.position.set(sp.board.x, R.groundH(sp.board.x, sp.board.y) + .04, sp.board.y); GFX.group.add(ring); sp.__ring = ring;

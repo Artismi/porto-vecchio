@@ -27892,7 +27892,7 @@ var Skate = (function () {
     const snow = box(R.L - .2, .12, R.W - .3, new THREE.MeshLambertMaterial({ color: '#e7ecef' }), 0, R.H + .1, 0); snow.rotation.x = .05; g.add(snow);
     [-1, 0, 1].forEach(s => g.add(box(.18, .3, R.W, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), s * (R.L / 2 - .3), R.H - .18, 0)));
     g.add(box(R.L, .3, .18, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), 0, R.H - .18, -R.W / 2 + .3)); g.add(box(R.L, .3, .18, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), 0, R.H - .18, R.W / 2 - .3));
-    const lamp = new THREE.PointLight('#ffd59a', .8, 18, 2); lamp.position.set(0, R.H - .5, 0); g.add(lamp); g.userData.lamp = lamp;   // la lampada sotto la tettoia, accesa la sera
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffe2a8' })); bulb.position.set(0, R.H - .45, 0); g.add(bulb);   // [leggero] la lampada sotto la tettoia: la luce la fanno i lampioni del motore, la sera
     g.userData.mats = []; g.traverse(o => { if (o.isMesh && !g.userData.mats.includes(o.material)) g.userData.mats.push(o.material); }); g.userData.op = 1;
     return g;
   }
@@ -27910,7 +27910,7 @@ var Skate = (function () {
     const scene = R.__models.scene; GFX.group = new THREE.Group(); scene.add(GFX.group);
     PIECES.forEach((P, i) => { const m = pieceMesh(P, i + 3); m.position.set(P.x, R.groundH(P.x, P.y) - .02, P.y); m.rotation.y = -P.ang; GFX.group.add(m); });
     PLACED.forEach((sp, i) => {
-      if (sp.roof) { const r = roofMesh(sp); r.position.set(sp.x, R.groundH(sp.x, sp.y), sp.y); r.rotation.y = -sp.ang; GFX.group.add(r); sp.__roof = r; }
+      if (sp.roof) { const r = roofMesh(sp); r.position.set(sp.x, R.groundH(sp.x, sp.y), sp.y); r.rotation.y = -sp.ang; GFX.group.add(r); sp.__roof = r; if (R.addLight) R.addLight(sp.x, R.groundH(sp.x, sp.y) + sp.roof.H - .5, sp.y, '#ffd59a', 1.6, 12); }
       const b = boardMesh(i); b.position.set(sp.board.x, R.groundH(sp.board.x, sp.board.y), sp.board.y); b.userData.inner.rotation.z = 1.25; b.userData.inner.position.y = .3; b.rotation.y = i; GFX.group.add(b); sp.__board = b;
       // il segnale: un cerchio giallo a terra, come i raccoglibili
       const ring = new THREE.Mesh(new THREE.RingGeometry(.45, .58, 20), new THREE.MeshBasicMaterial({ color: '#ffd23a', transparent: true, opacity: .55, depthWrite: false })); ring.rotation.x = -PI / 2; ring.position.set(sp.board.x, R.groundH(sp.board.x, sp.board.y) + .04, sp.board.y); GFX.group.add(ring); sp.__ring = ring;
@@ -39246,6 +39246,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   const LFR = new THREE.Frustum(), LPM = new THREE.Matrix4(), LSPH = new THREE.Sphere();
   function updateLights(time, night, fx, fz) {   // [inverno28] studio luci
     frameN++;
+    // [leggero] di giorno i lampioni (12 faretti con ombra, 8 punti) si tolgono davvero: in Three.js una luce a intensità 0 costa
+    // come una accesa, su ogni pixel di ogni oggetto. Si cambia al tramonto e all'alba; gli shader per tutti e due gli stati sono pronti dall'avvio
+    const lampsOn = night > (dyn.lampsOn ? .012 : .025);
+    if (!dyn.lampsPre && renderer && scene && camera) { dyn.lampsPre = true; try { [true, false].forEach(v => { LPOOL.forEach(l => { l.visible = v; }); renderer.compile(scene, camera); }); } catch (e) { } dyn.lampsOn = undefined; }
+    if (lampsOn !== dyn.lampsOn) { dyn.lampsOn = lampsOn; LPOOL.forEach(l => { l.visible = lampsOn; if (l.shadow) l.shadow.needsUpdate = true; }); if (!lampsOn) { SPOOL.forEach(l => { l.intensity = 0; l.userData.cone.visible = false; }); dyn.lsp = []; dyn.lpp = []; } }
+    if (!lampsOn) return;
     if (frameN % 4 === 1 || !dyn.lsp) {
       camera.updateMatrixWorld(); LPM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); LFR.setFromProjectionMatrix(LPM);
       const on = [];
@@ -39602,7 +39608,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { addLight: (x, y, z, c, i, d, f) => addLight(x, y, z, c, i, d, f), __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
 </script>
 <script>/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).

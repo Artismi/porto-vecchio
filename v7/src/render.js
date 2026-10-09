@@ -11226,6 +11226,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   const LFR = new THREE.Frustum(), LPM = new THREE.Matrix4(), LSPH = new THREE.Sphere();
   function updateLights(time, night, fx, fz) {   // [inverno28] studio luci
     frameN++;
+    // [leggero] di giorno i lampioni (12 faretti con ombra, 8 punti) si tolgono davvero: in Three.js una luce a intensità 0 costa
+    // come una accesa, su ogni pixel di ogni oggetto. Si cambia al tramonto e all'alba; gli shader per tutti e due gli stati sono pronti dall'avvio
+    const lampsOn = night > (dyn.lampsOn ? .012 : .025);
+    if (!dyn.lampsPre && renderer && scene && camera) { dyn.lampsPre = true; try { [true, false].forEach(v => { LPOOL.forEach(l => { l.visible = v; }); renderer.compile(scene, camera); }); } catch (e) { } dyn.lampsOn = undefined; }
+    if (lampsOn !== dyn.lampsOn) { dyn.lampsOn = lampsOn; LPOOL.forEach(l => { l.visible = lampsOn; if (l.shadow) l.shadow.needsUpdate = true; }); if (!lampsOn) { SPOOL.forEach(l => { l.intensity = 0; l.userData.cone.visible = false; }); dyn.lsp = []; dyn.lpp = []; } }
+    if (!lampsOn) return;
     if (frameN % 4 === 1 || !dyn.lsp) {
       camera.updateMatrixWorld(); LPM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); LFR.setFromProjectionMatrix(LPM);
       const on = [];
@@ -11582,5 +11588,5 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { addLight: (x, y, z, c, i, d, f) => addLight(x, y, z, c, i, d, f), __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
