@@ -156,25 +156,25 @@ var Vesti3D = (function () {
   function lanaTex(kind) {
     if (LTEX[kind]) return LTEX[kind]; const N = 64, cv = document.createElement('canvas'); cv.width = cv.height = N; const x = cv.getContext('2d'), id = x.createImageData(N, N), d = id.data;
     for (let py = 0; py < N; py++) for (let px = 0; px < N; px++) { let v;
-      if (kind === 'maglia') { const cx = px % 8, cy = py % 8, u = (cx + .5) / 8 - .5, w = (cy + .5) / 8, leg = Math.abs(Math.abs(u) - (.06 + w * .3)); v = .62 + .38 * Math.max(0, 1 - leg / .2) - (Math.abs(u) < .04 ? .16 : 0); }   // le due gambe della maglia a V
+      if (kind === 'maglia') { const cx = px % 8, cy = py % 8, u = (cx + .5) / 8 - .5, w = (cy + .5) / 8, leg = Math.abs(Math.abs(u) - (.1 + w * .28)); v = .5 + .5 * Math.max(0, 1 - leg / .16) - (Math.abs(u) < .05 ? .3 : 0) - (w > .88 ? .2 : 0); }   // le due gambe della maglia a V
       else if (kind === 'costine') { const u = (px % 6) / 6; v = .45 + .5 * Math.sin(u * Math.PI) - (py % 5 === 0 ? .08 : 0); }
       else { v = .45 + .5 * hs2(px >> 1, py >> 3) + .1 * Math.sin(py * .8 + (px >> 2)); }   // il pelo a ciocche
-      v += (hs2(px, py) - .5) * .05; v = Math.max(0, Math.min(1, v)); const k = (py * N + px) * 4; d[k] = d[k + 1] = d[k + 2] = 255 * (.55 + .45 * v); d[k + 3] = 255; }
+      v += (hs2(px, py) - .5) * .14; v = Math.max(0, Math.min(1, v)); const k = (py * N + px) * 4; d[k] = d[k + 1] = d[k + 2] = 255 * (.48 + .52 * v); d[k + 3] = 255; }
     x.putImageData(id, 0, 0); const T = new THREE.CanvasTexture(cv); T.wrapS = T.wrapT = THREE.RepeatWrapping; LTEX[kind] = T; return T;
   }
   function lana(col, kind, ru, rv) {
     kind = kind || 'maglia'; const key = [col, kind, ru || 1, rv || 1].join('|'); let m = LANA.get(key); if (m) return m;
     const T = lanaTex(kind).clone(); T.needsUpdate = true; T.repeat.set(ru || 1, rv || 1);
-    m = new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(1.12), map: T, bumpMap: T, bumpScale: .003, roughness: 1, metalness: 0, side: THREE.DoubleSide }); m.emissive = new THREE.Color(col).multiplyScalar(.14); LANA.set(key, m); return m;
+    m = new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(1.22), map: T, bumpMap: T, bumpScale: .0055, roughness: 1, metalness: 0, side: THREE.DoubleSide }); m.emissive = new THREE.Color(col).multiplyScalar(.14); LANA.set(key, m); return m;
   }
   const FUZZ = new Map(); let FUZT = null;
   function peluria(col, ru, rv) {
     const key = col + '|' + (ru || 1) + '|' + (rv || 1); if (FUZZ.has(key)) return FUZZ.get(key);
     if (!FUZT) { const N = 128, cv = document.createElement('canvas'); cv.width = cv.height = N; const x = cv.getContext('2d'); x.strokeStyle = '#fff'; x.lineCap = 'round';
-      for (let i = 0; i < 420; i++) { const px = hs2(i, 1) * N, py = hs2(i, 2) * N, a = hs2(i, 3) * Math.PI * 2, L = 3 + hs2(i, 4) * 7; x.lineWidth = .6 + hs2(i, 5) * 1.1; x.globalAlpha = .7 + hs2(i, 6) * .3; x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + Math.cos(a + .6) * L * .6, py + Math.sin(a + .6) * L * .6, px + Math.cos(a) * L, py + Math.sin(a) * L); x.stroke(); }
+      for (let i = 0; i < 220; i++) { const px = hs2(i, 1) * N, py = hs2(i, 2) * N, a = hs2(i, 3) * Math.PI * 2, L = 2 + hs2(i, 4) * 5; x.lineWidth = .5 + hs2(i, 5) * .6; x.globalAlpha = .7 + hs2(i, 6) * .3; x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + Math.cos(a + .6) * L * .6, py + Math.sin(a + .6) * L * .6, px + Math.cos(a) * L, py + Math.sin(a) * L); x.stroke(); }
       FUZT = new THREE.CanvasTexture(cv); FUZT.wrapS = FUZT.wrapT = THREE.RepeatWrapping; }
     const T = FUZT.clone(); T.needsUpdate = true; T.repeat.set((ru || 1) * .5, (rv || 1) * .5);
-    const m = new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(1.35), alphaMap: T, alphaTest: .45, transparent: false, roughness: 1, metalness: 0, side: THREE.DoubleSide, depthWrite: true }); m.emissive = new THREE.Color(col).multiplyScalar(.2); FUZZ.set(key, m); return m;
+    const m = new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(1.3), alphaMap: T, alphaTest: .55, transparent: false, roughness: 1, metalness: 0, side: THREE.DoubleSide, depthWrite: true }); m.emissive = new THREE.Color(col).multiplyScalar(.2); FUZZ.set(key, m); return m;
   }
   // una sacca morbida: rettangolo dagli angoli tondi, estruso col bordo smussato e la pancia gonfia (non una scatola, non una capsula)
   function sacca(w, h, d, rr, pancia) {
@@ -222,7 +222,7 @@ var Vesti3D = (function () {
     pm_righe: { fori: 'fessura', righe: '#1a1a1e', bordo: '#1a1a1e' },
     pm_punte: { fori: 'occhi', bordo: '#1a1a1e', cresta: ['#e8e0d0', '#1a1a1e'] },
     pm_orecchie: { fori: 'occhi', bocca: 1, bordo: '#1a1a1e', orecchie: 'gatto', c2: '#f4b8c8' },
-    pm_diavolo: { fori: 'occhi', bocca: 'labbra', bordo: '#d8283a', spesso: 1, corna: 'diavolo', cc: ['#d8283a'], collo: '#d8283a', borchie: 1, guancia: '#6a8ad0' },
+    pm_diavolo: { fori: 'occhi', bocca: 'labbra', stelleOcchi: '#d8283a', spesso: 1, corna: 'diavolo', cc: ['#d8283a'], collo: '#d8283a', borchie: 1, guancia: '#6a8ad0' },
     pm_clown: { fori: 'occhi', bocca: 1, viso: '#6ac8e0', zigzag: '#e8586a', bolle: '#f0e8d4', naso: '#e8586a', guance: '#e8586a', frange: '#f0e8d4', punta: 1 },
     pm_riccio: { fori: 'occhi', bordo: '#5a0a2a', riccio: 1, becco: 1 },
     pm_corna: { fori: 'occhi', borchieOcchi: '#d8d8e0', bordo2: ['#60e030', '#f040a8'], corna: 'lunghe', cc: ['#60e030', '#f040a8'], gorgiera: ['#ff8a1e'] },
@@ -251,15 +251,15 @@ var Vesti3D = (function () {
     for (let j = 0; j <= NR; j++) { const y = rowY(j); if (y < Hb * .35) continue; const pr = profR(y), k = Math.min(1, (y - Hb * .35) / (Hb * .3)); for (let i = 0; i < NA; i++) RG[j][i] = Math.min(RG[j][i], pr * (1.1 - .06 * k) + .002); }   // la calotta resta tonda (niente cilindro)
     // sezioni più tonde (la testa del modello è a cubo): verso un ovale smussato largo e profondo come la sezione
     for (let j = 0; j < NR; j++) { const R = RG[j]; let W = 0, Df = 0, Db = 0; for (let i = 0; i < NA; i++) { const a = -Math.PI + (i / NA) * Math.PI * 2 + Math.PI / NA * 0, x = Math.abs(Math.sin(a)) * R[i], z = Math.cos(a) * R[i]; W = Math.max(W, x); if (z > 0) Df = Math.max(Df, z); else Db = Math.max(Db, -z); }
-      for (let i = 0; i < NA; i++) { const a = (i / NA) * Math.PI * 2 - Math.PI, ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a)), D = Math.cos(a) >= 0 ? Df : Db, e = 2.3, rs = 1 / Math.pow(Math.pow(ca / Math.max(D, .02), e) + Math.pow(sa / Math.max(W, .02), e), 1 / e); R[i] = Math.max(R[i], rs * .96); } }
+      for (let i = 0; i < NA; i++) { const a = (i / NA) * Math.PI * 2 - Math.PI, ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a)), D = Math.cos(a) >= 0 ? Df : Db, e = 2.3, rs = 1 / Math.pow(Math.pow(ca / Math.max(D, .02), e) + Math.pow(sa / Math.max(W, .02), e), 1 / e); R[i] = Math.max(R[i] * .985, rs * .9); } }
     // la calotta a cupola dalla fronte in su: copre tutta la testa (anche gli spigoli del cranio a cubo) ma tonda
-    if (!st.punta) { let jb = 0; for (let j = 0; j <= NR; j++) if (rowY(j) <= 0) jb = j; const R0 = new Float32Array(NA), pe = 2.25; for (let j = jb; j < NR && rowY(j) < .025; j++) for (let i = 0; i < NA; i++) R0[i] = Math.max(R0[i], RG[j][i]);
+    if (!st.punta) { let jb = 0; for (let j = 0; j <= NR; j++) if (rowY(j) <= 0) jb = j; const R0 = new Float32Array(NA), pe = 2.35; for (let j = jb; j < NR && rowY(j) < .025; j++) for (let i = 0; i < NA; i++) R0[i] = Math.max(R0[i], RG[j][i]);
       { let W = 0, Df = 0, Db = 0; for (let i = 0; i < NA; i++) { const a = i / NA * Math.PI * 2 - Math.PI; W = Math.max(W, Math.abs(Math.sin(a)) * R0[i]); const z = Math.cos(a) * R0[i]; if (z > 0) Df = Math.max(Df, z); else Db = Math.max(Db, -z); }
-        for (let i = 0; i < NA; i++) { const a = i / NA * Math.PI * 2 - Math.PI, D = Math.cos(a) >= 0 ? Df : Db; R0[i] = Math.max(R0[i] * .97, 1 / Math.sqrt((Math.cos(a) / D) ** 2 + (Math.sin(a) / W) ** 2)); } }   // la base della cupola: un ovale
+        for (let i = 0; i < NA; i++) { const a = i / NA * Math.PI * 2 - Math.PI, D = Math.cos(a) >= 0 ? Df : Db; R0[i] = Math.max(R0[i] * .95, .93 / Math.sqrt((Math.cos(a) / D) ** 2 + (Math.sin(a) / W) ** 2)); } }   // la base della cupola: quasi un ovale (la pelle sotto è nascosta: si può stare stretti)
       let Hd = Hb * .85; for (let j = jb + 1; j < NR; j++) { const y = rowY(j); for (let i = 0; i < NA; i++) { const q = Math.min(.97, RG[j][i] / Math.max(1e-4, R0[i])); if (RG[j][i] > 1e-4 && y > 0 && y < Hb + .01) Hd = Math.max(Hd, y / Math.pow(1 - Math.pow(q, pe), 1 / pe)); } }
-      Hd = Math.min(Hd, Hb * 1.22, yTop - .002);
+      Hd = Math.min(Math.max(Hb * .98, Math.min(Hd, Hb * 1.04)), yTop - .002);   // alta quanto il cranio, non di più
       for (let j = jb + 1; j <= NR; j++) { const y = rowY(j), f = Math.pow(Math.max(0, 1 - Math.pow(Math.min(1, y / Hd), pe)), 1 / pe); for (let i = 0; i < NA; i++) RG[j][i] = R0[i] * f; } }   // la calotta: cupola piena ma bassa, aderente al cranio
-    for (let j = 0; j <= NR; j++) for (let i = 0; i < NA; i++) RG[j][i] = RG[j][i] > 1e-4 ? RG[j][i] + .004 : 0;
+    for (let j = 0; j <= NR; j++) for (let i = 0; i < NA; i++) RG[j][i] = RG[j][i] > 1e-4 ? RG[j][i] + .0035 : 0;
     const rA = (a, y) => { const fj = Math.max(0, Math.min(NR, (y - y0) / (yTop - y0) * NR)), j0 = Math.floor(fj), j1 = Math.min(NR, j0 + 1), u = fj - j0, fi = (((a + Math.PI) / (Math.PI * 2) * NA) % NA + NA) % NA, i0 = Math.floor(fi), i1 = (i0 + 1) % NA, v = fi - i0;
       return (RG[j0][i0] * (1 - v) + RG[j0][i1] * v) * (1 - u) + (RG[j1][i0] * (1 - v) + RG[j1][i1] * v) * u; };
     const rAt = y => rA(0, y), zSh = y => st.punta ? -Math.max(0, y - Hb * .8) * .45 : 0;
@@ -280,10 +280,10 @@ var Vesti3D = (function () {
       return !!st.bocca && (X / .025) ** 2 + ((y - my) / .012) ** 2 < 1; };
     // il guscio: griglia fitta solo qui (i fori devono essere tondi)
     const shell = (filt, off, mat) => { const na = 72, nr = 46, Pp = [], U = [], I = [];
-      for (let j = 0; j <= nr; j++) { const y = y0 + (yTop - y0) * j / nr; for (let i = 0; i <= na; i++) { const a = -Math.PI + i / na * Math.PI * 2, p = lift(P(a, y, off)); Pp.push(p.x, p.y, p.z); U.push(a * rAt(.03) / .065, y / .06); } }
+      for (let j = 0; j <= nr; j++) { const y = y0 + (yTop - y0) * j / nr; for (let i = 0; i <= na; i++) { const a = -Math.PI + i / na * Math.PI * 2, p = lift(P(a, y, off)); Pp.push(p.x, p.y, p.z); U.push(a * rAt(.03) / .042, y / .04); } }
       for (let j = 0; j < nr; j++) for (let i = 0; i < na; i++) { const a = -Math.PI + (i + .5) / na * Math.PI * 2, y = y0 + (yTop - y0) * (j + .5) / nr; if (!filt(a, y)) continue; const q = j * (na + 1) + i, r2 = q + na + 1; I.push(q, r2, q + 1, q + 1, r2, r2 + 1); }
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(Pp, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); return new THREE.Mesh(g, mat); };
-    h.add(shell((a, y) => !inHole(a, y), 0, main));
+    h.add(shell((a, y) => !inHole(a, y), 0, main), shell((a, y) => !inHole(a, y), .0016, peluria(col, 3, 3)));   // un velo di peluria fine
     const faceOval = (a, y) => Math.cos(a) > 0 && (Math.sin(a) * rAt(y) / .085) ** 2 + ((y - (ey - .025)) / .1) ** 2 < 1;
     if (st.viso) h.add(shell((a, y) => faceOval(a, y) && !inHole(a, y), .0025, knit(st.viso)));
     // i bordi: curve chiuse sul guscio
@@ -297,6 +297,8 @@ var Vesti3D = (function () {
     const mouth = st.bocca ? loop(t => [.028 * Math.cos(t), my + .0145 * Math.sin(t)], 22) : null;
     const rimR = st.spesso ? .0085 : .0055;
     loops.forEach((L, i) => { const cc = st.bordo2 ? st.bordo2[i % 2] : st.bordo; if (cc) tube(L, rimR, knit(cc)); });
+    // stelle ricamate attorno agli occhi (diavolo): un cordone spesso a stella a cinque punte
+    if (st.stelleOcchi) for (const sx of [-1, 1]) { const L = loop(t => { const k = Math.round(t / (Math.PI * 2) * 10), rr = (k % 2 ? .021 : .048) * sc, q = t + Math.PI / 2; return [sx * (ex + .003) + Math.cos(q) * rr, ey + .003 + Math.sin(q) * rr * .92]; }, 10); tube(L, .0055, knit(st.stelleOcchi)); }
     if (mouth) { if (st.bocca === 'labbra') { tube(mouth, .012, knit(st.cc ? st.cc[0] : '#d8283a')); } else if (st.bordo) tube(mouth, rimR, knit(st.bordo)); }
     if (st.bolle) [...loops, ...(mouth ? [mouth] : [])].forEach(L => L.forEach((p, k) => { if (k % 2) return; h.add(Sp(.0068, knit(st.bolle), p.x, p.y, p.z)); }));
     if (st.ruche) loops.forEach(L => L.forEach((p, k) => { const s2 = Sp(.012, knit(st.ruche), p.x, p.y, p.z + .002); s2.scale.set(1, 1, .7); h.add(s2); }));
@@ -307,9 +309,10 @@ var Vesti3D = (function () {
       h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 8, .003, 4), knit(st.bordo))); for (const k of [.012, .026]) for (const sd of [-1, 1]) { const yy = y1 + dir * k, q0 = P(aOf(x0, yy), yy, .003), q1 = P(aOf(x0 + sd * .008, yy + dir * .006), yy + dir * .006, .003); h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.LineCurve3(q0, q1), 1, .0022, 4), knit(st.bordo))); } }
     // la cornice a zig-zag attorno al viso (clown), naso, guance
     const tri = (p0, p1, p2, mat) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([...p0.toArray(), ...p1.toArray(), ...p2.toArray()], 3)); g.computeVertexNormals(); h.add(new THREE.Mesh(g, mat)); };
-    if (st.zigzag) { const m0 = lm(st.zigzag); for (let k = 0; k < 20; k++) { const t0 = k / 20 * Math.PI * 2, t1 = (k + 1) / 20 * Math.PI * 2, tm = (t0 + t1) / 2, f = (t, s2) => { const X = .085 * s2 * Math.cos(t), Y = ey - .025 + .1 * s2 * Math.sin(t); return Math.abs(X) < .15 ? P(aOf(X, Y), Y, .005) : null; };
-      const a0 = f(t0, 1), a1 = f(t1, 1), tp = f(tm, 1.22); if (a0 && a1 && tp) tri(a0, a1, tp, m0); } }
-    if (st.naso) { const p = P(0, ey - .035, .016); h.add(Sp(.017, knit(st.naso), p.x, p.y, p.z)); }
+    // la cornice a punte attorno al viso (pagliaccio): piramidine lavorate a maglia che escono dal bordo
+    if (st.zigzag) for (let k = 0; k < 22; k++) { const t = k / 22 * Math.PI * 2, X = .088 * sc * Math.cos(t), Y = ey - .025 + .104 * sc * Math.sin(t); if (Math.abs(X) > .15) continue; const a = aOf(X, Y), p = P(a, Y, .003), n = N(a, Y), out = V(Math.cos(t), Math.sin(t), 0).projectOnPlane(n).normalize(), d = out.clone().multiplyScalar(.7).addScaledVector(n, .5).normalize();
+      const pyr = new THREE.Mesh(new THREE.ConeGeometry(.012, .026, 4), knit(st.zigzag)); pyr.position.copy(p).addScaledVector(d, .011); pyr.quaternion.setFromUnitVectors(V(0, 1, 0), d); h.add(pyr); const kn = Sp(.006, knit(st.zigzag), p.x, p.y, p.z); h.add(kn); }
+    if (st.naso) { const p = P(0, ey - .036, .004), n = N(0, ey - .036), cn = new THREE.Mesh(new THREE.ConeGeometry(.016, .036, 8), knit(st.naso)); cn.position.copy(p).addScaledVector(n, .015); cn.quaternion.setFromUnitVectors(V(0, 1, 0), n.clone().add(V(0, -.3, 0)).normalize()); h.add(cn); }   // il naso a punta, lavorato
     if (st.guance || st.guancia) for (const s of st.guance ? [-1, 1] : [-1]) { const y = ey - .045, a = aOf(s * .058, y), p = P(a, y, .0035), d = Cy(st.guance ? .013 : .019, st.guance ? .013 : .019, .003, knit(st.guance || st.guancia), p.x, p.y, p.z, 12); d.quaternion.setFromUnitVectors(V(0, 1, 0), N(a, y)); h.add(d); }
     // la rete sul viso aperto
     if (st.rete) { const L = []; for (let k = -4; k <= 4; k++) { for (let q = 0; q < 10; q++) { const ya = faceY + (q / 10 - .5) * .17 * sc, yb = faceY + ((q + 1) / 10 - .5) * .17 * sc, X = k * .016 * sc; if (inHole(aOf(X, ya), ya) && inHole(aOf(X, yb), yb)) L.push(P(aOf(X, ya), ya, .004), P(aOf(X, yb), yb, .004)); }
@@ -319,7 +322,7 @@ var Vesti3D = (function () {
     const corno = (pts, r0, bands, tipCol) => { const cu = new THREE.CatmullRomCurve3(pts), nb = bands.length;
       for (let b = 0; b < nb; b++) { const t0 = b / nb, t1 = (b + 1) / nb, n = 6, ring = 12, Pp = [], I = [], UV = [];
         for (let i = 0; i <= n; i++) { const t = t0 + (t1 - t0) * i / n, c0 = cu.getPointAt(t), tg = cu.getTangentAt(t), up = Math.abs(tg.y) > .9 ? V(1, 0, 0) : V(0, 1, 0), nn = V().crossVectors(tg, up).normalize(), bb = V().crossVectors(nn, tg).normalize(), r = r0 * Math.pow(1 - t, .8) + .003;
-          for (let k = 0; k <= ring; k++) { const q = k / ring * Math.PI * 2, p = c0.clone().addScaledVector(nn, Math.cos(q) * r).addScaledVector(bb, Math.sin(q) * r); Pp.push(p.x, p.y, p.z); UV.push(k / ring * Math.PI * 2 * r0 / .065, t * cu.getLength() / .06); } }
+          for (let k = 0; k <= ring; k++) { const q = k / ring * Math.PI * 2, p = c0.clone().addScaledVector(nn, Math.cos(q) * r).addScaledVector(bb, Math.sin(q) * r); Pp.push(p.x, p.y, p.z); UV.push(k / ring * Math.PI * 2 * r0 / .042, t * cu.getLength() / .04); } }
         for (let i = 0; i < n; i++) for (let k = 0; k < ring; k++) { const q = i * (ring + 1) + k, r2 = q + ring + 1; I.push(q, q + 1, r2, q + 1, r2 + 1, r2); }
         const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(Pp, 3)); g.setIndex(I); g.computeVertexNormals(); g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
         const cc = tipCol && b === nb - 1 ? tipCol : bands[b] || col; h.add(new THREE.Mesh(g, knit(cc))); }
@@ -337,7 +340,7 @@ var Vesti3D = (function () {
     // orecchie modellate: una foglia di maglia con lo spessore, incavata davanti, base stretta che entra nella testa, il dentro di un altro colore
     const orecchio = (len, wid, th, cup, bend, tri, cOut, cIn) => { const g0 = new THREE.Group(), nu = 10, nt = 12;
       const W = t => tri ? wid * (1 - t) * Math.min(1, t / .12 + .55) : wid * Math.pow(Math.sin(Math.PI * (.12 + .88 * t)), .6) * (.7 + .3 * t), Z = (u, t) => -bend * Math.pow(t * len, 2) * 3;
-      const surf = (side, uMax, t0, t1, lift) => { const Pp = [], UV = [], I = []; for (let j = 0; j <= nt; j++) { const t = t0 + (t1 - t0) * j / nt, w = W(t); for (let i = 0; i <= nu; i++) { const u = (i / nu * 2 - 1) * uMax, bul = Math.sqrt(Math.max(0, 1 - u * u)), z = side * th / 2 * bul * (1 - .5 * t) - cup * (1 - u * u) * Math.sin(Math.PI * t) + Z(u, t) + (lift || 0); Pp.push(u * w, t * len, z); UV.push(u * w / .065, t * len / .06); } }
+      const surf = (side, uMax, t0, t1, lift) => { const Pp = [], UV = [], I = []; for (let j = 0; j <= nt; j++) { const t = t0 + (t1 - t0) * j / nt, w = W(t); for (let i = 0; i <= nu; i++) { const u = (i / nu * 2 - 1) * uMax, bul = Math.sqrt(Math.max(0, 1 - u * u)), z = side * th / 2 * bul * (1 - .5 * t) - cup * (1 - u * u) * Math.sin(Math.PI * t) + Z(u, t) + (lift || 0); Pp.push(u * w, t * len, z); UV.push(u * w / .042, t * len / .04); } }
         for (let j = 0; j < nt; j++) for (let i = 0; i < nu; i++) { const q = j * (nu + 1) + i, r2 = q + nu + 1; if (side > 0) I.push(q, q + 1, r2, q + 1, r2 + 1, r2); else I.push(q, r2, q + 1, q + 1, r2, r2 + 1); }
         const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(Pp, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.setIndex(I); g.computeVertexNormals(); return g; };
       g0.add(new THREE.Mesh(surf(1, 1, 0, 1), knit(cOut)), new THREE.Mesh(surf(-1, 1, 0, 1), knit(cOut)), new THREE.Mesh(surf(1, .62, .1, .86, .0018), knit(cIn))); return g0; };
@@ -355,10 +358,13 @@ var Vesti3D = (function () {
     // al collo: bordo, borchie, gorgiera a ruche, frange coi pompon
     if (st.collo) { const L = []; for (let k = 0; k < 24; k++) L.push(lift(P(k / 24 * Math.PI * 2, y0 + .008, .004))); tube(L, .008, knit(st.collo)); }
     if (st.borchie) for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2 + .3, p = lift(P(a, y0 + .025, .004)), n = V(Math.sin(a), -.15, Math.cos(a)).normalize(), cn = new THREE.Mesh(new THREE.ConeGeometry(.007, .055, 6), lm('#c8c8cc')); cn.position.copy(p).addScaledVector(n, .027); cn.quaternion.setFromUnitVectors(V(0, 1, 0), n); h.add(cn); }
-    if (st.gorgiera) st.gorgiera.forEach((gc, li) => { const na = 120, nr = 6, yc = y0 + .01 - li * .02, rin = rAt(y0) + .002 + li * .008, w = .045 + li * .025, Pp = [], I = [];
-      for (let j = 0; j <= nr; j++) for (let i = 0; i <= na; i++) { const a = i / na * Math.PI * 2, t = j / nr, f = a * (12 + li * 3), r = rin + w * t + .014 * t * t * Math.cos(f), yy = yc - .035 * t * t + .03 * t * t * Math.sin(f); const q = lift(V(Math.sin(a) * r, yy, Math.cos(a) * r + zSh(y0))); Pp.push(q.x, q.y, q.z); }   // le ruche: onde morbide che si aprono verso il bordo
+    // la gorgiera a ruche: una striscia arricciata a fisarmonica (pieghe fitte che si aprono in fuori) col bordo arrotolato all'uncinetto
+    if (st.gorgiera) st.gorgiera.forEach((gc, li) => { const na = 240, nr = 7, nf = 30 + li * 6, yc = y0 + .012 - li * .022, rin = rAt(y0) + .003 + li * .006, w = .04 + li * .022, Pp = [], I = [], uv = [], edge = [];
+      for (let j = 0; j <= nr; j++) for (let i = 0; i <= na; i++) { const a = i / na * Math.PI * 2, t = j / nr, f = Math.sin(a * nf + li), amp = Math.pow(t, 1.3), r = rin + w * t + .012 * amp * f, yy = yc - .03 * t * t + .016 * amp * Math.cos(a * nf + li) * .4 - .005 * amp * Math.abs(f);
+        const q = lift(V(Math.sin(a) * r, yy, Math.cos(a) * r + zSh(y0))); Pp.push(q.x, q.y, q.z); uv.push(i / na * Math.PI * 2 * rin / .03, t * w / .03); if (j === nr && i % 2 === 0) edge.push(q); }
       for (let j = 0; j < nr; j++) for (let i = 0; i < na; i++) { const q = j * (na + 1) + i, r2 = q + na + 1; I.push(q, r2, q + 1, q + 1, r2, r2 + 1); }
-      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(Pp, 3)); g.setIndex(I); g.computeVertexNormals(); const uv = []; for (let j = 0; j <= nr; j++) for (let i = 0; i <= na; i++) uv.push(i / na * Math.PI * 2 * rin / .065, j / nr * w / .06); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); h.add(new THREE.Mesh(g, knit(gc))); });
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(Pp, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(I); g.computeVertexNormals(); h.add(new THREE.Mesh(g, knit(gc)));
+      edge.pop(); tube(edge, .0045, knit(st.gorgieraBordo || sh(gc, .85))); });   // il bordo arrotolato
     if (st.frange) for (let k = 0; k < 22; k++) { const a = k / 22 * Math.PI * 2, p = P(a, y0 + .004, .006); if (floorAt(p.x, p.z) > p.y - .065) continue; h.add(Cy(.004, .004, .05, knit(st.frange), p.x, p.y - .025, p.z, 5), Sp(.012, knit(st.frange), p.x, p.y - .055, p.z)); }
     return h;
   }
