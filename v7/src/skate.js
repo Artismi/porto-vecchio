@@ -333,9 +333,10 @@ var Skate = (function () {
   function groundStep(st, k, c, dt, release, hold, gest) {
     const p = st.player;
     // sterzo: A/D a mano; con W la tavola va verso il puntatore
-    const rate = 2.9 / (1 + Math.abs(k.V) / 7);
-    if (c.turn) k.yaw += c.turn * rate * dt;
-    else if (c.push && c.aim !== undefined && !k.crouch) { const tr = k.V >= -.2 ? k.yaw : k.yaw + PI; k.yaw += clamp(angD(c.aim, tr) * 2.2, -rate, rate) * dt; }
+    // [giro] sterzo pronto anche in velocità; S + A/D: curva stretta di traverso, che frena; il puntatore guida anche per inerzia
+    const slide = c.brake && c.turn && Math.abs(k.V) > 1.5, rate = 4.2 / (1 + Math.abs(k.V) / 12) * (slide ? 1.8 : 1);
+    if (c.turn) { k.yaw += c.turn * rate * dt; if (slide) k.V -= Math.sign(k.V) * Math.min(Math.abs(k.V), 1.6 * dt); }
+    else if (c.aim !== undefined && !k.crouch && (c.push || Math.abs(k.V) > .8)) { const tr = k.V >= -.2 ? k.yaw : k.yaw + PI; k.yaw += clamp(angD(c.aim, tr) * 3, -rate, rate) * dt; }
     let [sF, sL] = slopes(p.x, p.y, k.yaw);
     if (Math.abs(sL) > .25 && Math.abs(k.V) > .5) k.yaw += clamp(-sL * .55, -.9, .9) * dt * Math.sign(k.V);   // sulla parete la tavola cade verso il basso
     // spinta a colpi
@@ -353,7 +354,12 @@ var Skate = (function () {
     const u = k.V / n1, nx = p.x + Math.cos(k.yaw) * u * dt, ny = p.y + Math.sin(k.yaw) * u * dt, Sn = surface(nx, ny), sol = solidAt(nx, ny, .18);
     const rise = STEP_UP + Math.abs(u * dt) * Math.max(0, sF, slopes(nx, ny, k.yaw)[0]) * 1.15;   // sulle rampe si sale col passo, contro i fianchi no
     const blocked = !free(nx, ny) || Sn - k.z > rise || (sol !== null && sol > k.z + STEP_UP * .6);
-    if (blocked) { if (Math.abs(k.V) > 3.6) return bail(st, 'Contro il muro!'); k.V = -k.V * .2; return; }
+    if (blocked) {
+      // [giro] di striscio contro un muro, un albero, uno spigolo: la tavola si mette a filo e scorre perdendo velocità; si cade solo prendendolo di fronte
+      const dx = nx - p.x, dy = ny - p.y, d2 = Math.hypot(dx, dy) || 1, go = (x, y) => free(x, y) && surface(x, y) - k.z <= rise && !((s => s !== null && s > k.z + STEP_UP * .6)(solidAt(x, y, .18)));
+      const ax = Math.abs(dx) / d2, ay = Math.abs(dy) / d2, cand = [[ax, dx, 0], [ay, 0, dy]].sort((a, b) => b[0] - a[0]).find(c => c[0] > .45 && go(p.x + c[1], p.y + c[2]));
+      if (cand) { const ny2 = Math.atan2(cand[2], cand[1]); k.yaw += angD(k.V >= 0 ? ny2 : ny2 + PI, k.yaw) * Math.min(1, dt * 10); k.V *= Math.min(.985, cand[0]); p.x += cand[1]; p.y += cand[2]; k.lastVS = 0; return; }
+      if (Math.abs(k.V) > 3.6) return bail(st, 'Contro il muro!'); k.V = -k.V * .2; return; }
     const vs = (Sn - k.z) / dt;
     if (k.z - Sn > STEP_UP) { const vt = Math.abs(k.lastSF || 0) > 1.6; takeoff(st, k, vt ? p.x : nx, vt ? p.y : ny, Math.cos(k.yaw) * u, Math.sin(k.yaw) * u, k.lastVS, vt); return; }   // giù da un gradino, o dalla cima di una rampa
     if (k.lastVS - vs > GRAV * dt * 1.6 && k.lastVS > .9) {   // il bordo di una rampa: si vola
