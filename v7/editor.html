@@ -29792,11 +29792,18 @@ var Render = (function () {
     window.__muri = cnt;
   }
   // [prato1] il prato vero nel materiale del terreno (vedi strumenti_inverno/prato1.py)
-  const PRATO9 = { k: { value: 1 } };
-  function prato9(mat) {
-    mat.customProgramCacheKey = () => 'suolo-prato9';
+  const PRATO9 = { k: { value: 1 }, l: { value: 1 } };   /* [finitura1] l: dettaglio dei pavimenti */
+  // [finitura1] che pavimento c'è in ogni casella del blocco: r piazza, g selciato, b marciapiede e banchina, a asfalto (filtrata: bordi morbidi)
+  function mat9Tex(tx0, ty0, n, m) {
+    const T = G.T, d = new Uint8Array(n * m * 4);
+    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const v = gT(tx0 + i, ty0 + j), o = ((m - 1 - j) * n + i) * 4;
+      d[o] = v === T.PIAZZA ? 255 : 0; d[o + 1] = v === T.COB || v === T.STAIRS ? 255 : 0; d[o + 2] = v === T.WALK || v === T.QUAY ? 255 : 0; d[o + 3] = v === T.VIA ? 255 : 0; }
+    const t = new THREE.DataTexture(d, n, m, THREE.RGBAFormat); t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true; return t;
+  }
+  function prato9(mat, mt) {
+    mat.customProgramCacheKey = () => 'suolo-prato9-finitura1';
     mat.onBeforeCompile = sh => {
-      sh.uniforms.uPrato9 = PRATO9.k;
+      sh.uniforms.uPrato9 = PRATO9.k; sh.uniforms.uLast9 = PRATO9.l; sh.uniforms.uMat9 = { value: mt };
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGw9;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGw9 = (modelMatrix * vec4(transformed, 1.)).xyz;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
@@ -29817,7 +29824,40 @@ var Render = (function () {
           c = mix(c, c * vec3(.8, .94, 1.12), gap * aa * .6);                                    // le fughe, fredde
           float dry = smoothstep(.66, .84, dryN) * (1. - tuft);
           c = mix(c, vec3(dot(c, vec3(.3, .59, .11))) * vec3(1.32, 1.12, .66), dry * .4);       // chiazze secche
-          return c; }`)
+          return c; }
+        // [finitura1] i pavimenti da vicino. Le lastre ridisegnano esattamente il motivo dipinto (8 px per metro, periodo 32 m: lastre 1 × 0,625 m a correre,
+        // fila sfalsata di (fila·37 mod 8) px, fascia ogni 8 m), ma nitide a ogni distanza: giunti sottili, spigoli smussati, tono per lastra, grana, crepe.
+        uniform sampler2D uMat9; uniform float uLast9;
+        float gH9, gR9, gRk9;   // rilievo (in metri) e ruvidezza per le luci, scritti nella mappa, letti dopo
+        float ln9(float d, float w, float a){ return 1. - smoothstep(w - a * .5, w + a * .5, d); }   // una linea larga 2w, sfumata del pixel (si schiarisce da lontano, non sparisce a scatti)
+        vec3 lastre9(vec3 base, vec2 p, float mpp, out float H){
+          vec2 q = mod(p * 8., 256.), per = floor(p * 8. / 256.);
+          float row = floor(q.y / 5.), off = mod(row * 37., 8.), ex = q.x + off, col = floor(ex / 8.);
+          float dyy = q.y - row * 5. - .5, dxx = ex - col * 8. - .5;              // dal giunto (al centro del suo pixel dipinto)
+          float dy = min(abs(dyy), 5. - dyy) / 8., dx = min(abs(dxx), 8. - dxx) / 8., d = min(dx, dy);   // in metri
+          vec2 id = vec2(col, row) + per * vec2(41., 67.);
+          float h = ph9(id), h2 = ph9(id + 13.7), band = step(mod(q.y, 64.), 4.99);
+          float aa1 = 1. - smoothstep(.006, .03, mpp), aa2 = 1. - smoothstep(.002, .012, mpp);
+          // la pietra: tono per lastra (fascia più scura), venatura lenta, grana a due scale
+          float g = (pn9(p * 37. + id) - .5) * .09 * aa1 + (pn9(p * 113.) - .5) * .07 * aa2;
+          float vein = smoothstep(.62, .9, pn9(vec2(p.x * 2.1 + p.y * .7, p.y * 6.3) + id * 3.1)) * .05;
+          vec3 c = base * ((band > .5 ? .9 + h * .05 : .93 + h * .11) + g - vein);
+          c *= mix(vec3(1.), vec3(1.035, 1.0, .955), step(.8, h));               // qualche lastra calda
+          // la crepa: poche lastre, una linea che le attraversa
+          float cr = 0.; if (h2 < .07) { vec2 lp = vec2(dxx - 4., dyy - 2.5) / 8.; float a = h2 * 90.; vec2 nr = vec2(cos(a), sin(a)); cr = ln9(abs(dot(lp, nr) + (pn9(p * 30.) - .5) * .02), .0018, mpp) * aa1; }
+          // giunto e spigolo smussato: sul giunto il fondo (malta scura, con un filo di verde), lo spigolo scende in 2 cm
+          float jl = ln9(d, .0055, mpp), bev = smoothstep(.004, .024, d);
+          vec3 grout = base * vec3(.42, .43, .4) + vec3(.004, .01, 0.) * step(.75, ph9(floor(p * 9.)));
+          c = mix(c, grout, clamp(jl * .9 + cr * .6, 0., 1.));
+          c *= 1. + (1. - bev) * (1. - jl) * .05 * aa1;                           // lo spigolo consumato, un filo più chiaro
+          H = (bev - 1.) * .006 - cr * .002 + g * .004;
+          return c; }
+        vec3 grana9(vec3 c, vec2 p, float mpp, float k, out float H){   // selciato e asfalto: inerti e pori, a una scala sotto il pixel dipinto
+          float aa1 = 1. - smoothstep(.006, .03, mpp), aa2 = 1. - smoothstep(.002, .012, mpp);
+          vec2 cell = floor(p * 55.); float s = ph9(cell), s2 = ph9(cell + 7.1);
+          float spk = (step(.86, s) * .9 - step(s, .1) * .7) * aa2, g = (pn9(p * 21.) - .5) * aa1 + (pn9(p * 70.) - .5) * aa2 * .7;
+          H = (g * .0016 + spk * .0006) * k;
+          return c * (1. + (g * .1 + spk * .09) * k) * mix(vec3(1.), vec3(1.02, 1., .97), step(.93, s2) * aa2 * k); }`)
         .replace('#include <map_fragment>', `#include <map_fragment>
         #ifdef USE_MAP
         if (uPrato9 > .01) {   // [prato1] dove il suolo è verde
@@ -29825,7 +29865,26 @@ var Render = (function () {
           float gm9 = smoothstep(1.06, 1.3, sm9.g / max(max(sm9.r, sm9.b), .003)) * smoothstep(.008, .025, sm9.g) * uPrato9;
           if (gm9 > .001) diffuseColor.rgb = mix(diffuseColor.rgb, prato9(diffuse * sm9, vGw9.xz), gm9);
         }
-        #endif`);
+        gH9 = 0.; gR9 = 1.; gRk9 = 0.;
+        if (uLast9 > .01) {   // [finitura1] i pavimenti
+          vec4 mt9 = texture2D(uMat9, vUv); vec2 fw9 = fwidth(vGw9.xz); float mpp9 = max(fw9.x, fw9.y), near9 = 1. - smoothstep(.04, .1, mpp9);
+          float pz9 = smoothstep(.3, .62, mt9.r) * uLast9;
+          if (pz9 * near9 > .001) {   // la piazza: sotto, la mappa sfocata (luce, sporco, neve); sopra, le lastre nitide
+            vec3 bl9 = texture2D(map, vUv, 2.).rgb; float H9;
+            vec3 lc9 = lastre9(diffuse * bl9, vGw9.xz, mpp9, H9);
+            float k9 = pz9 * near9; diffuseColor.rgb = mix(diffuseColor.rgb, lc9, k9); gH9 += H9 * k9; gR9 = .8; gRk9 = k9; }
+          float gk9 = clamp(mt9.g + mt9.a * .8 + mt9.b * .6, 0., 1.) * (1. - pz9) * uLast9;
+          if (gk9 > .001) { float Hg9; diffuseColor.rgb = grana9(diffuseColor.rgb, vGw9.xz, mpp9, gk9, Hg9); gH9 += Hg9; }
+        }
+        #endif`)
+        .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        roughnessFactor = mix(roughnessFactor, roughnessFactor * gR9, gRk9);   // [finitura1] la pietra un filo più liscia dei giunti`)
+        .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        {   // [finitura1] il rilievo dei pavimenti nella luce (giunti, spigoli, grana): come il bumpMap di three, dal rilievo in metri
+          vec2 dH9 = vec2(dFdx(gH9), dFdy(gH9)); vec3 sx9 = dFdx(-vViewPosition), sy9 = dFdy(-vViewPosition), vN9 = normal;
+          vec3 R19 = cross(sy9, vN9), R29 = cross(vN9, sx9); float det9 = dot(sx9, R19) * faceDirection;
+          if (abs(det9) > 1e-12) normal = normalize(abs(det9) * vN9 - sign(det9) * (dH9.x * R19 + dH9.y * R29));
+        }`);
     };
     return mat;
   }
@@ -29858,7 +29917,7 @@ var Render = (function () {
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
     const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
-    const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
+    const mt9 = mat9Tex(tx0, ty0, n, m), mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }), mt9);   /* [prato1] [finitura1] */
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
@@ -29866,10 +29925,10 @@ var Render = (function () {
     const vd = verde38(tx0, ty0, n, m); vd.visible = false; grp.add(vd);   // [verde]
     scene.add(grp);
     if (window.Officina) Officina.onChunk(grp, groundH);   // [studio] alberi e cespugli ritoccati
-    return { grp, geo, mat, tex, btex, veg, nat, lt, vd, rev: ISO.rev };
+    return { grp, geo, mat, tex, btex, mt9, veg, nat, lt, vd, rev: ISO.rev };
   }
   function dropChunk(ch) {
-    scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose();
+    scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose(); if (ch.mt9) ch.mt9.dispose();
     ch.veg.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });
     if (ch.vd) ch.vd.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });   // [verde]
     if (ch.nat) ch.nat.children.forEach(im => { im.geometry.dispose(); if (im.dispose) im.dispose(); });
@@ -35913,7 +35972,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.25, ink: 0, rim: .6, cav: .85, clar: .32, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85, prato: 1 /* [prato1] */, ao: 1 /* [aloni1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.25, ink: 0, rim: .6, cav: .85, clar: .32, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85, prato: 1 /* [prato1] */, ao: 1 /* [aloni1] */, last: 1 /* [finitura1] dettaglio dei pavimenti */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -39582,7 +39641,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     {   // [amb2] la macchina da presa
       const A = AMB, dk = 1 - night; U.tBloom.value = APS.rts[3] ? APS.rts[3].texture : null; U.tBloom2.value = APS.rts[5] ? APS.rts[5].texture : null; U.tBlur.value = APS.rts[7] ? APS.rts[7].texture : null;
       A.thr = A.thrDay + (A.thrNight - A.thrDay) * night; U.aK.value.set(A.expo * (.84 + night * .5) /* [unione7] */, A.bloom * (.22 + night * .78), A.dof * (pveh ? .45 : 1) * (p.indoor ? 0 : 1) * (1 - A.pal * .55), A.grain); U.aK2.value.set(A.ca, A.sharp, A.outline, A.vig); U.aTime.value = time; U.pK.value.set(A.pal, A.sat, A.ink, A.rim); U.pC.value.set(A.cav, A.clar);   /* [amb3] */
-      PRATO9.k.value = A.prato === undefined ? 1 : A.prato;   /* [prato1] */
+      PRATO9.k.value = A.prato === undefined ? 1 : A.prato;   /* [prato1] */ PRATO9.l.value = A.last === undefined ? 1 : A.last;   /* [finitura1] */
       { U.lK.value.set(A.luc, A.spec * (indoorNow || p.indoor ? .5 : 1), A.coat, A.trans); U.lOl.value = A.ol; U.aoK.value = A.ao === undefined ? 1 : A.ao;   /* [lucido1] il sole per la lacca */
         U.lSun.value.subVectors(moon.position, moon.target.position).normalize(); const sk = (.55 * dk + .12 * night) * Math.min(1.4, moon.intensity);
         U.lSunC.value.set(moon.color.r * sk, moon.color.g * sk, moon.color.b * sk); }
