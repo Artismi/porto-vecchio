@@ -116,7 +116,7 @@
   function zoomBy(f) { ui.zoom = Math.max(.12, Math.min(4.2, (ui.zoom || 1) * f)); }  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
 
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
-  addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; });
+  addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
   const stick = { x: 0, y: 0 };
   let lastAim = null, touchFire = false, touchRun = false;
   function aimAngle() {

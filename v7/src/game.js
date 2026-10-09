@@ -1459,7 +1459,6 @@ var Game = (function () {
       if (p.jz <= 0) { p.landV = -p.jvz; p.jz = 0; p.jvz = 0; p.landT = st.clock; st.sfx.push({ k: 'land', x: p.x, y: p.y }); }
     }
     if (v) { v.jz = p.jz || 0; v.jvz = p.jvz || 0; }
-    else st.vehicles.forEach(k => { if (k.jz && k.rider !== 'player') k.jz = 0; });
   }
   // [bmx] i trick con le frecce (la bici si guida col punta e clicca): giù tenuta = impennata, destra/sinistra tenuta = un piede
   // sulla pedalina di quel lato, il corpo fuori. v.wheelie (0-1) e v.peg (-1 destra … +1 sinistra) salgono e scendono morbidi.
@@ -1789,6 +1788,7 @@ var Game = (function () {
   }
   function runOver(st, v, by) {
     const K = VK[v.kind];
+    if (K.pocket) return bikeBump(st, v);   // [bmx] una bici non è un'auto
     for (const n of st.npcs) {
       if (n.inside || n.dead || n.jailedUntil > st.t) continue;
       const d = dist(n.x, n.y, v.x, v.y);
@@ -1810,6 +1810,24 @@ var Game = (function () {
     if (by !== 'player' && !st.player.vehicle) {
       const p = st.player, d = dist(p.x, p.y, v.x, v.y);
       if (insideVehicle(v, p.x, p.y, .3) && Math.abs(v.speed) > 5.5 && st.clock - (p.carHitT || -99) > 2) { p.carHitT = st.clock; launch(st, p, v); damagePlayer(st, 15 + Math.abs(v.speed) * 3, v.ang, 'auto'); p.stun = 1.2; scaleVel(v, .6); }
+    }
+  }
+  // [bmx] in BMX contro un pedone: niente volo né morti. Lui va giù stordito (pochi danni) e se lo ricorda; tu cadi e la bici
+  // torna in tasca. Ma se sei in aria (bunny hop, più di 45 cm) gli passi sopra: il salto serve a scavalcare la gente.
+  function bikeBump(st, v) {
+    const p = st.player; if (p.jz > .45) return;
+    const vsp = v.vx !== undefined ? Math.hypot(v.vx, v.vy) : Math.abs(v.speed);
+    for (const n of st.npcs) {
+      if (n.inside || n.dead || n.jailedUntil > st.t || !insideVehicle(v, n.x, n.y, .2)) continue;
+      if (vsp < 3.5) { pushOutOfVehicles(st, n, .35); continue; }
+      if (st.clock - (n.lastHitByCar || -99) < 2) continue;
+      n.lastHitByCar = st.clock; st.sfx.push({ k: 'thud' });
+      if (vsp < 6) { n.stun = .7; scaleVel(v, .45); pushOutOfVehicles(st, n, .35); feed(st, `Urti ${n.first} di striscio: barcolla e ti manda a quel paese.`, 'bad'); return; }   // pedalata leggera: resti in sella
+      n.stun = 1.4;
+      const ev = emit(st, 'investimento', { target: n.id }); addLog(st, `${clockStr(st.t)} · Sei finito in BMX addosso a ${n.name}.`, 'bad', ev.id);
+      damage(st, n, 3 + vsp * .8, 'player', Math.atan2(n.y - v.y, n.x - v.x), 'pugni');
+      if (p.vehicle === v.id) { exitVehicle(st); p.stun = .7; feed(st, `Prendi in pieno ${n.first} e finite tutti e due per terra. La BMX è di nuovo in tasca.`, 'bad'); }
+      return;
     }
   }
   // traffico: corsie della Via al Mare, si ferma davanti agli ostacoli
