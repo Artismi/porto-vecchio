@@ -196,13 +196,15 @@ var Game = (function () {
     gozzo: { r: 1.1, len: 5, wid: 1.75, max: 6.5, accel: 2, turn: 1.15, hp: 90, label: 'Gozzo', boat: true, art: 'il', m0: true },
     lancia: { r: 1.25, len: 6, wid: 2.1, max: 9, accel: 2.8, turn: 1.05, hp: 110, label: 'Lancia a motore', boat: true, art: 'la' },
     motoscafo: { r: 1.4, len: 7, wid: 2.4, max: 17, accel: 5, turn: 1.1, hp: 120, label: 'Motoscafo', boat: true, art: 'il', m0: true },
+    // [bmx] la bici tascabile: si tira fuori con P quando vuoi e quando scendi torna in tasca. Niente motore, niente fari, non brucia.
+    bmx: { r: .5, len: 1.7, wid: .6, max: 9, accel: 6, turn: 3.8, hp: 45, label: 'BMX', two: true, pocket: true },
   };
   // fisica: massa (kg) e aderenza laterale (m/s²). Vespa e Ape scivolano meno, le berline derapano.
   Object.assign(VK.vespa, { m: 150, grip: 24 }); Object.assign(VK.cinquecento, { m: 560, grip: 19 }); Object.assign(VK.ritmo, { m: 860, grip: 20 });
   Object.assign(VK.giulia, { m: 1050, grip: 21 }); Object.assign(VK.ape, { m: 420, grip: 15 }); Object.assign(VK.polizia, { m: 1150, grip: 22 });
   Object.assign(VK.furgone, { m: 1900, grip: 18 }); Object.assign(VK.fuoristrada, { m: 1600, grip: 24 }); Object.assign(VK.camion, { m: 3600, grip: 17 }); Object.assign(VK.campagnola, { m: 1500, grip: 23 }); Object.assign(VK.blindato, { m: 6200, grip: 21 });
   Object.assign(VK.gozzo, { m: 700, grip: 2.6 }); Object.assign(VK.lancia, { m: 950, grip: 2.8 }); Object.assign(VK.motoscafo, { m: 1200, grip: 3.4 });
-  Object.assign(VK.rx7, { m: 1250, grip: 22 }); Object.assign(VK.gtr, { m: 1400, grip: 23 }); Object.assign(VK.bursley, { m: 1600, grip: 19 });
+  Object.assign(VK.bmx, { m: 95, grip: 23 }); Object.assign(VK.rx7, { m: 1250, grip: 22 }); Object.assign(VK.gtr, { m: 1400, grip: 23 }); Object.assign(VK.bursley, { m: 1600, grip: 19 });
   for (const k in VK) VK[k].I = (VK[k].len * VK[k].len + VK[k].wid * VK[k].wid) / 12; // inerzia / massa
   const PICKUP_LABEL = { pistola: 'Beretta 92', lupara: 'Lupara', mitra: 'Skorpion', molotov: 'Molotov', munizioni: 'Munizioni', salute: 'Cassetta del pronto soccorso', soldi: 'Soldi', valigetta: 'Valigetta dei Marsigliesi' };
 
@@ -531,11 +533,11 @@ var Game = (function () {
     if (n && n.shop && PLACES[n.shop] && dist(n.x, n.y, PLACES[n.shop].x, PLACES[n.shop].y) < 5) return n;
     return null;
   }
-  function vehicleName(st, v) { if (VK[v.kind].art) return `${VK[v.kind].art} ${VK[v.kind].label.toLowerCase()}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; if (v.kind === 'vespa') return `la Vespa${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; return `la ${VK[v.kind].label}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; }
+  function vehicleName(st, v) { if (v.kind === 'bmx') return 'la BMX'; if (VK[v.kind].art) return `${VK[v.kind].art} ${VK[v.kind].label.toLowerCase()}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; if (v.kind === 'vespa') return `la Vespa${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; return `la ${VK[v.kind].label}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; }
   function context(st) {
     const p = st.player, out = [];
     if (st.over) return out;
-    if (p.vehicle) { const v = st.vehicles.find(k => k.id === p.vehicle); out.push({ key: 'F', label: v.kind === 'vespa' ? 'Scendi dalla Vespa' : VK[v.kind].boat ? 'Scendi dalla barca' : 'Scendi dall\'auto' }); return out; }
+    if (p.vehicle) { const v = st.vehicles.find(k => k.id === p.vehicle); out.push({ key: 'F', label: v.kind === 'bmx' ? 'Scendi dalla BMX (torna in tasca)' : v.kind === 'vespa' ? 'Scendi dalla Vespa' : VK[v.kind].boat ? 'Scendi dalla barca' : 'Scendi dall\'auto' }); return out; }
     const n = nearestNpc(st, 2.2), v = nearestVehicle(st, 1.8), sk = shopkeeperHere(st);
     if (n) out.push({ key: 'T', label: `Parla con ${n.first}` });
     if (sk) out.push({ key: 'E', label: `Rapina ${PLACES[sk.shop].name}`, bad: true });
@@ -546,7 +548,7 @@ var Game = (function () {
 
   function exitVehicle(st) {
     const p = st.player, v = st.vehicles.find(k => k.id === p.vehicle); if (!v) { p.vehicle = null; return; }
-    if (Math.abs(v.speed) > 7) { p.stun = .7; damagePlayer(st, 12, v.ang + Math.PI, 'caduta'); }
+    if (Math.abs(v.speed) > 7 && !VK[v.kind].pocket) { p.stun = .7; damagePlayer(st, 12, v.ang + Math.PI, 'caduta'); }
     v.rider = null; p.vehicle = null;
     const r = VK[v.kind].r + .6;
     if (VK[v.kind].boat) {   // [costa] dalla barca si scende sul pontile o sulla riva più vicina; se non c'è, si finisce in acqua
@@ -556,6 +558,22 @@ var Game = (function () {
     } else
     for (const off of [Math.PI / 2, -Math.PI / 2, Math.PI, 0]) { const x = v.x + Math.cos(v.ang + off) * r, y = v.y + Math.sin(v.ang + off) * r; if (walkM(x, y)) { p.x = x; p.y = y; break; } }
     scaleVel(v, .3);
+    if (VK[v.kind].pocket) st.vehicles = st.vehicles.filter(k => k !== v);   // [bmx] la pieghi e la rimetti in tasca
+  }
+  // [bmx] P: tira fuori la BMX dalla tasca e ci salti sopra; se ci sei già, scendi e la rimetti in tasca
+  function bmx(st) {
+    const p = st.player;
+    if (st.over || p.stun > 0) return { ok: false };
+    if (p.vehicle) { const v = st.vehicles.find(k => k.id === p.vehicle); if (v && v.kind === 'bmx') { exitVehicle(st); return { ok: true, msg: 'Pieghi la BMX e te la rimetti in tasca.' }; } return { ok: false, msg: 'Prima scendi da qui.' }; }
+    if (p.indoor) return { ok: false, msg: 'Al chiuso la BMX resta in tasca.' };
+    if (p.lv) return { ok: false, msg: 'Qui non c\'è spazio per pedalare.' };
+    if (p.swim) return { ok: false, msg: 'In acqua? La BMX resta in tasca.' };
+    if (p.carrying) return { ok: false, msg: 'Hai le mani occupate.' };
+    if (!walkM(p.x, p.y)) return { ok: false, msg: 'Qui non ci stai, con la BMX.' };
+    st.vehicles = st.vehicles.filter(k => k.kind !== 'bmx');
+    const v = makeVehicle(st, { id: 'bmx', kind: 'bmx', x: p.x, y: p.y, ang: p.face, color: '#35e6ff', mine: true, rider: 'player' });
+    st.vehicles.push(v); p.vehicle = v.id; p.path = [];
+    return { ok: true, msg: 'Tiri fuori la BMX dalla tasca e ci salti sopra.' };
   }
   function act(st, type) {
     const p = st.player, rng = st.rng;
@@ -778,6 +796,7 @@ var Game = (function () {
     dmg *= 1 - Math.min(.8, ((v.armor || 0) + (VK[v.kind].armor0 || 0) * (v.armor === undefined ? 1 : 0)) * .22); // le lamiere saldate reggono i colpi
     v.hp -= dmg; if (by) v.lastHitBy = by;
     if (v.traffic) { v.panicT = st.clock; }
+    if (VK[v.kind].pocket) { if (v.hp <= 0) { v.hp = VK[v.kind].hp; if (v.rider === 'player') { exitVehicle(st); st.player.stun = .6; feed(st, 'Voli giù dalla BMX. Per fortuna si raddrizza: è di nuovo in tasca.', 'bad'); } } return; }   // [bmx] non brucia: ti butta giù e torna in tasca
     if (v.hp <= 0 && !v.burning) { v.burning = 3.2; v.hp = 0; st.sfx.push({ k: 'ignite', x: v.x, y: v.y }); }
   }
   function explode(st, v) {
@@ -998,6 +1017,7 @@ var Game = (function () {
       const v = st.vehicles.find(k => k.id === p.vehicle);
       if (v.owner === 'sandro') { feed(st, 'Sandro: «Questa è la MIA macchina, idiota.»', 'bad'); return; }
       if (v.lent) { feed(st, 'Sandro: «Quella Vespa la conoscono tutti. Portami altro.»', 'bad'); return; }
+      if (VK[v.kind].pocket) { feed(st, 'Sandro: «Una bicicletta? Mi prendi in giro? Portami una macchina.»', 'bad'); return; }   // [bmx]
       const pay = v.kind === 'vespa' ? 100 : v.kind === 'polizia' ? 250 : 160;
       v.rider = null; v.hidden = true; p.vehicle = null; p.x = tg.x; p.y = tg.y;
       p.money += pay; feed(st, `+${pay}.000 lire. Sandro fa sparire ${v.kind === 'vespa' ? 'la Vespa' : 'la macchina'}.`, 'money'); st.sfx.push({ k: 'cash' });
@@ -2275,7 +2295,7 @@ var Game = (function () {
 
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
-    tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
+    tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, bmx, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]

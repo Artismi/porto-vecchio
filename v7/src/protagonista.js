@@ -237,7 +237,7 @@ var Protagonista = (function () {
     const UPG = [['motore', 'Motore', [40, 90, 160], 'più spinta e velocità di punta'], ['assetto', 'Assetto e gomme', [30, 70, 130], 'più tenuta e sterzo più pronto'], ['nitro', 'Nitro', [80, 170], 'Shift spinge di più'], ['corazza', 'Corazza saldata', [50, 110, 200], 'regge meglio urti e colpi']];
     if (!M.warp && atPlace(st, 'officina', P.vehicle ? 18 : 7)) {
       const v = P.vehicle ? st.vehicles.find(q => q.id === P.vehicle) : st.vehicles.find(q => q.mine && !q.wreck && !q.hidden && dist(q.x, q.y, P.x, P.y) < 9);
-      if (v && v.kind !== 'vespa') {
+      if (v && v.kind !== 'vespa' && v.kind !== 'bmx') {   // [bmx] la bici non si trucca
         v.up = v.up || {};
         const payUp = c => { if (P.money < c) return false; P.money -= c; M.stats.speso += c; return true; };
         UPG.forEach(([k, label, costs, desc]) => {

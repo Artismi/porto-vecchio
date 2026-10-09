@@ -1,0 +1,26 @@
+// [bmx] la BMX tascabile: node test_bmx.js
+global.World = require('./world.js'); global.Interior = require('./interiors.js');
+const G = require('./game.js');
+const st = G.create(7), p = st.player;
+let ok = true; const check = (c, msg) => { console.log((c ? 'ok   ' : 'NO   ') + msg); if (!c) ok = false; };
+const n0 = st.vehicles.length;
+let r = G.bmx(st); const v = st.vehicles.find(k => k.kind === 'bmx');
+check(r.ok && v && p.vehicle === v.id, `P la tira fuori e ci sali: ${r.msg}`);
+check(st.vehicles.length === n0 + 1, 'nel mondo c\'è una sola BMX in più');
+const x0 = p.x, y0 = p.y;
+for (let i = 0; i < 90; i++) G.step(st, 1 / 30, { x: 0, y: 0, drive: { thr: 1 } });
+const d = Math.hypot(p.x - x0, p.y - y0), sp = Math.abs(v.speed);
+check(d > 1, `pedala: ${d.toFixed(1)} m in 3 s, ${sp.toFixed(1)} m/s`);
+check(sp <= G.VK.bmx.max * 1.2 + .1, 'più lenta della Vespa: velocità entro il massimo della bici');
+check(G.context(st).some(c => /BMX/.test(c.label)), 'il suggerimento dice «Scendi dalla BMX»');
+r = G.bmx(st);
+check(r.ok && !p.vehicle && !st.vehicles.some(k => k.kind === 'bmx'), `P di nuovo: scendi e torna in tasca (${r.msg})`);
+check(p.hp === undefined || p.hp > 0, 'scendere in corsa non fa male');
+G.bmx(st); r = G.act(st, 'veicolo');
+check(!p.vehicle && !st.vehicles.some(k => k.kind === 'bmx'), 'anche con F scendi e la BMX torna in tasca');
+G.bmx(st); const b = st.vehicles.find(k => k.kind === 'bmx'); G.damageVehicle(st, b, 999, 'npc');
+check(!p.vehicle && !st.vehicles.some(k => k.kind === 'bmx') && !st.fires.length, 'colpita forte: ti butta giù, non brucia, torna in tasca');
+p.stun = 0; p.swim = true; r = G.bmx(st); check(!r.ok, `a nuoto resta in tasca: ${r.msg}`); p.swim = false;
+p.indoor = { b: 0, f: 0 }; r = G.bmx(st); check(!r.ok, `al chiuso resta in tasca: ${r.msg}`); p.indoor = null;
+r = G.bmx(st); check(r.ok, 'si può tirare fuori di nuovo, tutte le volte che vuoi');
+console.log(ok ? '\nTUTTO OK' : '\nQUALCOSA NON VA'); process.exit(ok ? 0 : 1);

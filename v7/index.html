@@ -270,6 +270,7 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
       <button data-k="t">Parla</button><button data-k="e" class="bad">Ruba</button><button data-k="fire" class="bad">Spara</button>
       <button data-k="f">Mezzo</button><button data-k="q">Arma</button><button data-k="shift">Corri</button>
       <button data-k="tab">Tacc.</button><button data-k="r">Ricar.</button><button data-k="space">Freno</button>
+      <button data-k="p">BMX</button>
     </div>
   </div>
   <div class="layer"><div id="ring" hidden></div><div id="hover" hidden></div></div>
@@ -11063,13 +11064,15 @@ var Game = (function () {
     gozzo: { r: 1.1, len: 5, wid: 1.75, max: 6.5, accel: 2, turn: 1.15, hp: 90, label: 'Gozzo', boat: true, art: 'il', m0: true },
     lancia: { r: 1.25, len: 6, wid: 2.1, max: 9, accel: 2.8, turn: 1.05, hp: 110, label: 'Lancia a motore', boat: true, art: 'la' },
     motoscafo: { r: 1.4, len: 7, wid: 2.4, max: 17, accel: 5, turn: 1.1, hp: 120, label: 'Motoscafo', boat: true, art: 'il', m0: true },
+    // [bmx] la bici tascabile: si tira fuori con P quando vuoi e quando scendi torna in tasca. Niente motore, niente fari, non brucia.
+    bmx: { r: .5, len: 1.7, wid: .6, max: 9, accel: 6, turn: 3.8, hp: 45, label: 'BMX', two: true, pocket: true },
   };
   // fisica: massa (kg) e aderenza laterale (m/s²). Vespa e Ape scivolano meno, le berline derapano.
   Object.assign(VK.vespa, { m: 150, grip: 24 }); Object.assign(VK.cinquecento, { m: 560, grip: 19 }); Object.assign(VK.ritmo, { m: 860, grip: 20 });
   Object.assign(VK.giulia, { m: 1050, grip: 21 }); Object.assign(VK.ape, { m: 420, grip: 15 }); Object.assign(VK.polizia, { m: 1150, grip: 22 });
   Object.assign(VK.furgone, { m: 1900, grip: 18 }); Object.assign(VK.fuoristrada, { m: 1600, grip: 24 }); Object.assign(VK.camion, { m: 3600, grip: 17 }); Object.assign(VK.campagnola, { m: 1500, grip: 23 }); Object.assign(VK.blindato, { m: 6200, grip: 21 });
   Object.assign(VK.gozzo, { m: 700, grip: 2.6 }); Object.assign(VK.lancia, { m: 950, grip: 2.8 }); Object.assign(VK.motoscafo, { m: 1200, grip: 3.4 });
-  Object.assign(VK.rx7, { m: 1250, grip: 22 }); Object.assign(VK.gtr, { m: 1400, grip: 23 }); Object.assign(VK.bursley, { m: 1600, grip: 19 });
+  Object.assign(VK.bmx, { m: 95, grip: 23 }); Object.assign(VK.rx7, { m: 1250, grip: 22 }); Object.assign(VK.gtr, { m: 1400, grip: 23 }); Object.assign(VK.bursley, { m: 1600, grip: 19 });
   for (const k in VK) VK[k].I = (VK[k].len * VK[k].len + VK[k].wid * VK[k].wid) / 12; // inerzia / massa
   const PICKUP_LABEL = { pistola: 'Beretta 92', lupara: 'Lupara', mitra: 'Skorpion', molotov: 'Molotov', munizioni: 'Munizioni', salute: 'Cassetta del pronto soccorso', soldi: 'Soldi', valigetta: 'Valigetta dei Marsigliesi' };
 
@@ -11398,11 +11401,11 @@ var Game = (function () {
     if (n && n.shop && PLACES[n.shop] && dist(n.x, n.y, PLACES[n.shop].x, PLACES[n.shop].y) < 5) return n;
     return null;
   }
-  function vehicleName(st, v) { if (VK[v.kind].art) return `${VK[v.kind].art} ${VK[v.kind].label.toLowerCase()}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; if (v.kind === 'vespa') return `la Vespa${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; return `la ${VK[v.kind].label}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; }
+  function vehicleName(st, v) { if (v.kind === 'bmx') return 'la BMX'; if (VK[v.kind].art) return `${VK[v.kind].art} ${VK[v.kind].label.toLowerCase()}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; if (v.kind === 'vespa') return `la Vespa${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; return `la ${VK[v.kind].label}${v.owner ? ' di ' + nameOf(st, v.owner) : ''}`; }
   function context(st) {
     const p = st.player, out = [];
     if (st.over) return out;
-    if (p.vehicle) { const v = st.vehicles.find(k => k.id === p.vehicle); out.push({ key: 'F', label: v.kind === 'vespa' ? 'Scendi dalla Vespa' : VK[v.kind].boat ? 'Scendi dalla barca' : 'Scendi dall\'auto' }); return out; }
+    if (p.vehicle) { const v = st.vehicles.find(k => k.id === p.vehicle); out.push({ key: 'F', label: v.kind === 'bmx' ? 'Scendi dalla BMX (torna in tasca)' : v.kind === 'vespa' ? 'Scendi dalla Vespa' : VK[v.kind].boat ? 'Scendi dalla barca' : 'Scendi dall\'auto' }); return out; }
     const n = nearestNpc(st, 2.2), v = nearestVehicle(st, 1.8), sk = shopkeeperHere(st);
     if (n) out.push({ key: 'T', label: `Parla con ${n.first}` });
     if (sk) out.push({ key: 'E', label: `Rapina ${PLACES[sk.shop].name}`, bad: true });
@@ -11413,7 +11416,7 @@ var Game = (function () {
 
   function exitVehicle(st) {
     const p = st.player, v = st.vehicles.find(k => k.id === p.vehicle); if (!v) { p.vehicle = null; return; }
-    if (Math.abs(v.speed) > 7) { p.stun = .7; damagePlayer(st, 12, v.ang + Math.PI, 'caduta'); }
+    if (Math.abs(v.speed) > 7 && !VK[v.kind].pocket) { p.stun = .7; damagePlayer(st, 12, v.ang + Math.PI, 'caduta'); }
     v.rider = null; p.vehicle = null;
     const r = VK[v.kind].r + .6;
     if (VK[v.kind].boat) {   // [costa] dalla barca si scende sul pontile o sulla riva più vicina; se non c'è, si finisce in acqua
@@ -11423,6 +11426,22 @@ var Game = (function () {
     } else
     for (const off of [Math.PI / 2, -Math.PI / 2, Math.PI, 0]) { const x = v.x + Math.cos(v.ang + off) * r, y = v.y + Math.sin(v.ang + off) * r; if (walkM(x, y)) { p.x = x; p.y = y; break; } }
     scaleVel(v, .3);
+    if (VK[v.kind].pocket) st.vehicles = st.vehicles.filter(k => k !== v);   // [bmx] la pieghi e la rimetti in tasca
+  }
+  // [bmx] P: tira fuori la BMX dalla tasca e ci salti sopra; se ci sei già, scendi e la rimetti in tasca
+  function bmx(st) {
+    const p = st.player;
+    if (st.over || p.stun > 0) return { ok: false };
+    if (p.vehicle) { const v = st.vehicles.find(k => k.id === p.vehicle); if (v && v.kind === 'bmx') { exitVehicle(st); return { ok: true, msg: 'Pieghi la BMX e te la rimetti in tasca.' }; } return { ok: false, msg: 'Prima scendi da qui.' }; }
+    if (p.indoor) return { ok: false, msg: 'Al chiuso la BMX resta in tasca.' };
+    if (p.lv) return { ok: false, msg: 'Qui non c\'è spazio per pedalare.' };
+    if (p.swim) return { ok: false, msg: 'In acqua? La BMX resta in tasca.' };
+    if (p.carrying) return { ok: false, msg: 'Hai le mani occupate.' };
+    if (!walkM(p.x, p.y)) return { ok: false, msg: 'Qui non ci stai, con la BMX.' };
+    st.vehicles = st.vehicles.filter(k => k.kind !== 'bmx');
+    const v = makeVehicle(st, { id: 'bmx', kind: 'bmx', x: p.x, y: p.y, ang: p.face, color: '#35e6ff', mine: true, rider: 'player' });
+    st.vehicles.push(v); p.vehicle = v.id; p.path = [];
+    return { ok: true, msg: 'Tiri fuori la BMX dalla tasca e ci salti sopra.' };
   }
   function act(st, type) {
     const p = st.player, rng = st.rng;
@@ -11645,6 +11664,7 @@ var Game = (function () {
     dmg *= 1 - Math.min(.8, ((v.armor || 0) + (VK[v.kind].armor0 || 0) * (v.armor === undefined ? 1 : 0)) * .22); // le lamiere saldate reggono i colpi
     v.hp -= dmg; if (by) v.lastHitBy = by;
     if (v.traffic) { v.panicT = st.clock; }
+    if (VK[v.kind].pocket) { if (v.hp <= 0) { v.hp = VK[v.kind].hp; if (v.rider === 'player') { exitVehicle(st); st.player.stun = .6; feed(st, 'Voli giù dalla BMX. Per fortuna si raddrizza: è di nuovo in tasca.', 'bad'); } } return; }   // [bmx] non brucia: ti butta giù e torna in tasca
     if (v.hp <= 0 && !v.burning) { v.burning = 3.2; v.hp = 0; st.sfx.push({ k: 'ignite', x: v.x, y: v.y }); }
   }
   function explode(st, v) {
@@ -11865,6 +11885,7 @@ var Game = (function () {
       const v = st.vehicles.find(k => k.id === p.vehicle);
       if (v.owner === 'sandro') { feed(st, 'Sandro: «Questa è la MIA macchina, idiota.»', 'bad'); return; }
       if (v.lent) { feed(st, 'Sandro: «Quella Vespa la conoscono tutti. Portami altro.»', 'bad'); return; }
+      if (VK[v.kind].pocket) { feed(st, 'Sandro: «Una bicicletta? Mi prendi in giro? Portami una macchina.»', 'bad'); return; }   // [bmx]
       const pay = v.kind === 'vespa' ? 100 : v.kind === 'polizia' ? 250 : 160;
       v.rider = null; v.hidden = true; p.vehicle = null; p.x = tg.x; p.y = tg.y;
       p.money += pay; feed(st, `+${pay}.000 lire. Sandro fa sparire ${v.kind === 'vespa' ? 'la Vespa' : 'la macchina'}.`, 'money'); st.sfx.push({ k: 'cash' });
@@ -13142,7 +13163,7 @@ var Game = (function () {
 
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
-    tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
+    tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, bmx, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
@@ -22088,7 +22109,7 @@ var Protagonista = (function () {
     const UPG = [['motore', 'Motore', [40, 90, 160], 'più spinta e velocità di punta'], ['assetto', 'Assetto e gomme', [30, 70, 130], 'più tenuta e sterzo più pronto'], ['nitro', 'Nitro', [80, 170], 'Shift spinge di più'], ['corazza', 'Corazza saldata', [50, 110, 200], 'regge meglio urti e colpi']];
     if (!M.warp && atPlace(st, 'officina', P.vehicle ? 18 : 7)) {
       const v = P.vehicle ? st.vehicles.find(q => q.id === P.vehicle) : st.vehicles.find(q => q.mine && !q.wreck && !q.hidden && dist(q.x, q.y, P.x, P.y) < 9);
-      if (v && v.kind !== 'vespa') {
+      if (v && v.kind !== 'vespa' && v.kind !== 'bmx') {   // [bmx] la bici non si trucca
         v.up = v.up || {};
         const payUp = c => { if (P.money < c) return false; P.money -= c; M.stats.speso += c; return true; };
         UPG.forEach(([k, label, costs, desc]) => {
@@ -34480,6 +34501,32 @@ var Render = (function () {
     const exh = cyl(.06, .06, .5, 6, chrome); exh.rotation.x = Math.PI / 2; exh.position.set(.26, .28, -.55); g.add(exh);
     ud.len = 1.9; return finishVehicle(g, ud);
   }
+  // [bmx] la BMX tascabile: telaio a diamante di tubi sottili, ruote da 20 pollici con le razze, manubrio alto, sellino basso, pedivelle
+  function bmxMesh(color) {
+    const g = G0(), c = std({ color, roughness: .3, metalness: .45 }), dark = sl('#141218'), chrome = std({ color: '#d8d8e0', metalness: .85, roughness: .18 });
+    const ud = { paint: [c], lamps: [], tails: [], wheels: [], front: [], two: true, dents: 0, parts: {} };
+    const up = new THREE.Vector3(0, 1, 0);
+    const tube = (a, b, r, mat) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), m = cyl(r, r, d.length(), 6, mat); m.position.copy(A).add(B).multiplyScalar(.5); m.quaternion.setFromUnitVectors(up, d.normalize()); g.add(m); return m; };
+    const R = .27, zF = .56, zR = -.5, bb = [0, .3, -.05], seatT = [0, .74, -.24], head = [0, .78, .38], headLo = [0, .6, .44];
+    tube(bb, seatT, .028, c); tube(seatT, head, .028, c); tube(bb, headLo, .032, c); tube(head, headLo, .034, c);   // telaio
+    [-1, 1].forEach(s => { tube([s * .05, .3, -.05], [s * .06, R, zR], .02, c); tube([s * .05, .72, -.23], [s * .06, R, zR], .018, c); tube([s * .05, .62, .44], [s * .06, R, zF], .022, chrome); });   // forcellini e forcella
+    tube([0, .78, .38], [0, .98, .34], .022, chrome); tube([-.32, 1.0, .3], [.32, 1.0, .3], .02, chrome); tube([-.14, .9, .35], [.14, .9, .35], .015, chrome);   // attacco, manubrio e traversino
+    [-1, 1].forEach(s => { const gr = cyl(.03, .03, .12, 6, dark); gr.rotation.z = Math.PI / 2; gr.position.set(s * .36, 1.0, .3); g.add(gr); });
+    tube([0, .74, -.24], [0, .84, -.27], .02, chrome);
+    const seat = box(.14, .05, .26, sm('#1a1418', { roughness: .7 })); seat.position.set(0, .87, -.26); seat.rotation.x = .12; g.add(seat);
+    const ring = cyl(.09, .09, .02, 12, chrome); ring.rotation.z = Math.PI / 2; ring.position.set(.06, .3, -.05); g.add(ring);   // corona
+    [-1, 1].forEach(s => { const cr = box(.02, .03, .3, chrome); cr.position.set(s * .09, .3, -.05); cr.rotation.x = s * .9; g.add(cr); const pd = box(.1, .025, .05, dark); pd.position.set(s * .14, .3 + Math.sin(s * .9) * -.15, -.05 + Math.cos(s * .9) * .15); g.add(pd); });
+    const pad = box(.06, .06, .2, sm('#ffd23a')); pad.position.set(0, .64, .1); pad.rotation.x = -.42; g.add(pad);   // l'imbottitura gialla sul tubo, anni '80
+    const bmxWheel = () => {
+      const w = G0(), tire = new THREE.Mesh(new THREE.TorusGeometry(R - .03, .035, 6, 18), dark); tire.rotation.y = Math.PI / 2; w.add(tire);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(R - .065, .012, 4, 18), chrome); rim.rotation.y = Math.PI / 2; w.add(rim);
+      for (let k = 0; k < 6; k++) { const sp = box(.01, (R - .07) * 2, .012, chrome); sp.rotation.x = k / 6 * Math.PI; w.add(sp); }
+      const hub = cyl(.03, .03, .1, 8, chrome); hub.rotation.z = Math.PI / 2; w.add(hub); return mergeGroup(w);
+    };
+    const fp = G0(); fp.position.set(0, R, zF); const fw = bmxWheel(); fp.add(fw); g.add(fp); ud.wheels.push({ wh: fw, piv: fp, front: true, r: R });
+    const rp = G0(); rp.position.set(0, R, zR); const rw = bmxWheel(); rp.add(rw); g.add(rp); ud.wheels.push({ wh: rw, piv: rp, front: false, r: R });
+    ud.len = 1.7; return finishVehicle(g, ud);
+  }
   function driverMesh(look, cap) {
     const g = G0();
     const t = box(.46, .45, .28, lam(look.top)); t.position.y = .22; const h = box(.36, .36, .34, lam(look.skin)); h.position.y = .62;
@@ -34518,7 +34565,7 @@ var Render = (function () {
   function vehicleMesh(v) {
     const K = G.VK[v.kind];
     const glb = K.glb && window.Models && Models.has(K.glb) ? Models.vehicle(K.glb, K, v.color) : null;
-    const g = glb || (v.kind === 'vespa' ? vespaMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
+    const g = glb || (v.kind === 'vespa' ? vespaMesh(v.color) : v.kind === 'bmx' ? bmxMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
     if (K.scale && !glb) g.scale.set(K.scale[0], K.scale[1], K.scale[2]);
     g.userData.glbWait = !!K.glb && !glb;
     g.userData.glb = !!glb;   // [animazioni-mondo] le auto dai modelli non hanno il profilo del parabrezza
@@ -38227,7 +38274,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       dyn.ghosts = ghosts.map(o => { const gm = new THREE.Mesh(o.geometry, xray); gm.renderOrder = 999; gm.visible = false; o.add(gm); return gm; });
       const ring = new THREE.Mesh(new THREE.RingGeometry(.5, .62, 16), new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: .7, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .04; pg.add(ring);
     }
-    const onVespa = pveh && pveh.kind === 'vespa';
+    const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx');   // [bmx] in sella come sulla Vespa
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
     pg.visible = !pveh || onVespa;
     pg.position.set(p.x, playerH + (onVespa ? .35 : 0), p.y); pg.rotation.y = Math.PI / 2 - p.face;
@@ -38271,7 +38318,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (u.drv2) u.drv2.visible = !v.wreck && (v.police || v.livrea) && v.rider === 'npc' && !v.arrived;   /* [ordine] */
       const lampsOn = !v.wreck && (v.traffic || v.rider) && night > .3;
       u.glows.forEach(s => { s.visible = lampsOn && !s.userData.broken; s.material.opacity = .7; });
-      u.beams.forEach(b => b.visible = lampsOn && !b.userData.broken); u.pool.visible = lampsOn;
+      u.beams.forEach(b => b.visible = lampsOn && !b.userData.broken); u.pool.visible = lampsOn && u.lamps.length > 0;   // [bmx] senza fari, niente chiazza di luce
       const braking = (v.lastSpeed !== undefined && Math.abs(v.speed) < Math.abs(v.lastSpeed) - 6 * dt && Math.abs(v.speed) > .5) || (v.skid > .5 && (v.rider || v.traffic)); v.lastSpeed = v.speed;
       u.tailGlows.forEach(s => { s.visible = !v.wreck && (lampsOn || braking); s.material.opacity = braking ? .9 : .4; s.scale.setScalar(braking ? 1.1 : .7); });
       if (u.tlMat) u.tlMat.color.set(braking ? '#ff3a3a' : lampsOn ? '#d02020' : '#8a1010');
@@ -38986,7 +39033,7 @@ var Audio8 = (function () {
     if (!ctx) return;
     const p = st.player, t = now();
     const v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
-    if (v && on) {
+    if (v && on && v.kind !== 'bmx') {   // [bmx] la bici non ha motore
       // marce: il motore sale di giri e cala a ogni cambio
       const sp = Math.abs(v.speed), vespa = v.kind === 'vespa', G4 = vespa ? [0, 4, 8, 12, 99] : [0, 4.5, 8.5, 12.5, 16.5, 99];
       let gi = 0; while (sp > G4[gi + 1]) gi++; const rpm = (sp - G4[gi]) / ((G4[gi + 1] === 99 ? G4[gi] + 6 : G4[gi + 1]) - G4[gi]);
@@ -39716,6 +39763,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
     if (e.repeat) return;
     if (k === 'e') doAct('scippo'); else if (k === 'f') doAct('veicolo'); else if (k === 't') openTalk();
+    else if (k === 'p') doBmx();   // [bmx] la bici tascabile
     else if (k === 'r') G.reload(st);
     else if (k === 'q') G.switchWeapon(st, 1);
     else if (k === 'g') { const was = st.player.cur; st.player.cur = 'pugni'; st.player.cool = 0; G.fire(st, aimAngle(), ui.aimPoint, true); st.player.cur = was; }
@@ -39778,6 +39826,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     return { x, y, sprint, aim: a };
   }
   function doAct(t) { const r = G.act(st, t); if (r && r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); }
+  function doBmx() { click.t = null; ui.mark = null; const r = G.bmx(st); if (r && r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); }   // [bmx]
   function toast(msg, kind) { st.feed.unshift({ text: msg, kind: kind || 'info', until: st.clock + 4 }); if (st.feed.length > 5) st.feed.pop(); }
 
   // ---------- Punta e clicca ----------
@@ -40017,7 +40066,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       <div class="story"><p>Da quarant'anni l'isola è sotto la <b>Tutela</b>. Il Garante parla ogni sera alle 20 da tutti gli schermi, i <b>Grigi</b> presidiano le strade, gli <b>Orecchi</b> ascoltano nei bar. Chi parla troppo viene <b>rettificato</b>.</p>
       <p>Tu sei della <b>Risacca</b>, la corrente che non si vede. Per ora siete in pochi: <b>parla con la gente</b>, scrivi quello che vuoi, convincili. Recluta, trova spazi vuoti, costruisci basi, finanzia la causa, sabota.</p>
       <p>Lupo, il vecchio bibliotecario, sa da dove cominciare. In tasca hai tre gessetti.</p></div>
-      <div class="keys"><span><kbd>CLIC</kbd>vai / scegli</span><span><kbd>CLIC SU UNA PERSONA</kbd>Parla · Chatta</span><span><kbd>C</kbd>chatta con chi hai vicino</span><span><kbd>B</kbd>la Risacca: squadra, basi, risorse</span><span><kbd>W A S D</kbd>muoviti</span><span><kbd>F</kbd>mezzi</span><span><kbd>TAB</kbd>taccuino</span><span><kbd>M</kbd>audio</span></div>
+      <div class="keys"><span><kbd>CLIC</kbd>vai / scegli</span><span><kbd>CLIC SU UNA PERSONA</kbd>Parla · Chatta</span><span><kbd>C</kbd>chatta con chi hai vicino</span><span><kbd>B</kbd>la Risacca: squadra, basi, risorse</span><span><kbd>W A S D</kbd>muoviti</span><span><kbd>F</kbd>mezzi</span><span><kbd>P</kbd>la BMX tascabile</span><span><kbd>TAB</kbd>taccuino</span><span><kbd>M</kbd>audio</span></div>
       <button class="cta" id="go">Scendi in strada</button>
       <div class="credits" style="margin-top:14px;font-size:11px;opacity:.7;max-width:640px;line-height:1.5">Modelli: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) ·
       <a href="https://poly.pizza/bundle/Race-kit-LcWNxpyXuL" target="_blank" rel="noopener">Race kit</a> di <a href="https://poly.pizza/u/Player11132" target="_blank" rel="noopener">Player11132</a> [<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY</a>] via Poly Pizza · Medieval Torture Devices via Poly Pizza</div></div>`;
@@ -40027,7 +40076,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       <div class="story"><p>Sei <b>Nino Baldi</b>. Sei uscito di galera ieri, e lo Squalo, Sandro Neri, rivuole i suoi <b>500.000 lire</b> entro l'alba di giovedì.</p>
       <p>Nei caruggi <b>tutti vedono, tutti ricordano, tutti parlano</b>. Un lavoro onesto ti apre le porte. Una sparatoria davanti alla persona sbagliata te le chiude, e la voce arriva alla polizia prima di te.</p>
       <p>Di notte, al Pontile Est, tre marsigliesi fanno la guardia a una valigetta. Sotto le reti del molo qualcuno ha nascosto una pistola.</p></div>
-      <div class="keys"><span><kbd>MOUSE</kbd>mira</span><span><kbd>CLIC</kbd>spara</span><span><kbd>W A S D</kbd>muoviti rispetto al cursore</span><span><kbd>SHIFT</kbd>corri</span><span><kbd>R</kbd>ricarica</span><span><kbd>1-5 · ROTELLA</kbd>armi</span><span><kbd>F</kbd>sali su auto e Vespe</span><span><kbd>SPAZIO</kbd>freno a mano</span><span><kbd>T</kbd>parla</span><span><kbd>E</kbd>scippa o rapina</span><span><kbd>G</kbd>pugno</span><span><kbd>TAB</kbd>taccuino</span><span><kbd>M</kbd>audio</span></div>
+      <div class="keys"><span><kbd>MOUSE</kbd>mira</span><span><kbd>CLIC</kbd>spara</span><span><kbd>W A S D</kbd>muoviti rispetto al cursore</span><span><kbd>SHIFT</kbd>corri</span><span><kbd>R</kbd>ricarica</span><span><kbd>1-5 · ROTELLA</kbd>armi</span><span><kbd>F</kbd>sali su auto e Vespe</span><span><kbd>P</kbd>tira fuori la BMX</span><span><kbd>SPAZIO</kbd>freno a mano</span><span><kbd>T</kbd>parla</span><span><kbd>E</kbd>scippa o rapina</span><span><kbd>G</kbd>pugno</span><span><kbd>TAB</kbd>taccuino</span><span><kbd>M</kbd>audio</span></div>
       <button class="cta" id="go">Scendi in strada</button></div>`;
     $('go').onclick = start;
   }
@@ -40214,7 +40263,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
         if (k === 'tab') return toggleBook(); if (ui.dialog || ui.book) return;
         if (k === 'fire') { touchFire = true; mouse.pressed = true; return; }
         if (k === 'space') { touchBrake = true; return; }
-        if (k === 'e') doAct('scippo'); if (k === 'f') doAct('veicolo'); if (k === 't') openTalk(); if (k === 'q') G.switchWeapon(st, 1); if (k === 'r') G.reload(st);
+        if (k === 'e') doAct('scippo'); if (k === 'f') doAct('veicolo'); if (k === 'p') doBmx(); if (k === 't') openTalk(); if (k === 'q') G.switchWeapon(st, 1); if (k === 'r') G.reload(st);
       });
       const up = () => { if (b.dataset.k === 'fire') touchFire = false; if (b.dataset.k === 'space') touchBrake = false; };
       b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);
