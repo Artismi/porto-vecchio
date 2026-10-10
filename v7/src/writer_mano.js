@@ -265,42 +265,40 @@ var WriterMano = (function () {
   // (le lettere strette al centro e le ali che si aprono a raggiera), il BASIS (aste alte e spigolose, le traverse lunghe che
   // attraversano tutto, le tacche), il BUSTED (le lettere a ricciolo chiuse nel cuore, a spruzzo, che cola). Non si deve
   // leggere per forza: deve colpire.
+  // [writer] LA SCUOLA DEL MURO (dal pezzo SKILZ, pensato a marker): la tag sale verso destra; la rampa parte da sotto la prima
+  // lettera, corre sotto tutto e risale a punta, così la tag sta dentro un triangolo; le lettere sono spigolose, le traverse
+  // sforano a lama; dai tratti spuntano le spine (il punto [x, y, 3]: un uncino curvo che esce e finisce a punta); sopra
+  // galleggia il disco. Non si deve leggere per forza: deve colpire.
   const SIGNED = {
-    KEOS: { w: 5.4, sl: .12, base: 42, idea: 'swipe: la frustata sotto e il taglio sopra', strokes: [
-      [[13, 4], [10.5, 22], [8, 42]],
-      [[27, 7], [17, 17], [10, 25, 1], [18, 33], [26, 42]],
-      [[27, 37], [35, 30], [33.5, 25], [27.5, 27.5], [25.5, 36], [30, 42], [38, 39]],
-      [[53, 8], [44, 12], [38.5, 27], [41, 39.5], [49, 39], [55.5, 24], [53.5, 9.5], [46, 10.5]],
-      [[74, 9], [66.5, 6.5], [59.5, 11.5], [64.5, 21], [68.5, 30], [62, 40], [51, 43]],
-      [[1, 49], [30, 46.5], [62, 43], [84, 36], [100, 27]],
-      [[36, 19.5], [62, 15.5], [84, 11], [99, 6]],
-      [[80, 25]], [[86, 23.5]],
+    KEOS: { sharp: true, w: 5.2, sl: .24, base: 50, idea: 'la rampa, le spine, la O fatta disco', strokes: [
+      [[19, 6, 3], [15, 28], [9, 50], [1, 60, 1], [30, 53], [60, 45, 3], [88, 37, 1], [84, 29]],
+      [[35, 10], [26, 20], [15, 31, 1], [25, 38, 3], [36, 47]],
+      [[54, 15], [45, 14.5, 1], [40.5, 41, 1], [53, 39.5]], [[41.5, 28, 3], [55, 26], [68, 24.5]],
+      arcP(56, 4, 7.5, 4.6, -.3, 6.4, 18),
+      [[85, 16, 3], [76, 12.5], [68.5, 18], [74.5, 26], [81.5, 33], [75, 42], [64, 45.5]],
     ] },
-    DAKO: { w: 5.2, sl: .1, base: 40, idea: 'whamx: le ali che si aprono', strokes: [
-      [[17, 9], [15, 24], [13.5, 38, 1], [22, 36.5], [29, 26], [27.5, 14], [18, 9], [9, 11]],
-      [[28, 40], [33, 24], [36.5, 7, 1], [40, 22], [43.5, 39]], [[29.5, 27], [47.5, 25]],
-      [[50, 8], [48.5, 23], [47.5, 39]], [[61, 9], [49, 24, 1], [55.5, 31], [63, 40]],
-      [[75, 11], [66.5, 15], [63.5, 29], [68, 38.5], [76, 35], [79, 21], [75, 11], [69, 13]],
-      [[12, 24, 2], [3, 32], [0, 44], [4, 54]], [[84, 18, 2], [94, 27], [99, 40], [96, 52]],
-      [[32, 40, 2], [23, 50]], [[44, 40, 2], [43, 53]], [[56, 40, 2], [64, 52]], [[71, 39, 2], [86, 50]],
+    DAKO: { sharp: true, w: 5.2, sl: .24, base: 50, idea: 'la rampa, la D a lama, il disco', strokes: [
+      [[15, 8, 3], [12.5, 30], [8, 50], [0, 58, 1], [40, 52], [72, 46, 3], [94, 41, 1], [90, 34]],
+      [[11, 46, 2], [24, 45], [34, 36], [33, 20], [23, 10.5], [7, 12]],
+      [[31, 50], [37.5, 30], [42.5, 6, 1], [46.5, 28, 3], [51, 47]], [[28, 32], [50, 30], [64, 28]],
+      [[59, 10, 3], [57, 30], [54.5, 48]], [[73, 14], [58, 30, 1], [67, 37, 3], [77, 46]],
+      [[90, 24], [84, 22], [80.5, 30], [83.5, 38], [90, 36], [92, 28], [88, 22.5]],
+      arcP(44, -4, 7, 4.4, -.3, 6.4, 16),
     ] },
-    SNEK: { w: 4.6, sl: .14, base: 42, idea: 'basis: aste alte, traverse che attraversano', strokes: [
-      [[17, 9], [9, 6], [4.5, 13], [13, 23], [17.5, 33], [10, 42], [1, 39]],
-      [[20, 43], [22.5, 26], [25, 9, 1], [31, 25], [34, 41, 1], [37, 22], [40, 1]],
-      [[57, 7], [49, 7.5], [44, 8.5, 1], [42, 25], [40.5, 41, 1], [50, 40], [58, 39]],
-      [[60, 1], [58, 22], [56.5, 45]], [[75, 10], [66, 18], [58, 26, 1], [68, 33], [78, 42], [86, 47]],
-      [[16, 25.5], [40, 24], [70, 21.5], [99, 18]],
-      [[88, 9], [86.5, 20]], [[93, 8], [91.5, 19]],
-      [[63, 49]], [[69, 50.5]],
+    SNEK: { sharp: true, w: 5, sl: .24, base: 50, idea: 'la rampa, la traversa a lama, le spine', strokes: [
+      [[21, 10, 3], [11, 8], [6.5, 16], [16, 26], [20, 36], [12, 47], [0, 57, 1], [44, 51], [92, 41, 1], [88, 33]],
+      [[22, 48], [25, 26], [28, 8, 1], [34, 30, 3], [38, 46, 1], [42, 24], [46, 3]],
+      [[62, 10], [52.5, 10, 1], [48.5, 44, 1], [60, 42]], [[49.5, 27, 3], [63, 25], [78, 23]],
+      [[69, 5, 3], [66, 28], [63, 50]], [[83, 14], [67, 30, 1], [77, 38, 3], [89, 48]],
+      arcP(46, -7, 5.5, 3.6, -.3, 6.4, 14),
     ] },
-    KAOS: { w: 3.8, sl: .08, base: 44, drips: 7, idea: 'busted: i riccioli chiusi nel cuore, che cola', strokes: [
-      [[50, 13], [42, 3], [26, 2], [12, 11], [10, 26], [24, 39], [50, 54, 1], [74, 39], [89, 25], [87, 10], [74, 2], [59, 3], [50, 13]],
-      [[23, 13], [21.5, 26], [20.5, 37]], [[33, 14], [26, 21], [22, 26, 1], [28, 31], [34, 36]],
-      [[45, 23], [39.5, 21], [35.5, 27], [39, 33.5], [44.5, 30], [46, 22], [47.5, 35]],
-      [[57, 21.5], [51.5, 24.5], [51.5, 33], [57, 34], [60.5, 27], [58.5, 21.5], [54, 20]],
-      [[73, 19], [67, 19], [65.5, 24.5], [71.5, 27.5], [73, 33], [64.5, 37]],
-      [[42, 46], [58, 46]],
-      [[94, 5], [92.5, 14]], [[98, 4], [96.5, 13]],
+    KAOS: { sharp: true, w: 5.2, sl: .24, base: 50, idea: 'la rampa, la O fatta disco sulla A', strokes: [
+      [[17, 6, 3], [13, 30], [7, 50], [0, 58, 1], [44, 50.5], [86, 40, 1], [82, 32]],
+      [[31, 12], [23, 22], [14, 30, 1], [23, 37, 3], [31, 46]],
+      [[33, 48], [38.5, 28], [43.5, 8, 1], [47.5, 28, 3], [52.5, 46]], [[30, 32], [56, 30], [64, 29]],
+      arcP(44, -3, 7, 4.4, -.3, 6.4, 16),
+      [[79, 14, 3], [67, 10], [59, 16], [67, 26], [75, 34], [67, 44], [55, 47]],
+      [[90, 22]], [[94.5, 20]],
     ] },
   };
   // il gesto: la curva per i punti (Catmull-Rom centripeta: niente riccioli né pance), spezzata alle punte; [x, y, punta]
@@ -344,7 +342,7 @@ var WriterMano = (function () {
   // [writer] LA FISICA DEL TRATTO (dai fogli): il marker si appoggia e lascia la goccia piena; correndo dritto si consuma e
   // si stringe; nelle curve la mano frena e il tratto si riempie; alla fine scappa via a punta tagliente. Una saldatura (w0, w1)
   // entra piena nell'altro tratto.
-  function profile(G, W, mark, nibA, w0, w1) {
+  function profile(G, W, mark, nibA, w0, w1, sharp) {
     const n = G.length, s = [0]; for (let i = 1; i < n; i++) s.push(s[i - 1] + hyp(G[i][0] - G[i - 1][0], G[i][1] - G[i - 1][1])); const L = s[n - 1] || 1;
     const kap = G.map((q, i) => { const a = G[Math.max(0, i - 3)], b = G[Math.min(n - 1, i + 3)]; if (q[2]) return 1; const u = Math.atan2(q[1] - a[1], q[0] - a[0]), v = Math.atan2(b[1] - q[1], b[0] - q[0]); let d = Math.abs(v - u); if (d > PI) d = 2 * PI - d; return clamp(d / Math.max(.5, s[Math.min(n - 1, i + 3)] - s[Math.max(0, i - 3)]) * 4, 0, 1); });
     const ks = kap.map((_, i) => { let t = 0, c = 0; for (let j = Math.max(0, i - 4); j <= Math.min(n - 1, i + 4); j++) { t += kap[j]; c++; } return t / c; });
@@ -352,7 +350,7 @@ var WriterMano = (function () {
     const exit = Math.min(.45, W * (mark ? 3.2 : 2.4) / L);
     return G.map((q, i) => {
       const u = s[i] / L, a = G[Math.max(0, i - 1)], b = G[Math.min(n - 1, i + 1)], dir = Math.atan2(b[1] - a[1], b[0] - a[0]);
-      const pool = w0 ? 1 : 1 + .2 * (1 - sstep(0, W * 2, s[i])), fast = 1 - .38 * sstep(0, W * 12, runs[i]), brake = 1 + .22 * ks[i], tail = w1 ? 1 : (mark ? .03 : .14) + (mark ? .97 : .86) * (1 - sstep(1 - exit, 1, u));
+      const pool = w0 ? 1 : sharp ? .12 + .88 * sstep(0, W * 2.4, s[i]) : 1 + .2 * (1 - sstep(0, W * 2, s[i]))   /* sharp: anche l'attacco a lama */, fast = 1 - .38 * sstep(0, W * 12, runs[i]), brake = 1 + .22 * ks[i], tail = w1 ? 1 : (mark ? .03 : .14) + (mark ? .97 : .86) * (1 - sstep(1 - exit, 1, u));
       let w = W * pool * fast * brake * tail;
       if (mark) w *= .5 + .5 * Math.abs(Math.sin(dir - nibA));
       return Math.max(1, w);
@@ -361,12 +359,16 @@ var WriterMano = (function () {
   // disegna una firma; ritorna i punti del percorso (per la mano che la ripassa)
   function drawSigned(x, S, Wp, Hp, r, col, tool, d) {
     const mark = tool === 'mtag', sl = S.sl || .2, path = [];
+    // le spine: da ogni punto [x, y, 3] spunta un uncino curvo saldato al tratto, verso dove corre la mano, a lati alterni
+    if (!S.__x) { let side = 1; const add = []; S.strokes.forEach(t => t.forEach((q, k) => { if (q[2] !== 3) return; const a = t[Math.max(0, k - 1)], b = t[Math.min(t.length - 1, k + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = hyp(dx, dy) || 1, tx = dx / l, ty = dy / l, nx = -ty * side, ny = tx * side; side = -side; add.push([[q[0], q[1], 2], [q[0] + nx * 3.2 + tx * 2.2, q[1] + ny * 3.2 + ty * 2.2], [q[0] + nx * 5.2 + tx * 7.5, q[1] + ny * 5.2 + ty * 7.5]]); }));
+      S.__x = { strokes: S.strokes.map(t => t.map(q => q[2] === 3 ? [q[0], q[1]] : q)).concat(add), n: S.strokes.length }; }
+    S = Object.assign({}, S, { strokes: S.__x.strokes });
     const B = S.base || 40, G0 = S.strokes.map(t => t.length < 2 ? [[t[0][0] + (B - t[0][1]) * sl, t[0][1], 0]] : gesture(t.map(([a, b, c]) => [a + (B - b) * sl, b, c]), .35));
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; G0.forEach(g => g.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
     const pad = S.w * 1.2, sc = Math.min(Wp * .94 / (x1 - x0 + pad * 2), Hp * .86 / (y1 - y0 + pad * 2)), ox = Wp / 2 - (x0 + x1) / 2 * sc, oy = Hp * .45 - (y0 + y1) / 2 * sc;
     const G = G0.map(g => g.map(([a, b, c]) => [ox + a * sc, oy + b * sc, c])), W = S.w * sc * (mark ? .78 : 1), nibA = d && d.nibA != null ? d.nibA : -.75;
-    const weld = S.strokes.map(t => [t[0][2] === 2, t[t.length - 1][2] === 2]), Wds = G.map((g, i) => g.length < 2 ? [W * (mark ? 1.1 : 1.15)] : profile(g, mark ? W * 1.45 : W, mark, nibA, weld[i][0], weld[i][1]).map((w, k) => w * (1 + (mark ? .13 : .07) * (Math.sin(k * .21 + i * 2.3) * .6 + Math.sin(k * .83 + i) * .3) + (mark ? .035 : .05) * (r() - .5))));   // [writer] il bordo dell'inchiostro: mai liscio, la vernice prende e molla
-    const draw = (k, cap) => G.forEach((g, i) => { if (g.length < 2) { x.beginPath(); x.arc(g[0][0], g[0][1], Wds[i][0] * k / 2, 0, 7); x.fill(); return; } ribbon(x, g, Wds[i].map(w => w * k), cap); if (!weld[i][0]) { x.beginPath(); x.arc(g[0][0], g[0][1], Wds[i][0] * k * .47, 0, 7); x.fill(); }   /* la goccia dove si appoggia */ weld[i].forEach((on, e) => { if (!on) return; const j = e ? g.length - 1 : 0; x.beginPath(); x.arc(g[j][0], g[j][1], Math.max(Wds[i][j], W * .8) * k * .55, 0, 7); x.fill(); }); });   // la giunta della saldatura
+    const weld = S.strokes.map(t => [t[0][2] === 2, t[t.length - 1][2] === 2]), Wds = G.map((g, i) => g.length < 2 ? [W * (mark ? 1.1 : 1.15)] : profile(g, mark ? W * 1.45 : W, mark, nibA, weld[i][0], weld[i][1], S.sharp).map((w, k) => w * (1 + (mark ? .13 : .07) * (Math.sin(k * .21 + i * 2.3) * .6 + Math.sin(k * .83 + i) * .3) + (mark ? .035 : .05) * (r() - .5))));   // [writer] il bordo dell'inchiostro: mai liscio, la vernice prende e molla
+    const draw = (k, cap) => G.forEach((g, i) => { if (g.length < 2) { x.beginPath(); x.arc(g[0][0], g[0][1], Wds[i][0] * k / 2, 0, 7); x.fill(); return; } ribbon(x, g, Wds[i].map(w => w * k), cap); if (!weld[i][0] && !S.sharp) { x.beginPath(); x.arc(g[0][0], g[0][1], Wds[i][0] * k * .47, 0, 7); x.fill(); }   /* la goccia dove si appoggia */ weld[i].forEach((on, e) => { if (!on) return; const j = e ? g.length - 1 : 0; x.beginPath(); x.arc(g[j][0], g[j][1], Math.max(Wds[i][j], W * .8) * k * .55, 0, 7); x.fill(); }); });   // la giunta della saldatura
     x.save(); x.fillStyle = col; x.strokeStyle = col;
     if (!mark) { x.save(); x.filter = `blur(${(W * .35).toFixed(1)}px)`; x.globalAlpha = .16; draw(1.4, true); x.restore(); x.save(); x.filter = `blur(${Math.max(.5, W * .03).toFixed(1)}px)`; draw(1, true); x.restore(); }   // lo spruzzo: l'alone largo e leggero, poi il tratto col bordo appena morbido
     else draw(1, false);
