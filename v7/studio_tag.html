@@ -32,6 +32,7 @@
   .firma.sel { border-color: var(--ac); }
   .firma canvas { width: 100%; display: block; }
   .firma b { position: absolute; left: 6px; top: 3px; color: #555; font-size: 11px; }
+  .firma u { position: absolute; left: 6px; bottom: 2px; color: var(--ac); text-decoration: none; font-weight: 700; }
   .firma i { position: absolute; right: 6px; top: 1px; color: #933; font-style: normal; font-weight: 700; padding: 0 3px; }
   #stato { color: var(--mu); margin-left: auto; }
 </style>
@@ -39,8 +40,8 @@
 <body>
 <header>
   <h1>STUDIO TAG</h1>
-  <label>Writer <select id="nome"></select></label>
-  <input type="text" id="altro" placeholder="o un nome nuovo" size="10">
+  <label>Nome della tag <input type="text" id="altro" placeholder="es. KEOS" size="10"></label>
+  <label>o un writer dell'isola <select id="nome"></select></label>
   <label>Spessore <input type="range" id="spess" min="4" max="26" value="12"></label>
   <label><input type="checkbox" id="piatta"> punta piatta</label>
   <label>Colore <select id="col"><option value="#141418">nero</option><option value="#d8201a">rosso</option><option value="#1c3aa8">blu</option><option value="#2a8a3a">verde</option><option value="#f2efe6">bianco</option></select></label>
@@ -52,7 +53,8 @@
     <div class="righe">
       <button id="annulla">Annulla tratto</button>
       <button id="pulisci">Cancella</button>
-      <button class="go" id="salva">Salva firma</button>
+      <button class="go" id="salva">Salva preset</button>
+      <button id="mia">È la mia tag</button>
       <button id="esporta">Scarica tag_firme.json</button>
       <button id="importa">Carica tag_firme.json</button>
       <input type="file" id="file" accept=".json" hidden>
@@ -63,7 +65,7 @@
     <canvas class="anteprima" id="pv1" width="640" height="300"></canvas>
     <h2>Nel gioco: a pennarello</h2>
     <canvas class="anteprima" id="pv2" width="640" height="300"></canvas>
-    <h2>Firme salvate</h2>
+    <h2>Preset salvati (★ = la tua tag)</h2>
     <div id="elenco"></div>
   </aside>
 </main>
@@ -85,7 +87,7 @@
   const pos = e => { const b = live.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * CW, (e.clientY - b.top) / b.height * CH]; };
   const nome = () => ($('altro').value.trim() || $('nome').value).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9]/g, '');
   const wFrac = () => +$('spess').value / 100;
-  NOMI.concat(Object.keys(FIRME).filter(n => !NOMI.includes(n))).forEach(n => { const o = document.createElement('option'); o.value = o.textContent = n; $('nome').appendChild(o); });
+  NOMI.concat(Object.keys(FIRME).filter(n => n !== '_mia' && !NOMI.includes(n))).forEach(n => { const o = document.createElement('option'); o.value = o.textContent = n; $('nome').appendChild(o); });
   // ---- il disegno a mano: tratti di [x, y, t (ms), pressione] ----
   live.addEventListener('pointerdown', e => {
     live.setPointerCapture(e.pointerId); const [x, y] = pos(e);
@@ -113,6 +115,7 @@
     try { WM.drawRecorded(x, r, { seed: 7 }, c.width, c.height, WM.mulberry(11), col, tool); } catch (e) { console.error(e); }
   }
   function preview() { const r = rec(); render($('pv1'), r, $('col').value, 'tag'); render($('pv2'), r, '#141418', 'mtag'); }
+  $('nome').addEventListener('change', () => { $('altro').value = ''; });
   ['spess', 'piatta', 'col'].forEach(id => $(id).addEventListener('input', () => { drawRaw(); preview(); }));
   $('annulla').onclick = () => { strokes.pop(); drawRaw(); preview(); };
   $('pulisci').onclick = () => { strokes = []; drawRaw(); preview(); };
@@ -133,16 +136,18 @@
     if (![...$('nome').options].some(o => o.value === n)) { const o = document.createElement('option'); o.value = o.textContent = n; $('nome').appendChild(o); }
     persist(); elenco();
   };
+  // la tua tag: il preset scelto; nel gioco il giocatore firma con quello (finché non ne scrive un'altra)
+  $('mia').onclick = () => { const n = nome(); if (!FIRME[n] || !FIRME[n].strokes) { stato('Salva prima il preset ' + (n || '') + ', poi sceglilo come tua tag.'); return; } FIRME._mia = n; persist(); elenco(); stato('La tua tag è ' + n + '.'); };
   $('esporta').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(FIRME)], { type: 'application/json' })); a.download = 'tag_firme.json'; a.click(); };
   $('importa').onclick = () => $('file').click();
   $('file').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { Object.assign(FIRME, JSON.parse(await f.text())); persist(); elenco(); } catch (err) { stato('File non valido.'); } };
   // ---- le firme salvate: clic per riaprirla, ✕ per toglierla ----
   function elenco() {
     const box = $('elenco'); box.innerHTML = '';
-    Object.keys(FIRME).sort().forEach(n => {
+    Object.keys(FIRME).filter(n => FIRME[n] && FIRME[n].strokes).sort().forEach(n => {
       const d = document.createElement('div'); d.className = 'firma' + (n === sel ? ' sel' : '');
       const c = document.createElement('canvas'); c.width = 320; c.height = 150; d.appendChild(c);
-      d.insertAdjacentHTML('beforeend', `<b>${n}</b><i title="togli">✕</i>`);
+      d.insertAdjacentHTML('beforeend', `<b>${n}</b><i title="togli">✕</i>${FIRME._mia === n ? '<u>★ la tua tag</u>' : ''}`);
       render(c, FIRME[n], '#141418', 'mtag');
       d.onclick = ev => {
         if (ev.target.tagName === 'I') { if (confirm('Togliere la firma di ' + n + '?')) { delete FIRME[n]; persist(); elenco(); } return; }
@@ -153,7 +158,7 @@
     });
   }
   // le firme già nel file (tag_firme.json), se il browser non le ha
-  fetch('tag_firme.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).then(o => { let n = 0; Object.keys(o || {}).forEach(k => { if (!FIRME[k]) { FIRME[k] = o[k]; n++; } }); if (n) { try { localStorage.setItem(KEY, JSON.stringify(FIRME)); } catch (e) { } } elenco(); }).catch(() => elenco());
+  fetch('tag_firme.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).then(o => { let n = 0; Object.keys(o || {}).forEach(k => { if (FIRME[k] === undefined) { FIRME[k] = o[k]; n++; } }); if (n) { try { localStorage.setItem(KEY, JSON.stringify(FIRME)); } catch (e) { } } elenco(); }).catch(() => elenco());
   drawRaw(); preview();
 })();
 </script>

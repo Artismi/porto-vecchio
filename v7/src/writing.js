@@ -66,7 +66,7 @@ var Writing = (function () {
     if (!st.wr.kit) { st.wr.kit = true; const O = OG(); if (O) { const inv = O.inv(st); inv.bomboletta = (inv.bomboletta || 0) + 4; inv.pennarello = (inv.pennarello || 0) + 1; } }   // [writer] i due pennelli dall'inizio: la bomboletta e il pennarello
     return st.wr;
   }
-  const playerAka = st => S(st).aka || 'NINO';
+  const playerAka = st => S(st).aka || (typeof WriterMano !== 'undefined' && WriterMano.MIA) || 'NINO';   // [writer] la tua tag: quella scelta fra i preset dello studio
 
   // ---------------- IL TRENO (logica) ----------------
   // la ferrovia della miniera (game.js: layout().rail, un punto ogni metro): dalla Stazione di estrazione Nord, nel bosco della
@@ -137,7 +137,8 @@ var Writing = (function () {
     const W = S(st), used = new Set(W.writers.map(id => { const m = G.byId(st, id); return m && m.pop.writer && m.pop.writer.aka; }));
     const free = AKAS.concat(AKAS2).filter(a => !used.has(a)); if (!free.length) return null;
     let h = 7; for (const ch of String(n.id)) h = (h * 31 + ch.charCodeAt(0)) % 1009;
-    const aka = free[(h * 13 + (k || 0) * 5) % free.length], r = WA.mulberry(h * 7919 + 3);
+    const WMm = typeof WriterMano !== 'undefined' ? WriterMano : null, pre = WMm ? Object.keys(WMm.RECORDED).filter(a => !used.has(a) && a !== WMm.MIA && a !== S(st).aka) : [];   // [writer] i preset dello studio tag vanno ai writer per primi
+    const aka = pre.length ? pre[0] : free[(h * 13 + (k || 0) * 5) % free.length], r = WA.mulberry(h * 7919 + 3);
     const skill = .3 + ((h * 3) % 7) / 10, cr = CREWS.find(c => c.id === crew) || CREWS[0], dna = WA.dnaOf(h * 7919 + 3, skill, cr.col);
     n.pop.writer = { aka, crew, skill, fam: dna.fam, dna, hand: h * 7919 + 11, roof: r() < .45, train: r() < .5 || crew === 'TNT', mop: r() < .5, since: st.t };
     W.writers.push(n.id); return n.pop.writer;

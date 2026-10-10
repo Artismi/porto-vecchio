@@ -527,10 +527,10 @@ var WriterMano = (function () {
   // [writer] Le tag disegnate a mano nello studio: il gesto vero (punti, tempi, pressione), rifatto col motore della velocità.
   // Si caricano da tag_firme.json (la cartella del gioco) e dal browser (lo studio le salva anche lì); quelle del browser
   // vincono. Una firma registrata ha la precedenza su tutto: quel writer firma così.
-  const RECORDED = {};
+  const RECORDED = {}; let MIA = null;   // MIA: il preset che il giocatore ha scelto come sua tag
   function loadRecorded() {
     if (typeof window === 'undefined') return;
-    const put = o => { if (o && typeof o === 'object') Object.keys(o).forEach(k => { if (o[k] && o[k].strokes) RECORDED[k] = o[k]; }); };
+    const put = o => { if (o && typeof o === 'object') { Object.keys(o).forEach(k => { if (o[k] && o[k].strokes) RECORDED[k] = o[k]; }); if (typeof o._mia === 'string') MIA = o._mia; } };
     const local = () => { try { put(JSON.parse(localStorage.getItem('pv.tagFirme') || '{}')); } catch (e) { } };
     local();
     try { fetch('tag_firme.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(o => { put(o); local(); }).catch(() => { }); } catch (e) { }
@@ -746,7 +746,7 @@ var WriterMano = (function () {
     x.restore();
     return { path, W };
   }
-  return { STILI, A, HS, SIGNED, GEST, RECORDED, loadRecorded, recordedLayout, drawRecorded, flowLayout, drawFlow, handLayout, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
+  return { STILI, A, HS, SIGNED, GEST, RECORDED, get MIA() { return MIA && RECORDED[MIA] ? MIA : null; }, loadRecorded, recordedLayout, drawRecorded, flowLayout, drawFlow, handLayout, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
 })();
 if (typeof module !== 'undefined') module.exports = WriterMano;
 else WriterMano.loadRecorded();
