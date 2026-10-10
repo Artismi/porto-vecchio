@@ -42,3 +42,14 @@ Risultato (stesso punto, media di 8 fotogrammi): 4.313 → 3.141 chiamate, 7,0 �
 - Il post finale è molto pesante per pixel (decine di letture di profondità e colore): su una scheda integrata pesa più di tutto il resto;
   la risoluzione adattiva lo contiene, una versione leggera per le schede deboli lo risolverebbe.
 - Geometrie e texture che crescono girando: blocchi lontani da liberare (dispose).
+
+## 30 fotogrammi fissi (main.js, `CAP`)
+- Il ciclo disegna a 30 fps fissi: `requestAnimationFrame` arriva a 60/120/144 al secondo, si disegna solo quando l'orologio
+  (passo 33,3 ms, 2 ms di tolleranza per la sincronia) lo dice. Dopo una pausa lunga (scheda nascosta) si riparte da adesso,
+  senza recuperare a raffica. `?fps60` nell'indirizzo toglie il limite (torna la regolazione fluido1 a 45/57).
+- La risoluzione adattiva ora serve a TENERE i 30: se più del 15% dei fotogrammi in 1,5 s arriva in ritardo (> 37 ms) la
+  risoluzione interna scende del 10% (fino al 55%); risale del 5% solo dopo 6 s senza ritardi e con lavoro del fotogramma
+  sotto i 14 ms; un livello che ha fatto perdere i 30 non si ritenta per 30 s.
+- Il controllo dei primi 90 fotogrammi (`R.lowQuality`) col limite scatta sotto i 24 fps (prima: sotto i 32, che col limite
+  sarebbe scattato sempre).
+- F9 mostra «NN/30 fps».
