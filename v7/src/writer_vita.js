@@ -107,6 +107,7 @@ var WriterVita = (function () {
         if (w.prog < 1) return 'wait';
         w.prog = 1; w.done = true; w.tDone = st.t; w.live = null; n.__tip = null; n.hand = null;
         if (w.surf === 'treno') { const k = w.car + ':' + w.side, W = WR.S(st); (W.train.sides[k] = W.train.sides[k] || []).push(w.id); W.train.news = `Stanotte i ${w.crew} hanno fatto il treno: ${WR.STYLES[w.style].nome} di ${w.aka}.`; }
+        if (w.cop) { const W = WR.S(st); W.news = `Stanotte qualcuno ha bombato una volante dei Grigi: c'è sopra ${w.aka} ${w.crew}. La Celere è furiosa.`; try { G.emit(st, 'vandalismo', { actor: n.id }); } catch (e) { } }
         if (watched(st, n)) G.feed(st, `${w.aka} dei ${w.crew} ha finito ${w.style === 'mtag' || w.style === 'tag' ? 'la sua tag' : 'il ' + WR.STYLES[w.style].nome}${w.spot && w.spot.h != null ? ' lassù, in cima al palazzo' : ''}.`);
         return 'next';
       },
@@ -195,6 +196,16 @@ var WriterVita = (function () {
     }
     return E;
   }
+  // L'AUTO: una macchina parcheggiata (e se c'è, la volante dei Grigi: vale di più, scotta di più)
+  function auto(st, n) {
+    const wr = n.pop.writer, cars = st.vehicles.filter(v => !v.rider && !v.traffic && !v.hidden && !v.wreck && !v.military && hyp(v.x - n.x, v.y - n.y) < 180 && Math.abs(v.speed || 0) < .1);
+    if (!cars.length) return null; const cops = cars.filter(v => v.police), v = cops.length && rnd() < .4 ? pick(cops) : pick(cars);
+    const side = rnd() < .5 ? 1 : -1, nx = -Math.sin(v.ang) * side, ny = Math.cos(v.ang) * side, du = (rnd() - .5) * 1.4, at = { x: v.x + Math.cos(v.ang) * du + nx * 1.3, y: v.y + Math.sin(v.ang) * du + ny * 1.3 };
+    if (!G.walkM(at.x, at.y)) return null;
+    const style = v.police ? (rnd() < .6 ? 'throw' : 'tag') : rnd() < .55 ? 'tag' : 'throw';
+    return start(st, n, 'writer', v.police ? 'bombare la volante' : "bombare un'auto", [goStep(v.police ? 'si avvicina alla volante, piano' : 'va alla macchina parcheggiata', at),
+      paintStep(v.police ? 'spruzza la volante dei Grigi' : 'spruzza la fiancata della macchina', (st2, n2) => WR.npcWork(st2, n2, wr, style, { x: at.x, y: at.y, face: Math.atan2(-ny, -nx), place: placeOf(at) }, { surf: 'auto', veh: v.id, side, du, cop: !!v.police })), homeStep()]);
+  }
   // IL BOMBING: una passeggiata notturna, una tag (o un throw-up) su ogni muro buono lungo la strada
   function bombing(st, n) {
     const wr = n.pop.writer, first = freeSite(st, ['strada', 'hall'], { x: n.x, y: n.y }, 220); if (!first) return null;
@@ -235,7 +246,7 @@ var WriterVita = (function () {
     for (let k = 0; k < n0 && used.size < ws.length; k++) {
       const n = pick(ws.filter(m => !used.has(m.id))); if (!n) break; used.add(n.id);
       const wr = n.pop.writer, r = rnd();
-      const kind = wr.train && r < .25 ? 'treno' : wr.roof && r < .45 ? 'heaven' : r < .7 ? 'bombing' : r < .88 ? 'muro' : 'hall';
+      const kind = wr.train && r < .22 ? 'treno' : wr.roof && r < .4 ? 'heaven' : r < .52 ? 'auto' : r < .74 ? 'bombing' : r < .9 ? 'muro' : 'hall';
       const mates = (crewOf[wr.crew] || []).filter(m => !used.has(m.id)), partner = (kind === 'muro' || kind === 'hall') && mates.length && rnd() < .7 ? pick(mates) : null;
       if (partner) used.add(partner.id);
       v.plan.push({ id: n.id, partner: partner && partner.id, kind, at: dayIdx(st.t + 120) * 1440 - 90 + Math.floor(rnd() * 300) });   // fra le 22:30 e le 3:30
@@ -248,7 +259,7 @@ var WriterVita = (function () {
     for (let i = v.plan.length - 1; i >= 0; i--) {
       const P = v.plan[i]; if (st.t < P.at) continue; v.plan.splice(i, 1);
       const n = G.byId(st, P.id), partner = P.partner ? G.byId(st, P.partner) : null; if (!alive(n)) continue;
-      (P.kind === 'bombing' ? bombing(st, n) : mission(st, n, P.kind, partner)) || mission(st, n, 'muro', partner);
+      (P.kind === 'bombing' ? bombing(st, n) : P.kind === 'auto' ? auto(st, n) : mission(st, n, P.kind, partner)) || mission(st, n, 'muro', partner);
     }
   }
   // di giorno: chi ha il mop lascia una tag (e un segno) sul muro più vicino mentre passa
@@ -368,6 +379,6 @@ var WriterVita = (function () {
     const go = () => { if (!window.THREE || !window.__pv) { setTimeout(go, 300); return; } requestAnimationFrame(frame); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
-  return { SITES, buildSites, freeSite, mission, bombing, history, planNight, runNight, coverage, drawMap, V };
+  return { SITES, buildSites, freeSite, mission, bombing, auto, history, planNight, runNight, coverage, drawMap, V };
 })();
 if (typeof module !== 'undefined') module.exports = WriterVita;

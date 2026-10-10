@@ -43,7 +43,26 @@ var WriterArte = (function () {
     { f: ['#fff2a0', '#ffd23a', '#e09a0a'], o: '#2a0e3a', d: '#6a1aa0', k: '#f8f0ff', bg: '#1ab0a0', hi: '#ffffff' },
   ];
   // i colori della rotella di main.js (rosso, nero, bianco, blu, giallo, verde, rosa, arancio) → tavolozza
-  const COL2PAL = [5, 6, 4, 1, 0, 8, 9, 10];
+  // LE TAVOLOZZE DI OGGI (dalle 14 in poi): poche tinte piatte e il nero. L'argento e nero, i pastelli col contorno nero dei muri
+  // pieni, il rosso e nero, il bianco e nero, i toni di terra, un fluo da solo, il blu pieno, il duotono. Quelle sopra (gli anni '80:
+  // sfumature arcobaleno) restano per i lavori vecchi della storia dei muri.
+  PAL.push(
+    { f: ['#d6d9dd', '#c8ccd1', '#b4b9bf'], o: '#0c0c0e', d: '#0c0c0e', k: '#f2efe6', bg: '#1a1a1e', hi: '#ffffff', silver: true },
+    { f: ['#a8dcec', '#9ad4e8', '#86c6de'], o: '#111114', d: '#2a3a7a', k: '#f4f1ea', bg: '#f0b8cc', hi: '#ffffff' },
+    { f: ['#cdb6ea', '#bca2e0', '#a88ed4'], o: '#111114', d: '#2a2240', k: '#f4f1ea', bg: '#e8e0a8', hi: '#ffffff' },
+    { f: ['#f4aec8', '#ee96b8', '#e27ea6'], o: '#111114', d: '#5a1a3a', k: '#ffffff', bg: '#a8dcec', hi: '#ffffff' },
+    { f: ['#aeeacf', '#96dec0', '#7ed2b0'], o: '#111114', d: '#1a4a3a', k: '#f4f1ea', bg: '#f4aec8', hi: '#ffffff' },
+    { f: ['#e2221b', '#d21c17', '#b51611'], o: '#0c0c0e', d: '#0c0c0e', k: '#f4f1ea', bg: '#f4f1ea', hi: '#ffffff' },
+    { f: ['#f6f4ee', '#efece4', '#e4e0d6'], o: '#0c0c0e', d: '#0c0c0e', k: '#e2221b', bg: '#0c0c0e', hi: '#ffffff' },
+    { f: ['#17171b', '#141418', '#101014'], o: '#f6f4ee', d: '#f6f4ee', k: '#17171b', bg: '#e2221b', hi: '#f6f4ee' },
+    { f: ['#c8643a', '#b85a32', '#a04a28'], o: '#f0e8d8', d: '#3a2a1e', k: '#2a2018', bg: '#7a8a4a', hi: '#f0e8d8' },
+    { f: ['#d8aa3a', '#c89c32', '#b0862a'], o: '#1e1a14', d: '#5a6a32', k: '#f0e8d8', bg: '#2a2a2a', hi: '#fff4d8' },
+    { f: ['#ff7a1a', '#ff6c12', '#f05c0a'], o: '#0c0c0e', d: '#0c0c0e', k: '#f4f1ea', bg: '#cfd3d8', hi: '#ffffff' },
+    { f: ['#c0ff3a', '#b0f22e', '#9ee024'], o: '#0c0c0e', d: '#3a2a6a', k: '#f4f1ea', bg: '#17171b', hi: '#ffffff' },
+    { f: ['#2a3ad8', '#2434ca', '#1c2ab2'], o: '#f6f4ee', d: '#0c0c0e', k: '#0c0c0e', bg: '#f4aec8', hi: '#ffffff' },
+    { f: ['#ff8a3a', '#ff8a3a', '#cdb6ea'], o: '#111114', d: '#2a2240', k: '#f4f1ea', bg: '#aeeacf', hi: '#ffffff' });
+  const MOD = [14, 14, 14, 15, 15, 16, 17, 18, 19, 19, 20, 21, 22, 23, 24, 25, 26, 27];
+  const COL2PAL = [19, 21, 20, 26, 23, 18, 17, 24];
 
   // ---------------- LE FAMIGLIE DI LETTERE ----------------
   // adv: passo fra le lettere (sotto .7 si accavallano); lw: spessore del riempimento (frazione dell'altezza); d3: profondità del 3D
@@ -64,9 +83,12 @@ var WriterArte = (function () {
   // fill-in: riempimento piatto, contorno nero spesso, niente 3D (i pezzi veloci dei muri pieni); contorno: solo la linea, dentro il muro
   FAM.piatto = { nome: 'fill-in', adv: .86, skew: .04, bounce: .02, rot: .04, wob: 0, scale: .05, ext: 0, lw: .38, join: 'miter', cap: 'square', d3: 0, arrows: 0, links: 0, flat: true, sh: { flare: 0, bh: .12, con: .12, cap: 'square', sharp: true } };
   FAM.contorno = { nome: 'solo contorno', adv: .84, skew: .06, bounce: .03, rot: .05, wob: 0, scale: .06, ext: .1, lw: .4, join: 'miter', cap: 'square', d3: 0, arrows: 0, links: 0, flat: true, hollow: true, sh: { flare: .05, bh: .1, con: .15, cap: 'square', sharp: true } };
+  FAM.astratto = { nome: 'astratto', adv: .84, skew: .06, bounce: .03, rot: .06, wob: 0, scale: .08, ext: .05, lw: .4, join: 'miter', cap: 'square', d3: .3, arrows: 0, links: 0, flat: true, cuts: true, sh: { flare: 0, bh: .15, con: .2, cap: 'square', sharp: true } };
   const FLATS = ['#9ad8e8', '#e86a9a', '#d8201a', '#b48ad8', '#f2d23a', '#f2efe6', '#5ac8a0', '#ff8a3a', '#cfd3d8'];
   const THROW_FAMS = ['throwie', 'throwie', 'chrome', 'chrome', 'fat', 'bubble'];
   const FAMS = Object.keys(FAM);
+  // le famiglie di oggi, coi loro pesi (il wildstyle con le frecce e il bubble arcobaleno sono rari)
+  const MODFAMS = ['piatto', 'piatto', 'piatto', 'contorno', 'contorno', 'block', 'block', 'heavy', 'semi', 'semi', 'script', 'astratto', 'astratto', 'astratto', 'bubble', 'wild', 'spiky'];
   const FILLS = ['flat', 'flat', 'due', 'due', 'fade', 'fade', 'diag', 'split', 'bolle', 'crepe', 'fiamme', 'scacchi', 'stelle'];
   const BGS = ['nuvola', 'sole', 'radici', 'skyline', 'spruzzi', 'ghiaccio', 'ovale', 'scacchi', 'esplosione', 'splat'];
   const BADGES = ['ovale', 'ovale', 'scacchi', 'esplosione', 'splat', 'nuvola', 'spruzzi', 'ghiaccio'];
@@ -92,25 +114,25 @@ var WriterArte = (function () {
     const d = o.dna || {}, seed = o.seed || Math.floor(Math.random() * 1e9), r = mulberry(seed ^ 0x2545f491), style = o.style || 'pezzo';
     const wild = style === 'burner' || style === 'wholecar', throwUp = style === 'throw';
     const q = clamp((d.skill != null ? d.skill : .5) + (r() - .5) * .18, .05, 1);
-    let fam = r() < .78 && d.fam ? d.fam : pickR(r, FAMS); if (throwUp && !THROW_FAMS.includes(fam)) fam = pickR(r, THROW_FAMS);
+    let fam = r() < .7 && d.fam ? d.fam : pickR(r, MODFAMS); if (throwUp && !THROW_FAMS.includes(fam)) fam = pickR(r, THROW_FAMS);
     if (q < .3 && (fam === 'wild' || fam === 'spiky' || fam === 'script')) fam = pickR(r, ['semi', 'bubble', 'block', 'piatto']);   // un toy non sa fare il wildstyle
     const pals = d.pals && d.pals.length ? d.pals : [Math.floor(r() * PAL.length)];
     const pol = d.pol != null ? d.pol : .4;
     const sk = { style, aka: o.aka, crew: o.crew, seed, q, fam, pal: pickR(r, pals) % PAL.length,
       words: wild && r() < pol * .5 ? pickR(r, WORDS) : null,
-      slogan: !throwUp && style !== 'tag' && r() < pol * (wild ? 1 : .5) ? pickR(r, SLOGANS) : null,
-      chr: wild && q > .3 ? (d.chars && d.chars.length && r() < .8 ? pickR(r, d.chars) : pickR(r, CHARS)) : null,
-      fillk: q < .3 ? 'fade' : FAM[fam].chrome ? 'chrome' : pickR(r, FILLS),
-      bgk: style === 'wholecar' ? pickR(r, ['sole', 'radici', 'skyline']) : wild ? pickR(r, ['sole', 'radici', 'skyline', 'esplosione', 'ovale']) : throwUp ? (r() < .35 ? pickR(r, ['ovale', 'splat', 'esplosione']) : null) : pickR(r, BADGES),
-      yr: pickR(r, YEARS), by: o.by };
+      slogan: !throwUp && style !== 'tag' && r() < pol * (wild ? .5 : .25) ? pickR(r, SLOGANS) : null,
+      chr: null,
+      fillk: FAM[fam].chrome ? 'chrome' : pickR(r, ['flat', 'flat', 'flat', 'due', 'due', 'fade', r() < .1 ? pickR(r, FILLS) : 'flat']),
+      bgk: style === 'wholecar' ? pickR(r, ['rullo', 'rullo', 'skyline']) : throwUp ? (r() < .3 ? 'rullo' : null) : r() < .45 ? 'rullo' : r() < .08 ? pickR(r, BADGES) : null,
+      yr: r() < .12 ? pickR(r, YEARS) : '', by: o.by };
     if (FAM[fam].flat && r() < .75) sk.bgk = null;
     return sk;
   }
   // il DNA di un writer a caso (gli NPC: dal loro numero)
   function dnaOf(seed, skill, crewCol) {
-    const r = mulberry(seed ^ 0x9e3779b9), pals = [crewCol != null ? crewCol : Math.floor(r() * PAL.length)];
-    while (pals.length < 3) { const k = Math.floor(r() * PAL.length); if (!pals.includes(k)) pals.push(k); }
-    return { fam: pickR(r, FAMS), pals, chars: [pickR(r, CHARS), pickR(r, CHARS)], pol: r(), skill: skill != null ? skill : .3 + r() * .6 };
+    const r = mulberry(seed ^ 0x9e3779b9), pals = [crewCol != null ? (crewCol >= 14 ? crewCol : MOD[(crewCol * 5 + 3) % MOD.length]) : pickR(r, MOD)];
+    while (pals.length < 3) { const k = pickR(r, MOD); if (!pals.includes(k)) pals.push(k); }
+    return { fam: pickR(r, MODFAMS), pals, chars: [pickR(r, CHARS), pickR(r, CHARS)], pol: r(), skill: skill != null ? skill : .3 + r() * .6 };
   }
 
   // ---------------- LE LETTERE ----------------
@@ -299,6 +321,13 @@ var WriterArte = (function () {
       }
       for (let k = 0; k < (full ? 30 : 12); k++) sparkle(bg, r() * Wp, r() * Hp * .6, Hp * (.015 + r() * .025), 'rgba(255,255,255,.85)');
       if (full) { const n = 10 + Math.floor(r() * 6); bg.save(); for (let k = 0; k < n; k++) { const a = Wp * (k + r() * .6) / n, b = Hp * (.92 + r() * .08), rr = Hp * (.07 + r() * .07); bg.fillStyle = P.o; bg.beginPath(); bg.arc(a, b, rr + 3, 0, 7); bg.fill(); bg.fillStyle = P.k; bg.beginPath(); bg.arc(a, b, rr, 0, 7); bg.fill(); } bg.restore(); } else bg.restore();
+    } else if (kind === 'rullo') {   // il fondo a rullo: una o due campiture piatte, storte, coi bordi sfrangiati e le righe del rullo
+      const n = r() < .5 ? 1 : 2;
+      for (let k = 0; k < n; k++) { const col = k ? P.d : P.bg, mx = Wp * (.03 + r() * .06), my = Hp * (.06 + r() * .1), x0 = mx + (k ? Wp * (.2 + r() * .3) : 0), x1 = Wp - mx - (k ? 0 : Wp * r() * .1), y0 = my + (k ? Hp * .3 : 0), y1 = Hp - my, rot = (r() - .5) * .05;
+        bg.save(); bg.translate(Wp / 2, Hp / 2); bg.rotate(rot); bg.translate(-Wp / 2, -Hp / 2); bg.fillStyle = col; bg.beginPath();
+        const edge = (ax, ay, bx, by) => { const L = hyp(bx - ax, by - ay), n0 = Math.max(4, Math.floor(L / (Hp * .03))); for (let j = 0; j <= n0; j++) { const t = j / n0; bg.lineTo(ax + (bx - ax) * t + (r() - .5) * Hp * .02, ay + (by - ay) * t + (r() - .5) * Hp * .02); } };
+        edge(x0, y0, x1, y0); edge(x1, y0, x1, y1); edge(x1, y1, x0, y1); edge(x0, y1, x0, y0); bg.closePath(); bg.fill();
+        bg.save(); bg.clip(); bg.globalAlpha = .08; bg.strokeStyle = r() < .5 ? '#ffffff' : '#000000'; for (let yy = y0; yy < y1; yy += Hp * (.06 + r() * .05)) { bg.lineWidth = Hp * (.02 + r() * .04); bg.beginPath(); bg.moveTo(x0, yy); bg.lineTo(x1, yy + (r() - .5) * Hp * .05); bg.stroke(); } bg.restore(); bg.restore(); }
     } else if (kind === 'ovale') {   // il badge ovale, un po' storto, col suo bordo (e a volte un secondo ovale dietro)
       const rot = (r() - .5) * .14;
       if (r() < .5) { bg.fillStyle = P.d; bg.beginPath(); bg.ellipse(Wp / 2 + Hp * .06, Hp / 2 + Hp * .05, Wp * .49, Hp * .44, rot, 0, 7); bg.fill(); }
@@ -452,6 +481,7 @@ var WriterArte = (function () {
     if (fam === 'chrome') return r() < .55 ? { fill: '#cfd3d8', ol: '#101012', outer: null, d3: '#101012', shine: '#ffffff', slit: '#101012', thick: 1.6 } : { fill: 'chrome', ol: '#101012', outer: P.k === '#101012' ? null : P.k, d3: '#101012', shine: '#ffffff', slit: '#101012' };
     const k = r();
     if (k < .3) { const c = pickR(r, [P.f[2], '#d8201a', '#1a3a9a', '#101012']); return { fill: '#fbf8f0', ol: c, outer: null, d3: c, shine: c, slit: c }; }   // il bozzetto
+    if (P.f && k < .75) return { fill: P.f[1], ol: '#101012', outer: null, d3: r() < .5 ? '#101012' : P.d, shine: '#ffffff', slit: '#101012', thick: 1.4 };   // pieno piatto col nero
     return { fill: P.f[k < .65 ? 0 : 1], fill2: P.f[1], ol: P.o, outer: q > .5 ? P.k : null, d3: P.d, shine: '#ffffff', slit: P.o };
   }
   function bubbleArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
@@ -499,7 +529,7 @@ var WriterArte = (function () {
   // ================= I PERSONAGGI (lavoro a sé: lo «stile» mostro) =================
   function monsterArt(w, P, r, Wp, Hp, snap, paths, radii, x) {
     // il corpo: tre-sei passate di rullo (linee grasse a capo tondo) buttate giù di getto; la loro unione è la sagoma
-    const lw = Math.max(3, Hp * .022), K = '#101012', body = r() < .5 ? '#f2efe6' : pickR(r, FLATS.concat([P.f[0], P.f[1]])), body2 = r() < .5 ? pickR(r, FLATS) : null;
+    const ign = r() < .45, lw = Math.max(3, Hp * (ign ? .016 : .022)), K = '#101012', body = r() < .5 ? '#f2efe6' : pickR(r, FLATS.concat([P.f[0], P.f[1]])), body2 = !ign && r() < .5 ? pickR(r, FLATS) : null;   // ign: l'ignorant style (linea unica, niente ombre, faccia da niente)
     const cx = Wp * (.42 + r() * .16), cy = Hp * (.52 + r() * .06), R0 = Math.min(Wp * .25, Hp * .25), rolls = [];
     const nR = 3 + Math.floor(r() * 4);
     for (let k = 0; k < nR; k++) { const a = r() * PI, l = R0 * (.6 + r() * 1.1), ox = (r() - .5) * R0 * 1.1, oy = (r() - .5) * R0 * .9, wd = R0 * (.55 + r() * .55); rolls.push({ a: [cx + ox - Math.cos(a) * l / 2, cy + oy - Math.sin(a) * l / 2], b: [cx + ox + Math.cos(a) * l / 2, cy + oy + Math.sin(a) * l / 2], w: wd, col: body2 && k === nR - 1 ? body2 : body }); }
@@ -516,9 +546,17 @@ var WriterArte = (function () {
     x.drawImage(F0, 0, 0); snap(x.canvas); paths.push(all.flatMap(q => [q.a, [(q.a[0] + q.b[0]) / 2, (q.a[1] + q.b[1]) / 2], q.b])); radii.push(R0 * .45);
     // 2. la linea nera attorno a tutto (sotto le macchie: resta solo il bordo), un po' fuori registro come fatta dopo, a mano
     const O = cv(Wp, Hp), o = O.getContext('2d'), mis = lw * .6; all.forEach(q => roll(o, { a: [q.a[0] + mis, q.a[1] - mis * .5], b: [q.b[0] + mis, q.b[1] - mis * .5], w: q.w }, lw * 2, K)); o.drawImage(F0, 0, 0);
-    o.save(); o.globalCompositeOperation = 'source-atop'; o.fillStyle = 'rgba(0,0,0,.16)'; o.beginPath(); o.ellipse(cx + R0 * .7, cy + R0 * .4, R0 * .7, R0 * 1.3, -.4, 0, 7); o.fill(); o.restore();   // l'ombra di lato
+    if (!ign) { o.save(); o.globalCompositeOperation = 'source-atop'; o.fillStyle = 'rgba(0,0,0,.16)'; o.beginPath(); o.ellipse(cx + R0 * .7, cy + R0 * .4, R0 * .7, R0 * 1.3, -.4, 0, 7); o.fill(); o.restore(); }   // l'ombra di lato
     x.clearRect(0, 0, Wp, Hp); x.drawImage(O, 0, 0); snap(x.canvas); paths.push(all.flatMap(q => [q.a, q.b])); radii.push(R0 * .3);
     // 3. la faccia, dove la sagoma lo permette: gli occhi in alto, la bocca coi denti sotto
+    if (ign) {   // la faccia da niente: due puntini storti, una linea per bocca (a volte coi denti contati), una X
+      const ey2 = top + R0 * (.5 + r() * .2); x.fillStyle = K; x.strokeStyle = K; x.lineWidth = lw; x.lineCap = 'round';
+      [-1, 1].forEach(sx => { const ex = cx + sx * R0 * (.22 + r() * .1), ey3 = ey2 + (r() - .5) * R0 * .12; if (r() < .2) { x.beginPath(); x.moveTo(ex - R0 * .07, ey3 - R0 * .07); x.lineTo(ex + R0 * .07, ey3 + R0 * .07); x.moveTo(ex + R0 * .07, ey3 - R0 * .07); x.lineTo(ex - R0 * .07, ey3 + R0 * .07); x.stroke(); } else { x.beginPath(); x.arc(ex, ey3, R0 * (.05 + r() * .04), 0, 7); x.fill(); } });
+      const my2 = ey2 + R0 * (.4 + r() * .2), mw2 = R0 * (.3 + r() * .3); x.beginPath(); x.moveTo(cx - mw2, my2 + (r() - .5) * R0 * .1); x.quadraticCurveTo(cx, my2 + (r() - .3) * R0 * .3, cx + mw2, my2 + (r() - .5) * R0 * .1); x.stroke();
+      if (r() < .5) for (let k = 1; k < 5; k++) { const tx = cx - mw2 + k * mw2 * .4; x.beginPath(); x.moveTo(tx, my2 - R0 * .05); x.lineTo(tx, my2 + R0 * .06); x.stroke(); }
+      if (w.aka) smallTag(x, w.aka, Wp * .8, Hp * .9, Hp * .07, K, r, Wp * .3);
+      snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .12); return;
+    }
     const Wh = '#ffffff', ne = pickR(r, [1, 2, 2, 2, 3]), ey = top + R0 * (.45 + r() * .2);
     for (let k = 0; k < ne; k++) { const ex = cx + (ne === 1 ? 0 : (k / (ne - 1) - .5) * R0 * (ne === 3 ? 1 : .75)) + (r() - .5) * R0 * .1, er = R0 * (ne === 1 ? .38 : .22) * (.85 + r() * .35);
       x.fillStyle = Wh; x.strokeStyle = K; x.lineWidth = lw; x.beginPath(); x.ellipse(ex, ey, er, er * (.9 + r() * .3), (r() - .5) * .3, 0, 7); x.fill(); x.stroke(); const lk = (r() - .5) * er * .7; x.fillStyle = K; x.beginPath(); x.arc(ex + lk, ey + er * .15, er * .4, 0, 7); x.fill(); x.fillStyle = Wh; x.beginPath(); x.arc(ex + lk - er * .14, ey, er * .11, 0, 7); x.fill();
@@ -608,7 +646,7 @@ var WriterArte = (function () {
     const padK = .6 * F.lw / (1 + 1.2 * F.lw) + .04, L = fit(L0, LW, Hp - sloganH, Hp * padK, train ? 1.6 : wild ? 1.3 : 1.1);
     const ox0 = charLeft ? charW : 0; L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a + ox0, b]); }); L.box = [L.box[0] + ox0, L.box[1], L.box[2] + ox0, L.box[3]];
     const lw = F.lw * 100 * L.s * (train ? 1.12 : 1), ol = Math.max(2.5, lw * (throwUp ? .24 : .2) * (toy ? .7 + r() * .6 : 1)), kl = Math.max(2, lw * .16);
-    const d3 = F.flat ? (r() < .4 ? lw * .22 : .01) : throwUp ? Math.max(2, lw * F.d3 * .6) : Math.max(toy ? 1 : 3, lw * F.d3 * (toy ? .3 : .55 + q * .55)), ang3 = F.chrome ? .9 : .78, dx = d3 * Math.cos(ang3), dy = d3 * Math.sin(ang3), steps = Math.max(1, Math.round(d3 / 1.5));
+    const mod3 = r(), d3 = F.flat || (C.pal >= 14 && mod3 < .4) ? (r() < .4 ? lw * .22 : .01) : throwUp ? Math.max(2, lw * F.d3 * .6) : Math.max(toy ? 1 : 3, lw * F.d3 * (toy ? .3 : .55 + q * .55)), ang3 = F.chrome ? .9 : .78, dx = d3 * Math.cos(ang3), dy = d3 * Math.sin(ang3), steps = Math.max(1, Math.round(d3 / 1.5));
     if (F.swash) swash(L, r);
     if (F.arrows && !throwUp && q > .3) arrows(L, r, Math.max(1, Math.round(F.arrows * q * .6)), lw); else { L.arrows = []; L.w0 = lw; }
     if (F.spikes) spikes(L, r, lw);
@@ -680,7 +718,7 @@ var WriterArte = (function () {
     const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); ox.drawImage(BG, 0, 0);
     ox.lineJoin = 'round'; ox.lineCap = 'round';
     const allP = order.flatMap(i => polys[i]);
-    if (q > .3 && !throwUp && !F.flat) { ox.strokeStyle = KL; ox.fillStyle = KL; extrude(ox, allP, KL, 2 * (ol + kl)); strokeL(ox, allP, KL, 2 * (ol + kl)); }   // la keyline attorno a tutto, 3D compreso
+    if (q > .3 && !throwUp && !F.flat && (P.k && (w.pal < 14 || r() < .3))) { ox.strokeStyle = KL; ox.fillStyle = KL; extrude(ox, allP, KL, 2 * (ol + kl)); strokeL(ox, allP, KL, 2 * (ol + kl)); }   // la keyline attorno a tutto, 3D compreso
     ox.strokeStyle = F.ink ? KL : P.o; extrude(ox, allP, null, 2 * ol);   // il bordo del blocco 3D
     ox.fillStyle = F.ink ? KL : P.d; extrude(ox, allP, null, 0);   // il blocco 3D
     order.forEach(i => {
@@ -691,12 +729,16 @@ var WriterArte = (function () {
       if (q > .5 && !F.flat) { lc.strokeStyle = P.hi; lc.fillStyle = P.hi; lc.lineCap = 'round'; lc.lineWidth = Math.max(1.5, ol * .7); polys[i].slice(0, 1).forEach(pl => { let k0 = 0, best = 1e9; pl.forEach(([a, b], k) => { if (a + b < best) { best = a + b; k0 = k; } }); const a = pl[k0], b = pl[(k0 + 1) % pl.length], cxp = pl.reduce((s0, p) => s0 + p[0], 0) / pl.length, cyp = pl.reduce((s0, p) => s0 + p[1], 0) / pl.length, ix = cxp - a[0], iy = cyp - a[1], il = hyp(ix, iy) || 1, off = ol * 2.4, ex2 = b[0] - a[0], ey2 = b[1] - a[1], el = hyp(ex2, ey2) || 1, len = Math.min(el * .6, lw * .55);
         lc.beginPath(); lc.moveTo(a[0] + ix / il * off, a[1] + iy / il * off); lc.lineTo(a[0] + ix / il * off + ex2 / el * len, a[1] + iy / il * off + ey2 / el * len); lc.stroke(); lc.beginPath(); lc.arc(a[0] + ix / il * off + ex2 / el * (len + ol * 2.2), a[1] + iy / il * off + ey2 / el * (len + ol * 2.2), ol * .6, 0, 7); lc.fill(); }); }   // la luce: un tocco sul bordo in alto a sinistra
       if (F.doodles && q > .25) doodles(lc, groups[i], lw, r, F.ink ? '#f6f4ee' : P.hi, F.ink, F.stars, F.ink && i === order[Math.floor(order.length / 2)] && r() < .45);
+      if (F.cuts) { const pts = polys[i].flat(), a0 = Math.min(...pts.map(p => p[0])), a1 = Math.max(...pts.map(p => p[0])), b0 = Math.min(...pts.map(p => p[1])), b1 = Math.max(...pts.map(p => p[1])), cols = [P.f[0], P.bg, P.d, P.k, P.f[2]];
+        for (let k = 0; k < 2 + Math.floor(r() * 3); k++) { const ang = r() * PI, cx0 = a0 + (a1 - a0) * r(), cy0 = b0 + (b1 - b0) * r(), L2 = (a1 - a0 + b1 - b0), ux = Math.cos(ang), uy = Math.sin(ang);
+          lc.fillStyle = pickR(r, cols); lc.beginPath(); lc.moveTo(cx0 - ux * L2, cy0 - uy * L2); lc.lineTo(cx0 + ux * L2, cy0 + uy * L2); lc.lineTo(cx0 + ux * L2 - uy * L2, cy0 + uy * L2 + ux * L2); lc.lineTo(cx0 - ux * L2 - uy * L2, cy0 - uy * L2 + ux * L2); lc.closePath(); lc.globalAlpha = .9; lc.fill(); lc.globalAlpha = 1;
+          lc.strokeStyle = OL; lc.lineWidth = Math.max(1.5, ol * .7); lc.beginPath(); lc.moveTo(cx0 - ux * L2, cy0 - uy * L2); lc.lineTo(cx0 + ux * L2, cy0 + uy * L2); lc.stroke(); } }   // i piani
       lc.globalCompositeOperation = 'source-over'; ox.drawImage(T1, 0, 0);
     });
     if (throwUp || toy) drips(ox, L, r, F.ink ? (r() < .5 ? '#f6f4ee' : '#141418') : throwUp ? P.o : P.f[2], lw * .3, throwUp ? 6 : 7, Hp * (toy ? .22 : .16));
     x.clearRect(0, 0, Wp, Hp); x.drawImage(OUT, 0, 0); snap(c); paths.push(densify(order.flatMap(i => groups[i]), lw * .6)); radii.push(lw * .6 + ol * 2 + d3 * .5);
     // 4. i dettagli: stelline, il personaggio, la firma della crew, l'anno, lo slogan
-    if (q > .75) for (let k = 0; k < (wild ? 2 : 1); k++) { const [a0, b0, a1] = L.box; sparkle(x, a0 + (a1 - a0) * (k ? .85 : .1), b0 - lw * .1, lw * .4, '#ffffff'); }   // una stellina sul bordo, non dentro
+
     if (C.chr) character(x, C.chr, charLeft ? charW * .5 : Wp - charW * .5, (Hp - sloganH) * .52, Hp * (train ? .5 : .46), P, r);
     const [bx0, by0, bx1, by1] = L.box, crew = w.crew || 'PV';
     smallTag(x, w.words && w.aka ? w.aka + ' ' + crew : crew, Math.min(Wp - Hp * .3, bx1 - Hp * .2), Math.min(Hp - sloganH - Hp * .07, by1 + lw * .9), Hp * .1, P.o, r, Wp * .3);
