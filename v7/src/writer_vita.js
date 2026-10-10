@@ -67,6 +67,8 @@ var WriterVita = (function () {
         }
       });
     });
+    // [ferrovia] i muri antirumore lungo la linea: il lato verso la strada, un sito ogni 8 m
+    const RL = WR.RAIL; if (RL && RL.ok) RL.walls.forEach((Wl, k) => { if (k % 2) return; const q = WR.sidePt(Wl.s + 2, Wl.side, Wl.off + .7); if (!G.walkT(Math.floor(q.x / TS), Math.floor(q.y / TS))) return; const nx = -Math.sin(q.ang) * Wl.side, ny = Math.cos(q.ang) * Wl.side; SITES.push({ x: q.x, y: q.y, face: Math.atan2(-ny, -nx), kind: 'ferrovia', bi: -1, len: 8, out: [nx, ny], along: [Math.cos(q.ang), Math.sin(q.ang)], place: 'lungo la ferrovia' }); });
   }
   buildSites();
   const placeOf = s => { try { const p = G.nearestPlace(s.x, s.y); return p ? 'a ' + p.name : ''; } catch (e) { return ''; } };
@@ -173,7 +175,7 @@ var WriterVita = (function () {
       const E = start(st, n, 'writer', 'fare il treno al deposito', [goStep('va al deposito della miniera, al buio', q), paintStep('spruzza la bomboletta sul treno', (st2, n2) => WR.npcWork(st2, n2, wr, WR.TR.CARS[car].k === 'loco' ? 'burner' : 'wholecar', null, { surf: 'treno', car, side, u0: .3, vb: .25, W: L - .6, H: 2.55 })), homeStep()]);
       return E;
     }
-    const s = freeSite(st, kind === 'heaven' ? ['heaven'] : kind === 'hall' ? ['hall'] : ['strada', 'hall'], here, 260); if (!s) return null;
+    const s = freeSite(st, kind === 'heaven' ? ['heaven'] : kind === 'hall' ? ['hall'] : ['strada', 'hall', 'ferrovia'], here, 260); if (!s) return null;
     const style = styleFor(n, s.kind);
     if (s.kind === 'heaven') {
       const L = TT.LADDERS[s.L]; if (!L) return null;

@@ -27,7 +27,7 @@ for (let d = 0; d < days; d++) {
   run(1440); const R = O.report(st);
   line(`giorno ${d + 1}: ${JSON.stringify(R.stats)} · scaffali vuoti ${R.vuoti}`);
 }
-{ while (G.hour(st) < 9 || G.hour(st) > 12) run(30); run(20); const pw = st.npcs.filter(n => n.pop && n.pop.post && n.pop.post.i >= -2 && n.pop.cur && n.pop.cur.act === 'lavoro' && !n.inside); const atp = pw.filter(n => { const Lg = O.luoghi(st)[n.pop.post.k]; const q = n.pop.post.i === -1 ? Lg.banco : n.pop.post.i >= 0 ? Lg.posts[n.pop.post.i] : n.pop.post; return q && Math.hypot(n.x - q.x, n.y - q.y) < 1.5; }); line(`Al lavoro all'aperto: ${pw.length}, al loro posto: ${atp.length}`); ok(!pw.length || atp.length / pw.length > .5, 'i lavoratori all\'aperto non stanno al loro posto'); }
+{ while (G.hour(st) < 9 || G.hour(st) > 12) run(30); run(20); const postOf = n => { const Lg = O.luoghi(st)[n.pop.post.k]; return n.pop.post.i === -1 ? Lg.banco : n.pop.post.i >= 0 ? Lg.posts[n.pop.post.i] : n.pop.post; }; const pw = st.npcs.filter(n => n.pop && n.pop.post && n.pop.post.i >= -2 && n.pop.cur && n.pop.cur.act === 'lavoro' && !n.inside).filter(n => { const q = postOf(n); return !q || Math.hypot(n.x - q.x, n.y - q.y) < 40; }); /* chi è ancora in cammino verso un posto lontano non conta */ const atp = pw.filter(n => { const q = postOf(n); return q && Math.hypot(n.x - q.x, n.y - q.y) < 1.5; }); line(`Al lavoro all'aperto: ${pw.length}, al loro posto: ${atp.length}`); ok(!pw.length || atp.length / pw.length > .5, 'i lavoratori all\'aperto non stanno al loro posto'); }
 const R = O.report(st);
 line('Laboratori:'); R.laboratori.slice(0, 14).forEach(l => line('  ' + l));
 line(`Vuoti: ${R.esempiVuoti.join('; ')}`);

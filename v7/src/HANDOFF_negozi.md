@@ -49,3 +49,20 @@ Righe segnate `[planimetrie]`, `[design]`, `[disgelo]`, `[negozi]`.
 ## Da fare
 - Gli scaffali Kenney (`bookcaseOpen`) espongono la merce solo se sono bassi: i piani di quelli alti non sono misurati.
 - Le vetrine si rifanno solo rientrando nel negozio.
+
+## Vissuto e cinematografico (10 ottobre, sera) — righe `[vissuto]`, `[stile]`
+- **Disposizione** (interiors.js):
+  - Niente angoli perfetti (`JIT`): sedie scostate e girate, poltrone e pouf orientati, tappeti un po' storti, mobili quasi dritti.
+  - La roba per terra sta accanto al mobile giusto (`ANCH`, `nearAnch0`): scarpe vicino al letto o all'ingresso, giornali e bottiglie vicino a divani e poltrone, giocattoli sul tappeto, valigia ai piedi del letto, legna accanto alla stufa, gatto vicino al caldo.
+  - I quadri si compongono sopra i mobili bassi appoggiati ai muri esterni (`PIC`, `ART_ANCH`): uno al centro e due ai lati, a quote diverse e appena storti (`o.tilt`).
+  - Le stanze grandi col centro vuoto ricevono la scena di mezzo dal riempimento: tavolo, partita, salotto.
+- **Sporco e pulito secondo chi ci vive** (`DIRT`): rudere 1, kommunalka .75, operaio .65 … funzionario .03.
+  - Sopra .45 compaiono cartacce, mozziconi e bottiglie (`ia_cartacce`), poi macchie e ragnatele.
+  - I pavimenti puliti sono più lucidi.
+- **Manifesti** (`lifeTokens`):
+  - ribellione (`REBEL`: `ia_poster_ribelle`, `ia_stencil`, volantini) nelle camerette, negli atelier, nei ruderi, nelle kommunalke e nelle sale giochi;
+  - propaganda (`PROPA`: `ia_manifesto`, `ia_pubblicita`) dal funzionario, negli uffici, nelle caserme e all'Emporio;
+  - nei bar tutte e due.
+- **Luce da film** (interni_arte.js `ombreLuci`): ombra morbida sotto ogni mobile; pozze di luce calda sotto lampade, abat-jour, jukebox e lumini; luce fredda davanti alle TV.
+- **Muri**: ombra in basso, in alto e negli angoli; graffi all'altezza delle spalliere, ditate, intonaco saltato. Sul pavimento l'ombra lungo i muri.
+- **Pezzi rifatti a mano** (`KITRE`): registratore di cassa, banco, distributore, macchina del caffè, lavatrice, secchio, cassa acustica, sgabelli, cibo, macchinette mangiasoldi; il jukebox è stato rifatto.

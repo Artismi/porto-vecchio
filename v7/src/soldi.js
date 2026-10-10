@@ -670,7 +670,8 @@ var Soldi = (function () {
         const g = M.van.crew && G.byId(st, M.van.crew); if (g && g.pop) { note(st, g, 'rapinato il portavalori, sotto la minaccia di un\'arma', 'bad', { w: 1 }); feel(g, 'paura', .5); if (g.pop.emer) Az.endPlan(st, g, 'rapinato'); }
         G.emit(st, 'rapina', { target: g ? g.id : null, shop: 'il portavalori' }); if (R) R.repr = clamp(R.repr + 10, 0, 100);
         news(st, `Assalto al portavalori del Banco: ${L(x)} spariti.`); st.sfx.push({ k: 'cash' });
-        return R_(true, id === 'assalto' ? `Le guardie alzano le mani. I sacchi delle banconote passano a te: ${L(x)}.` : `La lamiera cede. Dentro ci sono i sacchi: ${L(x)}.`);
+        const gAlive = st.sc && st.sc.guards ? st.sc.guards.map(k => G.byId(st, k)).filter(n => n && !n.dead).length : 2;   // [scontri] le guardie giurate vere
+        return R_(true, id === 'assalto' ? `${gAlive ? 'Le guardie alzano le mani.' : 'L\'autista alza le mani, bianco in faccia.'} I sacchi delle banconote passano a te: ${L(x)}.` : `La lamiera cede. Dentro ci sono i sacchi: ${L(x)}.`);
       }
       // ---- cassa comune ----
       case 'cassa_metti': { if (!R) return R_(false); if (!cassaReach(st)) return R_(false, `La cassa è in ${cassaWhere(st)}: devi andarci.`); const q = Math.min(ex.q || 0, Math.floor(p.money)); if (q < 1) return R_(false, 'Niente in tasca.'); pay(st, q, 'nella cassa comune'); R.cassa += q; return R_(true, `Messi ${L(q)} nella cassa comune.`); }

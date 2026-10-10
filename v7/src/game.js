@@ -514,6 +514,7 @@ var Game = (function () {
     let a = 0; st.npcs.forEach(n => { if (n.cop && !n.dead) { opinions(st, n); a = Math.max(a, n.alert); } });
     let lv = a < .45 ? 0 : a < .8 ? 1 : a < .93 ? 2 : 3;
     if (lv > 0 && (st.copKilled || st.player.kills >= 3)) lv = Math.min(4, Math.max(3, lv + 1));
+    if (HOOKS.wantedCap) lv = HOOKS.wantedCap(st, lv);   // [scontri] in piazza, con le bottiglie, si rischia la cella e non il piombo
     return lv;
   }
 
@@ -1339,8 +1340,12 @@ var Game = (function () {
     if (a === 'combatte') return combatMove(st, n, dt);
     if (a === 'fugge') {
       const src = n.panic > 0 && n.fleeFrom ? n.fleeFrom : p;
-      if (!n.path.length) { let best = null, bd = -1e9; for (const pl of Object.values(PLACES)) { const s = dist(pl.x, pl.y, src.x, src.y) - dist(pl.x, pl.y, n.x, n.y) * .5; if (s > bd) { bd = s; best = pl; } } goTo(n, best.x, best.y); }
-      stepAlong(n, 3.6, dt); return;
+      // [scontri] si scappa verso un luogo vicino (entro 200 m: il più lontano dell'isola stava spesso su un'altra isola, e la
+      // ricerca fallita esplorava tutta la mappa a ogni fotogramma); se il percorso non c'è si corre via e si riprova tra 2 s
+      if (!n.path.length && st.clock > (n.__fleeRe || 0)) { let best = null, bd = -1e9; for (const pl of Object.values(PLACES)) { const dn = dist(pl.x, pl.y, n.x, n.y); if (dn > 200) continue; const s = dist(pl.x, pl.y, src.x, src.y) - dn * .5; if (s > bd) { bd = s; best = pl; } } if (best) goTo(n, best.x, best.y); if (!n.path.length) n.__fleeRe = st.clock + 2; }
+      if (n.path.length) { stepAlong(n, 3.6, dt); return; }
+      { const a = Math.atan2(n.y - src.y, n.x - src.x); for (const o of [0, .6, -.6, 1.2, -1.2]) { const sx = n.x + Math.cos(a + o) * 3.6 * dt, sy = n.y + Math.sin(a + o) * 3.6 * dt; if (walkM(sx, sy)) { n.x = sx; n.y = sy; n.speedNow = 3.6; n.face = a + o; break; } } }
+      return;
     }
     if (a === 'denuncia') {
       const cops = st.npcs.filter(k => k.cop && !k.inside && !k.dead);
@@ -2206,6 +2211,22 @@ var Game = (function () {
     pts.forEach(([x, y], i) => { if (sea[i]) return; for (let a = -2.5; a <= 2.5; a += 1) for (let b = -2.5; b <= 2.5; b += 1) { const tx = Math.floor((x + a) / TS), ty = Math.floor((y + b) / TS); if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const k = ty * GW + tx; if (done.has(k)) continue; done.add(k); const v = T0[k];
       if (bIndex[k] >= 0 || v === T.BLD) { if (Math.hypot(a, b) < 1.6) L.rail.conflicts++; continue; }
       if (SOFT.includes(v)) { T0[k] = T.GRAVEL; grid[k] = T.GRAVEL; } } });
+    // [ferrovia] gli scali: binari secondari a 4,6 m dalla linea (il deposito della miniera, lo scalo del bosco), coi deviatoi
+    // di 18 m alle due punte; la massicciata si allarga e il bosco si taglia; dal lato dove non ci sono case, strade o acqua
+    const yards = [], landN = sea.indexOf(true) < 0 ? pts.length : sea.indexOf(true), YL = 110, OFF = 4.6;
+    const rmp = u => { const sm = t => t * t * (3 - 2 * t); return sm(Math.min(1, Math.max(0, u / 18))) * sm(Math.min(1, Math.max(0, (YL - u) / 18))); };
+    // una fascia libera per il binario secondario lungo YL da s0 dal lato side (le caselle da sgombrare, o null)
+    const fit = (s0, YLk, side) => { const cells = []; const r2 = u => { const sm = t => t * t * (3 - 2 * t); return sm(Math.min(1, Math.max(0, u / 18))) * sm(Math.min(1, Math.max(0, (YLk - u) / 18))); };
+      for (let u = 0; u <= YLk; u += 1) { const q = pts[s0 + u], a = pts[Math.max(0, s0 + u - 2)], b = pts[Math.min(pts.length - 1, s0 + u + 2)], an = Math.atan2(b[1] - a[1], b[0] - a[0]), nx = -Math.sin(an) * side, ny = Math.cos(an) * side;
+        for (let o = Math.max(2.5, OFF * r2(u) - 1.6); o <= OFF * r2(u) + 1.6; o += .8) { const tx = Math.floor((q[0] + nx * o) / TS), ty = Math.floor((q[1] + ny * o) / TS); if (tx < 1 || ty < 1 || tx >= GW - 1 || ty >= GH - 1) return null; const k = ty * GW + tx, v = T0[k]; if (bIndex[k] >= 0 || v === T.BLD || v === T.WATER || v === T.VIA || v === T.PIER || v === T.QUAY || v === T.STAIRS) return null; cells.push(k); } }
+      return cells; };
+    const take = (name, s0, YLk, side, cells) => { cells.forEach(k => { if (SOFT.includes(T0[k])) { T0[k] = T.GRAVEL; grid[k] = T.GRAVEL; } }); yards.push({ name, s0, len: YLk, side, off: OFF }); };
+    // il deposito accanto alla miniera; lo scalo del bosco nel tratto libero più lungo (le case del paese stanno a ridosso della linea)
+    for (const side of [1, -1]) { const c = s0ok(118) && fit(118, YL, side); if (c) { take('deposito della miniera', 118, YL, side, c); break; } }
+    function s0ok(s0) { return s0 + YL < landN - 60; }
+    let bestY = null; for (let s0 = 235; s0 + 64 < Math.min(landN - 60, 470); s0 += 3) for (const side of [1, -1]) for (let YLk = 100; YLk >= 64; YLk -= 6) { if (s0 + YLk > Math.min(landN - 60, 470) || yards.some(y => s0 < y.s0 + y.len + 20 && s0 + YLk > y.s0 - 20)) continue; if (bestY && YLk <= bestY.YLk) break; const c = fit(s0, YLk, side); if (c) { bestY = { s0, YLk, side, c }; break; } }
+    if (bestY) take('scalo del bosco', bestY.s0, bestY.YLk, bestY.side, bestY.c);
+    L.rail.yards = yards;
   }
   function applyLayout() { layout().block.forEach(([tx, ty]) => { setT(tx, ty, T.BLD); LBLOCK.add(ty * GW + tx); }); }
   function baseTile(tx, ty) { const i = ty * GW + tx; return LBLOCK.has(i) ? MAP0.grid[i] : tileAt(tx, ty); }
