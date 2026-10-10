@@ -29322,7 +29322,7 @@ var WriterMano = (function () {
   // attraversano tutto, le tacche), il BUSTED (le lettere a ricciolo chiuse nel cuore, a spruzzo, che cola). Non si deve
   // leggere per forza: deve colpire.
   const SIGNED = {
-    KEOS: { w: 5.4, sl: .12, base: 42, idea: 'swipe: la frustata sotto e il taglio sopra', deco: [['stella', 1, 6, 4.5, .2], ['asterisco', 93, 42, 3, .3], ['virgolette', 88, 18, 4], ['tacche', 4, 30, 3.5]], strokes: [
+    KEOS: { w: 5.4, sl: .12, base: 42, idea: 'swipe: la frustata sotto e il taglio sopra', deco: [['virgolette', 88, 18, 4]], strokes: [
       [[13, 4], [10.5, 22], [8, 42]],
       [[27, 7], [17, 17], [10, 25, 1], [18, 33], [26, 42]],
       [[27, 37], [35, 30], [33.5, 25], [27.5, 27.5], [25.5, 36], [30, 42], [38, 39]],
@@ -29556,8 +29556,8 @@ var WriterMano = (function () {
     if (runs.length && h.attacco) { const f = runs[0][0]; runs[0].unshift([f[0] - .28, f[1] - .16], [f[0] - .1, f[1] - .04]); }
     if (runs.length) { const R = runs[runs.length - 1], e = R[R.length - 1], e0 = R[R.length - 3] || R[0], ux = e[0] - e0[0], uy = e[1] - e0[1], ul = hyp(ux, uy) || 1;
       let X0 = 1e9; runs.forEach(t => t.forEach(([a]) => { X0 = Math.min(X0, a); }));
-      if (h.coda === 1) R.push([e[0] + ux / ul * .35 + .25, e[1] + uy / ul * .2 - .02], [e[0] + .85, e[1] + (uy > 0 ? .25 : -.12)]);   // la frusta avanti
-      else if (h.coda === 2) { R.push([e[0] + .25, Math.min(e[1], 0) - .22], [(X0 + e[0]) / 2, -.34], [X0 - .1, -.24]); h.under = false; }   // il ritorno: la coda passa sotto la parola e la sottolinea (un gesto solo)
+      if (h.coda === 1 || h.coda === 2 && e[1] >= .38) R.push([e[0] + ux / ul * .35 + .25, e[1] + uy / ul * .2 - .02], [e[0] + .85, e[1] + (uy > 0 ? .25 : -.12)]);   // la frusta avanti
+      else if (h.coda === 2 && e[1] < .38) { R.push([e[0] + .25, Math.min(e[1], 0) - .22], [(X0 + e[0]) / 2, -.34], [X0 - .1, -.24]); h.under = false; }   // il ritorno: la coda passa sotto la parola e la sottolinea (un gesto solo)
     }
     // l'inclinazione e la salita, uguali per tutto (dopo, così l'incastro resta)
     const SH = ([X, Y]) => [X + Y * h.slant + (h.r() - .5) * h.wob, Y + h.rise * X + (h.r() - .5) * h.wob];
@@ -29641,7 +29641,8 @@ var WriterMano = (function () {
     x.save(); x.fillStyle = col;
     if (!mark) { x.save(); x.filter = `blur(${(W * .35).toFixed(1)}px)`; x.globalAlpha = .1; draw(1.35); x.restore(); x.save(); x.filter = `blur(${Math.max(.5, W * .03).toFixed(1)}px)`; draw(1); x.restore(); }
     else { x.save(); x.filter = `blur(${Math.max(.5, W * .05).toFixed(1)}px)`; draw(1); x.restore(); }   // l'inchiostro beve un filo nel muro
-    if (h.balls && !(mark && h.flat)) strokes.forEach(st => { const p = st.pts; if (p.length < 2) return; let Lq = 0; for (let i = 1; i < p.length; i++) Lq += hyp(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); if (st.deco && Lq < W * 5 && Lq > W * .5) return; [p[0], p[p.length - 1]].forEach(q => { x.beginPath(); x.arc(q[0], q[1], W * (st.deco ? .62 : .78), 0, 7); x.fill(); }); });   // [writer] le palline: ogni tratto comincia e finisce tondo, tutte uguali
+    if (h.balls && !(mark && h.flat)) strokes.forEach(st => { const p = st.pts; if (p.length < 2) return; let Lq = 0; for (let i = 1; i < p.length; i++) Lq += hyp(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); if (st.deco && Lq < W * 5 && Lq > W * .5) return; [[0, 1], [p.length - 1, p.length - 2]].forEach(([i, j]) => { const q = p[i], o = p[Math.max(0, Math.min(p.length - 1, j))], dx = q[0] - o[0], dy = q[1] - o[1], a = Math.atan2(dy, dx), R0 = W * (st.deco ? .55 : .7) * (.9 + r() * .25);   // [writer] la goccia: la vernice si raccoglie dove la mano si ferma, allungata nel verso del tratto e tirata un filo in giù
+      x.save(); x.translate(q[0], q[1]); x.rotate(a); x.beginPath(); x.ellipse(R0 * .3, 0, R0 * 1.15, R0 * .82, 0, 0, 7); x.fill(); x.restore(); if (r() < .3) { x.beginPath(); x.ellipse(q[0], q[1] + R0 * .5, R0 * .7, R0 * 1.05, 0, 0, 7); x.fill(); } }); });   // [writer] le palline: ogni tratto comincia e finisce tondo, tutte uguali
     strokes.forEach(st => st.pts.forEach(q => path.push(q)));
     // le colature: dai punti lenti e bassi dei tratti principali
     const bots = []; strokes.forEach(st => { if (!st.main) return; st.pts.forEach((q, k) => { if (k < 3 || k > st.pts.length - 4) return; if (st.pts[k - 3][1] < q[1] && st.pts[k + 3][1] <= q[1]) bots.push([q, st.w[k]]); }); });
