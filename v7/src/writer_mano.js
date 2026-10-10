@@ -547,7 +547,7 @@ var WriterMano = (function () {
     });
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; tr.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
     const H = Math.max(1, y1 - y0);
-    return { tr, box: [x0, y0, x1, y1], h: { rec: true, deco: [], tacche: 0, grazie: 0, lati: false, W: (rec.w || .12) * H, flat: !!rec.flat, r: mulberry((d && d.seed) || 7) } };
+    return { tr, box: [x0, y0, x1, y1], frame: rec.frame || null, h: { rec: true, deco: [], tacche: 0, grazie: 0, lati: false, W: rec.wpx || (rec.w || .12) * H, flat: !!rec.flat, r: mulberry((d && d.seed) || 7) } };
   }
   function drawRecorded(x, rec, d, Wp, Hp, r, col, tool) { return renderFlow(x, recordedLayout(rec, d), d || {}, Wp, Hp, r, col, tool); }
   function renderFlow(x, L, d, Wp, Hp, r, col, tool) {
@@ -562,7 +562,8 @@ var WriterMano = (function () {
     const mainPts = []; L.tr.forEach(t => { if (t.main) t.pts.forEach((q, k) => { if (k > 3 && k < t.pts.length - 4) mainPts.push([q, t.pts[k - 3], t.pts[k + 3]]); }); });
     for (let k = 0; k < h.tacche && mainPts.length; k++) { const [q, a, b] = mainPts[Math.floor(h.r() * mainPts.length)], ang = Math.atan2(b[1] - a[1], b[0] - a[0]) + 1.25 + (h.r() - .5) * .4, l = .13 + h.r() * .08; dec.push([[q[0] - Math.cos(ang) * l, q[1] - Math.sin(ang) * l], [q[0] + Math.cos(ang) * l, q[1] + Math.sin(ang) * l]]); }
     dec.forEach(t => t.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
-    const pad = h.W * 1.2, sc = Math.min(Wp * .94 / (x1 - x0 + 2 * pad), Hp * .9 / (y1 - y0 + 2 * pad)), ox = Wp / 2 - (x0 + x1) / 2 * sc, oy = Hp / 2 + (y0 + y1) / 2 * sc;
+    const pad = h.W * 1.2; let sc = Math.min(Wp * .94 / (x1 - x0 + 2 * pad), Hp * .9 / (y1 - y0 + 2 * pad)), ox = Wp / 2 - (x0 + x1) / 2 * sc, oy = Hp / 2 + (y0 + y1) / 2 * sc;
+    if (L.frame) { sc = Wp / L.frame.w; ox = 0; oy = 0; }   // [writer] la tavoletta: il disegno resta dove l'hai fatto, alla sua scala
     const P = ([a, b, v, pr]) => [ox + a * sc, oy - b * sc, v || 0, pr], W = h.W * sc, nibA = d.nibA != null ? d.nibA : -.75, path = [];
     const strokes = L.tr.map(t => ({ pts: t.pts.map(P), main: t.main })).concat(dec.map(t => ({ pts: smoothC(t.map(P), 5).map(q => [q[0], q[1], 1]), deco: true })));
     // lo spessore: la velocità (normalizzata sul tratto), la goccia d'appoggio, la frusta in fondo, la punta del marker

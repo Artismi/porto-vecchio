@@ -29346,7 +29346,7 @@ var WriterMano = (function () {
     });
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; tr.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
     const H = Math.max(1, y1 - y0);
-    return { tr, box: [x0, y0, x1, y1], h: { rec: true, deco: [], tacche: 0, grazie: 0, lati: false, W: (rec.w || .12) * H, flat: !!rec.flat, r: mulberry((d && d.seed) || 7) } };
+    return { tr, box: [x0, y0, x1, y1], frame: rec.frame || null, h: { rec: true, deco: [], tacche: 0, grazie: 0, lati: false, W: rec.wpx || (rec.w || .12) * H, flat: !!rec.flat, r: mulberry((d && d.seed) || 7) } };
   }
   function drawRecorded(x, rec, d, Wp, Hp, r, col, tool) { return renderFlow(x, recordedLayout(rec, d), d || {}, Wp, Hp, r, col, tool); }
   function renderFlow(x, L, d, Wp, Hp, r, col, tool) {
@@ -29361,7 +29361,8 @@ var WriterMano = (function () {
     const mainPts = []; L.tr.forEach(t => { if (t.main) t.pts.forEach((q, k) => { if (k > 3 && k < t.pts.length - 4) mainPts.push([q, t.pts[k - 3], t.pts[k + 3]]); }); });
     for (let k = 0; k < h.tacche && mainPts.length; k++) { const [q, a, b] = mainPts[Math.floor(h.r() * mainPts.length)], ang = Math.atan2(b[1] - a[1], b[0] - a[0]) + 1.25 + (h.r() - .5) * .4, l = .13 + h.r() * .08; dec.push([[q[0] - Math.cos(ang) * l, q[1] - Math.sin(ang) * l], [q[0] + Math.cos(ang) * l, q[1] + Math.sin(ang) * l]]); }
     dec.forEach(t => t.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
-    const pad = h.W * 1.2, sc = Math.min(Wp * .94 / (x1 - x0 + 2 * pad), Hp * .9 / (y1 - y0 + 2 * pad)), ox = Wp / 2 - (x0 + x1) / 2 * sc, oy = Hp / 2 + (y0 + y1) / 2 * sc;
+    const pad = h.W * 1.2; let sc = Math.min(Wp * .94 / (x1 - x0 + 2 * pad), Hp * .9 / (y1 - y0 + 2 * pad)), ox = Wp / 2 - (x0 + x1) / 2 * sc, oy = Hp / 2 + (y0 + y1) / 2 * sc;
+    if (L.frame) { sc = Wp / L.frame.w; ox = 0; oy = 0; }   // [writer] la tavoletta: il disegno resta dove l'hai fatto, alla sua scala
     const P = ([a, b, v, pr]) => [ox + a * sc, oy - b * sc, v || 0, pr], W = h.W * sc, nibA = d.nibA != null ? d.nibA : -.75, path = [];
     const strokes = L.tr.map(t => ({ pts: t.pts.map(P), main: t.main })).concat(dec.map(t => ({ pts: smoothC(t.map(P), 5).map(q => [q[0], q[1], 1]), deco: true })));
     // lo spessore: la velocità (normalizzata sul tratto), la goccia d'appoggio, la frusta in fondo, la punta del marker
@@ -30377,10 +30378,11 @@ var WriterArte = (function () {
     for (const k of [-1, 0, 1]) pass(x, { strokes, arrows: k ? [] : arrowsL, w0: w2 }, w2, col, (dx || 0) + ux * k, (dy || 0) + uy * k, J, Cp);
   }
   function art(w) {
-    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = /^(tag|mtag|gotico)$/.test(w.style) && w.surf !== 'treno' ? 3 : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
+    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = (/^(tag|mtag|gotico)$/.test(w.style) || w.rec) && w.surf !== 'treno' ? (w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : 3) : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
     const C = choose(w), q = C.q, stages = [], paths = [], radii = [];
-    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: w.style === 'mtag' })); };
+    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: w.style === 'mtag' || (w.rec && w.tool === 'pennarello'), amp: w.rec ? .25 : undefined })); };
     const toy = q < .35;
+    if (w.rec) { const c = cv(Wp, Hp), x = c.getContext('2d'), res = WM.drawRecorded(x, w.rec, Object.assign({}, WM.dna(w.hand || w.seed || 1)), Wp, Hp, r, w.col || '#141418', w.tool === 'pennarello' ? 'mtag' : 'tag'); snap(c); paths.push(res.path.filter((q, i) => i % 3 === 0)); radii.push(Math.max(res.W * 2.2, Hp * .08)); return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK }; }   // [writer] il disegno fatto alla tavoletta
     if (w.style === 'mostro') { const c = cv(Wp, Hp); monsterArt(w, P, r, Wp, Hp, snap, paths, radii, c.getContext('2d')); return { stages, paths, radii, Wp, Hp, C }; }
     if (w.style === 'tag' || w.style === 'mtag' || w.style === 'gotico') {   // la tag: la mano del writer (writer_mano.js), col suo segno accanto
       const c = cv(Wp, Hp), x = c.getContext('2d'), signW = w.sign && w.style !== 'gotico' ? Hp * .7 : 0, d = Object.assign({}, WM.dna(w.hand || w.seed || 1), w.style === 'gotico' ? { goth: true, vert: Hp > Wp * 1.4 } : {});
@@ -30605,8 +30607,8 @@ var Writing = (function () {
     mostro: { nome: 'personaggio', rank: 2, W: 3, H: 2.6, dur: 40, cans: 2.6, fame: 12 },   // il mostro coi denti
     wholecar: { nome: 'whole car', rank: 4, W: 16, H: 2.9, dur: 110, cans: 7, fame: 45 },
   };
-  const MODES = ['libero', 'tag', 'throw', 'pezzo', 'burner'];
-  const MODE_TXT = { libero: 'a mano libera', tag: 'tag', throw: 'throw-up', pezzo: 'pezzo', burner: 'burner (sul treno: whole car)' };
+  const MODES = ['libero', 'tag', 'throw', 'pezzo', 'burner', 'tavoletta'];
+  const MODE_TXT = { libero: 'a mano libera', tag: 'tag', throw: 'throw-up', pezzo: 'pezzo', burner: 'burner (sul treno: whole car)', tavoletta: 'tavoletta (trascina sul muro la finestra, poi disegni)' };
   const RANKS = [[0, 'toy'], [25, 'writer'], [120, 'king della zona'], [400, 'king della linea'], [1000, 'all city king']];
   const rankOf = f => RANKS.filter(r => f >= r[0]).pop()[1];
   const un = k => (k === 'tag' || k === 'mtag' ? 'una ' : 'un ') + STYLES[k].nome;   // una tag, un pezzo
@@ -31144,10 +31146,120 @@ var Writing = (function () {
   }
   function washSide(i, sd) { const car = GFX.train && GFX.train.cars[i]; if (!car) return; const s = car.sides[sd], b = GFX.base[i + ':' + sd]; s.ctx.globalCompositeOperation = 'source-over'; s.ctx.drawImage(b, 0, 0); if (s.c.__pvOrig) s.c.__pvOrig.getContext('2d').drawImage(b, 0, 0); s.tex.needsUpdate = true; }
 
+  // ---------------- LA TAVOLETTA ----------------
+  // [writer] Modalità «tavoletta» (B): si trascina sul muro (o su un mezzo) e si traccia la finestra; il gioco fotografa
+  // quella zona di fronte, dritta, alla massima risoluzione, e la apre a tutto schermo; ci si disegna sopra col mouse o con la
+  // tavoletta (la pressione conta), alla scala che si vuole; «Applica» la mette sulla superficie esattamente dov'era, con la
+  // resa del gioco (writer_mano.js, il gesto registrato), e conta come un lavoro tuo: fama, crossaggi, vernice.
+  const TAV = { a: null, b: null, frame: null, pad: null };
+  const TAV_COLS = [['#c42a22', 'rosso'], ['#1e1e24', 'nero'], ['#e8e0d0', 'bianco'], ['#2a6ac8', 'blu'], ['#e8c040', 'giallo'], ['#3a9a5a', 'verde'], ['#c84a9a', 'rosa'], ['#e8a020', 'arancio']];
+  function tavRect() {
+    const A = TAV.a, rx = A.r, ua = 0, ub = (TAV.b.x - A.pt.x) * rx.x + (TAV.b.z - A.pt.z) * rx.z;
+    let Wm = Math.abs(ub - ua), Hm = Math.abs(TAV.b.y - A.pt.y), cu = (ua + ub) / 2, cy = (A.pt.y + TAV.b.y) / 2;
+    if (Wm < .25 || Hm < .2) { Wm = 1.6; Hm = .9; cu = 0; cy = A.pt.y; }   // un clic solo: la finestra della tag
+    Wm = clamp(Wm, .25, 8); Hm = clamp(Hm, .2, 4);
+    return { W: Wm, H: Hm, c: { x: A.pt.x + rx.x * cu, y: cy, z: A.pt.z + rx.z * cu } };
+  }
+  function tavFrame() {
+    const THREE = T3(), A = TAV.a, Rc = tavRect(), n = A.n, rx = A.r, sc = scene(); if (!sc) return;
+    const P = (u, v) => new THREE.Vector3(Rc.c.x + rx.x * u + n.x * .03, Rc.c.y + v, Rc.c.z + rx.z * u + n.z * .03);
+    const pts = [P(-Rc.W / 2, -Rc.H / 2), P(Rc.W / 2, -Rc.H / 2), P(Rc.W / 2, Rc.H / 2), P(-Rc.W / 2, Rc.H / 2)];
+    if (!TAV.frame) { TAV.frame = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffe14a, depthTest: false })); TAV.frame.renderOrder = 9; sc.add(TAV.frame); }
+    TAV.frame.geometry.setFromPoints(pts);
+  }
+  function tavClear() { if (TAV.frame) { if (TAV.frame.parent) TAV.frame.parent.remove(TAV.frame); TAV.frame.geometry.dispose(); TAV.frame.material.dispose(); TAV.frame = null; } TAV.a = null; TAV.b = null; }
+  function tavTick(st, nx, ny, tool, col) {
+    const THREE = T3(), R = R_(), p = st.player; if (!THREE || !R || TAV.pad) return true;
+    const cam = R.getCamera(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), cam); rc.near = 0; rc.far = 1e4;
+    if (!TAV.a) {
+      const h = rc.intersectObjects(cands(p.x, p.y), false).find(h => { if (!h.face || hyp(h.point.x - p.x, h.point.z - p.y) > 14) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
+      if (!h) return false;
+      const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (n.dot(rc.ray.direction) > 0) n.negate();
+      if (Math.abs(n.y) > .6) return { msg: 'La tavoletta va su un muro o su un mezzo: trascina sulla parete.' };
+      const nn = new THREE.Vector3(n.x, 0, n.z).normalize();
+      TAV.a = { pt: h.point.clone(), n: nn, r: new THREE.Vector3(nn.z, 0, -nn.x), obj: h.object, tool, col }; TAV.b = h.point.clone();
+      TAV.plane = new THREE.Plane().setFromNormalAndCoplanarPoint(nn, h.point); tavFrame(); return true;
+    }
+    const q = new THREE.Vector3(); if (rc.ray.intersectPlane(TAV.plane, q)) { TAV.b = q; tavFrame(); }
+    return true;
+  }
+  // la foto della zona: una camera ortogonale dritta davanti al muro, appena staccata (così il writer non c'è)
+  function tavShot(Rc, n, rx) {
+    const THREE = T3(), R = R_(), rend = R.__models && R.__models.renderer, sc = scene(); if (!rend || !sc) return null;
+    const MAX = 2048, pw = Rc.W >= Rc.H ? MAX : Math.round(MAX * Rc.W / Rc.H), ph = Rc.W >= Rc.H ? Math.round(MAX * Rc.H / Rc.W) : MAX;
+    const cam = new THREE.OrthographicCamera(-Rc.W / 2, Rc.W / 2, Rc.H / 2, -Rc.H / 2, .01, 1.2);
+    cam.position.set(Rc.c.x + n.x * .3, Rc.c.y, Rc.c.z + n.z * .3); cam.up.set(0, 1, 0); cam.lookAt(Rc.c.x, Rc.c.y, Rc.c.z); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+    const rt = new THREE.WebGLRenderTarget(pw, ph), prev = rend.getRenderTarget(), fr = TAV.frame; if (fr) fr.visible = false;
+    rend.setRenderTarget(rt); rend.clear(); rend.render(sc, cam); const buf = new Uint8Array(pw * ph * 4); rend.readRenderTargetPixels(rt, 0, 0, pw, ph, buf); rend.setRenderTarget(prev); rt.dispose(); if (fr) fr.visible = true;
+    const c = cv(pw, ph), x = c.getContext('2d'), im = x.createImageData(pw, ph);
+    for (let y = 0; y < ph; y++) im.data.set(buf.subarray((ph - 1 - y) * pw * 4, (ph - y) * pw * 4), y * pw * 4);   // la riga di sotto va su
+    x.putImageData(im, 0, 0); return c;
+  }
+  function tavRelease(st) {
+    if (!TAV.a || TAV.pad) return;
+    const A = TAV.a, Rc = tavRect(), shot = tavShot(Rc, A.n, A.r);
+    if (!shot) { tavClear(); return; }
+    tavPad(st, shot, Rc, A);
+  }
+  // il pannello: la foto a tutto schermo, il disegno sopra, gli strumenti
+  function tavPad(st, shot, Rc, A) {
+    if (typeof document === 'undefined') return;
+    const pw = shot.width, ph = shot.height, strokes = []; let cur = null, tool = A.tool, colI = Math.max(0, TAV_COLS.findIndex(c => c[0] === A.col)), cm = tool === 'pennarello' ? 2.5 : 4;
+    const box = document.createElement('div'); box.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,9,8,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font:14px system-ui,sans-serif;color:#eee;user-select:none';
+    const bar = document.createElement('div'); bar.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center';
+    const wrap = document.createElement('div'); wrap.style.cssText = 'position:relative;touch-action:none;box-shadow:0 0 0 2px #ffe14a';
+    const bg = document.createElement('canvas'), ink = document.createElement('canvas'), live = document.createElement('canvas');
+    [bg, ink, live].forEach((c, i) => { c.width = pw; c.height = ph; c.style.cssText = (i ? 'position:absolute;left:0;top:0;' : 'display:block;') + 'width:100%;height:100%'; wrap.appendChild(c); });
+    bg.getContext('2d').drawImage(shot, 0, 0);
+    const fit = () => { const k = Math.min((innerWidth - 40) / pw, (innerHeight - 110) / ph); wrap.style.width = pw * k + 'px'; wrap.style.height = ph * k + 'px'; };
+    fit(); addEventListener('resize', fit);
+    const btn = (t, f, hot) => { const b = document.createElement('button'); b.textContent = t; b.style.cssText = 'padding:7px 14px;border-radius:5px;border:1px solid #555;cursor:pointer;color:#fff;background:' + (hot ? '#d8402a' : '#34312c'); b.onclick = f; bar.appendChild(b); return b; };
+    const info = document.createElement('span'); info.style.color = '#bbb';
+    const tb = btn('', () => { tool = tool === 'pennarello' ? 'bomboletta' : 'pennarello'; upd(); render(); });
+    const cb = btn('', () => { colI = (colI + 1) % TAV_COLS.length; upd(); render(); });
+    const sl = document.createElement('input'); sl.type = 'range'; sl.min = 1; sl.max = 30; sl.value = cm; sl.oninput = () => { cm = +sl.value; upd(); drawLive(); render(); };
+    const lab = document.createElement('label'); lab.style.color = '#bbb'; lab.append('spessore ', sl); bar.appendChild(lab);
+    btn('Annulla tratto', () => { strokes.pop(); drawLive(); render(); });
+    btn('Applica', () => apply(), true);
+    btn('Esci', () => close());
+    bar.appendChild(info);
+    const upd = () => { tb.textContent = tool === 'pennarello' ? 'Pennarello' : 'Bomboletta'; cb.textContent = 'Colore: ' + TAV_COLS[colI][1]; cb.style.borderColor = TAV_COLS[colI][0]; info.textContent = `${Rc.W.toFixed(2)} × ${Rc.H.toFixed(2)} m · ${cm} cm`; };
+    upd();
+    box.appendChild(bar); box.appendChild(wrap); document.body.appendChild(box);
+    const pxm = pw / Rc.W, wpx = () => cm / 100 * pxm;
+    const pos = e => { const b = live.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * pw, (e.clientY - b.top) / b.height * ph]; };
+    live.addEventListener('pointerdown', e => { live.setPointerCapture(e.pointerId); const [x, y] = pos(e); cur = [[x, y, e.timeStamp, e.pressure || .5]]; strokes.push(cur); drawLive(); });
+    live.addEventListener('pointermove', e => { if (!cur) return; const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; (evs.length ? evs : [e]).forEach(ev => { const [x, y] = pos(ev), l = cur[cur.length - 1]; if (hyp(x - l[0], y - l[1]) < 1.5) return; cur.push([x, y, ev.timeStamp, ev.pressure || .5]); }); drawLive(); });
+    const end = () => { if (!cur) return; cur = null; drawLive(); render(); }; live.addEventListener('pointerup', end); live.addEventListener('pointercancel', end);
+    // mentre si disegna: il tratto com'è; appena staccato: la resa del gioco
+    function drawLive() { const x = live.getContext('2d'); x.clearRect(0, 0, pw, ph); if (!cur) return; x.strokeStyle = TAV_COLS[colI][0]; x.globalAlpha = .7; x.lineCap = x.lineJoin = 'round'; x.lineWidth = wpx(); x.beginPath(); cur.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); x.stroke(); }
+    const rec = () => ({ strokes: strokes.map(s => s.map(q => [q[0], q[1], q[2] - strokes[0][0][2], q[3]])), wpx: wpx(), frame: { w: pw, h: ph } });
+    function render() { const x = ink.getContext('2d'); x.clearRect(0, 0, pw, ph); if (!strokes.length) return; try { WriterMano.drawRecorded(x, rec(), { seed: 7 }, pw, ph, mulberry(11), TAV_COLS[colI][0], tool === 'pennarello' ? 'mtag' : 'tag'); } catch (e) { console.error(e); } }
+    const keys = e => { e.stopPropagation(); if (e.key === 'Escape') close(); }; addEventListener('keydown', keys, true); addEventListener('keyup', keys, true);
+    function close() { removeEventListener('keydown', keys, true); removeEventListener('keyup', keys, true); removeEventListener('resize', fit); box.remove(); TAV.pad = null; tavClear(); GFX.held = false; }
+    function apply() {
+      if (!strokes.length) { close(); return; }
+      const W = S(st), inv = OG() ? OG().inv(st) : null, r = rec();
+      let len = 0; r.strokes.forEach(s => s.forEach((q, i) => { if (i) len += hyp(q[0] - s[i - 1][0], q[1] - s[i - 1][1]); })); const lenM = len / pxm, cmM = cm / 100;
+      // la vernice: la bomboletta copre un po' meno di un metro quadro di tratto, il pennarello una ventina di metri di linea
+      if (inv && tool === 'bomboletta') { W.canUse += lenM * cmM / .8; while (W.canUse >= 1 && inv.bomboletta > 0) { inv.bomboletta--; W.canUse -= 1; } if (!inv.bomboletta) delete inv.bomboletta; }
+      if (inv && tool === 'pennarello') { W.mkUse += lenM / 20; if (W.mkUse >= 1 && inv.pennarello > 0) { W.mkUse -= 1; inv.pennarello--; if (!inv.pennarello) delete inv.pennarello; } }
+      const area = Rc.W * Rc.H, style = tool === 'pennarello' ? 'mtag' : area > 3.5 ? 'pezzo' : area > 1.2 ? 'throw' : 'tag', THREE = T3();
+      const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, col: TAV_COLS[colI][0], rec: r, pal: 0, seed: Math.floor(rnd() * 1e9), prog: 1, done: false, surf: 'muro', place: G.nearestPlace ? 'a ' + G.nearestPlace(st.player.x, st.player.y).name : '', W: Rc.W, H: Rc.H, hand: W.hand || (W.hand = Math.floor(rnd() * 1e9)) };
+      nw.gfxRect = { c: new THREE.Vector3(Rc.c.x, Rc.c.y, Rc.c.z), n: A.n.clone(), r: A.r.clone(), W: Rc.W, H: Rc.H, obj: A.obj }; nw.pos = { x: Rc.c.x, y: Rc.c.y, z: Rc.c.z };
+      const vid = vehOf(A.obj); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v && v.police) nw.cop = true; }
+      addWork(st, nw); const m = judge(st, nw); if (m) G.feed(st, m, /crossato/.test(m) ? 'bad' : 'info');
+      finish(st, nw); try { G.emit(st, 'graffito'); } catch (e) { }
+      close();
+    }
+    TAV.pad = box; GFX.held = false;
+  }
+
   // ---------------- IL GIOCATORE: il colpo, il lavoro sotto il puntatore ----------------
   // ritorna: true (si dipinge), { go } (avvicinati), { msg } (non si può), false (niente sotto)
   const REACH = 1.7;
   function tick(st, nx, ny, dt, col, colIdx, tool) {
+    if (mode(st) === 'tavoletta') return tavTick(st, nx, ny, tool, col);   // [writer] la finestra per la tavoletta
     const W = S(st), p = st.player, THREE = T3(), R = R_(); if (!THREE || !R) return false;
     let w = W.cur && !W.cur.done ? W.cur : null;
     if (!w) {
@@ -31250,7 +31362,7 @@ var Writing = (function () {
   // la mano del giocatore: cresce coi lavori fatti e con la fama
   function playerDna(st) { const W = S(st), d = W.done, skill = clamp(.38 + (d.tag + d.throw * 2 + d.pezzo * 4 + d.burner * 6 + d.wholecar * 8) * .006 + W.fame / 1500, .3, .97); return Object.assign(W.dna || (W.dna = WA.dnaOf(Math.floor(rnd() * 1e9), .5, 0)), { skill, fam: W.fam || (W.dna && W.dna.fam) }); }
   function judgeTrain(st, w) { const W = S(st), k = w.car + ':' + w.side, under = (W.train.sides[k] || []).map(id => W.works.find(o => o.id === id)).filter(o => o && !o.erased && o.by !== 'player'); if (!under.length) return null; const o = under[0]; w.over = under.map(o => o.id); return STYLES[w.style].rank > STYLES[o.style].rank ? `Vai sopra al ${STYLES[o.style].nome} di ${o.aka}: il tuo è più grosso, si può.` : `Hai crossato ${o.aka} dei ${o.crew} sul treno. Guerra.`; }
-  function release(st) { const W = S(st); if (W.cur && !W.cur.done) { const w = W.cur; G.feed(st, `${STYLES[w.style].nome[0].toUpperCase() + STYLES[w.style].nome.slice(1)} al ${Math.round(w.prog * 100)}%: clicca sopra per riprendere.`); } W.cur = null; GFX.held = false; }
+  function release(st) { if (TAV.a) { tavRelease(st); GFX.held = false; return; } const W = S(st); if (W.cur && !W.cur.done) { const w = W.cur; G.feed(st, `${STYLES[w.style].nome[0].toUpperCase() + STYLES[w.style].nome.slice(1)} al ${Math.round(w.prog * 100)}%: clicca sopra per riprendere.`); } W.cur = null; GFX.held = false; }
   // main.js: con questo attrezzo e questa modalità ci pensa il writing (non lo spruzzo libero)
   const wants = (st, tool) => tool === 'pennarello' || (tool === 'bomboletta' && mode(st) !== 'libero');
 
