@@ -29166,6 +29166,157 @@ var WriterMano = (function () {
       [[90, 22]], [[94.5, 20]],
     ] },
   };
+  // ---------------- LA TAG COME MOVIMENTO (sigma-lognormale) ----------------
+  // [writer] La ricerca (Berio e Leymarie, Goldsmiths «AutoGraff», sul modello sigma-lognormale di Plamondon; il GML di
+  // Graffiti Analysis che registra le tag come x, y e tempo): una tag non è un disegno di curve, è un MOVIMENTO. La mano va
+  // verso una sequenza di punti obiettivo con colpi di velocità a campana (lognormali) che si accavallano nel tempo: il colpo
+  // dopo parte prima che finisca quello prima, così gli angoli si arrotondano da soli e la parola esce in un gesto solo, senza
+  // pezzi incollati. Più si accavallano, più è fluida; meno, più è spigolosa. La velocità decide l'inchiostro: dove la mano
+  // frena il tratto si riempie, dove corre si assottiglia, e alla fine la punta si alza ancora in corsa (la frusta).
+  // Dai tutorial: lettere della stessa altezza, si toccano appena; i connettori fra una lettera e l'altra (dritto, a forcina,
+  // a occhiello); le traverse e i punti si fanno dopo, a parte.
+  // L'alfabeto del gesto: punti obiettivo nell'ordine della mano (x 0..~.85, y 0 la base, 1 l'altezza, y in su); [dopo] = i
+  // tratti che si fanno dopo, a penna alzata.
+  const GEST = {
+    A: { g: [[0, 0], [.42, 1], [.82, 0]], dopo: [[[.1, .38], [.85, .46]]] },
+    B: { g: [[0, 1], [0, 0], [.7, .2], [.1, .52], [.62, .82], [-.04, .96]] },
+    C: { g: [[.72, .84], [.32, 1], [0, .5], [.3, 0], [.82, .14]] },
+    D: { g: [[0, 1], [0, 0], [.45, .06], [.82, .5], [.45, .96], [-.06, .94]] },
+    E: { g: [[.78, 1], [0, .98], [0, 0], [.84, .02]], dopo: [[[-.04, .5], [.62, .53]]] },
+    F: { g: [[.82, 1], [.08, .98], [0, 0]], dopo: [[[-.05, .5], [.62, .55]]] },
+    G: { g: [[.74, .86], [.3, 1], [0, .5], [.3, 0], [.74, .2], [.76, .5], [.4, .5]] },
+    H: { g: [[0, 1], [0, 0], [.04, .5], [.72, .56], [.72, 1], [.74, 0]] },
+    I: { g: [[.1, 1], [.04, 0]], stretto: true },
+    J: { g: [[.62, 1], [.5, -.25], [0, -.1]] },
+    K: { g: [[0, 1], [0, 0], [.05, .42], [.72, 1], [.2, .5], [.82, 0]] },
+    L: { g: [[0, 1], [0, 0], [.8, .04]] },
+    M: { g: [[0, 0], [.08, 1], [.44, .3], [.8, 1], [.9, 0]] },
+    N: { g: [[0, 0], [0, 1], [.72, 0], [.78, 1]] },
+    O: { g: [[.5, 1], [0, .55], [.38, 0], [.82, .45], [.48, 1], [.2, .86]] },
+    P: { g: [[0, 0], [.02, 1], [.7, .8], [.06, .46]] },
+    Q: { g: [[.5, 1], [0, .55], [.38, 0], [.82, .45], [.48, 1], [.2, .86]], dopo: [[[.4, .25], [.95, -.15]]] },
+    R: { g: [[0, 0], [.02, 1], [.7, .8], [.06, .5], [.84, 0]] },
+    S: { g: [[.72, .9], [.36, 1], [0, .76], [.7, .3], [.42, 0], [0, .1]] },
+    T: { g: [[.42, 1], [.36, 0]], dopo: [[[-.05, .98], [.9, 1.05]]] },
+    U: { g: [[0, 1], [.1, 0], [.7, .1], [.74, 1], [.8, 0]] },
+    V: { g: [[0, 1], [.4, 0], [.82, 1]] },
+    W: { g: [[0, 1], [.2, 0], [.46, .7], [.7, 0], [.92, 1]] },
+    X: { g: [[0, 1], [.82, 0]], dopo: [[[.82, 1], [0, 0]]] },
+    Y: { g: [[0, 1], [.36, .45], [.82, 1], [.3, -.5]] },
+    Z: { g: [[0, 1], [.8, 1], [0, 0], [.86, 0]] },
+    '0': { g: [[.5, 1], [0, .55], [.38, 0], [.82, .45], [.48, 1], [.2, .86]] },
+    '1': { g: [[0, .75], [.3, 1], [.25, 0]], stretto: true },
+    '2': { g: [[0, .8], [.4, 1], [.75, .75], [0, 0], [.8, .05]] },
+    '3': { g: [[0, .9], [.6, .9], [.25, .55], [.72, .3], [.35, 0], [0, .12]] },
+    '4': { g: [[.55, 0], [.6, 1], [0, .3], [.85, .32]] },
+    '5': { g: [[.75, 1], [.1, 1], [.05, .55], [.7, .45], [.5, 0], [0, .1]] },
+    '6': { g: [[.7, .95], [.1, .6], [.2, 0], [.75, .25], [.4, .5], [.05, .3]] },
+    '7': { g: [[0, 1], [.8, 1], [.2, 0]] },
+    '8': { g: [[.7, .85], [.4, 1], [0, .78], [.72, .25], [.4, 0], [0, .25], [.7, .75], [.4, 1]] },
+    '9': { g: [[.75, .7], [.4, .5], [.05, .75], [.4, 1], [.75, .75], [.6, 0]] },
+    '!': { g: [[.1, 1], [.03, .3]], dopo: [[[0, 0]]], stretto: true },
+  };
+  // un colpo lognormale: la frazione di strada fatta al tempo t (la cumulata) e la sua derivata (la campana della velocità)
+  const erf = z => { const t = 1 / (1 + .3275911 * Math.abs(z)), y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - .284496736) * t + .254829592) * t * Math.exp(-z * z); return z >= 0 ? y : -y; };
+  // la traiettoria: dai punti obiettivo ai campioni [x, y, velocità]; ogni tratto è un arco (curvatura d), i colpi si
+  // accavallano di «ov» (0 = uno dopo l'altro, a scatti; .7 = tutto un gesto); la punta si alza a «lift» dell'ultimo colpo
+  function lognormal(P, o) {
+    const n = P.length - 1; if (n < 1) return P.map(p => [p[0], p[1], 0]);
+    const ks = []; let t0 = 0;
+    for (let i = 0; i < n; i++) {
+      const a = P[i], b = P[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], L = hyp(dx, dy) || 1e-3, al = Math.atan2(dy, dx), d = o.curv ? o.curv(i) : 0;
+      const D = Math.abs(d) > 1e-3 ? L * d / (2 * Math.sin(d / 2)) : L, T = .1 + .22 * Math.sqrt(L), sg = o.sigma || .3, mu = Math.log(T * .55);
+      ks.push({ t0, D, ts: al - d / 2, te: al + d / 2, mu, sg, T });
+      t0 += T * (1 - (o.ov != null ? o.ov : .4));
+    }
+    const last = ks[n - 1], tEnd = last.t0 + Math.exp(last.mu + last.sg * 2.6), dt = .0025, out = []; let x = P[0][0], y = P[0][1];
+    const tLift = o.lift ? last.t0 + Math.exp(last.mu + last.sg * o.lift) : tEnd;
+    for (let t = 0; t <= Math.min(tEnd, tLift); t += dt) {
+      let vx = 0, vy = 0;
+      for (const k of ks) { const u = t - k.t0; if (u <= 0) continue; const z = (Math.log(u) - k.mu) / k.sg, pdf = Math.exp(-z * z / 2) / (k.sg * Math.sqrt(2 * PI) * u), ph = k.ts + (k.te - k.ts) * .5 * (1 + erf(z / Math.SQRT2)), v = k.D * pdf; vx += v * Math.cos(ph); vy += v * Math.sin(ph); }
+      out.push([x, y, hyp(vx, vy)]); x += vx * dt; y += vy * dt;
+    }
+    // si tengono i campioni ogni tanto di strada (non di tempo), con la velocità
+    const res = [out[0]]; let acc = 0; for (let i = 1; i < out.length; i++) { acc += hyp(out[i][0] - out[i - 1][0], out[i][1] - out[i - 1][1]); if (acc >= (o.step || .012)) { res.push(out[i]); acc = 0; } }
+    if (res[res.length - 1] !== out[out.length - 1]) res.push(out[out.length - 1]);
+    return res;
+  }
+  // la mano della tag che si muove: dal seme, sempre la stessa per lo stesso writer
+  function flowHand(d) {
+    const r = mulberry((d.seed || 1) ^ 0x1f0a7);
+    const toy = d.skill != null && d.skill < .35;
+    return {
+      ov: toy ? .1 + r() * .12 : .22 + r() * .26, curv: toy ? .3 + r() * .4 : .08 + r() * .34, curvSign: r() < .5 ? 1 : -1, sigma: .24 + r() * .14,
+      slant: toy ? r() * .2 : .15 + r() * .4, wide: .6 + r() * .35, gap: -.12 + r() * .22, rise: (r() - .3) * .25, bigFirst: r() < .6 ? 1.2 + r() * .5 : 1,
+      conn: pickR(r, ['dritto', 'dritto', 'forcina', 'occhiello']), lift: .6 + r() * .9, under: r() < .45, underK: pickR(r, ['frusta', 'rampa', 'onda']),
+      deco: Array.from({ length: toy ? Math.floor(r() * 2) : Math.floor(r() * 4) }, () => pickR(r, ['stella', 'asterisco', 'corona', 'freccia', 'bang', 'uguale', 'virgolette', 'tacche', 'diamante', 'scintilla', 'x', 'aureola'])),
+      W: (toy ? .1 : .14) + r() * .07, wob: toy ? .05 : .012, r,
+    };
+  }
+  // la parola: i gesti delle lettere in fila, legati dai connettori, in una traiettoria sola (o poche, se la mano si stacca);
+  // poi i tratti dopo; ritorna tratti di campioni [x, y, velocità] (y in su) e la mano
+  function flowLayout(text, d) {
+    const h = d.__fh || flowHand(d), s = DEACC(text).replace(/[^A-Z0-9!]/g, ''), runs = [], dopo = []; let cur = [], x = 0;
+    [...s].forEach((ch, i) => {
+      const G = GEST[ch]; if (!G) return;
+      const sz = i === 0 ? h.bigFirst : 1 + .12 * Math.sin(i * 2.3 + (d.seed || 1) % 5), base = h.rise * x;
+      const T = ([u, v]) => { const X = x + u * h.wide * sz, Y = base + v * sz; return [X + Y * h.slant + (h.r() - .5) * h.wob, Y + (h.r() - .5) * h.wob]; };
+      const pts = G.g.map(T);
+      if (cur.length) {
+        const a = cur[cur.length - 1], b = pts[0];
+        if (b[1] - a[1] > .55 && h.conn === 'forcina') cur.push([a[0] + .12, a[1] - .08], [b[0] - .05, a[1] + .1]);   // la forcina: risale stretta
+        else if (h.conn === 'occhiello' && b[1] - a[1] > .4) cur.push([a[0] + .18, a[1] + .25], [a[0] + .05, a[1] + .18]);   // l'occhiello
+        if (hyp(b[0] - a[0], b[1] - a[1]) > 1.6) { runs.push(cur); cur = []; }   // troppo lontano: la mano si stacca
+      }
+      cur.push(...pts);
+      (G.dopo || []).forEach(t => dopo.push(t.map(T)));
+      x += ((G.stretto ? .25 : .85) * h.wide + h.gap + .12) * sz;
+    });
+    if (cur.length) runs.push(cur);
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; runs.concat(dopo).forEach(t => t.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
+    // la sottolineatura come gesto: la frusta che parte da sotto e scappa avanti, la rampa che sale, l'onda
+    if (h.under && runs.length) { const W2 = x1 - x0, yb = y0 - .18; dopo.push(h.underK === 'rampa' ? [[x0 - .2, yb - .1], [x0 + W2 * .5, yb + .05], [x1 + .3, yb + .35]] : h.underK === 'onda' ? [[x0 - .1, yb], [x0 + W2 * .3, yb - .08], [x0 + W2 * .6, yb + .05], [x1 + .2, yb - .02]] : [[x0 + W2 * .1, yb + .05], [x0 + W2 * .6, yb - .05], [x1 + .45, yb + .12]]); }
+    const curv = i => h.curvSign * h.curv * (i % 2 ? -1 : 1) * (.6 + .4 * Math.sin(i * 1.7));
+    const tr = runs.map(P => ({ pts: lognormal(P, { ov: h.ov, curv, sigma: h.sigma, lift: h.lift }), main: true }))
+      .concat(dopo.map(P => ({ pts: P.length < 2 ? [[P[0][0], P[0][1], 0]] : lognormal(P, { ov: .3, curv: () => h.curvSign * .25, sigma: .28, lift: 1.2 }), dopo: true })));
+    return { tr, h, box: [x0, y0, x1, y1] };
+  }
+  // disegna la tag-movimento in Wp × Hp: spessore dalla velocità, la goccia dove si appoggia, la frusta dove si alza;
+  // i segni attorno nei vuoti; al marker la punta a scalpello, a spruzzo l'alone; le colature dai punti lenti in basso
+  function drawFlow(x, text, d, Wp, Hp, r, col, tool) {
+    const L = flowLayout(text, d), h = L.h, mark = tool === 'mtag';
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; L.tr.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
+    // i segni attorno: nei vuoti agli angoli, misura della lettera piccola
+    const dec = []; h.deco.forEach((k, j) => { const cx = j % 2 ? x1 + .05 + h.r() * .12 : x0 + h.r() * .12, cy = j < 2 ? y1 + .02 + h.r() * .1 : y0 + h.r() * .1; decoStrokes(k, cx, -cy, .2, (h.r() - .5) * .6).forEach(t => dec.push(t.map(([a, b, f]) => [a, -b, f]))); });
+    dec.forEach(t => t.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
+    const pad = h.W * 1.2, sc = Math.min(Wp * .94 / (x1 - x0 + 2 * pad), Hp * .9 / (y1 - y0 + 2 * pad)), ox = Wp / 2 - (x0 + x1) / 2 * sc, oy = Hp / 2 + (y0 + y1) / 2 * sc;
+    const P = ([a, b, v]) => [ox + a * sc, oy - b * sc, v || 0], W = h.W * sc, nibA = d.nibA != null ? d.nibA : -.75, path = [];
+    const strokes = L.tr.map(t => ({ pts: t.pts.map(P), main: t.main })).concat(dec.map(t => ({ pts: smoothC(t.map(P), 5).map(q => [q[0], q[1], 1]), deco: true })));
+    // lo spessore: la velocità (normalizzata sul tratto), la goccia d'appoggio, la frusta in fondo, la punta del marker
+    strokes.forEach(st => {
+      const p = st.pts, n = p.length; if (n < 2) { st.w = [W * (st.deco ? .5 : 1.05)]; return; }
+      let vm = 0; p.forEach(q => { vm = Math.max(vm, q[2]); }); vm = vm || 1;
+      const sl = [0]; for (let i = 1; i < n; i++) sl.push(sl[i - 1] + hyp(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1])); const Lt = sl[n - 1] || 1;
+      st.w = p.map((q, i) => {
+        const a = p[Math.max(0, i - 1)], b = p[Math.min(n - 1, i + 1)], dir = Math.atan2(b[1] - a[1], b[0] - a[0]), sp = st.deco ? .5 : q[2] / vm;
+        let w = W * (st.deco ? .42 : st.main ? 1 : .8) * (1.25 - .65 * Math.pow(sp, .8)) * (1 + .25 * (1 - sstep(0, W * 1.5, sl[i]))) * (.1 + .9 * (1 - sstep(1 - Math.min(.35, W * 3 / Lt), 1, sl[i] / Lt)));
+        if (mark) w *= .55 + .45 * Math.abs(Math.sin(dir - nibA));
+        return Math.max(.8, w * (1 + .06 * Math.sin(i * .3 + n) + .03 * (r() - .5)));
+      });
+    });
+    const draw = k => strokes.forEach(st => { if (st.pts.length < 2) { x.beginPath(); x.arc(st.pts[0][0], st.pts[0][1], st.w[0] * k / 2, 0, 7); x.fill(); return; } ribbon(x, st.pts.map(q => [q[0], q[1], 0]), st.w.map(w => w * k), true); });
+    x.save(); x.fillStyle = col;
+    if (!mark) { x.save(); x.filter = `blur(${(W * .35).toFixed(1)}px)`; x.globalAlpha = .16; draw(1.4); x.restore(); x.save(); x.filter = `blur(${Math.max(.5, W * .03).toFixed(1)}px)`; draw(1); x.restore(); }
+    else draw(1);
+    strokes.forEach(st => st.pts.forEach(q => path.push(q)));
+    // le colature: dai punti lenti e bassi dei tratti principali
+    const bots = []; strokes.forEach(st => { if (!st.main) return; st.pts.forEach((q, k) => { if (k < 3 || k > st.pts.length - 4) return; if (st.pts[k - 3][1] < q[1] && st.pts[k + 3][1] <= q[1]) bots.push([q, st.w[k]]); }); });
+    const nd = Math.min(bots.length, mark ? (r() < .6 ? 1 + Math.floor(r() * 2) : 0) : 1 + Math.floor(r() * 4));
+    for (let k = 0; k < nd; k++) { const [q, w0] = bots.splice(Math.floor(r() * bots.length), 1)[0], l = Hp * (.04 + r() * r() * .32), w = Math.max(1, w0 * (.25 + r() * .15)); x.beginPath(); x.moveTo(q[0] - w / 2, q[1]); x.lineTo(q[0] + w / 2, q[1]); x.lineTo(q[0] + w * .35, q[1] + l); x.arc(q[0], q[1] + l, w * .55, 0, PI); x.lineTo(q[0] - w * .35, q[1] + l); x.closePath(); x.fill(); }
+    if (!mark) { x.globalAlpha = .25; for (let k = 0; k < path.length * .2; k++) { const q = path[Math.floor(r() * path.length)], a = r() * PI * 2, rr = W * (.8 + r() * 1.2); x.fillRect(q[0] + Math.cos(a) * rr, q[1] + Math.sin(a) * rr, 1.5, 1.5); } }
+    x.restore();
+    return { path, W };
+  }
   // il gesto: la curva per i punti (Catmull-Rom centripeta: niente riccioli né pance), spezzata alle punte; [x, y, punta]
   function gesture(P, step) {
     const out = [], pieces = []; let pc = [P[0]];
@@ -29282,6 +29433,7 @@ var WriterMano = (function () {
   // disegna la tag di questa mano in un riquadro Wp × Hp; ritorna i punti del percorso (per la mano che la ripassa)
   function handTag(x, text, d, Wp, Hp, r, col, tool) {
     { const S = !d.goth && SIGNED[DEACC(text)]; if (S) return drawSigned(x, S, Wp, Hp, r, col, tool, d); }   // [writer] la firma disegnata, se ce l'ha
+    if (!d.goth && !d.oldHand) return drawFlow(x, text, d, Wp, Hp, r, col, tool);   // [writer] la tag come movimento
     if (d.st && STILI[d.st] && !d.goth) d = Object.assign({}, d, STILI[d.st]);
     if (d.goth) d = Object.assign({}, d, { crown: false, halo: false, under: false, dashes: false, stars: false, quotes: false, spray: false, nibW: .3, nibA: -.78, contrast: .9 });
     if (d.st === 'libera' && !d.goth && d.st2 < .5) d = Object.assign({}, d, STILI.grog);   // metà delle mani libere sono del marker alto
@@ -29319,7 +29471,7 @@ var WriterMano = (function () {
     x.restore();
     return { path, W };
   }
-  return { STILI, A, HS, SIGNED, handLayout, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
+  return { STILI, A, HS, SIGNED, GEST, flowLayout, drawFlow, handLayout, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
 })();
 if (typeof module !== 'undefined') module.exports = WriterMano;
 </script>
