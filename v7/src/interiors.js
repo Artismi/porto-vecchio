@@ -196,6 +196,7 @@ var Interior = (function () {
   const SMALL = { ia_samovar: 1, ia_moka: 1, ia_macchina_scrivere: 1, ia_telefono: 1, ia_lampada_tavolo: 1, ia_pila_carte: 1, ia_giradischi: 1, ia_bilancia: 1, ia_candela: 1, ia_posacenere: 1, ia_bicchieri: 1, ia_radiolina: 1, ia_vaso: 1, ia_carte_gioco: 1, ia_pane: 1, ia_pesce: 1, ia_libro: 1, ia_teschio_bue: 1, ia_spillatore: 1,
     ia_mazzette: 1, ia_lingotti: 1, ia_piatti: 1, ia_pentola: 1, ia_tazze: 1, ia_lettere: 1, ia_radio_clandestina: 1, ia_cesto_frutta: 1, ia_bottiglia_vino: 1, ia_quaderni: 1, ia_ferro_stiro: 1, ia_abatjour: 1, ia_vaso_fiori: 1, ia_lampada_scrivania: 1 };
   LOOTSMALL.forEach(k => { SMALL[k] = 1; });
+  SMALL['ar_cash-register'] = 1;   // [stile] il registratore sta sopra un banco, non per terra
   // roba appesa ai muri esterni: [larghezza, altezza dal pavimento (centro), bassa: va anche sui muri interni]
   const DECOR = { ia_ritratto: [.9, 1.85], ia_manifesto: [.8, 1.6], ia_tappeto_muro: [2, 1.55], ia_calendario: [.4, 1.5], ia_orologio: [.4, 2.1], ia_specchio: [.6, 1.55], ia_mensola: [1, 1.7], ia_quadro: [.8, 1.65],
     ia_foto: [.9, 1.6], ia_icona: [.5, 1.9], ia_crocifisso: [.4, 1.95], ia_mappa: [1.4, 1.6], ia_bandiera_muro: [1.2, 1.8], ia_lavagna: [2, 1.4], ia_termosifone: [1, .45, 1], ia_appendiabiti: [1, 1.6], ia_reti: [1.6, 1.6],
@@ -908,7 +909,7 @@ var Interior = (function () {
             if (tb) { tb.full = (tb.full || 0) + 1; put(id, tb.x + (r() - .5) * .5, tb.y + (r() - .5) * .2, r() * 6, /kitchenBar|kitchenCabinet|banco|bancone/.test(tb.id) ? .95 : .76); }
             return !!tb;
           }
-          if (SMALL[id]) { const tb = out.find(o => o.room === qi && /desk|table|tavol|sideTable|kitchenCabinet|banco/.test(o.id) && !o.h); if (tb) put(id, tb.x + (r() - .5) * .4, tb.y, tb.ry, /kitchenCabinet|banco/.test(tb.id) ? .92 : /sideTable/.test(tb.id) ? .55 : .76); return !!tb; }
+          if (SMALL[id]) { const tb = out.find(o => o.room === qi && /desk|table|tavol|sideTable|kitchenCabinet|kitchenBar|banco/.test(o.id) && !o.h && !(id === 'ar_cash-register' && out.some(c => c.id === id && c.room === qi && Math.hypot(c.x - o.x, c.y - o.y) < 1.2))); if (tb) put(id, tb.x + (r() - .5) * .4, tb.y, tb.ry, /kitchenBar|pv_banco|bancone/.test(tb.id) ? .95 : /kitchenCabinet|banco/.test(tb.id) ? .92 : /sideTable/.test(tb.id) ? .55 : .76); return !!tb; }
           const [w, d] = isV ? V[id] : szOf(id), rug = RUG.test(id);
           const opt = { tall: isV ? V[id][2].some(it => TALL.test(it[0].replace('?', ''))) && w < 2.6 : TALL.test(id), c: CENTERED.test(id) };
           let spot = null;
