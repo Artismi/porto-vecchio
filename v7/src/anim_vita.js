@@ -345,6 +345,18 @@
     legTo(P, 'L', .12, .3 * d + GF, .2, .1, .2, 1); legTo(P, 'R', .12, .3 * d + GF, -.05, .1, .2, 1);
     arm(P, 'R', .1, -.6, .7, 0, -.9, .3, d);
   }); BUSY.raccoglie = 1;
+  // ---- [design] PRENDE dal tavolo: si china appena, la mano va avanti all'altezza del piano, le dita si chiudono, la mano torna al petto ----
+  def('prende', FULL, (P, A) => {
+    const g = A && A.grab, k = g ? g.k : cyc(P, 1.2), d = pulse(k, 0, .35, .55, 1), y = g ? Math.max(.55, Math.min(1.25, (g.h || .8) + .08)) : .9;
+    P.rot('Abdomen', .35 * d, 0, 0); P.rot('Chest', .1 * d, 0, 0); P.rot('Head', .4 * d, 0, 0);
+    handTo(P, 'R', .08, 1.0 + (y - 1.0) * d, .2 + .38 * d, .9, -.4, 0); P.fingers('R', .15 + .75 * pulse(k, .3, .45, 1, 1.1), .6);
+  });
+  // ---- [negozi] PORGE: il commesso allunga la merce sul banco, poi torna alla cassa ----
+  def('porge', FULL, (P, A) => {
+    const k = A && A.serve != null ? A.serve : cyc(P, 1.4), d = pulse(k, 0, .3, .6, 1);
+    P.rot('Abdomen', .15 + .2 * d, 0, 0); P.rot('Head', .2, 0, 0);
+    handTo(P, 'R', .06, 1.05, .25 + .3 * d, .9, -.2, 0); handTo(P, 'L', .12, 1.0, .22 + .15 * d, .9, -.3, 0); P.fingers('R', .45, .5); P.fingers('L', .45, .5);
+  });
   // ---- PREGA: in ginocchio, mani giunte, testa bassa ----
   def('prega', FULL, (P) => {
     kneel(P, 0); P.rot('Abdomen', -.3, 0, 0);
@@ -593,6 +605,7 @@
   // ================= LE MAPPE: dallo stato del gioco alla posa =================
   // testo del passo del piano (azioni.js, regia.js «fai»: «ripara la rete», «dipinge la barca»...) → posa
   const BY_LABEL = [
+    [/barba|barbiere|sauna|vapore|medicar|rammend|stringere la giacca/, 'siede'], [/caffè corretto|boccale|birra scura/, 'beve'], [/lavare e stirare|noleggia|stampare|volantini \(sotto/, 'aspetta'],   // [negozi] i servizi
     [/scav|seppell|buca|fossa|vanga|pala/, 'scava'], [/zapp|orto|semin|pianta|raccogl.*(olive|uva|frutta)|vign/, 'zappa'],
     [/inchiod|martell|ripara il tetto|aggiust|costruis|assi/, 'martella'], [/forza|scassin|piede di porco|serratura/, 'forza'],
     [/fruga|tasche|perquis|cerca (per terra|nei)|rovist/, 'fruga'], [/colla|manifest|volantin|affigg/, 'attacchina'],
@@ -682,6 +695,7 @@
       if (Math.abs(n.speedNow || 0) > .3) return;
       if (n.room.pose === 'dorme') { s.act = 'dorme'; s.lookAt = null; s.talk = false; return; }
       if (n.room.pose === 'legge') { s.act = 'siede'; s.upper = 'legge'; } else if (n.room.pose) put(n.room.pose, s); else habit(n, st.clock, s);
+      if (n.__serve) { const e = (performance.now() - n.__serve) / 1400; if (e < 1) { s.act = 'porge'; s.serve = e; s.lookAt = { x: st.player.x, y: 1.5, z: st.player.y, ground: true }; } else n.__serve = 0; }   // [negozi] ti porge la merce e ti guarda
       if (n.bark && n.bark.until > st.clock) { s.talk = true; if (/[!?]/.test(n.bark.text || '')) s.upper = 'discute'; }
       return;
     }
@@ -728,6 +742,7 @@
     if (W) { const k = W.kind || ''; if (/sonno/.test(k)) s.act = W.nap ? 'siede' : 'dorme'; else if (/lavor/.test(k)) s.act = 'lavora'; else if (/mang|pranz/.test(k)) s.act = 'tavola'; else if (/tv|casa|svago/.test(k)) s.act = 'siede'; else byLabel(W.label, s); return; }
     if (p.hand && HELD_UP[p.hand]) s.upper = HELD_UP[p.hand];
     if (p.carrying) s.upper = 'porta';
+    const gb = p.__grab; if (gb) { const e = (performance.now() - gb.t) / 900; if (e < 1) { s.act = gb.low ? 'raccoglie' : 'prende'; s.grab = { k: e, h: gb.h }; } else p.__grab = null; }   // [design] il gesto del prendere
     const tp = p.__tip; if (tp && performance.now() - tp.t < 350) { s.act = 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; }   // [graffiti] la bomboletta del giocatore
   });
 })();
