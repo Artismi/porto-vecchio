@@ -29045,6 +29045,74 @@ var WriterMano = (function () {
     return { strokes, box: [x0, y0, x1, y1], hs: h };
   }
 
+  // ---------------- LE FIRME DISEGNATE ----------------
+  // [writer] Le tag dei writer veri non escono da una formula: ognuna è un segno solo, disegnato una volta e rifatto sempre
+  // uguale, con la sua idea (la lettera enorme che abbraccia le altre, la barra che attraversa, il tratto che non si stacca).
+  // Riquadro 100 × 50, y in giù, la riga di base a ~40. Ogni tratto è una lista di punti (curve tese; dove gira di colpo, punta).
+  const arc = (cx, cy, rx, ry, a0, a1, n) => { const o = []; n = n || 14; for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; o.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); } return o; };
+  const SIGNED = {
+    // la O è un cerchio grande che esce sopra e sotto, col punto dentro; la K e la E piccole e strette, la S alta
+    KEOS: { w: 4.2, idea: 'la O enorme', strokes: [
+      [[9, 9], [8.5, 24], [7, 40]],
+      [[25, 12], [16, 19], [9, 26], [16, 33], [22, 40], [27, 37]],
+      [[40, 21], [34, 18.5], [29.5, 22.5], [35.5, 27.5], [29.5, 30.5], [29, 37], [36, 40.5], [43, 36]],
+      arc(60, 26, 14, 17, -1.2, 5.3, 22),
+      [[60.5, 26.5]],
+      [[87, 13], [80, 10.5], [75.5, 15.5], [82, 22.5], [87, 30], [82, 38.5], [72, 37]],
+      [[78, 4], [85, 2.5]], [[79, 7.5], [86, 6]],
+    ] },
+    // la D fa da tetto: l'asta lunga a sinistra, la pancia sale sopra tutta la parola, ricade alla fine e torna sotto; A, K, O ci stanno dentro
+    DAKO: { w: 3.4, idea: 'la D che fa da tetto', strokes: [
+      [[8, 5], [6.5, 26], [9.5, 47]],
+      [[3, 8], [28, 2], [66, 3.5], [90, 13], [96, 27], [89, 40], [70, 46], [36, 47.5], [12, 46.5]],   // e torna sotto fino al piede: la D chiude tutta la parola
+      [[18, 41], [27, 16], [34, 41]],
+      [[16, 32], [42, 28.5]],
+      [[46, 15], [44.5, 41]],
+      [[59, 17], [46, 29], [58, 40], [63, 38]],
+      [[74, 18], [67, 23], [66, 34], [72.5, 40], [79, 34], [79.5, 23], [74, 17], [70, 19.5]],
+      [[64, 10], [62, 17]], [[67.5, 10], [65.5, 17]],
+    ] },
+    // la S è un serpente: la sua curva bassa scorre sotto tutta la parola e finisce con la lingua biforcuta; N, E, K alte e tirate
+    SNEK: { w: 2.6, idea: 'la S serpente', strokes: [
+      [[17, 10], [9.5, 7], [4, 13], [12, 22], [16.5, 30], [11, 38], [24, 44], [45, 39.5], [65, 46], [84, 40.5], [93, 36]],
+      [[93, 36], [99, 31]], [[93, 36], [99.5, 40]],
+      [[23, 37], [26, 10], [36, 34], [41, 3]],
+      [[47, 11], [45.5, 35]], [[44, 11.5], [58, 9.5]], [[44, 22.5], [55, 21]], [[44, 34.5], [59, 32.5]],
+      [[64, 2], [61.5, 37]], [[76, 12], [63, 23.5], [77, 36], [81, 34]],
+      [[82, 13], [88, 11]], [[82, 17.5], [88, 15.5]],
+    ] },
+    // tutta la parola in un tratto solo, senza staccare: la K apre, la gamba diventa la A, il giro della A entra nella O, la O
+    // si scioglie nella S; poi il punto esclamativo
+    KAOS: { w: 5.2, idea: 'un tratto solo', strokes: [
+      [[7, 8], [6, 24], [5, 40]],
+      [[21, 9], [9, 25], [18, 36], [24, 41], [32, 13], [39, 41], [37, 33], [44, 31], [49, 22], [57, 20], [63, 28], [60, 38], [51, 40], [47, 32], [53, 26], [66, 24], [75, 20], [69, 28], [77, 34], [72, 41], [62, 41]],
+      [[88, 8], [85, 32]],
+      [[83.5, 40]],
+    ] },
+  };
+  // disegna una firma: al marker la punta a scalpello, a spruzzo il tratto tondo con l'alone; ritorna i punti del percorso
+  function drawSigned(x, S, Wp, Hp, r, col, tool, d) {
+    const m = .06, sc = Math.min(Wp * (1 - 2 * m) / 100, Hp * (1 - 2 * m) / 50), ox = (Wp - 100 * sc) / 2, oy = (Hp - 50 * sc) / 2, mark = tool === 'mtag';
+    const W = S.w * sc * (mark ? .8 : 1), path = [], segs = S.strokes.map(t => smoothC(t.map(([a, b]) => [ox + a * sc, oy + b * sc]), 6));
+    x.save(); x.fillStyle = col; x.strokeStyle = col; x.lineCap = 'round'; x.lineJoin = 'round';
+    if (!mark) { x.shadowColor = col; x.shadowBlur = W * .25; }
+    segs.forEach(pts => {
+      pts.forEach(q => path.push(q));
+      if (pts.length < 2) { x.beginPath(); x.arc(pts[0][0], pts[0][1], W * (mark ? .75 : .8), 0, 7); x.fill(); return; }
+      if (mark) { chisel(x, pts, W * 1.5, d.nibA != null ? d.nibA : -.7, 2, 2, .9); return; }
+      // lo spruzzo: largo nel mezzo, si stringe dove la mano accelera alla fine
+      const L = pts.length - 1;
+      for (let i = 0; i < L; i++) { const t = i / L; x.lineWidth = W * (t > .82 ? .45 + (1 - t) / .18 * .55 : 1); x.beginPath(); x.moveTo(pts[i][0], pts[i][1]); x.lineTo(pts[i + 1][0], pts[i + 1][1]); x.stroke(); }
+    });
+    x.shadowBlur = 0;
+    // le colature: dalle curve basse, sottili, lunghe e corte
+    const lows = path.filter((q, i) => i % 4 === 0 && q[1] > oy + 30 * sc).sort((a, b) => b[1] - a[1]).slice(0, 24), n = mark ? 1 + Math.floor(r() * 3) : 2 + Math.floor(r() * 4);
+    for (let k = 0; k < n && lows.length; k++) { const q = lows[Math.floor(r() * lows.length)], l = Hp * (.05 + r() * r() * .35), w = Math.max(1, W * (.18 + r() * .2)); x.lineWidth = w; x.beginPath(); x.moveTo(q[0], q[1]); x.lineTo(q[0] + (r() - .5), q[1] + l); x.stroke(); x.beginPath(); x.arc(q[0], q[1] + l, w * .6, 0, 7); x.fill(); }
+    if (!mark) { x.globalAlpha = .3; for (let k = 0; k < path.length * .5; k++) { const q = path[Math.floor(r() * path.length)], a = r() * PI * 2, rr = W * (.7 + r() * 1.3); x.fillRect(q[0] + Math.cos(a) * rr, q[1] + Math.sin(a) * rr, 1.5, 1.5); } }
+    x.restore();
+    return { path, W };
+  }
+
   // ---------------- LA TAG ----------------
   // la parola nella mano: i tratti in pixel (y in giù), già inclinati, rimbalzati, con la prima lettera grande e lo svolazzo
   function layout(text, d, r) {
@@ -29077,6 +29145,7 @@ var WriterMano = (function () {
   }
   // disegna la tag di questa mano in un riquadro Wp × Hp; ritorna i punti del percorso (per la mano che la ripassa)
   function handTag(x, text, d, Wp, Hp, r, col, tool) {
+    { const S = !d.goth && SIGNED[DEACC(text)]; if (S) return drawSigned(x, S, Wp, Hp, r, col, tool, d); }   // [writer] la firma disegnata, se ce l'ha
     if (d.st && STILI[d.st] && !d.goth) d = Object.assign({}, d, STILI[d.st]);
     if (d.goth) d = Object.assign({}, d, { crown: false, halo: false, under: false, dashes: false, stars: false, quotes: false, spray: false, nibW: .3, nibA: -.78, contrast: .9 });
     if (d.st === 'libera' && !d.goth && d.st2 < .5) d = Object.assign({}, d, STILI.grog);   // metà delle mani libere sono del marker alto
@@ -29114,7 +29183,7 @@ var WriterMano = (function () {
     x.restore();
     return { path, W };
   }
-  return { STILI, A, HS, handLayout, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
+  return { STILI, A, HS, SIGNED, handLayout, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
 })();
 if (typeof module !== 'undefined') module.exports = WriterMano;
 </script>
