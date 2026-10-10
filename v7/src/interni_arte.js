@@ -279,7 +279,7 @@ var InterniArte = (function () {
   const WOODD = ['#5a3e2a', '#6a4a30', '#4a3424', '#7a5a3a', '#5e4632'], LEATHER = ['#4a2e22', '#2e2420', '#5a3a2a', '#1e1e22'], BRASS = { metalness: .8, roughness: .3 };
   const MT = (key, t, o) => MC['T' + key] || (MC['T' + key] = new THREE.MeshStandardMaterial(Object.assign({ map: t, roughness: .9 }, o || {})));
   const tgeo = (R, rr, arc) => { const k = 't' + R + ',' + rr + ',' + arc; return GEO[k] || (GEO[k] = new THREE.TorusGeometry(R, rr, 5, 12, arc)); };
-  function build(id, r) {
+  function build(id, r, opt) {
     const g = new THREE.Group(); g.userData.ia = id;
     // [design] la sfumatura del pezzo: un po' più caldo o più freddo, più chiaro o più scuro (due mobili uguali non sono mai identici)
     const r9 = rng(((id.length * 131) ^ Math.floor(r() * 1e9)) >>> 0), nuB = .93 + r9() * .12, nuT = pick(r9, ['#8a9098', '#7a8088', '#9a9488', '#8a8a8a']), nuK = .12 + r9() * .12;
@@ -372,7 +372,7 @@ var InterniArte = (function () {
       // ---- bar, botteghe ----
       case 'ia_bancone_bar': { B(.9, 1.0, .58, 0, 0, 0, shade(wood, .9)); B(.9, .7, .02, 0, .15, .3, shade(wood, 1.3)); B(.9, .15, .02, 0, 0, .3, '#1e1814'); B(.94, .05, .66, 0, 1.0, .02, M('#d8d0c4', { roughness: .3 })); B(.9, .03, .03, 0, .12, .36, M('#b8a050', { metalness: .7 })); break; }
       case 'ia_scaffale_bottiglie': { B(2.2, 2.1, .3, 0, 0, -.02, shade(wood, .8)); B(2.1, .55, .02, 0, 1.3, .14, M('#a8b8c0', { roughness: .1, metalness: .4 })); for (let s = 0; s < 3; s++) { B(2.15, .03, .3, 0, .35 + s * .42, 0, shade(wood, .6)); for (let i = 0; i < 12; i++) if (r() < .85) bottle(-.95 + i * .17, .38 + s * .42, .03, pick(r, ['#2a5a2a', '#5a3a1a', '#d8c070', '#c8d8d8', '#8a1a2a', '#3a2a5a'])); } B(2.2, .2, .32, 0, 1.95, 0, shade(wood, .7)); break; }
-      case 'ia_scaffale_merci': { const c = '#8a8e88'; B(1.6, .04, .44, 0, .1, 0, c); [[-.78], [.78]].forEach(([x]) => B(.04, 1.9, .44, x, 0, 0, c)); B(1.6, 1.9, .02, 0, 0, -.21, shade(c, .8)); for (let s = 0; s < 4; s++) { B(1.56, .03, .42, 0, .14 + s * .45, 0, c); let x = -.7; while (x < .7) { const w = .1 + r() * .12, h = .12 + r() * .2, col = pick(r, ['#c8b48a', '#8a4a2a', '#d8d0c0', '#b02a2a', '#3a5a8a', '#e0c070', '#5a7a4a', '#9a9aa0']); if (r() < .85) { const yy = .17 + s * .45, k0 = r(); if (k0 < .3) { C(w / 2.2, h, x + w / 2, yy, 0, M('#b8bcc0', { metalness: .8, roughness: .35 }), 8); C(w / 2.2 + .002, h * .7, x + w / 2, yy + h * .15, 0, col, 8); } else if (k0 < .5) { C(w / 2.3, h, x + w / 2, yy, 0, M('#e0eef0', { roughness: .05, transparent: true, opacity: .4 }), 8); C(w / 2.6, h * .75, x + w / 2, yy + .005, 0, col, 8); C(w / 2.2, .02, x + w / 2, yy + h, 0, '#c8a040', 8); } else B(w, h, .25, x + w / 2, yy, 0, col); }   /* [roba] lattine con l'etichetta, vasetti di vetro, scatole */ x += w + .03; } } break; }
+      case 'ia_scaffale_merci': { const c = '#8a8e88'; B(1.6, .04, .44, 0, .1, 0, c); [[-.78], [.78]].forEach(([x]) => B(.04, 1.9, .44, x, 0, 0, c)); B(1.6, 1.9, .02, 0, 0, -.21, shade(c, .8)); for (let s = 0; s < 4; s++) { B(1.56, .03, .42, 0, .14 + s * .45, 0, c); let x = -.7; while (x < .7 && !(opt && opt.vuoto)) { const w = .1 + r() * .12, h = .12 + r() * .2, col = pick(r, ['#c8b48a', '#8a4a2a', '#d8d0c0', '#b02a2a', '#3a5a8a', '#e0c070', '#5a7a4a', '#9a9aa0']); if (r() < .85) { const yy = .17 + s * .45, k0 = r(); if (k0 < .3) { C(w / 2.2, h, x + w / 2, yy, 0, M('#b8bcc0', { metalness: .8, roughness: .35 }), 8); C(w / 2.2 + .002, h * .7, x + w / 2, yy + h * .15, 0, col, 8); } else if (k0 < .5) { C(w / 2.3, h, x + w / 2, yy, 0, M('#e0eef0', { roughness: .05, transparent: true, opacity: .4 }), 8); C(w / 2.6, h * .75, x + w / 2, yy + .005, 0, col, 8); C(w / 2.2, .02, x + w / 2, yy + h, 0, '#c8a040', 8); } else B(w, h, .25, x + w / 2, yy, 0, col); }   /* [roba] lattine con l'etichetta, vasetti di vetro, scatole */ x += w + .03; } } break; }
       case 'ia_vetrina_frigo': { B(1.6, .8, .8, 0, 0, 0, '#e8e8e4'); B(1.6, .06, .8, 0, .8, 0, '#c8c8c8'); const gl = B(1.5, .5, .02, 0, .85, .2, M('#c8e8f8', { transparent: true, opacity: .35, roughness: .05 })); gl.rotation.x = -.5; B(1.5, .04, .7, 0, .82, -.05, GL('#d8f4ff', .6)); for (let i = 0; i < 6; i++) B(.2, .08, .25, -.6 + i * .24, .86, -.05, pick(r, ['#e8c8b0', '#c86a5a', '#f0e8c8', '#a85a4a', '#d8b890'])); B(1.6, .12, .02, 0, .1, .41, '#3a6aa0'); g.userData.cold = [0, .9, 0]; break; }
       case 'ia_cassette_frutta': for (let k = 0; k < 2 + Math.floor(r() * 2); k++) { const x = -.42 + k * .44, y = k > 1 ? .22 : 0, col = pick(r, ['#c83a2a', '#6a9a3a', '#8a6a3a', '#e0b040', '#5a8a4a']); B(.4, .22, .55, x, y, 0, '#a8844a'); for (let i = 0; i < 6; i++) S(.06, x + (i % 2 - .5) * .14, y + .26, -.18 + Math.floor(i / 2) * .16, col, 5); } break;
       case 'ia_jukebox': { B(.9, 1.1, .6, 0, 0, 0, '#5a2a1a'); const t = C(.45, .6, 0, 1.1, 0, '#6a3020', 12); t.rotation.x = PI / 2; t.scale.set(1, 1, 1); t.position.y = 1.1; B(.7, .5, .02, 0, .5, .31, GL('#ffb04a', 1.2)); for (let i = 0; i < 3; i++) B(.04, .9, .02, -.3 + i * .3, .15, .32, GL(['#ff4fa3', '#35e6ff', '#ffd23b'][i], 1.5)); g.userData.neon = [0, 1, .4, '#ffb04a']; break; }
@@ -863,11 +863,12 @@ var InterniArte = (function () {
     // soglia d'ingresso (arancione: si esce di qui) con lo zerbino
     if (f === 0 && L.ent) { const e = L.ent, rot = e.side === 'N' || e.side === 'S' ? 0 : PI / 2; const mat = new THREE.Mesh(plane(1.4, .9), new THREE.MeshStandardMaterial({ map: T.stuoia(), emissive: '#ff8a2a', emissiveIntensity: .25, roughness: .9 })); mat.rotation.x = -PI / 2; mat.rotation.z = rot; mat.position.set(e.in[0], BASE + .03, e.in[1]); grp.add(mat); }
     // mobili e oggetti
-    const fires = [], lamps = [];
+    const fires = [], lamps = []; S.furnList = F.furn;
+    try { vetrine(grp, b, f, F); } catch (e) { console.warn('[vetrine]', e); }   // [negozi] la merce vera sugli scaffali
     F.furn.forEach(o => {
       if (o.taken) return;   // [roba] portata via
       if (o.decor && !o.low && !backSide[o.wall]) return;   // appesa a un muro tagliato basso: non si vede
-      const p = /^ia_|^st_stufa$/.test(o.id) ? Promise.resolve(build(o.id, rng((o.x * 97 + o.y * 31) >>> 0))) : (window.Models ? Models.furniture(o.id) : Promise.resolve(null));
+      const p = /^ia_|^st_stufa$/.test(o.id) ? Promise.resolve(build(o.id, rng((o.x * 97 + o.y * 31) >>> 0), { vuoto: !!o.__merce })) : (window.Models ? Models.furniture(o.id) : Promise.resolve(null));
       p.then(m => {
         if (!m || S.grp !== grp) return;
         if (window.Officina) Officina.apply('mobile:' + o.id, m);   // [studio]
@@ -979,5 +980,64 @@ var InterniArte = (function () {
     ['calce', 'verde', 'blu', 'ocra', 'rosso', 'crema', 'ospedale', 'rosa', 'azzurro', 'fiori', 'righe', 'rombi', 'piastrelle', 'mattoni', 'cemento', 'legno', 'perline', 'velluto', 'nero'].forEach((st, i) => out.push({ nome: st, gruppo: 'Pareti', c: wallStyleCanvas(st, 6, 4099 + i * 71, 0), ppm: PPM }));
     return out;
   }
-  return { build: build_, light, exit, prop: build, materiali, floorY: () => (S.grp ? BASE : null) };
+  // =====================================================================================================================
+  // [negozi] LE VETRINE: sugli scaffali, sui banchi e nelle vetrine della sala vendita c'è la merce che la bottega ha davvero
+  // (Oggetti.counter: scorta e prezzo). Ogni merce ha la sua forma (scatoletta, bottiglia, pacco, sacco, attrezzo, vestito piegato…),
+  // ripetuta quanto ce n'è (fino a sei), col cartellino del prezzo; la merce finita lascia il posto vuoto col cartellino rosso.
+  // All'Emporio Imperiale le confezioni sono pastello e lucide (carine ma stupide); nelle botteghe dell'isola carta e latta sobrie.
+  // =====================================================================================================================
+  const RETRO = /retro|magazzino|bagno|cella|^forno|macello|dispensa|prova|ufficio|cucina|deposito|soppalco|camerini|poligono|laboratorio_armi|cantina_birra|officina_r|radio_r/;
+  // i posti dove si espone: [livelli (altezza del piano), larghezza utile, profondità del piano, z del bordo davanti]
+  const ESPO = { ia_scaffale_merci: [[.17, .62, 1.07, 1.52], 1.44, .36, .2], bookcaseOpenLow: [[.84], .7, .36, .2], kitchenBar: [[.97], .8, .36, .2], pv_banco_vendita: [[.97], 1.6, .4, .3], ia_vetrina: [[.92], 1.2, .5, .32], ia_tavolo_maglie: [[.78], 1.2, .6, .38], ia_scaffale_scarpe: [[.12, .5, .88], 1.3, .3, .18] };
+  const BOTTLE = /vino|birra|grappa|whisky|vodka|acqua$|aranciata|olio$|latte|mirto|aceto|succo|alcol|sciroppo|disinfettante|candeggina|detersivo|shampoo|lubrificante/, CAN = /scatol|carne_scatola|legumi|passata|acciughe|sarde|conserva|marmellata|vernice|latta$|colla|silicone/, BAG = /farina|riso|sale$|zucchero|caffe$|orzo|ceci|cemento|calce|malta|sabbia|carbone|sacch/;
+  const PRODUCE = /verdura|patate|pomodori|cipolle|frutta|limoni|mele|arance|uva|fichi|noci|castagne|funghi|olive/, BREAD = /pane|focaccia|panino/;
+  function goodMesh(gid, cat, r, pop) {
+    const g = new THREE.Group(), k = hashStr(gid), col = pop ? ['#9ad8c0', '#f4b0c0', '#f4dc80', '#a8c8f0', '#f08a6a', '#ffffff'][k % 6] : ['#8a3a2e', '#3a5a6a', '#c8a050', '#5a6a3a', '#d8d0bc', '#6a4a5a', '#2a3a4a'][k % 7];
+    const pk = M(col, { roughness: pop ? .25 : .6 }), lab = M(pop ? '#ffffff' : '#e8dcc0', { roughness: .7 });
+    const add = (geo, m, x, y, z) => { const q = new THREE.Mesh(geo, m); q.position.set(x, y, z); g.add(q); return q; };
+    let w = .1, h = .14;
+    if (BOTTLE.test(gid)) { const gm = M(/vino|olio|mirto/.test(gid) ? '#2a4a2a' : /birra|whisky|aceto/.test(gid) ? '#6a3a12' : '#c8d8d8', { roughness: .1, transparent: true, opacity: .8 }); add(cgeo(.035, .035, .2, 8), gm, 0, .1, 0); add(cgeo(.013, .013, .07, 6), gm, 0, .235, 0); add(cgeo(.036, .036, .07, 8), lab, 0, .08, 0); add(cgeo(.015, .015, .02, 6), pk, 0, .275, 0); w = .08; h = .28; }
+    else if (CAN.test(gid)) { add(cgeo(.038, .038, .1, 10), M('#b8bcc0', { metalness: .8, roughness: .35 }), 0, .05, 0); add(cgeo(.039, .039, .06, 10), pk, 0, .05, 0); w = .085; h = .1; }
+    else if (BAG.test(gid)) { add(bgeo(.16, .2, .1), M(pop ? col : '#d8ccb0', { roughness: .9 }), 0, .1, 0); add(bgeo(.161, .06, .101), pk, 0, .12, 0); w = .18; h = .2; }
+    else if (PRODUCE.test(gid)) { add(bgeo(.3, .1, .24), M('#a8844a'), 0, .05, 0); const pc = /pomodori|mele/.test(gid) ? '#b83a2a' : /limoni/.test(gid) ? '#e0c840' : /arance/.test(gid) ? '#e0882a' : /patate|noci|castagne|funghi/.test(gid) ? '#8a6a42' : /olive|uva/.test(gid) ? '#4a5a2a' : '#6a9a3a'; for (let i = 0; i < 6; i++) add(sgeo(.045, 6), M(pc), (i % 3 - 1) * .09, .12, (i < 3 ? -.05 : .05)); w = .32; h = .17; }
+    else if (BREAD.test(gid)) { const b0 = add(sgeo(.08, 8), M('#c8904a'), 0, .05, 0); b0.scale.set(1.5, .6, .9); w = .25; h = .1; }
+    else if (cat === 'attrezzi' || cat === 'armi') { add(bgeo(.24, .02, .05), M('#5a5e62', { metalness: .7, roughness: .4 }), 0, .02, 0); add(bgeo(.1, .03, .055), M(cat === 'armi' ? '#4a3020' : col), -.08, .025, 0); w = .26; h = .05; }
+    else if (cat === 'vestiti') { for (let i = 0; i < 3; i++) add(bgeo(.3, .04, .24), M(['#4a5560', '#7a5a48', '#5a6458', '#8a8478', '#6a4a42'][(k + i) % 5], { roughness: .95 }), 0, .02 + i * .042, 0); w = .32; h = .13; }
+    else if (cat === 'stampa') { add(bgeo(.21, .05, .28), M('#efe8d8'), 0, .025, 0); add(bgeo(.211, .006, .1), pk, 0, .05, -.06); w = .22; h = .06; }
+    else if (cat === 'medicina' || cat === 'igiene') { add(bgeo(.08, .06, .05), pk, 0, .03, 0); add(bgeo(.081, .02, .051), lab, 0, .035, 0); w = .09; h = .06; }
+    else if (cat === 'elettrico') { add(bgeo(.14, .1, .1), M(pop ? col : '#d8d0bc', { roughness: .4 }), 0, .05, 0); add(bgeo(.141, .03, .101), M('#2a2a2e'), 0, .07, 0); w = .15; h = .1; }
+    else if (cat === 'valori') { add(bgeo(.08, .025, .1), pk, 0, .0125, 0); add(bgeo(.081, .026, .03), lab, 0, .0125, -.03); w = .09; h = .03; }
+    else { add(bgeo(.12, .16, .07), pk, 0, .08, 0); add(bgeo(.121, .05, .071), lab, 0, .09, 0); w = .13; h = .16; }
+    if (pop && h > .05) { const st0 = add(sgeo(.012, 4), GL('#ff3a3a', .6), 0, h * .7, .06); st0.scale.z = .3; }   // la stellina del marchio imperiale
+    g.userData.w = w; return g;
+  }
+  function hashStr(t) { let h = 7; for (const c of t) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
+  const tagTex = (txt, red) => canv('tag' + txt + red, 40, 14, (x, w, h) => { x.fillStyle = red ? '#c83a2a' : '#f4f0e4'; x.fillRect(0, 0, w, h); x.fillStyle = red ? '#ffffff' : '#1e1e22'; x.font = 'bold 10px monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, w / 2, h / 2 + 1); x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(0, h - 1, w, 1); });
+  const lire = q => String(Math.max(10, Math.round(q * 100) * 10)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');   // 1,5 → «1.500» (lire)
+  function vetrine(grp, b, f, F) {
+    if (f !== 0 || typeof Oggetti === 'undefined' || !Oggetti.counter || !window.__pv) return;
+    const st = window.__pv.st, bi = window.__pv.G.BUILDINGS.indexOf(b), C = st && bi >= 0 ? Oggetti.counter(st, 'b' + bi) : null; if (!C || !C.goods || !C.goods.length) return;
+    const pop = !!C.emporio, goods = C.goods.slice().sort((a, c) => (a.cat || '').localeCompare(c.cat || '') || a.g.localeCompare(c.g));
+    const sale = F.furn.filter(o => ESPO[o.id] && !o.h && !o.taken && (() => { const q = F.rooms[o.room]; return q && !RETRO.test(q.name); })());
+    if (!sale.length) return;
+    sale.forEach(o => { if (o.id === 'ia_scaffale_merci') o.__merce = 1; });
+    let gi = 0;
+    sale.forEach(o => {
+      const [levels, wid, dep, front] = ESPO[o.id], G0 = new THREE.Group(); G0.position.set(o.x, BASE, o.y); G0.rotation.y = o.ry || 0; grp.add(G0);
+      levels.forEach(y => {
+        let x = -wid / 2;
+        while (x < wid / 2 - .1) {
+          const it = goods[gi++ % goods.length], n = Math.max(0, Math.min(6, it.stock)), r = rng(hashStr(it.g) + gi);
+          const sample = goodMesh(it.g, it.cat, r, pop), w = sample.userData.w + .015; if (x + w > wid / 2) break;
+          const cols = Math.max(1, Math.ceil(n / 2)), used = cols * w;   // due pezzi in profondità per colonna, il davanti allineato al bordo
+          for (let k = 0; k < n; k++) { const col = Math.floor(k / 2), row = k % 2; if (x + (col + 1) * w > wid / 2 + .01) break; const m = k ? sample.clone() : sample; m.position.set(x + col * w + w / 2, y, front - .07 - row * Math.min(.14, dep * .4)); G0.add(m); }
+          const tg = new THREE.Mesh(plane(.12, .045), new THREE.MeshStandardMaterial({ map: tagTex(n ? lire(it.price) : 'finito', !n), roughness: .8 })); tg.position.set(x + Math.min(used, .2) / 2, y - .005, front + .006); G0.add(tg);
+          x += used + .03;
+        }
+      });
+    });
+  }
+  // [design] la roba presa sparisce dal mobile (senza rifare il piano): l'indice è quello di F.furn
+  function hide(i) { if (!S.grp) return; S.grp.children.forEach(m => { const o = m.userData.furn; if (o && o === (S.furnList || [])[i]) m.visible = false; }); }
+  return { build: build_, light, exit, prop: build, materiali, hide, floorY: () => (S.grp ? BASE : null) };
 })();

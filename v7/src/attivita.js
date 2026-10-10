@@ -147,12 +147,41 @@ var Attivita = (function () {
     if (nearFurn(st, /^ia_auto_esposta$/, 2.6)) add('guarda_auto', 'Siediti al volante dell\'auto in esposizione', () => { spend(st, 5, 'sogni a occhi aperti'); svago(st, .06); return 'Il volante è freddo, la pelle dei sedili sa di nuovo. Il cartello col prezzo, meglio non guardarlo.'; });
   }
 
+  // ---------------- [negozi] I SERVIZI: si paga una cosa fatta da qualcuno, non una merce ----------------
+  // [tipo di locale, mobile o posto vicino a cui stare, id, etichetta, prezzo (migliaia), minuti, effetto → frase]
+  // Servono il commesso al banco (O.clerk) e il locale aperto; il tempo passa davvero (Nino resta lì: spend).
+  const SERV = [
+    ['barbiere', /^ia_poltrona_barbiere$|^bathroomSink$/, 'barba', 'Capelli e barba dal barbiere', 4, 30, (st, N, M) => { N.igiene = clamp(N.igiene - .35, 0, 1); N.svago = clamp(N.svago - .08, 0, 1); M.ordinato = st.t + 3 * 1440; return ['Rasoio a mano libera, panno caldo, colonia che pizzica. Allo specchio sembri uno che paga le rate.', 'Ti racconta del figlio alla miniera mentre ti sfuma la nuca. Esci che sembri un altro.']; }],
+    ['lavanderia', /^washer$/, 'lava', 'Fai lavare e stirare i vestiti', 2, 40, (st, N) => { N.igiene = clamp(N.igiene - .3, 0, 1); return ['Te li ridanno piegati e caldi, con l\'odore di sapone di Marsiglia.', 'Una macchia d\'olio non va via. «Quella è sua, la tenga per ricordo.»']; }],
+    ['banja', /^ia_panca_sauna$/, 'sauna', 'Sauna e vapore alla banja', 3, 45, (st, N, M, p) => { N.igiene = 0; N.svago = clamp(N.svago - .2, 0, 1); p.hp = Math.min(100, p.hp + 10); return ['Il vapore ti scioglie il gelo dalle ossa. Fuori, nella neve, ti senti di vetro.', 'Due vecchi reduci sulla panca di sopra parlano piano dei boschi. Smettono quando entri.']; }],
+    ['ambulatorio', /^st_tavolo_medico$|^ia_letto_ospedale$/, 'medica', 'Fatti medicare', 6, 30, (st, N, M, p) => { const was = p.hp; p.hp = Math.min(100, p.hp + 45); return [was >= 95 ? 'Ti misurano la pressione e ti dicono di bere meno. Seimila lire per questo.' : 'Punti, garza, un\'iniezione che brucia. Il dottore non chiede come te lo sei fatto.']; }],
+    ['sartoria', /^st_macchina_cucire$/, 'rammenda', 'Fatti rammendare e stringere la giacca', 3, 35, (st, N, M) => { M.ordinato = st.t + 2 * 1440; N.svago = clamp(N.svago - .05, 0, 1); return ['Due punti sulla tasca strappata, le maniche accorciate. La giacca di tuo padre ti sta finalmente bene.']; }],
+    ['tipografia', /^st_ciclostile$|^fx_machine$/, 'stampa', 'Fai stampare cinquanta volantini (sottobanco)', 5, 40, (st, N, M) => { if (O && O.givePlayer) O.givePlayer(st, 'volantini', 10, true); return ['Il tipografo non legge quello che stampa. «Io faccio inviti a nozze, ha capito?» Ti dà il pacco ancora caldo.']; }],
+    ['video', /^pv_banco_vendita$/, 'noleggia', 'Noleggia una videocassetta per stasera', 2, 10, (st, N) => { N.svago = clamp(N.svago - .25, 0, 1); if (O && O.givePlayer) O.givePlayer(st, 'cassetta', 1, true); return ['Un film americano doppiato male, con le macchine che volano. Il commesso ti strizza l\'occhio: «Questa non l\'ha vista la Tutela.»']; }],
+    ['bar', /^ia_bancone_bar$/, 'corretto', 'Un caffè corretto al banco', 1.5, 10, (st, N, M) => { N.sonno = clamp(N.sonno - .15, 0, 1); M.drunk = clamp((M.drunk || 0) + .06, 0, 1); return ['Caffè bollente e un dito di grappa. Il bancone è l\'unico posto caldo del porto.', 'Il barista lo corregge senza chiedere. Alla radio il notiziario federale, nessuno ascolta.']; }],
+    ['pub', /^ia_bancone_bar$/, 'boccale', 'Un boccale di birra scura', 2, 15, (st, N, M) => { N.svago = clamp(N.svago - .1, 0, 1); N.compagnia = clamp(N.compagnia - .1, 0, 1); M.drunk = clamp((M.drunk || 0) + .12, 0, 1); return ['Schiuma fredda e il calore della sala. Qualcuno ti dà una pacca sulla spalla senza motivo.']; }],
+  ];
+  function servizi(st, out, add) {
+    const I = inside(st); if (!I) return;
+    const kind = INT.kindOf(I.b), p = st.player, N = st.me && st.me.need, M = st.me || {}; if (!N) return;
+    const Lg = luogoOf(st, I.bi);
+    SERV.forEach(([k, re, id, label, cost, mins, fx]) => {
+      if (kind !== k || !nearFurn(st, re, 2.6)) return;
+      if (!openNow(st, Lg)) { out.push({ id: 'sv_' + id, label: `${label}: è chiuso`, run: null, off: 'non c\'è nessuno' }); return; }
+      const who = O && Lg ? O.clerk(st, Lg) : null;
+      add('sv_' + id, `${label} (${String(Math.round(cost * 1000)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} lire)`, p.money >= cost ? () => {
+        pay(st, cost); spend(st, mins, label.toLowerCase()); if (st.sfx) st.sfx.push({ k: 'cash' });
+        const t = pick(fx(st, N, M, p)); return who ? `${who.first}: ${t}` : t;
+      } : null, 'non hai abbastanza soldi');
+    });
+  }
+
   // ---------------- LE AZIONI ----------------
   function actions(st) {
     if (st.me && st.me.warp) return [];
     const out = [], add = (id, label, run, off) => out.push({ id, label, run, off: run ? '' : off || '' });
     if (st.player.vehicle) { garage(st, out, add); return out; }
-    try { garage(st, out, add); till(st, out, add); games(st, out, add); } catch (e) { if (typeof console !== 'undefined') console.error('[attività]', e); }
+    try { garage(st, out, add); till(st, out, add); games(st, out, add); servizi(st, out, add); } catch (e) { if (typeof console !== 'undefined') console.error('[attività]', e); }
     return out;
   }
   function install() {
@@ -161,6 +190,6 @@ var Attivita = (function () {
     AZ.playerActions = st => (a0 ? a0(st) || [] : []).concat(actions(st));
   }
   install();
-  return { actions, LISTINO, UPG };
+  return { actions, LISTINO, UPG, SERV };
 })();
 if (typeof module !== 'undefined') module.exports = Attivita;
