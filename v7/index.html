@@ -29046,68 +29046,115 @@ var WriterMano = (function () {
 
   // ---------------- LE FIRME DISEGNATE ----------------
   // [writer] Le tag dei writer veri non escono da una formula: ognuna è un segno solo, disegnato una volta e rifatto sempre
-  // uguale, con la sua idea (la lettera enorme che abbraccia le altre, la barra che attraversa, il tratto che non si stacca).
-  // Riquadro 100 × 50, y in giù, la riga di base a ~40. Ogni tratto è una lista di punti (curve tese; dove gira di colpo, punta).
-  const arc = (cx, cy, rx, ry, a0, a1, n) => { const o = []; n = n || 14; for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; o.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); } return o; };
+  // uguale, con la sua idea (la lettera che chiude la parola, la curva che diventa la sottolineatura, il tratto che non si stacca).
+  // Il disegno è dritto, in un riquadro 100 × 50 (y in giù, la riga di base a 40, le maiuscole da ~11): l'inclinazione (sl) la
+  // mette il polso, uguale per tutto. Pochi stacchi: le lettere entrano una nell'altra. Un punto [x, y, 1] è una punta (il
+  // gesto si ferma e torna indietro); fra le punte la curva è tesa e continua.
+  // IL GESTO: il tratto è un nastro che cambia spessore lungo la corsa: si appoggia sottile, si gonfia dove la mano rallenta
+  // (le curve), si stringe dove corre (i dritti), alla fine scappa via a punta. Al marker conta anche l'angolo della punta.
   const SIGNED = {
-    // la O è un cerchio grande che esce sopra e sotto, col punto dentro; la K e la E piccole e strette, la S alta
-    KEOS: { w: 4.2, idea: 'la O enorme', strokes: [
-      [[9, 9], [8.5, 24], [7, 40]],
-      [[25, 12], [16, 19], [9, 26], [16, 33], [22, 40], [27, 37]],
-      [[40, 21], [34, 18.5], [29.5, 22.5], [35.5, 27.5], [29.5, 30.5], [29, 37], [36, 40.5], [43, 36]],
-      arc(60, 26, 14, 17, -1.2, 5.3, 22),
-      [[60.5, 26.5]],
-      [[87, 13], [80, 10.5], [75.5, 15.5], [82, 22.5], [87, 30], [82, 38.5], [72, 37]],
-      [[78, 4], [85, 2.5]], [[79, 7.5], [86, 6]],
+    // la O enorme: K e la e corsiva piccole, legate, entrano nella O e la girano; la S alta scende e passa sotto, a frusta
+    KEOS: { w: 4.6, sl: .22, tool: 'spray', idea: 'la O enorme, col punto', strokes: [
+      [[9, 9], [8.6, 25], [8, 40]],
+      [[23, 11], [16, 18], [9.5, 26, 1], [15, 31], [21, 37], [27, 39.5], [33, 37], [36.5, 32], [34, 27.5], [29, 28.5], [27, 34], [30, 39.5], [36, 41], [42, 39], [48, 41], [57, 40], [63, 33], [64, 23], [59, 14], [51, 11], [44, 15], [41, 25], [44, 35], [52, 40.5], [59, 39]],
+      [[84, 15], [79, 11.5], [73.5, 13], [73, 18.5], [79, 24], [83, 30], [81, 37], [74, 40.5], [67, 41.5], [61, 45]],
+      [[52.5, 26]],
     ] },
-    // la D fa da tetto: l'asta lunga a sinistra, la pancia sale sopra tutta la parola, ricade alla fine e torna sotto; A, K, O ci stanno dentro
-    DAKO: { w: 3.4, idea: 'la D che fa da tetto', strokes: [
-      [[8, 5], [6.5, 26], [9.5, 47]],
-      [[3, 8], [28, 2], [66, 3.5], [90, 13], [96, 27], [89, 40], [70, 46], [36, 47.5], [12, 46.5]],   // e torna sotto fino al piede: la D chiude tutta la parola
-      [[18, 41], [27, 16], [34, 41]],
-      [[16, 32], [42, 28.5]],
-      [[46, 15], [44.5, 41]],
-      [[59, 17], [46, 29], [58, 40], [63, 38]],
-      [[74, 18], [67, 23], [66, 34], [72.5, 40], [79, 34], [79.5, 23], [74, 17], [70, 19.5]],
-      [[64, 10], [62, 17]], [[67.5, 10], [65.5, 17]],
+    // la D chiude la parola: scende, corre sotto, risale e fa il tetto, torna all'asta; dentro la A con la traversa che sfora
+    // nella K, la gamba della K che diventa la O
+    DAKO: { w: 3.6, sl: .18, idea: 'la D che chiude la parola', strokes: [
+      [[6, 7], [7, 25], [8, 44, 1], [30, 46.5], [62, 46], [84, 42], [95, 30], [93, 16], [82, 7], [58, 3], [30, 3.5], [12, 6], [3, 10]],
+      [[16, 40], [20.5, 28], [24, 16, 1], [28, 28], [31.5, 40]], [[17.5, 31.5], [29, 30], [40, 28.5]],
+      [[45.5, 15], [45, 28], [44.5, 40]],
+      [[57, 15], [51, 21], [46, 27.5, 1], [51, 33], [56, 38.5], [62, 40.5], [69, 39.5], [74, 33], [74.5, 24], [70, 17.5], [64, 17], [60, 22], [60, 31], [64, 38.5], [71, 40.5], [76, 38]],
     ] },
-    // la S è un serpente: la sua curva bassa scorre sotto tutta la parola e finisce con la lingua biforcuta; N, E, K alte e tirate
-    SNEK: { w: 2.6, idea: 'la S serpente', strokes: [
-      [[17, 10], [9.5, 7], [4, 13], [12, 22], [16.5, 30], [11, 38], [24, 44], [45, 39.5], [65, 46], [84, 40.5], [93, 36]],
-      [[93, 36], [99, 31]], [[93, 36], [99.5, 40]],
-      [[23, 37], [26, 10], [36, 34], [41, 3]],
-      [[47, 11], [45.5, 35]], [[44, 11.5], [58, 9.5]], [[44, 22.5], [55, 21]], [[44, 34.5], [59, 32.5]],
-      [[64, 2], [61.5, 37]], [[76, 12], [63, 23.5], [77, 36], [81, 34]],
-      [[82, 13], [88, 11]], [[82, 17.5], [88, 15.5]],
+    // la S serpente: scende, torna indietro e corre sotto tutta la parola a onde fino alla lingua; N, E, K alte e tirate
+    SNEK: { w: 2.8, sl: .26, idea: 'la S serpente', strokes: [
+      [[17, 11], [12, 7.5], [6, 10], [5.5, 16], [11, 22], [16, 28.5], [15, 35], [9, 39], [4, 37, 1], [12, 42.5], [26, 44], [42, 40.5], [58, 45], [74, 42], [88, 37.5], [95, 34]],
+      [[95, 34], [100, 30.5]], [[95, 34], [100.5, 37.5]],
+      [[23, 38], [24, 24], [25.5, 11, 1], [31, 24], [36.5, 37, 1], [39, 20], [41, 4]],
+      [[57, 10.5], [51, 11], [46.5, 11.5, 1], [46, 23], [45.5, 35, 1], [52, 34.5], [59, 33.5]], [[45, 22.5], [55, 21.5]],
+      [[65, 3], [63.5, 20], [62.5, 36]], [[77, 12], [70, 18], [64, 23.5, 1], [70, 29], [77, 35.5], [82, 34]],
+      [[82, 14], [88, 12.5]], [[82.5, 18], [88.5, 16.5]],
     ] },
-    // tutta la parola in un tratto solo, senza staccare: la K apre, la gamba diventa la A, il giro della A entra nella O, la O
-    // si scioglie nella S; poi il punto esclamativo
-    KAOS: { w: 5.2, idea: 'un tratto solo', strokes: [
-      [[7, 8], [6, 24], [5, 40]],
-      [[21, 9], [9, 25], [18, 36], [24, 41], [32, 13], [39, 41], [37, 33], [44, 31], [49, 22], [57, 20], [63, 28], [60, 38], [51, 40], [47, 32], [53, 26], [66, 24], [75, 20], [69, 28], [77, 34], [72, 41], [62, 41]],
-      [[88, 8], [85, 32]],
-      [[83.5, 40]],
+    // quasi un tratto solo: la gamba della K sale nella A; la traversa della A corre nella O, la O esce in alto
+    // e va a prendere la S dalla punta; poi il punto esclamativo
+    KAOS: { w: 5, sl: .2, idea: 'un tratto solo', strokes: [
+      [[7, 8], [6.5, 24], [6, 40]],
+      [[21, 9], [14, 17], [8, 25, 1], [13, 31], [18, 37], [23, 40.5, 1], [26, 28], [29.5, 14, 1], [33, 27], [36.5, 40.5]],
+      [[25, 31.5], [34, 30], [41, 29.5], [45, 25], [51, 20], [58, 21], [62, 29], [58, 38], [50, 40.5], [45, 35], [47, 28], [54, 25], [64, 24], [71, 20, 1], [66, 19.5], [63, 24], [68, 29.5], [73, 34], [70, 40], [61, 41.5]],
+      [[86, 8], [84.5, 22], [83, 31]],
+      [[81.8, 39.5]],
     ] },
   };
-  // disegna una firma: al marker la punta a scalpello, a spruzzo il tratto tondo con l'alone; ritorna i punti del percorso
-  function drawSigned(x, S, Wp, Hp, r, col, tool, d) {
-    const m = .06, sc = Math.min(Wp * (1 - 2 * m) / 100, Hp * (1 - 2 * m) / 50), ox = (Wp - 100 * sc) / 2, oy = (Hp - 50 * sc) / 2, mark = tool === 'mtag';
-    const W = S.w * sc * (mark ? .8 : 1), path = [], segs = S.strokes.map(t => smoothC(t.map(([a, b]) => [ox + a * sc, oy + b * sc]), 6));
-    x.save(); x.fillStyle = col; x.strokeStyle = col; x.lineCap = 'round'; x.lineJoin = 'round';
-    if (!mark) { x.shadowColor = col; x.shadowBlur = W * .25; }
-    segs.forEach(pts => {
-      pts.forEach(q => path.push(q));
-      if (pts.length < 2) { x.beginPath(); x.arc(pts[0][0], pts[0][1], W * (mark ? .75 : .8), 0, 7); x.fill(); return; }
-      if (mark) { chisel(x, pts, W * 1.5, d.nibA != null ? d.nibA : -.7, 2, 2, .9); return; }
-      // lo spruzzo: largo nel mezzo, si stringe dove la mano accelera alla fine
-      const L = pts.length - 1;
-      for (let i = 0; i < L; i++) { const t = i / L; x.lineWidth = W * (t > .82 ? .45 + (1 - t) / .18 * .55 : 1); x.beginPath(); x.moveTo(pts[i][0], pts[i][1]); x.lineTo(pts[i + 1][0], pts[i + 1][1]); x.stroke(); }
+  // il gesto: la curva per i punti (Catmull-Rom centripeta: niente riccioli né pance), spezzata alle punte; [x, y, punta]
+  function gesture(P, step) {
+    const out = [], pieces = []; let pc = [P[0]];
+    for (let i = 1; i < P.length; i++) { pc.push(P[i]); if (P[i][2] && i < P.length - 1) { pieces.push(pc); pc = [P[i]]; } }
+    pieces.push(pc);
+    const dd = (a, b) => Math.sqrt(Math.max(1e-4, hyp(b[0] - a[0], b[1] - a[1])));
+    pieces.forEach((Q, k) => {
+      if (Q.length < 2) return;
+      for (let i = 0; i < Q.length - 1; i++) {
+        const p1 = Q[i], p2 = Q[i + 1], p0 = Q[i - 1] || [2 * p1[0] - p2[0], 2 * p1[1] - p2[1]], p3 = Q[i + 2] || [2 * p2[0] - p1[0], 2 * p2[1] - p1[1]];
+        const t1 = dd(p0, p1), t2 = t1 + dd(p1, p2), t3 = t2 + dd(p2, p3), n = Math.max(2, Math.ceil(hyp(p2[0] - p1[0], p2[1] - p1[1]) / step));
+        for (let j = (k === 0 && i === 0) ? 0 : 1; j <= n; j++) {
+          const t = t1 + (t2 - t1) * j / n, L = (a, b, ta, tb) => [a[0] * (tb - t) / (tb - ta) + b[0] * (t - ta) / (tb - ta), a[1] * (tb - t) / (tb - ta) + b[1] * (t - ta) / (tb - ta)];
+          const A1 = L(p0, p1, 0, t1), A2 = L(p1, p2, t1, t2), A3 = L(p2, p3, t2, t3), B1 = L(A1, A2, 0, t2), B2 = L(A2, A3, t1, t3), C = L(B1, B2, t1, t2);
+          out.push([C[0], C[1], (j === n && i === Q.length - 2 && k < pieces.length - 1) ? 1 : 0]);
+        }
+      }
     });
-    x.shadowBlur = 0;
-    // le colature: dalle curve basse, sottili, lunghe e corte
-    const lows = path.filter((q, i) => i % 4 === 0 && q[1] > oy + 30 * sc).sort((a, b) => b[1] - a[1]).slice(0, 24), n = mark ? 1 + Math.floor(r() * 3) : 2 + Math.floor(r() * 4);
-    for (let k = 0; k < n && lows.length; k++) { const q = lows[Math.floor(r() * lows.length)], l = Hp * (.05 + r() * r() * .35), w = Math.max(1, W * (.18 + r() * .2)); x.lineWidth = w; x.beginPath(); x.moveTo(q[0], q[1]); x.lineTo(q[0] + (r() - .5), q[1] + l); x.stroke(); x.beginPath(); x.arc(q[0], q[1] + l, w * .6, 0, 7); x.fill(); }
-    if (!mark) { x.globalAlpha = .3; for (let k = 0; k < path.length * .5; k++) { const q = path[Math.floor(r() * path.length)], a = r() * PI * 2, rr = W * (.7 + r() * 1.3); x.fillRect(q[0] + Math.cos(a) * rr, q[1] + Math.sin(a) * rr, 1.5, 1.5); } }
+    return out;
+  }
+  const sstep = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  // il nastro: uno spessore per campione, i bordi sinistro e destro, un poligono per pezzo (fra le punte), la giunta tonda
+  function ribbon(x, G, Wd, cap) {
+    let a = 0;
+    const cut = [0]; G.forEach((q, i) => { if (q[2] && i > 0 && i < G.length - 1) cut.push(i); }); cut.push(G.length - 1);
+    for (let c = 0; c + 1 < cut.length; c++) {
+      const i0 = cut[c], i1 = cut[c + 1], Lf = [], Rt = [];
+      for (let i = i0; i <= i1; i++) {
+        const pa = G[Math.max(i0, i - 1)], pb = G[Math.min(i1, i + 1)], tx = pb[0] - pa[0], ty = pb[1] - pa[1], l = hyp(tx, ty) || 1, nx = -ty / l, ny = tx / l, h = Wd[i] / 2;
+        Lf.push([G[i][0] + nx * h, G[i][1] + ny * h]); Rt.push([G[i][0] - nx * h, G[i][1] - ny * h]);
+      }
+      x.beginPath(); Lf.forEach((p, k) => k ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1])); for (let k = Rt.length - 1; k >= 0; k--) x.lineTo(Rt[k][0], Rt[k][1]); x.closePath(); x.fill();
+      if (c > 0) { x.beginPath(); x.arc(G[i0][0], G[i0][1], Wd[i0] * .42, 0, 7); x.fill(); }   // la punta: la giunta piena
+    }
+    if (cap) [0, G.length - 1].forEach(i => { x.beginPath(); x.arc(G[i][0], G[i][1], Wd[i] / 2, 0, 7); x.fill(); });
+    return a;
+  }
+  // lo spessore lungo il gesto: l'appoggio, la velocità (le curve lente, i dritti veloci), la fuga finale, la punta del marker
+  function profile(G, W, mark, nibA) {
+    const n = G.length, s = [0]; for (let i = 1; i < n; i++) s.push(s[i - 1] + hyp(G[i][0] - G[i - 1][0], G[i][1] - G[i - 1][1])); const L = s[n - 1] || 1;
+    const kap = G.map((q, i) => { const a = G[Math.max(0, i - 3)], b = G[Math.min(n - 1, i + 3)]; if (q[2]) return 1; const u = Math.atan2(q[1] - a[1], q[0] - a[0]), v = Math.atan2(b[1] - q[1], b[0] - q[0]); let d = Math.abs(v - u); if (d > PI) d = 2 * PI - d; return clamp(d / Math.max(.5, s[Math.min(n - 1, i + 3)] - s[Math.max(0, i - 3)]) * 4, 0, 1); });
+    const ks = kap.map((_, i) => { let t = 0, c = 0; for (let j = Math.max(0, i - 4); j <= Math.min(n - 1, i + 4); j++) { t += kap[j]; c++; } return t / c; });
+    const entry = Math.min(.12, 3 / L), exit = Math.min(.3, (mark ? 9 : 6) / L);
+    return G.map((q, i) => {
+      const u = s[i] / L, a = G[Math.max(0, i - 1)], b = G[Math.min(n - 1, i + 1)], dir = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      let w = W * (.35 + .65 * sstep(0, entry, u)) * ((mark ? .06 : .4) + (mark ? .94 : .6) * (1 - sstep(1 - exit, 1, u))) * (.86 + .3 * ks[i]);
+      if (mark) w *= .24 + .76 * Math.abs(Math.sin(dir - nibA));
+      return Math.max(mark ? 1 : 1.5, w);
+    });
+  }
+  // disegna una firma; ritorna i punti del percorso (per la mano che la ripassa)
+  function drawSigned(x, S, Wp, Hp, r, col, tool, d) {
+    const mark = tool === 'mtag', sl = S.sl || .2, path = [];
+    const G0 = S.strokes.map(t => t.length < 2 ? [[t[0][0] + (40 - t[0][1]) * sl, t[0][1], 0]] : gesture(t.map(([a, b, c]) => [a + (40 - b) * sl, b, c]), .35));
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; G0.forEach(g => g.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
+    const pad = S.w * 1.2, sc = Math.min(Wp * .94 / (x1 - x0 + pad * 2), Hp * .86 / (y1 - y0 + pad * 2)), ox = Wp / 2 - (x0 + x1) / 2 * sc, oy = Hp * .45 - (y0 + y1) / 2 * sc;
+    const G = G0.map(g => g.map(([a, b, c]) => [ox + a * sc, oy + b * sc, c])), W = S.w * sc * (mark ? .78 : 1), nibA = d && d.nibA != null ? d.nibA : -.75;
+    const Wds = G.map(g => g.length < 2 ? [W * (mark ? 1.1 : 1.15)] : profile(g, mark ? W * 1.45 : W, mark, nibA));
+    const draw = (k, cap) => G.forEach((g, i) => { if (g.length < 2) { x.beginPath(); x.arc(g[0][0], g[0][1], Wds[i][0] * k / 2, 0, 7); x.fill(); } else ribbon(x, g, Wds[i].map(w => w * k), cap); });
+    x.save(); x.fillStyle = col; x.strokeStyle = col;
+    if (!mark) { x.save(); x.filter = `blur(${(W * .35).toFixed(1)}px)`; x.globalAlpha = .16; draw(1.4, true); x.restore(); x.save(); x.filter = `blur(${Math.max(.5, W * .03).toFixed(1)}px)`; draw(1, true); x.restore(); }   // lo spruzzo: l'alone largo e leggero, poi il tratto col bordo appena morbido
+    else draw(1, false);
+    G.forEach(g => g.forEach(q => path.push(q)));
+    // le colature: dove la mano si ferma in basso (i fondi delle curve, le punte in basso), poche e sottili
+    const bots = []; G.forEach((g, i) => g.forEach((q, k) => { if (k < 3 || k > g.length - 4) return; if (g[k - 3][1] < q[1] && g[k + 3][1] <= q[1] && q[1] > Hp * .45) bots.push([q, Wds[i][k]]); }));
+    const n = Math.min(bots.length, mark ? (r() < .5 ? 1 : 0) : 1 + Math.floor(r() * 3));
+    for (let k = 0; k < n; k++) { const [q, w0] = bots.splice(Math.floor(r() * bots.length), 1)[0], l = Hp * (.04 + r() * r() * .3), w = Math.max(1, w0 * (.22 + r() * .15)); x.beginPath(); x.moveTo(q[0] - w / 2, q[1]); x.lineTo(q[0] + w / 2, q[1]); x.lineTo(q[0] + w * .35, q[1] + l); x.arc(q[0], q[1] + l, w * .55, 0, PI); x.lineTo(q[0] - w * .35, q[1] + l); x.closePath(); x.fill(); }
+    if (!mark) { x.globalAlpha = .25; for (let k = 0; k < path.length * .25; k++) { const q = path[Math.floor(r() * path.length)], a = r() * PI * 2, rr = W * (.8 + r() * 1.2); x.fillRect(q[0] + Math.cos(a) * rr, q[1] + Math.sin(a) * rr, 1.5, 1.5); } }   // la grana fuori
     x.restore();
     return { path, W };
   }
