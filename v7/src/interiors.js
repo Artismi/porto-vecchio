@@ -497,7 +497,7 @@ var Interior = (function () {
     cantina_r: ['cotto', 'mattoni', 'bulbo', ['!fd_barrel', '!fd_barrel', 'ia_botti', 'ia_botti', 'kitchenBar', 'ar_cash-register', '~ia_bottiglie', '^ia_salami']],
   };
   // [roba] l'altezza dei piani d'appoggio, e che cosa ci si lascia sopra a seconda della stanza: [stanza, roba, quante volte su cento c'è]
-  const SURF = { table: .76, tableRound: .76, tableCloth: .76, ia_tavolino: .74, ia_tavolino_tondo: .74, ia_tavolo_lungo: .77, desk: .75, sideTable: .55, kitchenBar: .95, ia_bancone_bar: 1.0, kitchenCabinet: .92, ia_credenza: .9, pv_banco_vendita: .95, ia_scrivania_grande: .78, tableCoffee: .38, ia_cassapanca: .55,
+  const SURF = { table: .76, tableRound: .76, tableCloth: .76, ia_tavolino: .74, ia_tavolino_tondo: .74, ia_tavolo_lungo: .77, desk: .75, sideTable: .55, kitchenBar: .95, ia_bancone_bar: 1.0, kitchenCabinet: .92, ia_credenza: .9, pv_banco_vendita: .95, ia_scrivania_grande: .78, tableCoffee: .42, ia_cassapanca: .55,
     ia_tavolino_design: .42, ia_madia: .81, ia_comodino: .56, ia_como: .87, ia_tavolo_design: .76, ia_consolle_ingresso: .83, ia_scarpiera: .56, ia_scrivania_design: .76, ia_cucina_componibile: .92, ia_lavabo_design: .86, ia_mobile_dipinto: .88, bookcaseOpenLow: .82 };
   const DRESS = [
     [/^bagno$/, ['ia_rasoio', 'ia_profumo', 'ia_medicine', 'ia_rasoio', 'ia_profumo', 'ia_medicine', 'ia_orologio_polso'], .95],   // [design]
