@@ -526,13 +526,14 @@ var WriterArte = (function () {
     x.save(); bodyPath(x, l, -u * .02, 0, 0); x.clip(); x.strokeStyle = S0.ol; x.fillStyle = S0.ol; x.lineCap = 'round'; x.lineJoin = 'round'; x.lineWidth = Math.max(1.2, u * .016);
     const at = () => [c[0] + (r() - .5) * R * 1.1, c[1] + (r() - .5) * R * 1.1];
     for (let k = 0; k < n; k++) {
-      const [px, py] = at(), kd = pickR(r, ['uguale', 'croce', 'punti', 'freccia', 'linea', 'tag', 'punti']), s2 = u * (.05 + r() * .04);
+      const [px, py] = at(), kd = pickR(r, ['uguale', 'croce', 'punti', 'freccia', 'linea', 'tag', 'punti', 'spirale', 'spirale']), s2 = u * (.05 + r() * .04);
       if (kd === 'uguale') { for (const d of [-.3, .3]) { x.beginPath(); x.moveTo(px - s2, py + d * s2); x.lineTo(px + s2, py + d * s2 - s2 * .2); x.stroke(); } }
       if (kd === 'croce') { x.beginPath(); x.moveTo(px - s2 * .7, py - s2 * .7); x.lineTo(px + s2 * .7, py + s2 * .7); x.moveTo(px + s2 * .7, py - s2 * .7); x.lineTo(px - s2 * .7, py + s2 * .7); x.stroke(); }
       if (kd === 'punti') for (let j = 0; j < 2 + Math.floor(r() * 3); j++) { x.beginPath(); x.arc(px + (r() - .5) * s2 * 3, py + (r() - .5) * s2 * 3, Math.max(1.5, s2 * (.2 + r() * .35)), 0, 7); x.fill(); }
       if (kd === 'freccia') { const a = r() * 6.28, L = s2 * 3; x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(a) * L, py + Math.sin(a) * L); x.stroke(); const hx = px + Math.cos(a) * L, hy = py + Math.sin(a) * L; x.beginPath(); x.moveTo(hx, hy); x.lineTo(hx - Math.cos(a - .5) * s2, hy - Math.sin(a - .5) * s2); x.moveTo(hx, hy); x.lineTo(hx - Math.cos(a + .5) * s2, hy - Math.sin(a + .5) * s2); x.stroke(); }
       if (kd === 'linea') { x.beginPath(); x.moveTo(px - R * .4, py + R * .3); x.quadraticCurveTo(px, py - R * .2, px + R * .35, py + R * .4); x.stroke(); }   // la linea di costruzione (la curva interna)
       if (kd === 'tag' && R > u * .2) smallTag(x, text, px, py, R * .28, S0.ol, r, R * 1.1);
+      if (kd === 'spirale') { x.beginPath(); for (let t = 0; t < 14; t += .3) { const rr = s2 * .12 * t; x.lineTo(px + Math.cos(t) * rr, py + Math.sin(t) * rr); } x.stroke(); }
     }
     x.restore();
   }
@@ -559,6 +560,13 @@ var WriterArte = (function () {
   // la faccia dentro la lettera: gli occhi socchiusi e il ghigno coi denti
   function letterFace(x, l, S0, u, r) {
     const b = l.body.reduce((a, c) => (c.r > a.r ? c : a)), c = b.c || [(b.a[0] + b.b[0]) / 2, (b.a[1] + b.b[1]) / 2], R = b.r * .7;
+    if (r() < .5) {   // gli occhioni a cartone che spuntano dalla lettera
+      const K = S0.ol === '#f6f4ee' ? '#141418' : S0.ol, lw0 = Math.max(1.5, u * .025);
+      for (const sd of [-1, 1]) { const ex = c[0] + sd * R * .42, ey = c[1] - R * .25, rx = R * .4, ry = R * .55; x.fillStyle = '#ffffff'; x.strokeStyle = K; x.lineWidth = lw0; x.beginPath(); x.ellipse(ex, ey, rx, ry, 0, 0, 7); x.fill(); x.stroke();
+        x.fillStyle = '#101012'; x.beginPath(); x.ellipse(ex + sd * rx * .2, ey + ry * .3, rx * .3, ry * .3, 0, 0, 7); x.fill(); x.fillStyle = '#ffffff'; x.beginPath(); x.arc(ex + sd * rx * .12, ey + ry * .2, rx * .09, 0, 7); x.fill();
+        x.strokeStyle = K; x.beginPath(); x.moveTo(ex - rx * .5, ey - ry * 1.25); x.lineTo(ex + rx * .3, ey - ry * 1.05); x.stroke(); }
+      return;
+    }
     x.save(); bodyPath(x, l, 0, 0, 0); x.clip(); x.lineJoin = 'round'; x.lineCap = 'round';
     x.fillStyle = '#ffffff'; x.strokeStyle = S0.ol; x.lineWidth = Math.max(1.5, u * .022);
     x.beginPath(); x.moveTo(c[0] - R * .7, c[1] + R * .05); x.quadraticCurveTo(c[0], c[1] + R * .2, c[0] + R * .75, c[1] - R * .05); x.quadraticCurveTo(c[0] + R * .1, c[1] + R * .85, c[0] - R * .7, c[1] + R * .05); x.fill(); x.stroke();
@@ -574,7 +582,7 @@ var WriterArte = (function () {
     const star = (cx, cy, s) => { x.save(); x.fillStyle = '#ffffff'; x.beginPath(); for (let k = 0; k < 8; k++) { const a = k * PI / 4, rr = k % 2 ? s * .12 : s; x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } x.closePath(); x.fill(); x.restore(); };
     const cross = (cx, cy, s) => { x.save(); x.translate(cx, cy); x.rotate((r() - .5) * .5); x.lineJoin = 'round'; const pth = () => { x.beginPath(); [[-1, -3], [1, -3], [1, -1], [3, -1], [3, 1], [1, 1], [1, 3], [-1, 3], [-1, 1], [-3, 1], [-3, -1], [-1, -1]].forEach(([a, b], k) => k ? x.lineTo(a * s / 3, b * s / 3) : x.moveTo(a * s / 3, b * s / 3)); x.closePath(); }; pth(); x.lineWidth = ol * 1.6; x.strokeStyle = K; x.stroke(); x.fillStyle = col; x.fill(); x.restore(); };
     const kinds = []; const n = 2 + Math.floor(r() * 3);
-    for (let k = 0; k < n; k++) kinds.push(pickR(r, ['aureola', 'corona', 'croci', 'stelle', 'stelle', 'cuore', 'minitag', 'gocce']));
+    for (let k = 0; k < n; k++) kinds.push(pickR(r, ['aureola', 'corona', 'croci', 'stelle', 'stelle', 'cuore', 'minitag', 'gocce', 'corna']));
     if (S0.deco === S0.fill) kinds.push('croci');
     [...new Set(kinds)].forEach(kd => {
       x.lineCap = 'round'; x.lineJoin = 'round';
@@ -584,6 +592,7 @@ var WriterArte = (function () {
       if (kd === 'stelle') for (let k = 0; k < 2 + Math.floor(r() * 3); k++) star(bx0 + r() * (bx1 - bx0), by0 + r() * (by1 - by0) * .5, u * (.06 + r() * .07));
       if (kd === 'cuore') { const t = pickR(r, tops), s2 = u * .09, cx = t[0] + u * .25, cy = t[1] + u * .05; x.fillStyle = col === '#ffffff' ? '#e8406a' : col; x.strokeStyle = K; x.lineWidth = Math.max(1, ol * .8); x.beginPath(); x.moveTo(cx, cy + s2); x.bezierCurveTo(cx - s2 * 1.6, cy - s2 * .2, cx - s2 * .7, cy - s2 * 1.4, cx, cy - s2 * .45); x.bezierCurveTo(cx + s2 * .7, cy - s2 * 1.4, cx + s2 * 1.6, cy - s2 * .2, cx, cy + s2); x.fill(); x.stroke(); }
       if (kd === 'minitag') smallTag(x, text, clamp(bx0 + (r() < .5 ? -u * .05 : (bx1 - bx0) * .9), u * .4, Wp - u * .4), r() < .5 ? Math.max(u * .12, by0 - u * .02) : Math.min(Hp - u * .1, by1 + u * .02), u * .14, col === '#ffffff' ? K : col, r, u * 1.1);
+      if (kd === 'corna') tops.forEach(t => { if (r() < .5) return; const h = u * (.12 + r() * .08), w2 = u * .07, lean = (r() - .5) * u * .1; x.fillStyle = S0.fill === 'chrome' ? '#cfd3d8' : S0.fill; x.strokeStyle = K; x.lineWidth = Math.max(1.5, ol * 1.4); x.beginPath(); x.moveTo(t[0] - w2, t[1] + ol * 2); x.quadraticCurveTo(t[0] - w2 * .3 + lean, t[1] - h * .5, t[0] + lean * 1.5, t[1] - h); x.quadraticCurveTo(t[0] + w2 * .2, t[1] - h * .3, t[0] + w2, t[1] + ol * 2); x.stroke(); x.fill(); });
       if (kd === 'gocce') { const lows = []; B.L.forEach(l => l.body.forEach(b => { const c = b.c || (b.a[1] > b.b[1] ? b.a : b.b); lows.push([c[0], c[1] + b.r]); })); x.strokeStyle = S0.ol; x.fillStyle = S0.ol; for (let k = 0; k < 3 + Math.floor(r() * 3); k++) { const q = pickR(r, lows), l2 = u * (.15 + r() * .35); x.lineWidth = ol * 1.1; x.beginPath(); x.moveTo(q[0], q[1] - ol); x.lineTo(q[0], q[1] + l2); x.stroke(); x.beginPath(); x.ellipse(q[0], q[1] + l2 + ol * .4, ol * 1.2, ol * 1.6, 0, 0, 7); x.fill(); } }
     });
   }
@@ -603,7 +612,7 @@ var WriterArte = (function () {
     const o = { adv: C.fam === 'throwie' ? .72 : C.fam === 'fat' ? .74 : .8, jit: .1 + (1 - q) * .12, rot: .16 + (1 - q) * .1, bounce: .05 + r() * .06, squash: .95 + r() * .35, slant: (r() - .3) * .25, puff: C.fam === 'fat' || C.fam === 'throwie' ? 1.12 + r() * .1 : 1 + r() * .08 };
     const sloganH = C.slogan && !throwUp ? Hp * .12 : 0, B = bubbleFit(bubbleLayout(w.words || w.aka || 'NINO', o, r), Wp, Hp - sloganH, Hp * .1);
     const u = B.s, ol = Math.max(2, u * (.045 + r() * .02) * (S0.thick || 1)), d3 = u * (.12 + r() * .1) * (q < .3 ? .4 : 1), ang = .6 + r() * .5, dx = Math.cos(ang) * d3, dy = Math.sin(ang) * d3, steps = Math.max(2, Math.round(d3 / 1.2));
-    const faceI = S0.ref && q > .45 && r() < .3 ? Math.floor(r() * B.L.length) : -1;
+    const faceI = S0.ref && q > .45 && r() < .3 ? Math.floor(r() * B.L.length) : -1, faceI2 = C.fam === 'throwie' && r() < .35 ? Math.floor(r() * B.L.length) : -1;
     const order = B.L.map((l, i) => i).reverse();   // si disegna da destra: la lettera a sinistra sta sopra quella a destra (così si legge)
     const chromeG = () => { const g = x.createLinearGradient(0, B.box[1], 0, B.box[3]); g.addColorStop(0, '#ffffff'); g.addColorStop(.45, '#c8d0da'); g.addColorStop(.52, '#5a6472'); g.addColorStop(.6, '#9aa4b2'); g.addColorStop(1, '#eef2f6'); return g; };
     const fillCol = c => c === 'chrome' ? chromeG() : c;
@@ -629,13 +638,15 @@ var WriterArte = (function () {
       // le luci: un arco e un puntino sul cuscinetto più grande, in alto a sinistra
       const big = l.body.reduce((a, b) => (b.r > a.r ? b : a)), bc = big.c || [(big.a[0] + big.b[0]) / 2, Math.min(big.a[1], big.b[1])];
       if (S0.ref) { if (!S0.flat) glints(ox, l, S0.shine, u, r); if (i === faceI) letterFace(ox, l, S0, u, r); else if (S0.marks || r() < .35) innerMarks(ox, l, S0, u, r, w.aka || 'NINO', (S0.marks || 1) + Math.floor(r() * 2)); } else { ox.strokeStyle = S0.shine; ox.fillStyle = S0.shine; ox.lineWidth = Math.max(1.5, ol * .8); ox.beginPath(); ox.arc(bc[0], bc[1], big.r * .62, PI * 1.08, PI * 1.42); ox.stroke(); ox.beginPath(); ox.arc(bc[0] + Math.cos(PI * 1.55) * big.r * .62, bc[1] + Math.sin(PI * 1.55) * big.r * .62, ol * .7, 0, 7); ox.fill(); }
-      if (C.fam === 'throwie' && r() < .3) doodles(ox, [{ pts: [bc, [bc[0], bc[1] + big.r * .4]] }], big.r * 1.4, r, S0.shine, true, false, r() < .4);
+      if (C.fam === 'throwie' && S0.fill === '#141418') { if (i === faceI2) letterFace(ox, l, S0, u, r); else if (r() < .7) innerMarks(ox, l, S0, u, r, w.aka || 'NINO', 1 + Math.floor(r() * 2)); }   // [writer] la throwie nera: spirali, crocette, «=» bianchi dentro
+      else if (C.fam === 'throwie' && r() < .3) doodles(ox, [{ pts: [bc, [bc[0], bc[1] + big.r * .4]] }], big.r * 1.4, r, S0.shine, true, false, r() < .4);
     });
     if (throwUp ? r() < .5 : r() < .3) { const lows = []; B.L.forEach(l => l.body.forEach(b => { const c = b.c || (b.a[1] > b.b[1] ? b.a : b.b); lows.push([c[0], c[1] + b.r]); })); ox.fillStyle = S0.ol; ox.strokeStyle = S0.ol; ox.lineCap = 'round'; for (let k = 0; k < 3 + Math.floor(r() * 4); k++) { const qq = pickR(r, lows), l2 = Hp * (.05 + r() * .14); ox.lineWidth = ol * 1.4; ox.beginPath(); ox.moveTo(qq[0], qq[1]); ox.lineTo(qq[0], qq[1] + l2); ox.stroke(); ox.beginPath(); ox.arc(qq[0], qq[1] + l2, ol * 1.1, 0, 7); ox.fill(); } }   // le colature
     x.clearRect(0, 0, Wp, Hp); x.drawImage(OUT, 0, 0); snap(x.canvas); paths.push(pts.slice()); radii.push(u * .38);
     // 4. i dettagli: la firma, l'anno, lo slogan, qualche stellina
     const [bx0, by0, bx1, by1] = B.box;
-    if (S0.ref) decorate(x, B, S0, u, r, w.aka || 'NINO', Wp, Hp, ol);   // [writer] aureole, corone, crocette, stelline, mini-tag, gocce
+    if (S0.ref) decorate(x, B, S0, u, r, w.aka || 'NINO', Wp, Hp, ol);
+    else if (C.fam === 'throwie' && S0.fill === '#141418' && r() < .6) decorate(x, B, Object.assign({}, S0, { deco: '#141418' }), u, r, w.aka || 'NINO', Wp, Hp, ol);   // [writer] aureole, corone, crocette, stelline, mini-tag, gocce
     else if (q > .6) for (let k = 0; k < 2; k++) sparkle(x, bx0 + r() * (bx1 - bx0), by0 + r() * (by1 - by0) * .3, u * .08, S0.shine === '#141418' ? '#141418' : '#ffffff');
     smallTag(x, w.words && w.aka ? w.aka + ' ' + (w.crew || 'PV') : (w.crew || 'PV'), Math.min(Wp - Hp * .3, bx1 - Hp * .15), Math.min(Hp - sloganH - Hp * .06, by1 + ol * 2), Hp * .1, S0.ol === '#f6f4ee' ? '#141418' : S0.ol, r, Wp * .3);
     if (!throwUp && C.yr) smallTag(x, C.yr, bx0 + Hp * .12, Math.max(Hp * .06, by0 + Hp * .02), Hp * .08, S0.ol === '#f6f4ee' ? '#141418' : S0.ol, r);
