@@ -40,9 +40,11 @@ sole e del cielo diventava un velo bianco, gonfiato dal bloom. `MATTE_GLSL` tien
 - **Rifiuti**: `trashFree` fa lo stesso per bidoni, cassonetti e campane: quelli messi a mano vengono prima, sui
   marciapiedi del centro un bidone ogni 9 m al massimo, cassonetti ad almeno 14 m l'uno dall'altro. Il tiro dei dadi
   dei marciapiedi resta uguale, quindi il resto dell'arredo non si sposta.
-- **Compenetrazioni**: la pulizia `pulizia35` (fuori dalle case, fuori dalla carreggiata, niente uno dentro l'altro)
-  girava a metà costruzione; ora gira anche alla fine (`pulizia39`) e vale per tutto quello messo dopo (incroci,
-  strade, arredo urbano, guardrail…). Con il seme di prova toglie altri 87 oggetti.
+- **Compenetrazioni, senza perdere nulla**: la pulizia `pulizia35` (fuori dalle case, fuori dalla carreggiata, niente
+  uno dentro l'altro) girava a metà costruzione e toglieva gli oggetti fuori posto; ora gira anche alla fine (`pulizia39`)
+  e vale per tutto quello messo dopo (incroci, strade, arredo urbano, guardrail…). Un oggetto fuori posto prima si
+  sposta (`moveProp35`: il punto libero e in piano più vicino, fino a 3 m); si toglie solo se non c'è posto.
+  Con il seme di prova: 107 spostati, 14 tolti (prima delle modifiche ne sparivano 32 nella sola prima pulizia).
 
 ## Come misurare
 - Profilo camminando, istantanee e misure senza disegno: gli script usati stanno fuori dal repository; il metodo è
