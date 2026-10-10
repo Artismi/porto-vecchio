@@ -1813,7 +1813,7 @@ var Render = (function () {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
+    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
     try { const W = c.width, H = c.height, id = x.getImageData(0, 0, W, H), d = id.data, rc = mk(W, H), rxx = rc.getContext('2d'), od = rxx.createImageData(W, H), o = od.data;
@@ -5112,6 +5112,27 @@ var Render = (function () {
       for (let i = 0; i < 30; i++) { x.fillStyle = 'rgba(30,30,30,.2)'; x.fillRect(r() * S, r() * S, 1, 1); }
     }
     return (P35[kind] = c);
+  }
+  // [ferrovia] il suolo della linea: terra battuta e pietrisco sparso lungo il tracciato liscio (le caselle di ghiaia servono
+  // solo alle collisioni: a terra niente scalini), sfumato verso l'erba; negli scali la fascia si allarga sotto i binari secondari
+  function railGround(x, tx0, ty0, n, m) {
+    const L = G.layout && G.layout(), RL = L && L.rail; if (!RL || !RL.pts) return;
+    const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS, pad = 12, P = RL.pts;
+    const path = (pts) => { let on = false; x.beginPath(); for (let k = 0; k < pts.length; k++) { const q = pts[k]; if (!q || q[3] || q[0] < X0 - pad || q[0] > X1 + pad || q[1] < Y0 - pad || q[1] > Y1 + pad) { on = false; continue; } if (!on) { x.moveTo((q[0] - X0) * PPM, (q[1] - Y0) * PPM); on = true; } else x.lineTo((q[0] - X0) * PPM, (q[1] - Y0) * PPM); } };
+    const rmp = (u, l) => { const sm = t => t * t * (3 - 2 * t); return sm(Math.min(1, Math.max(0, u / 18))) * sm(Math.min(1, Math.max(0, (l - u) / 18))); };
+    const yp = (RL.yards || []).map(Y => { const o = []; for (let u = 0; u <= Y.len; u++) { const i = Y.s0 + u, a = P[Math.max(0, i - 2)], b = P[Math.min(P.length - 1, i + 2)], q = P[i]; if (!q) break; const an = Math.atan2(b[1] - a[1], b[0] - a[0]), off = Y.side * Y.off * rmp(u, Y.len); o.push([q[0] - Math.sin(an) * off, q[1] + Math.cos(an) * off, 0, 0]); } return o; });
+    x.save(); x.lineJoin = 'round'; x.lineCap = 'round';
+    const layer = (w, wy, st) => { x.strokeStyle = st; path(P); x.lineWidth = w * PPM; x.stroke(); yp.forEach(o => { path(o); x.lineWidth = wy * PPM; x.stroke(); }); };
+    layer(19, 12, 'rgba(98,86,62,.16)'); layer(16, 10, 'rgba(98,86,62,.28)'); layer(13.5, 8.5, 'rgba(104,92,68,.6)'); layer(12.5, 7.5, railPat(x, X0, Y0));
+    x.restore();
+  }
+  function railPat(x, X0, Y0) {   // 16 m: terra secca, pietrisco grigio sparso, macchie d'olio, ciuffi
+    if (!P35.__rail) { const S = 128, c = mk(S, S), y = c.getContext('2d'), r = rng(4242); y.fillStyle = '#76684e'; y.fillRect(0, 0, S, S);
+      for (let k = 0; k < 900; k++) { const v = r(); y.fillStyle = v < .5 ? `rgba(${120 + r() * 40},${112 + r() * 36},${100 + r() * 30},.7)` : v < .8 ? `rgba(${80 + r() * 30},${70 + r() * 24},${52 + r() * 20},.6)` : `rgba(${70 + r() * 30},${90 + r() * 30},${44 + r() * 20},.55)`; y.fillRect(r() * S, r() * S, 1 + r() * 1.5, 1 + r() * 1.5); }
+      for (let k = 0; k < 7; k++) { y.fillStyle = 'rgba(40,34,28,.18)'; y.beginPath(); y.ellipse(r() * S, r() * S, 3 + r() * 8, 2 + r() * 4, r() * 3, 0, 7); y.fill(); }
+      P35.__rail = c; }
+    const p = x.createPattern(P35.__rail, 'repeat'), sc = 16 * PPM / 128; try { p.setTransform(new DOMMatrix([sc, 0, 0, sc, -((X0 * PPM) % (16 * PPM)), -((Y0 * PPM) % (16 * PPM))])); } catch (e) {}
+    return p;
   }
   function pat35(x, kind, X0, Y0) {   // pattern che ripete ogni 16 m di mondo
     if (kind === 'asfalto') return wpat1(x, 'asfalto', X0, Y0);   // [strade1] asfalto premium da 32 m
