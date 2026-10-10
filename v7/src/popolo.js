@@ -19,10 +19,10 @@ var Popolo = (function () {
 
   // ---------------- REGOLAZIONI ----------------
   const CFG = {
-    max: 420,          // abitanti al massimo (la mappa ne può offrire di più)
+    max: 840,          // abitanti al massimo (la mappa ne può offrire di più) [alleggerimento] raddoppiati: erano 420
     near: 52,          // entro questa distanza dal giocatore si vive per intero (m)
     far: 66,           // oltre questa si torna al livello leggero (isteresi)
-    maxNear: 70,       // quanti al massimo a pieno contemporaneamente
+    maxNear: 130,      // quanti al massimo a pieno contemporaneamente (erano 70)
     lodEvery: .5,      // secondi reali tra due controlli di distanza
     talkEvery: 15,     // minuti di gioco tra due giri di chiacchiere lontane
     maxProj: 2,        // progetti in testa contemporaneamente
@@ -260,7 +260,7 @@ var Popolo = (function () {
       const isHome = b.use === 'casa' || b.use === 'cascina' || (b.home && !b.church);
       if (isHome) {
         const area = b.w * b.h * TS * TS, fl = Math.max(1, b.fl || 1);
-        info.cap = clamp(Math.round(area * fl / (b.home ? 26 : 42)), 1, b.home ? 24 : 7);
+        info.cap = clamp(Math.round(area * fl / (b.home ? 13 : 21)), 1, b.home ? 48 : 14);   // [alleggerimento] il doppio degli abitanti: case più piene (erano 26 e 42 m² a testa, 24 e 7 al massimo)
         info.farm = !!b.farm; info.condo = !!b.home;
         homes.push(info);
       }
