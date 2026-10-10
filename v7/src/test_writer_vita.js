@@ -58,8 +58,8 @@ const cov1 = WV.coverage(st); ok(cov1 > cov0, `la città si colora: ${Math.round
 const wn = W.writers.length; W.grow = .6; WR.grow(st); WR.grow(st); ok(W.writers.length > wn, `la scena cresce: ${wn} → ${W.writers.length} writer`);
 
 // gli stili: scelte diverse dal seme, sempre uguali per lo stesso lavoro
-const picks = new Set(); for (let k = 1; k < 60; k++) { const C = WA.choose({ style: 'burner', seed: k, pal: k % 14 }); picks.add(C.fam + '/' + C.bgk + '/' + C.chr); }
-ok(picks.size > 25, `${picks.size} combinazioni diverse di lettere, sfondi e personaggi su 59 burner`);
+const picks = new Set(); for (let k = 1; k < 60; k++) { const C = WA.choose({ style: 'burner', seed: k, pal: k % 14 }); picks.add(C.fam + '/' + C.bgk + '/' + C.fillk + '/' + C.chr); }
+ok(picks.size > 25, `${picks.size} combinazioni diverse di lettere, sfondi, riempimenti e personaggi su 59 burner (i personaggi sono rari: solo i king)`);
 ok(JSON.stringify(WA.choose({ style: 'pezzo', seed: 7, pal: 2 })) === JSON.stringify(WA.choose({ style: 'pezzo', seed: 7, pal: 2 })), 'lo stesso lavoro si ridisegna uguale');
 
 console.log(fail ? `\n${fail} prove fallite` : '\ntutto bene');
