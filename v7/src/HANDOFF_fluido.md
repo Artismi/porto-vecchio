@@ -60,7 +60,7 @@ Risultato (stesso punto, media di 8 fotogrammi): 4.313 → 3.141 chiamate, 7,0 �
   faretti 2 o 14): ogni volta che cambia (una casa: +6 luci, un incendio, il sottosuolo, il cantiere, i lampioni) Three.js
   ricompila tutti i materiali in vista insieme → secondi di blocco.
   - `render.js` STAB: ogni luce aggiunta a qualunque oggetto si registra (Object3D.add); prima di ogni fotogramma si tengono
-    10 puntiformi e 2/14 faretti (giorno/notte: i lampioni), le più vicine e accese; le altre si escludono con lo strato 30
+    10 puntiformi e 14 faretti sempre (di giorno i lampioni restano nel conto, spenti: niente ricompilazione al tramonto), le più vicine e accese; le altre si escludono con lo strato 30
     (il loro `visible` resta di chi le usa), le mancanti si completano con luci vuote. warmShaders e la precompilazione dei
     lampioni compilano coi conti stabilizzati (e senza riaccendere le luci spente).
   - `renderer.debug.checkShaderErrors` solo con `?shaderdebug`: leggere il registro subito dopo il link costringe ad aspettare.

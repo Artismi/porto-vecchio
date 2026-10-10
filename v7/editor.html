@@ -44323,7 +44323,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // fotogramma si tengono le STAB.np puntiformi (e i faretti del budget) accese e più vicine, le altre si escludono (strato 30,
   // senza toccare il loro visible), e se mancano si completano con luci vuote. Il budget dei faretti ha due stati, giorno e notte
   // (i lampioni), già compilati all'avvio.
-  const LREG30 = new Set(), STAB = { np: 10, nsDay: 2, nsNight: 14, pads: { p: [], s: [] }, v: new THREE.Vector3() };
+  const LREG30 = new Set(), STAB = { np: 10, nsDay: 14, nsNight: 14, pads: { p: [], s: [] }, v: new THREE.Vector3() };
   { const add0 = THREE.Object3D.prototype.add; THREE.Object3D.prototype.add = function () { const r = add0.apply(this, arguments); for (let i = 0; i < arguments.length; i++) { const o = arguments[i]; if (!o || !o.isObject3D) continue; if (o.isLight) LREG30.add(o); else if (o.children.length) o.traverse(c => { if (c.isLight) LREG30.add(c); }); } return r; }; }
   function stabOn(l) { let p = l; while (p) { if (!p.visible) return false; if (p === scene) return true; p = p.parent; } return false; }
   function stabFit(list, n, kind) {
@@ -45163,7 +45163,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     // come una accesa, su ogni pixel di ogni oggetto. Si cambia al tramonto e all'alba; gli shader per tutti e due gli stati sono pronti dall'avvio
     const lampsOn = night > (dyn.lampsOn ? .012 : .025);
     if (!dyn.lampsPre && renderer && scene && camera) { dyn.lampsPre = true; try { [true, false].forEach(v => { LPOOL.forEach(l => { l.visible = v; }); dyn.lampsOn = v; stabLights(); renderer.compile(scene, camera); }); } catch (e) { } dyn.lampsOn = undefined; }   // [30fps] coi conti delle luci stabilizzati
-    if (lampsOn !== dyn.lampsOn) { dyn.lampsOn = lampsOn; LPOOL.forEach(l => { l.visible = lampsOn; if (l.shadow) l.shadow.needsUpdate = true; }); if (!lampsOn) { SPOOL.forEach(l => { l.intensity = 0; l.userData.cone.visible = false; }); dyn.lsp = []; dyn.lpp = []; } }
+    if (lampsOn !== dyn.lampsOn) { dyn.lampsOn = lampsOn; LPOOL.forEach(l => { l.visible = true; if (l.shadow) l.shadow.needsUpdate = true; });   /* [30fps] restano tutte nel conto (spente di giorno): niente ricompilazione al tramonto e all'alba */ if (!lampsOn) { SPOOL.forEach(l => { l.intensity = 0; l.userData.cone.visible = false; }); PPOOL.forEach(l => { l.intensity = 0; }); dyn.lsp = []; dyn.lpp = []; } }
     if (!lampsOn) return;
     if (frameN % 4 === 1 || !dyn.lsp) {
       camera.updateMatrixWorld(); LPM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); LFR.setFromProjectionMatrix(LPM);
