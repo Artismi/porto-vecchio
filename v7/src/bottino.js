@@ -167,6 +167,9 @@ var Bottino = (function () {
     const list = refresh(st); if (!list.length) return null;
     let best = null, bd = Math.max(20, o.h * .035);
     list.forEach(L => {
+      if (L.kind === 'mobile' && L.take) {   // [design] la roba sopra i mobili: si punta lei, all'altezza del piano
+        const pr = R.project(L.x, (L.h || 0) + .06, L.y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h) - 4; if (d < bd) { bd = d; best = L; } return;
+      }
       if (L.kind === 'mobile' || L.kind === 'bagagliaio') return;
       if (L.kind === 'corpo') { const n = PV().G.byId(st, L.npc); if (!n || !n.dead) return; }   // chi è solo a terra si clicca come persona (menu)
       for (const hh of L.kind === 'carico' ? [.4, 1.1] : L.kind === 'corpo' ? [.15] : [.15, .4]) {
@@ -177,7 +180,7 @@ var Bottino = (function () {
     });
     if (!best) {
       const g = R.screenToGround(nx, ny);
-      if (g) { let gd = 1e9; list.forEach(L => { if (L.kind !== 'mobile' && L.kind !== 'bagagliaio') return; const d = Math.hypot(L.x - g.x, L.y - g.y), lim = L.kind === 'mobile' ? 1.1 : 1.0; if (d < lim && d < gd) { gd = d; best = L; } }); }
+      if (g) { let gd = 1e9; list.forEach(L => { if ((L.kind !== 'mobile' || L.take) && L.kind !== 'bagagliaio') return; const d = Math.hypot(L.x - g.x, L.y - g.y), lim = L.kind === 'mobile' ? 1.1 : 1.0; if (d < lim && d < gd) { gd = d; best = L; } }); }
     }
     if (!best) return null;
     U.hot = best.ref; U.hotT = performance.now();
@@ -203,6 +206,9 @@ var Bottino = (function () {
     const G = PV().G;
     if (L.take && !L.locked) {
       const r = Oggetti.act(st, 'prendi_tutto', ref);
+      // [design] il gesto: dal tavolo si allunga la mano, da terra ci si china; la roba sparisce dal mobile
+      st.player.__grab = { t: performance.now(), h: L.h || 0, low: !(L.h > .3) };
+      if (r && r.ok && L.kind === 'mobile' && typeof InterniArte !== 'undefined' && InterniArte.hide) { const p0 = st.player, F0 = p0.indoor && G.INT.layout(G.BUILDINGS[p0.indoor.b]).floors[p0.indoor.f], o0 = F0 && F0.furn[+ref.slice(2)]; if (o0 && o0.taken) setTimeout(() => InterniArte.hide(+ref.slice(2)), 380); }
       if (r && r.ok) { G.feed(st, r.msg, /ti ha visto/.test(r.msg) ? 'bad' : 'good'); const R = PV().R; if (R && R.sfx) R.sfx.push({ k: 'pickup', x: L.x, y: L.y }); refresh(st, true); return; }
     }
     if (typeof OggettiUI !== 'undefined') OggettiUI.open('fruga', ref);
