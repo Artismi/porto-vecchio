@@ -411,7 +411,7 @@ var Render = (function () {
       });
     }
     const mkGeo = (P, UV, N) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); return g; };
-    const gm = new THREE.Mesh(mkGeo(pos, uv, nor), std({ map: tex, roughnessMap: rtex, roughness: 1, metalness: 0 }));
+    const gm = new THREE.Mesh(mkGeo(pos, uv, nor), matteGround(std({ map: tex, roughnessMap: rtex, roughness: 1, metalness: 0 })));
     gm.receiveShadow = true; scene.add(gm);
     const wm = new THREE.Mesh(mkGeo(sp, suv, snor), std({ map: stoneTexture(), roughness: .95 })); wm.receiveShadow = true; wm.castShadow = true; scene.add(wm);
     buildStairs(); buildWalls();
@@ -747,6 +747,7 @@ var Render = (function () {
       if (q.prairie) { const wx = q.tx * TS, wy = q.ty * TS, k = vnz(wx / 40, wy / 40) + vnz(wx / 9, wy / 9) * .4; blot(q.px, q.py, P, P, `rgb(${Math.round(122 + k * 30)},${Math.round(108 + k * 26)},${Math.round(74 + k * 16)})`); }   // erba secca color paglia, a macchie larghe
       else blot(q.px, q.py, P, P, pick(r, ['#4e463e', '#524a40', '#4a423c'])); });
     // 3) la neve: velo sfumato, poi chiazze col contorno morbido ritagliate dal rumore
+    if (NEVE) {   // senza neve il velo è tutto trasparente: niente sfocatura né lettura dei pixel (un blocco a ogni pezzo di città)
     x.save(); x.imageSmoothingEnabled = true;
     // la mappa a una casella per pixel, ingrandita in modo lineare, fa losanghe a spigolo: la si sfuma con un raggio di ~0,6 caselle
     const BP = B * P, big = mk(NW * P, NH * P), bx = big.getContext('2d'); bx.imageSmoothingEnabled = true;
@@ -764,6 +765,7 @@ var Render = (function () {
     }
     const outc = mk(n * P, m * P); outc.getContext('2d').putImageData(id, 0, 0); x.drawImage(outc, 0, 0);
     x.restore();
+    }
     // 4) dettagli: fanghiglia, impronte, pozzanghere, fuliggine, erba secca
     info.forEach(q => {
       const r = rng((q.tx * 7717 + q.ty * 3301) >>> 0), px = q.px, py = q.py;
@@ -1563,9 +1565,10 @@ var Render = (function () {
     const smM = new THREE.SpriteMaterial({ map: smokeTexture(), color: '#6a6c70', transparent: true, opacity: 0, depthWrite: false });
     AIR2.smoke = []; for (let i = 0; i < 150; i++) { const sp = new THREE.Sprite(smM.clone()); sp.visible = false; sp.renderOrder = 3; scene.add(sp); AIR2.smoke.push(sp); }
     // --- tombini: il chiusino sotto ogni sbuffo di vapore in strada ---
-    const lidM = sm('#1a1a1e', { roughness: .5, metalness: .5 }), seen = {};
-    VX.steam.forEach(s => { if (s.k > .9) return; const key = Math.round(s.x * 4) + ',' + Math.round(s.z * 4); if (seen[key]) return; seen[key] = 1;
-      const lid = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .04, 14), lidM); lid.position.set(s.x, s.y - .02, s.z); scene.add(lid); });
+    const lidM = sm('#1a1a1e', { roughness: .5, metalness: .5 }), seen = {}, lids = [];
+    VX.steam.forEach(s => { if (s.k > .9) return; const key = Math.round(s.x * 4) + ',' + Math.round(s.z * 4); if (seen[key]) return; seen[key] = 1; lids.push(s); });
+    if (lids.length) { const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(.42, .42, .04, 14), lidM, lids.length), m4 = new THREE.Matrix4();   // [alleggerimento] una sola chiamata di disegno
+      lids.forEach((s, k) => { m4.makeTranslation(s.x, s.y - .02, s.z); im.setMatrixAt(k, m4); }); im.receiveShadow = true; scene.add(im); }
   }
   function tickAir2(time, night) {
     if (!AIR2.on) initAir2();
@@ -1805,20 +1808,29 @@ var Render = (function () {
           float gm9 = smoothstep(1.06, 1.3, sm9.g / max(max(sm9.r, sm9.b), .003)) * smoothstep(.008, .025, sm9.g) * uPrato9;
           if (gm9 > .001) diffuseColor.rgb = mix(diffuseColor.rgb, prato9(diffuse * sm9, vGw9.xz), gm9);
         }
-        #endif`);
+        #endif`).replace('#include <aomap_fragment>', MATTE_GLSL).replace('#include <roughnessmap_fragment>', ROUGH_GLSL);
     };
     return mat;
   }
+  // il suolo è opaco: guardato di taglio (visuale inclinata) il Fresnel del sole e del cielo faceva un velo bianco fortissimo,
+  // gonfiato dal bloom. Si tiene solo un filo di lucido; il colore e le luci (lampioni, luce cotta) non cambiano.
+  const MATTE_GLSL = `reflectedLight.directSpecular = min(reflectedLight.directSpecular * .18, vec3(.05));
+        reflectedLight.indirectSpecular *= .3;
+        #include <aomap_fragment>`;
+  // la lucidità dalla luminosità della texture del suolo: come la vecchia roughnessMap (0,72 sul nero, 1 dal grigio in su)
+  const ROUGH_GLSL = `float roughnessFactor = roughness;
+        #ifdef USE_MAP
+        { vec3 sc9 = texture2D(map, vUv).rgb; float lum9 = dot(sc9, vec3(.3, .59, .11)) * 255.; roughnessFactor *= clamp(.72 + (lum9 - 40.) / 120. * .28, .72, 1.); }
+        #endif`;
+  function matteGround(mat) { mat.customProgramCacheKey = () => 'suolo-opaco'; mat.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <aomap_fragment>', MATTE_GLSL); }; return mat; }
   function buildChunk(ci, cj) {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
     paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
-    let rtex = null;
-    try { const W = c.width, H = c.height, id = x.getImageData(0, 0, W, H), d = id.data, rc = mk(W, H), rxx = rc.getContext('2d'), od = rxx.createImageData(W, H), o = od.data;
-      for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.72, Math.min(1, .72 + (lum - 40) / 120 * .28)) * 255   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
-      rxx.putImageData(od, 0, 0); rtex = canvasTex(rc); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; }
+    // [isola35] la lucidità segue la luminosità del suolo: ora la calcola lo shader (ROUGH_GLSL) dalla texture stessa. Prima si
+    // rileggeva tutta la tela dalla GPU (getImageData) a ogni blocco nuovo: era il blocco di qualche secondo camminando.
     const pos = new Float32Array((n + 1) * (m + 1) * 3), uv = new Float32Array((n + 1) * (m + 1) * 2), idx = [];
     for (let j = 0; j <= m; j++) for (let i = 0; i <= n; i++) {
       const k = j * (n + 1) + i, tx = tx0 + i, ty = ty0 + j;
@@ -1838,7 +1850,7 @@ var Render = (function () {
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
     const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
-    const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
+    const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
@@ -4109,6 +4121,23 @@ var Render = (function () {
   }
   function sampPat1(x, X0, Y0) { const c = sampCanvas1(), p = x.createPattern(c, 'repeat'), sc = 16 * PPM / c.width; try { p.setTransform(new DOMMatrix([sc, 0, 0, sc, -((X0 * PPM) % (16 * PPM)), -((Y0 * PPM) % (16 * PPM))])); } catch (e) {} return p; }
   const inBox1 = (px, py, X0, Y0, X1, Y1, pad) => px > X0 - pad && px < X1 + pad && py > Y0 - pad && py < Y1 + pad;
+  // [alleggerimento] un solo registro dei tombini. Prima c'erano quattro giri indipendenti (quelli veri del sottosuolo, uno a ogni
+  // incrocio e lungo le vie, quelli dipinti sull'asfalto, i chiusini sotto il vapore) e si accavallavano a decine. Ora quelli veri
+  // (ci si scende) vengono per primi; un tombino decorativo nasce solo se non ce n'è già uno vicino.
+  let MANH = null;
+  function manholeFree(x, z, d) {
+    if (!MANH) { MANH = []; const T0 = typeof Sottosuolo !== 'undefined' && Sottosuolo.TPL && Sottosuolo.TPL.portals; if (T0) T0.forEach(P => { if (P.kind === 'tombino') MANH.push([(P.s[0] + .5) * TS, (P.s[1] + .5) * TS]); }); }
+    for (const q of MANH) if ((q[0] - x) * (q[0] - x) + (q[1] - z) * (q[1] - z) < d * d) return false;
+    MANH.push([x, z]); return true;
+  }
+  // [alleggerimento] lo stesso per i contenitori dei rifiuti (bidoni, cassonetti, campane del vetro): più giri li mettevano
+  // ciascuno per conto suo e lungo i marciapiedi del centro ce n'era uno ogni pochi metri. Il primo arrivato resta.
+  const TRASH = new Map(), TRASH_C = 8;
+  function trashFree(x, z, d, onlyLook) {
+    const i0 = Math.floor(x / TRASH_C), j0 = Math.floor(z / TRASH_C), R = Math.ceil(d / TRASH_C);
+    for (let i = i0 - R; i <= i0 + R; i++) for (let j = j0 - R; j <= j0 + R; j++) for (const q of TRASH.get(i * 4096 + j) || []) if ((q[0] - x) * (q[0] - x) + (q[1] - z) * (q[1] - z) < d * d) return false;
+    if (onlyLook) return true; const k = i0 * 4096 + j0; let a = TRASH.get(k); if (!a) TRASH.set(k, a = []); a.push([x, z]); return true;
+  }
   // macchie di asfalto consumato che lasciano vedere i sampietrini di sotto, caditoie e tombini: liste fisse per strada
   let SURF1 = null;
   function surfList1() {
@@ -4119,7 +4148,7 @@ var Render = (function () {
         if (nearJ1(x0, y0, 1) < 0) continue;
         if (city && s > next && cityAt1(x0, y0)) { next = s + 14 + r() * 30; if (r() < .55) { const sd = r() < .5 ? 1 : -1, len = 1.5 + r() * 4, wid = .8 + r() * 1.4, lat = sd * (rd.w / 2 - wid / 2 - .1 - r() * (rd.w / 4)); SURF1.patch.push([x0 + nx * lat, y0 + ny * lat, len, wid, Math.atan2(g.uy[k], g.ux[k]), ri * 31 + k]); } }
         if (city && s > nd && cityAt1(x0, y0)) { nd = s + 10 + r() * 9; [-1, 1].forEach(sd => { if (r() < .75) SURF1.drain.push([x0 + nx * sd * (rd.w / 2 - .22), y0 + ny * sd * (rd.w / 2 - .22), Math.atan2(g.uy[k], g.ux[k])]); }); }
-        if (s > nm) { nm = s + 25 + r() * 40; const lat = (r() - .5) * rd.w * .4; SURF1.man.push([x0 + nx * lat, y0 + ny * lat, ri + k]); }
+        if (s > nm) { nm = s + 25 + r() * 40; const lat = (r() - .5) * rd.w * .4; if (manholeFree(x0 + nx * lat, y0 + ny * lat, 14)) SURF1.man.push([x0 + nx * lat, y0 + ny * lat, ri + k]); }
       } });
     return SURF1;
   }
@@ -5377,7 +5406,8 @@ var Render = (function () {
         for (let q = 0; q < 2 + Math.floor(rr() * 4); q++) B35.sacco(g, .95 + rr() * .5, (rr() - .5) * .6, rr() * 6, pick(rr, ['#1a1a1e', '#1a1a1e', '#2a3a2a', '#3a3a50']));
         if (rr() < .7) { B35.cartone(g, -1.05, .05, rr() * .4, .9, rr() < .5); if (rr() < .5) B35.cartone(g, -1.0, .1, rr(), .7); }
         for (let q = 0; q < 4; q++) { const w = rr(), px = (rr() - .5) * 2.6, pz = .4 + rr() * .5; if (w < .4) B35.lattina(g, px, pz, pick(rr, ['#b03028', '#c8b030', '#3a6a9a', '#d8d8d0'])); else if (w < .7) B35.bottiglia(g, px, pz, pick(rr, ['#2a5a2a', '#3a2a14'])); else B35.bicchiere(g, px, pz); }
-        if (put(g, x, z, ry, 1.5, .55)) { bins++; break; }
+        if (!trashFree(x, z, 14, true)) continue;   // [alleggerimento] niente due cassonetti a due passi l'uno dall'altro
+        if (put(g, x, z, ry, 1.5, .55)) { trashFree(x, z, 0); bins++; break; }
       }
     });
     // i cortili: roba vecchia buttata (poltrona, televisore, frigo, gomme, pallet), una cassetta di piante, un fusto per il fuoco
@@ -6364,7 +6394,7 @@ var Render = (function () {
     const r = rng(3838); let n = 0;
     const city = (x, z) => zoneT(Math.floor(x / TS), Math.floor(z / TS)) === ZN.CITTA;
     const iron = sm('#2a2a2e', { roughness: .7, metalness: .4 }), conc = sm('#77736c', { roughness: 1 }), grate = sm('#1c1b1e', { roughness: .6, metalness: .5 });
-    const tombino = (x, z, rr) => { const g = G0(); add(g, cyl(rr, rr, .03, 14, grate), 0, .015, 0); add(g, cyl(rr * .7, rr * .7, .035, 14, iron), 0, .02, 0); DZ.hint = 'static'; place(g, x, z, r() * 6); n++; };
+    const tombino = (x, z, rr) => { const rot = r() * 6; if (!manholeFree(x, z, 14)) return; const g = G0(); add(g, cyl(rr, rr, .03, 14, grate), 0, .015, 0); add(g, cyl(rr * .7, rr * .7, .035, 14, iron), 0, .02, 0); DZ.hint = 'static'; place(g, x, z, rot); n++; };   // [alleggerimento] niente doppioni
     junctions().forEach(([jx, jy, jr]) => {
       if (!city(jx, jy)) return; const arms = armsAt(jx, jy, jr); if (arms.length < 2) return;
       tombino(jx + (r() - .5) * 2, jy + (r() - .5) * 2, .36);
@@ -6937,6 +6967,7 @@ var Render = (function () {
     else if (kind === 'glass') { const m = sm('#2f7a4a'); add(g, cyl(.55, .6, 1.3, 10, m), 0, .65, 0); add(g, new THREE.Mesh(new THREE.SphereGeometry(.55, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), m), 0, 1.3, 0); add(g, cyl(.12, .12, .05, 8, PM.iron()), 0, 1.3, .5, Math.PI / 2, 0, 0); }
     else if (kind === 'beach') { add(g, cyl(.3, .28, .8, 10, sm('#f4a6c0')), 0, .4, 0); add(g, cyl(.32, .32, .05, 10, PM.white()), 0, .82, 0); }
     else { add(g, cyl(.06, .06, 1, 6, PM.ironG()), 0, .5, 0); add(g, cyl(.22, .18, .55, 10, PM.ironG()), 0, .75, .15); add(g, cyl(.23, .23, .04, 10, sm('#1a3a2a')), 0, 1.03, .15); }
+    if (kind !== 'beach') trashFree(x, z, 0);   // [alleggerimento] messi a mano: vengono prima, gli altri si tengono lontani
     return place(g, x, z, rot || 0);
   }
 
@@ -8864,8 +8895,8 @@ var Render = (function () {
     for (let ty = 28; ty < 104 && cnt < 260; ty++) for (let tx = 166; tx < 242 && cnt < 260; tx++) {
       if (G.tileAt(tx, ty) !== T.WALK) continue; let wx = 0, wz = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (G.tileAt(tx + dx, ty + dy) === T.BLD) { wx = dx; wz = dy; }
       if (!wx && !wz) continue; const q = rs(), X = tx * TS + 1 + wx * .6, Z = ty * TS + 1 + wz * .6, Y = groundH(X, Z), yaw = Math.atan2(-wx, -wz);
-      const put = (o, x, y, z) => { o.position.set(X + x, Y + y, Z + z); kit.add(o); return o; };
-      if (q < .1) { cnt++; put(cyl(.3, .27, .85, 9, binM), 0, .42, 0); put(cyl(.32, .32, .08, 9, snow), 0, .88, 0); if (rs() < .6) { put(new THREE.Mesh(new THREE.SphereGeometry(.28, 6, 5), bagM), wz ? .6 : 0, .25, wx ? .6 : 0); put(new THREE.Mesh(new THREE.SphereGeometry(.22, 6, 5), bagM), wz ? .9 : .3, .2, wx ? .9 : .3); } }
+      let sink = kit; const put = (o, x, y, z) => { o.position.set(X + x, Y + y, Z + z); if (sink) sink.add(o); return o; };
+      if (q < .1) { if (!trashFree(X, Z, 9)) sink = null; else cnt++;   /* [alleggerimento] un bidone ogni nove metri al massimo (il tiro dei dadi resta uguale: il resto del marciapiede non cambia) */ put(cyl(.3, .27, .85, 9, binM), 0, .42, 0); put(cyl(.32, .32, .08, 9, snow), 0, .88, 0); if (rs() < .6) { put(new THREE.Mesh(new THREE.SphereGeometry(.28, 6, 5), bagM), wz ? .6 : 0, .25, wx ? .6 : 0); put(new THREE.Mesh(new THREE.SphereGeometry(.22, 6, 5), bagM), wz ? .9 : .3, .2, wx ? .9 : .3); } }
       else if (q < .15) { cnt++; for (let k = 0; k < 3; k++) put(box(1, .14, 1.2, palM), 0, .07 + k * .14, 0).rotation.y = yaw + (k - 1) * .08; put(box(.7, .5, .6, sm('#b88a5a', { roughness: 1 })), 0, .64, 0).rotation.y = yaw; }
       else if (q < .19) { cnt++; const bn = new THREE.Group(); bn.position.set(X, Y, Z); bn.rotation.y = yaw; kit.add(bn); const add2 = (o, x, y, z) => { o.position.set(x, y, z); bn.add(o); }; add2(box(1.6, .08, .45, benchM), 0, .5, .35); add2(box(1.6, .5, .06, benchM), 0, .78, .12); add2(box(.08, .5, .4, dark), -.7, .25, .35); add2(box(.08, .5, .4, dark), .7, .25, .35); }
       else if (q < .215) { cnt++; const col = ['#ff3fa4', '#38e8ff', '#ffb050', '#ffb050'][Math.floor(rs() * 4)], vm = new THREE.Group(); vm.position.set(X, Y, Z); vm.rotation.y = yaw; kit.add(vm); const b1 = box(.8, 1.9, .65, sm('#2a2c34', { roughness: .6, metalness: .4 })); b1.position.set(0, .95, .35); vm.add(b1); const fr = new THREE.Mesh(new THREE.PlaneGeometry(.6, 1.2), glowM(col)); fr.position.set(0, 1.2, .69); vm.add(fr); }
@@ -10053,6 +10084,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     // ---- vapore: dai barili col fuoco e dai tombini del centro ----
     const vents = (typeof WX !== 'undefined' ? WX.fires : []).map(f => [f.g.position.x, f.g.position.y + .6, f.g.position.z, 1]);
     for (let k = 0; k < 600 && vents.length < 70; k++) { const x = ((M.world && M.world.DXC) || 0) + 352 + r() * 110, z = 90 + r() * 80 + ((M.world && M.world.OY) || 0), v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v === T.VIA) vents.push([x, groundH(x, z) + .05, z, .7]); }
+    // [alleggerimento] il vapore esce da un tombino solo dove non ce n'è già un altro a pochi metri (prima: settanta chiusini a caso in centro)
+    for (let i = vents.length - 1; i >= 0; i--) if (vents[i][3] < .9 && !manholeFree(vents[i][0], vents[i][2], 12)) vents.splice(i, 1);
     const sMat = new THREE.SpriteMaterial({ map: glowT, color: '#d8dce4', transparent: true, opacity: 0, depthWrite: false });
     vents.forEach(([x, y, z, k]) => { for (let q = 0; q < 5; q++) { const sp = new THREE.Sprite(sMat.clone()); sp.position.set(x, y, z); scene.add(sp); VX.steam.push({ sp, x, y, z, k, ph: r() * 10 + q * 1.3 }); } });
     // ---- nebbia a strati: due veli che scorrono, radi vicino a te, fitti lontano ----
@@ -10439,7 +10472,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     const TT = (n, f) => { const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
-    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('guardrail1', buildGuardrail1); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
+    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('guardrail1', buildGuardrail1); TT('pulizia39', pulizia35); /* [alleggerimento] la stessa pulizia anche per tutto quello messo dopo la prima */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
@@ -11256,6 +11289,32 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       l.position.set(L.x, L.y, L.z); l.color.copy(L.color); l.distance = L.dist; l.intensity = L.base * kOf(L) * .8;
     });
   }
+  // [alleggerimento] gli shader si compilano tutti all'inizio, anche quelli delle cose ancora nascoste (boschi lontani, insegne
+  // spente, la grafica che compare dopo): prima si compilavano la prima volta che una cosa entrava in vista, e il gioco si
+  // fermava entrando in una zona nuova. Due giri: al terzo fotogramma e quando i primi blocchi di città sono pronti.
+  const WARM = { n: 0 };
+  function warmShaders() {
+    WARM.n++; if (WARM.n !== 3 && WARM.n !== 150) return;
+    const hid = []; scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } });
+    try { renderer.compile(scene, camera); } catch (e) { console.warn('[shader]', e); }
+    hid.forEach(o => { o.visible = false; });
+  }
+  // [alleggerimento] chi si allontana lascia il modello in serbo invece di buttarlo: tornando vicino (o tu tornando indietro)
+  // si riusa lo stesso, senza rivestirlo da capo. Prima ogni abitante che entrava nel raggio si ricostruiva intero (ossa,
+  // vestiti, materiali): camminando ne entravano decine insieme. Si tiene solo se è ancora la stessa persona, con lo stesso
+  // aspetto e la stessa divisa.
+  const PKEEP = new Map(), PKEEP_N = 160;
+  const whoOf = n => (n.cop || n.military) && !n.borghese ? 'cop' : null;
+  function keepPerson(n, g) {
+    if (!g.userData.model || g.userData.voxelWait) return;
+    g.userData.pkeep = { look: n.look, who: whoOf(n) }; PKEEP.delete(n.id); PKEEP.set(n.id, g);
+    while (PKEEP.size > PKEEP_N) PKEEP.delete(PKEEP.keys().next().value);
+  }
+  function reusePerson(n) {
+    const g = PKEEP.get(n.id); if (!g) return null; PKEEP.delete(n.id);
+    const k = g.userData.pkeep; if (!k || k.look !== n.look || k.who !== whoOf(n)) return null;
+    g.visible = true; return g;
+  }
   function frame(st, dt, ui) {
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
     meteoAt(st.t, METEO); { const rg = regimeAt(cam.x, cam.y); METEO.reg += (rg - METEO.reg) * Math.min(1, (dt || .016) * 1.5); } dyn.meteo = METEO;   /* [amb1] */
@@ -11318,13 +11377,16 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
 
     // persone
     const pveh = p.vehicle ? st.vehicles.find(v => v.id === p.vehicle) : null;
+    let madeP = 0;   // [alleggerimento] modelli nuovi in questo fotogramma: pochi alla volta, gli altri compaiono nei fotogrammi dopo
     st.npcs.forEach(n => {
       let g = dyn.people[n.id];
       // [popolo] il modello si crea solo per chi si vede; gli abitanti lontani (popolo.js) lo liberano
       const inRoom = !!(n.room && p.indoor && !n.dead);   // [scopo] dentro l'edificio del giocatore: si vede chi c'è
-      if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if (n.pop && !n.pop.near) { scene.remove(g); delete dyn.people[n.id]; } } return; }
+      if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if (n.pop && !n.pop.near) { scene.remove(g); delete dyn.people[n.id]; keepPerson(n, g); } } return; }
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
-      if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */ g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
+      if (!g) { g = reusePerson(n); if (g) { scene.add(g); dyn.people[n.id] = g; } }
+      if (!g && madeP >= 3 && !n.room && n.id !== (ui && ui.dialogNpc && ui.dialogNpc.id)) return;
+      if (!g) { madeP++; const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */ g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
       g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = Math.PI / 2 - n.face;
@@ -11533,7 +11595,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     ombre1(st, night);   /* [ombre1] */
-    renderer.setRenderTarget(rt); renderer.render(scene, camera);
+    renderer.setRenderTarget(rt); warmShaders(); renderer.render(scene, camera);   // [alleggerimento] la precompilazione va fatta sul bersaglio vero
     renderer.setRenderTarget(null); ambPasses();   /* [amb2] */
     const U = postMat.uniforms;
     U.tC.value = paintPass(); U.tD.value = rt.depthTexture;   /* [amb3] la scena dipinta */ U.near.value = camera.near; U.far.value = camera.far;
