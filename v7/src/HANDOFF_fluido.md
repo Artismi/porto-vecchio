@@ -27,6 +27,12 @@ Risultato (stesso punto, media di 8 fotogrammi): 4.313 → 3.141 chiamate, 7,0 �
   ha piante di due sistemi insieme.
 - Totale con le ombre (stesso punto): 4.313 → 3.141 (fluido1) → 2.396 chiamate di media.
 
+## fluido4 (stessa immagine)
+- Delle 265 mesh di case visibili, 134 erano materiali a tinta unita separati solo dal colore. Ora il colore va nei vertici e
+  il materiale bianco si condivide (vertexColors): le case passano da 286 a 226 chiamate, il passaggio principale da 1.357 a 1.138.
+  Le facciate dipinte (texture) restano come sono: graffiti, writer e Studio ci dipingono sopra.
+- Contatore: F9 (o ?fps nell'indirizzo) mostra fotogrammi al secondo, millisecondi, il fotogramma peggiore e la risoluzione interna.
+
 ## Ancora da fare (in ordine di peso)
 - Le facciate dipinte una per una (un materiale per casa): un atlante delle facciate farebbe condividere il materiale a molte case
   (oggi ~290 chiamate solo per le case vicine).

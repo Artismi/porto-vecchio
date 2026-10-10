@@ -32287,6 +32287,11 @@ var Render = (function () {
     if (c.emissiveMap) FD1.emis.push(c);
     FD1.canon.set(key, c); return c;
   }
+  // [fluido4] tinta unita: il colore va nei vertici, il materiale bianco si condivide
+  const VC1 = new Map();
+  function vcOk1(m) { return (m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial) && !m.map && !m.emissiveMap && !m.alphaMap && !m.lightMap && !m.aoMap && !m.vertexColors
+    && !(m.emissive && m.emissive.getHex() !== 0) && !m.userData.plaster && !m.userData.mondo && !!m.color; }
+  function vcMat1(m, sigK) { let t = VC1.get(sigK); if (t) return t; t = m.clone(); t.color.setRGB(1, 1, 1); t.vertexColors = true; VC1.set(sigK, t); return t; }
   function fusione1() {
     const before = (() => { let n = 0; scene.traverse(o => { if (o.isMesh) n++; }); return n; })();
     const live = liveSet1(), isLive = o => { for (let q = o; q && q !== scene; q = q.parent) if (live.objs.has(q)) return true; return false; };
@@ -32301,11 +32306,13 @@ var Render = (function () {
       top.traverse(o => {
         if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || Array.isArray(o.material) || !o.visible || o.renderOrder || o.customDepthMaterial || o.userData.keep) return;
         const m = o.material; if (m.transparent || m.userData.keepTr || live.mats.has(m) || !okGeo(o.geometry) || isLive(o)) return;
-        const sig = matSig1(m); if (!sig) return;
+        const sig0 = matSig1(m); if (!sig0) return;
+        const vc = vcOk1(m), sig = vc ? sig0.replace(/\|color:[0-9a-f]{6}/, '|color:*') + '|vc' : sig0;   // [fluido4]
         const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(o.matrixWorld);
         g.computeBoundingBox(); g.boundingBox.getCenter(_wp);   // il settore dal centro vero (i gruppi delle case stanno tutti in 0,0)
         const key = sig + '|' + Math.floor(_wp.x / 32) + ',' + Math.floor(_wp.z / 32) + '|' + o.castShadow + o.receiveShadow;
-        let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow });
+        let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow, vc, sigK: sig });   // [fluido4]
+        if (vc) { const nv = g.attributes.position.count, ca = new Float32Array(nv * 3), cr = m.color.r, cg = m.color.g, cb = m.color.b; for (let q = 0; q < nv; q++) { ca[q * 3] = cr; ca[q * 3 + 1] = cg; ca[q * 3 + 2] = cb; } g.setAttribute('color', new THREE.BufferAttribute(ca, 3)); }
         const id = new Float32Array(g.attributes.position.count).fill(bi); g.setAttribute('bId1', new THREE.BufferAttribute(id, 1));
         b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
       });
@@ -32313,11 +32320,12 @@ var Render = (function () {
     moved.forEach(o => { o.visible = false; });   // restano pronti per la trasparenza
     B.forEach(b => {
       let n = 0; b.geos.forEach(g => n += g.attributes.position.count);
-      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), id = new Float32Array(n); let k = 0;
-      b.geos.forEach(g => { const c = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); if (g.attributes.normal) nor.set(g.attributes.normal.array, k * 3); if (g.attributes.uv) uv.set(g.attributes.uv.array, k * 2); id.set(g.attributes.bId1.array, k); k += c; g.dispose(); });
+      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), id = new Float32Array(n), col = b.vc ? new Float32Array(n * 3) : null; let k = 0;   // [fluido4] col
+      b.geos.forEach(g => { const c = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); if (g.attributes.normal) nor.set(g.attributes.normal.array, k * 3); if (g.attributes.uv) uv.set(g.attributes.uv.array, k * 2); id.set(g.attributes.bId1.array, k); if (col) col.set(g.attributes.color.array, k * 3); k += c; g.dispose(); });
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setAttribute('bId1', new THREE.BufferAttribute(id, 1));
+      if (col) geo.setAttribute('color', new THREE.BufferAttribute(col, 3));   // [fluido4]
       geo.computeBoundingSphere(); geo.computeBoundingBox();
-      const mesh = new THREE.Mesh(geo, fadeMat1(b.m)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh);
+      const mesh = new THREE.Mesh(geo, fadeMat1(b.vc ? vcMat1(b.m, b.sigK) : b.m)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh);
       if (b.cast) { const sk = Math.floor(geo.boundingBox.min.x / 48) + ',' + Math.floor(geo.boundingBox.min.z / 48) + '|' + b.m.side + '|' + b.m.shadowSide; let q = SH.get(sk); if (!q) SH.set(sk, q = { side: b.m.side, ss: b.m.shadowSide, pos: [] }); q.pos.push(pos); } });
     // l'ombra delle case: la texture non conta, quindi tutte le parti di un settore di 48 m fanno ombra con una mesh sola,
     // su un livello (layer 1) che vedono solo le camere delle ombre
