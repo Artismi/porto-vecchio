@@ -29907,7 +29907,7 @@ var WriterArte = (function () {
       words: wild && r() < pol * .5 ? pickR(r, WORDS) : null,
       slogan: !throwUp && style !== 'tag' && r() < pol * (wild ? .5 : .25) ? pickR(r, SLOGANS) : null,
       chr: null,
-      fillk: FAM[fam].chrome ? 'chrome' : pickR(r, ['flat', 'flat', 'flat', 'due', 'due', 'fade', r() < .1 ? pickR(r, FILLS) : 'flat']),
+      fillk: FAM[fam].chrome ? 'chrome' : pickR(r, ['flat', 'flat', 'bande', 'bande', 'bande', 'due', r() < .1 ? pickR(r, FILLS) : 'flat']),
       bgk: style === 'wholecar' ? pickR(r, ['rullo', 'rullo', 'skyline']) : throwUp ? (r() < .3 ? 'rullo' : null) : r() < .45 ? 'rullo' : r() < .08 ? pickR(r, BADGES) : null,
       yr: r() < .12 ? pickR(r, YEARS) : '', by: o.by };
     if (FAM[fam].flat && r() < .75) sk.bgk = null;
@@ -29918,7 +29918,7 @@ var WriterArte = (function () {
   // spaziatura, lo spessore della linea. Ogni writer ha la sua; due writer non costruiscono mai uguale.
   function consOf(seed) {
     const r = mulberry((seed || 1) ^ 0x68e31da4);
-    return { width: .6 + r() * .32, weight: .2 + r() * .12, slant: r() < .45 ? 0 : (r() - .25) * .32, con: r() * .45, bh: r() < .4 ? r() * .35 : 0,
+    return { wave: r() < .5 ? .03 + r() * .05 : 0, link: r() < .35, width: .6 + r() * .32, weight: .2 + r() * .12, slant: r() < .3 ? 0 : .08 + r() * .2, con: r() * .45, bh: r() < .4 ? r() * .35 : 0,
       term: pickR(r, ['cut', 'cut', 'flare', 'round', 'spike']), step: r() < .25 ? .04 + r() * .06 : 0, bars: r() < .35 ? .25 + r() * .3 : 0, gap: .05 + r() * .12, line: .035 + r() * .025 };
   }
   // il DNA di un writer a caso (gli NPC: dal loro numero)
@@ -30032,6 +30032,12 @@ var WriterArte = (function () {
     fx.save(); fx.globalCompositeOperation = 'source-atop';
     const vgrad = (a, b, c) => { const g = fx.createLinearGradient(0, T, 0, Bm); g.addColorStop(0, a); g.addColorStop(.55, b); g.addColorStop(1, c); return g; };
     if (kind === 'flat') { fx.fillStyle = P.f[1]; fx.fillRect(0, 0, Wp, Hp); fx.restore(); return; }
+    if (kind === 'bande') {   // la sfumatura a bande nette: chiaro in alto, scuro in basso, i tagli appena curvi, un filo di luce sul taglio
+      const n = r() < .5 ? 2 : 3, cols = n === 2 ? [shade(P.f[1], .28), shade(P.f[1], -.12)] : [shade(P.f[1], .32), P.f[1], shade(P.f[1], -.24)], hh = (by1 - by0 + lw) / n, bend = (r() - .5) * lw * .5;
+      fx.fillStyle = cols[0]; fx.fillRect(0, 0, Wp, Hp);
+      for (let k = 1; k < n; k++) { const y0 = by0 - lw / 2 + hh * k; fx.fillStyle = cols[k]; fx.beginPath(); fx.moveTo(0, y0 + bend); fx.quadraticCurveTo(Wp / 2, y0 - bend, Wp, y0 + bend); fx.lineTo(Wp, Hp); fx.lineTo(0, Hp); fx.fill(); fx.strokeStyle = 'rgba(255,255,255,.55)'; fx.lineWidth = Math.max(1, lw * .04); fx.beginPath(); fx.moveTo(0, y0 + bend); fx.quadraticCurveTo(Wp / 2, y0 - bend, Wp, y0 + bend); fx.stroke(); }
+      fx.restore(); return;
+    }
     if (kind === 'due') { fx.fillStyle = P.f[0]; fx.fillRect(0, 0, Wp, Hp); fx.fillStyle = P.f[1]; fx.beginPath(); const yy = by0 + (by1 - by0) * (.45 + r() * .2); fx.moveTo(0, yy); for (let xx = 0; xx <= Wp; xx += lw * .4) fx.lineTo(xx, yy + Math.sin(xx / lw * 2.2) * lw * .12); fx.lineTo(Wp, Hp); fx.lineTo(0, Hp); fx.fill(); fx.restore(); return; }
     if (kind === 'chrome') {   // il cromato: cielo chiaro in alto, l'orizzonte scuro a metà, il riflesso del suolo sotto
       const g = fx.createLinearGradient(0, T, 0, Bm); g.addColorStop(0, '#ffffff'); g.addColorStop(.42, '#c4ccd6'); g.addColorStop(.5, '#4a5462'); g.addColorStop(.56, '#8a94a2'); g.addColorStop(1, '#e8ecf2');
@@ -30597,9 +30603,10 @@ var WriterArte = (function () {
     const bb = {}; ids.forEach(i => { let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; groups[i].forEach(t => { if (t.swash) return; t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }); }); if (x0 > x1) { x0 = x1 = 0; y0 = 0; y1 = 1; } bb[i] = [x0, y0, x1, y1]; });
     const hs = ids.map(i => bb[i][3] - bb[i][1]).sort((a, b) => a - b), H = hs[hs.length - 1] || 1;   // l'altezza delle maiuscole (la più alta)
     const tw = (cons ? cons.width : (WIDTH[fam] || .7)) * H, gap = (cons ? cons.gap : .08) * H * (fam === 'wild' ? .2 : fam === 'script' ? .4 : 1), step = cons ? cons.step * H : 0;
-    let cur = 0;
-    ids.forEach((i, k) => { const [x0, , x1] = bb[i], w0 = Math.max(1e-3, x1 - x0), narrow = w0 / H < .3, sx = narrow ? 1 : clamp(tw / w0, .7, 1.6), dy = step * (k % 2 ? -1 : 0);
-      groups[i].forEach(t => { t.pts = t.pts.map(([a, b]) => [cur + (a - x0) * sx, b + dy]); }); cur += w0 * sx + gap; });
+    let cur = 0; const wave = cons ? (cons.wave || 0) * H : 0, n = ids.length, foot = [];
+    ids.forEach((i, k) => { const [x0, , x1, y1] = bb[i], w0 = Math.max(1e-3, x1 - x0), narrow = w0 / H < .3, sx = narrow ? 1 : clamp(tw / w0, .7, 1.6), dy = step * (k % 2 ? -1 : 0) - wave * Math.sin((k + .5) / n * PI);   // l'onda: la parola fa un arco
+      groups[i].forEach(t => { t.pts = t.pts.map(([a, b]) => [cur + (a - x0) * sx, b + dy]); }); foot.push([cur, cur + w0 * sx, y1 + dy]); cur += w0 * sx + gap; });
+    if (cons && cons.link && fam !== 'contorno') for (let k = 0; k + 1 < n; k++) { if (k % 2) continue; const a = foot[k], b = foot[k + 1], y = Math.max(a[2], b[2]) - H * .06; L.strokes.push({ i: ids[k], link: true, pts: [[a[1] - H * .12, y], [b[0] + H * .12, y]] }); }   // i collegamenti alla base
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; L.strokes.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
     L.box = [x0, y0, x1, y1]; return L;
   }
