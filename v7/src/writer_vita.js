@@ -95,7 +95,7 @@ var WriterVita = (function () {
       label, dur: 0, outside: true,
       tick: (st, n, E) => {
         let w = E.work;
-        if (!w) { w = E.work = WR._.addWork(st, mk(st, n, E)); w.live = n.id; E.pdur = STY_MIN[w.style] * (1.3 - (n.pop.writer.skill || .5) * .5); }
+        if (!w) { w = E.work = WR._.addWork(st, mk(st, n, E)); w.live = n.id; E.pdur = STY_MIN[w.style] * (1.3 - ((n.pop.writer || n.pop.toy || {}).skill || .5) * .5); }
         const f = clamp(el(st, n, E) / E.pdur, 0, 1); w.prog = Math.max(w.prog, f);
         n.hand = w.style === 'mtag' ? 'pennarello' : 'bomboletta'; n.__mop = w.style === 'mtag';
         const tp = tipOf(st, w, f); if (tp) { n.__tip = { x: tp.x, y: tp.y, z: tp.z, t: nowMs(), col: WA.PAL[w.pal % WA.PAL.length].f[1] }; n.face = Math.atan2(tp.z - n.y, tp.x - n.x); }
@@ -125,7 +125,7 @@ var WriterVita = (function () {
   function busted(st, n, E) {
     const W = WR.S(st), w = E.work; n.__tip = null; n.hand = null; if (w) w.live = null;
     V(st).caught++;
-    if (watched(st, n)) G.feed(st, `I Grigi! ${n.pop.writer.aka} scappa e lascia ${w ? 'il ' + WR.STYLES[w.style].nome + ' a metà' : 'tutto lì'}.`, 'bad');
+    if (watched(st, n)) G.feed(st, `I Grigi! ${(n.pop.writer || n.pop.toy || {}).aka || n.first} scappa e lascia ${w ? 'il ' + WR.STYLES[w.style].nome + ' a metà' : 'tutto lì'}.`, 'bad');
     try { G.emit(st, 'graffito', { place: w && w.place, actor: n.id }); } catch (e) { }
     n.panic = Math.max(n.panic || 0, 4);
   }
@@ -262,15 +262,43 @@ var WriterVita = (function () {
       (P.kind === 'bombing' ? bombing(st, n) : P.kind === 'auto' ? auto(st, n) : mission(st, n, P.kind, partner)) || mission(st, n, 'muro', partner);
     }
   }
-  // di giorno: chi ha il mop lascia una tag (e un segno) sul muro più vicino mentre passa
+  // [writer] I TOY: i ragazzi giovani senza crew che firmano dove passano (la loro tag, sempre la stessa, nata dal loro numero)
+  const SYL = ['KA', 'ZE', 'TO', 'MI', 'RU', 'SK', 'NO', 'VI', 'DE', 'BO', 'XO', 'LU', 'PE', 'ZU', 'RI', 'KO', 'MA', 'TY'];
+  function toyOf(n) {
+    if (n.pop.toy) return n.pop.toy; let h = 7; for (const ch of String(n.id)) h = (h * 31 + ch.charCodeAt(0)) % 100003;
+    const r = WA.mulberry(h), aka = true ? SYL[Math.floor(r() * SYL.length)] + SYL[Math.floor(r() * SYL.length)] + (r() < .4 ? pickR2(r, ['S', 'K', 'X', 'Z', '1']) : '') : 'TOY';
+    return (n.pop.toy = { aka: aka.slice(0, 6), crew: '', skill: .12 + r() * .25, hand: h * 131 + 7, mop: r() < .75 });
+  }
+  const pickR2 = (r, a) => a[Math.floor(r() * a.length)];
+  const isToy = n => n.pop && !n.pop.writer && n.pop.age >= 13 && n.pop.age <= 24 && !n.cop && !/soldat|agente|poliz|guardia|tutela/i.test(n.role || '');
+  function siteNear(n, max) { let best = null, bd = max; for (const s of SITES) { if (s.kind === 'heaven') continue; const dd = hyp(s.x - n.x, s.y - n.y); if (dd < bd) { bd = dd; best = s; } } return best; }
+  // di giorno: chi passa lascia la sua tag sul muro più vicino (i writer col mop o con la bomboletta, i toy col pennarello);
+  // lontano dagli occhi del giocatore la città si riempie da sola
   function runDay(st) {
-    const v = V(st), m = minOfDay(st.t); if (m < 8 * 60 || m > 21 * 60 || st.clock - v.mopT < 25) return; v.mopT = st.clock;
+    const v = V(st), m = minOfDay(st.t); if (m < 7 * 60 || m > 22 * 60) return;
     const p = st.player, W = WR.S(st);
-    const ws = W.writers.map(id => G.byId(st, id)).filter(n => alive(n) && n.pop.writer && n.pop.writer.mop && n.pop.near && !n.inside && !n.pop.emer && hyp(n.x - p.x, n.y - p.y) < 40);
-    if (!ws.length || rnd() < .4) return; const n = pick(ws), wr = n.pop.writer;
-    let best = null, bd = 9; for (const s of SITES) { if (s.kind === 'heaven') continue; const dd = hyp(s.x - n.x, s.y - n.y); if (dd < bd) { bd = dd; best = s; } }
-    if (!best) return; const spot = spotOf(best, (rnd() - .5) * Math.min(4, best.len - 1), null);
-    start(st, n, 'writer', 'una tag col pennarello', [goStep('si avvicina al muro', { x: spot.x, y: spot.y }), paintStep('fa una tag col pennarello', (st2, n2) => WR.npcWork(st2, n2, wr, 'mtag', spot, { sign: rnd() < .5 ? pick(WA.SIGNS) : undefined }))]);
+    if (st.clock - v.mopT >= 10) {
+      v.mopT = st.clock;
+      const near = n => alive(n) && n.pop.near && !n.inside && !n.pop.emer && !n.vehicle && hyp(n.x - p.x, n.y - p.y) < 70;
+      const ws = W.writers.map(id => G.byId(st, id)).filter(n => near(n) && n.pop.writer), toys = st.npcs.filter(n => near(n) && isToy(n));
+      const pool = ws.concat(rnd() < .5 ? toys : []);
+      if (pool.length && rnd() < .75) {
+        const n = pick(pool), wr = n.pop.writer || toyOf(n), best = siteNear(n, 12);
+        if (best) {
+          const style = !n.pop.writer || wr.mop && rnd() < .6 ? 'mtag' : 'tag', spot = spotOf(best, (rnd() - .5) * Math.min(4, best.len - 1), null);
+          start(st, n, 'writer', style === 'mtag' ? 'una tag col pennarello' : 'una tag con la bomboletta', [goStep('si avvicina al muro', { x: spot.x, y: spot.y }), paintStep(style === 'mtag' ? 'fa una tag col pennarello' : 'fa la sua tag', (st2, n2) => WR.npcWork(st2, n2, wr, style, spot, { sign: rnd() < .35 ? pick(WA.SIGNS) : undefined }))]);
+        }
+      }
+    }
+    if (st.t - (v.farT || 0) > 15) {   // lontano: una tag (o un throw-up) in più in città
+      v.farT = st.t;
+      const cand = st.npcs.filter(n => alive(n) && (n.pop.writer || isToy(n)) && hyp(n.x - p.x, n.y - p.y) > 60);
+      const sites = SITES.filter(s => s.kind !== 'heaven' && hyp(s.x - p.x, s.y - p.y) > 60);
+      if (cand.length && sites.length) {
+        const n = pick(cand), wr = n.pop.writer || toyOf(n), s0 = pick(sites), style = n.pop.writer && rnd() < .25 ? 'throw' : wr.mop ? 'mtag' : 'tag';
+        WR._.addWork(st, WR.npcWork(st, n, wr, style, spotOf(s0, (rnd() - .5) * Math.min(4, s0.len - 1), null), { prog: 1, done: true }));
+      }
+    }
   }
   // la città si colora: quanti muri hanno un lavoro sopra
   function coverage(st) {

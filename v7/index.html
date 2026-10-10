@@ -28854,10 +28854,20 @@ var WriterMano = (function () {
       seed, slant: -.1 + r() * .6, wide: .75 + r() * .55, nibA: -.25 - r() * .9, nibW: (r() < .5 ? .13 : .18) + r() * .1, contrast: .45 + r() * .5,
       mix: r() < .3 ? 0 : r() * .8, bigFirst: r() < .55 ? 1.25 + r() * .35 : 1, bounce: r() * .14, arc: (r() - .5) * .3, adv: .5 + r() * .3,
       flick: r() < .7, swash: r() < .4, loop: r() < .3, tall: r() < .35 ? 1.2 + r() * .3 : 1,
-      crown: r() < .22, halo: r() < .2, under: r() < .45, dashes: r() < .3, stars: r() < .25, quotes: r() < .15, drip: r() < .55,
+      crown: r() < .07, halo: r() < .1, under: r() < .4, dashes: r() < .12, stars: r() < .08, quotes: r() < .1, drip: r() < .55,
       spray: r() < .5, grain: .3 + r() * .7, wob: .005 + r() * .02,
+      st: pickR(r, ['calli', 'stampatello', 'corsivo', 'spigoloso', 'spray', 'veloce', 'libera', 'libera']),
     };
   }
+  // [writer] LE FAMIGLIE DI MANO: la stessa tag cambia carattere a seconda di chi la fa
+  const STILI = {
+    calli: { nibW: .26, contrast: .95, nibA: -.62, slant: .3, wide: 1.15, adv: .74, swash: true, flick: true, mix: .35, connect: true, bounce: .04, spray: false },   // calligrafica a punta larga
+    stampatello: { nibW: .26, contrast: .4, slant: .02, wide: .95, mix: 0, swash: false, flick: false, under: true, drip: true, bounce: .02, arc: 0, tall: 1, bigFirst: 1.1 },   // stampatello grosso che cola
+    corsivo: { nibW: .17, contrast: .7, slant: .34, wide: 1.05, mix: .95, loop: true, connect: true, swash: true, bounce: .1, tall: 1.35 },   // corsivo legato, le aste lunghe
+    spigoloso: { nibW: .18, contrast: .85, slant: .45, wide: .72, adv: .62, angular: true, flick: true, swash: false, bounce: .06, mix: .2 },   // spigoloso e stretto, le lettere si toccano
+    spray: { nibW: .36, contrast: .25, spray: true, grain: 1, slant: .15, wide: 1.1, drip: true, flick: true, mix: .3 },   // spray grasso con l'alone
+    veloce: { nibW: .1, contrast: .5, wob: .035, slant: .42, wide: 1.25, under: true, swash: true, flick: true, bounce: .12, mix: .6, scratch: true },   // veloce, sottile, graffiata
+  };
   // la lettera di questa mano: la variante la decide la mano (sempre uguale per la stessa lettera nella stessa posizione)
   function glyph(ch, d, i) {
     const g = A[ch]; if (!g) return FB()[ch] || null;
@@ -28903,19 +28913,24 @@ var WriterMano = (function () {
   // ---------------- LA TAG ----------------
   // la parola nella mano: i tratti in pixel (y in giù), già inclinati, rimbalzati, con la prima lettera grande e lo svolazzo
   function layout(text, d, r) {
+    if (d.st && STILI[d.st] && !d.goth) d = Object.assign({}, d, STILI[d.st]);
     if (d.goth) d = Object.assign({}, d, { nibA: -.78, nibW: .3, wide: d.vert ? 1.25 : .9, contrast: .9, mix: 0, slant: d.vert ? 0 : .08, bigFirst: 1.15, tall: 1.3, adv: .62, swash: false, flick: true, bounce: .02, arc: 0, crown: false, halo: false, under: false, dashes: false, stars: false, quotes: false });
-    const s = DEACC(text), strokes = []; let x = 0;
+    // [writer] L'ARMONIA: un solo alfabeto per tutta la parola (le maiuscole o la mano), le lettere della stessa larghezza (il ritmo),
+    // il rimbalzo come un'onda continua lungo la parola, niente tremolio a caso sui punti: la mano corre, non trema
+    const s = DEACC(text), strokes = [], caseV = d.goth ? 0 : (d.mix > .5 ? 1 : 0), ph = (d.seed || 1) % 7, cw = .56 * d.wide; let x = 0;
     [...s].forEach((ch, i) => {
-      const g = glyph(ch, d, i); if (!g) { x += .35; return; }
-      const sz = (i === 0 ? d.bigFirst : 1) * (1 + (r() - .5) * .12), by = d.bounce * (i % 2 ? 1 : -1) * (.5 + r()) + d.arc * Math.sin((i + .5) / Math.max(1, s.length) * PI);
-      let gx1 = 0; g.forEach(tr => tr.forEach(([u]) => { gx1 = Math.max(gx1, u); }));
+      const G0 = A[ch], g = G0 ? G0[i === 0 && d.bigFirst > 1 ? 0 : caseV] : (FB()[ch] || null); if (!g) { x += .35; return; }
+      const sz = i === 0 ? d.bigFirst : 1, by = d.bounce * Math.sin(i * 1.25 + ph) + d.arc * Math.sin((i + .5) / Math.max(1, s.length) * PI);
+      let gx0 = 1e9, gx1 = -1e9; g.forEach(tr => tr.forEach(([u]) => { gx0 = Math.min(gx0, u); gx1 = Math.max(gx1, u); }));
+      const gw = Math.max(.12, gx1 - gx0), kx = gw < .2 ? 1 : clamp(.6 / gw, .8, 1.3);   // ogni lettera portata alla stessa larghezza (le I e le punteggiature restano strette)
       g.forEach(tr => {
-        const pts = tr.map(([u, v]) => { const vv = v > .9 ? .9 + (v - .9) * d.tall * 2.2 : v; let X = (d.vert ? -gx1 * d.wide * sz / 2 : x) + u * d.wide * sz, Y = (vv * sz + by - (d.vert ? i * 1.05 : 0)); X += Y * d.slant; return [X + (r() - .5) * d.wob * 4, -Y + (r() - .5) * d.wob * 4]; });
+        const pts = tr.map(([u, v]) => { const vv = v > .9 ? .9 + (v - .9) * d.tall * 2.2 : v; let X = (d.vert ? -gw * d.wide * sz / 2 : x) + (u - gx0) * kx * d.wide * sz, Y = (vv * sz + by - (d.vert ? i * 1.05 : 0)); X += Y * d.slant; return [X, -Y]; });
         strokes.push({ pts, i });
       });
-      if (!d.vert) x += (gx1 * d.wide + .08) * sz * (d.adv / .65);
+      if (!d.vert) x += ((gw < .2 ? gw : .6) * d.wide + .1) * sz * (d.adv / .65);
     });
     if (!strokes.length) return { strokes, box: [0, 0, 1, 1] };
+    if (d.connect) { const byI = []; strokes.forEach(t => { (byI[t.i] = byI[t.i] || []).push(t); }); for (let i = 0; i + 1 < byI.length; i++) { const A0 = byI[i], B0 = byI[i + 1]; if (!A0 || !B0) continue; const a = A0[A0.length - 1].pts.slice(-1)[0], b = B0[0].pts[0]; if (hyp(b[0] - a[0], b[1] - a[1]) > 1.1) continue; strokes.push({ i, link: true, pts: [a, [(a[0] + b[0]) / 2, Math.max(a[1], b[1]) + .12], b] }); } }   // [writer] le lettere legate
     // lo svolazzo: l'ultimo tratto continua, torna sotto la parola e finisce a punta
     const last = strokes[strokes.length - 1], e = last.pts[last.pts.length - 1];
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; strokes.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
@@ -28927,15 +28942,17 @@ var WriterMano = (function () {
   }
   // disegna la tag di questa mano in un riquadro Wp × Hp; ritorna i punti del percorso (per la mano che la ripassa)
   function handTag(x, text, d, Wp, Hp, r, col, tool) {
+    if (d.st && STILI[d.st] && !d.goth) d = Object.assign({}, d, STILI[d.st]);
     if (d.goth) d = Object.assign({}, d, { crown: false, halo: false, under: false, dashes: false, stars: false, quotes: false, spray: false, nibW: .3, nibA: -.78, contrast: .9 });
     const L = layout(text, d, r), [x0, y0, x1, y1] = L.box, decoT = d.crown || d.halo ? .22 : .06, decoB = d.under || d.swash ? .2 : .08;
     const sc = Math.min((Wp * .9) / Math.max(.1, x1 - x0), (Hp * (1 - decoT - decoB)) / Math.max(.1, y1 - y0)), ox = (Wp - (x1 - x0) * sc) / 2 - x0 * sc, oy = Hp * decoT - y0 * sc;
     const P = t => t.map(([a, b]) => [a * sc + ox, b * sc + oy]);
     const W = Math.max(2, sc * d.nibW * (tool === 'mtag' ? 1.1 : 1)), spray = tool !== 'mtag' && d.spray, path = [];
     x.save(); x.fillStyle = col; x.strokeStyle = col; x.lineJoin = 'round'; x.lineCap = 'round';
-    if (spray) { x.shadowColor = col; x.shadowBlur = W * 1.1; }
-    const segs = L.strokes.map(t => { const pts = smooth(P(t.pts), 5); pts.forEach(q => path.push(q)); return { pts, t }; });
-    segs.forEach(({ pts, t }) => chisel(x, pts, W * (t.swash ? .8 : 1), d.nibA, true, t.flick || t.swash || pts.length > 6, d.contrast));
+    if (spray) { x.shadowColor = col; x.shadowBlur = W * .45; }   // [writer] l'alone sì, ma la tag si deve leggere
+    const segs = L.strokes.map(t => { const pts = d.angular && !t.swash ? P(t.pts) : smooth(P(t.pts), 5); pts.forEach(q => path.push(q)); return { pts, t }; });
+    segs.forEach(({ pts, t }) => chisel(x, pts, W * (t.swash ? .8 : t.link ? .35 : 1), d.nibA, true, t.flick || t.swash || t.link || pts.length > 6, d.contrast));
+    if (d.scratch) { x.save(); x.globalAlpha = .5; x.lineWidth = Math.max(1, W * .12); segs.forEach(({ pts }) => { if (r() < .5) return; x.beginPath(); pts.forEach((q, i) => i ? x.lineTo(q[0] + W * .4, q[1] - W * .3) : x.moveTo(q[0] + W * .4, q[1] - W * .3)); x.stroke(); }); x.restore(); }   // la seconda passata veloce, scheggiata
     x.shadowBlur = 0;
     if (d.goth) { x.lineWidth = Math.max(1, W * .1); x.lineCap = 'round'; segs.forEach(({ pts }) => { if (pts.length < 3 || r() < .6) return; const e = pts[pts.length - 1], p0 = pts[pts.length - 3], dx = e[0] - p0[0], dy = e[1] - p0[1], l = hyp(dx, dy) || 1, ux = dx / l, uy = dy / l, L2 = W * (1.5 + r() * 1.5), sg = r() < .5 ? 1 : -1; x.beginPath(); x.moveTo(e[0], e[1]); x.bezierCurveTo(e[0] + ux * L2 * .6, e[1] + uy * L2 * .6, e[0] + ux * L2 - uy * L2 * .5 * sg, e[1] + uy * L2 + ux * L2 * .5 * sg, e[0] + ux * L2 * .7 - uy * L2 * .9 * sg, e[1] + uy * L2 * .7 + ux * L2 * .9 * sg); x.stroke(); }); }   // i riccioli del gotico
     // la grana dello spray: puntini attorno ai tratti
@@ -28952,14 +28969,14 @@ var WriterMano = (function () {
     if (d.quotes) { const qx = bx1 + W * .8, qy = by0; x.fillRect(qx, qy, th, Hp * .1); x.fillRect(qx + th * 2.2, qy, th, Hp * .1); }
     // le colature: dai punti più bassi dei tratti verticali
     if (d.drip || tool === 'mtag') {
-      const lows = path.filter((q, i) => i % 3 === 0).sort((a, b) => b[1] - a[1]).slice(0, 18), n = 2 + Math.floor(r() * (tool === 'mtag' ? 6 : 4));
+      const main = []; segs.forEach(({ pts, t }) => { if (!t.swash && !t.link) pts.forEach(q => main.push(q)); }); const lows = main.filter((q, i) => i % 3 === 0).sort((a, b) => b[1] - a[1]).slice(0, 18),   /* [writer] cola dalle lettere, non dallo svolazzo né dalla sottolineatura */ n = 2 + Math.floor(r() * (tool === 'mtag' ? 6 : 4));
       x.lineCap = 'round';
       for (let k = 0; k < n && lows.length; k++) { const q = lows[Math.floor(r() * lows.length)], l = Hp * (.06 + r() * .26), w = Math.max(1, W * (.18 + r() * .2)); x.lineWidth = w; x.beginPath(); x.moveTo(q[0], q[1]); x.lineTo(q[0] + (r() - .5), q[1] + l); x.stroke(); x.beginPath(); x.arc(q[0], q[1] + l, w * .8, 0, 7); x.fill(); }
     }
     x.restore();
     return { path, W };
   }
-  return { A, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
+  return { STILI, A, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
 })();
 if (typeof module !== 'undefined') module.exports = WriterMano;
 </script>
@@ -30828,7 +30845,7 @@ var WriterVita = (function () {
       label, dur: 0, outside: true,
       tick: (st, n, E) => {
         let w = E.work;
-        if (!w) { w = E.work = WR._.addWork(st, mk(st, n, E)); w.live = n.id; E.pdur = STY_MIN[w.style] * (1.3 - (n.pop.writer.skill || .5) * .5); }
+        if (!w) { w = E.work = WR._.addWork(st, mk(st, n, E)); w.live = n.id; E.pdur = STY_MIN[w.style] * (1.3 - ((n.pop.writer || n.pop.toy || {}).skill || .5) * .5); }
         const f = clamp(el(st, n, E) / E.pdur, 0, 1); w.prog = Math.max(w.prog, f);
         n.hand = w.style === 'mtag' ? 'pennarello' : 'bomboletta'; n.__mop = w.style === 'mtag';
         const tp = tipOf(st, w, f); if (tp) { n.__tip = { x: tp.x, y: tp.y, z: tp.z, t: nowMs(), col: WA.PAL[w.pal % WA.PAL.length].f[1] }; n.face = Math.atan2(tp.z - n.y, tp.x - n.x); }
@@ -30858,7 +30875,7 @@ var WriterVita = (function () {
   function busted(st, n, E) {
     const W = WR.S(st), w = E.work; n.__tip = null; n.hand = null; if (w) w.live = null;
     V(st).caught++;
-    if (watched(st, n)) G.feed(st, `I Grigi! ${n.pop.writer.aka} scappa e lascia ${w ? 'il ' + WR.STYLES[w.style].nome + ' a metà' : 'tutto lì'}.`, 'bad');
+    if (watched(st, n)) G.feed(st, `I Grigi! ${(n.pop.writer || n.pop.toy || {}).aka || n.first} scappa e lascia ${w ? 'il ' + WR.STYLES[w.style].nome + ' a metà' : 'tutto lì'}.`, 'bad');
     try { G.emit(st, 'graffito', { place: w && w.place, actor: n.id }); } catch (e) { }
     n.panic = Math.max(n.panic || 0, 4);
   }
@@ -30995,15 +31012,43 @@ var WriterVita = (function () {
       (P.kind === 'bombing' ? bombing(st, n) : P.kind === 'auto' ? auto(st, n) : mission(st, n, P.kind, partner)) || mission(st, n, 'muro', partner);
     }
   }
-  // di giorno: chi ha il mop lascia una tag (e un segno) sul muro più vicino mentre passa
+  // [writer] I TOY: i ragazzi giovani senza crew che firmano dove passano (la loro tag, sempre la stessa, nata dal loro numero)
+  const SYL = ['KA', 'ZE', 'TO', 'MI', 'RU', 'SK', 'NO', 'VI', 'DE', 'BO', 'XO', 'LU', 'PE', 'ZU', 'RI', 'KO', 'MA', 'TY'];
+  function toyOf(n) {
+    if (n.pop.toy) return n.pop.toy; let h = 7; for (const ch of String(n.id)) h = (h * 31 + ch.charCodeAt(0)) % 100003;
+    const r = WA.mulberry(h), aka = true ? SYL[Math.floor(r() * SYL.length)] + SYL[Math.floor(r() * SYL.length)] + (r() < .4 ? pickR2(r, ['S', 'K', 'X', 'Z', '1']) : '') : 'TOY';
+    return (n.pop.toy = { aka: aka.slice(0, 6), crew: '', skill: .12 + r() * .25, hand: h * 131 + 7, mop: r() < .75 });
+  }
+  const pickR2 = (r, a) => a[Math.floor(r() * a.length)];
+  const isToy = n => n.pop && !n.pop.writer && n.pop.age >= 13 && n.pop.age <= 24 && !n.cop && !/soldat|agente|poliz|guardia|tutela/i.test(n.role || '');
+  function siteNear(n, max) { let best = null, bd = max; for (const s of SITES) { if (s.kind === 'heaven') continue; const dd = hyp(s.x - n.x, s.y - n.y); if (dd < bd) { bd = dd; best = s; } } return best; }
+  // di giorno: chi passa lascia la sua tag sul muro più vicino (i writer col mop o con la bomboletta, i toy col pennarello);
+  // lontano dagli occhi del giocatore la città si riempie da sola
   function runDay(st) {
-    const v = V(st), m = minOfDay(st.t); if (m < 8 * 60 || m > 21 * 60 || st.clock - v.mopT < 25) return; v.mopT = st.clock;
+    const v = V(st), m = minOfDay(st.t); if (m < 7 * 60 || m > 22 * 60) return;
     const p = st.player, W = WR.S(st);
-    const ws = W.writers.map(id => G.byId(st, id)).filter(n => alive(n) && n.pop.writer && n.pop.writer.mop && n.pop.near && !n.inside && !n.pop.emer && hyp(n.x - p.x, n.y - p.y) < 40);
-    if (!ws.length || rnd() < .4) return; const n = pick(ws), wr = n.pop.writer;
-    let best = null, bd = 9; for (const s of SITES) { if (s.kind === 'heaven') continue; const dd = hyp(s.x - n.x, s.y - n.y); if (dd < bd) { bd = dd; best = s; } }
-    if (!best) return; const spot = spotOf(best, (rnd() - .5) * Math.min(4, best.len - 1), null);
-    start(st, n, 'writer', 'una tag col pennarello', [goStep('si avvicina al muro', { x: spot.x, y: spot.y }), paintStep('fa una tag col pennarello', (st2, n2) => WR.npcWork(st2, n2, wr, 'mtag', spot, { sign: rnd() < .5 ? pick(WA.SIGNS) : undefined }))]);
+    if (st.clock - v.mopT >= 10) {
+      v.mopT = st.clock;
+      const near = n => alive(n) && n.pop.near && !n.inside && !n.pop.emer && !n.vehicle && hyp(n.x - p.x, n.y - p.y) < 70;
+      const ws = W.writers.map(id => G.byId(st, id)).filter(n => near(n) && n.pop.writer), toys = st.npcs.filter(n => near(n) && isToy(n));
+      const pool = ws.concat(rnd() < .5 ? toys : []);
+      if (pool.length && rnd() < .75) {
+        const n = pick(pool), wr = n.pop.writer || toyOf(n), best = siteNear(n, 12);
+        if (best) {
+          const style = !n.pop.writer || wr.mop && rnd() < .6 ? 'mtag' : 'tag', spot = spotOf(best, (rnd() - .5) * Math.min(4, best.len - 1), null);
+          start(st, n, 'writer', style === 'mtag' ? 'una tag col pennarello' : 'una tag con la bomboletta', [goStep('si avvicina al muro', { x: spot.x, y: spot.y }), paintStep(style === 'mtag' ? 'fa una tag col pennarello' : 'fa la sua tag', (st2, n2) => WR.npcWork(st2, n2, wr, style, spot, { sign: rnd() < .35 ? pick(WA.SIGNS) : undefined }))]);
+        }
+      }
+    }
+    if (st.t - (v.farT || 0) > 15) {   // lontano: una tag (o un throw-up) in più in città
+      v.farT = st.t;
+      const cand = st.npcs.filter(n => alive(n) && (n.pop.writer || isToy(n)) && hyp(n.x - p.x, n.y - p.y) > 60);
+      const sites = SITES.filter(s => s.kind !== 'heaven' && hyp(s.x - p.x, s.y - p.y) > 60);
+      if (cand.length && sites.length) {
+        const n = pick(cand), wr = n.pop.writer || toyOf(n), s0 = pick(sites), style = n.pop.writer && rnd() < .25 ? 'throw' : wr.mop ? 'mtag' : 'tag';
+        WR._.addWork(st, WR.npcWork(st, n, wr, style, spotOf(s0, (rnd() - .5) * Math.min(4, s0.len - 1), null), { prog: 1, done: true }));
+      }
+    }
   }
   // la città si colora: quanti muri hanno un lavoro sopra
   function coverage(st) {
