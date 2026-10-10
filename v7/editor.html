@@ -47551,7 +47551,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     fpsTick(Math.min(raw, 1));   // [fluido1] contatore F9
     if (perfDone && R.scale && !ui.menu && !ui.dialog && !ui.intro && !ui.book) {
       if (CAP.on) {   // [30fps] risoluzione adattiva per tenere i 30
-        CAP.t += Math.min(raw, .25); CAP.n++; if (raw > 1 / 27) CAP.late++;
+        CAP.t += Math.min(raw, .25); CAP.n++; if (raw > .045) CAP.late++;   // un fotogramma saltato dura almeno 50 ms; a 75 o 144 Hz il passo normale oscilla fino a 40
         const sc = R.scale(), key = Math.round(sc * 100);
         if (CAP.t > 1.5 && CAP.late > CAP.n * .15 && sc > .56) { CAP.bad[key] = ui.time; R.scale(sc - .1); CAP.t = CAP.n = CAP.late = 0; CAP.work = 0; }
         else if (CAP.t > 6) { const up = Math.min(1, sc + .05), ku = Math.round(up * 100); if (CAP.late < CAP.n * .03 && CAP.work / CAP.n < 14 && sc < 1 && !(CAP.bad[ku] && ui.time - CAP.bad[ku] < 30)) R.scale(up); CAP.t = CAP.n = CAP.late = 0; CAP.work = 0; }
