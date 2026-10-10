@@ -288,6 +288,7 @@ var Writing = (function () {
     if (w.surf === 'muro' && w.pos && w.pos.y - feetG > 3.2) { mult *= 2.5; why.push('heaven spot'); }
     else if (p.lv && p.lv.k === 'tetto') { mult *= 1.5; why.push('dal tetto'); }
     if (w.surf === 'treno') { mult *= 2; why.push('sul treno'); }
+    if (w.surf === 'auto') { mult *= w.cop ? 3 : 1.3; why.push(w.cop ? 'sulla volante dei Grigi' : 'su un\'auto'); if (w.cop) W.heat = (W.heat || 0) + 6; }
     const eyes = st.npcs.filter(n => !n.dead && !n.inside && hyp(n.x - p.x, n.y - p.y) < 28).length; if (eyes >= 3) { mult *= 1 + Math.min(5, eyes) * .08; why.push('davanti alla gente'); }
     if (w.over && w.over.length) { const r0 = Math.max(...w.over.map(id => { const o = W.works.find(x => x.id === id); return o ? STYLES[o.style].rank : 0; })); if (sty.rank > r0) { mult *= 1.2; why.push('sopra a un toy'); } }
     const f = Math.max(1, Math.round(sty.fame * mult)), before = rankOf(W.fame); W.fame += f; W.done[w.style] = (W.done[w.style] || 0) + 1;
@@ -383,7 +384,7 @@ var Writing = (function () {
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(R.W, R.H), mat); mesh.userData.velo = true; mesh.userData.wr = w.id; mesh.renderOrder = 3 + layer;
     mesh.position.set(R.c.x + R.n.x * (.014 + layer * .004), R.c.y, R.c.z + R.n.z * (.014 + layer * .004)); mesh.lookAt(mesh.position.x + R.n.x, mesh.position.y, mesh.position.z + R.n.z);
     mesh.receiveShadow = true; scene().add(mesh); mesh.updateMatrixWorld(true);
-    if (R.obj && R.obj.parent && R.obj.userData.veh) R.obj.attach(mesh);
+    if (R.obj && R.veh) R.obj.attach(mesh);   // sulle auto il velo segue il mezzo
     return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: 1 };
   }
   // disegna il lavoro fino a prog (le tappe in ordine, ognuna da sinistra a destra)
@@ -456,8 +457,20 @@ var Writing = (function () {
     g.cellCost = g.cellCost || 1 / A.stages.reduce((s0, _, k) => s0 + needOf(A, k).n, 0);
     return got;
   }
+  // un lavoro su un'auto: la fiancata del modello, il velo attaccato al mezzo (se riparte se lo porta via)
+  function vehGroup(id) { const R = R_(); return R && R.__vehicles && R.__vehicles[id]; }
+  function vehOf(o) { const R = R_(), V = R && R.__vehicles; if (!V) return null; let g = o; while (g) { for (const id in V) if (V[id] === g) return id; g = g.parent; } return null; }
+  function placeVeh(w) {
+    const THREE = T3(), R = R_(), st = GFX.st, v = st.vehicles.find(x => x.id === w.veh), g = vehGroup(w.veh); if (!v || !g || v.hidden || v.wreck) return false;
+    g.updateMatrixWorld(true); const sd = w.side || 1, nx = -Math.sin(v.ang) * sd, nz = Math.cos(v.ang) * sd, gh = R.groundH(v.x, v.y), along = (w.du || 0);
+    const o = new THREE.Vector3(v.x + Math.cos(v.ang) * along + nx * 3, gh + .85, v.y + Math.sin(v.ang) * along + nz * 3), d = new THREE.Vector3(-nx, 0, -nz);
+    const rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.set(o, d); rc.far = 5; const h = rc.intersectObject(g, true).find(h => h.face && !h.object.userData.velo); if (!h) return false;
+    const n = new THREE.Vector3(nx, 0, nz), sty = STYLES[w.style], k = w.style === 'tag' || w.style === 'mtag' ? (w.tagK || 1) : 1, W0 = Math.min(sty.W * k, 3.2), H0 = Math.min(sty.H * k, 1);
+    const c = h.point.clone(); c.y = gh + .55 + H0 / 2; w.W = W0; w.H = H0; w.gfxRect = { c, n, r: new THREE.Vector3(n.z, 0, -n.x), W: W0, H: H0, obj: g, veh: true }; w.pos = { x: c.x, y: c.y, z: c.z }; return true;
+  }
   // un lavoro degli NPC (o di prima di un ricaricamento): trova il suo muro
   function placeWall(w) {
+    if (w.surf === 'auto') return placeVeh(w);
     const THREE = T3(), R = R_(), sp = w.spot; if (!sp) return false;
     const gh = R.groundH(sp.x, sp.y), list = cands(sp.x, sp.y); if (!list.length) return false;
     const d = new THREE.Vector3(Math.cos(sp.face), 0, Math.sin(sp.face)), sty = STYLES[w.style];
@@ -614,9 +627,10 @@ var Writing = (function () {
       if (Math.abs(nn.y) < .5) c.y = clamp(c.y, feet + .12 + Hh / 2, Math.max(feet + .12 + Hh / 2, feet + 2.75 - Hh / 2));
       let fitR = null;
       if (Math.abs(nn.y) > .5) { fitR = { W: sty.W, H: sty.H, r: new THREE.Vector3(1, 0, 0) }; }
-      else fitR = wallRect(c, nn, sty.W, Hh, cands(c.x, c.z));
+      else fitR = vehOf(h.object) ? { W: Math.min(sty.W, 3), H: Math.min(Hh, 1), r: new THREE.Vector3(nn.z, 0, -nn.x) } : wallRect(c, nn, sty.W, Hh, cands(c.x, c.z));
       if (!fitR) return { msg: `Qui il muro non basta per un ${sty.nome}: cerca una parete più larga.` };
       nw.W = fitR.W; nw.H = fitR.H; nw.gfxRect = { c, n: nn, r: fitR.r, W: fitR.W, H: fitR.H, obj: h.object }; nw.pos = { x: c.x, y: c.y, z: c.z };
+      { const vid = vehOf(h.object); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v && v.police) { G.feed(st, 'Stai bombando una volante dei Grigi. Se ti vedono, è finita.', 'bad'); nw.cop = true; } } }
       addWork(st, nw); W.cur = nw;
       const g = { art: art(nw), drawn: 0 };
       if (Math.abs(nn.y) > .5) { // per terra (le tag): il velo steso
@@ -712,6 +726,7 @@ var Writing = (function () {
         const byId = new Map(W.works.map(o => [o.id, o]));
         for (const id in GFX.works) {
           const g = GFX.works[id], w = byId.get(+id);
+          if (w && w.surf === 'auto') { const v = st.vehicles.find(x => x.id === w.veh); if (!v || v.wreck) { w.erased = true; } else if (g.tgt && g.tgt.mesh) { let o = g.tgt.mesh; while (o.parent) o = o.parent; if (o !== sc) { delete GFX.works[id]; w.gfxRect = null; continue; } w.pos = { x: v.x, y: w.pos ? w.pos.y : 1, z: v.y }; } }
           if (w && !w.erased && w.surf !== 'treno' && w.pos && hyp(w.pos.x - cx, w.pos.z - cy) > 140 && w !== W.cur) {
             if (g.tgt && g.tgt.mesh) { if (g.tgt.mesh.parent) g.tgt.mesh.parent.remove(g.tgt.mesh); g.tgt.mesh.geometry.dispose(); g.tgt.mesh.material.dispose(); if (g.tgt.tex) g.tgt.tex.dispose(); }
             delete GFX.works[id]; continue;

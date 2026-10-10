@@ -55,9 +55,9 @@ var WriterArte = (function () {
     bubble: { nome: 'bubble', adv: .58, skew: .05, bounce: .07, rot: .14, wob: .02, scale: .14, ext: 0, lw: .48, join: 'round', cap: 'round', d3: .3, arrows: 0, links: 0, fat: true, doodles: true },
     fat: { nome: 'bubble grasso', adv: .52, skew: .06, bounce: .09, rot: .18, wob: .015, scale: .2, ext: 0, lw: .56, join: 'round', cap: 'round', d3: .35, arrows: 0, links: 0, fat: true, doodles: true, stars: true },
     throwie: { nome: 'throwie', adv: .55, skew: .04, bounce: .09, rot: .16, wob: .015, scale: .2, ext: 0, lw: .54, join: 'round', cap: 'round', d3: .1, arrows: 0, links: 0, fat: true, ink: true, doodles: true },
-    semi: { nome: 'semi-wild', adv: .74, skew: .14, bounce: .05, rot: .12, wob: .025, scale: .14, ext: .32, lw: .28, join: 'miter', cap: 'square', d3: .5, arrows: 2, links: 1 , sh: { flare: .4, bh: .2, con: .3, cap: 'flare', sharp: true } },
-    wild: { nome: 'wildstyle', adv: .64, skew: .22, bounce: .1, rot: .32, wob: .04, scale: .3, ext: .62, lw: .24, join: 'miter', cap: 'square', d3: .55, arrows: 4, links: 3 , sh: { flare: .5, bh: .15, con: .35, cap: 'point', sharp: true } },
-    spiky: { nome: 'a spine', adv: .7, skew: .14, bounce: .08, rot: .24, wob: .02, scale: .26, ext: .5, lw: .26, join: 'miter', cap: 'butt', d3: .4, arrows: 0, links: 1, spikes: true , sh: { flare: -.45, bh: .1, con: .45, cap: 'point', sharp: true } },
+    semi: { nome: 'semi-wild', adv: .74, skew: .14, bounce: .05, rot: .12, wob: .025, scale: .14, ext: .32, lw: .36, join: 'miter', cap: 'square', d3: .5, arrows: 2, links: 1 , sh: { flare: .4, bh: .2, con: .3, cap: 'flare', sharp: true } },
+    wild: { nome: 'wildstyle', adv: .64, skew: .22, bounce: .1, rot: .32, wob: .04, scale: .3, ext: .62, lw: .32, join: 'miter', cap: 'square', d3: .55, arrows: 4, links: 3 , sh: { flare: .5, bh: .15, con: .35, cap: 'point', sharp: true } },
+    spiky: { nome: 'a spine', adv: .7, skew: .14, bounce: .08, rot: .24, wob: .02, scale: .26, ext: .5, lw: .32, join: 'miter', cap: 'butt', d3: .4, arrows: 0, links: 1, spikes: true , sh: { flare: -.45, bh: .1, con: .45, cap: 'point', sharp: true } },
     script: { nome: 'corsivo', adv: .6, skew: .38, bounce: .05, rot: .06, wob: .01, scale: .1, ext: .2, lw: .3, join: 'round', cap: 'round', d3: .32, arrows: 0, links: 0, nibK: .6, swash: true , sh: { flare: -.3, bh: 0, con: .45, cap: 'point', sharp: false, smooth: true } },
     chrome: { nome: 'chrome', adv: .62, skew: .08, bounce: .05, rot: .1, wob: .015, scale: .1, ext: .06, lw: .4, join: 'round', cap: 'round', d3: .25, arrows: 0, links: 0, chrome: true, fat: true },
   };
@@ -498,39 +498,72 @@ var WriterArte = (function () {
 
   // ================= I PERSONAGGI (lavoro a sé: lo «stile» mostro) =================
   function monsterArt(w, P, r, Wp, Hp, snap, paths, radii, x) {
-    const lw = Math.max(3, Hp * .024), K = '#101012', body = r() < .55 ? '#f2efe6' : pickR(r, FLATS.concat([P.f[0], P.f[1]])), side = shade(body === '#f2efe6' ? '#c8c4bc' : body, -.18), kind = pickR(r, ['blob', 'croc', 'robot', 'bunny', 'blob']);
-    const cx = Wp * (.42 + r() * .16), cy = Hp * .45, R0 = Math.min(Wp * .34, Hp * .36);
-    const shapes = [];   // [tipo, ...] disegnati due volte: prima i pieni, poi i contorni
-    const E = (a, b, rx, ry, rot, col) => shapes.push({ t: 'e', a, b, rx, ry, rot: rot || 0, col: col || body });
-    const Pl = (pts, col) => shapes.push({ t: 'p', pts, col: col || body });
-    // il corpo e la testa
-    if (kind === 'croc') { E(cx - R0 * .2, cy + R0 * .55, R0 * .75, R0 * .65); E(cx, cy, R0 * .9, R0 * .55); Pl([[cx + R0 * .3, cy - R0 * .35], [cx + R0 * 1.9, cy - R0 * .15], [cx + R0 * 1.9, cy + R0 * .25], [cx + R0 * .4, cy + R0 * .45]]); }
-    else if (kind === 'robot') { Pl([[cx - R0, cy - R0 * .8], [cx + R0, cy - R0 * .85], [cx + R0 * 1.05, cy + R0 * .7], [cx - R0 * .95, cy + R0 * .75]]); Pl([[cx - R0 * .7, cy + R0 * .75], [cx + R0 * .7, cy + R0 * .75], [cx + R0 * .8, cy + R0 * 1.3], [cx - R0 * .8, cy + R0 * 1.3]], side); }
-    else { E(cx, cy + R0 * .35, R0 * 1.02, R0 * .95); if (kind === 'bunny') { E(cx - R0 * .45, cy - R0 * 1.05, R0 * .2, R0 * .6, -.2); E(cx + R0 * .45, cy - R0 * 1.05, R0 * .2, R0 * .6, .2); } }
-    if (r() < .6 && kind !== 'bunny') for (const sx of [-1, 1]) Pl([[cx + sx * R0 * .55, cy - R0 * .6], [cx + sx * R0 * .95, cy - R0 * 1.25], [cx + sx * R0 * .85, cy - R0 * .45]]);   // le corna
-    // le braccia, le mani a tre dita
-    for (const sx of [-1, 1]) { if (r() < .25) continue; const ax = cx + sx * R0 * .95, ay = cy + R0 * .45, hx = ax + sx * R0 * (.4 + r() * .3), hy = ay - R0 * (.3 + r() * .5); E((ax + hx) / 2, (ay + hy) / 2, R0 * .32, R0 * .13, Math.atan2(hy - ay, hx - ax)); for (let f = -1; f <= 1; f++) E(hx + sx * R0 * .08, hy - R0 * .12 + f * R0 * .1, R0 * .13, R0 * .06, f * .5 - sx * .3); }
-    const Wh = '#ffffff', fills = cv(Wp, Hp), fx = fills.getContext('2d');
-    const draw = (ctx, sh, stroke) => { ctx.beginPath(); if (sh.t === 'e') ctx.ellipse(sh.a, sh.b, sh.rx, sh.ry, sh.rot, 0, 7); else { sh.pts.forEach(([a, b], k) => k ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); } if (stroke) ctx.stroke(); else { ctx.fillStyle = sh.col; ctx.fill(); } };
-    fx.lineJoin = 'round'; shapes.forEach(sh => draw(fx, sh));
-    x.drawImage(fills, 0, 0); snap(x.canvas); paths.push(raster(Wp, Hp, 4)); radii.push(Hp * .12);
-    // i contorni (sotto i pieni: solo il bordo esterno resta), l'ombra di lato
-    const out = cv(Wp, Hp), o = out.getContext('2d'); o.lineJoin = 'round'; o.strokeStyle = K; o.lineWidth = lw * 2; shapes.forEach(sh => draw(o, sh, true)); o.drawImage(fills, 0, 0);
-    o.save(); o.globalCompositeOperation = 'source-atop'; o.fillStyle = side; o.beginPath(); o.ellipse(cx + R0 * .9, cy + R0 * .6, R0 * .55, R0 * 1.2, -.3, 0, 7); o.fill(); o.restore();
-    x.clearRect(0, 0, Wp, Hp); x.drawImage(out, 0, 0); snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .14);
-    // la faccia: gli occhi (uno, due o tre), la bocca coi denti, i segni del movimento
-    const ne = pickR(r, [1, 2, 2, 2, 3]), ey = cy - R0 * (kind === 'croc' ? .35 : .15);
-    for (let k = 0; k < ne; k++) { const ex = cx + (ne === 1 ? 0 : (k / (ne - 1) - .5) * R0 * (ne === 3 ? 1.1 : .8)) + (kind === 'croc' ? R0 * .3 : 0), er = R0 * (ne === 1 ? .42 : .24) * (.9 + r() * .25);
-      x.fillStyle = Wh; x.strokeStyle = K; x.lineWidth = lw; x.beginPath(); x.arc(ex, ey, er, 0, 7); x.fill(); x.stroke(); const lk = (r() - .5) * er * .6; x.fillStyle = K; x.beginPath(); x.arc(ex + lk, ey + er * .1, er * .42, 0, 7); x.fill(); x.fillStyle = Wh; x.beginPath(); x.arc(ex + lk - er * .15, ey - er * .05, er * .12, 0, 7); x.fill();
-      if (r() < .4) { x.lineWidth = lw * 1.2; x.beginPath(); x.moveTo(ex - er, ey - er * 1.1); x.lineTo(ex + er, ey - er * (.7 + (k % 2) * .5)); x.stroke(); } }
-    const mx = kind === 'croc' ? cx + R0 * 1.1 : cx, my = kind === 'croc' ? cy + R0 * .1 : cy + R0 * .45, mw = kind === 'croc' ? R0 * .8 : R0 * (.55 + r() * .3), mh = R0 * (kind === 'robot' ? .25 : .3 + r() * .2);
-    x.fillStyle = '#2a1416'; x.strokeStyle = K; x.lineWidth = lw; x.beginPath(); if (kind === 'robot') x.rect(mx - mw, my - mh, mw * 2, mh * 2); else x.ellipse(mx, my, mw, mh, 0, 0, PI); x.closePath(); x.fill(); x.stroke();
-    x.fillStyle = Wh; const nT = 5 + Math.floor(r() * 5);
-    for (let k = 0; k < nT; k++) { const tx = mx - mw + (k + .5) / nT * mw * 2, tw = mw / nT * .9, th = mh * (.45 + r() * .25); x.beginPath(); x.moveTo(tx - tw, my); x.lineTo(tx, my + th); x.lineTo(tx + tw, my); x.closePath(); x.fill(); x.lineWidth = lw * .5; x.stroke(); }
-    if (r() < .5) { x.fillStyle = '#e86a7a'; x.beginPath(); x.ellipse(mx + mw * .2, my + mh * .65, mw * .3, mh * .25, 0, 0, 7); x.fill(); }   // la lingua
-    x.strokeStyle = K; x.lineWidth = lw * .7; x.lineCap = 'round'; for (let k = 0; k < 10; k++) { const a = r() * PI * 2, d = R0 * (1.25 + r() * .3), px0 = cx + Math.cos(a) * d * 1.1, py0 = cy + R0 * .3 + Math.sin(a) * d * .85; if (px0 < lw || px0 > Wp - lw || py0 < lw || py0 > Hp - lw) continue; x.beginPath(); x.moveTo(px0, py0); x.lineTo(px0 + Math.cos(a) * lw * 3, py0 + Math.sin(a) * lw * 3); x.stroke(); }   // i segni del movimento
-    if (w.aka) smallTag(x, w.aka + ' ' + (w.crew || ''), Wp * .82, Hp * .9, Hp * .07, K, r, Wp * .3);
+    // il corpo: tre-sei passate di rullo (linee grasse a capo tondo) buttate giù di getto; la loro unione è la sagoma
+    const lw = Math.max(3, Hp * .022), K = '#101012', body = r() < .5 ? '#f2efe6' : pickR(r, FLATS.concat([P.f[0], P.f[1]])), body2 = r() < .5 ? pickR(r, FLATS) : null;
+    const cx = Wp * (.42 + r() * .16), cy = Hp * (.52 + r() * .06), R0 = Math.min(Wp * .25, Hp * .25), rolls = [];
+    const nR = 3 + Math.floor(r() * 4);
+    for (let k = 0; k < nR; k++) { const a = r() * PI, l = R0 * (.6 + r() * 1.1), ox = (r() - .5) * R0 * 1.1, oy = (r() - .5) * R0 * .9, wd = R0 * (.55 + r() * .55); rolls.push({ a: [cx + ox - Math.cos(a) * l / 2, cy + oy - Math.sin(a) * l / 2], b: [cx + ox + Math.cos(a) * l / 2, cy + oy + Math.sin(a) * l / 2], w: wd, col: body2 && k === nR - 1 ? body2 : body }); }
+    // le appendici: corna, orecchie, braccia, gambe (passate più sottili che escono dalla sagoma)
+    const top = rolls.reduce((m, q) => Math.min(m, q.a[1] - q.w / 2, q.b[1] - q.w / 2), 1e9), bot = rolls.reduce((m, q) => Math.max(m, q.a[1] + q.w / 2, q.b[1] + q.w / 2), -1e9);
+    const lims = []; if (r() < .7) for (const sx of [-1, 1]) lims.push({ a: [cx + sx * R0 * .4, top + R0 * .25], b: [cx + sx * R0 * (.55 + r() * .35), top - R0 * (.35 + r() * .45)], w: R0 * (.12 + r() * .1), col: body });
+    for (const sx of [-1, 1]) if (r() < .75) { const ay = cy + (r() - .3) * R0 * .5, ax = cx + sx * R0 * 1.05; lims.push({ a: [ax - sx * R0 * .3, ay], b: [ax + sx * R0 * (.3 + r() * .3), ay - R0 * (.2 + r() * .6)], w: R0 * (.16 + r() * .08), col: body }); }
+    for (const sx of [-1, 1]) if (r() < .6) lims.push({ a: [cx + sx * R0 * .35, bot - R0 * .2], b: [cx + sx * R0 * (.4 + r() * .2), bot + R0 * (.2 + r() * .15)], w: R0 * .2, col: body });
+    const all = rolls.concat(lims), roll = (ctx, q, extra, col) => { ctx.strokeStyle = col; ctx.lineWidth = q.w + extra; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(q.a[0], q.a[1]); ctx.quadraticCurveTo((q.a[0] + q.b[0]) / 2 + (q.b[1] - q.a[1]) * .15, (q.a[1] + q.b[1]) / 2 - (q.b[0] - q.a[0]) * .15, q.b[0], q.b[1]); ctx.stroke(); };
+    // 1. le macchie (con la trama del rullo: righe nel verso della passata)
+    const F0 = cv(Wp, Hp), f0 = F0.getContext('2d');
+    all.forEach(q => { roll(f0, q, 0, q.col); }); f0.save(); f0.globalCompositeOperation = 'source-atop';
+    all.forEach(q => { const a = Math.atan2(q.b[1] - q.a[1], q.b[0] - q.a[0]); for (let k = 0; k < 7; k++) { const o = (k / 6 - .5) * q.w * .9; f0.strokeStyle = k % 2 ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.07)'; f0.lineWidth = q.w * .1; f0.beginPath(); f0.moveTo(q.a[0] - Math.sin(a) * o, q.a[1] + Math.cos(a) * o); f0.lineTo(q.b[0] - Math.sin(a) * o, q.b[1] + Math.cos(a) * o); f0.stroke(); } }); f0.restore();
+    x.drawImage(F0, 0, 0); snap(x.canvas); paths.push(all.flatMap(q => [q.a, [(q.a[0] + q.b[0]) / 2, (q.a[1] + q.b[1]) / 2], q.b])); radii.push(R0 * .45);
+    // 2. la linea nera attorno a tutto (sotto le macchie: resta solo il bordo), un po' fuori registro come fatta dopo, a mano
+    const O = cv(Wp, Hp), o = O.getContext('2d'), mis = lw * .6; all.forEach(q => roll(o, { a: [q.a[0] + mis, q.a[1] - mis * .5], b: [q.b[0] + mis, q.b[1] - mis * .5], w: q.w }, lw * 2, K)); o.drawImage(F0, 0, 0);
+    o.save(); o.globalCompositeOperation = 'source-atop'; o.fillStyle = 'rgba(0,0,0,.16)'; o.beginPath(); o.ellipse(cx + R0 * .7, cy + R0 * .4, R0 * .7, R0 * 1.3, -.4, 0, 7); o.fill(); o.restore();   // l'ombra di lato
+    x.clearRect(0, 0, Wp, Hp); x.drawImage(O, 0, 0); snap(x.canvas); paths.push(all.flatMap(q => [q.a, q.b])); radii.push(R0 * .3);
+    // 3. la faccia, dove la sagoma lo permette: gli occhi in alto, la bocca coi denti sotto
+    const Wh = '#ffffff', ne = pickR(r, [1, 2, 2, 2, 3]), ey = top + R0 * (.45 + r() * .2);
+    for (let k = 0; k < ne; k++) { const ex = cx + (ne === 1 ? 0 : (k / (ne - 1) - .5) * R0 * (ne === 3 ? 1 : .75)) + (r() - .5) * R0 * .1, er = R0 * (ne === 1 ? .38 : .22) * (.85 + r() * .35);
+      x.fillStyle = Wh; x.strokeStyle = K; x.lineWidth = lw; x.beginPath(); x.ellipse(ex, ey, er, er * (.9 + r() * .3), (r() - .5) * .3, 0, 7); x.fill(); x.stroke(); const lk = (r() - .5) * er * .7; x.fillStyle = K; x.beginPath(); x.arc(ex + lk, ey + er * .15, er * .4, 0, 7); x.fill(); x.fillStyle = Wh; x.beginPath(); x.arc(ex + lk - er * .14, ey, er * .11, 0, 7); x.fill();
+      if (r() < .45) { x.lineWidth = lw * 1.3; x.lineCap = 'round'; x.beginPath(); x.moveTo(ex - er * 1.1, ey - er * (1.2 + r() * .3)); x.lineTo(ex + er * .9, ey - er * (.8 + r() * .5)); x.stroke(); } }
+    const mx = cx + (r() - .5) * R0 * .2, my = Math.min(bot - R0 * .4, ey + R0 * (.55 + r() * .25)), mw = R0 * (.45 + r() * .35), mh = R0 * (.22 + r() * .2), sad = r() < .2;
+    x.fillStyle = '#2a1416'; x.strokeStyle = K; x.lineWidth = lw; x.beginPath(); if (sad) x.ellipse(mx, my + mh, mw, mh, 0, PI, 0); else x.ellipse(mx, my, mw, mh, 0, 0, PI); x.closePath(); x.fill(); x.stroke();
+    if (!sad) { x.fillStyle = Wh; const nT = 4 + Math.floor(r() * 6), crooked = r() < .5; for (let k = 0; k < nT; k++) { const tx = mx - mw * .9 + (k + .5) / nT * mw * 1.8, tw = mw / nT * .85, th = mh * (.4 + r() * (crooked ? .5 : .15)); x.beginPath(); x.moveTo(tx - tw, my); x.lineTo(tx + (crooked ? (r() - .5) * tw : 0), my + th); x.lineTo(tx + tw, my); x.closePath(); x.fill(); x.lineWidth = lw * .5; x.stroke(); } if (r() < .5) { x.fillStyle = '#e86a7a'; x.beginPath(); x.ellipse(mx + mw * .2, my + mh * .7, mw * .3, mh * .25, 0, 0, 7); x.fill(); } }
+    x.strokeStyle = K; x.lineWidth = lw * .7; x.lineCap = 'round'; for (let k = 0; k < 12; k++) { const a = r() * PI * 2, d = R0 * (1.35 + r() * .35), px0 = cx + Math.cos(a) * d * 1.15, py0 = cy + Math.sin(a) * d * .85; if (px0 < lw || px0 > Wp - lw || py0 < lw || py0 > Hp - lw) continue; x.beginPath(); x.moveTo(px0, py0); x.lineTo(px0 + Math.cos(a) * lw * 3, py0 + Math.sin(a) * lw * 3); x.stroke(); }   // i segni del movimento
+    if (w.aka) smallTag(x, w.aka + ' ' + (w.crew || ''), Wp * .82, Hp * .92, Hp * .07, K, r, Wp * .3);
     snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .12);
+  }
+  // ================= LA MANO SULLA VERNICE =================
+  // Quello che rende un lavoro vivo invece di un carattere tipografico: la deformazione continua del braccio (un campo morbido
+  // che piega tutte le linee insieme, uguale per ogni tappa dello stesso lavoro), la nebbia dello spray attorno ai bordi, la grana,
+  // le passate del riempimento, le colature. Tutto dal seme: lo stesso lavoro si ridisegna uguale.
+  function warpField(seed, Wp, Hp, amp) {
+    const r = mulberry(seed ^ 0x51ed27), comps = [];
+    for (let k = 0; k < 4; k++) comps.push({ fx: (.6 + r() * 1.6) / Hp, fy: (.6 + r() * 1.6) / Hp, ph: r() * 7, ax: (r() - .5) * 2, ay: (r() - .5) * 2, w: 1 / (k + 1) });
+    return (x, y) => { let dx = 0, dy = 0; for (const c of comps) { const s0 = Math.sin(x * c.fx * 6.283 + y * c.fy * 2.1 + c.ph) * c.w, s1 = Math.cos(y * c.fy * 6.283 - x * c.fx * 1.7 + c.ph * 1.3) * c.w; dx += s0 * c.ax + s1 * .4; dy += s1 * c.ay + s0 * .4; } return [dx * amp, dy * amp]; };
+  }
+  function handify(cnv, seed, q, opt) {
+    const W = cnv.width, H = cnv.height, x = cnv.getContext('2d'), amp = H * (.008 + (1 - q) * .014) * (opt && opt.amp != null ? opt.amp : 1);
+    // 1. il braccio: tutto si piega un poco, insieme (bilineare)
+    const src = x.getImageData(0, 0, W, H), dst = x.createImageData(W, H), S = src.data, D = dst.data, f = warpField(seed, W, H, amp);
+    for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
+      const [dx, dy] = f(xx, yy), sx = clamp(xx + dx, 0, W - 1.001), sy = clamp(yy + dy, 0, H - 1.001), x0 = sx | 0, y0 = sy | 0, ax = sx - x0, ay = sy - y0, i00 = (y0 * W + x0) * 4, i10 = i00 + 4, i01 = i00 + W * 4, i11 = i01 + 4, o = (yy * W + xx) * 4;
+      for (let c = 0; c < 4; c++) D[o + c] = (S[i00 + c] * (1 - ax) + S[i10 + c] * ax) * (1 - ay) + (S[i01 + c] * (1 - ax) + S[i11 + c] * ax) * ay;
+    }
+    x.putImageData(dst, 0, 0);
+    if (opt && opt.noSpray) return cnv;
+    // 2. la nebbia: una copia sfocata dietro (lo spray non ha mai il bordo netto come un pennarello)
+    const k = cv(W, H), kx = k.getContext('2d'); kx.filter = `blur(${Math.max(1, H * .006).toFixed(1)}px)`; kx.drawImage(cnv, 0, 0); kx.filter = 'none';
+    x.save(); x.globalCompositeOperation = 'destination-over'; x.globalAlpha = .7; x.drawImage(k, 0, 0); x.restore();
+    // 3. la grana: puntini del colore del bordo, appena fuori
+    const r = mulberry(seed ^ 0x3c6ef3), img = x.getImageData(0, 0, W, H).data, n = Math.round(W * H / 90);
+    for (let i = 0; i < n; i++) { const px = Math.floor(r() * W), py = Math.floor(r() * H), j = (py * W + px) * 4; if (img[j + 3] < 200) continue; const a = r() * 6.283, d = 1 + r() * H * .012, qx = px + Math.cos(a) * d, qy = py + Math.sin(a) * d, jj = ((qy | 0) * W + (qx | 0)) * 4; if (qx < 0 || qy < 0 || qx >= W || qy >= H || img[jj + 3] > 60) continue; x.fillStyle = `rgba(${img[j]},${img[j + 1]},${img[j + 2]},${(.35 + r() * .5).toFixed(2)})`; x.fillRect(qx, qy, 1 + (r() < .3 ? 1 : 0), 1); }
+    return cnv;
+  }
+  // le passate del riempimento: strisce morbide più chiare e più scure, come le braccia che vanno avanti e indietro
+  function passes(x, box, lw, r, Wp, Hp) {
+    const [a0, b0, a1, b1] = box; x.save(); x.globalCompositeOperation = 'source-atop'; x.lineCap = 'round';
+    x.filter = `blur(${Math.max(1, lw * .12).toFixed(1)}px)`;
+    for (let k = 0; k < 9; k++) { const xx = a0 + (a1 - a0) * r(), th = lw * (.4 + r() * .7), ang = .9 + (r() - .5) * .5; x.strokeStyle = r() < .55 ? 'rgba(255,255,255,.09)' : 'rgba(0,0,0,.07)'; x.lineWidth = th; x.beginPath(); x.moveTo(xx - Math.cos(ang) * Hp, b1 + lw); x.lineTo(xx + Math.cos(ang) * Hp * .4, b0 - lw); x.stroke(); }
+    x.filter = 'none';
+    x.restore();
   }
 
   // ================= IL LAVORO =================
@@ -547,7 +580,7 @@ var WriterArte = (function () {
   function art(w) {
     const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), Wp = Math.round(w.W * PPM), Hp = Math.round(w.H * PPM), text = w.words || w.aka || 'NINO';
     const C = choose(w), q = C.q, stages = [], paths = [], radii = [];
-    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(k); };
+    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: w.style === 'mtag' })); };
     const toy = q < .35;
     if (w.style === 'mostro') { const c = cv(Wp, Hp); monsterArt(w, P, r, Wp, Hp, snap, paths, radii, c.getContext('2d')); return { stages, paths, radii, Wp, Hp, C }; }
     if (w.style === 'tag' || w.style === 'mtag' || w.style === 'gotico') {   // la tag: la mano del writer (writer_mano.js), col suo segno accanto
@@ -565,7 +598,14 @@ var WriterArte = (function () {
     const sloganH = C.slogan && !throwUp ? Hp * .1 : 0;
     // la mano: un toy trema, non sa il 3D, sbaglia gli spessori; un king è pulito, profondo, pieno di dettagli
     const LW = Wp - charW, opts = { font: null, h: 100, adv: F.adv, skew: F.skew, bounce: F.bounce * .5, rot: F.rot * .35, wob: q < .35 ? .03 : 0, scale: F.scale * .4, ext: F.ext * .6, links: C.fam === 'wild' && q > .6 ? Math.min(2, F.links) : 0 };
-    const padK = .6 * F.lw / (1 + 1.2 * F.lw) + .04, L = fit(letters(text, opts, r), LW, Hp - sloganH, Hp * padK, train ? 1.6 : wild ? 1.3 : 1.1);
+    // lo scheletro: per le famiglie che corrono (semi, wild, corsivo, a spine) è la TAG del writer, ingrassata: il pezzo ha la sua mano
+    const handFam = /^(semi|wild|script|spiky)$/.test(C.fam) || (C.fam === 'block' && r() < .3);
+    let L0;
+    if (handFam && WM) {
+      const hd = Object.assign({}, WM.dna(w.hand || w.seed || 1), { crown: false, halo: false, under: false, dashes: false, stars: false, quotes: false, swash: C.fam === 'script' || (wild && r() < .5), loop: false, wob: 0, mix: C.fam === 'script' ? .7 : C.fam === 'block' ? 0 : .35, adv: C.fam === 'wild' ? .55 : .62, bigFirst: 1.2 + r() * .25, tall: 1 + r() * .2 });
+      const H0 = WM.layout(text, hd, r); L0 = { strokes: H0.strokes.map(t => ({ pts: WM.smooth(t.pts, 3).filter((q, k, a) => k % 2 === 0 || k === a.length - 1).map(([a, b]) => [a * 100, b * 100]), i: t.i, swash: t.swash })), box: H0.box.map(v => v * 100) };
+    } else L0 = letters(text, opts, r);
+    const padK = .6 * F.lw / (1 + 1.2 * F.lw) + .04, L = fit(L0, LW, Hp - sloganH, Hp * padK, train ? 1.6 : wild ? 1.3 : 1.1);
     const ox0 = charLeft ? charW : 0; L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a + ox0, b]); }); L.box = [L.box[0] + ox0, L.box[1], L.box[2] + ox0, L.box[3]];
     const lw = F.lw * 100 * L.s * (train ? 1.12 : 1), ol = Math.max(2.5, lw * (throwUp ? .24 : .2) * (toy ? .7 + r() * .6 : 1)), kl = Math.max(2, lw * .16);
     const d3 = F.flat ? (r() < .4 ? lw * .22 : .01) : throwUp ? Math.max(2, lw * F.d3 * .6) : Math.max(toy ? 1 : 3, lw * F.d3 * (toy ? .3 : .55 + q * .55)), ang3 = F.chrome ? .9 : .78, dx = d3 * Math.cos(ang3), dy = d3 * Math.sin(ang3), steps = Math.max(1, Math.round(d3 / 1.5));
@@ -620,6 +660,7 @@ var WriterArte = (function () {
     const inkFill = F.ink ? (r() < .75 ? '#141418' : shade(P.f[2], -.55)) : F.flat ? pickR(r, FLATS) : null, OL = F.ink ? '#f6f4ee' : F.flat ? '#101012' : P.o, KL = F.ink ? '#141418' : P.k;
     const PAT = cv(Wp, Hp), px = PAT.getContext('2d'); px.fillStyle = inkFill || P.f[1]; px.fillRect(0, 0, Wp, Hp);
     if (!F.ink && !F.flat) fillPattern(px, throwUp && !F.chrome ? (C.fillk === 'diag' ? 'diag' : 'fade') : C.fillk, P, L.box, lw, Wp, Hp, r);
+    passes(px, L.box, lw, r, Wp, Hp);
     // il riempimento di una lettera (con la seconda linea: la maschera erosa riempita col motivo sopra la maschera del colore della linea)
     const letterImg = (i, lineCol, m) => {
       const Mi = maskOf(i);
