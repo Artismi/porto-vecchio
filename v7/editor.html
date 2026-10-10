@@ -30131,14 +30131,14 @@ var WriterMano = (function () {
   const GEST = {
     A: { g: [[0, 0], [.42, 1], [.82, 0]], dopo: [[[.1, .38], [.85, .46]]] },
     B: { g: [[0, 1], [0, 0], [.5, .02], [.76, .22], [.5, .48], [.08, .52], [.5, .58], [.66, .82], [.4, 1], [-.04, .97]] },
-    C: { g: [[.72, .84], [.32, 1], [0, .5], [.3, 0], [.82, .14]] },
+    C: { g: [[.72, .84], [.32, 1], [0, .5], [.3, 0], [.82, .14]], stacca: true },   // dopo la C la penna si alza: legarla la chiude in una G
     D: { g: [[0, 1], [0, 0], [.45, .06], [.82, .5], [.45, .96], [-.06, .94]] },
     E: { g: [[.78, 1], [0, .98], [0, 0], [.84, .02]], dopo: [[[-.04, .5], [.62, .53]]] },
     F: { g: [[.82, 1], [.08, .98], [0, 0]], dopo: [[[-.05, .5], [.62, .55]]] },
     G: { g: [[.74, .86], [.3, 1], [0, .5], [.3, 0], [.74, .2], [.76, .5], [.4, .5]] },
     H: { g: [[0, 1], [0, 0], [.04, .5], [.72, .56], [.72, 1], [.74, 0]] },
     I: { g: [[.1, 1], [.04, 0]], stretto: true },
-    J: { g: [[.62, 1], [.5, -.25], [0, -.1]] },
+    J: { g: [[.62, 1], [.58, .22], [.44, .0], [.2, -.02], [.06, .14]], stacca: true, norev: true },   // l'uncino corto e tondo
     K: { g: [[0, 1], [0, 0], [.05, .42], [.72, 1], [.2, .5], [.82, 0]] },
     L: { g: [[0, 1], [0, 0], [.8, .04]] },
     M: { g: [[0, 0], [.08, 1], [.44, .3], [.8, 1], [.9, 0]] },
@@ -30148,7 +30148,7 @@ var WriterMano = (function () {
     Q: { g: [[.5, 1], [0, .55], [.38, 0], [.82, .45], [.48, 1], [.2, .86]], dopo: [[[.4, .25], [.95, -.15]]] },
     R: { g: [[0, 0], [.02, 1], [.42, 1.02], [.72, .86], [.68, .6], [.38, .5], [.06, .5], [.46, .36], [.86, 0]] },
     S: { g: [[.74, .88], [.4, 1.02], [.06, .86], [.1, .62], [.62, .4], [.74, .16], [.42, -.01], [0, .1]] },
-    T: { g: [[-.05, .98], [.9, 1.04], [.46, 1.01], [.4, 0]] },   // [writer] in un gesto: la barra, il ritorno a metà, giù
+    T: { g: [[-.05, .98], [.9, 1.04], [.46, 1.01], [.4, 0]], norev: true },   // [writer] in un gesto: la barra, il ritorno a metà, giù
     U: { g: [[0, 1], [.1, 0], [.7, .1], [.74, 1], [.8, 0]] },
     V: { g: [[0, 1], [.4, 0], [.82, 1]] },
     W: { g: [[0, 1], [.2, 0], [.46, .7], [.7, 0], [.92, 1]] },
@@ -30211,7 +30211,7 @@ var WriterMano = (function () {
       ov: toy ? .1 + r() * .12 : .22 + r() * .26, curv: toy ? .3 + r() * .4 : .08 + r() * .34, curvSign: r() < .5 ? 1 : -1, sigma: (.24 + r() * .14) * (1.12 - .3 * sk), sk,
       round: toy ? .25 + r() * .2 : .42 + r() * .25, slant: toy ? r() * .2 : .2 + r() * .35, wide: toy ? .7 + r() * .3 : .95 + r() * .45, gap: -.13 + r() * .15, rise: (r() - .4) * .08, bigFirst: r() < .6 ? 1.2 + r() * .5 : 1,
       conn: pickR(r, ['dritto', 'occhiello', 'forcina', 'occhiello']), lift: 1.9 + r() * .7, under: r() < (toy ? .4 : .22), underK: pickR(r, ['frusta', 'rampa', 'onda']),
-      deco: toy ? (r() < .6 ? [pickR(r, ['stella', 'corona', 'freccia', 'diamante', 'x', 'aureola'])] : []) : r() < .35 ? [pickR(r, ['virgolette', 'tacche', 'uguale', 'bang', 'virgolette', 'tacche', d.skill > .8 ? 'corona' : 'uguale'])] : [],   /* [writer] i segni: chi sa fare ne mette uno, misurato; le stelle e i diamanti sono roba da toy */
+      deco: toy ? (r() < .6 ? [pickR(r, ['stella', 'corona', 'freccia', 'diamante', 'x', 'aureola'])] : []) : r() < .35 ? [pickR(r, ['virgolette', 'tacche', 'uguale', 'bang', 'virgolette', 'tacche', 'uguale'])] : [],   /* [writer] i segni: chi sa fare ne mette uno, misurato; le stelle e i diamanti sono roba da toy */
       W: (toy ? .12 : .19) + r() * (toy ? .06 : .07),   /* [writer] il peso: la tag di chi sa è grassa e piena */ wob: toy ? .05 : .012 * (1.3 - sk), flat: !toy && r() < .5, tacche: !toy && r() < .45 ? 2 + Math.floor(r() * 3) : 0, lati: r() < .6, mean: .5, snap: 0, grazie: 0, arch: toy ? 'libera' : pickR(r, ['stretta', 'stretta', 'stretta', 'rimbalzo', 'bassa', 'corsiva', 'corsiva']), attacco: !toy && r() < .55, coda: toy ? 0 : pickR(r, [0, 1, 1, 2, 2]), balls: !toy && r() < .55, acc: toy ? [] : [...new Set(['ovale', 'ovale', 'punto', 'virgolette', 'trattini'].filter(() => r() < .17))], r,   /* [writer] le palline in fondo ai tratti e gli accenti: l'ovale sopra, l'anello sotto, il punto, le virgolette, i trattini */   /* angoli e linea mediana della mano: provati, irrigidiscono; spenti */
     };
   }
@@ -30242,9 +30242,9 @@ var WriterMano = (function () {
     // viaggia meno fra l'uscita di una e l'entrata dell'altra (e preferisce il suo verso abituale)
     const wOf = l => l.gw * l.kx * h.wide * l.sz;
     const link = (pl, pr, nl, nr) => { const A = loc(pl, pr), B = loc(nl, nr), e = A[A.length - 1], b = B[0]; return Math.abs(e[1] - b[1]) * .8 + (wOf(pl) - e[0]) * .9 + b[0] * .9 + (nr ? .22 : 0) + (e[0] < wOf(pl) * .45 ? .6 : 0); };   // uscire indietro costa
-    const best = [[Ls[0].G.stretto ? 0 : 0, null], [.22, null]];
+    const best = [[0, null], [.22 + (Ls[0].G.norev ? 9 : 0), null]];
     const tab = [best];
-    for (let k = 1; k < Ls.length; k++) { const row = []; for (const nr of [0, 1]) { let bc = 1e9, bp = 0; for (const pr of [0, 1]) { const c = tab[k - 1][pr][0] + link(Ls[k - 1], pr, Ls[k], nr); if (c < bc) { bc = c; bp = pr; } } row.push([bc, bp]); } tab.push(row); }
+    for (let k = 1; k < Ls.length; k++) { const row = []; for (const nr of [0, 1]) { let bc = 1e9, bp = 0; for (const pr of [0, 1]) { const c = tab[k - 1][pr][0] + link(Ls[k - 1], pr, Ls[k], nr) + (nr && Ls[k].G.norev ? 9 : 0) + (pr && Ls[k - 1].G.norev ? 9 : 0); if (c < bc) { bc = c; bp = pr; } } row.push([bc, bp]); } tab.push(row); }
     let st = tab[Ls.length - 1][0][0] <= tab[Ls.length - 1][1][0] ? 0 : 1; for (let k = Ls.length - 1; k >= 0; k--) { Ls[k].rev = st; if (k) st = tab[k][st][1]; }
     // 3. l'incastro per forma: la lettera dopo si mette nel vuoto lasciato da quella prima, fascia per fascia (la A sotto il
     // braccio della K, la O dentro la pancia della R), mai più di un quarto dentro
@@ -30254,7 +30254,7 @@ var WriterMano = (function () {
     Ls.forEach((l, k) => {
       l.pts = loc(l, l.rev); const P = prof(l.pts.concat([])), dopoL = (l.G.dopo || []).map(t => t.map(([u, v]) => [(u - l.gx0) * l.kx * h.wide * l.sz, meanV(v) * l.sz + (l.dy || 0)]));
       dopoL.forEach(t => { const q = prof(t); for (let b = 0; b < BANDS; b++) { P.Lp[b] = Math.min(P.Lp[b], q.Lp[b]); P.Rp[b] = Math.max(P.Rp[b], q.Rp[b]); } });
-      if (prevR) { let need = -1e9; for (let b = 0; b < BANDS; b++) if (prevR[b] > -1e8 && P.Lp[b] < 1e8) need = Math.max(need, prevR[b] - P.Lp[b]); const gap = Math.max(h.W * 1.5, h.gap + .14); x = need > -1e8 ? Math.max(need + gap, x + prevW * .9) : x + prevW + gap; }   // [writer] con la linea grassa lo spazio cresce: le lettere si toccano, non si mangiano
+      if (prevR) { let need = -1e9; for (let b = 0; b < BANDS; b++) if (prevR[b] > -1e8 && P.Lp[b] < 1e8) need = Math.max(need, prevR[b] - P.Lp[b]); const gap = Math.max(h.W * 1.5, h.gap + .14) + (l.G.stretto || Ls[k - 1].G.stretto ? h.W * .55 + .03 : 0); x = need > -1e8 ? Math.max(need + gap, x + prevW * .9) : x + prevW + gap; }   // [writer] con la linea grassa lo spazio cresce: le lettere si toccano, non si mangiano   // la I (stretta) vuole aria attorno, se no si fonde
       if (h.sk > .55 && !l.rev && /[KRAXLZQ]/.test(l.ch) && k === Ls.length - 1 && l.pts.length > 1) { const e = l.pts[l.pts.length - 1], p0 = l.pts[l.pts.length - 2]; if (e[1] < p0[1] && e[0] > p0[0]) { e[0] += (e[0] - p0[0]) * .7; e[1] += (e[1] - p0[1]) * .35; } }   // [writer] il tiro: la gamba che scappa lunga, sicura, sotto la lettera dopo
       l.x = x; l.abs = l.pts.map(([u, v]) => [u + x, v]); l.dopo = dopoL.map(t => t.map(([u, v]) => [u + x, v]));
       prevR = P.Rp.map(v => v > -1e8 ? v + x : v); prevW = wOf(l);
@@ -30268,7 +30268,7 @@ var WriterMano = (function () {
         const A = cur, a = A[A.length - 1], b = l.abs[0], dx = b[0] - a[0], dy = b[1] - a[1], D = hyp(dx, dy), pl = Ls[k - 1], fr = (a[0] - pl.x) / Math.max(.1, wOf(pl));
         // si lega solo se il legame è corto e va avanti: se la mano esce indietro (la D, la B, la P finiscono in alto a sinistra)
         // o deve scavalcare la lettera sopra o sotto, la penna si alza, come fa un writer
-        const back = dx < -.05, q2 = l.abs[Math.min(2, l.abs.length - 1)], leftStart = q2[0] - l.abs[0][0] < -.2; if (D > (h.arch === 'corsiva' ? 1.7 : 1.3) || Math.abs(dy) > .95 || back && D > .75 || fr < .3 || leftStart) { runs.push(cur); cur = []; }   // [writer] se la lettera comincia andando indietro (la E, la C, la O) la penna si stacca: legarla vorrebbe dire ripassarci sopra   // [writer] la penna resta giù più che può: si stacca solo se il salto è lungo
+        const back = dx < -.05, q2 = l.abs[Math.min(2, l.abs.length - 1)], leftStart = q2[0] - l.abs[0][0] < -.2; if (D > (h.arch === 'corsiva' ? 1.7 : 1.3) || Math.abs(dy) > .95 || back && D > .75 || fr < .3 || leftStart || pl.G.stacca) { runs.push(cur); cur = []; }   // [writer] se la lettera comincia andando indietro (la E, la C, la O) la penna si stacca: legarla vorrebbe dire ripassarci sopra   // [writer] la penna resta giù più che può: si stacca solo se il salto è lungo
         else {
           a[0] += dx * .22; a[1] += dy * .22; b[0] -= dx * .12; b[1] -= dy * .12;
           const a0 = A[A.length - 2] || a, b1 = l.abs[1] || b, ta = [a[0] - a0[0], a[1] - a0[1]], tb = [b1[0] - b[0], b1[1] - b[1]], la = hyp(...ta) || 1, lb = hyp(...tb) || 1, D2 = hyp(b[0] - a[0], b[1] - a[1]);
@@ -30286,11 +30286,11 @@ var WriterMano = (function () {
     });
     if (cur.length) runs.push(cur);
     // [writer] l'attacco: la mano entra da sotto a sinistra prima della prima lettera; la coda: l'ultima scappa avanti o torna sotto la parola
-    if (runs.length && h.attacco) { const f = runs[0][0]; runs[0].unshift([f[0] - .28, f[1] - .16], [f[0] - .1, f[1] - .04]); }
+    if (runs.length && h.attacco && runs[0][0][1] < .4) { const f = runs[0][0]; runs[0].unshift([f[0] - .28, f[1] - .16], [f[0] - .1, f[1] - .04]); }
     if (runs.length) { const R = runs[runs.length - 1], e = R[R.length - 1], e0 = R[R.length - 3] || R[0], ux = e[0] - e0[0], uy = e[1] - e0[1], ul = hyp(ux, uy) || 1;
       let X0 = 1e9; runs.forEach(t => t.forEach(([a]) => { X0 = Math.min(X0, a); }));
-      if (h.coda === 1 && ux > 0 || h.coda === 2 && e[1] >= .38 && ux > 0) R.push([e[0] + ux / ul * .35 + .25, e[1] + uy / ul * .2 - .02], [e[0] + .85, e[1] + (uy > 0 ? .25 : -.12)]);   // la frusta avanti
-      else if (h.coda === 2 && e[1] < .38 && ux > 0 && Ls.length > 2) { R.push([e[0] + .2, e[1] - .1], [e[0] + .18, -.3], [e[0] - .2, -.38], [(X0 + e[0]) / 2, -.34], [X0 - .1, -.26]); h.under = false; }   // il ritorno: la coda passa sotto la parola e la sottolinea (un gesto solo)
+      if ((h.coda === 1 || h.coda === 2 && e[1] >= .38) && ux > ul * .35) R.push([e[0] + ux / ul * .35 + .25, e[1] + uy / ul * .2 - .02], [e[0] + .85, e[1] + (uy > 0 ? .25 : -.12)]);   // la frusta avanti
+      else if (h.coda === 2 && e[1] < .38 && ux > ul * .35 && Ls.length > 2) { R.push([e[0] + .2, e[1] - .1], [e[0] + .18, -.3], [e[0] - .2, -.38], [(X0 + e[0]) / 2, -.34], [X0 - .1, -.26]); h.under = false; }   // il ritorno: la coda passa sotto la parola e la sottolinea (un gesto solo)
     }
     // l'inclinazione e la salita, uguali per tutto (dopo, così l'incastro resta)
     const SH = ([X, Y]) => [X + Y * h.slant + (h.r() - .5) * h.wob, Y + h.rise * X + (h.r() - .5) * h.wob];
@@ -30346,7 +30346,7 @@ var WriterMano = (function () {
     for (let k = 0; k < h.tacche && mainPts.length; k++) { const [q, a, b] = mainPts[Math.floor(h.r() * mainPts.length)], ang = Math.atan2(b[1] - a[1], b[0] - a[0]) + 1.25 + (h.r() - .5) * .4, l = .13 + h.r() * .08; dec.push([[q[0] - Math.cos(ang) * l, q[1] - Math.sin(ang) * l], [q[0] + Math.cos(ang) * l, q[1] + Math.sin(ang) * l]]); }
     if (h.acc && h.acc.length) { const Wd = x1 - x0, mx = (x0 + x1) / 2, ell = (cx, cy, rx, ry, a0, a1, tl) => { const o = []; for (let k = 0; k <= 22; k++) { const a = a0 + (a1 - a0) * k / 22, X = Math.cos(a) * rx, Y = Math.sin(a) * ry; o.push([cx + X * Math.cos(tl) - Y * Math.sin(tl), cy + X * Math.sin(tl) + Y * Math.cos(tl)]); } return o; };
       h.acc.forEach(k => {
-        if (k === 'ovale') dec.push(ell(x0 + Wd * (.3 + h.r() * .45), y1 + .18 + h.r() * .1, Wd * (.18 + h.r() * .1), .1 + h.r() * .04, .6, PI * 2 + .1, (h.r() - .5) * .3));   // l'ovale: storto e spostato, ognuno il suo   // l'ovale lungo sopra, quasi chiuso
+        if (k === 'ovale') dec.push(ell(x0 + Wd * (.3 + h.r() * .45), y1 + .26 + h.W + h.r() * .08, Wd * (.18 + h.r() * .1), .1 + h.r() * .04, .6, PI * 2 + .1, (h.r() - .5) * .3));   // l'ovale: storto e spostato, ognuno il suo   // l'ovale lungo sopra, quasi chiuso
         else if (k === 'anello') dec.push(ell(mx + Wd * .05, y0 - .14, Wd * (.42 + h.r() * .1), .08 + h.r() * .03, PI * .9, PI * 2.85, -.03));   // l'anello schiacciato sotto: entra da sinistra, gira, esce
         else if (k === 'punto') dec.push([[x1 + .14, y0 + .06], [x1 + .155, y0 + .05]]);
         else if (k === 'virgolette') [[x0 - .2, y1 - .02], [x0 - .09, y1 + .02], [x1 + .07, y1 + .02], [x1 + .18, y1 - .02]].forEach(([a, b]) => dec.push([[a + .05, b + .02], [a, b - .17]]));
@@ -30376,7 +30376,7 @@ var WriterMano = (function () {
     else { x.save(); x.filter = `blur(${Math.max(.5, W * .05).toFixed(1)}px)`; draw(1); x.restore(); }   // l'inchiostro beve un filo nel muro
     let bT = 1e9, bB = -1e9; strokes.forEach(st => { if (st.main) st.pts.forEach(q => { bT = Math.min(bT, q[1]); bB = Math.max(bB, q[1]); }); });
     const MS = strokes.filter(st => st.main);
-    if (h.balls && !(mark && h.flat)) strokes.forEach(st => { const p = st.pts; if (p.length < 2) return; let Lq = 0; for (let i = 1; i < p.length; i++) Lq += hyp(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); if (st.deco && Lq < W * 5 && Lq > W * .5) return; (st.main || st.deco ? [[0, 1], [p.length - 1, p.length - 2]] : [[p.length - 1, p.length - 2]]).forEach(([i, j]) => { const q = p[i], o = p[Math.max(0, Math.min(p.length - 1, j))], vv = (q[1] - bT) / Math.max(1, bB - bT); if (!st.deco && vv > .28 && vv < .72) return; if (st.main && vv > .8 && !(st === MS[0] && i === 0)) return;   // sulla riga fra le lettere niente goccia: sembrerebbe un punto   // [writer] la goccia solo dove il tratto finisce in alto o in basso, mai a metà (la barra della E)
+    if (h.balls && !(mark && h.flat)) strokes.forEach(st => { const p = st.pts; if (p.length < 2) return; let Lq = 0; for (let i = 1; i < p.length; i++) Lq += hyp(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); if (st.deco && Lq < W * 5 && Lq > W * .5) return; (st.main || st.deco ? [[0, 1], [p.length - 1, p.length - 2]] : [[p.length - 1, p.length - 2]]).forEach(([i, j]) => { const q = p[i], o = p[Math.max(0, Math.min(p.length - 1, j))], vv = (q[1] - bT) / Math.max(1, bB - bT); if (!st.deco && vv > .28 && vv < .72) return; if (st.main && vv > .25 && !(st === MS[0] && i === 0)) return;   // sulla riga fra le lettere niente goccia: sembrerebbe un punto   // [writer] la goccia solo dove il tratto finisce in alto o in basso, mai a metà (la barra della E)
       const dx = q[0] - o[0], dy = q[1] - o[1], a = Math.atan2(dy, dx), R0 = W * (st.deco ? .5 : st.main ? (vv > .8 ? .5 : .62) : .55);   // sulla riga di base la goccia è piccola: non deve sembrare un punto   // [writer] la goccia: la vernice si raccoglie dove la mano si ferma, allungata nel verso del tratto e tirata un filo in giù
       x.save(); x.translate(q[0], q[1]); x.rotate(a); x.beginPath(); x.ellipse(R0 * .3, 0, R0 * 1.15, R0 * .82, 0, 0, 7); x.fill(); x.restore();  }); });   // [writer] le palline: ogni tratto comincia e finisce tondo, tutte uguali
     strokes.forEach(st => st.pts.forEach(q => path.push(q)));
