@@ -29179,7 +29179,7 @@ var WriterMano = (function () {
   // tratti che si fanno dopo, a penna alzata.
   const GEST = {
     A: { g: [[0, 0], [.42, 1], [.82, 0]], dopo: [[[.1, .38], [.85, .46]]] },
-    B: { g: [[0, 1], [0, 0], [.7, .2], [.1, .52], [.62, .82], [-.04, .96]] },
+    B: { g: [[0, 1], [0, 0], [.5, .02], [.76, .22], [.5, .48], [.08, .52], [.5, .58], [.66, .82], [.4, 1], [-.04, .97]] },
     C: { g: [[.72, .84], [.32, 1], [0, .5], [.3, 0], [.82, .14]] },
     D: { g: [[0, 1], [0, 0], [.45, .06], [.82, .5], [.45, .96], [-.06, .94]] },
     E: { g: [[.78, 1], [0, .98], [0, 0], [.84, .02]], dopo: [[[-.04, .5], [.62, .53]]] },
@@ -29193,10 +29193,10 @@ var WriterMano = (function () {
     M: { g: [[0, 0], [.08, 1], [.44, .3], [.8, 1], [.9, 0]] },
     N: { g: [[0, 0], [0, 1], [.72, 0], [.78, 1]] },
     O: { g: [[.5, 1], [0, .55], [.38, 0], [.82, .45], [.48, 1], [.2, .86]] },
-    P: { g: [[0, 0], [.02, 1], [.7, .8], [.06, .46]] },
+    P: { g: [[0, 0], [.02, 1], [.42, 1.02], [.72, .86], [.7, .6], [.4, .46], [.04, .47]] },
     Q: { g: [[.5, 1], [0, .55], [.38, 0], [.82, .45], [.48, 1], [.2, .86]], dopo: [[[.4, .25], [.95, -.15]]] },
-    R: { g: [[0, 0], [.02, 1], [.7, .8], [.06, .5], [.84, 0]] },
-    S: { g: [[.72, .9], [.36, 1], [0, .76], [.7, .3], [.42, 0], [0, .1]] },
+    R: { g: [[0, 0], [.02, 1], [.42, 1.02], [.72, .86], [.68, .6], [.38, .5], [.06, .5], [.46, .36], [.86, 0]] },
+    S: { g: [[.74, .88], [.4, 1.02], [.06, .86], [.1, .62], [.62, .4], [.74, .16], [.42, -.01], [0, .1]] },
     T: { g: [[.42, 1], [.36, 0]], dopo: [[[-.05, .98], [.9, 1.05]]] },
     U: { g: [[0, 1], [.1, 0], [.7, .1], [.74, 1], [.8, 0]] },
     V: { g: [[0, 1], [.4, 0], [.82, 1]] },
@@ -29247,7 +29247,7 @@ var WriterMano = (function () {
     const toy = d.skill != null && d.skill < .35;
     return {
       ov: toy ? .1 + r() * .12 : .22 + r() * .26, curv: toy ? .3 + r() * .4 : .08 + r() * .34, curvSign: r() < .5 ? 1 : -1, sigma: .24 + r() * .14,
-      slant: toy ? r() * .2 : .2 + r() * .35, wide: toy ? .7 + r() * .3 : .95 + r() * .45, gap: -.12 + r() * .22, rise: (r() - .3) * .25, bigFirst: r() < .6 ? 1.2 + r() * .5 : 1,
+      slant: toy ? r() * .2 : .2 + r() * .35, wide: toy ? .7 + r() * .3 : .95 + r() * .45, gap: -.12 + r() * .22, rise: (r() - .3) * .2, bigFirst: r() < .35 ? 1.15 + r() * .25 : 1, mean: .38 + r() * .28, diagA: 1.05 + r() * .25, snap: toy ? 0 : .55 + r() * .35, grazie: toy ? 0 : Math.floor(r() * 4),
       conn: pickR(r, ['dritto', 'dritto', 'forcina', 'occhiello']), lift: .6 + r() * .9, under: r() < .45, underK: pickR(r, ['frusta', 'rampa', 'onda']),
       deco: Array.from({ length: toy ? Math.floor(r() * 2) : Math.floor(r() * 4) }, () => pickR(r, ['stella', 'asterisco', 'corona', 'freccia', 'bang', 'uguale', 'virgolette', 'tacche', 'diamante', 'scintilla', 'x', 'aureola'])),
       W: (toy ? .1 : .14) + r() * .07, wob: toy ? .05 : .012, flat: !toy && r() < .5, tacche: !toy && r() < .45 ? 2 + Math.floor(r() * 3) : 0, lati: r() < .6, r,
@@ -29261,10 +29261,15 @@ var WriterMano = (function () {
     const Ls = [...s].map((ch, i) => GEST[ch] ? { ch, i, G: GEST[ch] } : null).filter(Boolean);
     if (!Ls.length) return { tr: [], h, box: [0, 0, 1, 1] };
     // 1. l'equilibrio: le lettere larghe si stringono, le strette si allargano (il peso si spartisce lungo la parola); la prima grande
-    Ls.forEach((l, k) => { let a = 1e9, b = -1e9; l.G.g.forEach(([u]) => { a = Math.min(a, u); b = Math.max(b, u); }); l.gx0 = a; l.gw = Math.max(.1, b - a); l.sz = k === 0 ? h.bigFirst : 1 + .1 * Math.sin(k * 2.3 + (d.seed || 1) % 5); });
+    Ls.forEach((l, k) => { let a = 1e9, b = -1e9; l.G.g.forEach(([u]) => { a = Math.min(a, u); b = Math.max(b, u); }); l.gx0 = a; l.gw = Math.max(.1, b - a); l.sz = k === 0 ? h.bigFirst : 1; });   // [writer] l'uniformità: tutte della stessa altezza (la prima grande solo se è la mano)
     const wide = Ls.filter(l => !l.G.stretto), mw = wide.reduce((t, l) => t + l.gw, 0) / Math.max(1, wide.length);
     Ls.forEach(l => { l.kx = l.G.stretto ? 1 : clamp(Math.sqrt(mw / l.gw), .78, 1.25); });
-    const loc = (l, rev) => (rev ? l.G.g.slice().reverse() : l.G.g).map(([u, v]) => [(u - l.gx0) * l.kx * h.wide * l.sz, v * l.sz]);
+    // [writer] la linea mediana della mano (dove si attaccano traverse e pance) e gli angoli della mano: ogni tratto obliquo si
+    // piega verso una delle sue due diagonali, ogni asta verso la sua verticale; così tutta la tag ripete gli stessi angoli
+    const meanV = v => v <= 0 || v >= 1 ? v : v < .5 ? v / .5 * h.mean : h.mean + (v - .5) / .5 * (1 - h.mean);
+    const snapG = P => { if (!h.snap || P.length < 2) return P; const out = [P[0].slice()]; for (let k = 1; k < P.length; k++) { const a = P[k - 1], b = P[k], dx = b[0] - a[0], dy = b[1] - a[1], L2 = hyp(dx, dy), pa = out[k - 1]; if (L2 < .6) { out.push([pa[0] + dx, pa[1] + dy]); continue; }   /* solo le aste e le diagonali lunghe: le pance restano tonde */ const an = Math.atan2(dy, dx), C = [0, PI, PI / 2, -PI / 2, h.diagA, h.diagA - PI, -h.diagA, PI - h.diagA]; let bd = 9, de = 0; C.forEach(c => { const e = ((c - an + PI * 3) % (PI * 2)) - PI; if (Math.abs(e) < Math.abs(bd)) bd = e; }); de = Math.abs(bd) < .5 ? bd * h.snap : 0; const a2 = an + de, nb = [pa[0] + Math.cos(a2) * L2, pa[1] + Math.sin(a2) * L2]; out.push([nb[0] * .7 + (pa[0] + dx) * .3, nb[1] * .7 + (pa[1] + dy) * .3]); } return out; };
+    Ls.forEach(l => { l.g2 = snapG(l.G.g.map(([u, v]) => [u, meanV(v)])); });
+    const loc = (l, rev) => (rev ? l.g2.slice().reverse() : l.g2).map(([u, v]) => [(u - l.gx0) * l.kx * h.wide * l.sz, v * l.sz]);
     // 2. il verso del gesto: ogni lettera si può fare nei due sensi; sulla parola si sceglie la combinazione dove la mano
     // viaggia meno fra l'uscita di una e l'entrata dell'altra (e preferisce il suo verso abituale)
     const wOf = l => l.gw * l.kx * h.wide * l.sz;
@@ -29279,7 +29284,7 @@ var WriterMano = (function () {
     const prof = pts => { const Lp = Array(BANDS).fill(1e9), Rp = Array(BANDS).fill(-1e9); for (let k = 0; k < pts.length - 1; k++) { const a = pts[k], b = pts[k + 1], n = Math.max(2, Math.ceil(hyp(b[0] - a[0], b[1] - a[1]) / .05)); for (let j = 0; j <= n; j++) { const X = a[0] + (b[0] - a[0]) * j / n, Y = a[1] + (b[1] - a[1]) * j / n, q = band(Y); Lp[q] = Math.min(Lp[q], X); Rp[q] = Math.max(Rp[q], X); } } return { Lp, Rp }; };
     let x = 0, prevR = null, prevW = 0;
     Ls.forEach((l, k) => {
-      l.pts = loc(l, l.rev); const P = prof(l.pts.concat([])), dopoL = (l.G.dopo || []).map(t => t.map(([u, v]) => [(u - l.gx0) * l.kx * h.wide * l.sz, v * l.sz]));
+      l.pts = loc(l, l.rev); const P = prof(l.pts.concat([])), dopoL = (l.G.dopo || []).map(t => t.map(([u, v]) => [(u - l.gx0) * l.kx * h.wide * l.sz, meanV(v) * l.sz]));
       dopoL.forEach(t => { const q = prof(t); for (let b = 0; b < BANDS; b++) { P.Lp[b] = Math.min(P.Lp[b], q.Lp[b]); P.Rp[b] = Math.max(P.Rp[b], q.Rp[b]); } });
       if (prevR) { let need = -1e9; for (let b = 0; b < BANDS; b++) if (prevR[b] > -1e8 && P.Lp[b] < 1e8) need = Math.max(need, prevR[b] - P.Lp[b]); const gap = Math.max(.05, h.gap + .14); x = need > -1e8 ? Math.max(need + gap, x + prevW * .75) : x + prevW + gap; }
       l.x = x; l.abs = l.pts.map(([u, v]) => [u + x, v]); l.dopo = dopoL.map(t => t.map(([u, v]) => [u + x, v]));
@@ -29322,6 +29327,9 @@ var WriterMano = (function () {
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; L.tr.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
     // i segni attorno: nei vuoti agli angoli, misura della lettera piccola
     const dec = []; h.deco.forEach((k, j) => { const cx = j % 2 ? x1 + .05 + h.r() * .12 : x0 + h.r() * .12, cy = h.lati ? (y0 + y1) / 2 + (h.r() - .3) * .4 : j < 2 ? y1 + .02 + h.r() * .1 : y0 + h.r() * .1; decoStrokes(k, cx, -cy, .2, (h.r() - .5) * .6).forEach(t => dec.push(t.map(([a, b, f]) => [a, -b, f]))); });
+    // [writer] le grazie: poche (due o tre), corte, orizzontali in cima o al piede delle aste
+    { const ends = []; L.tr.forEach(t => { if (!t.main) return; const p = t.pts; for (let k = 4; k < p.length - 4; k++) { const up = p[k][1] > p[k - 4][1] && p[k][1] >= p[k + 4][1], dn = p[k][1] < p[k - 4][1] && p[k][1] <= p[k + 4][1]; if ((up && p[k][1] > y1 - .25) || (dn && p[k][1] < y0 + .25)) ends.push(p[k]); } });
+      for (let k = 0; k < h.grazie && ends.length; k++) { const q = ends.splice(Math.floor(h.r() * ends.length), 1)[0]; dec.push([[q[0] - .1, q[1]], [q[0] + .12, q[1] + .01]]); } }
     // [writer] le tacche: tagli corti di traverso che attraversano le aste (come le spine, ma a lama)
     const mainPts = []; L.tr.forEach(t => { if (t.main) t.pts.forEach((q, k) => { if (k > 3 && k < t.pts.length - 4) mainPts.push([q, t.pts[k - 3], t.pts[k + 3]]); }); });
     for (let k = 0; k < h.tacche && mainPts.length; k++) { const [q, a, b] = mainPts[Math.floor(h.r() * mainPts.length)], ang = Math.atan2(b[1] - a[1], b[0] - a[0]) + 1.25 + (h.r() - .5) * .4, l = .13 + h.r() * .08; dec.push([[q[0] - Math.cos(ang) * l, q[1] - Math.sin(ang) * l], [q[0] + Math.cos(ang) * l, q[1] + Math.sin(ang) * l]]); }
@@ -29336,7 +29344,7 @@ var WriterMano = (function () {
       const sl = [0]; for (let i = 1; i < n; i++) sl.push(sl[i - 1] + hyp(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1])); const Lt = sl[n - 1] || 1;
       st.w = p.map((q, i) => {
         const a = p[Math.max(0, i - 1)], b = p[Math.min(n - 1, i + 1)], dir = Math.atan2(b[1] - a[1], b[0] - a[0]), sp = st.deco ? .5 : q[2] / vm;
-        let w = W * (st.deco ? .42 : st.main ? 1 : .8) * (mark ? 1.12 - .4 * Math.pow(sp, .8) : 1.25 - .65 * Math.pow(sp, .8)) * (1 + .25 * (1 - sstep(0, W * 1.5, sl[i]))) * (.1 + .9 * (1 - sstep(1 - Math.min(.35, W * 3 / Lt), 1, sl[i] / Lt)));
+        let w = W * (st.deco ? .42 : st.main ? 1 : .8) * (mark ? 1.08 - .3 * Math.pow(sp, .8) : 1.15 - .42 * Math.pow(sp, .8)) * (1 + .25 * (1 - sstep(0, W * 1.5, sl[i]))) * (.1 + .9 * (1 - sstep(1 - Math.min(.35, W * 3 / Lt), 1, sl[i] / Lt)));
         if (mark) w *= h.flat ? .3 + .7 * Math.abs(Math.sin(dir - nibA)) : .86 + .14 * Math.abs(Math.sin(dir - nibA));   // la punta piatta a scalpello (grosso e sottile) o il marker tondo
         return Math.max(.8, w * (1 + .06 * Math.sin(i * .3 + n) + .03 * (r() - .5)));
       });
