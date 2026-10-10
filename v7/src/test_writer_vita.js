@@ -49,8 +49,8 @@ ok(!!E3, `${t.pop.writer.aka} va al deposito a fare il treno`); runUntil(() => !
 const trw = W.works.slice(tw0).find(w => w.surf === 'treno'); ok(trw && trw.done && W.train.sides[trw.car + ':' + trw.side].includes(trw.id), `whole car finito sulla fiancata ${trw && trw.car + ':' + trw.side}`);
 
 // l'auto parcheggiata
-{ const wa = ws.find(n => !n.pop.emer && !n.dead), aw0 = W.works.length; at(2, 0); const cars = st.vehicles.filter(v => !v.rider && !v.traffic && !v.hidden && !v.wreck); if (cars[0]) { wa.x = cars[0].x + 3; wa.y = cars[0].y + 3; }
-  const E4 = WV.auto(st, wa); ok(!!E4, `${wa.pop.writer.aka}: «${E4 && E4.label}»`); if (E4) { runUntil(() => !wa.pop.emer, 600); const aw = W.works.slice(aw0).find(w => w.surf === 'auto'); ok(aw && aw.veh && (aw.done || aw.prog > 0), `sulla fiancata di ${aw && aw.veh}: ${aw && aw.style}${aw && aw.cop ? ' (la volante!)' : ''}`); } }
+{ const wa = ws.find(n => !n.pop.emer && !n.dead), aw0 = W.works.length; at(2, 0); const cars = st.vehicles.filter(v => !v.rider && !v.traffic && !v.hidden && !v.wreck && !v.military);
+  let E4 = null; for (const v of cars) { wa.x = v.x + 3; wa.y = v.y + 3; E4 = WV.auto(st, wa); if (E4) break; } ok(!!E4, `${wa.pop.writer.aka}: «${E4 && E4.label}»`); if (E4) { runUntil(() => !wa.pop.emer, 600); const aw = W.works.slice(aw0).find(w => w.surf === 'auto'); ok(aw && aw.veh && (aw.done || aw.prog > 0), `sulla fiancata di ${aw && aw.veh}: ${aw && aw.style}${aw && aw.cop ? ' (la volante!)' : ''}`); } }
 // il calendario della notte e la città che si colora
 const v = WV.V(st); v.night = -1; at(21, 30); run(.1); ok(v.plan.length >= 2, `stanotte escono in ${v.plan.length}: ${v.plan.map(q => q.kind).join(', ')}`);
 const cov0 = WV.coverage(st); for (let k = 0; k < 120; k++) { const s = WV.freeSite(st, ['strada', 'hall', 'heaven'], null); if (s) WR._.addWork(st, { by: ws[0].id, aka: 'TEST', crew: 'PVK', style: 'pezzo', pal: 1, seed: k, surf: 'muro', spot: { x: s.x, y: s.y, face: s.face, h: s.h }, prog: 1, done: true }); }

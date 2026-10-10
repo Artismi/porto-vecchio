@@ -107,7 +107,7 @@ var WriterArte = (function () {
     const fillk = w.fillk || (FAM[fam].chrome || P.chrome ? 'chrome' : throwUp || q < .3 ? pickR(r, ['fade', 'diag']) : pickR(r, FILLS));
     const bgk = w.bgk !== undefined ? w.bgk : (w.style === 'wholecar' ? pickR(r, ['sole', 'radici', 'skyline', 'skyline']) : w.style === 'burner' ? pickR(r, ['sole', 'radici', 'skyline', 'esplosione', 'ovale']) : throwUp ? (r() < .35 ? pickR(r, ['ovale', 'splat', 'esplosione']) : null) : pickR(r, BADGES));
     const chr = w.chr !== undefined ? w.chr : (wild && q > .3 ? pickR(r, CHARS) : null);
-    return { fam, fillk, bgk, chr, q, yr: w.yr || pickR(r, YEARS), slogan: w.slogan !== undefined ? w.slogan : (wild && q > .4 || r() < .2 ? pickR(r, SLOGANS) : null) };
+    return { fam, fillk, bgk, chr, q, yr: w.yr !== undefined ? w.yr : (r() < .12 ? pickR(r, YEARS) : ''), slogan: w.slogan !== undefined ? w.slogan : (wild && q > .4 || r() < .2 ? pickR(r, SLOGANS) : null) };
   }
   // IL BOZZETTO: un writer pensa il suo pezzo. dna = { fam, pals, chars, pol (quanto è politico), skill }; tutto il resto lo decide il caso
   function conceive(o) {
@@ -118,7 +118,7 @@ var WriterArte = (function () {
     if (q < .3 && (fam === 'wild' || fam === 'spiky' || fam === 'script')) fam = pickR(r, ['semi', 'bubble', 'block', 'piatto']);   // un toy non sa fare il wildstyle
     const pals = d.pals && d.pals.length ? d.pals : [Math.floor(r() * PAL.length)];
     const pol = d.pol != null ? d.pol : .4;
-    const sk = { style, aka: o.aka, crew: o.crew, seed, q, fam, pal: pickR(r, pals) % PAL.length,
+    const sk = { style, aka: o.aka, crew: o.crew, seed, q, fam, cons: d.cons || consOf(seed), pal: pickR(r, pals) % PAL.length,
       words: wild && r() < pol * .5 ? pickR(r, WORDS) : null,
       slogan: !throwUp && style !== 'tag' && r() < pol * (wild ? .5 : .25) ? pickR(r, SLOGANS) : null,
       chr: null,
@@ -128,11 +128,19 @@ var WriterArte = (function () {
     if (FAM[fam].flat && r() < .75) sk.bgk = null;
     return sk;
   }
+  // LA COSTRUZIONE: come un writer disegna le lettere dei pezzi. Non disordine: scelte. Larghezza, peso, inclinazione, contrasto
+  // (verticali e orizzontali diversi), i terminali, la base pesante, i gradini della linea di base, le barre che sporgono, la
+  // spaziatura, lo spessore della linea. Ogni writer ha la sua; due writer non costruiscono mai uguale.
+  function consOf(seed) {
+    const r = mulberry((seed || 1) ^ 0x68e31da4);
+    return { width: .6 + r() * .32, weight: .2 + r() * .12, slant: r() < .45 ? 0 : (r() - .25) * .32, con: r() * .45, bh: r() < .4 ? r() * .35 : 0,
+      term: pickR(r, ['cut', 'cut', 'flare', 'round', 'spike']), step: r() < .25 ? .04 + r() * .06 : 0, bars: r() < .35 ? .25 + r() * .3 : 0, gap: .05 + r() * .12, line: .035 + r() * .025 };
+  }
   // il DNA di un writer a caso (gli NPC: dal loro numero)
   function dnaOf(seed, skill, crewCol) {
     const r = mulberry(seed ^ 0x9e3779b9), pals = [crewCol != null ? (crewCol >= 14 ? crewCol : MOD[(crewCol * 5 + 3) % MOD.length]) : pickR(r, MOD)];
     while (pals.length < 3) { const k = pickR(r, MOD); if (!pals.includes(k)) pals.push(k); }
-    return { fam: pickR(r, MODFAMS), pals, chars: [pickR(r, CHARS), pickR(r, CHARS)], pol: r(), skill: skill != null ? skill : .3 + r() * .6 };
+    return { cons: consOf(seed), fam: pickR(r, MODFAMS), pals, chars: [pickR(r, CHARS), pickR(r, CHARS)], pol: r(), skill: skill != null ? skill : .3 + r() * .6 };
   }
 
   // ---------------- LE LETTERE ----------------
@@ -578,7 +586,7 @@ var WriterArte = (function () {
     return (x, y) => { let dx = 0, dy = 0; for (const c of comps) { const s0 = Math.sin(x * c.fx * 6.283 + y * c.fy * 2.1 + c.ph) * c.w, s1 = Math.cos(y * c.fy * 6.283 - x * c.fx * 1.7 + c.ph * 1.3) * c.w; dx += s0 * c.ax + s1 * .4; dy += s1 * c.ay + s0 * .4; } return [dx * amp, dy * amp]; };
   }
   function handify(cnv, seed, q, opt) {
-    const W = cnv.width, H = cnv.height, x = cnv.getContext('2d'), amp = H * (.008 + (1 - q) * .014) * (opt && opt.amp != null ? opt.amp : 1);
+    const W = cnv.width, H = cnv.height, x = cnv.getContext('2d'), amp = H * (.0035 + (1 - q) * .009) * (opt && opt.amp != null ? opt.amp : 1);
     // 1. il braccio: tutto si piega un poco, insieme (bilineare)
     const src = x.getImageData(0, 0, W, H), dst = x.createImageData(W, H), S = src.data, D = dst.data, f = warpField(seed, W, H, amp);
     for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
@@ -609,6 +617,21 @@ var WriterArte = (function () {
   // i punti dei tratti, uno ogni step pixel, lettera dopo lettera: il percorso della mano
   function densify(strokes, step) { const out = []; strokes.forEach(t => { for (let k = 0; k < t.pts.length; k++) { const a = t.pts[k], b = t.pts[k + 1]; out.push(a); if (!b) continue; const l = hyp(b[0] - a[0], b[1] - a[1]), n = Math.floor(l / step); for (let j = 1; j < n; j++) out.push([a[0] + (b[0] - a[0]) * j / n, a[1] + (b[1] - a[1]) * j / n]); } }); return out; }
   function raster(Wp, Hp, rows) { const out = [], dy = Hp / rows; for (let k = 0; k < rows; k++) { const y = dy * (k + .5), L = k % 2 ? [Wp, 0] : [0, Wp]; for (let j = 0; j <= 16; j++) out.push([L[0] + (L[1] - L[0]) * j / 16, y + (j % 2 ? dy * .3 : -dy * .3)]); } return out; }
+  // LE PROPORZIONI: ogni lettera alla stessa altezza delle maiuscole, sulla stessa linea di base, larga quanto vuole la famiglia
+  // (le I e gli 1 restano strette), una dopo l'altra con la spaziatura della famiglia. Lo svolazzo segue l'ultima lettera.
+  const WIDTH = { block: .72, heavy: .78, piatto: .74, contorno: .72, astratto: .74, semi: .7, wild: .7, spiky: .66, script: .56 }, GAP = { block: -.02, heavy: -.04, piatto: -.03, contorno: .03, astratto: -.02, semi: -.07, wild: -.12, spiky: -.05, script: -.1 };
+  function evenOut(L, fam, cons) {
+    const groups = {}; L.strokes.forEach(t => { (groups[t.i] = groups[t.i] || []).push(t); });
+    const ids = Object.keys(groups).map(Number).sort((a, b) => a - b); if (!ids.length) return L;
+    const bb = {}; ids.forEach(i => { let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; groups[i].forEach(t => { if (t.swash) return; t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }); }); if (x0 > x1) { x0 = x1 = 0; y0 = 0; y1 = 1; } bb[i] = [x0, y0, x1, y1]; });
+    const hs = ids.map(i => bb[i][3] - bb[i][1]).sort((a, b) => a - b), H = hs[hs.length - 1] || 1;   // l'altezza delle maiuscole (la più alta)
+    const tw = (cons ? cons.width : (WIDTH[fam] || .7)) * H, gap = (cons ? cons.gap : .08) * H * (fam === 'wild' ? .2 : fam === 'script' ? .4 : 1), step = cons ? cons.step * H : 0;
+    let cur = 0;
+    ids.forEach((i, k) => { const [x0, , x1] = bb[i], w0 = Math.max(1e-3, x1 - x0), narrow = w0 / H < .3, sx = narrow ? 1 : clamp(tw / w0, .7, 1.6), dy = step * (k % 2 ? -1 : 0);
+      groups[i].forEach(t => { t.pts = t.pts.map(([a, b]) => [cur + (a - x0) * sx, b + dy]); }); cur += w0 * sx + gap; });
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; L.strokes.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
+    L.box = [x0, y0, x1, y1]; return L;
+  }
   // la penna larga: il tratto ripassato tre volte lungo la punta inclinata (i verticali più grossi degli orizzontali)
   function pen(x, strokes, arrowsL, w, col, dx, dy, J, Cp, nib) {
     if (!nib) { pass(x, { strokes, arrows: arrowsL, w0: w }, w, col, dx, dy, J, Cp); return; }
@@ -635,26 +658,31 @@ var WriterArte = (function () {
     const charW = C.chr ? Hp * (train ? .95 : .9) : 0, charLeft = !(r() < .3);
     const sloganH = C.slogan && !throwUp ? Hp * .1 : 0;
     // la mano: un toy trema, non sa il 3D, sbaglia gli spessori; un king è pulito, profondo, pieno di dettagli
-    const LW = Wp - charW, opts = { font: null, h: 100, adv: F.adv, skew: F.skew, bounce: F.bounce * .5, rot: F.rot * .35, wob: q < .35 ? .03 : 0, scale: F.scale * .4, ext: F.ext * .6, links: C.fam === 'wild' && q > .6 ? Math.min(2, F.links) : 0 };
+    const CN0 = w.cons || consOf(w.hand || w.seed || 1), LW = Wp - charW, opts = { font: null, h: 100, adv: F.adv, skew: F.skew * .4 + CN0.slant, bounce: q < .35 ? .04 : 0, rot: q < .35 ? .1 : .02, wob: q < .35 ? .03 : 0, scale: 0, ext: F.ext * .6, links: C.fam === 'wild' && q > .6 ? Math.min(2, F.links) : 0 };
     // lo scheletro: per le famiglie che corrono (semi, wild, corsivo, a spine) è la TAG del writer, ingrassata: il pezzo ha la sua mano
-    const handFam = /^(semi|wild|script|spiky)$/.test(C.fam) || (C.fam === 'block' && r() < .3);
+    const handFam = /^(wild|script)$/.test(C.fam);
     let L0;
     if (handFam && WM) {
-      const hd = Object.assign({}, WM.dna(w.hand || w.seed || 1), { crown: false, halo: false, under: false, dashes: false, stars: false, quotes: false, swash: C.fam === 'script' || (wild && r() < .5), loop: false, wob: 0, mix: C.fam === 'script' ? .7 : C.fam === 'block' ? 0 : .35, adv: C.fam === 'wild' ? .55 : .62, bigFirst: 1.2 + r() * .25, tall: 1 + r() * .2 });
+      const hd = Object.assign({}, WM.dna(w.hand || w.seed || 1), { crown: false, halo: false, under: false, dashes: false, stars: false, quotes: false, swash: C.fam === 'script' || (wild && r() < .5), loop: false, wob: 0, mix: C.fam === 'script' ? .7 : C.fam === 'block' ? 0 : .35, adv: C.fam === 'wild' ? .55 : .62, bigFirst: 1, tall: 1, bounce: 0, arc: 0, wob: 0 });
       const H0 = WM.layout(text, hd, r); L0 = { strokes: H0.strokes.map(t => ({ pts: WM.smooth(t.pts, 3).filter((q, k, a) => k % 2 === 0 || k === a.length - 1).map(([a, b]) => [a * 100, b * 100]), i: t.i, swash: t.swash })), box: H0.box.map(v => v * 100) };
     } else L0 = letters(text, opts, r);
+    const CN = w.cons || consOf(w.hand || w.seed || 1);
+    L0 = evenOut(L0, C.fam, CN);
     const padK = .6 * F.lw / (1 + 1.2 * F.lw) + .04, L = fit(L0, LW, Hp - sloganH, Hp * padK, train ? 1.6 : wild ? 1.3 : 1.1);
     const ox0 = charLeft ? charW : 0; L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a + ox0, b]); }); L.box = [L.box[0] + ox0, L.box[1], L.box[2] + ox0, L.box[3]];
-    const lw = F.lw * 100 * L.s * (train ? 1.12 : 1), ol = Math.max(2.5, lw * (throwUp ? .24 : .2) * (toy ? .7 + r() * .6 : 1)), kl = Math.max(2, lw * .16);
+    const capH = 100 * L.s, lw = (F.flat || F.fat || F.ink ? F.lw * .5 + CN.weight * .5 : CN.weight * .6 + F.lw * .4) * capH * (train ? 1.1 : 1), ol = Math.max(2, capH * CN.line * (toy ? .7 + r() * .6 : 1)), kl = Math.max(2, capH * .03);
     const mod3 = r(), d3 = F.flat || (C.pal >= 14 && mod3 < .4) ? (r() < .4 ? lw * .22 : .01) : throwUp ? Math.max(2, lw * F.d3 * .6) : Math.max(toy ? 1 : 3, lw * F.d3 * (toy ? .3 : .55 + q * .55)), ang3 = F.chrome ? .9 : .78, dx = d3 * Math.cos(ang3), dy = d3 * Math.sin(ang3), steps = Math.max(1, Math.round(d3 / 1.5));
     if (F.swash) swash(L, r);
     if (F.arrows && !throwUp && q > .3) arrows(L, r, Math.max(1, Math.round(F.arrows * q * .6)), lw); else { L.arrows = []; L.w0 = lw; }
     if (F.spikes) spikes(L, r, lw);
+    if (CN.bars) L.strokes.forEach(t => { if (t.swash || t.pts.length < 2) return; const e = t.pts[t.pts.length - 1], p0 = t.pts[t.pts.length - 2], dx = e[0] - p0[0], dy = e[1] - p0[1]; if (Math.abs(dy) > Math.abs(dx) * .3 || dx <= 0) return;
+      const free = !L.strokes.some(o => o !== t && o.i === t.i && o.pts.some(q2 => hyp(q2[0] - e[0], q2[1] - e[1]) < lw * .9)); if (free && r() < CN.bars) e[0] += 100 * L.s * .22; });   // le barre che sporgono
     // IL CORPO DELLE LETTERE: ogni tratto diventa una sagoma (poligono) a spessore variabile; le lettere sono sagome, non tubi
-    const SH = F.sh || { flare: .2, bh: .2, con: .25, cap: 'square', sharp: true }, nibA = -.9 + r() * .5;
+    const SH0 = F.sh || { flare: .2, bh: .2, con: .25, cap: 'square', sharp: true }, SH = Object.assign({}, SH0, { con: (SH0.con + CN.con) / 2, bh: Math.max(SH0.bh * .5, CN.bh), cap: C.fam === 'script' ? SH0.cap : { cut: 'square', flare: 'flare', round: 'round', spike: 'point' }[CN.term] }), nibA = -.9 + r() * .5;
     const [lbx0, lby0, lbx1, lby1] = L.box, lbh = Math.max(1, lby1 - lby0);
     const wfn = (t, p, a) => lw * Math.max(.25, (1 + SH.flare * Math.pow(Math.abs(2 * t - 1), 3)) * (1 + SH.bh * ((p[1] - lby0) / lbh - .5)) * (1 - SH.con + SH.con * Math.abs(Math.sin(a - nibA)) * 1.3));
     const jit = q < .35 ? lw * .04 : 0;
+    const groups = []; L.strokes.forEach(t => { (groups[t.i] = groups[t.i] || []).push(t); });
     const strokePoly = (t) => {
       let pts = t.pts; if (SH.smooth && pts.length > 2 && WM) pts = WM.smooth(pts, 4);
       if (pts.length === 1) { const c0 = pts[0], rr = lw * .55, o = []; for (let k = 0; k < 14; k++) o.push([c0[0] + Math.cos(k / 14 * PI * 2) * rr, c0[1] + Math.sin(k / 14 * PI * 2) * rr]); return o; }
@@ -668,7 +696,8 @@ var WriterArte = (function () {
       }
       const capOf = (end) => {   // l'estremità: tagliata, tonda, a punta, svasata
         const i = end ? n - 1 : 0, d = end ? dirs[n - 2] : [-dirs[0][0], -dirs[0][1]], p = pts[i], w = wfn(end ? 1 : 0, p, 0) / 2, a = end ? Lf[n - 1] : Rt[0], b = end ? Rt[n - 1] : Lf[0];
-        const cap = t.swash || (SH.cap === 'flare' && r() < .5) ? 'point' : SH.cap;
+        const joint = (groups[t.i] || []).some(o => o !== t && o.pts.some(q2 => hyp(q2[0] - p[0], q2[1] - p[1]) < lw * .9));   // il capo tocca un altro tratto della lettera
+        const cap = joint ? (SH.cap === 'square' ? 'square' : 'round') : t.swash || (SH.cap === 'flare' && r() < .5) ? 'point' : SH.cap;
         if (cap === 'point') return [[p[0] + d[0] * w * (1.6 + r()), p[1] + d[1] * w * (1.6 + r())]];
         if (cap === 'round') { const o = [], a0 = Math.atan2(a[1] - p[1], a[0] - p[0]); for (let k = 1; k < 6; k++) { const an = a0 - k / 6 * PI; o.push([p[0] + Math.cos(an) * w, p[1] + Math.sin(an) * w]); } return o; }
         if (cap === 'flare') return [[a[0] + d[0] * w * .5 - d[1] * w * .25, a[1] + d[1] * w * .5 + d[0] * w * .25], [p[0] + d[0] * w * .9, p[1] + d[1] * w * .9], [b[0] + d[0] * w * .3, b[1] + d[1] * w * .3]];
@@ -679,7 +708,7 @@ var WriterArte = (function () {
       let area = 0; for (let k = 0; k < poly.length; k++) { const p0 = poly[k], p1 = poly[(k + 1) % poly.length]; area += p0[0] * p1[1] - p1[0] * p0[1]; } if (area < 0) poly = poly.reverse();
       return poly;
     };
-    const groups = []; L.strokes.forEach(t => { (groups[t.i] = groups[t.i] || []).push(t); }); const order = groups.map((g, i) => i).filter(i => groups[i]).reverse();   // da destra: la lettera a sinistra sta sopra (così si legge)
+    const order = groups.map((g, i) => i).filter(i => groups[i]).reverse();   // da destra: la lettera a sinistra sta sopra (così si legge)
     if (C.fam === 'wild' && q > .75) for (let k = 0; k + 1 < order.length; k++) if (r() < .15) { const t = order[k]; order[k] = order[k + 1]; order[k + 1] = t; k += 2; }   // solo il wildstyle dei king intreccia qualche lettera
     const arrOf = i => (L.arrows || []).filter(a => { const tip = a[1]; let best = -1, bd = 1e9; L.strokes.forEach(t => { const e = t.pts[t.pts.length - 1], d = hyp(e[0] - tip[0], e[1] - tip[1]); if (d < bd) { bd = d; best = t.i; } }); return best === i; });
     const polys = []; order.forEach(i => { polys[i] = groups[i].map(strokePoly).concat(arrOf(i).map(a => { let p = a.slice(); let ar = 0; for (let k = 0; k < 3; k++) { const p0 = p[k], p1 = p[(k + 1) % 3]; ar += p0[0] * p1[1] - p1[0] * p0[1]; } return ar < 0 ? p.reverse() : p; })); });
@@ -722,7 +751,7 @@ var WriterArte = (function () {
     ox.strokeStyle = F.ink ? KL : P.o; extrude(ox, allP, null, 2 * ol);   // il bordo del blocco 3D
     ox.fillStyle = F.ink ? KL : P.d; extrude(ox, allP, null, 0);   // il blocco 3D
     order.forEach(i => {
-      ox.lineJoin = J; ox.miterLimit = 1.6; strokeL(ox, polys[i], OL, 2 * ol * (F.flat ? 1.5 : 1)); ox.lineJoin = 'round';   // il contorno della lettera (sopra il 3D e sopra la lettera prima)
+      ox.lineJoin = J; ox.miterLimit = 1.6; strokeL(ox, polys[i], OL, 2 * ol); ox.lineJoin = 'round';   // il contorno della lettera (sopra il 3D e sopra la lettera prima)
       if (F.hollow) { ox.save(); ox.globalCompositeOperation = 'destination-out'; ox.drawImage(maskOf(i), 0, 0); ox.restore(); if (C.bgk) { ox.save(); ox.globalCompositeOperation = 'destination-over'; ox.restore(); } return; }   // solo contorno: dentro si vede il muro
       const Li = letterImg(i, !F.ink && !F.flat && q > .45 ? shade(P.f[2], -.35) : null, Math.max(1.5, ol * .8)), lc = t1; lc.clearRect(0, 0, Wp, Hp); lc.drawImage(Li, 0, 0);
       lc.globalCompositeOperation = 'source-atop';
