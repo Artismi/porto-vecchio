@@ -662,7 +662,7 @@ var Writing = (function () {
       if (dd > .3) { const sp = Math.min(dd, 2 * dt), nx2 = p.x + dx / dd * sp, ny2 = p.y + dy / dd * sp; const okW = p.lv ? (typeof Livelli !== 'undefined' && Livelli.freeFn(p, .3) ? Livelli.freeFn(p, .3)(nx2, ny2) : true) : G.walkM(nx2, ny2); if (okW) { p.x = nx2; p.y = ny2; p.speedNow = sp / dt; } }
       if (dH > 2.6) return true;
     }
-    const brush = (w.sketch ? .3 : .19) * PPM * (1 + (W.done.pezzo + W.done.burner) * .01);
+    const brush = (w.sketch ? .3 : .19) * (A.ppm || PPM) * (1 + (W.done.pezzo + W.done.burner) * .01);
     const got = traceAt(w, g, lx, ly, brush);
     p.__tip = { x: tp.x, y: tp.y, z: tp.z, t: performance.now() };
     // le bombolette: in proporzione a quello che si copre (e un filo anche solo spruzzando)

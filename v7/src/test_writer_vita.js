@@ -36,10 +36,10 @@ away.forEach(([n, x, y]) => { n.x = x; n.y = y; });
 // un muro col palo: arrivano i Grigi e il pezzo resta a metà
 const [b, c] = ws.filter(n => n !== a && !n.dead).slice(0, 2); [b, c].forEach(n => n.pop.emer && Azioni.endPlan(st, n, 'prova'));
 const E2 = WV.mission(st, b, 'muro', c); ok(E2 && c.pop.emer && /palo/.test(c.pop.emer.label), `${b.pop.writer.aka} dipinge, ${c.pop.writer.aka} fa il palo`);
-runUntil(() => E2.work && E2.work.prog > .2, 600);
+if (E2) runUntil(() => E2.work && E2.work.prog > .2, 600);
 const cop = st.npcs.find(n => n.cop && !n.dead); ok(!!cop, 'c\'è un agente');
 const keep = { x: cop.x, y: cop.y }; cop.x = b.x + 2; cop.y = b.y + 2;
-runUntil(() => !b.pop.emer, 20); const bw = E2.work;
+runUntil(() => !b.pop.emer, 20); const bw = E2 && E2.work;
 ok(!b.pop.emer && bw && !bw.done && bw.prog < 1, `i Grigi! il ${bw && bw.style} resta al ${bw && Math.round(bw.prog * 100)}%`);
 cop.x = keep.x; cop.y = keep.y;
 
@@ -58,9 +58,17 @@ const cov1 = WV.coverage(st); ok(cov1 > cov0, `la città si colora: ${Math.round
 const wn = W.writers.length; W.grow = .6; WR.grow(st); WR.grow(st); ok(W.writers.length > wn, `la scena cresce: ${wn} → ${W.writers.length} writer`);
 
 // gli stili: scelte diverse dal seme, sempre uguali per lo stesso lavoro
-const picks = new Set(); for (let k = 1; k < 60; k++) { const C = WA.choose({ style: 'burner', seed: k, pal: k % 14 }); picks.add(C.fam + '/' + C.bgk + '/' + C.chr); }
-ok(picks.size > 25, `${picks.size} combinazioni diverse di lettere, sfondi e personaggi su 59 burner`);
+const picks = new Set(); for (let k = 1; k < 60; k++) { const C = WA.choose({ style: 'burner', seed: k, pal: k % 14 }); picks.add(C.fam + '/' + C.bgk + '/' + C.fillk + '/' + C.chr); }
+ok(picks.size > 25, `${picks.size} combinazioni diverse di lettere, sfondi, riempimenti e personaggi su 59 burner (i personaggi sono rari: solo i king)`);
 ok(JSON.stringify(WA.choose({ style: 'pezzo', seed: 7, pal: 2 })) === JSON.stringify(WA.choose({ style: 'pezzo', seed: 7, pal: 2 })), 'lo stesso lavoro si ridisegna uguale');
 
+// di giorno si tagga: i writer e i toy che passano, e la città lontana che si riempie da sola
+{ at(11); const W = WR.S(st), v = WV.V(st); v.mopT = 0; v.farT = 0; const n0 = W.works.length, toys = new Set();
+  // il giocatore in mezzo alla città, dove passa la gente
+  const busy = st.npcs.filter(n => !n.dead && !n.inside && n.pop && n.pop.age >= 13 && n.pop.age <= 24)[0]; if (busy) { p.x = busy.x; p.y = busy.y; }
+  for (let k = 0; k < 900 * 30; k++) { G.step(st, DT, { x: 0, y: 0 }); if (k % 300 === 0) st.npcs.forEach(n => { if (n.pop && n.pop.toy) toys.add(n.id); }); }
+  const tags = W.works.slice(n0).filter(w => w.style === 'tag' || w.style === 'mtag');
+  ok(tags.length >= 8, `in un quarto d'ora di gioco vero ${tags.length} tag nuove (${W.works.length - n0} lavori), ${toys.size} toy con la loro tag`);
+  ok(new Set(tags.map(w => w.hand)).size >= 3, `mani diverse: ${new Set(tags.map(w => w.hand)).size}`); }
 console.log(fail ? `\n${fail} prove fallite` : '\ntutto bene');
 process.exit(fail ? 1 : 0);
