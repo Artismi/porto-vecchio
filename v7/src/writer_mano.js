@@ -292,7 +292,7 @@ var WriterMano = (function () {
   // attraversano tutto, le tacche), il BUSTED (le lettere a ricciolo chiuse nel cuore, a spruzzo, che cola). Non si deve
   // leggere per forza: deve colpire.
   const SIGNED = {
-    KEOS: { w: 5.4, sl: .12, base: 42, idea: 'swipe: la frustata sotto e il taglio sopra', deco: [['stella', 1, 6, 4.5, .2], ['asterisco', 93, 42, 3, .3], ['virgolette', 88, 18, 4], ['tacche', 4, 30, 3.5]], strokes: [
+    KEOS: { w: 5.4, sl: .12, base: 42, idea: 'swipe: la frustata sotto e il taglio sopra', deco: [['virgolette', 88, 18, 4]], strokes: [
       [[13, 4], [10.5, 22], [8, 42]],
       [[27, 7], [17, 17], [10, 25, 1], [18, 33], [26, 42]],
       [[27, 37], [35, 30], [33.5, 25], [27.5, 27.5], [25.5, 36], [30, 42], [38, 39]],
@@ -397,7 +397,7 @@ var WriterMano = (function () {
     Q: { g: [[.5, 1], [0, .55], [.38, 0], [.82, .45], [.48, 1], [.2, .86]], dopo: [[[.4, .25], [.95, -.15]]] },
     R: { g: [[0, 0], [.02, 1], [.42, 1.02], [.72, .86], [.68, .6], [.38, .5], [.06, .5], [.46, .36], [.86, 0]] },
     S: { g: [[.74, .88], [.4, 1.02], [.06, .86], [.1, .62], [.62, .4], [.74, .16], [.42, -.01], [0, .1]] },
-    T: { g: [[.42, 1], [.36, 0]], dopo: [[[-.05, .98], [.9, 1.05]]] },
+    T: { g: [[-.05, .98], [.9, 1.04], [.46, 1.01], [.4, 0]] },   // [writer] in un gesto: la barra, il ritorno a metà, giù
     U: { g: [[0, 1], [.1, 0], [.7, .1], [.74, 1], [.8, 0]] },
     V: { g: [[0, 1], [.4, 0], [.82, 1]] },
     W: { g: [[0, 1], [.2, 0], [.46, .7], [.7, 0], [.92, 1]] },
@@ -416,15 +416,26 @@ var WriterMano = (function () {
     '9': { g: [[.75, .7], [.4, .5], [.05, .75], [.4, 1], [.75, .75], [.6, 0]] },
     '!': { g: [[.1, 1], [.03, .3]], dopo: [[[0, 0]]], stretto: true },
   };
+  // [writer] le lettere tonde: fra i punti del disegno se ne mettono altri sulla curva (Catmull-Rom), così ogni giro è piccolo
+  // e resta morbido; gli angoli veri (la E, la L, la Z) restano spigoli
+  ['O', 'Q', '0', 'C', 'G', 'S', 'U', 'J', 'D', 'B', 'P', 'R', '3', '6', '8', '9'].forEach(ch => { const G = GEST[ch]; if (!G) return; const P = G.g, out = [P[0]];
+    for (let i = 0; i < P.length - 1; i++) { const a = P[Math.max(0, i - 1)], b = P[i], c = P[i + 1], d = P[Math.min(P.length - 1, i + 2)], L = hyp(c[0] - b[0], c[1] - b[1]);
+      if (L > .25) out.push([.5625 * (b[0] + c[0]) - .0625 * (a[0] + d[0]), .5625 * (b[1] + c[1]) - .0625 * (a[1] + d[1])]); out.push(c); }
+    G.g = out; });
   // un colpo lognormale: la frazione di strada fatta al tempo t (la cumulata) e la sua derivata (la campana della velocità)
   const erf = z => { const t = 1 / (1 + .3275911 * Math.abs(z)), y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - .284496736) * t + .254829592) * t * Math.exp(-z * z); return z >= 0 ? y : -y; };
   // la traiettoria: dai punti obiettivo ai campioni [x, y, velocità]; ogni tratto è un arco (curvatura d), i colpi si
   // accavallano di «ov» (0 = uno dopo l'altro, a scatti; .7 = tutto un gesto); la punta si alza a «lift» dell'ultimo colpo
+  // [writer] la curva segue il verso in cui la mano gira: in una O gira sempre dalla stessa parte (tonda), agli spigoli veri (la K, la Z) no
+  function turnAt(P, i) {
+    const ang = k => { if (k <= 0 || k >= P.length - 1) return 0; const a = P[k - 1], b = P[k], c = P[k + 1]; let e = Math.atan2(c[1] - b[1], c[0] - b[0]) - Math.atan2(b[1] - a[1], b[0] - a[0]); while (e > PI) e -= 2 * PI; while (e < -PI) e += 2 * PI; return Math.abs(e) > 1.3 ? 0 : e; };   // lo spigolo vivo resta spigolo (anche l'angolo retto della E, della L)
+    return (ang(i) + ang(i + 1)) / 2;
+  }
   function lognormal(P, o) {
     const n = P.length - 1; if (n < 1) return P.map(p => [p[0], p[1], 0]);
     const ks = []; let t0 = 0;
     for (let i = 0; i < n; i++) {
-      const a = P[i], b = P[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], L = hyp(dx, dy) || 1e-3, al = Math.atan2(dy, dx), d = o.curv ? o.curv(i) : 0;
+      const a = P[i], b = P[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], L = hyp(dx, dy) || 1e-3, al = Math.atan2(dy, dx), d = (o.curv ? o.curv(i) : 0) * (o.turn ? .35 : 1) + (o.turn ? o.turn * turnAt(P, i) : 0);
       const D = Math.abs(d) > 1e-3 ? L * d / (2 * Math.sin(d / 2)) : L, T = .1 + .22 * Math.sqrt(L), sg = o.sigma || .3, mu = Math.log(T * .55);
       ks.push({ t0, D, ts: al - d / 2, te: al + d / 2, mu, sg, T });
       t0 += T * (1 - (o.ov != null ? o.ov : .4));
@@ -444,13 +455,13 @@ var WriterMano = (function () {
   // la mano della tag che si muove: dal seme, sempre la stessa per lo stesso writer
   function flowHand(d) {
     const r = mulberry((d.seed || 1) ^ 0x1f0a7);
-    const toy = d.skill != null && d.skill < .35;
+    const toy = d.skill != null && d.skill < .35, sk = d.skill != null ? d.skill : .5;   // [writer] la bravura: più è alta, più la mano è sicura (dritte dritte, aste parallele, stessa altezza)
     return {
-      ov: toy ? .1 + r() * .12 : .22 + r() * .26, curv: toy ? .3 + r() * .4 : .08 + r() * .34, curvSign: r() < .5 ? 1 : -1, sigma: .24 + r() * .14,
-      slant: toy ? r() * .2 : .2 + r() * .35, wide: toy ? .7 + r() * .3 : .95 + r() * .45, gap: -.12 + r() * .22, rise: (r() - .3) * .25, bigFirst: r() < .6 ? 1.2 + r() * .5 : 1,
-      conn: pickR(r, ['dritto', 'dritto', 'forcina', 'occhiello']), lift: .6 + r() * .9, under: r() < .45, underK: pickR(r, ['frusta', 'rampa', 'onda']),
-      deco: Array.from({ length: toy ? Math.floor(r() * 2) : Math.floor(r() * 4) }, () => pickR(r, ['stella', 'asterisco', 'corona', 'freccia', 'bang', 'uguale', 'virgolette', 'tacche', 'diamante', 'scintilla', 'x', 'aureola'])),
-      W: (toy ? .1 : .14) + r() * .07, wob: toy ? .05 : .012, flat: !toy && r() < .5, tacche: !toy && r() < .45 ? 2 + Math.floor(r() * 3) : 0, lati: r() < .6, mean: .5, snap: 0, grazie: 0, r,   /* angoli e linea mediana della mano: provati, irrigidiscono; spenti */
+      ov: toy ? .1 + r() * .12 : .22 + r() * .26, curv: toy ? .3 + r() * .4 : .08 + r() * .34, curvSign: r() < .5 ? 1 : -1, sigma: (.24 + r() * .14) * (1.12 - .3 * sk), sk,
+      round: toy ? .25 + r() * .2 : .42 + r() * .25, slant: toy ? r() * .2 : .2 + r() * .35, wide: toy ? .7 + r() * .3 : .95 + r() * .45, gap: -.13 + r() * .15, rise: (r() - .4) * .08, bigFirst: r() < .6 ? 1.2 + r() * .5 : 1,
+      conn: pickR(r, ['dritto', 'occhiello', 'forcina', 'occhiello']), lift: 1.9 + r() * .7, under: r() < (toy ? .4 : .22), underK: pickR(r, ['frusta', 'rampa', 'onda']),
+      deco: toy ? (r() < .6 ? [pickR(r, ['stella', 'corona', 'freccia', 'diamante', 'x', 'aureola'])] : []) : r() < .35 ? [pickR(r, ['virgolette', 'tacche', 'uguale', 'bang', 'virgolette', 'tacche', d.skill > .8 ? 'corona' : 'uguale'])] : [],   /* [writer] i segni: chi sa fare ne mette uno, misurato; le stelle e i diamanti sono roba da toy */
+      W: (toy ? .12 : .19) + r() * (toy ? .06 : .07),   /* [writer] il peso: la tag di chi sa è grassa e piena */ wob: toy ? .05 : .012 * (1.3 - sk), flat: !toy && r() < .5, tacche: !toy && r() < .45 ? 2 + Math.floor(r() * 3) : 0, lati: r() < .6, mean: .5, snap: 0, grazie: 0, arch: toy ? 'libera' : pickR(r, ['stretta', 'stretta', 'stretta', 'rimbalzo', 'bassa', 'corsiva', 'corsiva']), attacco: !toy && r() < .55, coda: toy ? 0 : pickR(r, [0, 1, 1, 2, 2]), balls: !toy && r() < .55, acc: toy ? [] : [...new Set(['ovale', 'ovale', 'punto', 'virgolette', 'trattini'].filter(() => r() < .3))], r,   /* [writer] le palline in fondo ai tratti e gli accenti: l'ovale sopra, l'anello sotto, il punto, le virgolette, i trattini */   /* angoli e linea mediana della mano: provati, irrigidiscono; spenti */
     };
   }
   // la parola: i gesti delle lettere in fila, legati dai connettori, in una traiettoria sola (o poche, se la mano si stacca);
@@ -461,15 +472,21 @@ var WriterMano = (function () {
     const Ls = [...s].map((ch, i) => GEST[ch] ? { ch, i, G: GEST[ch] } : null).filter(Boolean);
     if (!Ls.length) return { tr: [], h, box: [0, 0, 1, 1] };
     // 1. l'equilibrio: le lettere larghe si stringono, le strette si allargano (il peso si spartisce lungo la parola); la prima grande
-    Ls.forEach((l, k) => { let a = 1e9, b = -1e9; l.G.g.forEach(([u]) => { a = Math.min(a, u); b = Math.max(b, u); }); l.gx0 = a; l.gw = Math.max(.1, b - a); l.sz = k === 0 ? h.bigFirst : 1 + .1 * Math.sin(k * 2.3 + (d.seed || 1) % 5); });
+    Ls.forEach((l, k) => { let a = 1e9, b = -1e9; l.G.g.forEach(([u]) => { a = Math.min(a, u); b = Math.max(b, u); }); l.gx0 = a; l.gw = Math.max(.1, b - a); l.sz = k === 0 ? h.bigFirst : 1 + .1 * (1.15 - h.sk) * Math.sin(k * 2.3 + (d.seed || 1) % 5); });
     const wide = Ls.filter(l => !l.G.stretto), mw = wide.reduce((t, l) => t + l.gw, 0) / Math.max(1, wide.length);
     Ls.forEach(l => { l.kx = l.G.stretto ? 1 : clamp(Math.sqrt(mw / l.gw), .78, 1.25); });
+    // [writer] l'impronta della mano: stretta e alta, a rimbalzo sulla riga, bassa e larga, corsiva e tirata (sempre la stessa per quel writer)
+    Ls.forEach((l, k) => { l.dy = 0; const last = k === Ls.length - 1;
+      if (h.arch === 'stretta') { l.kx *= .68; l.sz *= k && !last ? 1.08 : 1.22; }
+      else if (h.arch === 'rimbalzo') { l.dy = k % 2 ? .2 : -.06; l.sz *= k % 2 ? .82 : 1.05; }
+      else if (h.arch === 'bassa') { l.kx *= 1.35; l.sz *= k ? .78 : 1; }
+      else if (h.arch === 'corsiva') { l.kx *= .85; l.sz *= k && !last ? .9 : 1.15; } });
     // [writer] la linea mediana della mano (dove si attaccano traverse e pance) e gli angoli della mano: ogni tratto obliquo si
     // piega verso una delle sue due diagonali, ogni asta verso la sua verticale; così tutta la tag ripete gli stessi angoli
     const meanV = v => v <= 0 || v >= 1 ? v : v < .5 ? v / .5 * h.mean : h.mean + (v - .5) / .5 * (1 - h.mean);
     const snapG = P => { if (!h.snap || P.length < 2) return P; const out = [P[0].slice()]; for (let k = 1; k < P.length; k++) { const a = P[k - 1], b = P[k], dx = b[0] - a[0], dy = b[1] - a[1], L2 = hyp(dx, dy), pa = out[k - 1]; if (L2 < .6) { out.push([pa[0] + dx, pa[1] + dy]); continue; }   /* solo le aste e le diagonali lunghe: le pance restano tonde */ const an = Math.atan2(dy, dx), C = [0, PI, PI / 2, -PI / 2, h.diagA, h.diagA - PI, -h.diagA, PI - h.diagA]; let bd = 9, de = 0; C.forEach(c => { const e = ((c - an + PI * 3) % (PI * 2)) - PI; if (Math.abs(e) < Math.abs(bd)) bd = e; }); de = Math.abs(bd) < .5 ? bd * h.snap : 0; const a2 = an + de, nb = [pa[0] + Math.cos(a2) * L2, pa[1] + Math.sin(a2) * L2]; out.push([nb[0] * .7 + (pa[0] + dx) * .3, nb[1] * .7 + (pa[1] + dy) * .3]); } return out; };
     Ls.forEach(l => { l.g2 = snapG(l.G.g.map(([u, v]) => [u, meanV(v)])); });
-    const loc = (l, rev) => (rev ? l.g2.slice().reverse() : l.g2).map(([u, v]) => [(u - l.gx0) * l.kx * h.wide * l.sz, v * l.sz]);
+    const loc = (l, rev) => (rev ? l.g2.slice().reverse() : l.g2).map(([u, v]) => [(u - l.gx0) * l.kx * h.wide * l.sz, v * l.sz + (l.dy || 0)]);
     // 2. il verso del gesto: ogni lettera si può fare nei due sensi; sulla parola si sceglie la combinazione dove la mano
     // viaggia meno fra l'uscita di una e l'entrata dell'altra (e preferisce il suo verso abituale)
     const wOf = l => l.gw * l.kx * h.wide * l.sz;
@@ -484,9 +501,10 @@ var WriterMano = (function () {
     const prof = pts => { const Lp = Array(BANDS).fill(1e9), Rp = Array(BANDS).fill(-1e9); for (let k = 0; k < pts.length - 1; k++) { const a = pts[k], b = pts[k + 1], n = Math.max(2, Math.ceil(hyp(b[0] - a[0], b[1] - a[1]) / .05)); for (let j = 0; j <= n; j++) { const X = a[0] + (b[0] - a[0]) * j / n, Y = a[1] + (b[1] - a[1]) * j / n, q = band(Y); Lp[q] = Math.min(Lp[q], X); Rp[q] = Math.max(Rp[q], X); } } return { Lp, Rp }; };
     let x = 0, prevR = null, prevW = 0;
     Ls.forEach((l, k) => {
-      l.pts = loc(l, l.rev); const P = prof(l.pts.concat([])), dopoL = (l.G.dopo || []).map(t => t.map(([u, v]) => [(u - l.gx0) * l.kx * h.wide * l.sz, meanV(v) * l.sz]));
+      l.pts = loc(l, l.rev); const P = prof(l.pts.concat([])), dopoL = (l.G.dopo || []).map(t => t.map(([u, v]) => [(u - l.gx0) * l.kx * h.wide * l.sz, meanV(v) * l.sz + (l.dy || 0)]));
       dopoL.forEach(t => { const q = prof(t); for (let b = 0; b < BANDS; b++) { P.Lp[b] = Math.min(P.Lp[b], q.Lp[b]); P.Rp[b] = Math.max(P.Rp[b], q.Rp[b]); } });
-      if (prevR) { let need = -1e9; for (let b = 0; b < BANDS; b++) if (prevR[b] > -1e8 && P.Lp[b] < 1e8) need = Math.max(need, prevR[b] - P.Lp[b]); const gap = Math.max(.05, h.gap + .14); x = need > -1e8 ? Math.max(need + gap, x + prevW * .75) : x + prevW + gap; }
+      if (prevR) { let need = -1e9; for (let b = 0; b < BANDS; b++) if (prevR[b] > -1e8 && P.Lp[b] < 1e8) need = Math.max(need, prevR[b] - P.Lp[b]); const gap = Math.max(h.W * 1.5, h.gap + .14); x = need > -1e8 ? Math.max(need + gap, x + prevW * .9) : x + prevW + gap; }   // [writer] con la linea grassa lo spazio cresce: le lettere si toccano, non si mangiano
+      if (h.sk > .55 && !l.rev && /[KRAXLZQ]/.test(l.ch) && k === Ls.length - 1 && l.pts.length > 1) { const e = l.pts[l.pts.length - 1], p0 = l.pts[l.pts.length - 2]; if (e[1] < p0[1] && e[0] > p0[0]) { e[0] += (e[0] - p0[0]) * .7; e[1] += (e[1] - p0[1]) * .35; } }   // [writer] il tiro: la gamba che scappa lunga, sicura, sotto la lettera dopo
       l.x = x; l.abs = l.pts.map(([u, v]) => [u + x, v]); l.dopo = dopoL.map(t => t.map(([u, v]) => [u + x, v]));
       prevR = P.Rp.map(v => v > -1e8 ? v + x : v); prevW = wOf(l);
     });
@@ -499,25 +517,39 @@ var WriterMano = (function () {
         const A = cur, a = A[A.length - 1], b = l.abs[0], dx = b[0] - a[0], dy = b[1] - a[1], D = hyp(dx, dy), pl = Ls[k - 1], fr = (a[0] - pl.x) / Math.max(.1, wOf(pl));
         // si lega solo se il legame è corto e va avanti: se la mano esce indietro (la D, la B, la P finiscono in alto a sinistra)
         // o deve scavalcare la lettera sopra o sotto, la penna si alza, come fa un writer
-        if (D > 1 || dx < -.05 || Math.abs(dy) > .65 || fr < .45) { runs.push(cur); cur = []; }
+        const back = dx < -.05, q2 = l.abs[Math.min(2, l.abs.length - 1)], leftStart = q2[0] - l.abs[0][0] < -.2; if (D > (h.arch === 'corsiva' ? 1.7 : 1.3) || Math.abs(dy) > .95 || back && D > .75 || fr < .3 || leftStart) { runs.push(cur); cur = []; }   // [writer] se la lettera comincia andando indietro (la E, la C, la O) la penna si stacca: legarla vorrebbe dire ripassarci sopra   // [writer] la penna resta giù più che può: si stacca solo se il salto è lungo
         else {
           a[0] += dx * .22; a[1] += dy * .22; b[0] -= dx * .12; b[1] -= dy * .12;
           const a0 = A[A.length - 2] || a, b1 = l.abs[1] || b, ta = [a[0] - a0[0], a[1] - a0[1]], tb = [b1[0] - b[0], b1[1] - b[1]], la = hyp(...ta) || 1, lb = hyp(...tb) || 1, D2 = hyp(b[0] - a[0], b[1] - a[1]);
-          if (D2 > .2) cur.push([(a[0] + ta[0] / la * D2 * tw + b[0] - tb[0] / lb * D2 * tw) / 2, (a[1] + ta[1] / la * D2 * tw + b[1] - tb[1] / lb * D2 * tw) / 2]);
+          // [writer] IL LEGAME HA IL SUO DISEGNO, uguale per tutta la tag (è la firma della mano): il circoletto sulla base,
+          // la forcina sotto la riga, il dritto teso; quando torna indietro, un arco largo che passa sotto, senza incrociarsi
+          const base = Math.min(a[1], b[1]), arc = (cx, cy, rx, ry, t0, t1, n) => { for (let q = 1; q < n; q++) { const t = t0 + (t1 - t0) * q / n; cur.push([cx + Math.cos(t) * rx, cy + Math.sin(t) * ry]); } };
+          if (back && b[0] - a[0] < -.3) { const cx = (a[0] + b[0]) / 2, rx = Math.abs(a[0] - b[0]) / 2 + .14, cy = base - .02, ry = .24; arc(cx, cy, rx, ry, Math.atan2((a[1] - cy) / ry, (a[0] - cx) / rx), -PI / 2, 5); arc(cx, cy, rx, ry, -PI / 2, -PI - .35, 4); }   // l'arco sotto: scende, passa, risale da sinistra
+          else if (h.conn === 'occhiello' && D2 > .15 && a[1] < .32 && b[1] < .32) { const mx = (a[0] + b[0]) / 2, H2 = .36 + Math.min(.14, D2 * .1);   // l'asola: sale stretta inclinata, gira in cima, ridiscende e si incrocia alla base (come la l corsiva)
+            [[-.05, .04], [.05, H2 * .55], [.04, H2], [-.03, H2 * .86], [-.03, H2 * .35], [.07, .03]].forEach(([u, v]) => cur.push([mx + u, base + v])); }
+          else if (h.conn === 'forcina' && D2 > .15 && a[1] < .45 && b[1] < .45) { const yb = base - .12 - D2 * .06; cur.push([a[0] + (b[0] - a[0]) * .2, yb + .03], [a[0] + (b[0] - a[0]) * .5, yb], [a[0] + (b[0] - a[0]) * .8, yb + .03]); }   // la forcina: la U morbida sotto
+          else if (D2 > .2) cur.push([(a[0] + ta[0] / la * D2 * tw + b[0] - tb[0] / lb * D2 * tw) / 2, (a[1] + ta[1] / la * D2 * tw + b[1] - tb[1] / lb * D2 * tw) / 2]);   // il dritto teso
         }
       }
       cur.push(...l.abs); l.dopo.forEach(t => dopo.push(t));
     });
     if (cur.length) runs.push(cur);
+    // [writer] l'attacco: la mano entra da sotto a sinistra prima della prima lettera; la coda: l'ultima scappa avanti o torna sotto la parola
+    if (runs.length && h.attacco) { const f = runs[0][0]; runs[0].unshift([f[0] - .28, f[1] - .16], [f[0] - .1, f[1] - .04]); }
+    if (runs.length) { const R = runs[runs.length - 1], e = R[R.length - 1], e0 = R[R.length - 3] || R[0], ux = e[0] - e0[0], uy = e[1] - e0[1], ul = hyp(ux, uy) || 1;
+      let X0 = 1e9; runs.forEach(t => t.forEach(([a]) => { X0 = Math.min(X0, a); }));
+      if (h.coda === 1 && ux > 0 || h.coda === 2 && e[1] >= .38 && ux > 0) R.push([e[0] + ux / ul * .35 + .25, e[1] + uy / ul * .2 - .02], [e[0] + .85, e[1] + (uy > 0 ? .25 : -.12)]);   // la frusta avanti
+      else if (h.coda === 2 && e[1] < .38 && ux > 0 && Ls.length > 2) { R.push([e[0] + .2, e[1] - .1], [e[0] + .18, -.3], [e[0] - .2, -.38], [(X0 + e[0]) / 2, -.34], [X0 - .1, -.26]); h.under = false; }   // il ritorno: la coda passa sotto la parola e la sottolinea (un gesto solo)
+    }
     // l'inclinazione e la salita, uguali per tutto (dopo, così l'incastro resta)
     const SH = ([X, Y]) => [X + Y * h.slant + (h.r() - .5) * h.wob, Y + h.rise * X + (h.r() - .5) * h.wob];
     runs.forEach((t, k) => { runs[k] = t.map(SH); }); dopo.forEach((t, k) => { dopo[k] = t.map(SH); });
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; runs.concat(dopo).forEach(t => t.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
     // la sottolineatura come gesto: la frusta che parte da sotto e scappa avanti, la rampa che sale, l'onda
     if (h.under && runs.length) { const W2 = x1 - x0, yb = y0 - .18; dopo.push(h.underK === 'rampa' ? [[x0 - .2, yb - .1], [x0 + W2 * .5, yb + .05], [x1 + .3, yb + .35]] : h.underK === 'onda' ? [[x0 - .1, yb], [x0 + W2 * .3, yb - .08], [x0 + W2 * .6, yb + .05], [x1 + .2, yb - .02]] : [[x0 + W2 * .1, yb + .05], [x0 + W2 * .6, yb - .05], [x1 + .45, yb + .12]]); }
-    const curv = i => h.curvSign * h.curv * (i % 2 ? -1 : 1) * (.6 + .4 * Math.sin(i * 1.7));
-    const tr = runs.map(P => ({ pts: lognormal(P, { ov: h.ov, curv, sigma: h.sigma, lift: h.lift }), main: true }))
-      .concat(dopo.map(P => ({ pts: P.length < 2 ? [[P[0][0], P[0][1], 0]] : lognormal(P, { ov: .3, curv: () => h.curvSign * .25, sigma: .28, lift: 1.2 }), dopo: true })));
+    const curv = i => h.curvSign * h.curv * (1.25 - h.sk) * (i % 2 ? -1 : 1) * (.6 + .4 * Math.sin(i * 1.7));   // le gobbe a caso: il toy sì, il king no
+    const tr = runs.map(P => ({ pts: lognormal(P, { ov: h.ov, curv, sigma: h.sigma, lift: h.lift, turn: h.round }), main: true }))
+      .concat(dopo.map(P => ({ pts: P.length < 2 ? [[P[0][0], P[0][1], 0]] : lognormal(P, { ov: .3, curv: () => h.curvSign * .12, sigma: .28, lift: 2.2 }), dopo: true })));
     return { tr, h, box: [x0, y0, x1, y1] };
   }
   // disegna la tag-movimento in Wp × Hp: spessore dalla velocità, la goccia dove si appoggia, la frusta dove si alza;
@@ -561,11 +593,19 @@ var WriterMano = (function () {
     // [writer] le tacche: tagli corti di traverso che attraversano le aste (come le spine, ma a lama)
     const mainPts = []; L.tr.forEach(t => { if (t.main) t.pts.forEach((q, k) => { if (k > 3 && k < t.pts.length - 4) mainPts.push([q, t.pts[k - 3], t.pts[k + 3]]); }); });
     for (let k = 0; k < h.tacche && mainPts.length; k++) { const [q, a, b] = mainPts[Math.floor(h.r() * mainPts.length)], ang = Math.atan2(b[1] - a[1], b[0] - a[0]) + 1.25 + (h.r() - .5) * .4, l = .13 + h.r() * .08; dec.push([[q[0] - Math.cos(ang) * l, q[1] - Math.sin(ang) * l], [q[0] + Math.cos(ang) * l, q[1] + Math.sin(ang) * l]]); }
+    if (h.acc && h.acc.length) { const Wd = x1 - x0, mx = (x0 + x1) / 2, ell = (cx, cy, rx, ry, a0, a1, tl) => { const o = []; for (let k = 0; k <= 22; k++) { const a = a0 + (a1 - a0) * k / 22, X = Math.cos(a) * rx, Y = Math.sin(a) * ry; o.push([cx + X * Math.cos(tl) - Y * Math.sin(tl), cy + X * Math.sin(tl) + Y * Math.cos(tl)]); } return o; };
+      h.acc.forEach(k => {
+        if (k === 'ovale') dec.push(ell(mx + Wd * (h.r() - .5) * .2, y1 + .2 + h.r() * .08, Wd * (.22 + h.r() * .1), .11 + h.r() * .05, .6, PI * 2 + .1, .05 - h.r() * .1));   // l'ovale lungo sopra, quasi chiuso
+        else if (k === 'anello') dec.push(ell(mx + Wd * .05, y0 - .14, Wd * (.42 + h.r() * .1), .08 + h.r() * .03, PI * .9, PI * 2.85, -.03));   // l'anello schiacciato sotto: entra da sinistra, gira, esce
+        else if (k === 'punto') dec.push([[x1 + .14, y0 + .06], [x1 + .155, y0 + .05]]);
+        else if (k === 'virgolette') [[x0 - .2, y1 - .02], [x0 - .09, y1 + .02], [x1 + .07, y1 + .02], [x1 + .18, y1 - .02]].forEach(([a, b]) => dec.push([[a + .05, b + .02], [a, b - .17]]));
+        else if (k === 'trattini') { const yy = y0 - .2; dec.push([[mx - Wd * .25, yy], [mx - Wd * .05, yy + .01]], [[mx + Wd * .02, yy], [mx + Wd * .2, yy + .01]]); }
+      }); }
     dec.forEach(t => t.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
     const pad = h.W * 1.2; let sc = Math.min(Wp * .94 / (x1 - x0 + 2 * pad), Hp * .9 / (y1 - y0 + 2 * pad)), ox = Wp / 2 - (x0 + x1) / 2 * sc, oy = Hp / 2 + (y0 + y1) / 2 * sc;
     if (L.frame) { sc = Wp / L.frame.w; ox = 0; oy = 0; }   // [writer] la tavoletta: il disegno resta dove l'hai fatto, alla sua scala
     const P = ([a, b, v, pr]) => [ox + a * sc, oy - b * sc, v || 0, pr], W = h.W * sc, nibA = d.nibA != null ? d.nibA : -.75, path = [];
-    const strokes = L.tr.map(t => ({ pts: t.pts.map(P), main: t.main })).concat(dec.map(t => ({ pts: smoothC(t.map(P), 5).map(q => [q[0], q[1], 1]), deco: true })));
+    const strokes = L.tr.map(t => ({ pts: t.pts.map(P), main: t.main })).concat(dec.map(t => ({ pts: t.length > 8 ? t.map(P).map(q => [q[0], q[1], 1]) : smoothC(t.map(P), 5).map(q => [q[0], q[1], 1]), deco: true, big: t.length > 8 })));   // gli ovali hanno la linea delle lettere
     // lo spessore: la velocità (normalizzata sul tratto), la goccia d'appoggio, la frusta in fondo, la punta del marker
     strokes.forEach(st => {
       const p = st.pts, n = p.length; if (n < 2) { st.w = [W * (st.deco ? .5 : 1.05)]; return; }
@@ -574,21 +614,25 @@ var WriterMano = (function () {
       st.w = p.map((q, i) => {
         const a = p[Math.max(0, i - 1)], b = p[Math.min(n - 1, i + 1)], dir = Math.atan2(b[1] - a[1], b[0] - a[0]), sp = st.deco ? .5 : q[2] / vm;
         if (h.rec) { let w = W * (.55 + .9 * (q[3] != null ? q[3] : .5)) * (1.08 - .2 * Math.pow(sp, .8)) * (.6 + .4 * (1 - sstep(Lt - W * 1.2, Lt, sl[i]))); if (mark && h.flat) w *= .45 + .55 * Math.abs(Math.sin(dir - nibA)); return Math.max(.8, w); }   // [writer] la firma registrata: la mano vera ha ragione; la pressione della tavoletta, la velocità appena, la chiusa corta e tonda (niente ago)
-        let w = W * (st.deco ? .42 : st.main ? 1 : .8) * (mark ? 1.12 - .4 * Math.pow(sp, .8) : 1.25 - .65 * Math.pow(sp, .8)) * (1 + .25 * (1 - sstep(0, W * 1.5, sl[i]))) * (.1 + .9 * (1 - sstep(1 - Math.min(.35, W * 3 / Lt), 1, sl[i] / Lt)));
+        let w = W * (st.deco ? (st.big ? .85 : .5) : st.main ? 1 : .8) * (mark ? 1.12 - .4 * Math.pow(sp, .8) : 1.03 - .12 * Math.pow(sp, .8)) * (1 + .04 * (1 - sstep(0, W * 1.5, sl[i]))) * (.1 + .9 * (1 - sstep(1 - Math.min(.35, W * 3 / Lt), 1, sl[i] / Lt)));
         if (mark) w *= h.flat ? .3 + .7 * Math.abs(Math.sin(dir - nibA)) : .86 + .14 * Math.abs(Math.sin(dir - nibA));   // la punta piatta a scalpello (grosso e sottile) o il marker tondo
-        return Math.max(.8, w * (1 + .06 * Math.sin(i * .3 + n) + .03 * (r() - .5)));
+        return Math.max(.8, w * (1 + .015 * Math.sin(i * .3 + n)));   // [writer] la mano sicura: lo spessore non balla
       });
     });
     const draw = k => strokes.forEach(st => { if (st.pts.length < 2) { x.beginPath(); x.arc(st.pts[0][0], st.pts[0][1], st.w[0] * k / 2, 0, 7); x.fill(); return; } ribbon(x, st.pts.map(q => [q[0], q[1], 0]), st.w.map(w => w * k), !(mark && h.flat)); });   // a scalpello le punte tagliate, non tonde
     x.save(); x.fillStyle = col;
-    if (!mark) { x.save(); x.filter = `blur(${(W * .35).toFixed(1)}px)`; x.globalAlpha = .16; draw(1.4); x.restore(); x.save(); x.filter = `blur(${Math.max(.5, W * .03).toFixed(1)}px)`; draw(1); x.restore(); }
+    if (!mark) { x.save(); x.filter = `blur(${(W * .35).toFixed(1)}px)`; x.globalAlpha = .04; draw(1.12); x.restore(); x.save(); x.filter = `blur(${Math.max(.5, W * .03).toFixed(1)}px)`; draw(1); x.restore(); }
     else { x.save(); x.filter = `blur(${Math.max(.5, W * .05).toFixed(1)}px)`; draw(1); x.restore(); }   // l'inchiostro beve un filo nel muro
+    let bT = 1e9, bB = -1e9; strokes.forEach(st => { if (st.main) st.pts.forEach(q => { bT = Math.min(bT, q[1]); bB = Math.max(bB, q[1]); }); });
+    if (h.balls && !(mark && h.flat)) strokes.forEach(st => { const p = st.pts; if (p.length < 2) return; let Lq = 0; for (let i = 1; i < p.length; i++) Lq += hyp(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); if (st.deco && Lq < W * 5 && Lq > W * .5) return; (st.main || st.deco ? [[0, 1], [p.length - 1, p.length - 2]] : [[p.length - 1, p.length - 2]]).forEach(([i, j]) => { const q = p[i], o = p[Math.max(0, Math.min(p.length - 1, j))], vv = (q[1] - bT) / Math.max(1, bB - bT); if (!st.deco && vv > .28 && vv < .72) return;   // [writer] la goccia solo dove il tratto finisce in alto o in basso, mai a metà (la barra della E)
+      const dx = q[0] - o[0], dy = q[1] - o[1], a = Math.atan2(dy, dx), R0 = W * (st.deco ? .5 : st.main ? (vv > .8 ? .5 : .66) : .55) * (.9 + r() * .25);   // sulla riga di base la goccia è piccola: non deve sembrare un punto   // [writer] la goccia: la vernice si raccoglie dove la mano si ferma, allungata nel verso del tratto e tirata un filo in giù
+      x.save(); x.translate(q[0], q[1]); x.rotate(a); x.beginPath(); x.ellipse(R0 * .3, 0, R0 * 1.15, R0 * .82, 0, 0, 7); x.fill(); x.restore();  }); });   // [writer] le palline: ogni tratto comincia e finisce tondo, tutte uguali
     strokes.forEach(st => st.pts.forEach(q => path.push(q)));
     // le colature: dai punti lenti e bassi dei tratti principali
     const bots = []; strokes.forEach(st => { if (!st.main) return; st.pts.forEach((q, k) => { if (k < 3 || k > st.pts.length - 4) return; if (st.pts[k - 3][1] < q[1] && st.pts[k + 3][1] <= q[1]) bots.push([q, st.w[k]]); }); });
-    const nd = Math.min(bots.length, mark ? (r() < .6 ? 1 + Math.floor(r() * 2) : 0) : 1 + Math.floor(r() * 4));
+    const nd = Math.min(bots.length, r() < (mark ? .45 : .35) ? 1 : 0);   // [writer] lo spray cola poco: una, due, spesso niente
     for (let k = 0; k < nd; k++) { const [q, w0] = bots.splice(Math.floor(r() * bots.length), 1)[0], l = Hp * (.04 + r() * r() * .32), w = Math.max(1, w0 * (.25 + r() * .15)); x.beginPath(); x.moveTo(q[0] - w / 2, q[1]); x.lineTo(q[0] + w / 2, q[1]); x.lineTo(q[0] + w * .35, q[1] + l); x.arc(q[0], q[1] + l, w * .55, 0, PI); x.lineTo(q[0] - w * .35, q[1] + l); x.closePath(); x.fill(); }
-    if (!mark) { x.globalAlpha = .25; for (let k = 0; k < path.length * .2; k++) { const q = path[Math.floor(r() * path.length)], a = r() * PI * 2, rr = W * (.8 + r() * 1.2); x.fillRect(q[0] + Math.cos(a) * rr, q[1] + Math.sin(a) * rr, 1.5, 1.5); } }
+    if (!mark) { x.globalAlpha = .18; for (let k = 0; k < path.length * .04; k++) { const q = path[Math.floor(r() * path.length)], a = r() * PI * 2, rr = W * (.8 + r() * 1.2); x.fillRect(q[0] + Math.cos(a) * rr, q[1] + Math.sin(a) * rr, 1.5, 1.5); } }
     x.restore();
     return { path, W };
   }
@@ -708,7 +752,7 @@ var WriterMano = (function () {
   // disegna la tag di questa mano in un riquadro Wp × Hp; ritorna i punti del percorso (per la mano che la ripassa)
   function handTag(x, text, d, Wp, Hp, r, col, tool) {
     { const R = !d.goth && RECORDED[DEACC(text)]; if (R) return drawRecorded(x, R, d, Wp, Hp, r, col, tool); }   // [writer] la firma registrata nello studio
-    { const S = !d.goth && SIGNED[DEACC(text)]; if (S) return drawSigned(x, S, Wp, Hp, r, col, tool, d); }   // [writer] la firma disegnata, se ce l'ha
+    { const S = !d.goth && d.signed && SIGNED[DEACC(text)]; if (S) return drawSigned(x, S, Wp, Hp, r, col, tool, d); }   // [writer] le firme dei fogli solo se chieste (col peso nuovo non reggono)   // [writer] la firma disegnata, se ce l'ha
     if (!d.goth && !d.oldHand) return drawFlow(x, text, d, Wp, Hp, r, col, tool);   // [writer] la tag come movimento
     if (d.st && STILI[d.st] && !d.goth) d = Object.assign({}, d, STILI[d.st]);
     if (d.goth) d = Object.assign({}, d, { crown: false, halo: false, under: false, dashes: false, stars: false, quotes: false, spray: false, nibW: .3, nibA: -.78, contrast: .9 });
