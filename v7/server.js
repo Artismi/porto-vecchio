@@ -399,6 +399,27 @@ function handleRitocchi(req, res, pathname, parsedUrl) {
   });
 }
 
+// [writer] le firme registrate nello studio delle tag: si scrive solo tag_firme.json, solo dal gioco aperto in locale
+const TAG_FILE = path.join(ROOT, 'tag_firme.json');
+let tagBackupDone = false;
+function handleTagFirme(req, res) {
+  const origin = req.headers.origin;
+  if (origin && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) { sendJSON(res, 403, { ok: false, errore: 'solo dal gioco aperto in locale' }); return; }
+  if (req.method !== 'POST') { sendJSON(res, 405, { ok: false }); return; }
+  const chunks = []; let size = 0;
+  req.on('data', c => { size += c.length; if (size > 16 * 1024 * 1024) { req.destroy(); return; } chunks.push(c); });
+  req.on('end', () => {
+    try {
+      const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      if (!data || typeof data !== 'object' || Array.isArray(data)) { sendJSON(res, 400, { ok: false, errore: 'serve un oggetto { NOME: firma }' }); return; }
+      if (!tagBackupDone && fs.existsSync(TAG_FILE)) fs.copyFileSync(TAG_FILE, path.join(ROOT, 'tag_firme.backup.json'));
+      tagBackupDone = true;
+      fs.writeFileSync(TAG_FILE, JSON.stringify(data));
+      sendJSON(res, 200, { ok: true, n: Object.keys(data).length });
+    } catch (e) { console.error('[tag]', e.message); sendJSON(res, 500, { ok: false, errore: e.message }); }
+  });
+}
+
 function aiReply(res, aiResp) {
   sendJSON(res, 200, {
     ok: true,
@@ -580,6 +601,7 @@ const server = http.createServer(async (req, res) => {
 
   // [editor] l'editor del gioco (F2) salva qui i ritocchi: ritocchi.json e le pitture in ritocchi/*.png
   if (pathname.startsWith('/api/ritocchi')) { handleRitocchi(req, res, pathname, parsedUrl); return; }
+  if (pathname === '/api/tag_firme') { handleTagFirme(req, res); return; }   // [writer] le firme disegnate nello studio_tag.html
 
   if (pathname === '/') pathname = '/index.html';
   const filePath = path.join(ROOT, pathname);

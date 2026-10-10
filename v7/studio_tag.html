@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Porto Vecchio — Studio tag</title>
+<!-- [writer] Lo studio delle tag: qui si disegnano a mano le firme dei writer. Si registra il gesto vero (punti, tempi,
+     pressione); il gioco lo rifà col motore della velocità (writer_mano.js): dove la mano frena il tratto si riempie,
+     dove corre si assottiglia, dove si alza scappa a punta. Le firme si salvano in tag_firme.json (col server di AVVIA.bat)
+     e nel browser; ogni firma salvata col nome di un writer diventa la sua tag nel gioco. -->
+<style>
+  :root { --bg: #1b1a18; --pan: #262421; --tx: #ece8df; --mu: #9d978a; --ac: #e8492f; --mur: #d9d4c7; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--tx); font: 14px/1.4 system-ui, sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 10px 16px; background: var(--pan); border-bottom: 1px solid #000; }
+  header h1 { font-size: 16px; margin: 0 8px 0 0; letter-spacing: .04em; }
+  label { color: var(--mu); display: flex; gap: 6px; align-items: center; }
+  select, input[type=text] { background: #11100f; color: var(--tx); border: 1px solid #444; border-radius: 4px; padding: 4px 6px; }
+  button { background: #3a3732; color: var(--tx); border: 1px solid #555; border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+  button:hover { background: #4a463f; }
+  button.go { background: var(--ac); border-color: var(--ac); color: #fff; font-weight: 600; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; padding: 14px 16px; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  #muro { position: relative; background: var(--mur); border-radius: 6px; overflow: hidden; touch-action: none; aspect-ratio: 2.1 / 1; }
+  #muro canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #muro .aiuto { position: absolute; left: 12px; bottom: 8px; color: #8a8478; font-size: 12px; pointer-events: none; }
+  .righe { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  aside h2 { font-size: 13px; color: var(--mu); margin: 0 0 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  .anteprima { background: var(--mur); border-radius: 6px; margin-bottom: 10px; width: 100%; display: block; }
+  #elenco { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .firma { background: var(--mur); border-radius: 5px; position: relative; cursor: pointer; border: 2px solid transparent; }
+  .firma.sel { border-color: var(--ac); }
+  .firma canvas { width: 100%; display: block; }
+  .firma b { position: absolute; left: 6px; top: 3px; color: #555; font-size: 11px; }
+  .firma u { position: absolute; left: 6px; bottom: 2px; color: var(--ac); text-decoration: none; font-weight: 700; }
+  .firma i { position: absolute; right: 6px; top: 1px; color: #933; font-style: normal; font-weight: 700; padding: 0 3px; }
+  #stato { color: var(--mu); margin-left: auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>STUDIO TAG</h1>
+  <label>Nome della tag <input type="text" id="altro" placeholder="es. KEOS" size="10"></label>
+  <label>o un writer dell'isola <select id="nome"></select></label>
+  <label>Spessore <input type="range" id="spess" min="4" max="26" value="12"></label>
+  <label><input type="checkbox" id="piatta"> punta piatta</label>
+  <label>Colore <select id="col"><option value="#141418">nero</option><option value="#d8201a">rosso</option><option value="#1c3aa8">blu</option><option value="#2a8a3a">verde</option><option value="#f2efe6">bianco</option></select></label>
+  <span id="stato"></span>
+</header>
+<main>
+  <section>
+    <div id="muro"><canvas id="ink"></canvas><canvas id="live"></canvas><div class="aiuto">Disegna la tag come la faresti sul muro: veloce, senza ripassare. Ogni tratto è un gesto.</div></div>
+    <div class="righe">
+      <button id="annulla">Annulla tratto</button>
+      <button id="pulisci">Cancella</button>
+      <button class="go" id="salva">Salva preset</button>
+      <button id="mia">È la mia tag</button>
+      <button id="esporta">Scarica tag_firme.json</button>
+      <button id="importa">Carica tag_firme.json</button>
+      <input type="file" id="file" accept=".json" hidden>
+    </div>
+  </section>
+  <aside>
+    <h2>Nel gioco: a bomboletta</h2>
+    <canvas class="anteprima" id="pv1" width="640" height="300"></canvas>
+    <h2>Nel gioco: a pennarello</h2>
+    <canvas class="anteprima" id="pv2" width="640" height="300"></canvas>
+    <h2>Preset salvati (★ = la tua tag)</h2>
+    <div id="elenco"></div>
+  </aside>
+</main>
+<script src="src/writer_mano.js"></script>
+<script>
+(function () {
+  'use strict';
+  const WM = window.WriterMano, $ = id => document.getElementById(id);
+  // i writer dell'isola (writing.js: AKAS e AKAS2)
+  const NOMI = ['DAKO', 'KEOS', 'SPIK', 'RAKE', 'NOTE', 'BLES', 'SNEK', 'KAOS', 'TOXI', 'PHAZ', 'DEMO', 'SKEMA', 'ZORA', 'MOSE', 'VIBE', 'KRAN', 'FUSE', 'OBIE', 'RUSK', 'NEMO', 'ZEKE', 'MIRK', 'SOLE', 'BOLT', 'KOMA', 'TRAX', 'ELKE', 'GRIM', 'NEON', 'DUNE', 'PIXO', 'RAZO', 'VAPO', 'ICER', 'LUPA', 'KASH'];
+  const KEY = 'pv.tagFirme';
+  let FIRME = {};
+  try { FIRME = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { FIRME = {}; }
+  const muro = $('muro'), ink = $('ink'), live = $('live');
+  let strokes = [], cur = null, sel = null;
+  // ---- le misure del muro: il disegno si tiene in pixel del canvas (W × H fissi), lo schermo si adatta ----
+  const CW = 1400, CH = Math.round(1400 / 2.1);
+  [ink, live].forEach(c => { c.width = CW; c.height = CH; });
+  const pos = e => { const b = live.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * CW, (e.clientY - b.top) / b.height * CH]; };
+  const nome = () => ($('altro').value.trim() || $('nome').value).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9]/g, '');
+  const wFrac = () => +$('spess').value / 100;
+  NOMI.concat(Object.keys(FIRME).filter(n => n !== '_mia' && !NOMI.includes(n))).forEach(n => { const o = document.createElement('option'); o.value = o.textContent = n; $('nome').appendChild(o); });
+  // ---- il disegno a mano: tratti di [x, y, t (ms), pressione] ----
+  live.addEventListener('pointerdown', e => {
+    live.setPointerCapture(e.pointerId); const [x, y] = pos(e);
+    cur = [[x, y, e.timeStamp, e.pressure || .5]]; strokes.push(cur); drawRaw();
+  });
+  live.addEventListener('pointermove', e => {
+    if (!cur) return;
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    (evs.length ? evs : [e]).forEach(ev => { const [x, y] = pos(ev), l = cur[cur.length - 1]; if (Math.hypot(x - l[0], y - l[1]) < 1.5) return; cur.push([x, y, ev.timeStamp, ev.pressure || .5]); });
+    drawRaw();
+  });
+  const end = () => { if (!cur) return; cur = null; drawRaw(); preview(); };
+  live.addEventListener('pointerup', end); live.addEventListener('pointercancel', end);
+  // sul muro grande: il tratto com'è, a spessore fisso (le anteprime mostrano la resa del gioco)
+  function drawRaw() {
+    const x = live.getContext('2d'); x.clearRect(0, 0, CW, CH);
+    x.strokeStyle = $('col').value === '#f2efe6' ? '#666' : $('col').value; x.lineCap = 'round'; x.lineJoin = 'round'; x.lineWidth = wFrac() * CH * .45;
+    strokes.forEach(st => { x.beginPath(); st.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); if (st.length === 1) x.lineTo(st[0][0] + .1, st[0][1]); x.stroke(); });
+  }
+  const rec = () => ({ strokes: strokes.map(st => st.map(q => [Math.round(q[0] * 10) / 10, Math.round(q[1] * 10) / 10, Math.round(q[2] - strokes[0][0][2]), Math.round(q[3] * 100) / 100])), w: wFrac(), flat: $('piatta').checked });
+  // ---- la resa del gioco (writer_mano.js) ----
+  function render(c, r, col, tool) {
+    const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height);
+    if (!r.strokes.length) return;
+    try { WM.drawRecorded(x, r, { seed: 7 }, c.width, c.height, WM.mulberry(11), col, tool); } catch (e) { console.error(e); }
+  }
+  function preview() { const r = rec(); render($('pv1'), r, $('col').value, 'tag'); render($('pv2'), r, '#141418', 'mtag'); }
+  $('nome').addEventListener('change', () => { $('altro').value = ''; });
+  ['spess', 'piatta', 'col'].forEach(id => $(id).addEventListener('input', () => { drawRaw(); preview(); }));
+  $('annulla').onclick = () => { strokes.pop(); drawRaw(); preview(); };
+  $('pulisci').onclick = () => { strokes = []; drawRaw(); preview(); };
+  // ---- salvare: nel browser e, col server di AVVIA.bat, in tag_firme.json ----
+  async function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(FIRME)); } catch (e) { }
+    try {
+      const r = await fetch('/api/tag_firme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(FIRME) });
+      if (!r.ok) throw new Error(r.status);
+      stato('Salvata in tag_firme.json e nel browser.');
+    } catch (e) { stato('Salvata nel browser (il server di AVVIA.bat non risponde: per il file usa «Scarica tag_firme.json»).'); }
+  }
+  const stato = t => { $('stato').textContent = t; };
+  $('salva').onclick = () => {
+    const n = nome(); if (!n) { stato('Scegli il writer o scrivi un nome.'); return; }
+    if (!strokes.length) { stato('Disegna prima la tag.'); return; }
+    FIRME[n] = Object.assign(rec(), { aka: n, quando: new Date().toISOString() }); sel = n;
+    if (![...$('nome').options].some(o => o.value === n)) { const o = document.createElement('option'); o.value = o.textContent = n; $('nome').appendChild(o); }
+    persist(); elenco();
+  };
+  // la tua tag: il preset scelto; nel gioco il giocatore firma con quello (finché non ne scrive un'altra)
+  $('mia').onclick = () => { const n = nome(); if (!FIRME[n] || !FIRME[n].strokes) { stato('Salva prima il preset ' + (n || '') + ', poi sceglilo come tua tag.'); return; } FIRME._mia = n; persist(); elenco(); stato('La tua tag è ' + n + '.'); };
+  $('esporta').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(FIRME)], { type: 'application/json' })); a.download = 'tag_firme.json'; a.click(); };
+  $('importa').onclick = () => $('file').click();
+  $('file').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { Object.assign(FIRME, JSON.parse(await f.text())); persist(); elenco(); } catch (err) { stato('File non valido.'); } };
+  // ---- le firme salvate: clic per riaprirla, ✕ per toglierla ----
+  function elenco() {
+    const box = $('elenco'); box.innerHTML = '';
+    Object.keys(FIRME).filter(n => FIRME[n] && FIRME[n].strokes).sort().forEach(n => {
+      const d = document.createElement('div'); d.className = 'firma' + (n === sel ? ' sel' : '');
+      const c = document.createElement('canvas'); c.width = 320; c.height = 150; d.appendChild(c);
+      d.insertAdjacentHTML('beforeend', `<b>${n}</b><i title="togli">✕</i>${FIRME._mia === n ? '<u>★ la tua tag</u>' : ''}`);
+      render(c, FIRME[n], '#141418', 'mtag');
+      d.onclick = ev => {
+        if (ev.target.tagName === 'I') { if (confirm('Togliere la firma di ' + n + '?')) { delete FIRME[n]; persist(); elenco(); } return; }
+        const f = FIRME[n]; sel = n; strokes = f.strokes.map(st => st.map(q => q.slice())); $('spess').value = Math.round((f.w || .12) * 100); $('piatta').checked = !!f.flat;
+        $('altro').value = NOMI.includes(n) ? '' : n; if (NOMI.includes(n)) $('nome').value = n; drawRaw(); preview(); elenco();
+      };
+      box.appendChild(d);
+    });
+  }
+  // le firme già nel file (tag_firme.json), se il browser non le ha
+  fetch('tag_firme.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).then(o => { let n = 0; Object.keys(o || {}).forEach(k => { if (FIRME[k] === undefined) { FIRME[k] = o[k]; n++; } }); if (n) { try { localStorage.setItem(KEY, JSON.stringify(FIRME)); } catch (e) { } } elenco(); }).catch(() => elenco());
+  drawRaw(); preview();
+})();
+</script>
+</body>
+</html>
