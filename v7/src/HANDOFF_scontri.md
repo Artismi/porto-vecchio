@@ -65,6 +65,9 @@ schermo i bordi lattiginosi del gas e la brina del bagnato. Si aggancia avvolgen
 | `index.src.html` | `scontri.js` dopo `ordine.js`, `scontri_arte.js` dopo `ordine_arte.js` |
 
 ## Da fare
+- **La nube dei lacrimogeni** da vicino è ancora un alone pallido e uniforme (gli sbuffi morbidi si fondono): serve una
+  texture di fumo con più contrasto, o particelle più piccole e più scure ai bordi. Gli scudi e la barricata si leggono bene.
+- Le prove con le foto: `strumenti_inverno/shot_gioco.js` ora accetta `"meteo"` e `"js"` per scena (vedi l'intestazione).
 - **Convogli ferroviari** (vagoni deviati su un binario morto dalla Famiglia, casellanti corrotti): non c'è ancora la ferrovia.
 - **Le staffette** in bici e snow-skate con le radioline: vedette che segnalano le volanti durante la fuga.
 - **Sabotaggi degli Spilli di Ferro** (bombe carta di notte su sportelli, uffici di collocamento, concessionarie; cavi tagliati;
@@ -75,6 +78,8 @@ schermo i bordi lattiginosi del gas e la brina del bagnato. Si aggancia avvolgen
   Banco e la Famiglia, e di pignoramento, sfratto e turni in miniera alla scadenza.
 
 ## Le culture dell'isola (dal manifesto di Andrea, da portare nel gioco)
+Il testo intero è `v7/MANIFESTO_NARRATIVO.md` sul ramo `claude/nifty-gauss-8lb4a9`, con `v7/BIBBIA_MISSIONI.md`: quando quel ramo
+entra, nella bibbia (capitolo 6, «Cosa sa fare il motore») vanno aggiunti gli scontri di questo modulo.
 Ventisette anni dopo la Battuta dei boschi (l'Impero ha sterminato il 20% dell'isola e messo l'altro 80% a libro paga della
 miniera), Porto Vecchio è una frattura di costumi, linguaggi, odori, suoni e modi di muoversi.
 1. **Il Miracolo del Gelo** (la cultura egemone): l'auto a rate come feticcio, viali e parcheggi al posto dei vicoli, il grande

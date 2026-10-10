@@ -17,7 +17,7 @@ const srv = http.createServer((req, res) => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const pg = await b.newPage({ viewport: { width: W, height: H } });
   pg.on('pageerror', e => console.log('[errore]', e.message, (e.stack || '').split('\n').slice(0, 4).join(' | ')));
-  pg.on('console', m => { if (m.type() === 'error' || /\[dbg\]|oggetti35/.test(m.text())) console.log('[console]', m.text().slice(0, 300)); });
+  pg.on('console', m => { if (m.type() === 'error' || /\[dbg\]|oggetti35|scontri/.test(m.text())) console.log('[console]', m.text().slice(0, 300)); });
   await pg.addInitScript(() => { window.__dbg35 = true; });
   await pg.goto(`http://localhost:${port}/index.html`);
   await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: 240000 });

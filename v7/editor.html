@@ -44828,7 +44828,7 @@ var OrdineArte = (function () {
 var ScontriArte = (function () {
   'use strict';
   let scene = null, G = null, groundH = null, ready = false, built = false;
-  const MAXSH = 24, MAXPUFF = 90, MAXJET = 60, MAXCAN = 8;
+  const MAXSH = 24, MAXPUFF = 120, MAXJET = 60, MAXCAN = 8;
   let SHIELDS = null, PUFFS = [], JETS = [], CANS = [], OVER = null;
   const BARR = {};   // id → { g, parts }
   const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3();
@@ -44919,12 +44919,13 @@ var ScontriArte = (function () {
     let pi = 0;
     Sc.gas.forEach((g, gi) => {
       const age = st.clock - g.t0, life = g.until - g.t0, fade = Math.min(1, age * 2) * Math.min(1, (g.until - st.clock) / 6);
-      const N = Math.min(14, MAXPUFF - pi), gy = groundH(g.x, g.y);
+      const N = Math.min(22, MAXPUFF - pi), gy = groundH(g.x, g.y);
       for (let j = 0; j < N; j++) {
         const s = PUFFS[pi++], a = j * 2.399 + gi, rr = g.r * Math.sqrt((j + .5) / N), drift = age * .25;
-        s.visible = true; s.position.set(g.x + Math.cos(a + age * .1) * rr + drift, gy + .6 + (j % 4) * .45 + age * .03, g.y + Math.sin(a + age * .1) * rr + drift * .4);
-        const sz = 2.2 + (j % 3) * .9 + Math.min(age, 6) * .25; s.scale.set(sz, sz, 1);
-        s.material.opacity = .42 * fade * (.7 + .3 * Math.sin(time * .7 + j)); s.material.color.set(night > .5 ? '#9aa49a' : '#e2e8dc');
+        const rise = ((time * .35 + j * .137) % 1);   // gli sbuffi salgono, si allargano e svaniscono, uno dopo l'altro
+        s.visible = true; s.position.set(g.x + Math.cos(a + age * .1) * rr + drift, gy + .4 + (j % 3) * .35 + rise * 1.6, g.y + Math.sin(a + age * .1) * rr + drift * .4);
+        const sz = 1.6 + (j % 3) * .7 + rise * 1.4 + Math.min(age, 6) * .2; s.scale.set(sz, sz, 1);
+        s.material.opacity = .7 * fade * Math.sin(rise * Math.PI) * (.75 + .25 * Math.sin(time * .7 + j)); s.material.color.set(night > .5 ? '#8e988c' : j % 3 ? '#d6dccb' : '#c4ccb8');
       }
       // il fumo del candelotto, denso alla sorgente
       if (pi < MAXPUFF && age < life - 4) { const s = PUFFS[pi++]; s.visible = true; s.position.set(g.x, gy + .3 + (time * 1.3 % 1) * .8, g.y); s.scale.set(1.1, 1.1, 1); s.material.opacity = .7 * fade; s.material.color.set('#f2f4ee'); }
@@ -44959,10 +44960,10 @@ var ScontriArte = (function () {
     if (OVER) {
       const gp = Sc.gasP || 0, wp = Sc.wet || 0;
       if (gp < .02 && wp < .02) OVER.style.opacity = 0;
-      else {
-        OVER.style.background = gp >= wp ? `radial-gradient(ellipse at center, rgba(230,236,220,${.05 + gp * .25}) 30%, rgba(214,228,196,${.45 + gp * .4}) 100%)`
-          : `radial-gradient(ellipse at center, rgba(200,225,245,0) 45%, rgba(190,220,245,${.35 + wp * .35}) 100%)`;
-        OVER.style.opacity = Math.max(gp, wp * .8).toFixed(2);
+      else {   // solo ai bordi: il centro (dove sei tu) resta leggibile
+        OVER.style.background = gp >= wp ? `radial-gradient(ellipse at center, rgba(226,232,214,0) 38%, rgba(214,226,196,${(.18 + gp * .32).toFixed(2)}) 100%)`
+          : `radial-gradient(ellipse at center, rgba(200,225,245,0) 50%, rgba(196,224,246,${(.15 + wp * .3).toFixed(2)}) 100%)`;
+        OVER.style.opacity = '1';
       }
     }
   }
