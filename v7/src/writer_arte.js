@@ -19,7 +19,9 @@ var WriterArte = (function () {
   const FONT = () => (typeof Graffiti !== 'undefined' && Graffiti.F) || {};
   const WM = typeof WriterMano !== 'undefined' ? WriterMano : (typeof require !== 'undefined' ? require('./writer_mano.js') : null);
   function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-  const cv = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; };
+  // tutte le tele del disegno restano in memoria (willReadFrequently): il lavoro si legge pixel per pixel a ogni tappa, e una tela
+  // sulla GPU costringe ogni volta ad aspettare la scheda video e a riportare indietro l'immagine (il blocco camminando)
+  const cv = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); c.getContext('2d', { willReadFrequently: true }); return c; };
   const DEACC = s => String(s).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9!?.\- ']/g, '');
   const pickR = (r, a) => a[Math.floor(r() * a.length)];
 
@@ -764,17 +766,38 @@ var WriterArte = (function () {
     for (let k = 0; k < 4; k++) comps.push({ fx: (.6 + r() * 1.6) / Hp, fy: (.6 + r() * 1.6) / Hp, ph: r() * 7, ax: (r() - .5) * 2, ay: (r() - .5) * 2, w: 1 / (k + 1) });
     return (x, y) => { let dx = 0, dy = 0; for (const c of comps) { const s0 = Math.sin(x * c.fx * 6.283 + y * c.fy * 2.1 + c.ph) * c.w, s1 = Math.cos(y * c.fy * 6.283 - x * c.fx * 1.7 + c.ph * 1.3) * c.w; dx += s0 * c.ax + s1 * .4; dy += s1 * c.ay + s0 * .4; } return [dx * amp, dy * amp]; };
   }
+  // il campo è morbido (onde lunghe metà del lavoro): lo si calcola su una griglia rada e lo si interpola, e lo si tiene per
+  // tutte le tappe dello stesso lavoro (stesso seme, stessa misura). Prima era sin/cos per ogni pixel: secondi di blocco.
+  const WARP_G = 8; let warpMemo = null;
+  function warpGrid(seed, W, H, amp) {
+    const key = seed + ':' + W + ':' + H + ':' + amp; if (warpMemo && warpMemo.key === key) return warpMemo;
+    const f = warpField(seed, W, H, amp), gw = Math.ceil(W / WARP_G) + 2, gh = Math.ceil(H / WARP_G) + 2, gx = new Float32Array(gw * gh), gy = new Float32Array(gw * gh);
+    for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) { const d = f(i * WARP_G, j * WARP_G); gx[j * gw + i] = d[0]; gy[j * gw + i] = d[1]; }
+    return (warpMemo = { key, gw, gx, gy });
+  }
   function handify(cnv, seed, q, opt) {
     const W = cnv.width, H = cnv.height, x = cnv.getContext('2d'), amp = H * (.0035 + (1 - q) * .009) * (opt && opt.amp != null ? opt.amp : 1);
     // 1. il braccio: tutto si piega un poco, insieme (bilineare)
-    const src = x.getImageData(0, 0, W, H), dst = x.createImageData(W, H), S = src.data, D = dst.data, f = warpField(seed, W, H, amp), rg = mulberry(seed ^ 0x2b7e15), ph1 = rg() * 7, ph2 = rg() * 7, ph3 = rg() * 7;
-    for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
-      const [dx, dy] = f(xx, yy), sx = clamp(xx + dx, 0, W - 1.001), sy = clamp(yy + dy, 0, H - 1.001), x0 = sx | 0, y0 = sy | 0, ax = sx - x0, ay = sy - y0, i00 = (y0 * W + x0) * 4, i10 = i00 + 4, i01 = i00 + W * 4, i11 = i01 + 4, o = (yy * W + xx) * 4;
-      for (let c = 0; c < 4; c++) D[o + c] = (S[i00 + c] * (1 - ax) + S[i10 + c] * ax) * (1 - ay) + (S[i01 + c] * (1 - ax) + S[i11 + c] * ax) * ay;
-      if (D[o + 3] > 8 && !(opt && opt.noSpray)) {   // [writer] la vernice copre a nuvole (passate più cariche e più scariche), la grana fine, qualche buco dove si vede il muro
-        const cl = Math.sin(xx * .021 + ph1) * Math.sin(yy * .029 + ph2) + Math.sin((xx + yy * .7) * .013 + ph3) * .6, gr = rg() - .5, m = 1 + cl * .045 + gr * .07;
-        D[o] = Math.min(255, D[o] * m); D[o + 1] = Math.min(255, D[o + 1] * m); D[o + 2] = Math.min(255, D[o + 2] * m);
-        if (rg() < .003) D[o + 3] *= .35; else if (cl < -1.1) D[o + 3] *= .9;
+    const src = x.getImageData(0, 0, W, H), dst = x.createImageData(W, H), S = src.data, D = dst.data, wg = warpGrid(seed, W, H, amp), gw = wg.gw, GX = wg.gx, GY = wg.gy, W4 = W * 4, rg = mulberry(seed ^ 0x2b7e15), ph1 = rg() * 7, ph2 = rg() * 7, ph3 = rg() * 7, spray = !(opt && opt.noSpray);
+    for (let yy = 0; yy < H; yy++) {
+      const gj = (yy / WARP_G) | 0, fy = yy / WARP_G - gj, r0 = gj * gw, r1 = r0 + gw;
+      for (let xx = 0; xx < W; xx++) {
+        const gi = (xx / WARP_G) | 0, fx = xx / WARP_G - gi, a = r0 + gi, b = r1 + gi;
+        const dx = (GX[a] * (1 - fx) + GX[a + 1] * fx) * (1 - fy) + (GX[b] * (1 - fx) + GX[b + 1] * fx) * fy;
+        const dy = (GY[a] * (1 - fx) + GY[a + 1] * fx) * (1 - fy) + (GY[b] * (1 - fx) + GY[b + 1] * fx) * fy;
+        let sx = xx + dx, sy = yy + dy; sx = sx < 0 ? 0 : sx > W - 1.001 ? W - 1.001 : sx; sy = sy < 0 ? 0 : sy > H - 1.001 ? H - 1.001 : sy;
+        const x0 = sx | 0, y0 = sy | 0, i00 = (y0 * W + x0) * 4, i10 = i00 + 4, i01 = i00 + W4, i11 = i01 + 4;
+        if (!(S[i00 + 3] | S[i10 + 3] | S[i01 + 3] | S[i11 + 3])) continue;   // tutto trasparente: resta trasparente
+        const ax = sx - x0, ay = sy - y0, w00 = (1 - ax) * (1 - ay), w10 = ax * (1 - ay), w01 = (1 - ax) * ay, w11 = ax * ay, o = (yy * W + xx) * 4;
+        D[o] = S[i00] * w00 + S[i10] * w10 + S[i01] * w01 + S[i11] * w11;
+        D[o + 1] = S[i00 + 1] * w00 + S[i10 + 1] * w10 + S[i01 + 1] * w01 + S[i11 + 1] * w11;
+        D[o + 2] = S[i00 + 2] * w00 + S[i10 + 2] * w10 + S[i01 + 2] * w01 + S[i11 + 2] * w11;
+        D[o + 3] = S[i00 + 3] * w00 + S[i10 + 3] * w10 + S[i01 + 3] * w01 + S[i11 + 3] * w11;
+        if (spray && D[o + 3] > 8) {   // [writer] la vernice copre a nuvole (passate più cariche e più scariche), la grana fine, qualche buco dove si vede il muro
+          const cl = Math.sin(xx * .021 + ph1) * Math.sin(yy * .029 + ph2) + Math.sin((xx + yy * .7) * .013 + ph3) * .6, gr = rg() - .5, mm = 1 + cl * .045 + gr * .07;
+          D[o] = Math.min(255, D[o] * mm); D[o + 1] = Math.min(255, D[o + 1] * mm); D[o + 2] = Math.min(255, D[o + 2] * mm);
+          if (rg() < .003) D[o + 3] *= .35; else if (cl < -1.1) D[o + 3] *= .9;
+        }
       }
     }
     x.putImageData(dst, 0, 0);
