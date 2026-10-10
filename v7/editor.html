@@ -29492,7 +29492,7 @@ var WriterMano = (function () {
       round: toy ? .25 + r() * .2 : .42 + r() * .25, slant: toy ? r() * .2 : .2 + r() * .35, wide: toy ? .7 + r() * .3 : .95 + r() * .45, gap: -.13 + r() * .15, rise: (r() - .4) * .08, bigFirst: r() < .6 ? 1.2 + r() * .5 : 1,
       conn: pickR(r, ['dritto', 'occhiello', 'forcina', 'occhiello']), lift: 1.9 + r() * .7, under: r() < (toy ? .4 : .22), underK: pickR(r, ['frusta', 'rampa', 'onda']),
       deco: toy ? (r() < .6 ? [pickR(r, ['stella', 'corona', 'freccia', 'diamante', 'x', 'aureola'])] : []) : r() < .35 ? [pickR(r, ['virgolette', 'tacche', 'uguale', 'bang', 'virgolette', 'tacche', d.skill > .8 ? 'corona' : 'uguale'])] : [],   /* [writer] i segni: chi sa fare ne mette uno, misurato; le stelle e i diamanti sono roba da toy */
-      W: (toy ? .12 : .19) + r() * (toy ? .06 : .07),   /* [writer] il peso: la tag di chi sa è grassa e piena */ wob: toy ? .05 : .012 * (1.3 - sk), flat: !toy && r() < .5, tacche: !toy && r() < .45 ? 2 + Math.floor(r() * 3) : 0, lati: r() < .6, mean: .5, snap: 0, grazie: 0, arch: toy ? 'libera' : pickR(r, ['stretta', 'stretta', 'stretta', 'rimbalzo', 'bassa', 'corsiva', 'corsiva']), attacco: !toy && r() < .55, coda: toy ? 0 : pickR(r, [0, 1, 1, 2, 2]), balls: !toy && r() < .55, acc: toy ? [] : [...new Set(['ovale', 'ovale', 'punto', 'virgolette', 'trattini'].filter(() => r() < .3))], r,   /* [writer] le palline in fondo ai tratti e gli accenti: l'ovale sopra, l'anello sotto, il punto, le virgolette, i trattini */   /* angoli e linea mediana della mano: provati, irrigidiscono; spenti */
+      W: (toy ? .12 : .19) + r() * (toy ? .06 : .07),   /* [writer] il peso: la tag di chi sa è grassa e piena */ wob: toy ? .05 : .012 * (1.3 - sk), flat: !toy && r() < .5, tacche: !toy && r() < .45 ? 2 + Math.floor(r() * 3) : 0, lati: r() < .6, mean: .5, snap: 0, grazie: 0, arch: toy ? 'libera' : pickR(r, ['stretta', 'stretta', 'stretta', 'rimbalzo', 'bassa', 'corsiva', 'corsiva']), attacco: !toy && r() < .55, coda: toy ? 0 : pickR(r, [0, 1, 1, 2, 2]), balls: !toy && r() < .55, acc: toy ? [] : [...new Set(['ovale', 'ovale', 'punto', 'virgolette', 'trattini'].filter(() => r() < .17))], r,   /* [writer] le palline in fondo ai tratti e gli accenti: l'ovale sopra, l'anello sotto, il punto, le virgolette, i trattini */   /* angoli e linea mediana della mano: provati, irrigidiscono; spenti */
     };
   }
   // la parola: i gesti delle lettere in fila, legati dai connettori, in una traiettoria sola (o poche, se la mano si stacca);
@@ -29503,15 +29503,15 @@ var WriterMano = (function () {
     const Ls = [...s].map((ch, i) => GEST[ch] ? { ch, i, G: GEST[ch] } : null).filter(Boolean);
     if (!Ls.length) return { tr: [], h, box: [0, 0, 1, 1] };
     // 1. l'equilibrio: le lettere larghe si stringono, le strette si allargano (il peso si spartisce lungo la parola); la prima grande
-    Ls.forEach((l, k) => { let a = 1e9, b = -1e9; l.G.g.forEach(([u]) => { a = Math.min(a, u); b = Math.max(b, u); }); l.gx0 = a; l.gw = Math.max(.1, b - a); l.sz = k === 0 ? h.bigFirst : 1 + .1 * (1.15 - h.sk) * Math.sin(k * 2.3 + (d.seed || 1) % 5); });
+    Ls.forEach((l, k) => { let a = 1e9, b = -1e9; l.G.g.forEach(([u]) => { a = Math.min(a, u); b = Math.max(b, u); }); l.gx0 = a; l.gw = Math.max(.1, b - a); l.sz = k === 0 ? 1 + (h.bigFirst - 1) * .3 : 1 + .04 * (1.15 - h.sk) * Math.sin(k * 2.3 + (d.seed || 1) % 5); });   // [writer] tutte alla stessa altezza; la prima al più un filo più grande
     const wide = Ls.filter(l => !l.G.stretto), mw = wide.reduce((t, l) => t + l.gw, 0) / Math.max(1, wide.length);
     Ls.forEach(l => { l.kx = l.G.stretto ? 1 : clamp(Math.sqrt(mw / l.gw), .78, 1.25); });
     // [writer] l'impronta della mano: stretta e alta, a rimbalzo sulla riga, bassa e larga, corsiva e tirata (sempre la stessa per quel writer)
     Ls.forEach((l, k) => { l.dy = 0; const last = k === Ls.length - 1;
-      if (h.arch === 'stretta') { l.kx *= .68; l.sz *= k && !last ? 1.08 : 1.22; }
+      if (h.arch === 'stretta') { l.kx *= .7; l.sz *= 1.1; }
       else if (h.arch === 'rimbalzo') { l.dy = k % 2 ? .2 : -.06; l.sz *= k % 2 ? .82 : 1.05; }
       else if (h.arch === 'bassa') { l.kx *= 1.35; l.sz *= k ? .78 : 1; }
-      else if (h.arch === 'corsiva') { l.kx *= .85; l.sz *= k && !last ? .9 : 1.15; } });
+      else if (h.arch === 'corsiva') { l.kx *= .85; l.sz *= k && !last ? .97 : 1.06; } });
     // [writer] la linea mediana della mano (dove si attaccano traverse e pance) e gli angoli della mano: ogni tratto obliquo si
     // piega verso una delle sue due diagonali, ogni asta verso la sua verticale; così tutta la tag ripete gli stessi angoli
     const meanV = v => v <= 0 || v >= 1 ? v : v < .5 ? v / .5 * h.mean : h.mean + (v - .5) / .5 * (1 - h.mean);
@@ -29626,7 +29626,7 @@ var WriterMano = (function () {
     for (let k = 0; k < h.tacche && mainPts.length; k++) { const [q, a, b] = mainPts[Math.floor(h.r() * mainPts.length)], ang = Math.atan2(b[1] - a[1], b[0] - a[0]) + 1.25 + (h.r() - .5) * .4, l = .13 + h.r() * .08; dec.push([[q[0] - Math.cos(ang) * l, q[1] - Math.sin(ang) * l], [q[0] + Math.cos(ang) * l, q[1] + Math.sin(ang) * l]]); }
     if (h.acc && h.acc.length) { const Wd = x1 - x0, mx = (x0 + x1) / 2, ell = (cx, cy, rx, ry, a0, a1, tl) => { const o = []; for (let k = 0; k <= 22; k++) { const a = a0 + (a1 - a0) * k / 22, X = Math.cos(a) * rx, Y = Math.sin(a) * ry; o.push([cx + X * Math.cos(tl) - Y * Math.sin(tl), cy + X * Math.sin(tl) + Y * Math.cos(tl)]); } return o; };
       h.acc.forEach(k => {
-        if (k === 'ovale') dec.push(ell(mx + Wd * (h.r() - .5) * .2, y1 + .2 + h.r() * .08, Wd * (.22 + h.r() * .1), .11 + h.r() * .05, .6, PI * 2 + .1, .05 - h.r() * .1));   // l'ovale lungo sopra, quasi chiuso
+        if (k === 'ovale') dec.push(ell(x0 + Wd * (.3 + h.r() * .45), y1 + .18 + h.r() * .1, Wd * (.18 + h.r() * .1), .1 + h.r() * .04, .6, PI * 2 + .1, (h.r() - .5) * .3));   // l'ovale: storto e spostato, ognuno il suo   // l'ovale lungo sopra, quasi chiuso
         else if (k === 'anello') dec.push(ell(mx + Wd * .05, y0 - .14, Wd * (.42 + h.r() * .1), .08 + h.r() * .03, PI * .9, PI * 2.85, -.03));   // l'anello schiacciato sotto: entra da sinistra, gira, esce
         else if (k === 'punto') dec.push([[x1 + .14, y0 + .06], [x1 + .155, y0 + .05]]);
         else if (k === 'virgolette') [[x0 - .2, y1 - .02], [x0 - .09, y1 + .02], [x1 + .07, y1 + .02], [x1 + .18, y1 - .02]].forEach(([a, b]) => dec.push([[a + .05, b + .02], [a, b - .17]]));
@@ -29655,8 +29655,9 @@ var WriterMano = (function () {
     if (!mark) { x.save(); x.filter = `blur(${(W * .35).toFixed(1)}px)`; x.globalAlpha = .04; draw(1.12); x.restore(); x.save(); x.filter = `blur(${Math.max(.5, W * .03).toFixed(1)}px)`; draw(1); x.restore(); }
     else { x.save(); x.filter = `blur(${Math.max(.5, W * .05).toFixed(1)}px)`; draw(1); x.restore(); }   // l'inchiostro beve un filo nel muro
     let bT = 1e9, bB = -1e9; strokes.forEach(st => { if (st.main) st.pts.forEach(q => { bT = Math.min(bT, q[1]); bB = Math.max(bB, q[1]); }); });
-    if (h.balls && !(mark && h.flat)) strokes.forEach(st => { const p = st.pts; if (p.length < 2) return; let Lq = 0; for (let i = 1; i < p.length; i++) Lq += hyp(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); if (st.deco && Lq < W * 5 && Lq > W * .5) return; (st.main || st.deco ? [[0, 1], [p.length - 1, p.length - 2]] : [[p.length - 1, p.length - 2]]).forEach(([i, j]) => { const q = p[i], o = p[Math.max(0, Math.min(p.length - 1, j))], vv = (q[1] - bT) / Math.max(1, bB - bT); if (!st.deco && vv > .28 && vv < .72) return;   // [writer] la goccia solo dove il tratto finisce in alto o in basso, mai a metà (la barra della E)
-      const dx = q[0] - o[0], dy = q[1] - o[1], a = Math.atan2(dy, dx), R0 = W * (st.deco ? .5 : st.main ? (vv > .8 ? .5 : .66) : .55) * (.9 + r() * .25);   // sulla riga di base la goccia è piccola: non deve sembrare un punto   // [writer] la goccia: la vernice si raccoglie dove la mano si ferma, allungata nel verso del tratto e tirata un filo in giù
+    const MS = strokes.filter(st => st.main);
+    if (h.balls && !(mark && h.flat)) strokes.forEach(st => { const p = st.pts; if (p.length < 2) return; let Lq = 0; for (let i = 1; i < p.length; i++) Lq += hyp(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); if (st.deco && Lq < W * 5 && Lq > W * .5) return; (st.main || st.deco ? [[0, 1], [p.length - 1, p.length - 2]] : [[p.length - 1, p.length - 2]]).forEach(([i, j]) => { const q = p[i], o = p[Math.max(0, Math.min(p.length - 1, j))], vv = (q[1] - bT) / Math.max(1, bB - bT); if (!st.deco && vv > .28 && vv < .72) return; if (st.main && vv > .8 && !(st === MS[0] && i === 0)) return;   // sulla riga fra le lettere niente goccia: sembrerebbe un punto   // [writer] la goccia solo dove il tratto finisce in alto o in basso, mai a metà (la barra della E)
+      const dx = q[0] - o[0], dy = q[1] - o[1], a = Math.atan2(dy, dx), R0 = W * (st.deco ? .5 : st.main ? (vv > .8 ? .5 : .62) : .55);   // sulla riga di base la goccia è piccola: non deve sembrare un punto   // [writer] la goccia: la vernice si raccoglie dove la mano si ferma, allungata nel verso del tratto e tirata un filo in giù
       x.save(); x.translate(q[0], q[1]); x.rotate(a); x.beginPath(); x.ellipse(R0 * .3, 0, R0 * 1.15, R0 * .82, 0, 0, 7); x.fill(); x.restore();  }); });   // [writer] le palline: ogni tratto comincia e finisce tondo, tutte uguali
     strokes.forEach(st => st.pts.forEach(q => path.push(q)));
     // le colature: dai punti lenti e bassi dei tratti principali
