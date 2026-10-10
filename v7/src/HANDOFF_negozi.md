@@ -66,3 +66,5 @@ Righe segnate `[planimetrie]`, `[design]`, `[disgelo]`, `[negozi]`.
 - **Luce da film** (interni_arte.js `ombreLuci`): ombra morbida sotto ogni mobile; pozze di luce calda sotto lampade, abat-jour, jukebox e lumini; luce fredda davanti alle TV.
 - **Muri**: ombra in basso, in alto e negli angoli; graffi all'altezza delle spalliere, ditate, intonaco saltato. Sul pavimento l'ombra lungo i muri.
 - **Pezzi rifatti a mano** (`KITRE`): registratore di cassa, banco, distributore, macchina del caffè, lavatrice, secchio, cassa acustica, sgabelli, cibo, macchinette mangiasoldi; il jukebox è stato rifatto.
+
+- **Sala giochi** (`[stile]`): cabinati, flipper, gru dei peluche, air hockey e il biliardino nuovo (`ia_biliardino`) rifatti nello stile anni '80. Tolti la pedana da ballo e il canestro, fuori epoca. La sala giochi è la stanza più grande dell'edificio. Tolto il fornello dalla sala del bar.

@@ -269,6 +269,16 @@ var InterniArte = (function () {
       x.strokeStyle = '#ffd060'; x.lineWidth = 1; for (let i = 0; i < 12; i++) { const a0 = i * PI / 6; x.beginPath(); x.moveTo(w / 2 + Math.cos(a0) * 6.5, h / 2 + Math.sin(a0) * 6.5); x.lineTo(w / 2 + Math.cos(a0) * 9, h / 2 + Math.sin(a0) * 9); x.stroke(); }
       [[4, 4], [w - 5, 4], [4, h - 5], [w - 5, h - 5]].forEach(([X, Y]) => { x.fillStyle = '#7ac85a'; for (let k = 0; k < 4; k++) { x.beginPath(); x.ellipse(X + Math.cos(k * 1.57) * 2, Y + Math.sin(k * 1.57) * 2, 2, .9, k * 1.57, 0, 7); x.fill(); } x.fillStyle = '#f0e0b0'; x.fillRect(X - .5, Y - .5, 1, 1); });
       x.strokeStyle = '#e8d8b0'; x.strokeRect(1.5, 1.5, w - 3, h - 3); }),
+    // [stile] gli schermi dei cabinati (astronavi, labirinto, pugili), il piano del flipper, le insegne
+    videogioco: v => canv('vg' + v, 20, 16, (x, w, h) => { const k = v % 3; x.fillStyle = '#05060c'; x.fillRect(0, 0, w, h);
+      if (k === 0) { x.fillStyle = '#e8e8f0'; for (let i = 0; i < 12; i++) x.fillRect((i * 7) % w, (i * 5) % h, 1, 1); x.fillStyle = '#40e0ff'; x.fillRect(9, 12, 3, 2); x.fillRect(10, 11, 1, 1); x.fillStyle = '#ff4a6a'; [[3, 3], [8, 3], [13, 3], [5, 6], [11, 6]].forEach(([a, b]) => { x.fillRect(a, b, 2, 1); x.fillRect(a - 1, b + 1, 4, 1); }); x.fillStyle = '#ffe040'; x.fillRect(10, 8, 1, 2); }
+      else if (k === 1) { x.fillStyle = '#2a3aff'; for (let i = 0; i < w; i += 4) { x.fillRect(i, 0, 1, h); } for (let j = 0; j < h; j += 4) x.fillRect(0, j, w, 1); x.fillStyle = '#ffe040'; x.beginPath(); x.arc(6, 6, 1.5, .4, 5.9); x.lineTo(6, 6); x.fill(); x.fillStyle = '#ff4040'; x.fillRect(13, 9, 2, 2); x.fillStyle = '#e8e0d0'; for (let i = 2; i < w; i += 4) x.fillRect(i, 2, 1, 1); }
+      else { x.fillStyle = '#3a8a3a'; x.fillRect(0, 11, w, 5); x.fillStyle = '#e8c890'; x.fillRect(4, 5, 3, 6); x.fillRect(13, 5, 3, 6); x.fillStyle = '#c82a2a'; x.fillRect(7, 7, 2, 2); x.fillStyle = '#2a4ac8'; x.fillRect(11, 7, 2, 2); x.fillStyle = '#ffffff'; x.fillRect(2, 1, 5, 1); x.fillRect(13, 1, 5, 1); }
+      x.fillStyle = 'rgba(0,0,0,.25)'; for (let j = 0; j < h; j += 2) x.fillRect(0, j, w, 1); }),
+    flipper: v => canv('fl' + v, 24, 40, (x, w, h) => { const r = rng(v * 9 + 2), c = ['#c82a5a', '#2a6ac8', '#e8a020'][v % 3]; x.fillStyle = '#1a1424'; x.fillRect(0, 0, w, h); x.fillStyle = c; x.beginPath(); x.moveTo(0, h); x.lineTo(0, 10); x.quadraticCurveTo(w / 2, -4, w, 10); x.lineTo(w, h); x.fill();
+      x.fillStyle = '#1a1424'; x.beginPath(); x.moveTo(3, h); x.lineTo(3, 12); x.quadraticCurveTo(w / 2, 0, w - 3, 12); x.lineTo(w - 3, h); x.fill(); [[7, 14], [16, 14], [12, 20]].forEach(([a, b]) => { x.fillStyle = '#f0e8d0'; x.beginPath(); x.arc(a, b, 2.5, 0, 7); x.fill(); x.fillStyle = c; x.beginPath(); x.arc(a, b, 1.2, 0, 7); x.fill(); });
+      x.fillStyle = '#f0e8d0'; x.save(); x.translate(8, 34); x.rotate(.4); x.fillRect(0, 0, 5, 1.5); x.restore(); x.save(); x.translate(16, 34); x.rotate(2.74); x.fillRect(0, 0, 5, 1.5); x.restore(); for (let i = 0; i < 8; i++) { x.fillStyle = pick(r, ['#ffe040', '#40e0ff', '#ff4a6a']); x.fillRect(4 + r() * 16, 22 + r() * 8, 1, 1); } }),
+    marquee: v => canv('mq' + v, 24, 6, (x, w, h) => { const g = x.createLinearGradient(0, 0, w, 0); const c = [['#ff4a2a', '#ffd040'], ['#40a0ff', '#e040ff'], ['#40e080', '#ffe040']][v % 3]; g.addColorStop(0, c[0]); g.addColorStop(1, c[1]); x.fillStyle = g; x.fillRect(0, 0, w, h); x.fillStyle = '#1a1424'; for (let i = 3; i < w - 3; i += 3) x.fillRect(i, 2, 2, 2); }),
     // [vissuto] lo stencil a spray sul muro (trasparente): il pugno con la bomboletta, il sole che spacca il ghiaccio, la scritta DISGELO, la R della Risacca
     stencil: v => canv('sten' + v, 40, 28, (x, w, h) => { const r = rng(v * 41 + 3), c = ['#1e1a1c', '#a8281e', '#1e1a1c', '#2a6a7a'][v % 4], k = v % 4; x.clearRect(0, 0, w, h); x.fillStyle = c;
       if (k === 0) { x.fillRect(16, 10, 8, 10); x.fillRect(14, 8, 12, 4); for (let i = 0; i < 4; i++) x.fillRect(15 + i * 3, 6, 2, 3); x.fillRect(20, 2, 3, 6); x.fillRect(18, 20, 4, 6); }
@@ -858,13 +868,41 @@ var InterniArte = (function () {
           B(.06, .03, .02, x + .12, 1.08, .215, '#1e1e22'); for (let k = 0; k < 5; k++) B(.03 + r() * .06, .02 + r() * .05, .003, x + (r() - .5) * .42, .8 + r() * .8, .212, '#b8ae9c');
           const lv = C(.014, .4, 0, 0, 0, cr, 6); lv.position.set(x + .29, 1.25, .05); lv.rotation.z = -.15; S(.045, x + .32, 1.46, .05, M('#b02a22', { roughness: .3 }), 8); C(.04, .06, 0, 0, 0, cr, 8).rotation.z = PI / 2; g.children[g.children.length - 1].position.set(x + .27, 1.1, .05); });
         break; }
+      // ---- [stile] la sala giochi degli anni '80 ----
+      case 'ar_arcade-machine': {   // il cabinato: mobile nero e finto legno, fianchi decorati, schermo a tubo acceso, insegna, joystick e bottoni, sportello dei gettoni
+        const sideC = M(pick(r, ['#1e1a22', '#3a2a1e', '#2a2430']), { roughness: .55 }), v = Math.floor(r() * 9);
+        [-1, 1].forEach(sx => { B(.04, 1.75, .78, sx * .32, 0, -.02, sideC); const d0 = decal(g, T.graffito(v + (sx > 0 ? 1 : 0)), .5, .9, sx * .343, .95, 0); d0.rotation.y = sx * PI / 2; });
+        B(.6, .9, .72, 0, 0, -.04, sideC); B(.6, .22, .3, 0, .9, .14, '#2a2a2e'); const cp = B(.62, .04, .34, 0, 1.08, .17, M(pick(r, ['#c82a2a', '#2a4ac8', '#1e1e22']), { roughness: .4 })); cp.rotation.x = .25;
+        C(.012, .1, -.12, 1.1, .2, '#1e1e22', 6); S(.03, -.12, 1.22, .2, M('#c82a2a', { roughness: .3 }), 8); [[.05, '#e8e040'], [.13, '#40c0e8'], [.21, '#e84040']].forEach(([x0, c]) => C(.022, .03, x0, 1.1, .2, M(c, { roughness: .3 }), 8));
+        B(.6, .62, .42, 0, 1.12, -.14, sideC); const sc = new THREE.Mesh(plane(.46, .38), new THREE.MeshStandardMaterial({ map: T.videogioco(v), emissive: '#ffffff', emissiveMap: T.videogioco(v), emissiveIntensity: 1 })); sc.position.set(0, 1.42, .08); sc.rotation.x = -.18; g.add(sc); sc.userData.screen = 1;
+        B(.62, .2, .3, 0, 1.75, -.1, sideC); const mq = new THREE.Mesh(plane(.54, .14), new THREE.MeshStandardMaterial({ map: T.marquee(v), emissive: '#ffffff', emissiveMap: T.marquee(v), emissiveIntensity: .9 })); mq.position.set(0, 1.85, .055); g.add(mq);
+        B(.26, .22, .01, 0, .3, .32, '#2a2a2e'); [-.05, .05].forEach(x0 => B(.03, .05, .01, x0, .42, .33, GL('#ff3a2a', .9))); g.userData.screen = [0, 1.42, .3]; break; }
+      case 'ar_pinball': {   // il flipper: piano sotto il vetro, schienale illuminato, gambe cromate, molla di lancio
+        const cab = M(pick(r, ['#2a1a3a', '#3a1a1a', '#1a2a3a']), { roughness: .4 }), cr = M('#c8ccd0', { metalness: .85, roughness: .25 }), v = Math.floor(r() * 6);
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b0]) => B(.05, .75, .05, a * .3, 0, b0 * .78, cr)); const tb = B(.7, .22, 1.7, 0, .75, 0, cab); tb.rotation.x = -.07;
+        const pf = new THREE.Mesh(plane(.62, 1.6), new THREE.MeshStandardMaterial({ map: T.flipper(v), emissive: '#ffffff', emissiveMap: T.flipper(v), emissiveIntensity: .35 })); pf.rotation.x = -PI / 2 - .07; pf.position.set(0, .98, 0); g.add(pf);
+        const gl = B(.64, .01, 1.62, 0, .99, 0, glass({ opacity: .15 })); gl.rotation.x = -.07; B(.72, .7, .14, 0, 1.0, -.82, cab); const bg = new THREE.Mesh(plane(.62, .55), new THREE.MeshStandardMaterial({ map: T.graffito(v + 2), emissive: '#ffffff', emissiveMap: T.graffito(v + 2), emissiveIntensity: .7 })); bg.position.set(0, 1.37, -.745); g.add(bg);
+        const pl = C(.012, .12, 0, 0, 0, cr, 6); pl.rotation.x = PI / 2; pl.position.set(.26, .88, .9); S(.025, .26, .88, .97, '#c82a2a', 6); g.userData.screen = [0, 1.37, -.6]; break; }
+      case 'ar_claw-machine': {   // la gru dei pupazzi: teca di vetro coi peluche, il gancio, la luce in alto
+        const cab = M(pick(r, ['#c82a5a', '#2a6ac8', '#e8a020']), { roughness: .35 }); B(1.1, .8, 1.1, 0, 0, 0, cab); B(1.12, .04, 1.12, 0, .8, 0, M('#c8ccd0', { metalness: .8 }));
+        B(1.06, 1.0, 1.06, 0, .84, 0, glass({ opacity: .15 })); for (let i = 0; i < 14; i++) S(.08 + r() * .04, (r() - .5) * .8, .9 + r() * .2, (r() - .5) * .8, pick(r, ['#e8a0b0', '#a0c8e8', '#f0e090', '#c8e8a0', '#d8b090', '#ffffff']), 6);
+        B(1.1, .16, 1.1, 0, 1.84, 0, cab); B(.9, .06, .02, 0, 1.9, .56, GL('#ffe090', 1.2)); C(.008, .4, .1, 1.44, .1, '#c8ccd0', 5); for (let i = 0; i < 3; i++) { const f0 = B(.01, .1, .01, .1 + Math.cos(i * 2.1) * .04, 1.36, .1 + Math.sin(i * 2.1) * .04, '#c8ccd0'); f0.rotation.z = .3; }
+        B(.4, .1, .2, 0, .82, .6, '#2a2a2e'); S(.03, -.1, .9, .65, '#c82a2a', 6); B(.04, .06, .02, .12, .5, .555, GL('#ff3a2a', .9)); break; }
+      case 'ar_air-hockey': { const cab = M(pick(r, ['#2a3a6a', '#3a2a2a']), { roughness: .4 }); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b0]) => B(.08, .7, .08, a * 1.1, 0, b0 * .75, '#2a2a2e')); B(2.4, .14, 1.7, 0, .7, 0, cab);
+        B(2.3, .02, 1.6, 0, .84, 0, M('#e8ecf0', { roughness: .15 })); B(.02, .021, 1.6, 0, .841, 0, '#c82a2a'); [-1, 1].forEach(s0 => { B(2.4, .06, .05, 0, .84, s0 * .82, cab); B(.05, .06, 1.7, s0 * 1.18, .84, 0, cab); C(.06, .05, s0 * .9, .86, 0, M(s0 > 0 ? '#c82a2a' : '#2a6ac8', { roughness: .3 }), 12); });
+        C(.04, .01, .2, .86, .1, '#1e1e22', 12); B(.5, .3, .1, 0, 1.0, -.86, '#1e1e22'); B(.4, .12, .01, 0, 1.12, -.805, GL('#ff4a2a', .8)); break; }
+      case 'ia_biliardino': {   // il calciobalilla: cassone di legno, campo verde, otto stecche con gli omini rossi e blu
+        const wdd = pick(r, ['#5a3e2a', '#6a4a30']); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b0]) => B(.08, .72, .08, a * .6, 0, b0 * .32, wdd)); B(1.3, .26, .72, 0, .62, 0, wdd);
+        B(1.2, .01, .64, 0, .7, 0, '#2a6a3a'); B(.01, .011, .64, 0, .705, 0, '#f0ece0'); const cr = M('#c8ccd0', { metalness: .85, roughness: .25 });
+        [-.5, -.36, -.18, -.05, .05, .18, .36, .5].forEach((x0, i) => { const rd = C(.012, 1.0, 0, 0, 0, cr, 6); rd.rotation.x = PI / 2; rd.position.set(x0, .82, 0); C(.025, .1, 0, 0, 0, '#1e1e22', 8).rotation.x = PI / 2; g.children[g.children.length - 1].position.set(x0, .82, i % 2 ? .52 : -.52);
+          const n = [1, 2, 5, 3, 3, 5, 2, 1][i]; for (let k = 0; k < n; k++) B(.04, .12, .03, x0, .72, -.25 + (k + .5) * .5 / n, i % 2 ? '#c82a2a' : '#2a4ac8'); }); S(.018, .1, .72, .05, '#f0ece0', 6); break; }
       default: return false;
     }
     return true;
   }
   // [stile] i pezzi del kit fuori tema rifatti a mano (stesse misure): la cassa, il banco, il distributore, la macchina del caffè, la lavatrice,
   // il secchio, la cassa acustica, il cibo di plastica; lampada e tappeti passano ai pezzi fatti a mano. Il resto del kit resta com'è.
-  const KITRE = { 'ar_gambling-machine': 1, stoolBar: 1, 'ar_cash-register': 1, pv_banco_vendita: 1, kitchenBar: 1, 'ar_vending-machine': 1, kitchenCoffeeMachine: 1, washer: 1, trashcan: 1, speaker: 1, fd_barrel: 1, fd_bread: 1, 'fd_loaf-baguette': 1, fd_croissant: 1, fd_cake: 1, fd_fish: 1,
+  const KITRE = { 'ar_arcade-machine': 1, ar_pinball: 1, 'ar_claw-machine': 1, 'ar_air-hockey': 1, 'ar_gambling-machine': 1, stoolBar: 1, 'ar_cash-register': 1, pv_banco_vendita: 1, kitchenBar: 1, 'ar_vending-machine': 1, kitchenCoffeeMachine: 1, washer: 1, trashcan: 1, speaker: 1, fd_barrel: 1, fd_bread: 1, 'fd_loaf-baguette': 1, fd_croissant: 1, fd_cake: 1, fd_fish: 1,
     lampRoundFloor: 'ia_lampada_piede', rugRound: 'ia_tappeto_tondo', rugRectangle: 'ia_tappeto_design' };
   const handId = id => /^ia_|^st_stufa$/.test(id) ? id : KITRE[id] === 1 ? id : KITRE[id] || null;
   // le cose appese hanno il centro all'altezza h: i pannelli sono già costruiti così
