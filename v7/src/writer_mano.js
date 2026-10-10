@@ -265,11 +265,54 @@ var WriterMano = (function () {
   // (le lettere strette al centro e le ali che si aprono a raggiera), il BASIS (aste alte e spigolose, le traverse lunghe che
   // attraversano tutto, le tacche), il BUSTED (le lettere a ricciolo chiuse nel cuore, a spruzzo, che cola). Non si deve
   // leggere per forza: deve colpire.
+  // [writer] Quattro scuole dai fogli: lo SWIPE (tutto avanti, la frustata lunga sotto e quella che taglia sopra), il WHAMX
+  // (le lettere strette al centro e le ali che si aprono a raggiera), il BASIS (aste alte e spigolose, le traverse lunghe che
+  // attraversano tutto, le tacche), il BUSTED (le lettere a ricciolo chiuse nel cuore, a spruzzo, che cola). Non si deve
+  // leggere per forza: deve colpire.
+  const SIGNED = {
+    KEOS: { w: 5.4, sl: .12, base: 42, idea: 'swipe: la frustata sotto e il taglio sopra', strokes: [
+      [[13, 4], [10.5, 22], [8, 42]],
+      [[27, 7], [17, 17], [10, 25, 1], [18, 33], [26, 42]],
+      [[27, 37], [35, 30], [33.5, 25], [27.5, 27.5], [25.5, 36], [30, 42], [38, 39]],
+      [[53, 8], [44, 12], [38.5, 27], [41, 39.5], [49, 39], [55.5, 24], [53.5, 9.5], [46, 10.5]],
+      [[74, 9], [66.5, 6.5], [59.5, 11.5], [64.5, 21], [68.5, 30], [62, 40], [51, 43]],
+      [[1, 49], [30, 46.5], [62, 43], [84, 36], [100, 27]],
+      [[36, 19.5], [62, 15.5], [84, 11], [99, 6]],
+      [[80, 25]], [[86, 23.5]],
+    ] },
+    DAKO: { w: 5.2, sl: .1, base: 40, idea: 'whamx: le ali che si aprono', strokes: [
+      [[17, 9], [15, 24], [13.5, 38, 1], [22, 36.5], [29, 26], [27.5, 14], [18, 9], [9, 11]],
+      [[28, 40], [33, 24], [36.5, 7, 1], [40, 22], [43.5, 39]], [[29.5, 27], [47.5, 25]],
+      [[50, 8], [48.5, 23], [47.5, 39]], [[61, 9], [49, 24, 1], [55.5, 31], [63, 40]],
+      [[75, 11], [66.5, 15], [63.5, 29], [68, 38.5], [76, 35], [79, 21], [75, 11], [69, 13]],
+      [[12, 24, 2], [3, 32], [0, 44], [4, 54]], [[84, 18, 2], [94, 27], [99, 40], [96, 52]],
+      [[32, 40, 2], [23, 50]], [[44, 40, 2], [43, 53]], [[56, 40, 2], [64, 52]], [[71, 39, 2], [86, 50]],
+    ] },
+    SNEK: { w: 4.6, sl: .14, base: 42, idea: 'basis: aste alte, traverse che attraversano', strokes: [
+      [[17, 9], [9, 6], [4.5, 13], [13, 23], [17.5, 33], [10, 42], [1, 39]],
+      [[20, 43], [22.5, 26], [25, 9, 1], [31, 25], [34, 41, 1], [37, 22], [40, 1]],
+      [[57, 7], [49, 7.5], [44, 8.5, 1], [42, 25], [40.5, 41, 1], [50, 40], [58, 39]],
+      [[60, 1], [58, 22], [56.5, 45]], [[75, 10], [66, 18], [58, 26, 1], [68, 33], [78, 42], [86, 47]],
+      [[16, 25.5], [40, 24], [70, 21.5], [99, 18]],
+      [[88, 9], [86.5, 20]], [[93, 8], [91.5, 19]],
+      [[63, 49]], [[69, 50.5]],
+    ] },
+    KAOS: { w: 3.8, sl: .08, base: 44, drips: 7, idea: 'busted: i riccioli chiusi nel cuore, che cola', strokes: [
+      [[50, 13], [42, 3], [26, 2], [12, 11], [10, 26], [24, 39], [50, 54, 1], [74, 39], [89, 25], [87, 10], [74, 2], [59, 3], [50, 13]],
+      [[23, 13], [21.5, 26], [20.5, 37]], [[33, 14], [26, 21], [22, 26, 1], [28, 31], [34, 36]],
+      [[45, 23], [39.5, 21], [35.5, 27], [39, 33.5], [44.5, 30], [46, 22], [47.5, 35]],
+      [[57, 21.5], [51.5, 24.5], [51.5, 33], [57, 34], [60.5, 27], [58.5, 21.5], [54, 20]],
+      [[73, 19], [67, 19], [65.5, 24.5], [71.5, 27.5], [73, 33], [64.5, 37]],
+      [[42, 46], [58, 46]],
+      [[94, 5], [92.5, 14]], [[98, 4], [96.5, 13]],
+    ] },
+  };
+  // la scuola del muro (pezzo SKILZ, a marker): tenuta da parte, più incisa che scritta
   // [writer] LA SCUOLA DEL MURO (dal pezzo SKILZ, pensato a marker): la tag sale verso destra; la rampa parte da sotto la prima
   // lettera, corre sotto tutto e risale a punta, così la tag sta dentro un triangolo; le lettere sono spigolose, le traverse
   // sforano a lama; dai tratti spuntano le spine (il punto [x, y, 3]: un uncino curvo che esce e finisce a punta); sopra
   // galleggia il disco. Non si deve leggere per forza: deve colpire.
-  const SIGNED = {
+  const SIGNED_MURO = {
     KEOS: { sharp: true, w: 5.2, sl: .24, base: 50, idea: 'la rampa, le spine, la O fatta disco', strokes: [
       [[19, 6, 3], [15, 28], [9, 50], [1, 60, 1], [30, 53], [60, 45, 3], [88, 37, 1], [84, 29]],
       [[35, 10], [26, 20], [15, 31, 1], [25, 38, 3], [36, 47]],
