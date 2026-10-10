@@ -1878,7 +1878,7 @@ var Popolo = (function () {
     if (b.obj === 'flipper') return { want: 'free', pose: 'flipper' };
     if (b.obj === 'pista') return { want: 'free', pose: 'balla' };
     if (b.obj === 'barbiere') return { want: 'seat', pose: 'siede' };
-    if (b.obj === 'bottega' || b.act === 'spesa') return { want: 'spot', spot: 'cliente|guarda', pose: 'merce', alt: 'counter' };
+    if (b.obj === 'bottega' || b.act === 'spesa') return { want: 'spot', spot: Math.random() < .55 ? 'scaffale|cliente|guarda' : 'cliente|guarda|scaffale', pose: 'merce', alt: 'counter' };   // [negozi] prima si guarda la merce sugli scaffali, poi si va alla cassa
     const coin = (String(n.id) + (P.curKey || '')).split('').reduce((h, c) => (h * 33 + c.charCodeAt(0)) % 1000, 5) / 1000;   // la stessa scelta finché dura il blocco
     if (atHome) return coin < .5 ? { want: 'soft', pose: 'siede' } : { want: 'free', pose: null };
     return coin < .55 ? { want: 'seat', pose: 'siede' } : { want: 'counter', pose: 'bancone' };
@@ -1914,7 +1914,7 @@ var Popolo = (function () {
     if (spot && u.want === 'work' && pose === 'merce') { const sb = (F.spots || []).filter(s => s.k === 'banco').sort((a, c) => Math.hypot(a.x - spot.x, a.y - spot.y) - Math.hypot(c.x - spot.x, c.y - spot.y))[0]; if (sb && Math.hypot(sb.x - spot.x, sb.y - spot.y) < 2.5) { spot = { x: sb.x, y: sb.y, face: sb.face }; } }   // [attività] dietro il banco, verso i clienti
     if (!spot && u.want === 'work' && /guardia giurata|buttafuori/.test((P.job && P.job.title) || '')) { const s = spotK('guardia'); if (s) { spot = s; pose = null; } }   // [banca] la guardia accanto alla porta
     if (!spot && u.want === 'work') { const jt = (P.job && P.job.title) || '', mec = /meccanic/.test(jt), s = mec || /commess|cassier|barist|barman|camerier|oste|armaiol|venditor|tabacc|farmacist|istruttore di tiro/.test(jt) ? spotK(mec ? 'meccanico' : /istruttore di tiro/.test(jt) ? 'tiro|banco' : 'banco') : null; if (s) { spot = s; pose = mec ? 'lavora' : 'merce'; } }
-    if (!spot && u.want === 'spot') { const s = spotK(u.spot); if (s) { spot = s; if (u.spot === 'guarda|prova' && s.k === 'prova') pose = 'prova'; if (s.k === 'auto' && pose === 'lavora') pose = 'osserva'; } else { u.want = u.alt || 'free'; pose = u.want === 'counter' ? 'bancone' : u.want === 'table' ? pose : null; } }
+    if (!spot && u.want === 'spot') { const s = spotK(u.spot); if (s) { spot = s; if (u.spot === 'guarda|prova' && s.k === 'prova') pose = 'prova'; if (s.k === 'auto' && pose === 'lavora') pose = 'osserva'; if (s.k === 'scaffale') pose = 'osserva'; } else { u.want = u.alt || 'free'; pose = u.want === 'counter' ? 'bancone' : u.want === 'table' ? pose : null; } }
     if (!spot && u.want === 'counter') { const s = spotK('bevi'); if (s) spot = s; }
     if (!spot && u.want === 'work') {
       const o = furn(COUNTERS) || furn(/^(pv_banco_lavoro|ia_scrivania_grande|ia_macchina_scrivere|desk)$|^st_/) || furn(STOVES);

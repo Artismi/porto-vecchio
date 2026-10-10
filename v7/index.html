@@ -6308,6 +6308,18 @@ Anim.npcMap((st, n, s) => {
     legTo(P, 'L', .12, .3 * d + GF, .2, .1, .2, 1); legTo(P, 'R', .12, .3 * d + GF, -.05, .1, .2, 1);
     arm(P, 'R', .1, -.6, .7, 0, -.9, .3, d);
   }); BUSY.raccoglie = 1;
+  // ---- [design] PRENDE dal tavolo: si china appena, la mano va avanti all'altezza del piano, le dita si chiudono, la mano torna al petto ----
+  def('prende', FULL, (P, A) => {
+    const g = A && A.grab, k = g ? g.k : cyc(P, 1.2), d = pulse(k, 0, .35, .55, 1), y = g ? Math.max(.55, Math.min(1.25, (g.h || .8) + .08)) : .9;
+    P.rot('Abdomen', .35 * d, 0, 0); P.rot('Chest', .1 * d, 0, 0); P.rot('Head', .4 * d, 0, 0);
+    handTo(P, 'R', .08, 1.0 + (y - 1.0) * d, .2 + .38 * d, .9, -.4, 0); P.fingers('R', .15 + .75 * pulse(k, .3, .45, 1, 1.1), .6);
+  });
+  // ---- [negozi] PORGE: il commesso allunga la merce sul banco, poi torna alla cassa ----
+  def('porge', FULL, (P, A) => {
+    const k = A && A.serve != null ? A.serve : cyc(P, 1.4), d = pulse(k, 0, .3, .6, 1);
+    P.rot('Abdomen', .15 + .2 * d, 0, 0); P.rot('Head', .2, 0, 0);
+    handTo(P, 'R', .06, 1.05, .25 + .3 * d, .9, -.2, 0); handTo(P, 'L', .12, 1.0, .22 + .15 * d, .9, -.3, 0); P.fingers('R', .45, .5); P.fingers('L', .45, .5);
+  });
   // ---- PREGA: in ginocchio, mani giunte, testa bassa ----
   def('prega', FULL, (P) => {
     kneel(P, 0); P.rot('Abdomen', -.3, 0, 0);
@@ -6556,6 +6568,7 @@ Anim.npcMap((st, n, s) => {
   // ================= LE MAPPE: dallo stato del gioco alla posa =================
   // testo del passo del piano (azioni.js, regia.js «fai»: «ripara la rete», «dipinge la barca»...) → posa
   const BY_LABEL = [
+    [/barba|barbiere|sauna|vapore|medicar|rammend|stringere la giacca/, 'siede'], [/caffè corretto|boccale|birra scura/, 'beve'], [/lavare e stirare|noleggia|stampare|volantini \(sotto/, 'aspetta'],   // [negozi] i servizi
     [/scav|seppell|buca|fossa|vanga|pala/, 'scava'], [/zapp|orto|semin|pianta|raccogl.*(olive|uva|frutta)|vign/, 'zappa'],
     [/inchiod|martell|ripara il tetto|aggiust|costruis|assi/, 'martella'], [/forza|scassin|piede di porco|serratura/, 'forza'],
     [/fruga|tasche|perquis|cerca (per terra|nei)|rovist/, 'fruga'], [/colla|manifest|volantin|affigg/, 'attacchina'],
@@ -6645,6 +6658,7 @@ Anim.npcMap((st, n, s) => {
       if (Math.abs(n.speedNow || 0) > .3) return;
       if (n.room.pose === 'dorme') { s.act = 'dorme'; s.lookAt = null; s.talk = false; return; }
       if (n.room.pose === 'legge') { s.act = 'siede'; s.upper = 'legge'; } else if (n.room.pose) put(n.room.pose, s); else habit(n, st.clock, s);
+      if (n.__serve) { const e = (performance.now() - n.__serve) / 1400; if (e < 1) { s.act = 'porge'; s.serve = e; s.lookAt = { x: st.player.x, y: 1.5, z: st.player.y, ground: true }; } else n.__serve = 0; }   // [negozi] ti porge la merce e ti guarda
       if (n.bark && n.bark.until > st.clock) { s.talk = true; if (/[!?]/.test(n.bark.text || '')) s.upper = 'discute'; }
       return;
     }
@@ -6691,6 +6705,7 @@ Anim.npcMap((st, n, s) => {
     if (W) { const k = W.kind || ''; if (/sonno/.test(k)) s.act = W.nap ? 'siede' : 'dorme'; else if (/lavor/.test(k)) s.act = 'lavora'; else if (/mang|pranz/.test(k)) s.act = 'tavola'; else if (/tv|casa|svago/.test(k)) s.act = 'siede'; else byLabel(W.label, s); return; }
     if (p.hand && HELD_UP[p.hand]) s.upper = HELD_UP[p.hand];
     if (p.carrying) s.upper = 'porta';
+    const gb = p.__grab; if (gb) { const e = (performance.now() - gb.t) / 900; if (e < 1) { s.act = gb.low ? 'raccoglie' : 'prende'; s.grab = { k: e, h: gb.h }; } else p.__grab = null; }   // [design] il gesto del prendere
     const tp = p.__tip; if (tp && performance.now() - tp.t < 350) { s.act = 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; }   // [graffiti] la bomboletta del giocatore
   });
 })();
@@ -10376,6 +10391,7 @@ var Interior = (function () {
     ia_como: [1.25, .5, 1], ia_armadio_design: [1.66, .64, 1], ia_pianta_grande: [.6, .6, 0], ia_pianta_alta: [.4, .4, 0], ia_tappeto_design: [2.4, 1.7, 0], ia_passatoia: [2.2, .8, 0], ia_tappeto_tondo: [1.8, 1.8, 0],
     ia_tavolo_design: [1.8, .95, 1], ia_sedia_design: [.45, .45, 0], ia_cucina_componibile: [3.24, .65, 1], ia_frigo_design: [.7, .65, 1], ia_lavabo_design: [.84, .5, 1], ia_vasca_design: [1.7, .76, 1],
     ia_boombox: [.52, .2, 0], ia_skate: [.8, .3, 0], ia_serra: [1.4, .5, 1],   // [disgelo]
+    ia_cartacce: [.6, .4, 0], ia_macchia: [.9, .7, 0],   // [vissuto] lo sporco per terra
     ia_mobile_dipinto: [1.24, .5, 1], ia_lampada_casco: [.45, .45, 0], ia_casse_crate: [.6, .3, 0], ia_letto_patchwork: [1.05, 2.1, 1], ia_ventilatore: [.4, .4, 0],
     ia_portasciugamani: [.6, .3, 0], ia_consolle_ingresso: [1.1, .36, 0], ia_scarpiera: [.92, .34, 1], ia_attaccapanni_design: [.5, .5, 0], ia_scrivania_design: [1.4, .7, 1],
   };
@@ -10387,6 +10403,7 @@ var Interior = (function () {
   const SMALL = { ia_samovar: 1, ia_moka: 1, ia_macchina_scrivere: 1, ia_telefono: 1, ia_lampada_tavolo: 1, ia_pila_carte: 1, ia_giradischi: 1, ia_bilancia: 1, ia_candela: 1, ia_posacenere: 1, ia_bicchieri: 1, ia_radiolina: 1, ia_vaso: 1, ia_carte_gioco: 1, ia_pane: 1, ia_pesce: 1, ia_libro: 1, ia_teschio_bue: 1, ia_spillatore: 1,
     ia_mazzette: 1, ia_lingotti: 1, ia_piatti: 1, ia_pentola: 1, ia_tazze: 1, ia_lettere: 1, ia_radio_clandestina: 1, ia_cesto_frutta: 1, ia_bottiglia_vino: 1, ia_quaderni: 1, ia_ferro_stiro: 1, ia_abatjour: 1, ia_vaso_fiori: 1, ia_lampada_scrivania: 1 };
   LOOTSMALL.forEach(k => { SMALL[k] = 1; });
+  SMALL['ar_cash-register'] = 1;   // [stile] il registratore sta sopra un banco, non per terra
   // roba appesa ai muri esterni: [larghezza, altezza dal pavimento (centro), bassa: va anche sui muri interni]
   const DECOR = { ia_ritratto: [.9, 1.85], ia_manifesto: [.8, 1.6], ia_tappeto_muro: [2, 1.55], ia_calendario: [.4, 1.5], ia_orologio: [.4, 2.1], ia_specchio: [.6, 1.55], ia_mensola: [1, 1.7], ia_quadro: [.8, 1.65],
     ia_foto: [.9, 1.6], ia_icona: [.5, 1.9], ia_crocifisso: [.4, 1.95], ia_mappa: [1.4, 1.6], ia_bandiera_muro: [1.2, 1.8], ia_lavagna: [2, 1.4], ia_termosifone: [1, .45, 1], ia_appendiabiti: [1, 1.6], ia_reti: [1.6, 1.6],
@@ -10394,7 +10411,8 @@ var Interior = (function () {
     ia_poster_disco: [.8, 1.6], ia_specchio_bar: [1.6, 1.7], ia_quadro_elettrico: [.6, 1.6], ia_estintore: [.3, .4, 1], ia_trofei: [1.2, 1.9], ia_salami: [1.2, 2], ia_mensola_alta: [1.4, 2.1], ia_altoparlante: [.4, 2.3], ia_spioncino: [.3, 1.5],
     ia_scritta_risacca: [1.4, 1.2], ia_stella_regime: [.8, 2.1], ia_lampada_muro: [.3, 1.9], ia_ventaglio_carte: [.6, 1.5], ia_tabella_turni: [.8, 1.5], ia_schermo_radar: [1, 1.5], ia_pannello_strumenti: [1.6, 1.5],
     ia_freccette: [.6, 1.7, 1], ia_stecche: [.8, 1.3, 1], ia_trofeo_caccia: [.6, 2.05], ia_fucili_muro: [1.6, 1.6], ia_insegna_birra: [1, 1.95], ia_cartello_prezzi: [.8, 1.6], ia_poster_auto: [.8, 1.65], ia_altarino: [.6, 1.5], ia_lupara_muro: [1.1, 1.5],
-    ia_quadro_grande: [1.2, 1.6], ia_poster_design: [.62, 1.6], ia_specchio_tondo: [.66, 1.55], ia_mensola_libri: [1.0, 1.75], ia_mensola_skate: [.82, 1.45] };   // [design]
+    ia_quadro_grande: [1.2, 1.6], ia_poster_design: [.62, 1.6], ia_specchio_tondo: [.66, 1.55], ia_mensola_libri: [1.0, 1.75], ia_mensola_skate: [.82, 1.45],
+    ia_poster_ribelle: [.6, 1.55], ia_stencil: [1.0, 1.35], ia_pubblicita: [.7, 1.65], ia_ragnatela: [.6, 2.55] };   // [vissuto] ribellione, propaganda, ragnatele   // [design]
 
   // ---------------------------------------------------------------------------------------------------------------
   // GRUPPI: mobili che stanno insieme. [id, x lungo il muro, y dal muro verso il centro, rotazione, h (sopra un mobile)]
@@ -10486,6 +10504,30 @@ var Interior = (function () {
   };
   // [design] mobili alti e composizioni larghe: i primi negli angoli, le seconde in mezzo al muro
   const CENTERED = /^(letto|salotto|divano|zona_tv|pranzo|cena|bancone)|bed|ia_divano|mobile_tv|lavabo|consolle/;
+  // [vissuto] quanto è sporco, secondo chi ci vive o lavora (0 lucido, 1 rudere)
+  const DIRT = { rudere: 1, kommunalka: .75, operaio: .65, pescatore: .55, contadino: .6, intellettuale: .45, famiglia: .3, anziana: .15, funzionario: .03, condominio: .55, albergo: .08, cultura: .05, banca: .03, bar: .55, pub: .6, magazzino: .75, deposito: .8, hangar: .7, officina: .8, cantiere: .8, caserma: .2, rocca: .25, ambulatorio: .1, disco: .6, sala_giochi: .65, baracca: .7, emporio: .1, supermercato: .15 };
+  // [vissuto] le pareti di chi: dove si ribellano (stencil, poster dei ragazzi, volantini) e dove si crede alla propaganda (manifesti, pubblicità)
+  const REBEL = /cameretta|atelier|mono_artista|stanza_vuota|rudere|cantine|androne|corridoio_k|stanza_fam|camera_spoglia|rimessa_reti|soppalco|magazzino_neri|sala_biliardo|biliardo|sala_giochi|pista|bar_disco/;
+  const PROPA = /ufficio|ingresso_caserma|caserma|comando|archivio|schedario|direzione|presidenza|hall|atrio|sala_riunioni|museo_regime|salone_cultura|sportelli|ingresso_uff|corsia|attesa|aula|mensa_t|camerata|emporio|supermercato/;
+  function lifeTokens(name, mood, dirt, r) {
+    const t = [];
+    if (dirt > .45) { t.push('~ia_cartacce'); if (dirt > .6) t.push('~ia_cartacce', '?~ia_macchia', '?^ia_ragnatela'); else if (r() < .5) t.push('~ia_macchia'); }
+    const rebel = REBEL.test(name) || /kommunalka|rudere|intellettuale/.test(mood) && !/bagno/.test(name), propa = PROPA.test(name) || mood === 'funzionario' && !/bagno|cucina/.test(name);
+    if (rebel) { t.push('?^ia_poster_ribelle', '?^ia_stencil'); if (r() < .4) t.push('^ia_volantini'); }
+    if (propa) { t.push('^ia_manifesto|^ia_pubblicita', '?^ia_pubblicita'); }
+    if (/sala_bar|sala_pub|bar_circolo|circolo/.test(name)) t.push('^ia_pubblicita', '?^ia_stencil', '?^ia_volantini');   // al bar si incollano uno sopra l'altro
+    return t;
+  }
+  // [vissuto] la roba per terra sta dove la si lascia davvero: [cosa, vicino a quale mobile]
+  const ANCH = [[/scarpe|stivali/, /bed|letto|branda|lettino|scarpiera|coatRack|attaccapanni|consolle|castello/], [/giornali|bottiglie|rivista/, /divano|loungeSofa|poltrona|branda|materasso|chair/], [/giocattoli|palla/, /rug|tappeto|castello|letto|bed/],
+    [/valigia/, /bed|letto|armadio|bookcaseClosed/], [/secchio$|bacinella/, /Sink|toilet|lavello|cucina|Stove|lavabo|vasca|tinozza|washer/], [/legna|secchio_carbone/, /stufa|focolare|Stove/], [/gatto/, /stufa|focolare|divano|poltrona|tappeto|rug|bed/],
+    [/cesto|sacchi/, /table|tavol|credenza|madia|Cabinet|scaffale/], [/boombox|skate/, /letto|desk|scrivania|castello|branda|materasso|patchwork/], [/casse_birra|ia_casse$|cardboardBox|casse_munizioni/, /bancone|scaffale|bookcase|casse|botti|barrel/], [/cartacce|macchia|sedia_rotta/, /./]];
+  // [vissuto] niente angoli perfetti: le sedie scostate e girate, le poltrone orientate, i tappeti un po' storti, i mobili quasi dritti
+  const JIT = id => /^(chair|chairCushion|ia_sedia_design|ia_sedia_rotta|stoolBar|ia_sgabello)$/.test(id) ? [.45, .1] : /chairDesk/.test(id) ? [.7, .12] : /poltrona|pouf|loungeChair/.test(id) ? [.3, .05] : RUG_J.test(id) ? [.16, .05] : /tavolino|tableCoffee|tableRound/.test(id) ? [.1, .04] : /^(ia_|bookcase|kitchen|desk|bed|table)/.test(id) ? [.025, 0] : null;
+  const RUG_J = /^rug|ia_tappeto_design|ia_tappeto_tondo|ia_passatoia/;
+  // [vissuto] i quadri e le foto che si compongono, e i mobili sopra cui si appendono
+  const PIC = /quadro|foto|poster|specchio|icona|ritratto|manifesto|pubblicita|tappeto_muro|mappa|altarino|mensola_libri|mensola_skate/;
+  const ART_ANCH = /divano|loungeSofa|letto|bed|credenza|madia|ia_como|desk|scrivania|pianoforte|mobile_tv|consolle|tavolo|^table$|cassapanca|comodino|sideTable|ia_tv$/;
   const CAP = /pianta|pottedPlant|plantSmall|pouf|lampada|lettura_design|zona_tv|ia_madia|libreria_piena|salotto_/;
   const RUG = /^rug|ia_pista|ia_tappeto_design|ia_tappeto_tondo|ia_passatoia/;
   // ---------------------------------------------------------------------------------------------------------------
@@ -10520,7 +10562,7 @@ var Interior = (function () {
     sala_pranzo: ['spina|parquet', 'velluto|fiori|crema', 'lampadario', ['*@pranzo_design|*@pranzo', 'ia_madia|ia_credenza', 'ia_credenza|ia_libreria_piena', '?ia_pianta_grande|pottedPlant', '^ia_quadro_grande|^ia_ritratto', '^ia_quadro', '^ia_orologio', '^ia_termosifone'], ['ia_pianta_alta']],
     studio: ['parquet|spina', 'legno|crema', 'lampadario', ['?st_cassaforte', '@studio_design|@scrivania|@scrittoio', 'ia_libreria_piena|bookcaseClosedWide', 'bookcaseOpen|ia_libreria_piena', 'ia_schedario', '?@lettura_design|@lettura', '?ia_pianta_alta', '?^ia_quadro_grande', '?ia_bandiera', '^ia_ritratto', '^ia_mappa', '?^ia_calendario']],
     corridoio_k: ['linoleum|assi', 'verde|ocra', 'bulbo', ['coatRackStanding', '?ia_bici', '?ia_carrozzina', '~ia_stivali', '~ia_secchio', '^ia_appendiabiti', '^ia_tabella_turni', '^ia_quadro_elettrico', '?^ia_calendario']],
-    stanza_fam: ['parquet|linoleum', 'fiori|righe|rombi', 'bulbo', ['!@letto2|@letto1|@castello|@letto_ferro', 'ia_armadio', '@pranzo_piccolo|ia_tavolino', '?ia_tv', '?ia_cassapanca', '^ia_tappeto_muro', '?^ia_foto', '^ia_termosifone', '?~ia_valigia', '?~ia_bucato', '%@stiro|@angolo_bimbi|@partenza', '?~ia_scarpe', '??^ia_altarino'], ['%@stiro|@angolo_bimbi|@cucito', '~ia_giocattoli', '~ia_scarpe']],
+    stanza_fam: ['parquet|linoleum', 'fiori|righe|rombi', 'bulbo', ['!@letto2|@letto1|@castello|@letto_ferro', 'ia_armadio', '@pranzo_piccolo|ia_tavolino', '?ia_tv', '?ia_cassapanca', '^ia_tappeto_muro', '?^ia_foto', '^ia_termosifone', '?~ia_valigia', '?~ia_bucato', '%@stiro|@angolo_bimbi|@partenza', '?~ia_scarpe', '??^ia_altarino'], ['*@carte_interrotta|*@pranzo_piccolo|*@tavolino', '%@stiro|@angolo_bimbi|@cucito', '~ia_giocattoli', '~ia_scarpe']],   // [vissuto] in mezzo alla stanza grande, il tavolo della vita di tutti i giorni
     cucina_comune: ['linoleum|scacchi', 'verde|piastrelle', 'neon', ['@cucina_povera', '@cucina_povera|ia_cucina_gas', 'ia_cucina_gas', 'ia_frigo_vecchio', '*ia_tavolo_lungo|*@pranzo', '^ia_mensola', '^ia_mensola', '^ia_tabella_turni', '?~ia_bucato', '~ia_secchio', '~ia_bottiglie', '?@stiro', '?~ia_giocattoli', 'ia_scaffale_barattoli']],
     cucina_focolare: ['cotto|terra', 'calce|mattoni', 'fuoco', ['!@focolare|ia_focolare', '%@cena|@pranzo|ia_tavolo_lungo', 'ia_credenza', '?fd_barrel', '?ia_cesto', '^ia_salami', '^ia_mensola', '?^ia_icona', '~ia_legna', '~ia_cesto', '?~ia_gatto', '?^ia_lupara_muro']],
     granaio: ['assi', 'mattoni|calce', 'spenta', ['ia_sacchi', 'ia_sacchi', 'ia_sacchi', 'fd_barrel', 'ia_casse', '~ia_cesto', '~ia_sacchi', '?ia_scaffale_barattoli']],
@@ -10628,26 +10670,26 @@ var Interior = (function () {
     direzione: ['spina', 'legno|velluto', 'lampadario', ['!st_cassaforte', '@comando', 'bookcaseClosedWide', 'ia_schedario', 'ia_poltrona', 'ia_poltrona', 'pottedPlant', '^ia_ritratto', '^ia_quadro', '^ia_orologio', '^ia_mappa', 'rugRectangle']],
     ingresso_uff: ['linoleum', 'crema|verde', 'neon', ['?st_cassaforte', 'desk', 'chairDesk', 'ia_telefono', 'ia_poltrona', 'ia_poltrona', 'pottedPlant', 'coatRackStanding', '^ia_ritratto', '^ia_calendario']],
     tipografia: ['cemento', 'calce|cemento', 'neon', ['!st_ciclostile', 'pv_banco_lavoro', 'fx_machine', 'ia_ciclostile_vecchio', 'table', 'cardboardBoxClosed', 'cardboardBoxClosed', 'bookcaseOpen', '~ia_giornali', '~ia_giornali', '^ia_manifesto', '^ia_calendario', '^ia_quadro_elettrico']],
-    barbiere: ['scacchi|piastrelle', 'piastrelle|azzurro', 'neon', ['@barbiere_post', '@barbiere_post', 'bench', 'coatRackStanding', 'ar_cash-register', '^ia_specchio', '^ia_specchio', '^ia_ritratto', '^ia_calendario', '~ia_giornali']],
-    tabacchi: ['graniglia', 'crema|legno', 'neon', ['!@cassa|pv_banco_vendita', 'kitchenBar', 'kitchenBar', 'ar_cash-register', 'bookcaseOpen', 'ar_vending-machine', 'ar_gambling-machine', '^ia_ritratto', '^ia_manifesto', '^ia_calendario', '~ia_giornali']],
-    farmacia: ['graniglia|marmo', 'ospedale|crema', 'neon', ['!st_tavolo_medico', '!@cassa|pv_banco_vendita', 'bookcaseOpen', 'bookcaseOpen', 'kitchenBar', 'ia_scaffale_merci', '^ia_ritratto', '^ia_bacheca', '^ia_calendario']],
+    barbiere: ['scacchi|piastrelle', 'piastrelle|azzurro', 'neon', ['!@barbiere_post', '@barbiere_post', 'bench', 'coatRackStanding', 'ar_cash-register', '^ia_specchio', '^ia_specchio', '^ia_ritratto', '^ia_calendario', '~ia_giornali']],
+    tabacchi: ['graniglia', 'crema|legno', 'neon', ['!@cassa|pv_banco_vendita', 'kitchenBar', 'ia_scaffale_merci', 'ar_cash-register', 'ia_scaffale_merci|bookcaseOpen', 'ar_vending-machine', 'ar_gambling-machine', '^ia_ritratto', '^ia_manifesto', '^ia_calendario', '~ia_giornali']],
+    farmacia: ['graniglia|marmo', 'ospedale|crema', 'neon', ['!st_tavolo_medico', '!@cassa|pv_banco_vendita', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'kitchenBar', 'ia_scaffale_merci', '^ia_ritratto', '^ia_bacheca', '^ia_calendario']],
     lavanderia: ['piastrelle', 'piastrelle|azzurro', 'neon', ['washer', 'washer', 'washer', 'washer', 'bench', 'kitchenBar', 'ar_cash-register', '?@lavatoio', '~ia_bacinella', '~ia_bucato', '^ia_tabella_turni', '^ia_ritratto']],
     sartoria: ['parquet|linoleum', 'fiori|crema', 'bulbo', ['!st_macchina_cucire', '!st_macchina_cucire', 'table', 'table', 'chair', 'chair', 'coatRackStanding', 'coatRackStanding', 'bookcaseOpen', 'rugRectangle', 'pv_banco_lavoro', '^ia_specchio', '^ia_ritratto', '^ia_calendario', '~ia_cesto']],
     prova: ['parquet', 'fiori', 'lampadario', ['coatRackStanding', 'ia_poltrona', 'rugRound', '^ia_specchio', '^ia_specchio']],
-    ferramenta: ['cemento|graniglia', 'calce|verde', 'neon', ['!@cassa|pv_banco_vendita', 'pv_banco_lavoro', 'kitchenBar', 'kitchenBar', 'ar_cash-register', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpenLow', 'fx_box-small', 'fx_box-small', 'cardboardBoxClosed', '^ia_attrezzi_muro', '^ia_attrezzi_muro', '^ia_ritratto', '^ia_calendario'], ['*ia_scaffale_metallo', 'bookcaseOpen', 'fx_box-small']],
-    panetteria: ['graniglia', 'piastrelle|crema', 'neon', ['!st_forno', '!@cassa|pv_banco_vendita', 'kitchenBar', 'kitchenBar', 'kitchenBar', 'fd_loaf-baguette', 'fd_bread', 'fd_croissant', 'fd_cake', 'ar_cash-register', 'bookcaseOpen', 'ia_scaffale_merci', '^ia_ritratto', '^ia_menu', '~ia_cesto', '~ia_sacchi']],
+    ferramenta: ['cemento|graniglia', 'calce|verde', 'neon', ['!@cassa|pv_banco_vendita', 'pv_banco_lavoro', 'kitchenBar', 'ia_scaffale_merci', 'ar_cash-register', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'bookcaseOpenLow', 'fx_box-small', 'fx_box-small', 'cardboardBoxClosed', '^ia_attrezzi_muro', '^ia_attrezzi_muro', '^ia_ritratto', '^ia_calendario'], ['*ia_scaffale_metallo', 'ia_scaffale_merci|bookcaseOpen', 'fx_box-small']],
+    panetteria: ['graniglia', 'piastrelle|crema', 'neon', ['!st_forno', '!@cassa|pv_banco_vendita', 'kitchenBar', 'ia_scaffale_merci', 'kitchenBar', 'fd_loaf-baguette', 'fd_bread', 'fd_croissant', 'fd_cake', 'ar_cash-register', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci', '^ia_ritratto', '^ia_menu', '~ia_cesto', '~ia_sacchi']],
     forno: ['cotto', 'calce|mattoni', 'fuoco', ['!st_forno', 'pv_banco_lavoro', 'kitchenStove', 'table', 'fd_bread', 'kitchenCabinet', 'cardboardBoxClosed', 'ia_sacchi', '~ia_sacchi', '~ia_legna', '^ia_mensola']],
     pescheria: ['piastrelle', 'piastrelle', 'neon', ['!@cassa|pv_banco_vendita', 'kitchenBar', 'kitchenBar', 'fd_fish', 'fd_fish', 'fd_barrel', 'fd_barrel', 'ar_cash-register', 'kitchenSink', 'ia_vetrina_frigo', '^ia_reti', '^ia_ritratto', '^ia_menu', '~ia_cassette_frutta', '~ia_secchio']],
     cella_frigo: ['piastrelle', 'piastrelle', 'neon', ['kitchenFridge', 'kitchenFridge', 'fd_barrel', 'fd_barrel', '^ia_gancio_carne']],
-    supermercato: ['linoleum|graniglia', 'piastrelle|crema', 'neon', ['!@cassa|pv_banco_vendita', 'ar_cash-register', 'ar_cash-register', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpen', 'bookcaseOpen', 'kitchenFridge', 'kitchenFridge', 'ia_vetrina_frigo', 'cardboardBoxClosed', 'cardboardBoxClosed', '?ia_cassette_frutta', '~ia_cassette_frutta', '~ia_sacchi', '^ia_ritratto', '^ia_manifesto', '^ia_calendario']],   // [ordine]
-    bottega: ['graniglia|linoleum', 'crema|verde|ocra', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpenLow', 'cardboardBoxClosed', 'pottedPlant', '?ia_cassette_frutta', '^ia_ritratto', '^ia_calendario', '^ia_manifesto', '~ia_cassette_frutta', '?ia_scaffale_barattoli'], ['ia_scaffale_merci', '*ia_scaffale_merci', 'ia_cassette_frutta']],
+    supermercato: ['linoleum|graniglia', 'piastrelle|crema', 'neon', ['!@cassa|pv_banco_vendita', 'ar_cash-register', 'ar_cash-register', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'kitchenFridge', 'kitchenFridge', 'ia_vetrina_frigo', 'cardboardBoxClosed', 'cardboardBoxClosed', '?ia_cassette_frutta', '~ia_cassette_frutta', '~ia_sacchi', '^ia_ritratto', '^ia_manifesto', '^ia_calendario']],   // [ordine]
+    bottega: ['graniglia|linoleum', 'crema|verde|ocra', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'bookcaseOpenLow', 'cardboardBoxClosed', 'pottedPlant', '?ia_cassette_frutta', '^ia_ritratto', '^ia_calendario', '^ia_manifesto', '~ia_cassette_frutta', '?ia_scaffale_barattoli'], ['ia_scaffale_merci', '*ia_scaffale_merci', 'ia_cassette_frutta']],
     alimentari: ['linoleum|graniglia', 'crema|verde', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_vetrina_frigo', 'ia_cassette_frutta', 'ia_sacchi', '^ia_ritratto', '^ia_menu', '^ia_calendario', '~ia_cassette_frutta', '~ia_cesto', 'ia_scaffale_barattoli'], ['*ia_scaffale_merci', 'ia_cassette_frutta', 'ia_sacchi']],
     cassa_benzina: ['linoleum', 'blu|crema', 'neon', ['?st_cassaforte', '@cassa', 'ia_scaffale_merci', 'ar_vending-machine', 'ia_bidone', '^ia_calendario', '^ia_ritratto', '^ia_mappa', '~pv_pneumatici']],
     attesa: ['linoleum', 'ospedale', 'neon', ['bench', 'bench', 'bench', 'pottedPlant', 'desk', '^ia_ritratto', '^ia_bacheca', '^ia_orologio', '^ia_manifesto'], ['bench', 'pottedPlant']],
     visite: ['linoleum', 'ospedale', 'neon', ['!st_tavolo_medico', '@ospedale', 'desk', 'chairDesk', 'bathroomSink', 'ia_schedario', '^ia_specchio', '^ia_calendario', '^ia_ritratto']],
     corsia: ['linoleum', 'ospedale', 'neon', ['@ospedale', '@ospedale', '@ospedale', '@ospedale', 'sideTable', 'sideTable', '^ia_ritratto', '^ia_orologio', '^ia_termosifone']],
     studio_medico: ['parquet|linoleum', 'ospedale|crema', 'bulbo', ['@scrivania', 'bookcaseClosedWide', 'ia_schedario', '^ia_ritratto', '^ia_calendario']],
-    videoteca: ['moquette_b', 'nero', 'neon', ['pv_banco_vendita', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', 'pv_banco_vendita', 'ia_tv', '^ia_poster_film', '^ia_poster_film', '^ia_insegna_neon']],
+    videoteca: ['moquette_b', 'nero', 'neon', ['pv_banco_vendita', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'pv_banco_vendita', 'ia_tv', '^ia_poster_film', '^ia_poster_film', '^ia_insegna_neon']],
     sala_giochi: ['moquette_b', 'nero', 'neon_rosa', ['ar_arcade-machine', 'ar_arcade-machine', 'ar_pinball', 'ar_pinball', 'ar_claw-machine', 'ar_air-hockey', 'ar_dance-machine', 'ar_gambling-machine', 'ar_basketball-game', 'ar_prizes', 'ar_cash-register', 'ar_vending-machine', '^ia_poster_disco', '^ia_insegna_neon']],
     // --- mestieri: le postazioni (st_*) sono quelle di oggetti.js, si piazzano per prime ('!') ---
     forgia: ['cemento|terra', 'mattoni', 'fuoco', ['!st_forgia', '!st_saldatrice', '!pv_banco_lavoro', 'st_cassetta', 'ia_bidone', 'kitchenBar', 'ar_cash-register', '~ia_secchio_carbone', '~ia_legna', '^ia_attrezzi_muro', '^ia_attrezzi_muro', '^ia_calendario']],
@@ -10681,7 +10723,9 @@ var Interior = (function () {
   const TALL = /ia_lampada_casco|ia_serra|libreria_piena|armadio_design|frigo_design|cucina_componibile|lavabo_design|consolle_ingresso|attaccapanni|pianta_grande|porta_caveau|cassette_sicurezza|stender|manichino|camerino|bookcase|stenka|armadio|Fridge|frigo|scaffale|armadietti|jukebox|arcade|vending|claw|castello|schedario|credenza|radio_grande|pianoforte|quadro_comandi|prizes|dance|basketball|fx_|ia_casse|ia_bidone/;
   // apertura delle stanze grandi: niente muri dentro
   const OPEN = { chiesa: 1, deposito: 1, officina: 1, fabbrica: 1, hangar: 1, cantiere: 1, faro: 1 };
-  const MAINBIG = { banca: 1, bar: 1, pub: 1, autorimessa: 1, abbigliamento: 1, armeria: 1, trattoria: 1, circolo: 1 };
+  const MAINBIG = { banca: 1, bar: 1, pub: 1, autorimessa: 1, abbigliamento: 1, armeria: 1, trattoria: 1, circolo: 1,
+    // [negozi] anche nelle botteghe la sala vendita è la stanza più grande (il magazzino dietro)
+    alimentari: 1, emporio: 1, ferramenta: 1, bottega: 1, tabacchi: 1, farmacia: 1, panetteria: 1, supermercato: 1, fruttivendolo: 1, macelleria: 1, pescheria: 1, video: 1, barbiere: 1, lavanderia: 1, sartoria: 1, cantina: 1, gelateria: 1, benzina: 1 };
   const OPEN0 = { teatro: 1, cinema: 1, palestra: 1, cultura: 1, disco: 1, magazzino: 1 };
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -10901,7 +10945,7 @@ var Interior = (function () {
       if (f === 0 && MAINBIG[kind]) { const big = P.rooms.reduce((a, q) => q.w * q.h > a.w * a.h ? q : a, P.rooms[0]); if (big !== eRoom && big.w * big.h > eRoom.w * eRoom.h * 1.2 && names.get(big) !== 'bagno') { const n0 = names.get(eRoom); names.set(eRoom, names.get(big)); names.set(big, n0); } }
       if (!OPEN[kind]) hallDoors(P, eRoom, stairs);
       const walls = wallsOf(f, P.inner), dw = P.inner.filter(q => q.gap);
-      const rooms = P.rooms.map(q => { const name = names.get(q), st = roomStyle(name, rf); return { x: q.x, y: q.y, w: q.w, h: q.h, name, floor: st.floor, wall: st.wall, light: st.light, dirt: prog.mood === 'rudere' ? 1 : prog.mood === 'operaio' || prog.mood === 'kommunalka' || prog.mood === 'magazzino' ? .6 : prog.mood === 'funzionario' || prog.mood === 'albergo' || prog.mood === 'cultura' ? .1 : .3 }; });
+      const rooms = P.rooms.map(q => { const name = names.get(q), st = roomStyle(name, rf); return { x: q.x, y: q.y, w: q.w, h: q.h, name, floor: st.floor, wall: st.wall, light: st.light, dirt: Math.max(0, Math.min(1, (DIRT[prog.mood] != null ? DIRT[prog.mood] : .35) + (rf() - .5) * .2)) }; });
       const F = { f, mood: prog.mood, walls, rooms, inner: dw, segs: P.inner, wins: /disco|cinema|sala_giochi/.test(prog.mood) ? [] : windows(Lb, f, P.inner, prog.names[0] === 'lanterna' || prog.mood === 'chiesa'), doors: dw.map(q => ({ x: q.v ? q.a[0] : q.gap[0], y: q.v ? q.gap[0] : q.a[1], v: q.v })), furn: [] };
       Lb.floors.push(F);
       F.furn = furnish(Lb, F, rf, dw, kind);
@@ -11003,8 +11047,9 @@ var Interior = (function () {
       const name = q.name, x0 = q.x + .15, y0 = q.y + .15, x1 = q.x + q.w - .15, y1 = q.y + q.h - .15;
       const used = [];   // [cx, cy, hw, hd, tappeto, alto]
       const free = (cx, cy, hw, hd, rug) => cx - hw >= x0 - .01 && cx + hw <= x1 + .01 && cy - hd >= y0 - .01 && cy + hd <= y1 + .01 && !used.some(u => (rug ? u[4] : !u[4]) && Math.abs(u[0] - cx) < u[2] + hw + .04 && Math.abs(u[1] - cy) < u[3] + hd + .04);
-      const put = (id, x, y, ry, h, extra) => { const [w, d, sol] = szOf(id), sw = Math.abs(Math.sin(ry)) > .5, hw = (sw ? d : w) / 2, hd = (sw ? w : d) / 2; const o = Object.assign({ id, x, y, ry, h: h || 0, solid: sol && !h ? [x - hw, y - hd, hw * 2, hd * 2] : null, room: qi }, extra || {}); out.push(o); return o; };
-      const list = roomItems(name).map(t => parseTok(t, r)).filter(Boolean);
+      const put = (id, x, y, ry, h, extra) => { const J = !h && !(extra && extra.decor) ? JIT(id) : null; if (J) { const a = (r() - .5) * J[0], pull = r() * J[1]; ry += a; x -= Math.sin(ry) * pull; y -= Math.cos(ry) * pull; }   // [vissuto]
+        const [w, d, sol] = szOf(id), sw = Math.abs(Math.sin(ry)) > .5, hw = (sw ? d : w) / 2, hd = (sw ? w : d) / 2; const o = Object.assign({ id, x, y, ry, h: h || 0, solid: sol && !h ? [x - hw, y - hd, hw * 2, hd * 2] : null, room: qi }, extra || {}); out.push(o); return o; };
+      const list = roomItems(name).concat(lifeTokens(name, F.mood, q.dirt || 0, r)).map(t => parseTok(t, r)).filter(Boolean);
       // posti lungo i muri: nord, est, sud, ovest
       const slots = [];
       for (let x = x0 + .25; x < x1 - .2; x += .25) slots.push([x, y0, 'N']);
@@ -11057,7 +11102,9 @@ var Interior = (function () {
       const fullness = () => used.reduce((a, u) => a + (u[4] ? 0 : u[2] * u[3] * 4), 0) / Math.max(1, (x1 - x0) * (y1 - y0));
       // [design] contro quale muro sta (e se è un muro esterno): i pensili e gli specchi si vedono solo contro i muri alti
       const wallOf = spot => { const sd = spot.side, wp = sd === 'N' ? Math.abs(q.y - BY) < .01 : sd === 'S' ? Math.abs(q.y + q.h - BY - BH) < .01 : sd === 'W' ? Math.abs(q.x - BX) < .01 : Math.abs(q.x + q.w - BX - BW) < .01; return { ws: sd, wp }; };
-      const placeOne = (id, spot) => { const S = SIDE[spot.side]; put(id, spot.cx, spot.cy, S.ry, 0, wallOf(spot)); used.push([spot.cx, spot.cy, spot.hw, spot.hd, RUG.test(id), TALL.test(id)]); };
+      // [negozi] davanti agli scaffali della merce c'è un posto dove i clienti si fermano a guardare
+      const browse = (id, spot) => { if (!/^(ia_scaffale_merci|bookcaseOpen|bookcaseOpenLow|ia_vetrina|ia_vetrina_frigo|ia_scaffale_scarpe|ia_cassette_frutta|ia_scaffale_barattoli)$/.test(id) || /^(casa|magazzino|deposito|hangar|cantiere|officina|fabbrica|stazione)$/.test(kind) || /retro|magazzino|archivio|cantin|dispensa|ufficio|scaffali/.test(name)) return; const S = SIDE[spot.side], dd = (S.n[0] ? spot.hw : spot.hd) + .6; F.spots.push({ k: 'scaffale', x: spot.cx + S.n[0] * dd, y: spot.cy + S.n[1] * dd, face: PI / 2 - (S.ry + PI), room: qi }); };
+      const placeOne = (id, spot) => { const S = SIDE[spot.side]; browse(id, spot); put(id, spot.cx, spot.cy, S.ry, 0, wallOf(spot)); used.push([spot.cx, spot.cy, spot.hw, spot.hd, RUG.test(id), TALL.test(id)]); };
       // file di posti
       const rows = ROWS[name];
       if (rows && q.w >= 6 && q.h >= 6) {
@@ -11083,6 +11130,20 @@ var Interior = (function () {
           put(seat, cx, cy, S.ry + PI, 0); used.push([cx, cy, sw0 / 2, sd0 / 2, false, false]);
         }
       }
+      // [vissuto] la roba per terra accanto al mobile giusto: davanti o di fianco, a 15-45 cm, girata come capita
+      const nearAnch0 = (id, w, d) => {
+        const A = ANCH.find(([re]) => re.test(id)); if (!A) return null;
+        const cand = out.filter(o => o.room === qi && !o.h && !o.decor && A[1].test(o.id)); if (!cand.length) return null;
+        for (let k = 0; k < 14; k++) {
+          const o = cand[Math.floor(r() * cand.length)], [ow, od] = szOf(o.id), fx = Math.sin(o.ry || 0), fz = Math.cos(o.ry || 0), side = r() < .6 ? 0 : r() < .5 ? 1 : -1;
+          const along = side ? (ow / 2 + .2 + r() * .25) * side : (r() - .5) * ow * .8, out0 = side ? (r() - .5) * od * .6 : od / 2 + .2 + r() * .25;
+          const cx = o.x + fx * out0 + fz * along, cy = o.y + fz * out0 - fx * along, hw = Math.max(w, d) / 2 * .8;
+          if (cx - hw < x0 || cx + hw > x1 || cy - hw < y0 || cy + hw > y1 || !free(cx, cy, hw * .7, hw * .7, false) || blocked(cx, cy, hw, hw)) continue;
+          return { cx, cy, hw, hd: hw, anch: 1 };
+        }
+        return null;
+      };
+      const nearAnchor = (id, w, d) => /cartacce|macchia/.test(id) ? null : nearAnch0(id, w, d);
       // prima i gruppi contro i muri, poi le cose in mezzo, poi i mobili sciolti, poi la roba per terra
       const order = { v: 0, c: 1, w: 2, k: 3 };
       const placeTok = t => {
@@ -11095,7 +11156,7 @@ var Interior = (function () {
             if (tb) { tb.full = (tb.full || 0) + 1; put(id, tb.x + (r() - .5) * .5, tb.y + (r() - .5) * .2, r() * 6, /kitchenBar|kitchenCabinet|banco|bancone/.test(tb.id) ? .95 : .76); }
             return !!tb;
           }
-          if (SMALL[id]) { const tb = out.find(o => o.room === qi && /desk|table|tavol|sideTable|kitchenCabinet|banco/.test(o.id) && !o.h); if (tb) put(id, tb.x + (r() - .5) * .4, tb.y, tb.ry, /kitchenCabinet|banco/.test(tb.id) ? .92 : /sideTable/.test(tb.id) ? .55 : .76); return !!tb; }
+          if (SMALL[id]) { const tb = out.find(o => o.room === qi && /desk|table|tavol|sideTable|kitchenCabinet|kitchenBar|banco/.test(o.id) && !o.h && !(id === 'ar_cash-register' && out.some(c => c.id === id && c.room === qi && Math.hypot(c.x - o.x, c.y - o.y) < 1.2))); if (tb) put(id, tb.x + (r() - .5) * .4, tb.y, tb.ry, /kitchenBar|pv_banco|bancone/.test(tb.id) ? .95 : /kitchenCabinet|banco/.test(tb.id) ? .92 : /sideTable/.test(tb.id) ? .55 : .76); return !!tb; }
           const [w, d] = isV ? V[id] : szOf(id), rug = RUG.test(id);
           const opt = { tall: isV ? V[id][2].some(it => TALL.test(it[0].replace('?', ''))) && w < 2.6 : TALL.test(id), c: CENTERED.test(id) };
           let spot = null;
@@ -11104,6 +11165,7 @@ var Interior = (function () {
           else spot = atWall(w, d, rug, opt);
           if (!spot) continue;
           if (isV) placeGroup(id, spot);
+          else if (t.kind === 'k' && (spot = nearAnchor(id, w, d) || spot) && spot.anch) { put(id, spot.cx, spot.cy, r() * PI * 2, 0); used.push([spot.cx, spot.cy, spot.hw, spot.hd, false, false]); }
           else if (t.kind === 'k') { const S = SIDE[spot.side]; put(id, spot.cx + (r() - .5) * .1, spot.cy + (r() - .5) * .1, S.ry + (r() - .5) * 1.2, 0); used.push([spot.cx, spot.cy, spot.hw, spot.hd, false, false]); }
           else placeOne(id, spot);
           if (t.pri || /^st_|^pv_banco|ar_cash/.test(id)) for (let k = n0; k < out.length; k++) out[k].keep = 1;
@@ -11118,6 +11180,8 @@ var Interior = (function () {
         const want = q.w * q.h >= 40 ? .3 : .26; let miss = 0;
         for (let k = 0; k < 24 && miss < FILL.length && fullness() < want; k++) { const t = parseTok(FILL[k % FILL.length], r); if (t && placeTok(t)) miss = 0; else miss++; }
       }
+      // [vissuto] una stanza grande col centro vuoto sembra un magazzino: ci va la scena di mezzo (il tavolo, il salotto, la partita), se c'è
+      if (FILL && q.w * q.h >= 28) { const mx = (x0 + x1) / 2, my = (y0 + y1) / 2; if (!out.some(o => o.room === qi && !o.h && !o.decor && !RUG.test(o.id) && Math.abs(o.x - mx) < q.w * .22 && Math.abs(o.y - my) < q.h * .22)) FILL.filter(t => t[0] === '*').some(tk => { const t = parseTok(tk, () => .1); return t && placeTok(t); }); }
       dress(q, qi);
       // roba appesa: sui muri esterni (quelle basse anche sui muri interni), lontano da finestre, varchi e mobili alti
       const decor = list.filter(t => t.kind === 'd'), hung = [];
@@ -11141,10 +11205,24 @@ var Interior = (function () {
             cands.push([side, p, x, y]);
           }
         });
-        if (!cands.length) return;
-        const [side, p, x, y] = cands[Math.floor(r() * cands.length)], S = SIDE[side];
-        hung.push([side, p, dw]);
-        out.push({ id, x: x + S.n[0] * WT / 2, y: y + S.n[1] * WT / 2, ry: S.ry, h: dh, wall: side, decor: 1, low: !!low, solid: null, room: qi });
+        // [vissuto] i quadri si compongono sopra un mobile basso appoggiato al muro (divano, letto, credenza, scrivania): il primo al centro,
+        // gli altri ai lati, un po' più in basso o più in alto; se non c'è posto, dove capita come prima
+        let pickC = null, hh = dh;
+        if (PIC.test(id)) {
+          const anchors = out.filter(o => o.room === qi && !o.h && !o.decor && ART_ANCH.test(o.id)).map(o => { const [ow, od] = szOf(o.id); let best = null; sides.forEach(([side, line]) => { const horiz = side === 'N' || side === 'S', dist0 = Math.abs((horiz ? o.y : o.x) - line); if (dist0 < od / 2 + .5 && (!best || dist0 < best[2])) best = [side, line, dist0]; }); return best && { o, ow, side: best[0], line: best[1] }; }).filter(Boolean);
+          for (const A of anchors.sort(() => r() - .5)) {
+            const horiz = A.side === 'N' || A.side === 'S', c0 = horiz ? A.o.x : A.o.y, n = hung.filter(h0 => h0[3] === A.o).length; if (n >= 3) continue;
+            const off = n === 0 ? 0 : (n === 1 ? -1 : 1) * (Math.min(.55, A.ow / 2) + dw / 2 - .1), p = c0 + off, x = horiz ? p : A.line, y = horiz ? A.line : p;
+            if (!cands.some(c => c[0] === A.side && Math.abs(c[1] - p) < .13)) continue;
+            if (hung.some(h0 => h0[0] === A.side && Math.abs(h0[1] - p) < (h0[2] + dw) / 2 + .08)) continue;
+            if (F.wins.some(w0 => w0.side === A.side && Math.abs((horiz ? w0.x : w0.y) - p) < dw / 2 + .7)) continue;
+            pickC = [A.side, p, x, y, A.o]; hh = dh + (n === 0 ? .1 : n === 1 ? -.08 : .14); break;
+          }
+        }
+        if (!pickC && !cands.length) return;
+        const [side, p, x, y, anc] = pickC || cands[Math.floor(r() * cands.length)], S = SIDE[side];
+        hung.push([side, p, dw, anc || null]);
+        out.push({ id, x: x + S.n[0] * WT / 2, y: y + S.n[1] * WT / 2, ry: S.ry, h: hh, wall: side, decor: 1, low: !!low, solid: null, room: qi, tilt: PIC.test(id) ? (r() - .5) * .06 : 0 });
         // [attività] le freccette si tirano da due metri e mezzo; davanti alle stecche si sceglie la stecca
         if (id === 'ia_freccette') [2.37, 1.9].forEach(k => F.spots.push({ k: 'freccette', x: x + S.n[0] * k, y: y + S.n[1] * k, face: Math.atan2(-S.n[1], -S.n[0]), room: qi }));
       });
@@ -17145,7 +17223,7 @@ var Popolo = (function () {
     if (b.obj === 'flipper') return { want: 'free', pose: 'flipper' };
     if (b.obj === 'pista') return { want: 'free', pose: 'balla' };
     if (b.obj === 'barbiere') return { want: 'seat', pose: 'siede' };
-    if (b.obj === 'bottega' || b.act === 'spesa') return { want: 'spot', spot: 'cliente|guarda', pose: 'merce', alt: 'counter' };
+    if (b.obj === 'bottega' || b.act === 'spesa') return { want: 'spot', spot: Math.random() < .55 ? 'scaffale|cliente|guarda' : 'cliente|guarda|scaffale', pose: 'merce', alt: 'counter' };   // [negozi] prima si guarda la merce sugli scaffali, poi si va alla cassa
     const coin = (String(n.id) + (P.curKey || '')).split('').reduce((h, c) => (h * 33 + c.charCodeAt(0)) % 1000, 5) / 1000;   // la stessa scelta finché dura il blocco
     if (atHome) return coin < .5 ? { want: 'soft', pose: 'siede' } : { want: 'free', pose: null };
     return coin < .55 ? { want: 'seat', pose: 'siede' } : { want: 'counter', pose: 'bancone' };
@@ -17181,7 +17259,7 @@ var Popolo = (function () {
     if (spot && u.want === 'work' && pose === 'merce') { const sb = (F.spots || []).filter(s => s.k === 'banco').sort((a, c) => Math.hypot(a.x - spot.x, a.y - spot.y) - Math.hypot(c.x - spot.x, c.y - spot.y))[0]; if (sb && Math.hypot(sb.x - spot.x, sb.y - spot.y) < 2.5) { spot = { x: sb.x, y: sb.y, face: sb.face }; } }   // [attività] dietro il banco, verso i clienti
     if (!spot && u.want === 'work' && /guardia giurata|buttafuori/.test((P.job && P.job.title) || '')) { const s = spotK('guardia'); if (s) { spot = s; pose = null; } }   // [banca] la guardia accanto alla porta
     if (!spot && u.want === 'work') { const jt = (P.job && P.job.title) || '', mec = /meccanic/.test(jt), s = mec || /commess|cassier|barist|barman|camerier|oste|armaiol|venditor|tabacc|farmacist|istruttore di tiro/.test(jt) ? spotK(mec ? 'meccanico' : /istruttore di tiro/.test(jt) ? 'tiro|banco' : 'banco') : null; if (s) { spot = s; pose = mec ? 'lavora' : 'merce'; } }
-    if (!spot && u.want === 'spot') { const s = spotK(u.spot); if (s) { spot = s; if (u.spot === 'guarda|prova' && s.k === 'prova') pose = 'prova'; if (s.k === 'auto' && pose === 'lavora') pose = 'osserva'; } else { u.want = u.alt || 'free'; pose = u.want === 'counter' ? 'bancone' : u.want === 'table' ? pose : null; } }
+    if (!spot && u.want === 'spot') { const s = spotK(u.spot); if (s) { spot = s; if (u.spot === 'guarda|prova' && s.k === 'prova') pose = 'prova'; if (s.k === 'auto' && pose === 'lavora') pose = 'osserva'; if (s.k === 'scaffale') pose = 'osserva'; } else { u.want = u.alt || 'free'; pose = u.want === 'counter' ? 'bancone' : u.want === 'table' ? pose : null; } }
     if (!spot && u.want === 'counter') { const s = spotK('bevi'); if (s) spot = s; }
     if (!spot && u.want === 'work') {
       const o = furn(COUNTERS) || furn(/^(pv_banco_lavoro|ia_scrivania_grande|ia_macchina_scrivere|desk)$|^st_/) || furn(STOVES);
@@ -21726,9 +21804,11 @@ var Oggetti = (function () {
     if (p.indoor) {
       const b = G.BUILDINGS[p.indoor.b], Lx = INT.layout(b), F = Lx.floors[p.indoor.f]; if (!F) return out;
       F.furn.forEach((o, i) => {
-        if (dist(o.x, o.y, p.x, p.y) > r) return; const room = INT.roomAt ? (INT.roomAt(Lx, p.indoor.f, o.x, o.y) || {}).name : null; if (!lootTable(b, room, o.id)) return;
+        if (o.taken || dist(o.x, o.y, p.x, p.y) > r) return; const room = INT.roomAt ? (INT.roomAt(Lx, p.indoor.f, o.x, o.y) || {}).name : null; if (!lootTable(b, room, o.id)) return;
         const c = S(st).cont[`b${p.indoor.b}:${p.indoor.f}:${i}`];
-        out.push({ ref: `f:${i}`, kind: 'mobile', x: o.x, y: o.y, label: furnName(o.id, room), locked: !!LOCKED[o.id] && !(c && c.forced) });
+        // [design] la roba piccola (sopra i mobili o per terra) si prende con un clic, senza aprire la scheda: take, all'altezza h
+        const small = PICK.test(o.id);
+        out.push({ ref: `f:${i}`, kind: 'mobile', x: o.x, y: o.y, h: o.h || 0, label: small ? FNAME[o.id] || (INT.FNAME && INT.FNAME[o.id]) || o.id : furnName(o.id, room), locked: !!LOCKED[o.id] && !(c && c.forced), take: small, fid: o.id });
       });
       return out;
     }
@@ -21797,6 +21877,7 @@ var Oggetti = (function () {
     Sh.stock[g] -= q; p.money -= pr; tillMove(st, Sh, pr); Ec.eco(st).stats.venduto += q;
     if (So && st.soldi) { const M = st.soldi; M.player.mov.unshift([st.t, -pr, `${c.nome} (${Sh.label})`]); M.player.mov = M.player.mov.slice(0, 40); }
     st.sfx && st.sfx.push({ k: 'cash' });
+    { const ck = Lg ? clerk(st, Lg) : null; if (ck && typeof performance !== 'undefined') ck.__serve = performance.now(); }   // [negozi] il commesso ti porge la merce (anim_vita: 'porge')
     if (Sh.emporio && st.ris) st.ris.morale = clamp(st.ris.morale - .1, 0, 100);
     if (mode === 'consuma' && c.eat) { add(inv(st), g, q); let m = ''; for (let i = 0; i < q; i++) m = consume(st, g).msg; return R_(true, `${cap(c.nome)}${q > 1 ? ' ×' + q : ''}: ${L(pr)}. ${m}`); }
     const left = givePlayer(st, g, q);
@@ -22997,12 +23078,41 @@ var Attivita = (function () {
     if (nearFurn(st, /^ia_auto_esposta$/, 2.6)) add('guarda_auto', 'Siediti al volante dell\'auto in esposizione', () => { spend(st, 5, 'sogni a occhi aperti'); svago(st, .06); return 'Il volante è freddo, la pelle dei sedili sa di nuovo. Il cartello col prezzo, meglio non guardarlo.'; });
   }
 
+  // ---------------- [negozi] I SERVIZI: si paga una cosa fatta da qualcuno, non una merce ----------------
+  // [tipo di locale, mobile o posto vicino a cui stare, id, etichetta, prezzo (migliaia), minuti, effetto → frase]
+  // Servono il commesso al banco (O.clerk) e il locale aperto; il tempo passa davvero (Nino resta lì: spend).
+  const SERV = [
+    ['barbiere', /^ia_poltrona_barbiere$|^bathroomSink$/, 'barba', 'Capelli e barba dal barbiere', 4, 30, (st, N, M) => { N.igiene = clamp(N.igiene - .35, 0, 1); N.svago = clamp(N.svago - .08, 0, 1); M.ordinato = st.t + 3 * 1440; return ['Rasoio a mano libera, panno caldo, colonia che pizzica. Allo specchio sembri uno che paga le rate.', 'Ti racconta del figlio alla miniera mentre ti sfuma la nuca. Esci che sembri un altro.']; }],
+    ['lavanderia', /^washer$/, 'lava', 'Fai lavare e stirare i vestiti', 2, 40, (st, N) => { N.igiene = clamp(N.igiene - .3, 0, 1); return ['Te li ridanno piegati e caldi, con l\'odore di sapone di Marsiglia.', 'Una macchia d\'olio non va via. «Quella è sua, la tenga per ricordo.»']; }],
+    ['banja', /^ia_panca_sauna$/, 'sauna', 'Sauna e vapore alla banja', 3, 45, (st, N, M, p) => { N.igiene = 0; N.svago = clamp(N.svago - .2, 0, 1); p.hp = Math.min(100, p.hp + 10); return ['Il vapore ti scioglie il gelo dalle ossa. Fuori, nella neve, ti senti di vetro.', 'Due vecchi reduci sulla panca di sopra parlano piano dei boschi. Smettono quando entri.']; }],
+    ['ambulatorio', /^st_tavolo_medico$|^ia_letto_ospedale$/, 'medica', 'Fatti medicare', 6, 30, (st, N, M, p) => { const was = p.hp; p.hp = Math.min(100, p.hp + 45); return [was >= 95 ? 'Ti misurano la pressione e ti dicono di bere meno. Seimila lire per questo.' : 'Punti, garza, un\'iniezione che brucia. Il dottore non chiede come te lo sei fatto.']; }],
+    ['sartoria', /^st_macchina_cucire$/, 'rammenda', 'Fatti rammendare e stringere la giacca', 3, 35, (st, N, M) => { M.ordinato = st.t + 2 * 1440; N.svago = clamp(N.svago - .05, 0, 1); return ['Due punti sulla tasca strappata, le maniche accorciate. La giacca di tuo padre ti sta finalmente bene.']; }],
+    ['tipografia', /^st_ciclostile$|^fx_machine$/, 'stampa', 'Fai stampare cinquanta volantini (sottobanco)', 5, 40, (st, N, M) => { if (O && O.givePlayer) O.givePlayer(st, 'volantini', 10, true); return ['Il tipografo non legge quello che stampa. «Io faccio inviti a nozze, ha capito?» Ti dà il pacco ancora caldo.']; }],
+    ['video', /^pv_banco_vendita$/, 'noleggia', 'Noleggia una videocassetta per stasera', 2, 10, (st, N) => { N.svago = clamp(N.svago - .25, 0, 1); if (O && O.givePlayer) O.givePlayer(st, 'cassetta', 1, true); return ['Un film americano doppiato male, con le macchine che volano. Il commesso ti strizza l\'occhio: «Questa non l\'ha vista la Tutela.»']; }],
+    ['bar', /^ia_bancone_bar$/, 'corretto', 'Un caffè corretto al banco', 1.5, 10, (st, N, M) => { N.sonno = clamp(N.sonno - .15, 0, 1); M.drunk = clamp((M.drunk || 0) + .06, 0, 1); return ['Caffè bollente e un dito di grappa. Il bancone è l\'unico posto caldo del porto.', 'Il barista lo corregge senza chiedere. Alla radio il notiziario federale, nessuno ascolta.']; }],
+    ['pub', /^ia_bancone_bar$/, 'boccale', 'Un boccale di birra scura', 2, 15, (st, N, M) => { N.svago = clamp(N.svago - .1, 0, 1); N.compagnia = clamp(N.compagnia - .1, 0, 1); M.drunk = clamp((M.drunk || 0) + .12, 0, 1); return ['Schiuma fredda e il calore della sala. Qualcuno ti dà una pacca sulla spalla senza motivo.']; }],
+  ];
+  function servizi(st, out, add) {
+    const I = inside(st); if (!I) return;
+    const kind = INT.kindOf(I.b), p = st.player, N = st.me && st.me.need, M = st.me || {}; if (!N) return;
+    const Lg = luogoOf(st, I.bi);
+    SERV.forEach(([k, re, id, label, cost, mins, fx]) => {
+      if (kind !== k || !nearFurn(st, re, 2.6)) return;
+      if (!openNow(st, Lg)) { out.push({ id: 'sv_' + id, label: `${label}: è chiuso`, run: null, off: 'non c\'è nessuno' }); return; }
+      const who = O && Lg ? O.clerk(st, Lg) : null;
+      add('sv_' + id, `${label} (${String(Math.round(cost * 1000)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} lire)`, p.money >= cost ? () => {
+        pay(st, cost); spend(st, mins, label.toLowerCase()); if (st.sfx) st.sfx.push({ k: 'cash' });
+        const t = pick(fx(st, N, M, p)); return who ? `${who.first}: ${t}` : t;
+      } : null, 'non hai abbastanza soldi');
+    });
+  }
+
   // ---------------- LE AZIONI ----------------
   function actions(st) {
     if (st.me && st.me.warp) return [];
     const out = [], add = (id, label, run, off) => out.push({ id, label, run, off: run ? '' : off || '' });
     if (st.player.vehicle) { garage(st, out, add); return out; }
-    try { garage(st, out, add); till(st, out, add); games(st, out, add); } catch (e) { if (typeof console !== 'undefined') console.error('[attività]', e); }
+    try { garage(st, out, add); till(st, out, add); games(st, out, add); servizi(st, out, add); } catch (e) { if (typeof console !== 'undefined') console.error('[attività]', e); }
     return out;
   }
   function install() {
@@ -23011,7 +23121,7 @@ var Attivita = (function () {
     AZ.playerActions = st => (a0 ? a0(st) || [] : []).concat(actions(st));
   }
   install();
-  return { actions, LISTINO, UPG };
+  return { actions, LISTINO, UPG, SERV };
 })();
 if (typeof module !== 'undefined') module.exports = Attivita;
 </script>
@@ -44497,6 +44607,9 @@ var Bottino = (function () {
     const list = refresh(st); if (!list.length) return null;
     let best = null, bd = Math.max(20, o.h * .035);
     list.forEach(L => {
+      if (L.kind === 'mobile' && L.take) {   // [design] la roba sopra i mobili: si punta lei, all'altezza del piano
+        const pr = R.project(L.x, (L.h || 0) + .06, L.y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h) - 4; if (d < bd) { bd = d; best = L; } return;
+      }
       if (L.kind === 'mobile' || L.kind === 'bagagliaio') return;
       if (L.kind === 'corpo') { const n = PV().G.byId(st, L.npc); if (!n || !n.dead) return; }   // chi è solo a terra si clicca come persona (menu)
       for (const hh of L.kind === 'carico' ? [.4, 1.1] : L.kind === 'corpo' ? [.15] : [.15, .4]) {
@@ -44507,7 +44620,7 @@ var Bottino = (function () {
     });
     if (!best) {
       const g = R.screenToGround(nx, ny);
-      if (g) { let gd = 1e9; list.forEach(L => { if (L.kind !== 'mobile' && L.kind !== 'bagagliaio') return; const d = Math.hypot(L.x - g.x, L.y - g.y), lim = L.kind === 'mobile' ? 1.1 : 1.0; if (d < lim && d < gd) { gd = d; best = L; } }); }
+      if (g) { let gd = 1e9; list.forEach(L => { if ((L.kind !== 'mobile' || L.take) && L.kind !== 'bagagliaio') return; const d = Math.hypot(L.x - g.x, L.y - g.y), lim = L.kind === 'mobile' ? 1.1 : 1.0; if (d < lim && d < gd) { gd = d; best = L; } }); }
     }
     if (!best) return null;
     U.hot = best.ref; U.hotT = performance.now();
@@ -44533,6 +44646,9 @@ var Bottino = (function () {
     const G = PV().G;
     if (L.take && !L.locked) {
       const r = Oggetti.act(st, 'prendi_tutto', ref);
+      // [design] il gesto: dal tavolo si allunga la mano, da terra ci si china; la roba sparisce dal mobile
+      st.player.__grab = { t: performance.now(), h: L.h || 0, low: !(L.h > .3) };
+      if (r && r.ok && L.kind === 'mobile' && typeof InterniArte !== 'undefined' && InterniArte.hide) { const p0 = st.player, F0 = p0.indoor && G.INT.layout(G.BUILDINGS[p0.indoor.b]).floors[p0.indoor.f], o0 = F0 && F0.furn[+ref.slice(2)]; if (o0 && o0.taken) setTimeout(() => InterniArte.hide(+ref.slice(2)), 380); }
       if (r && r.ok) { G.feed(st, r.msg, /ti ha visto/.test(r.msg) ? 'bad' : 'good'); const R = PV().R; if (R && R.sfx) R.sfx.push({ k: 'pickup', x: L.x, y: L.y }); refresh(st, true); return; }
     }
     if (typeof OggettiUI !== 'undefined') OggettiUI.open('fruga', ref);
@@ -50099,6 +50215,7 @@ var InterniArte = (function () {
     // usura: polvere lungo i muri, macchie, il passaggio consumato in mezzo
     const d = q.dirt || .3;
     x.fillStyle = `rgba(20,16,12,${.18 + d * .25})`; x.fillRect(0, 0, cw, 2); x.fillRect(0, ch - 2, cw, 2); x.fillRect(0, 0, 2, ch); x.fillRect(cw - 2, 0, 2, ch);
+    { const E = Math.round(.45 * PPM); [[0, 0, 0, E], [0, ch, 0, ch - E], [0, 0, E, 0], [cw, 0, cw - E, 0]].forEach(([a0, b0, a1, b1]) => { const g0 = x.createLinearGradient(a0, b0, a1, b1); g0.addColorStop(0, 'rgba(8,6,4,.4)'); g0.addColorStop(1, 'rgba(8,6,4,0)'); x.fillStyle = g0; x.fillRect(0, 0, cw, ch); }); }   // [vissuto] l'ombra lungo i muri
     for (let k = 0; k < cw * ch / 400 * (.3 + d); k++) { x.fillStyle = `rgba(${r() < .5 ? '40,30,20' : '60,50,40'},${.08 + r() * .14 * (.5 + d)})`; x.beginPath(); x.ellipse(r() * cw, r() * ch, 2 + r() * 6, 1 + r() * 4, r() * 3, 0, 7); x.fill(); }
     const g = x.createRadialGradient(cw / 2, ch / 2, 0, cw / 2, ch / 2, Math.max(cw, ch) * .6); g.addColorStop(0, 'rgba(255,240,220,.06)'); g.addColorStop(1, 'rgba(0,0,0,.12)'); x.fillStyle = g; x.fillRect(0, 0, cw, ch);
     // neve sciolta e impronte vicino all'ingresso
@@ -50156,6 +50273,14 @@ var InterniArte = (function () {
     for (let k = 0; k < lenM * (.5 + dirt * 2); k++) px('rgba(30,24,20,.25)', Math.floor(r() * cw), ch - 3 - Math.floor(r() * 12), 1 + Math.floor(r() * 4), 1);
     for (let k = 0; k < lenM * .2 * (.3 + dirt); k++) { let X = r() * cw, Y = r() * ch * .6; for (let s = 0; s < 14; s++) { px('rgba(20,16,12,.45)', Math.floor(X), Math.floor(Y)); X += r() * 2 - 1; Y += 1; } }
     if (dirt > .5) { const g = x.createLinearGradient(0, ch, 0, ch - 14); g.addColorStop(0, 'rgba(40,50,30,.4)'); g.addColorStop(1, 'rgba(40,50,30,0)'); x.fillStyle = g; x.fillRect(0, ch - 14, cw, 14); }
+    // [vissuto] i segni di chi ci vive: graffi delle spalliere all'altezza delle sedie, ditate vicino agli spigoli, intonaco saltato
+    for (let k = 0; k < lenM * (.6 + dirt * 3); k++) { const Y = ch - Math.round((.72 + r() * .3) * PPM), X = Math.floor(r() * cw); px(`rgba(30,24,20,${.12 + r() * .18})`, X, Y, 2 + Math.floor(r() * 8), 1); }
+    for (let k = 0; k < lenM * dirt * 1.2; k++) { const X = Math.floor(r() * cw), Y = Math.floor(ch * (.3 + r() * .5)); px('rgba(40,32,26,.14)', X, Y, 2, 3); px('rgba(40,32,26,.1)', X + 2, Y + 1, 1, 2); }
+    for (let k = 0; k < lenM * .4 * (.2 + dirt); k++) { const X = Math.floor(r() * cw), Y = Math.floor(r() * ch * .85), w = 3 + Math.floor(r() * 7), h = 2 + Math.floor(r() * 5); px('#c8bea8', X, Y, w, h); px('rgba(0,0,0,.28)', X, Y + h, w, 1); px('rgba(0,0,0,.18)', X + w, Y, 1, h); }
+    // [vissuto] l'ombra: in basso dove il muro incontra il pavimento, in alto sotto il soffitto, e negli angoli
+    const gb = x.createLinearGradient(0, ch, 0, ch - .55 * PPM); gb.addColorStop(0, 'rgba(10,8,6,.42)'); gb.addColorStop(1, 'rgba(10,8,6,0)'); x.fillStyle = gb; x.fillRect(0, ch - .55 * PPM, cw, .55 * PPM);
+    const gt = x.createLinearGradient(0, 0, 0, .4 * PPM); gt.addColorStop(0, 'rgba(10,8,6,.38)'); gt.addColorStop(1, 'rgba(10,8,6,0)'); x.fillStyle = gt; x.fillRect(0, 0, cw, .4 * PPM);
+    [[0, .45 * PPM], [cw, cw - .45 * PPM]].forEach(([a, b0]) => { const gs = x.createLinearGradient(a, 0, b0, 0); gs.addColorStop(0, 'rgba(10,8,6,.34)'); gs.addColorStop(1, 'rgba(10,8,6,0)'); x.fillStyle = gs; x.fillRect(Math.min(a, b0), 0, Math.abs(b0 - a), ch); });
     px(style === 'velluto' || style === 'nero' ? '#0e0a10' : '#3a2a20', 0, ch - 2, cw, 2);
     return c;
   }
@@ -50263,6 +50388,18 @@ var InterniArte = (function () {
       x.strokeStyle = '#ffd060'; x.lineWidth = 1; for (let i = 0; i < 12; i++) { const a0 = i * PI / 6; x.beginPath(); x.moveTo(w / 2 + Math.cos(a0) * 6.5, h / 2 + Math.sin(a0) * 6.5); x.lineTo(w / 2 + Math.cos(a0) * 9, h / 2 + Math.sin(a0) * 9); x.stroke(); }
       [[4, 4], [w - 5, 4], [4, h - 5], [w - 5, h - 5]].forEach(([X, Y]) => { x.fillStyle = '#7ac85a'; for (let k = 0; k < 4; k++) { x.beginPath(); x.ellipse(X + Math.cos(k * 1.57) * 2, Y + Math.sin(k * 1.57) * 2, 2, .9, k * 1.57, 0, 7); x.fill(); } x.fillStyle = '#f0e0b0'; x.fillRect(X - .5, Y - .5, 1, 1); });
       x.strokeStyle = '#e8d8b0'; x.strokeRect(1.5, 1.5, w - 3, h - 3); }),
+    // [vissuto] lo stencil a spray sul muro (trasparente): il pugno con la bomboletta, il sole che spacca il ghiaccio, la scritta DISGELO, la R della Risacca
+    stencil: v => canv('sten' + v, 40, 28, (x, w, h) => { const r = rng(v * 41 + 3), c = ['#1e1a1c', '#a8281e', '#1e1a1c', '#2a6a7a'][v % 4], k = v % 4; x.clearRect(0, 0, w, h); x.fillStyle = c;
+      if (k === 0) { x.fillRect(16, 10, 8, 10); x.fillRect(14, 8, 12, 4); for (let i = 0; i < 4; i++) x.fillRect(15 + i * 3, 6, 2, 3); x.fillRect(20, 2, 3, 6); x.fillRect(18, 20, 4, 6); }
+      else if (k === 1) { x.beginPath(); x.arc(20, 12, 6, 0, 7); x.fill(); for (let i = 0; i < 10; i++) { const a = i * PI / 5; x.fillRect(20 + Math.cos(a) * 9 - 1, 12 + Math.sin(a) * 9 - 1, 2, 2); } x.fillRect(2, 22, 36, 2); x.clearRect(10, 21, 1, 4); x.clearRect(25, 21, 1, 4); }
+      else if (k === 2) { const L = [[0, 0, 1, 5], [0, 0, 3, 1], [0, 4, 3, 1], [3, 1, 1, 3], [5, 0, 1, 5], [7, 0, 3, 1], [7, 2, 3, 1], [7, 4, 3, 1], [7, 0, 1, 3], [9, 2, 1, 3]]; for (let j = 0; j < 2; j++) L.forEach(([a, b, c0, d]) => x.fillRect(6 + a * 2 + j * 14, 9 + b * 2, c0 * 2, d * 2)); }
+      else { x.font = 'bold 22px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('R', 20, 15); x.beginPath(); x.arc(20, 14, 12, 0, 7); x.lineWidth = 2; x.strokeStyle = c; x.stroke(); }
+      for (let i = 0; i < 160; i++) { x.globalAlpha = r() * .35; x.fillRect(Math.floor(w / 2 + (r() - .5) * w * .9), Math.floor(h / 2 + (r() - .5) * h * .9), 1, 1); } x.globalAlpha = 1;
+      for (let i = 0; i < 3; i++) { x.fillRect(10 + Math.floor(r() * 20), 18, 1, 4 + Math.floor(r() * 6)); } }),
+    ragnatela: () => canv('ragno', 16, 16, (x, w, h) => { x.clearRect(0, 0, w, h); x.strokeStyle = 'rgba(220,220,215,.55)'; x.lineWidth = .6; for (let i = 0; i < 6; i++) { const a = i / 5 * PI / 2; x.beginPath(); x.moveTo(0, 0); x.lineTo(Math.cos(a) * 16, Math.sin(a) * 16); x.stroke(); } for (let k = 3; k < 16; k += 3) { x.beginPath(); x.arc(0, 0, k, 0, PI / 2); x.stroke(); } }),
+    macchia: v => canv('macc' + v, 24, 18, (x, w, h) => { const r = rng(v * 7 + 1); x.clearRect(0, 0, w, h); for (let i = 0; i < 4; i++) { const g = x.createRadialGradient(8 + r() * 8, 6 + r() * 6, 0, 8 + r() * 8, 6 + r() * 6, 4 + r() * 6); g.addColorStop(0, v % 2 ? 'rgba(40,30,20,.5)' : 'rgba(70,50,30,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); } }),
+    blob: () => canv('blob', 16, 16, (x, w, h) => { const g = x.createRadialGradient(8, 8, 1, 8, 8, 8); g.addColorStop(0, 'rgba(0,0,0,.7)'); g.addColorStop(.6, 'rgba(0,0,0,.35)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); }),
+    pozza: () => canv('pozza', 32, 32, (x, w, h) => { const g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.4, 'rgba(255,255,255,.45)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); }),
     piastrelle: v => canv('pia' + v, 16, 8, (x, w, h) => { const c = [['#d8d4c8', '#a8b0a8'], ['#d8ccb4', '#8a6a4a'], ['#c8d0cc', '#5a6a6a'], ['#d4d0c8', '#4a4844']][v % 4]; for (let j = 0; j < h; j += 2) for (let i = 0; i < w; i += 2) { x.fillStyle = (i + j) % 4 === 0 && v % 2 ? c[1] : c[0]; x.fillRect(i, j, 2, 2); x.fillStyle = 'rgba(0,0,0,.12)'; x.fillRect(i, j, 2, .3); x.fillRect(i, j, .3, 2); } if (!(v % 2)) { x.fillStyle = c[1]; x.fillRect(0, 3, w, 1); } x.fillStyle = 'rgba(60,50,40,.12)'; x.fillRect(0, h - 2, w, 2); }),
     stoffa: v => canv('sto' + v, 16, 16, (x, w, h) => { const k = v % 4, c = [['#a89c88', '#6a4a3a'], ['#8a9098', '#3e4652'], ['#a8a088', '#5a5a44'], ['#a8948a', '#6a3e3a']][v % 4]; x.fillStyle = c[0]; x.fillRect(0, 0, w, h); x.fillStyle = c[1];
       if (k === 0) for (let i = 0; i < w; i += 4) x.fillRect(i, 0, 1, h); else if (k === 1) for (let j = 0; j < h; j += 4) for (let i = 0; i < w; i += 4) { if ((i + j) % 8 === 0) x.fillRect(i, j, 4, 4); } else if (k === 2) for (let j = 2; j < h; j += 5) for (let i = 2; i < w; i += 5) { x.fillRect(i, j, 1, 1); } else { for (let j = 0; j < h; j += 4) x.fillRect(0, j, w, 1); for (let i = 0; i < w; i += 4) x.fillRect(i, 0, 1, h); } }),
@@ -50282,7 +50419,7 @@ var InterniArte = (function () {
   const WOODD = ['#5a3e2a', '#6a4a30', '#4a3424', '#7a5a3a', '#5e4632'], LEATHER = ['#4a2e22', '#2e2420', '#5a3a2a', '#1e1e22'], BRASS = { metalness: .8, roughness: .3 };
   const MT = (key, t, o) => MC['T' + key] || (MC['T' + key] = new THREE.MeshStandardMaterial(Object.assign({ map: t, roughness: .9 }, o || {})));
   const tgeo = (R, rr, arc) => { const k = 't' + R + ',' + rr + ',' + arc; return GEO[k] || (GEO[k] = new THREE.TorusGeometry(R, rr, 5, 12, arc)); };
-  function build(id, r) {
+  function build(id, r, opt) {
     const g = new THREE.Group(); g.userData.ia = id;
     // [design] la sfumatura del pezzo: un po' più caldo o più freddo, più chiaro o più scuro (due mobili uguali non sono mai identici)
     const r9 = rng(((id.length * 131) ^ Math.floor(r() * 1e9)) >>> 0), nuB = .93 + r9() * .12, nuT = pick(r9, ['#8a9098', '#7a8088', '#9a9488', '#8a8a8a']), nuK = .12 + r9() * .12;
@@ -50375,10 +50512,19 @@ var InterniArte = (function () {
       // ---- bar, botteghe ----
       case 'ia_bancone_bar': { B(.9, 1.0, .58, 0, 0, 0, shade(wood, .9)); B(.9, .7, .02, 0, .15, .3, shade(wood, 1.3)); B(.9, .15, .02, 0, 0, .3, '#1e1814'); B(.94, .05, .66, 0, 1.0, .02, M('#d8d0c4', { roughness: .3 })); B(.9, .03, .03, 0, .12, .36, M('#b8a050', { metalness: .7 })); break; }
       case 'ia_scaffale_bottiglie': { B(2.2, 2.1, .3, 0, 0, -.02, shade(wood, .8)); B(2.1, .55, .02, 0, 1.3, .14, M('#a8b8c0', { roughness: .1, metalness: .4 })); for (let s = 0; s < 3; s++) { B(2.15, .03, .3, 0, .35 + s * .42, 0, shade(wood, .6)); for (let i = 0; i < 12; i++) if (r() < .85) bottle(-.95 + i * .17, .38 + s * .42, .03, pick(r, ['#2a5a2a', '#5a3a1a', '#d8c070', '#c8d8d8', '#8a1a2a', '#3a2a5a'])); } B(2.2, .2, .32, 0, 1.95, 0, shade(wood, .7)); break; }
-      case 'ia_scaffale_merci': { const c = '#8a8e88'; B(1.6, .04, .44, 0, .1, 0, c); [[-.78], [.78]].forEach(([x]) => B(.04, 1.9, .44, x, 0, 0, c)); B(1.6, 1.9, .02, 0, 0, -.21, shade(c, .8)); for (let s = 0; s < 4; s++) { B(1.56, .03, .42, 0, .14 + s * .45, 0, c); let x = -.7; while (x < .7) { const w = .1 + r() * .12, h = .12 + r() * .2, col = pick(r, ['#c8b48a', '#8a4a2a', '#d8d0c0', '#b02a2a', '#3a5a8a', '#e0c070', '#5a7a4a', '#9a9aa0']); if (r() < .85) { const yy = .17 + s * .45, k0 = r(); if (k0 < .3) { C(w / 2.2, h, x + w / 2, yy, 0, M('#b8bcc0', { metalness: .8, roughness: .35 }), 8); C(w / 2.2 + .002, h * .7, x + w / 2, yy + h * .15, 0, col, 8); } else if (k0 < .5) { C(w / 2.3, h, x + w / 2, yy, 0, M('#e0eef0', { roughness: .05, transparent: true, opacity: .4 }), 8); C(w / 2.6, h * .75, x + w / 2, yy + .005, 0, col, 8); C(w / 2.2, .02, x + w / 2, yy + h, 0, '#c8a040', 8); } else B(w, h, .25, x + w / 2, yy, 0, col); }   /* [roba] lattine con l'etichetta, vasetti di vetro, scatole */ x += w + .03; } } break; }
+      case 'ia_scaffale_merci': { const c = '#8a8e88'; B(1.6, .04, .44, 0, .1, 0, c); [[-.78], [.78]].forEach(([x]) => B(.04, 1.9, .44, x, 0, 0, c)); B(1.6, 1.9, .02, 0, 0, -.21, shade(c, .8)); for (let s = 0; s < 4; s++) { B(1.56, .03, .42, 0, .14 + s * .45, 0, c); let x = -.7; while (x < .7 && !(opt && opt.vuoto)) { const w = .1 + r() * .12, h = .12 + r() * .2, col = pick(r, ['#c8b48a', '#8a4a2a', '#d8d0c0', '#b02a2a', '#3a5a8a', '#e0c070', '#5a7a4a', '#9a9aa0']); if (r() < .85) { const yy = .17 + s * .45, k0 = r(); if (k0 < .3) { C(w / 2.2, h, x + w / 2, yy, 0, M('#b8bcc0', { metalness: .8, roughness: .35 }), 8); C(w / 2.2 + .002, h * .7, x + w / 2, yy + h * .15, 0, col, 8); } else if (k0 < .5) { C(w / 2.3, h, x + w / 2, yy, 0, M('#e0eef0', { roughness: .05, transparent: true, opacity: .4 }), 8); C(w / 2.6, h * .75, x + w / 2, yy + .005, 0, col, 8); C(w / 2.2, .02, x + w / 2, yy + h, 0, '#c8a040', 8); } else B(w, h, .25, x + w / 2, yy, 0, col); }   /* [roba] lattine con l'etichetta, vasetti di vetro, scatole */ x += w + .03; } } break; }
       case 'ia_vetrina_frigo': { B(1.6, .8, .8, 0, 0, 0, '#e8e8e4'); B(1.6, .06, .8, 0, .8, 0, '#c8c8c8'); const gl = B(1.5, .5, .02, 0, .85, .2, M('#c8e8f8', { transparent: true, opacity: .35, roughness: .05 })); gl.rotation.x = -.5; B(1.5, .04, .7, 0, .82, -.05, GL('#d8f4ff', .6)); for (let i = 0; i < 6; i++) B(.2, .08, .25, -.6 + i * .24, .86, -.05, pick(r, ['#e8c8b0', '#c86a5a', '#f0e8c8', '#a85a4a', '#d8b890'])); B(1.6, .12, .02, 0, .1, .41, '#3a6aa0'); g.userData.cold = [0, .9, 0]; break; }
       case 'ia_cassette_frutta': for (let k = 0; k < 2 + Math.floor(r() * 2); k++) { const x = -.42 + k * .44, y = k > 1 ? .22 : 0, col = pick(r, ['#c83a2a', '#6a9a3a', '#8a6a3a', '#e0b040', '#5a8a4a']); B(.4, .22, .55, x, y, 0, '#a8844a'); for (let i = 0; i < 6; i++) S(.06, x + (i % 2 - .5) * .14, y + .26, -.18 + Math.floor(i / 2) * .16, col, 5); } break;
-      case 'ia_jukebox': { B(.9, 1.1, .6, 0, 0, 0, '#5a2a1a'); const t = C(.45, .6, 0, 1.1, 0, '#6a3020', 12); t.rotation.x = PI / 2; t.scale.set(1, 1, 1); t.position.y = 1.1; B(.7, .5, .02, 0, .5, .31, GL('#ffb04a', 1.2)); for (let i = 0; i < 3; i++) B(.04, .9, .02, -.3 + i * .3, .15, .32, GL(['#ff4fa3', '#35e6ff', '#ffd23b'][i], 1.5)); g.userData.neon = [0, 1, .4, '#ffb04a']; break; }
+      case 'ia_jukebox': {   // [stile] il jukebox del bar del porto: legno lucido consumato, colonnine ambrate, la finestra coi dischi, la griglia cromata
+        const wj = pick(r, ['#5a2e1e', '#4a2a1a', '#6a3a24']), cr = M('#c8ccd0', { metalness: .85, roughness: .25 });
+        B(.9, .12, .6, 0, 0, 0, shade(wj, .6)); B(.86, 1.0, .56, 0, .12, 0, wj); const ar = C(.43, .56, 0, 0, 0, wj, 16); ar.rotation.x = PI / 2; ar.position.set(0, 1.12, 0); ar.scale.z = 1;
+        const tr = new THREE.Mesh(tgeo(.44, .02, PI), cr); tr.position.set(0, 1.12, .28); g.add(tr);
+        [-1, 1].forEach(sx => { B(.08, 1.0, .08, sx * .4, .12, .26, GL('#e8a050', .7)); B(.1, 1.02, .02, sx * .4, .11, .3, M('#e0c890', { transparent: true, opacity: .45, roughness: .1 })); });
+        B(.56, .34, .02, 0, .78, .285, M('#1e1a18', { roughness: .2 })); C(.13, .01, 0, 0, 0, '#111114', 18).rotation.x = PI / 2; g.children[g.children.length - 1].position.set(-.05, .92, .29); C(.03, .012, 0, 0, 0, '#c8a050', 8).rotation.x = PI / 2; g.children[g.children.length - 1].position.set(-.05, .92, .295);
+        B(.2, .015, .015, .12, .97, .292, cr).rotation.z = -.4; B(.58, .36, .02, 0, .78, .3, M('#e0d0a8', { transparent: true, opacity: .18, roughness: .05 }));
+        for (let i = 0; i < 7; i++) B(.5, .015, .02, 0, .2 + i * .05, .29, cr); B(.6, .08, .04, 0, .62, .29, '#2a2420'); for (let i = 0; i < 10; i++) B(.035, .025, .02, -.22 + i * .05, .64, .31, i % 3 ? '#e8e0cc' : '#a83a2a');
+        const top = C(.36, .02, 0, 0, 0, GL('#f0b860', .5), 16, .36); top.rotation.x = PI / 2; top.position.set(0, 1.12, .27); top.scale.set(1, 1, 1); B(.04, .04, .02, .35, .4, .3, '#c8a050');
+        g.userData.lamp = [0, 1.2, .4]; break; }
       case 'ia_poltrona_barbiere': { C(.22, .1, 0, 0, 0, M('#c8c8d0', { metalness: .8, roughness: .3 }), 10); C(.06, .4, 0, .1, 0, M('#c8c8d0', { metalness: .8 }), 8); B(.6, .14, .6, 0, .5, 0, '#8a1a1a'); B(.6, .7, .12, 0, .55, -.28, '#8a1a1a'); B(.24, .16, .1, 0, 1.25, -.28, '#8a1a1a'); B(.08, .1, .55, -.33, .65, 0, M('#c8c8d0', { metalness: .8 })); B(.08, .1, .55, .33, .65, 0, M('#c8c8d0', { metalness: .8 })); B(.4, .04, .2, 0, .2, .35, M('#c8c8d0', { metalness: .8 })); break; }
       case 'ia_biliardo': { B(2.5, .12, 1.4, 0, .78, 0, '#2a6a3a'); B(2.6, .12, .08, 0, .82, -.72, shade(wood, .8)); B(2.6, .12, .08, 0, .82, .72, shade(wood, .8)); B(.08, .12, 1.5, -1.28, .82, 0, shade(wood, .8)); B(.08, .12, 1.5, 1.28, .82, 0, shade(wood, .8)); B(2.4, .1, 1.3, 0, .68, 0, shade(wood, .7)); legs(2.3, 1.2, .7, shade(wood, .7), .14); for (let i = 0; i < 6; i++) S(.04, (r() - .5) * 2, .94, (r() - .5) * 1.1, pick(r, ['#f0ece0', '#c83a2a', '#e8c030', '#2a3a8a', '#1a1a1a']), 6); const q = B(1.5, .03, .03, .3, .94, .4, '#c8a060'); q.rotation.y = .3; break; }
       case 'ia_schedario': { const c = pick(r, ['#6a7468', '#7a7a74', '#5a6a6a']); B(.5, 1.32, .6, 0, 0, 0, M(c, { metalness: .4, roughness: .5 })); for (let k = 0; k < 4; k++) { B(.44, .3, .02, 0, .04 + k * .32, .3, M(shade(c, 1.1), { metalness: .4 })); B(.12, .03, .02, 0, .26 + k * .32, .315, '#c8c8c0'); B(.1, .05, .01, 0, .2 + k * .32, .315, '#e8e4d8'); } break; }
@@ -50774,15 +50920,77 @@ var InterniArte = (function () {
       case 'ia_letto_patchwork': { taper(.95, 1.9, .14, '#4a3424', .1); B(1.0, .2, 2.06, 0, .12, .04, H('#4a3424')); B(1.05, .7, .08, 0, .12, -1.0, H('#4a3424')); B(.92, .2, 1.96, 0, .32, .04, '#d8d0c0');
         B(.98, .09, 1.5, 0, .5, .3, H('#3a3a5a')); flat(T.patchwork(Math.floor(r() * 8)), .98, 1.48, 0, .595, .3); [-1, 1].forEach(sx => decal(g, T.patchwork(Math.floor(r() * 8) + 3), 1.48, .3, sx * .5, .4, .3).rotation.y = sx * PI / 2);
         g.children.slice(-2).forEach((m, i) => { m.position.set(i ? .5 : -.5, .4, .3); }); const p0 = B(.6, .14, .34, 0, .55, -.78, '#e8e0d0'); p0.rotation.x = -.3; break; }
+      // ---- [stile] i pezzi del kit rifatti nello stile dell'isola ----
+      case 'ar_cash-register': {   // il registratore di cassa di metallo, pesante: tasti tondi, i cartellini dei numeri che saltano su, il cassetto, il rotolo
+        const body = M(pick(r, ['#5a6458', '#4a4e52', '#6a5a48']), { metalness: .55, roughness: .4 }), br = M('#b89a5a', BRASS);
+        B(.44, .1, .36, 0, 0, 0, body); B(.42, .025, .02, 0, .045, .18, br); B(.08, .012, .02, 0, .05, .19, '#1e1e22');
+        const kb = B(.36, .14, .22, 0, .1, .04, body); kb.rotation.x = -.45; for (let j = 0; j < 4; j++) for (let i = 0; i < 6; i++) { const k0 = C(.013, .015, 0, 0, 0, i > 3 ? '#8a2a22' : '#e8e0cc', 8); k0.position.set(-.13 + i * .052, .17 + j * .022, .11 - j * .045); }
+        B(.3, .16, .14, 0, .17, -.11, body); B(.24, .07, .01, 0, .25, -.035, M('#1e1e22', { roughness: .3 }));
+        for (let i = 0; i < 4; i++) { const v = Math.floor(r() * 10); B(.045, .045, .004, -.075 + i * .05, .26, -.03, MT('cifra' + v, canv('cifra' + v, 8, 8, (x, w, h) => { x.fillStyle = '#f4f0e4'; x.fillRect(0, 0, w, h); x.fillStyle = '#1e1e22'; x.font = 'bold 7px monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(String(v), w / 2, h / 2 + .5); }))); }
+        const rl = C(.035, .08, 0, 0, 0, '#f0ece0', 10); rl.rotation.z = PI / 2; rl.position.set(.25, .2, -.1); B(.05, .12, .003, .25, .1, -.06, '#f0ece0');
+        const lv = C(.008, .16, 0, 0, 0, br, 5); lv.rotation.z = -.5; lv.position.set(.26, .12, .05); S(.02, .3, .19, .05, '#1e1e22', 6); break; }
+      case 'pv_banco_vendita': case 'kitchenBar': {   // il banco della bottega: legno a pannelli, piano consumato col bordo di metallo, vetrinetta davanti
+        const W = id === 'kitchenBar' ? .9 : 2, D0 = id === 'kitchenBar' ? .45 : .66, wdd = pick(r, ['#5a3e2a', '#6a4a30', '#4a3424']), top = pick(r, ['#c8c0b0', '#8a8a84', '#d8d0bc', '#5a4a3a']);
+        B(W, .06, D0 - .04, 0, 0, -.01, shade(wdd, .6)); B(W, .84, D0, 0, .06, 0, wdd); B(W + .04, .04, D0 + .04, 0, .9, 0, top); B(W + .05, .015, .02, 0, .92, D0 / 2 + .02, M('#8a8e94', { metalness: .8, roughness: .35 }));
+        const np = Math.max(1, Math.round(W / .5)); for (let i = 0; i < np; i++) { const x = -W / 2 + (i + .5) * W / np; B(W / np - .08, .62, .012, x, .15, D0 / 2 + .002, shade(wdd, 1.12)); B(W / np - .18, .5, .01, x, .21, D0 / 2 + .008, shade(wdd, .9)); }
+        if (W > 1.5) { B(.7, .02, D0 - .12, -.55, .62, .04, shade(wdd, 1.1)); B(.72, .3, .01, -.55, .62, D0 / 2 + .012, glass({ opacity: .3 })); }
+        if (W > 1.5 && r() < .55) { C(.11, .03, .7, .94, -.05, M('#c8ccd0', { metalness: .8, roughness: .3 }), 14); B(.06, .16, .06, .7, .94, -.2, '#3a3e40'); C(.07, .02, .7, 1.1, -.2, M('#f0ece0'), 12); }
+        break; }
+      case 'ar_vending-machine': {   // il distributore del regime: lamiera verde-grigia, vetro con le bottiglie, gettoniera, targa, ruggine
+        const st0 = M(pick(r, ['#5a6a5a', '#6a6a62', '#7a3a2e']), { metalness: .45, roughness: .55 }); B(1.2, 1.8, .9, 0, 0, 0, st0); B(1.22, .05, .92, 0, 1.8, 0, shade('#5a5e58', .7));
+        B(.7, 1.1, .02, -.18, .5, .455, glass({ opacity: .35 })); for (let j = 0; j < 4; j++) { B(.68, .02, .3, -.18, .52 + j * .27, .3, '#3a3e3a'); for (let i = 0; i < 6; i++) { C(.028, .16, -.48 + i * .11, .54 + j * .27, .33, M(pick(r, ['#6a3a12', '#2a4a2a', '#c8d8d8', '#8a2a22']), { roughness: .15 }), 7); } }
+        B(.26, .5, .02, .4, .9, .455, '#2a2a2e'); B(.04, .1, .02, .4, 1.25, .47, M('#c8ccd0', { metalness: .9 })); B(.18, .1, .02, .4, 1.05, .47, GL('#ff8a3a', .5)); B(.5, .14, .04, -.18, .2, .46, '#1e1e22');
+        B(.3, .2, .01, .4, .6, .468, '#b02a2a'); S(.04, .4, .7, .475, '#f0e4cc', 6).scale.z = .2; for (let i = 0; i < 5; i++) B(.06 + r() * .1, .04 + r() * .08, .005, (r() - .5) * 1.1, r() * 1.7, .458, '#7a4a2a'); break; }
+      case 'kitchenCoffeeMachine': {   // la macchina dell'espresso a leva: caldaia cromata, due leve, l'aquila sopra, le tazzine a scaldare
+        const cr = M('#d8dce0', { metalness: .9, roughness: .15 }); B(.44, .06, .34, 0, 0, 0, '#2a2a2e'); C(.15, .3, 0, .06, -.04, cr, 16); B(.44, .2, .3, 0, .06, 0, M(pick(r, ['#8a2a22', '#e8e0cc', '#2a2a2e']), { roughness: .3 }));
+        [-.1, .1].forEach(x => { C(.035, .06, x, .2, .15, cr, 10); const l = C(.012, .28, x, .26, .17, '#1e1e22', 6); l.rotation.x = -.3; S(.025, x, .52, .26, '#1e1e22', 6); C(.025, .03, x, .13, .17, '#f0ece0', 8); });
+        C(.08, .02, 0, .36, -.04, cr, 12); S(.03, 0, .42, -.04, M('#c8a050', BRASS), 6); for (let i = 0; i < 4; i++) C(.025, .035, -.12 + i * .08, .36, .08, '#f0ece0', 8); break; }
+      case 'washer': {   // la lavatrice a carica dall'alto, smaltata, con le manopole e il tubo
+        const en = M(pick(r, ['#e4e0d4', '#d8d4c8', '#c8d0c8']), { roughness: .35 }); B(.7, .82, .62, 0, .04, 0, en); B(.62, .04, .5, 0, .04, 0, '#2a2a2e');
+        C(.22, .02, 0, .86, .03, M('#c8ccd0', { metalness: .7, roughness: .3 }), 16); B(.7, .12, .1, 0, .86, -.26, en); [-.2, 0, .2].forEach(x => { const k = C(.03, .03, 0, 0, 0, '#2a2a2e', 10); k.rotation.x = PI / 2; k.position.set(x, .92, -.2); });
+        B(.18, .04, .005, .15, .7, .312, '#3a5a8a'); const t = C(.02, .5, 0, 0, 0, '#8a8a84', 6); t.rotation.z = PI / 2.3; t.position.set(.35, .3, -.25); break; }
+      case 'trashcan': { const zn = M('#9aa0a4', { metalness: .6, roughness: .5 }); C(.2, .5, 0, 0, 0, zn, 14, .18); for (let i = 0; i < 3; i++) C(.205, .02, 0, .1 + i * .15, 0, M('#7a8084', { metalness: .6 }), 14); C(.22, .04, 0, .5, 0, zn, 14); B(.12, .03, .03, 0, .56, 0, '#3a3e40'); if (r() < .4) B(.1, .06, .1, .1, .54, .08, '#f0ece0').rotation.y = r() * 6; break; }
+      case 'speaker': { const wdd = pick(r, ['#5a3e2a', '#2a2a2e']); B(.3, .5, .26, 0, 0, 0, wdd); B(.26, .44, .01, 0, .03, .13, MT('telacassa', canv('telacassa', 8, 8, (x) => { x.fillStyle = '#4a4440'; x.fillRect(0, 0, 8, 8); x.fillStyle = 'rgba(0,0,0,.25)'; for (let i = 0; i < 8; i += 2) x.fillRect(i, 0, 1, 8); }))); C(.05, .01, 0, 0, 0, '#c8a050', 8).position.set(0, .45, .13); break; }
+      case 'stoolBar': { const cr = M('#b8bcc0', { metalness: .85, roughness: .25 }); C(.17, .02, 0, 0, 0, cr, 12); C(.025, .66, 0, .02, 0, cr, 8); const ring = new THREE.Mesh(tgeo(.14, .01, PI * 2), cr); ring.rotation.x = PI / 2; ring.position.y = .3; g.add(ring); C(.17, .08, 0, .68, 0, M(pick(r, ['#5a2a24', '#2a2a2e', '#4a3a2e', '#6a5a48']), { roughness: .45 }), 14); C(.175, .015, 0, .67, 0, cr, 14); break; }
+      case 'fd_barrel': { const wdd = pick(r, ['#6a4228', '#5a3a24']); C(.36, .8, 0, 0, 0, wdd, 14, .32); C(.33, .02, 0, .8, 0, shade(wdd, .7), 14); [.1, .38, .66].forEach(y => C(.36, .04, 0, y, 0, M('#3a3a3a', { metalness: .6 }), 14)); C(.03, .05, 0, 0, 0, '#3a2a1a', 6).position.set(0, .3, .36); break; }
+      case 'fd_bread': { const b0 = S(.13, 0, .06, 0, '#b8803a', 10); b0.scale.set(1, .55, 1); for (let i = -1; i <= 1; i++) B(.18, .005, .015, 0, .13, i * .05, '#e8c890').rotation.y = .3; break; }
+      case 'fd_loaf-baguette': { const b0 = S(.06, 0, .05, 0, '#c8904a', 8); b0.scale.set(4, .7, 1); for (let i = -1; i <= 1; i++) B(.04, .005, .05, i * .1, .088, 0, '#e8c890').rotation.y = .5; break; }
+      case 'fd_croissant': { const t0 = new THREE.Mesh(tgeo(.07, .035, PI * 1.2), TM('#c8883a')); t0.rotation.x = -PI / 2; t0.position.y = .03; g.add(t0); break; }
+      case 'fd_cake': { C(.18, .1, 0, 0, 0, '#c8904a', 16); C(.185, .03, 0, .1, 0, '#f0e8d8', 16); for (let i = 0; i < 8; i++) S(.018, Math.cos(i * .8) * .13, .14, Math.sin(i * .8) * .13, '#a82a2a', 5); break; }
+      case 'fd_fish': { for (let i = 0; i < 3; i++) { const f0 = S(.05, (i - 1) * .06, .03, 0, M('#a8b0b8', { metalness: .5, roughness: .3 }), 8); f0.scale.set(.7, .45, 3); f0.rotation.y = (r() - .5) * .3; } B(.3, .02, .4, 0, 0, 0, '#a8844a'); break; }
+      // ---- [vissuto] lo sporco per terra, le ragnatele, i manifesti dei ragazzi e quelli del regime ----
+      case 'ia_cartacce': { for (let i = 0; i < 3 + Math.floor(r() * 3); i++) { const p0 = S(.03 + r() * .025, (r() - .5) * .5, .02, (r() - .5) * .34, M(pick(r, ['#e8e4d8', '#d8d0bc', '#c8c0a8', '#b8b0a0']), { roughness: .95 }), 5); p0.scale.y = .7; p0.rotation.set(r() * 3, r() * 3, 0); }
+        for (let i = 0; i < 3; i++) { const c0 = C(.004, .025, 0, 0, 0, i ? '#e8dcc0' : '#c86a2a', 4); c0.rotation.z = PI / 2; c0.rotation.y = r() * 6; c0.position.set((r() - .5) * .5, .005, (r() - .5) * .34); }
+        if (r() < .4) { const b0 = C(.03, .2, 0, 0, 0, M('#2a4a2a', { roughness: .15, transparent: true, opacity: .8 }), 8); b0.rotation.z = PI / 2; b0.position.set(.15, .03, .1); b0.rotation.y = r() * 6; } break; }
+      case 'ia_macchia': { flat(T.macchia(Math.floor(r() * 4)), .9, .7, 0, .013, 0).material.depthWrite = false; break; }
+      case 'ia_ragnatela': { const m0 = decal(g, T.ragnatela(), .55, .55, 0, 0, .01); m0.position.set(r() < .5 ? -.02 : .02, 0, .01); break; }
+      case 'ia_poster_ribelle': { const t0 = r() < .5 ? T.graffito(Math.floor(r() * 8)) : T.stencil(Math.floor(r() * 4)); B(.5, .7, .004, 0, -.35, .006, pick(r, ['#1e1c20', '#e8e0cc', '#2a2a2e'])); decal(g, t0, .46, .62, 0, 0, .01); [[-.22, .32], [.22, .32], [-.22, -.32], [.22, -.32]].forEach(([a, b0]) => B(.06, .025, .002, a, b0, .012, M('#c8c0a0', { transparent: true, opacity: .7 })).rotation.z = (r() - .5) * 1.5); break; }
+      case 'ia_stencil': { const m0 = decal(g, T.stencil(Math.floor(r() * 8)), .95, .68, 0, 0, .006); m0.material.depthWrite = false; break; }
+      case 'ia_pubblicita': { B(.62, .84, .004, 0, -.42, .006, '#f4f0e4'); decal(g, T.arte(pick(r, [1, 2, 6, 7, 11, 12, 0, 5])), .56, .6, 0, .07, .01); B(.56, .14, .002, 0, -.32, .01, '#c8202a'); B(.4, .03, .002, 0, -.31, .012, '#ffffff'); break; }
+      case 'ar_gambling-machine': {   // [stile] due macchinette mangiasoldi su un mobiletto: lamiera smaltata scrostata, i rulli, la leva col pomello rosso, il vassoio dei gettoni
+        B(1.24, .7, .6, 0, 0, 0, shade(pick(r, ['#4a3424', '#3a3a3e']), 1)); B(1.26, .03, .62, 0, .7, 0, M('#8a8e94', { metalness: .7, roughness: .4 }));
+        [-.31, .31].forEach((x, i) => {
+          const en = M(pick(r, ['#8a2a22', '#2a4a6a', '#6a5a2a', '#3a3a3e']), { metalness: .35, roughness: .4 }), cr = M('#c8ccd0', { metalness: .85, roughness: .25 });
+          B(.5, .82, .42, x, .73, 0, en); B(.52, .16, .44, x, 1.55, 0, en); B(.44, .12, .01, x, 1.57, .225, GL(pick(r, ['#f0b860', '#e8d090']), .6));
+          B(.4, .2, .02, x, 1.22, .215, '#1a1a1c'); for (let k = 0; k < 3; k++) { const rl = C(.07, .1, 0, 0, 0, '#f0ece0', 12); rl.rotation.z = PI / 2; rl.position.set(x - .12 + k * .12, 1.32, .18); S(.022, x - .12 + k * .12, 1.32, .25, pick(r, ['#a83a2a', '#d8b040', '#4a7a3a', '#2a4a8a']), 5); }
+          B(.42, .22, .02, x, 1.22, .222, M('#e0e8ec', { transparent: true, opacity: .2, roughness: .05 })); B(.34, .1, .12, x, .78, .22, cr); B(.3, .02, .1, x, .87, .23, '#2a2a2e');
+          B(.06, .03, .02, x + .12, 1.08, .215, '#1e1e22'); for (let k = 0; k < 5; k++) B(.03 + r() * .06, .02 + r() * .05, .003, x + (r() - .5) * .42, .8 + r() * .8, .212, '#b8ae9c');
+          const lv = C(.014, .4, 0, 0, 0, cr, 6); lv.position.set(x + .29, 1.25, .05); lv.rotation.z = -.15; S(.045, x + .32, 1.46, .05, M('#b02a22', { roughness: .3 }), 8); C(.04, .06, 0, 0, 0, cr, 8).rotation.z = PI / 2; g.children[g.children.length - 1].position.set(x + .27, 1.1, .05); });
+        break; }
       default: return false;
     }
     return true;
   }
+  // [stile] i pezzi del kit fuori tema rifatti a mano (stesse misure): la cassa, il banco, il distributore, la macchina del caffè, la lavatrice,
+  // il secchio, la cassa acustica, il cibo di plastica; lampada e tappeti passano ai pezzi fatti a mano. Il resto del kit resta com'è.
+  const KITRE = { 'ar_gambling-machine': 1, stoolBar: 1, 'ar_cash-register': 1, pv_banco_vendita: 1, kitchenBar: 1, 'ar_vending-machine': 1, kitchenCoffeeMachine: 1, washer: 1, trashcan: 1, speaker: 1, fd_barrel: 1, fd_bread: 1, 'fd_loaf-baguette': 1, fd_croissant: 1, fd_cake: 1, fd_fish: 1,
+    lampRoundFloor: 'ia_lampada_piede', rugRound: 'ia_tappeto_tondo', rugRectangle: 'ia_tappeto_design' };
+  const handId = id => /^ia_|^st_stufa$/.test(id) ? id : KITRE[id] === 1 ? id : KITRE[id] || null;
   // le cose appese hanno il centro all'altezza h: i pannelli sono già costruiti così
   // Models.furniture sa fare anche le nostre
   if (typeof Models !== 'undefined' && Models.furniture) {
     const f0 = Models.furniture; let n = 0;
-    Models.furniture = name => { if (/^ia_|^st_stufa$/.test(name)) { const g = build(name, rng(++n * 7919)); if (g) return Promise.resolve(g); } return f0(name); };
+    Models.furniture = name => { const h = handId(name); if (h) { const g = build(h, rng(++n * 7919)); if (g) return Promise.resolve(g); } return f0(name); };
   }
 
   // =====================================================================================================================
@@ -50813,7 +51021,7 @@ var InterniArte = (function () {
     F.rooms.forEach(q => {
       const wet = f === 0 && L.ent && q.x <= L.ent.in[0] && L.ent.in[0] <= q.x + q.w && q.y <= L.ent.in[1] && L.ent.in[1] <= q.y + q.h ? [(L.ent.in[0] - q.x) * PPM, (L.ent.in[1] - q.y) * PPM] : null;
       const t = tex(floorCanvas(q, rng((b.x * 17 + q.x * 3 + q.y * 7 + f * 101) >>> 0), wet));
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(q.w, q.h), new THREE.MeshStandardMaterial({ map: t, roughness: /marmo|piastrelle|graniglia|linoleum|scacchi/.test(q.floor) ? .45 : .85, metalness: 0 }));
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(q.w, q.h), new THREE.MeshStandardMaterial({ map: t, roughness: Math.min(.95, (/marmo|piastrelle|graniglia|linoleum|scacchi/.test(q.floor) ? .45 : .85) - (q.dirt < .15 ? .2 : 0) + (q.dirt > .6 ? .1 : 0)), metalness: 0 }));   // [vissuto] lucido dove si pulisce
       m.rotation.x = -PI / 2; m.position.set(q.x + q.w / 2, BASE + .01, q.y + q.h / 2); m.receiveShadow = true; grp.add(m);
     });
     // muri: quelli di fondo (perimetro dal lato lontano dalla camera) alti, gli altri bassi a sezione; ogni faccia ha la parete della sua stanza
@@ -50866,16 +51074,18 @@ var InterniArte = (function () {
     // soglia d'ingresso (arancione: si esce di qui) con lo zerbino
     if (f === 0 && L.ent) { const e = L.ent, rot = e.side === 'N' || e.side === 'S' ? 0 : PI / 2; const mat = new THREE.Mesh(plane(1.4, .9), new THREE.MeshStandardMaterial({ map: T.stuoia(), emissive: '#ff8a2a', emissiveIntensity: .25, roughness: .9 })); mat.rotation.x = -PI / 2; mat.rotation.z = rot; mat.position.set(e.in[0], BASE + .03, e.in[1]); grp.add(mat); }
     // mobili e oggetti
-    const fires = [], lamps = [];
+    const fires = [], lamps = []; S.furnList = F.furn;
+    try { vetrine(grp, b, f, F); } catch (e) { console.warn('[vetrine]', e); }   // [negozi] la merce vera sugli scaffali
+    try { ombreLuci(grp, F, I); } catch (e) { console.warn('[ombre]', e); }   // [vissuto] ombre sotto i mobili, pozze di luce delle lampade
     F.furn.forEach(o => {
       if (o.taken) return;   // [roba] portata via
       if (o.decor && !o.low && !backSide[o.wall]) return;   // appesa a un muro tagliato basso: non si vede
-      const p = /^ia_|^st_stufa$/.test(o.id) ? Promise.resolve(build(o.id, rng((o.x * 97 + o.y * 31) >>> 0))) : (window.Models ? Models.furniture(o.id) : Promise.resolve(null));
+      const hid = handId(o.id), p = hid ? Promise.resolve(build(hid, rng((o.x * 97 + o.y * 31) >>> 0), { vuoto: !!o.__merce })) : (window.Models ? Models.furniture(o.id) : Promise.resolve(null));
       p.then(m => {
         if (!m || S.grp !== grp) return;
         if (window.Officina) Officina.apply('mobile:' + o.id, m);   // [studio]
-        m.position.set(o.x, BASE + (o.h || 0), o.y); m.rotation.y = o.ry || 0; if (o.s) m.scale.multiplyScalar(o.s); m.userData.furn = o; grp.add(m);   // [editor]
-        if (!/^ia_|^st_stufa$/.test(o.id)) m.traverse(k => { if (!k.isMesh || !k.geometry || !k.geometry.attributes.uv) return; const fix = mt => mt && !mt.map && mt.color && !mt.emissiveMap && !(mt.emissiveIntensity > .5 && mt.emissive && mt.emissive.getHex()) ? TM('#' + mt.color.getHexString(), { transparent: mt.transparent, opacity: mt.opacity, metalness: mt.metalness || 0 }) : mt; k.material = Array.isArray(k.material) ? k.material.map(fix) : fix(k.material); });   // [design] anche i mobili del kit con la trama
+        m.position.set(o.x, BASE + (o.h || 0), o.y); m.rotation.y = o.ry || 0; if (o.tilt) m.rotation.z = o.tilt; if (o.s) m.scale.multiplyScalar(o.s); m.userData.furn = o; grp.add(m);   // [editor]   // [vissuto] i quadri appena storti
+        if (!handId(o.id)) m.traverse(k => { if (!k.isMesh || !k.geometry || !k.geometry.attributes.uv) return; const fix = mt => mt && !mt.map && mt.color && !mt.emissiveMap && !(mt.emissiveIntensity > .5 && mt.emissive && mt.emissive.getHex()) ? TM('#' + mt.color.getHexString(), { transparent: mt.transparent, opacity: mt.opacity, metalness: mt.metalness || 0 }) : mt; k.material = Array.isArray(k.material) ? k.material.map(fix) : fix(k.material); });   // [design] anche i mobili del kit con la trama
         if (m.userData.upper && !(o.wp && backSide[o.ws])) m.traverse(k => { if (k !== m && k.userData.upper) k.visible = false; });   // [design] pensili e specchi contro un muro basso: via
         const u = m.userData;
         if (u.fire || u.candle) { const q = u.fire || u.candle, v = new THREE.Vector3(q[0], q[1], q[2]).applyAxisAngle(new THREE.Vector3(0, 1, 0), o.ry || 0); S.fires.push({ at: [o.x + v.x, BASE + (o.h || 0) + v.y, o.y + v.z], big: !!u.fire, meshes: [] }); m.traverse(k => { if (k.isMesh && k.userData.fire) { k.material = k.material.clone(); S.fires[S.fires.length - 1].meshes.push(k); } }); addLights(); }
@@ -50982,7 +51192,86 @@ var InterniArte = (function () {
     ['calce', 'verde', 'blu', 'ocra', 'rosso', 'crema', 'ospedale', 'rosa', 'azzurro', 'fiori', 'righe', 'rombi', 'piastrelle', 'mattoni', 'cemento', 'legno', 'perline', 'velluto', 'nero'].forEach((st, i) => out.push({ nome: st, gruppo: 'Pareti', c: wallStyleCanvas(st, 6, 4099 + i * 71, 0), ppm: PPM }));
     return out;
   }
-  return { build: build_, light, exit, prop: build, materiali, floorY: () => (S.grp ? BASE : null) };
+  // =====================================================================================================================
+  // [negozi] LE VETRINE: sugli scaffali, sui banchi e nelle vetrine della sala vendita c'è la merce che la bottega ha davvero
+  // (Oggetti.counter: scorta e prezzo). Ogni merce ha la sua forma (scatoletta, bottiglia, pacco, sacco, attrezzo, vestito piegato…),
+  // ripetuta quanto ce n'è (fino a sei), col cartellino del prezzo; la merce finita lascia il posto vuoto col cartellino rosso.
+  // All'Emporio Imperiale le confezioni sono pastello e lucide (carine ma stupide); nelle botteghe dell'isola carta e latta sobrie.
+  // =====================================================================================================================
+  const RETRO = /retro|magazzino|bagno|cella|^forno|macello|dispensa|prova|ufficio|cucina|deposito|soppalco|camerini|poligono|laboratorio_armi|cantina_birra|officina_r|radio_r/;
+  // i posti dove si espone: [livelli (altezza del piano), larghezza utile, profondità del piano, z del bordo davanti]
+  const ESPO = { ia_scaffale_merci: [[.17, .62, 1.07, 1.52], 1.44, .36, .2], bookcaseOpenLow: [[.84], .7, .36, .2], kitchenBar: [[.97], .8, .36, .2], pv_banco_vendita: [[.97], 1.6, .4, .3], ia_vetrina: [[.92], 1.2, .5, .32], ia_tavolo_maglie: [[.78], 1.2, .6, .38], ia_scaffale_scarpe: [[.12, .5, .88], 1.3, .3, .18] };
+  const BOTTLE = /vino|birra|grappa|whisky|vodka|acqua$|aranciata|olio$|latte|mirto|aceto|succo|alcol|sciroppo|disinfettante|candeggina|detersivo|shampoo|lubrificante/, CAN = /scatol|carne_scatola|legumi|passata|acciughe|sarde|conserva|marmellata|vernice|latta$|colla|silicone/, BAG = /farina|riso|sale$|zucchero|caffe$|orzo|ceci|cemento|calce|malta|sabbia|carbone|sacch/;
+  const PRODUCE = /verdura|patate|pomodori|cipolle|frutta|limoni|mele|arance|uva|fichi|noci|castagne|funghi|olive/, BREAD = /pane|focaccia|panino/;
+  function goodMesh(gid, cat, r, pop) {
+    const g = new THREE.Group(), k = hashStr(gid), col = pop ? ['#9ad8c0', '#f4b0c0', '#f4dc80', '#a8c8f0', '#f08a6a', '#ffffff'][k % 6] : ['#8a3a2e', '#3a5a6a', '#c8a050', '#5a6a3a', '#d8d0bc', '#6a4a5a', '#2a3a4a'][k % 7];
+    const pk = M(col, { roughness: pop ? .25 : .6 }), lab = M(pop ? '#ffffff' : '#e8dcc0', { roughness: .7 });
+    const add = (geo, m, x, y, z) => { const q = new THREE.Mesh(geo, m); q.position.set(x, y, z); g.add(q); return q; };
+    let w = .1, h = .14;
+    if (BOTTLE.test(gid)) { const gm = M(/vino|olio|mirto/.test(gid) ? '#2a4a2a' : /birra|whisky|aceto/.test(gid) ? '#6a3a12' : '#c8d8d8', { roughness: .1, transparent: true, opacity: .8 }); add(cgeo(.035, .035, .2, 8), gm, 0, .1, 0); add(cgeo(.013, .013, .07, 6), gm, 0, .235, 0); add(cgeo(.036, .036, .07, 8), lab, 0, .08, 0); add(cgeo(.015, .015, .02, 6), pk, 0, .275, 0); w = .08; h = .28; }
+    else if (CAN.test(gid)) { add(cgeo(.038, .038, .1, 10), M('#b8bcc0', { metalness: .8, roughness: .35 }), 0, .05, 0); add(cgeo(.039, .039, .06, 10), pk, 0, .05, 0); w = .085; h = .1; }
+    else if (BAG.test(gid)) { add(bgeo(.16, .2, .1), M(pop ? col : '#d8ccb0', { roughness: .9 }), 0, .1, 0); add(bgeo(.161, .06, .101), pk, 0, .12, 0); w = .18; h = .2; }
+    else if (PRODUCE.test(gid)) { add(bgeo(.3, .1, .24), M('#a8844a'), 0, .05, 0); const pc = /pomodori|mele/.test(gid) ? '#b83a2a' : /limoni/.test(gid) ? '#e0c840' : /arance/.test(gid) ? '#e0882a' : /patate|noci|castagne|funghi/.test(gid) ? '#8a6a42' : /olive|uva/.test(gid) ? '#4a5a2a' : '#6a9a3a'; for (let i = 0; i < 6; i++) add(sgeo(.045, 6), M(pc), (i % 3 - 1) * .09, .12, (i < 3 ? -.05 : .05)); w = .32; h = .17; }
+    else if (BREAD.test(gid)) { const b0 = add(sgeo(.08, 8), M('#c8904a'), 0, .05, 0); b0.scale.set(1.5, .6, .9); w = .25; h = .1; }
+    else if (cat === 'attrezzi' || cat === 'armi') { add(bgeo(.24, .02, .05), M('#5a5e62', { metalness: .7, roughness: .4 }), 0, .02, 0); add(bgeo(.1, .03, .055), M(cat === 'armi' ? '#4a3020' : col), -.08, .025, 0); w = .26; h = .05; }
+    else if (cat === 'vestiti') { for (let i = 0; i < 3; i++) add(bgeo(.3, .04, .24), M(['#4a5560', '#7a5a48', '#5a6458', '#8a8478', '#6a4a42'][(k + i) % 5], { roughness: .95 }), 0, .02 + i * .042, 0); w = .32; h = .13; }
+    else if (cat === 'stampa') { add(bgeo(.21, .05, .28), M('#efe8d8'), 0, .025, 0); add(bgeo(.211, .006, .1), pk, 0, .05, -.06); w = .22; h = .06; }
+    else if (cat === 'medicina' || cat === 'igiene') { add(bgeo(.08, .06, .05), pk, 0, .03, 0); add(bgeo(.081, .02, .051), lab, 0, .035, 0); w = .09; h = .06; }
+    else if (cat === 'elettrico') { add(bgeo(.14, .1, .1), M(pop ? col : '#d8d0bc', { roughness: .4 }), 0, .05, 0); add(bgeo(.141, .03, .101), M('#2a2a2e'), 0, .07, 0); w = .15; h = .1; }
+    else if (cat === 'valori') { add(bgeo(.08, .025, .1), pk, 0, .0125, 0); add(bgeo(.081, .026, .03), lab, 0, .0125, -.03); w = .09; h = .03; }
+    else { add(bgeo(.12, .16, .07), pk, 0, .08, 0); add(bgeo(.121, .05, .071), lab, 0, .09, 0); w = .13; h = .16; }
+    if (pop && h > .05) { const st0 = add(sgeo(.012, 4), GL('#ff3a3a', .6), 0, h * .7, .06); st0.scale.z = .3; }   // la stellina del marchio imperiale
+    g.userData.w = w; return g;
+  }
+  function hashStr(t) { let h = 7; for (const c of t) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
+  const tagTex = (txt, red) => canv('tag' + txt + red, 40, 14, (x, w, h) => { x.fillStyle = red ? '#c83a2a' : '#f4f0e4'; x.fillRect(0, 0, w, h); x.fillStyle = red ? '#ffffff' : '#1e1e22'; x.font = 'bold 10px monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, w / 2, h / 2 + 1); x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(0, h - 1, w, 1); });
+  const lire = q => String(Math.max(10, Math.round(q * 100) * 10)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');   // 1,5 → «1.500» (lire)
+  function vetrine(grp, b, f, F) {
+    if (f !== 0 || typeof Oggetti === 'undefined' || !Oggetti.counter || !window.__pv) return;
+    const st = window.__pv.st, bi = window.__pv.G.BUILDINGS.indexOf(b), C = st && bi >= 0 ? Oggetti.counter(st, 'b' + bi) : null; if (!C || !C.goods || !C.goods.length) return;
+    const pop = !!C.emporio, goods = C.goods.slice().sort((a, c) => (a.cat || '').localeCompare(c.cat || '') || a.g.localeCompare(c.g));
+    const sale = F.furn.filter(o => ESPO[o.id] && !o.h && !o.taken && (() => { const q = F.rooms[o.room]; return q && !RETRO.test(q.name); })());
+    if (!sale.length) return;
+    sale.forEach(o => { if (o.id === 'ia_scaffale_merci') o.__merce = 1; });
+    let gi = 0;
+    sale.forEach(o => {
+      const [levels, wid, dep, front] = ESPO[o.id], G0 = new THREE.Group(); G0.position.set(o.x, BASE, o.y); G0.rotation.y = o.ry || 0; grp.add(G0);
+      levels.forEach(y => {
+        let x = -wid / 2;
+        while (x < wid / 2 - .1) {
+          const it = goods[gi++ % goods.length], n = Math.max(0, Math.min(6, it.stock)), r = rng(hashStr(it.g) + gi);
+          const sample = goodMesh(it.g, it.cat, r, pop), w = sample.userData.w + .015; if (x + w > wid / 2) break;
+          const cols = Math.max(1, Math.ceil(n / 2)), used = cols * w;   // due pezzi in profondità per colonna, il davanti allineato al bordo
+          for (let k = 0; k < n; k++) { const col = Math.floor(k / 2), row = k % 2; if (x + (col + 1) * w > wid / 2 + .01) break; const m = k ? sample.clone() : sample; m.position.set(x + col * w + w / 2, y, front - .07 - row * Math.min(.14, dep * .4)); G0.add(m); }
+          const tg = new THREE.Mesh(plane(.12, .045), new THREE.MeshStandardMaterial({ map: tagTex(n ? lire(it.price) : 'finito', !n), roughness: .8 })); tg.position.set(x + Math.min(used, .2) / 2, y - .005, front + .006); G0.add(tg);
+          x += used + .03;
+        }
+      });
+    });
+  }
+  // =====================================================================================================================
+  // [vissuto] LUCE DA FILM: un'ombra morbida sotto ogni mobile (il mobile poggia, non galleggia), e sotto le lampade, le abat-jour,
+  // il jukebox e i lumini una pozza di luce calda; davanti ai televisori una luce fredda. Costa poco: piani trasparenti, niente luci vere.
+  // =====================================================================================================================
+  const NOSHADOW = /^rug|ia_tappeto|ia_passatoia|ia_pista|ia_macchia|ia_cartacce|ia_ring|ia_telo|ia_reti/;
+  const LAMPS = [[/lampada_arco/, '#ffc070', .3, 2.2, 1.5], [/lampada|abatjour|lampRoundFloor|lampadario_pavimento|lampada_casco/, '#ffb060', .24, 1.9, 0], [/candel|altarino|icona/, '#ff9040', .2, 1.3, 0], [/jukebox/, '#ff9a40', .22, 2.2, .6], [/ia_tv$|mobile_tv|tv_muro/, '#8ab4ff', .14, 1.8, .9], [/serra/, '#d8f0ff', .14, 2.2, .5], [/insegna_neon/, '#ff6aa0', .12, 2.2, .5]];
+  function ombreLuci(grp, F, I) {
+    const sh = new THREE.MeshBasicMaterial({ map: T.blob(), color: '#000000', transparent: true, opacity: .62, depthWrite: false });
+    F.furn.forEach(o => {
+      if (o.taken) return; const sz = I.szOf ? I.szOf(o.id) : null;
+      if (sz && !o.decor && !o.h && !NOSHADOW.test(o.id) && (sz[0] > .25 || sz[1] > .25)) {
+        const m = new THREE.Mesh(plane(sz[0] + .35, sz[1] + .35), sh); m.rotation.x = -PI / 2; m.rotation.z = o.ry || 0; m.position.set(o.x, BASE + .016, o.y); m.renderOrder = 1; grp.add(m);
+      }
+      const L = LAMPS.find(([re]) => re.test(o.id)); if (!L) return;
+      const [, col, op, rad, fwd] = L, fx = Math.sin(o.ry || 0) * fwd, fz = Math.cos(o.ry || 0) * fwd;
+      const pm = new THREE.MeshBasicMaterial({ map: T.pozza(), color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+      const pl = new THREE.Mesh(plane(rad * 2, rad * 2), pm); pl.rotation.x = -PI / 2; pl.position.set(o.x + fx, BASE + .02, o.y + fz); pl.renderOrder = 2; grp.add(pl);
+      if (o.decor || o.h > .3) { const wl = new THREE.Mesh(plane(rad * 1.4, rad * 1.2), pm); wl.position.set(o.x, BASE + (o.h || 1) + .3, o.y); wl.rotation.y = o.ry || 0; wl.position.x -= Math.sin(o.ry || 0) * .05; wl.position.z -= Math.cos(o.ry || 0) * .05; grp.add(wl); }
+    });
+  }
+  // [design] la roba presa sparisce dal mobile (senza rifare il piano): l'indice è quello di F.furn
+  function hide(i) { if (!S.grp) return; S.grp.children.forEach(m => { const o = m.userData.furn; if (o && o === (S.furnList || [])[i]) m.visible = false; }); }
+  return { build: build_, light, exit, prop: build, materiali, hide, floorY: () => (S.grp ? BASE : null) };
 })();
 </script>
 <script>/* Porto Vecchio — Il Protagonista: i bisogni sotto i soldi, il lavoro, e il tempo che corre (solo interfaccia). */

@@ -1433,9 +1433,11 @@ var Oggetti = (function () {
     if (p.indoor) {
       const b = G.BUILDINGS[p.indoor.b], Lx = INT.layout(b), F = Lx.floors[p.indoor.f]; if (!F) return out;
       F.furn.forEach((o, i) => {
-        if (dist(o.x, o.y, p.x, p.y) > r) return; const room = INT.roomAt ? (INT.roomAt(Lx, p.indoor.f, o.x, o.y) || {}).name : null; if (!lootTable(b, room, o.id)) return;
+        if (o.taken || dist(o.x, o.y, p.x, p.y) > r) return; const room = INT.roomAt ? (INT.roomAt(Lx, p.indoor.f, o.x, o.y) || {}).name : null; if (!lootTable(b, room, o.id)) return;
         const c = S(st).cont[`b${p.indoor.b}:${p.indoor.f}:${i}`];
-        out.push({ ref: `f:${i}`, kind: 'mobile', x: o.x, y: o.y, label: furnName(o.id, room), locked: !!LOCKED[o.id] && !(c && c.forced) });
+        // [design] la roba piccola (sopra i mobili o per terra) si prende con un clic, senza aprire la scheda: take, all'altezza h
+        const small = PICK.test(o.id);
+        out.push({ ref: `f:${i}`, kind: 'mobile', x: o.x, y: o.y, h: o.h || 0, label: small ? FNAME[o.id] || (INT.FNAME && INT.FNAME[o.id]) || o.id : furnName(o.id, room), locked: !!LOCKED[o.id] && !(c && c.forced), take: small, fid: o.id });
       });
       return out;
     }
@@ -1504,6 +1506,7 @@ var Oggetti = (function () {
     Sh.stock[g] -= q; p.money -= pr; tillMove(st, Sh, pr); Ec.eco(st).stats.venduto += q;
     if (So && st.soldi) { const M = st.soldi; M.player.mov.unshift([st.t, -pr, `${c.nome} (${Sh.label})`]); M.player.mov = M.player.mov.slice(0, 40); }
     st.sfx && st.sfx.push({ k: 'cash' });
+    { const ck = Lg ? clerk(st, Lg) : null; if (ck && typeof performance !== 'undefined') ck.__serve = performance.now(); }   // [negozi] il commesso ti porge la merce (anim_vita: 'porge')
     if (Sh.emporio && st.ris) st.ris.morale = clamp(st.ris.morale - .1, 0, 100);
     if (mode === 'consuma' && c.eat) { add(inv(st), g, q); let m = ''; for (let i = 0; i < q; i++) m = consume(st, g).msg; return R_(true, `${cap(c.nome)}${q > 1 ? ' ×' + q : ''}: ${L(pr)}. ${m}`); }
     const left = givePlayer(st, g, q);
