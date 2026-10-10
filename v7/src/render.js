@@ -8233,11 +8233,11 @@ var Render = (function () {
     });
     postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
   }
-  let TARGET = 540, lastSize = null;
+  let TARGET = 540, lastSize = null, RSC1 = 1;   /* [fluido1] */
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
-    PX = LOWQ.on ? Math.max(2, Math.round(dpr) * 2) : Math.max(1, ch * dpr / 720);   /* [unione8] al massimo 720 righe */   /* [amb3] risoluzione piena */
+    PX = LOWQ.on ? Math.max(2, Math.round(dpr) * 2) : Math.max(1, ch * dpr / (720 * RSC1));   /* [fluido1] RSC1: risoluzione adattiva */   /* [unione8] al massimo 720 righe */   /* [amb3] risoluzione piena */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     renderer.setSize(cw, ch, false);
     if (rt) rt.dispose();
@@ -10454,7 +10454,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     fillAmb = new THREE.AmbientLight('#2a2440', .35); scene.add(fillAmb);
     moon = new THREE.DirectionalLight('#8fa2ff', .5); moon.castShadow = true; moon.shadow.mapSize.set(1024, 1024);
     const sc = moon.shadow.camera; sc.left = -46; sc.right = 46; sc.top = 46; sc.bottom = -46; sc.near = 1; sc.far = 160; moon.shadow.mapSize.set(2048, 2048); moon.shadow.bias = -.0015;
-    scene.add(moon); scene.add(moon.target);
+    scene.add(moon); scene.add(moon.target); moon.shadow.autoUpdate = false; moon.shadow.needsUpdate = true;   /* [fluido1] */
     dyn.rim = new THREE.DirectionalLight('#b8c8e8', .4); scene.add(dyn.rim); scene.add(dyn.rim.target);
     dyn.fill = new THREE.DirectionalLight('#6f8fb0', .3); scene.add(dyn.fill); scene.add(dyn.fill.target);   // [inverno] riempimento sud: pareti in ombra leggibili   // [inverno] controluce: stacca i volumi dal fondo
     // poche luci vere, spostate ogni fotogramma sulle sorgenti più vicine
@@ -10468,6 +10468,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
           sh.vertexShader = 'varying float vFr; varying float vH;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vec3 nV = normalize(normalMatrix * normal); vec4 mvq = modelViewMatrix * vec4(position, 1.); vFr = abs(dot(nV, normalize(-mvq.xyz))); vH = uv.y;');
           sh.fragmentShader = 'varying float vFr; varying float vH;\n' + sh.fragmentShader.replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n diffuseColor.a *= pow(vFr, 1.6) * (.12 + .88 * vH * vH);'); };
         l.userData.cone = cone; scene.add(l); scene.add(l.target); scene.add(cone); SPOOL.push(l); LPOOL.push(l); }
+      SPOOL.forEach((l, i) => { if (i >= 4) l.castShadow = false; });   /* [fluido1] ombra solo ai 4 faretti più vicini */
       for (let i = 0; i < 8; i++) { const l = new THREE.PointLight('#ffa040', 0, 8, 2); scene.add(l); PPOOL.push(l); LPOOL.push(l); }
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
@@ -11256,6 +11257,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   const lerp = (a, b, k) => a + (b - a) * k;
   const angLerp = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
   let frameN = 0, playerH = 0;
+  const FLU1 = { x: 1e9, y: 0, z: 0, dx: 0, dy: 1, dz: 0 };   /* [fluido1] */
   const LFR = new THREE.Frustum(), LPM = new THREE.Matrix4(), LSPH = new THREE.Sphere();
   function updateLights(time, night, fx, fz) {   // [inverno28] studio luci
     frameN++;
@@ -11277,13 +11279,13 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (!L) { l.intensity = 0; cone.visible = false; return; }
       const k = kOf(L), hh = Math.max(1.2, L.y - L.gy);
       if (l.userData.src !== L) { l.userData.src = L; l.position.set(L.x, L.y, L.z); l.target.position.set(L.x, L.gy - 2, L.z); l.target.updateMatrixWorld(); l.color.copy(L.color);
-        l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.shadow.needsUpdate = true; }
+        l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.shadow.needsUpdate = l.castShadow; }   /* [fluido1] */
       if (L.nb === undefined) { L.nb = 0; LSRC.forEach(o => { if (o !== L && Math.abs(o.x - L.x) < 7 && Math.abs(o.z - L.z) < 7) L.nb++; }); }   // [inverno29] vicine: si dividono la luce
       l.intensity = L.base * k * .55 / Math.sqrt(1 + L.nb * .6);   // [inverno30] la pozza a terra la fa la luce cotta
       const tall = hh > 2.8 && night > .25;
       cone.visible = tall && k > .05; if (cone.visible) { const rr = hh * .62; cone.position.set(L.x, L.y - .15, L.z); cone.scale.set(rr, hh - .1, rr); cone.material.color.copy(L.color); cone.material.opacity = .1 * Math.min(1, k); }   // [luci2] (la forma la dà lo shader)
     });
-    for (let q = 0; q < 3; q++) { const l = SPOOL[(frameN * 3 + q) % SPOOL.length]; if (l && l.intensity > 0) l.shadow.needsUpdate = true; }
+    if (night > .3) { const l = SPOOL[frameN % 4]; if (l && l.castShadow && l.intensity > 0) l.shadow.needsUpdate = true; }   /* [fluido1] di sera, uno per fotogramma */
     PPOOL.forEach((l, i) => {
       const L = dyn.lpp[i]; if (!L) { l.intensity = 0; return; }
       l.position.set(L.x, L.y, L.z); l.color.copy(L.color); l.distance = L.dist; l.intensity = L.base * kOf(L) * .8;
@@ -11595,6 +11597,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     ombre1(st, night);   /* [ombre1] */
+    { const F = FLU1, cp = camera.position, mv = Math.hypot(cp.x - F.x, cp.z - F.z) + Math.abs(cp.y - F.y);   /* [fluido1] l'ombra del sole a fotogrammi alterni */
+      const sx = moon.position.x - moon.target.position.x, sy = moon.position.y - moon.target.position.y, sz = moon.position.z - moon.target.position.z, sl = Math.hypot(sx, sy, sz) || 1;
+      const turn = 1 - (sx * F.dx + sy * F.dy + sz * F.dz) / sl;
+      if (frameN % 2 === 0 || mv > .5 || turn > .0004) { moon.shadow.needsUpdate = true; F.x = cp.x; F.y = cp.y; F.z = cp.z; F.dx = sx / sl; F.dy = sy / sl; F.dz = sz / sl; } }
     renderer.setRenderTarget(rt); warmShaders(); renderer.render(scene, camera);   // [alleggerimento] la precompilazione va fatta sul bersaglio vero
     renderer.setRenderTarget(null); ambPasses();   /* [amb2] */
     const U = postMat.uniforms;
@@ -11645,5 +11651,6 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { scale: s => { if (s !== undefined) { s = Math.max(.55, Math.min(1, s)); if (Math.abs(s - RSC1) > .01) { RSC1 = s; if (lastSize) resize(...lastSize); } } return RSC1; },   /* [fluido1] */
+    get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
