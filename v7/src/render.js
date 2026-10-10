@@ -2811,7 +2811,7 @@ var Render = (function () {
     if (Math.abs(n.y) > .9) mesh.up.set(0, 0, 1);
     mesh.position.copy(o).addScaledVector(n, .012); mesh.lookAt(BMB.vb.copy(mesh.position).add(n)); scene.add(mesh); mesh.updateMatrixWorld(true);
     const s = h.object.getWorldScale(new THREE.Vector3()); if (Math.abs(s.x - s.y) < .01 && Math.abs(s.y - s.z) < .01) h.object.attach(mesh);   // segue l'oggetto (una macchina che riparte)
-    const L = { mesh, c, tex, n, W, H, dens }; c.__velo = L; BMB.veli.push(L); if (BMB.veli.length > 90) bmbDrop(BMB.veli[0]);
+    const L = { mesh, c, tex, n, W, H, dens }; c.__velo = L; BMB.veli.push(L); if (BMB.veli.length > 160) bmbDrop(BMB.veli[0]);
     return at(L);
   }
   // la superficie colpita da un raggio: canvas, pixel, densità (pixel per metro), come surfaceAt dello Studio
@@ -2899,7 +2899,7 @@ var Render = (function () {
   function sprayAt(st, nx, ny, col) {
     const rc = BMB.rc, p = st.player; rc.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), camera); rc.near = 0; rc.far = 1e4;
     // la prima superficie a portata di braccio (i tetti e i muri fra la camera e il giocatore il gioco li toglie di mezzo)
-    const h = rc.intersectObjects(bmbCands(p.x, p.y), false).find(h => { if (Math.hypot(h.point.x - p.x, h.point.z - p.y) > 9 || h.point.y > groundH(h.point.x, h.point.z) + 2.4) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face && h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
+    const h = rc.intersectObjects(bmbCands(p.x, p.y), false).find(h => { const ft = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; if (Math.hypot(h.point.x - p.x, h.point.z - p.y) > 9 || h.point.y > (ft !== null ? ft : groundH(p.x, p.y)) + 2.6 || (ft !== null && h.point.y < ft - 1.2)) return false; /* [writer] la mano arriva a 2,6 m sopra i piedi (anche sul tetto) */ let m = h.object.material; if (Array.isArray(m)) m = m[h.face && h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
     if (!h) return false;
     const o = h.point, nW = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (nW.dot(rc.ray.direction) > 0) nW.negate();
     const nh = Math.hypot(nW.x, nW.z), off = nh > .3 ? .5 : 0;   // davanti al muro, a mezzo metro; per terra, ci si va sopra
@@ -11327,7 +11327,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */ g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
-      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y), n.y); g.rotation.y = Math.PI / 2 - n.face;
+      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = Math.PI / 2 - n.face;
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
       if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
       const dtA = dt + (g.userData.dt1 || 0); g.userData.dt1 = 0;
@@ -11516,10 +11516,11 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
 
     // edifici tra la camera e il giocatore: diventano trasparenti
     const hitv = new THREE.Vector3();
-    const rays = focus.map(([fx, fz]) => { const o = new THREE.Vector3(fx, groundH(fx, fz) + .9, fz); return new THREE.Ray(o, V3.copy(camera.position).sub(o).normalize().clone()); });
+    const feet0 = window.Tetti && p.lv && (p.lv.k === 'tetto' || p.lv.k === 'scala') ? Livelli.heightOf(st, p) : null, roofB0 = window.Tetti ? Tetti.roofB(st) : null;   // [writer] sul tetto: i raggi partono dai piedi veri, la casa sotto non sparisce
+    const rays = focus.map(([fx, fz], k) => { const o = new THREE.Vector3(fx, (k === 0 && feet0 !== null ? feet0 : groundH(fx, fz)) + .9, fz); return new THREE.Ray(o, V3.copy(camera.position).sub(o).normalize().clone()); });
     let covered = false;
     dyn.buildings.forEach(B => {
-      const hit = rays.some(ry => ry.intersectBox(B.box3, hitv) !== null); if (hit && rays[0].intersectBox(B.box3, hitv) !== null) covered = true;
+      const hit = !(feet0 !== null && (B.b === roofB0 || (roofB0 && B.b && B.b.id === roofB0.id) || B.box3.max.y - 2.5 < feet0 + .8)) && rays.some(ry => ry.intersectBox(B.box3, hitv) !== null); if (hit && rays[0].intersectBox(B.box3, hitv) !== null) covered = true;
       const target = hit ? 1 : 0; B.fade += (target - B.fade) * Math.min(1, dt * 8); fadeTick1(B);   /* [pulitore1] */
       const op = 1 - B.fade * .9;
       B.mats.forEach(m => { const kt = m.userData.keepTr, tr = op < .99 || !!kt; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !tr; if (m.emissiveMap) m.emissiveIntensity *= op; });   // [case] keepTr
@@ -11582,5 +11583,5 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();

@@ -56,6 +56,7 @@ var Azioni = (function () {
     carriola:   { name: 'carriola', two: true, cap: 130, buy: { 'use:ferramenta': 15 }, take: ['cantiere', 'masseria', 'discarica', 'vigne'] },
     piede:      { name: 'piede di porco', buy: { 'use:ferramenta': 4, officina: 4 }, take: ['cantiere', 'officina'] },
     bomboletta: { name: 'bomboletta', buy: { officina: 3, 'use:ferramenta': 3 } },
+    pennarello: { name: 'pennarello da tag', buy: { 'use:ferramenta': 2, 'use:tabacchi': 2 } },   // [writer]
     pennello:   { name: 'pennello e vernice', buy: { 'use:ferramenta': 5 } },
     gesso:      { name: 'gesso', buy: { wu: 1, 'use:tabacchi': 1 } },
     telefono:   { name: 'cellulare', buy: { video: 30 } },

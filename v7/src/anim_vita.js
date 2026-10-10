@@ -177,6 +177,7 @@
   vprop('canna', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .006, 2.4, '#4a3a2a', 1.0, GY, GZ, 0, 0, PI / 2, 5); cyl(g, .03, .03, .04, '#2a2a2a', -.1, GY, GZ + .04, 0, 0, 0, 8); return g; });
   vprop('piede', 'R', () => { const g = new THREE.Group(); cyl(g, .013, .013, .6, '#3a3a44', .2, GY, GZ, 0, 0, PI / 2, 6); box(g, .08, .02, .025, '#3a3a44', .52, GY + .03, GZ, 0, 0, -.9); return g; });
   vprop('bomboletta', 'R', () => { const g = new THREE.Group(); cyl(g, .032, .032, .17, '#c8302a', .0, GY, GZ, 0, 0, PI / 2, 8); cyl(g, .01, .01, .02, '#e8e8e8', .095, GY, GZ, 0, 0, PI / 2, 5); return g; });
+  vprop('pennarello', 'R', () => { const g = new THREE.Group(); cyl(g, .014, .014, .13, '#1e1e24', .02, GY, GZ, 0, 0, PI / 2, 6); cyl(g, .01, .006, .025, '#f0f0f0', .095, GY, GZ, 0, 0, PI / 2, 5); return g; });   // [writer]
   vprop('gesso', 'R', () => { const g = new THREE.Group(); box(g, .02, .07, .02, '#f4f4ee', -.01, GY + .06, GZ - .01); return g; });
   vprop('pennello', 'R', () => { const g = new THREE.Group(); cyl(g, .01, .01, .25, '#b08a52', .08, GY, GZ, 0, 0, PI / 2, 5); box(g, .06, .05, .02, '#c03028', .22, GY, GZ); return g; });
   vprop('fotocamera', 'R', () => { const g = new THREE.Group(); box(g, .13, .08, .06, '#202024', .04, GY, GZ + .03); cyl(g, .025, .025, .05, '#101012', .04, GY, GZ + .08, PI / 2, 0, 0, 8); return g; });
