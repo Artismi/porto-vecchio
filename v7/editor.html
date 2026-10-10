@@ -32281,7 +32281,9 @@ var Writing = (function () {
     const layer = S(GFX.st).works.filter(o => o.gfxRect && o !== w && overlapCheck(GFX.st, w).includes(o)).length;
     const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 - layer, polygonOffsetUnits: -4 - layer * 2 });
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(R.W, R.H), mat); mesh.userData.velo = true; mesh.userData.wr = w.id; mesh.renderOrder = 3 + layer;
-    mesh.position.set(R.c.x + R.n.x * (.014 + layer * .004), R.c.y, R.c.z + R.n.z * (.014 + layer * .004)); mesh.lookAt(mesh.position.x + R.n.x, mesh.position.y, mesh.position.z + R.n.z);
+    const off = .014 + layer * .004, ny = R.n.y || 0; mesh.position.set(R.c.x + R.n.x * off, R.c.y + ny * off, R.c.z + R.n.z * off);
+    if (Math.abs(ny) > .5) { const up = R.u || new THREE.Vector3().crossVectors(R.n, R.r); mesh.up.set(up.x, up.y, up.z); mesh.lookAt(mesh.position.x, mesh.position.y + ny, mesh.position.z); }   // [writer] per terra, su un tetto: il velo si stende, con l'alto del disegno dove guardavi
+    else mesh.lookAt(mesh.position.x + R.n.x, mesh.position.y, mesh.position.z + R.n.z);
     mesh.receiveShadow = true; scene().add(mesh); mesh.updateMatrixWorld(true);
     if (R.obj && R.veh) R.obj.attach(mesh);   // sulle auto il velo segue il mezzo
     return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: 1 };
@@ -32377,8 +32379,12 @@ var Writing = (function () {
     const k = w.tagK || 1, H = sty.H * k, n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), c = hit.p.clone(); c.y = sp.h != null ? sp.h : gh + .2 + H / 2 + (w.style === 'tag' || w.style === 'mtag' ? .3 + rnd() * 1.4 : 0);
     const fitR = wallRect(c, n, sty.W * k, H, list); if (!fitR) return false;
     w.W = fitR.W; w.H = fitR.H; w.gfxRect = { c, n, r: fitR.r, W: fitR.W, H: fitR.H }; w.pos = { x: c.x, y: c.y, z: c.z };
-    // niente due lavori uno sull'altro di notte: se si accavalla, salta
-    if (!/^(tag|mtag|gotico)$/.test(w.style) && overlapCheck(GFX.st, w).filter(o => !/^(tag|mtag|gotico)$/.test(o.style)).length) { w.gfxRect = null; return false; }   // le tag si mettono sopra a tutto (i muri veri sono a strati); i pezzi non si accavallano fra loro
+    // [writer] i muri sono a strati: le tag vanno sopra a tutto; un pezzo va sopra a uno di rango più basso (quasi sempre), sopra
+    // a uno dello stesso rango a volte (è un crossaggio), sopra a uno più alto solo un toy, e di rado. Deciso dal seme: ricaricando, il muro è lo stesso
+    const under = /^(tag|mtag|gotico)$/.test(w.style) ? [] : overlapCheck(GFX.st, w).filter(o => !/^(tag|mtag|gotico)$/.test(o.style));
+    if (under.length) { const R = sty.rank, d0 = mulberry((w.seed || 1) ^ 0x5eed)(), toy = (w.q != null ? w.q : .7) < .35, top = Math.max(...under.map(o => STYLES[o.style].rank));
+      const ok = top < R ? d0 < .8 : top === R ? d0 < .3 : toy && d0 < .12; if (!ok) { w.gfxRect = null; return false; }
+      under.forEach(o => { o.covered = true; }); w.over = under.map(o => o.id); }
     return true;
   }
 
@@ -32829,15 +32835,15 @@ var Writing = (function () {
   const TAV = { a: null, b: null, frame: null, pad: null };
   const TAV_COLS = [['#c42a22', 'rosso'], ['#1e1e24', 'nero'], ['#e8e0d0', 'bianco'], ['#2a6ac8', 'blu'], ['#e8c040', 'giallo'], ['#3a9a5a', 'verde'], ['#c84a9a', 'rosa'], ['#e8a020', 'arancio']];
   function tavRect() {
-    const A = TAV.a, rx = A.r, ua = 0, ub = (TAV.b.x - A.pt.x) * rx.x + (TAV.b.z - A.pt.z) * rx.z;
-    let Wm = Math.abs(ub - ua), Hm = Math.abs(TAV.b.y - A.pt.y), cu = (ua + ub) / 2, cy = (A.pt.y + TAV.b.y) / 2;
-    if (Wm < .25 || Hm < .2) { Wm = 1.6; Hm = .9; cu = 0; cy = A.pt.y; }   // un clic solo: la finestra della tag
-    Wm = clamp(Wm, .25, 8); Hm = clamp(Hm, .2, 4);
-    return { W: Wm, H: Hm, c: { x: A.pt.x + rx.x * cu, y: cy, z: A.pt.z + rx.z * cu } };
+    const A = TAV.a, rx = A.r, up = A.u, d = { x: TAV.b.x - A.pt.x, y: TAV.b.y - A.pt.y, z: TAV.b.z - A.pt.z }, ub = d.x * rx.x + d.y * (rx.y || 0) + d.z * rx.z, vb = d.x * up.x + d.y * up.y + d.z * up.z;   // [writer] r a destra, u in alto sulla superficie (sul muro è la verticale, per terra è avanti)
+    let Wm = Math.abs(ub), Hm = Math.abs(vb), cu = ub / 2, cv0 = vb / 2;
+    if (Wm < .25 || Hm < .2) { Wm = 1.6; Hm = .9; cu = 0; cv0 = 0; }   // un clic solo: la finestra della tag
+    Wm = clamp(Wm, .25, 16); Hm = clamp(Hm, .2, 4);
+    return { W: Wm, H: Hm, c: { x: A.pt.x + rx.x * cu + up.x * cv0, y: A.pt.y + (rx.y || 0) * cu + up.y * cv0, z: A.pt.z + rx.z * cu + up.z * cv0 } };
   }
   function tavFrame() {
     const THREE = T3(), A = TAV.a, Rc = tavRect(), n = A.n, rx = A.r, sc = scene(); if (!sc) return;
-    const P = (u, v) => new THREE.Vector3(Rc.c.x + rx.x * u + n.x * .03, Rc.c.y + v, Rc.c.z + rx.z * u + n.z * .03);
+    const up = A.u, P = (u, v) => new THREE.Vector3(Rc.c.x + rx.x * u + up.x * v + n.x * .03, Rc.c.y + up.y * v + n.y * .03, Rc.c.z + rx.z * u + up.z * v + n.z * .03);
     const pts = [P(-Rc.W / 2, -Rc.H / 2), P(Rc.W / 2, -Rc.H / 2), P(Rc.W / 2, Rc.H / 2), P(-Rc.W / 2, Rc.H / 2)];
     if (!TAV.frame) { TAV.frame = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffe14a, depthTest: false })); TAV.frame.renderOrder = 9; sc.add(TAV.frame); }
     TAV.frame.geometry.setFromPoints(pts);
@@ -32847,12 +32853,15 @@ var Writing = (function () {
     const THREE = T3(), R = R_(), p = st.player; if (!THREE || !R || TAV.pad) return true;
     const cam = R.getCamera(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), cam); rc.near = 0; rc.far = 1e4;
     if (!TAV.a) {
-      const h = rc.intersectObjects(cands(p.x, p.y), false).find(h => { if (!h.face || hyp(h.point.x - p.x, h.point.z - p.y) > 14) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
+      const list = cands(p.x, p.y); if (GFX.train) GFX.train.cars.forEach(c => c.sides.forEach(s => list.push(s.mesh)));   // [writer] anche le fiancate del treno
+      const h = rc.intersectObjects(list, false).find(h => { if (!h.face || hyp(h.point.x - p.x, h.point.z - p.y) > 14) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
       if (!h) return false;
       const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (n.dot(rc.ray.direction) > 0) n.negate();
-      if (Math.abs(n.y) > .6) return { msg: 'La tavoletta va su un muro o su un mezzo: trascina sulla parete.' };
-      const nn = new THREE.Vector3(n.x, 0, n.z).normalize();
-      TAV.a = { pt: h.point.clone(), n: nn, r: new THREE.Vector3(nn.z, 0, -nn.x), obj: h.object, tool, col }; TAV.b = h.point.clone();
+      if (h.object.userData.car) { const tr = trainAt(st.t); if (tr && tr.v) return { msg: 'Il treno si muove!' }; }
+      let nn, rr, uu;   // [writer] qualunque superficie: un muro, un mezzo, il treno, un carro, la terra, un tetto
+      if (Math.abs(n.y) > .6) { const f = new THREE.Vector3(); cam.getWorldDirection(f); f.y = 0; if (f.lengthSq() < 1e-4) f.set(0, 0, -1); f.normalize(); nn = new THREE.Vector3(0, Math.sign(n.y), 0); uu = f.clone(); rr = new THREE.Vector3().crossVectors(uu, nn).normalize(); }   // per terra: l'alto del disegno è dove guardi
+      else { nn = new THREE.Vector3(n.x, 0, n.z).normalize(); rr = new THREE.Vector3(nn.z, 0, -nn.x); uu = new THREE.Vector3(0, 1, 0); }
+      TAV.a = { pt: h.point.clone(), n: nn, r: rr, u: uu, obj: h.object, tool, col }; TAV.b = h.point.clone();
       TAV.plane = new THREE.Plane().setFromNormalAndCoplanarPoint(nn, h.point); tavFrame(); return true;
     }
     const q = new THREE.Vector3(); if (rc.ray.intersectPlane(TAV.plane, q)) { TAV.b = q; tavFrame(); }
@@ -32863,7 +32872,7 @@ var Writing = (function () {
     const THREE = T3(), R = R_(), rend = R.__models && R.__models.renderer, sc = scene(); if (!rend || !sc) return null;
     const MAX = 2048, pw = Rc.W >= Rc.H ? MAX : Math.round(MAX * Rc.W / Rc.H), ph = Rc.W >= Rc.H ? Math.round(MAX * Rc.H / Rc.W) : MAX;
     const cam = new THREE.OrthographicCamera(-Rc.W / 2, Rc.W / 2, Rc.H / 2, -Rc.H / 2, .01, 1.2);
-    cam.position.set(Rc.c.x + n.x * .3, Rc.c.y, Rc.c.z + n.z * .3); cam.up.set(0, 1, 0); cam.lookAt(Rc.c.x, Rc.c.y, Rc.c.z); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+    cam.position.set(Rc.c.x + n.x * .3, Rc.c.y + (n.y || 0) * .3, Rc.c.z + n.z * .3); cam.up.copy(TAV.a && TAV.a.u ? TAV.a.u : new THREE.Vector3(0, 1, 0)); cam.lookAt(Rc.c.x, Rc.c.y, Rc.c.z); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
     const rt = new THREE.WebGLRenderTarget(pw, ph), prev = rend.getRenderTarget(), fr = TAV.frame; if (fr) fr.visible = false;
     rend.setRenderTarget(rt); rend.clear(); rend.render(sc, cam); const buf = new Uint8Array(pw * ph * 4); rend.readRenderTargetPixels(rt, 0, 0, pw, ph, buf); rend.setRenderTarget(prev); rt.dispose(); if (fr) fr.visible = true;
     const c = cv(pw, ph), x = c.getContext('2d'), im = x.createImageData(pw, ph);
@@ -32922,8 +32931,14 @@ var Writing = (function () {
       const area = Rc.W * Rc.H, style = tool === 'pennarello' ? 'mtag' : area > 3.5 ? 'pezzo' : area > 1.2 ? 'throw' : 'tag', THREE = T3();
       const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, col: TAV_COLS[colI][0], rec: r, pal: 0, seed: Math.floor(rnd() * 1e9), prog: 1, done: false, surf: 'muro', place: G.nearestPlace ? 'a ' + G.nearestPlace(st.player.x, st.player.y).name : '', W: Rc.W, H: Rc.H, hand: W.hand || (W.hand = Math.floor(rnd() * 1e9)) };
       nw.gfxRect = { c: new THREE.Vector3(Rc.c.x, Rc.c.y, Rc.c.z), n: A.n.clone(), r: A.r.clone(), W: Rc.W, H: Rc.H, obj: A.obj }; nw.pos = { x: Rc.c.x, y: Rc.c.y, z: Rc.c.z };
-      const vid = vehOf(A.obj); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v && v.police) nw.cop = true; }
-      addWork(st, nw); const m = judge(st, nw); if (m) G.feed(st, m, /crossato/.test(m) ? 'bad' : 'info');
+      nw.gfxRect.u = A.u.clone();
+      const ud = A.obj && A.obj.userData || {}, car = ud.car, wag = ud.wag;
+      if (car) { const tr = trainAt(st.t), q = carPose(tr, car.i), c = Math.cos(q.ang), sn = Math.sin(q.ang), uOf = (x, z) => { const al = (x - q.x) * c + (z - q.y) * sn; return car.side ? al + q.L / 2 : q.L / 2 - al; };   // [writer] sul treno fermo: il disegno diventa un lavoro della fiancata
+        const uL = uOf(Rc.c.x - A.r.x * Rc.W / 2, Rc.c.z - A.r.z * Rc.W / 2), uR = uOf(Rc.c.x + A.r.x * Rc.W / 2, Rc.c.z + A.r.z * Rc.W / 2), Wc = Math.min(Rc.W, q.L - .2);
+        Object.assign(nw, { surf: 'treno', car: car.i, side: car.side, u0: clamp(Math.min(uL, uR), .1, q.L - Wc - .1), vb: clamp(Rc.c.y - Rc.H / 2 - q.h - BODY_Y, 0, SIDE_H - .2), W: Wc, H: Math.min(Rc.H, SIDE_H - .1), style: Rc.W * Rc.H > 20 ? 'wholecar' : nw.style }); nw.gfxRect = null; }
+      else if (wag && GFX.yard && GFX.yard[wag.key + ':' + wag.k]) { nw.surf = 'vagone'; nw.cons = wag.key; nw.wk = wag.k; nw.gfxRect.obj = GFX.yard[wag.key + ':' + wag.k].g; nw.gfxRect.veh = true; }   // il carro fermo: il velo parte con lui
+      else { const vid = vehOf(A.obj); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v && v.police) nw.cop = true; } }
+      addWork(st, nw); const m = nw.surf === 'treno' ? judgeTrain(st, nw) : judge(st, nw); if (m) G.feed(st, m, /crossato/.test(m) ? 'bad' : 'info');
       finish(st, nw); try { G.emit(st, 'graffito'); } catch (e) { }
       close();
     }
