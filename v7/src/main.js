@@ -670,10 +670,28 @@
   function size() { const w = app.clientWidth || innerWidth, h = app.clientHeight || innerHeight; R.resize(w, h, Math.min(2, devicePixelRatio || 1)); }
   new ResizeObserver(size).observe(app); size();
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false;
+  const FLU = { t: 0, n: 0, ok: 0 };   // [fluido1]
+  // [fluido1] contatore: F9 (o ?fps nell'indirizzo) mostra fotogrammi al secondo, millisecondi per fotogramma e risoluzione interna
+  const FPS = { on: /[?&]fps/.test(location.search), el: null, t: 0, n: 0, worst: 0 };
+  addEventListener('keydown', e => { if (e.key === 'F9') { e.preventDefault(); FPS.on = !FPS.on; if (FPS.el) FPS.el.hidden = !FPS.on; } });
+  function fpsTick(raw) {
+    if (!FPS.on) return;
+    if (!FPS.el) { FPS.el = document.createElement('div'); FPS.el.style.cssText = 'position:absolute;left:50%;top:44px;transform:translateX(-50%);z-index:50;font:12px/1.3 monospace;color:#e8f0d8;background:rgba(10,12,16,.72);padding:4px 10px;border-radius:3px;pointer-events:none;white-space:nowrap'; app.appendChild(FPS.el); }
+    FPS.t += raw; FPS.n++; FPS.worst = Math.max(FPS.worst, raw);
+    if (FPS.t >= .5) { const fps = FPS.n / FPS.t, sc = R.scale ? R.scale() : 1;
+      FPS.el.textContent = `${fps.toFixed(0)} fps · ${(1000 * FPS.t / FPS.n).toFixed(1)} ms (peggiore ${(1000 * FPS.worst).toFixed(0)}) · risoluzione ${Math.round(sc * 100)}% · ${st.npcs.length} persone`;
+      FPS.t = 0; FPS.n = 0; FPS.worst = 0; } }
   function loop(now) {
     const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
     if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > 1 / 32) R.lowQuality(); } }
+    fpsTick(Math.min(raw, 1));   // [fluido1] contatore F9
+    // [fluido1] risoluzione adattiva: sotto i 45 fotogrammi al secondo la risoluzione interna scende (fino al 55%), sopra i 57 risale
+    if (perfDone && R.scale && !ui.menu && !ui.dialog && !ui.intro && !ui.book) { FLU.t += Math.min(raw, .25); FLU.n++;
+      if (FLU.t > 2) { const avg = FLU.t / FLU.n, sc = R.scale();
+        if (avg > 1 / 45 && sc > .56) { R.scale(sc - .1); FLU.ok = 0; }
+        else if (avg < 1 / 57) { if (++FLU.ok >= 2 && sc < 1) { R.scale(sc + .05); FLU.ok = 0; } } else FLU.ok = 0;
+        FLU.t = 0; FLU.n = 0; } }
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
     const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]

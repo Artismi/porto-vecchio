@@ -441,7 +441,7 @@ var Writing = (function () {
   const CELL = 9;
   function needOf(A, sI) {
     A.need = A.need || []; if (A.need[sI]) return A.need[sI];
-    const gw = Math.ceil(A.Wp / CELL), gh = Math.ceil(A.Hp / CELL), small = cv(gw, gh), sx = small.getContext('2d');
+    const gw = Math.ceil(A.Wp / CELL), gh = Math.ceil(A.Hp / CELL), small = cv(gw, gh), sx = small.getContext('2d', { willReadFrequently: true });
     const read = img => { sx.clearRect(0, 0, gw, gh); if (img) sx.drawImage(img, 0, 0, gw, gh); return sx.getImageData(0, 0, gw, gh).data; };
     const a = read(A.stages[sI]), b = read(sI ? A.stages[sI - 1] : null), need = new Uint8Array(gw * gh); let n = 0;
     for (let i = 0; i < gw * gh; i++) { const d = Math.abs(a[i * 4] - b[i * 4]) + Math.abs(a[i * 4 + 1] - b[i * 4 + 1]) + Math.abs(a[i * 4 + 2] - b[i * 4 + 2]) + Math.abs(a[i * 4 + 3] - b[i * 4 + 3]) * 2; if (d > 60) { need[i] = 1; n++; } }
@@ -803,6 +803,16 @@ var Writing = (function () {
   // main.js: con questo attrezzo e questa modalità ci pensa il writing (non lo spruzzo libero)
   const wants = (st, tool) => tool === 'pennarello' || (tool === 'bomboletta' && mode(st) !== 'libero');
 
+  // i lavori finiti lasciati indietro tengono l'immagine finale: tornando lì non si ridisegnano da capo (era il blocco di
+  // qualche secondo camminando). Solo i finiti e non crossati: la loro immagine non cambia più.
+  const ART_KEEP = new Map(), ART_KEEP_N = 48;
+  function keepArt(w, g) {
+    if (!w || !w.done || w.crossed || !g.art || g.art.stages.length !== 1) return;
+    ART_KEEP.delete(w.id); ART_KEEP.set(w.id, g.art);
+    while (ART_KEEP.size > ART_KEEP_N) ART_KEEP.delete(ART_KEEP.keys().next().value);
+  }
+  function artFor(w) { const A = ART_KEEP.get(w.id); if (A) { ART_KEEP.delete(w.id); if (w.done && !w.crossed) return A; } return art(w); }
+
   // ---------------- OGNI FOTOGRAMMA ----------------
   function frame() {
     try {
@@ -810,7 +820,7 @@ var Writing = (function () {
       if (R && R.__models && R.__models.scene && st && window.THREE && R.__bmb) {
         const sc = R.__models.scene;
         if (GFX.st !== st) {   // una partita nuova: via i veli, il treno si ridipinge da capo
-          Object.values(GFX.works).forEach(g => { if (g.tgt && g.tgt.mesh && g.tgt.mesh.parent) g.tgt.mesh.parent.remove(g.tgt.mesh); }); GFX.works = {};
+          Object.values(GFX.works).forEach(g => { if (g.tgt && g.tgt.mesh && g.tgt.mesh.parent) g.tgt.mesh.parent.remove(g.tgt.mesh); }); GFX.works = {}; ART_KEEP.clear();
           if (GFX.train) { TR.CARS.forEach((c, i) => [0, 1].forEach(sd => washSide(i, sd))); }
           GFX.st = st;
         }
@@ -830,10 +840,10 @@ var Writing = (function () {
           for (const w of near) {
             if (performance.now() - t0 > 14) break;
             if (GFX.works[w.id] || w.erased || w.gfxFail > 3) continue;
-            if (w.surf === 'treno') { if (!GFX.train) continue; const tgt = trainTarget(w); if (!tgt) continue; GFX.works[w.id] = { tgt, art: art(w), drawn: 0 }; n++; continue; }
+            if (w.surf === 'treno') { if (!GFX.train) continue; const tgt = trainTarget(w); if (!tgt) continue; GFX.works[w.id] = { tgt, art: artFor(w), drawn: 0 }; n++; continue; }
             const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (!sp || hyp(sp.x - cx, sp.y - cy) > 80) continue;
             if (!w.gfxRect && !placeWall(w)) { w.gfxFail = (w.gfxFail || 0) + 1; continue; }
-            const g = { art: art(w), drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; n++;
+            const g = { art: artFor(w), drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; n++;
           }
         }
         // disegno: i lavori finiti in un colpo, quelli in corso fin dove sono arrivati; i cancellati via; i lontani si liberano
@@ -843,7 +853,7 @@ var Writing = (function () {
           if (w && w.surf === 'auto') { const v = st.vehicles.find(x => x.id === w.veh); if (!v || v.wreck) { w.erased = true; } else if (g.tgt && g.tgt.mesh) { let o = g.tgt.mesh; while (o.parent) o = o.parent; if (o !== sc) { delete GFX.works[id]; w.gfxRect = null; continue; } w.pos = { x: v.x, y: w.pos ? w.pos.y : 1, z: v.y }; } }
           if (w && !w.erased && w.surf !== 'treno' && w.pos && hyp(w.pos.x - cx, w.pos.z - cy) > 140 && w !== W.cur) {
             if (g.tgt && g.tgt.mesh) { if (g.tgt.mesh.parent) g.tgt.mesh.parent.remove(g.tgt.mesh); g.tgt.mesh.geometry.dispose(); g.tgt.mesh.material.dispose(); if (g.tgt.tex) g.tgt.tex.dispose(); }
-            delete GFX.works[id]; continue;
+            keepArt(w, g); delete GFX.works[id]; continue;
           }
           if (!w || w.erased) {
             if (g.tgt && g.tgt.mesh && g.tgt.mesh.parent) g.tgt.mesh.parent.remove(g.tgt.mesh);
