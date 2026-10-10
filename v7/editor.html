@@ -29247,10 +29247,10 @@ var WriterMano = (function () {
     const toy = d.skill != null && d.skill < .35;
     return {
       ov: toy ? .1 + r() * .12 : .22 + r() * .26, curv: toy ? .3 + r() * .4 : .08 + r() * .34, curvSign: r() < .5 ? 1 : -1, sigma: .24 + r() * .14,
-      slant: toy ? r() * .2 : .15 + r() * .4, wide: .6 + r() * .35, gap: -.12 + r() * .22, rise: (r() - .3) * .25, bigFirst: r() < .6 ? 1.2 + r() * .5 : 1,
+      slant: toy ? r() * .2 : .2 + r() * .35, wide: toy ? .7 + r() * .3 : .95 + r() * .45, gap: -.12 + r() * .22, rise: (r() - .3) * .25, bigFirst: r() < .6 ? 1.2 + r() * .5 : 1,
       conn: pickR(r, ['dritto', 'dritto', 'forcina', 'occhiello']), lift: .6 + r() * .9, under: r() < .45, underK: pickR(r, ['frusta', 'rampa', 'onda']),
       deco: Array.from({ length: toy ? Math.floor(r() * 2) : Math.floor(r() * 4) }, () => pickR(r, ['stella', 'asterisco', 'corona', 'freccia', 'bang', 'uguale', 'virgolette', 'tacche', 'diamante', 'scintilla', 'x', 'aureola'])),
-      W: (toy ? .1 : .14) + r() * .07, wob: toy ? .05 : .012, r,
+      W: (toy ? .1 : .14) + r() * .07, wob: toy ? .05 : .012, flat: !toy && r() < .5, tacche: !toy && r() < .45 ? 2 + Math.floor(r() * 3) : 0, lati: r() < .6, r,
     };
   }
   // la parola: i gesti delle lettere in fila, legati dai connettori, in una traiettoria sola (o poche, se la mano si stacca);
@@ -29321,7 +29321,10 @@ var WriterMano = (function () {
     const L = flowLayout(text, d), h = L.h, mark = tool === 'mtag';
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; L.tr.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
     // i segni attorno: nei vuoti agli angoli, misura della lettera piccola
-    const dec = []; h.deco.forEach((k, j) => { const cx = j % 2 ? x1 + .05 + h.r() * .12 : x0 + h.r() * .12, cy = j < 2 ? y1 + .02 + h.r() * .1 : y0 + h.r() * .1; decoStrokes(k, cx, -cy, .2, (h.r() - .5) * .6).forEach(t => dec.push(t.map(([a, b, f]) => [a, -b, f]))); });
+    const dec = []; h.deco.forEach((k, j) => { const cx = j % 2 ? x1 + .05 + h.r() * .12 : x0 + h.r() * .12, cy = h.lati ? (y0 + y1) / 2 + (h.r() - .3) * .4 : j < 2 ? y1 + .02 + h.r() * .1 : y0 + h.r() * .1; decoStrokes(k, cx, -cy, .2, (h.r() - .5) * .6).forEach(t => dec.push(t.map(([a, b, f]) => [a, -b, f]))); });
+    // [writer] le tacche: tagli corti di traverso che attraversano le aste (come le spine, ma a lama)
+    const mainPts = []; L.tr.forEach(t => { if (t.main) t.pts.forEach((q, k) => { if (k > 3 && k < t.pts.length - 4) mainPts.push([q, t.pts[k - 3], t.pts[k + 3]]); }); });
+    for (let k = 0; k < h.tacche && mainPts.length; k++) { const [q, a, b] = mainPts[Math.floor(h.r() * mainPts.length)], ang = Math.atan2(b[1] - a[1], b[0] - a[0]) + 1.25 + (h.r() - .5) * .4, l = .13 + h.r() * .08; dec.push([[q[0] - Math.cos(ang) * l, q[1] - Math.sin(ang) * l], [q[0] + Math.cos(ang) * l, q[1] + Math.sin(ang) * l]]); }
     dec.forEach(t => t.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
     const pad = h.W * 1.2, sc = Math.min(Wp * .94 / (x1 - x0 + 2 * pad), Hp * .9 / (y1 - y0 + 2 * pad)), ox = Wp / 2 - (x0 + x1) / 2 * sc, oy = Hp / 2 + (y0 + y1) / 2 * sc;
     const P = ([a, b, v]) => [ox + a * sc, oy - b * sc, v || 0], W = h.W * sc, nibA = d.nibA != null ? d.nibA : -.75, path = [];
@@ -29334,11 +29337,11 @@ var WriterMano = (function () {
       st.w = p.map((q, i) => {
         const a = p[Math.max(0, i - 1)], b = p[Math.min(n - 1, i + 1)], dir = Math.atan2(b[1] - a[1], b[0] - a[0]), sp = st.deco ? .5 : q[2] / vm;
         let w = W * (st.deco ? .42 : st.main ? 1 : .8) * (mark ? 1.12 - .4 * Math.pow(sp, .8) : 1.25 - .65 * Math.pow(sp, .8)) * (1 + .25 * (1 - sstep(0, W * 1.5, sl[i]))) * (.1 + .9 * (1 - sstep(1 - Math.min(.35, W * 3 / Lt), 1, sl[i] / Lt)));
-        if (mark) w *= .86 + .14 * Math.abs(Math.sin(dir - nibA));   // il marker grosso a punta tonda: il contrasto appena
+        if (mark) w *= h.flat ? .3 + .7 * Math.abs(Math.sin(dir - nibA)) : .86 + .14 * Math.abs(Math.sin(dir - nibA));   // la punta piatta a scalpello (grosso e sottile) o il marker tondo
         return Math.max(.8, w * (1 + .06 * Math.sin(i * .3 + n) + .03 * (r() - .5)));
       });
     });
-    const draw = k => strokes.forEach(st => { if (st.pts.length < 2) { x.beginPath(); x.arc(st.pts[0][0], st.pts[0][1], st.w[0] * k / 2, 0, 7); x.fill(); return; } ribbon(x, st.pts.map(q => [q[0], q[1], 0]), st.w.map(w => w * k), true); });
+    const draw = k => strokes.forEach(st => { if (st.pts.length < 2) { x.beginPath(); x.arc(st.pts[0][0], st.pts[0][1], st.w[0] * k / 2, 0, 7); x.fill(); return; } ribbon(x, st.pts.map(q => [q[0], q[1], 0]), st.w.map(w => w * k), !(mark && h.flat)); });   // a scalpello le punte tagliate, non tonde
     x.save(); x.fillStyle = col;
     if (!mark) { x.save(); x.filter = `blur(${(W * .35).toFixed(1)}px)`; x.globalAlpha = .16; draw(1.4); x.restore(); x.save(); x.filter = `blur(${Math.max(.5, W * .03).toFixed(1)}px)`; draw(1); x.restore(); }
     else { x.save(); x.filter = `blur(${Math.max(.5, W * .05).toFixed(1)}px)`; draw(1); x.restore(); }   // l'inchiostro beve un filo nel muro
