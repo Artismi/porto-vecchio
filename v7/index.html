@@ -28917,11 +28917,11 @@ var Writing = (function () {
         const c = Math.cos(q.ang), sn = Math.sin(q.ang), dx = o.x - q.x, dy = o.y - q.y, u = dx * c + dy * sn, v = -dx * sn + dy * c;
         if (Math.abs(u) > q.L / 2 + .45 || Math.abs(v) > hw) continue;
         const sd = v < 0 ? -1 : 1, nv = sd * (hw + .02); o.x = q.x + u * c - nv * sn; o.y = q.y + u * sn + nv * c;
-        if (isP && tr.v && !o.__trHit) { o.__trHit = st.clock; o.hp = Math.max(1, o.hp - 18); o.stun = Math.max(o.stun || 0, .8); G.feed(st, 'Il treno ti prende di striscio!', 'bad'); }
+        if (isP && tr.v && o.__trHit == null) { o.__trHit = st.clock; o.hp = Math.max(1, o.hp - 18); o.stun = Math.max(o.stun || 0, .8); G.feed(st, 'Il treno ti prende di striscio!', 'bad'); }
         break;
       }
     };
-    push(st.player, true); if (st.player.__trHit && st.clock - st.player.__trHit > 2) st.player.__trHit = null;
+    push(st.player, true); if (st.player.__trHit != null && st.clock - st.player.__trHit > 2) st.player.__trHit = null;
     for (const n of st.npcs) if (!n.dead && !n.inside) push(n, false);
   }
 
