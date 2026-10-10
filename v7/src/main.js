@@ -709,6 +709,7 @@
         CAP.t += Math.min(raw, .25); CAP.n++; if (raw > .045) CAP.late++;   // un fotogramma saltato dura almeno 50 ms; a 75 o 144 Hz il passo normale oscilla fino a 40
         const sc = R.scale(), key = Math.round(sc * 100);
         if (CAP.t > 1.5 && CAP.late > CAP.n * .15 && sc > .56) { CAP.bad[key] = ui.time; R.scale(sc - .1); CAP.t = CAP.n = CAP.late = 0; CAP.work = 0; }
+        else if (CAP.t > 3 && CAP.late > CAP.n * .25 && sc <= .56 && !CAP.low && R.lowQuality) { CAP.low = true; R.lowQuality(); CAP.t = CAP.n = CAP.late = 0; CAP.work = 0; }   // [30fps] alla risoluzione minima e ancora in ritardo: niente ombre, verde più corto (una volta sola)
         else if (CAP.t > 6) { const up = Math.min(1, sc + .05), ku = Math.round(up * 100); if (CAP.late < CAP.n * .03 && CAP.work / CAP.n < 14 && sc < 1 && !(CAP.bad[ku] && ui.time - CAP.bad[ku] < 30)) R.scale(up); CAP.t = CAP.n = CAP.late = 0; CAP.work = 0; }
       } else { FLU.t += Math.min(raw, .25); FLU.n++;   // [fluido1] senza limite: sotto i 45 la risoluzione interna scende (fino al 55%), sopra i 57 risale
         if (FLU.t > 2) { const avg = FLU.t / FLU.n, sc = R.scale();
