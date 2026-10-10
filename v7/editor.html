@@ -29476,10 +29476,11 @@ var WriterArte = (function () {
     x.save(); bodyPath(x, l, 0, 0, 0); x.clip();
     const box = l.body.reduce((a, b) => { const cs = b.c ? [b.c] : [b.a, b.b]; cs.forEach(([p, q]) => { a[0] = Math.min(a[0], p - b.r); a[1] = Math.min(a[1], q - b.r); a[2] = Math.max(a[2], p + b.r); a[3] = Math.max(a[3], q + b.r); }); return a; }, [1e9, 1e9, -1e9, -1e9]);
     if (S0.shade) { x.fillStyle = S0.shade; x.fillRect(box[0], box[1], box[2] - box[0], box[3] - box[1]); fillBody(x, l, -u * .02, S0.fill, -u * .02, -u * .11); }
-    if (S0.flat) { x.restore(); return; }
+    const lum = (h => { if (!h || h[0] !== '#') return .5; const n = parseInt(h.slice(1), 16); return ((n >> 16) * .3 + ((n >> 8) & 255) * .59 + (n & 255) * .11) / 255; })(S0.fill);
+    if (S0.flat || lum < .3) { x.restore(); return; }
     x.lineCap = 'round'; const ang = -1.05 + (r() - .5) * .3, ca = Math.cos(ang), sa = Math.sin(ang), step = Math.max(2, u * .045), L = (box[2] - box[0]) + (box[3] - box[1]);
-    for (let t = -L; t < L; t += step * (.7 + r() * .8)) {
-      const cx = (box[0] + box[2]) / 2 + t, cy = (box[1] + box[3]) / 2; x.strokeStyle = r() < .7 ? (S0.shade || 'rgba(0,0,0,.4)') : 'rgba(255,255,255,.6)'; x.globalAlpha = .16 + r() * .14; x.lineWidth = Math.max(1, u * (.008 + r() * .012));
+    for (let t = -L; t < L; t += step * (2.2 + r() * 2.5)) {
+      const cx = (box[0] + box[2]) / 2 + t, cy = (box[1] + box[3]) / 2; x.strokeStyle = r() < .7 ? (S0.shade || 'rgba(0,0,0,.4)') : 'rgba(255,255,255,.6)'; x.globalAlpha = .06 + r() * .07; x.lineWidth = Math.max(1, u * (.03 + r() * .04));
       const a = (r() - .5) * L * .3, b = L * (.3 + r() * .35); x.beginPath(); x.moveTo(cx + ca * (a - b), cy + sa * (a - b)); x.lineTo(cx + ca * (a + b), cy + sa * (a + b)); x.stroke();
     }
     x.globalAlpha = 1;
@@ -29587,12 +29588,13 @@ var WriterArte = (function () {
     x.drawImage(FILL, 0, 0); snap(x.canvas); const pts = []; B.L.forEach(l => l.body.forEach(b => { if (b.c) for (let a = 0; a < 6; a++) pts.push([b.c[0] + Math.cos(a) * b.r * .5, b.c[1] + Math.sin(a) * b.r * .5]); else for (let t = 0; t <= 1; t += .25) pts.push([b.a[0] + (b.b[0] - b.a[0]) * t, b.a[1] + (b.b[1] - b.a[1]) * t]); })); paths.push(pts); radii.push(u * .3);
     // 2. lo sfondo
     const BG = cv(Wp, Hp), bg = BG.getContext('2d');
+    if (S0.ref && C.bgk !== 'rullo') C.bgk = null;   // [writer] le bolle dei bozzetti stanno da sole sul muro
     if (C.bgk) { background(bg, C.bgk, P, Wp, Hp, r, false); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .18); }
     // 3. le lettere: il filo esterno attorno a tutto, poi ognuna col suo blocco 3D pieno, il contorno, il riempimento, le fessure
     const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); if (S0.scribble) scribble(bg, Wp, Hp, S0.ol, r, u); ox.drawImage(BG, 0, 0);
     if (S0.outer) for (let s = 0; s <= steps; s++) B.L.forEach(l => fillBody(ox, l, ol * 2.4, S0.outer, dx * s / steps, dy * s / steps));
-    order.forEach(i => { const l = B.L[i]; for (let s = steps; s >= 1; s--) fillBody(ox, l, ol, S0.ol, dx * s / steps, dy * s / steps); });   // il blocco del 3D col suo bordo, dietro a tutto
-    order.forEach(i => { const l = B.L[i]; for (let s = steps; s >= 1; s--) fillBody(ox, l, 0, S0.d3, dx * s / steps, dy * s / steps); });
+    order.forEach(i => { const l = B.L[i]; for (let s = steps; s >= 1; s--) fillBody(ox, l, ol * 2, S0.ol, dx * s / steps, dy * s / steps); });   // il blocco del 3D col suo bordo, dietro a tutto
+    order.forEach(i => { const l = B.L[i]; for (let s = steps; s >= 1; s--) fillBody(ox, l, ol, S0.d3, dx * s / steps, dy * s / steps); });   // [writer] gonfiato quanto il contorno: copre i bordi dei gradini, resta solo quello esterno
     order.forEach(i => {
       const l = B.L[i];
       if (S0.d3 === S0.ol) { ox.strokeStyle = S0.fill === 'chrome' ? '#fff' : S0.fill; ox.lineWidth = Math.max(1, ol * .35); ox.globalAlpha = .5; bodyPath(ox, l, -ol * .1, dx * .55, dy * .55); ox.stroke(); ox.globalAlpha = 1; }   // la riga del 3D (nel bozzetto)
@@ -29746,7 +29748,7 @@ var WriterArte = (function () {
     // la mano: un toy trema, non sa il 3D, sbaglia gli spessori; un king è pulito, profondo, pieno di dettagli
     const CN0 = w.cons || consOf(w.hand || w.seed || 1), LW = Wp - charW, PZ = !F.flat && !F.ink && C.fam !== 'script' && q > .35, opts = { font: null, h: 100, adv: F.adv * (PZ ? .9 : 1), skew: PZ ? .14 + Math.abs(CN0.slant) * .5 : F.skew * .4 + CN0.slant, bounce: q < .35 ? .04 : 0, rot: q < .35 ? .1 : .02, wob: q < .35 ? .03 : 0, scale: 0, ext: F.ext * .6, links: C.fam === 'wild' && q > .6 ? Math.min(2, F.links) : 0 };
     // lo scheletro: per le famiglie che corrono (semi, wild, corsivo, a spine) è la TAG del writer, ingrassata: il pezzo ha la sua mano
-    const handFam = /^(wild|script)$/.test(C.fam);
+    const handFam = C.fam === 'script';   // [writer] il wildstyle parte dalle lettere dei pezzi (con frecce e punte), non dalla tag: si legge
     let L0;
     if (handFam && WM) {
       const hd = Object.assign({}, WM.dna(w.hand || w.seed || 1), { crown: false, halo: false, under: false, dashes: false, stars: false, quotes: false, swash: C.fam === 'script' || (wild && r() < .5), loop: false, wob: 0, mix: C.fam === 'script' ? .7 : 0, adv: C.fam === 'wild' ? .55 : .62, bigFirst: 1, tall: 1, bounce: 0, arc: 0, wob: 0 });
@@ -29754,7 +29756,7 @@ var WriterArte = (function () {
     } else L0 = letters(text, opts, r);
     const CN = w.cons || consOf(w.hand || w.seed || 1);
     L0 = evenOut(L0, C.fam, CN);
-    const padK = .6 * F.lw / (1 + 1.2 * F.lw) + .04, L = fit(L0, LW, Hp - sloganH, Hp * padK, train ? 1.6 : wild ? 1.3 : 1.1);
+    const padK = (.6 * F.lw / (1 + 1.2 * F.lw) + .04) * (PZ ? 1.45 : 1), L = fit(L0, LW, Hp - sloganH, Hp * padK, train ? 1.6 : wild ? 1.3 : 1.1);
     const ox0 = charLeft ? charW : 0; L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a + ox0, b]); });
     if (PZ) { const fl0 = r() * 6.28, fA = Hp * (.025 + r() * .02), bw = Math.max(1, L.box[2] - L.box[0]); L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a, b + Math.sin((a - L.box[0]) / bw * PI * 1.3 + fl0) * fA]); }); L.box = [L.box[0], L.box[1] - fA, L.box[2], L.box[3] + fA]; }   /* [writer] il flow: la linea di base ondeggia, le lettere corrono insieme */  L.box = [L.box[0] + ox0, L.box[1], L.box[2] + ox0, L.box[3]];
     const capH = 100 * L.s, lw = (F.flat || F.fat || F.ink ? F.lw * .5 + CN.weight * .5 : CN.weight * .6 + F.lw * .4) * capH * (train ? 1.1 : 1) * (PZ ? 1.3 : 1), ol = Math.max(2, capH * CN.line * (toy ? .7 + r() * .6 : 1)), kl = Math.max(2, capH * .03);
@@ -29772,6 +29774,10 @@ var WriterArte = (function () {
     const groups = []; L.strokes.forEach(t => { (groups[t.i] = groups[t.i] || []).push(t); });
     const strokePoly = (t) => {
       let pts = t.pts; if (SH.smooth && pts.length > 2 && WM) pts = WM.smooth(pts, 4);
+      else if (PZ && pts.length > 2) for (let it = 0; it < 3; it++) {   // [writer] niente low poly: le curve si arrotondano e si infittiscono, gli spigoli (oltre 55°) restano vivi
+        const Q = [pts[0]]; for (let k = 1; k < pts.length - 1; k++) { const a = pts[k - 1], b = pts[k], c2 = pts[k + 1], u1 = [b[0] - a[0], b[1] - a[1]], u2 = [c2[0] - b[0], c2[1] - b[1]], turn = Math.abs(Math.atan2(u1[0] * u2[1] - u1[1] * u2[0], u1[0] * u2[0] + u1[1] * u2[1]));
+          if (turn < .95) Q.push([.75 * b[0] + .25 * a[0], .75 * b[1] + .25 * a[1]], [.75 * b[0] + .25 * c2[0], .75 * b[1] + .25 * c2[1]]); else Q.push(b); }
+        Q.push(pts[pts.length - 1]); pts = Q; }
       if (pts.length === 1) { const c0 = pts[0], rr = lw * .55, o = []; for (let k = 0; k < 14; k++) o.push([c0[0] + Math.cos(k / 14 * PI * 2) * rr, c0[1] + Math.sin(k / 14 * PI * 2) * rr]); return o; }
       const n = pts.length, Lf = [], Rt = [], dirs = [];
       for (let i = 0; i < n - 1; i++) { const dx = pts[i + 1][0] - pts[i][0], dy = pts[i + 1][1] - pts[i][1], l = hyp(dx, dy) || 1; dirs.push([dx / l, dy / l]); }
@@ -29786,7 +29792,7 @@ var WriterArte = (function () {
         const joint = (groups[t.i] || []).some(o => o !== t && o.pts.some(q2 => hyp(q2[0] - p[0], q2[1] - p[1]) < lw * .9));   // il capo tocca un altro tratto della lettera
         const cap = joint ? (SH.cap === 'square' ? 'square' : 'round') : t.swash || (SH.cap === 'flare' && r() < .5) ? 'point' : SH.cap;
         if (cap === 'point') return [[p[0] + d[0] * w * (1.6 + r()), p[1] + d[1] * w * (1.6 + r())]];
-        if (cap === 'round') { const o = [], a0 = Math.atan2(a[1] - p[1], a[0] - p[0]); for (let k = 1; k < 6; k++) { const an = a0 - k / 6 * PI; o.push([p[0] + Math.cos(an) * w, p[1] + Math.sin(an) * w]); } return o; }
+        if (cap === 'round') { const o = [], a0 = Math.atan2(a[1] - p[1], a[0] - p[0]); for (let k = 1; k < 12; k++) { const an = a0 - k / 12 * PI; o.push([p[0] + Math.cos(an) * w, p[1] + Math.sin(an) * w]); } return o; }
         if (cap === 'flare') return [[a[0] + d[0] * w * .5 - d[1] * w * .25, a[1] + d[1] * w * .5 + d[0] * w * .25], [p[0] + d[0] * w * .9, p[1] + d[1] * w * .9], [b[0] + d[0] * w * .3, b[1] + d[1] * w * .3]];
         return [[a[0] + d[0] * w * .55, a[1] + d[1] * w * .55], [b[0] + d[0] * w * .55, b[1] + d[1] * w * .55]];   // il taglio dritto (block)
       };
@@ -29833,23 +29839,29 @@ var WriterArte = (function () {
     x.drawImage(FILL, 0, 0); snap(c); paths.push(densify(order.flatMap(i => groups[i]), lw * .5)); radii.push(lw * .75);
     // 2. lo sfondo (dietro alle lettere)
     const BG = cv(Wp, Hp), bg = BG.getContext('2d');
-    if (PZ && !train && C.bgk && C.bgk !== 'rullo') C.bgk = q > .55 && r() < .6 ? 'nuvola' : null;   // [writer] nei pezzi niente scacchi, ovali, adesivi
+    let cloudPZ = null; if (PZ && !train && C.bgk && C.bgk !== 'rullo') { cloudPZ = q > .55 && r() < .6 ? pickR(r, FLATS.filter(c => c !== '#d8201a')) : null; C.bgk = null; }   // [writer] nei pezzi niente scacchi, ovali, adesivi: al più la nuvola chiara
+    if (cloudPZ) { bg.save(); bg.translate(Wp * .08, Hp * .14); cloud(bg, Wp * .84, Hp * .72, r, cloudPZ, P.o, 0); bg.restore(); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(c); paths.push(raster(Wp, Hp, 4)); radii.push(Hp * .16); }
     if (C.bgk) { background(bg, toy && !train ? 'spruzzi' : C.bgk, P, Wp, Hp, r, train); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(c); paths.push(raster(Wp, Hp, train ? 6 : 4)); radii.push(Hp * (train ? .13 : .16)); }
     // 3. le lettere vere: la keyline attorno a tutto (3D compreso), il 3D pieno col suo bordo dietro a tutte, poi le lettere in ordine
     const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); ox.drawImage(BG, 0, 0);
     ox.lineJoin = 'round'; ox.lineCap = 'round';
     const allP = order.flatMap(i => polys[i]);
+    const inPoly = (pt, pl) => { let c3 = false; for (let a = 0, b = pl.length - 1; a < pl.length; b = a++) { const A = pl[a], B2 = pl[b]; if ((A[1] > pt[1]) !== (B2[1] > pt[1]) && pt[0] < (B2[0] - A[0]) * (pt[1] - A[1]) / (B2[1] - A[1]) + A[0]) c3 = !c3; } return c3; };
     if (q > .3 && !throwUp && !F.flat && (P.k && (PZ || w.pal < 14 || r() < .3))) { ox.strokeStyle = KL; ox.fillStyle = KL; extrude(ox, allP, KL, 2 * (ol + kl)); strokeL(ox, allP, KL, 2 * (ol + kl)); }   // la keyline attorno a tutto, 3D compreso
     ox.strokeStyle = F.ink ? KL : P.o; extrude(ox, allP, null, 2 * ol);   // il bordo del blocco 3D
     ox.fillStyle = F.ink ? KL : P.d; extrude(ox, allP, null, 0);   // il blocco 3D
     if (PZ && d3 > 3) {   // [writer] gli spigoli del 3D: dagli angoli della lettera al blocco, sottili, del colore del contorno
       ox.strokeStyle = P.o; ox.lineWidth = Math.max(1, ol * .55); ox.lineCap = 'round';
-      allP.forEach(pl => { const n = pl.length; for (let k = 0; k < n; k++) { const a = pl[(k - 1 + n) % n], b = pl[k], c2 = pl[(k + 1) % n], u1 = [b[0] - a[0], b[1] - a[1]], u2 = [c2[0] - b[0], c2[1] - b[1]], l1 = hyp(...u1) || 1, l2 = hyp(...u2) || 1, turn = Math.abs(Math.atan2(u1[0] * u2[1] - u1[1] * u2[0], u1[0] * u2[0] + u1[1] * u2[1]));
+      const onEdge = (pt, own) => !allP.some(o => o !== own && inPoly(pt, o));
+      allP.forEach(pl => { const n = pl.length; for (let k = 0; k < n; k++) { if (!onEdge(pl[k], pl)) continue; const a = pl[(k - 1 + n) % n], b = pl[k], c2 = pl[(k + 1) % n], u1 = [b[0] - a[0], b[1] - a[1]], u2 = [c2[0] - b[0], c2[1] - b[1]], l1 = hyp(...u1) || 1, l2 = hyp(...u2) || 1, turn = Math.abs(Math.atan2(u1[0] * u2[1] - u1[1] * u2[0], u1[0] * u2[0] + u1[1] * u2[1]));
         if (turn < .6 || l1 < ol * 2 || l2 < ol * 2) continue; ox.beginPath(); ox.moveTo(b[0], b[1]); ox.lineTo(b[0] + dx, b[1] + dy); ox.stroke(); } });
       const sh3 = ox.createLinearGradient(0, L.box[1], 0, L.box[3] + d3); sh3.addColorStop(0, 'rgba(255,255,255,.12)'); sh3.addColorStop(1, 'rgba(0,0,0,.25)');
     }
+    const DI = cv(Wp, Hp), di = DI.getContext('2d'), RL = cv(Wp, Hp), rl = RL.getContext('2d');
+    const rim = (i, k, sx, sy, col) => { rl.globalCompositeOperation = 'source-over'; rl.clearRect(0, 0, Wp, Hp); rl.drawImage(maskOf(i), 0, 0); rl.globalCompositeOperation = 'destination-out'; rl.drawImage(M, sx * k, sy * k); rl.globalCompositeOperation = 'source-in'; rl.fillStyle = col; rl.fillRect(0, 0, Wp, Hp); rl.globalCompositeOperation = 'source-over'; return RL; };   // il bordo interno della lettera dal lato (sx, sy)
     order.forEach(i => {
-      ox.lineJoin = J; ox.miterLimit = 1.6; strokeL(ox, polys[i], OL, 2 * ol); ox.lineJoin = 'round';   // il contorno della lettera (sopra il 3D e sopra la lettera prima)
+      if (PZ) { di.clearRect(0, 0, Wp, Hp); dilate(di, maskOf(i), ol); ox.drawImage(tint(DI, OL), 0, 0); }   // [writer] il contorno: la sagoma unita della lettera allargata (chiuso, niente giunture)
+      else { ox.lineJoin = J; ox.miterLimit = 1.6; strokeL(ox, polys[i], OL, 2 * ol); ox.lineJoin = 'round'; }   // il contorno della lettera (sopra il 3D e sopra la lettera prima)
       if (F.hollow) { ox.save(); ox.globalCompositeOperation = 'destination-out'; ox.drawImage(maskOf(i), 0, 0); ox.restore(); if (C.bgk) { ox.save(); ox.globalCompositeOperation = 'destination-over'; ox.restore(); } return; }   // solo contorno: dentro si vede il muro
       const Li = letterImg(i, !F.ink && !F.flat && q > .45 ? shade(P.f[2], -.35) : null, Math.max(1.5, ol * .8)), lc = t1; lc.clearRect(0, 0, Wp, Hp); lc.drawImage(Li, 0, 0);
       lc.globalCompositeOperation = 'source-atop';
@@ -29859,10 +29871,12 @@ var WriterArte = (function () {
           for (let k = 0; k < pl.length; k++) { const a = pl[k], b = pl[(k + 1) % pl.length], ex = b[0] - a[0], ey = b[1] - a[1], el = hyp(ex, ey); if (el < lw * .45) continue;
             const nx = ey / el * sg, ny = -ex / el * sg; if (nx * -.62 + ny * -.78 < .55) continue;   // la normale verso fuori guarda la luce (in alto a sinistra)
             lit.push({ a, ex, ey, el, nx, ny }); } });
-        lit.sort((p0, p1) => p1.el - p0.el); lit.slice(0, 2).forEach(({ a, ex, ey, el, nx, ny }) => { {
+        const kk = Math.max(1.5, lw * .085);
+        lc.globalAlpha = .55; lc.drawImage(rim(i, kk * 1.3, -1, -1, shade(P.f[2], -.35)), 0, 0);   // [writer] l'ombra interna in basso a destra
+        lc.globalAlpha = .85; lc.drawImage(rim(i, kk, 1, 1, P.hi), kk * .45, kk * .45); lc.globalAlpha = 1;   // la luce continua lungo i bordi in alto a sinistra, rientrata
+        lit.sort((p0, p1) => p1.el - p0.el); lit.filter(e => !polys[i].some(o => inPoly([e.a[0] + e.ex * .5, e.a[1] + e.ey * .5], o) && !o.includes(e.a))).slice(0, 1).forEach(({ a, ex, ey, el, nx, ny }) => { {
             const inn = ol * 1.4 + lw * .06, s0 = .18, s1 = .18 + Math.min(.5, lw * 1.2 / el); lc.beginPath(); lc.moveTo(a[0] + ex * s0 - nx * inn, a[1] + ey * s0 - ny * inn); lc.lineTo(a[0] + ex * s1 - nx * inn, a[1] + ey * s1 - ny * inn); lc.stroke();
             lc.beginPath(); lc.arc(a[0] + ex * (s1 + .1) - nx * inn, a[1] + ey * (s1 + .1) - ny * inn, lc.lineWidth * .55, 0, 7); lc.fill(); } });
-        markerHatch(lc, L.box, lw, r, P.f[2]);
       } else       if (q > .5 && !F.flat) { lc.strokeStyle = P.hi; lc.fillStyle = P.hi; lc.lineCap = 'round'; lc.lineWidth = Math.max(1.5, ol * .7); polys[i].slice(0, 1).forEach(pl => { let k0 = 0, best = 1e9; pl.forEach(([a, b], k) => { if (a + b < best) { best = a + b; k0 = k; } }); const a = pl[k0], b = pl[(k0 + 1) % pl.length], cxp = pl.reduce((s0, p) => s0 + p[0], 0) / pl.length, cyp = pl.reduce((s0, p) => s0 + p[1], 0) / pl.length, ix = cxp - a[0], iy = cyp - a[1], il = hyp(ix, iy) || 1, off = ol * 2.4, ex2 = b[0] - a[0], ey2 = b[1] - a[1], el = hyp(ex2, ey2) || 1, len = Math.min(el * .6, lw * .55);
         lc.beginPath(); lc.moveTo(a[0] + ix / il * off, a[1] + iy / il * off); lc.lineTo(a[0] + ix / il * off + ex2 / el * len, a[1] + iy / il * off + ey2 / el * len); lc.stroke(); lc.beginPath(); lc.arc(a[0] + ix / il * off + ex2 / el * (len + ol * 2.2), a[1] + iy / il * off + ey2 / el * (len + ol * 2.2), ol * .6, 0, 7); lc.fill(); }); }   // la luce: un tocco sul bordo in alto a sinistra
       if (F.doodles && q > .25) doodles(lc, groups[i], lw, r, F.ink ? '#f6f4ee' : P.hi, F.ink, F.stars, F.ink && i === order[Math.floor(order.length / 2)] && r() < .45);
