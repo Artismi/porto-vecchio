@@ -687,15 +687,21 @@
   // se c'è margine (lavoro del fotogramma corto e nessun ritardo per 6 secondi) risale; un passo che ha fatto perdere i 30 non
   // si ritenta per mezzo minuto.
   const CAP = { on: !/[?&]fps60/.test(location.search), step: 1000 / 30, next: 0, work: 0, late: 0, n: 0, t: 0, bad: {} };
+  // [30fps] tutti gli altri cicli (skate, tetti, cantiere, bottino, sottosuolo, risacca, menu, studio...) chiedevano il loro
+  // requestAnimationFrame alla frequenza dello schermo (60-144 al secondo), fuori dal limite: ora aspettano in coda e girano una
+  // volta per ogni fotogramma disegnato, subito dopo il disegno
+  const RAF0 = window.requestAnimationFrame.bind(window), SIDE = [];
+  window.requestAnimationFrame = fn => { SIDE.push(fn); return 0; };
+  const sideFlush = now => { const q = SIDE.splice(0); for (const f of q) { try { f(now); } catch (e) { console.error(e); } } };
   function loop(now) {
     if (CAP.on) {
       if (!CAP.next || now - CAP.next > 100) CAP.next = now;   // il primo fotogramma, o dopo una pausa lunga (scheda nascosta)
-      if (now < CAP.next - 2) { requestAnimationFrame(loop); return; }   // non è ancora il momento (2 ms di tolleranza per la sincronia dello schermo)
+      if (now < CAP.next - 2) { RAF0(loop); return; }   // non è ancora il momento (2 ms di tolleranza per la sincronia dello schermo)
       CAP.next += CAP.step; if (CAP.next < now - CAP.step) CAP.next = now + CAP.step;   // in ritardo di più di un fotogramma: si riparte da adesso, senza recuperare a raffica
     }
     const t0 = performance.now();
     const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
-    if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
+    if (window.Studio && Studio.hidesGame()) { sideFlush(now); RAF0(loop); return; }   // [studio] nell'hangar il mondo dorme
     if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > (CAP.on ? 1 / 24 : 1 / 32)) R.lowQuality(); } }   // [30fps] col limite il passo normale è 1/30: «lento» è sotto i 24
     fpsTick(Math.min(raw, 1));   // [fluido1] contatore F9
     if (perfDone && R.scale && !ui.menu && !ui.dialog && !ui.intro && !ui.book) {
@@ -729,10 +735,11 @@
     sounds();
     drawBubbles(); crosshair();
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); }
+    sideFlush(now);   // [30fps] i cicli degli altri moduli, una volta per fotogramma
     CAP.work += performance.now() - t0;   // [30fps] il lavoro del fotogramma (logica + comandi di disegno)
-    requestAnimationFrame(loop);
+    RAF0(loop);
   }
-  requestAnimationFrame(loop);
+  RAF0(loop);
   window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y) };
   }
 })();
