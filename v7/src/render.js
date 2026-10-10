@@ -1783,11 +1783,18 @@ var Render = (function () {
     window.__muri = cnt;
   }
   // [prato1] il prato vero nel materiale del terreno (vedi strumenti_inverno/prato1.py)
-  const PRATO9 = { k: { value: 1 } };
-  function prato9(mat) {
-    mat.customProgramCacheKey = () => 'suolo-prato9';
+  const PRATO9 = { k: { value: 1 }, l: { value: 1 } };   /* [finitura1] l: dettaglio dei pavimenti */
+  // [finitura1] che pavimento c'è in ogni casella del blocco: r piazza, g selciato, b marciapiede e banchina, a asfalto (filtrata: bordi morbidi)
+  function mat9Tex(tx0, ty0, n, m) {
+    const T = G.T, d = new Uint8Array(n * m * 4);
+    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const v = gT(tx0 + i, ty0 + j), o = ((m - 1 - j) * n + i) * 4;
+      d[o] = v === T.PIAZZA ? 255 : 0; d[o + 1] = v === T.COB || v === T.STAIRS ? 255 : 0; d[o + 2] = v === T.WALK || v === T.QUAY ? 255 : 0; d[o + 3] = v === T.VIA ? 255 : 0; }
+    const t = new THREE.DataTexture(d, n, m, THREE.RGBAFormat); t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true; return t;
+  }
+  function prato9(mat, mt) {
+    mat.customProgramCacheKey = () => 'suolo-prato9-finitura1';
     mat.onBeforeCompile = sh => {
-      sh.uniforms.uPrato9 = PRATO9.k;
+      sh.uniforms.uPrato9 = PRATO9.k; sh.uniforms.uLast9 = PRATO9.l; sh.uniforms.uMat9 = { value: mt };
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGw9;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGw9 = (modelMatrix * vec4(transformed, 1.)).xyz;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
@@ -1808,7 +1815,40 @@ var Render = (function () {
           c = mix(c, c * vec3(.8, .94, 1.12), gap * aa * .6);                                    // le fughe, fredde
           float dry = smoothstep(.66, .84, dryN) * (1. - tuft);
           c = mix(c, vec3(dot(c, vec3(.3, .59, .11))) * vec3(1.32, 1.12, .66), dry * .4);       // chiazze secche
-          return c; }`)
+          return c; }
+        // [finitura1] i pavimenti da vicino. Le lastre ridisegnano esattamente il motivo dipinto (8 px per metro, periodo 32 m: lastre 1 × 0,625 m a correre,
+        // fila sfalsata di (fila·37 mod 8) px, fascia ogni 8 m), ma nitide a ogni distanza: giunti sottili, spigoli smussati, tono per lastra, grana, crepe.
+        uniform sampler2D uMat9; uniform float uLast9;
+        float gH9, gR9, gRk9;   // rilievo (in metri) e ruvidezza per le luci, scritti nella mappa, letti dopo
+        float ln9(float d, float w, float a){ return 1. - smoothstep(w - a * .5, w + a * .5, d); }   // una linea larga 2w, sfumata del pixel (si schiarisce da lontano, non sparisce a scatti)
+        vec3 lastre9(vec3 base, vec2 p, float mpp, out float H){
+          vec2 q = mod(p * 8., 256.), per = floor(p * 8. / 256.);
+          float row = floor(q.y / 5.), off = mod(row * 37., 8.), ex = q.x + off, col = floor(ex / 8.);
+          float dyy = q.y - row * 5. - .5, dxx = ex - col * 8. - .5;              // dal giunto (al centro del suo pixel dipinto)
+          float dy = min(abs(dyy), 5. - dyy) / 8., dx = min(abs(dxx), 8. - dxx) / 8., d = min(dx, dy);   // in metri
+          vec2 id = vec2(col, row) + per * vec2(41., 67.);
+          float h = ph9(id), h2 = ph9(id + 13.7), band = step(mod(q.y, 64.), 4.99);
+          float aa1 = 1. - smoothstep(.006, .03, mpp), aa2 = 1. - smoothstep(.002, .012, mpp);
+          // la pietra: tono per lastra (fascia più scura), venatura lenta, grana a due scale
+          float g = (pn9(p * 37. + id) - .5) * .09 * aa1 + (pn9(p * 113.) - .5) * .07 * aa2;
+          float vein = smoothstep(.62, .9, pn9(vec2(p.x * 2.1 + p.y * .7, p.y * 6.3) + id * 3.1)) * .05;
+          vec3 c = base * ((band > .5 ? .9 + h * .05 : .93 + h * .11) + g - vein);
+          c *= mix(vec3(1.), vec3(1.035, 1.0, .955), step(.8, h));               // qualche lastra calda
+          // la crepa: poche lastre, una linea che le attraversa
+          float cr = 0.; if (h2 < .07) { vec2 lp = vec2(dxx - 4., dyy - 2.5) / 8.; float a = h2 * 90.; vec2 nr = vec2(cos(a), sin(a)); cr = ln9(abs(dot(lp, nr) + (pn9(p * 30.) - .5) * .02), .0018, mpp) * aa1; }
+          // giunto e spigolo smussato: sul giunto il fondo (malta scura, con un filo di verde), lo spigolo scende in 2 cm
+          float jl = ln9(d, .0055, mpp), bev = smoothstep(.004, .024, d);
+          vec3 grout = base * vec3(.42, .43, .4) + vec3(.004, .01, 0.) * step(.75, ph9(floor(p * 9.)));
+          c = mix(c, grout, clamp(jl * .9 + cr * .6, 0., 1.));
+          c *= 1. + (1. - bev) * (1. - jl) * .05 * aa1;                           // lo spigolo consumato, un filo più chiaro
+          H = (bev - 1.) * .006 - cr * .002 + g * .004;
+          return c; }
+        vec3 grana9(vec3 c, vec2 p, float mpp, float k, out float H){   // selciato e asfalto: inerti e pori, a una scala sotto il pixel dipinto
+          float aa1 = 1. - smoothstep(.006, .03, mpp), aa2 = 1. - smoothstep(.002, .012, mpp);
+          vec2 cell = floor(p * 55.); float s = ph9(cell), s2 = ph9(cell + 7.1);
+          float spk = (step(.86, s) * .9 - step(s, .1) * .7) * aa2, g = (pn9(p * 21.) - .5) * aa1 + (pn9(p * 70.) - .5) * aa2 * .7;
+          H = (g * .0016 + spk * .0006) * k;
+          return c * (1. + (g * .1 + spk * .09) * k) * mix(vec3(1.), vec3(1.02, 1., .97), step(.93, s2) * aa2 * k); }`)
         .replace('#include <map_fragment>', `#include <map_fragment>
         #ifdef USE_MAP
         if (uPrato9 > .01) {   // [prato1] dove il suolo è verde
@@ -1816,7 +1856,26 @@ var Render = (function () {
           float gm9 = smoothstep(1.06, 1.3, sm9.g / max(max(sm9.r, sm9.b), .003)) * smoothstep(.008, .025, sm9.g) * uPrato9;
           if (gm9 > .001) diffuseColor.rgb = mix(diffuseColor.rgb, prato9(diffuse * sm9, vGw9.xz), gm9);
         }
-        #endif`).replace('#include <aomap_fragment>', MATTE_GLSL).replace('#include <roughnessmap_fragment>', ROUGH_GLSL);
+        gH9 = 0.; gR9 = 1.; gRk9 = 0.;
+        if (uLast9 > .01) {   // [finitura1] i pavimenti
+          vec4 mt9 = texture2D(uMat9, vUv); vec2 fw9 = fwidth(vGw9.xz); float mpp9 = max(fw9.x, fw9.y), near9 = 1. - smoothstep(.04, .1, mpp9);
+          float pz9 = smoothstep(.3, .62, mt9.r) * uLast9;
+          if (pz9 * near9 > .001) {   // la piazza: sotto, la mappa sfocata (luce, sporco, neve); sopra, le lastre nitide
+            vec3 bl9 = texture2D(map, vUv, 2.).rgb; float H9;
+            vec3 lc9 = lastre9(diffuse * bl9, vGw9.xz, mpp9, H9);
+            float k9 = pz9 * near9; diffuseColor.rgb = mix(diffuseColor.rgb, lc9, k9); gH9 += H9 * k9; gR9 = .8; gRk9 = k9; }
+          float gk9 = clamp(mt9.g + mt9.a * .8 + mt9.b * .6, 0., 1.) * (1. - pz9) * uLast9;
+          if (gk9 > .001) { float Hg9; diffuseColor.rgb = grana9(diffuseColor.rgb, vGw9.xz, mpp9, gk9, Hg9); gH9 += Hg9; }
+        }
+        #endif`).replace('#include <aomap_fragment>', MATTE_GLSL)
+        .replace('#include <roughnessmap_fragment>', ROUGH_GLSL + `
+        roughnessFactor = mix(roughnessFactor, roughnessFactor * gR9, gRk9);   // [finitura1] la pietra un filo più liscia dei giunti`)
+        .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        {   // [finitura1] il rilievo dei pavimenti nella luce (giunti, spigoli, grana): come il bumpMap di three, dal rilievo in metri
+          vec2 dH9 = vec2(dFdx(gH9), dFdy(gH9)); vec3 sx9 = dFdx(-vViewPosition), sy9 = dFdy(-vViewPosition), vN9 = normal;
+          vec3 R19 = cross(sy9, vN9), R29 = cross(vN9, sx9); float det9 = dot(sx9, R19) * faceDirection;
+          if (abs(det9) > 1e-12) normal = normalize(abs(det9) * vN9 - sign(det9) * (dH9.x * R19 + dH9.y * R29));
+        }`);
     };
     return mat;
   }
@@ -1858,7 +1917,7 @@ var Render = (function () {
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
     const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
-    const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
+    const mt9 = mat9Tex(tx0, ty0, n, m), mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }), mt9);   /* [prato1] */
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
@@ -1866,10 +1925,10 @@ var Render = (function () {
     const vd = verde38(tx0, ty0, n, m); vd.visible = false; grp.add(vd);   // [verde]
     scene.add(grp);
     if (window.Officina) Officina.onChunk(grp, groundH);   // [studio] alberi e cespugli ritoccati
-    return { grp, geo, mat, tex, btex, veg, nat, lt, vd, rev: ISO.rev };
+    return { grp, geo, mat, tex, btex, mt9, veg, nat, lt, vd, rev: ISO.rev };
   }
   function dropChunk(ch) {
-    scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose();
+    scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose(); if (ch.mt9) ch.mt9.dispose();
     ch.veg.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });
     if (ch.vd) ch.vd.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });   // [verde]
     if (ch.nat) ch.nat.children.forEach(im => { im.geometry.dispose(); if (im.dispose) im.dispose(); });
@@ -7974,7 +8033,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.25, ink: 0, rim: .6, cav: .85, clar: .32, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.25, ink: 0, rim: .6, cav: .85, clar: .32, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85, prato: 1 /* [prato1] */, ao: 1 /* [aloni1] */, last: 1 /* [finitura1] dettaglio dei pavimenti */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -8051,7 +8110,7 @@ var Render = (function () {
   function buildPost() {
     postScene = new THREE.Scene(); postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     postMat = new THREE.ShaderMaterial({
-      uniforms: { uFoc9: { value: 30 }, uFogNF: { value: new THREE.Vector2(100, 300) },   /* [nebbia_zoom1] */ lK: { value: new THREE.Vector4(1, .9, .8, 1) }, lSun: { value: new THREE.Vector3(.4, .8, .3) }, lSunC: { value: new THREE.Vector3(1, 1, 1) }, lOl: { value: .85 },   /* [lucido1] */ tC: { value: null }, tD: { value: null },   /* [unione9] */ res: { value: new THREE.Vector2(1, 1) }, near: { value: 1 }, far: { value: 300 }, letter: { value: 0 }, pillar: { value: 0 }, fade: { value: 0 }, flash: { value: 0 }, hurt: { value: 0 }, sat: { value: 1 }, pK: { value: new THREE.Vector4(.5, 1.25, .5, .5) }, pC: { value: new THREE.Vector2(1, .45) }, palC: { value: [[0.0471,0.0431,0.0706],[0.1020,0.0980,0.1333],[0.1647,0.1569,0.1961],[0.2353,0.2275,0.2627],[0.3255,0.3176,0.3529],[0.4275,0.4157,0.4314],[0.5412,0.5255,0.5176],[0.6667,0.6392,0.5961],[0.7961,0.7608,0.6980],[0.9176,0.8824,0.8039],[0.1804,0.0706,0.0863],[0.3529,0.1020,0.1176],[0.5569,0.1373,0.1490],[0.7608,0.2275,0.1882],[0.9098,0.4000,0.2902],[0.9569,0.6275,0.5020],[0.2275,0.1490,0.0784],[0.4000,0.2667,0.1255],[0.6039,0.4157,0.1725],[0.8000,0.5882,0.2510],[0.9412,0.7647,0.3529],[1.0000,0.8980,0.5882],[0.0627,0.1255,0.1020],[0.1020,0.2078,0.1412],[0.1569,0.3098,0.1725],[0.2431,0.4314,0.2039],[0.3843,0.5686,0.2431],[0.5765,0.7059,0.3216],[0.7686,0.8314,0.4784],[0.0471,0.1333,0.1882],[0.0902,0.2431,0.2980],[0.1490,0.3686,0.4078],[0.2471,0.5216,0.5255],[0.4549,0.6902,0.6431],[0.0706,0.0863,0.1882],[0.1216,0.1569,0.3137],[0.1961,0.2471,0.4549],[0.2980,0.3608,0.5882],[0.4941,0.5490,0.7216],[0.1725,0.1020,0.2275],[0.2902,0.1725,0.3373],[0.4314,0.2667,0.4627],[0.6039,0.4157,0.5804],[1.0000,0.2902,0.5961],[1.0000,0.8235,0.2431],[0.3373,0.8784,0.8471],[1.0000,0.4784,0.1647],[0.8863,0.6588,0.5176],[0.7059,0.4549,0.3373],[0.4784,0.2902,0.2275],[0.8627,0.7765,0.5647],[0.7216,0.6118,0.3843]].map(a => new THREE.Vector3(...a)) }, palO: { value: [[0.1071,0.0066,-0.0188],[0.1888,0.0070,-0.0198],[0.2644,0.0085,-0.0190],[0.3436,0.0074,-0.0154],[0.4367,0.0069,-0.0141],[0.5295,0.0055,-0.0050],[0.6267,0.0038,0.0043],[0.7229,0.0032,0.0174],[0.8212,0.0032,0.0237],[0.9140,0.0016,0.0278],[0.2011,0.0521,0.0134],[0.3119,0.0942,0.0380],[0.4278,0.1352,0.0628],[0.5474,0.1567,0.0862],[0.6670,0.1394,0.0948],[0.7851,0.0807,0.0730],[0.2713,0.0225,0.0417],[0.4127,0.0303,0.0673],[0.5646,0.0337,0.0969],[0.7130,0.0277,0.1197],[0.8402,0.0078,0.1333],[0.9276,-0.0040,0.1012],[0.1996,-0.0281,0.0065],[0.2863,-0.0458,0.0221],[0.3819,-0.0658,0.0444],[0.4886,-0.0828,0.0691],[0.6069,-0.0886,0.0939],[0.7285,-0.0764,0.1098],[0.8414,-0.0529,0.1035],[0.2182,-0.0216,-0.0378],[0.3324,-0.0379,-0.0379],[0.4467,-0.0544,-0.0326],[0.5746,-0.0698,-0.0207],[0.7169,-0.0655,-0.0006],[0.1826,0.0023,-0.0599],[0.2751,0.0005,-0.0812],[0.3771,0.0007,-0.0971],[0.4877,0.0008,-0.0983],[0.6494,0.0006,-0.0684],[0.2365,0.0433,-0.0548],[0.3390,0.0617,-0.0600],[0.4526,0.0764,-0.0615],[0.5911,0.0756,-0.0419],[0.6861,0.2263,-0.0077],[0.8809,-0.0050,0.1640],[0.8324,-0.1180,-0.0205],[0.7254,0.1233,0.1364],[0.7812,0.0498,0.0674],[0.6226,0.0645,0.0676],[0.4585,0.0573,0.0475],[0.8359,0.0017,0.0745],[0.7091,0.0072,0.0844]].map(a => new THREE.Vector3(...a)) },   /* [amb3] */ dusk: { value: 0 }, night: { value: 1 }, uReg: { value: .7 }, uWx: { value: new THREE.Vector4() }, uHz: { value: new THREE.Color() },   /* [amb1] */
+      uniforms: { uFoc9: { value: 30 }, uFogNF: { value: new THREE.Vector2(100, 300) },   /* [nebbia_zoom1] */ lK: { value: new THREE.Vector4(1, .9, .8, 1) }, lSun: { value: new THREE.Vector3(.4, .8, .3) }, lSunC: { value: new THREE.Vector3(1, 1, 1) }, lOl: { value: .85 }, aoK: { value: 1 },   /* [lucido1] */ tC: { value: null }, tD: { value: null },   /* [unione9] */ res: { value: new THREE.Vector2(1, 1) }, near: { value: 1 }, far: { value: 300 }, letter: { value: 0 }, pillar: { value: 0 }, fade: { value: 0 }, flash: { value: 0 }, hurt: { value: 0 }, sat: { value: 1 }, pK: { value: new THREE.Vector4(.5, 1.25, .5, .5) }, pC: { value: new THREE.Vector2(1, .45) }, palC: { value: [[0.0471,0.0431,0.0706],[0.1020,0.0980,0.1333],[0.1647,0.1569,0.1961],[0.2353,0.2275,0.2627],[0.3255,0.3176,0.3529],[0.4275,0.4157,0.4314],[0.5412,0.5255,0.5176],[0.6667,0.6392,0.5961],[0.7961,0.7608,0.6980],[0.9176,0.8824,0.8039],[0.1804,0.0706,0.0863],[0.3529,0.1020,0.1176],[0.5569,0.1373,0.1490],[0.7608,0.2275,0.1882],[0.9098,0.4000,0.2902],[0.9569,0.6275,0.5020],[0.2275,0.1490,0.0784],[0.4000,0.2667,0.1255],[0.6039,0.4157,0.1725],[0.8000,0.5882,0.2510],[0.9412,0.7647,0.3529],[1.0000,0.8980,0.5882],[0.0627,0.1255,0.1020],[0.1020,0.2078,0.1412],[0.1569,0.3098,0.1725],[0.2431,0.4314,0.2039],[0.3843,0.5686,0.2431],[0.5765,0.7059,0.3216],[0.7686,0.8314,0.4784],[0.0471,0.1333,0.1882],[0.0902,0.2431,0.2980],[0.1490,0.3686,0.4078],[0.2471,0.5216,0.5255],[0.4549,0.6902,0.6431],[0.0706,0.0863,0.1882],[0.1216,0.1569,0.3137],[0.1961,0.2471,0.4549],[0.2980,0.3608,0.5882],[0.4941,0.5490,0.7216],[0.1725,0.1020,0.2275],[0.2902,0.1725,0.3373],[0.4314,0.2667,0.4627],[0.6039,0.4157,0.5804],[1.0000,0.2902,0.5961],[1.0000,0.8235,0.2431],[0.3373,0.8784,0.8471],[1.0000,0.4784,0.1647],[0.8863,0.6588,0.5176],[0.7059,0.4549,0.3373],[0.4784,0.2902,0.2275],[0.8627,0.7765,0.5647],[0.7216,0.6118,0.3843]].map(a => new THREE.Vector3(...a)) }, palO: { value: [[0.1071,0.0066,-0.0188],[0.1888,0.0070,-0.0198],[0.2644,0.0085,-0.0190],[0.3436,0.0074,-0.0154],[0.4367,0.0069,-0.0141],[0.5295,0.0055,-0.0050],[0.6267,0.0038,0.0043],[0.7229,0.0032,0.0174],[0.8212,0.0032,0.0237],[0.9140,0.0016,0.0278],[0.2011,0.0521,0.0134],[0.3119,0.0942,0.0380],[0.4278,0.1352,0.0628],[0.5474,0.1567,0.0862],[0.6670,0.1394,0.0948],[0.7851,0.0807,0.0730],[0.2713,0.0225,0.0417],[0.4127,0.0303,0.0673],[0.5646,0.0337,0.0969],[0.7130,0.0277,0.1197],[0.8402,0.0078,0.1333],[0.9276,-0.0040,0.1012],[0.1996,-0.0281,0.0065],[0.2863,-0.0458,0.0221],[0.3819,-0.0658,0.0444],[0.4886,-0.0828,0.0691],[0.6069,-0.0886,0.0939],[0.7285,-0.0764,0.1098],[0.8414,-0.0529,0.1035],[0.2182,-0.0216,-0.0378],[0.3324,-0.0379,-0.0379],[0.4467,-0.0544,-0.0326],[0.5746,-0.0698,-0.0207],[0.7169,-0.0655,-0.0006],[0.1826,0.0023,-0.0599],[0.2751,0.0005,-0.0812],[0.3771,0.0007,-0.0971],[0.4877,0.0008,-0.0983],[0.6494,0.0006,-0.0684],[0.2365,0.0433,-0.0548],[0.3390,0.0617,-0.0600],[0.4526,0.0764,-0.0615],[0.5911,0.0756,-0.0419],[0.6861,0.2263,-0.0077],[0.8809,-0.0050,0.1640],[0.8324,-0.1180,-0.0205],[0.7254,0.1233,0.1364],[0.7812,0.0498,0.0674],[0.6226,0.0645,0.0676],[0.4585,0.0573,0.0475],[0.8359,0.0017,0.0745],[0.7091,0.0072,0.0844]].map(a => new THREE.Vector3(...a)) },   /* [amb3] */ dusk: { value: 0 }, night: { value: 1 }, uReg: { value: .7 }, uWx: { value: new THREE.Vector4() }, uHz: { value: new THREE.Color() },   /* [amb1] */
         tBloom: { value: null }, tBloom2: { value: null }, tBlur: { value: null }, aK: { value: new THREE.Vector4(1, .9, .75, .022) }, aK2: { value: new THREE.Vector4(.5, .3, .3, .75) }, aFoc: { value: new THREE.Vector2(.5, .5) }, aTime: { value: 0 },
         sSM: { value: null }, sSMat: { value: new THREE.Matrix4() }, sCol: { value: new THREE.Vector3() }, sOn: { value: 0 },   /* [amb2] */
         vInvVP: { value: new THREE.Matrix4() }, vCam: { value: new THREE.Vector3() }, vOn: { value: 0 }, vSM0: { value: null }, vSM1: { value: null }, vSM2: { value: null }, vSM3: { value: null },
@@ -8061,7 +8120,7 @@ var Render = (function () {
         uniform float uFoc9; uniform vec2 uFogNF; uniform sampler2D tC; uniform sampler2D tD; uniform vec2 res; uniform float near; uniform float far; uniform float letter; uniform float pillar; uniform float fade; uniform float flash; uniform float hurt; uniform float sat; uniform float dusk; uniform float night; uniform float uReg; uniform vec4 uWx; uniform vec3 uHz;
         uniform sampler2D tBloom; uniform sampler2D tBloom2; uniform sampler2D tBlur; uniform vec4 aK; uniform vec4 aK2; uniform vec2 aFoc; uniform float aTime;   // [amb2] aK: espos., bloom, dof, grana; aK2: aberr., nitidezza, contorni, vignetta
         uniform sampler2D sSM; uniform mat4 sSMat; uniform vec3 sCol; uniform float sOn;
-        uniform vec4 lK; uniform vec3 lSun; uniform vec3 lSunC; uniform float lOl;   // [lucido1]
+        uniform vec4 lK; uniform vec3 lSun; uniform vec3 lSunC; uniform float lOl; uniform float aoK;   // [lucido1]
         uniform vec4 pK; uniform vec2 pC;   // [amb3] pC: cavità, chiarezza palette, saturazione, inchiostro, luce sui profili
         const int NP = 52;
         uniform vec3 palC[52]; uniform vec3 palO[52];
@@ -8142,7 +8201,7 @@ var Render = (function () {
             float ink = max(max(max(max(max(thin, sil), thick), crease * .55), form) * (1. - thinObj * .6) * (1. - vegK * .88), max(shapeI * .85, brick)) * (1.-coc) * (1. - busyK) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55) * (1. - smoothstep(uFogNF.x, uFogNF.y, d) * .95);   /* [nebbia_zoom1] */
             vec3 inkC = vec3(.19, .085, .2) + c * .06;   // inchiostro prugna: viola scuro e caldo, lega col colore (riferimento isometrico di Andrea)
             c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); } }   /* [fluido3] */
-          { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)); } c *= 1. - ao/8.*.42*(1.-coc*.7); }
+          { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)) * (1. - smoothstep(.4 + d*.004, 1.2 + d*.012, d-dn)); }   /* [aloni1] solo a contatto: un oggetto sospeso (cartelli, insegne, tettoie) non lascia una cornice grigia sul fondo */ c *= 1. - ao/8.*.42*(1.-coc*.7)*aoK; }
           {   // [amb3] inchiostro e profili: il volume si stacca dal fondo
             if (pK.z > .001) {   // [fluido3] l'inchiostro di amb3 solo se pesa qualcosa
             float la = dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, vec3(.3,.59,.11)), lb = dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, vec3(.3,.59,.11));
@@ -11313,6 +11372,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   const LFR = new THREE.Frustum(), LPM = new THREE.Matrix4(), LSPH = new THREE.Sphere();
   function updateLights(time, night, fx, fz) {   // [inverno28] studio luci
     frameN++;
+    // [leggero] di giorno i lampioni (12 faretti con ombra, 8 punti) si tolgono davvero: in Three.js una luce a intensità 0 costa
+    // come una accesa, su ogni pixel di ogni oggetto. Si cambia al tramonto e all'alba; gli shader per tutti e due gli stati sono pronti dall'avvio
+    const lampsOn = night > (dyn.lampsOn ? .012 : .025);
+    if (!dyn.lampsPre && renderer && scene && camera) { dyn.lampsPre = true; try { [true, false].forEach(v => { LPOOL.forEach(l => { l.visible = v; }); renderer.compile(scene, camera); }); } catch (e) { } dyn.lampsOn = undefined; }
+    if (lampsOn !== dyn.lampsOn) { dyn.lampsOn = lampsOn; LPOOL.forEach(l => { l.visible = lampsOn; if (l.shadow) l.shadow.needsUpdate = true; }); if (!lampsOn) { SPOOL.forEach(l => { l.intensity = 0; l.userData.cone.visible = false; }); dyn.lsp = []; dyn.lpp = []; } }
+    if (!lampsOn) return;
     if (frameN % 4 === 1 || !dyn.lsp) {
       camera.updateMatrixWorld(); LPM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); LFR.setFromProjectionMatrix(LPM);
       const on = [];
@@ -11677,8 +11742,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     {   // [amb2] la macchina da presa
       const A = AMB, dk = 1 - night; U.tBloom.value = APS.rts[3] ? APS.rts[3].texture : null; U.tBloom2.value = APS.rts[5] ? APS.rts[5].texture : null; U.tBlur.value = APS.rts[7] ? APS.rts[7].texture : null;
       A.thr = A.thrDay + (A.thrNight - A.thrDay) * night; U.aK.value.set(A.expo * (.84 + night * .5) /* [unione7] */, A.bloom * (.22 + night * .78), A.dof * (pveh ? .45 : 1) * (p.indoor ? 0 : 1) * (1 - A.pal * .55), A.grain); U.aK2.value.set(A.ca, A.sharp, A.outline, A.vig); U.aTime.value = time; U.pK.value.set(A.pal, A.sat, A.ink, A.rim); U.pC.value.set(A.cav, A.clar);   /* [amb3] */
-      PRATO9.k.value = A.prato === undefined ? 1 : A.prato;   /* [prato1] */
-      { U.lK.value.set(A.luc, A.spec * (indoorNow || p.indoor ? .5 : 1), A.coat, A.trans); U.lOl.value = A.ol;   /* [lucido1] il sole per la lacca */
+      PRATO9.k.value = A.prato === undefined ? 1 : A.prato;   /* [prato1] */ PRATO9.l.value = A.last === undefined ? 1 : A.last;   /* [finitura1] */
+      { U.lK.value.set(A.luc, A.spec * (indoorNow || p.indoor ? .5 : 1), A.coat, A.trans); U.lOl.value = A.ol; U.aoK.value = A.ao === undefined ? 1 : A.ao;   /* [lucido1] il sole per la lacca */
         U.lSun.value.subVectors(moon.position, moon.target.position).normalize(); const sk = (.55 * dk + .12 * night) * Math.min(1.4, moon.intensity);
         U.lSunC.value.set(moon.color.r * sk, moon.color.g * sk, moon.color.b * sk); }
       { const fp = project(p.x, 1, p.y); U.aFoc.value.set(Math.min(.9, Math.max(.1, fp.x)), Math.min(.9, Math.max(.1, 1 - fp.y))); }
@@ -11703,6 +11768,6 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { scale: s => { if (s !== undefined) { s = Math.max(.55, Math.min(1, s)); if (Math.abs(s - RSC1) > .01) { RSC1 = s; if (lastSize) resize(...lastSize); } } return RSC1; },   /* [fluido1] */
+  return { addLight: (x, y, z, c, i, d, f) => addLight(x, y, z, c, i, d, f), scale: s => { if (s !== undefined) { s = Math.max(.55, Math.min(1, s)); if (Math.abs(s - RSC1) > .01) { RSC1 = s; if (lastSize) resize(...lastSize); } } return RSC1; },   /* [fluido1] */
     get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();

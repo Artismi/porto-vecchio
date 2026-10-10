@@ -679,19 +679,36 @@
     if (!FPS.el) { FPS.el = document.createElement('div'); FPS.el.style.cssText = 'position:absolute;left:50%;top:44px;transform:translateX(-50%);z-index:50;font:12px/1.3 monospace;color:#e8f0d8;background:rgba(10,12,16,.72);padding:4px 10px;border-radius:3px;pointer-events:none;white-space:nowrap'; app.appendChild(FPS.el); }
     FPS.t += raw; FPS.n++; FPS.worst = Math.max(FPS.worst, raw);
     if (FPS.t >= .5) { const fps = FPS.n / FPS.t, sc = R.scale ? R.scale() : 1;
-      FPS.el.textContent = `${fps.toFixed(0)} fps · ${(1000 * FPS.t / FPS.n).toFixed(1)} ms (peggiore ${(1000 * FPS.worst).toFixed(0)}) · risoluzione ${Math.round(sc * 100)}% · ${st.npcs.length} persone`;
+      FPS.el.textContent = `${fps.toFixed(0)}${CAP.on ? '/30' : ''} fps · ${(1000 * FPS.t / FPS.n).toFixed(1)} ms (peggiore ${(1000 * FPS.worst).toFixed(0)}) · risoluzione ${Math.round(sc * 100)}% · ${st.npcs.length} persone`;
       FPS.t = 0; FPS.n = 0; FPS.worst = 0; } }
+  // [30fps] il gioco gira a 30 fotogrammi fissi: requestAnimationFrame arriva a 60, 120, 144 al secondo, si disegna solo quando
+  // tocca (un orologio a passo di 33,3 ms, non «uno sì e uno no»: va bene a ogni frequenza dello schermo). ?fps60 nell'indirizzo
+  // toglie il limite. La qualità si regola per TENERE i 30: se i fotogrammi arrivano in ritardo la risoluzione interna scende,
+  // se c'è margine (lavoro del fotogramma corto e nessun ritardo per 6 secondi) risale; un passo che ha fatto perdere i 30 non
+  // si ritenta per mezzo minuto.
+  const CAP = { on: !/[?&]fps60/.test(location.search), step: 1000 / 30, next: 0, work: 0, late: 0, n: 0, t: 0, bad: {} };
   function loop(now) {
+    if (CAP.on) {
+      if (!CAP.next || now - CAP.next > 100) CAP.next = now;   // il primo fotogramma, o dopo una pausa lunga (scheda nascosta)
+      if (now < CAP.next - 2) { requestAnimationFrame(loop); return; }   // non è ancora il momento (2 ms di tolleranza per la sincronia dello schermo)
+      CAP.next += CAP.step; if (CAP.next < now - CAP.step) CAP.next = now + CAP.step;   // in ritardo di più di un fotogramma: si riparte da adesso, senza recuperare a raffica
+    }
+    const t0 = performance.now();
     const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
-    if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > 1 / 32) R.lowQuality(); } }
+    if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > (CAP.on ? 1 / 24 : 1 / 32)) R.lowQuality(); } }   // [30fps] col limite il passo normale è 1/30: «lento» è sotto i 24
     fpsTick(Math.min(raw, 1));   // [fluido1] contatore F9
-    // [fluido1] risoluzione adattiva: sotto i 45 fotogrammi al secondo la risoluzione interna scende (fino al 55%), sopra i 57 risale
-    if (perfDone && R.scale && !ui.menu && !ui.dialog && !ui.intro && !ui.book) { FLU.t += Math.min(raw, .25); FLU.n++;
-      if (FLU.t > 2) { const avg = FLU.t / FLU.n, sc = R.scale();
-        if (avg > 1 / 45 && sc > .56) { R.scale(sc - .1); FLU.ok = 0; }
-        else if (avg < 1 / 57) { if (++FLU.ok >= 2 && sc < 1) { R.scale(sc + .05); FLU.ok = 0; } } else FLU.ok = 0;
-        FLU.t = 0; FLU.n = 0; } }
+    if (perfDone && R.scale && !ui.menu && !ui.dialog && !ui.intro && !ui.book) {
+      if (CAP.on) {   // [30fps] risoluzione adattiva per tenere i 30
+        CAP.t += Math.min(raw, .25); CAP.n++; if (raw > 1 / 27) CAP.late++;
+        const sc = R.scale(), key = Math.round(sc * 100);
+        if (CAP.t > 1.5 && CAP.late > CAP.n * .15 && sc > .56) { CAP.bad[key] = ui.time; R.scale(sc - .1); CAP.t = CAP.n = CAP.late = 0; CAP.work = 0; }
+        else if (CAP.t > 6) { const up = Math.min(1, sc + .05), ku = Math.round(up * 100); if (CAP.late < CAP.n * .03 && CAP.work / CAP.n < 14 && sc < 1 && !(CAP.bad[ku] && ui.time - CAP.bad[ku] < 30)) R.scale(up); CAP.t = CAP.n = CAP.late = 0; CAP.work = 0; }
+      } else { FLU.t += Math.min(raw, .25); FLU.n++;   // [fluido1] senza limite: sotto i 45 la risoluzione interna scende (fino al 55%), sopra i 57 risale
+        if (FLU.t > 2) { const avg = FLU.t / FLU.n, sc = R.scale();
+          if (avg > 1 / 45 && sc > .56) { R.scale(sc - .1); FLU.ok = 0; }
+          else if (avg < 1 / 57) { if (++FLU.ok >= 2 && sc < 1) { R.scale(sc + .05); FLU.ok = 0; } } else FLU.ok = 0;
+          FLU.t = 0; FLU.n = 0; } } }
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
     const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]
@@ -712,6 +729,7 @@
     sounds();
     drawBubbles(); crosshair();
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); }
+    CAP.work += performance.now() - t0;   // [30fps] il lavoro del fotogramma (logica + comandi di disegno)
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);

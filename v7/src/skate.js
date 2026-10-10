@@ -333,9 +333,10 @@ var Skate = (function () {
   function groundStep(st, k, c, dt, release, hold, gest) {
     const p = st.player;
     // sterzo: A/D a mano; con W la tavola va verso il puntatore
-    const rate = 2.9 / (1 + Math.abs(k.V) / 7);
-    if (c.turn) k.yaw += c.turn * rate * dt;
-    else if (c.push && c.aim !== undefined && !k.crouch) { const tr = k.V >= -.2 ? k.yaw : k.yaw + PI; k.yaw += clamp(angD(c.aim, tr) * 2.2, -rate, rate) * dt; }
+    // [giro] sterzo pronto anche in velocità; S + A/D: curva stretta di traverso, che frena; il puntatore guida anche per inerzia
+    const slide = c.brake && c.turn && Math.abs(k.V) > 1.5, rate = 4.2 / (1 + Math.abs(k.V) / 12) * (slide ? 1.8 : 1);
+    if (c.turn) { k.yaw += c.turn * rate * dt; if (slide) k.V -= Math.sign(k.V) * Math.min(Math.abs(k.V), 1.6 * dt); }
+    else if (c.aim !== undefined && !k.crouch && (c.push || Math.abs(k.V) > .8)) { const tr = k.V >= -.2 ? k.yaw : k.yaw + PI; k.yaw += clamp(angD(c.aim, tr) * 3, -rate, rate) * dt; }
     let [sF, sL] = slopes(p.x, p.y, k.yaw);
     if (Math.abs(sL) > .25 && Math.abs(k.V) > .5) k.yaw += clamp(-sL * .55, -.9, .9) * dt * Math.sign(k.V);   // sulla parete la tavola cade verso il basso
     // spinta a colpi
@@ -353,7 +354,12 @@ var Skate = (function () {
     const u = k.V / n1, nx = p.x + Math.cos(k.yaw) * u * dt, ny = p.y + Math.sin(k.yaw) * u * dt, Sn = surface(nx, ny), sol = solidAt(nx, ny, .18);
     const rise = STEP_UP + Math.abs(u * dt) * Math.max(0, sF, slopes(nx, ny, k.yaw)[0]) * 1.15;   // sulle rampe si sale col passo, contro i fianchi no
     const blocked = !free(nx, ny) || Sn - k.z > rise || (sol !== null && sol > k.z + STEP_UP * .6);
-    if (blocked) { if (Math.abs(k.V) > 3.6) return bail(st, 'Contro il muro!'); k.V = -k.V * .2; return; }
+    if (blocked) {
+      // [giro] di striscio contro un muro, un albero, uno spigolo: la tavola si mette a filo e scorre perdendo velocità; si cade solo prendendolo di fronte
+      const dx = nx - p.x, dy = ny - p.y, d2 = Math.hypot(dx, dy) || 1, go = (x, y) => free(x, y) && surface(x, y) - k.z <= rise && !((s => s !== null && s > k.z + STEP_UP * .6)(solidAt(x, y, .18)));
+      const ax = Math.abs(dx) / d2, ay = Math.abs(dy) / d2, cand = [[ax, dx, 0], [ay, 0, dy]].sort((a, b) => b[0] - a[0]).find(c => c[0] > .45 && go(p.x + c[1], p.y + c[2]));
+      if (cand) { const ny2 = Math.atan2(cand[2], cand[1]); k.yaw += angD(k.V >= 0 ? ny2 : ny2 + PI, k.yaw) * Math.min(1, dt * 10); k.V *= Math.min(.985, cand[0]); p.x += cand[1]; p.y += cand[2]; k.lastVS = 0; return; }
+      if (Math.abs(k.V) > 3.6) return bail(st, 'Contro il muro!'); k.V = -k.V * .2; return; }
     const vs = (Sn - k.z) / dt;
     if (k.z - Sn > STEP_UP) { const vt = Math.abs(k.lastSF || 0) > 1.6; takeoff(st, k, vt ? p.x : nx, vt ? p.y : ny, Math.cos(k.yaw) * u, Math.sin(k.yaw) * u, k.lastVS, vt); return; }   // giù da un gradino, o dalla cima di una rampa
     if (k.lastVS - vs > GRAV * dt * 1.6 && k.lastVS > .9) {   // il bordo di una rampa: si vola
@@ -590,7 +596,7 @@ var Skate = (function () {
     const snow = box(R.L - .2, .12, R.W - .3, new THREE.MeshLambertMaterial({ color: '#e7ecef' }), 0, R.H + .1, 0); snow.rotation.x = .05; g.add(snow);
     [-1, 0, 1].forEach(s => g.add(box(.18, .3, R.W, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), s * (R.L / 2 - .3), R.H - .18, 0)));
     g.add(box(R.L, .3, .18, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), 0, R.H - .18, -R.W / 2 + .3)); g.add(box(R.L, .3, .18, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), 0, R.H - .18, R.W / 2 - .3));
-    const lamp = new THREE.PointLight('#ffd59a', .8, 18, 2); lamp.position.set(0, R.H - .5, 0); g.add(lamp); g.userData.lamp = lamp;   // la lampada sotto la tettoia, accesa la sera
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffe2a8' })); bulb.position.set(0, R.H - .45, 0); g.add(bulb);   // [leggero] la lampada sotto la tettoia: la luce la fanno i lampioni del motore, la sera
     g.userData.mats = []; g.traverse(o => { if (o.isMesh && !g.userData.mats.includes(o.material)) g.userData.mats.push(o.material); }); g.userData.op = 1;
     return g;
   }
@@ -624,7 +630,7 @@ var Skate = (function () {
     // ogni posto è un gruppo suo: i pezzi fusi per materiale, e si disegna solo quando la camera è vicina
     PLACED.forEach(sp => { const raw = new THREE.Group(); sp.pieces.forEach(P => { const m = pieceMesh(P, PIECES.indexOf(P) + 3); m.position.set(P.x, R.groundH(P.x, P.y) - .02, P.y); m.rotation.y = -P.ang; raw.add(m); }); sp.__g = mergeByMat(raw); GFX.group.add(sp.__g); });
     PLACED.forEach((sp, i) => {
-      if (sp.roof) { const r = roofMesh(sp); r.position.set(sp.x, R.groundH(sp.x, sp.y), sp.y); r.rotation.y = -sp.ang; sp.__g.add(r); sp.__roof = r; }
+      if (sp.roof) { const r = roofMesh(sp); r.position.set(sp.x, R.groundH(sp.x, sp.y), sp.y); r.rotation.y = -sp.ang; sp.__g.add(r); sp.__roof = r; if (R.addLight) R.addLight(sp.x, R.groundH(sp.x, sp.y) + sp.roof.H - .5, sp.y, '#ffd59a', 1.6, 12); }
       const b = boardMesh(i); b.position.set(sp.board.x, R.groundH(sp.board.x, sp.board.y), sp.board.y); b.userData.inner.rotation.z = 1.25; b.userData.inner.position.y = .3; b.rotation.y = i; sp.__g.add(b); sp.__board = b;
       // il segnale: un cerchio giallo a terra, come i raccoglibili
       const ring = new THREE.Mesh(new THREE.RingGeometry(.45, .58, 20), new THREE.MeshBasicMaterial({ color: '#ffd23a', transparent: true, opacity: .55, depthWrite: false })); ring.rotation.x = -PI / 2; ring.position.set(sp.board.x, R.groundH(sp.board.x, sp.board.y) + .04, sp.board.y); sp.__g.add(ring); sp.__ring = ring;
