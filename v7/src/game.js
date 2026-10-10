@@ -514,6 +514,7 @@ var Game = (function () {
     let a = 0; st.npcs.forEach(n => { if (n.cop && !n.dead) { opinions(st, n); a = Math.max(a, n.alert); } });
     let lv = a < .45 ? 0 : a < .8 ? 1 : a < .93 ? 2 : 3;
     if (lv > 0 && (st.copKilled || st.player.kills >= 3)) lv = Math.min(4, Math.max(3, lv + 1));
+    if (HOOKS.wantedCap) lv = HOOKS.wantedCap(st, lv);   // [scontri] in piazza, con le bottiglie, si rischia la cella e non il piombo
     return lv;
   }
 
@@ -1339,8 +1340,12 @@ var Game = (function () {
     if (a === 'combatte') return combatMove(st, n, dt);
     if (a === 'fugge') {
       const src = n.panic > 0 && n.fleeFrom ? n.fleeFrom : p;
-      if (!n.path.length) { let best = null, bd = -1e9; for (const pl of Object.values(PLACES)) { const s = dist(pl.x, pl.y, src.x, src.y) - dist(pl.x, pl.y, n.x, n.y) * .5; if (s > bd) { bd = s; best = pl; } } goTo(n, best.x, best.y); }
-      stepAlong(n, 3.6, dt); return;
+      // [scontri] si scappa verso un luogo vicino (entro 200 m: il più lontano dell'isola stava spesso su un'altra isola, e la
+      // ricerca fallita esplorava tutta la mappa a ogni fotogramma); se il percorso non c'è si corre via e si riprova tra 2 s
+      if (!n.path.length && st.clock > (n.__fleeRe || 0)) { let best = null, bd = -1e9; for (const pl of Object.values(PLACES)) { const dn = dist(pl.x, pl.y, n.x, n.y); if (dn > 200) continue; const s = dist(pl.x, pl.y, src.x, src.y) - dn * .5; if (s > bd) { bd = s; best = pl; } } if (best) goTo(n, best.x, best.y); if (!n.path.length) n.__fleeRe = st.clock + 2; }
+      if (n.path.length) { stepAlong(n, 3.6, dt); return; }
+      { const a = Math.atan2(n.y - src.y, n.x - src.x); for (const o of [0, .6, -.6, 1.2, -1.2]) { const sx = n.x + Math.cos(a + o) * 3.6 * dt, sy = n.y + Math.sin(a + o) * 3.6 * dt; if (walkM(sx, sy)) { n.x = sx; n.y = sy; n.speedNow = 3.6; n.face = a + o; break; } } }
+      return;
     }
     if (a === 'denuncia') {
       const cops = st.npcs.filter(k => k.cop && !k.inside && !k.dead);

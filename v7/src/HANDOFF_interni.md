@@ -27,3 +27,32 @@ Gli interni sono rifatti da capo: attività per attività, casa per casa, piano 
 ## 4/10 notte
 - Clic per andare dentro gli edifici: percorso vero sul piano (`Interior.findPath`, `nearFree`; `main.js` goalPath/freeSpot), clic sul pavimento (screenToGround all'altezza del pavimento), cambiando piano il clic vecchio si annulla.
 - Tappeti della scala con la freccia e che pulsano: giallo ↑ sali, azzurro ↓ scendi. Zona della scala un po' più larga.
+
+## 9-10 ottobre: planimetrie al metro, arredi composti, roba sui mobili, il tono di Porto Vecchio
+Commit `2339dbb` e `184631b` (righe segnate `[planimetrie]` e `[design]` in `interiors.js`, nuovi oggetti in `interni_arte.js`).
+- **Planimetrie al metro** (`splitFloor`): si taglia a passi di 1 m, non più a caselle di 2 m. Bagni, ripostigli e ingressi
+  stretti come quelli veri (minimo 2 m nelle case, 3 m altrove); i tagli stanno lontani dalle porte già aperte e dalla scala;
+  le porte vicino a un angolo (il muro lungo resta per i mobili), qualche volta in mezzo.
+- **Il corridoio**: le case grandi hanno un disimpegno largo 2 m dall'ingresso verso il fondo, con le stanze ai lati e, se la
+  casa è profonda, una stanza larga quanto la casa in fondo (di solito il soggiorno). `hallDoors` apre una porta per ogni
+  stanza che confina col disimpegno o con l'ingresso; nessuna stanza resta chiusa.
+- **Case più grandi**: una casa piccola guadagna un paio di stanze, le botteghe una sala vera. L'ingresso piccolo di casa è un
+  ingresso vero (attaccapanni, scarpiera, specchio). Stanze in più dove servono: ingresso, stanza degli ospiti, lavanderia.
+- **Arredi composti** (`V`, `CENTERED`, `CAP`, `TALL`): il salotto col tappeto sotto, il divano, il tavolino, le poltrone che si
+  guardano, la lampada ad arco e la TV di fronte; il tavolo da pranzo con le sedie e i fiori; il letto coi comodini e le
+  abat-jour sul tappeto; lo studio; l'angolo lettura. I mobili alti cercano l'angolo, le composizioni il centro del muro;
+  davanti alle finestre niente mobili alti; al massimo due piante o un angolo lettura per stanza.
+- **Roba da prendere sui mobili** (`LOOTSMALL`, `SURF`, `PICK`): portafogli, banconote, orologi, medicine, profumi, rasoi,
+  cassette, vinili, fiammiferi, accendini, boombox, moka, radioline, carte da gioco, candele, lettere… raccolta in uno o due
+  mucchietti per piano sopra tavoli, banconi e credenze, all'altezza giusta del piano. Presa tutta, sparisce dalla stanza
+  (`oggetti.js`, `pickGone`).
+- **Il tono** (`184631b`): l'ambiente spento e freddo; il consumo pastello lucido; la pubblicità del regime zuccherosa;
+  controcultura e autoprodotto ricchi (patchwork, mobile dipinto, casse fatte a mano, serra idroponica, boombox).
+
+### Prove
+- `node test_oggetti.js 1 1`: piante raggiungibili, scale coerenti. Un controllo falliva: «i lavoratori all'aperto non
+  stanno al loro posto». Su `main` passa solo perché quell'istante (9:20 del secondo giorno) non c'è nessuno all'aperto; qui ce
+  ne sono 2-3 ancora in cammino verso i campi e la calata (a 130-180 m dal posto). Il controllo guarda un istante solo: con
+  gli interni nuovi cambia l'ordine dei numeri casuali. Ora il controllo conta solo chi è già sul posto (entro 40 m):
+  chi è ancora in cammino non conta.
+- La simulazione è circa il 10% più lenta di `main` (un'ora di gioco: 4,3 s contro 3,9 s).
