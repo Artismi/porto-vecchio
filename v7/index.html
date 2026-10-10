@@ -29060,50 +29060,46 @@ var WriterMano = (function () {
   // lettera enorme, una minuscola infilata nel vuoto), le aste si proiettano fuori, e ha i suoi segni: la corona, l'aureola,
   // le virgolette, la freccia, il cuore, la scintilla. Riquadro ~100 × 70, y in giù; base = la riga attorno a cui il polso
   // inclina (sl).
+  // [writer] Quattro scuole dai fogli: lo SWIPE (tutto avanti, la frustata lunga sotto e quella che taglia sopra), il WHAMX
+  // (le lettere strette al centro e le ali che si aprono a raggiera), il BASIS (aste alte e spigolose, le traverse lunghe che
+  // attraversano tutto, le tacche), il BUSTED (le lettere a ricciolo chiuse nel cuore, a spruzzo, che cola). Non si deve
+  // leggere per forza: deve colpire.
   const SIGNED = {
-    // la O è il cuore dell'amuleto: la K alta la tiene da sinistra e con la gamba la culla da sotto, la S la avvolge da destra
-    // e scende a chiudere sulla gamba della K; la e piccola nel vuoto, la corona sopra, il punto nella O, le virgolette
-    KEOS: { w: 5, sl: .16, base: 50, idea: 'la O nell\'amuleto, con la corona', strokes: [
-      [[15, 3], [13, 25], [12, 50]],
-      [[31, 17], [22, 25], [13, 32, 1], [20, 42], [28, 52], [40, 58], [56, 60], [71.5, 55.2, 2]],
-      [[22, 41], [30, 37.5], [29.5, 33], [25, 33.5], [23.5, 38.5], [28, 42.5], [36.8, 40.5, 2]],
-      arcP(53, 35, 16.5, 19, -1.75, 4.6, 22),
-      [[82, 14], [75, 7.5], [66, 8.5], [63.5, 14.5], [70, 21.5], [80, 29.5], [84, 40], [79, 50], [71, 55]],
-      [[40, 17, 2], [40.5, 8, 1], [45, 13, 1], [48, 5, 1], [51, 12.5, 1], [55.5, 7.5, 1], [55, 17, 2]], [[39, 17.2], [56.5, 16.8]],
-      [[53, 35]],
-      [[88, 3], [86.8, 8.5]], [[92, 3], [90.8, 8.5]],
+    KEOS: { w: 5.4, sl: .12, base: 42, idea: 'swipe: la frustata sotto e il taglio sopra', strokes: [
+      [[13, 4], [10.5, 22], [8, 42]],
+      [[27, 7], [17, 17], [10, 25, 1], [18, 33], [26, 42]],
+      [[27, 37], [35, 30], [33.5, 25], [27.5, 27.5], [25.5, 36], [30, 42], [38, 39]],
+      [[53, 8], [44, 12], [38.5, 27], [41, 39.5], [49, 39], [55.5, 24], [53.5, 9.5], [46, 10.5]],
+      [[74, 9], [66.5, 6.5], [59.5, 11.5], [64.5, 21], [68.5, 30], [62, 40], [51, 43]],
+      [[1, 49], [30, 46.5], [62, 43], [84, 36], [100, 27]],
+      [[36, 19.5], [62, 15.5], [84, 11], [99, 6]],
+      [[80, 25]], [[86, 23.5]],
     ] },
-    // la D è un uovo che contiene tutto; la A grande buca il tetto e si prende l'aureola; la K e la O piccole dentro, la gamba
-    // della K esce dal guscio
-    DAKO: { w: 4.1, sl: .14, base: 52, idea: 'la D a uovo, la A con l\'aureola', strokes: [
-      [[16, 7], [14, 36], [17, 64]],
-      [[11, 9], [40, 3], [70, 10], [88, 30], [85, 52], [63, 64], [32, 67], [17, 64]],
-      [[15.2, 50, 2], [24, 22], [33, -6, 1], [37, 24], [43, 52]],
-      [[19.5, 37.5, 2], [38, 35.5], [55.4, 34, 2]],
-      [[56, 22], [55, 37], [54.5, 52]],
-      [[68.6, 27, 2], [61, 32], [55.5, 37, 1], [62, 44], [72, 54], [84, 62], [96, 66]],
-      arcP(76.5, 32, 8, 10, -1.6, 4.9, 18),
-      arcP(33, -13, 10, 3.2, 0, 6.6, 18),
+    DAKO: { w: 5.2, sl: .1, base: 40, idea: 'whamx: le ali che si aprono', strokes: [
+      [[17, 9], [15, 24], [13.5, 38, 1], [22, 36.5], [29, 26], [27.5, 14], [18, 9], [9, 11]],
+      [[28, 40], [33, 24], [36.5, 7, 1], [40, 22], [43.5, 39]], [[29.5, 27], [47.5, 25]],
+      [[50, 8], [48.5, 23], [47.5, 39]], [[61, 9], [49, 24, 1], [55.5, 31], [63, 40]],
+      [[75, 11], [66.5, 15], [63.5, 29], [68, 38.5], [76, 35], [79, 21], [75, 11], [69, 13]],
+      [[12, 24, 2], [3, 32], [0, 44], [4, 54]], [[84, 18, 2], [94, 27], [99, 40], [96, 52]],
+      [[32, 40, 2], [23, 50]], [[44, 40, 2], [43, 53]], [[56, 40, 2], [64, 52]], [[71, 39, 2], [86, 50]],
     ] },
-    // la parola sale: la S enorme si arrotola a sinistra e la sua coda corre sotto a onde; N, E, K salgono a gradini, la
-    // gamba della K si proietta giù a destra e finisce in freccia; la scintilla in alto
-    SNEK: { w: 3.4, sl: .2, base: 50, idea: 'la S che si arrotola, la N che dà l\'asta alla E', strokes: [
-      [[25, 10], [15, 3.5], [5.5, 9], [8, 21], [20, 31], [26, 44], [20, 57], [9, 61], [3, 55, 1], [15, 65], [34, 68], [55, 64], [76, 59]],
-      [[31, 48], [32, 36], [33.5, 24, 1], [39.5, 38], [43.5, 48, 1], [46.5, 30], [50, 13]],
-      [[50, 13, 2], [57, 12], [63.5, 11.5]], [[47.8, 24, 2], [56, 23], [61.5, 22.5]], [[45.4, 35, 2], [58, 34.2], [69.4, 33.6, 2]],
-      [[71, 1], [70, 18], [69.4, 33.6, 2]], [[83, 7], [76, 14], [70, 20, 1], [78, 28], [87, 40], [95, 53]],
-      [[88.5, 53.5], [95, 53, 1], [94, 46]],
-      [[58, 2], [58, 10]], [[54.5, 6], [61.5, 6]],
+    SNEK: { w: 4.6, sl: .14, base: 42, idea: 'basis: aste alte, traverse che attraversano', strokes: [
+      [[17, 9], [9, 6], [4.5, 13], [13, 23], [17.5, 33], [10, 42], [1, 39]],
+      [[20, 43], [22.5, 26], [25, 9, 1], [31, 25], [34, 41, 1], [37, 22], [40, 1]],
+      [[57, 7], [49, 7.5], [44, 8.5, 1], [42, 25], [40.5, 41, 1], [50, 40], [58, 39]],
+      [[60, 1], [58, 22], [56.5, 45]], [[75, 10], [66, 18], [58, 26, 1], [68, 33], [78, 42], [86, 47]],
+      [[16, 25.5], [40, 24], [70, 21.5], [99, 18]],
+      [[88, 9], [86.5, 20]], [[93, 8], [91.5, 19]],
+      [[63, 49]], [[69, 50.5]],
     ] },
-    // la K alta come tutta la tag tiene il resto: la gamba entra nella O grande in basso, la A piccola in alto con la traversa
-    // che va a toccare la S, la S si avvolge a destra; sotto, il cuore; le virgolette in alto
-    KAOS: { w: 5.4, sl: .14, base: 55, idea: 'la K che tiene tutto, la A sulla O', strokes: [
-      [[12, 2], [10, 34], [12, 66]],
-      [[33, 6], [22, 18], [12, 30, 1], [23, 39], [33, 46], [38, 57], [50, 64], [63, 60], [67, 48], [61, 37], [50, 33], [41, 38], [41, 50], [49, 57]],
-      [[43, 35, 2], [46, 20], [49.5, 5, 1], [53, 20], [56.5, 33.5, 2]], [[42, 22], [56, 21], [73.5, 20.5, 2]],
-      [[86, 9], [77, 5], [69, 9], [71, 17], [81, 23], [87, 33], [81, 42], [67.4, 46, 2]],
-      [[84, 57], [80, 50], [73, 51.5], [73.5, 59], [84, 68, 1], [94, 59], [94.5, 51.5], [88, 50], [84, 57]],
-      [[92, 2], [90.5, 7.5]], [[96, 2], [94.5, 7.5]],
+    KAOS: { w: 3.8, sl: .08, base: 44, drips: 7, idea: 'busted: i riccioli chiusi nel cuore, che cola', strokes: [
+      [[50, 13], [42, 3], [26, 2], [12, 11], [10, 26], [24, 39], [50, 54, 1], [74, 39], [89, 25], [87, 10], [74, 2], [59, 3], [50, 13]],
+      [[23, 13], [21.5, 26], [20.5, 37]], [[33, 14], [26, 21], [22, 26, 1], [28, 31], [34, 36]],
+      [[45, 23], [39.5, 21], [35.5, 27], [39, 33.5], [44.5, 30], [46, 22], [47.5, 35]],
+      [[57, 21.5], [51.5, 24.5], [51.5, 33], [57, 34], [60.5, 27], [58.5, 21.5], [54, 20]],
+      [[73, 19], [67, 19], [65.5, 24.5], [71.5, 27.5], [73, 33], [64.5, 37]],
+      [[42, 46], [58, 46]],
+      [[94, 5], [92.5, 14]], [[98, 4], [96.5, 13]],
     ] },
   };
   // il gesto: la curva per i punti (Catmull-Rom centripeta: niente riccioli né pance), spezzata alle punte; [x, y, punta]
@@ -29144,16 +29140,21 @@ var WriterMano = (function () {
     return a;
   }
   // lo spessore lungo il gesto: l'appoggio, la velocità (le curve lente, i dritti veloci), la fuga finale, la punta del marker
+  // [writer] LA FISICA DEL TRATTO (dai fogli): il marker si appoggia e lascia la goccia piena; correndo dritto si consuma e
+  // si stringe; nelle curve la mano frena e il tratto si riempie; alla fine scappa via a punta tagliente. Una saldatura (w0, w1)
+  // entra piena nell'altro tratto.
   function profile(G, W, mark, nibA, w0, w1) {
     const n = G.length, s = [0]; for (let i = 1; i < n; i++) s.push(s[i - 1] + hyp(G[i][0] - G[i - 1][0], G[i][1] - G[i - 1][1])); const L = s[n - 1] || 1;
     const kap = G.map((q, i) => { const a = G[Math.max(0, i - 3)], b = G[Math.min(n - 1, i + 3)]; if (q[2]) return 1; const u = Math.atan2(q[1] - a[1], q[0] - a[0]), v = Math.atan2(b[1] - q[1], b[0] - q[0]); let d = Math.abs(v - u); if (d > PI) d = 2 * PI - d; return clamp(d / Math.max(.5, s[Math.min(n - 1, i + 3)] - s[Math.max(0, i - 3)]) * 4, 0, 1); });
     const ks = kap.map((_, i) => { let t = 0, c = 0; for (let j = Math.max(0, i - 4); j <= Math.min(n - 1, i + 4); j++) { t += kap[j]; c++; } return t / c; });
-    const entry = Math.min(.12, 3 / L), exit = Math.min(.3, (mark ? 9 : 6) / L);
+    let run = 0; const runs = G.map((q, i) => { if (i) run += s[i] - s[i - 1]; run *= 1 - ks[i] * .25; if (q[2]) run = 0; return run; });   // quanto corre dritto (le curve frenano, le punte ripartono)
+    const exit = Math.min(.45, W * (mark ? 3.2 : 2.4) / L);
     return G.map((q, i) => {
       const u = s[i] / L, a = G[Math.max(0, i - 1)], b = G[Math.min(n - 1, i + 1)], dir = Math.atan2(b[1] - a[1], b[0] - a[0]);
-      let w = W * (w0 ? 1 : .35 + .65 * sstep(0, entry, u)) * (w1 ? 1 : (mark ? .06 : .4) + (mark ? .94 : .6) * (1 - sstep(1 - exit, 1, u))) * (.86 + .3 * ks[i]);   // la saldatura (w0, w1): il tratto entra pieno nell'altro, non si assottiglia
-      if (mark) w *= .24 + .76 * Math.abs(Math.sin(dir - nibA));
-      return Math.max(mark ? 1 : 1.5, w);
+      const pool = w0 ? 1 : 1 + .2 * (1 - sstep(0, W * 2, s[i])), fast = 1 - .38 * sstep(0, W * 12, runs[i]), brake = 1 + .22 * ks[i], tail = w1 ? 1 : (mark ? .03 : .14) + (mark ? .97 : .86) * (1 - sstep(1 - exit, 1, u));
+      let w = W * pool * fast * brake * tail;
+      if (mark) w *= .5 + .5 * Math.abs(Math.sin(dir - nibA));
+      return Math.max(1, w);
     });
   }
   // disegna una firma; ritorna i punti del percorso (per la mano che la ripassa)
@@ -29163,16 +29164,16 @@ var WriterMano = (function () {
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; G0.forEach(g => g.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
     const pad = S.w * 1.2, sc = Math.min(Wp * .94 / (x1 - x0 + pad * 2), Hp * .86 / (y1 - y0 + pad * 2)), ox = Wp / 2 - (x0 + x1) / 2 * sc, oy = Hp * .45 - (y0 + y1) / 2 * sc;
     const G = G0.map(g => g.map(([a, b, c]) => [ox + a * sc, oy + b * sc, c])), W = S.w * sc * (mark ? .78 : 1), nibA = d && d.nibA != null ? d.nibA : -.75;
-    const weld = S.strokes.map(t => [t[0][2] === 2, t[t.length - 1][2] === 2]), Wds = G.map((g, i) => g.length < 2 ? [W * (mark ? 1.1 : 1.15)] : profile(g, mark ? W * 1.45 : W, mark, nibA, weld[i][0], weld[i][1]).map((w, k) => w * (1 + (mark ? .13 : .07) * (Math.sin(k * .21 + i * 2.3) * .6 + Math.sin(k * .83 + i) * .3) + (mark ? .1 : .05) * (r() - .5))));   // [writer] il bordo dell'inchiostro: mai liscio, la vernice prende e molla
-    const draw = (k, cap) => G.forEach((g, i) => { if (g.length < 2) { x.beginPath(); x.arc(g[0][0], g[0][1], Wds[i][0] * k / 2, 0, 7); x.fill(); return; } ribbon(x, g, Wds[i].map(w => w * k), cap); weld[i].forEach((on, e) => { if (!on) return; const j = e ? g.length - 1 : 0; x.beginPath(); x.arc(g[j][0], g[j][1], Math.max(Wds[i][j], W * .8) * k * .55, 0, 7); x.fill(); }); });   // la giunta della saldatura
+    const weld = S.strokes.map(t => [t[0][2] === 2, t[t.length - 1][2] === 2]), Wds = G.map((g, i) => g.length < 2 ? [W * (mark ? 1.1 : 1.15)] : profile(g, mark ? W * 1.45 : W, mark, nibA, weld[i][0], weld[i][1]).map((w, k) => w * (1 + (mark ? .13 : .07) * (Math.sin(k * .21 + i * 2.3) * .6 + Math.sin(k * .83 + i) * .3) + (mark ? .035 : .05) * (r() - .5))));   // [writer] il bordo dell'inchiostro: mai liscio, la vernice prende e molla
+    const draw = (k, cap) => G.forEach((g, i) => { if (g.length < 2) { x.beginPath(); x.arc(g[0][0], g[0][1], Wds[i][0] * k / 2, 0, 7); x.fill(); return; } ribbon(x, g, Wds[i].map(w => w * k), cap); if (!weld[i][0]) { x.beginPath(); x.arc(g[0][0], g[0][1], Wds[i][0] * k * .47, 0, 7); x.fill(); }   /* la goccia dove si appoggia */ weld[i].forEach((on, e) => { if (!on) return; const j = e ? g.length - 1 : 0; x.beginPath(); x.arc(g[j][0], g[j][1], Math.max(Wds[i][j], W * .8) * k * .55, 0, 7); x.fill(); }); });   // la giunta della saldatura
     x.save(); x.fillStyle = col; x.strokeStyle = col;
     if (!mark) { x.save(); x.filter = `blur(${(W * .35).toFixed(1)}px)`; x.globalAlpha = .16; draw(1.4, true); x.restore(); x.save(); x.filter = `blur(${Math.max(.5, W * .03).toFixed(1)}px)`; draw(1, true); x.restore(); }   // lo spruzzo: l'alone largo e leggero, poi il tratto col bordo appena morbido
     else draw(1, false);
     G.forEach(g => g.forEach(q => path.push(q)));
     // le colature: dove la mano si ferma in basso (i fondi delle curve, le punte in basso), poche e sottili
-    const bots = []; G.forEach((g, i) => g.forEach((q, k) => { if (k < 3 || k > g.length - 4) return; if (g[k - 3][1] < q[1] && g[k + 3][1] <= q[1] && q[1] > Hp * .45) bots.push([q, Wds[i][k]]); }));
-    const n = Math.min(bots.length, mark ? (r() < .5 ? 1 : 0) : 1 + Math.floor(r() * 3));
-    for (let k = 0; k < n; k++) { const [q, w0] = bots.splice(Math.floor(r() * bots.length), 1)[0], l = Hp * (.04 + r() * r() * .3), w = Math.max(1, w0 * (.22 + r() * .15)); x.beginPath(); x.moveTo(q[0] - w / 2, q[1]); x.lineTo(q[0] + w / 2, q[1]); x.lineTo(q[0] + w * .35, q[1] + l); x.arc(q[0], q[1] + l, w * .55, 0, PI); x.lineTo(q[0] - w * .35, q[1] + l); x.closePath(); x.fill(); }
+    const bots = []; G.forEach((g, i) => g.forEach((q, k) => { if (k < 3 || k > g.length - 4) return; if (g[k - 3][1] < q[1] && g[k + 3][1] <= q[1] && q[1] > Hp * (S.drips > 4 ? .3 : .45)) bots.push([q, Wds[i][k]]); else if (S.drips > 4 && k % 9 === 0 && q[1] > Hp * .35) bots.push([q, Wds[i][k] * .8]); }));
+    const n = Math.min(bots.length, S.drips != null ? S.drips : mark ? (r() < .5 ? 1 : 0) : 1 + Math.floor(r() * 3));
+    for (let k = 0; k < n; k++) { const [q, w0] = bots.splice(Math.floor(r() * bots.length), 1)[0], l = Hp * (.04 + r() * r() * (S.drips > 4 ? .45 : .3)), w = Math.max(1, w0 * (.22 + r() * .15)); x.beginPath(); x.moveTo(q[0] - w / 2, q[1]); x.lineTo(q[0] + w / 2, q[1]); x.lineTo(q[0] + w * .35, q[1] + l); x.arc(q[0], q[1] + l, w * .55, 0, PI); x.lineTo(q[0] - w * .35, q[1] + l); x.closePath(); x.fill(); }
     if (!mark) { x.globalAlpha = .25; for (let k = 0; k < path.length * .25; k++) { const q = path[Math.floor(r() * path.length)], a = r() * PI * 2, rr = W * (.8 + r() * 1.2); x.fillRect(q[0] + Math.cos(a) * rr, q[1] + Math.sin(a) * rr, 1.5, 1.5); } }   // la grana fuori
     x.restore();
     return { path, W };
