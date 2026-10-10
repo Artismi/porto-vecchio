@@ -77,3 +77,11 @@ Il buff: i muri vengono ripuliti dopo qualche giorno; il treno si lava dopo tre 
 ## Prove
 `node test_tetti.js` (scale, salita, bordo, salto fra due tetti, caduta) · `node test_writing.js` (linea, orario,
 spinta, crew, notte, fama, heaven spot, crossaggi, lavaggio, menu, pennarello) · `node test_writer_vita.js`.
+
+## Studio tag (le firme disegnate a mano)
+- `v7/studio_tag.html`: si sceglie il writer, si disegna la tag col mouse o la tavoletta (punti, tempi, pressione), le anteprime mostrano la resa del gioco a bomboletta e a pennarello. «Salva firma» la scrive nel browser e, col server di AVVIA.bat, in `v7/tag_firme.json` (endpoint `POST /api/tag_firme` in server.js, con `tag_firme.backup.json`).
+- Il gioco carica le firme da `tag_firme.json` e dal browser (`WriterMano.loadRecorded`); una firma registrata vince su tutto (`handTag`: registrata → disegnata (SIGNED) → generata col movimento sigma-lognormale).
+- La resa delle firme registrate è fedele: la pressione della tavoletta, la velocità appena, la chiusa corta e tonda.
+- Ogni tag salvata nello studio è un PRESET: i writer dell'isola prendono i nomi prima dai preset (writing.js recruit), poi dalla lista; «È la mia tag» sceglie il preset del giocatore (`_mia` in tag_firme.json, `WriterMano.MIA`, usato da playerAka).
+- LA TAVOLETTA (modalità B «tavoletta», writing.js `tavTick`/`tavRelease`/`tavPad`): si trascina sul muro o su un mezzo la finestra, il gioco fotografa la zona con una camera ortogonale (fino a 2048 px), si disegna sopra a tutto schermo (pressione, colore, spessore in cm, pennarello o bomboletta), «Applica» crea un lavoro del giocatore con `w.rec` (art() lo rende con WriterMano.drawRecorded in modalità frame: il disegno resta dove e com'è). Stile per area: mtag, tag, throw, pezzo. Vernice per lunghezza del tratto.
+- Il giocatore parte coi gadget: la BMX in tasca, lo skate (`st.skate.owned`), 4 bombolette e il pennarello.

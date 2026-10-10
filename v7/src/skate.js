@@ -213,7 +213,7 @@ var Skate = (function () {
   // =====================================================================================================================
   // STATO E COMANDI
   // =====================================================================================================================
-  const S = st => st.skate || (st.skate = { owned: false, total: 0, best: 0, warn: 0, warnT: -99, emitT: -99, hint: false, line: null, lastLine: null });
+  const S = st => st.skate || (st.skate = { owned: true,   /* [writer] la tavola ce l'hai già dall'inizio, come la BMX in tasca e i due pennelli */ total: 0, best: 0, warn: 0, warnT: -99, emitT: -99, hint: false, line: null, lastLine: null });
   const on = st => !!(st.player.sk && st.player.sk.on);
   const KEYS = { w: 0, s: 0, a: 0, d: 0, sp: 0 }, MS = []; let mouseTrack = false;
   function ctl(inp) {

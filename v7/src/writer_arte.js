@@ -825,10 +825,11 @@ var WriterArte = (function () {
     for (const k of [-1, 0, 1]) pass(x, { strokes, arrows: k ? [] : arrowsL, w0: w2 }, w2, col, (dx || 0) + ux * k, (dy || 0) + uy * k, J, Cp);
   }
   function art(w) {
-    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = /^(tag|mtag|gotico)$/.test(w.style) && w.surf !== 'treno' ? 3 : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
+    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = (/^(tag|mtag|gotico)$/.test(w.style) || w.rec) && w.surf !== 'treno' ? (w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : 3) : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
     const C = choose(w), q = C.q, stages = [], paths = [], radii = [];
-    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: w.style === 'mtag' })); };
+    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: w.style === 'mtag' || (w.rec && w.tool === 'pennarello'), amp: w.rec ? .25 : undefined })); };
     const toy = q < .35;
+    if (w.rec) { const c = cv(Wp, Hp), x = c.getContext('2d'), res = WM.drawRecorded(x, w.rec, Object.assign({}, WM.dna(w.hand || w.seed || 1)), Wp, Hp, r, w.col || '#141418', w.tool === 'pennarello' ? 'mtag' : 'tag'); snap(c); paths.push(res.path.filter((q, i) => i % 3 === 0)); radii.push(Math.max(res.W * 2.2, Hp * .08)); return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK }; }   // [writer] il disegno fatto alla tavoletta
     if (w.style === 'mostro') { const c = cv(Wp, Hp); monsterArt(w, P, r, Wp, Hp, snap, paths, radii, c.getContext('2d')); return { stages, paths, radii, Wp, Hp, C }; }
     if (w.style === 'tag' || w.style === 'mtag' || w.style === 'gotico') {   // la tag: la mano del writer (writer_mano.js), col suo segno accanto
       const c = cv(Wp, Hp), x = c.getContext('2d'), signW = w.sign && w.style !== 'gotico' ? Hp * .7 : 0, d = Object.assign({}, WM.dna(w.hand || w.seed || 1), w.style === 'gotico' ? { goth: true, vert: Hp > Wp * 1.4 } : {});
