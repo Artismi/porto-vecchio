@@ -52,20 +52,11 @@ var Writing = (function () {
     { id: 'BDS', nome: 'Banda della Scogliera', col: 3 },
     { id: 'TNT', nome: 'Treni Notte Tunnel', col: 5 },
   ];
+  const AKAS2 = ['ZEKE', 'MIRK', 'SOLE', 'BOLT', 'KOMA', 'TRAX', 'ELKE', 'GRIM', 'NEON', 'DUNE', 'PIXO', 'RAZO', 'VAPO', 'ICER', 'LUPA', 'KASH'];
   const AKAS = ['DAKO', 'KEOS', 'SPIK', 'RAKE', 'NOTE', 'BLES', 'SNEK', 'KAOS', 'TOXI', 'PHAZ', 'DEMO', 'SKEMA', 'ZORA', 'MOSE', 'VIBE', 'KRAN', 'FUSE', 'OBIE', 'RUSK', 'NEMO'];
-  // le tavolozze (anni '80): riempimento sfumato (3), contorno, 3D, keyline, fondo, luce
-  const PAL = [
-    { f: ['#ffe14a', '#ff9a1e', '#e2361e'], o: '#1a1420', d: '#3a1a62', k: '#f6f1e4', bg: '#3aa6e0', hi: '#ffffff' },
-    { f: ['#8ee0ff', '#2a86e0', '#283c9e'], o: '#0e1018', d: '#c8302a', k: '#fbf8ee', bg: '#f2c430', hi: '#ffffff' },
-    { f: ['#ff8acb', '#d8409a', '#6e1a70'], o: '#14121c', d: '#1a6e5c', k: '#eefbf3', bg: '#9ad44a', hi: '#ffffff' },
-    { f: ['#d2f560', '#5ab43a', '#1a6c3c'], o: '#0e1410', d: '#5a2a8e', k: '#faf2e0', bg: '#ee5e2a', hi: '#ffffff' },
-    { f: ['#ffffff', '#c8d0d8', '#7e8ea0'], o: '#0e0e10', d: '#202026', k: '#e23a2a', bg: '#1c1c2c', hi: '#ffffff' },   // cromato
-    { f: ['#ff5a3a', '#c8201a', '#5e0e0e'], o: '#f6f1e4', d: '#101012', k: '#101012', bg: '#f4c43a', hi: '#ffe0c0' },
-    { f: ['#4a4a56', '#24242c', '#0a0a0e'], o: '#f6f1e4', d: '#c8302a', k: '#101010', bg: '#e8e0d0', hi: '#b8c0d0' },   // nero
-    { f: ['#ffd23a', '#ff8a1a', '#c84a10'], o: '#1a1010', d: '#2a5a9a', k: '#f8f0e0', bg: '#5a2a8e', hi: '#ffffff' },
-  ];
-  // i colori della rotella di main.js (rosso, nero, bianco, blu, giallo, verde, rosa, arancio) → tavolozza
-  const COL2PAL = [5, 6, 4, 1, 0, 3, 2, 7];
+  // le tavolozze e il disegno stanno in writer_arte.js
+  const WA = typeof WriterArte !== 'undefined' ? WriterArte : require('./writer_arte.js');
+  const PAL = WA.PAL, COL2PAL = WA.COL2PAL;
 
   // ---------------- STATO ----------------
   function S(st) {
@@ -132,15 +123,34 @@ var Writing = (function () {
     const young = st.npcs.filter(n => !n.dead && n.pop && n.pop.age >= 15 && n.pop.age <= 31 && !/soldat|agente|poliz|carabin|guardia|tutela|commissar|prete|suora|sindac/i.test(n.role || ''));
     const hs = n => { let h = 7; for (const ch of String(n.id)) h = (h * 31 + ch.charCodeAt(0)) % 1009; return h; }; young.sort((a, b) => hs(a) - hs(b));
     const akas = AKAS.slice();
-    young.slice(0, 9).forEach((n, k) => {
-      const crew = CREWS[k % 3].id, aka = akas.splice((hs(n) * 13 + k * 5) % akas.length, 1)[0];
-      n.pop.writer = { aka, crew, skill: .3 + ((k * 3) % 7) / 10 };
-      W.writers.push(n.id);
-    });
+    // prima chi ha l'arte, la musica, il ballo (la controcultura del Disgelo); poi gli altri ragazzi
+    const cult = n => ((n.pop.ints || n.pop.interests || []).some(i => /arte|musica|ballo/.test(i.k || i)) ? 0 : 1);
+    young.sort((a, b) => cult(a) - cult(b) || hs(a) - hs(b));
+    W.pool = young.map(n => n.id);
+    young.slice(0, 9).forEach((n, k) => recruit(st, n, CREWS[k % 3].id, k));
+  }
+  // un ragazzo diventa writer: la tag, la crew, la mano (famiglia di lettere), le specialità
+  function recruit(st, n, crew, k) {
+    const W = S(st), used = new Set(W.writers.map(id => { const m = G.byId(st, id); return m && m.pop.writer && m.pop.writer.aka; }));
+    const free = AKAS.concat(AKAS2).filter(a => !used.has(a)); if (!free.length) return null;
+    let h = 7; for (const ch of String(n.id)) h = (h * 31 + ch.charCodeAt(0)) % 1009;
+    const aka = free[(h * 13 + (k || 0) * 5) % free.length], r = WA.mulberry(h * 7919 + 3);
+    n.pop.writer = { aka, crew, skill: .3 + ((h * 3) % 7) / 10, fam: WA.FAMS[Math.floor(r() * WA.FAMS.length)], roof: r() < .45, train: r() < .5 || crew === 'TNT', mop: r() < .5, since: st.t };
+    W.writers.push(n.id); return n.pop.writer;
+  }
+  // la scena del Disgelo: cresce coi lavori in giro e con la tua fama; più scena, più writer, più notti di vernice
+  function sceneLevel(st) { const W = S(st), live = W.works.filter(w => !w.erased && w.done).length; return clamp(live / 260 + W.fame / 900 + (W.grow || 0), 0, 1); }
+  function grow(st) {
+    const W = S(st), sc = sceneLevel(st), want = Math.round(9 + sc * 15);
+    if (W.writers.length >= want || !W.pool) return;
+    const n = W.pool.map(id => G.byId(st, id)).find(m => m && !m.dead && m.pop && !m.pop.writer); if (!n) return;
+    const crew = CREWS[W.writers.length % 3].id, wr = recruit(st, n, crew, W.writers.length);
+    if (wr && hyp(n.x - st.player.x, n.y - st.player.y) < 300) W.newsCrew = `In giro c'è una tag nuova: ${wr.aka} dei ${crew}. La scena cresce.`;
   }
   const writerOf = (st, n) => n && n.pop && n.pop.writer;
   // una parete per un lavoro di notte: un muro di un posto, lontano dal giocatore
   function nightSpot(st) {
+    if (typeof WriterVita !== 'undefined' && rnd() < .7) { const s = WriterVita.freeSite(st, ['strada', 'hall', 'heaven', 'strada'], null); if (s) return { x: s.x, y: s.y, face: s.face, h: s.h, place: (G.nearestPlace(s.x, s.y) || {}).name || '' }; }
     const I = PO() && PO()._; if (!I || !I.spotsOf) return null;
     const P = G.PLACES, keys = Object.keys(P), p = st.player;
     for (let k = 0; k < 12; k++) {
@@ -151,9 +161,17 @@ var Writing = (function () {
     }
     return null;
   }
+  // un lavoro di un writer NPC: la sua mano, la tavolozza della crew, i segni accanto alle tag, gli slogan sotto i pezzi
+  function npcWork(st, n, wr, style, sp, extra) {
+    const cr = CREWS.find(c => c.id === wr.crew) || CREWS[0], seed = Math.floor(rnd() * 1e9);
+    const w = { by: n.id, aka: wr.aka, crew: wr.crew, style, fam: style === 'throw' ? (rnd() < .35 ? 'chrome' : 'bubble') : wr.fam, pal: (cr.col + Math.floor(rnd() * 3) + (rnd() < .35 ? 8 : 0)) % PAL.length, seed, surf: 'muro', spot: sp, place: sp && sp.place, prog: 0, done: false };
+    if (style === 'tag' || style === 'mtag') { if (rnd() < .3) w.sign = pick(WA.SIGNS); }
+    else if (style === 'burner' && rnd() < .3) w.words = pick(WA.WORDS);
+    return Object.assign(w, extra || {});
+  }
   function addWork(st, w) {
     const W = S(st); w.id = W.nextId++; w.t0 = w.t0 || st.t; W.works.push(w);
-    if (W.works.length > 220) { const i = W.works.findIndex(o => o.by !== 'player' && o.done); if (i >= 0) W.works.splice(i, 1); }
+    if (W.works.length > 900) { const i = W.works.findIndex(o => o.by !== 'player' && o.done); if (i >= 0) W.works.splice(i, 1); }
     return w;
   }
   // la notte dei writer: tag, throw-up, pezzi sui muri della città; a volte il treno in deposito; i crossaggi per i beef
@@ -161,10 +179,11 @@ var Writing = (function () {
     const W = S(st), d = dayIdx(st.t);
     if (W.night === d) return; W.night = d; let made = 0;
     W.writers.forEach(id => {
-      const n = G.byId(st, id); if (!n || n.dead || n.jailedUntil > st.t || rnd() > .7) return; const wr = writerOf(st, n); if (!wr) return;
+      const n = G.byId(st, id); if (!n || n.dead || n.jailedUntil > st.t || rnd() > (typeof WriterVita !== 'undefined' ? .35 : .7)) return; const wr = writerOf(st, n); if (!wr) return;
+      if (n.pop.emer && n.pop.emer.kind === 'writer') return;   // è già fuori a dipingere (writer_vita.js)
       const r = rnd() + wr.skill * .12, style = r < .5 ? 'tag' : r < .8 ? 'throw' : r < .97 ? 'pezzo' : 'burner';
       const sp = nightSpot(st); if (!sp) return;
-      addWork(st, { by: id, aka: wr.aka, crew: wr.crew, style, pal: (CREWS.find(c => c.id === wr.crew).col + Math.floor(rnd() * 3)) % PAL.length, seed: Math.floor(rnd() * 1e9), surf: 'muro', spot: sp, place: sp.place, prog: 1, done: true });
+      addWork(st, npcWork(st, n, wr, style, sp, { prog: 1, done: true }));
       made++;
     });
     // il treno in deposito: una crew fa un whole car (mai sulle fiancate che hai dipinto tu)
@@ -173,7 +192,7 @@ var Writing = (function () {
       const free = []; TR.CARS.forEach((c, i) => [0, 1].forEach(sd => { const k = i + ':' + sd; if (!(W.train.sides[k] && W.train.sides[k].length)) free.push([i, sd]); }));
       if (mem.length && free.length) {
         const [car, side] = pick(free), a = pick(mem), wr = writerOf(st, a), L = TR.CARS[car].L;
-        const w = addWork(st, { by: a.id, aka: wr.aka, crew: crew.id, style: TR.CARS[car].k === 'loco' ? 'burner' : 'wholecar', pal: (crew.col + Math.floor(rnd() * 2)) % PAL.length, seed: Math.floor(rnd() * 1e9), surf: 'treno', car, side, u0: .3, vb: .25, W: L - .6, H: SIDE_H - .35, prog: 1, done: true });
+        const w = addWork(st, npcWork(st, a, wr, TR.CARS[car].k === 'loco' ? 'burner' : 'wholecar', null, { surf: 'treno', car, side, u0: .3, vb: .25, W: L - .6, H: SIDE_H - .35, prog: 1, done: true }));
         (W.train.sides[car + ':' + side] = W.train.sides[car + ':' + side] || []).push(w.id); W.train.news = `Stanotte i ${crew.id} hanno fatto il treno: ${STYLES[w.style].nome} di ${wr.aka}.`;
       }
     }
@@ -189,11 +208,12 @@ var Writing = (function () {
       W.beef[cid] = Math.max(0, W.beef[cid] - .5);
     });
     if (made) W.newsWalls = `Stanotte i writer hanno bombato: ${made} lavori nuovi in giro.`;
+    grow(st);
   }
   // la mattina: le notizie della notte; il treno che esce col tuo pezzo; il lavaggio delle fiancate vecchie; il buff dei muri
   function morning(st) {
     const W = S(st), d = dayIdx(st.t); if (W.morning === d) return; W.morning = d; W.heat = (W.heat || 0) * .5; if (W.heat < 5) W.heatWarned = false;
-    [W.news, W.train.news, W.newsWalls].filter(Boolean).forEach(m => G.feed(st, m)); W.news = W.train.news = W.newsWalls = null;
+    [W.news, W.train.news, W.newsWalls, W.newsCrew].filter(Boolean).forEach(m => G.feed(st, m)); W.news = W.train.news = W.newsWalls = W.newsCrew = null;
     // il treno: tre giorni di linea, poi si lava
     Object.keys(W.train.sides).forEach(k => {
       const ids = W.train.sides[k] || []; const ws = ids.map(id => W.works.find(w => w.id === id)).filter(Boolean);
@@ -318,171 +338,9 @@ var Writing = (function () {
     if (t.length < 2) return 'Troppo corta.'; W.aka = t; return `D'ora in poi firmi ${t}.`;
   }
 
-  // =====================================================================================================================
-  // IL DISEGNO DEI LAVORI (canvas 2D): lettere a tratti dal font di graffiti.js, fatte spesse coi passaggi di pennello
-  // =====================================================================================================================
-  const FONT = () => (typeof Graffiti !== 'undefined' && Graffiti.F) || {};
-  function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  // il disegno dei lavori (le tappe da svelare in ordine): writer_arte.js
   const cv = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; };
-  const DEACC = s => String(s).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9!?.\- ]/g, '');
-  // le lettere: ogni tratto in pixel, con la mano del writer (inclinazione, rimbalzo, lettere che si accavallano, punte allungate)
-  function letters(text, o, r) {
-    const F = FONT(), s = DEACC(text), out = [], h = o.h, adv = h * (o.adv || .78);
-    let x = 0;
-    [...s].forEach((ch, i) => {
-      const g = F[ch]; if (!g) { x += adv * .5; return; }
-      const bounce = (o.bounce || 0) * h * (i % 2 ? 1 : -1) * (.6 + r() * .6), rot = (o.rot || 0) * (r() - .5), sc = 1 + (o.scale || 0) * (r() - .5);
-      const cxL = x + .3 * h, cyL = h / 2, cr = Math.cos(rot), sr = Math.sin(rot);
-      g.forEach(tr => {
-        let pts = tr.map(([u, v]) => { let px = (u - .3) * h * sc, py = -(v - .5) * h * sc; px += py * -(o.skew || 0); const qx = px * cr - py * sr, qy = px * sr + py * cr; return [cxL + qx + (r() - .5) * (o.wob || 0) * h, cyL + qy + bounce + (r() - .5) * (o.wob || 0) * h]; });
-        if (o.ext && pts.length > 1 && r() < o.ext) {   // la punta che esce (wildstyle)
-          const a = pts[pts.length - 1], b = pts[pts.length - 2], dx = a[0] - b[0], dy = a[1] - b[1], l = hyp(dx, dy) || 1; pts = pts.concat([[a[0] + dx / l * h * .22, a[1] + dy / l * h * .22]]);
-        }
-        out.push({ pts, i });
-      });
-      x += adv * sc;
-    });
-    // centra nel riquadro
-    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; out.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
-    return { strokes: out, box: [x0, y0, x1, y1] };
-  }
-  function fit(L, W, H, pad) {   // scala e sposta le lettere dentro W × H (margine pad)
-    const [x0, y0, x1, y1] = L.box, s = Math.min((W - 2 * pad) / Math.max(1, x1 - x0), (H - 2 * pad) / Math.max(1, y1 - y0)), ox = (W - (x1 - x0) * s) / 2 - x0 * s, oy = (H - (y1 - y0) * s) / 2 - y0 * s;
-    L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a * s + ox, b * s + oy]); }); L.box = [x0 * s + ox, y0 * s + oy, x1 * s + ox, y1 * s + oy]; L.s = s; return L;
-  }
-  function path(x, pts) { x.beginPath(); pts.forEach(([a, b], k) => k ? x.lineTo(a, b) : x.moveTo(a, b)); }
-  // un passaggio: tutte le lettere spesse w, di quel colore, spostate di (dx, dy)
-  function pass(x, L, w, col, dx, dy, join, cap) {
-    x.save(); x.translate(dx || 0, dy || 0); x.lineJoin = join || 'round'; x.lineCap = cap || 'round'; x.lineWidth = w; x.strokeStyle = col;
-    L.strokes.forEach(t => { if (t.pts.length === 1) { x.beginPath(); x.arc(t.pts[0][0], t.pts[0][1], w / 2, 0, 7); x.fillStyle = col; x.fill(); return; } path(x, t.pts); x.stroke(); });
-    (L.arrows || []).forEach(a => { x.beginPath(); a.forEach(([p, q], k) => k ? x.lineTo(p, q) : x.moveTo(p, q)); x.closePath(); x.fillStyle = col; x.fill(); if (w > L.w0) { x.lineWidth = w - L.w0; x.stroke(); x.lineWidth = w; } });
-    x.restore();
-  }
-  // le frecce: dalle punte di qualche tratto, triangoli che continuano la linea
-  function arrows(L, r, n, w) {
-    L.arrows = []; L.w0 = w; const ends = [];
-    L.strokes.forEach(t => { if (t.pts.length < 2) return; const a = t.pts[t.pts.length - 1], b = t.pts[t.pts.length - 2]; ends.push([a, b]); });
-    for (let k = 0; k < n && ends.length; k++) {
-      const [a, b] = ends.splice(Math.floor(r() * ends.length), 1)[0], dx = a[0] - b[0], dy = a[1] - b[1], l = hyp(dx, dy) || 1, ux = dx / l, uy = dy / l, s = w * 1.25;
-      const tip = [a[0] + ux * s * 1.6, a[1] + uy * s * 1.6], l1 = [a[0] - uy * s, a[1] + ux * s], l2 = [a[0] + uy * s, a[1] - ux * s];
-      L.arrows.push([l1, tip, l2]);
-    }
-  }
-  function sparkle(x, cx, cy, s, col) { x.save(); x.fillStyle = col; x.beginPath(); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, rr = k % 2 ? s * .22 : s; x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } x.closePath(); x.fill(); x.restore(); }
-  // lo sfondo: una nuvola di bolle col suo contorno, qualche goccia, stelline
-  function cloud(x, W, H, r, col, edge, k) {
-    const blobs = []; const n = 7 + Math.floor(r() * 5) + (k || 0);
-    for (let i = 0; i < n; i++) blobs.push([W * (.1 + .8 * r()), H * (.25 + .5 * r()), H * (.22 + .2 * r())]);
-    x.fillStyle = edge; blobs.forEach(([a, b, rr]) => { x.beginPath(); x.arc(a, b, rr + Math.max(2, H * .025), 0, 7); x.fill(); });
-    x.fillStyle = col; blobs.forEach(([a, b, rr]) => { x.beginPath(); x.arc(a, b, rr, 0, 7); x.fill(); });
-    x.fillStyle = 'rgba(255,255,255,.22)'; blobs.forEach(([a, b, rr]) => { x.beginPath(); x.arc(a - rr * .3, b - rr * .35, rr * .35, 0, 7); x.fill(); });
-  }
-  // il personaggio: la testa del b-boy col cappellino all'indietro, gli occhiali, il ghigno
-  function character(x, cx, cy, s, P) {
-    x.save(); x.lineJoin = 'round'; x.lineWidth = Math.max(2, s * .06); x.strokeStyle = P.o;
-    x.fillStyle = '#e8b48a'; x.beginPath(); x.ellipse(cx, cy, s * .42, s * .5, 0, 0, 7); x.fill(); x.stroke();          // faccia
-    x.fillStyle = P.f[2]; x.beginPath(); x.ellipse(cx, cy - s * .3, s * .46, s * .3, 0, Math.PI, 0); x.fill(); x.stroke();  // cappellino
-    x.beginPath(); x.moveTo(cx + s * .3, cy - s * .3); x.lineTo(cx + s * .78, cy - s * .2); x.lineTo(cx + s * .32, cy - s * .12); x.closePath(); x.fill(); x.stroke();   // visiera all'indietro (di lato)
-    x.fillStyle = '#101014'; x.fillRect(cx - s * .36, cy - s * .08, s * .72, s * .2); x.strokeRect(cx - s * .36, cy - s * .08, s * .72, s * .2);   // occhiali
-    x.fillStyle = 'rgba(255,255,255,.7)'; x.fillRect(cx - s * .3, cy - s * .05, s * .12, s * .05);
-    x.fillStyle = '#ffffff'; x.beginPath(); x.moveTo(cx - s * .22, cy + s * .2); x.quadraticCurveTo(cx + s * .05, cy + s * .42, cx + s * .26, cy + s * .16); x.closePath(); x.fill(); x.stroke();   // ghigno
-    x.fillStyle = P.f[0]; x.beginPath(); x.ellipse(cx, cy + s * .62, s * .5, s * .16, 0, 0, 7); x.fill(); x.stroke();    // colletto
-    x.restore();
-  }
-  function drips(x, L, r, col, w, n, maxL) {
-    x.save(); x.strokeStyle = col; x.fillStyle = col; x.lineCap = 'round';
-    const pts = []; L.strokes.forEach(t => t.pts.forEach(q => pts.push(q))); pts.sort((a, b) => b[1] - a[1]);
-    for (let k = 0; k < n && pts.length; k++) { const q = pts[Math.floor(r() * Math.min(pts.length, 12 + k * 3))], l = maxL * (.3 + r() * .7); x.lineWidth = w * (.35 + r() * .3); x.beginPath(); x.moveTo(q[0], q[1]); x.lineTo(q[0] + (r() - .5) * 1.5, q[1] + l); x.stroke(); x.beginPath(); x.arc(q[0], q[1] + l, x.lineWidth * .7, 0, 7); x.fill(); }
-    x.restore();
-  }
-  function smallTag(x, text, cx, cy, h, col, r) {   // la firma piccola (crew, anno, dediche)
-    const L = letters(text, { h, adv: .7, skew: .35, wob: .06, bounce: .05 }, r); const [x0, y0, x1, y1] = L.box;
-    L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a - (x0 + x1) / 2 + cx, b - (y0 + y1) / 2 + cy]); }); L.box = [0, 0, 0, 0];
-    pass(x, L, Math.max(1.2, h * .1), col, 0, 0);
-  }
-  // IL LAVORO: le tappe come immagini intere (ognuna contiene le precedenti), da svelare in ordine
-  // tag: una tappa; throw-up: riempimento, contorno; pezzo/burner/whole car: riempimento, fondo, contorno e 3D, luci e dettagli
-  const PPM = 56;
-  function art(w) {
-    const sty = STYLES[w.style], P = PAL[w.pal % PAL.length], r = mulberry(w.seed || 1), Wp = Math.round(w.W * PPM), Hp = Math.round(w.H * PPM), text = w.aka || 'NINO';
-    const stages = [];
-    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(k); };
-    if (w.style === 'tag' || w.style === 'mtag') {
-      const c = cv(Wp, Hp), x = c.getContext('2d');
-      const L = fit(letters(text, { h: 100, adv: .66, skew: .42, wob: .07, bounce: .1, rot: .25, ext: .3 }, r), Wp, Hp, Hp * .14);
-      const lw = w.style === 'mtag' ? Math.max(2, Hp * .06) : Math.max(2.5, Hp * .085), col = w.col || (w.style === 'mtag' ? '#121216' : P.f[1]);
-      if (w.style === 'tag') { x.shadowColor = col; x.shadowBlur = lw * .9; }
-      pass(x, L, lw, col, 0, 0); x.shadowBlur = 0;
-      // il ricciolo sotto, la corona o la stellina
-      const [x0, , x1, y1] = L.box; x.save(); x.strokeStyle = col; x.lineWidth = lw * .8; x.lineCap = 'round'; x.beginPath(); x.moveTo(x0, y1 + lw); x.bezierCurveTo(x0 + (x1 - x0) * .3, y1 + lw * 3, x1 - (x1 - x0) * .2, y1 - lw, x1 + lw * 2, y1 + lw * .5); x.stroke(); x.restore();
-      if (r() < .4) { x.save(); x.strokeStyle = col; x.lineWidth = lw * .7; x.beginPath(); const cx = (x0 + x1) / 2, cy = L.box[1] - lw * 2.2, s = Hp * .09; x.moveTo(cx - s, cy + s * .6); x.lineTo(cx - s * .6, cy - s * .5); x.lineTo(cx - s * .1, cy + s * .2); x.lineTo(cx + s * .3, cy - s * .7); x.lineTo(cx + s * .6, cy + s * .2); x.lineTo(cx + s, cy - s * .5); x.lineTo(cx + s * .8, cy + s * .6); x.closePath(); x.stroke(); x.restore(); }
-      if (w.style === 'mtag') drips(x, L, r, col, lw, 4 + Math.floor(r() * 5), Hp * .32);   // il mop cola
-      snap(c); return { stages, Wp, Hp };
-    }
-    const c = cv(Wp, Hp), x = c.getContext('2d');
-    const train = w.style === 'wholecar', wild = w.style === 'burner' || train, throwUp = w.style === 'throw';
-    const charW = wild ? Hp * .95 : 0;   // il personaggio a sinistra
-    const LW = Wp - charW, opts = throwUp ? { h: 100, adv: .62, bounce: .06, rot: .12, wob: .02 } : { h: 100, adv: .76, skew: wild ? .18 : .1, bounce: wild ? .08 : .04, rot: wild ? .22 : .08, wob: wild ? .05 : .02, scale: wild ? .25 : .1, ext: wild ? .45 : .12 };
-    const L = fit(letters(text, opts, r), LW, Hp, Hp * (train ? .2 : throwUp ? .2 : .2));
-    L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a + charW, b]); }); L.box = [L.box[0] + charW, L.box[1], L.box[2] + charW, L.box[3]];
-    const lw = (throwUp ? .3 : .2) * 100 * L.s, ol = Math.max(2.5, lw * (throwUp ? .26 : .2)), kl = Math.max(2, lw * .16);
-    const d3 = throwUp ? 0 : Math.max(3, lw * (wild ? .55 : .42)), dx = d3 * .7, dy = d3 * .7, steps = Math.max(1, Math.round(d3 / 1.5));
-    if (wild) arrows(L, r, 2 + Math.floor(r() * 3), lw); else { L.arrows = []; L.w0 = lw; }
-    // la sfumatura del riempimento: dall'alto in basso (o in diagonale)
-    const [bx0, by0, bx1, by1] = L.box, grad = x.createLinearGradient(bx0, by0 - lw / 2, wild ? bx1 * .3 : bx0, by1 + lw / 2);
-    if (throwUp) { grad.addColorStop(0, P.f[0]); grad.addColorStop(1, P.f[1]); } else { grad.addColorStop(0, P.f[0]); grad.addColorStop(.55, P.f[1]); grad.addColorStop(1, P.f[2]); }
-    const FILL = cv(Wp, Hp), fx = FILL.getContext('2d');
-    pass(fx, L, lw, grad, 0, 0, throwUp ? 'round' : 'miter', throwUp ? 'round' : 'square');
-    if (!throwUp) {   // le bande che tagliano il riempimento (split), i pallini
-      fx.save(); fx.globalCompositeOperation = 'source-atop'; fx.strokeStyle = P.f[2]; fx.globalAlpha = .55; fx.lineWidth = Math.max(2, lw * .12);
-      for (let yy = by0 + (by1 - by0) * .58; yy < by1 + lw; yy += lw * .9) { fx.beginPath(); for (let xx = bx0 - lw; xx < bx1 + lw; xx += lw * .5) fx.lineTo(xx, yy + ((xx / (lw * .5)) % 2 < 1 ? -lw * .12 : lw * .12)); fx.stroke(); }
-      fx.globalAlpha = .9; fx.fillStyle = P.f[0]; for (let k = 0; k < 18; k++) { fx.beginPath(); fx.arc(bx0 + r() * (bx1 - bx0), by0 + r() * (by1 - by0) * .5, lw * (.04 + r() * .06), 0, 7); fx.fill(); }
-      fx.restore();
-    } else {   // il riempimento fatto di fretta: le passate si vedono
-      fx.save(); fx.globalCompositeOperation = 'source-atop'; fx.strokeStyle = 'rgba(255,255,255,.18)'; fx.lineWidth = lw * .18; for (let xx = bx0 - Hp; xx < bx1 + Hp; xx += lw * .45) { fx.beginPath(); fx.moveTo(xx, by1 + lw); fx.lineTo(xx + Hp * .8, by0 - lw); fx.stroke(); } fx.restore();
-    }
-    // 1. il riempimento (prima tappa: un writer riempie per primo)
-    x.drawImage(FILL, 0, 0); snap(c);
-    // 2. lo sfondo (dietro alle lettere)
-    const BG = cv(Wp, Hp), bg = BG.getContext('2d');
-    if (train) {   // la fiancata intera: cielo, città, sole, nuvole
-      const g = bg.createLinearGradient(0, 0, 0, Hp); g.addColorStop(0, P.bg); g.addColorStop(1, P.d); bg.fillStyle = g; bg.fillRect(0, 0, Wp, Hp);
-      bg.fillStyle = 'rgba(0,0,0,.35)'; for (let xx = 0; xx < Wp;) { const bw = Hp * (.12 + r() * .2), bh = Hp * (.15 + r() * .35); bg.fillRect(xx, Hp - bh, bw, bh); xx += bw + Hp * .03; }   // i palazzi della costa
-      bg.fillStyle = P.f[0]; bg.globalAlpha = .9; bg.beginPath(); bg.arc(Wp * (.55 + r() * .35), Hp * .3, Hp * .22, 0, 7); bg.fill(); bg.globalAlpha = 1;
-      for (let k = 0; k < 30; k++) sparkle(bg, r() * Wp, r() * Hp * .6, Hp * (.02 + r() * .03), 'rgba(255,255,255,.85)');
-      cloud(bg, Wp, Hp, r, P.k, P.o, 6);
-    } else if (!throwUp) cloud(bg, Wp, Hp, r, P.bg, P.o, wild ? 4 : 0);
-    if (!throwUp) { const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(c); }
-    // 3. keyline, 3D, contorni: dietro il riempimento
-    const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); ox.drawImage(BG, 0, 0);
-    const J = throwUp ? 'round' : 'miter', C = throwUp ? 'round' : 'square';
-    if (!throwUp) { for (let s = 0; s <= steps; s++) pass(ox, L, lw + 2 * ol + 2 * kl, P.k, dx * s / steps, dy * s / steps, J, C); }   // la keyline attorno a tutto
-    if (d3) { for (let s = 0; s <= steps; s++) pass(ox, L, lw + 2 * ol + 2, P.o, dx * s / steps, dy * s / steps, J, C); for (let s = 1; s <= steps; s++) { const sh = s / steps; pass(ox, L, lw + 2 * ol - 2, shade(P.d, -.25 * sh), dx * s / steps, dy * s / steps, J, C); } }
-    pass(ox, L, lw + 2 * ol, P.o, 0, 0, J, C);
-    ox.drawImage(FILL, 0, 0);
-    if (throwUp) drips(ox, L, r, P.o, lw * .5, 5, Hp * .14);
-    x.clearRect(0, 0, Wp, Hp); x.drawImage(OUT, 0, 0); snap(c);
-    // 4. luci e dettagli: il riflesso sui bordi, le stelline, il personaggio, la firma della crew, l'anno
-    const HI = cv(Wp, Hp), hx = HI.getContext('2d');
-    pass(hx, L, Math.max(1.5, lw * .16), P.hi, -lw * .26, -lw * .26, J, C);
-    hx.globalCompositeOperation = 'destination-in'; hx.drawImage(FILL, 0, 0); hx.globalCompositeOperation = 'source-over';
-    x.drawImage(HI, 0, 0);
-    for (let k = 0; k < (wild ? 6 : 3); k++) { const t = pick(L.strokes), q = t.pts[0]; sparkle(x, q[0], q[1] - lw * .3, lw * (.35 + r() * .3), P.hi); }
-    if (wild) character(x, charW * .5, Hp * .5, Hp * .62, P);
-    const crew = w.crew || 'PV', yr = "'86";
-    smallTag(x, crew, bx1 - Hp * .2, Math.min(Hp - Hp * .07, by1 + lw * .9), Hp * .1, P.o, r);
-    if (!throwUp) smallTag(x, yr, bx0 + Hp * .15, Math.max(Hp * .07, by0 - lw * .8), Hp * .08, P.o, r);
-    snap(c);
-    return { stages, Wp, Hp };
-  }
-  function shade(hex, k) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const f = v => clamp(Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k), 0, 255); return '#' + [f(r), f(g), f(b)].map(v => v.toString(16).padStart(2, '0')).join(''); }
-  // il crossaggio: una X enorme e la tag di chi crossa
-  function crossOut(ctx, x, y, Wp, Hp, c, r) {
-    ctx.save(); ctx.strokeStyle = '#101012'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(4, Hp * .07); ctx.shadowColor = '#101012'; ctx.shadowBlur = 3;
-    ctx.beginPath(); ctx.moveTo(x + Wp * .08, y + Hp * .1); ctx.lineTo(x + Wp * .92, y + Hp * .9); ctx.moveTo(x + Wp * .9, y + Hp * .08); ctx.lineTo(x + Wp * .1, y + Hp * .92); ctx.stroke(); ctx.restore();
-    const L = fit(letters(c.aka + ' ' + c.crew, { h: 100, adv: .66, skew: .4, wob: .07, bounce: .1, rot: .2 }, r), Wp * .8, Hp * .45, 4);
-    ctx.save(); ctx.translate(x + Wp * .1, y + Hp * .3); pass(ctx, L, Math.max(3, Hp * .06), '#d8201a', 0, 0); ctx.restore();
-  }
+  const mulberry = WA.mulberry, art = w => WA.art(w), crossOut = WA.crossOut, PPM = WA.PPM;
 
   // =====================================================================================================================
   // LA GRAFICA: veli sui muri, il treno, la galleria
@@ -534,6 +392,11 @@ var Writing = (function () {
       const done = clamp((g.drawn - a) / wt[s], 0, 1), now = clamp((want - a) / wt[s], 0, 1); if (now <= done) continue;
       const img = A.stages[Math.min(s, A.stages.length - 1)], x0 = Math.floor(done * A.Wp), x1 = Math.ceil(now * A.Wp); if (x1 <= x0) continue;
       T.ctx.drawImage(img, x0, 0, x1 - x0, A.Hp, T.x0 + x0 * T.k, T.y0, (x1 - x0) * T.k, A.Hp * T.k);
+      if (now < 1 && w.prog < 1) {   // il bordo: strisce di altezza a caso un po' più avanti, mezze trasparenti (la vernice arriva prima dove passa la mano)
+        const band = Math.max(4, A.Wp * .025), ch = Math.max(6, A.Hp / 9); T.ctx.save(); T.ctx.globalAlpha = .45;
+        for (let yy = 0; yy < A.Hp; yy += ch) { const ext = Math.min(A.Wp - x1, Math.floor(band * Math.random())); if (ext > 0) T.ctx.drawImage(img, x1, yy, ext, ch, T.x0 + x1 * T.k, T.y0 + yy * T.k, ext * T.k, ch * T.k); }
+        T.ctx.restore();
+      }
     }
     g.drawn = want; T.tex.needsUpdate = true;
     if (w.crossed && !g.crossDrawn && w.prog >= 1) { g.crossDrawn = true; crossOut(T.ctx, T.x0, T.y0, A.Wp * T.k, A.Hp * T.k, w.crossed, mulberry(w.seed + 7)); T.tex.needsUpdate = true; }
@@ -551,8 +414,8 @@ var Writing = (function () {
     const THREE = T3(), R = R_(), sp = w.spot; if (!sp) return false;
     const gh = R.groundH(sp.x, sp.y), list = cands(sp.x, sp.y); if (!list.length) return false;
     const d = new THREE.Vector3(Math.cos(sp.face), 0, Math.sin(sp.face)), sty = STYLES[w.style];
-    const hit = rayWall(new THREE.Vector3(sp.x, gh + 1.4, sp.y), d, 3, list); if (!hit || Math.abs(hit.n.y) > .4) return false;
-    const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), H = sty.H, c = hit.p.clone(); c.y = gh + .2 + H / 2 + (w.style === 'tag' ? .5 + rnd() * .5 : 0);
+    const y0 = sp.h != null ? sp.h : gh + 1.4, hit = rayWall(new THREE.Vector3(sp.x, y0, sp.y), d, sp.h != null ? 6 : 3, list); if (!hit || Math.abs(hit.n.y) > .4) return false;
+    const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), H = sty.H, c = hit.p.clone(); c.y = sp.h != null ? sp.h : gh + .2 + H / 2 + (w.style === 'tag' || w.style === 'mtag' ? .5 + rnd() * .5 : 0);
     const fitR = wallRect(c, n, sty.W, H, list); if (!fitR) return false;
     w.W = fitR.W; w.H = fitR.H; w.gfxRect = { c, n, r: fitR.r, W: fitR.W, H: fitR.H }; w.pos = { x: c.x, y: c.y, z: c.z };
     // niente due lavori uno sull'altro di notte: se si accavalla, salta
@@ -684,7 +547,7 @@ var Writing = (function () {
       const sty = STYLES[style];
       if (!sty.marker && !(OG() && (OG().inv(st).bomboletta || 0) > 0)) return { msg: 'Niente bombolette.' };
       if (!W.aka && typeof prompt === 'function' && tool !== 'pennarello' && style !== 'tag') { const m = renameTag(st); if (m) G.feed(st, m); }
-      const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, pal: COL2PAL[colIdx % COL2PAL.length], col: style === 'tag' || style === 'mtag' ? (tool === 'pennarello' ? '#121216' : col) : null, seed: Math.floor(rnd() * 1e9), prog: 0, done: false, surf, place: G.nearestPlace ? 'a ' + G.nearestPlace(p.x, p.y).name : '' };
+      const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, fam: W.fam || undefined, pal: COL2PAL[colIdx % COL2PAL.length], col: style === 'tag' || style === 'mtag' ? (tool === 'pennarello' ? '#121216' : col) : null, seed: Math.floor(rnd() * 1e9), prog: 0, done: false, surf, place: G.nearestPlace ? 'a ' + G.nearestPlace(p.x, p.y).name : '' };
       if (car) {
         const L = TR.CARS[car.i].L, tr = trainAt(st.t); if (tr && tr.v) return { msg: 'Il treno si muove!' };
         const u = h.uv ? h.uv.x * L : L / 2;
@@ -776,9 +639,14 @@ var Writing = (function () {
             const g = { art: art(w), drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; n++;
           }
         }
-        // disegno: i lavori finiti in un colpo, quelli in corso fin dove sono arrivati; i cancellati via
+        // disegno: i lavori finiti in un colpo, quelli in corso fin dove sono arrivati; i cancellati via; i lontani si liberano
+        const byId = new Map(W.works.map(o => [o.id, o]));
         for (const id in GFX.works) {
-          const g = GFX.works[id], w = W.works.find(o => o.id === +id);
+          const g = GFX.works[id], w = byId.get(+id);
+          if (w && !w.erased && w.surf !== 'treno' && w.pos && hyp(w.pos.x - cx, w.pos.z - cy) > 140 && w !== W.cur) {
+            if (g.tgt && g.tgt.mesh) { if (g.tgt.mesh.parent) g.tgt.mesh.parent.remove(g.tgt.mesh); g.tgt.mesh.geometry.dispose(); g.tgt.mesh.material.dispose(); if (g.tgt.tex) g.tgt.tex.dispose(); }
+            delete GFX.works[id]; continue;
+          }
           if (!w || w.erased) {
             if (g.tgt && g.tgt.mesh && g.tgt.mesh.parent) g.tgt.mesh.parent.remove(g.tgt.mesh);
             if (w && w.surf === 'treno' && w.washed && !g.washed) { g.washed = true; washSide(w.car, w.side); W.works.filter(o => o.surf === 'treno' && o.car === w.car && o.side === w.side && !o.erased).forEach(o => { delete GFX.works[o.id]; }); }
@@ -801,6 +669,6 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, _: { addWork, overlapCheck, nightSpot, letters, livery, washSide, trainTarget } };
+  return { S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, _: { addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;

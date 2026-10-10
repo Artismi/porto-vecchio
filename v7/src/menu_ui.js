@@ -702,6 +702,7 @@ var MenuUI = (function () {
       x.fillStyle = 'rgba(13,16,21,.45)'; x.fillRect(r[0], r[1] + 2, r[2], r[3] - 2); x.fillStyle = 'rgba(233,220,188,.9)'; x.fillText(P0.name, px, py - 7); });
     if (typeof Cantiere !== 'undefined') Cantiere.covi(st).forEach(C0 => { x.strokeStyle = '#B08D57'; x.lineWidth = 2; x.beginPath(); x.arc(C0.x * k, C0.y * k, C0.r * k, 0, Math.PI * 2); x.stroke(); });
     (st.ris && st.ris.bases || []).filter(b => b.alive).forEach(b => { x.fillStyle = '#35e6ff'; x.fillRect((b.cx || b.x) * k - 3, (b.cy || b.y) * k - 3, 6, 6); });
+    if (window.WriterVita) WriterVita.drawMap(x, k, st);   // [writer] la città che si colora
     const jt = G0.jobTarget && G0.jobTarget(st); if (jt) { x.fillStyle = '#FF5FA2'; x.beginPath(); x.arc(jt.x * k, jt.y * k, 5, 0, Math.PI * 2); x.fill(); }
     const p = st.player, a = p.face || 0; x.save(); x.translate(p.x * k, p.y * k); x.rotate(a); x.fillStyle = '#f2ead8'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.beginPath(); x.moveTo(9, 0); x.lineTo(-6, 6); x.lineTo(-3, 0); x.lineTo(-6, -6); x.closePath(); x.stroke(); x.fill(); x.restore();
   }

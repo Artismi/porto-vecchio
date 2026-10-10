@@ -28797,6 +28797,761 @@ var Tetti = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = Tetti;
 </script>
+<script>/* Porto Vecchio — la mano dei writer (v7, «Writer»): l'handstyle, la tag vera. Solo canvas 2D.
+   - L'ALFABETO: ogni lettera in due varianti (la maiuscola dritta e la sua forma «di mano»: minuscola, arricciata, con
+     l'asta lunga), tratti di punti in una casella alta 1 (0 la linea di base, sotto zero le discendenti, sopra 1 le aste).
+   - LA MANO (dna): l'inclinazione, la larghezza, la punta (marker a scalpello o spray), l'angolo della punta, quanto mischia
+     maiuscole e minuscole, la prima lettera grande, il rimbalzo, l'arco della parola, lo svolazzo finale, le decorazioni
+     (corona, aureola, sottolineatura col puntino, trattini ai lati, stelline, virgolette), le colature. Ogni writer ha la sua
+     e la sua tag gli viene sempre uguale; due writer non firmano mai allo stesso modo.
+   - IL TRATTO: la punta larga si trascina lungo il percorso (quadrilateri fra un punto e il successivo): i tratti di traverso
+     alla punta sono grossi, quelli lungo la punta sottili, come col marker vero; le estremità si assottigliano (la pressione).
+     Lo spray ha l'alone e la grana, il marker ha la goccia d'inchiostro dove si appoggia e cola.
+   Si usa da writer_arte.js: per le tag (handTag) e come scheletro delle lettere dei pezzi (fontFor). */
+var WriterMano = (function () {
+  'use strict';
+  const hyp = Math.hypot, PI = Math.PI, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const pickR = (r, a) => a[Math.floor(r() * a.length)];
+
+  // ---------------- L'ALFABETO ----------------
+  // [variante dritta, variante di mano]; un tratto di un solo punto è un puntino
+  const A = {
+    A: [[[[0, 0], [.3, 1], [.6, 0]], [[.1, .42], [.52, .46]]], [[[.5, .55], [.3, .65], [.08, .45], [.12, .1], [.35, 0], [.5, .25]], [[.5, .66], [.5, .08], [.64, 0]]]],
+    B: [[[[0, 0], [0, 1]], [[0, 1], [.35, 1], [.5, .86], [.45, .62], [0, .55]], [[0, .55], [.48, .5], [.6, .26], [.45, 0], [0, 0]]], [[[.06, 1.18], [0, 0]], [[0, .32], [.25, .6], [.5, .45], [.5, .15], [.25, 0], [0, .1]]]],
+    C: [[[[.58, .86], [.36, 1], [.1, .86], [0, .5], [.1, .12], [.36, 0], [.6, .15]]], [[[.46, .56], [.26, .63], [.05, .42], [.1, .08], [.32, 0], [.52, .14]]]],
+    D: [[[[0, 0], [0, 1]], [[0, 1], [.3, .96], [.55, .72], [.58, .3], [.35, .03], [0, 0]]], [[[.5, 1.18], [.5, 0], [.64, .05]], [[.5, .45], [.28, .62], [.05, .42], [.1, .08], [.32, 0], [.5, .2]]]],
+    E: [[[[.56, 1], [0, 1], [0, 0], [.6, 0]], [[0, .52], [.42, .52]]], [[[.52, .9], [.3, 1], [.08, .86], [.15, .6], [.38, .52]], [[.38, .52], [.05, .42], [0, .15], [.25, 0], [.58, .12]]]],
+    F: [[[[.6, 1], [0, 1], [0, -.05]], [[0, .52], [.42, .52]]], [[[.62, 1.05], [.36, 1.12], [.2, .9], [.15, -.12], [0, -.24]], [[0, .5], [.46, .55]]]],
+    G: [[[[.58, .86], [.36, 1], [.08, .86], [0, .5], [.1, .12], [.36, 0], [.58, .15], [.6, .45], [.32, .45]]], [[[.5, .5], [.28, .63], [.06, .42], [.12, .15], [.35, .12], [.5, .35]], [[.5, .62], [.5, -.2], [.3, -.38], [.04, -.25]]]],
+    H: [[[[0, 0], [0, 1]], [[.6, 0], [.6, 1]], [[0, .52], [.6, .52]]], [[[0, 1.18], [0, 0]], [[0, .35], [.25, .6], [.5, .5], [.55, .2], [.62, 0]]]],
+    I: [[[[.3, 0], [.3, 1]], [[.05, 1], [.55, 1]], [[.05, 0], [.55, 0]]], [[[.2, .66], [.22, 0], [.34, .04]], [[.21, .94]]]],
+    J: [[[[.6, 1], [.6, .2], [.45, 0], [.15, 0], [0, .2]]], [[[.42, .66], [.44, -.2], [.26, -.4], [0, -.3]], [[.43, .94]]]],
+    K: [[[[0, 0], [0, 1]], [[.6, 1], [0, .45], [.62, 0]]], [[[0, 1.18], [0, 0]], [[.5, .66], [.05, .3], [.58, 0]]]],
+    L: [[[[0, 1], [0, 0], [.6, 0]]], [[[.26, 1.18], [.05, .2], [.15, 0], [.62, .06]]]],
+    M: [[[[0, 0], [0, 1], [.3, .45], [.6, 1], [.6, 0]]], [[[0, 0], [0, .62]], [[0, .45], [.15, .62], [.3, .45], [.3, 0]], [[.3, .45], [.45, .62], [.6, .45], [.62, 0]]]],
+    N: [[[[0, 0], [0, 1], [.6, 0], [.6, 1]]], [[[0, 0], [0, .63]], [[0, .4], [.25, .63], [.5, .5], [.56, 0]]]],
+    O: [[[[.3, 1], [.05, .86], [0, .45], [.1, .1], [.3, 0], [.55, .12], [.62, .5], [.52, .88], [.3, 1]]], [[[.3, .63], [.08, .5], [.05, .2], [.25, 0], [.5, .12], [.55, .42], [.3, .63]]]],
+    P: [[[[0, -.05], [0, 1]], [[0, 1], [.4, 1], [.6, .8], [.55, .55], [.35, .45], [0, .45]]], [[[0, .63], [0, -.36]], [[0, .45], [.25, .63], [.5, .45], [.45, .12], [.2, .05], [0, .15]]]],
+    Q: [[[[.3, 1], [.05, .86], [0, .45], [.1, .1], [.3, 0], [.55, .12], [.62, .5], [.52, .88], [.3, 1]], [[.38, .22], [.7, -.1]]], [[[.5, .5], [.28, .63], [.06, .42], [.12, .15], [.35, .12], [.5, .35]], [[.5, .62], [.5, -.36], [.66, -.26]]]],
+    R: [[[[0, 0], [0, 1]], [[0, 1], [.4, 1], [.6, .8], [.55, .58], [.3, .48], [0, .48]], [[.25, .48], [.62, 0]]], [[[0, 0], [0, .63]], [[0, .4], [.2, .6], [.46, .63]]]],
+    S: [[[[.58, .86], [.4, 1], [.12, .98], [0, .8], [.1, .6], [.5, .42], [.6, .18], [.42, 0], [.12, 0], [0, .15]]], [[[.5, .56], [.25, .63], [.08, .5], [.25, .32], [.45, .2], [.4, .02], [.08, 0]]]],
+    T: [[[[0, 1], [.6, 1]], [[.3, 1], [.3, 0]]], [[[.25, 1.08], [.22, .1], [.35, 0], [.52, .08]], [[0, .62], [.56, .66]]]],
+    U: [[[[0, 1], [0, .25], [.15, 0], [.45, 0], [.6, .25], [.6, 1]]], [[[0, .63], [.02, .15], [.2, 0], [.45, .1], [.5, .63]], [[.5, .63], [.52, 0], [.64, .05]]]],
+    V: [[[[0, 1], [.3, 0], [.6, 1]]], [[[0, .63], [.25, 0], [.55, .66], [.68, .76]]]],
+    W: [[[[0, 1], [.15, 0], [.3, .55], [.45, 0], [.6, 1]]], [[[0, .63], [.14, 0], [.3, .4], [.46, 0], [.62, .66]]]],
+    X: [[[[0, 0], [.6, 1]], [[0, 1], [.6, 0]]], [[[0, .63], [.56, 0]], [[.56, .63], [0, -.06]]]],
+    Y: [[[[0, 1], [.3, .5], [.6, 1]], [[.3, .5], [.3, 0]]], [[[0, .63], [.1, .2], [.3, .15], [.5, .63]], [[.5, .63], [.48, -.25], [.3, -.42], [.04, -.3]]]],
+    Z: [[[[0, 1], [.6, 1], [0, 0], [.6, 0]]], [[[0, .63], [.56, .63], [0, 0], [.58, 0]], [[.12, .32], [.46, .32]]]],
+  };
+  const FB = () => (typeof Graffiti !== 'undefined' && Graffiti.F) || {};
+  const DEACC = s => String(s).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9!?.\- ']/g, '');
+
+  // ---------------- LA MANO ----------------
+  function dna(seed) {
+    const r = mulberry((seed || 1) ^ 0x7f4a7c15);
+    return {
+      seed, slant: -.1 + r() * .6, wide: .75 + r() * .55, nibA: -.25 - r() * .9, nibW: (r() < .5 ? .13 : .18) + r() * .1, contrast: .45 + r() * .5,
+      mix: r() < .3 ? 0 : r() * .8, bigFirst: r() < .55 ? 1.25 + r() * .35 : 1, bounce: r() * .14, arc: (r() - .5) * .3, adv: .5 + r() * .3,
+      flick: r() < .7, swash: r() < .4, loop: r() < .3, tall: r() < .35 ? 1.2 + r() * .3 : 1,
+      crown: r() < .22, halo: r() < .2, under: r() < .45, dashes: r() < .3, stars: r() < .25, quotes: r() < .15, drip: r() < .55,
+      spray: r() < .5, grain: .3 + r() * .7, wob: .005 + r() * .02,
+    };
+  }
+  // la lettera di questa mano: la variante la decide la mano (sempre uguale per la stessa lettera nella stessa posizione)
+  function glyph(ch, d, i) {
+    const g = A[ch]; if (!g) return FB()[ch] || null;
+    const k = mulberry((d.seed || 1) * 31 + ch.charCodeAt(0) * 7 + (i === 0 ? 3 : 0))();
+    return g[i === 0 && d.bigFirst > 1 ? 0 : (k < d.mix ? 1 : 0)];
+  }
+  // lo scheletro per i pezzi (writer_arte.js letters): un alfabeto come Graffiti.F, con le varianti di questa mano
+  function fontFor(d) {
+    const out = Object.assign({}, FB());
+    Object.keys(A).forEach(ch => { const k = mulberry((d.seed || 1) * 31 + ch.charCodeAt(0) * 7)(); out[ch] = A[ch][k < (d.mix || 0) * .6 ? 1 : 0]; });
+    return out;
+  }
+
+  // ---------------- IL TRATTO ----------------
+  // Catmull-Rom: il tratto ammorbidito, n punti fra un punto e l'altro
+  function smooth(pts, n) {
+    if (pts.length < 3) { if (pts.length < 2) return pts.slice(); const out = []; for (let j = 0; j <= n; j++) out.push([pts[0][0] + (pts[1][0] - pts[0][0]) * j / n, pts[0][1] + (pts[1][1] - pts[0][1]) * j / n]); return out; }
+    const out = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+      for (let j = 0; j < n; j++) { const t = j / n, t2 = t * t, t3 = t2 * t; out.push([.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3), .5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)]); }
+    }
+    out.push(pts[pts.length - 1]); return out;
+  }
+  // la punta larga trascinata lungo il percorso: un quadrilatero per segmento, tutti in un tracciato solo (niente giunture più scure)
+  function chisel(x, pts, W, ang, taper0, taper1, contrast) {
+    if (pts.length < 2) { x.beginPath(); x.arc(pts[0][0], pts[0][1], W * .5, 0, 7); x.fill(); return; }
+    const nx = Math.cos(ang) * W / 2, ny = Math.sin(ang) * W / 2, L = pts.length - 1, base = Math.max(1, W * .16);
+    x.beginPath();
+    for (let i = 0; i < L; i++) {
+      const a = pts[i], b = pts[i + 1], t0 = i / L, t1 = (i + 1) / L;
+      const p = t => Math.min(1, taper0 ? Math.min(1, .35 + t / .2) : 1, taper1 ? Math.min(1, .15 + (1 - t) / .25) : 1);
+      // il contrasto: dove il tratto corre lungo la punta resta il filo sottile (base), mai zero
+      const s0 = p(t0), s1 = p(t1);
+      const k = 1;   // la sezione la fa la geometria della punta
+      x.moveTo(a[0] - nx * s0 * k, a[1] - ny * s0 * k); x.lineTo(a[0] + nx * s0 * k, a[1] + ny * s0 * k); x.lineTo(b[0] + nx * s1 * k, b[1] + ny * s1 * k); x.lineTo(b[0] - nx * s1 * k, b[1] - ny * s1 * k); x.closePath();
+    }
+    x.fill();
+    // il filo: anche dove la punta corre di taglio resta una linea
+    x.save(); x.lineWidth = base; x.lineCap = 'round'; x.lineJoin = 'round'; x.strokeStyle = x.fillStyle; x.beginPath(); pts.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); x.stroke(); x.restore();
+  }
+
+  // ---------------- LA TAG ----------------
+  // la parola nella mano: i tratti in pixel (y in giù), già inclinati, rimbalzati, con la prima lettera grande e lo svolazzo
+  function layout(text, d, r) {
+    const s = DEACC(text), strokes = []; let x = 0;
+    [...s].forEach((ch, i) => {
+      const g = glyph(ch, d, i); if (!g) { x += .35; return; }
+      const sz = (i === 0 ? d.bigFirst : 1) * (1 + (r() - .5) * .12), by = d.bounce * (i % 2 ? 1 : -1) * (.5 + r()) + d.arc * Math.sin((i + .5) / Math.max(1, s.length) * PI);
+      let gx1 = 0; g.forEach(tr => tr.forEach(([u]) => { gx1 = Math.max(gx1, u); }));
+      g.forEach(tr => {
+        const pts = tr.map(([u, v]) => { const vv = v > .9 ? .9 + (v - .9) * d.tall * 2.2 : v; let X = x + u * d.wide * sz, Y = (vv * sz + by); X += Y * d.slant; return [X + (r() - .5) * d.wob * 4, -Y + (r() - .5) * d.wob * 4]; });
+        strokes.push({ pts, i });
+      });
+      x += (gx1 * d.wide + .08) * sz * (d.adv / .65);
+    });
+    if (!strokes.length) return { strokes, box: [0, 0, 1, 1] };
+    // lo svolazzo: l'ultimo tratto continua, torna sotto la parola e finisce a punta
+    const last = strokes[strokes.length - 1], e = last.pts[last.pts.length - 1];
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; strokes.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
+    if (d.swash) strokes.push({ i: last.i, swash: true, pts: [e, [e[0] + .25, y1 + .12], [(x0 + x1) * .55, y1 + .32], [x0 + .1, y1 + .2], [x0 - .2, y1 - .05]] });
+    else if (d.flick) { const p0 = last.pts[Math.max(0, last.pts.length - 2)], dx = e[0] - p0[0], dy = e[1] - p0[1], l = hyp(dx, dy) || 1; last.pts.push([e[0] + dx / l * .35, e[1] + dy / l * .35]); last.flick = true; }
+    if (d.loop && strokes[0]) { const f = strokes[0], a = f.pts[0]; f.pts.unshift([a[0] - .1, a[1] + .1], [a[0] - .22, a[1] - .1], [a[0] - .05, a[1] - .18]); }
+    x0 = 1e9; x1 = -1e9; y0 = 1e9; y1 = -1e9; strokes.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
+    return { strokes, box: [x0, y0, x1, y1] };
+  }
+  // disegna la tag di questa mano in un riquadro Wp × Hp; ritorna i punti del percorso (per la mano che la ripassa)
+  function handTag(x, text, d, Wp, Hp, r, col, tool) {
+    const L = layout(text, d, r), [x0, y0, x1, y1] = L.box, decoT = d.crown || d.halo ? .22 : .06, decoB = d.under || d.swash ? .2 : .08;
+    const sc = Math.min((Wp * .9) / Math.max(.1, x1 - x0), (Hp * (1 - decoT - decoB)) / Math.max(.1, y1 - y0)), ox = (Wp - (x1 - x0) * sc) / 2 - x0 * sc, oy = Hp * decoT - y0 * sc;
+    const P = t => t.map(([a, b]) => [a * sc + ox, b * sc + oy]);
+    const W = Math.max(2, sc * d.nibW * (tool === 'mtag' ? 1.1 : 1)), spray = tool !== 'mtag' && d.spray, path = [];
+    x.save(); x.fillStyle = col; x.strokeStyle = col; x.lineJoin = 'round'; x.lineCap = 'round';
+    if (spray) { x.shadowColor = col; x.shadowBlur = W * 1.1; }
+    const segs = L.strokes.map(t => { const pts = smooth(P(t.pts), 5); pts.forEach(q => path.push(q)); return { pts, t }; });
+    segs.forEach(({ pts, t }) => chisel(x, pts, W * (t.swash ? .8 : 1), d.nibA, true, t.flick || t.swash || pts.length > 6, d.contrast));
+    x.shadowBlur = 0;
+    // la grana dello spray: puntini attorno ai tratti
+    if (spray) { x.globalAlpha = .35; for (let k = 0; k < path.length * d.grain * .6; k++) { const q = path[Math.floor(r() * path.length)], a = r() * PI * 2, rr = W * (.6 + r() * 1.4); x.fillRect(q[0] + Math.cos(a) * rr, q[1] + Math.sin(a) * rr, 1.2, 1.2); } x.globalAlpha = 1; }
+    // l'inchiostro del marker: la goccia dove si appoggia
+    if (!spray) segs.forEach(({ pts }) => { if (r() < .5) { x.beginPath(); x.arc(pts[0][0], pts[0][1], W * .42, 0, 7); x.fill(); } });
+    const bx0 = x0 * sc + ox, bx1 = x1 * sc + ox, by0 = y0 * sc + oy, by1 = y1 * sc + oy, mid = (bx0 + bx1) / 2, th = Math.max(1.5, W * .45);
+    x.lineWidth = th;
+    if (d.crown) { const cw = (bx1 - bx0) * (.18 + r() * .14), cx = mid + (r() - .5) * (bx1 - bx0) * .4, cy = by0 - Hp * .04, h = Hp * .13; x.beginPath(); x.moveTo(cx - cw, cy); x.lineTo(cx - cw * .9, cy - h); x.lineTo(cx - cw * .4, cy - h * .45); x.lineTo(cx, cy - h * 1.15); x.lineTo(cx + cw * .4, cy - h * .45); x.lineTo(cx + cw * .9, cy - h); x.lineTo(cx + cw, cy); x.stroke(); [-.9, 0, .9].forEach(k => { x.beginPath(); x.arc(cx + cw * k, cy - h * (k ? 1.05 : 1.25), th * .8, 0, 7); x.fill(); }); }
+    else if (d.halo) { const hx = bx0 + (bx1 - bx0) * (.15 + r() * .3); x.beginPath(); x.ellipse(hx, by0 - Hp * .07, Hp * .13, Hp * .045, -.15, 0, 7); x.stroke(); }
+    if (d.under && !d.swash) { const uy = by1 + Hp * .07, u0 = bx0 + (bx1 - bx0) * .05, u1 = bx1 - (bx1 - bx0) * (.1 + r() * .2); chisel(x, smooth([[u0, uy + Hp * .02], [(u0 + u1) / 2, uy], [u1, uy - Hp * .01]], 4), W * .9, d.nibA, true, true, d.contrast); x.beginPath(); x.arc(u1 + W * 1.4, uy - Hp * .01, W * .55, 0, 7); x.fill(); if (r() < .5) { x.fillRect(u0 + (u1 - u0) * .2, uy + Hp * .06, (u1 - u0) * .4, th); } }
+    if (d.dashes) { const cy = (by0 + by1) / 2; x.fillRect(bx0 - W * 3.2, cy, W * 2, th); x.fillRect(bx1 + W * 1.2, cy - W, W * 2, th); }
+    if (d.stars) for (let k = 0; k < 2; k++) { const sx = k ? bx1 + W * 1.5 : bx0 - W * 1.5, sy = by0 + Hp * .05; x.beginPath(); for (let j = 0; j < 8; j++) { const a = j * PI / 4, rr = j % 2 ? W * .3 : W * 1.2; x.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr); } x.closePath(); x.fill(); }
+    if (d.quotes) { const qx = bx1 + W * .8, qy = by0; x.fillRect(qx, qy, th, Hp * .1); x.fillRect(qx + th * 2.2, qy, th, Hp * .1); }
+    // le colature: dai punti più bassi dei tratti verticali
+    if (d.drip || tool === 'mtag') {
+      const lows = path.filter((q, i) => i % 3 === 0).sort((a, b) => b[1] - a[1]).slice(0, 18), n = 2 + Math.floor(r() * (tool === 'mtag' ? 6 : 4));
+      x.lineCap = 'round';
+      for (let k = 0; k < n && lows.length; k++) { const q = lows[Math.floor(r() * lows.length)], l = Hp * (.06 + r() * .26), w = Math.max(1, W * (.18 + r() * .2)); x.lineWidth = w; x.beginPath(); x.moveTo(q[0], q[1]); x.lineTo(q[0] + (r() - .5), q[1] + l); x.stroke(); x.beginPath(); x.arc(q[0], q[1] + l, w * .8, 0, 7); x.fill(); }
+    }
+    x.restore();
+    return { path, W };
+  }
+  return { A, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
+})();
+if (typeof module !== 'undefined') module.exports = WriterMano;
+</script>
+<script>/* Porto Vecchio — il disegno dei lavori dei writer (v7, «Writer»). Solo canvas 2D, nessuna dipendenza da three.js.
+   Un lavoro (writing.js: { style, aka, pal, seed, W, H, crew, ... }) diventa una serie di TAPPE, immagini intere da svelare
+   in ordine come le farebbe un writer vero: il riempimento, lo sfondo, il contorno col 3D, alla fine luci e dettagli.
+   - LE FAMIGLIE DI LETTERE: block (blockbuster dritte, angoli vivi), bubble (lettere a bolla dei throw-up), semi (semi-wild:
+     qualche freccia), wild (wildstyle: lettere che si incastrano, frecce, punte, collegamenti), chrome (argento e nero,
+     il throw-up classico). Ogni writer ha la sua (st.npcs[].pop.writer.fam), il giocatore la sceglie col pezzo.
+   - I RIEMPIMENTI: sfumato, in diagonale, a bande (split), a bolle, a crepe di ghiaccio, a fiamme, a scacchi, cromato, a stelle.
+   - GLI SFONDI: la nuvola di bolle, il sole che spacca il ghiaccio, le radici che sollevano l'asfalto, lo skyline del porto
+     (palazzoni, gru, la torre della miniera col fumo), gli spruzzi, le schegge di ghiaccio.
+   - I PERSONAGGI (burner e whole car): il b-boy, lo skater col berretto oversize, il sole con gli occhiali, il banchiere che
+     si scioglie, il Grigio col casco della Celere (col naso da maiale), il boombox.
+   - LE PAROLE: di solito il nome del writer; nelle produzioni le parole del Disgelo (DISGELO, SOLE, RADICI...); sotto i pezzi
+     gli slogan piccoli; vicino alle tag i SEGNI (le tag sono mappe: la presa calda, il tombino aperto, la rampa pulita,
+     l'occhio dei Grigi, la serra).
+   Tutto è deciso dal seme del lavoro: lo stesso lavoro si ridisegna sempre uguale. */
+var WriterArte = (function () {
+  'use strict';
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), hyp = Math.hypot, PI = Math.PI;
+  const FONT = () => (typeof Graffiti !== 'undefined' && Graffiti.F) || {};
+  const WM = typeof WriterMano !== 'undefined' ? WriterMano : (typeof require !== 'undefined' ? require('./writer_mano.js') : null);
+  function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const cv = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; };
+  const DEACC = s => String(s).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9!?.\- ']/g, '');
+  const pickR = (r, a) => a[Math.floor(r() * a.length)];
+
+  // ---------------- LE TAVOLOZZE ----------------
+  // riempimento sfumato (3), contorno, 3D, keyline, fondo, luce. Le prime otto sono quelle della rotella dei colori.
+  const PAL = [
+    { f: ['#ffe14a', '#ff9a1e', '#e2361e'], o: '#1a1420', d: '#3a1a62', k: '#f6f1e4', bg: '#3aa6e0', hi: '#ffffff' },
+    { f: ['#8ee0ff', '#2a86e0', '#283c9e'], o: '#0e1018', d: '#c8302a', k: '#fbf8ee', bg: '#f2c430', hi: '#ffffff' },
+    { f: ['#ff8acb', '#d8409a', '#6e1a70'], o: '#14121c', d: '#1a6e5c', k: '#eefbf3', bg: '#9ad44a', hi: '#ffffff' },
+    { f: ['#d2f560', '#5ab43a', '#1a6c3c'], o: '#0e1410', d: '#5a2a8e', k: '#faf2e0', bg: '#ee5e2a', hi: '#ffffff' },
+    { f: ['#ffffff', '#c8d0d8', '#7e8ea0'], o: '#0e0e10', d: '#202026', k: '#e23a2a', bg: '#1c1c2c', hi: '#ffffff', chrome: true },
+    { f: ['#ff5a3a', '#c8201a', '#5e0e0e'], o: '#f6f1e4', d: '#101012', k: '#101012', bg: '#f4c43a', hi: '#ffe0c0' },
+    { f: ['#4a4a56', '#24242c', '#0a0a0e'], o: '#f6f1e4', d: '#c8302a', k: '#101010', bg: '#e8e0d0', hi: '#b8c0d0' },
+    { f: ['#ffd23a', '#ff8a1a', '#c84a10'], o: '#1a1010', d: '#2a5a9a', k: '#f8f0e0', bg: '#5a2a8e', hi: '#ffffff' },
+    // il Disgelo: verde acido, fucsia, arancione contro il grigio del cemento; il ghiaccio che si spacca
+    { f: ['#e6ff5a', '#9ae620', '#2e9a1a'], o: '#120e1a', d: '#ff2a9a', k: '#ffffff', bg: '#2a1a4a', hi: '#ffffff' },
+    { f: ['#ff9ae2', '#ff2aa8', '#a0105e'], o: '#101014', d: '#2ad8ff', k: '#fff8f0', bg: '#ff9a1a', hi: '#ffffff' },
+    { f: ['#ffc06a', '#ff6a10', '#c03a08'], o: '#0e0e14', d: '#2a3a9a', k: '#f0f8ff', bg: '#9ad8ff', hi: '#ffffff' },
+    { f: ['#f0fbff', '#8ad0f0', '#2a7ab0'], o: '#0a1420', d: '#ff5a2a', k: '#ffd23a', bg: '#ff7a3a', hi: '#ffffff' },
+    { f: ['#c8fff0', '#3ae0c0', '#0a7a8a'], o: '#14101c', d: '#ffd23a', k: '#1a1420', bg: '#e8304a', hi: '#ffffff' },
+    { f: ['#fff2a0', '#ffd23a', '#e09a0a'], o: '#2a0e3a', d: '#6a1aa0', k: '#f8f0ff', bg: '#1ab0a0', hi: '#ffffff' },
+  ];
+  // i colori della rotella di main.js (rosso, nero, bianco, blu, giallo, verde, rosa, arancio) → tavolozza
+  const COL2PAL = [5, 6, 4, 1, 0, 8, 9, 10];
+
+  // ---------------- LE FAMIGLIE DI LETTERE ----------------
+  // adv: passo fra le lettere (sotto .7 si accavallano); lw: spessore del riempimento (frazione dell'altezza); d3: profondità del 3D
+  // fat: lettere grasse fuse in un blocco; ink: nero pieno e contorno bianco (le throwie); doodles: luci, occhi, spirali, crocette dentro le lettere
+  // spikes: punte affilate a ogni estremità; swash: lo svolazzo del corsivo sotto la parola; hard: l'ombra netta lunga invece del 3D sfumato
+  const FAM = {
+    block: { nome: 'block', adv: .84, skew: 0, bounce: 0, rot: .03, wob: .006, scale: .05, ext: .04, lw: .34, join: 'miter', cap: 'square', d3: .62, arrows: 0, links: 0 },
+    heavy: { nome: 'block pesante', adv: .8, skew: .06, bounce: .02, rot: .04, wob: .004, scale: .06, ext: 0, lw: .46, join: 'miter', cap: 'square', d3: 1, arrows: 0, links: 0, hard: true },
+    bubble: { nome: 'bubble', adv: .58, skew: .05, bounce: .07, rot: .14, wob: .02, scale: .14, ext: 0, lw: .48, join: 'round', cap: 'round', d3: .3, arrows: 0, links: 0, fat: true, doodles: true },
+    fat: { nome: 'bubble grasso', adv: .52, skew: .06, bounce: .09, rot: .18, wob: .015, scale: .2, ext: 0, lw: .56, join: 'round', cap: 'round', d3: .35, arrows: 0, links: 0, fat: true, doodles: true, stars: true },
+    throwie: { nome: 'throwie', adv: .55, skew: .04, bounce: .09, rot: .16, wob: .015, scale: .2, ext: 0, lw: .54, join: 'round', cap: 'round', d3: .1, arrows: 0, links: 0, fat: true, ink: true, doodles: true },
+    semi: { nome: 'semi-wild', adv: .74, skew: .14, bounce: .05, rot: .12, wob: .025, scale: .14, ext: .32, lw: .28, join: 'miter', cap: 'square', d3: .5, arrows: 2, links: 1 },
+    wild: { nome: 'wildstyle', adv: .64, skew: .22, bounce: .1, rot: .32, wob: .04, scale: .3, ext: .62, lw: .24, join: 'miter', cap: 'square', d3: .55, arrows: 4, links: 3 },
+    spiky: { nome: 'a spine', adv: .7, skew: .14, bounce: .08, rot: .24, wob: .02, scale: .26, ext: .5, lw: .26, join: 'miter', cap: 'butt', d3: .4, arrows: 0, links: 1, spikes: true },
+    script: { nome: 'corsivo', adv: .56, skew: .44, bounce: .07, rot: .08, wob: .01, scale: .14, ext: .2, lw: .22, join: 'round', cap: 'round', d3: .32, arrows: 0, links: 0, nibK: .6, swash: true },
+    chrome: { nome: 'chrome', adv: .62, skew: .08, bounce: .05, rot: .1, wob: .015, scale: .1, ext: .06, lw: .4, join: 'round', cap: 'round', d3: .25, arrows: 0, links: 0, chrome: true, fat: true },
+  };
+  const THROW_FAMS = ['throwie', 'throwie', 'fat', 'bubble', 'chrome'];
+  const FAMS = Object.keys(FAM);
+  const FILLS = ['flat', 'flat', 'due', 'due', 'fade', 'fade', 'diag', 'split', 'bolle', 'crepe', 'fiamme', 'scacchi', 'stelle'];
+  const BGS = ['nuvola', 'sole', 'radici', 'skyline', 'spruzzi', 'ghiaccio', 'ovale', 'scacchi', 'esplosione', 'splat'];
+  const BADGES = ['ovale', 'ovale', 'scacchi', 'esplosione', 'splat', 'nuvola', 'spruzzi', 'ghiaccio'];
+  const CHARS = ['bboy', 'skater', 'sole', 'banchiere', 'grigio', 'boombox'];
+  const WORDS = ['DISGELO', 'SOLE', 'RADICI', 'RESPIRA', 'LIBERI', 'PEDALA', 'CALDO', 'VAPORE'];
+  const SLOGANS = ['IL GHIACCIO SI SPACCA', 'NO ALLE RATE', 'PEDALA E RESPIRA', 'SOLE PER TUTTI', 'LA STRADA E NOSTRA', 'GRIGI GO HOME', 'LAVORA CONSUMA PAGA? NO',
+    'RADICI SOTTO L\'ASFALTO', 'PORTO VECCHIO VIVE', 'IL DISGELO E QUI', 'PIU BICI MENO RATE', 'NIENTE MARTIRI SOLO COLORI', 'IL VAPORE E DI TUTTI'];
+  const SIGNS = ['caldo', 'tombino', 'rampa', 'occhio', 'serra'];
+  const SIGN_TXT = { caldo: 'una presa calda (vapore, si sta al caldo)', tombino: 'un tombino aperto (per sparire)', rampa: 'una rampa pulita (per lo skate)', occhio: 'qui passano i Grigi', serra: 'una serra vicina' };
+  const YEARS = ["'86", "'87", "'88", '86', '87'];
+  // le scelte di un lavoro (se non le ha già): dal seme, così si ridisegna sempre uguale. q: la mano (0 toy … 1 king)
+  function choose(w) {
+    const r = mulberry((w.seed || 1) ^ 0x5bd1e995), throwUp = w.style === 'throw', wild = w.style === 'burner' || w.style === 'wholecar';
+    const P = PAL[(w.pal || 0) % PAL.length], q = w.q != null ? w.q : .7;
+    const fam = w.fam && FAM[w.fam] ? (throwUp && !THROW_FAMS.includes(w.fam) ? pickR(r, THROW_FAMS) : w.fam) : throwUp ? (P.chrome ? 'chrome' : pickR(r, THROW_FAMS)) : wild ? pickR(r, ['wild', 'wild', 'semi', 'spiky', 'heavy']) : pickR(r, FAMS);
+    const fillk = w.fillk || (FAM[fam].chrome || P.chrome ? 'chrome' : throwUp || q < .3 ? pickR(r, ['fade', 'diag']) : pickR(r, FILLS));
+    const bgk = w.bgk !== undefined ? w.bgk : (w.style === 'wholecar' ? pickR(r, ['sole', 'radici', 'skyline', 'skyline']) : w.style === 'burner' ? pickR(r, ['sole', 'radici', 'skyline', 'esplosione', 'ovale']) : throwUp ? (r() < .35 ? pickR(r, ['ovale', 'splat', 'esplosione']) : null) : pickR(r, BADGES));
+    const chr = w.chr !== undefined ? w.chr : (wild && q > .3 ? pickR(r, CHARS) : null);
+    return { fam, fillk, bgk, chr, q, yr: w.yr || pickR(r, YEARS), slogan: w.slogan !== undefined ? w.slogan : (wild && q > .4 || r() < .2 ? pickR(r, SLOGANS) : null) };
+  }
+  // IL BOZZETTO: un writer pensa il suo pezzo. dna = { fam, pals, chars, pol (quanto è politico), skill }; tutto il resto lo decide il caso
+  function conceive(o) {
+    const d = o.dna || {}, seed = o.seed || Math.floor(Math.random() * 1e9), r = mulberry(seed ^ 0x2545f491), style = o.style || 'pezzo';
+    const wild = style === 'burner' || style === 'wholecar', throwUp = style === 'throw';
+    const q = clamp((d.skill != null ? d.skill : .5) + (r() - .5) * .18, .05, 1);
+    let fam = r() < .78 && d.fam ? d.fam : pickR(r, FAMS); if (throwUp && !THROW_FAMS.includes(fam)) fam = pickR(r, THROW_FAMS);
+    if (q < .3 && (fam === 'wild' || fam === 'spiky' || fam === 'script')) fam = pickR(r, ['semi', 'bubble', 'block']);   // un toy non sa fare il wildstyle
+    const pals = d.pals && d.pals.length ? d.pals : [Math.floor(r() * PAL.length)];
+    const pol = d.pol != null ? d.pol : .4;
+    const sk = { style, aka: o.aka, crew: o.crew, seed, q, fam, pal: pickR(r, pals) % PAL.length,
+      words: wild && r() < pol * .5 ? pickR(r, WORDS) : null,
+      slogan: !throwUp && style !== 'tag' && r() < pol * (wild ? 1 : .5) ? pickR(r, SLOGANS) : null,
+      chr: wild && q > .3 ? (d.chars && d.chars.length && r() < .8 ? pickR(r, d.chars) : pickR(r, CHARS)) : null,
+      fillk: q < .3 ? 'fade' : FAM[fam].chrome ? 'chrome' : pickR(r, FILLS),
+      bgk: style === 'wholecar' ? pickR(r, ['sole', 'radici', 'skyline']) : wild ? pickR(r, ['sole', 'radici', 'skyline', 'esplosione', 'ovale']) : throwUp ? (r() < .35 ? pickR(r, ['ovale', 'splat', 'esplosione']) : null) : pickR(r, BADGES),
+      yr: pickR(r, YEARS), by: o.by };
+    return sk;
+  }
+  // il DNA di un writer a caso (gli NPC: dal loro numero)
+  function dnaOf(seed, skill, crewCol) {
+    const r = mulberry(seed ^ 0x9e3779b9), pals = [crewCol != null ? crewCol : Math.floor(r() * PAL.length)];
+    while (pals.length < 3) { const k = Math.floor(r() * PAL.length); if (!pals.includes(k)) pals.push(k); }
+    return { fam: pickR(r, FAMS), pals, chars: [pickR(r, CHARS), pickR(r, CHARS)], pol: r(), skill: skill != null ? skill : .3 + r() * .6 };
+  }
+
+  // ---------------- LE LETTERE ----------------
+  // ogni tratto in pixel, con la mano del writer (inclinazione, rimbalzo, lettere che si accavallano, punte allungate)
+  function letters(text, o, r) {
+    const F = o.font || FONT(), s = DEACC(text), out = [], h = o.h, adv = h * (o.adv || .78);
+    let x = 0;
+    [...s].forEach((ch, i) => {
+      const g = F[ch]; if (!g) { x += adv * .5; return; }
+      const bounce = (o.bounce || 0) * h * (i % 2 ? 1 : -1) * (.6 + r() * .6), rot = (o.rot || 0) * (r() - .5), sc = 1 + (o.scale || 0) * (r() - .5);
+      const cxL = x + .3 * h, cyL = h / 2, cr = Math.cos(rot), sr = Math.sin(rot);
+      g.forEach(tr => {
+        let pts = tr.map(([u, v]) => { let px = (u - .3) * h * sc, py = -(v - .5) * h * sc; px += py * -(o.skew || 0); const qx = px * cr - py * sr, qy = px * sr + py * cr; return [cxL + qx + (r() - .5) * (o.wob || 0) * h, cyL + qy + bounce + (r() - .5) * (o.wob || 0) * h]; });
+        if (o.ext && pts.length > 1 && r() < o.ext) {   // la punta che esce (wildstyle)
+          const a = pts[pts.length - 1], b = pts[pts.length - 2], dx = a[0] - b[0], dy = a[1] - b[1], l = hyp(dx, dy) || 1; pts = pts.concat([[a[0] + dx / l * h * .24, a[1] + dy / l * h * .24]]);
+        }
+        if (o.ext && pts.length > 1 && r() < o.ext * .5) {   // e quella che entra
+          const a = pts[0], b = pts[1], dx = a[0] - b[0], dy = a[1] - b[1], l = hyp(dx, dy) || 1; pts = [[a[0] + dx / l * h * .18, a[1] + dy / l * h * .18]].concat(pts);
+        }
+        out.push({ pts, i });
+      });
+      x += adv * sc;
+    });
+    // i collegamenti del wildstyle: una lettera tira una linea dentro la successiva
+    for (let k = 0; k < (o.links || 0); k++) {
+      const ls = out.filter(t => t.pts.length > 1); if (ls.length < 3) break;
+      const a = ls[Math.floor(r() * (ls.length - 1))], b = ls.find(t => t.i === a.i + 1); if (!b) continue;
+      const p = a.pts[a.pts.length - 1], q = b.pts[Math.floor(b.pts.length / 2)], m = [(p[0] + q[0]) / 2, Math.min(p[1], q[1]) - h * .12];
+      out.push({ pts: [p, m, q], i: a.i, link: true });
+    }
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; out.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
+    if (!out.length) { x0 = y0 = 0; x1 = y1 = 1; }
+    return { strokes: out, box: [x0, y0, x1, y1] };
+  }
+  function fit(L, W, H, pad, stretch) {   // scala e sposta le lettere dentro W × H (margine pad); stretch: quanto si possono allargare
+    const [x0, y0, x1, y1] = L.box, sy = Math.min((W - 2 * pad) / Math.max(1, x1 - x0), (H - 2 * pad) / Math.max(1, y1 - y0)), sx = Math.min(sy * (stretch || 1), (W - 2 * pad) / Math.max(1, x1 - x0));
+    const ox = (W - (x1 - x0) * sx) / 2 - x0 * sx, oy = (H - (y1 - y0) * sy) / 2 - y0 * sy;
+    L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a * sx + ox, b * sy + oy]); }); L.box = [x0 * sx + ox, y0 * sy + oy, x1 * sx + ox, y1 * sy + oy]; L.s = sy; return L;
+  }
+  function path(x, pts) { x.beginPath(); pts.forEach(([a, b], k) => k ? x.lineTo(a, b) : x.moveTo(a, b)); }
+  // un passaggio: tutte le lettere spesse w, di quel colore, spostate di (dx, dy)
+  function pass(x, L, w, col, dx, dy, join, cap) {
+    x.save(); x.translate(dx || 0, dy || 0); x.lineJoin = join || 'round'; x.lineCap = cap || 'round'; x.lineWidth = w; x.strokeStyle = col; x.miterLimit = 3;
+    L.strokes.forEach(t => { if (t.pts.length === 1) { x.beginPath(); x.arc(t.pts[0][0], t.pts[0][1], w / 2, 0, 7); x.fillStyle = col; x.fill(); return; } path(x, t.pts); x.stroke(); });
+    (L.arrows || []).forEach(a => { x.beginPath(); a.forEach(([p, q], k) => k ? x.lineTo(p, q) : x.moveTo(p, q)); x.closePath(); x.fillStyle = col; x.fill(); if (w > L.w0) { x.lineWidth = w - L.w0; x.stroke(); x.lineWidth = w; } });
+    x.restore();
+  }
+  // le frecce: dalle punte di qualche tratto, triangoli che continuano la linea
+  function arrows(L, r, n, w) {
+    L.arrows = []; L.w0 = w; const ends = [];
+    L.strokes.forEach(t => { if (t.pts.length < 2 || t.link) return; const a = t.pts[t.pts.length - 1], b = t.pts[t.pts.length - 2]; ends.push([a, b]); });
+    for (let k = 0; k < n && ends.length; k++) {
+      const [a, b] = ends.splice(Math.floor(r() * ends.length), 1)[0], dx = a[0] - b[0], dy = a[1] - b[1], l = hyp(dx, dy) || 1, ux = dx / l, uy = dy / l, s = w * (1.1 + r() * .4);
+      const tip = [a[0] + ux * s * 1.7, a[1] + uy * s * 1.7], l1 = [a[0] - uy * s, a[1] + ux * s], l2 = [a[0] + uy * s, a[1] - ux * s];
+      L.arrows.push([l1, tip, l2]);
+    }
+  }
+  // le spine: a ogni estremità un triangolo lungo e stretto che continua il tratto (lettere taglienti)
+  function spikes(L, r, w) {
+    L.arrows = L.arrows || []; L.w0 = w;
+    L.strokes.forEach(t => { if (t.pts.length < 2 || t.link || t.swash) return; [[t.pts.length - 1, t.pts.length - 2], [0, 1]].forEach(([i, j], e) => { if (e && r() < .5) return; const a = t.pts[i], b = t.pts[j], dx = a[0] - b[0], dy = a[1] - b[1], l = hyp(dx, dy) || 1, ux = dx / l, uy = dy / l, s = w * .5, len = w * (1.3 + r() * 1.4);
+      L.arrows.push([[a[0] - uy * s, a[1] + ux * s], [a[0] + ux * len, a[1] + uy * len], [a[0] + uy * s, a[1] - ux * s]]); }); });
+  }
+  // lo svolazzo del corsivo: dall'ultima lettera torna indietro sotto la parola e finisce a punta
+  function swash(L, r) {
+    const [x0, y0, x1, y1] = L.box, last = Math.max(...L.strokes.map(t => t.i)), h = y1 - y0;
+    L.strokes.push({ i: last, swash: true, pts: [[x1 - h * .1, y1 - h * .15], [x1 + h * .1, y1 + h * .12], [(x0 + x1) * .5, y1 + h * .2], [x0 + h * .1, y1 + h * .05], [x0 - h * .15, y1 - h * .12]] });
+    let a0 = 1e9, b0 = 1e9, a1 = -1e9, b1 = -1e9; L.strokes.forEach(t => t.pts.forEach(([a, b]) => { a0 = Math.min(a0, a); b0 = Math.min(b0, b); a1 = Math.max(a1, a); b1 = Math.max(b1, b); })); L.box = [a0, b0, a1, b1];
+  }
+  // dentro le lettere grasse: la luce (un arco e un puntino), e a volte gli occhi, la spirale, la crocetta
+  function doodles(x, G0, lw, r, col, ink, stars, eyes) {
+    const pts = []; G0.forEach(t => t.pts.forEach(q => pts.push(q))); if (!pts.length) return; pts.sort((a, b) => a[1] - b[1]);
+    x.save(); x.strokeStyle = col; x.fillStyle = col; x.lineCap = 'round';
+    const top = pts[Math.floor(r() * Math.min(pts.length, 3))], cx = top[0] - lw * .18, cy = top[1] - lw * .1;
+    x.lineWidth = Math.max(1.5, lw * .1); x.beginPath(); x.arc(cx + lw * .12, cy + lw * .2, lw * .26, PI * 1.05, PI * 1.55); x.stroke();
+    x.beginPath(); x.arc(cx + lw * .3, cy - lw * .02, lw * .055, 0, 7); x.fill();
+    const mid = pts[Math.floor(pts.length * (.4 + r() * .3))], k = r();
+    if (eyes) {   // la faccia: due occhi da cartone
+      for (const s of [-1, 1]) { x.fillStyle = '#ffffff'; x.beginPath(); x.ellipse(mid[0] + s * lw * .2, mid[1], lw * .17, lw * .22, 0, 0, 7); x.fill(); x.strokeStyle = '#101012'; x.lineWidth = Math.max(1, lw * .04); x.stroke(); x.fillStyle = '#101012'; x.beginPath(); x.arc(mid[0] + s * lw * .2 + lw * .05, mid[1] + lw * .05, lw * .08, 0, 7); x.fill(); }
+    } else if (k < .25 && ink) { x.lineWidth = Math.max(1.2, lw * .06); x.beginPath(); for (let a = 0; a < PI * 5; a += .3) { const rr = lw * .03 * a; x.lineTo(mid[0] + Math.cos(a) * rr, mid[1] + Math.sin(a) * rr); } x.stroke(); }   // la spirale
+    else if (k < .45 && ink) { x.lineWidth = Math.max(1.2, lw * .07); x.beginPath(); x.moveTo(mid[0] - lw * .16, mid[1]); x.lineTo(mid[0] + lw * .16, mid[1]); x.moveTo(mid[0], mid[1] - lw * .16); x.lineTo(mid[0], mid[1] + lw * .16); x.stroke(); }   // la crocetta
+    else if (stars && k < .7) sparkle(x, mid[0], mid[1], lw * .22, col);
+    x.restore();
+  }
+  function shade(hex, k) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const f = v => clamp(Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k), 0, 255); return '#' + [f(r), f(g), f(b)].map(v => v.toString(16).padStart(2, '0')).join(''); }
+  function sparkle(x, cx, cy, s, col) { x.save(); x.fillStyle = col; x.beginPath(); for (let k = 0; k < 8; k++) { const a = k * PI / 4, rr = k % 2 ? s * .22 : s; x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } x.closePath(); x.fill(); x.restore(); }
+  function drips(x, L, r, col, w, n, maxL) {
+    x.save(); x.strokeStyle = col; x.fillStyle = col; x.lineCap = 'round';
+    const pts = []; L.strokes.forEach(t => t.pts.forEach(q => pts.push(q))); pts.sort((a, b) => b[1] - a[1]);
+    for (let k = 0; k < n && pts.length; k++) { const q = pts[Math.floor(r() * Math.min(pts.length, 12 + k * 3))], l = maxL * (.3 + r() * .7); x.lineWidth = w * (.35 + r() * .3); x.beginPath(); x.moveTo(q[0], q[1]); x.lineTo(q[0] + (r() - .5) * 1.5, q[1] + l); x.stroke(); x.beginPath(); x.arc(q[0], q[1] + l, x.lineWidth * .7, 0, 7); x.fill(); }
+    x.restore();
+  }
+  function smallTag(x, text, cx, cy, h, col, r, maxW, thick) {   // la scritta piccola (crew, anno, slogan, dediche)
+    const L = letters(text, { h, adv: .7, skew: .3, wob: .05, bounce: .04 }, r); let [x0, y0, x1, y1] = L.box;
+    const k = maxW && x1 - x0 > maxW ? maxW / (x1 - x0) : 1;
+    L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [(a - (x0 + x1) / 2) * k + cx, (b - (y0 + y1) / 2) * k + cy]); }); L.box = [0, 0, 0, 0];
+    pass(x, L, Math.max(1.2, h * .11 * k) * (thick || 1), col, 0, 0);
+  }
+
+  // ---------------- I RIEMPIMENTI ----------------
+  // si dipinge su FILL (già pieno delle lettere): source-atop, quindi solo dentro le lettere
+  function fillPattern(fx, kind, P, box, lw, Wp, Hp, r) {
+    const [bx0, by0, bx1, by1] = box, T = by0 - lw / 2, Bm = by1 + lw / 2;
+    fx.save(); fx.globalCompositeOperation = 'source-atop';
+    const vgrad = (a, b, c) => { const g = fx.createLinearGradient(0, T, 0, Bm); g.addColorStop(0, a); g.addColorStop(.55, b); g.addColorStop(1, c); return g; };
+    if (kind === 'flat') { fx.fillStyle = P.f[1]; fx.fillRect(0, 0, Wp, Hp); fx.restore(); return; }
+    if (kind === 'due') { fx.fillStyle = P.f[0]; fx.fillRect(0, 0, Wp, Hp); fx.fillStyle = P.f[1]; fx.beginPath(); const yy = by0 + (by1 - by0) * (.45 + r() * .2); fx.moveTo(0, yy); for (let xx = 0; xx <= Wp; xx += lw * .4) fx.lineTo(xx, yy + Math.sin(xx / lw * 2.2) * lw * .12); fx.lineTo(Wp, Hp); fx.lineTo(0, Hp); fx.fill(); fx.restore(); return; }
+    if (kind === 'chrome') {   // il cromato: cielo chiaro in alto, l'orizzonte scuro a metà, il riflesso del suolo sotto
+      const g = fx.createLinearGradient(0, T, 0, Bm); g.addColorStop(0, '#ffffff'); g.addColorStop(.42, '#c4ccd6'); g.addColorStop(.5, '#4a5462'); g.addColorStop(.56, '#8a94a2'); g.addColorStop(1, '#e8ecf2');
+      fx.fillStyle = g; fx.fillRect(0, 0, Wp, Hp);
+      fx.strokeStyle = 'rgba(255,255,255,.75)'; fx.lineWidth = Math.max(1.5, lw * .06); for (let k = 0; k < 6; k++) { const xx = bx0 + r() * (bx1 - bx0); fx.beginPath(); fx.moveTo(xx, T); fx.lineTo(xx + lw * .5, Bm); fx.stroke(); }
+    } else if (kind === 'diag') {
+      const g = fx.createLinearGradient(bx0, T, bx1, Bm); g.addColorStop(0, P.f[0]); g.addColorStop(.5, P.f[1]); g.addColorStop(1, P.f[2]); fx.fillStyle = g; fx.fillRect(0, 0, Wp, Hp);
+    } else {
+      fx.fillStyle = vgrad(P.f[0], P.f[1], P.f[2]); fx.fillRect(0, 0, Wp, Hp);
+    }
+    if (kind === 'split') {   // le bande che tagliano il riempimento
+      fx.strokeStyle = P.f[2]; fx.globalAlpha = .6; fx.lineWidth = Math.max(2, lw * .12);
+      for (let yy = by0 + (by1 - by0) * .58; yy < by1 + lw; yy += lw * .9) { fx.beginPath(); for (let xx = bx0 - lw; xx < bx1 + lw; xx += lw * .5) fx.lineTo(xx, yy + ((xx / (lw * .5)) % 2 < 1 ? -lw * .12 : lw * .12)); fx.stroke(); }
+      fx.globalAlpha = 1;
+    } else if (kind === 'bolle') {
+      for (let k = 0; k < 40; k++) { fx.fillStyle = k % 3 ? P.f[0] : P.hi; fx.globalAlpha = .55 + r() * .4; fx.beginPath(); fx.arc(bx0 + r() * (bx1 - bx0), T + r() * (Bm - T), lw * (.05 + r() * .14), 0, 7); fx.fill(); }
+      fx.globalAlpha = 1;
+    } else if (kind === 'crepe') {   // il ghiaccio che si spacca: crepe bianche che si ramificano
+      fx.strokeStyle = 'rgba(255,255,255,.85)'; fx.lineCap = 'round';
+      for (let k = 0; k < 9; k++) {
+        let x = bx0 + r() * (bx1 - bx0), y = T + r() * (Bm - T), a = r() * PI * 2; fx.lineWidth = Math.max(1.2, lw * (.04 + r() * .04)); fx.beginPath(); fx.moveTo(x, y);
+        for (let s = 0; s < 6; s++) { a += (r() - .5) * 1.4; x += Math.cos(a) * lw * .45; y += Math.sin(a) * lw * .45; fx.lineTo(x, y); if (r() < .35) { fx.moveTo(x, y); fx.lineTo(x + Math.cos(a + 1) * lw * .3, y + Math.sin(a + 1) * lw * .3); fx.moveTo(x, y); } }
+        fx.stroke();
+      }
+    } else if (kind === 'fiamme') {   // le fiamme dal basso
+      fx.fillStyle = P.f[2]; fx.fillRect(0, by0 + (by1 - by0) * .55, Wp, Hp);
+      fx.fillStyle = P.f[0];
+      for (let xx = bx0 - lw; xx < bx1 + lw; xx += lw * (.35 + r() * .3)) {
+        const h0 = (by1 - by0) * (.25 + r() * .35), w0 = lw * (.25 + r() * .2), base = Bm;
+        fx.beginPath(); fx.moveTo(xx - w0, base); fx.quadraticCurveTo(xx - w0 * .2, base - h0 * .6, xx + w0 * .3, base - h0); fx.quadraticCurveTo(xx + w0 * .2, base - h0 * .45, xx + w0, base); fx.closePath(); fx.fill();
+      }
+    } else if (kind === 'scacchi') {
+      const s = Math.max(4, lw * .3); fx.fillStyle = P.f[2]; fx.globalAlpha = .75;
+      for (let yy = by0 + (by1 - by0) * .6; yy < Bm; yy += s) for (let xx = bx0 - lw; xx < bx1 + lw; xx += s) if ((Math.floor(xx / s) + Math.floor(yy / s)) % 2) fx.fillRect(xx, yy, s, s);
+      fx.globalAlpha = 1;
+    } else if (kind === 'stelle') {
+      for (let k = 0; k < 22; k++) sparkle(fx, bx0 + r() * (bx1 - bx0), T + r() * (Bm - T), lw * (.08 + r() * .14), k % 2 ? P.hi : P.f[0]);
+    } else if (kind === 'fade' || kind === 'diag') {   // le passate di vernice si vedono
+      fx.strokeStyle = 'rgba(255,255,255,.14)'; fx.lineWidth = lw * .16; for (let xx = bx0 - Hp; xx < bx1 + Hp; xx += lw * .5) { fx.beginPath(); fx.moveTo(xx, Bm); fx.lineTo(xx + Hp * .7, T); fx.stroke(); }
+    }
+    if (kind !== 'chrome') { fx.fillStyle = 'rgba(255,255,255,.9)'; for (let k = 0; k < 14; k++) { fx.beginPath(); fx.arc(bx0 + r() * (bx1 - bx0), by0 + r() * (by1 - by0) * .45, lw * (.03 + r() * .05), 0, 7); fx.fill(); } }
+    fx.restore();
+  }
+
+  // ---------------- GLI SFONDI ----------------
+  function cloud(x, W, H, r, col, edge, k) {
+    const blobs = [], n = 7 + Math.floor(r() * 5) + (k || 0);
+    for (let i = 0; i < n; i++) blobs.push([W * (.1 + .8 * r()), H * (.25 + .5 * r()), H * (.22 + .2 * r())]);
+    x.fillStyle = edge; blobs.forEach(([a, b, rr]) => { x.beginPath(); x.arc(a, b, rr + Math.max(2, H * .025), 0, 7); x.fill(); });
+    x.fillStyle = col; blobs.forEach(([a, b, rr]) => { x.beginPath(); x.arc(a, b, rr, 0, 7); x.fill(); });
+    x.fillStyle = 'rgba(255,255,255,.22)'; blobs.forEach(([a, b, rr]) => { x.beginPath(); x.arc(a - rr * .3, b - rr * .35, rr * .35, 0, 7); x.fill(); });
+  }
+  function shard(x, cx, cy, s, r, fill, edge) {   // una scheggia di ghiaccio
+    x.beginPath(); const n = 4 + Math.floor(r() * 3); for (let k = 0; k < n; k++) { const a = k / n * PI * 2 + r() * .6, rr = s * (.5 + r() * .7); x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .8); } x.closePath();
+    x.fillStyle = fill; x.fill(); x.strokeStyle = edge; x.lineWidth = Math.max(1.5, s * .08); x.stroke();
+  }
+  function background(bg, kind, P, Wp, Hp, r, full) {
+    if (full || kind === 'skyline' || kind === 'sole' || kind === 'radici') {   // le scene intere (whole car, burner)
+      const g = bg.createLinearGradient(0, 0, 0, Hp); g.addColorStop(0, P.bg); g.addColorStop(1, P.d); bg.fillStyle = g;
+      if (full) bg.fillRect(0, 0, Wp, Hp); else { bg.beginPath(); const rr = Hp * .18; bg.moveTo(rr, Hp * .06); bg.lineTo(Wp - rr, Hp * .04); bg.quadraticCurveTo(Wp - 2, Hp * .06, Wp - Hp * .04, rr); bg.lineTo(Wp - Hp * .02, Hp - rr); bg.quadraticCurveTo(Wp - 2, Hp - 2, Wp - rr, Hp - Hp * .05); bg.lineTo(rr, Hp - Hp * .03); bg.quadraticCurveTo(2, Hp - 2, Hp * .03, Hp - rr); bg.lineTo(Hp * .05, rr); bg.quadraticCurveTo(2, 2, rr, Hp * .06); bg.closePath(); bg.fill(); bg.strokeStyle = P.o; bg.lineWidth = Math.max(3, Hp * .025); bg.stroke(); bg.save(); bg.clip(); }
+      if (kind === 'sole') {   // il sole che spacca il ghiaccio
+        const cx = Wp * (.55 + r() * .3), cy = Hp * .42, R0 = Hp * .26;
+        bg.fillStyle = P.f[0]; bg.globalAlpha = .55; for (let k = 0; k < 16; k++) { const a = k / 16 * PI * 2; bg.beginPath(); bg.moveTo(cx, cy); bg.lineTo(cx + Math.cos(a - .09) * Wp, cy + Math.sin(a - .09) * Wp); bg.lineTo(cx + Math.cos(a + .09) * Wp, cy + Math.sin(a + .09) * Wp); bg.closePath(); bg.fill(); } bg.globalAlpha = 1;
+        bg.fillStyle = P.f[1]; bg.beginPath(); bg.arc(cx, cy, R0 * 1.15, 0, 7); bg.fill(); bg.fillStyle = P.f[0]; bg.beginPath(); bg.arc(cx, cy, R0, 0, 7); bg.fill();
+        for (let xx = 0; xx < Wp; xx += Hp * (.18 + r() * .12)) shard(bg, xx, Hp * (.86 + r() * .1), Hp * (.12 + r() * .08), r, '#d8f2ff', '#5aa6d8');   // la lastra di ghiaccio che si spacca
+        bg.strokeStyle = '#ffffff'; bg.lineWidth = Math.max(2, Hp * .012); for (let k = 0; k < 7; k++) { let x0 = r() * Wp, y0 = Hp * .8; bg.beginPath(); bg.moveTo(x0, y0); for (let s = 0; s < 4; s++) { x0 += (r() - .5) * Hp * .3; y0 += Hp * .05; bg.lineTo(x0, y0); } bg.stroke(); }
+      } else if (kind === 'radici') {   // le radici che sollevano l'asfalto delle concessionarie
+        for (let xx = -Hp * .2; xx < Wp; xx += Hp * (.35 + r() * .2)) { bg.save(); bg.translate(xx, Hp * .9); bg.rotate((r() - .5) * .5); bg.fillStyle = '#5a5a60'; bg.fillRect(0, -Hp * .1, Hp * .34, Hp * .16); bg.strokeStyle = '#2a2a2e'; bg.lineWidth = 2; bg.strokeRect(0, -Hp * .1, Hp * .34, Hp * .16); bg.fillStyle = '#f2f2e8'; bg.fillRect(Hp * .05, -Hp * .03, Hp * .1, Hp * .02); bg.restore(); }
+        bg.lineCap = 'round';
+        for (let k = 0; k < 6; k++) {
+          let x0 = Wp * r(), y0 = Hp; bg.strokeStyle = k % 2 ? '#6a3a1a' : '#8a5a2a'; bg.lineWidth = Hp * (.03 + r() * .04); bg.beginPath(); bg.moveTo(x0, y0);
+          for (let s = 0; s < 5; s++) { const nx = x0 + (r() - .5) * Hp * .5, ny = y0 - Hp * (.12 + r() * .1); bg.quadraticCurveTo((x0 + nx) / 2 + (r() - .5) * Hp * .2, (y0 + ny) / 2, nx, ny); x0 = nx; y0 = ny; } bg.stroke();
+          bg.fillStyle = '#5ac83a'; for (let s = 0; s < 3; s++) { bg.beginPath(); bg.ellipse(x0 + (r() - .5) * Hp * .1, y0 + (r() - .5) * Hp * .1, Hp * .05, Hp * .025, r() * PI, 0, 7); bg.fill(); }
+        }
+      } else {   // lo skyline del porto: palazzoni, gru, la torre della miniera col fumo
+        bg.fillStyle = 'rgba(0,0,0,.38)';
+        for (let xx = 0; xx < Wp;) { const bw = Hp * (.12 + r() * .2), bh = Hp * (.15 + r() * .4); bg.fillRect(xx, Hp - bh, bw, bh); bg.fillStyle = 'rgba(255,230,120,.35)'; for (let wy = Hp - bh + Hp * .04; wy < Hp - Hp * .05; wy += Hp * .06) for (let wx = xx + Hp * .02; wx < xx + bw - Hp * .03; wx += Hp * .05) if (r() < .4) bg.fillRect(wx, wy, Hp * .02, Hp * .025); bg.fillStyle = 'rgba(0,0,0,.38)'; xx += bw + Hp * .03; }
+        const gx = Wp * (.2 + r() * .6); bg.strokeStyle = 'rgba(0,0,0,.45)'; bg.lineWidth = Math.max(2, Hp * .015); bg.beginPath(); bg.moveTo(gx, Hp); bg.lineTo(gx, Hp * .25); bg.lineTo(gx + Hp * .5, Hp * .25); bg.moveTo(gx - Hp * .12, Hp * .25); bg.lineTo(gx, Hp * .25); bg.moveTo(gx + Hp * .4, Hp * .25); bg.lineTo(gx + Hp * .4, Hp * .45); bg.stroke();   // la gru
+        const mx = Wp * (.05 + r() * .2); bg.fillStyle = 'rgba(0,0,0,.45)'; bg.fillRect(mx, Hp * .3, Hp * .08, Hp * .7); bg.fillStyle = 'rgba(220,220,220,.35)'; for (let k = 0; k < 5; k++) { bg.beginPath(); bg.arc(mx + Hp * (.06 + k * .07), Hp * (.25 - k * .04), Hp * (.06 + k * .02), 0, 7); bg.fill(); }   // la miniera che fuma
+      }
+      for (let k = 0; k < (full ? 30 : 12); k++) sparkle(bg, r() * Wp, r() * Hp * .6, Hp * (.015 + r() * .025), 'rgba(255,255,255,.85)');
+      if (full) { const n = 10 + Math.floor(r() * 6); bg.save(); for (let k = 0; k < n; k++) { const a = Wp * (k + r() * .6) / n, b = Hp * (.92 + r() * .08), rr = Hp * (.07 + r() * .07); bg.fillStyle = P.o; bg.beginPath(); bg.arc(a, b, rr + 3, 0, 7); bg.fill(); bg.fillStyle = P.k; bg.beginPath(); bg.arc(a, b, rr, 0, 7); bg.fill(); } bg.restore(); } else bg.restore();
+    } else if (kind === 'ovale') {   // il badge ovale, un po' storto, col suo bordo (e a volte un secondo ovale dietro)
+      const rot = (r() - .5) * .14;
+      if (r() < .5) { bg.fillStyle = P.d; bg.beginPath(); bg.ellipse(Wp / 2 + Hp * .06, Hp / 2 + Hp * .05, Wp * .49, Hp * .44, rot, 0, 7); bg.fill(); }
+      bg.fillStyle = P.bg; bg.strokeStyle = P.o; bg.lineWidth = Math.max(3, Hp * .03); bg.beginPath(); bg.ellipse(Wp / 2, Hp / 2, Wp * .47, Hp * .4, rot, 0, 7); bg.fill(); bg.stroke();
+      bg.strokeStyle = 'rgba(255,255,255,.5)'; bg.lineWidth = Math.max(2, Hp * .015); bg.beginPath(); bg.ellipse(Wp / 2, Hp / 2, Wp * .44, Hp * .36, rot, PI * 1.05, PI * 1.45); bg.stroke();
+    } else if (kind === 'scacchi') {   // le strisce a scacchi sopra e sotto
+      const s0 = Math.max(5, Hp * .07); bg.fillStyle = P.bg; bg.fillRect(Wp * .04, Hp * .2, Wp * .92, Hp * .6);
+      for (const y0 of [Hp * .06, Hp * .8]) for (let yy = 0; yy < 2; yy++) for (let xx = 0; xx * s0 < Wp * .9; xx++) { bg.fillStyle = (xx + yy) % 2 ? P.o : P.k; bg.fillRect(Wp * .05 + xx * s0, y0 + yy * s0, s0, s0); }
+    } else if (kind === 'esplosione') {   // l'esplosione a stella
+      const cx = Wp / 2, cy = Hp / 2, n = 18 + Math.floor(r() * 8); bg.beginPath();
+      for (let k = 0; k < n * 2; k++) { const a = k / (n * 2) * PI * 2, rr = k % 2 ? .62 : 1 + r() * .25; bg.lineTo(cx + Math.cos(a) * Wp * .48 * rr, cy + Math.sin(a) * Hp * .48 * rr); }
+      bg.closePath(); bg.fillStyle = P.bg; bg.fill(); bg.strokeStyle = P.o; bg.lineWidth = Math.max(3, Hp * .025); bg.stroke();
+      bg.save(); bg.clip(); bg.fillStyle = 'rgba(255,255,255,.18)'; for (let k = 0; k < 9; k++) { const a = k / 9 * PI * 2; bg.beginPath(); bg.moveTo(cx, cy); bg.lineTo(cx + Math.cos(a) * Wp, cy + Math.sin(a) * Wp); bg.lineTo(cx + Math.cos(a + .12) * Wp, cy + Math.sin(a + .12) * Wp); bg.closePath(); bg.fill(); } bg.restore();
+    } else if (kind === 'splat') {   // lo schizzo di vernice con le colature
+      const cx = Wp / 2, cy = Hp / 2; bg.fillStyle = P.bg;
+      bg.beginPath(); for (let k = 0; k < 28; k++) { const a = k / 28 * PI * 2, rr = .8 + r() * .25; bg.lineTo(cx + Math.cos(a) * Wp * .42 * rr, cy + Math.sin(a) * Hp * .4 * rr); } bg.closePath(); bg.fill();
+      for (let k = 0; k < 14; k++) { const a = r() * PI * 2, d = .5 + r() * .12; bg.beginPath(); bg.arc(cx + Math.cos(a) * Wp * d, cy + Math.sin(a) * Hp * d, Hp * (.02 + r() * .05), 0, 7); bg.fill(); }
+      for (let k = 0; k < 6; k++) { const xx = Wp * (.25 + r() * .5), l = Hp * (.15 + r() * .3); bg.fillRect(xx, cy + Hp * .25, Hp * .035, l); bg.beginPath(); bg.arc(xx + Hp * .0175, cy + Hp * .25 + l, Hp * .03, 0, 7); bg.fill(); }
+    } else if (kind === 'ghiaccio') {
+      for (let k = 0; k < 8; k++) shard(bg, Wp * (.08 + r() * .84), Hp * (.25 + r() * .5), Hp * (.2 + r() * .14), r, '#cfefff', P.o);
+    } else if (kind === 'spruzzi') {   // gli spruzzi e le colature: sfondo leggero
+      for (let k = 0; k < 26; k++) { const a = Wp * r(), b = Hp * (.15 + r() * .7), rr = Hp * (.03 + r() * .09); bg.fillStyle = k % 3 ? P.bg : P.d; bg.globalAlpha = .8; bg.beginPath(); bg.arc(a, b, rr, 0, 7); bg.fill(); if (r() < .4) { bg.fillRect(a - rr * .15, b, rr * .3, rr * (1 + r() * 2)); } }
+      bg.globalAlpha = 1;
+    } else cloud(bg, Wp, Hp, r, P.bg, P.o, 0);
+  }
+
+  // ---------------- I PERSONAGGI ----------------
+  function character(x, kind, cx, cy, s, P, r) {
+    x.save(); x.lineJoin = 'round'; x.lineCap = 'round'; x.lineWidth = Math.max(2, s * .06); x.strokeStyle = P.o;
+    const ell = (a, b, rx, ry, col, rot) => { x.fillStyle = col; x.beginPath(); x.ellipse(a, b, rx, ry, rot || 0, 0, 7); x.fill(); x.stroke(); };
+    const shades = (y) => { x.fillStyle = '#101014'; x.fillRect(cx - s * .36, y, s * .72, s * .2); x.strokeRect(cx - s * .36, y, s * .72, s * .2); x.fillStyle = 'rgba(255,255,255,.7)'; x.fillRect(cx - s * .3, y + s * .03, s * .12, s * .05); };
+    const grin = () => { x.fillStyle = '#ffffff'; x.beginPath(); x.moveTo(cx - s * .22, cy + s * .2); x.quadraticCurveTo(cx + s * .05, cy + s * .42, cx + s * .26, cy + s * .16); x.closePath(); x.fill(); x.stroke(); };
+    if (kind === 'sole') {   // il sole con gli occhiali che ghigna
+      x.fillStyle = P.f[1]; for (let k = 0; k < 12; k++) { const a = k / 12 * PI * 2; x.beginPath(); x.moveTo(cx + Math.cos(a - .18) * s * .5, cy + Math.sin(a - .18) * s * .5); x.lineTo(cx + Math.cos(a) * s * .82, cy + Math.sin(a) * s * .82); x.lineTo(cx + Math.cos(a + .18) * s * .5, cy + Math.sin(a + .18) * s * .5); x.closePath(); x.fill(); x.stroke(); }
+      ell(cx, cy, s * .5, s * .5, P.f[0]); shades(cy - s * .12); grin();
+    } else if (kind === 'banchiere') {   // il banchiere del Banco che si scioglie: cilindro, monocolo, sigaro, il sacco delle rate
+      ell(cx, cy + s * .05, s * .4, s * .48, '#f0c8a8');
+      x.fillStyle = '#1a1a1e'; x.fillRect(cx - s * .3, cy - s * .85, s * .6, s * .45); x.strokeRect(cx - s * .3, cy - s * .85, s * .6, s * .45); x.fillRect(cx - s * .46, cy - s * .44, s * .92, s * .08);
+      x.fillStyle = '#c8302a'; x.fillRect(cx - s * .3, cy - s * .5, s * .6, s * .06);
+      x.beginPath(); x.arc(cx + s * .14, cy - s * .05, s * .1, 0, 7); x.stroke(); x.beginPath(); x.moveTo(cx + s * .22, cy); x.lineTo(cx + s * .3, cy + s * .3); x.stroke();   // il monocolo
+      x.fillStyle = '#101010'; x.beginPath(); x.arc(cx - s * .14, cy - s * .05, s * .04, 0, 7); x.fill();
+      ell(cx, cy + s * .14, s * .1, s * .08, '#e09a8a');   // il naso
+      x.fillStyle = '#6a3a1a'; x.fillRect(cx + s * .05, cy + s * .3, s * .4, s * .07); x.fillStyle = '#ff6a10'; x.fillRect(cx + s * .44, cy + s * .3, s * .05, s * .07);   // il sigaro
+      x.fillStyle = 'rgba(140,200,240,.85)'; for (let k = 0; k < 5; k++) { const dx = (k - 2) * s * .16; x.beginPath(); x.moveTo(cx + dx - s * .05, cy + s * .48); x.quadraticCurveTo(cx + dx, cy + s * (.8 + r() * .3), cx + dx + s * .05, cy + s * .48); x.fill(); }   // si scioglie
+      ell(cx - s * .6, cy + s * .5, s * .22, s * .25, '#c8a060'); x.fillStyle = P.o; x.font = `bold ${Math.round(s * .22)}px Arial`; x.textAlign = 'center'; x.fillText('L.', cx - s * .6, cy + s * .58);
+    } else if (kind === 'grigio') {   // il Grigio della Celere: casco, visiera di plexiglas, naso da maiale, manganello
+      ell(cx, cy, s * .44, s * .5, '#e8b48a');
+      x.fillStyle = '#5a6068'; x.beginPath(); x.ellipse(cx, cy - s * .12, s * .52, s * .5, 0, PI, 0); x.fill(); x.stroke(); x.fillRect(cx - s * .52, cy - s * .14, s * 1.04, s * .08);
+      x.fillStyle = 'rgba(180,220,255,.45)'; x.fillRect(cx - s * .44, cy - s * .08, s * .88, s * .4); x.strokeRect(cx - s * .44, cy - s * .08, s * .88, s * .4);
+      ell(cx, cy + s * .14, s * .16, s * .11, '#f0a0a8'); x.fillStyle = '#5a2030'; x.beginPath(); x.arc(cx - s * .05, cy + s * .14, s * .03, 0, 7); x.arc(cx + s * .05, cy + s * .14, s * .03, 0, 7); x.fill();
+      x.fillStyle = '#101010'; x.beginPath(); x.arc(cx - s * .17, cy + s * .02, s * .04, 0, 7); x.arc(cx + s * .17, cy + s * .02, s * .04, 0, 7); x.fill();
+      x.fillStyle = '#2a2a2e'; x.save(); x.translate(cx + s * .55, cy + s * .2); x.rotate(-.6); x.fillRect(-s * .05, -s * .6, s * .1, s * .9); x.strokeRect(-s * .05, -s * .6, s * .1, s * .9); x.restore();
+      x.fillStyle = P.f[1]; x.font = `bold ${Math.round(s * .16)}px Arial`; x.textAlign = 'center'; x.fillText('OINK', cx, cy + s * .72);
+    } else if (kind === 'boombox') {
+      x.fillStyle = '#2a2a30'; x.fillRect(cx - s * .7, cy - s * .35, s * 1.4, s * .8); x.strokeRect(cx - s * .7, cy - s * .35, s * 1.4, s * .8);
+      x.fillStyle = '#c8c8d0'; x.fillRect(cx - s * .5, cy - s * .62, s, s * .08); x.strokeRect(cx - s * .5, cy - s * .62, s, s * .08);
+      for (const sx of [-1, 1]) { ell(cx + sx * s * .42, cy + s * .08, s * .22, s * .22, '#101014'); ell(cx + sx * s * .42, cy + s * .08, s * .09, s * .09, P.f[1]); }
+      x.fillStyle = '#e8e2d0'; x.fillRect(cx - s * .14, cy - s * .2, s * .28, s * .18); x.fillStyle = '#3a3a3e'; x.beginPath(); x.arc(cx - s * .06, cy - s * .11, s * .04, 0, 7); x.arc(cx + s * .06, cy - s * .11, s * .04, 0, 7); x.fill();
+      x.fillStyle = P.hi; x.font = `bold ${Math.round(s * .4)}px Arial`; x.textAlign = 'center'; x.fillText('♪', cx - s * .7, cy - s * .55); x.fillText('♫', cx + s * .75, cy - s * .7);
+    } else if (kind === 'skater') {   // lo skater: berretto oversize, sciarpa fluo, la tavola
+      x.save(); x.translate(cx + s * .35, cy + s * .55); x.rotate(-.5); x.fillStyle = P.f[1]; x.fillRect(-s * .7, -s * .09, s * 1.4, s * .18); x.strokeRect(-s * .7, -s * .09, s * 1.4, s * .18); x.fillStyle = '#f0f0f0'; for (const wx of [-.45, .45]) { x.beginPath(); x.arc(wx * s, s * .16, s * .07, 0, 7); x.fill(); x.stroke(); } x.restore();
+      ell(cx, cy, s * .42, s * .5, '#c89a72');
+      x.fillStyle = P.d; x.beginPath(); x.moveTo(cx - s * .46, cy - s * .1); x.quadraticCurveTo(cx - s * .5, cy - s * .9, cx + s * .1, cy - s * .78); x.quadraticCurveTo(cx + s * .6, cy - s * .6, cx + s * .46, cy - s * .1); x.closePath(); x.fill(); x.stroke();   // il berretto oversize
+      x.fillStyle = P.f[0]; x.fillRect(cx - s * .48, cy - s * .16, s * .96, s * .1);
+      x.fillStyle = '#101014'; x.beginPath(); x.arc(cx - s * .15, cy + s * .03, s * .05, 0, 7); x.arc(cx + s * .15, cy + s * .03, s * .05, 0, 7); x.fill(); grin();
+      x.fillStyle = '#c8ff3a'; x.fillRect(cx - s * .5, cy + s * .45, s, s * .14); x.strokeRect(cx - s * .5, cy + s * .45, s, s * .14); x.fillRect(cx + s * .3, cy + s * .55, s * .14, s * .4);   // la sciarpa fluo
+    } else {   // il b-boy col cappellino all'indietro, gli occhiali, il ghigno
+      ell(cx, cy, s * .42, s * .5, '#e8b48a');
+      x.fillStyle = P.f[2]; x.beginPath(); x.ellipse(cx, cy - s * .3, s * .46, s * .3, 0, PI, 0); x.fill(); x.stroke();
+      x.beginPath(); x.moveTo(cx + s * .3, cy - s * .3); x.lineTo(cx + s * .78, cy - s * .2); x.lineTo(cx + s * .32, cy - s * .12); x.closePath(); x.fill(); x.stroke();
+      shades(cy - s * .08); grin(); ell(cx, cy + s * .62, s * .5, s * .16, P.f[0]);
+    }
+    x.restore();
+  }
+  // ---------------- I SEGNI (le tag come mappe) ----------------
+  function sign(x, kind, cx, cy, s, col) {
+    x.save(); x.strokeStyle = col; x.fillStyle = col; x.lineWidth = Math.max(1.5, s * .12); x.lineCap = 'round'; x.lineJoin = 'round';
+    if (kind === 'caldo') { x.strokeRect(cx - s * .4, cy, s * .8, s * .4); for (let k = -1; k <= 1; k++) { x.beginPath(); x.moveTo(cx + k * s * .25, cy - s * .05); x.bezierCurveTo(cx + k * s * .25 - s * .12, cy - s * .25, cx + k * s * .25 + s * .12, cy - s * .4, cx + k * s * .25, cy - s * .6); x.stroke(); } }
+    else if (kind === 'tombino') { x.beginPath(); x.arc(cx, cy, s * .4, 0, 7); x.stroke(); x.beginPath(); x.moveTo(cx - s * .28, cy); x.lineTo(cx + s * .28, cy); x.moveTo(cx, cy - s * .28); x.lineTo(cx, cy + s * .28); x.stroke(); x.beginPath(); x.moveTo(cx + s * .6, cy - s * .3); x.lineTo(cx + s * .6, cy + s * .3); x.lineTo(cx + s * .45, cy + s * .15); x.moveTo(cx + s * .6, cy + s * .3); x.lineTo(cx + s * .75, cy + s * .15); x.stroke(); }
+    else if (kind === 'rampa') { x.beginPath(); x.moveTo(cx - s * .5, cy + s * .3); x.lineTo(cx + s * .5, cy + s * .3); x.lineTo(cx + s * .5, cy - s * .2); x.closePath(); x.stroke(); x.beginPath(); x.arc(cx - s * .2, cy - s * .35, s * .1, 0, 7); x.arc(cx + s * .15, cy - s * .55, s * .1, 0, 7); x.fill(); }
+    else if (kind === 'occhio') { x.beginPath(); x.moveTo(cx - s * .5, cy); x.quadraticCurveTo(cx, cy - s * .45, cx + s * .5, cy); x.quadraticCurveTo(cx, cy + s * .45, cx - s * .5, cy); x.stroke(); x.beginPath(); x.arc(cx, cy, s * .14, 0, 7); x.fill(); x.beginPath(); x.moveTo(cx - s * .55, cy - s * .5); x.lineTo(cx + s * .55, cy + s * .5); x.stroke(); }
+    else { x.strokeRect(cx - s * .4, cy - s * .4, s * .8, s * .8); x.beginPath(); x.ellipse(cx, cy, s * .14, s * .3, .6, 0, 7); x.fill(); x.beginPath(); x.moveTo(cx - s * .2, cy + s * .3); x.lineTo(cx + s * .15, cy - s * .2); x.stroke(); }
+    x.restore();
+  }
+
+  // ================= LE LETTERE A BOLLA (throw-up, bubble, throwie, chrome) =================
+  // ogni lettera è fatta di cuscinetti: c = cerchio [x, y, r], k = capsula [x1, y1, x2, y2, r] (casella alta 1, y in su);
+  // s = le fessure (le linee del contorno dentro la lettera: i buchi schiacciati, le gambe, le bocche della C e della S)
+  const BUB = {
+    A: { b: [['k', .2, .2, .32, .62, .26], ['k', .8, .2, .68, .62, .26], ['c', .5, .7, .33]], s: [[[.5, -.08], [.5, .34]]], h: [[.5, .62, .07, .1]] },
+    B: { b: [['k', .22, .16, .22, .84, .24], ['c', .55, .73, .27], ['c', .6, .29, .31]], s: [[[1.02, .5], [.56, .5]]], h: [[.54, .73, .07, .06], [.58, .29, .08, .07]] },
+    C: { b: [['c', .5, .5, .46]], s: [[[1, .5], [.52, .5]]] },
+    D: { b: [['k', .22, .16, .22, .84, .24], ['c', .56, .5, .42]], s: [], h: [[.56, .5, .08, .15]] },
+    E: { b: [['k', .22, .16, .22, .84, .24], ['k', .22, .83, .74, .83, .17], ['k', .22, .5, .64, .5, .16], ['k', .22, .17, .78, .17, .18]], s: [[[1, .665], [.4, .665]], [[1, .335], [.4, .335]]] },
+    F: { b: [['k', .22, .14, .22, .84, .24], ['k', .22, .83, .76, .83, .18], ['k', .22, .5, .64, .5, .16]], s: [[[1, .665], [.4, .665]], [[.9, .3], [.42, .3]]] },
+    G: { b: [['c', .5, .5, .46], ['c', .78, .3, .18]], s: [[[1, .6], [.56, .6]], [[.62, .45], [.62, .3]]] },
+    H: { b: [['k', .2, .12, .2, .88, .24], ['k', .8, .12, .8, .88, .24], ['k', .2, .5, .8, .5, .22]], s: [[[.5, 1], [.5, .72]], [[.5, 0], [.5, .28]]] },
+    I: { b: [['k', .38, .14, .38, .86, .28]], s: [] },
+    J: { b: [['k', .66, .4, .66, .88, .25], ['c', .42, .3, .3]], s: [[[.42, .55], [.42, .38]]] },
+    K: { b: [['k', .2, .12, .2, .88, .24], ['c', .64, .76, .25], ['c', .68, .25, .28]], s: [[[.95, .5], [.45, .5]], [[.44, .9], [.44, .62]]] },
+    L: { b: [['k', .24, .25, .24, .88, .25], ['k', .24, .2, .78, .2, .22]], s: [[[.48, .55], [.62, .42]]] },
+    M: { b: [['k', .16, .14, .16, .84, .2], ['k', .5, .14, .5, .76, .2], ['k', .84, .14, .84, .84, .2], ['c', .33, .78, .21], ['c', .67, .78, .21]], s: [[[.33, 0], [.33, .55]], [[.67, 0], [.67, .55]]] },
+    N: { b: [['k', .18, .12, .18, .88, .23], ['k', .82, .12, .82, .88, .23], ['k', .2, .78, .8, .22, .21]], s: [[[.44, 0], [.44, .38]], [[.56, 1], [.56, .62]]] },
+    O: { b: [['c', .5, .5, .47]], s: [], h: [[.5, .5, .1, .18]] },
+    P: { b: [['k', .22, .12, .22, .88, .24], ['c', .58, .66, .33]], s: [[[.46, .0], [.56, .3]]], h: [[.57, .67, .08, .09]] },
+    Q: { b: [['c', .5, .52, .45], ['c', .84, .12, .15]], s: [[[.68, .26], [.82, .18]]], h: [[.5, .54, .1, .16]] },
+    R: { b: [['k', .22, .12, .22, .88, .24], ['c', .58, .68, .3], ['k', .45, .4, .74, .16, .22]], s: [[[1, .44], [.52, .44]], [[.46, -.02], [.5, .28]]], h: [[.57, .69, .07, .08]] },
+    S: { b: [['c', .44, .72, .3], ['c', .56, .28, .3]], s: [[[1, .64], [.55, .64]], [[0, .36], [.45, .36]]] },
+    T: { b: [['k', .12, .82, .88, .82, .2], ['k', .5, .14, .5, .78, .25]], s: [[[.25, .58], [.3, .66]], [[.75, .58], [.7, .66]]] },
+    U: { b: [['k', .2, .4, .2, .88, .24], ['k', .8, .4, .8, .88, .24], ['c', .5, .32, .38]], s: [[[.5, 1], [.5, .5]]] },
+    V: { b: [['k', .2, .84, .44, .22, .26], ['k', .8, .84, .56, .22, .26]], s: [[[.5, 1], [.5, .56]]] },
+    W: { b: [['k', .12, .84, .26, .2, .2], ['k', .5, .66, .38, .2, .2], ['k', .5, .66, .62, .2, .2], ['k', .88, .84, .74, .2, .2]], s: [[[.31, 1], [.33, .5]], [[.69, 1], [.67, .5]]] },
+    X: { b: [['k', .2, .84, .8, .16, .24], ['k', .8, .84, .2, .16, .24]], s: [[[.5, 1], [.5, .7]], [[.5, 0], [.5, .3]]] },
+    Y: { b: [['k', .2, .84, .5, .5, .24], ['k', .8, .84, .5, .5, .24], ['k', .5, .14, .5, .5, .24]], s: [[[.5, 1], [.5, .72]]] },
+    Z: { b: [['k', .16, .82, .84, .82, .2], ['k', .82, .8, .18, .2, .22], ['k', .16, .18, .84, .18, .2]], s: [[[0, .62], [.42, .62]], [[1, .38], [.58, .38]]] },
+    '0': { b: [['c', .5, .5, .46]], s: [], h: [[.5, .5, .09, .2]] }, '1': { b: [['k', .42, .14, .42, .86, .27], ['c', .26, .78, .16]], s: [] },
+    '2': { b: [['c', .5, .72, .3], ['k', .2, .2, .8, .2, .22], ['k', .72, .6, .24, .22, .2]], s: [[[0, .64], [.4, .64]]] }, '3': { b: [['c', .48, .73, .28], ['c', .5, .28, .3]], s: [[[0, .64], [.42, .64]], [[0, .36], [.42, .36]], [[.25, .5], [.6, .5]]] },
+    '4': { b: [['k', .7, .14, .7, .86, .24], ['k', .2, .4, .85, .4, .2], ['k', .24, .45, .5, .86, .2]], s: [[[.5, .6], [.55, .5]]] }, '5': { b: [['k', .25, .82, .8, .82, .2], ['k', .26, .82, .26, .5, .2], ['c', .52, .32, .32]], s: [[[0, .38], [.42, .38]]] },
+    '6': { b: [['c', .5, .32, .33], ['k', .3, .4, .55, .88, .22]], s: [[[.5, .38], [.5, .26]]] }, '7': { b: [['k', .15, .82, .85, .82, .2], ['k', .82, .8, .4, .14, .24]], s: [] },
+    '8': { b: [['c', .5, .74, .27], ['c', .5, .29, .31]], s: [[[.5, .8], [.5, .7]], [[.5, .36], [.5, .24]]] }, '9': { b: [['c', .5, .68, .33], ['k', .7, .6, .45, .12, .22]], s: [[[.5, .74], [.5, .62]]] },
+  };
+  // la parola a bolla: i cuscinetti in pixel (y in giù), lettera dopo lettera, accavallate
+  function bubbleLayout(text, o, r) {
+    const s = DEACC(text).replace(/[^A-Z0-9]/g, ''), L = []; let x = 0;
+    [...s].forEach((ch, i) => {
+      const g = BUB[ch] || BUB.O, sz = 1 + (r() - .5) * o.jit, rot = (r() - .5) * o.rot, by = (i % 2 ? 1 : -1) * o.bounce * (.4 + r() * .6), sq = o.squash;
+      const cx = .5, cy = .5, cr = Math.cos(rot), sr = Math.sin(rot);
+      const T = (u, v) => { const px = (u - cx) * sq * sz, py = (v - cy) * sz; return [x + .5 * sq + px * cr - py * sr + py * o.slant, -(cy + by + px * sr + py * cr)]; };
+      const body = g.b.map(b => b[0] === 'c' ? { c: T(b[1], b[2]), r: b[3] * sz * o.puff } : { a: T(b[1], b[2]), b: T(b[3], b[4]), r: b[5] * sz * o.puff });
+      const slits = g.s.map(sl => sl.map(([u, v]) => T(u, v))), holes = (g.h || []).map(([u, v, rx, ry]) => ({ c: T(u, v), rx: rx * sq * sz, ry: ry * sz, rot }));
+      L.push({ ch, body, slits, holes, i }); x += o.adv * sq * sz;
+    });
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    L.forEach(l => l.body.forEach(b => (b.c ? [b.c] : [b.a, b.b]).forEach(([a, c]) => { x0 = Math.min(x0, a - b.r); x1 = Math.max(x1, a + b.r); y0 = Math.min(y0, c - b.r); y1 = Math.max(y1, c + b.r); })));
+    return { L, box: [x0, y0, x1, y1] };
+  }
+  function bubbleFit(B, W, H, pad) {
+    const [x0, y0, x1, y1] = B.box, s = Math.min((W - 2 * pad) / (x1 - x0), (H - 2 * pad) / (y1 - y0)), ox = (W - (x1 - x0) * s) / 2 - x0 * s, oy = (H - (y1 - y0) * s) / 2 - y0 * s, M = ([a, b]) => [a * s + ox, b * s + oy];
+    B.L.forEach(l => { l.body.forEach(b => { if (b.c) b.c = M(b.c); else { b.a = M(b.a); b.b = M(b.b); } b.r *= s; }); l.slits = l.slits.map(sl => sl.map(M)); l.holes.forEach(h => { h.c = M(h.c); h.rx *= s; h.ry *= s; }); });
+    B.box = [x0 * s + ox, y0 * s + oy, x1 * s + ox, y1 * s + oy]; B.s = s; return B;
+  }
+  // i cuscinetti di una lettera, gonfiati di e (il contorno), spostati di (dx, dy)
+  function bodyPath(x, l, e, dx, dy) {
+    x.beginPath();
+    l.body.forEach(b => { if (b.c) { x.moveTo(b.c[0] + dx + b.r + e, b.c[1] + dy); x.arc(b.c[0] + dx, b.c[1] + dy, b.r + e, 0, PI * 2); } else { const ax = b.a[0] + dx, ay = b.a[1] + dy, bx = b.b[0] + dx, by = b.b[1] + dy, an = Math.atan2(by - ay, bx - ax), rr = b.r + e; x.moveTo(ax + Math.cos(an + PI / 2) * rr, ay + Math.sin(an + PI / 2) * rr); x.arc(ax, ay, rr, an + PI / 2, an + PI * 1.5); x.arc(bx, by, rr, an - PI / 2, an + PI / 2); x.closePath(); } });
+  }
+  function fillBody(x, l, e, col, dx, dy) { x.fillStyle = col; l.body.forEach(b => { x.beginPath(); if (b.c) x.arc(b.c[0] + (dx || 0), b.c[1] + (dy || 0), b.r + e, 0, PI * 2); else { const ax = b.a[0] + (dx || 0), ay = b.a[1] + (dy || 0), bx = b.b[0] + (dx || 0), by = b.b[1] + (dy || 0), an = Math.atan2(by - ay, bx - ax), rr = b.r + e; x.moveTo(ax + Math.cos(an + PI / 2) * rr, ay + Math.sin(an + PI / 2) * rr); x.arc(ax, ay, rr, an + PI / 2, an + PI * 1.5); x.arc(bx, by, rr, an - PI / 2, an + PI / 2); x.closePath(); } x.fill(); }); }
+  // gli schemi di colore: il bozzetto (bianco e rosso), la throwie (nero e bianco), il colore pieno, il cromato
+  function bubbleScheme(fam, P, r, q) {
+    if (fam === 'throwie') return r() < .7 ? { fill: '#141418', ol: '#f6f4ee', outer: '#141418', d3: '#141418', shine: '#f6f4ee', slit: '#f6f4ee' } : { fill: '#f6f4ee', ol: '#141418', outer: null, d3: '#141418', shine: '#141418', slit: '#141418' };
+    if (fam === 'chrome') return { fill: 'chrome', ol: '#101012', outer: P.k === '#101012' ? null : P.k, d3: '#101012', shine: '#ffffff', slit: '#101012' };
+    const k = r();
+    if (k < .3) { const c = pickR(r, [P.f[2], '#d8201a', '#1a3a9a', '#101012']); return { fill: '#fbf8f0', ol: c, outer: null, d3: c, shine: c, slit: c }; }   // il bozzetto
+    return { fill: P.f[k < .65 ? 0 : 1], fill2: P.f[1], ol: P.o, outer: q > .5 ? P.k : null, d3: P.d, shine: '#ffffff', slit: P.o };
+  }
+  function bubbleArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
+    const F = FAM[C.fam], q = C.q, throwUp = w.style === 'throw', S0 = bubbleScheme(C.fam, P, r, q);
+    const o = { adv: C.fam === 'throwie' ? .72 : C.fam === 'fat' ? .74 : .8, jit: .1 + (1 - q) * .12, rot: .16 + (1 - q) * .1, bounce: .05 + r() * .06, squash: .95 + r() * .35, slant: (r() - .3) * .25, puff: C.fam === 'fat' || C.fam === 'throwie' ? 1.12 + r() * .1 : 1 + r() * .08 };
+    const sloganH = C.slogan && !throwUp ? Hp * .12 : 0, B = bubbleFit(bubbleLayout(w.words || w.aka || 'NINO', o, r), Wp, Hp - sloganH, Hp * .1);
+    const u = B.s, ol = Math.max(2, u * (.045 + r() * .02)), d3 = u * (.12 + r() * .1) * (q < .3 ? .4 : 1), ang = .6 + r() * .5, dx = Math.cos(ang) * d3, dy = Math.sin(ang) * d3, steps = Math.max(2, Math.round(d3 / 1.2));
+    const order = B.L.map((l, i) => i); if (r() < .4) order.reverse();   // da sinistra sopra o da destra sopra
+    const chromeG = () => { const g = x.createLinearGradient(0, B.box[1], 0, B.box[3]); g.addColorStop(0, '#ffffff'); g.addColorStop(.45, '#c8d0da'); g.addColorStop(.52, '#5a6472'); g.addColorStop(.6, '#9aa4b2'); g.addColorStop(1, '#eef2f6'); return g; };
+    const fillCol = c => c === 'chrome' ? chromeG() : c;
+    // 1. il riempimento
+    const FILL = cv(Wp, Hp), fx = FILL.getContext('2d'); order.forEach(i => fillBody(fx, B.L[i], 0, S0.fill === 'chrome' ? '#c8d0da' : S0.fill));
+    x.drawImage(FILL, 0, 0); snap(x.canvas); const pts = []; B.L.forEach(l => l.body.forEach(b => { if (b.c) for (let a = 0; a < 6; a++) pts.push([b.c[0] + Math.cos(a) * b.r * .5, b.c[1] + Math.sin(a) * b.r * .5]); else for (let t = 0; t <= 1; t += .25) pts.push([b.a[0] + (b.b[0] - b.a[0]) * t, b.a[1] + (b.b[1] - b.a[1]) * t]); })); paths.push(pts); radii.push(u * .3);
+    // 2. lo sfondo
+    const BG = cv(Wp, Hp), bg = BG.getContext('2d');
+    if (C.bgk) { background(bg, C.bgk, P, Wp, Hp, r, false); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .18); }
+    // 3. le lettere: il filo esterno attorno a tutto, poi ognuna col suo blocco 3D pieno, il contorno, il riempimento, le fessure
+    const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); ox.drawImage(BG, 0, 0);
+    if (S0.outer) for (let s = 0; s <= steps; s++) B.L.forEach(l => fillBody(ox, l, ol * 2.4, S0.outer, dx * s / steps, dy * s / steps));
+    order.forEach(i => { const l = B.L[i]; for (let s = steps; s >= 1; s--) fillBody(ox, l, ol, S0.ol, dx * s / steps, dy * s / steps); });   // il blocco del 3D col suo bordo, dietro a tutto
+    order.forEach(i => { const l = B.L[i]; for (let s = steps; s >= 1; s--) fillBody(ox, l, 0, S0.d3, dx * s / steps, dy * s / steps); });
+    order.forEach(i => {
+      const l = B.L[i];
+      if (S0.d3 === S0.ol) { ox.strokeStyle = S0.fill === 'chrome' ? '#fff' : S0.fill; ox.lineWidth = Math.max(1, ol * .35); ox.globalAlpha = .5; bodyPath(ox, l, -ol * .1, dx * .55, dy * .55); ox.stroke(); ox.globalAlpha = 1; }   // la riga del 3D (nel bozzetto)
+      fillBody(ox, l, ol, S0.ol, 0, 0); fillBody(ox, l, 0, fillCol(S0.fill), 0, 0);
+      if (S0.fill2 && q > .45) { ox.save(); bodyPath(ox, l, 0, 0, 0); ox.clip(); const [a0, b0, a1, b1] = B.box; ox.fillStyle = S0.fill2; ox.beginPath(); ox.moveTo(a0, (b0 + b1) * .58); for (let xx = a0; xx <= a1; xx += u * .35) ox.lineTo(xx, (b0 + b1) * .58 + Math.sin(xx / u * 4) * u * .05); ox.lineTo(a1, b1); ox.lineTo(a0, b1); ox.fill(); ox.restore(); }   // la sfumatura a onda (due colori)
+      ox.fillStyle = S0.slit; l.holes.forEach(h => { ox.beginPath(); ox.ellipse(h.c[0], h.c[1], Math.max(ol, h.rx), Math.max(ol, h.ry), h.rot, 0, 7); ox.fill(); });   // i buchi
+      ox.strokeStyle = S0.slit; ox.lineWidth = ol * 1.15; ox.lineCap = 'round'; ox.lineJoin = 'round'; l.slits.forEach(sl => { ox.save(); bodyPath(ox, l, -ol * .2, 0, 0); ox.clip(); ox.beginPath(); sl.forEach(([a, b], k) => k ? ox.lineTo(a, b) : ox.moveTo(a, b)); ox.stroke(); ox.restore(); });
+      // le luci: un arco e un puntino sul cuscinetto più grande, in alto a sinistra
+      const big = l.body.reduce((a, b) => (b.r > a.r ? b : a)), bc = big.c || [(big.a[0] + big.b[0]) / 2, Math.min(big.a[1], big.b[1])];
+      ox.strokeStyle = S0.shine; ox.fillStyle = S0.shine; ox.lineWidth = Math.max(1.5, ol * .8); ox.beginPath(); ox.arc(bc[0], bc[1], big.r * .62, PI * 1.08, PI * 1.42); ox.stroke(); ox.beginPath(); ox.arc(bc[0] + Math.cos(PI * 1.55) * big.r * .62, bc[1] + Math.sin(PI * 1.55) * big.r * .62, ol * .7, 0, 7); ox.fill();
+      if (C.fam === 'throwie' && r() < .3) doodles(ox, [{ pts: [bc, [bc[0], bc[1] + big.r * .4]] }], big.r * 1.4, r, S0.shine, true, false, r() < .4);
+    });
+    if (throwUp ? r() < .5 : r() < .3) { const lows = []; B.L.forEach(l => l.body.forEach(b => { const c = b.c || (b.a[1] > b.b[1] ? b.a : b.b); lows.push([c[0], c[1] + b.r]); })); ox.fillStyle = S0.ol; ox.strokeStyle = S0.ol; ox.lineCap = 'round'; for (let k = 0; k < 3 + Math.floor(r() * 4); k++) { const qq = pickR(r, lows), l2 = Hp * (.05 + r() * .14); ox.lineWidth = ol * 1.4; ox.beginPath(); ox.moveTo(qq[0], qq[1]); ox.lineTo(qq[0], qq[1] + l2); ox.stroke(); ox.beginPath(); ox.arc(qq[0], qq[1] + l2, ol * 1.1, 0, 7); ox.fill(); } }   // le colature
+    x.clearRect(0, 0, Wp, Hp); x.drawImage(OUT, 0, 0); snap(x.canvas); paths.push(pts.slice()); radii.push(u * .38);
+    // 4. i dettagli: la firma, l'anno, lo slogan, qualche stellina
+    const [bx0, by0, bx1, by1] = B.box;
+    if (q > .6) for (let k = 0; k < 2; k++) sparkle(x, bx0 + r() * (bx1 - bx0), by0 + r() * (by1 - by0) * .3, u * .08, S0.shine === '#141418' ? '#141418' : '#ffffff');
+    smallTag(x, w.words && w.aka ? w.aka + ' ' + (w.crew || 'PV') : (w.crew || 'PV'), Math.min(Wp - Hp * .3, bx1 - Hp * .15), Math.min(Hp - sloganH - Hp * .06, by1 + ol * 2), Hp * .1, S0.ol === '#f6f4ee' ? '#141418' : S0.ol, r, Wp * .3);
+    if (!throwUp && C.yr) smallTag(x, C.yr, bx0 + Hp * .12, Math.max(Hp * .06, by0 + Hp * .02), Hp * .08, S0.ol === '#f6f4ee' ? '#141418' : S0.ol, r);
+    if (sloganH) { const r2 = mulberry((w.seed || 1) + 99), r3 = mulberry((w.seed || 1) + 99); smallTag(x, C.slogan, Wp / 2, Hp - sloganH * .55, sloganH * .7, '#ffffff', r2, Wp * .85, 2.6); smallTag(x, C.slogan, Wp / 2, Hp - sloganH * .55, sloganH * .7, '#141418', r3, Wp * .85); }
+    snap(x.canvas); paths.push(raster(Wp, Hp, 2)); radii.push(Hp * .2);
+  }
+
+  // ================= IL LAVORO =================
+  const PPM = 56;   // pixel per metro
+  // i punti dei tratti, uno ogni step pixel, lettera dopo lettera: il percorso della mano
+  function densify(strokes, step) { const out = []; strokes.forEach(t => { for (let k = 0; k < t.pts.length; k++) { const a = t.pts[k], b = t.pts[k + 1]; out.push(a); if (!b) continue; const l = hyp(b[0] - a[0], b[1] - a[1]), n = Math.floor(l / step); for (let j = 1; j < n; j++) out.push([a[0] + (b[0] - a[0]) * j / n, a[1] + (b[1] - a[1]) * j / n]); } }); return out; }
+  function raster(Wp, Hp, rows) { const out = [], dy = Hp / rows; for (let k = 0; k < rows; k++) { const y = dy * (k + .5), L = k % 2 ? [Wp, 0] : [0, Wp]; for (let j = 0; j <= 16; j++) out.push([L[0] + (L[1] - L[0]) * j / 16, y + (j % 2 ? dy * .3 : -dy * .3)]); } return out; }
+  // la penna larga: il tratto ripassato tre volte lungo la punta inclinata (i verticali più grossi degli orizzontali)
+  function pen(x, strokes, arrowsL, w, col, dx, dy, J, Cp, nib) {
+    if (!nib) { pass(x, { strokes, arrows: arrowsL, w0: w }, w, col, dx, dy, J, Cp); return; }
+    const a = -.8, ux = Math.cos(a) * w * nib, uy = Math.sin(a) * w * nib, w2 = w * (1 - nib * .55);
+    for (const k of [-1, 0, 1]) pass(x, { strokes, arrows: k ? [] : arrowsL, w0: w2 }, w2, col, (dx || 0) + ux * k, (dy || 0) + uy * k, J, Cp);
+  }
+  function art(w) {
+    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), Wp = Math.round(w.W * PPM), Hp = Math.round(w.H * PPM), text = w.words || w.aka || 'NINO';
+    const C = choose(w), q = C.q, stages = [], paths = [], radii = [];
+    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(k); };
+    const toy = q < .35;
+    if (w.style === 'tag' || w.style === 'mtag') {   // la tag: la mano del writer (writer_mano.js), col suo segno accanto
+      const c = cv(Wp, Hp), x = c.getContext('2d'), signW = w.sign ? Hp * .7 : 0, d = WM.dna(w.hand || w.seed || 1);
+      const col = w.col || (w.style === 'mtag' ? '#121216' : P.f[1]);
+      const res = WM.handTag(x, text, d, Wp - signW, Hp, r, col, w.style);
+      if (w.sign) sign(x, w.sign, Wp - signW * .55, Hp * .5, signW * .55, w.style === 'mtag' ? '#f2efe6' : col);
+      snap(c); paths.push(res.path.filter((q, i) => i % 2 === 0).concat(w.sign ? [[Wp - signW * .55, Hp * .5]] : [])); radii.push(Math.max(res.W * 2.2, Hp * .1));
+      return { stages, paths, radii, Wp, Hp, C };
+    }
+    const c = cv(Wp, Hp), x = c.getContext('2d');
+    if (FAM[C.fam] && FAM[C.fam].fat && w.style !== 'wholecar') { bubbleArt(w, P, C, r, Wp, Hp, snap, paths, radii, x); return { stages, paths, radii, Wp, Hp, C }; }   // le lettere a bolla
+    const train = w.style === 'wholecar', wild = w.style === 'burner' || train, throwUp = w.style === 'throw', F = FAM[C.fam];
+    const charW = C.chr ? Hp * (train ? .95 : .9) : 0, charLeft = !(r() < .3);
+    const sloganH = C.slogan && !throwUp ? Hp * .1 : 0;
+    // la mano: un toy trema, non sa il 3D, sbaglia gli spessori; un king è pulito, profondo, pieno di dettagli
+    const LW = Wp - charW, opts = { font: WM ? WM.fontFor(WM.dna(w.hand || w.seed || 1)) : null, h: 100, adv: F.adv, skew: F.skew, bounce: F.bounce, rot: F.rot * (.6 + q * .6), wob: F.wob + (1 - q) * .045, scale: F.scale, ext: F.ext * (.3 + q * .9), links: wild && q > .5 ? F.links : Math.min(1, F.links) };
+    const padK = .6 * F.lw / (1 + 1.2 * F.lw) + .04, L = fit(letters(text, opts, r), LW, Hp - sloganH, Hp * padK, train ? 1.6 : wild ? 1.3 : 1.1);
+    const ox0 = charLeft ? charW : 0; L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a + ox0, b]); }); L.box = [L.box[0] + ox0, L.box[1], L.box[2] + ox0, L.box[3]];
+    const lw = F.lw * 100 * L.s * (train ? 1.12 : 1), ol = Math.max(2.5, lw * (throwUp ? .24 : .2) * (toy ? .7 + r() * .6 : 1)), kl = Math.max(2, lw * .16);
+    const d3 = throwUp ? Math.max(2, lw * F.d3 * .6) : Math.max(toy ? 1 : 3, lw * F.d3 * (toy ? .3 : .55 + q * .55)), ang3 = F.chrome ? .9 : .78, dx = d3 * Math.cos(ang3), dy = d3 * Math.sin(ang3), steps = Math.max(1, Math.round(d3 / 1.5));
+    if (F.swash) swash(L, r);
+    if (F.arrows && !throwUp && q > .3) arrows(L, r, Math.round(F.arrows * q) + Math.floor(r() * 2), lw); else { L.arrows = []; L.w0 = lw; }
+    if (F.spikes) spikes(L, r, lw);
+    const J = F.join, Cp = F.cap, nib = F.nibK || (F.join === 'miter' && !throwUp ? .22 + q * .1 : 0);
+    // le lettere una per una, nell'ordine in cui si accavallano (nel wildstyle qualcuna passa sotto la vicina)
+    const groups = []; L.strokes.forEach(t => { (groups[t.i] = groups[t.i] || []).push(t); }); const order = groups.map((g, i) => i).filter(i => groups[i]);
+    if (C.fam === 'wild' && q > .5) for (let k = 0; k + 1 < order.length; k++) if (r() < .35) { const t = order[k]; order[k] = order[k + 1]; order[k + 1] = t; k++; }
+    const arrOf = i => (L.arrows || []).filter(a => { const tip = a[1]; let best = -1, bd = 1e9; L.strokes.forEach(t => { const e = t.pts[t.pts.length - 1], d = hyp(e[0] - tip[0], e[1] - tip[1]); if (d < bd) { bd = d; best = t.i; } }); return best === i; });
+    // i colori: le throwie a inchiostro (nero pieno, bordo bianco, filo nero fuori); il block pesante col riempimento chiaro
+    const inkFill = F.ink ? (r() < .75 ? '#141418' : shade(P.f[2], -.55)) : null, OL = F.ink ? '#f6f4ee' : P.o, KL = F.ink ? '#141418' : P.k;
+    // il riempimento: un motivo che copre tutto, ritagliato dalle lettere
+    const PAT = cv(Wp, Hp), px = PAT.getContext('2d'); px.fillStyle = inkFill || P.f[1]; px.fillRect(0, 0, Wp, Hp);
+    if (!F.ink) fillPattern(px, F.hard && r() < .5 ? 'fade' : throwUp && !F.chrome ? (C.fillk === 'diag' ? 'diag' : 'fade') : C.fillk, P, L.box, lw, Wp, Hp, r);
+    const TMP = cv(Wp, Hp), tx = TMP.getContext('2d');
+    const letterFill = (i, wid) => { tx.clearRect(0, 0, Wp, Hp); tx.globalCompositeOperation = 'source-over'; pen(tx, groups[i], arrOf(i), wid, '#ffffff', 0, 0, J, Cp, nib); tx.globalCompositeOperation = 'source-in'; tx.drawImage(PAT, 0, 0); tx.globalCompositeOperation = 'source-over'; return TMP; };
+    // 1. il riempimento (un writer riempie per primo)
+    const FILL = cv(Wp, Hp), fx = FILL.getContext('2d'); order.forEach(i => fx.drawImage(letterFill(i, lw), 0, 0));
+    x.drawImage(FILL, 0, 0); snap(c); paths.push(densify(order.flatMap(i => groups[i]), lw * .6)); radii.push(lw * .8);
+    // 2. lo sfondo (dietro alle lettere)
+    const BG = cv(Wp, Hp), bg = BG.getContext('2d');
+    if (C.bgk) { background(bg, toy && !train ? 'spruzzi' : C.bgk, P, Wp, Hp, r, train); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(c); paths.push(raster(Wp, Hp, train ? 6 : 4)); radii.push(Hp * (train ? .13 : .16)); }
+    // 3. le lettere vere: keyline attorno a tutto, poi ogni lettera col suo 3D, il suo contorno, il suo riempimento, le luci
+    const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); ox.drawImage(BG, 0, 0);
+    const keyW = F.ink ? lw + 2 * ol + 5 : lw + 2 * ol + 2 * kl;
+    if ((!throwUp || F.ink || F.fat) && q > .3) for (let s = 0; s <= steps; s++) pen(ox, L.strokes, L.arrows, keyW, KL, dx * s / steps, dy * s / steps, J, Cp, nib);
+    const olOf = order.map(() => toy ? ol * (.6 + r() * .9) : ol);
+    order.forEach((i, k) => { for (let s = steps; s >= 1; s--) pen(ox, groups[i], arrOf(i), lw + 2 * olOf[k] + 2, F.ink ? KL : P.o, dx * s / steps, dy * s / steps, J, Cp, nib); });   // il blocco del 3D col suo bordo, dietro a tutte
+    if (!throwUp || F.fat) order.forEach((i, k) => { for (let s = steps; s >= 1; s--) pen(ox, groups[i], arrOf(i), lw + 2 * olOf[k] - 2, F.hard || q > .5 ? P.d : shade(P.d, -.32 * s / steps), dx * s / steps, dy * s / steps, J, Cp, nib); });
+    if (!throwUp && q > .5) order.forEach(i => pen(ox, groups[i], arrOf(i), Math.max(1, ol * .25), shade(P.d, .25), dx * .5, dy * .5, J, Cp, nib));   // la riga di luce sul 3D
+    order.forEach((i, k) => {
+      const G0 = groups[i], A0 = arrOf(i), olI = olOf[k];
+      pen(ox, G0, A0, lw + 2 * olI, OL, 0, 0, J, Cp, nib);   // il contorno
+      if (!throwUp && !F.chrome && !F.ink && q > .45) pen(ox, G0, A0, lw + olI * .55, shade(P.f[2], -.4), 0, 0, J, Cp, nib);   // la seconda linea
+      const T = letterFill(i, lw);
+      tx.globalCompositeOperation = 'source-atop';
+      if (q > .4 && !F.fat) pass(tx, { strokes: G0, arrows: [], w0: lw }, Math.max(1.5, lw * .14), P.hi, -lw * .24, -lw * .24, J, Cp);   // la luce sul bordo
+      if (F.doodles && q > .25) doodles(tx, G0, lw, r, F.ink ? '#f6f4ee' : P.hi, F.ink, F.stars, F.ink && i === order[Math.floor(order.length / 2)] && r() < .45);
+      if (q > .8 && !throwUp && r() < .4) { tx.strokeStyle = shade(P.f[2], -.2); tx.lineWidth = Math.max(1.2, lw * .06); const [a0, b0, a1, b1] = L.box; for (let k = 0; k < 2; k++) { const xx = a0 + r() * (a1 - a0); tx.beginPath(); tx.moveTo(xx, b0 - lw); tx.lineTo(xx + lw * .9, b1 + lw); tx.stroke(); } }   // i tagli
+      tx.globalCompositeOperation = 'source-over';
+      ox.drawImage(T, 0, 0);
+    });
+    if (throwUp || toy || r() < .3) drips(ox, L, r, F.ink ? (r() < .5 ? '#f6f4ee' : '#141418') : throwUp ? P.o : P.f[2], lw * .3, throwUp ? 6 : toy ? 7 : 3, Hp * (toy ? .22 : .16));
+    x.clearRect(0, 0, Wp, Hp); x.drawImage(OUT, 0, 0); snap(c); paths.push(densify(order.flatMap(i => groups[i]), lw * .7)); radii.push((lw + 2 * ol) * .75 + d3 * .5);
+    // 4. i dettagli: stelline, il personaggio, la firma della crew, l'anno, lo slogan
+    for (let k = 0; k < Math.round((wild ? 4 : 2) * q); k++) { const t = pickR(r, L.strokes), qq = t.pts[0]; sparkle(x, qq[0], qq[1] - lw * .3, lw * (.35 + r() * .3), P.hi); }
+    if (C.chr) character(x, C.chr, charLeft ? charW * .5 : Wp - charW * .5, (Hp - sloganH) * .52, Hp * (train ? .5 : .46), P, r);
+    const [bx0, by0, bx1, by1] = L.box, crew = w.crew || 'PV';
+    smallTag(x, w.words && w.aka ? w.aka + ' ' + crew : crew, Math.min(Wp - Hp * .3, bx1 - Hp * .2), Math.min(Hp - sloganH - Hp * .07, by1 + lw * .9), Hp * .1, P.o, r, Wp * .3);
+    if (!throwUp) smallTag(x, C.yr, bx0 + Hp * .15, Math.max(Hp * .07, by0 - lw * .8), Hp * .08, P.o, r);
+    if (sloganH) { const r2 = mulberry((w.seed || 1) + 99), r3 = mulberry((w.seed || 1) + 99); smallTag(x, C.slogan, Wp / 2, Hp - sloganH * .55, sloganH * .75, P.k, r2, Wp * .85, 2.6); smallTag(x, C.slogan, Wp / 2, Hp - sloganH * .55, sloganH * .75, P.o, r3, Wp * .85); }
+    snap(c); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .2);
+    return { stages, paths, radii, Wp, Hp, C };
+  }
+  // il crossaggio: una X enorme e la tag di chi crossa
+  function crossOut(ctx, x, y, Wp, Hp, c, r) {
+    ctx.save(); ctx.strokeStyle = '#101012'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(4, Hp * .07); ctx.shadowColor = '#101012'; ctx.shadowBlur = 3;
+    ctx.beginPath(); ctx.moveTo(x + Wp * .08, y + Hp * .1); ctx.lineTo(x + Wp * .92, y + Hp * .9); ctx.moveTo(x + Wp * .9, y + Hp * .08); ctx.lineTo(x + Wp * .1, y + Hp * .92); ctx.stroke(); ctx.restore();
+    const L = fit(letters(c.aka + ' ' + c.crew, { h: 100, adv: .66, skew: .4, wob: .07, bounce: .1, rot: .2 }, r), Wp * .8, Hp * .45, 4);
+    ctx.save(); ctx.translate(x + Wp * .1, y + Hp * .3); pass(ctx, L, Math.max(3, Hp * .06), '#d8201a', 0, 0); ctx.restore();
+  }
+  return { PAL, COL2PAL, FAM, FAMS, FILLS, BGS, CHARS, WORDS, SLOGANS, SIGNS, SIGN_TXT, PPM, art, choose, conceive, dnaOf, crossOut, letters, mulberry };
+})();
+if (typeof module !== 'undefined') module.exports = WriterArte;
+</script>
 <script>/* Porto Vecchio — il writing (v7, «Writer»). La sottocultura delle bombolette: tag, throw-up, pezzi, burner, whole car.
    - LA SCALA DEI LAVORI (dal più piccolo): tag (la firma, a pennarello o a spruzzo) → throw-up (lettere a bolla, due colori,
      fatte in fretta) → pezzo (lettere a blocchi con fondo, contorno, 3D, sfumatura e luci) → burner (wildstyle: frecce,
@@ -28851,20 +29606,11 @@ var Writing = (function () {
     { id: 'BDS', nome: 'Banda della Scogliera', col: 3 },
     { id: 'TNT', nome: 'Treni Notte Tunnel', col: 5 },
   ];
+  const AKAS2 = ['ZEKE', 'MIRK', 'SOLE', 'BOLT', 'KOMA', 'TRAX', 'ELKE', 'GRIM', 'NEON', 'DUNE', 'PIXO', 'RAZO', 'VAPO', 'ICER', 'LUPA', 'KASH'];
   const AKAS = ['DAKO', 'KEOS', 'SPIK', 'RAKE', 'NOTE', 'BLES', 'SNEK', 'KAOS', 'TOXI', 'PHAZ', 'DEMO', 'SKEMA', 'ZORA', 'MOSE', 'VIBE', 'KRAN', 'FUSE', 'OBIE', 'RUSK', 'NEMO'];
-  // le tavolozze (anni '80): riempimento sfumato (3), contorno, 3D, keyline, fondo, luce
-  const PAL = [
-    { f: ['#ffe14a', '#ff9a1e', '#e2361e'], o: '#1a1420', d: '#3a1a62', k: '#f6f1e4', bg: '#3aa6e0', hi: '#ffffff' },
-    { f: ['#8ee0ff', '#2a86e0', '#283c9e'], o: '#0e1018', d: '#c8302a', k: '#fbf8ee', bg: '#f2c430', hi: '#ffffff' },
-    { f: ['#ff8acb', '#d8409a', '#6e1a70'], o: '#14121c', d: '#1a6e5c', k: '#eefbf3', bg: '#9ad44a', hi: '#ffffff' },
-    { f: ['#d2f560', '#5ab43a', '#1a6c3c'], o: '#0e1410', d: '#5a2a8e', k: '#faf2e0', bg: '#ee5e2a', hi: '#ffffff' },
-    { f: ['#ffffff', '#c8d0d8', '#7e8ea0'], o: '#0e0e10', d: '#202026', k: '#e23a2a', bg: '#1c1c2c', hi: '#ffffff' },   // cromato
-    { f: ['#ff5a3a', '#c8201a', '#5e0e0e'], o: '#f6f1e4', d: '#101012', k: '#101012', bg: '#f4c43a', hi: '#ffe0c0' },
-    { f: ['#4a4a56', '#24242c', '#0a0a0e'], o: '#f6f1e4', d: '#c8302a', k: '#101010', bg: '#e8e0d0', hi: '#b8c0d0' },   // nero
-    { f: ['#ffd23a', '#ff8a1a', '#c84a10'], o: '#1a1010', d: '#2a5a9a', k: '#f8f0e0', bg: '#5a2a8e', hi: '#ffffff' },
-  ];
-  // i colori della rotella di main.js (rosso, nero, bianco, blu, giallo, verde, rosa, arancio) → tavolozza
-  const COL2PAL = [5, 6, 4, 1, 0, 3, 2, 7];
+  // le tavolozze e il disegno stanno in writer_arte.js
+  const WA = typeof WriterArte !== 'undefined' ? WriterArte : require('./writer_arte.js');
+  const PAL = WA.PAL, COL2PAL = WA.COL2PAL;
 
   // ---------------- STATO ----------------
   function S(st) {
@@ -28931,15 +29677,34 @@ var Writing = (function () {
     const young = st.npcs.filter(n => !n.dead && n.pop && n.pop.age >= 15 && n.pop.age <= 31 && !/soldat|agente|poliz|carabin|guardia|tutela|commissar|prete|suora|sindac/i.test(n.role || ''));
     const hs = n => { let h = 7; for (const ch of String(n.id)) h = (h * 31 + ch.charCodeAt(0)) % 1009; return h; }; young.sort((a, b) => hs(a) - hs(b));
     const akas = AKAS.slice();
-    young.slice(0, 9).forEach((n, k) => {
-      const crew = CREWS[k % 3].id, aka = akas.splice((hs(n) * 13 + k * 5) % akas.length, 1)[0];
-      n.pop.writer = { aka, crew, skill: .3 + ((k * 3) % 7) / 10 };
-      W.writers.push(n.id);
-    });
+    // prima chi ha l'arte, la musica, il ballo (la controcultura del Disgelo); poi gli altri ragazzi
+    const cult = n => ((n.pop.ints || n.pop.interests || []).some(i => /arte|musica|ballo/.test(i.k || i)) ? 0 : 1);
+    young.sort((a, b) => cult(a) - cult(b) || hs(a) - hs(b));
+    W.pool = young.map(n => n.id);
+    young.slice(0, 9).forEach((n, k) => recruit(st, n, CREWS[k % 3].id, k));
+  }
+  // un ragazzo diventa writer: la tag, la crew, la mano (famiglia di lettere), le specialità
+  function recruit(st, n, crew, k) {
+    const W = S(st), used = new Set(W.writers.map(id => { const m = G.byId(st, id); return m && m.pop.writer && m.pop.writer.aka; }));
+    const free = AKAS.concat(AKAS2).filter(a => !used.has(a)); if (!free.length) return null;
+    let h = 7; for (const ch of String(n.id)) h = (h * 31 + ch.charCodeAt(0)) % 1009;
+    const aka = free[(h * 13 + (k || 0) * 5) % free.length], r = WA.mulberry(h * 7919 + 3);
+    n.pop.writer = { aka, crew, skill: .3 + ((h * 3) % 7) / 10, fam: WA.FAMS[Math.floor(r() * WA.FAMS.length)], roof: r() < .45, train: r() < .5 || crew === 'TNT', mop: r() < .5, since: st.t };
+    W.writers.push(n.id); return n.pop.writer;
+  }
+  // la scena del Disgelo: cresce coi lavori in giro e con la tua fama; più scena, più writer, più notti di vernice
+  function sceneLevel(st) { const W = S(st), live = W.works.filter(w => !w.erased && w.done).length; return clamp(live / 260 + W.fame / 900 + (W.grow || 0), 0, 1); }
+  function grow(st) {
+    const W = S(st), sc = sceneLevel(st), want = Math.round(9 + sc * 15);
+    if (W.writers.length >= want || !W.pool) return;
+    const n = W.pool.map(id => G.byId(st, id)).find(m => m && !m.dead && m.pop && !m.pop.writer); if (!n) return;
+    const crew = CREWS[W.writers.length % 3].id, wr = recruit(st, n, crew, W.writers.length);
+    if (wr && hyp(n.x - st.player.x, n.y - st.player.y) < 300) W.newsCrew = `In giro c'è una tag nuova: ${wr.aka} dei ${crew}. La scena cresce.`;
   }
   const writerOf = (st, n) => n && n.pop && n.pop.writer;
   // una parete per un lavoro di notte: un muro di un posto, lontano dal giocatore
   function nightSpot(st) {
+    if (typeof WriterVita !== 'undefined' && rnd() < .7) { const s = WriterVita.freeSite(st, ['strada', 'hall', 'heaven', 'strada'], null); if (s) return { x: s.x, y: s.y, face: s.face, h: s.h, place: (G.nearestPlace(s.x, s.y) || {}).name || '' }; }
     const I = PO() && PO()._; if (!I || !I.spotsOf) return null;
     const P = G.PLACES, keys = Object.keys(P), p = st.player;
     for (let k = 0; k < 12; k++) {
@@ -28950,9 +29715,17 @@ var Writing = (function () {
     }
     return null;
   }
+  // un lavoro di un writer NPC: la sua mano, la tavolozza della crew, i segni accanto alle tag, gli slogan sotto i pezzi
+  function npcWork(st, n, wr, style, sp, extra) {
+    const cr = CREWS.find(c => c.id === wr.crew) || CREWS[0], seed = Math.floor(rnd() * 1e9);
+    const w = { by: n.id, aka: wr.aka, crew: wr.crew, style, fam: style === 'throw' ? (rnd() < .35 ? 'chrome' : 'bubble') : wr.fam, pal: (cr.col + Math.floor(rnd() * 3) + (rnd() < .35 ? 8 : 0)) % PAL.length, seed, surf: 'muro', spot: sp, place: sp && sp.place, prog: 0, done: false };
+    if (style === 'tag' || style === 'mtag') { if (rnd() < .3) w.sign = pick(WA.SIGNS); }
+    else if (style === 'burner' && rnd() < .3) w.words = pick(WA.WORDS);
+    return Object.assign(w, extra || {});
+  }
   function addWork(st, w) {
     const W = S(st); w.id = W.nextId++; w.t0 = w.t0 || st.t; W.works.push(w);
-    if (W.works.length > 220) { const i = W.works.findIndex(o => o.by !== 'player' && o.done); if (i >= 0) W.works.splice(i, 1); }
+    if (W.works.length > 900) { const i = W.works.findIndex(o => o.by !== 'player' && o.done); if (i >= 0) W.works.splice(i, 1); }
     return w;
   }
   // la notte dei writer: tag, throw-up, pezzi sui muri della città; a volte il treno in deposito; i crossaggi per i beef
@@ -28960,10 +29733,11 @@ var Writing = (function () {
     const W = S(st), d = dayIdx(st.t);
     if (W.night === d) return; W.night = d; let made = 0;
     W.writers.forEach(id => {
-      const n = G.byId(st, id); if (!n || n.dead || n.jailedUntil > st.t || rnd() > .7) return; const wr = writerOf(st, n); if (!wr) return;
+      const n = G.byId(st, id); if (!n || n.dead || n.jailedUntil > st.t || rnd() > (typeof WriterVita !== 'undefined' ? .35 : .7)) return; const wr = writerOf(st, n); if (!wr) return;
+      if (n.pop.emer && n.pop.emer.kind === 'writer') return;   // è già fuori a dipingere (writer_vita.js)
       const r = rnd() + wr.skill * .12, style = r < .5 ? 'tag' : r < .8 ? 'throw' : r < .97 ? 'pezzo' : 'burner';
       const sp = nightSpot(st); if (!sp) return;
-      addWork(st, { by: id, aka: wr.aka, crew: wr.crew, style, pal: (CREWS.find(c => c.id === wr.crew).col + Math.floor(rnd() * 3)) % PAL.length, seed: Math.floor(rnd() * 1e9), surf: 'muro', spot: sp, place: sp.place, prog: 1, done: true });
+      addWork(st, npcWork(st, n, wr, style, sp, { prog: 1, done: true }));
       made++;
     });
     // il treno in deposito: una crew fa un whole car (mai sulle fiancate che hai dipinto tu)
@@ -28972,7 +29746,7 @@ var Writing = (function () {
       const free = []; TR.CARS.forEach((c, i) => [0, 1].forEach(sd => { const k = i + ':' + sd; if (!(W.train.sides[k] && W.train.sides[k].length)) free.push([i, sd]); }));
       if (mem.length && free.length) {
         const [car, side] = pick(free), a = pick(mem), wr = writerOf(st, a), L = TR.CARS[car].L;
-        const w = addWork(st, { by: a.id, aka: wr.aka, crew: crew.id, style: TR.CARS[car].k === 'loco' ? 'burner' : 'wholecar', pal: (crew.col + Math.floor(rnd() * 2)) % PAL.length, seed: Math.floor(rnd() * 1e9), surf: 'treno', car, side, u0: .3, vb: .25, W: L - .6, H: SIDE_H - .35, prog: 1, done: true });
+        const w = addWork(st, npcWork(st, a, wr, TR.CARS[car].k === 'loco' ? 'burner' : 'wholecar', null, { surf: 'treno', car, side, u0: .3, vb: .25, W: L - .6, H: SIDE_H - .35, prog: 1, done: true }));
         (W.train.sides[car + ':' + side] = W.train.sides[car + ':' + side] || []).push(w.id); W.train.news = `Stanotte i ${crew.id} hanno fatto il treno: ${STYLES[w.style].nome} di ${wr.aka}.`;
       }
     }
@@ -28988,11 +29762,12 @@ var Writing = (function () {
       W.beef[cid] = Math.max(0, W.beef[cid] - .5);
     });
     if (made) W.newsWalls = `Stanotte i writer hanno bombato: ${made} lavori nuovi in giro.`;
+    grow(st);
   }
   // la mattina: le notizie della notte; il treno che esce col tuo pezzo; il lavaggio delle fiancate vecchie; il buff dei muri
   function morning(st) {
     const W = S(st), d = dayIdx(st.t); if (W.morning === d) return; W.morning = d; W.heat = (W.heat || 0) * .5; if (W.heat < 5) W.heatWarned = false;
-    [W.news, W.train.news, W.newsWalls].filter(Boolean).forEach(m => G.feed(st, m)); W.news = W.train.news = W.newsWalls = null;
+    [W.news, W.train.news, W.newsWalls, W.newsCrew].filter(Boolean).forEach(m => G.feed(st, m)); W.news = W.train.news = W.newsWalls = W.newsCrew = null;
     // il treno: tre giorni di linea, poi si lava
     Object.keys(W.train.sides).forEach(k => {
       const ids = W.train.sides[k] || []; const ws = ids.map(id => W.works.find(w => w.id === id)).filter(Boolean);
@@ -29117,171 +29892,9 @@ var Writing = (function () {
     if (t.length < 2) return 'Troppo corta.'; W.aka = t; return `D'ora in poi firmi ${t}.`;
   }
 
-  // =====================================================================================================================
-  // IL DISEGNO DEI LAVORI (canvas 2D): lettere a tratti dal font di graffiti.js, fatte spesse coi passaggi di pennello
-  // =====================================================================================================================
-  const FONT = () => (typeof Graffiti !== 'undefined' && Graffiti.F) || {};
-  function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  // il disegno dei lavori (le tappe da svelare in ordine): writer_arte.js
   const cv = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; };
-  const DEACC = s => String(s).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9!?.\- ]/g, '');
-  // le lettere: ogni tratto in pixel, con la mano del writer (inclinazione, rimbalzo, lettere che si accavallano, punte allungate)
-  function letters(text, o, r) {
-    const F = FONT(), s = DEACC(text), out = [], h = o.h, adv = h * (o.adv || .78);
-    let x = 0;
-    [...s].forEach((ch, i) => {
-      const g = F[ch]; if (!g) { x += adv * .5; return; }
-      const bounce = (o.bounce || 0) * h * (i % 2 ? 1 : -1) * (.6 + r() * .6), rot = (o.rot || 0) * (r() - .5), sc = 1 + (o.scale || 0) * (r() - .5);
-      const cxL = x + .3 * h, cyL = h / 2, cr = Math.cos(rot), sr = Math.sin(rot);
-      g.forEach(tr => {
-        let pts = tr.map(([u, v]) => { let px = (u - .3) * h * sc, py = -(v - .5) * h * sc; px += py * -(o.skew || 0); const qx = px * cr - py * sr, qy = px * sr + py * cr; return [cxL + qx + (r() - .5) * (o.wob || 0) * h, cyL + qy + bounce + (r() - .5) * (o.wob || 0) * h]; });
-        if (o.ext && pts.length > 1 && r() < o.ext) {   // la punta che esce (wildstyle)
-          const a = pts[pts.length - 1], b = pts[pts.length - 2], dx = a[0] - b[0], dy = a[1] - b[1], l = hyp(dx, dy) || 1; pts = pts.concat([[a[0] + dx / l * h * .22, a[1] + dy / l * h * .22]]);
-        }
-        out.push({ pts, i });
-      });
-      x += adv * sc;
-    });
-    // centra nel riquadro
-    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; out.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
-    return { strokes: out, box: [x0, y0, x1, y1] };
-  }
-  function fit(L, W, H, pad) {   // scala e sposta le lettere dentro W × H (margine pad)
-    const [x0, y0, x1, y1] = L.box, s = Math.min((W - 2 * pad) / Math.max(1, x1 - x0), (H - 2 * pad) / Math.max(1, y1 - y0)), ox = (W - (x1 - x0) * s) / 2 - x0 * s, oy = (H - (y1 - y0) * s) / 2 - y0 * s;
-    L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a * s + ox, b * s + oy]); }); L.box = [x0 * s + ox, y0 * s + oy, x1 * s + ox, y1 * s + oy]; L.s = s; return L;
-  }
-  function path(x, pts) { x.beginPath(); pts.forEach(([a, b], k) => k ? x.lineTo(a, b) : x.moveTo(a, b)); }
-  // un passaggio: tutte le lettere spesse w, di quel colore, spostate di (dx, dy)
-  function pass(x, L, w, col, dx, dy, join, cap) {
-    x.save(); x.translate(dx || 0, dy || 0); x.lineJoin = join || 'round'; x.lineCap = cap || 'round'; x.lineWidth = w; x.strokeStyle = col;
-    L.strokes.forEach(t => { if (t.pts.length === 1) { x.beginPath(); x.arc(t.pts[0][0], t.pts[0][1], w / 2, 0, 7); x.fillStyle = col; x.fill(); return; } path(x, t.pts); x.stroke(); });
-    (L.arrows || []).forEach(a => { x.beginPath(); a.forEach(([p, q], k) => k ? x.lineTo(p, q) : x.moveTo(p, q)); x.closePath(); x.fillStyle = col; x.fill(); if (w > L.w0) { x.lineWidth = w - L.w0; x.stroke(); x.lineWidth = w; } });
-    x.restore();
-  }
-  // le frecce: dalle punte di qualche tratto, triangoli che continuano la linea
-  function arrows(L, r, n, w) {
-    L.arrows = []; L.w0 = w; const ends = [];
-    L.strokes.forEach(t => { if (t.pts.length < 2) return; const a = t.pts[t.pts.length - 1], b = t.pts[t.pts.length - 2]; ends.push([a, b]); });
-    for (let k = 0; k < n && ends.length; k++) {
-      const [a, b] = ends.splice(Math.floor(r() * ends.length), 1)[0], dx = a[0] - b[0], dy = a[1] - b[1], l = hyp(dx, dy) || 1, ux = dx / l, uy = dy / l, s = w * 1.25;
-      const tip = [a[0] + ux * s * 1.6, a[1] + uy * s * 1.6], l1 = [a[0] - uy * s, a[1] + ux * s], l2 = [a[0] + uy * s, a[1] - ux * s];
-      L.arrows.push([l1, tip, l2]);
-    }
-  }
-  function sparkle(x, cx, cy, s, col) { x.save(); x.fillStyle = col; x.beginPath(); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, rr = k % 2 ? s * .22 : s; x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } x.closePath(); x.fill(); x.restore(); }
-  // lo sfondo: una nuvola di bolle col suo contorno, qualche goccia, stelline
-  function cloud(x, W, H, r, col, edge, k) {
-    const blobs = []; const n = 7 + Math.floor(r() * 5) + (k || 0);
-    for (let i = 0; i < n; i++) blobs.push([W * (.1 + .8 * r()), H * (.25 + .5 * r()), H * (.22 + .2 * r())]);
-    x.fillStyle = edge; blobs.forEach(([a, b, rr]) => { x.beginPath(); x.arc(a, b, rr + Math.max(2, H * .025), 0, 7); x.fill(); });
-    x.fillStyle = col; blobs.forEach(([a, b, rr]) => { x.beginPath(); x.arc(a, b, rr, 0, 7); x.fill(); });
-    x.fillStyle = 'rgba(255,255,255,.22)'; blobs.forEach(([a, b, rr]) => { x.beginPath(); x.arc(a - rr * .3, b - rr * .35, rr * .35, 0, 7); x.fill(); });
-  }
-  // il personaggio: la testa del b-boy col cappellino all'indietro, gli occhiali, il ghigno
-  function character(x, cx, cy, s, P) {
-    x.save(); x.lineJoin = 'round'; x.lineWidth = Math.max(2, s * .06); x.strokeStyle = P.o;
-    x.fillStyle = '#e8b48a'; x.beginPath(); x.ellipse(cx, cy, s * .42, s * .5, 0, 0, 7); x.fill(); x.stroke();          // faccia
-    x.fillStyle = P.f[2]; x.beginPath(); x.ellipse(cx, cy - s * .3, s * .46, s * .3, 0, Math.PI, 0); x.fill(); x.stroke();  // cappellino
-    x.beginPath(); x.moveTo(cx + s * .3, cy - s * .3); x.lineTo(cx + s * .78, cy - s * .2); x.lineTo(cx + s * .32, cy - s * .12); x.closePath(); x.fill(); x.stroke();   // visiera all'indietro (di lato)
-    x.fillStyle = '#101014'; x.fillRect(cx - s * .36, cy - s * .08, s * .72, s * .2); x.strokeRect(cx - s * .36, cy - s * .08, s * .72, s * .2);   // occhiali
-    x.fillStyle = 'rgba(255,255,255,.7)'; x.fillRect(cx - s * .3, cy - s * .05, s * .12, s * .05);
-    x.fillStyle = '#ffffff'; x.beginPath(); x.moveTo(cx - s * .22, cy + s * .2); x.quadraticCurveTo(cx + s * .05, cy + s * .42, cx + s * .26, cy + s * .16); x.closePath(); x.fill(); x.stroke();   // ghigno
-    x.fillStyle = P.f[0]; x.beginPath(); x.ellipse(cx, cy + s * .62, s * .5, s * .16, 0, 0, 7); x.fill(); x.stroke();    // colletto
-    x.restore();
-  }
-  function drips(x, L, r, col, w, n, maxL) {
-    x.save(); x.strokeStyle = col; x.fillStyle = col; x.lineCap = 'round';
-    const pts = []; L.strokes.forEach(t => t.pts.forEach(q => pts.push(q))); pts.sort((a, b) => b[1] - a[1]);
-    for (let k = 0; k < n && pts.length; k++) { const q = pts[Math.floor(r() * Math.min(pts.length, 12 + k * 3))], l = maxL * (.3 + r() * .7); x.lineWidth = w * (.35 + r() * .3); x.beginPath(); x.moveTo(q[0], q[1]); x.lineTo(q[0] + (r() - .5) * 1.5, q[1] + l); x.stroke(); x.beginPath(); x.arc(q[0], q[1] + l, x.lineWidth * .7, 0, 7); x.fill(); }
-    x.restore();
-  }
-  function smallTag(x, text, cx, cy, h, col, r) {   // la firma piccola (crew, anno, dediche)
-    const L = letters(text, { h, adv: .7, skew: .35, wob: .06, bounce: .05 }, r); const [x0, y0, x1, y1] = L.box;
-    L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a - (x0 + x1) / 2 + cx, b - (y0 + y1) / 2 + cy]); }); L.box = [0, 0, 0, 0];
-    pass(x, L, Math.max(1.2, h * .1), col, 0, 0);
-  }
-  // IL LAVORO: le tappe come immagini intere (ognuna contiene le precedenti), da svelare in ordine
-  // tag: una tappa; throw-up: riempimento, contorno; pezzo/burner/whole car: riempimento, fondo, contorno e 3D, luci e dettagli
-  const PPM = 56;
-  function art(w) {
-    const sty = STYLES[w.style], P = PAL[w.pal % PAL.length], r = mulberry(w.seed || 1), Wp = Math.round(w.W * PPM), Hp = Math.round(w.H * PPM), text = w.aka || 'NINO';
-    const stages = [];
-    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(k); };
-    if (w.style === 'tag' || w.style === 'mtag') {
-      const c = cv(Wp, Hp), x = c.getContext('2d');
-      const L = fit(letters(text, { h: 100, adv: .66, skew: .42, wob: .07, bounce: .1, rot: .25, ext: .3 }, r), Wp, Hp, Hp * .14);
-      const lw = w.style === 'mtag' ? Math.max(2, Hp * .06) : Math.max(2.5, Hp * .085), col = w.col || (w.style === 'mtag' ? '#121216' : P.f[1]);
-      if (w.style === 'tag') { x.shadowColor = col; x.shadowBlur = lw * .9; }
-      pass(x, L, lw, col, 0, 0); x.shadowBlur = 0;
-      // il ricciolo sotto, la corona o la stellina
-      const [x0, , x1, y1] = L.box; x.save(); x.strokeStyle = col; x.lineWidth = lw * .8; x.lineCap = 'round'; x.beginPath(); x.moveTo(x0, y1 + lw); x.bezierCurveTo(x0 + (x1 - x0) * .3, y1 + lw * 3, x1 - (x1 - x0) * .2, y1 - lw, x1 + lw * 2, y1 + lw * .5); x.stroke(); x.restore();
-      if (r() < .4) { x.save(); x.strokeStyle = col; x.lineWidth = lw * .7; x.beginPath(); const cx = (x0 + x1) / 2, cy = L.box[1] - lw * 2.2, s = Hp * .09; x.moveTo(cx - s, cy + s * .6); x.lineTo(cx - s * .6, cy - s * .5); x.lineTo(cx - s * .1, cy + s * .2); x.lineTo(cx + s * .3, cy - s * .7); x.lineTo(cx + s * .6, cy + s * .2); x.lineTo(cx + s, cy - s * .5); x.lineTo(cx + s * .8, cy + s * .6); x.closePath(); x.stroke(); x.restore(); }
-      if (w.style === 'mtag') drips(x, L, r, col, lw, 4 + Math.floor(r() * 5), Hp * .32);   // il mop cola
-      snap(c); return { stages, Wp, Hp };
-    }
-    const c = cv(Wp, Hp), x = c.getContext('2d');
-    const train = w.style === 'wholecar', wild = w.style === 'burner' || train, throwUp = w.style === 'throw';
-    const charW = wild ? Hp * .95 : 0;   // il personaggio a sinistra
-    const LW = Wp - charW, opts = throwUp ? { h: 100, adv: .62, bounce: .06, rot: .12, wob: .02 } : { h: 100, adv: .76, skew: wild ? .18 : .1, bounce: wild ? .08 : .04, rot: wild ? .22 : .08, wob: wild ? .05 : .02, scale: wild ? .25 : .1, ext: wild ? .45 : .12 };
-    const L = fit(letters(text, opts, r), LW, Hp, Hp * (train ? .2 : throwUp ? .2 : .2));
-    L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a + charW, b]); }); L.box = [L.box[0] + charW, L.box[1], L.box[2] + charW, L.box[3]];
-    const lw = (throwUp ? .3 : .2) * 100 * L.s, ol = Math.max(2.5, lw * (throwUp ? .26 : .2)), kl = Math.max(2, lw * .16);
-    const d3 = throwUp ? 0 : Math.max(3, lw * (wild ? .55 : .42)), dx = d3 * .7, dy = d3 * .7, steps = Math.max(1, Math.round(d3 / 1.5));
-    if (wild) arrows(L, r, 2 + Math.floor(r() * 3), lw); else { L.arrows = []; L.w0 = lw; }
-    // la sfumatura del riempimento: dall'alto in basso (o in diagonale)
-    const [bx0, by0, bx1, by1] = L.box, grad = x.createLinearGradient(bx0, by0 - lw / 2, wild ? bx1 * .3 : bx0, by1 + lw / 2);
-    if (throwUp) { grad.addColorStop(0, P.f[0]); grad.addColorStop(1, P.f[1]); } else { grad.addColorStop(0, P.f[0]); grad.addColorStop(.55, P.f[1]); grad.addColorStop(1, P.f[2]); }
-    const FILL = cv(Wp, Hp), fx = FILL.getContext('2d');
-    pass(fx, L, lw, grad, 0, 0, throwUp ? 'round' : 'miter', throwUp ? 'round' : 'square');
-    if (!throwUp) {   // le bande che tagliano il riempimento (split), i pallini
-      fx.save(); fx.globalCompositeOperation = 'source-atop'; fx.strokeStyle = P.f[2]; fx.globalAlpha = .55; fx.lineWidth = Math.max(2, lw * .12);
-      for (let yy = by0 + (by1 - by0) * .58; yy < by1 + lw; yy += lw * .9) { fx.beginPath(); for (let xx = bx0 - lw; xx < bx1 + lw; xx += lw * .5) fx.lineTo(xx, yy + ((xx / (lw * .5)) % 2 < 1 ? -lw * .12 : lw * .12)); fx.stroke(); }
-      fx.globalAlpha = .9; fx.fillStyle = P.f[0]; for (let k = 0; k < 18; k++) { fx.beginPath(); fx.arc(bx0 + r() * (bx1 - bx0), by0 + r() * (by1 - by0) * .5, lw * (.04 + r() * .06), 0, 7); fx.fill(); }
-      fx.restore();
-    } else {   // il riempimento fatto di fretta: le passate si vedono
-      fx.save(); fx.globalCompositeOperation = 'source-atop'; fx.strokeStyle = 'rgba(255,255,255,.18)'; fx.lineWidth = lw * .18; for (let xx = bx0 - Hp; xx < bx1 + Hp; xx += lw * .45) { fx.beginPath(); fx.moveTo(xx, by1 + lw); fx.lineTo(xx + Hp * .8, by0 - lw); fx.stroke(); } fx.restore();
-    }
-    // 1. il riempimento (prima tappa: un writer riempie per primo)
-    x.drawImage(FILL, 0, 0); snap(c);
-    // 2. lo sfondo (dietro alle lettere)
-    const BG = cv(Wp, Hp), bg = BG.getContext('2d');
-    if (train) {   // la fiancata intera: cielo, città, sole, nuvole
-      const g = bg.createLinearGradient(0, 0, 0, Hp); g.addColorStop(0, P.bg); g.addColorStop(1, P.d); bg.fillStyle = g; bg.fillRect(0, 0, Wp, Hp);
-      bg.fillStyle = 'rgba(0,0,0,.35)'; for (let xx = 0; xx < Wp;) { const bw = Hp * (.12 + r() * .2), bh = Hp * (.15 + r() * .35); bg.fillRect(xx, Hp - bh, bw, bh); xx += bw + Hp * .03; }   // i palazzi della costa
-      bg.fillStyle = P.f[0]; bg.globalAlpha = .9; bg.beginPath(); bg.arc(Wp * (.55 + r() * .35), Hp * .3, Hp * .22, 0, 7); bg.fill(); bg.globalAlpha = 1;
-      for (let k = 0; k < 30; k++) sparkle(bg, r() * Wp, r() * Hp * .6, Hp * (.02 + r() * .03), 'rgba(255,255,255,.85)');
-      cloud(bg, Wp, Hp, r, P.k, P.o, 6);
-    } else if (!throwUp) cloud(bg, Wp, Hp, r, P.bg, P.o, wild ? 4 : 0);
-    if (!throwUp) { const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(c); }
-    // 3. keyline, 3D, contorni: dietro il riempimento
-    const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); ox.drawImage(BG, 0, 0);
-    const J = throwUp ? 'round' : 'miter', C = throwUp ? 'round' : 'square';
-    if (!throwUp) { for (let s = 0; s <= steps; s++) pass(ox, L, lw + 2 * ol + 2 * kl, P.k, dx * s / steps, dy * s / steps, J, C); }   // la keyline attorno a tutto
-    if (d3) { for (let s = 0; s <= steps; s++) pass(ox, L, lw + 2 * ol + 2, P.o, dx * s / steps, dy * s / steps, J, C); for (let s = 1; s <= steps; s++) { const sh = s / steps; pass(ox, L, lw + 2 * ol - 2, shade(P.d, -.25 * sh), dx * s / steps, dy * s / steps, J, C); } }
-    pass(ox, L, lw + 2 * ol, P.o, 0, 0, J, C);
-    ox.drawImage(FILL, 0, 0);
-    if (throwUp) drips(ox, L, r, P.o, lw * .5, 5, Hp * .14);
-    x.clearRect(0, 0, Wp, Hp); x.drawImage(OUT, 0, 0); snap(c);
-    // 4. luci e dettagli: il riflesso sui bordi, le stelline, il personaggio, la firma della crew, l'anno
-    const HI = cv(Wp, Hp), hx = HI.getContext('2d');
-    pass(hx, L, Math.max(1.5, lw * .16), P.hi, -lw * .26, -lw * .26, J, C);
-    hx.globalCompositeOperation = 'destination-in'; hx.drawImage(FILL, 0, 0); hx.globalCompositeOperation = 'source-over';
-    x.drawImage(HI, 0, 0);
-    for (let k = 0; k < (wild ? 6 : 3); k++) { const t = pick(L.strokes), q = t.pts[0]; sparkle(x, q[0], q[1] - lw * .3, lw * (.35 + r() * .3), P.hi); }
-    if (wild) character(x, charW * .5, Hp * .5, Hp * .62, P);
-    const crew = w.crew || 'PV', yr = "'86";
-    smallTag(x, crew, bx1 - Hp * .2, Math.min(Hp - Hp * .07, by1 + lw * .9), Hp * .1, P.o, r);
-    if (!throwUp) smallTag(x, yr, bx0 + Hp * .15, Math.max(Hp * .07, by0 - lw * .8), Hp * .08, P.o, r);
-    snap(c);
-    return { stages, Wp, Hp };
-  }
-  function shade(hex, k) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const f = v => clamp(Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k), 0, 255); return '#' + [f(r), f(g), f(b)].map(v => v.toString(16).padStart(2, '0')).join(''); }
-  // il crossaggio: una X enorme e la tag di chi crossa
-  function crossOut(ctx, x, y, Wp, Hp, c, r) {
-    ctx.save(); ctx.strokeStyle = '#101012'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(4, Hp * .07); ctx.shadowColor = '#101012'; ctx.shadowBlur = 3;
-    ctx.beginPath(); ctx.moveTo(x + Wp * .08, y + Hp * .1); ctx.lineTo(x + Wp * .92, y + Hp * .9); ctx.moveTo(x + Wp * .9, y + Hp * .08); ctx.lineTo(x + Wp * .1, y + Hp * .92); ctx.stroke(); ctx.restore();
-    const L = fit(letters(c.aka + ' ' + c.crew, { h: 100, adv: .66, skew: .4, wob: .07, bounce: .1, rot: .2 }, r), Wp * .8, Hp * .45, 4);
-    ctx.save(); ctx.translate(x + Wp * .1, y + Hp * .3); pass(ctx, L, Math.max(3, Hp * .06), '#d8201a', 0, 0); ctx.restore();
-  }
+  const mulberry = WA.mulberry, art = w => WA.art(w), crossOut = WA.crossOut, PPM = WA.PPM;
 
   // =====================================================================================================================
   // LA GRAFICA: veli sui muri, il treno, la galleria
@@ -29333,6 +29946,11 @@ var Writing = (function () {
       const done = clamp((g.drawn - a) / wt[s], 0, 1), now = clamp((want - a) / wt[s], 0, 1); if (now <= done) continue;
       const img = A.stages[Math.min(s, A.stages.length - 1)], x0 = Math.floor(done * A.Wp), x1 = Math.ceil(now * A.Wp); if (x1 <= x0) continue;
       T.ctx.drawImage(img, x0, 0, x1 - x0, A.Hp, T.x0 + x0 * T.k, T.y0, (x1 - x0) * T.k, A.Hp * T.k);
+      if (now < 1 && w.prog < 1) {   // il bordo: strisce di altezza a caso un po' più avanti, mezze trasparenti (la vernice arriva prima dove passa la mano)
+        const band = Math.max(4, A.Wp * .025), ch = Math.max(6, A.Hp / 9); T.ctx.save(); T.ctx.globalAlpha = .45;
+        for (let yy = 0; yy < A.Hp; yy += ch) { const ext = Math.min(A.Wp - x1, Math.floor(band * Math.random())); if (ext > 0) T.ctx.drawImage(img, x1, yy, ext, ch, T.x0 + x1 * T.k, T.y0 + yy * T.k, ext * T.k, ch * T.k); }
+        T.ctx.restore();
+      }
     }
     g.drawn = want; T.tex.needsUpdate = true;
     if (w.crossed && !g.crossDrawn && w.prog >= 1) { g.crossDrawn = true; crossOut(T.ctx, T.x0, T.y0, A.Wp * T.k, A.Hp * T.k, w.crossed, mulberry(w.seed + 7)); T.tex.needsUpdate = true; }
@@ -29350,8 +29968,8 @@ var Writing = (function () {
     const THREE = T3(), R = R_(), sp = w.spot; if (!sp) return false;
     const gh = R.groundH(sp.x, sp.y), list = cands(sp.x, sp.y); if (!list.length) return false;
     const d = new THREE.Vector3(Math.cos(sp.face), 0, Math.sin(sp.face)), sty = STYLES[w.style];
-    const hit = rayWall(new THREE.Vector3(sp.x, gh + 1.4, sp.y), d, 3, list); if (!hit || Math.abs(hit.n.y) > .4) return false;
-    const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), H = sty.H, c = hit.p.clone(); c.y = gh + .2 + H / 2 + (w.style === 'tag' ? .5 + rnd() * .5 : 0);
+    const y0 = sp.h != null ? sp.h : gh + 1.4, hit = rayWall(new THREE.Vector3(sp.x, y0, sp.y), d, sp.h != null ? 6 : 3, list); if (!hit || Math.abs(hit.n.y) > .4) return false;
+    const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), H = sty.H, c = hit.p.clone(); c.y = sp.h != null ? sp.h : gh + .2 + H / 2 + (w.style === 'tag' || w.style === 'mtag' ? .5 + rnd() * .5 : 0);
     const fitR = wallRect(c, n, sty.W, H, list); if (!fitR) return false;
     w.W = fitR.W; w.H = fitR.H; w.gfxRect = { c, n, r: fitR.r, W: fitR.W, H: fitR.H }; w.pos = { x: c.x, y: c.y, z: c.z };
     // niente due lavori uno sull'altro di notte: se si accavalla, salta
@@ -29483,7 +30101,7 @@ var Writing = (function () {
       const sty = STYLES[style];
       if (!sty.marker && !(OG() && (OG().inv(st).bomboletta || 0) > 0)) return { msg: 'Niente bombolette.' };
       if (!W.aka && typeof prompt === 'function' && tool !== 'pennarello' && style !== 'tag') { const m = renameTag(st); if (m) G.feed(st, m); }
-      const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, pal: COL2PAL[colIdx % COL2PAL.length], col: style === 'tag' || style === 'mtag' ? (tool === 'pennarello' ? '#121216' : col) : null, seed: Math.floor(rnd() * 1e9), prog: 0, done: false, surf, place: G.nearestPlace ? 'a ' + G.nearestPlace(p.x, p.y).name : '' };
+      const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, fam: W.fam || undefined, pal: COL2PAL[colIdx % COL2PAL.length], col: style === 'tag' || style === 'mtag' ? (tool === 'pennarello' ? '#121216' : col) : null, seed: Math.floor(rnd() * 1e9), prog: 0, done: false, surf, place: G.nearestPlace ? 'a ' + G.nearestPlace(p.x, p.y).name : '' };
       if (car) {
         const L = TR.CARS[car.i].L, tr = trainAt(st.t); if (tr && tr.v) return { msg: 'Il treno si muove!' };
         const u = h.uv ? h.uv.x * L : L / 2;
@@ -29575,9 +30193,14 @@ var Writing = (function () {
             const g = { art: art(w), drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; n++;
           }
         }
-        // disegno: i lavori finiti in un colpo, quelli in corso fin dove sono arrivati; i cancellati via
+        // disegno: i lavori finiti in un colpo, quelli in corso fin dove sono arrivati; i cancellati via; i lontani si liberano
+        const byId = new Map(W.works.map(o => [o.id, o]));
         for (const id in GFX.works) {
-          const g = GFX.works[id], w = W.works.find(o => o.id === +id);
+          const g = GFX.works[id], w = byId.get(+id);
+          if (w && !w.erased && w.surf !== 'treno' && w.pos && hyp(w.pos.x - cx, w.pos.z - cy) > 140 && w !== W.cur) {
+            if (g.tgt && g.tgt.mesh) { if (g.tgt.mesh.parent) g.tgt.mesh.parent.remove(g.tgt.mesh); g.tgt.mesh.geometry.dispose(); g.tgt.mesh.material.dispose(); if (g.tgt.tex) g.tgt.tex.dispose(); }
+            delete GFX.works[id]; continue;
+          }
           if (!w || w.erased) {
             if (g.tgt && g.tgt.mesh && g.tgt.mesh.parent) g.tgt.mesh.parent.remove(g.tgt.mesh);
             if (w && w.surf === 'treno' && w.washed && !g.washed) { g.washed = true; washSide(w.car, w.side); W.works.filter(o => o.surf === 'treno' && o.car === w.car && o.side === w.side && !o.erased).forEach(o => { delete GFX.works[o.id]; }); }
@@ -29600,9 +30223,352 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, _: { addWork, overlapCheck, nightSpot, letters, livery, washSide, trainTarget } };
+  return { S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, _: { addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;
+</script>
+<script>/* Porto Vecchio — la vita dei writer (v7, «Writer»). I ragazzi della controcultura dipingono davvero, sotto i tuoi occhi.
+   - I MURI DELLA CITTÀ (SITES): ogni facciata con la strada davanti offre muri da bombare; le facciate lunghe sono le
+     hall of fame (le crew ci fanno le produzioni, un pezzo accanto all'altro); in cima ai palazzi con la scala di ferro
+     ci sono gli heaven spot, che si dipingono sporgendosi dal tetto e si vedono da tutta la strada.
+   - LE NOTTI: dalle 22:30 alle 4 i writer escono. Ognuno ha un piano (azioni.js): va al muro (o alla scala, sale, cammina
+     sul tetto fino al bordo), agita la bomboletta e il pezzo cresce a strati mentre lo guardi; un compagno di crew fa il
+     palo. Se arrivano i Grigi scappano e il pezzo resta a metà. Le crew dei treni vanno al deposito della miniera.
+     Di giorno chi ha il mop (il pennarello) lascia tag e segni dove passa.
+   - LA CITTÀ SI COLORA: più lavori ci sono in giro, più la scena cresce (writing.js: sceneLevel): più writer, più uscite
+     per notte. Sulla mappa del menu i lavori sono macchie di colore; il menu Writer dice quanto della città è colorato.
+   - LE ANIMAZIONI: la salita sulla scala (giocatore e NPC), la tag a pennarello, la bomboletta che spruzza (la nebbia di
+     vernice davanti all'ugello, del colore del lavoro).
+   Stato: st.wr.vita = { night, missions }; sugli NPC: n.wrH (quota dei piedi sopra il suolo: scala, tetto), n.__tip
+   (dove va la vernice), n.__climb, n.__mop. render.js legge n.wrH (una riga [writer]). */
+var WriterVita = (function () {
+  'use strict';
+  const G = typeof Game !== 'undefined' ? Game : require('./game.js');
+  const WR = typeof Writing !== 'undefined' ? Writing : require('./writing.js');
+  const TT = typeof Tetti !== 'undefined' ? Tetti : require('./tetti.js');
+  const AZ = () => (typeof Azioni !== 'undefined' ? Azioni : null);
+  const WA = typeof WriterArte !== 'undefined' ? WriterArte : require('./writer_arte.js');
+  const TS = G.TS, B = G.BUILDINGS, GW = G.GW, GH = G.GH, MPS = G.MIN_PER_SEC;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), hyp = Math.hypot, lerp = (a, b, t) => a + (b - a) * t;
+  const rnd = Math.random, pick = a => a[Math.floor(rnd() * a.length)];
+  const minOfDay = t => ((t % 1440) + 1440) % 1440, dayIdx = t => Math.floor(t / 1440);
+  const inb = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH;
+  const tileH = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return inb(tx, ty) ? G.MAP.elev[ty * GW + tx] : 0; };
+
+  // ================= I MURI DELLA CITTÀ =================
+  // un sito: { x, y (dove sta chi dipinge, a terra o sul tetto), face (verso il muro), kind: 'strada'|'hall'|'heaven', bi, len (metri di muro libero),
+  //            h (heaven: quota del centro del lavoro), L (heaven: la scala), roof: { x, y } (heaven: dove si sta sul tetto) }
+  const SITES = [];
+  function buildSites() {
+    SITES.length = 0;
+    B.forEach((b, bi) => {
+      if (b.lighthouse || b.kiosk || b.w * b.h < 6) return;
+      const d = b.door, ladders = TT.LADDERS.filter(L => L.bi === bi && L.footB < 0), roofH = TT.roofRule(b);
+      const sides = [
+        { n: b.w, out: [0, 1], tile: k => [b.x + k, b.y + b.h], wall: k => [(b.x + k + .5) * TS, (b.y + b.h) * TS] },
+        { n: b.w, out: [0, -1], tile: k => [b.x + k, b.y - 1], wall: k => [(b.x + k + .5) * TS, b.y * TS] },
+        { n: b.h, out: [1, 0], tile: k => [b.x + b.w, b.y + k], wall: k => [(b.x + b.w) * TS, (b.y + k + .5) * TS] },
+        { n: b.h, out: [-1, 0], tile: k => [b.x - 1, b.y + k], wall: k => [b.x * TS, (b.y + k + .5) * TS] },
+      ];
+      sides.forEach(sd => {
+        // i tratti di muro liberi: davanti si cammina, niente porta, niente scala
+        let run = [];
+        const flush = () => {
+          if (run.length >= 2) {
+            const len = run.length * TS, mid = run[Math.floor(run.length / 2)], [wx, wy] = sd.wall(mid), [ox, oy] = sd.out, face = Math.atan2(-oy, -ox);
+            const kind = len >= 10 ? 'hall' : 'strada';
+            SITES.push({ x: wx + ox * .55, y: wy + oy * .55, face, kind, bi, len, out: [ox, oy], along: [-oy, ox] });
+            if (len >= 9 && kind === 'strada') { const q = run[1], [ax, ay] = sd.wall(q); SITES.push({ x: ax + ox * .55, y: ay + oy * .55, face, kind: 'strada', bi, len: TS * 2, out: [ox, oy], along: [-oy, ox] }); }
+          }
+          run = [];
+        };
+        for (let k = 0; k < sd.n; k++) {
+          const [tx, ty] = sd.tile(k);
+          const ok = inb(tx, ty) && G.walkT(tx, ty) && !(d && Math.max(Math.abs(tx - d[0]), Math.abs(ty - d[1])) <= 1) && !TT.LADDERS.some(L => Math.floor(L.fx / TS) === tx && Math.floor(L.fy / TS) === ty);
+          if (ok) run.push(k); else flush();
+        }
+        flush();
+        // l'heaven spot: in cima alla facciata, sopra la strada, se il palazzo ha la scala e la facciata è alta
+        if (ladders.length && roofH - (b.base || 0) >= 6 && sd.n >= 3) {
+          const k = Math.floor(sd.n / 2), [tx, ty] = sd.tile(k); if (!inb(tx, ty) || !G.walkT(tx, ty)) return;
+          const [wx, wy] = sd.wall(k), [ox, oy] = sd.out, L = ladders.reduce((a, c) => hyp(c.x - wx, c.y - wy) < hyp(a.x - wx, a.y - wy) ? c : a);
+          SITES.push({ x: wx + ox * .7, y: wy + oy * .7, face: Math.atan2(-oy, -ox), kind: 'heaven', bi, len: Math.min(sd.n * TS, 8), h: roofH - 1.35, L: L.i, roof: { x: wx - ox * .55, y: wy - oy * .55 }, out: [ox, oy], along: [-oy, ox] });
+        }
+      });
+    });
+  }
+  buildSites();
+  const placeOf = s => { try { const p = G.nearestPlace(s.x, s.y); return p ? 'a ' + p.name : ''; } catch (e) { return ''; } };
+  // un muro per una notte: libero (niente lavori sopra), lontano dal giocatore se non vuoi farti vedere... ma non troppo
+  function freeSite(st, kinds, near, maxD) {
+    const W = WR.S(st), live = W.works.filter(w => !w.erased && w.spot);
+    for (let k = 0; k < 40; k++) {
+      const s = pick(SITES); if (!kinds.includes(s.kind)) continue;
+      if (near && hyp(s.x - near.x, s.y - near.y) > (maxD || 200)) continue;
+      if (live.some(w => hyp(w.spot.x - s.x, w.spot.y - s.y) < (s.kind === 'hall' ? 8 : 3.5) && (w.spot.h != null) === (s.h != null))) continue;
+      return s;
+    }
+    return null;
+  }
+
+  // ================= LE MISSIONI =================
+  const V = st => { const W = WR.S(st); return W.vita || (W.vita = { night: -1, plan: [], out: 0, mopT: 0, caught: 0 }); };
+  const watched = (st, n) => !!(n.pop && n.pop.near && hyp(n.x - st.player.x, n.y - st.player.y) < 45);
+  const el = (st, n, E) => (watched(st, n) ? (st.clock - E.c0) * MPS : st.t - E.t0);   // minuti di gioco passati nel passo
+  const alive = n => n && !n.dead && !(n.stun > 0) && n.pop;
+  const STY_MIN = { tag: 3, mtag: 1.5, throw: 9, pezzo: 32, burner: 55, wholecar: 80 };   // minuti di gioco per lavoro (come writing.js STYLES.dur, ma in minuti)
+  const cops = (st, x, y, r) => st.npcs.some(c => !c.dead && !c.inside && (c.cop || c.military) && hyp(c.x - x, c.y - y) < r);
+  // il passo della bomboletta: crea il lavoro, lo fa crescere, la mano va dove va la vernice; i Grigi interrompono
+  function paintStep(label, mk) {
+    return {
+      label, dur: 0, outside: true,
+      tick: (st, n, E) => {
+        let w = E.work;
+        if (!w) { w = E.work = WR._.addWork(st, mk(st, n, E)); w.live = n.id; E.pdur = STY_MIN[w.style] * (1.3 - (n.pop.writer.skill || .5) * .5); }
+        const f = clamp(el(st, n, E) / E.pdur, 0, 1); w.prog = Math.max(w.prog, f);
+        n.hand = w.style === 'mtag' ? 'pennarello' : 'bomboletta'; n.__mop = w.style === 'mtag';
+        const tp = tipOf(st, w, f); if (tp) { n.__tip = { x: tp.x, y: tp.y, z: tp.z, t: nowMs(), col: WA.PAL[w.pal % WA.PAL.length].f[1] }; n.face = Math.atan2(tp.z - n.y, tp.x - n.x); }
+        if (st.clock - (E.copT || 0) > 1) { E.copT = st.clock; if (cops(st, n.x, n.y, 22)) { E.busted = true; } }
+      },
+      act: (st, n, E) => {
+        const w = E.work; if (!w) return 'next';
+        if (E.busted) { busted(st, n, E); return 'stop'; }
+        if (w.prog < 1) return 'wait';
+        w.prog = 1; w.done = true; w.tDone = st.t; w.live = null; n.__tip = null; n.hand = null;
+        if (w.surf === 'treno') { const k = w.car + ':' + w.side, W = WR.S(st); (W.train.sides[k] = W.train.sides[k] || []).push(w.id); W.train.news = `Stanotte i ${w.crew} hanno fatto il treno: ${WR.STYLES[w.style].nome} di ${w.aka}.`; }
+        if (watched(st, n)) G.feed(st, `${w.aka} dei ${w.crew} ha finito ${w.style === 'mtag' || w.style === 'tag' ? 'la sua tag' : 'il ' + WR.STYLES[w.style].nome}${w.spot && w.spot.h != null ? ' lassù, in cima al palazzo' : ''}.`);
+        return 'next';
+      },
+    };
+  }
+  // il bersaglio della mano: sul muro (se la grafica l'ha già messo) o sulla fiancata
+  function tipOf(st, w, f) {
+    const g = WR.GFX.works[w.id], v = Math.sin(st.clock * 6) * .3;
+    if (w.surf === 'treno') { const tr = WR.trainAt(st.t); return WR.sidePoint(tr, w.car, w.side, w.u0 + f * w.W, 1.15 + w.vb + w.H * (.5 + v * .6)); }
+    const R = w.gfxRect; if (!R) return w.spot ? { x: w.spot.x + Math.cos(w.spot.face) * .5, y: (w.spot.h != null ? w.spot.h : tileH(w.spot.x, w.spot.y) + 1.4), z: w.spot.y + Math.sin(w.spot.face) * .5 } : null;
+    const u = (f % 1) - .5; return { x: R.c.x + R.r.x * u * R.W, y: R.c.y + v * R.H * .6, z: R.c.z + R.r.z * u * R.W, g };
+  }
+  const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  function busted(st, n, E) {
+    const W = WR.S(st), w = E.work; n.__tip = null; n.hand = null; if (w) w.live = null;
+    V(st).caught++;
+    if (watched(st, n)) G.feed(st, `I Grigi! ${n.pop.writer.aka} scappa e lascia ${w ? 'il ' + WR.STYLES[w.style].nome + ' a metà' : 'tutto lì'}.`, 'bad');
+    try { G.emit(st, 'graffito', { place: w && w.place, actor: n.id }); } catch (e) { }
+    n.panic = Math.max(n.panic || 0, 4);
+  }
+  // camminare (sul tetto, lungo il muro): in linea retta, alla velocità di un passo
+  function walkStep(label, from, to, after) {
+    return {
+      label, dur: 0, outside: true,
+      tick: (st, n, E) => { const a = from(st, n, E), b = to(st, n, E), d = hyp(b.x - a.x, b.y - a.y) || .01; const f = clamp(el(st, n, E) / Math.max(.05, d / 1.3 * MPS), 0, 1); n.x = lerp(a.x, b.x, f); n.y = lerp(a.y, b.y, f); n.face = Math.atan2(b.y - a.y, b.x - a.x); n.speedNow = f < 1 ? 1.3 : 0; E.wf = f; if (after) after(st, n, E, f); },
+      act: (st, n, E) => (E.wf >= 1 ? 'next' : 'wait'),
+    };
+  }
+  // la scala di ferro: su o giù (n.wrH dal suolo dei piedi della scala al tetto)
+  function ladderStep(up, Li) {
+    const L = TT.LADDERS[Li], a = TT._.footH(L), b = TT._.topH(L), g0 = tileH(L.fx, L.fy), mins = Math.max(1.2, Math.abs(b - a) / 1.4) * MPS;
+    return {
+      label: up ? 'sale la scala di ferro' : 'scende la scala di ferro', dur: 0, outside: true,
+      tick: (st, n, E) => { const f = clamp(el(st, n, E) / mins, 0, 1); n.x = L.fx; n.y = L.fy; n.face = L.ang + Math.PI; n.wrH = (up ? lerp(a, b, f) : lerp(b, a, f)) - g0; n.__climb = nowMs(); E.lf = f; n.speedNow = 0; },
+      act: (st, n, E) => { if (E.lf < 1) return 'wait'; if (up) { n.x = L.tx; n.y = L.ty; n.wrH = b - tileH(L.tx, L.ty); } else n.wrH = null; return 'next'; },
+    };
+  }
+  const goStep = (label, at, run) => ({ label, at: typeof at === 'function' ? at : () => at, dur: 0, outside: true, run: !!run });
+  const homeStep = () => ({ label: 'torna a casa', at: (st, n) => n.pop.homeT, dur: 5, inside: true, outside: false });
+  const waitStep = (label, done) => ({ label, dur: 0, outside: true, tick: (st, n, E) => { n.speedNow = 0; }, act: (st, n, E) => (done(st, n, E) ? 'next' : 'wait') });
+  function start(st, n, kind, label, steps, extra) {
+    const A = AZ(); if (!A || !A.startPlan || !alive(n) || (n.pop.emer && (n.pop.emer.prio || 0) >= 1)) return null;
+    const E = A.startPlan(st, n, 'writer', label, steps, 1, Object.assign({ onEnd: (st2, n2, why) => { n2.__tip = null; n2.__climb = null; n2.__mop = false; if (n2.wrH != null) { const L = E.L != null ? TT.LADDERS[E.L] : null; if (L) { n2.x = L.fx; n2.y = L.fy; } n2.wrH = null; } if (E.work && !E.work.done) E.work.live = null; } }, extra || {}));
+    return E;
+  }
+  // lo stile della notte: dalla mano e dall'esperienza
+  function styleFor(n, kind) {
+    const wr = n.pop.writer, r = rnd() + (wr.skill || .5) * .2;
+    if (kind === 'heaven') return r < .55 ? 'throw' : 'pezzo';
+    if (kind === 'hall') return r < .5 ? 'pezzo' : 'burner';
+    return r < .4 ? 'tag' : r < .72 ? 'throw' : r < .95 ? 'pezzo' : 'burner';
+  }
+  const spotOf = (s, du, h) => ({ x: s.x + s.along[0] * (du || 0), y: s.y + s.along[1] * (du || 0), face: s.face, h: h != null ? h : s.h, place: placeOf(s), kind: s.kind });
+  // UNA USCITA: muro di strada, heaven spot, hall of fame con la crew, treno al deposito
+  function mission(st, n, kind, partner) {
+    const wr = n.pop.writer, here = { x: n.x, y: n.y };
+    if (kind === 'treno') {
+      const tr = WR.trainAt(st.t); if (!tr || !tr.parked) return null;
+      const W = WR.S(st), free = []; WR.TR.CARS.forEach((c, i) => [0, 1].forEach(sd => { const k = i + ':' + sd; if (!(W.train.sides[k] && W.train.sides[k].length) && !W.works.some(w => w.surf === 'treno' && w.car === i && w.side === sd && !w.erased)) free.push([i, sd]); }));
+      if (!free.length) return null; const [car, side] = pick(free), L = WR.TR.CARS[car].L;
+      const stand = WR.sidePoint(tr, car, side, L * .5, 0), q = { x: stand.x + stand.nx * .9, y: stand.z + stand.nz * .9 };
+      const E = start(st, n, 'writer', 'fare il treno al deposito', [goStep('va al deposito della miniera, al buio', q), paintStep('spruzza la bomboletta sul treno', (st2, n2) => WR.npcWork(st2, n2, wr, WR.TR.CARS[car].k === 'loco' ? 'burner' : 'wholecar', null, { surf: 'treno', car, side, u0: .3, vb: .25, W: L - .6, H: 2.55 })), homeStep()]);
+      return E;
+    }
+    const s = freeSite(st, kind === 'heaven' ? ['heaven'] : kind === 'hall' ? ['hall'] : ['strada', 'hall'], here, 260); if (!s) return null;
+    const style = styleFor(n, s.kind);
+    if (s.kind === 'heaven') {
+      const L = TT.LADDERS[s.L]; if (!L) return null;
+      const steps = [goStep('va alla scala di ferro, di notte', { x: L.fx, y: L.fy }), ladderStep(true, s.L),
+        walkStep('cammina sul tetto fino al bordo', () => ({ x: L.tx, y: L.ty }), () => s.roof, (st2, n2) => { n2.wrH = (TT.roofH(s.bi, n2.x, n2.y) ?? TT.roofRule(B[s.bi])) - tileH(n2.x, n2.y); }),
+        paintStep('si sporge dal tetto e spruzza la bomboletta', (st2, n2) => WR.npcWork(st2, n2, wr, style, spotOf(s, 0, s.h - (style === 'throw' ? 0 : .3)))),
+        walkStep('torna alla scala sul tetto', () => s.roof, () => ({ x: L.tx, y: L.ty })), ladderStep(false, s.L), homeStep()];
+      return start(st, n, 'writer', 'un heaven spot in cima al palazzo', steps, { L: s.L });
+    }
+    const du = s.kind === 'hall' && partner ? -2.6 : 0, spot = spotOf(s, du, null);
+    const E = start(st, n, 'writer', s.kind === 'hall' ? 'la hall of fame della crew' : 'bombare un muro', [goStep(`va a dipingere ${spot.place}`, { x: spot.x, y: spot.y }), paintStep(style === 'tag' ? 'fa la sua tag con la bomboletta' : 'agita la bomboletta e spruzza', (st2, n2) => WR.npcWork(st2, n2, wr, style, spot)), homeStep()]);
+    if (E && partner && alive(partner) && partner.pop.writer) {
+      if (s.kind === 'hall') {   // la produzione: il compagno dipinge accanto
+        const sp2 = spotOf(s, 2.6, null), st2y = styleFor(partner, 'hall');
+        start(st, partner, 'writer', 'la hall of fame della crew', [goStep(`va con la crew ${sp2.place}`, { x: sp2.x, y: sp2.y }), paintStep('agita la bomboletta e spruzza', (st3, n3) => WR.npcWork(st3, n3, partner.pop.writer, st2y, sp2)), homeStep()]);
+      } else {   // il palo: guarda la strada, se arrivano i Grigi fischia
+        const pp = { x: s.x + s.along[0] * 5 + s.out[0] * 2, y: s.y + s.along[1] * 5 + s.out[1] * 2 };
+        start(st, partner, 'writer', 'fare il palo alla crew', [goStep(`va a fare il palo ${spot.place}`, pp), waitStep('fa il palo e guarda la strada', (st3, n3) => { if (cops(st3, n3.x, n3.y, 30)) { E.busted = true; return true; } return !n.pop.emer || n.pop.emer !== E || E.i > 1; }), homeStep()]);
+      }
+    }
+    return E;
+  }
+  // il calendario della notte: chi esce, quando, dove
+  function planNight(st) {
+    const v = V(st), W = WR.S(st), d = dayIdx(st.t + 120); if (v.night === d) return; v.night = d;
+    const sc = WR.sceneLevel(st), n0 = 2 + Math.round(sc * 8), crewOf = {};
+    const ws = W.writers.map(id => G.byId(st, id)).filter(n => alive(n) && n.pop.writer && !(n.jailedUntil > st.t));
+    ws.forEach(n => { (crewOf[n.pop.writer.crew] = crewOf[n.pop.writer.crew] || []).push(n); });
+    v.plan = [];
+    const used = new Set();
+    for (let k = 0; k < n0 && used.size < ws.length; k++) {
+      const n = pick(ws.filter(m => !used.has(m.id))); if (!n) break; used.add(n.id);
+      const wr = n.pop.writer, r = rnd();
+      const kind = wr.train && r < .3 ? 'treno' : wr.roof && r < .6 ? 'heaven' : r < .8 ? 'muro' : 'hall';
+      const mates = (crewOf[wr.crew] || []).filter(m => !used.has(m.id)), partner = (kind === 'muro' || kind === 'hall') && mates.length && rnd() < .7 ? pick(mates) : null;
+      if (partner) used.add(partner.id);
+      v.plan.push({ id: n.id, partner: partner && partner.id, kind, at: dayIdx(st.t + 120) * 1440 - 90 + Math.floor(rnd() * 300) });   // fra le 22:30 e le 3:30
+    }
+  }
+  function runNight(st) {
+    const v = V(st), m = minOfDay(st.t), night = m >= 22 * 60 + 15 || m < 4 * 60;
+    if (m >= 21 * 60 && m < 22 * 60 + 15) planNight(st);
+    if (!night || !v.plan.length) return;
+    for (let i = v.plan.length - 1; i >= 0; i--) {
+      const P = v.plan[i]; if (st.t < P.at) continue; v.plan.splice(i, 1);
+      const n = G.byId(st, P.id), partner = P.partner ? G.byId(st, P.partner) : null; if (!alive(n)) continue;
+      mission(st, n, P.kind, partner) || mission(st, n, 'muro', partner);
+    }
+  }
+  // di giorno: chi ha il mop lascia una tag (e un segno) sul muro più vicino mentre passa
+  function runDay(st) {
+    const v = V(st), m = minOfDay(st.t); if (m < 8 * 60 || m > 21 * 60 || st.clock - v.mopT < 25) return; v.mopT = st.clock;
+    const p = st.player, W = WR.S(st);
+    const ws = W.writers.map(id => G.byId(st, id)).filter(n => alive(n) && n.pop.writer && n.pop.writer.mop && n.pop.near && !n.inside && !n.pop.emer && hyp(n.x - p.x, n.y - p.y) < 40);
+    if (!ws.length || rnd() < .4) return; const n = pick(ws), wr = n.pop.writer;
+    let best = null, bd = 9; for (const s of SITES) { if (s.kind === 'heaven') continue; const dd = hyp(s.x - n.x, s.y - n.y); if (dd < bd) { bd = dd; best = s; } }
+    if (!best) return; const spot = spotOf(best, (rnd() - .5) * Math.min(4, best.len - 1), null);
+    start(st, n, 'writer', 'una tag col pennarello', [goStep('si avvicina al muro', { x: spot.x, y: spot.y }), paintStep('fa una tag col pennarello', (st2, n2) => WR.npcWork(st2, n2, wr, 'mtag', spot, { sign: rnd() < .5 ? pick(WA.SIGNS) : undefined }))]);
+  }
+  // la città si colora: quanti muri hanno un lavoro sopra
+  function coverage(st) {
+    const W = WR.S(st), live = W.works.filter(w => !w.erased && (w.spot || w.pos)), cells = new Set();
+    live.forEach(w => { const x = w.spot ? w.spot.x : w.pos.x, y = w.spot ? w.spot.y : w.pos.z; cells.add(Math.floor(x / 24) + ',' + Math.floor(y / 24)); });
+    const all = new Set(SITES.map(s => Math.floor(s.x / 24) + ',' + Math.floor(s.y / 24)));
+    return all.size ? Math.min(1, cells.size / all.size) : 0;
+  }
+  function step(st, dt) {
+    if (!st.player || !st.pop) return;
+    runNight(st); runDay(st);
+  }
+  { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); try { step(st, dt); } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.warn('[WriterVita]', e); } } }; }
+  // il menu: quanto è colorata la città, cosa dicono i segni
+  if (AZ() && AZ().playerActions) { const prev = AZ().playerActions; AZ().playerActions = st => { const out = (prev(st) || []).slice(), p = st.player, W = WR.S(st);
+    if (p.hand === 'bomboletta' || p.hand === 'pennarello' || W.fame > 0) out.push({ id: 'writer_citta', label: `La città colorata: ${Math.round(coverage(st) * 100)}% · ${W.writers.length} writer in giro`, run: () => null, off: '' });
+    if (p.hand === 'bomboletta') out.push({ id: 'writer_fam', label: `La tua mano: ${WA.FAM[W.fam || 'semi'].nome}`, run: () => { const i = WA.FAMS.indexOf(W.fam || 'semi'); W.fam = WA.FAMS[(i + 1) % WA.FAMS.length]; return `Le tue lettere: ${WA.FAM[W.fam].nome}.`; }, off: 'cambia lo stile delle lettere' });
+    const sg = W.works.find(w => !w.erased && w.sign && w.spot && hyp(w.spot.x - p.x, w.spot.y - p.y) < 3);
+    if (sg) out.push({ id: 'writer_segno', label: `Il segno di ${sg.aka}: ${WA.SIGN_TXT[sg.sign]}`, run: () => `Lo dice il segno accanto alla tag di ${sg.aka}: ${WA.SIGN_TXT[sg.sign]}.`, off: '' });
+    return out; }; }
+
+  // ================= LA GRAFICA: le animazioni, la nebbia di vernice, la mappa =================
+  // la mappa del menu (menu_ui.js drawMap): i lavori come macchie di colore
+  function drawMap(x, k, st) {
+    const W = WR.S(st); x.save();
+    W.works.forEach(w => { if (w.erased) return; const px = w.spot ? w.spot.x : w.pos ? w.pos.x : null, py = w.spot ? w.spot.y : w.pos ? w.pos.z : null; if (px == null) return;
+      const P = WA.PAL[(w.pal || 0) % WA.PAL.length], r = [1.6, 1.6, 2.4, 3.2, 4, 5][WR.STYLES[w.style].rank + 1] || 2; x.globalAlpha = w.done ? .85 : .45; x.fillStyle = w.surf === 'treno' ? '#ffffff' : P.f[1]; x.beginPath(); x.arc(px * k, py * k, r, 0, 7); x.fill(); });
+    x.globalAlpha = 1; x.font = 'italic 15px "Instrument Serif", Georgia, serif'; x.textAlign = 'left'; x.fillStyle = 'rgba(13,16,21,.6)'; x.fillRect(8, x.canvas.height - 30, 250, 22);
+    x.fillStyle = '#ff5fa2'; x.fillText(`La città colorata: ${Math.round(coverage(st) * 100)}% · ${W.writers.length} writer`, 14, x.canvas.height - 14); x.restore();
+  }
+  if (typeof window !== 'undefined') {
+    // le pose: la scala, la tag a pennarello; il pennarello in mano
+    const installAnim = () => {
+      if (typeof Anim === 'undefined' || typeof THREE === 'undefined' || installAnim.done) return !!installAnim.done; installAnim.done = true;
+      Anim.prop('mop', () => { const g = new THREE.Group(), m = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: .6 }); const b = new THREE.Mesh(new THREE.CylinderGeometry(.014, .014, .13, 6), m('#1e1e24')); b.rotation.z = Math.PI / 2; g.add(b); const t = new THREE.Mesh(new THREE.CylinderGeometry(.009, .006, .03, 5), m('#f0f0f0')); t.rotation.z = Math.PI / 2; t.position.x = .08; g.add(t); return g; }, 'WristR', [0, -.08, .04]);
+      const _v = new THREE.Vector3(), _m = new THREE.Matrix4();
+      // SALE LA SCALA: le mani si alternano sui pioli, le ginocchia salgono a turno
+      Anim.def('scala', { base: 'Idle_Neutral', fade: .2, full: true, fn(P) {
+        const ph = Math.sin(P.t * 5.2), a = Math.max(0, ph), b = Math.max(0, -ph);
+        P.aim('UpperArmL', [.12, .75 + .2 * a, .55]); P.aim('LowerArmL', [.05, .9, .25]);
+        P.aim('UpperArmR', [-.12, .75 + .2 * b, .55]); P.aim('LowerArmR', [-.05, .9, .25]);
+        P.legTo('L', .12, .12 + .35 * a, .22, .15, 1, .6, .2, 0); P.legTo('R', -.12, .12 + .35 * b, .22, -.15, 1, .6, .2, 0);
+        P.rot('Head', -.35, 0, 0); P.rot('Chest', .08, 0, 0);
+      } });
+      // LA TAG A PENNARELLO: il polso scrive veloce, la testa segue, ogni tanto si guarda alle spalle
+      Anim.def('tagga', { base: 'Idle_Neutral', fade: .2, full: true, fn(P, A) {
+        const tip = A && A.tip; let dir = [-.2, .3, .9];
+        if (tip && P.g) { _v.set(tip.x, tip.y, tip.z).applyMatrix4(_m.copy(P.g.matrixWorld).invert()); const l = Math.hypot(_v.x, _v.y - 1.35, _v.z) || 1; dir = [_v.x / l, (_v.y - 1.35) / l, _v.z / l]; }
+        const w = Math.sin(P.t * 22) * .12, w2 = Math.cos(P.t * 17) * .1;
+        P.aim('UpperArmR', [dir[0] - .25, dir[1] + .05, dir[2]]); P.aim('LowerArmR', [dir[0] + w, dir[1] + w2, dir[2]]);
+        P.aim('UpperArmL', [.25, -.95, .1]); P.aim('LowerArmL', [.1, -.9, .3]);
+        P.rot('Head', -.05, Math.sin(P.t * .9) > .85 ? .9 : .1, 0); P.prop('mop');
+      } });
+      Anim.npcMap((st, n, s) => {
+        const now = performance.now();
+        if (n.__climb && now - n.__climb < 400) { s.act = 'scala'; s.upper = null; return; }
+        const tp = n.__tip; if (tp && now - tp.t < 600) { s.act = n.__mop ? 'tagga' : 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; s.upper = null; }
+      });
+      Anim.playerMap((st, p, s) => {
+        if (p.lv && p.lv.k === 'scala') { s.act = 'scala'; s.upper = null; return; }
+        const tp = p.__tip; if (p.hand === 'pennarello' && tp && performance.now() - tp.t < 350) { s.act = 'tagga'; s.tip = tp; }
+      });
+      return true;
+    };
+    // la nebbia di vernice: punti che escono dall'ugello verso il muro e si posano
+    const MIST = { pts: null, N: 360, i: 0, life: null, vel: null };
+    function mistInit(scene) {
+      const T = THREE, g = new T.BufferGeometry(), pos = new Float32Array(MIST.N * 3).fill(-9999), col = new Float32Array(MIST.N * 3);
+      g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('color', new T.BufferAttribute(col, 3));
+      const m = new T.PointsMaterial({ size: .07, vertexColors: true, transparent: true, opacity: .55, depthWrite: false, sizeAttenuation: true });
+      MIST.pts = new T.Points(g, m); MIST.pts.frustumCulled = false; MIST.pts.userData.velo = true; MIST.pts.userData.wr = 1; scene.add(MIST.pts);
+      MIST.life = new Float32Array(MIST.N); MIST.vel = new Float32Array(MIST.N * 3); MIST.c = new T.Color();
+    }
+    function emit(from, tip, col, n) {
+      const P = MIST.pts.geometry.attributes.position.array, C = MIST.pts.geometry.attributes.color.array; MIST.c.set(col || '#ff5a3a');
+      const dx = tip.x - from.x, dy = tip.y - from.y, dz = tip.z - from.z, l = hyp(dx, dy, dz) || 1;
+      for (let k = 0; k < n; k++) {
+        const i = MIST.i = (MIST.i + 1) % MIST.N, b = .25 + rnd() * .2;
+        P[i * 3] = tip.x - dx / l * b + (rnd() - .5) * .05; P[i * 3 + 1] = tip.y - dy / l * b + (rnd() - .5) * .05; P[i * 3 + 2] = tip.z - dz / l * b + (rnd() - .5) * .05;
+        MIST.vel[i * 3] = dx / l * 1.4 + (rnd() - .5) * .5; MIST.vel[i * 3 + 1] = dy / l * 1.4 + (rnd() - .5) * .5; MIST.vel[i * 3 + 2] = dz / l * 1.4 + (rnd() - .5) * .5;
+        C[i * 3] = MIST.c.r; C[i * 3 + 1] = MIST.c.g; C[i * 3 + 2] = MIST.c.b; MIST.life[i] = .35 + rnd() * .3;
+      }
+    }
+    function mistStep(dt) {
+      const P = MIST.pts.geometry.attributes.position.array;
+      for (let i = 0; i < MIST.N; i++) { if (MIST.life[i] <= 0) continue; MIST.life[i] -= dt; if (MIST.life[i] <= 0) { P[i * 3 + 1] = -9999; continue; } const k = Math.exp(-dt * 4); MIST.vel[i * 3] *= k; MIST.vel[i * 3 + 1] = MIST.vel[i * 3 + 1] * k - dt * .3; MIST.vel[i * 3 + 2] *= k; P[i * 3] += MIST.vel[i * 3] * dt; P[i * 3 + 1] += MIST.vel[i * 3 + 1] * dt; P[i * 3 + 2] += MIST.vel[i * 3 + 2] * dt; }
+      MIST.pts.geometry.attributes.position.needsUpdate = true; MIST.pts.geometry.attributes.color.needsUpdate = true;
+    }
+    let last = 0;
+    function frame(ts) {
+      try {
+        installAnim();
+        const pv = window.__pv, R = pv && pv.R, st = pv && pv.st, sc = R && R.__models && R.__models.scene;
+        if (sc && st && window.THREE) {
+          if (!MIST.pts) mistInit(sc);
+          const dt = Math.min(.05, (ts - last) / 1000 || .016); last = ts; const now = performance.now();
+          const p = st.player, W = WR.S(st);
+          if (p.__tip && now - p.__tip.t < 120 && p.hand === 'bomboletta') { const w = W.cur, col = w ? WA.PAL[(w.pal || 0) % WA.PAL.length].f[1] : '#ff5a3a', h = (typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : R.groundH(p.x, p.y)) || 0; emit({ x: p.x, y: h + 1.4, z: p.y }, p.__tip, w && (w.style === 'tag') && w.col ? w.col : col, 3); }
+          for (const n of st.npcs) { const tp = n.__tip; if (!tp || now - tp.t > 120 || n.__mop || !n.pop || !n.pop.near) continue; if (hyp(n.x - p.x, n.y - p.y) > 60) continue; emit({ x: n.x, y: R.groundH(n.x, n.y) + (n.wrH || 0) + 1.4, z: n.y }, tp, tp.col, 2); }
+          mistStep(dt);
+        }
+      } catch (e) { if (!frame.err) { frame.err = 1; console.warn('[WriterVita]', e); } }
+      requestAnimationFrame(frame);
+    }
+    const go = () => { if (!window.THREE || !window.__pv) { setTimeout(go, 300); return; } requestAnimationFrame(frame); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
+  }
+  return { SITES, buildSites, freeSite, mission, planNight, runNight, coverage, drawMap, V };
+})();
+if (typeof module !== 'undefined') module.exports = WriterVita;
 </script>
 <script>
 /* Porto Vecchio — resa 3D in stile pixel art (Three.js r149).
@@ -40933,7 +41899,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */ g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
-      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y), n.y); g.rotation.y = Math.PI / 2 - n.face;
+      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = Math.PI / 2 - n.face;
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
       if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
       const dtA = dt + (g.userData.dt1 || 0); g.userData.dt1 = 0;
@@ -50005,6 +50971,7 @@ var MenuUI = (function () {
       x.fillStyle = 'rgba(13,16,21,.45)'; x.fillRect(r[0], r[1] + 2, r[2], r[3] - 2); x.fillStyle = 'rgba(233,220,188,.9)'; x.fillText(P0.name, px, py - 7); });
     if (typeof Cantiere !== 'undefined') Cantiere.covi(st).forEach(C0 => { x.strokeStyle = '#B08D57'; x.lineWidth = 2; x.beginPath(); x.arc(C0.x * k, C0.y * k, C0.r * k, 0, Math.PI * 2); x.stroke(); });
     (st.ris && st.ris.bases || []).filter(b => b.alive).forEach(b => { x.fillStyle = '#35e6ff'; x.fillRect((b.cx || b.x) * k - 3, (b.cy || b.y) * k - 3, 6, 6); });
+    if (window.WriterVita) WriterVita.drawMap(x, k, st);   // [writer] la città che si colora
     const jt = G0.jobTarget && G0.jobTarget(st); if (jt) { x.fillStyle = '#FF5FA2'; x.beginPath(); x.arc(jt.x * k, jt.y * k, 5, 0, Math.PI * 2); x.fill(); }
     const p = st.player, a = p.face || 0; x.save(); x.translate(p.x * k, p.y * k); x.rotate(a); x.fillStyle = '#f2ead8'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.beginPath(); x.moveTo(9, 0); x.lineTo(-6, 6); x.lineTo(-3, 0); x.lineTo(-6, -6); x.closePath(); x.stroke(); x.fill(); x.restore();
   }
