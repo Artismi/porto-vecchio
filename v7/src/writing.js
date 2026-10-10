@@ -35,8 +35,8 @@ var Writing = (function () {
 
   // ---------------- LA SCALA DEI LAVORI ----------------
   const STYLES = {
-    tag: { nome: 'tag', rank: 0, W: 1.15, H: .5, dur: 2.6, cans: .06, fame: 1 },
-    mtag: { nome: 'tag', rank: 0, W: .62, H: .28, dur: 1.4, cans: 0, fame: 1, marker: true },
+    tag: { nome: 'tag', rank: 0, W: 1.5, H: .62, dur: 2.6, cans: .06, fame: 1 },
+    mtag: { nome: 'tag', rank: 0, W: 1, H: .42, dur: 1.4, cans: 0, fame: 1, marker: true },
     throw: { nome: 'throw-up', rank: 1, W: 2.7, H: 1.3, dur: 9, cans: .7, fame: 4 },
     pezzo: { nome: 'pezzo', rank: 2, W: 4.8, H: 2.05, dur: 32, cans: 2.2, fame: 12 },
     burner: { nome: 'burner', rank: 3, W: 6.6, H: 2.5, dur: 60, cans: 4, fame: 25 },
@@ -135,7 +135,8 @@ var Writing = (function () {
     const free = AKAS.concat(AKAS2).filter(a => !used.has(a)); if (!free.length) return null;
     let h = 7; for (const ch of String(n.id)) h = (h * 31 + ch.charCodeAt(0)) % 1009;
     const aka = free[(h * 13 + (k || 0) * 5) % free.length], r = WA.mulberry(h * 7919 + 3);
-    n.pop.writer = { aka, crew, skill: .3 + ((h * 3) % 7) / 10, fam: WA.FAMS[Math.floor(r() * WA.FAMS.length)], roof: r() < .45, train: r() < .5 || crew === 'TNT', mop: r() < .5, since: st.t };
+    const skill = .3 + ((h * 3) % 7) / 10, cr = CREWS.find(c => c.id === crew) || CREWS[0], dna = WA.dnaOf(h * 7919 + 3, skill, cr.col);
+    n.pop.writer = { aka, crew, skill, fam: dna.fam, dna, hand: h * 7919 + 11, roof: r() < .45, train: r() < .5 || crew === 'TNT', mop: r() < .5, since: st.t };
     W.writers.push(n.id); return n.pop.writer;
   }
   // la scena del Disgelo: cresce coi lavori in giro e con la tua fama; più scena, più writer, più notti di vernice
@@ -164,7 +165,9 @@ var Writing = (function () {
   // un lavoro di un writer NPC: la sua mano, la tavolozza della crew, i segni accanto alle tag, gli slogan sotto i pezzi
   function npcWork(st, n, wr, style, sp, extra) {
     const cr = CREWS.find(c => c.id === wr.crew) || CREWS[0], seed = Math.floor(rnd() * 1e9);
-    const w = { by: n.id, aka: wr.aka, crew: wr.crew, style, fam: style === 'throw' ? (rnd() < .35 ? 'chrome' : 'bubble') : wr.fam, pal: (cr.col + Math.floor(rnd() * 3) + (rnd() < .35 ? 8 : 0)) % PAL.length, seed, surf: 'muro', spot: sp, place: sp && sp.place, prog: 0, done: false };
+    const dna = wr.dna || WA.dnaOf(seed, wr.skill, cr.col), sk = WA.conceive({ aka: wr.aka, crew: wr.crew, style, dna, seed, by: n.id });   // il bozzetto: lo pensa lui, con la sua mano
+    const w = Object.assign(sk, { by: n.id, hand: wr.hand || seed, surf: 'muro', spot: sp, place: sp && sp.place, prog: 0, done: false });
+    if (style === 'tag' || style === 'mtag') { const k = .8 + rnd() * .55; w.tagK = k; }
     if (style === 'tag' || style === 'mtag') { if (rnd() < .3) w.sign = pick(WA.SIGNS); }
     else if (style === 'burner' && rnd() < .3) w.words = pick(WA.WORDS);
     return Object.assign(w, extra || {});
@@ -382,32 +385,74 @@ var Writing = (function () {
     return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: 1 };
   }
   // disegna il lavoro fino a prog (le tappe in ordine, ognuna da sinistra a destra)
-  const STAGE_W = { tag: [1], mtag: [1], throw: [.45, .4, .15], pezzo: [.3, .15, .35, .2], burner: [.28, .14, .38, .2], wholecar: [.3, .16, .36, .18] };
-  function drawUpTo(w, g) {
-    const wt = STAGE_W[w.style], A = g.art, T = g.tgt; if (!A || !T) return;
-    const total = wt.reduce((a, b) => a + b, 0), want = clamp(w.prog, 0, 1) * total;
-    let acc = 0;
-    for (let s = 0; s < wt.length; s++) {
-      const a = acc, b = acc + wt[s]; acc = b;
-      const done = clamp((g.drawn - a) / wt[s], 0, 1), now = clamp((want - a) / wt[s], 0, 1); if (now <= done) continue;
-      const img = A.stages[Math.min(s, A.stages.length - 1)], x0 = Math.floor(done * A.Wp), x1 = Math.ceil(now * A.Wp); if (x1 <= x0) continue;
-      T.ctx.drawImage(img, x0, 0, x1 - x0, A.Hp, T.x0 + x0 * T.k, T.y0, (x1 - x0) * T.k, A.Hp * T.k);
-      if (now < 1 && w.prog < 1) {   // il bordo: strisce di altezza a caso un po' più avanti, mezze trasparenti (la vernice arriva prima dove passa la mano)
-        const band = Math.max(4, A.Wp * .025), ch = Math.max(6, A.Hp / 9); T.ctx.save(); T.ctx.globalAlpha = .45;
-        for (let yy = 0; yy < A.Hp; yy += ch) { const ext = Math.min(A.Wp - x1, Math.floor(band * Math.random())); if (ext > 0) T.ctx.drawImage(img, x1, yy, ext, ch, T.x0 + x1 * T.k, T.y0 + yy * T.k, ext * T.k, ch * T.k); }
-        T.ctx.restore();
-      }
-    }
-    g.drawn = want; T.tex.needsUpdate = true;
-    if (w.crossed && !g.crossDrawn && w.prog >= 1) { g.crossDrawn = true; crossOut(T.ctx, T.x0, T.y0, A.Wp * T.k, A.Hp * T.k, w.crossed, mulberry(w.seed + 7)); T.tex.needsUpdate = true; }
+  // LA SVELATURA. I lavori degli NPC crescono lungo il percorso della mano (art.paths: i tratti delle lettere, le passate dello
+  // sfondo): la bomboletta «gratta via» il muro e scopre la tappa in corso. Il giocatore invece ricalca a mano (traceAt).
+  // g.drawn: tappe fatte (con la frazione della tappa in corso); i lavori finiti si disegnano in un colpo.
+  function stamp(T, img, x, y, R) {
+    const k = T.k, X = T.x0 + x * k, Y = T.y0 + y * k, sx = Math.max(0, Math.floor(x - R)), sy = Math.max(0, Math.floor(y - R)), sw = Math.min(img.width - sx, Math.ceil(2 * R) + 1), sh = Math.min(img.height - sy, Math.ceil(2 * R) + 1); if (sw <= 0 || sh <= 0) return;
+    const c = T.ctx; c.save(); c.beginPath(); c.arc(X, Y, R * k, 0, 7); c.clip(); c.drawImage(img, sx, sy, sw, sh, T.x0 + sx * k, T.y0 + sy * k, sw * k, sh * k); c.restore();
+    c.save(); c.globalAlpha = .35; c.beginPath(); c.arc(X, Y, R * k * 1.35, 0, 7); c.arc(X, Y, R * k, 0, 7, true); c.clip(); c.drawImage(img, sx, sy, sw, sh, T.x0 + sx * k, T.y0 + sy * k, sw * k, sh * k); c.restore();   // la nebbia attorno al getto
   }
-  // il punto (mondo) dove sta andando la vernice adesso: per la mano e per spostarsi lungo il lavoro
+  function fullStage(T, img, A) { T.ctx.drawImage(img, 0, 0, A.Wp, A.Hp, T.x0, T.y0, A.Wp * T.k, A.Hp * T.k); }
+  function drawUpTo(w, g) {
+    const A = g.art, T = g.tgt; if (!A || !T) return; const nS = A.stages.length;
+    if (w.trace && !w.done) {   // il giocatore: lo disegna traceAt; qui solo il ritorno (le tappe già fatte, dopo che la grafica è stata liberata)
+      if (g.ts == null) { g.ts = Math.min(nS - 1, Math.floor(w.prog * nS)); ghost(T, A, w); if (g.ts > 0) fullStage(T, A.stages[g.ts - 1], A); g.drawn = g.ts; T.tex.needsUpdate = true; }
+      return;
+    }
+    const want = (w.done ? 1 : clamp(w.prog, 0, 1)) * nS;
+    if (w.done && !g.drawn) { fullStage(T, A.stages[nS - 1], A); g.drawn = nS; }
+    let guard = 0;
+    while (g.drawn < want - 1e-6 && guard++ < nS + 2) {
+      const sI = Math.min(nS - 1, Math.floor(g.drawn)), a = g.drawn - sI, b = Math.min(1, want - sI), P = A.paths[sI] || [], R = A.radii[sI] || 8, img = A.stages[sI];
+      const i0 = Math.floor(a * P.length), i1 = Math.min(P.length, Math.ceil(b * P.length));
+      for (let i = i0; i < i1; i++) stamp(T, img, P[i][0], P[i][1], R);
+      if (b >= 1) { fullStage(T, img, A); g.drawn = sI + 1; } else g.drawn = sI + b;
+    }
+    T.tex.needsUpdate = true;
+    if (w.crossed && !g.crossDrawn && (w.done || w.prog >= 1)) { g.crossDrawn = true; crossOut(T.ctx, T.x0, T.y0, A.Wp * T.k, A.Hp * T.k, w.crossed, mulberry(w.seed + 7)); T.tex.needsUpdate = true; }
+  }
+  // il bozzetto sul muro, appena accennato: il writer lo ricalca (col disegno pronto si vede meglio)
+  function ghost(T, A, w) { T.ctx.save(); T.ctx.globalAlpha = w.sketch ? .2 : .09; fullStage(T, A.stages[A.stages.length - 1], A); T.ctx.restore(); }
+  // dove sta la mano di un NPC: il punto del percorso a cui è arrivato (pixel del lavoro)
+  function pathPoint(w, g) {
+    const A = g && g.art; if (!A) return null; const nS = A.stages.length, d = clamp(w.prog, 0, 1) * nS, sI = Math.min(nS - 1, Math.floor(d)), P = A.paths[sI] || []; if (!P.length) return null;
+    return P[Math.min(P.length - 1, Math.floor((d - sI) * P.length))];
+  }
+  // un punto del lavoro (pixel) nel mondo
+  function workPoint(w, g, px, py) {
+    const A = g.art, fu = px / A.Wp, fv = py / A.Hp;
+    if (w.surf === 'treno') { const tr = trainAt(GFX.st.t); return sidePoint(tr, w.car, w.side, w.u0 + fu * w.W, BODY_Y + w.vb + (1 - fv) * w.H); }
+    const R = w.gfxRect; if (!R) return null; return { x: R.c.x + R.r.x * (fu - .5) * R.W, y: R.c.y + (.5 - fv) * R.H, z: R.c.z + R.r.z * (fu - .5) * R.W };
+  }
   function tipOf(w, g) {
-    const wt = STAGE_W[w.style], total = wt.reduce((a, b) => a + b, 0); let want = w.prog * total, acc = 0, f = 0;
-    for (const x of wt) { if (want <= acc + x) { f = (want - acc) / x; break; } acc += x; f = 1; }
-    const u = f - .5, v = (Math.sin(performance.now() / 160) * .35);
-    if (w.surf === 'treno') { const tr = trainAt(GFX.st.t); return sidePoint(tr, w.car, w.side, w.u0 + f * w.W, BODY_Y + w.vb + w.H * (.5 + v * .6)); }
+    const q = pathPoint(w, g); if (q) { const tp = workPoint(w, g, q[0], q[1]); if (tp) return tp; }
+    const v = (Math.sin(performance.now() / 160) * .35), u = (w.prog % 1) - .5;
+    if (w.surf === 'treno') { const tr = trainAt(GFX.st.t); return sidePoint(tr, w.car, w.side, w.u0 + (u + .5) * w.W, BODY_Y + w.vb + w.H * (.5 + v * .6)); }
     const R = w.gfxRect; return { x: R.c.x + R.r.x * u * R.W, y: R.c.y + v * R.H * .6, z: R.c.z + R.r.z * u * R.W };
+  }
+  // IL RICALCO del giocatore: dove passa il getto (lx, ly: pixel del lavoro) la tappa in corso si scopre; la tappa è fatta quando
+  // è coperto quasi tutto quello che serve (le celle dove la tappa cambia qualcosa). Ritorna quante celle nuove ha coperto.
+  const CELL = 9;
+  function needOf(A, sI) {
+    A.need = A.need || []; if (A.need[sI]) return A.need[sI];
+    const gw = Math.ceil(A.Wp / CELL), gh = Math.ceil(A.Hp / CELL), small = cv(gw, gh), sx = small.getContext('2d');
+    const read = img => { sx.clearRect(0, 0, gw, gh); if (img) sx.drawImage(img, 0, 0, gw, gh); return sx.getImageData(0, 0, gw, gh).data; };
+    const a = read(A.stages[sI]), b = read(sI ? A.stages[sI - 1] : null), need = new Uint8Array(gw * gh); let n = 0;
+    for (let i = 0; i < gw * gh; i++) { const d = Math.abs(a[i * 4] - b[i * 4]) + Math.abs(a[i * 4 + 1] - b[i * 4 + 1]) + Math.abs(a[i * 4 + 2] - b[i * 4 + 2]) + Math.abs(a[i * 4 + 3] - b[i * 4 + 3]) * 2; if (d > 60) { need[i] = 1; n++; } }
+    return (A.need[sI] = { need, n: Math.max(1, n), gw, gh, got: new Uint8Array(gw * gh), cov: 0 });
+  }
+  function traceAt(w, g, lx, ly, R) {
+    const A = g.art, T = g.tgt, nS = A.stages.length; if (g.ts == null) { g.ts = 0; ghost(T, A, w); }
+    if (g.ts >= nS) return 0;
+    const sI = g.ts, N = needOf(A, sI), img = A.stages[sI], Rs = R * (A.paths[sI] && sI > 0 && sI < nS - 1 && A.radii[sI] > A.radii[0] * 2 ? 1.6 : 1);
+    stamp(T, img, lx, ly, Rs); T.tex.needsUpdate = true;
+    let got = 0; const c0 = Math.floor((lx - Rs) / CELL), c1 = Math.floor((lx + Rs) / CELL), r0 = Math.floor((ly - Rs) / CELL), r1 = Math.floor((ly + Rs) / CELL);
+    for (let cy = Math.max(0, r0); cy <= Math.min(N.gh - 1, r1); cy++) for (let cx = Math.max(0, c0); cx <= Math.min(N.gw - 1, c1); cx++) { const i = cy * N.gw + cx; if (!N.need[i] || N.got[i]) continue; if (hyp((cx + .5) * CELL - lx, (cy + .5) * CELL - ly) > Rs + CELL * .5) continue; N.got[i] = 1; got++; N.cov++; }
+    if (N.cov / N.n >= .9) { fullStage(T, img, A); g.ts++; }   // la tappa è fatta: si pulisce e si passa alla prossima
+    w.prog = clamp((g.ts + (g.ts < nS ? needOf(A, Math.min(nS - 1, g.ts)).cov / needOf(A, Math.min(nS - 1, g.ts)).n : 0)) / nS, 0, g.ts >= nS ? 1 : .999);
+    g.cellCost = g.cellCost || 1 / A.stages.reduce((s0, _, k) => s0 + needOf(A, k).n, 0);
+    return got;
   }
   // un lavoro degli NPC (o di prima di un ricaricamento): trova il suo muro
   function placeWall(w) {
@@ -415,8 +460,8 @@ var Writing = (function () {
     const gh = R.groundH(sp.x, sp.y), list = cands(sp.x, sp.y); if (!list.length) return false;
     const d = new THREE.Vector3(Math.cos(sp.face), 0, Math.sin(sp.face)), sty = STYLES[w.style];
     const y0 = sp.h != null ? sp.h : gh + 1.4, hit = rayWall(new THREE.Vector3(sp.x, y0, sp.y), d, sp.h != null ? 6 : 3, list); if (!hit || Math.abs(hit.n.y) > .4) return false;
-    const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), H = sty.H, c = hit.p.clone(); c.y = sp.h != null ? sp.h : gh + .2 + H / 2 + (w.style === 'tag' || w.style === 'mtag' ? .5 + rnd() * .5 : 0);
-    const fitR = wallRect(c, n, sty.W, H, list); if (!fitR) return false;
+    const k = w.tagK || 1, H = sty.H * k, n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), c = hit.p.clone(); c.y = sp.h != null ? sp.h : gh + .2 + H / 2 + (w.style === 'tag' || w.style === 'mtag' ? .3 + rnd() * 1.4 : 0);
+    const fitR = wallRect(c, n, sty.W * k, H, list); if (!fitR) return false;
     w.W = fitR.W; w.H = fitR.H; w.gfxRect = { c, n, r: fitR.r, W: fitR.W, H: fitR.H }; w.pos = { x: c.x, y: c.y, z: c.z };
     // niente due lavori uno sull'altro di notte: se si accavalla, salta
     if (overlapCheck(GFX.st, w).length) { w.gfxRect = null; return false; }
@@ -547,7 +592,9 @@ var Writing = (function () {
       const sty = STYLES[style];
       if (!sty.marker && !(OG() && (OG().inv(st).bomboletta || 0) > 0)) return { msg: 'Niente bombolette.' };
       if (!W.aka && typeof prompt === 'function' && tool !== 'pennarello' && style !== 'tag') { const m = renameTag(st); if (m) G.feed(st, m); }
-      const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, fam: W.fam || undefined, pal: COL2PAL[colIdx % COL2PAL.length], col: style === 'tag' || style === 'mtag' ? (tool === 'pennarello' ? '#121216' : col) : null, seed: Math.floor(rnd() * 1e9), prog: 0, done: false, surf, place: G.nearestPlace ? 'a ' + G.nearestPlace(p.x, p.y).name : '' };
+      const sk = sketchFor(st, style), nw0 = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, fam: W.fam || undefined, pal: COL2PAL[colIdx % COL2PAL.length], col: style === 'tag' || style === 'mtag' ? (tool === 'pennarello' ? '#121216' : col) : null, seed: Math.floor(rnd() * 1e9), prog: 0, done: false, surf, place: G.nearestPlace ? 'a ' + G.nearestPlace(p.x, p.y).name : '' };
+      const imp = sk ? null : WA.conceive({ aka: playerAka(st), crew: W.crew, style: style === 'wholecar' ? 'burner' : style, dna: Object.assign({}, playerDna(st), { skill: playerDna(st).skill - .08 }), seed: nw0.seed }), nw = Object.assign(nw0, sk || imp, { by: 'player', aka: (sk && sk.aka) || playerAka(st), crew: W.crew, style, tool, trace: true, sketch: !!sk, prog: 0, done: false, surf: nw0.surf, place: nw0.place, col: nw0.col, hand: W.hand || (W.hand = Math.floor(rnd() * 1e9)) });
+      if (sk && sk.bitten) { const o = sk.bitten; W.beef[o] = (W.beef[o] || 0) + 2; G.feed(st, `Stai facendo il pezzo di un altro: è biting. Se i ${o} lo vedono, sono guai.`, 'bad'); }
       if (car) {
         const L = TR.CARS[car.i].L, tr = trainAt(st.t); if (tr && tr.v) return { msg: 'Il treno si muove!' };
         const u = h.uv ? h.uv.x * L : L / 2;
@@ -579,29 +626,48 @@ var Writing = (function () {
       const m2 = judge(st, nw); if (m2) G.feed(st, m2, /crossato/.test(m2) ? 'bad' : 'info');
       GFX.held = true; return true;
     }
-    // si dipinge: il lavoro cresce, la mano va dove va la vernice, il writer si sposta lungo i lavori grandi
+    // si dipinge: il RICALCO. Il getto va dove punta il mouse; dove passa, il bozzetto si scopre (la tappa in corso). Se il punto è
+    // lontano, il writer si sposta lungo il muro; se è troppo in alto, ci vuole la scala o il tetto.
     const g = GFX.works[w.id]; if (!g) { W.cur = null; return false; }
-    const ctr = w.surf === 'treno' ? null : w.gfxRect;
-    const tp = tipOf(w, g), dPl = hyp(tp.x - p.x, tp.z - p.y);
     if (w.surf === 'treno') { const tr = trainAt(st.t); if (tr && tr.v) { W.cur = null; return { msg: 'Il treno parte! Via dalla calata.' } } }
-    if (dPl > 4.5) { W.cur = null; return { msg: 'Troppo lontano dal lavoro: torna lì e clicca sopra per riprendere.' } }
-    const r = progress(st, w, dt);
-    if (r === null) { W.cur = null; return { msg: 'Finite le bombolette. Il lavoro resta a metà: con altre bombolette lo riprendi.' }; }
-    drawUpTo(w, g);
-    p.__tip = { x: tp.x, y: tp.y, z: tp.z, t: performance.now() };
-    // lungo il lavoro: un passo alla volta davanti al punto dove va la vernice
-    if ((w.W > 2.2) && !(p.lv && p.lv.k === 'scala')) {
-      let ax, ay;
-      if (w.surf === 'treno') { ax = tp.x + tp.nx * .55; ay = tp.z + tp.nz * .55; }
-      else { ax = tp.x + ctr.n.x * .6; ay = tp.z + ctr.n.z * .6; }
-      const dx = ax - p.x, dy = ay - p.y, dd = hyp(dx, dy);
-      if (dd > .25) { const sp = Math.min(dd, 1.3 * dt), nx2 = p.x + dx / dd * sp, ny2 = p.y + dy / dd * sp; const okW = p.lv ? (typeof Livelli !== 'undefined' && Livelli.freeFn(p, .3) ? Livelli.freeFn(p, .3)(nx2, ny2) : true) : G.walkM(nx2, ny2); if (okW) { p.x = nx2; p.y = ny2; p.speedNow = sp / dt; } }
-    }
+    const T = g.tgt, A = g.art; if (!T || !A) return false;
+    const cam = R.getCamera(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), cam); rc.near = 0; rc.far = 1e4;
+    const target = w.surf === 'treno' ? GFX.train.cars[w.car].sides[w.side].mesh : T.mesh; if (!target) return false;
+    const hh = rc.intersectObject(target, false)[0];
+    if (!hh || !hh.uv) { if (dist2(w, p) > 4.5) { W.cur = null; return { msg: 'Troppo lontano dal lavoro: torna lì e clicca sopra per riprendere.' }; } return true; }
+    const lx = (hh.uv.x * T.c.width - T.x0) / T.k, ly = ((1 - hh.uv.y) * T.c.height - T.y0) / T.k;
+    if (lx < -6 || ly < -6 || lx > A.Wp + 6 || ly > A.Hp + 6) return true;   // fuori dal pezzo: niente
+    const tp = hh.point, feetY = TT() ? TT().feetH(st) : R.groundH(p.x, p.y), dH = hyp(tp.x - p.x, tp.z - p.y);
     p.face = Math.atan2(tp.z - p.y, tp.x - p.x);
-    if (r === 'fatto') { finish(st, w); W.cur = null; GFX.held = false; return 'fatto'; }
-    if (r === 'vuota') G.feed(st, 'Una bomboletta finita: la butti e ne agiti un\'altra.');
+    if (tp.y > feetY + 2.75) { if (st.clock - (W.highT || 0) > 4) { W.highT = st.clock; G.feed(st, 'Lì non ci arrivi: ci vuole una scala, o il tetto.'); } return true; }
+    if (dH > 1.9 && !(p.lv && p.lv.k === 'scala')) {   // ci si avvicina lungo il muro
+      let nrm = w.gfxRect && w.gfxRect.n; if (w.surf === 'treno') { const q = carPose(trainAt(st.t), w.car), sd = w.side ? 1 : -1; nrm = { x: -Math.sin(q.ang) * sd, z: Math.cos(q.ang) * sd }; }
+      const ax = tp.x + nrm.x * .75, ay = tp.z + nrm.z * .75, dx = ax - p.x, dy = ay - p.y, dd = hyp(dx, dy);
+      if (dd > .3) { const sp = Math.min(dd, 2 * dt), nx2 = p.x + dx / dd * sp, ny2 = p.y + dy / dd * sp; const okW = p.lv ? (typeof Livelli !== 'undefined' && Livelli.freeFn(p, .3) ? Livelli.freeFn(p, .3)(nx2, ny2) : true) : G.walkM(nx2, ny2); if (okW) { p.x = nx2; p.y = ny2; p.speedNow = sp / dt; } }
+      if (dH > 2.6) return true;
+    }
+    const brush = (w.sketch ? .3 : .19) * PPM * (1 + (W.done.pezzo + W.done.burner) * .01);
+    const got = traceAt(w, g, lx, ly, brush);
+    p.__tip = { x: tp.x, y: tp.y, z: tp.z, t: performance.now() };
+    // le bombolette: in proporzione a quello che si copre (e un filo anche solo spruzzando)
+    const sty = STYLES[w.style], inv = OG() ? OG().inv(st) : null;
+    if (inv && !sty.marker) {
+      W.canUse += got * (g.cellCost || 0) * sty.cans + dt * .004;
+      while (W.canUse >= 1) { if (!(inv.bomboletta > 0)) { W.cur = null; return { msg: 'Finite le bombolette. Il lavoro resta a metà: con altre bombolette lo riprendi.' }; } inv.bomboletta--; W.canUse -= 1; if (!inv.bomboletta) delete inv.bomboletta; G.feed(st, 'Una bomboletta finita: la butti e ne agiti un\'altra.'); }
+    } else if (inv && sty.marker) { W.mkUse += got * (g.cellCost || 0) / 40; if (W.mkUse >= 1) { W.mkUse -= 1; inv.pennarello = Math.max(0, (inv.pennarello || 0) - 1); if (!inv.pennarello) delete inv.pennarello; } }
+    if (st.clock - (W.emitT || 0) > 6) { W.emitT = st.clock; try { G.emit(st, 'graffito'); } catch (e) { } }
+    if (g.ts >= A.stages.length) { w.prog = 1; finish(st, w); W.cur = null; GFX.held = false; return 'fatto'; }
     return true;
   }
+  const dist2 = (w, p) => { const q = w.pos || (w.gfxRect && w.gfxRect.c); return q ? hyp(q.x - p.x, q.z - p.y) : 0; };
+  // il bozzetto da usare per questo lavoro: quello scelto nel blackbook (se è dello stesso tipo), altrimenti si improvvisa
+  function sketchFor(st, style) {
+    const W = S(st), b = W.book && W.book[W.bookSel]; if (!b) return null;
+    const base = style === 'wholecar' ? 'burner' : style; if (b.style !== base && !(b.style === 'burner' && style === 'wholecar')) return null;
+    return Object.assign({}, b, { style });
+  }
+  // la mano del giocatore: cresce coi lavori fatti e con la fama
+  function playerDna(st) { const W = S(st), d = W.done, skill = clamp(.38 + (d.tag + d.throw * 2 + d.pezzo * 4 + d.burner * 6 + d.wholecar * 8) * .006 + W.fame / 1500, .3, .97); return Object.assign(W.dna || (W.dna = WA.dnaOf(Math.floor(rnd() * 1e9), .5, 0)), { skill, fam: W.fam || (W.dna && W.dna.fam) }); }
   function judgeTrain(st, w) { const W = S(st), k = w.car + ':' + w.side, under = (W.train.sides[k] || []).map(id => W.works.find(o => o.id === id)).filter(o => o && !o.erased && o.by !== 'player'); if (!under.length) return null; const o = under[0]; w.over = under.map(o => o.id); return STYLES[w.style].rank > STYLES[o.style].rank ? `Vai sopra al ${STYLES[o.style].nome} di ${o.aka}: il tuo è più grosso, si può.` : `Hai crossato ${o.aka} dei ${o.crew} sul treno. Guerra.`; }
   function release(st) { const W = S(st); if (W.cur && !W.cur.done) { const w = W.cur; G.feed(st, `${STYLES[w.style].nome[0].toUpperCase() + STYLES[w.style].nome.slice(1)} al ${Math.round(w.prog * 100)}%: clicca sopra per riprendere.`); } W.cur = null; GFX.held = false; }
   // main.js: con questo attrezzo e questa modalità ci pensa il writing (non lo spruzzo libero)
@@ -652,7 +718,7 @@ var Writing = (function () {
             if (w && w.surf === 'treno' && w.washed && !g.washed) { g.washed = true; washSide(w.car, w.side); W.works.filter(o => o.surf === 'treno' && o.car === w.car && o.side === w.side && !o.erased).forEach(o => { delete GFX.works[o.id]; }); }
             delete GFX.works[id]; continue;
           }
-          if (g.drawn < w.prog * 1.0001 * STAGE_W[w.style].reduce((a, b) => a + b, 0) - 1e-6 || (w.crossed && !g.crossDrawn)) drawUpTo(w, g);
+          if (w.trace && !w.done) { if (g.ts == null) drawUpTo(w, g); } else if (g.drawn < (w.done ? 1 : w.prog) * g.art.stages.length - 1e-6 || (w.crossed && !g.crossDrawn)) drawUpTo(w, g);
         }
       }
     } catch (e) { if (!frame.err) { frame.err = 1; console.warn('[Writing]', e); } }
@@ -669,6 +735,6 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, _: { addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
+  return { S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;

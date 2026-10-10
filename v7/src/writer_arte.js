@@ -50,15 +50,15 @@ var WriterArte = (function () {
   // fat: lettere grasse fuse in un blocco; ink: nero pieno e contorno bianco (le throwie); doodles: luci, occhi, spirali, crocette dentro le lettere
   // spikes: punte affilate a ogni estremità; swash: lo svolazzo del corsivo sotto la parola; hard: l'ombra netta lunga invece del 3D sfumato
   const FAM = {
-    block: { nome: 'block', adv: .84, skew: 0, bounce: 0, rot: .03, wob: .006, scale: .05, ext: .04, lw: .34, join: 'miter', cap: 'square', d3: .62, arrows: 0, links: 0 },
-    heavy: { nome: 'block pesante', adv: .8, skew: .06, bounce: .02, rot: .04, wob: .004, scale: .06, ext: 0, lw: .46, join: 'miter', cap: 'square', d3: 1, arrows: 0, links: 0, hard: true },
+    block: { nome: 'block', adv: .84, skew: 0, bounce: 0, rot: .03, wob: .006, scale: .05, ext: .04, lw: .34, join: 'miter', cap: 'square', d3: .62, arrows: 0, links: 0 , sh: { flare: .05, bh: .25, con: .2, cap: 'square', sharp: true } },
+    heavy: { nome: 'block pesante', adv: .8, skew: .06, bounce: .02, rot: .04, wob: .004, scale: .06, ext: 0, lw: .46, join: 'miter', cap: 'square', d3: 1, arrows: 0, links: 0, hard: true , sh: { flare: 0, bh: .35, con: .15, cap: 'square', sharp: true } },
     bubble: { nome: 'bubble', adv: .58, skew: .05, bounce: .07, rot: .14, wob: .02, scale: .14, ext: 0, lw: .48, join: 'round', cap: 'round', d3: .3, arrows: 0, links: 0, fat: true, doodles: true },
     fat: { nome: 'bubble grasso', adv: .52, skew: .06, bounce: .09, rot: .18, wob: .015, scale: .2, ext: 0, lw: .56, join: 'round', cap: 'round', d3: .35, arrows: 0, links: 0, fat: true, doodles: true, stars: true },
     throwie: { nome: 'throwie', adv: .55, skew: .04, bounce: .09, rot: .16, wob: .015, scale: .2, ext: 0, lw: .54, join: 'round', cap: 'round', d3: .1, arrows: 0, links: 0, fat: true, ink: true, doodles: true },
-    semi: { nome: 'semi-wild', adv: .74, skew: .14, bounce: .05, rot: .12, wob: .025, scale: .14, ext: .32, lw: .28, join: 'miter', cap: 'square', d3: .5, arrows: 2, links: 1 },
-    wild: { nome: 'wildstyle', adv: .64, skew: .22, bounce: .1, rot: .32, wob: .04, scale: .3, ext: .62, lw: .24, join: 'miter', cap: 'square', d3: .55, arrows: 4, links: 3 },
-    spiky: { nome: 'a spine', adv: .7, skew: .14, bounce: .08, rot: .24, wob: .02, scale: .26, ext: .5, lw: .26, join: 'miter', cap: 'butt', d3: .4, arrows: 0, links: 1, spikes: true },
-    script: { nome: 'corsivo', adv: .56, skew: .44, bounce: .07, rot: .08, wob: .01, scale: .14, ext: .2, lw: .22, join: 'round', cap: 'round', d3: .32, arrows: 0, links: 0, nibK: .6, swash: true },
+    semi: { nome: 'semi-wild', adv: .74, skew: .14, bounce: .05, rot: .12, wob: .025, scale: .14, ext: .32, lw: .28, join: 'miter', cap: 'square', d3: .5, arrows: 2, links: 1 , sh: { flare: .4, bh: .2, con: .3, cap: 'flare', sharp: true } },
+    wild: { nome: 'wildstyle', adv: .64, skew: .22, bounce: .1, rot: .32, wob: .04, scale: .3, ext: .62, lw: .24, join: 'miter', cap: 'square', d3: .55, arrows: 4, links: 3 , sh: { flare: .5, bh: .15, con: .35, cap: 'point', sharp: true } },
+    spiky: { nome: 'a spine', adv: .7, skew: .14, bounce: .08, rot: .24, wob: .02, scale: .26, ext: .5, lw: .26, join: 'miter', cap: 'butt', d3: .4, arrows: 0, links: 1, spikes: true , sh: { flare: -.45, bh: .1, con: .45, cap: 'point', sharp: true } },
+    script: { nome: 'corsivo', adv: .56, skew: .44, bounce: .07, rot: .08, wob: .01, scale: .14, ext: .2, lw: .22, join: 'round', cap: 'round', d3: .32, arrows: 0, links: 0, nibK: .6, swash: true , sh: { flare: -.35, bh: 0, con: .65, cap: 'point', sharp: false, smooth: true } },
     chrome: { nome: 'chrome', adv: .62, skew: .08, bounce: .05, rot: .1, wob: .015, scale: .1, ext: .06, lw: .4, join: 'round', cap: 'round', d3: .25, arrows: 0, links: 0, chrome: true, fat: true },
   };
   const THROW_FAMS = ['throwie', 'throwie', 'fat', 'bubble', 'chrome'];
@@ -492,7 +492,7 @@ var WriterArte = (function () {
   }
 
   // ================= IL LAVORO =================
-  const PPM = 56;   // pixel per metro
+  const PPM = 100;   // pixel per metro (alto: i bordi netti anche da vicino)
   // i punti dei tratti, uno ogni step pixel, lettera dopo lettera: il percorso della mano
   function densify(strokes, step) { const out = []; strokes.forEach(t => { for (let k = 0; k < t.pts.length; k++) { const a = t.pts[k], b = t.pts[k + 1]; out.push(a); if (!b) continue; const l = hyp(b[0] - a[0], b[1] - a[1]), n = Math.floor(l / step); for (let j = 1; j < n; j++) out.push([a[0] + (b[0] - a[0]) * j / n, a[1] + (b[1] - a[1]) * j / n]); } }); return out; }
   function raster(Wp, Hp, rows) { const out = [], dy = Hp / rows; for (let k = 0; k < rows; k++) { const y = dy * (k + .5), L = k % 2 ? [Wp, 0] : [0, Wp]; for (let j = 0; j <= 16; j++) out.push([L[0] + (L[1] - L[0]) * j / 16, y + (j % 2 ? dy * .3 : -dy * .3)]); } return out; }
@@ -529,46 +529,81 @@ var WriterArte = (function () {
     if (F.swash) swash(L, r);
     if (F.arrows && !throwUp && q > .3) arrows(L, r, Math.round(F.arrows * q) + Math.floor(r() * 2), lw); else { L.arrows = []; L.w0 = lw; }
     if (F.spikes) spikes(L, r, lw);
-    const J = F.join, Cp = F.cap, nib = F.nibK || (F.join === 'miter' && !throwUp ? .22 + q * .1 : 0);
-    // le lettere una per una, nell'ordine in cui si accavallano (nel wildstyle qualcuna passa sotto la vicina)
+    // IL CORPO DELLE LETTERE: ogni tratto diventa una sagoma (poligono) a spessore variabile; le lettere sono sagome, non tubi
+    const SH = F.sh || { flare: .2, bh: .2, con: .25, cap: 'square', sharp: true }, nibA = -.9 + r() * .5;
+    const [lbx0, lby0, lbx1, lby1] = L.box, lbh = Math.max(1, lby1 - lby0);
+    const wfn = (t, p, a) => lw * Math.max(.25, (1 + SH.flare * Math.pow(Math.abs(2 * t - 1), 3)) * (1 + SH.bh * ((p[1] - lby0) / lbh - .5)) * (1 - SH.con + SH.con * Math.abs(Math.sin(a - nibA)) * 1.3));
+    const jit = (1 - q) * lw * .05 + lw * .008;
+    const strokePoly = (t) => {
+      let pts = t.pts; if (SH.smooth && pts.length > 2 && WM) pts = WM.smooth(pts, 4);
+      if (pts.length === 1) { const c0 = pts[0], rr = lw * .55, o = []; for (let k = 0; k < 14; k++) o.push([c0[0] + Math.cos(k / 14 * PI * 2) * rr, c0[1] + Math.sin(k / 14 * PI * 2) * rr]); return o; }
+      const n = pts.length, Lf = [], Rt = [], dirs = [];
+      for (let i = 0; i < n - 1; i++) { const dx = pts[i + 1][0] - pts[i][0], dy = pts[i + 1][1] - pts[i][1], l = hyp(dx, dy) || 1; dirs.push([dx / l, dy / l]); }
+      for (let i = 0; i < n; i++) {
+        const d0 = dirs[Math.max(0, i - 1)], d1 = dirs[Math.min(n - 2, i)], ax = d0[0] + d1[0], ay = d0[1] + d1[1], al = hyp(ax, ay) || 1, tx0 = ax / al, ty0 = ay / al, nx = -ty0, ny = tx0;
+        const mit = SH.sharp ? Math.min(1.6, 1 / Math.max(.6, Math.abs(d0[0] * tx0 + d0[1] * ty0))) : 1, w = wfn(i / (n - 1), pts[i], Math.atan2(ty0, tx0)) / 2 * mit, p = pts[i];
+        const j1 = (r() - .5) * jit, j2 = (r() - .5) * jit;
+        Lf.push([p[0] + nx * w + j1, p[1] + ny * w + j2]); Rt.push([p[0] - nx * w - j2, p[1] - ny * w + j1]);
+      }
+      const capOf = (end) => {   // l'estremità: tagliata, tonda, a punta, svasata
+        const i = end ? n - 1 : 0, d = end ? dirs[n - 2] : [-dirs[0][0], -dirs[0][1]], p = pts[i], w = wfn(end ? 1 : 0, p, 0) / 2, a = end ? Lf[n - 1] : Rt[0], b = end ? Rt[n - 1] : Lf[0];
+        const cap = t.swash || (SH.cap === 'flare' && r() < .5) ? 'point' : SH.cap;
+        if (cap === 'point') return [[p[0] + d[0] * w * (1.6 + r()), p[1] + d[1] * w * (1.6 + r())]];
+        if (cap === 'round') { const o = [], a0 = Math.atan2(a[1] - p[1], a[0] - p[0]); for (let k = 1; k < 6; k++) { const an = a0 - k / 6 * PI; o.push([p[0] + Math.cos(an) * w, p[1] + Math.sin(an) * w]); } return o; }
+        if (cap === 'flare') return [[a[0] + d[0] * w * .5 - d[1] * w * .25, a[1] + d[1] * w * .5 + d[0] * w * .25], [p[0] + d[0] * w * .9, p[1] + d[1] * w * .9], [b[0] + d[0] * w * .3, b[1] + d[1] * w * .3]];
+        return [[a[0] + d[0] * w * .55, a[1] + d[1] * w * .55], [b[0] + d[0] * w * .55, b[1] + d[1] * w * .55]];   // il taglio dritto (block)
+      };
+      let poly = Lf.concat(capOf(true), Rt.reverse(), capOf(false));
+      let area = 0; for (let k = 0; k < poly.length; k++) { const p0 = poly[k], p1 = poly[(k + 1) % poly.length]; area += p0[0] * p1[1] - p1[0] * p0[1]; } if (area < 0) poly = poly.reverse();
+      return poly;
+    };
     const groups = []; L.strokes.forEach(t => { (groups[t.i] = groups[t.i] || []).push(t); }); const order = groups.map((g, i) => i).filter(i => groups[i]);
     if (C.fam === 'wild' && q > .5) for (let k = 0; k + 1 < order.length; k++) if (r() < .35) { const t = order[k]; order[k] = order[k + 1]; order[k + 1] = t; k++; }
     const arrOf = i => (L.arrows || []).filter(a => { const tip = a[1]; let best = -1, bd = 1e9; L.strokes.forEach(t => { const e = t.pts[t.pts.length - 1], d = hyp(e[0] - tip[0], e[1] - tip[1]); if (d < bd) { bd = d; best = t.i; } }); return best === i; });
+    const polys = []; order.forEach(i => { polys[i] = groups[i].map(strokePoly).concat(arrOf(i).map(a => { let p = a.slice(); let ar = 0; for (let k = 0; k < 3; k++) { const p0 = p[k], p1 = p[(k + 1) % 3]; ar += p0[0] * p1[1] - p1[0] * p0[1]; } return ar < 0 ? p.reverse() : p; })); });
+    const pathOf = (list, dx, dy) => { const P2 = new Path2D(); list.forEach(pl => { pl.forEach(([a, b], k) => k ? P2.lineTo(a + (dx || 0), b + (dy || 0)) : P2.moveTo(a + (dx || 0), b + (dy || 0))); P2.closePath(); }); return P2; };
+    // l'estrusione esatta del 3D: per ogni lato della sagoma il quadrilatero fino alla copia spostata, più la copia
+    const extrudeOf = (list) => { const P2 = new Path2D(); list.forEach(pl => { for (let k = 0; k < pl.length; k++) { const a = pl[k], b = pl[(k + 1) % pl.length]; P2.moveTo(a[0], a[1]); P2.lineTo(b[0], b[1]); P2.lineTo(b[0] + dx, b[1] + dy); P2.lineTo(a[0] + dx, a[1] + dy); P2.closePath(); } pl.forEach(([a, b], k) => k ? P2.lineTo(a + dx, b + dy) : P2.moveTo(a + dx, b + dy)); P2.closePath(); }); return P2; };
+    const LP = [], EP = []; order.forEach(i => { LP[i] = pathOf(polys[i]); EP[i] = extrudeOf(polys[i]); });
     // i colori: le throwie a inchiostro (nero pieno, bordo bianco, filo nero fuori); il block pesante col riempimento chiaro
     const inkFill = F.ink ? (r() < .75 ? '#141418' : shade(P.f[2], -.55)) : null, OL = F.ink ? '#f6f4ee' : P.o, KL = F.ink ? '#141418' : P.k;
-    // il riempimento: un motivo che copre tutto, ritagliato dalle lettere
     const PAT = cv(Wp, Hp), px = PAT.getContext('2d'); px.fillStyle = inkFill || P.f[1]; px.fillRect(0, 0, Wp, Hp);
-    if (!F.ink) fillPattern(px, F.hard && r() < .5 ? 'fade' : throwUp && !F.chrome ? (C.fillk === 'diag' ? 'diag' : 'fade') : C.fillk, P, L.box, lw, Wp, Hp, r);
-    const TMP = cv(Wp, Hp), tx = TMP.getContext('2d');
-    const letterFill = (i, wid) => { tx.clearRect(0, 0, Wp, Hp); tx.globalCompositeOperation = 'source-over'; pen(tx, groups[i], arrOf(i), wid, '#ffffff', 0, 0, J, Cp, nib); tx.globalCompositeOperation = 'source-in'; tx.drawImage(PAT, 0, 0); tx.globalCompositeOperation = 'source-over'; return TMP; };
+    if (!F.ink) fillPattern(px, throwUp && !F.chrome ? (C.fillk === 'diag' ? 'diag' : 'fade') : C.fillk, P, L.box, lw, Wp, Hp, r);
+    const fillIn = (ctx, i) => { ctx.save(); ctx.clip(LP[i], 'nonzero'); ctx.drawImage(PAT, 0, 0); ctx.restore(); };
+    // la seconda linea: la sagoma erosa (intersezione di 8 copie spostate) riempita col motivo, sopra la sagoma piena del colore della linea
+    const M1 = cv(Wp, Hp), m1 = M1.getContext('2d'), M2 = cv(Wp, Hp), m2 = M2.getContext('2d');
+    const fillInLine = (ctx, i, col, m) => {
+      m1.clearRect(0, 0, Wp, Hp); m1.fillStyle = '#fff'; m1.fill(LP[i]);
+      m2.globalCompositeOperation = 'source-over'; m2.clearRect(0, 0, Wp, Hp); m2.drawImage(M1, 0, 0); m2.globalCompositeOperation = 'destination-in';
+      for (let k = 0; k < 8; k++) m2.drawImage(M1, Math.cos(k * PI / 4) * m, Math.sin(k * PI / 4) * m);
+      m2.globalCompositeOperation = 'source-in'; m2.drawImage(PAT, 0, 0); m2.globalCompositeOperation = 'source-over';
+      ctx.save(); ctx.fillStyle = col; ctx.fill(LP[i]); ctx.restore(); ctx.drawImage(M2, 0, 0);
+    };
+    const J = SH.sharp ? 'miter' : 'round';
     // 1. il riempimento (un writer riempie per primo)
-    const FILL = cv(Wp, Hp), fx = FILL.getContext('2d'); order.forEach(i => fx.drawImage(letterFill(i, lw), 0, 0));
-    x.drawImage(FILL, 0, 0); snap(c); paths.push(densify(order.flatMap(i => groups[i]), lw * .6)); radii.push(lw * .8);
+    const FILL = cv(Wp, Hp), fx = FILL.getContext('2d'); order.forEach(i => fillIn(fx, i));
+    x.drawImage(FILL, 0, 0); snap(c); paths.push(densify(order.flatMap(i => groups[i]), lw * .5)); radii.push(lw * .75);
     // 2. lo sfondo (dietro alle lettere)
     const BG = cv(Wp, Hp), bg = BG.getContext('2d');
     if (C.bgk) { background(bg, toy && !train ? 'spruzzi' : C.bgk, P, Wp, Hp, r, train); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(c); paths.push(raster(Wp, Hp, train ? 6 : 4)); radii.push(Hp * (train ? .13 : .16)); }
-    // 3. le lettere vere: keyline attorno a tutto, poi ogni lettera col suo 3D, il suo contorno, il suo riempimento, le luci
-    const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); ox.drawImage(BG, 0, 0);
-    const keyW = F.ink ? lw + 2 * ol + 5 : lw + 2 * ol + 2 * kl;
-    if ((!throwUp || F.ink || F.fat) && q > .3) for (let s = 0; s <= steps; s++) pen(ox, L.strokes, L.arrows, keyW, KL, dx * s / steps, dy * s / steps, J, Cp, nib);
-    const olOf = order.map(() => toy ? ol * (.6 + r() * .9) : ol);
-    order.forEach((i, k) => { for (let s = steps; s >= 1; s--) pen(ox, groups[i], arrOf(i), lw + 2 * olOf[k] + 2, F.ink ? KL : P.o, dx * s / steps, dy * s / steps, J, Cp, nib); });   // il blocco del 3D col suo bordo, dietro a tutte
-    if (!throwUp || F.fat) order.forEach((i, k) => { for (let s = steps; s >= 1; s--) pen(ox, groups[i], arrOf(i), lw + 2 * olOf[k] - 2, F.hard || q > .5 ? P.d : shade(P.d, -.32 * s / steps), dx * s / steps, dy * s / steps, J, Cp, nib); });
-    if (!throwUp && q > .5) order.forEach(i => pen(ox, groups[i], arrOf(i), Math.max(1, ol * .25), shade(P.d, .25), dx * .5, dy * .5, J, Cp, nib));   // la riga di luce sul 3D
-    order.forEach((i, k) => {
-      const G0 = groups[i], A0 = arrOf(i), olI = olOf[k];
-      pen(ox, G0, A0, lw + 2 * olI, OL, 0, 0, J, Cp, nib);   // il contorno
-      if (!throwUp && !F.chrome && !F.ink && q > .45) pen(ox, G0, A0, lw + olI * .55, shade(P.f[2], -.4), 0, 0, J, Cp, nib);   // la seconda linea
-      const T = letterFill(i, lw);
-      tx.globalCompositeOperation = 'source-atop';
-      if (q > .4 && !F.fat) pass(tx, { strokes: G0, arrows: [], w0: lw }, Math.max(1.5, lw * .14), P.hi, -lw * .24, -lw * .24, J, Cp);   // la luce sul bordo
-      if (F.doodles && q > .25) doodles(tx, G0, lw, r, F.ink ? '#f6f4ee' : P.hi, F.ink, F.stars, F.ink && i === order[Math.floor(order.length / 2)] && r() < .45);
-      if (q > .8 && !throwUp && r() < .4) { tx.strokeStyle = shade(P.f[2], -.2); tx.lineWidth = Math.max(1.2, lw * .06); const [a0, b0, a1, b1] = L.box; for (let k = 0; k < 2; k++) { const xx = a0 + r() * (a1 - a0); tx.beginPath(); tx.moveTo(xx, b0 - lw); tx.lineTo(xx + lw * .9, b1 + lw); tx.stroke(); } }   // i tagli
-      tx.globalCompositeOperation = 'source-over';
-      ox.drawImage(T, 0, 0);
+    // 3. le lettere vere: la keyline attorno a tutto, il 3D pieno dietro a tutte, poi ogni lettera col suo contorno e il suo riempimento
+    const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); ox.drawImage(BG, 0, 0); ox.lineJoin = J; ox.miterLimit = 3;
+    ox.lineJoin = 'round';
+    if (q > .3 && !throwUp) { ox.strokeStyle = KL; ox.lineWidth = 2 * (ol + kl); order.forEach(i => { ox.stroke(LP[i]); ox.stroke(EP[i]); }); ox.fillStyle = KL; order.forEach(i => { ox.fill(LP[i]); ox.fill(EP[i]); }); }
+    ox.strokeStyle = OL; ox.lineWidth = 2 * ol; order.forEach(i => ox.stroke(EP[i])); ox.lineJoin = J; ox.miterLimit = 2;
+    ox.fillStyle = F.ink ? KL : P.d; order.forEach(i => ox.fill(EP[i]));
+    order.forEach(i => {
+      ox.strokeStyle = OL; ox.lineWidth = 2 * ol; ox.stroke(LP[i]);
+      if (!F.ink && q > .45) fillInLine(ox, i, shade(P.f[2], -.35), Math.max(1.5, ol * .8)); else fillIn(ox, i);
+      ox.save(); ox.clip(LP[i]);
+      // le luci: tocchi bianchi lungo il bordo in alto a sinistra di ogni lettera (mai una riga in mezzo)
+      if (q > .5) { ox.strokeStyle = P.hi; ox.lineCap = 'round'; ox.lineWidth = Math.max(1.5, ol * .7); polys[i].slice(0, 1).forEach(pl => { let k0 = 0, best = 1e9; pl.forEach(([a, b], k) => { if (a + b < best) { best = a + b; k0 = k; } }); const a = pl[k0], b = pl[(k0 + 1) % pl.length], cxp = pl.reduce((s0, p) => s0 + p[0], 0) / pl.length, cyp = pl.reduce((s0, p) => s0 + p[1], 0) / pl.length, ix = cxp - a[0], iy = cyp - a[1], il = hyp(ix, iy) || 1, off = ol * 2.2, ex = b[0] - a[0], ey = b[1] - a[1], el = hyp(ex, ey) || 1, len = Math.min(el * .6, lw * .55);
+        ox.beginPath(); ox.moveTo(a[0] + ix / il * off, a[1] + iy / il * off); ox.lineTo(a[0] + ix / il * off + ex / el * len, a[1] + iy / il * off + ey / el * len); ox.stroke(); ox.fillStyle = P.hi; ox.beginPath(); ox.arc(a[0] + ix / il * off + ex / el * (len + ol * 2.2), a[1] + iy / il * off + ey / el * (len + ol * 2.2), ol * .6, 0, 7); ox.fill(); }); }
+      if (F.doodles && q > .25) doodles(ox, groups[i], lw, r, F.ink ? '#f6f4ee' : P.hi, F.ink, F.stars, F.ink && i === order[Math.floor(order.length / 2)] && r() < .45);
+      ox.restore();
     });
     if (throwUp || toy || r() < .3) drips(ox, L, r, F.ink ? (r() < .5 ? '#f6f4ee' : '#141418') : throwUp ? P.o : P.f[2], lw * .3, throwUp ? 6 : toy ? 7 : 3, Hp * (toy ? .22 : .16));
-    x.clearRect(0, 0, Wp, Hp); x.drawImage(OUT, 0, 0); snap(c); paths.push(densify(order.flatMap(i => groups[i]), lw * .7)); radii.push((lw + 2 * ol) * .75 + d3 * .5);
+    x.clearRect(0, 0, Wp, Hp); x.drawImage(OUT, 0, 0); snap(c); paths.push(densify(order.flatMap(i => groups[i]), lw * .6)); radii.push(lw * .6 + ol * 2 + d3 * .5);
     // 4. i dettagli: stelline, il personaggio, la firma della crew, l'anno, lo slogan
     for (let k = 0; k < Math.round((wild ? 4 : 2) * q); k++) { const t = pickR(r, L.strokes), qq = t.pts[0]; sparkle(x, qq[0], qq[1] - lw * .3, lw * (.35 + r() * .3), P.hi); }
     if (C.chr) character(x, C.chr, charLeft ? charW * .5 : Wp - charW * .5, (Hp - sloganH) * .52, Hp * (train ? .5 : .46), P, r);
