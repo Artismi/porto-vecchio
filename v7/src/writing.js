@@ -149,8 +149,46 @@ var Writing = (function () {
     // i muri antirumore: 180 m prima del mare, dal lato della strada (pannelli da 4 m, alti 2,8)
     const sideRoad = (() => { const nord = G.MAP.roads.find(r => r.id === 'nord'); if (!nord) return -1; const s = Math.max(0, landEnd - 120), q = P[s], a = P[Math.max(0, s - 2)], b = P[s + 2], an = Math.atan2(b[1] - a[1], b[0] - a[0]); let bd = 1e9, rp = null; nord.pts.forEach(p => { const d = hyp(p[0] - q[0], p[1] - q[1]); if (d < bd) { bd = d; rp = p; } }); return rp && (-Math.sin(an) * (rp[0] - q[0]) + Math.cos(an) * (rp[1] - q[1])) > 0 ? 1 : -1; })();
     for (let s = Math.max(Math.ceil(TR.sMine) + 10, landEnd - 190); s + 4 < landEnd - 8; s += 4) { if (onBridge(s) || inYard(s) || gaps.some(g => g.side === sideRoad && Math.abs(g.s - s) < 3)) continue; walls.push({ s, side: sideRoad, len: 4, h: 2.8, off: 4.1 }); }
-    return { ok: true, landEnd, bridge, onBridge, yards, fences, gaps, walls, OFF };
+    // [writer] GLI SPOT LUNGO LA LINEA: la stazione abbandonata (il fabbricato, la banchina, la pensilina), due case cantoniere,
+    // sotto il ponte (i piloni e le spalle); su terreno libero e quasi piano, lontano da scali, ponte, varchi e muri
+    const spots = { station: null, cant: [] };
+    { const angAt = s => { const a = P[Math.max(0, s - 2)], b = P[Math.min(n - 1, s + 2)]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
+      const ptAt = (s, side, off, u) => { const an = angAt(s), c = Math.cos(an), sn = Math.sin(an), q = P[s]; return { x: q[0] + c * u - sn * off * side, y: q[1] + sn * u + c * off * side }; };
+      const busy = (s, side) => s < TR.sMine + 30 || s > landEnd - 30 || onBridge(s - 16) || onBridge(s + 16) || yards.some(y => y.side === side && s > y.s0 - 22 && s < y.s0 + y.len + 22) || walls.some(w => w.side === side && s > w.s - 16 && s < w.s + w.len + 16);   // lo scalo e il muro occupano solo il loro lato
+      const T0 = G.T, freeT = (x, y) => { const tx = Math.floor(x / G.TS), ty = Math.floor(y / G.TS); if (tx < 1 || ty < 1 || tx >= G.GW - 1 || ty >= G.GH - 1 || (G.bIndex && G.bIndex[ty * G.GW + tx] >= 0)) return false; const v = G.tileAt(tx, ty); return v !== T0.BLD && v !== T0.WATER && v !== T0.CLIFF && v !== T0.FOUNT && v !== T0.VIA; };   // gli alberi si tagliano (la stazione è nel bosco), la roccia no
+      const fits = (s, side, o0, o1, hl) => { let lo = 1e9, hi = -1e9; for (let u = -hl; u <= hl; u += 1) for (let o = o0; o <= o1; o += 1) { const q = ptAt(s, side, o, u); if (!freeT(q.x, q.y)) return false; const e = el(q.x, q.y); lo = Math.min(lo, e); hi = Math.max(hi, e); } return hi - lo < 3.2; };
+      const find = (frac, o0, o1, hl, away) => { for (let d = 0; d < landEnd * .45; d += 3) for (const sg of [1, -1]) { const s = Math.round(landEnd * frac + d * sg); if (away.some(a => Math.abs(a - s) < 60)) continue; for (const side of [1, -1]) if (!busy(s, side) && fits(s, side, o0, o1, hl)) return { s, side }; } return null; };
+      spots.station = find(.34, 6, 12.5, 6.5, []);   // il fabbricato da 6 a 12 m dall'asse, la banchina davanti
+      [.6, .82].forEach(f => { const c = find(f, 6.5, 13.5, 4.5, [spots.station ? spots.station.s : -999].concat(spots.cant.map(c => c.s))); if (c) spots.cant.push(c); });
+      const clear = (S, o0, o1, hl) => { for (let u = -hl; u <= hl; u += .5) for (let o = o0; o <= o1; o += .5) { const q = ptAt(S.s, S.side, o, u), tx = Math.floor(q.x / G.TS), ty = Math.floor(q.y / G.TS); if (G.tileAt(tx, ty) === T0.TREE) G.setTile(tx, ty, T0.DIRT); } };   // la radura attorno
+      const block = (S, o0, o1, hl) => { for (let u = -hl; u <= hl; u += .5) for (let o = o0; o <= o1; o += .5) { const q = ptAt(S.s, S.side, o, u); G.setTile(Math.floor(q.x / G.TS), Math.floor(q.y / G.TS), G.T.BLD); } };   // i muri veri: non ci si passa attraverso
+      spots.apply = () => { if (spots.station) { clear(spots.station, 2.4, 15, 21); block(spots.station, 6.9, 11.1, 5.1); } spots.cant.forEach(c => { clear(c, 4, 16, 7); block(c, 7.9, 12.1, 2.6); }); };   // le caselle: la radura, i muri (si rimettono a ogni partita nuova: create ripristina la mappa)
+      spots.apply();
+      if (spots.station) for (let k = fences.length - 1; k >= 0; k--) if (Math.abs(fences[k].s - spots.station.s) < 24) fences.splice(k, 1); }   // davanti alla stazione la rete non c'è più
+    return { ok: true, landEnd, bridge, onBridge, yards, fences, gaps, walls, OFF, spots };
   })();
+  if (RAIL.ok && RAIL.spots.apply && G.create && !G.create.__spots) { const c0 = G.create; G.create = function () { const st = c0.apply(this, arguments); try { RAIL.spots.apply(); } catch (e) { } return st; }; G.create.__spots = true; }   // [writer] dopo ogni partita nuova, le caselle degli spot
+  // [writer] GLI SPOT LUNGO LA LINEA: le piante (per la grafica) e i siti (dove si mette chi dipinge, verso dove guarda)
+  // blds: la stazione abbandonata e le case cantoniere (s, lato, da o0 a o1 metri dall'asse, da u0 a u1 lungo la linea);
+  // sotto il ponte: i piloni e le due spalle; lungo i binari: gli armadietti. Una funzione sola: grafica e writer d'accordo.
+  function spotPlan() {
+    if (spotPlan.v) return spotPlan.v; const out = { blds: [], piers: [], abut: [], sites: [] }; spotPlan.v = out; if (!RAIL.ok) return out;
+    const P = TR.P, Sp = RAIL.spots, [b0, b1] = RAIL.bridge;
+    const tAt = s => { const a = P[Math.max(0, s - 2)], b = P[Math.min(P.length - 1, s + 2)], an = Math.atan2(b[1] - a[1], b[0] - a[0]); return [Math.cos(an), Math.sin(an)]; };
+    const at = (s, side, off, u) => { const [c, sn] = tAt(Math.round(s)), q = P[Math.round(s)]; return { x: q[0] + c * u - sn * off * side, y: q[1] + sn * u + c * off * side }; };
+    const site = (q, fx, fy, kind, len, name) => { if (!G.walkT(Math.floor(q.x / G.TS), Math.floor(q.y / G.TS))) return; const face = Math.atan2(fy, fx); out.sites.push({ x: q.x, y: q.y, face, kind, len, name, out: [-Math.cos(face), -Math.sin(face)], along: [Math.sin(face), -Math.cos(face)] }); };
+    const boxSites = (B, kindL, kindS, name) => { const [c, sn] = tAt(B.s), nx = -sn * B.side, ny = c * B.side, L = B.u1 - B.u0, D = B.o1 - B.o0;
+      for (let u = B.u0 + 2.5; u <= B.u1 - 2.4; u += 5) { site(at(B.s, B.side, B.o0 - 1.2, u), nx, ny, L >= 10 ? kindL : kindS, Math.min(L, 6), name); site(at(B.s, B.side, B.o1 + 1.2, u), -nx, -ny, L >= 10 ? kindL : kindS, Math.min(L, 6), name); }   // le facciate lunghe: davanti (verso i binari) e dietro
+      [[B.u0 - 1.2, c, sn], [B.u1 + 1.2, -c, -sn]].forEach(([u, fx, fy]) => site(at(B.s, B.side, (B.o0 + B.o1) / 2, u), fx, fy, kindS, D, name)); };   // i fianchi
+    if (Sp.station) { const B = Object.assign({ kind: 'stazione', o0: 6.3, o1: 11.7, u0: -5.7, u1: 5.7, H: 7.2 }, Sp.station); out.blds.push(B); boxSites(B, 'hall', 'strada', 'alla stazione abbandonata'); }
+    Sp.cant.forEach(cn => { const B = Object.assign({ kind: 'cantoniera', o0: 7.3, o1: 12.7, u0: -3.2, u1: 3.2, H: 6.6 }, cn); out.blds.push(B); boxSites(B, 'strada', 'strada', 'alla casa cantoniera'); });
+    // sotto il ponte: i piloni ogni 12 m (sottili lungo la linea, larghi 3,2 di traverso) e le spalle alle due teste
+    for (let s = 6; s < P.length - 6; s += 12) { if (s < b0 + 4 || s > b1 - 4 || P[s][3]) continue; const q = at(s, 1, 0, 0), [c, sn] = tAt(s); out.piers.push({ s }); site({ x: q.x - c * 1.5, y: q.y - sn * 1.5 }, c, sn, 'strada', 3.2, 'sotto il ponte'); site({ x: q.x + c * 1.5, y: q.y + sn * 1.5 }, -c, -sn, 'strada', 3.2, 'sotto il ponte'); }
+    [[b0 + 1.5, 1], [b1 - 1.5, -1]].forEach(([s, dir]) => { const si = Math.round(s), q = at(si, 1, 0, 0), [c, sn] = tAt(si); out.abut.push({ s: si, dir }); site({ x: q.x + c * dir * 2, y: q.y + sn * dir * 2 }, -c * dir, -sn * dir, 'hall', 5.6, 'sotto il ponte'); });   // la spalla: il muro di cemento sotto la testa del ponte
+    // lungo i binari: gli armadietti grigi (le tag, i throw-up)
+    for (let s = 90, k = 0; s < P.length - 30; s += 170, k++) { const sd = k % 2 ? 1 : -1; if (RAIL.onBridge(s) || P[s][3]) continue; const [c, sn] = tAt(s + 4); site(at(s + 4, sd, 4.6, 0), sn * sd, -c * sd, 'strada', 1.1, 'lungo i binari'); }
+    return out;
+  }
   // un punto del binario secondario: u metri dall'inizio dello scalo; lo scarto dalla linea entra e esce coi deviatoi (18 m)
   const ramp = (u, L) => { const a = clamp(u / 18, 0, 1), b = clamp((L - u) / 18, 0, 1), sm = t => t * t * (3 - 2 * t); return sm(a) * sm(b); };
   function yardAt(Y, u) {
@@ -835,8 +873,9 @@ var Writing = (function () {
     // traversine: di cemento sulla linea in terra e sul ponte, di legno vecchio sul viadotto e negli scali
     rails(s => railAt(s), 0, P.length - 1, s => !SEA(s));
     RAIL.yards.forEach(Y => rails(u => yardAt(Y, u), 0, Y.len, () => false));
+    const pilL = [];   // [writer] i piloni del ponte in terra: mesh vere, si dipingono (sotto il ponte)
     // i piloni: sul ponte in terra e sul viadotto, fino al terreno (o al fondo del mare)
-    for (let s = 6; s < P.length - 6; s += 12) { if (!(EL(s) || SEA(s))) continue; const q = railAt(s), top = q.h - 1.15, bot = SEA(s) ? -4 : gH(q.x, q.y) - .3; if (top - bot < .4) continue; pil.push([q.x, (top + bot) / 2, q.y, [1.2, top - bot, 3.2], -q.ang]); pil.push([q.x, top - .2, q.y, [1.7, .4, 4.6], -q.ang]); pil.push([q.x, top - .5, q.y, [1.4, .2, 3.8], -q.ang]); if (!SEA(s)) pil.push([q.x, bot + .45, q.y, [2, .5, 4], -q.ang]); }
+    for (let s = 6; s < P.length - 6; s += 12) { if (!(EL(s) || SEA(s))) continue; const q = railAt(s), top = q.h - 1.15, bot = SEA(s) ? -4 : gH(q.x, q.y) - .3; if (top - bot < .4) continue; (SEA(s) ? pil : pilL).push([q.x, (top + bot) / 2, q.y, [1.2, top - bot, 3.2], -q.ang]); pil.push([q.x, top - .2, q.y, [1.7, .4, 4.6], -q.ang]); pil.push([q.x, top - .5, q.y, [1.4, .2, 3.8], -q.ang]); if (!SEA(s)) pil.push([q.x, bot + .45, q.y, [2, .5, 4], -q.ang]); }
     // i parapetti del ponte e del viadotto (bassi, di cemento, si dipingono): un muro unico per lato
     const para = (sd) => { const pp = [], pi = [], pu = []; let pv = null; for (let i = 0; i < P.length; i += 2) { if (!(EL(i) || SEA(i))) { pv = null; continue; } const q = railAt(i), nx = -Math.sin(q.ang) * sd, nz = Math.cos(q.ang) * sd, o = 2.45, base = q.h - .18; const a = pp.length / 3; pp.push(q.x + nx * o, base, q.y + nz * o, q.x + nx * o, base + .95, q.y + nz * o); pu.push(i / 3, 0, i / 3, .48); if (pv !== null) pi.push(pv, a, pv + 1, pv + 1, a, a + 1); pv = a; }
       if (!pi.length) return; const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(pu, 2)); gg.setIndex(pi); gg.computeVertexNormals(); const m = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ map: RT.concrete, side: THREE.DoubleSide })); m.receiveShadow = true; m.castShadow = true; m.name = 'parapetto'; g.add(m); };
@@ -976,6 +1015,48 @@ var Writing = (function () {
       const uv = []; for (let k = 0; k < pp.length / 6; k++) uv.push(k / 4, 0, k / 4, 1);
       const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); gg.setIndex(pi); gg.computeVertexNormals();
       wt.wrapS = THREE.RepeatWrapping; const m = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ map: wt, side: THREE.DoubleSide })); m.castShadow = true; m.receiveShadow = true; m.name = 'muro_antirumore'; g.add(m);
+    }
+    // ---- [writer] GLI SPOT: i piloni del ponte in terra e le spalle (cemento vero, si dipinge), la stazione abbandonata, le case cantoniere ----
+    { const SP = spotPlan(), conM = new THREE.MeshLambertMaterial({ map: RT.concrete });
+      pilL.forEach(([x, y, z, [w, h, d], ry]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), conM); m.position.set(x, y, z); m.rotation.y = ry; m.castShadow = true; m.receiveShadow = true; m.name = 'pilone'; g.add(m); });
+      SP.abut.forEach(A => { const q = railAt(A.s), top = q.h - 1.15, bot = gH(q.x, q.y) - .5; if (top - bot < 1) return; const m = new THREE.Mesh(new THREE.BoxGeometry(1.6, top - bot, 5.8), conM); m.position.set(q.x, (top + bot) / 2, q.y); m.rotation.y = -q.ang; m.castShadow = true; m.receiveShadow = true; m.name = 'spalla_ponte'; g.add(m); });
+      // l'intonaco vecchio: il colore, le macchie, l'umido che sale, l'intonaco caduto sui mattoni, le finestre murate o sbarrate, le scritte sbiadite, le tag di anni fa
+      const wallTex = (wm, hm, o) => { const W0 = Math.round(wm * 40), H0 = Math.round(hm * 40), c = cv(W0, H0), x = c.getContext('2d'), r = mulberry(o.seed);
+        x.fillStyle = o.col; x.fillRect(0, 0, W0, H0);
+        for (let k = 0; k < 90; k++) { x.fillStyle = r() < .5 ? `rgba(255,250,235,${.04 + r() * .08})` : `rgba(40,30,20,${.04 + r() * .1})`; x.beginPath(); x.ellipse(r() * W0, r() * H0, 4 + r() * 18, 3 + r() * 10, r() * 3, 0, 7); x.fill(); }
+        const gd = x.createLinearGradient(0, H0, 0, H0 * .55); gd.addColorStop(0, 'rgba(45,35,25,.5)'); gd.addColorStop(1, 'rgba(45,35,25,0)'); x.fillStyle = gd; x.fillRect(0, 0, W0, H0);   // l'umido dal basso
+        for (let k = 0; k < 3 + r() * 6; k++) { const px = r() * W0, py = r() * H0 * .9, pw = 18 + r() * 70, ph = 10 + r() * 40; x.fillStyle = '#8e5038'; x.fillRect(px, py, pw, ph); x.strokeStyle = 'rgba(60,30,20,.55)'; x.lineWidth = 1; for (let yy = py + 5; yy < py + ph; yy += 6) { x.beginPath(); x.moveTo(px, yy); x.lineTo(px + pw, yy); x.stroke(); } }   // dove l'intonaco è caduto
+        if (o.floors > 1) { x.fillStyle = 'rgba(240,232,214,.55)'; x.fillRect(0, H0 * .5, W0, 9); }   // il marcapiano
+        const n = Math.max(1, Math.floor(wm / 2.7)), win = (wx, wy, ww, wh) => { x.fillStyle = 'rgba(236,228,210,.8)'; x.fillRect(wx - 4, wy - 4, ww + 8, wh + 8); const k = r();
+          if (k < .45) { x.fillStyle = '#8c8880'; x.fillRect(wx, wy, ww, wh); x.strokeStyle = 'rgba(50,48,44,.6)'; for (let yy = wy + 7; yy < wy + wh; yy += 7) { x.beginPath(); x.moveTo(wx, yy); x.lineTo(wx + ww, yy); x.stroke(); } }   // murata coi blocchetti
+          else if (k < .8) { x.fillStyle = '#1a1814'; x.fillRect(wx, wy, ww, wh); for (let j = 0; j < 4; j++) { x.fillStyle = ['#7a5a3a', '#6a4a30', '#8a6a48'][j % 3]; x.save(); x.translate(wx + ww / 2, wy + wh * (.2 + j * .22)); x.rotate((r() - .5) * .3); x.fillRect(-ww * .6, -5, ww * 1.2, 10); x.restore(); } }   // sbarrata con le assi
+          else { x.fillStyle = '#121418'; x.fillRect(wx, wy, ww, wh); x.fillStyle = 'rgba(180,200,210,.35)'; x.beginPath(); x.moveTo(wx, wy); x.lineTo(wx + ww * .4, wy); x.lineTo(wx, wy + wh * .5); x.fill(); } };   // il vetro rotto
+        for (let f = 0; f < o.floors; f++) for (let k = 0; k < n; k++) { if (o.door && f === 0 && k === Math.floor(n / 2)) continue; win((k + .5) * W0 / n - 18, f === 0 ? H0 * .62 : H0 * .14, 36, f === 0 ? 50 : 54); }
+        if (o.door) { const dx = (Math.floor(n / 2) + .5) * W0 / n - 24; x.fillStyle = 'rgba(236,228,210,.8)'; x.fillRect(dx - 5, H0 * .55 - 5, 58, H0 * .45 + 5); x.fillStyle = '#8c8880'; x.fillRect(dx, H0 * .55, 48, H0 * .45); x.strokeStyle = 'rgba(50,48,44,.6)'; for (let yy = H0 * .55 + 7; yy < H0; yy += 7) { x.beginPath(); x.moveTo(dx, yy); x.lineTo(dx + 48, yy); x.stroke(); } }   // la porta murata
+        if (o.text) { x.save(); x.globalAlpha = .62; x.fillStyle = o.ink || '#f2ece0'; x.font = `bold ${Math.round(H0 * .07)}px Arial`; x.textAlign = 'center'; x.fillText(o.text, W0 / 2, H0 * .485); x.restore(); }   // la scritta sbiadita
+        try { if (typeof WriterMano !== 'undefined' && WriterMano.handTag) for (let k = 0; k < 2 + r() * 4; k++) { const tw = 70 + r() * 60, th = 34 + r() * 20, tc = cv(Math.round(tw), Math.round(th)); WriterMano.handTag(tc.getContext('2d'), pick(['SNEK', 'OKAY', 'BRUT', 'MIKS', 'DUNE', 'KEOS', 'RAKE', 'ZORA']), Object.assign(WriterMano.dna(Math.floor(r() * 1e6)), { skill: .6 }), tc.width, tc.height, r, pick(['#1a1a1e', '#2a4a8a', '#8a2a2a']), 'mtag'); x.save(); x.globalAlpha = .45 + r() * .2; x.drawImage(tc, r() * (W0 - tw), H0 * (.6 + r() * .25)); x.restore(); } } catch (er) { }   // le tag di anni fa, sbiadite
+        return new THREE.MeshLambertMaterial({ map: canvasTexture(c) }); };
+      const roofM = new THREE.MeshLambertMaterial({ color: '#7a4630' }), rustM = new THREE.MeshStandardMaterial({ color: '#5a3a2a', metalness: .5, roughness: .8 }), darkM2 = new THREE.MeshLambertMaterial({ color: '#2a2622' });
+      SP.blds.forEach((B, bi) => {
+        const L = B.u1 - B.u0, D = B.o1 - B.o0, cq = sidePt(B.s, B.side, (B.o0 + B.o1) / 2), ang = cq.ang;
+        let base = 1e9; for (const u of [B.u0, 0, B.u1]) for (const o of [B.o0, B.o1]) { const q = sidePt(B.s + u, B.side, o); base = Math.min(base, gH(q.x, q.y)); } base -= .25;
+        const st = B.kind === 'stazione', nm = (() => { try { const p = G.nearestPlace(cq.x, cq.y); return p ? p.name.replace(/^\S+\s+(della|delle|dello|dei|degli|del|di|d')\s*/i, '').replace(/\s+[IVX]+$/, '').toUpperCase() : ''; } catch (e) { return ''; } })();   // «Case della Tramontana» → TRAMONTANA
+        const col = st ? '#c8a868' : '#a0402e', frontT = wallTex(L, B.H, { seed: 31 + bi * 7, col, floors: 2, door: true, text: st ? 'STAZIONE DI ' + nm : 'CASA CANTONIERA', ink: st ? '#3a2a1a' : '#f2ece0' }), backT = wallTex(L, B.H, { seed: 47 + bi * 7, col, floors: 2 }), endT = wallTex(D, B.H, { seed: 53 + bi * 7, col, floors: 2 });
+        const mats = [endT, endT, darkM2, darkM2, B.side > 0 ? backT : frontT, B.side > 0 ? frontT : backT];   // la facciata con la scritta guarda i binari
+        const m = new THREE.Mesh(new THREE.BoxGeometry(L, B.H, D), mats); m.position.set(cq.x, base + B.H / 2, cq.y); m.rotation.y = -ang; m.castShadow = true; m.receiveShadow = true; m.name = st ? 'stazione_abbandonata' : 'casa_cantoniera'; g.add(m);
+        // il tetto a due falde (alla stazione mezzo crollato: una falda ha il buco)
+        const rise = D * .28, sl = Math.hypot(D / 2 + .35, rise), ta = Math.atan2(rise, D / 2 + .35);
+        [-1, 1].forEach(k => { const f = new THREE.Mesh(new THREE.BoxGeometry(L + .5, .14, sl), roofM); const lz = k * (D / 4 + .1), off = (B.o0 + B.o1) / 2 + lz; const q = sidePt(B.s, B.side, off); f.position.set(q.x, base + B.H + rise / 2, q.y); f.rotation.set(0, -ang, 0); f.rotateX(k * B.side * ta); f.castShadow = true; g.add(f); });
+        if (!st) return;
+        // la banchina davanti (cemento, il bordo verso i binari si dipinge), la pensilina arrugginita sui pali, la tabella blu col nome
+        const pq = sidePt(B.s, B.side, 4.3), ph = railAt(B.s).h + .05, pb = Math.min(gH(pq.x, pq.y), ph) - .4;
+        const pf = new THREE.Mesh(new THREE.BoxGeometry(30, ph - pb, 2.6), conM); pf.position.set(pq.x, (ph + pb) / 2, pq.y); pf.rotation.y = -ang; pf.receiveShadow = true; pf.castShadow = true; pf.name = 'banchina'; g.add(pf);
+        for (let u = -10; u <= 10; u += 5) { const q = sidePt(B.s + u, B.side, 4.9), po = new THREE.Mesh(new THREE.CylinderGeometry(.08, .1, 3.1, 8), rustM); po.position.set(q.x, ph + 1.55, q.y); g.add(po); }
+        const cn = new THREE.Mesh(new THREE.BoxGeometry(22, .14, 2.8), rustM), cnq = sidePt(B.s, B.side, 4.4); cn.position.set(cnq.x, ph + 3.15, cnq.y); cn.rotation.y = -ang; cn.rotation.z = .02; cn.castShadow = true; g.add(cn);
+        { const c = cv(320, 64), x = c.getContext('2d'); x.fillStyle = '#25427a'; x.fillRect(0, 0, 320, 64); x.fillStyle = 'rgba(240,240,240,.85)'; x.font = 'bold 30px Arial'; x.textAlign = 'center'; x.fillText(nm.slice(0, 16), 160, 43); x.fillStyle = 'rgba(120,70,30,.5)'; for (let k = 0; k < 40; k++) x.fillRect(Math.random() * 320, Math.random() * 64, 3, 3);
+          const q = sidePt(B.s + 12, B.side, 5.2), sg = new THREE.Mesh(new THREE.BoxGeometry(3.2, .64, .06), new THREE.MeshLambertMaterial({ map: canvasTexture(c) })); sg.position.set(q.x, ph + 2.2, q.y); sg.rotation.y = -ang; sg.name = 'tabella_stazione'; g.add(sg);
+          [-1.3, 1.3].forEach(du => { const pq2 = sidePt(B.s + 12 + du, B.side, 5.2), p2 = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 2.4, 6), rustM); p2.position.set(pq2.x, ph + 1.2, pq2.y); g.add(p2); }); }
+      });
     }
     // ---- i segnali (palo, testa, la luce rossa o verde) e gli armadietti grigi accanto (si dipingono) ----
     const cabTex = k => { const c = cv(128, 176), x = c.getContext('2d'); x.fillStyle = '#8c9088'; x.fillRect(0, 0, 128, 176); x.strokeStyle = 'rgba(30,32,30,.7)'; x.lineWidth = 2; x.strokeRect(6, 6, 56, 164); x.strokeRect(66, 6, 56, 164);
@@ -1337,6 +1418,6 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { RAIL, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
+  return { RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;
