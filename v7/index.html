@@ -13588,6 +13588,22 @@ var Game = (function () {
     pts.forEach(([x, y], i) => { if (sea[i]) return; for (let a = -2.5; a <= 2.5; a += 1) for (let b = -2.5; b <= 2.5; b += 1) { const tx = Math.floor((x + a) / TS), ty = Math.floor((y + b) / TS); if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const k = ty * GW + tx; if (done.has(k)) continue; done.add(k); const v = T0[k];
       if (bIndex[k] >= 0 || v === T.BLD) { if (Math.hypot(a, b) < 1.6) L.rail.conflicts++; continue; }
       if (SOFT.includes(v)) { T0[k] = T.GRAVEL; grid[k] = T.GRAVEL; } } });
+    // [ferrovia] gli scali: binari secondari a 4,6 m dalla linea (il deposito della miniera, lo scalo del bosco), coi deviatoi
+    // di 18 m alle due punte; la massicciata si allarga e il bosco si taglia; dal lato dove non ci sono case, strade o acqua
+    const yards = [], landN = sea.indexOf(true) < 0 ? pts.length : sea.indexOf(true), YL = 110, OFF = 4.6;
+    const rmp = u => { const sm = t => t * t * (3 - 2 * t); return sm(Math.min(1, Math.max(0, u / 18))) * sm(Math.min(1, Math.max(0, (YL - u) / 18))); };
+    // una fascia libera per il binario secondario lungo YL da s0 dal lato side (le caselle da sgombrare, o null)
+    const fit = (s0, YLk, side) => { const cells = []; const r2 = u => { const sm = t => t * t * (3 - 2 * t); return sm(Math.min(1, Math.max(0, u / 18))) * sm(Math.min(1, Math.max(0, (YLk - u) / 18))); };
+      for (let u = 0; u <= YLk; u += 1) { const q = pts[s0 + u], a = pts[Math.max(0, s0 + u - 2)], b = pts[Math.min(pts.length - 1, s0 + u + 2)], an = Math.atan2(b[1] - a[1], b[0] - a[0]), nx = -Math.sin(an) * side, ny = Math.cos(an) * side;
+        for (let o = Math.max(2.5, OFF * r2(u) - 1.6); o <= OFF * r2(u) + 1.6; o += .8) { const tx = Math.floor((q[0] + nx * o) / TS), ty = Math.floor((q[1] + ny * o) / TS); if (tx < 1 || ty < 1 || tx >= GW - 1 || ty >= GH - 1) return null; const k = ty * GW + tx, v = T0[k]; if (bIndex[k] >= 0 || v === T.BLD || v === T.WATER || v === T.VIA || v === T.PIER || v === T.QUAY || v === T.STAIRS) return null; cells.push(k); } }
+      return cells; };
+    const take = (name, s0, YLk, side, cells) => { cells.forEach(k => { if (SOFT.includes(T0[k])) { T0[k] = T.GRAVEL; grid[k] = T.GRAVEL; } }); yards.push({ name, s0, len: YLk, side, off: OFF }); };
+    // il deposito accanto alla miniera; lo scalo del bosco nel tratto libero più lungo (le case del paese stanno a ridosso della linea)
+    for (const side of [1, -1]) { const c = s0ok(118) && fit(118, YL, side); if (c) { take('deposito della miniera', 118, YL, side, c); break; } }
+    function s0ok(s0) { return s0 + YL < landN - 60; }
+    let bestY = null; for (let s0 = 235; s0 + 64 < Math.min(landN - 60, 470); s0 += 3) for (const side of [1, -1]) for (let YLk = 100; YLk >= 64; YLk -= 6) { if (s0 + YLk > Math.min(landN - 60, 470) || yards.some(y => s0 < y.s0 + y.len + 20 && s0 + YLk > y.s0 - 20)) continue; if (bestY && YLk <= bestY.YLk) break; const c = fit(s0, YLk, side); if (c) { bestY = { s0, YLk, side, c }; break; } }
+    if (bestY) take('scalo del bosco', bestY.s0, bestY.YLk, bestY.side, bestY.c);
+    L.rail.yards = yards;
   }
   function applyLayout() { layout().block.forEach(([tx, ty]) => { setT(tx, ty, T.BLD); LBLOCK.add(ty * GW + tx); }); }
   function baseTile(tx, ty) { const i = ty * GW + tx; return LBLOCK.has(i) ? MAP0.grid[i] : tileAt(tx, ty); }
@@ -31763,8 +31779,8 @@ var Writing = (function () {
 
   // ---------------- LA SCALA DEI LAVORI ----------------
   const STYLES = {
-    tag: { nome: 'tag', rank: 0, W: 1.5, H: .9, dur: 2.6, cans: .06, fame: 1 },
-    mtag: { nome: 'tag', rank: 0, W: 1, H: .62, dur: 1.4, cans: 0, fame: 1, marker: true },
+    tag: { nome: 'tag', rank: 0, W: 1.1, H: .55, dur: 2.6, cans: .06, fame: 1 },
+    mtag: { nome: 'tag', rank: 0, W: .6, H: .32, dur: 1.4, cans: 0, fame: 1, marker: true },
     throw: { nome: 'throw-up', rank: 1, W: 2.7, H: 1.3, dur: 9, cans: .7, fame: 4 },
     pezzo: { nome: 'pezzo', rank: 2, W: 4.8, H: 2.05, dur: 32, cans: 2.2, fame: 12 },
     burner: { nome: 'burner', rank: 3, W: 6.6, H: 2.5, dur: 60, cans: 4, fame: 25 },
@@ -31846,6 +31862,112 @@ var Writing = (function () {
     };
     push(st.player, true); if (st.player.__trHit != null && st.clock - st.player.__trHit > 2) st.player.__trHit = null;
     for (const n of st.npcs) if (!n.dead && !n.inside) push(n, false);
+  }
+
+  // ---------------- LA LINEA: IL PONTE, GLI SCALI, LE RECINZIONI ----------------
+  // [ferrovia] Si decide dalla linea e dalle caselle (la logica, senza grafica):
+  //  - IL PONTE: in terra, dove il terreno scende di più fra due punti a 90 m, il binario passa su un ponte di cemento coi
+  //    piloni (oltre al viadotto sul mare); altrove sta su una massicciata bassa, appoggiata al terreno.
+  //  - GLI SCALI: binari secondari a fianco della linea (il deposito della miniera, lo scalo del bosco, il raccordo prima della
+  //    città), con un deviatoio per parte; ci stanno fermi i carri merci, che si dipingono e dopo qualche giorno partono.
+  //  - LE RECINZIONI: la rete ai due lati dove la linea è in terra, con i VARCHI (la rete tagliata e piegata, il sentiero
+  //    battuto): chi non passa da un varco non entra; i MURI antirumore prima della città, di cemento, che si dipingono.
+  const RAIL = (function () {
+    if (!TR.ok) return { ok: false, yards: [], walls: [], gaps: [], fences: [] };
+    const P = TR.P, n = P.length, el = (x, y) => { const tx = Math.floor(x / G.TS), ty = Math.floor(y / G.TS); return tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH ? 0 : G.MAP.elev[ty * G.GW + tx]; };
+    const okT = (x, y) => { const tx = Math.floor(x / G.TS), ty = Math.floor(y / G.TS); return tx > 0 && ty > 0 && tx < G.GW - 1 && ty < G.GH - 1 && G.walkT(tx, ty) && !(G.bIndex && G.bIndex[ty * G.GW + tx] >= 0); };
+    let landEnd = n - 1; for (let i = Math.ceil(TR.sMine); i < n; i++) if (P[i][3]) { landEnd = i; break; }
+    // il ponte in terra
+    let best = null; const YD = (G.layout().rail || {}).yards || []; for (let s = Math.ceil(TR.sMine) + 60; s + 90 < landEnd - 60; s += 5) { if (YD.some(y => s < y.s0 + y.len + 25 && s + 90 > y.s0 - 25)) continue; const g0 = el(P[s][0], P[s][1]), g1 = el(P[s + 90][0], P[s + 90][1]); let m = 0; for (let k = 15; k <= 75; k += 5) m += el(P[s + k][0], P[s + k][1]); m /= 13; const dd = Math.min(g0, g1) - m; if (!best || dd > best.d) best = { s0: s, s1: s + 90, d: dd }; }
+    const bridge = best ? [best.s0, best.s1] : [Math.round(landEnd * .45), Math.round(landEnd * .45) + 90];
+    const onBridge = s => s > bridge[0] - 2 && s < bridge[1] + 2;
+    // gli scali: li prepara la mappa (game.js railLine: la massicciata larga, il bosco tagliato)
+    const OFF = 4.6, yards = ((G.layout().rail || {}).yards || []).map((y, i) => Object.assign({ i }, y));
+    // le recinzioni: dove la linea è in terra, fuori dal ponte e dagli scali (lì la rete gira attorno allo scalo, più larga)
+    const fences = [], gaps = [], walls = [];
+    const inYard = s => yards.find(y => s >= y.s0 - 4 && s <= y.s0 + y.len + 4);
+    for (let s = Math.ceil(TR.sMine) + 6; s < landEnd - 4; s += 2) { if (onBridge(s)) continue; const y = inYard(s); fences.push({ s, off: [3.9 + (y && y.side === 1 ? OFF + 2.6 : 0), 3.9 + (y && y.side === -1 ? OFF + 2.6 : 0)] }); }
+    // i varchi: ogni 90–140 m, a lati alterni (e uno a ogni scalo, dalla parte dei carri)
+    for (let s = Math.ceil(TR.sMine) + 40, k = 0; s < landEnd - 20; s += 90 + ((s * 37) % 50), k++) if (!onBridge(s)) gaps.push({ s, side: k % 2 ? 1 : -1, w: 1.4 });
+    yards.forEach(y => gaps.push({ s: y.s0 + Math.round(y.len * .3), side: y.side, w: 1.6 }));
+    // i muri antirumore: 180 m prima del mare, dal lato della strada (pannelli da 4 m, alti 2,8)
+    const sideRoad = (() => { const nord = G.MAP.roads.find(r => r.id === 'nord'); if (!nord) return -1; const s = Math.max(0, landEnd - 120), q = P[s], a = P[Math.max(0, s - 2)], b = P[s + 2], an = Math.atan2(b[1] - a[1], b[0] - a[0]); let bd = 1e9, rp = null; nord.pts.forEach(p => { const d = hyp(p[0] - q[0], p[1] - q[1]); if (d < bd) { bd = d; rp = p; } }); return rp && (-Math.sin(an) * (rp[0] - q[0]) + Math.cos(an) * (rp[1] - q[1])) > 0 ? 1 : -1; })();
+    for (let s = Math.max(Math.ceil(TR.sMine) + 10, landEnd - 190); s + 4 < landEnd - 8; s += 4) { if (onBridge(s) || inYard(s) || gaps.some(g => g.side === sideRoad && Math.abs(g.s - s) < 3)) continue; walls.push({ s, side: sideRoad, len: 4, h: 2.8, off: 4.1 }); }
+    return { ok: true, landEnd, bridge, onBridge, yards, fences, gaps, walls, OFF };
+  })();
+  // un punto del binario secondario: u metri dall'inizio dello scalo; lo scarto dalla linea entra e esce coi deviatoi (18 m)
+  const ramp = (u, L) => { const a = clamp(u / 18, 0, 1), b = clamp((L - u) / 18, 0, 1), sm = t => t * t * (3 - 2 * t); return sm(a) * sm(b); };
+  function yardAt(Y, u) {
+    const f = o => { const q = railAt(Y.s0 + o), off = Y.side * Y.off * ramp(o, Y.len); return { x: q.x - Math.sin(q.ang) * off, y: q.y + Math.cos(q.ang) * off, h: q.h }; };
+    const q = f(u), a = f(u - .8), b = f(u + .8); return { x: q.x, y: q.y, h: q.h, ang: Math.atan2(b.y - a.y, b.x - a.x) };
+  }
+  // [ferrovia] una crew dipinge un carro fermo (mai sopra un lavoro che c'è già su quella fiancata)
+  function yardPaint(st, c, old) {
+    const W = S(st), k = Math.floor(rnd() * c.cars.length), side = rnd() < .5 ? 0 : 1;
+    if (W.works.some(w => w.surf === 'vagone' && w.cons === c.key && w.wk === k && w.side === side && !w.erased)) return null;
+    const ws = W.writers.map(id => G.byId(st, id)).filter(n => n && writerOf(st, n)); if (!ws.length) return null;
+    const a = pick(ws), wr = writerOf(st, a), L = c.cars[k][1], r = rnd(), style = r < .45 ? 'pezzo' : r < .8 ? 'throw' : 'burner', Wd = Math.min(STYLES[style].W, L - 1), Hd = Math.min(STYLES[style].H, 2.4);
+    return addWork(st, npcWork(st, a, wr, style, null, { surf: 'vagone', cons: c.key, wk: k, side, u0: .4 + rnd() * Math.max(0, L - 1 - Wd), vb: .15 + rnd() * .2, W: Wd, H: Hd, prog: 1, done: true, old: !!old }));
+  }
+  // un punto della recinzione (o del muro): s sulla linea, lato, scarto
+  function sidePt(s, side, off) { const q = railAt(s); return { x: q.x - Math.sin(q.ang) * off * side, y: q.y + Math.cos(q.ang) * off * side, h: q.h, ang: q.ang }; }
+  // i carri fermi negli scali: due o tre per scalo, chiusi e tramogge; dopo 2–4 giorni partono (alle 9) e la notte dopo ne arrivano di puliti
+  const YARD_CARS = [['chiuso', 15], ['tramoggia', 14], ['chiuso', 15], ['tramoggia', 14]];
+  function yardState(st) {
+    const W = S(st); if (W.yard) return W.yard;
+    W.yard = { cons: RAIL.yards.map(Y => ({ y: Y.i, key: Y.i + 'a', cars: YARD_CARS.slice(Y.i % 2, Y.i % 2 + 2 + (Y.i === 0 ? 1 : 0)), day0: dayIdx(st.t) - (Y.i % 3), stay: 2 + (Y.i % 3), leave: null, gone: false })) };
+    return W.yard;
+  }
+  const consLen = c => c.cars.reduce((t, k) => t + k[1], 0) + (c.cars.length - 1) * .9;
+  // la posa del carro k di un convoglio: fermo al centro dello scalo, o in partenza (avanza a 5 m/s verso la linea e il porto)
+  function wagPose(st, c, k) {
+    const Y = RAIL.yards[c.y]; if (!Y || c.gone) return null;
+    let o = (Y.len - consLen(c)) / 2; for (let j = 0; j < k; j++) o += c.cars[j][1] + .9; o += c.cars[k][1] / 2;
+    const mv = c.leave ? Math.max(0, (st.t - c.leave) * 60 * 5 / 60) : 0;   // st.t in minuti di gioco: 5 m al secondo vero ≈ 5 m al minuto di gioco
+    const u = o + mv, L = c.cars[k][1];
+    if (u < Y.len) { const a = yardAt(Y, u - L * .35), b = yardAt(Y, u + L * .35), q = yardAt(Y, u); return { x: q.x, y: q.y, h: q.h, ang: Math.atan2(b.y - a.y, b.x - a.x), L }; }
+    const s = Y.s0 + u; if (s > TR.len - 6) return null;
+    const q = railAt(s), a = railAt(s - L * .35), b = railAt(s + L * .35); return { x: q.x, y: q.y, h: q.h, ang: Math.atan2(b.y - a.y, b.x - a.x), L };
+  }
+  // un punto della fiancata di un carro fermo (come sidePoint per il treno)
+  function wagSidePoint(st, c, k, side, u, y) {
+    const q = wagPose(st, c, k); if (!q) return null; const cs = Math.cos(q.ang), sn = Math.sin(q.ang), sd = side ? 1 : -1, along = side ? -q.L / 2 + u : q.L / 2 - u, out = TR.W / 2 + .02;
+    return { x: q.x + cs * along - sn * sd * out, y: q.h + y, z: q.y + sn * along + cs * sd * out, nx: -sn * sd, nz: cs * sd };
+  }
+  const consOf = (st, key) => yardState(st).cons.find(c => c.key === key);
+  // ogni passo: i convogli che partono escono di scena e i lavori sopra vanno via con loro; quelli nuovi arrivano di notte
+  function yardTick(st) {
+    if (!RAIL.ok || !RAIL.yards.length) return;
+    const Ys = yardState(st), W = S(st), d = dayIdx(st.t), m = minOfDay(st.t);
+    if (!Ys.seeded && W.writers.length) { Ys.seeded = true; Ys.cons.forEach(c => { for (let j = 0; j < 3; j++) yardPaint(st, c, true); }); }   // i carri arrivano già dipinti
+    Ys.cons.forEach(c => {
+      if (!c.gone && !c.leave && d - c.day0 >= c.stay && m >= 9 * 60 && m < 20 * 60) { c.leave = st.t; const mine = W.works.filter(w => w.surf === 'vagone' && w.cons === c.key && !w.erased && w.by === 'player'); if (mine.length && hyp(st.player.x - yardAt(RAIL.yards[c.y], 55).x, st.player.y - yardAt(RAIL.yards[c.y], 55).y) < 120) G.feed(st, `I carri dello ${RAIL.yards[c.y].name} partono: il tuo ${STYLES[mine[0].style].nome} se ne va in giro.`, 'good'); }
+      if (c.leave && !c.gone && c.cars.every((_, k) => !wagPose(st, c, k))) {
+        c.gone = true; const ws = W.works.filter(w => w.surf === 'vagone' && w.cons === c.key && !w.erased);
+        const run = ws.filter(w => w.by === 'player'); if (run.length) { const f = Math.round(run.reduce((t, w) => t + STYLES[w.style].fame * .6, 0)); W.fame += f; G.feed(st, `I carri col tuo lavoro sono partiti per il continente: +${f} fama.`, 'good'); }
+        ws.forEach(w => { w.erased = true; w.gone = true; });
+      }
+      // di notte arriva un convoglio pulito al posto di quello partito
+      if (c.gone && (m >= 23 * 60 || m < 4 * 60) && d > dayIdx(c.leave)) { const k = (parseInt(c.key, 10) || 0); c.key = c.y + String.fromCharCode(97 + ((c.key.charCodeAt(c.key.length - 1) - 96) % 26)); c.cars = YARD_CARS.slice((c.y + d) % 2, (c.y + d) % 2 + 2 + (d % 2)); c.day0 = d + 1; c.stay = 2 + (d % 3); c.leave = null; c.gone = false; }
+    });
+  }
+  // la rete: chi è a piedi (o in BMX) non la passa se non da un varco
+  function fencePush(st) {
+    if (!RAIL.ok || !RAIL.fences.length || !GFX.fenceOn) return;
+    const p = st.player; if (p.lv || p.indoor) return;
+    const prev = p.__rs; let near = null, bd = 1e9;
+    for (let k = 0; k < RAIL.fences.length; k += 4) { const q = railAt(RAIL.fences[k].s), d = hyp(q.x - p.x, q.y - p.y); if (d < bd) { bd = d; near = RAIL.fences[k]; } }
+    if (!near || bd > 22) { p.__rs = null; return; }
+    // la posizione rispetto alla linea: s (lungo) e v (di lato)
+    let s = near.s, bq = null; for (let k = -12; k <= 12; k++) { const q = railAt(near.s + k * 2), d = hyp(q.x - p.x, q.y - p.y); if (!bq || d < bq.d) bq = { d, s: near.s + k * 2, q }; } s = bq.s;
+    const q = bq.q, v = -(p.x - q.x) * Math.sin(q.ang) + (p.y - q.y) * Math.cos(q.ang), F = RAIL.fences.find(f => Math.abs(f.s - s) <= 1); if (!F) { p.__rs = null; return; }
+    const sd = v >= 0 ? 1 : -1, off = F.off[sd > 0 ? 0 : 1], zone = Math.abs(v) < off ? 'dentro' : 'fuori';
+    if (prev && prev.zone !== zone && prev.sd === sd && !RAIL.gaps.some(g => g.side === sd && Math.abs(g.s - s) < g.w / 2 + .6)) {
+      const tv = sd * (zone === 'dentro' ? off + .3 : off - .3), cx = q.x - Math.sin(q.ang) * tv, cy = q.y + Math.cos(q.ang) * tv; p.x = cx; p.y = cy;
+      if (st.clock - (GFX.fenceMsg || -99) > 6) { GFX.fenceMsg = st.clock; G.feed(st, 'La rete della ferrovia: si passa solo dai varchi (dove è tagliata).'); }
+      return;
+    }
+    p.__rs = { zone, sd };
   }
 
   // ---------------- I WRITER DELL'ISOLA ----------------
@@ -31931,6 +32053,8 @@ var Writing = (function () {
         (W.train.sides[car + ':' + side] = W.train.sides[car + ':' + side] || []).push(w.id); W.train.news = `Stanotte i ${crew.id} hanno fatto il treno: ${STYLES[w.style].nome} di ${wr.aka}.`;
       }
     }
+    // i carri fermi negli scali: di notte qualcuno ci va (dai varchi)
+    if (RAIL.ok && RAIL.yards.length) yardState(st).cons.forEach(c => { if (!c.gone && !c.leave && rnd() < .45) yardPaint(st, c); });
     // i beef: chi è stato crossato crossa
     Object.keys(W.beef).forEach(cid => {
       if (W.beef[cid] <= 0) return;
@@ -32055,6 +32179,7 @@ var Writing = (function () {
     if (m >= 6 * 60 + 2 && m < 10 * 60) morning(st);
     if (st.clock - (W.meetT || 0) > .5) { W.meetT = st.clock; meet(st); }
     if (TR.ok) trainPush(st, trainAt(st.t));
+    if (RAIL.ok) { yardTick(st); fencePush(st); }   // [ferrovia] gli scali e la rete
   }
   { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); try { step(st, dt); } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.warn('[Writing]', e); } } }; }
   { const prev = G.HOOKS.verb; G.HOOKS.verb = (st, m, T) => m.type === 'graffito' && m.actor === 'player' ? `ha dipinto sui muri${m.place ? ' ' + m.place : ''}` : (prev ? prev(st, m, T) : null); }
@@ -32272,37 +32397,158 @@ var Writing = (function () {
     });
     return { grp, cars };
   }
-  // la ferrovia: massicciata e rilevato sul bosco, viadotto coi piloni sul mare, traversine e rotaie; i paraurti e i cartelli delle due stazioni
+  // [ferrovia] la quota vera del binario: sulla terra resa dal gioco (R.groundH), su una massicciata bassa che segue il terreno
+  // (pendenza al massimo 3%), sul ponte in terra a 5 m sopra la valle, sul mare il viadotto; TR.el = i tratti su piloni
+  function railFit(R) {
+    if (TR.fit || !RAIL.ok) return; TR.fit = true;
+    const P = TR.P, n = P.length, g = P.map(q => q[3] ? -3 : R.groundH(q[0], q[1])), side = (i, o) => { const a = P[Math.max(0, i - 2)], b = P[Math.min(n - 1, i + 2)], an = Math.atan2(b[1] - a[1], b[0] - a[0]); return [R.groundH(P[i][0] - Math.sin(an) * o, P[i][1] + Math.cos(an) * o), R.groundH(P[i][0] + Math.sin(an) * o, P[i][1] - Math.cos(an) * o)]; };
+    // il terreno sotto la massicciata: il centro e i due bordi
+    const ter = P.map((q, i) => { if (q[3]) return 2.6; const [l, r] = side(i, 1.8); return Math.max(g[i], (g[i] * 2 + l + r) / 4) + .42; });   // la media fra centro e bordi: in costa la massicciata taglia un poco il pendio
+    const [b0, b1] = RAIL.bridge, top = Math.max(g[b0], g[b1]) + 1.2;
+    const t = ter.map((v, i) => i >= b0 && i <= b1 ? Math.max(v, top, g[i] + 4.6) : v);
+    const h = t.slice(), G2 = .03;
+    for (let it = 0; it < 3; it++) { for (let i = 1; i < n; i++) h[i] = Math.max(h[i], h[i - 1] - G2); for (let i = n - 2; i >= 0; i--) h[i] = Math.max(h[i], h[i + 1] - G2); }
+    for (let it = 0; it < 4; it++) { const o = h.slice(); for (let i = 2; i < n - 2; i++) h[i] = Math.max(t[i], (o[i - 2] + o[i - 1] + o[i] + o[i + 1] + o[i + 2]) / 5); }
+    TR.el = P.map((q, i) => !q[3] && i >= b0 - 3 && i <= b1 + 3 && h[i] - g[i] > 1.5 ? 1 : 0); TR.g = g;   // i piloni solo sul ponte: altrove il rilevato di terra
+    P.forEach((q, i) => { q[2] = h[i]; });
+  }
+  const tex64 = (w, h, f) => { const c = cv(w, h), x = c.getContext('2d'); f(x, w, h); const t = canvasTexture(c); return t; };
+  // la ferrovia: la massicciata (o il ponte e il viadotto), le traversine e le rotaie, i piloni fino a terra; gli scali coi loro
+  // binari; la rete coi varchi, i muri antirumore, i segnali, i cippi, la canalina dei cavi, gli armadietti; le due stazioni
   function track() {
     const THREE = T3(), R = R_(), P = TR.P, g = new THREE.Group(); g.name = 'ferrovia';
+    railFit(R);
+    const EL = i => TR.el ? TR.el[Math.max(0, Math.min(P.length - 1, Math.round(i)))] : 0, SEA = i => !!P[Math.max(0, Math.min(P.length - 1, Math.round(i)))][3];
+    const gH = (x, y) => R.groundH(x, y), jit = (c, k) => { const v = (Math.sin(k * 12.9898) * 43758.5453) % 1, d = (v - Math.floor(v) - .5) * .12; return new THREE.Color(Math.min(1, c.r + d), Math.min(1, c.g + d), Math.min(1, c.b + d)); };
+    // ---- la massicciata (in terra) e l'impalcato (ponte e viadotto) ----
     const pos = [], col = [], idx = [], push = (x, y, z, c) => { pos.push(x, y, z); col.push(c.r, c.g, c.b); return pos.length / 3 - 1; };
-    const cG = new THREE.Color('#8c877e'), cG2 = new THREE.Color('#6e6a62'), cC = new THREE.Color('#9a968e'), cC2 = new THREE.Color('#7a766e');
-    let prev = null;
+    const cG = new THREE.Color('#77726a'), cG2 = new THREE.Color('#5e5a52'), cO = new THREE.Color('#4e4034'), cC = new THREE.Color('#a29e95'), cC2 = new THREE.Color('#7c786f');
+    let prev = null, prevK = null;
+    const bed = (q, i, dk) => {   // una sezione: bordo esterno a terra, spalla, il centro più scuro d'olio e ruggine, spalla, bordo
+      const nx = -Math.sin(q.ang), nz = Math.cos(q.ang), top = q.h - .18, el = EL(i) || SEA(i);
+      if (el) { const bot = top - .95, hw = 2.5; return [push(q.x + nx * hw, bot, q.y + nz * hw, cC2), push(q.x + nx * hw, top, q.y + nz * hw, cC), push(q.x + nx * 1.6, top, q.y + nz * 1.6, cC), push(q.x, top, q.y, cC), push(q.x - nx * 1.6, top, q.y - nz * 1.6, cC), push(q.x - nx * hw, top, q.y - nz * hw, cC), push(q.x - nx * hw, bot, q.y - nz * hw, cC2)]; }
+      // il rilevato: la scarpata scende a terra con pendenza 2:3 (più è alto, più è largo); sotto la ghiaia, la terra con l'erba rada
+      const ft = sd => { let f = 3.3; for (let k = 0; k < 4; k++) { const gg = gH(q.x + nx * f * sd, q.y + nz * f * sd); f = 3.3 + Math.max(0, top - gg - .3) * 1.5; } return Math.min(f, 14); };
+      const fL = ft(1), fR = ft(-1), foot = fL, gL = Math.min(top, gH(q.x + nx * fL, q.y + nz * fL)) - .15, gR = Math.min(top, gH(q.x - nx * fR, q.y - nz * fR)) - .15, cE = new THREE.Color('#6f6a4c');
+      const eL = Math.min(top, gL + .1) - Math.min(.35, top - gL), eR = Math.min(top, gR + .1) - Math.min(.35, top - gR);   // dove finisce la ghiaia comincia la terra
+      return [push(q.x + nx * fL, gL, q.y + nz * fL, jit(cE, i)), push(q.x + nx * 2.6, top - Math.min(.35, top - gL), q.y + nz * 2.6, jit(fL > 4.5 ? cE : cG2, i + 5)), push(q.x + nx * 1.9, top, q.y + nz * 1.9, jit(cG, i + 1)), push(q.x, top + .02, q.y, jit(cO, i + 2)), push(q.x - nx * 1.9, top, q.y - nz * 1.9, jit(cG, i + 3)), push(q.x - nx * 2.6, top - Math.min(.35, top - gR), q.y - nz * 2.6, jit(fR > 4.5 ? cE : cG2, i + 6)), push(q.x - nx * fR, gR, q.y - nz * fR, jit(cE, i + 4))];
+    };
     for (let i = 0; i < P.length; i += 2) {
-      const q = railAt(i), c = Math.cos(q.ang), s2 = Math.sin(q.ang), nx = -s2, nz = c, sea = !!P[i][3], top = q.h - .18, hw = sea ? 2.6 : 1.9, foot = sea ? 2.6 : 3.2;
-      const gL = sea ? top - .9 : Math.min(top, R.groundH(q.x + nx * foot, q.y + nz * foot)) - .1, gR = sea ? top - .9 : Math.min(top, R.groundH(q.x - nx * foot, q.y - nz * foot)) - .1;
-      const k = [push(q.x + nx * foot, gL, q.y + nz * foot, sea ? cC2 : cG2), push(q.x + nx * hw, top, q.y + nz * hw, sea ? cC : cG), push(q.x - nx * hw, top, q.y - nz * hw, sea ? cC : cG), push(q.x - nx * foot, gR, q.y - nz * foot, sea ? cC2 : cG2)];
-      if (prev) for (let a = 0; a < 3; a++) idx.push(prev[a], k[a], prev[a + 1], prev[a + 1], k[a], k[a + 1]);
-      prev = k;
+      const q = railAt(i), k = bed(q, i), kind = EL(i) || SEA(i) ? 1 : 0;
+      if (prev && kind === prevK) for (let a = 0; a < 6; a++) idx.push(prev[a], k[a], prev[a + 1], prev[a + 1], k[a], k[a + 1]);
+      else if (prev) { const k2 = bed(railAt(i - 1), i - 1); for (let a = 0; a < 6; a++) idx.push(prev[a], k2[a], prev[a + 1], prev[a + 1], k2[a], k2[a + 1]); }
+      prev = k; prevK = kind;
     }
+    // gli scali: la loro massicciata accanto, e i binari secondari
+    RAIL.yards.forEach(Y => { let pv = null; for (let u = 0; u <= Y.len; u += 2) { const q = yardAt(Y, u); const k = bed(q, Y.s0 + u, 1); if (pv) for (let a = 0; a < 6; a++) idx.push(pv[a], k[a], pv[a + 1], pv[a + 1], k[a], k[a + 1]); pv = k; } });
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); geo.setIndex(idx); geo.computeVertexNormals();
-    const bed = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })); bed.receiveShadow = true; bed.userData.wr = 1; g.add(bed);
+    const bedM = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })); bedM.receiveShadow = true; bedM.userData.wr = 1; g.add(bedM);
+    // ---- le parti ripetute (instanced) ----
     const bx = new THREE.BoxGeometry(1, 1, 1), m4 = new THREE.Matrix4(), qt = new THREE.Quaternion(), e = new THREE.Euler(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
-    const inst = (mat, list) => { const im = new THREE.InstancedMesh(bx, mat, list.length); list.forEach((L, k) => { e.set(0, L[4], 0); qt.setFromEuler(e); im.setMatrixAt(k, m4.compose(v3.set(L[0], L[1], L[2]), qt, s3.set(L[3][0], L[3][1], L[3][2]))); }); im.castShadow = true; im.receiveShadow = true; im.userData.wr = 1; im.frustumCulled = false; g.add(im); return im; };
-    const sl = [], rl = [], pil = [];
-    for (let s0 = 0; s0 < P.length - 1; s0 += .65) { const q = railAt(s0); sl.push([q.x, q.h - .1, q.y, [.24, .14, 2.5], -q.ang]); }   // traversine
-    for (let s0 = 0; s0 < P.length - 3; s0 += 2) { const a = railAt(s0), b = railAt(s0 + 2), ang = Math.atan2(b.y - a.y, b.x - a.x), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, mh = (a.h + b.h) / 2, l = Math.hypot(b.x - a.x, b.y - a.y) + .02; for (const sd of [-.72, .72]) rl.push([mx - Math.sin(ang) * sd, mh + .02, my + Math.cos(ang) * sd, [l, .14, .08], -ang]); }   // rotaie
-    for (let s0 = 6; s0 < P.length - 6; s0 += 12) { if (!P[Math.round(s0)][3]) continue; const q = railAt(s0), top = q.h - 1.1; pil.push([q.x, (top - 4) / 2, q.y, [1.2, top + 4, 3.2], -q.ang]); }   // i piloni del viadotto
-    inst(new THREE.MeshStandardMaterial({ color: '#4a3a2c', roughness: .95 }), sl); inst(new THREE.MeshStandardMaterial({ color: '#8a8a8e', metalness: .7, roughness: .4 }), rl);
-    if (pil.length) inst(new THREE.MeshStandardMaterial({ color: '#8e8a82', roughness: .95 }), pil);
+    const inst = (mat, list, shadow) => { if (!list.length) return; const im = new THREE.InstancedMesh(bx, mat, list.length); list.forEach((L, k) => { e.set(L[5] || 0, L[4], 0, 'YXZ'); qt.setFromEuler(e); im.setMatrixAt(k, m4.compose(v3.set(L[0], L[1], L[2]), qt, s3.set(L[3][0], L[3][1], L[3][2]))); }); im.castShadow = shadow !== false; im.receiveShadow = true; im.userData.wr = 1; im.frustumCulled = false; g.add(im); };
+    const slW = [], slC = [], rl = [], pil = [], posts = [], kmp = [], trough = [];
+    const rails = (at, s0, s1, conc) => {
+      for (let s = s0; s < s1; s += .65) { const q = at(s); (conc(s) ? slC : slW).push([q.x, q.h - .1, q.y, conc(s) ? [.26, .17, 2.6] : [.24, .14, 2.5], -q.ang]); }
+      for (let s = s0; s < s1 - 2; s += 2) { const a = at(s), b = at(s + 2), ang = Math.atan2(b.y - a.y, b.x - a.x), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, mh = (a.h + b.h) / 2, l = Math.hypot(b.x - a.x, b.y - a.y) + .02; for (const sd of [-.72, .72]) rl.push([mx - Math.sin(ang) * sd, mh + .02, my + Math.cos(ang) * sd, [l, .14, .07], -ang]); }
+    };
+    // traversine: di cemento sulla linea in terra e sul ponte, di legno vecchio sul viadotto e negli scali
+    rails(s => railAt(s), 0, P.length - 1, s => !SEA(s));
+    RAIL.yards.forEach(Y => rails(u => yardAt(Y, u), 0, Y.len, () => false));
+    // i piloni: sul ponte in terra e sul viadotto, fino al terreno (o al fondo del mare)
+    for (let s = 6; s < P.length - 6; s += 12) { if (!(EL(s) || SEA(s))) continue; const q = railAt(s), top = q.h - 1.15, bot = SEA(s) ? -4 : gH(q.x, q.y) - .3; if (top - bot < .4) continue; pil.push([q.x, (top + bot) / 2, q.y, [1.2, top - bot, 3.2], -q.ang]); }
+    // i parapetti del ponte e del viadotto (bassi, di cemento, si dipingono): un muro unico per lato
+    const para = (sd) => { const pp = [], pi = []; let pv = null; for (let i = 0; i < P.length; i += 2) { if (!(EL(i) || SEA(i))) { pv = null; continue; } const q = railAt(i), nx = -Math.sin(q.ang) * sd, nz = Math.cos(q.ang) * sd, o = 2.45, base = q.h - .18; const a = pp.length / 3; pp.push(q.x + nx * o, base, q.y + nz * o, q.x + nx * o, base + .95, q.y + nz * o); if (pv !== null) pi.push(pv, a, pv + 1, pv + 1, a, a + 1); pv = a; }
+      if (!pi.length) return; const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); gg.setIndex(pi); gg.computeVertexNormals(); const m = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ color: '#a7a399', side: THREE.DoubleSide })); m.receiveShadow = true; m.castShadow = true; m.name = 'parapetto'; g.add(m); };
+    para(1); para(-1);
+    // cippi ogni 100 m, la canalina dei cavi in cemento lungo un lato della linea in terra
+    for (let s = 50; s < P.length - 4; s += 100) { const q = sidePt(s, 1, 2.9); kmp.push([q.x, (EL(s) || SEA(s) ? q.h : gH(q.x, q.y)) + .35, q.y, [.18, .7, .18], -q.ang]); }
+    for (let s = 2; s < RAIL.landEnd - 2; s += 2) { if (EL(s)) continue; const q = sidePt(s, -1, 2.55); trough.push([q.x, q.h - .2, q.y, [2.02, .22, .34], -q.ang]); }
+    inst(new THREE.MeshStandardMaterial({ color: '#4a3a2c', roughness: .95 }), slW); inst(new THREE.MeshStandardMaterial({ color: '#7e7b74', roughness: .9 }), slC);
+    inst(new THREE.MeshStandardMaterial({ color: '#8a8a8e', metalness: .7, roughness: .4 }), rl);
+    inst(new THREE.MeshStandardMaterial({ color: '#8e8a82', roughness: .95 }), pil); inst(new THREE.MeshStandardMaterial({ color: '#e8e4da', roughness: .8 }), kmp); inst(new THREE.MeshStandardMaterial({ color: '#8a867e', roughness: .95 }), trough);
+    // ---- la rete: pali ogni 2,5 m e la maglia (trasparente), tagliata nei varchi (il lembo piegato, il sentiero battuto) ----
+    const meshT = tex64(64, 64, (x, w, h) => { x.clearRect(0, 0, w, h); x.strokeStyle = 'rgba(150,152,150,.95)'; x.lineWidth = 2.2; for (let k = -64; k < 128; k += 16) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k + 64, 64); x.stroke(); x.beginPath(); x.moveTo(k + 64, 0); x.lineTo(k, 64); x.stroke(); } });
+    meshT.wrapS = meshT.wrapT = THREE.RepeatWrapping;
+    const netM = new THREE.MeshLambertMaterial({ map: meshT, transparent: true, alphaTest: .4, side: THREE.DoubleSide }), dirtM = new THREE.MeshLambertMaterial({ color: '#5e5040' }), FH = 2.1;
+    [1, -1].forEach(sd => {
+      const pp = [], uv = [], pi = []; let pv = null, along = 0, last = null;
+      RAIL.fences.forEach(F => {
+        const off = F.off[sd > 0 ? 0 : 1], q = sidePt(F.s, sd, off), gap = RAIL.gaps.find(gp => gp.side === sd && Math.abs(gp.s - F.s) < gp.w / 2 + .9);
+        if (gap || (last && F.s - last.s > 2.5)) { pv = null; }
+        if (gap) { last = null; return; }
+        const b = gH(q.x, q.y) - .05; if (last) along += Math.hypot(q.x - last.q.x, q.y - last.q.y); last = { s: F.s, q };
+        const a = pp.length / 3; pp.push(q.x, b, q.y, q.x, b + FH, q.y); uv.push(along / 1.6, 0, along / 1.6, FH / 1.6);
+        if (pv !== null) pi.push(pv, a, pv + 1, pv + 1, a, a + 1); pv = a;
+        if (Math.round(F.s) % 3 === 0) posts.push([q.x, b + FH / 2 + .05, q.y, [.07, FH + .1, .07], -q.ang]);
+      });
+      if (pi.length) { const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); gg.setIndex(pi); gg.computeVertexNormals(); const m = new THREE.Mesh(gg, netM); m.userData.wr = 1; m.userData.velo = true; g.add(m); }
+    });
+    RAIL.gaps.forEach(gp => {
+      const off = (RAIL.fences.find(f => Math.abs(f.s - gp.s) <= 1) || { off: [3.9, 3.9] }).off[gp.side > 0 ? 0 : 1], q = sidePt(gp.s, gp.side, off), b = gH(q.x, q.y);
+      const flap = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.4), netM); flap.position.set(q.x, b + .55, q.y); flap.rotation.set(-.5, -q.ang + .9, .3); flap.userData.velo = true; g.add(flap);   // il lembo della rete piegato
+      const nx = -Math.sin(q.ang) * gp.side, nz = Math.cos(q.ang) * gp.side;
+      for (let k = 0; k < 6; k++) { const d = 1 + k * 1.3, x = q.x + nx * d + Math.cos(k * 1.7) * .25, z = q.y + nz * d + Math.sin(k * 2.3) * .25, pth = new THREE.Mesh(new THREE.CircleGeometry(.75 - k * .05, 10), dirtM); pth.rotation.x = -Math.PI / 2; pth.position.set(x, gH(x, z) + .04, z); pth.receiveShadow = true; pth.userData.wr = 1; g.add(pth); }   // il sentiero battuto
+    });
+    inst(new THREE.MeshStandardMaterial({ color: '#5a5c5e', metalness: .5, roughness: .6 }), posts);
+    // ---- i muri antirumore: pannelli di cemento grigio, a filo del terreno, che si dipingono (un muro vero, non instanced) ----
+    if (RAIL.walls.length) {
+      const pp = [], pi = []; let pv = null, lastS = -99;
+      RAIL.walls.forEach(Wl => { for (let u = 0; u <= Wl.len; u += 1) { const q = sidePt(Wl.s + u, Wl.side, Wl.off), b = gH(q.x, q.y) - .2; if (Wl.s + u - lastS > 1.5) pv = null; const a = pp.length / 3; pp.push(q.x, b, q.y, q.x, b + Wl.h + .2, q.y); if (pv !== null) pi.push(pv, a, pv + 1, pv + 1, a, a + 1); pv = a; lastS = Wl.s + u; } });
+      const wt = tex64(256, 128, (x, w, h) => { x.fillStyle = '#9c988f'; x.fillRect(0, 0, w, h); for (let k = 0; k < 900; k++) { x.fillStyle = `rgba(${60 + Math.random() * 40},${60 + Math.random() * 40},${55 + Math.random() * 40},.12)`; x.fillRect(Math.random() * w, Math.random() * h, 2, 2); } x.fillStyle = 'rgba(40,38,34,.35)'; for (let u = 0; u < w; u += 64) x.fillRect(u, 0, 3, h); const gr = x.createLinearGradient(0, h, 0, h * .6); gr.addColorStop(0, 'rgba(70,60,45,.35)'); gr.addColorStop(1, 'rgba(70,60,45,0)'); x.fillStyle = gr; x.fillRect(0, h * .6, w, h * .4); });
+      const uv = []; for (let k = 0; k < pp.length / 6; k++) uv.push(k / 4, 0, k / 4, 1);
+      const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); gg.setIndex(pi); gg.computeVertexNormals();
+      wt.wrapS = THREE.RepeatWrapping; const m = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ map: wt, side: THREE.DoubleSide })); m.castShadow = true; m.receiveShadow = true; m.name = 'muro_antirumore'; g.add(m);
+    }
+    // ---- i segnali (palo, testa, la luce rossa o verde) e gli armadietti grigi accanto (si dipingono) ----
+    const darkM = new THREE.MeshStandardMaterial({ color: '#2a2c2e', metalness: .4, roughness: .6 }), cabM = new THREE.MeshStandardMaterial({ color: '#8c9088', roughness: .7 });
+    for (let s = 90, k = 0; s < P.length - 30; s += 170, k++) {
+      const sd = k % 2 ? 1 : -1, q = sidePt(s, sd, 3.1), b = EL(s) || SEA(s) ? q.h - .18 : gH(q.x, q.y), mast = new THREE.Mesh(new THREE.CylinderGeometry(.07, .09, 4.2, 8), darkM); mast.position.set(q.x, b + 2.1, q.y); g.add(mast);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(.5, .9, .3), darkM); head.position.set(q.x, b + 3.9, q.y); head.rotation.y = -q.ang + Math.PI / 2; g.add(head);
+      for (const [dy, c] of [[.18, k % 3 ? '#2aff5a' : '#ff2a1a'], [-.18, '#3a3a3a']]) { const l = new THREE.Mesh(new THREE.CircleGeometry(.1, 10), new THREE.MeshBasicMaterial({ color: c })); l.position.set(q.x - Math.sin(-q.ang + Math.PI / 2) * .16, b + 3.9 + dy, q.y - Math.cos(-q.ang + Math.PI / 2) * .16); l.rotation.y = -q.ang + Math.PI / 2 + Math.PI; g.add(l); }
+      if (!(EL(s) || SEA(s))) { const cq = sidePt(s + 4, sd, 3.6), cb = gH(cq.x, cq.y), cab = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.5, .6), cabM); cab.position.set(cq.x, cb + .75, cq.y); cab.rotation.y = -cq.ang; cab.castShadow = true; cab.receiveShadow = true; cab.name = 'armadietto'; g.add(cab); }
+    }
+    // ---- i paraurti e i cartelli delle due stazioni, i lampioni degli scali ----
     const stop = (s0, dir) => { const q = railAt(s0), pb = new THREE.Group(); pb.position.set(q.x, q.h, q.y); pb.rotation.y = -q.ang + (dir < 0 ? Math.PI : 0); const red = new THREE.MeshStandardMaterial({ color: '#c8302a', roughness: .7 }), blk = new THREE.MeshStandardMaterial({ color: '#202022' });
       [[.5, .5, 2.2, red, 0, .9, 0], [.3, 1.2, .3, blk, -.3, .6, -.7], [.3, 1.2, .3, blk, -.3, .6, .7]].forEach(([w, h, d, mm, a, b, z]) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mm); o.position.set(a, b, z); o.castShadow = true; pb.add(o); }); g.add(pb); };
     stop(1, -1); stop(P.length - 2, 1);
-    const sign = (s0, text, side) => { const q = railAt(s0), c = cv(320, 56), x = c.getContext('2d'); x.fillStyle = '#f2efe6'; x.fillRect(0, 0, 320, 56); x.strokeStyle = '#1c3a7a'; x.lineWidth = 6; x.strokeRect(3, 3, 314, 50); x.fillStyle = '#1c3a7a'; x.font = 'bold 26px Arial'; x.textAlign = 'center'; x.fillText(text, 160, 37);
-      const pl = new THREE.Mesh(new THREE.PlaneGeometry(3.2, .56), new THREE.MeshStandardMaterial({ map: canvasTexture(c), side: THREE.DoubleSide })); const nx = -Math.sin(q.ang) * side, nz = Math.cos(q.ang) * side; pl.position.set(q.x + nx * 3.6, q.h + 2.4, q.y + nz * 3.6); pl.rotation.y = -q.ang; g.add(pl);
-      for (const d of [-1.3, 1.3]) { const po = new THREE.Mesh(new THREE.BoxGeometry(.08, 2.6, .08), new THREE.MeshStandardMaterial({ color: '#3a3a3e' })); po.position.set(pl.position.x + Math.cos(q.ang) * d, q.h + 1.2, pl.position.z + Math.sin(q.ang) * d); g.add(po); } };
-    sign(TR.sMine - TR.LEN / 2, 'MINIERA NORD', 1); sign(TR.sPort - 8, 'PORTO MILITARE', 1);
+    const sign = (q, text, side) => { const c = cv(360, 56), x = c.getContext('2d'); x.fillStyle = '#f2efe6'; x.fillRect(0, 0, 360, 56); x.strokeStyle = '#1c3a7a'; x.lineWidth = 6; x.strokeRect(3, 3, 354, 50); x.fillStyle = '#1c3a7a'; x.font = 'bold 24px Arial'; x.textAlign = 'center'; x.fillText(text, 180, 37);
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(3.6, .56), new THREE.MeshStandardMaterial({ map: canvasTexture(c), side: THREE.DoubleSide })); const nx = -Math.sin(q.ang) * side, nz = Math.cos(q.ang) * side, b = gH(q.x + nx * 3.8, q.y + nz * 3.8); pl.position.set(q.x + nx * 3.8, Math.max(b, q.h) + 2.4, q.y + nz * 3.8); pl.rotation.y = -q.ang; g.add(pl);
+      for (const d of [-1.4, 1.4]) { const po = new THREE.Mesh(new THREE.BoxGeometry(.08, 2.6, .08), darkM); po.position.set(pl.position.x + Math.cos(q.ang) * d, pl.position.y - 1.2, pl.position.z + Math.sin(q.ang) * d); g.add(po); } };
+    sign(railAt(TR.sMine - TR.LEN / 2), 'MINIERA NORD', 1); sign(railAt(TR.sPort - 8), 'PORTO MILITARE', 1);
+    RAIL.yards.forEach(Y => { sign(yardAt(Y, 8), Y.name.toUpperCase(), Y.side); for (const u of [Y.len * .3, Y.len * .7]) { const q = yardAt(Y, u), nx = -Math.sin(q.ang) * Y.side, nz = Math.cos(q.ang) * Y.side, x0 = q.x + nx * 3, z0 = q.y + nz * 3, b = gH(x0, z0), pole = new THREE.Mesh(new THREE.CylinderGeometry(.08, .11, 7, 8), darkM); pole.position.set(x0, b + 3.5, z0); g.add(pole); const lamp = new THREE.Mesh(new THREE.BoxGeometry(.7, .18, .3), new THREE.MeshBasicMaterial({ color: '#fff0c0' })); lamp.position.set(x0 - nx * .5, b + 6.95, z0 - nz * .5); g.add(lamp); } });
+    GFX.fenceOn = true;
     return g;
+  }
+  // ---- i carri fermi negli scali: un gruppo per carro, le fiancate su canvas propri (si dipingono come un muro: i veli si
+  // attaccano al carro e partono con lui) ----
+  function wagMesh(kind, L) {
+    const THREE = T3(), g = new THREE.Group(), Wd = TR.W, M = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .7, metalness: .25 }, o || {}));
+    const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
+    [0, 1].forEach(sd => { const cnv = cv(L * SPPM, SIDE_H * SPPM); livery(cnv, kind, L, sd); const m = new THREE.MeshStandardMaterial({ map: canvasTexture(cnv), roughness: .6, metalness: .2 }), pl = new THREE.Mesh(new THREE.PlaneGeometry(L, SIDE_H), m); pl.position.set(0, BODY_Y + SIDE_H / 2, (sd ? 1 : -1) * Wd / 2); if (!sd) pl.rotation.y = Math.PI; pl.castShadow = true; pl.receiveShadow = true; pl.name = 'fiancata'; g.add(pl); });
+    box(L - .02, SIDE_H - .02, Wd - .04, M(kind === 'chiuso' ? '#6a3a26' : '#4a4e52'), 0, BODY_Y + SIDE_H / 2, 0).userData.wr = 1;
+    if (kind === 'tramoggia') box(L - .5, .4, Wd - .4, M('#121214', { roughness: 1, metalness: 0 }), 0, BODY_Y + SIDE_H + .05, 0); else box(L, .2, Wd + .06, M('#4a4e52'), 0, BODY_Y + SIDE_H + .1, 0).userData.wr = 1;
+    const dark = M('#1c1c20'), wheel = M('#2a2a2c', { metalness: .6 });
+    box(L - .4, .45, Wd - .3, dark, 0, BODY_Y - .2, 0);
+    for (const e of [-1, 1]) { const bg = new THREE.Group(); bg.position.set(e * (L / 2 - 2.4), .55, 0); g.add(bg); const bb = new THREE.Mesh(new THREE.BoxGeometry(2.6, .45, 2), dark); bb.position.y = .1; bg.add(bb); for (const ax of [-.8, .8]) for (const s2 of [-1, 1]) { const wh = new THREE.Mesh(new THREE.CylinderGeometry(.46, .46, .14, 14), wheel); wh.rotation.x = Math.PI / 2; wh.position.set(ax, -.08, s2 * .72); bg.add(wh); } }
+    return g;
+  }
+  function yardFrame(st, sc, cx, cy) {
+    if (!RAIL.yards.length) return;
+    const Ys = yardState(st); GFX.yard = GFX.yard || {};
+    const live = new Set();
+    Ys.cons.forEach(c => c.cars.forEach((ck, k) => {
+      const key = c.key + ':' + k, q = wagPose(st, c, k); if (!q) return; live.add(key);
+      let o = GFX.yard[key]; if (!o) { o = GFX.yard[key] = { g: wagMesh(ck[0], ck[1]), L: ck[1] }; o.g.name = 'carro_' + key; o.g.traverse(m => { if (m.isMesh) m.userData.wag = { key: c.key, k }; }); sc.add(o.g); }
+      o.g.visible = hyp(q.x - cx, q.y - cy) < 260; o.g.position.set(q.x, q.h, q.y); o.g.rotation.set(0, -q.ang, 0);
+    }));
+    Object.keys(GFX.yard).forEach(key => { if (live.has(key)) return; const o = GFX.yard[key]; if (o.g.parent) o.g.parent.remove(o.g); o.g.traverse(m => { if (m.isMesh) { m.geometry.dispose(); if (m.material.map) m.material.map.dispose(); m.material.dispose(); } }); delete GFX.yard[key]; });
+  }
+  // il rettangolo di un lavoro su un carro fermo (u0 dal bordo, vb sopra il telaio): nel mondo, attaccato al carro
+  function wagRect(w) {
+    const THREE = T3(), o = GFX.yard && GFX.yard[w.cons + ':' + w.wk]; if (!o) return null;
+    const sd = w.side ? 1 : -1, L = o.L, lx = (sd > 0 ? -L / 2 + w.u0 + w.W / 2 : L / 2 - w.u0 - w.W / 2), loc = new THREE.Vector3(lx, BODY_Y + w.vb + w.H / 2, sd * (TR.W / 2 + .02));
+    o.g.updateMatrixWorld(true); const c = o.g.localToWorld(loc.clone()), n = new THREE.Vector3(0, 0, sd).applyQuaternion(o.g.quaternion); n.y = 0; n.normalize();
+    return { c, n, r: new THREE.Vector3(n.z, 0, -n.x), W: w.W, H: w.H, obj: o.g, veh: true };
   }
   // il bersaglio (canvas e offset) per un lavoro sul treno
   function trainTarget(w) {
@@ -32436,7 +32682,7 @@ var Writing = (function () {
       if (!h) return false;
       // ripresa: il clic cade su un lavoro tuo lasciato a metà
       const mine = W.works.find(o => o.by === 'player' && !o.done && !o.erased && o.gfxRect && Math.abs((h.point.x - o.gfxRect.c.x) * o.gfxRect.r.x + (h.point.z - o.gfxRect.c.z) * o.gfxRect.r.z) < o.gfxRect.W / 2 && Math.abs(h.point.y - o.gfxRect.c.y) < o.gfxRect.H / 2 && Math.abs((h.point.x - o.gfxRect.c.x) * o.gfxRect.n.x + (h.point.z - o.gfxRect.c.z) * o.gfxRect.n.z) < .3);
-      const car = h.object.userData.car;
+      const car = h.object.userData.car, wag = h.object.userData.wag;   // [ferrovia] wag: un carro fermo nello scalo
       const mineT = car && W.works.find(o => o.by === 'player' && !o.done && !o.erased && o.surf === 'treno' && o.car === car.i && o.side === car.side);
       const back = mine || mineT;
       const d = hyp(h.point.x - p.x, h.point.z - p.y), n = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (n.dot(rc.ray.direction) > 0) n.negate();
@@ -32467,10 +32713,12 @@ var Writing = (function () {
       if (Math.abs(nn.y) < .5) c.y = clamp(c.y, feet + .12 + Hh / 2, Math.max(feet + .12 + Hh / 2, feet + 2.75 - Hh / 2));
       let fitR = null;
       if (Math.abs(nn.y) > .5) { fitR = { W: sty.W, H: sty.H, r: new THREE.Vector3(1, 0, 0) }; }
-      else fitR = vehOf(h.object) ? { W: Math.min(sty.W, 3), H: Math.min(Hh, 1), r: new THREE.Vector3(nn.z, 0, -nn.x) } : wallRect(c, nn, sty.W, Hh, cands(c.x, c.z));
+      else { if (wag) { const cs = consOf(st, wag.key); if (!cs || cs.leave) return { msg: 'I carri si muovono!' }; } const WG = wag && GFX.yard && GFX.yard[wag.key + ':' + wag.k];
+        fitR = WG ? { W: Math.min(sty.W, WG.L - .6), H: Math.min(Hh, 2.6), r: new THREE.Vector3(nn.z, 0, -nn.x) } : vehOf(h.object) ? { W: Math.min(sty.W, 3), H: Math.min(Hh, 1), r: new THREE.Vector3(nn.z, 0, -nn.x) } : wallRect(c, nn, sty.W, Hh, cands(c.x, c.z)); }
       if (!fitR && (style === 'tag' || style === 'mtag')) fitR = { W: Math.min(sty.W, .7), H: Math.min(sty.H, .45), r: new THREE.Vector3(nn.z, 0, -nn.x) };   // [writer] la tag si fa ovunque: un palo, un cassonetto, una gomma, una porta stretta
       if (!fitR) return { msg: `Qui il muro non basta per un ${sty.nome}: cerca una parete più larga.` };
       nw.W = fitR.W; nw.H = fitR.H; nw.gfxRect = { c, n: nn, r: fitR.r, W: fitR.W, H: fitR.H, obj: h.object }; nw.pos = { x: c.x, y: c.y, z: c.z };
+      if (wag && GFX.yard && GFX.yard[wag.key + ':' + wag.k]) { nw.surf = 'vagone'; nw.cons = wag.key; nw.wk = wag.k; nw.gfxRect.obj = GFX.yard[wag.key + ':' + wag.k].g; nw.gfxRect.veh = true; }   // [ferrovia] il velo sta sul carro e parte con lui
       { const vid = vehOf(h.object); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v && v.police) { G.feed(st, 'Stai bombando una volante dei Grigi. Se ti vedono, è finita.', 'bad'); nw.cop = true; } } }
       addWork(st, nw); W.cur = nw;
       const g = { art: art(nw), drawn: 0 };
@@ -32550,15 +32798,17 @@ var Writing = (function () {
           GFX.train.grp.visible = !far;
           if (!far) GFX.train.cars.forEach((c, i) => { const q = carPose(tr, i); c.g.position.set(q.x, q.h, q.y); c.g.rotation.set(0, -q.ang, q.pitch, 'YXZ'); });
         }
+        if (GFX.train) yardFrame(st, sc, cx, cy);   // [ferrovia] i carri fermi negli scali (e quelli che partono)
         // i lavori: quelli che non hanno ancora la grafica (della notte, o di prima) vicino alla camera
         const now = performance.now();
         if (now - (GFX.scanT || 0) > 150) {
           GFX.scanT = now; let n = 0; const t0 = performance.now();
-          const near = W.works.filter(w => !GFX.works[w.id] && !w.erased && !(w.gfxFail > 3)).map(w => { const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); return [w, w.surf === 'treno' ? 0 : sp ? hyp(sp.x - cx, sp.y - cy) : 1e9]; }).filter(a => a[1] < 80).sort((a, b) => a[1] - b[1]).map(a => a[0]);
+          const near = W.works.filter(w => !GFX.works[w.id] && !w.erased && !(w.gfxFail > 3)).map(w => { const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (w.surf === 'vagone') { const c = consOf(st, w.cons), q = c && wagPose(st, c, w.wk); return [w, q ? hyp(q.x - cx, q.y - cy) : 1e9]; } return [w, w.surf === 'treno' ? 0 : sp ? hyp(sp.x - cx, sp.y - cy) : 1e9]; }).filter(a => a[1] < 80).sort((a, b) => a[1] - b[1]).map(a => a[0]);
           for (const w of near) {
             if (performance.now() - t0 > 14) break;
             if (GFX.works[w.id] || w.erased || w.gfxFail > 3) continue;
             if (w.surf === 'treno') { if (!GFX.train) continue; const tgt = trainTarget(w); if (!tgt) continue; GFX.works[w.id] = { tgt, art: art(w), drawn: 0 }; n++; continue; }
+            if (w.surf === 'vagone') { if (!w.gfxRect) { const rc2 = wagRect(w); if (!rc2) continue; w.gfxRect = rc2; } w.pos = { x: w.gfxRect.c.x, y: w.gfxRect.c.y, z: w.gfxRect.c.z }; const g = { art: art(w), drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; n++; continue; }   // [ferrovia] sui carri fermi
             const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (!sp || hyp(sp.x - cx, sp.y - cy) > 80) continue;
             if (!w.gfxRect && !placeWall(w)) { w.gfxFail = (w.gfxFail || 0) + 1; continue; }
             const g = { art: art(w), drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; n++;
@@ -32569,7 +32819,8 @@ var Writing = (function () {
         for (const id in GFX.works) {
           const g = GFX.works[id], w = byId.get(+id);
           if (w && w.surf === 'auto') { const v = st.vehicles.find(x => x.id === w.veh); if (!v || v.wreck) { w.erased = true; } else if (g.tgt && g.tgt.mesh) { let o = g.tgt.mesh; while (o.parent) o = o.parent; if (o !== sc) { delete GFX.works[id]; w.gfxRect = null; continue; } w.pos = { x: v.x, y: w.pos ? w.pos.y : 1, z: v.y }; } }
-          if (w && !w.erased && w.surf !== 'treno' && w.pos && hyp(w.pos.x - cx, w.pos.z - cy) > 140 && w !== W.cur) {
+          if (w && w.surf === 'vagone' && g.tgt && g.tgt.mesh) { let o = g.tgt.mesh; while (o.parent) o = o.parent; if (o !== sc) { delete GFX.works[id]; if (!w.erased) w.gfxRect = null; continue; } }   // il carro è partito (o rifatto): il velo va con lui
+          if (w && !w.erased && w.surf !== 'treno' && w.surf !== 'vagone' && w.pos && hyp(w.pos.x - cx, w.pos.z - cy) > 140 && w !== W.cur) {
             if (g.tgt && g.tgt.mesh) { if (g.tgt.mesh.parent) g.tgt.mesh.parent.remove(g.tgt.mesh); g.tgt.mesh.geometry.dispose(); g.tgt.mesh.material.dispose(); if (g.tgt.tex) g.tgt.tex.dispose(); }
             delete GFX.works[id]; continue;
           }
@@ -32595,7 +32846,7 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
+  return { RAIL, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;
 </script>
@@ -32668,6 +32919,8 @@ var WriterVita = (function () {
         }
       });
     });
+    // [ferrovia] i muri antirumore lungo la linea: il lato verso la strada, un sito ogni 8 m
+    const RL = WR.RAIL; if (RL && RL.ok) RL.walls.forEach((Wl, k) => { if (k % 2) return; const q = WR.sidePt(Wl.s + 2, Wl.side, Wl.off + .7); if (!G.walkT(Math.floor(q.x / TS), Math.floor(q.y / TS))) return; const nx = -Math.sin(q.ang) * Wl.side, ny = Math.cos(q.ang) * Wl.side; SITES.push({ x: q.x, y: q.y, face: Math.atan2(-ny, -nx), kind: 'ferrovia', bi: -1, len: 8, out: [nx, ny], along: [Math.cos(q.ang), Math.sin(q.ang)], place: 'lungo la ferrovia' }); });
   }
   buildSites();
   const placeOf = s => { try { const p = G.nearestPlace(s.x, s.y); return p ? 'a ' + p.name : ''; } catch (e) { return ''; } };
@@ -32774,7 +33027,7 @@ var WriterVita = (function () {
       const E = start(st, n, 'writer', 'fare il treno al deposito', [goStep('va al deposito della miniera, al buio', q), paintStep('spruzza la bomboletta sul treno', (st2, n2) => WR.npcWork(st2, n2, wr, WR.TR.CARS[car].k === 'loco' ? 'burner' : 'wholecar', null, { surf: 'treno', car, side, u0: .3, vb: .25, W: L - .6, H: 2.55 })), homeStep()]);
       return E;
     }
-    const s = freeSite(st, kind === 'heaven' ? ['heaven'] : kind === 'hall' ? ['hall'] : ['strada', 'hall'], here, 260); if (!s) return null;
+    const s = freeSite(st, kind === 'heaven' ? ['heaven'] : kind === 'hall' ? ['hall'] : ['strada', 'hall', 'ferrovia'], here, 260); if (!s) return null;
     const style = styleFor(n, s.kind);
     if (s.kind === 'heaven') {
       const L = TT.LADDERS[s.L]; if (!L) return null;

@@ -25,6 +25,16 @@ const D = 1440 * Math.floor(st.t / 1440); let jump = 0; for (let m = 0; m < 1440
 // il treno ingombra il binario
 at(23); const q2 = WR.carPose(WR.trainAt(st.t), 2); p.x = q2.x; p.y = q2.y; p.lv = null; run(.1); const d2 = Math.abs(-(p.x - q2.x) * Math.sin(q2.ang) + (p.y - q2.y) * Math.cos(q2.ang)); ok(d2 > TR.W / 2, 'chi sta sul binario col treno fermo viene spostato di lato');
 
+// la linea: il ponte, gli scali coi carri, la rete coi varchi, i muri
+const RL = WR.RAIL; ok(RL.ok && RL.yards.length >= 1, `gli scali: ${RL.yards.map(y => y.name + ' (' + y.len + ' m)').join(', ')}`);
+ok(RL.bridge[1] - RL.bridge[0] >= 60, `il ponte in terra: da ${RL.bridge[0]} a ${RL.bridge[1]} m`);
+ok(RL.gaps.length >= 3 && RL.fences.length > 50, `la rete lungo la linea con ${RL.gaps.length} varchi`);
+ok(RL.walls.length > 5, `i muri antirumore prima del mare: ${RL.walls.length} pannelli`);
+ok(RL.yards.every(Y => { const q = WR.yardAt(Y, Y.len / 2), m = WR.railAt(Y.s0 + Y.len / 2); return Math.abs(Math.hypot(q.x - m.x, q.y - m.y) - Y.off) < .3; }), 'il binario secondario corre a fianco della linea');
+{ const Ys = WR.yardState(st), c = Ys.cons[0], d0 = Math.floor(st.t / 1440); ok(c && c.cars.length >= 2 && WR.wagPose(st, c, 0), `i carri fermi: ${c.cars.map(k => k[0]).join(', ')}`);
+  c.day0 = d0 - 9; at(10); for (let i = 0; i < 200 && !c.gone; i++) { st.t += 2; G.step(st, DT, { x: 0, y: 0 }); }
+  ok(c.leave && c.gone, 'dopo qualche giorno i carri partono e se ne vanno');
+  st.t = (d0 + 1) * 1440 + 23 * 60 + 30; G.step(st, DT, { x: 0, y: 0 }); ok(!c.gone && c.cars.length >= 2, 'di notte ne arrivano di puliti'); }
 // i writer
 run(.1); const W = WR.S(st); ok(W.writers.length >= 6, `i writer dell'isola: ${W.writers.map(id => { const n = G.byId(st, id); return n.pop.writer.aka + ' ' + n.pop.writer.crew; }).join(', ')}`);
 ok(new Set(W.writers.map(id => G.byId(st, id).pop.writer.crew)).size === 3, 'tre crew');
