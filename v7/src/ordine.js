@@ -987,10 +987,11 @@ var Ordine = (function () {
     if (why !== 'fine') { n.panic = why === 'carica' ? 5 + Math.random() * 4 : 2 + Math.random() * 3; n.fleeFrom = { x: Pr.x, y: Pr.y }; }
     const PL = PO();
     if (PL && n.pop) {
-      const t = { avviso: 'alla protesta: al secondo avviso dei Grigi me ne sono andat' + (n.pop.sex === 'f' ? 'a' : 'o'), carica: 'i Grigi hanno caricato la protesta: sono scappat' + (n.pop.sex === 'f' ? 'a' : 'o'), fine: 'sono stat' + (n.pop.sex === 'f' ? 'a' : 'o') + ' alla protesta, eravamo in tanti' }[why] || 'alla protesta';
-      PL.note(st, n, t, why === 'fine' ? 'good' : 'bad', { w: why === 'carica' ? .7 : .45, tag: 'protesta' });
-      const N = n.pop.need; if (N) { if (why === 'fine') { N.rabbia = clamp((N.rabbia || 0) - .25, 0, 1); N.compagnia = clamp((N.compagnia || 0) - .3, 0, 1); } else { N.paura = clamp((N.paura || 0) + (why === 'carica' ? .25 : .1), 0, 1); N.rabbia = clamp((N.rabbia || 0) + (why === 'carica' ? .2 : .03), 0, 1); } }
-      if (n.ris && why === 'carica') n.ris.ideo = clamp(n.ris.ideo + .04, 0, 1);
+      const t = { avviso: 'alla protesta: al secondo avviso dei Grigi me ne sono andat' + (n.pop.sex === 'f' ? 'a' : 'o'), carica: 'i Grigi hanno caricato la protesta: sono scappat' + (n.pop.sex === 'f' ? 'a' : 'o'), fine: 'sono stat' + (n.pop.sex === 'f' ? 'a' : 'o') + ' alla protesta, eravamo in tanti',
+        gas: 'i lacrimogeni: non respiravo, sono scappat' + (n.pop.sex === 'f' ? 'a' : 'o') + ' piangendo', idrante: 'l\'idrante mi ha buttat' + (n.pop.sex === 'f' ? 'a' : 'o') + ' a terra, i vestiti mi gelavano addosso', spari: 'hanno sparato sulla piazza: sono scappat' + (n.pop.sex === 'f' ? 'a' : 'o') + ' senza guardarmi indietro' }[why] || 'alla protesta';   // [scontri] gas, idrante, spari
+      PL.note(st, n, t, why === 'fine' ? 'good' : 'bad', { w: why === 'spari' ? 1 : why === 'carica' || why === 'idrante' ? .7 : .45, tag: 'protesta' });
+      const N = n.pop.need; if (N) { if (why === 'fine') { N.rabbia = clamp((N.rabbia || 0) - .25, 0, 1); N.compagnia = clamp((N.compagnia || 0) - .3, 0, 1); } else { const hard = why === 'carica' || why === 'gas' || why === 'idrante' || why === 'spari'; N.paura = clamp((N.paura || 0) + (why === 'spari' ? .45 : hard ? .25 : .1), 0, 1); N.rabbia = clamp((N.rabbia || 0) + (hard ? .2 : .03), 0, 1); } }
+      if (n.ris && why !== 'fine' && why !== 'avviso') n.ris.ideo = clamp(n.ris.ideo + .04, 0, 1);
     }
   }
   function endProtest(st, Pr, how) {
@@ -1138,6 +1139,6 @@ var Ordine = (function () {
     H.verb = (st, m, T) => (m.type === 'fuga_controllo' ? 'è scappato a un controllo dei Grigi' : m.type === 'intrusione' ? 'è entrato nella zona militare' : v0 ? v0(st, m, T) : null);
   })();
 
-  return { CFG, SUPER, BERTH, QUAY, create, step, report, label, docsOf, contraband, startCheck, startProtest, sendRiot, onDuty, isCurfew, stockLevel, restock, startCoda, bloccoSlot, endBlocco, toLane };
+  return { CFG, SUPER, BERTH, QUAY, create, step, report, label, docsOf, contraband, startCheck, startProtest, sendRiot, leaveProtest, fermo,   /* [scontri] */ onDuty, isCurfew, stockLevel, restock, startCoda, bloccoSlot, endBlocco, toLane };
 })();
 if (typeof module !== 'undefined') module.exports = Ordine;
