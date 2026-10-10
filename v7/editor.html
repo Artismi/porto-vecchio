@@ -27984,7 +27984,7 @@ var Skate = (function () {
   // =====================================================================================================================
   // STATO E COMANDI
   // =====================================================================================================================
-  const S = st => st.skate || (st.skate = { owned: false, total: 0, best: 0, warn: 0, warnT: -99, emitT: -99, hint: false, line: null, lastLine: null });
+  const S = st => st.skate || (st.skate = { owned: true,   /* [writer] la tavola ce l'hai già dall'inizio, come la BMX in tasca e i due pennelli */ total: 0, best: 0, warn: 0, warnT: -99, emitT: -99, hint: false, line: null, lastLine: null });
   const on = st => !!(st.player.sk && st.player.sk.on);
   const KEYS = { w: 0, s: 0, a: 0, d: 0, sp: 0 }, MS = []; let mouseTrack = false;
   function ctl(inp) {
@@ -29322,8 +29322,36 @@ var WriterMano = (function () {
   }
   // disegna la tag-movimento in Wp × Hp: spessore dalla velocità, la goccia dove si appoggia, la frusta dove si alza;
   // i segni attorno nei vuoti; al marker la punta a scalpello, a spruzzo l'alone; le colature dai punti lenti in basso
-  function drawFlow(x, text, d, Wp, Hp, r, col, tool) {
-    const L = flowLayout(text, d), h = L.h, mark = tool === 'mtag';
+  function drawFlow(x, text, d, Wp, Hp, r, col, tool) { return renderFlow(x, flowLayout(text, d), d, Wp, Hp, r, col, tool); }
+  // ---------------- LE FIRME REGISTRATE (studio_tag.html) ----------------
+  // [writer] Le tag disegnate a mano nello studio: il gesto vero (punti, tempi, pressione), rifatto col motore della velocità.
+  // Si caricano da tag_firme.json (la cartella del gioco) e dal browser (lo studio le salva anche lì); quelle del browser
+  // vincono. Una firma registrata ha la precedenza su tutto: quel writer firma così.
+  const RECORDED = {};
+  function loadRecorded() {
+    if (typeof window === 'undefined') return;
+    const put = o => { if (o && typeof o === 'object') Object.keys(o).forEach(k => { if (o[k] && o[k].strokes) RECORDED[k] = o[k]; }); };
+    const local = () => { try { put(JSON.parse(localStorage.getItem('pv.tagFirme') || '{}')); } catch (e) { } };
+    local();
+    try { fetch('tag_firme.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(o => { put(o); local(); }).catch(() => { }); } catch (e) { }
+  }
+  // il gesto registrato → i tratti del motore: la mano trema un poco (si leva il tremolio del mouse), la velocità dai tempi
+  function recordedLayout(rec, d) {
+    const tr = [];
+    rec.strokes.forEach(st => {
+      if (!st.length) return;
+      if (st.length < 3) { tr.push({ pts: [[st[0][0], -st[0][1], 0]], main: true }); return; }
+      const sm = st.map((q, i) => { const a = st[Math.max(0, i - 1)], b = st[Math.min(st.length - 1, i + 1)]; return [(a[0] + q[0] * 2 + b[0]) / 4, (a[1] + q[1] * 2 + b[1]) / 4, q[2]]; });
+      const pts = sm.map((q, i) => { const a = sm[Math.max(0, i - 2)], b = sm[Math.min(sm.length - 1, i + 2)], dt = Math.max(1, b[2] - a[2]); return [q[0], -q[1], hyp(b[0] - a[0], b[1] - a[1]) / dt, st[i][3] != null ? st[i][3] : .5]; });
+      tr.push({ pts, main: true });
+    });
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; tr.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
+    const H = Math.max(1, y1 - y0);
+    return { tr, box: [x0, y0, x1, y1], h: { rec: true, deco: [], tacche: 0, grazie: 0, lati: false, W: (rec.w || .12) * H, flat: !!rec.flat, r: mulberry((d && d.seed) || 7) } };
+  }
+  function drawRecorded(x, rec, d, Wp, Hp, r, col, tool) { return renderFlow(x, recordedLayout(rec, d), d || {}, Wp, Hp, r, col, tool); }
+  function renderFlow(x, L, d, Wp, Hp, r, col, tool) {
+    const h = L.h, mark = tool === 'mtag';
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; L.tr.forEach(t => t.pts.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
     // i segni attorno: nei vuoti agli angoli, misura della lettera piccola
     const dec = []; h.deco.forEach((k, j) => { const cx = j % 2 ? x1 + .05 + h.r() * .12 : x0 + h.r() * .12, cy = h.lati ? (y0 + y1) / 2 + (h.r() - .3) * .4 : j < 2 ? y1 + .02 + h.r() * .1 : y0 + h.r() * .1; decoStrokes(k, cx, -cy, .2, (h.r() - .5) * .6).forEach(t => dec.push(t.map(([a, b, f]) => [a, -b, f]))); });
@@ -29335,7 +29363,7 @@ var WriterMano = (function () {
     for (let k = 0; k < h.tacche && mainPts.length; k++) { const [q, a, b] = mainPts[Math.floor(h.r() * mainPts.length)], ang = Math.atan2(b[1] - a[1], b[0] - a[0]) + 1.25 + (h.r() - .5) * .4, l = .13 + h.r() * .08; dec.push([[q[0] - Math.cos(ang) * l, q[1] - Math.sin(ang) * l], [q[0] + Math.cos(ang) * l, q[1] + Math.sin(ang) * l]]); }
     dec.forEach(t => t.forEach(([a, b]) => { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }));
     const pad = h.W * 1.2, sc = Math.min(Wp * .94 / (x1 - x0 + 2 * pad), Hp * .9 / (y1 - y0 + 2 * pad)), ox = Wp / 2 - (x0 + x1) / 2 * sc, oy = Hp / 2 + (y0 + y1) / 2 * sc;
-    const P = ([a, b, v]) => [ox + a * sc, oy - b * sc, v || 0], W = h.W * sc, nibA = d.nibA != null ? d.nibA : -.75, path = [];
+    const P = ([a, b, v, pr]) => [ox + a * sc, oy - b * sc, v || 0, pr], W = h.W * sc, nibA = d.nibA != null ? d.nibA : -.75, path = [];
     const strokes = L.tr.map(t => ({ pts: t.pts.map(P), main: t.main })).concat(dec.map(t => ({ pts: smoothC(t.map(P), 5).map(q => [q[0], q[1], 1]), deco: true })));
     // lo spessore: la velocità (normalizzata sul tratto), la goccia d'appoggio, la frusta in fondo, la punta del marker
     strokes.forEach(st => {
@@ -29344,6 +29372,7 @@ var WriterMano = (function () {
       const sl = [0]; for (let i = 1; i < n; i++) sl.push(sl[i - 1] + hyp(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1])); const Lt = sl[n - 1] || 1;
       st.w = p.map((q, i) => {
         const a = p[Math.max(0, i - 1)], b = p[Math.min(n - 1, i + 1)], dir = Math.atan2(b[1] - a[1], b[0] - a[0]), sp = st.deco ? .5 : q[2] / vm;
+        if (h.rec) { let w = W * (.55 + .9 * (q[3] != null ? q[3] : .5)) * (1.08 - .2 * Math.pow(sp, .8)) * (.6 + .4 * (1 - sstep(Lt - W * 1.2, Lt, sl[i]))); if (mark && h.flat) w *= .45 + .55 * Math.abs(Math.sin(dir - nibA)); return Math.max(.8, w); }   // [writer] la firma registrata: la mano vera ha ragione; la pressione della tavoletta, la velocità appena, la chiusa corta e tonda (niente ago)
         let w = W * (st.deco ? .42 : st.main ? 1 : .8) * (mark ? 1.12 - .4 * Math.pow(sp, .8) : 1.25 - .65 * Math.pow(sp, .8)) * (1 + .25 * (1 - sstep(0, W * 1.5, sl[i]))) * (.1 + .9 * (1 - sstep(1 - Math.min(.35, W * 3 / Lt), 1, sl[i] / Lt)));
         if (mark) w *= h.flat ? .3 + .7 * Math.abs(Math.sin(dir - nibA)) : .86 + .14 * Math.abs(Math.sin(dir - nibA));   // la punta piatta a scalpello (grosso e sottile) o il marker tondo
         return Math.max(.8, w * (1 + .06 * Math.sin(i * .3 + n) + .03 * (r() - .5)));
@@ -29477,6 +29506,7 @@ var WriterMano = (function () {
   }
   // disegna la tag di questa mano in un riquadro Wp × Hp; ritorna i punti del percorso (per la mano che la ripassa)
   function handTag(x, text, d, Wp, Hp, r, col, tool) {
+    { const R = !d.goth && RECORDED[DEACC(text)]; if (R) return drawRecorded(x, R, d, Wp, Hp, r, col, tool); }   // [writer] la firma registrata nello studio
     { const S = !d.goth && SIGNED[DEACC(text)]; if (S) return drawSigned(x, S, Wp, Hp, r, col, tool, d); }   // [writer] la firma disegnata, se ce l'ha
     if (!d.goth && !d.oldHand) return drawFlow(x, text, d, Wp, Hp, r, col, tool);   // [writer] la tag come movimento
     if (d.st && STILI[d.st] && !d.goth) d = Object.assign({}, d, STILI[d.st]);
@@ -29516,9 +29546,10 @@ var WriterMano = (function () {
     x.restore();
     return { path, W };
   }
-  return { STILI, A, HS, SIGNED, GEST, flowLayout, drawFlow, handLayout, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
+  return { STILI, A, HS, SIGNED, GEST, RECORDED, loadRecorded, recordedLayout, drawRecorded, flowLayout, drawFlow, handLayout, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
 })();
 if (typeof module !== 'undefined') module.exports = WriterMano;
+else WriterMano.loadRecorded();
 </script>
 <script>/* Porto Vecchio — il disegno dei lavori dei writer (v7, «Writer»). Solo canvas 2D, nessuna dipendenza da three.js.
    Un lavoro (writing.js: { style, aka, pal, seed, W, H, crew, ... }) diventa una serie di TAPPE, immagini intere da svelare
@@ -30594,6 +30625,7 @@ var Writing = (function () {
   // ---------------- STATO ----------------
   function S(st) {
     if (!st.wr) st.wr = { aka: null, crew: null, fame: 0, works: [], beef: {}, resp: {}, writers: [], mode: 'libero', canUse: 0, mkUse: 0, nextId: 1, night: -1, morning: -1, greeted: {}, train: { sides: {}, runDay: -1 }, offer: null, done: { tag: 0, throw: 0, pezzo: 0, burner: 0, wholecar: 0 } };
+    if (!st.wr.kit) { st.wr.kit = true; const O = OG(); if (O) { const inv = O.inv(st); inv.bomboletta = (inv.bomboletta || 0) + 4; inv.pennarello = (inv.pennarello || 0) + 1; } }   // [writer] i due pennelli dall'inizio: la bomboletta e il pennarello
     return st.wr;
   }
   const playerAka = st => S(st).aka || 'NINO';

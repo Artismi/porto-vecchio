@@ -77,3 +77,9 @@ Il buff: i muri vengono ripuliti dopo qualche giorno; il treno si lava dopo tre 
 ## Prove
 `node test_tetti.js` (scale, salita, bordo, salto fra due tetti, caduta) · `node test_writing.js` (linea, orario,
 spinta, crew, notte, fama, heaven spot, crossaggi, lavaggio, menu, pennarello) · `node test_writer_vita.js`.
+
+## Studio tag (le firme disegnate a mano)
+- `v7/studio_tag.html`: si sceglie il writer, si disegna la tag col mouse o la tavoletta (punti, tempi, pressione), le anteprime mostrano la resa del gioco a bomboletta e a pennarello. «Salva firma» la scrive nel browser e, col server di AVVIA.bat, in `v7/tag_firme.json` (endpoint `POST /api/tag_firme` in server.js, con `tag_firme.backup.json`).
+- Il gioco carica le firme da `tag_firme.json` e dal browser (`WriterMano.loadRecorded`); una firma registrata vince su tutto (`handTag`: registrata → disegnata (SIGNED) → generata col movimento sigma-lognormale).
+- La resa delle firme registrate è fedele: la pressione della tavoletta, la velocità appena, la chiusa corta e tonda.
+- Il giocatore parte coi gadget: la BMX in tasca, lo skate (`st.skate.owned`), 4 bombolette e il pennarello.
