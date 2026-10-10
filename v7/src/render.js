@@ -10553,6 +10553,28 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
 
   // ---------------- INIZIALIZZAZIONE ----------------
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
+  // [30fps] IL NUMERO DELLE LUCI NON CAMBIA MAI. In Three.js il numero di luci puntiformi e faretti fa parte di ogni shader:
+  // se cambia (entri in una casa: +6 luci; un incendio, il sottosuolo, il cantiere, l'elicottero) TUTTI i materiali in vista si
+  // ricompilano insieme, e il gioco si pianta per secondi. Ogni luce aggiunta a qualunque oggetto si registra qui; prima di ogni
+  // fotogramma si tengono le STAB.np puntiformi (e i faretti del budget) accese e più vicine, le altre si escludono (strato 30,
+  // senza toccare il loro visible), e se mancano si completano con luci vuote. Il budget dei faretti ha due stati, giorno e notte
+  // (i lampioni), già compilati all'avvio.
+  const LREG30 = new Set(), STAB = { np: 10, nsDay: 2, nsNight: 14, pads: { p: [], s: [] }, v: new THREE.Vector3() };
+  { const add0 = THREE.Object3D.prototype.add; THREE.Object3D.prototype.add = function () { const r = add0.apply(this, arguments); for (let i = 0; i < arguments.length; i++) { const o = arguments[i]; if (!o || !o.isObject3D) continue; if (o.isLight) LREG30.add(o); else if (o.children.length) o.traverse(c => { if (c.isLight) LREG30.add(c); }); } return r; }; }
+  function stabOn(l) { let p = l; while (p) { if (!p.visible) return false; if (p === scene) return true; p = p.parent; } return false; }
+  function stabFit(list, n, kind) {
+    const cp = camera ? camera.position : STAB.v; list.forEach(l => { l.getWorldPosition(STAB.v); l.userData.__sk = (l.intensity > 0 ? 0 : 1e7) + STAB.v.distanceToSquared(cp); });
+    list.sort((a, b) => a.userData.__sk - b.userData.__sk);
+    list.forEach((l, i) => { if (i < n) { if (l.userData.__lm !== undefined) { l.layers.mask = l.userData.__lm; delete l.userData.__lm; } } else if (l.userData.__lm === undefined) { l.userData.__lm = l.layers.mask; l.layers.set(30); } });
+    const P = STAB.pads[kind], need = Math.max(0, n - list.length);
+    while (P.length < n) { const l = kind === 'p' ? new THREE.PointLight('#000000', 0, .01) : new THREE.SpotLight('#000000', 0, .01); l.userData.pad = 1; l.position.set(0, -900, 0); if (l.target) { l.target.position.set(0, -901, 0); scene.add(l.target); } scene.add(l); P.push(l); }
+    P.forEach((l, i) => { l.visible = i < need; });
+  }
+  function stabLights() {
+    if (!scene) return; const pts = [], sps = []; if (!STAB.scan) { STAB.scan = true; scene.traverse(o => { if (o.isLight) LREG30.add(o); }); }
+    LREG30.forEach(l => { if (l.userData.pad) return; if (!l.parent) { LREG30.delete(l); return; } if (!stabOn(l)) return; if (l.isPointLight) pts.push(l); else if (l.isSpotLight) sps.push(l); });
+    stabFit(pts, STAB.np, 'p'); stabFit(sps, dyn.lampsOn ? STAB.nsNight : STAB.nsDay, 's');
+  }
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     renderer.debug.checkShaderErrors = typeof location !== 'undefined' && /[?&]shaderdebug/.test(location.search);   // [30fps] leggere il registro dello shader appena compilato costringe ad aspettare la compilazione (fino a centinaia di ms per materiale nuovo, camminando): solo con ?shaderdebug
@@ -11376,7 +11398,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     // [leggero] di giorno i lampioni (12 faretti con ombra, 8 punti) si tolgono davvero: in Three.js una luce a intensità 0 costa
     // come una accesa, su ogni pixel di ogni oggetto. Si cambia al tramonto e all'alba; gli shader per tutti e due gli stati sono pronti dall'avvio
     const lampsOn = night > (dyn.lampsOn ? .012 : .025);
-    if (!dyn.lampsPre && renderer && scene && camera) { dyn.lampsPre = true; try { [true, false].forEach(v => { LPOOL.forEach(l => { l.visible = v; }); renderer.compile(scene, camera); }); } catch (e) { } dyn.lampsOn = undefined; }
+    if (!dyn.lampsPre && renderer && scene && camera) { dyn.lampsPre = true; try { [true, false].forEach(v => { LPOOL.forEach(l => { l.visible = v; }); dyn.lampsOn = v; stabLights(); renderer.compile(scene, camera); }); } catch (e) { } dyn.lampsOn = undefined; }   // [30fps] coi conti delle luci stabilizzati
     if (lampsOn !== dyn.lampsOn) { dyn.lampsOn = lampsOn; LPOOL.forEach(l => { l.visible = lampsOn; if (l.shadow) l.shadow.needsUpdate = true; }); if (!lampsOn) { SPOOL.forEach(l => { l.intensity = 0; l.userData.cone.visible = false; }); dyn.lsp = []; dyn.lpp = []; } }
     if (!lampsOn) return;
     if (frameN % 4 === 1 || !dyn.lsp) {
@@ -11415,8 +11437,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   const WARM = { n: 0 };
   function warmShaders() {
     WARM.n++; if (WARM.n !== 3 && WARM.n !== 150) return;
-    const hid = []; scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } });
-    try { renderer.compile(scene, camera); } catch (e) { console.warn('[shader]', e); }
+    const hid = []; scene.traverse(o => { if (!o.visible && !o.isLight && !(o.userData && o.userData.pad)) { hid.push(o); o.visible = true; } });   // [30fps] le luci restano come sono: si compila coi conti veri
+    stabLights(); try { renderer.compile(scene, camera); } catch (e) { console.warn('[shader]', e); }
     hid.forEach(o => { o.visible = false; });
   }
   // [alleggerimento] chi si allontana lascia il modello in serbo invece di buttarlo: tornando vicino (o tu tornando indietro)
@@ -11719,7 +11741,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       const sx = moon.position.x - moon.target.position.x, sy = moon.position.y - moon.target.position.y, sz = moon.position.z - moon.target.position.z, sl = Math.hypot(sx, sy, sz) || 1;
       const turn = 1 - (sx * F.dx + sy * F.dy + sz * F.dz) / sl;
       if (frameN % 2 === 0 || mv > .5 || turn > .0004) { moon.shadow.needsUpdate = true; F.x = cp.x; F.y = cp.y; F.z = cp.z; F.dx = sx / sl; F.dy = sy / sl; F.dz = sz / sl; } }
-    renderer.setRenderTarget(rt); warmShaders(); renderer.render(scene, camera);   // [alleggerimento] la precompilazione va fatta sul bersaglio vero
+    renderer.setRenderTarget(rt); warmShaders(); stabLights(); renderer.render(scene, camera);   // [alleggerimento] la precompilazione va fatta sul bersaglio vero
     renderer.setRenderTarget(null); ambPasses();   /* [amb2] */
     const U = postMat.uniforms;
     U.tC.value = paintPass(); U.tD.value = rt.depthTexture;   /* [amb3] la scena dipinta */ U.near.value = camera.near; U.far.value = camera.far;

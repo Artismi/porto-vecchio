@@ -53,3 +53,18 @@ Risultato (stesso punto, media di 8 fotogrammi): 4.313 → 3.141 chiamate, 7,0 �
 - Il controllo dei primi 90 fotogrammi (`R.lowQuality`) col limite scatta sotto i 24 fps (prima: sotto i 32, che col limite
   sarebbe scattato sempre).
 - F9 mostra «NN/30 fps».
+
+## Perché si piantava (misure del 10 ottobre, profilo CPU camminando 40 s)
+- **60% del tempo: compilazione degli shader** (`getProgramInfoLog`). All'avvio 452 programmi; camminando ~20 nuovi al minuto,
+  ognuno un blocco. Le chiavi dei programmi cambiavano soprattutto per il NUMERO DI LUCI (puntiformi 11, 12, 16, 19, 28;
+  faretti 2 o 14): ogni volta che cambia (una casa: +6 luci, un incendio, il sottosuolo, il cantiere, i lampioni) Three.js
+  ricompila tutti i materiali in vista insieme → secondi di blocco.
+  - `render.js` STAB: ogni luce aggiunta a qualunque oggetto si registra (Object3D.add); prima di ogni fotogramma si tengono
+    10 puntiformi e 2/14 faretti (giorno/notte: i lampioni), le più vicine e accese; le altre si escludono con lo strato 30
+    (il loro `visible` resta di chi le usa), le mancanti si completano con luci vuote. warmShaders e la precompilazione dei
+    lampioni compilano coi conti stabilizzati (e senza riaccendere le luci spente).
+  - `renderer.debug.checkShaderErrors` solo con `?shaderdebug`: leggere il registro subito dopo il link costringe ad aspettare.
+- **15–25%: caricamento di geometrie** (`bufferData`): blocchi, persone e vestiti nuovi.
+- **I tetti** (`tetti.js`): centinaia di raggi per casa, due case ogni 60 ms, tutti insieme → ora una fila alla volta, 3 ms per
+  fotogramma.
+- I cicli degli altri moduli (`requestAnimationFrame` di skate, tetti, cantiere...) girano una volta per fotogramma disegnato.
