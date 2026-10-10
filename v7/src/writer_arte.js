@@ -825,7 +825,7 @@ var WriterArte = (function () {
     for (const k of [-1, 0, 1]) pass(x, { strokes, arrows: k ? [] : arrowsL, w0: w2 }, w2, col, (dx || 0) + ux * k, (dy || 0) + uy * k, J, Cp);
   }
   function art(w) {
-    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), Wp = Math.round(w.W * PPM), Hp = Math.round(w.H * PPM), text = w.words || w.aka || 'NINO';
+    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = /^(tag|mtag|gotico)$/.test(w.style) && w.surf !== 'treno' ? 3 : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
     const C = choose(w), q = C.q, stages = [], paths = [], radii = [];
     const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: w.style === 'mtag' })); };
     const toy = q < .35;
@@ -836,7 +836,7 @@ var WriterArte = (function () {
       const res = WM.handTag(x, text, d, Wp - signW, Hp, r, w.style === 'gotico' && !w.col ? '#101012' : col, w.style === 'gotico' ? 'tag' : w.style);
       if (w.sign) sign(x, w.sign, Wp - signW * .55, Hp * .5, signW * .55, w.style === 'mtag' ? '#f2efe6' : col);
       snap(c); paths.push(res.path.filter((q, i) => i % 2 === 0).concat(w.sign ? [[Wp - signW * .55, Hp * .5]] : [])); radii.push(Math.max(res.W * 2.2, Hp * .1));
-      return { stages, paths, radii, Wp, Hp, C };
+      return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK };
     }
     const c = cv(Wp, Hp), x = c.getContext('2d');
     if (FAM[C.fam] && (FAM[C.fam].fat && w.style !== 'wholecar' || /^(block|heavy|semi|wild|spiky|piatto|astratto)$/.test(C.fam) && w.style !== 'throw')) { bubbleArt(w, P, C, r, Wp, Hp, snap, paths, radii, x); SQ = 0; CUT = 0; return { stages, paths, radii, Wp, Hp, C }; }   // [writer] le bolle, e i pezzi costruiti sulle bolle   // le lettere a bolla
