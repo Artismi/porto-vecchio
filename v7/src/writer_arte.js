@@ -334,7 +334,7 @@ var WriterArte = (function () {
         const mx = Wp * (.05 + r() * .2); bg.fillStyle = 'rgba(0,0,0,.45)'; bg.fillRect(mx, Hp * .3, Hp * .08, Hp * .7); bg.fillStyle = 'rgba(220,220,220,.35)'; for (let k = 0; k < 5; k++) { bg.beginPath(); bg.arc(mx + Hp * (.06 + k * .07), Hp * (.25 - k * .04), Hp * (.06 + k * .02), 0, 7); bg.fill(); }   // la miniera che fuma
       }
       for (let k = 0; k < (full ? 30 : 12); k++) sparkle(bg, r() * Wp, r() * Hp * .6, Hp * (.015 + r() * .025), 'rgba(255,255,255,.85)');
-      if (full) { const n = 10 + Math.floor(r() * 6); bg.save(); for (let k = 0; k < n; k++) { const a = Wp * (k + r() * .6) / n, b = Hp * (.92 + r() * .08), rr = Hp * (.07 + r() * .07); bg.fillStyle = P.o; bg.beginPath(); bg.arc(a, b, rr + 3, 0, 7); bg.fill(); bg.fillStyle = P.k; bg.beginPath(); bg.arc(a, b, rr, 0, 7); bg.fill(); } bg.restore(); } else bg.restore();
+      if (full === true) { const n = 10 + Math.floor(r() * 6); bg.save(); for (let k = 0; k < n; k++) { const a = Wp * (k + r() * .6) / n, b = Hp * (.92 + r() * .08), rr = Hp * (.07 + r() * .07); bg.fillStyle = P.o; bg.beginPath(); bg.arc(a, b, rr + 3, 0, 7); bg.fill(); bg.fillStyle = P.k; bg.beginPath(); bg.arc(a, b, rr, 0, 7); bg.fill(); } bg.restore(); } else bg.restore();
     } else if (kind === 'rullo') {   // il fondo a rullo: una o due campiture piatte, storte, coi bordi sfrangiati e le righe del rullo
       const n = r() < .5 ? 1 : 2;
       for (let k = 0; k < n; k++) { const col = k ? P.d : P.bg, mx = Wp * (.03 + r() * .06), my = Hp * (.06 + r() * .1), x0 = mx + (k ? Wp * (.2 + r() * .3) : 0), x1 = Wp - mx - (k ? 0 : Wp * r() * .1), y0 = my + (k ? Hp * .3 : 0), y1 = Hp - my, rot = (r() - .5) * .05;
@@ -982,6 +982,47 @@ var WriterArte = (function () {
     snap(x.canvas); paths.push(raster(Wp, Hp, 2)); radii.push(Hp * .2);
   }
 
+  // ================= IL WHOLE CAR =================
+  // [writer] la fiancata intera, da un capo all'altro e da sopra a sotto: il fondo (il rullo a due colori con le passate e le
+  // colature, il cielo con le nuvole, o una scena), il pezzo grande coi motori dei muri, di lato il throw-up della crew o il
+  // personaggio, poi la data, la crew e le tag dei soci negli angoli. Ogni fase è un passo del riempimento.
+  function trainArt(w, P, C, r, Wp, Hp, stages, paths, radii) {
+    const q = C.q, out = cv(Wp, Hp), x = out.getContext('2d'), push = () => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(out, 0, 0); stages.push(k); };
+    // 1. il fondo: lascia un filo di carro nudo sopra e sotto, sfrangiato (il rullo non arriva al bordo)
+    const BG = cv(Wp, Hp), b = BG.getContext('2d'), kind = w.bgk && w.bgk !== 'rullo' ? 'scena' : pickR(r, ['rullo', 'rullo', 'cielo', 'cielo', 'scena']), m0 = Hp * (.03 + r() * .03), m1 = Hp * (.03 + r() * .04);
+    if (kind === 'scena') background(b, w.bgk && w.bgk !== 'rullo' ? w.bgk : pickR(r, ['sole', 'skyline', 'radici']), P, Wp, Hp, r, 'treno');
+    else if (kind === 'cielo') { const g = b.createLinearGradient(0, 0, 0, Hp); g.addColorStop(0, shade(P.bg, -.25)); g.addColorStop(.6, P.bg); g.addColorStop(1, shade(P.bg, .3)); b.fillStyle = g; b.fillRect(0, 0, Wp, Hp);
+      const M = cv(Wp, Hp), mx = M.getContext('2d'); mx.fillStyle = '#fff'; for (let xx = -Hp * .2; xx < Wp + Hp * .2; xx += Hp * (.18 + r() * .2)) { mx.beginPath(); mx.arc(xx, Hp * (.82 + r() * .12), Hp * (.12 + r() * .14), 0, 7); mx.fill(); }   // le nuvole basse, fuse
+      const Cl = blurThresh(M, Hp * .03, .5), ck = Cl.getContext('2d'); ck.globalCompositeOperation = 'source-in'; ck.fillStyle = shade(P.bg, .7); ck.fillRect(0, 0, Wp, Hp); b.save(); b.filter = `blur(${(Hp * .01).toFixed(1)}px)`; b.drawImage(Cl, 0, 0); b.restore();
+      for (let k = 0; k < 14; k++) sparkle(b, r() * Wp, Hp * (.08 + r() * .45), Hp * (.02 + r() * .03), 'rgba(255,255,255,.85)'); }
+    else { const c0 = P.bg, c1 = pickR(r, [P.d, shade(P.bg, -.35), P.f[0]]), yb = Hp * (.5 + r() * .2); b.fillStyle = c0; b.fillRect(0, 0, Wp, Hp); b.fillStyle = c1; b.beginPath(); b.moveTo(0, yb); for (let xx = 0; xx <= Wp; xx += Hp * .12) b.lineTo(xx, yb + Math.sin(xx / Hp * 2.1 + r()) * Hp * .03); b.lineTo(Wp, Hp); b.lineTo(0, Hp); b.closePath(); b.fill();
+      b.save(); b.globalAlpha = .07; for (let yy = 0; yy < Hp; yy += Hp * (.035 + r() * .03)) { b.fillStyle = r() < .5 ? '#000' : '#fff'; b.fillRect(0, yy, Wp, Hp * (.012 + r() * .02)); } b.restore();   // le passate del rullo
+      b.fillStyle = c0; for (let k = 0; k < Wp / (Hp * .25); k++) { const xx = r() * Wp, l = Hp * (.03 + r() * r() * .18), wd = Hp * (.008 + r() * .01); b.fillRect(xx, yb - 2, wd, l); b.beginPath(); b.arc(xx + wd / 2, yb + l, wd * .6, 0, 7); b.fill(); } }   // le colature del colore di sopra
+    { b.save(); b.globalCompositeOperation = 'destination-out'; b.fillStyle = '#000'; const edge = (y0, dir) => { b.beginPath(); b.moveTo(0, dir < 0 ? 0 : Hp); for (let xx = 0; xx <= Wp; xx += Hp * .04) b.lineTo(xx, y0 + (r() - .5) * Hp * .02); b.lineTo(Wp, dir < 0 ? 0 : Hp); b.closePath(); b.fill(); }; edge(m0, -1); edge(Hp - m1, 1); b.restore(); }
+    x.drawImage(BG, 0, 0); stages.push(handify(out, (w.seed || 1) * 7 + 1, q, {})); paths.push(raster(Wp, Hp, 6)); radii.push(Hp * .13);
+    // 2. il pezzo grande: alto quasi quanto la fiancata, a sinistra o al centro
+    const side = r() < .55 ? (r() < .5 ? 'crew' : 'mostro') : null, pw = w.W * (side ? .57 : .8), ph = w.H * .84, base = { aka: w.aka, crew: w.crew, words: w.words, hand: w.hand, cons: w.cons, dna: w.dna, pal: w.pal, q: w.q, by: w.by, slogan: null, bgk: null };
+    const fam = /^(block|heavy|piatto|astratto|bubble|fat|semi)$/.test(C.fam) ? C.fam : pickR(r, ['block', 'heavy', 'astratto', 'bubble', 'fat']);
+    const main = art(Object.assign({}, base, { style: 'burner', fam, W: pw, H: ph, seed: (w.seed || 1) * 3 + 1 })), ox = Math.round(side ? Wp * .03 : (Wp - main.Wp) / 2), oy = Math.round((Hp - main.Hp) / 2);
+    main.stages.forEach(s0 => { x.clearRect(0, 0, Wp, Hp); x.drawImage(BG, 0, 0); x.drawImage(s0, ox, oy); push(); });
+    const LAY = cv(Wp, Hp), ly = LAY.getContext('2d'); ly.drawImage(main.stages[main.stages.length - 1], ox, oy);
+    main.paths.forEach((pt, k) => { paths.push(pt.map(([a, bb]) => [a + ox, bb + oy])); radii.push(main.radii[k]); });
+    // 3. di lato: il throw-up della crew, o il personaggio
+    const gaps = [[Wp * .01, ox]]; let gx1 = Wp * .99;
+    if (side) { const sw = w.W * .3, sh = w.H * (side === 'mostro' ? .86 : .7), sub = art(Object.assign({}, base, side === 'mostro' ? { style: 'mostro', W: sw, H: sh, seed: (w.seed || 1) * 5 + 2 } : { style: 'throw', words: w.crew || 'PVK', W: sw, H: sh, seed: (w.seed || 1) * 5 + 2, pal: (w.pal || 0) + 3 })), sx = Math.round(Wp - sub.Wp - Wp * .025), sy = Math.round((Hp - sub.Hp) / 2 + (side === 'crew' ? Hp * .05 : 0));
+      sub.stages.forEach(s0 => { x.clearRect(0, 0, Wp, Hp); x.drawImage(BG, 0, 0); x.drawImage(LAY, 0, 0); x.drawImage(s0, sx, sy); push(); });
+      gx1 = sx; ly.drawImage(sub.stages[sub.stages.length - 1], sx, sy); sub.paths.forEach((pt, k) => { paths.push(pt.map(([a, bb]) => [a + sx, bb + sy])); radii.push(sub.radii[k]); }); }
+    gaps.push([ox + main.Wp, gx1]); if (side) gaps.push([gx1 + Wp * .27, Wp * .99]);
+    const free = gaps.filter(([a, bb]) => bb - a > Wp * .05).sort((u, v) => (v[1] - v[0]) - (u[1] - u[0]));   // gli spazi liberi, i più larghi prima
+    // 4. i dettagli: la data e la crew in basso, le tag dei soci, solo negli spazi liberi (mai sopra il pezzo)
+    x.clearRect(0, 0, Wp, Hp); x.drawImage(BG, 0, 0); x.drawImage(LAY, 0, 0);
+    const ink = lum(P.bg) > .55 ? '#141418' : '#f2efe6', d = new Date(2026, 9, 1 + Math.floor(r() * 28)), date = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`;
+    const G0 = free[0], G1 = free[1] || free[0];
+    if (G0) { smallTag(x, (w.crew || 'PVK') + ' CREW', (G0[0] + G0[1]) / 2, Hp - m1 - Hp * .08, Hp * .065, ink, r, (G0[1] - G0[0]) * .9); smallTag(x, date, (G1[0] + G1[1]) / 2, Hp - m1 - Hp * (G1 === G0 ? .18 : .08), Hp * .06, ink, r, (G1[1] - G1[0]) * .9); }
+    if (WM && WM.handTag) for (let k = 0; k < Math.min(free.length * 2, 2 + Math.floor(r() * 2)); k++) { const Gk = free[k % free.length], tw = Math.min(Wp * .07, (Gk[1] - Gk[0]) * .85), th = Hp * .16, tc = cv(Math.round(tw), Math.round(th)), nm = pickR(r, ['KEOS', 'DUNE', 'RAKE', 'ZORA', 'NEMO', 'KRAN', 'BLES', w.aka || 'PV']); WM.handTag(tc.getContext('2d'), nm, Object.assign({}, WM.dna(Math.floor(r() * 1e6)), { skill: .8 }), tc.width, tc.height, r, ink, 'mtag'); x.drawImage(tc, Gk[0] + (Gk[1] - Gk[0] - tw) * r(), k < free.length ? m0 + Hp * .02 : Hp * .4); }   // le tag dei soci
+    push(); paths.push(raster(Wp, Hp, 2)); radii.push(Hp * .15);
+  }
+  const lum = h => { const n = parseInt(String(h).slice(1, 7), 16); return ((n >> 16) * .3 + ((n >> 8) & 255) * .59 + (n & 255) * .11) / 255; };
   // ================= IL LAVORO =================
   const PPM = 100;   // pixel per metro (alto: i bordi netti anche da vicino)
   // i punti dei tratti, uno ogni step pixel, lettera dopo lettera: il percorso della mano
@@ -1024,6 +1065,7 @@ var WriterArte = (function () {
       snap(c); paths.push(res.path.filter((q, i) => i % 2 === 0).concat(w.sign ? [[Wp - signW * .55, Hp * .5]] : [])); radii.push(Math.max(res.W * 2.2, Hp * .1));
       return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK };
     }
+    if (w.style === 'wholecar' && !w.flat) { trainArt(w, P, C, r, Wp, Hp, stages, paths, radii); return { stages, paths, radii, Wp, Hp, C }; }   // [writer] la fiancata intera
     const c = cv(Wp, Hp), x = c.getContext('2d');
     if (/^(block|heavy|piatto|contorno|astratto)$/.test(C.fam) && w.style !== 'throw' && w.style !== 'wholecar') { blockArt(w, P, C, r, Wp, Hp, snap, paths, radii, x); return { stages, paths, radii, Wp, Hp, C }; }   // le lettere blockbuster
     if (FAM[C.fam] && (FAM[C.fam].fat && w.style !== 'wholecar' || /^(block|heavy|semi|wild|spiky|piatto|astratto)$/.test(C.fam) && w.style !== 'throw')) { bubbleArt(w, P, C, r, Wp, Hp, snap, paths, radii, x); SQ = 0; CUT = 0; return { stages, paths, radii, Wp, Hp, C }; }   // [writer] le bolle, e i pezzi costruiti sulle bolle   // le lettere a bolla

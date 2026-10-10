@@ -47,7 +47,6 @@ Righe segnate `[planimetrie]`, `[design]`, `[disgelo]`, `[negozi]`.
 - `test_vita` e `test_azioni` non sono verificati: superano i 200 s anche sul codice di partenza.
 
 ## Da fare
-- Gli scaffali Kenney (`bookcaseOpen`) espongono la merce solo se sono bassi: i piani di quelli alti non sono misurati.
 - Le vetrine si rifanno solo rientrando nel negozio.
 
 ## Vissuto e cinematografico (10 ottobre, sera) — righe `[vissuto]`, `[stile]`
@@ -66,3 +65,13 @@ Righe segnate `[planimetrie]`, `[design]`, `[disgelo]`, `[negozi]`.
 - **Luce da film** (interni_arte.js `ombreLuci`): ombra morbida sotto ogni mobile; pozze di luce calda sotto lampade, abat-jour, jukebox e lumini; luce fredda davanti alle TV.
 - **Muri**: ombra in basso, in alto e negli angoli; graffi all'altezza delle spalliere, ditate, intonaco saltato. Sul pavimento l'ombra lungo i muri.
 - **Pezzi rifatti a mano** (`KITRE`): registratore di cassa, banco, distributore, macchina del caffè, lavatrice, secchio, cassa acustica, sgabelli, cibo, macchinette mangiasoldi; il jukebox è stato rifatto.
+
+- **Sala giochi** (`[stile]`): cabinati, flipper, gru dei peluche, air hockey e il biliardino nuovo (`ia_biliardino`) rifatti nello stile anni '80. Tolti la pedana da ballo e il canestro, fuori epoca. La sala giochi è la stanza più grande dell'edificio. Tolto il fornello dalla sala del bar.
+- **Il resto del kit rifatto a mano** (`KITRE`, `[stile]`, stesse misure e altezze dei piani):
+  - sedie da cucina, poltroncina girevole da ufficio, scrivania da impiegato (di legno o di lamiera), comò basso;
+  - scaffali aperti con libri e soprammobili nelle case, faldoni, scatole e barattoli nei posti di lavoro (`opt.room`); armadi di legno o di lamiera;
+  - poltroncine del cinema, water, lavandino a colonna, doccia con la tenda;
+  - cucina smaltata, lavello con la tendina, mobile base in formica;
+  - panca, scatoloni, tavolo tondo, banco da lavoro.
+  - Letti, divano, tavolini, tavolo, frigo, piante, attaccapanni, vasca e mobile della TV passano ai pezzi di design.
+  - Gli scaffali alti espongono la merce nei negozi.

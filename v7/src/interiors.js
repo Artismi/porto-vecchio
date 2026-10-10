@@ -186,6 +186,7 @@ var Interior = (function () {
     ia_tavolo_design: [1.8, .95, 1], ia_sedia_design: [.45, .45, 0], ia_cucina_componibile: [3.24, .65, 1], ia_frigo_design: [.7, .65, 1], ia_lavabo_design: [.84, .5, 1], ia_vasca_design: [1.7, .76, 1],
     ia_boombox: [.52, .2, 0], ia_skate: [.8, .3, 0], ia_serra: [1.4, .5, 1],   // [disgelo]
     ia_cartacce: [.6, .4, 0], ia_macchia: [.9, .7, 0],   // [vissuto] lo sporco per terra
+    ia_biliardino: [1.45, .85, 1],   // [stile]
     ia_mobile_dipinto: [1.24, .5, 1], ia_lampada_casco: [.45, .45, 0], ia_casse_crate: [.6, .3, 0], ia_letto_patchwork: [1.05, 2.1, 1], ia_ventilatore: [.4, .4, 0],
     ia_portasciugamani: [.6, .3, 0], ia_consolle_ingresso: [1.1, .36, 0], ia_scarpiera: [.92, .34, 1], ia_attaccapanni_design: [.5, .5, 0], ia_scrivania_design: [1.4, .7, 1],
   };
@@ -378,7 +379,7 @@ var Interior = (function () {
     stanza_radio: ['assi', 'perline', 'bulbo', ['@radio_regime', 'ia_schedario', '^ia_mappa', '^ia_calendario']],
     lanterna: ['cemento', 'calce', 'neon', ['*ia_lanterna_faro']],
     // --- bar, trattorie, svago ---
-    sala_bar: ['scacchi|graniglia', 'crema|verde|rosso', 'bulbo', ['!@bancone|@bancone_corto|@bancone_mini', 'kitchenStove', '*@tavolino', '*@tavolino', '?*@carte', '@jukebox|ar_gambling-machine', '?st_stufa', 'ia_casse_birra', '?ar_gambling-machine', '^ia_ritratto', '^ia_tv_muro', '^ia_specchio_bar', '?^ia_insegna_neon', '^ia_menu', '^ia_freccette', '?^ia_insegna_birra', '?^ia_calendario', '~ia_giornali', '?~ia_casse_birra'], ['*@tavolino', '*@carte', '*@tavolino']],
+    sala_bar: ['scacchi|graniglia', 'crema|verde|rosso', 'bulbo', ['!@bancone|@bancone_corto|@bancone_mini', '*@tavolino', '*@tavolino', '?*@carte', '@jukebox|ar_gambling-machine', '?st_stufa', 'ia_casse_birra', '?ar_gambling-machine', '^ia_ritratto', '^ia_tv_muro', '^ia_specchio_bar', '?^ia_insegna_neon', '^ia_menu', '^ia_freccette', '?^ia_insegna_birra', '?^ia_calendario', '~ia_giornali', '?~ia_casse_birra'], ['*@tavolino', '*@carte', '*@tavolino']],
     retro: ['piastrelle|cemento', 'piastrelle|calce', 'neon', ['!st_cassaforte', 'st_cassetta', '@cucina_corta|kitchenStove', 'kitchenFridge', 'cardboardBoxClosed', 'trashcan', '?pv_banco_lavoro', '~ia_casse', '~ia_bottiglie', '^ia_calendario', '^ia_mensola', '??~ia_pistola', '?ia_scaffale_barattoli']],
     magazzino: ['cemento', 'cemento|calce', 'neon', ['ia_scaffale_metallo|bookcaseOpen', 'bookcaseOpen', 'ia_casse', 'cardboardBoxClosed', 'cardboardBoxClosed', '?pv_banco_lavoro', '~ia_sacchi', '~ia_casse', '^ia_quadro_elettrico'], ['ia_casse', 'cardboardBoxClosed', 'ia_sacchi', '*ia_casse']],
     sala_trattoria: ['cotto|scacchi', 'crema|ocra|mattoni', 'lampadario', ['!@cucina_corta', '*@tavolata', '*@tavolino', '?*@tavolino', '@bancone_corto|ia_credenza', 'st_stufa', '?fd_barrel', '^ia_ritratto', '^ia_menu', '^ia_salami', '?^ia_quadro', '?^ia_orologio'], ['*@tavolino', '*@tavolata']],
@@ -484,7 +485,7 @@ var Interior = (function () {
     corsia: ['linoleum', 'ospedale', 'neon', ['@ospedale', '@ospedale', '@ospedale', '@ospedale', 'sideTable', 'sideTable', '^ia_ritratto', '^ia_orologio', '^ia_termosifone']],
     studio_medico: ['parquet|linoleum', 'ospedale|crema', 'bulbo', ['@scrivania', 'bookcaseClosedWide', 'ia_schedario', '^ia_ritratto', '^ia_calendario']],
     videoteca: ['moquette_b', 'nero', 'neon', ['pv_banco_vendita', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'pv_banco_vendita', 'ia_tv', '^ia_poster_film', '^ia_poster_film', '^ia_insegna_neon']],
-    sala_giochi: ['moquette_b', 'nero', 'neon_rosa', ['ar_arcade-machine', 'ar_arcade-machine', 'ar_pinball', 'ar_pinball', 'ar_claw-machine', 'ar_air-hockey', 'ar_dance-machine', 'ar_gambling-machine', 'ar_basketball-game', 'ar_prizes', 'ar_cash-register', 'ar_vending-machine', '^ia_poster_disco', '^ia_insegna_neon']],
+    sala_giochi: ['moquette_b', 'nero', 'neon_rosa', ['ar_arcade-machine', 'ar_arcade-machine', 'ar_arcade-machine', 'ar_pinball', 'ar_pinball', '*ia_biliardino', 'ar_claw-machine', '*ar_air-hockey', 'ar_gambling-machine', '@cassa', 'ar_vending-machine', '^ia_poster_disco', '^ia_insegna_neon', '?^ia_poster_ribelle', '?^ia_stencil'], ['ar_arcade-machine', 'ar_pinball', '*ia_biliardino']],   // [stile] la sala giochi degli anni '80: cabinati, flipper, biliardino
     // --- mestieri: le postazioni (st_*) sono quelle di oggetti.js, si piazzano per prime ('!') ---
     forgia: ['cemento|terra', 'mattoni', 'fuoco', ['!st_forgia', '!st_saldatrice', '!pv_banco_lavoro', 'st_cassetta', 'ia_bidone', 'kitchenBar', 'ar_cash-register', '~ia_secchio_carbone', '~ia_legna', '^ia_attrezzi_muro', '^ia_attrezzi_muro', '^ia_calendario']],
     laboratorio: ['assi', 'mattoni|calce', 'bulbo', ['!st_banco_falegname', '!st_banco_falegname', '!pv_banco_lavoro', 'st_cassetta', 'kitchenBar', 'ar_cash-register', '~ia_legna', '~ia_legna', '^ia_attrezzi_muro', '^ia_calendario']],
@@ -496,7 +497,7 @@ var Interior = (function () {
     cantina_r: ['cotto', 'mattoni', 'bulbo', ['!fd_barrel', '!fd_barrel', 'ia_botti', 'ia_botti', 'kitchenBar', 'ar_cash-register', '~ia_bottiglie', '^ia_salami']],
   };
   // [roba] l'altezza dei piani d'appoggio, e che cosa ci si lascia sopra a seconda della stanza: [stanza, roba, quante volte su cento c'è]
-  const SURF = { table: .76, tableRound: .76, tableCloth: .76, ia_tavolino: .74, ia_tavolino_tondo: .74, ia_tavolo_lungo: .77, desk: .75, sideTable: .55, kitchenBar: .95, ia_bancone_bar: 1.0, kitchenCabinet: .92, ia_credenza: .9, pv_banco_vendita: .95, ia_scrivania_grande: .78, tableCoffee: .38, ia_cassapanca: .55,
+  const SURF = { table: .76, tableRound: .76, tableCloth: .76, ia_tavolino: .74, ia_tavolino_tondo: .74, ia_tavolo_lungo: .77, desk: .75, sideTable: .55, kitchenBar: .95, ia_bancone_bar: 1.0, kitchenCabinet: .92, ia_credenza: .9, pv_banco_vendita: .95, ia_scrivania_grande: .78, tableCoffee: .42, ia_cassapanca: .55,
     ia_tavolino_design: .42, ia_madia: .81, ia_comodino: .56, ia_como: .87, ia_tavolo_design: .76, ia_consolle_ingresso: .83, ia_scarpiera: .56, ia_scrivania_design: .76, ia_cucina_componibile: .92, ia_lavabo_design: .86, ia_mobile_dipinto: .88, bookcaseOpenLow: .82 };
   const DRESS = [
     [/^bagno$/, ['ia_rasoio', 'ia_profumo', 'ia_medicine', 'ia_rasoio', 'ia_profumo', 'ia_medicine', 'ia_orologio_polso'], .95],   // [design]
@@ -519,7 +520,7 @@ var Interior = (function () {
   const OPEN = { chiesa: 1, deposito: 1, officina: 1, fabbrica: 1, hangar: 1, cantiere: 1, faro: 1 };
   const MAINBIG = { banca: 1, bar: 1, pub: 1, autorimessa: 1, abbigliamento: 1, armeria: 1, trattoria: 1, circolo: 1,
     // [negozi] anche nelle botteghe la sala vendita è la stanza più grande (il magazzino dietro)
-    alimentari: 1, emporio: 1, ferramenta: 1, bottega: 1, tabacchi: 1, farmacia: 1, panetteria: 1, supermercato: 1, fruttivendolo: 1, macelleria: 1, pescheria: 1, video: 1, barbiere: 1, lavanderia: 1, sartoria: 1, cantina: 1, gelateria: 1, benzina: 1 };
+    sala_giochi: 1, alimentari: 1, emporio: 1, ferramenta: 1, bottega: 1, tabacchi: 1, farmacia: 1, panetteria: 1, supermercato: 1, fruttivendolo: 1, macelleria: 1, pescheria: 1, video: 1, barbiere: 1, lavanderia: 1, sartoria: 1, cantina: 1, gelateria: 1, benzina: 1 };
   const OPEN0 = { teatro: 1, cinema: 1, palestra: 1, cultura: 1, disco: 1, magazzino: 1 };
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -1144,7 +1145,7 @@ var Interior = (function () {
     ia_bottiglia_vino: 'bottiglia di vino', ia_barattoli: 'barattoli', ia_vasetti: 'vasetti', ia_scaffale_barattoli: 'scaffale dei barattoli', nx_wafer: 'wafer', nx_crostini: 'crostini', nx_pan_zenzero: 'pan di zenzero', nx_semi: 'semi di girasole', nx_cioccolato: 'cioccolata',
     nx_kitkat: 'barretta di cioccolato', nx_doshirak: 'zuppa liofilizzata', nx_noodles_pollo: 'noodles al pollo', nx_noodles_funghi: 'noodles ai funghi', nx_fetta_pane: 'fetta di pane', nx_agusha: 'succo di frutta', nx_maionese: 'maionese', nx_caramella: 'caramella', nx_caramella_35: 'caramella',
     nx_caramelle: 'caramelle', nx_nokia: 'telefonino', nx_lettera: 'lettera',
-    ia_bersaglio: 'bersaglio', ia_banco_tiro: 'banco di tiro', ia_auto_esposta: 'auto in vendita', ia_casse_birra: 'casse di birra', ia_biliardo: 'biliardo', ia_jukebox: 'jukebox',
+    ia_bersaglio: 'bersaglio', ia_banco_tiro: 'banco di tiro', ia_auto_esposta: 'auto in vendita', ia_casse_birra: 'casse di birra', ia_biliardo: 'biliardo', ia_jukebox: 'jukebox', ia_biliardino: 'biliardino',
     ia_sportello: 'sportello', ia_cassette_sicurezza: 'cassette di sicurezza', ia_carrello_soldi: 'carrello dei valori', ia_valigia_aperta: 'valigia aperta', ia_cesto_cucito: 'cesto del cucito', ia_giocattoli: 'giocattoli', ia_radio_clandestina: 'radio',
     ia_divano_design: 'divano', ia_poltrona_design: 'poltrona', ia_madia: 'madia', ia_libreria_piena: 'libreria', ia_mobile_tv: 'mobile della tv', ia_letto_design: 'letto', ia_letto_singolo_design: 'letto', ia_comodino: 'comodino', ia_como: 'comò',
     ia_armadio_design: 'armadio', ia_tavolino_design: 'tavolino', ia_cucina_componibile: 'cucina', ia_frigo_design: 'frigorifero', ia_lavabo_design: 'mobile del lavabo', ia_consolle_ingresso: 'consolle', ia_scarpiera: 'scarpiera', ia_attaccapanni_design: 'attaccapanni',
