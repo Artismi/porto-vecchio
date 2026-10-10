@@ -28904,16 +28904,17 @@ var WriterMano = (function () {
   // ---------------- LA TAG ----------------
   // la parola nella mano: i tratti in pixel (y in giù), già inclinati, rimbalzati, con la prima lettera grande e lo svolazzo
   function layout(text, d, r) {
+    if (d.goth) d = Object.assign({}, d, { nibA: -.78, nibW: .3, wide: d.vert ? 1.25 : .9, contrast: .9, mix: 0, slant: d.vert ? 0 : .08, bigFirst: 1.15, tall: 1.3, adv: .62, swash: false, flick: true, bounce: .02, arc: 0, crown: false, halo: false, under: false, dashes: false, stars: false, quotes: false });
     const s = DEACC(text), strokes = []; let x = 0;
     [...s].forEach((ch, i) => {
       const g = glyph(ch, d, i); if (!g) { x += .35; return; }
       const sz = (i === 0 ? d.bigFirst : 1) * (1 + (r() - .5) * .12), by = d.bounce * (i % 2 ? 1 : -1) * (.5 + r()) + d.arc * Math.sin((i + .5) / Math.max(1, s.length) * PI);
       let gx1 = 0; g.forEach(tr => tr.forEach(([u]) => { gx1 = Math.max(gx1, u); }));
       g.forEach(tr => {
-        const pts = tr.map(([u, v]) => { const vv = v > .9 ? .9 + (v - .9) * d.tall * 2.2 : v; let X = x + u * d.wide * sz, Y = (vv * sz + by); X += Y * d.slant; return [X + (r() - .5) * d.wob * 4, -Y + (r() - .5) * d.wob * 4]; });
+        const pts = tr.map(([u, v]) => { const vv = v > .9 ? .9 + (v - .9) * d.tall * 2.2 : v; let X = (d.vert ? -gx1 * d.wide * sz / 2 : x) + u * d.wide * sz, Y = (vv * sz + by - (d.vert ? i * 1.05 : 0)); X += Y * d.slant; return [X + (r() - .5) * d.wob * 4, -Y + (r() - .5) * d.wob * 4]; });
         strokes.push({ pts, i });
       });
-      x += (gx1 * d.wide + .08) * sz * (d.adv / .65);
+      if (!d.vert) x += (gx1 * d.wide + .08) * sz * (d.adv / .65);
     });
     if (!strokes.length) return { strokes, box: [0, 0, 1, 1] };
     // lo svolazzo: l'ultimo tratto continua, torna sotto la parola e finisce a punta
@@ -28927,6 +28928,7 @@ var WriterMano = (function () {
   }
   // disegna la tag di questa mano in un riquadro Wp × Hp; ritorna i punti del percorso (per la mano che la ripassa)
   function handTag(x, text, d, Wp, Hp, r, col, tool) {
+    if (d.goth) d = Object.assign({}, d, { crown: false, halo: false, under: false, dashes: false, stars: false, quotes: false, spray: false, nibW: .3, nibA: -.78, contrast: .9 });
     const L = layout(text, d, r), [x0, y0, x1, y1] = L.box, decoT = d.crown || d.halo ? .22 : .06, decoB = d.under || d.swash ? .2 : .08;
     const sc = Math.min((Wp * .9) / Math.max(.1, x1 - x0), (Hp * (1 - decoT - decoB)) / Math.max(.1, y1 - y0)), ox = (Wp - (x1 - x0) * sc) / 2 - x0 * sc, oy = Hp * decoT - y0 * sc;
     const P = t => t.map(([a, b]) => [a * sc + ox, b * sc + oy]);
@@ -28936,6 +28938,7 @@ var WriterMano = (function () {
     const segs = L.strokes.map(t => { const pts = smooth(P(t.pts), 5); pts.forEach(q => path.push(q)); return { pts, t }; });
     segs.forEach(({ pts, t }) => chisel(x, pts, W * (t.swash ? .8 : 1), d.nibA, true, t.flick || t.swash || pts.length > 6, d.contrast));
     x.shadowBlur = 0;
+    if (d.goth) { x.lineWidth = Math.max(1, W * .1); x.lineCap = 'round'; segs.forEach(({ pts }) => { if (pts.length < 3 || r() < .6) return; const e = pts[pts.length - 1], p0 = pts[pts.length - 3], dx = e[0] - p0[0], dy = e[1] - p0[1], l = hyp(dx, dy) || 1, ux = dx / l, uy = dy / l, L2 = W * (1.5 + r() * 1.5), sg = r() < .5 ? 1 : -1; x.beginPath(); x.moveTo(e[0], e[1]); x.bezierCurveTo(e[0] + ux * L2 * .6, e[1] + uy * L2 * .6, e[0] + ux * L2 - uy * L2 * .5 * sg, e[1] + uy * L2 + ux * L2 * .5 * sg, e[0] + ux * L2 * .7 - uy * L2 * .9 * sg, e[1] + uy * L2 * .7 + ux * L2 * .9 * sg); x.stroke(); }); }   // i riccioli del gotico
     // la grana dello spray: puntini attorno ai tratti
     if (spray) { x.globalAlpha = .35; for (let k = 0; k < path.length * d.grain * .6; k++) { const q = path[Math.floor(r() * path.length)], a = r() * PI * 2, rr = W * (.6 + r() * 1.4); x.fillRect(q[0] + Math.cos(a) * rr, q[1] + Math.sin(a) * rr, 1.2, 1.2); } x.globalAlpha = 1; }
     // l'inchiostro del marker: la goccia dove si appoggia
@@ -29021,10 +29024,14 @@ var WriterArte = (function () {
     semi: { nome: 'semi-wild', adv: .74, skew: .14, bounce: .05, rot: .12, wob: .025, scale: .14, ext: .32, lw: .28, join: 'miter', cap: 'square', d3: .5, arrows: 2, links: 1 , sh: { flare: .4, bh: .2, con: .3, cap: 'flare', sharp: true } },
     wild: { nome: 'wildstyle', adv: .64, skew: .22, bounce: .1, rot: .32, wob: .04, scale: .3, ext: .62, lw: .24, join: 'miter', cap: 'square', d3: .55, arrows: 4, links: 3 , sh: { flare: .5, bh: .15, con: .35, cap: 'point', sharp: true } },
     spiky: { nome: 'a spine', adv: .7, skew: .14, bounce: .08, rot: .24, wob: .02, scale: .26, ext: .5, lw: .26, join: 'miter', cap: 'butt', d3: .4, arrows: 0, links: 1, spikes: true , sh: { flare: -.45, bh: .1, con: .45, cap: 'point', sharp: true } },
-    script: { nome: 'corsivo', adv: .56, skew: .44, bounce: .07, rot: .08, wob: .01, scale: .14, ext: .2, lw: .22, join: 'round', cap: 'round', d3: .32, arrows: 0, links: 0, nibK: .6, swash: true , sh: { flare: -.35, bh: 0, con: .65, cap: 'point', sharp: false, smooth: true } },
+    script: { nome: 'corsivo', adv: .6, skew: .38, bounce: .05, rot: .06, wob: .01, scale: .1, ext: .2, lw: .3, join: 'round', cap: 'round', d3: .32, arrows: 0, links: 0, nibK: .6, swash: true , sh: { flare: -.3, bh: 0, con: .45, cap: 'point', sharp: false, smooth: true } },
     chrome: { nome: 'chrome', adv: .62, skew: .08, bounce: .05, rot: .1, wob: .015, scale: .1, ext: .06, lw: .4, join: 'round', cap: 'round', d3: .25, arrows: 0, links: 0, chrome: true, fat: true },
   };
-  const THROW_FAMS = ['throwie', 'throwie', 'fat', 'bubble', 'chrome'];
+  // fill-in: riempimento piatto, contorno nero spesso, niente 3D (i pezzi veloci dei muri pieni); contorno: solo la linea, dentro il muro
+  FAM.piatto = { nome: 'fill-in', adv: .86, skew: .04, bounce: .02, rot: .04, wob: 0, scale: .05, ext: 0, lw: .38, join: 'miter', cap: 'square', d3: 0, arrows: 0, links: 0, flat: true, sh: { flare: 0, bh: .12, con: .12, cap: 'square', sharp: true } };
+  FAM.contorno = { nome: 'solo contorno', adv: .84, skew: .06, bounce: .03, rot: .05, wob: 0, scale: .06, ext: .1, lw: .4, join: 'miter', cap: 'square', d3: 0, arrows: 0, links: 0, flat: true, hollow: true, sh: { flare: .05, bh: .1, con: .15, cap: 'square', sharp: true } };
+  const FLATS = ['#9ad8e8', '#e86a9a', '#d8201a', '#b48ad8', '#f2d23a', '#f2efe6', '#5ac8a0', '#ff8a3a', '#cfd3d8'];
+  const THROW_FAMS = ['throwie', 'throwie', 'chrome', 'chrome', 'fat', 'bubble'];
   const FAMS = Object.keys(FAM);
   const FILLS = ['flat', 'flat', 'due', 'due', 'fade', 'fade', 'diag', 'split', 'bolle', 'crepe', 'fiamme', 'scacchi', 'stelle'];
   const BGS = ['nuvola', 'sole', 'radici', 'skyline', 'spruzzi', 'ghiaccio', 'ovale', 'scacchi', 'esplosione', 'splat'];
@@ -29052,7 +29059,7 @@ var WriterArte = (function () {
     const wild = style === 'burner' || style === 'wholecar', throwUp = style === 'throw';
     const q = clamp((d.skill != null ? d.skill : .5) + (r() - .5) * .18, .05, 1);
     let fam = r() < .78 && d.fam ? d.fam : pickR(r, FAMS); if (throwUp && !THROW_FAMS.includes(fam)) fam = pickR(r, THROW_FAMS);
-    if (q < .3 && (fam === 'wild' || fam === 'spiky' || fam === 'script')) fam = pickR(r, ['semi', 'bubble', 'block']);   // un toy non sa fare il wildstyle
+    if (q < .3 && (fam === 'wild' || fam === 'spiky' || fam === 'script')) fam = pickR(r, ['semi', 'bubble', 'block', 'piatto']);   // un toy non sa fare il wildstyle
     const pals = d.pals && d.pals.length ? d.pals : [Math.floor(r() * PAL.length)];
     const pol = d.pol != null ? d.pol : .4;
     const sk = { style, aka: o.aka, crew: o.crew, seed, q, fam, pal: pickR(r, pals) % PAL.length,
@@ -29062,6 +29069,7 @@ var WriterArte = (function () {
       fillk: q < .3 ? 'fade' : FAM[fam].chrome ? 'chrome' : pickR(r, FILLS),
       bgk: style === 'wholecar' ? pickR(r, ['sole', 'radici', 'skyline']) : wild ? pickR(r, ['sole', 'radici', 'skyline', 'esplosione', 'ovale']) : throwUp ? (r() < .35 ? pickR(r, ['ovale', 'splat', 'esplosione']) : null) : pickR(r, BADGES),
       yr: pickR(r, YEARS), by: o.by };
+    if (FAM[fam].flat && r() < .75) sk.bgk = null;
     return sk;
   }
   // il DNA di un writer a caso (gli NPC: dal loro numero)
@@ -29129,7 +29137,7 @@ var WriterArte = (function () {
   // le spine: a ogni estremità un triangolo lungo e stretto che continua il tratto (lettere taglienti)
   function spikes(L, r, w) {
     L.arrows = L.arrows || []; L.w0 = w;
-    L.strokes.forEach(t => { if (t.pts.length < 2 || t.link || t.swash) return; [[t.pts.length - 1, t.pts.length - 2], [0, 1]].forEach(([i, j], e) => { if (e && r() < .5) return; const a = t.pts[i], b = t.pts[j], dx = a[0] - b[0], dy = a[1] - b[1], l = hyp(dx, dy) || 1, ux = dx / l, uy = dy / l, s = w * .5, len = w * (1.3 + r() * 1.4);
+    L.strokes.forEach(t => { if (t.pts.length < 2 || t.link || t.swash) return; [[t.pts.length - 1, t.pts.length - 2], [0, 1]].forEach(([i, j], e) => { if (r() < (e ? .8 : .55)) return; const a = t.pts[i], b = t.pts[j], dx = a[0] - b[0], dy = a[1] - b[1], l = hyp(dx, dy) || 1, ux = dx / l, uy = dy / l, s = w * .48, len = w * (1.2 + r() * .6);
       L.arrows.push([[a[0] - uy * s, a[1] + ux * s], [a[0] + ux * len, a[1] + uy * len], [a[0] + uy * s, a[1] - ux * s]]); }); });
   }
   // lo svolazzo del corsivo: dall'ultima lettera torna indietro sotto la parola e finisce a punta
@@ -29356,7 +29364,7 @@ var WriterArte = (function () {
     H: { b: [['k', .2, .12, .2, .88, .24], ['k', .8, .12, .8, .88, .24], ['k', .2, .5, .8, .5, .22]], s: [[[.5, 1], [.5, .72]], [[.5, 0], [.5, .28]]] },
     I: { b: [['k', .38, .14, .38, .86, .28]], s: [] },
     J: { b: [['k', .66, .4, .66, .88, .25], ['c', .42, .3, .3]], s: [[[.42, .55], [.42, .38]]] },
-    K: { b: [['k', .2, .12, .2, .88, .24], ['c', .64, .76, .25], ['c', .68, .25, .28]], s: [[[.95, .5], [.45, .5]], [[.44, .9], [.44, .62]]] },
+    K: { b: [['k', .2, .12, .2, .88, .24], ['k', .3, .5, .74, .84, .21], ['k', .32, .46, .78, .16, .23]], s: [[[1, .5], [.6, .5]]] },
     L: { b: [['k', .24, .25, .24, .88, .25], ['k', .24, .2, .78, .2, .22]], s: [[[.48, .55], [.62, .42]]] },
     M: { b: [['k', .16, .14, .16, .84, .2], ['k', .5, .14, .5, .76, .2], ['k', .84, .14, .84, .84, .2], ['c', .33, .78, .21], ['c', .67, .78, .21]], s: [[[.33, 0], [.33, .55]], [[.67, 0], [.67, .55]]] },
     N: { b: [['k', .18, .12, .18, .88, .23], ['k', .82, .12, .82, .88, .23], ['k', .2, .78, .8, .22, .21]], s: [[[.44, 0], [.44, .38]], [[.56, 1], [.56, .62]]] },
@@ -29407,7 +29415,7 @@ var WriterArte = (function () {
   // gli schemi di colore: il bozzetto (bianco e rosso), la throwie (nero e bianco), il colore pieno, il cromato
   function bubbleScheme(fam, P, r, q) {
     if (fam === 'throwie') return r() < .7 ? { fill: '#141418', ol: '#f6f4ee', outer: '#141418', d3: '#141418', shine: '#f6f4ee', slit: '#f6f4ee' } : { fill: '#f6f4ee', ol: '#141418', outer: null, d3: '#141418', shine: '#141418', slit: '#141418' };
-    if (fam === 'chrome') return { fill: 'chrome', ol: '#101012', outer: P.k === '#101012' ? null : P.k, d3: '#101012', shine: '#ffffff', slit: '#101012' };
+    if (fam === 'chrome') return r() < .55 ? { fill: '#cfd3d8', ol: '#101012', outer: null, d3: '#101012', shine: '#ffffff', slit: '#101012', thick: 1.6 } : { fill: 'chrome', ol: '#101012', outer: P.k === '#101012' ? null : P.k, d3: '#101012', shine: '#ffffff', slit: '#101012' };
     const k = r();
     if (k < .3) { const c = pickR(r, [P.f[2], '#d8201a', '#1a3a9a', '#101012']); return { fill: '#fbf8f0', ol: c, outer: null, d3: c, shine: c, slit: c }; }   // il bozzetto
     return { fill: P.f[k < .65 ? 0 : 1], fill2: P.f[1], ol: P.o, outer: q > .5 ? P.k : null, d3: P.d, shine: '#ffffff', slit: P.o };
@@ -29416,8 +29424,8 @@ var WriterArte = (function () {
     const F = FAM[C.fam], q = C.q, throwUp = w.style === 'throw', S0 = bubbleScheme(C.fam, P, r, q);
     const o = { adv: C.fam === 'throwie' ? .72 : C.fam === 'fat' ? .74 : .8, jit: .1 + (1 - q) * .12, rot: .16 + (1 - q) * .1, bounce: .05 + r() * .06, squash: .95 + r() * .35, slant: (r() - .3) * .25, puff: C.fam === 'fat' || C.fam === 'throwie' ? 1.12 + r() * .1 : 1 + r() * .08 };
     const sloganH = C.slogan && !throwUp ? Hp * .12 : 0, B = bubbleFit(bubbleLayout(w.words || w.aka || 'NINO', o, r), Wp, Hp - sloganH, Hp * .1);
-    const u = B.s, ol = Math.max(2, u * (.045 + r() * .02)), d3 = u * (.12 + r() * .1) * (q < .3 ? .4 : 1), ang = .6 + r() * .5, dx = Math.cos(ang) * d3, dy = Math.sin(ang) * d3, steps = Math.max(2, Math.round(d3 / 1.2));
-    const order = B.L.map((l, i) => i); if (r() < .4) order.reverse();   // da sinistra sopra o da destra sopra
+    const u = B.s, ol = Math.max(2, u * (.045 + r() * .02) * (S0.thick || 1)), d3 = u * (.12 + r() * .1) * (q < .3 ? .4 : 1), ang = .6 + r() * .5, dx = Math.cos(ang) * d3, dy = Math.sin(ang) * d3, steps = Math.max(2, Math.round(d3 / 1.2));
+    const order = B.L.map((l, i) => i).reverse();   // si disegna da destra: la lettera a sinistra sta sopra quella a destra (così si legge)
     const chromeG = () => { const g = x.createLinearGradient(0, B.box[1], 0, B.box[3]); g.addColorStop(0, '#ffffff'); g.addColorStop(.45, '#c8d0da'); g.addColorStop(.52, '#5a6472'); g.addColorStop(.6, '#9aa4b2'); g.addColorStop(1, '#eef2f6'); return g; };
     const fillCol = c => c === 'chrome' ? chromeG() : c;
     // 1. il riempimento
@@ -29454,6 +29462,43 @@ var WriterArte = (function () {
     snap(x.canvas); paths.push(raster(Wp, Hp, 2)); radii.push(Hp * .2);
   }
 
+  // ================= I PERSONAGGI (lavoro a sé: lo «stile» mostro) =================
+  function monsterArt(w, P, r, Wp, Hp, snap, paths, radii, x) {
+    const lw = Math.max(3, Hp * .024), K = '#101012', body = r() < .55 ? '#f2efe6' : pickR(r, FLATS.concat([P.f[0], P.f[1]])), side = shade(body === '#f2efe6' ? '#c8c4bc' : body, -.18), kind = pickR(r, ['blob', 'croc', 'robot', 'bunny', 'blob']);
+    const cx = Wp * (.42 + r() * .16), cy = Hp * .45, R0 = Math.min(Wp * .34, Hp * .36);
+    const shapes = [];   // [tipo, ...] disegnati due volte: prima i pieni, poi i contorni
+    const E = (a, b, rx, ry, rot, col) => shapes.push({ t: 'e', a, b, rx, ry, rot: rot || 0, col: col || body });
+    const Pl = (pts, col) => shapes.push({ t: 'p', pts, col: col || body });
+    // il corpo e la testa
+    if (kind === 'croc') { E(cx - R0 * .2, cy + R0 * .55, R0 * .75, R0 * .65); E(cx, cy, R0 * .9, R0 * .55); Pl([[cx + R0 * .3, cy - R0 * .35], [cx + R0 * 1.9, cy - R0 * .15], [cx + R0 * 1.9, cy + R0 * .25], [cx + R0 * .4, cy + R0 * .45]]); }
+    else if (kind === 'robot') { Pl([[cx - R0, cy - R0 * .8], [cx + R0, cy - R0 * .85], [cx + R0 * 1.05, cy + R0 * .7], [cx - R0 * .95, cy + R0 * .75]]); Pl([[cx - R0 * .7, cy + R0 * .75], [cx + R0 * .7, cy + R0 * .75], [cx + R0 * .8, cy + R0 * 1.3], [cx - R0 * .8, cy + R0 * 1.3]], side); }
+    else { E(cx, cy + R0 * .35, R0 * 1.02, R0 * .95); if (kind === 'bunny') { E(cx - R0 * .45, cy - R0 * 1.05, R0 * .2, R0 * .6, -.2); E(cx + R0 * .45, cy - R0 * 1.05, R0 * .2, R0 * .6, .2); } }
+    if (r() < .6 && kind !== 'bunny') for (const sx of [-1, 1]) Pl([[cx + sx * R0 * .55, cy - R0 * .6], [cx + sx * R0 * .95, cy - R0 * 1.25], [cx + sx * R0 * .85, cy - R0 * .45]]);   // le corna
+    // le braccia, le mani a tre dita
+    for (const sx of [-1, 1]) { if (r() < .25) continue; const ax = cx + sx * R0 * .95, ay = cy + R0 * .45, hx = ax + sx * R0 * (.4 + r() * .3), hy = ay - R0 * (.3 + r() * .5); E((ax + hx) / 2, (ay + hy) / 2, R0 * .32, R0 * .13, Math.atan2(hy - ay, hx - ax)); for (let f = -1; f <= 1; f++) E(hx + sx * R0 * .08, hy - R0 * .12 + f * R0 * .1, R0 * .13, R0 * .06, f * .5 - sx * .3); }
+    const Wh = '#ffffff', fills = cv(Wp, Hp), fx = fills.getContext('2d');
+    const draw = (ctx, sh, stroke) => { ctx.beginPath(); if (sh.t === 'e') ctx.ellipse(sh.a, sh.b, sh.rx, sh.ry, sh.rot, 0, 7); else { sh.pts.forEach(([a, b], k) => k ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); } if (stroke) ctx.stroke(); else { ctx.fillStyle = sh.col; ctx.fill(); } };
+    fx.lineJoin = 'round'; shapes.forEach(sh => draw(fx, sh));
+    x.drawImage(fills, 0, 0); snap(x.canvas); paths.push(raster(Wp, Hp, 4)); radii.push(Hp * .12);
+    // i contorni (sotto i pieni: solo il bordo esterno resta), l'ombra di lato
+    const out = cv(Wp, Hp), o = out.getContext('2d'); o.lineJoin = 'round'; o.strokeStyle = K; o.lineWidth = lw * 2; shapes.forEach(sh => draw(o, sh, true)); o.drawImage(fills, 0, 0);
+    o.save(); o.globalCompositeOperation = 'source-atop'; o.fillStyle = side; o.beginPath(); o.ellipse(cx + R0 * .9, cy + R0 * .6, R0 * .55, R0 * 1.2, -.3, 0, 7); o.fill(); o.restore();
+    x.clearRect(0, 0, Wp, Hp); x.drawImage(out, 0, 0); snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .14);
+    // la faccia: gli occhi (uno, due o tre), la bocca coi denti, i segni del movimento
+    const ne = pickR(r, [1, 2, 2, 2, 3]), ey = cy - R0 * (kind === 'croc' ? .35 : .15);
+    for (let k = 0; k < ne; k++) { const ex = cx + (ne === 1 ? 0 : (k / (ne - 1) - .5) * R0 * (ne === 3 ? 1.1 : .8)) + (kind === 'croc' ? R0 * .3 : 0), er = R0 * (ne === 1 ? .42 : .24) * (.9 + r() * .25);
+      x.fillStyle = Wh; x.strokeStyle = K; x.lineWidth = lw; x.beginPath(); x.arc(ex, ey, er, 0, 7); x.fill(); x.stroke(); const lk = (r() - .5) * er * .6; x.fillStyle = K; x.beginPath(); x.arc(ex + lk, ey + er * .1, er * .42, 0, 7); x.fill(); x.fillStyle = Wh; x.beginPath(); x.arc(ex + lk - er * .15, ey - er * .05, er * .12, 0, 7); x.fill();
+      if (r() < .4) { x.lineWidth = lw * 1.2; x.beginPath(); x.moveTo(ex - er, ey - er * 1.1); x.lineTo(ex + er, ey - er * (.7 + (k % 2) * .5)); x.stroke(); } }
+    const mx = kind === 'croc' ? cx + R0 * 1.1 : cx, my = kind === 'croc' ? cy + R0 * .1 : cy + R0 * .45, mw = kind === 'croc' ? R0 * .8 : R0 * (.55 + r() * .3), mh = R0 * (kind === 'robot' ? .25 : .3 + r() * .2);
+    x.fillStyle = '#2a1416'; x.strokeStyle = K; x.lineWidth = lw; x.beginPath(); if (kind === 'robot') x.rect(mx - mw, my - mh, mw * 2, mh * 2); else x.ellipse(mx, my, mw, mh, 0, 0, PI); x.closePath(); x.fill(); x.stroke();
+    x.fillStyle = Wh; const nT = 5 + Math.floor(r() * 5);
+    for (let k = 0; k < nT; k++) { const tx = mx - mw + (k + .5) / nT * mw * 2, tw = mw / nT * .9, th = mh * (.45 + r() * .25); x.beginPath(); x.moveTo(tx - tw, my); x.lineTo(tx, my + th); x.lineTo(tx + tw, my); x.closePath(); x.fill(); x.lineWidth = lw * .5; x.stroke(); }
+    if (r() < .5) { x.fillStyle = '#e86a7a'; x.beginPath(); x.ellipse(mx + mw * .2, my + mh * .65, mw * .3, mh * .25, 0, 0, 7); x.fill(); }   // la lingua
+    x.strokeStyle = K; x.lineWidth = lw * .7; x.lineCap = 'round'; for (let k = 0; k < 10; k++) { const a = r() * PI * 2, d = R0 * (1.25 + r() * .3), px0 = cx + Math.cos(a) * d * 1.1, py0 = cy + R0 * .3 + Math.sin(a) * d * .85; if (px0 < lw || px0 > Wp - lw || py0 < lw || py0 > Hp - lw) continue; x.beginPath(); x.moveTo(px0, py0); x.lineTo(px0 + Math.cos(a) * lw * 3, py0 + Math.sin(a) * lw * 3); x.stroke(); }   // i segni del movimento
+    if (w.aka) smallTag(x, w.aka + ' ' + (w.crew || ''), Wp * .82, Hp * .9, Hp * .07, K, r, Wp * .3);
+    snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .12);
+  }
+
   // ================= IL LAVORO =================
   const PPM = 100;   // pixel per metro (alto: i bordi netti anche da vicino)
   // i punti dei tratti, uno ogni step pixel, lettera dopo lettera: il percorso della mano
@@ -29470,10 +29515,11 @@ var WriterArte = (function () {
     const C = choose(w), q = C.q, stages = [], paths = [], radii = [];
     const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(k); };
     const toy = q < .35;
-    if (w.style === 'tag' || w.style === 'mtag') {   // la tag: la mano del writer (writer_mano.js), col suo segno accanto
-      const c = cv(Wp, Hp), x = c.getContext('2d'), signW = w.sign ? Hp * .7 : 0, d = WM.dna(w.hand || w.seed || 1);
+    if (w.style === 'mostro') { const c = cv(Wp, Hp); monsterArt(w, P, r, Wp, Hp, snap, paths, radii, c.getContext('2d')); return { stages, paths, radii, Wp, Hp, C }; }
+    if (w.style === 'tag' || w.style === 'mtag' || w.style === 'gotico') {   // la tag: la mano del writer (writer_mano.js), col suo segno accanto
+      const c = cv(Wp, Hp), x = c.getContext('2d'), signW = w.sign && w.style !== 'gotico' ? Hp * .7 : 0, d = Object.assign({}, WM.dna(w.hand || w.seed || 1), w.style === 'gotico' ? { goth: true, vert: Hp > Wp * 1.4 } : {});
       const col = w.col || (w.style === 'mtag' ? '#121216' : P.f[1]);
-      const res = WM.handTag(x, text, d, Wp - signW, Hp, r, col, w.style);
+      const res = WM.handTag(x, text, d, Wp - signW, Hp, r, w.style === 'gotico' && !w.col ? '#101012' : col, w.style === 'gotico' ? 'tag' : w.style);
       if (w.sign) sign(x, w.sign, Wp - signW * .55, Hp * .5, signW * .55, w.style === 'mtag' ? '#f2efe6' : col);
       snap(c); paths.push(res.path.filter((q, i) => i % 2 === 0).concat(w.sign ? [[Wp - signW * .55, Hp * .5]] : [])); radii.push(Math.max(res.W * 2.2, Hp * .1));
       return { stages, paths, radii, Wp, Hp, C };
@@ -29484,19 +29530,19 @@ var WriterArte = (function () {
     const charW = C.chr ? Hp * (train ? .95 : .9) : 0, charLeft = !(r() < .3);
     const sloganH = C.slogan && !throwUp ? Hp * .1 : 0;
     // la mano: un toy trema, non sa il 3D, sbaglia gli spessori; un king è pulito, profondo, pieno di dettagli
-    const LW = Wp - charW, opts = { font: WM ? WM.fontFor(WM.dna(w.hand || w.seed || 1)) : null, h: 100, adv: F.adv, skew: F.skew, bounce: F.bounce, rot: F.rot * (.6 + q * .6), wob: F.wob + (1 - q) * .045, scale: F.scale, ext: F.ext * (.3 + q * .9), links: wild && q > .5 ? F.links : Math.min(1, F.links) };
+    const LW = Wp - charW, opts = { font: null, h: 100, adv: F.adv, skew: F.skew, bounce: F.bounce * .5, rot: F.rot * .35, wob: q < .35 ? .03 : 0, scale: F.scale * .4, ext: F.ext * .6, links: C.fam === 'wild' && q > .6 ? Math.min(2, F.links) : 0 };
     const padK = .6 * F.lw / (1 + 1.2 * F.lw) + .04, L = fit(letters(text, opts, r), LW, Hp - sloganH, Hp * padK, train ? 1.6 : wild ? 1.3 : 1.1);
     const ox0 = charLeft ? charW : 0; L.strokes.forEach(t => { t.pts = t.pts.map(([a, b]) => [a + ox0, b]); }); L.box = [L.box[0] + ox0, L.box[1], L.box[2] + ox0, L.box[3]];
     const lw = F.lw * 100 * L.s * (train ? 1.12 : 1), ol = Math.max(2.5, lw * (throwUp ? .24 : .2) * (toy ? .7 + r() * .6 : 1)), kl = Math.max(2, lw * .16);
-    const d3 = throwUp ? Math.max(2, lw * F.d3 * .6) : Math.max(toy ? 1 : 3, lw * F.d3 * (toy ? .3 : .55 + q * .55)), ang3 = F.chrome ? .9 : .78, dx = d3 * Math.cos(ang3), dy = d3 * Math.sin(ang3), steps = Math.max(1, Math.round(d3 / 1.5));
+    const d3 = F.flat ? (r() < .4 ? lw * .22 : .01) : throwUp ? Math.max(2, lw * F.d3 * .6) : Math.max(toy ? 1 : 3, lw * F.d3 * (toy ? .3 : .55 + q * .55)), ang3 = F.chrome ? .9 : .78, dx = d3 * Math.cos(ang3), dy = d3 * Math.sin(ang3), steps = Math.max(1, Math.round(d3 / 1.5));
     if (F.swash) swash(L, r);
-    if (F.arrows && !throwUp && q > .3) arrows(L, r, Math.round(F.arrows * q) + Math.floor(r() * 2), lw); else { L.arrows = []; L.w0 = lw; }
+    if (F.arrows && !throwUp && q > .3) arrows(L, r, Math.max(1, Math.round(F.arrows * q * .6)), lw); else { L.arrows = []; L.w0 = lw; }
     if (F.spikes) spikes(L, r, lw);
     // IL CORPO DELLE LETTERE: ogni tratto diventa una sagoma (poligono) a spessore variabile; le lettere sono sagome, non tubi
     const SH = F.sh || { flare: .2, bh: .2, con: .25, cap: 'square', sharp: true }, nibA = -.9 + r() * .5;
     const [lbx0, lby0, lbx1, lby1] = L.box, lbh = Math.max(1, lby1 - lby0);
     const wfn = (t, p, a) => lw * Math.max(.25, (1 + SH.flare * Math.pow(Math.abs(2 * t - 1), 3)) * (1 + SH.bh * ((p[1] - lby0) / lbh - .5)) * (1 - SH.con + SH.con * Math.abs(Math.sin(a - nibA)) * 1.3));
-    const jit = (1 - q) * lw * .05 + lw * .008;
+    const jit = q < .35 ? lw * .04 : 0;
     const strokePoly = (t) => {
       let pts = t.pts; if (SH.smooth && pts.length > 2 && WM) pts = WM.smooth(pts, 4);
       if (pts.length === 1) { const c0 = pts[0], rr = lw * .55, o = []; for (let k = 0; k < 14; k++) o.push([c0[0] + Math.cos(k / 14 * PI * 2) * rr, c0[1] + Math.sin(k / 14 * PI * 2) * rr]); return o; }
@@ -29516,59 +29562,66 @@ var WriterArte = (function () {
         if (cap === 'flare') return [[a[0] + d[0] * w * .5 - d[1] * w * .25, a[1] + d[1] * w * .5 + d[0] * w * .25], [p[0] + d[0] * w * .9, p[1] + d[1] * w * .9], [b[0] + d[0] * w * .3, b[1] + d[1] * w * .3]];
         return [[a[0] + d[0] * w * .55, a[1] + d[1] * w * .55], [b[0] + d[0] * w * .55, b[1] + d[1] * w * .55]];   // il taglio dritto (block)
       };
-      let poly = Lf.concat(capOf(true), Rt.reverse(), capOf(false));
+      const capE = capOf(true), capS = capOf(false);   // le estremità prima di girare il lato destro
+      let poly = Lf.concat(capE, Rt.slice().reverse(), capS);
       let area = 0; for (let k = 0; k < poly.length; k++) { const p0 = poly[k], p1 = poly[(k + 1) % poly.length]; area += p0[0] * p1[1] - p1[0] * p0[1]; } if (area < 0) poly = poly.reverse();
       return poly;
     };
-    const groups = []; L.strokes.forEach(t => { (groups[t.i] = groups[t.i] || []).push(t); }); const order = groups.map((g, i) => i).filter(i => groups[i]);
-    if (C.fam === 'wild' && q > .5) for (let k = 0; k + 1 < order.length; k++) if (r() < .35) { const t = order[k]; order[k] = order[k + 1]; order[k + 1] = t; k++; }
+    const groups = []; L.strokes.forEach(t => { (groups[t.i] = groups[t.i] || []).push(t); }); const order = groups.map((g, i) => i).filter(i => groups[i]).reverse();   // da destra: la lettera a sinistra sta sopra (così si legge)
+    if (C.fam === 'wild' && q > .75) for (let k = 0; k + 1 < order.length; k++) if (r() < .15) { const t = order[k]; order[k] = order[k + 1]; order[k + 1] = t; k += 2; }   // solo il wildstyle dei king intreccia qualche lettera
     const arrOf = i => (L.arrows || []).filter(a => { const tip = a[1]; let best = -1, bd = 1e9; L.strokes.forEach(t => { const e = t.pts[t.pts.length - 1], d = hyp(e[0] - tip[0], e[1] - tip[1]); if (d < bd) { bd = d; best = t.i; } }); return best === i; });
     const polys = []; order.forEach(i => { polys[i] = groups[i].map(strokePoly).concat(arrOf(i).map(a => { let p = a.slice(); let ar = 0; for (let k = 0; k < 3; k++) { const p0 = p[k], p1 = p[(k + 1) % 3]; ar += p0[0] * p1[1] - p1[0] * p0[1]; } return ar < 0 ? p.reverse() : p; })); });
-    const pathOf = (list, dx, dy) => { const P2 = new Path2D(); list.forEach(pl => { pl.forEach(([a, b], k) => k ? P2.lineTo(a + (dx || 0), b + (dy || 0)) : P2.moveTo(a + (dx || 0), b + (dy || 0))); P2.closePath(); }); return P2; };
-    // l'estrusione esatta del 3D: per ogni lato della sagoma il quadrilatero fino alla copia spostata, più la copia
-    const extrudeOf = (list) => { const P2 = new Path2D(); list.forEach(pl => { for (let k = 0; k < pl.length; k++) { const a = pl[k], b = pl[(k + 1) % pl.length]; P2.moveTo(a[0], a[1]); P2.lineTo(b[0], b[1]); P2.lineTo(b[0] + dx, b[1] + dy); P2.lineTo(a[0] + dx, a[1] + dy); P2.closePath(); } pl.forEach(([a, b], k) => k ? P2.lineTo(a + dx, b + dy) : P2.moveTo(a + dx, b + dy)); P2.closePath(); }); return P2; };
-    const LP = [], EP = []; order.forEach(i => { LP[i] = pathOf(polys[i]); EP[i] = extrudeOf(polys[i]); });
-    // i colori: le throwie a inchiostro (nero pieno, bordo bianco, filo nero fuori); il block pesante col riempimento chiaro
-    const inkFill = F.ink ? (r() < .75 ? '#141418' : shade(P.f[2], -.55)) : null, OL = F.ink ? '#f6f4ee' : P.o, KL = F.ink ? '#141418' : P.k;
+    // LE MASCHERE: ogni lettera riempita tratto per tratto (niente buchi dove i tratti si incrociano); contorni, keyline e 3D
+    // si fanno per dilatazione della maschera (copie spostate in cerchio): nessuna linea interna, bordi puliti
+    const M = cv(Wp, Hp), mx = M.getContext('2d'), T1 = cv(Wp, Hp), t1 = T1.getContext('2d'), T2 = cv(Wp, Hp), t2 = T2.getContext('2d');
+    const J = SH.cap === 'square' ? 'miter' : 'round';
+    const polyPath = (ctx, pl, dx0, dy0) => { ctx.beginPath(); pl.forEach(([a, b], k) => k ? ctx.lineTo(a + (dx0 || 0), b + (dy0 || 0)) : ctx.moveTo(a + (dx0 || 0), b + (dy0 || 0))); ctx.closePath(); };
+    const maskOf = i => { mx.clearRect(0, 0, Wp, Hp); mx.fillStyle = '#fff'; mx.strokeStyle = '#fff'; mx.lineWidth = 1.2; mx.lineJoin = 'round'; polys[i].forEach(pl => { polyPath(mx, pl); mx.fill(); mx.stroke(); }); return M; };
+    // i contorni e il 3D a vettori, un tratto alla volta (così i tratti che si incrociano non si annullano)
+    const strokeL = (ctx, list, col, wd, dx0, dy0) => { ctx.strokeStyle = col; ctx.lineWidth = wd; list.forEach(pl => { polyPath(ctx, pl, dx0, dy0); ctx.stroke(); }); };
+    const extrude = (ctx, list, col, wd) => { list.forEach(pl => { for (let k = 0; k < pl.length; k++) { const a = pl[k], b = pl[(k + 1) % pl.length]; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(b[0] + dx, b[1] + dy); ctx.lineTo(a[0] + dx, a[1] + dy); ctx.closePath(); if (wd) ctx.stroke(); else ctx.fill(); } polyPath(ctx, pl, dx, dy); if (wd) ctx.stroke(); else ctx.fill(); }); };
+    const tint = (src, col, dst) => { const d = dst || t1; d.globalCompositeOperation = 'source-over'; d.clearRect(0, 0, Wp, Hp); d.drawImage(src, 0, 0); d.globalCompositeOperation = 'source-in'; if (col instanceof HTMLCanvasElement) d.drawImage(col, 0, 0); else { d.fillStyle = col; d.fillRect(0, 0, Wp, Hp); } d.globalCompositeOperation = 'source-over'; return d.canvas; };
+    const DIRS = 20, dilate = (ctx, img, rr, ox0, oy0) => { ctx.drawImage(img, ox0 || 0, oy0 || 0); if (rr <= 0) return; for (const f of rr > 4 ? [1, .55] : [1]) for (let k = 0; k < DIRS; k++) ctx.drawImage(img, (ox0 || 0) + Math.cos(k / DIRS * PI * 2) * rr * f, (oy0 || 0) + Math.sin(k / DIRS * PI * 2) * rr * f); };
+    const smear = (img, dst) => { dst.clearRect(0, 0, Wp, Hp); const n = Math.max(1, Math.ceil(d3 / 1.2)); for (let k = 0; k <= n; k++) dst.drawImage(img, dx * k / n, dy * k / n); return dst.canvas; };   // la maschera trascinata lungo il 3D
+    const inkFill = F.ink ? (r() < .75 ? '#141418' : shade(P.f[2], -.55)) : F.flat ? pickR(r, FLATS) : null, OL = F.ink ? '#f6f4ee' : F.flat ? '#101012' : P.o, KL = F.ink ? '#141418' : P.k;
     const PAT = cv(Wp, Hp), px = PAT.getContext('2d'); px.fillStyle = inkFill || P.f[1]; px.fillRect(0, 0, Wp, Hp);
-    if (!F.ink) fillPattern(px, throwUp && !F.chrome ? (C.fillk === 'diag' ? 'diag' : 'fade') : C.fillk, P, L.box, lw, Wp, Hp, r);
-    const fillIn = (ctx, i) => { ctx.save(); ctx.clip(LP[i], 'nonzero'); ctx.drawImage(PAT, 0, 0); ctx.restore(); };
-    // la seconda linea: la sagoma erosa (intersezione di 8 copie spostate) riempita col motivo, sopra la sagoma piena del colore della linea
-    const M1 = cv(Wp, Hp), m1 = M1.getContext('2d'), M2 = cv(Wp, Hp), m2 = M2.getContext('2d');
-    const fillInLine = (ctx, i, col, m) => {
-      m1.clearRect(0, 0, Wp, Hp); m1.fillStyle = '#fff'; m1.fill(LP[i]);
-      m2.globalCompositeOperation = 'source-over'; m2.clearRect(0, 0, Wp, Hp); m2.drawImage(M1, 0, 0); m2.globalCompositeOperation = 'destination-in';
-      for (let k = 0; k < 8; k++) m2.drawImage(M1, Math.cos(k * PI / 4) * m, Math.sin(k * PI / 4) * m);
-      m2.globalCompositeOperation = 'source-in'; m2.drawImage(PAT, 0, 0); m2.globalCompositeOperation = 'source-over';
-      ctx.save(); ctx.fillStyle = col; ctx.fill(LP[i]); ctx.restore(); ctx.drawImage(M2, 0, 0);
+    if (!F.ink && !F.flat) fillPattern(px, throwUp && !F.chrome ? (C.fillk === 'diag' ? 'diag' : 'fade') : C.fillk, P, L.box, lw, Wp, Hp, r);
+    // il riempimento di una lettera (con la seconda linea: la maschera erosa riempita col motivo sopra la maschera del colore della linea)
+    const letterImg = (i, lineCol, m) => {
+      const Mi = maskOf(i);
+      if (!lineCol) return tint(Mi, PAT, t2);
+      t2.globalCompositeOperation = 'source-over'; t2.clearRect(0, 0, Wp, Hp); t2.drawImage(Mi, 0, 0); t2.globalCompositeOperation = 'destination-in';
+      for (let k = 0; k < 8; k++) t2.drawImage(Mi, Math.cos(k * PI / 4) * m, Math.sin(k * PI / 4) * m);
+      t2.globalCompositeOperation = 'source-in'; t2.drawImage(PAT, 0, 0); t2.globalCompositeOperation = 'destination-over'; t2.fillStyle = lineCol; t2.fillRect(0, 0, Wp, Hp);   // sotto: il colore della linea (solo dentro la maschera)
+      t2.globalCompositeOperation = 'destination-in'; t2.drawImage(Mi, 0, 0); t2.globalCompositeOperation = 'source-over'; return T2;
     };
-    const J = SH.sharp ? 'miter' : 'round';
     // 1. il riempimento (un writer riempie per primo)
-    const FILL = cv(Wp, Hp), fx = FILL.getContext('2d'); order.forEach(i => fillIn(fx, i));
+    const FILL = cv(Wp, Hp), fx = FILL.getContext('2d'); order.forEach(i => fx.drawImage(letterImg(i), 0, 0));
     x.drawImage(FILL, 0, 0); snap(c); paths.push(densify(order.flatMap(i => groups[i]), lw * .5)); radii.push(lw * .75);
     // 2. lo sfondo (dietro alle lettere)
     const BG = cv(Wp, Hp), bg = BG.getContext('2d');
     if (C.bgk) { background(bg, toy && !train ? 'spruzzi' : C.bgk, P, Wp, Hp, r, train); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(c); paths.push(raster(Wp, Hp, train ? 6 : 4)); radii.push(Hp * (train ? .13 : .16)); }
-    // 3. le lettere vere: la keyline attorno a tutto, il 3D pieno dietro a tutte, poi ogni lettera col suo contorno e il suo riempimento
-    const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); ox.drawImage(BG, 0, 0); ox.lineJoin = J; ox.miterLimit = 3;
-    ox.lineJoin = 'round';
-    if (q > .3 && !throwUp) { ox.strokeStyle = KL; ox.lineWidth = 2 * (ol + kl); order.forEach(i => { ox.stroke(LP[i]); ox.stroke(EP[i]); }); ox.fillStyle = KL; order.forEach(i => { ox.fill(LP[i]); ox.fill(EP[i]); }); }
-    ox.strokeStyle = OL; ox.lineWidth = 2 * ol; order.forEach(i => ox.stroke(EP[i])); ox.lineJoin = J; ox.miterLimit = 2;
-    ox.fillStyle = F.ink ? KL : P.d; order.forEach(i => ox.fill(EP[i]));
+    // 3. le lettere vere: la keyline attorno a tutto (3D compreso), il 3D pieno col suo bordo dietro a tutte, poi le lettere in ordine
+    const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); ox.drawImage(BG, 0, 0);
+    ox.lineJoin = 'round'; ox.lineCap = 'round';
+    const allP = order.flatMap(i => polys[i]);
+    if (q > .3 && !throwUp && !F.flat) { ox.strokeStyle = KL; ox.fillStyle = KL; extrude(ox, allP, KL, 2 * (ol + kl)); strokeL(ox, allP, KL, 2 * (ol + kl)); }   // la keyline attorno a tutto, 3D compreso
+    ox.strokeStyle = F.ink ? KL : P.o; extrude(ox, allP, null, 2 * ol);   // il bordo del blocco 3D
+    ox.fillStyle = F.ink ? KL : P.d; extrude(ox, allP, null, 0);   // il blocco 3D
     order.forEach(i => {
-      ox.strokeStyle = OL; ox.lineWidth = 2 * ol; ox.stroke(LP[i]);
-      if (!F.ink && q > .45) fillInLine(ox, i, shade(P.f[2], -.35), Math.max(1.5, ol * .8)); else fillIn(ox, i);
-      ox.save(); ox.clip(LP[i]);
-      // le luci: tocchi bianchi lungo il bordo in alto a sinistra di ogni lettera (mai una riga in mezzo)
-      if (q > .5) { ox.strokeStyle = P.hi; ox.lineCap = 'round'; ox.lineWidth = Math.max(1.5, ol * .7); polys[i].slice(0, 1).forEach(pl => { let k0 = 0, best = 1e9; pl.forEach(([a, b], k) => { if (a + b < best) { best = a + b; k0 = k; } }); const a = pl[k0], b = pl[(k0 + 1) % pl.length], cxp = pl.reduce((s0, p) => s0 + p[0], 0) / pl.length, cyp = pl.reduce((s0, p) => s0 + p[1], 0) / pl.length, ix = cxp - a[0], iy = cyp - a[1], il = hyp(ix, iy) || 1, off = ol * 2.2, ex = b[0] - a[0], ey = b[1] - a[1], el = hyp(ex, ey) || 1, len = Math.min(el * .6, lw * .55);
-        ox.beginPath(); ox.moveTo(a[0] + ix / il * off, a[1] + iy / il * off); ox.lineTo(a[0] + ix / il * off + ex / el * len, a[1] + iy / il * off + ey / el * len); ox.stroke(); ox.fillStyle = P.hi; ox.beginPath(); ox.arc(a[0] + ix / il * off + ex / el * (len + ol * 2.2), a[1] + iy / il * off + ey / el * (len + ol * 2.2), ol * .6, 0, 7); ox.fill(); }); }
-      if (F.doodles && q > .25) doodles(ox, groups[i], lw, r, F.ink ? '#f6f4ee' : P.hi, F.ink, F.stars, F.ink && i === order[Math.floor(order.length / 2)] && r() < .45);
-      ox.restore();
+      ox.lineJoin = J; ox.miterLimit = 1.6; strokeL(ox, polys[i], OL, 2 * ol * (F.flat ? 1.5 : 1)); ox.lineJoin = 'round';   // il contorno della lettera (sopra il 3D e sopra la lettera prima)
+      if (F.hollow) { ox.save(); ox.globalCompositeOperation = 'destination-out'; ox.drawImage(maskOf(i), 0, 0); ox.restore(); if (C.bgk) { ox.save(); ox.globalCompositeOperation = 'destination-over'; ox.restore(); } return; }   // solo contorno: dentro si vede il muro
+      const Li = letterImg(i, !F.ink && !F.flat && q > .45 ? shade(P.f[2], -.35) : null, Math.max(1.5, ol * .8)), lc = t1; lc.clearRect(0, 0, Wp, Hp); lc.drawImage(Li, 0, 0);
+      lc.globalCompositeOperation = 'source-atop';
+      if (q > .5 && !F.flat) { lc.strokeStyle = P.hi; lc.fillStyle = P.hi; lc.lineCap = 'round'; lc.lineWidth = Math.max(1.5, ol * .7); polys[i].slice(0, 1).forEach(pl => { let k0 = 0, best = 1e9; pl.forEach(([a, b], k) => { if (a + b < best) { best = a + b; k0 = k; } }); const a = pl[k0], b = pl[(k0 + 1) % pl.length], cxp = pl.reduce((s0, p) => s0 + p[0], 0) / pl.length, cyp = pl.reduce((s0, p) => s0 + p[1], 0) / pl.length, ix = cxp - a[0], iy = cyp - a[1], il = hyp(ix, iy) || 1, off = ol * 2.4, ex2 = b[0] - a[0], ey2 = b[1] - a[1], el = hyp(ex2, ey2) || 1, len = Math.min(el * .6, lw * .55);
+        lc.beginPath(); lc.moveTo(a[0] + ix / il * off, a[1] + iy / il * off); lc.lineTo(a[0] + ix / il * off + ex2 / el * len, a[1] + iy / il * off + ey2 / el * len); lc.stroke(); lc.beginPath(); lc.arc(a[0] + ix / il * off + ex2 / el * (len + ol * 2.2), a[1] + iy / il * off + ey2 / el * (len + ol * 2.2), ol * .6, 0, 7); lc.fill(); }); }   // la luce: un tocco sul bordo in alto a sinistra
+      if (F.doodles && q > .25) doodles(lc, groups[i], lw, r, F.ink ? '#f6f4ee' : P.hi, F.ink, F.stars, F.ink && i === order[Math.floor(order.length / 2)] && r() < .45);
+      lc.globalCompositeOperation = 'source-over'; ox.drawImage(T1, 0, 0);
     });
-    if (throwUp || toy || r() < .3) drips(ox, L, r, F.ink ? (r() < .5 ? '#f6f4ee' : '#141418') : throwUp ? P.o : P.f[2], lw * .3, throwUp ? 6 : toy ? 7 : 3, Hp * (toy ? .22 : .16));
+    if (throwUp || toy) drips(ox, L, r, F.ink ? (r() < .5 ? '#f6f4ee' : '#141418') : throwUp ? P.o : P.f[2], lw * .3, throwUp ? 6 : 7, Hp * (toy ? .22 : .16));
     x.clearRect(0, 0, Wp, Hp); x.drawImage(OUT, 0, 0); snap(c); paths.push(densify(order.flatMap(i => groups[i]), lw * .6)); radii.push(lw * .6 + ol * 2 + d3 * .5);
     // 4. i dettagli: stelline, il personaggio, la firma della crew, l'anno, lo slogan
-    for (let k = 0; k < Math.round((wild ? 4 : 2) * q); k++) { const t = pickR(r, L.strokes), qq = t.pts[0]; sparkle(x, qq[0], qq[1] - lw * .3, lw * (.35 + r() * .3), P.hi); }
+    if (q > .75) for (let k = 0; k < (wild ? 2 : 1); k++) { const [a0, b0, a1] = L.box; sparkle(x, a0 + (a1 - a0) * (k ? .85 : .1), b0 - lw * .1, lw * .4, '#ffffff'); }   // una stellina sul bordo, non dentro
     if (C.chr) character(x, C.chr, charLeft ? charW * .5 : Wp - charW * .5, (Hp - sloganH) * .52, Hp * (train ? .5 : .46), P, r);
     const [bx0, by0, bx1, by1] = L.box, crew = w.crew || 'PV';
     smallTag(x, w.words && w.aka ? w.aka + ' ' + crew : crew, Math.min(Wp - Hp * .3, bx1 - Hp * .2), Math.min(Hp - sloganH - Hp * .07, by1 + lw * .9), Hp * .1, P.o, r, Wp * .3);
@@ -29630,6 +29683,8 @@ var Writing = (function () {
     throw: { nome: 'throw-up', rank: 1, W: 2.7, H: 1.3, dur: 9, cans: .7, fame: 4 },
     pezzo: { nome: 'pezzo', rank: 2, W: 4.8, H: 2.05, dur: 32, cans: 2.2, fame: 12 },
     burner: { nome: 'burner', rank: 3, W: 6.6, H: 2.5, dur: 60, cans: 4, fame: 25 },
+    gotico: { nome: 'gotico', rank: 1, W: 1.4, H: 3.2, dur: 16, cans: .5, fame: 6 },   // la calligrafia verticale (piloni, spigoli alti)
+    mostro: { nome: 'personaggio', rank: 2, W: 3, H: 2.6, dur: 40, cans: 2.6, fame: 12 },   // il mostro coi denti
     wholecar: { nome: 'whole car', rank: 4, W: 16, H: 2.9, dur: 110, cans: 7, fame: 45 },
   };
   const MODES = ['libero', 'tag', 'throw', 'pezzo', 'burner'];
@@ -29764,7 +29819,7 @@ var Writing = (function () {
   }
   function addWork(st, w) {
     const W = S(st); w.id = W.nextId++; w.t0 = w.t0 || st.t; W.works.push(w);
-    if (W.works.length > 900) { const i = W.works.findIndex(o => o.by !== 'player' && o.done); if (i >= 0) W.works.splice(i, 1); }
+    if (W.works.length > 900) { let i = W.works.findIndex(o => o.erased && o.by !== 'player'); if (i < 0) i = W.works.findIndex(o => o.by !== 'player' && o.done); if (i >= 0) W.works.splice(i, 1); }
     return w;
   }
   // la notte dei writer: tag, throw-up, pezzi sui muri della città; a volte il treno in deposito; i crossaggi per i beef
@@ -29816,7 +29871,7 @@ var Writing = (function () {
       if (run.length) { const f = Math.round(run.reduce((s, w) => s + STYLES[w.style].fame * .35, 0)); W.fame += f; G.feed(st, `Il treno esce col tuo ${STYLES[run[0].style].nome}: tutta la linea lo vede (+${f} fama).`); }
     });
     // il buff: i muri del centro ogni tanto vengono ripuliti (i lavori vecchi di più di quattro giorni)
-    W.works.forEach(w => { if (w.surf === 'muro' && w.done && !w.erased && d - dayIdx(w.tDone || w.t0) >= 4 && rnd() < .25) { w.erased = true; w.buffed = true; } });
+    W.works.forEach(w => { if (w.surf === 'muro' && w.done && !w.erased && d - dayIdx(w.tDone || w.t0) >= 4 && rnd() < (w.old ? .015 : .05)) { w.erased = true; w.buffed = true; } });
   }
   // i writer per strada: ti salutano (o ti minacciano); la crew ti chiede di entrare
   function meet(st) {
@@ -29991,7 +30046,7 @@ var Writing = (function () {
       return;
     }
     const want = (w.done ? 1 : clamp(w.prog, 0, 1)) * nS;
-    if (w.done && !g.drawn) { fullStage(T, A.stages[nS - 1], A); g.drawn = nS; }
+    if (w.done && !g.drawn) { fullStage(T, A.stages[nS - 1], A); g.drawn = nS; if (!w.crossed) { A.stages = [A.stages[nS - 1]]; A.paths = A.need = null; g.drawn = 1; T.tex.needsUpdate = true; return; } }   // finito: basta l'immagine finale
     let guard = 0;
     while (g.drawn < want - 1e-6 && guard++ < nS + 2) {
       const sI = Math.min(nS - 1, Math.floor(g.drawn)), a = g.drawn - sI, b = Math.min(1, want - sI), P = A.paths[sI] || [], R = A.radii[sI] || 8, img = A.stages[sI];
@@ -30054,7 +30109,7 @@ var Writing = (function () {
     const fitR = wallRect(c, n, sty.W * k, H, list); if (!fitR) return false;
     w.W = fitR.W; w.H = fitR.H; w.gfxRect = { c, n, r: fitR.r, W: fitR.W, H: fitR.H }; w.pos = { x: c.x, y: c.y, z: c.z };
     // niente due lavori uno sull'altro di notte: se si accavalla, salta
-    if (overlapCheck(GFX.st, w).length) { w.gfxRect = null; return false; }
+    if (!/^(tag|mtag|gotico)$/.test(w.style) && overlapCheck(GFX.st, w).filter(o => !/^(tag|mtag|gotico)$/.test(o.style)).length) { w.gfxRect = null; return false; }   // le tag si mettono sopra a tutto (i muri veri sono a strati); i pezzi non si accavallano fra loro
     return true;
   }
 
@@ -30284,10 +30339,11 @@ var Writing = (function () {
         }
         // i lavori: quelli che non hanno ancora la grafica (della notte, o di prima) vicino alla camera
         const now = performance.now();
-        if (now - (GFX.scanT || 0) > 400) {
-          GFX.scanT = now; let n = 0;
-          for (const w of W.works) {
-            if (n > 2) break;
+        if (now - (GFX.scanT || 0) > 150) {
+          GFX.scanT = now; let n = 0; const t0 = performance.now();
+          const near = W.works.filter(w => !GFX.works[w.id] && !w.erased && !(w.gfxFail > 3)).map(w => { const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); return [w, w.surf === 'treno' ? 0 : sp ? hyp(sp.x - cx, sp.y - cy) : 1e9]; }).filter(a => a[1] < 80).sort((a, b) => a[1] - b[1]).map(a => a[0]);
+          for (const w of near) {
+            if (performance.now() - t0 > 14) break;
             if (GFX.works[w.id] || w.erased || w.gfxFail > 3) continue;
             if (w.surf === 'treno') { if (!GFX.train) continue; const tgt = trainTarget(w); if (!tgt) continue; GFX.works[w.id] = { tgt, art: art(w), drawn: 0 }; n++; continue; }
             const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (!sp || hyp(sp.x - cx, sp.y - cy) > 80) continue;
@@ -30418,7 +30474,7 @@ var WriterVita = (function () {
   const watched = (st, n) => !!(n.pop && n.pop.near && hyp(n.x - st.player.x, n.y - st.player.y) < 45);
   const el = (st, n, E) => (watched(st, n) ? (st.clock - E.c0) * MPS : st.t - E.t0);   // minuti di gioco passati nel passo
   const alive = n => n && !n.dead && !(n.stun > 0) && n.pop;
-  const STY_MIN = { tag: 3, mtag: 1.5, throw: 9, pezzo: 32, burner: 55, wholecar: 80 };   // minuti di gioco per lavoro (come writing.js STYLES.dur, ma in minuti)
+  const STY_MIN = { tag: 3, mtag: 1.5, throw: 9, gotico: 12, mostro: 40, pezzo: 32, burner: 55, wholecar: 80 };   // minuti di gioco per lavoro (come writing.js STYLES.dur, ma in minuti)
   const cops = (st, x, y, r) => st.npcs.some(c => !c.dead && !c.inside && (c.cop || c.military) && hyp(c.x - x, c.y - y) < r);
   // il passo della bomboletta: crea il lavoro, lo fa crescere, la mano va dove va la vernice; i Grigi interrompono
   function paintStep(label, mk) {
@@ -30446,6 +30502,7 @@ var WriterVita = (function () {
   // il bersaglio della mano: sul muro (se la grafica l'ha già messo) o sulla fiancata
   function tipOf(st, w, f) {
     const g = WR.GFX.works[w.id], v = Math.sin(st.clock * 6) * .3;
+    if (g && g.art && WR.pathPoint) { const q = WR.pathPoint(w, g); if (q) { const tp = WR.workPoint(w, g, q[0], q[1]); if (tp) return tp; } }   // la mano segue il tratto che sta dipingendo
     if (w.surf === 'treno') { const tr = WR.trainAt(st.t); return WR.sidePoint(tr, w.car, w.side, w.u0 + f * w.W, 1.15 + w.vb + w.H * (.5 + v * .6)); }
     const R = w.gfxRect; if (!R) return w.spot ? { x: w.spot.x + Math.cos(w.spot.face) * .5, y: (w.spot.h != null ? w.spot.h : tileH(w.spot.x, w.spot.y) + 1.4), z: w.spot.y + Math.sin(w.spot.face) * .5 } : null;
     const u = (f % 1) - .5; return { x: R.c.x + R.r.x * u * R.W, y: R.c.y + v * R.H * .6, z: R.c.z + R.r.z * u * R.W, g };
@@ -30487,8 +30544,8 @@ var WriterVita = (function () {
   function styleFor(n, kind) {
     const wr = n.pop.writer, r = rnd() + (wr.skill || .5) * .2;
     if (kind === 'heaven') return r < .55 ? 'throw' : 'pezzo';
-    if (kind === 'hall') return r < .5 ? 'pezzo' : 'burner';
-    return r < .4 ? 'tag' : r < .72 ? 'throw' : r < .95 ? 'pezzo' : 'burner';
+    if (kind === 'hall') return r < .4 ? 'pezzo' : r < .72 ? 'burner' : 'mostro';
+    return r < .36 ? 'tag' : r < .66 ? 'throw' : r < .72 ? 'gotico' : r < .8 ? 'mostro' : r < .96 ? 'pezzo' : 'burner';
   }
   const spotOf = (s, du, h) => ({ x: s.x + s.along[0] * (du || 0), y: s.y + s.along[1] * (du || 0), face: s.face, h: h != null ? h : s.h, place: placeOf(s), kind: s.kind });
   // UNA USCITA: muro di strada, heaven spot, hall of fame con la crew, treno al deposito
@@ -30525,6 +30582,35 @@ var WriterVita = (function () {
     }
     return E;
   }
+  // IL BOMBING: una passeggiata notturna, una tag (o un throw-up) su ogni muro buono lungo la strada
+  function bombing(st, n) {
+    const wr = n.pop.writer, first = freeSite(st, ['strada', 'hall'], { x: n.x, y: n.y }, 220); if (!first) return null;
+    const run = [first], used = new Set([first]);
+    for (let k = 0; k < 3 + Math.floor(rnd() * 5); k++) { const last = run[run.length - 1]; let best = null, bd = 1e9; for (const s of SITES) { if (used.has(s) || s.kind === 'heaven') continue; const d = hyp(s.x - last.x, s.y - last.y); if (d > 6 && d < 40 && d < bd) { bd = d; best = s; } } if (!best) break; used.add(best); run.push(best); }
+    const steps = [];
+    run.forEach((s, k) => { const style = rnd() < .65 ? (wr.mop && rnd() < .5 ? 'mtag' : 'tag') : 'throw', spot = spotOf(s, (rnd() - .5) * Math.min(4, s.len - 1), null);
+      steps.push(goStep(k ? 'passa al muro dopo' : `esce a bombare ${spot.place}`, { x: spot.x, y: spot.y }, false), paintStep(style === 'throw' ? 'fa un throw-up veloce' : 'fa la sua tag', (st2, n2) => WR.npcWork(st2, n2, wr, style, spot, { sign: style !== 'throw' && rnd() < .35 ? pick(WA.SIGNS) : undefined }))); });
+    steps.push(homeStep());
+    return start(st, n, 'writer', 'bombare la strada', steps);
+  }
+  // LA STORIA DEI MURI: la città non è nuova. All'inizio della partita sui muri c'è già quello che hanno fatto negli anni i writer
+  // di adesso e quelli che non ci sono più (crew sciolte, gente partita): tante tag, throw-up, qualche pezzo, qualche heaven spot.
+  const OLD = [['RENZ', 'OGS'], ['MASK', 'OGS'], ['ZULU', 'KMT'], ['ODIO', 'KMT'], ['TREK', 'FLM'], ['NAPO', 'FLM'], ['SUBA', 'RSC'], ['KILO', 'RSC'], ['ASMA', 'OGS'], ['FENO', 'KMT']];
+  function history(st) {
+    const v = V(st); if (v.hist) return; v.hist = true;
+    const W = WR.S(st), N = 680, now = st.t, hot = []; for (let k = 0; k < 45; k++) hot.push(pick(SITES.filter(s => s.kind !== 'heaven')));
+    const ws = W.writers.map(id => G.byId(st, id)).filter(n => n && n.pop && n.pop.writer);
+    for (let k = 0; k < N; k++) {
+      const s = rnd() < .55 ? pick(hot) : pick(SITES), r = rnd(), old = rnd() < .45, who = old || !ws.length ? null : pick(ws);
+      const wr = who ? who.pop.writer : (() => { const [aka, crew] = pick(OLD), h = aka.charCodeAt(0) * 977 + aka.charCodeAt(1); return { aka, crew, skill: .35 + (h % 50) / 100, dna: WA.dnaOf(h, .35 + (h % 50) / 100, h % 14), hand: h * 13 }; })();
+      const style = s.kind === 'heaven' ? (r < .5 ? 'throw' : r < .7 ? 'gotico' : 'pezzo') : r < .42 ? 'tag' : r < .56 ? 'mtag' : r < .76 ? 'throw' : r < .8 ? 'gotico' : r < .86 ? 'mostro' : r < .96 ? 'pezzo' : 'burner';
+      if ((style === 'pezzo' || style === 'burner') && s.kind === 'strada' && s.len < 5) continue;
+      const spot = spotOf(s, s.kind === 'heaven' ? 0 : (rnd() - .5) * Math.max(0, s.len - 2), s.kind === 'heaven' ? s.h - .3 : null);
+      const w = WR._.addWork(st, WR.npcWork(st, who || { id: 'old:' + wr.aka }, wr, style, spot, { prog: 1, done: true, old: true, sign: (style === 'tag' || style === 'mtag') && rnd() < .3 ? pick(WA.SIGNS) : undefined }));
+      w.t0 = w.tDone = now - Math.floor(rnd() * 40) * 1440;   // fatto nei giorni (e nei mesi) prima
+      if (!who) { w.by = 'old'; }
+    }
+  }
   // il calendario della notte: chi esce, quando, dove
   function planNight(st) {
     const v = V(st), W = WR.S(st), d = dayIdx(st.t + 120); if (v.night === d) return; v.night = d;
@@ -30536,7 +30622,7 @@ var WriterVita = (function () {
     for (let k = 0; k < n0 && used.size < ws.length; k++) {
       const n = pick(ws.filter(m => !used.has(m.id))); if (!n) break; used.add(n.id);
       const wr = n.pop.writer, r = rnd();
-      const kind = wr.train && r < .3 ? 'treno' : wr.roof && r < .6 ? 'heaven' : r < .8 ? 'muro' : 'hall';
+      const kind = wr.train && r < .25 ? 'treno' : wr.roof && r < .45 ? 'heaven' : r < .7 ? 'bombing' : r < .88 ? 'muro' : 'hall';
       const mates = (crewOf[wr.crew] || []).filter(m => !used.has(m.id)), partner = (kind === 'muro' || kind === 'hall') && mates.length && rnd() < .7 ? pick(mates) : null;
       if (partner) used.add(partner.id);
       v.plan.push({ id: n.id, partner: partner && partner.id, kind, at: dayIdx(st.t + 120) * 1440 - 90 + Math.floor(rnd() * 300) });   // fra le 22:30 e le 3:30
@@ -30549,7 +30635,7 @@ var WriterVita = (function () {
     for (let i = v.plan.length - 1; i >= 0; i--) {
       const P = v.plan[i]; if (st.t < P.at) continue; v.plan.splice(i, 1);
       const n = G.byId(st, P.id), partner = P.partner ? G.byId(st, P.partner) : null; if (!alive(n)) continue;
-      mission(st, n, P.kind, partner) || mission(st, n, 'muro', partner);
+      (P.kind === 'bombing' ? bombing(st, n) : mission(st, n, P.kind, partner)) || mission(st, n, 'muro', partner);
     }
   }
   // di giorno: chi ha il mop lascia una tag (e un segno) sul muro più vicino mentre passa
@@ -30571,6 +30657,7 @@ var WriterVita = (function () {
   }
   function step(st, dt) {
     if (!st.player || !st.pop) return;
+    const W = WR.S(st); if (W.writers.length) history(st);
     runNight(st); runDay(st);
   }
   { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); try { step(st, dt); } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.warn('[WriterVita]', e); } } }; }
@@ -30668,7 +30755,7 @@ var WriterVita = (function () {
     const go = () => { if (!window.THREE || !window.__pv) { setTimeout(go, 300); return; } requestAnimationFrame(frame); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
-  return { SITES, buildSites, freeSite, mission, planNight, runNight, coverage, drawMap, V };
+  return { SITES, buildSites, freeSite, mission, bombing, history, planNight, runNight, coverage, drawMap, V };
 })();
 if (typeof module !== 'undefined') module.exports = WriterVita;
 </script>

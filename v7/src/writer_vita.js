@@ -87,7 +87,7 @@ var WriterVita = (function () {
   const watched = (st, n) => !!(n.pop && n.pop.near && hyp(n.x - st.player.x, n.y - st.player.y) < 45);
   const el = (st, n, E) => (watched(st, n) ? (st.clock - E.c0) * MPS : st.t - E.t0);   // minuti di gioco passati nel passo
   const alive = n => n && !n.dead && !(n.stun > 0) && n.pop;
-  const STY_MIN = { tag: 3, mtag: 1.5, throw: 9, pezzo: 32, burner: 55, wholecar: 80 };   // minuti di gioco per lavoro (come writing.js STYLES.dur, ma in minuti)
+  const STY_MIN = { tag: 3, mtag: 1.5, throw: 9, gotico: 12, mostro: 40, pezzo: 32, burner: 55, wholecar: 80 };   // minuti di gioco per lavoro (come writing.js STYLES.dur, ma in minuti)
   const cops = (st, x, y, r) => st.npcs.some(c => !c.dead && !c.inside && (c.cop || c.military) && hyp(c.x - x, c.y - y) < r);
   // il passo della bomboletta: crea il lavoro, lo fa crescere, la mano va dove va la vernice; i Grigi interrompono
   function paintStep(label, mk) {
@@ -115,6 +115,7 @@ var WriterVita = (function () {
   // il bersaglio della mano: sul muro (se la grafica l'ha già messo) o sulla fiancata
   function tipOf(st, w, f) {
     const g = WR.GFX.works[w.id], v = Math.sin(st.clock * 6) * .3;
+    if (g && g.art && WR.pathPoint) { const q = WR.pathPoint(w, g); if (q) { const tp = WR.workPoint(w, g, q[0], q[1]); if (tp) return tp; } }   // la mano segue il tratto che sta dipingendo
     if (w.surf === 'treno') { const tr = WR.trainAt(st.t); return WR.sidePoint(tr, w.car, w.side, w.u0 + f * w.W, 1.15 + w.vb + w.H * (.5 + v * .6)); }
     const R = w.gfxRect; if (!R) return w.spot ? { x: w.spot.x + Math.cos(w.spot.face) * .5, y: (w.spot.h != null ? w.spot.h : tileH(w.spot.x, w.spot.y) + 1.4), z: w.spot.y + Math.sin(w.spot.face) * .5 } : null;
     const u = (f % 1) - .5; return { x: R.c.x + R.r.x * u * R.W, y: R.c.y + v * R.H * .6, z: R.c.z + R.r.z * u * R.W, g };
@@ -156,8 +157,8 @@ var WriterVita = (function () {
   function styleFor(n, kind) {
     const wr = n.pop.writer, r = rnd() + (wr.skill || .5) * .2;
     if (kind === 'heaven') return r < .55 ? 'throw' : 'pezzo';
-    if (kind === 'hall') return r < .5 ? 'pezzo' : 'burner';
-    return r < .4 ? 'tag' : r < .72 ? 'throw' : r < .95 ? 'pezzo' : 'burner';
+    if (kind === 'hall') return r < .4 ? 'pezzo' : r < .72 ? 'burner' : 'mostro';
+    return r < .36 ? 'tag' : r < .66 ? 'throw' : r < .72 ? 'gotico' : r < .8 ? 'mostro' : r < .96 ? 'pezzo' : 'burner';
   }
   const spotOf = (s, du, h) => ({ x: s.x + s.along[0] * (du || 0), y: s.y + s.along[1] * (du || 0), face: s.face, h: h != null ? h : s.h, place: placeOf(s), kind: s.kind });
   // UNA USCITA: muro di strada, heaven spot, hall of fame con la crew, treno al deposito
@@ -194,6 +195,35 @@ var WriterVita = (function () {
     }
     return E;
   }
+  // IL BOMBING: una passeggiata notturna, una tag (o un throw-up) su ogni muro buono lungo la strada
+  function bombing(st, n) {
+    const wr = n.pop.writer, first = freeSite(st, ['strada', 'hall'], { x: n.x, y: n.y }, 220); if (!first) return null;
+    const run = [first], used = new Set([first]);
+    for (let k = 0; k < 3 + Math.floor(rnd() * 5); k++) { const last = run[run.length - 1]; let best = null, bd = 1e9; for (const s of SITES) { if (used.has(s) || s.kind === 'heaven') continue; const d = hyp(s.x - last.x, s.y - last.y); if (d > 6 && d < 40 && d < bd) { bd = d; best = s; } } if (!best) break; used.add(best); run.push(best); }
+    const steps = [];
+    run.forEach((s, k) => { const style = rnd() < .65 ? (wr.mop && rnd() < .5 ? 'mtag' : 'tag') : 'throw', spot = spotOf(s, (rnd() - .5) * Math.min(4, s.len - 1), null);
+      steps.push(goStep(k ? 'passa al muro dopo' : `esce a bombare ${spot.place}`, { x: spot.x, y: spot.y }, false), paintStep(style === 'throw' ? 'fa un throw-up veloce' : 'fa la sua tag', (st2, n2) => WR.npcWork(st2, n2, wr, style, spot, { sign: style !== 'throw' && rnd() < .35 ? pick(WA.SIGNS) : undefined }))); });
+    steps.push(homeStep());
+    return start(st, n, 'writer', 'bombare la strada', steps);
+  }
+  // LA STORIA DEI MURI: la città non è nuova. All'inizio della partita sui muri c'è già quello che hanno fatto negli anni i writer
+  // di adesso e quelli che non ci sono più (crew sciolte, gente partita): tante tag, throw-up, qualche pezzo, qualche heaven spot.
+  const OLD = [['RENZ', 'OGS'], ['MASK', 'OGS'], ['ZULU', 'KMT'], ['ODIO', 'KMT'], ['TREK', 'FLM'], ['NAPO', 'FLM'], ['SUBA', 'RSC'], ['KILO', 'RSC'], ['ASMA', 'OGS'], ['FENO', 'KMT']];
+  function history(st) {
+    const v = V(st); if (v.hist) return; v.hist = true;
+    const W = WR.S(st), N = 680, now = st.t, hot = []; for (let k = 0; k < 45; k++) hot.push(pick(SITES.filter(s => s.kind !== 'heaven')));
+    const ws = W.writers.map(id => G.byId(st, id)).filter(n => n && n.pop && n.pop.writer);
+    for (let k = 0; k < N; k++) {
+      const s = rnd() < .55 ? pick(hot) : pick(SITES), r = rnd(), old = rnd() < .45, who = old || !ws.length ? null : pick(ws);
+      const wr = who ? who.pop.writer : (() => { const [aka, crew] = pick(OLD), h = aka.charCodeAt(0) * 977 + aka.charCodeAt(1); return { aka, crew, skill: .35 + (h % 50) / 100, dna: WA.dnaOf(h, .35 + (h % 50) / 100, h % 14), hand: h * 13 }; })();
+      const style = s.kind === 'heaven' ? (r < .5 ? 'throw' : r < .7 ? 'gotico' : 'pezzo') : r < .42 ? 'tag' : r < .56 ? 'mtag' : r < .76 ? 'throw' : r < .8 ? 'gotico' : r < .86 ? 'mostro' : r < .96 ? 'pezzo' : 'burner';
+      if ((style === 'pezzo' || style === 'burner') && s.kind === 'strada' && s.len < 5) continue;
+      const spot = spotOf(s, s.kind === 'heaven' ? 0 : (rnd() - .5) * Math.max(0, s.len - 2), s.kind === 'heaven' ? s.h - .3 : null);
+      const w = WR._.addWork(st, WR.npcWork(st, who || { id: 'old:' + wr.aka }, wr, style, spot, { prog: 1, done: true, old: true, sign: (style === 'tag' || style === 'mtag') && rnd() < .3 ? pick(WA.SIGNS) : undefined }));
+      w.t0 = w.tDone = now - Math.floor(rnd() * 40) * 1440;   // fatto nei giorni (e nei mesi) prima
+      if (!who) { w.by = 'old'; }
+    }
+  }
   // il calendario della notte: chi esce, quando, dove
   function planNight(st) {
     const v = V(st), W = WR.S(st), d = dayIdx(st.t + 120); if (v.night === d) return; v.night = d;
@@ -205,7 +235,7 @@ var WriterVita = (function () {
     for (let k = 0; k < n0 && used.size < ws.length; k++) {
       const n = pick(ws.filter(m => !used.has(m.id))); if (!n) break; used.add(n.id);
       const wr = n.pop.writer, r = rnd();
-      const kind = wr.train && r < .3 ? 'treno' : wr.roof && r < .6 ? 'heaven' : r < .8 ? 'muro' : 'hall';
+      const kind = wr.train && r < .25 ? 'treno' : wr.roof && r < .45 ? 'heaven' : r < .7 ? 'bombing' : r < .88 ? 'muro' : 'hall';
       const mates = (crewOf[wr.crew] || []).filter(m => !used.has(m.id)), partner = (kind === 'muro' || kind === 'hall') && mates.length && rnd() < .7 ? pick(mates) : null;
       if (partner) used.add(partner.id);
       v.plan.push({ id: n.id, partner: partner && partner.id, kind, at: dayIdx(st.t + 120) * 1440 - 90 + Math.floor(rnd() * 300) });   // fra le 22:30 e le 3:30
@@ -218,7 +248,7 @@ var WriterVita = (function () {
     for (let i = v.plan.length - 1; i >= 0; i--) {
       const P = v.plan[i]; if (st.t < P.at) continue; v.plan.splice(i, 1);
       const n = G.byId(st, P.id), partner = P.partner ? G.byId(st, P.partner) : null; if (!alive(n)) continue;
-      mission(st, n, P.kind, partner) || mission(st, n, 'muro', partner);
+      (P.kind === 'bombing' ? bombing(st, n) : mission(st, n, P.kind, partner)) || mission(st, n, 'muro', partner);
     }
   }
   // di giorno: chi ha il mop lascia una tag (e un segno) sul muro più vicino mentre passa
@@ -240,6 +270,7 @@ var WriterVita = (function () {
   }
   function step(st, dt) {
     if (!st.player || !st.pop) return;
+    const W = WR.S(st); if (W.writers.length) history(st);
     runNight(st); runDay(st);
   }
   { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); try { step(st, dt); } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.warn('[WriterVita]', e); } } }; }
@@ -337,6 +368,6 @@ var WriterVita = (function () {
     const go = () => { if (!window.THREE || !window.__pv) { setTimeout(go, 300); return; } requestAnimationFrame(frame); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
-  return { SITES, buildSites, freeSite, mission, planNight, runNight, coverage, drawMap, V };
+  return { SITES, buildSites, freeSite, mission, bombing, history, planNight, runNight, coverage, drawMap, V };
 })();
 if (typeof module !== 'undefined') module.exports = WriterVita;
