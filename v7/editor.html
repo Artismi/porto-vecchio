@@ -33998,8 +33998,11 @@ var Render = (function () {
     // [inverno17] un pezzo per blocco: si nasconde dove il blocco vero è caricato (prima spuntava a rombi scuri)
     const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1, polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 3 });
     const P32 = new THREE.Float32BufferAttribute(pos, 3), UV2 = new THREE.Float32BufferAttribute(uv, 2), grp = new THREE.Group(); ISO.basePieces = {};
-    Object.keys(PIECE).forEach(key => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', P32); geo.setAttribute('uv', UV2); geo.setIndex(PIECE[key]); geo.computeVertexNormals(); geo.computeBoundingSphere();
-      const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; grp.add(mesh); ISO.basePieces[key] = mesh; });
+    {   // [fluido2] una mesh sola invece di un pezzo per blocco (245 chiamate per 12 mila triangoli); i pezzi restano come indici
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', P32); geo.setAttribute('uv', UV2);
+      const all = []; Object.keys(PIECE).forEach(key => { for (const v of PIECE[key]) all.push(v); });
+      geo.setIndex(all); geo.computeVertexNormals(); geo.computeBoundingSphere();
+      const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; grp.add(mesh); ISO.baseMesh = mesh; ISO.basePiece = PIECE; ISO.baseSig = ''; }
     scene.add(grp); ISO.base = grp;
   }
   // carica i blocchi vicini alla camera (uno per fotogramma, il più vicino prima) e scarica quelli lontani
@@ -34014,7 +34017,10 @@ var Render = (function () {
       else if (ch && d > 190) { dropChunk(ch); ISO.chunks.delete(key); }
     }
     if (best) { const old = ISO.chunks.get(best[2]); if (old) dropChunk(old); ISO.chunks.set(best[2], buildChunk(best[0], best[1])); }
-    if (ISO.basePieces) for (const key in ISO.basePieces) ISO.basePieces[key].visible = !ISO.chunks.has(key);   // [inverno17]
+    if (ISO.baseMesh) {   // [inverno17] l'isola lontana si nasconde dove il blocco vero è caricato; [fluido2] ricomponendo l'indice della mesh sola
+      const P = ISO.basePiece, keys = Object.keys(P).filter(k => !ISO.chunks.has(k)), sig = keys.join(';');
+      if (sig !== ISO.baseSig) { ISO.baseSig = sig; let n = 0; keys.forEach(k => n += P[k].length); const ix = new Uint32Array(n); let o = 0; keys.forEach(k => { ix.set(P[k], o); o += P[k].length; });
+        const g = ISO.baseMesh.geometry; g.setIndex(new THREE.BufferAttribute(ix, 1)); ISO.baseMesh.visible = n > 0; } }
   }
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
   function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; }
@@ -40177,6 +40183,7 @@ var Render = (function () {
             float fb11 = 0.; { float dB = 0.; for (int k = 0; k < 8; k++) { float a = float(k) * .7854 + .2; dB += dL(uv + vec2(cos(a), sin(a)) * px * (k < 4 ? 5. : 10.)); } dB /= 8.;   // oscuramento di profondità
               float behind = clamp((d - dB) / (d * .02 + .4), 0., 1.), front = clamp((dB - d) / (d * .02 + .4), 0., 1.), nearK = (1. - coc) * (1. - smoothstep(dc * 1.2, dc * 2., d) * .7);
               c *= 1. - behind * .3 * nearK; c += c * front * .14 * nearK; fb11 = behind * nearK; }
+            if (aK2.z > .001) {   // [fluido3] l'inchiostro di unione11 solo se pesa qualcosa
             for (int k = 0; k < 8; k++) { float a = float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * px * (k - k/2*2 == 0 ? 2. : 1.7); float jk = dL(uv + o) - d; e2 = max(e2, jk); nearR = max(nearR, -jk); busy += step(tA, abs(jk)); busyS += step(tS * 2., jk); }
             float lum0 = dot(c, vec3(.3,.59,.11)), dark = 1. - smoothstep(.08, .5, lum0);
             float zr = texture2D(tD, uv).r; vec4 wq = vInvVP * vec4(uv * 2. - 1., zr * 2. - 1., 1.); vec3 wp = wq.xyz / wq.w; vec2 sp = vec2(wp.x + wp.y * .6, wp.z - wp.y * .6) * .9;
@@ -40204,14 +40211,15 @@ var Render = (function () {
             float sil = smoothstep(tS * 2.5, tS * 4., e2) * (1. - thinObj) * (1. - bgSide) * .9;   // le sagome esterne col secondo peso, più spesse delle linee interne
             float ink = max(max(max(max(max(thin, sil), thick), crease * .55), form) * (1. - thinObj * .6) * (1. - vegK * .88), max(shapeI * .85, brick)) * (1.-coc) * (1. - busyK) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55);
             vec3 inkC = vec3(.19, .085, .2) + c * .06;   // inchiostro prugna: viola scuro e caldo, lega col colore (riferimento isometrico di Andrea)
-            c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); }
+            c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); } }   /* [fluido3] */
           { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)); } c *= 1. - ao/8.*.42*(1.-coc*.7); }
           {   // [amb3] inchiostro e profili: il volume si stacca dal fondo
+            if (pK.z > .001) {   // [fluido3] l'inchiostro di amb3 solo se pesa qualcosa
             float la = dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, vec3(.3,.59,.11)), lb = dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, vec3(.3,.59,.11));
             float lc2 = dot(texture2D(tC, uv + vec2(0., px.y)).rgb, vec3(.3,.59,.11)), ld = dot(texture2D(tC, uv - vec2(0., px.y)).rgb, vec3(.3,.59,.11)), l0 = dot(c, vec3(.3,.59,.11));
             float ge = clamp((max(max(la, lb), max(lc2, ld)) - l0) * 3.2 - .12, 0., 1.);   // solo il lato scuro del bordo prende l'inchiostro
             ge *= mix(0., 1., smoothstep(.05*(1.+d*.01), .25*(1.+d*.012), max(abs(d1 + d2 - 2.*d), abs(d3 + d4 - 2.*d))));   /* [unione11] solo dove salta la profondità: le fughe del pavimento no */
-            c = mix(c, c * vec3(.42,.4,.56), ge * pK.z * (1. - coc));
+            c = mix(c, c * vec3(.42,.4,.56), ge * pK.z * (1. - coc)); }   /* [fluido3] */
             float du = d3, du2 = dL(uv + vec2(0., px.y * 2.));   /* [unione11] */
             float rim = smoothstep(.5*(1.+d*.01), 1.6*(1.+d*.012), max(du, du2) - d) * (1. - coc);   // il profilo alto di un oggetto: dietro c'è qualcosa di lontano
             c += (c * .55 + vec3(.05,.04,.02)) * mix(vec3(1.08,1.,.86), vec3(.8,.9,1.15), night) * rim * pK.w;
