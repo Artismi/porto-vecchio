@@ -653,6 +653,54 @@ var Writing = (function () {
     });
     return { grp, cars };
   }
+  // [ferrovia] I MATERIALI DELLA LINEA: dipinti a mano su canvas (niente colori pieni): la ghiaia sasso per sasso con la luce e
+  // l'ombra, la terra con l'erba rada e i ciottoli, il cemento coi casseri, le colature e le macchie, il legno delle traversine
+  // con le venature e le crepe, l'erba e le foglie su carte trasparenti (i ciuffi veri, non i coni)
+  let RTEX = null;
+  function railTex() {
+    if (RTEX) return RTEX; const THREE = T3();
+    const hr = k => { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+    const mk = (w, h, f, rep) => { const c = cv(w, h), x = c.getContext('2d'); f(x, w, h); const t = canvasTexture(c); if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; } return t; };
+    const stones = (x, w, h, n, r0, r1, pal, seed) => { for (let k = 0; k < n; k++) { const px = hr(seed + k) * w, py = hr(seed + k * 1.7 + 3) * h, r = r0 + hr(seed + k * 2.3) * (r1 - r0), a = hr(seed + k * 3.1) * 3.14, c = pal[Math.floor(hr(seed + k * 5.7) * pal.length)];
+      for (const [dx, dy] of [[0, 0], [w, 0], [-w, 0], [0, h], [0, -h]]) { const cx = px + dx, cy = py + dy; if (cx < -r1 * 2 || cx > w + r1 * 2 || cy < -r1 * 2 || cy > h + r1 * 2) continue;
+        x.save(); x.translate(cx, cy); x.rotate(a); x.fillStyle = 'rgba(0,0,0,.35)'; x.beginPath(); x.ellipse(r * .18, r * .22, r, r * .72, 0, 0, 7); x.fill();   // l'ombra
+        x.fillStyle = c; x.beginPath(); for (let j = 0; j < 7; j++) { const aa = j / 7 * 6.283, rr = r * (.78 + hr(seed + k * 7 + j) * .3); x.lineTo(Math.cos(aa) * rr, Math.sin(aa) * rr * .72); } x.closePath(); x.fill();
+        const gr = x.createRadialGradient(-r * .35, -r * .3, 0, 0, 0, r); gr.addColorStop(0, 'rgba(255,255,255,.28)'); gr.addColorStop(1, 'rgba(0,0,0,.18)'); x.fillStyle = gr; x.fill(); x.restore(); } } };
+    RTEX = {
+      // la ghiaia: pietrisco spaccato, grigio, qualche sasso rossiccio, la polvere fra i sassi
+      gravel: mk(512, 512, (x, w, h) => { x.fillStyle = '#5a5650'; x.fillRect(0, 0, w, h); stones(x, w, h, 2600, 4, 11, ['#8a857c', '#77736b', '#9a948a', '#6c675f', '#a39b8e', '#7d6e5e', '#878279'], 11); stones(x, w, h, 900, 2, 5, ['#9a948a', '#6e6a62', '#857f75'], 77); }, true),
+      // la terra della scarpata: bruno secco, ciottoli, l'erba rada a ciuffi
+      earth: mk(512, 512, (x, w, h) => { x.fillStyle = '#6b5f45'; x.fillRect(0, 0, w, h); for (let k = 0; k < 4000; k++) { x.fillStyle = `rgba(${70 + hr(k) * 60},${60 + hr(k + 1) * 50},${35 + hr(k + 2) * 30},.35)`; x.fillRect(hr(k + 3) * w, hr(k + 4) * h, 2 + hr(k + 5) * 4, 2 + hr(k + 6) * 3); } stones(x, w, h, 260, 2, 6, ['#8a8070', '#77705f', '#9a917e'], 333);
+        for (let k = 0; k < 2400; k++) { const px = hr(k + 900) * w, py = hr(k + 901) * h, l = 4 + hr(k + 902) * 10, a = -1.57 + (hr(k + 903) - .5) * 1.2; x.strokeStyle = `rgba(${80 + hr(k + 904) * 60},${100 + hr(k + 905) * 50},${40 + hr(k + 906) * 20},.8)`; x.lineWidth = 1.2; x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(a) * l, py + Math.sin(a) * l); x.stroke(); } }, true),
+      // il cemento: le tavole dei casseri, i fori dei tiranti, le colature di ruggine e di pioggia, le macchie
+      concrete: mk(512, 512, (x, w, h) => { x.fillStyle = '#8e8a82'; x.fillRect(0, 0, w, h); for (let k = 0; k < 6000; k++) { const v = 110 + hr(k) * 50; x.fillStyle = `rgba(${v},${v - 4},${v - 10},.18)`; x.fillRect(hr(k + 1) * w, hr(k + 2) * h, 2, 2); }
+        for (let y = 0; y < h; y += 64) { x.fillStyle = 'rgba(40,38,34,.25)'; x.fillRect(0, y, w, 2); } for (let y = 32; y < h; y += 128) for (let u = 40; u < w; u += 120) { x.fillStyle = 'rgba(30,28,26,.55)'; x.beginPath(); x.arc(u, y, 4, 0, 7); x.fill(); }
+        for (let k = 0; k < 40; k++) { const u = hr(k + 50) * w, y0 = hr(k + 51) * h * .7, l = 40 + hr(k + 52) * 200, gr = x.createLinearGradient(0, y0, 0, y0 + l); gr.addColorStop(0, k % 3 ? 'rgba(60,56,50,.25)' : 'rgba(120,70,40,.3)'); gr.addColorStop(1, 'rgba(60,56,50,0)'); x.fillStyle = gr; x.fillRect(u, y0, 3 + hr(k + 53) * 8, l); }
+        const gr = x.createLinearGradient(0, h, 0, h * .7); gr.addColorStop(0, 'rgba(60,70,40,.4)'); gr.addColorStop(1, 'rgba(60,70,40,0)'); x.fillStyle = gr; x.fillRect(0, h * .7, w, h * .3); }, true),
+      // il legno delle traversine: catramato, le venature, le crepe, la testa scura
+      wood: mk(256, 64, (x, w, h) => { x.fillStyle = '#3e3024'; x.fillRect(0, 0, w, h); for (let k = 0; k < 60; k++) { x.strokeStyle = `rgba(${20 + hr(k) * 40},${15 + hr(k + 1) * 30},${10 + hr(k + 2) * 20},.6)`; x.lineWidth = 1 + hr(k + 3) * 2; const y = hr(k + 4) * h; x.beginPath(); x.moveTo(0, y); for (let u = 0; u <= w; u += 16) x.lineTo(u, y + Math.sin(u * .05 + k) * 2); x.stroke(); }
+        for (let k = 0; k < 8; k++) { x.strokeStyle = 'rgba(10,8,6,.85)'; x.lineWidth = 1.5; const u = hr(k + 70) * w, y = hr(k + 71) * h; x.beginPath(); x.moveTo(u, y); x.lineTo(u + 20 + hr(k + 72) * 40, y + (hr(k + 73) - .5) * 6); x.stroke(); } }, true),
+      // l'erba: fili su carta trasparente (verdi, gialli secchi), il ciuffo si apre a ventaglio
+      grass: mk(128, 128, (x, w, h) => { x.clearRect(0, 0, w, h); for (let k = 0; k < 70; k++) { const bx = w * .2 + hr(k) * w * .6, top = h * (.05 + hr(k + 1) * .5), lean = (hr(k + 2) - .5) * w * .5, c = hr(k + 3); x.strokeStyle = c < .55 ? `rgb(${70 + hr(k + 4) * 50},${110 + hr(k + 5) * 50},${40 + hr(k + 6) * 20})` : `rgb(${150 + hr(k + 4) * 50},${140 + hr(k + 5) * 40},${70 + hr(k + 6) * 30})`; x.lineWidth = 1.5 + hr(k + 7) * 2; x.beginPath(); x.moveTo(bx, h); x.quadraticCurveTo(bx + lean * .3, (h + top) / 2, bx + lean, top); x.stroke(); } }),
+      // le foglie: la massa del cespuglio su carta trasparente
+      leaves: mk(128, 128, (x, w, h) => { x.clearRect(0, 0, w, h); for (let k = 0; k < 260; k++) { const a = hr(k) * 6.283, r = Math.sqrt(hr(k + 1)) * w * .46, px = w / 2 + Math.cos(a) * r, py = h * .55 + Math.sin(a) * r * .8, s = 4 + hr(k + 2) * 6, g2 = 70 + hr(k + 3) * 70; x.fillStyle = `rgb(${30 + hr(k + 4) * 40},${g2},${25 + hr(k + 5) * 25})`; x.save(); x.translate(px, py); x.rotate(hr(k + 6) * 6.283); x.beginPath(); x.ellipse(0, 0, s, s * .5, 0, 0, 7); x.fill(); x.restore(); } }),
+    };
+    return RTEX;
+  }
+  // il ciuffo: tre carte incrociate, ognuna 1 × 1, appoggiate a terra
+  function tuftGeo(n) {
+    const THREE = T3(), pos = [], uv = [], idx = [];
+    for (let k = 0; k < (n || 3); k++) { const a = k / (n || 3) * Math.PI, cx = Math.cos(a) * .5, cz = Math.sin(a) * .5, b = pos.length / 3; pos.push(-cx, 0, -cz, cx, 0, cz, cx, 1, cz, -cx, 1, -cz); uv.push(0, 0, 1, 0, 1, 1, 0, 1); idx.push(b, b + 1, b + 2, b, b + 2, b + 3); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+    const nr = g.attributes.normal; for (let i = 0; i < nr.count; i++) nr.setXYZ(i, 0, 1, 0);   // le carte prendono la luce dall'alto, come l'erba vera
+    return g;
+  }
+  // il sasso: un icosaedro mosso (ogni sasso diverso), spigoli vivi
+  function rockGeo(seed) {
+    const THREE = T3(), g = new THREE.IcosahedronGeometry(1, 1), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), n = Math.sin(x * 3.1 + seed) * Math.cos(z * 2.7 + seed * 1.3) * .22 + Math.sin(y * 4.3 + seed * .7) * .12; p.setXYZ(i, x * (1 + n), y * (.7 + n * .5), z * (1 + n * .8)); }
+    g.computeVertexNormals(); return g;
+  }
   // [ferrovia] la quota vera del binario: sulla terra resa dal gioco (R.groundH), su una massicciata bassa che segue il terreno
   // (pendenza al massimo 3%), sul ponte in terra a 5 m sopra la valle, sul mare il viadotto; TR.el = i tratti su piloni
   function railFit(R) {
@@ -677,35 +725,36 @@ var Writing = (function () {
     const EL = i => TR.el ? TR.el[Math.max(0, Math.min(P.length - 1, Math.round(i)))] : 0, SEA = i => !!P[Math.max(0, Math.min(P.length - 1, Math.round(i)))][3];
     const gH = (x, y) => R.groundH(x, y), jit = (c, k) => { const v = (Math.sin(k * 12.9898) * 43758.5453) % 1, d = (v - Math.floor(v) - .5) * .12; return new THREE.Color(Math.min(1, c.r + d), Math.min(1, c.g + d), Math.min(1, c.b + d)); };
     // ---- la massicciata (in terra) e l'impalcato (ponte e viadotto) ----
-    const pos = [], col = [], idx = [], push = (x, y, z, c) => { pos.push(x, y, z); col.push(c.r, c.g, c.b); return pos.length / 3 - 1; };
-    const cG = new THREE.Color('#77726a'), cG2 = new THREE.Color('#5e5a52'), cO = new THREE.Color('#4e4034'), cC = new THREE.Color('#a29e95'), cC2 = new THREE.Color('#7c786f');
+    const RT = railTex(), pos = [], col = [], uvs = [], idxG = [], idxE = [], idxD = [], push = (x, y, z, c) => { pos.push(x, y, z); col.push(c.r, c.g, c.b); uvs.push(x / 2.2 + y * .15, z / 2.2 - y * .15); return pos.length / 3 - 1; };   // la texture proiettata dall'alto (più la quota: le scarpate non si stirano)
+    const cG = new THREE.Color('#e2dcd2'), cG2 = new THREE.Color('#c4bdb1'), cO = new THREE.Color('#9c8c7c'), cC = new THREE.Color('#d6d2ca'), cC2 = new THREE.Color('#aaa69e');
     let prev = null, prevK = null;
     const bed = (q, i, dk) => {   // una sezione: bordo esterno a terra, spalla, il centro più scuro d'olio e ruggine, spalla, bordo
       const nx = -Math.sin(q.ang), nz = Math.cos(q.ang), top = q.h - .18, el = EL(i) || SEA(i);
       if (el) { const bot = top - .95, hw = 2.5; return [push(q.x + nx * hw, bot, q.y + nz * hw, cC2), push(q.x + nx * hw, top, q.y + nz * hw, cC), push(q.x + nx * 1.6, top, q.y + nz * 1.6, cC), push(q.x, top, q.y, cC), push(q.x - nx * 1.6, top, q.y - nz * 1.6, cC), push(q.x - nx * hw, top, q.y - nz * hw, cC), push(q.x - nx * hw, bot, q.y - nz * hw, cC2)]; }
       // il rilevato: la scarpata scende a terra con pendenza 2:3 (più è alto, più è largo); sotto la ghiaia, la terra con l'erba rada
       const ft = sd => { let f = 3.3; for (let k = 0; k < 4; k++) { const gg = gH(q.x + nx * f * sd, q.y + nz * f * sd); f = 3.3 + Math.max(0, top - gg - .3) * 1.5; } return Math.min(f, 14); };
-      const fL = ft(1), fR = ft(-1), foot = fL, gL = Math.min(top, gH(q.x + nx * fL, q.y + nz * fL)) - .15, gR = Math.min(top, gH(q.x - nx * fR, q.y - nz * fR)) - .15, cE = new THREE.Color('#6f6a4c');
+      const fL = ft(1), fR = ft(-1), foot = fL, gL = Math.min(top, gH(q.x + nx * fL, q.y + nz * fL)) - .15, gR = Math.min(top, gH(q.x - nx * fR, q.y - nz * fR)) - .15, cE = new THREE.Color('#e0d8c0');
       const eL = Math.min(top, gL + .1) - Math.min(.35, top - gL), eR = Math.min(top, gR + .1) - Math.min(.35, top - gR);   // dove finisce la ghiaia comincia la terra
       return [push(q.x + nx * fL, gL, q.y + nz * fL, jit(cE, i)), push(q.x + nx * 2.6, top - Math.min(.35, top - gL), q.y + nz * 2.6, jit(fL > 4.5 ? cE : cG2, i + 5)), push(q.x + nx * 1.9, top, q.y + nz * 1.9, jit(cG, i + 1)), push(q.x, top + .02, q.y, jit(cO, i + 2)), push(q.x - nx * 1.9, top, q.y - nz * 1.9, jit(cG, i + 3)), push(q.x - nx * 2.6, top - Math.min(.35, top - gR), q.y - nz * 2.6, jit(fR > 4.5 ? cE : cG2, i + 6)), push(q.x - nx * fR, gR, q.y - nz * fR, jit(cE, i + 4))];
     };
     for (let i = 0; i < P.length; i += 2) {
       const q = railAt(i), k = bed(q, i), kind = EL(i) || SEA(i) ? 1 : 0;
-      if (prev && kind === prevK) for (let a = 0; a < 6; a++) idx.push(prev[a], k[a], prev[a + 1], prev[a + 1], k[a], k[a + 1]);
-      else if (prev) { const k2 = bed(railAt(i - 1), i - 1); for (let a = 0; a < 6; a++) idx.push(prev[a], k2[a], prev[a + 1], prev[a + 1], k2[a], k2[a + 1]); }
+      const strip = (A, B, kd) => { for (let a = 0; a < 6; a++) (kd ? idxD : a === 0 || a === 5 ? idxE : idxG).push(A[a], B[a], A[a + 1], A[a + 1], B[a], B[a + 1]); };
+      if (prev && kind === prevK) strip(prev, k, kind);
+      else if (prev) { const k2 = bed(railAt(i - 1), i - 1); strip(prev, k2, prevK); }
       prev = k; prevK = kind;
     }
     // gli scali: la loro massicciata accanto, e i binari secondari
-    RAIL.yards.forEach(Y => { let pv = null; for (let u = 0; u <= Y.len; u += 2) { const q = yardAt(Y, u); const k = bed(q, Y.s0 + u, 1); if (pv) for (let a = 0; a < 6; a++) idx.push(pv[a], k[a], pv[a + 1], pv[a + 1], k[a], k[a + 1]); pv = k; } });
-    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); geo.setIndex(idx); geo.computeVertexNormals();
-    const bedM = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })); bedM.receiveShadow = true; bedM.userData.wr = 1; g.add(bedM);
+    RAIL.yards.forEach(Y => { let pv = null; for (let u = 0; u <= Y.len; u += 2) { const q = yardAt(Y, u); const k = bed(q, Y.s0 + u, 1); if (pv) for (let a = 0; a < 6; a++) (a === 0 || a === 5 ? idxE : idxG).push(pv[a], k[a], pv[a + 1], pv[a + 1], k[a], k[a + 1]); pv = k; } });
+    const PA = new THREE.Float32BufferAttribute(pos, 3), CA = new THREE.Float32BufferAttribute(col, 3), UA = new THREE.Float32BufferAttribute(uvs, 2);
+    [[idxG, RT.gravel], [idxE, RT.earth], [idxD, RT.concrete]].forEach(([ix, mp]) => { if (!ix.length) return; const geo = new THREE.BufferGeometry(); geo.setAttribute('position', PA); geo.setAttribute('color', CA); geo.setAttribute('uv', UA); geo.setIndex(ix); geo.computeVertexNormals(); const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: mp, vertexColors: true, side: THREE.DoubleSide })); m.receiveShadow = true; m.userData.wr = 1; g.add(m); });
     // ---- le parti ripetute (instanced) ----
     const bx = new THREE.BoxGeometry(1, 1, 1), m4 = new THREE.Matrix4(), qt = new THREE.Quaternion(), e = new THREE.Euler(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
     const inst = (mat, list, shadow) => { if (!list.length) return; const im = new THREE.InstancedMesh(bx, mat, list.length); list.forEach((L, k) => { e.set(L[5] || 0, L[4], 0, 'YXZ'); qt.setFromEuler(e); im.setMatrixAt(k, m4.compose(v3.set(L[0], L[1], L[2]), qt, s3.set(L[3][0], L[3][1], L[3][2]))); }); im.castShadow = shadow !== false; im.receiveShadow = true; im.userData.wr = 1; im.frustumCulled = false; g.add(im); };
-    const slW = [], slC = [], rl = [], pil = [], posts = [], kmp = [], trough = [];
+    const slW = [], slC = [], rl = [], rlH = [], rlF = [], plates = [], clips = [], pil = [], posts = [], kmp = [], trough = [];
     const rails = (at, s0, s1, conc) => {
-      for (let s = s0; s < s1; s += .65) { const q = at(s); (conc(s) ? slC : slW).push([q.x, q.h - .1, q.y, conc(s) ? [.26, .17, 2.6] : [.24, .14, 2.5], -q.ang]); }
-      for (let s = s0; s < s1 - 2; s += 2) { const a = at(s), b = at(s + 2), ang = Math.atan2(b.y - a.y, b.x - a.x), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, mh = (a.h + b.h) / 2, l = Math.hypot(b.x - a.x, b.y - a.y) + .02; for (const sd of [-.72, .72]) rl.push([mx - Math.sin(ang) * sd, mh + .02, my + Math.cos(ang) * sd, [l, .14, .07], -ang]); }
+      for (let s = s0; s < s1; s += .65) { const q = at(s), cc = conc(s), wob = cc ? 0 : (Math.sin(s * 9.1) * .03); (cc ? slC : slW).push([q.x, q.h - .1, q.y, cc ? [.26, .17, 2.6] : [.24, .14, 2.5], -q.ang + wob]); for (const sd of [-.72, .72]) { const px = q.x - Math.sin(q.ang) * sd, pz = q.y + Math.cos(q.ang) * sd; plates.push([px, q.h - .02, pz, [.17, .025, .32], -q.ang]); for (const cl of [-.11, .11]) clips.push([px - Math.sin(q.ang) * cl, q.h, pz + Math.cos(q.ang) * cl, [.05, .04, .06], -q.ang]); } }   // la piastra e i due attacchi sotto ogni rotaia
+      for (let s = s0; s < s1 - 2; s += 2) { const a = at(s), b = at(s + 2), ang = Math.atan2(b.y - a.y, b.x - a.x), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, mh = (a.h + b.h) / 2, l = Math.hypot(b.x - a.x, b.y - a.y) + .02; for (const sd of [-.72, .72]) { const rx = mx - Math.sin(ang) * sd, rz = my + Math.cos(ang) * sd; rlH.push([rx, mh + .07, rz, [l, .045, .07], -ang]); rl.push([rx, mh + .01, rz, [l, .08, .022], -ang]); rlF.push([rx, mh - .035, rz, [l, .016, .14], -ang]); } }   // la rotaia vera: il fungo lucido, l'anima, la suola
     };
     // traversine: di cemento sulla linea in terra e sul ponte, di legno vecchio sul viadotto e negli scali
     rails(s => railAt(s), 0, P.length - 1, s => !SEA(s));
@@ -713,15 +762,84 @@ var Writing = (function () {
     // i piloni: sul ponte in terra e sul viadotto, fino al terreno (o al fondo del mare)
     for (let s = 6; s < P.length - 6; s += 12) { if (!(EL(s) || SEA(s))) continue; const q = railAt(s), top = q.h - 1.15, bot = SEA(s) ? -4 : gH(q.x, q.y) - .3; if (top - bot < .4) continue; pil.push([q.x, (top + bot) / 2, q.y, [1.2, top - bot, 3.2], -q.ang]); }
     // i parapetti del ponte e del viadotto (bassi, di cemento, si dipingono): un muro unico per lato
-    const para = (sd) => { const pp = [], pi = []; let pv = null; for (let i = 0; i < P.length; i += 2) { if (!(EL(i) || SEA(i))) { pv = null; continue; } const q = railAt(i), nx = -Math.sin(q.ang) * sd, nz = Math.cos(q.ang) * sd, o = 2.45, base = q.h - .18; const a = pp.length / 3; pp.push(q.x + nx * o, base, q.y + nz * o, q.x + nx * o, base + .95, q.y + nz * o); if (pv !== null) pi.push(pv, a, pv + 1, pv + 1, a, a + 1); pv = a; }
-      if (!pi.length) return; const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); gg.setIndex(pi); gg.computeVertexNormals(); const m = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ color: '#a7a399', side: THREE.DoubleSide })); m.receiveShadow = true; m.castShadow = true; m.name = 'parapetto'; g.add(m); };
+    const para = (sd) => { const pp = [], pi = [], pu = []; let pv = null; for (let i = 0; i < P.length; i += 2) { if (!(EL(i) || SEA(i))) { pv = null; continue; } const q = railAt(i), nx = -Math.sin(q.ang) * sd, nz = Math.cos(q.ang) * sd, o = 2.45, base = q.h - .18; const a = pp.length / 3; pp.push(q.x + nx * o, base, q.y + nz * o, q.x + nx * o, base + .95, q.y + nz * o); pu.push(i / 3, 0, i / 3, .48); if (pv !== null) pi.push(pv, a, pv + 1, pv + 1, a, a + 1); pv = a; }
+      if (!pi.length) return; const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(pu, 2)); gg.setIndex(pi); gg.computeVertexNormals(); const m = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ map: RT.concrete, side: THREE.DoubleSide })); m.receiveShadow = true; m.castShadow = true; m.name = 'parapetto'; g.add(m); };
     para(1); para(-1);
     // cippi ogni 100 m, la canalina dei cavi in cemento lungo un lato della linea in terra
     for (let s = 50; s < P.length - 4; s += 100) { const q = sidePt(s, 1, 2.9); kmp.push([q.x, (EL(s) || SEA(s) ? q.h : gH(q.x, q.y)) + .35, q.y, [.18, .7, .18], -q.ang]); }
     for (let s = 2; s < RAIL.landEnd - 2; s += 2) { if (EL(s)) continue; const q = sidePt(s, -1, 2.55); trough.push([q.x, q.h - .2, q.y, [2.02, .22, .34], -q.ang]); }
-    inst(new THREE.MeshStandardMaterial({ color: '#4a3a2c', roughness: .95 }), slW); inst(new THREE.MeshStandardMaterial({ color: '#7e7b74', roughness: .9 }), slC);
-    inst(new THREE.MeshStandardMaterial({ color: '#8a8a8e', metalness: .7, roughness: .4 }), rl);
-    inst(new THREE.MeshStandardMaterial({ color: '#8e8a82', roughness: .95 }), pil); inst(new THREE.MeshStandardMaterial({ color: '#e8e4da', roughness: .8 }), kmp); inst(new THREE.MeshStandardMaterial({ color: '#8a867e', roughness: .95 }), trough);
+    inst(new THREE.MeshLambertMaterial({ map: RT.wood }), slW); inst(new THREE.MeshLambertMaterial({ map: RT.concrete, color: '#d0ccc4' }), slC);
+    inst(new THREE.MeshStandardMaterial({ color: '#6a4a36', metalness: .4, roughness: .8 }), rl); inst(new THREE.MeshStandardMaterial({ color: '#5e4232', metalness: .3, roughness: .85 }), rlF); inst(new THREE.MeshStandardMaterial({ color: '#b4b4b8', metalness: .85, roughness: .3 }), rlH);   // il fianco arrugginito, il fungo lucidato dalle ruote
+    inst(new THREE.MeshStandardMaterial({ color: '#4a3c32', metalness: .5, roughness: .7 }), plates, false); inst(new THREE.MeshStandardMaterial({ color: '#3a3634', metalness: .6, roughness: .5 }), clips, false);
+    inst(new THREE.MeshLambertMaterial({ map: RT.concrete }), pil); inst(new THREE.MeshStandardMaterial({ color: '#e8e4da', roughness: .8 }), kmp); inst(new THREE.MeshStandardMaterial({ color: '#8a867e', roughness: .95 }), trough);
+    // ---- la superficie del rilevato a una distanza o dall'asse (per appoggiarci rete, muri, sassi, erba) e il suo piede ----
+    const surfAt = (s, sd, o) => { const q = sidePt(s, sd, 0), top = q.h - .18, nx = -Math.sin(q.ang) * sd, nz = Math.cos(q.ang) * sd, gg = gH(q.x + nx * o, q.y + nz * o); if (EL(s) || SEA(s)) return gg; return o <= 1.9 ? top : Math.max(gg, top - .35 - Math.max(0, o - 2.6) / 1.5); };
+    const footAt = (s, sd) => { for (let o = 2.6; o < 16; o += .4) { const q = sidePt(s, sd, o); if (surfAt(s, sd, o) - gH(q.x, q.y) < .05) return o; } return 16; };
+    // la rete sta oltre il piede della scarpata (mai dentro il rilevato): lo stesso confine vale per chi cammina (fencePush)
+    RAIL.fences.forEach(F => { [1, -1].forEach((sd, k) => { if (F.off[k] > 6) return; F.off[k] = Math.max(F.off[k], Math.min(15, footAt(F.s, sd) + .7)); }); });
+    for (let k = 1; k < RAIL.fences.length - 1; k++) for (let j = 0; j < 2; j++) { const a = RAIL.fences[k - 1].off[j], c = RAIL.fences[k + 1].off[j], b = RAIL.fences[k].off[j]; if (b < 6 && a < 6 && c < 6) RAIL.fences[k].off[j] = Math.max(b, (a + b + c) / 3); }   // senza scalini
+    // ---- la vegetazione e i sassi: ghiaia grossa sulle spalle, cespugli ed erba sulle scarpate e lungo la rete, erbacce negli scali ----
+    const hr = k => { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+    const rocks = [], bush = [], grass = [], weeds = [];
+    for (let s = 2; s < RAIL.landEnd - 2; s += 1.1) {
+      if (EL(s)) continue;
+      for (const sd of [1, -1]) {
+        const k = s * 7 + (sd > 0 ? 3 : 11), q0 = sidePt(s, sd, 0), F = RAIL.fences.find(f => Math.abs(f.s - s) <= 1.1), fo = F ? F.off[sd > 0 ? 0 : 1] : 99, gap = RAIL.gaps.find(gp => gp.side === sd && Math.abs(gp.s - s) < 3);
+        if (hr(k) < .55) { const o = 2.0 + hr(k + 1) * 1.2, q = sidePt(s, sd, o), sz = .12 + hr(k + 2) * .22; rocks.push([q.x, surfAt(s, sd, o) + sz * .3, q.y, [sz, sz * .7, sz * .9], hr(k + 3) * 6]); }   // i sassi della massicciata
+        if (hr(k + 4) < .5) { const o = 3 + hr(k + 5) * Math.max(1, Math.min(fo - .6, 14) - 3), q = sidePt(s, sd, o); if (!gap && Math.abs(o - fo) > .5) grass.push([q.x, surfAt(s, sd, o) + .12, q.y, [.35 + hr(k + 6) * .4, .25 + hr(k + 7) * .35, .35 + hr(k + 8) * .4], hr(k + 9) * 6]); }   // l'erba sulla scarpata
+        if (hr(k + 10) < .22) { const o = fo < 20 ? fo + .8 + hr(k + 11) * 3 : 4 + hr(k + 11) * 8, q = sidePt(s, sd, o), sz = .5 + hr(k + 12) * .9; if (!gap) bush.push([q.x, gH(q.x, q.y) + sz * .45, q.y, [sz * 1.2, sz, sz * 1.1], hr(k + 13) * 6]); }   // i cespugli oltre la rete
+        if (hr(k + 14) < .12) { const o = 2.4 + hr(k + 15) * 1.5, q = sidePt(s, sd, o), sz = .35 + hr(k + 16) * .5; if (!gap) bush.push([q.x, surfAt(s, sd, o) + sz * .35, q.y, [sz, sz * .8, sz], hr(k + 17) * 6]); }   // i rovi che salgono sulla ghiaia
+      }
+    }
+    RAIL.yards.forEach(Y => { for (let u = 4; u < Y.len - 4; u += .9) { const q = yardAt(Y, u), k = Y.s0 * 13 + u * 7; if (hr(k) < .45) { const o = (hr(k + 1) - .5) * 1.6, x = q.x - Math.sin(q.ang) * o, z = q.y + Math.cos(q.ang) * o; weeds.push([x, q.h - .12, z, [.3 + hr(k + 2) * .3, .2 + hr(k + 3) * .25, .3 + hr(k + 2) * .3], hr(k + 4) * 6]); } } });   // le erbacce fra le traversine degli scali (binari poco usati)
+    const geoInst = (geo, mat, list, cols) => { if (!list.length) return; const im = new THREE.InstancedMesh(geo, mat, list.length); list.forEach((L, k) => { e.set(0, L[4], 0); qt.setFromEuler(e); im.setMatrixAt(k, m4.compose(v3.set(L[0], L[1], L[2]), qt, s3.set(L[3][0], L[3][1], L[3][2]))); if (cols) im.setColorAt(k, cols[k % cols.length]); }); im.castShadow = true; im.receiveShadow = true; im.userData.wr = 1; im.frustumCulled = false; g.add(im); };
+    const C = h => new THREE.Color(h);
+    // i sassi: quattro forme mosse, colori della pietra del posto
+    [0, 1, 2, 3].forEach(f => geoInst(rockGeo(f * 3.7 + 1), new THREE.MeshLambertMaterial({ color: '#ffffff', flatShading: true }), rocks.filter((_, k) => k % 4 === f), [C('#6e6a63'), C('#80796f'), C('#5d5a55'), C('#8a8478'), C('#6a6052'), C('#7a7468')]));
+    // l'erba a ciuffi (carte trasparenti incrociate), i cespugli (carte di foglie attorno a un cuore scuro), le erbacce degli scali
+    const tuft = tuftGeo(3), cardM = (mp, dbl) => new THREE.MeshLambertMaterial({ map: mp, alphaTest: .45, transparent: false, side: THREE.DoubleSide, color: '#ffffff' });
+    const grassL = grass.map(L => [L[0], L[1] - .12, L[2], [L[3][0] * 1.6, L[3][1] * 1.9, L[3][2] * 1.6], L[4]]);
+    geoInst(tuft, cardM(RT.grass), grassL.concat(weeds.map(L => [L[0], L[1] - .05, L[2], [L[3][0] * 1.4, L[3][1] * 1.6, L[3][2] * 1.4], L[4]])), [C('#ffffff'), C('#e8f0d0'), C('#f4e8c0'), C('#d8e8c8'), C('#fff0d0')]);
+    const bushCards = []; bush.forEach((L, k) => { for (let j = 0; j < 4; j++) { const a = j * 1.57 + L[4], r = L[3][0] * .35; bushCards.push([L[0] + Math.cos(a) * r, L[1] - L[3][1] * .55, L[2] + Math.sin(a) * r, [L[3][0] * 1.5, L[3][1] * 1.6, L[3][2] * 1.5], a]); } });
+    geoInst(tuft, cardM(RT.leaves), bushCards, [C('#ffffff'), C('#e0ecd0'), C('#d0dcb8'), C('#f0f4e0')]);
+    geoInst(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: '#2a3a1e', flatShading: true }), bush.map(L => [L[0], L[1] - L[3][1] * .2, L[2], [L[3][0] * .45, L[3][1] * .45, L[3][2] * .45], L[4]]));
+    // l'erba alta e secca lungo la rete (dove il decespugliatore non arriva)
+    const tall = []; RAIL.fences.forEach((F, k) => { if (k % 2) return; [1, -1].forEach((sd, j) => { const o = F.off[j], gap = RAIL.gaps.find(gp => gp.side === sd && Math.abs(gp.s - F.s) < 2.5); if (gap || hr(k * 3 + j) < .35) return; const q = sidePt(F.s + hr(k + j) * 2, sd, o + (hr(k * 5 + j) - .5) * .8), sz = .5 + hr(k * 7 + j) * .6; tall.push([q.x, gH(q.x, q.y), q.y, [sz * 1.3, sz * 2.2, sz * 1.3], hr(k * 11 + j) * 6]); }); });
+    geoInst(tuft, cardM(RT.grass), tall, [C('#f8e8b8'), C('#e8d8a0'), C('#ffffff'), C('#f0e0b0')]);
+    // ---- la vita lungo la linea: bombolette vuote sotto i muri e ai varchi, bottiglie, lattine; negli scali le traversine
+    // vecchie accatastate, i bancali, una sala montata arrugginita, la bobina del cavo; i cartelli ai varchi (già taggati) ----
+    const cans = [], caps = [], bottles = [], tins = [], oldSl = [], pallet = [], rust = [], drum = [];
+    const canCol = [C('#c42a22'), C('#1e1e24'), C('#e8e0d0'), C('#2a6ac8'), C('#e8c040'), C('#3a9a5a'), C('#c84a9a'), C('#9a9aa0')];
+    const scatterAt = (x0, z0, n, seed, r) => { for (let k = 0; k < n; k++) { const a = hr(seed + k) * 6.283, d = hr(seed + k * 1.3) * r, x = x0 + Math.cos(a) * d, z = z0 + Math.sin(a) * d, y = gH(x, z), t = hr(seed + k * 2.1);
+      if (t < .55) { cans.push([x, y + .033, z, [.066, .2, .066], hr(seed + k * 3) * 6, 1.57]); } else if (t < .8) bottles.push([x, y + .035, z, [.07, .26, .07], hr(seed + k * 3) * 6, 1.57]); else tins.push([x, y + .033, z, [.066, .12, .066], hr(seed + k * 3) * 6, 1.57]); } };
+    RAIL.walls.forEach((Wl, k) => { if (k % 3) return; const q = sidePt(Wl.s + 2, Wl.side, Wl.off + 1); scatterAt(q.x, q.y, 3 + Math.floor(hr(k) * 4), k * 31, 1.4); });
+    RAIL.gaps.forEach((gp, k) => { const F = RAIL.fences.find(f => Math.abs(f.s - gp.s) <= 1), o = F ? F.off[gp.side > 0 ? 0 : 1] : 4, q = sidePt(gp.s, gp.side, o - 1.2); scatterAt(q.x, q.y, 4, 900 + k * 17, 1.2); });
+    RAIL.yards.forEach((Y, k) => {
+      const out = Y.side, at = (u, o) => { const q = yardAt(Y, u), nx = -Math.sin(q.ang) * out, nz = Math.cos(q.ang) * out; return { x: q.x + nx * o, z: q.y + nz * o, ang: q.ang }; };
+      { const c = at(Y.len * .55, 3.6), b = gH(c.x, c.z); for (let l = 0; l < 4; l++) for (let m = 0; m < 5 - l; m++) oldSl.push([c.x + Math.cos(c.ang) * (m - 2 + l * .5) * .28, b + .07 + l * .145, c.z + Math.sin(c.ang) * (m - 2 + l * .5) * .28, [2.5, .14, .24], -c.ang + Math.PI / 2 + (hr(k + l * 5 + m) - .5) * .08]); }   // la catasta di traversine
+      { const c = at(Y.len * .78, 3.8), b = gH(c.x, c.z); for (let l = 0; l < 3; l++) { for (let m = -1; m <= 1; m++) pallet.push([c.x + Math.cos(c.ang) * m * .45, b + .05 + l * .16, c.z + Math.sin(c.ang) * m * .45, [1.2, .03, .12], -c.ang + Math.PI / 2 + l * .05]); for (let m = -2; m <= 2; m++) pallet.push([c.x - Math.sin(c.ang) * m * .26, b + .1 + l * .16, c.z + Math.cos(c.ang) * m * .26, [1.1, .02, .1], -c.ang + l * .05]); } }   // i bancali
+      { const c = at(Y.len * .2, 3.4), b = gH(c.x, c.z); for (const sd of [-.72, .72]) rust.push([c.x + Math.cos(c.ang) * sd, b + .46, c.z + Math.sin(c.ang) * sd, [.92, .1, .92], -c.ang, 1.57]); rust.push([c.x, b + .46, c.z, [.12, 1.7, .12], -c.ang + 1.57, 1.57]); }   // la sala montata (due ruote e l'asse) lasciata lì
+      { const c = at(Y.len * .35, 4.2), b = gH(c.x, c.z); drum.push([c.x, b + .55, c.z, [1.1, .7, 1.1], -c.ang, 1.57]); }   // la bobina del cavo
+      scatterAt(at(Y.len * .5, 2.8).x, at(Y.len * .5, 2.8).z, 6, 4000 + k * 13, 2.5);
+    });
+    const cylInst = (geo, mat, list, cols) => geoInst(geo, mat, list.map(L => L), cols);
+    const gC = new THREE.CylinderGeometry(.5, .5, 1, 10); gC.rotateX(Math.PI / 2);
+    const lie = list => list.map(L => [L[0], L[1], L[2], [L[3][0], L[3][2], L[3][1]], L[4]]);   // sdraiati per terra
+    geoInst(gC, new THREE.MeshStandardMaterial({ color: '#ffffff', metalness: .6, roughness: .4 }), lie(cans), canCol);
+    geoInst(gC, new THREE.MeshStandardMaterial({ color: '#ffffff', metalness: .1, roughness: .2, transparent: true, opacity: .85 }), lie(bottles), [C('#2a5a2a'), C('#6a4020'), C('#cfd8d0')]);
+    geoInst(gC, new THREE.MeshStandardMaterial({ color: '#ffffff', metalness: .7, roughness: .5 }), lie(tins), [C('#b8b8b8'), C('#c8302a'), C('#2a4a8a')]);
+    inst(new THREE.MeshLambertMaterial({ map: RT.wood, color: '#8a7a6a' }), oldSl); inst(new THREE.MeshLambertMaterial({ color: '#a08a64' }), pallet);
+    const gD = new THREE.CylinderGeometry(.5, .5, 1, 16); geoInst(gD, new THREE.MeshStandardMaterial({ color: '#6a3a20', metalness: .6, roughness: .8 }), rust.map(L => [L[0], L[1], L[2], [L[3][0], L[3][1], L[3][2]], L[4]]).map((L, k) => { if (k % 3 === 2) return L; return L; }));
+    geoInst(new THREE.CylinderGeometry(.5, .5, 1, 18), new THREE.MeshLambertMaterial({ map: RT.wood, color: '#b09070' }), drum);
+    // i cartelli ai varchi: «VIETATO ATTRAVERSARE I BINARI», col palo, la ruggine e le tag sopra
+    RAIL.gaps.forEach((gp, k) => {
+      const F = RAIL.fences.find(f => Math.abs(f.s - gp.s) <= 1), o = F ? F.off[gp.side > 0 ? 0 : 1] : 4, q = sidePt(gp.s + 2.2, gp.side, o + .25), b = gH(q.x, q.y);
+      const c = cv(256, 160), x = c.getContext('2d'); x.fillStyle = '#f0ece2'; x.fillRect(0, 0, 256, 160); x.strokeStyle = '#c8202a'; x.lineWidth = 10; x.strokeRect(5, 5, 246, 150); x.fillStyle = '#c8202a'; x.font = 'bold 26px Arial'; x.textAlign = 'center'; x.fillText('VIETATO', 128, 46); x.font = 'bold 19px Arial'; x.fillText('ATTRAVERSARE I BINARI', 128, 76); x.fillStyle = '#222'; x.font = '15px Arial'; x.fillText('PERICOLO DI MORTE', 128, 104); x.fillText('FERROVIE DELLO STATO', 128, 128);
+      for (let j = 0; j < 30; j++) { x.fillStyle = `rgba(120,60,30,${.15 + hr(k * 9 + j) * .3})`; x.beginPath(); x.arc(hr(k + j * 3) * 256, hr(k + j * 5) * 160, 2 + hr(j + k) * 7, 0, 7); x.fill(); }   // la ruggine
+      try { if (typeof WriterMano !== 'undefined' && WriterMano.handTag) WriterMano.handTag(x, ['DAKO', 'KEOS', 'SNEK', 'RUSK', 'ZORA', 'NEMO'][k % 6], WriterMano.dna(77 + k), 256, 160, mulberry(k + 5), k % 2 ? '#1a1a1e' : '#2a56c8', 'mtag'); } catch (er) { }   // la tag sopra il cartello
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(.8, .5), new THREE.MeshLambertMaterial({ map: canvasTexture(c), side: THREE.DoubleSide })); pl.position.set(q.x, b + 1.55, q.y); pl.rotation.y = -q.ang; g.add(pl);
+      const po = new THREE.Mesh(new THREE.CylinderGeometry(.03, .035, 1.9, 6), new THREE.MeshStandardMaterial({ color: '#5a4a40', metalness: .5, roughness: .7 })); po.position.set(q.x, b + .95, q.y); g.add(po);
+    });
     // ---- la rete: pali ogni 2,5 m e la maglia (trasparente), tagliata nei varchi (il lembo piegato, il sentiero battuto) ----
     const meshT = tex64(64, 64, (x, w, h) => { x.clearRect(0, 0, w, h); x.strokeStyle = 'rgba(150,152,150,.95)'; x.lineWidth = 2.2; for (let k = -64; k < 128; k += 16) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k + 64, 64); x.stroke(); x.beginPath(); x.moveTo(k + 64, 0); x.lineTo(k, 64); x.stroke(); } });
     meshT.wrapS = meshT.wrapT = THREE.RepeatWrapping;
@@ -749,7 +867,7 @@ var Writing = (function () {
     // ---- i muri antirumore: pannelli di cemento grigio, a filo del terreno, che si dipingono (un muro vero, non instanced) ----
     if (RAIL.walls.length) {
       const pp = [], pi = []; let pv = null, lastS = -99;
-      RAIL.walls.forEach(Wl => { for (let u = 0; u <= Wl.len; u += 1) { const q = sidePt(Wl.s + u, Wl.side, Wl.off), b = gH(q.x, q.y) - .2; if (Wl.s + u - lastS > 1.5) pv = null; const a = pp.length / 3; pp.push(q.x, b, q.y, q.x, b + Wl.h + .2, q.y); if (pv !== null) pi.push(pv, a, pv + 1, pv + 1, a, a + 1); pv = a; lastS = Wl.s + u; } });
+      RAIL.walls.forEach(Wl => { for (let u = 0; u <= Wl.len; u += 1) { const q = sidePt(Wl.s + u, Wl.side, Wl.off), b = surfAt(Wl.s + u, Wl.side, Wl.off) - .25;   /* il muro posa sulla scarpata, non ci affonda */ if (Wl.s + u - lastS > 1.5) pv = null; const a = pp.length / 3; pp.push(q.x, b, q.y, q.x, b + Wl.h + .2, q.y); if (pv !== null) pi.push(pv, a, pv + 1, pv + 1, a, a + 1); pv = a; lastS = Wl.s + u; } });
       const wt = tex64(256, 128, (x, w, h) => { x.fillStyle = '#9c988f'; x.fillRect(0, 0, w, h); for (let k = 0; k < 900; k++) { x.fillStyle = `rgba(${60 + Math.random() * 40},${60 + Math.random() * 40},${55 + Math.random() * 40},.12)`; x.fillRect(Math.random() * w, Math.random() * h, 2, 2); } x.fillStyle = 'rgba(40,38,34,.35)'; for (let u = 0; u < w; u += 64) x.fillRect(u, 0, 3, h); const gr = x.createLinearGradient(0, h, 0, h * .6); gr.addColorStop(0, 'rgba(70,60,45,.35)'); gr.addColorStop(1, 'rgba(70,60,45,0)'); x.fillStyle = gr; x.fillRect(0, h * .6, w, h * .4); });
       const uv = []; for (let k = 0; k < pp.length / 6; k++) uv.push(k / 4, 0, k / 4, 1);
       const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); gg.setIndex(pi); gg.computeVertexNormals();
