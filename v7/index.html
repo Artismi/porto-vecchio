@@ -30466,7 +30466,7 @@ var WriterArte = (function () {
     // 2. lo sfondo
     const BG = cv(Wp, Hp), bg = BG.getContext('2d');
     if (S0.ref && C.bgk !== 'rullo' && w.style !== 'wholecar') C.bgk = null;   // [writer] le bolle dei bozzetti stanno da sole sul muro
-    if (C.bgk) { background(bg, C.bgk, P, Wp, Hp, r, w.style === 'wholecar'); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .18); }
+    if (C.bgk) { if (C.bgk === 'rullo' && w.style !== 'wholecar') cloudOf(bg, FILL, P, Wp, Hp, r, q); else background(bg, C.bgk, P, Wp, Hp, r, w.style === 'wholecar'); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .18); }
     // 3. le lettere: il filo esterno attorno a tutto, poi ognuna col suo blocco 3D pieno, il contorno, il riempimento, le fessure
     const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); if (S0.scribble) scribble(bg, Wp, Hp, S0.ol, r, u); ox.drawImage(BG, 0, 0);
     if (S0.outer) for (let s = 0; s <= steps; s++) { if (S3 && s && s < steps) continue; B.L.forEach(l => fillBody(ox, l, ol * (V.kv === 'sottile' ? 1.5 : 2.4), S0.outer, dx * s / steps, dy * s / steps)); }
@@ -30640,26 +30640,53 @@ var WriterArte = (function () {
   // larghezza della lettera (in altezze): le strette e le larghe
   const BW = ch => ch === 'I' ? 0 : ch === '1' ? .55 : /[MW]/.test(ch) ? 1.3 : /[TYVXA]/.test(ch) ? 1.05 : 1;
   // sfocatura e soglia: thr .5 arrotonda gli angoli senza cambiare la misura; thr basso allarga (il contorno, il bordo)
-  function blurThresh(src, s, thr) {
+  // il rumore morbido (per i bordi dello spray e le passate del riempimento): caselle a caso ingrandite con lo sfumato
+  function noiseField(W, H, seed, cell) {
+    const r = mulberry(seed ^ 0x2f6b), w0 = Math.max(2, Math.ceil(W / cell)), h0 = Math.max(2, Math.ceil(H / cell)), sm = cv(w0, h0), sx = sm.getContext('2d'), id = sx.createImageData(w0, h0);
+    for (let i = 0; i < w0 * h0; i++) { const v = r() * 255; id.data[i * 4] = id.data[i * 4 + 1] = id.data[i * 4 + 2] = v; id.data[i * 4 + 3] = 255; } sx.putImageData(id, 0, 0);
+    const big = cv(W, H), bx = big.getContext('2d'); bx.imageSmoothingEnabled = true; bx.drawImage(sm, 0, 0, W, H); return { cnv: big, data: bx.getImageData(0, 0, W, H).data };
+  }
+  function blurThresh(src, s, thr, rough, NF) {
     const W = src.width, H = src.height, k = cv(W, H), x = k.getContext('2d'); if (s > .3) x.filter = `blur(${s.toFixed(2)}px)`; x.drawImage(src, 0, 0); x.filter = 'none';
-    const d = x.getImageData(0, 0, W, H), A = d.data, lo = (thr - .06) * 255, hi = (thr + .06) * 255;
-    for (let i = 0; i < A.length; i += 4) { const a = A[i + 3], v = a <= lo ? 0 : a >= hi ? 255 : (a - lo) / (hi - lo) * 255; A[i] = A[i + 1] = A[i + 2] = 255; A[i + 3] = v; }
+    const d = x.getImageData(0, 0, W, H), A = d.data, lo = (thr - .06) * 255, hi = (thr + .06) * 255, N = rough && NF ? NF.data : null;
+    for (let i = 0; i < A.length; i += 4) { const a0 = A[i + 3], a = a0 + (N && a0 > 0 && a0 < 255 ? (N[i] - 128) * rough : 0), v = a <= lo ? 0 : a >= hi ? 255 : (a - lo) / (hi - lo) * 255; A[i] = A[i + 1] = A[i + 2] = 255; A[i + 3] = v; }
     x.putImageData(d, 0, 0); return k;
   }
-  const grow = (src, r0) => blurThresh(src, Math.max(.5, r0 / 1.28), .1);   // allarga di r0 pixel (angoli tondi, chiuso)
+  const grow = (src, r0, rough, NF) => blurThresh(src, Math.max(.5, r0 / 1.28), .1, rough, NF);   // allarga di r0 pixel (angoli tondi, chiuso; rough: il bordo ruvido dello spray)
+  // la nuvola dietro al pezzo: tondi spruzzati attorno alle lettere, fusi in una sagoma sola, il bordo che sfuma in polvere
+  function cloud(bg, L, toPx, S, P, Wp, Hp, r, q) {
+    const M = cv(Wp, Hp), mx = M.getContext('2d'); mx.fillStyle = '#fff';
+    L.forEach(l => { const n = 2 + Math.floor(r() * 3); for (let k = 0; k < n; k++) { const [a, b] = toPx(l, [l.w * (.1 + r() * .8), .25 + r() * .7]), R = S * (.42 + r() * .3); mx.beginPath(); mx.arc(a, b, R, 0, 7); mx.fill(); } });
+    const B = blurThresh(M, S * .14, .5), T = cv(Wp, Hp), tx = T.getContext('2d'); tx.filter = `blur(${(S * .025).toFixed(1)}px)`; tx.drawImage(B, 0, 0); tx.filter = 'none'; tx.globalCompositeOperation = 'source-in';
+    const g = tx.createLinearGradient(0, 0, 0, Hp); g.addColorStop(0, shade(P.bg, .12)); g.addColorStop(1, shade(P.bg, -.12)); tx.fillStyle = g; tx.fillRect(0, 0, Wp, Hp); tx.globalCompositeOperation = 'source-over';
+    bg.save(); bg.globalAlpha = .9; bg.filter = `blur(${(S * .1).toFixed(1)}px)`; bg.drawImage(T, 0, 0); bg.restore(); bg.drawImage(T, 0, 0);   // il velo attorno, poi la nuvola piena
+    if (q > .5) for (let k = 0; k < 4 + r() * 6; k++) sparkle(bg, r() * Wp, Hp * (.08 + r() * .3), S * (.06 + r() * .08), 'rgba(255,255,255,.9)');
+  }
+  // la nuvola da una maschera qualunque (bolle, tratti): la sagoma delle lettere gonfiata e resa morbida, il bordo mosso piano
+  function cloudOf(bg, FILL, P, Wp, Hp, r, q) {
+    const NF = noiseField(Wp, Hp, Math.floor(r() * 1e6), Hp * .22), B = blurThresh(FILL, Hp * .055, .1, .45, NF), T = cv(Wp, Hp), tx = T.getContext('2d'); tx.drawImage(B, 0, 0); tx.globalCompositeOperation = 'destination-in'; tx.filter = `blur(${(Hp * .035).toFixed(1)}px)`; tx.fillStyle = '#fff'; tx.fillRect(Hp * .09, Hp * .09, Wp - Hp * .18, Hp * .82); tx.filter = 'none'; tx.globalCompositeOperation = 'source-in';   // sfuma prima del bordo del muro
+    const g = tx.createLinearGradient(0, 0, 0, Hp); g.addColorStop(0, shade(P.bg, .12)); g.addColorStop(1, shade(P.bg, -.12)); tx.fillStyle = g; tx.fillRect(0, 0, Wp, Hp); tx.globalCompositeOperation = 'source-over';
+    bg.save(); bg.globalAlpha = .9; bg.filter = `blur(${(Hp * .03).toFixed(1)}px)`; bg.drawImage(T, 0, 0); bg.restore(); bg.save(); bg.filter = `blur(${(Hp * .006).toFixed(1)}px)`; bg.drawImage(T, 0, 0); bg.restore();
+    if (q > .5) for (let k = 0; k < 3 + r() * 5; k++) sparkle(bg, r() * Wp, Hp * (.08 + r() * .3), Hp * (.03 + r() * .04), 'rgba(255,255,255,.9)');
+  }
   function blockArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
     const q = C.q, F = FAM[C.fam], CN = w.cons || consOf(w.hand || w.seed || 1), text = DEACC(w.words || w.aka || 'NINO').replace(/[^A-Z0-9]/g, '') || 'NINO';
     const hollow = !!F.hollow, heavy = C.fam === 'heavy';
     const t = clamp(CN.weight * (heavy ? 1.35 : hollow ? .95 : 1.12), .18, heavy ? .4 : hollow ? .26 : .33), wL = Math.max(clamp(CN.width, .58, .92), 2 * clamp(CN.weight * (heavy ? 1.35 : hollow ? .95 : 1.12), .18, heavy ? .4 : hollow ? .26 : .33) + .24), sl = CN.slant, gap = clamp(CN.gap * .7, .05, .14);
     const corner = { cut: 0, spike: 0, flare: .07, round: .16 }[CN.term] ?? .05, step = CN.step || 0, wave = CN.wave || 0;
     // la parola in coordinate della lettera (altezza 1): le caselle una dopo l'altra, l'inclinazione, i gradini, l'onda
-    const L = []; let cur = 0; [...text].forEach((ch, k) => { const ww = ch === 'I' ? t : wL * BW(ch), dy = (k % 2 ? -step : 0) - wave * Math.sin((k + .5) / text.length * PI); L.push({ ch, x0: cur, w: ww, dy, polys: blockGlyph(ch, t, ww) }); cur += ww + gap; });
+    const L = []; let cur = 0; [...text].forEach((ch, k) => { const ww = ch === 'I' ? t : wL * BW(ch), dy = (k % 2 ? -step : 0) - wave * Math.sin((k + .5) / text.length * PI); L.push({ ch, x0: cur, w: ww, dy, rot: (r() - .5) * (.08 + (1 - q) * .1) + (k % 2 ? .02 : -.02) * CN.con, sc: k === 0 ? 1.08 : .95 + r() * .08, polys: blockGlyph(ch, t, ww) }); cur += ww + gap; });   // le lettere ballano: ognuna un filo storta, la prima più grande
+    const arrL = false, arrR = q > .45 && mulberry((w.hand || w.seed || 1) * 7919 + 13)() < .35, aw = arrR ? .3 : 0;   // le frecce: escono dalle lettere, fanno parte della lettera (stessa maschera, stesso contorno)
+    if (arrL) { const l = L[0], th = Math.min(t, .2) * .95; l.polys.push([[t * .2, 0], [t * .2 + th, 0], [-.04, -.17], [-.04 - th * .7, -.17 + th * .7]], [[-.26, -.26], [.06, -.2], [-.16, .02]]); }   // la freccia in su: il gambo che esce dall'asta, la punta
+    if (arrR) { const l = L[L.length - 1], th = Math.min(t, .2) * .95; l.polys.push([[l.w - .05, 1 - th], [l.w + aw * .55, 1 - th], [l.w + aw * .55, 1], [l.w - .05, 1]], [[l.w + aw * .4, 1 - th * 2.1], [l.w + aw, 1 - th / 2], [l.w + aw * .4, 1 + th * 1.1]]); }   // la freccia in fondo: la riga di base che continua e finisce a punta
+    cur += aw;
     const totW = cur - gap + Math.abs(sl), sloganH = C.slogan ? Hp * .1 : 0;
     // le misure in pixel: margine per contorno, 3D, bordo
-    const pad = Hp * .1, d3k = .16 + r() * .1, ang = .55 + r() * .4, S = Math.min((Wp - 2 * pad - Hp * d3k) / totW, (Hp - 2 * pad - sloganH - Hp * d3k * .6) / (1 + step + wave));
+    const pad = Hp * (arrL ? .15 : .12), d3k = .16 + r() * .1, ang = .55 + r() * .4, S = Math.min((Wp - 2 * pad - Hp * d3k) / totW, (Hp - 2 * pad - sloganH - Hp * d3k * .6) / (1 + step + wave));
     const ox0 = (Wp - (totW * S + Hp * d3k * .5)) / 2, oy0 = (Hp - sloganH - (1 + step + wave) * S - Hp * d3k * .5) / 2 + (step + wave) * S;
     const ol = Math.max(2, S * CN.line * (hollow ? .8 : 1.05)), d3 = hollow || C.fam === 'piatto' && r() < .45 ? 0 : S * d3k * (heavy ? 1.3 : 1), dx = Math.cos(ang) * d3, dy = Math.sin(ang) * d3;
-    const toPx = (l, [u, v]) => [ox0 + (l.x0 + u + (1 - v) * sl) * S, oy0 + (v + l.dy) * S];
+    const toPx = (l, [u, v]) => { const c = Math.cos(l.rot), sn = Math.sin(l.rot), a = (u - l.w / 2) * l.sc, b = (v - .6) * l.sc, U = l.w / 2 + a * c - b * sn, V = .6 + a * sn + b * c; return [ox0 + (l.x0 + U + (1 - V) * sl) * S, oy0 + (V + l.dy) * S]; };
+    const NF = noiseField(Wp, Hp, (w.seed || 1) * 3 + 7, Math.max(8, S * .45)), rough = .12 + (1 - q) * .1;   // lo spray: la linea che ingrossa e si assottiglia piano lungo il tratto (la mano rallenta, accelera)
     // le maschere delle lettere (con gli angoli scelti dal writer)
     const masks = L.map(l => { const m = cv(Wp, Hp), mx = m.getContext('2d'); mx.fillStyle = '#fff'; l.polys.forEach(pl => { mx.beginPath(); pl.forEach((p, k) => { const [a, b] = toPx(l, p); k ? mx.lineTo(a, b) : mx.moveTo(a, b); }); mx.closePath(); mx.fill(); }); return corner > 0 ? blurThresh(m, corner * t * S, .5) : m; });
     const tintC = (src, col) => { const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(src, 0, 0); kx.globalCompositeOperation = 'source-in'; if (col instanceof HTMLCanvasElement) kx.drawImage(col, 0, 0); else { kx.fillStyle = col; kx.fillRect(0, 0, Wp, Hp); } kx.globalCompositeOperation = 'source-over'; return k; };   // il contesto torna normale: chi ci disegna sopra dopo non cancella niente
@@ -30668,23 +30695,34 @@ var WriterArte = (function () {
     const top = oy0 - (step + wave) * S, bot = oy0 + S;
     if (fk === 'bande' || fk === 'fade') { const n = r() < .5 ? 2 : 3, cols = n === 2 ? [shade(P.f[1], .25), shade(P.f[1], -.1)] : [shade(P.f[1], .3), P.f[1], shade(P.f[1], -.22)], hh = (bot - top) / n; px.fillStyle = cols[0]; px.fillRect(0, 0, Wp, Hp); for (let k = 1; k < n; k++) { px.fillStyle = cols[k]; px.fillRect(0, top + hh * k, Wp, Hp); } }
     else if (fk === 'due') { px.fillStyle = P.f[0]; px.fillRect(0, 0, Wp, Hp); px.fillStyle = P.bg; px.fillRect(0, top + (bot - top) * (.55 + r() * .1), Wp, Hp); }
-    else { px.fillStyle = P.f[1]; px.fillRect(0, 0, Wp, Hp); }
+    else { const g = px.createLinearGradient(0, top, 0, bot), mid = .45 + r() * .2; g.addColorStop(0, P.f[0]); g.addColorStop(mid - .12, P.f[0]); g.addColorStop(mid + .12, P.f[1]); g.addColorStop(1, shade(P.f[1], -.18)); px.fillStyle = g; px.fillRect(0, 0, Wp, Hp); }   // la sfumata: due colori che si mangiano a metà, morbida come lo spray
     const lum = h => { const n = parseInt(h.slice(1), 16); return ((n >> 16) * .3 + ((n >> 8) & 255) * .59 + (n & 255) * .11) / 255; };
     const OL = hollow && lum(P.o) > .55 ? '#141418' : P.o, D3 = P.d, KL = P.k;   // il solo contorno su un muro chiaro vuole la linea scura
+    { const pa = -.5 + r() * .3, ca = Math.cos(pa), sa = Math.sin(pa), bw = S * (.16 + r() * .08); px.save(); px.lineCap = 'round';   // le passate: il braccio va avanti e indietro in diagonale, ogni passata un filo più o meno carica
+      for (let k = 0, n = Math.ceil((Wp + Hp) / bw * .9); k < n; k++) { const c0 = -Hp + k * bw * 1.1, a0 = r(); px.globalAlpha = .05 + a0 * .07; px.strokeStyle = a0 < .5 ? '#000000' : '#ffffff'; px.lineWidth = bw * (.8 + r() * .5);
+        px.beginPath(); px.moveTo(c0 - sa * Hp * 2, -ca * Hp * 2 + Hp / 2); px.lineTo(c0 + sa * Hp * 2, ca * Hp * 2 + Hp / 2); px.stroke(); }
+      px.restore(); }
+    if (q > .4 && !hollow) { const ka = -1.05 + r() * .25, kc = Math.cos(ka), ks = Math.sin(ka), sp = S * (1.8 + r() * 1.2), ph = r() * sp; px.save(); px.strokeStyle = P.hi; px.lineCap = 'butt';   // i tagli di luce: due righe parallele, una grossa e una fina, sempre allo stesso angolo su tutto il pezzo
+      for (let c0 = -Hp + ph; c0 < Wp + Hp; c0 += sp) [[0, .07], [.13, .025]].forEach(([o0, wd]) => { px.globalAlpha = .6; px.lineWidth = S * wd * .8; const cx = c0 + o0 * S; px.beginPath(); px.moveTo(cx - kc * Hp * 2, Hp / 2 - ks * Hp * 2); px.lineTo(cx + kc * Hp * 2, Hp / 2 + ks * Hp * 2); px.stroke(); });
+      px.restore(); }
     // 1. il riempimento
     const FILL = cv(Wp, Hp), fx = FILL.getContext('2d'); if (!hollow) masks.forEach(m => fx.drawImage(tintC(m, PAT), 0, 0)); else masks.forEach(m => fx.drawImage(tintC(grow(m, ol), OL), 0, 0));
     x.drawImage(FILL, 0, 0); snap(x.canvas); const pts = []; L.forEach(l => l.polys.forEach(pl => { const c0 = pl.reduce((s0, p) => [s0[0] + p[0] / pl.length, s0[1] + p[1] / pl.length], [0, 0]); pts.push(toPx(l, c0)); })); paths.push(pts); radii.push(t * S * .9);
     // 2. il fondo
-    const BG = cv(Wp, Hp), bg = BG.getContext('2d'); if (C.bgk) { background(bg, C.bgk, P, Wp, Hp, r, false); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .16); }
+    const BG = cv(Wp, Hp), bg = BG.getContext('2d'); if (C.bgk) { if (C.bgk === 'rullo') cloud(bg, L, toPx, S, P, Wp, Hp, r, q); else background(bg, C.bgk, P, Wp, Hp, r, false); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .16); }
     // 3. il pezzo: il bordo attorno a tutto, il 3D col suo contorno dietro a tutte, poi le lettere da destra (la sinistra sta sopra)
     const OUT = cv(Wp, Hp), o = OUT.getContext('2d'); o.drawImage(BG, 0, 0);
     const ALL = cv(Wp, Hp), al = ALL.getContext('2d'); masks.forEach(m => al.drawImage(m, 0, 0));
     const EXT = cv(Wp, Hp), ex = EXT.getContext('2d'), n3 = Math.max(1, Math.ceil(d3 / 1.2)); for (let k = 0; k <= n3; k++) ex.drawImage(ALL, dx * k / n3, dy * k / n3);
     const EXTo = grow(EXT, ol);
     if (!hollow && q > .35 && r() < .75) o.drawImage(tintC(grow(EXTo, S * (.045 + CN.line * .6)), KL), 0, 0);   // il bordo: chiude il pezzo in una sagoma sola
-    if (d3 > 0) { o.drawImage(tintC(EXTo, OL), 0, 0); const E2 = cv(Wp, Hp), e2 = E2.getContext('2d'); for (let k = 1; k <= n3; k++) e2.drawImage(ALL, dx * k / n3, dy * k / n3); o.drawImage(tintC(E2, D3), 0, 0); }
+    if (d3 > 0) { o.drawImage(tintC(EXTo, OL), 0, 0); const E2 = cv(Wp, Hp), e2 = E2.getContext('2d'); for (let k = 1; k <= n3; k++) e2.drawImage(ALL, dx * k / n3, dy * k / n3); o.drawImage(tintC(E2, shade(D3, -.3)), 0, 0); [[.6, 0], [.3, .16]].forEach(([fr, sh]) => { const E3 = cv(Wp, Hp), e3 = E3.getContext('2d'), nk = Math.max(1, Math.round(n3 * fr)); for (let k = 1; k <= nk; k++) e3.drawImage(ALL, dx * k / n3, dy * k / n3); o.drawImage(tintC(E3, shade(D3, sh)), 0, 0); }); }   // il 3D con la luce: chiaro vicino alla lettera, scuro in fondo
     [...masks.keys()].reverse().forEach(i => {
-      const m = masks[i]; o.drawImage(tintC(grow(m, ol), OL), 0, 0);   // il contorno, chiuso, di spessore costante
+      const m = masks[i];
+      if (!hollow) { o.save(); o.globalAlpha = .3; o.filter = `blur(${(ol * 1.6).toFixed(1)}px)`; o.drawImage(tintC(grow(m, ol * 1.4), P.f[1]), 0, 0); o.restore(); }   // la nebbia del riempimento che scappa fuori
+      const LN = grow(m, ol, rough, NF); o.save(); o.filter = 'blur(.6px)'; o.drawImage(tintC(LN, OL), 0, 0); o.restore();   // il contorno, chiuso, morbido sul bordo come lo spray
+      { const RG = grow(LN, ol * 1.6), rg = RG.getContext('2d'); rg.globalCompositeOperation = 'destination-out'; rg.drawImage(LN, 0, 0); const MI = cv(Wp, Hp), mi = MI.getContext('2d'), rs = mulberry((w.seed || 1) * 31 + i);   // la polvere: puntini fini solo a ridosso della linea
+        mi.fillStyle = '#000'; for (let k = 0, n = Wp * Hp / 90; k < n; k++) { const a = rs() * Wp, b = rs() * Hp, z = .5 + rs() * rs() * 1.3; mi.fillRect(a, b, z, z); } mi.globalCompositeOperation = 'destination-in'; mi.drawImage(RG, 0, 0); o.save(); o.globalAlpha = .55 - q * .25; o.drawImage(tintC(MI, OL), 0, 0); o.restore(); }
       if (hollow) { o.save(); o.globalCompositeOperation = 'destination-out'; o.drawImage(m, 0, 0); o.restore(); return; }
       const Li = tintC(m, PAT), lx = Li.getContext('2d');
       if (q > .45) {   // la luce: una riga sottile lungo i bordi in alto a sinistra, rientrata dal contorno
@@ -30697,6 +30735,9 @@ var WriterArte = (function () {
         lx.strokeStyle = OL; lx.lineWidth = Math.max(1.5, ol * .7); lx.beginPath(); lx.moveTo(cx0 - ux * LL, cy0 - uy * LL); lx.lineTo(cx0 + ux * LL, cy0 + uy * LL); lx.stroke(); lx.globalCompositeOperation = 'source-over'; }   // l'astratto: un taglio, due piani
       o.drawImage(Li, 0, 0);
     });
+    { const nD = Math.round((q < .5 ? 5 : 2) + r() * 3); o.lineCap = 'round';   // le colature: dal fondo delle lettere, del colore del contorno o del riempimento
+      for (let k = 0; k < nD; k++) { const l = pickR(r, L), pl = pickR(r, l.polys), b0 = pl.reduce((m0, p) => p[1] > m0[1] ? p : m0, pl[0]); if (b0[1] < .85) continue; const [bx, by] = toPx(l, [b0[0] + (r() - .5) * t * .6, Math.min(1, b0[1])]), len = S * (.06 + r() * .22), wd = Math.max(1.5, ol * (.5 + r() * .5));
+        o.strokeStyle = o.fillStyle = r() < .6 ? OL : P.f[1]; o.lineWidth = wd; o.beginPath(); o.moveTo(bx, by + ol * .5); o.lineTo(bx + (r() - .5) * 1.5, by + ol + len); o.stroke(); o.beginPath(); o.arc(bx, by + ol + len, wd * .8, 0, 7); o.fill(); } }
     x.clearRect(0, 0, Wp, Hp); x.drawImage(OUT, 0, 0); snap(x.canvas); paths.push(pts.slice()); radii.push(t * S * .9 + ol * 2);
     // 4. la firma della crew, lo slogan
     smallTag(x, w.words && w.aka ? w.aka + ' ' + (w.crew || '') : (w.crew || ''), Math.min(Wp - Hp * .25, ox0 + totW * S), Math.min(Hp - sloganH - Hp * .05, oy0 + S + Hp * .07), Hp * .08, '#141418', r, Wp * .3);
@@ -30848,7 +30889,7 @@ var WriterArte = (function () {
     const BG = cv(Wp, Hp), bg = BG.getContext('2d');
     let cloudPZ = null; if (PZ && !train && C.bgk && C.bgk !== 'rullo') { cloudPZ = q > .55 && r() < .6 ? pickR(r, FLATS.filter(c => c !== '#d8201a')) : null; C.bgk = null; }   // [writer] nei pezzi niente scacchi, ovali, adesivi: al più la nuvola chiara
     if (cloudPZ) { bg.save(); bg.translate(Wp * .08, Hp * .14); cloud(bg, Wp * .84, Hp * .72, r, cloudPZ, P.o, 0); bg.restore(); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(c); paths.push(raster(Wp, Hp, 4)); radii.push(Hp * .16); }
-    if (C.bgk) { background(bg, toy && !train ? 'spruzzi' : C.bgk, P, Wp, Hp, r, train); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(c); paths.push(raster(Wp, Hp, train ? 6 : 4)); radii.push(Hp * (train ? .13 : .16)); }
+    if (C.bgk) { if (C.bgk === 'rullo' && !train && !toy) cloudOf(bg, FILL, P, Wp, Hp, r, q); else background(bg, toy && !train ? 'spruzzi' : C.bgk, P, Wp, Hp, r, train); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(c); paths.push(raster(Wp, Hp, train ? 6 : 4)); radii.push(Hp * (train ? .13 : .16)); }
     // 3. le lettere vere: la keyline attorno a tutto (3D compreso), il 3D pieno col suo bordo dietro a tutte, poi le lettere in ordine
     const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'); ox.drawImage(BG, 0, 0);
     ox.lineJoin = 'round'; ox.lineCap = 'round';
