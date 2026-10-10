@@ -30589,6 +30589,122 @@ var WriterArte = (function () {
     x.restore();
   }
 
+  // ================= LE LETTERE BLOCKBUSTER (block, heavy, fill-in, solo contorno, astratto) =================
+  // Lettere progettate, non scheletri ingrassati: aste e barre piene dello stesso spessore t, le diagonali solo dove servono,
+  // i buchi netti. Casella alta 1 (y in giù), larga w. Ogni writer sceglie spessore, larghezza, inclinazione, angoli (vivi,
+  // smussati, tondi), spaziatura. Contorno, 3D e bordo si fanno sulla maschera della lettera: sfocata e tagliata a soglia, così
+  // il contorno è chiuso e di spessore costante.
+  function blockGlyph(ch, t, w) {
+    const P = [], R = (x0, y0, x1, y1) => P.push([[x0, y0], [x1, y0], [x1, y1], [x0, y1]]);
+    const D = (x0, y0, x1, y1, th) => { const dx = x1 - x0, dy = y1 - y0, l = hyp(dx, dy) || 1, nx = -dy / l * th / 2, ny = dx / l * th / 2; P.push([[x0 + nx, y0 + ny], [x1 + nx, y1 + ny], [x1 - nx, y1 - ny], [x0 - nx, y0 - ny]]); };
+    const th = Math.min(t, .22), m = .5 - th / 2, h2 = t / 2;   // le barre orizzontali un po' più sottili delle aste: i buchi restano aperti anche nelle lettere pesanti
+    switch (ch) {
+      case 'A': R(0, t * .9, t, 1); R(w - t, t * .9, w, 1); R(0, 0, w, th); R(0, m + .04, w, m + .04 + th); break;
+      case 'B': R(0, 0, t, 1); R(0, 0, w - t * .45, th); R(0, m, w, m + th); R(0, 1 - th, w, 1); R(w - t * 1.35, 0, w - t * .35, m + th); R(w - t, m, w, 1); break;
+      case 'C': R(0, 0, t, 1); R(0, 0, w, th); R(0, 1 - th, w, 1); break;
+      case 'D': R(0, 0, t, 1); R(0, 0, w - t * .7, th); R(0, 1 - th, w - t * .7, 1); R(w - t, t * .7, w, 1 - t * .7); D(w - t * .9, t * .5, w - t * .4, t * 1.05, t * .9); D(w - t * .9, 1 - t * .5, w - t * .4, 1 - t * 1.05, t * .9); break;
+      case 'E': R(0, 0, t, 1); R(0, 0, w, th); R(0, m, w * .82, m + th); R(0, 1 - th, w, 1); break;
+      case 'F': R(0, 0, t, 1); R(0, 0, w, th); R(0, m, w * .82, m + th); break;
+      case 'G': R(0, 0, t, 1); R(0, 0, w, th); R(0, 1 - th, w, 1); R(w - t, m, w, 1); R(w * .48, m, w, m + th); break;
+      case 'H': R(0, 0, t, 1); R(w - t, 0, w, 1); R(0, m, w, m + th); break;
+      case 'I': R(0, 0, t, 1); break;
+      case 'J': R(w - t, 0, w, 1); R(0, 1 - th, w, 1); R(0, .55, t, 1); break;
+      case 'K': R(0, 0, t, 1); D(t * .6, .56, w - h2 * .8, h2 * .8, t * 1.05); D(t * .6, .44, w - h2 * .8, 1 - h2 * .8, t * 1.05); break;
+      case 'L': R(0, 0, t, 1); R(0, 1 - th, w, 1); break;
+      case 'M': R(0, 0, t, 1); R(w - t, 0, w, 1); R(0, 0, w, th); R(w / 2 - t / 2, 0, w / 2 + t / 2, .72); break;
+      case 'N': R(0, 0, t, 1); R(w - t, 0, w, 1); D(h2, h2 * .6, w - h2, 1 - h2 * .6, t * 1.15); break;
+      case 'O': case '0': R(0, 0, t, 1); R(w - t, 0, w, 1); R(0, 0, w, th); R(0, 1 - th, w, 1); break;
+      case 'P': R(0, 0, t, 1); R(0, 0, w, th); R(w - t, 0, w, m + th); R(0, m, w, m + th); break;
+      case 'Q': R(0, 0, t, 1); R(w - t, 0, w, 1); R(0, 0, w, th); R(0, 1 - th, w, 1); D(w * .55, .7, w + t * .45, 1.12, t * .9); break;
+      case 'R': R(0, 0, t, 1); R(0, 0, w, th); R(w - t, 0, w, m + th); R(0, m, w, m + th); D(w * .5, m + t * .6, w - h2, 1 - h2 * .4, t * 1.05); break;
+      case 'S': R(t * .35, 0, w, th); R(0, 0, t, m + th); R(0, m, w, m + th); R(w - t, m, w, 1); R(0, 1 - th, w - t * .35, 1); break;
+      case 'T': R(0, 0, w, th); R(w / 2 - t / 2, 0, w / 2 + t / 2, 1); break;
+      case 'U': R(0, 0, t, 1); R(w - t, 0, w, 1); R(0, 1 - th, w, 1); break;
+      case 'V': D(h2, 0, w / 2, 1 - h2 * .5, t * 1.1); D(w - h2, 0, w / 2, 1 - h2 * .5, t * 1.1); break;
+      case 'W': R(0, 0, t, 1); R(w - t, 0, w, 1); R(0, 1 - th, w, 1); R(w / 2 - t / 2, .28, w / 2 + t / 2, 1); break;
+      case 'X': D(h2, h2 * .5, w - h2, 1 - h2 * .5, t * 1.1); D(w - h2, h2 * .5, h2, 1 - h2 * .5, t * 1.1); break;
+      case 'Y': D(h2, 0, w / 2, .52, t * 1.05); D(w - h2, 0, w / 2, .52, t * 1.05); R(w / 2 - t / 2, .45, w / 2 + t / 2, 1); break;
+      case 'Z': R(0, 0, w, th); R(0, 1 - th, w, 1); D(w - h2 * 1.2, t * .9, h2 * 1.2, 1 - t * .9, t * 1.1); break;
+      case '1': R(w / 2 - t / 2, 0, w / 2 + t / 2, 1); R(w / 2 - t * 1.4, 0, w / 2, t); break;
+      case '2': R(0, 0, w, th); R(w - t, 0, w, m + th); R(0, m, w, m + th); R(0, m, t, 1); R(0, 1 - th, w, 1); break;
+      case '3': R(0, 0, w, th); R(w - t, 0, w, 1); R(w * .25, m, w, m + th); R(0, 1 - th, w, 1); break;
+      case '4': R(0, 0, t, m + th); R(0, m, w, m + th); R(w - t * 1.4, 0, w - t * .4, 1); break;
+      case '5': R(0, 0, w, th); R(0, 0, t, m + th); R(0, m, w, m + th); R(w - t, m, w, 1); R(0, 1 - th, w, 1); break;
+      case '6': R(0, 0, t, 1); R(0, 0, w, th); R(0, m, w, m + th); R(w - t, m, w, 1); R(0, 1 - th, w, 1); break;
+      case '7': R(0, 0, w, th); D(w - h2, t * .8, w * .35, 1 - h2 * .3, t * 1.1); break;
+      case '8': R(0, 0, t, 1); R(w - t, 0, w, 1); R(0, 0, w, th); R(0, m, w, m + th); R(0, 1 - th, w, 1); break;
+      case '9': R(0, 0, w, th); R(0, 0, t, m + th); R(0, m, w, m + th); R(w - t, 0, w, 1); R(0, 1 - th, w, 1); break;
+      default: R(0, 0, t, 1);
+    }
+    return P;
+  }
+  // larghezza della lettera (in altezze): le strette e le larghe
+  const BW = ch => ch === 'I' ? 0 : ch === '1' ? .55 : /[MW]/.test(ch) ? 1.3 : /[TYVXA]/.test(ch) ? 1.05 : 1;
+  // sfocatura e soglia: thr .5 arrotonda gli angoli senza cambiare la misura; thr basso allarga (il contorno, il bordo)
+  function blurThresh(src, s, thr) {
+    const W = src.width, H = src.height, k = cv(W, H), x = k.getContext('2d'); if (s > .3) x.filter = `blur(${s.toFixed(2)}px)`; x.drawImage(src, 0, 0); x.filter = 'none';
+    const d = x.getImageData(0, 0, W, H), A = d.data, lo = (thr - .06) * 255, hi = (thr + .06) * 255;
+    for (let i = 0; i < A.length; i += 4) { const a = A[i + 3], v = a <= lo ? 0 : a >= hi ? 255 : (a - lo) / (hi - lo) * 255; A[i] = A[i + 1] = A[i + 2] = 255; A[i + 3] = v; }
+    x.putImageData(d, 0, 0); return k;
+  }
+  const grow = (src, r0) => blurThresh(src, Math.max(.5, r0 / 1.28), .1);   // allarga di r0 pixel (angoli tondi, chiuso)
+  function blockArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
+    const q = C.q, F = FAM[C.fam], CN = w.cons || consOf(w.hand || w.seed || 1), text = DEACC(w.words || w.aka || 'NINO').replace(/[^A-Z0-9]/g, '') || 'NINO';
+    const hollow = !!F.hollow, heavy = C.fam === 'heavy';
+    const t = clamp(CN.weight * (heavy ? 1.35 : hollow ? .95 : 1.12), .18, heavy ? .4 : hollow ? .26 : .33), wL = Math.max(clamp(CN.width, .58, .92), 2 * clamp(CN.weight * (heavy ? 1.35 : hollow ? .95 : 1.12), .18, heavy ? .4 : hollow ? .26 : .33) + .24), sl = CN.slant, gap = clamp(CN.gap * .7, .05, .14);
+    const corner = { cut: 0, spike: 0, flare: .07, round: .16 }[CN.term] ?? .05, step = CN.step || 0, wave = CN.wave || 0;
+    // la parola in coordinate della lettera (altezza 1): le caselle una dopo l'altra, l'inclinazione, i gradini, l'onda
+    const L = []; let cur = 0; [...text].forEach((ch, k) => { const ww = ch === 'I' ? t : wL * BW(ch), dy = (k % 2 ? -step : 0) - wave * Math.sin((k + .5) / text.length * PI); L.push({ ch, x0: cur, w: ww, dy, polys: blockGlyph(ch, t, ww) }); cur += ww + gap; });
+    const totW = cur - gap + Math.abs(sl), sloganH = C.slogan ? Hp * .1 : 0;
+    // le misure in pixel: margine per contorno, 3D, bordo
+    const pad = Hp * .1, d3k = .16 + r() * .1, ang = .55 + r() * .4, S = Math.min((Wp - 2 * pad - Hp * d3k) / totW, (Hp - 2 * pad - sloganH - Hp * d3k * .6) / (1 + step + wave));
+    const ox0 = (Wp - (totW * S + Hp * d3k * .5)) / 2, oy0 = (Hp - sloganH - (1 + step + wave) * S - Hp * d3k * .5) / 2 + (step + wave) * S;
+    const ol = Math.max(2, S * CN.line * (hollow ? .8 : 1.05)), d3 = hollow || C.fam === 'piatto' && r() < .45 ? 0 : S * d3k * (heavy ? 1.3 : 1), dx = Math.cos(ang) * d3, dy = Math.sin(ang) * d3;
+    const toPx = (l, [u, v]) => [ox0 + (l.x0 + u + (1 - v) * sl) * S, oy0 + (v + l.dy) * S];
+    // le maschere delle lettere (con gli angoli scelti dal writer)
+    const masks = L.map(l => { const m = cv(Wp, Hp), mx = m.getContext('2d'); mx.fillStyle = '#fff'; l.polys.forEach(pl => { mx.beginPath(); pl.forEach((p, k) => { const [a, b] = toPx(l, p); k ? mx.lineTo(a, b) : mx.moveTo(a, b); }); mx.closePath(); mx.fill(); }); return corner > 0 ? blurThresh(m, corner * t * S, .5) : m; });
+    const tintC = (src, col) => { const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(src, 0, 0); kx.globalCompositeOperation = 'source-in'; if (col instanceof HTMLCanvasElement) kx.drawImage(col, 0, 0); else { kx.fillStyle = col; kx.fillRect(0, 0, Wp, Hp); } kx.globalCompositeOperation = 'source-over'; return k; };   // il contesto torna normale: chi ci disegna sopra dopo non cancella niente
+    // il riempimento: piatto, a bande nette, a due toni
+    const PAT = cv(Wp, Hp), px = PAT.getContext('2d'), fk = F.flat && C.fillk !== 'bande' ? 'flat' : C.fillk;
+    const top = oy0 - (step + wave) * S, bot = oy0 + S;
+    if (fk === 'bande' || fk === 'fade') { const n = r() < .5 ? 2 : 3, cols = n === 2 ? [shade(P.f[1], .25), shade(P.f[1], -.1)] : [shade(P.f[1], .3), P.f[1], shade(P.f[1], -.22)], hh = (bot - top) / n; px.fillStyle = cols[0]; px.fillRect(0, 0, Wp, Hp); for (let k = 1; k < n; k++) { px.fillStyle = cols[k]; px.fillRect(0, top + hh * k, Wp, Hp); } }
+    else if (fk === 'due') { px.fillStyle = P.f[0]; px.fillRect(0, 0, Wp, Hp); px.fillStyle = P.bg; px.fillRect(0, top + (bot - top) * (.55 + r() * .1), Wp, Hp); }
+    else { px.fillStyle = P.f[1]; px.fillRect(0, 0, Wp, Hp); }
+    const lum = h => { const n = parseInt(h.slice(1), 16); return ((n >> 16) * .3 + ((n >> 8) & 255) * .59 + (n & 255) * .11) / 255; };
+    const OL = hollow && lum(P.o) > .55 ? '#141418' : P.o, D3 = P.d, KL = P.k;   // il solo contorno su un muro chiaro vuole la linea scura
+    // 1. il riempimento
+    const FILL = cv(Wp, Hp), fx = FILL.getContext('2d'); if (!hollow) masks.forEach(m => fx.drawImage(tintC(m, PAT), 0, 0)); else masks.forEach(m => fx.drawImage(tintC(grow(m, ol), OL), 0, 0));
+    x.drawImage(FILL, 0, 0); snap(x.canvas); const pts = []; L.forEach(l => l.polys.forEach(pl => { const c0 = pl.reduce((s0, p) => [s0[0] + p[0] / pl.length, s0[1] + p[1] / pl.length], [0, 0]); pts.push(toPx(l, c0)); })); paths.push(pts); radii.push(t * S * .9);
+    // 2. il fondo
+    const BG = cv(Wp, Hp), bg = BG.getContext('2d'); if (C.bgk) { background(bg, C.bgk, P, Wp, Hp, r, false); const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(BG, 0, 0); kx.drawImage(FILL, 0, 0); x.clearRect(0, 0, Wp, Hp); x.drawImage(k, 0, 0); snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .16); }
+    // 3. il pezzo: il bordo attorno a tutto, il 3D col suo contorno dietro a tutte, poi le lettere da destra (la sinistra sta sopra)
+    const OUT = cv(Wp, Hp), o = OUT.getContext('2d'); o.drawImage(BG, 0, 0);
+    const ALL = cv(Wp, Hp), al = ALL.getContext('2d'); masks.forEach(m => al.drawImage(m, 0, 0));
+    const EXT = cv(Wp, Hp), ex = EXT.getContext('2d'), n3 = Math.max(1, Math.ceil(d3 / 1.2)); for (let k = 0; k <= n3; k++) ex.drawImage(ALL, dx * k / n3, dy * k / n3);
+    const EXTo = grow(EXT, ol);
+    if (!hollow && q > .35 && r() < .75) o.drawImage(tintC(grow(EXTo, S * (.045 + CN.line * .6)), KL), 0, 0);   // il bordo: chiude il pezzo in una sagoma sola
+    if (d3 > 0) { o.drawImage(tintC(EXTo, OL), 0, 0); const E2 = cv(Wp, Hp), e2 = E2.getContext('2d'); for (let k = 1; k <= n3; k++) e2.drawImage(ALL, dx * k / n3, dy * k / n3); o.drawImage(tintC(E2, D3), 0, 0); }
+    [...masks.keys()].reverse().forEach(i => {
+      const m = masks[i]; o.drawImage(tintC(grow(m, ol), OL), 0, 0);   // il contorno, chiuso, di spessore costante
+      if (hollow) { o.save(); o.globalCompositeOperation = 'destination-out'; o.drawImage(m, 0, 0); o.restore(); return; }
+      const Li = tintC(m, PAT), lx = Li.getContext('2d');
+      if (q > .45) {   // la luce: una riga sottile lungo i bordi in alto a sinistra, rientrata dal contorno
+        const g = Math.max(1.5, t * S * .1), h = Math.max(1.5, t * S * .07), B1 = cv(Wp, Hp), b1 = B1.getContext('2d'); b1.drawImage(m, g, g); b1.globalCompositeOperation = 'destination-out'; b1.drawImage(m, g + h, g + h); b1.globalCompositeOperation = 'destination-in'; b1.drawImage(m, 0, 0);
+        lx.globalAlpha = .8; lx.drawImage(tintC(B1, P.hi), 0, 0); lx.globalAlpha = 1;
+      }
+      if (F.cuts) { const xs = L[i].polys.flat().map(p => toPx(L[i], p)), a0 = Math.min(...xs.map(p => p[0])), a1 = Math.max(...xs.map(p => p[0])), b0 = Math.min(...xs.map(p => p[1])), b1 = Math.max(...xs.map(p => p[1]));
+        lx.globalCompositeOperation = 'source-atop'; const cA = r() * PI, cx0 = a0 + (a1 - a0) * (.3 + r() * .4), cy0 = b0 + (b1 - b0) * (.3 + r() * .4), ux = Math.cos(cA), uy = Math.sin(cA), LL = (a1 - a0 + b1 - b0);
+        lx.fillStyle = pickR(r, [P.bg, P.d, P.f[0], KL]); lx.beginPath(); lx.moveTo(cx0 - ux * LL, cy0 - uy * LL); lx.lineTo(cx0 + ux * LL, cy0 + uy * LL); lx.lineTo(cx0 + ux * LL - uy * LL, cy0 + uy * LL + ux * LL); lx.lineTo(cx0 - ux * LL - uy * LL, cy0 - uy * LL + ux * LL); lx.closePath(); lx.fill();
+        lx.strokeStyle = OL; lx.lineWidth = Math.max(1.5, ol * .7); lx.beginPath(); lx.moveTo(cx0 - ux * LL, cy0 - uy * LL); lx.lineTo(cx0 + ux * LL, cy0 + uy * LL); lx.stroke(); lx.globalCompositeOperation = 'source-over'; }   // l'astratto: un taglio, due piani
+      o.drawImage(Li, 0, 0);
+    });
+    x.clearRect(0, 0, Wp, Hp); x.drawImage(OUT, 0, 0); snap(x.canvas); paths.push(pts.slice()); radii.push(t * S * .9 + ol * 2);
+    // 4. la firma della crew, lo slogan
+    smallTag(x, w.words && w.aka ? w.aka + ' ' + (w.crew || '') : (w.crew || ''), Math.min(Wp - Hp * .25, ox0 + totW * S), Math.min(Hp - sloganH - Hp * .05, oy0 + S + Hp * .07), Hp * .08, '#141418', r, Wp * .3);
+    if (sloganH) { const r2 = mulberry((w.seed || 1) + 99); smallTag(x, C.slogan, Wp / 2, Hp - sloganH * .55, sloganH * .7, '#141418', r2, Wp * .85); }
+    snap(x.canvas); paths.push(raster(Wp, Hp, 2)); radii.push(Hp * .2);
+  }
+
   // ================= IL LAVORO =================
   const PPM = 100;   // pixel per metro (alto: i bordi netti anche da vicino)
   // i punti dei tratti, uno ogni step pixel, lettera dopo lettera: il percorso della mano
@@ -30632,6 +30748,7 @@ var WriterArte = (function () {
       return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK };
     }
     const c = cv(Wp, Hp), x = c.getContext('2d');
+    if (/^(block|heavy|piatto|contorno|astratto)$/.test(C.fam) && w.style !== 'throw' && w.style !== 'wholecar') { blockArt(w, P, C, r, Wp, Hp, snap, paths, radii, x); return { stages, paths, radii, Wp, Hp, C }; }   // le lettere blockbuster
     if (FAM[C.fam] && (FAM[C.fam].fat && w.style !== 'wholecar' || /^(block|heavy|semi|wild|spiky|piatto|astratto)$/.test(C.fam) && w.style !== 'throw')) { bubbleArt(w, P, C, r, Wp, Hp, snap, paths, radii, x); SQ = 0; CUT = 0; return { stages, paths, radii, Wp, Hp, C }; }   // [writer] le bolle, e i pezzi costruiti sulle bolle   // le lettere a bolla
     const train = w.style === 'wholecar', wild = w.style === 'burner' || train, throwUp = w.style === 'throw', F = FAM[C.fam];
     const charW = C.chr ? Hp * (train ? .95 : .9) : 0, charLeft = !(r() < .3);
