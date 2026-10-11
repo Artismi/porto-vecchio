@@ -216,7 +216,7 @@ var Tetti = (function () {
   function recsOf(R, b) { return recs(R).filter(r => r.grp && r.b && (r.b === b || r.b.id === b.id)); }
   // la quota vera: un raggio dall'alto ogni metro, sul modello dell'edificio (solo i pezzi sopra il primo piano)
   function scanRoof(R, bi) {
-    const b = B[bi]; if (!b || b.__rH) return true; const parts = recsOf(R, b).map(r => r.grp); if (!parts.length) return false;
+    const b = B[bi]; if (!b || b.__rH) return true; const parts = []; recsOf(R, b).forEach(r => [r.grp, r.roofGrp, r.cityGrp].forEach(q => { if (q) parts.push(q); })); if (!parts.length) return false;   // [ordine1] anche la roba sul tetto: ci si sale sopra o ci si gira attorno
     const T3 = THREE, rc = GFX.rc || (GFX.rc = new T3.Raycaster()), o = new T3.Vector3(), dn = new T3.Vector3(0, -1, 0);
     parts.forEach(g => g.updateMatrixWorld(true));
     const W1 = b.w * TS, H1 = b.h * TS, g = new Float32Array(W1 * H1), floor = (b.base || 0) + 1.6, rule = roofRule(b);

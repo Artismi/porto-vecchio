@@ -333,7 +333,8 @@ var Writing = (function () {
   }
   function addWork(st, w) {
     const W = S(st); w.id = W.nextId++; w.t0 = w.t0 || st.t; W.works.push(w);
-    if (W.works.length > 900) { let i = W.works.findIndex(o => o.erased && o.by !== 'player'); if (i < 0) i = W.works.findIndex(o => o.by !== 'player' && o.done); if (i >= 0) W.works.splice(i, 1); }
+    if (W.works.length > 1500) {   // [ordine1] più spazio: la città parte già piena di storia
+  let i = W.works.findIndex(o => o.erased && o.by !== 'player'); if (i < 0) i = W.works.findIndex(o => o.by !== 'player' && o.done); if (i >= 0) W.works.splice(i, 1); }
     return w;
   }
   // la notte dei writer: tag, throw-up, pezzi sui muri della città; a volte il treno in deposito; i crossaggi per i beef
