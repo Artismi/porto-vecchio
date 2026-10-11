@@ -730,6 +730,21 @@
     st.viewR = r + 20;
   }
 
+  // ---------- [prestazioni] Quale scheda video usa il browser ----------
+  // Se il browser disegna in software (accelerazione hardware spenta, o scheda esclusa) il gioco va a pochi fotogrammi
+  // qualunque cosa si alleggerisca: lo si dice subito, con cosa fare.
+  function gpuName() {
+    if (gpuName.v !== undefined) return gpuName.v;
+    try { const gl = R.__models && R.__models.renderer && R.__models.renderer.getContext(), e = gl && gl.getExtension('WEBGL_debug_renderer_info'); gpuName.v = gl ? String(e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) : ''; } catch (x) { gpuName.v = ''; }
+    return gpuName.v;
+  }
+  const SOFT_GPU = /swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic|mesa offscreen/i;
+  function softwareCheck() {
+    const n = gpuName(); if (!n || !SOFT_GPU.test(n)) return;
+    toast('Il browser sta disegnando SENZA scheda video (' + (n.match(/swiftshader|llvmpipe|softpipe|basic render[^,)]*|microsoft basic[^,)]*|software[^,)]*|mesa offscreen/i) || [n])[0] + '): per questo va a scatti. Attiva l\'accelerazione hardware: Chrome o Edge → Impostazioni → Sistema → «Usa accelerazione grafica quando disponibile», poi riavvia il browser.', 'bad');
+    st.feed[0].until = st.clock + 30;
+  }
+
   // ---------- [prestazioni] Il contatore: F3 (o ?perf nell'indirizzo) ----------
   // fps, il fotogramma peggiore, i millisecondi della logica (G.step) e della grafica lato processore (R.frame),
   // e il tempo vero della scheda video per fase (scena con le ombre, bagliore, pittura, post), se il browser lo concede.
@@ -745,7 +760,10 @@
     const n = PERF.frames, sec = (now - PERF.t0) / 1000, g = R.gpuTimes || { ok: false, ms: {}, info: {} }, ms = g.ms, I = g.info || {};
     const gt = ['scena', 'bagliore', 'pittura', 'post'].map(k => ms[k] !== undefined ? `${k} ${ms[k].toFixed(1)}` : '').filter(Boolean);
     const gsum = Object.values(ms).reduce((a, b) => a + b, 0);
+    const frameMs = sec * 1000 / n, gameMs = (PERF.step + PERF.frame) / n, gn = gpuName();
     PERF.el.textContent = `${(n / sec).toFixed(0)} fps · peggiore ${PERF.worst.toFixed(0)} ms\n` +
+      `fotogramma ${frameMs.toFixed(0)} ms = gioco ${gameMs.toFixed(0)} ms + attesa ${Math.max(0, frameMs - gameMs).toFixed(0)} ms (scheda video, altri moduli, browser)\n` +
+      `scheda: ${gn || 'sconosciuta'}${SOFT_GPU.test(gn) ? '  ⚠ IN SOFTWARE: accelerazione hardware spenta' : ''}\n` +
       `logica ${(PERF.step / n).toFixed(1)} ms · grafica (processore) ${(PERF.frame / n).toFixed(1)} ms\n` +
       (g.ok ? `scheda video ${gsum.toFixed(1)} ms: ${gt.join(' · ')}` : 'scheda video: il browser non dà i tempi') + '\n' +
       `${I.calls || '?'} disegni · ${I.tris ? Math.round(I.tris / 1000) + 'k' : '?'} triangoli · ${I.progs || '?'} shader · ${I.px || ''} · abitanti fuori ${st.npcs.filter(k => !k.dead && !k.inside).length}/${st.npcs.length} · bolla ${st.bubble ? Math.round(st.bubble.r) + ' m' : '-'}` +
@@ -767,6 +785,7 @@
     $('screen').innerHTML = `<div class="in"><div class="logo" style="font-size:clamp(34px,6vw,64px)">Porto Vecchio</div><div class="story"><p>Il gioco usa la grafica 3D del browser (WebGL) e qui non è riuscito ad avviarla.</p><p>Prova ad aprire la pagina in Chrome, Edge o Firefox aggiornati, con l'accelerazione hardware attiva nelle impostazioni del browser.</p></div></div>`;
     return;
   }
+  setTimeout(() => { try { softwareCheck(); } catch (e) { } }, 4000);   // [prestazioni] avvisa se si disegna senza scheda video
   if (window.Editor) Editor.attach({ get st() { return st; }, ui, G, R, cv, app, toast });   // [editor] F2
   function size() { const w = app.clientWidth || innerWidth, h = app.clientHeight || innerHeight; R.resize(w, h, Math.min(2, devicePixelRatio || 1)); }
   new ResizeObserver(size).observe(app); size();
