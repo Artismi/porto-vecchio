@@ -717,6 +717,25 @@
     function mv(e) { const r = sEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 65) / 50, dy = (e.clientY - r.top - 65) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } stick.x = dx; stick.y = dy; kn.style.left = 43 + dx * 40 + 'px'; kn.style.top = 43 + dy * 40 + 'px'; }
   }
 
+  // ---------- [prestazioni] Il contatore: F3 (o ?perf nell'indirizzo) ----------
+  // fps, il fotogramma peggiore, i millisecondi della logica (G.step) e della grafica lato processore (R.frame),
+  // e il tempo vero della scheda video per fase (scena con le ombre, bagliore, pittura, post), se il browser lo concede.
+  const PERF = { on: /[?&]perf\b/.test(location.search), el: null, t0: 0, frames: 0, step: 0, frame: 0, worst: 0 };
+  addEventListener('keydown', e => { if (e.key === 'F3') { e.preventDefault(); PERF.on = !PERF.on; if (PERF.el) PERF.el.hidden = !PERF.on; } });
+  function perfTick(now) {
+    if (!PERF.on) { PERF.frames = PERF.step = PERF.frame = PERF.worst = 0; PERF.t0 = now; return; }
+    if (!PERF.el) { const d = document.createElement('div'); d.id = 'perf'; d.style.cssText = 'position:absolute;left:50%;top:34px;transform:translateX(-50%);z-index:60;pointer-events:none;background:rgba(8,8,14,.82);color:#e8e0d0;font:11px/1.45 monospace;padding:6px 10px;border:1px solid #444;white-space:pre'; app.appendChild(d); PERF.el = d; if (R.gpuTiming) R.gpuTiming(true); }
+    if (now - PERF.t0 < 1000 || !PERF.frames) return;
+    const n = PERF.frames, sec = (now - PERF.t0) / 1000, g = R.gpuTimes || { ok: false, ms: {}, info: {} }, ms = g.ms, I = g.info || {};
+    const gt = ['scena', 'bagliore', 'pittura', 'post'].map(k => ms[k] !== undefined ? `${k} ${ms[k].toFixed(1)}` : '').filter(Boolean);
+    const gsum = Object.values(ms).reduce((a, b) => a + b, 0);
+    PERF.el.textContent = `${(n / sec).toFixed(0)} fps · peggiore ${PERF.worst.toFixed(0)} ms\n` +
+      `logica ${(PERF.step / n).toFixed(1)} ms · grafica (processore) ${(PERF.frame / n).toFixed(1)} ms\n` +
+      (g.ok ? `scheda video ${gsum.toFixed(1)} ms: ${gt.join(' · ')}` : 'scheda video: il browser non dà i tempi') + '\n' +
+      `${I.calls || '?'} disegni · ${I.tris ? Math.round(I.tris / 1000) + 'k' : '?'} triangoli · ${I.progs || '?'} shader · ${I.px || ''} · abitanti fuori ${st.npcs.filter(k => !k.dead && !k.inside).length}/${st.npcs.length}`;
+    PERF.t0 = now; PERF.frames = PERF.step = PERF.frame = PERF.worst = 0;
+  }
+
   // ---------- Avvio ----------
   buildMinimap(); introScreen(); showHud(false);
   // i moduli degli edifici (Kenney Building Kit) arrivano prima della scena: la città nasce già montata
@@ -748,16 +767,18 @@
       if (!ui.intro && (mouse.down || touchFire || mouse.pressed)) G.fire(st, inp.aim !== undefined ? inp.aim : aimAngle(), ui.aimPoint, mouse.pressed);
       mouse.pressed = false;
       tickClick(); sprayTick(dt);
-      G.step(st, dt, inp);
+      const tS = performance.now(); G.step(st, dt, inp); PERF.step += performance.now() - tS;
     }
     if (st.over && !ui.over) endScreen();
     ui.flash = Math.max(0, ui.flash - dt * 1.2);
     ui.fade = ui.fadeUntil && ui.time < ui.fadeUntil ? Math.min(1, (ui.fadeUntil - ui.time) * 1.5) : 0;
     ui.desat = st.slowmo > 0;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
+    const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     R.frame(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    PERF.frame += performance.now() - tF;
     sounds();
-    drawBubbles(); crosshair();
+    drawBubbles(); crosshair(); perfTick(now);
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); }
     requestAnimationFrame(loop);
   }
