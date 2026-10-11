@@ -37,6 +37,14 @@ Profilo a regime, il peso che resta è **lavoro che parte quando qualcosa entra 
 - Un singolo personaggio che costa più del budget si costruisce comunque intero (non si spezza a metà): il budget evita che
   se ne costruiscano tanti nello stesso fotogramma.
 
+## Raggi veloci (fatto, punto 3)
+- `mesh_bvh.js`: three-mesh-bvh 0.5.24 (MIT), caricato dopo three.min.js. `render.js` sostituisce `Mesh.prototype.raycast`:
+  ogni geometria con più di 300 triangoli riceve un indice spaziale al secondo raggio che la colpisce; da lì un raggio tocca
+  poche decine di triangoli invece di tutti. Restano col metodo di prima i personaggi animati, le forme con morph, le
+  geometrie disegnate a metà (drawRange) e quelle modificate dopo (si accorge dalla versione degli attributi e torna indietro).
+- Prova nel browser: 300 raggi sulla città, **300/300 risultati identici** (oggetto, distanza, materiale, uv), 4,3 volte più
+  veloci anche provando tutte le 16.000 mesh insieme. Servono a tetti, graffiti, bomboletta, tavoletta, clic e tocchi.
+
 ## Prossimi passi (piano)
 1. **Una coda unica di "costruzioni"** con un tetto per fotogramma (2-3 ms), in ordine di distanza: personaggi, vestiti,
    stoffe, blocchi di piante, veli dei graffiti, misure dei muri. Niente si costruisce tutto insieme: entra un pezzo per

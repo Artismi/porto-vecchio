@@ -10517,6 +10517,27 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (!o.__icS && !o.__icParts && now - o.__icT > 1500 && o.count > 0) { const S = icSphere(o); if (S) { if (S.radius > 70 && o.count >= 32 && icSplit(o)) continue; o.__icS = S; o.frustumCulled = true; } }
     }
   }
+  // [fluido] RAGGI VELOCI: three prova ogni triangolo della mesh a ogni raggio (i blocchi fusi della città ne hanno decine di
+  // migliaia). Con three-mesh-bvh (mesh_bvh.js) ogni geometria grande ha un indice spaziale e un raggio tocca poche decine di
+  // triangoli: stessi punti, normali, materiali e uv di prima. Si costruisce al secondo raggio su quella geometria (chi viene
+  // colpita una volta sola non costa niente). Restano col metodo di prima: personaggi animati, forme che si deformano,
+  // geometrie disegnate a metà, e quelle che qualcuno modifica dopo (oggetti distrutti, segni): lì il risultato è sempre giusto.
+  if (typeof MeshBVHLib !== 'undefined' && !THREE.Mesh.prototype.raycast.__bvh) {
+    const orig = THREE.Mesh.prototype.raycast, acc = MeshBVHLib.acceleratedRaycast;
+    const verOf = g => g.attributes.position.version + ':' + (g.index ? g.index.version : -1);
+    const fast = function (rc, out) {
+      const g = this.geometry;
+      if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) return orig.call(this, rc, out);
+      if (g.boundsTree) { if (g.__bvhVer === verOf(g)) return acc.call(this, rc, out); g.boundsTree = null; g.__bvhNo = true; return orig.call(this, rc, out); }   // è cambiata: si torna al metodo di prima
+      const pos = g.attributes.position, dr = g.drawRange, n = g.index ? g.index.count : pos ? pos.count : 0;
+      if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || n < 900) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; return orig.call(this, rc, out); }
+      if (!g.__bvhSeen) { g.__bvhSeen = verOf(g); return orig.call(this, rc, out); }   // il primo raggio come prima; dal secondo, l'indice
+      if (g.__bvhSeen !== verOf(g)) { g.__bvhNo = true; return orig.call(this, rc, out); }
+      try { g.boundsTree = new MeshBVHLib.MeshBVH(g); g.__bvhVer = verOf(g); } catch (e) { g.__bvhNo = true; return orig.call(this, rc, out); }
+      return acc.call(this, rc, out);
+    };
+    fast.__bvh = true; THREE.Mesh.prototype.raycast = fast;
+  }
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
