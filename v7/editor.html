@@ -53778,6 +53778,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [prestazioni] il contatore (F3 o ?perf): tempo vero della scheda video per fase, con le query del timer di WebGL2.
   // Spento non costa niente. Una query alla volta: le fasi sono in fila. I risultati arrivano qualche fotogramma dopo.
   const GPUT = { on: false, ext: null, gl: null, open: null, pend: [], acc: {}, n: 0, res: {}, info: {} };
+  // [prestazioni] e il tempo del processore dentro frame(), per pezzo (con il contatore acceso)
+  const CPUT = { t: 0, acc: {}, n: 0, res: [] };
+  function cpuMark(k) { if (!GPUT.on) return; const t = performance.now(); if (k) CPUT.acc[k] = (CPUT.acc[k] || 0) + t - CPUT.t; CPUT.t = t; }
+  function cpuEnd() { if (!GPUT.on) return; if (++CPUT.n >= 30) { CPUT.res = Object.entries(CPUT.acc).map(([k, v]) => [k, v / CPUT.n]).sort((a, b) => b[1] - a[1]); CPUT.acc = {}; CPUT.n = 0; } }
   function gpuTiming(on) { GPUT.on = !!on; if (on && !GPUT.gl) { GPUT.gl = renderer.getContext(); GPUT.ext = GPUT.gl.getExtension && GPUT.gl.getExtension('EXT_disjoint_timer_query_webgl2'); } return !!GPUT.ext; }
   function gpuB(name) { if (!GPUT.on || !GPUT.ext) return; const gl = GPUT.gl, q = gl.createQuery(); gl.beginQuery(GPUT.ext.TIME_ELAPSED_EXT, q); GPUT.open = { q, name }; }
   function gpuE() { if (!GPUT.open) return; const gl = GPUT.gl; gl.endQuery(GPUT.ext.TIME_ELAPSED_EXT); GPUT.pend.push(GPUT.open); GPUT.open = null; }
@@ -54786,14 +54790,15 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     });
   }
   function frame(st, dt, ui) {
-    BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
+    cpuMark(); BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
     SHMOV.st = st;   // [fluido] per le ombre dei faretti
     frzTick();   // [fluido] gli oggetti fermi congelati (e il controllo a rotazione)
+    cpuMark('congelati');
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
     meteoAt(st.t, METEO); { const rg = regimeAt(cam.x, cam.y); METEO.reg += (rg - METEO.reg) * Math.min(1, (dt || .016) * 1.5); } dyn.meteo = METEO;   /* [amb1] */
     const WXc = METEO.w[0], WXwet = METEO.w[1], WXfog = METEO.w[2], WXst = METEO.w[3], SUNK = (1 - night) * (1 - WXc * .82);   /* [amb1] quanto sole arriva */
     ISO.rush = !!(ui && ui.intro);   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
-    updateChunks(cam.x, cam.y);
+    updateChunks(cam.x, cam.y); cpuMark('blocchi');
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, (.22 - night * .16) * METEO.reg).multiplyScalar(1 - night * .45 * (1 - WXfog * .4)); /* [amb1] */ /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
     // [inverno] luce di neve: tanto cielo, poco sole
@@ -54808,7 +54813,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     FD1.emis.forEach(m => { m.emissiveIntensity = .04 + night * .85; });   /* [pulitore1] */
     if (dyn.backdropMats) dyn.backdropMats.forEach(m => m.emissiveIntensity = .1 + night * .9);
     const time = ui.studio ? 30 : (ui.time || st.clock);   // [studio] tutto fermo: vento, bandiere, fumo, schermi
-    updateLights(time, night, cam.x, cam.y);
+    cpuMark('cielo'); updateLights(time, night, cam.x, cam.y); cpuMark('luci');
     { const dayK = 1 - night;   /* [amb1] sole e cielo secondo il tempo; la notte resta della regia luci */
       hemi.intensity = Math.max(hemi.intensity, (.34 + WXc * .3) * dayK);
       moon.intensity = Math.max(moon.intensity * (1 - WXc * .7 * dayK), (1.05 - WXc * .82) * dayK * (1 - dusk * .3));
@@ -54819,7 +54824,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     ISO.chunks.forEach(ch => { if (ch.mat) ch.mat.emissiveIntensity = night * .95; });   // [inverno30]
     if (frameN % 2 === 0 || !dyn.reflList) { dyn.reflList = (dyn.lsp || []).concat(dyn.lpp || []).concat(SPILLS.filter(S => { const a = S.x - cam.x, b = S.z - cam.y; return a * a + b * b < 38 * 38; })); }
     updateRefl(night, dyn.reflList);
-    tickAir(time, night);   // [luci2]
+    cpuMark('riflessi'); tickAir(time, night);   // [luci2]
     tickAir2(time, night);   // [luci3]
     MV.t.value = time;   // [muri1] il vento nella stoffa
     dyn.flicker.forEach(f => { f.s.material.opacity = f.base * (.2 + night * .8) * (.85 + Math.sin(time * 9 + f.base * 7) * .15); });
@@ -54834,14 +54839,14 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     tickCosta(time, night); tickMovers(st, time);   // [costa] i fanali del porto, le barche che vanno e vengono
     dyn.boats.forEach(b => { b.g.position.y = (b.y !== undefined ? b.y : -.3) + Math.sin(time * 1.3 + b.ph) * .08; b.g.rotation.z = Math.sin(time * 1.1 + b.ph) * .04; b.g.rotation.x = Math.sin(time * .83 + b.ph * 1.7) * .025; });   // [animazioni-mondo] beccheggio
     dyn.laundry.forEach(l => { if (l.ax === false) l.m.rotation.z = Math.sin(time * 2 + l.ph) * .25; else l.m.rotation.x = Math.sin(time * 2 + l.ph) * .25; });
-    if (window.Models) Models.tick(st, time, night);
+    cpuMark('acqua e cielo'); if (window.Models) Models.tick(st, time, night); cpuMark('modelli');
     if (window.OrdineArte) try { OrdineArte.tick(st, time, night, dt, cam); } catch (e) { if (!frame.oaErr) { frame.oaErr = 1; console.warn('[ordine_arte]', e); } }   /* [ordine] animali, nave, posti di blocco, cortei */
-    tickWinter(time, night);
+    cpuMark('ordine_arte'); tickWinter(time, night);
     tickStrade1(time, night);   // [strade1] semafori e lampade dei cantieri
     tickUrbano1(time, night);
     tickMondo(st, time, night, ui.studio ? 0 : dt);   // [animazioni-mondo] vento, fumo, scintille, carte, piccioni, porte
-    muriGente(st);   /* [muri_gente2] */
-    bmbPass(st);   /* [bombolette1] */
+    cpuMark('mondo animato'); muriGente(st);   /* [muri_gente2] */
+    cpuMark('muri'); bmbPass(st); cpuMark('bombolette');   /* [bombolette1] */
     dyn.spin.forEach(s => { s.o.rotation.y = time * s.speed; s.o.children.forEach(c => c.children.forEach(m => m.material.opacity = .015 + night * .06)); });
     dyn.beams.forEach(b => { b.piv.rotation.z = Math.sin(time * .6 + b.ph) * .45; b.piv.rotation.x = Math.cos(time * .45 + b.ph) * .3; b.mat.opacity = .02 + night * .13; });
     dyn.chasers.forEach(c => { const n = c.bulbs.length; c.bulbs.forEach((b, i) => b.material.color.set(((i + Math.floor(time * 8)) % 3) === 0 ? '#fff4c0' : '#6a4a20')); });
@@ -54849,6 +54854,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (dyn.lanterna) { const a = time * .8; dyn.lanterna.position.set(camera.position.x - 130, 22, camera.position.z - 60); dyn.lanterna.material.opacity = (.35 + .65 * Math.max(0, Math.sin(a))) * (.3 + night * .7); }
     if (dyn.antenna) dyn.antenna.material.opacity = Math.sin(time * 3) > 0 ? .9 : .15;
 
+    cpuMark('decori');
     // persone
     const pveh = p.vehicle ? st.vehicles.find(v => v.id === p.vehicle) : null;
     st.npcs.forEach(n => {
@@ -54879,7 +54885,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       g.userData.shadowC.visible = !n.dead;
       flight(g, n, st);
     });
-    let pg = dyn.people.__player;
+    cpuMark('persone'); let pg = dyn.people.__player;
     if (pg && pg.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(pg); pg = null; dyn.people.__player = null; }
     if (!pg) {
       const plook = { skin: '#dcae88', top: '#8c2f24', bottom: '#34425f', hair: '#17110e', hat: 'none', build: 1.05, extra: '' };
@@ -54901,6 +54907,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (window.Skate && !pveh) Skate.pose(pg, st, playerH, dt);   // [skate] in tavola: di traverso, sopra la tavola, coi trick
     swimPose(pg, p, !!pveh, time);   // [costa] a nuoto: dentro l'acqua fino alle spalle, coricato in avanti quando va, coi cerchi sull'acqua
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
+    cpuMark('giocatore');
     // veicoli
     const VIEW_R = Math.max(75, 62 / Math.max(.12, ui.zoom || 1));
     st.vehicles.forEach(v => {
@@ -54957,6 +54964,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       for (const id in dyn.people) if (id !== '__player' && !nIds.has(id)) { scene.remove(dyn.people[id]); delete dyn.people[id]; }
     }
     if (pveh) { const h = groundH(pveh.x, pveh.y); dyn.headlight.intensity = 4 * (.2 + night) * (pveh.wreck ? 0 : 1); dyn.headlight.position.set(pveh.x + Math.cos(pveh.ang) * 1.6, h + 1.1, pveh.y + Math.sin(pveh.ang) * 1.6); dyn.headlight.target.position.set(pveh.x + Math.cos(pveh.ang) * 12, h, pveh.y + Math.sin(pveh.ang) * 12); } else dyn.headlight.intensity = 0;
+    cpuMark('mezzi');
     // oggetti da raccogliere
     st.pickups.forEach(k => {
       let m = FX.pickups[k.id]; if (!m) { m = pickupMesh(k.kind); scene.add(m); FX.pickups[k.id] = m; }
@@ -54969,7 +54977,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     st.__hurt = 0;
     if (DZ.lastSt !== st) tickDestruction(st, 0);
     st.fx.forEach(e => spawnFx(st, e)); st.fx.length = 0;
-    tickFx(st, dt, night); tickDestruction(st, Math.min(dt, 1 / 20));
+    tickFx(st, dt, night); tickDestruction(st, Math.min(dt, 1 / 20)); cpuMark('effetti');
 
     if (dyn.mark) { const m = ui.mark; dyn.mark.visible = !!m && !ui.intro; if (m) { const k = (ui.time || 0) - m.t, s = (m.k === 'car' ? 2.6 : 1) * (1 + Math.max(0, .5 - k) * 1.5 + Math.sin(k * 6) * .06); dyn.mark.position.set(m.x, groundH(m.x, m.y) + .06, m.y); dyn.mark.scale.setScalar(s); } }
     if (dyn.aim) { dyn.aim.visible = !!ui.aimPoint && !ui.intro && !ui.dialogNpc && !pveh; if (ui.aimPoint) dyn.aim.position.set(ui.aimPoint.x, groundH(ui.aimPoint.x, ui.aimPoint.y) + .05, ui.aimPoint.y); }
@@ -55066,6 +55074,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); camera.updateProjectionMatrix(); }   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
     if (dyn.sky) dyn.sky.position.copy(camera.position);
 
+    cpuMark('camera');
     // edifici tra la camera e il giocatore: diventano trasparenti
     const hitv = new THREE.Vector3();
     const feet0 = window.Tetti && p.lv && (p.lv.k === 'tetto' || p.lv.k === 'scala') ? Livelli.heightOf(st, p) : null, roofB0 = window.Tetti ? Tetti.roofB(st) : null;   // [writer] sul tetto: i raggi partono dai piedi veri, la casa sotto non sparisce
@@ -55084,15 +55093,15 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = covered && !pveh);
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }   /* [pulitore1] */
 
-    INDOOR.quad = Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2) - .5) & 3;
+    cpuMark('case trasparenti'); INDOOR.quad = Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2) - .5) & 3;
     const indoorNow = indoorPass(st); if (indoorNow) { scene.fog.near = 200; scene.fog.far = 400; }
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
-    ombre1(st, night);   /* [ombre1] */
-    instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
-    renderer.setRenderTarget(rt); renderer.render(scene, camera);
+    cpuMark('interni'); ombre1(st, night); cpuMark('ombre gente');   /* [ombre1] */
+    instCull(); gpuPoll(); cpuMark('ritaglio'); gpuB('scena');   /* [prestazioni] */
+    renderer.setRenderTarget(rt); renderer.render(scene, camera); cpuMark('disegno scena');
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
-    gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE();   /* [amb2] */
+    gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE(); cpuMark('bagliore');   /* [amb2] */
     const U = postMat.uniforms;
     gpuB('pittura'); U.tC.value = paintPass(); gpuE(); U.tD.value = rt.depthTexture;   /* [amb3] la scena dipinta */ U.near.value = camera.near; U.far.value = camera.far;
     U.letter.value += ((ui.letterbox ? 1 : 0) - U.letter.value) * Math.min(1, dt * 5);
@@ -55126,7 +55135,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         const k = (.07 + dyn.meteo.w[2] * .12 + dusk * .06) * moon.intensity; U.sCol.value.set(moon.color.r * k, moon.color.g * k * .97, moon.color.b * k * .9); }
       if (!sOK) U.sSM.value = null;
     }
-    gpuB('post'); renderer.render(postScene, postCam); gpuE();
+    cpuMark('preparazione post'); gpuB('post'); renderer.render(postScene, postCam); gpuE(); cpuMark('disegno post'); cpuEnd();
   }
 
   const pv3 = new THREE.Vector3();
@@ -55141,7 +55150,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info, cpu: CPUT.res }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
 </script>
 <script data-m="ordine_arte">/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
@@ -57224,6 +57233,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       `fotogramma ${frameMs.toFixed(0)} ms = gioco ${gameMs.toFixed(0)} ms + attesa ${Math.max(0, frameMs - gameMs).toFixed(0)} ms (scheda video, altri moduli, browser)\n` +
       `scheda: ${gn || 'sconosciuta'}${SOFT_GPU.test(gn) ? '  ⚠ IN SOFTWARE: accelerazione hardware spenta' : ''}\n` +
       `logica ${(PERF.step / n).toFixed(1)} ms · grafica (processore) ${(PERF.frame / n).toFixed(1)} ms\n` +
+      (g.cpu && g.cpu.length ? 'dentro la grafica: ' + g.cpu.slice(0, 8).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(' · ') + '\n' : '') +
       (g.ok ? `scheda video ${gsum.toFixed(1)} ms: ${gt.join(' · ')}` : 'scheda video: il browser non dà i tempi') + '\n' +
       `${I.calls || '?'} disegni · ${I.tris ? Math.round(I.tris / 1000) + 'k' : '?'} triangoli · ${I.progs || '?'} shader · ${I.px || ''} · abitanti fuori ${st.npcs.filter(k => !k.dead && !k.inside).length}/${st.npcs.length} · bolla ${st.bubble ? Math.round(st.bubble.r) + ' m' : '-'}` +
       (typeof Misura !== 'undefined' && Misura.ON ? '\n— i moduli più pesanti (ms per fotogramma, tempo proprio) —\n' + Misura.top(12).map(([k, v]) => `${v.toFixed(2).padStart(6)}  ${k}`).join('\n') : '\n(per la classifica dei moduli: ?perf nell\'indirizzo)');

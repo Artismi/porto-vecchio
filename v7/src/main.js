@@ -765,6 +765,7 @@
       `fotogramma ${frameMs.toFixed(0)} ms = gioco ${gameMs.toFixed(0)} ms + attesa ${Math.max(0, frameMs - gameMs).toFixed(0)} ms (scheda video, altri moduli, browser)\n` +
       `scheda: ${gn || 'sconosciuta'}${SOFT_GPU.test(gn) ? '  ⚠ IN SOFTWARE: accelerazione hardware spenta' : ''}\n` +
       `logica ${(PERF.step / n).toFixed(1)} ms · grafica (processore) ${(PERF.frame / n).toFixed(1)} ms\n` +
+      (g.cpu && g.cpu.length ? 'dentro la grafica: ' + g.cpu.slice(0, 8).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(' · ') + '\n' : '') +
       (g.ok ? `scheda video ${gsum.toFixed(1)} ms: ${gt.join(' · ')}` : 'scheda video: il browser non dà i tempi') + '\n' +
       `${I.calls || '?'} disegni · ${I.tris ? Math.round(I.tris / 1000) + 'k' : '?'} triangoli · ${I.progs || '?'} shader · ${I.px || ''} · abitanti fuori ${st.npcs.filter(k => !k.dead && !k.inside).length}/${st.npcs.length} · bolla ${st.bubble ? Math.round(st.bubble.r) + ' m' : '-'}` +
       (typeof Misura !== 'undefined' && Misura.ON ? '\n— i moduli più pesanti (ms per fotogramma, tempo proprio) —\n' + Misura.top(12).map(([k, v]) => `${v.toFixed(2).padStart(6)}  ${k}`).join('\n') : '\n(per la classifica dei moduli: ?perf nell\'indirizzo)');
