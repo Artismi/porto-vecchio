@@ -1349,6 +1349,16 @@ var Render = (function () {
   }
   const vM4 = new THREE.Matrix4(), vQ = new THREE.Quaternion(), vE = new THREE.Euler(), vV = new THREE.Vector3(), vS = new THREE.Vector3(), vC = new THREE.Color();
   const LOWQ = { on: false };
+  // [fluido] LE COSTRUZIONI: un tetto di tempo per fotogramma (3 ms) per tutto quello che nasce mentre si gioca (personaggi coi
+  // vestiti, mezzi, blocchi di piante, graffiti sui muri). Chi chiede e non c'è più tempo aspetta il fotogramma dopo; quello
+  // che è vicinissimo (meno di 20 m) passa sempre, così niente spunta in ritardo sotto gli occhi. Anche writing.js lo usa.
+  // A turno: ogni tipo (gente, mezzi, piante, graffiti) ha almeno una costruzione ogni 4 fotogrammi, anche se gli altri hanno finito il tempo.
+  const BUD = { used: 0, max: 3, n: 0, last: {}, start() { this.used = 0; this.n++; },
+    ok(d, k) { return (d !== undefined && d < 20) || this.used < this.max || (k !== undefined && this.n - (this.last[k] || 0) >= 4); },
+    add(ms, k) { this.used += ms; if (k !== undefined) this.last[k] = this.n; } };
+  if (typeof window !== 'undefined') window.Costruzioni = BUD;
+  // [fluido] i personaggi che escono dalla bolla di popolo.js si tengono da parte (gli ultimi 40): se tornano, nessuna ricostruzione
+  const PEOPLE_KEEP = new Map();
   // [fluido] il profilo telefono, deciso all'avvio (il numero di luci entra nei programmi della scheda video): touch o ?leggera; ?alta lo spegne
   const PHONE = (() => { try { const q = location.search; if (/[?&]alta\b/.test(q)) return false; return /[?&](leggera|bassa)\b/.test(q) || matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
   LOWQ.phone = PHONE;
@@ -1891,7 +1901,7 @@ var Render = (function () {
       if (d < 135) { if ((!ch || ch.rev !== ISO.rev) && d < bd) { bd = d; best = [ci, cj, key]; } }
       else if (ch && d > 190) { dropChunk(ch); ISO.chunks.delete(key); }
     }
-    if (best) { const old = ISO.chunks.get(best[2]); if (old) dropChunk(old); ISO.chunks.set(best[2], buildChunk(best[0], best[1])); }
+    if (best && (bd < 70 || BUD.ok(undefined, 'piante'))) { const old = ISO.chunks.get(best[2]), t0 = performance.now(); if (old) dropChunk(old); ISO.chunks.set(best[2], buildChunk(best[0], best[1])); BUD.add(performance.now() - t0, 'piante'); }   // [fluido] i blocchi lontani (si vedono da 62 m) solo quando c'è tempo
     if (ISO.basePieces) for (const key in ISO.basePieces) ISO.basePieces[key].visible = !ISO.chunks.has(key);   // [inverno17]
   }
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
@@ -11356,6 +11366,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     });
   }
   function frame(st, dt, ui) {
+    BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
     meteoAt(st.t, METEO); { const rg = regimeAt(cam.x, cam.y); METEO.reg += (rg - METEO.reg) * Math.min(1, (dt || .016) * 1.5); } dyn.meteo = METEO;   /* [amb1] */
     const WXc = METEO.w[0], WXwet = METEO.w[1], WXfog = METEO.w[2], WXst = METEO.w[3], SUNK = (1 - night) * (1 - WXc * .82);   /* [amb1] quanto sole arriva */
@@ -11421,9 +11432,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       let g = dyn.people[n.id];
       // [popolo] il modello si crea solo per chi si vede; gli abitanti lontani (popolo.js) lo liberano
       const inRoom = !!(n.room && p.indoor && !n.dead);   // [scopo] dentro l'edificio del giocatore: si vede chi c'è
-      if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if (n.pop && !n.pop.near) { scene.remove(g); delete dyn.people[n.id]; } } return; }
+      if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if (n.pop && !n.pop.near) { scene.remove(g); delete dyn.people[n.id]; if (!g.userData.voxelWait) { PEOPLE_KEEP.set(n.id, g); if (PEOPLE_KEEP.size > 40) PEOPLE_KEEP.delete(PEOPLE_KEEP.keys().next().value); } } } return; }
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
-      if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */ g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
+      if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */
+        const kept = PEOPLE_KEEP.get(n.id); if (kept && (kept.userData.who || null) === who) { PEOPLE_KEEP.delete(n.id); g = kept; }   // [fluido] torna com'era, già vestito
+        else { if (!BUD.ok(Math.hypot(n.x - p.x, n.y - p.y), 'gente')) return; const t0 = performance.now(); g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); g.userData.who = who; BUD.add(performance.now() - t0, 'gente'); }   // [fluido] nasce quando c'è tempo
+        if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
       g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = Math.PI / 2 - n.face;
@@ -11466,7 +11480,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       // [fluido] fuori dalla vista (raggio secondo lo zoom) il mezzo non si crea, non si anima e non si disegna
       const far = v !== pveh && (Math.abs(v.x - cam.x) > VIEW_R || Math.abs(v.y - cam.y) > VIEW_R);
       let g = dyn.vehicles[v.id]; if (far) { if (g) g.visible = false; return; }
-      if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { g = vehicleMesh(v); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }
+      if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { if (!v.hidden && !BUD.ok(Math.hypot(v.x - p.x, v.y - p.y) - 10, 'mezzi')) return; const t0 = performance.now(); g = vehicleMesh(v); BUD.add(performance.now() - t0, 'mezzi'); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }   // [fluido] nasce quando c'è tempo
       g.visible = !v.hidden; if (!g.visible) return;
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
       const hF = groundH(v.x + ca * hl, v.y + sa * hl), hR = groundH(v.x - ca * hl, v.y - sa * hl);

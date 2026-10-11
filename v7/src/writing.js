@@ -1419,6 +1419,7 @@ var Writing = (function () {
           const near = W.works.filter(w => !GFX.works[w.id] && !w.erased && !(w.gfxFail > 3)).map(w => { const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (w.surf === 'vagone') { const c = consOf(st, w.cons), q = c && wagPose(st, c, w.wk); return [w, q ? hyp(q.x - cx, q.y - cy) : 1e9]; } return [w, w.surf === 'treno' ? 0 : sp ? hyp(sp.x - cx, sp.y - cy) : 1e9]; }).filter(a => a[1] < 80).sort((a, b) => a[1] - b[1]).map(a => a[0]);
           for (const w of near) {
             if (performance.now() - t0 > 6) break;   /* [fluido] al massimo 6 ms di graffiti nuovi ogni 150 ms */
+            const CB = typeof window !== 'undefined' && window.Costruzioni; if (CB && !CB.ok(undefined, 'graffiti')) break;   // [fluido] e solo se nel fotogramma c'è ancora tempo per costruire
             if (GFX.works[w.id] || w.erased || w.gfxFail > 3) continue;
             if (ARTW.pend.has(w.id)) continue;   // [fluido] il disegno è in preparazione
             // [fluido] il disegno arriva da artFor (memoria, worker o qui); il velo si fa quando c'è, se il lavoro serve ancora
@@ -1426,8 +1427,8 @@ var Writing = (function () {
             if (w.surf === 'treno') { if (!GFX.train) continue; const tgt = trainTarget(w); if (!tgt) continue; ready(A => { GFX.works[w.id] = { tgt, art: A, drawn: 0 }; }); n++; continue; }
             if (w.surf === 'vagone') { if (!w.gfxRect) { const rc2 = wagRect(w); if (!rc2) continue; w.gfxRect = rc2; } w.pos = { x: w.gfxRect.c.x, y: w.gfxRect.c.y, z: w.gfxRect.c.z }; ready(A => { const g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; }); n++; continue; }   // [ferrovia] sui carri fermi
             const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (!sp || hyp(sp.x - cx, sp.y - cy) > 80) continue;
-            if (!w.gfxRect && !placeWall(w)) { w.gfxFail = (w.gfxFail || 0) + 1; continue; }
-            ready(A => { const g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; }); n++;
+            if (!w.gfxRect) { const tp = performance.now(), okW = placeWall(w); if (CB) CB.add(performance.now() - tp, 'graffiti'); if (!okW) { w.gfxFail = (w.gfxFail || 0) + 1; continue; } }
+            ready(A => { const tv = performance.now(), g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; if (CB) CB.add(performance.now() - tv, 'graffiti'); }); n++;
           }
         }
         // disegno: i lavori finiti in un colpo, quelli in corso fin dove sono arrivati; i cancellati via; i lontani si liberano

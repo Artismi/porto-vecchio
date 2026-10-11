@@ -26,6 +26,17 @@ Profilo a regime, il peso che resta è **lavoro che parte quando qualcosa entra 
 - `pittura.js paint`/`paintAt`: le stoffe dipinte (~2,8%).
 - `buildChunk` (vegetazione): i blocchi di piante che entrano in zona (~2,2%).
 
+## Le costruzioni a budget e il riciclo (fatto, punto 1 e parte del 2)
+- `render.js` `BUD` (anche `window.Costruzioni`): 3 ms per fotogramma per tutto quello che nasce mentre si gioca. Ogni
+  costruzione chiede `ok(distanza, tipo)` e dichiara `add(ms, tipo)`. Passa sempre chi è a meno di 20 m; a turno ogni
+  tipo (`gente`, `mezzi`, `piante`, `graffiti`) ha almeno una costruzione ogni 4 fotogrammi, così nessuno resta a secco.
+  Collegati: i personaggi (modello, vestiti, stoffe), i mezzi, i blocchi di piante lontani (oltre 70 m: si vedono da 62),
+  i graffiti (`placeWall` e il velo, in `writing.js`).
+- **Riciclo dei personaggi** (`PEOPLE_KEEP`): chi esce dalla bolla di `popolo.js` resta da parte (gli ultimi 40) e torna già
+  vestito, invece di ricostruire modello, vestiti e stoffe.
+- Un singolo personaggio che costa più del budget si costruisce comunque intero (non si spezza a metà): il budget evita che
+  se ne costruiscano tanti nello stesso fotogramma.
+
 ## Prossimi passi (piano)
 1. **Una coda unica di "costruzioni"** con un tetto per fotogramma (2-3 ms), in ordine di distanza: personaggi, vestiti,
    stoffe, blocchi di piante, veli dei graffiti, misure dei muri. Niente si costruisce tutto insieme: entra un pezzo per
