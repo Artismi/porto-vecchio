@@ -11013,7 +11013,16 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // solo la forma singola all'origine, non dove stanno le istanze, e quindi si disegnavano anche fuori dallo schermo (metà
   // dei triangoli). Qui ogni gruppo fermo riceve l'ingombro vero (le sue istanze, più un margine per il vento) e il
   // controllo si riaccende; l'immagine non cambia. Chi cambia le istanze (schegge, segni delle gomme…) resta com'era.
-  const IC = { list: [], t: 0 };
+  const IC = { list: [], t: 0, set: new Set(), boot: false };
+  // [fluido] chi entra in scena si segnala da sé (aggancio di Object3D.add): niente più giri di tutta la scena per trovarli
+  function icSee(o) {
+    if (o.isInstancedMesh) IC.set.add(o);
+    if (o.userData && o.userData.model && o.userData.mixer) o.traverse(q => { if ((q.isMesh || q.isSkinnedMesh) && !q.frustumCulled && !q.__icR && !q.isInstancedMesh) { q.__icR = o; q.frustumCulled = true; } });   // i personaggi
+  }
+  function icAdded(parent, kids) {
+    let person = null; for (let q = parent; q; q = q.parent) if (q.userData && q.userData.model && q.userData.mixer) { person = q; break; }
+    for (const c of kids) { if (!c || !c.isObject3D) continue; c.traverse(o => { if (o.isInstancedMesh) IC.set.add(o); if (person && (o.isMesh || o.isSkinnedMesh) && !o.frustumCulled && !o.__icR && !o.isInstancedMesh) { o.__icR = person; o.frustumCulled = true; } }); icSee(c); }   // i vestiti e gli oggetti in mano attaccati dopo
+  }
   { const io = THREE.Frustum.prototype.intersectsObject, sph = new THREE.Sphere();
     THREE.Frustum.prototype.intersectsObject = function (o) {
       if (o.__icS) { sph.copy(o.__icS).applyMatrix4(o.matrixWorld); return this.intersectsSphere(sph); }
@@ -11060,8 +11069,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   function instCull() {
     if (IC.off) return;   // [prova] R.__ic.off = true la spegne (solo per le misure)
     const now = performance.now();
-    if (now > IC.t) { IC.t = now + 1000; IC.list = []; scene.traverse(o => { if (o.isInstancedMesh && !o.__icPart && (!o.frustumCulled || o.__icS || o.__icParts)) IC.list.push(o);
-      if (o.userData.model && o.userData.mixer) o.traverse(q => { if ((q.isMesh || q.isSkinnedMesh) && !q.frustumCulled && !q.__icR && !q.isInstancedMesh) { q.__icR = o; q.frustumCulled = true; } }); }); }   // i personaggi (e i vestiti e gli oggetti in mano attaccati dopo)
+    if (!IC.boot) { IC.boot = true; scene.traverse(o => { icSee(o); }); }   // una volta sola: poi li segnala l'aggancio di add (sotto)
+    if (now > IC.t) { IC.t = now + 1000; IC.list = []; IC.set.forEach(o => { if (!o.parent) { IC.set.delete(o); return; } if (!o.__icPart && (!o.frustumCulled || o.__icS || o.__icParts)) IC.list.push(o); }); }
     for (const o of IC.list) {   // ferme da un secondo e mezzo: si accende il controllo; appena cambiano, si spegne
       const ver = o.instanceMatrix.version + ':' + o.count + ':' + (o.geometry && o.geometry.id);
       if (o.__icV !== ver) { o.__icV = ver; o.__icT = now; if (o.__icS) { o.__icS = null; o.frustumCulled = false; } if (o.__icParts) icUnsplit(o); continue; }
@@ -11088,6 +11097,54 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       return acc.call(this, rc, out);
     };
     fast.__bvh = true; THREE.Mesh.prototype.raycast = fast;
+  }
+  // [fluido] GLI OGGETTI FERMI SI CONGELANO: la città ha circa 31.000 oggetti e three ricalcolava e attraversava a ogni
+  // fotogramma la posizione di tutti, anche delle case. I gruppi che non si muovono mai (case fuse, edifici, ferrovia,
+  // sottosuolo, ombre delle case) si calcolano una volta e poi il motore salta il loro ramo. Due reti: se dentro un gruppo
+  // congelato si aggiunge qualcosa (una stanza aperta, un velo) si scongela subito; e un controllo a rotazione (1500 oggetti
+  // per fotogramma) li riguarda tutti: se qualcosa si è spostato, si scongela. Chi si scongela non si ricongela più.
+  const FRZ = { list: [], ri: 0, oi: 0, t: 0 };
+  const FRZ_UMW = function (force) { if (force) THREE.Object3D.prototype.updateMatrixWorld.call(this, true); };
+  { const add0 = THREE.Object3D.prototype.add, att0 = THREE.Object3D.prototype.attach;
+    const thawUp = o => { for (let q = o; q; q = q.parent) if (q.__frz) { frzThaw(q); break; } };
+    THREE.Object3D.prototype.add = function () { const r = add0.apply(this, arguments); thawUp(this); if (IC.boot) icAdded(this, arguments); return r; };
+    THREE.Object3D.prototype.attach = function () { const r = att0.apply(this, arguments); thawUp(this); return r; }; }
+  const frzSnap = (o, a, i) => { const P = o.position, Q = o.quaternion, S = o.scale; a[i] = P.x; a[i + 1] = P.y; a[i + 2] = P.z; a[i + 3] = Q.x; a[i + 4] = Q.y; a[i + 5] = Q.z; a[i + 6] = Q.w; a[i + 7] = S.x; a[i + 8] = S.y; a[i + 9] = S.z; };
+  function frzFreeze(root) {
+    root.updateMatrixWorld(true); const objs = []; root.traverse(o => objs.push(o));
+    const snap = new Float64Array(objs.length * 10); objs.forEach((o, k) => frzSnap(o, snap, k * 10));
+    root.__frz = { objs, snap }; root.updateMatrixWorld = FRZ_UMW; FRZ.list.push(root);
+  }
+  function frzThaw(root) {
+    if (!root.__frz) return; root.__frz = null; root.__frzNo = true; delete root.updateMatrixWorld; root.updateMatrixWorld(true);
+    const i = FRZ.list.indexOf(root); if (i >= 0) FRZ.list.splice(i, 1);
+  }
+  const frzOk = (o, bset) => !o.__frzNo && !o.__frz && (bset.has(o) || o.userData.fusione1 || o.userData.fgRec1 || o.userData.ombra1 || o.name === 'ferrovia' || o.name === 'sottosuolo' || o.name === 'sottosuolo_sopra');
+  const _frzT = new Float64Array(10);
+  // la scena salta i gruppi congelati senza nemmeno entrarci (è updateMatrixWorld di three, con quel salto in più)
+  function frzScene() {
+    if (scene.__frzS) return; scene.__frzS = true;
+    scene.updateMatrixWorld = function (force) {
+      if (this.matrixAutoUpdate) this.updateMatrix();
+      if (this.matrixWorldNeedsUpdate || force) { if (this.parent === null) this.matrixWorld.copy(this.matrix); else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); this.matrixWorldNeedsUpdate = false; force = true; }
+      const ch = this.children; for (let i = 0, l = ch.length; i < l; i++) { const c = ch[i]; if (c.__frz && !force) continue; c.updateMatrixWorld(force); }
+    };
+  }
+  function frzTick() {
+    frzScene();
+    const now = performance.now();
+    if (now > FRZ.t) { FRZ.t = now + 1000; const bset = new Set(dyn.buildings.map(B => B.grp).filter(Boolean)); scene.children.forEach(o => { if (frzOk(o, bset)) frzFreeze(o); }); }
+    let budget = 1500;
+    while (budget > 0 && FRZ.list.length) {
+      if (FRZ.ri >= FRZ.list.length) { FRZ.ri = 0; FRZ.oi = 0; }
+      const root = FRZ.list[FRZ.ri], F = root.__frz;
+      if (!F) { FRZ.ri++; FRZ.oi = 0; continue; }
+      const end = Math.min(F.objs.length, FRZ.oi + budget); let moved = false;
+      for (let k = FRZ.oi; k < end; k++) { frzSnap(F.objs[k], _frzT, 0); const b = k * 10; for (let q = 0; q < 10; q++) if (_frzT[q] !== F.snap[b + q]) { moved = true; break; } if (moved) break; }
+      budget -= end - FRZ.oi;
+      if (moved) { frzThaw(root); FRZ.oi = 0; continue; }
+      if (end >= F.objs.length) { FRZ.ri++; FRZ.oi = 0; } else FRZ.oi = end;
+    }
   }
   const SHMOV = { list: [] };   // [fluido] chi si muove (x, y, velocità), per le ombre dei faretti
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
@@ -11953,6 +12010,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   function frame(st, dt, ui) {
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
     SHMOV.st = st;   // [fluido] per le ombre dei faretti
+    frzTick();   // [fluido] gli oggetti fermi congelati (e il controllo a rotazione)
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
     meteoAt(st.t, METEO); { const rg = regimeAt(cam.x, cam.y); METEO.reg += (rg - METEO.reg) * Math.min(1, (dt || .016) * 1.5); } dyn.meteo = METEO;   /* [amb1] */
     const WXc = METEO.w[0], WXwet = METEO.w[1], WXfog = METEO.w[2], WXst = METEO.w[3], SUNK = (1 - night) * (1 - WXc * .82);   /* [amb1] quanto sole arriva */

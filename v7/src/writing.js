@@ -576,7 +576,7 @@ var Writing = (function () {
     try {
       const src = typeof document !== 'undefined' && document.getElementById('pv-artworker');
       if (!src || typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined' || typeof Blob === 'undefined') return (ARTW.ok = false);
-      const code = 'const document = { createElement: () => new OffscreenCanvas(1, 1) };\n' + src.textContent + '\n' + ARTW_MAIN;
+      const code = 'const _u32 = v => (Math.trunc(+v) || 0) >>> 0; class PVCanvas extends OffscreenCanvas { constructor() { super(1, 1); } get width() { return super.width; } set width(v) { super.width = _u32(v); } get height() { return super.height; } set height(v) { super.height = _u32(v); } getContext(t, o) { return super.getContext(t, t === \'2d\' ? Object.assign({ willReadFrequently: true }, o || {}) : o); } }\nconst document = { createElement: () => new PVCanvas() }; self.HTMLCanvasElement = OffscreenCanvas; self.HTMLImageElement = self.HTMLImageElement || ImageBitmap;\n'   // il canvas del worker accetta le misure come quello della pagina (tronca, NaN = 0) + src.textContent + '\n' + ARTW_MAIN;
       ARTW.w = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
       ARTW.w.onmessage = e => { const m = e.data, cb = ARTW.wait.get(m.id); ARTW.wait.delete(m.id); if (cb) cb(m.err ? null : m.A, m.err); };
       ARTW.w.onerror = e => { console.warn('[Writing] disegnatore a parte spento:', e.message); ARTW.ok = false; const cbs = [...ARTW.wait.values()]; ARTW.wait.clear(); cbs.forEach(cb => cb(null, 'worker')); };
@@ -595,11 +595,11 @@ var Writing = (function () {
     for (const key in w) if (key !== 'gfxRect') msg.w[key] = w[key];
     if (sig !== ARTW.recSig) { ARTW.recSig = sig; msg.rec = Object.assign({}, WM.RECORDED, WM.MIA ? { _mia: WM.MIA } : {}); }
     ARTW.wait.set(msg.id, (A, err) => {
-      if (!A) { sync(); return; }   // non è riuscito di là: si fa qui
+      if (!A) { if (!ARTW.warned) { ARTW.warned = true; console.warn('[Writing] il disegnatore a parte non ce l\'ha fatta, si fa qui:', err); } sync(); return; }   // non è riuscito di là: si fa qui
       if (w.done) { ARTW.cache.set(k, A); while (ARTW.cache.size > 48) ARTW.cache.delete(ARTW.cache.keys().next().value); }
       cb(Object.assign({}, A, { stages: A.stages.slice() }));
     });
-    try { ARTW.w.postMessage(msg); } catch (e) { ARTW.wait.delete(msg.id); sync(); }   // qualcosa nel lavoro non si copia: qui
+    try { ARTW.w.postMessage(msg); } catch (e) { ARTW.wait.delete(msg.id); if (!ARTW.warned2) { ARTW.warned2 = true; console.warn('[Writing] il lavoro non si copia nel disegnatore a parte:', e.message, Object.keys(msg.w).join(',')); } sync(); }   // qualcosa nel lavoro non si copia: qui
   }
   function drawUpTo(w, g) {
     const A = g.art, T = g.tgt; if (!A || !T) return; const nS = A.stages.length;
@@ -1490,6 +1490,6 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
+  return { RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { artFor, ARTW, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;
