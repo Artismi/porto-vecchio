@@ -41899,11 +41899,13 @@ var Render = (function () {
     });
     postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
   }
-  let TARGET = 540, lastSize = null;
+  let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
+  function setRes(k) { k = Math.max(.5, Math.min(1, k)); if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
     PX = LOWQ.on ? Math.max(2, Math.round(dpr) * 2) : Math.max(1, ch * dpr / 720);   /* [unione8] al massimo 720 righe */   /* [amb3] risoluzione piena */
+    PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     GPUT.px = W + '×' + H;   /* [prestazioni] */
     renderer.setSize(cw, ch, false);
@@ -45362,7 +45364,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
 </script>
 <script>/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
@@ -47436,11 +47438,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   if (window.Editor) Editor.attach({ get st() { return st; }, ui, G, R, cv, app, toast });   // [editor] F2
   function size() { const w = app.clientWidth || innerWidth, h = app.clientHeight || innerHeight; R.resize(w, h, Math.min(2, devicePixelRatio || 1)); }
   new ResizeObserver(size).observe(app); size();
-  let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false;
+  let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
   function loop(now) {
     const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
     if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > 1 / 32) R.lowQuality(); } }
+    // [fluido] risoluzione dinamica: media mobile del fotogramma; sopra i 22 ms si scende di un gradino, sotto i 14 ms per 4 s si risale (al massimo un cambio ogni 1,5 s)
+    if (R.setRes && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
+      if (resT > 1.5 && resAvg > .022) { R.setRes(R.res * .85); resT = 0; resAvg = .018; }
+      else if (resT > 4 && resAvg < .014 && R.res < 1) { R.setRes(R.res * 1.1); resT = 0; } }
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
     const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]

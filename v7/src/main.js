@@ -756,11 +756,15 @@
   if (window.Editor) Editor.attach({ get st() { return st; }, ui, G, R, cv, app, toast });   // [editor] F2
   function size() { const w = app.clientWidth || innerWidth, h = app.clientHeight || innerHeight; R.resize(w, h, Math.min(2, devicePixelRatio || 1)); }
   new ResizeObserver(size).observe(app); size();
-  let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false;
+  let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
   function loop(now) {
     const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
     if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > 1 / 32) R.lowQuality(); } }
+    // [fluido] risoluzione dinamica: media mobile del fotogramma; sopra i 22 ms si scende di un gradino, sotto i 14 ms per 4 s si risale (al massimo un cambio ogni 1,5 s)
+    if (R.setRes && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
+      if (resT > 1.5 && resAvg > .022) { R.setRes(R.res * .85); resT = 0; resAvg = .018; }
+      else if (resT > 4 && resAvg < .014 && R.res < 1) { R.setRes(R.res * 1.1); resT = 0; } }
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
     const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]
