@@ -511,6 +511,9 @@
     x.fillStyle = '#0a0816'; x.fillRect(0, 0, 88, 88);
     x.save(); x.translate(44 - p.x * sc, 44 - p.y * sc); x.drawImage(miniBase, 0, 0);
     const jt = G.jobTarget(st); if (jt) { x.fillStyle = '#ffd24a'; x.fillRect(jt.x * sc - 2, jt.y * sc - 2, 4, 4); }
+    // [sottosuolo] le porte di sotto: la metro (quadrato rosso), tombini, pozzi e grate (puntini grigi)
+    if (window.Livelli && !p.indoor) Livelli.S(st).portals.forEach(P => { if (!Livelli.CLIMB.has(P.kind) || P.kind === 'interno') return; const c = p.lv ? P.u : P.s, X = (c[0] + .5) * G.TS, Y = (c[1] + .5) * G.TS; if (Math.abs(X - p.x) > 46 || Math.abs(Y - p.y) > 46) return;
+      if (P.metro) { x.fillStyle = '#d0202a'; x.fillRect(Math.round(X * sc) - 3, Math.round(Y * sc) - 3, 6, 6); x.fillStyle = '#fff'; x.fillRect(Math.round(X * sc) - 2, Math.round(Y * sc) - 1, 4, 1); } else { x.fillStyle = '#9a9aa8'; x.fillRect(Math.round(X * sc) - 1, Math.round(Y * sc) - 1, 2, 2); } });
     st.pickups.forEach(k => { if (!G.pickupVisible(st, k)) return; x.fillStyle = k.kind === 'valigetta' ? '#ff4fa3' : k.kind === 'salute' || k.kind === 'soldi' ? '#7ee0a0' : '#ffd24a'; x.fillRect(Math.round(k.x * sc) - 1, Math.round(k.y * sc) - 1, 2, 2); });
     st.vehicles.forEach(v => { if (v.hidden) return; x.fillStyle = v.police ? (Math.sin(st.clock * 12) > 0 ? '#3a7aff' : '#fff') : v.wreck ? '#222' : '#8a8a9a'; x.fillRect(Math.round(v.x * sc) - 1, Math.round(v.y * sc) - 1, 3, 2); });
     st.npcs.forEach(n => { if (n.inside || n.dead || Math.abs(n.x - p.x) > 46 || Math.abs(n.y - p.y) > 46) return; const a = G.attitude(st, n);   // [fluido] solo chi cade nella minimappa x.fillStyle = n.cop ? '#4a8aff' : a.tone === 'bad' ? '#ff5a5a' : a.tone === 'good' ? '#7ee0a0' : a.tone === 'warn' ? '#ffb35c' : '#8a82a0'; x.fillRect(Math.round(n.x * sc) - 1, Math.round(n.y * sc) - 1, 2, 2); });
