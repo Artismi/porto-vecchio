@@ -219,7 +219,7 @@ var Tetti = (function () {
   // (scanWork), poi riprende dal punto dove era arrivato. Stessi raggi, stessa quota: prima tutto in un colpo bloccava il
   // gioco (fino a centinaia di raggi per casa, contro tutti i triangoli del modello, due case ogni 60 ms).
   function scanStart(R, bi) {
-    const b = B[bi]; if (!b || b.__rH) return null; const parts = recsOf(R, b).map(r => r.grp); if (!parts.length) return false;
+    const b = B[bi]; if (!b || b.__rH) return null; const parts = []; recsOf(R, b).forEach(r => [r.grp, r.roofGrp, r.cityGrp].forEach(q => { if (q) parts.push(q); })); if (!parts.length) return false;   // [ordine1] anche la roba sul tetto: ci si sale sopra
     parts.forEach(g => g.updateMatrixWorld(true));
     const W1 = b.w * TS, H1 = b.h * TS;
     return { bi, b, parts, W1, H1, g: new Float32Array(W1 * H1), floor: (b.base || 0) + 1.6, rule: roofRule(b), gy: 0, hits: 0 };
