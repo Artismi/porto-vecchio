@@ -3912,14 +3912,30 @@ var Render = (function () {
     const ice = G2.ice ? sm('#c8d0d2', { roughness: .4 }) : null;
     for (let k = 0; k < 4; k++) { const cxk = -1.35 + k * .9, cr = add(g, box(.8, .14, .5, crateM), cxk, .97, 0); if (ice) add(g, box(.74, .03, .44, ice), cxk, 1.04, 0);
       const hc = pick(r, G2.heap); for (let q = 0; q < 7; q++) { const s = .07 + r() * .05, o = new THREE.Mesh(G2.ice ? new THREE.SphereGeometry(1, 6, 4) : new THREE.IcosahedronGeometry(1, 0), sm(q % 3 ? hc : pick(r, G2.heap), { roughness: .8 })); o.scale.set(G2.ice ? s * 2.2 : s, s * (G2.ice ? .6 : 1), s); o.position.set(cxk + (r() - .5) * .6, 1.08 + r() * .05, (r() - .5) * .34); o.rotation.y = r() * 6; g.add(o); } }
-    // pali: uno di legno, uno di tubo, legati; il telo pende e ha le toppe
-    const iron = PM.iron(); add(g, box(.08, 2.5, .08, woodD), -1.9, 1.25, -.5, 0, 0, .04); add(g, cyl(.04, .04, 2.6, 6, iron), 1.9, 1.3, -.5, 0, 0, -.05);
-    add(g, box(.08, 2.1, .08, woodD), -1.9, 1.05, .7, 0, 0, -.06); add(g, cyl(.04, .04, 2.2, 6, iron), 1.85, 1.1, .7, 0, 0, .05);
-    const tarpM = sm(mute(G2.tarp, .9), { roughness: 1, side: THREE.DoubleSide }), patchM = sm(mute(pick(r, ['#6a6448', '#5a4a40', '#4a5a6a']), .9), { roughness: 1 });
-    // il telo in tre falde con l'avvallamento al centro (dove si ferma l'acqua)
-    [[-1.3, .1], [0, -.08], [1.3, .1]].forEach(([ox, dy], k) => add(g, box(1.36, .03, 1.5, tarpM), ox, 2.32 + dy, .1, .25, 0, (k - 1) * -.06));
-    add(g, box(.6, .035, .5, patchM), .7, 2.3, .2, .25, 0, 0);
-    for (let k = 0; k < 3; k++) add(g, box(.02, .02, .5 + r() * .3, sm('#c8c0a8')), -1.9 + k * 1.9, 2.1, .9 + r() * .2, .6, 0, 0);   // corde
+    // [ordine1] ogni banco è suo: copertura diversa (telo a tre falde, falda unica, ombrellone, tenda a righe), colore del telo suo, altezza sua
+    const vr = rng((Math.round(it.x * 7) * 31 + Math.round(it.y * 13)) >>> 0), cano = ['falde', 'falda', 'ombrellone', 'righe'][Math.floor(vr() * 4)], hh = .85 + vr() * .25;
+    const tcol = mute(pick(vr, [G2.tarp, '#5a6a74', '#6a6448', '#7a4a3c', '#4a6a5a', '#8a7a5a', '#5a4e6a', '#3e5a6e']), .9);
+    const iron = PM.iron(), tarpM = sm(tcol, { roughness: 1, side: THREE.DoubleSide }), patchM = sm(mute(pick(r, ['#6a6448', '#5a4a40', '#4a5a6a']), .9), { roughness: 1 });
+    if (cano === 'ombrellone') {   // ombrellone da mercato: palo al centro con la base di cemento, quattro spicchi, la balza
+      add(g, cyl(.04, .04, 2.7 * hh, 6, iron), 0, 1.35 * hh, .9); add(g, cyl(.25, .3, .14, 10, sm('#7a766e', { roughness: 1 })), 0, .07, .9);
+      for (let k = 0; k < 4; k++) { const sp = add(g, box(2.3, .03, 2.3, tarpM), 0, 2.55 * hh, .2); sp.rotation.set(0, k * Math.PI / 2 + Math.PI / 4, 0); }
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(2.5, .55, 4, 1, true), tarpM); cone.position.set(0, 2.6 * hh + .25, .2); cone.rotation.y = Math.PI / 4; g.add(cone);
+      [[0, 1.75], [0, -1.35], [1.55, .2], [-1.55, .2]].forEach(([vx, vz], k) => add(g, box(k < 2 ? 3.4 : .03, .22, k < 2 ? .03 : 3.1, tarpM), vx, 2.45 * hh, vz));
+    } else {
+      add(g, box(.08, 2.5 * hh, .08, woodD), -1.9, 1.25 * hh, -.5, 0, 0, .04); add(g, cyl(.04, .04, 2.6 * hh, 6, iron), 1.9, 1.3 * hh, -.5, 0, 0, -.05);
+      add(g, box(.08, 2.1 * hh, .08, woodD), -1.9, 1.05 * hh, .7, 0, 0, -.06); add(g, cyl(.04, .04, 2.2 * hh, 6, iron), 1.85, 1.1 * hh, .7, 0, 0, .05);
+      if (cano === 'falde') {   // il telo in tre falde con l'avvallamento al centro (dove si ferma l'acqua)
+        [[-1.3, .1], [0, -.08], [1.3, .1]].forEach(([ox, dy], k) => add(g, box(1.36, .03, 1.5, tarpM), ox, 2.32 * hh + dy, .1, .25, 0, (k - 1) * -.06));
+        add(g, box(.6, .035, .5, patchM), .7, 2.3 * hh, .2, .25, 0, 0);
+      } else if (cano === 'falda') {   // un telo solo, teso dal palo alto dietro a quello basso davanti, che sporge sul passaggio
+        add(g, box(4.2, .03, 1.9, tarpM), 0, 2.3 * hh, .25, .32, 0, (vr() - .5) * .05); add(g, box(.7, .035, .6, patchM), -.9, 2.31 * hh, .35, .32, 0, 0);
+      } else {   // tenda a righe con la mantovana smerlata
+        const stM = stripeMat(pick(vr, ['#b0283c', '#2f5a3e', '#3a4a7a', '#8a6a2a']), '#e9e0cf');
+        add(g, box(4.1, .04, 1.7, stM), 0, 2.3 * hh, .2, .3, 0, 0);
+        for (let k = 0; k < 9; k++) add(g, box(.42, .2, .02, stM), -1.85 + k * .46, 2.0 * hh, 1.0);
+      }
+    }
+    for (let k = 0; k < 3; k++) add(g, box(.02, .02, .5 + r() * .3, sm('#c8c0a8')), -1.9 + k * 1.9, 2.1 * hh, .9 + r() * .2, .6, 0, 0);   // corde
     // cartone scritto a mano, appeso con lo spago
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.2, .45), new THREE.MeshStandardMaterial({ map: handTex(G2.sign, '#b8a07a', '#2a1a12'), roughness: 1 })); sg.position.set((r() - .5) * 1.4, 1.95, .86); sg.rotation.z = (r() - .5) * .12; g.add(sg);
     // bilancia, sacchetti, cassette vuote a terra, la lampadina sul filo
@@ -6768,7 +6784,7 @@ var Render = (function () {
       const fS = fac('S', w), fE = fac('E', d), fN = fac('N', w), fW = fac('W', d);
       const mat = f => std({ map: f.map, emissiveMap: f.emissive, emissive: 0xffffff, emissiveIntensity: 1, color: b.military ? '#a8b090' : '#ffffff' });
       let roofTopM;
-      if (b.deco) { const rtx = flatRoofTex().clone(); rtx.needsUpdate = true; rtx.repeat.set(w / 4, d / 4); roofTopM = std({ map: rtx, roughness: .95, color: '#9c968e' }); }
+      if (b.deco) roofTopM = deckMat1(th(b.x, b.y, 1203) < .6 ? 'guaina' : 'cemento', w, d);   // [ordine1] lastrico in scala vera
       else roofTopM = std({ color: '#241f2e' });
       const mats = [mat(fE), mat(fW), roofTopM, roofTopM, mat(fS), mat(fN)];
       const bodyH = b.deco ? hgt : hgt + plinth;
