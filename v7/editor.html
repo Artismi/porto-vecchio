@@ -279,7 +279,17 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 </div>
 
 <script>window.PV_STUDIO = true;</script>
-<script>/* [file://] Aperto col doppio clic (file://) il browser vieta fetch() sui file della cartella, e i modelli
+<script>/* [fluido] i canvas 2D del gioco (graffiti, terreno, neve, insegne...) si disegnano una volta e si rileggono coi pixel
+   (getImageData): nella scheda video ogni rilettura la ferma e ricopia tutto (era il 75% del tempo del processore).
+   Qui ogni contesto 2D nasce «da rileggere spesso», cioè in memoria normale; le texture ci arrivano lo stesso. */
+(function () {
+  try {
+    const P = HTMLCanvasElement.prototype, g0 = P.getContext;
+    P.getContext = function (type, opt) { if (type === '2d') opt = Object.assign({ willReadFrequently: true }, opt || {}); return g0.call(this, type, opt); };
+    if (typeof OffscreenCanvas !== 'undefined') { const O = OffscreenCanvas.prototype, o0 = O.getContext; O.getContext = function (type, opt) { if (type === '2d') opt = Object.assign({ willReadFrequently: true }, opt || {}); return o0.call(this, type, opt); }; }
+  } catch (e) { }
+})();
+/* [file://] Aperto col doppio clic (file://) il browser vieta fetch() sui file della cartella, e i modelli
    (assets/*.json) non arrivano: i personaggi restano a blocchetti. Qui, solo in quel caso, ogni richiesta
    a assets/...json viene servita dal gemello assets/...json.js, caricato con un <script> (che file:// permette).
    Con AVVIA.bat (http://localhost) questo pezzo non fa nulla. I .json.js si rifanno con strumenti_inverno/pack_file.py */
@@ -33213,7 +33223,7 @@ var Writing = (function () {
           GFX.scanT = now; let n = 0; const t0 = performance.now();
           const near = W.works.filter(w => !GFX.works[w.id] && !w.erased && !(w.gfxFail > 3)).map(w => { const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (w.surf === 'vagone') { const c = consOf(st, w.cons), q = c && wagPose(st, c, w.wk); return [w, q ? hyp(q.x - cx, q.y - cy) : 1e9]; } return [w, w.surf === 'treno' ? 0 : sp ? hyp(sp.x - cx, sp.y - cy) : 1e9]; }).filter(a => a[1] < 80).sort((a, b) => a[1] - b[1]).map(a => a[0]);
           for (const w of near) {
-            if (performance.now() - t0 > 14) break;
+            if (performance.now() - t0 > 6) break;   /* [fluido] al massimo 6 ms di graffiti nuovi ogni 150 ms */
             if (GFX.works[w.id] || w.erased || w.gfxFail > 3) continue;
             if (w.surf === 'treno') { if (!GFX.train) continue; const tgt = trainTarget(w); if (!tgt) continue; GFX.works[w.id] = { tgt, art: art(w), drawn: 0 }; n++; continue; }
             if (w.surf === 'vagone') { if (!w.gfxRect) { const rc2 = wagRect(w); if (!rc2) continue; w.gfxRect = rc2; } w.pos = { x: w.gfxRect.c.x, y: w.gfxRect.c.y, z: w.gfxRect.c.z }; const g = { art: art(w), drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; n++; continue; }   // [ferrovia] sui carri fermi
@@ -41871,7 +41881,7 @@ var Render = (function () {
     for (let i = 0; i < 70; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTexture(), color: '#555', transparent: true, depthWrite: false, opacity: 0 })); s.visible = false; scene.add(s); FX.smokes.push({ s, life: 0, max: 1, v: new THREE.Vector3(), grow: 1 }); }
     for (let i = 0; i < 30; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ff7a20', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.visible = false; scene.add(s); FX.flames.push({ s }); }
     for (let i = 0; i < (LOWQ.phone ? 1 : 3); i++) { const l = new THREE.PointLight('#ff7a30', 0, 12, 2); scene.add(l); FX.flights.push(l); }
-    for (let i = 0; i < 4; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffc070', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.visible = false; scene.add(s); const l = new THREE.PointLight('#ffa040', 0, 26, 2); scene.add(l); const ring = new THREE.Mesh(new THREE.RingGeometry(.8, 1, 24), new THREE.MeshBasicMaterial({ color: '#ffd8a0', transparent: true, opacity: .6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.visible = false; scene.add(ring); FX.explos.push({ s, l, ring, life: 0 }); }
+    for (let i = 0; i < 4; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffc070', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.visible = false; scene.add(s); const l = LOWQ.phone && i > 0 ? Object.assign(new THREE.Object3D(), { intensity: 0, color: new THREE.Color('#ffa040'), distance: 26 }) : new THREE.PointLight('#ffa040', 0, 26, 2); scene.add(l); /* [fluido] sul telefono una sola luce vera per le esplosioni */ const ring = new THREE.Mesh(new THREE.RingGeometry(.8, 1, 24), new THREE.MeshBasicMaterial({ color: '#ffd8a0', transparent: true, opacity: .6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.visible = false; scene.add(ring); FX.explos.push({ s, l, ring, life: 0 }); }
     for (let i = 0; i < 4; i++) { const b = weaponModel('molotov'); b.scale.multiplyScalar(1.6); b.visible = false; scene.add(b); FX.bottles.push(b); }
     FX.siren = new THREE.PointLight('#2a6aff', 0, 16, 2); scene.add(FX.siren);
   }
