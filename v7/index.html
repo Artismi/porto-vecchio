@@ -35275,9 +35275,9 @@ var Render = (function () {
     const smM = new THREE.SpriteMaterial({ map: smokeTexture(), color: '#6a6c70', transparent: true, opacity: 0, depthWrite: false });
     AIR2.smoke = []; for (let i = 0; i < 150; i++) { const sp = new THREE.Sprite(smM.clone()); sp.visible = false; sp.renderOrder = 3; scene.add(sp); AIR2.smoke.push(sp); }
     // --- tombini: il chiusino sotto ogni sbuffo di vapore in strada ---
-    const lidM = sm('#1a1a1e', { roughness: .5, metalness: .5 }), seen = {};
+    const lidM = sm('#4a4846', { roughness: .55, metalness: .5 }), seen = {};   // [ordine1] ghisa, non buchi neri
     VX.steam.forEach(s => { if (s.k > .9) return; const key = Math.round(s.x * 4) + ',' + Math.round(s.z * 4); if (seen[key]) return; seen[key] = 1;
-      const lid = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .04, 14), lidM); lid.position.set(s.x, s.y - .02, s.z); scene.add(lid); });
+      if (Object.keys(seen).length % 2) return; const lid = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .03, 14), lidM); lid.position.set(s.x, s.y - .02, s.z); scene.add(lid); });
   }
   function tickAir2(time, night) {
     if (!AIR2.on) initAir2();
@@ -40474,7 +40474,7 @@ var Render = (function () {
   function incroci38() {
     const r = rng(3838); let n = 0;
     const city = (x, z) => zoneT(Math.floor(x / TS), Math.floor(z / TS)) === ZN.CITTA;
-    const iron = sm('#2a2a2e', { roughness: .7, metalness: .4 }), conc = sm('#77736c', { roughness: 1 }), grate = sm('#1c1b1e', { roughness: .6, metalness: .5 });
+    const iron = sm('#2a2a2e', { roughness: .7, metalness: .4 }), conc = sm('#77736c', { roughness: 1 }), grate = sm('#3a3936', { roughness: .6, metalness: .5 });   // [ordine1] ghisa
     const tombino = (x, z, rr) => { const g = G0(); add(g, cyl(rr, rr, .03, 14, grate), 0, .015, 0); add(g, cyl(rr * .7, rr * .7, .035, 14, iron), 0, .02, 0); DZ.hint = 'static'; place(g, x, z, r() * 6); n++; };
     junctions().forEach(([jx, jy, jr]) => {
       if (!city(jx, jy)) return; const arms = armsAt(jx, jy, jr); if (arms.length < 2) return;
