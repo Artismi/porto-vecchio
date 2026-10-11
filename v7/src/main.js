@@ -677,17 +677,14 @@
     modo: { l: () => 'Modo: ' + MODE_NM[(window.Writing && Writing.mode(st)) || 'libero'], dn: sprayMode },
     colore: { l: 'Colore', col: () => ui.spray ? SPRAY_COLS[ui.spray.col][0] : '', dn: () => sprayColor(1) },
   };
-  // i pulsanti di adesso, il principale per primo (va in basso a destra, sotto il pollice)
+  // i pulsanti di adesso: pochi, il principale per primo (va in basso a destra, sotto il pollice)
   function touchSet() {
     const p = st.player;
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || (window.Cantiere && Cantiere.active())) return [];
-    if (window.Skate && Skate.on(st)) return ['ollie', 'frena'];
-    if (p.vehicle) return jumpMode() ? ['salta', 'impenna', 'pegdx', 'pegsx', 'scendi'] : ['freno', 'spinta', 'scendi'];
-    const o = ['salta'];
-    if (Object.keys(p.arms || {}).some(w => w !== 'pugni' && p.arms[w])) o.push('arma');
-    o.push('corri', 'tacc');
-    if (ui.spray) { o.push('colore'); if (ui.spray.tool === 'bomboletta') o.push('modo'); }
-    return o;
+    if (window.Skate && Skate.on(st)) return ['ollie'];
+    if (p.vehicle) return jumpMode() ? ['salta', 'impenna'] : ['freno', 'scendi'];
+    if (ui.spray) return ui.spray.tool === 'bomboletta' && !(window.Writing && Writing.mode(st) === 'tavoletta') ? ['colore', 'modo'] : ['colore'];
+    return ['salta'];
   }
   const lab = d => typeof d.l === 'function' ? d.l() : d.l;
   let tbKey = '';
@@ -711,6 +708,7 @@
   }
   if (touchMode) {
     $('touch').hidden = false; $('bookBtn').style.display = 'none';
+    $('debt').addEventListener('click', () => { if (!ui.intro && !ui.over) toggleBook(); });   // il taccuino: tocca i soldi e l'ora
     const sEl = $('stick'), kn = $('knob'); let sid = null;
     sEl.addEventListener('pointerdown', e => { A.init(); sid = e.pointerId; sEl.setPointerCapture(sid); mv(e); });
     sEl.addEventListener('pointermove', e => { if (e.pointerId === sid) mv(e); });
