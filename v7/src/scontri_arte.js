@@ -74,7 +74,7 @@ var ScontriArte = (function () {
     for (let i = 0; i < 6; i++) put(box(2.4 + r(), .06, .2, M(['#6a4a2a', '#7a5a3a', '#5a3a22'][i % 3])), -hw + r() * b.w, .2 + r() * .9, (r() - .5) * 1.2, r() * 3, (r() - .5) * .8);
     // il bidone che brucia, dietro
     const drum = new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, .85, 12), MT('#3a3028')); put(drum, 1.8, .42, 1.6);
-    const fire = new THREE.PointLight('#ff8a3a', 0, 9, 2); fire.position.set(1.8, 1.2, 1.6); g.add(fire);
+    const fire = new THREE.PointLight('#ff8a3a', 0, 9, 2); fire.position.set(1.8, 1.2, 1.6); if (!(typeof Render !== 'undefined' && Render.phone)) g.add(fire);   /* [fluido] sul telefono il bidone brucia senza luce vera */
     const flame = new THREE.Mesh(new THREE.ConeGeometry(.26, .7, 8), new THREE.MeshBasicMaterial({ color: '#ffb050', transparent: true, opacity: .85, fog: true })); flame.position.set(1.8, 1.15, 1.6); g.add(flame);
     scene.add(g);
     return { g, parts, fire, flame };

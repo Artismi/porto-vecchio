@@ -1299,6 +1299,7 @@ var Render = (function () {
     }
     UGR.was = on;
     if (!UGR.lantern) { UGR.lantern = new THREE.PointLight('#ffc070', 0, 20, 1.2); scene.add(UGR.lantern); }
+    UGR.lantern.visible = !!on;   /* [fluido] la lanterna esiste solo sotto terra (fuori non pesa sui pixel) */
     if (!on) { UGR.lantern.intensity = 0; return false; }
     hemi.intensity *= .5; moon.intensity *= .05; fillAmb.intensity *= .9;   // [sottosuolo] meno buio: si deve vedere dove si va
     const pg = dyn.people.__player, h = Livelli.heightOf(st, p);
@@ -7738,7 +7739,7 @@ var Render = (function () {
     const tg = new THREE.BoxGeometry(1, 1, 1);
     for (let i = 0; i < 40; i++) { const m = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: '#ffe7a0', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); m.visible = false; scene.add(m); FX.tracers.push({ m, life: 0 }); }
     for (let i = 0; i < 12; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTexture('pistola'), color: '#ffffff', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.visible = false; scene.add(s); const h = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffb050', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); h.visible = false; scene.add(h); FX.muzzles.push({ s, h, life: 0 }); }
-    for (let i = 0; i < 3; i++) { const l = new THREE.PointLight('#ffb050', 0, 10, 2); scene.add(l); FX.mlights.push({ l, life: 0, base: 0 }); }
+    for (let i = 0; i < (LOWQ.phone ? 1 : 3); i++) { const l = new THREE.PointLight('#ffb050', 0, 10, 2); scene.add(l); FX.mlights.push({ l, life: 0, base: 0 }); }   /* [fluido] sul telefono una sola */
     const mkPts = (N, additive, size) => {
       const pos = new Float32Array(N * 3), col = new Float32Array(N * 3), geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -7754,7 +7755,7 @@ var Render = (function () {
     FX.decalI = 0;
     for (let i = 0; i < 70; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTexture(), color: '#555', transparent: true, depthWrite: false, opacity: 0 })); s.visible = false; scene.add(s); FX.smokes.push({ s, life: 0, max: 1, v: new THREE.Vector3(), grow: 1 }); }
     for (let i = 0; i < 30; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ff7a20', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.visible = false; scene.add(s); FX.flames.push({ s }); }
-    for (let i = 0; i < 3; i++) { const l = new THREE.PointLight('#ff7a30', 0, 12, 2); scene.add(l); FX.flights.push(l); }
+    for (let i = 0; i < (LOWQ.phone ? 1 : 3); i++) { const l = new THREE.PointLight('#ff7a30', 0, 12, 2); scene.add(l); FX.flights.push(l); }
     for (let i = 0; i < 4; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffc070', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.visible = false; scene.add(s); const l = new THREE.PointLight('#ffa040', 0, 26, 2); scene.add(l); const ring = new THREE.Mesh(new THREE.RingGeometry(.8, 1, 24), new THREE.MeshBasicMaterial({ color: '#ffd8a0', transparent: true, opacity: .6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.visible = false; scene.add(ring); FX.explos.push({ s, l, ring, life: 0 }); }
     for (let i = 0; i < 4; i++) { const b = weaponModel('molotov'); b.scale.multiplyScalar(1.6); b.visible = false; scene.add(b); FX.bottles.push(b); }
     FX.siren = new THREE.PointLight('#2a6aff', 0, 16, 2); scene.add(FX.siren);
@@ -11698,5 +11699,5 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
