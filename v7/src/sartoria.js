@@ -1214,7 +1214,8 @@ var Sartoria = (function () {
   }
 
   // il vestito intero: ritorna { meshes, covered: Set di 'srcIndex:vertex' coperti, spessore per parte }
-  function dress(g, outfit, PARTI, seedStr, opt) {
+  function dress(g, outfit, PARTI, seedStr, opt) { const it = dressGen(g, outfit, PARTI, seedStr, opt); let r; do r = it.next(); while (!r.done); return r.value; }
+  function* dressGen(g, outfit, PARTI, seedStr, opt) {   // [fluido] un capo per passo (il vestire a rate)
     const B = body(g, PARTI); if (!B) return null; opt = opt || {};
     // ordine degli strati: per classe, ma dentro la stessa zona vale l'ordine scelto dal giocatore
     const L = outfit.filter(c => c.parti && c.parti.length && !/^(piedi|mani)$/.test(c.parti.join()) && !(c.parti.length === 1 && (c.parti[0] === 'piedi' || c.parti[0] === 'mani')));
@@ -1223,12 +1224,12 @@ var Sartoria = (function () {
     const seed = hstr(seedStr || '');
     // l'intimo coperto del tutto da un capo sopra non si costruisce (non si vede e non deve sbucare)
     const hiddenUnder = (c, k) => (CUT[c.id] ? CUT[c.id].cl : 1) === 0 && ranked.slice(k + 1).some(o => { const P = o.c.parti || [], C2 = CUT[o.c.id] || {}; return !C2.gonna && !C2.davanti && !C2.smanicato && c.parti.every(p => p === 'piedi' || p === 'mani' || P.includes(p) || (p === 'bacino' && C2.cl === 2)); });
-    B._falde = []; ranked.forEach(({ c }, k) => {
-      if (hiddenUnder(c, k)) { (c.parti || []).forEach(p => { th[p] = Math.max(th[p] || 0, .002); }); return; }
+    B._falde = []; for (let k = 0; k < ranked.length; k++) { const { c } = ranked[k];
+      if (hiddenUnder(c, k)) { (c.parti || []).forEach(p => { th[p] = Math.max(th[p] || 0, .002); }); continue; }
       const base = CUT[c.id] || { cl: 1, fab: c.pat === 'righe' ? 'righe' : c.pat === 'fiori' ? 'fiori' : 'cotone' };
       const vars = VARIANTI[c.id]; let vi = 0; if (vars && seedStr !== undefined && seedStr !== 'player') vi = (seed >>> (k * 3)) % vars.length; if (c.var && typeof c.var === 'object' && vars) { const j = vars.indexOf(c.var); if (j >= 0) vi = j; }
       const giacchetta = opt.soloFalde && !base.gonna && !base.poncho && (base.cl || 0) >= 3 && !base.corto && !base.davanti && (c.parti || []).includes('bacino');   // giacche e giacconi: la falda corta passa sopra il taglio busto/gambe
-      if (opt.soloFalde && !(base.gonna || base.poncho || giacchetta)) return;   // dipinto sul corpo (Pittura): qui solo le falde che sporgono
+      if (opt.soloFalde && !(base.gonna || base.poncho || giacchetta)) continue;   // dipinto sul corpo (Pittura): qui solo le falde che sporgono
       const C = Object.assign({ id: c.id }, base, vars ? vars[vi] : {}, { faldaTop: c.faldaTop, var: vi, seed: c.stampa !== undefined ? c.stampa : (seed >>> 5) });
       if (opt.soloFalde) { if (!C.poncho) C.solo_gonna = 1; C.davanti = C.davanti || 0; C.blocchi = 1; }
       if (giacchetta) { C.gonna = 1; C.solo_gonna = 1; C.len = 'giacchetta'; C.svasa = 0; C.faldaTop = window.Pittura ? Pittura.cutY(B) + .012 : B.bones.Hips.y; C.giacchetta = 1; }   // il poncho resta intero: mantella dal collo
@@ -1250,7 +1251,8 @@ var Sartoria = (function () {
         const m = new THREE.SkinnedMesh(geo, mats(C, c.col)); m.userData.vesti = true; m.userData.capo = c.id; m.castShadow = true; m.frustumCulled = false;
         out.push(m); cover.push({ C, parti }); lay.push({ id: c.id, cl: C.cl, t, off, collo: C.collo, parti });
       } catch (e) { console.error('[Sartoria]', c.id, e); }
-    });
+      yield;
+    }
     return { meshes: out, th, cover, B, lay };
   }
   // quali vertici del corpo sono coperti (per toglierli): per tubo e tratto
@@ -1271,6 +1273,6 @@ var Sartoria = (function () {
     return flag;
   }
 
-  return { STAMPE, printMat, lengths, neckY, CUT_: () => CUT, dress, covered, body, testa, attach, boneRest, fabMat, solidMat, texFor, TESS, CUT, VARIANTI, tube, surf, frameAt };
+  return { STAMPE, printMat, lengths, neckY, CUT_: () => CUT, dress, dressGen, covered, body, testa, attach, boneRest, fabMat, solidMat, texFor, TESS, CUT, VARIANTI, tube, surf, frameAt };
 })();
 if (typeof module !== 'undefined') module.exports = Sartoria;

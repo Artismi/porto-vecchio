@@ -44132,7 +44132,7 @@ var Render = (function () {
   // vestiti, mezzi, blocchi di piante, graffiti sui muri). Chi chiede e non c'è più tempo aspetta il fotogramma dopo; quello
   // che è vicinissimo (meno di 20 m) passa sempre, così niente spunta in ritardo sotto gli occhi. Anche writing.js lo usa.
   // A turno: ogni tipo (gente, mezzi, piante, graffiti) ha almeno una costruzione ogni 4 fotogrammi, anche se gli altri hanno finito il tempo.
-  const BUD = { used: 0, max: 3, n: 0, last: {}, start() { this.used = 0; this.n++; },
+  const BUD = { used: 0, max: 3, n: 0, last: {}, start() { this.used = 0; this.n++; this.vesti = 0; },
     ok(d, k) { return (d !== undefined && d < 20) || this.used < this.max || (k !== undefined && this.n - (this.last[k] || 0) >= 4); },
     add(ms, k) { this.used += ms; if (k !== undefined) this.last[k] = this.n; } };
   if (typeof window !== 'undefined') window.Costruzioni = BUD;
@@ -44609,12 +44609,12 @@ var Render = (function () {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
-    yield;
+    // [fluido] un pittore per passo: prima erano tre passi grossi (fino a 75 ms l'uno sui computer lenti)
+    for (const f of [paintTiles, blobs1, blobTex1, paintOpere, smoothRoads, railGround, svolte1, usura1, surf1, roadMarks, strisce35, raccordi1, holes1, sporco35, macro1, snowPass]) { f(x, tx0, ty0, n, m); if (!ISO.rush) yield; }
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
     try { const W = c.width, H = c.height, id = x.getImageData(0, 0, W, H), d = id.data, rc = mk(W, H), rxx = rc.getContext('2d'), od = rxx.createImageData(W, H), o = od.data;
-      for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.72, Math.min(1, .72 + (lum - 40) / 120 * .28)) * 255   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
+      for (let q = 0; q < W * H; q++) { if (q && !(q & 262143) && !ISO.rush) yield;   /* [fluido] a fette */ const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.72, Math.min(1, .72 + (lum - 40) / 120 * .28)) * 255   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
       rxx.putImageData(od, 0, 0); rtex = canvasTex(rc); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; }
     yield;
     const pos = new Float32Array((n + 1) * (m + 1) * 3), uv = new Float32Array((n + 1) * (m + 1) * 2), idx = [];
@@ -44700,7 +44700,7 @@ var Render = (function () {
     const J = ISO.job;
     if (J) { const t0 = performance.now(); let steps = 0;
       while (ISO.rush || (steps === 0 && (J.near || BUD.ok(undefined, 'piante'))) || (steps > 0 && J.near && BUD.ok() && performance.now() - t0 < 4)) {
-        const r = J.it.next(); steps++;
+        const tP = performance.now(), r = J.it.next(); steps++; J.ph = (J.ph || 0) + 1; cpuAdd('  blocchi: fase ' + J.ph, performance.now() - tP);
         if (r.done) { const old = ISO.chunks.get(J.key); if (old) dropChunk(old); if (J.dirty) r.value.rev = -1; ISO.chunks.set(J.key, r.value); ISO.job = null; break; }   // cambiata la mappa a metà: si rifà
       }
       if (steps) BUD.add(performance.now() - t0, 'piante'); }
@@ -53786,6 +53786,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [prestazioni] e il tempo del processore dentro frame(), per pezzo (con il contatore acceso)
   const CPUT = { t: 0, acc: {}, n: 0, res: [] };
   function cpuMark(k) { if (!GPUT.on) return; const t = performance.now(); if (k) CPUT.acc[k] = (CPUT.acc[k] || 0) + t - CPUT.t; CPUT.t = t; }
+  function cpuAdd(k, ms) { if (GPUT.on) CPUT.acc[k] = (CPUT.acc[k] || 0) + ms; }   // un sotto-pezzo (dentro un pezzo)
   function cpuEnd() { if (!GPUT.on) return; const t = performance.now(); if (!CPUT.t0) CPUT.t0 = t; if (++CPUT.n >= 30 || t - CPUT.t0 > 2000) { CPUT.t0 = t; CPUT.res = Object.entries(CPUT.acc).map(([k, v]) => [k, v / CPUT.n]).sort((a, b) => b[1] - a[1]); CPUT.acc = {}; CPUT.n = 0; } }
   function gpuTiming(on) { GPUT.on = !!on; if (on && !GPUT.gl) { GPUT.gl = renderer.getContext(); GPUT.ext = GPUT.gl.getExtension && GPUT.gl.getExtension('EXT_disjoint_timer_query_webgl2'); } return !!GPUT.ext; }
   function gpuB(name) { if (!GPUT.on || !GPUT.ext) return; const gl = GPUT.gl, q = gl.createQuery(); gl.beginQuery(GPUT.ext.TIME_ELAPSED_EXT, q); GPUT.open = { q, name }; }
@@ -53938,6 +53939,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    renderer.debug.checkShaderErrors = /[?&]shader\b/.test(location.search);   // [fluido] il controllo degli errori ferma il gioco finché lo shader non è compilato (si riaccende con ?shader)
     renderer.setPixelRatio(1);
     canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); try { localStorage.setItem('pvLow', String(Date.now())); } catch (x) {} console.warn('[grafica] contesto perso: ricarico in qualità ridotta'); setTimeout(() => location.reload(), 400); });   /* [unione10] */
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -54878,11 +54880,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
       if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */
         const kept = PEOPLE_KEEP.get(n.id); if (kept && (kept.userData.who || null) === who) { PEOPLE_KEEP.delete(n.id); g = kept; }   // [fluido] torna com'era, già vestito
-        else { if (!BUD.ok(Math.hypot(n.x - p.x, n.y - p.y), 'gente')) return; const t0 = performance.now(); if (window.Models) Models.__aRate = true; try { g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); } finally { if (window.Models) Models.__aRate = false; } g.userData.who = who; BUD.add(performance.now() - t0, 'gente'); }   // [fluido] nasce quando c'è tempo
+        else { if (!BUD.ok(Math.hypot(n.x - p.x, n.y - p.y), 'gente')) return; const t0 = performance.now(); if (window.Models) Models.__aRate = true; try { g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); } finally { if (window.Models) Models.__aRate = false; } g.userData.who = who; BUD.add(performance.now() - t0, 'gente'); cpuAdd('  persone: nascono', performance.now() - t0); }   // [fluido] nasce quando c'è tempo
         if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
       if (g.userData.dressing) {   // [fluido] si sta vestendo: una fase per fotogramma (a budget), invisibile finché non ha finito
         const dn = Math.hypot(n.x - p.x, n.y - p.y); let fin = false;
-        if (BUD.ok(dn, 'vesti')) { const t0 = performance.now(); try { fin = g.userData.dressing.next().done; } catch (e) { fin = true; console.error('[fluido] vestire', e); } BUD.add(performance.now() - t0, 'vesti'); }
+        if (BUD.ok(BUD.vesti ? undefined : dn, 'vesti')) { BUD.vesti = 1; const t0 = performance.now();   // [fluido] chi è vicino passa avanti, ma un passo solo per fotogramma in tutto
+          try { fin = g.userData.dressing.next().done; } catch (e) { fin = true; console.error('[fluido] vestire', e); } BUD.add(performance.now() - t0, 'vesti'); cpuAdd('  persone: vestire', performance.now() - t0); g.userData.dPh = (g.userData.dPh || 0) + 1; cpuAdd('  vestire fase ' + g.userData.dPh, performance.now() - t0); }
         if (fin) g.userData.dressing = null; else { g.visible = false; return; }
       }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
@@ -54892,10 +54895,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
       { const dd = Math.abs(n.x - cam.x) + Math.abs(n.y - cam.y), every = dd > 45 ? 3 : dd > 28 ? 2 : 1;   /* [fluido] lontano dalla camera l'animazione si aggiorna a fotogrammi alterni, col tempo recuperato */
         if (every > 1 && (frameN + (g.id || 0)) % every) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; } }
-      const dtA = dt + (g.userData.dt1 || 0); g.userData.dt1 = 0;
+      const dtA = dt + (g.userData.dt1 || 0); g.userData.dt1 = 0; const tA = GPUT.on ? performance.now() : 0;
       if (g.userData.model) Models.animPerson(g, { speed: n.speedNow, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, held: n.hand || null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), punch: n.gesture === 'punch' ? 1 : 0, handsUp: !n.dead && n.stun <= 0 && ((n.action.name === 'fugge' && n.panic <= 0) || n.action.name === 'ordine_fermato'), riot: !!(n.ord && n.ord.riot), banner: n.ord && n.ord.protester ? n.ord.protester.banner : null, anim: window.Anim ? Anim.npcState(st, n) : null }, dtA); else   // [animazioni] anim
       animPerson(g, { anim: n.anim, speed: n.speedNow, gesture: n.gesture, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0 && p.cur !== 'pugni' && Math.hypot(n.x - p.x, n.y - p.y) < 6, twoHand: n.cop });
-      g.userData.shadowC.visible = !n.dead;
+      g.userData.shadowC.visible = !n.dead; if (tA) cpuAdd('  persone: animare', performance.now() - tA);
       flight(g, n, st);
     });
     cpuMark('persone'); let pg = dyn.people.__player;
@@ -60249,7 +60252,8 @@ var Sartoria = (function () {
   }
 
   // il vestito intero: ritorna { meshes, covered: Set di 'srcIndex:vertex' coperti, spessore per parte }
-  function dress(g, outfit, PARTI, seedStr, opt) {
+  function dress(g, outfit, PARTI, seedStr, opt) { const it = dressGen(g, outfit, PARTI, seedStr, opt); let r; do r = it.next(); while (!r.done); return r.value; }
+  function* dressGen(g, outfit, PARTI, seedStr, opt) {   // [fluido] un capo per passo (il vestire a rate)
     const B = body(g, PARTI); if (!B) return null; opt = opt || {};
     // ordine degli strati: per classe, ma dentro la stessa zona vale l'ordine scelto dal giocatore
     const L = outfit.filter(c => c.parti && c.parti.length && !/^(piedi|mani)$/.test(c.parti.join()) && !(c.parti.length === 1 && (c.parti[0] === 'piedi' || c.parti[0] === 'mani')));
@@ -60258,12 +60262,12 @@ var Sartoria = (function () {
     const seed = hstr(seedStr || '');
     // l'intimo coperto del tutto da un capo sopra non si costruisce (non si vede e non deve sbucare)
     const hiddenUnder = (c, k) => (CUT[c.id] ? CUT[c.id].cl : 1) === 0 && ranked.slice(k + 1).some(o => { const P = o.c.parti || [], C2 = CUT[o.c.id] || {}; return !C2.gonna && !C2.davanti && !C2.smanicato && c.parti.every(p => p === 'piedi' || p === 'mani' || P.includes(p) || (p === 'bacino' && C2.cl === 2)); });
-    B._falde = []; ranked.forEach(({ c }, k) => {
-      if (hiddenUnder(c, k)) { (c.parti || []).forEach(p => { th[p] = Math.max(th[p] || 0, .002); }); return; }
+    B._falde = []; for (let k = 0; k < ranked.length; k++) { const { c } = ranked[k];
+      if (hiddenUnder(c, k)) { (c.parti || []).forEach(p => { th[p] = Math.max(th[p] || 0, .002); }); continue; }
       const base = CUT[c.id] || { cl: 1, fab: c.pat === 'righe' ? 'righe' : c.pat === 'fiori' ? 'fiori' : 'cotone' };
       const vars = VARIANTI[c.id]; let vi = 0; if (vars && seedStr !== undefined && seedStr !== 'player') vi = (seed >>> (k * 3)) % vars.length; if (c.var && typeof c.var === 'object' && vars) { const j = vars.indexOf(c.var); if (j >= 0) vi = j; }
       const giacchetta = opt.soloFalde && !base.gonna && !base.poncho && (base.cl || 0) >= 3 && !base.corto && !base.davanti && (c.parti || []).includes('bacino');   // giacche e giacconi: la falda corta passa sopra il taglio busto/gambe
-      if (opt.soloFalde && !(base.gonna || base.poncho || giacchetta)) return;   // dipinto sul corpo (Pittura): qui solo le falde che sporgono
+      if (opt.soloFalde && !(base.gonna || base.poncho || giacchetta)) continue;   // dipinto sul corpo (Pittura): qui solo le falde che sporgono
       const C = Object.assign({ id: c.id }, base, vars ? vars[vi] : {}, { faldaTop: c.faldaTop, var: vi, seed: c.stampa !== undefined ? c.stampa : (seed >>> 5) });
       if (opt.soloFalde) { if (!C.poncho) C.solo_gonna = 1; C.davanti = C.davanti || 0; C.blocchi = 1; }
       if (giacchetta) { C.gonna = 1; C.solo_gonna = 1; C.len = 'giacchetta'; C.svasa = 0; C.faldaTop = window.Pittura ? Pittura.cutY(B) + .012 : B.bones.Hips.y; C.giacchetta = 1; }   // il poncho resta intero: mantella dal collo
@@ -60285,7 +60289,8 @@ var Sartoria = (function () {
         const m = new THREE.SkinnedMesh(geo, mats(C, c.col)); m.userData.vesti = true; m.userData.capo = c.id; m.castShadow = true; m.frustumCulled = false;
         out.push(m); cover.push({ C, parti }); lay.push({ id: c.id, cl: C.cl, t, off, collo: C.collo, parti });
       } catch (e) { console.error('[Sartoria]', c.id, e); }
-    });
+      yield;
+    }
     return { meshes: out, th, cover, B, lay };
   }
   // quali vertici del corpo sono coperti (per toglierli): per tubo e tratto
@@ -60306,7 +60311,7 @@ var Sartoria = (function () {
     return flag;
   }
 
-  return { STAMPE, printMat, lengths, neckY, CUT_: () => CUT, dress, covered, body, testa, attach, boneRest, fabMat, solidMat, texFor, TESS, CUT, VARIANTI, tube, surf, frameAt };
+  return { STAMPE, printMat, lengths, neckY, CUT_: () => CUT, dress, dressGen, covered, body, testa, attach, boneRest, fabMat, solidMat, texFor, TESS, CUT, VARIANTI, tube, surf, frameAt };
 })();
 if (typeof module !== 'undefined') module.exports = Sartoria;
 </script>
@@ -60585,7 +60590,8 @@ var Pittura = (function () {
     return [...mul(c, tone), h];
   }
   // dipinge le cinque tele di una persona. W[reg] = { c: Uint8ClampedArray rgba, h: bump }
-  function paint(B, outfit, skin) {
+  function paint(B, outfit, skin) { const it = paintGen(B, outfit, skin); let r; do r = it.next(); while (!r.done); return r.value; }
+  function* paintGen(B, outfit, skin) {   // [fluido] una regione del corpo per passo
     const F = frame(B), SK = rgb(skin || '#dcae88'), Sa = S(), CUT = Sa.CUT_();
     const list = outfit.filter(c => c.parti && c.parti.some(p => /torso|braccia|avambracci|bacino|cosce|polpacci|collo/.test(p)));
     // ordine degli strati (come la Sartoria): classe, poi l'ordine scelto
@@ -60596,7 +60602,7 @@ var Pittura = (function () {
     const ankle = shoe ? rgb(sock && sock.col || '#2a2a2e') : null;
     const LO = legOrder(outfit), socksOver = LO.socksOver, sockTop = LO.sock && LO.sock.id === 'calze_sport' ? .34 : .27, sockCol = sock ? rgb(sock.col || '#2a2a2e') : null;
     const bt = outfit.find(c => /^stivali/.test(c.id)), boots = bt ? { top: bt.id === 'stivali' ? .34 : .3, col: rgb(bt.col || '#2a1e18'), risv: bt.id !== 'stivali' } : null;
-    REG.forEach((R, ri) => {
+    for (let ri = 0; ri < REG.length; ri++) { const R = REG[ri];
       const [W, H] = SIZE[R], tb = F.tubes[ri], [s0, s1] = F.range[ri], circ = F.circ[ri], col = new Uint8ClampedArray(W * H * 4), hh = new Uint8ClampedArray(W * H * 4);
       for (let py = 0; py < H; py++) {
         const sv = lerp(s0, s1, (py + .5) / H), fr = S().frameAt(tb, sv), y0 = fr.p.y;
@@ -60641,7 +60647,8 @@ var Pittura = (function () {
         }
       }
       out[R] = { W, H, col, hh };
-    });
+      if (ri < REG.length - 1) yield;
+    }
     return { out, plans };
   }
   // le pieghe disegnate: tratti scuri dove la stoffa si raccoglie (sopra la cintura, al cavallo, ai gomiti, alle caviglie, sotto le ascelle)
@@ -60856,13 +60863,15 @@ var Pittura = (function () {
     return M;
   }
   // veste g dipingendo il corpo. Ritorna i piani (per sapere cosa c'è, es. le falde da fare in geometria)
-  function dipingi(g, outfit, look, PARTI) {
+  // [fluido] a passi (generatore): il vestire a rate ne fa uno per fotogramma; dipingi() li fa tutti subito
+  function dipingi(g, outfit, look, PARTI) { const it = dipingiGen(g, outfit, look, PARTI); let r; do r = it.next(); while (!r.done); return r.value; }
+  function* dipingiGen(g, outfit, look, PARTI) {
     const Sa = S(); if (!Sa) return null; const B = Sa.body(g, PARTI); if (!B) return null;
     const srcs = []; g.traverse(o => { if (o.isSkinnedMesh && !o.userData.vesti) srcs.push(o); });
     const skin = (look && look.skin) || '#dcae88';
     const sig = B.key + '|' + skin + '|' + JSON.stringify(outfit.map(c => [c.id, c.col, c.parti]));
-    let P = null, M = MCACHE.get(sig); if (!M) { P = paint(B, outfit, skin); M = mats(sig, P); }
-    if (!B.welded) { B.welded = 1; weld(B, g, srcs); }
+    let P = null, M = MCACHE.get(sig); if (!M) { P = yield* paintGen(B, outfit, skin); M = mats(sig, P); yield; }
+    if (!B.welded) { B.welded = 1; weld(B, g, srcs); yield; }
     const plans = paintPlans(B, outfit), nY = Sa.neckY(B);
     // sotto l'ascella e lungo il fianco, dove il braccio sta attaccato al busto, lo spessore si assottiglia (non entra nel braccio)
     const armFade = p => { let f = 1; for (const sd of ['L', 'R']) { const j = B.bones['UpperArm' + sd], e = B.bones['LowerArm' + sd]; if (!j || !e) continue; const ax = e.clone().sub(j), L2 = ax.lengthSq(), v = new THREE.Vector3(p[0], p[1], p[2]).sub(j), t = cl(v.dot(ax) / L2, -.2, 1), d = v.sub(ax.multiplyScalar(t)).length(); f = Math.min(f, .25 + .75 * cl((d - .06) / .06, 0, 1)); } return f; };
@@ -60872,12 +60881,14 @@ var Pittura = (function () {
       for (let w0 = 0; w0 < pg.VI.length; w0++) { const L = pg.VI[w0]; if (!L) continue; let off = memo.get(L); if (off === undefined) { const C = topAt(B, plans, pg.VR[w0], L.a, L.s, L.p[1], nY); off = C ? spessore(C) + spalla(B, C, pg.VR[w0], L, nY) + volume(B, C, pg.VR[w0], L) : 0; if (C && C.smanicato && (pg.VR[w0] === 1 || pg.VR[w0] === 2)) off = 0; if (off && pg.VR[w0] === 0) off *= armFade(L.p); memo.set(L, off); }
         const k = pk(L); let j = J.get(k); if (!j) J.set(k, j = { o: 0, d: new THREE.Vector3(), seen: new Set() }); j.o = Math.max(j.o, off); if (!j.seen.has(L)) { j.seen.add(L); j.d.x += L.d[0]; j.d.y += L.d[1]; j.d.z += L.d[2]; } } });
     J.forEach(j => j.d.normalize());
+    yield;
     // dove un capo spesso finisce su uno sottile (giro manica dello smanicato, orlo del piumino) lo scalino diventa uno smusso: niente pareti a punta
     { const NB = new Map(), link = (a, b) => { if (a === b) return; let x = NB.get(a); if (!x) NB.set(a, x = new Set()); x.add(b); };
       srcs.forEach((src, si) => { const pg = paintGeo(B, src, si); if (!pg) return; for (let w0 = 0; w0 + 2 < pg.VI.length; w0 += 3) { const L0 = pg.VI[w0], L1 = pg.VI[w0 + 1], L2 = pg.VI[w0 + 2]; if (!L0 || !L1 || !L2) continue; const k0 = J.get(pk(L0)), k1 = J.get(pk(L1)), k2 = J.get(pk(L2)); link(k0, k1); link(k1, k0); link(k1, k2); link(k2, k1); link(k0, k2); link(k2, k0); } });
       for (let it = 0; it < 3; it++) { const nv = new Map(); NB.forEach((nb, j) => { let mx = 0, sum = 0; nb.forEach(q => { mx = Math.max(mx, Math.abs(q.o - j.o)); sum += q.o; }); if (mx > .006) nv.set(j, lerp(j.o, sum / nb.size, .5)); }); nv.forEach((v, j) => { j.o = v; }); } }
-    srcs.forEach((src, si) => {
-      const pg = paintGeo(B, src, si); if (!pg) return;
+    yield;
+    for (let si = 0; si < srcs.length; si++) { const src = srcs[si];
+      const pg = paintGeo(B, src, si); if (!pg) continue;
       if (!src.userData.pitOrig) src.userData.pitOrig = { geo: src.userData.geo0 || src.geometry, mat: src.material };
       const m0 = Array.isArray(src.userData.pitOrig.mat) ? src.userData.pitOrig.mat[0] : src.material;
       // quello che sta sotto scarpe e guanti (e i resti dei vestiti del kit sotto i nostri) si toglie davvero: un indice per persona
@@ -60906,7 +60917,8 @@ var Pittura = (function () {
         pgeo.setAttribute('position', pos); } grp.forEach(g0 => pgeo.addGroup(g0[0], g0[1], g0[2]));
       pgeo.boundingSphere = pg.geo.boundingSphere; pgeo.userData.pittura = true;
       src.geometry = pgeo; src.material = [Array.isArray(src.material) ? src.material[0] : src.material, ...M];
-    });
+      if (si < srcs.length - 1) yield;
+    }
     return { B, sig };
   }
   // le normali saldate su tutto il modello (i pezzi del kit — busto, gambe, piedi — sono mesh diverse: senza questo, righe scure dove si toccano)
@@ -60997,7 +61009,7 @@ var Pittura = (function () {
   }
   // il raggio della superficie dipinta del busto (stirata) a (s, angolo) sul tubo del tronco: le falde in rilievo ci si raccordano a filo
   function raggio(B, s, a) { const tb = frame(B).tubes[0]; return shape(B, tb, s, a, ironRadius(ironed(tb), tb, s, a)); }
-  return { raggio, ironAll, cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
+  return { raggio, ironAll, cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, dipingiGen, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
 })();
 </script>
 <script data-m="vestiario">/* Porto Vecchio — I vestiti che si vedono: ogni capo del Guardaroba diventa un guscio ricavato dal corpo del personaggio
@@ -61822,7 +61834,7 @@ var Vesti3D = (function () {
     if (window.Sartoria) try {
       { const CUT = Sartoria.CUT_(), B0 = Sartoria.body(g, PARTI); outfit.forEach(c => { const Cc = CUT[c.id] || {}; if (!Cc.solo_gonna || !B0) return;   // la maglia fuori dalla gonna: la gonna comincia sotto il suo orlo
         const out = outfit.find(o => (CUT[o.id] || {}).cl <= 1 && (o.parti || []).includes('torso') && (o.when || 0) > (c.when || 0) && c.when > 0); if (out) c.faldaTop = B0.bones.Hips.y - .07; }); }
-      D = Sartoria.dress(g, outfit, PARTI, seed === undefined ? 'player' : String(seed), { soloFalde: !!window.Pittura });
+      { const a = [g, outfit, PARTI, seed === undefined ? 'player' : String(seed), { soloFalde: !!window.Pittura }]; D = Sartoria.dressGen ? yield* Sartoria.dressGen(...a) : Sartoria.dress(...a); }   // [fluido] a passi
       if (D) {
         const srcs = []; g.traverse(o => { if (o.isSkinnedMesh && !o.userData.vesti) srcs.push(o); });
         const ref = srcs.find(o => /Body/i.test(o.name)) || srcs[0];
@@ -61830,14 +61842,14 @@ var Vesti3D = (function () {
         // la pelle e i vestiti del kit coperti si tolgono
         const flag = Sartoria.covered(D.B, D.cover), per = new Map();
         for (let i = 0; i < flag.length; i++) if (flag[i]) { const s = D.B.srcOf[i]; let a = per.get(s); if (!a) per.set(s, a = []); a.push(D.B.idxOf[i]); }
-        srcs.forEach((src, si) => { const A = analyze(src); if (!A) return; const ex = new Uint8Array(A.part.length); (per.get(si) || []).forEach(i => { ex[i] = 1; }); hideCovered(src, A, [], ex); });
+        for (let si = 0; si < srcs.length; si++) { yield; const src = srcs[si], A = analyze(src); if (!A) continue; const ex = new Uint8Array(A.part.length); (per.get(si) || []).forEach(i => { ex[i] = 1; }); hideCovered(src, A, [], ex); }
         const S = g.userData.spessore = g.userData.spessore || {}; for (const k in D.th) S[k] = Math.max(S[k] || 0, D.th[k]);
       }
     } catch (e) { console.error('[Vesti3D] sartoria', e); D = null; }
     yield;
     try { shells(g, outfit, unit, D && D.B); } catch (e) { console.error('[Vesti3D] gusci', e); }
     yield;
-    if (window.Pittura) try { Pittura.dipingi(g, outfit, look, PARTI); } catch (e) { console.error('[Vesti3D] pittura', e); }   // i vestiti dipinti sul corpo
+    if (window.Pittura) try { if (Pittura.dipingiGen) yield* Pittura.dipingiGen(g, outfit, look, PARTI); else Pittura.dipingi(g, outfit, look, PARTI); } catch (e) { console.error('[Vesti3D] pittura', e); }   // [fluido] a passi   // i vestiti dipinti sul corpo
     yield;
     try { accessories(g, outfit, held, D); } catch (e) { console.error('[Vesti3D] pezzi', e); }
     if (window.Officina) try { Officina.onDress(g, outfit); } catch (e) { console.error('[Vesti3D] officina', e); }   // [studio]

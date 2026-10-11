@@ -820,7 +820,7 @@ var Vesti3D = (function () {
     if (window.Sartoria) try {
       { const CUT = Sartoria.CUT_(), B0 = Sartoria.body(g, PARTI); outfit.forEach(c => { const Cc = CUT[c.id] || {}; if (!Cc.solo_gonna || !B0) return;   // la maglia fuori dalla gonna: la gonna comincia sotto il suo orlo
         const out = outfit.find(o => (CUT[o.id] || {}).cl <= 1 && (o.parti || []).includes('torso') && (o.when || 0) > (c.when || 0) && c.when > 0); if (out) c.faldaTop = B0.bones.Hips.y - .07; }); }
-      D = Sartoria.dress(g, outfit, PARTI, seed === undefined ? 'player' : String(seed), { soloFalde: !!window.Pittura });
+      { const a = [g, outfit, PARTI, seed === undefined ? 'player' : String(seed), { soloFalde: !!window.Pittura }]; D = Sartoria.dressGen ? yield* Sartoria.dressGen(...a) : Sartoria.dress(...a); }   // [fluido] a passi
       if (D) {
         const srcs = []; g.traverse(o => { if (o.isSkinnedMesh && !o.userData.vesti) srcs.push(o); });
         const ref = srcs.find(o => /Body/i.test(o.name)) || srcs[0];
@@ -828,14 +828,14 @@ var Vesti3D = (function () {
         // la pelle e i vestiti del kit coperti si tolgono
         const flag = Sartoria.covered(D.B, D.cover), per = new Map();
         for (let i = 0; i < flag.length; i++) if (flag[i]) { const s = D.B.srcOf[i]; let a = per.get(s); if (!a) per.set(s, a = []); a.push(D.B.idxOf[i]); }
-        srcs.forEach((src, si) => { const A = analyze(src); if (!A) return; const ex = new Uint8Array(A.part.length); (per.get(si) || []).forEach(i => { ex[i] = 1; }); hideCovered(src, A, [], ex); });
+        for (let si = 0; si < srcs.length; si++) { yield; const src = srcs[si], A = analyze(src); if (!A) continue; const ex = new Uint8Array(A.part.length); (per.get(si) || []).forEach(i => { ex[i] = 1; }); hideCovered(src, A, [], ex); }
         const S = g.userData.spessore = g.userData.spessore || {}; for (const k in D.th) S[k] = Math.max(S[k] || 0, D.th[k]);
       }
     } catch (e) { console.error('[Vesti3D] sartoria', e); D = null; }
     yield;
     try { shells(g, outfit, unit, D && D.B); } catch (e) { console.error('[Vesti3D] gusci', e); }
     yield;
-    if (window.Pittura) try { Pittura.dipingi(g, outfit, look, PARTI); } catch (e) { console.error('[Vesti3D] pittura', e); }   // i vestiti dipinti sul corpo
+    if (window.Pittura) try { if (Pittura.dipingiGen) yield* Pittura.dipingiGen(g, outfit, look, PARTI); else Pittura.dipingi(g, outfit, look, PARTI); } catch (e) { console.error('[Vesti3D] pittura', e); }   // [fluido] a passi   // i vestiti dipinti sul corpo
     yield;
     try { accessories(g, outfit, held, D); } catch (e) { console.error('[Vesti3D] pezzi', e); }
     if (window.Officina) try { Officina.onDress(g, outfit); } catch (e) { console.error('[Vesti3D] officina', e); }   // [studio]

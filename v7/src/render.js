@@ -1354,7 +1354,7 @@ var Render = (function () {
   // vestiti, mezzi, blocchi di piante, graffiti sui muri). Chi chiede e non c'è più tempo aspetta il fotogramma dopo; quello
   // che è vicinissimo (meno di 20 m) passa sempre, così niente spunta in ritardo sotto gli occhi. Anche writing.js lo usa.
   // A turno: ogni tipo (gente, mezzi, piante, graffiti) ha almeno una costruzione ogni 4 fotogrammi, anche se gli altri hanno finito il tempo.
-  const BUD = { used: 0, max: 3, n: 0, last: {}, start() { this.used = 0; this.n++; },
+  const BUD = { used: 0, max: 3, n: 0, last: {}, start() { this.used = 0; this.n++; this.vesti = 0; },
     ok(d, k) { return (d !== undefined && d < 20) || this.used < this.max || (k !== undefined && this.n - (this.last[k] || 0) >= 4); },
     add(ms, k) { this.used += ms; if (k !== undefined) this.last[k] = this.n; } };
   if (typeof window !== 'undefined') window.Costruzioni = BUD;
@@ -1831,12 +1831,12 @@ var Render = (function () {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
-    yield;
+    // [fluido] un pittore per passo: prima erano tre passi grossi (fino a 75 ms l'uno sui computer lenti)
+    for (const f of [paintTiles, blobs1, blobTex1, paintOpere, smoothRoads, railGround, svolte1, usura1, surf1, roadMarks, strisce35, raccordi1, holes1, sporco35, macro1, snowPass]) { f(x, tx0, ty0, n, m); if (!ISO.rush) yield; }
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
     try { const W = c.width, H = c.height, id = x.getImageData(0, 0, W, H), d = id.data, rc = mk(W, H), rxx = rc.getContext('2d'), od = rxx.createImageData(W, H), o = od.data;
-      for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.72, Math.min(1, .72 + (lum - 40) / 120 * .28)) * 255   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
+      for (let q = 0; q < W * H; q++) { if (q && !(q & 262143) && !ISO.rush) yield;   /* [fluido] a fette */ const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.72, Math.min(1, .72 + (lum - 40) / 120 * .28)) * 255   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
       rxx.putImageData(od, 0, 0); rtex = canvasTex(rc); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; }
     yield;
     const pos = new Float32Array((n + 1) * (m + 1) * 3), uv = new Float32Array((n + 1) * (m + 1) * 2), idx = [];
@@ -1922,7 +1922,7 @@ var Render = (function () {
     const J = ISO.job;
     if (J) { const t0 = performance.now(); let steps = 0;
       while (ISO.rush || (steps === 0 && (J.near || BUD.ok(undefined, 'piante'))) || (steps > 0 && J.near && BUD.ok() && performance.now() - t0 < 4)) {
-        const r = J.it.next(); steps++;
+        const tP = performance.now(), r = J.it.next(); steps++; J.ph = (J.ph || 0) + 1; cpuAdd('  blocchi: fase ' + J.ph, performance.now() - tP);
         if (r.done) { const old = ISO.chunks.get(J.key); if (old) dropChunk(old); if (J.dirty) r.value.rev = -1; ISO.chunks.set(J.key, r.value); ISO.job = null; break; }   // cambiata la mappa a metà: si rifà
       }
       if (steps) BUD.add(performance.now() - t0, 'piante'); }
@@ -11008,6 +11008,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [prestazioni] e il tempo del processore dentro frame(), per pezzo (con il contatore acceso)
   const CPUT = { t: 0, acc: {}, n: 0, res: [] };
   function cpuMark(k) { if (!GPUT.on) return; const t = performance.now(); if (k) CPUT.acc[k] = (CPUT.acc[k] || 0) + t - CPUT.t; CPUT.t = t; }
+  function cpuAdd(k, ms) { if (GPUT.on) CPUT.acc[k] = (CPUT.acc[k] || 0) + ms; }   // un sotto-pezzo (dentro un pezzo)
   function cpuEnd() { if (!GPUT.on) return; const t = performance.now(); if (!CPUT.t0) CPUT.t0 = t; if (++CPUT.n >= 30 || t - CPUT.t0 > 2000) { CPUT.t0 = t; CPUT.res = Object.entries(CPUT.acc).map(([k, v]) => [k, v / CPUT.n]).sort((a, b) => b[1] - a[1]); CPUT.acc = {}; CPUT.n = 0; } }
   function gpuTiming(on) { GPUT.on = !!on; if (on && !GPUT.gl) { GPUT.gl = renderer.getContext(); GPUT.ext = GPUT.gl.getExtension && GPUT.gl.getExtension('EXT_disjoint_timer_query_webgl2'); } return !!GPUT.ext; }
   function gpuB(name) { if (!GPUT.on || !GPUT.ext) return; const gl = GPUT.gl, q = gl.createQuery(); gl.beginQuery(GPUT.ext.TIME_ELAPSED_EXT, q); GPUT.open = { q, name }; }
@@ -11160,6 +11161,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    renderer.debug.checkShaderErrors = /[?&]shader\b/.test(location.search);   // [fluido] il controllo degli errori ferma il gioco finché lo shader non è compilato (si riaccende con ?shader)
     renderer.setPixelRatio(1);
     canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); try { localStorage.setItem('pvLow', String(Date.now())); } catch (x) {} console.warn('[grafica] contesto perso: ricarico in qualità ridotta'); setTimeout(() => location.reload(), 400); });   /* [unione10] */
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -12100,11 +12102,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
       if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */
         const kept = PEOPLE_KEEP.get(n.id); if (kept && (kept.userData.who || null) === who) { PEOPLE_KEEP.delete(n.id); g = kept; }   // [fluido] torna com'era, già vestito
-        else { if (!BUD.ok(Math.hypot(n.x - p.x, n.y - p.y), 'gente')) return; const t0 = performance.now(); if (window.Models) Models.__aRate = true; try { g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); } finally { if (window.Models) Models.__aRate = false; } g.userData.who = who; BUD.add(performance.now() - t0, 'gente'); }   // [fluido] nasce quando c'è tempo
+        else { if (!BUD.ok(Math.hypot(n.x - p.x, n.y - p.y), 'gente')) return; const t0 = performance.now(); if (window.Models) Models.__aRate = true; try { g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); } finally { if (window.Models) Models.__aRate = false; } g.userData.who = who; BUD.add(performance.now() - t0, 'gente'); cpuAdd('  persone: nascono', performance.now() - t0); }   // [fluido] nasce quando c'è tempo
         if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
       if (g.userData.dressing) {   // [fluido] si sta vestendo: una fase per fotogramma (a budget), invisibile finché non ha finito
         const dn = Math.hypot(n.x - p.x, n.y - p.y); let fin = false;
-        if (BUD.ok(dn, 'vesti')) { const t0 = performance.now(); try { fin = g.userData.dressing.next().done; } catch (e) { fin = true; console.error('[fluido] vestire', e); } BUD.add(performance.now() - t0, 'vesti'); }
+        if (BUD.ok(BUD.vesti ? undefined : dn, 'vesti')) { BUD.vesti = 1; const t0 = performance.now();   // [fluido] chi è vicino passa avanti, ma un passo solo per fotogramma in tutto
+          try { fin = g.userData.dressing.next().done; } catch (e) { fin = true; console.error('[fluido] vestire', e); } BUD.add(performance.now() - t0, 'vesti'); cpuAdd('  persone: vestire', performance.now() - t0); g.userData.dPh = (g.userData.dPh || 0) + 1; cpuAdd('  vestire fase ' + g.userData.dPh, performance.now() - t0); }
         if (fin) g.userData.dressing = null; else { g.visible = false; return; }
       }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
@@ -12114,10 +12117,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
       { const dd = Math.abs(n.x - cam.x) + Math.abs(n.y - cam.y), every = dd > 45 ? 3 : dd > 28 ? 2 : 1;   /* [fluido] lontano dalla camera l'animazione si aggiorna a fotogrammi alterni, col tempo recuperato */
         if (every > 1 && (frameN + (g.id || 0)) % every) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; } }
-      const dtA = dt + (g.userData.dt1 || 0); g.userData.dt1 = 0;
+      const dtA = dt + (g.userData.dt1 || 0); g.userData.dt1 = 0; const tA = GPUT.on ? performance.now() : 0;
       if (g.userData.model) Models.animPerson(g, { speed: n.speedNow, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, held: n.hand || null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), punch: n.gesture === 'punch' ? 1 : 0, handsUp: !n.dead && n.stun <= 0 && ((n.action.name === 'fugge' && n.panic <= 0) || n.action.name === 'ordine_fermato'), riot: !!(n.ord && n.ord.riot), banner: n.ord && n.ord.protester ? n.ord.protester.banner : null, anim: window.Anim ? Anim.npcState(st, n) : null }, dtA); else   // [animazioni] anim
       animPerson(g, { anim: n.anim, speed: n.speedNow, gesture: n.gesture, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0 && p.cur !== 'pugni' && Math.hypot(n.x - p.x, n.y - p.y) < 6, twoHand: n.cop });
-      g.userData.shadowC.visible = !n.dead;
+      g.userData.shadowC.visible = !n.dead; if (tA) cpuAdd('  persone: animare', performance.now() - tA);
       flight(g, n, st);
     });
     cpuMark('persone'); let pg = dyn.people.__player;
