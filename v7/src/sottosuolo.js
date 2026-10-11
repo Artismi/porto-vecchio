@@ -167,7 +167,13 @@ var Sottosuolo = (function () {
     // l'ingresso: una casella aperta (piazzetta, selciato, prato), lontana dalla carreggiata e dai marciapiedi (pensiline, pali, panchine)
     const open = (tx, ty) => { for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const v = G.tileAt(tx + i, ty + j); if (!G.walkT(tx + i, ty + j) || v === T.VIA || v === T.WALK) return false; } return true; };
     const spot = (x, y) => { const [cx, cy] = ti(x, y); for (const strict of [true, false]) { let best = null, bd = 1e9; for (let r = 0; r < 18 && !best; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue; const tx = cx + i, ty = cy + j; if (!inb(tx, ty) || W.zone[idx(tx, ty)] !== ZC) continue; const v = G.tileAt(tx, ty); if (![T.WALK, T.COB, T.PIAZZA, T.GRASS, T.DIRT].includes(v) || (strict && !open(tx, ty))) continue; const d = Math.hypot(i, j); if (d < bd) { bd = d; best = [tx, ty]; } } if (best) return best; } return null; };
-    const S0 = spot(836, 202), N0 = spot(1122, 64), metro = { ok: false };
+    // i due capi si ricavano dalla città com'è adesso (la mappa è cambiata e le vecchie coordinate fisse cadevano in mare):
+    // si scartano le frange (10% per lato) e si prende il bordo sud della parte ovest e il bordo nord della parte est
+    const cityAt = (() => { const xs = [], ys = []; for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) if (W.zone[idx(tx, ty)] === ZC) { xs.push(tx); ys.push(ty); }
+      if (!xs.length) return () => null; const q = (a, k) => a.slice().sort((m, n) => m - n)[Math.floor(a.length * k)], X0 = q(xs, .1), X1 = q(xs, .9), Y0 = q(ys, .1), Y1 = q(ys, .9);
+      return (fx, fy) => { const gx = X0 + (X1 - X0) * fx, gy = Y0 + (Y1 - Y0) * fy; let b = null, bd = 1e9; for (let i = 0; i < xs.length; i++) { const d = (xs[i] - gx) ** 2 + (ys[i] - gy) ** 2; if (d < bd) { bd = d; b = i; } } return [cen(xs[b]), cen(ys[b])]; }; })();
+    const aS = cityAt(.2, .92), aN = cityAt(.8, .08);
+    const S0 = aS && spot(...aS), N0 = aN && spot(...aN), metro = { ok: false };
     if (S0 && N0) {
       const ax = cen(S0[0]), ay = cen(S0[1]), bx = cen(N0[0]), by = cen(N0[1]), Ld = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / Ld, uy = (by - ay) / Ld, nx = -uy, ny = ux;
       const R = 4.4, OFF = 11;   // raggio dell'elica (mezza distanza tra le gallerie); la banchina comincia 11 m oltre l'ingresso
@@ -405,11 +411,16 @@ var Sottosuolo = (function () {
   // CLIC: gente, casse, treno (main.js li tratta come 'loot' con via 'sotto')
   // =====================================================================================================================
   const UI = { open: null, msg: '', msgT: 0, tab: 'compra' };
+  // [punta e clicca] tombini, pozzi, grate e scale della metropolitana: un clic e ci vai, arrivato scendi (o risali)
+  const PORTAL_LABEL = { tombino: 'Scendi nel tombino', scala: 'Scendi le scale', grata: 'Scendi dalla grata', pozzo: 'Scendi nel pozzo', botola: 'Scendi nella botola' };
+  function portalAt(st, i) { const L = LV.S(st), P = L.portals[i], p = st.player; if (!P || !LV.CLIMB.has(P.kind) || P.kind === 'interno' && !p.lv) return null; const c = p.lv ? P.u : P.s; return { P, x: cen(c[0]), y: cen(c[1]) }; }
   function pick(st, nx, ny, o) {
-    const p = st.player, R = typeof window !== 'undefined' && window.__pv && window.__pv.R; if (!R || !p.lv || p.lv.k !== 'ug' || p.lv.ride !== undefined || p.vehicle) return null;
+    const p = st.player, R = typeof window !== 'undefined' && window.__pv && window.__pv.R; if (!R || p.indoor || p.vehicle || (p.lv && (p.lv.k !== 'ug' || p.lv.ride !== undefined))) return null;
     if (typeof Cantiere !== 'undefined' && Cantiere.active()) return null;
     const R0 = S0(st); let best = null, bd = Math.max(26, o.h * .045);
     const test = (x, y, h, ref, label) => { if (Math.hypot(x - p.x, y - p.y) > 40) return; const pr = R.project(x, h, y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = { kind: 'loot', via: 'sotto', ref, x, y, label }; } };
+    LV.S(st).portals.forEach((P, i) => { const q = portalAt(st, i); if (!q) return; const lab = p.lv ? (P.kind === 'interno' ? `Sali in ${P.name || 'casa'}` : 'Risali da qui') : P.metro ? P.name : P.nat ? 'Scendi nel pozzo' : PORTAL_LABEL[P.kind] || 'Scendi'; test(q.x, q.y, p.lv ? ((floorAtXY(st, q.x, q.y) || 0) + .3) : R.groundH(q.x, q.y) + .1, 'p:' + i, lab); });
+    if (!p.lv) return best;
     R0.folk.forEach(n => test(n.x, n.y, n.f + 1.2, 'n:' + n.id, `${n.name} · ${n.role}`));
     R0.crates.forEach(c => test(c.x, c.y, c.f + .5, 'c:' + c.id, c.open ? `${c.label} (vuota)` : `Apri: ${c.label}`));
     if (M.ok) [0, 1].forEach(j => { const tr = train(st, j); if (tr && tr.at) test(tr.x, tr.y, tr.h + 2, 't:' + j, `Sali sul treno per ${tr.at === 'sud' ? M.B.name : M.A.name}`); });
@@ -420,12 +431,14 @@ var Sottosuolo = (function () {
     if (k === 'n') { const n = R0.folk.find(q => q.id === id); return n ? { x: n.x, y: n.y } : null; }
     if (k === 'c') { const c = R0.crates.find(q => q.id === id); return c ? { x: c.x, y: c.y } : null; }
     if (k === 't') { const tr = train(st, +id); if (!tr || !tr.at) return null; const S = stationOf(tr.at); return { x: S.x, y: S.y }; }
+    if (k === 'p') return portalAt(st, +id);
     return null;
   }
-  const goal = (st, ref) => { const q = find(st, ref); if (!q) return null; if (ref[0] === 't') return q; return freeSpot(st, q.x, q.y); };
-  const reach = ref => ref[0] === 't' ? 3 : 1.7;
+  const goal = (st, ref) => { const q = find(st, ref); if (!q) return null; if (ref[0] === 't' || ref[0] === 'p') return { x: q.x, y: q.y }; return freeSpot(st, q.x, q.y); };
+  const reach = ref => ref[0] === 't' ? 3 : ref[0] === 'p' ? .9 : 1.7;
   function arrive(st, ref) {
     const R0 = S0(st), k = ref[0], id = ref.slice(2);
+    if (k === 'p') { const q = portalAt(st, +id); if (!q) return; const p = st.player; p.x = q.x; p.y = q.y; const m = LV.climb(st); if (m) G.feed(st, m, 'info'); return; }
     if (k === 't') { const m = board(st, +id); G.feed(st, m, 'info'); return; }
     if (k === 'c') { const c = R0.crates.find(q => q.id === id); if (c) { const r = openCrate(st, c); G.feed(st, r.msg, r.ok ? 'good' : 'bad'); } return; }
     if (k === 'n') { const n = R0.folk.find(q => q.id === id); if (!n) return; n.talk = st.clock; n.lineI = ((n.lineI === undefined ? -1 : n.lineI) + 1) % n.lines.length; UI.open = n.id; UI.tab = 'compra'; UI.msg = ''; UI.dirty = true; }

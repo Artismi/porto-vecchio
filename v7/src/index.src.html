@@ -161,9 +161,12 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 #touch { inset: auto 0 0 0; height: 44%; pointer-events: none; }
 #stick { position: absolute; left: 22px; bottom: 26px; width: 130px; height: 130px; border-radius: 50%; border: 2px solid rgba(240,230,208,.35); background: rgba(13,11,26,.35); pointer-events: auto; touch-action: none; }
 #knob { position: absolute; left: 43px; top: 43px; width: 44px; height: 44px; border-radius: 50%; background: rgba(240,230,208,.6); }
-#tbtns { position: absolute; right: 16px; bottom: 190px; display: grid; grid-template-columns: repeat(3, 54px); gap: 8px; pointer-events: auto; }
-#tbtns button { height: 54px; border: 2px solid var(--line); background: var(--panel); color: var(--fg); font-family: var(--f-label); font-size: 11px; box-shadow: 3px 3px 0 #07060e; }
-#tbtns button.bad { color: var(--blood); }
+/* [mobile] i pulsanti di adesso: il principale in basso a destra, sotto il pollice; gli altri sopra e a sinistra */
+#tbtns { position: absolute; right: 14px; bottom: 16px; width: 224px; display: flex; flex-direction: row-reverse; flex-wrap: wrap-reverse; align-items: flex-end; gap: 8px; pointer-events: auto; }
+#tbtns button { width: 58px; height: 58px; border-radius: 50%; border: 2px solid rgba(240,230,208,.35); background: rgba(13,11,26,.62); color: var(--fg); font-family: var(--f-label); font-size: 11px; line-height: 1.1; padding: 0; touch-action: none; user-select: none; -webkit-user-select: none; display: grid; place-content: center; }
+#tbtns button.big { width: 84px; height: 84px; font-size: 14px; border-color: rgba(255,210,58,.6); }
+#tbtns button small { display: block; font-size: 8px; opacity: .7; margin-top: 2px; }
+#tbtns button.on { background: rgba(255,210,58,.3); border-color: var(--amber); }
 @media (pointer: coarse) { #mini { top: 96px; bottom: auto; right: 4px; transform: scale(.72); transform-origin: top right; } #ctx { bottom: auto; top: 150px; max-width: calc(100vw - 24px); } #ctx .chip kbd { display: none; } #feed { top: 200px; } }
 @media (prefers-reduced-motion: reduce) { .fi, #wanted.chase .star.on { animation: none; } }
 
@@ -266,11 +269,7 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
   </div>
   <div class="layer" id="touch" hidden>
     <div id="stick"><div id="knob"></div></div>
-    <div id="tbtns">
-      <button data-k="t">Parla</button><button data-k="e" class="bad">Ruba</button><button data-k="fire" class="bad">Spara</button>
-      <button data-k="f">Mezzo</button><button data-k="q">Arma</button><button data-k="shift">Corri</button>
-      <button data-k="tab">Tacc.</button><button data-k="r">Ricar.</button><button data-k="space">Freno</button>
-      <button data-k="p">BMX</button>
+    <div id="tbtns"></div>
     </div>
   </div>
   <div class="layer"><div id="ring" hidden></div><div id="hover" hidden></div></div>
@@ -345,6 +344,7 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 <script>/*pezzi.js*/</script>
 <script>/*cantiere.js*/</script>
 <script>/*menu_ui.js*/</script>
+<script>/*comandi.js*/</script>
 <script>/*interni_arte.js*/</script>
 <script>/*protagonista_ui.js*/</script>
 <script>/*studio.js*/</script>

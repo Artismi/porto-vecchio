@@ -161,9 +161,12 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 #touch { inset: auto 0 0 0; height: 44%; pointer-events: none; }
 #stick { position: absolute; left: 22px; bottom: 26px; width: 130px; height: 130px; border-radius: 50%; border: 2px solid rgba(240,230,208,.35); background: rgba(13,11,26,.35); pointer-events: auto; touch-action: none; }
 #knob { position: absolute; left: 43px; top: 43px; width: 44px; height: 44px; border-radius: 50%; background: rgba(240,230,208,.6); }
-#tbtns { position: absolute; right: 16px; bottom: 190px; display: grid; grid-template-columns: repeat(3, 54px); gap: 8px; pointer-events: auto; }
-#tbtns button { height: 54px; border: 2px solid var(--line); background: var(--panel); color: var(--fg); font-family: var(--f-label); font-size: 11px; box-shadow: 3px 3px 0 #07060e; }
-#tbtns button.bad { color: var(--blood); }
+/* [mobile] i pulsanti di adesso: il principale in basso a destra, sotto il pollice; gli altri sopra e a sinistra */
+#tbtns { position: absolute; right: 14px; bottom: 16px; width: 224px; display: flex; flex-direction: row-reverse; flex-wrap: wrap-reverse; align-items: flex-end; gap: 8px; pointer-events: auto; }
+#tbtns button { width: 58px; height: 58px; border-radius: 50%; border: 2px solid rgba(240,230,208,.35); background: rgba(13,11,26,.62); color: var(--fg); font-family: var(--f-label); font-size: 11px; line-height: 1.1; padding: 0; touch-action: none; user-select: none; -webkit-user-select: none; display: grid; place-content: center; }
+#tbtns button.big { width: 84px; height: 84px; font-size: 14px; border-color: rgba(255,210,58,.6); }
+#tbtns button small { display: block; font-size: 8px; opacity: .7; margin-top: 2px; }
+#tbtns button.on { background: rgba(255,210,58,.3); border-color: var(--amber); }
 @media (pointer: coarse) { #mini { top: 96px; bottom: auto; right: 4px; transform: scale(.72); transform-origin: top right; } #ctx { bottom: auto; top: 150px; max-width: calc(100vw - 24px); } #ctx .chip kbd { display: none; } #feed { top: 200px; } }
 @media (prefers-reduced-motion: reduce) { .fi, #wanted.chase .star.on { animation: none; } }
 
@@ -266,11 +269,7 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
   </div>
   <div class="layer" id="touch" hidden>
     <div id="stick"><div id="knob"></div></div>
-    <div id="tbtns">
-      <button data-k="t">Parla</button><button data-k="e" class="bad">Ruba</button><button data-k="fire" class="bad">Spara</button>
-      <button data-k="f">Mezzo</button><button data-k="q">Arma</button><button data-k="shift">Corri</button>
-      <button data-k="tab">Tacc.</button><button data-k="r">Ricar.</button><button data-k="space">Freno</button>
-      <button data-k="p">BMX</button>
+    <div id="tbtns"></div>
     </div>
   </div>
   <div class="layer"><div id="ring" hidden></div><div id="hover" hidden></div></div>
@@ -11559,9 +11558,11 @@ var Game = (function () {
     const pop = () => { const top = heap[0], lh = heap.pop(), lf = hf.pop(); if (heap.length) { heap[0] = lh; hf[0] = lf; let i = 0; for (; ;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && hf[l] < hf[m]) m = l; if (r < heap.length && hf[r] < hf[m]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; [hf[m], hf[i]] = [hf[i], hf[m]]; i = m; } } return top; };
     seen[si] = gen; cost[si] = 0; came[si] = -1; push(si, 0);
     const hx = g[0], hy = g[1]; let found = si === gi, steps = 0;
+    // [fluido] il tetto di caselle esplorate cresce con la distanza: una meta irraggiungibile si scopre subito, non dopo 70.000 caselle (30-40 ms, uno scatto)
+    const span = Math.abs(hx - s[0]) + Math.abs(hy - s[1]), cap = Math.min(PF.cap, 1500 + span * span * 3);
     while (heap.length && !found) {
       const cur = pop(); if (shut[cur] === gen) continue; shut[cur] = gen; if (cur === gi) { found = true; break; }
-      if (++steps > PF.cap) break;
+      if (++steps > cap) break;
       const cx = cur % GW, cy = (cur / GW) | 0;
       for (let k = 0; k < 8; k++) {
         const dx = DX8[k], dy = DY8[k];
@@ -13325,9 +13326,9 @@ var Game = (function () {
     const fx = Math.cos(v.ang), fy = Math.sin(v.ang);
     const check = (x, y, r) => { const dx = x - v.x, dy = y - v.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx); if (along > 0 && along < 9 && lat < 1.3 + Math.min(r, .5)) block = Math.min(block, along - r); };
     if (!st.player.vehicle) check(st.player.x, st.player.y, .4);
-    st.npcs.forEach(n => { if (!n.inside && !n.dead) check(n.x, n.y, .4); else if (n.dead && !n.inside) check(n.x, n.y, .3); });
+    for (const n of st.npcs) { if (n.inside || Math.abs(n.x - v.x) > 10 || Math.abs(n.y - v.y) > 10) continue; check(n.x, n.y, n.dead ? .3 : .4); }   // [fluido] solo chi è a portata
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
-    st.vehicles.forEach(o => { if (o === v || o.hidden) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1); });
+    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1); });
     const K = VK[v.kind];
     let want = target;
     if (block < 7) want = Math.max(0, (block - 2.2) * 1.6);
@@ -13751,6 +13752,16 @@ var Game = (function () {
   }
 
   // ---------------- CICLO ----------------
+  // [fluido] la bolla: centro un po' avanti nella direzione di marcia, raggio che cresce con la velocità
+  function bubble(st) {
+    const p = st.player, v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
+    const vx = v ? (v.vx || 0) : Math.cos(p.face || 0) * (p.speed || 0), vy = v ? (v.vy || 0) : Math.sin(p.face || 0) * (p.speed || 0), sp = Math.hypot(vx, vy);
+    return (st.bubble = { x: p.x + vx * 1.5, y: p.y + vy * 1.5, r: 60 + sp * 2.5 });
+  }
+  const inBubble = (B, x, y) => Math.abs(x - B.x) < B.r && Math.abs(y - B.y) < B.r;
+  // chi sta combattendo, inseguendo, scappando o soffrendo resta sempre a dettaglio pieno, anche lontano
+  const BUSY = { combatte: 1, insegue: 1, affronta: 1, fugge: 1, arresta: 1, rientra: 1 };
+  const calmNpc = n => !BUSY[n.action.name] && !n.aggro && !(n.burn > 0) && !(n.stun > 0) && !n.alarm && !(n.panic > 0) && !n.kbx && !n.kby;
   function step(st, dtReal, inp) {
     if (st.over) return;
     if (st.hitstop > 0) { st.hitstop -= dtReal; return; }
@@ -13777,11 +13788,18 @@ var Game = (function () {
       }
       return true;
     });
+    // [fluido] la bolla del dettaglio: attorno al giocatore (spostata in avanti e più larga quando va forte) tutto si calcola
+    // a ogni fotogramma; fuori, chi fa la sua giornata pensa e cammina a passi radi (4 volte al secondo, col tempo accumulato):
+    // arriva negli stessi posti alle stesse ore, solo senza le finezze che tanto nessuno vede
+    const B = bubble(st);
     for (const n of st.npcs) {
       if (n.dead) continue;
-      n.thinkAt -= dt;
+      let ndt = dt;
+      if (!inBubble(B, n.x, n.y) && calmNpc(n)) { n.__far = (n.__far || 0) + dt; if (n.__far < .25) continue; ndt = n.__far; }
+      n.__far = 0;
+      n.thinkAt -= ndt;
       if (n.thinkAt <= 0) { n.thinkAt = n.action.name === 'combatte' ? .25 : .35; think(st, n); }
-      moveNpc(st, n, dt);
+      moveNpc(st, n, ndt);
       if (!n.inside) pushOutOfVehicles(st, n, .35);
     }
     separate(st);   // [passo]
@@ -13796,17 +13814,26 @@ var Game = (function () {
     }
     // urti tra veicoli
     for (let i = 0; i < st.vehicles.length; i++) for (let j = i + 1; j < st.vehicles.length; j++) {
-      const a = st.vehicles[i], b = st.vehicles[j]; if (a.hidden || b.hidden) continue;
+      const a = st.vehicles[i], b = st.vehicles[j]; if (a.hidden || b.hidden || Math.abs(a.x - b.x) > 12 || Math.abs(a.y - b.y) > 12) continue;   // [fluido] lontani non si toccano
       collideVehicles(st, a, b);
     }
     if (st.player.vehicle && st.player.x !== undefined) { const v = st.vehicles.find(k => k.id === st.player.vehicle); if (v) { st.player.x = v.x; st.player.y = v.y; } }
     updateProjectiles(st, dt);
     updateHazards(st, dt);
     updatePickups(st);
-    const live = st.npcs.filter(n => !n.inside && !n.dead);
-    for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
-      const a = live[i], b = live[j], d = dist(a.x, a.y, b.x, b.y);
-      if (d < .55 && d > .001) { const push = (.55 - d) / 2, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d; if (walkM(a.x - ux * push, a.y - uy * push)) { a.x -= ux * push; a.y -= uy * push; } if (walkM(b.x + ux * push, b.y + uy * push)) { b.x += ux * push; b.y += uy * push; } }
+    // [fluido] chi si pesta i piedi si scosta: si confrontano solo i vicini di casella (una griglia), non tutte le coppie dell'isola
+    const cell = new Map();
+    for (const n of st.npcs) { if (n.inside || n.dead) continue; const k = Math.floor(n.x / .6) * 4096 + Math.floor(n.y / .6), C = cell.get(k); if (C) C.push(n); else cell.set(k, [n]); }
+    for (const [k, C] of cell) {
+      const cx = Math.floor(k / 4096), cy = k - cx * 4096;
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+        const D = ox || oy ? cell.get((cx + ox) * 4096 + cy + oy) : C; if (!D) continue;
+        for (const a of C) for (const b of D) {
+          if (a === b || (D === C ? C.indexOf(b) < C.indexOf(a) : (ox * 3 + oy) < 0)) continue;
+          const d = dist(a.x, a.y, b.x, b.y);
+          if (d < .55 && d > .001) { const push = (.55 - d) / 2, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d; if (walkM(a.x - ux * push, a.y - uy * push)) { a.x -= ux * push; a.y -= uy * push; } if (walkM(b.x + ux * push, b.y + uy * push)) { b.x += ux * push; b.y += uy * push; } }
+        }
+      }
     }
     st.gossipAt = (st.gossipAt || 0) - dt;
     if (st.gossipAt <= 0) { st.gossipAt = .5; gossip(st); }
@@ -26212,7 +26239,13 @@ var Sottosuolo = (function () {
     // l'ingresso: una casella aperta (piazzetta, selciato, prato), lontana dalla carreggiata e dai marciapiedi (pensiline, pali, panchine)
     const open = (tx, ty) => { for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const v = G.tileAt(tx + i, ty + j); if (!G.walkT(tx + i, ty + j) || v === T.VIA || v === T.WALK) return false; } return true; };
     const spot = (x, y) => { const [cx, cy] = ti(x, y); for (const strict of [true, false]) { let best = null, bd = 1e9; for (let r = 0; r < 18 && !best; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue; const tx = cx + i, ty = cy + j; if (!inb(tx, ty) || W.zone[idx(tx, ty)] !== ZC) continue; const v = G.tileAt(tx, ty); if (![T.WALK, T.COB, T.PIAZZA, T.GRASS, T.DIRT].includes(v) || (strict && !open(tx, ty))) continue; const d = Math.hypot(i, j); if (d < bd) { bd = d; best = [tx, ty]; } } if (best) return best; } return null; };
-    const S0 = spot(836, 202), N0 = spot(1122, 64), metro = { ok: false };
+    // i due capi si ricavano dalla città com'è adesso (la mappa è cambiata e le vecchie coordinate fisse cadevano in mare):
+    // si scartano le frange (10% per lato) e si prende il bordo sud della parte ovest e il bordo nord della parte est
+    const cityAt = (() => { const xs = [], ys = []; for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) if (W.zone[idx(tx, ty)] === ZC) { xs.push(tx); ys.push(ty); }
+      if (!xs.length) return () => null; const q = (a, k) => a.slice().sort((m, n) => m - n)[Math.floor(a.length * k)], X0 = q(xs, .1), X1 = q(xs, .9), Y0 = q(ys, .1), Y1 = q(ys, .9);
+      return (fx, fy) => { const gx = X0 + (X1 - X0) * fx, gy = Y0 + (Y1 - Y0) * fy; let b = null, bd = 1e9; for (let i = 0; i < xs.length; i++) { const d = (xs[i] - gx) ** 2 + (ys[i] - gy) ** 2; if (d < bd) { bd = d; b = i; } } return [cen(xs[b]), cen(ys[b])]; }; })();
+    const aS = cityAt(.2, .92), aN = cityAt(.8, .08);
+    const S0 = aS && spot(...aS), N0 = aN && spot(...aN), metro = { ok: false };
     if (S0 && N0) {
       const ax = cen(S0[0]), ay = cen(S0[1]), bx = cen(N0[0]), by = cen(N0[1]), Ld = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / Ld, uy = (by - ay) / Ld, nx = -uy, ny = ux;
       const R = 4.4, OFF = 11;   // raggio dell'elica (mezza distanza tra le gallerie); la banchina comincia 11 m oltre l'ingresso
@@ -26450,11 +26483,16 @@ var Sottosuolo = (function () {
   // CLIC: gente, casse, treno (main.js li tratta come 'loot' con via 'sotto')
   // =====================================================================================================================
   const UI = { open: null, msg: '', msgT: 0, tab: 'compra' };
+  // [punta e clicca] tombini, pozzi, grate e scale della metropolitana: un clic e ci vai, arrivato scendi (o risali)
+  const PORTAL_LABEL = { tombino: 'Scendi nel tombino', scala: 'Scendi le scale', grata: 'Scendi dalla grata', pozzo: 'Scendi nel pozzo', botola: 'Scendi nella botola' };
+  function portalAt(st, i) { const L = LV.S(st), P = L.portals[i], p = st.player; if (!P || !LV.CLIMB.has(P.kind) || P.kind === 'interno' && !p.lv) return null; const c = p.lv ? P.u : P.s; return { P, x: cen(c[0]), y: cen(c[1]) }; }
   function pick(st, nx, ny, o) {
-    const p = st.player, R = typeof window !== 'undefined' && window.__pv && window.__pv.R; if (!R || !p.lv || p.lv.k !== 'ug' || p.lv.ride !== undefined || p.vehicle) return null;
+    const p = st.player, R = typeof window !== 'undefined' && window.__pv && window.__pv.R; if (!R || p.indoor || p.vehicle || (p.lv && (p.lv.k !== 'ug' || p.lv.ride !== undefined))) return null;
     if (typeof Cantiere !== 'undefined' && Cantiere.active()) return null;
     const R0 = S0(st); let best = null, bd = Math.max(26, o.h * .045);
     const test = (x, y, h, ref, label) => { if (Math.hypot(x - p.x, y - p.y) > 40) return; const pr = R.project(x, h, y); if (pr.behind) return; const d = Math.hypot((pr.x - nx) * o.w, (pr.y - ny) * o.h); if (d < bd) { bd = d; best = { kind: 'loot', via: 'sotto', ref, x, y, label }; } };
+    LV.S(st).portals.forEach((P, i) => { const q = portalAt(st, i); if (!q) return; const lab = p.lv ? (P.kind === 'interno' ? `Sali in ${P.name || 'casa'}` : 'Risali da qui') : P.metro ? P.name : P.nat ? 'Scendi nel pozzo' : PORTAL_LABEL[P.kind] || 'Scendi'; test(q.x, q.y, p.lv ? ((floorAtXY(st, q.x, q.y) || 0) + .3) : R.groundH(q.x, q.y) + .1, 'p:' + i, lab); });
+    if (!p.lv) return best;
     R0.folk.forEach(n => test(n.x, n.y, n.f + 1.2, 'n:' + n.id, `${n.name} · ${n.role}`));
     R0.crates.forEach(c => test(c.x, c.y, c.f + .5, 'c:' + c.id, c.open ? `${c.label} (vuota)` : `Apri: ${c.label}`));
     if (M.ok) [0, 1].forEach(j => { const tr = train(st, j); if (tr && tr.at) test(tr.x, tr.y, tr.h + 2, 't:' + j, `Sali sul treno per ${tr.at === 'sud' ? M.B.name : M.A.name}`); });
@@ -26465,12 +26503,14 @@ var Sottosuolo = (function () {
     if (k === 'n') { const n = R0.folk.find(q => q.id === id); return n ? { x: n.x, y: n.y } : null; }
     if (k === 'c') { const c = R0.crates.find(q => q.id === id); return c ? { x: c.x, y: c.y } : null; }
     if (k === 't') { const tr = train(st, +id); if (!tr || !tr.at) return null; const S = stationOf(tr.at); return { x: S.x, y: S.y }; }
+    if (k === 'p') return portalAt(st, +id);
     return null;
   }
-  const goal = (st, ref) => { const q = find(st, ref); if (!q) return null; if (ref[0] === 't') return q; return freeSpot(st, q.x, q.y); };
-  const reach = ref => ref[0] === 't' ? 3 : 1.7;
+  const goal = (st, ref) => { const q = find(st, ref); if (!q) return null; if (ref[0] === 't' || ref[0] === 'p') return { x: q.x, y: q.y }; return freeSpot(st, q.x, q.y); };
+  const reach = ref => ref[0] === 't' ? 3 : ref[0] === 'p' ? .9 : 1.7;
   function arrive(st, ref) {
     const R0 = S0(st), k = ref[0], id = ref.slice(2);
+    if (k === 'p') { const q = portalAt(st, +id); if (!q) return; const p = st.player; p.x = q.x; p.y = q.y; const m = LV.climb(st); if (m) G.feed(st, m, 'info'); return; }
     if (k === 't') { const m = board(st, +id); G.feed(st, m, 'info'); return; }
     if (k === 'c') { const c = R0.crates.find(q => q.id === id); if (c) { const r = openCrate(st, c); G.feed(st, r.msg, r.ok ? 'good' : 'bad'); } return; }
     if (k === 'n') { const n = R0.folk.find(q => q.id === id); if (!n) return; n.talk = st.clock; n.lineI = ((n.lineI === undefined ? -1 : n.lineI) + 1) % n.lines.length; UI.open = n.id; UI.tab = 'compra'; UI.msg = ''; UI.dirty = true; }
@@ -28996,17 +29036,23 @@ var Skate = (function () {
   const S = st => st.skate || (st.skate = { owned: true,   /* [writer] la tavola ce l'hai già dall'inizio, come la BMX in tasca e i due pennelli */ total: 0, best: 0, warn: 0, warnT: -99, emitT: -99, hint: false, line: null, lastLine: null });
   const on = st => !!(st.player.sk && st.player.sk.on);
   const KEYS = { w: 0, s: 0, a: 0, d: 0, sp: 0 }, MS = []; let mouseTrack = false;
+  // [mobile] i comandi a tocco (main.js): il dito tenuto sullo schermo spinge verso dove tocchi, la levetta curva,
+  // il pulsante Ollie carica e il dito trascinato sopra sceglie il trick (stesso gesto del mouse)
+  const PAD = { push: 0, brake: 0, turn: 0, crouch: 0 };
+  function padCrouch(v) { if (v && !PAD.crouch) MS.length = 0; PAD.crouch = v ? 1 : 0; }
+  function swipe(dx, dy) { if (PAD.crouch) MS.push({ t: typeof performance !== 'undefined' ? performance.now() : 0, dx, dy }); }
   function ctl(inp) {
     if (inp && inp.sk) return inp.sk;   // le prove passano i comandi a mano
     const now = typeof performance !== 'undefined' ? performance.now() : 0;
     while (MS.length && now - MS[0].t > 350) MS.shift();
-    return { push: !!KEYS.w, brake: !!KEYS.s, turn: (KEYS.d ? 1 : 0) - (KEYS.a ? 1 : 0), crouch: !!KEYS.sp, aim: inp ? inp.aim : undefined, gesture: () => classify(MS.filter(m => now - m.t < 300)) };
+    const turn = (KEYS.d ? 1 : 0) - (KEYS.a ? 1 : 0) || PAD.turn;
+    return { push: !!(KEYS.w || PAD.push), brake: !!(KEYS.s || PAD.brake), turn, crouch: !!(KEYS.sp || PAD.crouch), aim: inp ? inp.aim : undefined, gesture: () => classify(MS.filter(m => now - m.t < 300)) };
   }
 
   function mount(st, quiet) {
     const p = st.player; if (p.vehicle || p.indoor || p.lv || p.swim) return false;
     p.sk = { on: true, z: surface(p.x, p.y), vz: 0, V: 0, vx: 0, vy: 0, yaw: p.face, air: false, grind: null, trick: null, vert: null, crouchT: null, crouchPrev: false, pushT: 0, pushA: -9, lastVS: 0, carveT: 0, boardOff: 0, airT0: 0, free: null };
-    if (!quiet) G.feed(st, 'In tavola. W spinta · Spazio ollie · scatto del mouse con Spazio: flip · X scendi.', 'info');
+    if (!quiet) G.feed(st, typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches ? 'In tavola. Tieni il dito dove vuoi andare: spingi · Ollie: tieni e lascia, trascina il dito per il trick.' : 'In tavola. W o sinistro tenuto: spinta verso il puntatore · Spazio ollie · scatto del mouse con Spazio: flip · X scendi.', 'info');
     return true;
   }
   function dismount(st, quiet) {
@@ -29502,14 +29548,14 @@ var Skate = (function () {
       else if (k === ' ') { if (!KEYS.sp) MS.length = 0; KEYS.sp = 1; mouseTrack = true; e.preventDefault(); }
     });
     addEventListener('keyup', e => { const k = e.key.toLowerCase(); if (k === 'w' || k === 'arrowup') KEYS.w = 0; else if (k === 's' || k === 'arrowdown') KEYS.s = 0; else if (k === 'a' || k === 'arrowleft') KEYS.a = 0; else if (k === 'd' || k === 'arrowright') KEYS.d = 0; else if (k === ' ') { KEYS.sp = 0; mouseTrack = false; } });
-    addEventListener('blur', () => { KEYS.w = KEYS.s = KEYS.a = KEYS.d = KEYS.sp = 0; });
+    addEventListener('blur', () => { KEYS.w = KEYS.s = KEYS.a = KEYS.d = KEYS.sp = 0; PAD.push = PAD.brake = PAD.turn = PAD.crouch = 0; });
     let lx = null, ly = null;
     addEventListener('mousemove', e => { if (lx !== null && mouseTrack) MS.push({ t: performance.now(), dx: e.clientX - lx, dy: e.clientY - ly }); lx = e.clientX; ly = e.clientY; });
     const go = () => { if (!window.THREE || !window.__pv) { setTimeout(go, 250); return; } requestAnimationFrame(frame); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { SPOTS: PLACED, PIECES, EDGES, surface, solidAt, spotAt, free, move, mount, dismount, key, on, pose, classify, TRICKS, S, _: { addTrick, closeLine, bail, lockGrind, MINE, hLocal, toL } };
+  return { SPOTS: PLACED, PIECES, EDGES, surface, solidAt, spotAt, free, move, mount, dismount, key, on, pose, classify, TRICKS, S, PAD, padCrouch, swipe, _: { addTrick, closeLine, bail, lockGrind, MINE, hLocal, toL } };
 })();
 if (typeof module !== 'undefined') module.exports = Skate;
 </script>
@@ -42387,12 +42433,15 @@ var Render = (function () {
     });
     postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
   }
-  let TARGET = 540, lastSize = null;
+  let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
+  function setRes(k) { k = Math.max(.5, Math.min(1, k)); if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
     PX = LOWQ.on ? Math.max(2, Math.round(dpr) * 2) : Math.max(1, ch * dpr / 720);   /* [unione8] al massimo 720 righe */   /* [amb3] risoluzione piena */
+    PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
+    GPUT.px = W + '×' + H;   /* [prestazioni] */
     renderer.setSize(cw, ch, false);
     if (rt) rt.dispose();
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
@@ -44710,6 +44759,77 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   }
 
   // ---------------- INIZIALIZZAZIONE ----------------
+  // [prestazioni] il contatore (F3 o ?perf): tempo vero della scheda video per fase, con le query del timer di WebGL2.
+  // Spento non costa niente. Una query alla volta: le fasi sono in fila. I risultati arrivano qualche fotogramma dopo.
+  const GPUT = { on: false, ext: null, gl: null, open: null, pend: [], acc: {}, n: 0, res: {}, info: {} };
+  function gpuTiming(on) { GPUT.on = !!on; if (on && !GPUT.gl) { GPUT.gl = renderer.getContext(); GPUT.ext = GPUT.gl.getExtension && GPUT.gl.getExtension('EXT_disjoint_timer_query_webgl2'); } return !!GPUT.ext; }
+  function gpuB(name) { if (!GPUT.on || !GPUT.ext) return; const gl = GPUT.gl, q = gl.createQuery(); gl.beginQuery(GPUT.ext.TIME_ELAPSED_EXT, q); GPUT.open = { q, name }; }
+  function gpuE() { if (!GPUT.open) return; const gl = GPUT.gl; gl.endQuery(GPUT.ext.TIME_ELAPSED_EXT); GPUT.pend.push(GPUT.open); GPUT.open = null; }
+  function gpuPoll() {
+    if (!GPUT.on || !GPUT.ext) return; const gl = GPUT.gl, bad = gl.getParameter(GPUT.ext.GPU_DISJOINT_EXT);
+    while (GPUT.pend.length) { const P = GPUT.pend[0]; if (!gl.getQueryParameter(P.q, gl.QUERY_RESULT_AVAILABLE)) break; GPUT.pend.shift(); if (!bad) GPUT.acc[P.name] = (GPUT.acc[P.name] || 0) + gl.getQueryParameter(P.q, gl.QUERY_RESULT) / 1e6; if (P.name === 'post') GPUT.n++; gl.deleteQuery(P.q); }
+    if (GPUT.n >= 30) { for (const k in GPUT.acc) GPUT.res[k] = GPUT.acc[k] / GPUT.n; GPUT.acc = {}; GPUT.n = 0; }
+    if (GPUT.pend.length > 40) GPUT.pend.splice(0, GPUT.pend.length - 40).forEach(P => gl.deleteQuery(P.q));
+  }
+  // [prestazioni] I gruppi di istanze (bosco, verde, binari…) avevano il controllo d'inquadratura spento: three r149 misura
+  // solo la forma singola all'origine, non dove stanno le istanze, e quindi si disegnavano anche fuori dallo schermo (metà
+  // dei triangoli). Qui ogni gruppo fermo riceve l'ingombro vero (le sue istanze, più un margine per il vento) e il
+  // controllo si riaccende; l'immagine non cambia. Chi cambia le istanze (schegge, segni delle gomme…) resta com'era.
+  const IC = { list: [], t: 0 };
+  { const io = THREE.Frustum.prototype.intersectsObject, sph = new THREE.Sphere();
+    THREE.Frustum.prototype.intersectsObject = function (o) {
+      if (o.__icS) { sph.copy(o.__icS).applyMatrix4(o.matrixWorld); return this.intersectsSphere(sph); }
+      if (o.__icR) { const e = o.__icR.matrixWorld.elements; sph.center.set(e[12], e[13] + 1, e[14]); sph.radius = 2.6 * o.__icR.matrixWorld.getMaxScaleOnAxis(); return this.intersectsSphere(sph); }   // un personaggio: attorno al suo gruppo
+      return io.call(this, o); }; }
+  const IC_GS = new WeakMap();   // l'ingombro vero della forma, dai vertici (c'è chi riscrive boundingSphere con la zona del mondo)
+  function geoSphere(g) {
+    let S = IC_GS.get(g); if (S) return S; const p = g.attributes.position, b = new THREE.Box3();
+    if (p && !p.isInterleavedBufferAttribute) b.setFromBufferAttribute(p); else { if (!g.boundingBox) g.computeBoundingBox(); b.copy(g.boundingBox); }
+    S = b.isEmpty() ? new THREE.Sphere() : b.getBoundingSphere(new THREE.Sphere()); IC_GS.set(g, S); return S;
+  }
+  function icSphere(o) {
+    const g = o.geometry, gs = geoSphere(g);
+    const m = new THREE.Matrix4(), v = new THREE.Vector3(), b = new THREE.Box3(), a = o.instanceMatrix.array; let sc = 0;
+    for (let i = 0; i < o.count; i++) { m.fromArray(a, i * 16); const k = m.getMaxScaleOnAxis(); if (k < 1e-4) continue; v.copy(gs.center).applyMatrix4(m); if (Math.abs(v.x) > 2e4 || Math.abs(v.y) > 2e3 || Math.abs(v.z) > 2e4) continue; b.expandByPoint(v); sc = Math.max(sc, k); }   // le istanze spente (scala zero o parcheggiate lontano) non contano
+    if (b.isEmpty()) return null; const S = b.getBoundingSphere(new THREE.Sphere()); S.radius += gs.radius * sc + 2; return S;
+  }
+  // un gruppo grande come l'isola (una specie di albero, le scale dei tetti, le traversine) a che serve controllarlo tutto
+  // insieme: si spezza in celle da 40 m, figlie dell'originale (ne seguono posizione e visibilità); l'originale non si
+  // disegna più da sé (strato spento), le celle sì. Se qualcuno cambia le istanze, le celle spariscono e torna com'era.
+  const IC_CELL = 40;
+  function icSplit(o) {
+    const g = o.geometry; if (!g || o.isSkinnedMesh || g.morphAttributes && Object.keys(g.morphAttributes).length) return false;
+    const instA = Object.entries(g.attributes).filter(([, at]) => at.isInstancedBufferAttribute && !at.isInterleavedBufferAttribute && (at.meshPerAttribute || 1) === 1);
+    if (Object.values(g.attributes).some(at => at.isInterleavedBufferAttribute && at.data && at.data.isInstancedInterleavedBuffer)) return false;
+    const a = o.instanceMatrix.array, cells = new Map(), m = new THREE.Matrix4();
+    for (let i = 0; i < o.count; i++) { m.fromArray(a, i * 16); if (m.getMaxScaleOnAxis() < 1e-4) continue; const k = Math.floor(a[i * 16 + 12] / IC_CELL) + ',' + Math.floor(a[i * 16 + 14] / IC_CELL); (cells.get(k) || cells.set(k, []).get(k)).push(i); }
+    if (cells.size < 2) return false;
+    const parts = [];
+    cells.forEach(idx => {
+      let gg = g;   // gli attributi per istanza (il vento, il colore…): la cella ha la sua fetta, il resto della forma è in comune
+      if (instA.length) { gg = new THREE.BufferGeometry(); gg.index = g.index; for (const [k, at] of Object.entries(g.attributes)) gg.setAttribute(k, at); g.groups.forEach(q => gg.addGroup(q.start, q.count, q.materialIndex)); gg.drawRange = Object.assign({}, g.drawRange); gg.boundingSphere = g.boundingSphere; gg.boundingBox = g.boundingBox;
+        instA.forEach(([k, at]) => { const n = at.itemSize, arr = new at.array.constructor(idx.length * n); idx.forEach((i, j) => { for (let q = 0; q < n; q++) arr[j * n + q] = at.array[i * n + q]; }); gg.setAttribute(k, new THREE.InstancedBufferAttribute(arr, n, at.normalized)); }); }
+      const im = new THREE.InstancedMesh(gg, o.material, idx.length);
+      idx.forEach((i, j) => { for (let q = 0; q < 16; q++) im.instanceMatrix.array[j * 16 + q] = a[i * 16 + q]; if (o.instanceColor) { if (!im.instanceColor) im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(idx.length * 3), 3); for (let q = 0; q < 3; q++) im.instanceColor.array[j * 3 + q] = o.instanceColor.array[i * 3 + q]; } });
+      im.castShadow = o.castShadow; im.receiveShadow = o.receiveShadow; im.renderOrder = o.renderOrder; im.layers.mask = o.layers.mask; im.userData = o.userData;
+      im.onBeforeRender = o.onBeforeRender; im.customDepthMaterial = o.customDepthMaterial; im.customDistanceMaterial = o.customDistanceMaterial;
+      const S = icSphere(im); if (S) { im.__icS = S; im.frustumCulled = true; } else im.frustumCulled = false;
+      im.__icPart = true; o.add(im); parts.push(im);
+    });
+    o.__icParts = parts; o.__icMask = o.layers.mask; o.layers.disableAll(); return true;
+  }
+  function icUnsplit(o) { o.__icParts.forEach(im => { o.remove(im); if (im.geometry !== o.geometry) im.geometry.dispose(); im.dispose(); }); o.__icParts = null; o.layers.mask = o.__icMask; }
+  function instCull() {
+    if (IC.off) return;   // [prova] R.__ic.off = true la spegne (solo per le misure)
+    const now = performance.now();
+    if (now > IC.t) { IC.t = now + 1000; IC.list = []; scene.traverse(o => { if (o.isInstancedMesh && !o.__icPart && (!o.frustumCulled || o.__icS || o.__icParts)) IC.list.push(o);
+      if (o.userData.model && o.userData.mixer) o.traverse(q => { if ((q.isMesh || q.isSkinnedMesh) && !q.frustumCulled && !q.__icR && !q.isInstancedMesh) { q.__icR = o; q.frustumCulled = true; } }); }); }   // i personaggi (e i vestiti e gli oggetti in mano attaccati dopo)
+    for (const o of IC.list) {   // ferme da un secondo e mezzo: si accende il controllo; appena cambiano, si spegne
+      const ver = o.instanceMatrix.version + ':' + o.count + ':' + (o.geometry && o.geometry.id);
+      if (o.__icV !== ver) { o.__icV = ver; o.__icT = now; if (o.__icS) { o.__icS = null; o.frustumCulled = false; } if (o.__icParts) icUnsplit(o); continue; }
+      if (!o.__icS && !o.__icParts && now - o.__icT > 1500 && o.count > 0) { const S = icSphere(o); if (S) { if (S.radius > 70 && o.count >= 32 && icSplit(o)) continue; o.__icS = S; o.frustumCulled = true; } }
+    }
+  }
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -45661,9 +45781,13 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     swimPose(pg, p, !!pveh, time);   // [costa] a nuoto: dentro l'acqua fino alle spalle, coricato in avanti quando va, coi cerchi sull'acqua
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
     // veicoli
+    const VIEW_R = Math.max(75, 62 / Math.max(.12, ui.zoom || 1));
     st.vehicles.forEach(v => {
       if (G.VK[v.kind] && G.VK[v.kind].boat) { boatVehicle(v, dt, time); return; }   // [costa] le barche vanno per conto loro
-      let g = dyn.vehicles[v.id]; if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { g = vehicleMesh(v); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }
+      // [fluido] fuori dalla vista (raggio secondo lo zoom) il mezzo non si crea, non si anima e non si disegna
+      const far = v !== pveh && (Math.abs(v.x - cam.x) > VIEW_R || Math.abs(v.y - cam.y) > VIEW_R);
+      let g = dyn.vehicles[v.id]; if (far) { if (g) g.visible = false; return; }
+      if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { g = vehicleMesh(v); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }
       g.visible = !v.hidden; if (!g.visible) return;
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
       const hF = groundH(v.x + ca * hl, v.y + sa * hl), hR = groundH(v.x - ca * hl, v.y - sa * hl);
@@ -45705,8 +45829,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (u.beacons) { const on = v.siren && Math.sin(st.clock * 14) > 0; u.beacons[0].color.set(on ? '#3a7aff' : '#10204a'); u.beacons[1].color.set(!on && v.siren ? '#3a7aff' : '#10204a'); }
       vehMondo(v, g, u, K, dt, time, night);   // [animazioni-mondo] portiere, tergicristalli, scarico, motore al minimo, lampeggianti
     });
-    for (const id in dyn.vehicles) if (!st.vehicles.find(v => v.id === id)) { const gg = dyn.vehicles[id]; if (gg.userData.wakeG) scene.remove(gg.userData.wakeG); scene.remove(gg); delete dyn.vehicles[id]; }
-    for (const id in dyn.people) if (id !== '__player' && !st.npcs.find(n => n.id === id)) { scene.remove(dyn.people[id]); delete dyn.people[id]; }
+    // [fluido] chi non c'è più: un insieme degli id, non una ricerca nell'elenco per ognuno (569 × 569 confronti a fotogramma)
+    if (frameN % 15 === 0) {
+      const vIds = new Set(st.vehicles.map(v => v.id)), nIds = new Set(st.npcs.map(n => n.id));
+      for (const id in dyn.vehicles) if (!vIds.has(id)) { const gg = dyn.vehicles[id]; if (gg.userData.wakeG) scene.remove(gg.userData.wakeG); scene.remove(gg); delete dyn.vehicles[id]; }
+      for (const id in dyn.people) if (id !== '__player' && !nIds.has(id)) { scene.remove(dyn.people[id]); delete dyn.people[id]; }
+    }
     if (pveh) { const h = groundH(pveh.x, pveh.y); dyn.headlight.intensity = 4 * (.2 + night) * (pveh.wreck ? 0 : 1); dyn.headlight.position.set(pveh.x + Math.cos(pveh.ang) * 1.6, h + 1.1, pveh.y + Math.sin(pveh.ang) * 1.6); dyn.headlight.target.position.set(pveh.x + Math.cos(pveh.ang) * 12, h, pveh.y + Math.sin(pveh.ang) * 12); } else dyn.headlight.intensity = 0;
     // oggetti da raccogliere
     st.pickups.forEach(k => {
@@ -45715,7 +45843,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       m.userData.g.rotation.y = time * 1.8; m.userData.g.position.y = .7 + Math.sin(time * 3 + k.id) * .12;
       m.userData.icon.position.y = 2.2 + Math.sin(time * 2 + k.id) * .1; const dd = Math.hypot(k.x - p.x, k.y - p.y); m.userData.icon.material.opacity = Math.min(1, Math.max(.35, (dd - 1.5) / 3));
     });
-    for (const id in FX.pickups) if (!st.pickups.find(k => String(k.id) === id)) { scene.remove(FX.pickups[id]); delete FX.pickups[id]; }
+    { const kIds = new Set(st.pickups.map(k => String(k.id))); for (const id in FX.pickups) if (!kIds.has(id)) { scene.remove(FX.pickups[id]); delete FX.pickups[id]; } }
     // effetti
     st.__hurt = 0;
     if (DZ.lastSt !== st) tickDestruction(st, 0);
@@ -45835,10 +45963,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     ombre1(st, night);   /* [ombre1] */
+    instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     renderer.setRenderTarget(rt); renderer.render(scene, camera);
-    renderer.setRenderTarget(null); ambPasses();   /* [amb2] */
+    gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
+    gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE();   /* [amb2] */
     const U = postMat.uniforms;
-    U.tC.value = paintPass(); U.tD.value = rt.depthTexture;   /* [amb3] la scena dipinta */ U.near.value = camera.near; U.far.value = camera.far;
+    gpuB('pittura'); U.tC.value = paintPass(); gpuE(); U.tD.value = rt.depthTexture;   /* [amb3] la scena dipinta */ U.near.value = camera.near; U.far.value = camera.far;
     U.letter.value += ((ui.letterbox ? 1 : 0) - U.letter.value) * Math.min(1, dt * 5);
     U.pillar.value = ease; U.dusk.value = dusk; U.night.value = night; U.uReg.value = METEO.reg; U.uWx.value.set(WXc, WXwet, WXfog, WXst); U.uHz.value.copy(scene.fog.color); U.uFogNF.value.set(scene.fog.near, scene.fog.far);   /* [amb1] [nebbia_zoom1] */ U.uFoc9.value = camera.position.distanceTo(V3.set(cam.x, groundH(cam.x, cam.y), cam.y));   /* [unione9] */
     U.fade.value = ui.fade || 0; U.flash.value = ui.flash || 0; U.sat.value = ui.desat ? .45 : 1;
@@ -45870,7 +46000,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         const k = (.07 + dyn.meteo.w[2] * .12 + dusk * .06) * moon.intensity; U.sCol.value.set(moon.color.r * k, moon.color.g * k * .97, moon.color.b * k * .9); }
       if (!sOK) U.sSM.value = null;
     }
-    renderer.render(postScene, postCam);
+    gpuB('post'); renderer.render(postScene, postCam); gpuE();
   }
 
   const pv3 = new THREE.Vector3();
@@ -45885,7 +46015,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
 </script>
 <script>/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
@@ -47261,9 +47391,23 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   cv.addEventListener('pointerdown', e => { cv.focus(); A.init(); const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
     if (window.Cantiere && Cantiere.active() && e.button !== 1) { Cantiere.down(e.button, nx, ny); return; }   // [cantiere] si costruisce, non si cammina
     if (e.button === 2) { mouse.down = true; mouse.pressed = true; return; }
-    if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
+    const busy = ui.intro || ui.over || ui.dialog || ui.book || ui.menu;
+    if (e.button === 0 && !busy && window.Skate && Skate.on(st)) { tpGrab(e, 'skate', nx, ny); mouse.nx = nx; mouse.ny = ny; return; }   // [mobile] in tavola: tieni premuto e spingi verso quel punto
+    if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; tpGrab(e, 'spray', nx, ny); return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
+    if (e.button === 0 && !busy && e.pointerType !== 'mouse' && tapShoots()) { tpGrab(e, 'fire', nx, ny); touchAimAt(nx, ny); touchFire = true; mouse.pressed = true; return; }   // [mobile] arma in mano: spari dove tocchi
     if (e.button === 0) { mouse.nx = nx; mouse.ny = ny; onClick(nx, ny, e.detail >= 2); } });
-  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; if (window.Cantiere && Cantiere.up) Cantiere.up(); if (e.button === 0 && ui.spray) sprayEnd(); });
+  // [mobile] il dito che tiene premuto: spruzza, spara o spinge la tavola seguendo dove si sposta
+  const tp = { id: null, mode: null, nx: .5, ny: .5, aim: null };
+  function tpGrab(e, mode, nx, ny) { tp.id = e.pointerId; tp.mode = mode; tp.nx = nx; tp.ny = ny; try { cv.setPointerCapture(e.pointerId); } catch (x) { } }
+  function tpEnd() { if (tp.mode === 'fire') { touchFire = false; tp.aim = null; } tp.id = null; tp.mode = null; }
+  cv.addEventListener('pointermove', e => { if (e.pointerId !== tp.id) return; const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height; tp.nx = nx; tp.ny = ny;
+    if (e.pointerType !== 'mouse' && (tp.mode === 'spray' || tp.mode === 'skate')) { mouse.nx = nx; mouse.ny = ny; }
+    if (tp.mode === 'fire') touchAimAt(nx, ny); });
+  // con un'arma da fuoco (o la molotov) in mano, sul telefono il tocco spara
+  function tapShoots() { const p = st.player; return touchMode && !p.hand && p.cur !== 'pugni' && !!G.WEAPONS[p.cur] && !(window.Cantiere && Cantiere.active()); }
+  function touchAimAt(nx, ny) { const h = pickAt(nx, ny); tp.aim = h && h.kind === 'npc' ? { x: h.n.x, y: h.n.y, id: h.n.id } : h && h.kind === 'car' ? { x: h.v.x, y: h.v.y } : R.screenToGround(nx, ny) || tp.aim; }
+  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; if (window.Cantiere && Cantiere.up) Cantiere.up(); if (e.button === 0 && ui.spray) sprayEnd(); if (e.pointerId === tp.id) tpEnd(); });
+  addEventListener('pointercancel', e => { if (e.pointerId === tp.id) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } });
   // [cantiere] tenendo premuto il sinistro e trascinando si posa una fila (muri, recinti, solchi dell'orto…)
   cv.addEventListener('pointermove', e => { if (!(e.buttons & 1) || !window.Cantiere || !Cantiere.active() || !Cantiere.drag) return; const r = cv.getBoundingClientRect(); Cantiere.drag((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height); });
   // [graffiti] la bomboletta: il pennello dello Studio con la misura bloccata da bomboletta. Si impugna dalle Tasche;
@@ -47336,9 +47480,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
   const stick = { x: 0, y: 0 };
-  let lastAim = null, touchFire = false, touchRun = false;
+  let lastAim = null, touchFire = false, touchRun = false, touchBoost = false; const touchTrick = { wheelie: false, peg: 0 };
   function aimAngle() {
     const p = st.player;
+    if (touchMode && tp.aim) {   // [mobile] il dito sullo schermo: si mira lì (alla persona toccata, anche se si muove)
+      const a = tp.aim, n = a.id && G.byId(st, a.id); if (n && !n.dead) { a.x = n.x; a.y = n.y; }
+      ui.aimPoint = { x: a.x, y: a.y }; return Math.atan2(a.y - p.y, a.x - p.x);
+    }
     if (touchMode) {
       // mira automatica: il nemico più vicino davanti, altrimenti la direzione dello sguardo
       let best = null, bd = 16;
@@ -47353,12 +47501,20 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   }
   // [bmx] in BMX si va col punta e clicca; le frecce fanno i trick: giù impenna, destra e sinistra il piede sulla pedalina
   function input() {
-    const r = input0(); if (!r || !st.player.vehicle || !jumpMode()) return r;
-    r.trick = { wheelie: !!keys.arrowdown, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : 0 };
+    const r = input0(); if (!r) return r;
+    const p = st.player;
+    if (window.Skate && Skate.on(st)) {   // [mobile] in tavola: il dito (o il sinistro) tenuto spinge verso quel punto, la levetta curva e spinge
+      const P = Skate.PAD, hold = tp.mode === 'skate'; let aim = r.aim;
+      if (hold) { const g = R.screenToGround(touchMode ? tp.nx : mouse.nx, touchMode ? tp.ny : mouse.ny); if (g && Math.hypot(g.x - p.x, g.y - p.y) > .8) aim = Math.atan2(g.y - p.y, g.x - p.x); }
+      P.push = hold || -stick.y > .4 ? 1 : 0; P.turn = Math.abs(stick.x) > .2 ? stick.x : 0;
+      return Object.assign({}, r, { x: 0, y: 0, aim: aim !== undefined ? aim : aimAngle() });
+    }
+    if (!p.vehicle || !jumpMode()) return r;
+    r.trick = { wheelie: !!keys.arrowdown || touchTrick.wheelie, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : touchTrick.peg };
     return r;
   }
   function input0() {
-    const sprint = !!keys.shift || touchRun, brakeKey = !!keys[' '] || touchBrake;
+    const sprint = !!keys.shift || touchRun || touchBoost, brakeKey = !!keys[' '] || touchBrake;
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (stick.x || stick.y) { // touch: la levetta segue lo schermo
       const B = R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
@@ -47714,9 +47870,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     x.fillStyle = '#0a0816'; x.fillRect(0, 0, 88, 88);
     x.save(); x.translate(44 - p.x * sc, 44 - p.y * sc); x.drawImage(miniBase, 0, 0);
     const jt = G.jobTarget(st); if (jt) { x.fillStyle = '#ffd24a'; x.fillRect(jt.x * sc - 2, jt.y * sc - 2, 4, 4); }
+    // [sottosuolo] le porte di sotto: la metro (quadrato rosso), tombini, pozzi e grate (puntini grigi)
+    if (window.Livelli && !p.indoor) Livelli.S(st).portals.forEach(P => { if (!Livelli.CLIMB.has(P.kind) || P.kind === 'interno') return; const c = p.lv ? P.u : P.s, X = (c[0] + .5) * G.TS, Y = (c[1] + .5) * G.TS; if (Math.abs(X - p.x) > 46 || Math.abs(Y - p.y) > 46) return;
+      if (P.metro) { x.fillStyle = '#d0202a'; x.fillRect(Math.round(X * sc) - 3, Math.round(Y * sc) - 3, 6, 6); x.fillStyle = '#fff'; x.fillRect(Math.round(X * sc) - 2, Math.round(Y * sc) - 1, 4, 1); } else { x.fillStyle = '#9a9aa8'; x.fillRect(Math.round(X * sc) - 1, Math.round(Y * sc) - 1, 2, 2); } });
     st.pickups.forEach(k => { if (!G.pickupVisible(st, k)) return; x.fillStyle = k.kind === 'valigetta' ? '#ff4fa3' : k.kind === 'salute' || k.kind === 'soldi' ? '#7ee0a0' : '#ffd24a'; x.fillRect(Math.round(k.x * sc) - 1, Math.round(k.y * sc) - 1, 2, 2); });
     st.vehicles.forEach(v => { if (v.hidden) return; x.fillStyle = v.police ? (Math.sin(st.clock * 12) > 0 ? '#3a7aff' : '#fff') : v.wreck ? '#222' : '#8a8a9a'; x.fillRect(Math.round(v.x * sc) - 1, Math.round(v.y * sc) - 1, 3, 2); });
-    st.npcs.forEach(n => { if (n.inside || n.dead) return; const a = G.attitude(st, n); x.fillStyle = n.cop ? '#4a8aff' : a.tone === 'bad' ? '#ff5a5a' : a.tone === 'good' ? '#7ee0a0' : a.tone === 'warn' ? '#ffb35c' : '#8a82a0'; x.fillRect(Math.round(n.x * sc) - 1, Math.round(n.y * sc) - 1, 2, 2); });
+    st.npcs.forEach(n => { if (n.inside || n.dead || Math.abs(n.x - p.x) > 46 || Math.abs(n.y - p.y) > 46) return; const a = G.attitude(st, n); /* [fluido] solo chi cade nella minimappa */ x.fillStyle = n.cop ? '#4a8aff' : a.tone === 'bad' ? '#ff5a5a' : a.tone === 'good' ? '#7ee0a0' : a.tone === 'warn' ? '#ffb35c' : '#8a82a0'; x.fillRect(Math.round(n.x * sc) - 1, Math.round(n.y * sc) - 1, 2, 2); });
     x.fillStyle = '#fff'; x.fillRect(Math.round(p.x * sc) - 1, Math.round(p.y * sc) - 1, 3, 3);
     x.restore();
   }
@@ -47731,7 +47890,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (!ui.intro) st.npcs.forEach(n => {
       if ((n.inside && !inRoom(n)) || n.dead) return;
       if (p.indoor && !inRoom(n)) return;   // dentro un edificio il fuori non si vede (chi è nella stanza sì)
-      const d = Math.hypot(n.x - p.x, n.y - p.y);
+      const d = Math.hypot(n.x - p.x, n.y - p.y); if (d > 30) return;   // [fluido] oltre i 30 m niente fumetti né icone: inutile proiettarli
       const pr = R.project(n.x, 2.35, n.y); if (pr.behind || pr.x < -.05 || pr.x > 1.05 || pr.y < -.05 || pr.y > 1.05) return;
       const sx = pr.x * W, sy = pr.y * H;
       if (n.bark && n.bark.until > st.clock && d < 26) {
@@ -47831,28 +47990,86 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   }
 
   // ---------- Touch ----------
+  // [mobile] la levetta resta per camminare e guidare; il resto è punta e clicca. I pulsanti a destra cambiano con quello
+  // che stai facendo: a piedi, in auto, in BMX, in tavola, con la bomboletta in mano
   let touchBrake = false;
   const touchMode = matchMedia('(pointer: coarse)').matches;
+  const MODE_NM = { libero: 'libero', tag: 'tag', throw: 'throw-up', pezzo: 'pezzo', burner: 'burner', tavoletta: 'tavoletta' };
+  function sprayColor(d) { const S = ui.spray; if (!S) return; S.col = (S.col + (d || 1) + SPRAY_COLS.length) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[S.col][1] + '.'); }
+  function sprayMode() { if (!window.Writing || st.player.hand !== 'bomboletta') return; const m = Writing.cycleMode(st); toast('Bomboletta: ' + MODE_NM[m] + (m === 'libero' ? '' : m === 'tavoletta' ? ' — trascina sul muro la finestra, poi disegni' : ' — tieni premuto sul muro') + '.'); }
+  const TB = {
+    salta: { l: 'Salta', hold: 1, big: 1, dn: () => { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; }, up: () => { touchBrake = false; G.jumpHold(st, false); } },
+    corri: { l: 'Corri', dn: () => { touchRun = !touchRun; }, on: () => touchRun },
+    arma: { l: 'Arma', dn: () => G.switchWeapon(st, 1) },
+    tacc: { l: 'Tacc.', dn: () => toggleBook() },
+    freno: { l: 'Freno', hold: 1, big: 1, dn: () => { touchBrake = true; }, up: () => { touchBrake = false; } },
+    spinta: { l: 'Spinta', hold: 1, dn: () => { touchBoost = true; }, up: () => { touchBoost = false; } },
+    scendi: { l: 'Scendi', dn: () => { click.t = null; ui.mark = null; doAct('veicolo'); } },
+    impenna: { l: 'Impenna', hold: 1, dn: () => { touchTrick.wheelie = true; }, up: () => { touchTrick.wheelie = false; } },
+    pegsx: { l: '◄ Piede', hold: 1, dn: () => { touchTrick.peg = 1; }, up: () => { touchTrick.peg = 0; } },
+    pegdx: { l: 'Piede ►', hold: 1, dn: () => { touchTrick.peg = -1; }, up: () => { touchTrick.peg = 0; } },
+    ollie: { l: 'Ollie', sub: 'trascina: trick', hold: 1, big: 1, dn: () => Skate.padCrouch(true), up: () => Skate.padCrouch(false), drag: (dx, dy) => Skate.swipe(dx, dy) },
+    frena: { l: 'Frena', hold: 1, dn: () => { Skate.PAD.brake = 1; }, up: () => { Skate.PAD.brake = 0; } },
+    modo: { l: () => 'Modo: ' + MODE_NM[(window.Writing && Writing.mode(st)) || 'libero'], dn: sprayMode },
+    colore: { l: 'Colore', col: () => ui.spray ? SPRAY_COLS[ui.spray.col][0] : '', dn: () => sprayColor(1) },
+  };
+  // i pulsanti di adesso: pochi, il principale per primo (va in basso a destra, sotto il pollice)
+  function touchSet() {
+    const p = st.player;
+    if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || (window.Cantiere && Cantiere.active())) return [];
+    if (window.Skate && Skate.on(st)) return ['ollie'];
+    if (p.vehicle) return jumpMode() ? ['salta', 'impenna'] : ['freno', 'scendi'];
+    if (ui.spray) return ui.spray.tool === 'bomboletta' && !(window.Writing && Writing.mode(st) === 'tavoletta') ? ['colore', 'modo'] : ['colore'];
+    return ['salta'];
+  }
+  const lab = d => typeof d.l === 'function' ? d.l() : d.l;
+  let tbKey = '';
+  function touchButtons() {
+    if (!touchMode) return;
+    const list = touchSet(), key = list.map(k => k + ':' + lab(TB[k])).join('|'), box = $('tbtns');
+    if (key !== tbKey) {
+      tbKey = key; box.innerHTML = '';
+      list.forEach(k => {
+        const d = TB[k], b = document.createElement('button'); b.dataset.k = k; if (d.big) b.className = 'big';
+        b.innerHTML = esc(lab(d)) + (d.sub ? `<small>${esc(d.sub)}</small>` : '');
+        let lx = 0, ly = 0, held = false;
+        b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); A.init(); if (ui.intro || ui.over) return; try { b.setPointerCapture(e.pointerId); } catch (x) { } held = true; lx = e.clientX; ly = e.clientY; b.classList.add('on'); d.dn(); });
+        b.addEventListener('pointermove', e => { if (!held || !d.drag) return; d.drag(e.clientX - lx, e.clientY - ly); lx = e.clientX; ly = e.clientY; });
+        const up = () => { if (!held) return; held = false; b.classList.remove('on'); if (d.up) d.up(); };
+        b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+        box.appendChild(b);
+      });
+    }
+    box.querySelectorAll('button').forEach(b => { const d = TB[b.dataset.k]; if (d.on) b.classList.toggle('on', !!d.on()); if (d.col) b.style.borderColor = d.col() || ''; });
+  }
   if (touchMode) {
     $('touch').hidden = false; $('bookBtn').style.display = 'none';
+    $('debt').addEventListener('click', () => { if (!ui.intro && !ui.over) toggleBook(); });   // il taccuino: tocca i soldi e l'ora
     const sEl = $('stick'), kn = $('knob'); let sid = null;
     sEl.addEventListener('pointerdown', e => { A.init(); sid = e.pointerId; sEl.setPointerCapture(sid); mv(e); });
     sEl.addEventListener('pointermove', e => { if (e.pointerId === sid) mv(e); });
     const end = () => { sid = null; stick.x = stick.y = 0; kn.style.left = '43px'; kn.style.top = '43px'; };
     sEl.addEventListener('pointerup', end); sEl.addEventListener('pointercancel', end);
     function mv(e) { const r = sEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 65) / 50, dy = (e.clientY - r.top - 65) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } stick.x = dx; stick.y = dy; kn.style.left = 43 + dx * 40 + 'px'; kn.style.top = 43 + dy * 40 + 'px'; }
-    $('tbtns').querySelectorAll('button').forEach(b => {
-      b.addEventListener('pointerdown', e => {
-        e.preventDefault(); A.init(); const k = b.dataset.k; if (ui.intro || ui.over) return;
-        if (k === 'shift') { touchRun = !touchRun; b.style.borderColor = touchRun ? 'var(--amber)' : ''; return; }
-        if (k === 'tab') return toggleBook(); if (ui.dialog || ui.book) return;
-        if (k === 'fire') { touchFire = true; mouse.pressed = true; return; }
-        if (k === 'space') { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; return; }   // [salto]
-        if (k === 'e') doAct('scippo'); if (k === 'f') doAct('veicolo'); if (k === 'p') doBmx(); if (k === 't') openTalk(); if (k === 'q') G.switchWeapon(st, 1); if (k === 'r') G.reload(st);
-      });
-      const up = () => { if (b.dataset.k === 'fire') touchFire = false; if (b.dataset.k === 'space') { touchBrake = false; G.jumpHold(st, false); } };
-      b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);
-    });
+  }
+
+  // ---------- [prestazioni] Il contatore: F3 (o ?perf nell'indirizzo) ----------
+  // fps, il fotogramma peggiore, i millisecondi della logica (G.step) e della grafica lato processore (R.frame),
+  // e il tempo vero della scheda video per fase (scena con le ombre, bagliore, pittura, post), se il browser lo concede.
+  const PERF = { on: /[?&]perf\b/.test(location.search), el: null, t0: 0, frames: 0, step: 0, frame: 0, worst: 0 };
+  addEventListener('keydown', e => { if (e.key === 'F3') { e.preventDefault(); PERF.on = !PERF.on; if (PERF.el) PERF.el.hidden = !PERF.on; } });
+  function perfTick(now) {
+    if (!PERF.on) { PERF.frames = PERF.step = PERF.frame = PERF.worst = 0; PERF.t0 = now; return; }
+    if (!PERF.el) { const d = document.createElement('div'); d.id = 'perf'; d.style.cssText = 'position:absolute;left:50%;top:34px;transform:translateX(-50%);z-index:60;pointer-events:none;background:rgba(8,8,14,.82);color:#e8e0d0;font:11px/1.45 monospace;padding:6px 10px;border:1px solid #444;white-space:pre'; app.appendChild(d); PERF.el = d; if (R.gpuTiming) R.gpuTiming(true); }
+    if (now - PERF.t0 < 1000 || !PERF.frames) return;
+    const n = PERF.frames, sec = (now - PERF.t0) / 1000, g = R.gpuTimes || { ok: false, ms: {}, info: {} }, ms = g.ms, I = g.info || {};
+    const gt = ['scena', 'bagliore', 'pittura', 'post'].map(k => ms[k] !== undefined ? `${k} ${ms[k].toFixed(1)}` : '').filter(Boolean);
+    const gsum = Object.values(ms).reduce((a, b) => a + b, 0);
+    PERF.el.textContent = `${(n / sec).toFixed(0)} fps · peggiore ${PERF.worst.toFixed(0)} ms\n` +
+      `logica ${(PERF.step / n).toFixed(1)} ms · grafica (processore) ${(PERF.frame / n).toFixed(1)} ms\n` +
+      (g.ok ? `scheda video ${gsum.toFixed(1)} ms: ${gt.join(' · ')}` : 'scheda video: il browser non dà i tempi') + '\n' +
+      `${I.calls || '?'} disegni · ${I.tris ? Math.round(I.tris / 1000) + 'k' : '?'} triangoli · ${I.progs || '?'} shader · ${I.px || ''} · abitanti fuori ${st.npcs.filter(k => !k.dead && !k.inside).length}/${st.npcs.length}`;
+    PERF.t0 = now; PERF.frames = PERF.step = PERF.frame = PERF.worst = 0;
   }
 
   // ---------- Avvio ----------
@@ -47872,11 +48089,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   if (window.Editor) Editor.attach({ get st() { return st; }, ui, G, R, cv, app, toast });   // [editor] F2
   function size() { const w = app.clientWidth || innerWidth, h = app.clientHeight || innerHeight; R.resize(w, h, Math.min(2, devicePixelRatio || 1)); }
   new ResizeObserver(size).observe(app); size();
-  let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false;
+  let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
   function loop(now) {
     const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
     if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > 1 / 32) R.lowQuality(); } }
+    // [fluido] risoluzione dinamica: media mobile del fotogramma; sopra i 22 ms si scende di un gradino, sotto i 14 ms per 4 s si risale (al massimo un cambio ogni 1,5 s)
+    if (R.setRes && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
+      if (resT > 1.5 && resAvg > .022) { R.setRes(R.res * .85); resT = 0; resAvg = .018; }
+      else if (resT > 4 && resAvg < .014 && R.res < 1) { R.setRes(R.res * 1.1); resT = 0; } }
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
     const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]
@@ -47886,21 +48107,23 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       if (!ui.intro && (mouse.down || touchFire || mouse.pressed)) G.fire(st, inp.aim !== undefined ? inp.aim : aimAngle(), ui.aimPoint, mouse.pressed);
       mouse.pressed = false;
       tickClick(); sprayTick(dt);
-      G.step(st, dt, inp);
+      const tS = performance.now(); G.step(st, dt, inp); PERF.step += performance.now() - tS;
     }
     if (st.over && !ui.over) endScreen();
     ui.flash = Math.max(0, ui.flash - dt * 1.2);
     ui.fade = ui.fadeUntil && ui.time < ui.fadeUntil ? Math.min(1, (ui.fadeUntil - ui.time) * 1.5) : 0;
     ui.desat = st.slowmo > 0;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
+    const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     R.frame(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    PERF.frame += performance.now() - tF;
     sounds();
-    drawBubbles(); crosshair();
-    hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); }
+    drawBubbles(); crosshair(); perfTick(now);
+    hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
-  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y) };
+  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)
   }
 })();
 </script>
@@ -55036,6 +55259,203 @@ var MenuUI = (function () {
     const n = quiCount(st), d = b.querySelector('.dot'); d.hidden = !n; d.textContent = n;
   } catch (e) { } }, 300);
   return { open, close, toggle, render, icon, state: U, quiList, quiCount, thumbFor };
+})();
+</script>
+<script>// Porto Vecchio — Le icone a schermo (10-11 ottobre) [mobile]
+// Tre icone in basso, uguali su computer e telefono, ognuna gira fra i suoi stati a ogni tocco:
+// - Graffiti: mani libere → bomboletta → tavoletta → mani libere (col pennarello se non hai bombolette).
+// - Ruote: a piedi → BMX → skate → a piedi (lo skate solo se hai la tavola).
+// - Zaino: il menu; il numero sono le cose da fare qui. La mappa: tocca la minimappa.
+// Più la mano, solo quando impugni un'arma o un oggetto: con l'arma sul telefono si spara dove tocchi (main.js, tapShoots)
+// e il tocco sulla mano ricarica; con un oggetto il tocco sulla mano lo usa (il cibo si mangia, la pala scava…). La ✕ lo rimette via.
+// Sostituisce il pulsante rotondo ZAINO di menu_ui.js (#muBtn) e il riquadro «Qui» di risacca_ui.js (nascosti dal CSS qui sotto).
+const Comandi = (() => {
+  'use strict';
+  if (typeof document === 'undefined') return {};
+  const $ = id => document.getElementById(id), PV = () => window.__pv, ST = () => PV() && PV().st;
+  const say = (m, k) => { const pv = PV(); if (pv && pv.toast && m) pv.toast(m, k); };
+  const has = id => { try { return (Oggetti.inv(ST()) || {})[id] >= 1; } catch (e) { return false; } };
+  const equip = id => typeof Azioni !== 'undefined' && Azioni.playerEquip(ST(), id || null);
+  const W = () => typeof Writing !== 'undefined' ? Writing : null;
+  const tavOn = st => { const p = st.player; return (p.hand === 'bomboletta' || p.hand === 'pennarello') && W() && W().mode(st) === 'tavoletta'; };
+  const onBmx = st => { const p = st.player, v = p.vehicle && st.vehicles.find(q => q.id === p.vehicle); return !!(v && v.kind === 'bmx'); };
+  const onSk = st => typeof Skate !== 'undefined' && Skate.on(st);
+  let lastMode = 'libero';
+
+  // ---------------- le azioni delle icone ----------------
+  function bomboletta() {
+    const st = ST(), p = st.player, w = W();
+    if ((p.hand === 'bomboletta' || p.hand === 'pennarello') && !tavOn(st)) { equip(null); say('Mani libere.'); return; }
+    if (w && w.mode(st) === 'tavoletta') w.setMode(st, lastMode);
+    if (has('bomboletta')) { if (p.hand !== 'bomboletta') equip('bomboletta'); else say('Bomboletta: ' + w.mode(st) + '.'); return; }
+    if (has('pennarello')) { equip('pennarello'); return; }
+    say('Niente bombolette: le trovi in ferramenta e in officina.', 'bad');
+  }
+  function tavoletta() {
+    const st = ST(), w = W(); if (!w) return;
+    if (tavOn(st)) { equip(null); w.setMode(st, lastMode); say('Mani libere.'); return; }
+    const tool = has('bomboletta') ? 'bomboletta' : has('pennarello') ? 'pennarello' : null;
+    if (!tool) { say('Per la tavoletta ti serve una bomboletta o un pennarello.', 'bad'); return; }
+    if (w.mode(st) !== 'tavoletta') lastMode = w.mode(st);
+    equip(tool); w.setMode(st, 'tavoletta');
+    say(PV().touchMode ? 'Tavoletta: trascina il dito sul muro (o su un mezzo) per la finestra, poi ci disegni sopra.' : 'Tavoletta: trascina sul muro (o su un mezzo) la finestra, poi ci disegni sopra.');
+  }
+  function bmx() {
+    const st = ST(); if (onSk(st)) Skate.dismount(st, true);
+    PV().bmx();
+  }
+  function skate() {
+    const st = ST(), p = st.player;
+    if (onBmx(st)) PV().act('veicolo');
+    if (p.vehicle && !onSk(st)) { say('Prima scendi dal mezzo.', 'bad'); return; }
+    if (typeof Skate === 'undefined' || Skate.key(st)) return;
+    if (!Skate.S(st).owned) say('La tavola non ce l\'hai più: ne trovi un\'altra nei posti dello skate (il cerchio giallo).', 'bad');
+    else say(p.indoor ? 'Al chiuso la tavola resta sotto il braccio.' : 'Qui non si va in tavola.', 'bad');
+  }
+  function graffiti() {   // mani libere → bomboletta → tavoletta → mani libere
+    const st = ST(), p = st.player, spray = p.hand === 'bomboletta' || p.hand === 'pennarello';
+    if (!spray) { bomboletta(); return; }
+    if (!tavOn(st)) { tavoletta(); return; }
+    tavoletta();   // dalla tavoletta: mani libere
+  }
+  function ruote() {   // a piedi → BMX → skate → a piedi
+    const st = ST();
+    if (onSk(st)) { Skate.dismount(st); return; }
+    if (onBmx(st)) { if (typeof Skate !== 'undefined' && Skate.S(st).owned) skate(); else bmx(); return; }
+    bmx();
+  }
+  function mappa() { if (typeof MenuUI === 'undefined') return; if (MenuUI.state.open && MenuUI.state.tab === 'mappa') MenuUI.close(); else MenuUI.open('mappa'); }
+  function zaino() { if (typeof MenuUI !== 'undefined') MenuUI.toggle('zaino'); }
+  // la mano: usa quello che impugni
+  const HANDACT = ['scava', 'dipingi', 'foto', 'guardia', 'ambulanza', 'banda'];
+  function usaMano() {
+    const st = ST(), p = st.player, pv = PV(), h = p.hand;
+    if (!h) {
+      const Wp = pv.G.WEAPONS[p.cur]; if (!Wp) return;
+      if (Wp.throw) { say(pv.touchMode ? 'Tocca dove lanciarla.' : 'Col destro la lanci verso il puntatore.'); return; }
+      pv.G.reload(st); return;
+    }
+    if (h === 'bomboletta') { pv.sprayMode(); return; }
+    if (h === 'pennarello') { say(pv.touchMode ? 'Tieni il dito su un muro vicino: la tua tag.' : 'Tieni premuto il sinistro su un muro vicino: la tua tag.'); return; }
+    const C = typeof Oggetti !== 'undefined' && Oggetti.CAT[h];
+    if (C && C.eat) { const r = Oggetti.consume(st, h); if (r && r.msg) say(r.msg, r.ok === false ? 'bad' : 'info'); if (!has(h)) equip(null); return; }
+    const acts = typeof Azioni !== 'undefined' ? (Azioni.playerActions(st) || []) : [], a = acts.find(x => HANDACT.includes(x.id));
+    if (a && a.run) { const r = a.run(); say(typeof r === 'string' ? r : a.label); return; }
+    if (a && a.off) { say(a.off, 'bad'); return; }
+    say('Qui con questo non c\'è niente da fare.');
+  }
+
+  // ---------------- le icone (pixel art 16×16) ----------------
+  function px(c, rows, pal) { const x = c.getContext('2d'); x.clearRect(0, 0, 16, 16); rows.forEach((r, j) => [...r].forEach((ch, i) => { if (pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(i, j, 1, 1); } })); }
+  const DRAW = {
+    bomboletta: c => px(c, ['      kk        ', '     kwwk   r r ', '     kkkk  r r  ', '    rrrrrr  r r ', '    rwrrrr      ', '    rwrrrr      ', '    rwrrrr      ', '    rrrrrr      ', '    rwrrrr      ', '    rwrrrr      ', '    rrrrrr      ', '    rwrrrr      ', '    rrrrrr      ', '    kkkkkk      '], { k: '#3a3a44', w: '#ffb0a0', r: '#c42a22' }),
+    bmx: c => px(c, ['', '', '', '', '           kk   ', '          k     ', '    ccccccc     ', '    c   ck      ', '   c   c  k     ', ' ppp  c  ppp    ', 'p   pcccp   p   ', 'p  k p  p k p   ', 'p   p   p   p   ', ' ppp     ppp    '].map(r => r.padEnd(16)), { c: '#e8dcc0', k: '#1c1a22', p: '#a05ad8' }),
+    skate: c => px(c, ['', '', '', '', '', '', '', ' y            y ', ' yrrrrrrrrrrrry ', '  yyyyyyyyyyyy  ', '   kk      kk   ', '   ww      ww   ', '   ww      ww   '].map(r => r.padEnd(16)), { y: '#ffd23a', r: '#ff5fa2', k: '#5a5a66', w: '#e8e0d0' }),
+    tavoletta: c => px(c, ['', '  kkkkkkkkkkk   ', '  kwwwwwwwwwk   ', '  kwwrwwwwwwk   ', '  kwrwrwwbwwk   ', '  kwwwwrwbwwk  p', '  kwwwwwrwwwk pp', '  kwwbbwwwwwkpp ', '  kwwwwwwwwwpp  ', '  kwwwwwwwwppk  ', '  kwwwwwwwwwwk  ', '  kkkkkkkkkkkk  '].map(r => r.padEnd(16)), { k: '#2a2a34', w: '#efe3c8', r: '#c42a22', b: '#2a6ac8', p: '#ffd23a' }),
+  };
+  function iconOf(c, id) {
+    if (DRAW[id]) { DRAW[id](c); return; }
+    if (typeof MenuUI !== 'undefined' && MenuUI.icon) MenuUI.icon(c, id);
+  }
+
+  // ---------------- la fila ----------------
+  const ITEMS = [
+    ['graffiti', 'Bomboletta · tavoletta', '', graffiti],
+    ['ruote', 'BMX · skate', '', ruote],
+    ['zaino', 'Zaino', 'I', zaino],
+  ];
+  function mount() {
+    if ($('dock') || !$('app')) return !!$('dock');
+    const css = document.createElement('style'); css.textContent = `
+#muBtn { display: none !important; }
+#weapon { display: none !important; }   /* l'arma e i colpi stanno sulla mano */
+#dock { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 31; display: flex; gap: 8px; align-items: flex-end; pointer-events: auto; }
+#dock button { position: relative; width: 50px; height: 50px; border-radius: 50%; padding: 0; cursor: pointer; display: grid; place-items: center; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  border: 1px solid rgba(233,220,188,.25); background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.14), transparent 45%), linear-gradient(135deg, #24443c, #2e2c40 50%, #24443c);
+  box-shadow: 0 0 0 2px rgba(13,16,21,.8), 0 4px 12px rgba(0,0,0,.45); }
+#dock button:hover { transform: translateY(-1px); }
+#dock button canvas { width: 30px; height: 30px; image-rendering: pixelated; pointer-events: none; }
+#dock button.on { box-shadow: 0 0 0 2px rgba(13,16,21,.8), 0 0 0 4px #ffd23a, 0 4px 12px rgba(0,0,0,.45); }
+#dock button.off canvas { opacity: .35; }
+#dock button kbd { position: absolute; left: 50%; bottom: -3px; transform: translateX(-50%); font: 600 9px 'Saira Condensed', sans-serif; color: #E9DCBC; background: rgba(13,16,21,.85); padding: 0 4px; border-radius: 3px; pointer-events: none; }
+#dock .dot { position: absolute; right: -4px; top: -4px; min-width: 18px; height: 18px; border-radius: 9px; background: #FF5FA2; color: #0D1015; font: 700 11px/18px 'Saira Condensed', sans-serif; text-align: center; pointer-events: none; }
+#dkHand { width: 64px !important; height: 64px !important; margin-right: 6px; box-shadow: 0 0 0 2px rgba(13,16,21,.8), 0 0 0 4px #B08D57, 0 4px 12px rgba(0,0,0,.45) !important; }
+#dkHand canvas { width: 40px !important; height: 20px !important; margin-bottom: 10px; }
+#dkHand canvas.sq { width: 30px !important; height: 30px !important; }
+#dkHand .lb { position: absolute; left: 50%; bottom: 5px; font-size: 9px !important; transform: translateX(-50%); white-space: nowrap; font: 600 10px 'Saira Condensed', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #E9DCBC; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+#dkHand .x { position: absolute; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 12px sans-serif; color: #E9DCBC; background: #2a2030; border: 1px solid rgba(233,220,188,.5); }
+#dkHand .x { right: -6px; top: -6px; }
+#dock button[data-id=graffiti]::after { content: ''; position: absolute; left: 50%; bottom: 4px; width: 14px; height: 4px; margin-left: -7px; border-radius: 2px; background: var(--col, transparent); pointer-events: none; }
+#rs-here button.qui { display: none !important; }   /* il numero sta sullo zaino */
+#ctx { bottom: 112px !important; }
+#rs-here { bottom: 72px !important; }
+@media (pointer: coarse) {
+  #ctx { bottom: auto !important; }
+  #dock { left: 168px; transform: none; bottom: 12px; gap: 7px; max-width: calc(100vw - 410px); flex-wrap: wrap-reverse; }
+  #dock button { width: 46px; height: 46px; } #dock button canvas { width: 28px; height: 28px; } #dock button kbd { display: none; }
+  #dkHand { width: 58px !important; height: 58px !important; }
+  #rs-here { left: 168px !important; transform: none !important; bottom: 76px !important; max-width: calc(100vw - 410px) !important; justify-content: flex-start !important; }
+  #cnBtn { right: 8px !important; bottom: auto !important; top: 186px !important; }
+  #me-box, #sound, #rs-open, #rs-sneak { display: none !important; }   /* sul telefono: i bisogni nel menu (Chi è), Risacca e chat toccando le persone */
+  #debt { pointer-events: auto; cursor: pointer; }   /* toccare i soldi e l'ora apre il taccuino */
+  #feed .fi:nth-child(n+3) { display: none; }
+}
+@media (pointer: coarse) and (max-width: 640px) {
+  #dock { left: auto; right: 8px; top: 190px; bottom: auto; flex-direction: column; flex-wrap: nowrap; align-items: center; max-width: none; }
+  #dkHand { margin: 0 0 14px 0; }
+  #rs-here { left: 12px !important; max-width: calc(100vw - 80px) !important; bottom: 200px !important; }
+  #cnBtn { right: auto !important; left: 12px !important; top: 150px !important; }
+}`;
+    document.head.appendChild(css);
+    const d = document.createElement('div'); d.id = 'dock'; d.className = 'hud';
+    const hb = document.createElement('button'); hb.id = 'dkHand'; hb.hidden = true; hb.title = 'In mano';
+    hb.innerHTML = '<canvas width="32" height="16"></canvas><span class="lb"></span><span class="x" title="Metti via">✕</span>';
+    hb.addEventListener('click', e => { if (e.target.classList.contains('x')) { equip(null); say('Mani libere.'); } else usaMano(); upd(true); });
+    d.appendChild(hb);
+    ITEMS.forEach(([id, name, k, fn]) => {
+      const b = document.createElement('button'); b.dataset.id = id; b.title = name + (k ? ' (' + k + ')' : '');
+      b.innerHTML = `<canvas width="16" height="16"></canvas>${k ? `<kbd>${k}</kbd>` : ''}${id === 'zaino' ? '<span class="dot" hidden></span>' : ''}`;
+      b.addEventListener('click', () => { try { fn(); } catch (e) { console.warn('[comandi]', e); } upd(true); });
+      d.appendChild(b);
+    });
+    $('app').appendChild(d);
+    const mi = $('mini'); if (mi) { mi.style.pointerEvents = 'auto'; mi.style.cursor = 'pointer'; mi.title = 'Mappa'; mi.addEventListener('click', () => mappa()); }   // la minimappa apre la mappa
+    return true;
+  }
+  let handKey = '';
+  function upd(now) {
+    const pv = PV(), st = ST(); if (!pv || !st || !mount()) return;
+    const ui = pv.ui, p = st.player, d = $('dock');
+    const hide = ui.intro || ui.over || ui.dialog || ui.book || ui.menu || (typeof Cantiere !== 'undefined' && Cantiere.active()) || (window.Editor && Editor.active && Editor.active());
+    d.style.display = hide ? 'none' : ''; if (hide) return;
+    const spray = p.hand === 'bomboletta' || p.hand === 'pennarello', sk = onSk(st), bm = onBmx(st);
+    d.querySelectorAll('button[data-id]').forEach(b => {
+      const id = b.dataset.id, c = b.querySelector('canvas');
+      const look = id === 'graffiti' ? (tavOn(st) ? 'tavoletta' : 'bomboletta') : id === 'ruote' ? (sk ? 'skate' : 'bmx') : id;
+      if (c.dataset.look !== look) { iconOf(c, look); c.dataset.look = look; }
+      b.classList.toggle('on', id === 'graffiti' ? spray : id === 'ruote' ? sk || bm : false);
+      if (id === 'graffiti') { b.classList.toggle('off', !has('bomboletta') && !has('pennarello')); b.style.setProperty('--col', spray && ui.spray ? pv.SPRAY_COLS[ui.spray.col][0] : 'transparent'); }
+      if (id === 'zaino') { const dot = b.querySelector('.dot'), n = typeof MenuUI !== 'undefined' && MenuUI.quiCount ? MenuUI.quiCount(st) : 0; dot.hidden = !n; dot.textContent = n; }
+    });
+    // la mano
+    const hb = $('dkHand'), Wp = !p.hand && p.cur !== 'pugni' && pv.G.WEAPONS[p.cur], id = spray ? null : p.hand || (Wp ? p.cur : null);
+    hb.hidden = !id; if (!id) { handKey = ''; return; }
+    const ammo = Wp && p.arms[p.cur] ? (Wp.throw ? '×' + ((p.arms[p.cur].mag || 0) + (p.arms[p.cur].reserve || 0)) : (p.arms[p.cur].mag || 0) + '/' + (p.arms[p.cur].reserve || 0)) : '';
+    const name = Wp ? Wp.name : (typeof Oggetti !== 'undefined' && Oggetti.nm ? Oggetti.nm(id) : id);
+    const hint = Wp ? (pv.touchMode ? (Wp.throw ? 'tocca dove lanciarla' : 'tocca dove sparare · qui: ricarica') : (Wp.throw ? 'destro: lancia' : 'destro: spara · clic qui: ricarica'))
+      : 'tocca qui per usarlo';
+    const key = id + '|' + ammo;
+    if (key !== handKey || now) {
+      handKey = key;
+      const wide = !!Wp || /^(pala|piccone|ascia|zappa|falce|sega|canna|carriola)$/.test(id), c = hb.querySelector('canvas');
+      c.width = wide ? 32 : 16; c.height = 16; c.className = wide ? '' : 'sq';
+      if (typeof MenuUI !== 'undefined' && MenuUI.icon) MenuUI.icon(c, id);
+      hb.querySelector('.lb').textContent = ammo || name;
+      hb.title = name + ' — ' + hint;
+    }
+  }
+  setInterval(() => { try { upd(false); } catch (e) { if (!upd.err) { upd.err = 1; console.warn('[comandi]', e); } } }, 200);
+  return { bomboletta, tavoletta, bmx, skate, mappa, zaino, usaMano, update: upd };
 })();
 </script>
 <script>/* Interni, la grafica [interni 4/10].

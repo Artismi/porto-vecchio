@@ -123,9 +123,11 @@ var Game = (function () {
     const pop = () => { const top = heap[0], lh = heap.pop(), lf = hf.pop(); if (heap.length) { heap[0] = lh; hf[0] = lf; let i = 0; for (; ;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && hf[l] < hf[m]) m = l; if (r < heap.length && hf[r] < hf[m]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; [hf[m], hf[i]] = [hf[i], hf[m]]; i = m; } } return top; };
     seen[si] = gen; cost[si] = 0; came[si] = -1; push(si, 0);
     const hx = g[0], hy = g[1]; let found = si === gi, steps = 0;
+    // [fluido] il tetto di caselle esplorate cresce con la distanza: una meta irraggiungibile si scopre subito, non dopo 70.000 caselle (30-40 ms, uno scatto)
+    const span = Math.abs(hx - s[0]) + Math.abs(hy - s[1]), cap = Math.min(PF.cap, 1500 + span * span * 3);
     while (heap.length && !found) {
       const cur = pop(); if (shut[cur] === gen) continue; shut[cur] = gen; if (cur === gi) { found = true; break; }
-      if (++steps > PF.cap) break;
+      if (++steps > cap) break;
       const cx = cur % GW, cy = (cur / GW) | 0;
       for (let k = 0; k < 8; k++) {
         const dx = DX8[k], dy = DY8[k];
@@ -1889,9 +1891,9 @@ var Game = (function () {
     const fx = Math.cos(v.ang), fy = Math.sin(v.ang);
     const check = (x, y, r) => { const dx = x - v.x, dy = y - v.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx); if (along > 0 && along < 9 && lat < 1.3 + Math.min(r, .5)) block = Math.min(block, along - r); };
     if (!st.player.vehicle) check(st.player.x, st.player.y, .4);
-    st.npcs.forEach(n => { if (!n.inside && !n.dead) check(n.x, n.y, .4); else if (n.dead && !n.inside) check(n.x, n.y, .3); });
+    for (const n of st.npcs) { if (n.inside || Math.abs(n.x - v.x) > 10 || Math.abs(n.y - v.y) > 10) continue; check(n.x, n.y, n.dead ? .3 : .4); }   // [fluido] solo chi è a portata
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
-    st.vehicles.forEach(o => { if (o === v || o.hidden) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1); });
+    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1); });
     const K = VK[v.kind];
     let want = target;
     if (block < 7) want = Math.max(0, (block - 2.2) * 1.6);
@@ -2315,6 +2317,16 @@ var Game = (function () {
   }
 
   // ---------------- CICLO ----------------
+  // [fluido] la bolla: centro un po' avanti nella direzione di marcia, raggio che cresce con la velocità
+  function bubble(st) {
+    const p = st.player, v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
+    const vx = v ? (v.vx || 0) : Math.cos(p.face || 0) * (p.speed || 0), vy = v ? (v.vy || 0) : Math.sin(p.face || 0) * (p.speed || 0), sp = Math.hypot(vx, vy);
+    return (st.bubble = { x: p.x + vx * 1.5, y: p.y + vy * 1.5, r: 60 + sp * 2.5 });
+  }
+  const inBubble = (B, x, y) => Math.abs(x - B.x) < B.r && Math.abs(y - B.y) < B.r;
+  // chi sta combattendo, inseguendo, scappando o soffrendo resta sempre a dettaglio pieno, anche lontano
+  const BUSY = { combatte: 1, insegue: 1, affronta: 1, fugge: 1, arresta: 1, rientra: 1 };
+  const calmNpc = n => !BUSY[n.action.name] && !n.aggro && !(n.burn > 0) && !(n.stun > 0) && !n.alarm && !(n.panic > 0) && !n.kbx && !n.kby;
   function step(st, dtReal, inp) {
     if (st.over) return;
     if (st.hitstop > 0) { st.hitstop -= dtReal; return; }
@@ -2341,11 +2353,18 @@ var Game = (function () {
       }
       return true;
     });
+    // [fluido] la bolla del dettaglio: attorno al giocatore (spostata in avanti e più larga quando va forte) tutto si calcola
+    // a ogni fotogramma; fuori, chi fa la sua giornata pensa e cammina a passi radi (4 volte al secondo, col tempo accumulato):
+    // arriva negli stessi posti alle stesse ore, solo senza le finezze che tanto nessuno vede
+    const B = bubble(st);
     for (const n of st.npcs) {
       if (n.dead) continue;
-      n.thinkAt -= dt;
+      let ndt = dt;
+      if (!inBubble(B, n.x, n.y) && calmNpc(n)) { n.__far = (n.__far || 0) + dt; if (n.__far < .25) continue; ndt = n.__far; }
+      n.__far = 0;
+      n.thinkAt -= ndt;
       if (n.thinkAt <= 0) { n.thinkAt = n.action.name === 'combatte' ? .25 : .35; think(st, n); }
-      moveNpc(st, n, dt);
+      moveNpc(st, n, ndt);
       if (!n.inside) pushOutOfVehicles(st, n, .35);
     }
     separate(st);   // [passo]
@@ -2360,17 +2379,26 @@ var Game = (function () {
     }
     // urti tra veicoli
     for (let i = 0; i < st.vehicles.length; i++) for (let j = i + 1; j < st.vehicles.length; j++) {
-      const a = st.vehicles[i], b = st.vehicles[j]; if (a.hidden || b.hidden) continue;
+      const a = st.vehicles[i], b = st.vehicles[j]; if (a.hidden || b.hidden || Math.abs(a.x - b.x) > 12 || Math.abs(a.y - b.y) > 12) continue;   // [fluido] lontani non si toccano
       collideVehicles(st, a, b);
     }
     if (st.player.vehicle && st.player.x !== undefined) { const v = st.vehicles.find(k => k.id === st.player.vehicle); if (v) { st.player.x = v.x; st.player.y = v.y; } }
     updateProjectiles(st, dt);
     updateHazards(st, dt);
     updatePickups(st);
-    const live = st.npcs.filter(n => !n.inside && !n.dead);
-    for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
-      const a = live[i], b = live[j], d = dist(a.x, a.y, b.x, b.y);
-      if (d < .55 && d > .001) { const push = (.55 - d) / 2, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d; if (walkM(a.x - ux * push, a.y - uy * push)) { a.x -= ux * push; a.y -= uy * push; } if (walkM(b.x + ux * push, b.y + uy * push)) { b.x += ux * push; b.y += uy * push; } }
+    // [fluido] chi si pesta i piedi si scosta: si confrontano solo i vicini di casella (una griglia), non tutte le coppie dell'isola
+    const cell = new Map();
+    for (const n of st.npcs) { if (n.inside || n.dead) continue; const k = Math.floor(n.x / .6) * 4096 + Math.floor(n.y / .6), C = cell.get(k); if (C) C.push(n); else cell.set(k, [n]); }
+    for (const [k, C] of cell) {
+      const cx = Math.floor(k / 4096), cy = k - cx * 4096;
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+        const D = ox || oy ? cell.get((cx + ox) * 4096 + cy + oy) : C; if (!D) continue;
+        for (const a of C) for (const b of D) {
+          if (a === b || (D === C ? C.indexOf(b) < C.indexOf(a) : (ox * 3 + oy) < 0)) continue;
+          const d = dist(a.x, a.y, b.x, b.y);
+          if (d < .55 && d > .001) { const push = (.55 - d) / 2, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d; if (walkM(a.x - ux * push, a.y - uy * push)) { a.x -= ux * push; a.y -= uy * push; } if (walkM(b.x + ux * push, b.y + uy * push)) { b.x += ux * push; b.y += uy * push; } }
+        }
+      }
     }
     st.gossipAt = (st.gossipAt || 0) - dt;
     if (st.gossipAt <= 0) { st.gossipAt = .5; gossip(st); }

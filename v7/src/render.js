@@ -8639,12 +8639,15 @@ var Render = (function () {
     });
     postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
   }
-  let TARGET = 540, lastSize = null;
+  let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
+  function setRes(k) { k = Math.max(.5, Math.min(1, k)); if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
     PX = LOWQ.on ? Math.max(2, Math.round(dpr) * 2) : Math.max(1, ch * dpr / 720);   /* [unione8] al massimo 720 righe */   /* [amb3] risoluzione piena */
+    PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
+    GPUT.px = W + '×' + H;   /* [prestazioni] */
     renderer.setSize(cw, ch, false);
     if (rt) rt.dispose();
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
@@ -10962,6 +10965,77 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   }
 
   // ---------------- INIZIALIZZAZIONE ----------------
+  // [prestazioni] il contatore (F3 o ?perf): tempo vero della scheda video per fase, con le query del timer di WebGL2.
+  // Spento non costa niente. Una query alla volta: le fasi sono in fila. I risultati arrivano qualche fotogramma dopo.
+  const GPUT = { on: false, ext: null, gl: null, open: null, pend: [], acc: {}, n: 0, res: {}, info: {} };
+  function gpuTiming(on) { GPUT.on = !!on; if (on && !GPUT.gl) { GPUT.gl = renderer.getContext(); GPUT.ext = GPUT.gl.getExtension && GPUT.gl.getExtension('EXT_disjoint_timer_query_webgl2'); } return !!GPUT.ext; }
+  function gpuB(name) { if (!GPUT.on || !GPUT.ext) return; const gl = GPUT.gl, q = gl.createQuery(); gl.beginQuery(GPUT.ext.TIME_ELAPSED_EXT, q); GPUT.open = { q, name }; }
+  function gpuE() { if (!GPUT.open) return; const gl = GPUT.gl; gl.endQuery(GPUT.ext.TIME_ELAPSED_EXT); GPUT.pend.push(GPUT.open); GPUT.open = null; }
+  function gpuPoll() {
+    if (!GPUT.on || !GPUT.ext) return; const gl = GPUT.gl, bad = gl.getParameter(GPUT.ext.GPU_DISJOINT_EXT);
+    while (GPUT.pend.length) { const P = GPUT.pend[0]; if (!gl.getQueryParameter(P.q, gl.QUERY_RESULT_AVAILABLE)) break; GPUT.pend.shift(); if (!bad) GPUT.acc[P.name] = (GPUT.acc[P.name] || 0) + gl.getQueryParameter(P.q, gl.QUERY_RESULT) / 1e6; if (P.name === 'post') GPUT.n++; gl.deleteQuery(P.q); }
+    if (GPUT.n >= 30) { for (const k in GPUT.acc) GPUT.res[k] = GPUT.acc[k] / GPUT.n; GPUT.acc = {}; GPUT.n = 0; }
+    if (GPUT.pend.length > 40) GPUT.pend.splice(0, GPUT.pend.length - 40).forEach(P => gl.deleteQuery(P.q));
+  }
+  // [prestazioni] I gruppi di istanze (bosco, verde, binari…) avevano il controllo d'inquadratura spento: three r149 misura
+  // solo la forma singola all'origine, non dove stanno le istanze, e quindi si disegnavano anche fuori dallo schermo (metà
+  // dei triangoli). Qui ogni gruppo fermo riceve l'ingombro vero (le sue istanze, più un margine per il vento) e il
+  // controllo si riaccende; l'immagine non cambia. Chi cambia le istanze (schegge, segni delle gomme…) resta com'era.
+  const IC = { list: [], t: 0 };
+  { const io = THREE.Frustum.prototype.intersectsObject, sph = new THREE.Sphere();
+    THREE.Frustum.prototype.intersectsObject = function (o) {
+      if (o.__icS) { sph.copy(o.__icS).applyMatrix4(o.matrixWorld); return this.intersectsSphere(sph); }
+      if (o.__icR) { const e = o.__icR.matrixWorld.elements; sph.center.set(e[12], e[13] + 1, e[14]); sph.radius = 2.6 * o.__icR.matrixWorld.getMaxScaleOnAxis(); return this.intersectsSphere(sph); }   // un personaggio: attorno al suo gruppo
+      return io.call(this, o); }; }
+  const IC_GS = new WeakMap();   // l'ingombro vero della forma, dai vertici (c'è chi riscrive boundingSphere con la zona del mondo)
+  function geoSphere(g) {
+    let S = IC_GS.get(g); if (S) return S; const p = g.attributes.position, b = new THREE.Box3();
+    if (p && !p.isInterleavedBufferAttribute) b.setFromBufferAttribute(p); else { if (!g.boundingBox) g.computeBoundingBox(); b.copy(g.boundingBox); }
+    S = b.isEmpty() ? new THREE.Sphere() : b.getBoundingSphere(new THREE.Sphere()); IC_GS.set(g, S); return S;
+  }
+  function icSphere(o) {
+    const g = o.geometry, gs = geoSphere(g);
+    const m = new THREE.Matrix4(), v = new THREE.Vector3(), b = new THREE.Box3(), a = o.instanceMatrix.array; let sc = 0;
+    for (let i = 0; i < o.count; i++) { m.fromArray(a, i * 16); const k = m.getMaxScaleOnAxis(); if (k < 1e-4) continue; v.copy(gs.center).applyMatrix4(m); if (Math.abs(v.x) > 2e4 || Math.abs(v.y) > 2e3 || Math.abs(v.z) > 2e4) continue; b.expandByPoint(v); sc = Math.max(sc, k); }   // le istanze spente (scala zero o parcheggiate lontano) non contano
+    if (b.isEmpty()) return null; const S = b.getBoundingSphere(new THREE.Sphere()); S.radius += gs.radius * sc + 2; return S;
+  }
+  // un gruppo grande come l'isola (una specie di albero, le scale dei tetti, le traversine) a che serve controllarlo tutto
+  // insieme: si spezza in celle da 40 m, figlie dell'originale (ne seguono posizione e visibilità); l'originale non si
+  // disegna più da sé (strato spento), le celle sì. Se qualcuno cambia le istanze, le celle spariscono e torna com'era.
+  const IC_CELL = 40;
+  function icSplit(o) {
+    const g = o.geometry; if (!g || o.isSkinnedMesh || g.morphAttributes && Object.keys(g.morphAttributes).length) return false;
+    const instA = Object.entries(g.attributes).filter(([, at]) => at.isInstancedBufferAttribute && !at.isInterleavedBufferAttribute && (at.meshPerAttribute || 1) === 1);
+    if (Object.values(g.attributes).some(at => at.isInterleavedBufferAttribute && at.data && at.data.isInstancedInterleavedBuffer)) return false;
+    const a = o.instanceMatrix.array, cells = new Map(), m = new THREE.Matrix4();
+    for (let i = 0; i < o.count; i++) { m.fromArray(a, i * 16); if (m.getMaxScaleOnAxis() < 1e-4) continue; const k = Math.floor(a[i * 16 + 12] / IC_CELL) + ',' + Math.floor(a[i * 16 + 14] / IC_CELL); (cells.get(k) || cells.set(k, []).get(k)).push(i); }
+    if (cells.size < 2) return false;
+    const parts = [];
+    cells.forEach(idx => {
+      let gg = g;   // gli attributi per istanza (il vento, il colore…): la cella ha la sua fetta, il resto della forma è in comune
+      if (instA.length) { gg = new THREE.BufferGeometry(); gg.index = g.index; for (const [k, at] of Object.entries(g.attributes)) gg.setAttribute(k, at); g.groups.forEach(q => gg.addGroup(q.start, q.count, q.materialIndex)); gg.drawRange = Object.assign({}, g.drawRange); gg.boundingSphere = g.boundingSphere; gg.boundingBox = g.boundingBox;
+        instA.forEach(([k, at]) => { const n = at.itemSize, arr = new at.array.constructor(idx.length * n); idx.forEach((i, j) => { for (let q = 0; q < n; q++) arr[j * n + q] = at.array[i * n + q]; }); gg.setAttribute(k, new THREE.InstancedBufferAttribute(arr, n, at.normalized)); }); }
+      const im = new THREE.InstancedMesh(gg, o.material, idx.length);
+      idx.forEach((i, j) => { for (let q = 0; q < 16; q++) im.instanceMatrix.array[j * 16 + q] = a[i * 16 + q]; if (o.instanceColor) { if (!im.instanceColor) im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(idx.length * 3), 3); for (let q = 0; q < 3; q++) im.instanceColor.array[j * 3 + q] = o.instanceColor.array[i * 3 + q]; } });
+      im.castShadow = o.castShadow; im.receiveShadow = o.receiveShadow; im.renderOrder = o.renderOrder; im.layers.mask = o.layers.mask; im.userData = o.userData;
+      im.onBeforeRender = o.onBeforeRender; im.customDepthMaterial = o.customDepthMaterial; im.customDistanceMaterial = o.customDistanceMaterial;
+      const S = icSphere(im); if (S) { im.__icS = S; im.frustumCulled = true; } else im.frustumCulled = false;
+      im.__icPart = true; o.add(im); parts.push(im);
+    });
+    o.__icParts = parts; o.__icMask = o.layers.mask; o.layers.disableAll(); return true;
+  }
+  function icUnsplit(o) { o.__icParts.forEach(im => { o.remove(im); if (im.geometry !== o.geometry) im.geometry.dispose(); im.dispose(); }); o.__icParts = null; o.layers.mask = o.__icMask; }
+  function instCull() {
+    if (IC.off) return;   // [prova] R.__ic.off = true la spegne (solo per le misure)
+    const now = performance.now();
+    if (now > IC.t) { IC.t = now + 1000; IC.list = []; scene.traverse(o => { if (o.isInstancedMesh && !o.__icPart && (!o.frustumCulled || o.__icS || o.__icParts)) IC.list.push(o);
+      if (o.userData.model && o.userData.mixer) o.traverse(q => { if ((q.isMesh || q.isSkinnedMesh) && !q.frustumCulled && !q.__icR && !q.isInstancedMesh) { q.__icR = o; q.frustumCulled = true; } }); }); }   // i personaggi (e i vestiti e gli oggetti in mano attaccati dopo)
+    for (const o of IC.list) {   // ferme da un secondo e mezzo: si accende il controllo; appena cambiano, si spegne
+      const ver = o.instanceMatrix.version + ':' + o.count + ':' + (o.geometry && o.geometry.id);
+      if (o.__icV !== ver) { o.__icV = ver; o.__icT = now; if (o.__icS) { o.__icS = null; o.frustumCulled = false; } if (o.__icParts) icUnsplit(o); continue; }
+      if (!o.__icS && !o.__icParts && now - o.__icT > 1500 && o.count > 0) { const S = icSphere(o); if (S) { if (S.radius > 70 && o.count >= 32 && icSplit(o)) continue; o.__icS = S; o.frustumCulled = true; } }
+    }
+  }
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -11913,9 +11987,13 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     swimPose(pg, p, !!pveh, time);   // [costa] a nuoto: dentro l'acqua fino alle spalle, coricato in avanti quando va, coi cerchi sull'acqua
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
     // veicoli
+    const VIEW_R = Math.max(75, 62 / Math.max(.12, ui.zoom || 1));
     st.vehicles.forEach(v => {
       if (G.VK[v.kind] && G.VK[v.kind].boat) { boatVehicle(v, dt, time); return; }   // [costa] le barche vanno per conto loro
-      let g = dyn.vehicles[v.id]; if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { g = vehicleMesh(v); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }
+      // [fluido] fuori dalla vista (raggio secondo lo zoom) il mezzo non si crea, non si anima e non si disegna
+      const far = v !== pveh && (Math.abs(v.x - cam.x) > VIEW_R || Math.abs(v.y - cam.y) > VIEW_R);
+      let g = dyn.vehicles[v.id]; if (far) { if (g) g.visible = false; return; }
+      if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { g = vehicleMesh(v); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }
       g.visible = !v.hidden; if (!g.visible) return;
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
       const hF = groundH(v.x + ca * hl, v.y + sa * hl), hR = groundH(v.x - ca * hl, v.y - sa * hl);
@@ -11957,8 +12035,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (u.beacons) { const on = v.siren && Math.sin(st.clock * 14) > 0; u.beacons[0].color.set(on ? '#3a7aff' : '#10204a'); u.beacons[1].color.set(!on && v.siren ? '#3a7aff' : '#10204a'); }
       vehMondo(v, g, u, K, dt, time, night);   // [animazioni-mondo] portiere, tergicristalli, scarico, motore al minimo, lampeggianti
     });
-    for (const id in dyn.vehicles) if (!st.vehicles.find(v => v.id === id)) { const gg = dyn.vehicles[id]; if (gg.userData.wakeG) scene.remove(gg.userData.wakeG); scene.remove(gg); delete dyn.vehicles[id]; }
-    for (const id in dyn.people) if (id !== '__player' && !st.npcs.find(n => n.id === id)) { scene.remove(dyn.people[id]); delete dyn.people[id]; }
+    // [fluido] chi non c'è più: un insieme degli id, non una ricerca nell'elenco per ognuno (569 × 569 confronti a fotogramma)
+    if (frameN % 15 === 0) {
+      const vIds = new Set(st.vehicles.map(v => v.id)), nIds = new Set(st.npcs.map(n => n.id));
+      for (const id in dyn.vehicles) if (!vIds.has(id)) { const gg = dyn.vehicles[id]; if (gg.userData.wakeG) scene.remove(gg.userData.wakeG); scene.remove(gg); delete dyn.vehicles[id]; }
+      for (const id in dyn.people) if (id !== '__player' && !nIds.has(id)) { scene.remove(dyn.people[id]); delete dyn.people[id]; }
+    }
     if (pveh) { const h = groundH(pveh.x, pveh.y); dyn.headlight.intensity = 4 * (.2 + night) * (pveh.wreck ? 0 : 1); dyn.headlight.position.set(pveh.x + Math.cos(pveh.ang) * 1.6, h + 1.1, pveh.y + Math.sin(pveh.ang) * 1.6); dyn.headlight.target.position.set(pveh.x + Math.cos(pveh.ang) * 12, h, pveh.y + Math.sin(pveh.ang) * 12); } else dyn.headlight.intensity = 0;
     // oggetti da raccogliere
     st.pickups.forEach(k => {
@@ -11967,7 +12049,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       m.userData.g.rotation.y = time * 1.8; m.userData.g.position.y = .7 + Math.sin(time * 3 + k.id) * .12;
       m.userData.icon.position.y = 2.2 + Math.sin(time * 2 + k.id) * .1; const dd = Math.hypot(k.x - p.x, k.y - p.y); m.userData.icon.material.opacity = Math.min(1, Math.max(.35, (dd - 1.5) / 3));
     });
-    for (const id in FX.pickups) if (!st.pickups.find(k => String(k.id) === id)) { scene.remove(FX.pickups[id]); delete FX.pickups[id]; }
+    { const kIds = new Set(st.pickups.map(k => String(k.id))); for (const id in FX.pickups) if (!kIds.has(id)) { scene.remove(FX.pickups[id]); delete FX.pickups[id]; } }
     // effetti
     st.__hurt = 0;
     if (DZ.lastSt !== st) tickDestruction(st, 0);
@@ -12087,10 +12169,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     ombre1(st, night);   /* [ombre1] */
+    instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     renderer.setRenderTarget(rt); renderer.render(scene, camera);
-    renderer.setRenderTarget(null); ambPasses();   /* [amb2] */
+    gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
+    gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE();   /* [amb2] */
     const U = postMat.uniforms;
-    U.tC.value = paintPass(); U.tD.value = rt.depthTexture;   /* [amb3] la scena dipinta */ U.near.value = camera.near; U.far.value = camera.far;
+    gpuB('pittura'); U.tC.value = paintPass(); gpuE(); U.tD.value = rt.depthTexture;   /* [amb3] la scena dipinta */ U.near.value = camera.near; U.far.value = camera.far;
     U.letter.value += ((ui.letterbox ? 1 : 0) - U.letter.value) * Math.min(1, dt * 5);
     U.pillar.value = ease; U.dusk.value = dusk; U.night.value = night; U.uReg.value = METEO.reg; U.uWx.value.set(WXc, WXwet, WXfog, WXst); U.uHz.value.copy(scene.fog.color); U.uFogNF.value.set(scene.fog.near, scene.fog.far);   /* [amb1] [nebbia_zoom1] */ U.uFoc9.value = camera.position.distanceTo(V3.set(cam.x, groundH(cam.x, cam.y), cam.y));   /* [unione9] */
     U.fade.value = ui.fade || 0; U.flash.value = ui.flash || 0; U.sat.value = ui.desat ? .45 : 1;
@@ -12122,7 +12206,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         const k = (.07 + dyn.meteo.w[2] * .12 + dusk * .06) * moon.intensity; U.sCol.value.set(moon.color.r * k, moon.color.g * k * .97, moon.color.b * k * .9); }
       if (!sOK) U.sSM.value = null;
     }
-    renderer.render(postScene, postCam);
+    gpuB('post'); renderer.render(postScene, postCam); gpuE();
   }
 
   const pv3 = new THREE.Vector3();
@@ -12137,5 +12221,5 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
