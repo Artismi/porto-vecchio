@@ -560,6 +560,8 @@ var WriterMano = (function () {
   // Si caricano da tag_firme.json (la cartella del gioco) e dal browser (lo studio le salva anche lì); quelle del browser
   // vincono. Una firma registrata ha la precedenza su tutto: quel writer firma così.
   const RECORDED = {}; let MIA = null;   // MIA: il preset che il giocatore ha scelto come sua tag
+  // [fluido] le firme già lette, passate da fuori (il disegnatore dei graffiti in un thread a parte non ha né file né browser)
+  function setRecorded(o) { if (o && typeof o === 'object') { Object.keys(o).forEach(k => { if (o[k] && o[k].strokes) RECORDED[k] = o[k]; }); if (typeof o._mia === 'string') MIA = o._mia; } }
   function loadRecorded() {
     if (typeof window === 'undefined') return;
     const put = o => { if (o && typeof o === 'object') { Object.keys(o).forEach(k => { if (o[k] && o[k].strokes) RECORDED[k] = o[k]; }); if (typeof o._mia === 'string') MIA = o._mia; } };
@@ -792,7 +794,7 @@ var WriterMano = (function () {
     x.restore();
     return { path, W };
   }
-  return { STILI, A, HS, SIGNED, GEST, RECORDED, get MIA() { return MIA && RECORDED[MIA] ? MIA : null; }, loadRecorded, recordedLayout, drawRecorded, flowLayout, drawFlow, handLayout, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
+  return { setRecorded, STILI, A, HS, SIGNED, GEST, RECORDED, get MIA() { return MIA && RECORDED[MIA] ? MIA : null; }, loadRecorded, recordedLayout, drawRecorded, flowLayout, drawFlow, handLayout, dna, glyph, fontFor, layout, handTag, chisel, smooth, mulberry };
 })();
 if (typeof module !== 'undefined') module.exports = WriterMano;
 else WriterMano.loadRecorded();

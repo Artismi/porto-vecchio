@@ -2321,7 +2321,7 @@ var Game = (function () {
   function bubble(st) {
     const p = st.player, v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
     const vx = v ? (v.vx || 0) : Math.cos(p.face || 0) * (p.speed || 0), vy = v ? (v.vy || 0) : Math.sin(p.face || 0) * (p.speed || 0), sp = Math.hypot(vx, vy);
-    return (st.bubble = { x: p.x + vx * 1.5, y: p.y + vy * 1.5, r: 60 + sp * 2.5 });
+    return (st.bubble = { x: p.x + vx * 1.5, y: p.y + vy * 1.5, r: Math.max(60 + sp * 2.5, (st.viewR || 0) + sp * 1.5) });   // st.viewR (main.js): quanto si vede attorno al giocatore, così la bolla copre sempre tutto lo schermo anche a zoom largo
   }
   const inBubble = (B, x, y) => Math.abs(x - B.x) < B.r && Math.abs(y - B.y) < B.r;
   // chi sta combattendo, inseguendo, scappando o soffrendo resta sempre a dettaglio pieno, anche lontano
@@ -2371,6 +2371,7 @@ var Game = (function () {
     for (const v of st.vehicles) {
       if (v.hidden) continue;
       if (v.burning > 0) { v.burning -= dt; if (v.burning <= 0) explode(st, v); }
+      if (!v.traffic && !v.rider && !v.burning && !inBubble(B, v.x, v.y) && Math.abs(v.vx || 0) + Math.abs(v.vy || 0) + Math.abs(v.w || 0) < .05) continue;   // fermo e lontano: niente da calcolare
       if (v.wreck) { freeRoll(st, v, dt, true); continue; }
       if (v.driveTo && v.rider === 'npc' && !v.traffic) continue;   // [ordine] lo guida ordine.js (volanti, Campagnola, camion della nave)
       if (v.traffic) updateTraffic(st, v, dt);

@@ -548,6 +548,47 @@ var Writing = (function () {
     c.save(); c.globalAlpha = .35; c.beginPath(); c.arc(X, Y, R * k * 1.35, 0, 7); c.arc(X, Y, R * k, 0, 7, true); c.clip(); c.drawImage(img, sx, sy, sw, sh, T.x0 + sx * k, T.y0 + sy * k, sw * k, sh * k); c.restore();   // la nebbia attorno al getto
   }
   function fullStage(T, img, A) { T.ctx.drawImage(img, 0, 0, A.Wp, A.Hp, T.x0, T.y0, A.Wp * T.k, A.Hp * T.k); }
+  // ---------------- [fluido] IL DISEGNATORE A PARTE ----------------
+  // Generare un lavoro (art: lettere, riempimenti, contorni, tutte le tappe) costa da 50 a 200 ms: fatto qui fermava il
+  // gioco ogni volta che ci si avvicinava a dei graffiti. Lo fa un Web Worker con gli stessi file (writer_mano.js e
+  // writer_arte.js, copiati nella pagina in <script id="pv-artworker" type="text/plain">) e gli stessi semi: il disegno
+  // è identico, arriva qualche fotogramma dopo, e intanto il gioco va avanti. I lavori finiti si tengono (gli ultimi 48),
+  // così tornando in una zona non si rifanno. Senza Worker o OffscreenCanvas: come prima, qui.
+  const ARTW = { w: null, ok: null, seq: 0, wait: new Map(), cache: new Map(), recSig: '', pend: new Set() };
+  const ARTW_MAIN = `onmessage = e => { const m = e.data; if (m.rec) WriterMano.setRecorded(m.rec); if (!m.w) return; let A;
+    try { A = WriterArte.art(m.w); } catch (err) { postMessage({ id: m.id, err: String(err && err.message || err) }); return; }
+    const tr = [], bm = c => { if (c && typeof c.transferToImageBitmap === 'function') { const b = c.transferToImageBitmap(); tr.push(b); return b; } return c; };
+    postMessage({ id: m.id, A: { stages: A.stages.map(bm), paths: A.paths, radii: A.radii, Wp: A.Wp, Hp: A.Hp, ppm: A.ppm } }, tr); };`;
+  function artWorker() {
+    if (ARTW.ok !== null) return ARTW.ok;
+    try {
+      const src = typeof document !== 'undefined' && document.getElementById('pv-artworker');
+      if (!src || typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined' || typeof Blob === 'undefined') return (ARTW.ok = false);
+      const code = 'const document = { createElement: () => new OffscreenCanvas(1, 1) };\n' + src.textContent + '\n' + ARTW_MAIN;
+      ARTW.w = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
+      ARTW.w.onmessage = e => { const m = e.data, cb = ARTW.wait.get(m.id); ARTW.wait.delete(m.id); if (cb) cb(m.err ? null : m.A, m.err); };
+      ARTW.w.onerror = e => { console.warn('[Writing] disegnatore a parte spento:', e.message); ARTW.ok = false; const cbs = [...ARTW.wait.values()]; ARTW.wait.clear(); cbs.forEach(cb => cb(null, 'worker')); };
+      return (ARTW.ok = true);
+    } catch (e) { return (ARTW.ok = false); }
+  }
+  const artKey = w => [w.id, w.seed, w.style, w.pal || 0, w.col || '', w.W || '', w.H || '', w.surf, w.flat ? 1 : 0].join(':');
+  // il disegno di w: subito (dalla memoria, o qui se il worker non c'è) o appena il worker l'ha fatto. cb(A) con A pronto da usare
+  function artFor(w, cb) {
+    const k = artKey(w), C = ARTW.cache.get(k);
+    if (C) { ARTW.cache.delete(k); ARTW.cache.set(k, C); cb(Object.assign({}, C, { stages: C.stages.slice() })); return; }
+    const sync = () => cb(art(w));
+    if (!artWorker()) { sync(); return; }
+    const WM = typeof WriterMano !== 'undefined' ? WriterMano : { RECORDED: {}, MIA: null };
+    const sig = Object.keys(WM.RECORDED).length + ':' + (WM.MIA || ''), msg = { id: ++ARTW.seq, w: {} };
+    for (const key in w) if (key !== 'gfxRect') msg.w[key] = w[key];
+    if (sig !== ARTW.recSig) { ARTW.recSig = sig; msg.rec = Object.assign({}, WM.RECORDED, WM.MIA ? { _mia: WM.MIA } : {}); }
+    ARTW.wait.set(msg.id, (A, err) => {
+      if (!A) { sync(); return; }   // non è riuscito di là: si fa qui
+      if (w.done) { ARTW.cache.set(k, A); while (ARTW.cache.size > 48) ARTW.cache.delete(ARTW.cache.keys().next().value); }
+      cb(Object.assign({}, A, { stages: A.stages.slice() }));
+    });
+    try { ARTW.w.postMessage(msg); } catch (e) { ARTW.wait.delete(msg.id); sync(); }   // qualcosa nel lavoro non si copia: qui
+  }
   function drawUpTo(w, g) {
     const A = g.art, T = g.tgt; if (!A || !T) return; const nS = A.stages.length;
     if (w.trace && !w.done) {   // il giocatore: lo disegna traceAt; qui solo il ritorno (le tappe già fatte, dopo che la grafica è stata liberata)
@@ -1379,11 +1420,14 @@ var Writing = (function () {
           for (const w of near) {
             if (performance.now() - t0 > 6) break;   /* [fluido] al massimo 6 ms di graffiti nuovi ogni 150 ms */
             if (GFX.works[w.id] || w.erased || w.gfxFail > 3) continue;
-            if (w.surf === 'treno') { if (!GFX.train) continue; const tgt = trainTarget(w); if (!tgt) continue; GFX.works[w.id] = { tgt, art: art(w), drawn: 0 }; n++; continue; }
-            if (w.surf === 'vagone') { if (!w.gfxRect) { const rc2 = wagRect(w); if (!rc2) continue; w.gfxRect = rc2; } w.pos = { x: w.gfxRect.c.x, y: w.gfxRect.c.y, z: w.gfxRect.c.z }; const g = { art: art(w), drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; n++; continue; }   // [ferrovia] sui carri fermi
+            if (ARTW.pend.has(w.id)) continue;   // [fluido] il disegno è in preparazione
+            // [fluido] il disegno arriva da artFor (memoria, worker o qui); il velo si fa quando c'è, se il lavoro serve ancora
+            const ready = fn => { ARTW.pend.add(w.id); artFor(w, A => { ARTW.pend.delete(w.id); if (GFX.st !== st || GFX.works[w.id] || w.erased) return; try { fn(A); } catch (e) { w.gfxFail = (w.gfxFail || 0) + 1; } }); };
+            if (w.surf === 'treno') { if (!GFX.train) continue; const tgt = trainTarget(w); if (!tgt) continue; ready(A => { GFX.works[w.id] = { tgt, art: A, drawn: 0 }; }); n++; continue; }
+            if (w.surf === 'vagone') { if (!w.gfxRect) { const rc2 = wagRect(w); if (!rc2) continue; w.gfxRect = rc2; } w.pos = { x: w.gfxRect.c.x, y: w.gfxRect.c.y, z: w.gfxRect.c.z }; ready(A => { const g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; }); n++; continue; }   // [ferrovia] sui carri fermi
             const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (!sp || hyp(sp.x - cx, sp.y - cy) > 80) continue;
             if (!w.gfxRect && !placeWall(w)) { w.gfxFail = (w.gfxFail || 0) + 1; continue; }
-            const g = { art: art(w), drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; n++;
+            ready(A => { const g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; }); n++;
           }
         }
         // disegno: i lavori finiti in un colpo, quelli in corso fin dove sono arrivati; i cancellati via; i lontani si liberano
