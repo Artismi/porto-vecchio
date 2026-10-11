@@ -11501,9 +11501,11 @@ var Game = (function () {
     const pop = () => { const top = heap[0], lh = heap.pop(), lf = hf.pop(); if (heap.length) { heap[0] = lh; hf[0] = lf; let i = 0; for (; ;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && hf[l] < hf[m]) m = l; if (r < heap.length && hf[r] < hf[m]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; [hf[m], hf[i]] = [hf[i], hf[m]]; i = m; } } return top; };
     seen[si] = gen; cost[si] = 0; came[si] = -1; push(si, 0);
     const hx = g[0], hy = g[1]; let found = si === gi, steps = 0;
+    // [fluido] il tetto di caselle esplorate cresce con la distanza: una meta irraggiungibile si scopre subito, non dopo 70.000 caselle (30-40 ms, uno scatto)
+    const span = Math.abs(hx - s[0]) + Math.abs(hy - s[1]), cap = Math.min(PF.cap, 1500 + span * span * 3);
     while (heap.length && !found) {
       const cur = pop(); if (shut[cur] === gen) continue; shut[cur] = gen; if (cur === gi) { found = true; break; }
-      if (++steps > PF.cap) break;
+      if (++steps > cap) break;
       const cx = cur % GW, cy = (cur / GW) | 0;
       for (let k = 0; k < 8; k++) {
         const dx = DX8[k], dy = DY8[k];
@@ -13267,9 +13269,9 @@ var Game = (function () {
     const fx = Math.cos(v.ang), fy = Math.sin(v.ang);
     const check = (x, y, r) => { const dx = x - v.x, dy = y - v.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx); if (along > 0 && along < 9 && lat < 1.3 + Math.min(r, .5)) block = Math.min(block, along - r); };
     if (!st.player.vehicle) check(st.player.x, st.player.y, .4);
-    st.npcs.forEach(n => { if (!n.inside && !n.dead) check(n.x, n.y, .4); else if (n.dead && !n.inside) check(n.x, n.y, .3); });
+    for (const n of st.npcs) { if (n.inside || Math.abs(n.x - v.x) > 10 || Math.abs(n.y - v.y) > 10) continue; check(n.x, n.y, n.dead ? .3 : .4); }   // [fluido] solo chi è a portata
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
-    st.vehicles.forEach(o => { if (o === v || o.hidden) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1); });
+    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1); });
     const K = VK[v.kind];
     let want = target;
     if (block < 7) want = Math.max(0, (block - 2.2) * 1.6);
@@ -13693,6 +13695,16 @@ var Game = (function () {
   }
 
   // ---------------- CICLO ----------------
+  // [fluido] la bolla: centro un po' avanti nella direzione di marcia, raggio che cresce con la velocità
+  function bubble(st) {
+    const p = st.player, v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
+    const vx = v ? (v.vx || 0) : Math.cos(p.face || 0) * (p.speed || 0), vy = v ? (v.vy || 0) : Math.sin(p.face || 0) * (p.speed || 0), sp = Math.hypot(vx, vy);
+    return (st.bubble = { x: p.x + vx * 1.5, y: p.y + vy * 1.5, r: 60 + sp * 2.5 });
+  }
+  const inBubble = (B, x, y) => Math.abs(x - B.x) < B.r && Math.abs(y - B.y) < B.r;
+  // chi sta combattendo, inseguendo, scappando o soffrendo resta sempre a dettaglio pieno, anche lontano
+  const BUSY = { combatte: 1, insegue: 1, affronta: 1, fugge: 1, arresta: 1, rientra: 1 };
+  const calmNpc = n => !BUSY[n.action.name] && !n.aggro && !(n.burn > 0) && !(n.stun > 0) && !n.alarm && !(n.panic > 0) && !n.kbx && !n.kby;
   function step(st, dtReal, inp) {
     if (st.over) return;
     if (st.hitstop > 0) { st.hitstop -= dtReal; return; }
@@ -13719,11 +13731,18 @@ var Game = (function () {
       }
       return true;
     });
+    // [fluido] la bolla del dettaglio: attorno al giocatore (spostata in avanti e più larga quando va forte) tutto si calcola
+    // a ogni fotogramma; fuori, chi fa la sua giornata pensa e cammina a passi radi (4 volte al secondo, col tempo accumulato):
+    // arriva negli stessi posti alle stesse ore, solo senza le finezze che tanto nessuno vede
+    const B = bubble(st);
     for (const n of st.npcs) {
       if (n.dead) continue;
-      n.thinkAt -= dt;
+      let ndt = dt;
+      if (!inBubble(B, n.x, n.y) && calmNpc(n)) { n.__far = (n.__far || 0) + dt; if (n.__far < .25) continue; ndt = n.__far; }
+      n.__far = 0;
+      n.thinkAt -= ndt;
       if (n.thinkAt <= 0) { n.thinkAt = n.action.name === 'combatte' ? .25 : .35; think(st, n); }
-      moveNpc(st, n, dt);
+      moveNpc(st, n, ndt);
       if (!n.inside) pushOutOfVehicles(st, n, .35);
     }
     separate(st);   // [passo]
@@ -13738,17 +13757,26 @@ var Game = (function () {
     }
     // urti tra veicoli
     for (let i = 0; i < st.vehicles.length; i++) for (let j = i + 1; j < st.vehicles.length; j++) {
-      const a = st.vehicles[i], b = st.vehicles[j]; if (a.hidden || b.hidden) continue;
+      const a = st.vehicles[i], b = st.vehicles[j]; if (a.hidden || b.hidden || Math.abs(a.x - b.x) > 12 || Math.abs(a.y - b.y) > 12) continue;   // [fluido] lontani non si toccano
       collideVehicles(st, a, b);
     }
     if (st.player.vehicle && st.player.x !== undefined) { const v = st.vehicles.find(k => k.id === st.player.vehicle); if (v) { st.player.x = v.x; st.player.y = v.y; } }
     updateProjectiles(st, dt);
     updateHazards(st, dt);
     updatePickups(st);
-    const live = st.npcs.filter(n => !n.inside && !n.dead);
-    for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
-      const a = live[i], b = live[j], d = dist(a.x, a.y, b.x, b.y);
-      if (d < .55 && d > .001) { const push = (.55 - d) / 2, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d; if (walkM(a.x - ux * push, a.y - uy * push)) { a.x -= ux * push; a.y -= uy * push; } if (walkM(b.x + ux * push, b.y + uy * push)) { b.x += ux * push; b.y += uy * push; } }
+    // [fluido] chi si pesta i piedi si scosta: si confrontano solo i vicini di casella (una griglia), non tutte le coppie dell'isola
+    const cell = new Map();
+    for (const n of st.npcs) { if (n.inside || n.dead) continue; const k = Math.floor(n.x / .6) * 4096 + Math.floor(n.y / .6), C = cell.get(k); if (C) C.push(n); else cell.set(k, [n]); }
+    for (const [k, C] of cell) {
+      const cx = Math.floor(k / 4096), cy = k - cx * 4096;
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+        const D = ox || oy ? cell.get((cx + ox) * 4096 + cy + oy) : C; if (!D) continue;
+        for (const a of C) for (const b of D) {
+          if (a === b || (D === C ? C.indexOf(b) < C.indexOf(a) : (ox * 3 + oy) < 0)) continue;
+          const d = dist(a.x, a.y, b.x, b.y);
+          if (d < .55 && d > .001) { const push = (.55 - d) / 2, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d; if (walkM(a.x - ux * push, a.y - uy * push)) { a.x -= ux * push; a.y -= uy * push; } if (walkM(b.x + ux * push, b.y + uy * push)) { b.x += ux * push; b.y += uy * push; } }
+        }
+      }
     }
     st.gossipAt = (st.gossipAt || 0) - dt;
     if (st.gossipAt <= 0) { st.gossipAt = .5; gossip(st); }
@@ -45009,9 +45037,13 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     swimPose(pg, p, !!pveh, time);   // [costa] a nuoto: dentro l'acqua fino alle spalle, coricato in avanti quando va, coi cerchi sull'acqua
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
     // veicoli
+    const VIEW_R = Math.max(75, 62 / Math.max(.12, ui.zoom || 1));
     st.vehicles.forEach(v => {
       if (G.VK[v.kind] && G.VK[v.kind].boat) { boatVehicle(v, dt, time); return; }   // [costa] le barche vanno per conto loro
-      let g = dyn.vehicles[v.id]; if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { g = vehicleMesh(v); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }
+      // [fluido] fuori dalla vista (raggio secondo lo zoom) il mezzo non si crea, non si anima e non si disegna
+      const far = v !== pveh && (Math.abs(v.x - cam.x) > VIEW_R || Math.abs(v.y - cam.y) > VIEW_R);
+      let g = dyn.vehicles[v.id]; if (far) { if (g) g.visible = false; return; }
+      if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { g = vehicleMesh(v); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }
       g.visible = !v.hidden; if (!g.visible) return;
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
       const hF = groundH(v.x + ca * hl, v.y + sa * hl), hR = groundH(v.x - ca * hl, v.y - sa * hl);
@@ -45053,8 +45085,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (u.beacons) { const on = v.siren && Math.sin(st.clock * 14) > 0; u.beacons[0].color.set(on ? '#3a7aff' : '#10204a'); u.beacons[1].color.set(!on && v.siren ? '#3a7aff' : '#10204a'); }
       vehMondo(v, g, u, K, dt, time, night);   // [animazioni-mondo] portiere, tergicristalli, scarico, motore al minimo, lampeggianti
     });
-    for (const id in dyn.vehicles) if (!st.vehicles.find(v => v.id === id)) { const gg = dyn.vehicles[id]; if (gg.userData.wakeG) scene.remove(gg.userData.wakeG); scene.remove(gg); delete dyn.vehicles[id]; }
-    for (const id in dyn.people) if (id !== '__player' && !st.npcs.find(n => n.id === id)) { scene.remove(dyn.people[id]); delete dyn.people[id]; }
+    // [fluido] chi non c'è più: un insieme degli id, non una ricerca nell'elenco per ognuno (569 × 569 confronti a fotogramma)
+    if (frameN % 15 === 0) {
+      const vIds = new Set(st.vehicles.map(v => v.id)), nIds = new Set(st.npcs.map(n => n.id));
+      for (const id in dyn.vehicles) if (!vIds.has(id)) { const gg = dyn.vehicles[id]; if (gg.userData.wakeG) scene.remove(gg.userData.wakeG); scene.remove(gg); delete dyn.vehicles[id]; }
+      for (const id in dyn.people) if (id !== '__player' && !nIds.has(id)) { scene.remove(dyn.people[id]); delete dyn.people[id]; }
+    }
     if (pveh) { const h = groundH(pveh.x, pveh.y); dyn.headlight.intensity = 4 * (.2 + night) * (pveh.wreck ? 0 : 1); dyn.headlight.position.set(pveh.x + Math.cos(pveh.ang) * 1.6, h + 1.1, pveh.y + Math.sin(pveh.ang) * 1.6); dyn.headlight.target.position.set(pveh.x + Math.cos(pveh.ang) * 12, h, pveh.y + Math.sin(pveh.ang) * 12); } else dyn.headlight.intensity = 0;
     // oggetti da raccogliere
     st.pickups.forEach(k => {
@@ -45063,7 +45099,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       m.userData.g.rotation.y = time * 1.8; m.userData.g.position.y = .7 + Math.sin(time * 3 + k.id) * .12;
       m.userData.icon.position.y = 2.2 + Math.sin(time * 2 + k.id) * .1; const dd = Math.hypot(k.x - p.x, k.y - p.y); m.userData.icon.material.opacity = Math.min(1, Math.max(.35, (dd - 1.5) / 3));
     });
-    for (const id in FX.pickups) if (!st.pickups.find(k => String(k.id) === id)) { scene.remove(FX.pickups[id]); delete FX.pickups[id]; }
+    { const kIds = new Set(st.pickups.map(k => String(k.id))); for (const id in FX.pickups) if (!kIds.has(id)) { scene.remove(FX.pickups[id]); delete FX.pickups[id]; } }
     // effetti
     st.__hurt = 0;
     if (DZ.lastSt !== st) tickDestruction(st, 0);
@@ -47064,7 +47100,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     const jt = G.jobTarget(st); if (jt) { x.fillStyle = '#ffd24a'; x.fillRect(jt.x * sc - 2, jt.y * sc - 2, 4, 4); }
     st.pickups.forEach(k => { if (!G.pickupVisible(st, k)) return; x.fillStyle = k.kind === 'valigetta' ? '#ff4fa3' : k.kind === 'salute' || k.kind === 'soldi' ? '#7ee0a0' : '#ffd24a'; x.fillRect(Math.round(k.x * sc) - 1, Math.round(k.y * sc) - 1, 2, 2); });
     st.vehicles.forEach(v => { if (v.hidden) return; x.fillStyle = v.police ? (Math.sin(st.clock * 12) > 0 ? '#3a7aff' : '#fff') : v.wreck ? '#222' : '#8a8a9a'; x.fillRect(Math.round(v.x * sc) - 1, Math.round(v.y * sc) - 1, 3, 2); });
-    st.npcs.forEach(n => { if (n.inside || n.dead) return; const a = G.attitude(st, n); x.fillStyle = n.cop ? '#4a8aff' : a.tone === 'bad' ? '#ff5a5a' : a.tone === 'good' ? '#7ee0a0' : a.tone === 'warn' ? '#ffb35c' : '#8a82a0'; x.fillRect(Math.round(n.x * sc) - 1, Math.round(n.y * sc) - 1, 2, 2); });
+    st.npcs.forEach(n => { if (n.inside || n.dead || Math.abs(n.x - p.x) > 46 || Math.abs(n.y - p.y) > 46) return; const a = G.attitude(st, n);   // [fluido] solo chi cade nella minimappa x.fillStyle = n.cop ? '#4a8aff' : a.tone === 'bad' ? '#ff5a5a' : a.tone === 'good' ? '#7ee0a0' : a.tone === 'warn' ? '#ffb35c' : '#8a82a0'; x.fillRect(Math.round(n.x * sc) - 1, Math.round(n.y * sc) - 1, 2, 2); });
     x.fillStyle = '#fff'; x.fillRect(Math.round(p.x * sc) - 1, Math.round(p.y * sc) - 1, 3, 3);
     x.restore();
   }
@@ -47079,7 +47115,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (!ui.intro) st.npcs.forEach(n => {
       if ((n.inside && !inRoom(n)) || n.dead) return;
       if (p.indoor && !inRoom(n)) return;   // dentro un edificio il fuori non si vede (chi è nella stanza sì)
-      const d = Math.hypot(n.x - p.x, n.y - p.y);
+      const d = Math.hypot(n.x - p.x, n.y - p.y); if (d > 30) return;   // [fluido] oltre i 30 m niente fumetti né icone: inutile proiettarli
       const pr = R.project(n.x, 2.35, n.y); if (pr.behind || pr.x < -.05 || pr.x > 1.05 || pr.y < -.05 || pr.y > 1.05) return;
       const sx = pr.x * W, sy = pr.y * H;
       if (n.bark && n.bark.until > st.clock && d < 26) {

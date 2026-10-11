@@ -513,7 +513,7 @@
     const jt = G.jobTarget(st); if (jt) { x.fillStyle = '#ffd24a'; x.fillRect(jt.x * sc - 2, jt.y * sc - 2, 4, 4); }
     st.pickups.forEach(k => { if (!G.pickupVisible(st, k)) return; x.fillStyle = k.kind === 'valigetta' ? '#ff4fa3' : k.kind === 'salute' || k.kind === 'soldi' ? '#7ee0a0' : '#ffd24a'; x.fillRect(Math.round(k.x * sc) - 1, Math.round(k.y * sc) - 1, 2, 2); });
     st.vehicles.forEach(v => { if (v.hidden) return; x.fillStyle = v.police ? (Math.sin(st.clock * 12) > 0 ? '#3a7aff' : '#fff') : v.wreck ? '#222' : '#8a8a9a'; x.fillRect(Math.round(v.x * sc) - 1, Math.round(v.y * sc) - 1, 3, 2); });
-    st.npcs.forEach(n => { if (n.inside || n.dead) return; const a = G.attitude(st, n); x.fillStyle = n.cop ? '#4a8aff' : a.tone === 'bad' ? '#ff5a5a' : a.tone === 'good' ? '#7ee0a0' : a.tone === 'warn' ? '#ffb35c' : '#8a82a0'; x.fillRect(Math.round(n.x * sc) - 1, Math.round(n.y * sc) - 1, 2, 2); });
+    st.npcs.forEach(n => { if (n.inside || n.dead || Math.abs(n.x - p.x) > 46 || Math.abs(n.y - p.y) > 46) return; const a = G.attitude(st, n);   // [fluido] solo chi cade nella minimappa x.fillStyle = n.cop ? '#4a8aff' : a.tone === 'bad' ? '#ff5a5a' : a.tone === 'good' ? '#7ee0a0' : a.tone === 'warn' ? '#ffb35c' : '#8a82a0'; x.fillRect(Math.round(n.x * sc) - 1, Math.round(n.y * sc) - 1, 2, 2); });
     x.fillStyle = '#fff'; x.fillRect(Math.round(p.x * sc) - 1, Math.round(p.y * sc) - 1, 3, 3);
     x.restore();
   }
@@ -528,7 +528,7 @@
     if (!ui.intro) st.npcs.forEach(n => {
       if ((n.inside && !inRoom(n)) || n.dead) return;
       if (p.indoor && !inRoom(n)) return;   // dentro un edificio il fuori non si vede (chi è nella stanza sì)
-      const d = Math.hypot(n.x - p.x, n.y - p.y);
+      const d = Math.hypot(n.x - p.x, n.y - p.y); if (d > 30) return;   // [fluido] oltre i 30 m niente fumetti né icone: inutile proiettarli
       const pr = R.project(n.x, 2.35, n.y); if (pr.behind || pr.x < -.05 || pr.x > 1.05 || pr.y < -.05 || pr.y > 1.05) return;
       const sx = pr.x * W, sy = pr.y * H;
       if (n.bark && n.bark.until > st.clock && d < 26) {

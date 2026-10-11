@@ -11380,9 +11380,13 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     swimPose(pg, p, !!pveh, time);   // [costa] a nuoto: dentro l'acqua fino alle spalle, coricato in avanti quando va, coi cerchi sull'acqua
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
     // veicoli
+    const VIEW_R = Math.max(75, 62 / Math.max(.12, ui.zoom || 1));
     st.vehicles.forEach(v => {
       if (G.VK[v.kind] && G.VK[v.kind].boat) { boatVehicle(v, dt, time); return; }   // [costa] le barche vanno per conto loro
-      let g = dyn.vehicles[v.id]; if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { g = vehicleMesh(v); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }
+      // [fluido] fuori dalla vista (raggio secondo lo zoom) il mezzo non si crea, non si anima e non si disegna
+      const far = v !== pveh && (Math.abs(v.x - cam.x) > VIEW_R || Math.abs(v.y - cam.y) > VIEW_R);
+      let g = dyn.vehicles[v.id]; if (far) { if (g) g.visible = false; return; }
+      if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { g = vehicleMesh(v); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }
       g.visible = !v.hidden; if (!g.visible) return;
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
       const hF = groundH(v.x + ca * hl, v.y + sa * hl), hR = groundH(v.x - ca * hl, v.y - sa * hl);
@@ -11424,8 +11428,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (u.beacons) { const on = v.siren && Math.sin(st.clock * 14) > 0; u.beacons[0].color.set(on ? '#3a7aff' : '#10204a'); u.beacons[1].color.set(!on && v.siren ? '#3a7aff' : '#10204a'); }
       vehMondo(v, g, u, K, dt, time, night);   // [animazioni-mondo] portiere, tergicristalli, scarico, motore al minimo, lampeggianti
     });
-    for (const id in dyn.vehicles) if (!st.vehicles.find(v => v.id === id)) { const gg = dyn.vehicles[id]; if (gg.userData.wakeG) scene.remove(gg.userData.wakeG); scene.remove(gg); delete dyn.vehicles[id]; }
-    for (const id in dyn.people) if (id !== '__player' && !st.npcs.find(n => n.id === id)) { scene.remove(dyn.people[id]); delete dyn.people[id]; }
+    // [fluido] chi non c'è più: un insieme degli id, non una ricerca nell'elenco per ognuno (569 × 569 confronti a fotogramma)
+    if (frameN % 15 === 0) {
+      const vIds = new Set(st.vehicles.map(v => v.id)), nIds = new Set(st.npcs.map(n => n.id));
+      for (const id in dyn.vehicles) if (!vIds.has(id)) { const gg = dyn.vehicles[id]; if (gg.userData.wakeG) scene.remove(gg.userData.wakeG); scene.remove(gg); delete dyn.vehicles[id]; }
+      for (const id in dyn.people) if (id !== '__player' && !nIds.has(id)) { scene.remove(dyn.people[id]); delete dyn.people[id]; }
+    }
     if (pveh) { const h = groundH(pveh.x, pveh.y); dyn.headlight.intensity = 4 * (.2 + night) * (pveh.wreck ? 0 : 1); dyn.headlight.position.set(pveh.x + Math.cos(pveh.ang) * 1.6, h + 1.1, pveh.y + Math.sin(pveh.ang) * 1.6); dyn.headlight.target.position.set(pveh.x + Math.cos(pveh.ang) * 12, h, pveh.y + Math.sin(pveh.ang) * 12); } else dyn.headlight.intensity = 0;
     // oggetti da raccogliere
     st.pickups.forEach(k => {
@@ -11434,7 +11442,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       m.userData.g.rotation.y = time * 1.8; m.userData.g.position.y = .7 + Math.sin(time * 3 + k.id) * .12;
       m.userData.icon.position.y = 2.2 + Math.sin(time * 2 + k.id) * .1; const dd = Math.hypot(k.x - p.x, k.y - p.y); m.userData.icon.material.opacity = Math.min(1, Math.max(.35, (dd - 1.5) / 3));
     });
-    for (const id in FX.pickups) if (!st.pickups.find(k => String(k.id) === id)) { scene.remove(FX.pickups[id]); delete FX.pickups[id]; }
+    { const kIds = new Set(st.pickups.map(k => String(k.id))); for (const id in FX.pickups) if (!kIds.has(id)) { scene.remove(FX.pickups[id]); delete FX.pickups[id]; } }
     // effetti
     st.__hurt = 0;
     if (DZ.lastSt !== st) tickDestruction(st, 0);
