@@ -51,6 +51,13 @@ Profilo a regime, il peso che resta è **lavoro che parte quando qualcosa entra 
   fotogramma (budget, tipo `vesti`), invisibile finché non ha finito (compare a 52 m, come prima, qualche fotogramma dopo).
 - Prova: 6 abitanti vestiti subito e a rate, **6/6 identici** (mesh, vertici, materiali).
 
+## Blocchi di terreno e piante a fasi (fatto)
+- `render.js buildChunkGen`: un blocco (32 × 32 caselle) si costruisce in 9 fasi (dipinto del terreno in tre passate,
+  scabrosità, geometria, luce cotta, vegetazione, bosco, verde) e va in scena solo finito; intanto resta il vecchio (o la
+  base a bassa risoluzione, come prima). `updateChunks` porta avanti un lavoro alla volta (`ISO.job`): lontano una fase
+  quando c'è tempo, vicino (meno di 70 m) almeno una per fotogramma e di più se il budget lo concede (fino a 4 ms).
+  Nella schermata iniziale (`ISO.rush`) si fanno interi come prima. Se la mappa cambia a metà, il blocco si rifà.
+
 ## Dove siamo (misure a regime, Chromium senza scheda video: contano i rapporti)
 - Ciclo dei graffiti: da 344 a 60 ms per fotogramma; Risacca 6, tetti 2: i cicli dei moduli ora sono leggeri.
 - Quello che resta in cima: il disegno della scena (scheda video), la costruzione dei personaggi (ora a fasi) e dei blocchi
