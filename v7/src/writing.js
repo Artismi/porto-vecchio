@@ -136,7 +136,18 @@ var Writing = (function () {
     // il ponte in terra
     let best = null; const YD = (G.layout().rail || {}).yards || []; for (let s = Math.ceil(TR.sMine) + 60; s + 90 < landEnd - 60; s += 5) { if (YD.some(y => s < y.s0 + y.len + 25 && s + 90 > y.s0 - 25)) continue; const g0 = el(P[s][0], P[s][1]), g1 = el(P[s + 90][0], P[s + 90][1]); let m = 0; for (let k = 15; k <= 75; k += 5) m += el(P[s + k][0], P[s + k][1]); m /= 13; const dd = Math.min(g0, g1) - m; if (!best || dd > best.d) best = { s0: s, s1: s + 90, d: dd }; }
     const bridge = best ? [best.s0, best.s1] : [Math.round(landEnd * .45), Math.round(landEnd * .45) + 90];
-    const onBridge = s => s > bridge[0] - 2 && s < bridge[1] + 2;
+    // [ordine1] i sottopassi: dove una strada (o un sentiero) incrocia la linea in terra, la linea passa sopra su un impalcato con le spalle,
+    // la strada sotto, libera; niente rete né muri sopra la carreggiata
+    const cross = [];
+    G.MAP.roads.forEach(rd => { if (!rd.pts || rd.traccia) return; const RP = rd.pts;
+      for (let i = 0; i < RP.length; i++) { const [x, y] = RP[i];
+        for (let k = Math.ceil(TR.sMine) + 2; k < landEnd - 2; k += 1) { const q = P[k]; if (Math.abs(q[0] - x) > 2 || Math.abs(q[1] - y) > 2 || hyp(q[0] - x, q[1] - y) > 1.2) continue;
+          if (cross.some(c => Math.abs(c.s - k) < 12)) break;
+          const a = RP[Math.max(0, i - 2)], b = RP[Math.min(RP.length - 1, i + 2)], ra = Math.atan2(b[1] - a[1], b[0] - a[0]), la = Math.atan2(P[k + 2][1] - P[k - 2][1], P[k + 2][0] - P[k - 2][0]);
+          const sn = Math.max(.45, Math.abs(Math.sin(ra - la))), hw = (rd.w / 2 + (rd.kind === 'sterrato' && rd.w < 2.8 ? 1.2 : 2.2)) / sn;
+          cross.push({ s: k, hw, road: rd.id, w: rd.w, foot: rd.kind === 'sterrato' && rd.w < 2.8, x, y }); break; } } });
+    const inCross = (s, pad) => cross.some(c => Math.abs(s - c.s) < c.hw + (pad || 0));
+    const onBridge = s => (s > bridge[0] - 2 && s < bridge[1] + 2) || inCross(s, 3);
     // gli scali: li prepara la mappa (game.js railLine: la massicciata larga, il bosco tagliato)
     const OFF = 4.6, yards = ((G.layout().rail || {}).yards || []).map((y, i) => Object.assign({ i }, y));
     // le recinzioni: dove la linea è in terra, fuori dal ponte e dagli scali (lì la rete gira attorno allo scalo, più larga)
@@ -156,7 +167,7 @@ var Writing = (function () {
       const ptAt = (s, side, off, u) => { const an = angAt(s), c = Math.cos(an), sn = Math.sin(an), q = P[s]; return { x: q[0] + c * u - sn * off * side, y: q[1] + sn * u + c * off * side }; };
       const busy = (s, side) => s < TR.sMine + 30 || s > landEnd - 30 || onBridge(s - 16) || onBridge(s + 16) || yards.some(y => y.side === side && s > y.s0 - 22 && s < y.s0 + y.len + 22) || walls.some(w => w.side === side && s > w.s - 16 && s < w.s + w.len + 16);   // lo scalo e il muro occupano solo il loro lato
       const T0 = G.T, freeT = (x, y) => { const tx = Math.floor(x / G.TS), ty = Math.floor(y / G.TS); if (tx < 1 || ty < 1 || tx >= G.GW - 1 || ty >= G.GH - 1 || (G.bIndex && G.bIndex[ty * G.GW + tx] >= 0)) return false; const v = G.tileAt(tx, ty); return v !== T0.BLD && v !== T0.WATER && v !== T0.CLIFF && v !== T0.FOUNT && v !== T0.VIA; };   // gli alberi si tagliano (la stazione è nel bosco), la roccia no
-      const fits = (s, side, o0, o1, hl) => { let lo = 1e9, hi = -1e9; for (let u = -hl; u <= hl; u += 1) for (let o = o0; o <= o1; o += 1) { const q = ptAt(s, side, o, u); if (!freeT(q.x, q.y)) return false; const e = el(q.x, q.y); lo = Math.min(lo, e); hi = Math.max(hi, e); } return hi - lo < 3.2; };
+      const fits = (s, side, o0, o1, hl) => { let lo = 1e9, hi = -1e9; for (let u = -hl - 3; u <= hl + 3; u += 1) for (let o = o0; o <= o1 + 3.5; o += 1) {   /* [ordine1] col margine: la stazione non si incastra più in una casa */ const q = ptAt(s, side, o, u); if (!freeT(q.x, q.y)) return false; const e = el(q.x, q.y); lo = Math.min(lo, e); hi = Math.max(hi, e); } return hi - lo < 3.2; };
       const find = (frac, o0, o1, hl, away) => { for (let d = 0; d < landEnd * .45; d += 3) for (const sg of [1, -1]) { const s = Math.round(landEnd * frac + d * sg); if (away.some(a => Math.abs(a - s) < 60)) continue; for (const side of [1, -1]) if (!busy(s, side) && fits(s, side, o0, o1, hl)) return { s, side }; } return null; };
       spots.station = find(.34, 6, 12.5, 6.5, []);   // il fabbricato da 6 a 12 m dall'asse, la banchina davanti
       [.6, .82].forEach(f => { const c = find(f, 6.5, 13.5, 4.5, [spots.station ? spots.station.s : -999].concat(spots.cant.map(c => c.s))); if (c) spots.cant.push(c); });
@@ -165,7 +176,7 @@ var Writing = (function () {
       spots.apply = () => { if (spots.station) { clear(spots.station, 2.4, 15, 21); block(spots.station, 6.9, 11.1, 5.1); } spots.cant.forEach(c => { clear(c, 4, 16, 7); block(c, 7.9, 12.1, 2.6); }); };   // le caselle: la radura, i muri (si rimettono a ogni partita nuova: create ripristina la mappa)
       spots.apply();
       if (spots.station) for (let k = fences.length - 1; k >= 0; k--) if (Math.abs(fences[k].s - spots.station.s) < 24) fences.splice(k, 1); }   // davanti alla stazione la rete non c'è più
-    return { ok: true, landEnd, bridge, onBridge, yards, fences, gaps, walls, OFF, spots };
+    return { ok: true, landEnd, bridge, onBridge, yards, fences, gaps, walls, OFF, spots, cross, inCross };
   })();
   if (RAIL.ok && RAIL.spots.apply && G.create && !G.create.__spots) { const c0 = G.create; G.create = function () { const st = c0.apply(this, arguments); try { RAIL.spots.apply(); } catch (e) { } return st; }; G.create.__spots = true; }   // [writer] dopo ogni partita nuova, le caselle degli spot
   // [writer] GLI SPOT LUNGO LA LINEA: le piante (per la grafica) e i siti (dove si mette chi dipinge, verso dove guarda)
@@ -322,7 +333,8 @@ var Writing = (function () {
   }
   function addWork(st, w) {
     const W = S(st); w.id = W.nextId++; w.t0 = w.t0 || st.t; W.works.push(w);
-    if (W.works.length > 900) { let i = W.works.findIndex(o => o.erased && o.by !== 'player'); if (i < 0) i = W.works.findIndex(o => o.by !== 'player' && o.done); if (i >= 0) W.works.splice(i, 1); }
+    if (W.works.length > 1500) {   // [ordine1] più spazio: la città parte già piena di storia
+  let i = W.works.findIndex(o => o.erased && o.by !== 'player'); if (i < 0) i = W.works.findIndex(o => o.by !== 'player' && o.done); if (i >= 0) W.works.splice(i, 1); }
     return w;
   }
   // la notte dei writer: tag, throw-up, pezzi sui muri della città; a volte il treno in deposito; i crossaggi per i beef
@@ -805,10 +817,13 @@ var Writing = (function () {
     const ter = P.map((q, i) => { if (q[3]) return 2.6; const [l, r] = side(i, 1.8); return Math.max(g[i], (g[i] * 2 + l + r) / 4) + .42; });   // la media fra centro e bordi: in costa la massicciata taglia un poco il pendio
     const [b0, b1] = RAIL.bridge, top = Math.max(g[b0], g[b1]) + 1.2;
     const t = ter.map((v, i) => i >= b0 && i <= b1 ? Math.max(v, top, g[i] + 4.6) : v);
+    // [ordine1] sopra le strade: il ferro a 5,4 m dalla carreggiata (4,5 m liberi sotto l'impalcato)
+    (RAIL.cross || []).forEach(c => { const rh = R.groundH(c.x, c.y) + (c.foot ? 3.6 : 5.4); for (let i = Math.max(0, Math.floor(c.s - c.hw - 2)); i <= Math.min(n - 1, Math.ceil(c.s + c.hw + 2)); i++) t[i] = Math.max(t[i], rh); });
     const h = t.slice(), G2 = .03;
     for (let it = 0; it < 3; it++) { for (let i = 1; i < n; i++) h[i] = Math.max(h[i], h[i - 1] - G2); for (let i = n - 2; i >= 0; i--) h[i] = Math.max(h[i], h[i + 1] - G2); }
     for (let it = 0; it < 4; it++) { const o = h.slice(); for (let i = 2; i < n - 2; i++) h[i] = Math.max(t[i], (o[i - 2] + o[i - 1] + o[i] + o[i + 1] + o[i + 2]) / 5); }
-    TR.el = P.map((q, i) => !q[3] && i >= b0 - 3 && i <= b1 + 3 && h[i] - g[i] > 1.5 ? 1 : 0); TR.g = g;   // i piloni solo sul ponte: altrove il rilevato di terra
+    TR.el = P.map((q, i) => !q[3] && ((i >= b0 - 3 && i <= b1 + 3 && h[i] - g[i] > 1.5) || h[i] - g[i] > 3.4 || (RAIL.inCross && RAIL.inCross(i, 1))) ? 1 : 0); TR.g = g;   // i piloni sul ponte, sopra le strade e dove il rilevato sarebbe una montagna (oltre 3,4 m: viadotto ad archi bassi); altrove la massicciata
+    for (let it = 0; it < 2; it++) for (let i = 1; i < n - 1; i++) if (!TR.el[i] && TR.el[i - 1] && TR.el[i + 1]) TR.el[i] = 1;   // niente buchi di un metro fra due tratti su piloni
     P.forEach((q, i) => { q[2] = h[i]; });
     // gli scali: il binario secondario non affonda nel pendio (si alza col terreno, raccordato ai deviatoi)
     RAIL.yards.forEach(Y => { Y._lf = null; const L0 = []; for (let u = 0; u <= Y.len; u++) { const q = yardAt(Y, u); L0.push(Math.max(0, Math.max(R.groundH(q.x, q.y), R.groundH(q.x - Math.sin(q.ang) * 1.6, q.y + Math.cos(q.ang) * 1.6), R.groundH(q.x + Math.sin(q.ang) * 1.6, q.y - Math.cos(q.ang) * 1.6)) + .42 - q.h) * ramp(u, Y.len)); }
@@ -824,21 +839,28 @@ var Writing = (function () {
     const EL = i => TR.el ? TR.el[Math.max(0, Math.min(P.length - 1, Math.round(i)))] : 0, SEA = i => !!P[Math.max(0, Math.min(P.length - 1, Math.round(i)))][3];
     const gH = (x, y) => R.groundH(x, y), jit = (c, k) => { const v = (Math.sin(k * 12.9898) * 43758.5453) % 1, d = (v - Math.floor(v) - .5) * .12; return new THREE.Color(Math.min(1, c.r + d), Math.min(1, c.g + d), Math.min(1, c.b + d)); };
     // ---- la massicciata (in terra) e l'impalcato (ponte e viadotto) ----
-    const RT = railTex(), pos = [], col = [], uvs = [], idxG = [], idxE = [], idxD = [], push = (x, y, z, c) => { pos.push(x, y, z); col.push(c.r, c.g, c.b); uvs.push(x / 2.2 + y * .15, z / 2.2 - y * .15); return pos.length / 3 - 1; };   // la texture proiettata dall'alto (più la quota: le scarpate non si stirano)
+    const RT = railTex(), pos = [], col = [], uvs = [], idxG = [], idxE = [], idxD = [], idxW = [], push = (x, y, z, c) => { pos.push(x, y, z); col.push(c.r, c.g, c.b); uvs.push(x / 2.2 + y * .15, z / 2.2 - y * .15); return pos.length / 3 - 1; };   // la texture proiettata dall'alto (più la quota: le scarpate non si stirano)
     const cG = new THREE.Color('#e2dcd2'), cG2 = new THREE.Color('#c4bdb1'), cO = new THREE.Color('#9c8c7c'), cC = new THREE.Color('#d6d2ca'), cC2 = new THREE.Color('#aaa69e');
     let prev = null, prevK = null;
     const bed = (q, i, dk) => {   // una sezione: bordo esterno a terra, spalla, il centro più scuro d'olio e ruggine, spalla, bordo
       const nx = -Math.sin(q.ang), nz = Math.cos(q.ang), top = q.h - .18, el = EL(i) || SEA(i);
       if (el) { const bot = top - .95, hw = 2.5; return [push(q.x + nx * hw, bot, q.y + nz * hw, cC2), push(q.x + nx * hw, top, q.y + nz * hw, cC), push(q.x + nx * 1.6, top + .06, q.y + nz * 1.6, cG2), push(q.x, top + .1, q.y, cO), push(q.x - nx * 1.6, top + .06, q.y - nz * 1.6, cG2), push(q.x - nx * hw, top, q.y - nz * hw, cC), push(q.x - nx * hw, bot, q.y - nz * hw, cC2)]; }
       // il rilevato: la scarpata scende a terra con pendenza 2:3 (più è alto, più è largo); sotto la ghiaia, la terra con l'erba rada
-      const ft = sd => { let f = 3.3; for (let k = 0; k < 4; k++) { const gg = gH(q.x + nx * f * sd, q.y + nz * f * sd); f = 3.3 + Math.max(0, top - gg - .3) * 1.5; } return Math.min(f, 14); };
+      // [ordine1] oltre 1,2 m il rilevato non scende più in una scarpata liscia larga fino a 14 m: lo regge un muro di pietra a secco
+      const wall = sd => !dk && top - gH(q.x + nx * 3 * sd, q.y + nz * 3 * sd) > 1.2;
+      const ft = sd => { if (wall(sd)) return 2.95; let f = 3.3; for (let k = 0; k < 4; k++) { const gg = gH(q.x + nx * f * sd, q.y + nz * f * sd); f = 3.3 + Math.max(0, top - gg - .3) * 1.5; } return Math.min(f, 14); };
+      const wl = wall(1), wr = wall(-1);
+      if (wl || wr) { const fL = ft(1), fR = ft(-1), gL = gH(q.x + nx * fL, q.y + nz * fL) - .2, gR = gH(q.x - nx * fR, q.y - nz * fR) - .2, cS = new THREE.Color('#d8d2c6');
+        const shL = wl ? top - .04 : top - Math.min(.35, top - gL), shR = wr ? top - .04 : top - Math.min(.35, top - gR);
+        const A = [push(q.x + nx * fL, Math.min(top, gL), q.y + nz * fL, jit(wl ? cS : cG2, i)), push(q.x + nx * (wl ? 2.75 : 2.6), shL, q.y + nz * (wl ? 2.75 : 2.6), jit(wl ? cS : cG2, i + 5)), push(q.x + nx * 1.9, top, q.y + nz * 1.9, jit(cG, i + 1)), push(q.x, top + .02, q.y, jit(cO, i + 2)), push(q.x - nx * 1.9, top, q.y - nz * 1.9, jit(cG, i + 3)), push(q.x - nx * (wr ? 2.75 : 2.6), shR, q.y - nz * (wr ? 2.75 : 2.6), jit(wr ? cS : cG2, i + 6)), push(q.x - nx * fR, Math.min(top, gR), q.y - nz * fR, jit(wr ? cS : cG2, i + 4))];
+        A.wl = wl; A.wr = wr; return A; }
       const fL = ft(1), fR = ft(-1), foot = fL, gL = Math.min(top, gH(q.x + nx * fL, q.y + nz * fL)) - .15, gR = Math.min(top, gH(q.x - nx * fR, q.y - nz * fR)) - .15, cE = new THREE.Color('#e0d8c0');
       const eL = Math.min(top, gL + .1) - Math.min(.35, top - gL), eR = Math.min(top, gR + .1) - Math.min(.35, top - gR);   // dove finisce la ghiaia comincia la terra
       return [push(q.x + nx * fL, gL, q.y + nz * fL, jit(cE, i)), push(q.x + nx * 2.6, top - Math.min(.35, top - gL), q.y + nz * 2.6, jit(fL > 4.5 ? cE : cG2, i + 5)), push(q.x + nx * 1.9, top, q.y + nz * 1.9, jit(cG, i + 1)), push(q.x, top + .02, q.y, jit(cO, i + 2)), push(q.x - nx * 1.9, top, q.y - nz * 1.9, jit(cG, i + 3)), push(q.x - nx * 2.6, top - Math.min(.35, top - gR), q.y - nz * 2.6, jit(fR > 4.5 ? cE : cG2, i + 6)), push(q.x - nx * fR, gR, q.y - nz * fR, jit(cE, i + 4))];
     };
     for (let i = 0; i < P.length; i += 2) {
       const q = railAt(i), k = bed(q, i), kind = EL(i) || SEA(i) ? 1 : 0;
-      const strip = (A, B, kd) => { for (let a = 0; a < 6; a++) (kd ? (a === 2 || a === 3 ? idxG : idxD) : a === 0 || a === 5 ? idxE : idxG).push(A[a], B[a], A[a + 1], A[a + 1], B[a], B[a + 1]); };
+      const strip = (A, B, kd) => { for (let a = 0; a < 6; a++) (kd ? (a === 2 || a === 3 ? idxG : idxD) : a === 0 ? (A.wl || B.wl ? idxW : idxE) : a === 5 ? (A.wr || B.wr ? idxW : idxE) : idxG).push(A[a], B[a], A[a + 1], A[a + 1], B[a], B[a + 1]); };
       if (prev && kind === prevK) strip(prev, k, kind);
       else if (prev) { const k2 = bed(railAt(i - 1), i - 1); strip(prev, k2, prevK); }
       prev = k; prevK = kind;
@@ -846,7 +868,11 @@ var Writing = (function () {
     // gli scali: la loro massicciata accanto, e i binari secondari
     RAIL.yards.forEach(Y => { let pv = null; for (let u = 0; u <= Y.len; u += 2) { const q = yardAt(Y, u); const k = bed(q, Y.s0 + u, 1); if (pv) for (let a = 0; a < 6; a++) (a === 0 || a === 5 ? idxE : idxG).push(pv[a], k[a], pv[a + 1], pv[a + 1], k[a], k[a + 1]); pv = k; } });
     const PA = new THREE.Float32BufferAttribute(pos, 3), CA = new THREE.Float32BufferAttribute(col, 3), UA = new THREE.Float32BufferAttribute(uvs, 2);
-    [[idxG, RT.gravel], [idxE, RT.earth], [idxD, RT.concrete]].forEach(([ix, mp]) => { if (!ix.length) return; const geo = new THREE.BufferGeometry(); geo.setAttribute('position', PA); geo.setAttribute('color', CA); geo.setAttribute('uv', UA); geo.setIndex(ix); geo.computeVertexNormals(); const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: mp, vertexColors: true, side: THREE.DoubleSide })); m.receiveShadow = true; m.userData.wr = 1; g.add(m); });
+    // [ordine1] il muro di pietra a secco: conci irregolari a corsi, giunti scuri, licheni e muschio in basso
+    if (!RT.stone) RT.stone = tex64(64, 64, (x, w, h) => { x.fillStyle = '#4a4640'; x.fillRect(0, 0, w, h); let s0 = 7;
+      for (let y = 0; y < h; y += 8) { let u = (y / 8 % 2) * 5 - 6; while (u < w) { s0 = (s0 * 16807) % 2147483647; const L = 7 + s0 % 9, t = 70 + (s0 >> 5) % 40; x.fillStyle = `rgb(${t + 26},${t + 20},${t + 10})`; x.fillRect(u + 1, y + 1, L - 1, 6); x.fillStyle = 'rgba(255,250,235,.18)'; x.fillRect(u + 1, y + 1, L - 1, 1); x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(u + 1, y + 6, L - 1, 1); u += L; } }
+      for (let k = 0; k < 140; k++) { s0 = (s0 * 16807) % 2147483647; x.fillStyle = k % 3 ? 'rgba(90,110,60,.45)' : 'rgba(200,196,160,.4)'; x.fillRect(s0 % w, (s0 >> 8) % h, 2, 1); } }); RT.stone.wrapS = RT.stone.wrapT = THREE.RepeatWrapping;
+    [[idxG, RT.gravel], [idxE, RT.earth], [idxD, RT.concrete], [idxW, RT.stone]].forEach(([ix, mp]) => { if (!ix.length) return; const geo = new THREE.BufferGeometry(); geo.setAttribute('position', PA); geo.setAttribute('color', CA); geo.setAttribute('uv', UA); geo.setIndex(ix); geo.computeVertexNormals(); const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: mp, vertexColors: true, side: THREE.DoubleSide })); m.receiveShadow = true; m.userData.wr = 1; g.add(m); });
     // ---- le parti ripetute (instanced) ----
     const bx = new THREE.BoxGeometry(1, 1, 1), m4 = new THREE.Matrix4(), qt = new THREE.Quaternion(), e = new THREE.Euler(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
     const inst = (mat, list, shadow) => { if (!list.length) return; const im = new THREE.InstancedMesh(bx, mat, list.length); list.forEach((L, k) => { e.set(L[5] || 0, L[4], 0, 'YXZ'); qt.setFromEuler(e); im.setMatrixAt(k, m4.compose(v3.set(L[0], L[1], L[2]), qt, s3.set(L[3][0], L[3][1], L[3][2]))); }); im.castShadow = shadow !== false; im.receiveShadow = true; im.userData.wr = 1; im.frustumCulled = false; g.add(im); };
@@ -875,7 +901,8 @@ var Writing = (function () {
     RAIL.yards.forEach(Y => rails(u => yardAt(Y, u), 0, Y.len, () => false));
     const pilL = [];   // [writer] i piloni del ponte in terra: mesh vere, si dipingono (sotto il ponte)
     // i piloni: sul ponte in terra e sul viadotto, fino al terreno (o al fondo del mare)
-    for (let s = 6; s < P.length - 6; s += 12) { if (!(EL(s) || SEA(s))) continue; const q = railAt(s), top = q.h - 1.15, bot = SEA(s) ? -4 : gH(q.x, q.y) - .3; if (top - bot < .4) continue; (SEA(s) ? pil : pilL).push([q.x, (top + bot) / 2, q.y, [1.2, top - bot, 3.2], -q.ang]); pil.push([q.x, top - .2, q.y, [1.7, .4, 4.6], -q.ang]); pil.push([q.x, top - .5, q.y, [1.4, .2, 3.8], -q.ang]); if (!SEA(s)) pil.push([q.x, bot + .45, q.y, [2, .5, 4], -q.ang]); }
+    (RAIL.cross || []).forEach(c => [-1, 1].forEach(sg => { const s = c.s + sg * (c.hw + .7); if (s < 1 || s > P.length - 2) return; const q = railAt(s), top = q.h - 1.15, bot = gH(q.x, q.y) - .4; if (top - bot < .4) return; pilL.push([q.x, (top + bot) / 2, q.y, [1.5, top - bot, 5.4], -q.ang]); pil.push([q.x, top - .1, q.y, [1.9, .3, 5.8], -q.ang]); }));   /* [ordine1] le spalle del sottopasso */
+    for (let s = 6; s < P.length - 6; s += 12) { if (!(EL(s) || SEA(s))) continue; if ((RAIL.cross || []).some(c => Math.abs(s - c.s) < c.hw + 2)) continue; /* [ordine1] mai un pilone in mezzo alla strada */ const q = railAt(s), top = q.h - 1.15, bot = SEA(s) ? -4 : gH(q.x, q.y) - .3; if (top - bot < .4) continue; (SEA(s) ? pil : pilL).push([q.x, (top + bot) / 2, q.y, [1.2, top - bot, 3.2], -q.ang]); pil.push([q.x, top - .2, q.y, [1.7, .4, 4.6], -q.ang]); pil.push([q.x, top - .5, q.y, [1.4, .2, 3.8], -q.ang]); if (!SEA(s)) pil.push([q.x, bot + .45, q.y, [2, .5, 4], -q.ang]); }
     // i parapetti del ponte e del viadotto (bassi, di cemento, si dipingono): un muro unico per lato
     const para = (sd) => { const pp = [], pi = [], pu = []; let pv = null; for (let i = 0; i < P.length; i += 2) { if (!(EL(i) || SEA(i))) { pv = null; continue; } const q = railAt(i), nx = -Math.sin(q.ang) * sd, nz = Math.cos(q.ang) * sd, o = 2.45, base = q.h - .18; const a = pp.length / 3; pp.push(q.x + nx * o, base, q.y + nz * o, q.x + nx * o, base + .95, q.y + nz * o); pu.push(i / 3, 0, i / 3, .48); if (pv !== null) pi.push(pv, a, pv + 1, pv + 1, a, a + 1); pv = a; }
       if (!pi.length) return; const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(pu, 2)); gg.setIndex(pi); gg.computeVertexNormals(); const m = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ map: RT.concrete, side: THREE.DoubleSide })); m.receiveShadow = true; m.castShadow = true; m.name = 'parapetto'; g.add(m); };
@@ -887,7 +914,7 @@ var Writing = (function () {
     inst(new THREE.MeshStandardMaterial({ color: '#4a3c32', metalness: .5, roughness: .7 }), plates, false); inst(new THREE.MeshStandardMaterial({ color: '#3a3634', metalness: .6, roughness: .5 }), clips, false);
     inst(new THREE.MeshLambertMaterial({ map: RT.concrete }), pil); inst(new THREE.MeshStandardMaterial({ color: '#e8e4da', roughness: .8 }), kmp); 
     // ---- la superficie del rilevato a una distanza o dall'asse (per appoggiarci rete, muri, sassi, erba) e il suo piede ----
-    const surfAt = (s, sd, o) => { const q = sidePt(s, sd, 0), top = q.h - .18, nx = -Math.sin(q.ang) * sd, nz = Math.cos(q.ang) * sd, gg = gH(q.x + nx * o, q.y + nz * o); if (EL(s) || SEA(s)) return gg; return o <= 1.9 ? top : Math.max(gg, o <= 2.6 ? top - (o - 1.9) / .7 * .35 : top - .35 - (o - 2.6) / 1.5); };   // come la sezione della massicciata: piano, spalla, scarpata
+    const surfAt = (s, sd, o) => { const q = sidePt(s, sd, 0), top = q.h - .18, nx = -Math.sin(q.ang) * sd, nz = Math.cos(q.ang) * sd, gg = gH(q.x + nx * o, q.y + nz * o); if (EL(s) || SEA(s)) return gg; if (o > 2.8 && top - gH(q.x + nx * 3, q.y + nz * 3) > 1.2) return gg; return o <= 1.9 ? top : Math.max(gg, o <= 2.6 ? top - (o - 1.9) / .7 * .35 : top - .35 - (o - 2.6) / 1.5); };   // [ordine1] oltre il muro, il prato   // come la sezione della massicciata: piano, spalla, scarpata
     // la canalina dei cavi: un cordolo di cemento continuo appoggiato sulla spalla della massicciata (lato sinistro), coperchi ogni metro
     { const trM = new THREE.MeshLambertMaterial({ map: RT.concrete, color: '#ffffff' }); let a0 = null;
       const run = (a, b) => { if (b - a > 6) sweep(s => sidePt(s, 1, 0), a, b, 1, (s, q) => { const t = surfAt(s, -1, 1.95) + .07, bL = surfAt(s, -1, 1.98) - .12, bR = surfAt(s, -1, 2.36) - .12; return [[-1.98, bL], [-1.98, t], [-1.98, t], [-2.36, t], [-2.36, t], [-2.36, bR]]; }, trM, true); };

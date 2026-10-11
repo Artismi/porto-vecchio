@@ -69,6 +69,10 @@ var WriterVita = (function () {
     });
     // [ferrovia] i muri antirumore lungo la linea: il lato verso la strada, un sito ogni 8 m
     const RL = WR.RAIL; if (RL && RL.ok) RL.walls.forEach((Wl, k) => { if (k % 2) return; const q = WR.sidePt(Wl.s + 2, Wl.side, Wl.off + .7); if (!G.walkT(Math.floor(q.x / TS), Math.floor(q.y / TS))) return; const nx = -Math.sin(q.ang) * Wl.side, ny = Math.cos(q.ang) * Wl.side; SITES.push({ x: q.x, y: q.y, face: Math.atan2(-ny, -nx), kind: 'ferrovia', bi: -1, len: 8, out: [nx, ny], along: [Math.cos(q.ang), Math.sin(q.ang)], place: 'lungo la ferrovia' }); });
+    // [ordine1] il Muro dalla parte della città: la hall of fame della Risacca, un sito ogni 5 m (fuori dal varco)
+    const WL = G.MAP.world && G.MAP.world.WALL; if (WL) for (let y = WL.y0 + 4; y < WL.y1 - 4; y += 5) { if (y > WL.gate[0] - 6 && y < WL.gate[1] + 6) continue; const x = WL.x + .4 - .6, tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (!inb(tx, ty) || !G.walkT(tx, ty)) continue; SITES.push({ x, y, face: 0, kind: 'muro', bi: -1, len: 5, out: [-1, 0], along: [0, 1], name: 'sul Muro' }); }
+    // [ordine1] i sottopassi della ferrovia: le spalle di cemento ai due lati della strada
+    if (RL && RL.ok && RL.cross) RL.cross.forEach(c => [-1, 1].forEach(sg => { const s0 = c.s + sg * (c.hw - .4), q = WR.railAt(s0), ux = Math.cos(q.ang), uy = Math.sin(q.ang), x = q.x - ux * sg * 1.1, y = q.y - uy * sg * 1.1; if (!G.walkT(Math.floor(x / TS), Math.floor(y / TS))) return; SITES.push({ x, y, face: Math.atan2(uy * sg, ux * sg), kind: 'ponte', bi: -1, len: 4, out: [-ux * sg, -uy * sg], along: [-uy, ux], name: 'sotto la ferrovia' }); }));
     // [writer] gli spot lungo la linea: la stazione abbandonata, le case cantoniere, sotto il ponte, gli armadietti
     if (WR.spotPlan) WR.spotPlan().sites.forEach(q => SITES.push(Object.assign({ bi: -1 }, q)));
   }
@@ -223,20 +227,50 @@ var WriterVita = (function () {
   }
   // LA STORIA DEI MURI: la città non è nuova. All'inizio della partita sui muri c'è già quello che hanno fatto negli anni i writer
   // di adesso e quelli che non ci sono più (crew sciolte, gente partita): tante tag, throw-up, qualche pezzo, qualche heaven spot.
-  const OLD = [['RENZ', 'OGS'], ['MASK', 'OGS'], ['ZULU', 'KMT'], ['ODIO', 'KMT'], ['TREK', 'FLM'], ['NAPO', 'FLM'], ['SUBA', 'RSC'], ['KILO', 'RSC'], ['ASMA', 'OGS'], ['FENO', 'KMT']];
+  const OLD = [['RENZ', 'OGS'], ['MASK', 'OGS'], ['ZULU', 'KMT'], ['ODIO', 'KMT'], ['TREK', 'FLM'], ['NAPO', 'FLM'], ['SUBA', 'RSC'], ['KILO', 'RSC'], ['ASMA', 'OGS'], ['FENO', 'KMT'],
+    // [ordine1] più mani sui muri: le vecchie crew, i solitari, gli ultras, la Risacca, i ragazzini del quartiere
+    ['VERA', 'RSC'], ['MOLO', 'RSC'], ['ZERO', 'RSC'], ['KAOS', 'FLM'], ['BLUE', 'OGS'], ['TOKE', 'KMT'], ['RUGA', 'SPK'], ['ORZO', 'SPK'], ['NEVA', 'SPK'], ['DUKA', 'CVR'], ['ULTR', 'CVR'], ['BOSS', 'CVR'],
+    ['PIX', 'TOY'], ['GEKO', 'TOY'], ['LUPO', 'TOY'], ['MIRO', ''], ['SKAN', ''], ['ATOM', ''], ['ROSA', ''], ['TEO', ''], ['DOGE', 'FLM'], ['NEMO', 'OGS'], ['SALE', 'RSC'], ['TUFO', 'KMT']];
+  const BEEF0 = { OGS: 'KMT', KMT: 'OGS', FLM: 'SPK', SPK: 'FLM', CVR: 'RSC', RSC: 'CVR' };   // le vecchie guerre: chi crossa chi
+  const POLW = ['RISACCA', 'LIBERI', 'FUORI', 'RIBELLI', 'MAREA', 'NOMURO', 'DISGELO', 'RESPIRA', 'ISOLA'];
+  const HOT = ['bar', 'osteria', 'flipper', 'disco', 'cinema', 'video', 'stella', 'aurora', 'magazzino', 'cantiere', 'scalo', 'calata', 'giardini', 'piazzetta', 'caruggio', 'vico', 'spiaggia', 'discarica', 'muro', 'varco'];
+  const COLD = ['governo', 'ministero', 'garante', 'archivio', 'commissariato', 'rocca', 'caserma_p', 'piazza_gov', 'chiesa', 'santuario', 'cultura'];
+  // quanto un muro attira la vernice: i ritrovi, la ferrovia, il Muro, i sottopassi sì; i palazzi del regime no (li ripuliscono)
+  function heatOf(s) { if (s.kind === 'muro' || s.kind === 'ponte') return 3.2; if (s.kind === 'ferrovia') return 2.2; const P = G.PLACES; let h = 1;
+    COLD.forEach(id => { const q = P[id]; if (q && hyp(q.x - s.x, q.y - s.y) < 28) h *= .18; }); HOT.forEach(id => { const q = P[id]; if (q && hyp(q.x - s.x, q.y - s.y) < 30) h *= 1.8; });
+    return Math.min(h, 4); }
   function history(st) {
     const v = V(st); if (v.hist) return; v.hist = true;
-    const W = WR.S(st), N = 680, now = st.t, hot = []; for (let k = 0; k < 45; k++) hot.push(pick(SITES.filter(s => s.kind !== 'heaven')));
+    const W = WR.S(st), N = 820, now = st.t;
+    // [ordine1] i muri pesati: dove si dipinge davvero (ritrovi, ferrovia, Muro, sottopassi) e dove no (il regime)
+    const pool = SITES.filter(s => s.kind !== 'heaven' || rnd() < .6), wts = pool.map(heatOf), tot = wts.reduce((a, c) => a + c, 0);
+    const pickW = () => { let t = rnd() * tot; for (let i = 0; i < pool.length; i++) { t -= wts[i]; if (t <= 0) return pool[i]; } return pool[pool.length - 1]; };
     const ws = W.writers.map(id => G.byId(st, id)).filter(n => n && n.pop && n.pop.writer);
+    const oldWr = (aka, crew) => { const h = aka.charCodeAt(0) * 977 + aka.charCodeAt(1) * 31 + (aka.charCodeAt(2) || 7); const sk = crew === 'TOY' ? .12 + (h % 20) / 100 : .35 + (h % 50) / 100; return { aka, crew, skill: sk, dna: WA.dnaOf(h, sk, h % 14), hand: h * 13 }; };
+    const made = [];
     for (let k = 0; k < N; k++) {
-      const s = rnd() < .55 ? pick(hot) : pick(SITES), r = rnd(), old = rnd() < .45, who = old || !ws.length ? null : pick(ws);
-      const wr = who ? who.pop.writer : (() => { const [aka, crew] = pick(OLD), h = aka.charCodeAt(0) * 977 + aka.charCodeAt(1); return { aka, crew, skill: .35 + (h % 50) / 100, dna: WA.dnaOf(h, .35 + (h % 50) / 100, h % 14), hand: h * 13 }; })();
-      const style = s.kind === 'heaven' ? (r < .5 ? 'throw' : r < .7 ? 'gotico' : 'pezzo') : r < .42 ? 'tag' : r < .56 ? 'mtag' : r < .76 ? 'throw' : r < .8 ? 'gotico' : r < .86 ? 'mostro' : r < .96 ? 'pezzo' : 'burner';
+      const s = pickW(), r = rnd(), old = rnd() < .5, who = old || !ws.length ? null : pick(ws);
+      const [aka0, crew0] = pick(OLD), wr = who ? who.pop.writer : oldWr(aka0, crew0);
+      let style;
+      if (s.kind === 'heaven') style = r < .5 ? 'throw' : r < .7 ? 'gotico' : 'pezzo';
+      else if (s.kind === 'muro') style = r < .2 ? 'tag' : r < .45 ? 'throw' : r < .55 ? 'mostro' : r < .85 ? 'pezzo' : 'burner';   // sul Muro le produzioni e le parole
+      else if (s.kind === 'ponte') style = r < .3 ? 'tag' : r < .55 ? 'throw' : r < .75 ? 'gotico' : r < .88 ? 'mostro' : 'pezzo';
+      else style = r < .4 ? 'tag' : r < .56 ? 'mtag' : r < .76 ? 'throw' : r < .8 ? 'gotico' : r < .86 ? 'mostro' : r < .96 ? 'pezzo' : 'burner';
+      if (wr.crew === 'TOY' && style !== 'mtag') style = r < .6 ? 'tag' : 'throw';   // i ragazzini: tag e throw storti
       if ((style === 'pezzo' || style === 'burner') && s.kind === 'strada' && s.len < 5) continue;
-      const spot = spotOf(s, s.kind === 'heaven' ? 0 : (rnd() - .5) * Math.max(0, s.len - 2), s.kind === 'heaven' ? s.h - .3 : null);
-      const w = WR._.addWork(st, WR.npcWork(st, who || { id: 'old:' + wr.aka }, wr, style, spot, { prog: 1, done: true, old: true, sign: (style === 'tag' || style === 'mtag') && rnd() < .3 ? pick(WA.SIGNS) : undefined }));
-      w.t0 = w.tDone = now - Math.floor(rnd() * 40) * 1440;   // fatto nei giorni (e nei mesi) prima
-      if (!who) { w.by = 'old'; }
+      const big = style === 'pezzo' || style === 'burner' || style === 'mostro';
+      const spot = spotOf(s, s.kind === 'heaven' ? 0 : (rnd() - .5) * Math.max(0, s.len - (big ? 4 : 1.2)), s.kind === 'heaven' ? s.h - .3 : null);
+      // niente lavori grandi uno sull'altro: le tag sì, si ammucchiano (i muri delle fermate e dei bar sono fitti di firme)
+      if (big && made.some(m => m.big && hyp(m.x - spot.x, m.y - spot.y) < 4.2)) continue;
+      const words = (s.kind === 'muro' || (wr.crew === 'RSC' && big)) && rnd() < .55 ? pick(POLW) : undefined;
+      const extra = { prog: 1, done: true, old: true, sign: (style === 'tag' || style === 'mtag') && rnd() < .3 ? pick(WA.SIGNS) : undefined };
+      if (words) extra.words = words;
+      const w = WR._.addWork(st, WR.npcWork(st, who || { id: 'old:' + wr.aka }, wr, style, spot, extra));
+      w.t0 = w.tDone = now - Math.floor(rnd() * 60) * 1440;   // fatto nei giorni (e nei mesi) prima
+      if (!who) w.by = 'old';
+      // le vecchie guerre: un pezzo su sei della crew rivale è crossato
+      if (!who && big && BEEF0[wr.crew] && rnd() < .17) { const [ra] = pick(OLD.filter(o => o[1] === BEEF0[wr.crew])) || []; if (ra) w.crossed = { aka: ra, crew: BEEF0[wr.crew], t: w.t0 + 1440 }; }
+      made.push({ x: spot.x, y: spot.y, big });
     }
   }
   // il calendario della notte: chi esce, quando, dove
