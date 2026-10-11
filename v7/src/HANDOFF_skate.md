@@ -55,7 +55,7 @@ Una tavola, sei posti dove usarla e una fisica pensata per sentire la tavola sot
 - `test_vita.js`, `test_azioni.js` e `test_economia.js` girano anche con i posti caricati.
 
 ## Aperto
-- Il touch non ha ancora i comandi dello skate.
+- Il touch ha i comandi dello skate: vedi `HANDOFF_mobile.md`.
 - Le panchine e le fioriere della città (oggetti di `render.js`) non sono ancora grindabili, perché il motore non sa dove sono. Si può fare leggendo `R.__dz.props` dopo il caricamento.
 - Il cordolo dei marciapiedi è disegnato con una curva liscia, mentre la logica ragiona a caselle da 2 m: per ora non è grindabile.
 - I ragazzi dello skate non si possono cliccare né parlano: un `OGG` `spot_skate` in `popolo.js` (interesse sport) li farebbe diventare abitanti veri.
