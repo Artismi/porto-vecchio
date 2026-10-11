@@ -29359,7 +29359,7 @@ var Skate = (function () {
     const snow = box(R.L - .2, .12, R.W - .3, new THREE.MeshLambertMaterial({ color: '#e7ecef' }), 0, R.H + .1, 0); snow.rotation.x = .05; g.add(snow);
     [-1, 0, 1].forEach(s => g.add(box(.18, .3, R.W, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), s * (R.L / 2 - .3), R.H - .18, 0)));
     g.add(box(R.L, .3, .18, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), 0, R.H - .18, -R.W / 2 + .3)); g.add(box(R.L, .3, .18, new THREE.MeshLambertMaterial({ color: '#4a4f52' }), 0, R.H - .18, R.W / 2 - .3));
-    const lamp = new THREE.PointLight('#ffd59a', .8, 18, 2); lamp.position.set(0, R.H - .5, 0); g.add(lamp); g.userData.lamp = lamp;   // la lampada sotto la tettoia, accesa la sera
+    const lamp = new THREE.PointLight('#ffd59a', .8, 18, 2); lamp.position.set(0, R.H - .5, 0); if (!(typeof Render !== 'undefined' && Render.phone)) g.add(lamp); g.userData.lamp = lamp;   /* [fluido] sul telefono la lampada è solo la lampadina */   // la lampada sotto la tettoia, accesa la sera
     g.userData.mats = []; g.traverse(o => { if (o.isMesh && !g.userData.mats.includes(o.material)) g.userData.mats.push(o.material); }); g.userData.op = 1;
     return g;
   }
@@ -53946,6 +53946,7 @@ var Cantiere = (function () {
       C.obj.forEach(o => { const b = BY[o.id]; if (!b || o.lv || o.wip) return; if (b.sh === 'falo' || b.sh === 'ramada' || o.id === 'focolare') src.push([o.x, o.y, 1.2, '#ff8a30', 1.8, true]); else if (o.id === 'lampione' || o.id === 'fari') src.push([o.x, o.y, 2.8, '#ffd890', 1.4, false]); });
       if (U.camp) { const lb = U.camp.getObjectByName('lampadine'); if (lb) { const M4 = new THREE.Matrix4(), V = new THREE.Vector3(); for (let k = 0; k < lb.count; k += 6) { lb.getMatrixAt(k, M4); V.setFromMatrixPosition(M4); src.push([V.x, V.z, V.y - hAt(st, V.x, V.z, null), '#ffc070', .9, false]); } } }
       const near = src.map(q => [Math.hypot(q[0] - p.x, q[1] - p.y), q]).filter(q => q[0] < 40).sort((a, b) => a[0] - b[0]).slice(0, 4);
+      { const on = !!(near.length && nk && !lvOf(st)); U.lights.forEach(l => { l.visible = on; }); }   /* [fluido] di giorno o lontano dal covo le quattro luci non esistono (spente pesavano lo stesso su ogni pixel); si accendono e spengono insieme */
       U.lights.forEach((l, k) => { const q = near[k]; if (!q || !nk || lvOf(st)) { l.intensity = 0; return; } const [x, y, hh, c, I, fire] = q[1]; l.position.set(x, hAt(st, x, y, null) + hh, y); l.color.set(c); l.intensity = I * nk * (fire ? .85 + Math.sin(t * 11 + k) * .1 + Math.sin(t * 23) * .05 : 1); }); }
     const PW = {}; const pw = o => { const Cv = covoOf(st, o.x, o.y, o.lv); if (!Cv) return false; if (PW[Cv.id] === undefined) PW[Cv.id] = power(st, Cv).on; return PW[Cv.id]; };
     Object.entries(U.meshes).forEach(([k, m]) => { if (!/^crop:/.test(k) || !m.visible) return; const d = m.getObjectByName('goccia') || m.getObjectByName('pronto'); if (d) { d.position.y = 1.4 + Math.sin(t * 3) * .08; d.rotation.y = t; } });
