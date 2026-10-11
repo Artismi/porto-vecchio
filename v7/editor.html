@@ -53216,6 +53216,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     };
     fast.__bvh = true; THREE.Mesh.prototype.raycast = fast;
   }
+  const SHMOV = { list: [] };   // [fluido] chi si muove (x, y, velocità), per le ombre dei faretti
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -54058,7 +54059,19 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       const tall = hh > 2.8 && night > .25;
       cone.visible = tall && k > .05; if (cone.visible) { const rr = hh * .62; cone.position.set(L.x, L.y - .15, L.z); cone.scale.set(rr, hh - .1, rr); cone.material.color.copy(L.color); cone.material.opacity = .1 * Math.min(1, k); }   // [luci2] (la forma la dà lo shader)
     });
-    for (let q = 0; q < 3; q++) { const l = SPOOL[(frameN * 3 + q) % SPOOL.length]; if (l && l.intensity > 0) l.shadow.needsUpdate = true; }
+    // [fluido] le ombre dei faretti si ridisegnano quando serve: subito (fino a 3 per fotogramma) se nel loro raggio si muove
+    // qualcosa (gente, mezzi, il giocatore), altrimenti due volte al secondo (le chiome nel vento). Prima: 3 a turno a ogni
+    // fotogramma, anche nelle strade vuote dove l'ombra veniva identica.
+    if (SHMOV.st) { const st = SHMOV.st, now = performance.now(), movers = SHMOV.list; movers.length = 0;
+      const pl = st.player; movers.push(pl.x, pl.y, Math.abs(pl.speed || 0) + (pl.vehicle ? 1 : 0));
+      for (const n of st.npcs) { if (n.dead || n.inside || (n.pop && !n.pop.near)) continue; movers.push(n.x, n.y, (n.speedNow || 0) + (n.gesture > 0 || n.stun > 0 || n.airT ? 1 : 0)); }
+      for (const v of st.vehicles) { if (v.hidden) continue; movers.push(v.x, v.y, Math.abs(v.vx || 0) + Math.abs(v.vy || 0) + Math.abs(v.w || 0)); }
+      const want = [];
+      SPOOL.forEach(l => { if (!(l.intensity > 0)) return; const u = l.userData, r = (l.distance || 10) + 2, lx = l.position.x, lz = l.position.z; let busy = false;
+        for (let i = 0; i < movers.length; i += 3) { if (movers[i + 2] > .05 && Math.abs(movers[i] - lx) < r && Math.abs(movers[i + 1] - lz) < r) { busy = true; break; } }
+        if (busy) want.push([0, l]); else if (now - (u.shT || 0) > 500) want.push([now - (u.shT || 0), l]); });
+      want.sort((a, b) => (a[0] === 0 ? -1 : 0) - (b[0] === 0 ? -1 : 0) || b[0] - a[0]);
+      for (let q = 0; q < Math.min(3, want.length); q++) { const l = want[q][1]; l.shadow.needsUpdate = true; l.userData.shT = now; } }
     PPOOL.forEach((l, i) => {
       const L = dyn.lpp[i]; if (!L) { l.intensity = 0; return; }
       l.position.set(L.x, L.y, L.z); l.color.copy(L.color); l.distance = L.dist; l.intensity = L.base * kOf(L) * .8;
@@ -54066,6 +54079,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   }
   function frame(st, dt, ui) {
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
+    SHMOV.st = st;   // [fluido] per le ombre dei faretti
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
     meteoAt(st.t, METEO); { const rg = regimeAt(cam.x, cam.y); METEO.reg += (rg - METEO.reg) * Math.min(1, (dt || .016) * 1.5); } dyn.meteo = METEO;   /* [amb1] */
     const WXc = METEO.w[0], WXwet = METEO.w[1], WXfog = METEO.w[2], WXst = METEO.w[3], SUNK = (1 - night) * (1 - WXc * .82);   /* [amb1] quanto sole arriva */

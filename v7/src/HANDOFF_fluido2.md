@@ -58,6 +58,11 @@ Profilo a regime, il peso che resta è **lavoro che parte quando qualcosa entra 
   quando c'è tempo, vicino (meno di 70 m) almeno una per fotogramma e di più se il budget lo concede (fino a 4 ms).
   Nella schermata iniziale (`ISO.rush`) si fanno interi come prima. Se la mappa cambia a metà, il blocco si rifà.
 
+## Ombre dei faretti quando serve (fatto)
+- `render.js updateLights`: prima 3 faretti a turno ridisegnavano l'ombra a ogni fotogramma (ognuno circa 15 volte al
+  secondo), anche nelle strade vuote. Ora: chi ha nel suo raggio qualcosa che si muove (gente, mezzi, il giocatore) subito,
+  con la precedenza (fino a 3 per fotogramma); gli altri due volte al secondo (le chiome nel vento). `SHMOV` raccoglie chi si muove.
+
 ## Dove siamo (misure a regime, Chromium senza scheda video: contano i rapporti)
 - Ciclo dei graffiti: da 344 a 60 ms per fotogramma; Risacca 6, tetti 2: i cicli dei moduli ora sono leggeri.
 - Quello che resta in cima: il disegno della scena (scheda video), la costruzione dei personaggi (ora a fasi) e dei blocchi
