@@ -792,16 +792,24 @@
   new ResizeObserver(size).observe(app); size();
   // [fluido] i programmi della scheda video si preparano adesso, durante il caricamento, non a scatti mentre si gioca
   try { const M0 = R.__models; if (M0 && M0.renderer && M0.scene && R.getCamera) M0.renderer.compile(M0.scene, R.getCamera()); } catch (e) { console.warn('[compile]', e); }
-  let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
+  let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0, workAvg = .01, playT = 0, upT = 0;
   const loop = typeof Misura !== 'undefined' ? Misura.timed(loop0, 'main:ciclo') : loop0;   // [misura]
   function loop0(now) {
-    const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
+    const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt; const tL = performance.now();
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
-    if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > 1 / 32) R.lowQuality(); } }
-    // [fluido] risoluzione dinamica: media mobile del fotogramma; sopra i 22 ms si scende di un gradino, sotto i 14 ms per 4 s si risale (al massimo un cambio ogni 1,5 s)
+    // [fluido] quanto aspetta il fotogramma oltre il lavoro del gioco (workAvg, misurato in fondo al ciclo): è l'attesa della
+    // scheda video. Abbassare la risoluzione aiuta solo se è lei a frenare; se frena il processore toglie qualità e basta.
+    const gpuWait = resAvg - workAvg;
+    if (!ui.intro) playT += raw;
+    // la qualità ridotta (mezza risoluzione, niente ombre) solo se a gioco avviato, passati i primi 6 s (i blocchi della città
+    // si costruiscono), si sta sotto i 20 al secondo PER la scheda video. Prima scattava col caricamento e restava per sempre
+    if (!perfDone && playT > 6 && raw < .25) { perfT += raw; perfN++; if (perfN >= 120) { perfDone = true; if (perfT / perfN > 1 / 20 && gpuWait > .015) R.lowQuality(); } }
+    // risoluzione dinamica: sopra i 22 ms si scende di un gradino se c'è attesa della scheda video; si risale sotto i 14 ms,
+    // o quando l'attesa sparisce (frena il processore: la risoluzione non c'entra). Al massimo un cambio ogni 1,5 s
     if (R.setRes && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
-      if (resT > 1.5 && resAvg > .022) { R.setRes(R.res * .85); resT = 0; resAvg = .018; }
-      else if (resT > 4 && resAvg < .014 && R.res < 1) { R.setRes(R.res * 1.1); resT = 0; } }
+      if (resT > 1.5 && resAvg > .022 && gpuWait > .006) { R.setRes(R.res * .85); resT = 0; resAvg = .018; upT = 0; }
+      else if (R.res < 1 && (resAvg < .014 || gpuWait < .003)) { upT += raw; if (upT > 3 && resT > 1.5) { R.setRes(R.res * 1.1); resT = 0; upT = 0; } }
+      else upT = 0; }
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
     const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]
@@ -825,6 +833,7 @@
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); }
+    workAvg += ((performance.now() - tL) / 1000 - workAvg) * .05;   // [fluido] il lavoro del gioco in questo fotogramma
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
