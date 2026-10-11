@@ -161,9 +161,12 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 #touch { inset: auto 0 0 0; height: 44%; pointer-events: none; }
 #stick { position: absolute; left: 22px; bottom: 26px; width: 130px; height: 130px; border-radius: 50%; border: 2px solid rgba(240,230,208,.35); background: rgba(13,11,26,.35); pointer-events: auto; touch-action: none; }
 #knob { position: absolute; left: 43px; top: 43px; width: 44px; height: 44px; border-radius: 50%; background: rgba(240,230,208,.6); }
-#tbtns { position: absolute; right: 16px; bottom: 190px; display: grid; grid-template-columns: repeat(3, 54px); gap: 8px; pointer-events: auto; }
-#tbtns button { height: 54px; border: 2px solid var(--line); background: var(--panel); color: var(--fg); font-family: var(--f-label); font-size: 11px; box-shadow: 3px 3px 0 #07060e; }
-#tbtns button.bad { color: var(--blood); }
+/* [mobile] i pulsanti di adesso: il principale in basso a destra, sotto il pollice; gli altri sopra e a sinistra */
+#tbtns { position: absolute; right: 14px; bottom: 16px; width: 224px; display: flex; flex-direction: row-reverse; flex-wrap: wrap-reverse; align-items: flex-end; gap: 8px; pointer-events: auto; }
+#tbtns button { width: 58px; height: 58px; border-radius: 50%; border: 2px solid rgba(240,230,208,.35); background: rgba(13,11,26,.62); color: var(--fg); font-family: var(--f-label); font-size: 11px; line-height: 1.1; padding: 0; touch-action: none; user-select: none; -webkit-user-select: none; display: grid; place-content: center; }
+#tbtns button.big { width: 84px; height: 84px; font-size: 14px; border-color: rgba(255,210,58,.6); }
+#tbtns button small { display: block; font-size: 8px; opacity: .7; margin-top: 2px; }
+#tbtns button.on { background: rgba(255,210,58,.3); border-color: var(--amber); }
 @media (pointer: coarse) { #mini { top: 96px; bottom: auto; right: 4px; transform: scale(.72); transform-origin: top right; } #ctx { bottom: auto; top: 150px; max-width: calc(100vw - 24px); } #ctx .chip kbd { display: none; } #feed { top: 200px; } }
 @media (prefers-reduced-motion: reduce) { .fi, #wanted.chase .star.on { animation: none; } }
 
@@ -266,11 +269,7 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
   </div>
   <div class="layer" id="touch" hidden>
     <div id="stick"><div id="knob"></div></div>
-    <div id="tbtns">
-      <button data-k="t">Parla</button><button data-k="e" class="bad">Ruba</button><button data-k="fire" class="bad">Spara</button>
-      <button data-k="f">Mezzo</button><button data-k="q">Arma</button><button data-k="shift">Corri</button>
-      <button data-k="tab">Tacc.</button><button data-k="r">Ricar.</button><button data-k="space">Freno</button>
-      <button data-k="p">BMX</button>
+    <div id="tbtns"></div>
     </div>
   </div>
   <div class="layer"><div id="ring" hidden></div><div id="hover" hidden></div></div>
@@ -28939,17 +28938,23 @@ var Skate = (function () {
   const S = st => st.skate || (st.skate = { owned: true,   /* [writer] la tavola ce l'hai già dall'inizio, come la BMX in tasca e i due pennelli */ total: 0, best: 0, warn: 0, warnT: -99, emitT: -99, hint: false, line: null, lastLine: null });
   const on = st => !!(st.player.sk && st.player.sk.on);
   const KEYS = { w: 0, s: 0, a: 0, d: 0, sp: 0 }, MS = []; let mouseTrack = false;
+  // [mobile] i comandi a tocco (main.js): il dito tenuto sullo schermo spinge verso dove tocchi, la levetta curva,
+  // il pulsante Ollie carica e il dito trascinato sopra sceglie il trick (stesso gesto del mouse)
+  const PAD = { push: 0, brake: 0, turn: 0, crouch: 0 };
+  function padCrouch(v) { if (v && !PAD.crouch) MS.length = 0; PAD.crouch = v ? 1 : 0; }
+  function swipe(dx, dy) { if (PAD.crouch) MS.push({ t: typeof performance !== 'undefined' ? performance.now() : 0, dx, dy }); }
   function ctl(inp) {
     if (inp && inp.sk) return inp.sk;   // le prove passano i comandi a mano
     const now = typeof performance !== 'undefined' ? performance.now() : 0;
     while (MS.length && now - MS[0].t > 350) MS.shift();
-    return { push: !!KEYS.w, brake: !!KEYS.s, turn: (KEYS.d ? 1 : 0) - (KEYS.a ? 1 : 0), crouch: !!KEYS.sp, aim: inp ? inp.aim : undefined, gesture: () => classify(MS.filter(m => now - m.t < 300)) };
+    const turn = (KEYS.d ? 1 : 0) - (KEYS.a ? 1 : 0) || PAD.turn;
+    return { push: !!(KEYS.w || PAD.push), brake: !!(KEYS.s || PAD.brake), turn, crouch: !!(KEYS.sp || PAD.crouch), aim: inp ? inp.aim : undefined, gesture: () => classify(MS.filter(m => now - m.t < 300)) };
   }
 
   function mount(st, quiet) {
     const p = st.player; if (p.vehicle || p.indoor || p.lv || p.swim) return false;
     p.sk = { on: true, z: surface(p.x, p.y), vz: 0, V: 0, vx: 0, vy: 0, yaw: p.face, air: false, grind: null, trick: null, vert: null, crouchT: null, crouchPrev: false, pushT: 0, pushA: -9, lastVS: 0, carveT: 0, boardOff: 0, airT0: 0, free: null };
-    if (!quiet) G.feed(st, 'In tavola. W spinta · Spazio ollie · scatto del mouse con Spazio: flip · X scendi.', 'info');
+    if (!quiet) G.feed(st, typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches ? 'In tavola. Tieni il dito dove vuoi andare: spingi · Ollie: tieni e lascia, trascina il dito per il trick.' : 'In tavola. W o sinistro tenuto: spinta verso il puntatore · Spazio ollie · scatto del mouse con Spazio: flip · X scendi.', 'info');
     return true;
   }
   function dismount(st, quiet) {
@@ -29445,14 +29450,14 @@ var Skate = (function () {
       else if (k === ' ') { if (!KEYS.sp) MS.length = 0; KEYS.sp = 1; mouseTrack = true; e.preventDefault(); }
     });
     addEventListener('keyup', e => { const k = e.key.toLowerCase(); if (k === 'w' || k === 'arrowup') KEYS.w = 0; else if (k === 's' || k === 'arrowdown') KEYS.s = 0; else if (k === 'a' || k === 'arrowleft') KEYS.a = 0; else if (k === 'd' || k === 'arrowright') KEYS.d = 0; else if (k === ' ') { KEYS.sp = 0; mouseTrack = false; } });
-    addEventListener('blur', () => { KEYS.w = KEYS.s = KEYS.a = KEYS.d = KEYS.sp = 0; });
+    addEventListener('blur', () => { KEYS.w = KEYS.s = KEYS.a = KEYS.d = KEYS.sp = 0; PAD.push = PAD.brake = PAD.turn = PAD.crouch = 0; });
     let lx = null, ly = null;
     addEventListener('mousemove', e => { if (lx !== null && mouseTrack) MS.push({ t: performance.now(), dx: e.clientX - lx, dy: e.clientY - ly }); lx = e.clientX; ly = e.clientY; });
     const go = () => { if (!window.THREE || !window.__pv) { setTimeout(go, 250); return; } requestAnimationFrame(frame); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { SPOTS: PLACED, PIECES, EDGES, surface, solidAt, spotAt, free, move, mount, dismount, key, on, pose, classify, TRICKS, S, _: { addTrick, closeLine, bail, lockGrind, MINE, hLocal, toL } };
+  return { SPOTS: PLACED, PIECES, EDGES, surface, solidAt, spotAt, free, move, mount, dismount, key, on, pose, classify, TRICKS, S, PAD, padCrouch, swipe, _: { addTrick, closeLine, bail, lockGrind, MINE, hLocal, toL } };
 })();
 if (typeof module !== 'undefined') module.exports = Skate;
 </script>
@@ -46610,9 +46615,23 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   cv.addEventListener('pointerdown', e => { cv.focus(); A.init(); const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
     if (window.Cantiere && Cantiere.active() && e.button !== 1) { Cantiere.down(e.button, nx, ny); return; }   // [cantiere] si costruisce, non si cammina
     if (e.button === 2) { mouse.down = true; mouse.pressed = true; return; }
-    if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
+    const busy = ui.intro || ui.over || ui.dialog || ui.book || ui.menu;
+    if (e.button === 0 && !busy && window.Skate && Skate.on(st)) { tpGrab(e, 'skate', nx, ny); mouse.nx = nx; mouse.ny = ny; return; }   // [mobile] in tavola: tieni premuto e spingi verso quel punto
+    if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; tpGrab(e, 'spray', nx, ny); return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
+    if (e.button === 0 && !busy && e.pointerType !== 'mouse' && tapShoots()) { tpGrab(e, 'fire', nx, ny); touchAimAt(nx, ny); touchFire = true; mouse.pressed = true; return; }   // [mobile] arma in mano: spari dove tocchi
     if (e.button === 0) { mouse.nx = nx; mouse.ny = ny; onClick(nx, ny, e.detail >= 2); } });
-  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; if (window.Cantiere && Cantiere.up) Cantiere.up(); if (e.button === 0 && ui.spray) sprayEnd(); });
+  // [mobile] il dito che tiene premuto: spruzza, spara o spinge la tavola seguendo dove si sposta
+  const tp = { id: null, mode: null, nx: .5, ny: .5, aim: null };
+  function tpGrab(e, mode, nx, ny) { tp.id = e.pointerId; tp.mode = mode; tp.nx = nx; tp.ny = ny; try { cv.setPointerCapture(e.pointerId); } catch (x) { } }
+  function tpEnd() { if (tp.mode === 'fire') { touchFire = false; tp.aim = null; } tp.id = null; tp.mode = null; }
+  cv.addEventListener('pointermove', e => { if (e.pointerId !== tp.id) return; const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height; tp.nx = nx; tp.ny = ny;
+    if (e.pointerType !== 'mouse' && (tp.mode === 'spray' || tp.mode === 'skate')) { mouse.nx = nx; mouse.ny = ny; }
+    if (tp.mode === 'fire') touchAimAt(nx, ny); });
+  // con un'arma da fuoco (o la molotov) in mano, sul telefono il tocco spara
+  function tapShoots() { const p = st.player; return touchMode && !p.hand && p.cur !== 'pugni' && !!G.WEAPONS[p.cur] && !(window.Cantiere && Cantiere.active()); }
+  function touchAimAt(nx, ny) { const h = pickAt(nx, ny); tp.aim = h && h.kind === 'npc' ? { x: h.n.x, y: h.n.y, id: h.n.id } : h && h.kind === 'car' ? { x: h.v.x, y: h.v.y } : R.screenToGround(nx, ny) || tp.aim; }
+  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; if (window.Cantiere && Cantiere.up) Cantiere.up(); if (e.button === 0 && ui.spray) sprayEnd(); if (e.pointerId === tp.id) tpEnd(); });
+  addEventListener('pointercancel', e => { if (e.pointerId === tp.id) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } });
   // [cantiere] tenendo premuto il sinistro e trascinando si posa una fila (muri, recinti, solchi dell'orto…)
   cv.addEventListener('pointermove', e => { if (!(e.buttons & 1) || !window.Cantiere || !Cantiere.active() || !Cantiere.drag) return; const r = cv.getBoundingClientRect(); Cantiere.drag((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height); });
   // [graffiti] la bomboletta: il pennello dello Studio con la misura bloccata da bomboletta. Si impugna dalle Tasche;
@@ -46685,9 +46704,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
   const stick = { x: 0, y: 0 };
-  let lastAim = null, touchFire = false, touchRun = false;
+  let lastAim = null, touchFire = false, touchRun = false, touchBoost = false; const touchTrick = { wheelie: false, peg: 0 };
   function aimAngle() {
     const p = st.player;
+    if (touchMode && tp.aim) {   // [mobile] il dito sullo schermo: si mira lì (alla persona toccata, anche se si muove)
+      const a = tp.aim, n = a.id && G.byId(st, a.id); if (n && !n.dead) { a.x = n.x; a.y = n.y; }
+      ui.aimPoint = { x: a.x, y: a.y }; return Math.atan2(a.y - p.y, a.x - p.x);
+    }
     if (touchMode) {
       // mira automatica: il nemico più vicino davanti, altrimenti la direzione dello sguardo
       let best = null, bd = 16;
@@ -46702,12 +46725,20 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   }
   // [bmx] in BMX si va col punta e clicca; le frecce fanno i trick: giù impenna, destra e sinistra il piede sulla pedalina
   function input() {
-    const r = input0(); if (!r || !st.player.vehicle || !jumpMode()) return r;
-    r.trick = { wheelie: !!keys.arrowdown, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : 0 };
+    const r = input0(); if (!r) return r;
+    const p = st.player;
+    if (window.Skate && Skate.on(st)) {   // [mobile] in tavola: il dito (o il sinistro) tenuto spinge verso quel punto, la levetta curva e spinge
+      const P = Skate.PAD, hold = tp.mode === 'skate'; let aim = r.aim;
+      if (hold) { const g = R.screenToGround(touchMode ? tp.nx : mouse.nx, touchMode ? tp.ny : mouse.ny); if (g && Math.hypot(g.x - p.x, g.y - p.y) > .8) aim = Math.atan2(g.y - p.y, g.x - p.x); }
+      P.push = hold || -stick.y > .4 ? 1 : 0; P.turn = Math.abs(stick.x) > .2 ? stick.x : 0;
+      return Object.assign({}, r, { x: 0, y: 0, aim: aim !== undefined ? aim : aimAngle() });
+    }
+    if (!p.vehicle || !jumpMode()) return r;
+    r.trick = { wheelie: !!keys.arrowdown || touchTrick.wheelie, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : touchTrick.peg };
     return r;
   }
   function input0() {
-    const sprint = !!keys.shift || touchRun, brakeKey = !!keys[' '] || touchBrake;
+    const sprint = !!keys.shift || touchRun || touchBoost, brakeKey = !!keys[' '] || touchBrake;
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (stick.x || stick.y) { // touch: la levetta segue lo schermo
       const B = R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
@@ -47180,8 +47211,61 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   }
 
   // ---------- Touch ----------
+  // [mobile] la levetta resta per camminare e guidare; il resto è punta e clicca. I pulsanti a destra cambiano con quello
+  // che stai facendo: a piedi, in auto, in BMX, in tavola, con la bomboletta in mano
   let touchBrake = false;
   const touchMode = matchMedia('(pointer: coarse)').matches;
+  const MODE_NM = { libero: 'libero', tag: 'tag', throw: 'throw-up', pezzo: 'pezzo', burner: 'burner', tavoletta: 'tavoletta' };
+  function sprayColor(d) { const S = ui.spray; if (!S) return; S.col = (S.col + (d || 1) + SPRAY_COLS.length) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[S.col][1] + '.'); }
+  function sprayMode() { if (!window.Writing || st.player.hand !== 'bomboletta') return; const m = Writing.cycleMode(st); toast('Bomboletta: ' + MODE_NM[m] + (m === 'libero' ? '' : m === 'tavoletta' ? ' — trascina sul muro la finestra, poi disegni' : ' — tieni premuto sul muro') + '.'); }
+  const TB = {
+    salta: { l: 'Salta', hold: 1, big: 1, dn: () => { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; }, up: () => { touchBrake = false; G.jumpHold(st, false); } },
+    corri: { l: 'Corri', dn: () => { touchRun = !touchRun; }, on: () => touchRun },
+    arma: { l: 'Arma', dn: () => G.switchWeapon(st, 1) },
+    tacc: { l: 'Tacc.', dn: () => toggleBook() },
+    freno: { l: 'Freno', hold: 1, big: 1, dn: () => { touchBrake = true; }, up: () => { touchBrake = false; } },
+    spinta: { l: 'Spinta', hold: 1, dn: () => { touchBoost = true; }, up: () => { touchBoost = false; } },
+    scendi: { l: 'Scendi', dn: () => { click.t = null; ui.mark = null; doAct('veicolo'); } },
+    impenna: { l: 'Impenna', hold: 1, dn: () => { touchTrick.wheelie = true; }, up: () => { touchTrick.wheelie = false; } },
+    pegsx: { l: '◄ Piede', hold: 1, dn: () => { touchTrick.peg = 1; }, up: () => { touchTrick.peg = 0; } },
+    pegdx: { l: 'Piede ►', hold: 1, dn: () => { touchTrick.peg = -1; }, up: () => { touchTrick.peg = 0; } },
+    ollie: { l: 'Ollie', sub: 'trascina: trick', hold: 1, big: 1, dn: () => Skate.padCrouch(true), up: () => Skate.padCrouch(false), drag: (dx, dy) => Skate.swipe(dx, dy) },
+    frena: { l: 'Frena', hold: 1, dn: () => { Skate.PAD.brake = 1; }, up: () => { Skate.PAD.brake = 0; } },
+    modo: { l: () => 'Modo: ' + MODE_NM[(window.Writing && Writing.mode(st)) || 'libero'], dn: sprayMode },
+    colore: { l: 'Colore', col: () => ui.spray ? SPRAY_COLS[ui.spray.col][0] : '', dn: () => sprayColor(1) },
+  };
+  // i pulsanti di adesso, il principale per primo (va in basso a destra, sotto il pollice)
+  function touchSet() {
+    const p = st.player;
+    if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || (window.Cantiere && Cantiere.active())) return [];
+    if (window.Skate && Skate.on(st)) return ['ollie', 'frena'];
+    if (p.vehicle) return jumpMode() ? ['salta', 'impenna', 'pegdx', 'pegsx', 'scendi'] : ['freno', 'spinta', 'scendi'];
+    const o = ['salta'];
+    if (Object.keys(p.arms || {}).some(w => w !== 'pugni' && p.arms[w])) o.push('arma');
+    o.push('corri', 'tacc');
+    if (ui.spray) { o.push('colore'); if (ui.spray.tool === 'bomboletta') o.push('modo'); }
+    return o;
+  }
+  const lab = d => typeof d.l === 'function' ? d.l() : d.l;
+  let tbKey = '';
+  function touchButtons() {
+    if (!touchMode) return;
+    const list = touchSet(), key = list.map(k => k + ':' + lab(TB[k])).join('|'), box = $('tbtns');
+    if (key !== tbKey) {
+      tbKey = key; box.innerHTML = '';
+      list.forEach(k => {
+        const d = TB[k], b = document.createElement('button'); b.dataset.k = k; if (d.big) b.className = 'big';
+        b.innerHTML = esc(lab(d)) + (d.sub ? `<small>${esc(d.sub)}</small>` : '');
+        let lx = 0, ly = 0, held = false;
+        b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); A.init(); if (ui.intro || ui.over) return; try { b.setPointerCapture(e.pointerId); } catch (x) { } held = true; lx = e.clientX; ly = e.clientY; b.classList.add('on'); d.dn(); });
+        b.addEventListener('pointermove', e => { if (!held || !d.drag) return; d.drag(e.clientX - lx, e.clientY - ly); lx = e.clientX; ly = e.clientY; });
+        const up = () => { if (!held) return; held = false; b.classList.remove('on'); if (d.up) d.up(); };
+        b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+        box.appendChild(b);
+      });
+    }
+    box.querySelectorAll('button').forEach(b => { const d = TB[b.dataset.k]; if (d.on) b.classList.toggle('on', !!d.on()); if (d.col) b.style.borderColor = d.col() || ''; });
+  }
   if (touchMode) {
     $('touch').hidden = false; $('bookBtn').style.display = 'none';
     const sEl = $('stick'), kn = $('knob'); let sid = null;
@@ -47190,18 +47274,6 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     const end = () => { sid = null; stick.x = stick.y = 0; kn.style.left = '43px'; kn.style.top = '43px'; };
     sEl.addEventListener('pointerup', end); sEl.addEventListener('pointercancel', end);
     function mv(e) { const r = sEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 65) / 50, dy = (e.clientY - r.top - 65) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } stick.x = dx; stick.y = dy; kn.style.left = 43 + dx * 40 + 'px'; kn.style.top = 43 + dy * 40 + 'px'; }
-    $('tbtns').querySelectorAll('button').forEach(b => {
-      b.addEventListener('pointerdown', e => {
-        e.preventDefault(); A.init(); const k = b.dataset.k; if (ui.intro || ui.over) return;
-        if (k === 'shift') { touchRun = !touchRun; b.style.borderColor = touchRun ? 'var(--amber)' : ''; return; }
-        if (k === 'tab') return toggleBook(); if (ui.dialog || ui.book) return;
-        if (k === 'fire') { touchFire = true; mouse.pressed = true; return; }
-        if (k === 'space') { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; return; }   // [salto]
-        if (k === 'e') doAct('scippo'); if (k === 'f') doAct('veicolo'); if (k === 'p') doBmx(); if (k === 't') openTalk(); if (k === 'q') G.switchWeapon(st, 1); if (k === 'r') G.reload(st);
-      });
-      const up = () => { if (b.dataset.k === 'fire') touchFire = false; if (b.dataset.k === 'space') { touchBrake = false; G.jumpHold(st, false); } };
-      b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);
-    });
   }
 
   // ---------- Avvio ----------
@@ -47245,11 +47317,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     R.frame(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     sounds();
     drawBubbles(); crosshair();
-    hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); }
+    hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
-  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y) };
+  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)
   }
 })();
 </script>
@@ -54385,6 +54457,192 @@ var MenuUI = (function () {
     const n = quiCount(st), d = b.querySelector('.dot'); d.hidden = !n; d.textContent = n;
   } catch (e) { } }, 300);
   return { open, close, toggle, render, icon, state: U, quiList, quiCount, thumbFor };
+})();
+</script>
+<script>// Porto Vecchio — Le icone a schermo (10 ottobre) [mobile]
+// Una fila di icone in basso, uguale su computer e telefono: la mano (quello che impugni), la bomboletta, la tavoletta,
+// la BMX, lo skate, la mappa, lo zaino. Un tocco e via: niente tasti da ricordare.
+// - La mano compare solo quando impugni qualcosa. Con un'arma da fuoco (o la molotov) sul telefono si spara dove tocchi
+//   (main.js, tapShoots), e il tocco sulla mano ricarica; con un attrezzo o un oggetto il tocco sulla mano lo usa
+//   (la bomboletta cambia modalità, il cibo si mangia, la pala scava, la fotocamera scatta…). La ✕ lo rimette via.
+//   Il pallino colorato sulla bomboletta cambia colore (sul telefono non c'è la rotella).
+// - Bomboletta e tavoletta: la prima la impugna (o la rimette via), la seconda la impugna già in modalità tavoletta.
+// - BMX e skate: su e giù. Dalla BMX si passa allo skate e viceversa senza scendere prima.
+// - Mappa e zaino aprono il menu (menu_ui.js) sulla scheda giusta; lo zaino tiene il numero delle cose da fare qui.
+// Sostituisce il pulsante rotondo ZAINO di menu_ui.js (#muBtn, nascosto dal CSS qui sotto).
+const Comandi = (() => {
+  'use strict';
+  if (typeof document === 'undefined') return {};
+  const $ = id => document.getElementById(id), PV = () => window.__pv, ST = () => PV() && PV().st;
+  const say = (m, k) => { const pv = PV(); if (pv && pv.toast && m) pv.toast(m, k); };
+  const has = id => { try { return (Oggetti.inv(ST()) || {})[id] >= 1; } catch (e) { return false; } };
+  const equip = id => typeof Azioni !== 'undefined' && Azioni.playerEquip(ST(), id || null);
+  const W = () => typeof Writing !== 'undefined' ? Writing : null;
+  const tavOn = st => { const p = st.player; return (p.hand === 'bomboletta' || p.hand === 'pennarello') && W() && W().mode(st) === 'tavoletta'; };
+  const onBmx = st => { const p = st.player, v = p.vehicle && st.vehicles.find(q => q.id === p.vehicle); return !!(v && v.kind === 'bmx'); };
+  const onSk = st => typeof Skate !== 'undefined' && Skate.on(st);
+  let lastMode = 'libero';
+
+  // ---------------- le azioni delle icone ----------------
+  function bomboletta() {
+    const st = ST(), p = st.player, w = W();
+    if ((p.hand === 'bomboletta' || p.hand === 'pennarello') && !tavOn(st)) { equip(null); say('Mani libere.'); return; }
+    if (w && w.mode(st) === 'tavoletta') w.setMode(st, lastMode);
+    if (has('bomboletta')) { if (p.hand !== 'bomboletta') equip('bomboletta'); else say('Bomboletta: ' + w.mode(st) + '.'); return; }
+    if (has('pennarello')) { equip('pennarello'); return; }
+    say('Niente bombolette: le trovi in ferramenta e in officina.', 'bad');
+  }
+  function tavoletta() {
+    const st = ST(), w = W(); if (!w) return;
+    if (tavOn(st)) { equip(null); w.setMode(st, lastMode); say('Mani libere.'); return; }
+    const tool = has('bomboletta') ? 'bomboletta' : has('pennarello') ? 'pennarello' : null;
+    if (!tool) { say('Per la tavoletta ti serve una bomboletta o un pennarello.', 'bad'); return; }
+    if (w.mode(st) !== 'tavoletta') lastMode = w.mode(st);
+    equip(tool); w.setMode(st, 'tavoletta');
+    say(PV().touchMode ? 'Tavoletta: trascina il dito sul muro (o su un mezzo) per la finestra, poi ci disegni sopra.' : 'Tavoletta: trascina sul muro (o su un mezzo) la finestra, poi ci disegni sopra.');
+  }
+  function bmx() {
+    const st = ST(); if (onSk(st)) Skate.dismount(st, true);
+    PV().bmx();
+  }
+  function skate() {
+    const st = ST(), p = st.player;
+    if (onBmx(st)) PV().act('veicolo');
+    if (p.vehicle && !onSk(st)) { say('Prima scendi dal mezzo.', 'bad'); return; }
+    if (typeof Skate === 'undefined' || Skate.key(st)) return;
+    if (!Skate.S(st).owned) say('La tavola non ce l\'hai più: ne trovi un\'altra nei posti dello skate (il cerchio giallo).', 'bad');
+    else say(p.indoor ? 'Al chiuso la tavola resta sotto il braccio.' : 'Qui non si va in tavola.', 'bad');
+  }
+  function mappa() { if (typeof MenuUI === 'undefined') return; if (MenuUI.state.open && MenuUI.state.tab === 'mappa') MenuUI.close(); else MenuUI.open('mappa'); }
+  function zaino() { if (typeof MenuUI !== 'undefined') MenuUI.toggle('zaino'); }
+  // la mano: usa quello che impugni
+  const HANDACT = ['scava', 'dipingi', 'foto', 'guardia', 'ambulanza', 'banda'];
+  function usaMano() {
+    const st = ST(), p = st.player, pv = PV(), h = p.hand;
+    if (!h) {
+      const Wp = pv.G.WEAPONS[p.cur]; if (!Wp) return;
+      if (Wp.throw) { say(pv.touchMode ? 'Tocca dove lanciarla.' : 'Col destro la lanci verso il puntatore.'); return; }
+      pv.G.reload(st); return;
+    }
+    if (h === 'bomboletta') { pv.sprayMode(); return; }
+    if (h === 'pennarello') { say(pv.touchMode ? 'Tieni il dito su un muro vicino: la tua tag.' : 'Tieni premuto il sinistro su un muro vicino: la tua tag.'); return; }
+    const C = typeof Oggetti !== 'undefined' && Oggetti.CAT[h];
+    if (C && C.eat) { const r = Oggetti.consume(st, h); if (r && r.msg) say(r.msg, r.ok === false ? 'bad' : 'info'); if (!has(h)) equip(null); return; }
+    const acts = typeof Azioni !== 'undefined' ? (Azioni.playerActions(st) || []) : [], a = acts.find(x => HANDACT.includes(x.id));
+    if (a && a.run) { const r = a.run(); say(typeof r === 'string' ? r : a.label); return; }
+    if (a && a.off) { say(a.off, 'bad'); return; }
+    say('Qui con questo non c\'è niente da fare.');
+  }
+
+  // ---------------- le icone (pixel art 16×16) ----------------
+  function px(c, rows, pal) { const x = c.getContext('2d'); x.clearRect(0, 0, 16, 16); rows.forEach((r, j) => [...r].forEach((ch, i) => { if (pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(i, j, 1, 1); } })); }
+  const DRAW = {
+    bomboletta: c => px(c, ['      kk        ', '     kwwk   r r ', '     kkkk  r r  ', '    rrrrrr  r r ', '    rwrrrr      ', '    rwrrrr      ', '    rwrrrr      ', '    rrrrrr      ', '    rwrrrr      ', '    rwrrrr      ', '    rrrrrr      ', '    rwrrrr      ', '    rrrrrr      ', '    kkkkkk      '], { k: '#3a3a44', w: '#ffb0a0', r: '#c42a22' }),
+    bmx: c => px(c, ['', '', '', '', '           kk   ', '          k     ', '    ccccccc     ', '    c   ck      ', '   c   c  k     ', ' ppp  c  ppp    ', 'p   pcccp   p   ', 'p  k p  p k p   ', 'p   p   p   p   ', ' ppp     ppp    '].map(r => r.padEnd(16)), { c: '#e8dcc0', k: '#1c1a22', p: '#a05ad8' }),
+    skate: c => px(c, ['', '', '', '', '', '', '', ' y            y ', ' yrrrrrrrrrrrry ', '  yyyyyyyyyyyy  ', '   kk      kk   ', '   ww      ww   ', '   ww      ww   '].map(r => r.padEnd(16)), { y: '#ffd23a', r: '#ff5fa2', k: '#5a5a66', w: '#e8e0d0' }),
+    tavoletta: c => px(c, ['', '  kkkkkkkkkkk   ', '  kwwwwwwwwwk   ', '  kwwrwwwwwwk   ', '  kwrwrwwbwwk   ', '  kwwwwrwbwwk  p', '  kwwwwwrwwwk pp', '  kwwbbwwwwwkpp ', '  kwwwwwwwwwpp  ', '  kwwwwwwwwppk  ', '  kwwwwwwwwwwk  ', '  kkkkkkkkkkkk  '].map(r => r.padEnd(16)), { k: '#2a2a34', w: '#efe3c8', r: '#c42a22', b: '#2a6ac8', p: '#ffd23a' }),
+  };
+  function iconOf(c, id) {
+    if (DRAW[id]) { DRAW[id](c); return; }
+    if (typeof MenuUI !== 'undefined' && MenuUI.icon) MenuUI.icon(c, id);
+  }
+
+  // ---------------- la fila ----------------
+  const ITEMS = [
+    ['bomboletta', 'Bomboletta', '', bomboletta, 'bomboletta'],
+    ['tavoletta', 'Tavoletta', '', tavoletta, 'tavoletta'],
+    ['bmx', 'BMX', 'P', bmx, 'bmx'],
+    ['skate', 'Skate', 'X', skate, 'skate'],
+    ['mappa', 'Mappa', '', mappa, 'mappa'],
+    ['zaino', 'Zaino', 'I', zaino, 'zaino'],
+  ];
+  function mount() {
+    if ($('dock') || !$('app')) return !!$('dock');
+    const css = document.createElement('style'); css.textContent = `
+#muBtn { display: none !important; }
+#dock { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 31; display: flex; gap: 8px; align-items: flex-end; pointer-events: auto; }
+#dock button { position: relative; width: 50px; height: 50px; border-radius: 50%; padding: 0; cursor: pointer; display: grid; place-items: center; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  border: 1px solid rgba(233,220,188,.25); background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.14), transparent 45%), linear-gradient(135deg, #24443c, #2e2c40 50%, #24443c);
+  box-shadow: 0 0 0 2px rgba(13,16,21,.8), 0 4px 12px rgba(0,0,0,.45); }
+#dock button:hover { transform: translateY(-1px); }
+#dock button canvas { width: 30px; height: 30px; image-rendering: pixelated; pointer-events: none; }
+#dock button.on { box-shadow: 0 0 0 2px rgba(13,16,21,.8), 0 0 0 4px #ffd23a, 0 4px 12px rgba(0,0,0,.45); }
+#dock button.off canvas { opacity: .35; }
+#dock button kbd { position: absolute; left: 50%; bottom: -3px; transform: translateX(-50%); font: 600 9px 'Saira Condensed', sans-serif; color: #E9DCBC; background: rgba(13,16,21,.85); padding: 0 4px; border-radius: 3px; pointer-events: none; }
+#dock .dot { position: absolute; right: -4px; top: -4px; min-width: 18px; height: 18px; border-radius: 9px; background: #FF5FA2; color: #0D1015; font: 700 11px/18px 'Saira Condensed', sans-serif; text-align: center; pointer-events: none; }
+#dkHand { width: 64px !important; height: 64px !important; margin-right: 6px; box-shadow: 0 0 0 2px rgba(13,16,21,.8), 0 0 0 4px #B08D57, 0 4px 12px rgba(0,0,0,.45) !important; }
+#dkHand canvas { width: 40px !important; height: 20px !important; margin-bottom: 10px; }
+#dkHand canvas.sq { width: 30px !important; height: 30px !important; }
+#dkHand .lb { position: absolute; left: 50%; bottom: 5px; font-size: 9px !important; transform: translateX(-50%); white-space: nowrap; font: 600 10px 'Saira Condensed', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #E9DCBC; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+#dkHand .x, #dkHand .col { position: absolute; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 12px sans-serif; color: #E9DCBC; background: #2a2030; border: 1px solid rgba(233,220,188,.5); }
+#dkHand .x { right: -6px; top: -6px; } #dkHand .col { left: -6px; top: -6px; }
+#ctx { bottom: 112px !important; }
+#rs-here { bottom: 72px !important; }
+@media (pointer: coarse) {
+  #ctx { bottom: auto !important; }
+  #dock { left: 168px; transform: none; bottom: 12px; gap: 7px; max-width: calc(100vw - 410px); flex-wrap: wrap-reverse; }
+  #dock button { width: 46px; height: 46px; } #dock button canvas { width: 28px; height: 28px; } #dock button kbd { display: none; }
+  #dkHand { width: 58px !important; height: 58px !important; }
+  #rs-here { left: 168px !important; transform: none !important; bottom: 76px !important; max-width: calc(100vw - 410px) !important; justify-content: flex-start !important; }
+  #cnBtn { right: 8px !important; bottom: auto !important; top: 186px !important; }
+  #me-box { display: none !important; }   /* sul telefono i bisogni stanno nel menu (Chi è): la levetta resta libera */
+}
+@media (pointer: coarse) and (max-width: 640px) {
+  #dock { left: auto; right: 8px; top: 190px; bottom: auto; flex-direction: column; flex-wrap: nowrap; align-items: center; max-width: none; }
+  #dkHand { margin: 0 0 14px 0; }
+  #rs-here { left: 12px !important; max-width: calc(100vw - 80px) !important; bottom: 200px !important; }
+  #cnBtn { right: auto !important; left: 12px !important; top: 150px !important; }
+}`;
+    document.head.appendChild(css);
+    const d = document.createElement('div'); d.id = 'dock'; d.className = 'hud';
+    const hb = document.createElement('button'); hb.id = 'dkHand'; hb.hidden = true; hb.title = 'In mano';
+    hb.innerHTML = '<canvas width="32" height="16"></canvas><span class="lb"></span><span class="col" title="Colore">●</span><span class="x" title="Metti via">✕</span>';
+    hb.addEventListener('click', e => { const t = e.target; if (t.classList.contains('x')) { equip(null); say('Mani libere.'); } else if (t.classList.contains('col')) PV().sprayColor(1); else usaMano(); upd(true); });
+    d.appendChild(hb);
+    ITEMS.forEach(([id, name, k, fn, ic]) => {
+      const b = document.createElement('button'); b.dataset.id = id; b.title = name + (k ? ' (' + k + ')' : '');
+      b.innerHTML = `<canvas width="16" height="16"></canvas>${k ? `<kbd>${k}</kbd>` : ''}${id === 'zaino' ? '<span class="dot" hidden></span>' : ''}`;
+      b.addEventListener('click', () => { try { fn(); } catch (e) { console.warn('[comandi]', e); } upd(true); });
+      d.appendChild(b);
+    });
+    $('app').appendChild(d);
+    return true;
+  }
+  let handKey = '';
+  function upd(now) {
+    const pv = PV(), st = ST(); if (!pv || !st || !mount()) return;
+    const ui = pv.ui, p = st.player, d = $('dock');
+    const hide = ui.intro || ui.over || ui.dialog || ui.book || ui.menu || (typeof Cantiere !== 'undefined' && Cantiere.active()) || (window.Editor && Editor.active && Editor.active());
+    d.style.display = hide ? 'none' : ''; if (hide) return;
+    d.querySelectorAll('button[data-id]').forEach(b => {
+      const id = b.dataset.id, c = b.querySelector('canvas');
+      if (!c.dataset.done) { iconOf(c, id); c.dataset.done = 1; }
+      const on = id === 'bomboletta' ? (p.hand === 'bomboletta' || p.hand === 'pennarello') && !tavOn(st) : id === 'tavoletta' ? tavOn(st) : id === 'bmx' ? onBmx(st) : id === 'skate' ? onSk(st) : false;
+      b.classList.toggle('on', on);
+      if (id === 'bomboletta' || id === 'tavoletta') b.classList.toggle('off', !has('bomboletta') && !has('pennarello'));
+      if (id === 'zaino') { const dot = b.querySelector('.dot'), n = typeof MenuUI !== 'undefined' && MenuUI.quiCount ? MenuUI.quiCount(st) : 0; dot.hidden = !n; dot.textContent = n; }
+    });
+    // la mano
+    const hb = $('dkHand'), Wp = !p.hand && p.cur !== 'pugni' && pv.G.WEAPONS[p.cur], id = p.hand || (Wp ? p.cur : null);
+    hb.hidden = !id; if (!id) { handKey = ''; return; }
+    const spray = p.hand === 'bomboletta' || p.hand === 'pennarello', col = spray && ui.spray ? pv.SPRAY_COLS[ui.spray.col][0] : '';
+    const ammo = Wp && p.arms[p.cur] ? (Wp.throw ? '×' + ((p.arms[p.cur].mag || 0) + (p.arms[p.cur].reserve || 0)) : (p.arms[p.cur].mag || 0) + '/' + (p.arms[p.cur].reserve || 0)) : '';
+    const name = Wp ? Wp.name : (typeof Oggetti !== 'undefined' && Oggetti.nm ? Oggetti.nm(id) : id);
+    const hint = Wp ? (pv.touchMode ? (Wp.throw ? 'tocca dove lanciarla' : 'tocca dove sparare · qui: ricarica') : (Wp.throw ? 'destro: lancia' : 'destro: spara · clic qui: ricarica'))
+      : p.hand === 'bomboletta' ? 'qui: cambia modalità · ● colore' : p.hand === 'pennarello' ? 'tieni premuto su un muro' : 'tocca qui per usarlo';
+    const key = id + '|' + ammo + '|' + col + '|' + (spray && W() ? W().mode(st) : '');
+    if (key !== handKey || now) {
+      handKey = key;
+      const wide = !!Wp || /^(pala|piccone|ascia|zappa|falce|sega|canna|carriola)$/.test(id), c = hb.querySelector('canvas');
+      c.width = wide ? 32 : 16; c.height = 16; c.className = wide ? '' : 'sq';
+      if (typeof MenuUI !== 'undefined' && MenuUI.icon) MenuUI.icon(c, id);
+      hb.querySelector('.lb').textContent = ammo || (spray && W() && p.hand === 'bomboletta' ? W().mode(st) : name);
+      hb.title = name + ' — ' + hint;
+      const cb = hb.querySelector('.col'); cb.hidden = !col; cb.style.color = col;
+    }
+  }
+  setInterval(() => { try { upd(false); } catch (e) { if (!upd.err) { upd.err = 1; console.warn('[comandi]', e); } } }, 200);
+  return { bomboletta, tavoletta, bmx, skate, mappa, zaino, usaMano, update: upd };
 })();
 </script>
 <script>/* Interni, la grafica [interni 4/10].

@@ -58,9 +58,23 @@
   cv.addEventListener('pointerdown', e => { cv.focus(); A.init(); const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
     if (window.Cantiere && Cantiere.active() && e.button !== 1) { Cantiere.down(e.button, nx, ny); return; }   // [cantiere] si costruisce, non si cammina
     if (e.button === 2) { mouse.down = true; mouse.pressed = true; return; }
-    if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
+    const busy = ui.intro || ui.over || ui.dialog || ui.book || ui.menu;
+    if (e.button === 0 && !busy && window.Skate && Skate.on(st)) { tpGrab(e, 'skate', nx, ny); mouse.nx = nx; mouse.ny = ny; return; }   // [mobile] in tavola: tieni premuto e spingi verso quel punto
+    if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; tpGrab(e, 'spray', nx, ny); return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
+    if (e.button === 0 && !busy && e.pointerType !== 'mouse' && tapShoots()) { tpGrab(e, 'fire', nx, ny); touchAimAt(nx, ny); touchFire = true; mouse.pressed = true; return; }   // [mobile] arma in mano: spari dove tocchi
     if (e.button === 0) { mouse.nx = nx; mouse.ny = ny; onClick(nx, ny, e.detail >= 2); } });
-  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; if (window.Cantiere && Cantiere.up) Cantiere.up(); if (e.button === 0 && ui.spray) sprayEnd(); });
+  // [mobile] il dito che tiene premuto: spruzza, spara o spinge la tavola seguendo dove si sposta
+  const tp = { id: null, mode: null, nx: .5, ny: .5, aim: null };
+  function tpGrab(e, mode, nx, ny) { tp.id = e.pointerId; tp.mode = mode; tp.nx = nx; tp.ny = ny; try { cv.setPointerCapture(e.pointerId); } catch (x) { } }
+  function tpEnd() { if (tp.mode === 'fire') { touchFire = false; tp.aim = null; } tp.id = null; tp.mode = null; }
+  cv.addEventListener('pointermove', e => { if (e.pointerId !== tp.id) return; const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height; tp.nx = nx; tp.ny = ny;
+    if (e.pointerType !== 'mouse' && (tp.mode === 'spray' || tp.mode === 'skate')) { mouse.nx = nx; mouse.ny = ny; }
+    if (tp.mode === 'fire') touchAimAt(nx, ny); });
+  // con un'arma da fuoco (o la molotov) in mano, sul telefono il tocco spara
+  function tapShoots() { const p = st.player; return touchMode && !p.hand && p.cur !== 'pugni' && !!G.WEAPONS[p.cur] && !(window.Cantiere && Cantiere.active()); }
+  function touchAimAt(nx, ny) { const h = pickAt(nx, ny); tp.aim = h && h.kind === 'npc' ? { x: h.n.x, y: h.n.y, id: h.n.id } : h && h.kind === 'car' ? { x: h.v.x, y: h.v.y } : R.screenToGround(nx, ny) || tp.aim; }
+  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; if (window.Cantiere && Cantiere.up) Cantiere.up(); if (e.button === 0 && ui.spray) sprayEnd(); if (e.pointerId === tp.id) tpEnd(); });
+  addEventListener('pointercancel', e => { if (e.pointerId === tp.id) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } });
   // [cantiere] tenendo premuto il sinistro e trascinando si posa una fila (muri, recinti, solchi dell'orto…)
   cv.addEventListener('pointermove', e => { if (!(e.buttons & 1) || !window.Cantiere || !Cantiere.active() || !Cantiere.drag) return; const r = cv.getBoundingClientRect(); Cantiere.drag((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height); });
   // [graffiti] la bomboletta: il pennello dello Studio con la misura bloccata da bomboletta. Si impugna dalle Tasche;
@@ -133,9 +147,13 @@
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
   const stick = { x: 0, y: 0 };
-  let lastAim = null, touchFire = false, touchRun = false;
+  let lastAim = null, touchFire = false, touchRun = false, touchBoost = false; const touchTrick = { wheelie: false, peg: 0 };
   function aimAngle() {
     const p = st.player;
+    if (touchMode && tp.aim) {   // [mobile] il dito sullo schermo: si mira lì (alla persona toccata, anche se si muove)
+      const a = tp.aim, n = a.id && G.byId(st, a.id); if (n && !n.dead) { a.x = n.x; a.y = n.y; }
+      ui.aimPoint = { x: a.x, y: a.y }; return Math.atan2(a.y - p.y, a.x - p.x);
+    }
     if (touchMode) {
       // mira automatica: il nemico più vicino davanti, altrimenti la direzione dello sguardo
       let best = null, bd = 16;
@@ -150,12 +168,20 @@
   }
   // [bmx] in BMX si va col punta e clicca; le frecce fanno i trick: giù impenna, destra e sinistra il piede sulla pedalina
   function input() {
-    const r = input0(); if (!r || !st.player.vehicle || !jumpMode()) return r;
-    r.trick = { wheelie: !!keys.arrowdown, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : 0 };
+    const r = input0(); if (!r) return r;
+    const p = st.player;
+    if (window.Skate && Skate.on(st)) {   // [mobile] in tavola: il dito (o il sinistro) tenuto spinge verso quel punto, la levetta curva e spinge
+      const P = Skate.PAD, hold = tp.mode === 'skate'; let aim = r.aim;
+      if (hold) { const g = R.screenToGround(touchMode ? tp.nx : mouse.nx, touchMode ? tp.ny : mouse.ny); if (g && Math.hypot(g.x - p.x, g.y - p.y) > .8) aim = Math.atan2(g.y - p.y, g.x - p.x); }
+      P.push = hold || -stick.y > .4 ? 1 : 0; P.turn = Math.abs(stick.x) > .2 ? stick.x : 0;
+      return Object.assign({}, r, { x: 0, y: 0, aim: aim !== undefined ? aim : aimAngle() });
+    }
+    if (!p.vehicle || !jumpMode()) return r;
+    r.trick = { wheelie: !!keys.arrowdown || touchTrick.wheelie, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : touchTrick.peg };
     return r;
   }
   function input0() {
-    const sprint = !!keys.shift || touchRun, brakeKey = !!keys[' '] || touchBrake;
+    const sprint = !!keys.shift || touchRun || touchBoost, brakeKey = !!keys[' '] || touchBrake;
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (stick.x || stick.y) { // touch: la levetta segue lo schermo
       const B = R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
@@ -628,8 +654,61 @@
   }
 
   // ---------- Touch ----------
+  // [mobile] la levetta resta per camminare e guidare; il resto è punta e clicca. I pulsanti a destra cambiano con quello
+  // che stai facendo: a piedi, in auto, in BMX, in tavola, con la bomboletta in mano
   let touchBrake = false;
   const touchMode = matchMedia('(pointer: coarse)').matches;
+  const MODE_NM = { libero: 'libero', tag: 'tag', throw: 'throw-up', pezzo: 'pezzo', burner: 'burner', tavoletta: 'tavoletta' };
+  function sprayColor(d) { const S = ui.spray; if (!S) return; S.col = (S.col + (d || 1) + SPRAY_COLS.length) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[S.col][1] + '.'); }
+  function sprayMode() { if (!window.Writing || st.player.hand !== 'bomboletta') return; const m = Writing.cycleMode(st); toast('Bomboletta: ' + MODE_NM[m] + (m === 'libero' ? '' : m === 'tavoletta' ? ' — trascina sul muro la finestra, poi disegni' : ' — tieni premuto sul muro') + '.'); }
+  const TB = {
+    salta: { l: 'Salta', hold: 1, big: 1, dn: () => { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; }, up: () => { touchBrake = false; G.jumpHold(st, false); } },
+    corri: { l: 'Corri', dn: () => { touchRun = !touchRun; }, on: () => touchRun },
+    arma: { l: 'Arma', dn: () => G.switchWeapon(st, 1) },
+    tacc: { l: 'Tacc.', dn: () => toggleBook() },
+    freno: { l: 'Freno', hold: 1, big: 1, dn: () => { touchBrake = true; }, up: () => { touchBrake = false; } },
+    spinta: { l: 'Spinta', hold: 1, dn: () => { touchBoost = true; }, up: () => { touchBoost = false; } },
+    scendi: { l: 'Scendi', dn: () => { click.t = null; ui.mark = null; doAct('veicolo'); } },
+    impenna: { l: 'Impenna', hold: 1, dn: () => { touchTrick.wheelie = true; }, up: () => { touchTrick.wheelie = false; } },
+    pegsx: { l: '◄ Piede', hold: 1, dn: () => { touchTrick.peg = 1; }, up: () => { touchTrick.peg = 0; } },
+    pegdx: { l: 'Piede ►', hold: 1, dn: () => { touchTrick.peg = -1; }, up: () => { touchTrick.peg = 0; } },
+    ollie: { l: 'Ollie', sub: 'trascina: trick', hold: 1, big: 1, dn: () => Skate.padCrouch(true), up: () => Skate.padCrouch(false), drag: (dx, dy) => Skate.swipe(dx, dy) },
+    frena: { l: 'Frena', hold: 1, dn: () => { Skate.PAD.brake = 1; }, up: () => { Skate.PAD.brake = 0; } },
+    modo: { l: () => 'Modo: ' + MODE_NM[(window.Writing && Writing.mode(st)) || 'libero'], dn: sprayMode },
+    colore: { l: 'Colore', col: () => ui.spray ? SPRAY_COLS[ui.spray.col][0] : '', dn: () => sprayColor(1) },
+  };
+  // i pulsanti di adesso, il principale per primo (va in basso a destra, sotto il pollice)
+  function touchSet() {
+    const p = st.player;
+    if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || (window.Cantiere && Cantiere.active())) return [];
+    if (window.Skate && Skate.on(st)) return ['ollie', 'frena'];
+    if (p.vehicle) return jumpMode() ? ['salta', 'impenna', 'pegdx', 'pegsx', 'scendi'] : ['freno', 'spinta', 'scendi'];
+    const o = ['salta'];
+    if (Object.keys(p.arms || {}).some(w => w !== 'pugni' && p.arms[w])) o.push('arma');
+    o.push('corri', 'tacc');
+    if (ui.spray) { o.push('colore'); if (ui.spray.tool === 'bomboletta') o.push('modo'); }
+    return o;
+  }
+  const lab = d => typeof d.l === 'function' ? d.l() : d.l;
+  let tbKey = '';
+  function touchButtons() {
+    if (!touchMode) return;
+    const list = touchSet(), key = list.map(k => k + ':' + lab(TB[k])).join('|'), box = $('tbtns');
+    if (key !== tbKey) {
+      tbKey = key; box.innerHTML = '';
+      list.forEach(k => {
+        const d = TB[k], b = document.createElement('button'); b.dataset.k = k; if (d.big) b.className = 'big';
+        b.innerHTML = esc(lab(d)) + (d.sub ? `<small>${esc(d.sub)}</small>` : '');
+        let lx = 0, ly = 0, held = false;
+        b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); A.init(); if (ui.intro || ui.over) return; try { b.setPointerCapture(e.pointerId); } catch (x) { } held = true; lx = e.clientX; ly = e.clientY; b.classList.add('on'); d.dn(); });
+        b.addEventListener('pointermove', e => { if (!held || !d.drag) return; d.drag(e.clientX - lx, e.clientY - ly); lx = e.clientX; ly = e.clientY; });
+        const up = () => { if (!held) return; held = false; b.classList.remove('on'); if (d.up) d.up(); };
+        b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+        box.appendChild(b);
+      });
+    }
+    box.querySelectorAll('button').forEach(b => { const d = TB[b.dataset.k]; if (d.on) b.classList.toggle('on', !!d.on()); if (d.col) b.style.borderColor = d.col() || ''; });
+  }
   if (touchMode) {
     $('touch').hidden = false; $('bookBtn').style.display = 'none';
     const sEl = $('stick'), kn = $('knob'); let sid = null;
@@ -638,18 +717,6 @@
     const end = () => { sid = null; stick.x = stick.y = 0; kn.style.left = '43px'; kn.style.top = '43px'; };
     sEl.addEventListener('pointerup', end); sEl.addEventListener('pointercancel', end);
     function mv(e) { const r = sEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 65) / 50, dy = (e.clientY - r.top - 65) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } stick.x = dx; stick.y = dy; kn.style.left = 43 + dx * 40 + 'px'; kn.style.top = 43 + dy * 40 + 'px'; }
-    $('tbtns').querySelectorAll('button').forEach(b => {
-      b.addEventListener('pointerdown', e => {
-        e.preventDefault(); A.init(); const k = b.dataset.k; if (ui.intro || ui.over) return;
-        if (k === 'shift') { touchRun = !touchRun; b.style.borderColor = touchRun ? 'var(--amber)' : ''; return; }
-        if (k === 'tab') return toggleBook(); if (ui.dialog || ui.book) return;
-        if (k === 'fire') { touchFire = true; mouse.pressed = true; return; }
-        if (k === 'space') { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; return; }   // [salto]
-        if (k === 'e') doAct('scippo'); if (k === 'f') doAct('veicolo'); if (k === 'p') doBmx(); if (k === 't') openTalk(); if (k === 'q') G.switchWeapon(st, 1); if (k === 'r') G.reload(st);
-      });
-      const up = () => { if (b.dataset.k === 'fire') touchFire = false; if (b.dataset.k === 'space') { touchBrake = false; G.jumpHold(st, false); } };
-      b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);
-    });
   }
 
   // ---------- Avvio ----------
@@ -693,10 +760,10 @@
     R.frame(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     sounds();
     drawBubbles(); crosshair();
-    hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); }
+    hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
-  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y) };
+  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)
   }
 })();

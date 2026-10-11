@@ -216,17 +216,23 @@ var Skate = (function () {
   const S = st => st.skate || (st.skate = { owned: true,   /* [writer] la tavola ce l'hai già dall'inizio, come la BMX in tasca e i due pennelli */ total: 0, best: 0, warn: 0, warnT: -99, emitT: -99, hint: false, line: null, lastLine: null });
   const on = st => !!(st.player.sk && st.player.sk.on);
   const KEYS = { w: 0, s: 0, a: 0, d: 0, sp: 0 }, MS = []; let mouseTrack = false;
+  // [mobile] i comandi a tocco (main.js): il dito tenuto sullo schermo spinge verso dove tocchi, la levetta curva,
+  // il pulsante Ollie carica e il dito trascinato sopra sceglie il trick (stesso gesto del mouse)
+  const PAD = { push: 0, brake: 0, turn: 0, crouch: 0 };
+  function padCrouch(v) { if (v && !PAD.crouch) MS.length = 0; PAD.crouch = v ? 1 : 0; }
+  function swipe(dx, dy) { if (PAD.crouch) MS.push({ t: typeof performance !== 'undefined' ? performance.now() : 0, dx, dy }); }
   function ctl(inp) {
     if (inp && inp.sk) return inp.sk;   // le prove passano i comandi a mano
     const now = typeof performance !== 'undefined' ? performance.now() : 0;
     while (MS.length && now - MS[0].t > 350) MS.shift();
-    return { push: !!KEYS.w, brake: !!KEYS.s, turn: (KEYS.d ? 1 : 0) - (KEYS.a ? 1 : 0), crouch: !!KEYS.sp, aim: inp ? inp.aim : undefined, gesture: () => classify(MS.filter(m => now - m.t < 300)) };
+    const turn = (KEYS.d ? 1 : 0) - (KEYS.a ? 1 : 0) || PAD.turn;
+    return { push: !!(KEYS.w || PAD.push), brake: !!(KEYS.s || PAD.brake), turn, crouch: !!(KEYS.sp || PAD.crouch), aim: inp ? inp.aim : undefined, gesture: () => classify(MS.filter(m => now - m.t < 300)) };
   }
 
   function mount(st, quiet) {
     const p = st.player; if (p.vehicle || p.indoor || p.lv || p.swim) return false;
     p.sk = { on: true, z: surface(p.x, p.y), vz: 0, V: 0, vx: 0, vy: 0, yaw: p.face, air: false, grind: null, trick: null, vert: null, crouchT: null, crouchPrev: false, pushT: 0, pushA: -9, lastVS: 0, carveT: 0, boardOff: 0, airT0: 0, free: null };
-    if (!quiet) G.feed(st, 'In tavola. W spinta · Spazio ollie · scatto del mouse con Spazio: flip · X scendi.', 'info');
+    if (!quiet) G.feed(st, typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches ? 'In tavola. Tieni il dito dove vuoi andare: spingi · Ollie: tieni e lascia, trascina il dito per il trick.' : 'In tavola. W o sinistro tenuto: spinta verso il puntatore · Spazio ollie · scatto del mouse con Spazio: flip · X scendi.', 'info');
     return true;
   }
   function dismount(st, quiet) {
@@ -722,13 +728,13 @@ var Skate = (function () {
       else if (k === ' ') { if (!KEYS.sp) MS.length = 0; KEYS.sp = 1; mouseTrack = true; e.preventDefault(); }
     });
     addEventListener('keyup', e => { const k = e.key.toLowerCase(); if (k === 'w' || k === 'arrowup') KEYS.w = 0; else if (k === 's' || k === 'arrowdown') KEYS.s = 0; else if (k === 'a' || k === 'arrowleft') KEYS.a = 0; else if (k === 'd' || k === 'arrowright') KEYS.d = 0; else if (k === ' ') { KEYS.sp = 0; mouseTrack = false; } });
-    addEventListener('blur', () => { KEYS.w = KEYS.s = KEYS.a = KEYS.d = KEYS.sp = 0; });
+    addEventListener('blur', () => { KEYS.w = KEYS.s = KEYS.a = KEYS.d = KEYS.sp = 0; PAD.push = PAD.brake = PAD.turn = PAD.crouch = 0; });
     let lx = null, ly = null;
     addEventListener('mousemove', e => { if (lx !== null && mouseTrack) MS.push({ t: performance.now(), dx: e.clientX - lx, dy: e.clientY - ly }); lx = e.clientX; ly = e.clientY; });
     const go = () => { if (!window.THREE || !window.__pv) { setTimeout(go, 250); return; } requestAnimationFrame(frame); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { SPOTS: PLACED, PIECES, EDGES, surface, solidAt, spotAt, free, move, mount, dismount, key, on, pose, classify, TRICKS, S, _: { addTrick, closeLine, bail, lockGrind, MINE, hLocal, toL } };
+  return { SPOTS: PLACED, PIECES, EDGES, surface, solidAt, spotAt, free, move, mount, dismount, key, on, pose, classify, TRICKS, S, PAD, padCrouch, swipe, _: { addTrick, closeLine, bail, lockGrind, MINE, hLocal, toL } };
 })();
 if (typeof module !== 'undefined') module.exports = Skate;
