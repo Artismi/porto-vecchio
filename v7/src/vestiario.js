@@ -800,7 +800,11 @@ var Vesti3D = (function () {
     cappello_paglia: { id: 'cappello_paglia', zona: 'testa', parti: [], sp: 0, col: '#8a2a2a', acc: 'paglia' },
     casco_cantiere: { id: 'casco_cantiere', zona: 'testa', parti: [], sp: 0, col: '#e8b83a', acc: 'hard' },
   };
-  function dress(g, outfit, look, held, seed) {
+  // [fluido] vestire è un lavoro in fasi (sartoria, parti coperte, gusci, pittura, accessori): dressGen le fa una per volta.
+  // dress le fa tutte subito (il giocatore, i ritratti); gli abitanti in strada le fanno una per fotogramma (render.js, a
+  // budget) e restano invisibili finché non sono vestiti: niente fotogramma lungo quando qualcuno entra in scena.
+  function dress(g, outfit, look, held, seed) { const it = dressGen(g, outfit, look, held, seed); while (!it.next().done); }
+  function* dressGen(g, outfit, look, held, seed) {
     strip(g); bare(g, look);
     // gli abitanti: ogni capo nella sua variante (scollo a V, collo alto, righe, quadri…), sempre la stessa per persona
     if (seed !== undefined && window.Sartoria) outfit.forEach(c => { const V = Sartoria.VARIANTI[c.id]; if (V && !c.var) c.var = V[hsh(String(seed) + c.id) % V.length]; });
@@ -811,6 +815,7 @@ var Vesti3D = (function () {
     if (!unit) { const lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9]; g.traverse(o => { if (!o.isSkinnedMesh || o.userData.vesti) return; const A = analyze(o); if (A) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], A.lo[k]); hi[k] = Math.max(hi[k], A.hi[k]); } });
       const R = Math.max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]); unit = g.userData.vUnit = R > 0 && R < 1e8 ? 1.75 / R : .01; }
     g.traverse(o => { if (o.isSkinnedMesh && !o.userData.vesti) analyze(o); });   // prima si sgonfiano i corpi
+    yield;
     let D = null;
     if (window.Sartoria) try {
       { const CUT = Sartoria.CUT_(), B0 = Sartoria.body(g, PARTI); outfit.forEach(c => { const Cc = CUT[c.id] || {}; if (!Cc.solo_gonna || !B0) return;   // la maglia fuori dalla gonna: la gonna comincia sotto il suo orlo
@@ -827,8 +832,11 @@ var Vesti3D = (function () {
         const S = g.userData.spessore = g.userData.spessore || {}; for (const k in D.th) S[k] = Math.max(S[k] || 0, D.th[k]);
       }
     } catch (e) { console.error('[Vesti3D] sartoria', e); D = null; }
+    yield;
     try { shells(g, outfit, unit, D && D.B); } catch (e) { console.error('[Vesti3D] gusci', e); }
+    yield;
     if (window.Pittura) try { Pittura.dipingi(g, outfit, look, PARTI); } catch (e) { console.error('[Vesti3D] pittura', e); }   // i vestiti dipinti sul corpo
+    yield;
     try { accessories(g, outfit, held, D); } catch (e) { console.error('[Vesti3D] pezzi', e); }
     if (window.Officina) try { Officina.onDress(g, outfit); } catch (e) { console.error('[Vesti3D] officina', e); }   // [studio]
   }
@@ -848,7 +856,8 @@ var Vesti3D = (function () {
       try {
         const st = ST(), fem = /^(Casual|Formal)$/.test(g.userData.model || '');
         if (who === 'player' && st) { Guardaroba.worn(st); dress(g, Guardaroba.outfitOfPlayer(st), look, st.player.worn && st.player.worn.sx); g.userData.wsig = wsig(st); players.add(g); }
-        else { const n = npcOf(look) || { id: JSON.stringify(look || {}).length + (look && look.top || ''), look: look || {} }; if (who === 'cop' && !n.cop) n.cop = true; dress(g, fromLook(Guardaroba.outfitOf(n, fem), look, who), look, null, n.id); }
+        else { const n = npcOf(look) || { id: JSON.stringify(look || {}).length + (look && look.top || ''), look: look || {} }; if (who === 'cop' && !n.cop) n.cop = true; const of = fromLook(Guardaroba.outfitOf(n, fem), look, who);
+          if (Models.__aRate) g.userData.dressing = dressGen(g, of, look, null, n.id); else dress(g, of, look, null, n.id); }   // [fluido] in strada (render.js) si veste a rate
       } catch (e) { console.error('[Vesti3D]', e); }
       return g;
     };

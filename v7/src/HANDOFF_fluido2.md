@@ -45,6 +45,18 @@ Profilo a regime, il peso che resta è **lavoro che parte quando qualcosa entra 
 - Prova nel browser: 300 raggi sulla città, **300/300 risultati identici** (oggetto, distanza, materiale, uv), 4,3 volte più
   veloci anche provando tutte le 16.000 mesh insieme. Servono a tetti, graffiti, bomboletta, tavoletta, clic e tocchi.
 
+## Vestire a rate (fatto)
+- `vestiario.js dressGen`: il vestire è un generatore in fasi (sartoria, parti coperte, gusci, pittura, accessori). `dress`
+  le fa tutte subito (giocatore, ritratti); in strada `render.js` chiede `Models.__aRate` e l'abitante si veste una fase per
+  fotogramma (budget, tipo `vesti`), invisibile finché non ha finito (compare a 52 m, come prima, qualche fotogramma dopo).
+- Prova: 6 abitanti vestiti subito e a rate, **6/6 identici** (mesh, vertici, materiali).
+
+## Dove siamo (misure a regime, Chromium senza scheda video: contano i rapporti)
+- Ciclo dei graffiti: da 344 a 60 ms per fotogramma; Risacca 6, tetti 2: i cicli dei moduli ora sono leggeri.
+- Quello che resta in cima: il disegno della scena (scheda video), la costruzione dei personaggi (ora a fasi) e dei blocchi
+  di piante col terreno dipinto (`buildChunk`, `paintTiles`, `verde38`, `prato38`).
+- Il calendario unico (punto 4) vale poco con questi numeri: si decide con la classifica di F3 (`?perf`) sul PC vero.
+
 ## Prossimi passi (piano)
 1. **Una coda unica di "costruzioni"** con un tetto per fotogramma (2-3 ms), in ordine di distanza: personaggi, vestiti,
    stoffe, blocchi di piante, veli dei graffiti, misure dei muri. Niente si costruisce tutto insieme: entra un pezzo per

@@ -11457,8 +11457,13 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
       if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */
         const kept = PEOPLE_KEEP.get(n.id); if (kept && (kept.userData.who || null) === who) { PEOPLE_KEEP.delete(n.id); g = kept; }   // [fluido] torna com'era, già vestito
-        else { if (!BUD.ok(Math.hypot(n.x - p.x, n.y - p.y), 'gente')) return; const t0 = performance.now(); g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); g.userData.who = who; BUD.add(performance.now() - t0, 'gente'); }   // [fluido] nasce quando c'è tempo
+        else { if (!BUD.ok(Math.hypot(n.x - p.x, n.y - p.y), 'gente')) return; const t0 = performance.now(); if (window.Models) Models.__aRate = true; try { g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); } finally { if (window.Models) Models.__aRate = false; } g.userData.who = who; BUD.add(performance.now() - t0, 'gente'); }   // [fluido] nasce quando c'è tempo
         if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
+      if (g.userData.dressing) {   // [fluido] si sta vestendo: una fase per fotogramma (a budget), invisibile finché non ha finito
+        const dn = Math.hypot(n.x - p.x, n.y - p.y); let fin = false;
+        if (BUD.ok(dn, 'vesti')) { const t0 = performance.now(); try { fin = g.userData.dressing.next().done; } catch (e) { fin = true; console.error('[fluido] vestire', e); } BUD.add(performance.now() - t0, 'vesti'); }
+        if (fin) g.userData.dressing = null; else { g.visible = false; return; }
+      }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
       g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = Math.PI / 2 - n.face;
