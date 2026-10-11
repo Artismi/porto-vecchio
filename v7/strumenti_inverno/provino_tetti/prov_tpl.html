@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#222}canvas{image-rendering:pixelated}</style></head><body>
+<script src="three.min.js"></script>
+<script>
+(function(){
+const G = { TS: 2, BUILDINGS: [], T: {} }, M = { world: null }, TS = 2, Kit = { get: () => new THREE.Group() };
+const modKind = b => b.kind || 'borgo';
+/*HELPERS*/
+/*MODULE*/
+const W = +(new URLSearchParams(location.search).get('w') || 1200), H = +(new URLSearchParams(location.search).get('h') || 800), PX = +(new URLSearchParams(location.search).get('px') || 3);
+const renderer = new THREE.WebGLRenderer({ antialias: false }); renderer.setPixelRatio(1); renderer.setSize(W / PX, H / PX, false); renderer.domElement.style.width = W + 'px'; renderer.domElement.style.height = H + 'px';
+renderer.shadowMap.enabled = true; renderer.outputEncoding = THREE.sRGBEncoding; document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#9ab0c0');
+scene.add(new THREE.HemisphereLight('#dfe8f0', '#6a6458', .75));
+const sun = new THREE.DirectionalLight('#fff2dc', 1.6); sun.position.set(-30, 50, 25); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = sc.bottom = -40; sc.right = sc.top = 40; sc.far = 200; scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: '#8a8478', roughness: 1 })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const add = o => { o.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); scene.add(o); return o; };
+const house = (x0, z0, w, d, H0, col) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, H0, d), plasterMat1(col)); m.position.set(x0 + w / 2, H0 / 2, z0 + d / 2); add(m);
+  for (let y = 1.4; y < H0 - .8; y += 2.6) for (let u = 1; u < w - .6; u += 2) { const wi = new THREE.Mesh(new THREE.BoxGeometry(.9, 1.3, .05), new THREE.MeshStandardMaterial({ color: '#2c3850' })); wi.position.set(x0 + u, y, z0 + d + .02); add(wi); }
+  for (let y = 1.4; y < H0 - .8; y += 2.6) for (let u = 1; u < d - .6; u += 2) { const wi = new THREE.Mesh(new THREE.BoxGeometry(.05, 1.3, .9), new THREE.MeshStandardMaterial({ color: '#2c3850' })); wi.position.set(x0 + w + .02, y, z0 + u); add(wi); } };
+window.__built = (window.__scene || function () {})({ scene, add, house, tetto1, torrino1, copertina1, bocchettone1, deckMat1, rng, oAntenna, oAC, oTank, oDish, fB });
+const cam = new THREE.PerspectiveCamera(+(new URLSearchParams(location.search).get('fov') || 14), W / H, 1, 2000);
+const tx = +(new URLSearchParams(location.search).get('tx') || 0), tz = +(new URLSearchParams(location.search).get('tz') || 0), dist = +(new URLSearchParams(location.search).get('dist') || 160), yaw = Math.PI / 4, pitch = .78;
+cam.position.set(tx + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, tz + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(tx, 4, tz);
+renderer.render(scene, cam); window.__done = true;
+})();
+</script></body></html>
