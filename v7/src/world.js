@@ -1459,6 +1459,35 @@ var World = (function () {
       }
       b.door = best;
     });
+    // [ordine1] I VIALETTI: ogni casa fuori città che non sta su una strada ha il suo vialetto di terra battuta fino alla strada (o al
+    // sentiero) più vicina, tracciato sul terreno come i sentieri (segue le curve di livello, evita acqua, pareti e case); il bosco si apre.
+    {
+      const isRoad = new Uint8Array(N); roads.forEach(rd => { if (!rd.pts) return; rd.pts.forEach(([x, y]) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const i = (ty + b) * GW + tx + a; if (tx + a >= 0 && ty + b >= 0 && tx + a < GW && ty + b < GH) isRoad[i] = 1; } }); });
+      for (let i = 0; i < N; i++) if (roadW[i] > 0) isRoad[i] = 1;
+      const hard = v => v === T.WATER || v === T.CLIFF || v === T.BLD || v === T.FOUNT || v === T.PIER;
+      let nv = 0;
+      B.forEach(b => {
+        if (!b.door || b.shack || b.barrack || b.isola) return; const [dx, dy] = b.door, di = dy * GW + dx; if (zone[di] === Z.CITTA) return;
+        let near = false; for (let a = -2; a <= 2 && !near; a++) for (let c = -2; c <= 2 && !near; c++) { const tx = dx + a, ty = dy + c; if (tx >= 0 && ty >= 0 && tx < GW && ty < GH && isRoad[ty * GW + tx]) near = true; }
+        if (near) return;
+        // Dijkstra a 8 vicini, fino a 70 m
+        const D = new Map(), PR = new Map(), Q = [[0, dx, dy]], k0 = dy * GW + dx; D.set(k0, 0); let end = -1;
+        while (Q.length) { let bi = 0; for (let q = 1; q < Q.length; q++) if (Q[q][0] < Q[bi][0]) bi = q; const [d, i, j] = Q[bi]; Q[bi] = Q[Q.length - 1]; Q.pop(); const k = j * GW + i;
+          if (d > D.get(k)) continue; if (isRoad[k] && d > 0) { end = k; break; }
+          for (const [a, c] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const ni = i + a, nj = j + c; if (ni < 1 || nj < 1 || ni >= GW - 1 || nj >= GH - 1 || Math.abs(ni - dx) > 35 || Math.abs(nj - dy) > 35) continue;
+            const nk = nj * GW + ni, v = grid[nk]; if (hard(v)) continue; if (a && c && (hard(grid[j * GW + ni]) || hard(grid[nj * GW + i]))) continue;
+            const L = Math.hypot(a, c) * TS, sl = Math.abs(elev[nk] - elev[k]) / L; if (sl > .35) continue;
+            const cc = d + L * (1 + Math.pow(sl / .1, 2) * 2.5) * (v === T.TREE ? 1.6 : 1) * (.85 + .3 * fbm(ni / 6, nj / 6, 433, 2));
+            if (cc < (D.has(nk) ? D.get(nk) : 1e18)) { D.set(nk, cc); PR.set(nk, k); Q.push([cc, ni, nj]); } } }
+        if (end < 0) return;
+        const out = []; let k = end; while (k !== undefined) { out.push([(k % GW) * TS + 1, Math.floor(k / GW) * TS + 1]); k = PR.get(k); }
+        if (out.length < 3) return;
+        const thin = out.filter((q, n) => n % 2 === 0 || n === out.length - 1), pts = chaikin(thin, 3);
+        out.forEach(([x, y]) => { const i = Math.floor(y / TS) * GW + Math.floor(x / TS); if (grid[i] === T.TREE || grid[i] === T.SHRUB || grid[i] === T.ROCK) grid[i] = T.DIRT; isRoad[i] = 1; });
+        roads.push({ id: 'vialetto_' + b.id, name: 'Vialetto', w: 2, kind: 'sterrato', pts, traccia: true, vialetto: true, h: pts.map(([x, y]) => rawElev(x, y)) }); nv++;
+      });
+      if (typeof process !== 'undefined' && process.env && process.env.STRADE_DBG) console.log('[ordine1] vialetti', nv);
+    }
     Object.values(PLACES).forEach(p => { if (p.isola) return; /* [arcipelago] sulle isole si arriva per mare */ if (!reach[p.ty * GW + p.tx]) { const q = nearReach(p.tx, p.ty); if (q) { p.tx = q[0]; p.ty = q[1]; } } });
     B.forEach(b => { if (b.name && b.door && !b.barrack && !PLACES[b.id]) PLACES[b.id] = { id: b.id, name: b.name, tx: b.door[0], ty: b.door[1] }; });   // [isola] chi ha avuto la porta dopo
     B.forEach(b => { if (b.name && b.door && PLACES[b.id]) { PLACES[b.id].tx = b.door[0]; PLACES[b.id].ty = b.door[1]; } });
@@ -1586,10 +1615,18 @@ var World = (function () {
       const NV = VW * (GH + 1), PRI = rd => rd.kind === 'litoranea' ? 0 : rd.kind === 'strada' ? 1 : rd.kind === 'citta' ? 2 : rd.kind === 'vicolo' ? 3 : 4;
       const RDS = roads.filter(rd => rd.h && rd.pts && rd.pts.length >= 2 && !rd.traccia && !(rd.kind === 'sterrato' && rd.w < 3)).sort((a, c) => PRI(a) - PRI(c));
       const near = (o, x, y) => { let bd = 1e9, bh = 0; for (let j = 0; j < o.pts.length - 1; j++) { const [ax, ay] = o.pts[j], [bx, by] = o.pts[j + 1], L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1), d = Math.hypot(ax + (bx - ax) * t - x, ay + (by - ay) * t - y); if (d < bd) { bd = d; bh = o.h[j] + (o.h[j + 1] - o.h[j]) * t; } } return [bd, bh]; };
+      // 0) [ordine1] il profilo di ogni strada si leviga prima di tutto: media mobile su ±14 m (gli estremi restano fermi), poi la pendenza
+      //    massima (asfalto 12%, sterrate 18%) in avanti e all'indietro; niente gradini di 3 m né dossi di 20 cm sotto le ruote
+      RDS.forEach(rd => { if (rd.kind === 'vicolo') return; const n = rd.pts.length; if (n < 6) return; const h0 = rd.h.slice(), Gm = rd.kind === 'sterrato' ? .18 : .12;
+        const S = [0]; for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(rd.pts[k][0] - rd.pts[k - 1][0], rd.pts[k][1] - rd.pts[k - 1][1]));
+        for (let pass = 0; pass < 3; pass++) { const o = rd.h.slice(); let a = 0, b = 0, sum = 0;
+          for (let k = 0; k < n; k++) { while (S[b] - S[k] <= 14 && b < n) { sum += o[b]; b++; } while (S[k] - S[a] > 14) { sum -= o[a]; a++; } rd.h[k] = sum / (b - a); }
+          const ed = Math.min(n - 1, 3); for (let k = 0; k < n; k++) { const w = Math.min(1, Math.min(S[k], S[n - 1] - S[k]) / 14); rd.h[k] = h0[k] + (rd.h[k] - h0[k]) * w; } }
+        for (let it = 0; it < 2; it++) { for (let k = 1; k < n; k++) { const L = S[k] - S[k - 1]; rd.h[k] = clamp(rd.h[k], rd.h[k - 1] - Gm * L, rd.h[k - 1] + Gm * L); } for (let k = n - 2; k >= 0; k--) { const L = S[k + 1] - S[k]; rd.h[k] = clamp(rd.h[k], rd.h[k + 1] - Gm * L, rd.h[k + 1] + Gm * L); } } });
       // 1) gli estremi delle minori sulla quota della maggiore
       RDS.forEach(rd => { const n = rd.pts.length;
         [0, n - 1].forEach(e => { const [x, y] = rd.pts[e]; let best = null;
-          RDS.forEach(o => { if (o === rd || PRI(o) > PRI(rd)) return; const [d, h] = near(o, x, y); if (d < o.w / 2 + 1.5 && Math.abs(h - rd.h[e]) < 3 && (!best || PRI(o) < PRI(best[0]))) best = [o, h]; });
+          RDS.forEach(o => { if (o === rd || PRI(o) > PRI(rd)) return; const [d, h] = near(o, x, y); if (d < o.w / 2 + 1.5 && Math.abs(h - rd.h[e]) < 6 && (!best || PRI(o) < PRI(best[0]))) best = [o, h];   /* [ordine1] fino a 6 m: la sterrata della cresta scendeva sul Corso con un gradino */ });
           if (!best) return; const o = best[0], oflat = o.w / 2 + (o.kind === 'citta' || o.kind === 'litoranea' ? 2 : 0) + .4, sg = e === 0 ? 1 : -1;
           // dentro la carreggiata (e il marciapiede) della maggiore: la sua quota, in piano
           let k = e, dh = 0; for (; k >= 0 && k < n; k += sg) { const [d, h] = near(o, rd.pts[k][0], rd.pts[k][1]); if (d > oflat) break; dh = h - rd.h[k]; rd.h[k] = h; }
@@ -1598,6 +1635,16 @@ var World = (function () {
           for (; k >= 0 && k < n; k += sg) { acc += Math.hypot(rd.pts[k][0] - rd.pts[k - sg][0], rd.pts[k][1] - rd.pts[k - sg][1]); const w = 1 - sstep(0, 24, acc); if (w <= 0) break; rd.h[k] += dh * w; }
           const Gm = rd.kind === 'vicolo' || rd.kind === 'sterrato' ? .22 : .13;
           for (k = k0; k >= 0 && k < n; k += sg) { const L = Math.hypot(rd.pts[k][0] - rd.pts[k - sg][0], rd.pts[k][1] - rd.pts[k - sg][1]), a = rd.h[k - sg], h = clamp(rd.h[k], a - Gm * L, a + Gm * L); if (Math.abs(h - rd.h[k]) < .005 && acc > 30) break; rd.h[k] = h; } }); });
+      // 1b) [ordine1] gli incroci a metà: dove una minore attraversa una maggiore, dentro la carreggiata della maggiore prende la sua quota
+      //     e da lì si raccorda dalle due parti con la sua pendenza massima (prima passava sopra o sotto con un gradino di metri)
+      const above = (o, rd) => PRI(o) !== PRI(rd) ? PRI(o) < PRI(rd) : !!o.main !== !!rd.main ? !!o.main : o.w !== rd.w ? o.w > rd.w : o.pts.length !== rd.pts.length ? o.pts.length > rd.pts.length : o.id < rd.id;   // un ordine stretto: chi comanda all'incrocio
+      const BB = RDS.map(o => { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; o.pts.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }); return [x0 - o.w, y0 - o.w, x1 + o.w, y1 + o.w]; });
+      RDS.forEach(rd => { if (rd.kind === 'vicolo') return; const n = rd.pts.length, pin = new Uint8Array(n); let any = false;
+        RDS.forEach((o, oi) => { if (o === rd || !above(o, rd)) return; const bb = BB[oi];
+          for (let k = 0; k < n; k++) { const [x, y] = rd.pts[k]; if (x < bb[0] || x > bb[2] || y < bb[1] || y > bb[3]) continue; const [d, h] = near(o, x, y); if (d < o.w / 2 + .4) { rd.h[k] = h; pin[k] = 1; any = true; } } });
+        if (!any) return; const Gm = rd.kind === 'sterrato' ? .18 : .13;
+        for (let it = 0; it < 3; it++) { for (let k = 1; k < n; k++) if (!pin[k]) { const L = Math.hypot(rd.pts[k][0] - rd.pts[k - 1][0], rd.pts[k][1] - rd.pts[k - 1][1]); rd.h[k] = clamp(rd.h[k], rd.h[k - 1] - Gm * L, rd.h[k - 1] + Gm * L); }
+          for (let k = n - 2; k >= 0; k--) if (!pin[k]) { const L = Math.hypot(rd.pts[k + 1][0] - rd.pts[k][0], rd.pts[k + 1][1] - rd.pts[k][1]); rd.h[k] = clamp(rd.h[k], rd.h[k + 1] - Gm * L, rd.h[k + 1] + Gm * L); } } });
       // 2) carreggiate (e marciapiedi delle vie di città) in piano, la più importante vince
       const own = new Int8Array(NV).fill(-1), setH = new Float32Array(NV), dmin = new Float32Array(NV).fill(1e9);
       const fixed = new Uint8Array(NV); for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const v = grid[ty * GW + tx]; if (v === T.BLD || v === T.PIER || v === T.FOUNT || v === T.CLIFF) for (let cy = 0; cy < 2; cy++) for (let cx = 0; cx < 2; cx++) fixed[(ty + cy) * VW + tx + cx] = 1; }
@@ -1608,6 +1655,16 @@ var World = (function () {
             if (d > flat || (own[q] >= 0 && own[q] < p) || (own[q] === p && d >= dmin[q])) continue;
             own[q] = p; dmin[q] = d; setH[q] = rd.h[k] + (rd.h[k + 1] - rd.h[k]) * t; } } });
       let moved = 0; for (let q = 0; q < NV; q++) if (own[q] >= 0) { if (Math.abs(vh[q] - setH[q]) > .05) moved++; vh[q] = setH[q]; if (CARR) CARR[q] = 1; }
+      // 3) [ordine1] le sponde: oltre il ciglio il terreno si raccorda alla strada in 6 m (sfumato), fuori città, senza toccare edifici, acqua e moli
+      { const bh = new Float32Array(NV), bw = new Float32Array(NV);
+        RDS.forEach(rd => { if (rd.kind === 'citta' || rd.kind === 'vicolo') return; const flat = rd.w / 2 + .2, P = rd.pts, n = P.length, R2 = flat + 6;
+          for (let k = 0; k < n - 1; k += 1) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
+            for (let j = Math.max(0, Math.floor((Math.min(ay, by) - R2) / TS)); j <= Math.min(GH, Math.ceil((Math.max(ay, by) + R2) / TS)); j++) for (let i = Math.max(0, Math.floor((Math.min(ax, bx) - R2) / TS)); i <= Math.min(GW, Math.ceil((Math.max(ax, bx) + R2) / TS)); i++) {
+              const q = j * VW + i; if (own[q] >= 0 || fixed[q]) continue; const x = i * TS, y = j * TS, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1), d = Math.hypot(x - ax - (bx - ax) * t, y - ay - (by - ay) * t);
+              if (d <= flat || d > R2) continue; const w = 1 - sstep(0, 1, (d - flat) / 6); if (w > bw[q]) { bw[q] = w; bh[q] = rd.h[k] + (rd.h[k + 1] - rd.h[k]) * t; } } } });
+        const wet = q => { const i = q % VW, j = Math.floor(q / VW); for (let b = -1; b <= 0; b++) for (let a = -1; a <= 0; a++) { const tx = i + a, ty = j + b; if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const v = grid[ty * GW + tx]; if (v === T.WATER || v === T.SAND) return true; } return false; };
+        for (let q = 0; q < NV; q++) if (bw[q] > 0 && !wet(q)) vh[q] += (bh[q] - vh[q]) * bw[q] * .85;
+        for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const k = ty * VW + tx; if (!(bw[k] || bw[k + 1] || bw[k + VW] || bw[k + VW + 1])) continue; const i = ty * GW + tx; if (grid[i] === T.BLD) continue; elev[i] = (vh[k] + vh[k + 1] + vh[k + VW] + vh[k + VW + 1]) / 4; } }
       for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const k = ty * VW + tx; if (own[k] < 0 && own[k + 1] < 0 && own[k + VW] < 0 && own[k + VW + 1] < 0) continue; const i = ty * GW + tx; if (grid[i] === T.BLD) continue; elev[i] = (vh[k] + vh[k + 1] + vh[k + VW] + vh[k + VW + 1]) / 4; }
       if (typeof process !== 'undefined' && process.env && process.env.STRADE_DBG) console.log('[strade1] vertici rimessi in piano', moved);
     }

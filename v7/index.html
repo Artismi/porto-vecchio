@@ -9751,6 +9751,35 @@ var World = (function () {
       }
       b.door = best;
     });
+    // [ordine1] I VIALETTI: ogni casa fuori città che non sta su una strada ha il suo vialetto di terra battuta fino alla strada (o al
+    // sentiero) più vicina, tracciato sul terreno come i sentieri (segue le curve di livello, evita acqua, pareti e case); il bosco si apre.
+    {
+      const isRoad = new Uint8Array(N); roads.forEach(rd => { if (!rd.pts) return; rd.pts.forEach(([x, y]) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const i = (ty + b) * GW + tx + a; if (tx + a >= 0 && ty + b >= 0 && tx + a < GW && ty + b < GH) isRoad[i] = 1; } }); });
+      for (let i = 0; i < N; i++) if (roadW[i] > 0) isRoad[i] = 1;
+      const hard = v => v === T.WATER || v === T.CLIFF || v === T.BLD || v === T.FOUNT || v === T.PIER;
+      let nv = 0;
+      B.forEach(b => {
+        if (!b.door || b.shack || b.barrack || b.isola) return; const [dx, dy] = b.door, di = dy * GW + dx; if (zone[di] === Z.CITTA) return;
+        let near = false; for (let a = -2; a <= 2 && !near; a++) for (let c = -2; c <= 2 && !near; c++) { const tx = dx + a, ty = dy + c; if (tx >= 0 && ty >= 0 && tx < GW && ty < GH && isRoad[ty * GW + tx]) near = true; }
+        if (near) return;
+        // Dijkstra a 8 vicini, fino a 70 m
+        const D = new Map(), PR = new Map(), Q = [[0, dx, dy]], k0 = dy * GW + dx; D.set(k0, 0); let end = -1;
+        while (Q.length) { let bi = 0; for (let q = 1; q < Q.length; q++) if (Q[q][0] < Q[bi][0]) bi = q; const [d, i, j] = Q[bi]; Q[bi] = Q[Q.length - 1]; Q.pop(); const k = j * GW + i;
+          if (d > D.get(k)) continue; if (isRoad[k] && d > 0) { end = k; break; }
+          for (const [a, c] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const ni = i + a, nj = j + c; if (ni < 1 || nj < 1 || ni >= GW - 1 || nj >= GH - 1 || Math.abs(ni - dx) > 35 || Math.abs(nj - dy) > 35) continue;
+            const nk = nj * GW + ni, v = grid[nk]; if (hard(v)) continue; if (a && c && (hard(grid[j * GW + ni]) || hard(grid[nj * GW + i]))) continue;
+            const L = Math.hypot(a, c) * TS, sl = Math.abs(elev[nk] - elev[k]) / L; if (sl > .35) continue;
+            const cc = d + L * (1 + Math.pow(sl / .1, 2) * 2.5) * (v === T.TREE ? 1.6 : 1) * (.85 + .3 * fbm(ni / 6, nj / 6, 433, 2));
+            if (cc < (D.has(nk) ? D.get(nk) : 1e18)) { D.set(nk, cc); PR.set(nk, k); Q.push([cc, ni, nj]); } } }
+        if (end < 0) return;
+        const out = []; let k = end; while (k !== undefined) { out.push([(k % GW) * TS + 1, Math.floor(k / GW) * TS + 1]); k = PR.get(k); }
+        if (out.length < 3) return;
+        const thin = out.filter((q, n) => n % 2 === 0 || n === out.length - 1), pts = chaikin(thin, 3);
+        out.forEach(([x, y]) => { const i = Math.floor(y / TS) * GW + Math.floor(x / TS); if (grid[i] === T.TREE || grid[i] === T.SHRUB || grid[i] === T.ROCK) grid[i] = T.DIRT; isRoad[i] = 1; });
+        roads.push({ id: 'vialetto_' + b.id, name: 'Vialetto', w: 2, kind: 'sterrato', pts, traccia: true, vialetto: true, h: pts.map(([x, y]) => rawElev(x, y)) }); nv++;
+      });
+      if (typeof process !== 'undefined' && process.env && process.env.STRADE_DBG) console.log('[ordine1] vialetti', nv);
+    }
     Object.values(PLACES).forEach(p => { if (p.isola) return; /* [arcipelago] sulle isole si arriva per mare */ if (!reach[p.ty * GW + p.tx]) { const q = nearReach(p.tx, p.ty); if (q) { p.tx = q[0]; p.ty = q[1]; } } });
     B.forEach(b => { if (b.name && b.door && !b.barrack && !PLACES[b.id]) PLACES[b.id] = { id: b.id, name: b.name, tx: b.door[0], ty: b.door[1] }; });   // [isola] chi ha avuto la porta dopo
     B.forEach(b => { if (b.name && b.door && PLACES[b.id]) { PLACES[b.id].tx = b.door[0]; PLACES[b.id].ty = b.door[1]; } });
@@ -9878,10 +9907,18 @@ var World = (function () {
       const NV = VW * (GH + 1), PRI = rd => rd.kind === 'litoranea' ? 0 : rd.kind === 'strada' ? 1 : rd.kind === 'citta' ? 2 : rd.kind === 'vicolo' ? 3 : 4;
       const RDS = roads.filter(rd => rd.h && rd.pts && rd.pts.length >= 2 && !rd.traccia && !(rd.kind === 'sterrato' && rd.w < 3)).sort((a, c) => PRI(a) - PRI(c));
       const near = (o, x, y) => { let bd = 1e9, bh = 0; for (let j = 0; j < o.pts.length - 1; j++) { const [ax, ay] = o.pts[j], [bx, by] = o.pts[j + 1], L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1), d = Math.hypot(ax + (bx - ax) * t - x, ay + (by - ay) * t - y); if (d < bd) { bd = d; bh = o.h[j] + (o.h[j + 1] - o.h[j]) * t; } } return [bd, bh]; };
+      // 0) [ordine1] il profilo di ogni strada si leviga prima di tutto: media mobile su ±14 m (gli estremi restano fermi), poi la pendenza
+      //    massima (asfalto 12%, sterrate 18%) in avanti e all'indietro; niente gradini di 3 m né dossi di 20 cm sotto le ruote
+      RDS.forEach(rd => { if (rd.kind === 'vicolo') return; const n = rd.pts.length; if (n < 6) return; const h0 = rd.h.slice(), Gm = rd.kind === 'sterrato' ? .18 : .12;
+        const S = [0]; for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(rd.pts[k][0] - rd.pts[k - 1][0], rd.pts[k][1] - rd.pts[k - 1][1]));
+        for (let pass = 0; pass < 3; pass++) { const o = rd.h.slice(); let a = 0, b = 0, sum = 0;
+          for (let k = 0; k < n; k++) { while (S[b] - S[k] <= 14 && b < n) { sum += o[b]; b++; } while (S[k] - S[a] > 14) { sum -= o[a]; a++; } rd.h[k] = sum / (b - a); }
+          const ed = Math.min(n - 1, 3); for (let k = 0; k < n; k++) { const w = Math.min(1, Math.min(S[k], S[n - 1] - S[k]) / 14); rd.h[k] = h0[k] + (rd.h[k] - h0[k]) * w; } }
+        for (let it = 0; it < 2; it++) { for (let k = 1; k < n; k++) { const L = S[k] - S[k - 1]; rd.h[k] = clamp(rd.h[k], rd.h[k - 1] - Gm * L, rd.h[k - 1] + Gm * L); } for (let k = n - 2; k >= 0; k--) { const L = S[k + 1] - S[k]; rd.h[k] = clamp(rd.h[k], rd.h[k + 1] - Gm * L, rd.h[k + 1] + Gm * L); } } });
       // 1) gli estremi delle minori sulla quota della maggiore
       RDS.forEach(rd => { const n = rd.pts.length;
         [0, n - 1].forEach(e => { const [x, y] = rd.pts[e]; let best = null;
-          RDS.forEach(o => { if (o === rd || PRI(o) > PRI(rd)) return; const [d, h] = near(o, x, y); if (d < o.w / 2 + 1.5 && Math.abs(h - rd.h[e]) < 3 && (!best || PRI(o) < PRI(best[0]))) best = [o, h]; });
+          RDS.forEach(o => { if (o === rd || PRI(o) > PRI(rd)) return; const [d, h] = near(o, x, y); if (d < o.w / 2 + 1.5 && Math.abs(h - rd.h[e]) < 6 && (!best || PRI(o) < PRI(best[0]))) best = [o, h];   /* [ordine1] fino a 6 m: la sterrata della cresta scendeva sul Corso con un gradino */ });
           if (!best) return; const o = best[0], oflat = o.w / 2 + (o.kind === 'citta' || o.kind === 'litoranea' ? 2 : 0) + .4, sg = e === 0 ? 1 : -1;
           // dentro la carreggiata (e il marciapiede) della maggiore: la sua quota, in piano
           let k = e, dh = 0; for (; k >= 0 && k < n; k += sg) { const [d, h] = near(o, rd.pts[k][0], rd.pts[k][1]); if (d > oflat) break; dh = h - rd.h[k]; rd.h[k] = h; }
@@ -9890,6 +9927,16 @@ var World = (function () {
           for (; k >= 0 && k < n; k += sg) { acc += Math.hypot(rd.pts[k][0] - rd.pts[k - sg][0], rd.pts[k][1] - rd.pts[k - sg][1]); const w = 1 - sstep(0, 24, acc); if (w <= 0) break; rd.h[k] += dh * w; }
           const Gm = rd.kind === 'vicolo' || rd.kind === 'sterrato' ? .22 : .13;
           for (k = k0; k >= 0 && k < n; k += sg) { const L = Math.hypot(rd.pts[k][0] - rd.pts[k - sg][0], rd.pts[k][1] - rd.pts[k - sg][1]), a = rd.h[k - sg], h = clamp(rd.h[k], a - Gm * L, a + Gm * L); if (Math.abs(h - rd.h[k]) < .005 && acc > 30) break; rd.h[k] = h; } }); });
+      // 1b) [ordine1] gli incroci a metà: dove una minore attraversa una maggiore, dentro la carreggiata della maggiore prende la sua quota
+      //     e da lì si raccorda dalle due parti con la sua pendenza massima (prima passava sopra o sotto con un gradino di metri)
+      const above = (o, rd) => PRI(o) !== PRI(rd) ? PRI(o) < PRI(rd) : !!o.main !== !!rd.main ? !!o.main : o.w !== rd.w ? o.w > rd.w : o.pts.length !== rd.pts.length ? o.pts.length > rd.pts.length : o.id < rd.id;   // un ordine stretto: chi comanda all'incrocio
+      const BB = RDS.map(o => { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; o.pts.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }); return [x0 - o.w, y0 - o.w, x1 + o.w, y1 + o.w]; });
+      RDS.forEach(rd => { if (rd.kind === 'vicolo') return; const n = rd.pts.length, pin = new Uint8Array(n); let any = false;
+        RDS.forEach((o, oi) => { if (o === rd || !above(o, rd)) return; const bb = BB[oi];
+          for (let k = 0; k < n; k++) { const [x, y] = rd.pts[k]; if (x < bb[0] || x > bb[2] || y < bb[1] || y > bb[3]) continue; const [d, h] = near(o, x, y); if (d < o.w / 2 + .4) { rd.h[k] = h; pin[k] = 1; any = true; } } });
+        if (!any) return; const Gm = rd.kind === 'sterrato' ? .18 : .13;
+        for (let it = 0; it < 3; it++) { for (let k = 1; k < n; k++) if (!pin[k]) { const L = Math.hypot(rd.pts[k][0] - rd.pts[k - 1][0], rd.pts[k][1] - rd.pts[k - 1][1]); rd.h[k] = clamp(rd.h[k], rd.h[k - 1] - Gm * L, rd.h[k - 1] + Gm * L); }
+          for (let k = n - 2; k >= 0; k--) if (!pin[k]) { const L = Math.hypot(rd.pts[k + 1][0] - rd.pts[k][0], rd.pts[k + 1][1] - rd.pts[k][1]); rd.h[k] = clamp(rd.h[k], rd.h[k + 1] - Gm * L, rd.h[k + 1] + Gm * L); } } });
       // 2) carreggiate (e marciapiedi delle vie di città) in piano, la più importante vince
       const own = new Int8Array(NV).fill(-1), setH = new Float32Array(NV), dmin = new Float32Array(NV).fill(1e9);
       const fixed = new Uint8Array(NV); for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const v = grid[ty * GW + tx]; if (v === T.BLD || v === T.PIER || v === T.FOUNT || v === T.CLIFF) for (let cy = 0; cy < 2; cy++) for (let cx = 0; cx < 2; cx++) fixed[(ty + cy) * VW + tx + cx] = 1; }
@@ -9900,6 +9947,16 @@ var World = (function () {
             if (d > flat || (own[q] >= 0 && own[q] < p) || (own[q] === p && d >= dmin[q])) continue;
             own[q] = p; dmin[q] = d; setH[q] = rd.h[k] + (rd.h[k + 1] - rd.h[k]) * t; } } });
       let moved = 0; for (let q = 0; q < NV; q++) if (own[q] >= 0) { if (Math.abs(vh[q] - setH[q]) > .05) moved++; vh[q] = setH[q]; if (CARR) CARR[q] = 1; }
+      // 3) [ordine1] le sponde: oltre il ciglio il terreno si raccorda alla strada in 6 m (sfumato), fuori città, senza toccare edifici, acqua e moli
+      { const bh = new Float32Array(NV), bw = new Float32Array(NV);
+        RDS.forEach(rd => { if (rd.kind === 'citta' || rd.kind === 'vicolo') return; const flat = rd.w / 2 + .2, P = rd.pts, n = P.length, R2 = flat + 6;
+          for (let k = 0; k < n - 1; k += 1) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
+            for (let j = Math.max(0, Math.floor((Math.min(ay, by) - R2) / TS)); j <= Math.min(GH, Math.ceil((Math.max(ay, by) + R2) / TS)); j++) for (let i = Math.max(0, Math.floor((Math.min(ax, bx) - R2) / TS)); i <= Math.min(GW, Math.ceil((Math.max(ax, bx) + R2) / TS)); i++) {
+              const q = j * VW + i; if (own[q] >= 0 || fixed[q]) continue; const x = i * TS, y = j * TS, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1), d = Math.hypot(x - ax - (bx - ax) * t, y - ay - (by - ay) * t);
+              if (d <= flat || d > R2) continue; const w = 1 - sstep(0, 1, (d - flat) / 6); if (w > bw[q]) { bw[q] = w; bh[q] = rd.h[k] + (rd.h[k + 1] - rd.h[k]) * t; } } } });
+        const wet = q => { const i = q % VW, j = Math.floor(q / VW); for (let b = -1; b <= 0; b++) for (let a = -1; a <= 0; a++) { const tx = i + a, ty = j + b; if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const v = grid[ty * GW + tx]; if (v === T.WATER || v === T.SAND) return true; } return false; };
+        for (let q = 0; q < NV; q++) if (bw[q] > 0 && !wet(q)) vh[q] += (bh[q] - vh[q]) * bw[q] * .85;
+        for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const k = ty * VW + tx; if (!(bw[k] || bw[k + 1] || bw[k + VW] || bw[k + VW + 1])) continue; const i = ty * GW + tx; if (grid[i] === T.BLD) continue; elev[i] = (vh[k] + vh[k + 1] + vh[k + VW] + vh[k + VW + 1]) / 4; } }
       for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const k = ty * VW + tx; if (own[k] < 0 && own[k + 1] < 0 && own[k + VW] < 0 && own[k + VW + 1] < 0) continue; const i = ty * GW + tx; if (grid[i] === T.BLD) continue; elev[i] = (vh[k] + vh[k + 1] + vh[k + VW] + vh[k + VW + 1]) / 4; }
       if (typeof process !== 'undefined' && process.env && process.env.STRADE_DBG) console.log('[strade1] vertici rimessi in piano', moved);
     }
@@ -31924,7 +31981,18 @@ var Writing = (function () {
     // il ponte in terra
     let best = null; const YD = (G.layout().rail || {}).yards || []; for (let s = Math.ceil(TR.sMine) + 60; s + 90 < landEnd - 60; s += 5) { if (YD.some(y => s < y.s0 + y.len + 25 && s + 90 > y.s0 - 25)) continue; const g0 = el(P[s][0], P[s][1]), g1 = el(P[s + 90][0], P[s + 90][1]); let m = 0; for (let k = 15; k <= 75; k += 5) m += el(P[s + k][0], P[s + k][1]); m /= 13; const dd = Math.min(g0, g1) - m; if (!best || dd > best.d) best = { s0: s, s1: s + 90, d: dd }; }
     const bridge = best ? [best.s0, best.s1] : [Math.round(landEnd * .45), Math.round(landEnd * .45) + 90];
-    const onBridge = s => s > bridge[0] - 2 && s < bridge[1] + 2;
+    // [ordine1] i sottopassi: dove una strada (o un sentiero) incrocia la linea in terra, la linea passa sopra su un impalcato con le spalle,
+    // la strada sotto, libera; niente rete né muri sopra la carreggiata
+    const cross = [];
+    G.MAP.roads.forEach(rd => { if (!rd.pts || rd.traccia) return; const RP = rd.pts;
+      for (let i = 0; i < RP.length; i++) { const [x, y] = RP[i];
+        for (let k = Math.ceil(TR.sMine) + 2; k < landEnd - 2; k += 1) { const q = P[k]; if (Math.abs(q[0] - x) > 2 || Math.abs(q[1] - y) > 2 || hyp(q[0] - x, q[1] - y) > 1.2) continue;
+          if (cross.some(c => Math.abs(c.s - k) < 12)) break;
+          const a = RP[Math.max(0, i - 2)], b = RP[Math.min(RP.length - 1, i + 2)], ra = Math.atan2(b[1] - a[1], b[0] - a[0]), la = Math.atan2(P[k + 2][1] - P[k - 2][1], P[k + 2][0] - P[k - 2][0]);
+          const sn = Math.max(.45, Math.abs(Math.sin(ra - la))), hw = (rd.w / 2 + (rd.kind === 'sterrato' && rd.w < 2.8 ? 1.2 : 2.2)) / sn;
+          cross.push({ s: k, hw, road: rd.id, w: rd.w, foot: rd.kind === 'sterrato' && rd.w < 2.8, x, y }); break; } } });
+    const inCross = (s, pad) => cross.some(c => Math.abs(s - c.s) < c.hw + (pad || 0));
+    const onBridge = s => (s > bridge[0] - 2 && s < bridge[1] + 2) || inCross(s, 3);
     // gli scali: li prepara la mappa (game.js railLine: la massicciata larga, il bosco tagliato)
     const OFF = 4.6, yards = ((G.layout().rail || {}).yards || []).map((y, i) => Object.assign({ i }, y));
     // le recinzioni: dove la linea è in terra, fuori dal ponte e dagli scali (lì la rete gira attorno allo scalo, più larga)
@@ -31944,7 +32012,7 @@ var Writing = (function () {
       const ptAt = (s, side, off, u) => { const an = angAt(s), c = Math.cos(an), sn = Math.sin(an), q = P[s]; return { x: q[0] + c * u - sn * off * side, y: q[1] + sn * u + c * off * side }; };
       const busy = (s, side) => s < TR.sMine + 30 || s > landEnd - 30 || onBridge(s - 16) || onBridge(s + 16) || yards.some(y => y.side === side && s > y.s0 - 22 && s < y.s0 + y.len + 22) || walls.some(w => w.side === side && s > w.s - 16 && s < w.s + w.len + 16);   // lo scalo e il muro occupano solo il loro lato
       const T0 = G.T, freeT = (x, y) => { const tx = Math.floor(x / G.TS), ty = Math.floor(y / G.TS); if (tx < 1 || ty < 1 || tx >= G.GW - 1 || ty >= G.GH - 1 || (G.bIndex && G.bIndex[ty * G.GW + tx] >= 0)) return false; const v = G.tileAt(tx, ty); return v !== T0.BLD && v !== T0.WATER && v !== T0.CLIFF && v !== T0.FOUNT && v !== T0.VIA; };   // gli alberi si tagliano (la stazione è nel bosco), la roccia no
-      const fits = (s, side, o0, o1, hl) => { let lo = 1e9, hi = -1e9; for (let u = -hl; u <= hl; u += 1) for (let o = o0; o <= o1; o += 1) { const q = ptAt(s, side, o, u); if (!freeT(q.x, q.y)) return false; const e = el(q.x, q.y); lo = Math.min(lo, e); hi = Math.max(hi, e); } return hi - lo < 3.2; };
+      const fits = (s, side, o0, o1, hl) => { let lo = 1e9, hi = -1e9; for (let u = -hl - 3; u <= hl + 3; u += 1) for (let o = o0; o <= o1 + 3.5; o += 1) {   /* [ordine1] col margine: la stazione non si incastra più in una casa */ const q = ptAt(s, side, o, u); if (!freeT(q.x, q.y)) return false; const e = el(q.x, q.y); lo = Math.min(lo, e); hi = Math.max(hi, e); } return hi - lo < 3.2; };
       const find = (frac, o0, o1, hl, away) => { for (let d = 0; d < landEnd * .45; d += 3) for (const sg of [1, -1]) { const s = Math.round(landEnd * frac + d * sg); if (away.some(a => Math.abs(a - s) < 60)) continue; for (const side of [1, -1]) if (!busy(s, side) && fits(s, side, o0, o1, hl)) return { s, side }; } return null; };
       spots.station = find(.34, 6, 12.5, 6.5, []);   // il fabbricato da 6 a 12 m dall'asse, la banchina davanti
       [.6, .82].forEach(f => { const c = find(f, 6.5, 13.5, 4.5, [spots.station ? spots.station.s : -999].concat(spots.cant.map(c => c.s))); if (c) spots.cant.push(c); });
@@ -31953,7 +32021,7 @@ var Writing = (function () {
       spots.apply = () => { if (spots.station) { clear(spots.station, 2.4, 15, 21); block(spots.station, 6.9, 11.1, 5.1); } spots.cant.forEach(c => { clear(c, 4, 16, 7); block(c, 7.9, 12.1, 2.6); }); };   // le caselle: la radura, i muri (si rimettono a ogni partita nuova: create ripristina la mappa)
       spots.apply();
       if (spots.station) for (let k = fences.length - 1; k >= 0; k--) if (Math.abs(fences[k].s - spots.station.s) < 24) fences.splice(k, 1); }   // davanti alla stazione la rete non c'è più
-    return { ok: true, landEnd, bridge, onBridge, yards, fences, gaps, walls, OFF, spots };
+    return { ok: true, landEnd, bridge, onBridge, yards, fences, gaps, walls, OFF, spots, cross, inCross };
   })();
   if (RAIL.ok && RAIL.spots.apply && G.create && !G.create.__spots) { const c0 = G.create; G.create = function () { const st = c0.apply(this, arguments); try { RAIL.spots.apply(); } catch (e) { } return st; }; G.create.__spots = true; }   // [writer] dopo ogni partita nuova, le caselle degli spot
   // [writer] GLI SPOT LUNGO LA LINEA: le piante (per la grafica) e i siti (dove si mette chi dipinge, verso dove guarda)
@@ -32593,10 +32661,13 @@ var Writing = (function () {
     const ter = P.map((q, i) => { if (q[3]) return 2.6; const [l, r] = side(i, 1.8); return Math.max(g[i], (g[i] * 2 + l + r) / 4) + .42; });   // la media fra centro e bordi: in costa la massicciata taglia un poco il pendio
     const [b0, b1] = RAIL.bridge, top = Math.max(g[b0], g[b1]) + 1.2;
     const t = ter.map((v, i) => i >= b0 && i <= b1 ? Math.max(v, top, g[i] + 4.6) : v);
+    // [ordine1] sopra le strade: il ferro a 5,4 m dalla carreggiata (4,5 m liberi sotto l'impalcato)
+    (RAIL.cross || []).forEach(c => { const rh = R.groundH(c.x, c.y) + (c.foot ? 3.6 : 5.4); for (let i = Math.max(0, Math.floor(c.s - c.hw - 2)); i <= Math.min(n - 1, Math.ceil(c.s + c.hw + 2)); i++) t[i] = Math.max(t[i], rh); });
     const h = t.slice(), G2 = .03;
     for (let it = 0; it < 3; it++) { for (let i = 1; i < n; i++) h[i] = Math.max(h[i], h[i - 1] - G2); for (let i = n - 2; i >= 0; i--) h[i] = Math.max(h[i], h[i + 1] - G2); }
     for (let it = 0; it < 4; it++) { const o = h.slice(); for (let i = 2; i < n - 2; i++) h[i] = Math.max(t[i], (o[i - 2] + o[i - 1] + o[i] + o[i + 1] + o[i + 2]) / 5); }
-    TR.el = P.map((q, i) => !q[3] && i >= b0 - 3 && i <= b1 + 3 && h[i] - g[i] > 1.5 ? 1 : 0); TR.g = g;   // i piloni solo sul ponte: altrove il rilevato di terra
+    TR.el = P.map((q, i) => !q[3] && ((i >= b0 - 3 && i <= b1 + 3 && h[i] - g[i] > 1.5) || h[i] - g[i] > 3.4 || (RAIL.inCross && RAIL.inCross(i, 1))) ? 1 : 0); TR.g = g;   // i piloni sul ponte, sopra le strade e dove il rilevato sarebbe una montagna (oltre 3,4 m: viadotto ad archi bassi); altrove la massicciata
+    for (let it = 0; it < 2; it++) for (let i = 1; i < n - 1; i++) if (!TR.el[i] && TR.el[i - 1] && TR.el[i + 1]) TR.el[i] = 1;   // niente buchi di un metro fra due tratti su piloni
     P.forEach((q, i) => { q[2] = h[i]; });
     // gli scali: il binario secondario non affonda nel pendio (si alza col terreno, raccordato ai deviatoi)
     RAIL.yards.forEach(Y => { Y._lf = null; const L0 = []; for (let u = 0; u <= Y.len; u++) { const q = yardAt(Y, u); L0.push(Math.max(0, Math.max(R.groundH(q.x, q.y), R.groundH(q.x - Math.sin(q.ang) * 1.6, q.y + Math.cos(q.ang) * 1.6), R.groundH(q.x + Math.sin(q.ang) * 1.6, q.y - Math.cos(q.ang) * 1.6)) + .42 - q.h) * ramp(u, Y.len)); }
@@ -32612,21 +32683,28 @@ var Writing = (function () {
     const EL = i => TR.el ? TR.el[Math.max(0, Math.min(P.length - 1, Math.round(i)))] : 0, SEA = i => !!P[Math.max(0, Math.min(P.length - 1, Math.round(i)))][3];
     const gH = (x, y) => R.groundH(x, y), jit = (c, k) => { const v = (Math.sin(k * 12.9898) * 43758.5453) % 1, d = (v - Math.floor(v) - .5) * .12; return new THREE.Color(Math.min(1, c.r + d), Math.min(1, c.g + d), Math.min(1, c.b + d)); };
     // ---- la massicciata (in terra) e l'impalcato (ponte e viadotto) ----
-    const RT = railTex(), pos = [], col = [], uvs = [], idxG = [], idxE = [], idxD = [], push = (x, y, z, c) => { pos.push(x, y, z); col.push(c.r, c.g, c.b); uvs.push(x / 2.2 + y * .15, z / 2.2 - y * .15); return pos.length / 3 - 1; };   // la texture proiettata dall'alto (più la quota: le scarpate non si stirano)
+    const RT = railTex(), pos = [], col = [], uvs = [], idxG = [], idxE = [], idxD = [], idxW = [], push = (x, y, z, c) => { pos.push(x, y, z); col.push(c.r, c.g, c.b); uvs.push(x / 2.2 + y * .15, z / 2.2 - y * .15); return pos.length / 3 - 1; };   // la texture proiettata dall'alto (più la quota: le scarpate non si stirano)
     const cG = new THREE.Color('#e2dcd2'), cG2 = new THREE.Color('#c4bdb1'), cO = new THREE.Color('#9c8c7c'), cC = new THREE.Color('#d6d2ca'), cC2 = new THREE.Color('#aaa69e');
     let prev = null, prevK = null;
     const bed = (q, i, dk) => {   // una sezione: bordo esterno a terra, spalla, il centro più scuro d'olio e ruggine, spalla, bordo
       const nx = -Math.sin(q.ang), nz = Math.cos(q.ang), top = q.h - .18, el = EL(i) || SEA(i);
       if (el) { const bot = top - .95, hw = 2.5; return [push(q.x + nx * hw, bot, q.y + nz * hw, cC2), push(q.x + nx * hw, top, q.y + nz * hw, cC), push(q.x + nx * 1.6, top + .06, q.y + nz * 1.6, cG2), push(q.x, top + .1, q.y, cO), push(q.x - nx * 1.6, top + .06, q.y - nz * 1.6, cG2), push(q.x - nx * hw, top, q.y - nz * hw, cC), push(q.x - nx * hw, bot, q.y - nz * hw, cC2)]; }
       // il rilevato: la scarpata scende a terra con pendenza 2:3 (più è alto, più è largo); sotto la ghiaia, la terra con l'erba rada
-      const ft = sd => { let f = 3.3; for (let k = 0; k < 4; k++) { const gg = gH(q.x + nx * f * sd, q.y + nz * f * sd); f = 3.3 + Math.max(0, top - gg - .3) * 1.5; } return Math.min(f, 14); };
+      // [ordine1] oltre 1,2 m il rilevato non scende più in una scarpata liscia larga fino a 14 m: lo regge un muro di pietra a secco
+      const wall = sd => !dk && top - gH(q.x + nx * 3 * sd, q.y + nz * 3 * sd) > 1.2;
+      const ft = sd => { if (wall(sd)) return 2.95; let f = 3.3; for (let k = 0; k < 4; k++) { const gg = gH(q.x + nx * f * sd, q.y + nz * f * sd); f = 3.3 + Math.max(0, top - gg - .3) * 1.5; } return Math.min(f, 14); };
+      const wl = wall(1), wr = wall(-1);
+      if (wl || wr) { const fL = ft(1), fR = ft(-1), gL = gH(q.x + nx * fL, q.y + nz * fL) - .2, gR = gH(q.x - nx * fR, q.y - nz * fR) - .2, cS = new THREE.Color('#d8d2c6');
+        const shL = wl ? top - .04 : top - Math.min(.35, top - gL), shR = wr ? top - .04 : top - Math.min(.35, top - gR);
+        const A = [push(q.x + nx * fL, Math.min(top, gL), q.y + nz * fL, jit(wl ? cS : cG2, i)), push(q.x + nx * (wl ? 2.75 : 2.6), shL, q.y + nz * (wl ? 2.75 : 2.6), jit(wl ? cS : cG2, i + 5)), push(q.x + nx * 1.9, top, q.y + nz * 1.9, jit(cG, i + 1)), push(q.x, top + .02, q.y, jit(cO, i + 2)), push(q.x - nx * 1.9, top, q.y - nz * 1.9, jit(cG, i + 3)), push(q.x - nx * (wr ? 2.75 : 2.6), shR, q.y - nz * (wr ? 2.75 : 2.6), jit(wr ? cS : cG2, i + 6)), push(q.x - nx * fR, Math.min(top, gR), q.y - nz * fR, jit(wr ? cS : cG2, i + 4))];
+        A.wl = wl; A.wr = wr; return A; }
       const fL = ft(1), fR = ft(-1), foot = fL, gL = Math.min(top, gH(q.x + nx * fL, q.y + nz * fL)) - .15, gR = Math.min(top, gH(q.x - nx * fR, q.y - nz * fR)) - .15, cE = new THREE.Color('#e0d8c0');
       const eL = Math.min(top, gL + .1) - Math.min(.35, top - gL), eR = Math.min(top, gR + .1) - Math.min(.35, top - gR);   // dove finisce la ghiaia comincia la terra
       return [push(q.x + nx * fL, gL, q.y + nz * fL, jit(cE, i)), push(q.x + nx * 2.6, top - Math.min(.35, top - gL), q.y + nz * 2.6, jit(fL > 4.5 ? cE : cG2, i + 5)), push(q.x + nx * 1.9, top, q.y + nz * 1.9, jit(cG, i + 1)), push(q.x, top + .02, q.y, jit(cO, i + 2)), push(q.x - nx * 1.9, top, q.y - nz * 1.9, jit(cG, i + 3)), push(q.x - nx * 2.6, top - Math.min(.35, top - gR), q.y - nz * 2.6, jit(fR > 4.5 ? cE : cG2, i + 6)), push(q.x - nx * fR, gR, q.y - nz * fR, jit(cE, i + 4))];
     };
     for (let i = 0; i < P.length; i += 2) {
       const q = railAt(i), k = bed(q, i), kind = EL(i) || SEA(i) ? 1 : 0;
-      const strip = (A, B, kd) => { for (let a = 0; a < 6; a++) (kd ? (a === 2 || a === 3 ? idxG : idxD) : a === 0 || a === 5 ? idxE : idxG).push(A[a], B[a], A[a + 1], A[a + 1], B[a], B[a + 1]); };
+      const strip = (A, B, kd) => { for (let a = 0; a < 6; a++) (kd ? (a === 2 || a === 3 ? idxG : idxD) : a === 0 ? (A.wl || B.wl ? idxW : idxE) : a === 5 ? (A.wr || B.wr ? idxW : idxE) : idxG).push(A[a], B[a], A[a + 1], A[a + 1], B[a], B[a + 1]); };
       if (prev && kind === prevK) strip(prev, k, kind);
       else if (prev) { const k2 = bed(railAt(i - 1), i - 1); strip(prev, k2, prevK); }
       prev = k; prevK = kind;
@@ -32634,7 +32712,11 @@ var Writing = (function () {
     // gli scali: la loro massicciata accanto, e i binari secondari
     RAIL.yards.forEach(Y => { let pv = null; for (let u = 0; u <= Y.len; u += 2) { const q = yardAt(Y, u); const k = bed(q, Y.s0 + u, 1); if (pv) for (let a = 0; a < 6; a++) (a === 0 || a === 5 ? idxE : idxG).push(pv[a], k[a], pv[a + 1], pv[a + 1], k[a], k[a + 1]); pv = k; } });
     const PA = new THREE.Float32BufferAttribute(pos, 3), CA = new THREE.Float32BufferAttribute(col, 3), UA = new THREE.Float32BufferAttribute(uvs, 2);
-    [[idxG, RT.gravel], [idxE, RT.earth], [idxD, RT.concrete]].forEach(([ix, mp]) => { if (!ix.length) return; const geo = new THREE.BufferGeometry(); geo.setAttribute('position', PA); geo.setAttribute('color', CA); geo.setAttribute('uv', UA); geo.setIndex(ix); geo.computeVertexNormals(); const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: mp, vertexColors: true, side: THREE.DoubleSide })); m.receiveShadow = true; m.userData.wr = 1; g.add(m); });
+    // [ordine1] il muro di pietra a secco: conci irregolari a corsi, giunti scuri, licheni e muschio in basso
+    if (!RT.stone) RT.stone = tex64(64, 64, (x, w, h) => { x.fillStyle = '#4a4640'; x.fillRect(0, 0, w, h); let s0 = 7;
+      for (let y = 0; y < h; y += 8) { let u = (y / 8 % 2) * 5 - 6; while (u < w) { s0 = (s0 * 16807) % 2147483647; const L = 7 + s0 % 9, t = 70 + (s0 >> 5) % 40; x.fillStyle = `rgb(${t + 26},${t + 20},${t + 10})`; x.fillRect(u + 1, y + 1, L - 1, 6); x.fillStyle = 'rgba(255,250,235,.18)'; x.fillRect(u + 1, y + 1, L - 1, 1); x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(u + 1, y + 6, L - 1, 1); u += L; } }
+      for (let k = 0; k < 140; k++) { s0 = (s0 * 16807) % 2147483647; x.fillStyle = k % 3 ? 'rgba(90,110,60,.45)' : 'rgba(200,196,160,.4)'; x.fillRect(s0 % w, (s0 >> 8) % h, 2, 1); } }); RT.stone.wrapS = RT.stone.wrapT = THREE.RepeatWrapping;
+    [[idxG, RT.gravel], [idxE, RT.earth], [idxD, RT.concrete], [idxW, RT.stone]].forEach(([ix, mp]) => { if (!ix.length) return; const geo = new THREE.BufferGeometry(); geo.setAttribute('position', PA); geo.setAttribute('color', CA); geo.setAttribute('uv', UA); geo.setIndex(ix); geo.computeVertexNormals(); const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: mp, vertexColors: true, side: THREE.DoubleSide })); m.receiveShadow = true; m.userData.wr = 1; g.add(m); });
     // ---- le parti ripetute (instanced) ----
     const bx = new THREE.BoxGeometry(1, 1, 1), m4 = new THREE.Matrix4(), qt = new THREE.Quaternion(), e = new THREE.Euler(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
     const inst = (mat, list, shadow) => { if (!list.length) return; const im = new THREE.InstancedMesh(bx, mat, list.length); list.forEach((L, k) => { e.set(L[5] || 0, L[4], 0, 'YXZ'); qt.setFromEuler(e); im.setMatrixAt(k, m4.compose(v3.set(L[0], L[1], L[2]), qt, s3.set(L[3][0], L[3][1], L[3][2]))); }); im.castShadow = shadow !== false; im.receiveShadow = true; im.userData.wr = 1; im.frustumCulled = false; g.add(im); };
@@ -32663,7 +32745,8 @@ var Writing = (function () {
     RAIL.yards.forEach(Y => rails(u => yardAt(Y, u), 0, Y.len, () => false));
     const pilL = [];   // [writer] i piloni del ponte in terra: mesh vere, si dipingono (sotto il ponte)
     // i piloni: sul ponte in terra e sul viadotto, fino al terreno (o al fondo del mare)
-    for (let s = 6; s < P.length - 6; s += 12) { if (!(EL(s) || SEA(s))) continue; const q = railAt(s), top = q.h - 1.15, bot = SEA(s) ? -4 : gH(q.x, q.y) - .3; if (top - bot < .4) continue; (SEA(s) ? pil : pilL).push([q.x, (top + bot) / 2, q.y, [1.2, top - bot, 3.2], -q.ang]); pil.push([q.x, top - .2, q.y, [1.7, .4, 4.6], -q.ang]); pil.push([q.x, top - .5, q.y, [1.4, .2, 3.8], -q.ang]); if (!SEA(s)) pil.push([q.x, bot + .45, q.y, [2, .5, 4], -q.ang]); }
+    (RAIL.cross || []).forEach(c => [-1, 1].forEach(sg => { const s = c.s + sg * (c.hw + .7); if (s < 1 || s > P.length - 2) return; const q = railAt(s), top = q.h - 1.15, bot = gH(q.x, q.y) - .4; if (top - bot < .4) return; pilL.push([q.x, (top + bot) / 2, q.y, [1.5, top - bot, 5.4], -q.ang]); pil.push([q.x, top - .1, q.y, [1.9, .3, 5.8], -q.ang]); }));   /* [ordine1] le spalle del sottopasso */
+    for (let s = 6; s < P.length - 6; s += 12) { if (!(EL(s) || SEA(s))) continue; if ((RAIL.cross || []).some(c => Math.abs(s - c.s) < c.hw + 2)) continue; /* [ordine1] mai un pilone in mezzo alla strada */ const q = railAt(s), top = q.h - 1.15, bot = SEA(s) ? -4 : gH(q.x, q.y) - .3; if (top - bot < .4) continue; (SEA(s) ? pil : pilL).push([q.x, (top + bot) / 2, q.y, [1.2, top - bot, 3.2], -q.ang]); pil.push([q.x, top - .2, q.y, [1.7, .4, 4.6], -q.ang]); pil.push([q.x, top - .5, q.y, [1.4, .2, 3.8], -q.ang]); if (!SEA(s)) pil.push([q.x, bot + .45, q.y, [2, .5, 4], -q.ang]); }
     // i parapetti del ponte e del viadotto (bassi, di cemento, si dipingono): un muro unico per lato
     const para = (sd) => { const pp = [], pi = [], pu = []; let pv = null; for (let i = 0; i < P.length; i += 2) { if (!(EL(i) || SEA(i))) { pv = null; continue; } const q = railAt(i), nx = -Math.sin(q.ang) * sd, nz = Math.cos(q.ang) * sd, o = 2.45, base = q.h - .18; const a = pp.length / 3; pp.push(q.x + nx * o, base, q.y + nz * o, q.x + nx * o, base + .95, q.y + nz * o); pu.push(i / 3, 0, i / 3, .48); if (pv !== null) pi.push(pv, a, pv + 1, pv + 1, a, a + 1); pv = a; }
       if (!pi.length) return; const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(pu, 2)); gg.setIndex(pi); gg.computeVertexNormals(); const m = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ map: RT.concrete, side: THREE.DoubleSide })); m.receiveShadow = true; m.castShadow = true; m.name = 'parapetto'; g.add(m); };
@@ -32675,7 +32758,7 @@ var Writing = (function () {
     inst(new THREE.MeshStandardMaterial({ color: '#4a3c32', metalness: .5, roughness: .7 }), plates, false); inst(new THREE.MeshStandardMaterial({ color: '#3a3634', metalness: .6, roughness: .5 }), clips, false);
     inst(new THREE.MeshLambertMaterial({ map: RT.concrete }), pil); inst(new THREE.MeshStandardMaterial({ color: '#e8e4da', roughness: .8 }), kmp); 
     // ---- la superficie del rilevato a una distanza o dall'asse (per appoggiarci rete, muri, sassi, erba) e il suo piede ----
-    const surfAt = (s, sd, o) => { const q = sidePt(s, sd, 0), top = q.h - .18, nx = -Math.sin(q.ang) * sd, nz = Math.cos(q.ang) * sd, gg = gH(q.x + nx * o, q.y + nz * o); if (EL(s) || SEA(s)) return gg; return o <= 1.9 ? top : Math.max(gg, o <= 2.6 ? top - (o - 1.9) / .7 * .35 : top - .35 - (o - 2.6) / 1.5); };   // come la sezione della massicciata: piano, spalla, scarpata
+    const surfAt = (s, sd, o) => { const q = sidePt(s, sd, 0), top = q.h - .18, nx = -Math.sin(q.ang) * sd, nz = Math.cos(q.ang) * sd, gg = gH(q.x + nx * o, q.y + nz * o); if (EL(s) || SEA(s)) return gg; if (o > 2.8 && top - gH(q.x + nx * 3, q.y + nz * 3) > 1.2) return gg; return o <= 1.9 ? top : Math.max(gg, o <= 2.6 ? top - (o - 1.9) / .7 * .35 : top - .35 - (o - 2.6) / 1.5); };   // [ordine1] oltre il muro, il prato   // come la sezione della massicciata: piano, spalla, scarpata
     // la canalina dei cavi: un cordolo di cemento continuo appoggiato sulla spalla della massicciata (lato sinistro), coperchi ogni metro
     { const trM = new THREE.MeshLambertMaterial({ map: RT.concrete, color: '#ffffff' }); let a0 = null;
       const run = (a, b) => { if (b - a > 6) sweep(s => sidePt(s, 1, 0), a, b, 1, (s, q) => { const t = surfAt(s, -1, 1.95) + .07, bL = surfAt(s, -1, 1.98) - .12, bR = surfAt(s, -1, 2.36) - .12; return [[-1.98, bL], [-1.98, t], [-1.98, t], [-2.36, t], [-2.36, t], [-2.36, bR]]; }, trM, true); };
@@ -37697,8 +37780,9 @@ var Render = (function () {
     };
     junctions().forEach(([jx, jy, jr], k) => {
       if (city(jx, jy) || r() > .75) return;
-      const arms = armsAt(jx, jy, jr); arms.forEach((a, ai) => { if (r() > .55) return; const px = jx + a.ux * (jr + 3) - a.uy * (a.w / 2 + 1.6), pz = jy + a.uy * (jr + 3) + a.ux * (a.w / 2 + 1.6); if (!free(px, pz)) return;
-        const kind = r() < .35 ? 'dir' : r() < .6 ? 'tri' : 'round'; roadSign(px, pz, Math.atan2(a.ux, a.uy), kind, kind === 'dir' ? pick(r, NAMES) : kind === 'round' ? pick(r, ['50', '30', '70', 'STOP']) : pick(r, ['!', '⚠']), r); n++; });
+      // [ordine1] un cartello di direzione solo, sul braccio che arriva dalla strada più lunga, dritto (i divieti e le precedenze li mette [strade1])
+      const arms = armsAt(jx, jy, jr); if (arms.length < 3) return; const a = arms.reduce((b, c) => !b || c.w > b.w ? c : b, null); { const px = jx + a.ux * (jr + 3) - a.uy * (a.w / 2 + 1.6), pz = jy + a.uy * (jr + 3) + a.ux * (a.w / 2 + 1.6); if (!free(px, pz)) return;
+        roadSign(px, pz, Math.atan2(a.ux, a.uy), 'dir', pick(r, NAMES), () => .5); n++; }
     });
     // lavori in corso: coni, transenne bianche e rosse sbiadite, il cartello, la lampada gialla, un mucchio di ghiaia
     const transenna = (x, z, rot) => { const g = G0(), wood = PM.woodL(); [-1, 1].forEach(s => { add(g, box(.06, 1, .06, PM.iron()), s * .9, .5, -.2, .25, 0, 0); add(g, box(.06, 1, .06, PM.iron()), s * .9, .5, .2, -.25, 0, 0); });
@@ -37722,10 +37806,10 @@ var Render = (function () {
       for (let k = 0; k < 2; k++) { const g = G0(); for (let q = 0; q < 7; q++) add(g, box(.7, .3, .4, sm(pick(r, ['#7a6e56', '#6a5e48', '#84785e']), { roughness: 1 })), (q % 4) * .65 - 1, .15 + Math.floor(q / 4) * .3, 0, 0, r() * .2, 0); const x = p.x + (k ? 5 : -5), z = p.y + 4; if (free(x, z)) place(g, x, z, r()); } });
     // arredo delle vie di città: panchine scrostate, paletti, cabine del telefono, buche delle lettere; mai sulla carreggiata
     (M.roads || []).filter(rd => rd.kind === 'citta' || rd.kind === 'litoranea').forEach(rd => {
-      let acc = 0, nx0 = 9 + r() * 14;
-      for (let k = 1; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < nx0) continue; acc = 0; nx0 = 9 + r() * 16;
+      let acc = 0, nx0 = 16 + r() * 14;   // [ordine1] meno arredo sparso, con un ritmo
+      for (let k = 1; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < nx0) continue; acc = 0; nx0 = 22 + r() * 22;
         const nx = -(bz - az) / L, nz = (bx - ax) / L, sd = r() < .5 ? 1 : -1, off = rd.w / 2 + (rd.rect ? 1.1 : 1.5), x = ax + nx * sd * off, z = az + nz * sd * off;
-        if (!free(x, z) || !city(x, z) || nearJ(x, z, 2)) continue; const rot = Math.atan2(-nx * sd, -nz * sd), q = r();
+        if (!free(x, z) || !city(x, z) || nearJ(x, z, 2)) continue; const rot = Math.atan2(-nx * sd, -nz * sd), q = r() * .9;
         if (q < .3) bench(x, z, rot, 'iron'); else if (q < .52) { bollard(x, z); if (free(x + (bx - ax) / L * 1.6, z + (bz - az) / L * 1.6)) bollard(x + (bx - ax) / L * 1.6, z + (bz - az) / L * 1.6); } else if (q < .62) phoneBooth(x, z, rot); else if (q < .7) mailbox(x, z, rot); else if (q < .78) busStop(x + nx * sd * .6, z + nz * sd * .6, rot + Math.PI);
         n++; }
     });
@@ -37877,9 +37961,34 @@ var Render = (function () {
     for (let k = 0; k <= nA; k++) { const u = -len / 2 + k * len / nA, px = along ? cx + u : cx + N[0] * (w / 2 + 1), pz = along ? cz + N[1] * (d / 2 + 1) : cz + u;
       add(grp, box(along ? 1.4 : 2.2, H + 2, along ? 2.2 : 1.4, cemD), px, base + (H + 2) / 2, pz, along ? N[1] * .08 : 0, 0, along ? 0 : -N[0] * .08);
       if (k < nA) { const u2 = u + len / nA / 2, ax = along ? cx + u2 : cx + N[0] * (w / 2 + .02), az = along ? cz + N[1] * (d / 2 + .02) : cz + u2; add(grp, box(along ? len / nA - 2.2 : .1, H * .55, along ? .1 : len / nA - 2.2, dark), ax, base + H * .28, az); } }
+    { const rr = rng(i * 71 + 3), top = base + H + 2.2; for (let k = 0; k < 3; k++) { const vx = cx + (k - 1) * w * .28, vz = cz + (rr() - .5) * d * .4; add(grp, fB(1.8, 1.1, 1.4, '#6e6c66', 'concrete', .04), vx, top + .55, vz); add(grp, fB(1.5, .08, 1.1, '#3a3c40', 'galv', 0), vx, top + 1.15, vz); for (let q = 0; q < 4; q++) add(grp, fB(1.5, .04, .06, '#2a2c30', 'paint', 0), vx, top + .9 - q * .18, vz + .73); }   // [ordine1] prese d'aria, botola, antenna
+      add(grp, fB(1.2, .5, 1.2, '#5e5c56', 'concrete', .03), cx - w * .35, top + .25, cz + d * .3); const an = oAntenna(4, rr() * 6, rr); an.position.set(cx + w * .38, top, cz - d * .3); grp.add(an); }
     finish32(b, i, grp, base, low, H + 2.2);
   }
-  const GOV32 = { hangar1: bunker, hangar2: bunker, deposito_n: bunker, deposito_s: bunker };   // [isola34] le megastrutture solo alla Base
+  // [ordine1] l'hangar della Base: volta a botte di lamiera grecata sul lato lungo, muri bassi di cemento coi contrafforti, sulle testate
+  // il portone scorrevole a pannelli con le strisce gialle e nere sul bordo, le rotaie del portone, il numero dipinto, le lampade a braccio
+  function hangar(b, i, base, low) {
+    const w = b.w * TS, d = b.h * TS, x0 = b.x * TS, z0 = b.y * TS, cx = x0 + w / 2, cz = z0 + d / 2, grp = new THREE.Group(), along = w >= d, L = along ? w : d, S = along ? d : w, Hw = 4.2, R = S / 2;
+    const g = new THREE.Group(); grp.add(g); g.position.set(cx, base, cz); g.rotation.y = along ? 0 : Math.PI / 2;
+    fAt(g, fB(L, Hw, S, '#7e7c76', 'concrete', .05), 0, Hw / 2, 0);
+    for (let u = -L / 2 + 3; u < L / 2 - 1; u += 6) [-1, 1].forEach(sg => fAt(g, fB(.8, Hw + .4, 1.0, '#6e6c66', 'concrete', .04), u, (Hw + .4) / 2, sg * (S / 2 + .4)));
+    const vg = new THREE.CylinderGeometry(R + .25, R + .25, L + .6, 28, 1, true, -Math.PI / 2, Math.PI); vg.rotateZ(Math.PI / 2);
+    const uv = vg.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * Math.PI * R / 4, uv.getY(k) * L / 4);
+    const vm = new THREE.Mesh(vg, corrM('#6a7064')); vm.material = vm.material.clone(); vm.material.side = THREE.DoubleSide; vm.material.map = vm.material.map.clone(); vm.material.map.needsUpdate = true; vm.material.map.repeat.set(1, 1); vm.position.y = Hw; vm.scale.y = .62; g.add(vm);
+    for (let u = -L / 2 + 2; u < L / 2; u += 4) { const rib = new THREE.Mesh(new THREE.TorusGeometry(R + .3, .07, 4, 20, Math.PI), sm('#4e544c', { roughness: .7, metalness: .4 })); rib.rotation.y = Math.PI / 2; rib.position.set(u, Hw, 0); rib.scale.y = .62; g.add(rib); }
+    [-1, 1].forEach(sg => { // le testate: il timpano a semicerchio e il portone
+      const cap = new THREE.Mesh(new THREE.CircleGeometry(R + .2, 24, 0, Math.PI), sm('#5e625a', { roughness: .8, side: THREE.DoubleSide })); cap.rotation.y = sg * Math.PI / 2; cap.position.set(sg * (L / 2 + .02), Hw, 0); cap.scale.y = .62; g.add(cap);
+      const dw = S - 3, dh = Hw + R * .62 * .55; const pn = Math.max(3, Math.round(dw / 2.4));
+      for (let q = 0; q < pn; q++) { const pz = -dw / 2 + (q + .5) * dw / pn, pnl = fB(.12, dh, dw / pn - .06, q % 2 ? '#5a6052' : '#626a5a', 'paint', .01); pnl.position.set(sg * (L / 2 + .12 + (q % 2) * .1), dh / 2, pz); g.add(pnl); }
+      for (let q = 0; q < Math.floor(dw / .6); q++) { const st = fB(.13, .3, .6, q % 2 ? '#d8b020' : '#1a1a1c', 'paint', 0); st.position.set(sg * (L / 2 + .2), .15, -dw / 2 + .3 + q * .6); g.add(st); }
+      fAt(g, fB(.2, .2, dw + 4, '#3a3c40', 'rust', .01), sg * (L / 2 + .25), dh + .1, 0);
+      const num = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), new THREE.MeshLambertMaterial({ map: signTexture(b.id === 'hangar2' ? 'H-2' : 'H-1', '#e8e4d8', '#5e625a'), transparent: true })); num.rotation.y = sg * Math.PI / 2; num.position.set(sg * (L / 2 + .05), Hw + R * .62 * .6, 0); g.add(num);
+      [-1, 1].forEach(q => { fAt(g, fB(.9, .08, .08, '#3a3c40', 'paint', 0), sg * (L / 2 + .45), dh + .8, q * (dw / 2 + .8)); const lm = fB(.3, .14, .22, '#2a2c30', 'paint', .02); lm.position.set(sg * (L / 2 + .85), dh + .7, q * (dw / 2 + .8)); g.add(lm); });
+    });
+    // il piazzale davanti: cemento a lastre con le righe gialle
+    finish32(b, i, grp, base, low, Hw + R * .62 + .3);
+  }
+  const GOV32 = { hangar1: hangar, hangar2: hangar, deposito_n: bunker, deposito_s: bunker };   // [isola34] le megastrutture solo alla Base
 
   // ---------------- la parete del Tavolato: liscia sulla curva vera, a costole verticali, col ciglio che copre il bordo del terreno ----------------
   function buildTavolato() {
@@ -38186,9 +38295,9 @@ var Render = (function () {
     (M.roads || []).forEach((rd, ri) => { if (!asph1(rd) || !rd.pts || rd.pts.length < 4) return; const g = geo1(rd), P = rd.pts, r = rng(ri * 104729 + 7);
       let next = 6 + r() * 20;
       for (let k = 1; k < g.n - 1; k++) { if (g.s[k] < next) continue; const [x0, y0] = P[k], city = cityAt1(x0, y0), port = x0 > 1160;
-        next = g.s[k] + (port ? 9 : city ? 26 : 16) + r() * (city ? 40 : 26); if (nearJ1(x0, y0, 0) < 1) continue;
-        const nx = -g.uy[k], ny = g.ux[k], cnt = r() < .25 ? 2 + Math.floor(r() * 3) : 1;   // a volte un tratto dissestato
-        for (let q = 0; q < cnt; q++) { const lat = (r() - .5) * (rd.w - 1.4), along = (r() - .5) * (cnt > 1 ? 5 : 0), sz = .3 + r() * (cnt > 1 ? .55 : .8);
+        next = g.s[k] + (port ? 22 : city ? 70 : 34) + r() * (city ? 80 : 40); if (nearJ1(x0, y0, 0) < 6) continue;   /* [ordine1] meno buche: dove la strada è vecchia, mai sugli incroci */
+        const nx = -g.uy[k], ny = g.ux[k], cnt = !city && r() < .2 ? 2 + Math.floor(r() * 2) : 1;   // a volte un tratto dissestato
+        for (let q = 0; q < cnt; q++) { const lat = (r() < .5 ? -1 : 1) * (rd.w / 2 - .6 - r() * .9), along = (r() - .5) * (cnt > 1 ? 5 : 0), sz = .22 + r() * (cnt > 1 ? .35 : .5);   /* sul bordo, dove l'asfalto cede */
           HOLES1.push({ x: x0 + nx * lat + g.ux[k] * along, y: y0 + ny * lat + g.uy[k] * along, sz, wet: r() < .55, ang: r() * 3, seed: (ri * 1000 + k * 7 + q) >>> 0 }); } } });
     return HOLES1;
   }
@@ -38836,7 +38945,7 @@ var Render = (function () {
         const x = px - g.uy[k] * (rd.w / 2 + .45), z = pz + g.ux[k] * (rd.w / 2 + .45); if (swH(x, z) > .1 && okSpot1(x, z, .25)) parchimetro(x, z, Math.atan2(g.uy[k], -g.ux[k])); } });
     junc1().forEach(J => { if (!J.city || J.arms.length < 3 || r() < .4) return; const a = pick(r, J.arms), rx = -a.uy, ry = a.ux, x0 = J.x + a.ux * (J.r + 3) + rx * (a.w / 2 + 1.2), z0 = J.y + a.uy * (J.r + 3) + ry * (a.w / 2 + 1.2), rot = Math.atan2(-rx, -ry);
       if (swH(x0, z0) < .1 || solid1(x0, z0)) return; const k = 1 + Math.floor(r() * 3); for (let q = 0; q < k; q++) giornali(x0 + a.ux * q * .58, z0 + a.uy * q * .58, rot); });
-    doors35().forEach(d => { if (!d.bar || r() < .5 || !cityAt1(d.x, d.y)) return; for (let t = 0; t < 6; t++) { const a = t * 1.05 + r(), x = d.x + Math.cos(a) * 2.2, z = d.y + Math.sin(a) * 2.2; if (!solid1(x, z) && !onCarr1(x, z, .3) && giornali(x, z, a + Math.PI)) break; } });
+    // [ordine1] davanti ai bar niente distributori girati a caso attorno alla porta: stanno agli angoli, in fila, verso la strada
     if (window.__dbg35) console.log('[dbg] urbano1 parchimetri', npm, 'giornali', ngz);
     if (window.__dbg35) console.log('[dbg] urbano1 scalini', ns, 'impalcature', ni, 'telecamere', nc, 'paletti', np, 'orti', no);
     return n;
@@ -39159,7 +39268,7 @@ var Render = (function () {
       if (zoneT(Math.floor(jx / TS), Math.floor(jy / TS)) !== ZN.CITTA) return;
       if (R.filter(rd => nearRoad(rd, jx, jy)).length < 2) return;   // due vie larghe che si incontrano davvero
       const AR = armsAt(jx, jy, jr); if (AR.length < 3) return;   // [isola36] un incrocio vero, non una strada che ne continua un'altra
-      AR.forEach(a => { if (a.w < 6) return; { const qx = jx + a.ux * (jr + 1.4), qy = jy + a.uy * (jr + 1.4); if (CW35.some(c => Math.hypot(c.x - qx, c.y - qy) < 7)) return; }   /* [unione8] un attraversamento solo */ CW35.push({ x: jx + a.ux * (jr + 1.4), y: jy + a.uy * (jr + 1.4), ux: a.ux, uy: a.uy, w: a.w, s: (Math.round(jx * 7 + jy * 3) >>> 0) }); });
+      AR.forEach(a => { if (a.w < 6) return; { const qx = jx + a.ux * (jr + 3.4), qy = jy + a.uy * (jr + 3.4); if (CW35.some(c => Math.hypot(c.x - qx, c.y - qy) < 7)) return; }   /* [unione8] un attraversamento solo */ CW35.push({ x: jx + a.ux * (jr + 3.4), y: jy + a.uy * (jr + 3.4),   /* [ordine1] fuori dalla curva dell'angolo, dove il marciapiede è dritto */ ux: a.ux, uy: a.uy, w: a.w, s: (Math.round(jx * 7 + jy * 3) >>> 0) }); });
     });
     return CW35;
   }
@@ -39168,14 +39277,16 @@ var Render = (function () {
     crossings35().forEach(c => {
       if (c.x < X0 - 8 || c.x > X1 + 8 || c.y < Y0 - 8 || c.y > Y1 + 8) return;
       const r = rng(c.s), ang = Math.atan2(c.uy, c.ux);
-      for (let o = -c.w / 2 + .6; o <= c.w / 2 - .6; o += 1) {
-        const px = c.x - c.uy * o, py = c.y + c.ux * o;
+      // [ordine1] le zebre vere: bande di 50 cm parallele alla strada, lunghe 2,5 m, a 50 cm l'una dall'altra, tutte uguali; l'usura le
+      // consuma dove passano le ruote (due solchi più chiari), non a scacchi
+      const nb = Math.max(2, Math.floor((c.w - .8) / 1)), o0 = -(nb - 1) / 2;
+      for (let b = 0; b < nb; b++) { const o = o0 + b, px = c.x - c.uy * o, py = c.y + c.ux * o, a0 = .7 + r() * .15;
         x.save(); x.translate((px - X0) * PPM, (py - Y0) * PPM); x.rotate(ang);
-        for (let s = 0; s < 5; s++) { if (r() < .12) continue; x.fillStyle = `rgba(222,218,204,${.45 + r() * .35})`; x.fillRect((-1.25 + s * .5) * PPM, -.25 * PPM, .5 * PPM, .5 * PPM); }   // vernice consumata a pezzi
-        x.restore();
-      }
+        x.fillStyle = `rgba(226,222,208,${a0})`; x.fillRect(-1.25 * PPM, -.25 * PPM, 2.5 * PPM, .5 * PPM);
+        x.fillStyle = 'rgba(40,38,42,.35)'; for (let q = 0; q < 6; q++) x.fillRect(Math.round((-1.25 + r() * 2.4) * PPM), Math.round((-.25 + r() * .45) * PPM), 1, 1);
+        x.restore(); }
       // linea d'arresto sulla corsia che arriva
-      x.save(); x.translate((c.x + c.ux * 1.8 - X0) * PPM, (c.y + c.uy * 1.8 - Y0) * PPM); x.rotate(ang); x.fillStyle = 'rgba(222,218,204,.5)'; x.fillRect(0, 0, .3 * PPM, c.w / 2 * PPM * .9); x.restore();
+      x.save(); x.translate((c.x + c.ux * 2.4 - X0) * PPM, (c.y + c.uy * 2.4 - Y0) * PPM); x.rotate(ang); x.fillStyle = 'rgba(222,218,204,.6)'; x.fillRect(0, 0, .3 * PPM, (c.w / 2 - .3) * PPM); x.restore();
     });
   }
 
@@ -40935,8 +41046,24 @@ var Render = (function () {
   }
 
   // --- arredo urbano ---
-  function phoneBooth(x, z, rot) { const g = G0(), m = sm('#a8b0b8', { metalness: .4, roughness: .4 }), y = sm('#f0c020'); add(g, box(1, 2.4, 1, m), 0, 1.2, 0); add(g, box(.8, 1.6, .05, std({ color: '#8ac0d0', emissive: '#304850', roughness: .1 })), 0, 1.3, .5); add(g, box(1.04, .35, 1.04, y), 0, 2.35, 0); const t = add(g, box(.7, .2, .02, sb('#f4f0e0')), 0, 2.35, .53); add(g, box(.3, .45, .2, sm('#3a3a40')), 0, 1.4, -.35); return place(g, x, z, rot); }
-  function mailbox(x, z, rot) { const g = G0(), m = sm('#c8202a', { roughness: .5 }); add(g, cyl(.06, .06, 1, 6, PM.iron()), 0, .5, 0); add(g, box(.5, .6, .3, m), 0, 1.25, 0); add(g, cyl(.25, .25, .3, 10, m), 0, 1.55, 0, Math.PI / 2, 0, 0); add(g, box(.3, .04, .02, PM.iron()), 0, 1.4, .16); add(g, box(.3, .1, .01, PM.white()), 0, 1.15, .16); return place(g, x, z, rot); }
+  // [ordine1] la cabina del telefono anni '80: telaio d'alluminio, tre lati di vetro a riquadri, tetto col cassonetto luminoso TELEFONO,
+  // l'apparecchio a gettoni con la cornetta e l'elenco, la porta a soffietto, la base di cemento
+  function phoneBooth(x, z, rot) { const g = G0(), al = '#b8bcc0', W = 1.0, H = 2.3;
+    fAt(g, fB(W + .16, .1, W + .16, '#8a8680', 'concrete', .02), 0, .05, 0);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => fAt(g, fB(.06, H, .06, al, 'galv', .01), a * W / 2, .1 + H / 2, b * W / 2));
+    [[0, -W / 2, 0], [-W / 2, 0, Math.PI / 2], [W / 2, 0, Math.PI / 2], [0, W / 2, 0]].forEach(([px, pz, ry], k) => { [.5, 1.3, 2.05].forEach(y => fAt(g, fB(W, .04, .04, al, 'galv', 0), px, .1 + y, pz, 0, ry, 0)); if (k !== 3) { const gl = fB(W - .08, 1.9, .015, '#7aa4b4', 'glass', 0); gl.position.set(px, 1.18, pz); gl.rotation.y = ry; g.add(gl); } });
+    for (let q = -1; q <= 1; q += 2) { const d = fB(W / 2 - .04, 1.9, .03, '#8aaab8', 'glass', 0); d.position.set(q * W / 4, 1.18, W / 2 + .02 + (q > 0 ? .05 : 0)); d.rotation.y = q * .18; g.add(d); }
+    fAt(g, fB(W + .12, .08, W + .12, '#c8ccd0', 'paint', .02), 0, .1 + H + .04, 0); fAt(g, fB(W - .1, .3, W - .1, '#f0f0e8', 'plastic', .02), 0, .1 + H + .23, 0);
+    [[0, W / 2 - .04, 0], [0, -W / 2 + .04, Math.PI], [W / 2 - .04, 0, Math.PI / 2], [-W / 2 + .04, 0, -Math.PI / 2]].forEach(([px, pz, ry]) => { const t = new THREE.Mesh(new THREE.PlaneGeometry(.8, .2), RT1.tel || (RT1.tel = new THREE.MeshBasicMaterial({ map: signTexture('TELEFONO', '#d8a020', '#f2eee0'), toneMapped: false }))); t.position.set(px * 1.06, .1 + H + .23, pz * 1.06); t.rotation.y = ry; g.add(t); });
+    fAt(g, fB(.32, .48, .2, '#c8a020', 'paint', .02), 0, 1.45, -W / 2 + .14); fAt(g, fB(.1, .2, .08, '#2a2a2c', 'plastic', .01), -.1, 1.5, -W / 2 + .27); fAt(g, fB(.22, .08, .14, '#3a3a3e', 'paint', .01), 0, 1.05, -W / 2 + .12);
+    fAt(g, fB(.24, .04, .3, '#d8d0b8', 'paper', .01), .25, 1.05, -W / 2 + .2);
+    return place(g, x, z, rot); }
+  // la cassetta delle lettere rossa: piantana, cassa col tetto tondo, la feritoia, la targhetta degli orari
+  function mailbox(x, z, rot) { const g = G0(), red = '#b8282a';
+    fAt(g, fC(.045, .055, 1.0, 8, '#3a3c40', 'paint'), 0, .5, 0); fAt(g, fB(.5, .55, .32, red, 'paint', .03), 0, 1.25, 0);
+    const top = fC(.25, .25, .32, 12, red, 'paint'); top.rotation.x = Math.PI / 2; top.position.set(0, 1.52, 0); g.add(top);
+    fAt(g, fB(.3, .035, .02, '#1a1a1c', 'solid', 0), 0, 1.42, .17); fAt(g, fB(.26, .12, .01, '#e8e4d8', 'paper', 0), 0, 1.15, .165); fAt(g, fB(.08, .08, .01, '#e0c040', 'paint', 0), .15, 1.32, .165);
+    return place(g, x, z, rot); }
   function newsstand(x, z, rot, r) { // edicola: riviste, giornali, un barattolo di matite colorate
     const g = G0(), m = sm('#3a6a4a'), tex = magazineTexture();
     add(g, box(2.4, 2.4, 1.6, m), 0, 1.2, 0); add(g, box(2.8, .12, 2.1, sm('#2a4a3a')), 0, 2.46, .1);
@@ -42269,28 +42396,50 @@ var Render = (function () {
     // ---- il Muro: lastre di cemento, filo spinato, scritte del regime e della Risacca, torri coi riflettori ----
     const WL = W0.WALL, slabM = [concrete('#7e7e7c'), concrete('#8a8a86'), concrete('#747472')], wire = sl('#2a2a2e');
     const posters = ['ОПЕКА', '보호', 'ПОРЯДОК', 'ТРУД', 'ГАРАНТ'];
-    for (let y = WL.y0; y < WL.y1; y += 2) {
-      if (y + 1 > WL.gate[0] && y + 1 < WL.gate[1]) continue;
-      const x = WL.x + 1, g = G0();
-      add(g, box(.5, 4.2, 2.02, pick(r, slabM)), 0, 2.1, 0); add(g, box(.7, .25, 2.02, concrete('#6a6a68')), 0, .12, 0);
-      add(g, box(.04, .04, 2, wire), .1, 4.45, 0); add(g, box(.04, .04, 2, wire), -.1, 4.6, 0);
-      for (let k = 0; k < 3; k++) add(g, new THREE.Mesh(new THREE.TorusGeometry(.18, .015, 3, 8), wire), 0, 4.55, -.7 + k * .7, 0, Math.PI / 2, 0);
-      // da questa parte (la città) manifesti strappati e scritte
-      if (r() < .18) { const pm = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.1), new THREE.MeshLambertMaterial({ map: signTexture(pick(r, posters), '#f2e8d8', '#9a1c1c') })); pm.position.set(-.27, 2.2, 0); pm.rotation.y = -Math.PI / 2; g.add(pm); }
-      else if (r() < .14) { const pm = new THREE.Mesh(new THREE.PlaneGeometry(1.8, .7), new THREE.MeshLambertMaterial({ map: signTexture(pick(r, ['RISACCA', 'НЕТ', '자유', 'RIDATECI MARCO']), pick(r, ['#ff4a8a', '#3ae0ff', '#ffe04a', '#7aff6a']), '#7e7e7c'), transparent: true, opacity: .9 })); pm.position.set(-.27, 1.4, 0); pm.rotation.y = -Math.PI / 2; g.add(pm); }
-      place(g, x, y + 1, 0);
+    // [ordine1] il Muro vero: lastre a L di cemento armato da 1,2 m (3,6 m d'altezza, il piede verso la Base), il tubo tondo in cima che
+    // non si afferra, i giunti, le colature di ruggine dei ferri e lo sporco che sale da terra; dalla parte della città manifesti e scritte,
+    // dalla parte della Base la striscia della morte: sabbia rastrellata, cavalli di Frisia, la pista di pattuglia, i lampioni verso il Muro
+    const SL = 1.2, wallG = () => { const c = '#8c8a84'; return c; };
+    let si = 0;
+    for (let y = WL.y0; y < WL.y1; y += SL, si++) {
+      if (y + SL / 2 > WL.gate[0] && y + SL / 2 < WL.gate[1]) continue;
+      const x = WL.x + 1, g = G0(), tone = shade(wallG(), .92 + th(si, 7, 1953) * .14);
+      fAt(g, fB(.24, 3.6, SL - .03, tone, 'concrete', .01), 0, 1.8, 0);
+      fAt(g, fB(1.3, .26, SL - .03, shade(tone, .92), 'concrete', .01), .7, .13, 0);   // il piede a L verso la Base
+      fAt(g, fB(.12, .9, .16, shade(tone, .9), 'concrete', .005), .19, .6, 0);
+      const pipe = fC(.21, .21, SL - .02, 10, shade(tone, 1.04), 'concrete'); pipe.rotation.x = Math.PI / 2; pipe.position.set(0, 3.72, 0); g.add(pipe);
+      if (th(si, 3, 1954) < .35) fAt(g, fB(.02, .7 + th(si, 4, 1) * 1.4, .05, '#6a4a32', 'rust', 0), -.13, 2.9 - th(si, 5, 1) * .6, (th(si, 6, 1) - .5) * .8);   // colatura di ruggine
+      // dalla parte della città manifesti strappati e scritte
+      if (r() < .1) { const pm = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 1.1), new THREE.MeshLambertMaterial({ map: signTexture(pick(r, posters), '#f2e8d8', '#9a1c1c') })); pm.position.set(-.135, 2.2, 0); pm.rotation.y = -Math.PI / 2; g.add(pm); }
+      else if (r() < .1) { const pm = new THREE.Mesh(new THREE.PlaneGeometry(1.15, .6), new THREE.MeshLambertMaterial({ map: signTexture(pick(r, ['RISACCA', 'НЕТ', '자유', 'RIDATECI MARCO']), pick(r, ['#ff4a8a', '#3ae0ff', '#ffe04a', '#7aff6a']), '#8c8a84'), transparent: true, opacity: .9 })); pm.position.set(-.135, 1.4, 0); pm.rotation.y = -Math.PI / 2; g.add(pm); }
+      place(g, x, y + SL / 2, 0);
+      // la striscia: cavalli di Frisia ogni tanto, i lampioni ogni 18 m piegati verso il Muro
+      if (si % 15 === 7) { const cz = G0(); [0, 1.05, 2.1].forEach(an => { const bar = fB(.1, .1, 1.9, '#3a3836', 'rust', .01); bar.rotation.set(an, 0, .65); bar.position.y = .55; cz.add(bar); }); place(cz, x + 9, y, r() * 3); }
+      if (si % 15 === 0) { const lp = G0(); fAt(lp, fC(.08, .11, 6, 8, '#5a5c5e', 'galv'), 0, 3, 0); const arm = fB(1.6, .1, .1, '#5a5c5e', 'galv', 0); arm.position.set(-.75, 5.9, 0); lp.add(arm); fAt(lp, fB(.5, .18, .3, '#3a3c40', 'paint', .02), -1.5, 5.8, 0); place(lp, x + 6, y, 0);
+        const L2 = addLight(x + 4.5, groundH(x + 4, y) + 5.6, y, '#f0f0ff', 1.6, 14, .02); L2.always = true; }
     }
+    // la pista di pattuglia e la seconda rete, dalla parte della Base
+    { const g = G0(), x = WL.x + 14; for (let y = WL.y0 + 2; y < WL.y1 - 2; y += 3) { if (y > WL.gate[0] - 2 && y < WL.gate[1] + 2) continue; fAt(g, fC(.04, .05, 2.6, 6, '#5a5c5e', 'galv'), 0, 1.3, y - WL.y0); const net = fB(.02, 2.2, 3, '#7a7e80', 'galv', 0); net.position.set(0, 1.3, y - WL.y0 + 1.5); g.add(net); } place(g, x, WL.y0, 0); }
+    // le torri di guardia: fusto cilindrico di cemento, la cabina ottagonale con la fascia di vetri, il ballatoio, il riflettore e l'antenna in cima
     WL.towers.forEach(([x, y], k) => {
-      const g = G0(), cm = concrete('#7a7a78');
-      add(g, box(2.2, 8, 2.2, cm), 0, 4, 0); add(g, box(3.2, 2, 3.2, cm), 0, 9, 0);
-      add(g, box(3, .8, 3, sb('#ffe6a0')), 0, 9.2, 0).material = new THREE.MeshBasicMaterial({ color: '#c8b88a', toneMapped: false });
-      add(g, box(3.6, .25, 3.6, concrete('#5a5a58')), 0, 10.1, 0); add(g, box(3.4, .3, 3.4, sm('#e2e6ec')), 0, 10.35, 0);
-      const flag = add(g, box(.05, 2.4, .05, wire), 1.4, 11.4, 1.4); add(g, new THREE.Mesh(new THREE.PlaneGeometry(.9, .55, 6, 1).translate(.45, 0, 0), animMat(new THREE.MeshBasicMaterial({ color: '#b81c1c', toneMapped: false, fog: false, side: THREE.DoubleSide }), 'u:bandiera:.7')), 1.42, 12.2, 1.4);   /* [animazioni-mondo] bandiera che sventola */
-      const red = add(g, new THREE.Mesh(new THREE.SphereGeometry(.14, 6, 4), new THREE.MeshBasicMaterial({ color: '#ff2020', toneMapped: false })), -1.4, 10.8, -1.4); WX.blink.push({ m: red, ph: k });
-      place(g, x + 1, y, 0);
-      // il fascio del riflettore che spazza la neve
+      const g = G0(), cm = '#86847e';
+      fAt(g, fB(2.4, .4, 2.4, shade(cm, .8), 'concrete', .03), 0, .2, 0);
+      fAt(g, fC(.85, .95, 7.6, 12, cm, 'concrete'), 0, 4.0, 0);
+      for (let q = 1; q < 4; q++) fAt(g, fC(.97, .97, .06, 12, shade(cm, .8), 'concrete'), 0, q * 1.9, 0);
+      fAt(g, fC(1.75, 1.6, .3, 8, shade(cm, .9), 'concrete'), 0, 7.95, 0);
+      fAt(g, fC(1.6, 1.6, .9, 8, cm, 'concrete'), 0, 8.55, 0);
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(1.62, 1.62, .9, 8, 1, true), new THREE.MeshLambertMaterial({ color: '#2a3640', emissive: '#c8b88a', emissiveIntensity: .35 })); band.position.y = 9.45; g.add(band);
+      for (let q = 0; q < 8; q++) { const a3 = q / 8 * Math.PI * 2 + Math.PI / 8; fAt(g, fB(.08, .9, .08, shade(cm, .8), 'concrete', 0), Math.cos(a3) * 1.6, 9.45, Math.sin(a3) * 1.6); }
+      fAt(g, fC(1.95, 1.8, .22, 8, shade(cm, .75), 'concrete'), 0, 10.0, 0);
+      for (let q = 0; q < 16; q++) { const a3 = q / 16 * Math.PI * 2; fAt(g, fB(.04, .8, .04, '#3a3c40', 'paint', 0), Math.cos(a3) * 1.85, 10.5, Math.sin(a3) * 1.85); }
+      fAt(g, fT(1.85, .03, 16, '#3a3c40', 'paint'), 0, 10.9, 0);
+      const sl2 = G0(); fAt(sl2, fC(.32, .38, .5, 10, '#3a3c40', 'paint'), 0, 0, 0); sl2.children[0].rotation.z = Math.PI / 2; sl2.position.set(.9, 10.4, 0); g.add(sl2);
+      fAt(g, fC(.03, .03, 3, 5, '#2a2a2e', 'paint'), -.9, 11.6, .4);
+      const red = add(g, new THREE.Mesh(new THREE.SphereGeometry(.12, 6, 4), new THREE.MeshBasicMaterial({ color: '#ff2020', toneMapped: false })), -.9, 13.15, .4); WX.blink.push({ m: red, ph: k });
+      place(g, x + 1.6, y, 0);
+      // il fascio del riflettore che spazza
       const piv = new THREE.Group(), beam = new THREE.Mesh(new THREE.ConeGeometry(2.4, 18, 10, 1, true), new THREE.MeshBasicMaterial({ color: '#f4f0d0', transparent: true, opacity: .1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-      beam.position.y = -9; piv.add(beam); piv.position.set(x + 1, groundH(x, y) + 9.4, y); piv.rotation.z = .9; scene.add(piv); WX.beams.push({ piv, ph: k * 1.7, side: -1 });
+      beam.position.y = -9; piv.add(beam); piv.position.set(x + 2.5, groundH(x, y) + 10.4, y); piv.rotation.z = .9; scene.add(piv); WX.beams.push({ piv, ph: k * 1.7, side: -1 });
     });
     // il varco: sbarre, garitta, cavalli di Frisia
     { const y0 = WL.gate[0], y1 = WL.gate[1], gx = WL.x + 1, cy = (y0 + y1) / 2;
@@ -42310,7 +42459,11 @@ var Render = (function () {
       const top = add(ant, new THREE.Mesh(new THREE.SphereGeometry(.25, 6, 4), new THREE.MeshBasicMaterial({ color: '#ff2020', toneMapped: false })), 0, 22.2, 0); WX.blink.push({ m: top, ph: 0, slow: true });
       place(ant, R0.x - 18, R0.y + 22, 0);
       [-6, 0, 6].forEach(o => { const g = G0(); add(g, box(.12, 9, .12, sl('#3a3a40')), 0, 4.5, 0); add(g, box(2.2, 1.3, .03, sb('#a81818')), 1.1, 8.2, 0); add(g, box(.5, .5, .035, sb('#f2d84a')), 1.1, 8.2, .02); place(g, R0.x + o, R0.y + 12, 0); });
-      if (P.eliporto) { const e = P.eliporto, pad = G0(); add(pad, cyl(5, 5, .06, 24, sm('#5a5a5c')), 0, .03, 0); add(pad, box(.6, .02, 3.4, sb('#e8e4c0')), -1, .07, 0); add(pad, box(.6, .02, 3.4, sb('#e8e4c0')), 1, .07, 0); add(pad, box(2, .02, .6, sb('#e8e4c0')), 0, .07, 0); place(pad, e.x, e.y, 0); }
+      if (P.eliporto) { // [ordine1] l'eliporto in uno spiazzo libero vero (prima stava in mezzo alla strada, fra le case)
+        const T0 = G.T, okPad = (x, z) => { for (let a = -6; a <= 6; a += 2) for (let c = -6; c <= 6; c += 2) { const v = G.tileAt(Math.floor((x + a) / TS), Math.floor((z + c) / TS)); if (v === T0.BLD || v === T0.VIA || v === T0.WATER || v === T0.TREE || v === T0.FOUNT || v === undefined) return false; } return true; };
+        let best = null; for (let rr2 = 0; rr2 <= 50 && !best; rr2 += 2) for (let k = 0; k < 16 && !best; k++) { const a = k / 16 * Math.PI * 2, x = P.eliporto.x + Math.cos(a) * rr2, z = P.eliporto.y + Math.sin(a) * rr2; if (okPad(x, z)) best = { x, y: z }; }
+        WX.padAt = best || P.eliporto; }
+      if (P.eliporto) { const e = WX.padAt || P.eliporto, pad = G0(); add(pad, cyl(5, 5, .06, 24, sm('#5a5a5c')), 0, .03, 0); add(pad, box(.6, .02, 3.4, sb('#e8e4c0')), -1, .07, 0); add(pad, box(.6, .02, 3.4, sb('#e8e4c0')), 1, .07, 0); add(pad, box(2, .02, .6, sb('#e8e4c0')), 0, .07, 0); place(pad, e.x, e.y, 0); }
     }
     // l'elicottero: di giorno a terra sull'eliporto, di notte gira sopra la Base e la periferia est (non va oltre)
     { const h = G0(), body = sm('#4a5446', { roughness: .7 }), glass = sm('#1a2228', { roughness: .2 });
@@ -42323,7 +42476,7 @@ var Render = (function () {
       const sp = new THREE.SpotLight('#f4f2e0', 0, 60, .32, .5, 1.2); sp.position.set(0, .5, 1.5); h.add(sp); const tgt = new THREE.Object3D(); scene.add(tgt); sp.target = tgt;
       const cone = new THREE.Mesh(new THREE.ConeGeometry(4.5, 26, 12, 1, true), new THREE.MeshBasicMaterial({ color: '#f4f2e0', transparent: true, opacity: .09, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); scene.add(cone);
       h.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(h);
-      WX.heli = { g: h, rot, nav, sp, tgt, cone, home: P.eliporto || P.rocca };
+      WX.heli = { g: h, rot, nav, sp, tgt, cone, home: WX.padAt || P.eliporto || P.rocca };
     }
     // ---- il porto cargo: gru, container, bitte ----
     if (P.molo_cargo) {
