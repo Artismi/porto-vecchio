@@ -215,22 +215,38 @@ var Tetti = (function () {
   // i pezzi del modello di un edificio (le case a gradoni ne hanno più d'uno: il corpo e i volumi sopra)
   function recsOf(R, b) { return recs(R).filter(r => r.grp && r.b && (r.b === b || r.b.id === b.id)); }
   // la quota vera: un raggio dall'alto ogni metro, sul modello dell'edificio (solo i pezzi sopra il primo piano)
-  function scanRoof(R, bi) {
-    const b = B[bi]; if (!b || b.__rH) return true; const parts = []; recsOf(R, b).forEach(r => [r.grp, r.roofGrp, r.cityGrp].forEach(q => { if (q) parts.push(q); })); if (!parts.length) return false;   // [ordine1] anche la roba sul tetto: ci si sale sopra o ci si gira attorno
-    const T3 = THREE, rc = GFX.rc || (GFX.rc = new T3.Raycaster()), o = new T3.Vector3(), dn = new T3.Vector3(0, -1, 0);
+  // [fluido] la misura è a pezzi: un lavoro per edificio (scanStart) che avanza riga per riga finché c'è tempo nel fotogramma
+  // (scanWork), poi riprende dal punto dove era arrivato. Stessi raggi, stessa quota: prima tutto in un colpo bloccava il
+  // gioco (fino a centinaia di raggi per casa, contro tutti i triangoli del modello, due case ogni 60 ms).
+  function scanStart(R, bi) {
+    const b = B[bi]; if (!b || b.__rH) return null; const parts = []; recsOf(R, b).forEach(r => [r.grp, r.roofGrp, r.cityGrp].forEach(q => { if (q) parts.push(q); })); if (!parts.length) return false;   // [ordine1] anche la roba sul tetto: ci si sale sopra
     parts.forEach(g => g.updateMatrixWorld(true));
-    const W1 = b.w * TS, H1 = b.h * TS, g = new Float32Array(W1 * H1), floor = (b.base || 0) + 1.6, rule = roofRule(b);
-    let hits = 0;
-    for (let gy = 0; gy < H1; gy++) for (let gx = 0; gx < W1; gx++) {
-      const x = b.x * TS + gx + .5, z = b.y * TS + gy + .5; o.set(x, rule + 40, z); rc.set(o, dn); rc.far = 80;
-      const h = rc.intersectObjects(parts, true).find(h => !h.object.userData.velo && !h.object.userData.noRoof && h.point.y > floor);
-      g[gy * W1 + gx] = h ? h.point.y : NaN; if (h) hits++;
+    const W1 = b.w * TS, H1 = b.h * TS;
+    return { bi, b, parts, W1, H1, g: new Float32Array(W1 * H1), floor: (b.base || 0) + 1.6, rule: roofRule(b), gy: 0, hits: 0 };
+  }
+  function scanWork(J, deadline) {   // true: finito (misurato, o il modello non si presta)
+    const T3 = THREE, rc = GFX.rc || (GFX.rc = new T3.Raycaster()), o = GFX.ro || (GFX.ro = new T3.Vector3()), dn = GFX.rd || (GFX.rd = new T3.Vector3(0, -1, 0));
+    const { b, parts, W1, H1, g, floor, rule } = J;
+    while (J.gy < H1) {
+      const gy = J.gy++;
+      for (let gx = 0; gx < W1; gx++) {
+        const x = b.x * TS + gx + .5, z = b.y * TS + gy + .5; o.set(x, rule + 40, z); rc.set(o, dn); rc.far = 80;
+        const h = rc.intersectObjects(parts, true).find(h => !h.object.userData.velo && !h.object.userData.noRoof && h.point.y > floor);
+        g[gy * W1 + gx] = h ? h.point.y : NaN; if (h) J.hits++;
+      }
+      if (performance.now() > deadline) return J.gy >= H1 ? scanEnd(J) : false;
     }
+    return scanEnd(J);
+  }
+  function scanEnd(J) {
+    const { b, g, W1, H1, hits } = J;
     if (hits < W1 * H1 * .25) return true;   // il modello non si presta (vuoto, trasparente): resta la regola dei piani
     // i buchi isolati (uno spigolo mancato) prendono la quota dei vicini; i cortili veri restano vuoti
     for (let gy = 0; gy < H1; gy++) for (let gx = 0; gx < W1; gx++) { const i = gy * W1 + gx; if (Number.isFinite(g[i])) continue; let s = 0, n = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = gx + dx, Y = gy + dy; if (X < 0 || Y < 0 || X >= W1 || Y >= H1) continue; const v = g[Y * W1 + X]; if (Number.isFinite(v)) { s += v; n++; } } if (n >= 3) g[i] = s / n; }
     b.__rH = g; return true;
   }
+  // la quota vera: un raggio dall'alto ogni metro, sul modello dell'edificio (solo i pezzi sopra il primo piano). Tutto subito (le prove)
+  function scanRoof(R, bi) { const J = scanStart(R, bi); if (J === null) return true; if (!J) return false; return scanWork(J, Infinity); }
   function ladderGeo() {
     const T3 = THREE, box = new T3.BoxGeometry(1, 1, 1);
     const iron = new T3.MeshStandardMaterial({ color: '#3b3a3c', metalness: .55, roughness: .55 }), rust = new T3.MeshStandardMaterial({ color: '#6a3c28', metalness: .3, roughness: .8 });
@@ -269,13 +285,16 @@ var Tetti = (function () {
         if (L.length && sig !== GFX.sig) { GFX.sig = sig; GFX.stableT = performance.now(); GFX.dirty = true; }
         // la quota dei tetti dove servono le scale: la si misura una casa alla volta, vicino al giocatore
         const p = st.player, now = performance.now();
-        if (L.length && now - (GFX.scanT || 0) > 60) {
-          GFX.scanT = now; let n = 0;
-          const near = []; for (let bi = 0; bi < B.length; bi++) { const b = B[bi]; if (b.__rH || GFX.scanned.has(bi)) continue; const d = hyp((b.x + b.w / 2) * TS - p.x, (b.y + b.h / 2) * TS - p.y); if (d < 70) near.push([d, bi]); }
-          near.sort((a, c) => a[0] - c[0]);
-          for (const [, bi] of near) { if (n++ >= 2) break; if (scanRoof(R, bi)) { GFX.scanned.add(bi); GFX.dirty = true; } }
-          // sul tetto: si misurano prima i vicini (per i salti)
-          if (onRoof(st)) for (let dy = -6; dy <= 6; dy += 2) for (let dx = -6; dx <= 6; dx += 2) { const bi = bAt(p.x + dx, p.y + dy); if (bi >= 0 && !B[bi].__rH && !GFX.scanned.has(bi) && scanRoof(R, bi)) GFX.scanned.add(bi); }
+        if (L.length) {   // [fluido] un edificio alla volta, a pezzi: 1,5 ms per fotogramma (3 sul tetto, i vicini per i salti prima)
+          const roof = onRoof(st), deadline = now + (roof ? 3 : 1.5);
+          if (GFX.job && (B[GFX.job.bi].__rH || GFX.scanned.has(GFX.job.bi))) GFX.job = null;
+          if (!GFX.job && now - (GFX.scanT || 0) > 60) {
+            GFX.scanT = now; let pick = -1;
+            if (roof) for (let dy = -6; dy <= 6 && pick < 0; dy += 2) for (let dx = -6; dx <= 6; dx += 2) { const bi = bAt(p.x + dx, p.y + dy); if (bi >= 0 && !B[bi].__rH && !GFX.scanned.has(bi)) { pick = bi; break; } }
+            if (pick < 0) { let bd = 70; for (let bi = 0; bi < B.length; bi++) { const b = B[bi]; if (b.__rH || GFX.scanned.has(bi)) continue; const d = hyp((b.x + b.w / 2) * TS - p.x, (b.y + b.h / 2) * TS - p.y); if (d < bd) { bd = d; pick = bi; } } }
+            if (pick >= 0) { const J = scanStart(R, pick); if (J === null) GFX.scanned.add(pick); else if (J) GFX.job = J; }
+          }
+          if (GFX.job && scanWork(GFX.job, deadline)) { GFX.scanned.add(GFX.job.bi); GFX.dirty = true; GFX.job = null; }
         }
         if (GFX.dirty && now - (GFX.stableT || 0) > 1500 && now - (GFX.builtT || 0) > 2500) { GFX.dirty = false; GFX.builtT = now; buildLaddersGfx(R); }
         if (GFX.st !== st) { GFX.st = st; }

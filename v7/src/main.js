@@ -720,9 +720,37 @@
     function mv(e) { const r = sEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 65) / 50, dy = (e.clientY - r.top - 65) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } stick.x = dx; stick.y = dy; kn.style.left = 43 + dx * 40 + 'px'; kn.style.top = 43 + dy * 40 + 'px'; }
   }
 
+  // ---------- [fluido] Quanto si vede ----------
+  // ogni 0,2 s: la distanza dal giocatore dell'angolo di schermo più lontano (sul terreno), più un margine. game.js allarga la
+  // bolla del dettaglio fino a lì: a zoom largo chi è sul bordo dello schermo non cammina a scatti. Orizzonte in vista: tutto.
+  let viewT = 0;
+  function viewRadius(dt) {
+    if ((viewT -= dt) > 0) return; viewT = .2; const p = st.player; let r = 0;
+    for (const [nx, ny] of [[0, 0], [1, 0], [0, 1], [1, 1], [.5, 0], [.5, 1], [0, .5], [1, .5]]) { const g = R.screenToGround(nx, ny); if (!g) { r = 1e5; break; } r = Math.max(r, Math.hypot(g.x - p.x, g.y - p.y)); }
+    st.viewR = r + 20;
+  }
+
+  // ---------- [prestazioni] Quale scheda video usa il browser ----------
+  // Se il browser disegna in software (accelerazione hardware spenta, o scheda esclusa) il gioco va a pochi fotogrammi
+  // qualunque cosa si alleggerisca: lo si dice subito, con cosa fare.
+  function gpuName() {
+    if (gpuName.v !== undefined) return gpuName.v;
+    try { const gl = R.__models && R.__models.renderer && R.__models.renderer.getContext(), e = gl && gl.getExtension('WEBGL_debug_renderer_info'); gpuName.v = gl ? String(e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) : ''; } catch (x) { gpuName.v = ''; }
+    return gpuName.v;
+  }
+  const SOFT_GPU = /swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic|mesa offscreen/i;
+  function softwareCheck() {
+    const n = gpuName(); if (!n || !SOFT_GPU.test(n)) return;
+    toast('Il browser sta disegnando SENZA scheda video (' + (n.match(/swiftshader|llvmpipe|softpipe|basic render[^,)]*|microsoft basic[^,)]*|software[^,)]*|mesa offscreen/i) || [n])[0] + '): per questo va a scatti. Attiva l\'accelerazione hardware: Chrome o Edge → Impostazioni → Sistema → «Usa accelerazione grafica quando disponibile», poi riavvia il browser.', 'bad');
+    st.feed[0].until = st.clock + 30;
+  }
+
   // ---------- [prestazioni] Il contatore: F3 (o ?perf nell'indirizzo) ----------
   // fps, il fotogramma peggiore, i millisecondi della logica (G.step) e della grafica lato processore (R.frame),
   // e il tempo vero della scheda video per fase (scena con le ombre, bagliore, pittura, post), se il browser lo concede.
+  // [misura] con ?perf il passo del motore e il fotogramma della grafica si misurano a parte (il resto lo misura misura.js)
+  const STEP = typeof Misura !== 'undefined' ? Misura.timed((a, b, c) => G.step(a, b, c), 'motore:passo') : (a, b, c) => G.step(a, b, c);
+  const FRAME = typeof Misura !== 'undefined' ? Misura.timed((a, b, c) => R.frame(a, b, c), 'grafica:fotogramma') : (a, b, c) => R.frame(a, b, c);
   const PERF = { on: /[?&]perf\b/.test(location.search), el: null, t0: 0, frames: 0, step: 0, frame: 0, worst: 0 };
   addEventListener('keydown', e => { if (e.key === 'F3') { e.preventDefault(); PERF.on = !PERF.on; if (PERF.el) PERF.el.hidden = !PERF.on; } });
   function perfTick(now) {
@@ -732,10 +760,14 @@
     const n = PERF.frames, sec = (now - PERF.t0) / 1000, g = R.gpuTimes || { ok: false, ms: {}, info: {} }, ms = g.ms, I = g.info || {};
     const gt = ['scena', 'bagliore', 'pittura', 'post'].map(k => ms[k] !== undefined ? `${k} ${ms[k].toFixed(1)}` : '').filter(Boolean);
     const gsum = Object.values(ms).reduce((a, b) => a + b, 0);
+    const frameMs = sec * 1000 / n, gameMs = (PERF.step + PERF.frame) / n, gn = gpuName();
     PERF.el.textContent = `${(n / sec).toFixed(0)} fps · peggiore ${PERF.worst.toFixed(0)} ms\n` +
+      `fotogramma ${frameMs.toFixed(0)} ms = gioco ${gameMs.toFixed(0)} ms + attesa ${Math.max(0, frameMs - gameMs).toFixed(0)} ms (scheda video, altri moduli, browser)\n` +
+      `scheda: ${gn || 'sconosciuta'}${SOFT_GPU.test(gn) ? '  ⚠ IN SOFTWARE: accelerazione hardware spenta' : ''}\n` +
       `logica ${(PERF.step / n).toFixed(1)} ms · grafica (processore) ${(PERF.frame / n).toFixed(1)} ms\n` +
       (g.ok ? `scheda video ${gsum.toFixed(1)} ms: ${gt.join(' · ')}` : 'scheda video: il browser non dà i tempi') + '\n' +
-      `${I.calls || '?'} disegni · ${I.tris ? Math.round(I.tris / 1000) + 'k' : '?'} triangoli · ${I.progs || '?'} shader · ${I.px || ''} · abitanti fuori ${st.npcs.filter(k => !k.dead && !k.inside).length}/${st.npcs.length}`;
+      `${I.calls || '?'} disegni · ${I.tris ? Math.round(I.tris / 1000) + 'k' : '?'} triangoli · ${I.progs || '?'} shader · ${I.px || ''} · abitanti fuori ${st.npcs.filter(k => !k.dead && !k.inside).length}/${st.npcs.length} · bolla ${st.bubble ? Math.round(st.bubble.r) + ' m' : '-'}` +
+      (typeof Misura !== 'undefined' && Misura.ON ? '\n— i moduli più pesanti (ms per fotogramma, tempo proprio) —\n' + Misura.top(12).map(([k, v]) => `${v.toFixed(2).padStart(6)}  ${k}`).join('\n') : '\n(per la classifica dei moduli: ?perf nell\'indirizzo)');
     PERF.t0 = now; PERF.frames = PERF.step = PERF.frame = PERF.worst = 0;
   }
 
@@ -753,11 +785,15 @@
     $('screen').innerHTML = `<div class="in"><div class="logo" style="font-size:clamp(34px,6vw,64px)">Porto Vecchio</div><div class="story"><p>Il gioco usa la grafica 3D del browser (WebGL) e qui non è riuscito ad avviarla.</p><p>Prova ad aprire la pagina in Chrome, Edge o Firefox aggiornati, con l'accelerazione hardware attiva nelle impostazioni del browser.</p></div></div>`;
     return;
   }
+  setTimeout(() => { try { softwareCheck(); } catch (e) { } }, 4000);   // [prestazioni] avvisa se si disegna senza scheda video
   if (window.Editor) Editor.attach({ get st() { return st; }, ui, G, R, cv, app, toast });   // [editor] F2
   function size() { const w = app.clientWidth || innerWidth, h = app.clientHeight || innerHeight; R.resize(w, h, Math.min(2, devicePixelRatio || 1)); }
   new ResizeObserver(size).observe(app); size();
+  // [fluido] i programmi della scheda video si preparano adesso, durante il caricamento, non a scatti mentre si gioca
+  try { const M0 = R.__models; if (M0 && M0.renderer && M0.scene && R.getCamera) M0.renderer.compile(M0.scene, R.getCamera()); } catch (e) { console.warn('[compile]', e); }
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
-  function loop(now) {
+  const loop = typeof Misura !== 'undefined' ? Misura.timed(loop0, 'main:ciclo') : loop0;   // [misura]
+  function loop0(now) {
     const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
     if (!perfDone && ui.time > 2) { perfT += raw; perfN++; if (perfN >= 90) { perfDone = true; if (perfT / perfN > 1 / 32) R.lowQuality(); } }
@@ -774,7 +810,8 @@
       if (!ui.intro && (mouse.down || touchFire || mouse.pressed)) G.fire(st, inp.aim !== undefined ? inp.aim : aimAngle(), ui.aimPoint, mouse.pressed);
       mouse.pressed = false;
       tickClick(); sprayTick(dt);
-      const tS = performance.now(); G.step(st, dt, inp); PERF.step += performance.now() - tS;
+      viewRadius(dt);   // [fluido]
+      const tS = performance.now(); STEP(st, dt, inp); PERF.step += performance.now() - tS;
     }
     if (st.over && !ui.over) endScreen();
     ui.flash = Math.max(0, ui.flash - dt * 1.2);
@@ -782,10 +819,10 @@
     ui.desat = st.slowmo > 0;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
-    R.frame(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
-    drawBubbles(); crosshair(); perfTick(now);
+    drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); }
     requestAnimationFrame(loop);
   }

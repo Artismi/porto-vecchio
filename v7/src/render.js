@@ -1350,6 +1350,16 @@ var Render = (function () {
   }
   const vM4 = new THREE.Matrix4(), vQ = new THREE.Quaternion(), vE = new THREE.Euler(), vV = new THREE.Vector3(), vS = new THREE.Vector3(), vC = new THREE.Color();
   const LOWQ = { on: false };
+  // [fluido] LE COSTRUZIONI: un tetto di tempo per fotogramma (3 ms) per tutto quello che nasce mentre si gioca (personaggi coi
+  // vestiti, mezzi, blocchi di piante, graffiti sui muri). Chi chiede e non c'è più tempo aspetta il fotogramma dopo; quello
+  // che è vicinissimo (meno di 20 m) passa sempre, così niente spunta in ritardo sotto gli occhi. Anche writing.js lo usa.
+  // A turno: ogni tipo (gente, mezzi, piante, graffiti) ha almeno una costruzione ogni 4 fotogrammi, anche se gli altri hanno finito il tempo.
+  const BUD = { used: 0, max: 3, n: 0, last: {}, start() { this.used = 0; this.n++; },
+    ok(d, k) { return (d !== undefined && d < 20) || this.used < this.max || (k !== undefined && this.n - (this.last[k] || 0) >= 4); },
+    add(ms, k) { this.used += ms; if (k !== undefined) this.last[k] = this.n; } };
+  if (typeof window !== 'undefined') window.Costruzioni = BUD;
+  // [fluido] i personaggi che escono dalla bolla di popolo.js si tengono da parte (gli ultimi 40): se tornano, nessuna ricostruzione
+  const PEOPLE_KEEP = new Map();
   // [fluido] il profilo telefono, deciso all'avvio (il numero di luci entra nei programmi della scheda video): touch o ?leggera; ?alta lo spegne
   const PHONE = (() => { try { const q = location.search; if (/[?&]alta\b/.test(q)) return false; return /[?&](leggera|bassa)\b/.test(q) || matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
   LOWQ.phone = PHONE;
@@ -1814,16 +1824,21 @@ var Render = (function () {
     };
     return mat;
   }
-  function buildChunk(ci, cj) {
+  // [fluido] un blocco si costruisce in fasi (dipinto del terreno in tre passate, scabrosità, geometria, luce, vegetazione,
+  // bosco, verde): buildChunkGen ne fa una per volta e lo mette in scena solo finito; buildChunk le fa tutte subito.
+  function buildChunk(ci, cj) { const it = buildChunkGen(ci, cj); let r; do r = it.next(); while (!r.done); return r.value; }
+  function* buildChunkGen(ci, cj) {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
+    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
+    yield;
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
     try { const W = c.width, H = c.height, id = x.getImageData(0, 0, W, H), d = id.data, rc = mk(W, H), rxx = rc.getContext('2d'), od = rxx.createImageData(W, H), o = od.data;
       for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.72, Math.min(1, .72 + (lum - 40) / 120 * .28)) * 255   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
       rxx.putImageData(od, 0, 0); rtex = canvasTex(rc); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; }
+    yield;
     const pos = new Float32Array((n + 1) * (m + 1) * 3), uv = new Float32Array((n + 1) * (m + 1) * 2), idx = [];
     for (let j = 0; j <= m; j++) for (let i = 0; i <= n; i++) {
       const k = j * (n + 1) + i, tx = tx0 + i, ty = ty0 + j;
@@ -1842,12 +1857,16 @@ var Render = (function () {
       idx.push(a, b, cc, a, cc, d);
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
+    yield;
     const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
+    yield;
     const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
+    yield;
     const nat = buildNat(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');
+    yield;
     const vd = verde38(tx0, ty0, n, m); vd.visible = false; grp.add(vd);   // [verde]
     scene.add(grp);
     if (window.Officina) Officina.onChunk(grp, groundH);   // [studio] alberi e cespugli ritoccati
@@ -1892,11 +1911,20 @@ var Render = (function () {
       if (d < 135) { if ((!ch || ch.rev !== ISO.rev) && d < bd) { bd = d; best = [ci, cj, key]; } }
       else if (ch && d > 190) { dropChunk(ch); ISO.chunks.delete(key); }
     }
-    if (best) { const old = ISO.chunks.get(best[2]); if (old) dropChunk(old); ISO.chunks.set(best[2], buildChunk(best[0], best[1])); }
+    // [fluido] un blocco alla volta, a fasi: lontano (si vede da 62 m) una fase quando c'è tempo; vicino almeno una per
+    // fotogramma e, se il budget lo concede, di più. Il blocco vecchio resta finché il nuovo non è finito.
+    if (!ISO.job && best) ISO.job = { key: best[2], it: buildChunkGen(best[0], best[1]), near: bd < 70 };
+    const J = ISO.job;
+    if (J) { const t0 = performance.now(); let steps = 0;
+      while (ISO.rush || (steps === 0 && (J.near || BUD.ok(undefined, 'piante'))) || (steps > 0 && J.near && BUD.ok() && performance.now() - t0 < 4)) {
+        const r = J.it.next(); steps++;
+        if (r.done) { const old = ISO.chunks.get(J.key); if (old) dropChunk(old); if (J.dirty) r.value.rev = -1; ISO.chunks.set(J.key, r.value); ISO.job = null; break; }   // cambiata la mappa a metà: si rifà
+      }
+      if (steps) BUD.add(performance.now() - t0, 'piante'); }
     if (ISO.basePieces) for (const key in ISO.basePieces) ISO.basePieces[key].visible = !ISO.chunks.has(key);   // [inverno17]
   }
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
-  function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; }
+  function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true; }
   function buildIsland() { buildBase(); }
 
   // ---- arredo statico: lampioni, palme, porto, spiaggia, piazza, poligono ----
@@ -11040,6 +11068,28 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (!o.__icS && !o.__icParts && now - o.__icT > 1500 && o.count > 0) { const S = icSphere(o); if (S) { if (S.radius > 70 && o.count >= 32 && icSplit(o)) continue; o.__icS = S; o.frustumCulled = true; } }
     }
   }
+  // [fluido] RAGGI VELOCI: three prova ogni triangolo della mesh a ogni raggio (i blocchi fusi della città ne hanno decine di
+  // migliaia). Con three-mesh-bvh (mesh_bvh.js) ogni geometria grande ha un indice spaziale e un raggio tocca poche decine di
+  // triangoli: stessi punti, normali, materiali e uv di prima. Si costruisce al secondo raggio su quella geometria (chi viene
+  // colpita una volta sola non costa niente). Restano col metodo di prima: personaggi animati, forme che si deformano,
+  // geometrie disegnate a metà, e quelle che qualcuno modifica dopo (oggetti distrutti, segni): lì il risultato è sempre giusto.
+  if (typeof MeshBVHLib !== 'undefined' && !THREE.Mesh.prototype.raycast.__bvh) {
+    const orig = THREE.Mesh.prototype.raycast, acc = MeshBVHLib.acceleratedRaycast;
+    const verOf = g => g.attributes.position.version + ':' + (g.index ? g.index.version : -1);
+    const fast = function (rc, out) {
+      const g = this.geometry;
+      if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) return orig.call(this, rc, out);
+      if (g.boundsTree) { if (g.__bvhVer === verOf(g)) return acc.call(this, rc, out); g.boundsTree = null; g.__bvhNo = true; return orig.call(this, rc, out); }   // è cambiata: si torna al metodo di prima
+      const pos = g.attributes.position, dr = g.drawRange, n = g.index ? g.index.count : pos ? pos.count : 0;
+      if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || n < 900) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; return orig.call(this, rc, out); }
+      if (!g.__bvhSeen) { g.__bvhSeen = verOf(g); return orig.call(this, rc, out); }   // il primo raggio come prima; dal secondo, l'indice
+      if (g.__bvhSeen !== verOf(g)) { g.__bvhNo = true; return orig.call(this, rc, out); }
+      try { g.boundsTree = new MeshBVHLib.MeshBVH(g); g.__bvhVer = verOf(g); } catch (e) { g.__bvhNo = true; return orig.call(this, rc, out); }
+      return acc.call(this, rc, out);
+    };
+    fast.__bvh = true; THREE.Mesh.prototype.raycast = fast;
+  }
+  const SHMOV = { list: [] };   // [fluido] chi si muove (x, y, velocità), per le ombre dei faretti
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -11882,16 +11932,31 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       const tall = hh > 2.8 && night > .25;
       cone.visible = tall && k > .05; if (cone.visible) { const rr = hh * .62; cone.position.set(L.x, L.y - .15, L.z); cone.scale.set(rr, hh - .1, rr); cone.material.color.copy(L.color); cone.material.opacity = .1 * Math.min(1, k); }   // [luci2] (la forma la dà lo shader)
     });
-    for (let q = 0; q < 3; q++) { const l = SPOOL[(frameN * 3 + q) % SPOOL.length]; if (l && l.intensity > 0) l.shadow.needsUpdate = true; }
+    // [fluido] le ombre dei faretti si ridisegnano quando serve: subito (fino a 3 per fotogramma) se nel loro raggio si muove
+    // qualcosa (gente, mezzi, il giocatore), altrimenti due volte al secondo (le chiome nel vento). Prima: 3 a turno a ogni
+    // fotogramma, anche nelle strade vuote dove l'ombra veniva identica.
+    if (SHMOV.st) { const st = SHMOV.st, now = performance.now(), movers = SHMOV.list; movers.length = 0;
+      const pl = st.player; movers.push(pl.x, pl.y, Math.abs(pl.speed || 0) + (pl.vehicle ? 1 : 0));
+      for (const n of st.npcs) { if (n.dead || n.inside || (n.pop && !n.pop.near)) continue; movers.push(n.x, n.y, (n.speedNow || 0) + (n.gesture > 0 || n.stun > 0 || n.airT ? 1 : 0)); }
+      for (const v of st.vehicles) { if (v.hidden) continue; movers.push(v.x, v.y, Math.abs(v.vx || 0) + Math.abs(v.vy || 0) + Math.abs(v.w || 0)); }
+      const want = [];
+      SPOOL.forEach(l => { if (!(l.intensity > 0)) return; const u = l.userData, r = (l.distance || 10) + 2, lx = l.position.x, lz = l.position.z; let busy = false;
+        for (let i = 0; i < movers.length; i += 3) { if (movers[i + 2] > .05 && Math.abs(movers[i] - lx) < r && Math.abs(movers[i + 1] - lz) < r) { busy = true; break; } }
+        if (busy) want.push([0, l]); else if (now - (u.shT || 0) > 500) want.push([now - (u.shT || 0), l]); });
+      want.sort((a, b) => (a[0] === 0 ? -1 : 0) - (b[0] === 0 ? -1 : 0) || b[0] - a[0]);
+      for (let q = 0; q < Math.min(3, want.length); q++) { const l = want[q][1]; l.shadow.needsUpdate = true; l.userData.shT = now; } }
     PPOOL.forEach((l, i) => {
       const L = dyn.lpp[i]; if (!L) { l.intensity = 0; return; }
       l.position.set(L.x, L.y, L.z); l.color.copy(L.color); l.distance = L.dist; l.intensity = L.base * kOf(L) * .8;
     });
   }
   function frame(st, dt, ui) {
+    BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
+    SHMOV.st = st;   // [fluido] per le ombre dei faretti
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
     meteoAt(st.t, METEO); { const rg = regimeAt(cam.x, cam.y); METEO.reg += (rg - METEO.reg) * Math.min(1, (dt || .016) * 1.5); } dyn.meteo = METEO;   /* [amb1] */
     const WXc = METEO.w[0], WXwet = METEO.w[1], WXfog = METEO.w[2], WXst = METEO.w[3], SUNK = (1 - night) * (1 - WXc * .82);   /* [amb1] quanto sole arriva */
+    ISO.rush = !!(ui && ui.intro);   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
     updateChunks(cam.x, cam.y);
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, (.22 - night * .16) * METEO.reg).multiplyScalar(1 - night * .45 * (1 - WXfog * .4)); /* [amb1] */ /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
@@ -11954,9 +12019,17 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       let g = dyn.people[n.id];
       // [popolo] il modello si crea solo per chi si vede; gli abitanti lontani (popolo.js) lo liberano
       const inRoom = !!(n.room && p.indoor && !n.dead);   // [scopo] dentro l'edificio del giocatore: si vede chi c'è
-      if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if (n.pop && !n.pop.near) { scene.remove(g); delete dyn.people[n.id]; } } return; }
+      if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if (n.pop && !n.pop.near) { scene.remove(g); delete dyn.people[n.id]; if (!g.userData.voxelWait) { PEOPLE_KEEP.set(n.id, g); if (PEOPLE_KEEP.size > 40) PEOPLE_KEEP.delete(PEOPLE_KEEP.keys().next().value); } } } return; }
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
-      if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */ g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
+      if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */
+        const kept = PEOPLE_KEEP.get(n.id); if (kept && (kept.userData.who || null) === who) { PEOPLE_KEEP.delete(n.id); g = kept; }   // [fluido] torna com'era, già vestito
+        else { if (!BUD.ok(Math.hypot(n.x - p.x, n.y - p.y), 'gente')) return; const t0 = performance.now(); if (window.Models) Models.__aRate = true; try { g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); } finally { if (window.Models) Models.__aRate = false; } g.userData.who = who; BUD.add(performance.now() - t0, 'gente'); }   // [fluido] nasce quando c'è tempo
+        if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
+      if (g.userData.dressing) {   // [fluido] si sta vestendo: una fase per fotogramma (a budget), invisibile finché non ha finito
+        const dn = Math.hypot(n.x - p.x, n.y - p.y); let fin = false;
+        if (BUD.ok(dn, 'vesti')) { const t0 = performance.now(); try { fin = g.userData.dressing.next().done; } catch (e) { fin = true; console.error('[fluido] vestire', e); } BUD.add(performance.now() - t0, 'vesti'); }
+        if (fin) g.userData.dressing = null; else { g.visible = false; return; }
+      }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
       g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = Math.PI / 2 - n.face;
@@ -11999,7 +12072,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       // [fluido] fuori dalla vista (raggio secondo lo zoom) il mezzo non si crea, non si anima e non si disegna
       const far = v !== pveh && (Math.abs(v.x - cam.x) > VIEW_R || Math.abs(v.y - cam.y) > VIEW_R);
       let g = dyn.vehicles[v.id]; if (far) { if (g) g.visible = false; return; }
-      if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { g = vehicleMesh(v); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }
+      if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { if (!v.hidden && !BUD.ok(Math.hypot(v.x - p.x, v.y - p.y) - 10, 'mezzi')) return; const t0 = performance.now(); g = vehicleMesh(v); BUD.add(performance.now() - t0, 'mezzi'); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }   // [fluido] nasce quando c'è tempo
       g.visible = !v.hidden; if (!g.visible) return;
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
       const hF = groundH(v.x + ca * hl, v.y + sa * hl), hR = groundH(v.x - ca * hl, v.y - sa * hl);
