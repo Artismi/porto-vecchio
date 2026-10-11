@@ -35237,7 +35237,7 @@ var Render = (function () {
         const im = new THREE.InstancedMesh(g2, p.mat, arr.length);
         arr.forEach((o, k) => { nE.set(o.rx, o.ry, o.rz, 'YXZ'); nQ.setFromEuler(nE); nV.set(o.x, o.y, o.z); nS.set(o.s, o.s * o.sy, o.s); nM4.compose(nV, nQ, nS); im.setMatrixAt(k, nM4); im.setColorAt(k, nC.set(o.col || '#ffffff')); });
         im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
-        im.castShadow = tree && !LOWQ.on; im.receiveShadow = !tree; grp.add(im);
+        im.castShadow = tree && !LOWQ.on && !PHONE; im.receiveShadow = !tree; grp.add(im);
       });
     }
     return grp;
@@ -35463,6 +35463,9 @@ var Render = (function () {
   }
   const vM4 = new THREE.Matrix4(), vQ = new THREE.Quaternion(), vE = new THREE.Euler(), vV = new THREE.Vector3(), vS = new THREE.Vector3(), vC = new THREE.Color();
   const LOWQ = { on: false };
+  // [fluido] il profilo telefono, deciso all'avvio (il numero di luci entra nei programmi della scheda video): touch o ?leggera; ?alta lo spegne
+  const PHONE = (() => { try { const q = location.search; if (/[?&]alta\b/.test(q)) return false; return /[?&](leggera|bassa)\b/.test(q) || matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
+  LOWQ.phone = PHONE;
   function buildVeg(tx0, ty0, n, m) {
     const K = vegKit(), T = G.T, L0 = { trunk: [], leaf: [], cone: [], rock: [], cactus: [], vine: [], bark: [], fir: [], tuft: [] }, LT = { trunk: [], leaf: [], cone: [], rock: [], cactus: [], vine: [], bark: [], fir: [], tuft: [] };
     let L = L0;
@@ -35997,8 +36000,8 @@ var Render = (function () {
     let best = null, bd = 1e9;
     for (let cj = 0; cj < NCY; cj++) for (let ci = 0; ci < NCX; ci++) {
       const mx = Math.max(ci * W, Math.min(cx, (ci + 1) * W)), mz = Math.max(cj * W, Math.min(cz, (cj + 1) * W)), d = Math.hypot(mx - cx, mz - cz), key = ci + ',' + cj, ch = ISO.chunks.get(key);
-      if (ch && ch.vd) { ch.vd.visible = d < (LOWQ.on ? 36 : 62); if (ch.vd.userData.tap) ch.vd.userData.tap.visible = d < (LOWQ.on ? 26 : 44); }   // [verde]
-      if (ch && ch.nat) { const hi = ch.nat.children.length > 0 && d < (LOWQ.on ? 34 : 58); ch.nat.visible = hi; if (ch.lt) ch.lt.visible = !hi; }   // [monte] bosco vero vicino
+      if (ch && ch.vd) { ch.vd.visible = d < (LOWQ.on || PHONE ? 36 : 62); if (ch.vd.userData.tap) ch.vd.userData.tap.visible = d < (LOWQ.on || PHONE ? 26 : 44); }   // [verde]
+      if (ch && ch.nat) { const hi = ch.nat.children.length > 0 && d < (LOWQ.on || PHONE ? 34 : 58); ch.nat.visible = hi; if (ch.lt) ch.lt.visible = !hi; }   // [monte] bosco vero vicino
       if (d < 135) { if ((!ch || ch.rev !== ISO.rev) && d < bd) { bd = d; best = [ci, cj, key]; } }
       else if (ch && d > 190) { dropChunk(ch); ISO.chunks.delete(key); }
     }
@@ -42050,7 +42053,7 @@ var Render = (function () {
     APS.rts.forEach(r => r.dispose());
     const mk2 = (w, h) => new THREE.WebGLRenderTarget(Math.max(8, w), Math.max(8, h), { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType, depthBuffer: false });
     const h2 = [W >> 1, H >> 1], h4 = [W >> 2, H >> 2], h8 = [W >> 3, H >> 3];
-    APS.rts = [mk2(...h2), mk2(...h2), mk2(...h4), mk2(...h4), mk2(...h8), mk2(...h8), mk2(...h4), mk2(...h4)];
+    APS.rts = PHONE ? [] : [mk2(...h2), mk2(...h2), mk2(...h4), mk2(...h4), mk2(...h8), mk2(...h8), mk2(...h4), mk2(...h4)];   /* [fluido] sul telefono niente bagliore */
   }
   function ambPass(src, dst, dx, dy, thr) {
     const U = APS.mat.uniforms; U.t.value = src; U.dir.value.set(dx / dst.width, dy / dst.height); U.thr.value = thr || 0;
@@ -42343,7 +42346,7 @@ var Render = (function () {
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
-    PX = LOWQ.on ? Math.max(2, Math.round(dpr) * 2) : Math.max(1, ch * dpr / 720);   /* [unione8] al massimo 720 righe */   /* [amb3] risoluzione piena */
+    PX = LOWQ.on ? Math.max(2, Math.round(dpr) * 2) : Math.max(1, ch * dpr / (PHONE ? 480 : 720));   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
     PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     GPUT.px = W + '×' + H;   /* [prestazioni] */
@@ -44630,22 +44633,22 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     hemi = new THREE.HemisphereLight('#5a64a8', '#1a1226', .55); scene.add(hemi);
     fillAmb = new THREE.AmbientLight('#2a2440', .35); scene.add(fillAmb);
     moon = new THREE.DirectionalLight('#8fa2ff', .5); moon.castShadow = true; moon.shadow.mapSize.set(1024, 1024);
-    const sc = moon.shadow.camera; sc.left = -46; sc.right = 46; sc.top = 46; sc.bottom = -46; sc.near = 1; sc.far = 160; moon.shadow.mapSize.set(2048, 2048); moon.shadow.bias = -.0015;
+    const sc = moon.shadow.camera; sc.left = -46; sc.right = 46; sc.top = 46; sc.bottom = -46; sc.near = 1; sc.far = 160; moon.shadow.mapSize.set(PHONE ? 1024 : 2048, PHONE ? 1024 : 2048); moon.shadow.bias = -.0015;
     scene.add(moon); scene.add(moon.target);
-    dyn.rim = new THREE.DirectionalLight('#b8c8e8', .4); scene.add(dyn.rim); scene.add(dyn.rim.target);
-    dyn.fill = new THREE.DirectionalLight('#6f8fb0', .3); scene.add(dyn.fill); scene.add(dyn.fill.target);   // [inverno] riempimento sud: pareti in ombra leggibili   // [inverno] controluce: stacca i volumi dal fondo
+    if (!PHONE) { dyn.rim = new THREE.DirectionalLight('#b8c8e8', .4); scene.add(dyn.rim); scene.add(dyn.rim.target);   /* [fluido] sul telefono niente controluce e riempimento: ogni luce costa a ogni pixel */
+    dyn.fill = new THREE.DirectionalLight('#6f8fb0', .3); scene.add(dyn.fill); scene.add(dyn.fill.target); }   // [inverno] riempimento sud: pareti in ombra leggibili   // [inverno] controluce: stacca i volumi dal fondo
     // poche luci vere, spostate ogni fotogramma sulle sorgenti più vicine
     // [inverno28] faretti con ombra (quanti ne regge la scheda video) + punti senza ombra per i fuochi
-    { const maxT = (renderer.capabilities && renderer.capabilities.maxTextures) || 16, N = Math.max(4, Math.min(12, maxT - 7));
+    { const maxT = (renderer.capabilities && renderer.capabilities.maxTextures) || 16, N = PHONE ? 2 : Math.max(4, Math.min(12, maxT - 7));   /* [fluido] sul telefono due faretti senza ombra */
       const coneG = new THREE.ConeGeometry(1, 1, 18, 1, true); coneG.translate(0, -.5, 0);
       for (let i = 0; i < N; i++) { const l = new THREE.SpotLight('#ffb35c', 0, 10, 1.2, .4, 1.25); /* [luci5] bordo deciso */   // [inverno29] caduta morbida, bordo sfumato
-        l.castShadow = true; l.shadow.autoUpdate = false; l.shadow.needsUpdate = true; l.shadow.mapSize.set(1024, 1024); l.shadow.radius = 1; /* [luci5] ombre nette */ l.shadow.bias = -.0012; l.shadow.normalBias = .035; l.shadow.camera.near = .2; l.shadow.camera.far = 14;
+        l.castShadow = !PHONE; l.shadow.autoUpdate = false; l.shadow.needsUpdate = true; l.shadow.mapSize.set(1024, 1024); l.shadow.radius = 1; /* [luci5] ombre nette */ l.shadow.bias = -.0012; l.shadow.normalBias = .035; l.shadow.camera.near = .2; l.shadow.camera.far = 14;
         const cone = new THREE.Mesh(coneG, new THREE.MeshBasicMaterial({ color: '#ffd8a0', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); cone.visible = false; cone.renderOrder = 2;
         cone.material.onBeforeCompile = sh => {   // [luci2] cono d'aria: pieno vicino alla lampada, svanisce a terra e ai bordi
           sh.vertexShader = 'varying float vFr; varying float vH;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vec3 nV = normalize(normalMatrix * normal); vec4 mvq = modelViewMatrix * vec4(position, 1.); vFr = abs(dot(nV, normalize(-mvq.xyz))); vH = uv.y;');
           sh.fragmentShader = 'varying float vFr; varying float vH;\n' + sh.fragmentShader.replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n diffuseColor.a *= pow(vFr, 1.6) * (.12 + .88 * vH * vH);'); };
         l.userData.cone = cone; scene.add(l); scene.add(l.target); scene.add(cone); SPOOL.push(l); LPOOL.push(l); }
-      for (let i = 0; i < 8; i++) { const l = new THREE.PointLight('#ffa040', 0, 8, 2); scene.add(l); PPOOL.push(l); LPOOL.push(l); }
+      for (let i = 0; i < (PHONE ? 3 : 8); i++) { const l = new THREE.PointLight('#ffa040', 0, 8, 2); scene.add(l); PPOOL.push(l); LPOOL.push(l); }
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     const TT = (n, f) => { const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
@@ -45481,7 +45484,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       moon.position.set(cam.x - Math.sin(sa) * 38 - 8, el, night > .5 ? cam.y - 26 - Math.cos(sa) * 8 : cam.y + 22 + Math.cos(sa) * 10);   /* [unione4] di giorno il sole è a sud */ moon.target.position.set(cam.x, 0, cam.y); }
     if (dyn.fill) { dyn.fill.position.set(cam.x + 8, 14, cam.y + 40); dyn.fill.target.position.set(cam.x, 0, cam.y); dyn.fill.intensity = .12 + (1 - night) * .06 - night * .1; /* [luci5] */ dyn.fill.color.set(night > .5 ? '#5f86b4' : '#a8bcd0'); }
     if (dyn.rim) { dyn.rim.position.set(cam.x + 30, 18, cam.y + 34); dyn.rim.target.position.set(cam.x, 0, cam.y); dyn.rim.intensity = .1 + (1 - night) * .1 - night * .07; /* [luci5] */ dyn.rim.color.set(night > .5 ? '#6a8ac8' : '#b8c8e8'); }
-    dyn.buildings.forEach(b => b.mats.forEach(m => { if (m.emissiveMap) m.emissiveIntensity = .04 + night * .85; }));
+    { const ne = .04 + night * .85; dyn.__ne = ne; if (Math.abs(ne - (dyn.__neAll === undefined ? -9 : dyn.__neAll)) > .002) { dyn.__neAll = ne; dyn.buildings.forEach(b => { const op = b.__op === undefined ? 1 : b.__op; b.mats.forEach(m => { if (m.emissiveMap) m.emissiveIntensity = ne * op; }); }); } }   /* [fluido] le finestre si riaccendono solo quando cambia l'ora, non a ogni fotogramma */
     FD1.emis.forEach(m => { m.emissiveIntensity = .04 + night * .85; });   /* [pulitore1] */
     if (dyn.backdropMats) dyn.backdropMats.forEach(m => m.emissiveIntensity = .1 + night * .9);
     const time = ui.studio ? 30 : (ui.time || st.clock);   // [studio] tutto fermo: vento, bandiere, fumo, schermi
@@ -45540,6 +45543,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = Math.PI / 2 - n.face;
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
       if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
+      { const dd = Math.abs(n.x - cam.x) + Math.abs(n.y - cam.y), every = dd > 45 ? 3 : dd > 28 ? 2 : 1;   /* [fluido] lontano dalla camera l'animazione si aggiorna a fotogrammi alterni, col tempo recuperato */
+        if (every > 1 && (frameN + (g.id || 0)) % every) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; } }
       const dtA = dt + (g.userData.dt1 || 0); g.userData.dt1 = 0;
       if (g.userData.model) Models.animPerson(g, { speed: n.speedNow, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, held: n.hand || null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), punch: n.gesture === 'punch' ? 1 : 0, handsUp: !n.dead && n.stun <= 0 && ((n.action.name === 'fugge' && n.panic <= 0) || n.action.name === 'ordine_fermato'), riot: !!(n.ord && n.ord.riot), banner: n.ord && n.ord.protester ? n.ord.protester.banner : null, anim: window.Anim ? Anim.npcState(st, n) : null }, dtA); else   // [animazioni] anim
       animPerson(g, { anim: n.anim, speed: n.speedNow, gesture: n.gesture, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0 && p.cur !== 'pugni' && Math.hypot(n.x - p.x, n.y - p.y) < 6, twoHand: n.cop });
@@ -45730,6 +45735,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     }
     camera.updateMatrixWorld();
     scene.fog.near = lerp(walkDist * 1.05 + 10 - WXfog * (walkDist * .25 + 12), 40 - WXfog * 30, ease); scene.fog.far = lerp(walkDist * 1.9 + 110 - WXfog * (walkDist * .45 + 50), 160 - WXfog * 85, ease);   /* [nebbia_zoom1] la stessa aria a ogni zoom */
+    if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); camera.updateProjectionMatrix(); }   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
     if (dyn.sky) dyn.sky.position.copy(camera.position);
 
     // edifici tra la camera e il giocatore: diventano trasparenti
@@ -45737,11 +45743,15 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const feet0 = window.Tetti && p.lv && (p.lv.k === 'tetto' || p.lv.k === 'scala') ? Livelli.heightOf(st, p) : null, roofB0 = window.Tetti ? Tetti.roofB(st) : null;   // [writer] sul tetto: i raggi partono dai piedi veri, la casa sotto non sparisce
     const rays = focus.map(([fx, fz], k) => { const o = new THREE.Vector3(fx, (k === 0 && feet0 !== null ? feet0 : groundH(fx, fz)) + .9, fz); return new THREE.Ray(o, V3.copy(camera.position).sub(o).normalize().clone()); });
     let covered = false;
+    // [fluido] solo le case vicine alla linea fra te e la camera possono coprirti: le altre, se sono già piene, non si toccano
+    const sx0 = focus[0][0], sz0 = focus[0][1], sdx = camera.position.x - sx0, sdz = camera.position.z - sz0, sl2 = sdx * sdx + sdz * sdz || 1;
     dyn.buildings.forEach(B => {
+      if (!(B.fade > .001)) { const bx = (B.box3.min.x + B.box3.max.x) / 2, bz = (B.box3.min.z + B.box3.max.z) / 2, br = Math.hypot(B.box3.max.x - B.box3.min.x, B.box3.max.z - B.box3.min.z) / 2 + 6;
+        const t = Math.max(0, Math.min(1, ((bx - sx0) * sdx + (bz - sz0) * sdz) / sl2)), ex = sx0 + sdx * t - bx, ez = sz0 + sdz * t - bz; if (ex * ex + ez * ez > br * br) { B.fade = 0; return; } }
       const hit = !(feet0 !== null && (B.b === roofB0 || (roofB0 && B.b && B.b.id === roofB0.id) || B.box3.max.y - 2.5 < feet0 + .8)) && rays.some(ry => ry.intersectBox(B.box3, hitv) !== null); if (hit && rays[0].intersectBox(B.box3, hitv) !== null) covered = true;
       const target = hit ? 1 : 0; B.fade += (target - B.fade) * Math.min(1, dt * 8); fadeTick1(B);   /* [pulitore1] */
       const op = 1 - B.fade * .9;
-      B.mats.forEach(m => { const kt = m.userData.keepTr, tr = op < .99 || !!kt; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !tr; if (m.emissiveMap) m.emissiveIntensity *= op; });   // [case] keepTr
+      B.__op = op; B.mats.forEach(m => { const kt = m.userData.keepTr, tr = op < .99 || !!kt; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !tr; if (m.emissiveMap) m.emissiveIntensity = dyn.__ne * op; });   // [case] keepTr
     });
     if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = covered && !pveh);
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }   /* [pulitore1] */
@@ -45764,7 +45774,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     U.hurt.value = Math.max(hurtK, p.hp < 35 ? (.35 + Math.sin(time * 5) * .1) * (1 - p.hp / 35) : 0);
     {   // [luci4] ombre nella nebbia: le 4 luci con ombra accese più vicine
       U.vInvVP.value.multiplyMatrices(camera.matrixWorld, camera.projectionMatrixInverse); U.vCam.value.copy(camera.position);
-      U.vOn.value = (LOWQ.on || p.indoor || indoorNow) ? 0 : night;
+      U.vOn.value = (LOWQ.on || PHONE || p.indoor || indoorNow) ? 0 : night;
       let j = 0;
       for (const l of SPOOL) { if (j >= 4) break; if (!(l.intensity > .02) || !l.castShadow || !l.shadow.map) continue;
         U['vSM' + j].value = l.shadow.map.texture; U.vSMat.value[j].copy(l.shadow.matrix);
@@ -45782,7 +45792,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         U.lSun.value.subVectors(moon.position, moon.target.position).normalize(); const sk = (.55 * dk + .12 * night) * Math.min(1.4, moon.intensity);
         U.lSunC.value.set(moon.color.r * sk, moon.color.g * sk, moon.color.b * sk); }
       { const fp = project(p.x, 1, p.y); U.aFoc.value.set(Math.min(.9, Math.max(.1, fp.x)), Math.min(.9, Math.max(.1, 1 - fp.y))); }
-      const sOK = !LOWQ.on && !p.indoor && !indoorNow && moon.castShadow && moon.shadow.map && dk > .05;
+      const sOK = !LOWQ.on && !PHONE && !p.indoor && !indoorNow && moon.castShadow && moon.shadow.map && dk > .05;
       U.sOn.value = sOK ? A.shafts * dk * (1 - dyn.meteo.w[0] * .85) : 0;
       if (sOK) { U.sSM.value = moon.shadow.map.texture; U.sSMat.value.copy(moon.shadow.matrix);
         const k = (.07 + dyn.meteo.w[2] * .12 + dusk * .06) * moon.intensity; U.sCol.value.set(moon.color.r * k, moon.color.g * k * .97, moon.color.b * k * .9); }
