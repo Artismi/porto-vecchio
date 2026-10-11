@@ -11003,7 +11003,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [prestazioni] e il tempo del processore dentro frame(), per pezzo (con il contatore acceso)
   const CPUT = { t: 0, acc: {}, n: 0, res: [] };
   function cpuMark(k) { if (!GPUT.on) return; const t = performance.now(); if (k) CPUT.acc[k] = (CPUT.acc[k] || 0) + t - CPUT.t; CPUT.t = t; }
-  function cpuEnd() { if (!GPUT.on) return; if (++CPUT.n >= 30) { CPUT.res = Object.entries(CPUT.acc).map(([k, v]) => [k, v / CPUT.n]).sort((a, b) => b[1] - a[1]); CPUT.acc = {}; CPUT.n = 0; } }
+  function cpuEnd() { if (!GPUT.on) return; const t = performance.now(); if (!CPUT.t0) CPUT.t0 = t; if (++CPUT.n >= 30 || t - CPUT.t0 > 2000) { CPUT.t0 = t; CPUT.res = Object.entries(CPUT.acc).map(([k, v]) => [k, v / CPUT.n]).sort((a, b) => b[1] - a[1]); CPUT.acc = {}; CPUT.n = 0; } }
   function gpuTiming(on) { GPUT.on = !!on; if (on && !GPUT.gl) { GPUT.gl = renderer.getContext(); GPUT.ext = GPUT.gl.getExtension && GPUT.gl.getExtension('EXT_disjoint_timer_query_webgl2'); } return !!GPUT.ext; }
   function gpuB(name) { if (!GPUT.on || !GPUT.ext) return; const gl = GPUT.gl, q = gl.createQuery(); gl.beginQuery(GPUT.ext.TIME_ELAPSED_EXT, q); GPUT.open = { q, name }; }
   function gpuE() { if (!GPUT.open) return; const gl = GPUT.gl; gl.endQuery(GPUT.ext.TIME_ELAPSED_EXT); GPUT.pend.push(GPUT.open); GPUT.open = null; }
@@ -11150,6 +11150,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (end >= F.objs.length) { FRZ.ri++; FRZ.oi = 0; } else FRZ.oi = end;
     }
   }
+  const SUNSH = { n: 0, x: 0, y: 0, z: 0 };   // [fluido] l'ombra del sole a fotogrammi alterni (in frame)
   const SHMOV = { list: [] };   // [fluido] chi si muove (x, y, velocità), per le ombre dei faretti
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
@@ -11977,17 +11978,23 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       on.sort((a, b) => a.d2 - b.d2);
       const sp = [], pp = [];
       on.forEach(L => { const fire = L.flick >= .25 && L.y - L.gy < 2.2; if (!fire && sp.length < SPOOL.length) sp.push(L); else if (pp.length < PPOOL.length) pp.push(L); });
-      dyn.lsp = sp; dyn.lpp = pp;
+      // [fluido] ogni faretto resta sulla sua lampada finché questa è fra le scelte: prima l'ordine per distanza le rimescolava
+      // a ogni passo e ogni rimescolata ridisegnava l'ombra di quasi tutti i faretti
+      { const old = dyn.lslot || [], keep = new Set(sp), slot = new Array(SPOOL.length).fill(null), used = new Set();
+        old.forEach((L, i) => { if (L && keep.has(L) && i < slot.length) { slot[i] = L; used.add(L); } });
+        let j = 0; sp.forEach(L => { if (used.has(L)) return; while (j < slot.length && slot[j]) j++; if (j < slot.length) slot[j++] = L; });
+        dyn.lslot = slot; dyn.lsp = slot.filter(Boolean); }   // lslot: faretto i → lampada (o vuoto); lsp: le lampade, per gli altri
+      dyn.lpp = pp;
     }
     const kOf = L => { let k = L.always ? .06 + night * .94 : night * night;
       if (L.flick) k *= 1 - L.flick * .5 * (Math.sin(time * 13 + L.phase) * .5 + .5) * (Math.sin(time * 3.7 + L.phase * 2) > .3 ? 1 : .2);
       return k; };
     SPOOL.forEach((l, i) => {
-      const L = dyn.lsp[i], cone = l.userData.cone;
+      const L = dyn.lslot[i], cone = l.userData.cone;
       if (!L) { l.intensity = 0; cone.visible = false; return; }
-      const k = kOf(L), hh = Math.max(1.2, L.y - L.gy);
+      const k = kOf(L), hh = Math.max(1.2, L.y - L.gy); l.userData.k = k;
       if (l.userData.src !== L) { l.userData.src = L; l.position.set(L.x, L.y, L.z); l.target.position.set(L.x, L.gy - 2, L.z); l.target.updateMatrixWorld(); l.color.copy(L.color);
-        l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.shadow.needsUpdate = true; }
+        l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.userData.shDirty = true; }   // [fluido] l'ombra si rifà quando la luce è accesa (sotto)
       if (L.nb === undefined) { L.nb = 0; LSRC.forEach(o => { if (o !== L && Math.abs(o.x - L.x) < 7 && Math.abs(o.z - L.z) < 7) L.nb++; }); }   // [inverno29] vicine: si dividono la luce
       l.intensity = L.base * k * .55 / Math.sqrt(1 + L.nb * .6);   // [inverno30] la pozza a terra la fa la luce cotta
       const tall = hh > 2.8 && night > .25;
@@ -12001,11 +12008,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       for (const n of st.npcs) { if (n.dead || n.inside || (n.pop && !n.pop.near)) continue; movers.push(n.x, n.y, (n.speedNow || 0) + (n.gesture > 0 || n.stun > 0 || n.airT ? 1 : 0)); }
       for (const v of st.vehicles) { if (v.hidden) continue; movers.push(v.x, v.y, Math.abs(v.vx || 0) + Math.abs(v.vy || 0) + Math.abs(v.w || 0)); }
       const want = [];
-      SPOOL.forEach(l => { if (!(l.intensity > 0)) return; const u = l.userData, r = (l.distance || 10) + 2, lx = l.position.x, lz = l.position.z; let busy = false;
+      SPOOL.forEach(l => { const u = l.userData; if (!(l.intensity > 0) || !(u.k > .15)) { u.shDirty = true; return; }   // [fluido] di giorno la lampada è un filo: la sua ombra non si vede e non si ridisegna
+        const r = (l.distance || 10) + 2, lx = l.position.x, lz = l.position.z; let busy = false;
         for (let i = 0; i < movers.length; i += 3) { if (movers[i + 2] > .05 && Math.abs(movers[i] - lx) < r && Math.abs(movers[i + 1] - lz) < r) { busy = true; break; } }
-        if (busy) want.push([0, l]); else if (now - (u.shT || 0) > 500) want.push([now - (u.shT || 0), l]); });
+        if (busy || u.shDirty) want.push([0, l]); else if (now - (u.shT || 0) > 500) want.push([now - (u.shT || 0), l]); });
       want.sort((a, b) => (a[0] === 0 ? -1 : 0) - (b[0] === 0 ? -1 : 0) || b[0] - a[0]);
-      for (let q = 0; q < Math.min(3, want.length); q++) { const l = want[q][1]; l.shadow.needsUpdate = true; l.userData.shT = now; } }
+      for (let q = 0; q < Math.min(3, want.length); q++) { const l = want[q][1]; l.shadow.needsUpdate = true; l.userData.shT = now; l.userData.shDirty = false; } }
     PPOOL.forEach((l, i) => {
       const L = dyn.lpp[i]; if (!L) { l.intensity = 0; return; }
       l.position.set(L.x, L.y, L.z); l.color.copy(L.color); l.distance = L.dist; l.intensity = L.base * kOf(L) * .8;
@@ -12319,6 +12327,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const indoorNow = indoorPass(st); if (indoorNow) { scene.fog.near = 200; scene.fog.far = 400; }
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
+    // [fluido] l'ombra del sole ridisegnava tutta la città (1600 disegni) a ogni fotogramma: ora a fotogrammi alterni quando
+    // il gioco va sotto i 50 al secondo. La mappa e la sua matrice restano coppia fissa, quindi le ombre ferme non si spostano;
+    // solo quelle di chi si muove arrivano un fotogramma dopo. Subito se la luce o la camera saltano (taglio, teletrasporto)
+    { const S = SUNSH, sh = moon.shadow; sh.autoUpdate = false; S.n++;
+      const jump = Math.abs(moon.position.x - S.x) + Math.abs(moon.position.z - S.z) > 8 || Math.abs(moon.position.y - S.y) > 1;
+      if (jump || !(dt > .02) || S.n % 2 === 0) { sh.needsUpdate = true; S.x = moon.position.x; S.y = moon.position.y; S.z = moon.position.z; } }
     cpuMark('interni'); ombre1(st, night); cpuMark('ombre gente');   /* [ombre1] */
     instCull(); gpuPoll(); cpuMark('ritaglio'); gpuB('scena');   /* [prestazioni] */
     renderer.setRenderTarget(rt); renderer.render(scene, camera); cpuMark('disegno scena');

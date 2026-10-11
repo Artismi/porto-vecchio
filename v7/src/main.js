@@ -783,7 +783,7 @@
   let glOk = true;
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }
   if (!glOk) {
-    $('screen').innerHTML = `<div class="in"><div class="logo" style="font-size:clamp(34px,6vw,64px)">Porto Vecchio</div><div class="story"><p>Il gioco usa la grafica 3D del browser (WebGL) e qui non è riuscito ad avviarla.</p><p>Prova ad aprire la pagina in Chrome, Edge o Firefox aggiornati, con l'accelerazione hardware attiva nelle impostazioni del browser.</p></div></div>`;
+    $('screen').innerHTML = `<div class="in"><div class="logo" style="font-size:clamp(34px,6vw,64px)">Porto Vecchio</div><div class="story"><p>Il gioco usa la grafica 3D del browser (WebGL) e qui non è riuscito ad avviarla.</p><p>Se prima funzionava: chiudi del tutto il browser (tutte le finestre) e riaprilo. Quando la scheda video si blocca, il browser spegne la grafica 3D per quel sito finché non lo riavvii.</p><p>Altrimenti prova Chrome, Edge o Firefox aggiornati, con l'accelerazione hardware attiva nelle impostazioni del browser.</p></div></div>`;
     return;
   }
   setTimeout(() => { try { softwareCheck(); } catch (e) { } }, 4000);   // [prestazioni] avvisa se si disegna senza scheda video
