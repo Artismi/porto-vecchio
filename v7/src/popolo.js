@@ -688,6 +688,7 @@ var Popolo = (function () {
     if (isPassive(st, n)) return true;   // Grigi in servizio, membri della Risacca: li muove sempre il motore
     if (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato)) return true;   // [ordine] in piazza, in fila, portato in questura
     if (n.room) return true;             // [scopo] è nella stanza col giocatore
+    if (n.__ev) return true;             // [eventi] sta recitando una scena vicino al giocatore
     if (n.panic > 0 || n.stun > 0 || n.aggro || n.jailedUntil > st.t) return n.jailedUntil <= st.t;
     return ['fugge', 'denuncia', 'affronta', 'combatte', 'insegue'].includes(n.action.name);
   }

@@ -1,3 +1,13 @@
+/* [fluido] i canvas 2D del gioco (graffiti, terreno, neve, insegne...) si disegnano una volta e si rileggono coi pixel
+   (getImageData): nella scheda video ogni rilettura la ferma e ricopia tutto (era il 75% del tempo del processore).
+   Qui ogni contesto 2D nasce «da rileggere spesso», cioè in memoria normale; le texture ci arrivano lo stesso. */
+(function () {
+  try {
+    const P = HTMLCanvasElement.prototype, g0 = P.getContext;
+    P.getContext = function (type, opt) { if (type === '2d') opt = Object.assign({ willReadFrequently: true }, opt || {}); return g0.call(this, type, opt); };
+    if (typeof OffscreenCanvas !== 'undefined') { const O = OffscreenCanvas.prototype, o0 = O.getContext; O.getContext = function (type, opt) { if (type === '2d') opt = Object.assign({ willReadFrequently: true }, opt || {}); return o0.call(this, type, opt); }; }
+  } catch (e) { }
+})();
 /* [file://] Aperto col doppio clic (file://) il browser vieta fetch() sui file della cartella, e i modelli
    (assets/*.json) non arrivano: i personaggi restano a blocchetti. Qui, solo in quel caso, ogni richiesta
    a assets/...json viene servita dal gemello assets/...json.js, caricato con un <script> (che file:// permette).
