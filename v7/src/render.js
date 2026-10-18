@@ -2715,7 +2715,7 @@ var Render = (function () {
   }
   function buildPropsIsland() {
     const T = G.T, r = rng(2026), P = G.PLACES;
-    const free = (x, z) => { const v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; };
+    const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
     // lampioni e palme lungo le strade
     (M.roads || []).forEach(rd => {
       if (rd.kind === 'sterrato') return;
@@ -4040,7 +4040,7 @@ var Render = (function () {
   // ---------------- le strade: guardrail, cartelli, lavori in corso, transenne, arredo ----------------
   function buildStrade31() {
     const T = G.T, r = rng(2031), W0 = M.world; if (!W0) return 0;
-    const free = (x, z) => { const v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; };
+    const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; });   /* [leggera] anche attorno */
     const city = (x, z) => zoneT(Math.floor(x / TS), Math.floor(z / TS)) === ZN.CITTA;
     let n = 0;
     const rail = sm('#8a8c8a', { metalness: .55, roughness: .45 }), railR = sm('#7a6250', { metalness: .4, roughness: .7 }), post = sm('#5a5c5e', { metalness: .5, roughness: .6 }), conc = concrete('#8a8682'), concD = concrete('#6e6a66');
@@ -4132,7 +4132,7 @@ var Render = (function () {
       for (let k = 1; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < nx0) continue; acc = 0; nx0 = 22 + r() * 22;
         const nx = -(bz - az) / L, nz = (bx - ax) / L, sd = r() < .5 ? 1 : -1, off = rd.w / 2 + (rd.rect ? 1.1 : 1.5), x = ax + nx * sd * off, z = az + nz * sd * off;
         if (!free(x, z) || !city(x, z) || nearJ(x, z, 2)) continue; const rot = Math.atan2(-nx * sd, -nz * sd), q = r() * .9;
-        if (q < .3) bench(x, z, rot, 'iron'); else if (q < .52) { bollard(x, z); if (free(x + (bx - ax) / L * 1.6, z + (bz - az) / L * 1.6)) bollard(x + (bx - ax) / L * 1.6, z + (bz - az) / L * 1.6); } else if (q < .62) phoneBooth(x, z, rot); else if (q < .7) mailbox(x, z, rot); else if (q < .78) busStop(x + nx * sd * .6, z + nz * sd * .6, rot + Math.PI);
+        if (q < .3) bench(x, z, rot, 'iron'); else if (q < .52) { bollard(x, z); if (free(x + (bx - ax) / L * 1.6, z + (bz - az) / L * 1.6)) bollard(x + (bx - ax) / L * 1.6, z + (bz - az) / L * 1.6); } else if (q < .62) phoneBooth(x, z, rot); else if (q < .7) mailbox(x, z, rot); else if (q < .78 && free(x + nx * sd * .6, z + nz * sd * .6)) busStop(x + nx * sd * .6, z + nz * sd * .6, rot + Math.PI);   /* [leggera] la fermata spostata di lato: si controlla dove va davvero */
         n++; }
     });
     return n;
@@ -5809,7 +5809,7 @@ var Render = (function () {
       } else {   // casa: i vasi ai lati della porta, la bici appoggiata, la bombola, la sedia di chi si siede al sole
         const k = rb();
         if (k < .55) { [-1, 1].forEach(s => { if (rb() < .25) return; const [x, z] = at(s * (.95 + rb() * .2), .3); const g = G0(); B35.vaso(g, 0, 0, .26 + rb() * .16, pick(rb, ['#3f6a35', '#4f7e3a', '#5a7a3a', '#6a5a3a'])); put(g, x, z, ry, .22, .22); }); }
-        if (k > .3 && rb() < .4) { const [x, z] = at(side * (1.6 + rb()), .32); const g = G0(); B35.bici(g, 0, 0, Math.PI / 2); put(g, x, z, ry, .65, .2); }
+        if (k > .3 && rb() < .4) { const [x, z] = at(side * (1.6 + rb()), .32); const g = G0(); B35.bici(g, 0, 0, 0); put(g, x, z, ry, .65, .2);   /* [leggera] appoggiata lungo il muro: girata di 90° entrava per metà nella casa */ }
         else if (rb() < .25) { const [x, z] = at(side * 1.3, .3); const g = G0(); B35.bombola(g, 0, 0, pick(rb, ['#c84a2a', '#4a6a8a', '#a8a8a0'])); put(g, x, z, ry, .2, .2); }
         else if (rb() < .2) { const [x, z] = at(side * 1.3, .45); const g = G0(); B35.sedia(g, 0, 0, Math.PI, pick(rb, ['#5a4a3a', '#7a6a50'])); put(g, x, z, ry, .3, .3); }
       }
@@ -7194,8 +7194,17 @@ var Render = (function () {
     const wd = wallDist2(x, z), rd = roadDir2(x, z); let a0;
     if (wd < 3 && !(rd.d < wd)) a0 = 0; else if (rd.a !== null && rd.d < 6) a0 = rd.a; else return rot;
     const q = Math.PI / 2; return a0 + Math.round((rot - a0) / q) * q; }
-  function place(o, x, z, rot, live) { rot = snapRot2(o, x, z, rot);   /* [pulitore2] */ o.position.set(x, groundH(x, z), z); o.rotation.y = rot || 0; if (live) { shadowed(o); scene.add(o); DZ.hint = null; } else { const tag = newTag(); curTag = tag; addStatic(o); curTag = null; regProp(o, tag); } return o; }
+  function place(o, x, z, rot, live) { rot = snapRot2(o, x, z, rot);   /* [pulitore2] */ o.position.set(x, groundH(x, z), z); o.rotation.y = rot || 0; settle(o); if (live) { shadowed(o); scene.add(o); DZ.hint = null; } else { const tag = newTag(); curTag = tag; addStatic(o); curTag = null; regProp(o, tag); } return o; }
 
+  // [leggera] sul pendio la cosa si appoggia sullo spigolo più basso (a monte affonda di qualche centimetro, a valle non resta
+  // sospesa): fino a 60 cm, oltre resta com'era (le cose grandi su un pendio forte vanno sistemate da chi le posa)
+  const SETTLE_B = new THREE.Box3();
+  function settle(o) {
+    o.updateMatrixWorld(true); SETTLE_B.setFromObject(o); if (!isFinite(SETTLE_B.min.x)) return;
+    const { min, max } = SETTLE_B, y0 = o.position.y; if (max.x - min.x > 14 || max.z - min.z > 14) return;
+    let lo = y0; [[min.x, min.z], [min.x, max.z], [max.x, min.z], [max.x, max.z]].forEach(([qx, qz]) => { lo = Math.min(lo, groundH(qx, qz)); });
+    const d = y0 - lo; if (d > .04 && d < .6) o.position.y = y0 - d;
+  }
   // --- lampioni ---
   function streetLamp(x, z, kind, rot) {
     const g = G0(), iron = PM.iron(), y0 = groundH(x, z);
@@ -8738,7 +8747,7 @@ var Render = (function () {
   function buildWinter() {
     const W0 = M.world; if (!W0 || !W0.WALL) return;
     const P = G.PLACES, r = rng(1953), T = G.T;
-    const free = (x, z) => { const v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; };
+    const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
     // ---- il Muro: lastre di cemento, filo spinato, scritte del regime e della Risacca, torri coi riflettori ----
     const WL = W0.WALL, slabM = [concrete('#7e7e7c'), concrete('#8a8a86'), concrete('#747472')], wire = sl('#2a2a2e');
     const posters = ['ОПЕКА', '보호', 'ПОРЯДОК', 'ТРУД', 'ГАРАНТ'];
@@ -8749,7 +8758,9 @@ var Render = (function () {
     let si = 0;
     for (let y = WL.y0; y < WL.y1; y += SL, si++) {
       if (y + SL / 2 > WL.gate[0] && y + SL / 2 < WL.gate[1]) continue;
+      if (WL.towers.some(([tx2, ty2]) => Math.abs(ty2 - (y + SL / 2)) < 1.5) || G.tileAt(Math.floor((WL.x + 1) / TS), Math.floor((y + SL / 2) / TS)) === T.WATER) continue;   // [leggera] la torre ha il suo piede; in mare niente lastre
       const x = WL.x + 1, g = G0(), tone = shade(wallG(), .92 + th(si, 7, 1953) * .14);
+      { const h0 = groundH(x, y + SL / 2), hm = Math.min(...[[-.15, 0], [-.15, SL], [1.35, 0], [1.35, SL], [.6, SL / 2]].map(([u, w]) => groundH(x + u, y + w))), d = h0 - hm; if (d >= .6) fAt(g, fB(1.5, d + .15, SL - .03, shade(tone, .85), 'concrete', .01), .55, -d / 2 + .05, 0); }   // [leggera] sul pendio la fondazione scende fino a terra
       fAt(g, fB(.24, 3.6, SL - .03, tone, 'concrete', .01), 0, 1.8, 0);
       fAt(g, fB(1.3, .26, SL - .03, shade(tone, .92), 'concrete', .01), .7, .13, 0);   // il piede a L verso la Base
       fAt(g, fB(.12, .9, .16, shade(tone, .9), 'concrete', .005), .19, .6, 0);
@@ -8938,7 +8949,7 @@ var Render = (function () {
     });
     // ---- manifesti del Garante lungo le costiere ----
     let nm = 0; (M.roads || []).filter(rd => rd.id === 'nord' || rd.id === 'litoranea' || rd.id === 'porto').forEach(rd => { for (let k = 10; k < rd.pts.length - 2; k += 24) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / L, nz = (bx - ax) / L, x = ax + nx * (rd.w / 2 + 3), z = az + nz * (rd.w / 2 + 3); if (!free(x, z)) continue;
-      const g = G0(); add(g, box(.15, 3, .15, sl('#2a2a30')), -1.6, 1.5, 0); add(g, box(.15, 3, .15, sl('#2a2a30')), 1.6, 1.5, 0);
+      const g = G0(), ry0 = Math.atan2(nx, nz), h00 = groundH(x, z); [-1.6, 1.6].forEach(o => { const dh = Math.max(0, h00 - groundH(x + o * Math.cos(ry0), z - o * Math.sin(ry0))); add(g, box(.15, 3 + dh, .15, sl('#2a2a30')), o, (3 - dh) / 2, 0); });   // [leggera] sul pendio ogni gamba arriva a terra
       const bb = new THREE.Mesh(new THREE.PlaneGeometry(4, 2.2), new THREE.MeshLambertMaterial({ map: signTexture(pick(r, ['ОПЕКА ТЕБЯ ВИДИТ', '보호는 사랑', 'ТРУД · ПОРЯДОК', 'IL GARANTE VEGLIA']), '#f2e8d8', pick(r, ['#8a1a1a', '#1a3a6a'])), side: THREE.DoubleSide })); bb.position.y = 3.6; g.add(bb); add(g, box(4.2, .15, .3, sm('#e2e6ec')), 0, 4.78, 0);
       place(g, x, z, Math.atan2(nx, nz)); nm++; } });
   }

@@ -1,7 +1,8 @@
 // Sonda della mappa: carica il gioco vero in Chromium senza testa e cerca gli oggetti di scena messi male.
 //   node strumenti/sonda_mappa.js [uscita.json]        (da v7/, serve playwright: /opt/node22/lib/node_modules/playwright o PW=…)
 // Controlla ogni oggetto registrato da render.js (DZ.props e DZ.big): dentro un edificio, sulla carreggiata, in acqua,
-// sospeso o affondato rispetto al terreno, sovrapposto a un altro. Per ognuno dice quale funzione l'ha piazzato
+// sospeso (sotto lo spigolo più basso c'è vuoto, e non poggia su un'altra cosa) o sepolto (il piede è sotto anche lo
+// spigolo più basso del terreno), sovrapposto a un altro (se non sta sopra di lui). Per ognuno dice quale funzione l'ha piazzato
 // (file:riga del sorgente in src/), così si corregge alla fonte. Costruisce da sé una copia di index.html (_sonda.html)
 // con la stessa sostituzione di build.py e la cancella alla fine.
 const path = require('path'), http = require('http'), fs = require('fs');
@@ -33,7 +34,7 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
   try {
     b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
     const pg = await b.newPage({ viewport: { width: 1280, height: 720 } });
-    const errs = []; pg.on('pageerror', e => errs.push(e.message)); pg.on('console', q => { if (q.type() === 'error') errs.push(q.text().slice(0, 200)); });
+    const errs = []; pg.on('pageerror', e => errs.push(e.message + ' | ' + where(String(e.stack || '').split('\n').slice(1, 4).map(l => (l.match(/at (?:(\S+) \()?.*?:(\d+):\d+/) || []).slice(1).join('@')).join(' < ')))); pg.on('console', q => { if (q.type() === 'error') errs.push(q.text().slice(0, 200)); });
     await pg.goto(`http://localhost:${srv.address().port}/_sonda.html`);
     await pg.waitForFunction(() => window.__pv && window.__pv.R && window.__pv.R.__dz && window.__pv.R.__dz.props.length > 0, null, { timeout: 400000 });
     const tLoad = Date.now() - t0; await pg.waitForTimeout(5000);
@@ -48,10 +49,10 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
         for (const [fx, fz] of [[0, 0], [-.7, -.7], [.7, .7], [-.7, .7], [.7, -.7]]) { const k = Math.floor((p.c.x + fx * p.he.x) / TS) + ',' + Math.floor((p.c.z + fz * p.he.z) / TS); if (bAt.has(k)) { out.dentro_edificio.push(row(p, { edificio: bAt.get(k) })); break; } }
         if (t === T.VIA) out.su_strada.push(row(p));
         if (T.WATER !== undefined && t === T.WATER) out.in_acqua.push(row(p));
-        const d = p.base - R.groundH(p.c.x, p.c.z); if (d > .35) out.sospesi.push(row(p, { scarto: +d.toFixed(2) })); if (d < -.5) out.affondati.push(row(p, { scarto: +d.toFixed(2) }));
+        const hmin = Math.min(...[[0, 0], [-.8, -.8], [.8, .8], [-.8, .8], [.8, -.8]].map(([u, w]) => R.groundH(p.c.x + u * p.he.x, p.c.z + w * p.he.z))), d = p.base - hmin, held = d > .35 && all.some(q => q !== p && q.base + 2 * q.he.y > p.base - .15 && q.base < p.base && Math.abs(q.c.x - p.c.x) < q.he.x + p.he.x * .5 && Math.abs(q.c.z - p.c.z) < q.he.z + p.he.z * .5); if (d > .35 && !held) out.sospesi.push(row(p, { scarto: +d.toFixed(2) })); if (d < -.5) out.affondati.push(row(p, { scarto: +d.toFixed(2) }));   /* sotto anche lo spigolo più basso: sepolto */
       });
       const grid = new Map(); all.forEach((p, i) => { const k = Math.floor(p.c.x / 4) + ',' + Math.floor(p.c.z / 4); (grid.get(k) || grid.set(k, []).get(k)).push(i); });
-      all.forEach((a, i) => { const gx = Math.floor(a.c.x / 4), gz = Math.floor(a.c.z / 4); for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) (grid.get((gx + dx) + ',' + (gz + dz)) || []).forEach(j => { if (j <= i) return; const b = all[j]; const ix = Math.min(a.c.x + a.he.x, b.c.x + b.he.x) - Math.max(a.c.x - a.he.x, b.c.x - b.he.x), iz = Math.min(a.c.z + a.he.z, b.c.z + b.he.z) - Math.max(a.c.z - a.he.z, b.c.z - b.he.z); if (ix <= 0 || iz <= 0) return; const f = ix * iz / Math.max(.01, Math.min(4 * a.he.x * a.he.z, 4 * b.he.x * b.he.z)); if (f > .35) out.sovrapposti.push(row(a, { con: b.who, quota: +f.toFixed(2) })); }); });
+      all.forEach((a, i) => { const gx = Math.floor(a.c.x / 4), gz = Math.floor(a.c.z / 4); for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) (grid.get((gx + dx) + ',' + (gz + dz)) || []).forEach(j => { if (j <= i) return; const b = all[j]; const ix = Math.min(a.c.x + a.he.x, b.c.x + b.he.x) - Math.max(a.c.x - a.he.x, b.c.x - b.he.x), iz = Math.min(a.c.z + a.he.z, b.c.z + b.he.z) - Math.max(a.c.z - a.he.z, b.c.z - b.he.z); if (ix <= 0 || iz <= 0) return; if (a.base >= b.base + 2 * b.he.y - .08 || b.base >= a.base + 2 * a.he.y - .08) return; /* una sopra l altra: impilate, non compenetrate */ const f = ix * iz / Math.max(.01, Math.min(4 * a.he.x * a.he.z, 4 * b.he.x * b.he.z)); if (f > .35) out.sovrapposti.push(row(a, { con: b.who, quota: +f.toFixed(2) })); }); });
       let info = { oggetti: DZ.props.length, grandi: DZ.big.length, persone: st.npcs.length, mezzi: (st.vehicles || []).length };
       try { info.heapMB = Math.round(performance.memory.usedJSHeapSize / 1e6); } catch (e) { }
       return { info, out };
