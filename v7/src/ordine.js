@@ -39,7 +39,7 @@ var Ordine = (function () {
     blocchiAlGiorno: 4, bloccoMin: [60, 130],
     rondaStopOgni: [3, 7],        // minuti di gioco tra un controllo e l'altro di una ronda
     protestaOgni: 50,              // minuti di gioco tra due prove di protesta spontanea
-    abitanti: 560,                 // più gente per strada (popolo.js: CFG.max)
+    abitanti: 207,                 // (popolo.js: CFG.max) [leggera] 207 deciso il 18/10: prima 560 «più gente per strada», ma la gente dev'essere densa nei posti, non ovunque
   };
 
   // ================= AL CARICAMENTO: il Supermercato del Popolo, i documenti =================

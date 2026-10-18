@@ -55,6 +55,7 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
       all.forEach((a, i) => { const gx = Math.floor(a.c.x / 4), gz = Math.floor(a.c.z / 4); for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) (grid.get((gx + dx) + ',' + (gz + dz)) || []).forEach(j => { if (j <= i) return; const b = all[j]; const ix = Math.min(a.c.x + a.he.x, b.c.x + b.he.x) - Math.max(a.c.x - a.he.x, b.c.x - b.he.x), iz = Math.min(a.c.z + a.he.z, b.c.z + b.he.z) - Math.max(a.c.z - a.he.z, b.c.z - b.he.z); if (ix <= 0 || iz <= 0) return; if (a.base >= b.base + 2 * b.he.y - .08 || b.base >= a.base + 2 * a.he.y - .08) return; /* una sopra l altra: impilate, non compenetrate */ const f = ix * iz / Math.max(.01, Math.min(4 * a.he.x * a.he.z, 4 * b.he.x * b.he.z)); if (f > .35) out.sovrapposti.push(row(a, { con: b.who, quota: +f.toFixed(2) })); }); });
       let info = { oggetti: DZ.props.length, grandi: DZ.big.length, persone: st.npcs.length, mezzi: (st.vehicles || []).length };
       try { info.heapMB = Math.round(performance.memory.usedJSHeapSize / 1e6); } catch (e) { }
+      { const by = {}; st.npcs.forEach(n => { const k = n.pop ? (n.pop.cast ? 'cast:' + String(n.id).replace(/[0-9_]+$/, '') : 'popolo') : n.cop ? 'polizia' : n.military ? 'militari' : String(n.id).replace(/[0-9_]+$/, '').replace(/[0-9]+/g, '#'); by[k] = (by[k] || 0) + 1; }); info.persone_per_tipo = by; }
       return { info, out };
     });
     Object.values(r.out).forEach(L => L.forEach(q => { q.chi = where(q.chi); if (q.con) q.con = where(q.con); }));
