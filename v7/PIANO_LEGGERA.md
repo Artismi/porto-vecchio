@@ -509,6 +509,37 @@ Le fasi 1-4 vanno in quest'ordine (ognuna rende più semplice la successiva); 5,
 
 ---
 
+## Avanzamento
+
+### 18 ottobre — fase 1 (prove) e inizio fasi 2 (mappa) e 4 (abitanti)
+- **`test_cantiere` passa tutta.** Il garage non si posava perché nel bosco ogni casella aveva un albero o una roccia.
+  Ora una costruzione posata su alberi o roccia fuori città apre il cantiere: la banda prima disbosca e cava, poi
+  costruisce; da solo sgombri tu subito, se hai ascia o piccone (altrimenti la sagoma è rossa e dice cosa serve).
+  Sbloccata, la prova ha mostrato altri 7 errori a valle (alberello sulla sabbia, pannello e pala eolica): corretti.
+- **`test_eventi` passa.** La caduta in bici era una gara fra due tempi (arrivava prima di cadere: scena muta);
+  il ciclista ora passa di traverso invece di venire verso il giocatore; la rissa è un finale valido.
+  Resta raro (sotto 1 su 20) un attore che entra in casa a metà scena: da guardare.
+- **`test_ordine`** non è rotta: simula 2 giorni; con `node test_ordine.js 0.2 1` gira in meno di un minuto.
+- **`test_fazioni`**: il «NO» («nessuno si chiama più lo Squalo») c'era già prima di queste modifiche; da guardare.
+- **Mappa** (`strumenti/sonda_mappa.js`): bici davanti alle porte lungo il muro (erano girate di 90°), chi posa
+  arredi di strada controlla 60 cm attorno, ogni cosa si appoggia sullo spigolo più basso del terreno, il Muro senza
+  lastre in mare o nelle torri, cartelloni con le gambe fino a terra, fermata dell'autobus mai in acqua.
+  Dentro le case da 48 a 19, sepolti da 13 a 5. La sonda ora riconosce le cose impilate.
+- **Abitanti 207** (§3): case scelte una volta, 70% attorno alla casa di partenza; i personaggi della storia contano;
+  le altre isole no. `ordine.js` alzava il tetto a 560: tolto. Nel browser **da 569 a 279 persone** (174 abitanti,
+  ~63 personaggi e fazioni, 8 militari, 31 sulle altre isole). Logica **da 3,10 a 1,81 ms per passo**.
+- **Regia nei posti** (§17.3): una scena ogni 50-120 s dove c'è già gente o in un luogo pubblico; mai la stessa nello
+  stesso posto o quartiere nello stesso giorno; nessuno esce di casa apposta; verso il giocatore al massimo una ogni
+  10 minuti; tempi e passi un po' diversi ogni volta. Prova: 5-7 scene diverse in 8 minuti, nessuna ripetuta.
+
+### Prossimi passi
+1. Mappa: i 19 rimasti dentro le case (jersey, bandiere della Rocca, sdraio e ombrelloni su `casa_187`), sdraio e
+   ombrelloni sovrapposti, recinti e cartelloni lunghi su pendio; sonda estesa a vegetazione e kit; giro di foto.
+2. Le altre isole accese solo da vicino (§17.2): oggi la gente lontana è già leggera; resta da non costruire
+   oggetti e dettagli delle isole finché non ti avvicini.
+3. Fase 3 (leggera): asset senza doppioni, GLB, kit a richiesta.
+4. Fase 5: comandi leggeri pensati per il telefono (§17.4).
+
 ## Misure
 
 (da compilare a ogni fase: data, macchina, fps medi, fotogramma peggiore, disegni, triangoli, MB scaricati, s di
@@ -517,3 +548,4 @@ caricamento, abitanti totali / vicini)
 | Data | Macchina | Caricamento | Persone / mezzi | Heap JS | Note |
 | --- | --- | --- | --- | --- | --- |
 | 18/10 | container, Chromium senza scheda video (SwiftShader) | 33-54 s | 569 / 71 | 1,5 GB | partenza; fps non significativi senza scheda video |
+| 18/10 sera | stesso | 29-42 s | 279 / 71 | 1,4-1,5 GB | dopo 207 abitanti; logica 1,81 ms per passo (era 3,10) |
