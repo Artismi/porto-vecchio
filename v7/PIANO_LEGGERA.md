@@ -69,12 +69,10 @@ Restano fuori (o si caricano solo a richiesta): `studio.js`, `editor.js`, `misur
 `mente.js` (IA, solo con chiave), i sistemi d'ambiente pesanti del pacchetto inverno se non servono alla stagione.
 Tutti gli altri restano: la leggerezza viene dal disegno e dagli asset, non dal togliere gioco.
 
-### 2.4 Pulizia del repository (non tocca il gioco)
-- Spostare `v2`…`v6`, `_to_delete`, `_scambio`, `_backup_*`, `_immagini`, `menu-zaino-personaggio.zip`,
-  `porto-vecchio.html` vecchio in un ramo d'archivio (`archivio`) e toglierli da `main`. La storia git li conserva.
-- `index.html` ed `editor.html` generati: fuori dal repository (si fanno con `build.py` e su Vercel in fase di build),
-  così le unioni non hanno più conflitti su 6,7 MB di testo.
-- I 41 `HANDOFF_*.md` restano, ma si aggiunge `src/INDICE.md`: un rigo per modulo (cosa fa, da chi dipende, prove).
+### 2.4 Il repository (non si butta niente)
+- Le cartelle vecchie restano. La pubblicazione prende solo quello che serve al gioco (una lista in `build.py` e un
+  `.vercelignore`), così i 175 MB di versioni vecchie e gli scarti non si scaricano mai.
+- I 41 `HANDOFF_*.md` restano, e si aggiunge `src/INDICE.md`: un rigo per modulo (cosa fa, da chi dipende, prove).
 
 ---
 
@@ -88,7 +86,7 @@ regia…). Le case degli abitanti stanno già abbastanza vicine alla casa del gi
 all'inizio della partita, sulle case e sui posti di lavoro; dopo, nessuno nasce, sparisce o cambia strada perché il
 giocatore si è spostato.
 
-1. **Totale**: `CFG.max` da 420 a **180** nella leggera (220 nella completa), e un tetto anche per i moduli che
+1. **Totale**: `CFG.max` da 420 a **207** (deciso, §17), e un tetto anche per i moduli che
    aggiungono gente per conto loro (writer, sottosuolo, regia, fazioni): **≤ 240 persone in tutto** nella leggera.
    `maxNear` da 70 a **40**.
 2. **Le case, una volta sola, in ordine di distanza** dalla casa di partenza del giocatore (`playerHome`):
@@ -112,7 +110,7 @@ giocatore si è spostato.
 7. **Prova automatica dell'«effetto codazzo»** (`test_popolo.js`): il giocatore cammina per 20 minuti di gioco in un
    quartiere lontano; il numero di persone entro 40 m da lui deve restare quello del posto (misurato con il giocatore
    assente), non salire. In più: distribuzione per distanza, mestieri essenziali coperti, casa del giocatore libera.
-   Poi `test_vita`, `test_economia`, `test_soldi` brevi per vedere che l'economia regge con 180.
+   Poi `test_vita`, `test_economia`, `test_soldi` brevi per vedere che l'economia regge con 207.
 
 ---
 
@@ -151,7 +149,8 @@ Già fatto: bolla, costruzioni a budget, vestire a rate, blocchi a fasi, BVH, om
 5. **Riparare le prove rotte** prima di tutto: `test_cantiere` (garage), il «NO» di `test_fazioni`, `test_economia`
    oltre i 15 minuti (ridurre i giorni simulati o la popolazione nella prova). Una `npm test` che lancia le prove brevi.
 6. **Codice morto**: i rami già sostituiti (sezione 2D degli scavi, «Fruga: …» e «Cerca qui intorno», i pannelli di
-   `oggetti_ui.js` che ormai rimandano al Menu) vanno cancellati, non lasciati spenti.
+   `oggetti_ui.js` che ormai rimandano al Menu) escono dalla build; il codice si conserva in `src/_archivio/` con una
+   nota su cosa faceva (non si butta niente, §17.6).
 
 ---
 
@@ -228,8 +227,8 @@ Da completare:
 1. **Quaderno delle ricette leggibile**: per ogni ricetta ingredienti con «ne hai / ne servono», attrezzo, postazione,
    tempo; stato in tre colori (si fa ora / manca qualcosa / manca la postazione) e **dove trovare** quello che manca
    (bottega più vicina, posto da frugare, ricetta che lo produce).
-2. **Ricette da scoprire**: all'inizio una ventina; le altre si imparano smontando, leggendo (giornali, manuali da
-   trovare), dal mestiere e dagli amici. Oggi sono tutte visibili: troppe per orientarsi.
+2. **Tutte le ricette visibili** (deciso, §17.5), ma ordinate: prima quelle che si fanno ora e qui, poi quelle a cui
+   manca poco; filtri per postazione e per famiglia, ricerca per nome e per ingrediente («cosa ci faccio col ferro?»).
 3. **Coda di lavoro** alla postazione: «fanne 5», con il tempo che passa e il personaggio che lavora davvero (anima-
    zione della postazione già c'è). Si può lasciare e tornare.
 4. **Prende anche dal baule** se sei nel covo (oggi solo dalla borsa e dalle scorte delle basi in alcuni casi): unificare.
@@ -368,7 +367,7 @@ Per ogni funzione: si gioca 10 minuti dall'inizio alla fine, si scrive cosa non 
 8. **Barche e costa** (`HANDOFF_costa.md`): pescatori che escono davvero, nave che parte e torna, pescare dalla barca.
 9. **Freddo** (`HANDOFF_oggetti.md`, `HANDOFF_protagonista.md`): stufe, carbone, vestiti a strati come sesto bisogno;
    i valori ci sono già (`Oggetti.warmth`, `st.ogg.calore`).
-10. **Bambini** (`HANDOFF_regia.md`): oggi la popolazione va dai 18 anni in su. Con 180 abitanti si possono
+10. **Bambini** (`HANDOFF_regia.md`): oggi la popolazione va dai 18 anni in su. Con 207 abitanti si possono
     aggiungere figli nelle famiglie, scuola e gioco, con l'altezza nel modello.
 
 ---
@@ -472,17 +471,41 @@ Le fasi 1-4 vanno in quest'ordine (ognuna rende più semplice la successiva); 5,
 
 ---
 
-## 17. Decisioni da prendere
+## 17. Decisioni prese (18 ottobre)
 
-1. **Numero di abitanti**: 180 nella leggera e 220 nella completa, o un valore solo per tutte e due?
-2. **Mappa**: si tiene l'isola intera (1300 × 400 m) con la gente concentrata attorno alla casa del giocatore, oppure la
-   leggera si ferma a una parte (borgo, Ponente, Lungomare, collina, porto)?
-3. **Regia**: va bene togliere le scene messe in piedi attorno al giocatore (§3.4) e tenerle solo nei posti?
-4. **Tasti**: va bene la mappa unica di §6 (E interagisci con lo scippo spostato nel menu della persona, K solo
-   crafting, la profondità degli scavi su PagSu/PagGiù)? Cambia le abitudini di chi gioca già.
-5. **Ricette da scoprire** invece di tutte visibili dall'inizio?
-6. **Cartelle vecchie** (`v2`…`v6`, `_to_delete`, `_scambio`, backup): spostarle in un ramo d'archivio e toglierle
-   da `main`?
+1. **Abitanti: 207** (`CFG.max = 207`, un valore solo per le due versioni). Il tetto di §3.1 (≤ 240 persone in tutto,
+   contando writer, sottosuolo, regia, fazioni) resta.
+2. **Tutta l'isola.** Le altre isole dell'arcipelago (`world.js`, sezione `[arcipelago]`: Palme, Torre, Isola Lunga,
+   Gabbiano, Scoglio Piatto, Relitto, Grande del Sud, Presidio, Cannoni, Pescatori Lontani) **si attivano solo quando
+   ti avvicini**: fino ad allora c'è solo la sagoma lontana (terreno a bassa risoluzione, niente oggetti, niente
+   gente, niente logica). A ~250 m dalla riva si costruiscono a rate (blocchi, oggetti, poi la gente che ci vive);
+   allontanandosi oltre ~400 m si spengono, ma il loro stato (chi c'è, cosa hai lasciato, cosa hai costruito) resta.
+   La gente delle isole non conta nei 207: ha un piccolo numero suo per isola, fisso, deciso alla prima visita.
+3. **Regia nei posti, sì — ma mai uguale.** Le scene non devono sembrare preset ripetuti negli stessi posti con le
+   stesse dinamiche:
+   - **chi**: gli attori sono abitanti veri scelti per chi sono (carattere, mestiere, debiti, amicizie, memorie con
+     te), non ruoli fissi; la stessa scena con persone diverse va diversamente;
+   - **dove**: ogni scena ha un *tipo* di posto (un angolo con poca luce, una fermata, un bancone, una piazza col
+     mercato), non un posto preciso; si sceglie fra quelli adatti con un peso che scende ogni volta che ci è successo
+     qualcosa (memoria per posto e per tipo di scena);
+   - **quando**: dipende dall'ora, dal giorno, dal meteo, dalla repressione, da cosa è successo prima (un furto ieri →
+     ronda stasera; una rissa → il giorno dopo i due si evitano o si cercano);
+   - **come**: ogni scena è fatta di passi con varianti e bivi (la vittima scappa / reagisce / chiama aiuto; il
+     testimone interviene / filma / se ne va), con battute a pezzi ricombinabili e tempi diversi;
+   - **quanto spesso**: nessuna scena dello stesso tipo due volte nello stesso quartiere nella stessa giornata;
+     le 41 scene di oggi diventano famiglie di varianti, e una prova conta in 7 giorni simulati quante volte la stessa
+     combinazione (tipo, posto, attori) si ripete: deve essere quasi mai.
+4. **Comandi: sì, ma leggeri e leggibili, nell'estetica del gioco e pensati prima per il telefono.** L'aiuto e le
+   etichette a schermo non sono una tabella da manuale: sono poche icone nello stile delle icone di `comandi.js` e
+   della valigetta (madreperla, ottone, pixel netti), il verbo contestuale vicino alla cosa («Apri», «Scava»,
+   «Siediti») e, sul telefono, un solo pulsante grande che cambia icona secondo cosa hai davanti. Niente pannelli
+   pesanti: HTML leggero, nessun canvas in più, aggiornato solo quando cambia il contesto (non a ogni fotogramma).
+   I tasti del computer seguono la stessa logica (E fa quello che sul telefono fa il pulsante).
+5. **Ricette: per ora tutte visibili.** Il quaderno resta completo; si aiuta a orientarsi con filtri (si fa ora / qui /
+   mi manca poco) e con la ricerca.
+6. **Non si butta niente.** Le cartelle vecchie (`v2`…`v6`, `_to_delete`, `_scambio`, backup, immagini) restano dove
+   sono; semplicemente non entrano nella build leggera né nella pubblicazione. §2.4 cambia di conseguenza: si aggiunge
+   solo una lista di cosa pubblicare (`.vercelignore` / lista in `build.py`), senza cancellare.
 
 ---
 
