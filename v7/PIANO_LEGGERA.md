@@ -19,7 +19,10 @@ Prima si pulisce e si misura, poi si completa. Niente sistemi nuovi finché quel
 | Interfacce dello zaino | 3: `menu_ui.js`, `oggetti_ui.js`, `tasche_ui.js` | tutte caricate, con tasti propri (I, Z, K, U, L) |
 | Ascoltatori della tastiera | 16 `keydown` in 12 file | conflitti (vedi §6) |
 | Cartelle di scarto | `_to_delete` 23 MB, `_scambio` 17 MB, `_immagini` 33 MB, backup ~19 MB, `v2`…`v6` ~175 MB | nel repository, non nel gioco |
-| Prove | `test_sottosuolo`, `test_oggetti` passano; **`test_cantiere` fallisce** («il garage è finito»: la banda non trova dove posarlo, poi errore su `gar.x`) | |
+| Prove | 13 provate: 10 passano, **`test_cantiere` e `test_eventi` falliscono**, `test_ordine` non finisce in 5 minuti (§13) | |
+| Nel browser (Chromium senza scheda video) | caricamento 33-54 s, **569 persone**, 71 mezzi, **heap JS 1,5 GB** | |
+| Oggetti di scena messi male | 48 dentro le case, 41 sospesi, 13 affondati, 8 in acqua, 74 sovrapposti (§15) | |
+| Attrezzi visibili in mano | 7 su 50 (§14) | |
 
 Dai passaggi di consegne restano aperti, fra gli altri: persone dentro gli interni non disegnate, NPC che non usano
 ponti e cunicoli, guardie che non trovano le botole, scambio nello stile nuovo, vetrine che si rifanno solo rientrando,
@@ -75,26 +78,41 @@ Tutti gli altri restano: la leggerezza viene dal disegno e dagli asset, non dal 
 
 ---
 
-## 3. Gli abitanti: meno, ma attorno a te
+## 3. Gli abitanti: meno, ma attorno a te (senza che ti seguano)
 
-Oggi `populate()` (`popolo.js` ~r. 299) ordina le case per hash e riempie fino a 420: la gente è sparsa su 1300 m e
-attorno al giocatore ce n'è poca. Proposta:
+Misurato il 18/10: nel browser ci sono **569 persone** (486 del Popolo in Node, il resto da writer, sottosuolo,
+regia…). Le case degli abitanti stanno già abbastanza vicine alla casa del giocatore (mediana 122 m, 301 entro
+150 m, il 10% oltre 488 m), ma `populate()` (`popolo.js` ~r. 299) le sceglie per hash, non per distanza.
 
-1. **Totale**: `CFG.max` da 420 a **180** nella leggera (220 nella completa). `maxNear` da 70 a **40**.
-2. **Case in ordine di distanza dalla casa del giocatore** (`playerHome` di `protagonista.js`), con un peso per
-   quartiere:
-   - il quartiere del giocatore e quelli confinanti (raggio ~250 m) prendono il **70%** degli abitanti, le case piene;
-   - il resto dell'isola il 30%: una famiglia per casa al massimo, botteghe con un commesso solo;
-   - campagna e monte: solo chi ci lavora (contadini, pastori, minatore, carbonaio) e i bivacchi.
-3. **I posti di lavoro seguono la gente**: le botteghe lontane senza nessuno vicino aprono con un solo commesso
-   (le catene di `JOBPROD`/`ESSENTIAL` restano coperte: prima i mestieri essenziali, come oggi).
-4. **Comparse leggere fuori dalla bolla**: chi è lontano non ha modello; se il giocatore si sposta in un quartiere
-   vuoto, la regia (`eventi.js`) fa «uscire dalla porta» gente già esistente invece di inventarne.
-5. **La densità si vede**: in strada vicino a casa 15-25 persone a schermo; nei quartieri lontani 3-8.
-6. **Quando il giocatore cambia casa o covo**, la popolazione non si rigenera (resterebbero le memorie): si alza solo la
-   frequenza con cui la gente lontana ha commissioni nel nuovo quartiere.
-7. Prova: nuovo `test_popolo.js` (distribuzione per distanza, mestieri essenziali coperti, nessuna casa del giocatore
-   occupata), più `test_vita`, `test_economia`, `test_soldi` brevi per vedere che l'economia regge con 180.
+**La regola d'oro: la gente è densa in un *posto*, non attorno al giocatore.** La concentrazione si decide una volta,
+all'inizio della partita, sulle case e sui posti di lavoro; dopo, nessuno nasce, sparisce o cambia strada perché il
+giocatore si è spostato.
+
+1. **Totale**: `CFG.max` da 420 a **180** nella leggera (220 nella completa), e un tetto anche per i moduli che
+   aggiungono gente per conto loro (writer, sottosuolo, regia, fazioni): **≤ 240 persone in tutto** nella leggera.
+   `maxNear` da 70 a **40**.
+2. **Le case, una volta sola, in ordine di distanza** dalla casa di partenza del giocatore (`playerHome`):
+   il quartiere di casa e quelli confinanti (~250 m) prendono il **70%**, case piene; il resto dell'isola il 30%, una
+   famiglia per casa; campagna e monte solo chi ci lavora (contadini, pastori, minatore, carbonaio) e i bivacchi.
+3. **I posti di lavoro seguono le case**, non il giocatore: le botteghe lontane aprono con un commesso solo (i mestieri
+   essenziali di `ESSENTIAL` restano coperti per primi, come oggi).
+4. **Niente che sembri inseguimento**:
+   - nessuno compare dal nulla vicino al giocatore: chi entra in vista arriva camminando da dove stava già (porta di
+     casa, bottega, fermata), mai a meno di 25 m e mai nel campo visivo;
+   - la regia (`eventi.js`, oggi una scena **ogni 15-35 s a 10-34 m dal giocatore**) cambia: le scene nascono nei
+     *posti* (piazza, bar, mercato, fermata, molo) secondo l'ora e chi c'è davvero; il giocatore le incontra se passa
+     di lì. Al massimo una scena ogni 2-3 minuti vicino a lui, e quelle che vengono *verso* di lui (sigaretta,
+     provocazione, mendicante) al massimo una ogni 10 minuti, con una ragione (lo conoscono, è ricercato, ha soldi);
+   - chi è nella bolla fa la sua giornata: se il giocatore si ferma in un vicolo vuoto, il vicolo resta vuoto;
+   - niente «se fuori non c'è nessuno, qualcuno esce dalla porta» apposta per la scena.
+5. **Si vede la differenza fra i posti**: vicino a casa 15-25 persone a schermo di giorno, nella piazza del mercato
+   di più il mercoledì e il sabato, nei quartieri lontani 3-8, la notte quasi nessuno (coprifuoco).
+6. **Quando il giocatore cambia casa o covo** la popolazione non si rigenera (si perderebbero le memorie): cambia solo
+   la vita del nuovo quartiere col tempo (traslochi veri, nuovi clienti).
+7. **Prova automatica dell'«effetto codazzo»** (`test_popolo.js`): il giocatore cammina per 20 minuti di gioco in un
+   quartiere lontano; il numero di persone entro 40 m da lui deve restare quello del posto (misurato con il giocatore
+   assente), non salire. In più: distribuzione per distanza, mestieri essenziali coperti, casa del giocatore libera.
+   Poi `test_vita`, `test_economia`, `test_soldi` brevi per vedere che l'economia regge con 180.
 
 ---
 
@@ -314,12 +332,133 @@ Da completare:
 
 ---
 
-## 13. Ordine di lavoro
+## 13. Tutte le altre funzioni: graffiti, bici, skate, lavori, eventi, scontri
+
+Stato delle prove il 18/10 (`node test_*.js` in `v7/src`):
+
+| Prova | Esito | Tempo |
+| --- | --- | --- |
+| `test_skate`, `test_bmx`, `test_writing`, `test_tetti` | passano | 4-7 s |
+| `test_writer_vita`, `test_scontri` | passano | 23-33 s |
+| `test_imprese` | passa | 118 s |
+| `test_sottosuolo`, `test_oggetti` | passano | 79 s per gli oggetti |
+| **`test_cantiere`** | **fallisce**: il garage della banda non si finisce | |
+| **`test_eventi`** | **fallisce**: la scena «bici» finisce in 6 s senza battute | 66 s |
+| **`test_ordine`** | **non finisce in 5 minuti** | > 300 s |
+| `test_fazioni` | un «NO» da verificare (dal passaggio di consegne) | |
+| `test_economia` | oltre i 15 minuti | |
+
+Per ogni funzione: si gioca 10 minuti dall'inizio alla fine, si scrive cosa non va, si chiude prima di aggiungere.
+
+1. **Graffiti e writer** (`writing.js`, `writer_*.js`, `graffiti.js`): bomboletta, tavoletta, pennarello, i writer
+   che escono a bombare, le firme. Da finire: la scala di ferro e il tetto letti in modo chiaro, i lavori del
+   giocatore riconosciuti dalla città (chi li vede, chi li cancella, la polizia), il catalogo dei colori nella Roba
+   (le bombolette sono oggetti veri con quantità).
+2. **BMX** (`P`, icona Ruote): salti, impennata. Da finire: dove si posa la bici quando scendi (oggi «tascabile»:
+   deve diventare un oggetto a terra che qualcuno può rubare), suono delle ruote, la scena «bici» di `test_eventi`.
+3. **Skate** (`skate.js`): panchine e fioriere della città non grindabili (il motore non sa dove sono: leggere
+   `R.__dz.props`), cordoli non grindabili, piante del bosco che spuntano dentro la vasca, i ragazzi dello skate non
+   cliccabili e muti, nessun rotolio nell'audio.
+4. **Lavori e mestieri** (`mestieri.js`, `commissioni.js`, `attivita.js`, scheda Lavori): il turno del giocatore deve
+   essere un'attività vera in scena (postazione, gesti, tempo, paga a fine turno), non un salto di tempo; vendere un
+   mezzo rubato all'Autorimessa; chi guarda le vetrine resta oltre la chiusura.
+5. **Eventi e regia**: come in §3.4 (nei posti, non attorno al giocatore); mancano scene coi mezzi e coi cani.
+6. **Scontri, ordine, fazioni**: nube dei lacrimogeni poco leggibile, tiratori solo a terra, `test_ordine` troppo lungo.
+7. **Tetti** (`tetti.js`): ci si sale e si fruga; verificare che i tetti raggiungibili siano segnalati.
+8. **Barche e costa** (`HANDOFF_costa.md`): pescatori che escono davvero, nave che parte e torna, pescare dalla barca.
+9. **Freddo** (`HANDOFF_oggetti.md`, `HANDOFF_protagonista.md`): stufe, carbone, vestiti a strati come sesto bisogno;
+   i valori ci sono già (`Oggetti.warmth`, `st.ogg.calore`).
+10. **Bambini** (`HANDOFF_regia.md`): oggi la popolazione va dai 18 anni in su. Con 180 abitanti si possono
+    aggiungere figli nelle famiglie, scuola e gioco, con l'altezza nel modello.
+
+---
+
+## 14. Modelli 3D mancanti
+
+Misurato il 18/10:
+- **Attrezzi in mano**: `models.js` (r. 182 e seguenti) ha i modelli di 7 oggetti (bomboletta, cartello,
+  fotocamera, gesso, manganello, piede di porco, telefono) più le armi. **Degli altri 43 attrezzi del catalogo non si
+  vede niente in mano**, nemmeno la pala e il piccone mentre si scava, l'ascia mentre si disbosca, la zappa
+  nell'orto, il martello nel cantiere, la canna da pesca, la torcia, la carriola.
+- **Oggetti della Roba (377)**: le anteprime sono un modellino per famiglia (`mini()` in `menu_ui.js`, ~40 forme:
+  bottiglia, latta, sacco, chiave…). Vanno bene come icona, non come oggetto posato a terra o tenuto in mano.
+- **Gente al chiuso**: non si disegna (§12). **Sottosuolo**: se i personaggi non sono pronti si usa un pupazzo di
+  cilindri (`fallbackPerson` in `sottosuolo.js`). **Ragazzi dello skate**: non sono abitanti veri.
+- **Personaggi**: restano il punto più debole secondo tutti i passaggi di consegne (proporzioni, abiti anni '80,
+  animazioni di mira, corsa, caduta).
+
+Piano:
+1. **Tutti gli attrezzi in mano**, ognuno col suo gesto (scavare, zappare, segare, martellare, pescare, spingere la
+   carriola): 43 modelli piccoli e procedurali come quelli che ci sono (pochi triangoli, un materiale), agganciati al
+   polso come in `models.js`. Priorità: pala, piccone, ascia, zappa, martello, sega, secchio, annaffiatoio, canna,
+   torcia, carriola, piede di porco (già c'è), trapano.
+2. **Oggetti posati e tenuti**: un modello vero per le 60-80 cose che si vedono di più (cibo e bottiglie comuni,
+   taniche, casse, sacchi, attrezzi, radio, lampade); per le altre il modellino di famiglia, ma con le misure giuste.
+3. **Bottino e posti da frugare**: ogni tipo (`bottino.js`) con un modello leggibile dalla camera del gioco.
+4. **Pezzi del cantiere**: controllo che ognuno dei 122 abbia un modello finito (non una scatola) in tutti e tre i
+   posti (fuori, dentro, sotto) e la sua sagoma verde/rossa giusta.
+5. **Personaggi al chiuso, bambini, ragazzi dello skate**: con i corpi che ci sono e i vestiti di `guardaroba.js`.
+6. Una pagina di controllo (lo Studio o `showroom`) che mostra in griglia tutti gli oggetti e gli attrezzi in mano:
+   così si vede subito cosa manca.
+
+---
+
+## 15. La mappa: oggetti compenetrati o messi male
+
+Lo strumento nuovo `strumenti/sonda_mappa.js` carica il gioco vero in Chromium e controlla ogni oggetto di scena
+registrato da `render.js` (1.407 oggetti più 168 grandi); per ognuno dice quale funzione l'ha messo
+(`file:riga`) e scrive l'elenco completo con le coordinate. Primo giro, 18/10 (i dati logici della mappa invece sono
+puliti: nessun edificio sovrapposto, nessuna porta murata, un solo luogo su casella non percorribile, `isola_torre`):
+
+| Problema | Quanti | Fonti principali |
+| --- | --- | --- |
+| Dentro un edificio | 48 | 24 bici appoggiate davanti alle porte (`render.js:5812`, finiscono dentro la casa), 3 lampioni déco della litoranea (`:2730`) dentro case, sdraio e ombrellone dentro `casa_187`, jersey, panchina, bidone, sedia |
+| Sulla carreggiata | 133 | 63 coni e 18 transenne dei lavori (`buildStrade31`: forse voluti, ma si sovrappongono fra loro 8 volte), 12 jersey, 7 paletti, cartelli, semafori, parchimetri |
+| In acqua | 8 | 7 dell'inverno (`buildWinter`), 1 fermata dell'autobus |
+| Sospesi (> 35 cm) | 41 | 37 dell'inverno (`buildWinter`, r. 8761), pile di casse |
+| Affondati (> 50 cm) | 13 | massi lungo le strade (`:4082`), la stazione, pezzi dell'inverno |
+| Sovrapposti | 74 | 25 dell'inverno su un palo alto 13 m (`:8785`), coni con transenne, sdraio con ombrelloni, paletti con banchi del mercato, fontana con banco |
+
+Cosa non vede ancora (da aggiungere alla sonda): alberi e cespugli istanziati che entrano nelle case, nei muri e
+nelle strade; moduli dei kit degli edifici; oggetti degli interni dentro le pareti; persone e mezzi fermi dentro le
+cose. Per quelli serve un secondo controllo per caselle (istanze di `natura`, `verde`) e un giro di foto.
+
+Piano:
+1. **Correggere alla fonte** ogni gruppo della tabella (una regola di posa per funzione, non spostamenti a mano):
+   chi posa davanti alle porte prova il lato esterno; tutti passano da un `free(x, z, raggio)` comune che conosce
+   edifici, carreggiata, acqua e quello che è già stato posato; la quota si prende dal terreno su tutti e quattro gli
+   spigoli (non solo al centro), e sui pendii si posa in piano con un piedistallo o non si posa.
+2. **La sonda diventa una prova**: a ogni build deve dare zero dentro gli edifici, in acqua, sospesi e affondati; i
+   sovrapposti e le cose in strada ammessi solo da un elenco di eccezioni volute (cantiere stradale, mercato).
+3. **Giro di foto** (`strumenti_inverno/shot_gioco.js`) di tutti i luoghi di `PLACES`, giorno e notte, da guardare a
+   occhio per quello che la sonda non vede.
+4. Le note aperte nei passaggi di consegne: striscia chiara lungo i moli, terrazze a scacchiera sul monte, bivacchi e
+   sentieri che attraversano il massiccio, macchie tonde sfocate sospese di notte, il mare a trattini.
+
+---
+
+## 16. Ordine di lavoro
 
 Ogni fase finisce con: prove verdi, misura F3 scritta qui sotto, build pubblicata, una nota di consegna breve.
 
 | Fase | Contenuto | Durata indicativa |
 | --- | --- | --- |
+| **1. Pulizia e misura** | §2.4, §5.5 prove rotte (cantiere, eventi, ordine), `npm test`, misure di partenza sul PC e sul telefono | 1-2 giornate |
+| **2. Mappa pulita** | §15: correzioni alla fonte, sonda a zero, sonda estesa a vegetazione e kit, giro di foto | 2-3 giornate |
+| **3. Leggera** | §2.1-2.3 build `leggera.html`, asset senza doppioni e in GLB, kit a richiesta | 2-3 giornate |
+| **4. Abitanti** | §3 con la prova dell'«effetto codazzo», regia nei posti, ribilanciamento economia | 2 giornate |
+| **5. Un solo zaino, un solo tasto** | §5.1-5.4, §6 | 2-3 giornate |
+| **6. Modelli mancanti** | §14: attrezzi in mano con i gesti, oggetti posati, bottino, griglia di controllo | 3-4 giornate |
+| **7. Inventario e crafting** | §7, §8 | 3-4 giornate |
+| **8. Scavi e bunker** | §9, §10 | 3-4 giornate |
+| **9. Cantiere e interni** | §11, §12 | 4-5 giornate |
+| **10. Le altre funzioni** | §13: graffiti, BMX, skate, lavori, eventi, scontri, costa, freddo, bambini — giocate e chiuse una per una | 5-7 giornate |
+| **11. Fluidità finale** | §4 (personaggi fusi, scheduler, passo fisso) e misure finali | 2-3 giornate |
+
+Le fasi 1-5 vanno in quest'ordine (ognuna rende più semplice la successiva); dalla 6 alla 10 si possono scambiare.
+In tutto circa 30-40 giornate di lavoro: siamo lontani, ma ogni fase lascia il gioco più pulito e più giocabile di prima.
+
+--- | --- | --- |
 | **1. Pulizia e misura** | §2.4, §5.5 prove rotte, `npm test`, misure di partenza sul PC e sul telefono | 1-2 giornate |
 | **2. Leggera** | §2.1-2.3 build `leggera.html`, asset senza doppioni e in GLB, kit a richiesta | 2-3 giornate |
 | **3. Abitanti** | §3, `test_popolo.js`, ribilanciamento economia | 1-2 giornate |
@@ -333,15 +472,16 @@ Le fasi 1-4 vanno in quest'ordine (ognuna rende più semplice la successiva); 5,
 
 ---
 
-## 14. Decisioni da prendere
+## 17. Decisioni da prendere
 
 1. **Numero di abitanti**: 180 nella leggera e 220 nella completa, o un valore solo per tutte e due?
-2. **Mappa**: si tiene l'isola intera (1300 × 400 m) con la gente concentrata attorno al giocatore, oppure la
+2. **Mappa**: si tiene l'isola intera (1300 × 400 m) con la gente concentrata attorno alla casa del giocatore, oppure la
    leggera si ferma a una parte (borgo, Ponente, Lungomare, collina, porto)?
-3. **Tasti**: va bene la mappa unica di §6 (E interagisci con lo scippo spostato nel menu della persona, K solo
+3. **Regia**: va bene togliere le scene messe in piedi attorno al giocatore (§3.4) e tenerle solo nei posti?
+4. **Tasti**: va bene la mappa unica di §6 (E interagisci con lo scippo spostato nel menu della persona, K solo
    crafting, la profondità degli scavi su PagSu/PagGiù)? Cambia le abitudini di chi gioca già.
-4. **Ricette da scoprire** invece di tutte visibili dall'inizio?
-5. **Cartelle vecchie** (`v2`…`v6`, `_to_delete`, `_scambio`, backup): spostarle in un ramo d'archivio e toglierle
+5. **Ricette da scoprire** invece di tutte visibili dall'inizio?
+6. **Cartelle vecchie** (`v2`…`v6`, `_to_delete`, `_scambio`, backup): spostarle in un ramo d'archivio e toglierle
    da `main`?
 
 ---
@@ -350,3 +490,7 @@ Le fasi 1-4 vanno in quest'ordine (ognuna rende più semplice la successiva); 5,
 
 (da compilare a ogni fase: data, macchina, fps medi, fotogramma peggiore, disegni, triangoli, MB scaricati, s di
 caricamento, abitanti totali / vicini)
+
+| Data | Macchina | Caricamento | Persone / mezzi | Heap JS | Note |
+| --- | --- | --- | --- | --- | --- |
+| 18/10 | container, Chromium senza scheda video (SwiftShader) | 33-54 s | 569 / 71 | 1,5 GB | partenza; fps non significativi senza scheda video |
