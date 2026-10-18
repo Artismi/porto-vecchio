@@ -138,7 +138,7 @@ var Eventi = (function () {
     },
     ride: {
       start(st, sc, b) {
-        const n = actor(sc, b.ride); let to = null; for (let k = 0; k < 14 && !to; k++) { const a = Math.atan2(st.player.y - n.y, st.player.x - n.x) + (rnd() - .5) * 1.6, L = (b.L || 28) + rnd() * 8, x = n.x + Math.cos(a) * L, y = n.y + Math.sin(a) * L; if (G.walkM(x, y)) to = { x, y }; }
+        const n = actor(sc, b.ride); let to = null; for (let k = 0; k < 14 && !to; k++) { const a = Math.atan2(st.player.y - n.y, st.player.x - n.x) + (rnd() < .5 ? -1 : 1) * (Math.PI / 2 + (rnd() - .5) * .9), L = (b.L || 28) + rnd() * 8, x = n.x + Math.cos(a) * L, y = n.y + Math.sin(a) * L; if (G.walkM(x, y)) to = { x, y }; }
         if (!to) { b._fail = true; return; }
         const v = G.makeVehicle(st, { id: 'ev_bmx' + Math.floor(st.clock * 1000) + '_' + Math.floor(rnd() * 99), kind: 'bmx', x: n.x, y: n.y, ang: Math.atan2(to.y - n.y, to.x - n.x), color: pick(['#d02a2a', '#2a6ac8', '#e8c040', '#3a9a5a', '#1e1e24']), rider: 'npc', vx: 0, vy: 0, w: 0 });
         st.vehicles.push(v); S(st).bikes.push(v.id);
@@ -149,7 +149,7 @@ var Eventi = (function () {
       tick(st, sc, b, dt) {
         if (b._fail) return 'abort'; const n = actor(sc, b.ride), v = b._v, o = b._o; if (!n || !n.__ev) return 'abort';
         n.x = o.x; n.y = o.y; n.face = o.face; n.wrH = .35; v.x = o.x; v.y = o.y; v.ang = o.face; v.vx = v.vy = 0; v.speed = o.speedNow || 0; v.pedal = true; v.crank = (v.crank || 0) + (o.speedNow || 0) * dt / .9; n.__ev.crank = v.crank;
-        const arrived = hyp(o.x - b._to.x, o.y - b._to.y) < 2, fall = st.clock - b._t > b._fallAt;
+        const arrived = hyp(o.x - b._to.x, o.y - b._to.y) < 2, fall = !!b.fall && (arrived || st.clock - b._t > b._fallAt);   // chi deve cadere cade al più tardi in fondo alla corsa
         if (!arrived && !fall && st.clock - b._t < 20) return false;
         v.rider = null; v.speed = 0; v.pedal = false; n.wrH = null; n.__ev.wrH = false; n.__ev.pose = null; setMv(n, { k: 'stay' });
         const s = Math.sin(o.face), c = Math.cos(o.face); if (G.walkM(o.x - s * .9, o.y + c * .9)) { n.x = o.x - s * .9; n.y = o.y + c * .9; }

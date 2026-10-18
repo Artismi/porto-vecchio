@@ -50,7 +50,7 @@ r = CN.place(st, CN.BY.capanno, cs[0], cs[1], 0); ok(r.ok && !r.o.wip, 'senza ba
 // 5) [survival] l'orto: zappa, semina, annaffia, aspetta, raccogli; l'alberello diventa albero
 {
   Object.assign(bag, { zappa: 1, secchio: 1, patate: 2, legna: 3 });
-  let ox = null; for (let r0 = 2; r0 < 16 && !ox; r0 += 2) for (let a = 0; a < 16 && !ox; a++) { const x = p.x + Math.cos(a / 16 * 6.283) * r0, y = p.y + Math.sin(a / 16 * 6.283) * r0, [tx, ty] = [Math.floor(x / TS), Math.floor(y / TS)]; if (!CN.cropCheck(st, CN.BY.ara, tx, ty) && !CN.cropCheck(st, CN.BY.ara, tx + 1, ty)) ox = [tx, ty]; }
+  let ox = null; for (let r0 = 2; r0 < 16 && !ox; r0 += 2) for (let a = 0; a < 16 && !ox; a++) { const x = p.x + Math.cos(a / 16 * 6.283) * r0, y = p.y + Math.sin(a / 16 * 6.283) * r0, [tx, ty] = [Math.floor(x / TS), Math.floor(y / TS)]; if (!CN.cropCheck(st, CN.BY.ara, tx, ty) && !CN.cropCheck(st, CN.BY.albero, tx + 1, ty)) ox = [tx, ty]; }   // accanto all'orto una casella dove l'alberello attecchisce (non la sabbia)
   Object.assign(bag, { zappa: 1, secchio: 1, patate: 2, legna: 3 });
   let r = CN.cropDo(st, CN.BY.ara, ...ox); ok(r.ok, 'zappa: ' + r.msg);
   r = CN.cropDo(st, CN.BY.semina_patate, ...ox); ok(r.ok, 'semina: ' + r.msg);

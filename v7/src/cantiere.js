@@ -381,6 +381,12 @@ var Cantiere = (function () {
     if (b.op && (b.cat === 'terreno' || b.cat === 'orto')) { const [tx, ty] = tileOf(gx, gy); return [(tx + .5) * S0, (ty + .5) * S0]; }
     return [Math.round(gx * 4) / 4, Math.round(gy * 4) / 4];
   }
+  // [cantiere] cosa c'è da sgombrare sotto una costruzione all'aperto: [tx, ty, 'disbosca' | 'cava']
+  function clearOp(v) { const t = T(); return v === t.TREE ? 'disbosca' : v === t.ROCK || v === t.CLIFF ? 'cava' : null; }
+  function clearTiles(b, x, y, rot) { if (!b.fp || b.layer) return []; const G = Gm(); return footprint(b, x, y, rot).map(([tx, ty]) => [tx, ty, clearOp(G.tileAt(tx, ty))]).filter(q => q[2]); }
+  // senza banda lo sgombero lo fai tu: servono gli attrezzi
+  function clearWhy(st, b, x, y, rot) { if (crewAll(st).length) return ''; const L = clearTiles(b, x, y, rot); const tools = [...new Set(L.map(q => BY[q[2]].tool))].filter(k => !hasTool(st, k)); return tools.length ? `Prima va sgombrato (${clearSay(L)}): ti serve ${tools.map(k => k.split('|').map(q => O().nm(q)).join(' o ')).join(' e ')}, o la banda.` : ''; }
+  function clearSay(L) { const a = L.filter(q => q[2] === 'disbosca').length, r = L.length - a; return [a ? (a === 1 ? 'un albero' : a + ' alberi') : '', r ? (r === 1 ? 'un masso' : r + ' caselle di roccia') : ''].filter(Boolean).join(' e '); }
   function canPlace(st, b, x, y, rot) {
     const G = Gm(), t = T(), lv = lvOf(st), C = covoOf(st, x, y, lv);
     if (b.dig) return canDig(st, b, x, y, rot);   // [survival] gli scavi da edificio: sotto terra, dovunque
@@ -397,32 +403,39 @@ var Cantiere = (function () {
       const v = G.tileAt(tx, ty);
       if (lv) { if (!L.ug[ty * G.GW + tx]) return 'Qui è terra piena: scava prima.'; continue; }
       const ours = S(st).obj.some(o => o.tiles && o.tiles.some(q => q[0] === tx && q[1] === ty && q[2] !== null && q[2] !== undefined));   // una casella fatta solida da noi
+      if (b.fp && !lv && !b.layer && clearOp(v) && !inCity(x, y)) continue;   // [cantiere] alberi e roccia sotto una costruzione: si sgombrano prima (clearTiles)
       if (!(b.layer === 'tetto' && ours) && (v === t.WATER || v === t.BLD || v === t.CLIFF || v === t.ROCK || v === t.TREE)) return v === t.TREE ? 'C\'è un albero: disbosca prima.' : v === t.ROCK || v === t.CLIFF ? 'C\'è la roccia: cava prima.' : 'Qui non si può.';
       if (b.fp && S(st).obj.some(o => (BY[o.id].layer || '') === (b.layer || '') && o.tiles && o.tiles.some(q => q[0] === tx && q[1] === ty))) return 'C\'è già qualcosa.';
       if (b.fp && !b.layer && S(st).crops && S(st).crops[tx + ',' + ty]) return 'C\'è l\'orto: prima raccogli o zappa altrove.';
     }
+    if (!lv && b.fp && !b.layer) return clearWhy(st, b, x, y, rot);
     return '';
   }
   function place(st, b, x, y, rot, moving) {
     const why = canPlace(st, b, x, y, rot); if (why) return { ok: false, msg: why };
     let paid = moving ? moving.paid : null;
+    const crew = !lvOf(st) && crewAll(st).length > 0, toClear = lvOf(st) ? [] : clearTiles(b, x, y, rot);
     if (!moving) { const m = missing(st, b); if (m.length) return { ok: false, msg: `Mancano: ${m.join(', ')}.` }; paid = pay(st, b); }
+    let cleared = '';
+    if (toClear.length && !crew) { const bag = O().inv(st); toClear.forEach(([tx, ty, op]) => terrainDo(st, BY[op], tx, ty, bag)); cleared = ` Prima hai sgombrato: ${clearSay(toClear)}.`; }
     const G = Gm(), lv = lvOf(st), tiles = [];
     footprint(b, x, y, rot).forEach(([tx, ty, solid]) => { const orig = G.tileAt(tx, ty); if (solid && !lv) { G.setTile(tx, ty, T().BLD); dirty(tx, ty); } tiles.push([tx, ty, solid ? orig : null]); });
     const C = S(st), o = { uid: moving ? moving.uid : 'k' + (C.next++), id: b.id, x, y, rot, lv, tiles, paid, at: st.t, seed: moving ? moving.seed : (U.seed || Math.floor(Math.random() * 1e6) + 1) };
     if (!moving) U.seed = Math.floor(Math.random() * 1e6) + 1;   // la prossima baracca sarà diversa
     if (moving && moving.wip) o.wip = moving.wip;
     // [cantiere] le costruzioni grandi all'aperto le tira su la banda: si apre il cantiere
-    if (!moving && b.big && !lv && crewAll(st).length) { o.wip = b.big; addJob(st, { op: 'costruisci', uid: o.uid, x, y }); }
+    // [cantiere] se sotto c'erano alberi o roccia (e c'è la banda) prima si sgombra: le caselle diventano solide a sgombero finito
+    if (toClear.length && crew) { o.wip = o.wip || b.big || 30; o.clear = toClear.map(([tx, ty, op]) => addJob(st, { op, x: (tx + .5) * TS(), y: (ty + .5) * TS(), forUid: o.uid }).id); tiles.forEach(q => { if (q[2] !== null && q[2] !== undefined) { G.setTile(q[0], q[1], q[2]); dirty(q[0], q[1]); q[2] = null; } }); }   // non ancora solide: le fa solide jobsStep
+    if (!moving && (b.big || o.clear) && !lv && crew) addJob(st, { op: 'costruisci', uid: o.uid, x, y, after: o.clear || null }), o.wip = o.wip || b.big;
     C.obj.push(o); U.dirty = true;
-    return { ok: true, msg: moving ? `${b.nome}: spostato.` : o.wip ? `${b.nome}: cantiere aperto. Ci pensa la banda (${jobsLeft(st)} lavori in coda).` : `${b.nome}: fatto.`, o };
+    return { ok: true, msg: moving ? `${b.nome}: spostato.` : o.wip ? `${b.nome}: cantiere aperto.${o.clear ? ` Prima la banda sgombra (${clearSay(toClear)}).` : ''} Ci pensa la banda (${jobsLeft(st)} lavori in coda).` : `${b.nome}: fatto.${cleared}`, o };
   }
   function lift(st, uid) {   // toglie dal mondo (per spostare o per togliere)
     const C = S(st), i = C.obj.findIndex(o => o.uid === uid); if (i < 0) return null; const o = C.obj[i]; C.obj.splice(i, 1);
     (o.tiles || []).forEach(([tx, ty, orig]) => { if (orig !== null && orig !== undefined) { Gm().setTile(tx, ty, orig); dirty(tx, ty); } });
     U.dirty = true; return o;
   }
-  function remove(st, uid) { const o = lift(st, uid); if (!o) return { ok: false, msg: '' }; refund(st, o); const C = S(st); (C.jobs || []).forEach(j => { if (j.uid === uid) j.done = true; }); return { ok: true, msg: `${BY[o.id].nome}: smontato. Ti torna la roba.` }; }
+  function remove(st, uid) { const o = lift(st, uid); if (!o) return { ok: false, msg: '' }; refund(st, o); const C = S(st); (C.jobs || []).forEach(j => { if (j.uid === uid || j.forUid === uid) j.done = true; }); return { ok: true, msg: `${BY[o.id].nome}: smontato. Ti torna la roba.` }; }
 
   // =====================================================================================================================
   // [survival] L'ORTO E GLI ALBERI: zappi, semini, annaffi, aspetti, raccogli. Cresce solo bagnato (un giorno ogni annaffiata).
@@ -542,6 +555,8 @@ var Cantiere = (function () {
     const G = Gm(), R0 = RIS();
     C.jobs.forEach(J => {
       if (J.done) return;
+      if (J.after && J.after.some(id => { const q = C.jobs.find(k => k.id === id); return q && !q.done; })) return;   // [cantiere] prima lo sgombero
+      if (J.after && !J.solid) { J.solid = true; const o0 = C.obj.find(q => q.uid === J.uid); if (o0) { const Gg = Gm(), b0 = BY[o0.id]; o0.tiles = footprint(b0, o0.x, o0.y, o0.rot).map(([tx, ty, solid]) => { const orig = Gg.tileAt(tx, ty); if (solid) { Gg.setTile(tx, ty, T().BLD); dirty(tx, ty); } return [tx, ty, solid ? orig : null]; }); delete o0.clear; } }
       if (J.who) { const n = G.byId(st, J.who); if (n && !n.dead && n.ris && n.ris.task && n.ris.task.covoJob === J.id) return; J.who = null; if (++J.tries >= 3) { J.done = true; G.feed(st, 'Un lavoro del covo è rimasto a metà: nessuno riesce ad arrivarci.', 'bad'); } return; }
       const free = crewFree(st); if (!free.length || !R0 || !st.ris) return;
       const n = free.sort((a, b) => Math.hypot(a.x - J.x, a.y - J.y) - Math.hypot(b.x - J.x, b.y - J.y))[0];
