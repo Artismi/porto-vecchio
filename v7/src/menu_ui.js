@@ -122,7 +122,7 @@ var MenuUI = (function () {
   // del gioco, il resto con un piccolo modello per famiglia (bottiglia, latta, sacco, attrezzo…) e il colore dell'oggetto.
   // Si fanno poche per fotogramma e restano in memoria (TH).
   // =====================================================================================================================
-  const TH = new Map(), THQ = [], THS = 128;
+  const TH = new Map(), THQ = [], THS = 192;   // [anteprime] più definite (si disegnano a 96 px: il ridimensionamento le ammorbidisce)
   const thumb = id => TH.get(id) || (THQ.includes(id) || THQ.push(id), null);
   const CUST = {}; const thumbFor = (key, make) => { CUST[key] = make; return thumb(key); };
   function mini(id) {
@@ -130,7 +130,7 @@ var MenuUI = (function () {
     const M = (col, o) => new T.MeshStandardMaterial(Object.assign({ color: col, roughness: .7, metalness: 0 }, o || {}));
     const add = (geo, col, x, y, z, o, rx, ry, rz) => { const m = new T.Mesh(geo, M(col, o)); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); g.add(m); return m; };
     const Bo = (w, h, d) => new T.BoxGeometry(w, h, d), Cl = (a, b, h, n) => new T.CylinderGeometry(a, b, h, n || 18), Sf = (r, w, h) => new T.SphereGeometry(r, w || 18, h || 12), To = (r, tb, a, b) => new T.TorusGeometry(r, tb, a || 10, b || 24);
-    const GL = { metalness: .1, roughness: .15, transparent: true, opacity: .88 }, MET = { metalness: .7, roughness: .35 };
+    const GL = { metalness: .1, roughness: .15, transparent: true, opacity: .88 }, MET = { metalness: .35, roughness: .38 };   // [anteprime] metallo meno pieno: senza riflessi intorno veniva quasi nero
     switch (s) {
       case 'bottiglia': add(Cl(.16, .17, .55), c, 0, .28, 0, GL); add(Cl(.07, .16, .14), c, 0, .62, 0, GL); add(Cl(.05, .055, .16), c, 0, .76, 0, GL); add(Cl(.055, .055, .05), '#2a2a2e', 0, .86); add(Cl(.172, .172, .2), '#f0ead8', 0, .3, 0); break;
       case 'latta': add(Cl(.22, .22, .42, 24), '#b8bcc4', 0, .21, 0, MET); add(Cl(.225, .225, .3, 24), t, 0, .21, 0); add(Cl(.2, .2, .02, 24), '#d8dce4', 0, .43, 0, MET); break;
@@ -140,7 +140,8 @@ var MenuUI = (function () {
       case 'pesce': { const b = add(Sf(.2), c, 0, .16, 0, { metalness: .4, roughness: .3 }); b.scale.set(2, .7, .6); add(Cl(0, .14, .2, 4), c, .48, .16, 0, {}, 0, 0, Math.PI / 2); add(Sf(.025), '#111', -.3, .2, .1); break; }
       case 'carne': { const b = add(Bo(.5, .2, .36), c, 0, .1, 0); add(Bo(.12, .21, .1), '#f0d8d0', .08, .1, .05); break; }
       case 'formaggio': add(new T.CylinderGeometry(.3, .3, .22, 24, 1, false, 0, Math.PI * 1.6), c, 0, .11, 0); [[.1, .16, .1], [-.1, .1, .15]].forEach(([x, y, z]) => add(Sf(.035), sh(c, .8), x, y, z)); break;
-      case 'tazza': add(Cl(.16, .13, .26), '#f0ece2', 0, .13, 0); add(Cl(.14, .14, .01), c, 0, .25, 0); add(To(.08, .02), '#f0ece2', .18, .14, 0); add(Cl(.26, .26, .02), '#f0ece2', 0, .01, 0); break;
+      case 'tazza': if (/thermos/.test(id)) {   // il thermos: corpo, fascia, tappo-tazza
+          add(Cl(.12, .12, .6, 22), c, 0, .3, 0, MET); add(Cl(.125, .125, .08, 22), '#c8ccd4', 0, .15, 0, MET); add(Cl(.13, .12, .14, 22), '#2a2a30', 0, .67, 0); add(Cl(.06, .06, .03, 16), '#c8ccd4', 0, .75, 0, MET); break; } add(Cl(.16, .13, .26), '#f0ece2', 0, .13, 0); add(Cl(.14, .14, .01), c, 0, .25, 0); add(To(.08, .02), '#f0ece2', .18, .14, 0); add(Cl(.26, .26, .02), '#f0ece2', 0, .01, 0); break;
       case 'tronco': [[0, .11, 0], [.12, .11, .2], [.06, .3, .1]].forEach(([x, y, z]) => { add(Cl(.11, .11, .7, 10), c, x, y, z, {}, 0, 0, Math.PI / 2); add(Cl(.1, .1, .01, 10), '#d8b080', x + .355, y, z, {}, 0, 0, Math.PI / 2); }); break;
       case 'mucchio': for (let i = 0; i < 9; i++) { const b = add(new T.DodecahedronGeometry(.1 + (i % 3) * .03), c, Math.cos(i * 2.3) * .2, .08 + Math.floor(i / 5) * .12, Math.sin(i * 2.3) * .2, { roughness: .9 }); b.rotation.set(i, i * 2, 0); } break;
       case 'mattone': [[0, .07, 0], [.42, .07, 0], [.2, .21, 0]].forEach(([x, y, z]) => add(Bo(.4, .13, .2), c, x - .2, y, z, { roughness: .95 })); break;
@@ -156,7 +157,9 @@ var MenuUI = (function () {
       case 'pila': [-.12, .12].forEach(x => { add(Cl(.09, .09, .42), c, x, .21, 0); add(Cl(.035, .035, .04), '#c8ccd4', x, .44, 0, MET); }); break;
       case 'radio': add(Bo(.62, .36, .2), c, 0, .18, 0); add(Bo(.26, .22, .01), '#2a2a2e', -.13, .19, .1); add(Bo(.2, .06, .01), '#e8c040', .17, .25, .1); add(Cl(.008, .008, .5), '#c8ccd4', .25, .55, 0, MET, 0, 0, .3); break;
       case 'scatola': add(Bo(.55, .42, .4), c, 0, .21, 0); add(Bo(.38, .26, .01), '#1a2a2a', -.03, .23, .2, { emissive: '#3a6a6a', emissiveIntensity: .4 }); break;
-      case 'lampadina': add(Sf(.18), c, 0, .3, 0, { emissive: c, emissiveIntensity: .5 }); add(Cl(.08, .08, .12), '#c8ccd4', 0, .1, 0, MET); break;
+      case 'lampadina': if (/torcia/.test(id)) {   // la torcia: corpo zigrinato, testa larga col vetro acceso, pulsante
+          add(Cl(.07, .07, .5, 16), '#2a2a30', -.05, .07, 0, MET, 0, 0, Math.PI / 2); for (let i = 0; i < 5; i++) add(Cl(.073, .073, .02, 16), '#3a3a42', -.22 + i * .06, .07, 0, MET, 0, 0, Math.PI / 2);
+          add(Cl(.11, .075, .14, 18), '#2a2a30', .27, .07, 0, MET, 0, 0, Math.PI / 2); add(Cl(.1, .1, .01, 18), '#fff4c8', .345, .07, 0, { emissive: '#fff0b0', emissiveIntensity: .8 }, 0, 0, Math.PI / 2); add(Bo(.05, .03, .04), '#c83a2a', .05, .14, 0); break; } add(Sf(.18), c, 0, .3, 0, { emissive: c, emissiveIntensity: .5 }); add(Cl(.08, .08, .12), '#c8ccd4', 0, .1, 0, MET); break;
       case 'carta': [0, 1, 2, 3].forEach(i => { const b = add(Bo(.42, .01, .56), i === 3 ? '#f4efe2' : '#e8e2d2', 0, .01 + i * .012, 0); b.rotation.y = (i - 1.5) * .06; }); add(Bo(.3, .002, .06), t, 0, .06, -.18); [0, 1, 2].forEach(i => add(Bo(.3, .002, .02), '#8a8690', 0, .06, -.06 + i * .07)); break;
       case 'medicina': add(Bo(.5, .3, .32), '#f2eee6', 0, .15, 0); add(Bo(.08, .2, .01), c, 0, .16, .165); add(Bo(.2, .08, .01), c, 0, .16, .165); break;
       case 'siringa': add(Cl(.04, .04, .4), '#d8e4ec', 0, .04, 0, GL, 0, 0, Math.PI / 2); add(Cl(.035, .035, .25), c, -.05, .04, 0, {}, 0, 0, Math.PI / 2); add(Cl(.005, .005, .15), '#c8ccd4', .27, .04, 0, MET, 0, 0, Math.PI / 2); break;
@@ -164,7 +167,49 @@ var MenuUI = (function () {
       case 'sedia': add(Bo(.4, .04, .4), c, 0, .4, 0); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => add(Bo(.04, .4, .04), c, a * .17, .2, b * .17)); add(Bo(.4, .4, .04), c, 0, .62, -.18); break;
       case 'arma': add(Bo(.5, .1, .07), '#3a3a40', 0, .25, 0, MET); add(Bo(.12, .22, .06), c, -.12, .12, 0); break;
       case 'munizioni': for (let i = 0; i < 5; i++) { add(Cl(.035, .035, .16), '#c89a40', -.16 + i * .08, .08, 0, MET); add(Cl(.0, .035, .06), '#b8794a', -.16 + i * .08, .19, 0, MET); } break;
-      case 'moneta': for (let i = 0; i < 5; i++) add(Cl(.14, .14, .03, 24), c, (i % 2) * .03, .015 + i * .032, 0, { metalness: .9, roughness: .25 }); break;
+      case 'moneta':
+        if (/orologio/.test(id)) {   // l'orologio da polso: cassa, quadrante con le lancette, cinturino
+          add(Cl(.16, .16, .06, 28), '#c8a848', 0, .05, 0, { metalness: .45, roughness: .3 }); add(Cl(.135, .135, .01, 28), '#f4efe2', 0, .085, 0);
+          add(Bo(.012, .004, .1), '#1a1a1e', 0, .092, -.04); { const h = add(Bo(.012, .004, .07), '#1a1a1e', .025, .093, .015); h.rotation.y = 1.1; }
+          add(Cl(.02, .02, .05, 10), '#c8a848', .17, .05, 0, MET, 0, 0, Math.PI / 2);
+          [-1, 1].forEach(sd => { add(Bo(.16, .025, .4), '#5a3a22', 0, .02, sd * .32); });
+        } else if (/gioiell|anello|catenin/.test(id)) {
+          add(To(.12, .025, 10, 28), '#e0c060', 0, .03, 0, { metalness: .5, roughness: .25 }, Math.PI / 2); add(new T.OctahedronGeometry(.05), '#8ad0e8', 0, .1, .12, GL);
+          for (let i = 0; i < 14; i++) add(Sf(.022, 6, 4), '#e0c060', Math.cos(i * .45) * .3 - .1, .02, Math.sin(i * .45) * .2, { metalness: .5, roughness: .3 });
+        } else for (let i = 0; i < 6; i++) { add(Cl(.14, .14, .03, 28), c, (i % 2) * .025 - .012, .015 + i * .032, 0, { metalness: .4, roughness: .3 }); add(Cl(.11, .11, .032, 28), sh(c, 1.12), (i % 2) * .025 - .012, .015 + i * .032, 0, { metalness: .4, roughness: .3 }); }
+        break;
+      // [anteprime] le famiglie che non avevano un modello (mostravano tutte la cassa di legno)
+      case 'maglia': {   // il capo piegato: busto, maniche ripiegate, colletto e costine
+        add(Bo(.62, .1, .5), c, 0, .05, 0, { roughness: .95 }); add(Bo(.6, .03, .07), sh(c, .8), 0, .11, .22, { roughness: .95 });
+        [-1, 1].forEach(sd => { const m = add(Bo(.12, .04, .44), sh(c, .92), sd * .2, .12, -.01, { roughness: .95 }); m.rotation.y = sd * .5; });
+        add(new T.TorusGeometry(.09, .025, 6, 16, Math.PI), sh(c, .75), 0, .11, -.2, { roughness: .95 }, -Math.PI / 2);
+        for (let i = -4; i <= 4; i++) add(Bo(.012, .012, .06), sh(c, .7), i * .065, .102, .225);
+        break; }
+      case 'scarpa': [-1, 1].forEach(sd => {   // un paio: suola, tomaia, punta tonda, lacci
+        const g2 = new T.Group(); g2.position.set(sd * .17, 0, sd * .04); g2.rotation.y = sd * .12; g.add(g2);
+        const A = (geo, col, x, y, z, o) => { const m = new T.Mesh(geo, M(col, o)); m.position.set(x, y, z); g2.add(m); return m; };
+        A(Bo(.15, .04, .5), '#1a1614', 0, .02, 0); A(Bo(.14, .12, .32), c, 0, .1, -.08, { roughness: .6 });
+        const tip = A(Sf(.075, 14, 10), c, 0, .085, .14, { roughness: .6 }); tip.scale.set(1, .8, 1.3);
+        A(Bo(.13, .1, .1), sh(c, .8), 0, .19, -.18, { roughness: .6 });
+        for (let i = 0; i < 4; i++) A(Bo(.11, .008, .012), '#e8e0cc', 0, .165 - i * .008, -.02 + i * .04);
+      }); break;
+      case 'cappello': {   // berretto: calotta, risvolto, pompon (o visiera, per i berretti con la visiera)
+        const cap = add(new T.SphereGeometry(.24, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2), c, 0, .06, 0, { roughness: .9 }); cap.scale.y = 1.05;
+        add(Cl(.245, .25, .1, 24), sh(c, .82), 0, .05, 0, { roughness: .9 });
+        if (/elmetto/.test(id)) add(Cl(.3, .3, .02, 24), c, 0, .01, 0, MET);
+        else if (/berretto|cappell/.test(id)) { const v = add(new T.CylinderGeometry(.24, .24, .02, 22, 1, false, -Math.PI / 2.4, Math.PI / 1.2), sh(c, .7), 0, .02, .1); v.scale.z = 1.4; }
+        else add(Sf(.06, 10, 8), sh(c, 1.2), 0, .32, 0, { roughness: 1 });
+        break; }
+      case 'borsa': {   // lo zaino: corpo, patta, tasca davanti con la fibbia, spallacci dietro
+        const b = add(Bo(.46, .56, .24), c, 0, .28, 0, { roughness: .85 }); b.geometry.translate(0, 0, 0);
+        add(Bo(.47, .2, .26), sh(c, .85), 0, .5, .005, { roughness: .85 }); add(Bo(.3, .2, .08), sh(c, .9), 0, .2, .15, { roughness: .85 });
+        add(Bo(.06, .05, .02), '#c8a040', 0, .42, .14, MET); add(Bo(.05, .04, .02), '#c8a040', 0, .27, .2, MET);
+        [-1, 1].forEach(sd => add(Bo(.06, .5, .03), sh(c, .7), sd * .13, .3, -.14, { roughness: .85 })); add(To(.05, .012, 6, 12), sh(c, .7), 0, .6, -.02, {}, 0, 0, 0);
+        break; }
+      case 'cassa': {   // la cassa di legno a doghe, coi montanti agli spigoli
+        for (let i = 0; i < 4; i++) add(Bo(.52, .085, .42), i % 2 ? sh(c, .9) : c, 0, .05 + i * .1, 0, { roughness: .95 });
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b2]) => add(Bo(.05, .42, .05), sh(c, .7), a * .25, .2, b2 * .2, { roughness: .95 }));
+        break; }
       case 'pacchetto': add(Bo(.3, .44, .14), '#f0ece2', 0, .22, 0); add(Bo(.305, .18, .145), t, 0, .2, 0); [-.06, 0, .06].forEach(x => add(Cl(.022, .022, .1), '#f0ece2', x, .48, 0)); break;
       case 'cassetta': add(Bo(.5, .3, .08), c, 0, .15, 0); add(Bo(.38, .1, .01), '#f0ece2', 0, .18, .04); [-.1, .1].forEach(x => add(Cl(.035, .035, .01), '#1a1a1a', x, .18, .045, {}, Math.PI / 2)); break;
       case 'ruota': add(To(.28, .09, 12, 28), '#1a1a1e', 0, .37, 0); add(Cl(.15, .15, .1), '#9aa0a8', 0, .37, 0, MET, Math.PI / 2); break;
@@ -174,6 +219,10 @@ var MenuUI = (function () {
     }
     return g;
   }
+  // [mani] famiglia e colore di un oggetto, anche senza il catalogo (anim_mano.js, le anteprime)
+  const famOf = id => { try { return fam(id); } catch (e) { for (const [re, s, c] of FAM) if (re.test(id)) return [s, c]; return ['cassa', null]; } };
+  const tipo3 = id => /^(pistola|lupara|mitra|fucile)$/.test(id) ? id : /coltell|taglierino/.test(id) ? 'coltello' : /thermos/.test(id) ? 'thermos' : /torcia/.test(id) ? 'torcia' : /martell/.test(id) ? 'martello' : /^chiave/.test(id) ? 'chiave'
+    : famOf(id)[0] === 'bottiglia' && !/molotov/.test(id) ? 'bottiglia' : famOf(id)[0] === 'latta' && /scatol|conserva|passata|latta|lattine|carne_scatola/.test(id) ? 'latta' : null;
   let THR = null;
   function makeThumb(id) {
     const T = THREE, st = ST();
@@ -190,10 +239,20 @@ var MenuUI = (function () {
       obj.rotation.y = back ? Math.PI * .85 : side ? -.9 : -.35; cam.position.set(side ? .3 : 0, F[0] + F[1] * .15, F[1] * 2.2); cam.lookAt(side ? .25 : 0, F[0], 0);
     } else {
       const R = PV() && PV().R, W = st && G().WEAPONS && G().WEAPONS[id] && R && R.__models && R.__models.weaponModel;
-      obj = CUST[id] ? CUST[id]() : W ? R.__models.weaponModel(id) : mini(id);
-      const box = new T.Box3().setFromObject(obj), size = box.getSize(new T.Vector3()), ctr = box.getCenter(new T.Vector3()), r = Math.max(size.x, size.y, size.z) || 1;
-      const holder = new T.Group(); obj.position.sub(ctr); holder.add(obj); holder.rotation.set(.45, -.6, 0); obj = holder;
-      cam.position.set(0, 0, r * 2.3); cam.lookAt(0, 0, 0);
+      // [modelli] armi e attrezzi coi modelli definiti di oggetti3d.js (pistola, lupara, mitra, bottiglie, latte, martello, chiave...)
+      const o3 = typeof Oggetti3D !== 'undefined' && Oggetti3D && tipo3(id);
+      obj = CUST[id] ? CUST[id]() : o3 ? Oggetti3D.make(o3, TINTS[id] || famOf(id)[1], id) : W ? R.__models.weaponModel(id) : mini(id);
+      if (o3 && /^(pistola|lupara|mitra|fucile)$/.test(o3)) obj.rotation.y = -Math.PI / 2;   // di profilo, la canna a destra
+      else if (o3 && /^(martello|chiave|coltello|torcia)$/.test(o3)) obj.rotation.z = -.8;   // gli attrezzi lunghi in diagonale: riempiono il riquadro
+      // [anteprime] si inquadra la sfera che contiene l'oggetto già girato: niente più latte e casse tagliate in alto
+      const box = new T.Box3().setFromObject(obj), ctr = box.getCenter(new T.Vector3());
+      const holder = new T.Group(); obj.position.sub(ctr); holder.add(obj); holder.rotation.set(.42, -.6, 0); obj = holder; holder.updateMatrixWorld(true);
+      const sph = new T.Box3().setFromObject(holder).getBoundingSphere(new T.Sphere()), dist = sph.radius / Math.sin(cam.fov * Math.PI / 360) * .74;   // (la sfera è più larga della sagoma: .74 la riempie senza tagliare)
+      cam.position.set(sph.center.x, sph.center.y + dist * .08, sph.center.z + dist); cam.lookAt(sph.center);
+      // un'ombra morbida sotto, perché l'oggetto poggi da qualche parte
+      { const sc2 = document.createElement('canvas'); sc2.width = sc2.height = 64; const x2 = sc2.getContext('2d'), gr = x2.createRadialGradient(32, 32, 2, 32, 32, 31); gr.addColorStop(0, 'rgba(0,0,0,.45)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); x2.fillStyle = gr; x2.fillRect(0, 0, 64, 64);
+        const bb = new T.Box3().setFromObject(holder), sz = bb.getSize(new T.Vector3()), shd = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ map: new T.CanvasTexture(sc2), transparent: true, depthWrite: false }));
+        shd.rotation.x = -Math.PI / 2; shd.scale.set(sz.x * 1.2, sz.z * 1.2 + .05, 1); shd.position.set(bb.getCenter(new T.Vector3()).x, bb.min.y + .002, bb.getCenter(new T.Vector3()).z); sc.add(shd); }
     }
     sc.add(obj); THR.render(sc, cam);
     const cv = document.createElement('canvas'); cv.width = cv.height = THS; cv.getContext('2d').drawImage(THR.domElement, 0, 0);
@@ -215,7 +274,7 @@ var MenuUI = (function () {
     const wide = +c.getAttribute('width') === 32 || c.dataset.w === '1'; c.dataset.w = wide ? '1' : '';
     c.width = wide ? 160 : 96; c.height = wide ? 80 : 96; c.classList.add('tc');
     const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height); x.imageSmoothingEnabled = true;
-    if (wide) x.drawImage(cv, 0, 24, 128, 80, 0, 0, 160, 80); else x.drawImage(cv, 0, 0, 96, 96);
+    const q = cv.width / 128; if (wide) x.drawImage(cv, 0, 24 * q, 128 * q, 80 * q, 0, 0, 160, 80); else x.drawImage(cv, 0, 0, cv.width, cv.height, 0, 0, 96, 96);
   }
   function paintAll(root) { root.querySelectorAll('canvas[data-map]').forEach(c => drawMap(c)); root.querySelectorAll('canvas[data-ic]').forEach(c => { const id = c.dataset.ic, t = c.dataset.nt ? null : thumb(id); if (t) drawThumb(c, t); else icon(c, id); }); root.querySelectorAll('canvas[data-fig]').forEach(c => figure(c)); root.querySelectorAll('canvas[data-shop]').forEach(c => shopScene(c, c.dataset.shop, c.dataset.who)); }
 
@@ -436,6 +495,7 @@ var MenuUI = (function () {
 #mu .tile .q { top: 2px; bottom: auto; }
 #mu .tile[draggable="true"] { cursor: grab; } #mu .dragging { opacity: .35; } #mu .over { box-shadow: 0 0 0 2px var(--ott) !important; background: rgba(176,141,87,.1) !important; }
 #mu .addosso { display: grid; gap: 12px; }
+#mu [data-drag] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 #mu .ah { display: flex; align-items: baseline; gap: 14px; } #mu .ah .nmw { font: 400 30px var(--fs); }
 #mu .dress2 { display: grid; grid-template-columns: 1fr 190px 1fr; gap: 10px; align-items: center; }
 #mu .zc { display: grid; gap: 8px; align-content: center; }
@@ -469,6 +529,42 @@ var MenuUI = (function () {
 @media (max-width: 1240px) { #mu .roba { grid-template-columns: 1fr; } }
 @media (max-width: 1240px) { #mu .zaino { grid-template-columns: auto 1fr; } #mu .zaino .who { display: none; } #mu .pg { grid-template-columns: 220px 1fr; } #mu .pg > :last-child { grid-column: 1 / -1; } }
 @media (max-width: 900px) { #mu .case { inset: 6px; grid-template-columns: 64px 1fr; } #mu .rail button { width: 56px; height: 56px; font-size: 9px; } #mu .rail button canvas { width: 22px; height: 22px; } #mu .zaino, #mu .lav, #mu .shop, #mu .jobs, #mu .fr2, #mu .pg { grid-template-columns: 1fr; } #mu .bag { --c: 34px; } #mu footer .k { display: none; } }
+/* [menu2] telefono in verticale: tutto dentro lo schermo. Le schede diventano una fila in basso (sotto il pollice), il pannello
+   prende tutta la larghezza, niente si taglia a destra (i figli di una griglia senza min-width si allargavano oltre). */
+#mu .case > *, #mu .in, #mu main, #mu header { min-width: 0; }
+@media (max-width: 640px) {
+  #mu .case { inset: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0) 0; border-radius: 0; padding: 6px; grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 6px; }
+  #mu .case::before, #mu .case::after { display: none; }
+  #mu .rail { order: 2; flex-direction: row; overflow-x: auto; padding: 2px 4px; gap: 6px; justify-content: flex-start; scrollbar-width: none; }
+  #mu .rail .sp { display: none; }
+  #mu .rail button { flex: 0 0 auto; width: 60px; height: 60px; font-size: 9px; }
+  #mu .rail button canvas { width: 24px; height: 24px; }
+  #mu header { flex-wrap: wrap; gap: 4px 10px; padding: 12px 14px 8px; }
+  #mu header b { font-size: 28px; white-space: normal; }
+  #mu header span { order: 3; flex-basis: 100%; white-space: normal; font-size: 14px; }
+  #mu header .tabs { order: 4; flex-basis: 100%; margin-left: 0; }
+  #mu header .x { width: 44px; height: 44px; font-size: 20px; }
+  #mu main { padding: 6px 14px 14px; }
+  #mu footer { padding: 8px 14px; gap: 10px; font-size: 10.5px; } #mu footer > :not(.r) { display: none; }
+  #mu .bag { --c: calc((100vw - 92px) / 8); padding: 8px; } #mu .zaino > *, #mu .lav > *, #mu .jobs > * { min-width: 0; } #mu main * { white-space: normal; }
+  #mu .acts { grid-template-columns: 1fr; } #mu .act { font-size: 18px; }
+  #mu .recs { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); padding: 8px; }
+  #mu .det .hd { grid-template-columns: 64px 1fr; } #mu .det .pic { width: 64px; height: 64px; } #mu .det .nm { font-size: 24px; }
+  #mu .det [class*=bt], #mu .det .row { flex-wrap: wrap; }
+  #mu button.b { padding: 11px 16px; }
+  #mu .msg { max-width: 90%; bottom: 90px; }
+  #mu, #mu .dim { font-size: 15px; }
+  /* [menu3] i vestiti sempre in vista: «Addosso» in alto, compatto, fermo mentre la borsa scorre sotto */
+  #mu .inv, #mu .roba { display: flex; flex-direction: column; gap: 14px; }
+  #mu .inv .addosso, #mu .roba .addosso { order: -1; position: sticky; top: -6px; z-index: 2; background: var(--vetro); padding: 6px 0 8px; box-shadow: 0 8px 12px -8px rgba(0,0,0,.7); gap: 6px; }
+  #mu .addosso .ah .dim, #mu .addosso .ab2 { display: none; }
+  #mu .addosso .nmw { font-size: 20px; }
+  #mu .dress2 { grid-template-columns: 1fr 96px 1fr; gap: 6px; }
+  #mu .dress2 .nino canvas { width: 96px !important; height: 160px !important; }
+  #mu .zc { gap: 4px; } #mu .zr { min-height: 34px; padding: 3px 6px; } #mu .zr label { font-size: 9px; margin-bottom: 1px; } #mu .inv .hands { display: none; }
+  #mu .hands { transform: scale(.85); transform-origin: top center; margin-bottom: -10px; }
+  #mu .inv .bag, #mu .roba .bag { --c: calc((100vw - 92px) / 6); } #mu .roba .bag { --c: calc((100vw - 92px) / 5); }
+}
 `;
 
   // =====================================================================================================================
@@ -490,6 +586,18 @@ var MenuUI = (function () {
     m.addEventListener('dragend', () => { U.drag = null; m.querySelectorAll('.dragging,.over').forEach(x => x.classList.remove('dragging', 'over')); render(true); });
     m.addEventListener('dragover', e => { const t = e.target.closest('[data-drop]'); if (!t || !U.drag) return; e.preventDefault(); m.querySelectorAll('.over').forEach(x => { if (x !== t) x.classList.remove('over'); }); t.classList.add('over'); });
     m.addEventListener('drop', e => { const t = e.target.closest('[data-drop]'); if (!t || !U.drag) return; e.preventDefault(); const src = U.drag; U.drag = null; dropOn(src, t, e.clientX); render(true); });
+    // [menu3] col dito: tieni premuto un attimo su un oggetto (o un capo), poi trascinalo dove vuoi. Prima si poteva solo col mouse
+    { let T = null; const clear = () => { if (T) { clearTimeout(T.tm); if (T.gh) T.gh.remove(); m.querySelectorAll('.dragging,.over').forEach(x => x.classList.remove('dragging', 'over')); } T = null; };
+      m.addEventListener('touchstart', e => { const d = e.target.closest('[data-drag]'); if (!d || e.touches.length > 1) return; const t0 = e.touches[0];
+        T = { d, src: d.dataset.drag, x: t0.clientX, y: t0.clientY, on: false, tm: setTimeout(() => { if (!T) return; T.on = true; d.classList.add('dragging');
+          const gh = d.cloneNode(true); gh.style.cssText = 'position:fixed;z-index:10000;pointer-events:none;opacity:.85;transform:translate(-50%,-50%) scale(1.15);width:' + d.offsetWidth + 'px;height:' + d.offsetHeight + 'px;left:' + T.x + 'px;top:' + T.y + 'px'; m.appendChild(gh); T.gh = gh;
+          try { navigator.vibrate && navigator.vibrate(15); } catch (x) { } }, 260) }; }, { passive: true });
+      m.addEventListener('touchmove', e => { if (!T) return; const t0 = e.touches[0];
+        if (!T.on) { if (Math.hypot(t0.clientX - T.x, t0.clientY - T.y) > 10) clear(); return; }   // si stava scorrendo: niente trascinamento
+        e.preventDefault(); T.x = t0.clientX; T.y = t0.clientY; T.gh.style.left = T.x + 'px'; T.gh.style.top = T.y + 'px';
+        const el = document.elementFromPoint(T.x, T.y), tg = el && el.closest('[data-drop]'); m.querySelectorAll('.over').forEach(x => { if (x !== tg) x.classList.remove('over'); }); if (tg) tg.classList.add('over'); }, { passive: false });
+      m.addEventListener('touchend', e => { if (!T || !T.on) { clear(); return; } const x = T.x, y = T.y, src = T.src; clear(); const el = document.elementFromPoint(x, y), tg = el && el.closest('[data-drop]'); if (tg) { e.preventDefault(); dropOn(src, tg, x); render(true); } });
+      m.addEventListener('touchcancel', clear); }
     return true;
   }
   function open(tab, arg) {
@@ -559,7 +667,7 @@ var MenuUI = (function () {
   function pZaino(st, mode) {
     const all = bagItems(st), pv = all.pv, GR0 = typeof Guardaroba !== 'undefined' ? Guardaroba : null;
     // nell'equipaggiamento accanto a Nino c'è solo la roba che si indossa o si tiene in mano
-    const items = mode === 'equip' ? all.items.filter(i => (GR0 && GR0.CAPO[i.id]) || i.eq || (O().canHold && O().canHold(i.id))) : all.items, P = pack(items, mode === 'equip' ? 5 : 9);
+    const items = mode === 'equip' ? all.items.filter(i => (GR0 && GR0.CAPO[i.id]) || i.eq || (O().canHold && O().canHold(i.id))) : all.items, NC = mode === 'equip' ? 5 : matchMedia('(max-width: 640px)').matches ? 6 : 9, P = pack(items, NC);   // [menu3] in verticale 6 colonne: a 9 i nomi si accavallavano
     if (!U.sel || !items.some(i => i.id === U.sel)) U.sel = items[0] ? items[0].id : null;
     const sel = items.find(i => i.id === U.sel);
     const tiles = P.put.map(o => { const i = o.it, wide = o.w === 2 && o.h === 1, big = o.h === 2;
@@ -576,10 +684,10 @@ var MenuUI = (function () {
       <div class="hands">${hand('dx', GW.dx, 'destra')}<div class="hb">${btn('scambia_mani', 'Scambia')}${GW.sx ? btn('usa_sinistra', 'Usa sinistra') : ''}</div>${hand('sx', GW.sx, 'sinistra')}</div>
       <div class="ab2"><div class="stat" style="grid-template-columns:1fr auto 1fr auto;column-gap:14px"><span>Caldo</span><em>${Math.round(GW.calore * 100)}</em><span>Protezione</span><em>${Math.round(GW.arm * 100)}%</em></div>
         <div class="row">${btn('spogliati', 'Spogliati', { tutto: false })}${btn('spogliati', 'Nudo', { tutto: true }, 'bad')}</div></div></div>` : '';
-    const bagH = `<div class="bag ${inCovo(st) ? 'covo' : 'strada'}" data-drop="bag" style="grid-template-columns:repeat(${mode === 'equip' ? 5 : 9},var(--c));grid-template-rows:repeat(${P.rows},var(--c))">${tiles}</div>`;
+    const bagH = `<div class="bag ${inCovo(st) ? 'covo' : 'strada'}" data-drop="bag" style="grid-template-columns:repeat(${NC},var(--c));grid-template-rows:repeat(${P.rows},var(--c))">${tiles}</div>`;
     if (mode === 'equip') return `<div class="roba"><div class="lft"><h4>Da indossare e da tenere · trascina su Nino</h4>${bagH}<div class="det" style="margin-top:14px">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Niente da indossare in borsa.</div>'}</div></div>${addosso}</div>`;
     return `<div class="inv"><div>${bagH}<div class="dim" style="margin:8px 0 0">${items.length} cose · ${pv.peso} kg su ${pv.cap}. Quello che indossi non pesa nella borsa.${pv.base ? ' ' + btn('deposita', 'Tutto al covo', { id: '*' }) : ''}</div></div>
-        <div class="det">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Tasche vuote.</div>'}</div></div>`;
+        <div class="det">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Tasche vuote.</div>'}</div>${addosso}</div>`;   // [menu3] i vestiti si trascinano anche dall'inventario
   }
   function bar(l, v, max, cls, inv) { const f = Math.max(0, Math.min(1, v / max)), c = inv ? (f > .85 ? 'r' : f > .6 ? 'w' : '') : (f < .25 ? 'r' : f < .5 ? 'w' : cls || ''); return `<div class="stat"><span>${esc(l)}</span><em>${Math.round(v)}${max === 100 ? '%' : ''}</em><i><b class="${c}" style="width:${Math.round(f * 100)}%"></b></i></div>`; }
   function describe(id) {
@@ -869,5 +977,5 @@ var MenuUI = (function () {
     const c = b.querySelector('canvas'); if (!c.dataset.done) { const t = thumb('zaino'); if (t) { c.getContext('2d').drawImage(t, 0, 0, 96, 96); c.dataset.done = 1; } }
     const n = quiCount(st), d = b.querySelector('.dot'); d.hidden = !n; d.textContent = n;
   } catch (e) { } }, 300);
-  return { open, close, toggle, render, icon, state: U, quiList, quiCount, thumbFor };
+  return { open, close, toggle, render, icon, state: U, quiList, quiCount, thumbFor, famOf, anteprima: id => makeThumb(id) };   // anteprima: per lo studio e le prove
 })();

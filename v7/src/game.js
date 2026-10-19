@@ -1359,7 +1359,7 @@ var Game = (function () {
     }
     if (a === 'affronta') {
       if (dist(n.x, n.y, p.x, p.y) > 1.6) { if (!n.path.length || dist(n.goal.x, n.goal.y, p.x, p.y) > 2) goTo(n, p.x, p.y); stepAlong(n, 2.2, dt); }
-      else { n.face = Math.atan2(p.y - n.y, p.x - n.x); n.speedNow = 0; if (n.framedAngry && n.tr.cor > .7 && st.clock > (n.shoveAt || 0) && !p.vehicle) { n.shoveAt = st.clock + 6; p.stun = .8; damagePlayer(st, 8, n.face, n.id); say(st, n, 'Questa è per le voci che metti in giro!'); } }
+      else { n.face = Math.atan2(p.y - n.y, p.x - n.x); n.speedNow = 0; if (n.framedAngry && n.tr.cor > .7 && st.clock > (n.shoveAt || 0) && !p.vehicle) { n.shoveAt = st.clock + 6; p.kbx = Math.cos(n.face) * 5.5; p.kby = Math.sin(n.face) * 5.5; damagePlayer(st, 8, n.face, n.id); /* [anim] lo spintone ti manda indietro di un metro e barcolli; prima p.stun = .8 = a terra come morto */ say(st, n, 'Questa è per le voci che metti in giro!'); } }
       return;
     }
     if (a === 'insegue') {
@@ -1526,7 +1526,8 @@ var Game = (function () {
     const ix = inp.x, iy = inp.y;
     p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);   // [costa] in acqua si nuota
     if (ix || iy) {
-      const l = Math.hypot(ix, iy), sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : (p.sneak ? 1.7 : inp.pace >= 3 ? 7.8 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
+      const l = Math.hypot(ix, iy); let sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : (p.sneak ? 1.7 : inp.pace >= 3 ? 7.8 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
+      if (inp.mag !== undefined && !p.swim && !p.sneak && !(inp.pace >= 3)) sp = (1.3 + 5.1 * Math.min(1, inp.mag)) * (p.loadK || 1);   // [levetta] più il dito è lontano dal centro, più si va svelti (dal passo alla corsa)
       p.__st = st;   // [monte] i livelli (sotto terra, sul ponte) sanno dove si cammina
       const hitWall = tryMove(p, ix / l * sp * dt, iy / l * sp * dt, .35, !p.indoor && !p.lv && !p.carrying);   // [costa] il giocatore può entrare in mare (con un peso in braccio no)
       p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);
@@ -1678,7 +1679,8 @@ var Game = (function () {
       const off = want === null ? 0 : Math.abs(angDiff(want, v.ang));
       let a = K.accel * (v.boost || 1) * (off < 1.2 ? 1 : off < 2.4 ? .45 : .2) * (1 - clamp(vf / max, 0, 1) * .35);
       if (vf < 0) a += 10;
-      if (vf < max) vf = Math.min(max, vf + a * dt); else vf -= Math.min(vf - max, 4 * dt);
+      const tmax = max * Math.min(1, throttle);   // [levetta] gas a metà: velocità a metà
+      if (vf < tmax) vf = Math.min(tmax, vf + a * dt); else vf -= Math.min(vf - tmax, (throttle < 1 ? 3 : 4) * dt);
     } else if (throttle < 0) { if (vf > .6) vf -= 16 * dt; else vf = Math.max(-5, vf - K.accel * .7 * dt); }
     else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (K.boat ? .8 + Math.abs(vf) * .07 : 2.6) * dt);   // [costa] in mare si va avanti per abbrivio
     if (brake) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 19 * dt);

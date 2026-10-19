@@ -17,7 +17,7 @@
      P.o (le opzioni passate ad animPerson), P.r (numero fisso per persona, 0-1, per variare le pose),
      P.bulk (metri di vestiti su busto e braccia: allargare gomiti e mani di tanto, per non bucare il cappotto)
      P.base(clip)                  chiede una clip sotto la posa (es. 'Idle' per stare fermi mentre si siede)
-   Le pose si registrano con Anim.def(nome, { fn(P), full, base, fade }) e si scelgono con le «mappe»:
+   Le pose si registrano con Anim.def(nome, { fn(P), full, base, fade, air }) e si scelgono con le «mappe»:
      Anim.npcMap(fn(st, n, s))  e  Anim.playerMap(fn(st, p, s))  riempiono s = { act, upper, mood, talk, lookAt }
        act:   posa di tutto il corpo (una sola: 'siede', 'dorme', 'scava'...)
        upper: posa delle braccia sopra la camminata (una sola: 'telefono', 'fuma', 'porta'...)
@@ -30,11 +30,15 @@ var Anim = (function () {
   const V = () => new THREE.Vector3(), Q = () => new THREE.Quaternion();
   const _a = V(), _b = V(), _c = V(), _d = V(), _q = Q(), _q2 = Q(), _q3 = Q(), _q4 = Q(), _e = new THREE.Euler();
   const ID = Q();
-  const CHILD = { UpperArmL: 'LowerArmL', LowerArmL: 'WristL', UpperArmR: 'LowerArmR', LowerArmR: 'WristR', UpperLegL: 'LowerLegL', LowerLegL: 'FootL', UpperLegR: 'LowerLegR', LowerLegR: 'FootR', Neck: 'Head', Chest: 'Neck', Torso: 'Chest', Abdomen: 'Torso', Hips: 'Abdomen', ShoulderL: 'UpperArmL', ShoulderR: 'UpperArmR' };
+  const CHILD = { UpperArmL: 'LowerArmL', LowerArmL: 'WristL', UpperArmR: 'LowerArmR', LowerArmR: 'WristR', UpperLegL: 'LowerLegL', LowerLegL: 'FootL', UpperLegR: 'LowerLegR', LowerLegR: 'FootR', Neck: 'Head', Chest: 'Neck', Torso: 'Chest', Abdomen: 'Torso', Hips: 'Abdomen', ShoulderL: 'UpperArmL', ShoulderR: 'UpperArmR',
+    // il polso punta lungo la mano, verso la nocca del medio: le radici delle dita (Index1...) stanno a 2-3 cm dal polso, di lato,
+    // e puntare verso quelle girava la mano di traverso
+    WristL: 'Middle2L', WristR: 'Middle2R' };
   const FINGERS = ['Index', 'Middle', 'Ring', 'Pinky'], FB = [];
   ['L', 'R'].forEach(sd => { FINGERS.forEach(f => [1, 2, 3, 4].forEach(k => FB.push(f + k + sd))); [1, 2, 3].forEach(k => FB.push('Thumb' + k + sd)); });
   const BONES = FB.concat(['Hips', 'Abdomen', 'Torso', 'Chest', 'Neck', 'Head', 'ShoulderL', 'UpperArmL', 'LowerArmL', 'WristL', 'ShoulderR', 'UpperArmR', 'LowerArmR', 'WristR', 'UpperLegL', 'LowerLegL', 'FootL', 'UpperLegR', 'LowerLegR', 'FootR']);
   const disabled = {};
+  const HAND = .85;   // [mani] scala delle mani (vedi rig)
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   const smooth = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
   function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }
@@ -49,7 +53,10 @@ var Anim = (function () {
     for (const k in b) if (!CHILD[k] || !b[CHILD[k]]) { const c = b[k].children.find(x => x.isBone); if (c && !CHILD[k]) CHILD[k] = c.name; }
     // lunghezza dello stinco, presa subito (dopo il piede viene spostato dalle pose)
     let shin = .45; if (b.LowerLegL && b.FootL) { g.updateMatrixWorld(true); const p1 = new THREE.Vector3(), p2 = new THREE.Vector3(); b.LowerLegL.getWorldPosition(p1); b.FootL.getWorldPosition(p2); shin = p1.distanceTo(p2) || .45; }
-    u.rig = { shin, m, b, layers: {}, r: hashStr(String(g.id) + (u.model || '')), headYaw: 0, headPitch: 0, talkT: 0 };
+    // [mani] le mani del kit sono grandi (14 cm dal polso alle nocche, una mano vera ne fa ~10): si rimpiccioliscono un po'
+    const hs = {}; ['L', 'R'].forEach(sd => { const w = b['Wrist' + sd]; if (w) hs[sd] = w.scale.clone(); });
+    u.rig = { shin, m, b, hs, layers: {}, r: hashStr(String(g.id) + (u.model || '')), headYaw: 0, headPitch: 0, talkT: 0 };
+    for (const sd in hs) b['Wrist' + sd].scale.copy(hs[sd]).multiplyScalar(HAND);
     return u.rig;
   }
 
@@ -113,10 +120,21 @@ var Anim = (function () {
       legTo(side, fx, fy, fz, kx, ky, kz, pitch, yaw, w) { legTo(P, side === 'L' || side > 0 ? 'L' : 'R', fx, fy, fz, kx, ky, kz, pitch || 0, yaw || 0, (w === undefined ? 1 : w) * P.w); return P; },
       // dita: curl 0 (aperta) → 1 (pugno); thumb 0-1 il pollice che chiude sopra; spread allarga
       fingers(side, curl, thumb, w) { hand(P, side, curl, thumb === undefined ? curl : thumb, (w === undefined ? 1 : w) * P.w); return P; },
+      // dita una per una: c = [indice, medio, anulare, mignolo] (0 aperto → 1 chiuso); per indicare: P.fingerEach('R', [0, 1, 1, 1], .8)
+      fingerEach(side, c, thumb, w) { hand(P, side, c, thumb === undefined ? .5 : thumb, (w === undefined ? 1 : w) * P.w); return P; },
       // gira la mano perché la direzione A (vettore del MONDO, solidale alla mano: la canna, il manico) vada verso dir
       // (spazio del personaggio). Prima ruota l'avambraccio sul suo asse (pronazione, fino a ~95°), il resto lo fa il polso
       // entro maxWrist radianti (default 0,7): niente polsi spezzati; se non basta, l'attrezzo resta un po' fuori asse.
       turnHand(side, A, dir, maxWrist, w) { turn(P, side, A, dir, maxWrist === undefined ? .7 : maxWrist, (w === undefined ? 1 : w) * P.w); return P; },
+      // [mani] presa vera: il centro del pugno nel punto (x, y, z) (spazio del personaggio, prima di P.body), la mano orientata
+      // con X (dal mignolo al pollice per la destra, dal pollice al mignolo per la sinistra: per tutte e due «verso +x» se
+      // impugnano una barra di traverso con le nocche avanti) lungo ax, e le dita verso fy; il gomito verso il polo p.
+      // il polso in (x, y, z) (spazio del personaggio, prima di P.body), il gomito verso il polo p: IK a due ossa
+      reach(side, x, y, z, p, w) { armIK(P, side === 'L' ? 'L' : 'R', _rT.set(x, y, z), p || [0, -1, -.3], (w === undefined ? 1 : w) * P.w); return P; },
+      // [mani] come grab, ma la mano resta IN LINEA con l'avambraccio (polso dritto): si dà solo il verso del palmo (pz),
+      // le dita seguono l'avambraccio che esce dall'IK (tre passate: orientamento → IK → orientamento)
+      hold(side, x, y, z, pz, p, w) { hold(P, side === 'L' ? 'L' : 'R', x, y, z, pz, p || [0, -1, -.3], (w === undefined ? 1 : w) * P.w); return P; },
+      grab(side, x, y, z, ax, fy, p, w) { grab(P, side === 'L' ? 'L' : 'R', x, y, z, ax, fy, p || [0, -1, -.3], (w === undefined ? 1 : w) * P.w); return P; },
     };
     return P;
   }
@@ -160,7 +178,7 @@ var Anim = (function () {
     ft.parent.getWorldQuaternion(_q4); _lq.premultiply(_q4.invert()); ft.quaternion.copy(_lq); ft.updateMatrixWorld(true);
   }
   // ---------------- le mani ----------------
-  const _f1 = V(), _f2 = V(), _ax = V(), _fq = Q(), _tw = Q(), _sw = Q();
+  const _f1 = V(), _f2 = V(), _ax = V(), _fq = Q(), _tw = Q(), _sw = Q(), _tA = V(), _tB = V(), _tT = V();
   // il verso in cui le dita si chiudono si scopre una volta per scheletro: si prova a piegare il medio e si guarda
   // se la punta si avvicina alla base del pollice (il palmo)
   function curlSign(R, sd) {
@@ -183,22 +201,74 @@ var Anim = (function () {
     const R = P.R, sd = side === 'L' ? 'L' : 'R', i2 = R.b['Index2' + sd], p2 = R.b['Pinky2' + sd]; if (!i2 || !p2 || ww <= 0) return;
     const sg = curlSign(R, sd);
     for (let f = 0; f < 4; f++) {
-      const c = curl * (1 + (f - 1.5) * .06);   // il mignolo chiude un filo di più
+      const c = Array.isArray(curl) ? curl[f] : curl * (1 + (f - 1.5) * .06);   // il mignolo chiude un filo di più
       for (let k = 0; k < 4; k++) {
         const b = R.b[FINGERS[f] + (k + 1) + sd]; if (!b) continue;
         i2.getWorldPosition(_f1); p2.getWorldPosition(_f2); _ax.subVectors(_f1, _f2).normalize();   // asse delle nocche (si muove poco)
         _fq.setFromAxisAngle(_ax, sg * CURL[k] * c * ww); applyWorld(b, _fq);
       }
     }
-    // il pollice: la prima falange si porta davanti al palmo, le altre si chiudono sopra le dita
-    const t2 = R.b['Thumb2' + sd], t3 = R.b['Thumb3' + sd], m2 = R.b['Middle2' + sd], w0 = R.b['Wrist' + sd];
-    if (t2 && m2 && w0 && thumb > 0) {
+    // il pollice: la sua punta va verso la falange di mezzo dell'indice (già chiuso): ruota la radice, poi la punta si piega.
+    // Prima girava su assi fissi e nel pugno restava dritto, come un pollice alzato.
+    const t1 = R.b['Thumb1' + sd], t2 = R.b['Thumb2' + sd], t3 = R.b['Thumb3' + sd], i3 = R.b['Index3' + sd], m3 = R.b['Middle3' + sd];
+    if (t1 && t2 && t3 && i3 && m3 && thumb > 0) {
+      const k = clamp(thumb, 0, 1) * ww;
+      t1.getWorldPosition(_f1); t3.getWorldPosition(_tA); t2.getWorldPosition(_tB);
+      _tT.copy(_tA).sub(_tB).multiplyScalar(.9).add(_tA);                 // la punta (oltre l'ultima falange)
+      i3.getWorldPosition(_tB); m3.getWorldPosition(_f2); _tB.lerp(_f2, Array.isArray(curl) && curl[0] < .5 ? 1 : .3); // dove va: sopra indice e medio (sul medio, se l'indice è teso)
+      _tT.sub(_f1); _tB.sub(_f1);
+      if (_tT.lengthSq() > 1e-10 && _tB.lengthSq() > 1e-10) { _fq.setFromUnitVectors(_tT.normalize(), _tB.normalize()); _sw.copy(ID).slerp(_fq, k * .85); applyWorld(t1, _sw); }
       i2.getWorldPosition(_f1); p2.getWorldPosition(_f2); _ax.subVectors(_f1, _f2).normalize();
-      w0.getWorldPosition(_f1); m2.getWorldPosition(_f2); const fd = _f2.sub(_f1).normalize();
-      _fq.setFromAxisAngle(fd, sg * .5 * thumb * ww); applyWorld(t2, _fq);
-      if (t3) { _fq.setFromAxisAngle(_ax, sg * .7 * thumb * ww); applyWorld(t3, _fq); }
+      _fq.setFromAxisAngle(_ax, sg * .5 * k); applyWorld(t3, _fq);
     }
   }
+  // ---------------- la presa ----------------
+  const QH = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI), QHI = QH.clone().invert();
+  const _gx = V(), _gy = V(), _gz = V(), _gm = new THREE.Matrix4(), _gq = Q(), _gS = V(), _gE = V(), _gW = V(), _gT = V(), _gU = V(), _gN = V(), _gI = new THREE.Matrix4();
+  function grab(P, sd, x, y, z, ax, fy, pole, ww) {
+    const R = P.R, ua = R.b['UpperArm' + sd], la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd], m2 = R.b['Middle2' + sd]; if (!ua || !la || !wr || !m2 || ww <= 0) return;
+    if (ww > .5) R['grab' + sd] = R.__frame;   // presa scelta a mano: i limiti del polso non la ritoccano
+    // l'orientamento voluto della mano (spazio del personaggio → mondo)
+    _gx.set(ax[0], ax[1], ax[2]).normalize(); _gy.set(fy[0], fy[1], fy[2]); _gz.crossVectors(_gx, _gy).normalize(); _gy.crossVectors(_gz, _gx).normalize();
+    _gm.makeBasis(_gx, _gy, _gz); _gq.setFromRotationMatrix(_gm).premultiply(P._gq);
+    // dove sta il centro del pugno rispetto al polso (misurato sul kit: 11,8 cm lungo le dita e 2,2 verso il palmo, su 14,1 alle nocche)
+    wr.getWorldPosition(_gW); m2.getWorldPosition(_gT); const k = _gT.distanceTo(_gW) / .141;
+    _gU.set(0, .118 * k, .022 * k).applyQuaternion(_gq);
+    _gI.copy(P.g.matrixWorld).invert();
+    _gT.set(x, y, z); P.g.localToWorld(_gT); _gT.sub(_gU).applyMatrix4(_gI);       // il polso, nello spazio del personaggio
+    armIK(P, sd, _gT, pole, ww);
+    // il polso: dalla rotazione attuale a quella voluta (mano = polso · QH)
+    _gq.multiply(QHI); wr.getWorldQuaternion(_q4); _q.copy(_gq).multiply(_q4.invert()); _gq.copy(ID).slerp(_q, ww); applyWorld(wr, _gq);   // (applyWorld usa _q2 e _q3 per sé)
+  }
+  const _hY = V(), _hZ = V(), _hX = V(), _hE = V(), _hW = V(), _hI = new THREE.Matrix4(), _hA = [0, 0, 0], _hB = [0, 0, 0];
+  function hold(P, sd, x, y, z, pz, pole, ww) {
+    const R = P.R, la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd], ua = R.b['UpperArm' + sd]; if (!la || !wr || !ua || ww <= 0) return;
+    // prima stima: le dita dalla spalla verso il punto
+    _hI.copy(P.g.matrixWorld).invert(); ua.getWorldPosition(_hE).applyMatrix4(_hI); _hY.set(x, y, z).sub(_hE).normalize();
+    for (let i = 0; i < 3; i++) {
+      _hZ.set(pz[0], pz[1], pz[2]); _hZ.addScaledVector(_hY, -_hZ.dot(_hY)).normalize(); _hX.crossVectors(_hY, _hZ).normalize();
+      _hA[0] = _hX.x; _hA[1] = _hX.y; _hA[2] = _hX.z; _hB[0] = _hY.x; _hB[1] = _hY.y; _hB[2] = _hY.z;
+      grab(P, sd, x, y, z, _hA, _hB, pole, ww);
+      _hI.copy(P.g.matrixWorld).invert(); la.getWorldPosition(_hE).applyMatrix4(_hI); wr.getWorldPosition(_hW).applyMatrix4(_hI); _hY.subVectors(_hW, _hE).normalize();
+    }
+  }
+  // IK a due ossa del braccio: il polso in T (spazio del personaggio, prima di P.body), il gomito verso il polo
+  function armIK(P, sd, T, pole, ww) {
+    const R = P.R, ua = R.b['UpperArm' + sd], la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd]; if (!ua || !la || !wr || ww <= 0) return;
+    _gI.copy(P.g.matrixWorld).invert(); if (T !== _gT) _gT.copy(T);
+    ua.getWorldPosition(_gS).applyMatrix4(_gI); la.getWorldPosition(_gE).applyMatrix4(_gI); wr.getWorldPosition(_gW).applyMatrix4(_gI);
+    const a = _gS.distanceTo(_gE), b = _gE.distanceTo(_gW);
+    _gU.subVectors(_gT, _gS); let d = _gU.length(); if (d < 1e-4) return; _gU.divideScalar(d);
+    d = clamp(d, Math.abs(a - b) + .01, (a + b) * .998);
+    const xx = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - xx * xx));
+    _gN.set(pole[0], pole[1], pole[2]); _gN.addScaledVector(_gU, -_gN.dot(_gU)); if (_gN.lengthSq() < 1e-8) _gN.set(0, -1, 0); _gN.normalize();
+    _gE.copy(_gS).addScaledVector(_gU, xx).addScaledVector(_gN, h);
+    const w0 = P.w; P.w = ww;
+    _gW.subVectors(_gE, _gS); P.aim('UpperArm' + sd, [_gW.x, _gW.y, _gW.z], 1);
+    _gW.copy(_gS).addScaledVector(_gU, d).sub(_gE); P.aim('LowerArm' + sd, [_gW.x, _gW.y, _gW.z], 1);
+    P.w = w0;
+  }
+  const _rT = V();
   // twist (attorno all'asse dell'avambraccio) e swing (il resto) di una rotazione
   function turn(P, side, A, dir, maxW, ww) {
     const R = P.R, sd = side === 'L' ? 'L' : 'R', la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd]; if (!la || !wr || ww <= 0) return;
@@ -241,6 +311,7 @@ var Anim = (function () {
   }
   function apply(g, o, dt, time) {
     const R = rig(g); if (!R) return;
+    for (const sd in R.hs) R.b['Wrist' + sd].scale.copy(R.hs[sd]).multiplyScalar(HAND);
     const A = (o && o.anim) || {}, u = g.userData;
     const wanted = {};
     if (A.act && POSES[A.act] && !o.down) wanted[A.act] = 1;
@@ -250,10 +321,14 @@ var Anim = (function () {
     if (POSES.vita && !o.down) wanted.vita = 1;   // respiro, peso che si sposta: sempre
     // pesi: salgono e scendono col fade della posa
     for (const k in wanted) if (!R.layers[k]) R.layers[k] = { w: 0, t: 0 };
+    // [anim] niente scatti: si entra in una posa in almeno 0,1 s e se ne esce in almeno 0,18 (uscire è più lento, come nei
+    // gesti veri); una posa chiesta a fotogrammi alterni resta accesa per 0,12 s invece di sfarfallare
     for (const k in R.layers) {
       const L = R.layers[k], spec = POSES[k], f = spec ? spec.fade : .2;
-      L.w = clamp(L.w + (wanted[k] ? 1 : -1) * dt / Math.max(.01, f), 0, 1); L.t += dt;
-      if (!wanted[k] && L.w <= 0) delete R.layers[k];
+      if (wanted[k]) L.gone = 0; else L.gone = (L.gone || 0) + dt;
+      const on = wanted[k] || (L.gone < .12 && !o.down);
+      L.w = clamp(L.w + (on ? dt / Math.max(.1, f) : -dt / Math.max(.18, f * 1.3)), 0, 1); L.t += dt;
+      if (!on && L.w <= 0) delete R.layers[k];
     }
     // il corpo torna al suo posto ogni fotogramma (le pose lo spostano; flight() in render.js lo sposta dopo, in volo)
     if (u.body && !u.__flying) { u.body.position.set(0, 0, 0); u.body.rotation.set(0, 0, 0); }
@@ -283,12 +358,145 @@ var Anim = (function () {
       try { spec.fn(P, A); } catch (e) { disabled[k] = true; console.warn('[anim] posa spenta:', k, e); }
       if (P._props && L.w > .5) P._props.forEach(n => showProps[n] = 1);
     }
+    P._air = !!(A.act && POSES[A.act] && POSES[A.act].air);   // in sella o in aria: i piedi non cercano il pavimento
+    limits(P, R);
     toeFollow(R);
     if (P._body && u.body) { const B = P._body; u.body.position.set(B.x, B.y, B.z); u.body.rotation.set(B.rx, B.ry, B.rz); }
     // lo sguardo: la testa gira verso il punto, con i limiti del collo e un po' di ritardo
     look(g, R, A.lookAt, dt, P);
     // attrezzi
     for (const n in PROPS) { const want = !!showProps[n]; if (!want && !(R.props && R.props[n])) continue; const h = getProp(g, R, n); if (h) h.visible = want; }
+  }
+  // ---------------- limiti delle articolazioni (dopo tutte le pose) ----------------
+  // polso: la mano resta entro WRIST_MAX dall'asse dell'avambraccio (niente polsi spezzati, qualunque cosa chiedano le pose);
+  // ginocchio: lo stinco non si piega mai in avanti rispetto alla coscia (il ginocchio va davanti alla linea anca-caviglia)
+  const WRIST_MAX = 1.2, _l1 = V(), _l2 = V(), _l3 = V(), _lqa = Q();
+  function limits(P, R) {
+    for (const sd of ['L', 'R']) { untwist(P, R, sd); collide(P, R, sd); }
+    for (const sd of ['L', 'R']) {
+      const la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd], m2 = R.b['Middle2' + sd];
+      if (la && wr && m2 && R['grab' + sd] !== R.__frame) {
+        la.getWorldPosition(_l1); wr.getWorldPosition(_l2); m2.getWorldPosition(_l3);
+        _l3.sub(_l2); _l2.sub(_l1);
+        if (_l2.lengthSq() > 1e-8 && _l3.lengthSq() > 1e-8) {
+          _l2.normalize(); _l3.normalize(); const a = Math.acos(clamp(_l2.dot(_l3), -1, 1));
+          if (a > WRIST_MAX) { _lqa.setFromUnitVectors(_l3, _l2); _q.copy(ID).slerp(_lqa, (a - WRIST_MAX) / a); applyWorld(wr, _q); }
+          deviation(R, sd, wr, m2);
+        }
+      }
+      knee(P, R, sd);
+      ground(P, R, sd);
+    }
+  }
+  // piedi a terra: se una posa abbassa il corpo (P.body con y negativo) e il piede finirebbe sotto il pavimento, la gamba
+  // si piega e il piede resta appoggiato (prima rannicchiato, gesso, stordito... avevano le scarpe sotto terra).
+  // Non vale da sdraiati o in volo (corpo ruotato, o sollevato da render.js).
+  const FOOT_Y = .02;
+  function ground(P, R, sd) {
+    const B = P._body; if (!B || B.y >= 0 || P._air || Math.abs(B.rx) > .35 || Math.abs(B.rz) > .35 || P.g.userData.__flying) return;
+    const ft = R.b['Foot' + sd]; if (!ft) return;
+    ft.getWorldPosition(_kA).applyMatrix4(_kI.copy(P.g.matrixWorld).invert());
+    if (_kA.y + B.y >= FOOT_Y - .015) return;
+    const w = P.w; P.w = 1; legTo(P, sd, _kA.x, FOOT_Y - B.y, _kA.z, sd === 'L' ? .15 : -.15, .1, 1, 0, sd === 'L' ? .15 : .15, 1); P.w = w;
+  }
+  // ---- torsioni: niente avvitamenti netti ----
+  // Le pose girano le ossa in tanti passi; sommati, il braccio può finire avvitato sul suo asse (spalla «strizzata») o la mano
+  // girata tutta nel polso. Qui, rispetto alla clip di base (R.pre): il braccio non gira sul suo asse oltre UA_TW (il gomito
+  // resta dov'è, l'avambraccio si ripunta allo stesso polso, la mano resta com'era); la rotazione della mano si divide fra
+  // avambraccio (60%) e polso (40%), come fanno radio e ulna, entro i loro limiti.
+  const UA_TW = .45, LA_TW = 1.3, WR_TW = .5, _uA = Q(), _uB = Q(), _uY = new THREE.Vector3(0, 1, 0), _uW = V(), _uE = V(), _uI = new THREE.Matrix4();
+  function twistOf(b, pre) { _uA.copy(pre).invert().multiply(b.quaternion); let a = 2 * Math.atan2(_uA.y, _uA.w); if (a > Math.PI) a -= 2 * Math.PI; if (a < -Math.PI) a += 2 * Math.PI; return a; }
+  function spinLocal(b, a) { _uB.setFromAxisAngle(_uY, a); b.quaternion.multiply(_uB); b.updateMatrixWorld(true); }
+  function keepHand(wr, Qw) { wr.parent.getWorldQuaternion(_q4); wr.quaternion.copy(_q4.invert().multiply(Qw)); wr.updateMatrixWorld(true); }
+  function untwist(P, R, sd) {
+    const ua = R.b['UpperArm' + sd], la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd]; if (!ua || !la || !wr || !R.pre) return;
+    const Qw = wr.getWorldQuaternion(Q());
+    const tu = twistOf(ua, R.pre['UpperArm' + sd]);
+    if (Math.abs(tu) > UA_TW) {
+      wr.getWorldPosition(_uW);
+      spinLocal(ua, -(tu - clamp(tu, -UA_TW, UA_TW)));
+      la.getWorldPosition(_uE); _uI.copy(P.g.matrixWorld).invert();
+      _uW.applyMatrix4(_uI); _uE.applyMatrix4(_uI); _uW.sub(_uE);
+      const w0 = P.w; P.w = 1; P.aim('LowerArm' + sd, [_uW.x, _uW.y, _uW.z], 1); P.w = w0;
+      keepHand(wr, Qw);
+    }
+    // la mano rispetto al braccio: quanto gira in tutto, e come si divide
+    const tl = twistOf(la, R.pre['LowerArm' + sd]), tw = twistOf(wr, R.pre['Wrist' + sd]), tot = tl + tw;
+    const nl = clamp(tot * .6, -LA_TW, LA_TW);
+    if (Math.abs(nl - tl) > .03) { spinLocal(la, nl - tl); keepHand(wr, Qw); }
+    const tw2 = twistOf(wr, R.pre['Wrist' + sd]); if (Math.abs(tw2) > WR_TW) spinLocal(wr, -(tw2 - clamp(tw2, -WR_TW, WR_TW)));
+  }
+  // ---- compenetrazioni: gomiti e mani fuori dal busto e dalla testa ----
+  // Il busto è un'ellisse (larga e profonda come il torace, più lo spessore dei vestiti) lungo l'asse bacino-collo; la testa
+  // una sfera. Un gomito dentro il busto si sposta sulla superficie (il braccio lo segue, la mano resta); una mano dentro il
+  // busto o la testa si sposta fuori e il braccio si riadatta (IK), con la mano girata come prima.
+  const _cC = V(), _cH = V(), _cN = V(), _cU = V(), _cS = V(), _cF = V(), _cP = V(), _cL = V(), _cR = V(), _cW = V(), _cE = V(), _cM = V(), _cX = new THREE.Matrix4();
+  function inTorso(p, out) {   // true se dentro; out = il punto sulla superficie
+    _cP.subVectors(p, _cH); const L = _cH.distanceTo(_cN), u = _cP.dot(_cU);
+    if (u < L * .12 || u > L * 1.04) return false;
+    const a = .155 + _cBulk, b = .115 + _cBulk, sx = _cP.dot(_cS), fz = _cP.dot(_cF), r = (sx / a) * (sx / a) + (fz / b) * (fz / b);
+    if (r >= 1) return false;
+    const k = 1.04 / Math.sqrt(Math.max(r, 1e-4)); let ns = sx * k, nf = fz * k; if (r < 1e-3) { ns = 0; nf = b * 1.04; }
+    out.copy(_cH).addScaledVector(_cU, u).addScaledVector(_cS, ns).addScaledVector(_cF, nf); return true;
+  }
+  let _cBulk = 0;
+  function inHead(p, out, R) {
+    const h = R.b.Head; if (!h) return false; h.getWorldPosition(_cM); _cL.subVectors(_cM, _cN).normalize(); _cM.addScaledVector(_cL, .1);
+    const d = p.distanceTo(_cM), rad = .125; if (d >= rad) return false;
+    out.subVectors(p, _cM); if (out.lengthSq() < 1e-8) out.set(0, 0, 1); out.normalize().multiplyScalar(rad * 1.03).add(_cM); return true;
+  }
+  function collide(P, R, sd) {
+    const b = R.b, ua = b['UpperArm' + sd], la = b['LowerArm' + sd], wr = b['Wrist' + sd], m2 = b['Middle2' + sd];
+    if (!ua || !la || !wr || !m2 || !b.Hips || !b.Neck || !b.ShoulderL || !b.ShoulderR) return;
+    const sc = P.g.getWorldScale(_cE).x || 1;   // le misure sono in metri: il personaggio può essere scalato
+    _cBulk = (P.bulk || 0) * .8;
+    b.Hips.getWorldPosition(_cH); b.Neck.getWorldPosition(_cN); _cU.subVectors(_cN, _cH).normalize();
+    b.ShoulderL.getWorldPosition(_cS); b.ShoulderR.getWorldPosition(_cL); _cS.sub(_cL); _cS.addScaledVector(_cU, -_cS.dot(_cU)).normalize(); _cF.crossVectors(_cS, _cU);
+    if (sc !== 1) _cBulk *= sc;
+    const Qw = wr.getWorldQuaternion(Q()); _cX.copy(P.g.matrixWorld).invert();
+    // il gomito
+    la.getWorldPosition(_cE);
+    if (inTorso(_cE, _cR)) {
+      wr.getWorldPosition(_cW); ua.getWorldPosition(_cP);
+      const w0 = P.w; P.w = 1;
+      _cM.subVectors(_cR, _cP).transformDirection(_cX); P.aim('UpperArm' + sd, [_cM.x, _cM.y, _cM.z], 1);
+      la.getWorldPosition(_cE); _cM.subVectors(_cW, _cE).transformDirection(_cX); P.aim('LowerArm' + sd, [_cM.x, _cM.y, _cM.z], 1);
+      P.w = w0; keepHand(wr, Qw);
+    }
+    // la mano (il centro del palmo: a metà fra polso e nocche)
+    wr.getWorldPosition(_cW); m2.getWorldPosition(_cM); const hc = _cC.copy(_cW).lerp(_cM, .55);
+    if (inTorso(hc, _cR) || inHead(hc, _cR, R)) {
+      _cR.sub(hc).add(_cW).applyMatrix4(_cX);                                        // il nuovo polso, spazio del personaggio
+      la.getWorldPosition(_cE); ua.getWorldPosition(_cP); wr.getWorldPosition(_cW); _cM.copy(_cP).lerp(_cW, .5); _cE.sub(_cM).transformDirection(_cX);
+      armIK(P, sd, _cR, [_cE.x, _cE.y, _cE.z], 1); keepHand(wr, Qw);
+    }
+  }
+  // deviazione laterale del polso (verso il pollice / verso il mignolo): una mano vera arriva a ~20° e ~35°, non come in avanti.
+  // Si scompone la direzione della mano nel piano avambraccio-nocche e si riporta l'angolo dentro i limiti.
+  const DEV_RAD = .35, DEV_ULN = .6, _dF = V(), _dK = V(), _dN = V(), _dH = V(), _dP = V();
+  function deviation(R, sd, wr, m2) {
+    const la = R.b['LowerArm' + sd], i2 = R.b['Index2' + sd], p2 = R.b['Pinky2' + sd]; if (!la || !i2 || !p2) return;
+    la.getWorldPosition(_dF); wr.getWorldPosition(_dP); _dF.subVectors(_dP, _dF).normalize();            // avambraccio
+    m2.getWorldPosition(_dH); _dH.sub(_dP).normalize();                                                  // mano
+    i2.getWorldPosition(_dK); p2.getWorldPosition(_dN); _dK.sub(_dN); _dK.addScaledVector(_dF, -_dK.dot(_dF)); if (_dK.lengthSq() < 1e-8) return; _dK.normalize();   // verso il pollice
+    _dN.crossVectors(_dF, _dK);                                                                          // normale al palmo
+    const hf = _dH.dot(_dF), hk = _dH.dot(_dK), hn = _dH.dot(_dN), dev = Math.atan2(hk, Math.max(1e-4, hf));
+    const lim = clamp(dev, -DEV_ULN, DEV_RAD); if (Math.abs(lim - dev) < .01 || hf <= 0) return;
+    const r = Math.sqrt(Math.max(0, 1 - hn * hn));
+    _dP.copy(_dF).multiplyScalar(Math.cos(lim) * r).addScaledVector(_dK, Math.sin(lim) * r).addScaledVector(_dN, hn);
+    _lqa.setFromUnitVectors(_dH, _dP.normalize()); applyWorld(wr, _lqa);
+  }
+  const _kH = V(), _kK = V(), _kA = V(), _kM = V(), _kI = new THREE.Matrix4();
+  function knee(P, R, sd) {
+    const ul = R.b['UpperLeg' + sd], ll = R.b['LowerLeg' + sd], ft = R.b['Foot' + sd]; if (!ul || !ll || !ft) return;
+    _kI.copy(P.g.matrixWorld).invert();
+    ul.getWorldPosition(_kH).applyMatrix4(_kI); ll.getWorldPosition(_kK).applyMatrix4(_kI); ft.getWorldPosition(_kA).applyMatrix4(_kI);
+    _kM.subVectors(_kA, _kH); const L = _kM.length(); if (L < .05) return; _kM.divideScalar(L);
+    const t = _l1.subVectors(_kK, _kH).dot(_kM); _kM.multiplyScalar(t).add(_kH);   // il punto della linea anca-caviglia più vicino al ginocchio
+    const off = _kK.sub(_kM);
+    // ginocchio dietro la linea (z negativo nello spazio del personaggio) di più di 2 cm: gamba piegata al contrario
+    if (off.z > -.02 || Math.abs(off.x) > Math.abs(off.z) * 1.5) return;
+    const w = P.w; P.w = 1; legTo(P, sd, _kA.x, _kA.y, _kA.z, 0, .2, 1, 0, 0, 1); P.w = w;
   }
   const _tm = new THREE.Matrix4(), _tq = Q(), _tp = V();
   function toeSnap(g, R) {
@@ -318,7 +526,7 @@ var Anim = (function () {
     P.w = 1; P.rot('Neck', R.headPitch * .4, R.headYaw * .4, 0); P.rot('Head', R.headPitch * .6, R.headYaw * .6, 0);
   }
 
-  return { restore, def, npcMap, playerMap, npcState, playerState, apply, want, prop, rig, POSES, PROPS, CHILD, clamp, smooth, hashStr };
+  return { HAND, restore, def, npcMap, playerMap, npcState, playerState, apply, want, prop, rig, POSES, PROPS, CHILD, clamp, smooth, hashStr };
 })();
 
 // ================= POSE DI BASE (motore) =================

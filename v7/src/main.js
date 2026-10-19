@@ -52,6 +52,17 @@
   cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { mouse.down = false; const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width; if (nx < .08) mouse.nx = 0; else if (nx > .92) mouse.nx = 1; else mouse.active = false; } });
   // [monte] tenendo premuta la rotella del mouse e trascinando, la visuale gira attorno al giocatore
   let camDrag = null; ui.drag = 0;
+  // [telefono] due dita sullo schermo: pizzico per lo zoom (il secondo dito non cammina, non spara, non spruzza)
+  const pin = new Map(); let pinD = 0, pinA = 0;
+  const pinDist = () => { const [a, b] = [...pin.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+  const pinAng = () => { const [a, b] = [...pin.values()]; return Math.atan2(b.y - a.y, b.x - a.x); };
+  cv.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') return; pin.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pin.size === 2) { pinD = pinDist(); pinA = pinAng(); tg = null; if (tp.id !== null) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } mouse.pressed = false; click.t = null; ui.mark = null; }
+    if (pin.size >= 2) e.stopImmediatePropagation(); });
+  cv.addEventListener('pointermove', e => { const q = pin.get(e.pointerId); if (!q) return; q.x = e.clientX; q.y = e.clientY;
+    if (pin.size === 2) { const d = pinDist(), a = pinAng(); let da = a - pinA; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; zoomBy(pinD / d); ui.drag = (ui.drag || 0) + da; pinD = d; pinA = a; e.stopImmediatePropagation(); } });   // due dita: pizzico = zoom, torsione = la visuale gira
+  const pinUp = e => { pin.delete(e.pointerId); };
+  addEventListener('pointerup', pinUp); addEventListener('pointercancel', pinUp);
   cv.addEventListener('pointerdown', e => { if (e.button === 1) { camDrag = e.clientX; e.preventDefault(); } });
   addEventListener('pointermove', e => { if (camDrag !== null) { ui.drag += (e.clientX - camDrag) * .008; camDrag = e.clientX; } });
   addEventListener('pointerup', e => { if (e.button === 1) camDrag = null; });
@@ -62,7 +73,17 @@
     if (e.button === 0 && !busy && window.Skate && Skate.on(st)) { tpGrab(e, 'skate', nx, ny); mouse.nx = nx; mouse.ny = ny; return; }   // [mobile] in tavola: tieni premuto e spingi verso quel punto
     if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; tpGrab(e, 'spray', nx, ny); return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
     if (e.button === 0 && !busy && e.pointerType !== 'mouse' && tapShoots()) { tpGrab(e, 'fire', nx, ny); touchAimAt(nx, ny); touchFire = true; mouse.pressed = true; return; }   // [mobile] arma in mano: spari dove tocchi
+    if (e.button === 0 && e.pointerType === 'touch' && !busy) { tg = { id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, nx, ny, drag: false }; try { cv.setPointerCapture(e.pointerId); } catch (x) { } return; }   // [telefono] il tocco decide al rilascio: tocco = vai lì, trascinamento = guardati attorno
     if (e.button === 0) { mouse.nx = nx; mouse.ny = ny; onClick(nx, ny, e.detail >= 2); } });
+  // [telefono] un dito che si sposta più di 10 px trascina la visuale; se no, al rilascio è un tocco (due tocchi vicini e svelti: doppio)
+  let tg = null, lastTap = { t: 0, x: 0, y: 0 };
+  cv.addEventListener('pointermove', e => { if (!tg || e.pointerId !== tg.id) return;
+    if (!tg.drag && Math.hypot(e.clientX - tg.x, e.clientY - tg.y) > 10) { tg.drag = true; tg.lx = e.clientX; tg.ly = e.clientY; }
+    if (tg.drag) { const r = cv.getBoundingClientRect(); ui.drag = (ui.drag || 0) + (e.clientX - tg.lx) / r.width * 3.2; tg.lx = e.clientX; tg.ly = e.clientY; } });   // [telefono] un dito gira la visuale (non la sposta)
+  const tgUp = e => { if (!tg || e.pointerId !== tg.id) return; const g = tg; tg = null; if (g.drag || e.type === 'pointercancel') return;
+    const now = performance.now(), dbl = now - lastTap.t < 320 && Math.hypot(g.x - lastTap.x, g.y - lastTap.y) < 30; lastTap = { t: dbl ? 0 : now, x: g.x, y: g.y };
+    mouse.nx = g.nx; mouse.ny = g.ny; onClick(g.nx, g.ny, dbl); };
+  cv.addEventListener('pointerup', tgUp); cv.addEventListener('pointercancel', tgUp);
   // [mobile] il dito che tiene premuto: spruzza, spara o spinge la tavola seguendo dove si sposta
   const tp = { id: null, mode: null, nx: .5, ny: .5, aim: null };
   function tpGrab(e, mode, nx, ny) { tp.id = e.pointerId; tp.mode = mode; tp.nx = nx; tp.ny = ny; try { cv.setPointerCapture(e.pointerId); } catch (x) { } }
@@ -146,7 +167,7 @@
 
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
-  const stick = { x: 0, y: 0 };
+  const stick = { x: 0, y: 0 }; let stickB = null;   // [camera2] la visuale gira dietro al personaggio: mentre tieni la levetta il suo «su» non cambia (se no si gira in tondo)
   let lastAim = null, touchFire = false, touchRun = false, touchBoost = false; const touchTrick = { wheelie: false, peg: 0 };
   function aimAngle() {
     const p = st.player;
@@ -182,10 +203,17 @@
   }
   function input0() {
     const sprint = !!keys.shift || touchRun || touchBoost, brakeKey = !!keys[' '] || touchBrake;
+    if (st.player.vehicle && touchMode && Math.hypot(stick.x, stick.y) > .2) {   // [telefono] guida «verso dove spingi»: la levetta è una direzione dello schermo, non gas e sterzo
+      const v = st.vehicles.find(q => q.id === st.player.vehicle), B = stickB || R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));
+      if (v) { const want = Math.atan2(wy, wx), ad = a => Math.atan2(Math.sin(a), Math.cos(a)), d = ad(want - v.ang), spd = Math.abs(v.speed || Math.hypot(v.vx || 0, v.vy || 0));
+        const two = G.VK[v.kind] && (G.VK[v.kind].two || G.VK[v.kind].pocket);
+        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: Math.min(1, Math.max(0, (m - .2) / .7)), steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint } };   // avanti verso lì, sterzando
+        if (spd > 2 && (v.speed || 0) > 0) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: 0, hb: brakeKey, boost: false } };   // dalla parte opposta: prima frena
+        return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (stick.x || stick.y) { // touch: la levetta segue lo schermo
-      const B = R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
-      return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : aimAngle() };
+      const B = stickB || R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
+      return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode ? Math.atan2(y, x) : aimAngle(), mag: touchMode ? Math.min(1, Math.hypot(stick.x, stick.y)) : undefined };   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va
     }
     let f = 0, s = 0;
     const ar = !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick
@@ -468,24 +496,10 @@
   }
 
   // ---------- Schermate ----------
-  function introScreen() {
-    if (window.Risacca) { // RISACCA: la storia della bibbia
-      $('screen').innerHTML = `<div class="in"><div class="tagline">UN'ISOLA DEL TIRRENO · SOTTO LA TUTELA</div><div class="logo">Porto Vecchio</div>
-      <div class="story"><p>Da quarant'anni l'isola è sotto la <b>Tutela</b>. Il Garante parla ogni sera alle 20 da tutti gli schermi, i <b>Grigi</b> presidiano le strade, gli <b>Orecchi</b> ascoltano nei bar. Chi parla troppo viene <b>rettificato</b>.</p>
-      <p>Tu sei della <b>Risacca</b>, la corrente che non si vede. Per ora siete in pochi: <b>parla con la gente</b>, scrivi quello che vuoi, convincili. Recluta, trova spazi vuoti, costruisci basi, finanzia la causa, sabota.</p>
-      <p>Lupo, il vecchio bibliotecario, sa da dove cominciare. In tasca hai tre gessetti.</p></div>
-      <div class="keys"><span><kbd>CLIC</kbd>vai / scegli</span><span><kbd>CLIC SU UNA PERSONA</kbd>Parla · Chatta</span><span><kbd>C</kbd>chatta con chi hai vicino</span><span><kbd>B</kbd>la Risacca: squadra, basi, risorse</span><span><kbd>W A S D</kbd>muoviti</span><span><kbd>F</kbd>mezzi</span><span><kbd>P</kbd>la BMX tascabile</span><span><kbd>TAB</kbd>taccuino</span><span><kbd>M</kbd>audio</span></div>
+  function introScreen() {   // [menu2] una scritta, un pulsante: niente nome né storia, leggibile anche in verticale
+    $('screen').innerHTML = `<div class="in intro2"><div class="logo">Get out and state your business</div>
       <button class="cta" id="go">Scendi in strada</button>
-      <div class="credits" style="margin-top:14px;font-size:11px;opacity:.7;max-width:640px;line-height:1.5">Modelli: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) ·
-      <a href="https://poly.pizza/bundle/Race-kit-LcWNxpyXuL" target="_blank" rel="noopener">Race kit</a> di <a href="https://poly.pizza/u/Player11132" target="_blank" rel="noopener">Player11132</a> [<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY</a>] via Poly Pizza · Medieval Torture Devices via Poly Pizza</div></div>`;
-      $('go').onclick = start; return;
-    }
-    $('screen').innerHTML = `<div class="in"><div class="tagline">UN'ISOLA DEL TIRRENO · 1986</div><div class="logo">Porto Vecchio</div>
-      <div class="story"><p>Sei <b>Nino Baldi</b>. Sei uscito di galera ieri, e lo Squalo, Sandro Neri, rivuole i suoi <b>500.000 lire</b> entro l'alba di giovedì.</p>
-      <p>Nei caruggi <b>tutti vedono, tutti ricordano, tutti parlano</b>. Un lavoro onesto ti apre le porte. Una sparatoria davanti alla persona sbagliata te le chiude, e la voce arriva alla polizia prima di te.</p>
-      <p>Di notte, al Pontile Est, tre marsigliesi fanno la guardia a una valigetta. Sotto le reti del molo qualcuno ha nascosto una pistola.</p></div>
-      <div class="keys"><span><kbd>MOUSE</kbd>mira</span><span><kbd>CLIC</kbd>spara</span><span><kbd>W A S D</kbd>muoviti rispetto al cursore</span><span><kbd>SHIFT</kbd>corri</span><span><kbd>R</kbd>ricarica</span><span><kbd>1-5 · ROTELLA</kbd>armi</span><span><kbd>F</kbd>sali su auto e Vespe</span><span><kbd>P</kbd>tira fuori la BMX</span><span><kbd>SPAZIO</kbd>freno a mano</span><span><kbd>T</kbd>parla</span><span><kbd>E</kbd>scippa o rapina</span><span><kbd>G</kbd>pugno</span><span><kbd>TAB</kbd>taccuino</span><span><kbd>M</kbd>audio</span></div>
-      <button class="cta" id="go">Scendi in strada</button></div>`;
+      <div class="credits">Modelli: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) · <a href="https://poly.pizza/bundle/Race-kit-LcWNxpyXuL" target="_blank" rel="noopener">Race kit</a> di Player11132 [<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY</a>] via Poly Pizza</div></div>`;
     $('go').onclick = start;
   }
   function start() { A.init(); showHud(true); ui.intro = false; ui.letterbox = false; $('screen').innerHTML = ''; $('screen').style.pointerEvents = 'none'; cv.focus(); toast(window.Risacca ? 'Clic su una persona → Chatta. Lupo è in biblioteca.' : 'Parla con la gente (T): qualcuno ha un lavoro per te.', 'job'); }
@@ -686,7 +700,7 @@
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || (window.Cantiere && Cantiere.active())) return [];
     if (window.Skate && Skate.on(st)) return ['ollie'];
     if (p.vehicle) return jumpMode() ? ['salta', 'impenna'] : ['freno', 'scendi'];
-    if (ui.spray) return ui.spray.tool === 'bomboletta' && !(window.Writing && Writing.mode(st) === 'tavoletta') ? ['colore', 'modo'] : ['colore'];
+    if (ui.spray) return window.Writing && Writing.mode(st) === 'tavoletta' ? [] : ['colore', 'modo'];   // [graffiti3] con la tavoletta i colori si scelgono nel pannello
     return ['salta'];
   }
   const lab = d => typeof d.l === 'function' ? d.l() : d.l;
@@ -713,9 +727,9 @@
     $('touch').hidden = false; $('bookBtn').style.display = 'none';
     $('debt').addEventListener('click', () => { if (!ui.intro && !ui.over) toggleBook(); });   // il taccuino: tocca i soldi e l'ora
     const sEl = $('stick'), kn = $('knob'); let sid = null;
-    sEl.addEventListener('pointerdown', e => { A.init(); sid = e.pointerId; sEl.setPointerCapture(sid); mv(e); });
+    sEl.addEventListener('pointerdown', e => { A.init(); sid = e.pointerId; sEl.setPointerCapture(sid); stickB = R.camBasis(); mv(e); });   // [camera2] le direzioni della levetta restano quelle di quando la tocchi
     sEl.addEventListener('pointermove', e => { if (e.pointerId === sid) mv(e); });
-    const end = () => { sid = null; stick.x = stick.y = 0; kn.style.left = '43px'; kn.style.top = '43px'; };
+    const end = () => { sid = null; stickB = null; stick.x = stick.y = 0; kn.style.left = '43px'; kn.style.top = '43px'; };
     sEl.addEventListener('pointerup', end); sEl.addEventListener('pointercancel', end);
     function mv(e) { const r = sEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 65) / 50, dy = (e.clientY - r.top - 65) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } stick.x = dx; stick.y = dy; kn.style.left = 43 + dx * 40 + 'px'; kn.style.top = 43 + dy * 40 + 'px'; }
   }
@@ -793,14 +807,22 @@
   try { const M0 = R.__models; if (M0 && M0.renderer && M0.scene && R.getCamera) M0.renderer.compile(M0.scene, R.getCamera()); } catch (e) { console.warn('[compile]', e); }
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
   const loop = typeof Misura !== 'undefined' ? Misura.timed(loop0, 'main:ciclo') : loop0;   // [misura]
+  // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
+  // sembra più fluido di un 45 che oscilla (era il tremolio), e la risoluzione dinamica che scendeva era la «perdita di risoluzione»
+  const FC = { on: false, t: 0, n: 0 };
   function loop0(now) {
+    if (FC.on && now - last < 30) { requestAnimationFrame(loop); return; }
     const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
+    if (touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
-    if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && R.res <= .72) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
+    if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (touchMode || R.res <= .72)) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
     // [fluido] risoluzione dinamica: media mobile del fotogramma; sopra i 22 ms si scende di un gradino, sotto i 14 ms per 4 s si risale (al massimo un cambio ogni 1,5 s)
-    if (R.setRes && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
-      if (resT > 1.5 && resAvg > .022) { R.setRes(R.res * .85); resT = 0; resAvg = .018; }
-      else if (resT > 4 && resAvg < .014 && R.res < 1) { R.setRes(R.res * 1.1); resT = 0; } }
+    if (R.setRes && !touchMode && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
+      // [fluido2] tre gradini soli (100, 85, 72%) e con calma: ogni cambio rifà tutte le immagini intermedie della grafica
+      // (uno scatto, e sul telefono memoria che si rimescola). Prima poteva cambiare ogni 1,5 s, proprio quando acceleri o zoomi
+      const RL = [1, .85, .72], ri = RL.reduce((b, v, i) => Math.abs(v - R.res) < Math.abs(RL[b] - R.res) ? i : b, 0);
+      if (resT > 3 && resAvg > .024 && ri < 2) { R.setRes(RL[ri + 1]); resT = 0; resAvg = .018; }
+      else if (resT > 12 && resAvg < .013 && ri > 0) { R.setRes(RL[ri - 1]); resT = 0; } }
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
     const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]
@@ -819,7 +841,7 @@
     ui.desat = st.slowmo > 0;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: touchMode && Math.hypot(stick.x, stick.y) > .15 ? stick : null, pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
