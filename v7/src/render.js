@@ -3853,7 +3853,7 @@ var Render = (function () {
     if (two && words.length > 1) for (let k = 1; k < words.length; k++) tries.push([words.slice(0, k).join(' '), words.slice(k).join(' ')]);
     tries.forEach(L => { let sz = Math.floor(maxH / (L.length === 1 ? 1 : 2.15));
       x.font = `900 ${sz}px ${SIGN_FONT}`; const w = Math.max(...L.map(l => x.measureText(l).width)); if (w > maxW) sz = Math.floor(sz * maxW / w);
-      if (!best || sz > best.sz + 2) best = { L, sz }; });
+      if (!best || sz > best.sz * 1.12) best = { L, sz }; });   // due righe solo se le lettere vengono davvero più grandi
     return best;
   }
   function signTexture(text, color, bg, aspect) { color = nq(color); text = String(text).toUpperCase();
@@ -3863,7 +3863,7 @@ var Render = (function () {
     // cornice a due filetti, come una targa smaltata
     const m = Math.round(H * .07); x.strokeStyle = color; x.lineWidth = Math.max(4, H * .045); x.strokeRect(m, m, W - 2 * m, H - 2 * m);
     x.globalAlpha = .45; x.lineWidth = 2; x.strokeRect(m * 2, m * 2, W - 4 * m, H - 4 * m); x.globalAlpha = 1;
-    const best = signLines(x, text, W - m * 6, H - m * 6, text.length > 12 || aspect < 2.6);
+    const best = signLines(x, text, W - m * 5, H - m * 4.2, text.length > 9 || aspect < 2.6);
     x.font = `900 ${best.sz}px ${SIGN_FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle';
     const lh = best.sz * 1.08, y0 = H / 2 - (best.L.length - 1) * lh / 2 + best.sz * .04;
     // su fondo chiaro il colore deve staccare: se è troppo pallido lo scurisco
