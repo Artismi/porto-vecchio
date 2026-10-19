@@ -1656,6 +1656,7 @@ var Popolo = (function () {
     if (curbWait(st, n, dt)) return;   // [passo] prima di attraversare si guarda
     if (walkWith(st, n, t, dt)) return;   // [vivi] con un amico che va nello stesso posto
     greetFriends(st, n);
+    if (n.__pausa > st.clock) { n.speedNow = 0; return; }   // [gesti] fermi un attimo: la stretta di mano con un amico incrociato da vicino
     // in ritardo per un orario fisso: corre
     const late = b.fixed && minOfDay(st.t) > b.at + 5 && dist(n.x, n.y, t.x, t.y) > 6;
     const speed = (late ? 2.6 : 1.35) * (P.age > 70 ? .75 : P.age > 60 ? .88 : 1);
@@ -1692,6 +1693,11 @@ var Popolo = (function () {
       if (opinionOf(st, n, id) < -.3) continue;
       const wave = d > 2.5; n.greet = { who: id, until: st.clock + 1.6, wave };
       if (k.pop && !(k.__greeted && st.clock - k.__greeted[n.id] < 120)) { (k.__greeted = k.__greeted || {})[n.id] = st.clock; k.greet = { who: n.id, until: st.clock + 1.4 + Math.random() * .4, wave: wave && Math.random() < .6 }; }
+      // [gesti] da vicino, e se tutti e due sono per strada: ci si ferma, ci si guarda e ci si stringe la mano (anim_gesti.js)
+      if (!wave && d < 2.2 && !k.inside && !(k.__pausa > st.clock) && Math.random() < .7) {
+        const T = st.clock + 1.9; n.__pausa = k.__pausa = T; n.greet.shake = true; n.greet.until = T; if (k.greet && k.greet.who === n.id) { k.greet.shake = true; k.greet.until = T; }
+        n.face = Math.atan2(k.y - n.y, k.x - n.x); k.face = n.face + Math.PI;
+      }
       if (st.clock > (n.barkCd || 0)) { G.say(st, n, pick(Math.random, [`Ciao ${k.first}!`, `Ehi, ${k.first}.`, `${k.first}! Come va?`, 'Buongiorno.']), 1.6); n.barkCd = st.clock + 8; }
       break;
     }

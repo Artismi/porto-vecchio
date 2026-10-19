@@ -8166,8 +8166,9 @@ var Render = (function () {
     const fender = new THREE.Mesh(new THREE.SphereGeometry(.24, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), c); fender.scale.set(.75, .8, 1.25); fender.position.set(0, .4, .86); g.add(fender);
     const fork = box(.06, .4, .06, dark); fork.position.set(.08, .38, .86); g.add(fork);
     const col = cyl(.05, .05, .3, 6, c); col.position.set(0, 1.18, .7); g.add(col);
-    const bar = box(.74, .1, .12, c); bar.position.set(0, 1.3, .7); g.add(bar);
-    [-1, 1].forEach(s => { const gr = cyl(.035, .035, .12, 6, dark); gr.rotation.z = Math.PI / 2; gr.position.set(s * .42, 1.3, .7); g.add(gr); const mir = cyl(.05, .05, .02, 8, chrome); mir.rotation.x = Math.PI / 2; mir.position.set(s * .32, 1.5, .68); g.add(mir); const ms = box(.015, .2, .015, chrome); ms.position.set(s * .32, 1.4, .69); g.add(ms); });
+    // [mani] manubrio a misura vera (~70 cm, manopole a ±33 cm: prima era largo quasi un metro e le mani non ci arrivavano)
+    const bar = box(.56, .1, .12, c); bar.position.set(0, 1.3, .7); g.add(bar);
+    [-1, 1].forEach(s => { const gr = cyl(.032, .032, .12, 8, dark); gr.rotation.z = Math.PI / 2; gr.position.set(s * .33, 1.3, .7); g.add(gr); const mir = cyl(.05, .05, .02, 8, chrome); mir.rotation.x = Math.PI / 2; mir.position.set(s * .24, 1.5, .68); g.add(mir); const ms = box(.015, .2, .015, chrome); ms.position.set(s * .24, 1.4, .69); g.add(ms); });
     const lampH = cyl(.1, .1, .08, 10, new THREE.MeshBasicMaterial({ color: '#fff4c8', toneMapped: false })); lampH.rotation.x = Math.PI / 2; lampH.position.set(0, 1.26, .78); g.add(lampH); ud.front.push(lampH);
     const lampR = cyl(.12, .12, .05, 10, chrome); lampR.rotation.x = Math.PI / 2; lampR.position.set(0, 1.26, .75); g.add(lampR);
     const seat = new THREE.Mesh(extrudeSide(sideShape([[.0, .88], [-.05, .98], [-.7, .98], [-.8, .9]], [], .86), .36, .06), sm('#3a2418', { roughness: .8 })); g.add(seat);
@@ -8233,6 +8234,12 @@ var Render = (function () {
     const fp = G0(); fp.position.set(0, R, Gm.zF); const fw = bmxWheel(); fp.add(fw); g.add(fp); ud.wheels.push({ wh: fw, piv: fp, front: true, r: R });
     const rp = G0(); rp.position.set(0, R, Gm.zR); const rw = bmxWheel(); rp.add(rw); g.add(rp); ud.wheels.push({ wh: rw, piv: rp, front: false, r: R });
     ud.len = 1.5; return finishVehicle(g, ud);
+  }
+  // [anim] la rotazione di una persona verso l'angolo voluto, smorzata (k: quanto in fretta): ci si gira, non si scatta
+  function turnTo(g, want, dt, k) {
+    const u = g.userData; if (u.__ry === undefined || !(dt > 0)) return (u.__ry = want);
+    let d = want - u.__ry; d = Math.atan2(Math.sin(d), Math.cos(d));
+    u.__ry += d * (1 - Math.exp(-Math.min(dt, .1) * k)); return u.__ry;
   }
   function driverMesh(look, cap) {
     const g = G0();
@@ -12246,7 +12253,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
-      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = Math.PI / 2 - n.face;
+      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = turnTo(g, Math.PI / 2 - n.face, dt, 10);   // [anim] si gira, non scatta
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
       if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
       { const dd = Math.abs(n.x - cam.x) + Math.abs(n.y - cam.y), every = dd > 45 ? 3 : dd > 28 ? 2 : 1;   /* [fluido] lontano dalla camera l'animazione si aggiorna a fotogrammi alterni, col tempo recuperato */
@@ -12270,7 +12277,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx');   // [bmx] in sella come sulla Vespa
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
     pg.visible = !pveh || onVespa;
-    pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = Math.PI / 2 - p.face;   // [salto] p.jz: l'altezza del salto
+    pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = pveh ? (pg.userData.__ry = Math.PI / 2 - p.face) : turnTo(pg, Math.PI / 2 - p.face, dt, 22);   // [anim] a piedi si gira in fretta ma senza scatti   // [salto] p.jz: l'altezza del salto
     { const T = bmxTilt(pveh); pg.rotation.order = 'YXZ'; pg.rotation.x = -T.a; if (T.a) { const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang); pg.position.x += ca * T.dzP; pg.position.y += T.dyP; pg.position.z += sa * T.dzP; } }   // [bmx] impennata: il ciclista ruota con la bici
     const recoil = st.kick ? Math.max(0, 1 - (st.clock - st.kick.t) * 10) * st.kick.amt * 3 : 0;
     if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim

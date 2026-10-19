@@ -1359,7 +1359,7 @@ var Game = (function () {
     }
     if (a === 'affronta') {
       if (dist(n.x, n.y, p.x, p.y) > 1.6) { if (!n.path.length || dist(n.goal.x, n.goal.y, p.x, p.y) > 2) goTo(n, p.x, p.y); stepAlong(n, 2.2, dt); }
-      else { n.face = Math.atan2(p.y - n.y, p.x - n.x); n.speedNow = 0; if (n.framedAngry && n.tr.cor > .7 && st.clock > (n.shoveAt || 0) && !p.vehicle) { n.shoveAt = st.clock + 6; p.stun = .8; damagePlayer(st, 8, n.face, n.id); say(st, n, 'Questa è per le voci che metti in giro!'); } }
+      else { n.face = Math.atan2(p.y - n.y, p.x - n.x); n.speedNow = 0; if (n.framedAngry && n.tr.cor > .7 && st.clock > (n.shoveAt || 0) && !p.vehicle) { n.shoveAt = st.clock + 6; p.kbx = Math.cos(n.face) * 5.5; p.kby = Math.sin(n.face) * 5.5; damagePlayer(st, 8, n.face, n.id); /* [anim] lo spintone ti manda indietro di un metro e barcolli; prima p.stun = .8 = a terra come morto */ say(st, n, 'Questa è per le voci che metti in giro!'); } }
       return;
     }
     if (a === 'insegue') {
