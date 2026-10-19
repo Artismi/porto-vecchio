@@ -41128,16 +41128,17 @@ var Writing = (function () {
   // il pannello: la foto a tutto schermo, il disegno sopra, gli strumenti
   function tavPad(st, shot, Rc, A) {
     if (typeof document === 'undefined') return;
+    const TOUCH = matchMedia('(pointer: coarse)').matches;   // [graffiti3] sul telefono: pulsanti e colori grandi da dito
     const pw = shot.width, ph = shot.height, strokes = []; let cur = null, tool = A.tool, colI = Math.max(0, TAV_COLS.findIndex(c => c[0] === A.col)), cm = tool === 'pennarello' ? 2.5 : 4;
-    const box = document.createElement('div'); box.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,9,8,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font:14px system-ui,sans-serif;color:#eee;user-select:none';
+    const box = document.createElement('div'); box.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,9,8,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font:14px system-ui,sans-serif;color:#eee;user-select:none;-webkit-user-select:none;touch-action:none;padding:env(safe-area-inset-top,0) 8px env(safe-area-inset-bottom,0);box-sizing:border-box';
     const bar = document.createElement('div'); bar.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center';
     const wrap = document.createElement('div'); wrap.style.cssText = 'position:relative;touch-action:none;box-shadow:0 0 0 2px #ffe14a';
     const bg = document.createElement('canvas'), ink = document.createElement('canvas'), live = document.createElement('canvas');
     [bg, ink, live].forEach((c, i) => { c.width = pw; c.height = ph; c.style.cssText = (i ? 'position:absolute;left:0;top:0;' : 'display:block;') + 'width:100%;height:100%'; wrap.appendChild(c); });
     bg.getContext('2d').drawImage(shot, 0, 0);
-    const fit = () => { const k = Math.min((innerWidth - 40) / pw, (innerHeight - 160) / ph); wrap.style.width = pw * k + 'px'; wrap.style.height = ph * k + 'px'; };
-    fit(); addEventListener('resize', fit);
-    const btn = (t, f, hot, par) => { const b = document.createElement('button'); b.textContent = t; b.style.cssText = 'padding:7px 14px;border-radius:5px;border:1px solid #555;cursor:pointer;color:#fff;background:' + (hot ? '#d8402a' : '#34312c'); b.onclick = f; (par || bar).appendChild(b); return b; };
+    const fit = () => { const used = (head.offsetHeight || 40) + (bar.offsetHeight || 60) + 40, k = Math.min((innerWidth - 20) / pw, Math.max(80, innerHeight - used) / ph); wrap.style.width = pw * k + 'px'; wrap.style.height = ph * k + 'px'; };   // [graffiti3] lo spazio vero: sul telefono la barra va su più righe
+    addEventListener('resize', fit);
+    const btn = (t, f, hot, par) => { const b = document.createElement('button'); b.textContent = t; b.style.cssText = 'padding:' + (TOUCH ? '11px 16px;font-size:15px;' : '7px 14px;') + 'border-radius:5px;border:1px solid #555;cursor:pointer;color:#fff;background:' + (hot ? '#d8402a' : '#34312c'); b.onclick = f; (par || bar).appendChild(b); return b; };
     // [graffiti2] in cima: dove sei, quanto è grande, che lavoro diventa, come si usa
     const head = document.createElement('div'); head.style.cssText = 'text-align:center;line-height:1.45';
     const W0 = S(st), styleOf = () => tool === 'pennarello' ? 'mtag' : Rc.W * Rc.H > 3.5 ? 'pezzo' : Rc.W * Rc.H > 1.2 ? 'throw' : 'tag';
@@ -41148,7 +41149,7 @@ var Writing = (function () {
     const tb = btn('', () => { const nt = tool === 'pennarello' ? 'bomboletta' : 'pennarello'; if (OG() && !(inv0()[nt] > 0)) { info.textContent = nt === 'bomboletta' ? 'Non hai bombolette.' : 'Non hai pennarelli.'; return; } tool = nt; upd(); render(); });
     // i colori: tutti in vista, si sceglie con un clic (o coi tasti 1-8)
     const pal = document.createElement('span'); pal.style.cssText = 'display:inline-flex;gap:4px'; bar.appendChild(pal);
-    const sw = TAV_COLS.map((c, i) => { const b = document.createElement('button'); b.title = c[1] + ' (' + (i + 1) + ')'; b.style.cssText = 'width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid #222;background:' + c[0]; b.onclick = () => { colI = i; upd(); render(); }; pal.appendChild(b); return b; });
+    const sw = TAV_COLS.map((c, i) => { const b = document.createElement('button'); b.title = c[1] + ' (' + (i + 1) + ')'; b.style.cssText = (TOUCH ? 'width:36px;height:36px;' : 'width:26px;height:26px;') + 'border-radius:50%;cursor:pointer;border:2px solid #222;background:' + c[0]; b.onclick = () => { colI = i; upd(); render(); }; pal.appendChild(b); return b; });
     const sl = document.createElement('input'); sl.type = 'range'; sl.min = 1; sl.max = 30; sl.value = cm; sl.oninput = () => { cm = +sl.value; upd(); drawLive(); render(); };
     const lab = document.createElement('label'); lab.style.color = '#bbb'; lab.append('spessore ', sl); bar.appendChild(lab);
     btn('Annulla tratto', () => { strokes.pop(); drawLive(); render(); });
@@ -41160,10 +41161,10 @@ var Writing = (function () {
       const sty = STYLES[styleOf()], inv = inv0();
       head.innerHTML = '';
       const t1 = document.createElement('div'); t1.style.cssText = 'font-size:16px;color:#ffe14a'; t1.textContent = `Tavoletta${place ? ' · ' + place : ''} · ${Rc.W.toFixed(2)} × ${Rc.H.toFixed(2)} m → ${sty ? sty.nome : ''} di ${playerAka(st)}${W0.crew ? ' ' + W0.crew : ''}`;
-      const t2 = document.createElement('div'); t2.style.cssText = 'color:#aaa;font-size:12px'; t2.textContent = `Disegna col mouse o con la penna (la pressione conta). Colori 1-8 · Ctrl+Z annulla · Invio salva sul muro · Esc esce. ${tool === 'pennarello' ? 'Pennarelli: ' + (inv.pennarello || 0) : 'Bombolette: ' + (inv.bomboletta || 0)}`;
+      const t2 = document.createElement('div'); t2.style.cssText = 'color:#aaa;font-size:12px'; t2.textContent = `${TOUCH ? 'Disegna col dito o con la penna.' : 'Disegna col mouse o con la penna (la pressione conta). Colori 1-8 · Ctrl+Z annulla · Invio salva sul muro · Esc esce.'} ${tool === 'pennarello' ? 'Pennarelli: ' + (inv.pennarello || 0) : 'Bombolette: ' + (inv.bomboletta || 0)}`;
       head.append(t1, t2); info.textContent = `${cm} cm`; };
     upd();
-    box.appendChild(bar); box.appendChild(wrap); document.body.appendChild(box);
+    box.appendChild(bar); box.appendChild(wrap); document.body.appendChild(box); fit();
     const pxm = pw / Rc.W, wpx = () => cm / 100 * pxm;
     const pos = e => { const b = live.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * pw, (e.clientY - b.top) / b.height * ph]; };
     live.addEventListener('pointerdown', e => { live.setPointerCapture(e.pointerId); const [x, y] = pos(e); cur = [[x, y, e.timeStamp, e.pressure || .5]]; strokes.push(cur); drawLive(); });
@@ -43335,15 +43336,18 @@ var Render = (function () {
     const m = new THREE.MeshLambertMaterial({ color: '#ffffff', flatShading: true, vertexColors: true });
     m.onBeforeCompile = sh => {
       sh.uniforms.vTime = VEGU.time; sh.uniforms.wG = VENTO.g;   // [animazioni-mondo]
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; uniform float wG; varying float vSnow;')   /* [animazioni-mondo] wG */
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; uniform float wG; varying float vSnow; varying vec3 vWP2; varying float vLi2;')   /* [animazioni-mondo] wG */
         .replace('#include <begin_vertex>', `#include <begin_vertex>
-          vSnow = aSnow;
+          vSnow = aSnow; vLi2 = fract(sin(instanceMatrix[3].x * 12.9898 + instanceMatrix[3].z * 78.233) * 43758.5453);
           float ph = instanceMatrix[3].x * .37 + instanceMatrix[3].z * .29;
           float gw = wG * (.55 + .45 * sin(vTime * .8 - instanceMatrix[3].x * .045 - instanceMatrix[3].z * .015));   // [animazioni-mondo] la raffica passa sul bosco da ovest
           transformed.x += ((sin(vTime * 1.3 + ph) * .05 + sin(vTime * 3.1 + ph * 2.) * .014) * (.5 + gw * 1.5) + gw * .08) * aSway;   // [animazioni-mondo] più forte e piegato col vento
-          transformed.z += (cos(vTime * 1.1 + ph) * .04 * (.5 + gw * 1.5) + gw * .03) * aSway;   // [animazioni-mondo]`);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSnow;')
+          transformed.z += (cos(vTime * 1.1 + ph) * .04 * (.5 + gw * 1.5) + gw * .03) * aSway;   // [animazioni-mondo]`)
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n vWP2 = (modelMatrix * instanceMatrix * vec4(transformed, 1.)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSnow; varying vec3 vWP2; varying float vLi2;\nfloat lfH2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\nfloat lfN2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(lfH2(i), lfH2(i + vec2(1., 0.)), f.x), mix(lfH2(i + vec2(0., 1.)), lfH2(i + 1.), f.x), f.y); }')
         .replace('#include <color_fragment>', `#include <color_fragment>
+          { float cl = lfN2(vWP2.xz * 1.3 + vWP2.y * .8) * .6 + lfN2(vWP2.xz * 4.1 - vWP2.y * 2.3) * .4;   // [verde2] grana e ciuffi dal mondo, una tinta per pianta
+            diffuseColor.rgb *= (.8 + .4 * cl) * mix(vec3(1.06, 1.03, .86), vec3(.87, 1., 1.05), vLi2); }
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.8' : '0.'});`);
     };
     return m;
@@ -43420,25 +43424,33 @@ var Render = (function () {
     const k = (map ? map.uuid : 'x') + (leafy ? 'L' : 'B') + (tint || ''); if (NAT.mats[k]) return NAT.mats[k];
     if (map) { map.magFilter = THREE.LinearFilter; map.minFilter = THREE.LinearMipmapLinearFilter; map.generateMipmaps = true; map.needsUpdate = true; }
     const m = new THREE.MeshLambertMaterial({ map, color: tint || '#ffffff', alphaTest: leafy ? .5 : 0, side: leafy ? THREE.DoubleSide : THREE.FrontSide });
-    if (leafy) { m.color.multiplyScalar(1.55); m.emissive = new THREE.Color('#34482c'); m.emissiveMap = map; m.emissiveIntensity = .7; } else m.color.multiplyScalar(1.15);   // [isola33] il bosco vivo
+    if (leafy) { m.color.multiplyScalar(1.55); m.emissive = new THREE.Color('#34482c'); m.emissiveMap = map; m.emissiveIntensity = .45; }   /* [verde2] era .7: la luce propria appiattiva le chiome */ else m.color.multiplyScalar(1.15);   // [isola33] il bosco vivo
     m.onBeforeCompile = sh => {
       sh.uniforms.vTime = VEGU.time; sh.uniforms.uPl = NATU.pl; sh.uniforms.uCm = NATU.cm; sh.uniforms.wG = VENTO.g;   // [animazioni-mondo]
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; uniform float wG; varying float vSnow; varying vec3 vWP;')   /* [animazioni-mondo] wG */
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; uniform float wG; varying float vSnow; varying vec3 vWP; varying float vLh; varying float vLi;')   /* [animazioni-mondo] wG */   /* [verde2] vLh, vLi */
         .replace('#include <begin_vertex>', `#include <begin_vertex>
-          vSnow = aSnow;
+          vSnow = aSnow; vLh = clamp(aSway / 1.6 + .35, 0., 1.); vLi = fract(sin(instanceMatrix[3].x * 12.9898 + instanceMatrix[3].z * 78.233) * 43758.5453);   // [verde2] quota nella chioma, ogni pianta la sua tinta
           float ph = instanceMatrix[3].x * .37 + instanceMatrix[3].z * .29;
           float gw = wG * (.55 + .45 * sin(vTime * .8 - instanceMatrix[3].x * .045 - instanceMatrix[3].z * .015));   // [animazioni-mondo] la raffica passa sul bosco da ovest
           transformed.x += ((sin(vTime * 1.3 + ph) * .05 + sin(vTime * 3.1 + ph * 2.) * .014) * (.5 + gw * 1.5) + gw * .08) * aSway;   // [animazioni-mondo] più forte e piegato col vento
           transformed.z += (cos(vTime * 1.1 + ph) * .04 * (.5 + gw * 1.5) + gw * .03) * aSway;   // [animazioni-mondo]`).replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
           vWP = (modelMatrix * instanceMatrix * vec4(transformed, 1.)).xyz;`);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSnow; varying vec3 vWP; uniform vec3 uPl; uniform vec3 uCm;')
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSnow; varying vec3 vWP; uniform vec3 uPl; uniform vec3 uCm; varying float vLh; varying float vLi;\nfloat lfH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\nfloat lfN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(lfH(i), lfH(i + vec2(1., 0.)), f.x), mix(lfH(i + vec2(0., 1.)), lfH(i + 1.), f.x), f.y); }')
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance *= lfS;')
         .replace('#include <color_fragment>', `#include <color_fragment>
+          float lfS = 1.;
+          ${leafy ? `{   // [verde2] le chiome hanno volume e grana: dentro e sotto più scure, in cima più chiare, ciuffi di luce e d'ombra
+            // dal mondo (non si ripetono fra una pianta e l'altra) e ogni pianta una tinta sua, dal giallo-oliva al verde-azzurro
+            float cl = lfN(vWP.xz * 1.1 + vWP.y * .7) * .65 + lfN(vWP.xz * 3.3 - vWP.y * 1.9) * .35;
+            lfS = mix(.58, 1.14, smoothstep(.05, .95, vLh)) * (.8 + .4 * cl);
+            diffuseColor.rgb *= lfS * mix(vec3(1.07, 1.03, .84), vec3(.86, 1., 1.05), vLi); }` : ''}
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.6' : '0.'});
           { vec3 ab = uCm - uPl; float t = clamp(dot(vWP - uPl, ab) / dot(ab, ab), 0., 1.); float d = length(vWP - (uPl + ab * t));
             float open = (1. - smoothstep(1.6, 3.4, d)) * step(.04, t) * step(vWP.y, uPl.y + 30.) * step(uPl.y + .9, vWP.y);
             vec2 q = floor(gl_FragCoord.xy); float dth = fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453);
             if (open > dth * .9 + .1) discard; }`);
     };
+    m.customProgramCacheKey = () => 'natMat' + (leafy ? 'L' : 'B');   // [verde2] chiome e tronchi hanno lo stesso testo di shader: senza chiave three darebbe a tutti il primo programma compilato
     NAT.mats[k] = m; return m;
   }
   // un modello del kit -> pezzi (geometria nello spazio del modello + materiale), con neve sulle facce in su e ondeggiare in alto
@@ -43603,7 +43615,7 @@ var Render = (function () {
       x.fillStyle = '#c8a888'; x.beginPath(); x.arc(32, 13, 3.4, 0, 6.3); x.fill(); x.fillStyle = '#8a3a2a'; x.fillRect(26, 18, 12, 18);
       x.fillStyle = 'rgba(138,126,106,.55)'; for (let i = 0; i < 40; i++) x.fillRect(Math.random() * 64, Math.random() * 40, 3, 2);
     }
-    const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; return new THREE.MeshBasicMaterial({ map: t, transparent: kind === 'toro', opacity: 1 });
+    const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; const m = new THREE.MeshBasicMaterial({ map: t, transparent: kind === 'toro', opacity: 1 }); m.userData.ugOwn = true; return m;
   }
   function buildUG(L, win) {
     const grp = new THREE.Group(), GWd = G.GW, T = G.T, has = (tx, ty) => tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && L.ug[ty * GWd + tx] > 0;
@@ -43637,7 +43649,11 @@ var Render = (function () {
     Object.entries(WB).forEach(([k, [pos, uv]]) => { if (!pos.length) return; const m = new THREE.Mesh(mkGeo(pos, uv), ugTex(k)); m.material.side = THREE.DoubleSide; grp.add(m); });
     const wood = ugM('#6a4a30');
     tunnelWood(grp, props, has, L, (dx, dz) => dx * Math.sin(cam.yaw) + dz * Math.cos(cam.yaw) > .3);
-    rocks.forEach(([x, y, z]) => { const m = new THREE.Mesh(new THREE.DodecahedronGeometry(.25 + hash2i(x, z) * .25, 0), ugM(hash2i(z, x) < .5 ? '#55504a' : '#4a3828')); m.position.set(x, y - .15, z); m.scale.y = .6; m.rotation.y = hash2i(x, z) * 6; grp.add(m); });
+    // [crash] i sassi nelle pareti: due gruppi di istanze invece di una mesh (e una geometria) per sasso
+    { const RK = [[], []]; rocks.forEach(q => RK[hash2i(q[2], q[0]) < .5 ? 0 : 1].push(q)); const M4 = new THREE.Matrix4(), Q4 = new THREE.Quaternion(), E4 = new THREE.Euler(), V4 = new THREE.Vector3(), S4 = new THREE.Vector3();
+      RK.forEach((arr, k) => { if (!arr.length) return; const im = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), ugM(k ? '#4a3828' : '#55504a'), arr.length);
+        arr.forEach(([x, y, z], i) => { const r = .25 + hash2i(x, z) * .25; E4.set(0, hash2i(x, z) * 6, 0); Q4.setFromEuler(E4); V4.set(x, y - .15, z); S4.set(r, r * .6, r); M4.compose(V4, Q4, S4); im.setMatrixAt(i, M4); });
+        im.instanceMatrix.needsUpdate = true; grp.add(im); }); }
     // scale nei pozzi e nelle botole
     L.portals.forEach(P => {
       if (!/^(botola|pozzo|tombino|grata|interno)$/.test(P.kind) || P.u[0] < wx0 || P.u[0] > wx1 || P.u[1] < wy0 || P.u[1] > wy1) return; const i = P.u[1] * GWd + P.u[0], f = L.fl[i], top = M.elev[i] + .2, x = (P.u[0] + .5) * TS, z = (P.u[1] + .25) * TS;
@@ -43652,7 +43668,7 @@ var Render = (function () {
       const g = new THREE.Group(); g.position.set(R.x, R.f, R.y);
       if (R.deco === 'toro' || R.deco === 'eremo') {
         const pic = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), ugPicture(R.deco)); pic.position.set(0, 1.4, -1.85); g.add(pic);
-        if (R.deco === 'eremo') { const alt = new THREE.Mesh(new THREE.BoxGeometry(1.4, .9, .6), ugM('#8a8276')); alt.position.set(0, .45, -1.4); g.add(alt); for (let k = 0; k < 5; k++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, .22, 6), new THREE.MeshBasicMaterial({ color: '#f0e6c8' })); c.position.set(-.5 + k * .25, 1, -1.35); g.add(c); } const cr = new THREE.Mesh(new THREE.BoxGeometry(.06, .7, .06), wood); cr.position.set(0, 2.4, -1.8); g.add(cr); const cr2 = new THREE.Mesh(new THREE.BoxGeometry(.4, .06, .06), wood); cr2.position.set(0, 2.55, -1.8); g.add(cr2); }
+        if (R.deco === 'eremo') { const alt = new THREE.Mesh(new THREE.BoxGeometry(1.4, .9, .6), ugM('#8a8276')); alt.position.set(0, .45, -1.4); g.add(alt); for (let k = 0; k < 5; k++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, .22, 6), ugMats.__cand || (ugMats.__cand = new THREE.MeshBasicMaterial({ color: '#f0e6c8' }))); c.position.set(-.5 + k * .25, 1, -1.35); g.add(c); } const cr = new THREE.Mesh(new THREE.BoxGeometry(.06, .7, .06), wood); cr.position.set(0, 2.4, -1.8); g.add(cr); const cr2 = new THREE.Mesh(new THREE.BoxGeometry(.4, .06, .06), wood); cr2.position.set(0, 2.55, -1.8); g.add(cr2); }
         else { for (let k = 0; k < 3; k++) { const b = new THREE.Mesh(new THREE.DodecahedronGeometry(.25, 0), ugM('#d8d0c0')); b.position.set(-.8 + k * .5, .1, -.6 + k * .2); b.scale.set(1, .4, 2); g.add(b); } }
         UGR.lights.push([R.x, R.f + 1.6, R.y, R.deco === 'eremo' ? '#ffb060' : '#9ab0d0']);
       } else if (R.deco === 'covo') {
@@ -43698,7 +43714,7 @@ var Render = (function () {
     mk(new THREE.BoxGeometry(.1, .1, .7), wood, P.brace);
     mk(new THREE.BoxGeometry(.06, .26, 2), plank, P.plank);
     mk(new THREE.BoxGeometry(.6, .16, .6), woodD, P.cap);
-    if (P.lamp.length) { mk(new THREE.BoxGeometry(.16, .24, .16), new THREE.MeshStandardMaterial({ color: '#ffd890', emissive: '#ffb050', emissiveIntensity: 2.2 }), P.lamp); mk(new THREE.CylinderGeometry(.01, .01, .35, 4), sm('#2a2a2a'), P.lamp.map(q => [q[0], q[1] + .3, q[2], 0])); }
+    if (P.lamp.length) { mk(new THREE.BoxGeometry(.16, .24, .16), ugMats.__lamp || (ugMats.__lamp = new THREE.MeshStandardMaterial({ color: '#ffd890', emissive: '#ffb050', emissiveIntensity: 2.2 })), P.lamp); mk(new THREE.CylinderGeometry(.01, .01, .35, 4), sm('#2a2a2a'), P.lamp.map(q => [q[0], q[1] + .3, q[2], 0])); }
   }
   // il passaggio sotto terra: come per gli interni, si nasconde il mondo di sopra e si accende la lanterna
   function ugPass(st) {
@@ -43706,20 +43722,24 @@ var Render = (function () {
     const wcx = Math.floor(p.x / 48), wcy = Math.floor(p.y / 48);   // [sottosuolo] la finestra si sposta a passi di 48 m
     const key = on ? L.rev + ':' + (Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2)) & 3) + ':' + wcx + ',' + wcy : null;
     if (key !== UGR.key) {
-      if (UGR.grp) { scene.remove(UGR.grp); UGR.grp.traverse(o => { if (o.geometry) o.geometry.dispose(); }); UGR.grp = null; }
-      UGR.lights.length = 0; if (UGR.lightObjs) UGR.lightObjs.forEach(l => scene.remove(l)); UGR.lightObjs = [];
+      if (UGR.grp) { scene.remove(UGR.grp); UGR.grp.traverse(o => { if (o.isInstancedMesh) o.dispose(); if (o.geometry) o.geometry.dispose(); if (o.material && o.material.userData.ugOwn) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } }); UGR.grp = null; }   // [crash] le istanze (telai) e i materiali fatti apposta si liberano davvero
+      UGR.lights.length = 0; UGR.lightObjs = [];
       UGR.key = key;
-      if (on) { const r0 = Math.round(84 / TS); UGR.grp = buildUG(L, [Math.floor((wcx + .5) * 48 / TS) - r0, Math.floor((wcy + .5) * 48 / TS) - r0, Math.floor((wcx + .5) * 48 / TS) + r0, Math.floor((wcy + .5) * 48 / TS) + r0]); scene.add(UGR.grp); UGR.lightObjs = UGR.lights.map(([x, y, z, c]) => { const l = new THREE.PointLight(c, 2.2, 14, 1.3); l.position.set(x, y, z); scene.add(l); return l; }); }
+      if (on) { const r0 = Math.round(84 / TS); UGR.grp = buildUG(L, [Math.floor((wcx + .5) * 48 / TS) - r0, Math.floor((wcy + .5) * 48 / TS) - r0, Math.floor((wcx + .5) * 48 / TS) + r0, Math.floor((wcy + .5) * 48 / TS) + r0]); scene.add(UGR.grp); }   // [crash] niente luci nuove: le lanterne della galleria usano le luci fisse di PPOOL (vedi sotto). Prima ogni casella scavata cambiava il numero di luci e la scheda video ricompilava gli shader di tutto
       else if (UGR.was) scene.children.forEach(o => { if (o.userData.__hidUG) { o.visible = true; o.userData.__hidUG = false; } });
     }
     UGR.was = on;
-    if (!UGR.lantern) { UGR.lantern = new THREE.PointLight('#ffc070', 0, 20, 1.2); scene.add(UGR.lantern); }
-    UGR.lantern.visible = !!on;   /* [fluido] la lanterna esiste solo sotto terra (fuori non pesa sui pixel) */
-    if (!on) { UGR.lantern.intensity = 0; return false; }
+    if (!on) return false;
     hemi.intensity *= .5; moon.intensity *= .05; fillAmb.intensity *= .9;   // [sottosuolo] meno buio: si deve vedere dove si va
     const pg = dyn.people.__player, h = Livelli.heightOf(st, p);
-    UGR.lantern.position.set(p.x + Math.cos(p.face) * .4, h + 1.7, p.y + Math.sin(p.face) * .4); UGR.lantern.intensity = 2.8 + Math.sin(st.clock * 9) * .08;
-    scene.children.forEach(o => { if (o === UGR.grp || o === pg || o === UGR.lantern || UGR.lightObjs.includes(o) || o.userData.ugKeep) return; if (o.isLight && o !== moon && o !== hemi && o !== fillAmb) { if (o.visible) { o.visible = false; o.userData.__hidUG = true; } return; } if (o.isLight) return; if (o.visible) { o.visible = false; o.userData.__hidUG = true; } });
+    // [crash] sotto terra le luci restano le stesse di sopra (stesso numero: nessuno shader da rifare): i faretti si spengono,
+    // la prima luce di PPOOL è la lanterna del giocatore, le altre le lanterne della galleria più vicine
+    SPOOL.forEach(l => { l.intensity = 0; if (l.userData.cone) l.userData.cone.visible = false; });
+    const near = UGR.lights.map(q => [q, (q[0] - p.x) ** 2 + (q[2] - p.y) ** 2]).sort((a, b) => a[1] - b[1]);
+    PPOOL.forEach((l, i) => {
+      if (i === 0) { l.position.set(p.x + Math.cos(p.face) * .4, h + 1.7, p.y + Math.sin(p.face) * .4); l.color.set('#ffc070'); l.distance = 20; l.decay = 1.2; l.intensity = 2.8 + Math.sin(st.clock * 9) * .08; return; }
+      const q = near[i - 1]; if (!q) { l.intensity = 0; return; } const [x, y, z, c] = q[0]; l.position.set(x, y, z); l.color.set(c); l.distance = 14; l.decay = 1.3; l.intensity = 2.2; });
+    scene.children.forEach(o => { if (o === UGR.grp || o === pg || LPOOL.includes(o) || o.userData.ugKeep) return; if (o.isLight && o !== moon && o !== hemi && o !== fillAmb) { if (o.visible) { o.visible = false; o.userData.__hidUG = true; } return; } if (o.isLight) return; if (o.visible) { o.visible = false; o.userData.__hidUG = true; } });
     UGR.grp.visible = true; if (pg) pg.visible = true;
     return true;
   }
@@ -54458,8 +54478,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       want.sort((a, b) => (a[0] === 0 ? -1 : 0) - (b[0] === 0 ? -1 : 0) || b[0] - a[0]);
       for (let q = 0; q < Math.min(3, want.length); q++) { const l = want[q][1]; l.shadow.needsUpdate = true; l.userData.shT = now; } }
     PPOOL.forEach((l, i) => {
-      const L = dyn.lpp[i]; if (!L) { l.intensity = 0; return; }
-      l.position.set(L.x, L.y, L.z); l.color.copy(L.color); l.distance = L.dist; l.intensity = L.base * kOf(L) * .8;
+      const L = dyn.lpp[i]; l.decay = 2; if (!L) { l.intensity = 0; return; }
+      l.position.set(L.x, L.y, L.z); l.color.copy(L.color); l.distance = L.dist; l.decay = 2; l.intensity = L.base * kOf(L) * .8;
     });
   }
   function frame(st, dt, ui) {
@@ -54499,7 +54519,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     tickAir(time, night);   // [luci2]
     tickAir2(time, night);   // [luci3]
     MV.t.value = time;   // [muri1] il vento nella stoffa
-    dyn.flicker.forEach(f => { f.s.material.opacity = f.base * (.2 + night * .8) * (.85 + Math.sin(time * 9 + f.base * 7) * .15); });
+    dyn.flicker.forEach(f => { const o = f.base * night * (.85 + Math.sin(time * 9 + f.base * 7) * .15); f.s.material.opacity = o; });   // [proporzioni] di giorno l'alone non c'è: era un disco bianco di un metro e mezzo che faceva i lampioni giganti
     dyn.signs.forEach(s => { if (s.flick) { const on = Math.sin(time * 17) > -.85 || Math.sin(time * 2.3) > .2; s.m.color.setScalar(on ? 1 : .35); if (s.gl) s.gl.material.opacity = on ? .45 : .1; } });
     if (dyn.water) { const U = dyn.water.uniforms; U.time.value = time; U.night.value = night; U.dusk.value = dusk; U.fogC.value.copy(tmpC); U.camP.value.copy(camera.position); U.fogN.value = scene.fog.near; U.fogF.value = scene.fog.far; if (U.wx) U.wx.value.set(WXc, WXwet, WXfog, WXst); }
     if (dyn.sky) { dyn.sky.position.copy(camera.position); const U = dyn.sky.material.uniforms; U.night.value = night; U.dusk.value = dusk; U.time.value = time; if (U.wx) U.wx.value.set(WXc, WXwet, WXfog, METEO.reg); const sunA = ((st.t / 60) % 24 - 12) / 12 * Math.PI; U.sun.value.copy(moon.position).sub(moon.target.position).normalize();   /* [unione4] lo stesso sole della luce */ }
@@ -54681,9 +54701,16 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       const vw = VIEW * (ui.zoom || 1), fresh = cam.ppx === undefined || Math.hypot(p.x - cam.ppx, p.y - cam.ppy) > 6;
       const ivx = fresh || !(dt > 0) ? 0 : (p.x - cam.ppx) / dt, ivy = fresh || !(dt > 0) ? 0 : (p.y - cam.ppy) / dt; cam.ppx = p.x; cam.ppy = p.y;
       const kv = Math.min(1, dt * 2.2); cam.pvx = (cam.pvx || 0) + (ivx - (cam.pvx || 0)) * kv; cam.pvy = (cam.pvy || 0) + (ivy - (cam.pvy || 0)) * kv;
-      const spd = Math.hypot(cam.pvx, cam.pvy), leadOn = PHONE && !pveh && !ui.intro && !ui.dialogNpc && !ui.focus && !p.indoor;
-      const lm = leadOn ? Math.min(1, spd / 6) * vw * .2 : 0, lx = spd > .3 ? cam.pvx / spd * lm : 0, ly = spd > .3 ? cam.pvy / spd * lm : 0;
-      const kl = Math.min(1, dt * 1.6); cam.lx = (cam.lx || 0) + (lx - (cam.lx || 0)) * kl; cam.ly = (cam.ly || 0) + (ly - (cam.ly || 0)) * kl;
+      const spd = Math.hypot(cam.pvx, cam.pvy), leadOn = PHONE && !ui.intro && !ui.dialogNpc && !ui.focus && !p.indoor;
+      // lo sguardo avanti è una parte dello schermo, non dei metri: in verticale di lato c'è poco posto, in alto e in basso tanto.
+      // Si scompone la direzione di marcia nei due assi dello schermo e ognuno prende fino al 42% della sua mezza inquadratura
+      let lx = 0, ly = 0;
+      if (leadOn && spd > .3) {
+        const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, ux = cam.pvx / spd, uy = cam.pvy / spd, asp = W / Math.max(1, H);
+        const vh = pveh ? 2 * (cam.cd || 30) * Math.tan(camera.fov * Math.PI / 360) : vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
+        const k = .42 * Math.min(1, spd / (pveh ? 10 : 5)), sx = ux * rx + uy * rz, sy = ux * fx + uy * fz;
+        lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; }
+      const kl = Math.min(1, dt * (pveh ? 1.2 : 1.6)); cam.lx = (cam.lx || 0) + (lx - (cam.lx || 0)) * kl; cam.ly = (cam.ly || 0) + (ly - (cam.ly || 0)) * kl;
       cam.panX = cam.panX || 0; cam.panY = cam.panY || 0;
       if (ui.pan && !ui.intro && !ui.focus) { const pitch0 = PITCH, fx = -Math.sin(cam.yaw || YAW), fz = -Math.cos(cam.yaw || YAW), asp = W / Math.max(1, H), vh = vw * (H > W * 1.05 ? .78 : 1);
         const mx = -ui.pan.dx * vh * asp, my = ui.pan.dy * vh / Math.sin(pitch0);   // il mondo segue il dito: a destra il dito, la visuale va a sinistra
@@ -54698,6 +54725,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       let lead = pveh.speed < -1 ? 3 : G.VK[pveh.kind].pocket ? 1.5 + Math.max(0, vsp) * .35 : 5 + Math.max(0, vsp) * .75;   // [bmx] la bici è piccola: la visuale guarda meno avanti
       for (let L = 0; L <= lead; L += .5) { const x = pveh.x + Math.cos(head) * L, z = pveh.y + Math.sin(head) * L; if (G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)) === G.T.BLD) { lead = Math.max(0, L - 1.2); break; } }
       tx = pveh.x + Math.cos(head) * lead; ty = pveh.y + Math.sin(head) * lead;
+      if (PHONE) { tx = pveh.x + cam.lx; ty = pveh.y + cam.ly; }   // [telefono] sui mezzi lo sguardo avanti in proporzione allo schermo (sopra)
       const behind = Math.atan2(-Math.cos(head), -Math.sin(head));
       if (cam.drive < .05) cam.dyaw = cam.yaw;
       if (Math.abs(pveh.speed) > 1.2 || cam.drive < .9) cam.dyaw = angLerp(cam.dyaw, pveh.speed < -1 ? behind + Math.PI : behind, Math.min(1, dt * (1.6 + Math.abs(pveh.speed) * .08)));
@@ -54733,7 +54761,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const fov = lerp(30, onVespa ? 40 : 40, ease) * (1 + (pveh ? Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) : 0) / 18 * .16 * ease);
     const viewH = VIEW * cam.zoom * (H > W * 1.05 ? .78 : 1);   // [telefono] in verticale la visuale si stringe: il personaggio non è un puntino
     const walkDist = (viewH / 2) / Math.tan(30 * Math.PI / 360);
-    let driveDist = ((onVespa ? 26 : 32) * (ui.zoom || 1)) + (pveh ? Math.min(14, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .5) : 0);
+    let driveDist = ((onVespa ? 26 : 32) * (ui.zoom || 1) * (PHONE && H > W * 1.05 ? 1.3 : 1))   /* [telefono] in verticale un po' più indietro: di lato si vedeva pochissimo */ + (pveh ? Math.min(14, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .5) : 0);
     if (false) {
       const hx = Math.sin(cam.yaw), hz = Math.cos(cam.yaw), cp = Math.cos(onVespa ? .44 : .42);
       for (let s = 1.5; s < driveDist; s += .4) { const x = cam.x + hx * cp * s, z = cam.y + hz * cp * s; if (G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)) === G.T.BLD && !isWall(Math.floor(x / G.TS), Math.floor(z / G.TS))) { driveDist = Math.max(5, s - 1); break; } }
@@ -56866,7 +56894,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || (window.Cantiere && Cantiere.active())) return [];
     if (window.Skate && Skate.on(st)) return ['ollie'];
     if (p.vehicle) return jumpMode() ? ['salta', 'impenna'] : ['freno', 'scendi'];
-    if (ui.spray) return ui.spray.tool === 'bomboletta' && !(window.Writing && Writing.mode(st) === 'tavoletta') ? ['colore', 'modo'] : ['colore'];
+    if (ui.spray) return window.Writing && Writing.mode(st) === 'tavoletta' ? [] : ['colore', 'modo'];   // [graffiti3] con la tavoletta i colori si scelgono nel pannello
     return ['salta'];
   }
   const lab = d => typeof d.l === 'function' ? d.l() : d.l;
@@ -56979,8 +57007,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && R.res <= .72) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
     // [fluido] risoluzione dinamica: media mobile del fotogramma; sopra i 22 ms si scende di un gradino, sotto i 14 ms per 4 s si risale (al massimo un cambio ogni 1,5 s)
     if (R.setRes && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
-      if (resT > 1.5 && resAvg > .022) { R.setRes(R.res * .85); resT = 0; resAvg = .018; }
-      else if (resT > 4 && resAvg < .014 && R.res < 1) { R.setRes(R.res * 1.1); resT = 0; } }
+      // [fluido2] tre gradini soli (100, 85, 72%) e con calma: ogni cambio rifà tutte le immagini intermedie della grafica
+      // (uno scatto, e sul telefono memoria che si rimescola). Prima poteva cambiare ogni 1,5 s, proprio quando acceleri o zoomi
+      const RL = [1, .85, .72], ri = RL.reduce((b, v, i) => Math.abs(v - R.res) < Math.abs(RL[b] - R.res) ? i : b, 0);
+      if (resT > 3 && resAvg > .024 && ri < 2) { R.setRes(RL[ri + 1]); resT = 0; resAvg = .018; }
+      else if (resT > 12 && resAvg < .013 && ri > 0) { R.setRes(RL[ri - 1]); resT = 0; } }
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
     const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]
@@ -64171,9 +64202,9 @@ var MenuUI = (function () {
 })();
 </script>
 <script data-m="comandi">// Porto Vecchio — Le icone a schermo (10-11 ottobre) [mobile]
-// [colore1] Sul COMPUTER cinque pulsanti, ognuno col suo tasto scritto sotto: 6 bomboletta, 7 tavoletta, 8 BMX, 9 skate, I zaino
+// [colore1] Sul COMPUTER i pulsanti col tasto scritto sotto: 6 (o 7) graffiti con la tavoletta, 8 BMX, 9 skate, I zaino
 // (1-5 restano le armi; P e X fanno ancora bici e tavola). Sul TELEFONO tre icone che girano fra i loro stati a ogni tocco:
-// - Graffiti: mani libere → bomboletta → tavoletta → mani libere (col pennarello se non hai bombolette).
+// - Graffiti: mani libere ↔ tavoletta (con la bomboletta, o col pennarello se non hai bombolette). [graffiti3]
 // - Ruote: a piedi → BMX → skate → a piedi (lo skate solo se hai la tavola).
 // - Zaino: il menu; il numero sono le cose da fare qui. La mappa: tocca la minimappa.
 // Più la mano, solo quando impugni un'arma o un oggetto: con l'arma sul telefono si spara dove tocchi (main.js, tapShoots)
@@ -64222,11 +64253,10 @@ const Comandi = (() => {
     if (!Skate.S(st).owned) say('La tavola non ce l\'hai più: ne trovi un\'altra nei posti dello skate (il cerchio giallo).', 'bad');
     else say(p.indoor ? 'Al chiuso la tavola resta sotto il braccio.' : 'Qui non si va in tavola.', 'bad');
   }
-  function graffiti() {   // mani libere → bomboletta → tavoletta → mani libere
-    const st = ST(), p = st.player, spray = p.hand === 'bomboletta' || p.hand === 'pennarello';
-    if (!spray) { bomboletta(); return; }
-    if (!tavOn(st)) { tavoletta(); return; }
-    tavoletta();   // dalla tavoletta: mani libere
+  function graffiti() {   // [graffiti3] una cosa sola: la bomboletta È la tavoletta. Mani libere ↔ tavoletta
+    const st = ST(), p = st.player;
+    if ((p.hand === 'bomboletta' || p.hand === 'pennarello') && !tavOn(st)) { equip(null); }   // la bomboletta a mano libera (tasto B) si posa
+    tavoletta();
   }
   function ruote() {   // a piedi → BMX → skate → a piedi
     const st = ST();
@@ -64271,15 +64301,14 @@ const Comandi = (() => {
   // ---------------- la fila ----------------
   // [id, nome, tasto, azione, dove]: 'tch' solo sul telefono, 'pc' solo col mouse, '' sempre
   const ITEMS = [
-    ['graffiti', 'Bomboletta · tavoletta', '', graffiti, 'tch'],
-    ['bomboletta', 'Bomboletta', '6', bomboletta, 'pc'],
-    ['tavoletta', 'Tavoletta (bomboletta o pennarello)', '7', tavoletta, 'pc'],
+    ['graffiti', 'Graffiti: la tavoletta', '', graffiti, 'tch'],
+    ['tavoletta', 'Graffiti: la tavoletta (bomboletta o pennarello)', '6', graffiti, 'pc'],   // [graffiti3] niente più bomboletta a parte
     ['ruote', typeof Skate !== 'undefined' ? 'BMX · skate' : 'BMX', '', ruote, 'tch'],
     ['bmx', 'BMX', '8', bmx, 'pc'],
     ...(typeof Skate !== 'undefined' ? [['skate', 'Skate', '9', skate, 'pc']] : []),   // [pausa] lo skate è fuori dalla build per ora
     ['zaino', 'Zaino', 'I', zaino, ''],
   ];
-  const KEYS = { '6': bomboletta, '7': tavoletta, '8': bmx }; if (typeof Skate !== 'undefined') KEYS['9'] = skate;
+  const KEYS = { '6': graffiti, '7': graffiti, '8': bmx }; if (typeof Skate !== 'undefined') KEYS['9'] = skate;
   addEventListener('keydown', e => {
     const k = e.key, pv = PV(); if (!KEYS[k] || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !pv || !ST()) return;
     const ui = pv.ui, tag = (e.target && e.target.tagName) || ''; if (/INPUT|TEXTAREA|SELECT/.test(tag) || e.target.isContentEditable) return;
@@ -64355,9 +64384,9 @@ const Comandi = (() => {
     const spray = p.hand === 'bomboletta' || p.hand === 'pennarello', sk = onSk(st), bm = onBmx(st);
     d.querySelectorAll('button[data-id]').forEach(b => {
       const id = b.dataset.id, c = b.querySelector('canvas');
-      const look = id === 'graffiti' ? (tavOn(st) ? 'tavoletta' : 'bomboletta') : id === 'ruote' ? (sk ? 'skate' : 'bmx') : id;
+      const look = id === 'graffiti' ? 'tavoletta' : id === 'ruote' ? (sk ? 'skate' : 'bmx') : id;
       if (c.dataset.look !== look) { iconOf(c, look); c.dataset.look = look; }
-      b.classList.toggle('on', id === 'graffiti' ? spray : id === 'ruote' ? sk || bm : id === 'bomboletta' ? spray && !tavOn(st) : id === 'tavoletta' ? tavOn(st) : id === 'bmx' ? bm : id === 'skate' ? sk : false);
+      b.classList.toggle('on', id === 'graffiti' ? tavOn(st) : id === 'ruote' ? sk || bm : id === 'bomboletta' ? spray && !tavOn(st) : id === 'tavoletta' ? tavOn(st) : id === 'bmx' ? bm : id === 'skate' ? sk : false);
       if (id === 'bomboletta' || id === 'tavoletta') b.classList.toggle('off', !has('bomboletta') && !has('pennarello'));
       if (id === 'skate') b.classList.toggle('off', !(typeof Skate !== 'undefined' && Skate.S(st).owned));
       if (id === 'graffiti' || id === 'bomboletta') { b.classList.toggle('off', !has('bomboletta') && !has('pennarello')); b.style.setProperty('--col', spray && ui.spray ? pv.SPRAY_COLS[ui.spray.col][0] : 'transparent'); }

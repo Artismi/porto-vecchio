@@ -707,7 +707,7 @@
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || (window.Cantiere && Cantiere.active())) return [];
     if (window.Skate && Skate.on(st)) return ['ollie'];
     if (p.vehicle) return jumpMode() ? ['salta', 'impenna'] : ['freno', 'scendi'];
-    if (ui.spray) return ui.spray.tool === 'bomboletta' && !(window.Writing && Writing.mode(st) === 'tavoletta') ? ['colore', 'modo'] : ['colore'];
+    if (ui.spray) return window.Writing && Writing.mode(st) === 'tavoletta' ? [] : ['colore', 'modo'];   // [graffiti3] con la tavoletta i colori si scelgono nel pannello
     return ['salta'];
   }
   const lab = d => typeof d.l === 'function' ? d.l() : d.l;
@@ -820,8 +820,11 @@
     if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && R.res <= .72) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
     // [fluido] risoluzione dinamica: media mobile del fotogramma; sopra i 22 ms si scende di un gradino, sotto i 14 ms per 4 s si risale (al massimo un cambio ogni 1,5 s)
     if (R.setRes && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
-      if (resT > 1.5 && resAvg > .022) { R.setRes(R.res * .85); resT = 0; resAvg = .018; }
-      else if (resT > 4 && resAvg < .014 && R.res < 1) { R.setRes(R.res * 1.1); resT = 0; } }
+      // [fluido2] tre gradini soli (100, 85, 72%) e con calma: ogni cambio rifà tutte le immagini intermedie della grafica
+      // (uno scatto, e sul telefono memoria che si rimescola). Prima poteva cambiare ogni 1,5 s, proprio quando acceleri o zoomi
+      const RL = [1, .85, .72], ri = RL.reduce((b, v, i) => Math.abs(v - R.res) < Math.abs(RL[b] - R.res) ? i : b, 0);
+      if (resT > 3 && resAvg > .024 && ri < 2) { R.setRes(RL[ri + 1]); resT = 0; resAvg = .018; }
+      else if (resT > 12 && resAvg < .013 && ri > 0) { R.setRes(RL[ri - 1]); resT = 0; } }
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
     const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]

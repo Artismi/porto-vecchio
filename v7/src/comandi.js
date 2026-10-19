@@ -1,7 +1,7 @@
 // Porto Vecchio — Le icone a schermo (10-11 ottobre) [mobile]
-// [colore1] Sul COMPUTER cinque pulsanti, ognuno col suo tasto scritto sotto: 6 bomboletta, 7 tavoletta, 8 BMX, 9 skate, I zaino
+// [colore1] Sul COMPUTER i pulsanti col tasto scritto sotto: 6 (o 7) graffiti con la tavoletta, 8 BMX, 9 skate, I zaino
 // (1-5 restano le armi; P e X fanno ancora bici e tavola). Sul TELEFONO tre icone che girano fra i loro stati a ogni tocco:
-// - Graffiti: mani libere → bomboletta → tavoletta → mani libere (col pennarello se non hai bombolette).
+// - Graffiti: mani libere ↔ tavoletta (con la bomboletta, o col pennarello se non hai bombolette). [graffiti3]
 // - Ruote: a piedi → BMX → skate → a piedi (lo skate solo se hai la tavola).
 // - Zaino: il menu; il numero sono le cose da fare qui. La mappa: tocca la minimappa.
 // Più la mano, solo quando impugni un'arma o un oggetto: con l'arma sul telefono si spara dove tocchi (main.js, tapShoots)
@@ -50,11 +50,10 @@ const Comandi = (() => {
     if (!Skate.S(st).owned) say('La tavola non ce l\'hai più: ne trovi un\'altra nei posti dello skate (il cerchio giallo).', 'bad');
     else say(p.indoor ? 'Al chiuso la tavola resta sotto il braccio.' : 'Qui non si va in tavola.', 'bad');
   }
-  function graffiti() {   // mani libere → bomboletta → tavoletta → mani libere
-    const st = ST(), p = st.player, spray = p.hand === 'bomboletta' || p.hand === 'pennarello';
-    if (!spray) { bomboletta(); return; }
-    if (!tavOn(st)) { tavoletta(); return; }
-    tavoletta();   // dalla tavoletta: mani libere
+  function graffiti() {   // [graffiti3] una cosa sola: la bomboletta È la tavoletta. Mani libere ↔ tavoletta
+    const st = ST(), p = st.player;
+    if ((p.hand === 'bomboletta' || p.hand === 'pennarello') && !tavOn(st)) { equip(null); }   // la bomboletta a mano libera (tasto B) si posa
+    tavoletta();
   }
   function ruote() {   // a piedi → BMX → skate → a piedi
     const st = ST();
@@ -99,15 +98,14 @@ const Comandi = (() => {
   // ---------------- la fila ----------------
   // [id, nome, tasto, azione, dove]: 'tch' solo sul telefono, 'pc' solo col mouse, '' sempre
   const ITEMS = [
-    ['graffiti', 'Bomboletta · tavoletta', '', graffiti, 'tch'],
-    ['bomboletta', 'Bomboletta', '6', bomboletta, 'pc'],
-    ['tavoletta', 'Tavoletta (bomboletta o pennarello)', '7', tavoletta, 'pc'],
+    ['graffiti', 'Graffiti: la tavoletta', '', graffiti, 'tch'],
+    ['tavoletta', 'Graffiti: la tavoletta (bomboletta o pennarello)', '6', graffiti, 'pc'],   // [graffiti3] niente più bomboletta a parte
     ['ruote', typeof Skate !== 'undefined' ? 'BMX · skate' : 'BMX', '', ruote, 'tch'],
     ['bmx', 'BMX', '8', bmx, 'pc'],
     ...(typeof Skate !== 'undefined' ? [['skate', 'Skate', '9', skate, 'pc']] : []),   // [pausa] lo skate è fuori dalla build per ora
     ['zaino', 'Zaino', 'I', zaino, ''],
   ];
-  const KEYS = { '6': bomboletta, '7': tavoletta, '8': bmx }; if (typeof Skate !== 'undefined') KEYS['9'] = skate;
+  const KEYS = { '6': graffiti, '7': graffiti, '8': bmx }; if (typeof Skate !== 'undefined') KEYS['9'] = skate;
   addEventListener('keydown', e => {
     const k = e.key, pv = PV(); if (!KEYS[k] || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !pv || !ST()) return;
     const ui = pv.ui, tag = (e.target && e.target.tagName) || ''; if (/INPUT|TEXTAREA|SELECT/.test(tag) || e.target.isContentEditable) return;
@@ -183,9 +181,9 @@ const Comandi = (() => {
     const spray = p.hand === 'bomboletta' || p.hand === 'pennarello', sk = onSk(st), bm = onBmx(st);
     d.querySelectorAll('button[data-id]').forEach(b => {
       const id = b.dataset.id, c = b.querySelector('canvas');
-      const look = id === 'graffiti' ? (tavOn(st) ? 'tavoletta' : 'bomboletta') : id === 'ruote' ? (sk ? 'skate' : 'bmx') : id;
+      const look = id === 'graffiti' ? 'tavoletta' : id === 'ruote' ? (sk ? 'skate' : 'bmx') : id;
       if (c.dataset.look !== look) { iconOf(c, look); c.dataset.look = look; }
-      b.classList.toggle('on', id === 'graffiti' ? spray : id === 'ruote' ? sk || bm : id === 'bomboletta' ? spray && !tavOn(st) : id === 'tavoletta' ? tavOn(st) : id === 'bmx' ? bm : id === 'skate' ? sk : false);
+      b.classList.toggle('on', id === 'graffiti' ? tavOn(st) : id === 'ruote' ? sk || bm : id === 'bomboletta' ? spray && !tavOn(st) : id === 'tavoletta' ? tavOn(st) : id === 'bmx' ? bm : id === 'skate' ? sk : false);
       if (id === 'bomboletta' || id === 'tavoletta') b.classList.toggle('off', !has('bomboletta') && !has('pennarello'));
       if (id === 'skate') b.classList.toggle('off', !(typeof Skate !== 'undefined' && Skate.S(st).owned));
       if (id === 'graffiti' || id === 'bomboletta') { b.classList.toggle('off', !has('bomboletta') && !has('pennarello')); b.style.setProperty('--col', spray && ui.spray ? pv.SPRAY_COLS[ui.spray.col][0] : 'transparent'); }
