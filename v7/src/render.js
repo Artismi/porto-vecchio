@@ -12377,7 +12377,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       // lo sguardo avanti è una parte dello schermo, non dei metri: in verticale di lato c'è poco posto, in alto e in basso tanto.
       // Si scompone la direzione di marcia nei due assi dello schermo e ognuno prende fino al 42% della sua mezza inquadratura
       let lx = 0, ly = 0;
-      if (leadOn && spd > .3) {
+      if (leadOn && ui.stick) {   // [telefono] la levetta comanda lo sguardo: si inquadra subito dove la spingi (a piedi, in bici, in auto)
+        const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, asp = W / Math.max(1, H), m = Math.min(1, Math.hypot(ui.stick.x, ui.stick.y));
+        const vh = pveh ? 2 * (cam.cd || 30) * Math.tan(camera.fov * Math.PI / 360) : vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
+        const sx = ui.stick.x / (m || 1), sy = -ui.stick.y / (m || 1), k = .42 * m;
+        lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; }
+      else if (leadOn && spd > .3) {
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, ux = cam.pvx / spd, uy = cam.pvy / spd, asp = W / Math.max(1, H);
         const vh = pveh ? 2 * (cam.cd || 30) * Math.tan(camera.fov * Math.PI / 360) : vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
         const k = .42 * Math.min(1, spd / (pveh ? 10 : 5)), sx = ux * rx + uy * rz, sy = ux * fx + uy * fz;

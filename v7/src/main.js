@@ -79,7 +79,7 @@
   let tg = null, lastTap = { t: 0, x: 0, y: 0 };
   cv.addEventListener('pointermove', e => { if (!tg || e.pointerId !== tg.id) return;
     if (!tg.drag && Math.hypot(e.clientX - tg.x, e.clientY - tg.y) > 10) { tg.drag = true; tg.lx = e.clientX; tg.ly = e.clientY; }
-    if (tg.drag) { const r = cv.getBoundingClientRect(); ui.pan = ui.pan || { dx: 0, dy: 0 }; ui.pan.dx += (e.clientX - tg.lx) / r.width; ui.pan.dy += (e.clientY - tg.ly) / r.height; tg.lx = e.clientX; tg.ly = e.clientY; } });
+    if (tg.drag) { const r = cv.getBoundingClientRect(); ui.drag = (ui.drag || 0) + (e.clientX - tg.lx) / r.width * 3.2; tg.lx = e.clientX; tg.ly = e.clientY; } });   // [telefono] un dito gira la visuale (non la sposta)
   const tgUp = e => { if (!tg || e.pointerId !== tg.id) return; const g = tg; tg = null; if (g.drag || e.type === 'pointercancel') return;
     const now = performance.now(), dbl = now - lastTap.t < 320 && Math.hypot(g.x - lastTap.x, g.y - lastTap.y) < 30; lastTap = { t: dbl ? 0 : now, x: g.x, y: g.y };
     mouse.nx = g.nx; mouse.ny = g.ny; onClick(g.nx, g.ny, dbl); };
@@ -489,24 +489,10 @@
   }
 
   // ---------- Schermate ----------
-  function introScreen() {
-    if (window.Risacca) { // RISACCA: la storia della bibbia
-      $('screen').innerHTML = `<div class="in"><div class="tagline">UN'ISOLA DEL TIRRENO · SOTTO LA TUTELA</div><div class="logo">Porto Vecchio</div>
-      <div class="story"><p>Da quarant'anni l'isola è sotto la <b>Tutela</b>. Il Garante parla ogni sera alle 20 da tutti gli schermi, i <b>Grigi</b> presidiano le strade, gli <b>Orecchi</b> ascoltano nei bar. Chi parla troppo viene <b>rettificato</b>.</p>
-      <p>Tu sei della <b>Risacca</b>, la corrente che non si vede. Per ora siete in pochi: <b>parla con la gente</b>, scrivi quello che vuoi, convincili. Recluta, trova spazi vuoti, costruisci basi, finanzia la causa, sabota.</p>
-      <p>Lupo, il vecchio bibliotecario, sa da dove cominciare. In tasca hai tre gessetti.</p></div>
-      <div class="keys"><span><kbd>CLIC</kbd>vai / scegli</span><span><kbd>CLIC SU UNA PERSONA</kbd>Parla · Chatta</span><span><kbd>C</kbd>chatta con chi hai vicino</span><span><kbd>B</kbd>la Risacca: squadra, basi, risorse</span><span><kbd>W A S D</kbd>muoviti</span><span><kbd>F</kbd>mezzi</span><span><kbd>P</kbd>la BMX tascabile</span><span><kbd>TAB</kbd>taccuino</span><span><kbd>M</kbd>audio</span></div>
+  function introScreen() {   // [menu2] una scritta, un pulsante: niente nome né storia, leggibile anche in verticale
+    $('screen').innerHTML = `<div class="in intro2"><div class="logo">Get out and state your business</div>
       <button class="cta" id="go">Scendi in strada</button>
-      <div class="credits" style="margin-top:14px;font-size:11px;opacity:.7;max-width:640px;line-height:1.5">Modelli: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) ·
-      <a href="https://poly.pizza/bundle/Race-kit-LcWNxpyXuL" target="_blank" rel="noopener">Race kit</a> di <a href="https://poly.pizza/u/Player11132" target="_blank" rel="noopener">Player11132</a> [<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY</a>] via Poly Pizza · Medieval Torture Devices via Poly Pizza</div></div>`;
-      $('go').onclick = start; return;
-    }
-    $('screen').innerHTML = `<div class="in"><div class="tagline">UN'ISOLA DEL TIRRENO · 1986</div><div class="logo">Porto Vecchio</div>
-      <div class="story"><p>Sei <b>Nino Baldi</b>. Sei uscito di galera ieri, e lo Squalo, Sandro Neri, rivuole i suoi <b>500.000 lire</b> entro l'alba di giovedì.</p>
-      <p>Nei caruggi <b>tutti vedono, tutti ricordano, tutti parlano</b>. Un lavoro onesto ti apre le porte. Una sparatoria davanti alla persona sbagliata te le chiude, e la voce arriva alla polizia prima di te.</p>
-      <p>Di notte, al Pontile Est, tre marsigliesi fanno la guardia a una valigetta. Sotto le reti del molo qualcuno ha nascosto una pistola.</p></div>
-      <div class="keys"><span><kbd>MOUSE</kbd>mira</span><span><kbd>CLIC</kbd>spara</span><span><kbd>W A S D</kbd>muoviti rispetto al cursore</span><span><kbd>SHIFT</kbd>corri</span><span><kbd>R</kbd>ricarica</span><span><kbd>1-5 · ROTELLA</kbd>armi</span><span><kbd>F</kbd>sali su auto e Vespe</span><span><kbd>P</kbd>tira fuori la BMX</span><span><kbd>SPAZIO</kbd>freno a mano</span><span><kbd>T</kbd>parla</span><span><kbd>E</kbd>scippa o rapina</span><span><kbd>G</kbd>pugno</span><span><kbd>TAB</kbd>taccuino</span><span><kbd>M</kbd>audio</span></div>
-      <button class="cta" id="go">Scendi in strada</button></div>`;
+      <div class="credits">Modelli: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) · <a href="https://poly.pizza/bundle/Race-kit-LcWNxpyXuL" target="_blank" rel="noopener">Race kit</a> di Player11132 [<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY</a>] via Poly Pizza</div></div>`;
     $('go').onclick = start;
   }
   function start() { A.init(); showHud(true); ui.intro = false; ui.letterbox = false; $('screen').innerHTML = ''; $('screen').style.pointerEvents = 'none'; cv.focus(); toast(window.Risacca ? 'Clic su una persona → Chatta. Lupo è in biblioteca.' : 'Parla con la gente (T): qualcuno ha un lavoro per te.', 'job'); }
@@ -843,7 +829,7 @@
     ui.desat = st.slowmo > 0;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: touchMode && Math.hypot(stick.x, stick.y) > .15 ? stick : null, pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
