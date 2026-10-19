@@ -168,7 +168,7 @@ var Pittura = (function () {
   // Il busto si chiude al cavallo stringendosi sul profilo delle due cosce; in alto diventa il collo. Mani, piedi e testa restano del kit.
   // =====================================================================================
   let CORPO_ON = true;   // (Pittura.corpo(false) per confrontare col mosaico del kit)
-  const CORPO = { T: 64, A: 28, L: 36 };   // colonne attorno: busto, braccia, gambe
+  const CORPO = { T: 96, A: 28, L: 36 };   // colonne attorno: busto, braccia, gambe (il busto fitto: lo spessore dei capi è uno spostamento per vertice, a maglie larghe gli orli di revers e scollo venivano a dente di sega)
   // i pesi del punto: media sui vicini (±4 cm lungo l'asse, ±2 settori), così al ginocchio e al gomito la pelle piega morbida invece di fare uno scalino
   function pesi(tb, ii, q) { const M = new Map(), n = Math.max(1, Math.round(.04 / tb.ds)); let t = 0;
     for (let di = -n; di <= n; di++) { const i2 = cl(ii + di, 0, tb.ns), wi = 1 - Math.abs(di) / (n + 1); for (let dq = -2; dq <= 2; dq++) { const w = tb.W && tb.W[i2] && tb.W[i2][(q + dq + 64) % 64]; if (!w) continue; const k = wi * (1 - Math.abs(dq) / 3); w.forEach(([bi, wk]) => { M.set(bi, (M.get(bi) || 0) + wk * k); t += wk * k; }); } }
@@ -186,7 +186,7 @@ var Pittura = (function () {
       else if (r < 3) { const w = b['Wrist' + (r === 1 ? 'L' : 'R')]; sA = 0; sB = w ? Math.min(tb.L, tb.sNear(w) + .01) : tb.L; }
       else { sA = tb.sAtY(b.Hips.y - .02); sB = tb.sAtY((B.ankle[r === 3 ? 'L' : 'R'] || { y: .1 }).y - .01); }
       if (sB < sA) { const t = sA; sA = sB; sB = t; }
-      let nr = Math.max(4, Math.round((sB - sA) / .01)); const P = [], VI = [], SI = [], SW = [];
+      let nr = Math.max(4, Math.round((sB - sA) / (r === 0 ? .008 : .01)));   /* righe ogni 8 mm sul busto, 1 cm su braccia e gambe */ const P = [], VI = [], SI = [], SW = [];
       const handR = null, sWr = 0;
       const yHi = b.Hips.y - .02, nc = B.neckC, rn = B.neckR || .055;
       // le righe: sull'asse; il braccio in cima si chiude a cupola (il deltoide) che entra nella spalla, sennò il tubo aperto affiora
@@ -674,11 +674,7 @@ var Pittura = (function () {
       // costine all'orlo e allo scollo (maglioni, felpe)
       if (C.costine && y - (L.T.yb || 0) < .05 && y >= L.T.yb) { const rib = .5 + .5 * Math.sin(xm / .006 * Math.PI); c = mul(C.A, .82 + rib * .22); h = rib; }
       if (/giro|barca|canotta/.test(C.collo || '') && nY - neckDrop(C, a) - y < .018) { const rib = .5 + .5 * Math.sin(xm / .005 * Math.PI); c = mul(C.A, .85 + rib * .2); h = rib; if (nY - neckDrop(C, a) - y < .008) s *= .6; }
-      // colletto della camicia e della polo: fascia che gira, punte davanti
-      if ((C.collo === 'camicia' || C.collo === 'polo' || C.collo === 'camicia_aperta') && L.T.s0 !== undefined) {
-        const top = nY - neckDrop(C, a), dy = top - y, tip = Math.abs(a) < .55 ? (.55 - Math.abs(a)) * .08 : 0, wcol = .035 + tip;
-        if (dy < wcol && dy >= 0) { c = mul(C.A, 1.06); if (dy > wcol - .008 || dy < .007) { s *= .68; h = .1; } else h = .7; if (Math.abs(a) < .05) { s *= .7; } }
-      }
+      // [stile] il colletto della camicia e della polo non è dipinto: è la vela 3D di Vesti3D (dipinto in più faceva un secondo colletto sotto)
       // revers: due ali a V dal collo fino al primo bottone, larghe al petto e strette in basso, con la tacca (lo scollo dove si incontrano collo e revers)
       if (/revers/.test(C.collo || '') && L.T.s0 !== undefined && y > nY - .21 && Math.cos(a) > 0) {
         const X = Math.abs(a) * .14, k = cl((y - (nY - .2)) / .2, 0, 1), w0 = .098 * k, notchY = nY - .068, lw = y > notchY ? .03 + (y - notchY) * .1 : .066 * sm(cl((y - (nY - .2)) / .1, 0, 1)), d = X - w0;
@@ -686,7 +682,7 @@ var Pittura = (function () {
           if (y < notchY + .006 && y > notchY - .012 && d > .026) { s *= .5; h = .05; } }   // la tacca
         else if (d >= lw && d < lw + .01) s *= .84;   // l'ombra sotto il revers
       }
-      if (/revers/.test(C.collo || '') && L.T.s0 !== undefined && Math.cos(a) <= 0) { const dy = nY - neckDrop(C, a) - y; if (dy >= 0 && dy < .032) { c = mul(C.A, 1.06); h = .7; if (dy > .027) { s *= .6; h = .05; } } }   // il collo dietro
+      // il collo dietro della giacca è in rilievo (Vesti3D, colletti)
       // giacche e giacconi aperti sotto l'ultimo bottone: il bordo davanti che si divide (linea scura che si allarga verso l'orlo)
       if (C.cl >= 4 && !C.gonna && !C.falda3d && L.T.s0 !== undefined && /bottoni|doppio/.test(C.fronte || '') && y < B.waist + .06) { const t = cl((B.waist + .06 - y) / .12, 0, 1), ea = .03 + t * .2;
         if (Math.abs(a) < ea - .02) return null; if (Math.abs(Math.abs(a) - ea) < .025) { s *= .5; h = .05; } }

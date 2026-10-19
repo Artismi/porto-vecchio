@@ -924,7 +924,7 @@ var Vesti3D = (function () {
     const idx = PL.map((C, i) => i).filter(i => tipi.test(PL[i].collo || '') && !PL.slice(i + 1).some(O => copre.test(O.collo || '') || tipi.test(O.collo || ''))).pop();
     if (idx === undefined) return; const C = PL[idx], polo = C.collo === 'polo', aperta = C.collo === 'camicia_aperta', revers = PL.slice(idx + 1).some(O => /revers/.test(O.collo || '')), sopra = PL.slice(idx + 1).some(O => (O.parti || []).includes('torso'));
     const sub = revers ? outfit.filter(o => { const k = PL.findIndex(P0 => P0.id === o.id); return k < 0 || k <= idx; }) : outfit;
-    const M = revers ? misuraCollo(B, T, sub, Pt.paintPlans(B, sub)) : misuraCollo(B, T, outfit, PL), hx = c => '#' + new THREE.Color().setRGB(c[0], c[1], c[2]).getHexString(), col = hx(C.A), c2 = C.B ? hx(C.B) : col;
+    const MF = misuraCollo(B, T, outfit, PL), M = revers ? misuraCollo(B, T, sub, Pt.paintPlans(B, sub)) : MF, hx = c => '#' + new THREE.Color().setRGB(c[0], c[1], c[2]).getHexString(), col = hx(C.A), c2 = C.B ? hx(C.B) : col;
     const mt = Pt.blockMat(/^(tartan|vichy|righe_v|fiori|liberty)$/.test(C.fab) ? C.fab : C.fab === 'pique' ? 'cotone' : C.fab || 'cotone', col, c2, C.C ? hx(C.C) : col, { vc: false, liscio: 1 });
     // la misura lisciata attorno al giro (niente denti): per ogni angolo il raggio di quello che c'è sotto a una quota
     const NA = 72, smooth = R => { for (let it = 0; it < 3; it++) { const c0 = R.slice(); for (let i = 0; i < NA; i++) R[i] = Math.max(c0[i], (c0[(i + 1) % NA] + c0[(i + NA - 1) % NA]) / 2); }
@@ -933,15 +933,16 @@ var Vesti3D = (function () {
     const at = (R, a) => { const f = (((a + Math.PI) / (Math.PI * 2) * NA) % NA + NA) % NA, i0 = Math.floor(f), t = f - i0; return lerp0(R[i0], R[(i0 + 1) % NA], t); };
     // il listino (la fascia che sale dritta attorno al collo) e la vela che si rovescia sopra; davanti si apre (la polo sui bottoni, l'aperta di più)
     // [stile] colletti bassi e morbidi, da strada: la camicia sbottonata in cima (il collo si vede), listino appena accennato, la vela posata piatta
-    const gap = polo ? .26 : aperta ? .42 : revers ? .14 : .3, stH = polo ? .01 : revers ? .012 : .012, yS0 = nY - .006, yS1 = yS0 + stH, th = .0024;
-    const RS = ring(yS0 - .006, yS1, .0035);   // il listino sta sopra il collo
+    const gap = polo ? .26 : aperta ? .42 : revers ? .14 : .3, stH = polo ? .01 : revers ? .02 : .012, yS0 = nY - .006, yS1 = yS0 + stH, th = .0024;
+    const RS = ring(yS1 - .006, yS1, .0035);   // il listino sta sopra il collo: misurato in cima (più in basso il busto si allarga verso le spalle e il listino girava largo, staccato dal collo); sotto entra nel corpo
     const Wb = revers ? .013 : polo ? .026 : .028, Wp = aperta ? .04 : polo ? .016 : revers ? .014 : .03;   // la vela: dietro, e quanto in più verso le punte
     const pf = a => { const x = Math.max(0, 1 - (Math.PI - Math.abs(a)) / 2.3); return 0; };
     const fr = a => { const x = Math.max(0, 1 - Math.abs(a) / 1.15); return x * x * (3 - 2 * x); };   // 1 davanti alle punte, 0 dietro
     const W = a => Wb + Wp * fr(a) - .006 * Math.pow(Math.max(0, -Math.cos(a)), 2);
-    const RE = Float32Array.from({ length: NA }, (_, i) => { const a = -Math.PI + i / NA * Math.PI * 2, ye = yS1 - W(a) * .92; return M.maxR(a, ye - .008, yS1) + .004; }); smooth(RE);
+    // l'orlo della vela si posa su quello che c'è sotto; l'aperta sotto la giacca stende le punte sopra i revers (misura con tutti gli strati)
+    const RE = Float32Array.from({ length: NA }, (_, i) => { const a = -Math.PI + i / NA * Math.PI * 2, ye = yS1 - W(a) * .92; return (revers && aperta ? MF : M).maxR(a, ye - .008, yS1) + .004; }); smooth(RE);
     const pt = (a, t, d) => {   // t: 0 = la piega in cima, 1 = l'orlo della vela
-      const f = fr(a), aa = a * (1 - .1 * f * t * t) , rs = at(RS, a) + th + .0008, re = Math.max(at(RE, a), rs + .006), y = yS1 + .001 - W(a) * (.55 * t + .35 * t * t), r = rs + (re - rs) * Math.pow(t, .8) + .002 * Math.sin(t * Math.PI) + d;   // si apre subito e si posa: niente vela in piedi
+      const f = fr(a), aa = a * (1 - .1 * f * t * t) , rs = at(RS, a) + th + .0008, re = Math.min(Math.max(at(RE, a), rs + .006), rs + (aperta && revers ? .03 : .012)),   /* all'aperta sopra la giacca le punte si stendono sui revers; la vela abbraccia il collo: al massimo 1,2 cm più larga del listino (sennò sul petto che scende si apriva ad ali) */ y = yS1 + .001 - W(a) * (.55 * t + .35 * t * t), r = rs + (re - rs) * Math.pow(t, .8) + .002 * Math.sin(t * Math.PI) + d;   // si apre subito e si posa: niente vela in piedi
       return new THREE.Vector3(nx + Math.sin(aa) * r, y, nz + Math.cos(aa) * r); };
     const ptS = (a, t, d) => { const r = at(RS, a) + d, y = lerp0(yS0, yS1 + .002, t); return new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r); };
     const sheet = (fn, NT, a0, a1, NAi) => { const P = [], U = [], I = [], id = (i, j, d) => (i * (NT + 1) + j) * 2 + d;
@@ -951,8 +952,18 @@ var Vesti3D = (function () {
       for (const i of [0, NAi]) for (let j = 0; j < NT; j++) I.push(id(i, j, 0), id(i, j + 1, 0), id(i, j, 1), id(i, j, 1), id(i, j + 1, 0), id(i, j + 1, 1));
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); return new THREE.Mesh(g, mt); };
     const o = new THREE.Group();
-    const aMax = revers ? .95 : Math.PI;   // sotto la giacca il colletto si vede solo davanti, nello scollo dei revers
-    for (const [a0, a1] of [[gap, aMax], [-aMax, -gap]]) { o.add(sheet(ptS, 3, a0, a1, revers ? 12 : 30)); o.add(sheet(pt, 7, a0, a1, revers ? 12 : 30)); }
+    const aMax = revers ? (aperta ? .95 : .7) : Math.PI;   // sotto la giacca il colletto si vede solo davanti, nello scollo dei revers: ai lati finisce sotto il collo della giacca (sennò spuntava ad ali)
+    for (const [a0, a1] of [[gap, aMax], [-aMax, -gap]]) o.add(sheet(pt, 7, a0, a1, revers ? 12 : 30));
+    for (const [a0, a1] of [[gap, Math.PI], [-Math.PI, -gap]]) o.add(sheet(ptS, 3, a0, a1, 30));   // il listino gira tutto: sotto la giacca spunta sopra il suo collo
+    // il collo della giacca: gira dietro dalla tacca di un revers all'altra, sale sul listino della camicia (che ne spunta 1 cm) e si rovescia sulle spalle
+    if (revers) { const J = PL.slice(idx + 1).find(O => /revers/.test(O.collo || '')), jc = hx(J.A), mj = Pt.blockMat(J.fab || 'lana', jc, J.B ? hx(J.B) : jc, J.C ? hx(J.C) : jc, { vc: false, liscio: 1 });
+      const yJ0 = nY - .03, yJ1 = yS1 - .01, aJ = .66, RF = ring(yJ1 - .008, yJ1, .003), WJ = a => .03 + .01 * Math.max(0, Math.cos(a));
+      const rj = a => Math.max(at(RS, a) + th + .0016, at(RF, a));
+      const jS = (a, t, d) => { const r = rj(a) + d, y = lerp0(yJ0, yJ1, t); return new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r); };
+      const jF = (a, t, d) => { const rs = rj(a) + th, y = yJ1 + .001 - WJ(a) * (.5 * t + .5 * t * t), re = Math.min(Math.max(MF.maxR(a, y - .006, y + .006) + .003, rs + .003), rs + .009), r = rs + (re - rs) * Math.pow(t, .7) + .001 * Math.sin(t * Math.PI) + d;   // piatto sulle spalle, niente rotolo
+        return new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r); };
+      const sj = (fn, NT, a0, a1, NAi) => { const m = sheet(fn, NT, a0, a1, NAi); m.material = mj; return m; };
+      for (const [a0, a1] of [[aJ, Math.PI], [-Math.PI, -aJ]]) { o.add(sj(jS, 3, a0, a1, 30)); o.add(sj(jF, 7, a0, a1, 30)); } }
     // la punta: la vela davanti finisce a punta (taglio obliquo), non a lembo dritto
     // il bottone del listino, e nella polo il bordino a contrasto lungo l'orlo
     if (false) { const q = ptS(0, .5, .0015); o.add(Sp(.0035, lm(sh(col, .82)), q.x, q.y, q.z)); }
