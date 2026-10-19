@@ -31,6 +31,12 @@ La build normale resta con la mappa vecchia (`world.js`).
 - **Kotor** — mura continue attorno alla città, **Porta a Mare** sul molo, porte di terra con bastioni.
   [Fortifications of Kotor](https://en.wikipedia.org/wiki/Fortifications_of_Kotor)
 
+- **Brindisi, Castello Alfonsino (Forte a Mare)** (foto del committente) — la fortezza aragonese sull'isola davanti al porto:
+  il **torrione tondo** con la lanterna in cima, le cortine di tufo dorato a scarpa, e dentro un **fossato pieno d'acqua di mare**
+  (una darsena chiusa) che comunica col mare aperto da un **arco** sotto le mura; sulla banchina interna la **porta col portale
+  bugnato a fasce bianche** e le finestrelle quadrate delle caserme. È il modello del fossato della Rocca: acqua verde e ferma,
+  i riflessi delle mura, la passerella di servizio.
+
 ### Borghi di mare quasi in piano (il modello del borgo)
 - **Bari Vecchia** — labirinto di vicoli e corti sulla penisola, chiuso dalla Muraglia sul mare e da fortini; **un solo
   corso largo** lo separa dal **quartiere murattiano a griglia**: due città una accanto all'altra.

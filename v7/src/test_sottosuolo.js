@@ -35,7 +35,7 @@ p.x = (b.x + 1.5) * TS; p.y = (b.y + 1.5) * TS; p.inv = { pala: 1, piccone: 1 };
 m = LV.digUp(st); console.log('    ', m); wait(25); ok(p.indoor && p.indoor.b === bi, 'sbuco dentro la casa ' + (b.id || bi) + ': ' + (st.feed[0] && st.feed[0].text) + ' ' + where());
 // 5) da dentro una casa: una botola nel pavimento
 const sideFree = (q, dir) => { for (let y = q.y; y < q.y + q.h; y++) for (let k = 0; k < 8; k++) { const x = dir > 0 ? q.x + q.w + k : q.x - 1 - k, t = G.tileAt(x, y); if (t === G.T.BLD || t === G.T.WATER) return false; } return true; };   // [città2] la città è fitta: di filato senza fondamenta
-const b2i = G.BUILDINGS.findIndex((q, i) => i !== bi && q.door && q.w >= 3 && !q.rot && sideFree(q, 1) && sideFree(q, -1) && !L.portals.some(P => P.bi === i)); G.exitBuilding(st); p.lv = null; G.enterBuilding(st, b2i);
+const b2i = G.BUILDINGS.findIndex((q, i) => i !== bi && q.door && q.w >= 3 && !q.rot && !q.military && sideFree(q, 1) && sideFree(q, -1) && !L.portals.some(P => P.bi === i)); G.exitBuilding(st); p.lv = null; G.enterBuilding(st, b2i);
 m = LV.key(st, 'h'); console.log('    ', m); wait(16); m = LV.key(st, 'v'); ok(p.lv && p.lv.k === 'ug' && !p.indoor, 'botola nel pavimento e giù: ' + m + ' ' + where());
 // 6) scavare di filato: avanti finché non lo fermi
 { const qb = G.BUILDINGS[b2i], tx0 = Math.floor(p.x / TS); p.face = tx0 - qb.x < qb.x + qb.w - 1 - tx0 ? Math.PI : 0; }   // verso il lato più vicino: fuori dalla casa

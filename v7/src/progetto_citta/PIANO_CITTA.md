@@ -109,7 +109,7 @@ Ogni casella e ogni edificio porta la sua **epoca** (`era`): da lì, non da un h
 3. **La marina e il porto vecchio.** Calata, magazzini a volta, scalinate, darsena, scalo.
 4. **L'Ottocento.** Corso alberato, Mercato ottagonale, isolati a corte, stazione, ferrovia sul rilevato con baracche e tronchino.
 5. **Il Novecento.** Piazza d'adunata e portici della Vittoria, bombe, INA-Casa, torri e parcheggi, sostituzioni, sopraelevata, Vele, abuso sui tetti.
-6. **La Rocca rifinita.** Cortina 12 m, fossato -5 m, caserme lunghe addossate, governatore, polveriera, aggiunte del 1986.
+6. **La Rocca rifinita.** Cortina 12 m, fossato -5 m **allagato dal mare con l'arco di comunicazione** (Castello Alfonsino di Brindisi), torrione tondo con la lanterna, caserme lunghe addossate, governatore, polveriera, aggiunte del 1986.
 7. **I segni.** `b.era` → materiali, tetti, finestre, insegne, suoli; landmark con le loro luci; segni del Garante e della Risacca.
 8. **Il gioco.** Tetti continui, scorciatoie, porte coi posti di blocco e le alternative, regola dei 60 m, rilettura con le prove.
 
@@ -143,3 +143,31 @@ Il livello del dettaglio fa parte del progetto, non viene dopo. Per ogni epoca e
   una facciata), una quinta, una luce. Cinematografico.
 - **Texture e materiali**: dipinti a mano, coerenti per epoca, mai lo stesso modulo ovunque; prestazioni prima di tutto
   (atlanti, istanze).
+
+## 11. La città viva (richiesta del committente)
+
+La città deve sembrare abitata: piena, su più livelli, con angoli pensati per le situazioni. Il generatore non mette solo case
+e strade: lascia **i posti dove succedono le cose**, e le scene (`eventi.js`) li usano.
+
+**Zone su più livelli.** Il borgo sale sulla groppa verso la Rocca: scalinate dalla marina, gradoni, sottoportici sotto la
+Vittoria; il camminamento sulle mura di tramontana (si cammina sopra la ferrovia e sopra il mare); le terrazze e i tetti piani
+come un piano in più (stenditoi, piccioni, antenne, i ragazzi che fumano); la calata più bassa della marina; il rilevato della
+ferrovia col sottopasso; la sopraelevata del boom con il buio sotto; i cortili murattiani dietro i portoni.
+
+**Gli angoli per le situazioni** (ogni posto ha un tipo, una direzione e chi ci sta):
+- **dehors** dei bar sui marciapiedi larghi e sulle piazzette, con tavolini, ombrelloni, la lavagna;
+- **pensiline** dell'autobus sul Corso, sul lungomare e sulla Via della Stazione; **panchine** sulle piazze, sul lungomare,
+  nella villa comunale e sulle mura;
+- **angoli di strada** dove un vicolo sbuca su una strada (la piccola gang, lo spaccio, il palo che guarda);
+- **retrobotteghe e carico-scarico** sui vicoli dietro le botteghe (il furgone delle consegne, la merce rubata che passa);
+- **facciate in riparazione** (la scala, la lamiera, il secchio di calce) nei vicoli del borgo e sui tetti delle baracche;
+- **lotti vuoti e fuochi** fra le baracche, sotto la sopraelevata, sui vuoti delle bombe;
+- **porte della città** (Porta di Terra, sottopasso, sottoportico, passaggio a livello): posti di blocco e scorciatoie.
+
+**Chi si incontra per strada** (scene e routine): la piccola gang all'angolo, il ladro che studia una vetrina o uno scippo,
+il sistema mafioso (l'esattore del pizzo, il palo, il ricettatore nel retrobottega, il capo al tavolino del bar), il postino
+col suo giro, il furgone delle consegne in doppia fila, il portavalori con la scorta davanti alla banca, le botteghe che aprono
+e chiudono (la serranda alzata, la merce fuori, la pausa, la pulizia del marciapiede, l'incasso), i vecchi sulla panchina,
+le madri alla pensilina, chi ripara una lamiera su una scala e chi ci passa sotto o la fa cadere, chi porta due vetri e
+l'auto che lo investe, chi accende un fuoco in strada e chiacchiera (o intanto fa affari), chi si guarda attorno circospetto,
+chi saluta tutti. Le situazioni si legano ai posti e all'ora (mattina: consegne, postino, mercato; sera: dehors, gang, fuochi).

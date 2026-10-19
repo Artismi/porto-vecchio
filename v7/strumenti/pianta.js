@@ -12,6 +12,7 @@ const W = (X1 - X0) * S, H = (Y1 - Y0) * S, px = Buffer.alloc(W * H * 3);
 const put = (x, y, c) => { for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) { const o = ((y * S + j) * W + x * S + i) * 3; px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; } };
 for (let ty = Y0; ty < Y1; ty++) for (let tx = X0; tx < X1; tx++) {
   const v = G.tileAt(tx, ty), k = inv[v]; let c = C[k] || [255, 0, 255];
+  if (k === 'COB' && G.MAP.world.roadW[ty * GW + tx] > 0) c = [240, 190, 120];   // i vicoli più chiari dei cortili
   if (k === 'BLD') { const bi = G.MAP.world.bIndex[ty * GW + tx], b = B[bi], f = b ? b.fl || 1 : 1; const l = Math.max(40, 205 - f * 22); c = b && b.shack ? [150, 95, 70] : b && b.military ? [90, 95, 70] : [l, l * .85, l * .8];
     if (b && (tx === b.x || ty === b.y || tx === b.x + b.w - 1 || ty === b.y + b.h - 1)) c = c.map(q => q * .75); }
   put(tx - X0, ty - Y0, c);
