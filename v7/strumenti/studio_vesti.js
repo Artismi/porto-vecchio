@@ -92,6 +92,14 @@ const GRUPPI = {
     ['hawaii', [['camicia_hawaii', { col: '#1a6a7a' }], 'bermuda', 'sandali']],
     ['camicia_giacca', ['camicia', 'pantaloni_completo', 'giacca_completo', 'cravatta', 'scarpe_eleganti']],
   ],
+  pila: [   // [strati] le pile dell'inventario attorno al collo: l'ordine lo decide chi si veste
+    ['maglia_giacca', ['maglietta', 'pantaloni_completo', 'giacca_completo', 'scarpe_eleganti']],
+    ['camicia_v_giacca', ['camicia', 'maglione_v', 'pantaloni_completo', 'giacca_completo', 'cravatta', 'scarpe_eleganti']],
+    ['camicia_sopra_giacca', ['giacca_completo', 'camicia', 'pantaloni', 'scarpe']],
+    ['polo_cappotto', [['polo', { col: '#141416' }], 'jeans', 'cappotto', 'scarpe']],
+    ['camicia_giubbotto', ['camicia_quadri', 'jeans', 'giacca_pelle', 'stivali_pelle']],
+    ['hawaii_giacca', [['camicia_hawaii', { col: '#1a6a7a' }], 'pantaloni', 'giacca', 'mocassini']],
+  ],
   piedi: [
     ['scarponi', ['maglietta', 'jeans', 'calzini', 'scarpe']],
     ['skate', ['maglietta_oversize', 'jeans_larghi', 'calze_sport', 'scarpe_skate']],

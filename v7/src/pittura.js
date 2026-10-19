@@ -367,6 +367,10 @@ var Pittura = (function () {
     }
     C.L = L; return C;
   }
+  // la forma del revers sul petto, in metri dal centro davanti (|a|·0,14) per quota: [orlo interno, orlo esterno], o null fuori.
+  // L'orlo interno sta un filo dentro lo scollo a V della giacca (|a| = 0,7·k); la usa anche il revers in rilievo (Vesti3D, scollo)
+  function reversX(C, y, nY) { const yB = nY - .2, yN = nY - .062, k = cl((y - yB) / .2, 0, 1), LW = (C.cl || 0) >= 5 ? .085 : C.collo === 'revers_pelle' ? .075 : .068;
+    if (y < yB + .004 || y > yN + .004) return null; const xi = .098 * k - .008, w = .01 + (LW - .01) * sm(cl((y - yB) / .12, 0, 1)); return [xi, xi + w]; }
   // lo scollo (quanto scende dalla base del collo) per angolo, come nella Sartoria
   function neckDrop(C, a) {
     const fa = Math.cos(a), c = C.collo; let d = 0;
@@ -675,14 +679,9 @@ var Pittura = (function () {
       if (C.costine && y - (L.T.yb || 0) < .05 && y >= L.T.yb) { const rib = .5 + .5 * Math.sin(xm / .006 * Math.PI); c = mul(C.A, .82 + rib * .22); h = rib; }
       if (/giro|barca|canotta/.test(C.collo || '') && nY - neckDrop(C, a) - y < .018) { const rib = .5 + .5 * Math.sin(xm / .005 * Math.PI); c = mul(C.A, .85 + rib * .2); h = rib; if (nY - neckDrop(C, a) - y < .008) s *= .6; }
       // [stile] il colletto della camicia e della polo non è dipinto: è la vela 3D di Vesti3D (dipinto in più faceva un secondo colletto sotto)
-      // revers: due ali a V dal collo fino al primo bottone, larghe al petto e strette in basso, con la tacca (lo scollo dove si incontrano collo e revers)
-      if (/revers/.test(C.collo || '') && L.T.s0 !== undefined && y > nY - .21 && Math.cos(a) > 0) {
-        const X = Math.abs(a) * .14, k = cl((y - (nY - .2)) / .2, 0, 1), w0 = .098 * k, notchY = nY - .068, lw = y > notchY ? .03 + (y - notchY) * .1 : .066 * sm(cl((y - (nY - .2)) / .1, 0, 1)), d = X - w0;
-        if (d >= 0 && d < lw) { c = mul(C.A, 1.09); h = .75; if (d > lw - .006) { s *= .6; h = .05; } else if (d < .004) s *= .8;
-          if (y < notchY + .006 && y > notchY - .012 && d > .026) { s *= .5; h = .05; } }   // la tacca
-        else if (d >= lw && d < lw + .01) s *= .84;   // l'ombra sotto il revers
-      }
-      // il collo dietro della giacca è in rilievo (Vesti3D, colletti)
+      // revers e collo della giacca non sono dipinti: sono pezzi in rilievo dello scollo (Vesti3D, scollo), posati sopra lo scollo a V dipinto.
+      // Qui solo l'ombra che il revers getta sulla giacca, appena fuori dal suo orlo (stessa forma: reversX)
+      if (/revers/.test(C.collo || '') && L.T.s0 !== undefined && Math.cos(a) > 0) { const rv = reversX(C, y, nY); if (rv) { const d = Math.abs(a) * .14 - rv[1]; if (d >= 0 && d < .012) { s *= .55 + .45 * d / .012; h = .1; } } }
       // giacche e giacconi aperti sotto l'ultimo bottone: il bordo davanti che si divide (linea scura che si allarga verso l'orlo)
       if (C.cl >= 4 && !C.gonna && !C.falda3d && L.T.s0 !== undefined && /bottoni|doppio/.test(C.fronte || '') && y < B.waist + .06) { const t = cl((B.waist + .06 - y) / .12, 0, 1), ea = .03 + t * .2;
         if (Math.abs(a) < ea - .02) return null; if (Math.abs(Math.abs(a) - ea) < .025) { s *= .5; h = .05; } }
@@ -1032,5 +1031,5 @@ var Pittura = (function () {
   }
   // il raggio della superficie dipinta del busto (stirata) a (s, angolo) sul tubo del tronco: le falde in rilievo ci si raccordano a filo
   function raggio(B, s, a) { const tb = frame(B).tubes[0]; return shape(B, tb, s, a, ironRadius(ironed(tb), tb, s, a)); }
-  return { caduta, corpoOn: on => { CORPO_ON = !!on; GEO.clear(); }, limbRing, forma: k => { FORMA_K = k; IRON.clear(); }, offAt, ringOff, topOf, stackOff, raggio, ironAll, cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
+  return { caduta, corpoOn: on => { CORPO_ON = !!on; GEO.clear(); }, limbRing, forma: k => { FORMA_K = k; IRON.clear(); }, offAt, ringOff, reversX, topOf, stackOff, raggio, ironAll, cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
 })();
