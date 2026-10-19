@@ -12651,11 +12651,19 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (!pg) {
       const plook = { skin: '#dcae88', top: '#8c2f24', bottom: '#34425f', hair: '#17110e', hat: 'none', build: 1.05, extra: '' };
       pg = (window.Models && Models.charsReady() && Models.person(plook, 'player')) || person(plook, true); if (!pg.userData.model) pg.userData.voxelWait = !!window.Models; scene.add(pg); dyn.people.__player = pg;
-      const xray = new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: .5, depthWrite: false, depthTest: false });
-      const ghosts = []; pg.traverse(o => { if (o.isMesh && o.geometry.type === 'BoxGeometry' && !o.userData.noGhost) ghosts.push(o); });
-      dyn.ghosts = ghosts.map(o => { const gm = new THREE.Mesh(o.geometry, xray); gm.renderOrder = 999; gm.visible = false; o.add(gm); return gm; });
       const ring = new THREE.Mesh(new THREE.RingGeometry(.5, .62, 16), new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: .7, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .04; pg.add(ring);
     }
+    {   // [sezione5] la sagoma: il modello vero del giocatore (anche le parti con lo scheletro) disegnato una seconda volta solo dove è
+      // coperto (profondità invertita: GreaterDepth), arancione pieno. Si rifà quando il modello cambia (il personaggio vero arriva dopo).
+      let nm = 0; pg.traverse(o => { if (o.isMesh && !o.userData.ghost5) nm++; });
+      if (dyn.ghostPg !== pg || dyn.ghostN !== nm) {
+        (dyn.ghosts || []).forEach(g => g.parent && g.parent.remove(g));
+        const xray = dyn.ghostM || (dyn.ghostM = new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: .62, depthWrite: false, depthFunc: THREE.GreaterDepth, toneMapped: false, fog: false }));
+        const src = []; pg.traverse(o => { if (o.isMesh && !o.userData.ghost5 && !o.userData.noGhost && o.geometry && o.geometry.type !== 'RingGeometry') src.push(o); });
+        dyn.ghosts = src.map(o => { let gm; if (o.isSkinnedMesh) { gm = new THREE.SkinnedMesh(o.geometry, xray); gm.bind(o.skeleton, o.bindMatrix); gm.bindMode = o.bindMode; } else gm = new THREE.Mesh(o.geometry, xray);
+          gm.userData.ghost5 = true; gm.renderOrder = 999; gm.frustumCulled = false; gm.castShadow = gm.receiveShadow = false; gm.visible = false; o.add(gm); return gm; });
+        dyn.ghostPg = pg; dyn.ghostN = nm;
+      } }
     const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx');   // [bmx] in sella come sulla Vespa
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
     pg.visible = !pveh || onVespa;
