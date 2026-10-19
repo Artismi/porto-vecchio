@@ -80,6 +80,20 @@ W.train.sides['1:1'] = [tw.id]; const fT = W.fame;
 st.t = (day + 1) * 1440 + 7 * 60; W.morning = -1; WR.morning(st); ok(W.fame > fT && !tw.erased, `la mattina il treno esce col whole car: fama ${fT} → ${W.fame}`);
 st.t = (day + 3) * 1440 + 7 * 60; W.morning = -1; WR.morning(st); ok(tw.erased && tw.washed, 'dopo tre giorni la fiancata si lava');
 
+// [graffiti2] la città reagisce: chi ti vede, l'agente che ti vede, il muro del regime cancellato la mattina dopo
+{ const feeds = []; const fd = G.feed; G.feed = (s2, m, k) => { feeds.push(m); return fd(s2, m, k); };
+  const cop = st.npcs.find(n => !n.dead && (n.cop || /agente|poliz/i.test(n.role || ''))) || st.npcs.find(n => !n.dead);
+  const sv = { x: cop.x, y: cop.y, inside: cop.inside, cop: cop.cop, face: cop.face }; const se = G.seesPlayer; G.seesPlayer = (s2, n) => n === cop;
+  cop.x = p.x + 3; cop.y = p.y; cop.inside = false; cop.cop = true;
+  const h0 = W.heat || 0, wc = WR._.addWork(st, { by: 'player', aka: 'ZETA', style: 'tag', surf: 'muro', seed: 9, pos: { x: p.x, y: 1, z: p.y }, prog: 1, done: false, t0: st.t });
+  const r = WR._.cityReact(st, wc); ok(r.cops === 1 && W.heat > h0 && feeds.some(m => /ti ha visto dipingere/.test(m)), `l'agente ti vede dipingere: ${feeds[feeds.length - 1]}`);
+  Object.assign(cop, sv); G.seesPlayer = () => false; feeds.length = 0;
+  const gov = G.PLACES.governo || G.PLACES.commissariato, wg = WR._.addWork(st, { by: 'player', aka: 'ZETA', style: 'throw', surf: 'muro', seed: 10, pos: { x: gov.x, y: 1, z: gov.y }, prog: 1, done: true, t0: st.t, tDone: st.t });
+  WR._.cityReact(st, wg); ok(wg.regime && feeds.some(m => /Nessuno ti ha visto/.test(m)), 'nessuno ti vede; il muro è del regime');
+  G.seesPlayer = se; let gone = 0; for (let k = 0; k < 20; k++) { wg.erased = false; wg.buffed = false; wg.buffTold = false; st.t = (Math.floor(st.t / 1440) + 1) * 1440 + 7 * 60; W.morning = -1; WR.morning(st); if (wg.erased) gone++; }
+  ok(gone >= 12 && feeds.some(m => /ha cancellato/.test(m)), `sul muro del regime la squadra cancella la mattina dopo (${gone}/20)`);
+  G.feed = fd; }
+
 // il menu: chi sei come writer
 p.hand = 'bomboletta'; const acts = Azioni.playerActions(st).filter(a => /writer/.test(a.id)); ok(acts.length >= 2 && /ZETA/.test(acts[0].label), `nel menu: «${acts.map(a => a.label).join(' | ')}»`);
 ok(WR.cycleMode(st) !== 'libero' && WR.wants(st, 'bomboletta'), 'B cambia modalità e passa la mano al writing');
