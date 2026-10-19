@@ -389,6 +389,11 @@ var Writing = (function () {
     });
     // il buff: i muri del centro ogni tanto vengono ripuliti (i lavori vecchi di più di quattro giorni)
     W.works.forEach(w => { if (w.surf === 'muro' && w.done && !w.erased && d - dayIdx(w.tDone || w.t0) >= 4 && rnd() < (w.old ? .015 : .05)) { w.erased = true; w.buffed = true; } });
+    // [graffiti2] i tuoi: sui muri del regime la squadra passa subito, quelli visti da un agente quasi sempre; e lo vieni a sapere
+    const gone = W.works.filter(w => w.by === 'player' && w.surf === 'muro' && w.done && !w.erased && d > dayIdx(w.tDone || w.t0) && (w.regime ? rnd() < .85 : w.copSeen && rnd() < .5));
+    gone.forEach(w => { w.erased = true; w.buffed = true; });
+    const lost = W.works.filter(w => w.by === 'player' && w.buffed && !w.buffTold); lost.forEach(w => { w.buffTold = true; });
+    if (lost.length) G.feed(st, `La squadra del Garante ha cancellato ${lost.length > 1 ? lost.length + ' lavori tuoi' : 'il tuo ' + STYLES[lost[0].style].nome + (lost[0].place ? ' ' + lost[0].place : '')}: vernice grigia sopra.`, 'info');
   }
   // i writer per strada: ti salutano (o ti minacciano); la crew ti chiede di entrare
   function meet(st) {
@@ -461,6 +466,33 @@ var Writing = (function () {
     W.heat = (W.heat || 0) + sty.rank + 1;
     if (W.heat > 9 && !W.heatWarned) { W.heatWarned = true; G.feed(st, 'La Celere dei Grigi cerca chi dipinge: troppi pezzi in pochi giorni. Occhio alle retate.', 'bad'); }
     if (W.heat > 9) { try { G.emit(st, 'vandalismo', { place: w.place }); } catch (e) { } }
+    if (w.by === 'player') { try { cityReact(st, w); } catch (e) { if (typeof console !== 'undefined') console.warn('[Writing] reazioni', e); } }
+  }
+  // [graffiti2] LA CITTÀ REAGISCE a un lavoro tuo: chi ti ha visto (i nomi), i writer che approvano, la gente che si lamenta o
+  // chiama i Grigi, l'agente che ti vede (vandalismo: ti cerca); sui muri del regime il lavoro si cancella la mattina dopo.
+  const REGIME = ['governo', 'ministero', 'garante', 'archivio', 'commissariato', 'rocca', 'caserma_p', 'piazza_gov', 'chiesa', 'santuario', 'cultura'];
+  const isCop = n => !!(n.cop || /agente|poliz|guardia|tutela|soldat|carabin|commissar/i.test(n.role || ''));
+  function cityReact(st, w) {
+    const W = S(st), p = st.player, q = w.pos ? { x: w.pos.x, y: w.pos.z } : { x: p.x, y: p.y }, P = G.PLACES || {};
+    const eyes = (st.npcs || []).filter(n => !n.dead && !n.inside && hyp(n.x - p.x, n.y - p.y) < 24 && (!G.seesPlayer || G.seesPlayer(st, n)));
+    const cops = eyes.filter(isCop), crew = eyes.filter(n => !isCop(n) && n.pop && (n.pop.writer || n.pop.toy)), folk = eyes.filter(n => !isCop(n) && !crew.includes(n));
+    w.seen = eyes.length; w.regime = REGIME.some(id => P[id] && hyp(P[id].x - q.x, P[id].y - q.y) < 30);
+    const nm = n => n.name || n.first || 'qualcuno', say = (n, t) => { try { G.say(st, n, t, 3.5); } catch (e) { } };
+    if (cops.length) {
+      W.heat = (W.heat || 0) + 5; w.copSeen = true;
+      say(cops[0], pick(['Ehi tu! Fermo lì!', 'Alt! Giù quella bomboletta!', 'Cosa stai scrivendo? Documenti!']));
+      G.feed(st, `${nm(cops[0])} ti ha visto dipingere: i Grigi ti cercano. Allontanati.`, 'bad');
+      try { G.emit(st, 'vandalismo', { x: q.x, y: q.y, place: w.place }); } catch (e) { }
+    } else if (eyes.length) {
+      const names = eyes.slice(0, 3).map(nm).join(', ') + (eyes.length > 3 ? ` e altri ${eyes.length - 3}` : '');
+      G.feed(st, `Ti hanno visto dipingere: ${names}.`, 'info');
+    } else G.feed(st, 'Nessuno ti ha visto: il muro parla da solo.', 'good');
+    if (crew.length) { const n = crew[0], wr = n.pop.writer || n.pop.toy; say(n, pick([`Bomba, ${playerAka(st)}!`, 'Questo resta. Rispetto.', `Bello! ${wr && wr.aka ? 'Firmato ' + wr.aka + '.' : ''}`.trim()])); W.fame += crew.length; }
+    if (folk.length) { const n = pick(folk), angry = rnd() < (w.regime ? .7 : .45);
+      say(n, angry ? pick(['Vergogna! Sporcate tutto.', 'Adesso chiamo i Grigi.', 'Ma chi ti ha insegnato l\'educazione?']) : pick(['Finalmente un po\' di colore.', 'Però, non è male.', 'Che cosa vuol dire?']));
+      if (angry && !cops.length && rnd() < .35) { W.heat = (W.heat || 0) + 2; G.feed(st, `${nm(n)} va a chiamare i Grigi.`, 'bad'); try { G.emit(st, 'vandalismo', { x: q.x, y: q.y, place: w.place }); } catch (e) { } } }
+    if (w.regime) G.feed(st, 'È un muro del regime: domattina passano a cancellarlo.', 'info');
+    return { eyes: eyes.length, cops: cops.length, crew: crew.length };
   }
   // il passo del lavoro: quanto cresce in dt (secondi veri), quante bombolette consuma; null se manca la vernice
   function progress(st, w, dt) {
@@ -566,7 +598,7 @@ var Writing = (function () {
   // writer_arte.js, copiati nella pagina in <script id="pv-artworker" type="text/plain">) e gli stessi semi: il disegno
   // è identico, arriva qualche fotogramma dopo, e intanto il gioco va avanti. I lavori finiti si tengono (gli ultimi 48),
   // così tornando in una zona non si rifanno. Senza Worker o OffscreenCanvas: come prima, qui.
-  const ARTW = { w: null, ok: null, seq: 0, wait: new Map(), cache: new Map(), recSig: '', pend: new Set() };
+  const ARTW = { w: null, ok: null, seq: 0, wait: new Map(), cache: new Map(), recSig: '', pend: new Set(), q: [] };
   const ARTW_MAIN = `onmessage = e => { const m = e.data; if (m.rec) WriterMano.setRecorded(m.rec); if (!m.w) return; let A;
     try { A = WriterArte.art(m.w); } catch (err) { postMessage({ id: m.id, err: String(err && err.message || err) }); return; }
     const tr = [], bm = c => { if (c && typeof c.transferToImageBitmap === 'function') { const b = c.transferToImageBitmap(); tr.push(b); return b; } return c; };
@@ -594,12 +626,19 @@ var Writing = (function () {
     const sig = Object.keys(WM.RECORDED).length + ':' + (WM.MIA || ''), msg = { id: ++ARTW.seq, w: {} };
     for (const key in w) if (key !== 'gfxRect') msg.w[key] = w[key];
     if (sig !== ARTW.recSig) { ARTW.recSig = sig; msg.rec = Object.assign({}, WM.RECORDED, WM.MIA ? { _mia: WM.MIA } : {}); }
+    let fired = false;
     ARTW.wait.set(msg.id, (A, err) => {
+      if (fired) return; fired = true; if (A) ARTW.lastOk = performance.now();
       if (!A) { sync(); return; }   // non è riuscito di là: si fa qui
       if (w.done) { ARTW.cache.set(k, A); while (ARTW.cache.size > 48) ARTW.cache.delete(ARTW.cache.keys().next().value); }
       cb(Object.assign({}, A, { stages: A.stages.slice() }));
     });
-    try { ARTW.w.postMessage(msg); } catch (e) { ARTW.wait.delete(msg.id); sync(); }   // qualcosa nel lavoro non si copia: qui
+    try { ARTW.w.postMessage(msg); } catch (e) { ARTW.wait.delete(msg.id); fired = true; sync(); return; }   // qualcosa nel lavoro non si copia: qui
+    // [graffiti2] il disegnatore a parte non risponde (macchina strapiena, worker bloccato): dopo 4 s si fa qui; se non ha
+    // mai risposto a niente, si spegne e da lì in poi si disegna qui (un po' di scatto, ma i muri si vedono)
+    setTimeout(() => { if (fired || !ARTW.wait.has(msg.id)) return; ARTW.wait.delete(msg.id); fired = true; ARTW.late = (ARTW.late || 0) + 1;
+      if (!ARTW.lastOk && ARTW.late >= 3 && ARTW.ok) { ARTW.ok = false; try { ARTW.w.terminate(); } catch (e) { } console.warn('[Writing] il disegnatore a parte non risponde: i graffiti si disegnano nel gioco'); }
+      ARTW.q.push(() => { try { sync(); } catch (e) { cb(null); } }); }, 4000);   // in coda: uno alla volta dentro il tempo dei graffiti
   }
   function drawUpTo(w, g) {
     const A = g.art, T = g.tgt; if (!A || !T) return; const nS = A.stages.length;
@@ -1215,9 +1254,11 @@ var Writing = (function () {
     const cam = R.getCamera(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), cam); rc.near = 0; rc.far = 1e4;
     if (!TAV.a) {
       const list = cands(p.x, p.y); if (GFX.train) GFX.train.cars.forEach(c => c.sides.forEach(s => list.push(s.mesh)));   // [writer] anche le fiancate del treno
-      const h = rc.intersectObjects(list, false).find(h => { if (!h.face || hyp(h.point.x - p.x, h.point.z - p.y) > 14) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
-      if (!h) return false;
+      const vis = h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); };
+      const hits = rc.intersectObjects(list, false), h = hits.find(h => vis(h) && hyp(h.point.x - p.x, h.point.z - p.y) <= 14);
+      if (!h) { const far = hits.find(vis); return far && hyp(far.point.x - p.x, far.point.z - p.y) < 40 ? { msg: 'Troppo lontano per la tavoletta: avvicinati al muro.' } : false; }
       const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (n.dot(rc.ray.direction) > 0) n.negate();
+      if (!TAV.told) { TAV.told = true; try { G.feed(st, 'Tavoletta: tieni premuto e trascina per aprire la finestra sul muro, poi lascia e disegni.'); } catch (e) { } }
       if (h.object.userData.car) { const tr = trainAt(st.t); if (tr && tr.v) return { msg: 'Il treno si muove!' }; }
       let nn, rr, uu;   // [writer] qualunque superficie: un muro, un mezzo, il treno, un carro, la terra, un tetto
       if (Math.abs(n.y) > .6) { const f = new THREE.Vector3(); cam.getWorldDirection(f); f.y = 0; if (f.lengthSq() < 1e-4) f.set(0, 0, -1); f.normalize(); nn = new THREE.Vector3(0, Math.sign(n.y), 0); uu = f.clone(); rr = new THREE.Vector3().crossVectors(uu, nn).normalize(); }   // per terra: l'alto del disegno è dove guardi
@@ -1246,6 +1287,15 @@ var Writing = (function () {
     if (!shot) { tavClear(); return; }
     tavPad(st, shot, Rc, A);
   }
+  // [graffiti2] il disegno salvato va sul muro subito (non aspetta il giro dei graffiti né il disegnatore a parte)
+  function saveOnWall(w) {
+    try {
+      if (GFX.works[w.id]) return true;
+      if (w.surf === 'treno') { const tgt = trainTarget(w); if (!tgt) return false; GFX.works[w.id] = { tgt, art: art(w), drawn: 0 }; drawUpTo(w, GFX.works[w.id]); return true; }
+      if (!w.gfxRect) return false;
+      const g = { art: art(w), drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; drawUpTo(w, g); return true;
+    } catch (e) { console.warn('[Writing] tavoletta', e); return false; }
+  }
   // il pannello: la foto a tutto schermo, il disegno sopra, gli strumenti
   function tavPad(st, shot, Rc, A) {
     if (typeof document === 'undefined') return;
@@ -1256,19 +1306,33 @@ var Writing = (function () {
     const bg = document.createElement('canvas'), ink = document.createElement('canvas'), live = document.createElement('canvas');
     [bg, ink, live].forEach((c, i) => { c.width = pw; c.height = ph; c.style.cssText = (i ? 'position:absolute;left:0;top:0;' : 'display:block;') + 'width:100%;height:100%'; wrap.appendChild(c); });
     bg.getContext('2d').drawImage(shot, 0, 0);
-    const fit = () => { const k = Math.min((innerWidth - 40) / pw, (innerHeight - 110) / ph); wrap.style.width = pw * k + 'px'; wrap.style.height = ph * k + 'px'; };
+    const fit = () => { const k = Math.min((innerWidth - 40) / pw, (innerHeight - 160) / ph); wrap.style.width = pw * k + 'px'; wrap.style.height = ph * k + 'px'; };
     fit(); addEventListener('resize', fit);
-    const btn = (t, f, hot) => { const b = document.createElement('button'); b.textContent = t; b.style.cssText = 'padding:7px 14px;border-radius:5px;border:1px solid #555;cursor:pointer;color:#fff;background:' + (hot ? '#d8402a' : '#34312c'); b.onclick = f; bar.appendChild(b); return b; };
+    const btn = (t, f, hot, par) => { const b = document.createElement('button'); b.textContent = t; b.style.cssText = 'padding:7px 14px;border-radius:5px;border:1px solid #555;cursor:pointer;color:#fff;background:' + (hot ? '#d8402a' : '#34312c'); b.onclick = f; (par || bar).appendChild(b); return b; };
+    // [graffiti2] in cima: dove sei, quanto è grande, che lavoro diventa, come si usa
+    const head = document.createElement('div'); head.style.cssText = 'text-align:center;line-height:1.45';
+    const W0 = S(st), styleOf = () => tool === 'pennarello' ? 'mtag' : Rc.W * Rc.H > 3.5 ? 'pezzo' : Rc.W * Rc.H > 1.2 ? 'throw' : 'tag';
+    const place = G.nearestPlace ? (G.nearestPlace(Rc.c.x, Rc.c.z) || {}).name : '';
+    const inv0 = () => (OG() ? OG().inv(st) : {}) || {};
+    box.appendChild(head);
     const info = document.createElement('span'); info.style.color = '#bbb';
-    const tb = btn('', () => { tool = tool === 'pennarello' ? 'bomboletta' : 'pennarello'; upd(); render(); });
-    const cb = btn('', () => { colI = (colI + 1) % TAV_COLS.length; upd(); render(); });
+    const tb = btn('', () => { const nt = tool === 'pennarello' ? 'bomboletta' : 'pennarello'; if (OG() && !(inv0()[nt] > 0)) { info.textContent = nt === 'bomboletta' ? 'Non hai bombolette.' : 'Non hai pennarelli.'; return; } tool = nt; upd(); render(); });
+    // i colori: tutti in vista, si sceglie con un clic (o coi tasti 1-8)
+    const pal = document.createElement('span'); pal.style.cssText = 'display:inline-flex;gap:4px'; bar.appendChild(pal);
+    const sw = TAV_COLS.map((c, i) => { const b = document.createElement('button'); b.title = c[1] + ' (' + (i + 1) + ')'; b.style.cssText = 'width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid #222;background:' + c[0]; b.onclick = () => { colI = i; upd(); render(); }; pal.appendChild(b); return b; });
     const sl = document.createElement('input'); sl.type = 'range'; sl.min = 1; sl.max = 30; sl.value = cm; sl.oninput = () => { cm = +sl.value; upd(); drawLive(); render(); };
     const lab = document.createElement('label'); lab.style.color = '#bbb'; lab.append('spessore ', sl); bar.appendChild(lab);
     btn('Annulla tratto', () => { strokes.pop(); drawLive(); render(); });
-    btn('Applica', () => apply(), true);
+    btn('Pulisci', () => { strokes.length = 0; drawLive(); render(); });
+    btn('Salva sul muro', () => apply(), true);
     btn('Esci', () => close());
     bar.appendChild(info);
-    const upd = () => { tb.textContent = tool === 'pennarello' ? 'Pennarello' : 'Bomboletta'; cb.textContent = 'Colore: ' + TAV_COLS[colI][1]; cb.style.borderColor = TAV_COLS[colI][0]; info.textContent = `${Rc.W.toFixed(2)} × ${Rc.H.toFixed(2)} m · ${cm} cm`; };
+    const upd = () => { tb.textContent = tool === 'pennarello' ? 'Pennarello' : 'Bomboletta'; sw.forEach((b, i) => { b.style.borderColor = i === colI ? '#ffe14a' : '#222'; b.style.transform = i === colI ? 'scale(1.18)' : ''; });
+      const sty = STYLES[styleOf()], inv = inv0();
+      head.innerHTML = '';
+      const t1 = document.createElement('div'); t1.style.cssText = 'font-size:16px;color:#ffe14a'; t1.textContent = `Tavoletta${place ? ' · ' + place : ''} · ${Rc.W.toFixed(2)} × ${Rc.H.toFixed(2)} m → ${sty ? sty.nome : ''} di ${playerAka(st)}${W0.crew ? ' ' + W0.crew : ''}`;
+      const t2 = document.createElement('div'); t2.style.cssText = 'color:#aaa;font-size:12px'; t2.textContent = `Disegna col mouse o con la penna (la pressione conta). Colori 1-8 · Ctrl+Z annulla · Invio salva sul muro · Esc esce. ${tool === 'pennarello' ? 'Pennarelli: ' + (inv.pennarello || 0) : 'Bombolette: ' + (inv.bomboletta || 0)}`;
+      head.append(t1, t2); info.textContent = `${cm} cm`; };
     upd();
     box.appendChild(bar); box.appendChild(wrap); document.body.appendChild(box);
     const pxm = pw / Rc.W, wpx = () => cm / 100 * pxm;
@@ -1280,10 +1344,14 @@ var Writing = (function () {
     function drawLive() { const x = live.getContext('2d'); x.clearRect(0, 0, pw, ph); if (!cur) return; x.strokeStyle = TAV_COLS[colI][0]; x.globalAlpha = .7; x.lineCap = x.lineJoin = 'round'; x.lineWidth = wpx(); x.beginPath(); cur.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); x.stroke(); }
     const rec = () => ({ strokes: strokes.map(s => s.map(q => [q[0], q[1], q[2] - strokes[0][0][2], q[3]])), wpx: wpx(), frame: { w: pw, h: ph } });
     function render() { const x = ink.getContext('2d'); x.clearRect(0, 0, pw, ph); if (!strokes.length) return; try { WriterMano.drawRecorded(x, rec(), { seed: 7 }, pw, ph, mulberry(11), TAV_COLS[colI][0], tool === 'pennarello' ? 'mtag' : 'tag'); } catch (e) { console.error(e); } }
-    const keys = e => { e.stopPropagation(); if (e.key === 'Escape') close(); }; addEventListener('keydown', keys, true); addEventListener('keyup', keys, true);
+    const keys = e => { e.stopPropagation(); if (e.type !== 'keydown') return;
+      if (e.key === 'Escape') close(); else if (e.key === 'Enter') { e.preventDefault(); apply(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); strokes.pop(); drawLive(); render(); }
+      else if (/^[1-8]$/.test(e.key)) { colI = +e.key - 1; upd(); render(); } }; addEventListener('keydown', keys, true); addEventListener('keyup', keys, true);
     function close() { removeEventListener('keydown', keys, true); removeEventListener('keyup', keys, true); removeEventListener('resize', fit); box.remove(); TAV.pad = null; tavClear(); GFX.held = false; }
     function apply() {
-      if (!strokes.length) { close(); return; }
+      if (!strokes.length) { info.textContent = 'Prima disegna qualcosa (o Esc per uscire).'; return; }
+      if (OG() && !(inv0()[tool] > 0)) { info.textContent = tool === 'bomboletta' ? 'Senza bombolette non si salva: comprane in ferramenta.' : 'Senza pennarello non si salva.'; return; }
       const W = S(st), inv = OG() ? OG().inv(st) : null, r = rec();
       let len = 0; r.strokes.forEach(s => s.forEach((q, i) => { if (i) len += hyp(q[0] - s[i - 1][0], q[1] - s[i - 1][1]); })); const lenM = len / pxm, cmM = cm / 100;
       // la vernice: la bomboletta copre un po' meno di un metro quadro di tratto, il pennarello una ventina di metri di linea
@@ -1301,6 +1369,7 @@ var Writing = (function () {
       else { const vid = vehOf(A.obj); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v && v.police) nw.cop = true; } }
       addWork(st, nw); const m = nw.surf === 'treno' ? judgeTrain(st, nw) : judge(st, nw); if (m) G.feed(st, m, /crossato/.test(m) ? 'bad' : 'info');
       finish(st, nw); try { G.emit(st, 'graffito'); } catch (e) { }
+      saveOnWall(nw);
       close();
     }
     TAV.pad = box; GFX.held = false;
@@ -1419,6 +1488,37 @@ var Writing = (function () {
   // main.js: con questo attrezzo e questa modalità ci pensa il writing (non lo spruzzo libero)
   const wants = (st, tool) => tool === 'pennarello' || (tool === 'bomboletta' && mode(st) !== 'libero');
 
+  // [graffiti2] I MURI GIÀ DIPINTI. Ogni 150 ms i lavori vicini alla camera senza grafica trovano il muro (placeWall) e
+  // chiedono il disegno (artFor). Di regola 6 ms per giro e solo se le costruzioni hanno tempo; ma all'avvio, dopo un salto
+  // della camera o quando attorno non c'è ancora niente di dipinto si va di corsa (RUSH: 30 ms e senza aspettare il turno),
+  // così la città ha subito i suoi muri dipinti invece di riempirsi a uno a uno in mezzo minuto.
+  const RUSH = { until: 0, cx: null, cy: null };
+  function scanNear(st, cx, cy, opt) {
+    const W = S(st), now = performance.now();
+    if (!(opt && opt.force) && now - (GFX.scanT || 0) <= 150) return 0;
+    GFX.scanT = now; let n = 0; const t0 = performance.now();
+    if (RUSH.cx == null || hyp(cx - RUSH.cx, cy - RUSH.cy) > 60) RUSH.until = now + 12000;   // partita nuova o salto: si riempie di corsa
+    RUSH.cx = cx; RUSH.cy = cy;
+    const near = W.works.filter(w => !GFX.works[w.id] && !w.erased && !(w.gfxFail > 3)).map(w => { const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (w.surf === 'vagone') { const c = consOf(st, w.cons), q = c && wagPose(st, c, w.wk); return [w, q ? hyp(q.x - cx, q.y - cy) : 1e9]; } return [w, w.surf === 'treno' ? 0 : sp ? hyp(sp.x - cx, sp.y - cy) : 1e9]; }).filter(a => a[1] < 80).sort((a, b) => a[1] - b[1]).map(a => a[0]);
+    let shown = 0; for (const id in GFX.works) { const g = GFX.works[id]; if (g.tgt && g.tgt.mesh && hyp(g.tgt.mesh.position.x - cx, g.tgt.mesh.position.z - cy) < 40) shown++; }
+    const rush = (opt && opt.force) || now < RUSH.until || (shown < 12 && near.length > 0), cap = opt && opt.ms ? opt.ms : rush ? 30 : 6;
+    for (let first = true; ARTW.q.length && (first || performance.now() - t0 < cap); first = false) ARTW.q.shift()();   // i disegni rimasti indietro dal worker (almeno uno per giro)
+    for (const w of near) {
+      if (performance.now() - t0 > cap) break;   /* [fluido] al massimo 6 ms di graffiti nuovi ogni 150 ms (di corsa 30) */
+      const CB = typeof window !== 'undefined' && window.Costruzioni; if (!rush && CB && !CB.ok(undefined, 'graffiti')) break;   // [fluido] e solo se nel fotogramma c'è ancora tempo per costruire
+      if (GFX.works[w.id] || w.erased || w.gfxFail > 3) continue;
+      if (ARTW.pend.has(w.id)) continue;   // [fluido] il disegno è in preparazione
+      if (ARTW.pend.size >= (rush ? 24 : 8)) break;   // [graffiti2] non più di tanti in coda al disegnatore
+      // [fluido] il disegno arriva da artFor (memoria, worker o qui); il velo si fa quando c'è, se il lavoro serve ancora
+      const ready = fn => { ARTW.pend.add(w.id); artFor(w, A => { ARTW.pend.delete(w.id); if (GFX.st !== st || GFX.works[w.id] || w.erased) return; try { fn(A); } catch (e) { w.gfxFail = (w.gfxFail || 0) + 1; } }); };
+      if (w.surf === 'treno') { if (!GFX.train) continue; const tgt = trainTarget(w); if (!tgt) continue; ready(A => { GFX.works[w.id] = { tgt, art: A, drawn: 0 }; }); n++; continue; }
+      if (w.surf === 'vagone') { if (!w.gfxRect) { const rc2 = wagRect(w); if (!rc2) continue; w.gfxRect = rc2; } w.pos = { x: w.gfxRect.c.x, y: w.gfxRect.c.y, z: w.gfxRect.c.z }; ready(A => { const g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; }); n++; continue; }   // [ferrovia] sui carri fermi
+      const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (!sp || hyp(sp.x - cx, sp.y - cy) > 80) continue;
+      if (!w.gfxRect) { const tp = performance.now(), okW = placeWall(w); if (CB) CB.add(performance.now() - tp, 'graffiti'); if (!okW) { w.gfxFail = (w.gfxFail || 0) + 1; continue; } }
+      ready(A => { const tv = performance.now(), g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; drawUpTo(w, g); if (CB) CB.add(performance.now() - tv, 'graffiti'); }); n++;
+    }
+    return n;
+  }
   // ---------------- OGNI FOTOGRAMMA ----------------
   function frame() {
     try {
@@ -1440,24 +1540,7 @@ var Writing = (function () {
         }
         if (GFX.train) yardFrame(st, sc, cx, cy);   // [ferrovia] i carri fermi negli scali (e quelli che partono)
         // i lavori: quelli che non hanno ancora la grafica (della notte, o di prima) vicino alla camera
-        const now = performance.now();
-        if (now - (GFX.scanT || 0) > 150) {
-          GFX.scanT = now; let n = 0; const t0 = performance.now();
-          const near = W.works.filter(w => !GFX.works[w.id] && !w.erased && !(w.gfxFail > 3)).map(w => { const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (w.surf === 'vagone') { const c = consOf(st, w.cons), q = c && wagPose(st, c, w.wk); return [w, q ? hyp(q.x - cx, q.y - cy) : 1e9]; } return [w, w.surf === 'treno' ? 0 : sp ? hyp(sp.x - cx, sp.y - cy) : 1e9]; }).filter(a => a[1] < 80).sort((a, b) => a[1] - b[1]).map(a => a[0]);
-          for (const w of near) {
-            if (performance.now() - t0 > 6) break;   /* [fluido] al massimo 6 ms di graffiti nuovi ogni 150 ms */
-            const CB = typeof window !== 'undefined' && window.Costruzioni; if (CB && !CB.ok(undefined, 'graffiti')) break;   // [fluido] e solo se nel fotogramma c'è ancora tempo per costruire
-            if (GFX.works[w.id] || w.erased || w.gfxFail > 3) continue;
-            if (ARTW.pend.has(w.id)) continue;   // [fluido] il disegno è in preparazione
-            // [fluido] il disegno arriva da artFor (memoria, worker o qui); il velo si fa quando c'è, se il lavoro serve ancora
-            const ready = fn => { ARTW.pend.add(w.id); artFor(w, A => { ARTW.pend.delete(w.id); if (GFX.st !== st || GFX.works[w.id] || w.erased) return; try { fn(A); } catch (e) { w.gfxFail = (w.gfxFail || 0) + 1; } }); };
-            if (w.surf === 'treno') { if (!GFX.train) continue; const tgt = trainTarget(w); if (!tgt) continue; ready(A => { GFX.works[w.id] = { tgt, art: A, drawn: 0 }; }); n++; continue; }
-            if (w.surf === 'vagone') { if (!w.gfxRect) { const rc2 = wagRect(w); if (!rc2) continue; w.gfxRect = rc2; } w.pos = { x: w.gfxRect.c.x, y: w.gfxRect.c.y, z: w.gfxRect.c.z }; ready(A => { const g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; }); n++; continue; }   // [ferrovia] sui carri fermi
-            const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (!sp || hyp(sp.x - cx, sp.y - cy) > 80) continue;
-            if (!w.gfxRect) { const tp = performance.now(), okW = placeWall(w); if (CB) CB.add(performance.now() - tp, 'graffiti'); if (!okW) { w.gfxFail = (w.gfxFail || 0) + 1; continue; } }
-            ready(A => { const tv = performance.now(), g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; if (CB) CB.add(performance.now() - tv, 'graffiti'); }); n++;
-          }
-        }
+        scanNear(st, cx, cy);
         // disegno: i lavori finiti in un colpo, quelli in corso fin dove sono arrivati; i cancellati via; i lontani si liberano
         const byId = new Map(W.works.map(o => [o.id, o]));
         for (const id in GFX.works) {
@@ -1490,6 +1573,6 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
+  return { RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { ARTW, placeWall, artFor, scanNear, cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;
