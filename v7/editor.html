@@ -12057,6 +12057,7 @@ var Officina = (function () {
   return { onGroupPart, onGroupMerged, pickStatic, onChunk, reapplyVerde, pickVeg, vegSet, vegBox, onPart, detailRecs, get wantParts() { return wantParts; }, apply, sig, onStatic, onDress, held, load, build, loadGlb, parseGlb, patchCapi, wrapAll, orig, meshes, GLB, setStrada: v => { anyStrada = v; }, get STUDIO() { return STUDIO; } };
 })();
 </script>
+<script data-m="oggetti3d">/*oggetti3d.js*/</script>
 <script data-m="animazioni">/* ================= ANIMAZIONI: il motore comune =================
    I personaggi del kit (Quaternius) hanno poche clip: Idle, Walk, Run, Punch, Death, Wave, Interact, Gun_Shoot...
    Qui sopra le clip si aggiunge uno strato procedurale: ogni fotogramma, dopo il mixer, si piegano le ossa
@@ -12076,7 +12077,7 @@ var Officina = (function () {
      P.o (le opzioni passate ad animPerson), P.r (numero fisso per persona, 0-1, per variare le pose),
      P.bulk (metri di vestiti su busto e braccia: allargare gomiti e mani di tanto, per non bucare il cappotto)
      P.base(clip)                  chiede una clip sotto la posa (es. 'Idle' per stare fermi mentre si siede)
-   Le pose si registrano con Anim.def(nome, { fn(P), full, base, fade }) e si scelgono con le «mappe»:
+   Le pose si registrano con Anim.def(nome, { fn(P), full, base, fade, air }) e si scelgono con le «mappe»:
      Anim.npcMap(fn(st, n, s))  e  Anim.playerMap(fn(st, p, s))  riempiono s = { act, upper, mood, talk, lookAt }
        act:   posa di tutto il corpo (una sola: 'siede', 'dorme', 'scava'...)
        upper: posa delle braccia sopra la camminata (una sola: 'telefono', 'fuma', 'porta'...)
@@ -12089,11 +12090,15 @@ var Anim = (function () {
   const V = () => new THREE.Vector3(), Q = () => new THREE.Quaternion();
   const _a = V(), _b = V(), _c = V(), _d = V(), _q = Q(), _q2 = Q(), _q3 = Q(), _q4 = Q(), _e = new THREE.Euler();
   const ID = Q();
-  const CHILD = { UpperArmL: 'LowerArmL', LowerArmL: 'WristL', UpperArmR: 'LowerArmR', LowerArmR: 'WristR', UpperLegL: 'LowerLegL', LowerLegL: 'FootL', UpperLegR: 'LowerLegR', LowerLegR: 'FootR', Neck: 'Head', Chest: 'Neck', Torso: 'Chest', Abdomen: 'Torso', Hips: 'Abdomen', ShoulderL: 'UpperArmL', ShoulderR: 'UpperArmR' };
+  const CHILD = { UpperArmL: 'LowerArmL', LowerArmL: 'WristL', UpperArmR: 'LowerArmR', LowerArmR: 'WristR', UpperLegL: 'LowerLegL', LowerLegL: 'FootL', UpperLegR: 'LowerLegR', LowerLegR: 'FootR', Neck: 'Head', Chest: 'Neck', Torso: 'Chest', Abdomen: 'Torso', Hips: 'Abdomen', ShoulderL: 'UpperArmL', ShoulderR: 'UpperArmR',
+    // il polso punta lungo la mano, verso la nocca del medio: le radici delle dita (Index1...) stanno a 2-3 cm dal polso, di lato,
+    // e puntare verso quelle girava la mano di traverso
+    WristL: 'Middle2L', WristR: 'Middle2R' };
   const FINGERS = ['Index', 'Middle', 'Ring', 'Pinky'], FB = [];
   ['L', 'R'].forEach(sd => { FINGERS.forEach(f => [1, 2, 3, 4].forEach(k => FB.push(f + k + sd))); [1, 2, 3].forEach(k => FB.push('Thumb' + k + sd)); });
   const BONES = FB.concat(['Hips', 'Abdomen', 'Torso', 'Chest', 'Neck', 'Head', 'ShoulderL', 'UpperArmL', 'LowerArmL', 'WristL', 'ShoulderR', 'UpperArmR', 'LowerArmR', 'WristR', 'UpperLegL', 'LowerLegL', 'FootL', 'UpperLegR', 'LowerLegR', 'FootR']);
   const disabled = {};
+  const HAND = .85;   // [mani] scala delle mani (vedi rig)
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   const smooth = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
   function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }
@@ -12108,7 +12113,10 @@ var Anim = (function () {
     for (const k in b) if (!CHILD[k] || !b[CHILD[k]]) { const c = b[k].children.find(x => x.isBone); if (c && !CHILD[k]) CHILD[k] = c.name; }
     // lunghezza dello stinco, presa subito (dopo il piede viene spostato dalle pose)
     let shin = .45; if (b.LowerLegL && b.FootL) { g.updateMatrixWorld(true); const p1 = new THREE.Vector3(), p2 = new THREE.Vector3(); b.LowerLegL.getWorldPosition(p1); b.FootL.getWorldPosition(p2); shin = p1.distanceTo(p2) || .45; }
-    u.rig = { shin, m, b, layers: {}, r: hashStr(String(g.id) + (u.model || '')), headYaw: 0, headPitch: 0, talkT: 0 };
+    // [mani] le mani del kit sono grandi (14 cm dal polso alle nocche, una mano vera ne fa ~10): si rimpiccioliscono un po'
+    const hs = {}; ['L', 'R'].forEach(sd => { const w = b['Wrist' + sd]; if (w) hs[sd] = w.scale.clone(); });
+    u.rig = { shin, m, b, hs, layers: {}, r: hashStr(String(g.id) + (u.model || '')), headYaw: 0, headPitch: 0, talkT: 0 };
+    for (const sd in hs) b['Wrist' + sd].scale.copy(hs[sd]).multiplyScalar(HAND);
     return u.rig;
   }
 
@@ -12172,10 +12180,21 @@ var Anim = (function () {
       legTo(side, fx, fy, fz, kx, ky, kz, pitch, yaw, w) { legTo(P, side === 'L' || side > 0 ? 'L' : 'R', fx, fy, fz, kx, ky, kz, pitch || 0, yaw || 0, (w === undefined ? 1 : w) * P.w); return P; },
       // dita: curl 0 (aperta) → 1 (pugno); thumb 0-1 il pollice che chiude sopra; spread allarga
       fingers(side, curl, thumb, w) { hand(P, side, curl, thumb === undefined ? curl : thumb, (w === undefined ? 1 : w) * P.w); return P; },
+      // dita una per una: c = [indice, medio, anulare, mignolo] (0 aperto → 1 chiuso); per indicare: P.fingerEach('R', [0, 1, 1, 1], .8)
+      fingerEach(side, c, thumb, w) { hand(P, side, c, thumb === undefined ? .5 : thumb, (w === undefined ? 1 : w) * P.w); return P; },
       // gira la mano perché la direzione A (vettore del MONDO, solidale alla mano: la canna, il manico) vada verso dir
       // (spazio del personaggio). Prima ruota l'avambraccio sul suo asse (pronazione, fino a ~95°), il resto lo fa il polso
       // entro maxWrist radianti (default 0,7): niente polsi spezzati; se non basta, l'attrezzo resta un po' fuori asse.
       turnHand(side, A, dir, maxWrist, w) { turn(P, side, A, dir, maxWrist === undefined ? .7 : maxWrist, (w === undefined ? 1 : w) * P.w); return P; },
+      // [mani] presa vera: il centro del pugno nel punto (x, y, z) (spazio del personaggio, prima di P.body), la mano orientata
+      // con X (dal mignolo al pollice per la destra, dal pollice al mignolo per la sinistra: per tutte e due «verso +x» se
+      // impugnano una barra di traverso con le nocche avanti) lungo ax, e le dita verso fy; il gomito verso il polo p.
+      // il polso in (x, y, z) (spazio del personaggio, prima di P.body), il gomito verso il polo p: IK a due ossa
+      reach(side, x, y, z, p, w) { armIK(P, side === 'L' ? 'L' : 'R', _rT.set(x, y, z), p || [0, -1, -.3], (w === undefined ? 1 : w) * P.w); return P; },
+      // [mani] come grab, ma la mano resta IN LINEA con l'avambraccio (polso dritto): si dà solo il verso del palmo (pz),
+      // le dita seguono l'avambraccio che esce dall'IK (tre passate: orientamento → IK → orientamento)
+      hold(side, x, y, z, pz, p, w) { hold(P, side === 'L' ? 'L' : 'R', x, y, z, pz, p || [0, -1, -.3], (w === undefined ? 1 : w) * P.w); return P; },
+      grab(side, x, y, z, ax, fy, p, w) { grab(P, side === 'L' ? 'L' : 'R', x, y, z, ax, fy, p || [0, -1, -.3], (w === undefined ? 1 : w) * P.w); return P; },
     };
     return P;
   }
@@ -12219,7 +12238,7 @@ var Anim = (function () {
     ft.parent.getWorldQuaternion(_q4); _lq.premultiply(_q4.invert()); ft.quaternion.copy(_lq); ft.updateMatrixWorld(true);
   }
   // ---------------- le mani ----------------
-  const _f1 = V(), _f2 = V(), _ax = V(), _fq = Q(), _tw = Q(), _sw = Q();
+  const _f1 = V(), _f2 = V(), _ax = V(), _fq = Q(), _tw = Q(), _sw = Q(), _tA = V(), _tB = V(), _tT = V();
   // il verso in cui le dita si chiudono si scopre una volta per scheletro: si prova a piegare il medio e si guarda
   // se la punta si avvicina alla base del pollice (il palmo)
   function curlSign(R, sd) {
@@ -12242,22 +12261,74 @@ var Anim = (function () {
     const R = P.R, sd = side === 'L' ? 'L' : 'R', i2 = R.b['Index2' + sd], p2 = R.b['Pinky2' + sd]; if (!i2 || !p2 || ww <= 0) return;
     const sg = curlSign(R, sd);
     for (let f = 0; f < 4; f++) {
-      const c = curl * (1 + (f - 1.5) * .06);   // il mignolo chiude un filo di più
+      const c = Array.isArray(curl) ? curl[f] : curl * (1 + (f - 1.5) * .06);   // il mignolo chiude un filo di più
       for (let k = 0; k < 4; k++) {
         const b = R.b[FINGERS[f] + (k + 1) + sd]; if (!b) continue;
         i2.getWorldPosition(_f1); p2.getWorldPosition(_f2); _ax.subVectors(_f1, _f2).normalize();   // asse delle nocche (si muove poco)
         _fq.setFromAxisAngle(_ax, sg * CURL[k] * c * ww); applyWorld(b, _fq);
       }
     }
-    // il pollice: la prima falange si porta davanti al palmo, le altre si chiudono sopra le dita
-    const t2 = R.b['Thumb2' + sd], t3 = R.b['Thumb3' + sd], m2 = R.b['Middle2' + sd], w0 = R.b['Wrist' + sd];
-    if (t2 && m2 && w0 && thumb > 0) {
+    // il pollice: la sua punta va verso la falange di mezzo dell'indice (già chiuso): ruota la radice, poi la punta si piega.
+    // Prima girava su assi fissi e nel pugno restava dritto, come un pollice alzato.
+    const t1 = R.b['Thumb1' + sd], t2 = R.b['Thumb2' + sd], t3 = R.b['Thumb3' + sd], i3 = R.b['Index3' + sd], m3 = R.b['Middle3' + sd];
+    if (t1 && t2 && t3 && i3 && m3 && thumb > 0) {
+      const k = clamp(thumb, 0, 1) * ww;
+      t1.getWorldPosition(_f1); t3.getWorldPosition(_tA); t2.getWorldPosition(_tB);
+      _tT.copy(_tA).sub(_tB).multiplyScalar(.9).add(_tA);                 // la punta (oltre l'ultima falange)
+      i3.getWorldPosition(_tB); m3.getWorldPosition(_f2); _tB.lerp(_f2, Array.isArray(curl) && curl[0] < .5 ? 1 : .3); // dove va: sopra indice e medio (sul medio, se l'indice è teso)
+      _tT.sub(_f1); _tB.sub(_f1);
+      if (_tT.lengthSq() > 1e-10 && _tB.lengthSq() > 1e-10) { _fq.setFromUnitVectors(_tT.normalize(), _tB.normalize()); _sw.copy(ID).slerp(_fq, k * .85); applyWorld(t1, _sw); }
       i2.getWorldPosition(_f1); p2.getWorldPosition(_f2); _ax.subVectors(_f1, _f2).normalize();
-      w0.getWorldPosition(_f1); m2.getWorldPosition(_f2); const fd = _f2.sub(_f1).normalize();
-      _fq.setFromAxisAngle(fd, sg * .5 * thumb * ww); applyWorld(t2, _fq);
-      if (t3) { _fq.setFromAxisAngle(_ax, sg * .7 * thumb * ww); applyWorld(t3, _fq); }
+      _fq.setFromAxisAngle(_ax, sg * .5 * k); applyWorld(t3, _fq);
     }
   }
+  // ---------------- la presa ----------------
+  const QH = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI), QHI = QH.clone().invert();
+  const _gx = V(), _gy = V(), _gz = V(), _gm = new THREE.Matrix4(), _gq = Q(), _gS = V(), _gE = V(), _gW = V(), _gT = V(), _gU = V(), _gN = V(), _gI = new THREE.Matrix4();
+  function grab(P, sd, x, y, z, ax, fy, pole, ww) {
+    const R = P.R, ua = R.b['UpperArm' + sd], la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd], m2 = R.b['Middle2' + sd]; if (!ua || !la || !wr || !m2 || ww <= 0) return;
+    if (ww > .5) R['grab' + sd] = R.__frame;   // presa scelta a mano: i limiti del polso non la ritoccano
+    // l'orientamento voluto della mano (spazio del personaggio → mondo)
+    _gx.set(ax[0], ax[1], ax[2]).normalize(); _gy.set(fy[0], fy[1], fy[2]); _gz.crossVectors(_gx, _gy).normalize(); _gy.crossVectors(_gz, _gx).normalize();
+    _gm.makeBasis(_gx, _gy, _gz); _gq.setFromRotationMatrix(_gm).premultiply(P._gq);
+    // dove sta il centro del pugno rispetto al polso (misurato sul kit: 11,8 cm lungo le dita e 2,2 verso il palmo, su 14,1 alle nocche)
+    wr.getWorldPosition(_gW); m2.getWorldPosition(_gT); const k = _gT.distanceTo(_gW) / .141;
+    _gU.set(0, .118 * k, .022 * k).applyQuaternion(_gq);
+    _gI.copy(P.g.matrixWorld).invert();
+    _gT.set(x, y, z); P.g.localToWorld(_gT); _gT.sub(_gU).applyMatrix4(_gI);       // il polso, nello spazio del personaggio
+    armIK(P, sd, _gT, pole, ww);
+    // il polso: dalla rotazione attuale a quella voluta (mano = polso · QH)
+    _gq.multiply(QHI); wr.getWorldQuaternion(_q4); _q.copy(_gq).multiply(_q4.invert()); _gq.copy(ID).slerp(_q, ww); applyWorld(wr, _gq);   // (applyWorld usa _q2 e _q3 per sé)
+  }
+  const _hY = V(), _hZ = V(), _hX = V(), _hE = V(), _hW = V(), _hI = new THREE.Matrix4(), _hA = [0, 0, 0], _hB = [0, 0, 0];
+  function hold(P, sd, x, y, z, pz, pole, ww) {
+    const R = P.R, la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd], ua = R.b['UpperArm' + sd]; if (!la || !wr || !ua || ww <= 0) return;
+    // prima stima: le dita dalla spalla verso il punto
+    _hI.copy(P.g.matrixWorld).invert(); ua.getWorldPosition(_hE).applyMatrix4(_hI); _hY.set(x, y, z).sub(_hE).normalize();
+    for (let i = 0; i < 3; i++) {
+      _hZ.set(pz[0], pz[1], pz[2]); _hZ.addScaledVector(_hY, -_hZ.dot(_hY)).normalize(); _hX.crossVectors(_hY, _hZ).normalize();
+      _hA[0] = _hX.x; _hA[1] = _hX.y; _hA[2] = _hX.z; _hB[0] = _hY.x; _hB[1] = _hY.y; _hB[2] = _hY.z;
+      grab(P, sd, x, y, z, _hA, _hB, pole, ww);
+      _hI.copy(P.g.matrixWorld).invert(); la.getWorldPosition(_hE).applyMatrix4(_hI); wr.getWorldPosition(_hW).applyMatrix4(_hI); _hY.subVectors(_hW, _hE).normalize();
+    }
+  }
+  // IK a due ossa del braccio: il polso in T (spazio del personaggio, prima di P.body), il gomito verso il polo
+  function armIK(P, sd, T, pole, ww) {
+    const R = P.R, ua = R.b['UpperArm' + sd], la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd]; if (!ua || !la || !wr || ww <= 0) return;
+    _gI.copy(P.g.matrixWorld).invert(); if (T !== _gT) _gT.copy(T);
+    ua.getWorldPosition(_gS).applyMatrix4(_gI); la.getWorldPosition(_gE).applyMatrix4(_gI); wr.getWorldPosition(_gW).applyMatrix4(_gI);
+    const a = _gS.distanceTo(_gE), b = _gE.distanceTo(_gW);
+    _gU.subVectors(_gT, _gS); let d = _gU.length(); if (d < 1e-4) return; _gU.divideScalar(d);
+    d = clamp(d, Math.abs(a - b) + .01, (a + b) * .998);
+    const xx = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - xx * xx));
+    _gN.set(pole[0], pole[1], pole[2]); _gN.addScaledVector(_gU, -_gN.dot(_gU)); if (_gN.lengthSq() < 1e-8) _gN.set(0, -1, 0); _gN.normalize();
+    _gE.copy(_gS).addScaledVector(_gU, xx).addScaledVector(_gN, h);
+    const w0 = P.w; P.w = ww;
+    _gW.subVectors(_gE, _gS); P.aim('UpperArm' + sd, [_gW.x, _gW.y, _gW.z], 1);
+    _gW.copy(_gS).addScaledVector(_gU, d).sub(_gE); P.aim('LowerArm' + sd, [_gW.x, _gW.y, _gW.z], 1);
+    P.w = w0;
+  }
+  const _rT = V();
   // twist (attorno all'asse dell'avambraccio) e swing (il resto) di una rotazione
   function turn(P, side, A, dir, maxW, ww) {
     const R = P.R, sd = side === 'L' ? 'L' : 'R', la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd]; if (!la || !wr || ww <= 0) return;
@@ -12300,6 +12371,7 @@ var Anim = (function () {
   }
   function apply(g, o, dt, time) {
     const R = rig(g); if (!R) return;
+    for (const sd in R.hs) R.b['Wrist' + sd].scale.copy(R.hs[sd]).multiplyScalar(HAND);
     const A = (o && o.anim) || {}, u = g.userData;
     const wanted = {};
     if (A.act && POSES[A.act] && !o.down) wanted[A.act] = 1;
@@ -12309,10 +12381,14 @@ var Anim = (function () {
     if (POSES.vita && !o.down) wanted.vita = 1;   // respiro, peso che si sposta: sempre
     // pesi: salgono e scendono col fade della posa
     for (const k in wanted) if (!R.layers[k]) R.layers[k] = { w: 0, t: 0 };
+    // [anim] niente scatti: si entra in una posa in almeno 0,1 s e se ne esce in almeno 0,18 (uscire è più lento, come nei
+    // gesti veri); una posa chiesta a fotogrammi alterni resta accesa per 0,12 s invece di sfarfallare
     for (const k in R.layers) {
       const L = R.layers[k], spec = POSES[k], f = spec ? spec.fade : .2;
-      L.w = clamp(L.w + (wanted[k] ? 1 : -1) * dt / Math.max(.01, f), 0, 1); L.t += dt;
-      if (!wanted[k] && L.w <= 0) delete R.layers[k];
+      if (wanted[k]) L.gone = 0; else L.gone = (L.gone || 0) + dt;
+      const on = wanted[k] || (L.gone < .12 && !o.down);
+      L.w = clamp(L.w + (on ? dt / Math.max(.1, f) : -dt / Math.max(.18, f * 1.3)), 0, 1); L.t += dt;
+      if (!on && L.w <= 0) delete R.layers[k];
     }
     // il corpo torna al suo posto ogni fotogramma (le pose lo spostano; flight() in render.js lo sposta dopo, in volo)
     if (u.body && !u.__flying) { u.body.position.set(0, 0, 0); u.body.rotation.set(0, 0, 0); }
@@ -12342,12 +12418,145 @@ var Anim = (function () {
       try { spec.fn(P, A); } catch (e) { disabled[k] = true; console.warn('[anim] posa spenta:', k, e); }
       if (P._props && L.w > .5) P._props.forEach(n => showProps[n] = 1);
     }
+    P._air = !!(A.act && POSES[A.act] && POSES[A.act].air);   // in sella o in aria: i piedi non cercano il pavimento
+    limits(P, R);
     toeFollow(R);
     if (P._body && u.body) { const B = P._body; u.body.position.set(B.x, B.y, B.z); u.body.rotation.set(B.rx, B.ry, B.rz); }
     // lo sguardo: la testa gira verso il punto, con i limiti del collo e un po' di ritardo
     look(g, R, A.lookAt, dt, P);
     // attrezzi
     for (const n in PROPS) { const want = !!showProps[n]; if (!want && !(R.props && R.props[n])) continue; const h = getProp(g, R, n); if (h) h.visible = want; }
+  }
+  // ---------------- limiti delle articolazioni (dopo tutte le pose) ----------------
+  // polso: la mano resta entro WRIST_MAX dall'asse dell'avambraccio (niente polsi spezzati, qualunque cosa chiedano le pose);
+  // ginocchio: lo stinco non si piega mai in avanti rispetto alla coscia (il ginocchio va davanti alla linea anca-caviglia)
+  const WRIST_MAX = 1.2, _l1 = V(), _l2 = V(), _l3 = V(), _lqa = Q();
+  function limits(P, R) {
+    for (const sd of ['L', 'R']) { untwist(P, R, sd); collide(P, R, sd); }
+    for (const sd of ['L', 'R']) {
+      const la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd], m2 = R.b['Middle2' + sd];
+      if (la && wr && m2 && R['grab' + sd] !== R.__frame) {
+        la.getWorldPosition(_l1); wr.getWorldPosition(_l2); m2.getWorldPosition(_l3);
+        _l3.sub(_l2); _l2.sub(_l1);
+        if (_l2.lengthSq() > 1e-8 && _l3.lengthSq() > 1e-8) {
+          _l2.normalize(); _l3.normalize(); const a = Math.acos(clamp(_l2.dot(_l3), -1, 1));
+          if (a > WRIST_MAX) { _lqa.setFromUnitVectors(_l3, _l2); _q.copy(ID).slerp(_lqa, (a - WRIST_MAX) / a); applyWorld(wr, _q); }
+          deviation(R, sd, wr, m2);
+        }
+      }
+      knee(P, R, sd);
+      ground(P, R, sd);
+    }
+  }
+  // piedi a terra: se una posa abbassa il corpo (P.body con y negativo) e il piede finirebbe sotto il pavimento, la gamba
+  // si piega e il piede resta appoggiato (prima rannicchiato, gesso, stordito... avevano le scarpe sotto terra).
+  // Non vale da sdraiati o in volo (corpo ruotato, o sollevato da render.js).
+  const FOOT_Y = .02;
+  function ground(P, R, sd) {
+    const B = P._body; if (!B || B.y >= 0 || P._air || Math.abs(B.rx) > .35 || Math.abs(B.rz) > .35 || P.g.userData.__flying) return;
+    const ft = R.b['Foot' + sd]; if (!ft) return;
+    ft.getWorldPosition(_kA).applyMatrix4(_kI.copy(P.g.matrixWorld).invert());
+    if (_kA.y + B.y >= FOOT_Y - .015) return;
+    const w = P.w; P.w = 1; legTo(P, sd, _kA.x, FOOT_Y - B.y, _kA.z, sd === 'L' ? .15 : -.15, .1, 1, 0, sd === 'L' ? .15 : .15, 1); P.w = w;
+  }
+  // ---- torsioni: niente avvitamenti netti ----
+  // Le pose girano le ossa in tanti passi; sommati, il braccio può finire avvitato sul suo asse (spalla «strizzata») o la mano
+  // girata tutta nel polso. Qui, rispetto alla clip di base (R.pre): il braccio non gira sul suo asse oltre UA_TW (il gomito
+  // resta dov'è, l'avambraccio si ripunta allo stesso polso, la mano resta com'era); la rotazione della mano si divide fra
+  // avambraccio (60%) e polso (40%), come fanno radio e ulna, entro i loro limiti.
+  const UA_TW = .45, LA_TW = 1.3, WR_TW = .5, _uA = Q(), _uB = Q(), _uY = new THREE.Vector3(0, 1, 0), _uW = V(), _uE = V(), _uI = new THREE.Matrix4();
+  function twistOf(b, pre) { _uA.copy(pre).invert().multiply(b.quaternion); let a = 2 * Math.atan2(_uA.y, _uA.w); if (a > Math.PI) a -= 2 * Math.PI; if (a < -Math.PI) a += 2 * Math.PI; return a; }
+  function spinLocal(b, a) { _uB.setFromAxisAngle(_uY, a); b.quaternion.multiply(_uB); b.updateMatrixWorld(true); }
+  function keepHand(wr, Qw) { wr.parent.getWorldQuaternion(_q4); wr.quaternion.copy(_q4.invert().multiply(Qw)); wr.updateMatrixWorld(true); }
+  function untwist(P, R, sd) {
+    const ua = R.b['UpperArm' + sd], la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd]; if (!ua || !la || !wr || !R.pre) return;
+    const Qw = wr.getWorldQuaternion(Q());
+    const tu = twistOf(ua, R.pre['UpperArm' + sd]);
+    if (Math.abs(tu) > UA_TW) {
+      wr.getWorldPosition(_uW);
+      spinLocal(ua, -(tu - clamp(tu, -UA_TW, UA_TW)));
+      la.getWorldPosition(_uE); _uI.copy(P.g.matrixWorld).invert();
+      _uW.applyMatrix4(_uI); _uE.applyMatrix4(_uI); _uW.sub(_uE);
+      const w0 = P.w; P.w = 1; P.aim('LowerArm' + sd, [_uW.x, _uW.y, _uW.z], 1); P.w = w0;
+      keepHand(wr, Qw);
+    }
+    // la mano rispetto al braccio: quanto gira in tutto, e come si divide
+    const tl = twistOf(la, R.pre['LowerArm' + sd]), tw = twistOf(wr, R.pre['Wrist' + sd]), tot = tl + tw;
+    const nl = clamp(tot * .6, -LA_TW, LA_TW);
+    if (Math.abs(nl - tl) > .03) { spinLocal(la, nl - tl); keepHand(wr, Qw); }
+    const tw2 = twistOf(wr, R.pre['Wrist' + sd]); if (Math.abs(tw2) > WR_TW) spinLocal(wr, -(tw2 - clamp(tw2, -WR_TW, WR_TW)));
+  }
+  // ---- compenetrazioni: gomiti e mani fuori dal busto e dalla testa ----
+  // Il busto è un'ellisse (larga e profonda come il torace, più lo spessore dei vestiti) lungo l'asse bacino-collo; la testa
+  // una sfera. Un gomito dentro il busto si sposta sulla superficie (il braccio lo segue, la mano resta); una mano dentro il
+  // busto o la testa si sposta fuori e il braccio si riadatta (IK), con la mano girata come prima.
+  const _cC = V(), _cH = V(), _cN = V(), _cU = V(), _cS = V(), _cF = V(), _cP = V(), _cL = V(), _cR = V(), _cW = V(), _cE = V(), _cM = V(), _cX = new THREE.Matrix4();
+  function inTorso(p, out) {   // true se dentro; out = il punto sulla superficie
+    _cP.subVectors(p, _cH); const L = _cH.distanceTo(_cN), u = _cP.dot(_cU);
+    if (u < L * .12 || u > L * 1.04) return false;
+    const a = .155 + _cBulk, b = .115 + _cBulk, sx = _cP.dot(_cS), fz = _cP.dot(_cF), r = (sx / a) * (sx / a) + (fz / b) * (fz / b);
+    if (r >= 1) return false;
+    const k = 1.04 / Math.sqrt(Math.max(r, 1e-4)); let ns = sx * k, nf = fz * k; if (r < 1e-3) { ns = 0; nf = b * 1.04; }
+    out.copy(_cH).addScaledVector(_cU, u).addScaledVector(_cS, ns).addScaledVector(_cF, nf); return true;
+  }
+  let _cBulk = 0;
+  function inHead(p, out, R) {
+    const h = R.b.Head; if (!h) return false; h.getWorldPosition(_cM); _cL.subVectors(_cM, _cN).normalize(); _cM.addScaledVector(_cL, .1);
+    const d = p.distanceTo(_cM), rad = .125; if (d >= rad) return false;
+    out.subVectors(p, _cM); if (out.lengthSq() < 1e-8) out.set(0, 0, 1); out.normalize().multiplyScalar(rad * 1.03).add(_cM); return true;
+  }
+  function collide(P, R, sd) {
+    const b = R.b, ua = b['UpperArm' + sd], la = b['LowerArm' + sd], wr = b['Wrist' + sd], m2 = b['Middle2' + sd];
+    if (!ua || !la || !wr || !m2 || !b.Hips || !b.Neck || !b.ShoulderL || !b.ShoulderR) return;
+    const sc = P.g.getWorldScale(_cE).x || 1;   // le misure sono in metri: il personaggio può essere scalato
+    _cBulk = (P.bulk || 0) * .8;
+    b.Hips.getWorldPosition(_cH); b.Neck.getWorldPosition(_cN); _cU.subVectors(_cN, _cH).normalize();
+    b.ShoulderL.getWorldPosition(_cS); b.ShoulderR.getWorldPosition(_cL); _cS.sub(_cL); _cS.addScaledVector(_cU, -_cS.dot(_cU)).normalize(); _cF.crossVectors(_cS, _cU);
+    if (sc !== 1) _cBulk *= sc;
+    const Qw = wr.getWorldQuaternion(Q()); _cX.copy(P.g.matrixWorld).invert();
+    // il gomito
+    la.getWorldPosition(_cE);
+    if (inTorso(_cE, _cR)) {
+      wr.getWorldPosition(_cW); ua.getWorldPosition(_cP);
+      const w0 = P.w; P.w = 1;
+      _cM.subVectors(_cR, _cP).transformDirection(_cX); P.aim('UpperArm' + sd, [_cM.x, _cM.y, _cM.z], 1);
+      la.getWorldPosition(_cE); _cM.subVectors(_cW, _cE).transformDirection(_cX); P.aim('LowerArm' + sd, [_cM.x, _cM.y, _cM.z], 1);
+      P.w = w0; keepHand(wr, Qw);
+    }
+    // la mano (il centro del palmo: a metà fra polso e nocche)
+    wr.getWorldPosition(_cW); m2.getWorldPosition(_cM); const hc = _cC.copy(_cW).lerp(_cM, .55);
+    if (inTorso(hc, _cR) || inHead(hc, _cR, R)) {
+      _cR.sub(hc).add(_cW).applyMatrix4(_cX);                                        // il nuovo polso, spazio del personaggio
+      la.getWorldPosition(_cE); ua.getWorldPosition(_cP); wr.getWorldPosition(_cW); _cM.copy(_cP).lerp(_cW, .5); _cE.sub(_cM).transformDirection(_cX);
+      armIK(P, sd, _cR, [_cE.x, _cE.y, _cE.z], 1); keepHand(wr, Qw);
+    }
+  }
+  // deviazione laterale del polso (verso il pollice / verso il mignolo): una mano vera arriva a ~20° e ~35°, non come in avanti.
+  // Si scompone la direzione della mano nel piano avambraccio-nocche e si riporta l'angolo dentro i limiti.
+  const DEV_RAD = .35, DEV_ULN = .6, _dF = V(), _dK = V(), _dN = V(), _dH = V(), _dP = V();
+  function deviation(R, sd, wr, m2) {
+    const la = R.b['LowerArm' + sd], i2 = R.b['Index2' + sd], p2 = R.b['Pinky2' + sd]; if (!la || !i2 || !p2) return;
+    la.getWorldPosition(_dF); wr.getWorldPosition(_dP); _dF.subVectors(_dP, _dF).normalize();            // avambraccio
+    m2.getWorldPosition(_dH); _dH.sub(_dP).normalize();                                                  // mano
+    i2.getWorldPosition(_dK); p2.getWorldPosition(_dN); _dK.sub(_dN); _dK.addScaledVector(_dF, -_dK.dot(_dF)); if (_dK.lengthSq() < 1e-8) return; _dK.normalize();   // verso il pollice
+    _dN.crossVectors(_dF, _dK);                                                                          // normale al palmo
+    const hf = _dH.dot(_dF), hk = _dH.dot(_dK), hn = _dH.dot(_dN), dev = Math.atan2(hk, Math.max(1e-4, hf));
+    const lim = clamp(dev, -DEV_ULN, DEV_RAD); if (Math.abs(lim - dev) < .01 || hf <= 0) return;
+    const r = Math.sqrt(Math.max(0, 1 - hn * hn));
+    _dP.copy(_dF).multiplyScalar(Math.cos(lim) * r).addScaledVector(_dK, Math.sin(lim) * r).addScaledVector(_dN, hn);
+    _lqa.setFromUnitVectors(_dH, _dP.normalize()); applyWorld(wr, _lqa);
+  }
+  const _kH = V(), _kK = V(), _kA = V(), _kM = V(), _kI = new THREE.Matrix4();
+  function knee(P, R, sd) {
+    const ul = R.b['UpperLeg' + sd], ll = R.b['LowerLeg' + sd], ft = R.b['Foot' + sd]; if (!ul || !ll || !ft) return;
+    _kI.copy(P.g.matrixWorld).invert();
+    ul.getWorldPosition(_kH).applyMatrix4(_kI); ll.getWorldPosition(_kK).applyMatrix4(_kI); ft.getWorldPosition(_kA).applyMatrix4(_kI);
+    _kM.subVectors(_kA, _kH); const L = _kM.length(); if (L < .05) return; _kM.divideScalar(L);
+    const t = _l1.subVectors(_kK, _kH).dot(_kM); _kM.multiplyScalar(t).add(_kH);   // il punto della linea anca-caviglia più vicino al ginocchio
+    const off = _kK.sub(_kM);
+    // ginocchio dietro la linea (z negativo nello spazio del personaggio) di più di 2 cm: gamba piegata al contrario
+    if (off.z > -.02 || Math.abs(off.x) > Math.abs(off.z) * 1.5) return;
+    const w = P.w; P.w = 1; legTo(P, sd, _kA.x, _kA.y, _kA.z, 0, .2, 1, 0, 0, 1); P.w = w;
   }
   const _tm = new THREE.Matrix4(), _tq = Q(), _tp = V();
   function toeSnap(g, R) {
@@ -12377,7 +12586,7 @@ var Anim = (function () {
     P.w = 1; P.rot('Neck', R.headPitch * .4, R.headYaw * .4, 0); P.rot('Head', R.headPitch * .6, R.headYaw * .6, 0);
   }
 
-  return { restore, def, npcMap, playerMap, npcState, playerState, apply, want, prop, rig, POSES, PROPS, CHILD, clamp, smooth, hashStr };
+  return { HAND, restore, def, npcMap, playerMap, npcState, playerState, apply, want, prop, rig, POSES, PROPS, CHILD, clamp, smooth, hashStr };
 })();
 
 // ================= POSE DI BASE (motore) =================
@@ -12528,8 +12737,8 @@ Anim.npcMap((st, n, s) => {
   if (VITA0 && !VITA0.__vp) Anim.def('vita', { fade: VITA0.fade, __vp: true, fn(P, A) { const m = P.R.vp; if (m) for (const k in m) if (m[k]) m[k].visible = false; VITA0.fn(P, A); } });
 
   // ---------------- gli attrezzi ----------------
-  // impugnatura: nel pugno l'asse degli oggetti lunghi corre lungo X (dal pollice al mignolo), a ~8 cm lungo le dita e 3 cm verso il palmo
-  const GY = .075, GZ = .03;
+  // impugnatura: nel pugno l'asse degli oggetti lunghi corre lungo X (dal pollice al mignolo), a ~10 cm lungo le dita e 2 cm verso il palmo (GY, GZ)
+  const GY = .1, GZ = .02;   // [mani] il centro del pugno chiuso (misurato: 11,8 cm lungo le dita e 2,2 verso il palmo, per 0,85 di scala)
   vprop('sigaretta', 'R', () => { const g = new THREE.Group(); cyl(g, .005, .005, .07, '#f4f0e6', 0, .1, .01, 0, 0, PI / 2, 5); cyl(g, .0055, .0055, .012, '#ff5a1a', -.04, .1, .01, 0, 0, PI / 2, 5, '#a02000'); return g; });
   // bicchiere da osteria: vetro trasparente, il vino dentro, il fondo spesso (l'apertura verso il pollice, +X)
   const VETRO = new THREE.MeshLambertMaterial({ color: '#d8ecf0', transparent: true, opacity: .45, depthWrite: false });
@@ -12656,8 +12865,15 @@ Anim.npcMap((st, n, s) => {
   });
 
   // ---- BRACCIA CONSERTE ----
+  // [anim] braccia conserte: gli avambracci uno sull'altro davanti al petto, la destra infilata sotto il braccio sinistro,
+  // la sinistra sul bicipite destro (prima gli avambracci affondavano nel petto e le mani uscivano di lato, aperte)
+  const _ch = new THREE.Vector3();
+  function chestY(P) { const c = P.R.b.Chest; if (!c) return 1.25; c.getWorldPosition(_ch); return P.g.worldToLocal(_ch).y; }
   def('braccia', { fade: .35 }, (P) => {
-    arm(P, 'R', .25, -.85, .35, -.95, .2, .3); arm(P, 'L', .25, -.85, .3, -.95, .05, .35);
+    const y = chestY(P) - .14, b = P.bulk || 0;
+    // la destra: il palmo contro il fianco sinistro, le dita all'indietro sotto il braccio; la sinistra: il palmo sul bicipite destro
+    P.grab('R', .16 + b, y, .1 + b, [0, 1, 0], [.25, 0, -1], [-1, -.4, -.3]); P.grab('L', -.16 - b, y + .04, .12 + b, [0, -1, 0], [-.6, 0, -1], [1, -.4, -.3]);
+    P.fingers('R', .5, .4); P.fingers('L', .7, .6); P.rot('Chest', -.03, 0, 0);
   });
 
   // ---- MANI IN TASCA ----
@@ -12715,6 +12931,7 @@ Anim.npcMap((st, n, s) => {
   def('orologio', { fade: .3 }, (P) => { arm(P, 'L', .2, -.8, .4, -.7, .45, .55); P.rot('Head', .35, .15, 0); });
   // ---- PORTA UNA CASSA: due mani sotto, braccia piegate davanti alla pancia; schiena un po' indietro ----
   def('porta', { fade: .3 }, (P) => {
+    if (Anim.POSES.tiene) return Anim.POSES.tiene.fn(P, { tiene: 'casse' });   // [anim] la cassa a due mani, ai lati, davanti alla pancia (anim_mano.js): prima saliva davanti alla faccia
     arm(P, 'R', .15, -.75, .5, -.1, .05, 1); arm(P, 'L', .15, -.75, .5, -.1, .05, 1);
     P.rot('Abdomen', -.1, 0, 0); show(P, 'cassa');
   });
@@ -13185,14 +13402,18 @@ Anim.npcMap((st, n, s) => {
   const strike = k => k <= 0 || k >= 1 ? 0 : k < .3 ? smooth(k / .3) : 1 - smooth((k - .3) / .7);   // veloce all'andata, lento al ritorno
 
   // ---------------- ARMI ----------------
-  // la molotov: bottiglia con lo straccio, nella mano destra
-  Anim.prop('molotov', () => {
-    const g = new THREE.Group(), M = c => new THREE.MeshLambertMaterial({ color: c });
-    const b = new THREE.Mesh(new THREE.CylinderGeometry(.04, .045, .17, 8), M('#3c6a3a')); g.add(b);
-    const n = new THREE.Mesh(new THREE.CylinderGeometry(.016, .03, .08, 6), M('#3c6a3a')); n.position.y = .12; g.add(n);
-    const r = new THREE.Mesh(new THREE.BoxGeometry(.035, .07, .03), M('#d8cfb4')); r.position.y = .18; r.rotation.z = .3; g.add(r);
+  // la molotov: bottiglia con lo straccio acceso, stretta nel pugno destro (il collo verso il pollice)
+  // [mani] prima era agganciata al polso con uno scostamento a occhio e restava dietro la mano aperta
+  function molotovMake(GY, GZ) {
+    const g = new THREE.Group(), M = c => new THREE.MeshLambertMaterial({ color: c, transparent: c === '#3c6a3a', opacity: .85 });
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(.029, .031, .13, 10), M('#3c6a3a')); b.rotation.z = -Math.PI / 2; b.position.set(-.02, GY, GZ + .005); g.add(b);
+    const liq = new THREE.Mesh(new THREE.CylinderGeometry(.026, .028, .08, 10), M('#c8902a')); liq.rotation.z = -Math.PI / 2; liq.position.set(-.04, GY, GZ + .005); g.add(liq);
+    const n = new THREE.Mesh(new THREE.CylinderGeometry(.012, .028, .07, 8), M('#3c6a3a')); n.rotation.z = -Math.PI / 2; n.position.set(.08, GY, GZ + .005); g.add(n);
+    const r = new THREE.Mesh(new THREE.BoxGeometry(.05, .022, .028), M('#d8cfb4')); r.position.set(.13, GY + .01, GZ + .005); r.rotation.z = .4; g.add(r);
+    const f = new THREE.Mesh(new THREE.ConeGeometry(.016, .05, 6), new THREE.MeshBasicMaterial({ color: '#ffb040' })); f.position.set(.155, GY + .035, GZ + .005); g.add(f);
     return g;
-  }, 'WristR', [0, .11, .03], [0, 0, 0]);
+  }
+  function molotovInHand(P) { if (Anim.mano) Anim.mano.inHand(P, 'molotov', molotovMake); P.fingers('R', .85, .8); }
 
   // ---- strumenti: la mano in un punto (due ossa, gomito verso il «polo») e la canna dell'arma in una direzione ----
   const V3 = () => new THREE.Vector3();
@@ -13302,14 +13523,14 @@ Anim.npcMap((st, n, s) => {
     P.rot('Abdomen', .12 + e * .1, -.15 + e * .25, 0);
     reachS(P, -1, lerp(.06, .2, e), lerp(-.18, -.04, e), lerp(.32, .55, e), -.7, -.6, 0);
     aimGun(P, 'coltello', 0, lerp(.6, .1, e), 1);
-    reachS(P, 1, -.1, -.06 + e * .05, lerp(.3, .12, e), -.6, -.7, 0);
+    reachS(P, 1, -.1, -.06 + e * .05, lerp(.3, .12, e), -.6, -.7, 0); P.fingers('L', .55, .4);   // la sinistra in guardia, semichiusa
   }
   // molotov pronta: bottiglia alta dietro la spalla (il caricamento), la sinistra avanti a prendere la mira
   function molotovPronta(P, A, w) {
     P.rot('Chest', -.06 * w, -.3 * w, 0);
     AIM(P, 'UpperArmR', -.9, .12, -.35, w); AIM(P, 'LowerArmR', .05, 1, -.3, w); AIM(P, 'WristR', 0, 1, -.1, w);
     AIM(P, 'UpperArmL', .3, -.05, 1, w); AIM(P, 'LowerArmL', .1, .1, 1, w);
-    P.prop('molotov');
+    molotovInHand(P);
   }
   D('mira', { fade: .15, fn(P, A) {
     const w = armaDi(P.o);
@@ -13348,30 +13569,14 @@ Anim.npcMap((st, n, s) => {
     if (a < 1) { AIM(P, 'UpperArmR', lerp(-.85, -.2, a), lerp(.35, .7, a), lerp(-.3, .7, a)); AIM(P, 'LowerArmR', lerp(-.05, .1, a), lerp(1, .3, a), lerp(-.35, 1, a)); }
     else { AIM(P, 'UpperArmR', lerp(-.2, .1, f), lerp(.7, -.6, f), lerp(.7, .8, f)); AIM(P, 'LowerArmR', .1, lerp(.3, -.7, f), lerp(1, .6, f)); }
     AIM(P, 'UpperArmL', lerp(.3, .8, a), lerp(-.05, -.55, a), lerp(1, -.35, a)); AIM(P, 'LowerArmL', lerp(.1, .3, a), lerp(.1, -.5, a), lerp(1, .3, a));
-    if (k < .3) P.prop('molotov');
+    if (k < .3) molotovInHand(P); else P.fingers('R', .15 * (1 - k), .2);   // lasciata: la mano si apre
   } });
 
   // ---------------- CORPO A CORPO ----------------
   // guardia da pugile: pugni al mento, sinistro avanti; A.colpoK/A.colpoLato fanno partire il pugno
-  // ---- le dita: pugno chiuso (k 0-1). Le dita che la clip non anima terrebbero la rotazione di ieri: si ricorda
-  // la rotazione di base e quella messa da noi; se nessuno l'ha toccata nel frattempo, si riparte dalla base ----
-  const FING = ['Index1', 'Index2', 'Index3', 'Middle1', 'Middle2', 'Middle3', 'Ring1', 'Ring2', 'Ring3', 'Pinky1', 'Pinky2', 'Pinky3', 'Thumb1', 'Thumb2'];
-  const _fq = new THREE.Quaternion(), _fx = new THREE.Vector3(1, 0, 0);
-  function dita(P, side) {
-    const R = P.R, key = side > 0 ? 'fL' : 'fR'; if (R[key]) return R[key];
-    const out = [], L = side > 0 ? 'L' : 'R';
-    FING.forEach(n => { const b = R.m.getObjectByName(n + L); if (b) out.push({ b, base: b.quaternion.clone(), mine: b.quaternion.clone(), th: /^Thumb/.test(n) }); });
-    return (R[key] = out);
-  }
-  function pugno(P, side, k) {
-    const F = dita(P, side), ww = (k === undefined ? 1 : k) * P.w;
-    for (let i = 0; i < F.length; i++) {
-      const f = F[i], q = f.b.quaternion;
-      if (!q.equals(f.mine)) f.base.copy(q);              // l'ha mossa la clip: quella è la nuova base
-      _fq.setFromAxisAngle(_fx, (f.th ? .7 : 1.25) * ww);
-      q.copy(f.base).multiply(_fq); f.mine.copy(q);
-    }
-  }
+  // ---- le dita: pugno chiuso (k 0-1), col motore (P.fingers piega le dita verso il palmo; la vecchia rotazione sull'asse X
+  // delle ossa le piegava di lato: mani «a papera») ----
+  function pugno(P, side, k) { P.fingers(side > 0 ? 'L' : 'R', 1, 1, k === undefined ? 1 : k); }
   // un pugno chiuso davanti al mento; e (0-1) lo porta in avanti, teso, verso il centro
   function fist(P, side, fwd, e, w) {
     reachS(P, side, lerp(.1, .2, e), lerp(.02, .08, e), lerp(fwd, .62, e), -.5, -.85, -.1, w);
@@ -13440,12 +13645,17 @@ Anim.npcMap((st, n, s) => {
   // rialzarsi da terra: da un ginocchio a terra, la mano sul ginocchio, si spinge su
   D('rialza', { fade: .04, base: 'Idle', fn(P, A) {
     const k = clamp(P.t / .95, 0, 1), d = 1 - smooth(clamp((k - .25) / .75, 0, 1));   // d: quanto è ancora giù
-    P.body({ y: -.48 * d, rx: .3 * d });
-    P.rot('Abdomen', .4 * d, 0, 0); P.rot('Chest', .2 * d, 0, 0); P.rot('Head', -.3 * d, 0, 0);
-    AIM(P, 'UpperLegR', 0, -.25, 1, d); AIM(P, 'LowerLegR', 0, -1, .1, d);                  // piede destro avanti, piantato
-    AIM(P, 'UpperLegL', 0, -1, -.05, d); AIM(P, 'LowerLegL', 0, -.15, -1, d); AIM(P, 'FootL', 0, -.3, -1, d);   // ginocchio sinistro a terra
-    AIM(P, 'UpperArmR', -.15, -.75, .65, d); AIM(P, 'LowerArmR', .1, -.95, .2, d);          // mano sul ginocchio
-    AIM(P, 'UpperArmL', .4, -.8, .4, d); AIM(P, 'LowerArmL', 0, -1, .1, d);
+    const By = -.48 * d; P.body({ y: By, z: .04 * d });
+    P.rot('Abdomen', .55 * d, 0, 0); P.rot('Chest', .3 * d, 0, 0); P.rot('Head', -.35 * d, 0, 0);
+    // [anim] gambe con l'IK (coordinate prima dello spostamento del corpo): il piede destro piantato avanti, il ginocchio
+    // sinistro a terra con la punta del piede appoggiata dietro. Prima le ossa puntate a mano col corpo inclinato
+    // mandavano lo stinco sotto il pavimento.
+    P.legTo('R', -.13, .05 - By, .3, 0, .3, 1, 0, .1, d);
+    P.legTo('L', .13, .12 - By, -.38, 0, -.6, .4, -1.1, 0, d);
+    // la mano destra sul ginocchio destro, la sinistra pronta a spingere da terra
+    if (local(P, 'LowerLegR', _G)) reach(P, -1, _G.x + .02, _G.y + .06, _G.z + .02, -.6, .2, -.3, d);
+    if (local(P, 'UpperArmL', _B)) reach(P, 1, _B.x + .05, _B.y - .5, _B.z + .18, .6, 0, -.3, d);
+    P.fingers('R', .5, .4, d); P.fingers('L', .2, .2, d);
   } });
 
   // ---------------- PAURA E RESA ----------------
@@ -13464,7 +13674,13 @@ Anim.npcMap((st, n, s) => {
     P.rot('Abdomen', .55, 0, 0); P.rot('Chest', .4, 0, t); P.rot('Neck', .4, 0, 0); P.rot('Head', .3, 0, 0);
     AIM(P, 'UpperLegL', .2, -.1, 1); AIM(P, 'UpperLegR', -.2, -.1, 1); AIM(P, 'LowerLegL', .05, -1, -.35); AIM(P, 'LowerLegR', -.05, -1, -.35);
     AIM(P, 'FootL', 0, -.2, 1); AIM(P, 'FootR', 0, -.2, 1);
-    AIM(P, 'UpperArmL', .45, .55, .6); AIM(P, 'LowerArmL', -.75, .3, -.1); AIM(P, 'UpperArmR', -.45, .55, .6); AIM(P, 'LowerArmR', .75, .3, -.1);
+    // le mani intrecciate sulla nuca, i gomiti avanti ai lati della faccia (prima gli avambracci facevano una X sopra la testa)
+    if (local(P, 'Neck', _B) && local(P, 'Head', _G)) {
+      _B.subVectors(_G, _B).normalize();                                     // l'asse della testa (china in avanti)
+      const hx = _G.x + _B.x * .1, hy = _G.y + _B.y * .1 + .03, hz = _G.z + _B.z * .1 - .02;   // la nuca (reach usa _G e _u: si copia prima)
+      reach(P, 1, hx + .07, hy, hz, .5, -.4, 1); reach(P, -1, hx - .07, hy, hz, -.5, -.4, 1);
+      P.fingers('L', .35, .2); P.fingers('R', .35, .2);
+    }
   } });
   // fuga: sulla corsa, un braccio sopra la testa a ripararsi, l'altro che si agita
   D('fuga', { fade: .2, fn(P, A) {
@@ -13481,7 +13697,7 @@ Anim.npcMap((st, n, s) => {
     if (z < .2) { x = x < 0 ? -.9 : .9; z = .2; }   // dietro di sé non si indica: si resta di lato
     const jab = .06 * Math.max(0, P.wave(2.2));
     P.rot('Chest', -.04, clamp(Math.atan2(x, z) * .35, -.4, .4), 0);
-    AIM(P, 'UpperArmR', x, .12 + jab, z); AIM(P, 'LowerArmR', x, .18 + jab, z); AIM(P, 'WristR', x, .2, z);
+    AIM(P, 'UpperArmR', x, .12 + jab, z); AIM(P, 'LowerArmR', x, .18 + jab, z); AIM(P, 'WristR', x, .2, z); P.fingerEach('R', [0, .95, 1, 1], .8);   // [mani] l'indice teso, le altre chiuse
     AIM(P, 'UpperArmL', .45, -.85, -.15, .8); AIM(P, 'LowerArmL', -.55, -.1, -.4, .8);
   } });
   // alt: Guardia o Tutela, braccio sinistro teso col palmo avanti, la destra sulla fondina
@@ -13506,18 +13722,9 @@ Anim.npcMap((st, n, s) => {
   // ammanettato: le mani dietro la schiena, le spalle indietro, la testa bassa
   D('ammanettato', { fade: .25, fn(P, A) {
     P.rot('Chest', -.08, 0, 0); P.rot('Neck', .2, 0, 0); P.rot('Head', .25, 0, 0);
-    AIM(P, 'UpperArmL', .25, -.85, -.45); AIM(P, 'LowerArmL', -.8, -.15, -.35); AIM(P, 'WristL', -1, 0, -.1, .6);
-    AIM(P, 'UpperArmR', -.25, -.85, -.45); AIM(P, 'LowerArmR', .8, -.15, -.35); AIM(P, 'WristR', 1, 0, -.1, .6);
-  } });
-
-  // ---------------- IN VESPA ----------------
-  // seduto, le mani al manubrio, i piedi sulla pedana; il corpo è già alzato di 35 cm da render.js
-  D('in_vespa', { fade: .1, base: 'Idle', fn(P, A) {
-    P.body({ y: -.3, z: -.12 });
-    P.rot('Abdomen', .08, 0, 0); P.rot('Chest', .06, 0, 0);
-    AIM(P, 'UpperLegL', .12, -.15, 1); AIM(P, 'UpperLegR', -.12, -.15, 1); AIM(P, 'LowerLegL', 0, -1, .3); AIM(P, 'LowerLegR', 0, -1, .3);
-    AIM(P, 'FootL', 0, -.1, 1); AIM(P, 'FootR', 0, -.1, 1);
-    AIM(P, 'UpperArmL', .3, -.5, .8); AIM(P, 'LowerArmL', .15, -.05, 1); AIM(P, 'UpperArmR', -.3, -.5, .8); AIM(P, 'LowerArmR', -.15, -.05, 1);
+    // [anim] i polsi uniti dietro la schiena, sopra il sedere, i gomiti in fuori (prima un braccio restava di lato)
+    if (local(P, 'Hips', _G)) { P.reach('R', _G.x - .035, _G.y + .02, _G.z - .2, [-1, -.2, -.6]); P.reach('L', _G.x + .035, _G.y + .02, _G.z - .2, [1, -.2, -.6]); }
+    P.fingers('R', .4, .4); P.fingers('L', .4, .4);
   } });
 
   // ---------------- IN BMX ----------------
@@ -13525,7 +13732,7 @@ Anim.npcMap((st, n, s) => {
   // l'angolo delle pedivelle (A.crank, lo stesso che render.js dà al modello), le ginocchia salgono e scendono come nei
   // fotogrammi di una pedalata vera. A.carica (0-1): si accuccia prima del bunny hop; A.aria: in aria tira su il manubrio.
   // Le misure sono quelle di bmxMesh (BMX_GEO in render.js); il corpo è già alzato di 35 cm da render.js (LIFT).
-  const BMX = { bbY: .29, bbZ: -.04, crank: .17, pedX: .14, seatY: .81, seatZ: -.27, gripY: 1.04, gripZ: .22, gripX: .32, pegX: .19, pegY: .31, pegZ: -.5, LIFT: .35 };
+  const BMX = { bbY: .29, bbZ: -.04, crank: .17, pedX: .16, seatY: .81, seatZ: -.27, gripY: 1.04, gripZ: .22, gripX: .36, pegX: .19, pegY: .31, pegZ: -.5, LIFT: .35 };
   const _bp = new THREE.Vector3(), _bs = new THREE.Vector3(), _be = new THREE.Vector3(), _bt = new THREE.Vector3(), _bw = new THREE.Vector3();
   const bmxLocal = (P, bone, out) => { P.R.b[bone].getWorldPosition(out); return P.g.worldToLocal(out); };
   // braccio a due ossa: il polso in (tx,ty,tz) nello spazio del personaggio, gomito verso il basso e in fuori
@@ -13541,14 +13748,15 @@ Anim.npcMap((st, n, s) => {
     AIM(P, ub, _be.x, _be.y, _be.z, 1);
     bmxLocal(P, lb, _be); _bt.sub(_be); AIM(P, lb, _bt.x, _bt.y, _bt.z, 1);
   }
-  D('in_bmx', { fade: .12, base: 'Idle', fn(P, A) {
+  D('in_bmx', { fade: .12, base: 'Idle', air: true, fn(P, A) {
     const R = P.R, th = A.crank || 0, ck = A.carica || 0, air = A.aria || 0, wk = A.impenna || 0, pk = Math.abs(A.peg || 0), ps = (A.peg || 0) > 0 ? 1 : -1;
     // impennata (freccia giù): il corpo ruota già con la bici (render.js); qui ci si tira indietro a braccia tese.
     // pedalina (frecce destra/sinistra): in piedi, il piede di quel lato sul peg dietro, il corpo fuori da quel lato
     if (R.hipY === undefined && R.b.Hips) { bmxLocal(P, 'Hips', _bp); R.hipY = _bp.y; R.hipZ = _bp.z; }
     // il sedere sul sellino; caricando si abbassa e va indietro, in aria si raccoglie in avanti
     const By = (BMX.seatY + .08 - BMX.LIFT) - (R.hipY || .95) + .06 * ck + .08 * air + .1 * pk, Bz = BMX.seatZ - .06 - (R.hipZ || 0) - .1 * ck + .06 * air - .05 * wk - .04 * pk, Bx = ps * .09 * pk;   // carica: su dal sellino e indietro, come prima di un bunny hop
-    P.body({ x: Bx, y: By, z: Bz, rz: .035 * Math.sin(th) * (1 - air) * (1 - pk) - ps * .05 * pk });
+    P.body({ x: Bx, y: By, z: Bz, rz: -ps * .05 * pk });
+    P.rot('Hips', 0, 0, .05 * Math.sin(th) * (1 - air) * (1 - pk));   // [mani] il bacino ondeggia con la pedalata, non tutto il corpo: le mani restano sul manubrio
     P.rot('Abdomen', .45 + .3 * ck + .1 * air - .3 * wk + .3 * pk, 0, 0); P.rot('Chest', .2, .06 * Math.sin(th), 0); P.rot('Neck', -.3 - .1 * ck, 0, 0); P.rot('Head', -.25, 0, 0);
     // i piedi sui pedali: destra a th, sinistra di fronte (th + π); la caviglia sta 7 cm sopra il pedale, la punta in avanti
     [['R', -1, th], ['L', 1, th + Math.PI]].forEach(([sd, sg, a]) => {
@@ -13557,7 +13765,32 @@ Anim.npcMap((st, n, s) => {
       P.legTo(sd, px - Bx, py - BMX.LIFT - By, pz - Bz, sg * .2, .4, 1, .12 * Math.sin(a) - .05, .05);
     });
     // le mani sulle manopole: il polso sta dietro la manopola, così la mano la stringe (in aria le tira verso il petto)
-    ['L', 'R'].forEach(sd => { const sg = sd === 'L' ? 1 : -1; armTo(P, sd, sg * BMX.gripX - Bx, BMX.gripY + .02 - BMX.LIFT - By + .08 * air, BMX.gripZ - .08 - Bz - .06 * air); P.fingers(sd, .85, .7); });
+    grips(P, BMX.gripX, BMX.gripY - BMX.LIFT + .08 * air, BMX.gripZ - .06 * air, Bx, By, Bz);
+  } });
+  // [mani] le mani sulle manopole (una barra di traverso, x = ±gx, nello spazio del personaggio dopo il sollevamento):
+  // la manopola sta nel palmo, 7 cm davanti al polso e un filo sotto; le nocche guardano avanti, le dita la avvolgono
+  function grips(P, gx, gy, gz, Bx, By, Bz) {
+    ['L', 'R'].forEach(sd => {
+      const sg = sd === 'L' ? 1 : -1;
+      // la manopola nel pugno: il pollice verso il centro del manubrio (per la sinistra il sistema della mano è specchiato:
+      // in tutti e due i casi X va verso +x), le dita avanti e giù sopra la barra, il gomito in fuori e in basso
+      P.grab(sd, sg * gx - Bx, gy - By, gz - Bz, [1, 0, 0], [0, -.55, 1], [sg * .7, -1, -.2]);
+      P.fingers(sd, .92, .85);
+    });
+  }
+  // ---------------- IN VESPA ----------------
+  // seduti sulla sella, le mani alle manopole, i piedi sulla pedana. Misure di vespaMesh (render.js); il corpo è già
+  // alzato di 35 cm da render.js. Prima le braccia andavano avanti «a occhio» e le mani, aperte, restavano 20 cm dentro.
+  const VESPA = { seatY: .98, seatZ: .02, gripX: .33, gripY: 1.3, gripZ: .7, floorY: .37, footX: .13, footZ: .3, LIFT: .35 };
+  D('in_vespa', { fade: .1, base: 'Idle', air: true, fn(P, A) {
+    const R = P.R, V = VESPA;
+    if (R.hipY === undefined && R.b.Hips) { bmxLocal(P, 'Hips', _bp); R.hipY = _bp.y; R.hipZ = _bp.z; }
+    const By = (V.seatY + .08 - V.LIFT) - (R.hipY || .95), Bz = V.seatZ - (R.hipZ || 0);
+    P.body({ y: By, z: Bz });
+    P.rot('Abdomen', .42, 0, 0); P.rot('Chest', .22, 0, 0); P.rot('Neck', -.36, 0, 0); P.rot('Head', -.2, 0, 0);
+    P.rot('ShoulderL', 0, -.18, 0); P.rot('ShoulderR', 0, .18, 0);   // le spalle in avanti, verso il manubrio
+    [['L', 1], ['R', -1]].forEach(([sd, sg]) => P.legTo(sd, sg * V.footX, V.floorY + .075 - V.LIFT - By, V.footZ - Bz, sg * .15, .5, 1, .1, .12));
+    grips(P, V.gripX, V.gripY - V.LIFT, V.gripZ, 0, By, Bz);
   } });
   // ---------------- SALTO A PIEDI ----------------
   // [salto] carica: ci si accuccia (più carichi, più giù), le braccia indietro; in aria: ginocchia al petto, braccia su
@@ -13567,7 +13800,7 @@ Anim.npcMap((st, n, s) => {
     P.legTo('L', .13, .09 + dn, .06, .1, 0, 1, 0, .1); P.legTo('R', -.13, .09 + dn, .06, -.1, 0, 1, 0, .1);
     AIMS(P, 1, 'UpperArm', .2, -.7, -.5 * k); AIMS(P, -1, 'UpperArm', .2, -.7, -.5 * k); AIMS(P, 1, 'LowerArm', .1, -.6, -.2); AIMS(P, -1, 'LowerArm', .1, -.6, -.2);
   } });
-  D('salto', { fade: .06, fn(P, A) {
+  D('salto', { fade: .06, air: true, fn(P, A) {
     const up = A.su ? 1 : 0, tuck = A.raccolto || 0;
     P.rot('Abdomen', .15 + .2 * tuck, 0, 0);
     P.legTo('L', .12, .25 + .3 * tuck, .12 + .1 * tuck, .1, .3, 1, .2, .1); P.legTo('R', -.12, .15 + .25 * tuck, -.05, -.1, .3, 1, -.1, .1);
@@ -13596,8 +13829,10 @@ Anim.npcMap((st, n, s) => {
     P.rot('ShoulderL', 0, .12, .18); P.rot('ShoulderR', 0, -.12, -.18);
     P.rot('Chest', .1, t2, t); P.rot('Neck', .1, 0, 0); P.rot('Head', .05 + t, 0, 0);
     if (!A.upper && !(A.act && A.act !== 'ubriaco')) {
-      AIM(P, 'UpperArmL', .2, -.75, .45); AIM(P, 'LowerArmL', -.9, .25 + t, .25);
-      AIM(P, 'UpperArmR', -.2, -.75, .45); AIM(P, 'LowerArmR', .9, .35 + t2, .3);
+      // [anim] le braccia strette al petto, le mani che stringono le braccia (fuori dal busto, coi vestiti)
+      const c = P.R.b.Chest; let cy = 1.25; if (c) { c.getWorldPosition(_G); cy = P.g.worldToLocal(_G).y; } const b = P.bulk || 0;
+      P.grab('R', .16 + b, cy - .14 + t, .1 + b, [0, 1, 0], [.25, 0, -1], [-1, -.5, -.2]); P.grab('L', -.16 - b, cy - .1 + t2, .12 + b, [0, -1, 0], [-.6, 0, -1], [1, -.5, -.2]);
+      P.fingers('R', .75, .6); P.fingers('L', .75, .6);
     }
   } });
   // ferito: si tiene il fianco con la sinistra, piegato da quella parte; zoppica camminando
@@ -13696,7 +13931,7 @@ Anim.npcMap((st, n, s) => {
       s.act = 'colpito'; s.colpitoK = 1;
       const fx = Math.cos(n.face), fz = Math.sin(n.face);
       s.dietro = dP < 30 && fx * dx + fz * dz < 0;
-    } else if (sinceHit < 1.6 && n.hp < (n.maxHp || 60) * .5 && sp < 2) s.act = 'barcolla';
+    } else if ((sinceHit < 1.6 && n.hp < (n.maxHp || 60) * .5 && sp < 2) || Math.hypot(n.kbx || 0, n.kby || 0) > 1.2) s.act = 'barcolla';   // [anim] anche spinto via
     // la Guardia: perquisizione, manette, l'alt
     if (n.cop && a === 'perquisisce' && sp < .3) s.act = 'perquisisce';
     if (st.moments && st.moments.length) for (let i = 0; i < st.moments.length; i++) { const M = st.moments[i]; if (M.kind === 'jail' && M.until > clock && M.npcs && M.npcs[1] === n.id) s.act = 'ammanetta'; }
@@ -13773,6 +14008,7 @@ Anim.npcMap((st, n, s) => {
     if (st.moments) for (let i = 0; i < st.moments.length; i++) { const Mo = st.moments[i]; if (Mo.kind === 'arrest' && Mo.until > clock) { s.act = 'ammanettato'; s.upper = null; return; } }
     if (afterFall(m, clock, s)) return;
     if (clock - (p.hurtT || -99) < .4) { s.act = 'colpito'; s.colpitoK = .8; s.dietro = false; }
+    else if (Math.hypot(p.kbx || 0, p.kby || 0) > 1.2) s.act = 'barcolla';   // [anim] spinto via (spintone, urto): barcolla finché scivola
     const WP = W_(), W = WP[p.cur];
     // molotov: lancio, poi di nuovo pronta (se ne restano)
     if (clock - m.throwT < .6) { s.upper = 'lancia'; s.lancioK = (clock - m.throwT) / .6; return; }
@@ -13786,6 +14022,355 @@ Anim.npcMap((st, n, s) => {
     // pugni: in guardia per qualche secondo dopo l'ultimo pugno o l'ultimo colpo preso
     if (clock - m.punchT < 3 || clock - (p.hurtT || -99) < 2.5) { s.upper = 'guardia'; const k = (clock - m.punchT) / .4; s.colpoK = k < 1 ? k : 0; s.colpoLato = m.side; }
   });
+})();
+</script>
+<script data-m="anim_mano">/* ================= ANIMAZIONI: quello che si ha in mano =================
+   Chiunque può impugnare un oggetto dell'inventario (azioni.js: n.hand = id; il giocatore dalla Tasca: p.hand = id), ma il
+   modello aveva pronti solo pochi attrezzi (models.js: bomboletta, telefono, fotocamera, piede, gesso, manganello, cartello;
+   le armi del kit). Per tutto il resto la mano restava vuota e il braccio penzolava.
+   Qui ogni oggetto prende la sagoma della sua famiglia (le stesse delle icone del Menu: MenuUI.famOf) e un modo di tenerlo:
+     pugno   stretto davanti al fianco, il pollice in su (bottiglia, latta, attrezzo piccolo, pacchetto...)
+     lungo   il braccio giù, l'attrezzo orizzontale in avanti (ascia, sega, pala, mazza...)
+     appeso  per il manico, sotto il pugno (tanica, borsa, radio, la rete della frutta, il pesce...)
+     piatto  tra il pollice e le dita (carte, panni, cassette)
+     regge   a due mani davanti alla pancia (sedia, ruota, sacco, scatola, assi, rottami)
+   Si porta come si fa davvero: lungo il fianco (palmo verso la coscia), a due mani contro la pancia le cose grosse; la presa è
+   quella vera del motore (P.grab: il centro del pugno nel punto, la mano orientata).
+   La posa è uno strato delle braccia ('tiene', s.tiene = id): non prende il posto della lotta né dei lavori che hanno già il
+   loro attrezzo; sostituisce solo i gesti da fermi (mani in tasca, braccia conserte, mani dietro). */
+(function () {
+  'use strict';
+  if (typeof Anim === 'undefined' || typeof THREE === 'undefined') return;
+  const PI = Math.PI, clamp = Anim.clamp;
+  // sistema della mano (come in anim_vita.js): Y lungo le dita, Z fuori dal palmo, X verso il pollice
+  const GY = .1, GZ = .02;   // [mani] il centro del pugno chiuso (misurato: 11,8 cm lungo le dita e 2,2 verso il palmo, per 0,85 di scala)
+  const QHAND = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), PI);
+  const MAT = {}, lm = c => MAT[c] || (MAT[c] = new THREE.MeshLambertMaterial({ color: c }));
+  function box(g, w, h, d, c, x, y, z, rx, ry, rz) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lm(c)); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); g.add(m); return m; }
+  function cyl(g, rt, rb, h, c, x, y, z, rx, ry, rz, s) { const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, s || 8), lm(c)); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); g.add(m); return m; }
+  const shade = (c, k) => { const o = new THREE.Color(c); o.multiplyScalar(k); return '#' + o.getHexString(); };
+  const X = [0, 0, -PI / 2];   // un cilindro lungo l'asse X della mano (dal pugno verso il pollice)
+
+  // ---------------- le sagome: (colore) → Object3D nel sistema della mano (o del corpo per «regge») ----------------
+  const FAM = {
+    bottiglia: { how: 'pugno', grip: [.85, .8], make: c => { const g = new THREE.Group(); cyl(g, .032, .032, .16, c, -.01, GY, GZ + .01, ...X, 10); cyl(g, .013, .032, .04, c, .09, GY, GZ + .01, ...X, 10); cyl(g, .013, .013, .05, c, .13, GY, GZ + .01, ...X, 8); cyl(g, .0325, .0325, .06, '#e8dcb0', -.02, GY, GZ + .01, ...X, 10); return g; } },
+    latta: { how: 'pugno', grip: [.75, .7], make: c => { const g = new THREE.Group(); cyl(g, .04, .04, .11, '#a8a4ac', 0, GY, GZ + .02, ...X, 12); cyl(g, .041, .041, .07, c, 0, GY, GZ + .02, ...X, 12); return g; } },
+    pane: { how: 'pugno', grip: [.45, .5], make: () => { const g = new THREE.Group(); box(g, .22, .07, .08, '#c88a40', .02, GY + .01, GZ + .03); box(g, .2, .02, .06, '#e0b060', .02, GY + .045, GZ + .03); return g; } },
+    tondo: { how: 'appeso', grip: [.9, .8], make: c => { const g = new THREE.Group(); [[0, .17, 0], [.05, .2, .03], [-.05, .2, .02], [0, .23, -.03], [.03, .26, .03]].forEach(([x, y, z]) => { const s = new THREE.Mesh(new THREE.SphereGeometry(.045, 7, 5), lm(c || '#d84a3a')); s.position.set(x, y, GZ + z); g.add(s); }); box(g, .01, .1, .01, '#8a7a5a', 0, .08, GZ); return g; } },
+    pesce: { how: 'appeso', grip: [.85, .8], make: c => { const g = new THREE.Group(), k = c || '#7a9ab0'; const b = new THREE.Mesh(new THREE.SphereGeometry(.05, 10, 7), lm(k)); b.scale.set(.6, 2.6, 1.3); b.position.set(0, .2, GZ + .01); g.add(b); const t = new THREE.Mesh(new THREE.ConeGeometry(.045, .07, 4), lm(shade(k, .8))); t.position.set(0, .06, GZ + .01); t.scale.z = .3; g.add(t); [-1, 1].forEach(s => { const e = new THREE.Mesh(new THREE.SphereGeometry(.007, 5, 4), lm('#111')); e.position.set(s * .028, .31, GZ + .03); g.add(e); }); return g; } },   // per la coda: corpo affusolato, coda a ventaglio, occhi
+    carne: { how: 'pugno', grip: [.45, .45], make: c => { const g = new THREE.Group(); box(g, .16, .06, .11, '#e8e0d0', .01, GY + .01, GZ + .045); box(g, .12, .062, .08, c || '#b84a4a', .01, GY + .01, GZ + .045); return g; } },
+    formaggio: { how: 'pugno', grip: [.4, .4], make: c => { const g = new THREE.Group(); cyl(g, .07, .07, .06, c || '#e8c860', 0, GY + .01, GZ + .05, PI / 2, 0, 0, 12); return g; } },
+    tazza: { how: 'pugno', grip: [.8, .7], make: c => { const g = new THREE.Group(); cyl(g, .035, .035, .2, '#3a5a4a', .02, GY, GZ + .015, ...X, 10); cyl(g, .037, .037, .04, '#c8c8d0', .13, GY, GZ + .015, ...X, 10); return g; } },
+    viti: { how: 'pugno', grip: [.5, .5], make: c => { const g = new THREE.Group(); box(g, .1, .05, .06, '#c8a050', 0, GY + .01, GZ + .03); box(g, .101, .02, .061, '#8a6a2a', 0, GY + .01, GZ + .03); return g; } },
+    corda: { how: 'appeso', grip: [.9, .8], make: c => { const g = new THREE.Group(); const t = new THREE.Mesh(new THREE.TorusGeometry(.11, .022, 6, 14), lm(c || '#c89a5a')); t.position.set(0, .13, GZ); g.add(t); const t2 = t.clone(); t2.scale.setScalar(.85); t2.position.z += .02; g.add(t2); return g; } },
+    martello: { how: 'pugno', grip: [.95, .9], make: c => { const g = new THREE.Group(); cyl(g, .014, .014, .3, '#8a6a42', .07, GY, GZ, ...X, 6); box(g, .04, .04, .12, c || '#5a5e68', .21, GY, GZ); return g; } },
+    chiave: { how: 'pugno', grip: [.95, .9], make: c => { const g = new THREE.Group(); box(g, .2, .018, .03, c || '#8a8e98', .06, GY, GZ); box(g, .04, .05, .03, c || '#8a8e98', .17, GY, GZ); box(g, .03, .02, .032, '#2a2a2e', .18, GY + .015, GZ); return g; } },
+    lama: { how: 'pugno', grip: [.95, .9], make: c => { const g = new THREE.Group(); box(g, .1, .025, .03, c || '#3a2a20', 0, GY, GZ); box(g, .13, .022, .004, '#c8ccd4', .11, GY + .004, GZ); return g; } },
+    sega: { how: 'lungo', grip: [.9, .8], make: c => { const g = new THREE.Group(); box(g, .12, .03, .1, '#8a5a2a', 0, GY, GZ); box(g, .45, .002, .1, '#c8ccd4', .27, GY, GZ - .02); return g; } },
+    ascia: { how: 'lungo', grip: [.95, .9], make: c => { const g = new THREE.Group(); cyl(g, .016, .016, .7, '#8a5a2a', .2, GY, GZ, ...X, 6); box(g, .05, .03, .16, '#8a8e98', .52, GY, GZ + .06); return g; } },
+    pala: { how: 'lungo', grip: [.95, .9], make: () => { const g = new THREE.Group(); cyl(g, .016, .016, 1, '#8a6a42', .25, GY, GZ, ...X, 6); box(g, .24, .02, .2, '#5a5a60', .82, GY, GZ); return g; } },
+    pila: { how: 'pugno', grip: [.7, .7], make: c => { const g = new THREE.Group(); cyl(g, .018, .018, .06, c || '#c8a03a', 0, GY, GZ + .01, ...X, 8); return g; } },
+    radio: { how: 'appeso', atGrip: true, grip: [.9, .85], make: c => { const g = new THREE.Group(), k = c || '#4a5a4a', H = GY + .07; box(g, .16, .016, .02, '#1a1a1e', 0, GY, GZ); [-1, 1].forEach(s => box(g, .014, .07, .014, '#1a1a1e', s * .075, GY + .035, GZ)); box(g, .28, .16, .08, k, 0, H + .08, GZ); [-1, 1].forEach(s => { cyl(g, .045, .045, .01, '#2a2a2e', s * .08, H + .085, GZ - .041, PI / 2, 0, 0, 12); cyl(g, .025, .025, .012, '#5a5a60', s * .08, H + .085, GZ - .042, PI / 2, 0, 0, 10); }); box(g, .08, .03, .012, '#c8c0a0', 0, H + .03, GZ - .041); return g; } },
+    scatola: { how: 'regge', d: .3, w: .36, make: c => { const g = new THREE.Group(); box(g, .36, .28, .3, c || '#5a6a7a', 0, 0, 0); box(g, .28, .18, .005, '#2a2e34', 0, .02, .152); return g; } },
+    lampadina: { how: 'pugno', grip: [.85, .8], x: [0, -.15, 1], make: () => { const g = new THREE.Group(); cyl(g, .022, .022, .18, '#3a3a40', .03, GY, GZ + .01, ...X, 8); cyl(g, .032, .024, .05, '#3a3a40', .14, GY, GZ + .01, ...X, 8); cyl(g, .028, .028, .005, '#fff4c8', .166, GY, GZ + .01, ...X, 8); return g; } },
+    carta: { how: 'piatto', grip: [.4, .7], make: c => { const g = new THREE.Group(); box(g, .22, .3, .006, '#f2ead8', .04, GY + .08, GZ - .005); box(g, .2, .04, .007, c || '#c84a4a', .04, GY + .2, GZ - .005); return g; } },
+    medicina: { how: 'pugno', grip: [.45, .5], make: c => { const g = new THREE.Group(); box(g, .13, .08, .06, '#f2ead8', 0, GY + .01, GZ + .03); box(g, .03, .081, .061, c || '#d83a3a', 0, GY + .01, GZ + .03); return g; } },
+    siringa: { how: 'pugno', grip: [.7, .8], make: () => { const g = new THREE.Group(); cyl(g, .008, .008, .1, '#d8e4ec', .02, GY, GZ, ...X, 6); cyl(g, .001, .001, .04, '#a8acb4', .09, GY, GZ, ...X, 4); return g; } },
+    sapone: { how: 'pugno', grip: [.45, .45], make: c => { const g = new THREE.Group(); box(g, .1, .05, .07, c || '#e8b0d0', 0, GY + .01, GZ + .035); return g; } },
+    maglia: { how: 'piatto', grip: [.5, .6], make: c => { const g = new THREE.Group(); box(g, .26, .22, .06, c || '#4a5a8a', .06, GY + .06, GZ + .02); box(g, .26, .02, .062, shade(c || '#4a5a8a', .75), .06, GY + .13, GZ + .02); return g; } },
+    scarpa: { how: 'appeso', grip: [.85, .8], make: c => { const g = new THREE.Group(); [-.035, .035].forEach(x => { box(g, .06, .1, .26, c || '#5a3a2a', x, .14, GZ + .08); box(g, .062, .025, .27, '#1a1a1e', x, .09, GZ + .08); }); return g; } },
+    cappello: { how: 'pugno', grip: [.5, .5], make: c => { const g = new THREE.Group(); const s = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 5, 0, PI * 2, 0, PI / 2), lm(c || '#4a5a3a')); s.position.set(0, GY + .02, GZ + .05); s.rotation.x = -PI / 2; g.add(s); return g; } },
+    borsa: { how: 'appeso', atGrip: true, grip: [.9, .85], make: c => { const g = new THREE.Group(), k = c || '#5a6a3a', H = GY + .09; [-1, 1].forEach(s => { box(g, .02, .11, .012, shade(k, .6), s * .05, GY + .045, GZ, 0, 0, s * .25); }); box(g, .12, .018, .014, shade(k, .6), 0, GY, GZ); box(g, .34, .24, .14, k, 0, H + .12, GZ); box(g, .345, .06, .145, shade(k, .78), 0, H + .02, GZ); box(g, .04, .03, .148, '#c8a040', 0, H + .05, GZ); return g; } },
+    sedia: { how: 'appeso', atGrip: true, out: .07, grip: [.9, .8], make: c => { const g = new THREE.Group(), k = c || '#8a6a4a'; box(g, .42, .035, .035, shade(k, .85), 0, GY, GZ); box(g, .4, .32, .025, k, 0, GY + .19, GZ); [-1, 1].forEach(s => box(g, .03, .45, .03, k, s * .19, GY + .22, GZ)); box(g, .42, .035, .4, k, 0, GY + .44, GZ - .2); [[-.19, -.02], [.19, -.02], [-.19, -.38], [.19, -.38]].forEach(([x, z]) => box(g, .03, .44, .03, k, x, GY + .67, GZ + z)); return g; } },   // per lo schienale, il sedile verso fuori
+    arma: { how: 'lungo', grip: [.95, .9], make: c => { const g = new THREE.Group(); cyl(g, .02, .035, .8, c || '#8a6a42', .3, GY, GZ, ...X, 8); return g; } },
+    munizioni: { how: 'pugno', grip: [.45, .5], make: c => { const g = new THREE.Group(); box(g, .12, .07, .07, '#4a5a3a', 0, GY + .01, GZ + .035); box(g, .121, .02, .071, c || '#8a6a2a', 0, GY + .03, GZ + .035); return g; } },
+    moneta: { how: 'pugno', grip: [.75, .7], make: c => { const g = new THREE.Group(); const s = new THREE.Mesh(new THREE.SphereGeometry(.045, 7, 5), lm('#7a5a3a')); s.position.set(0, GY + .01, GZ + .03); s.scale.y = .8; g.add(s); cyl(g, .012, .02, .03, '#5a3a20', .045, GY + .01, GZ + .03, ...X, 6); return g; } },
+    pacchetto: { how: 'pugno', grip: [.55, .6], make: c => { const g = new THREE.Group(); box(g, .055, .085, .024, '#f2ead8', 0, GY + .01, GZ + .015, 0, 0, PI / 2); box(g, .03, .086, .025, c || '#c83a3a', 0, GY + .01, GZ + .015, 0, 0, PI / 2); return g; } },
+    cassetta: { how: 'piatto', grip: [.45, .7], make: c => { const g = new THREE.Group(); box(g, .1, .065, .015, c || '#3a3a4a', .02, GY + .03, GZ - .005); box(g, .07, .025, .016, '#f2ead8', .02, GY + .03, GZ - .005); return g; } },
+    ruota: { how: 'appeso', atGrip: true, out: .08, grip: [.9, .8], make: () => { const g = new THREE.Group(), cy = GY + .27; const t = new THREE.Mesh(new THREE.TorusGeometry(.26, .045, 6, 18), lm('#1a1a1e')); t.position.set(0, cy, GZ - .02); g.add(t); const r = new THREE.Mesh(new THREE.TorusGeometry(.22, .012, 4, 18), lm('#a8acb4')); r.position.set(0, cy, GZ - .02); g.add(r); for (let k = 0; k < 6; k++) box(g, .005, .44, .005, '#a8acb4', 0, cy, GZ - .02, 0, 0, k * PI / 6); cyl(g, .03, .03, .1, '#5a5a60', 0, cy, GZ - .02, PI / 2, 0, 0, 8); return g; } },   // per il cerchione, di taglio lungo la gamba
+    tanica: { how: 'appeso', atGrip: true, grip: [.92, .85], make: c => { const g = new THREE.Group(), k = c || '#c83a3a', H = GY + .05; box(g, .13, .022, .028, k, 0, GY, GZ); [-1, 1].forEach(s => box(g, .022, .05, .028, k, s * .055, GY + .025, GZ)); box(g, .3, .36, .14, k, 0, H + .18, GZ); box(g, .24, .3, .145, shade(k, 1.12), 0, H + .2, GZ); cyl(g, .022, .022, .04, '#1a1a1e', .12, H + .01, GZ, 0, 0, -.6, 8); return g; } },
+    rottame: { how: 'regge', d: .25, w: .4, make: c => { const g = new THREE.Group(); box(g, .4, .16, .22, c || '#6a6e78', 0, -.04, 0, 0, .2, .1); box(g, .25, .12, .2, '#7a4a2a', .04, .08, .02, .3, 0, -.2); cyl(g, .03, .03, .35, '#8a8e98', -.05, .02, .05, 0, 0, 1.2); return g; } },
+    cassa: { how: 'regge', d: .32, w: .4, make: c => { const g = new THREE.Group(), k = c || '#9a7a4a'; box(g, .4, .28, .32, k, 0, 0, 0); [-.08, .08].forEach(y => box(g, .405, .03, .325, shade(k, .7), 0, y, 0)); return g; } },
+    sacco: { how: 'regge', d: .3, w: .42, make: c => { const g = new THREE.Group(), k = c || '#c8b080'; const s = new THREE.Mesh(new THREE.SphereGeometry(.24, 8, 6), lm(k)); s.scale.set(1, .85, .6); g.add(s); box(g, .1, .06, .1, shade(k, .8), 0, .2, 0); return g; } },
+    tronco: { how: 'regge', d: .22, w: .34, make: c => { const g = new THREE.Group(), k = c || '#8a5a2a'; [[-.08, -.04], [.08, -.04], [0, .08]].forEach(([y, z]) => cyl(g, .055, .055, .55, k, 0, y, z, 0, 0, PI / 2, 7)); return g; } },
+    mattone: { how: 'regge', d: .13, w: .3, make: c => { const g = new THREE.Group(); for (let i = 0; i < 4; i++) box(g, .25, .065, .12, c || '#b8584a', 0, -.1 + i * .068, 0, 0, (i % 2) * .08, 0); return g; } },
+    lastra: { how: 'appeso', atGrip: true, out: .05, grip: [.85, .8], make: c => { const g = new THREE.Group(); box(g, .6, .5, .012, c || '#8a9098', .1, GY + .2, GZ - .03); box(g, .6, .02, .02, shade(c || '#8a9098', .8), .1, GY - .04, GZ - .03); return g; } },   // presa per il bordo di sopra, di taglio lungo la gamba
+    mucchio: { how: 'regge', d: .3, w: .4, make: c => FAM.sacco.make(c || '#3a3838') },
+  };
+  // le famiglie che hanno un modello definito in oggetti3d.js (profili torniti, sagome estruse): id → tipo
+  const O3 = { bottiglia: () => 'bottiglia', latta: () => 'latta', tazza: id => /thermos/.test(id) ? 'thermos' : null, lampadina: id => /torcia/.test(id) ? 'torcia' : null,
+    martello: id => /martell/.test(id) ? 'martello' : null, chiave: id => /chiave/.test(id) ? 'chiave' : null, lama: id => /coltell|taglierino/.test(id) ? 'coltello' : null };
+  // cose che hanno già il loro modello in mano (models.js, le armi del kit) o una posa a parte (anim_vita.js: HELD_UP)
+  const SKIP = /^(bomboletta|telefono|fotocamera|piede|gesso|manganello|cartello|pistola|mitra|lupara|fucile|coltello|pala|molotov|carriola|cassa|roba|merce|viveri|materiali|mobili|refurtiva|pugni)$/;
+  // famiglia e colore: quelle delle icone del Menu (se c'è), altrimenti un ripiego sul nome
+  const FALLBACK = [[/bottigl|vino|birra|acqua|olio|grappa/, 'bottiglia'], [/latta|scatol/, 'latta'], [/pane|panino/, 'pane'], [/radio/, 'radio'], [/tanica|benzina/, 'tanica'], [/carta|giornal|libr|document/, 'carta'], [/martell/, 'martello'], [/chiave|pinze/, 'chiave'], [/sedia/, 'sedia'], [/ruota/, 'ruota'], [/sacc|farina|cemento/, 'sacco']];
+  const FC = {};
+  function famOf(id) {
+    if (FC[id]) return FC[id];
+    let f = null, c = null;
+    if (typeof MenuUI !== 'undefined' && MenuUI.famOf) { try { const r = MenuUI.famOf(id); f = r[0]; c = r[1]; } catch (e) { } }
+    if (!f || !FAM[f]) { f = null; for (const [re, k] of FALLBACK) if (re.test(id)) { f = k; break; } }
+    return (FC[id] = { f: f || 'cassa', c });
+  }
+
+  // ---------------- il modello in mano (uno per persona e per oggetto, creato alla prima richiesta) ----------------
+  const _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
+  function holderFor(P, id) {
+    const R = P.R, map = R.mano || (R.mano = {}); if (map[id] !== undefined) return map[id];
+    const F = famOf(id), D = FAM[F.f]; let h = null;
+    try {
+      const o3 = typeof Oggetti3D !== 'undefined' && Oggetti3D && O3[F.f] && O3[F.f](id);   // [modelli] la versione definita, se c'è
+      const obj = o3 ? Oggetti3D.inHand(o3, F.c, id, GY, GZ) : D.make(F.c, id); h = new THREE.Group(); h.add(obj);
+      if (D.how === 'appeso' && !D.atGrip) obj.position.y += GY - .05;   // il manico (a ~5 cm nei modelli più semplici) nel centro del pugno, il resto sotto
+      if (D.how === 'regge') { const u = P.g.userData; if (u.body) { const s = u.body.scale; h.scale.set(1 / s.x, 1 / s.y, 1 / s.z); u.body.add(h); } else P.g.add(h); }
+      else { const bone = R.b.WristR; bone.getWorldScale(_v); P.g.getWorldScale(_v2); h.scale.setScalar(_v2.x / (_v.x || 1)); h.quaternion.copy(QHAND); bone.add(h); }
+      h.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+      h.visible = false;
+    } catch (e) { h = null; }
+    return (map[id] = h);
+  }
+  function hideAll(R) { const m = R.mano; if (m) for (const k in m) if (m[k]) m[k].visible = false; }
+
+  // ---------------- le braccia ----------------
+  const _d = [0, 0, 0], D3 = (x, y, z) => { _d[0] = x; _d[1] = y; _d[2] = z; return _d; };
+  const _s0 = new THREE.Vector3(), _s1 = new THREE.Vector3(), _s2 = new THREE.Vector3();
+  const SW = P => Math.sin(P.time * 5.5 + P.r * 6) * Math.min(1, Math.abs(P.o.speed || 0) / 3);   // il dondolio camminando
+
+  Anim.def('tiene', { fade: .25, fn(P, A) {
+    const R = P.R; hideAll(R);
+    const id = A.tiene; if (!id || P.w <= 0) return;
+    const F = famOf(id), D = FAM[F.f]; if (!D) return;
+    const sw = SW(P), grip = D.grip || [.8, .7], bk = P.bulk || 0;
+    if (D.how === 'regge') {
+      // a due mani, contro la pancia: i palmi sui fianchi della cosa, le dita in giù e avanti; la schiena compensa il peso
+      const w = (D.w || .4) / 2, d = D.d || .3, y = 1.0 + .012 * sw, z = .13 + bk + d / 2;
+      P.rot('Abdomen', -.08, 0, 0); P.rot('Chest', -.05, 0, 0);
+      P.hold('R', -(w + .015), y - .03, z, [1, 0, 0], [-.8, -.5, -.3]); P.hold('L', w + .015, y - .03, z, [-1, 0, 0], [.8, -.5, -.3]);
+      P.fingers('R', .35, .3); P.fingers('L', .35, .3);
+      const h = holderFor(P, id); if (h && P.w > .5) { h.position.set(0, y, z); h.visible = true; }
+      return;
+    }
+    // [mani] tutto il resto si porta lungo il fianco destro, come si fa davvero: il palmo verso la coscia, il gomito morbido
+    if (D.how === 'appeso') {
+      // per il manico, il braccio quasi teso, la cosa sotto il pugno (le dita in giù); il peso tira giù la spalla
+      P.hold('R', -.23 - bk - (D.out || 0), .8, .03 + .04 * sw, [1, 0, 0], [-.3, -1, -.4]);
+      P.rot('Chest', 0, 0, -.04);
+    } else if (D.how === 'lungo') {
+      // l'attrezzo orizzontale, in avanti, scostato dalla gamba
+      P.hold('R', -.27 - bk, .87 + .015 * sw, .1 + .05 * sw, [1, 0, 0], [-.3, -1, -.6]);
+    } else {
+      // pugno e piatto: il gomito piegato, l'avambraccio avanti e in giù, la mano IN LINEA con l'avambraccio (polso dritto):
+      // la cosa nel pugno sta quasi dritta, inclinata in avanti come l'avambraccio (prima la mano puntava avanti e il polso
+      // si piegava di 80°). La torcia invece si tiene col braccio giù, la luce in avanti.
+      if (D.x) P.hold('R', -.25 - bk, .84, .1 + .04 * sw, [1, 0, 0], [-.35, -1, -.6]);
+      else {
+        // il braccio lungo il fianco e l'avambraccio orizzontale in avanti: col polso dritto e il pollice in su la cosa sta dritta
+        const b = P.R.b, ua = b.UpperArmR, la = b.LowerArmR, wr = b.WristR;
+        ua.getWorldPosition(_s0); la.getWorldPosition(_s1); wr.getWorldPosition(_s2);
+        const A = _s0.distanceTo(_s1), Bf = _s1.distanceTo(_s2); P.g.worldToLocal(_s0);
+        P.hold('R', _s0.x - .03 - bk * .5, _s0.y - A + .02 + .01 * sw, _s0.z + Bf + .09 + .03 * sw, [1, 0, 0], [-.2, -1, -.9]);
+      }
+    }
+    P.fingers('R', grip[0], grip[1]);
+    const h = holderFor(P, id); if (h && P.w > .5) h.visible = true;
+  } });
+
+  // quando la posa si spegne del tutto non gira più: la pulizia sta nel respiro (sempre acceso), come in anim_vita.js
+  const VITA0 = Anim.POSES.vita;
+  if (VITA0 && !VITA0.__mano) Anim.def('vita', { fade: VITA0.fade, __mano: true, __vp: VITA0.__vp, fn(P, A) { hideAll(P.R); VITA0.fn(P, A); } });
+
+  // ---------------- mappe ----------------
+  // gli strati delle braccia che si possono lasciare per tenere qualcosa (gesti da fermi)
+  const FREE = { tasche: 1, braccia: 1, dietro: 1, orologio: 1, saluta: 0 };
+  function pick(id, s) {
+    if (!id || SKIP.test(id) || s.act && s.act !== 'aspetta' && s.act !== 'appoggiato') return;
+    if (s.upper && !FREE[s.upper]) return;
+    const F = famOf(id); if (!FAM[F.f]) return;
+    s.upper = 'tiene'; s.tiene = id;
+  }
+  Anim.npcMap((st, n, s) => { if (n.dead || n.stun > 0 || n.inside || n.inVeh) return; if (n.weapon && n.hand === n.weapon) return; pick(n.hand, s); });
+  Anim.playerMap((st, p, s) => { if (p.stun > 0 || p.vehicle || (p.cur && p.cur !== 'pugni')) return; pick(p.hand, s); });
+  // un oggetto nel pugno per le pose degli altri file (la molotov in anim_lotta.js): make() costruisce nel sistema della mano
+  // (GY, GZ = il centro del pugno). Restituisce il contenitore; resta acceso finché la posa lo chiede (si spegne nel respiro).
+  function inHand(P, key, make, sd) {
+    const R = P.R, map = R.mano || (R.mano = {}), id = '__' + key + (sd || 'R');
+    let h = map[id];
+    if (h === undefined) { h = null; const bone = R.b['Wrist' + (sd || 'R')]; if (bone) { h = new THREE.Group(); h.add(make(GY, GZ)); bone.getWorldScale(_v); P.g.getWorldScale(_v2); h.scale.setScalar(_v2.x / (_v.x || 1)); h.quaternion.copy(QHAND); bone.add(h); h.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); } map[id] = h; }
+    if (h && P.w > .5) h.visible = true; return h;
+  }
+  // per lo studio delle pose e le prove
+  Anim.mano = { FAM, famOf, inHand, GY, GZ };
+})();
+</script>
+<script data-m="anim_gesti">/* ================= ANIMAZIONI: i gesti di tutti i giorni =================
+   Da fermi, senza niente da fare, la gente non resta una statua: ogni tanto si gratta la testa, sbadiglia, si allaccia una
+   scarpa, si sistema il colletto, si tasta le tasche, si strofina il naso, si passa una mano nei capelli, guarda lontano con
+   la mano sugli occhi. E in due: la stretta di mano tra amici che si incrociano (popolo.js li ferma un attimo: greet.shake),
+   la pacca sulla spalla a chi si ha accanto mentre si chiacchiera.
+   Ognuno ha i suoi tempi (un numero fisso per persona sfasa tutto: non lo fanno tutti insieme); un gesto dura 2-4 s, poi
+   niente per un po'. I gesti lasciano il posto a tutto il resto: lavori, lotta, attrezzi in mano, chiacchiere.
+   Le pose usano il motore (animazioni.js): P.reach (il polso in un punto), P.grab (una presa vera), P.legTo, P.fingers. */
+(function () {
+  'use strict';
+  if (typeof Anim === 'undefined' || typeof THREE === 'undefined') return;
+  const clamp = Anim.clamp, smooth = Anim.smooth, hash = Anim.hashStr;
+  const D = (n, spec) => Anim.def(n, Object.assign({ fade: .3 }, spec));
+  // dentro il gesto: sale nel primo 20%, resta, scende nell'ultimo 25%
+  const env = k => k < .2 ? smooth(k / .2) : k > .75 ? 1 - smooth((k - .75) / .25) : 1;
+  const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
+  // posizione di un osso nello spazio del personaggio
+  function at(P, k, out) { const b = P.R.b[k]; if (!b) return null; b.getWorldPosition(out); return P.g.worldToLocal(out); }
+  // un punto del mondo ({x, y, z}: z del mondo = y del gioco) nello spazio del personaggio
+  function toLocal(P, p, out) { out.set(p.x, p.y, p.z); return P.g.worldToLocal(out); }
+
+  // ---------------- da soli ----------------
+  // si gratta la testa: la destra dietro la nuca, le dita che grattano, la testa piegata
+  D('gratta', { fn(P, A) {
+    const e = env(A.gk || 0); if (!at(P, 'Head', _a)) return;
+    P.rot('Head', .12 * e, 0, -.1 * e);
+    P.reach('R', _a.x - .05, _a.y + .14, _a.z - .06, [-1, .4, -.2], e);
+    P.fingers('R', .35 + .3 * Math.max(0, Math.sin(P.time * 15)), .3, e);
+  } });
+  // sbadiglia: la sinistra davanti alla bocca, la testa indietro, il petto che si gonfia
+  D('sbadiglia', { fn(P, A) {
+    const k = A.gk || 0, e = env(k), o = Math.sin(clamp(k / .8, 0, 1) * Math.PI);
+    P.rot('Chest', -.12 * o, 0, 0); P.rot('Neck', -.15 * o, 0, 0); P.rot('Head', -.22 * o, 0, 0);
+    if (!at(P, 'Head', _a)) return;
+    P.reach('L', _a.x + .03, _a.y + .03, _a.z + .17, [1, -.7, -.1], e); P.fingers('L', .25, .2, e);   // la mano davanti alla bocca, non dentro la faccia
+    P.rot('ShoulderL', 0, 0, .08 * o); P.rot('ShoulderR', 0, 0, -.08 * o);
+  } });
+  // si allaccia una scarpa: giù su un ginocchio, le mani sulla scarpa destra, la testa china
+  D('allaccia', { base: 'Idle', fn(P, A) {
+    const k = A.gk || 0, d = env(k), By = -.46 * d;
+    P.body({ y: By, z: .03 * d });
+    P.rot('Abdomen', .65 * d, 0, 0); P.rot('Chest', .25 * d, 0, 0); P.rot('Head', .2 * d, 0, 0);
+    P.legTo('R', -.13, .05 - By, .3, 0, .4, 1, 0, .1, d);
+    P.legTo('L', .13, .12 - By, -.36, 0, -.6, .4, -1.1, 0, d);
+    if (!at(P, 'LowerLegR', _a)) return;
+    const tug = .02 * Math.sin(P.time * 9);
+    // il nodo: sul collo del piede, 25 cm sotto e davanti al ginocchio
+    P.reach('R', _a.x - .05, _a.y - .3 + tug, _a.z + .12, [-.7, .2, -.2], d); P.reach('L', _a.x + .06, _a.y - .3 - tug, _a.z + .12, [.7, .2, -.2], d);
+    P.fingers('R', .55, .8, d); P.fingers('L', .55, .8, d);
+  } });
+  // si sistema il colletto: le due mani al bavero, un tirone
+  D('colletto', { fn(P, A) {
+    const k = A.gk || 0, e = env(k), tug = .025 * Math.max(0, Math.sin(k * Math.PI * 3));
+    if (!at(P, 'Neck', _a)) return;
+    P.rot('Neck', -.08 * e, 0, 0); P.rot('Chest', -.04 * e, 0, 0);
+    P.reach('R', _a.x - .09, _a.y - .1 - tug, _a.z + .12, [-.8, -.6, 0], e); P.reach('L', _a.x + .09, _a.y - .1 - tug, _a.z + .12, [.8, -.6, 0], e);
+    P.fingers('R', .7, .7, e); P.fingers('L', .7, .7, e);
+  } });
+  // si tasta le tasche (le chiavi? il portafoglio?): una mano ai pantaloni, l'altra alla giacca, a turno; la testa giù
+  D('tasche_cerca', { fn(P, A) {
+    const k = A.gk || 0, e = env(k), s = Math.sin(k * Math.PI * 4);
+    P.rot('Head', .3 * e, 0, 0); P.rot('Chest', .06 * e, .08 * s * e, 0);
+    if (!at(P, 'Hips', _a)) return;
+    P.reach('R', _a.x - .17, _a.y - .1 + .04 * s, _a.z + .06, [-.6, -.5, -.3], e);
+    P.reach('L', _a.x + .12, _a.y + .32 - .04 * s, _a.z + .16, [.7, -.6, 0], e);
+    P.fingers('R', .3, .3, e); P.fingers('L', .3, .3, e);
+  } });
+  // si strofina il naso: l'indice sotto il naso, avanti e indietro
+  D('naso', { fn(P, A) {
+    const k = A.gk || 0, e = env(k);
+    if (!at(P, 'Head', _a)) return;
+    P.rot('Head', .08 * e, -.1 * e, 0);
+    P.reach('R', _a.x - .06 + .02 * Math.sin(P.time * 12), _a.y - .02, _a.z + .12, [-.8, -.6, 0], e); P.fingerEach('R', [.2, .8, .9, .9], .6, e);
+  } });
+  // si passa una mano nei capelli: dalla fronte alla nuca
+  D('capelli', { fn(P, A) {
+    const k = A.gk || 0, e = env(k), m = smooth(clamp((k - .2) / .55, 0, 1));
+    if (!at(P, 'Head', _a)) return;
+    P.rot('Head', -.1 * m * e, 0, 0);
+    P.reach('R', _a.x - .03, _a.y + .12 + .04 * Math.sin(m * Math.PI), _a.z + .1 - .2 * m, [-1, .5, 0], e); P.fingers('R', .3, .2, e);
+  } });
+  // guarda lontano: la sinistra sopra gli occhi come una visiera, il mento su
+  D('guarda_lontano', { fn(P, A) {
+    const k = A.gk || 0, e = env(k);
+    if (!at(P, 'Head', _a)) return;
+    P.rot('Neck', -.06 * e, 0, 0); P.rot('Head', -.12 * e, .15 * Math.sin(k * Math.PI * 2) * e, 0);
+    P.grab('L', _a.x + .01, _a.y + .13, _a.z + .17, [.2, 0, 1], [-1, .2, .3], [1, .2, -.3], e);   // il palmo in giù, le dita di traverso sulla fronte P.fingers('L', .1, .1, e);
+  } });
+
+  // ---------------- in due ----------------
+  // la stretta di mano: le due destre a metà strada, il pollice in su, le dita verso l'altro; due, tre scosse
+  D('stretta', { fade: .25, fn(P, A) {
+    const p = A.compagno; if (!p) return;
+    const k = A.gk || 0, e = env(k);
+    toLocal(P, p, _a); _a.y = 0; const l = Math.hypot(_a.x, _a.z) || 1, dx = _a.x / l, dz = _a.z / l;
+    const half = Math.min(.42, l / 2 - .02), shake = .035 * Math.sin(k * Math.PI * 6) * (k > .25 && k < .8 ? 1 : 0);
+    P.rot('Chest', .04 * e, Math.atan2(dx, dz) * .2 * e, 0);
+    P.grab('R', dx * half - dz * .04, 1.0 + shake, dz * half + dx * .04, [0, 1, 0], [dx, -.1, dz], [-.6, -1, -.2], e);
+    P.fingers('R', .62, .55, e);
+  } });
+  // la pacca sulla spalla: la mano dal lato di chi si ha accanto, sulla sua spalla, due colpetti
+  D('pacca', { fade: .25, fn(P, A) {
+    const p = A.compagno; if (!p) return;
+    const k = A.gk || 0, e = env(k), pat = .035 * Math.max(0, Math.sin(k * Math.PI * 5));
+    toLocal(P, p, _a); const l = Math.hypot(_a.x, _a.z) || 1;
+    // la spalla più vicina dell'altro: 18 cm da lui verso di noi, all'altezza delle spalle
+    const dx = _a.x / l, dz = _a.z / l;
+    _b.set(_a.x - dx * .12, 1.36 + pat, _a.z - dz * .12);
+    // il palmo in giù sulla spalla, le dita che la scavalcano (X = Y × Z: dita verso l'altro e in giù, palmo verso terra)
+    _c.set(dx, -.45, dz).normalize(); const ax = [_c.z, 0, -_c.x];   // (Y × giù)
+    const sd = _a.x > 0 ? 'L' : 'R', sg = sd === 'L' ? 1 : -1;   // la mano dal suo lato (+x è la sinistra)
+    P.rot('Chest', 0, -sg * .12 * e, sg * .05 * e);
+    P.grab(sd, _b.x, _b.y, _b.z, ax, [_c.x, _c.y, _c.z], [sg * .7, -.6, -.1], e); P.fingers(sd, .3, .2, e);
+  } });
+
+  // ---------------- mappe ----------------
+  const SOLI = ['gratta', 'sbadiglia', 'allaccia', 'colletto', 'tasche_cerca', 'naso', 'capelli', 'guarda_lontano'];
+  const DUR = { gratta: 2.6, sbadiglia: 2.8, allaccia: 4.5, colletto: 2.2, tasche_cerca: 3, naso: 1.8, capelli: 2, guarda_lontano: 3.5 };
+  const FREE = { tasche: 1, braccia: 1, dietro: 1, orologio: 1 };
+  // un gesto ogni tanto: il tempo diviso in turni (lunghi 24-38 s, diversi per persona); in un turno su tre circa, all'inizio,
+  // un gesto a caso. Restituisce [nome, avanzamento 0-1] o null.
+  function turno(id, clock) {
+    const ph = hash(id + ':g') * 97, per = 24 + hash(id + ':p') * 14, slot = Math.floor((clock + ph) / per);
+    if (hash(id + ':' + slot) > .36) return null;
+    const g = SOLI[Math.floor(hash(id + ':' + slot + 'q') * SOLI.length)], t = (clock + ph) - slot * per - 1, k = t / DUR[g];
+    return k >= 0 && k < 1 ? [g, k] : null;
+  }
+  function soli(s, id, clock, busy, still) {
+    if (!still || s.talk || busy) return;
+    if (s.upper && !FREE[s.upper]) return;
+    const T = turno(String(id), clock); if (!T) return;
+    if (T[0] === 'allaccia') { if (s.act && s.act !== 'aspetta') return; s.act = 'allaccia'; s.upper = null; }
+    else { if (s.act && s.act !== 'aspetta' && s.act !== 'appoggiato') return; s.upper = T[0]; }
+    s.gk = T[1];
+  }
+  const NOGESTI = { combatte: 1, fugge: 1, insegue: 1, affronta: 1, perquisisce: 1 };
+  Anim.npcMap((st, n, s) => {
+    if (n.dead || n.stun > 0 || n.inVeh || n.jailedUntil > st.t) return;
+    const clock = st.clock, a = n.action ? n.action.name : '';
+    // la stretta di mano (popolo.js: greet.shake) — l'altro dev'essere lì davanti
+    const G = n.greet;
+    if (G && G.shake && G.until > clock && !n.hand) {
+      const k = window.Game && Game.byId(st, G.who);
+      if (k && Math.hypot(k.x - n.x, k.y - n.y) < 2.4) { s.upper = 'stretta'; s.act = null; s.gk = clamp(1 - (G.until - clock) / 1.9, 0, 1); s.compagno = { x: k.x, y: 0, z: k.y }; s.lookAt = { x: k.x, y: 1.55, z: k.y, ground: true }; return; }
+    }
+    if (NOGESTI[a] || n.panic > 0 || (n.cop && a !== 'routine') || (n.inside && !n.room)) return;
+    const still = Math.abs(n.speedNow || 0) < .2;
+    // in crocchio: a volte una pacca sulla spalla a chi si ha accanto (entro 95 cm: il braccio ci deve arrivare)
+    if (still && !s.upper && n.pop && n.pop.spot && n.pop.spot.on && !n.hand) {
+      const ph = hash(n.id + ':pc') * 61, slot = Math.floor((clock + ph) / 47);
+      if (hash(n.id + ':pc' + slot) < .3) {
+        const k = (clock + ph - slot * 47) / 1.8;
+        if (k >= 0 && k < 1) {
+          let best = null, bd = .95; for (const m of st.npcs) { if (m === n || m.dead || m.inside) continue; const d = Math.hypot(m.x - n.x, m.y - n.y); if (d < bd && d > .4) { bd = d; best = m; } }
+          if (best) { s.upper = 'pacca'; s.gk = k; s.compagno = { x: best.x, y: 0, z: best.y }; s.lookAt = { x: best.x, y: 1.55, z: best.y, ground: true }; return; }
+        }
+      }
+    }
+    soli(s, n.id, clock, !!n.hand, still);
+  });
+  // il protagonista: dopo 8 secondi fermo senza fare niente
+  const PM = { still: 0, t: 0 };
+  Anim.playerMap((st, p, s) => {
+    const dt = clamp(st.clock - PM.t, 0, .2); PM.t = st.clock;
+    const idle = !p.vehicle && !(p.stun > 0) && Math.abs(p.speed || 0) < .1 && (!p.cur || p.cur === 'pugni') && !p.hand && !p.carrying && !(p.jz > 0);
+    PM.still = idle ? PM.still + dt : 0;
+    if (PM.still > 8) soli(s, 'player', st.clock, false, true);
+  });
+  Anim.gesti = { SOLI, turno };
 })();
 </script>
 <script data-m="models">
@@ -13919,6 +14504,37 @@ var Models = (function () {
     const guns = {}; let parent = null; S.root.traverse(o => { if (/^(AK|Pistol|Shotgun|SMG|Knife_1|Revolver)$/.test(o.name)) { guns[o.name] = o; parent = o.parent; } });
     GUNTPL = { guns, boneScale: parent ? (() => { S.root.updateMatrixWorld(true); const v = new THREE.Vector3(); parent.getWorldScale(v); return v.x * S.k; })() : 1 };
   }
+  // [armi] le armi del Toon Shooter sono fatte per i suoi soldatini (mani e armi enormi): in mano ai personaggi veri la
+  // pistola misurava 60 cm e il coltello più di un metro. Si riportano alla lunghezza vera (metri), attorno all'impugnatura.
+  const GUN_LEN = { Pistol: .22, Revolver: .25, SMG: .45, Shotgun: .7, AK: .88, Knife_1: .3 };
+  function trueSize(g, guns) {
+    g.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4(), m = new THREE.Matrix4(), box = new THREE.Box3(), tmp = new THREE.Box3(), sc = new THREE.Vector3();
+    for (const k in guns) {
+      const gn = guns[k], L = GUN_LEN[k] / ((window.Anim && Anim.HAND) || 1); if (!L) continue;   // le mani poi si rimpiccioliscono (Anim.HAND): l'arma, figlia del dito, con loro
+      inv.copy(gn.matrixWorld).invert(); box.makeEmpty();
+      gn.traverse(o => { if (o.isMesh) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); tmp.copy(o.geometry.boundingBox).applyMatrix4(m.multiplyMatrices(inv, o.matrixWorld)); box.union(tmp); } });
+      if (box.isEmpty()) continue;
+      const sz = box.getSize(new THREE.Vector3()), len = Math.max(sz.x, sz.y, sz.z) * gn.getWorldScale(sc).x;
+      if (len > 1e-4) { gn.scale.multiplyScalar(L / len); gn.updateMatrixWorld(true); }
+    }
+  }
+  // [modelli] le armi del kit sono blocchi; al loro posto i modelli definiti di oggetti3d.js, nel pugno destro (la canna lungo
+  // le dita, il sopra verso il pollice, l'impugnatura al centro del pugno). Le pose (anim_lotta.js) ne leggono l'asse come prima.
+  const ARMI_VERE = { Pistol: 'pistola', Revolver: 'pistola', SMG: 'mitra', Shotgun: 'lupara', AK: 'fucile', Knife_1: 'coltello' };
+  function armiVere(g, m, guns) {
+    if (typeof Oggetti3D === 'undefined' || !Oggetti3D) return;
+    const wr = m.getObjectByName('WristR'); if (!wr) return;
+    g.updateMatrixWorld(true); const ws = new THREE.Vector3(), gs = new THREE.Vector3(); wr.getWorldScale(ws); g.getWorldScale(gs);
+    const HAND = (window.Anim && Anim.HAND) || 1, QH = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+    for (const k in ARMI_VERE) {
+      if (!guns[k]) continue;
+      const holder = new THREE.Group(); holder.quaternion.copy(QH); holder.scale.setScalar(gs.x / (ws.x || 1) / HAND);   // in metri, a mano già rimpicciolita
+      const root = Oggetti3D.armaInMano(ARMI_VERE[k], .1, .02); holder.add(root); wr.add(holder);
+      root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+      guns[k].visible = false; guns[k].userData.vecchia = true; root.visible = false; guns[k] = root;   // il kit resta spento
+    }
+  }
   function parallel(a, b, cb) { cb(a, b); for (let i = 0; i < a.children.length; i++) parallel(a.children[i], b.children[i], cb); }
   function cloneSkinned(src) {
     const sl = new Map(), cl = new Map(), c = src.clone(true);
@@ -13960,7 +14576,7 @@ var Models = (function () {
     // armi del soldato: sono già nella mano, si accende solo quella giusta
     const guns = {}; m.traverse(o => { if (/^(AK|Pistol|Revolver|Revolver_Small|Shotgun|SMG|Sniper|Sniper_2|Knife_1|Knife_2|GrenadeLauncher|RocketLauncher|ShortCannon|Shovel)$/.test(o.name)) { guns[o.name] = o; o.visible = false; } });
     // i civili non hanno armi nel modello: si prendono quelle del kit (stesse ossa Quaternius) e si agganciano all'indice destro
-    if (!Object.keys(guns).length && GUNTPL) { const bone = m.getObjectByName('Index1R'); if (bone) { const f = GUNTPL.boneScale / boneScaleOf(CM, 'Index1R'); for (const k in GUNTPL.guns) { const t = GUNTPL.guns[k], gn = t.clone(true); gn.position.copy(t.position).multiplyScalar(f); gn.quaternion.copy(t.quaternion); gn.scale.copy(t.scale).multiplyScalar(f); gn.visible = false; gn.traverse(o => { if (o.isMesh) o.castShadow = true; }); bone.add(gn); guns[k] = gn; } } }
+    if (!Object.keys(guns).length && GUNTPL) { const bone = m.getObjectByName('Index1R'); if (bone) { const f = GUNTPL.boneScale / boneScaleOf(CM, 'Index1R'); for (const k in GUNTPL.guns) { const t = GUNTPL.guns[k], gn = t.clone(true); gn.position.copy(t.position).multiplyScalar(f); gn.quaternion.copy(t.quaternion); gn.scale.copy(t.scale).multiplyScalar(f); gn.visible = false; gn.traverse(o => { if (o.isMesh) o.castShadow = true; }); bone.add(gn); guns[k] = gn; } trueSize(g, guns); armiVere(g, m, guns); } }
     const mixer = new THREE.AnimationMixer(m), acts = {};
     for (const k in CM.clips) acts[k] = mixer.clipAction(CM.clips[k]);
     const sh = new THREE.Mesh(new THREE.CircleGeometry(.42, 12), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .35, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = .02; g.add(sh);
@@ -14056,11 +14672,17 @@ var Models = (function () {
     }
     if (handL && (ex.includes('bag') || ex.includes('paper'))) { const hp2 = new THREE.Vector3(); handL.getWorldPosition(hp2); const bag = ex.includes('bag') ? B(.22, .26, .1, ['#c43c52', '#e8d8b0', '#2a3b66', '#f4f1ea'][Math.floor(r() * 4)]) : B(.04, .3, .2, '#e8e2d0'); tagC(pin(g, handL, bag, hp2.x, hp2.y - .18, hp2.z)); g.userData.carryBag = bag; }
   }
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+  // [anim] dissolvenze: tra camminata e corsa più lunghe (cambia anche il ritmo), verso la caduta un filo più svelte
+  const LOCO = { Walk: 1, Run: 1, Walk_Shoot: 1, Run_Gun: 1, Run_Shoot: 1, Idle: 1 };
   function play(g, name, once) {
     const u = g.userData, a = u.acts[name] || u.acts.Idle; if (!a || u.cur === a) return;
     a.reset(); a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); a.clampWhenFinished = !!once; a.play();
-    if (!once && a.getClip) a.time = Math.random() * a.getClip().duration;   // [passo] ognuno al suo punto del passo: non camminano a tempo
-    if (u.cur) u.cur.crossFadeTo(a, .18, false); u.cur = a;
+    // [passo] ognuno al suo punto del passo (non camminano a tempo); [anim] ma solo la prima volta: chi si ferma e riparte
+    // riprende il passo da dove l'aveva lasciato, invece di saltare a un punto a caso (i piedi scattavano)
+    if (!once && a.getClip) { u.ph = u.ph || {}; if (u.ph[name] === undefined) u.ph[name] = Math.random() * a.getClip().duration; a.time = u.ph[name]; }
+    if (u.cur) { if (u.cur.getClip && u.ph) u.ph[u.cur.getClip().name] = u.cur.time; const both = LOCO[u.cur.getClip ? u.cur.getClip().name : ''] && LOCO[name]; u.cur.crossFadeTo(a, once ? .22 : both ? .3 : .2, false); }
+    u.cur = a;
   }
   // stato → animazione
   function animPerson(g, o, dt) {
@@ -14074,16 +14696,20 @@ var Models = (function () {
     if (o.down) clip = 'Death';
     else if (o.punch > 0) clip = u.acts.Punch ? 'Punch' : 'Punch_Right';
     else if (o.hit > .5) clip = u.acts.HitReact ? 'HitReact' : 'HitRecieve';
-    else if (sp > 4.5) clip = o.weapon ? (u.acts.Run_Gun ? 'Run_Gun' : 'Run_Shoot') : 'Run';
-    else if (sp > .25) clip = o.weapon && u.acts.Walk_Shoot ? 'Walk_Shoot' : 'Walk';
+    // [anim] soglie con un margine: chi va piano attorno alla soglia non passa da una clip all'altra a ogni fotogramma;
+    // oltre i 3,8 m/s si corre (il passo veloce del giocatore, 4,2 m/s, sembrava una camminata a 2,6× di velocità)
+    else if (sp > (u.gait === 2 ? 3.3 : 3.8)) { clip = o.weapon ? (u.acts.Run_Gun ? 'Run_Gun' : 'Run_Shoot') : 'Run'; u.gait = 2; }
+    else if (sp > (u.gait >= 1 ? .15 : .35)) { clip = o.weapon && u.acts.Walk_Shoot ? 'Walk_Shoot' : 'Walk'; u.gait = 1; }
     else if (o.handsUp) clip = u.acts.Wave ? 'Wave' : 'Idle';
     else if (o.weapon) clip = u.acts.Idle_Shoot ? 'Idle_Shoot' : u.acts.Idle_Gun ? 'Idle_Gun' : 'Idle';
     else if (o.idle && u.acts[o.idle]) clip = o.idle;
+    if (sp <= .15 || o.down) u.gait = 0;
     // [animazioni] una posa di tutto il corpo può chiedere la sua clip di base (es. Idle per sedersi)
     const wb = window.Anim && Anim.want(g, o); if (wb && !o.down && !(o.punch > 0) && !(o.hit > .5) && u.acts[wb]) clip = wb;
     play(g, clip, clip === 'Death');
-    if (u.cur && (clip === 'Walk' || clip === 'Run' || clip === 'Walk_Shoot' || clip === 'Run_Gun' || clip === 'Run_Shoot')) u.cur.timeScale = clip.startsWith('Walk') ? Math.max(.5, sp / 1.6) : Math.max(.6, sp / 5);
-    else if (u.cur) u.cur.timeScale = 1;
+    let ts = 1;
+    if (u.cur && (clip === 'Walk' || clip === 'Run' || clip === 'Walk_Shoot' || clip === 'Run_Gun' || clip === 'Run_Shoot')) ts = clip.startsWith('Walk') ? clamp(sp / 1.6, .55, 2.2) : clamp(sp / 5, .7, 1.6);   // [anim] la camminata veloce non va oltre 2,2× (prima arrivava a 2,8 e il passo frullava)
+    if (u.cur) u.cur.timeScale += (ts - u.cur.timeScale) * Math.min(1, dt * 8);   // [anim] il ritmo cambia per gradi
     if (window.Anim) Anim.restore(g);   // [animazioni]
     u.mixer.update(dt);
     if (window.Anim) Anim.apply(g, o, dt, performance.now() / 1000);   // [animazioni] lo strato procedurale sopra la clip
@@ -16862,6 +17488,11 @@ var World = (function () {
       ISOLE.push({ id, name: NOMI[(n - 1) % NOMI.length] + (n > NOMI.length ? ' II' : ''), x, y, rx: rr, ry: rr * (.72 + r() * .26), rot: r() * 3.14, h: Math.min(26, rr * (tema === 'nuda' || tema === 'uccelli' ? .8 : 1.15) + 2), dome: true, amp: .2, seed: 100 + n, def: tema === 'palmeto' ? 'cala' : 'reef', kinds: r() < .35 ? [[r() * 6.28 - 3.14, .45, 'cala']] : [], veg: tema === 'pini' ? 'macchia' : tema === 'uccelli' ? 'nuda' : tema, tema, small: rr < 9, arco: rr > 9 && r() < .22, grotta: rr > 10 && r() < .25 });
       k--; } });
   }
+  // [isole2] dell'arcipelago restano due isole, le più belle: l'Isola delle Palme (piccola, davanti al porto) e l'Isola Grande
+  // del Sud (la montagna di giungla della tribù). Il resto (basi, villaggi, boomerang, creste, panettoni) non si genera più:
+  // meno terra da costruire e da disegnare, meno gente da muovere. Le definizioni restano qui sopra.
+  { const KEEP = new Set(['palme', 'grande_sud']); const keep = ISOLE.filter(I => KEEP.has(I.id)); ISOLE.length = 0; ISOLE.push(...keep);
+    LAGUNE.splice(0, 1); }   // la laguna dietro l'Isola Lunga
   let ISLES_ON = false;   // [arcipelago] durante la generazione dell'isola grande le isole non ci sono: le aggiunge expand() sulla mappa grande
   // [arcipelago] forme organiche: ogni isola è un corpo principale più alcuni lobi che ci si saldano sopra (come colline che si
   // fondono), su cui passa una deformazione a più scale: penisole, golfi, promontori; le creste serpeggiano.
@@ -18809,10 +19440,10 @@ var World = (function () {
       if (I.tema === 'uccelli') S.features.push({ type: 'colonia', id: 'colonia_' + I.id, x: I.x + OX, y: I.y + OY, r: Math.max(I.rx, I.ry) });
     });
     // la torre saracena sull'Isolotto della Torre, il relitto del Santa Rosalia sulla secca dell'Isola del Relitto
-    { const IT = ISOLE.find(I => I.id === 'torre'), x = IT.x + IT.top[0] * IT.rx + OX, y = IT.y + IT.top[1] * IT.ry + OY; S.ruins.push({ type: 'torre', id: 'torre_saracena', name: 'Torre saracena', x, y, r: 3.4 });
+    if (ISOLE.some(I => I.id === 'torre')) { const IT = ISOLE.find(I => I.id === 'torre'), x = IT.x + IT.top[0] * IT.rx + OX, y = IT.y + IT.top[1] * IT.ry + OY; S.ruins.push({ type: 'torre', id: 'torre_saracena', name: 'Torre saracena', x, y, r: 3.4 });
       for (let ty = Math.floor((y - 3.4) / TS); ty <= Math.floor((y + 3.4) / TS); ty++) for (let tx = Math.floor((x - 3.4) / TS); tx <= Math.floor((x + 3.4) / TS); tx++) if (Math.hypot(tx * TS + 1 - x, ty * TS + 1 - y) < 3.2) grid[ix(tx, ty)] = T_.CLIFF;
       place1(IT, 'torre_saracena', 'Torre saracena', x + 4.5, y + 1); }
-    { const IR = ISOLE.find(I => I.id === 'relitto'), sp0 = shoreB(IR, Math.PI + .15); S.ruins.push({ type: 'relitto', id: 'relitto', name: 'Il relitto del Santa Rosalia', x: sp0.x - 7, y: sp0.y + 2, ang: -.5 }); place1(IR, 'relitto', 'Il relitto del Santa Rosalia', sp0.x - 1, sp0.y); }
+    if (ISOLE.some(I => I.id === 'relitto')) { const IR = ISOLE.find(I => I.id === 'relitto'), sp0 = shoreB(IR, Math.PI + .15); S.ruins.push({ type: 'relitto', id: 'relitto', name: 'Il relitto del Santa Rosalia', x: sp0.x - 7, y: sp0.y + 2, ang: -.5 }); place1(IR, 'relitto', 'Il relitto del Santa Rosalia', sp0.x - 1, sp0.y); }
     // si pesca dagli scogli delle isole, si fa il bagno sulle loro spiagge
     ISOLE.forEach((I, n) => { if (I.arc || I.small || (I.dome && !I.use && Math.max(I.rx, I.ry) < 30)) return; let m = 0; const mx = I.use || !I.dome ? 2 : 1; /* solo le isole vere: niente pescate su ogni scoglio */ for (let k = 0; k < 16 && m < mx; k++) { const a = -Math.PI + k / 16 * Math.PI * 2 + n * .3, kd = isleKind(I, a); if (kd !== 'scogli' && kd !== 'falesia' && kd !== 'reef') continue;
       const sp0 = shoreB(I, a, 1.2); if (!walkB(Math.floor(sp0.x / TS), Math.floor(sp0.y / TS)) && !walkB(Math.floor((sp0.x - sp0.dx) / TS), Math.floor((sp0.y - sp0.dy) / TS))) continue;
@@ -21426,7 +22057,7 @@ var Game = (function () {
     }
     if (a === 'affronta') {
       if (dist(n.x, n.y, p.x, p.y) > 1.6) { if (!n.path.length || dist(n.goal.x, n.goal.y, p.x, p.y) > 2) goTo(n, p.x, p.y); stepAlong(n, 2.2, dt); }
-      else { n.face = Math.atan2(p.y - n.y, p.x - n.x); n.speedNow = 0; if (n.framedAngry && n.tr.cor > .7 && st.clock > (n.shoveAt || 0) && !p.vehicle) { n.shoveAt = st.clock + 6; p.stun = .8; damagePlayer(st, 8, n.face, n.id); say(st, n, 'Questa è per le voci che metti in giro!'); } }
+      else { n.face = Math.atan2(p.y - n.y, p.x - n.x); n.speedNow = 0; if (n.framedAngry && n.tr.cor > .7 && st.clock > (n.shoveAt || 0) && !p.vehicle) { n.shoveAt = st.clock + 6; p.kbx = Math.cos(n.face) * 5.5; p.kby = Math.sin(n.face) * 5.5; damagePlayer(st, 8, n.face, n.id); /* [anim] lo spintone ti manda indietro di un metro e barcolli; prima p.stun = .8 = a terra come morto */ say(st, n, 'Questa è per le voci che metti in giro!'); } }
       return;
     }
     if (a === 'insegue') {
@@ -25777,6 +26408,7 @@ var Popolo = (function () {
     if (curbWait(st, n, dt)) return;   // [passo] prima di attraversare si guarda
     if (walkWith(st, n, t, dt)) return;   // [vivi] con un amico che va nello stesso posto
     greetFriends(st, n);
+    if (n.__pausa > st.clock) { n.speedNow = 0; return; }   // [gesti] fermi un attimo: la stretta di mano con un amico incrociato da vicino
     // in ritardo per un orario fisso: corre
     const late = b.fixed && minOfDay(st.t) > b.at + 5 && dist(n.x, n.y, t.x, t.y) > 6;
     const speed = (late ? 2.6 : 1.35) * (P.age > 70 ? .75 : P.age > 60 ? .88 : 1);
@@ -25813,6 +26445,11 @@ var Popolo = (function () {
       if (opinionOf(st, n, id) < -.3) continue;
       const wave = d > 2.5; n.greet = { who: id, until: st.clock + 1.6, wave };
       if (k.pop && !(k.__greeted && st.clock - k.__greeted[n.id] < 120)) { (k.__greeted = k.__greeted || {})[n.id] = st.clock; k.greet = { who: n.id, until: st.clock + 1.4 + Math.random() * .4, wave: wave && Math.random() < .6 }; }
+      // [gesti] da vicino, e se tutti e due sono per strada: ci si ferma, ci si guarda e ci si stringe la mano (anim_gesti.js)
+      if (!wave && d < 2.2 && !k.inside && !(k.__pausa > st.clock) && Math.random() < .7) {
+        const T = st.clock + 1.9; n.__pausa = k.__pausa = T; n.greet.shake = true; n.greet.until = T; if (k.greet && k.greet.who === n.id) { k.greet.shake = true; k.greet.until = T; }
+        n.face = Math.atan2(k.y - n.y, k.x - n.x); k.face = n.face + Math.PI;
+      }
       if (st.clock > (n.barkCd || 0)) { G.say(st, n, pick(Math.random, [`Ciao ${k.first}!`, `Ehi, ${k.first}.`, `${k.first}! Come va?`, 'Buongiorno.']), 1.6); n.barkCd = st.clock + 8; }
       break;
     }
@@ -52706,8 +53343,9 @@ var Render = (function () {
     const fender = new THREE.Mesh(new THREE.SphereGeometry(.24, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), c); fender.scale.set(.75, .8, 1.25); fender.position.set(0, .4, .86); g.add(fender);
     const fork = box(.06, .4, .06, dark); fork.position.set(.08, .38, .86); g.add(fork);
     const col = cyl(.05, .05, .3, 6, c); col.position.set(0, 1.18, .7); g.add(col);
-    const bar = box(.74, .1, .12, c); bar.position.set(0, 1.3, .7); g.add(bar);
-    [-1, 1].forEach(s => { const gr = cyl(.035, .035, .12, 6, dark); gr.rotation.z = Math.PI / 2; gr.position.set(s * .42, 1.3, .7); g.add(gr); const mir = cyl(.05, .05, .02, 8, chrome); mir.rotation.x = Math.PI / 2; mir.position.set(s * .32, 1.5, .68); g.add(mir); const ms = box(.015, .2, .015, chrome); ms.position.set(s * .32, 1.4, .69); g.add(ms); });
+    // [mani] manubrio a misura vera (~70 cm, manopole a ±33 cm: prima era largo quasi un metro e le mani non ci arrivavano)
+    const bar = box(.56, .1, .12, c); bar.position.set(0, 1.3, .7); g.add(bar);
+    [-1, 1].forEach(s => { const gr = cyl(.032, .032, .12, 8, dark); gr.rotation.z = Math.PI / 2; gr.position.set(s * .33, 1.3, .7); g.add(gr); const mir = cyl(.05, .05, .02, 8, chrome); mir.rotation.x = Math.PI / 2; mir.position.set(s * .24, 1.5, .68); g.add(mir); const ms = box(.015, .2, .015, chrome); ms.position.set(s * .24, 1.4, .69); g.add(ms); });
     const lampH = cyl(.1, .1, .08, 10, new THREE.MeshBasicMaterial({ color: '#fff4c8', toneMapped: false })); lampH.rotation.x = Math.PI / 2; lampH.position.set(0, 1.26, .78); g.add(lampH); ud.front.push(lampH);
     const lampR = cyl(.12, .12, .05, 10, chrome); lampR.rotation.x = Math.PI / 2; lampR.position.set(0, 1.26, .75); g.add(lampR);
     const seat = new THREE.Mesh(extrudeSide(sideShape([[.0, .88], [-.05, .98], [-.7, .98], [-.8, .9]], [], .86), .36, .06), sm('#3a2418', { roughness: .8 })); g.add(seat);
@@ -52773,6 +53411,12 @@ var Render = (function () {
     const fp = G0(); fp.position.set(0, R, Gm.zF); const fw = bmxWheel(); fp.add(fw); g.add(fp); ud.wheels.push({ wh: fw, piv: fp, front: true, r: R });
     const rp = G0(); rp.position.set(0, R, Gm.zR); const rw = bmxWheel(); rp.add(rw); g.add(rp); ud.wheels.push({ wh: rw, piv: rp, front: false, r: R });
     ud.len = 1.5; return finishVehicle(g, ud);
+  }
+  // [anim] la rotazione di una persona verso l'angolo voluto, smorzata (k: quanto in fretta): ci si gira, non si scatta
+  function turnTo(g, want, dt, k) {
+    const u = g.userData; if (u.__ry === undefined || !(dt > 0)) return (u.__ry = want);
+    let d = want - u.__ry; d = Math.atan2(Math.sin(d), Math.cos(d));
+    u.__ry += d * (1 - Math.exp(-Math.min(dt, .1) * k)); return u.__ry;
   }
   function driverMesh(look, cap) {
     const g = G0();
@@ -56849,7 +57493,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
-      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = Math.PI / 2 - n.face;
+      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = turnTo(g, Math.PI / 2 - n.face, dt, 10);   // [anim] si gira, non scatta
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
       if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
       { const dd = Math.abs(n.x - cam.x) + Math.abs(n.y - cam.y), every = dd > 45 ? 3 : dd > 28 ? 2 : 1;   /* [fluido] lontano dalla camera l'animazione si aggiorna a fotogrammi alterni, col tempo recuperato */
@@ -56873,7 +57517,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx');   // [bmx] in sella come sulla Vespa
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
     pg.visible = !pveh || onVespa;
-    pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = Math.PI / 2 - p.face;   // [salto] p.jz: l'altezza del salto
+    pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = pveh ? (pg.userData.__ry = Math.PI / 2 - p.face) : turnTo(pg, Math.PI / 2 - p.face, dt, 22);   // [anim] a piedi si gira in fretta ma senza scatti   // [salto] p.jz: l'altezza del salto
     { const T = bmxTilt(pveh); pg.rotation.order = 'YXZ'; pg.rotation.x = -T.a; if (T.a) { const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang); pg.position.x += ca * T.dzP; pg.position.y += T.dyP; pg.position.z += sa * T.dzP; } }   // [bmx] impennata: il ciclista ruota con la bici
     const recoil = st.kick ? Math.max(0, 1 - (st.clock - st.kick.t) * 10) * st.kick.amt * 3 : 0;
     if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim
@@ -65739,7 +66383,7 @@ var MenuUI = (function () {
   // del gioco, il resto con un piccolo modello per famiglia (bottiglia, latta, sacco, attrezzo…) e il colore dell'oggetto.
   // Si fanno poche per fotogramma e restano in memoria (TH).
   // =====================================================================================================================
-  const TH = new Map(), THQ = [], THS = 128;
+  const TH = new Map(), THQ = [], THS = 192;   // [anteprime] più definite (si disegnano a 96 px: il ridimensionamento le ammorbidisce)
   const thumb = id => TH.get(id) || (THQ.includes(id) || THQ.push(id), null);
   const CUST = {}; const thumbFor = (key, make) => { CUST[key] = make; return thumb(key); };
   function mini(id) {
@@ -65747,7 +66391,7 @@ var MenuUI = (function () {
     const M = (col, o) => new T.MeshStandardMaterial(Object.assign({ color: col, roughness: .7, metalness: 0 }, o || {}));
     const add = (geo, col, x, y, z, o, rx, ry, rz) => { const m = new T.Mesh(geo, M(col, o)); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); g.add(m); return m; };
     const Bo = (w, h, d) => new T.BoxGeometry(w, h, d), Cl = (a, b, h, n) => new T.CylinderGeometry(a, b, h, n || 18), Sf = (r, w, h) => new T.SphereGeometry(r, w || 18, h || 12), To = (r, tb, a, b) => new T.TorusGeometry(r, tb, a || 10, b || 24);
-    const GL = { metalness: .1, roughness: .15, transparent: true, opacity: .88 }, MET = { metalness: .7, roughness: .35 };
+    const GL = { metalness: .1, roughness: .15, transparent: true, opacity: .88 }, MET = { metalness: .35, roughness: .38 };   // [anteprime] metallo meno pieno: senza riflessi intorno veniva quasi nero
     switch (s) {
       case 'bottiglia': add(Cl(.16, .17, .55), c, 0, .28, 0, GL); add(Cl(.07, .16, .14), c, 0, .62, 0, GL); add(Cl(.05, .055, .16), c, 0, .76, 0, GL); add(Cl(.055, .055, .05), '#2a2a2e', 0, .86); add(Cl(.172, .172, .2), '#f0ead8', 0, .3, 0); break;
       case 'latta': add(Cl(.22, .22, .42, 24), '#b8bcc4', 0, .21, 0, MET); add(Cl(.225, .225, .3, 24), t, 0, .21, 0); add(Cl(.2, .2, .02, 24), '#d8dce4', 0, .43, 0, MET); break;
@@ -65757,7 +66401,8 @@ var MenuUI = (function () {
       case 'pesce': { const b = add(Sf(.2), c, 0, .16, 0, { metalness: .4, roughness: .3 }); b.scale.set(2, .7, .6); add(Cl(0, .14, .2, 4), c, .48, .16, 0, {}, 0, 0, Math.PI / 2); add(Sf(.025), '#111', -.3, .2, .1); break; }
       case 'carne': { const b = add(Bo(.5, .2, .36), c, 0, .1, 0); add(Bo(.12, .21, .1), '#f0d8d0', .08, .1, .05); break; }
       case 'formaggio': add(new T.CylinderGeometry(.3, .3, .22, 24, 1, false, 0, Math.PI * 1.6), c, 0, .11, 0); [[.1, .16, .1], [-.1, .1, .15]].forEach(([x, y, z]) => add(Sf(.035), sh(c, .8), x, y, z)); break;
-      case 'tazza': add(Cl(.16, .13, .26), '#f0ece2', 0, .13, 0); add(Cl(.14, .14, .01), c, 0, .25, 0); add(To(.08, .02), '#f0ece2', .18, .14, 0); add(Cl(.26, .26, .02), '#f0ece2', 0, .01, 0); break;
+      case 'tazza': if (/thermos/.test(id)) {   // il thermos: corpo, fascia, tappo-tazza
+          add(Cl(.12, .12, .6, 22), c, 0, .3, 0, MET); add(Cl(.125, .125, .08, 22), '#c8ccd4', 0, .15, 0, MET); add(Cl(.13, .12, .14, 22), '#2a2a30', 0, .67, 0); add(Cl(.06, .06, .03, 16), '#c8ccd4', 0, .75, 0, MET); break; } add(Cl(.16, .13, .26), '#f0ece2', 0, .13, 0); add(Cl(.14, .14, .01), c, 0, .25, 0); add(To(.08, .02), '#f0ece2', .18, .14, 0); add(Cl(.26, .26, .02), '#f0ece2', 0, .01, 0); break;
       case 'tronco': [[0, .11, 0], [.12, .11, .2], [.06, .3, .1]].forEach(([x, y, z]) => { add(Cl(.11, .11, .7, 10), c, x, y, z, {}, 0, 0, Math.PI / 2); add(Cl(.1, .1, .01, 10), '#d8b080', x + .355, y, z, {}, 0, 0, Math.PI / 2); }); break;
       case 'mucchio': for (let i = 0; i < 9; i++) { const b = add(new T.DodecahedronGeometry(.1 + (i % 3) * .03), c, Math.cos(i * 2.3) * .2, .08 + Math.floor(i / 5) * .12, Math.sin(i * 2.3) * .2, { roughness: .9 }); b.rotation.set(i, i * 2, 0); } break;
       case 'mattone': [[0, .07, 0], [.42, .07, 0], [.2, .21, 0]].forEach(([x, y, z]) => add(Bo(.4, .13, .2), c, x - .2, y, z, { roughness: .95 })); break;
@@ -65773,7 +66418,9 @@ var MenuUI = (function () {
       case 'pila': [-.12, .12].forEach(x => { add(Cl(.09, .09, .42), c, x, .21, 0); add(Cl(.035, .035, .04), '#c8ccd4', x, .44, 0, MET); }); break;
       case 'radio': add(Bo(.62, .36, .2), c, 0, .18, 0); add(Bo(.26, .22, .01), '#2a2a2e', -.13, .19, .1); add(Bo(.2, .06, .01), '#e8c040', .17, .25, .1); add(Cl(.008, .008, .5), '#c8ccd4', .25, .55, 0, MET, 0, 0, .3); break;
       case 'scatola': add(Bo(.55, .42, .4), c, 0, .21, 0); add(Bo(.38, .26, .01), '#1a2a2a', -.03, .23, .2, { emissive: '#3a6a6a', emissiveIntensity: .4 }); break;
-      case 'lampadina': add(Sf(.18), c, 0, .3, 0, { emissive: c, emissiveIntensity: .5 }); add(Cl(.08, .08, .12), '#c8ccd4', 0, .1, 0, MET); break;
+      case 'lampadina': if (/torcia/.test(id)) {   // la torcia: corpo zigrinato, testa larga col vetro acceso, pulsante
+          add(Cl(.07, .07, .5, 16), '#2a2a30', -.05, .07, 0, MET, 0, 0, Math.PI / 2); for (let i = 0; i < 5; i++) add(Cl(.073, .073, .02, 16), '#3a3a42', -.22 + i * .06, .07, 0, MET, 0, 0, Math.PI / 2);
+          add(Cl(.11, .075, .14, 18), '#2a2a30', .27, .07, 0, MET, 0, 0, Math.PI / 2); add(Cl(.1, .1, .01, 18), '#fff4c8', .345, .07, 0, { emissive: '#fff0b0', emissiveIntensity: .8 }, 0, 0, Math.PI / 2); add(Bo(.05, .03, .04), '#c83a2a', .05, .14, 0); break; } add(Sf(.18), c, 0, .3, 0, { emissive: c, emissiveIntensity: .5 }); add(Cl(.08, .08, .12), '#c8ccd4', 0, .1, 0, MET); break;
       case 'carta': [0, 1, 2, 3].forEach(i => { const b = add(Bo(.42, .01, .56), i === 3 ? '#f4efe2' : '#e8e2d2', 0, .01 + i * .012, 0); b.rotation.y = (i - 1.5) * .06; }); add(Bo(.3, .002, .06), t, 0, .06, -.18); [0, 1, 2].forEach(i => add(Bo(.3, .002, .02), '#8a8690', 0, .06, -.06 + i * .07)); break;
       case 'medicina': add(Bo(.5, .3, .32), '#f2eee6', 0, .15, 0); add(Bo(.08, .2, .01), c, 0, .16, .165); add(Bo(.2, .08, .01), c, 0, .16, .165); break;
       case 'siringa': add(Cl(.04, .04, .4), '#d8e4ec', 0, .04, 0, GL, 0, 0, Math.PI / 2); add(Cl(.035, .035, .25), c, -.05, .04, 0, {}, 0, 0, Math.PI / 2); add(Cl(.005, .005, .15), '#c8ccd4', .27, .04, 0, MET, 0, 0, Math.PI / 2); break;
@@ -65781,7 +66428,49 @@ var MenuUI = (function () {
       case 'sedia': add(Bo(.4, .04, .4), c, 0, .4, 0); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => add(Bo(.04, .4, .04), c, a * .17, .2, b * .17)); add(Bo(.4, .4, .04), c, 0, .62, -.18); break;
       case 'arma': add(Bo(.5, .1, .07), '#3a3a40', 0, .25, 0, MET); add(Bo(.12, .22, .06), c, -.12, .12, 0); break;
       case 'munizioni': for (let i = 0; i < 5; i++) { add(Cl(.035, .035, .16), '#c89a40', -.16 + i * .08, .08, 0, MET); add(Cl(.0, .035, .06), '#b8794a', -.16 + i * .08, .19, 0, MET); } break;
-      case 'moneta': for (let i = 0; i < 5; i++) add(Cl(.14, .14, .03, 24), c, (i % 2) * .03, .015 + i * .032, 0, { metalness: .9, roughness: .25 }); break;
+      case 'moneta':
+        if (/orologio/.test(id)) {   // l'orologio da polso: cassa, quadrante con le lancette, cinturino
+          add(Cl(.16, .16, .06, 28), '#c8a848', 0, .05, 0, { metalness: .45, roughness: .3 }); add(Cl(.135, .135, .01, 28), '#f4efe2', 0, .085, 0);
+          add(Bo(.012, .004, .1), '#1a1a1e', 0, .092, -.04); { const h = add(Bo(.012, .004, .07), '#1a1a1e', .025, .093, .015); h.rotation.y = 1.1; }
+          add(Cl(.02, .02, .05, 10), '#c8a848', .17, .05, 0, MET, 0, 0, Math.PI / 2);
+          [-1, 1].forEach(sd => { add(Bo(.16, .025, .4), '#5a3a22', 0, .02, sd * .32); });
+        } else if (/gioiell|anello|catenin/.test(id)) {
+          add(To(.12, .025, 10, 28), '#e0c060', 0, .03, 0, { metalness: .5, roughness: .25 }, Math.PI / 2); add(new T.OctahedronGeometry(.05), '#8ad0e8', 0, .1, .12, GL);
+          for (let i = 0; i < 14; i++) add(Sf(.022, 6, 4), '#e0c060', Math.cos(i * .45) * .3 - .1, .02, Math.sin(i * .45) * .2, { metalness: .5, roughness: .3 });
+        } else for (let i = 0; i < 6; i++) { add(Cl(.14, .14, .03, 28), c, (i % 2) * .025 - .012, .015 + i * .032, 0, { metalness: .4, roughness: .3 }); add(Cl(.11, .11, .032, 28), sh(c, 1.12), (i % 2) * .025 - .012, .015 + i * .032, 0, { metalness: .4, roughness: .3 }); }
+        break;
+      // [anteprime] le famiglie che non avevano un modello (mostravano tutte la cassa di legno)
+      case 'maglia': {   // il capo piegato: busto, maniche ripiegate, colletto e costine
+        add(Bo(.62, .1, .5), c, 0, .05, 0, { roughness: .95 }); add(Bo(.6, .03, .07), sh(c, .8), 0, .11, .22, { roughness: .95 });
+        [-1, 1].forEach(sd => { const m = add(Bo(.12, .04, .44), sh(c, .92), sd * .2, .12, -.01, { roughness: .95 }); m.rotation.y = sd * .5; });
+        add(new T.TorusGeometry(.09, .025, 6, 16, Math.PI), sh(c, .75), 0, .11, -.2, { roughness: .95 }, -Math.PI / 2);
+        for (let i = -4; i <= 4; i++) add(Bo(.012, .012, .06), sh(c, .7), i * .065, .102, .225);
+        break; }
+      case 'scarpa': [-1, 1].forEach(sd => {   // un paio: suola, tomaia, punta tonda, lacci
+        const g2 = new T.Group(); g2.position.set(sd * .17, 0, sd * .04); g2.rotation.y = sd * .12; g.add(g2);
+        const A = (geo, col, x, y, z, o) => { const m = new T.Mesh(geo, M(col, o)); m.position.set(x, y, z); g2.add(m); return m; };
+        A(Bo(.15, .04, .5), '#1a1614', 0, .02, 0); A(Bo(.14, .12, .32), c, 0, .1, -.08, { roughness: .6 });
+        const tip = A(Sf(.075, 14, 10), c, 0, .085, .14, { roughness: .6 }); tip.scale.set(1, .8, 1.3);
+        A(Bo(.13, .1, .1), sh(c, .8), 0, .19, -.18, { roughness: .6 });
+        for (let i = 0; i < 4; i++) A(Bo(.11, .008, .012), '#e8e0cc', 0, .165 - i * .008, -.02 + i * .04);
+      }); break;
+      case 'cappello': {   // berretto: calotta, risvolto, pompon (o visiera, per i berretti con la visiera)
+        const cap = add(new T.SphereGeometry(.24, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2), c, 0, .06, 0, { roughness: .9 }); cap.scale.y = 1.05;
+        add(Cl(.245, .25, .1, 24), sh(c, .82), 0, .05, 0, { roughness: .9 });
+        if (/elmetto/.test(id)) add(Cl(.3, .3, .02, 24), c, 0, .01, 0, MET);
+        else if (/berretto|cappell/.test(id)) { const v = add(new T.CylinderGeometry(.24, .24, .02, 22, 1, false, -Math.PI / 2.4, Math.PI / 1.2), sh(c, .7), 0, .02, .1); v.scale.z = 1.4; }
+        else add(Sf(.06, 10, 8), sh(c, 1.2), 0, .32, 0, { roughness: 1 });
+        break; }
+      case 'borsa': {   // lo zaino: corpo, patta, tasca davanti con la fibbia, spallacci dietro
+        const b = add(Bo(.46, .56, .24), c, 0, .28, 0, { roughness: .85 }); b.geometry.translate(0, 0, 0);
+        add(Bo(.47, .2, .26), sh(c, .85), 0, .5, .005, { roughness: .85 }); add(Bo(.3, .2, .08), sh(c, .9), 0, .2, .15, { roughness: .85 });
+        add(Bo(.06, .05, .02), '#c8a040', 0, .42, .14, MET); add(Bo(.05, .04, .02), '#c8a040', 0, .27, .2, MET);
+        [-1, 1].forEach(sd => add(Bo(.06, .5, .03), sh(c, .7), sd * .13, .3, -.14, { roughness: .85 })); add(To(.05, .012, 6, 12), sh(c, .7), 0, .6, -.02, {}, 0, 0, 0);
+        break; }
+      case 'cassa': {   // la cassa di legno a doghe, coi montanti agli spigoli
+        for (let i = 0; i < 4; i++) add(Bo(.52, .085, .42), i % 2 ? sh(c, .9) : c, 0, .05 + i * .1, 0, { roughness: .95 });
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b2]) => add(Bo(.05, .42, .05), sh(c, .7), a * .25, .2, b2 * .2, { roughness: .95 }));
+        break; }
       case 'pacchetto': add(Bo(.3, .44, .14), '#f0ece2', 0, .22, 0); add(Bo(.305, .18, .145), t, 0, .2, 0); [-.06, 0, .06].forEach(x => add(Cl(.022, .022, .1), '#f0ece2', x, .48, 0)); break;
       case 'cassetta': add(Bo(.5, .3, .08), c, 0, .15, 0); add(Bo(.38, .1, .01), '#f0ece2', 0, .18, .04); [-.1, .1].forEach(x => add(Cl(.035, .035, .01), '#1a1a1a', x, .18, .045, {}, Math.PI / 2)); break;
       case 'ruota': add(To(.28, .09, 12, 28), '#1a1a1e', 0, .37, 0); add(Cl(.15, .15, .1), '#9aa0a8', 0, .37, 0, MET, Math.PI / 2); break;
@@ -65791,6 +66480,10 @@ var MenuUI = (function () {
     }
     return g;
   }
+  // [mani] famiglia e colore di un oggetto, anche senza il catalogo (anim_mano.js, le anteprime)
+  const famOf = id => { try { return fam(id); } catch (e) { for (const [re, s, c] of FAM) if (re.test(id)) return [s, c]; return ['cassa', null]; } };
+  const tipo3 = id => /^(pistola|lupara|mitra|fucile)$/.test(id) ? id : /coltell|taglierino/.test(id) ? 'coltello' : /thermos/.test(id) ? 'thermos' : /torcia/.test(id) ? 'torcia' : /martell/.test(id) ? 'martello' : /^chiave/.test(id) ? 'chiave'
+    : famOf(id)[0] === 'bottiglia' && !/molotov/.test(id) ? 'bottiglia' : famOf(id)[0] === 'latta' && /scatol|conserva|passata|latta|lattine|carne_scatola/.test(id) ? 'latta' : null;
   let THR = null;
   function makeThumb(id) {
     const T = THREE, st = ST();
@@ -65807,10 +66500,20 @@ var MenuUI = (function () {
       obj.rotation.y = back ? Math.PI * .85 : side ? -.9 : -.35; cam.position.set(side ? .3 : 0, F[0] + F[1] * .15, F[1] * 2.2); cam.lookAt(side ? .25 : 0, F[0], 0);
     } else {
       const R = PV() && PV().R, W = st && G().WEAPONS && G().WEAPONS[id] && R && R.__models && R.__models.weaponModel;
-      obj = CUST[id] ? CUST[id]() : W ? R.__models.weaponModel(id) : mini(id);
-      const box = new T.Box3().setFromObject(obj), size = box.getSize(new T.Vector3()), ctr = box.getCenter(new T.Vector3()), r = Math.max(size.x, size.y, size.z) || 1;
-      const holder = new T.Group(); obj.position.sub(ctr); holder.add(obj); holder.rotation.set(.45, -.6, 0); obj = holder;
-      cam.position.set(0, 0, r * 2.3); cam.lookAt(0, 0, 0);
+      // [modelli] armi e attrezzi coi modelli definiti di oggetti3d.js (pistola, lupara, mitra, bottiglie, latte, martello, chiave...)
+      const o3 = typeof Oggetti3D !== 'undefined' && Oggetti3D && tipo3(id);
+      obj = CUST[id] ? CUST[id]() : o3 ? Oggetti3D.make(o3, TINTS[id] || famOf(id)[1], id) : W ? R.__models.weaponModel(id) : mini(id);
+      if (o3 && /^(pistola|lupara|mitra|fucile)$/.test(o3)) obj.rotation.y = -Math.PI / 2;   // di profilo, la canna a destra
+      else if (o3 && /^(martello|chiave|coltello|torcia)$/.test(o3)) obj.rotation.z = -.8;   // gli attrezzi lunghi in diagonale: riempiono il riquadro
+      // [anteprime] si inquadra la sfera che contiene l'oggetto già girato: niente più latte e casse tagliate in alto
+      const box = new T.Box3().setFromObject(obj), ctr = box.getCenter(new T.Vector3());
+      const holder = new T.Group(); obj.position.sub(ctr); holder.add(obj); holder.rotation.set(.42, -.6, 0); obj = holder; holder.updateMatrixWorld(true);
+      const sph = new T.Box3().setFromObject(holder).getBoundingSphere(new T.Sphere()), dist = sph.radius / Math.sin(cam.fov * Math.PI / 360) * .74;   // (la sfera è più larga della sagoma: .74 la riempie senza tagliare)
+      cam.position.set(sph.center.x, sph.center.y + dist * .08, sph.center.z + dist); cam.lookAt(sph.center);
+      // un'ombra morbida sotto, perché l'oggetto poggi da qualche parte
+      { const sc2 = document.createElement('canvas'); sc2.width = sc2.height = 64; const x2 = sc2.getContext('2d'), gr = x2.createRadialGradient(32, 32, 2, 32, 32, 31); gr.addColorStop(0, 'rgba(0,0,0,.45)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); x2.fillStyle = gr; x2.fillRect(0, 0, 64, 64);
+        const bb = new T.Box3().setFromObject(holder), sz = bb.getSize(new T.Vector3()), shd = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ map: new T.CanvasTexture(sc2), transparent: true, depthWrite: false }));
+        shd.rotation.x = -Math.PI / 2; shd.scale.set(sz.x * 1.2, sz.z * 1.2 + .05, 1); shd.position.set(bb.getCenter(new T.Vector3()).x, bb.min.y + .002, bb.getCenter(new T.Vector3()).z); sc.add(shd); }
     }
     sc.add(obj); THR.render(sc, cam);
     const cv = document.createElement('canvas'); cv.width = cv.height = THS; cv.getContext('2d').drawImage(THR.domElement, 0, 0);
@@ -65832,7 +66535,7 @@ var MenuUI = (function () {
     const wide = +c.getAttribute('width') === 32 || c.dataset.w === '1'; c.dataset.w = wide ? '1' : '';
     c.width = wide ? 160 : 96; c.height = wide ? 80 : 96; c.classList.add('tc');
     const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height); x.imageSmoothingEnabled = true;
-    if (wide) x.drawImage(cv, 0, 24, 128, 80, 0, 0, 160, 80); else x.drawImage(cv, 0, 0, 96, 96);
+    const q = cv.width / 128; if (wide) x.drawImage(cv, 0, 24 * q, 128 * q, 80 * q, 0, 0, 160, 80); else x.drawImage(cv, 0, 0, cv.width, cv.height, 0, 0, 96, 96);
   }
   function paintAll(root) { root.querySelectorAll('canvas[data-map]').forEach(c => drawMap(c)); root.querySelectorAll('canvas[data-ic]').forEach(c => { const id = c.dataset.ic, t = c.dataset.nt ? null : thumb(id); if (t) drawThumb(c, t); else icon(c, id); }); root.querySelectorAll('canvas[data-fig]').forEach(c => figure(c)); root.querySelectorAll('canvas[data-shop]').forEach(c => shopScene(c, c.dataset.shop, c.dataset.who)); }
 
@@ -66535,7 +67238,7 @@ var MenuUI = (function () {
     const c = b.querySelector('canvas'); if (!c.dataset.done) { const t = thumb('zaino'); if (t) { c.getContext('2d').drawImage(t, 0, 0, 96, 96); c.dataset.done = 1; } }
     const n = quiCount(st), d = b.querySelector('.dot'); d.hidden = !n; d.textContent = n;
   } catch (e) { } }, 300);
-  return { open, close, toggle, render, icon, state: U, quiList, quiCount, thumbFor };
+  return { open, close, toggle, render, icon, state: U, quiList, quiCount, thumbFor, famOf, anteprima: id => makeThumb(id) };   // anteprima: per lo studio e le prove
 })();
 </script>
 <script data-m="comandi">// Porto Vecchio — Le icone a schermo (10-11 ottobre) [mobile]

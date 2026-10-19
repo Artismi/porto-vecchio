@@ -146,6 +146,11 @@ var World = (function () {
       ISOLE.push({ id, name: NOMI[(n - 1) % NOMI.length] + (n > NOMI.length ? ' II' : ''), x, y, rx: rr, ry: rr * (.72 + r() * .26), rot: r() * 3.14, h: Math.min(26, rr * (tema === 'nuda' || tema === 'uccelli' ? .8 : 1.15) + 2), dome: true, amp: .2, seed: 100 + n, def: tema === 'palmeto' ? 'cala' : 'reef', kinds: r() < .35 ? [[r() * 6.28 - 3.14, .45, 'cala']] : [], veg: tema === 'pini' ? 'macchia' : tema === 'uccelli' ? 'nuda' : tema, tema, small: rr < 9, arco: rr > 9 && r() < .22, grotta: rr > 10 && r() < .25 });
       k--; } });
   }
+  // [isole2] dell'arcipelago restano due isole, le più belle: l'Isola delle Palme (piccola, davanti al porto) e l'Isola Grande
+  // del Sud (la montagna di giungla della tribù). Il resto (basi, villaggi, boomerang, creste, panettoni) non si genera più:
+  // meno terra da costruire e da disegnare, meno gente da muovere. Le definizioni restano qui sopra.
+  { const KEEP = new Set(['palme', 'grande_sud']); const keep = ISOLE.filter(I => KEEP.has(I.id)); ISOLE.length = 0; ISOLE.push(...keep);
+    LAGUNE.splice(0, 1); }   // la laguna dietro l'Isola Lunga
   let ISLES_ON = false;   // [arcipelago] durante la generazione dell'isola grande le isole non ci sono: le aggiunge expand() sulla mappa grande
   // [arcipelago] forme organiche: ogni isola è un corpo principale più alcuni lobi che ci si saldano sopra (come colline che si
   // fondono), su cui passa una deformazione a più scale: penisole, golfi, promontori; le creste serpeggiano.
@@ -2093,10 +2098,10 @@ var World = (function () {
       if (I.tema === 'uccelli') S.features.push({ type: 'colonia', id: 'colonia_' + I.id, x: I.x + OX, y: I.y + OY, r: Math.max(I.rx, I.ry) });
     });
     // la torre saracena sull'Isolotto della Torre, il relitto del Santa Rosalia sulla secca dell'Isola del Relitto
-    { const IT = ISOLE.find(I => I.id === 'torre'), x = IT.x + IT.top[0] * IT.rx + OX, y = IT.y + IT.top[1] * IT.ry + OY; S.ruins.push({ type: 'torre', id: 'torre_saracena', name: 'Torre saracena', x, y, r: 3.4 });
+    if (ISOLE.some(I => I.id === 'torre')) { const IT = ISOLE.find(I => I.id === 'torre'), x = IT.x + IT.top[0] * IT.rx + OX, y = IT.y + IT.top[1] * IT.ry + OY; S.ruins.push({ type: 'torre', id: 'torre_saracena', name: 'Torre saracena', x, y, r: 3.4 });
       for (let ty = Math.floor((y - 3.4) / TS); ty <= Math.floor((y + 3.4) / TS); ty++) for (let tx = Math.floor((x - 3.4) / TS); tx <= Math.floor((x + 3.4) / TS); tx++) if (Math.hypot(tx * TS + 1 - x, ty * TS + 1 - y) < 3.2) grid[ix(tx, ty)] = T_.CLIFF;
       place1(IT, 'torre_saracena', 'Torre saracena', x + 4.5, y + 1); }
-    { const IR = ISOLE.find(I => I.id === 'relitto'), sp0 = shoreB(IR, Math.PI + .15); S.ruins.push({ type: 'relitto', id: 'relitto', name: 'Il relitto del Santa Rosalia', x: sp0.x - 7, y: sp0.y + 2, ang: -.5 }); place1(IR, 'relitto', 'Il relitto del Santa Rosalia', sp0.x - 1, sp0.y); }
+    if (ISOLE.some(I => I.id === 'relitto')) { const IR = ISOLE.find(I => I.id === 'relitto'), sp0 = shoreB(IR, Math.PI + .15); S.ruins.push({ type: 'relitto', id: 'relitto', name: 'Il relitto del Santa Rosalia', x: sp0.x - 7, y: sp0.y + 2, ang: -.5 }); place1(IR, 'relitto', 'Il relitto del Santa Rosalia', sp0.x - 1, sp0.y); }
     // si pesca dagli scogli delle isole, si fa il bagno sulle loro spiagge
     ISOLE.forEach((I, n) => { if (I.arc || I.small || (I.dome && !I.use && Math.max(I.rx, I.ry) < 30)) return; let m = 0; const mx = I.use || !I.dome ? 2 : 1; /* solo le isole vere: niente pescate su ogni scoglio */ for (let k = 0; k < 16 && m < mx; k++) { const a = -Math.PI + k / 16 * Math.PI * 2 + n * .3, kd = isleKind(I, a); if (kd !== 'scogli' && kd !== 'falesia' && kd !== 'reef') continue;
       const sp0 = shoreB(I, a, 1.2); if (!walkB(Math.floor(sp0.x / TS), Math.floor(sp0.y / TS)) && !walkB(Math.floor((sp0.x - sp0.dx) / TS), Math.floor((sp0.y - sp0.dy) / TS))) continue;
