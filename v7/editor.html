@@ -44176,7 +44176,7 @@ var Render = (function () {
   function buildBase() {   // [inverno17]
     const T = G.T, S = 4, nx = Math.ceil(G.GW / S), ny = Math.ceil(G.GH / S);
     const c = mk(G.GW, G.GH), x = c.getContext('2d'), img = x.createImageData(G.GW, G.GH);
-    const COL = { [T.COB]: [110, 100, 112], [T.VIA]: [44, 41, 52], [T.BLD]: [90, 70, 80], [T.PIAZZA]: [184, 172, 152], [T.QUAY]: [110, 104, 98], [T.PIER]: [106, 74, 50], [T.SAND]: [230, 208, 160], [T.GRASS]: [74, 122, 58], [T.WALK]: [138, 132, 144], [T.ROCK]: [122, 114, 112], [T.TREE]: [44, 62, 36], [T.DIRT]: [138, 106, 74], [T.FIELD]: [150, 130, 70], [T.DESERT]: [220, 180, 122], [T.SALT]: [236, 238, 238], [T.SHRUB]: [86, 104, 58], [T.FOUNT]: [42, 106, 138], [T.STAIRS]: [140, 130, 120] };
+    const COL = { [T.COB]: [104, 98, 92], [T.VIA]: [64, 63, 64], [T.BLD]: [96, 90, 84],   /* [scena1] i colori del terreno vero: viola (44, 41, 52), saturato, faceva le strade lilla finché non arrivava il blocco dipinto */ [T.PIAZZA]: [184, 172, 152], [T.QUAY]: [110, 104, 98], [T.PIER]: [106, 74, 50], [T.SAND]: [230, 208, 160], [T.GRASS]: [74, 122, 58], [T.WALK]: [86, 84, 86], [T.ROCK]: [122, 114, 112], [T.TREE]: [44, 62, 36], [T.DIRT]: [138, 106, 74], [T.FIELD]: [150, 130, 70], [T.DESERT]: [220, 180, 122], [T.SALT]: [236, 238, 238], [T.SHRUB]: [86, 104, 58], [T.FOUNT]: [42, 106, 138], [T.STAIRS]: [140, 130, 120] };
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) { const v = gT(tx, ty), o = (ty * G.GW + tx) * 4, c0 = COL[v] || [40, 60, 80], dd = M.world && M.world.districtAt ? M.world.districtAt(tx * TS) : '', urb = v === T.VIA || v === T.COB || v === T.WALK || v === T.PIAZZA || v === T.QUAY, k = !NEVE || v === T.WATER || v === T.BLD || dd === 'prateria' ? 0 : v === T.VIA ? .3 : urb ? .5 : .8, sn = urb ? [160, 164, 170] : [214, 218, 224], cc = (dd === 'prateria' && !urb ? [128, 114, 80] : c0).map((q, i) => q + (sn[i] - q) * k); img.data[o] = cc[0]; img.data[o + 1] = cc[1]; img.data[o + 2] = cc[2]; img.data[o + 3] = 255; }  // [inverno] neve
     x.putImageData(img, 0, 0);
     const tex = new THREE.CanvasTexture(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter;   // [inverno17] sfumata
@@ -50708,7 +50708,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: .97 /* [lucido1] più luce */ /* [plastica1] senza contorni era troppo chiaro (1.06) */, bloom: .7 /* [plastica1] era 1: l'alone attorno alle luci */, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: 0 /* [plastica1] la maschera di nitidezza faceva alone (era .32) */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.45 /* [colore1] più colore (era 1.25) */ /* [plastica1] 1.62 dava l'erba fluo */, ink: 0, rim: .35 /* [plastica1] */, cav: .4 /* [plastica1] un po' di volume nelle pieghe */, clar: 0 /* [plastica1] il contrasto locale (colore meno sfocato) è un alone attorno a ogni sagoma */, luc: 1.15, spec: 1.15, coat: 1.05, trans: 1.1, /* [colore1] miniature di plastica: più lacca, punto di luce, traslucenza (erano 1, .9, .8, 1) */ ol: 0 /* [plastica1] niente contorno scuro: miniature di plastica, non fumetto (era .85) */, prato: 1 /* [prato1] */, crisp: .55, film: .028, hal: .5 /* [sviluppo] nitidezza senza aloni, grana fine al pixel vero, alone rosso della pellicola sulle luci */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: .97 /* [lucido1] più luce */ /* [plastica1] senza contorni era troppo chiaro (1.06) */, bloom: .7 /* [plastica1] era 1: l'alone attorno alle luci */, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: .4 /* [scena1] col sole pieno la nebbia luminosa era un velo latte */, sharp: 0 /* [plastica1] la maschera di nitidezza faceva alone (era .32) */, outline: 0, vig: .3 /* [scena1] era .7: angoli scuri del 44% */, paint: 0, pal: 0, sat: 1.45 /* [colore1] più colore (era 1.25) */ /* [plastica1] 1.62 dava l'erba fluo */, ink: 0, rim: .35 /* [plastica1] */, cav: .4 /* [plastica1] un po' di volume nelle pieghe */, clar: 0 /* [plastica1] il contrasto locale (colore meno sfocato) è un alone attorno a ogni sagoma */, luc: 1.15, spec: 1.15, coat: 1.05, trans: 1.1, /* [colore1] miniature di plastica: più lacca, punto di luce, traslucenza (erano 1, .9, .8, 1) */ ol: 0 /* [plastica1] niente contorno scuro: miniature di plastica, non fumetto (era .85) */, prato: 1 /* [prato1] */, crisp: .55, film: .028, hal: .5 /* [sviluppo] nitidezza senza aloni, grana fine al pixel vero, alone rosso della pellicola sulle luci */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -50910,7 +50910,7 @@ var Render = (function () {
               float ndv = clamp(dot(n9, V9), 0., 1.), ndl = dot(n9, L9), day9 = 1. - night;
               float lu9 = dot(c, vec3(.3,.59,.11));
               // 1) colori bagnati: più saturi, i medi più profondi, i neri restano colore
-              vec3 sat9 = max(mix(vec3(lu9), c, 1.6), 0.);   /* [colore1] era 1.5 */
+              float ch9 = (max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b))) / max(max(c.r, max(c.g, c.b)), .05); vec3 sat9 = max(mix(vec3(lu9), c, mix(1., 1.6, smoothstep(.05, .2, ch9))), 0.);   /* [scena1] */   /* [colore1] era 1.5 */
               c = mix(c, sat9 * (1. - .1 * smoothstep(.5, .05, lu9)), lK.x);
               // 2) traslucenza: in ombra il materiale si accende del suo colore, come plastica che lascia passare la luce
               float sh9 = 1. - smoothstep(.05, .38, lu9); vec3 hue9 = max(c, 1e-4) / max(max(max(c.r, c.g), c.b), 1e-4);
@@ -50972,7 +50972,7 @@ var Render = (function () {
             c *= l2 / max(l, 1e-4);
             // 2) ombre colorate, non grigie: fredde e appena viola in città, verde-blu nella natura; luci calde dove c'è sole
             float shd = 1. - smoothstep(.04, .46, l2), hil = smoothstep(.32, .82, l2);
-            vec3 shT = vec3(.86,.98,1.14);   /* [lucido1] ombre verde-blu */
+            vec3 shT = vec3(.97,.99,1.03);   /* [scena1] meno viola nelle ombre (era .86, .98, 1.14) */   /* [lucido1] ombre verde-blu */
             vec3 hiT = mix(vec3(1.), mix(vec3(1.07,1.035,.93), vec3(1.035,1.015,.97), uReg), sunK);
             c *= mix(vec3(1.), shT, shd*(1.-warmL*.85)*(1.-night*.6));
             c *= mix(vec3(1.), hiT, hil*(1.-hot));
@@ -50981,7 +50981,7 @@ var Render = (function () {
             float keep = max(max(rosso*1.05, hot), warmL*.9);
             float sN = mix(1.12, 1.3, sunK) * (1. - uWx.z*.08), sR = 1.05 + sunK*.08;   /* [colore1] più colore anche col coperto e col regime */   /* [lucido1] il regime non spegne più i colori */
             float sv = max(mix(sN, sR, uReg), keep*mix(1.15, 1.05, uReg));
-            c = mix(vec3(lu), c, sv*sat);
+            { float ch0 = (max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b))) / max(max(c.r, max(c.g, c.b)), .05); c = mix(vec3(lu), c, mix(1., sv*sat, smoothstep(.05, .2, ch0))); }   /* [scena1] i grigi restano grigi: il filo di viola di asfalto e cemento, saturato tre volte, diventava lilla */
             c = mix(c, vec3(dot(c, vec3(.3,.59,.11)))*vec3(.98,1.,.98), uReg*.03*(1.-keep));   /* [lucido1] */   // cemento appena verdastro, da caserma
             { float cy = smoothstep(.03,.16, min(c.g,c.b)-c.r) * smoothstep(.06,.22, max(max(c.r,c.g),c.b)-min(min(c.r,c.g),c.b));
               c = mix(c, mix(vec3(dot(c, vec3(.3,.59,.11))), c, .3), cy*uReg*.2); }   /* [lucido1] gli azzurri tornano */   // in città niente azzurri accesi (fontane, vetri)
@@ -50999,7 +50999,7 @@ var Render = (function () {
           c = clamp((c * (2.51 * c + .03)) / (c * (2.43 * c + .59) + .14), 0., 1.);
           { float gn = fract(sin(dot(floor(vUv * res) + fract(aTime * 7.13) * 91.7, vec2(12.9898, 78.233))) * 43758.5453) - .5; float lg = dot(c, vec3(.3,.59,.11));
             c += gn * aK.w * (1. - lg * .6) * (1. - pK.x); }
-          c = max(mix(vec3(dot(c, vec3(.3,.59,.11))), c, 1.24), 0.);   /* [unione11] un filo più saturi */   /* [colore1] 1.24 (era 1.14) */
+          { float chF = (max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b))) / max(max(c.r, max(c.g, c.b)), .05); c = max(mix(vec3(dot(c, vec3(.3,.59,.11))), c, mix(1., 1.24, smoothstep(.05, .2, chF))), 0.); }   /* [scena1] */   /* [unione11] un filo più saturi */   /* [colore1] 1.24 (era 1.14) */
           if (pK.x > .01) {   // [amb3] colori saturi, ma in palette
             vec3 o = okl(c); float L = o.x; vec2 ab = o.yz * pK.y;   // spinta del colore
             vec3 q = vec3(L, ab); float d1 = 1e9, d2 = 1e9; vec3 p1 = c, p2 = c, o1 = q, o2 = q;
@@ -54353,26 +54353,26 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, (.22 - night * .16) * METEO.reg).multiplyScalar(1 - night * .45 * (1 - WXfog * .4)); /* [amb1] */ /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
     // [inverno] luce di neve: tanto cielo, poco sole
-    hemi.intensity = .22 + (1 - night) * .3 + night * .02; /* [unione7] */ /* [unione2] */ /* [unione1] */ /* [luci5] buio */   // [luci1] di notte meno cielo   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
-    fillAmb.intensity = .12 + (1 - night) * .12 + night * .0; /* [unione7] */ /* [unione1] */ /* [luci5] */ fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');
+    hemi.intensity = .2 + (1 - night) * .18 + night * .04;   /* [scena1] meno cielo di giorno (era .52): col sole forte le facce in ombra si distinguono */ /* [unione7] */ /* [unione2] */ /* [unione1] */ /* [luci5] buio */   // [luci1] di notte meno cielo   // [inverno23] hemi.color.set(night > .5 ? '#4a5878' : dusk > .3 ? '#b8a8b0' : '#d4dae4'); hemi.groundColor.set(night > .5 ? '#2c3650' : '#7a8296');
+    fillAmb.intensity = .1 + (1 - night) * .04 + night * .02;   /* [scena1] era .24 di giorno: grigio uniforme su tutto */ /* [unione7] */ /* [unione1] */ /* [luci5] */ fillAmb.color.set(night > .5 ? '#2a3044' : '#6a6e78');
     moon.intensity = .25 + (1 - night) * .77 + night * .2; /* [unione7] chiaro di luna */ /* [unione2] */ /* [unione1] la luna disegna le sagome */ /* [luci5] un filo di luna per le sagome */ /* [luci1] di notte meno luna */ moon.color.set(night > .5 ? '#9aaed8' /* [unione7] */ : (dusk > .3 ? '#e0a888' : '#f2eee4'));
     { const hh = (st.t / 60) % 24, sa = (hh - 13) / 12 * Math.PI, el = night > .5 ? 26 : Math.max(9, 34 - Math.abs(hh - 13) * 3.4);   /* [amb1] il sole gira, basso al mattino e alla sera */
       moon.position.set(cam.x - Math.sin(sa) * 38 - 8, el, night > .5 ? cam.y - 26 - Math.cos(sa) * 8 : cam.y + 22 + Math.cos(sa) * 10);   /* [unione4] di giorno il sole è a sud */ moon.target.position.set(cam.x, 0, cam.y); }
-    if (dyn.fill) { dyn.fill.position.set(cam.x + 8, 14, cam.y + 40); dyn.fill.target.position.set(cam.x, 0, cam.y); dyn.fill.intensity = .12 + (1 - night) * .06 - night * .1; /* [luci5] */ dyn.fill.color.set(night > .5 ? '#5f86b4' : '#a8bcd0'); }
-    if (dyn.rim) { dyn.rim.position.set(cam.x + 30, 18, cam.y + 34); dyn.rim.target.position.set(cam.x, 0, cam.y); dyn.rim.intensity = .1 + (1 - night) * .1 - night * .07; /* [luci5] */ dyn.rim.color.set(night > .5 ? '#6a8ac8' : '#b8c8e8'); }
+    if (dyn.fill) { dyn.fill.position.set(cam.x + 8, 14, cam.y + 40); dyn.fill.target.position.set(cam.x, 0, cam.y); dyn.fill.intensity = .12 + (1 - night) * .06 - night * .1; /* [luci5] */ dyn.fill.color.set(night > .5 ? '#5f86b4' : '#d2d0cc');   /* [scena1] era azzurro: le ombre di giorno venivano blu pieno */ }
+    if (dyn.rim) { dyn.rim.position.set(cam.x + 30, 18, cam.y + 34); dyn.rim.target.position.set(cam.x, 0, cam.y); dyn.rim.intensity = .1 + (1 - night) * .1 - night * .07; /* [luci5] */ dyn.rim.color.set(night > .5 ? '#6a8ac8' : '#dcdad6'); }
     { const ne = .04 + night * .85; dyn.__ne = ne; if (Math.abs(ne - (dyn.__neAll === undefined ? -9 : dyn.__neAll)) > .002) { dyn.__neAll = ne; dyn.buildings.forEach(b => { const op = b.__op === undefined ? 1 : b.__op; b.mats.forEach(m => { if (m.emissiveMap) m.emissiveIntensity = ne * op; }); }); } }   /* [fluido] le finestre si riaccendono solo quando cambia l'ora, non a ogni fotogramma */
     FD1.emis.forEach(m => { m.emissiveIntensity = .04 + night * .85; });   /* [pulitore1] */
     if (dyn.backdropMats) dyn.backdropMats.forEach(m => m.emissiveIntensity = .1 + night * .9);
     const time = ui.studio ? 30 : (ui.time || st.clock);   // [studio] tutto fermo: vento, bandiere, fumo, schermi
     updateLights(time, night, cam.x, cam.y);
     { const dayK = 1 - night;   /* [amb1] sole e cielo secondo il tempo; la notte resta della regia luci */
-      hemi.intensity = Math.max(hemi.intensity, (.34 + WXc * .3) * dayK);
-      moon.intensity = Math.max(moon.intensity * (1 - WXc * .7 * dayK), (1.05 - WXc * .82) * dayK * (1 - dusk * .3));
-      fillAmb.intensity = Math.max(fillAmb.intensity, (.12 + WXc * .14) * dayK);
-      if (dayK > .5) { moon.color.set(dusk > .3 ? '#f0b088' : '#fff1d6').lerp(WXT.set('#e8ecf0'), WXc); hemi.color.set('#cfd8e4').lerp(WXT.set('#d6d8da'), WXc); hemi.groundColor.set('#6e6a58').lerp(WXT.set('#6a6c70'), WXc); }
+      hemi.intensity = Math.max(hemi.intensity, (.3 + WXc * .34) * dayK);
+      moon.intensity = Math.max(moon.intensity * (1 - WXc * .7 * dayK), (1.5 - WXc * 1.2) * dayK * (1 - dusk * .3));   /* [scena1] sole pieno (era 1.05): luce e ombra nette, i volumi si leggono */
+      fillAmb.intensity = Math.max(fillAmb.intensity, (.06 + WXc * .2) * dayK);
+      if (dayK > .5) { moon.color.set(dusk > .3 ? '#f4a878' : '#ffe8c4').lerp(WXT.set('#e8ecf0'), WXc); hemi.color.set('#d6dce6').lerp(WXT.set('#d6d8da'), WXc); hemi.groundColor.set('#a08a60').lerp(WXT.set('#6a6c70'), WXc);   /* [scena1] sole caldo, cielo azzurro nelle ombre, riflesso caldo da terra */ }
       else { hemi.color.set('#4a5878'); hemi.groundColor.set('#2c3650'); }
       if (dyn.fill) dyn.fill.intensity *= 1 - WXc * .5; if (dyn.rim) dyn.rim.intensity *= 1 - WXc * .6; }   // [isola37] minimi solo di giorno: la notte è della regia luci
-    ISO.chunks.forEach(ch => { if (ch.mat) ch.mat.emissiveIntensity = night * .95; });   // [inverno30]
+    ISO.chunks.forEach(ch => { if (ch.mat) { ch.mat.emissiveIntensity = night * .95; ch.mat.envMapIntensity = .015 + WXwet * .16; } });   /* [scena1] il cielo riflesso solo col bagnato: asciutto faceva blu tutte le ombre per terra */   // [inverno30]
     if (frameN % 2 === 0 || !dyn.reflList) { dyn.reflList = (dyn.lsp || []).concat(dyn.lpp || []).concat(SPILLS.filter(S => { const a = S.x - cam.x, b = S.z - cam.y; return a * a + b * b < 38 * 38; })); }
     updateRefl(night, dyn.reflList);
     tickAir(time, night);   // [luci2]
@@ -54685,7 +54685,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     }
     {   // [amb2] la macchina da presa
       const A = AMB, dk = 1 - night; U.tBloom.value = APS.rts[3] ? APS.rts[3].texture : APS.rts[1] ? APS.rts[1].texture : null; U.tBloom2.value = APS.rts[5] ? APS.rts[5].texture : null; U.tBlur.value = APS.rts[7] ? APS.rts[7].texture : null;
-      A.thr = A.thrDay + (A.thrNight - A.thrDay) * night; U.aK.value.set(A.expo * (.84 + night * .5) /* [unione7] */, A.bloom * (.22 + night * .78), A.dof * (pveh ? .45 : 1) * (p.indoor ? 0 : 1) * (1 - A.pal * .55), A.grain); U.aK2.value.set(A.ca, A.sharp, A.outline, A.vig); U.aTime.value = time; U.aHal.value = A.hal || 0; U.pK.value.set(A.pal, A.sat, A.ink, A.rim); U.pC.value.set(A.cav, A.clar);   /* [amb3] */
+      A.thr = A.thrDay + (A.thrNight - A.thrDay) * night; U.aK.value.set(A.expo * (.95 + night * .39) /* [scena1] di giorno era .84: tutto cupo */ /* [unione7] */, A.bloom * (.22 + night * .78), A.dof * (pveh ? .45 : 1) * (p.indoor ? 0 : 1) * (1 - A.pal * .55), A.grain); U.aK2.value.set(A.ca, A.sharp, A.outline, A.vig); U.aTime.value = time; U.aHal.value = A.hal || 0; U.pK.value.set(A.pal, A.sat, A.ink, A.rim); U.pC.value.set(A.cav, A.clar);   /* [amb3] */
       PRATO9.k.value = A.prato === undefined ? 1 : A.prato;   /* [prato1] */
       { U.lK.value.set(A.luc, A.spec * (indoorNow || p.indoor ? .5 : 1), A.coat, A.trans); U.lOl.value = A.ol;   /* [lucido1] il sole per la lacca */
         U.lSun.value.subVectors(moon.position, moon.target.position).normalize(); const sk = (.55 * dk + .12 * night) * Math.min(1.4, moon.intensity);
