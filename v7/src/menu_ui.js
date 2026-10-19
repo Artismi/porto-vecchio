@@ -219,6 +219,10 @@ var MenuUI = (function () {
     }
     return g;
   }
+  // [mani] famiglia e colore di un oggetto, anche senza il catalogo (anim_mano.js, le anteprime)
+  const famOf = id => { try { return fam(id); } catch (e) { for (const [re, s, c] of FAM) if (re.test(id)) return [s, c]; return ['cassa', null]; } };
+  const tipo3 = id => /^(pistola|lupara|mitra|fucile)$/.test(id) ? id : /coltell|taglierino/.test(id) ? 'coltello' : /thermos/.test(id) ? 'thermos' : /torcia/.test(id) ? 'torcia' : /martell/.test(id) ? 'martello' : /^chiave/.test(id) ? 'chiave'
+    : famOf(id)[0] === 'bottiglia' && !/molotov/.test(id) ? 'bottiglia' : famOf(id)[0] === 'latta' && /scatol|conserva|passata|latta|lattine|carne_scatola/.test(id) ? 'latta' : null;
   let THR = null;
   function makeThumb(id) {
     const T = THREE, st = ST();
@@ -235,7 +239,11 @@ var MenuUI = (function () {
       obj.rotation.y = back ? Math.PI * .85 : side ? -.9 : -.35; cam.position.set(side ? .3 : 0, F[0] + F[1] * .15, F[1] * 2.2); cam.lookAt(side ? .25 : 0, F[0], 0);
     } else {
       const R = PV() && PV().R, W = st && G().WEAPONS && G().WEAPONS[id] && R && R.__models && R.__models.weaponModel;
-      obj = CUST[id] ? CUST[id]() : W ? R.__models.weaponModel(id) : mini(id);
+      // [modelli] armi e attrezzi coi modelli definiti di oggetti3d.js (pistola, lupara, mitra, bottiglie, latte, martello, chiave...)
+      const o3 = typeof Oggetti3D !== 'undefined' && Oggetti3D && tipo3(id);
+      obj = CUST[id] ? CUST[id]() : o3 ? Oggetti3D.make(o3, TINTS[id] || famOf(id)[1], id) : W ? R.__models.weaponModel(id) : mini(id);
+      if (o3 && /^(pistola|lupara|mitra|fucile)$/.test(o3)) obj.rotation.y = -Math.PI / 2;   // di profilo, la canna a destra
+      else if (o3 && /^(martello|chiave|coltello|torcia)$/.test(o3)) obj.rotation.z = -.8;   // gli attrezzi lunghi in diagonale: riempiono il riquadro
       // [anteprime] si inquadra la sfera che contiene l'oggetto già girato: niente più latte e casse tagliate in alto
       const box = new T.Box3().setFromObject(obj), ctr = box.getCenter(new T.Vector3());
       const holder = new T.Group(); obj.position.sub(ctr); holder.add(obj); holder.rotation.set(.42, -.6, 0); obj = holder; holder.updateMatrixWorld(true);
@@ -969,7 +977,5 @@ var MenuUI = (function () {
     const c = b.querySelector('canvas'); if (!c.dataset.done) { const t = thumb('zaino'); if (t) { c.getContext('2d').drawImage(t, 0, 0, 96, 96); c.dataset.done = 1; } }
     const n = quiCount(st), d = b.querySelector('.dot'); d.hidden = !n; d.textContent = n;
   } catch (e) { } }, 300);
-  // [mani] famiglia e colore di un oggetto, per il modello in mano (anim_mano.js)
-  const famOf = id => { try { return fam(id); } catch (e) { for (const [re, s, c] of FAM) if (re.test(id)) return [s, c]; return ['cassa', null]; } };
   return { open, close, toggle, render, icon, state: U, quiList, quiCount, thumbFor, famOf, anteprima: id => makeThumb(id) };   // anteprima: per lo studio e le prove
 })();

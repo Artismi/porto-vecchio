@@ -131,6 +131,9 @@ var Anim = (function () {
       // impugnano una barra di traverso con le nocche avanti) lungo ax, e le dita verso fy; il gomito verso il polo p.
       // il polso in (x, y, z) (spazio del personaggio, prima di P.body), il gomito verso il polo p: IK a due ossa
       reach(side, x, y, z, p, w) { armIK(P, side === 'L' ? 'L' : 'R', _rT.set(x, y, z), p || [0, -1, -.3], (w === undefined ? 1 : w) * P.w); return P; },
+      // [mani] come grab, ma la mano resta IN LINEA con l'avambraccio (polso dritto): si dà solo il verso del palmo (pz),
+      // le dita seguono l'avambraccio che esce dall'IK (tre passate: orientamento → IK → orientamento)
+      hold(side, x, y, z, pz, p, w) { hold(P, side === 'L' ? 'L' : 'R', x, y, z, pz, p || [0, -1, -.3], (w === undefined ? 1 : w) * P.w); return P; },
       grab(side, x, y, z, ax, fy, p, w) { grab(P, side === 'L' ? 'L' : 'R', x, y, z, ax, fy, p || [0, -1, -.3], (w === undefined ? 1 : w) * P.w); return P; },
     };
     return P;
@@ -236,6 +239,18 @@ var Anim = (function () {
     armIK(P, sd, _gT, pole, ww);
     // il polso: dalla rotazione attuale a quella voluta (mano = polso · QH)
     _gq.multiply(QHI); wr.getWorldQuaternion(_q4); _q.copy(_gq).multiply(_q4.invert()); _gq.copy(ID).slerp(_q, ww); applyWorld(wr, _gq);   // (applyWorld usa _q2 e _q3 per sé)
+  }
+  const _hY = V(), _hZ = V(), _hX = V(), _hE = V(), _hW = V(), _hI = new THREE.Matrix4(), _hA = [0, 0, 0], _hB = [0, 0, 0];
+  function hold(P, sd, x, y, z, pz, pole, ww) {
+    const R = P.R, la = R.b['LowerArm' + sd], wr = R.b['Wrist' + sd], ua = R.b['UpperArm' + sd]; if (!la || !wr || !ua || ww <= 0) return;
+    // prima stima: le dita dalla spalla verso il punto
+    _hI.copy(P.g.matrixWorld).invert(); ua.getWorldPosition(_hE).applyMatrix4(_hI); _hY.set(x, y, z).sub(_hE).normalize();
+    for (let i = 0; i < 3; i++) {
+      _hZ.set(pz[0], pz[1], pz[2]); _hZ.addScaledVector(_hY, -_hZ.dot(_hY)).normalize(); _hX.crossVectors(_hY, _hZ).normalize();
+      _hA[0] = _hX.x; _hA[1] = _hX.y; _hA[2] = _hX.z; _hB[0] = _hY.x; _hB[1] = _hY.y; _hB[2] = _hY.z;
+      grab(P, sd, x, y, z, _hA, _hB, pole, ww);
+      _hI.copy(P.g.matrixWorld).invert(); la.getWorldPosition(_hE).applyMatrix4(_hI); wr.getWorldPosition(_hW).applyMatrix4(_hI); _hY.subVectors(_hW, _hE).normalize();
+    }
   }
   // IK a due ossa del braccio: il polso in T (spazio del personaggio, prima di P.body), il gomito verso il polo
   function armIK(P, sd, T, pole, ww) {

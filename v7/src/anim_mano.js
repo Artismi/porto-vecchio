@@ -37,9 +37,9 @@
     tazza: { how: 'pugno', grip: [.8, .7], make: c => { const g = new THREE.Group(); cyl(g, .035, .035, .2, '#3a5a4a', .02, GY, GZ + .015, ...X, 10); cyl(g, .037, .037, .04, '#c8c8d0', .13, GY, GZ + .015, ...X, 10); return g; } },
     viti: { how: 'pugno', grip: [.5, .5], make: c => { const g = new THREE.Group(); box(g, .1, .05, .06, '#c8a050', 0, GY + .01, GZ + .03); box(g, .101, .02, .061, '#8a6a2a', 0, GY + .01, GZ + .03); return g; } },
     corda: { how: 'appeso', grip: [.9, .8], make: c => { const g = new THREE.Group(); const t = new THREE.Mesh(new THREE.TorusGeometry(.11, .022, 6, 14), lm(c || '#c89a5a')); t.position.set(0, .13, GZ); g.add(t); const t2 = t.clone(); t2.scale.setScalar(.85); t2.position.z += .02; g.add(t2); return g; } },
-    martello: { how: 'pugno', grip: [.95, .9], x: [0, -1, .2], make: c => { const g = new THREE.Group(); cyl(g, .014, .014, .3, '#8a6a42', .07, GY, GZ, ...X, 6); box(g, .04, .04, .12, c || '#5a5e68', .21, GY, GZ); return g; } },
-    chiave: { how: 'pugno', grip: [.95, .9], x: [0, -1, .2], make: c => { const g = new THREE.Group(); box(g, .2, .018, .03, c || '#8a8e98', .06, GY, GZ); box(g, .04, .05, .03, c || '#8a8e98', .17, GY, GZ); box(g, .03, .02, .032, '#2a2a2e', .18, GY + .015, GZ); return g; } },
-    lama: { how: 'pugno', grip: [.95, .9], x: [0, -1, .1], make: c => { const g = new THREE.Group(); box(g, .1, .025, .03, c || '#3a2a20', 0, GY, GZ); box(g, .13, .022, .004, '#c8ccd4', .11, GY + .004, GZ); return g; } },
+    martello: { how: 'pugno', grip: [.95, .9], make: c => { const g = new THREE.Group(); cyl(g, .014, .014, .3, '#8a6a42', .07, GY, GZ, ...X, 6); box(g, .04, .04, .12, c || '#5a5e68', .21, GY, GZ); return g; } },
+    chiave: { how: 'pugno', grip: [.95, .9], make: c => { const g = new THREE.Group(); box(g, .2, .018, .03, c || '#8a8e98', .06, GY, GZ); box(g, .04, .05, .03, c || '#8a8e98', .17, GY, GZ); box(g, .03, .02, .032, '#2a2a2e', .18, GY + .015, GZ); return g; } },
+    lama: { how: 'pugno', grip: [.95, .9], make: c => { const g = new THREE.Group(); box(g, .1, .025, .03, c || '#3a2a20', 0, GY, GZ); box(g, .13, .022, .004, '#c8ccd4', .11, GY + .004, GZ); return g; } },
     sega: { how: 'lungo', grip: [.9, .8], make: c => { const g = new THREE.Group(); box(g, .12, .03, .1, '#8a5a2a', 0, GY, GZ); box(g, .45, .002, .1, '#c8ccd4', .27, GY, GZ - .02); return g; } },
     ascia: { how: 'lungo', grip: [.95, .9], make: c => { const g = new THREE.Group(); cyl(g, .016, .016, .7, '#8a5a2a', .2, GY, GZ, ...X, 6); box(g, .05, .03, .16, '#8a8e98', .52, GY, GZ + .06); return g; } },
     pala: { how: 'lungo', grip: [.95, .9], make: () => { const g = new THREE.Group(); cyl(g, .016, .016, 1, '#8a6a42', .25, GY, GZ, ...X, 6); box(g, .24, .02, .2, '#5a5a60', .82, GY, GZ); return g; } },
@@ -71,6 +71,9 @@
     lastra: { how: 'appeso', atGrip: true, out: .05, grip: [.85, .8], make: c => { const g = new THREE.Group(); box(g, .6, .5, .012, c || '#8a9098', .1, GY + .2, GZ - .03); box(g, .6, .02, .02, shade(c || '#8a9098', .8), .1, GY - .04, GZ - .03); return g; } },   // presa per il bordo di sopra, di taglio lungo la gamba
     mucchio: { how: 'regge', d: .3, w: .4, make: c => FAM.sacco.make(c || '#3a3838') },
   };
+  // le famiglie che hanno un modello definito in oggetti3d.js (profili torniti, sagome estruse): id → tipo
+  const O3 = { bottiglia: () => 'bottiglia', latta: () => 'latta', tazza: id => /thermos/.test(id) ? 'thermos' : null, lampadina: id => /torcia/.test(id) ? 'torcia' : null,
+    martello: id => /martell/.test(id) ? 'martello' : null, chiave: id => /chiave/.test(id) ? 'chiave' : null, lama: id => /coltell|taglierino/.test(id) ? 'coltello' : null };
   // cose che hanno già il loro modello in mano (models.js, le armi del kit) o una posa a parte (anim_vita.js: HELD_UP)
   const SKIP = /^(bomboletta|telefono|fotocamera|piede|gesso|manganello|cartello|pistola|mitra|lupara|fucile|coltello|pala|molotov|carriola|cassa|roba|merce|viveri|materiali|mobili|refurtiva|pugni)$/;
   // famiglia e colore: quelle delle icone del Menu (se c'è), altrimenti un ripiego sul nome
@@ -90,7 +93,8 @@
     const R = P.R, map = R.mano || (R.mano = {}); if (map[id] !== undefined) return map[id];
     const F = famOf(id), D = FAM[F.f]; let h = null;
     try {
-      const obj = D.make(F.c); h = new THREE.Group(); h.add(obj);
+      const o3 = typeof Oggetti3D !== 'undefined' && Oggetti3D && O3[F.f] && O3[F.f](id);   // [modelli] la versione definita, se c'è
+      const obj = o3 ? Oggetti3D.inHand(o3, F.c, id, GY, GZ) : D.make(F.c, id); h = new THREE.Group(); h.add(obj);
       if (D.how === 'appeso' && !D.atGrip) obj.position.y += GY - .05;   // il manico (a ~5 cm nei modelli più semplici) nel centro del pugno, il resto sotto
       if (D.how === 'regge') { const u = P.g.userData; if (u.body) { const s = u.body.scale; h.scale.set(1 / s.x, 1 / s.y, 1 / s.z); u.body.add(h); } else P.g.add(h); }
       else { const bone = R.b.WristR; bone.getWorldScale(_v); P.g.getWorldScale(_v2); h.scale.setScalar(_v2.x / (_v.x || 1)); h.quaternion.copy(QHAND); bone.add(h); }
@@ -103,10 +107,7 @@
 
   // ---------------- le braccia ----------------
   const _d = [0, 0, 0], D3 = (x, y, z) => { _d[0] = x; _d[1] = y; _d[2] = z; return _d; };
-  // la presa con l'orientamento della mano scelto da dita (Y) e palmo (Z), o da pollice (X) e palmo (Z): il terzo asse viene da sé
-  const _hx = new THREE.Vector3(), _hy = new THREE.Vector3(), _hz = new THREE.Vector3();
-  function hold(P, sd, x, y, z, Y, Z, pole) { _hy.set(Y[0], Y[1], Y[2]).normalize(); _hz.set(Z[0], Z[1], Z[2]); _hx.crossVectors(_hy, _hz).normalize(); P.grab(sd, x, y, z, [_hx.x, _hx.y, _hx.z], [_hy.x, _hy.y, _hy.z], pole); }
-  function holdX(P, x, y, z, X, Z, pole) { _hx.set(X[0], X[1], X[2]).normalize(); _hz.set(Z[0], Z[1], Z[2]); _hy.crossVectors(_hz, _hx).normalize(); P.grab('R', x, y, z, [_hx.x, _hx.y, _hx.z], [_hy.x, _hy.y, _hy.z], pole); }
+  const _s0 = new THREE.Vector3(), _s1 = new THREE.Vector3(), _s2 = new THREE.Vector3();
   const SW = P => Math.sin(P.time * 5.5 + P.r * 6) * Math.min(1, Math.abs(P.o.speed || 0) / 3);   // il dondolio camminando
 
   Anim.def('tiene', { fade: .25, fn(P, A) {
@@ -118,7 +119,7 @@
       // a due mani, contro la pancia: i palmi sui fianchi della cosa, le dita in giù e avanti; la schiena compensa il peso
       const w = (D.w || .4) / 2, d = D.d || .3, y = 1.0 + .012 * sw, z = .13 + bk + d / 2;
       P.rot('Abdomen', -.08, 0, 0); P.rot('Chest', -.05, 0, 0);
-      hold(P, 'R', -(w + .015), y - .03, z, [0, -.6, .8], [1, 0, 0], [-.8, -.5, -.3]); hold(P, 'L', w + .015, y - .03, z, [0, -.6, .8], [-1, 0, 0], [.8, -.5, -.3]);
+      P.hold('R', -(w + .015), y - .03, z, [1, 0, 0], [-.8, -.5, -.3]); P.hold('L', w + .015, y - .03, z, [-1, 0, 0], [.8, -.5, -.3]);
       P.fingers('R', .35, .3); P.fingers('L', .35, .3);
       const h = holderFor(P, id); if (h && P.w > .5) { h.position.set(0, y, z); h.visible = true; }
       return;
@@ -126,14 +127,23 @@
     // [mani] tutto il resto si porta lungo il fianco destro, come si fa davvero: il palmo verso la coscia, il gomito morbido
     if (D.how === 'appeso') {
       // per il manico, il braccio quasi teso, la cosa sotto il pugno (le dita in giù); il peso tira giù la spalla
-      holdX(P, -.23 - bk - (D.out || 0), .8, .03 + .04 * sw, [0, 0, 1], [1, 0, 0], [-.3, -1, -.4]);
+      P.hold('R', -.23 - bk - (D.out || 0), .8, .03 + .04 * sw, [1, 0, 0], [-.3, -1, -.4]);
       P.rot('Chest', 0, 0, -.04);
     } else if (D.how === 'lungo') {
       // l'attrezzo orizzontale, in avanti, scostato dalla gamba
-      holdX(P, -.27 - bk, .87 + .015 * sw, .1 + .05 * sw, [0, .05, 1], [1, 0, 0], [-.3, -1, -.6]);
+      P.hold('R', -.27 - bk, .87 + .015 * sw, .1 + .05 * sw, [1, 0, 0], [-.3, -1, -.6]);
     } else {
-      // pugno e piatto: la cosa dritta nel pugno (o l'attrezzo a testa in giù), accanto alla coscia
-      holdX(P, -.25 - bk, .87 + .015 * sw, .09 + .06 * sw, D.x || [0, 1, .1], [1, 0, .15], [-.3, -1, -.8]);
+      // pugno e piatto: il gomito piegato, l'avambraccio avanti e in giù, la mano IN LINEA con l'avambraccio (polso dritto):
+      // la cosa nel pugno sta quasi dritta, inclinata in avanti come l'avambraccio (prima la mano puntava avanti e il polso
+      // si piegava di 80°). La torcia invece si tiene col braccio giù, la luce in avanti.
+      if (D.x) P.hold('R', -.25 - bk, .84, .1 + .04 * sw, [1, 0, 0], [-.35, -1, -.6]);
+      else {
+        // il braccio lungo il fianco e l'avambraccio orizzontale in avanti: col polso dritto e il pollice in su la cosa sta dritta
+        const b = P.R.b, ua = b.UpperArmR, la = b.LowerArmR, wr = b.WristR;
+        ua.getWorldPosition(_s0); la.getWorldPosition(_s1); wr.getWorldPosition(_s2);
+        const A = _s0.distanceTo(_s1), Bf = _s1.distanceTo(_s2); P.g.worldToLocal(_s0);
+        P.hold('R', _s0.x - .03 - bk * .5, _s0.y - A + .02 + .01 * sw, _s0.z + Bf + .09 + .03 * sw, [1, 0, 0], [-.2, -1, -.9]);
+      }
     }
     P.fingers('R', grip[0], grip[1]);
     const h = holderFor(P, id); if (h && P.w > .5) h.visible = true;

@@ -144,6 +144,22 @@ var Models = (function () {
       if (len > 1e-4) { gn.scale.multiplyScalar(L / len); gn.updateMatrixWorld(true); }
     }
   }
+  // [modelli] le armi del kit sono blocchi; al loro posto i modelli definiti di oggetti3d.js, nel pugno destro (la canna lungo
+  // le dita, il sopra verso il pollice, l'impugnatura al centro del pugno). Le pose (anim_lotta.js) ne leggono l'asse come prima.
+  const ARMI_VERE = { Pistol: 'pistola', Revolver: 'pistola', SMG: 'mitra', Shotgun: 'lupara', AK: 'fucile', Knife_1: 'coltello' };
+  function armiVere(g, m, guns) {
+    if (typeof Oggetti3D === 'undefined' || !Oggetti3D) return;
+    const wr = m.getObjectByName('WristR'); if (!wr) return;
+    g.updateMatrixWorld(true); const ws = new THREE.Vector3(), gs = new THREE.Vector3(); wr.getWorldScale(ws); g.getWorldScale(gs);
+    const HAND = (window.Anim && Anim.HAND) || 1, QH = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+    for (const k in ARMI_VERE) {
+      if (!guns[k]) continue;
+      const holder = new THREE.Group(); holder.quaternion.copy(QH); holder.scale.setScalar(gs.x / (ws.x || 1) / HAND);   // in metri, a mano già rimpicciolita
+      const root = Oggetti3D.armaInMano(ARMI_VERE[k], .1, .02); holder.add(root); wr.add(holder);
+      root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+      guns[k].visible = false; guns[k].userData.vecchia = true; root.visible = false; guns[k] = root;   // il kit resta spento
+    }
+  }
   function parallel(a, b, cb) { cb(a, b); for (let i = 0; i < a.children.length; i++) parallel(a.children[i], b.children[i], cb); }
   function cloneSkinned(src) {
     const sl = new Map(), cl = new Map(), c = src.clone(true);
@@ -185,7 +201,7 @@ var Models = (function () {
     // armi del soldato: sono già nella mano, si accende solo quella giusta
     const guns = {}; m.traverse(o => { if (/^(AK|Pistol|Revolver|Revolver_Small|Shotgun|SMG|Sniper|Sniper_2|Knife_1|Knife_2|GrenadeLauncher|RocketLauncher|ShortCannon|Shovel)$/.test(o.name)) { guns[o.name] = o; o.visible = false; } });
     // i civili non hanno armi nel modello: si prendono quelle del kit (stesse ossa Quaternius) e si agganciano all'indice destro
-    if (!Object.keys(guns).length && GUNTPL) { const bone = m.getObjectByName('Index1R'); if (bone) { const f = GUNTPL.boneScale / boneScaleOf(CM, 'Index1R'); for (const k in GUNTPL.guns) { const t = GUNTPL.guns[k], gn = t.clone(true); gn.position.copy(t.position).multiplyScalar(f); gn.quaternion.copy(t.quaternion); gn.scale.copy(t.scale).multiplyScalar(f); gn.visible = false; gn.traverse(o => { if (o.isMesh) o.castShadow = true; }); bone.add(gn); guns[k] = gn; } trueSize(g, guns); } }
+    if (!Object.keys(guns).length && GUNTPL) { const bone = m.getObjectByName('Index1R'); if (bone) { const f = GUNTPL.boneScale / boneScaleOf(CM, 'Index1R'); for (const k in GUNTPL.guns) { const t = GUNTPL.guns[k], gn = t.clone(true); gn.position.copy(t.position).multiplyScalar(f); gn.quaternion.copy(t.quaternion); gn.scale.copy(t.scale).multiplyScalar(f); gn.visible = false; gn.traverse(o => { if (o.isMesh) o.castShadow = true; }); bone.add(gn); guns[k] = gn; } trueSize(g, guns); armiVere(g, m, guns); } }
     const mixer = new THREE.AnimationMixer(m), acts = {};
     for (const k in CM.clips) acts[k] = mixer.clipAction(CM.clips[k]);
     const sh = new THREE.Mesh(new THREE.CircleGeometry(.42, 12), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .35, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = .02; g.add(sh);
