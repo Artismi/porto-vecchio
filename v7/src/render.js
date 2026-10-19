@@ -12389,7 +12389,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (leadOn && ui.stick) {   // [telefono] la levetta comanda lo sguardo: si inquadra subito dove la spingi (a piedi, in bici, in auto)
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, asp = W / Math.max(1, H), m = Math.min(1, Math.hypot(ui.stick.x, ui.stick.y));
         const vh = pveh ? 2 * (cam.cd || 30) * Math.tan(camera.fov * Math.PI / 360) : vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
-        const ha = pveh ? pveh.ang : (p.face || 0), ux = Math.cos(ha), uy = Math.sin(ha), sx = ux * rx + uy * rz, sy = ux * fx + uy * fz, k = .42 * m;   // [camera2] avanti è dove va il personaggio (la visuale gli gira dietro)
+        const sx = ui.stick.x / (m || 1), sy = -ui.stick.y / (m || 1), k = .45 * m;   // [levetta] l'angolo della levetta è il davanti dell'inquadratura, la distanza dal centro quanto si sposta
         lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; }
       else if (leadOn && spd > .3) {
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, ux = cam.pvx / spd, uy = cam.pvy / spd, asp = W / Math.max(1, H);
@@ -12435,12 +12435,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     // bordo dello schermo: la visuale gira (a piedi)
     cam.uy = cam.uy || 0; if (ui.edge && !pveh) cam.uy -= ui.edge * dt * 1.4;   // alla guida il bordo no: il puntatore serve a sterzare
     if (ui.rot) cam.uy += ui.rot * dt * 1.7; if (ui.drag) cam.uy += ui.drag;   // [monte] la visuale gira; [varco1] anche in auto, in Vespa e in bici (la guida non dipende dalla visuale)
-    if (PHONE && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc) {   // [telefono] la visuale va alle spalle di chi si muove: inquadra il suo davanti (piano a piedi, più svelta sui mezzi)
-      const vs = pveh ? Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
-      // [camera2] la direzione è quella del personaggio (dove guarda: con la levetta, dove va) o il muso del mezzo, non la velocità
-      // stimata fotogramma per fotogramma (rumorosa: la visuale andava a scatti). Rapida e morbida: punta avanti, non si trascina dietro
-      const hd = pveh ? ((pveh.speed || 0) > .8 ? pveh.ang : null) : vs > .4 && p.face !== undefined ? p.face : null;
-      if (hd !== null) { const tgt = Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW; cam.uy = angLerp(cam.uy, tgt, 1 - Math.exp(-dt * (pveh ? 3.2 : 4.5))); } }
+    // [levetta] la visuale non gira da sola: è la levetta a dire dove si va e dove guarda l'inquadratura
     cam.yaw = YAW + cam.uy; // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa
     let pitch = lerp(PITCH, onVespa ? .78 : .82, ease);
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto

@@ -19413,7 +19413,8 @@ var Game = (function () {
     const ix = inp.x, iy = inp.y;
     p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);   // [costa] in acqua si nuota
     if (ix || iy) {
-      const l = Math.hypot(ix, iy), sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : (p.sneak ? 1.7 : inp.pace >= 3 ? 7.8 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
+      const l = Math.hypot(ix, iy); let sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : (p.sneak ? 1.7 : inp.pace >= 3 ? 7.8 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
+      if (inp.mag !== undefined && !p.swim && !p.sneak && !(inp.pace >= 3)) sp = (1.3 + 5.1 * Math.min(1, inp.mag)) * (p.loadK || 1);   // [levetta] più il dito è lontano dal centro, più si va svelti (dal passo alla corsa)
       p.__st = st;   // [monte] i livelli (sotto terra, sul ponte) sanno dove si cammina
       const hitWall = tryMove(p, ix / l * sp * dt, iy / l * sp * dt, .35, !p.indoor && !p.lv && !p.carrying);   // [costa] il giocatore può entrare in mare (con un peso in braccio no)
       p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);
@@ -19565,7 +19566,8 @@ var Game = (function () {
       const off = want === null ? 0 : Math.abs(angDiff(want, v.ang));
       let a = K.accel * (v.boost || 1) * (off < 1.2 ? 1 : off < 2.4 ? .45 : .2) * (1 - clamp(vf / max, 0, 1) * .35);
       if (vf < 0) a += 10;
-      if (vf < max) vf = Math.min(max, vf + a * dt); else vf -= Math.min(vf - max, 4 * dt);
+      const tmax = max * Math.min(1, throttle);   // [levetta] gas a metà: velocità a metà
+      if (vf < tmax) vf = Math.min(tmax, vf + a * dt); else vf -= Math.min(vf - tmax, (throttle < 1 ? 3 : 4) * dt);
     } else if (throttle < 0) { if (vf > .6) vf -= 16 * dt; else vf = Math.max(-5, vf - K.accel * .7 * dt); }
     else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (K.boat ? .8 + Math.abs(vf) * .07 : 2.6) * dt);   // [costa] in mare si va avanti per abbrivio
     if (brake) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 19 * dt);
@@ -54729,7 +54731,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (leadOn && ui.stick) {   // [telefono] la levetta comanda lo sguardo: si inquadra subito dove la spingi (a piedi, in bici, in auto)
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, asp = W / Math.max(1, H), m = Math.min(1, Math.hypot(ui.stick.x, ui.stick.y));
         const vh = pveh ? 2 * (cam.cd || 30) * Math.tan(camera.fov * Math.PI / 360) : vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
-        const ha = pveh ? pveh.ang : (p.face || 0), ux = Math.cos(ha), uy = Math.sin(ha), sx = ux * rx + uy * rz, sy = ux * fx + uy * fz, k = .42 * m;   // [camera2] avanti è dove va il personaggio (la visuale gli gira dietro)
+        const sx = ui.stick.x / (m || 1), sy = -ui.stick.y / (m || 1), k = .45 * m;   // [levetta] l'angolo della levetta è il davanti dell'inquadratura, la distanza dal centro quanto si sposta
         lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; }
       else if (leadOn && spd > .3) {
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, ux = cam.pvx / spd, uy = cam.pvy / spd, asp = W / Math.max(1, H);
@@ -54775,12 +54777,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     // bordo dello schermo: la visuale gira (a piedi)
     cam.uy = cam.uy || 0; if (ui.edge && !pveh) cam.uy -= ui.edge * dt * 1.4;   // alla guida il bordo no: il puntatore serve a sterzare
     if (ui.rot) cam.uy += ui.rot * dt * 1.7; if (ui.drag) cam.uy += ui.drag;   // [monte] la visuale gira; [varco1] anche in auto, in Vespa e in bici (la guida non dipende dalla visuale)
-    if (PHONE && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc) {   // [telefono] la visuale va alle spalle di chi si muove: inquadra il suo davanti (piano a piedi, più svelta sui mezzi)
-      const vs = pveh ? Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
-      // [camera2] la direzione è quella del personaggio (dove guarda: con la levetta, dove va) o il muso del mezzo, non la velocità
-      // stimata fotogramma per fotogramma (rumorosa: la visuale andava a scatti). Rapida e morbida: punta avanti, non si trascina dietro
-      const hd = pveh ? ((pveh.speed || 0) > .8 ? pveh.ang : null) : vs > .4 && p.face !== undefined ? p.face : null;
-      if (hd !== null) { const tgt = Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW; cam.uy = angLerp(cam.uy, tgt, 1 - Math.exp(-dt * (pveh ? 3.2 : 4.5))); } }
+    // [levetta] la visuale non gira da sola: è la levetta a dire dove si va e dove guarda l'inquadratura
     cam.yaw = YAW + cam.uy; // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa
     let pitch = lerp(PITCH, onVespa ? .78 : .82, ease);
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
@@ -56426,13 +56423,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       const v = st.vehicles.find(q => q.id === st.player.vehicle), B = stickB || R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));
       if (v) { const want = Math.atan2(wy, wx), ad = a => Math.atan2(Math.sin(a), Math.cos(a)), d = ad(want - v.ang), spd = Math.abs(v.speed || Math.hypot(v.vx || 0, v.vy || 0));
         const two = G.VK[v.kind] && (G.VK[v.kind].two || G.VK[v.kind].pocket);
-        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: m > .35 ? 1 : 0, steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint } };   // avanti verso lì, sterzando
+        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: Math.min(1, Math.max(0, (m - .2) / .7)), steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint } };   // avanti verso lì, sterzando
         if (spd > 2 && (v.speed || 0) > 0) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: 0, hb: brakeKey, boost: false } };   // dalla parte opposta: prima frena
         return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (stick.x || stick.y) { // touch: la levetta segue lo schermo
       const B = stickB || R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
-      return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode ? Math.atan2(y, x) : aimAngle() };   // [telefono] con la levetta guarda dove va
+      return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode ? Math.atan2(y, x) : aimAngle(), mag: touchMode ? Math.min(1, Math.hypot(stick.x, stick.y)) : undefined };   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va
     }
     let f = 0, s = 0;
     const ar = !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick
