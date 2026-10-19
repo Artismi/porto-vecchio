@@ -1128,9 +1128,9 @@ var Vesti3D = (function () {
   }
   function accessories(g, outfit, held, D) {
     if (!window.Sartoria || !D || !D.B) return accessoriesOld(g, outfit, held);
-    if (window.Pittura) try { scarpe(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); } catch (e) { console.error('[Vesti3D] scarpe', e); }
+    if (window.Pittura && !D.soloAcc) try { scarpe(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); } catch (e) { console.error('[Vesti3D] scarpe', e); }
     const ATP = (bone, obj) => /^(Chest|Hips|Torso|Abdomen|Neck)$/.test(bone) ? pelle(g, obj, D.B) : Sartoria.attach(g, PARTI, bone, obj);   // sul busto la pelle sotto; sugli arti l'osso (un anello sta su un segmento solo)   // [strati] tutto quello che sta sul corpo si piega col corpo (pesi della pelle sotto), non rigido su un osso
-    if (window.Pittura) try { volumi(g, outfit, D.B, ATP); Pittura.bordi(g, D.B, outfit, ATP); cappuccio(g, outfit, D.B, ATP); } catch (e) { console.error('[Vesti3D] volumi', e); }
+    if (window.Pittura && !D.soloAcc) try { volumi(g, outfit, D.B, ATP); Pittura.bordi(g, D.B, outfit, ATP); cappuccio(g, outfit, D.B, ATP); } catch (e) { console.error('[Vesti3D] volumi', e); }
     curPL = window.Pittura ? Pittura.paintPlans(D.B, outfit) : null;
     const B = D.B, T = Sartoria.testa(g, PARTI), bn = B.bones, AT = ATP;
     const lay = D.lay || [], outer = lay.reduce((m, l) => Math.max(m, l.t || 0), 0) + .004, th = D.th || {};
@@ -1263,6 +1263,12 @@ var Vesti3D = (function () {
   function proporzioni(g, on) { const m = g.userData.model && g.userData.model.isObject3D ? g.userData.model : g; for (const n in PROP) { const b = m.getObjectByName(n); if (b && b.isBone) b.scale.setScalar(on ? PROP[n] : 1); } }
   function dress(g, outfit, look, held, seed) { const it = dressGen(g, outfit, look, held, seed); while (!it.next().done); }
   function* dressGen(g, outfit, look, held, seed) {
+    if (window.Taglio && Taglio.attivo && Taglio.dress(g, outfit, look)) {   // [taglio] i vestiti a pezzi modellati del kit; sopra, gli accessori
+      g.traverse(o => { if (o.userData && o.userData.corredo && o.userData.corredo !== 'baffi') o.visible = false; });
+      const rm = []; g.traverse(o => { if (o.userData && o.userData.vesti && !o.userData.taglio) rm.push(o); }); rm.forEach(o => o.parent && o.parent.remove(o));
+      const acc = outfit.filter(c => c.acc && !/^(busto|gambe|piedi)$/.test(c.zona) && !/^(cravatta|papillon)/.test(c.acc));
+      if (acc.length && window.Sartoria) try { const B = Sartoria.body(g, PARTI); if (B) { B._guscioPts = Taglio.punti(g, B); B._mc = null; accessories(g, acc, held, { B, soloAcc: true }); } } catch (e) { console.error('[Vesti3D] accessori', e); }
+      return; }
     proporzioni(g, false); strip(g); bare(g, look);
     // gli abitanti: ogni capo nella sua variante (scollo a V, collo alto, righe, quadri…), sempre la stessa per persona
     if (seed !== undefined && window.Sartoria) outfit.forEach(c => { const V = Sartoria.VARIANTI[c.id]; if (V && !c.var) c.var = V[hsh(String(seed) + c.id) % V.length]; });
