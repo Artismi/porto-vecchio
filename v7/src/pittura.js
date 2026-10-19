@@ -80,7 +80,7 @@ var Pittura = (function () {
   // Uomo: spalle e torace pieni, petto a piano, si stringe in vita (la V), glutei tondi. Donna: vita segnata, fianchi e glutei pieni.
   // Fattori sul raggio stirato per altezza e angolo (davanti, fianchi, dietro), con transizioni morbide (gaussiane).
   const FEMMINE = /^(Casual|Formal)$/;
-  let FORMA_K = 3.5;   // l'intensità del modellato (1 = appena accennato)
+  let FORMA_K = 2;   // l'intensità del modellato (1 = appena accennato). [proporzioni] era 3,5: vita strizzata, spalle troppo larghe
   function sartoriaForma(tb, R) {
     const B0 = tb.Bref, leg = tb.kind !== 'tronco', fem = FEMMINE.test(B0.key), n = tb.ns, RG = R[0].length, b = B0.bones, nY = S().neckY(B0);
     const yW = B0.waist, yH = b.Hips.y, yC = b.Chest.y, yCr = B0.crotch, g = (y, c, w) => Math.exp(-((y - c) * (y - c)) / (2 * w * w));
@@ -116,7 +116,7 @@ var Pittura = (function () {
   const MASCHI = /^(Casual_2|Casual_Hoodie|Worker)$/;
   function shape(B, tb, s, a, r) {
     if (tb.kind !== 'tronco') return r; const y = tb.S[cl(Math.round(s / tb.ds), 0, tb.ns)].y, sa = Math.abs(Math.sin(a));
-    if (MASCHI.test(B.key)) r *= 1 + .03 * sa * sa * cl((y - B.waist + .05) / .25, 0, 1);
+    if (MASCHI.test(B.key)) r *= 1 + .015 * sa * sa * cl((y - B.waist + .05) / .25, 0, 1);
     return r;
   }
   function ironRadius(R, tb, s, a) { const RG = R[0].length, fi = cl(s / tb.ds, 0, tb.ns), i0 = Math.floor(fi), i1 = Math.min(tb.ns, i0 + 1), t = fi - i0, fs = (((a / (Math.PI * 2)) * RG) % RG + RG) % RG, q0 = Math.floor(fs), q1 = (q0 + 1) % RG, u = fs - q0;
@@ -224,7 +224,7 @@ var Pittura = (function () {
           if (kc) { const P3 = c.map(q => { const g = gm[q]; return g >= 0 ? new THREE.Vector3(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]) : new THREE.Vector3().fromBufferAttribute(attrs.position, q).applyMatrix4(B.rel); });
             const n = P3[1].clone().sub(P3[0]).cross(P3[2].clone().sub(P3[0])), ln = n.length(); if (ln > 1e-12) { n.divideScalar(ln); const cc = P3[0].clone().add(P3[1]).add(P3[2]).divideScalar(3), ax = axial(tb, cc), fr = S().frameAt(tb, ax.s), rd = cc.clone().sub(fr.p); rd.addScaledVector(fr.t, -rd.dot(fr.t)); rd.normalize();
               if (kanga && reg === 0 && rd.z > .25 && cc.y > B.crotch + .06 && cc.y < B.waist + .14 && n.dot(rd) < .8) dropT.add(w / 3);   // [strati] la tasca canguro della felpa del kit: le sue pareti e il bordo (tutto ciò che non guarda fuori) via
-              else if (n.dot(rd) < -.7 && (cc.y < B.waist + .1 || reg === 1 || reg === 2)) dropT.add(w / 3);   /* anche i polsini del kit */ else if (reg === 0 && n.dot(rd) < -.2 && cc.y > S().neckY(B) - .07) dropT.add(w / 3);   /* [pulizia] il dentro dello scollo del kit (la mezzaluna scura sul collo) */ else if (Math.abs(n.dot(fr.t)) > .8 && n.dot(rd) < .3) { if (kanga && reg === 0 && cc.y < B.waist + .16 && cc.y > B.crotch + .1 && rd.z > .3) dropT.add(w / 3); else noN.add(w / 3); } } }   // [strati] le tasche e i risvolti del kit sulla pancia (la canguro della felpa): via, sennò fanno un lembo
+              else if (n.dot(rd) < -.7 && (cc.y < B.waist + .1 || reg === 1 || reg === 2)) dropT.add(w / 3);   /* anche i polsini del kit */ else if (reg === 0 && n.dot(rd) < -.2 && cc.y > S().neckY(B) - .07) dropT.add(w / 3);   /* [pulizia] il dentro dello scollo del kit (la mezzaluna scura sul collo) */ else if (Math.abs(n.dot(rd)) < .35 && Math.abs(n.dot(fr.t)) < .7 && (() => { const rr = P3.map(p => { const a2 = axial(tb, p), f2 = S().frameAt(tb, a2.s), d2 = p.clone().sub(f2.p); d2.addScaledVector(f2.t, -d2.dot(f2.t)); return d2.length(); }); return Math.max(...rr) - Math.min(...rr) < .012; })()) dropT.add(w / 3);   /* [pulizia] le pareti di spessore del kit (bordi di tasche, ginocchiere, gilet): sottili e di taglio, stirate fanno righe e crepe */ else if (Math.abs(n.dot(fr.t)) > .8 && n.dot(rd) < .3) { if (kanga && reg === 0 && cc.y < B.waist + .16 && cc.y > B.crotch + .1 && rd.z > .3) dropT.add(w / 3); else noN.add(w / 3); } } }   // [strati] le tasche e i risvolti del kit sulla pancia (la canguro della felpa): via, sennò fanno un lembo
         }
         c.forEach((q, k) => { keys.forEach(a => { const sz = attrs[a].itemSize; for (let j = 0; j < sz; j++) arr[a][w * sz + j] = attrs[a].array[q * sz + j]; });
           const g = gm[q], rv = reg < 5 ? reg : (g >= 0 ? regionOf(B, g) : -1); if (g >= 0 && rv >= 0 && rv < 5) { let L = ironCache[q]; if (!L) { const bp = ironPos(B, g, new THREE.Vector3()), tb = F.tubes[rv], ax = axial(tb, bp), fr = S().frameAt(tb, ax.s), d = bp.clone().sub(fr.p); d.addScaledVector(fr.t, -d.dot(fr.t)); d.normalize();

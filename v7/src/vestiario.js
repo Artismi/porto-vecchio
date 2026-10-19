@@ -1123,9 +1123,14 @@ var Vesti3D = (function () {
   // [fluido] vestire è un lavoro in fasi (sartoria, parti coperte, gusci, pittura, accessori): dressGen le fa una per volta.
   // dress le fa tutte subito (il giocatore, i ritratti); gli abitanti in strada le fanno una per fotogramma (render.js, a
   // budget) e restano invisibili finché non sono vestiti: niente fotogramma lungo quando qualcuno entra in scena.
+  // [proporzioni] il manichino del kit ha la testa grossa e le braccia corte ed esili (il polso finisce sopra l'inguine).
+  // Dopo aver vestito (le misure e gli agganci si fanno sul corpo a riposo) si scalano le ossa: testa più piccola, braccio
+  // più lungo e più pieno, la mano di nuovo della sua misura. Le animazioni non toccano le scale. A ogni vestizione si riparte da 1
+  const PROP = { Head: .9, UpperArmL: 1.18, UpperArmR: 1.18, WristL: 1 / 1.18, WristR: 1 / 1.18 };
+  function proporzioni(g, on) { const m = g.userData.model && g.userData.model.isObject3D ? g.userData.model : g; for (const n in PROP) { const b = m.getObjectByName(n); if (b && b.isBone) b.scale.setScalar(on ? PROP[n] : 1); } }
   function dress(g, outfit, look, held, seed) { const it = dressGen(g, outfit, look, held, seed); while (!it.next().done); }
   function* dressGen(g, outfit, look, held, seed) {
-    strip(g); bare(g, look);
+    proporzioni(g, false); strip(g); bare(g, look);
     // gli abitanti: ogni capo nella sua variante (scollo a V, collo alto, righe, quadri…), sempre la stessa per persona
     if (seed !== undefined && window.Sartoria) outfit.forEach(c => { const V = Sartoria.VARIANTI[c.id]; if (V && !c.var) c.var = V[hsh(String(seed) + c.id) % V.length]; });
     // il corredo a scatole di models.js: via (resta solo quello che non è un vestito, come i baffi)
@@ -1159,6 +1164,7 @@ var Vesti3D = (function () {
     yield;
     try { accessories(g, outfit, held, D); } catch (e) { console.error('[Vesti3D] pezzi', e); }
     if (window.Officina) try { Officina.onDress(g, outfit); } catch (e) { console.error('[Vesti3D] officina', e); }   // [studio]
+    proporzioni(g, true);
   }
   const npcByLook = new WeakMap(); let npcSt = null;
   function npcOf(look) {
@@ -1193,5 +1199,5 @@ var Vesti3D = (function () {
     requestAnimationFrame(loop);
   }
   const iv = setInterval(() => { if (hook()) { clearInterval(iv); requestAnimationFrame(loop); } }, 50);
-  return { dress, strip, players, analyze, PARTI, fromLook, EXTRA };
+  return { dress, strip, proporzioni, players, analyze, PARTI, fromLook, EXTRA };
 })();
