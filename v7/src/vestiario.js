@@ -765,7 +765,7 @@ var Vesti3D = (function () {
     const NA = 64, y0 = nY - .2, y1 = Math.min(T.chin + .02, nY + .12), dy = .004, NY = Math.round((y1 - y0) / dy) + 1, RG = Array.from({ length: NY }, () => new Float32Array(NA));
     const put = (x, y, z, pad) => { const j = Math.round((y - y0) / dy); if (j < 0 || j >= NY) return; const ddx = x - nx, ddz = z - nz, r = Math.hypot(ddx, ddz) + (pad || 0), i = ((Math.round((Math.atan2(ddx, ddz) + Math.PI) / (Math.PI * 2) * NA) % NA) + NA) % NA; if (r > RG[j][i]) RG[j][i] = r; };
     const sLo = tb.sAtY(y0 - .02), sHi = tb.sAtY(y1 + .01);
-    for (let sv = Math.min(sLo, sHi); sv <= Math.max(sLo, sHi); sv += .004) for (let k = 0; k < 96; k++) { const a = -Math.PI + k / 96 * Math.PI * 2, p = Pt.surfI(B, 0, sv, a, Pt.offAt(B, PL, 0, sv, a)); put(p.x, p.y, p.z, .002); }
+    for (let sv = Math.min(sLo, sHi); sv <= Math.max(sLo, sHi); sv += .004) for (let k = 0; k < 96; k++) { const a = -Math.PI + k / 96 * Math.PI * 2, p = Pt.surfI(B, 0, sv, a, Pt.offAt(B, PL, 0, sv, a)); if (B._guscioPts && p.y < nY + .01) continue; put(p.x, p.y, p.z, .002); }   /* sotto il guscio della giacca il corpo non c'è: conta il guscio */
     for (let k = 0; k < B.head.length; k += 3) put(B.head[k], B.head[k + 1], B.head[k + 2], .004);   // collo e mandibola della mesh della testa
     if (B._guscioPts) for (let k = 0; k < B._guscioPts.length; k += 3) put(B._guscioPts[k], B._guscioPts[k + 1], B._guscioPts[k + 2], .003);   // il guscio della giacca
     if (!window.Pittura) for (let k = 0; k < B.part.length; k++) if (B.part[k] === 'collo' || B.part[k] === 'torso') put(B.P[k * 3], B.P[k * 3 + 1], B.P[k * 3 + 2], .003);   // [corpo] coi vestiti dipinti il corpo del kit non c'è più (il cappuccio e gli orli del kit gonfiavano la misura: colletti a gorgiera)
@@ -789,8 +789,13 @@ var Vesti3D = (function () {
     const kind = c.acc, drop = kind === 'collana' ? .13 : kind === 'perle' ? .07 : .085, lift = kind === 'collana' ? .006 : .003;
     // la linea: dietro alta sul collo, davanti scende (curva a catenaria)
     const N = 96, L = [];
-    for (let i = 0; i <= N; i++) { const a = -Math.PI + i / N * Math.PI * 2, f = Math.max(0, Math.cos(a)), y = nY - .012 - drop * Math.pow(f, 1.6), r = M.maxR(a, y - .008, y + .008) + lift; L.push(new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r)); }
-    for (let it = 0; it < 3; it++) { const c0 = L.map(v => v.clone()); for (let i = 0; i <= N; i++) { const a = c0[(i + N - 1) % N], b = c0[(i + 1) % N]; L[i].copy(c0[i]).multiplyScalar(2).add(a).add(b).multiplyScalar(.25); const ang = -Math.PI + i / N * Math.PI * 2, y = L[i].y, rr = M.maxR(ang, y - .008, y + .008) + lift, d = Math.hypot(L[i].x - nx, L[i].z - nz); if (d < rr) { L[i].x = nx + (L[i].x - nx) * rr / d; L[i].z = nz + (L[i].z - nz) * rr / d; } } }
+    // davanti la catena pende: la x scende in verticale dai lati del collo al ciondolo, poi si posa in avanti sul petto (sennò seguiva il giro delle spalle);
+    // dietro sta sul collo. Il punto davanti: l'angolo dove la superficie ha quella x (bisezione), sopra la misura.
+    const nR0 = (B.neckR || .055) + .012, onX = (x, y, sg) => { let lo = 0, hi = Math.PI / 2; for (let k = 0; k < 24; k++) { const m = (lo + hi) / 2; if (Math.sin(m) * (M.maxR(sg * m, y - .006, y + .006) + lift) < x) lo = m; else hi = m; } const a = sg * (lo + hi) / 2, r = M.maxR(a, y - .006, y + .006) + lift; return new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r); };
+    for (let i = 0; i <= N; i++) { const t = -Math.PI + i / N * Math.PI * 2, f = Math.max(0, Math.cos(t)), y = nY - .012 - drop * Math.pow(f, 1.6);
+      if (Math.abs(t) >= Math.PI / 2) { const a = t, r = Math.max(M.maxR(a, y - .008, y + .008), nR0 - .006) + lift; L.push(new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r)); }
+      else L.push(onX(nR0 * Math.abs(Math.sin(t)) * (1 - .25 * f), y, Math.sign(t) || 1)); }
+    for (let it = 0; it < 3; it++) { const c0 = L.map(v => v.clone()); for (let i = 0; i <= N; i++) { const a = c0[(i + N - 1) % N], b = c0[(i + 1) % N]; L[i].copy(c0[i]).multiplyScalar(2).add(a).add(b).multiplyScalar(.25); const ang = Math.atan2(L[i].x - nx, L[i].z - nz), y = L[i].y, rr = M.maxR(ang, y - .008, y + .008) + lift, d = Math.hypot(L[i].x - nx, L[i].z - nz); if (d < rr) { if (Math.abs(ang) < Math.PI / 2) { const q = onX(Math.abs(L[i].x - nx), y, Math.sign(L[i].x - nx) || 1); L[i].z = Math.max(L[i].z, q.z); } else { L[i].x = nx + (L[i].x - nx) * rr / d; L[i].z = nz + (L[i].z - nz) * rr / d; } } } }
     const curve = new THREE.CatmullRomCurve3(L, true), len = curve.getLength();
     if (kind === 'perle') { const n = Math.round(len / .0145); for (let k = 0; k < n; k++) { const p = curve.getPointAt(k / n); o.add(Sp(.0068, new THREE.MeshStandardMaterial({ color: '#f4f0e6', roughness: .25, metalness: .1, emissive: '#3a3630' }), p.x, p.y, p.z)); } return o; }
     // la grumetta: maglie schiacciate in un'unica geometria
@@ -1295,7 +1300,7 @@ var Vesti3D = (function () {
     if (window.Pittura) try { Pittura.dipingi(g, outfit, look, PARTI); } catch (e) { console.error('[Vesti3D] pittura', e); }   // i vestiti dipinti sul corpo
     yield;
     // il guscio prima dei pezzi: catene e sciarpe ci si posano sopra (le sue misure entrano in quella del collo)
-    let guscio = null; if (D && D.B) { D.B._guscioPts = null; D.B._mc = null; if (GU) try { guscio = Giacche.costruisci(D.B, GU, look); const pts = []; guscio.traverse(m => { if (m.isMesh) pts.push(...m.geometry.attributes.position.array); }); D.B._guscioPts = pts; } catch (e) { console.error('[Vesti3D] giacca', e); } }
+    let guscio = null; if (D && D.B) { D.B._guscioPts = null; D.B._mc = null; if (GU) try { guscio = Giacche.costruisci(D.B, GU, look); const pts = []; guscio.traverse(m => { if (!m.isMesh || !m.userData.busto) return; const P = m.geometry.attributes.position.array, I = m.geometry.index.array; for (let t = 0; t < I.length; t += 3) for (const [u, v] of [[1, 0], [0, 1], [0, 0], [.33, .33], [.5, .5], [.5, 0], [0, .5], [.2, .6], [.6, .2]]) { const w = 1 - u - v; for (let c = 0; c < 3; c++) pts.push(P[I[t] * 3 + c] * u + P[I[t + 1] * 3 + c] * v + P[I[t + 2] * 3 + c] * w); } });   /* fitto: anche dentro i triangoli (sennò catene e sciarpe ci affondano tra un vertice e l'altro) */ D.B._guscioPts = pts; } catch (e) { console.error('[Vesti3D] giacca', e); } }
     try { accessories(g, outfit, held, D); } catch (e) { console.error('[Vesti3D] pezzi', e); }
     if (guscio) try { pelle(g, guscio, D.B); } catch (e) { console.error('[Vesti3D] giacca', e); }
     if (window.Officina) try { Officina.onDress(g, outfit); } catch (e) { console.error('[Vesti3D] officina', e); }   // [studio]

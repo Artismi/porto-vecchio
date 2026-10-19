@@ -24,7 +24,7 @@ var Giacche = (function () {
   function misure(B) {
     const b = B.bones, nY = Sartoria.neckY(B), [nx, nz] = B.neckC, hips = b.Hips.y, chest = (b.Chest || b.Spine || b.Hips).y;
     const yHem = Math.max(B.crotch + .035, hips - .13), arm = { L: b.UpperArmL, R: b.UpperArmR };
-    const ySh = Math.max(arm.L.y, arm.R.y) + .012;
+    const ySh = Math.min(Math.max(arm.L.y, arm.R.y) + .012, nY - .045);   // la spalla sotto la base del collo (sennò un ripiano piatto all'altezza del collo)
     return { nY, nx, nz, hips, chest, waist: B.waist, yHem, ySh, yPit: ySh - .085, cx: (arm.L.x + arm.R.x) / 2 };
   }
   // la sezione del corpo a una quota: per 2·N direzioni attorno al centro, il punto più lontano (pelle)
@@ -60,11 +60,13 @@ var Giacche = (function () {
       ring(nY + .002, nx, nz, rNc), ring(nY + .028, nx, nz, rNc), ring(nY + .028, nx, nz, rNc.map(r => r - .006)) ];   // il colletto della camicia (spunta sopra)
     const kJ = 9;   // da questo anello in su: la camicia
     // il colletto davanti è più basso che dietro (non va contro il mento)
-    const dip = (k, a) => k >= kJ - 1 ? -.014 * sm(1 - Math.abs(a) / 1.2) : 0;
+    const dip = (k, a) => (k >= kJ - 1 ? -.014 * sm(1 - Math.abs(a) / 1.2) : 0) - (info.shirtC && info.shirtC.collo === 'camicia_aperta' && k >= kJ + 1 ? .01 : 0);   // l'aperta: colletto più basso, posato
     const P = [], U = [], I = [], yLo = M.yHem, yHi = nY + .035;
     rings.forEach((rg, k) => { for (let i = 0; i <= NA; i++) { const a = -Math.PI + (i % NA) / NA * Math.PI * 2, r = rg.R[i % NA], y = rg.y + dip(k, a);
       P.push(rg.cx + Math.sin(a) * r, y, rg.cz + Math.cos(a) * r); U.push(i / NA, k >= kJ ? .985 + .015 * (k - kJ) / 3 : (y - yLo) / (yHi - yLo) * .97); } });
-    const W = NA + 1; for (let k = 0; k < rings.length - 1; k++) for (let i = 0; i < NA; i++) { const a = k * W + i, b = a + 1, c = a + W, d = c + 1; I.push(a, b, c, b, d, c); }
+    // la camicia aperta: il colletto non chiude la gola (davanti, niente anello)
+    const aperta = info.shirtC && info.shirtC.collo === 'camicia_aperta', gola = i => { const a = -Math.PI + (i + .5) / NA * Math.PI * 2; return Math.abs(a) < .62; };
+    const W = NA + 1; for (let k = 0; k < rings.length - 1; k++) for (let i = 0; i < NA; i++) { if (aperta && k >= kJ && gola(i)) continue; const a = k * W + i, b = a + 1, c = a + W, d = c + 1; I.push(a, b, c, b, d, c); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals();
     return { geo: g, rings, kJ, yLo, yHi };
   }
@@ -120,7 +122,8 @@ var Giacche = (function () {
     // la V: la camicia (o la maglia) dentro, la cravatta
     poly([[-xV(nY + .01) - .004, nY + .01], [xV(nY + .01) + .004, nY + .01], [0, yVb]], hex(vc));
     { const gV = x.createLinearGradient(0, V(nY), 0, V(yVb)); gV.addColorStop(0, 'rgba(0,0,0,.05)'); gV.addColorStop(1, 'rgba(0,0,0,.25)'); x.fillStyle = gV; poly([[-xV(nY + .01), nY + .01], [xV(nY + .01), nY + .01], [0, yVb]], 'rgba(0,0,0,0)'); x.fill(); }
-    if (aperta) { poly([[-.03, nY + .01], [.03, nY + .01], [0, nY - .12]], hex(info.skin || '#d8a888')); }   // aperta sul petto
+    if (aperta) { const sk = hex(info.skin || '#d8a888'); poly([[-.046, nY + .012], [.046, nY + .012], [0, nY - .15]], sk);   // aperta sul petto: la pelle, con l'ombra dei lembi
+      for (const sg of [-1, 1]) poly([[sg * .046, nY + .012], [sg * .036, nY + .012], [0, nY - .15]], 'rgba(0,0,0,.25)'); }
     if (tc) { const yK = nY - .002, yK0 = nY - .04, tip = yVb + .01;
       poly([[-.02, yK0], [-.042, tip + .025], [0, tip - .015], [.042, tip + .025], [.02, yK0]], hex(tc), mix(tc, .55), 3);   // la pala, larga
       x.save(); x.clip(); x.fillStyle = 'rgba(0,0,0,.12)'; for (let k = -10; k < 10; k++) { x.save(); x.translate(cxp + Xu(k * .012), V(yK0)); x.rotate(.6); x.fillRect(-1, 0, 3, H); x.restore(); } x.restore();
@@ -140,9 +143,9 @@ var Giacche = (function () {
     // il collo della giacca attorno al collo (gli anelli del collo): fascia col contorno sotto, tranne davanti dove c'è la camicia
     { const yA = nY - .024, yB2 = nY + .004, aF = .62; x.fillStyle = light; x.fillRect(0, V(yB2), U(-aF), V(yA) - V(yB2)); x.fillRect(U(aF), V(yB2), W - U(aF), V(yA) - V(yB2));
       x.fillStyle = line; x.fillRect(0, V(yA), U(-aF), 3); x.fillRect(U(aF), V(yA), W - U(aF), 3); x.fillRect(0, V(yB2), U(-aF), 2); x.fillRect(U(aF), V(yB2), W - U(aF), 2); }
-    if (aperta) for (const sg of [-1, 1]) {   // l'aperta alla Scarface: le punte larghe del colletto stese sopra i revers, contorno scuro e ombra sotto
-      poly([[sg * .03, nY + .012], [sg * .075, nY + .006], [sg * .135, nY - .085], [sg * .095, nY - .075], [sg * .045, nY - .06], [sg * .02, nY - .02]].map(([X, y]) => [X + sg * .006, y - .006]), 'rgba(0,0,0,.3)');
-      poly([[sg * .03, nY + .012], [sg * .075, nY + .006], [sg * .135, nY - .085], [sg * .095, nY - .075], [sg * .045, nY - .06], [sg * .02, nY - .02]], hex(sc), mix(sc, .45), 3); }
+    if (aperta) for (const sg of [-1, 1]) {   // l'aperta: le punte del colletto posate sul bordo dei revers (misura vera: 7 cm), contorno scuro e ombra sotto
+      const wing = [[sg * .045, nY + .004], [sg * .07, nY - .004], [sg * .09, nY - .07], [sg * .062, nY - .058], [sg * .04, nY - .03]];
+      poly(wing.map(([X, y]) => [X + sg * .005, y - .006]), 'rgba(0,0,0,.3)'); poly(wing, hex(sc), mix(sc, .45), 3); }
     // l'abbottonatura: il bordo davanti sotto la V, i bottoni, i quarti che si aprono in fondo
     x.strokeStyle = line; x.lineWidth = 3; x.beginPath(); x.moveTo(cxp, V(yVb)); x.lineTo(cxp, V(M.hips + .02)); x.quadraticCurveTo(cxp + Xu(.01), V(M.yHem + .02), cxp + Xu(.05), V(M.yHem)); x.stroke();
     x.beginPath(); x.moveTo(cxp, V(M.hips + .02)); x.quadraticCurveTo(cxp - Xu(.01), V(M.yHem + .02), cxp - Xu(.05), V(M.yHem)); x.stroke();
@@ -157,14 +160,14 @@ var Giacche = (function () {
   // ---------------- COSA COPRE (per la pittura: il corpo sotto il guscio si toglie) ----------------
   function copre(B, gu, reg, L) {
     if (!gu || !L) return false; const M = gu.M || (gu.M = misure(B));
-    if (reg === 1) return L.p[1] > M.yHem + .006 && L.p[1] < M.nY - .004;
+    if (reg === 1) return L.p[1] > M.yHem + .006 && L.p[1] < M.nY + .01;   // fin dentro il colletto: il raccordo collo-spalle non lo buca
     if (reg === 2 || reg === 3) { const tb = Pittura.frame(B).tubes[reg - 1], w = B.bones[reg === 2 ? 'WristL' : 'WristR']; return L.s < (w ? tb.sNear(w) : tb.L) - .012; }
     return false;
   }
   // ---------------- IL PEZZO ----------------
   function costruisci(B, info, look) {
     const M = misure(B), sh = busto(B, M, info), o = new THREE.Group(); info.skin = look && look.skin;
-    const mt = new THREE.MeshLambertMaterial({ map: tela(info, M, sh, 'busto') }); o.add(new THREE.Mesh(sh.geo, mt));
+    const mt = new THREE.MeshLambertMaterial({ map: tela(info, M, sh, 'busto') }), mb = new THREE.Mesh(sh.geo, mt); mb.userData.busto = 1; o.add(mb);
     const mm = new THREE.MeshLambertMaterial({ map: tela(info, M, sh, 'manica') });
     for (const sd of ['L', 'R']) o.add(new THREE.Mesh(manica(B, M, sd).geo, mm));
     return o;
