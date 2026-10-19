@@ -44,6 +44,9 @@ var Render = (function () {
     return LINC[k % LINC.length]; }
   function nq(hex) { const c = new THREE.Color(hex), h = {}; c.getHSL(h); const hu = h.h * 360; if (h.s < .25) return hex; let best = 0, bd = 999; [185, 355, 32].forEach((t, i) => { let d = Math.abs(hu - t); d = Math.min(d, 360 - d); if (d < bd) { bd = d; best = i; } }); return '#' + NQ[best].getHexString(); }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  // [leggera] una texture che non si ridipinge più: mandata alla scheda video, il canvas in memoria si svuota (se il contesto
+  // si perde il gioco ricarica la pagina, vedi webglcontextlost)
+  function freeAfterUpload(t) { t.onUpdate = () => { t.onUpdate = null; const im = t.image; if (im && im.getContext) { im.width = 1; im.height = 1; } }; return t; }
   function canvasTex(c) { const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; }
   function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
   const std = (o) => new THREE.MeshStandardMaterial(Object.assign({ roughness: .9, metalness: 0 }, o));
@@ -101,6 +104,9 @@ var Render = (function () {
       if (window.Officina && Officina.wantParts) Officina.onPart(o, b, b.geos.length - 1, g.attributes.position.count);   // [studio] dove finisce ogni mesh
     });
   }
+  // [leggera] normali in un byte per numero (Int8 normalizzato) invece di quattro: stessa luce a vista, un quarto della memoria,
+  // in RAM e sulla scheda video. Solo sulle geometrie finali (statiche fuse e case fuse), non su quelle che altri rileggono come float.
+  function packNormals(g) { const a = g.attributes.normal; if (!a || !(a.array instanceof Float32Array)) return g; const src = a.array, out = new Int8Array(src.length); for (let i = 0; i < src.length; i++) out[i] = Math.max(-127, Math.min(127, Math.round(src[i] * 127))); g.setAttribute('normal', new THREE.BufferAttribute(out, 3, true)); return g; }
   function mergeGeos(geos) {
     let n = 0; geos.forEach(g => n += g.attributes.position.count);
     const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2); let o = 0;
@@ -195,17 +201,19 @@ var Render = (function () {
         const key = sig + '|' + Math.floor(_wp.x / 32) + ',' + Math.floor(_wp.z / 32) + '|' + o.castShadow + o.receiveShadow;
         let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow });
         const id = new Float32Array(g.attributes.position.count).fill(bi); g.setAttribute('bId1', new THREE.BufferAttribute(id, 1));
-        b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
+        g.__src1 = o; b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
       });
     });
     moved.forEach(o => { o.visible = false; });   // restano pronti per la trasparenza
     B.forEach(b => {
       let n = 0; b.geos.forEach(g => n += g.attributes.position.count);
       const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), id = new Float32Array(n); let k = 0;
-      b.geos.forEach(g => { const c = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); if (g.attributes.normal) nor.set(g.attributes.normal.array, k * 3); if (g.attributes.uv) uv.set(g.attributes.uv.array, k * 2); id.set(g.attributes.bId1.array, k); k += c; g.dispose(); });
+      const srcs = [];
+      b.geos.forEach(g => { const c = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); if (g.attributes.normal) nor.set(g.attributes.normal.array, k * 3); if (g.attributes.uv) uv.set(g.attributes.uv.array, k * 2); id.set(g.attributes.bId1.array, k); if (g.__src1) srcs.push([g.__src1, k, c, !!g.attributes.normal, !!g.attributes.uv]); k += c; g.dispose(); });
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setAttribute('bId1', new THREE.BufferAttribute(id, 1));
-      geo.computeBoundingSphere(); geo.computeBoundingBox();
+      geo.computeBoundingSphere(); geo.computeBoundingBox(); packNormals(geo);   // [leggera]
       const mesh = new THREE.Mesh(geo, fadeMat1(b.m)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh);
+      srcs.forEach(([o, start, count, hasN, hasUv]) => lazyGeo1(o, geo, start, count, hasN, hasUv));   // [leggera] l'originale si rifà dalla fusa quando serve
       if (b.cast) { const sk = Math.floor(geo.boundingBox.min.x / 48) + ',' + Math.floor(geo.boundingBox.min.z / 48) + '|' + b.m.side + '|' + b.m.shadowSide; let q = SH.get(sk); if (!q) SH.set(sk, q = { side: b.m.side, ss: b.m.shadowSide, pos: [] }); q.pos.push(pos); } });
     // l'ombra delle case: la texture non conta, quindi tutte le parti di un settore di 48 m fanno ombra con una mesh sola,
     // su un livello (layer 1) che vedono solo le camere delle ombre
@@ -217,13 +225,34 @@ var Render = (function () {
     window.__fusione1 = { prima: before, dopo: after, secchi: B.size, spostate: moved.length, materiali: FD1.canon.size, ombre: SH.size };
     if (window.__dbg35) console.log('[dbg] fusione1', JSON.stringify(window.__fusione1));
   }
+  // [leggera] i pezzi originali delle case fuse (spenti, servono solo quando la casa si dissolve, ai raggi dei graffiti e dei tetti)
+  // non tengono più la loro geometria (erano ~260 MB): la rifanno dalla mesh fusa la prima volta che qualcuno la chiede, con
+  // lo stesso ingombro di prima per chi misura le scatole senza leggere i vertici.
+  const LAZY1 = { n: 0, made: 0 };
+  function lazyGeo1(o, fused, start, count, hasN, hasUv) {
+    const g0 = o.geometry; if (!g0 || o.userData.lazy1) return;
+    if (!g0.boundingBox) g0.computeBoundingBox(); if (!g0.boundingSphere) g0.computeBoundingSphere();
+    const ph = new THREE.BufferGeometry(); ph.boundingBox = g0.boundingBox.clone(); ph.boundingSphere = g0.boundingSphere.clone(); ph.name = g0.name;
+    const inv = o.matrixWorld.clone().invert(); let real = null; LAZY1.n++;
+    const make = () => {
+      const P = fused.attributes, a = start, z = start + count, g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(P.position.array.slice(a * 3, z * 3), 3));
+      if (hasN) g.setAttribute('normal', new THREE.BufferAttribute(P.normal.array.slice(a * 3, z * 3), 3, P.normal.normalized));
+      if (hasUv) g.setAttribute('uv', new THREE.BufferAttribute(P.uv.array.slice(a * 2, z * 2), 2));
+      g.applyMatrix4(inv); g.boundingBox = ph.boundingBox.clone(); g.boundingSphere = ph.boundingSphere.clone(); g.name = ph.name; LAZY1.made++; return g;
+    };
+    // finché nessuno la chiede davvero (la casa che si dissolve, un raggio) resta il segnaposto: chi compila i programmi o conta
+    // le mesh legge o.geometry senza volerne i vertici
+    o.userData.lazy1 = () => { if (!real) real = make(); return real; };
+    Object.defineProperty(o, 'geometry', { configurable: true, enumerable: true, get() { return real || ph; }, set(v) { real = v; } });
+  }
   function fadeTick1(rec) {   // la casa che si dissolve esce dalla mesh fusa e torna coi suoi pezzi trasparenti
     if (!rec.mv1 || !FD1.data) return; const i = FD1.idx.get(rec), on = rec.fade > .004;
-    if (rec.out1 === on) return; rec.out1 = on; rec.mv1.forEach(o => { o.visible = on; });
+    if (rec.out1 === on) return; rec.out1 = on; rec.mv1.forEach(o => { if (on && o.userData.lazy1) o.userData.lazy1(); o.visible = on; });
     FD1.data[i * 4] = on ? 255 : 0; FD1.dirty = true; }
   function flushStatic() {
     coalesce1();   /* [pulitore1] */
-    STATIC.forEach(b => { let o = 0; b.offs = b.geos.map(g => { const k = o; o += g.attributes.position.count; return k; }); const m = new THREE.Mesh(mergeGeos(b.geos), b.mat); b.mesh = m; b.geos = []; m.castShadow = !b.noShadow || b.noShadow === 'lamp'; if (b.noShadow === 'lamp') m.customDepthMaterial = lampDepth1();   /* [unione1] */ m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); });
+    STATIC.forEach(b => { let o = 0; b.offs = b.geos.map(g => { const k = o; o += g.attributes.position.count; return k; }); const m = new THREE.Mesh(packNormals(mergeGeos(b.geos)), b.mat); b.mesh = m; b.geos = []; m.castShadow = !b.noShadow || b.noShadow === 'lamp'; if (b.noShadow === 'lamp') m.customDepthMaterial = lampDepth1();   /* [unione1] */ m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); });
     STATIC.clear();
   }
   // fonde i figli di un gruppo (in coordinate del gruppo) per materiale.
@@ -1837,7 +1866,8 @@ var Render = (function () {
     let rtex = null;
     try { const W = c.width, H = c.height, id = x.getImageData(0, 0, W, H), d = id.data, rc = mk(W, H), rxx = rc.getContext('2d'), od = rxx.createImageData(W, H), o = od.data;
       for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.72, Math.min(1, .72 + (lum - 40) / 120 * .28)) * 255   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
-      rxx.putImageData(od, 0, 0); rtex = canvasTex(rc); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; }
+      rxx.putImageData(od, 0, 0); rtex = freeAfterUpload(canvasTex(rc)); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; }
+    freeAfterUpload(tex);   // [leggera] il terreno dipinto non si ritocca: dopo l'invio basta la copia della scheda video
     yield;
     const pos = new Float32Array((n + 1) * (m + 1) * 3), uv = new Float32Array((n + 1) * (m + 1) * 2), idx = [];
     for (let j = 0; j <= m; j++) for (let i = 0; i <= n; i++) {
@@ -11104,6 +11134,9 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     };
     fast.__bvh = true; THREE.Mesh.prototype.raycast = fast;
   }
+  { const rc1 = THREE.Mesh.prototype.raycast; if (!rc1.__lazy1) { const f = function (r, out) { const L = this.userData && this.userData.lazy1; if (typeof L === 'function') L(); return rc1.call(this, r, out); }; f.__lazy1 = true; f.__bvh = rc1.__bvh; THREE.Mesh.prototype.raycast = f; } }   // [leggera] il pezzo fuso si rifà prima del raggio
+  {
+  }
   const SHMOV = { list: [] };   // [fluido] chi si muove (x, y, velocità), per le ombre dei faretti
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
@@ -12320,5 +12353,5 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { get __lazy1() { return LAZY1; }, get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
