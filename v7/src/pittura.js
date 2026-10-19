@@ -189,6 +189,7 @@ var Pittura = (function () {
     const F = frame(B), idx = geo.index ? geo.index.array : null, nt = (idx ? idx.length : geo.attributes.position.count) / 3;
     const m0 = (Array.isArray(src.material) ? src.material[0] : src.material) || {}, kc = !/^(Skin|Eye|Eyebrows|Hair|Moustache)/i.test((src.userData.pitOrig ? (Array.isArray(src.userData.pitOrig.mat) ? src.userData.pitOrig.mat[0] : src.userData.pitOrig.mat) : m0).name || '') ? .0018 : 0;   // la stoffa del kit sta un filo sopra la pelle che copre (niente sfarfallio)
     const v = new THREE.Vector3(), ironCache = [], dropT = new Set(), noN = new Set(), byReg = [[], [], [], [], [], []];   // 0..4 regioni, 5 = resta com'è
+    const kanga = kc && /Purple/.test((src.userData.pitOrig ? (Array.isArray(src.userData.pitOrig.mat) ? src.userData.pitOrig.mat[0] : src.userData.pitOrig.mat) : m0).name || '');   // [pulizia] la tasca canguro c'è solo nella felpa viola del kit (Casual_Hoodie): sul top corto della donna toglieva l'orlo sotto il seno e lasciava i buchi
     for (let t = 0; t < nt; t++) {
       const c = [0, 1, 2].map(k => idx ? idx[t * 3 + k] : t * 3 + k), r = c.map(q => gm[q] >= 0 ? regionOf(B, gm[q]) : -1);
       const cnt = {}; r.forEach(x => { if (x >= 0 || !kc) cnt[x] = (cnt[x] || 0) + 1; }); let best = -1, bn = 0; for (const k in cnt) if (cnt[k] > bn) { bn = cnt[k]; best = +k; }   // nei vestiti del kit i pezzetti senza zona (zip, tasche) vanno con la zona vicina
@@ -213,8 +214,8 @@ var Pittura = (function () {
           // i bordi dei vestiti del kit (risvolti, orli che girano dentro): facce rivolte all'asse o in su/giù. Stirate si accartoccerebbero: via
           if (kc) { const P3 = c.map(q => { const g = gm[q]; return g >= 0 ? new THREE.Vector3(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]) : new THREE.Vector3().fromBufferAttribute(attrs.position, q).applyMatrix4(B.rel); });
             const n = P3[1].clone().sub(P3[0]).cross(P3[2].clone().sub(P3[0])), ln = n.length(); if (ln > 1e-12) { n.divideScalar(ln); const cc = P3[0].clone().add(P3[1]).add(P3[2]).divideScalar(3), ax = axial(tb, cc), fr = S().frameAt(tb, ax.s), rd = cc.clone().sub(fr.p); rd.addScaledVector(fr.t, -rd.dot(fr.t)); rd.normalize();
-              if (reg === 0 && rd.z > .25 && cc.y > B.crotch + .06 && cc.y < B.waist + .14 && n.dot(rd) < .8) dropT.add(w / 3);   // [strati] la tasca canguro della felpa del kit: le sue pareti e il bordo (tutto ciò che non guarda fuori) via
-              else if (n.dot(rd) < -.7 && (cc.y < B.waist + .1 || reg === 1 || reg === 2)) dropT.add(w / 3);   /* anche i polsini del kit */ else if (Math.abs(n.dot(fr.t)) > .8 && n.dot(rd) < .3) { if (reg === 0 && cc.y < B.waist + .16 && cc.y > B.crotch + .1 && rd.z > .3) dropT.add(w / 3); else noN.add(w / 3); } } }   // [strati] le tasche e i risvolti del kit sulla pancia (la canguro della felpa): via, sennò fanno un lembo
+              if (kanga && reg === 0 && rd.z > .25 && cc.y > B.crotch + .06 && cc.y < B.waist + .14 && n.dot(rd) < .8) dropT.add(w / 3);   // [strati] la tasca canguro della felpa del kit: le sue pareti e il bordo (tutto ciò che non guarda fuori) via
+              else if (n.dot(rd) < -.7 && (cc.y < B.waist + .1 || reg === 1 || reg === 2)) dropT.add(w / 3);   /* anche i polsini del kit */ else if (reg === 0 && n.dot(rd) < -.2 && cc.y > S().neckY(B) - .07) dropT.add(w / 3);   /* [pulizia] il dentro dello scollo del kit (la mezzaluna scura sul collo) */ else if (Math.abs(n.dot(fr.t)) > .8 && n.dot(rd) < .3) { if (kanga && reg === 0 && cc.y < B.waist + .16 && cc.y > B.crotch + .1 && rd.z > .3) dropT.add(w / 3); else noN.add(w / 3); } } }   // [strati] le tasche e i risvolti del kit sulla pancia (la canguro della felpa): via, sennò fanno un lembo
         }
         c.forEach((q, k) => { keys.forEach(a => { const sz = attrs[a].itemSize; for (let j = 0; j < sz; j++) arr[a][w * sz + j] = attrs[a].array[q * sz + j]; });
           const g = gm[q], rv = reg < 5 ? reg : (g >= 0 ? regionOf(B, g) : -1); if (g >= 0 && rv >= 0 && rv < 5) { let L = ironCache[q]; if (!L) { const bp = ironPos(B, g, new THREE.Vector3()), tb = F.tubes[rv], ax = axial(tb, bp), fr = S().frameAt(tb, ax.s), d = bp.clone().sub(fr.p); d.addScaledVector(fr.t, -d.dot(fr.t)); d.normalize();
@@ -384,7 +385,7 @@ var Pittura = (function () {
           // toni a gradini (pixel art): niente sfumature continue
           
           col[i] = c[0] * 255 * shade; col[i + 1] = c[1] * 255 * shade; col[i + 2] = c[2] * 255 * shade; col[i + 3] = 255;
-          const Ct = top >= 0 ? plans[top] : null, rf = Ct ? (FIN[Ct.fab] !== undefined ? FIN[Ct.fab] : .85) : .75;
+          const Ct = top >= 0 ? plans[top] : null, rf = Ct ? (FIN[Ct.fab] !== undefined ? FIN[Ct.fab] : .85) : .415;   // la pelle: come il materiale Skin del kit
           // grana della finitura: la lana ha il pelo, la pelle la grana, il nylon un riflesso più pulito
           if (Ct && /lana|panno|feltro|trecce|costine|scamosciato|montone|pelo/.test(Ct.fab)) { const n = (hsh(px * 7 + ri, py * 13) - .5) * (/panno|feltro/.test(Ct.fab) ? .3 : 1); col[i] = cl(col[i] * (1 + n * .07), 0, 255); col[i + 1] = cl(col[i + 1] * (1 + n * .07), 0, 255); col[i + 2] = cl(col[i + 2] * (1 + n * .07), 0, 255); h += n * .15; }   // il panno è liscio: appena una grana
           if (Ct && /pelle|gomma/.test(Ct.fab)) h += (hsh(px >> 1, py >> 1) - .5) * .2;
@@ -631,7 +632,8 @@ var Pittura = (function () {
     const M = REG.map(R => {
       const { W, H, col, hh } = P.out[R], mk = (data) => { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d'), id = x.createImageData(W, H); id.data.set(data); x.putImageData(id, 0, 0);
         const T = new THREE.CanvasTexture(cv); T.flipY = false; T.wrapS = THREE.RepeatWrapping; T.wrapT = THREE.ClampToEdgeWrapping; T.magFilter = THREE.NearestFilter; T.minFilter = THREE.NearestMipmapLinearFilter; T.anisotropy = 4; return T; };
-      const bh = mk(hh), m = new THREE.MeshStandardMaterial({ map: mk(col), bumpMap: bh, bumpScale: .0015, roughnessMap: bh, roughness: 1, metalness: 0 }); m.emissive = new THREE.Color('#2a2622'); m.userData.pittura = true; return m;
+      // [pulizia] la luce propria come il resto del personaggio (models.js: emissive = colore × 0,3), texel per texel: la pelle dipinta è identica a quella di viso e mani (prima un grigio fisso: il busto nudo pareva una maglietta color carne)
+      const bh = mk(hh), cm = mk(col), m = new THREE.MeshStandardMaterial({ map: cm, bumpMap: bh, bumpScale: .0015, roughnessMap: bh, roughness: 1, metalness: 0, emissiveMap: cm }); m.emissive = new THREE.Color(.3, .3, .3); m.userData.pittura = true; return m;
     });
     MCACHE.set(sig, M); if (++mcount > 160) { const k = MCACHE.keys().next().value; MCACHE.delete(k); }
     return M;
@@ -738,7 +740,7 @@ var Pittura = (function () {
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
       g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(SW, 4));
       const A = jeans.A, dk = '#' + new THREE.Color().setRGB(A[0] * .96, A[1] * .96, A[2] * .96).getHexString();
-      const m = new THREE.MeshStandardMaterial({ map: decalTex('tasca', jeans.cuciture || '#c8a050', dk), transparent: false, alphaTest: .5, roughness: .95, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2 }); m.emissive = new THREE.Color('#2a2622');
+      const m = new THREE.MeshStandardMaterial({ map: decalTex('tasca', jeans.cuciture || '#c8a050', dk), transparent: false, alphaTest: .5, roughness: .95, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2 }); m.emissiveMap = m.map; m.emissive = new THREE.Color(.3, .3, .3);
       // fuori dal pentagono trasparente: l'alpha dal disegno
       m.alphaMap = null; m.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <alphatest_fragment>', 'if (vUv.x < 0. || vUv.x > 1. || vUv.y < 0. || vUv.y > 1. || diffuseColor.a < .5) discard;'); };
       m.map.premultiplyAlpha = false; m.transparent = false; m.alphaTest = .5;
@@ -777,7 +779,7 @@ var Pittura = (function () {
     for (let py = 0; py < N; py++) for (let px = 0; px < N; px++) { const f = fabric(C, (px + .5) / N * sz, (py + .5) / N * sz), i = (py * N + px) * 4, k = opt.dark ? .72 : 1; id.data[i] = f[0] * 255 * k; id.data[i + 1] = f[1] * 255 * k; id.data[i + 2] = f[2] * 255 * k; id.data[i + 3] = 255; }
     x.putImageData(id, 0, 0); const T = new THREE.CanvasTexture(cv); T.wrapS = T.wrapT = THREE.RepeatWrapping; T.magFilter = THREE.NearestFilter; T.minFilter = THREE.NearestMipmapLinearFilter; T.repeat.set(1 / sz, 1 / sz);
     const m = opt.liscio ? new THREE.MeshStandardMaterial({ map: T, vertexColors: opt.vc !== false, side: THREE.DoubleSide, roughness: 1, metalness: 0 }) : new THREE.MeshLambertMaterial({ map: T, vertexColors: opt.vc !== false, side: THREE.DoubleSide, flatShading: true });
-    m.emissive = new THREE.Color('#2a2622'); BMAT.set(key, m); return m;   // le falde lisce con la stessa luce del vestito dipinto
+    m.emissiveMap = T; m.emissive = new THREE.Color(.3, .3, .3); BMAT.set(key, m); return m;   // le falde con la stessa luce del vestito dipinto (colore × 0,3, come mats)
   }
   // un punto sulla superficie stirata (quella che si vede) della regione r, staccato di off
   function surfI(B, r, s, a, off) {

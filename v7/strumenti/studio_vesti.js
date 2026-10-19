@@ -13,6 +13,7 @@ const M = { uomo: { top: '#8a3a2a', bottom: '#2a3a5a', skin: '#d8a888', hair: '#
   operaio: { top: '#8a3a2a', bottom: '#2a3a5a', skin: '#c89070', hair: '#1a1a1a', hat: 'none', extra: '', model: 'Worker' },
   elegante: { top: '#8a3a2a', bottom: '#2a3a5a', skin: '#e8c0a0', hair: '#5a3a1a', hat: 'none', extra: '', model: 'Formal' } };
 const GRUPPI = {
+  nudi: [['uomo', ['mutande']], ['donna', ['mutande'], 'donna'], ['operaio', ['mutande'], 'operaio'], ['elegante', ['mutande'], 'elegante']],
   strati: [   // mutande sopra i pantaloni larghi, maglia fuori/dentro, giacca aperta
     ['mutande_sopra', ['maglietta', 'jeans_larghi', ['mutande', { col: '#c8302a' }], 'scarpe_skate']],
     ['camicia_giacca', ['camicia', 'pantaloni_completo', 'giacca_completo', 'cravatta', 'scarpe_eleganti']],
