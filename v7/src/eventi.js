@@ -1,6 +1,9 @@
 /* Porto Vecchio — gli eventi vicino al giocatore (la regia senza IA)
-   Ogni 15-35 s, se sei all'aperto e nessuno ti dà la caccia, a 10-34 m da te succede qualcosa con la gente vera che faceva
-   la sua giornata. Le scene sono schede di dati (SCENE, in fondo): chi recita (ruoli con un filtro), dove, e le battute in
+   Ogni 50-120 s, se sei all'aperto e nessuno ti dà la caccia, succede qualcosa con la gente vera che faceva la sua giornata,
+   in un POSTO vicino (dove c'è già gente, o un luogo pubblico), non attorno a te: [leggera] la stessa scena non torna nello
+   stesso posto nello stesso giorno né due volte nello stesso quartiere, i posti dove è successo qualcosa da poco pesano meno,
+   nessuno esce di casa apposta per recitare, le scene che vengono verso di te (sigaretta, provocazione…) al massimo una ogni
+   10 minuti, e attese e passi cambiano un po' ogni volta. Eventi.run(st, id) (le prove) cerca ancora gli attori attorno a te. Le scene sono schede di dati (SCENE, in fondo): chi recita (ruoli con un filtro), dove, e le battute in
    fila; l'interprete le esegue. Chi recita ha n.__ev: il movimento lo decide la scena (G.HOOKS.move) finché non viene
    colpito o stordito; poi torna alla sua giornata. Al massimo due scene insieme.
 
@@ -20,13 +23,13 @@
 var Eventi = (function () {
   'use strict';
   const G = typeof Game !== 'undefined' ? Game : require('./game.js');
-  const CFG = { first: 12, every: [15, 35], near: 10, far: 34, max: 2 };
+  const CFG = { first: 25, every: [50, 120], near: 10, far: 34, max: 2, spotR: 18, spotFar: 46, playerEvery: 600 };   // [leggera] più rade, nei posti
   const rnd = Math.random, hyp = Math.hypot, pick = a => a[Math.floor(rnd() * a.length)];
   const lerp = (a, b, f) => a + (b - a) * f, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const tileH = (x, y) => { const tx = Math.floor(x / G.TS), ty = Math.floor(y / G.TS); return tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH ? G.MAP.elev[ty * G.GW + tx] : 0; };
   const AZ = () => (typeof Azioni !== 'undefined' ? Azioni : null);
-  const S = st => st.__eventi || (st.__eventi = { next: st.clock + CFG.first, live: [], bikes: [], log: [], seen: {} });
+  const S = st => st.__eventi || (st.__eventi = { next: st.clock + CFG.first, live: [], bikes: [], log: [], seen: {}, spots: {}, day: {}, lastPlayer: -1e9 });
   const hour = st => ((st.t / 60) % 24 + 24) % 24;
   const night = st => { const h = hour(st); return h >= 21 || h < 6; };
 
@@ -138,7 +141,7 @@ var Eventi = (function () {
     },
     ride: {
       start(st, sc, b) {
-        const n = actor(sc, b.ride); let to = null; for (let k = 0; k < 14 && !to; k++) { const a = Math.atan2(st.player.y - n.y, st.player.x - n.x) + (rnd() - .5) * 1.6, L = (b.L || 28) + rnd() * 8, x = n.x + Math.cos(a) * L, y = n.y + Math.sin(a) * L; if (G.walkM(x, y)) to = { x, y }; }
+        const n = actor(sc, b.ride); let to = null; for (let k = 0; k < 14 && !to; k++) { const a = Math.atan2(st.player.y - n.y, st.player.x - n.x) + (rnd() < .5 ? -1 : 1) * (Math.PI / 2 + (rnd() - .5) * .9), L = (b.L || 28) + rnd() * 8, x = n.x + Math.cos(a) * L, y = n.y + Math.sin(a) * L; if (G.walkM(x, y)) to = { x, y }; }
         if (!to) { b._fail = true; return; }
         const v = G.makeVehicle(st, { id: 'ev_bmx' + Math.floor(st.clock * 1000) + '_' + Math.floor(rnd() * 99), kind: 'bmx', x: n.x, y: n.y, ang: Math.atan2(to.y - n.y, to.x - n.x), color: pick(['#d02a2a', '#2a6ac8', '#e8c040', '#3a9a5a', '#1e1e24']), rider: 'npc', vx: 0, vy: 0, w: 0 });
         st.vehicles.push(v); S(st).bikes.push(v.id);
@@ -149,7 +152,7 @@ var Eventi = (function () {
       tick(st, sc, b, dt) {
         if (b._fail) return 'abort'; const n = actor(sc, b.ride), v = b._v, o = b._o; if (!n || !n.__ev) return 'abort';
         n.x = o.x; n.y = o.y; n.face = o.face; n.wrH = .35; v.x = o.x; v.y = o.y; v.ang = o.face; v.vx = v.vy = 0; v.speed = o.speedNow || 0; v.pedal = true; v.crank = (v.crank || 0) + (o.speedNow || 0) * dt / .9; n.__ev.crank = v.crank;
-        const arrived = hyp(o.x - b._to.x, o.y - b._to.y) < 2, fall = st.clock - b._t > b._fallAt;
+        const arrived = hyp(o.x - b._to.x, o.y - b._to.y) < 2, fall = !!b.fall && (arrived || st.clock - b._t > b._fallAt);   // chi deve cadere cade al più tardi in fondo alla corsa
         if (!arrived && !fall && st.clock - b._t < 20) return false;
         v.rider = null; v.speed = 0; v.pedal = false; n.wrH = null; n.__ev.wrH = false; n.__ev.pose = null; setMv(n, { k: 'stay' });
         const s = Math.sin(o.face), c = Math.cos(o.face); if (G.walkM(o.x - s * .9, o.y + c * .9)) { n.x = o.x - s * .9; n.y = o.y + c * .9; }
@@ -163,6 +166,7 @@ var Eventi = (function () {
   function splice(sc, list) { if (list && list.length) sc.beats.splice(sc.i + 1, 0, ...list.map(x => Object.assign({}, x))); }
   function startBeat(st, sc, b) {
     b._t = st.clock; const k = ORDER.find(k => b[k] !== undefined) || (b.p !== undefined && b.then ? 'p' : 'wait');
+    if (!b._var) { b._var = true; if (typeof b.wait === 'number') b.wait *= .75 + rnd() * .6; if (typeof b.sp === 'number') { const f = .9 + rnd() * .2; b.sp *= f; if (typeof b.fsp === 'number') b.fsp *= f; } }   /* chi insegue e chi scappa con lo stesso fattore: l'esito resta quello di prima */   // [leggera] ogni volta un po' diversa
     b._k = k; const H = BEAT[k]; if (H.start) H.start(st, sc, b); b._w = H.wait ? H.wait(b) : 0;
   }
   function tickBeat(st, sc, b, dt) {
@@ -182,9 +186,30 @@ var Eventi = (function () {
     const E = S(st); E.live = E.live.filter(x => x !== sc);
     if (sc.after) sc.after();
   }
-  function pickRoles(st, D) { return pickRoles0(st, D, false) || pickRoles0(st, D, true); }
-  function pickRoles0(st, D, doors) {
+  function pickRoles(st, D, auto) {
+    if (!auto) return pickRoles0(st, D, false) || pickRoles0(st, D, true);
+    // [leggera] la regia: prima il posto, poi chi c'è lì (niente porte: nessuno esce apposta)
+    if (D.place) return pickRoles0(st, D, false);
+    const spots = spotsFor(st, D);
+    for (const sp of spots) { const r = pickRoles0(st, D, false, sp); if (r) { r.__spot = r.__spot || sp; return r; } }
+    return null;
+  }
+  // [leggera] i posti dove può succedere: dove c'è già gente all'aperto e i luoghi pubblici, fra 12 e 46 m da te, mai lo stesso
+  // per la stessa scena nello stesso giorno; più peso a chi non ha visto niente da un pezzo. In ordine di peso, un po' a caso.
+  const cellK = (x, y) => Math.round(x / 40) + ',' + Math.round(y / 40);
+  function spotsFor(st, D) {
+    const E = S(st), p = st.player, day = Math.floor(st.t / 1440), out = [], seen = new Set();
+    const add = (x, y) => { const d = hyp(x - p.x, y - p.y); if (d < 12 || d > CFG.spotFar || !G.walkM(x, y)) return; const k = cellK(x, y); if (seen.has(k)) return; seen.add(k);
+      const last = E.spots[k], same = E.spots[k + '|' + D.id]; if (same !== undefined && Math.floor(same / 1440) === day) return;
+      const w = (last === undefined ? 1 : Math.min(1, .15 + (st.t - last) / 240)) * (.6 + rnd() * .8); out.push({ x, y, k, w }); };
+    for (const n of st.npcs) if (!n.inside && !n.dead && !n.cop && !n.__ev && Math.abs(n.x - p.x) < CFG.spotFar && Math.abs(n.y - p.y) < CFG.spotFar) add(n.x, n.y);
+    const PL = G.PLACES || {}; for (const id in PL) { const q = PL[id]; if (q && Math.abs(q.x - p.x) < CFG.spotFar && Math.abs(q.y - p.y) < CFG.spotFar) add(q.x, q.y); }
+    return out.sort((a, b) => b.w - a.w).slice(0, 5);
+  }
+  const districtOf = (x, y) => { const W = typeof World !== 'undefined' ? World : null; try { return (W && W.districtAt && W.districtAt(x, y)) || cellK(x, y); } catch (e) { return cellK(x, y); } };
+  function pickRoles0(st, D, doors, spot) {
     const roles = {}, used = new Set(), p = st.player;
+    if (spot) roles.__spot = spot;
     if (D.place === 'ladder') {
       const TT = typeof Tetti !== 'undefined' ? Tetti : null; if (!TT || !TT.LADDERS.length || !TT._ || !TT._.footH) return null;
       const L = pick(TT.LADDERS.filter(L => L.footB < 0 && hyp(L.fx - p.x, L.fy - p.y) > 10 && hyp(L.fx - p.x, L.fy - p.y) < CFG.far && G.walkM(L.fx, L.fy))); if (!L) return null;
@@ -192,20 +217,23 @@ var Eventi = (function () {
     }
     for (const R0 of D.roles) {
       const R = Object.assign({ doors }, R0);
-      const f = (st2, n) => { DOORS = false; if ((FILTERS[R.f || 'any'])(st2, n)) return true; if (R.f === 'cop' || R.f === 'writer' || !R.doors) return false; DOORS = true; const r0 = (FILTERS[R.f || 'any'])(st2, n); DOORS = false; return r0; }, base = R.near ? roles[R.near] : roles.__spot || p, r = R.r || (R.near ? 14 : CFG.far), ring = R.ring || (R.near || roles.__spot ? null : [CFG.near, CFG.far]);
+      const f = (st2, n) => { DOORS = false; if ((FILTERS[R.f || 'any'])(st2, n)) return true; if (R.f === 'cop' || R.f === 'writer' || !R.doors) return false; DOORS = true; const r0 = (FILTERS[R.f || 'any'])(st2, n); DOORS = false; return r0; }, base = R.near ? roles[R.near] : roles.__spot || p, r = R.r || (R.near ? 14 : spot && !R.near ? CFG.spotR : CFG.far), ring = spot ? (R.near ? null : [CFG.near - 2, CFG.spotFar + 8]) : R.ring || (R.near || roles.__spot ? null : [CFG.near, CFG.far]);
       const c = near(st, base.x, base.y, r, n => !used.has(n) && f(st, n) && (!ring || (dP(st, n) >= ring[0] && dP(st, n) <= ring[1])) && dP(st, n) > (R.min !== undefined ? R.min : 4));
       if (!c.length) return null; const n = pick(c); roles[R.id] = n; used.add(n);
     }
     return roles;
   }
-  function run(st, id) {
+  function run(st, id, auto) {
     const E = S(st), D = SCENE.find(s => s.id === id); if (!D) return null;
     if (D.solo) { try { return D.solo(st) ? { def: D } : null; } catch (e) { return null; } }
     if (E.live.length >= CFG.max) return null;
-    const roles = pickRoles(st, D); if (!roles) return null;
+    const roles = pickRoles(st, D, auto); if (!roles) return null;
+    if (auto) { const sp0 = roles.__spot || roles[D.roles[0].id], day = Math.floor(st.t / 1440), k0 = cellK(sp0.x, sp0.y);   // [leggera] anche per chi sceglie il posto da sé (la scala)
+      if ((E.spots[k0 + '|' + id] !== undefined && Math.floor(E.spots[k0 + '|' + id] / 1440) === day) || E.day[id + '|' + districtOf(sp0.x, sp0.y)] === day) return null; }
     const sc = { def: D, roles, cast: [], crowd: [], beats: D.beats.map(x => Object.assign({}, x)), i: -1, spot: roles.__spot || { x: roles[D.roles[0].id].x, y: roles[D.roles[0].id].y }, L: roles.__L, t0: st.clock };
     D.roles.forEach(R => cast(sc, roles[R.id], R.id));
-    E.live.push(sc); E.log.push({ id, t: st.t }); if (E.log.length > 40) E.log.shift(); E.seen[id] = st.clock;
+    E.live.push(sc); E.log.push({ id, t: st.t, k: cellK(sc.spot.x, sc.spot.y) }); if (E.log.length > 40) E.log.shift(); E.seen[id] = st.clock;
+    { const k = cellK(sc.spot.x, sc.spot.y); E.spots[k] = st.t; E.spots[k + '|' + id] = st.t; E.day[id + '|' + districtOf(sc.spot.x, sc.spot.y)] = Math.floor(st.t / 1440); if (D.player) E.lastPlayer = st.clock; }
     next(st, sc);
     return sc;
   }
@@ -225,6 +253,8 @@ var Eventi = (function () {
     if (D.when === 'night' && !night(st)) return 0; if (D.when === 'day' && night(st)) return 0;
     if (D.player && (st.player.vehicle || st.player.lv)) return 0;
     const E = S(st), ago = st.clock - (E.seen[D.id] || -1e9);
+    if (D.player && st.clock - E.lastPlayer < CFG.playerEvery) return 0;   // [leggera] chi viene verso di te: di rado
+    if (E.day[D.id + '|' + districtOf(st.player.x, st.player.y)] === Math.floor(st.t / 1440)) return 0;   // [leggera] già successa qui oggi
     return (D.w || 1) * (ago < 240 ? .15 : 1);   // la stessa scena non torna subito
   }
   function step(st, dt) {
@@ -238,7 +268,7 @@ var Eventi = (function () {
     const pool = SCENE.map(D => [D, weight(st, D)]).filter(x => x[1] > 0);
     for (let k = 0; k < 6 && pool.length; k++) {
       let tot = pool.reduce((s, x) => s + x[1], 0), r = rnd() * tot, j = 0; while (j < pool.length - 1 && (r -= pool[j][1]) > 0) j++;
-      const D = pool.splice(j, 1)[0][0]; if (run(st, D.id)) break;
+      const D = pool.splice(j, 1)[0][0]; if (run(st, D.id, true)) break;
     }
     E.next = st.clock + CFG.every[0] + rnd() * (CFG.every[1] - CFG.every[0]);
   }

@@ -26,7 +26,7 @@
 html, body { height: 100%; background: var(--ink); color: var(--fg); }
 body { font-family: var(--f-pix); font-size: 15px; line-height: 1.35; overflow: hidden; }
 #app { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hidden; background: var(--ink); user-select: none; -webkit-user-select: none; }
-#cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; touch-action: none; outline: none; cursor: none; }
+#cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: auto; touch-action: none; outline: none; cursor: none; }
 .layer { position: absolute; inset: 0; pointer-events: none; }
 .hud { position: absolute; font-family: var(--f-pix); }
 .card { background: var(--panel); border: 2px solid var(--line); box-shadow: 0 0 0 2px #07060e, 4px 4px 0 #07060e; }
@@ -354,5 +354,6 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 <script data-m="interni_arte">/*interni_arte.js*/</script>
 <script data-m="protagonista_ui">/*protagonista_ui.js*/</script>
 <script data-m="studio">/*studio.js*/</script>
+<script data-m="sviluppo">/*sviluppo.js*/</script>
 
 </body></html>

@@ -513,50 +513,50 @@ var World = (function () {
   const rel = pts => pts.map(([x, d]) => [x, yc(x) + d]);
 
   // ---------------- EDIFICI CON NOME ----------------
-  // id, nome, w, h (caselle), piani, stile, punto preferito (metri), extra. Insegne in cirillico e coreano.
+  // id, nome, w, h (caselle), piani, stile, punto preferito (metri), extra. Insegne in italiano, leggibili.
   const NAMED = [
     // centro
     ['chiesa', 'Chiesa di San Rocco', 8, 6, 5, 9, [369, 117], { church: true, home: true }],
-    ['bar', 'Bar Da Gino', 5, 6, 5, 1, [392, 134], { sign: { t: 'БАР ДЖИНО', c: '#ff4fa3' }, shop: true }],
-    ['wu', 'Alimentari Wu', 5, 5, 4, 7, [424, 134], { sign: { t: '吳 식료품', c: '#ff3b3b' }, shop: true, lanterns: true }],
+    ['bar', 'Bar Da Gino', 5, 6, 5, 1, [392, 134], { sign: { t: 'BAR DA GINO', c: '#ff4fa3' }, shop: true }],
+    ['wu', 'Alimentari Wu', 5, 5, 4, 7, [424, 134], { sign: { t: 'ALIMENTARI WU', c: '#ff3b3b' }, shop: true, lanterns: true }],
     ['biblioteca', 'Biblioteca civica', 7, 5, 4, 2, [420, 142], {}],
-    ['ambulatorio', 'Ambulatorio', 5, 6, 3, 8, [394, 96], { sign: { t: '✚ АМБУЛАТОРИЯ', c: '#4dff9a' } }],
-    ['cultura', 'Palazzo della Cultura', 9, 7, 3, 2, [446, 117], { sign: { t: 'ДВОРЕЦ КУЛЬТУРЫ', c: '#ff3b3b' }, landmark: 'cultura' }],
-    ['flipper', 'Sala giochi Flipper', 5, 6, 3, 3, [450, 142], { sign: { t: '플리퍼', c: '#35e6ff' } }],
+    ['ambulatorio', 'Ambulatorio', 5, 6, 3, 8, [394, 96], { sign: { t: '✚ AMBULATORIO', c: '#4dff9a' } }],
+    ['cultura', 'Palazzo della Cultura', 9, 7, 3, 2, [446, 117], { sign: { t: 'PALAZZO DELLA CULTURA', c: '#ff3b3b' }, landmark: 'cultura' }],
+    ['flipper', 'Sala giochi Flipper', 5, 6, 3, 3, [450, 142], { sign: { t: 'FLIPPER', c: '#35e6ff' } }],
     ['stella', 'Condominio Stella', 6, 7, 7, 2, [364, 144], { home: true }],
     ['aurora', 'Condominio Aurora', 6, 7, 6, 4, [450, 160], { home: true }],
-    ['commissariato', 'Caserma della Guardia', 9, 6, 3, 10, [386, 160], { sign: { t: 'ГВАРДИЯ', c: '#5a8aff' } }],
-    ['cinema', 'Cinema Astor', 7, 5, 4, 13, [400, 144], { sign: { t: 'КИНО АСТОР', c: '#ffd23b' }, deco: true }],
-    ['video', 'Videoteca Stella', 4, 5, 3, 27, [426, 96], { sign: { t: 'ВИДЕО 2000', c: '#ff5a5a' }, deco: true }],
+    ['commissariato', 'Caserma della Guardia', 9, 6, 3, 10, [386, 160], { sign: { t: 'GUARDIA', c: '#5a8aff' } }],
+    ['cinema', 'Cinema Astor', 7, 5, 4, 13, [400, 144], { sign: { t: 'CINEMA ASTOR', c: '#ffd23b' }, deco: true }],
+    ['video', 'Videoteca Stella', 4, 5, 3, 27, [426, 96], { sign: { t: 'VIDEO STELLA', c: '#ff5a5a' }, deco: true }],
     // il porto vecchio dei pescatori, sulla riva sud del centro
-    ['osteria', 'Osteria del Porto', 7, 4, 4, 5, [394, 168], { sign: { t: 'ТРАКТИР', c: '#ffb35c' } }],
-    ['miramare', 'Hotel Miramare', 6, 5, 7, 6, [426, 168], { sign: { t: 'МИРАМАРЕ', c: '#ff7ad9' }, deco: true }],
-    ['sirena', 'Bar Sirena', 5, 4, 3, 17, [374, 178], { sign: { t: '사이렌 БАР', c: '#35ffc0' }, shop: true, deco: true }],
-    ['magazzino', 'Magazzino Neri', 9, 5, 3, 11, [446, 180], { sign: { t: 'СКЛАД НЕРИ', c: '#ff6a3b' }, warehouse: true }],
-    ['cantiere', 'Cantiere navale', 8, 4, 3, 11, [356, 184], { warehouse: true, sign: { t: 'ВЕРФЬ', c: '#ff8a3b' } }],
+    ['osteria', 'Osteria del Porto', 7, 4, 4, 5, [394, 168], { sign: { t: 'OSTERIA', c: '#ffb35c' } }],
+    ['miramare', 'Hotel Miramare', 6, 5, 7, 6, [426, 168], { sign: { t: 'HOTEL MIRAMARE', c: '#ff7ad9' }, deco: true }],
+    ['sirena', 'Bar Sirena', 5, 4, 3, 17, [374, 178], { sign: { t: 'BAR SIRENA', c: '#35ffc0' }, shop: true, deco: true }],
+    ['magazzino', 'Magazzino Neri', 9, 5, 3, 11, [446, 180], { sign: { t: 'MAGAZZINO NERI', c: '#ff6a3b' }, warehouse: true }],
+    ['cantiere', 'Cantiere navale', 8, 4, 3, 11, [356, 184], { warehouse: true, sign: { t: 'CANTIERE NAVALE', c: '#ff8a3b' } }],
     // periferia ovest
-    ['disco', 'Discoteca Luna', 9, 5, 3, 12, [330, 88], { sign: { t: 'ЛУНА 클럽', c: '#c05cff' }, deco: true }],
-    ['benzina', 'Distributore', 4, 3, 1, 16, [350, 96], { sign: { t: 'БЕНЗИН', c: '#ffd23b' }, kiosk: true }],
-    ['officina', 'Officina di Dorino', 6, 5, 2, 3, [300, 184], { sign: { t: 'МОТО 정비', c: '#ffd23b' } }],
-    ['gabbiano', 'Pensione Gabbiano', 6, 6, 4, 15, [278, 188], { sign: { t: 'ПАНСИОН', c: '#35e6ff' } }],
+    ['disco', 'Discoteca Luna', 9, 5, 3, 12, [330, 88], { sign: { t: 'DISCOTECA LUNA', c: '#c05cff' }, deco: true }],
+    ['benzina', 'Distributore', 4, 3, 1, 16, [350, 96], { sign: { t: 'BENZINA', c: '#ffd23b' }, kiosk: true }],
+    ['officina', 'Officina di Dorino', 6, 5, 2, 3, [300, 184], { sign: { t: 'OFFICINA DORINO', c: '#ffd23b' } }],
+    ['gabbiano', 'Pensione Gabbiano', 6, 6, 4, 15, [278, 188], { sign: { t: 'PENSIONE GABBIANO', c: '#35e6ff' } }],
     // periferia est
     ['mare', 'Condominio Mare', 6, 6, 6, 0, [470, 92], { home: true }],
     ['santuario', 'Santuario del Mare', 8, 4, 4, 9, [526, 90], { church: true }],
-    ['car_2', 'Trattoria da Nina', 6, 4, 4, 0, [478, 178], { sign: { t: '식당 НИНА', c: '#ffb35c' }, shop: true }],
-    ['gelateria', 'Gelateria Polo Nord', 4, 5, 2, 25, [462, 182], { sign: { t: 'МОРОЖЕНОЕ', c: '#8affd0' }, deco: true, shop: true }],
-    ['flamingo', 'Hotel Flamingo', 7, 7, 5, 23, [498, 186], { sign: { t: 'ФЛАМИНГО', c: '#ff4fa3' }, deco: true }],
-    ['paradiso', 'Hotel Paradiso', 7, 7, 6, 24, [520, 182], { sign: { t: 'ПАРАДИЗО', c: '#35e6ff' }, deco: true }],
-    ['oceano', 'Hotel Oceano', 7, 7, 7, 26, [490, 92], { sign: { t: 'ОКЕАН', c: '#b28cff' }, deco: true }],
-    ['chiosco', 'Banja del Lido', 4, 2, 1, 28, [540, 192], { sign: { t: 'БАНЯ', c: '#ff9a3c' }, kiosk: true }],
+    ['car_2', 'Trattoria da Nina', 6, 4, 4, 0, [478, 178], { sign: { t: 'TRATTORIA DA NINA', c: '#ffb35c' }, shop: true }],
+    ['gelateria', 'Gelateria Polo Nord', 4, 5, 2, 25, [462, 182], { sign: { t: 'GELATERIA POLO NORD', c: '#8affd0' }, deco: true, shop: true }],
+    ['flamingo', 'Hotel Flamingo', 7, 7, 5, 23, [498, 186], { sign: { t: 'HOTEL FLAMINGO', c: '#ff4fa3' }, deco: true }],
+    ['paradiso', 'Hotel Paradiso', 7, 7, 6, 24, [520, 182], { sign: { t: 'HOTEL PARADISO', c: '#35e6ff' }, deco: true }],
+    ['oceano', 'Hotel Oceano', 7, 7, 7, 26, [490, 92], { sign: { t: 'HOTEL OCEANO', c: '#b28cff' }, deco: true }],
+    ['chiosco', 'Banja del Lido', 4, 2, 1, 28, [540, 192], { sign: { t: 'BAGNI DEL LIDO', c: '#ff9a3c' }, kiosk: true }],
     ['casotto', 'Casotto della cava', 4, 3, 1, 11, [530, 150], { warehouse: true }],
     // [isola] il quartiere del governo: torri di cemento sopra la baraccopoli (coordinate nuove)
-    ['pietra', 'La Pietra dell\'Onda', 5, 5, 3, 2, [887, 116], { gov: true, sign: { t: 'ОПЕКА', c: '#b84a3c' }, nuovo: true }],
-    ['governo', 'Palazzo del Governo', 9, 5, 3, 10, [921, 115], { gov: true, sign: { t: 'ДОМ ПРАВИТЕЛЬСТВА', c: '#b84a3c' }, landmark: 'governo', nuovo: true }],
+    ['pietra', 'La Pietra dell\'Onda', 5, 5, 3, 2, [887, 116], { gov: true, sign: { t: 'LA TUTELA', c: '#b84a3c' }, nuovo: true }],
+    ['governo', 'Palazzo del Governo', 9, 5, 3, 10, [921, 115], { gov: true, sign: { t: 'PALAZZO DEL GOVERNO', c: '#b84a3c' }, landmark: 'governo', nuovo: true }],
     ['ministero', 'Ministero dell\'Ordine', 6, 5, 3, 2, [954, 115], { gov: true, nuovo: true }],
-    ['garante', 'Uffici del Garante', 5, 5, 3, 2, [953, 152], { gov: true, sign: { t: 'ГАРАНТ 보호', c: '#b84a3c' }, nuovo: true }],
+    ['garante', 'Uffici del Garante', 5, 5, 3, 2, [953, 152], { gov: true, sign: { t: 'UFFICI DEL GARANTE', c: '#b84a3c' }, nuovo: true }],
     ['archivio', 'Archivio di Stato', 8, 6, 5, 10, [887, 155], { gov: true, nuovo: true }],
     // la Base della Tutela, oltre il Muro
-    ['rocca', 'Rocca della Tutela', 14, 10, 5, 10, [618, 122], { sign: { t: 'ОПЕКА 보호', c: '#ff3b3b' }, military: true }],
+    ['rocca', 'Rocca della Tutela', 14, 10, 5, 10, [618, 122], { sign: { t: 'ROCCA DELLA TUTELA', c: '#ff3b3b' }, military: true }],
     ['caserma_p', 'Caserma della Tutela', 10, 5, 2, 10, [584, 112], { military: true }],
     ['hangar1', 'Hangar degli elicotteri', 9, 8, 3, 11, [640, 166], { warehouse: true, military: true }],
     ['hangar2', 'Deposito della Base', 8, 6, 2, 11, [652, 124], { warehouse: true, military: true }],
@@ -564,7 +564,7 @@ var World = (function () {
     ['deposito_s', 'Dogana del porto cargo', 9, 6, 2, 11, [638, 176], { warehouse: true, military: true }],
     // foresta: San Giacomo e il Borgo dei Carbonai
     ['chiesa_sg', 'Chiesa di San Giacomo', 6, 5, 4, 9, [199, 97], { church: true }],
-    ['osteria_sg', 'Osteria di San Giacomo', 5, 4, 3, 5, [211, 106], { sign: { t: 'ТРАКТИР', c: '#ffb35c' }, shop: true }],
+    ['osteria_sg', 'Osteria di San Giacomo', 5, 4, 3, 5, [211, 106], { sign: { t: 'OSTERIA', c: '#ffb35c' }, shop: true }],
     ['masseria', 'Masseria Sant\'Elia', 8, 6, 2, 4, [178, 196], {}],
     ['cantina', 'Cantina delle terrazze', 7, 5, 2, 7, [262, 202], {}],
     ['ovile_b', 'Ovile abbandonato', 5, 4, 1, 9, [178, 116], {}],
@@ -1307,23 +1307,24 @@ var World = (function () {
     const big = city.slice().sort((a, c) => c.w * c.h - a.w * a.h);
     const USES = [
       // uso, insegna, colore neon, quante
-      ['teatro', 'ТЕАТР ОДЕОН', '#ffd23b', 1, 'Teatro Odeon'], ['palestra', 'СПОРТЗАЛ', '#ff4fa3', 2], ['ferramenta', 'ХОЗТОВАРЫ', '#ff8a3b', 2], ['ufficio', 'КОНТОРА', '#7ab8ff', 3],
-      ['barbiere', '이발 ЦИРЮЛЬНЯ', '#35e6ff', 2], ['tabacchi', 'ТАБАК', '#5aff9a', 2], ['panetteria', 'ХЛЕБ 빵', '#ffb35c', 2], ['farmacia', '✚ АПТЕКА 약국', '#4dff9a', 1], ['lavanderia', 'ПРАЧЕЧНАЯ', '#8affd0', 1],
-      ['tipografia', 'ТИПОГРАФИЯ', '#e8e0d0', 1], ['circolo', 'КЛУБ', '#ff6a3b', 1, 'Circolo dei Lavoratori'], ['scuola', 'ШКОЛА', '#ffffff', 1, 'Scuola elementare'], ['sartoria', 'АТЕЛЬЕ', '#ff7ad9', 1], ['pescheria', 'РЫБА 생선', '#35e6ff', 1],
+      ['teatro', 'TEATRO ODEON', '#ffd23b', 1, 'Teatro Odeon'], ['palestra', 'PALESTRA', '#ff4fa3', 2], ['ferramenta', 'FERRAMENTA', '#ff8a3b', 2], ['ufficio', 'UFFICI', '#7ab8ff', 3],
+      ['barbiere', 'BARBIERE', '#35e6ff', 2], ['tabacchi', 'TABACCHI', '#5aff9a', 2], ['panetteria', 'PANETTERIA', '#ffb35c', 2], ['farmacia', '✚ FARMACIA', '#4dff9a', 1], ['lavanderia', 'LAVANDERIA', '#8affd0', 1],
+      ['tipografia', 'TIPOGRAFIA', '#e8e0d0', 1], ['circolo', 'CIRCOLO', '#ff6a3b', 1, 'Circolo dei Lavoratori'], ['scuola', 'SCUOLA', '#ffffff', 1, 'Scuola elementare'], ['sartoria', 'SARTORIA', '#ff7ad9', 1], ['pescheria', 'PESCHERIA', '#35e6ff', 1],
       // [attività] dopo le altre, così le botteghe di prima restano dov'erano
-      ['autorimessa', 'АВТО ГАРАЖ', '#ffd23b', 1, 'Autorimessa Centrale'], ['armeria', 'ОРУЖИЕ 총포', '#ff4a3b', 1, 'Armeria del Cacciatore'], ['abbigliamento', 'ОДЕЖДА 옷', '#ff7ad9', 1, 'Abiti e Confezioni'], ['pub', 'ПИВО 맥주', '#ffb030', 1, 'Birreria del Porto'],
+      ['autorimessa', 'AUTORIMESSA', '#ffd23b', 1, 'Autorimessa Centrale'], ['armeria', 'ARMERIA', '#ff4a3b', 1, 'Armeria del Cacciatore'], ['abbigliamento', 'ABBIGLIAMENTO', '#ff7ad9', 1, 'Abiti e Confezioni'], ['pub', 'BIRRERIA', '#ffb030', 1, 'Birreria del Porto'],
     ];
     const taken = new Set();
     USES.forEach(([use, sign, col, n, label], k) => {
       for (let i = 0; i < n; i++) {
         const b = (use === 'teatro' || use === 'autorimessa' ? big : city).find(q => !taken.has(q)); if (!b) return; taken.add(b);
-        b.use = use; b.sign = { t: sign, c: col }; b.shop = true;
+        b.use = use; b.shop = true;
         b.name = label || (use.charAt(0).toUpperCase() + use.slice(1)) + ' ' + NOMI[(k * 3 + i) % NOMI.length];
+        b.sign = { t: !label && use !== 'ufficio' && /^[A-Z ]+$/.test(sign) && b.name.length <= 16 ? b.name.toUpperCase() : sign, c: col };   // insegna col nome della bottega quando ci sta: «FERRAMENTA BRUNO»
       }
     });
     // fuori città: due fabbriche nei capannoni più grandi della campagna, il resto case e cascine
     const rural = B.filter(b => !b.name && !b.military && b.door && zone[b.y * GW + b.x] !== Z.CITTA).sort((a, c) => c.w * c.h - a.w * a.h);
-    [['fabbrica', 'Conservificio Sanna'], ['fabbrica', 'Mattonificio Piras']].forEach(([use, label], i) => { const b = rural[i]; if (b) { b.use = use; b.name = label; b.sign = { t: i ? 'КИРПИЧ' : 'КОНСЕРВЫ', c: '#ff8a3b' }; } });
+    [['fabbrica', 'Conservificio Sanna'], ['fabbrica', 'Mattonificio Piras']].forEach(([use, label], i) => { const b = rural[i]; if (b) { b.use = use; b.name = label; b.sign = { t: i ? 'MATTONIFICIO PIRAS' : 'CONSERVIFICIO SANNA', c: '#ff8a3b' }; } });
     B.forEach((b, i) => { if (b.barrack) { b.use = 'baracca'; b.name = 'Baracca della Tutela'; } if (!b.use) b.use = b.name ? null : b.farm ? 'cascina' : 'casa'; if (!b.name) b.label = (b.farm ? 'Cascina ' : 'Casa ') + COGNOMI[Math.floor(hash2(b.x, b.y, 21) * COGNOMI.length)]; else b.label = b.name; });
 
 

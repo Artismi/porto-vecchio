@@ -1,5 +1,6 @@
 // Porto Vecchio — Le icone a schermo (10-11 ottobre) [mobile]
-// Tre icone in basso, uguali su computer e telefono, ognuna gira fra i suoi stati a ogni tocco:
+// [colore1] Sul COMPUTER cinque pulsanti, ognuno col suo tasto scritto sotto: 6 bomboletta, 7 tavoletta, 8 BMX, 9 skate, I zaino
+// (1-5 restano le armi; P e X fanno ancora bici e tavola). Sul TELEFONO tre icone che girano fra i loro stati a ogni tocco:
 // - Graffiti: mani libere → bomboletta → tavoletta → mani libere (col pennarello se non hai bombolette).
 // - Ruote: a piedi → BMX → skate → a piedi (lo skate solo se hai la tavola).
 // - Zaino: il menu; il numero sono le cose da fare qui. La mappa: tocca la minimappa.
@@ -96,11 +97,23 @@ const Comandi = (() => {
   }
 
   // ---------------- la fila ----------------
+  // [id, nome, tasto, azione, dove]: 'tch' solo sul telefono, 'pc' solo col mouse, '' sempre
   const ITEMS = [
-    ['graffiti', 'Bomboletta · tavoletta', '', graffiti],
-    ['ruote', 'BMX · skate', '', ruote],
-    ['zaino', 'Zaino', 'I', zaino],
+    ['graffiti', 'Bomboletta · tavoletta', '', graffiti, 'tch'],
+    ['bomboletta', 'Bomboletta', '6', bomboletta, 'pc'],
+    ['tavoletta', 'Tavoletta (bomboletta o pennarello)', '7', tavoletta, 'pc'],
+    ['ruote', typeof Skate !== 'undefined' ? 'BMX · skate' : 'BMX', '', ruote, 'tch'],
+    ['bmx', 'BMX', '8', bmx, 'pc'],
+    ...(typeof Skate !== 'undefined' ? [['skate', 'Skate', '9', skate, 'pc']] : []),   // [pausa] lo skate è fuori dalla build per ora
+    ['zaino', 'Zaino', 'I', zaino, ''],
   ];
+  const KEYS = { '6': bomboletta, '7': tavoletta, '8': bmx }; if (typeof Skate !== 'undefined') KEYS['9'] = skate;
+  addEventListener('keydown', e => {
+    const k = e.key, pv = PV(); if (!KEYS[k] || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !pv || !ST()) return;
+    const ui = pv.ui, tag = (e.target && e.target.tagName) || ''; if (/INPUT|TEXTAREA|SELECT/.test(tag) || e.target.isContentEditable) return;
+    if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || (typeof Cantiere !== 'undefined' && Cantiere.active())) return;
+    e.preventDefault(); e.stopImmediatePropagation(); try { KEYS[k](); } catch (x) { console.warn('[comandi]', x); } upd(true);
+  }, true);
   function mount() {
     if ($('dock') || !$('app')) return !!$('dock');
     const css = document.createElement('style'); css.textContent = `
@@ -114,6 +127,8 @@ const Comandi = (() => {
 #dock button canvas { width: 30px; height: 30px; image-rendering: pixelated; pointer-events: none; }
 #dock button.on { box-shadow: 0 0 0 2px rgba(13,16,21,.8), 0 0 0 4px #ffd23a, 0 4px 12px rgba(0,0,0,.45); }
 #dock button.off canvas { opacity: .35; }
+#dock button.tch { display: none; }
+@media (pointer: coarse) { #dock button.pc { display: none; } #dock button.tch { display: grid; } }
 #dock button kbd { position: absolute; left: 50%; bottom: -3px; transform: translateX(-50%); font: 600 9px 'Saira Condensed', sans-serif; color: #E9DCBC; background: rgba(13,16,21,.85); padding: 0 4px; border-radius: 3px; pointer-events: none; }
 #dock .dot { position: absolute; right: -4px; top: -4px; min-width: 18px; height: 18px; border-radius: 9px; background: #FF5FA2; color: #0D1015; font: 700 11px/18px 'Saira Condensed', sans-serif; text-align: center; pointer-events: none; }
 #dkHand { width: 64px !important; height: 64px !important; margin-right: 6px; box-shadow: 0 0 0 2px rgba(13,16,21,.8), 0 0 0 4px #B08D57, 0 4px 12px rgba(0,0,0,.45) !important; }
@@ -122,7 +137,7 @@ const Comandi = (() => {
 #dkHand .lb { position: absolute; left: 50%; bottom: 5px; font-size: 9px !important; transform: translateX(-50%); white-space: nowrap; font: 600 10px 'Saira Condensed', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #E9DCBC; text-shadow: 1px 1px 0 #000; pointer-events: none; }
 #dkHand .x { position: absolute; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 12px sans-serif; color: #E9DCBC; background: #2a2030; border: 1px solid rgba(233,220,188,.5); }
 #dkHand .x { right: -6px; top: -6px; }
-#dock button[data-id=graffiti]::after { content: ''; position: absolute; left: 50%; bottom: 4px; width: 14px; height: 4px; margin-left: -7px; border-radius: 2px; background: var(--col, transparent); pointer-events: none; }
+#dock button[data-id=graffiti]::after, #dock button[data-id=bomboletta]::after { content: ''; position: absolute; left: 50%; bottom: 4px; width: 14px; height: 4px; margin-left: -7px; border-radius: 2px; background: var(--col, transparent); pointer-events: none; }
 #rs-here button.qui { display: none !important; }   /* il numero sta sullo zaino */
 #ctx { bottom: 112px !important; }
 #rs-here { bottom: 72px !important; }
@@ -149,8 +164,8 @@ const Comandi = (() => {
     hb.innerHTML = '<canvas width="32" height="16"></canvas><span class="lb"></span><span class="x" title="Metti via">✕</span>';
     hb.addEventListener('click', e => { if (e.target.classList.contains('x')) { equip(null); say('Mani libere.'); } else usaMano(); upd(true); });
     d.appendChild(hb);
-    ITEMS.forEach(([id, name, k, fn]) => {
-      const b = document.createElement('button'); b.dataset.id = id; b.title = name + (k ? ' (' + k + ')' : '');
+    ITEMS.forEach(([id, name, k, fn, where]) => {
+      const b = document.createElement('button'); b.dataset.id = id; b.title = name + (k ? ' (' + k + ')' : ''); if (where) b.className = where;
       b.innerHTML = `<canvas width="16" height="16"></canvas>${k ? `<kbd>${k}</kbd>` : ''}${id === 'zaino' ? '<span class="dot" hidden></span>' : ''}`;
       b.addEventListener('click', () => { try { fn(); } catch (e) { console.warn('[comandi]', e); } upd(true); });
       d.appendChild(b);
@@ -170,8 +185,10 @@ const Comandi = (() => {
       const id = b.dataset.id, c = b.querySelector('canvas');
       const look = id === 'graffiti' ? (tavOn(st) ? 'tavoletta' : 'bomboletta') : id === 'ruote' ? (sk ? 'skate' : 'bmx') : id;
       if (c.dataset.look !== look) { iconOf(c, look); c.dataset.look = look; }
-      b.classList.toggle('on', id === 'graffiti' ? spray : id === 'ruote' ? sk || bm : false);
-      if (id === 'graffiti') { b.classList.toggle('off', !has('bomboletta') && !has('pennarello')); b.style.setProperty('--col', spray && ui.spray ? pv.SPRAY_COLS[ui.spray.col][0] : 'transparent'); }
+      b.classList.toggle('on', id === 'graffiti' ? spray : id === 'ruote' ? sk || bm : id === 'bomboletta' ? spray && !tavOn(st) : id === 'tavoletta' ? tavOn(st) : id === 'bmx' ? bm : id === 'skate' ? sk : false);
+      if (id === 'bomboletta' || id === 'tavoletta') b.classList.toggle('off', !has('bomboletta') && !has('pennarello'));
+      if (id === 'skate') b.classList.toggle('off', !(typeof Skate !== 'undefined' && Skate.S(st).owned));
+      if (id === 'graffiti' || id === 'bomboletta') { b.classList.toggle('off', !has('bomboletta') && !has('pennarello')); b.style.setProperty('--col', spray && ui.spray ? pv.SPRAY_COLS[ui.spray.col][0] : 'transparent'); }
       if (id === 'zaino') { const dot = b.querySelector('.dot'), n = typeof MenuUI !== 'undefined' && MenuUI.quiCount ? MenuUI.quiCount(st) : 0; dot.hidden = !n; dot.textContent = n; }
     });
     // la mano

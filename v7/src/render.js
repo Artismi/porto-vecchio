@@ -44,7 +44,29 @@ var Render = (function () {
     return LINC[k % LINC.length]; }
   function nq(hex) { const c = new THREE.Color(hex), h = {}; c.getHSL(h); const hu = h.h * 360; if (h.s < .25) return hex; let best = 0, bd = 999; [185, 355, 32].forEach((t, i) => { let d = Math.abs(hu - t); d = Math.min(d, 360 - d); if (d < bd) { bd = d; best = i; } }); return '#' + NQ[best].getHexString(); }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  function canvasTex(c) { const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; }
+  // [leggera] una texture che non si ridipinge più: mandata alla scheda video, il canvas in memoria si svuota (se il contesto
+  // si perde il gioco ricarica la pagina, vedi webglcontextlost)
+  function freeAfterUpload(t) { t.onUpdate = () => { t.onUpdate = null; const im = t.image; if (im && im.getContext) { im.width = 1; im.height = 1; } }; return t; }
+  function canvasTex(c) { const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; return t; }   /* [plastica2] morbide con le mipmap (prima a blocchi: NearestFilter a 8 px per metro, da vicino ogni pixel diventava un quadrato) */
+  // [plastica2] tutte le texture del mondo morbide e con le mipmap, e sulle superfici dipinte un rilievo ricavato dalla texture stessa
+  // (bumpMap = map): il sole fa risaltare tegole, mattoni, intonaco e assi invece di illuminare un foglio piatto. Ogni materiale una volta.
+  const SMOOTH2 = new WeakSet();
+  function smooth2(root) {
+    root.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : null; if (!ms) return;
+      for (const m of ms) { if (!m || SMOOTH2.has(m)) continue; SMOOTH2.add(m);
+        for (const k of ['map', 'emissiveMap', 'roughnessMap']) { const t = m[k]; if (!t || !t.isTexture || t.isDataTexture || t.isRenderTargetTexture || t.isDepthTexture) continue; const im = t.image; if (!im || !(im.width > 4)) continue;
+          if (t.magFilter === THREE.NearestFilter || t.minFilter === THREE.NearestFilter || t.minFilter === THREE.NearestMipmapNearestFilter) { t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true; } }
+        } });   /* [plastica2] via il rilievo dalla texture (bumpMap = map): sul terreno e sulle facciate era rumore che luccicava */
+    root.traverse(thin2);
+  }
+  // [plastica2] i pezzi sottili (tubi della bici, cavi, raggi, aste) non fanno ombra: sulla mappa a 4,5 cm venivano trine a puntini
+  const _b2 = new THREE.Vector3();
+  function thin2(o) { if (!o.isMesh || !o.castShadow || o.isInstancedMesh || o.userData.thin2 || !o.geometry) return; o.userData.thin2 = 1; const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox(); if (!g.boundingBox) return;
+    g.boundingBox.getSize(_b2); _b2.multiply(o.scale); const d = [Math.abs(_b2.x), Math.abs(_b2.y), Math.abs(_b2.z)].sort((a, b) => a - b); if (d[1] < .06) o.castShadow = false;
+  }
+  // [plastica2] l'ombra di contatto: un ovale sfumato, scuro al centro
+  let BLOB2 = null;
+  function blobT2() { if (BLOB2) return BLOB2; const c = mk(64, 64), x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.45, 'rgba(255,255,255,.7)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); BLOB2 = new THREE.CanvasTexture(c); return BLOB2; }
   function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
   const std = (o) => new THREE.MeshStandardMaterial(Object.assign({ roughness: .9, metalness: 0 }, o));
   const lam = (c) => new THREE.MeshLambertMaterial({ color: c });
@@ -101,6 +123,9 @@ var Render = (function () {
       if (window.Officina && Officina.wantParts) Officina.onPart(o, b, b.geos.length - 1, g.attributes.position.count);   // [studio] dove finisce ogni mesh
     });
   }
+  // [leggera] normali in un byte per numero (Int8 normalizzato) invece di quattro: stessa luce a vista, un quarto della memoria,
+  // in RAM e sulla scheda video. Solo sulle geometrie finali (statiche fuse e case fuse), non su quelle che altri rileggono come float.
+  function packNormals(g) { const a = g.attributes.normal; if (!a || !(a.array instanceof Float32Array)) return g; const src = a.array, out = new Int8Array(src.length); for (let i = 0; i < src.length; i++) out[i] = Math.max(-127, Math.min(127, Math.round(src[i] * 127))); g.setAttribute('normal', new THREE.BufferAttribute(out, 3, true)); return g; }
   function mergeGeos(geos) {
     let n = 0; geos.forEach(g => n += g.attributes.position.count);
     const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2); let o = 0;
@@ -195,17 +220,19 @@ var Render = (function () {
         const key = sig + '|' + Math.floor(_wp.x / 32) + ',' + Math.floor(_wp.z / 32) + '|' + o.castShadow + o.receiveShadow;
         let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow });
         const id = new Float32Array(g.attributes.position.count).fill(bi); g.setAttribute('bId1', new THREE.BufferAttribute(id, 1));
-        b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
+        g.__src1 = o; b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
       });
     });
     moved.forEach(o => { o.visible = false; });   // restano pronti per la trasparenza
     B.forEach(b => {
       let n = 0; b.geos.forEach(g => n += g.attributes.position.count);
       const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), id = new Float32Array(n); let k = 0;
-      b.geos.forEach(g => { const c = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); if (g.attributes.normal) nor.set(g.attributes.normal.array, k * 3); if (g.attributes.uv) uv.set(g.attributes.uv.array, k * 2); id.set(g.attributes.bId1.array, k); k += c; g.dispose(); });
+      const srcs = [];
+      b.geos.forEach(g => { const c = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); if (g.attributes.normal) nor.set(g.attributes.normal.array, k * 3); if (g.attributes.uv) uv.set(g.attributes.uv.array, k * 2); id.set(g.attributes.bId1.array, k); if (g.__src1) srcs.push([g.__src1, k, c, !!g.attributes.normal, !!g.attributes.uv]); k += c; g.dispose(); });
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setAttribute('bId1', new THREE.BufferAttribute(id, 1));
-      geo.computeBoundingSphere(); geo.computeBoundingBox();
+      geo.computeBoundingSphere(); geo.computeBoundingBox(); packNormals(geo);   // [leggera]
       const mesh = new THREE.Mesh(geo, fadeMat1(b.m)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh);
+      srcs.forEach(([o, start, count, hasN, hasUv]) => lazyGeo1(o, geo, start, count, hasN, hasUv));   // [leggera] l'originale si rifà dalla fusa quando serve
       if (b.cast) { const sk = Math.floor(geo.boundingBox.min.x / 48) + ',' + Math.floor(geo.boundingBox.min.z / 48) + '|' + b.m.side + '|' + b.m.shadowSide; let q = SH.get(sk); if (!q) SH.set(sk, q = { side: b.m.side, ss: b.m.shadowSide, pos: [] }); q.pos.push(pos); } });
     // l'ombra delle case: la texture non conta, quindi tutte le parti di un settore di 48 m fanno ombra con una mesh sola,
     // su un livello (layer 1) che vedono solo le camere delle ombre
@@ -217,13 +244,34 @@ var Render = (function () {
     window.__fusione1 = { prima: before, dopo: after, secchi: B.size, spostate: moved.length, materiali: FD1.canon.size, ombre: SH.size };
     if (window.__dbg35) console.log('[dbg] fusione1', JSON.stringify(window.__fusione1));
   }
+  // [leggera] i pezzi originali delle case fuse (spenti, servono solo quando la casa si dissolve, ai raggi dei graffiti e dei tetti)
+  // non tengono più la loro geometria (erano ~260 MB): la rifanno dalla mesh fusa la prima volta che qualcuno la chiede, con
+  // lo stesso ingombro di prima per chi misura le scatole senza leggere i vertici.
+  const LAZY1 = { n: 0, made: 0 };
+  function lazyGeo1(o, fused, start, count, hasN, hasUv) {
+    const g0 = o.geometry; if (!g0 || o.userData.lazy1) return;
+    if (!g0.boundingBox) g0.computeBoundingBox(); if (!g0.boundingSphere) g0.computeBoundingSphere();
+    const ph = new THREE.BufferGeometry(); ph.boundingBox = g0.boundingBox.clone(); ph.boundingSphere = g0.boundingSphere.clone(); ph.name = g0.name;
+    const inv = o.matrixWorld.clone().invert(); let real = null; LAZY1.n++;
+    const make = () => {
+      const P = fused.attributes, a = start, z = start + count, g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(P.position.array.slice(a * 3, z * 3), 3));
+      if (hasN) g.setAttribute('normal', new THREE.BufferAttribute(P.normal.array.slice(a * 3, z * 3), 3, P.normal.normalized));
+      if (hasUv) g.setAttribute('uv', new THREE.BufferAttribute(P.uv.array.slice(a * 2, z * 2), 2));
+      g.applyMatrix4(inv); g.boundingBox = ph.boundingBox.clone(); g.boundingSphere = ph.boundingSphere.clone(); g.name = ph.name; LAZY1.made++; return g;
+    };
+    // finché nessuno la chiede davvero (la casa che si dissolve, un raggio) resta il segnaposto: chi compila i programmi o conta
+    // le mesh legge o.geometry senza volerne i vertici
+    o.userData.lazy1 = () => { if (!real) real = make(); return real; };
+    Object.defineProperty(o, 'geometry', { configurable: true, enumerable: true, get() { return real || ph; }, set(v) { real = v; } });
+  }
   function fadeTick1(rec) {   // la casa che si dissolve esce dalla mesh fusa e torna coi suoi pezzi trasparenti
     if (!rec.mv1 || !FD1.data) return; const i = FD1.idx.get(rec), on = rec.fade > .004;
-    if (rec.out1 === on) return; rec.out1 = on; rec.mv1.forEach(o => { o.visible = on; });
+    if (rec.out1 === on) return; rec.out1 = on; rec.mv1.forEach(o => { if (on && o.userData.lazy1) o.userData.lazy1(); o.visible = on; });
     FD1.data[i * 4] = on ? 255 : 0; FD1.dirty = true; }
   function flushStatic() {
     coalesce1();   /* [pulitore1] */
-    STATIC.forEach(b => { let o = 0; b.offs = b.geos.map(g => { const k = o; o += g.attributes.position.count; return k; }); const m = new THREE.Mesh(mergeGeos(b.geos), b.mat); b.mesh = m; b.geos = []; m.castShadow = !b.noShadow || b.noShadow === 'lamp'; if (b.noShadow === 'lamp') m.customDepthMaterial = lampDepth1();   /* [unione1] */ m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); });
+    STATIC.forEach(b => { let o = 0; b.offs = b.geos.map(g => { const k = o; o += g.attributes.position.count; return k; }); const m = new THREE.Mesh(packNormals(mergeGeos(b.geos)), b.mat); b.mesh = m; b.geos = []; m.castShadow = !b.noShadow || b.noShadow === 'lamp'; if (b.noShadow === 'lamp') m.customDepthMaterial = lampDepth1();   /* [unione1] */ m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); });
     STATIC.clear();
   }
   // fonde i figli di un gruppo (in coordinate del gruppo) per materiale.
@@ -1836,8 +1884,9 @@ var Render = (function () {
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
     try { const W = c.width, H = c.height, id = x.getImageData(0, 0, W, H), d = id.data, rc = mk(W, H), rxx = rc.getContext('2d'), od = rxx.createImageData(W, H), o = od.data;
-      for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.72, Math.min(1, .72 + (lum - 40) / 120 * .28)) * 255   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
-      rxx.putImageData(od, 0, 0); rtex = canvasTex(rc); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; }
+      for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.9, Math.min(1, .9 + (lum - 40) / 120 * .1)) * 255   /* [plastica2] era .72 sullo scuro: l'asfalto luccicava più dei palazzi */   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
+      rxx.putImageData(od, 0, 0); rtex = freeAfterUpload(canvasTex(rc)); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; }
+    freeAfterUpload(tex);   // [leggera] il terreno dipinto non si ritocca: dopo l'invio basta la copia della scheda video
     yield;
     const pos = new Float32Array((n + 1) * (m + 1) * 3), uv = new Float32Array((n + 1) * (m + 1) * 2), idx = [];
     for (let j = 0; j <= m; j++) for (let i = 0; i <= n; i++) {
@@ -1963,7 +2012,7 @@ var Render = (function () {
       for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { const f = food(nm, .3); f.position.set(cx - .32 + i * .32, base + .16, cz - .09 + j * .18); f.rotation.y = r() * 6.28; g.add(f); }
     }));
     // insegna dipinta sul fronte del tendone
-    const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.8, .28), new THREE.MeshBasicMaterial({ map: signTexture(G2.sign, '#fff3d8', G2.c[0]), toneMapped: false })); sg.position.set(0, 2.1, -.06); sg.userData.keep = true; g.add(sg);
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.8, .28), new THREE.MeshBasicMaterial({ map: signTexture(G2.sign, '#fff3d8', G2.c[0], 6.4), toneMapped: false })); sg.position.set(0, 2.1, -.06); sg.userData.keep = true; g.add(sg);
     // a terra: cassette impilate dietro, un pezzo grosso davanti a un lato
     add(g, box(.7, .4, .5, crateM), -1.3, .2, -.85); add(g, box(.7, .4, .5, crateM), -1.25, .6, -.85); add(g, box(.7, .4, .5, crateM), 1.3, .2, -.85);
     if (G2.ground) { const big = food(G2.ground, .5); big.position.set(1.55, 0, .75); g.add(big); }
@@ -2548,7 +2597,7 @@ var Render = (function () {
       add(g, box(.12, .04, 1.6, woodL), -.1, .52, .3, 0, .3, 0); place(g, x, z, rot);
     };
     const palo = (x, z, h) => { const g = G0(); add(g, cyl(.07, .09, h, 5, wood), 0, h / 2, 0); add(g, new THREE.Mesh(new THREE.SphereGeometry(.17, 7, 6), sm('#e8e0cc')), 0, h + .1, 0); [-.06, .06].forEach(o => add(g, box(.05, .06, .03, sm('#141010')), o, h + .14, .15)); for (let k = 0; k < 3; k++) add(g, box(.04, .5, .04, sm('#d8b070')), (k - 1) * .12, h - .5, .1, 0, 0, (k - 1) * .3); place(g, x, z, r() * 6); };
-    const cartello = (x, z, rot, txt) => { const g = G0(); [-.7, .7].forEach(o => add(g, box(.08, 1.8, .08, PM.iron()), o, .9, 0)); const s2 = new THREE.Mesh(new THREE.PlaneGeometry(1.8, .9), new THREE.MeshLambertMaterial({ map: signTexture(txt, '#c82020', '#f0ece0'), side: THREE.DoubleSide })); add(g, s2, 0, 1.45, .05); place(g, x, z, rot); };
+    const cartello = (x, z, rot, txt) => { const g = G0(); [-.7, .7].forEach(o => add(g, box(.08, 1.8, .08, PM.iron()), o, .9, 0)); const s2 = new THREE.Mesh(new THREE.PlaneGeometry(1.8, .9), new THREE.MeshLambertMaterial({ map: signTexture(txt, '#c82020', '#f0ece0', 2), side: THREE.DoubleSide })); add(g, s2, 0, 1.45, .05); place(g, x, z, rot); };
     const sacchi = (x, z, rot, n) => { const g = G0(), m = sm('#a89a74', { roughness: 1 }); for (let k = 0; k < n; k++) for (let j = 0; j < 3; j++) add(g, box(.85, .3, .45, m), k * .82 - n * .41 + (j % 2) * .4, .15 + j * .3, 0, 0, (r() - .5) * .1, 0); place(g, x, z, rot); };
     const genera = (x, z, rot) => { const g = G0(), m = sm('#5a6440', { roughness: .6, metalness: .3 }); add(g, box(1.6, 1, 1, m), 0, .6, 0); add(g, box(1.7, .1, 1.1, PM.iron()), 0, .05, 0); add(g, cyl(.07, .07, 1.2, 6, PM.iron()), .6, 1.6, .3); add(g, box(.4, .3, .02, sm('#e8b820')), -.4, .7, .51); place(g, x, z, rot); };
     const cisterna = (x, z) => { const g = G0(), m = sm('#7a8070', { metalness: .3, roughness: .6 }); [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b]) => add(g, box(.12, 3, .12, PM.iron()), a * .8, 1.5, b * .8)); add(g, cyl(1.1, 1.1, 1.6, 12, m), 0, 3.8, 0); place(g, x, z, 0); };
@@ -2715,7 +2764,7 @@ var Render = (function () {
   }
   function buildPropsIsland() {
     const T = G.T, r = rng(2026), P = G.PLACES;
-    const free = (x, z) => { const v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; };
+    const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
     // lampioni e palme lungo le strade
     (M.roads || []).forEach(rd => {
       if (rd.kind === 'sterrato') return;
@@ -2740,7 +2789,7 @@ var Render = (function () {
     // porto: bitte, casse, reti sulla Calata ([costa] le barche hanno il loro posto: vedi buildCosta)
     for (let k = 0; k < 260; k++) { const tx = 175 + Math.floor(r() * 55) + (r() < .4 ? 135 : 0) + ((M.world && M.world.DXC) || 0) / TS, ty = (r() < .5 ? 55 : 80) + Math.floor(r() * 30) + ((M.world && M.world.OY) || 0) / TS, v = G.tileAt(tx, ty); if (v !== T.QUAY) continue; const x = tx * TS + 1, z = ty * TS + 1; const w = r(); if (w < .25) bitta(x, z); else if (w < .4) crateStack(x, z, 1 + Math.floor(r() * 4), r, pick(r, ['fish', 'fruit', 'none'])); else if (w < .5) nets(x, z, r); else if (w < .56) drumGroup(x, z, r); }
     // spiaggia del Lido: ombrelloni e lettini
-    if (P.spiaggia) { const q = P.spiaggia; let n = 0; for (let k = 0; k < 90 && n < 18; k++) { const x = q.x - 30 + r() * 60, z = q.y - 6 + r() * 24, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v !== T.SAND) continue; const ca = pick(r, ['#ff6aa0', '#40c0e0', '#f0c030', '#8a60e0']); beachUmbrella(x, z, r, ca, '#f4f0e8'); sunbed(x + 1.1, z + .6, 0, ca, r); n++; } if (n) lifeguardTower(q.x, q.y + 4); }
+    if (P.spiaggia) { const q = P.spiaggia; let n = 0; for (let k = 0; k < 90 && n < 18; k++) { const x = q.x - 30 + r() * 60, z = q.y - 6 + r() * 24, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v !== T.SAND || !free(x, z, 1.6) || !free(x + 1.1, z + .6, 1.1) || q.__u && q.__u.some(([ux, uz]) => Math.hypot(ux - x, uz - z) < 3.4)) continue; (q.__u = q.__u || []).push([x, z]);   /* [leggera] distanti fra loro e dalle case */ const ca = pick(r, ['#ff6aa0', '#40c0e0', '#f0c030', '#8a60e0']); beachUmbrella(x, z, r, ca, '#f4f0e8'); sunbed(x + 1.1, z + .6, 0, ca, r); n++; } if (n) lifeguardTower(q.x, q.y + 4); }
     // cantiere navale
     if (P.cantiere) { const q = P.cantiere; if (free(q.x + 6, q.y + 4)) hullOnCradle(q.x + 6, q.y + 6, Math.PI / 2); if (free(q.x - 6, q.y + 3)) crane(q.x - 6, q.y + 4, 0, '#d86a2a'); }
     // poligono: carri armati abbandonati, container, recinzioni
@@ -3106,7 +3155,7 @@ var Render = (function () {
         [45.8, 52.2].forEach(z => { const pole = box(.14, 5, .14, sl('#1e1a24')); pole.position.set(x0 + dir * k, 3, z); addStatic(pole); const hd = box(.5, .18, .3, sb('#ffd08a')); hd.position.set(x0 + dir * k, 5.4, z + (z < 49 ? .4 : -.4)); scene.add(hd); glow(x0 + dir * k, 5.3, z + (z < 49 ? .4 : -.4), '#ffb85c', 3); });
       }
       // la segnaletica «Terraferma»
-      const sg = new THREE.Mesh(new THREE.PlaneGeometry(4, 1.2), new THREE.MeshBasicMaterial({ map: signTexture(dir < 0 ? '← PONENTE' : 'LEVANTE →', '#6ad0ff', '#0e2a4a'), toneMapped: false, side: THREE.DoubleSide }));
+      const sg = new THREE.Mesh(new THREE.PlaneGeometry(4, 1.2), new THREE.MeshBasicMaterial({ map: signTexture(dir < 0 ? '← PONENTE' : 'LEVANTE →', '#6ad0ff', '#0e2a4a', 3.3), toneMapped: false, side: THREE.DoubleSide }));
       sg.position.set(x0 + dir * 10, 5.2, 46.2); sg.rotation.y = Math.PI / 2 * dir; scene.add(sg);
       const sp = box(.12, 5, .12, sl('#1e1a24')); sp.position.set(x0 + dir * 10, 2.5, 46); addStatic(sp);
     });
@@ -3576,7 +3625,12 @@ var Render = (function () {
     P = { prog, ins: hi < .4 ? 'cartellone' : hi < .72 ? 'serbatoio' : 'neon', x0, z0, w, d, occ: [], n: {}, lim: { antenna: 1, dish: prog === 'tecnico' ? 2 : 1, ac: prog === 'tecnico' ? 3 : 2, tank: 1, volume: 1, torrino: 1 } };
     // le scale di Tetti arrivano sul bordo: lì resta libero
     if (window.Tetti && Tetti.LADDERS) { if (!RP1lad) { RP1lad = new Map(); Tetti.LADDERS.forEach(L => { const bb = G.BUILDINGS[L.bi]; (RP1lad.get(bb) || RP1lad.set(bb, []).get(bb)).push(L); }); }
-      (RP1lad.get(b.__tierOf || b) || []).forEach(L => P.occ.push([L.tx, L.ty, 1.1])); }
+      (RP1lad.get(b.__tierOf || b) || []).forEach(L => P.occ.push([L.tx, L.ty, 1.1]));
+      // [tetti2] gli arrivi delle passerelle (la rampa e il bordo) e la panca del belvedere: lì niente roba
+      const bb0 = b.__tierOf || b, bi0 = G.BUILDINGS.indexOf(bb0);
+      (Tetti.PLANKS || []).forEach(Q => { if (Q.a === bi0) { P.occ.push([Q.wa[0] - Q.ox * .5, Q.wa[1] - Q.oy * .5, 1.0]); P.occ.push([Q.x0, Q.y0, .9]); }
+        if (Q.b === bi0) { P.occ.push([Q.wb[0] + Q.ox * .5, Q.wb[1] + Q.oy * .5, 1.0]); P.occ.push([Q.wb[0] + Q.ox * 1.5, Q.wb[1] + Q.oy * 1.5, .9]); } });
+      (Tetti.BELV || []).forEach(V => { if (V.bi === bi0) P.occ.push([V.x, V.y, 1.8]); }); }
     RP1.set(b, P); return P;
   }
   const rp1 = rec => rec && rec.b ? rpB(rec.b, !!rec.flat, rec.geo ? rec.geo.x0 : rec.box3.min.x, rec.geo ? rec.geo.z0 : rec.box3.min.z, rec.geo ? rec.geo.w : rec.box3.max.x - rec.box3.min.x, rec.geo ? rec.geo.d : rec.box3.max.z - rec.box3.min.z) : null;
@@ -3788,23 +3842,59 @@ var Render = (function () {
     x.fillStyle = '#2a2430'; x.fillRect(14, 14, 3, 3);
     flatTex = canvasTex(c); flatTex.wrapS = flatTex.wrapT = THREE.RepeatWrapping; return flatTex;
   }
-  function signTexture(text, color, bg) { color = nq(color);
-    const c = mk(256, 64), x = c.getContext('2d');
-    x.fillStyle = bg || '#0f0c16'; x.fillRect(0, 0, 256, 64);
-    x.strokeStyle = color; x.lineWidth = 3; x.strokeRect(5, 5, 246, 54);
-    let size = text.length > 10 ? 26 : 34;
-    x.font = `bold ${size}px "Pixelify Sans", "Trebuchet MS", sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
-    while (size > 12 && x.measureText(text).width > 232) { size -= 2; x.font = `bold ${size}px "Pixelify Sans", "Trebuchet MS", sans-serif`; }
-    x.shadowColor = color; x.shadowBlur = 14; x.fillStyle = color; x.fillText(text, 128, 34);
-    x.shadowBlur = 0; x.fillStyle = '#fff'; x.globalAlpha = .55; x.fillText(text, 128, 34); x.globalAlpha = 1;
+  // [insegne1] insegna leggibile alla distanza della camera: lettere grandi e piene, una o due righe, contrasto forte.
+  // Su fondo scuro è un neon (alone del colore, anima chiara); su fondo chiaro è vernice piena senza alone.
+  // aspect = larghezza/altezza del pannello che la porta, così le lettere non escono stirate.
+  const SIGN_FONT = '"Arial Black", "Helvetica Neue", Arial, "Liberation Sans", sans-serif';
+  const lumOf = hex => { const c = new THREE.Color(hex); return .2126 * c.r + .7152 * c.g + .0722 * c.b; };
+  function signLines(x, text, maxW, maxH, two) {   // la misura più grande che sta, spezzando in due righe bilanciate se serve
+    const words = text.split(' '); let best = null;
+    const tries = [[text]];
+    if (two && words.length > 1) for (let k = 1; k < words.length; k++) tries.push([words.slice(0, k).join(' '), words.slice(k).join(' ')]);
+    tries.forEach(L => { let sz = Math.floor(maxH / (L.length === 1 ? 1 : 2.15));
+      x.font = `900 ${sz}px ${SIGN_FONT}`; const w = Math.max(...L.map(l => x.measureText(l).width)); if (w > maxW) sz = Math.floor(sz * maxW / w);
+      if (!best || sz > best.sz * 1.12) best = { L, sz }; });   // due righe solo se le lettere vengono davvero più grandi
+    return best;
+  }
+  function signTexture(text, color, bg, aspect) { color = nq(color); text = String(text).toUpperCase();
+    aspect = aspect || 4; const W = 512, H = Math.max(96, Math.round(W / aspect)), c = mk(W, H), x = c.getContext('2d');
+    bg = bg || '#14101c'; const light = lumOf(bg) > .5;
+    x.fillStyle = bg; x.fillRect(0, 0, W, H);
+    // cornice a due filetti, come una targa smaltata
+    const m = Math.round(H * .07); x.strokeStyle = color; x.lineWidth = Math.max(4, H * .045); x.strokeRect(m, m, W - 2 * m, H - 2 * m);
+    x.globalAlpha = .45; x.lineWidth = 2; x.strokeRect(m * 2, m * 2, W - 4 * m, H - 4 * m); x.globalAlpha = 1;
+    const best = signLines(x, text, W - m * 5, H - m * 4.2, text.length > 9 || aspect < 2.6);
+    x.font = `900 ${best.sz}px ${SIGN_FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle';
+    const lh = best.sz * 1.08, y0 = H / 2 - (best.L.length - 1) * lh / 2 + best.sz * .04;
+    // su fondo chiaro il colore deve staccare: se è troppo pallido lo scurisco
+    let ink = color; if (light && lumOf(color) > .45) ink = '#' + new THREE.Color(color).multiplyScalar(.45).getHexString();
+    best.L.forEach((l, k) => { const y = y0 + k * lh;
+      if (light) { x.fillStyle = ink; x.fillText(l, W / 2, y); return; }
+      x.fillStyle = 'rgba(0,0,0,.55)'; x.fillText(l, W / 2 + 3, y + 4);                 // ombra: lettere in rilievo
+      x.shadowColor = color; x.shadowBlur = best.sz * .35; x.fillStyle = color; x.fillText(l, W / 2, y);
+      x.shadowBlur = 0; x.fillStyle = 'rgba(255,255,255,.72)'; x.fillText(l, W / 2, y);   // anima chiara del tubo
+    });
     return canvasTex(c);
   }
   // insegna verticale a bandiera (lettere una sotto l'altra), tipica degli hotel déco
-  function bladeTexture(text, color) {
-    const t = text.replace(/HOTEL /, ''), n = t.length, c = mk(48, 40 * n + 16), x = c.getContext('2d');
-    x.fillStyle = '#12101c'; x.fillRect(0, 0, c.width, c.height); x.strokeStyle = color; x.lineWidth = 3; x.strokeRect(4, 4, 40, c.height - 8);
-    x.font = 'bold 32px "Pixelify Sans", "Trebuchet MS", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
-    for (let i = 0; i < n; i++) { x.shadowColor = color; x.shadowBlur = 10; x.fillStyle = color; x.fillText(t[i], 24, 28 + i * 40); x.shadowBlur = 0; x.fillStyle = 'rgba(255,255,255,.6)'; x.fillText(t[i], 24, 28 + i * 40); }
+  // [insegne1] la parola corta delle insegne a bandiera: una per tipo di bottega, mai lettere a caso. null = niente bandiera.
+  const SHORT_ID = { bar: 'BAR', sirena: 'BAR', osteria: 'VINI', osteria_sg: 'VINI', car_2: 'CUCINA', wu: 'DROGHERIA', ambulatorio: 'MEDICO', cultura: 'CULTURA',
+    flipper: 'GIOCHI', cinema: 'CINEMA', video: 'VIDEO', miramare: 'MIRAMARE', flamingo: 'FLAMINGO', paradiso: 'PARADISO', oceano: 'OCEANO', gabbiano: 'ALBERGO',
+    disco: 'LUNA', benzina: 'BENZINA', officina: 'MOTO', gelateria: 'GELATI', chiosco: 'BAGNI', commissariato: 'GUARDIA' };
+  const SHORT_USE = { teatro: 'TEATRO', palestra: 'SPORT', ferramenta: 'UTENSILI', barbiere: 'BARBIERE', tabacchi: 'TABACCHI', panetteria: 'PANE', farmacia: 'FARMACIA',
+    lavanderia: 'LAVASECCO', tipografia: 'STAMPA', circolo: 'CIRCOLO', sartoria: 'SARTO', pescheria: 'PESCE', autorimessa: 'GARAGE', armeria: 'CACCIA',
+    abbigliamento: 'MODA', pub: 'BIRRA', supermercato: 'SPESA', alimentari: 'ALIMENTI' };
+  function shortWord(b) { if (!b) return null; return SHORT_ID[b.id] || SHORT_USE[b.use] || (b.sign && /^[A-Z]{3,8}$/.test(b.sign.t) ? b.sign.t : null); }
+  // insegna verticale a bandiera (lettere una sotto l'altra), tipica degli hotel déco
+  function bladeTexture(text, color, bg) { color = nq(color);
+    const t = String(text).replace(/^HOTEL /, '').replace(/ /g, ''), n = Math.max(1, t.length), S = 88, c = mk(112, S * n + 36), x = c.getContext('2d');
+    x.fillStyle = bg || '#12101c'; x.fillRect(0, 0, c.width, c.height); x.strokeStyle = color; x.lineWidth = 6; x.strokeRect(8, 8, 96, c.height - 16);
+    x.globalAlpha = .45; x.lineWidth = 2; x.strokeRect(16, 16, 80, c.height - 32); x.globalAlpha = 1;
+    x.font = `900 66px ${SIGN_FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle';
+    for (let i = 0; i < n; i++) { const y = 18 + S / 2 + i * S, ch = t[i], sc = Math.min(1, 74 / x.measureText(ch).width);
+      x.save(); x.translate(56, y); x.scale(sc, 1);
+      x.fillStyle = 'rgba(0,0,0,.55)'; x.fillText(ch, 3, 4); x.shadowColor = color; x.shadowBlur = 20; x.fillStyle = color; x.fillText(ch, 0, 0);
+      x.shadowBlur = 0; x.fillStyle = 'rgba(255,255,255,.72)'; x.fillText(ch, 0, 0); x.restore(); }
     return canvasTex(c);
   }
 
@@ -3906,7 +3996,7 @@ var Render = (function () {
     // traliccio sul tetto con le lettere e l'antenna con la luce rossa
     const tw = Math.min(w - 1, 9), th0 = 2.6;
     for (let k = 0; k <= 4; k++) { const px = x0 + w / 2 - tw / 2 + k * tw / 4; const p = box(.12, th0, .12, iron); p.position.set(px, top + .9 + th0 / 2, z0 + d / 2); grp.add(p); if (k < 4) { const dg = box(.06, Math.hypot(tw / 4, th0), .06, iron); dg.position.set(px + tw / 8, top + .9 + th0 / 2, z0 + d / 2 - .1); dg.rotation.z = Math.atan2(tw / 4, th0) * (k % 2 ? 1 : -1); grp.add(dg); } }
-    if (b.sign) { const sg = new THREE.Mesh(new THREE.PlaneGeometry(tw, 1.6), new THREE.MeshBasicMaterial({ map: signTexture(b.sign.t, '#e8c0a0', '#2a0c0c'), toneMapped: false })); sg.position.set(x0 + w / 2, top + .9 + th0 - .8, z0 + d / 2 + .12); sg.userData.keep = true; grp.add(sg);
+    if (b.sign) { const sg = new THREE.Mesh(new THREE.PlaneGeometry(tw, 1.6), new THREE.MeshBasicMaterial({ map: signTexture(b.sign.t, '#e8c0a0', '#2a0c0c', tw / 1.6), toneMapped: false })); sg.position.set(x0 + w / 2, top + .9 + th0 - .8, z0 + d / 2 + .12); sg.userData.keep = true; grp.add(sg);
       const bk = sg.clone(); bk.rotation.y = Math.PI; bk.position.z -= .24; grp.add(bk); glow(x0 + w / 2, top + 2.6, z0 + d / 2 + 1, '#b84a3c', 6); }
     const mast = cyl(.06, .1, 7, 6, iron); mast.position.set(x0 + w * .75, top + 4.4, z0 + d * .3); grp.add(mast);
     const rl = new THREE.Mesh(new THREE.SphereGeometry(.18, 8, 6), sb('#ff2a1a')); rl.position.set(mast.position.x, top + 8, mast.position.z); rl.userData.keep = true; grp.add(rl);
@@ -4040,7 +4130,7 @@ var Render = (function () {
   // ---------------- le strade: guardrail, cartelli, lavori in corso, transenne, arredo ----------------
   function buildStrade31() {
     const T = G.T, r = rng(2031), W0 = M.world; if (!W0) return 0;
-    const free = (x, z) => { const v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; };
+    const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; });   /* [leggera] anche attorno */
     const city = (x, z) => zoneT(Math.floor(x / TS), Math.floor(z / TS)) === ZN.CITTA;
     let n = 0;
     const rail = sm('#8a8c8a', { metalness: .55, roughness: .45 }), railR = sm('#7a6250', { metalness: .4, roughness: .7 }), post = sm('#5a5c5e', { metalness: .5, roughness: .6 }), conc = concrete('#8a8682'), concD = concrete('#6e6a66');
@@ -4086,13 +4176,13 @@ var Render = (function () {
       x.clearRect(0, 0, 64, 64);
       if (kind === 'tri') { x.fillStyle = '#e8e2d4'; x.beginPath(); x.moveTo(32, 4); x.lineTo(60, 58); x.lineTo(4, 58); x.closePath(); x.fill(); x.strokeStyle = '#a82a22'; x.lineWidth = 7; x.stroke(); x.fillStyle = '#1a1a1a'; x.font = 'bold 26px sans-serif'; x.textAlign = 'center'; x.fillText(text || '!', 32, 50); }
       else if (kind === 'round') { x.fillStyle = '#e8e2d4'; x.beginPath(); x.arc(32, 32, 28, 0, 6.3); x.fill(); x.strokeStyle = '#a82a22'; x.lineWidth = 8; x.stroke(); x.fillStyle = '#1a1a1a'; x.font = 'bold 24px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text || '50', 32, 34); }
-      else { x.fillStyle = '#2a4a6a'; x.fillRect(0, 14, 64, 36); x.strokeStyle = '#e8e2d4'; x.lineWidth = 2; x.strokeRect(2, 16, 60, 32); x.fillStyle = '#e8e2d4'; x.font = 'bold 12px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 30, 32); x.beginPath(); x.moveTo(54, 26); x.lineTo(61, 32); x.lineTo(54, 38); x.fill(); }
+      else { x.fillStyle = '#2a4a6a'; x.fillRect(0, 14, 64, 36); x.strokeStyle = '#e8e2d4'; x.lineWidth = 2; x.strokeRect(2, 16, 60, 32); x.fillStyle = '#e8e2d4'; { let fz = 13; x.font = 'bold ' + fz + 'px Arial, sans-serif'; while (fz > 8 && x.measureText(text).width > 46) x.font = 'bold ' + (--fz) + 'px Arial, sans-serif'; } x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 28, 32); x.beginPath(); x.moveTo(54, 26); x.lineTo(61, 32); x.lineTo(54, 38); x.fill(); }
       // ruggine, adesivi, fori di proiettile
       for (let k = 0; k < 14; k++) { x.fillStyle = `rgba(${90 + rr() * 40},${50 + rr() * 20},30,${rr() * .5})`; x.beginPath(); x.arc(rr() * 64, rr() * 64, 1 + rr() * 4, 0, 6.3); x.fill(); }
       for (let k = 0; k < 3; k++) { x.fillStyle = '#121212'; x.beginPath(); x.arc(12 + rr() * 40, 16 + rr() * 34, 1.3, 0, 6.3); x.fill(); }
       if (rr() < .5) { x.fillStyle = pick(rr, ['#c8b030', '#e8e2d4', '#8a2a2a']); x.fillRect(8 + rr() * 30, 30 + rr() * 20, 10, 7); }
       const t = canvasTex(c); return (I31.tex[key] = t); };
-    const NAMES = ['ЦЕНТР', 'ПОРТ', 'МАЯК', 'ТАВОЛАТО', 'СТЕНА', 'ЛЕС', 'ПЛЯЖ', 'ГАВАНЬ'];
+    const NAMES = ['CENTRO', 'PORTO', 'FARO', 'TAVOLATO', 'MURO', 'BOSCO', 'SPIAGGIA', 'DARSENA'];
     const roadSign = (x, z, rot, kind, text, r2) => {
       const g = G0(), tilt = r2() < .3 ? (r2() - .5) * .6 : (r2() - .5) * .08;
       add(g, cyl(.04, .05, 2.4, 6, post), 0, 1.2, 0);
@@ -4132,7 +4222,7 @@ var Render = (function () {
       for (let k = 1; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < nx0) continue; acc = 0; nx0 = 22 + r() * 22;
         const nx = -(bz - az) / L, nz = (bx - ax) / L, sd = r() < .5 ? 1 : -1, off = rd.w / 2 + (rd.rect ? 1.1 : 1.5), x = ax + nx * sd * off, z = az + nz * sd * off;
         if (!free(x, z) || !city(x, z) || nearJ(x, z, 2)) continue; const rot = Math.atan2(-nx * sd, -nz * sd), q = r() * .9;
-        if (q < .3) bench(x, z, rot, 'iron'); else if (q < .52) { bollard(x, z); if (free(x + (bx - ax) / L * 1.6, z + (bz - az) / L * 1.6)) bollard(x + (bx - ax) / L * 1.6, z + (bz - az) / L * 1.6); } else if (q < .62) phoneBooth(x, z, rot); else if (q < .7) mailbox(x, z, rot); else if (q < .78) busStop(x + nx * sd * .6, z + nz * sd * .6, rot + Math.PI);
+        if (q < .3) bench(x, z, rot, 'iron'); else if (q < .52) { bollard(x, z); if (free(x + (bx - ax) / L * 1.6, z + (bz - az) / L * 1.6)) bollard(x + (bx - ax) / L * 1.6, z + (bz - az) / L * 1.6); } else if (q < .62) phoneBooth(x, z, rot); else if (q < .7) mailbox(x, z, rot); else if (q < .78 && free(x + nx * sd * .6, z + nz * sd * .6)) busStop(x + nx * sd * .6, z + nz * sd * .6, rot + Math.PI);   /* [leggera] la fermata spostata di lato: si controlla dove va davvero */
         n++; }
     });
     return n;
@@ -4304,7 +4394,7 @@ var Render = (function () {
       for (let q = 0; q < pn; q++) { const pz = -dw / 2 + (q + .5) * dw / pn, pnl = fB(.12, dh, dw / pn - .06, q % 2 ? '#5a6052' : '#626a5a', 'paint', .01); pnl.position.set(sg * (L / 2 + .12 + (q % 2) * .1), dh / 2, pz); g.add(pnl); }
       for (let q = 0; q < Math.floor(dw / .6); q++) { const st = fB(.13, .3, .6, q % 2 ? '#d8b020' : '#1a1a1c', 'paint', 0); st.position.set(sg * (L / 2 + .2), .15, -dw / 2 + .3 + q * .6); g.add(st); }
       fAt(g, fB(.2, .2, dw + 4, '#3a3c40', 'rust', .01), sg * (L / 2 + .25), dh + .1, 0);
-      const num = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), new THREE.MeshLambertMaterial({ map: signTexture(b.id === 'hangar2' ? 'H-2' : 'H-1', '#e8e4d8', '#5e625a'), transparent: true })); num.rotation.y = sg * Math.PI / 2; num.position.set(sg * (L / 2 + .05), Hw + R * .62 * .6, 0); g.add(num);
+      const num = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), new THREE.MeshLambertMaterial({ map: signTexture(b.id === 'hangar2' ? 'H-2' : 'H-1', '#e8e4d8', '#5e625a', 2), transparent: true })); num.rotation.y = sg * Math.PI / 2; num.position.set(sg * (L / 2 + .05), Hw + R * .62 * .6, 0); g.add(num);
       [-1, 1].forEach(q => { fAt(g, fB(.9, .08, .08, '#3a3c40', 'paint', 0), sg * (L / 2 + .45), dh + .8, q * (dw / 2 + .8)); const lm = fB(.3, .14, .22, '#2a2c30', 'paint', .02); lm.position.set(sg * (L / 2 + .85), dh + .7, q * (dw / 2 + .8)); g.add(lm); });
     });
     // il piazzale davanti: cemento a lastre con le righe gialle
@@ -4502,7 +4592,8 @@ var Render = (function () {
   }
   const solid1 = (x, z) => { const T = G.T, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return v === T.BLD || v === T.WATER || v === T.CLIFF || v === T.FOUNT || v === T.TREE || v === undefined; };
   function busy1(x, z, r) { let hit = false; hashNear(x, z, r + 2, rec => { if (hit || rec.gone35 || rec.state !== 0) return; if (Math.abs(rec.c.x - x) < rec.he.x + r && Math.abs(rec.c.z - z) < rec.he.z + r) hit = true; }); return hit; }
-  const okSpot1 = (x, z, r) => !solid1(x, z) && !onCarr1(x, z, .15) && !busy1(x, z, r || .3);
+  const solidR1 = (x, z, d) => [[0, 0], [d, 0], [-d, 0], [0, d], [0, -d]].some(([u, w]) => solid1(x + u, z + w));   // [leggera] anche attorno, non solo al centro
+  const okSpot1 = (x, z, r) => !solidR1(x, z, Math.max(.4, r || .3)) && !onCarr1(x, z, .15) && !busy1(x, z, r || .3);
 
   // ================= PITTURA DEL SUOLO =================
   // pattern a 8 px/m: sampietrini a coda di pavone (esagerati: 25 cm), allineati al mondo come quelli di [isola35]
@@ -4688,7 +4779,7 @@ var Render = (function () {
     else if (kind === 'narrow') { poly([[32, 4], [61, 58], [3, 58]], '#a82a22'); poly([[32, 14], [52, 52], [12, 52]], '#e0c040'); x.fillStyle = '#1a1a1a'; poly([[24, 50], [28, 50], [28, 34], [24, 28]], '#1a1a1a'); x.fillRect(36, 26, 4, 24); }
     else if (kind === 'city' || kind === 'cityend') { x.fillStyle = '#e8e2d4'; x.fillRect(2, 2, W - 4, Hh - 4); x.strokeStyle = '#1a1a1a'; x.lineWidth = 3; x.strokeRect(5, 5, W - 10, Hh - 10); x.fillStyle = '#1a1a1a'; x.font = 'bold 19px sans-serif'; x.fillText(text, W / 2, Hh / 2 + 1);
       if (kind === 'cityend') { x.strokeStyle = '#a82a22'; x.lineWidth = 6; x.beginPath(); x.moveTo(8, Hh - 8); x.lineTo(W - 8, 8); x.stroke(); } }
-    else if (kind === 'cam') { x.fillStyle = '#e0c040'; x.fillRect(2, 2, 60, 60); x.strokeStyle = '#1a1a1a'; x.lineWidth = 3; x.strokeRect(4, 4, 56, 56); x.fillStyle = '#1a1a1a'; x.fillRect(16, 14, 26, 14); x.fillRect(42, 18, 8, 6); x.fillRect(22, 28, 4, 8); x.fillRect(14, 36, 16, 3); x.font = 'bold 8px sans-serif'; x.fillText('ВИДЕО-', 32, 46); x.fillText('КОНТРОЛЬ', 32, 55); }
+    else if (kind === 'cam') { x.fillStyle = '#e0c040'; x.fillRect(2, 2, 60, 60); x.strokeStyle = '#1a1a1a'; x.lineWidth = 3; x.strokeRect(4, 4, 56, 56); x.fillStyle = '#1a1a1a'; x.fillRect(16, 14, 26, 14); x.fillRect(42, 18, 8, 6); x.fillRect(22, 28, 4, 8); x.fillRect(14, 36, 16, 3); x.font = 'bold 8px sans-serif'; x.fillText('ZONA', 32, 46); x.fillText('SORVEGLIATA', 32, 55); }
     else if (kind === 'pedzone') { x.fillStyle = '#2a4a7a'; x.fillRect(3, 3, 58, 58); x.fillStyle = '#e8e2d4'; x.beginPath(); x.arc(32, 32, 24, 0, 6.3); x.fill(); x.fillStyle = '#1a1a1a'; x.beginPath(); x.arc(28, 16, 4, 0, 6.3); x.fill(); x.lineWidth = 4; x.strokeStyle = '#1a1a1a'; x.beginPath(); x.moveTo(28, 20); x.lineTo(26, 34); x.lineTo(20, 46); x.moveTo(26, 34); x.lineTo(33, 46); x.moveTo(27, 25); x.lineTo(19, 30); x.moveTo(27, 25); x.lineTo(36, 30); x.stroke(); x.beginPath(); x.arc(40, 30, 3, 0, 6.3); x.fill(); x.beginPath(); x.moveTo(40, 33); x.lineTo(40, 42); x.stroke(); }
     else if (kind === 'nopark') { x.fillStyle = '#2a4a8a'; x.beginPath(); x.arc(32, 32, 27, 0, 6.3); x.fill(); x.strokeStyle = '#a82a22'; x.lineWidth = 6; x.beginPath(); x.arc(32, 32, 25, 0, 6.3); x.stroke(); x.beginPath(); x.moveTo(14, 14); x.lineTo(50, 50); x.stroke(); }
     else if (kind === 'trail') { x.clearRect(0, 0, W, Hh); x.fillStyle = '#c8b08a'; x.beginPath(); x.moveTo(2, 2); x.lineTo(W - 18, 2); x.lineTo(W - 2, Hh / 2); x.lineTo(W - 18, Hh - 2); x.lineTo(2, Hh - 2); x.closePath(); x.fill(); x.fillStyle = '#e8e2d4'; x.fillRect(W - 30, 2, 8, Hh - 4); x.fillStyle = '#b02a22'; x.fillRect(W - 22, 2, 5, Hh - 4); x.fillStyle = '#3a2a1a'; let fs = 14; x.font = 'bold ' + fs + 'px serif'; while (x.measureText(text).width > W - 44 && fs > 7) { fs--; x.font = 'bold ' + fs + 'px serif'; } x.fillText(text, (W - 30) / 2 + 2, Hh / 2 + 1); for (let i = 0; i < 5; i++) { x.fillStyle = 'rgba(90,60,30,.35)'; x.fillRect(4, 4 + i * 5, W - 40, 1); } }
@@ -4813,7 +4904,7 @@ var Render = (function () {
     crossings35().forEach((c, i) => { if (junc1().some(J => J.signal && Math.hypot(J.x - c.x, J.y - c.y) < J.r + 6)) return; if (r() < .35) return;
       const rx = c.uy, ry = -c.ux, x = c.x + c.ux * 1.6 + rx * (c.w / 2 + .7), z = c.y + c.uy * 1.6 + ry * (c.w / 2 + .7); if (signPost1(x, z, Math.atan2(c.ux, c.uy), [['ped']], r)) n++; });
     // 3) inizio e fine città, limiti; frecce nelle curve; paletti delineatori — fuori città
-    const NAME = 'ПОРТО-ВЕККЬО';
+    const NAME = 'PORTO VECCHIO';
     (M.roads || []).forEach((rd, ri) => {
       if (!asph1(rd) || !rd.pts || rd.pts.length < 10) return; const g = geo1(rd), P = rd.pts, side = sideOf1(rd), rr = rng(ri * 31 + 9);
       const ext = rd.kind === 'strada' || rd.kind === 'litoranea';
@@ -4869,7 +4960,7 @@ var Render = (function () {
     // 6) new jersey ai posti di blocco della Tutela e alla Base: file di cemento con lo spazio per passare
     [G.PLACES.varco, G.PLACES.piazza_gov, G.PLACES.muro, G.PLACES.eliporto, G.PLACES.molo_cargo].forEach((p, pi) => { if (!p) return;
       for (let row = 0; row < 2; row++) { const a = pi * 1.1 + row * Math.PI, cx = p.x + Math.cos(a) * 11, cz = p.y + Math.sin(a) * 11, tx = -Math.sin(a), tz = Math.cos(a);
-        for (let q = -3; q <= 3; q++) { if (q === 0) continue; const x = cx + tx * q * 2, z = cz + tz * q * 2; if (!okSpot1(x, z, .5)) continue; jersey1(x, z, Math.atan2(tx, tz), false); n++; } } });
+        for (let q = -3; q <= 3; q++) { if (q === 0) continue; const x = cx + tx * q * 2, z = cz + tz * q * 2; if (!okSpot1(x, z, .5) || solidR1(x, z, 1.05)) continue; jersey1(x, z, Math.atan2(tx, tz), false); n++;   /* il jersey è lungo 2 m */ } } });
     if (window.__dbg35) console.log('[dbg] strade1', n, 'semafori', JSON.stringify(junc1().filter(j => j.signal).map(j => [Math.round(j.x), Math.round(j.y)])), 'cantieri', JSON.stringify(works1().map(w => [Math.round(w.x), Math.round(w.y)])), 'buche', holes1List().length);
     return n;
   }
@@ -4897,7 +4988,7 @@ var Render = (function () {
     for (let i = 0; i < 8; i++) { const ox = (i % 4) * 32, oy = Math.floor(i / 4) * 32, kind = i % 4;
       x.fillStyle = ['#d8d2c2', '#cfc8b4', '#b8955e', '#e2dccc'][kind]; x.fillRect(ox + 1, oy + 1, 30, 30);
       if (kind === 0 || kind === 1) { x.fillStyle = 'rgba(40,36,34,.75)'; x.fillRect(ox + 3, oy + 3, 26, 4); for (let l = 9; l < 29; l += 2) x.fillRect(ox + 3 + (l % 4), oy + l, 10 + r() * 14, 1); if (r() < .6) { x.fillStyle = 'rgba(60,56,54,.6)'; x.fillRect(ox + 18, oy + 10, 10, 8); } }
-      else if (kind === 2) { x.fillStyle = 'rgba(90,64,34,.6)'; x.fillRect(ox + 1, oy + 15, 30, 1); x.fillStyle = 'rgba(40,30,20,.7)'; x.font = 'bold 8px sans-serif'; x.fillText(pick(r, ['ХРУПКО', '↑↑', 'РЫБА', '사과']), ox + 4, oy + 26); }
+      else if (kind === 2) { x.fillStyle = 'rgba(90,64,34,.6)'; x.fillRect(ox + 1, oy + 15, 30, 1); x.fillStyle = 'rgba(40,30,20,.7)'; x.font = 'bold 8px sans-serif'; x.fillText(pick(r, ['FRAGILE', '↑↑', 'PESCE', 'MELE']), ox + 4, oy + 26); }
       else { x.fillStyle = pick(r, ['#a82a22', '#2a4a7a', '#1a1a1a']); x.fillRect(ox + 4, oy + 4, 24, 10); x.fillStyle = 'rgba(30,30,30,.7)'; for (let l = 17; l < 28; l += 3) x.fillRect(ox + 5, oy + l, 22, 1); }
       x.fillStyle = 'rgba(70,60,46,.35)'; for (let k = 0; k < 6; k++) x.fillRect(ox + r() * 28, oy + r() * 28, 3 + r() * 6, 2 + r() * 4);   // sporco e acqua
     }
@@ -5256,7 +5347,7 @@ var Render = (function () {
     let npm = 0, ngz = 0; const zinc = sm('#8a8e90', { metalness: .55, roughness: .45 }), dark = sm('#2a2c30', { metalness: .4, roughness: .5 });
     const parchimetro = (x, z, rot) => { const gg = G0(); MD1.meter(gg);
       place(gg, x, z, rot); npm++; };
-    const GZ = [['ПРАВДА ОСТРОВА', '#8a2a24'], ['IL GARANTE', '#2a3a6a'], ['ВЕЧЕРНИЙ ПОРТ', '#c89a30'], ['섬 신문', '#3a5a3a'], ['LA SERA', '#5a5a5a']];
+    const GZ = [['LA VOCE', '#8a2a24'], ['IL GARANTE', '#2a3a6a'], ['IL TIRRENO', '#c89a30'], ['GAZZETTA', '#3a5a3a'], ['LA SERA', '#5a5a5a']];
     const giornali = (x, z, rot) => { const gg = G0(), k = Math.floor(r() * GZ.length), tm = S1.tex['gz' + k] || (S1.tex['gz' + k] = new THREE.MeshLambertMaterial({ map: signTexture(GZ[k][0], '#f0ead8', GZ[k][1]) }));
       MD1.newsbox(gg, GZ[k][1], tm);
 
@@ -5614,7 +5705,7 @@ var Render = (function () {
 
   // ---- sporco a terra: cicche, cartacce, macchie, foglie, vetri, più fitto vicino alle porte dei bar e agli angoli ----
   let DOORS35 = null;
-  function doors35() { if (DOORS35) return DOORS35; DOORS35 = (G.BUILDINGS || []).filter(b => b.door).map(b => ({ x: (b.door[0] + .5) * TS, y: (b.door[1] + .5) * TS, bar: /bar|osteria|circolo|cinema|tabacchi/.test(b.id + ' ' + (b.use || '')) || (b.shop && /БАР|BAR/i.test((b.sign && b.sign.t) || '')), shop: !!b.shop })); return DOORS35; }
+  function doors35() { if (DOORS35) return DOORS35; DOORS35 = (G.BUILDINGS || []).filter(b => b.door).map(b => ({ x: (b.door[0] + .5) * TS, y: (b.door[1] + .5) * TS, bar: /bar|osteria|circolo|cinema|tabacchi/.test(b.id + ' ' + (b.use || '')) || (b.shop && /BAR/i.test((b.sign && b.sign.t) || '')), shop: !!b.shop })); return DOORS35; }
   function sporco35(x, tx0, ty0, n, m) {
     const T = G.T, X0 = tx0 * TS, Y0 = ty0 * TS;
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
@@ -5739,10 +5830,10 @@ var Render = (function () {
   function cardTex35(kind) {   // etichette e scritte delle cose: cartone, sacco di cemento, bombola, cassetta della birra
     const key = 'o35' + kind; if (I32.tex[key]) return I32.tex[key];
     return tex32(key, 32, 32, (x, r) => {
-      if (kind === 'cartone') { x.fillStyle = '#a07a50'; x.fillRect(0, 0, 32, 32); x.fillStyle = 'rgba(80,56,30,.5)'; x.fillRect(0, 15, 32, 2); x.fillStyle = 'rgba(40,30,20,.6)'; x.font = 'bold 7px sans-serif'; x.fillText(pick(r, ['FRAGILE', 'ТОВАР', '↑↑', 'МЫЛО', 'CONSERVE']), 3, 10); for (let k = 0; k < 20; k++) { x.fillStyle = 'rgba(60,40,20,.25)'; x.fillRect(r() * 32, r() * 32, 2, 1); } }
-      else if (kind === 'cemento') { x.fillStyle = '#c8c4b8'; x.fillRect(0, 0, 32, 32); x.fillStyle = '#b02a22'; x.fillRect(0, 10, 32, 6); x.fillStyle = '#f0ece0'; x.font = 'bold 6px sans-serif'; x.fillText('ЦЕМЕНТ', 3, 15); x.fillStyle = 'rgba(90,86,80,.4)'; for (let k = 0; k < 30; k++) x.fillRect(r() * 32, r() * 32, 1, 1); }
-      else if (kind === 'birra') { x.fillStyle = '#2a5a3a'; x.fillRect(0, 0, 32, 32); x.fillStyle = '#e8d8a0'; x.font = 'bold 8px sans-serif'; x.fillText('ПИВО', 4, 19); x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(0, 26, 32, 6); }
-      else if (kind === 'lavori') { x.fillStyle = '#e8e2d4'; x.fillRect(0, 0, 32, 32); x.fillStyle = '#a82a22'; x.fillRect(0, 0, 32, 5); x.fillRect(0, 27, 32, 5); x.fillStyle = '#1a1a1a'; x.font = 'bold 6px sans-serif'; x.fillText('ЛАВОРИ', 3, 15); x.fillText('ЗАКРЫТО', 2, 23); }
+      if (kind === 'cartone') { x.fillStyle = '#a07a50'; x.fillRect(0, 0, 32, 32); x.fillStyle = 'rgba(80,56,30,.5)'; x.fillRect(0, 15, 32, 2); x.fillStyle = 'rgba(40,30,20,.6)'; x.font = 'bold 7px sans-serif'; x.fillText(pick(r, ['FRAGILE', 'MERCE', '↑↑', 'SAPONE', 'CONSERVE']), 3, 10); for (let k = 0; k < 20; k++) { x.fillStyle = 'rgba(60,40,20,.25)'; x.fillRect(r() * 32, r() * 32, 2, 1); } }
+      else if (kind === 'cemento') { x.fillStyle = '#c8c4b8'; x.fillRect(0, 0, 32, 32); x.fillStyle = '#b02a22'; x.fillRect(0, 10, 32, 6); x.fillStyle = '#f0ece0'; x.font = 'bold 6px sans-serif'; x.fillText('CEMENTO', 3, 15); x.fillStyle = 'rgba(90,86,80,.4)'; for (let k = 0; k < 30; k++) x.fillRect(r() * 32, r() * 32, 1, 1); }
+      else if (kind === 'birra') { x.fillStyle = '#2a5a3a'; x.fillRect(0, 0, 32, 32); x.fillStyle = '#e8d8a0'; x.font = 'bold 8px sans-serif'; x.fillText('BIRRA', 3, 19); x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(0, 26, 32, 6); }
+      else if (kind === 'lavori') { x.fillStyle = '#e8e2d4'; x.fillRect(0, 0, 32, 32); x.fillStyle = '#a82a22'; x.fillRect(0, 0, 32, 5); x.fillRect(0, 27, 32, 5); x.fillStyle = '#1a1a1a'; x.font = 'bold 6px sans-serif'; x.fillText('LAVORI', 3, 15); x.fillText('IN CORSO', 2, 23); }
       else if (kind === 'righe') { for (let k = -32; k < 64; k += 8) { x.fillStyle = '#d8b030'; x.beginPath(); x.moveTo(k, 0); x.lineTo(k + 4, 0); x.lineTo(k + 36, 32); x.lineTo(k + 32, 32); x.fill(); x.fillStyle = '#1a1a1a'; x.beginPath(); x.moveTo(k + 4, 0); x.lineTo(k + 8, 0); x.lineTo(k + 40, 32); x.lineTo(k + 36, 32); x.fill(); } x.fillStyle = 'rgba(60,40,30,.3)'; for (let k = 0; k < 40; k++) x.fillRect(r() * 32, r() * 32, 2, 1); }
       else if (kind === 'rete') { x.clearRect(0, 0, 32, 32); x.strokeStyle = '#8a8c88'; x.lineWidth = 1; for (let k = 0; k < 32; k += 4) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k, 32); x.stroke(); x.beginPath(); x.moveTo(0, k); x.lineTo(32, k); x.stroke(); } }
     });
@@ -5794,7 +5885,7 @@ var Render = (function () {
       const tx = -fz, tz = fx, ry = Math.atan2(fx, fz), rb = rng(bi * 7919 + 35);   // lungo la facciata: (tx, tz)
       const wall = fx ? (fx > 0 ? (b.x + b.w) * TS : b.x * TS) : (fz > 0 ? (b.y + b.h) * TS : b.y * TS);
       const at = (u, off) => fx ? [wall + fx * off, dz0 + tz * u] : [dx0 + tx * u, wall + fz * off];   // u lungo il muro, off dal muro
-      const id = b.id + ' ' + (b.use || ''), bar = /bar|osteria|circolo|cinema|tabacchi/.test(id), food = /wu|alimentar|panett|pescher|forno|frutt|mercat/.test(id) || (b.shop && /식료품|ТОВАР|ПРОДУКТ/.test((b.sign && b.sign.t) || '')), off = /officin|ferrament|garage|meccan/.test(id);
+      const id = b.id + ' ' + (b.use || ''), bar = /bar|osteria|circolo|cinema|tabacchi/.test(id), food = /wu|alimentar|panett|pescher|forno|frutt|mercat/.test(id) || (b.shop && /ALIMENTARI|SPESA|SUPERMERCATO|DROGHERIA/.test((b.sign && b.sign.t) || '')), off = /officin|ferrament|garage|meccan/.test(id);
       const side = rb() < .5 ? -1 : 1;
       if (bar) {   // il bar: due tavolini di plastica, le sedie storte, le casse dei vuoti accatastate, cicche e bottiglie
         for (let k = 0; k < 2; k++) { const [x, z] = at(side * (1.6 + k * 1.6), 1.3); const g = G0(); B35.tavolino(g, 0, 0, pick(rb, ['#e8e4dc', '#c8302a', '#2a5a8a'])); B35.sedia(g, -.55, .1, 1.2 + rb(), '#e8e4dc'); B35.sedia(g, .5, -.1, -1.6 + rb(), '#e8e4dc', rb() < .15); if (rb() < .7) B35.bottiglia(g, .1, 0, '#3a2a14', true); put(g, x, z, ry + rb() * .3, .9, .7); }
@@ -5809,7 +5900,7 @@ var Render = (function () {
       } else {   // casa: i vasi ai lati della porta, la bici appoggiata, la bombola, la sedia di chi si siede al sole
         const k = rb();
         if (k < .55) { [-1, 1].forEach(s => { if (rb() < .25) return; const [x, z] = at(s * (.95 + rb() * .2), .3); const g = G0(); B35.vaso(g, 0, 0, .26 + rb() * .16, pick(rb, ['#3f6a35', '#4f7e3a', '#5a7a3a', '#6a5a3a'])); put(g, x, z, ry, .22, .22); }); }
-        if (k > .3 && rb() < .4) { const [x, z] = at(side * (1.6 + rb()), .32); const g = G0(); B35.bici(g, 0, 0, Math.PI / 2); put(g, x, z, ry, .65, .2); }
+        if (k > .3 && rb() < .4) { const [x, z] = at(side * (1.6 + rb()), .32); const g = G0(); B35.bici(g, 0, 0, 0); put(g, x, z, ry, .65, .2);   /* [leggera] appoggiata lungo il muro: girata di 90° entrava per metà nella casa */ }
         else if (rb() < .25) { const [x, z] = at(side * 1.3, .3); const g = G0(); B35.bombola(g, 0, 0, pick(rb, ['#c84a2a', '#4a6a8a', '#a8a8a0'])); put(g, x, z, ry, .2, .2); }
         else if (rb() < .2) { const [x, z] = at(side * 1.3, .45); const g = G0(); B35.sedia(g, 0, 0, Math.PI, pick(rb, ['#5a4a3a', '#7a6a50'])); put(g, x, z, ry, .3, .3); }
       }
@@ -6968,9 +7059,10 @@ var Render = (function () {
     const face = faceOf(b);
     const dx = b.door[0] * TS + TS / 2, dz = b.door[1] * TS + TS / 2;
     if (b.deco && b.fl >= 4) { // insegna verticale a bandiera sull'angolo
-      const tex = bladeTexture(b.sign.t, b.sign.c), n = b.sign.t.replace(/HOTEL /, '').length, hh = Math.min(b.fl * 3 - 4, n * 1.1);
+      const word = shortWord(b) || b.sign.t, tex = bladeTexture(word, b.sign.c), n = word.replace(/^HOTEL /, '').replace(/ /g, '').length;
+      let hh = n * .95, bw = 1.2; const cap = b.fl * 3 - 4; if (hh > cap) { hh = cap; bw = Math.max(.7, hh / n * 112 / 88); }   // [insegne1] lettere mai stirate
       const sm2 = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
-      const blade = new THREE.Mesh(new THREE.BoxGeometry(.25, hh, 1.2), [sm2, sm2, sb('#12101c'), sb('#12101c'), sb('#12101c'), sb('#12101c')]);
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(.25, hh, bw), [sm2, sm2, sb('#12101c'), sb('#12101c'), sb('#12101c'), sb('#12101c')]);
       const px = face === 'S' || face === 'N' ? dx + 2.6 : (face === 'E' ? x0 + w + .7 : x0 - .7), pz = face === 'S' ? z0 + d + .7 : face === 'N' ? z0 - .7 : dz + 2.6;
       blade.position.set(px, base + 4 + hh / 2, pz); blade.rotation.y = face === 'E' || face === 'W' ? Math.PI / 2 : 0;
       scene.add(blade);
@@ -6985,7 +7077,7 @@ var Render = (function () {
     if (face === 'S') { sg.position.set(dx, sy, z0 + d + .06); lz = z0 + d + 1.2; }
     else if (face === 'E') { sg.position.set(x0 + w + .06, sy, dz); sg.rotation.y = Math.PI / 2; lx = x0 + w + 1.2; }
     else {
-      sm1.side = THREE.DoubleSide; sg.scale.set(.8, 1.1, 1);
+      sm1.side = THREE.DoubleSide; sg.scale.set(.85, .85, 1);   // [insegne1] stessa scala sui due assi: le lettere restano dritte
       if (face === 'N') { sg.position.set(dx + 1.5, sy + .2, z0 - .9); sg.rotation.y = Math.PI / 2; lz = z0 - 1.4; lx = dx + 1.5; }
       else { sg.position.set(x0 - .9, sy + .2, dz + 1.5); lx = x0 - 1.4; lz = dz + 1.5; }
       const arm = box(.06, .06, 1.8, sl('#1b1820')); arm.position.copy(sg.position); arm.position.y += .62; if (face === 'W') arm.rotation.y = Math.PI / 2; scene.add(arm);
@@ -7055,7 +7147,7 @@ var Render = (function () {
     // portone con insegna
     const gate = box(4, 4.5, .4, darkM); gate.position.set(0, 2.25 + y0 * 0, d / 2 + .05); g.add(gate);
     const arch = box(5.4, 1.2, th + .4, wallM); arch.position.set(0, 5.1, d / 2 - th / 2); g.add(arch);
-    const sg = new THREE.Mesh(new THREE.PlaneGeometry(9, 2.2), new THREE.MeshBasicMaterial({ map: signTexture('TUTELA', '#ff3b3b'), toneMapped: false }));
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(9, 2.2), new THREE.MeshBasicMaterial({ map: signTexture('TUTELA', '#ff3b3b', null, 4.1), toneMapped: false }));
     sg.position.set(0, KH - 2.5, -d * .12 + kd / 2 + .08); sg.userData.keep = true; g.add(sg);
     g.position.set(cx, base, cz); shadowed(g); scene.add(g);
     glow(cx, base + KH - 2.5, cz - d * .12 + kd / 2 + 1, '#ff3b3b', 7);
@@ -7194,8 +7286,17 @@ var Render = (function () {
     const wd = wallDist2(x, z), rd = roadDir2(x, z); let a0;
     if (wd < 3 && !(rd.d < wd)) a0 = 0; else if (rd.a !== null && rd.d < 6) a0 = rd.a; else return rot;
     const q = Math.PI / 2; return a0 + Math.round((rot - a0) / q) * q; }
-  function place(o, x, z, rot, live) { rot = snapRot2(o, x, z, rot);   /* [pulitore2] */ o.position.set(x, groundH(x, z), z); o.rotation.y = rot || 0; if (live) { shadowed(o); scene.add(o); DZ.hint = null; } else { const tag = newTag(); curTag = tag; addStatic(o); curTag = null; regProp(o, tag); } return o; }
+  function place(o, x, z, rot, live) { rot = snapRot2(o, x, z, rot);   /* [pulitore2] */ o.position.set(x, groundH(x, z), z); o.rotation.y = rot || 0; settle(o); if (live) { shadowed(o); scene.add(o); DZ.hint = null; } else { const tag = newTag(); curTag = tag; addStatic(o); curTag = null; regProp(o, tag); } return o; }
 
+  // [leggera] sul pendio la cosa si appoggia sullo spigolo più basso (a monte affonda di qualche centimetro, a valle non resta
+  // sospesa): fino a 60 cm, oltre resta com'era (le cose grandi su un pendio forte vanno sistemate da chi le posa)
+  const SETTLE_B = new THREE.Box3();
+  function settle(o) {
+    o.updateMatrixWorld(true); SETTLE_B.setFromObject(o); if (!isFinite(SETTLE_B.min.x)) return;
+    const { min, max } = SETTLE_B, y0 = o.position.y; if (max.x - min.x > 14 || max.z - min.z > 14) return;
+    let lo = y0; [[min.x, min.z], [min.x, max.z], [max.x, min.z], [max.x, max.z]].forEach(([qx, qz]) => { lo = Math.min(lo, groundH(qx, qz)); });
+    const d = y0 - lo; if (d > .04 && d < .6) o.position.y = y0 - d;
+  }
   // --- lampioni ---
   function streetLamp(x, z, kind, rot) {
     const g = G0(), iron = PM.iron(), y0 = groundH(x, z);
@@ -7598,7 +7699,7 @@ var Render = (function () {
     stanchions(22.3 * TS, 5.3 * TS, 4); pot(22.8 * TS, 4.3 * TS, r, 'palm'); pot(25.6 * TS, 4.3 * TS, r, 'palm');
     streetLamp(19 * TS, 5.2 * TS, 'deco', 0); streetLamp(30 * TS, 3 * TS, 'deco', 0);
     // Cinema Astor: pensilina con le lampadine e manifesti
-    { const g = G0(); add(g, box(15, .5, 2.2, sm('#e8c060')), 7.5, 3.3, 1.1); add(g, box(15.2, .15, 2.3, sm('#c83a3a')), 7.5, 3.6, 1.1); const tex = signTexture('ULTIMA PRIMA', '#ffd23b', '#2a0a1a'); const sg = new THREE.Mesh(new THREE.BoxGeometry(8, 1.1, .1), [sb('#2a0a1a'), sb('#2a0a1a'), sb('#2a0a1a'), sb('#2a0a1a'), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), sb('#2a0a1a')]); sg.position.set(7.5, 4.3, 2.2); sg.userData.keep = true; g.add(sg); g.position.set(4 * TS + .5, 0, 15 * TS - .1); shadowed(g); scene.add(g); marquee(4 * TS + .5, 3.05, 15 * TS + 2.2, 15, r); addLight(8 * TS, 3, 15 * TS + 2, '#ffd890', 3, 10, 0).always = true; }
+    { const g = G0(); add(g, box(15, .5, 2.2, sm('#e8c060')), 7.5, 3.3, 1.1); add(g, box(15.2, .15, 2.3, sm('#c83a3a')), 7.5, 3.6, 1.1); const tex = signTexture('ULTIMA PRIMA', '#ffd23b', '#2a0a1a', 7.3); const sg = new THREE.Mesh(new THREE.BoxGeometry(8, 1.1, .1), [sb('#2a0a1a'), sb('#2a0a1a'), sb('#2a0a1a'), sb('#2a0a1a'), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), sb('#2a0a1a')]); sg.position.set(7.5, 4.3, 2.2); sg.userData.keep = true; g.add(sg); g.position.set(4 * TS + .5, 0, 15 * TS - .1); shadowed(g); scene.add(g); marquee(4 * TS + .5, 3.05, 15 * TS + 2.2, 15, r); addLight(8 * TS, 3, 15 * TS + 2, '#ffd890', 3, 10, 0).always = true; }
     posterBoard(4.6 * TS, 15.3 * TS, 0, r); posterBoard(11.5 * TS, 15.3 * TS, 0, r);
     // pensione e isolato
     pot(23 * TS, 15.3 * TS, r, 'lemon'); pot(25.7 * TS, 15.3 * TS, r, 'lemon'); bench(17 * TS, 15.3 * TS, 0); bin(13 * TS, 15.2 * TS, 'pole'); mailbox(20 * TS, 15.2 * TS, 0);
@@ -7945,7 +8046,7 @@ var Render = (function () {
     if (police) {
       const lv = std({ map: liveryTex('POLIZIA', color, '#f4f4f4'), roughness: .35, metalness: .3 });
       [-1, 1].forEach(s => { const side = new THREE.Mesh(new THREE.PlaneGeometry(L * .78, .26), lv); side.rotation.y = s * Math.PI / 2; side.position.set(s * (Wd / 2 + .075), .6, -.05); g.add(side); });
-      const roofN = new THREE.Mesh(new THREE.PlaneGeometry(.6, .3), new THREE.MeshBasicMaterial({ map: signTexture('113', '#1a3a7a', '#f4f4f4') })); roofN.rotation.x = -Math.PI / 2; roofN.position.set(0, 1.42, -.6); g.add(roofN);
+      const roofN = new THREE.Mesh(new THREE.PlaneGeometry(.6, .3), new THREE.MeshBasicMaterial({ map: signTexture('113', '#1a3a7a', '#f4f4f4', 2) })); roofN.rotation.x = -Math.PI / 2; roofN.position.set(0, 1.42, -.6); g.add(roofN);
       const barM = box(1.1, .1, .28, sm('#e8e8e8')); barM.position.set(0, 1.47, -.2); g.add(barM);
       const bl = new THREE.MeshBasicMaterial({ color: '#2a6aff', toneMapped: false }), bl2 = new THREE.MeshBasicMaterial({ color: '#2a6aff', toneMapped: false });
       const b1 = box(.3, .18, .24, bl); b1.position.set(-.36, 1.6, -.2); const b2 = box(.3, .18, .24, bl2); b2.position.set(.36, 1.6, -.2); g.add(b1, b2);
@@ -8111,8 +8212,8 @@ var Render = (function () {
     g.userData.glbWait = !!K.glb && !glb;
     g.userData.glb = !!glb;   // [animazioni-mondo] le auto dai modelli non hanno il profilo del parabrezza
     if (window.RisaccaUI && RisaccaUI.dressVehicle) { try { RisaccaUI.dressVehicle(g, v, THREE); } catch (e) { } } // corazze, rostri, insegne militari
-    const sh = new THREE.Mesh(new THREE.PlaneGeometry(K.wid + .5, K.len + .4), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .42, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = .03; g.add(sh);
-    g.traverse(o => { if (o.isMesh && o !== sh) o.castShadow = true; });
+    const sh = new THREE.Mesh(new THREE.PlaneGeometry(K.wid + .5, K.len + .4), new THREE.MeshBasicMaterial({ color: '#000', map: blobT2(), transparent: true, opacity: v.kind === 'bmx' ? .45 : .55, depthWrite: false }));   /* [plastica2] ombra di contatto sfumata (era un rettangolo nero pieno sotto la bici) */ sh.rotation.x = -Math.PI / 2; sh.position.y = .03; g.add(sh);
+    g.traverse(o => { if (o.isMesh && o !== sh) o.castShadow = true; }); g.traverse(thin2);   /* [plastica2] */
     const u = g.userData;
     if (u.seat) {
       u.drv = driverMesh(v.driverLook || { top: '#8c2f24', skin: '#dcae88', hair: '#17110e' }, v.police || v.livrea); u.drv.position.set(...u.seat); g.add(u.drv);
@@ -8362,7 +8463,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.25, ink: 0, rim: .6, cav: .85, clar: .32, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: .97 /* [lucido1] più luce */ /* [plastica1] senza contorni era troppo chiaro (1.06) */, bloom: .7 /* [plastica1] era 1: l'alone attorno alle luci */, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: 0 /* [plastica1] la maschera di nitidezza faceva alone (era .32) */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.45 /* [colore1] più colore (era 1.25) */ /* [plastica1] 1.62 dava l'erba fluo */, ink: 0, rim: .35 /* [plastica1] */, cav: .4 /* [plastica1] un po' di volume nelle pieghe */, clar: 0 /* [plastica1] il contrasto locale (colore meno sfocato) è un alone attorno a ogni sagoma */, luc: 1.15, spec: 1.15, coat: 1.05, trans: 1.1, /* [colore1] miniature di plastica: più lacca, punto di luce, traslucenza (erano 1, .9, .8, 1) */ ol: 0 /* [plastica1] niente contorno scuro: miniature di plastica, non fumetto (era .85) */, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -8529,7 +8630,7 @@ var Render = (function () {
             float ink = max(max(max(max(max(thin, sil), thick), crease * .55), form) * (1. - thinObj * .6) * (1. - vegK * .88), max(shapeI * .85, brick)) * (1.-coc) * (1. - busyK) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55) * (1. - smoothstep(uFogNF.x, uFogNF.y, d) * .95);   /* [nebbia_zoom1] */
             vec3 inkC = vec3(.19, .085, .2) + c * .06;   // inchiostro prugna: viola scuro e caldo, lega col colore (riferimento isometrico di Andrea)
             c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); }
-          { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)); } c *= 1. - ao/8.*.42*(1.-coc*.7); }
+          { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)); } c *= 1. - ao/8.*.22*(1.-coc*.7);   /* [plastica1] era .42: l'ombra di contatto larga faceva alone scuro */ }
           {   // [amb3] inchiostro e profili: il volume si stacca dal fondo
             float la = dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, vec3(.3,.59,.11)), lb = dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, vec3(.3,.59,.11));
             float lc2 = dot(texture2D(tC, uv + vec2(0., px.y)).rgb, vec3(.3,.59,.11)), ld = dot(texture2D(tC, uv - vec2(0., px.y)).rgb, vec3(.3,.59,.11)), l0 = dot(c, vec3(.3,.59,.11));
@@ -8562,7 +8663,7 @@ var Render = (function () {
               float ndv = clamp(dot(n9, V9), 0., 1.), ndl = dot(n9, L9), day9 = 1. - night;
               float lu9 = dot(c, vec3(.3,.59,.11));
               // 1) colori bagnati: più saturi, i medi più profondi, i neri restano colore
-              vec3 sat9 = max(mix(vec3(lu9), c, 1.5), 0.);
+              vec3 sat9 = max(mix(vec3(lu9), c, 1.6), 0.);   /* [colore1] era 1.5 */
               c = mix(c, sat9 * (1. - .1 * smoothstep(.5, .05, lu9)), lK.x);
               // 2) traslucenza: in ombra il materiale si accende del suo colore, come plastica che lascia passare la luce
               float sh9 = 1. - smoothstep(.05, .38, lu9); vec3 hue9 = max(c, 1e-4) / max(max(max(c.r, c.g), c.b), 1e-4);
@@ -8572,7 +8673,7 @@ var Render = (function () {
               vec3 sky9 = mix(mix(uHz, vec3(.78,.88,1.), .55), vec3(.1,.14,.26), night);
               c += sky9 * fr9 * .42 * lK.z * ok9;
               float nh9 = max(dot(n9, H9), 0.), lit9 = smoothstep(-.05, .15, ndl);
-              c += lSunC * (pow(nh9, 70.) * .9 + pow(nh9, 9.) * .12) * lit9 * lK.y * ok9;
+              c += lSunC * (pow(nh9, 70.) * .9 + pow(nh9, 9.) * .12) * lit9 * lK.y * ok9 * (1. - smoothstep(.8, .97, n9.y) * .85);   /* [plastica2] strade e piazze non sono laccate: la macchia di sole sull'asfalto */
               // 4) contorno pulito: la sagoma di un oggetto staccato dal fondo, della sua tinta scurita (niente su pieghe e mattoni)
               // e le pieghe: spigoli e cambi di piano dentro la sagoma (seconda derivata della profondità, in proporzione al texel), più leggere
               float far9 = max(max(d1 - d, d2 - d), max(d3 - d, d4 - d)), near9 = max(max(d - d1, d - d2), max(d - d3, d - d4));
@@ -8586,13 +8687,13 @@ var Render = (function () {
               { vec3 LW9 = vec3(.3,.59,.11); float l09 = dot(texture2D(tC, uv).rgb, LW9);
                 float la9 = dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, LW9), lb9 = dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, LW9), lc9 = dot(texture2D(tC, uv + vec2(0., px.y)).rgb, LW9), ld9 = dot(texture2D(tC, uv - vec2(0., px.y)).rgb, LW9);
                 float hi9 = max(max(la9, lb9), max(lc9, ld9)), lo9 = min(min(la9, lb9), min(lc9, ld9));
-                float dk9 = clamp((hi9 - l09) / max(hi9, .04) * 2.8 - .14, 0., 1.), lt9 = clamp((l09 - lo9) / max(l09, .04) * 2.2 - .2, 0., 1.);
+                float dk9 = clamp((hi9 - l09) / max(hi9, .04) * 2.4 - .3, 0., 1.), lt9 = clamp((l09 - lo9) / max(l09, .04) * 2.2 - .3, 0., 1.);   /* [colore1] solo i bordi netti: la grana delle texture non diventa puntinato */
                 float dK9 = (1. - smoothstep(dc * 1.25, dc * 2.6, d)) * (1. - gr9 * .75) * (1. - coc) * lK.x * (1. - ol9);
-                c *= 1. - dk9 * .5 * dK9; c *= 1. + lt9 * .14 * dK9;
+                c *= 1. - dk9 * .1 * dK9; c *= 1. + lt9 * .05 * dK9;   /* [plastica1] quasi niente: era il puntinato */   /* [colore1] era .5 */
                 // il volume delle facciate: ogni faccia un poco più chiara o più scura secondo quanto guarda il sole
-                c *= mix(1., .84 + .28 * clamp(ndl * .5 + .5, 0., 1.), .6 * ok9 * day9 * lK.x); }
+                c *= mix(1., .84 + .28 * clamp(ndl * .5 + .5, 0., 1.), .3 * ok9 * day9 * lK.x); }   /* [plastica2] era .6: segnava ogni faccia dei modelli e li faceva più spigolosi */
               float line9 = max(ol9, cr9) * (1. - gr9 * .7) * farK9 * lOl * (1. - coc) * (1. - smoothstep(uFogNF.x, uFogNF.y, d) * .95);   /* [nebbia_zoom1] */
-              c = mix(c, c * .14 + vec3(.012,.016,.04), clamp(line9, 0., 1.)); }   // blu notte scurito della tinta dell'oggetto
+              c = mix(c, c * .32 + vec3(.012,.016,.04), clamp(line9 * .85, 0., 1.)); }   /* [colore1] contorno della tinta, non nero pieno */   // blu notte scurito della tinta dell'oggetto
           }
           if (vOn > .01) {   // [luci4] ombre nella nebbia
             float z0 = texture2D(tD, uv).r; vec4 wp = vInvVP * vec4(uv * 2. - 1., z0 * 2. - 1., 1.); wp.xyz /= wp.w;
@@ -8608,8 +8709,8 @@ var Render = (function () {
               float lit = acc / max(wsum, 1e-3);
               c = c * mix(1., .86, sOn * (1. - lit)) + sCol * lit * sOn; } }   // manopola: densità della nebbia con le ombre
           { float far01 = smoothstep(dc*1.02, dc*1.7, d), lc0 = dot(c, vec3(.3,.59,.11));   /* [amb1] prospettiva aerea: lontano più chiaro, meno colore, il colore del cielo */
-            vec3 hz = mix(uHz*.92, vec3(.02,.022,.026), night), cd = mix(c, vec3(lc0), .25 + uWx.z*.3);   /* [lucido1] */
-            c = mix(c, mix(cd, hz, .45 + uWx.z*.2), far01 * (.12 + uWx.x*.05 + uWx.z*.16 - night*.06)); }   /* [nebbia_zoom1] */   /* [lucido1] */
+            vec3 hz = mix(uHz*.92, vec3(.02,.022,.026), night), cd = mix(c, vec3(lc0), .1 + uWx.z*.15);   /* [colore1] lontano resta colore */   /* [lucido1] */
+            c = mix(c, mix(cd, hz, .45 + uWx.z*.2), far01 * (.06 + uWx.x*.03 + uWx.z*.1 - night*.04));   /* [colore1] meno foschia */ }   /* [nebbia_zoom1] */   /* [lucido1] */
           // ===== [amb1] COLORE UNICO: ora (night, dusk), peso del regime (uReg), tempo (uWx: nuvole, bagnato, nebbia, tempesta) =====
           { float l = dot(c, vec3(.299,.587,.114));
             float sunK = (1.-night)*(1.-uWx.x*.82);                               // quanto sole c'è
@@ -8631,7 +8732,7 @@ var Render = (function () {
             // 3) saturazione: natura piena ma sobria; il regime spegne tutto tranne rossi, lampade e neon
             float lu = dot(c, vec3(.3,.59,.11));
             float keep = max(max(rosso*1.05, hot), warmL*.9);
-            float sN = mix(1., 1.14, sunK) * (1. - uWx.z*.18), sR = .9 + sunK*.06;   /* [lucido1] il regime non spegne più i colori */
+            float sN = mix(1.12, 1.3, sunK) * (1. - uWx.z*.08), sR = 1.05 + sunK*.08;   /* [colore1] più colore anche col coperto e col regime */   /* [lucido1] il regime non spegne più i colori */
             float sv = max(mix(sN, sR, uReg), keep*mix(1.15, 1.05, uReg));
             c = mix(vec3(lu), c, sv*sat);
             c = mix(c, vec3(dot(c, vec3(.3,.59,.11)))*vec3(.98,1.,.98), uReg*.03*(1.-keep));   /* [lucido1] */   // cemento appena verdastro, da caserma
@@ -8650,7 +8751,7 @@ var Render = (function () {
           c = clamp((c * (2.51 * c + .03)) / (c * (2.43 * c + .59) + .14), 0., 1.);
           { float gn = fract(sin(dot(floor(vUv * res) + fract(aTime * 7.13) * 91.7, vec2(12.9898, 78.233))) * 43758.5453) - .5; float lg = dot(c, vec3(.3,.59,.11));
             c += gn * aK.w * (1. - lg * .6) * (1. - pK.x); }
-          c = max(mix(vec3(dot(c, vec3(.3,.59,.11))), c, 1.14), 0.);   /* [unione11] un filo più saturi */
+          c = max(mix(vec3(dot(c, vec3(.3,.59,.11))), c, 1.24), 0.);   /* [unione11] un filo più saturi */   /* [colore1] 1.24 (era 1.14) */
           if (pK.x > .01) {   // [amb3] colori saturi, ma in palette
             vec3 o = okl(c); float L = o.x; vec2 ab = o.yz * pK.y;   // spinta del colore
             vec3 q = vec3(L, ab); float d1 = 1e9, d2 = 1e9; vec3 p1 = c, p2 = c, o1 = q, o2 = q;
@@ -8672,15 +8773,15 @@ var Render = (function () {
     postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
   }
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
-  function setRes(k) { k = Math.max(.5, Math.min(1, k)); if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
+  function setRes(k) { k = Math.max(.7, Math.min(1, k));   /* [colore1] non sotto il 70% (a metà era pastoso) */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
-    PX = LOWQ.on ? Math.max(2, Math.round(dpr) * 2) : Math.max(1, ch * dpr / (PHONE ? 480 : 720));   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
+    PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, ch * dpr / (PHONE ? 540 : 1080));   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
     PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     GPUT.px = W + '×' + H;   /* [prestazioni] */
-    renderer.setSize(cw, ch, false);
+    renderer.setSize(W, H, false);   /* [colore1] l'immagine finale esce alla risoluzione interna (prima a quella CSS della finestra: con lo schermo scalato il browser la ingrandiva a blocchi); il CSS la stende morbida */
     if (rt) rt.dispose();
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
     ambResize(W, H); paintResize(W, H);   /* [amb3] */
@@ -8738,10 +8839,10 @@ var Render = (function () {
   function buildWinter() {
     const W0 = M.world; if (!W0 || !W0.WALL) return;
     const P = G.PLACES, r = rng(1953), T = G.T;
-    const free = (x, z) => { const v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; };
+    const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
     // ---- il Muro: lastre di cemento, filo spinato, scritte del regime e della Risacca, torri coi riflettori ----
     const WL = W0.WALL, slabM = [concrete('#7e7e7c'), concrete('#8a8a86'), concrete('#747472')], wire = sl('#2a2a2e');
-    const posters = ['ОПЕКА', '보호', 'ПОРЯДОК', 'ТРУД', 'ГАРАНТ'];
+    const posters = ['ORDINE', 'LAVORO', 'OBBEDIRE', 'LA TUTELA', 'IL GARANTE VEGLIA'];
     // [ordine1] il Muro vero: lastre a L di cemento armato da 1,2 m (3,6 m d'altezza, il piede verso la Base), il tubo tondo in cima che
     // non si afferra, i giunti, le colature di ruggine dei ferri e lo sporco che sale da terra; dalla parte della città manifesti e scritte,
     // dalla parte della Base la striscia della morte: sabbia rastrellata, cavalli di Frisia, la pista di pattuglia, i lampioni verso il Muro
@@ -8749,15 +8850,17 @@ var Render = (function () {
     let si = 0;
     for (let y = WL.y0; y < WL.y1; y += SL, si++) {
       if (y + SL / 2 > WL.gate[0] && y + SL / 2 < WL.gate[1]) continue;
+      if (WL.towers.some(([tx2, ty2]) => Math.abs(ty2 - (y + SL / 2)) < 1.5) || G.tileAt(Math.floor((WL.x + 1) / TS), Math.floor((y + SL / 2) / TS)) === T.WATER) continue;   // [leggera] la torre ha il suo piede; in mare niente lastre
       const x = WL.x + 1, g = G0(), tone = shade(wallG(), .92 + th(si, 7, 1953) * .14);
+      { const h0 = groundH(x, y + SL / 2), hm = Math.min(...[[-.15, 0], [-.15, SL], [1.35, 0], [1.35, SL], [.6, SL / 2]].map(([u, w]) => groundH(x + u, y + w))), d = h0 - hm; if (d >= .6) fAt(g, fB(1.5, d + .15, SL - .03, shade(tone, .85), 'concrete', .01), .55, -d / 2 + .05, 0); }   // [leggera] sul pendio la fondazione scende fino a terra
       fAt(g, fB(.24, 3.6, SL - .03, tone, 'concrete', .01), 0, 1.8, 0);
       fAt(g, fB(1.3, .26, SL - .03, shade(tone, .92), 'concrete', .01), .7, .13, 0);   // il piede a L verso la Base
       fAt(g, fB(.12, .9, .16, shade(tone, .9), 'concrete', .005), .19, .6, 0);
       const pipe = fC(.21, .21, SL - .02, 10, shade(tone, 1.04), 'concrete'); pipe.rotation.x = Math.PI / 2; pipe.position.set(0, 3.72, 0); g.add(pipe);
       if (th(si, 3, 1954) < .35) fAt(g, fB(.02, .7 + th(si, 4, 1) * 1.4, .05, '#6a4a32', 'rust', 0), -.13, 2.9 - th(si, 5, 1) * .6, (th(si, 6, 1) - .5) * .8);   // colatura di ruggine
       // dalla parte della città manifesti strappati e scritte
-      if (r() < .1) { const pm = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 1.1), new THREE.MeshLambertMaterial({ map: signTexture(pick(r, posters), '#f2e8d8', '#9a1c1c') })); pm.position.set(-.135, 2.2, 0); pm.rotation.y = -Math.PI / 2; g.add(pm); }
-      else if (r() < .1) { const pm = new THREE.Mesh(new THREE.PlaneGeometry(1.15, .6), new THREE.MeshLambertMaterial({ map: signTexture(pick(r, ['RISACCA', 'НЕТ', '자유', 'RIDATECI MARCO']), pick(r, ['#ff4a8a', '#3ae0ff', '#ffe04a', '#7aff6a']), '#8c8a84'), transparent: true, opacity: .9 })); pm.position.set(-.135, 1.4, 0); pm.rotation.y = -Math.PI / 2; g.add(pm); }
+      if (r() < .1) { const pm = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 1.1), new THREE.MeshLambertMaterial({ map: signTexture(pick(r, posters), '#f2e8d8', '#9a1c1c', .95) })); pm.position.set(-.135, 2.2, 0); pm.rotation.y = -Math.PI / 2; g.add(pm); }
+      else if (r() < .1) { const pm = new THREE.Mesh(new THREE.PlaneGeometry(1.15, .6), new THREE.MeshLambertMaterial({ map: signTexture(pick(r, ['RISACCA', 'NO', 'LIBERTÀ', 'RIDATECI MARCO']), pick(r, ['#ff4a8a', '#3ae0ff', '#ffe04a', '#7aff6a']), '#8c8a84', 1.9), transparent: true, opacity: .9 })); pm.position.set(-.135, 1.4, 0); pm.rotation.y = -Math.PI / 2; g.add(pm); }
       place(g, x, y + SL / 2, 0);
       // la striscia: cavalli di Frisia ogni tanto, i lampioni ogni 18 m piegati verso il Muro
       if (si % 15 === 7) { const cz = G0(); [0, 1.05, 2.1].forEach(an => { const bar = fB(.1, .1, 1.9, '#3a3836', 'rust', .01); bar.rotation.set(an, 0, .65); bar.position.y = .55; cz.add(bar); }); place(cz, x + 9, y, r() * 3); }
@@ -8804,7 +8907,10 @@ var Render = (function () {
       const ant = G0(); add(ant, box(.5, 22, .5, sl('#b8201c')), 0, 11, 0); for (let k = 1; k < 7; k++) add(ant, box(1.6 - k * .15, .12, .12, sl('#e8e4dc')), 0, k * 3, 0);
       const top = add(ant, new THREE.Mesh(new THREE.SphereGeometry(.25, 6, 4), new THREE.MeshBasicMaterial({ color: '#ff2020', toneMapped: false })), 0, 22.2, 0); WX.blink.push({ m: top, ph: 0, slow: true });
       place(ant, R0.x - 18, R0.y + 22, 0);
-      [-6, 0, 6].forEach(o => { const g = G0(); add(g, box(.12, 9, .12, sl('#3a3a40')), 0, 4.5, 0); add(g, box(2.2, 1.3, .03, sb('#a81818')), 1.1, 8.2, 0); add(g, box(.5, .5, .035, sb('#f2d84a')), 1.1, 8.2, .02); place(g, R0.x + o, R0.y + 12, 0); });
+      { // [leggera] le tre bandiere davanti al portone della Rocca (prima a 12 m dal punto del posto, cioè dentro l'edificio)
+        const bR = (G.BUILDINGS || []).find(b => b.id === 'rocca' && b.door); let fx = R0.x, fz = R0.y + 12, nx0 = 0, nz0 = 1;
+        if (bR) { const cx = (bR.x + bR.w / 2) * TS, cz = (bR.y + bR.h / 2) * TS, dx = (bR.door[0] + .5) * TS, dz = (bR.door[1] + .5) * TS; if (Math.abs(dx - cx) / bR.w > Math.abs(dz - cz) / bR.h) { nx0 = Math.sign(dx - cx); nz0 = 0; } else { nx0 = 0; nz0 = Math.sign(dz - cz); } fx = dx + nx0 * 5; fz = dz + nz0 * 5; }
+        [-6, 0, 6].forEach(o => { const g = G0(); add(g, box(.12, 9, .12, sl('#3a3a40')), 0, 4.5, 0); add(g, box(2.2, 1.3, .03, sb('#a81818')), 1.1, 8.2, 0); add(g, box(.5, .5, .035, sb('#f2d84a')), 1.1, 8.2, .02); const x = fx - nz0 * o, z = fz + nx0 * o; if (free(x, z, .3)) place(g, x, z, 0); }); }
       if (P.eliporto) { // [ordine1] l'eliporto in uno spiazzo libero vero (prima stava in mezzo alla strada, fra le case)
         const T0 = G.T, okPad = (x, z) => { for (let a = -6; a <= 6; a += 2) for (let c = -6; c <= 6; c += 2) { const v = G.tileAt(Math.floor((x + a) / TS), Math.floor((z + c) / TS)); if (v === T0.BLD || v === T0.VIA || v === T0.WATER || v === T0.TREE || v === T0.FOUNT || v === undefined) return false; } return true; };
         let best = null; for (let rr2 = 0; rr2 <= 50 && !best; rr2 += 2) for (let k = 0; k < 16 && !best; k++) { const a = k / 16 * Math.PI * 2, x = P.eliporto.x + Math.cos(a) * rr2, z = P.eliporto.y + Math.sin(a) * rr2; if (okPad(x, z)) best = { x, y: z }; }
@@ -8938,8 +9044,8 @@ var Render = (function () {
     });
     // ---- manifesti del Garante lungo le costiere ----
     let nm = 0; (M.roads || []).filter(rd => rd.id === 'nord' || rd.id === 'litoranea' || rd.id === 'porto').forEach(rd => { for (let k = 10; k < rd.pts.length - 2; k += 24) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / L, nz = (bx - ax) / L, x = ax + nx * (rd.w / 2 + 3), z = az + nz * (rd.w / 2 + 3); if (!free(x, z)) continue;
-      const g = G0(); add(g, box(.15, 3, .15, sl('#2a2a30')), -1.6, 1.5, 0); add(g, box(.15, 3, .15, sl('#2a2a30')), 1.6, 1.5, 0);
-      const bb = new THREE.Mesh(new THREE.PlaneGeometry(4, 2.2), new THREE.MeshLambertMaterial({ map: signTexture(pick(r, ['ОПЕКА ТЕБЯ ВИДИТ', '보호는 사랑', 'ТРУД · ПОРЯДОК', 'IL GARANTE VEGLIA']), '#f2e8d8', pick(r, ['#8a1a1a', '#1a3a6a'])), side: THREE.DoubleSide })); bb.position.y = 3.6; g.add(bb); add(g, box(4.2, .15, .3, sm('#e2e6ec')), 0, 4.78, 0);
+      const g = G0(), ry0 = Math.atan2(nx, nz), h00 = groundH(x, z); [-1.6, 1.6].forEach(o => { const dh = Math.max(0, h00 - groundH(x + o * Math.cos(ry0), z - o * Math.sin(ry0))); add(g, box(.15, 3 + dh, .15, sl('#2a2a30')), o, (3 - dh) / 2, 0); });   // [leggera] sul pendio ogni gamba arriva a terra
+      const bb = new THREE.Mesh(new THREE.PlaneGeometry(4, 2.2), new THREE.MeshLambertMaterial({ map: signTexture(pick(r, ['LA TUTELA TI VEDE', 'IL GARANTE VEGLIA', 'LAVORO E ORDINE', 'UN POPOLO UNITO']), '#f2e8d8', pick(r, ['#8a1a1a', '#1a3a6a']), 1.82), side: THREE.DoubleSide })); bb.position.y = 3.6; g.add(bb); add(g, box(4.2, .15, .3, sm('#e2e6ec')), 0, 4.78, 0);
       place(g, x, z, Math.atan2(nx, nz)); nm++; } });
   }
   // ================= [inverno] VOLUMI E ARIA =================
@@ -8982,13 +9088,13 @@ var Render = (function () {
     const c = mk(w, h), x = c.getContext('2d'); x.fillStyle = '#0c0a10'; x.fillRect(0, 0, w, h);
     x.strokeStyle = col; x.lineWidth = 3; x.strokeRect(3, 3, w - 6, h - 6);
     x.fillStyle = col; x.textAlign = 'center'; x.textBaseline = 'middle';
-    if (vert) { x.save(); x.translate(w / 2, h / 2); x.rotate(-Math.PI / 2); x.font = 'bold ' + Math.floor(w * .62) + 'px sans-serif'; x.fillText(text, 0, 2); x.restore(); }
-    else { x.font = 'bold ' + Math.floor(h * .56) + 'px sans-serif'; x.fillText(text, w / 2, h / 2 + 2); x.fillText(text, w * 1.5, h / 2 + 2); }
-    // lettere spente e tubo rotto
-    x.fillStyle = 'rgba(12,10,16,.82)'; for (let i = 0; i < 2; i++) x.fillRect(Math.floor(vegHash(text.length, i, 4) * (w - 12)) + 4, Math.floor(vegHash(i, text.length, 5) * (h - 12)) + 4, vert ? w - 10 : 10, vert ? 8 : h - 10);
+    if (vert) { x.save(); x.translate(w / 2, h / 2); x.rotate(-Math.PI / 2); x.font = '900 ' + Math.floor(w * .62) + 'px ' + SIGN_FONT; x.fillText(text, 0, 2); x.restore(); }
+    else {   // [insegne1] intorno al serbatoio la scritta compare due volte, così si legge da ogni lato
+      let fz = Math.floor(h * .62); x.font = '900 ' + fz + 'px ' + SIGN_FONT; while (fz > 10 && x.measureText(text).width > w * .42) x.font = '900 ' + (--fz) + 'px ' + SIGN_FONT;
+      [w / 4, w * .75].forEach(cx => { x.shadowColor = col; x.shadowBlur = fz * .3; x.fillText(text, cx, h / 2 + 2); x.shadowBlur = 0; x.fillStyle = 'rgba(255,255,255,.7)'; x.fillText(text, cx, h / 2 + 2); x.fillStyle = col; }); }
     const t = canvasTex(c); return FACT[key] = t;
   }
-  const NEONS = ['#f0a048', '#d4d0c6', '#f0a048', '#b84a3c', '#d4d0c6'], WORDS = ['ПОМПА', 'РАБОТА', 'НОВОСТИ', 'ОТЕЛЬ', 'БАР', 'АПТЕКА', 'СКЛАД', '24 ЧАСА', '새 일자리', '약국', '酒', 'ЛОМБАРД', 'КИНО', 'ЧАЙ', '식당'];
+  const NEONS = ['#f0a048', '#d4d0c6', '#f0a048', '#b84a3c', '#d4d0c6'], TANK_ADS = ['CAFFÈ', 'BIRRA', 'RADIO ISOLA', 'GELATI', 'AMARO', 'PORTO VECCHIO'];   // [insegne1] pubblicità sui serbatoi: parole vere
   function buildFacades() {
     const T = G.T, st = sm('#3a3d44', { roughness: .7, metalness: .5 }), rust = sm('#6a4636', { roughness: 1 }), pipeM = sm('#4a4e54', { roughness: .6, metalness: .5 }), acM = sm('#8a8e94', { roughness: .6 });
     const cables = [], anchors = [];
@@ -9016,8 +9122,9 @@ var Render = (function () {
         // condizionatori appesi alla facciata
         const nac = Math.floor(r() * 4); for (let k = 0; k < nac; k++) { const sd = sides[Math.floor(r() * sides.length)], a = mkA(sd, .8 + r() * (sd.len - 1.6)), f = 1 + Math.floor(r() * (fl - 1)); if (!(b.__prop && b.__prop.f === sd.n)) ad(a, oAC(rng(bi * 79 + k), true), 0, base + MG + (f - 1) * MF - .05, .2); /* [case] mai sul murale */ }
         // insegna a bandiera verticale al neon
-        if (b.use && r() < .6) { const sd = sides[Math.floor(r() * sides.length)], a = mkA(sd, 1 + r() * Math.max(.1, sd.len - 2)), word = WORDS[Math.floor(r() * WORDS.length)], col = NEONS[Math.floor(r() * NEONS.length)];
-          const m = new THREE.MeshBasicMaterial({ map: labelTex(word.slice(0, 5), col, true, 48, 160) }); const H = 2.2 + r() * .8, y = base + MG * .5 + H / 2 + 1;
+        const bword = shortWord(b);   // [insegne1] la bandiera dice cosa vende la bottega; una sola per edificio, mai dove c'è già quella déco
+        if (bword && !b.__blade && !(b.deco && b.fl >= 4) && r() < .6) { b.__blade = true; const sd = sides[Math.floor(r() * sides.length)], a = mkA(sd, 1 + r() * Math.max(.1, sd.len - 2)), col = b.sign ? nq(b.sign.c) : NEONS[Math.floor(r() * NEONS.length)];
+          const m = new THREE.MeshBasicMaterial({ map: bladeTexture(bword, col), toneMapped: false }); const H = bword.length * .8 * 88 / 112 + .2, y = base + MG * .5 + H / 2 + 1;
           [-1, 1].forEach(s2 => { const pl = new THREE.Mesh(new THREE.PlaneGeometry(.8, H), m); pl.rotation.y = s2 * Math.PI / 2; ad(a, pl, s2 * .06, y, .55); }); ad(a, box(.1, .08, .7, st), 0, y + H / 2, .35); ad(a, box(.1, .08, .7, st), 0, y - H / 2, .35);
           const L = addLight(...(() => { const q = new THREE.Vector3(); q.set(0, y, 1.1); a.updateMatrixWorld(true); q.applyMatrix4(a.matrixWorld); return [q.x, q.y, q.z]; })(), col, 1.3, 7, .04); }
       }
@@ -9025,8 +9132,8 @@ var Render = (function () {
       const PF = rec.flat ? rp1(rec) : null, tq0 = fl >= 3 && w >= 6 && d >= 6 && r() < .32;   // [ordine1] mai su un tetto a falde, e solo dove il tetto è dell'insegna
       const tqA = PF && PF.prog === 'insegna' && PF.ins === 'serbatoio' && w >= 6 && d >= 6 ? rpNear(PF, 'tank', bb.min.x + w * .55, bb.min.z + d * .45, 2.1) : null;
       if (tqA) {
-        const tx = tqA[0], tz = tqA[1], R = 1.5 + r() * .5, H = 1.5, col = NEONS[Math.floor(r() * NEONS.length)], word = WORDS[Math.floor(r() * WORDS.length)];
-        const t = labelTex(word, col, false, 256, 64).clone(); t.needsUpdate = true; t.wrapS = THREE.RepeatWrapping; t.repeat.set(1, 1);
+        const tx = tqA[0], tz = tqA[1], R = 1.5 + r() * .5, H = 1.5, col = NEONS[Math.floor(r() * NEONS.length)], word = shortWord(b) || TANK_ADS[Math.floor(r() * TANK_ADS.length)];
+        const t = labelTex(word, col, false, 512, 80).clone(); t.needsUpdate = true; t.wrapS = THREE.RepeatWrapping; t.repeat.set(1, 1);
         const body = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 18, 1, true), new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide })); body.position.set(tx, top + 1.2 + H / 2, tz); body.rotation.y = r() * 6; g.add(body);
         const cap = new THREE.Mesh(new THREE.CylinderGeometry(R * .2, R * 1.04, .7, 18), sm('#2e3036', { roughness: .8 })); cap.position.set(tx, top + 1.2 + H + .35, tz); g.add(cap);
         const bot = cyl(R * 1.04, R * .9, .3, 18, sm('#2e3036', { roughness: .8 })); bot.position.set(tx, top + 1.2 + .1, tz); g.add(bot);
@@ -9130,7 +9237,7 @@ var Render = (function () {
   // sotto il cornicione. Il Garante è un volto inventato: berretto, occhiali tondi scuri, mascella quadrata, colletto alto.
   // Qualche ritratto è già stato sfregiato dalla Risacca (l'onda nera, gli occhi cancellati).
   const PROP_SLOGAN = ["L'ORDINE È UNA CAREZZA", 'IL GARANTE VEGLIA SU DI TE', 'OBBEDIRE È ESSERE LIBERI', 'LA TUTELA TI PROTEGGE', 'LAVORO · ORDINE · SILENZIO',
-    'IL GARANTE TI ASCOLTA', 'DENUNCIA IL DISORDINE', 'UN POPOLO · UNA VOCE', 'CHI TACE AMA LA PATRIA', 'ПОРЯДОК · ТРУД · ТИШИНА', 'IL DUBBIO È UN NEMICO', 'GRAZIE, GARANTE'];
+    'IL GARANTE TI ASCOLTA', 'DENUNCIA IL DISORDINE', 'UN POPOLO · UNA VOCE', 'CHI TACE AMA LA PATRIA', 'LA PATRIA TI GUARDA', 'IL DUBBIO È UN NEMICO', 'GRAZIE, GARANTE'];
   const PROP = {};
   function garanteFace(x, W, H, ox, oy, s, ink, paper, accent, defaced) {
     // tutto in unità di una griglia 32x40, scalata di s: stampo a tre colori (carta, rosso, nero)
@@ -9162,7 +9269,7 @@ var Render = (function () {
       if (kind === 'ritratto') { x.fillStyle = red; for (let a = 0; a < 18; a++) { if (a % 2) continue; const a0 = a / 18 * 6.283, a1 = (a + 1) / 18 * 6.283; x.beginPath(); x.moveTo(48, 52); x.lineTo(48 + Math.cos(a0) * 120, 52 + Math.sin(a0) * 120); x.lineTo(48 + Math.cos(a1) * 120, 52 + Math.sin(a1) * 120); x.fill(); } }   // raggi rossi
       garanteFace(x, W, H, 8, 10, 2.5, ink, kind === 'telone' ? '#d8c8b0' : paper, kind === 'telone' ? '#16110f' : red, defaced);
       // didascalia
-      const txt = pick(r, ['IL GARANTE', 'IL GARANTE VEGLIA', 'ГАРАНТ', 'ORDINE', 'TI ASCOLTA']);
+      const txt = pick(r, ['IL GARANTE', 'IL GARANTE VEGLIA', 'VEGLIA', 'ORDINE', 'TI ASCOLTA']);
       x.fillStyle = kind === 'telone' ? ink : red; x.fillRect(0, H - 26, W, 26);
       x.fillStyle = kind === 'telone' ? '#d8c8b0' : paper; x.textAlign = 'center'; x.textBaseline = 'middle';
       let fs = 15; x.font = 'bold ' + fs + 'px Impact, "Arial Black", sans-serif'; while (x.measureText(txt).width > W - 8 && fs > 8) { fs--; x.font = 'bold ' + fs + 'px Impact, "Arial Black", sans-serif'; } x.fillText(txt, W / 2, H - 13);
@@ -9325,7 +9432,7 @@ var Render = (function () {
     else if (kind === 2) { x.strokeStyle = '#38a8ff'; x.lineWidth = 3; for (let r2 = 0; r2 < 3; r2++) { x.beginPath(); for (let i = 0; i <= W; i += 2) x.lineTo(i, 8 + r2 * 8 + Math.sin(i * .35 + r2) * 3); x.stroke(); } }
     else if (kind === 3) { x.fillStyle = '#d8281f'; x.beginPath(); for (let i = 0; i < 10; i++) { const a = i * .6283 - 1.57, rr = i % 2 ? 5 : 12; x.lineTo(24 + Math.cos(a) * rr, 16 + Math.sin(a) * rr); } x.fill(); x.fillStyle = '#ffb050'; x.fillRect(22, 14, 4, 4); }
     else if (kind === 4) { x.fillStyle = '#ffb050'; x.fillRect(16, 4, 16, 18); x.fillStyle = '#2a1420'; x.fillRect(19, 9, 4, 3); x.fillRect(26, 9, 4, 3); x.fillRect(20, 16, 9, 2); x.strokeStyle = '#ff3fa4'; x.lineWidth = 2; x.beginPath(); x.moveTo(10, 28); x.lineTo(38, 6); x.stroke(); }
-    else { ['#ff3fa4', '#38e8ff', '#ffb050', '#38e8ff'].forEach((col, i) => { x.fillStyle = col; x.font = 'bold 13px sans-serif'; x.fillText('РЕЗ'.charAt(i % 3) || 'Я', 4 + i * 11, 12 + (i % 2) * 11); }); }
+    else { ['#ff3fa4', '#38e8ff', '#ffb050', '#38e8ff'].forEach((col, i) => { x.fillStyle = col; x.font = 'bold 13px sans-serif'; x.fillText('ONDA'.charAt(i), 4 + i * 11, 12 + (i % 2) * 11); }); }
     return MURAL[k] = canvasTex(c);
   }
   function buildDetails2() {
@@ -9518,7 +9625,6 @@ var Render = (function () {
   // Volumi sul tetto (torrette con finestre accese, rialzi, baracche), balconi a sbalzo con condizionatori e piante,
   // insegne verticali fitte al neon, schermi pubblicitari e del regime, parabole e antenne. Colori forti, non pastello.
   const CITY = {};
-  const CGLY = ['電', '脳', '夜', '薬', '酒', '食', '銀', '館', 'РАБ', 'БАР', 'МИР', 'ЧАЙ', '약', '국', '24', 'HOTEL', 'OK', 'ЛОМ', '診', '愛'];
   const CCOL = ['#d4d0c6', '#f0a048'];
   function cityWin(pane) {
     const key = 'w' + pane; if (CITY[key]) return CITY[key];
@@ -9527,14 +9633,9 @@ var Render = (function () {
     for (let k = 0; k < n; k++) { const px = 2 + k * 15.5, on = (k * 7 + pane.length) % 4 !== 0; x.fillStyle = on ? pane : '#2a3640'; x.fillRect(px, 4, 12, 16); if (on) { ex.fillStyle = pane; ex.fillRect(px, 4, 12, 16); ex.fillStyle = '#000'; ex.fillRect(px + 5, 4, 1, 16); } }
     return CITY[key] = std({ map: canvasTex(c), emissiveMap: canvasTex(e), emissive: '#ffffff', emissiveIntensity: 1, roughness: .85 });
   }
-  function bladeMat(col, seed) {
-    const key = 'b' + col + seed; if (CITY[key]) return CITY[key];
-    const W = 32, H = 128, c = mk(W, H), x = c.getContext('2d'), h = n => vegHash(seed, n, 31);
-    x.fillStyle = '#0a0b10'; x.fillRect(4, 0, 24, H); x.fillStyle = col; x.fillRect(4, 0, 2, H); x.fillRect(26, 0, 2, H);
-    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = col;
-    for (let k = 0; k < 5; k++) { const gl = CGLY[Math.floor(h(k) * CGLY.length)]; x.globalAlpha = h(k + 9) < .15 ? .25 : 1; x.font = 'bold ' + (gl.length > 2 ? 11 : 19) + 'px sans-serif'; x.fillText(gl, W / 2, 13 + k * 25); }
-    x.globalAlpha = 1; const t = canvasTex(c); t.magFilter = THREE.NearestFilter;
-    return CITY[key] = new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide, toneMapped: false });
+  function bladeMat(col, word) {   // [insegne1] la parola della bottega, lettere una sotto l'altra
+    const key = 'b' + col + word; if (CITY[key]) return CITY[key];
+    return CITY[key] = new THREE.MeshBasicMaterial({ map: bladeTexture(word, col), side: THREE.DoubleSide, toneMapped: false });
   }
   function adMat(k) {
     const key = 'a' + k; if (CITY[key]) return CITY[key];
@@ -10165,9 +10266,9 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // (il Garante, slogan, concerti, scomparsi, la Risacca, ordinanze, pubblicità), strappati, sbiaditi, coi tag a spray; murali dipinti
   // del regime che si scrostano; botteghe con la merce fuori; applique e festoni di lampadine; fuliggine, ruggine, muffa, rappezzi; cavi.
   const PA = { W: 64, H: 96, C: 16, R: 5 };
-  const PSLOG = ['ORDINE', 'LAVORO', 'SILENZIO', 'ПОРЯДОК', 'ТРУД', 'OBBEDIRE', 'VIGILANZA', 'UNITÀ', 'DISCIPLINA', 'ДИСЦИПЛИНА'];
-  const PEV = ['CONCERTO', 'BALLO', 'CIRCO', 'CINEMA', 'ТАНЦЫ', 'КИНО', 'TEATRO', 'LOTTERIA', 'ОРКЕСТР', 'FESTA'];
-  const PAD = ['SAPONE', 'ВОДКА', 'SIGARETTE', 'TONNO', 'RADIO', 'CAFFÈ', 'ЧАЙ', 'ПИВО', 'SARDINE', 'LUX'];
+  const PSLOG = ['ORDINE', 'LAVORO', 'SILENZIO', 'OBBEDIRE', 'VIGILANZA', 'UNITÀ', 'DISCIPLINA', 'FEDELTÀ', 'PATRIA', 'DOVERE'];
+  const PEV = ['CONCERTO', 'BALLO', 'CIRCO', 'CINEMA', 'TOMBOLA', 'SAGRA', 'TEATRO', 'LOTTERIA', 'ORCHESTRA', 'FESTA'];
+  const PAD = ['SAPONE', 'AMARO', 'SIGARETTE', 'TONNO', 'RADIO', 'CAFFÈ', 'GELATI', 'BIRRA', 'SARDINE', 'LUX'];
   function posterAtlas() {
     if (PA.mat) return;
     const { W, H, C, R } = PA, c = mk(W * C, H * R), x = c.getContext('2d'), r = rng(4041);
@@ -10179,32 +10280,32 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       x.save(); x.beginPath(); x.rect(ox, oy, W, H); x.clip(); x.translate(ox, oy);
       if (kind === 0) {   // il Garante: raggi rossi, il volto a stampo, la didascalia
         x.fillStyle = paper; x.fillRect(0, 0, W, H); x.fillStyle = red; for (let a = 0; a < 16; a += 2) { const a0 = a / 16 * 6.283, a1 = (a + 1) / 16 * 6.283; x.beginPath(); x.moveTo(32, 36); x.lineTo(32 + Math.cos(a0) * 90, 36 + Math.sin(a0) * 90); x.lineTo(32 + Math.cos(a1) * 90, 36 + Math.sin(a1) * 90); x.fill(); }
-        garanteFace(x, W, H, 8, 6, 1.5, ink, paper, red, r() < .2); x.fillStyle = red; x.fillRect(0, H - 22, W, 22); txt(pick(r, ['IL GARANTE', 'TI ASCOLTA', 'VEGLIA', 'ГАРАНТ']), 32, H - 11, 14, paper);
+        garanteFace(x, W, H, 8, 6, 1.5, ink, paper, red, r() < .2); x.fillStyle = red; x.fillRect(0, H - 22, W, 22); txt(pick(r, ['IL GARANTE', 'TI ASCOLTA', 'VEGLIA', 'ORDINE']), 32, H - 11, 14, paper);
       } else if (kind === 1) {   // slogan: rosso, una parola, l'occhio dentro la stella
         x.fillStyle = red; x.fillRect(0, 0, W, H); x.fillStyle = ink; x.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? 9 : 20; x.lineTo(32 + Math.cos(a) * rr, 30 + Math.sin(a) * rr); } x.fill();
         x.fillStyle = paper; x.beginPath(); x.ellipse(32, 31, 7, 4, 0, 0, 7); x.fill(); x.fillStyle = red; x.beginPath(); x.arc(32, 31, 2.5, 0, 7); x.fill();
-        txt(pick(r, PSLOG), 32, 66, 20, paper); x.fillStyle = paper; x.fillRect(6, 80, 52, 2); txt(pick(r, ['IL GARANTE VEGLIA', 'LA TUTELA', 'ОРДЕН', 'POPOLO UNITO']), 32, 88, 8, paper);
+        txt(pick(r, PSLOG), 32, 66, 20, paper); x.fillStyle = paper; x.fillRect(6, 80, 52, 2); txt(pick(r, ['IL GARANTE VEGLIA', 'LA TUTELA', 'LA PATRIA', 'POPOLO UNITO']), 32, 88, 8, paper);
       } else if (kind === 2) {   // concerto, ballo, cinema: bande colorate, titolo, data
         x.fillStyle = pick(r, ['#14101e', '#1e2a3a', '#2a1a14']); x.fillRect(0, 0, W, H); const cs = [pick(r, ['#e85a3a', '#d8a030', '#c84a8a']), pick(r, ['#3a9ac8', '#4ac08a', '#e8d040'])];
         for (let k = 0; k < 3; k++) { x.fillStyle = cs[k % 2]; x.beginPath(); x.moveTo(0, 18 + k * 12); x.lineTo(W, 6 + k * 12); x.lineTo(W, 12 + k * 12); x.lineTo(0, 24 + k * 12); x.fill(); }
-        txt(pick(r, PEV), 32, 62, 15, '#f0e6d0'); txt(pick(r, ['SAB 12·XI', 'DOM 3·XII', 'ORE 21', 'ВС 20:00']), 32, 76, 9, cs[0]); lines(10, 84, 2, 44, 'rgba(240,230,208,.6)');
+        txt(pick(r, PEV), 32, 62, 15, '#f0e6d0'); txt(pick(r, ['SAB 12·XI', 'DOM 3·XII', 'ORE 21', 'DOM ORE 20']), 32, 76, 9, cs[0]); lines(10, 84, 2, 44, 'rgba(240,230,208,.6)');
       } else if (kind === 3) {   // persona scomparsa: foto, testo, linguette strappate
-        x.fillStyle = '#e8e2d0'; x.fillRect(0, 0, W, H); txt(pick(r, ['SCOMPARSO', 'SCOMPARSA', 'ПРОПАЛ', 'AIUTATECI']), 32, 9, 12, red);
+        x.fillStyle = '#e8e2d0'; x.fillRect(0, 0, W, H); txt(pick(r, ['SCOMPARSO', 'SCOMPARSA', 'CERCASI', 'AIUTATECI']), 32, 9, 12, red);
         x.fillStyle = '#6a6460'; x.fillRect(14, 16, 36, 30); x.fillStyle = '#2a2624'; x.beginPath(); x.arc(32, 28, 7, 0, 7); x.fill(); x.fillRect(22, 36, 20, 10); lines(8, 52, 5, 48, '#4a4650');
         for (let k = 0; k < 7; k++) { if (r() < .35) continue; x.fillStyle = '#e8e2d0'; x.fillRect(3 + k * 8.5, 76, 7, 20); x.fillStyle = '#4a4650'; x.fillRect(6 + k * 8.5, 79, 1, 14); }
       } else if (kind === 4) {   // la Risacca: fotocopia, l'onda, scritto a mano
         x.fillStyle = '#e4e0d6'; x.fillRect(0, 0, W, H); x.strokeStyle = '#141414'; x.lineWidth = 3; for (let q = 0; q < 3; q++) { x.beginPath(); for (let k = 0; k <= W; k += 2) x.lineTo(k, 26 + q * 9 + Math.sin(k * .25 + q) * 5); x.stroke(); }
         txt('LA RISACCA', 32, 60, 13, '#141414', W - 6, '"Comic Sans MS", cursive'); lines(8, 70, 4, 48, '#3a3a3a', 5); for (let k = 0; k < 300; k++) { x.fillStyle = 'rgba(20,20,20,.25)'; x.fillRect(Math.floor(r() * W), Math.floor(r() * H), 1, 1); }
       } else if (kind === 5) {   // ordinanza: testo fitto, timbro rosso
-        x.fillStyle = '#ece6d4'; x.fillRect(0, 0, W, H); txt(pick(r, ['ORDINANZA', 'AVVISO', 'ПРИКАЗ', 'COPRIFUOCO']), 32, 9, 11, ink); x.fillStyle = ink; x.fillRect(6, 16, 52, 1);
+        x.fillStyle = '#ece6d4'; x.fillRect(0, 0, W, H); txt(pick(r, ['ORDINANZA', 'AVVISO', 'DECRETO', 'COPRIFUOCO']), 32, 9, 11, ink); x.fillStyle = ink; x.fillRect(6, 16, 52, 1);
         lines(6, 20, 13, 52, '#5a5650', 4); x.strokeStyle = 'rgba(170,30,30,.8)'; x.lineWidth = 2; x.beginPath(); x.arc(46, 80, 9, 0, 7); x.stroke(); x.beginPath(); x.arc(46, 80, 5, 0, 7); x.stroke();
       } else if (kind === 6) {   // pubblicità: fondo pieno, il prodotto, il marchio
         const bg = pick(r, ['#d8b030', '#3a7a5a', '#2a4a7a', '#c85a30', '#e0d8c0']); x.fillStyle = bg; x.fillRect(0, 0, W, H);
         x.fillStyle = shade(bg, .5); x.fillRect(22, 18, 20, 40); x.fillStyle = '#f0e8d8'; x.fillRect(24, 28, 16, 14); x.fillStyle = shade(bg, .5); x.fillRect(28, 10, 8, 10);
-        txt(pick(r, PAD), 32, 70, 16, '#f8f0e0'); txt(pick(r, ['IL MIGLIORE', 'DAL 1951', 'ЛУЧШИЙ', 'DI STATO']), 32, 84, 8, shade(bg, .45));
+        txt(pick(r, PAD), 32, 70, 16, '#f8f0e0'); txt(pick(r, ['IL MIGLIORE', 'DAL 1951', 'GENUINO', 'DI STATO']), 32, 84, 8, shade(bg, .45));
       } else if (kind === 7) {   // lavoratori: due figure col martello, scritta rossa
         x.fillStyle = '#c8a060'; x.fillRect(0, 0, W, H); x.fillStyle = '#2a2018'; [[18, 1], [42, -1]].forEach(([cx, s]) => { x.beginPath(); x.arc(cx, 22, 6, 0, 7); x.fill(); x.fillRect(cx - 8, 28, 16, 30); x.fillRect(cx - 4, 58, 3, 14); x.fillRect(cx + 1, 58, 3, 14); x.save(); x.translate(cx + s * 8, 30); x.rotate(-s * .6); x.fillRect(-1, -14, 3, 16); x.fillRect(-4, -16, 9, 4); x.restore(); });
-        txt(pick(r, ['LAVORO', 'ТРУД', 'PRODUCI', 'IL PORTO LAVORA']), 32, 84, 13, red);
+        txt(pick(r, ['LAVORO', 'PRODUCI', 'PRODUCI', 'IL PORTO LAVORA']), 32, 84, 13, red);
       } else if (kind === 8) {   // tag a spray su fondo trasparente
         const col = pick(r, ['#e83a8a', '#141414', '#e8e4dc', '#c82a2a', '#38a8d8']); x.strokeStyle = col; x.lineWidth = 3; x.lineCap = 'round'; x.lineJoin = 'round';
         if (r() < .4) { for (let q = 0; q < 2; q++) { x.beginPath(); for (let k = 4; k <= W - 4; k += 2) x.lineTo(k, 40 + q * 12 + Math.sin(k * .22 + q) * 7); x.stroke(); } }
@@ -10471,10 +10572,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       }
       // ---- insegne verticali fitte, schermi ----
       if (sides.length) {
-        const nbl = (b.shop || b.sign) && r() < .8 ? 1 : 0;
-        for (let k = 0; k < nbl; k++) {
-          const sd = pick(r, sides), u = r() < .5 ? .5 + r() * 1.2 : sd.len - .5 - r() * 1.2, a = mkA(gs, sd, Math.max(.4, Math.min(sd.len - .4, u))), col = pick(r, CCOL), H = 2.2 + r() * 3.4, y = Math.max(base + 2.7, top - 1.2 - r() * 2) - 0;
-          const mt = bladeMat(col, bi * 5 + k), bl = new THREE.Mesh(new THREE.PlaneGeometry(.75, H), mt); bl.rotation.y = Math.PI / 2; ad(a, bl, 0, y - H / 2 + 1.4, .62);
+        const bword = shortWord(b), nbl = (b.shop || b.sign) && bword && !b.__blade && !(b.deco && b.fl >= 4) && r() < .8 ? 1 : 0;   // [insegne1] una bandiera sola, con la parola giusta
+        for (let k = 0; k < nbl; k++) { b.__blade = true;
+          const sd = pick(r, sides), u = r() < .5 ? .5 + r() * 1.2 : sd.len - .5 - r() * 1.2, a = mkA(gs, sd, Math.max(.4, Math.min(sd.len - .4, u))), col = b.sign ? nq(b.sign.c) : pick(r, CCOL), H = bword.length * .75 * 88 / 112 + .2, y = Math.max(base + 2.7 + H - 1.4, top - 1.2 - r() * 2) - 0;
+          const mt = bladeMat(col, bword), bl = new THREE.Mesh(new THREE.PlaneGeometry(.75, H), mt); bl.rotation.y = Math.PI / 2; ad(a, bl, 0, y - H / 2 + 1.4, .62);
           ad(a, box(.05, .05, .65, iron), 0, y + 1.3, .33); ad(a, box(.05, .05, .65, iron), 0, y + 1.3 - H + .2, .33);
           const gl = glow(a.position.x + Math.sin(sd.yaw) * .62, y - H / 2 + 1.4, a.position.z + Math.cos(sd.yaw) * .62, col, 3.2); gl.material.opacity = .4;
           dyn.signs.push({ m: mt, gl, flick: r() < .3 });
@@ -10551,7 +10652,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       bx(gg, 3, 2.1, .04, glassM, 0, 1.15, -.6); [-1, 1].forEach(s => bx(gg, .04, 2.1, 1.1, glassM, s * 1.5, 1.15, -.05)); bx(gg, 3.4, .09, 1.7, iron, 0, 2.3, 0); [-1, 1].forEach(s => bx(gg, .06, 2.3, .06, iron, s * 1.55, 1.15, .75));
       bx(gg, 2.4, .07, .4, wood, 0, .5, -.35); [-1, 1].forEach(s => bx(gg, .05, .5, .35, iron, s * 1.0, .25, -.35)); bx(gg, 2.6, .04, .16, L.cold, 0, 2.23, .1);
       const lb = bx(gg, .14, 1.9, 1.1, iron, 1.95, 1.1, .1), k = (tx * 3 + ty) % 2; [-1, 1].forEach(s => { const pl = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.7), adMat(k)); pl.rotation.y = s * Math.PI / 2; pl.position.set(1.95 + s * .08, 1.1, .1); gg.add(pl); });
-      cy(gg, .04, .04, 3, iron, -2.0, 1.5, .5, 5); const sg = new THREE.Mesh(new THREE.PlaneGeometry(.9, .26), new THREE.MeshBasicMaterial({ map: signTexture(pick(r, ['12', 'Н-7', '44К', '3', 'НОЧЬ']), '#ffb050'), toneMapped: false })); sg.position.set(-2.0, 3.05, .55); gg.add(sg);
+      cy(gg, .04, .04, 3, iron, -2.0, 1.5, .5, 5); const sg = new THREE.Mesh(new THREE.PlaneGeometry(.9, .26), new THREE.MeshBasicMaterial({ map: signTexture(pick(r, ['12', '7', '44', '3', 'N 1']), '#ffb050', null, 3.5), toneMapped: false })); sg.position.set(-2.0, 3.05, .55); gg.add(sg);
       barrel(gg, 2.3, -.4, false); lamp(gg, 0, 2.1, .1, '#8fe0d4', 2.4, 8, 2.2);
     }
     // ---- stazioni: lunga pensilina su una spianata libera ----
@@ -11089,20 +11190,23 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     };
     fast.__bvh = true; THREE.Mesh.prototype.raycast = fast;
   }
+  { const rc1 = THREE.Mesh.prototype.raycast; if (!rc1.__lazy1) { const f = function (r, out) { const L = this.userData && this.userData.lazy1; if (typeof L === 'function') L(); return rc1.call(this, r, out); }; f.__lazy1 = true; f.__bvh = rc1.__bvh; THREE.Mesh.prototype.raycast = f; } }   // [leggera] il pezzo fuso si rifà prima del raggio
+  {
+  }
   const SHMOV = { list: [] };   // [fluido] chi si muove (x, y, velocità), per le ombre dei faretti
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     renderer.setPixelRatio(1);
     canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); try { localStorage.setItem('pvLow', '1'); } catch (x) {} console.warn('[grafica] contesto perso: ricarico in qualità ridotta'); setTimeout(() => location.reload(), 400); });   /* [unione10] */
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;   /* [plastica2] ombre morbide da plastico: le dure a punti di 4,5 cm facevano trine e scalini */
     scene = new THREE.Scene(); scene.background = new THREE.Color('#0d0b1a');
     scene.fog = new THREE.Fog('#16122a', 85, 140);
     camera = new THREE.PerspectiveCamera(14, 1.6, 1, 400);
     hemi = new THREE.HemisphereLight('#5a64a8', '#1a1226', .55); scene.add(hemi);
     fillAmb = new THREE.AmbientLight('#2a2440', .35); scene.add(fillAmb);
     moon = new THREE.DirectionalLight('#8fa2ff', .5); moon.castShadow = true; moon.shadow.mapSize.set(1024, 1024);
-    const sc = moon.shadow.camera; sc.left = -46; sc.right = 46; sc.top = 46; sc.bottom = -46; sc.near = 1; sc.far = 160; moon.shadow.mapSize.set(PHONE ? 1024 : 2048, PHONE ? 1024 : 2048); moon.shadow.bias = -.0015;
+    const sc = moon.shadow.camera; sc.left = -46; sc.right = 46; sc.top = 46; sc.bottom = -46; sc.near = 1; sc.far = 160; moon.shadow.mapSize.set(PHONE ? 1024 : 2048, PHONE ? 1024 : 2048); moon.shadow.bias = -.0015; moon.shadow.normalBias = .03;
     scene.add(moon); scene.add(moon.target);
     if (!PHONE) { dyn.rim = new THREE.DirectionalLight('#b8c8e8', .4); scene.add(dyn.rim); scene.add(dyn.rim.target);   /* [fluido] sul telefono niente controluce e riempimento: ogni luce costa a ogni pixel */
     dyn.fill = new THREE.DirectionalLight('#6f8fb0', .3); scene.add(dyn.fill); scene.add(dyn.fill.target); }   // [inverno] riempimento sud: pareti in ombra leggibili   // [inverno] controluce: stacca i volumi dal fondo
@@ -11124,6 +11228,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
+    TT('morbide2', () => smooth2(scene));   /* [plastica2] */
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
     if (window.Models) try { Models.attach({ scene, G, groundH }); } catch (e) { console.warn(e); }
     if (window.OrdineArte) try { OrdineArte.attach({ scene, G, groundH }); } catch (e) { console.warn('[ordine_arte]', e); }   /* [ordine] */
@@ -11951,6 +12056,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     });
   }
   function frame(st, dt, ui) {
+    if (!(frame.__sm2 > 0)) { frame.__sm2 = 3; try { smooth2(scene); } catch (e) { } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
     SHMOV.st = st;   // [fluido] per le ombre dei faretti
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
@@ -12305,5 +12411,5 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { get __lazy1() { return LAZY1; }, get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();

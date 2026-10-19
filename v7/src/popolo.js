@@ -19,7 +19,9 @@ var Popolo = (function () {
 
   // ---------------- REGOLAZIONI ----------------
   const CFG = {
-    max: 420,          // abitanti al massimo (la mappa ne può offrire di più)
+    max: 207,          // abitanti al massimo (la mappa ne può offrire di più) [leggera] 207, decisi una volta: densi attorno a casa, radi lontano
+    nearR: 250,        // [leggera] entro questa distanza dalla casa di partenza del giocatore le case sono piene
+    nearShare: .7,     // [leggera] la parte degli abitanti che vive lì
     near: 52,          // entro questa distanza dal giocatore si vive per intero (m)
     far: 66,           // oltre questa si torna al livello leggero (isteresi)
     maxNear: 70,       // quanti al massimo a pieno contemporaneamente
@@ -300,10 +302,26 @@ var Popolo = (function () {
     const IX = buildIndex(), r = W.rng(7919 + G.BUILDINGS.length);
     const people = [], households = [];
     let n = 0;
-    const homes = IX.homes.slice().sort((a, b) => W.hash2(a.bi, 3, 41) - W.hash2(b.bi, 3, 41));
+    // [leggera] la gente è densa in un posto, non attorno al giocatore: si decide qui, una volta, sulle case. Il posto è la casa dove
+    // comincerà il giocatore (la sceglie protagonista.js allo stesso modo: in periferia ovest, la prima per hash fra le libere; qui la
+    // si lascia libera). Le case vicine (CFG.nearR, distanza un po' rimescolata perché non sia un cerchio) si riempiono fino al 70%
+    // degli abitanti; il resto va lontano, una famiglia per casa, prima le cascine (chi lavora la terra).
+    const anchorBi = (() => { const all = G.BUILDINGS.map((b, bi) => [b, bi]).filter(([b]) => b.door && (b.use === 'casa' || b.block) && W.districtAt && W.districtAt((b.x + b.w / 2) * TS) === 'perif_o').sort((a, c) => W.hash2(a[1], 3, 19) - W.hash2(c[1], 3, 19)); return all.length ? all[0][1] : -1; })();
+    const A = anchorBi >= 0 ? IX.homes.find(h => h.bi === anchorBi) || { x: G.BUILDINGS[anchorBi].door[0] * TS, y: G.BUILDINGS[anchorBi].door[1] * TS } : null;
+    const dA = h => A ? dist(h.x, h.y, A.x, A.y) * (.8 + .4 * W.hash2(h.bi, 5, 77)) : 0;
+    // [leggera] le altre isole dell'arcipelago non contano nei 207: si accendono quando il giocatore si avvicina, con la loro gente
+    const isle = h => W.districtAt && W.districtAt(h.x, h.y) === 'isole';
+    const pool = IX.homes.filter(h => h.bi !== anchorBi && !isle(h));
+    const nearH = pool.filter(h => A && dA(h) < CFG.nearR).sort((a, b) => dA(a) - dA(b));
+    const farH = pool.filter(h => !nearH.includes(h)).sort((a, b) => (b.farm - a.farm) || (W.hash2(a.bi, 3, 41) - W.hash2(b.bi, 3, 41)));
+    // [leggera] i 207 contano anche i personaggi della storia, che ci sono già (st.npcs) e diventano abitanti dopo (castLife)
+    const LIM = Math.max(100, CFG.max - Object.keys(CAST_INFO).length)   /* CAST_INFO: i personaggi della storia sull'isola grande (la tribù vive sulla sua isola e non conta) */, nearMax = Math.round(LIM * CFG.nearShare);
+    const homes = nearH.map(h => Object.assign(h, { __lim: Infinity, __near: true })).concat(farH.map(h => Object.assign(h, { __lim: 1 })));
     for (const h of homes) {
-      let room = h.cap;
-      while (room > 0 && n < CFG.max) {
+      if (h.__near && n >= nearMax) continue;   // le case vicine si fermano al 70%: il resto va lontano
+      let room = h.cap, fams = 0;
+      while (room > 0 && n < LIM && fams < h.__lim && !(h.__near && n >= nearMax)) {
+        fams++;
         const sur = pick(r, COGNOMI), roll = r();
         // tipo di famiglia
         let kind = roll < .22 ? 'solo' : roll < .5 ? 'coppia' : roll < .78 ? 'famiglia' : roll < .9 ? 'anziani' : 'coinquilini';
@@ -322,7 +340,7 @@ var Popolo = (function () {
         else for (let i = 0; i < size; i++) mk(r() < .5 ? 'f' : 'm', 19 + Math.floor(r() * 14), pick(r, COGNOMI), 'coinquilino');
         room -= size;
       }
-      if (n >= CFG.max) break;
+      if (n >= LIM) break;
     }
     // il lavoro: i posti più vicini a casa, poi chi resta va al porto, nei campi o resta a spasso
     const slots = []; IX.works.forEach(w => { for (let i = 0; i < w.slots; i++) slots.push(w); });
