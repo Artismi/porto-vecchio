@@ -233,12 +233,14 @@ var Render = (function () {
       geo.computeBoundingSphere(); geo.computeBoundingBox(); packNormals(geo);   // [leggera]
       const mesh = new THREE.Mesh(geo, fadeMat1(b.m)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh);
       srcs.forEach(([o, start, count, hasN, hasUv]) => lazyGeo1(o, geo, start, count, hasN, hasUv));   // [leggera] l'originale si rifà dalla fusa quando serve
-      if (b.cast) { const sk = Math.floor(geo.boundingBox.min.x / 48) + ',' + Math.floor(geo.boundingBox.min.z / 48) + '|' + b.m.side + '|' + b.m.shadowSide; let q = SH.get(sk); if (!q) SH.set(sk, q = { side: b.m.side, ss: b.m.shadowSide, pos: [] }); q.pos.push(pos); } });
+      if (b.cast) { const sk = b.m.side + '|' + b.m.shadowSide; let q = SH.get(sk); if (!q) SH.set(sk, q = { side: b.m.side, ss: b.m.shadowSide, geos: [] }); q.geos.push(geo); } });
     // l'ombra delle case: la texture non conta, quindi tutte le parti di un settore di 48 m fanno ombra con una mesh sola,
     // su un livello (layer 1) che vedono solo le camere delle ombre
-    SH.forEach(q => { let n = 0; q.pos.forEach(a => n += a.length); const all = new Float32Array(n); let k = 0; q.pos.forEach(a => { all.set(a, k); k += a.length; });
-      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(all, 3)); geo.computeBoundingSphere();
-      const sm1 = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: q.side, shadowSide: q.ss, colorWrite: false })); sm1.castShadow = true; sm1.receiveShadow = false; sm1.layers.set(1); sm1.userData.ombra1 = true; scene.add(sm1); });
+    // [memoria] la sagoma d'ombra usa la stessa posizione della mesh fusa (stesso buffer anche sulla scheda video): prima era una
+    // copia di tutti i vertici delle case, quasi 100 MB. Una sagoma per mesh fusa (le fuori dalla camera dell'ombra si scartano)
+    SH.forEach(q => { const mat = new THREE.MeshBasicMaterial({ side: q.side, shadowSide: q.ss, colorWrite: false });
+      q.geos.forEach(fg => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', fg.attributes.position); geo.boundingSphere = fg.boundingSphere; geo.boundingBox = fg.boundingBox;
+        const sm1 = new THREE.Mesh(geo, mat); sm1.castShadow = true; sm1.receiveShadow = false; sm1.layers.set(1); sm1.userData.ombra1 = true; scene.add(sm1); }); });
     moon.shadow.camera.layers.enable(1); SPOOL.forEach(l => l.shadow.camera.layers.enable(1));
     let after = 0; scene.traverse(o => { if (o.isMesh && o.visible) after++; });
     window.__fusione1 = { prima: before, dopo: after, secchi: B.size, spostate: moved.length, materiali: FD1.canon.size, ombre: SH.size };
