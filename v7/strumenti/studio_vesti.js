@@ -38,6 +38,22 @@ const GRUPPI = {
     ['operaio_lavoro', ['camicia_quadri', 'pantaloni_lavoro', 'scarpe'], 'operaio'],
     ['uomo_completo', ['camicia', 'pantaloni_completo', 'scarpe_eleganti']],
   ],
+  street: [   // le sottoculture: un completo tipico per ciascuna
+    ['maranza', [['giacca_tuta', { col: '#16161a' }], ['pantaloni_tuta', { col: '#16161a' }], ['calze_sport', { when: 2 }], ['scarpe_air', { col: '#16161a' }], 'marsupio_tracolla', ['cappellino', { col: '#101012' }], 'occhiali_sole']],
+    ['skater', [['maglietta_oversize', { col: '#e8e2d4' }], ['felpa_skate', { col: '#3a5a3a' }], ['jeans_larghi', { col: '#5a7aa0' }], 'scarpe_skate', ['berretto_corto', { col: '#c8502a' }]]],
+    ['driller', [['felpa', { col: '#1a1a1e' }], ['cargo', { col: '#1a1a1e' }], ['piumino_oca', { col: '#0e0e10' }], 'scarpe_air', ['passamontagna', { col: '#121214' }]]],
+    ['polo_bermuda', [['polo', { col: '#1e3a6a' }], ['bermuda', { col: '#c8b48a' }], 'mocassini', 'occhiali_sole']],
+    ['hawaii', [['camicia_hawaii', { col: '#1a6a7a' }], ['pantaloni', { col: '#ece6d8' }], 'mocassini', 'catenina']],
+    ['pelliccia', [['dolcevita', { col: '#101012' }], ['leggings', { col: '#101012' }], 'pelliccia', 'stivali_pelle', 'occhiali_sole'], 'donna'],
+  ],
+  colletti: [
+    ['polo', [['polo', { col: '#1e3a6a' }], 'pantaloni', 'mocassini']],
+    ['polo_bianca', [['polo', { col: '#f0ece2' }], 'jeans', 'scarpe_tela']],
+    ['camicia', ['camicia', 'pantaloni', 'scarpe_eleganti']],
+    ['camicia_maglione', ['camicia_quadri', 'maglione_v', 'jeans', 'scarpe']],
+    ['hawaii', [['camicia_hawaii', { col: '#1a6a7a' }], 'bermuda', 'sandali']],
+    ['camicia_giacca', ['camicia', 'pantaloni_completo', 'giacca_completo', 'cravatta', 'scarpe_eleganti']],
+  ],
   piedi: [
     ['scarponi', ['maglietta', 'jeans', 'calzini', 'scarpe']],
     ['skate', ['maglietta_oversize', 'jeans_larghi', 'calze_sport', 'scarpe_skate']],
