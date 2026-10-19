@@ -39,7 +39,7 @@ const GRUPPI = {
     ['uomo_completo', ['camicia', 'pantaloni_completo', 'scarpe_eleganti']],
   ],
   street: [   // le sottoculture: un completo tipico per ciascuna
-    ['maranza', [['giacca_tuta', { col: '#16161a' }], ['pantaloni_tuta', { col: '#16161a' }], ['calze_sport', { when: 2 }], ['scarpe_air', { col: '#16161a' }], 'marsupio_tracolla', ['cappellino', { col: '#101012' }], 'occhiali_sole']],
+    ['maranza', [['giacca_tuta', { col: '#16161a' }], ['pantaloni_tuta', { col: '#16161a' }], ['calze_sport', { when: 2 }], ['scarpe_air', { col: '#16161a' }], 'marsupio_tracolla', ['cappellino', { col: '#101012' }], 'occhiali_mascherina']],
     ['skater', [['maglietta_oversize', { col: '#e8e2d4' }], ['felpa_skate', { col: '#3a5a3a' }], ['jeans_larghi', { col: '#5a7aa0' }], 'scarpe_skate', ['berretto_corto', { col: '#c8502a' }]]],
     ['driller', [['felpa', { col: '#1a1a1e' }], ['cargo', { col: '#1a1a1e' }], ['piumino_oca', { col: '#0e0e10' }], 'scarpe_air', ['passamontagna', { col: '#121214' }]]],
     ['polo_bermuda', [['polo', { col: '#1e3a6a' }], ['bermuda', { col: '#c8b48a' }], 'mocassini', 'occhiali_sole']],

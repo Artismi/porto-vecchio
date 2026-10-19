@@ -420,6 +420,7 @@ var Pittura = (function () {
     let o = 0; const md = (v, m) => ((v % m) + m) % m;
     if (C.fab === 'piumino' && r <= 2) { const P = C.oca ? .095 : .07, t = md(L.s - (r === 0 ? 0 : 0), P) / P; o += (C.oca ? .011 : .007) * (Math.pow(Math.sin(t * Math.PI), .6) - .5); }
     if (C.largo && r >= 3) o += .004 + .02 * cl((L.s - .12) / .5, 0, 1);
+    if (C.morbido && r >= 3) o += .009 * cl(L.s / .1, 0, 1) * (1 - .75 * cl((L.s - .4) / .35, 0, 1));   // la tuta: morbida sulla coscia, si stringe verso la caviglia (rastremata)
     return o;
   }
   // le spalle strutturate (giacche, cappotti, divise): l'imbottitura allarga e squadra la spalla; i maglioni la ammorbidiscono appena
@@ -430,7 +431,7 @@ var Pittura = (function () {
     return 0;
   }
   // la finitura: quanto è opaca (1) o lucida (0,3) la stoffa
-  const FIN = { pelle: .38, gomma: .45, nylon: .35, piumino: .32, raso: .3, ripstop: .55, cordura: .6, denim: .8, cotone: .85, jersey: .9, pique: .88, tela: .8,
+  const FIN = { pelle: .38, gomma: .45, nylon: .55, piumino: .32, raso: .3, ripstop: .55, cordura: .6, denim: .8, cotone: .85, jersey: .9, pique: .88, tela: .8,
     panno: .95, lana: .97, feltro: .98, spina: .93, gessato: .9, galles: .93, pied: .93, tartan: .92, vichy: .88, madras: .88, trecce: .98, costine: .96, velluto: .7, scamosciato: .98, pelo: .9, montone: .97, maculato: .9 };
   // il capo più esterno in un punto (per spessore e finitura)
   // [strati] lo spessore vero in un punto: il capo che si vede più quelli che gli stanno sotto, schiacciati.
@@ -475,7 +476,12 @@ var Pittura = (function () {
     if (xx > half) return -1; const tip = t > 1 ? (t - 1) / .18 : 0; if (tip > 0 && xx > half * (1 - tip)) return -1;
     const eSide = (half - xx), eTop = (p.y > yTop - .001 ? 0 : yTop - p.y), eBot = t > 1 ? (half * (1 - tip) - xx) * .7 : 9; return Math.min(eSide, eTop, eBot, t <= 1 ? 9 : 9);
   }
+  // le tre strisce (d: metri dalla linea centrale): 1 = striscia, 2 = il filo d'ombra sul bordo, 0 = niente
+  const TRE_W = .013, TRE_G = .008;   // esagerate: si leggono da lontano
+  function tre(d) { const tot = 3 * TRE_W + 2 * TRE_G, x = d + tot / 2; if (x < -.001 || x > tot + .001) return 0; const m = x % (TRE_W + TRE_G); if (m < TRE_W) return m < .0012 || m > TRE_W - .0012 ? 2 : 1; return 0; }
+  let F0 = ri => 0;
   function paintAt(B, C, R, ri, a, sv, y, xm, nY, tb) {
+    F0 = r => frame(B).circ[r];
     const L = C.L, dark = (c, k) => mul(c, k);
     const line = (d, w) => Math.abs(d) < w;   // una cucitura larga w metri
     let base = null, edge = 9;
@@ -584,7 +590,7 @@ var Pittura = (function () {
       const Ls = L[R], end = Ls.s1;
       if (C.polsi && end - sv < .045 && end > Ls.la) { c = mul(C.A, 1.04); h = .7; if (end - sv > .042 || end - sv < .003) { s *= .7; h = .1; } }
       if (C.costine && end - sv < .05 && end > Ls.la) { const rib = .5 + .5 * Math.sin(xm / .006 * Math.PI); c = mul(C.A, .82 + rib * .22); h = rib; }
-      if (C.bande && Math.abs(Math.abs(a) - R2) < .25 && sv < end - .05) { c = rgb(C.bande); h = .6; }
+      if (C.bande && sv < end - (C.costine ? .05 : .01)) { const k = tre((Math.abs(a) - R2) * F0(ri) / (Math.PI * 2)); if (k) { c = k > 1 ? mul(rgb(C.bande), .8) : rgb(C.bande); h = k > 1 ? .2 : .65; } }   // le tre strisce lungo la manica
       // pieghe al gomito (dentro) e alla spalla: archi più scuri
 
 
@@ -595,7 +601,7 @@ var Pittura = (function () {
     if (R[0] === 'L') {
       const Ls = L[R], end = Ls.s1, sg = R === 'LL' ? 1 : -1;
       if (line(Math.abs(a) - R2, .02)) { s *= C.cuciture ? 1 : .82; if (C.cuciture) c = mixc(c, rgb(C.cuciture), .7); h = .15; }   // cucitura laterale
-      if (C.banda && Math.abs(a - sg * R2) < .12) { c = rgb(C.banda); h = .6; }
+      if (C.banda && sv < end - (C.polsino ? .045 : .005)) { const k = tre((a - sg * R2) * F0(ri) / (Math.PI * 2) / 1.3); if (k) { c = k > 1 ? mul(rgb(C.banda), .8) : rgb(C.banda); h = k > 1 ? .2 : .65; } }   // le tre strisce lungo la gamba
       if (C.piega && line(a, .015)) { s *= 1.08; h = .9; }
       const kn = Math.abs(sv - Ls.kn);   // (niente tratti dipinti dietro il ginocchio: le pieghe le dà la forma)
       /* niente chiazze: i jeans sono uniformi */
