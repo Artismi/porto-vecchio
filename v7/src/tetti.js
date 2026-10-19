@@ -92,7 +92,8 @@ var Tetti = (function () {
         const rot = b.rot && !b.sign && !b.shop ? b.rot : 0;
         if (rot) { const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, co = Math.cos(rot), si = Math.sin(rot), qx = wx - cx, qy = wy - cy;
           wx = cx + qx * co - qy * si; wy = cy + qx * si + qy * co; const nx = ox * co - oy * si, ny = ox * si + oy * co; ox = nx; oy = ny;
-          if (c.foot < 0 && !G.walkM(wx + ox * .55, wy + oy * .55)) { got.pop(); used.delete(c.ty * GW + c.tx); continue; } }
+          const fx2 = wx + ox * .55, fy2 = wy + oy * .55, d0 = b.door ? hyp(fx2 - (b.door[0] + .5) * TS, fy2 - (b.door[1] + .5) * TS) : 99;
+          if ((c.foot < 0 && !G.walkM(fx2, fy2)) || bAt(wx - ox * .8, wy - oy * .8) !== bi || bAt(wx - ox * 1.6, wy - oy * 1.6) !== bi || d0 < 2.6) { got.pop(); used.delete(c.ty * GW + c.tx); continue; } }
         LADDERS.push({ i: LADDERS.length, bi, f: c.sd.f, x: wx, y: wy, ox, oy, fx: wx + ox * .55, fy: wy + oy * .55, tx: wx - ox * .8, ty: wy - oy * .8, footB: c.foot, ang: Math.atan2(oy, ox) });
       }
     });
@@ -109,7 +110,7 @@ var Tetti = (function () {
   function buildPlanks() {
     PLANKS.length = 0; PCELL.clear();
     const pairs = new Set(), per = new Map(), ladTops = LADDERS.map(L => [L.tx, L.ty]);
-    const okB = b => b && !b.lighthouse && !b.kiosk && !b.barrack && !b.military && !b.church && b.w >= 2 && b.h >= 2;
+    const okB = b => b && !b.lighthouse && !b.kiosk && !b.barrack && !b.military && !b.church && !b.rot && b.w >= 2 && b.h >= 2;   // [città2] non sulle case girate
     B.forEach((b, bi) => {
       if (!okB(b)) return;
       sidesOf(b).forEach(sd => {
