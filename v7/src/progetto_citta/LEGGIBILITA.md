@@ -85,3 +85,39 @@ La chat L scrive `strumenti/leggibilita.js`: per ogni casella di strada calcola 
 camera, contro le scatole degli edifici e i loro sbalzi), e stampa la percentuale per tipo di strada e una mappa delle zone cieche. Soglie:
 vicoli ≥ 60% visibili col varco, vie ≥ 90% senza, corsi e piazze 100%. Conta anche cavi per 100 m di strada (≤ 6), bidoni per 100 m
 (≤ 4), oggetti sopra 1,2 m sul bordo dei tetti lato camera (0). Gira prima e dopo ogni unione.
+
+## 5. La composizione: ogni scorcio è una pagina (richiesta del committente)
+
+«Ogni scorcio, angolo, piazzetta e muro deve essere una disposizione di elementi quasi tipografica, da cinema, scenografica, piena ma
+senza mille elementi sovrapposti che non si distinguono.» Quindi i dettagli non si *spargono* per probabilità: si **impaginano**.
+
+**Il regista delle pareti e degli scorci** (un modulo solo, `scena.js`, che tutti i sistemi di arredo interrogano prima di posare qualcosa):
+
+1. **Unità di composizione.** La città si divide in *pagine*: ogni **parete** (una facciata fra due spigoli o due aperture di vicolo), ogni
+   **sbocco** (dove un vicolo entra in una via o una piazza), ogni **piazzetta**, ogni **angolo** di isolato. Ogni pagina ha un'epoca, un
+   rango, una direzione verso la camera e un **fondale** (ciò che si vede dietro: un landmark, il mare, una facciata, il cielo).
+2. **Una gabbia tipografica per pagina.** Sulla parete le righe sono i marcapiani e lo zoccolo, le colonne gli assi delle finestre e del
+   portone: tutto ciò che si appende (insegna, targa, manifesto, lampada a braccio, cavo, tenda, mensola) sta **su una riga e su una
+   colonna**, mai a caso. A terra la gabbia è il cordolo, il filo del muro e l'asse della porta: dehors, bidone, motorino, fioriera stanno
+   in una *fascia* di 1-2 m lungo il muro, allineati al portone.
+3. **Un dominante, pochi secondari, molto vuoto.** Per pagina: **1 elemento dominante** (l'insegna, il ritratto, il portale, l'albero, il
+   dehors), **al massimo 3 secondari**, **al massimo 2 accenti** (una targa, uno sticker, un vaso); il resto è superficie quieta col suo
+   materiale e la sua usura. Il 30-40% delle pagine ha solo il materiale e un accento. Mai due dominanti della stessa famiglia a meno
+   di 15 m (due insegne, due ritratti).
+4. **Composizioni dal catalogo, non per hash.** Un catalogo di 20-30 *impaginazioni* nominate per tipo di pagina ed epoca (per esempio
+   *Bottega del borgo*: portone ad arco + insegna dipinta sopra + lampada a braccio a sinistra + tenda + due casse di merce a destra;
+   *Testata cieca del regime*: ritratto 4 × 6 m centrato + stencil del settore in basso a destra + buff grigio che copre un tag;
+   *Sbocco sul mare*: quinte scure ai lati, arco di contrasto in alto, bitta e rete come primo piano, il mare come fondale;
+   *Angolo murattiano*: smusso con bottega, targa della via, lampione in ghisa, cassonetti a coppia sul lato lontano).
+   Il regista sceglie l'impaginazione per pagina in base a epoca, rango, fondale e a quello che c'è nelle pagine vicine (variazione,
+   mai ripetizione a meno di 3 pagine), poi la compila con gli oggetti dei sistemi esistenti.
+5. **Inquadratura da cinema.** Ogni sbocco e ogni piazzetta ha **primo piano, quinte, fondale**: una cosa bassa e scura vicino alla
+   camera (una bitta, un bidone, un gatto, il tavolino), due masse laterali (le facciate), un fondale luminoso o un landmark al centro
+   della visuale lungo l'asse del vicolo. Il generatore orienta le piazzette e i vicoli perché l'asse punti su un landmark o sul mare
+   (sezione 5 del piano); il regista mette il primo piano dove la camera lo vede.
+6. **Verifica tipografica.** Per ogni pagina il validatore conta gli elementi per classe (dominante / secondario / accento), controlla
+   che nessuno si sovrapponga in proiezione dalla camera (le scatole degli oggetti proiettate sullo schermo non si intersecano oltre il
+   10%), e che nessun elemento copra una porta, una vetrina o una finestra. Una pagina che sfora si ripulisce: via i secondari dall'ultimo.
+
+Questo sostituisce tutti i "posa a caso con probabilità p" dei sistemi di arredo nella città nuova: la probabilità decide al massimo
+*quale* impaginazione, mai *dove* va una cosa.
