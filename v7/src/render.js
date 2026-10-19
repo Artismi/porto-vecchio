@@ -219,16 +219,17 @@ var Render = (function () {
         g.computeBoundingBox(); g.boundingBox.getCenter(_wp);   // il settore dal centro vero (i gruppi delle case stanno tutti in 0,0)
         const key = sig + '|' + Math.floor(_wp.x / 32) + ',' + Math.floor(_wp.z / 32) + '|' + o.castShadow + o.receiveShadow;
         let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow });
-        const id = new Float32Array(g.attributes.position.count).fill(bi); g.setAttribute('bId1', new THREE.BufferAttribute(id, 1));
-        g.__src1 = o; b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
+        g.__bi1 = bi; g.__src1 = o; b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
       });
     });
     moved.forEach(o => { o.visible = false; });   // restano pronti per la trasparenza
     B.forEach(b => {
-      let n = 0; b.geos.forEach(g => n += g.attributes.position.count);
-      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), id = new Float32Array(n); let k = 0;
+      let n = 0; b.geos.forEach(g => { n += g.attributes.position.count; });
+      // [memoria] il numero della casa in 16 bit invece di 32 (la scheda video lo legge comunque come numero)
+      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), id = new Uint16Array(n); let k = 0;
       const srcs = [];
-      b.geos.forEach(g => { const c = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); if (g.attributes.normal) nor.set(g.attributes.normal.array, k * 3); if (g.attributes.uv) uv.set(g.attributes.uv.array, k * 2); id.set(g.attributes.bId1.array, k); if (g.__src1) srcs.push([g.__src1, k, c, !!g.attributes.normal, !!g.attributes.uv]); k += c; g.dispose(); });
+      b.geos.forEach(g => { const c = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); if (g.attributes.normal) nor.set(g.attributes.normal.array, k * 3); if (g.attributes.uv) uv.set(g.attributes.uv.array, k * 2); id.fill(g.__bi1, k, k + c);
+        if (g.__src1) srcs.push([g.__src1, k, c, !!g.attributes.normal, !!g.attributes.uv]); k += c; g.dispose(); });
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setAttribute('bId1', new THREE.BufferAttribute(id, 1));
       geo.computeBoundingSphere(); geo.computeBoundingBox(); packNormals(geo);   // [leggera]
       const mesh = new THREE.Mesh(geo, fadeMat1(b.m)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh);
@@ -2005,7 +2006,9 @@ var Render = (function () {
     // [inverno17] un pezzo per blocco: si nasconde dove il blocco vero è caricato (prima spuntava a rombi scuri)
     const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1, polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 3 });
     const P32 = new THREE.Float32BufferAttribute(pos, 3), UV2 = new THREE.Float32BufferAttribute(uv, 2), grp = new THREE.Group(); ISO.basePieces = {};
-    Object.keys(PIECE).forEach(key => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', P32); geo.setAttribute('uv', UV2); geo.setIndex(PIECE[key]); geo.computeVertexNormals(); geo.computeBoundingSphere();
+    // [memoria] le normali una volta sola per tutta l'isola, condivise dai pezzi (prima ogni pezzo le calcolava per tutti i vertici: ~80 MB)
+    const NRM = (() => { const g0 = new THREE.BufferGeometry(); g0.setAttribute('position', P32); g0.setIndex([].concat(...Object.values(PIECE))); g0.computeVertexNormals(); packNormals(g0); const a = g0.attributes.normal; g0.setIndex(null); return a; })();
+    Object.keys(PIECE).forEach(key => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', P32); geo.setAttribute('uv', UV2); geo.setAttribute('normal', NRM); geo.setIndex(PIECE[key]); geo.computeBoundingSphere();
       const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; grp.add(mesh); ISO.basePieces[key] = mesh; });
     scene.add(grp); ISO.base = grp;
   }
@@ -9178,6 +9181,8 @@ var Render = (function () {
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv35, 2)); geo.setIndex(ind); geo.computeVertexNormals();
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(G.WW / 2, 0, G.WH / 2), Math.hypot(G.WW, G.WH));
     const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: lastre35(), vertexColors: true, emissive: NEVE ? '#34363c' : '#121214', polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); mesh.receiveShadow = true; mesh.frustumCulled = false; scene.add(mesh);
+    // [memoria] le griglie di lavoro dei marciapiedi non servono più: a gioco resta solo l'altezza (H, per swH). ~130 MB
+    if (SWF35) { SWF35.m = SWF35.Hn = SWF35.S38 = SWF35.D38 = SWF35.C38 = null; } S1.ramp = null;
     return ind.length / 3;
   }
   // ================= [inverno] CARATTERE DELLE FACCIATE =================
