@@ -15,7 +15,7 @@ var Pittura = (function () {
   const rgb = c => { const C = new THREE.Color(c); return [C.r, C.g, C.b]; };
   const mixc = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)], mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
   const REG = ['T', 'AL', 'AR', 'LL', 'LR'];
-  const SIZE = { T: [256, 320], AL: [64, 256], AR: [64, 256], LL: [96, 320], LR: [96, 320] };   // ~3,5 mm per pixel: bordi precisi   // ~7 mm per pixel: pixel grossi e netti
+  const SIZE = { T: [448, 560], AL: [112, 448], AR: [112, 448], LL: [168, 560], LR: [168, 560] };   // ~2 mm per pixel: revers, righe e stampe nitidi (era 3,5)
 
   // =====================================================================================
   // LE MESH DEL CORPO CON LE COORDINATE DI STOFFA (una volta per modello e per mesh)
@@ -383,6 +383,12 @@ var Pittura = (function () {
   // il colore del tessuto in un punto (metri): la piastrella del tessuto della Sartoria
   // il colore della stoffa in un punto (metri), a campiture: 2-3 toni a blocchi grossi, motivi grandi e leggibili
   const hsh = (a, b) => { let h = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263)) >>> 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  const FAB_AA = /^(gessato|tartan|madras|galles|vichy|pied|righe|righe_v|regimental|fiori|liberty|pois|maculato|etnico|denim)$/;
+  function fabricAA(C, xm, ym) {
+    if (!FAB_AA.test(C.fab || '')) return fabric(C, xm, ym);
+    const q = .0009, a = fabric(C, xm - q, ym - q), b = fabric(C, xm + q, ym - q), c = fabric(C, xm - q, ym + q), d = fabric(C, xm + q, ym + q);
+    return [0, 1, 2, 3].map(k => (a[k] + b[k] + c[k] + d[k]) / 4);
+  }
   function fabric(C, xm, ym) {
     const A = C.A, B = C.B, Cc = C.C, tone = 1;   // tinta unita (i corpi del kit sono già irregolari: niente macchie sopra)
     let c = A, h = .5; const f = C.fab;
@@ -391,7 +397,7 @@ var Pittura = (function () {
     else if (f === 'righe_v') c = md(xm, .08) < .04 ? A : B;
     else if (f === 'regimental') { const d = md(xm + ym, .06); c = d < .016 ? B : d > .022 && d < .027 ? Cc : A; }   // righe diagonali della cravatta
     else if (f === 'raso') c = A;
-    else if (f === 'gessato') { if (md(xm, .07) < .006) c = mixc(A, B, .28); }
+    else if (f === 'gessato') { const d = Math.abs(md(xm, .016) - .008); if (d > .008 - .0012) c = mixc(A, B, .5); }   // [stile] gessato vero: filo chiaro ogni 1,6 cm
     else if (f === 'tartan' || f === 'madras' || f === 'galles') { const bx = md(xm, .14) < .045, by = md(ym, .14) < .045, tx = md(xm, .14) > .09 && md(xm, .14) < .1, ty = md(ym, .14) > .09 && md(ym, .14) < .1; c = bx && by ? mul(B, .85) : bx || by ? mixc(A, B, .6) : A; if (tx || ty) c = mixc(c, Cc, .8); }
     else if (f === 'vichy' || f === 'pied') { const bx = md(xm, .05) < .025, by = md(ym, .05) < .025; c = bx && by ? B : bx || by ? mixc(A, B, .5) : A; }
     else if (f === 'fiori' || f === 'liberty' || f === 'paisley' || f === 'pois') { const cs = f === 'fiori' ? .09 : .05, cx = Math.floor(xm / cs), cy = Math.floor(ym / cs), r = hsh(cx * 7 + 3, cy * 13 + 1), ox = (hsh(cx, cy * 3) - .5) * cs * .4, oy = (hsh(cx * 5, cy) - .5) * cs * .4, d = Math.hypot(md(xm, cs) - cs / 2 - ox, md(ym, cs) - cs / 2 - oy); if (d < cs * (f === 'pois' ? .2 : .32)) c = r < .5 ? B : Cc; else if (f === 'fiori' && d < cs * .45 && r > .6) c = mixc(Cc, [.15, .3, .15], .5); }
@@ -628,13 +634,13 @@ var Pittura = (function () {
       else { if (!Ls || sv > Ls.s1) return null; edge = Ls.s1 - sv; }
     } else {
       const Ls = L[R]; if (!Ls) return null;
-      if (Ls.falda !== undefined) { if (y < Ls.falda) return null; const f0 = fabric(C, xm, sv); const e = y - Ls.falda; let c0 = [f0[0], f0[1], f0[2]], h0 = .3 + f0[3] * .4, s0 = (C.gonna || C.solo_gonna || C.poncho) ? .6 : e < .008 ? .5 : e < .02 ? .88 + .12 * (e - .008) / .012 : 1;   // sotto le falde: l'ombra interna
+      if (Ls.falda !== undefined) { if (y < Ls.falda) return null; const f0 = fabricAA(C, xm, sv); const e = y - Ls.falda; let c0 = [f0[0], f0[1], f0[2]], h0 = .3 + f0[3] * .4, s0 = (C.gonna || C.solo_gonna || C.poncho) ? .6 : e < .008 ? .5 : e < .02 ? .88 + .12 * (e - .008) / .012 : 1;   // sotto le falde: l'ombra interna
         if (C.costine && e < .05) { const rib = .5 + .5 * Math.sin(xm / .006 * Math.PI); c0 = mul(C.A, .82 + rib * .22); h0 = rib; }
         if ((C.cl >= 4 || C.poncho) && !C.costine && e >= .008 && e < .04) s0 *= .72;
         return { c: c0, h: h0, s: s0 }; }
       if (sv > Ls.s1) return null; edge = Ls.s1 - sv;
     }
-    let f = fabric(C, xm, sv); let c = [f[0], f[1], f[2]], h = .3 + f[3] * .4, s = 1;
+    let f = fabricAA(C, xm, sv); let c = [f[0], f[1], f[2]], h = .3 + f[3] * .4, s = 1;
     // l'orlo: piega scura e un filo d'ombra prima
     const conFalda = R === 'T' && C.cl >= 3 && !C.corto && !C.davanti && !C.gonna && L.T && L.T.yb !== undefined && y - L.T.yb < .05 && (C.parti || []).includes('bacino');   // giacca con la falda in rilievo: niente orlo dipinto, prosegue la falda
     if (!conFalda) { if (edge < .008) { s *= .5; h = .1; } else if (edge < .02) s *= .88 + .12 * (edge - .008) / .012; }
@@ -746,7 +752,7 @@ var Pittura = (function () {
     if (MCACHE.has(sig)) return MCACHE.get(sig);
     const M = REG.map(R => {
       const { W, H, col, hh } = P.out[R], mk = (data) => { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d'), id = x.createImageData(W, H); id.data.set(data); x.putImageData(id, 0, 0);
-        const T = new THREE.CanvasTexture(cv); T.flipY = false; T.wrapS = THREE.RepeatWrapping; T.wrapT = THREE.ClampToEdgeWrapping; T.magFilter = THREE.NearestFilter; T.minFilter = THREE.NearestMipmapLinearFilter; T.anisotropy = 4; return T; };
+        const T = new THREE.CanvasTexture(cv); T.flipY = false; T.wrapS = THREE.RepeatWrapping; T.wrapT = THREE.ClampToEdgeWrapping; T.magFilter = THREE.LinearFilter; T.minFilter = THREE.LinearMipmapLinearFilter; T.anisotropy = 8; return T; };   // [stile] morbido: niente scalini di pixel sui bordi
       // [pulizia] la luce propria come il resto del personaggio (models.js: emissive = colore × 0,3), texel per texel: la pelle dipinta è identica a quella di viso e mani (prima un grigio fisso: il busto nudo pareva una maglietta color carne)
       const bh = mk(hh), cm = mk(col), m = new THREE.MeshStandardMaterial({ map: cm, bumpMap: bh, bumpScale: .0015, roughnessMap: bh, roughness: 1, metalness: 0, emissiveMap: cm }); m.emissive = new THREE.Color(.3, .3, .3); m.userData.pittura = true; return m;
     });
