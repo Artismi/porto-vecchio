@@ -1,5 +1,6 @@
 // Studio delle pose: foto dei personaggi veri in posa, senza far partire il gioco.
 //   node strumenti_inverno/studio_anim.js cartella_uscita pose.json [larghezza altezza]
+// "mk": [[x,y,z, [lx,ly,lz]?, colore?], ...] segnaposti nello spazio della prima persona (sfere, o scatole se c'è la misura): manopole, pedali, sedili
 // pose.json: [{ "nome": "seduti", "t": 1.5, "cols": 4, "ang": 0.5, "side": 0.25,
 //               "pose": [{ "nome": "siede", "anim": { "act": "siede" }, "o": { "speed": 0 }, "who": null, "ang": 0.5 }] }]
 // Ogni voce fa un'immagine <nome>.png. "t" = secondi di animazione simulati prima della foto
@@ -24,7 +25,7 @@ const srv = http.createServer((req, res) => {
   // POSE_EXTRA: pose di prova definite al volo (solo per lo studio)
   await pg.evaluate(() => { const A = window.studio.Anim; if (!A.POSES.dita) A.def('dita', { fn(P) { P.fingers('R', 1, 1); P.fingers('L', 1, 1); } }); });
   for (const s of shots) {
-    await pg.evaluate(s => window.studio.run(s.pose, s), s);
+    await pg.evaluate(s => { window.studio.run(s.pose, s); const sc = window.studio.scene; (window.__mk || []).forEach(m => sc.remove(m)); window.__mk = []; (s.mk || []).forEach(p => { const m = new THREE.Mesh(p[3] ? new THREE.BoxGeometry(p[3][0], p[3][1], p[3][2]) : new THREE.SphereGeometry(.025, 8, 6), new THREE.MeshBasicMaterial({ color: p[4] || "#00ff66", transparent: true, opacity: .75, depthTest: !!p[3] })); const g = window.studio.people[0].g; m.position.set(p[0], p[1], p[2]); m.position.applyQuaternion(g.quaternion).add(g.position); m.quaternion.copy(g.quaternion); sc.add(m); window.__mk.push(m); }); window.studio.ren.render(sc, window.studio.cam); }, s);
     await pg.screenshot({ path: path.join(outDir, s.nome + '.png') }); console.log('ok', s.nome);
   }
   await b.close(); srv.close();

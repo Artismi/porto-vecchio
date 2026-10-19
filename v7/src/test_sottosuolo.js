@@ -34,10 +34,12 @@ const b = G.BUILDINGS[bi]; p.indoor = null; p.lv = { k: 'ug' }; L.ug[(b.y + 1) *
 p.x = (b.x + 1.5) * TS; p.y = (b.y + 1.5) * TS; p.inv = { pala: 1, piccone: 1 }; if (global.Oggetti) { const bag = Oggetti.inv(st); bag.pala = 1; bag.piccone = 1; }
 m = LV.digUp(st); console.log('    ', m); wait(25); ok(p.indoor && p.indoor.b === bi, 'sbuco dentro la casa ' + (b.id || bi) + ': ' + (st.feed[0] && st.feed[0].text) + ' ' + where());
 // 5) da dentro una casa: una botola nel pavimento
-const b2i = G.BUILDINGS.findIndex((q, i) => i !== bi && q.door && q.w >= 3 && !L.portals.some(P => P.bi === i)); G.exitBuilding(st); p.lv = null; G.enterBuilding(st, b2i);
+const sideFree = (q, dir) => { for (let y = q.y; y < q.y + q.h; y++) for (let k = 0; k < 8; k++) { const x = dir > 0 ? q.x + q.w + k : q.x - 1 - k, t = G.tileAt(x, y); if (t === G.T.BLD || t === G.T.WATER) return false; } return true; };   // [città2] la città è fitta: di filato senza fondamenta
+const b2i = G.BUILDINGS.findIndex((q, i) => i !== bi && q.door && q.w >= 3 && !q.rot && !q.military && sideFree(q, 1) && sideFree(q, -1) && !L.portals.some(P => P.bi === i)); G.exitBuilding(st); p.lv = null; G.enterBuilding(st, b2i);
 m = LV.key(st, 'h'); console.log('    ', m); wait(16); m = LV.key(st, 'v'); ok(p.lv && p.lv.k === 'ug' && !p.indoor, 'botola nel pavimento e giù: ' + m + ' ' + where());
 // 6) scavare di filato: avanti finché non lo fermi
-p.face = 0; m = LV.key(st, 'h', true); console.log('    ', m); const x0 = p.x; wait(40); ok(p.x > x0 + 4, `di filato: avanzato di ${(p.x - x0).toFixed(1)} m · ${st.feed.slice(0, 3).map(f => f.text).join(' | ')}`); LV.S(st).auto = null; LV.S(st).job = null;
+{ const qb = G.BUILDINGS[b2i], tx0 = Math.floor(p.x / TS); p.face = tx0 - qb.x < qb.x + qb.w - 1 - tx0 ? Math.PI : 0; }   // verso il lato più vicino: fuori dalla casa
+m = LV.key(st, 'h', true); console.log('    ', m); const x0 = p.x; wait(40); ok(Math.abs(p.x - x0) > 4, `di filato: avanzato di ${Math.abs(p.x - x0).toFixed(1)} m · ${st.feed.slice(0, 3).map(f => f.text).join(' | ')}`); LV.S(st).auto = null; LV.S(st).job = null;
 // 7) la roba sepolta: la cassa del brigante sotto il Paese Vecchio
 const C = SS.CACHES.find(c => c.id === 'brigante'); const before = JSON.stringify(Oggetti.inv(st));
 const msg = LV.hooks.dug.map(f => f(st, C.tx, C.ty, L)).find(Boolean); ok(/brigante/.test(msg || ''), 'la cassa del brigante: ' + msg);

@@ -2860,6 +2860,7 @@ var Render = (function () {
       for (let k = 0; k < 6; k++) { const x = q.x - 30 + r() * 60, z = q.y - 16 + r() * 32; if (free(x, z)) container(x, z, r() < .5 ? 0 : Math.PI / 2, pick(r, ['#5a6a4a', '#7a5a3a', '#4a5a6a'])); } }
     // cava e discarica: rottami e massi
     if (P.discarica) { const q = P.discarica; for (let k = 0; k < 12; k++) { const x = q.x - 10 + r() * 20, z = q.y - 7 + r() * 14; if (!free(x, z)) continue; if (r() < .5) drumGroup(x, z, r); else { const g = G0(); add(g, box(1.6 + r() * 2, .4 + r() * .6, 1 + r() * 2, sm(pick(r, ['#6a4a3a', '#5a5a60', '#8a3a2a']))), 0, .3, 0, (r() - .5) * .4, 0, (r() - .5) * .4); place(g, x, z, r() * 6); } } }
+    try { const ns = buildSets(); if (typeof window !== 'undefined' && window.__dbg35) console.log('[dbg] scenografie', ns); } catch (e) { console.warn('[scenografie]', e); }   // [città2]
   }
 
   // ================= INTERNI =================
@@ -4288,6 +4289,19 @@ var Render = (function () {
         if (q < .3) bench(x, z, rot, 'iron'); else if (q < .52) { bollard(x, z); if (free(x + (bx - ax) / L * 1.6, z + (bz - az) / L * 1.6)) bollard(x + (bx - ax) / L * 1.6, z + (bz - az) / L * 1.6); } else if (q < .62) phoneBooth(x, z, rot); else if (q < .7) mailbox(x, z, rot); else if (q < .78 && free(x + nx * sd * .6, z + nz * sd * .6)) busStop(x + nx * sd * .6, z + nz * sd * .6, rot + Math.PI);   /* [leggera] la fermata spostata di lato: si controlla dove va davvero */
         n++; }
     });
+    // [città2] le strade con gli alberi (rd.alberi): tigli in filare sui marciapiedi del Corso e del viale, palme sul lungomare;
+    // sulla Via della Vittoria (rd.pennoni) lampioni monumentali e pennoni del regime alternati a passo fisso: la gerarchia si legge
+    // dall'arredo, la strada importante ha il suo ritmo e non resta un piazzale vuoto
+    (M.roads || []).filter(rd => rd.alberi || rd.pennoni).forEach(rd => {
+      let acc = 0, kk = 0; const step = rd.pennoni ? 14 : 9;
+      for (let k = 1; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < step) continue; acc = 0; kk++;
+        const nx = -(bz - az) / L, nz = (bx - ax) / L;
+        [-1, 1].forEach(sd => { const off = rd.w / 2 + 1.1, x = ax + nx * sd * off, z = az + nz * sd * off, rot = Math.atan2(-nx * sd, -nz * sd); if (!free(x, z) || !city(x, z) || nearJ(x, z, 1)) return;
+          if (rd.pennoni) { if (kk % 2) streetLamp(x, z, 'deco', rot); else { const g = G0(); add(g, cyl(.06, .09, 7.5, 6, sm('#d8d6cc')), 0, 3.75, 0); add(g, box(.04, 1.2, 1.9, sm('#b8302a', { roughness: .9 })), 0, 6.6, .95); add(g, box(.05, .5, .5, sm('#f0e8d0')), 0, 6.6, 1.4); place(g, x, z, rot); } }
+          else if (rd.alberi === 'palme') palmTree(x, groundH(x, z), z, r, 6);
+          else leafyTree(x, z, r, false);
+          n++; }); }
+    });
     return n;
   }
 
@@ -4589,7 +4603,7 @@ var Render = (function () {
     const core = box(w - .4, fl * FH - .1, d - .4, std({ color: '#100c16', roughness: 1 })); core.position.set(cx, base + fl * FH / 2, cz); grp.add(core);
     shadowed(grp); const merged = mergeGroup(grp); shadowed(merged); scene.add(merged);
     const rec = { b, flat, grp: merged, fade: 0, box3: new THREE.Box3(new THREE.Vector3(x0 + .3, low, z0 + .3), new THREE.Vector3(x0 + w - .3, top + 2.5, z0 + d - .3)), mats: [] };
-    ownMats(merged, rec); dyn.buildings.push(rec); rec.geo = { x0, z0, w, d, y0: base, H: top - base }; DZ.bRec[i] = rec; b.__top = top; b.__wallHex = b.__wallHex || '#a8988a';
+    rotRec(rec, merged); ownMats(merged, rec); dyn.buildings.push(rec); rec.geo = { x0, z0, w, d, y0: base, H: top - base }; DZ.bRec[i] = rec; b.__top = top; b.__wallHex = b.__wallHex || '#a8988a';
     if (b.sign) addSign(b, base, w, d, x0, z0, top, base + 3.0, base + 2.55);
   }
 
@@ -7124,6 +7138,16 @@ var Render = (function () {
       if (b.sign) addSign(b, base, w, d, x0, z0, top);
     });
   }
+  // [città2] LA CASA CHE SEGUE LA STRADA: world.js dà alle case lungo le vie storte un angolo (b.rot, radianti, al più 32°). Il modello
+  // e tutto quello che gli appartiene (facciata, dettagli, tetto, rifiniture, roba di strada) si costruiscono dritti sul rettangolo
+  // della casa e poi girano attorno al suo centro. Le botteghe con l'insegna restano dritte (l'insegna e la tenda stanno sul filo).
+  const rotOf = b => b && b.rot && !b.sign && !b.shop ? b.rot : 0;
+  function rotRec(rec, o) {
+    const b = rec && rec.b, a = rotOf(b); if (!o || !a) return o;
+    const cx = (b.x + b.w / 2) * TS, cz = (b.y + b.h / 2) * TS;
+    const M = new THREE.Matrix4().makeTranslation(cx, 0, cz).multiply(new THREE.Matrix4().makeRotationY(-a)).multiply(new THREE.Matrix4().makeTranslation(-cx, 0, -cz));
+    o.applyMatrix4(M); o.updateMatrixWorld(true); return o;
+  }
   // ogni edificio ha i suoi materiali: quando diventa trasparente non deve trascinarsi dietro gli altri
   function ownMats(merged, rec) {
     merged.userData.fgRec1 = rec;   /* [pulitore1] */
@@ -7449,6 +7473,75 @@ var Render = (function () {
   }
 
   // --- bancarelle del mercato ---
+  // [città2] LE SCENOGRAFIE DEI NODI della città per epoche (M.world.sets) e la vita dei vicoli. Ogni nodo si riconosce da lontano
+  // per il suo arredo: il Mercato per la tettoia verde in ghisa e i banchi, il sagrato per gli alberi e le panchine verso la chiesa,
+  // la piazza d'adunata per il palco e i pennoni, la calata per le bitte e le casse del pesce, le piazzette per i tavolini.
+  // Nei vicoli il bucato teso da una casa all'altra e le edicole votive sugli spigoli. Con la mappa vecchia (niente sets) non fa niente.
+  function buildSets() {
+    const W0 = M.world, SETS = W0 && W0.sets; if (!SETS) return 0;
+    const T = G.T, r = rng(1986), tl = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); let n = 0;
+    const ok = (x, z, rr = .7) => [[0, 0], [rr, 0], [-rr, 0], [0, rr], [0, -rr]].every(([u, w]) => { const v = tl(x + u, z + w); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });
+    const TENDE = [['#2f6a4e', '#e9e0cf'], ['#b0283c', '#e9e0cf'], ['#3a5aa8', '#e9e0cf'], ['#c87a20', '#f0e6c8'], ['#6a3a7a', '#e9e0cf']];
+    const MERCI = [['#c84a2a', '#e0b030', '#4a8a3a', '#d06a2a'], ['#e0d0a0', '#f0e060', '#c83030', '#3a7a3a'], ['#9ab0c0', '#c0d0d8'], ['#8a6a3a', '#9a7444', '#6a4a2a'], ['#4a6a34', '#6a7a3a', '#7a3a2a']];
+    const faceTo = (x, z, cx, cz) => Math.atan2(cx - x, cz - z);   // il davanti (+z) verso il punto
+    const stallAt = (x, z, rot) => { if (!ok(x, z, 1.3)) return false; const c = pick(r, TENDE); stall(x, z, rot, c[0], c[1], pick(r, MERCI), r); n++; return true; };
+    SETS.forEach(q => {
+      if (q.k === 'mercato') {
+        // la tettoia: colonne di ghisa verdi su due file, il tetto a due falde di vetro, il colmo; sotto quattro file di banchi
+        const tw = q.r * 1.15, td = q.r * .72, gt = G0(), iron = sm('#2f5a44', { metalness: .4, roughness: .6 }), vetro = sm('#a8c4b4', { roughness: .3, transparent: true, opacity: .5 });
+        for (let i = -3; i <= 3; i++) for (const j of [-1, 1]) add(gt, cyl(.13, .17, 5, 8, iron), i * tw / 6, 2.5, j * td / 2);
+        [-1, 1].forEach(j => { add(gt, box(tw + 1, .3, .35, iron), 0, 5.1, j * td / 2); add(gt, box(tw + 1.6, .1, td / 2 + 1.4, vetro), 0, 5.8, j * (td / 4 + .2), -j * .32, 0, 0); });
+        add(gt, box(tw + 1.8, .35, .35, iron), 0, 6.35, 0); for (let i = -3; i <= 3; i++) add(gt, box(.12, .9, td + .4, iron), i * tw / 6, 5.6, 0);
+        place(gt, q.x, q.y, 0); n++;
+        for (const zz of [-td / 4, td / 4]) for (let x = -tw / 2 + 1.6; x <= tw / 2 - 1.6; x += 3.1) stallAt(q.x + x, q.y + zz + (zz < 0 ? -.9 : .9), zz < 0 ? Math.PI : 0);
+        // l'anello dei banchi all'aperto, rivolti verso la tettoia; cassette e bidoni dietro
+        for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2 + .1, rr = q.r - 3.2, x = q.x + Math.cos(a) * rr, z = q.y + Math.sin(a) * rr;
+          if (stallAt(x, z, faceTo(x, z, q.x, q.y)) && r() < .5) { const bx = q.x + Math.cos(a) * (rr + 1.9), bz = q.y + Math.sin(a) * (rr + 1.9); if (ok(bx, bz)) crateStack(bx, bz, 2 + Math.floor(r() * 3), r, pick(r, ['fish', '#c84a2a', '#e0b030', '#4a8a3a'])); } }
+        for (let k = 0; k < 4; k++) { const a = k * 1.57 + .78, x = q.x + Math.cos(a) * (q.r - .8), z = q.y + Math.sin(a) * (q.r - .8); if (ok(x, z)) bin(x, z, k % 2 ? 'dumpster' : 'pole', a); }
+        cat(q.x + 3, q.y + q.r * .5, r);
+      } else if (q.k === 'sagrato') {
+        // il sagrato della Chiesa Madre: due tigli agli angoli, le panchine rivolte alla chiesa, l'edicola e la cabina del telefono
+        const cx = (q.x0 + q.x1) / 2, cz = (q.y0 + q.y1) / 2;
+        [[q.x0 + 2, q.y0 + 2], [q.x1 - 2, q.y0 + 2]].forEach(([x, z]) => { if (ok(x, z)) { leafyTree(x, z, r, true); n++; } });
+        [cx - 4, cx + 4].forEach(x => { if (ok(x, cz + 1.5)) { bench(x, cz + 1.5, Math.PI, 'iron'); n++; } });
+        if (ok(q.x1 - 2, q.y1 - 2, 1)) newsstand(q.x1 - 2, q.y1 - 2, -Math.PI / 2, r); if (ok(q.x0 + 1.5, q.y1 - 1.5)) phoneBooth(q.x0 + 1.5, q.y1 - 1.5, Math.PI / 2);
+      } else if (q.k === 'adunata') {
+        // il palco del Garante contro il Ministero, i pennoni in fila sui due lati, le transenne per l'adunata
+        const cx = (q.x0 + q.x1) / 2, pz = q.y0 + 3; const g = G0(), pietra = sm('#e2d8c0', { roughness: .9 }), rosso = sm('#a8282a', { roughness: .95 });
+        add(g, box(9, 1.3, 4, pietra), 0, .65, 0); add(g, box(9.05, 1.1, .05, rosso), 0, .6, 2.02); for (let k = 0; k < 3; k++) add(g, box(3, .22, .5, pietra), 0, .11 + k * .22 * 1.9, 2.3 + (2 - k) * .45);
+        add(g, box(.12, 3.2, .12, PM.iron()), -3.8, 2.9, -1.6); add(g, box(.12, 3.2, .12, PM.iron()), 3.8, 2.9, -1.6); add(g, box(7.8, 1.4, .05, rosso), 0, 3.8, -1.6);
+        place(g, cx, pz, 0); n++;
+        for (let z = q.y0 + 8; z <= q.y1 - 3; z += 7) [q.x0 + 1.5, q.x1 - 1.5].forEach(x => { if (!ok(x, z)) return; const f = G0(); add(f, cyl(.06, .09, 8, 6, sm('#d8d6cc')), 0, 4, 0); add(f, box(.04, 1.3, 2, sm('#b8302a', { roughness: .9 })), 0, 7.1, 1); place(f, x, z, 0); n++; });
+        for (let x = q.x0 + 4; x < q.x1 - 3; x += 2.6) if (ok(x, q.y1 - 2)) { const g2 = G0(); add(g2, box(2.2, .06, .06, PM.iron()), 0, 1, 0); add(g2, box(2.2, .06, .06, PM.iron()), 0, .55, 0); [-1, 1].forEach(o => add(g2, box(.05, 1.05, .45, PM.iron()), o * 1.05, .52, 0)); place(g2, x, q.y1 - 2, 0); n++; }
+      } else if (q.k === 'piazzetta') {
+        // la piazzetta: i tavolini del bar o le cassette del forno, una panchina, il gatto, i vasi
+        if (q.bar) cafe(q.x - 2.5, q.y + q.r * .45, r, 'marble', 3, ['#b0283c', '#e9e0cf']);
+        if (q.forno) { if (ok(q.x - q.r * .5, q.y)) crateStack(q.x - q.r * .5, q.y, 3, r, '#c8a060'); if (ok(q.x + q.r * .4, q.y - 1)) bench(q.x + q.r * .4, q.y - 1, Math.PI / 2, 'wood'); }
+        for (let k = 0; k < 4; k++) { const a = r() * 6.28, x = q.x + Math.cos(a) * (q.r - .6), z = q.y + Math.sin(a) * (q.r - .6); if (ok(x, z, .4)) pot(x, z, r, pick(r, ['lemon', 'geranio', 'palm'])); }
+        cat(q.x + 1, q.y - 1, r); n += 4;
+      } else if (q.k === 'marina') {
+        // la Piazza della Marina: i tavoli di legno dell'osteria sotto gli ombrelloni, le reti stese, le casse del pesce
+        for (let k = 0; k < 3; k++) { const x = q.x0 + 4 + k * 4, z = q.y0 + 4; if (ok(x, z)) { table(x, z, 'wood', ['vino', 'vino', 'fiasco', 'pane'], r, 2); parasol(x, z, '#e0cdb0', '#2f5a3e'); n++; } }
+        if (ok(q.x1 - 3, q.y1 - 3, 1)) nets(q.x1 - 3, q.y1 - 3, r); if (ok(q.x0 + 2, q.y1 - 2)) crateStack(q.x0 + 2, q.y1 - 2, 4, r, 'fish');
+      } else if (q.k === 'calata') {
+        // la calata: le bitte sul ciglio ogni otto metri; fra l'una e l'altra casse di pesce, reti, barili, fusti
+        let last = -1e9, k = 0;
+        for (let x = q.x0; x <= q.x1; x += 1) { let z = null; for (let zz = 150 + (M.world.OY || 0); zz < 260 + (M.world.OY || 0); zz += 1) if (tl(x, zz) === T.QUAY && tl(x, zz + 1.5) === T.WATER) { z = zz; break; }
+          if (z === null || x - last < 8) continue; last = x; bitta(x, z - .2); n++; k++;
+          const ix = x + 4, iz = z - 3; if (!ok(ix, iz, 1)) continue; const c = k % 4; if (c === 0) crateStack(ix, iz, 3, r, 'fish'); else if (c === 1) nets(ix, iz, r); else if (c === 2) barrel(ix, iz, r, r() < .3); else drumGroup(ix, iz, r, ['#2a5ab8', '#c8302a']); }
+      }
+    });
+    // la vita dei vicoli: il bucato teso fra le case di fronte, le edicole votive sugli spigoli, i bidoni e i gatti
+    (M.roads || []).filter(rd => !rd.rect && rd.kind === 'vicolo' && rd.pts && rd.w <= 5).forEach(rd => {
+      let acc = 4 + r() * 8;
+      for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < 9) continue;
+        const nx = -(bz - az) / L, nz = (bx - ax) / L, d = rd.w / 2 + 1, L1 = tl(ax + nx * d, az + nz * d) === T.BLD, R1 = tl(ax - nx * d, az - nz * d) === T.BLD;
+        if (L1 && R1 && r() < .75) { laundry(ax, az, 4.6 + r() * 1.6, rd.w + 2.2, Math.abs(nx) > Math.abs(nz), r); acc = 0; n++; }
+        else if ((L1 || R1) && r() < .12) { const sd = L1 ? 1 : -1, wx = ax + nx * sd * (rd.w / 2 + .25), wz = az + nz * sd * (rd.w / 2 + .25); shrine(wx, wz, 2.4, Math.atan2(-nx * sd, -nz * sd)); acc = 0; n++; }
+        else if ((L1 || R1) && r() < .1) { const sd = L1 ? 1 : -1, wx = ax + nx * sd * (rd.w / 2 - .3), wz = az + nz * sd * (rd.w / 2 - .3); if (ok(wx, wz, .3)) { bin(wx, wz, r() < .3 ? 'dumpster' : 'pole', Math.atan2(nx, nz)); if (r() < .3) cat(wx + .6, wz, r); } acc = 0; n++; } }
+    });
+    return n;
+  }
   function stall(x, z, rot, ca, cb, goods, r) {
     const g = G0(), wood = PM.wood(), iron = PM.iron();
     add(g, box(2.4, .1, 1.3, PM.woodL()), 0, .9, 0); add(g, box(2.4, .8, .1, wood), 0, .45, .6); add(g, box(2.3, .06, 1.2, wood), 0, .3, 0);
@@ -8177,8 +8270,9 @@ var Render = (function () {
     const fender = new THREE.Mesh(new THREE.SphereGeometry(.24, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), c); fender.scale.set(.75, .8, 1.25); fender.position.set(0, .4, .86); g.add(fender);
     const fork = box(.06, .4, .06, dark); fork.position.set(.08, .38, .86); g.add(fork);
     const col = cyl(.05, .05, .3, 6, c); col.position.set(0, 1.18, .7); g.add(col);
-    const bar = box(.74, .1, .12, c); bar.position.set(0, 1.3, .7); g.add(bar);
-    [-1, 1].forEach(s => { const gr = cyl(.035, .035, .12, 6, dark); gr.rotation.z = Math.PI / 2; gr.position.set(s * .42, 1.3, .7); g.add(gr); const mir = cyl(.05, .05, .02, 8, chrome); mir.rotation.x = Math.PI / 2; mir.position.set(s * .32, 1.5, .68); g.add(mir); const ms = box(.015, .2, .015, chrome); ms.position.set(s * .32, 1.4, .69); g.add(ms); });
+    // [mani] manubrio a misura vera (~70 cm, manopole a ±33 cm: prima era largo quasi un metro e le mani non ci arrivavano)
+    const bar = box(.56, .1, .12, c); bar.position.set(0, 1.3, .7); g.add(bar);
+    [-1, 1].forEach(s => { const gr = cyl(.032, .032, .12, 8, dark); gr.rotation.z = Math.PI / 2; gr.position.set(s * .33, 1.3, .7); g.add(gr); const mir = cyl(.05, .05, .02, 8, chrome); mir.rotation.x = Math.PI / 2; mir.position.set(s * .24, 1.5, .68); g.add(mir); const ms = box(.015, .2, .015, chrome); ms.position.set(s * .24, 1.4, .69); g.add(ms); });
     const lampH = cyl(.1, .1, .08, 10, new THREE.MeshBasicMaterial({ color: '#fff4c8', toneMapped: false })); lampH.rotation.x = Math.PI / 2; lampH.position.set(0, 1.26, .78); g.add(lampH); ud.front.push(lampH);
     const lampR = cyl(.12, .12, .05, 10, chrome); lampR.rotation.x = Math.PI / 2; lampR.position.set(0, 1.26, .75); g.add(lampR);
     const seat = new THREE.Mesh(extrudeSide(sideShape([[.0, .88], [-.05, .98], [-.7, .98], [-.8, .9]], [], .86), .36, .06), sm('#3a2418', { roughness: .8 })); g.add(seat);
@@ -8244,6 +8338,12 @@ var Render = (function () {
     const fp = G0(); fp.position.set(0, R, Gm.zF); const fw = bmxWheel(); fp.add(fw); g.add(fp); ud.wheels.push({ wh: fw, piv: fp, front: true, r: R });
     const rp = G0(); rp.position.set(0, R, Gm.zR); const rw = bmxWheel(); rp.add(rw); g.add(rp); ud.wheels.push({ wh: rw, piv: rp, front: false, r: R });
     ud.len = 1.5; return finishVehicle(g, ud);
+  }
+  // [anim] la rotazione di una persona verso l'angolo voluto, smorzata (k: quanto in fretta): ci si gira, non si scatta
+  function turnTo(g, want, dt, k) {
+    const u = g.userData; if (u.__ry === undefined || !(dt > 0)) return (u.__ry = want);
+    let d = want - u.__ry; d = Math.atan2(Math.sin(d), Math.cos(d));
+    u.__ry += d * (1 - Math.exp(-Math.min(dt, .1) * k)); return u.__ry;
   }
   function driverMesh(look, cap) {
     const g = G0();
@@ -8953,10 +9053,73 @@ var Render = (function () {
     place(g, x, z, rot); addLight(x + Math.sin(rot) * 2, groundH(x, z) + 1.2, z + Math.cos(rot) * 2, '#ffb060', 1.2, 6, .1).always = true;
   }
   function concrete(c) { return sm(c || '#8a8a88', { roughness: 1 }); }
+  // [città2] LA ROCCAFORTE DEL SEICENTO (solo con la città nuova: World.FORT): bastioni a punta di freccia sul fronte di terra.
+  // Muro a scarpa in pietra (più largo alla base), cordone di pietra chiara, parapetto sulle facce, terrapieno erboso in cima, la
+  // garitta sulla punta; sopra, le cose del regime che li ha riusati: il riflettore e la bandiera. Il Muro di cemento corre fra i bastioni.
+  function buildFortezza() {
+    const W0 = M.world, F = W0 && W0.FORT; if (!F || !F.bastions || !F.bastions.length) return 0;
+    const stoneM = std({ map: stoneTexture(), color: '#a89a84', roughness: .95 }), capM = sm('#b8ab8c', { roughness: .9 }), earthM = sm('#4e5238', { roughness: 1 }), darkM = sm('#3a3832', { roughness: .8 });
+    const lampM = new THREE.MeshBasicMaterial({ color: '#fff2c8', toneMapped: false }), flagM = sm('#9e1f1a', { roughness: .9, side: THREE.DoubleSide }), gravelM = sm('#5a5448', { roughness: 1 });
+    stoneM.side = THREE.DoubleSide; earthM.side = THREE.DoubleSide;
+    const X = F.x; let n = 0; const g = G0();
+    // un tratto di muro a scarpa da A a B: più largo alla base, il cordone, il parapetto e la copertina; il camminamento dietro
+    const wallSeg = (ax, az, bx, bz, H, th) => {
+      const L = Math.hypot(bx - ax, bz - az); if (L < .2) return; const ang = Math.atan2(bz - az, bx - ax), mx = (ax + bx) / 2, mz = (az + bz) / 2, y0 = Math.min(groundH(ax, az), groundH(bx, bz), groundH(mx, mz)) - .4;
+      const lo = box(L + .2, H * .55, th + .9, stoneM); lo.position.set(mx, y0 + H * .275, mz); lo.rotation.y = -ang; g.add(lo);   // la scarpa
+      const hi = box(L + .1, H * .5, th, stoneM); hi.position.set(mx, y0 + H * .75, mz); hi.rotation.y = -ang; g.add(hi);
+      const co = box(L + .3, .28, th + .5, capM); co.position.set(mx, y0 + H * .55, mz); co.rotation.y = -ang; g.add(co);   // il cordone
+      const pa = box(L, .9, .55, stoneM); pa.position.set(mx, y0 + H + .45, mz); pa.rotation.y = -ang; g.add(pa);
+      const cp = box(L, .1, .65, capM); cp.position.set(mx, y0 + H + .95, mz); cp.rotation.y = -ang; g.add(cp);
+      return y0 + H; };
+    // un bastione o un rivellino: prisma a scarpa, terrapieno in cima, parapetto sulle facce, la garitta sulla punta
+    const prism = (P, H, gar) => {
+      const h0 = Math.min(...P.map(([x, z]) => groundH(x, z))) - .4, cx = P.reduce((a2, q) => a2 + q[0], 0) / P.length, cz = P.reduce((a2, q) => a2 + q[1], 0) / P.length;
+      const off = (q, k) => { const dx = q[0] - cx, dz = q[1] - cz, L = Math.hypot(dx, dz) || 1; return [q[0] + dx / L * k, q[1] + dz / L * k]; };
+      const pos = [], uv = [];
+      for (let i = 0; i < P.length; i++) { const j = (i + 1) % P.length, A = off(P[i], 1.2), B2 = off(P[j], 1.2), L = Math.hypot(P[j][0] - P[i][0], P[j][1] - P[i][1]);
+        pos.push(A[0], h0, A[1], B2[0], h0, B2[1], P[j][0], h0 + H, P[j][1], A[0], h0, A[1], P[j][0], h0 + H, P[j][1], P[i][0], h0 + H, P[i][1]); uv.push(0, 0, L / 3, 0, L / 3, H / 3, 0, 0, L / 3, H / 3, 0, H / 3);
+        // parapetto sulle facce che guardano fuori (non sulla gola verso l'interno)
+        if (P[i][0] < X - .3 || P[j][0] < X - .3) { const ang = Math.atan2(P[j][1] - P[i][1], P[j][0] - P[i][0]), mx = (P[i][0] + P[j][0]) / 2, mz = (P[i][1] + P[j][1]) / 2, nx = Math.sin(ang), nz = -Math.cos(ang), sg = (mx - cx) * nx + (mz - cz) * nz > 0 ? 1 : -1;
+          const pa = box(L, .9, .6, stoneM); pa.position.set(mx - nx * sg * .4, h0 + H + .45, mz - nz * sg * .4); pa.rotation.y = -ang; g.add(pa);
+          const co = box(L + .3, .3, .45, capM); co.position.set(mx + nx * sg * .2, h0 + H - 1.2, mz + nz * sg * .2); co.rotation.y = -ang; g.add(co); } }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.computeVertexNormals();
+      const m1 = new THREE.Mesh(geo, stoneM); m1.castShadow = m1.receiveShadow = true; scene.add(m1);
+      const top = new THREE.ShapeGeometry(new THREE.Shape(P.map(([x, z]) => new THREE.Vector2(x, z)))); top.rotateX(Math.PI / 2); top.translate(0, h0 + H, 0); const m2 = new THREE.Mesh(top, earthM); m2.receiveShadow = true; scene.add(m2);
+      if (gar) { let sp = 0; P.forEach((q, k) => { if (q[0] < P[sp][0]) sp = k; }); const u = off(P[sp], -1.1), y = h0 + H;
+        const body = cyl(.75, .8, 2.1, 10, stoneM); body.position.set(u[0], y + 1.05, u[1]); g.add(body);
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(.85, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), capM); dome.position.set(u[0], y + 2.1, u[1]); g.add(dome);
+        const slit = box(.12, .5, .2, darkM); slit.position.set(u[0] - .78, y + 1.3, u[1]); g.add(slit); }
+      return { h0, H, cx, cz }; };
+    F.bastions.forEach(P => { const q = prism(P, 7.2, true); n++;
+      // le cose del regime sui bastioni: il riflettore verso la spianata e la bandiera
+      const pole = cyl(.08, .1, 4.2, 6, darkM); pole.position.set(q.cx + 2, q.h0 + q.H + 2.1, q.cz); g.add(pole);
+      const head = box(.6, .45, .55, darkM); head.position.set(q.cx + 1.8, q.h0 + q.H + 4.3, q.cz); g.add(head); const lens = box(.05, .36, .44, lampM); lens.position.set(q.cx + 1.48, q.h0 + q.H + 4.3, q.cz); g.add(lens);
+      addLight(q.cx - 4, q.h0 + q.H + 3, q.cz, '#fff2c8', 2.2, 20, 0);
+      const fp = cyl(.06, .07, 6, 6, darkM); fp.position.set(q.cx + 4, q.h0 + q.H + 3, q.cz); g.add(fp); const fl = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.1), flagM); fl.position.set(q.cx + 4.9, q.h0 + q.H + 5.4, q.cz); g.add(fl); });
+    F.ravelin.forEach(P => { prism(P, 5.2, false); n++; });
+    F.walls.forEach(L => { for (let k = 0; k < L.length - 1; k++) wallSeg(L[k][0], L[k][1], L[k + 1][0], L[k + 1][1], 6.2, 1.8); n++; });
+    // il fossato: fondo di ghiaia scura e la controscarpa bassa in pietra dalla parte della spianata (la strada lo passa sul ponte)
+    if (F.ditch) { const [x0, z0, x1, z1] = F.ditch, gy = F.y, w = x1 - x0;
+      [[z0, gy - 6], [gy + 6, z1]].forEach(([a, b]) => { if (b - a < 1) return; const fl2 = box(w, .06, b - a, gravelM); fl2.position.set((x0 + x1) / 2, groundH((x0 + x1) / 2, (a + b) / 2) + .04, (a + b) / 2); g.add(fl2);
+        const cs = box(.5, .9, b - a, stoneM); cs.position.set(x0, groundH(x0, (a + b) / 2) + .45, (a + b) / 2); g.add(cs); });
+      [-1, 1].forEach(sd => { const pr = box(w + 1, .7, .3, darkM); pr.position.set((x0 + x1) / 2, groundH((x0 + x1) / 2, gy) + .9, gy + sd * 5.5); g.add(pr); }); }   // le spallette del ponte
+    // le porte: il portale di pietra (due piloni, l'arco, il frontone con l'occhio del Garante) sulla porta di terra, più semplice quella a mare
+    (F.gates || []).forEach(G1 => { const y0 = groundH(G1.x, G1.y), big = G1.kind === 'terra', wdt = big ? 12 : 7, H = big ? 8.5 : 6.6, gg = G0();
+      [-1, 1].forEach(sd => { const p1 = box(2.4, H, 2.6, stoneM); p1.position.set(0, H / 2, sd * (wdt / 2 + .2)); gg.add(p1); const c1 = box(2.7, .3, 2.9, capM); c1.position.set(0, H + .15, sd * (wdt / 2 + .2)); gg.add(c1); });
+      const lint = box(2.4, 1.6, wdt + 2.8, stoneM); lint.position.set(0, H - .8, 0); gg.add(lint);
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(wdt / 2 - .3, .35, 6, 16, Math.PI), capM); arch.rotation.y = Math.PI / 2; arch.position.set(-1.25, H - 2.2 - (wdt / 2 - .3) + 1.6, 0); gg.add(arch);
+      if (big) { const ped = box(2.2, 2.2, 6, stoneM); ped.position.set(-.1, H + 1.1, 0); gg.add(ped); const plq = new THREE.Mesh(new THREE.PlaneGeometry(4, 1.8), new THREE.MeshLambertMaterial({ map: signTexture('ROCCA DELLA TUTELA', '#e8dcc0', '#7e1118', 2.2) }));
+        plq.rotation.y = -Math.PI / 2; plq.position.set(-1.25, H - .8, 0); gg.add(plq); const eye = new THREE.Mesh(new THREE.CircleGeometry(.7, 16), sm('#9e1f1a')); eye.rotation.y = -Math.PI / 2; eye.position.set(-1.22, H + 1.2, 0); gg.add(eye); }
+      gg.position.set(G1.x, y0 - .2, G1.y); gg.rotation.y = -(G1.ang || 0); g.add(gg); });
+    shadowed(g); scene.add(mergeGroup(g));
+    return n;
+  }
+
   function buildWinter() {
     const W0 = M.world; if (!W0 || !W0.WALL) return;
     const P = G.PLACES, r = rng(1953), T = G.T;
     const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
+    buildFortezza();   // [città2] i bastioni (solo con la città nuova)
     // ---- il Muro: lastre di cemento, filo spinato, scritte del regime e della Risacca, torri coi riflettori ----
     const WL = W0.WALL, slabM = [concrete('#7e7e7c'), concrete('#8a8a86'), concrete('#747472')], wire = sl('#2a2a2e');
     const posters = ['ORDINE', 'LAVORO', 'OBBEDIRE', 'LA TUTELA', 'IL GARANTE VEGLIA'];
@@ -9270,14 +9433,14 @@ var Render = (function () {
         const ring = cyl(R * 1.12, R * 1.12, .06, 18, st); ring.position.set(tx, top + 1.2 + H + .02, tz); g.add(ring);
         addLight(tx, top + 1.2 + H * .6, tz, col, 2.2, 14, .03);
       }
-      if (g.children.length) { const gm = shadowed(mergeGroup(g), false, false); ownMats(gm, rec); scene.add(gm); rec.facGrp = gm; nn++; }
+      if (g.children.length) { const gm = shadowed(mergeGroup(g), false, false); rotRec(rec, gm); ownMats(gm, rec); scene.add(gm); rec.facGrp = gm; nn++; }
       rec.facDone = true;
       // punti d'attacco dei cavi: gli spigoli del tetto
       anchors.push({ rec, cx: bb.min.x + w / 2 - .3, cz: bb.min.z + d / 2 - .3, hx: w / 2, hz: d / 2, y: top + .5 });
     });
     // cavi tesi da un tetto all'altro, con qualche lampada appesa
     const pts = []; const rc = rng(5151), lampM = ['#9fe8dc', '#d8f0e8', '#38e8ff'].map(c => animMat(new THREE.MeshBasicMaterial({ color: c }), 'tutto:pendolo:1.6')), lg = new THREE.Group(), banM = animMat(eyeMat('banner').clone(), 'giu:panno:2.2');   // [animazioni-mondo] lampade e striscioni appesi al cavo si muovono col vento
-    anchors.forEach((A, i) => { let links = 0; for (let j = i + 1; j < anchors.length && links < 2; j++) { const B = anchors[j], dx = B.cx - A.cx, dz = B.cz - A.cz, L = Math.hypot(dx, dz); if (L < 11 || L > 30 || rc() < .45) continue;
+    anchors.forEach((A, i) => { let links = 0; for (let j = i + 1; j < anchors.length && links < 1; j++) { const B = anchors[j], dx = B.cx - A.cx, dz = B.cz - A.cz, L = Math.hypot(dx, dz); if (L < 11 || L > 22 || rc() < .8) continue;   // [città2] pochi cavi e corti: nelle zone fitte tagliavano la visuale
       const edge = (P, sx, sz) => { const k = Math.min(P.hx / (Math.abs(sx) || 1e-6), P.hz / (Math.abs(sz) || 1e-6)); return [P.cx + sx * k, P.cz + sz * k]; }, ux = dx / L, uz = dz / L, p0 = edge(A, ux, uz), p1 = edge(B, -ux, -uz), y0 = A.y, y1 = B.y, Ln = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]); if (Ln < 4) continue;
       let prev = [p0[0], y0, p0[1]]; for (let k = 1; k <= 7; k++) { const t = k / 7, sag = Math.sin(t * Math.PI) * Ln * .04, cur = [p0[0] + (p1[0] - p0[0]) * t, y0 + (y1 - y0) * t - sag, p0[1] + (p1[1] - p0[1]) * t]; pts.push(prev[0], prev[1], prev[2], cur[0], cur[1], cur[2]); prev = cur; }
       links++; if (rc() < .3) { const mx = (p0[0] + p1[0]) / 2, mz = (p0[1] + p1[1]) / 2, my = (y0 + y1) / 2 - Ln * .04 - .3, m = new THREE.Mesh(new THREE.SphereGeometry(.16, 6, 5), lampM[Math.floor(rc() * 3)]); m.position.set(mx, my, mz); lg.add(m); if (rc() < .18) { const bn = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.3, 1, 4), banM);   /* [ordine1] meno striscioni appesi a mezz'aria */ /* [animazioni-mondo] */ bn.position.set(mx, my - 1.3, mz); bn.rotation.y = Math.atan2(ux, uz); lg.add(bn); } if (rc() < .6) addLight(mx, my, mz, '#8fd8d0', 1.4, 9, .05); } } });
@@ -9532,7 +9695,7 @@ var Render = (function () {
         else if (use === 'casa' || use === 'cascina' || !use) { ad(a, cyl(.22, .18, .35, 8, sm('#7a4a34', { roughness: 1 })), -1.2, .18, .5); ad(a, new THREE.Mesh(new THREE.SphereGeometry(.2, 6, 5), sm('#3a5a34', { roughness: 1 })), -1.2, .5, .5); if (r() < .5) { ad(a, box(.05, .9, 1.7, metal), 1.5, .45, 1.1).rotation.y = Math.PI / 2; ad(a, cyl(.3, .3, .06, 10, dark), 1.5, .35, 1.1).rotation.z = Math.PI / 2; } }
         else if (use === 'chiesa') { [-1.5, 1.5].forEach(x => { ad(a, cyl(.14, .14, 1.4, 6, white), x, .7, .9); ad(a, new THREE.Mesh(new THREE.SphereGeometry(.12, 6, 5), glowM('#ffb35c')), x, 1.5, .9); }); }
       }
-      if (g.children.length) { const gm = shadowed(mergeGroup(g), false, false); ownMats(gm, rec); scene.add(gm); rec.detGrp = gm; np++; }
+      if (g.children.length) { const gm = shadowed(mergeGroup(g), false, false); rotRec(rec, gm); ownMats(gm, rec); scene.add(gm); rec.detGrp = gm; np++; }
     });
     // --- arredo di strada: colonnine, cabine, cassette, Ape parcheggiate ---
     const rs = rng(7007), kit = new THREE.Group(), apeCol = ['#c8b43a', '#3a6a8a', '#a04a3a', '#e8e4dc', '#4a7a52'], used = new Set(); let apes = 0, cols = 0;
@@ -9746,7 +9909,7 @@ var Render = (function () {
       else if (prog === 'colombaia' || prog === 'orto' || prog === 'ritrovo' || prog === 'cantiere') storiaTetto1(prog, P, g, top, r, bi);
       vitaTetto1(P, g, top, r, bi, low, prog);   // [ordine1] la vita di ogni tetto: acqua ferma, toppe, sfiati, la canalina, i piccioni, la roba dimenticata
       if (!g.children.length) return;
-      const gm = shadowed(mergeGroup(g)); ownMats(gm, rec); scene.add(gm); rec.roofDone = true; rec.roofGrp = gm; n++;
+      const gm = shadowed(mergeGroup(g)); rotRec(rec, gm); ownMats(gm, rec); scene.add(gm); rec.roofDone = true; rec.roofGrp = gm; n++;
     });
     return n;
   }
@@ -10386,7 +10549,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (!g.children.length) { rec.caseDone = true; return; }
       const gm = mergeGroup(g);
       gm.traverse(o => { if (!o.isMesh) return; const dec = o.material === CT.decM || o.material === CT.dampM; o.castShadow = !dec; o.receiveShadow = true; if (dec) o.renderOrder = 1; });
-      ownMats(gm, rec); scene.add(gm); rec.caseGrp = gm; rec.caseDone = true; n++;
+      rotRec(rec, gm); ownMats(gm, rec); scene.add(gm); rec.caseGrp = gm; rec.caseDone = true; n++;
     });
     return n;
   }
@@ -10714,8 +10877,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
           const sc = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), mt); ad(a, sc, 0, Math.max(base + 3, top - sh / 2 - 1.2), .1); ad(a, box(sw + .15, sh + .15, .08, iron), 0, sc.position.y, .04);
           const gl = glow(a.position.x + Math.sin(sd.yaw) * .4, sc.position.y, a.position.z + Math.cos(sd.yaw) * .4, reg ? '#7ff0e0' : pick(r, CCOL), 5.5); gl.material.opacity = .35; dyn.signs.push({ m: mt, gl, flick: r() < .3 }); }
       }
-      if (g.children.length) { const gm = shadowed(mergeGroup(g), true, true); ownMats(gm, rec); scene.add(gm); rec.cityGrp = gm; n++; }
-      if (gs.children.length) scene.add(gs);
+      if (g.children.length) { const gm = shadowed(mergeGroup(g), true, true); rotRec(rec, gm); ownMats(gm, rec); scene.add(gm); rec.cityGrp = gm; n++; }
+      if (gs.children.length) scene.add(rotRec(rec, gs));
       rec.cityDone = true;
     });
     return n;
@@ -12267,7 +12430,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
-      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = Math.PI / 2 - n.face;
+      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = turnTo(g, Math.PI / 2 - n.face, dt, 10);   // [anim] si gira, non scatta
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
       if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
       { const dd = Math.abs(n.x - cam.x) + Math.abs(n.y - cam.y), every = dd > 45 ? 3 : dd > 28 ? 2 : 1;   /* [fluido] lontano dalla camera l'animazione si aggiorna a fotogrammi alterni, col tempo recuperato */
@@ -12291,7 +12454,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx');   // [bmx] in sella come sulla Vespa
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
     pg.visible = !pveh || onVespa;
-    pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = Math.PI / 2 - p.face;   // [salto] p.jz: l'altezza del salto
+    pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = pveh ? (pg.userData.__ry = Math.PI / 2 - p.face) : turnTo(pg, Math.PI / 2 - p.face, dt, 22);   // [anim] a piedi si gira in fretta ma senza scatti   // [salto] p.jz: l'altezza del salto
     { const T = bmxTilt(pveh); pg.rotation.order = 'YXZ'; pg.rotation.x = -T.a; if (T.a) { const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang); pg.position.x += ca * T.dzP; pg.position.y += T.dyP; pg.position.z += sa * T.dzP; } }   // [bmx] impennata: il ciclista ruota con la bici
     const recoil = st.kick ? Math.max(0, 1 - (st.clock - st.kick.t) * 10) * st.kick.amt * 3 : 0;
     if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim

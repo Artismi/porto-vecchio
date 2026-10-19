@@ -1359,7 +1359,7 @@ var Game = (function () {
     }
     if (a === 'affronta') {
       if (dist(n.x, n.y, p.x, p.y) > 1.6) { if (!n.path.length || dist(n.goal.x, n.goal.y, p.x, p.y) > 2) goTo(n, p.x, p.y); stepAlong(n, 2.2, dt); }
-      else { n.face = Math.atan2(p.y - n.y, p.x - n.x); n.speedNow = 0; if (n.framedAngry && n.tr.cor > .7 && st.clock > (n.shoveAt || 0) && !p.vehicle) { n.shoveAt = st.clock + 6; p.stun = .8; damagePlayer(st, 8, n.face, n.id); say(st, n, 'Questa è per le voci che metti in giro!'); } }
+      else { n.face = Math.atan2(p.y - n.y, p.x - n.x); n.speedNow = 0; if (n.framedAngry && n.tr.cor > .7 && st.clock > (n.shoveAt || 0) && !p.vehicle) { n.shoveAt = st.clock + 6; p.kbx = Math.cos(n.face) * 5.5; p.kby = Math.sin(n.face) * 5.5; damagePlayer(st, 8, n.face, n.id); /* [anim] lo spintone ti manda indietro di un metro e barcolli; prima p.stun = .8 = a terra come morto */ say(st, n, 'Questa è per le voci che metti in giro!'); } }
       return;
     }
     if (a === 'insegue') {
@@ -2194,9 +2194,11 @@ var Game = (function () {
     const roadAt = x => { let k = 0, bd = 1e9; RP.forEach((q, i) => { const d = Math.abs(q[0] - x); if (d < bd) { bd = d; k = i; } }); const a = RP[Math.max(0, k - 2)], b = RP[Math.min(RP.length - 1, k + 2)]; let tx = b[0] - a[0], ty = b[1] - a[1]; const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l; let nx = -ty, ny = tx; if (ny < 0) { nx = -nx; ny = -ny; } return { x: RP[k][0], y: RP[k][1], nx, ny }; };
     const coastY = (x, y0) => { for (let y = y0; y > y0 - 60; y -= 1) if (tile0(x, y) === T.WATER) return y; return y0 - 14; };
     const cp = [[542, 279], [556, 279]];
-    for (let x = 572; x <= 1070; x += 14) { const r = roadAt(x); cp.push([r.x + r.nx * 15, r.y + r.ny * 15]); }   // nel bosco, a monte della strada
-    for (let x = 1112; x <= 1500; x += 14) { const r = roadAt(x); cp.push([x, coastY(x, r.y) - 10]); }   // sul mare, davanti alla città
-    cp.push([1514, 250], [1524, 262], [1527, 280], [1530, 296], [1538, 306], [1552, 310], [1568, 310], [1578, 310]);   // oltre il Muro, giù lungo il pontile, sulla banchina
+    for (let x = 572; x <= 1070; x += 14) { const r = roadAt(x); if (r) cp.push([r.x + r.nx * 15, r.y + r.ny * 15]); }   // nel bosco, a monte della strada
+    // [città2] con la città nuova la ferrovia corre a terra sulla costa nord, sul rilevato fra le baracche e la città (MAP.railCity)
+    if (MAP.world.railCity) { const RC = MAP.world.railCity; while (cp.length > 2 && cp[cp.length - 1][0] > RC[0][0] - 8) cp.pop(); RC.forEach((q, k) => { if (k % 2 === 0 || k === RC.length - 1) cp.push(q.slice()); }); }
+    else for (let x = 1112; x <= 1500; x += 14) { const r = roadAt(x); cp.push([x, coastY(x, r.y) - 10]); }   // sul mare, davanti alla città
+    if (!MAP.world.railCity) cp.push([1514, 250], [1524, 262], [1527, 280], [1530, 296], [1538, 306], [1552, 310], [1568, 310], [1578, 310]);   // [città2] con la città nuova finisce sul tronchino contro il Muro   // oltre il Muro, giù lungo il pontile, sulla banchina
     // arrotondata (Chaikin) e campionata ogni metro
     let P = cp; for (let it = 0; it < 4; it++) { const Q = [P[0]]; for (let k = 0; k < P.length - 1; k++) { const a = P[k], b = P[k + 1]; Q.push([.75 * a[0] + .25 * b[0], .75 * a[1] + .25 * b[1]], [.25 * a[0] + .75 * b[0], .25 * a[1] + .75 * b[1]]); } Q.push(P[P.length - 1]); P = Q; }
     const pts = [[P[0][0], P[0][1]]]; let acc = 0;

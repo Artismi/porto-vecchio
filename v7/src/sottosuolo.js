@@ -40,7 +40,7 @@ var Sottosuolo = (function () {
     // ---------------- LE FOGNE: sotto le strade grandi della città ----------------
     const sewer = [];
     (W.roads || []).forEach(rd => {
-      if (!rd.pts || rd.pts.length < 2 || !/^(citta|strada|litoranea)$/.test(rd.kind || '') || (rd.w || 0) < 6) return;
+      if (!rd.pts || rd.pts.length < 2 || (!rd.fogna && (!/^(citta|strada|litoranea)$/.test(rd.kind || '') || (rd.w || 0) < 6))) return;   // [città2] rd.fogna: la chiavica sotto la Rua e la marina del borgo
       let last = null, run = 0, tomb = -24;
       for (let k = 0; k < rd.pts.length - 1; k++) {
         const [ax, ay] = rd.pts[k], [bx, by] = rd.pts[k + 1], d = Math.hypot(bx - ax, by - ay);
