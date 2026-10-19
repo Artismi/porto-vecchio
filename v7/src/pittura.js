@@ -536,7 +536,7 @@ var Pittura = (function () {
     if (r === 0) {   // il busto dei capi strutturati: dal petto in giù la stoffa scende dritta (la giacca non fa la clessidra)
       const kt = C.cadutaT || CADUTA_T[C.id] || 0; if (!kt) return 0;
       const tb = frame(B).tubes[0], R = ironed(tb), yC = B.bones.Chest.y, key = 'cadT'; let T = B[key];
-      if (!T) { T = B[key] = new Float32Array(64); for (let q = 0; q < 64; q++) { const a = q / 64 * Math.PI * 2 - Math.PI; let m = 0; for (let y0 = yC - .02; y0 <= yC + .06; y0 += .02) m = Math.max(m, ironRadius(R, tb, tb.sAtY(y0), a)); T[q] = m; } }
+      if (!T) { T = B[key] = new Float32Array(64); const yH = B.bones.Hips.y - .04; for (let q = 0; q < 64; q++) { const a = q / 64 * Math.PI * 2 - Math.PI; let m = 0; for (let y0 = yH; y0 <= yC + .06; y0 += .02) m = Math.max(m, ironRadius(R, tb, tb.sAtY(y0), a)); T[q] = m; } }   // il raggio pieno dal petto ai fianchi: la giacca è una colonna unica con la falda
       const y = L.p[1]; if (y > yC + .04) return 0;
       const qi = ((Math.round((L.a + Math.PI) / (Math.PI * 2) * 64) % 64) + 64) % 64, rb = ironRadius(R, tb, L.s, L.a), want = T[qi] * kt;
       return Math.max(0, want - rb) * sm(cl((yC + .04 - y) / .06, 0, 1)); }
@@ -785,12 +785,14 @@ var Pittura = (function () {
     const pk = L => Math.round(L.p[0] * 2e4) + ',' + Math.round(L.p[1] * 2e4) + ',' + Math.round(L.p[2] * 2e4), J = new Map(), memo = new Map();
     srcs.forEach((src, si) => { const pg = paintGeo(B, src, si); if (!pg) return;
       for (let w0 = 0; w0 < pg.VI.length; w0++) { const L = pg.VI[w0]; if (!L) continue; let off = memo.get(L); if (off === undefined) { const SO = stackOff(B, plans, pg.VR[w0], L, nY), C = SO.C; off = SO.off; if (C && C.smanicato && (pg.VR[w0] === 1 || pg.VR[w0] === 2)) off = 0; if (off && pg.VR[w0] === 0) off *= armFade(L.p); memo.set(L, off); }
-        const k = pk(L); let j = J.get(k); if (!j) J.set(k, j = { o: 0, d: new THREE.Vector3(), seen: new Set() }); if (pg.VR[w0] >= 3) j.leg = 1; j.o = Math.max(j.o, off); if (!j.seen.has(L)) { j.seen.add(L); j.d.x += L.d[0]; j.d.y += L.d[1]; j.d.z += L.d[2]; } } });
+        const k = pk(L); let j = J.get(k); if (!j) J.set(k, j = { o: 0, d: new THREE.Vector3(), seen: new Set() }); if (pg.VR[w0] >= 3 || ((pg.VR[w0] === 1 || pg.VR[w0] === 2) && L.s > .2)) j.leg = 1; if (pg.VR[w0] === 0 && L.p[1] < B.waist + .12) j.jk = 1; j.o = Math.max(j.o, off); if (!j.seen.has(L)) { j.seen.add(L); j.d.x += L.d[0]; j.d.y += L.d[1]; j.d.z += L.d[2]; } } });
     J.forEach(j => j.d.normalize());
     // dove un capo spesso finisce su uno sottile (giro manica dello smanicato, orlo del piumino) lo scalino diventa uno smusso: niente pareti a punta
     { const NB = new Map(), link = (a, b) => { if (a === b) return; let x = NB.get(a); if (!x) NB.set(a, x = new Set()); x.add(b); };
       srcs.forEach((src, si) => { const pg = paintGeo(B, src, si); if (!pg) return; for (let w0 = 0; w0 + 2 < pg.VI.length; w0 += 3) { const L0 = pg.VI[w0], L1 = pg.VI[w0 + 1], L2 = pg.VI[w0 + 2]; if (!L0 || !L1 || !L2) continue; const k0 = J.get(pk(L0)), k1 = J.get(pk(L1)), k2 = J.get(pk(L2)); link(k0, k1); link(k1, k0); link(k1, k2); link(k2, k1); link(k0, k2); link(k2, k0); } });
-      for (let it = 0; it < 3; it++) { const nv = new Map(); NB.forEach((nb, j) => { if (j.leg) return; let mx = 0, sum = 0; nb.forEach(q => { mx = Math.max(mx, Math.abs(q.o - j.o)); sum += q.o; }); if (mx > .006) nv.set(j, lerp(j.o, sum / nb.size, .5)); }); nv.forEach((v, j) => { j.o = v; }); } }   // [stile] le gambe no: l'orlo largo resta largo
+      const hasJkF = plans.some(C => C.falda3d);
+      // [stile] gambe e orlo della giacca con la falda: il gradino è voluto, niente smusso (le due parti restano a filo)
+      for (let it = 0; it < 3; it++) { const nv = new Map(); NB.forEach((nb, j) => { if (j.leg || (hasJkF && j.jk)) return; let mx = 0, sum = 0; nb.forEach(q => { mx = Math.max(mx, Math.abs(q.o - j.o)); sum += q.o; }); if (mx > .006) nv.set(j, lerp(j.o, sum / nb.size, .5)); }); nv.forEach((v, j) => { j.o = v; }); } }   // [stile] le gambe e gli avambracci no: l'orlo largo resta largo, la manica finisce netta sull'orlo in rilievo
     srcs.forEach((src, si) => {
       const pg = paintGeo(B, src, si); if (!pg) return;
       if (!src.userData.pitOrig) src.userData.pitOrig = { geo: src.userData.geo0 || src.geometry, mat: src.material };
@@ -979,10 +981,19 @@ var Pittura = (function () {
     const shows = (C, r, s) => [0, Math.PI / 2, Math.PI, -Math.PI / 2].some(a => topOf(B, P, r, s, a) === C);   // a quell'altezza il capo è quello di sopra (almeno da un lato)
     for (const sd of ['L', 'R']) {
       const RA = 'A' + sd, ri = sd === 'L' ? 1 : 2;
-      P.forEach(CA => { if (!CA.L[RA] || (CA.polsi && CA.L[RA].s1 > CA.L[RA].la)) return; const Ls = CA.L[RA], sH = Ls.s1 - .008; if (!shows(CA, ri, sH - .01)) return;
-        const lng = Ls.s1 > Ls.la, tbA = F.tubes[ri], wA = B.bones['Wrist' + sd], sW = wA ? tbA.sNear(wA) : sH, off = ringOff(B, P, ri, sH - .006), o = new THREE.Group();
-        // il polsino delle maniche lunghe: alto (5-6 cm), dalla fine della manica dipinta fino al polso, chiude l'attacco della mano
-        o.add(lng ? orlo(B, ri, sW - .014, CA.cl >= 4 ? .042 : .06, off + .002, .004 + spessore(CA) * .35, 14, mat(CA)) : orlo(B, ri, sH, .014, off + .0025, .0035 + spessore(CA) * .35, 12, mat(CA)));   /* [stile] fascia sottile a filo della manica, non un rotolo */ AT(Ls.s1 < Ls.la - .02 ? 'UpperArm' + sd : 'LowerArm' + sd, o); });
+      // [sartoria] i polsini per ruolo: la manica di sopra finisce con un orlo sottile a filo; quella di sotto esce di un dito
+      // con il suo polsino aderente (raggio dei soli strati suoi, mai più largo della manica che la copre); la manica sola ha il suo polsino
+      const longOn = C => C.L[RA] && C.L[RA].s1 > C.L[RA].la;
+      P.forEach((CA, k) => { if (!CA.L[RA]) return; const Ls = CA.L[RA], sH = Ls.s1 - .008, own = P.slice(0, k + 1);
+        const lng = Ls.s1 > Ls.la, tbA = F.tubes[ri], wA = B.bones['Wrist' + sd], sW = wA ? tbA.sNear(wA) : sH, o = new THREE.Group(), th = .003 + spessore(CA) * .25;
+        const over = P.filter((C, j) => j > k && C.L[RA] && C.L[RA].s1 > Ls.s0 + .02), under = P.filter((C, j) => j < k && longOn(C) && C.L[RA].s1 > Ls.s1 + .006);
+        if (over.some(C => C.L[RA].s1 >= Ls.s1 - .004)) return;   // coperta fino in fondo: non si vede
+        if (lng && over.length && over.some(longOn)) { const sO = Math.max(...over.filter(longOn).map(C => C.L[RA].s1)), h = Math.max(.012, Ls.s1 - sO + .008), sc = Ls.s1 - h / 2;
+          o.add(orlo(B, ri, sc, h, ringOff(B, own, ri, sc) + .0012, .0028, 14, mat(CA))); }
+        else if (lng && under.length) return;   // [sartoria] la manica sopra un'altra finisce netta: il gradino della stoffa sul polsino è già l'orlo
+        else { if (!shows(CA, ri, sH - .01)) return; const off = ringOff(B, own, ri, sH - .006);
+          o.add(lng ? orlo(B, ri, sW - .014, CA.cl >= 4 ? .042 : .05, off + .002, th + .001, 14, mat(CA)) : orlo(B, ri, sH, .014, off + .0025, .0035 + spessore(CA) * .35, 12, mat(CA))); }
+        AT(Ls.s1 < Ls.la - .02 ? 'UpperArm' + sd : 'LowerArm' + sd, o); });
       const RL = 'L' + sd, rl = sd === 'L' ? 3 : 4;
       P.forEach(CL => { if (!CL.L[RL] || CL.L[RL].falda !== undefined || CL.risvolto) return; const Ls = CL.L[RL]; if (Ls.s1 >= F.tubes[rl].L + .01) return;
         const last = !P.slice(P.indexOf(CL) + 1).some(o => o.L[RL] && o.L[RL].falda === undefined && o.L[RL].s1 > Ls.s1 - .02 && (o.cl || 0) >= (CL.cl || 0));   // l'orlo in fondo alla gamba: solo se nessuno ci scende sopra

@@ -881,15 +881,21 @@ var Sartoria = (function () {
       { const s5 = r.slice(); for (let q = 0; q < RG; q++) { let a = 0; for (let k = -3; k <= 3; k++) a += s5[(q + k + RG) % RG]; r[q] = Math.max(s5[q] - (y > B.waist ? .0005 : .002), a / 7); } }
       if (y > yC) for (let q = 0; q < RG; q++) carry[q] = r[q] - OQ[q];
       R.push(r); }
-    // lungo l'altezza: linee dritte (niente onde)
-    for (let it = 0; it < 4; it++) for (let i = 1; i < rows - 1; i++) for (let q = 0; q < RG; q++) R[i][q] = Math.max(R[i][q], (R[i - 1][q] + R[i + 1][q]) / 2);
+    // [stile] un pezzo unico: in cima la falda è la giacca dipinta (stesso raggio, nessun ripiano); scende morbida sui fianchi
+    // fino al punto più sporgente di fianchi e glutei, poi cade a piombo. Le cosce spingono solo sotto l'inforcatura, sfumate
+    { const yH = Math.max(yC, B.bones.Hips.y - .03), col = new Float32Array(RG), R0 = R[0].slice();
+      for (let q = 0; q < RG; q++) { let m = 0; for (let i = 0; i < rows; i++) if (frameAt(tb, sOf(i)).p.y >= yC) m = Math.max(m, R[i][q]); col[q] = m; }
+      for (let it = 0; it < 2; it++) { const c0 = col.slice(); for (let q = 0; q < RG; q++) col[q] = Math.max(c0[q], (c0[(q + 1) % RG] + c0[(q + RG - 1) % RG]) / 2 * .999); }
+      for (let i = 0; i < rows; i++) { const y = frameAt(tb, sOf(i)).p.y, k = cl((yTop - y) / Math.max(.02, yTop - yH), 0, 1), e = k * k * (3 - 2 * k);
+        for (let q = 0; q < RG; q++) { const base = lerp(R0[q], col[q], e); R[i][q] = y >= yC ? Math.max(base, Math.min(R[i][q], base + .004)) : Math.max(col[q], Math.min(R[i][q], col[q] + .006)); } }
+      for (let i = 1; i < rows; i++) for (let q = 0; q < RG; q++) R[i][q] = Math.max(R[i][q], R[i - 1][q] - .0004);
+      for (let it = 0; it < 3; it++) for (let i = 1; i < rows - 1; i++) for (let q = 0; q < RG; q++) R[i][q] = Math.max(R[i][q], (R[i - 1][q] + R[i][q] * 2 + R[i + 1][q]) / 4); }
     const rad = (i, a) => { const f = ((a / (Math.PI * 2)) * RG % RG + RG) % RG, q0 = Math.floor(f), q1 = (q0 + 1) % RG, u = f - q0, i0 = Math.min(rows - 1, Math.floor(i)), i1 = Math.min(rows - 1, i0 + 1), v = i - i0; return lerp(lerp(R[i0][q0], R[i0][q1], u), lerp(R[i1][q0], R[i1][q1], u), v); };
     const gap = i => .025 + .13 * Math.pow(cl((tOf(i) - .7) / .3, 0, 1), 2), cols = 44;   // [stile] come gapF in pittura   // chiusa fino all'ultimo bottone, poi i quarti davanti si arrotondano verso l'orlo
     const angOf = (i, j) => { const g = gap(i); return g + j / cols * (Math.PI * 2 - 2 * g); };
     const pt = (i, a, dO) => { const s = sOf(i), fr = frameAt(tb, s), t = tOf(i), fe = Math.min(a, Math.PI * 2 - a);
-      let r = rad(i, a) + dO + .0012 * t;   // cade dritta, niente campana
-      if (fe < .25) r += (.25 - fe) * .004 * t;   // i lembi davanti appena staccati
-      r += .0015 + .004 * cl(t / .3, 0, 1);   // appena fuori dalla giacca dipinta (che sotto si toglie): attacco netto, niente sfarfallio
+      let r = rad(i, a) + dO;   // a piombo
+      r += .0018;   // appena fuori dalla giacca dipinta (che sotto si toglie): attacco a filo, nessun gradino
       const d = fr.f.clone().multiplyScalar(Math.cos(a)).addScaledVector(fr.sd, Math.sin(a)), ta = fr.f.clone().multiplyScalar(-Math.sin(a)).addScaledVector(fr.sd, Math.cos(a));
       return { p: fr.p.clone().addScaledVector(d, r), d, ta, fr, s }; };
     const ringC = rad(0, 0) * Math.PI * 2;
