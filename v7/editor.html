@@ -51233,7 +51233,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.62 /* [colore1] più colore (era 1.25) */, ink: 0, rim: .72, cav: .6 /* [colore1] era .85 */, clar: .18 /* [colore1] era .32: il contrasto locale faceva grana */, luc: 1.15, spec: 1.15, coat: 1.05, trans: 1.1, /* [colore1] miniature di plastica: più lacca, punto di luce, traslucenza (erano 1, .9, .8, 1) */ ol: .85, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: .7 /* [plastica1] era 1: l'alone attorno alle luci */, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: 0 /* [plastica1] la maschera di nitidezza faceva alone (era .32) */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.62 /* [colore1] più colore (era 1.25) */, ink: 0, rim: .35 /* [plastica1] */, cav: .25 /* [plastica1] */, clar: 0 /* [plastica1] il contrasto locale (colore meno sfocato) è un alone attorno a ogni sagoma */, luc: 1.15, spec: 1.15, coat: 1.05, trans: 1.1, /* [colore1] miniature di plastica: più lacca, punto di luce, traslucenza (erano 1, .9, .8, 1) */ ol: 0 /* [plastica1] niente contorno scuro: miniature di plastica, non fumetto (era .85) */, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -51400,7 +51400,7 @@ var Render = (function () {
             float ink = max(max(max(max(max(thin, sil), thick), crease * .55), form) * (1. - thinObj * .6) * (1. - vegK * .88), max(shapeI * .85, brick)) * (1.-coc) * (1. - busyK) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55) * (1. - smoothstep(uFogNF.x, uFogNF.y, d) * .95);   /* [nebbia_zoom1] */
             vec3 inkC = vec3(.19, .085, .2) + c * .06;   // inchiostro prugna: viola scuro e caldo, lega col colore (riferimento isometrico di Andrea)
             c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); }
-          { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)); } c *= 1. - ao/8.*.42*(1.-coc*.7); }
+          { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)); } c *= 1. - ao/8.*.22*(1.-coc*.7);   /* [plastica1] era .42: l'ombra di contatto larga faceva alone scuro */ }
           {   // [amb3] inchiostro e profili: il volume si stacca dal fondo
             float la = dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, vec3(.3,.59,.11)), lb = dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, vec3(.3,.59,.11));
             float lc2 = dot(texture2D(tC, uv + vec2(0., px.y)).rgb, vec3(.3,.59,.11)), ld = dot(texture2D(tC, uv - vec2(0., px.y)).rgb, vec3(.3,.59,.11)), l0 = dot(c, vec3(.3,.59,.11));
@@ -51459,7 +51459,7 @@ var Render = (function () {
                 float hi9 = max(max(la9, lb9), max(lc9, ld9)), lo9 = min(min(la9, lb9), min(lc9, ld9));
                 float dk9 = clamp((hi9 - l09) / max(hi9, .04) * 2.4 - .3, 0., 1.), lt9 = clamp((l09 - lo9) / max(l09, .04) * 2.2 - .3, 0., 1.);   /* [colore1] solo i bordi netti: la grana delle texture non diventa puntinato */
                 float dK9 = (1. - smoothstep(dc * 1.25, dc * 2.6, d)) * (1. - gr9 * .75) * (1. - coc) * lK.x * (1. - ol9);
-                c *= 1. - dk9 * .26 * dK9; c *= 1. + lt9 * .1 * dK9;   /* [colore1] era .5 */
+                c *= 1. - dk9 * .1 * dK9; c *= 1. + lt9 * .05 * dK9;   /* [plastica1] quasi niente: era il puntinato */   /* [colore1] era .5 */
                 // il volume delle facciate: ogni faccia un poco più chiara o più scura secondo quanto guarda il sole
                 c *= mix(1., .84 + .28 * clamp(ndl * .5 + .5, 0., 1.), .6 * ok9 * day9 * lK.x); }
               float line9 = max(ol9, cr9) * (1. - gr9 * .7) * farK9 * lOl * (1. - coc) * (1. - smoothstep(uFogNF.x, uFogNF.y, d) * .95);   /* [nebbia_zoom1] */
@@ -64493,7 +64493,8 @@ var MenuUI = (function () {
 })();
 </script>
 <script data-m="comandi">// Porto Vecchio — Le icone a schermo (10-11 ottobre) [mobile]
-// Tre icone in basso, uguali su computer e telefono, ognuna gira fra i suoi stati a ogni tocco:
+// [colore1] Sul COMPUTER cinque pulsanti, ognuno col suo tasto scritto sotto: 6 bomboletta, 7 tavoletta, 8 BMX, 9 skate, I zaino
+// (1-5 restano le armi; P e X fanno ancora bici e tavola). Sul TELEFONO tre icone che girano fra i loro stati a ogni tocco:
 // - Graffiti: mani libere → bomboletta → tavoletta → mani libere (col pennarello se non hai bombolette).
 // - Ruote: a piedi → BMX → skate → a piedi (lo skate solo se hai la tavola).
 // - Zaino: il menu; il numero sono le cose da fare qui. La mappa: tocca la minimappa.
@@ -64590,11 +64591,23 @@ const Comandi = (() => {
   }
 
   // ---------------- la fila ----------------
+  // [id, nome, tasto, azione, dove]: 'tch' solo sul telefono, 'pc' solo col mouse, '' sempre
   const ITEMS = [
-    ['graffiti', 'Bomboletta · tavoletta', '', graffiti],
-    ['ruote', 'BMX · skate', '', ruote],
-    ['zaino', 'Zaino', 'I', zaino],
+    ['graffiti', 'Bomboletta · tavoletta', '', graffiti, 'tch'],
+    ['bomboletta', 'Bomboletta', '6', bomboletta, 'pc'],
+    ['tavoletta', 'Tavoletta (bomboletta o pennarello)', '7', tavoletta, 'pc'],
+    ['ruote', 'BMX · skate', '', ruote, 'tch'],
+    ['bmx', 'BMX', '8', bmx, 'pc'],
+    ['skate', 'Skate', '9', skate, 'pc'],
+    ['zaino', 'Zaino', 'I', zaino, ''],
   ];
+  const KEYS = { '6': bomboletta, '7': tavoletta, '8': bmx, '9': skate };
+  addEventListener('keydown', e => {
+    const k = e.key, pv = PV(); if (!KEYS[k] || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !pv || !ST()) return;
+    const ui = pv.ui, tag = (e.target && e.target.tagName) || ''; if (/INPUT|TEXTAREA|SELECT/.test(tag) || e.target.isContentEditable) return;
+    if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || (typeof Cantiere !== 'undefined' && Cantiere.active())) return;
+    e.preventDefault(); e.stopImmediatePropagation(); try { KEYS[k](); } catch (x) { console.warn('[comandi]', x); } upd(true);
+  }, true);
   function mount() {
     if ($('dock') || !$('app')) return !!$('dock');
     const css = document.createElement('style'); css.textContent = `
@@ -64608,6 +64621,8 @@ const Comandi = (() => {
 #dock button canvas { width: 30px; height: 30px; image-rendering: pixelated; pointer-events: none; }
 #dock button.on { box-shadow: 0 0 0 2px rgba(13,16,21,.8), 0 0 0 4px #ffd23a, 0 4px 12px rgba(0,0,0,.45); }
 #dock button.off canvas { opacity: .35; }
+#dock button.tch { display: none; }
+@media (pointer: coarse) { #dock button.pc { display: none; } #dock button.tch { display: grid; } }
 #dock button kbd { position: absolute; left: 50%; bottom: -3px; transform: translateX(-50%); font: 600 9px 'Saira Condensed', sans-serif; color: #E9DCBC; background: rgba(13,16,21,.85); padding: 0 4px; border-radius: 3px; pointer-events: none; }
 #dock .dot { position: absolute; right: -4px; top: -4px; min-width: 18px; height: 18px; border-radius: 9px; background: #FF5FA2; color: #0D1015; font: 700 11px/18px 'Saira Condensed', sans-serif; text-align: center; pointer-events: none; }
 #dkHand { width: 64px !important; height: 64px !important; margin-right: 6px; box-shadow: 0 0 0 2px rgba(13,16,21,.8), 0 0 0 4px #B08D57, 0 4px 12px rgba(0,0,0,.45) !important; }
@@ -64616,7 +64631,7 @@ const Comandi = (() => {
 #dkHand .lb { position: absolute; left: 50%; bottom: 5px; font-size: 9px !important; transform: translateX(-50%); white-space: nowrap; font: 600 10px 'Saira Condensed', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #E9DCBC; text-shadow: 1px 1px 0 #000; pointer-events: none; }
 #dkHand .x { position: absolute; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 12px sans-serif; color: #E9DCBC; background: #2a2030; border: 1px solid rgba(233,220,188,.5); }
 #dkHand .x { right: -6px; top: -6px; }
-#dock button[data-id=graffiti]::after { content: ''; position: absolute; left: 50%; bottom: 4px; width: 14px; height: 4px; margin-left: -7px; border-radius: 2px; background: var(--col, transparent); pointer-events: none; }
+#dock button[data-id=graffiti]::after, #dock button[data-id=bomboletta]::after { content: ''; position: absolute; left: 50%; bottom: 4px; width: 14px; height: 4px; margin-left: -7px; border-radius: 2px; background: var(--col, transparent); pointer-events: none; }
 #rs-here button.qui { display: none !important; }   /* il numero sta sullo zaino */
 #ctx { bottom: 112px !important; }
 #rs-here { bottom: 72px !important; }
@@ -64643,8 +64658,8 @@ const Comandi = (() => {
     hb.innerHTML = '<canvas width="32" height="16"></canvas><span class="lb"></span><span class="x" title="Metti via">✕</span>';
     hb.addEventListener('click', e => { if (e.target.classList.contains('x')) { equip(null); say('Mani libere.'); } else usaMano(); upd(true); });
     d.appendChild(hb);
-    ITEMS.forEach(([id, name, k, fn]) => {
-      const b = document.createElement('button'); b.dataset.id = id; b.title = name + (k ? ' (' + k + ')' : '');
+    ITEMS.forEach(([id, name, k, fn, where]) => {
+      const b = document.createElement('button'); b.dataset.id = id; b.title = name + (k ? ' (' + k + ')' : ''); if (where) b.className = where;
       b.innerHTML = `<canvas width="16" height="16"></canvas>${k ? `<kbd>${k}</kbd>` : ''}${id === 'zaino' ? '<span class="dot" hidden></span>' : ''}`;
       b.addEventListener('click', () => { try { fn(); } catch (e) { console.warn('[comandi]', e); } upd(true); });
       d.appendChild(b);
@@ -64664,8 +64679,10 @@ const Comandi = (() => {
       const id = b.dataset.id, c = b.querySelector('canvas');
       const look = id === 'graffiti' ? (tavOn(st) ? 'tavoletta' : 'bomboletta') : id === 'ruote' ? (sk ? 'skate' : 'bmx') : id;
       if (c.dataset.look !== look) { iconOf(c, look); c.dataset.look = look; }
-      b.classList.toggle('on', id === 'graffiti' ? spray : id === 'ruote' ? sk || bm : false);
-      if (id === 'graffiti') { b.classList.toggle('off', !has('bomboletta') && !has('pennarello')); b.style.setProperty('--col', spray && ui.spray ? pv.SPRAY_COLS[ui.spray.col][0] : 'transparent'); }
+      b.classList.toggle('on', id === 'graffiti' ? spray : id === 'ruote' ? sk || bm : id === 'bomboletta' ? spray && !tavOn(st) : id === 'tavoletta' ? tavOn(st) : id === 'bmx' ? bm : id === 'skate' ? sk : false);
+      if (id === 'bomboletta' || id === 'tavoletta') b.classList.toggle('off', !has('bomboletta') && !has('pennarello'));
+      if (id === 'skate') b.classList.toggle('off', !(typeof Skate !== 'undefined' && Skate.S(st).owned));
+      if (id === 'graffiti' || id === 'bomboletta') { b.classList.toggle('off', !has('bomboletta') && !has('pennarello')); b.style.setProperty('--col', spray && ui.spray ? pv.SPRAY_COLS[ui.spray.col][0] : 'transparent'); }
       if (id === 'zaino') { const dot = b.querySelector('.dot'), n = typeof MenuUI !== 'undefined' && MenuUI.quiCount ? MenuUI.quiCount(st) : 0; dot.hidden = !n; dot.textContent = n; }
     });
     // la mano

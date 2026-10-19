@@ -8402,7 +8402,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.62 /* [colore1] più colore (era 1.25) */, ink: 0, rim: .72, cav: .6 /* [colore1] era .85 */, clar: .18 /* [colore1] era .32: il contrasto locale faceva grana */, luc: 1.15, spec: 1.15, coat: 1.05, trans: 1.1, /* [colore1] miniature di plastica: più lacca, punto di luce, traslucenza (erano 1, .9, .8, 1) */ ol: .85, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: .7 /* [plastica1] era 1: l'alone attorno alle luci */, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: 0 /* [plastica1] la maschera di nitidezza faceva alone (era .32) */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.62 /* [colore1] più colore (era 1.25) */, ink: 0, rim: .35 /* [plastica1] */, cav: .25 /* [plastica1] */, clar: 0 /* [plastica1] il contrasto locale (colore meno sfocato) è un alone attorno a ogni sagoma */, luc: 1.15, spec: 1.15, coat: 1.05, trans: 1.1, /* [colore1] miniature di plastica: più lacca, punto di luce, traslucenza (erano 1, .9, .8, 1) */ ol: 0 /* [plastica1] niente contorno scuro: miniature di plastica, non fumetto (era .85) */, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -8569,7 +8569,7 @@ var Render = (function () {
             float ink = max(max(max(max(max(thin, sil), thick), crease * .55), form) * (1. - thinObj * .6) * (1. - vegK * .88), max(shapeI * .85, brick)) * (1.-coc) * (1. - busyK) * (1. - smoothstep(dc*1.15, dc*1.9, d) * .55) * (1. - smoothstep(uFogNF.x, uFogNF.y, d) * .95);   /* [nebbia_zoom1] */
             vec3 inkC = vec3(.19, .085, .2) + c * .06;   // inchiostro prugna: viola scuro e caldo, lega col colore (riferimento isometrico di Andrea)
             c = mix(c, inkC, clamp(ink * clamp(aK2.z * 3., 0., 1.), 0., 1.)); }
-          { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)); } c *= 1. - ao/8.*.42*(1.-coc*.7); }
+          { float ao = 0.; for (int k=0;k<8;k++){ float a = float(k)*.785 + .39; vec2 o = vec2(cos(a),sin(a))*px*(k<4?2.:4.); float dn = lin(texture2D(tD, uv+o).r); ao += smoothstep(.0, 1., (d-dn)/(d*.035+.35)); } c *= 1. - ao/8.*.22*(1.-coc*.7);   /* [plastica1] era .42: l'ombra di contatto larga faceva alone scuro */ }
           {   // [amb3] inchiostro e profili: il volume si stacca dal fondo
             float la = dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, vec3(.3,.59,.11)), lb = dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, vec3(.3,.59,.11));
             float lc2 = dot(texture2D(tC, uv + vec2(0., px.y)).rgb, vec3(.3,.59,.11)), ld = dot(texture2D(tC, uv - vec2(0., px.y)).rgb, vec3(.3,.59,.11)), l0 = dot(c, vec3(.3,.59,.11));
@@ -8628,7 +8628,7 @@ var Render = (function () {
                 float hi9 = max(max(la9, lb9), max(lc9, ld9)), lo9 = min(min(la9, lb9), min(lc9, ld9));
                 float dk9 = clamp((hi9 - l09) / max(hi9, .04) * 2.4 - .3, 0., 1.), lt9 = clamp((l09 - lo9) / max(l09, .04) * 2.2 - .3, 0., 1.);   /* [colore1] solo i bordi netti: la grana delle texture non diventa puntinato */
                 float dK9 = (1. - smoothstep(dc * 1.25, dc * 2.6, d)) * (1. - gr9 * .75) * (1. - coc) * lK.x * (1. - ol9);
-                c *= 1. - dk9 * .26 * dK9; c *= 1. + lt9 * .1 * dK9;   /* [colore1] era .5 */
+                c *= 1. - dk9 * .1 * dK9; c *= 1. + lt9 * .05 * dK9;   /* [plastica1] quasi niente: era il puntinato */   /* [colore1] era .5 */
                 // il volume delle facciate: ogni faccia un poco più chiara o più scura secondo quanto guarda il sole
                 c *= mix(1., .84 + .28 * clamp(ndl * .5 + .5, 0., 1.), .6 * ok9 * day9 * lK.x); }
               float line9 = max(ol9, cr9) * (1. - gr9 * .7) * farK9 * lOl * (1. - coc) * (1. - smoothstep(uFogNF.x, uFogNF.y, d) * .95);   /* [nebbia_zoom1] */
