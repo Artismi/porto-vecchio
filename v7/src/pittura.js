@@ -27,6 +27,7 @@ var Pittura = (function () {
     if (p === 'torso' || p === 'collo' || p === 'bacino') return 0;
     if (p === 'braccia' || p === 'avambracci') return B.side[i] > 0 ? 1 : 2;
     if (p === 'cosce' || p === 'polpacci') return B.side[i] > 0 ? 3 : 4;
+    if (p === 'piedi' && B.side[i]) { const ft = B.bones['Foot' + (B.side[i] > 0 ? 'L' : 'R')]; if (ft && B.P[i * 3 + 1] > ft.y + .035) return B.side[i] > 0 ? 3 : 4; }   // [pulizia] il gambale del calzino del kit (legato all'osso del piede) è gamba: si stira col polpaccio
     return -1;
   }
   function frame(B) {   // i tubi e gli intervalli di ogni regione
@@ -67,6 +68,12 @@ var Pittura = (function () {
       const o = new Float32Array(RG); for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a)), D = Math.cos(a) >= 0 ? Df : Db;
         const rb = 1 / Math.pow(Math.pow(ca / Math.max(D, .01), e) + Math.pow(sa / Math.max(W, .01), e), 1 / e); o[q] = lerp(r[q], Math.min(rb, r[q] + .03), kb); } return o; });
     if (tb.Bref && (tb.kind === 'tronco' || /^gamba/.test(tb.kind || ''))) sartoriaForma(tb, R);
+    // [pulizia] il polpaccio vero: nei modelli coi pantaloni del kit la gamba sotto il ginocchio è un tubo dritto (con il risvolto in fondo).
+    // Si cappa il raggio con il profilo di una gamba: pieno al polpaccio, sottile alla caviglia (la forma attorno resta quella del modello)
+    if (tb.Bref && /^gamba[LR]$/.test(tb.kind || '')) { const B0 = tb.Bref, sd = tb.kind.slice(-1), kn = B0.bones['LowerLeg' + sd], ft = B0.bones['Foot' + sd];
+      if (kn && ft && kn.y > ft.y + .2) { const yK = kn.y, yA = ft.y + .02, mean = r => { let a = 0; for (let q = 0; q < RG; q++) a += r[q]; return a / RG; };
+        let rc = 0, nc = 0; for (let i = 0; i <= n; i++) { const y = tb.S[i].y; if (y < yK - .16 || y > yK - .06) continue; rc += mean(R[i]); nc++; } rc = nc ? rc / nc : .058; rc = Math.min(rc, .062);
+        for (let i = 0; i <= n; i++) { const y = tb.S[i].y; if (y > yK) continue; const t = cl((y - yA) / (yK - yA), 0, 1), f = t < .6 ? lerp(.56, 1, sm(t / .6)) : lerp(1, .9, (t - .6) / .4), m = mean(R[i]), k = Math.min(1, rc * f / Math.max(m, 1e-4)); if (k < 1) for (let q = 0; q < RG; q++) R[i][q] *= k; } } }
     IRON.set(tb, R); return R;
   }
   // [forma] il modellato di un capo ben tagliato: non un tubo, ma la linea che valorizza il corpo.
@@ -146,7 +153,7 @@ var Pittura = (function () {
     const r = rF !== undefined ? rF : regionOf(B, g); out.set(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]); if (r < 0) return out;
     const F = frame(B), tb = F.tubes[r], q = axial(tb, out), fr = S().frameAt(tb, q.s), R = ironed(tb), rr = shape(B, tb, q.s, q.a, ironRadius(R, tb, q.s, q.a)); q.r = q.r !== undefined ? q.r : out.clone().sub(fr.p).length(); q.i = q.s / tb.ds;
     // vicino a mani, piedi, collo (dove il corpo resta com'è) lo stiro sfuma
-    let k = 1; if (r > 0) k = cl((tb.L - q.i * tb.ds) / .06, 0, 1) * cl(q.i * tb.ds / .05, 0, 1); else { const ny = S().neckY(B); k = cl((ny - out.y) / .04, 0, 1) * cl((out.y - (B.crotch + .02)) / .07, 0, 1); const j = B.bones['UpperArm' + (out.x - (B.bones.Hips ? B.bones.Hips.x : 0) > 0 === (B.bones.UpperArmL && B.bones.UpperArmL.x > (B.bones.Hips ? B.bones.Hips.x : 0)) ? 'L' : 'R')]; if (j) k *= cl((out.distanceTo(j) - .06) / .12, 0, 1); }   // vicino al giro manica il busto resta com'è (niente punte verso il braccio)   // al cavallo, tra le gambe, il corpo resta com'è
+    let k = 1; if (r > 0) k = cl((tb.L - q.i * tb.ds) / (r >= 3 ? .015 : .06), 0, 1) * cl(q.i * tb.ds / .05, 0, 1);   // [pulizia] sulle gambe fino alla caviglia (sennò il risvolto del kit resta) else { const ny = S().neckY(B); k = cl((ny - out.y) / .04, 0, 1) * cl((out.y - (B.crotch + .02)) / .07, 0, 1); const j = B.bones['UpperArm' + (out.x - (B.bones.Hips ? B.bones.Hips.x : 0) > 0 === (B.bones.UpperArmL && B.bones.UpperArmL.x > (B.bones.Hips ? B.bones.Hips.x : 0)) ? 'L' : 'R')]; if (j) k *= cl((out.distanceTo(j) - .06) / .12, 0, 1); }   // vicino al giro manica il busto resta com'è (niente punte verso il braccio)   // al cavallo, tra le gambe, il corpo resta com'è
     // [forma] l'avambraccio verso il polso: affusolato (niente svasature dei polsini del kit); il raggio scende in linea verso quello del polso vero
     if (r === 1 || r === 2) { const w = B.bones['Wrist' + (r === 1 ? 'L' : 'R')], sw = w ? tb.sNear(w) : tb.L, s0 = sw - .14;
       const kw = cl((sw - .012 - q.s) / .035, 0, 1); k *= kw;   // al polso il corpo resta com'è (la mano non si tocca: niente punte)
@@ -170,8 +177,10 @@ var Pittura = (function () {
     const cloth = i => !/^(Skin|Eye|Eyebrows|Hair|Moustache)/i.test(B.srcMat[B.srcOf[i]] || 'Skin');
     const T = []; for (let t = 0; t < tr.length; t += 3) if (cloth(tr[t]) && cloth(tr[t + 1]) && cloth(tr[t + 2])) { const y0 = Math.min(P[tr[t] * 3 + 1], P[tr[t + 1] * 3 + 1], P[tr[t + 2] * 3 + 1]), y1 = Math.max(P[tr[t] * 3 + 1], P[tr[t + 1] * 3 + 1], P[tr[t + 2] * 3 + 1]); T.push([t, y0, y1]); }
     const v = new THREE.Vector3();
+    // [pulizia] anche la stoffa del kit sotto altra stoffa del kit (il collo della scarpa alta dentro i pantaloni, la camicia infilata):
+    // stirata finirebbe sulla stessa superficie dello strato sopra e farebbe fasce e risvolti. Per la stoffa serve un distacco vero (2 mm)
     for (let i = 0; i < n; i++) {
-      if (cloth(i)) continue; const r = regionOf(B, i); if (r < 0) continue; v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
+      const ci = cloth(i), r = regionOf(B, i); if (r < 0) continue; v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
       const tb = F.tubes[r], ax = axial(tb, v), fr = S().frameAt(tb, ax.s), d = v.clone().sub(fr.p); d.addScaledVector(fr.t, -d.dot(fr.t)); const r0 = d.length(); if (r0 < 1e-4) continue; d.divideScalar(r0);
       const o = fr.p, ox = o.x, oy = v.y, oz = o.z;   // raggio orizzontale-radiale dal punto dell'asse alla stessa quota
       for (const [t, y0, y1] of T) { if (v.y < y0 - .002 || v.y > y1 + .002) continue;
@@ -179,7 +188,7 @@ var Pittura = (function () {
         const px = d.y * e2z - d.z * e2y, py = d.z * e2x - d.x * e2z, pz = d.x * e2y - d.y * e2x, det = e1x * px + e1y * py + e1z * pz; if (Math.abs(det) < 1e-12) continue;
         const id = 1 / det, tx = v.x - d.x * r0 - P[a], ty = v.y - d.y * r0 - P[a + 1], tz = v.z - d.z * r0 - P[a + 2], u = (tx * px + ty * py + tz * pz) * id; if (u < 0 || u > 1) continue;
         const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x, w = (d.x * qx + d.y * qy + d.z * qz) * id; if (w < 0 || u + w > 1) continue;
-        const dist = (e2x * qx + e2y * qy + e2z * qz) * id; if (dist > r0 - .0005 && dist < r0 + .05) { CV[i] = 1; break; } }
+        const dist = (e2x * qx + e2y * qy + e2z * qz) * id; if (dist > r0 + (ci ? .002 : -.0005) && dist < r0 + .05) { CV[i] = 1; break; } }
     }
     B.covSkin = CV; return CV;
   }
@@ -210,7 +219,7 @@ var Pittura = (function () {
           c.forEach((q, k) => { const g = gm[q]; if (g >= 0) v.set(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]); else v.fromBufferAttribute(attrs.position, q).applyMatrix4(B.rel); const P0 = axial(tb, v); uu[k] = (P0.a + Math.PI) / (Math.PI * 2); vv[k] = (P0.s - s0) / (s1 - s0); });
           if (Math.max(...uu) - Math.min(...uu) > .5) uu = uu.map(x => x < .5 ? x + 1 : x);   // il triangolo a cavallo della cucitura dietro
           // la pelle sotto i vestiti del kit: stirate finirebbero sulla stessa superficie (pixel contesi). Si toglie
-          if (!kc) { const CV = coveredSkin(B); if (c.every(q => gm[q] >= 0 && CV[gm[q]])) dropT.add(w / 3); }
+          { const CV = coveredSkin(B); if (c.every(q => gm[q] >= 0 && CV[gm[q]])) dropT.add(w / 3); }
           // i bordi dei vestiti del kit (risvolti, orli che girano dentro): facce rivolte all'asse o in su/giù. Stirate si accartoccerebbero: via
           if (kc) { const P3 = c.map(q => { const g = gm[q]; return g >= 0 ? new THREE.Vector3(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]) : new THREE.Vector3().fromBufferAttribute(attrs.position, q).applyMatrix4(B.rel); });
             const n = P3[1].clone().sub(P3[0]).cross(P3[2].clone().sub(P3[0])), ln = n.length(); if (ln > 1e-12) { n.divideScalar(ln); const cc = P3[0].clone().add(P3[1]).add(P3[2]).divideScalar(3), ax = axial(tb, cc), fr = S().frameAt(tb, ax.s), rd = cc.clone().sub(fr.p); rd.addScaledVector(fr.t, -rd.dot(fr.t)); rd.normalize();
