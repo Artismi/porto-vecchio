@@ -8,7 +8,10 @@ global.World = require(root + '/src/world.js'); global.Interior = require(root +
 const CAPO = require(root + '/src/guardaroba.js').CAPO;
 const capo = (id, x) => { const c = CAPO[id]; if (!c) throw new Error('capo sconosciuto ' + id); return Object.assign({}, c, x || {}); };
 // i manichini: [nome, modello (look), capi dal più interno al più esterno]
-const M = { uomo: { top: '#8a3a2a', bottom: '#2a3a5a', skin: '#d8a888', hair: '#2a1a12', hat: 'none', extra: '', model: 'Casual_2' } };
+const M = { uomo: { top: '#8a3a2a', bottom: '#2a3a5a', skin: '#d8a888', hair: '#2a1a12', hat: 'none', extra: '', model: 'Casual_2' },
+  donna: { top: '#8a3a2a', bottom: '#2a3a5a', skin: '#e0b090', hair: '#3a2014', hat: 'none', extra: '', model: 'Casual' },
+  operaio: { top: '#8a3a2a', bottom: '#2a3a5a', skin: '#c89070', hair: '#1a1a1a', hat: 'none', extra: '', model: 'Worker' },
+  elegante: { top: '#8a3a2a', bottom: '#2a3a5a', skin: '#e8c0a0', hair: '#5a3a1a', hat: 'none', extra: '', model: 'Formal' } };
 const GRUPPI = {
   strati: [   // mutande sopra i pantaloni larghi, maglia fuori/dentro, giacca aperta
     ['mutande_sopra', ['maglietta', 'jeans_larghi', ['mutande', { col: '#c8302a' }], 'scarpe_skate']],
@@ -28,6 +31,13 @@ const GRUPPI = {
     ['cappello', ['camicia', 'pantaloni', 'giacca', 'cappello', 'scarpe_eleganti']],
     ['coppola', ['camicia_quadri', 'gilet', 'velluto', 'coppola', 'scarpe']],
   ],
+  corpo: [   // la forma: busto, vita, sedere, con capi aderenti e da sartoria
+    ['uomo_jeans', ['maglietta', 'jeans', 'scarpe_tela']],
+    ['donna_jeans', ['maglietta', 'jeans', 'scarpe_tela'], 'donna'],
+    ['donna_gonna', ['camicia', 'gonna', 'tacchi'], 'elegante'],
+    ['operaio_lavoro', ['camicia_quadri', 'pantaloni_lavoro', 'scarpe'], 'operaio'],
+    ['uomo_completo', ['camicia', 'pantaloni_completo', 'scarpe_eleganti']],
+  ],
   piedi: [
     ['scarponi', ['maglietta', 'jeans', 'calzini', 'scarpe']],
     ['skate', ['maglietta_oversize', 'jeans_larghi', 'calze_sport', 'scarpe_skate']],
@@ -40,11 +50,11 @@ const shots = [];
 const ANG = [0, .7, Math.PI / 2, Math.PI], zoom = process.env.VICINO ? +process.env.VICINO : 0;
 for (const [g, list] of Object.entries(GRUPPI)) {
   if (only && !only.includes(g) && !list.some(l => only.includes(l[0]))) continue;
-  for (const [nome, ids] of list) {
+  for (const [nome, ids, chi] of list) {
     if (only && !only.includes(g) && !only.includes(nome)) continue;
     const vesti = ids.map(x => Array.isArray(x) ? capo(x[0], x[1]) : capo(x));
-    const pose = ANG.map(a => ({ nome: '', look: M.uomo, vesti, ang: a }));
-    shots.push({ nome: g + '_' + nome, t: .3, cols: 4, sp: .78, pose, cam: zoom ? [0, zoom, 2.3, 0, zoom - .05, 0] : [0, 1.1, 4.1, 0, .95, 0] });
+    const pose = ANG.map(a => ({ nome: '', look: M[chi || 'uomo'], vesti, ang: a }));
+    shots.push({ nome: g + '_' + nome, t: .3, cols: 4, sp: .78, pose, cam: zoom ? [0, zoom, +(process.env.DIST || 2.3), 0, zoom - .05, 0] : [0, 1.1, 4.1, 0, .95, 0] });
   }
 }
 const tmp = path.join(out, '_scene.json'); fs.mkdirSync(out, { recursive: true }); fs.writeFileSync(tmp, JSON.stringify(shots));

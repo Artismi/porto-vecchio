@@ -53,20 +53,48 @@ var Pittura = (function () {
     // la vita si riempie: tra il petto e i fianchi la stoffa va dritta (il corpo del kit è strizzato in vita)
     if (tb.kind === 'tronco') { const yOf = i => tb.S[i].y, iAt = y => { let b = 0, bd = 9; for (let i = 0; i <= n; i++) { const d = Math.abs(yOf(i) - y); if (d < bd) { bd = d; b = i; } } return b; };
       const B0 = tb.Bref; if (B0) { const ih = iAt(B0.bones.Hips.y - .02), ic = iAt(B0.bones.Chest.y - .04); if (ic > ih + 2) { const Rh = R[ih], Rc = R[ic];
-        for (let i = ih + 1; i < ic; i++) { const t = (i - ih) / (ic - ih); for (let q = 0; q < RG; q++) R[i][q] = Math.max(R[i][q], lerp(R[i][q], lerp(Rh[q], Rc[q], t), .75)); } } } }
+        for (let i = ih + 1; i < ic; i++) { const t = (i - ih) / (ic - ih); for (let q = 0; q < RG; q++) R[i][q] = Math.max(R[i][q], lerp(R[i][q], lerp(Rh[q], Rc[q], t), .3)); } } } }
     // le anche: sotto la vita la sezione diventa un ovale liscio (niente spigoli e gradini dei pantaloncini del kit)
     if (tb.kind === 'tronco' && tb.Bref) { const B0 = tb.Bref; for (let i = 0; i <= n; i++) { const y = tb.S[i].y; if (y > B0.waist + .02) continue; const r = R[i]; let W = 0, Df = 0, Db = 0;
         for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2; W = Math.max(W, Math.abs(Math.sin(a)) * r[q]); const z = Math.cos(a) * r[q]; if (z > 0) Df = Math.max(Df, z); else Db = Math.max(Db, -z); }
         const k = cl((B0.waist + .02 - y) / .06, 0, 1); for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, D = Math.cos(a) >= 0 ? Df : Db, e = 2.2, rb = 1 / Math.pow(Math.pow(Math.abs(Math.cos(a)) / Math.max(D, .02), e) + Math.pow(Math.abs(Math.sin(a)) / Math.max(W, .02), e), 1 / e); r[q] = lerp(r[q], rb, k); } } }
     // la stoffa cade dalla parte più sporgente (seno, pettorali, scapole) dritta fino alla vita: niente conche sotto
     if (tb.kind === 'tronco' && tb.Bref) { const B0 = tb.Bref, yOf = i => tb.S[i].y; let iw = 0, ic = n; for (let i = 0; i <= n; i++) { if (yOf(i) < B0.waist) iw = i; if (yOf(i) < B0.bones.Chest.y + .06) ic = i; }
-      for (let q = 0; q < RG; q++) { let ia = iw; for (let i = iw; i <= ic; i++) if (R[i][q] > R[ia][q]) ia = i; for (let i = iw + 1; i < ia; i++) { const t = (i - iw) / (ia - iw); R[i][q] = Math.max(R[i][q], lerp(R[iw][q], R[ia][q], t)); } } }
+      for (let q = 0; q < RG; q++) { let ia = iw; for (let i = iw; i <= ic; i++) if (R[i][q] > R[ia][q]) ia = i; for (let i = iw + 1; i < ia; i++) { const t = (i - iw) / (ia - iw); R[i][q] = Math.max(R[i][q], lerp(R[i][q], lerp(R[iw][q], R[ia][q], t), .45)); } } }
     const kb = tb.kind === 'tronco' ? .3 : .15, e = 2.8;   // appena squadrata: piani, non scatole (solo sopra la vita)
     const yW = tb.Bref ? tb.Bref.waist : -9;
     R = R.map((r, i) => { if (tb.kind === 'tronco' && tb.S[i].y < yW + .04) return r; let W = 0, Df = 0, Db = 0; for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, x = Math.abs(Math.sin(a)) * r[q], z = Math.cos(a) * r[q]; W = Math.max(W, x); if (z > 0) Df = Math.max(Df, z); else Db = Math.max(Db, -z); }
       const o = new Float32Array(RG); for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a)), D = Math.cos(a) >= 0 ? Df : Db;
         const rb = 1 / Math.pow(Math.pow(ca / Math.max(D, .01), e) + Math.pow(sa / Math.max(W, .01), e), 1 / e); o[q] = lerp(r[q], Math.min(rb, r[q] + .03), kb); } return o; });
+    if (tb.kind === 'tronco' && tb.Bref) sartoriaForma(tb, R);
     IRON.set(tb, R); return R;
+  }
+  // [forma] il modellato di un capo ben tagliato: non un tubo, ma la linea che valorizza il corpo.
+  // Uomo: spalle e torace pieni, petto a piano, si stringe in vita (la V), glutei tondi. Donna: vita segnata, fianchi e glutei pieni.
+  // Fattori sul raggio stirato per altezza e angolo (davanti, fianchi, dietro), con transizioni morbide (gaussiane).
+  const FEMMINE = /^(Casual|Formal)$/;
+  let FORMA_K = 2;   // l'intensità del modellato (1 = appena accennato)
+  function sartoriaForma(tb, R) {
+    const B0 = tb.Bref, fem = FEMMINE.test(B0.key), n = tb.ns, RG = R[0].length, b = B0.bones, nY = S().neckY(B0);
+    const yW = B0.waist, yH = b.Hips.y, yC = b.Chest.y, yCr = B0.crotch, g = (y, c, w) => Math.exp(-((y - c) * (y - c)) / (2 * w * w));
+    const yG = Math.min(yH - .05, (yH + yCr) / 2 + .02);   // il punto più pieno dei glutei
+    for (let i = 0; i <= n; i++) { const y = tb.S[i].y; if (y > nY - .02 || y < yCr - .12) continue; const r = R[i], cut = cl((nY - .02 - y) / .06, 0, 1);
+      for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, ca = Math.cos(a), sa = Math.abs(Math.sin(a)), fr = Math.max(0, ca), bk = Math.max(0, -ca), side = sa * sa;
+        let k = 1; const A = FORMA_K;
+        if (fem) {
+          k += side * (- A * .1 * g(y, yW, .055) + A * .06 * g(y, yG + .01, .06));        // vita segnata, fianchi
+          k += fr * (- A * .05 * g(y, yW - .01, .05));                                  // pancia piatta
+          k += bk * (- A * .05 * g(y, yW + .01, .05) + A * .1 * g(y, yG, .055));            // la curva della schiena, i glutei
+        } else {
+          k += side * ( A * .05 * g(y, yC - .02, .07) - A * .065 * g(y, yW, .06));         // torace largo, vita stretta: la V
+          k += fr * ( A * .035 * g(y, yC + .01, .05) - A * .04 * g(y, yW - .01, .05));      // il petto a piano, la pancia piatta
+          k += bk * ( A * .03 * g(y, yC + .03, .06) - A * .035 * g(y, yW + .02, .05) + A * .075 * g(y, yG, .05));   // le scapole, la schiena che rientra, i glutei
+        }
+        // tra i glutei, sotto: la stoffa aderente segue il solco (appena)
+        if (ca < -.9 && y < yG + .02 && y > yCr - .02) k -= .035 * (1 - (Math.PI - Math.abs(a - Math.PI)) * 0) * cl((-ca - .9) / .1, 0, 1) * g(y, yG - .03, .05);
+        r[q] *= 1 + (k - 1) * cut; } }
+    // il giro lisciato attorno (niente spigoli dalle gaussiane)
+    for (let i = 0; i <= n; i++) { const r = R[i], c0 = r.slice(); for (let q = 0; q < RG; q++) r[q] = (c0[(q + RG - 1) % RG] + 2 * c0[q] + c0[(q + 1) % RG]) / 4; }
   }
   // l'altezza del taglio busto/gambe del modello (il punto più alto del confine, sui fianchi): sotto di lì la stoffa dipinta si spezzerebbe
   function cutY(B) {
@@ -78,7 +106,7 @@ var Pittura = (function () {
   const MASCHI = /^(Casual_2|Casual_Hoodie|Worker)$/;
   function shape(B, tb, s, a, r) {
     if (tb.kind !== 'tronco') return r; const y = tb.S[cl(Math.round(s / tb.ds), 0, tb.ns)].y, sa = Math.abs(Math.sin(a));
-    if (MASCHI.test(B.key)) r *= 1 + .08 * sa * sa * cl((y - B.waist + .05) / .25, 0, 1);
+    if (MASCHI.test(B.key)) r *= 1 + .03 * sa * sa * cl((y - B.waist + .05) / .25, 0, 1);
     return r;
   }
   function ironRadius(R, tb, s, a) { const RG = R[0].length, fi = cl(s / tb.ds, 0, tb.ns), i0 = Math.floor(fi), i1 = Math.min(tb.ns, i0 + 1), t = fi - i0, fs = (((a / (Math.PI * 2)) * RG) % RG + RG) % RG, q0 = Math.floor(fs), q1 = (q0 + 1) % RG, u = fs - q0;
@@ -719,5 +747,5 @@ var Pittura = (function () {
   }
   // il raggio della superficie dipinta del busto (stirata) a (s, angolo) sul tubo del tronco: le falde in rilievo ci si raccordano a filo
   function raggio(B, s, a) { const tb = frame(B).tubes[0]; return shape(B, tb, s, a, ironRadius(ironed(tb), tb, s, a)); }
-  return { offAt, ringOff, topOf, stackOff, raggio, ironAll, cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
+  return { forma: k => { FORMA_K = k; IRON.clear(); }, offAt, ringOff, topOf, stackOff, raggio, ironAll, cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
 })();
