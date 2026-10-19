@@ -121,3 +121,23 @@ senza mille elementi sovrapposti che non si distinguono.» Quindi i dettagli non
 
 Questo sostituisce tutti i "posa a caso con probabilità p" dei sistemi di arredo nella città nuova: la probabilità decide al massimo
 *quale* impaginazione, mai *dove* va una cosa.
+
+## 6. La rete elettrica: incasinata, ma non a caso (richiesta del committente)
+
+«I cavi sono tirati a caso dappertutto e finiscono per essere linee a caso: voglio una rete elettrica sensata, piena di allacci abusivi,
+incasinata, ma non a caso.» Quindi i cavi non sono arredo: sono **un grafo** (`rete.js`), e si disegnano solo da quel grafo. Ogni filo ha
+due estremi veri (mensola, isolatore, cassetta, palo, contatore): mai nel vuoto.
+
+- **Dorsale**: dalla cabina ENEL di quartiere (una ogni 150-200 m, sulle vie) lungo le facciate, con le mensole a isolatori all'altezza del
+  primo marcapiano ogni 8-12 m; gira gli angoli; attraversa la strada solo per cambiare isolato (una traversata ogni 40-60 m, a 6 m, con la
+  mensola da entrambi i lati). Nei vicoli stretti su un solo lato. Sulla Vittoria e sul Corso è interrata: pozzetti e lampioni e basta.
+- **Allacci legali**: da ogni mensola un filo scende al contatore della casa (cassetta grigia a 2,5 m col sigillo), uno per palazzo.
+- **Allacci abusivi** (il disordine ha una logica): dove non c'è il contatore o la casa è E7 o una superfetazione, un filo **parte da una
+  mensola o da un lampione vicino** e va alla finestra, al balcone o al tetto di chi ruba la corrente: matasse di 2-5 fili sulla stessa
+  mensola, un filo che attraversa un vicolo in diagonale verso un balcone, il cavo volante appeso con la cordicella, la ciabatta sul
+  davanzale, il filo che entra dalla persiana. Densità: baracche 80% delle case, borgo 30%, Ottocento 10%, Vittoria 0% (il regime
+  li taglia: resta il moncone sulla mensola), boom 20% (fra balconi).
+- **Le antenne TV** (1986: una per famiglia sui tetti, a selva) e i loro cavi che scendono lungo le facciate ai piani: stesso grafo.
+- **Lampioni a braccio** del borgo alimentati dalla dorsale (il filo corto dalla mensola al braccio).
+- Verifica: ogni segmento del grafo ha due nodi; nessun filo attraversa una via ≥ 10 m; conteggio per 100 m (dorsale, allacci, abusivi,
+  traversate) stampato prima/dopo; a occhio, in foto, ogni filo deve avere un *perché* leggibile (da dove viene, dove arriva).
