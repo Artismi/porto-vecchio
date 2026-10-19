@@ -46,6 +46,11 @@ const GRUPPI = {
     ['hawaii', [['camicia_hawaii', { col: '#1a6a7a' }], ['pantaloni', { col: '#ece6d8' }], 'mocassini', 'catenina']],
     ['pelliccia', [['dolcevita', { col: '#101012' }], ['leggings', { col: '#101012' }], 'pelliccia', 'stivali_pelle', 'occhiali_sole'], 'donna'],
   ],
+  cappucci: [
+    ['felpa', [['felpa', { col: '#5a5e66' }], 'jeans', 'scarpe_tela']],
+    ['felpa_skate', [['felpa_skate', { col: '#3a5a3a' }], 'jeans_larghi', 'scarpe_skate']],
+    ['felpa_piumino', [['felpa', { col: '#8a2a2a' }], 'cargo', 'piumino', 'scarpe_air']],
+  ],
   colletti: [
     ['polo', [['polo', { col: '#1e3a6a' }], 'pantaloni', 'mocassini']],
     ['polo_bianca', [['polo', { col: '#f0ece2' }], 'jeans', 'scarpe_tela']],

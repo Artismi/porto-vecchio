@@ -522,14 +522,41 @@ var Vesti3D = (function () {
       }
     });
   }
-  // il cappuccio abbassato delle felpe: un rotolo di stoffa attorno al collo e la sacca che ricade sulla schiena
+  // il cappuccio abbassato delle felpe: un rotolo morbido attorno al collo (spesso dietro, sottile davanti dove si incrocia o si apre la zip)
+  // e la sacca del cappuccio stesa sulla schiena, sopra la superficie vera della felpa, con l'apertura in ombra verso l'alto
   function cappuccio(g, outfit, B, AT) {
     const CUT = Sartoria.CUT_(), c = outfit.find(o => (CUT[o.id] || {}).collo === 'cappuccio'); if (!c) return;
-    Sartoria.neckY(B); const [nx, nz] = B.neckC, ny = B.neckY, rn = B.neckR + .03, mt = Pittura.blockMat('jersey', c.col, c.col, c.col, { vc: false }), o = new THREE.Group();
-    const pts = []; for (let k = 0; k <= 12; k++) { const t = lerp0(.32, 1.68, k / 12) * Math.PI, back = Math.max(0, -Math.cos(t)); pts.push(new THREE.Vector3(nx + Math.sin(t) * (rn + .012), ny - .015 - back * .02, nz + Math.cos(t) * (rn + .012))); }
-    const roll = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, .028, 6, false), mt); roll.scale.set(1, 1, 1); o.add(roll);
-    const sac = new THREE.Mesh(new THREE.SphereGeometry(.1, 8, 6), mt); sac.scale.set(1.15, .95, .45); sac.position.set(nx, ny - .085, nz - rn - .035); sac.rotation.x = .25; o.add(sac);
-    const inner = new THREE.Mesh(new THREE.SphereGeometry(.06, 6, 4), lm(sh(c.col, .45))); inner.scale.set(1.2, .5, .3); inner.position.set(nx, ny - .03, nz - rn - .03); o.add(inner);
+    const Pt = window.Pittura, T = Sartoria.testa(g, PARTI), PL = Pt.paintPlans(B, outfit.filter(o => o !== c || true)), nY = Sartoria.neckY(B), [nx, nz] = B.neckC, tb = Pt.frame(B).tubes[0];
+    const zip = /zip/.test((CUT[c.id] || {}).fronte || '') || (c.var && c.var.fronte === 'zip'), mt = Pt.blockMat('jersey', c.col, c.col, c.col, { vc: false, liscio: 1 }), inn = lm(sh(c.col, .42)), o = new THREE.Group();
+    const M = misuraCollo(B, T, outfit.filter(o2 => o2 !== c), Pt.paintPlans(B, outfit.filter(o2 => o2 !== c)));
+    // 1) il rotolo: sezione tonda, spessa dietro
+    const NA = 64, NS = 10, P = [], U = [], I = [], yc0 = nY - .004;
+    for (let i = 0; i <= NA; i++) { const a = -Math.PI + i / NA * Math.PI * 2, bk = Math.max(0, -Math.cos(a)), fr = Math.max(0, Math.cos(a)), th = .012 + .03 * Math.pow(bk, 1.3) + .004 * (1 - fr), hh = .03 + .03 * bk, yc = yc0 - .012 * fr * fr + .01 * bk;
+      const rin = M.maxR(a, yc - hh / 2, yc + hh / 2) + .002;
+      for (let k = 0; k <= NS; k++) { const t = k / NS * Math.PI * 2, r = rin + th / 2 + Math.cos(t) * th / 2 * (Math.cos(t) < 0 ? .3 : 1), y = yc + Math.sin(t) * hh / 2; P.push(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r); U.push(i / NA * 3, k / NS * .5); } }
+    for (let i = 0; i < NA; i++) { const a = -Math.PI + (i + .5) / NA * Math.PI * 2; if (zip && Math.abs(a) < .1) continue; for (let k = 0; k < NS; k++) { const q = i * (NS + 1) + k, r2 = q + NS + 1; I.push(q, r2, q + 1, q + 1, r2, r2 + 1); } }
+    { const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); gg.setIndex(I); gg.computeVertexNormals(); o.add(new THREE.Mesh(gg, mt)); }
+    // 2) la sacca sulla schiena: un cuscino a U sopra la felpa, largo in cima, tondo in fondo
+    const NU = 16, NV = 12, top = nY - .006, depth = .21, wid = .27, Q = [], seam = [], QU = [], QI = [], rim = [];
+    const sAt = y => tb.sAtY(y), half = v => wid / 2 * Math.sqrt(Math.max(0, 1 - Math.pow(Math.max(0, v - .35) / .65, 2.2)));
+    for (let j = 0; j <= NV; j++) { const v = j / NV, y = top - depth * v, sv = sAt(y);
+      for (let i = 0; i <= NU; i++) { const u = i / NU - .5, X = u * 2 * Math.max(.02, half(v)), rr = Math.max(.08, Pt.raggio(B, sv, Math.PI)), a = Math.PI + X / rr;
+        const bul = .04 * Math.pow(Math.sin(Math.PI * (i / NU)), .7) * Math.pow(Math.sin(Math.PI * Math.min(1, v * 1.05 + .08)), .8) + .004, p = Pt.surfI(B, 0, sv, a, Pt.offAt(B, PL, 0, sv, a) + .003 + bul);
+        Q.push(p.x, p.y, p.z); QU.push(i / NU * wid * 5, v * depth * 5); if (j === 0) rim.push(p); if (i === NU >> 1) seam.push(p); } }
+    o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(seam.map(p => p.clone())), 20, .0025, 4), lm(sh(c.col, .6))));   // la cucitura in mezzo al cappuccio
+    for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) { const a = j * (NU + 1) + i, b = a + 1, cc = a + NU + 1, d = cc + 1; QI.push(a, cc, b, b, cc, d); }
+    { const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(Q, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(QU, 2)); gg.setIndex(QI); gg.computeVertexNormals(); o.add(new THREE.Mesh(gg, Pt.blockMat('jersey', sh(c.col, .9), sh(c.col, .9), sh(c.col, .9), { vc: false, liscio: 1 }))); }
+    { const edge = [], at = (i, j) => new THREE.Vector3(Q[(j * (NU + 1) + i) * 3], Q[(j * (NU + 1) + i) * 3 + 1], Q[(j * (NU + 1) + i) * 3 + 2]);   // il contorno della sacca: un filo d'ombra dove si posa sulla felpa
+      for (let j = 0; j <= NV; j++) edge.push(at(0, j)); for (let i = 1; i <= NU; i++) edge.push(at(i, NV)); for (let j = NV - 1; j >= 0; j--) edge.push(at(NU, j));
+      o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(edge), 60, .004, 4), lm(sh(c.col, .55)))); }
+    // l'apertura: in cima la bocca del cappuccio, un'ellisse scura appena dentro, e il bordo orlato
+    { const nP = 18, E = [], EU = [], EI = []; const c0 = rim[NU >> 1].clone(); for (let k = 0; k <= nP; k++) { const t = k / nP, p = rim[Math.round(t * NU)].clone(); E.push(p.x, p.y + .002, p.z); EU.push(t, 0); const q = p.clone().lerp(c0, .55); q.y -= .045 * Math.sin(Math.PI * t) + .004; q.z += .006; E.push(q.x, q.y, q.z); EU.push(t, 1); }
+      for (let k = 0; k < nP; k++) { const a = k * 2; EI.push(a, a + 1, a + 2, a + 2, a + 1, a + 3); }
+      const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(E, 3)); gg.setIndex(EI); gg.computeVertexNormals(); const m = new THREE.Mesh(gg, inn); m.material.side = THREE.DoubleSide; o.add(m);
+      o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rim.map(p => p.clone().add(new THREE.Vector3(0, .002, 0)))), 24, .006, 5, false), mt)); }
+    // i cordini (felpa chiusa): due lacci che pendono davanti
+    if (!zip) for (const sx of [-1, 1]) { const a0 = sx * .28, y0 = yc0 - .016, s0 = tb.sAtY(y0), L = []; for (let k = 0; k <= 6; k++) { const y = y0 - k * .022, sv = tb.sAtY(y), a = a0 + sx * k * .01; L.push(Pt.surfI(B, 0, sv, a, Pt.offAt(B, PL, 0, sv, a) + .006)); }
+      o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L), 12, .0028, 4), lm('#ece8dc'))); const tip = Cy(.0035, .0035, .014, '#d8d4cc', L[6].x, L[6].y - .006, L[6].z, 6); o.add(tip); }
     AT('Chest', o);
   }
   const lerp0 = (a, b, t) => a + (b - a) * t;
