@@ -8880,7 +8880,7 @@ var Render = (function () {
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
-    PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 720 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
+    PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 640 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
     PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     GPUT.px = W + '×' + H;   /* [prestazioni] */
@@ -12389,7 +12389,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (leadOn && ui.stick) {   // [telefono] la levetta comanda lo sguardo: si inquadra subito dove la spingi (a piedi, in bici, in auto)
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, asp = W / Math.max(1, H), m = Math.min(1, Math.hypot(ui.stick.x, ui.stick.y));
         const vh = pveh ? 2 * (cam.cd || 30) * Math.tan(camera.fov * Math.PI / 360) : vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
-        const sx = ui.stick.x / (m || 1), sy = -ui.stick.y / (m || 1), k = .42 * m;
+        const ha = pveh ? pveh.ang : (p.face || 0), ux = Math.cos(ha), uy = Math.sin(ha), sx = ux * rx + uy * rz, sy = ux * fx + uy * fz, k = .42 * m;   // [camera2] avanti è dove va il personaggio (la visuale gli gira dietro)
         lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; }
       else if (leadOn && spd > .3) {
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, ux = cam.pvx / spd, uy = cam.pvy / spd, asp = W / Math.max(1, H);
@@ -12437,8 +12437,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (ui.rot) cam.uy += ui.rot * dt * 1.7; if (ui.drag) cam.uy += ui.drag;   // [monte] la visuale gira; [varco1] anche in auto, in Vespa e in bici (la guida non dipende dalla visuale)
     if (PHONE && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc) {   // [telefono] la visuale va alle spalle di chi si muove: inquadra il suo davanti (piano a piedi, più svelta sui mezzi)
       const vs = pveh ? Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
-      const hd = pveh ? (vs > 1 && (pveh.speed || 0) > -.5 ? Math.atan2(pveh.vy || Math.sin(pveh.ang), pveh.vx || Math.cos(pveh.ang)) : null) : vs > .6 ? Math.atan2(cam.pvy, cam.pvx) : null;
-      if (hd !== null) { const tgt = Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW; cam.uy = angLerp(cam.uy, tgt, Math.min(1, dt * (pveh ? 1.4 : .8) * Math.min(1, vs / (pveh ? 6 : 3)))); } }
+      // [camera2] la direzione è quella del personaggio (dove guarda: con la levetta, dove va) o il muso del mezzo, non la velocità
+      // stimata fotogramma per fotogramma (rumorosa: la visuale andava a scatti). Rapida e morbida: punta avanti, non si trascina dietro
+      const hd = pveh ? ((pveh.speed || 0) > .8 ? pveh.ang : null) : vs > .4 && p.face !== undefined ? p.face : null;
+      if (hd !== null) { const tgt = Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW; cam.uy = angLerp(cam.uy, tgt, 1 - Math.exp(-dt * (pveh ? 3.2 : 4.5))); } }
     cam.yaw = YAW + cam.uy; // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa
     let pitch = lerp(PITCH, onVespa ? .78 : .82, ease);
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
@@ -12464,7 +12466,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(0, 1, ease) + cam.jz;
     camera.position.set(cx + ox, cy + oy, cz + oz); camera.lookAt(cx, cy, cz);
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
-    if (ease < .02) {
+    if (ease < .02 && !PHONE) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti
       const texel = viewH / H; camera.updateMatrixWorld();
       const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0), up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
       const pos = camera.position.clone(), a = pos.dot(right), b = pos.dot(up);
