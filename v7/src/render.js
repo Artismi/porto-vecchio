@@ -1059,28 +1059,27 @@ var Render = (function () {
   // le chiome tra la camera e il giocatore si aprono (retinatura): il giocatore nel bosco si vede sempre
   const NATU = { pl: { value: new THREE.Vector3(0, -999, 0) }, cm: { value: new THREE.Vector3(0, 100, 0) } };
   // [sezione1] LA SEZIONE: i palazzi fra te e la camera si tagliano in orizzontale (come una pianta d'architetto), non si sbriciolano.
-  // Un corridoio diritto dal giocatore verso la camera (in pianta, largo k.x); dentro, tutto quello che sta sopra la quota di taglio
-  // (k.w, poco sopra i piedi) sparisce con un bordo netto, e dove il taglio scopre l'interno dei muri (le facce rovesce) si vede la
+  // Si tagliano i palazzi interi che stanno sulla linea giocatore → camera (fino a 8, le loro piante in B, un po' più larghe per
+  // balconi e grondaie); dentro, tutto quello che sta sopra la quota di taglio (k.w, poco sopra i piedi) sparisce con un bordo netto, e dove il taglio scopre l'interno dei muri (le facce rovesce) si vede la
   // campitura di sezione, un colore pieno. Restano interi terreno, cielo, gente e mezzi. k: mezza larghezza, acceso (> 0), da dove
   // comincia lungo il corridoio, quota di taglio.
-  const VARCO = { p: { value: new THREE.Vector3(0, -999, 0) }, c: { value: new THREE.Vector3(0, 100, 0) }, k: { value: new THREE.Vector4(0, 0, 1, 0) }, cap: { value: new THREE.Color('#5a4e46') }, done: new WeakSet(), t: -9 };
+  const VARCO = { p: { value: new THREE.Vector3(0, -999, 0) }, c: { value: new THREE.Vector3(0, 100, 0) }, k: { value: new THREE.Vector4(0, 0, 1, 0) }, cap: { value: new THREE.Color('#5a4e46') }, B: { value: Array.from({ length: 8 }, () => new THREE.Vector4(1e9, 1e9, -1e9, -1e9)) }, done: new WeakSet(), t: -9 };
   function varcoMat1(m) {
     if (VARCO.done.has(m)) return; VARCO.done.add(m);
     if (m.isShaderMaterial || m.isPointsMaterial || m.isLineBasicMaterial || m.isSpriteMaterial) return;
     const prev = m.onBeforeCompile, pk = m.customProgramCacheKey;
     const wrap = function (sh, r) { prev.call(m, sh, r);
       if (!sh.vertexShader.includes('#include <project_vertex>') || !sh.fragmentShader.includes('#include <clipping_planes_fragment>') || !sh.fragmentShader.includes('#include <dithering_fragment>')) return;
-      sh.uniforms.uVcP = VARCO.p; sh.uniforms.uVcC = VARCO.c; sh.uniforms.uVcK = VARCO.k; sh.uniforms.uVcCap = VARCO.cap;
+      sh.uniforms.uVcP = VARCO.p; sh.uniforms.uVcC = VARCO.c; sh.uniforms.uVcK = VARCO.k; sh.uniforms.uVcCap = VARCO.cap; sh.uniforms.uVcB = VARCO.B;
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1;').replace('#include <project_vertex>', `#include <project_vertex>
         { vec4 w1 = vec4(transformed, 1.);
         #ifdef USE_INSTANCING
           w1 = instanceMatrix * w1;
         #endif
           vVc1 = (modelMatrix * w1).xyz; }`);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1; uniform vec3 uVcP; uniform vec3 uVcC; uniform vec4 uVcK; uniform vec3 uVcCap; float vcIn1 = 0.;')
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1; uniform vec3 uVcP; uniform vec3 uVcC; uniform vec4 uVcK; uniform vec3 uVcCap; uniform vec4 uVcB[8]; float vcIn1 = 0.;')
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-        if (uVcK.y > 0.) { vec2 ab = uVcC.xz - uVcP.xz; float L = max(length(ab), .01); vec2 u = ab / L; vec2 w = vVc1.xz - uVcP.xz; float s = dot(w, u); float d = abs(w.x * u.y - w.y * u.x);
-          vcIn1 = step(d, uVcK.x) * step(uVcK.z, s);
+        if (uVcK.y > 0.) { for (int i = 0; i < 8; i++) { vec4 q = uVcB[i]; if (vVc1.x > q.x && vVc1.x < q.z && vVc1.z > q.y && vVc1.z < q.w) vcIn1 = 1.; }
           if (vcIn1 > .5 && vVc1.y > uVcK.w) discard; }`)
         .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         if (vcIn1 > .5 && !gl_FrontFacing) gl_FragColor = vec4(uVcCap * (.85 + .15 * smoothstep(uVcK.w - 3., uVcK.w, vVc1.y)), gl_FragColor.a);`); };
@@ -12871,13 +12870,16 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const sx0 = focus[0][0], sz0 = focus[0][1], sdx = camera.position.x - sx0, sdz = camera.position.z - sz0, sl2 = sdx * sdx + sdz * sdz || 1;
     dyn.buildings.forEach(B => {
       if (!(B.fade > .001)) { const bx = (B.box3.min.x + B.box3.max.x) / 2, bz = (B.box3.min.z + B.box3.max.z) / 2, br = Math.hypot(B.box3.max.x - B.box3.min.x, B.box3.max.z - B.box3.min.z) / 2 + 6;
-        const t = Math.max(0, Math.min(1, ((bx - sx0) * sdx + (bz - sz0) * sdz) / sl2)), ex = sx0 + sdx * t - bx, ez = sz0 + sdz * t - bz; if (ex * ex + ez * ez > br * br) { B.fade = 0; return; } }
+        const t = Math.max(0, Math.min(1, ((bx - sx0) * sdx + (bz - sz0) * sdz) / sl2)), ex = sx0 + sdx * t - bx, ez = sz0 + sdz * t - bz; if (ex * ex + ez * ez > br * br) { B.fade = 0; B.__cut1 = false; return; } }
       const hit = !(feet0 !== null && (B.b === roofB0 || (roofB0 && B.b && B.b.id === roofB0.id) || B.box3.max.y - 2.5 < feet0 + .8)) && rays.some(ry => ry.intersectBox(B.box3, hitv) !== null); if (hit && rays[0].intersectBox(B.box3, hitv) !== null) covered = true;
-      const target = hit && VARCO.off ? 1 : 0; B.fade += (target - B.fade) * Math.min(1, dt * 8); fadeTick1(B);   /* [pulitore1] */
+      B.__cut1 = hit; if (hit) B.__cutD1 = Math.hypot((B.box3.min.x + B.box3.max.x) / 2 - sx0, (B.box3.min.z + B.box3.max.z) / 2 - sz0); const target = hit && VARCO.off ? 1 : 0; B.fade += (target - B.fade) * Math.min(1, dt * 8); fadeTick1(B);   /* [pulitore1] */
       const op = 1 - B.fade * .9;
       B.__op = op; B.mats.forEach(m => { const kt = m.userData.keepTr, tr = op < .99 || !!kt; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !tr; if (m.emissiveMap) m.emissiveIntensity = dyn.__ne * op; });   // [case] keepTr
     });
-    if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = covered && !pveh && !!VARCO.off);   // [sezione1] con la sezione accesa la casa davanti non si fa trasparente: è tagliata
+    if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = covered && !pveh && !!VARCO.off);
+    {   // [sezione1] le piante dei palazzi da tagliare: quelli colpiti dai raggi, i più vicini al giocatore per primi
+      const cut = dyn.buildings.filter(B => B.__cut1).sort((a, b) => a.__cutD1 - b.__cutD1);
+      for (let i = 0; i < 8; i++) { const B = cut[i], q = VARCO.B.value[i]; if (B) q.set(B.box3.min.x - .6, B.box3.min.z - .6, B.box3.max.x + .6, B.box3.max.z + .6); else q.set(1e9, 1e9, -1e9, -1e9); } }   // [sezione1] con la sezione accesa la casa davanti non si fa trasparente: è tagliata
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }   /* [pulitore1] */
 
     INDOOR.quad = Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2) - .5) & 3;
