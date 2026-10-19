@@ -43378,6 +43378,45 @@ var Render = (function () {
   const NAT = { ok: false, models: {}, mats: {} };
   // le chiome tra la camera e il giocatore si aprono (retinatura): il giocatore nel bosco si vede sempre
   const NATU = { pl: { value: new THREE.Vector3(0, -999, 0) }, cm: { value: new THREE.Vector3(0, 100, 0) } };
+  // [varco1] lo stesso varco per tutto il resto (come The Sims, Divinity, Diablo): non si spegne la casa intera, si apre a retino
+  // una capsula lungo la linea giocatore → camera su ogni materiale (case, tetti, balconi, insegne, roba sui tetti, muraglioni).
+  // Restano interi terreno, cielo, gente e mezzi; sotto il metro dai piedi non si buca niente. p: dove guarda, c: la camera,
+  // k: raggio pieno, raggio aperto (0 = spento), dove comincia lungo la linea, quota minima
+  const VARCO = { p: { value: new THREE.Vector3(0, -999, 0) }, c: { value: new THREE.Vector3(0, 100, 0) }, k: { value: new THREE.Vector4(0, 0, 1, 0) }, done: new WeakSet(), t: -9 };
+  function varcoMat1(m) {
+    if (VARCO.done.has(m)) return; VARCO.done.add(m);
+    if (m.isShaderMaterial || m.isPointsMaterial || m.isLineBasicMaterial || m.isSpriteMaterial) return;
+    const prev = m.onBeforeCompile, pk = m.customProgramCacheKey;
+    const wrap = function (sh, r) { prev.call(m, sh, r);
+      if (!sh.vertexShader.includes('#include <project_vertex>') || !sh.fragmentShader.includes('#include <clipping_planes_fragment>')) return;
+      sh.uniforms.uVcP = VARCO.p; sh.uniforms.uVcC = VARCO.c; sh.uniforms.uVcK = VARCO.k;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1;').replace('#include <project_vertex>', `#include <project_vertex>
+        { vec4 w1 = vec4(transformed, 1.);
+        #ifdef USE_INSTANCING
+          w1 = instanceMatrix * w1;
+        #endif
+          vVc1 = (modelMatrix * w1).xyz; }`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1; uniform vec3 uVcP; uniform vec3 uVcC; uniform vec4 uVcK;')
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+        if (uVcK.y > 0.) { vec3 ab = uVcC - uVcP; float L = length(ab); vec3 u = ab / L; float s = dot(vVc1 - uVcP, u); float d = length(vVc1 - uVcP - u * s);
+          float open = (1. - smoothstep(uVcK.x, uVcK.y, d)) * smoothstep(uVcK.z, uVcK.z + 1.5, s) * step(s, L - 1.) * step(uVcK.w, vVc1.y);
+          vec2 q = floor(gl_FragCoord.xy); float dth = fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453);
+          if (open > dth * .9 + .1) discard; }`); };
+    wrap.toString = () => prev.toString() + '|vc1';   // la chiave del programma di default legge onBeforeCompile.toString()
+    m.onBeforeCompile = wrap;
+    if (pk !== THREE.Material.prototype.customProgramCacheKey) m.customProgramCacheKey = function () { return pk.call(m) + '|vc1'; };
+    m.needsUpdate = true;
+  }
+  function varcoScan1() {   // ogni tanto: i materiali nuovi entrano nel varco (le case si costruiscono a pezzi, i tetti si arredano)
+    const skip = new Set([dyn.sky, ISO.base]);
+    ISO.chunks.forEach(ch => skip.add(ch.grp));
+    [dyn.people, dyn.vehicles, FX.pickups].forEach(o => { if (o) for (const k in o) skip.add(o[k]); });
+    (dyn.boats || []).forEach(b => skip.add(b.g)); (dyn.gulls || []).forEach(b => skip.add(b.g));
+    const walk = o => { if (skip.has(o)) return;
+      if (o.isMesh && !o.isSkinnedMesh) { if (Array.isArray(o.material)) o.material.forEach(varcoMat1); else if (o.material) varcoMat1(o.material); }
+      for (const c of o.children) walk(c); };
+    walk(scene);
+  }
   function natMat(map, leafy, tint) {
     const k = (map ? map.uuid : 'x') + (leafy ? 'L' : 'B') + (tint || ''); if (NAT.mats[k]) return NAT.mats[k];
     if (map) { map.magFilter = THREE.LinearFilter; map.minFilter = THREE.LinearMipmapLinearFilter; map.generateMipmaps = true; map.needsUpdate = true; }
@@ -54681,8 +54720,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (st.kick) { const k = Math.max(0, 1 - (st.clock - st.kick.t) * 9); kx = -Math.cos(st.kick.a) * st.kick.amt * k * 1.2; ky = -Math.sin(st.kick.a) * st.kick.amt * k * 1.2; }
     const sh = st.shake || 0, sx = (Math.random() - .5) * sh * 1.4, sy = (Math.random() - .5) * sh * 1.4;
     // bordo dello schermo: la visuale gira (a piedi)
-    cam.uy = cam.uy || 0; if (ui.edge && !pveh) cam.uy -= ui.edge * dt * 1.4;
-    if (ui.rot && !pveh) cam.uy += ui.rot * dt * 1.7; if (ui.drag && !pveh) cam.uy += ui.drag;   // [monte] la visuale gira
+    cam.uy = cam.uy || 0; if (ui.edge && !pveh) cam.uy -= ui.edge * dt * 1.4;   // alla guida il bordo no: il puntatore serve a sterzare
+    if (ui.rot) cam.uy += ui.rot * dt * 1.7; if (ui.drag) cam.uy += ui.drag;   // [monte] la visuale gira; [varco1] anche in auto, in Vespa e in bici (la guida non dipende dalla visuale)
     cam.yaw = YAW + cam.uy; // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa
     let pitch = lerp(PITCH, onVespa ? .78 : .82, ease);
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
@@ -54740,7 +54779,15 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
 
     INDOOR.quad = Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2) - .5) & 3;
     const indoorNow = indoorPass(st); if (indoorNow) { scene.fog.near = 200; scene.fog.far = 400; }
-    if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
+    let ugNow = false;
+    if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { ugNow = true; scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
+    {   // [varco1] la capsula fra te e la camera: a piedi stretta e vicina, alla guida più larga e oltre il muso del mezzo
+      if (time - VARCO.t > 1.5) { VARCO.t = time; varcoScan1(); }
+      const on = !VARCO.off && !ui.intro && !ui.studio && !ui.focus && !p.indoor && !indoorNow && !ugNow, fy = (feet0 !== null ? feet0 : groundH(focus[0][0], focus[0][1]));
+      const rOut = lerp(Math.min(6, Math.max(2.4, viewH * .075)), 4.2, ease);
+      VARCO.p.value.set(focus[0][0], fy + .9, focus[0][1]); VARCO.c.value.copy(camera.position);
+      VARCO.k.value.set(rOut * .5, on ? rOut : 0, lerp(1.2, 3.5, ease), fy + 1);
+    }
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     ombre1(st, night);   /* [ombre1] */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
@@ -54793,7 +54840,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   function snap(st) { cam.x = st.player.x; cam.y = st.player.y; cam.h = groundH(st.player.x, st.player.y); }
   const __mondo = { M: MONDO, V: VENTO, stat: () => ({ ms: +MONDO.ms.toFixed(3), vento: +VENTO.g.value.toFixed(2), neve: MONDO.rain, fumo: MONDO.puffs ? Array.from(MONDO.puffs.life).filter(l => l > 0).length : 0, scintille: MONDO.sparks ? Array.from(MONDO.sparks.life).filter(l => l > 0).length : 0, fuochi: MONDO.fuochi.length + WX.fires.length, stormi: MONDO.birds ? MONDO.birds.F.length : 0, porte: MONDO.doors.filter(r => r.rig.visible).length, barche: dyn.boats.length, bucato: dyn.laundry.length, gabbiani: dyn.gulls.length }) };   // [animazioni-mondo] per le prove
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
-  const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
+  const __ed = { VARCO, DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
   return { get __lazy1() { return LAZY1; }, get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
