@@ -202,14 +202,14 @@ var Pittura = (function () {
           if (r === 0) { const y = fr.p.y;
             if (y < yHi) { const k = sm(cl((yHi - y) / Math.max(.02, yHi - B.crotch), 0, 1)), o = fr.p, u = Math.max(legR(3, y, dir, o), legR(4, y, dir, o)); rr = lerp(rr, Math.min(rr, u + .002), k); }   // il cavallo
             const kn = sm(cl((y - (nY - .025)) / .04, 0, 1)); if (kn > 0) { c.x = lerp(c.x, nc[0], kn); c.z = lerp(c.z, nc[1], kn); rr = lerp(rr, rn * (1 - .06 * Math.abs(Math.sin(a))), kn); } }   // il collo: un cilindro appena ovale centrato sul collo vero
-          if (r === 1 || r === 2) rr *= 1 + .12 * (1 - sm(cl(sv / .09, 0, 1)));   // il deltoide: la cima del braccio piena, copre l'attaccatura
+          if (r === 1 || r === 2) rr *= 1 + .05 * (1 - sm(cl(sv / .09, 0, 1)));   // il deltoide: la cima del braccio piena, copre l'attaccatura
           if (ROWS[i].bk) { rr *= ROWS[i].rk; c.addScaledVector(fr.t, -ROWS[i].bk); }
           const p = c.addScaledVector(dir, rr), q = ((Math.round((a / (Math.PI * 2)) * 64) % 64) + 64) % 64, w = pesi(tb, ii, q);
           let tw = 0; w.forEach(e => { tw += e[1]; }); const ww = w.map(e => [e[0], tw ? e[1] / tw : 0]); while (ww.length < 4) ww.push([0, 0]);
           P.push(p); VI.push({ l: p.clone().applyMatrix4(B.reli).toArray(), p: p.toArray(), d: dir.toArray(), s: sv, a }); ww.slice(0, 4).forEach(e => { SI.push(e[0]); SW.push(e[1]); });
         } }
       // [corpo] alla spalla il busto passa sotto il braccio (sennò affiora a chiazze dalla manica): dove sta dentro il tubo del braccio, rientra 4 mm sotto la sua pelle
-      if (r === 0) for (const ra of [1, 2]) { const ta = F.tubes[ra], Ra = ironed(ta); for (const p of P) { const q = axial(ta, p); if (q.s > .2 || q.s < .004 || q.r === undefined) continue; const ar = ironRadius(Ra, ta, q.s, q.a) * (1 + .12 * (1 - sm(cl(q.s / .09, 0, 1)))); if (q.r > ar + .035) continue; const f2 = Sa.frameAt(ta, q.s), d2 = p.clone().sub(f2.p); d2.addScaledVector(f2.t, -d2.dot(f2.t)); const L2 = d2.length(), w2 = 1 - sm(cl((L2 - ar) / .035, 0, 1)), tg = Math.max(0, ar - .004); if (L2 > 1e-5 && tg < L2) p.addScaledVector(d2, (tg - L2) / L2 * w2 * (1 - sm(cl((q.s - .12) / .08, 0, 1)))); } }
+      if (r === 0) for (const ra of [1, 2]) { const ta = F.tubes[ra], Ra = ironed(ta); for (const p of P) { const q = axial(ta, p); if (q.s > .2 || q.s < .004 || q.r === undefined) continue; const ar = ironRadius(Ra, ta, q.s, q.a) * (1 + .05 * (1 - sm(cl(q.s / .09, 0, 1)))); if (q.r > ar + .035) continue; const f2 = Sa.frameAt(ta, q.s), d2 = p.clone().sub(f2.p); d2.addScaledVector(f2.t, -d2.dot(f2.t)); const L2 = d2.length(), w2 = 1 - sm(cl((L2 - ar) / .035, 0, 1)), tg = Math.max(0, ar - .004); if (L2 > 1e-5 && tg < L2) p.addScaledVector(d2, (tg - L2) / L2 * w2 * (1 - sm(cl((q.s - .12) / .08, 0, 1)))); } }
       if (r === 0) P.forEach((p, k) => { VI[k].p = p.toArray(); VI[k].l = p.clone().applyMatrix4(B.reli).toArray(); });
       // le normali dalla griglia (lisce: stoffa e pelle continue)
       const N = [], id = (i, j) => i * (NA + 1) + ((j % NA) + NA) % NA;
