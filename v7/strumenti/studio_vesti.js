@@ -46,6 +46,17 @@ const GRUPPI = {
     ['hawaii', [['camicia_hawaii', { col: '#1a6a7a' }], ['pantaloni', { col: '#ece6d8' }], 'mocassini', 'catenina']],
     ['pelliccia', [['dolcevita', { col: '#101012' }], ['leggings', { col: '#101012' }], 'pelliccia', 'stivali_pelle', 'occhiali_sole'], 'donna'],
   ],
+  occhiali: [
+    ['goccia', ['camicia_hawaii', 'pantaloni', 'occhiali_sole', 'mocassini']],
+    ['mascherina', [['giacca_tuta', { col: '#16161a' }], 'pantaloni_tuta', 'occhiali_mascherina', ['cappellino_dritto', { col: '#101012' }], 'scarpe_air']],
+    ['ovali', [['maglietta_oversize', { col: '#1a1a1e' }], 'cargo', 'occhiali_ovali', 'scarpe_air']],
+    ['shield', [['felpa_zip', { col: '#e8e4dc' }], 'pantaloni_tuta', 'occhiali_shield', 'scarpe_air']],
+  ],
+  cappelli: [
+    ['cappellino', [['felpa', { col: '#1a1a1e' }], 'jeans', ['cappellino', { col: '#101012' }], 'scarpe_air']],
+    ['dritto', [['maglietta_oversize', { col: '#e8e2d4' }], 'jeans_larghi', ['cappellino_dritto', { col: '#2a3a6a' }], 'scarpe_skate']],
+    ['berretto_corto', [['felpa_skate', { col: '#3a5a3a' }], 'jeans_larghi', ['berretto_corto', { col: '#c8502a' }], 'scarpe_skate']],
+  ],
   cappucci: [
     ['felpa', [['felpa', { col: '#5a5e66' }], 'jeans', 'scarpe_tela']],
     ['felpa_skate', [['felpa_skate', { col: '#3a5a3a' }], 'jeans_larghi', 'scarpe_skate']],

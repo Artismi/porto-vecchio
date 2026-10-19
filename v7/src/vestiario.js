@@ -428,17 +428,33 @@ var Vesti3D = (function () {
   const hsh = s => { let h = 7; for (const ch of String(s)) h = h * 31 + ch.charCodeAt(0) | 0; return h >>> 0; };
   function headAcc2(kind, c, T, k) {   // gli altri copricapi
     const h = new THREE.Group(), r = T.r * (1 + k * .04) + .004, H = Math.max(.09, T.top - T.brow) + .012 + k * .006;
-    if (kind === 'cap') {   // cappellino da baseball: sei spicchi, visiera curva, bottone, il retro con la regolazione
-      const mt = FM('cotone', c), d = lathe([[r + .005, -.008], [r + .006, .03], [r * .95, H * .62], [r * .68, H * .9], [0, H + .012]], mt, 30);
-      const sm = lathe([[r + .0065, .0], [r + .0065, .004]], lm(sh(c, .7)), 30);
-      for (let i = 0; i < 6; i++) { const s0 = M_(new THREE.TorusGeometry(r * .82, .0018, 3, 16, Math.PI * .5), lm(sh(c, .65))); s0.rotation.y = i * Math.PI / 3; s0.rotation.z = Math.PI / 2; s0.position.y = H * .1; s0.scale.set(1.16, 1, 1); h.add(s0); }
-      const v = cutVisor(visor(r * .98, .075, 1.2, .02, FM('cotone', sh(c, .92))), 1.2); v.position.set(0, -.002, .0);
-      h.add(d, sm, v, Cy(.01, .012, .008, sh(c, .8), 0, H + .012, 0, 10)); return h; }
-    if (kind === 'snapback') {   // cappellino a visiera piatta: corona alta e dritta davanti, visiera piatta col bollino, la chiusura dietro
-      const mt = FM('cotone', c), d = lathe([[r + .005, -.008], [r + .008, .04], [r * .98, H * .7], [r * .74, H * .98], [0, H + .02]], mt, 30); d.scale.set(1, 1, 1.04);
-      const v = cutVisor(visor(r * .98, .085, 1.25, .001, FM('cotone', sh(c, .85))), 1.25), stk = Cy(.012, .012, .001, '#d8c050', 0, .003, r + .045, 12);
-      const back = Bx(.05, .015, .006, '#1a1a1c', 0, .01, -r - .006), btn = Cy(.01, .012, .008, sh(c, .8), 0, H + .02, 0, 10);
-      const logo = Bx(.06, .03, .004, lm(/^#[0-3]/.test(c) ? '#e8e4dc' : '#1a1a1c'), 0, H * .45, r + .006); logo.rotation.x = -.18; h.add(d, v, stk, back, btn, logo); return h; }
+    if (kind === 'cap' || kind === 'snapback') {   // il cappellino: sei spicchi, davanti strutturato e alto, dietro scende sulla nuca; visiera a D (curva o piatta)
+      const flat = kind === 'snapback', mt = FM('cotone', c), dk = lm(sh(c, .62)), NA = 48, NT = 12, P = [], U = [], I = [];
+      const Rb = a => r * (1 + .02 * Math.cos(a)) * (Math.cos(a) < 0 ? 1.06 : 1.03), yb = a => -.004 - .03 * Math.pow(Math.max(0, -Math.cos(a)), 1.5) + .002 * Math.max(0, Math.cos(a));   // il bordo: dietro più basso, sulla nuca
+      const Ht = H + (flat ? .012 : -.002), crown = (a, t) => { const fr = Math.max(0, Math.cos(a)), e = flat ? .6 : .75, rr = Rb(a) * Math.pow(Math.cos(t * Math.PI / 2), e) * (1 + (flat ? .06 : .04) * fr * Math.sin(Math.PI * t)), y = yb(a) + (Ht - yb(a)) * Math.pow(Math.sin(t * Math.PI / 2), flat ? .7 : .85);
+        return new THREE.Vector3(Math.sin(a) * rr, y, Math.cos(a) * rr * 1.04 + .004 * fr); };
+      for (let i = 0; i <= NA; i++) for (let j = 0; j <= NT; j++) { const a = -Math.PI + i / NA * Math.PI * 2, p = crown(a, j / NT); P.push(p.x, p.y, p.z); U.push(i / NA * 4, j / NT); }
+      for (let i = 0; i < NA; i++) for (let j = 0; j < NT; j++) { const a = i * (NT + 1) + j, b = a + 1, cc = a + NT + 1, d = cc + 1; I.push(a, cc, b, b, cc, d); }
+      const g0 = new THREE.BufferGeometry(); g0.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g0.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g0.setIndex(I); g0.computeVertexNormals(); h.add(new THREE.Mesh(g0, mt));
+      // le cuciture degli spicchi (meridiani) e la fascia interna
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + Math.PI / 6, L = []; for (let j = 0; j <= 10; j++) L.push(crown(a, j / 10 * .98).multiplyScalar(1.004)); h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L), 12, .0013, 3), dk)); }
+      { const L = []; for (let i = 0; i <= 40; i++) { const a = -Math.PI + i / 40 * Math.PI * 2; L.push(crown(a, 0).multiplyScalar(1.003)); } h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L, true), 40, .0022, 3, true), dk)); }
+      h.add(Cy(.0085, .0095, .006, sh(c, .85), 0, Ht + .001, 0, 10));   // il bottone
+      // la visiera: a D, attaccata al bordo davanti, curva (o piatta), spessa, il sotto scuro
+      const VL = flat ? .1 : .095, VA = 1.2, NV = 24, NW = 6, VP = [], VU = [], VI = [], vth = .006;
+      const vpt = (u, w, d) => { const a = -VA + u * 2 * VA, base = crown(a, 0), out = new THREE.Vector3(Math.sin(a), 0, Math.cos(a) * 1.04).normalize(), len = VL * Math.pow(Math.max(0, Math.cos(a / VA * Math.PI / 2)), .55) * w;
+        const p = base.clone().addScaledVector(out, len); const side = Math.abs(a) / VA; p.y += (flat ? -.004 * w : -.012 * w * w - .03 * side * side * w) - d; p.z += .002; return p; };
+      for (const d of [0, vth]) for (let i = 0; i <= NV; i++) for (let w = 0; w <= NW; w++) { const p = vpt(i / NV, w / NW, d); VP.push(p.x, p.y, p.z); VU.push(i / NV, w / NW); }
+      const vid = (d, i, w) => (d * (NV + 1) + i) * (NW + 1) + w;
+      for (let i = 0; i < NV; i++) for (let w = 0; w < NW; w++) { const a = vid(0, i, w), b = vid(0, i + 1, w), cc = vid(0, i, w + 1), d = vid(0, i + 1, w + 1); VI.push(a, b, cc, b, d, cc); }
+      const VI2 = []; for (let i = 0; i < NV; i++) { for (let w = 0; w < NW; w++) { const a = vid(1, i, w), b = vid(1, i + 1, w), cc = vid(1, i, w + 1), d = vid(1, i + 1, w + 1); VI2.push(a, cc, b, b, cc, d); } const a = vid(0, i, NW), b = vid(0, i + 1, NW), cc = vid(1, i, NW), d = vid(1, i + 1, NW); VI.push(a, cc, b, b, cc, d); }
+      const vg = new THREE.BufferGeometry(); vg.setAttribute('position', new THREE.Float32BufferAttribute(VP, 3)); vg.setAttribute('uv', new THREE.Float32BufferAttribute(VU, 2)); vg.setIndex(VI); vg.computeVertexNormals(); h.add(new THREE.Mesh(vg, FM('cotone', sh(c, .95))));
+      const vg2 = new THREE.BufferGeometry(); vg2.setAttribute('position', new THREE.Float32BufferAttribute(VP, 3)); vg2.setIndex(VI2); vg2.computeVertexNormals(); h.add(new THREE.Mesh(vg2, lm(flat ? '#2a3a2a' : sh(c, .45))));   // il sotto della visiera
+      { const L = []; for (let i = 0; i <= 16; i++) L.push(vpt(i / 16, .82, -.0005)); h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L), 20, .0011, 3), dk)); }   // l'impuntura della visiera
+      // dietro: l'apertura a mezzaluna con la regolazione
+      { const L = []; for (let i = 0; i <= 10; i++) { const a = Math.PI - .32 + i / 10 * .64, p = crown(a, .0).multiplyScalar(1.006); p.y += .028 * Math.sin(i / 10 * Math.PI); L.push(p); } h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L), 12, .003, 4), lm('#1a1a1c'))); }
+      if (flat) { const logo = Bx(.055, .028, .003, lm(/^#[0-3]/.test(c) ? '#e8e4dc' : '#1a1a1c'), 0, H * .5, 0); const q = crown(0, .45); logo.position.copy(q).add(new THREE.Vector3(0, 0, .002)); logo.rotation.x = -.25; h.add(logo, Cy(.011, .011, .001, '#d8c050', 0, vpt(.5, .6, -.0005).y + .0006, vpt(.5, .6, 0).z, 12)); }   // il ricamo davanti e il bollino sulla visiera
+      return h; }
     if (kind === 'docker') {   // berretto corto da pescatore: alto sopra le orecchie, risvolto largo a costine
       const mt = lana(c, 'costine', 30, 2), d = lathe([[r + .004, .03], [r + .005, .05], [r * .96, H * .64], [r * .7, H * .92], [r * .3, H + .012], [0, H + .016]], mt, 28), cuff = lathe([[r + .012, .026], [r + .015, .045], [r + .015, .068], [r + .009, .072]], lana(sh(c, .9), 'costine', 34, 1), 28);
       h.add(d, cuff, Bx(.03, .016, .004, '#e8e4dc', 0, .05, r + .016)); return h; }
@@ -720,6 +736,52 @@ var Vesti3D = (function () {
     const maxR = (a, ya, yb) => { let m = 0; for (let y = ya; y <= yb + 1e-6; y += dy) m = Math.max(m, rAt(a, y)); return m; };
     const out = { rAt, maxR }; B._mc.set(key, out); return out;
   }
+  // ---------------- GLI OCCHIALI DA SOLE ----------------
+  // Misurati sul viso vero (davanti degli occhi, larghezza del cranio, orecchie): la montatura segue la curva del viso, le lenti a specchio
+  // riflettono un cielo finto (gradiente), le stanghette vanno alle orecchie sopra i capelli.
+  //   occhiali: a goccia, montatura dorata sottile · mascherina: avvolgente, una lente sola a fascia, montatura nera lucida (quella dei ragazzi)
+  //   ovali: piccoli anni '90, montatura spessa · shield: visiera unica, senza montatura sopra
+  let LENTI = null;
+  function lenteMat(tinta) {
+    LENTI = LENTI || new Map(); if (LENTI.has(tinta)) return LENTI.get(tinta);
+    const N = 64, cv = document.createElement('canvas'); cv.width = cv.height = N; const x = cv.getContext('2d'), gr = x.createLinearGradient(0, 0, 0, N), T0 = { scuro: ['#3a4a5a', '#0a0c10', '#141820'], fumo: ['#5a5048', '#1a1612', '#2a221a'], blu: ['#7ad0ff', '#1a3a8a', '#0e1a3a'], fuoco: ['#ffe070', '#e8502a', '#5a1a10'], verde: ['#8ae0a0', '#1a5a3a', '#0a2a1a'] }[tinta] || ['#3a4a5a', '#0a0c10', '#141820'];
+    gr.addColorStop(0, T0[0]); gr.addColorStop(.45, T0[1]); gr.addColorStop(1, T0[2]); x.fillStyle = gr; x.fillRect(0, 0, N, N);
+    x.fillStyle = 'rgba(255,255,255,.55)'; x.beginPath(); x.ellipse(N * .3, N * .28, N * .16, N * .05, -.5, 0, Math.PI * 2); x.fill();   // il riflesso
+    const T = new THREE.CanvasTexture(cv); const m = new THREE.MeshStandardMaterial({ map: T, roughness: .12, metalness: .55, side: THREE.DoubleSide }); m.emissive = new THREE.Color(T0[1]).multiplyScalar(.5); LENTI.set(tinta, m); return m;
+  }
+  function occhiali(c, T, B) {
+    const kind = c.acc, o = new THREE.Group(), y = T.eyeY - T.brow - .002, zf = T.eyeZ - T.cz + .016, rs = T.rSkull, sc = T.sc || 1;
+    const met = kind === 'occhiali' ? new THREE.MeshStandardMaterial({ color: '#d8b860', roughness: .3, metalness: .9 }) : new THREE.MeshStandardMaterial({ color: c.col || '#101012', roughness: .25, metalness: .1 });
+    if (kind === 'occhiali' || kind === 'mascherina' || kind === 'shield') met.emissive = new THREE.Color(kind === 'occhiali' ? '#3a2a10' : '#0a0a0a');
+    // la curva del davanti: a x (metri dal centro) la profondità del viso (z), più avvolta per mascherina e shield
+    const wrap = kind === 'mascherina' || kind === 'shield' ? 1 : kind === 'ovali' ? .25 : .45, zAt = x => zf - wrap * (x * x) * 3.2 - .0;
+    const pane = (outline, mat, d) => {   // una lente: contorno 2D [x,y] proiettato sulla curva, triangolato a ventaglio dal centro
+      const cx = outline.reduce((a, p) => a + p[0], 0) / outline.length, cy = outline.reduce((a, p) => a + p[1], 0) / outline.length, P = [cx, cy, zAt(cx) + (d || 0)], U = [.5, .5], I = [];
+      const bx = [Math.min(...outline.map(p => p[0])), Math.max(...outline.map(p => p[0]))], by = [Math.min(...outline.map(p => p[1])), Math.max(...outline.map(p => p[1]))];
+      outline.forEach(p => { P.push(p[0], p[1], zAt(p[0]) + (d || 0)); U.push((p[0] - bx[0]) / (bx[1] - bx[0] || 1), 1 - (p[1] - by[0]) / (by[1] - by[0] || 1)); });
+      for (let k = 0; k < outline.length; k++) I.push(0, 1 + k, 1 + (k + 1) % outline.length);
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); return new THREE.Mesh(g, mat); };
+    const rim = (outline, r, mat) => new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(outline.map(p => new THREE.Vector3(p[0], p[1], zAt(p[0]) + .001)), true), outline.length * 2, r, 5, true), mat);
+    const ell = (cx, cy, rx, ry, n, e, tilt) => { const L = []; for (let k = 0; k < n; k++) { const t = k / n * Math.PI * 2, ct = Math.cos(t), st = Math.sin(t), X = Math.sign(ct) * Math.pow(Math.abs(ct), e || 1) * rx, Y = Math.sign(st) * Math.pow(Math.abs(st), e || 1) * ry; L.push([cx + X, cy + Y + (tilt || 0) * X]); } return L; };
+    const ex = .034 * sc; let hingeX = rs * .92, hingeY = y + .006, lensT = 'scuro';
+    if (kind === 'occhiali') {   // a goccia: lenti grandi che scendono verso l'esterno, ponte doppio
+      lensT = 'fumo'; for (const s0 of [-1, 1]) { const L = ell(s0 * ex, y - .004, .028, .024, 22, 1, 0).map(p => [p[0], p[1] - (p[1] < y - .004 ? .006 * Math.max(0, (p[0] * s0 - ex + .028) / .056) : 0)]); o.add(pane(L, lenteMat(lensT)), rim(L, .0022, met)); }
+      o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(-ex + .022, y + .016, zAt(0) + .002), new THREE.Vector3(0, y + .019, zAt(0) + .003), new THREE.Vector3(ex - .022, y + .016, zAt(0) + .002)]), 8, .0018, 4), met)); hingeX = ex + .028; hingeY = y + .012; }
+    if (kind === 'ovali') {   // piccoli ovali: lenti strette e allungate, montatura spessa
+      lensT = c.lente || 'fuoco'; for (const s0 of [-1, 1]) { const L = ell(s0 * (ex + .002), y, .023, .012, 20, .9, 0); o.add(pane(L, lenteMat(lensT)), rim(L, .0032, met)); }
+      o.add(Bx(.02, .004, .004, met, 0, y + .004, zAt(0) + .002)); hingeX = ex + .026; hingeY = y + .003; }
+    if (kind === 'mascherina' || kind === 'shield') {   // una lente sola a fascia, avvolgente fino alle tempie; la mascherina col bordo sopra spesso
+      lensT = c.lente || (kind === 'shield' ? 'blu' : 'scuro'); const W = rs * .98, top = y + .02, L = [];
+      for (let k = 0; k <= 24; k++) { const x = -W + k / 24 * 2 * W; L.push([x, top + .002 * Math.cos(x / W * Math.PI)]); }
+      for (let k = 24; k >= 0; k--) { const x = -W + k / 24 * 2 * W, ax = Math.abs(x), nose = Math.max(0, 1 - ax / .016) * .014; L.push([x, y - .022 + .012 * Math.pow(ax / W, 2.2) + nose]); }   // sotto: scende sulle guance, sale sul naso
+      o.add(pane(L, lenteMat(lensT)));
+      if (kind === 'mascherina') { const R = []; for (let k = 0; k <= 30; k++) { const x = -W - .002 + k / 30 * 2 * (W + .002); R.push(new THREE.Vector3(x, top + .003 + .002 * Math.cos(x / W * Math.PI), zAt(x) + .002)); } o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(R), 40, .0045, 5), met)); }   // il ciglio della montatura
+      hingeX = W; hingeY = top - .006; }
+    // le stanghette: dalla cerniera, lungo la tempia (sopra i capelli), fino all'orecchio
+    for (const s0 of [-1, 1]) { const p0 = new THREE.Vector3(s0 * hingeX, hingeY, zAt(hingeX) - .002), p1 = new THREE.Vector3(s0 * (rs + .012), hingeY + .002, (zAt(hingeX) + 0) * .3), p2 = new THREE.Vector3(s0 * (rs + .01), hingeY - .012, -.02);
+      o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([p0, p1, p2]), 10, kind === 'occhiali' ? .0018 : .003, 4), met)); }
+    return o;
+  }
   // ---------------- I COLLETTI ----------------
   // Il colletto di camicie e polo è una vela vera: parte dalla piega in cima al collo, si rovescia e si posa sopra quello che c'è sotto
   // (misura attorno al collo: mai dentro), dietro stretto e alto, davanti scende in punte. La polo resta aperta sui due bottoni.
@@ -821,12 +883,7 @@ var Vesti3D = (function () {
       if (!c.acc) return;
       const isHat = /^(pm_\w+|beanie|flat|fedora|scarf|ushanka|casco|elmetto|passamontagna|bandana|antigas|cap|snapback|docker|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc);
       if (isHat && T) { const o = /^(passamontagna|pm_)/.test(c.acc) ? balaclava(c, T, B) : /^(cap|snapback|docker|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc) ? headAcc2(c.acc, c.col, T, kh) : headAcc(c.acc, c.col, T, kh); kh++; o.position.set(T.cx, T.brow, T.cz); AT('Head', o); return; }
-      if (c.acc === 'occhiali' && T) {   // occhiali a goccia: lenti scure, montatura dorata, stanghette fino alle orecchie
-        const o = new THREE.Group(), y = T.eyeY - T.brow, z = T.eyeZ - T.cz + .014, lens = sx => { const L = new THREE.Mesh(new THREE.CircleGeometry(.026, 16), new THREE.MeshLambertMaterial({ color: '#0e1012', emissive: '#1a1e24', side: THREE.DoubleSide })); L.scale.set(1.1, .95, 1); L.position.set(sx, y - .004, z); L.rotation.y = sx > 0 ? .12 : -.12; return L; };
-        const fr = sx => { const f = new THREE.Mesh(new THREE.TorusGeometry(.027, .0025, 4, 18), lm('#c8a860')); f.scale.set(1.1, .95, 1); f.position.set(sx, y - .004, z + .001); f.rotation.y = sx > 0 ? .12 : -.12; return f; };
-        o.add(lens(-.034), lens(.034), fr(-.034), fr(.034), Bx(.022, .003, .003, '#c8a860', 0, y + .012, z + .002));
-        for (const sx of [-1, 1]) { const st = Bx(.003, .003, T.eyeZ - T.cz + .01, '#c8a860', sx * (T.rSkull + .004), y + .006, (T.eyeZ - T.cz) / 2 - .01); o.add(st); }
-        o.position.set(T.cx, T.brow, T.cz); AT('Head', o); return; }
+      if (/^(occhiali|mascherina|ovali|shield)$/.test(c.acc) && T) { try { const o = occhiali(c, T, B); o.position.set(T.cx, T.brow, T.cz); AT('Head', o); } catch (e) { console.error('[Vesti3D] occhiali', e); } return; }
       if ((c.acc === 'sciarpa') && T) { try { AT('Chest', sciarpa(c, B, T, outfit)); } catch (e) { console.error('[Vesti3D] sciarpa', e); } return; }
       if (c.acc === 'cravatta') {   // cravatta: nodo, pala che si allarga fino alla punta; sulla camicia, e si vede solo nello scollo di maglioni e giacche
         const P0 = window.Pittura, CUT = Sartoria.CUT_(), nY = Sartoria.neckY(B), sp = C0 => P0 ? P0.spessore(C0) : .004;
