@@ -469,6 +469,32 @@ var MenuUI = (function () {
 @media (max-width: 1240px) { #mu .roba { grid-template-columns: 1fr; } }
 @media (max-width: 1240px) { #mu .zaino { grid-template-columns: auto 1fr; } #mu .zaino .who { display: none; } #mu .pg { grid-template-columns: 220px 1fr; } #mu .pg > :last-child { grid-column: 1 / -1; } }
 @media (max-width: 900px) { #mu .case { inset: 6px; grid-template-columns: 64px 1fr; } #mu .rail button { width: 56px; height: 56px; font-size: 9px; } #mu .rail button canvas { width: 22px; height: 22px; } #mu .zaino, #mu .lav, #mu .shop, #mu .jobs, #mu .fr2, #mu .pg { grid-template-columns: 1fr; } #mu .bag { --c: 34px; } #mu footer .k { display: none; } }
+/* [menu2] telefono in verticale: tutto dentro lo schermo. Le schede diventano una fila in basso (sotto il pollice), il pannello
+   prende tutta la larghezza, niente si taglia a destra (i figli di una griglia senza min-width si allargavano oltre). */
+#mu .case > *, #mu .in, #mu main, #mu header { min-width: 0; }
+@media (max-width: 640px) {
+  #mu .case { inset: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0) 0; border-radius: 0; padding: 6px; grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 6px; }
+  #mu .case::before, #mu .case::after { display: none; }
+  #mu .rail { order: 2; flex-direction: row; overflow-x: auto; padding: 2px 4px; gap: 6px; justify-content: flex-start; scrollbar-width: none; }
+  #mu .rail .sp { display: none; }
+  #mu .rail button { flex: 0 0 auto; width: 60px; height: 60px; font-size: 9px; }
+  #mu .rail button canvas { width: 24px; height: 24px; }
+  #mu header { flex-wrap: wrap; gap: 4px 10px; padding: 12px 14px 8px; }
+  #mu header b { font-size: 28px; white-space: normal; }
+  #mu header span { order: 3; flex-basis: 100%; white-space: normal; font-size: 14px; }
+  #mu header .tabs { order: 4; flex-basis: 100%; margin-left: 0; }
+  #mu header .x { width: 44px; height: 44px; font-size: 20px; }
+  #mu main { padding: 6px 14px 14px; }
+  #mu footer { padding: 8px 14px; gap: 10px; font-size: 10.5px; } #mu footer > :not(.r) { display: none; }
+  #mu .bag { --c: calc((100vw - 92px) / 8); padding: 8px; } #mu .zaino > *, #mu .lav > *, #mu .jobs > * { min-width: 0; } #mu main * { white-space: normal; }
+  #mu .acts { grid-template-columns: 1fr; } #mu .act { font-size: 18px; }
+  #mu .recs { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); padding: 8px; }
+  #mu .det .hd { grid-template-columns: 64px 1fr; } #mu .det .pic { width: 64px; height: 64px; } #mu .det .nm { font-size: 24px; }
+  #mu .det [class*=bt], #mu .det .row { flex-wrap: wrap; }
+  #mu button.b { padding: 11px 16px; }
+  #mu .msg { max-width: 90%; bottom: 90px; }
+  #mu, #mu .dim { font-size: 15px; }
+}
 `;
 
   // =====================================================================================================================

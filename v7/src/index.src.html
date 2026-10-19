@@ -119,6 +119,8 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 #book nav button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 7px 10px; font-size: 15px; cursor: pointer; color: #6a5a6e; }
 #book nav button[aria-selected="true"] { color: #2a2030; border-bottom-color: #c43c52; font-weight: 600; }
 #book .body { overflow-y: auto; padding: 14px 16px 20px; }
+@media (max-width: 640px) { #book { inset: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0) 0; border-width: 0; box-shadow: none; } #book h2 { font-size: 21px; } #book .x { padding: 10px 14px; font-size: 15px; } #book nav button { font-size: 16px; padding: 10px 10px; } #book .body { font-size: 15.5px; } }   /* [menu2] taccuino a tutto schermo in verticale */
+body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: none !important; }   /* [menu2] il DEV non copre titoli e Chiudi */
 .people { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
 .pc { border: 2px solid #2a2030; background: #f7eedb; padding: 10px; display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; align-content: start; }
 .pc canvas { width: 48px; height: 48px; image-rendering: pixelated; border: 2px solid #2a2030; }
