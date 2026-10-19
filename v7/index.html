@@ -47620,8 +47620,9 @@ var Render = (function () {
   const NAT = { ok: false, models: {}, mats: {} };
   // le chiome tra la camera e il giocatore si aprono (retinatura): il giocatore nel bosco si vede sempre
   const NATU = { pl: { value: new THREE.Vector3(0, -999, 0) }, cm: { value: new THREE.Vector3(0, 100, 0) } };
-  // [sezione2] IL FORO: si toglie solo quello che copre davvero il giocatore. Un cerchio sullo schermo attorno a lui (S: centro e
-  // raggio in pixel del bersaglio di disegno, distanza giocatore-camera); dentro il cerchio sparisce, con bordo netto, ogni cosa più
+  // [sezione2] IL FORO: si toglie solo quello che copre davvero il giocatore. Un cerchio sullo schermo attorno a lui, che sale fino
+  // in cima allo schermo come una fessura larga uguale (S: centro e raggio in pixel del bersaglio di disegno, distanza
+  // giocatore-camera), così il muro davanti si taglia per tutta l'altezza e non resta un oblò; dentro sparisce, con bordo netto, ogni cosa più
   // vicina alla camera del giocatore (case, balconi, cavi, insegne, roba sui tetti), dai 15 cm da terra in su (k.w): resta lo zoccolo,
   // così si legge dove stava il muro tagliato, e il suo taglio ha la campitura (le facce rovesce in un colore pieno). Fuori dal
   // cerchio, e dietro di lui, non si tocca niente.
@@ -47642,13 +47643,13 @@ var Render = (function () {
           vVc1 = (modelMatrix * w1).xyz; }`);
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1; uniform vec3 uVcP; uniform vec3 uVcC; uniform vec4 uVcK; uniform vec4 uVcS; uniform vec3 uVcCap; float vcIn1 = 0.;')
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-        if (uVcK.y > 0.) { vcIn1 = step(length(gl_FragCoord.xy - uVcS.xy), uVcS.z) * step(length(vVc1 - uVcC), uVcS.w - .6);
+        if (uVcK.y > 0.) { vec2 dq = gl_FragCoord.xy - uVcS.xy; vcIn1 = max(step(length(dq), uVcS.z), step(0., dq.y) * step(abs(dq.x), uVcS.z)) * step(length(vVc1 - uVcC), uVcS.w - .6);
           if (vcIn1 > .5 && vVc1.y > uVcK.w) discard; }`)
         .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         if (vcIn1 > .5 && !gl_FrontFacing) gl_FragColor = vec4(uVcCap, gl_FragColor.a);`); };
-    wrap.toString = () => prev.toString() + '|sez3';   // la chiave del programma di default legge onBeforeCompile.toString()
+    wrap.toString = () => prev.toString() + '|sez4';   // la chiave del programma di default legge onBeforeCompile.toString()
     m.onBeforeCompile = wrap;
-    if (pk !== THREE.Material.prototype.customProgramCacheKey) m.customProgramCacheKey = function () { return pk.call(m) + '|sez3'; };
+    if (pk !== THREE.Material.prototype.customProgramCacheKey) m.customProgramCacheKey = function () { return pk.call(m) + '|sez4'; };
     if (m.side === THREE.FrontSide && !m.transparent) { m.side = THREE.DoubleSide; m.shadowSide = THREE.FrontSide; }   // le facce rovesce dello zoccolo tagliato fanno la campitura (l'ombra resta quella di prima)
     m.needsUpdate = true;
   }
