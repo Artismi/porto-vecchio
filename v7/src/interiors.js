@@ -61,6 +61,12 @@ var Interior = (function () {
       : /porto/.test(d) ? ['pescatore', 'pescatore', 'operaio', 'famiglia', 'anziana', 'kommunalka']
       : /base/.test(d) ? ['funzionario', 'operaio', 'famiglia']
       : ['famiglia', 'famiglia', 'operaio', 'operaio', 'anziana', 'kommunalka', 'kommunalka', 'pescatore', 'intellettuale'];
+    // [botteghe] nella città per epoche chi ci abita viene dalla strada: nel borgo pescatori e vecchie, nell'Ottocento il salotto buono,
+    // sotto i portici i funzionari, nel boom le famiglie giovani, fra le baracche gli operai e le stanze in comune
+    const ERA_POOL = { E0: ['pescatore', 'anziana', 'famiglia', 'kommunalka', 'operaio', 'anziana'], E2: ['pescatore', 'pescatore', 'famiglia', 'anziana', 'operaio'],
+      E3: ['famiglia', 'funzionario', 'intellettuale', 'anziana', 'anziana', 'famiglia'], E4: ['funzionario', 'funzionario', 'famiglia', 'anziana', 'intellettuale'],
+      E6: ['famiglia', 'famiglia', 'operaio', 'intellettuale', 'funzionario'], E7: ['operaio', 'kommunalka', 'kommunalka', 'pescatore', 'famiglia'] };
+    if (b.era && ERA_POOL[b.era]) return pick(r, ERA_POOL[b.era]);
     const coast = W && W.yc && Math.abs((b.y + b.h / 2) * TS - W.yc((b.x + b.w / 2) * TS)) > 40;
     if (coast && r() < .2) return 'pescatore';
     return pick(r, pool);
@@ -87,6 +93,12 @@ var Interior = (function () {
   function program(b, kind, f, nF, r) {
     const home = mood => ({ names: HOME[mood][f === 0 ? 0 : 1], mood });
     const up = () => { const mr = rng(((b.x * 2654435761) ^ (b.y * 40503) ^ (f * 977 + 999)) >>> 0); mr(); mr(); return home(moodOf(b, f, mr)); };   // sopra le botteghe ci vive qualcuno (o ci tengono la roba)
+    // [botteghe] la bottega al primo piano: sotto l'androne del palazzo, al primo piano la bottega (il suo programma del piano terra), sopra le case
+    const SF = b.shopFront; if (SF && SF.piano === 1 && b.door && !program.__sf) {
+      if (f === 0) return { names: ['androne', 'portineria', 'cantine', 'ripostiglio'], mood: 'condominio' };
+      if (f >= 2) return up();
+      program.__sf = true; try { return program(b, kind, 0, nF, r); } finally { program.__sf = false; }
+    }
     const ex = EXTRA.names[kind]; if (ex) return { names: ex[Math.min(f, ex.length - 1)] || ex[0], mood: kind };
     const P = (n0, n1, n2) => ({ names: f === 0 ? n0 : f === nF - 1 && n2 ? n2 : n1, mood: kind });
     switch (kind) {
@@ -147,6 +159,12 @@ var Interior = (function () {
       case 'supermercato': return f === 0 ? { names: ['supermercato', 'supermercato', 'magazzino', 'bagno'], mood: 'supermercato' } : { names: ['magazzino', 'ufficio', 'bagno'], mood: 'supermercato' };   // [ordine]
       case 'pescheria': return f === 0 ? { names: ['pescheria', 'cella_frigo', 'retro', 'bagno'], mood: kind } : up();
       case 'bottega': return f === 0 ? { names: ['bottega', 'retro', 'magazzino', 'bagno'], mood: 'bottega' } : up();
+      // [botteghe] il palazzo con la bottega al piano terra: dal portone l'androne (la bottega ha la sua pianta, vedi layout), sopra le case
+      case 'palazzo': return f === 0 ? { names: ['androne', 'portineria', 'cantine', 'ripostiglio'], mood: 'condominio' } : up();
+      // [botteghe] le botteghe di tutti i giorni della città per epoche: locale col banco, retrobottega, bagno; chi ripara ha il laboratorio
+      case 'drogheria': case 'latteria': case 'merceria': case 'cartoleria': case 'profumeria': return f === 0 ? { names: [kind, 'retro', 'magazzino', 'bagno'], mood: kind } : up();
+      case 'calzolaio': case 'orologiaio': case 'elettrodomestici': return f === 0 ? { names: [kind, 'laboratorio_b', 'retro', 'bagno'], mood: kind } : up();
+      case 'mobili': return f === 0 ? { names: ['mobili', 'magazzino', 'ufficio', 'bagno'], mood: kind } : up();
       default: return f === 0 ? { names: ['bottega', 'retro', 'magazzino', 'bagno'], mood: kind } : up();   // [soldi] le botteghe nuove (Emporio, macelleria, fabbro…)
     }
   }
@@ -300,7 +318,7 @@ var Interior = (function () {
   // [design] mobili alti e composizioni larghe: i primi negli angoli, le seconde in mezzo al muro
   const CENTERED = /^(letto|salotto|divano|zona_tv|pranzo|cena|bancone)|bed|ia_divano|mobile_tv|lavabo|consolle/;
   // [vissuto] quanto è sporco, secondo chi ci vive o lavora (0 lucido, 1 rudere)
-  const DIRT = { rudere: 1, kommunalka: .75, operaio: .65, pescatore: .55, contadino: .6, intellettuale: .45, famiglia: .3, anziana: .15, funzionario: .03, condominio: .55, albergo: .08, cultura: .05, banca: .03, bar: .55, pub: .6, magazzino: .75, deposito: .8, hangar: .7, officina: .8, cantiere: .8, caserma: .2, rocca: .25, ambulatorio: .1, disco: .6, sala_giochi: .65, baracca: .7, emporio: .1, supermercato: .15 };
+  const DIRT = { rudere: 1, kommunalka: .75, operaio: .65, pescatore: .55, contadino: .6, intellettuale: .45, famiglia: .3, anziana: .15, funzionario: .03, condominio: .55, albergo: .08, cultura: .05, banca: .03, bar: .55, pub: .6, magazzino: .75, deposito: .8, hangar: .7, officina: .8, cantiere: .8, caserma: .2, rocca: .25, ambulatorio: .1, disco: .6, sala_giochi: .65, baracca: .7, emporio: .1, supermercato: .15, profumeria: .08, orologiaio: .12, elettrodomestici: .15, mobili: .15, latteria: .2, cartoleria: .2, merceria: .25, drogheria: .3, calzolaio: .5 };   // [botteghe]
   // [vissuto] le pareti di chi: dove si ribellano (stencil, poster dei ragazzi, volantini) e dove si crede alla propaganda (manifesti, pubblicità)
   const REBEL = /cameretta|atelier|mono_artista|stanza_vuota|rudere|cantine|androne|corridoio_k|stanza_fam|camera_spoglia|rimessa_reti|soppalco|magazzino_neri|sala_biliardo|biliardo|sala_giochi|pista|bar_disco/;
   const PROPA = /ufficio|ingresso_caserma|caserma|comando|archivio|schedario|direzione|presidenza|hall|atrio|sala_riunioni|museo_regime|salone_cultura|sportelli|ingresso_uff|corsia|attesa|aula|mensa_t|camerata|emporio|supermercato/;
@@ -495,6 +513,17 @@ var Interior = (function () {
     fruttivendolo: ['cemento|graniglia', 'crema|verde', 'neon', ['!@cassa|pv_banco_vendita', 'ia_cassette_frutta', 'ia_cassette_frutta', 'ia_cassette_frutta', 'ia_sacchi', 'ar_cash-register', '~ia_cesto', '~ia_cassette_frutta', '^ia_ritratto', '^ia_menu']],
     radio_r: ['linoleum', 'verde', 'bulbo', ['!st_banco_radio', 'st_cassetta', 'cardboardBoxClosed', '@scrivania', '~ia_casse', '^ia_mappa', '^ia_poster_film']],
     cantina_r: ['cotto', 'mattoni', 'bulbo', ['!fd_barrel', '!fd_barrel', 'ia_botti', 'ia_botti', 'kitchenBar', 'ar_cash-register', '~ia_bottiglie', '^ia_salami']],
+    // [botteghe] le botteghe di tutti i giorni: una composizione per mestiere (banco con registratore o bilancia, la merce giusta, il calendario al muro)
+    drogheria: ['graniglia|linoleum', 'crema|verde', 'bulbo', ['!@cassa|pv_banco_vendita', 'ia_scaffale_barattoli', 'ia_scaffale_merci', 'ia_scaffale_merci|bookcaseOpen', 'ia_sacchi', '?ia_cassette_frutta', '^ia_calendario', '^ia_cartello_prezzi', '^ia_mensola_alta', '~ia_cesto', '?~ia_sacchi'], ['ia_scaffale_barattoli', '*ia_scaffale_merci']],
+    latteria: ['piastrelle|scacchi', 'piastrelle|azzurro', 'neon', ['!@cassa|pv_banco_vendita', 'ia_vetrina_frigo', 'kitchenBar', 'ia_scaffale_barattoli', '?ia_frigo_vecchio', '^ia_calendario', '^ia_cartello_prezzi', '^ia_orologio', '~ia_casse', '~ia_bottiglie']],
+    merceria: ['parquet|linoleum', 'fiori|crema|rosa', 'bulbo', ['!@cassa|pv_banco_vendita', 'ia_vetrina', 'bookcaseClosedWide|ia_credenza', 'bookcaseOpen', 'ia_manichino', '?ia_stender', '^ia_specchio', '^ia_calendario', '^ia_mensola', '~ia_cesto_cucito'], ['bookcaseOpen', 'ia_manichino']],
+    calzolaio: ['assi|cemento', 'calce|ocra', 'bulbo', ['!pv_banco_lavoro', 'st_cassetta', 'ia_scaffale_scarpe', 'ia_scaffale_scarpe|bookcaseOpen', 'chair', 'bench', 'ar_cash-register', '^ia_attrezzi_muro', '^ia_calendario', '^ia_ritratto', '~ia_scarpe', '~ia_stivali', '~ia_scarpe']],
+    orologiaio: ['parquet|graniglia', 'crema|verde', 'bulbo', ['!@cassa|pv_banco_vendita', 'ia_vetrina', 'ia_vetrina', 'desk', 'chairDesk', 'bookcaseClosedWide', '^ia_orologio', '^ia_orologio', '^ia_orologio', '^ia_calendario', '^ia_specchio']],
+    cartoleria: ['linoleum|graniglia', 'crema|azzurro', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci|bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', 'ia_vetrina', '^ia_manifesto', '^ia_calendario', '^ia_mappa', '~ia_giornali'], ['bookcaseOpen', '*ia_scaffale_merci']],
+    profumeria: ['marmo|graniglia', 'rosa|crema', 'neon', ['!@cassa|pv_banco_vendita', 'ia_vetrina', 'ia_vetrina', 'bookcaseClosedWide', 'ia_pianta_alta', '^ia_specchio', '^ia_specchio', '^ia_pubblicita', '^ia_calendario']],
+    elettrodomestici: ['linoleum', 'crema|azzurro', 'neon', ['!@cassa|pv_banco_vendita', 'ia_frigo_design', 'ia_frigo_design|kitchenFridge', 'washer', 'washer', 'ia_tv', 'ia_mobile_tv', 'ia_radio_grande|ia_mobile_radio', 'ia_cucina_gas', '^ia_pubblicita', '^ia_calendario', '^ia_cartello_prezzi', '?~ia_ventilatore'], ['washer', 'ia_tv', '*ia_frigo_design']],
+    mobili: ['parquet', 'crema', 'bulbo', ['@salotto_design|@divano', 'ia_armadio_design|ia_armadio', 'ia_credenza|ia_madia', '@pranzo_design|@pranzo', 'ia_libreria_piena', 'ia_poltrona_design', 'ia_lampada_piede', 'ar_cash-register', '^ia_calendario', '^ia_cartello_prezzi'], ['ia_poltrona_design', 'ia_armadio', '@pranzo']],
+    laboratorio_b: ['assi|cemento', 'calce', 'bulbo', ['!pv_banco_lavoro', 'st_cassetta', 'chair', 'ia_scaffale_metallo|bookcaseOpen', '^ia_attrezzi_muro', '^ia_calendario', '^ia_lampada_muro', '~ia_casse']],
   };
   // [roba] l'altezza dei piani d'appoggio, e che cosa ci si lascia sopra a seconda della stanza: [stanza, roba, quante volte su cento c'è]
   const SURF = { table: .76, tableRound: .76, tableCloth: .76, ia_tavolino: .74, ia_tavolino_tondo: .74, ia_tavolo_lungo: .77, desk: .75, sideTable: .55, kitchenBar: .95, ia_bancone_bar: 1.0, kitchenCabinet: .92, ia_credenza: .9, pv_banco_vendita: .95, ia_scrivania_grande: .78, tableCoffee: .42, ia_cassapanca: .55,
@@ -520,7 +549,7 @@ var Interior = (function () {
   const OPEN = { chiesa: 1, deposito: 1, officina: 1, fabbrica: 1, hangar: 1, cantiere: 1, faro: 1 };
   const MAINBIG = { banca: 1, bar: 1, pub: 1, autorimessa: 1, abbigliamento: 1, armeria: 1, trattoria: 1, circolo: 1,
     // [negozi] anche nelle botteghe la sala vendita è la stanza più grande (il magazzino dietro)
-    sala_giochi: 1, alimentari: 1, emporio: 1, ferramenta: 1, bottega: 1, tabacchi: 1, farmacia: 1, panetteria: 1, supermercato: 1, fruttivendolo: 1, macelleria: 1, pescheria: 1, video: 1, barbiere: 1, lavanderia: 1, sartoria: 1, cantina: 1, gelateria: 1, benzina: 1 };
+    sala_giochi: 1, alimentari: 1, emporio: 1, ferramenta: 1, bottega: 1, tabacchi: 1, farmacia: 1, panetteria: 1, supermercato: 1, fruttivendolo: 1, macelleria: 1, pescheria: 1, video: 1, barbiere: 1, lavanderia: 1, sartoria: 1, cantina: 1, gelateria: 1, benzina: 1, drogheria: 1, latteria: 1, merceria: 1, cartoleria: 1, profumeria: 1, calzolaio: 1, orologiaio: 1, elettrodomestici: 1, mobili: 1 };   // [botteghe]
   const OPEN0 = { teatro: 1, cinema: 1, palestra: 1, cultura: 1, disco: 1, magazzino: 1 };
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -643,6 +672,7 @@ var Interior = (function () {
   function growOf(b, kind) {
     if (!b.door || NOGROW[kind]) return [0, 0];
     const a = b.w * b.h, home = kind === 'casa' || kind === 'cascina';
+    if (kind === 'palazzo') return a < 20 ? [3, 3] : a < 42 ? [2, 3] : [1, 2];   // [botteghe] bottega e androne fianco a fianco: più fondo per il retrobottega
     // [planimetrie] più grandi: una casa piccola guadagna un paio di stanze, le botteghe una sala vera
     if (home) return a < 20 ? [3, 2] : a < 42 ? [2, 2] : [1, 1];
     if (a >= 90) return [1, 1];
@@ -659,33 +689,55 @@ var Interior = (function () {
   }
   function layout(b) {
     const key = b.i !== undefined ? b.i : b.id; if (CACHE[key]) return CACHE[key];
-    const kind = kindOf(b), vb = grownBox(b, kind);
+    // [botteghe] un palazzo con la bottega al piano terra (b.shopFront con porta e vetrine) ha due ingressi: dal portone l'androne
+    // con la scala e sopra le case, dalla porta della bottega il locale col banco, il retrobottega e il bagno. Le due parti stanno
+    // fianco a fianco sullo stesso piano, divise da un muro pieno; la pianta (programma, stanze, arredo) è una per parte.
+    const kind0 = kindOf(b), SF = b.shopFront, split = !!(SF && !SF.piano && SF.door && SF.span && b.door), kind = split ? 'palazzo' : kind0, shopKind = kind0; let vb = grownBox(b, kind);
+    if (split) {   // la bottega vuole almeno tre caselle di fronte (locale + retro): se il fronte è stretto, dentro cresce dal suo lato
+      const NS = SF.face === 'S' || SF.face === 'N', k0 = Math.min(SF.k0, SF.k1), k1 = Math.max(SF.k0, SF.k1), hiSide = k0 > SF.portone;
+      const ext = NS ? (hiSide ? vb.x + vb.w - (b.x + k1 + 1) : b.x + k0 - vb.x) : (hiSide ? vb.y + vb.h - (b.y + k1 + 1) : b.y + k0 - vb.y), need = 3 - (k1 - k0 + 1 + ext);
+      if (need > 0) { vb = Object.assign({}, vb); if (NS) { vb.w += need; if (!hiSide) vb.x -= need; } else { vb.h += need; if (!hiSide) vb.y -= need; } }
+    }
     const seed = (b.x * 7919 + b.y * 104729) >>> 0, r = rng(seed), X0 = vb.x * TS, Y0 = vb.y * TS, W = vb.w * TS, H = vb.h * TS;
     const want = Math.max(1, Math.min(MAXF, b.fl || 1));
     // ---- l'ingresso: sul lato che tocca la casella della porta ----
-    let ent = null;
-    if (b.door) {
-      const [dx, dy] = b.door, cx = dx * TS + 1, cy = dy * TS + 1;
-      if (dy < b.y) ent = { side: 'N', x: cx, y: Y0, out: [cx, Y0 - 1], in: [cx, Y0 + 1.1] };
-      else if (dy >= b.y + b.h) ent = { side: 'S', x: cx, y: Y0 + H, out: [cx, Y0 + H + 1], in: [cx, Y0 + H - 1.1] };
-      else if (dx < b.x) ent = { side: 'W', x: X0, y: cy, out: [X0 - 1, cy], in: [X0 + 1.1, cy] };
-      else ent = { side: 'E', x: X0 + W, y: cy, out: [X0 + W + 1, cy], in: [X0 + W - 1.1, cy] };
+    const entOf = door => {
+      const [dx, dy] = door, cx = dx * TS + 1, cy = dy * TS + 1;
+      if (dy < b.y) return { side: 'N', x: cx, y: Y0, out: [cx, Y0 - 1], in: [cx, Y0 + 1.1] };
+      if (dy >= b.y + b.h) return { side: 'S', x: cx, y: Y0 + H, out: [cx, Y0 + H + 1], in: [cx, Y0 + H - 1.1] };
+      if (dx < b.x) return { side: 'W', x: X0, y: cy, out: [X0 - 1, cy], in: [X0 + 1.1, cy] };
+      return { side: 'E', x: X0 + W, y: cy, out: [X0 + W + 1, cy], in: [X0 + W - 1.1, cy] };
+    };
+    let ent = b.door ? entOf(b.door) : null, ent2 = null, SP = null;
+    if (split) {   // le caselle della bottega lungo il fronte (col pezzo di crescita dal suo lato), il resto all'androne
+      const NS = SF.face === 'S' || SF.face === 'N', k0 = Math.min(SF.k0, SF.k1), k1 = Math.max(SF.k0, SF.k1), hiSide = k0 > SF.portone;
+      const vlo = NS ? vb.x : vb.y, vhi = NS ? vb.x + vb.w : vb.y + vb.h, lo = (NS ? b.x : b.y) + k0, hi = (NS ? b.x : b.y) + k1 + 1;
+      const sa = hiSide ? lo : vlo, sb = hiSide ? vhi : hi, pa = hiSide ? vlo : sb, pb = hiSide ? sa : vhi;   // [sa,sb) la bottega, [pa,pb) il palazzo, in caselle
+      const mk = (a, c) => NS ? { x: a, y: vb.y, w: c - a, h: vb.h } : { x: vb.x, y: a, w: vb.w, h: c - a };
+      if (sb - sa >= 1 && pb - pa >= 1) { SP = { s: mk(sa, sb), p: mk(pa, pb), line: (hiSide ? sa : sb) * TS, v: NS }; ent2 = entOf(SF.door); ent2.shop = true; }
     }
-    const prog0 = program(b, kind, 0, want, r), homeOf = pg => !!HOME[pg.mood] || pg.mood === 'condominio';
-    const entM = ent && { x: ent.x, y: ent.y, side: ent.side };
-    let P0 = splitFloor(vb, kind, 0, r, null, prog0.names.length, entM, homeOf(prog0));
+    const prog0 = program(b, kind, 0, want, r), progS = SP ? program(b, shopKind, 0, 1, r) : null, homeOf = pg => !!HOME[pg.mood] || pg.mood === 'condominio';
+    const entM = ent && { x: ent.x, y: ent.y, side: ent.side }, ent2M = ent2 && { x: ent2.x, y: ent2.y, side: ent2.side };
+    const inVB = (q, v) => q.x + q.w / 2 > v.x * TS && q.x + q.w / 2 < (v.x + v.w) * TS && q.y + q.h / 2 > v.y * TS && q.y + q.h / 2 < (v.y + v.h) * TS;
+    // la pianta del piano terra: una sola, oppure bottega + androne col muro pieno in mezzo (le porte interne per parte, più sotto)
+    const ground = (nP, homeP) => { if (!SP) return splitFloor(vb, kind, 0, r, null, nP, entM, homeP);
+      const PS = splitFloor(SP.s, shopKind, 0, r, null, progS.names.length, ent2M, false), PP = splitFloor(SP.p, kind, 0, r, null, nP, entM, homeP);
+      const wall = SP.v ? { a: [SP.line, Y0], b: [SP.line, Y0 + H], v: true, gap: null } : { a: [X0, SP.line], b: [X0 + W, SP.line], v: false, gap: null };
+      return { rooms: PS.rooms.concat(PP.rooms), inner: PS.inner.concat(PP.inner, [wall]), PS, PP, wall }; };
+    let P0 = ground(prog0.names.length, homeOf(prog0));
     const roomIn = (rooms, x, y) => rooms.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
     let entRoom = ent ? roomIn(P0.rooms, ent.in[0], ent.in[1]) : P0.rooms[0];
     // ---- scala: in una stanza del piano terra, contro un muro, due caselle ----
     let stairs = null;
     for (let tryN = 0; want > 1 && !stairs && tryN < 5; tryN++) {
       const GD = [2.2, 1.6, 1.6, 1.6, 1.6][tryN], ED = [2.2, 1.8, 1.8, 1.8, 1.8][tryN], needWall = tryN < 2;
-      if (tryN === 3) { P0 = splitFloor(vb, kind, 0, r, null, prog0.names.length, entM, homeOf(prog0)); entRoom = ent ? roomIn(P0.rooms, ent.in[0], ent.in[1]) : P0.rooms[0]; }   // un'altra pianta
-      if (tryN === 4) { P0 = splitFloor(vb, kind, 0, r, null, 1, entM, false); entRoom = ent ? roomIn(P0.rooms, ent.in[0], ent.in[1]) : P0.rooms[0]; }
+      if (tryN === 3) { P0 = ground(prog0.names.length, homeOf(prog0)); entRoom = ent ? roomIn(P0.rooms, ent.in[0], ent.in[1]) : P0.rooms[0]; }   // un'altra pianta
+      if (tryN === 4) { P0 = ground(1, false); entRoom = ent ? roomIn(P0.rooms, ent.in[0], ent.in[1]) : P0.rooms[0]; }
       // si provano tutte le posizioni: due caselle (cima T e rampa O) contro un muro, il piede oltre O, il pianerottolo accanto a T
       const gapNear = (tx, ty) => P0.inner.some(q => { if (!q.gap) return false; const gx = q.v ? q.a[0] : q.gap[0], gy = q.v ? q.gap[0] : q.a[1]; return Math.abs(gx - (tx * TS + 1)) < GD && Math.abs(gy - (ty * TS + 1)) < GD; });
       let best = null, bs = -1e9;
       P0.rooms.forEach(q => {
+        if (SP && !inVB(q, SP.p)) return;   // [botteghe] la scala sta nell'androne, non in bottega
         // la casella sta tutta nella stanza; il muro c'è se la casella accanto è quasi tutta fuori
         const inR = (x, y) => x * TS >= q.x - .01 && x * TS + TS <= q.x + q.w + .01 && y * TS >= q.y - .01 && y * TS + TS <= q.y + q.h + .01;
         const overR = (x, y) => Math.min(x * TS + TS, q.x + q.w) - Math.max(x * TS, q.x) > .6 && Math.min(y * TS + TS, q.y + q.h) - Math.max(y * TS, q.y) > .6;
@@ -711,19 +763,18 @@ var Interior = (function () {
     // ---- muri: perimetro con la porta, muri interni con i passaggi ----
     const wallsOf = (f, inner) => {
       const w = [];
-      const seg = (x0, y0, x1, y1, gap) => {
-        const v = x0 === x1;
-        if (!gap) { w.push(v ? [x0 - WT / 2, Math.min(y0, y1), WT, Math.abs(y1 - y0)] : [Math.min(x0, x1), y0 - WT / 2, Math.abs(x1 - x0), WT]); return; }
-        const [c, gw] = gap, a = v ? Math.min(y0, y1) : Math.min(x0, x1), bb = v ? Math.max(y0, y1) : Math.max(x0, x1);
-        if (c - gw / 2 > a) w.push(v ? [x0 - WT / 2, a, WT, c - gw / 2 - a] : [a, y0 - WT / 2, c - gw / 2 - a, WT]);
-        if (c + gw / 2 < bb) w.push(v ? [x0 - WT / 2, c + gw / 2, WT, bb - c - gw / 2] : [c + gw / 2, y0 - WT / 2, bb - c - gw / 2, WT]);
+      const seg = (x0, y0, x1, y1, gap) => {   // gap: [centro, larghezza] o una lista di varchi ([botteghe] portone e porta della bottega sullo stesso muro)
+        const v = x0 === x1, a = v ? Math.min(y0, y1) : Math.min(x0, x1), bb = v ? Math.max(y0, y1) : Math.max(x0, x1);
+        const gs = (gap ? (Array.isArray(gap[0]) ? gap : [gap]) : []).slice().sort((p, q) => p[0] - q[0]); let cur = a;
+        gs.forEach(([c, gw]) => { if (c - gw / 2 > cur) w.push(v ? [x0 - WT / 2, cur, WT, c - gw / 2 - cur] : [cur, y0 - WT / 2, c - gw / 2 - cur, WT]); cur = Math.max(cur, c + gw / 2); });
+        if (cur < bb) w.push(v ? [x0 - WT / 2, cur, WT, bb - cur] : [cur, y0 - WT / 2, bb - cur, WT]);
       };
-      const g = s => f === 0 && ent && ent.side === s ? [s === 'N' || s === 'S' ? ent.x : ent.y, 1.5] : null;
+      const g = s => { const gs = []; [ent, ent2].forEach(e => { if (f === 0 && e && e.side === s) gs.push([s === 'N' || s === 'S' ? e.x : e.y, 1.5]); }); return gs.length ? gs : null; };
       seg(X0, Y0, X0 + W, Y0, g('N')); seg(X0, Y0 + H, X0 + W, Y0 + H, g('S')); seg(X0, Y0, X0, Y0 + H, g('W')); seg(X0 + W, Y0, X0 + W, Y0 + H, g('E'));
       inner.forEach(q => seg(q.a[0], q.a[1], q.b[0], q.b[1], q.gap));
       return w;
     };
-    const Lb = { b, kind, floors: [], ent, stairs, box: [X0, Y0, W, H], mood: prog0.mood };
+    const Lb = { b, kind: SP ? shopKind : kind, floors: [], ent, ent2, stairs, box: [X0, Y0, W, H], mood: SP ? progS.mood : prog0.mood, shop: SP ? [SP.s.x * TS, SP.s.y * TS, SP.s.w * TS, SP.s.h * TS] : null };   // [botteghe] shop: il rettangolo della bottega
     for (let f = 0; f < nF; f++) {
       const rf = f === 0 ? r : rng((seed + f * 7777) >>> 0);
       const prog = f === 0 ? prog0 : program(b, kind, f, nF, rf);
@@ -735,13 +786,23 @@ var Interior = (function () {
       const eRoom = f === 0 ? entRoom : roomIn(P.rooms, stairs.landing[0], stairs.landing[1]) || P.rooms[0];
       // [planimetrie] nelle case l'ingresso piccolo è un ingresso vero (attaccapanni, scarpiera, specchio), non una stanza qualunque
       const hall = HOME[prog.mood] && prog.mood !== 'rudere' && prog.mood !== 'kommunalka' && P.rooms.length >= 3 && (Math.min(eRoom.w, eRoom.h) <= 2.5 || eRoom.w * eRoom.h <= 12);
-      const names = nameRooms(P.rooms, eRoom, hall ? ['ingresso_casa'].concat(prog.names) : prog.names, HOME_MORE[prog.mood]);
       // [attività] nei locali la sala vera (bancone, biliardo, auto in vendita, abiti) è la stanza più grande, anche se non è quella d'ingresso
-      if (f === 0 && MAINBIG[kind]) { const big = P.rooms.reduce((a, q) => q.w * q.h > a.w * a.h ? q : a, P.rooms[0]); if (big !== eRoom && big.w * big.h > eRoom.w * eRoom.h * 1.2 && names.get(big) !== 'bagno') { const n0 = names.get(eRoom); names.set(eRoom, names.get(big)); names.set(big, n0); } }
-      if (!OPEN[kind]) hallDoors(P, eRoom, stairs);
+      const salaGrande = (rooms, eR, nm, kd) => { if (!MAINBIG[kd]) return; const big = rooms.reduce((a, q) => q.w * q.h > a.w * a.h ? q : a, rooms[0]); if (big !== eR && big.w * big.h > eR.w * eR.h * 1.2 && nm.get(big) !== 'bagno') { const n0 = nm.get(eR); nm.set(eR, nm.get(big)); nm.set(big, n0); } };
+      let names, eRoom2 = null;
+      if (f === 0 && P.PS) {   // [botteghe] due programmi su un piano: la bottega dalla sua porta, l'androne dal portone; le porte interne per parte, il muro fra le due resta pieno
+        eRoom2 = roomIn(P.PS.rooms, ent2.in[0], ent2.in[1]) || P.PS.rooms[0];
+        names = nameRooms(P.PS.rooms, eRoom2, progS.names, ['magazzino', 'ripostiglio', 'retro']); salaGrande(P.PS.rooms, eRoom2, names, shopKind);
+        nameRooms(P.PP.rooms, eRoom, prog.names, HOME_MORE[prog.mood]).forEach((v, k) => names.set(k, v));
+        hallDoors(P.PS, eRoom2, null); hallDoors(P.PP, eRoom, stairs); P.inner = P.PS.inner.concat(P.PP.inner, [P.wall]);
+      } else {
+        names = nameRooms(P.rooms, eRoom, hall ? ['ingresso_casa'].concat(prog.names) : prog.names, HOME_MORE[prog.mood]);
+        if (f === 0) salaGrande(P.rooms, eRoom, names, kind);
+        if (!OPEN[kind]) hallDoors(P, eRoom, stairs);
+      }
       const walls = wallsOf(f, P.inner), dw = P.inner.filter(q => q.gap);
-      const rooms = P.rooms.map(q => { const name = names.get(q), st = roomStyle(name, rf); return { x: q.x, y: q.y, w: q.w, h: q.h, name, floor: st.floor, wall: st.wall, light: st.light, dirt: Math.max(0, Math.min(1, (DIRT[prog.mood] != null ? DIRT[prog.mood] : .35) + (rf() - .5) * .2)) }; });
-      const F = { f, mood: prog.mood, walls, rooms, inner: dw, segs: P.inner, wins: /disco|cinema|sala_giochi/.test(prog.mood) ? [] : windows(Lb, f, P.inner, prog.names[0] === 'lanterna' || prog.mood === 'chiesa'), doors: dw.map(q => ({ x: q.v ? q.a[0] : q.gap[0], y: q.v ? q.gap[0] : q.a[1], v: q.v })), furn: [] };
+      const moodQ = q => f === 0 && P.PS && inVB(q, SP.s) ? progS.mood : prog.mood;   // [botteghe] lo sporco della bottega è il suo, quello dell'androne del condominio
+      const rooms = P.rooms.map(q => { const name = names.get(q), st = roomStyle(name, rf), md = moodQ(q); return { x: q.x, y: q.y, w: q.w, h: q.h, name, floor: st.floor, wall: st.wall, light: st.light, dirt: Math.max(0, Math.min(1, (DIRT[md] != null ? DIRT[md] : .35) + (rf() - .5) * .2)) }; });
+      const F = { f, mood: f === 0 && P.PS ? progS.mood : prog.mood, walls, rooms, inner: dw, segs: P.inner, wins: /disco|cinema|sala_giochi/.test(prog.mood) ? [] : windows(Lb, f, P.inner, prog.names[0] === 'lanterna' || prog.mood === 'chiesa'), doors: dw.map(q => ({ x: q.v ? q.a[0] : q.gap[0], y: q.v ? q.gap[0] : q.a[1], v: q.v })), furn: [] };
       Lb.floors.push(F);
       F.furn = furnish(Lb, F, rf, dw, kind);
     }
@@ -751,7 +812,7 @@ var Interior = (function () {
       for (let tries = 0; tries < 40; tries++) {
         if (reachAll(Lb, f)) break;
         const solid = F.furn.filter(o => o.solid); if (!solid.length) break;
-        const pts = F.inner.map(q => q.v ? [q.a[0], q.gap[0]] : [q.gap[0], q.a[1]]); if (stairs) pts.push(stairs.foot, stairs.landing, [stairs.o[0] + 1, stairs.o[1] + 1]); if (ent && f === 0) pts.push(ent.in);
+        const pts = F.inner.map(q => q.v ? [q.a[0], q.gap[0]] : [q.gap[0], q.a[1]]); if (stairs) pts.push(stairs.foot, stairs.landing, [stairs.o[0] + 1, stairs.o[1] + 1]); if (ent && f === 0) pts.push(ent.in); if (ent2 && f === 0) pts.push(ent2.in);
         let best = null, bd = 1e9; solid.forEach(o => pts.forEach(p => { const d = Math.hypot(o.x - p[0], o.y - p[1]) + (o.keep ? 6 : 0); if (d < bd) { bd = d; best = o; } }));   // le postazioni per ultime
         // se era in un gruppo, il gruppo resta: si toglie solo lui
         F.furn.splice(F.furn.indexOf(best), 1);
@@ -780,7 +841,7 @@ var Interior = (function () {
   function windows(L, f, inner, all) {
     const [X0, Y0, W, H] = L.box, out = [], e = L.ent;
     const junction = (x, y) => inner.some(q => (q.v ? Math.abs(q.a[0] - x) < 1.1 && (Math.abs(q.a[1] - y) < .1 || Math.abs(q.b[1] - y) < .1) : Math.abs(q.a[1] - y) < 1.1 && (Math.abs(q.a[0] - x) < .1 || Math.abs(q.b[0] - x) < .1)));
-    const nearEnt = (s, x, y) => f === 0 && e && e.side === s && Math.hypot(x - e.x, y - e.y) < 1.9;
+    const nearEnt = (s, x, y) => f === 0 && [e, L.ent2].some(q => q && q.side === s && Math.hypot(x - q.x, y - q.y) < 1.9);
     const nx = W / TS, ny = H / TS;
     for (let i = 1; i < nx - 1; i++) { if (i % 2 !== 1 && !all) continue; const x = X0 + i * TS + 1; if (!nearEnt('N', x, Y0) && !junction(x, Y0)) out.push({ x, y: Y0, side: 'N' }); if (!nearEnt('S', x, Y0 + H) && !junction(x, Y0 + H)) out.push({ x, y: Y0 + H, side: 'S' }); }
     for (let j = 1; j < ny - 1; j++) { if (j % 2 !== 1 && !all) continue; const y = Y0 + j * TS + 1; if (!nearEnt('W', X0, y) && !junction(X0, y)) out.push({ x: X0, y, side: 'W' }); if (!nearEnt('E', X0 + W, y) && !junction(X0 + W, y)) out.push({ x: X0 + W, y, side: 'E' }); }
@@ -811,10 +872,11 @@ var Interior = (function () {
     const distRect = (px, py, cx, cy, hw, hd) => Math.hypot(Math.max(0, Math.abs(px - cx) - hw), Math.max(0, Math.abs(py - cy) - hd));
     const blocked = (cx, cy, hw, hd) => {
       if (f === 0 && ent && distRect(ent.in[0], ent.in[1], cx, cy, hw, hd) < .85) return true;
+      if (f === 0 && L.ent2 && distRect(L.ent2.in[0], L.ent2.in[1], cx, cy, hw, hd) < .85) return true;   // [botteghe]
       for (const g of gaps) if (distRect(g[0], g[1], cx, cy, hw, hd) < .9) return true;
       // davanti a ogni varco un corridoio libero, dalle due parti
       for (const q of inner) { const gx = q.v ? q.a[0] : q.gap[0], gy = q.v ? q.gap[0] : q.a[1], ax = q.v ? 1.25 : .72, ay = q.v ? .72 : 1.25; if (Math.abs(cx - gx) < hw + ax && Math.abs(cy - gy) < hd + ay) return true; }
-      if (f === 0 && ent) { const vx = ent.side === 'N' || ent.side === 'S', ax = vx ? .75 : 1.5, ay = vx ? 1.5 : .75; if (Math.abs(cx - ent.x) < hw + ax && Math.abs(cy - ent.y) < hd + ay) return true; }
+      for (const e of [ent, L.ent2]) if (f === 0 && e) { const vx = e.side === 'N' || e.side === 'S', ax = vx ? .75 : 1.5, ay = vx ? 1.5 : .75; if (Math.abs(cx - e.x) < hw + ax && Math.abs(cy - e.y) < hd + ay) return true; }
       if (stairs) {
         const s = stairs; if (cx + hw > s.x - .2 && cx - hw < s.x + s.w + .2 && cy + hd > s.y - .2 && cy - hd < s.y + s.h + .2) return true;
         if (distRect(s.foot[0], s.foot[1], cx, cy, hw, hd) < .9 || distRect(s.landing[0], s.landing[1], cx, cy, hw, hd) < .9) return true;
@@ -1027,12 +1089,11 @@ var Interior = (function () {
 
   function reachAll(L, f) {
     const [X0, Y0, W, H] = L.box, S = .5, F = L.floors[f];
-    const start = f === 0 ? (L.ent ? L.ent.in : null) : L.stairs && L.stairs.landing; if (!start) return true;
+    const starts = f === 0 ? [L.ent && L.ent.in, L.ent2 && L.ent2.in].filter(Boolean) : [L.stairs && L.stairs.landing].filter(Boolean); if (!starts.length) return true;   // [botteghe] dalle due porte
     const nx = Math.ceil(W / S), ny = Math.ceil(H / S), seen = new Uint8Array(nx * ny), q = [];
     const id = (x, y) => Math.floor((y - Y0) / S) * nx + Math.floor((x - X0) / S);
     const ok = (x, y) => x > X0 && y > Y0 && x < X0 + W && y < Y0 + H && walk(L, f, x, y, .3);
-    if (!ok(start[0], start[1])) return false;
-    q.push(start); seen[id(start[0], start[1])] = 1;
+    for (const start of starts) { if (!ok(start[0], start[1])) return false; q.push(start); seen[id(start[0], start[1])] = 1; }
     while (q.length) { const [x, y] = q.pop(); for (const [dx, dy] of [[S, 0], [-S, 0], [0, S], [0, -S]]) { const a = x + dx, c = y + dy; if (!ok(a, c)) continue; const k = id(a, c); if (seen[k]) continue; seen[k] = 1; q.push([a, c]); } }
     for (const r of F.rooms) { let hit = false; for (let x = r.x + .25; x < r.x + r.w && !hit; x += S) for (let y = r.y + .25; y < r.y + r.h && !hit; y += S) if (seen[id(x, y)]) hit = true; if (!hit) return false; }
     const s = L.stairs, last = L.floors.length - 1;
@@ -1045,9 +1106,9 @@ var Interior = (function () {
     const [X0, Y0, W, H] = L.box, F = L.floors[f]; if (!F) return false;
     const inBox = x - rr > X0 && x + rr < X0 + W && y - rr > Y0 && y + rr < Y0 + H;
     if (!inBox) {
-      if (f !== 0 || !L.ent) return false;
-      const e = L.ent, along = e.side === 'N' || e.side === 'S' ? Math.abs(x - e.x) : Math.abs(y - e.y);
-      if (along > .75 - rr * .3) return false;
+      if (f !== 0) return false;
+      const thru = e => e && (e.side === 'N' || e.side === 'S' ? Math.abs(x - e.x) : Math.abs(y - e.y)) <= .75 - rr * .3;
+      if (!thru(L.ent) && !thru(L.ent2)) return false;   // [botteghe] anche dalla porta della bottega
     }
     const hit = q => x + rr > q[0] && x - rr < q[0] + q[2] && y + rr > q[1] && y - rr < q[1] + q[3];
     if (F.walls.some(hit)) return false;
@@ -1160,6 +1221,7 @@ var Interior = (function () {
     magazzino_sale: 'magazzino del sale', ingresso_faro: 'ingresso del faro', alloggio_guardiano: 'alloggio del guardiano', deposito_olio: 'deposito dell\'olio', stanza_radio: 'stanza della radio', lanterna: 'lanterna', sala_bar: 'sala', sala_trattoria: 'sala', cucina_trattoria: 'cucina', laboratorio_gelati: 'laboratorio', spogliatoio_banja: 'spogliatoio', bar_disco: 'bar', corridoio_h: 'corridoio', stanza_h: 'camera',
     salone_cultura: 'salone delle adunanze', biblioteca_partito: 'biblioteca del Partito', museo_regime: 'museo della Tutela', studio_medico: 'studio del medico', cassa_benzina: 'cassa', ingresso_caserma: 'ingresso', ufficio_t: 'ufficio', mensa_t: 'mensa', sala_radio_t: 'sala radio', magazzino_neri: 'magazzino', magazzino_porto: 'magazzino', ufficio_porto: 'ufficio', sala_comandi: 'sala comandi', spogliatoio_m: 'spogliatoio', sala_cinema: 'sala', bar_circolo: 'bar', ingresso_uff: 'ingresso', cella_frigo: 'cella frigo', radio_r: 'laboratorio radio', cantina_r: 'cantina', direzione: 'ufficio del direttore', sportelli: 'sala degli sportelli', caveau: 'caveau',
     sala_biliardo: 'sala del biliardo', sala_pub: 'birreria', cantina_birra: 'cantina della birra', armeria_negozio: 'armeria', laboratorio_armi: 'laboratorio', negozio_vestiti: 'negozio', salone_auto: 'salone', officina_r: 'officina', ufficio_vendite: 'ufficio vendite', ingresso_casa: 'ingresso', stanza_ospiti: 'stanza degli ospiti', lavanderia_casa: 'lavanderia' };
+  RNAME.laboratorio_b = 'laboratorio delle riparazioni'; RNAME.elettrodomestici = 'negozio di elettrodomestici'; RNAME.mobili = 'mobilificio';   // [botteghe]
   const roomLabel = n => RNAME[n] || String(n || '').replace(/_r$/, '').replace(/_/g, ' ');
   const ORD = ['piano terra', 'primo piano', 'secondo piano', 'terzo piano', 'quarto piano', 'quinto piano', 'sesto piano', 'settimo piano'];
   const floorLabel = f => ORD[f] || `piano ${f}`;
