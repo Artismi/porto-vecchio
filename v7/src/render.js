@@ -8505,7 +8505,7 @@ var Render = (function () {
     PAINT.mat = new THREE.ShaderMaterial({
       uniforms: { t: { value: null }, d: { value: null }, px: { value: new THREE.Vector2() }, k: { value: 1 } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: `uniform sampler2D t; uniform sampler2D d; uniform vec2 px; uniform float k; varying vec2 vUv;
+      fragmentShader: `precision highp float; precision highp sampler2D; uniform sampler2D t; uniform sampler2D d; uniform vec2 px; uniform float k; varying vec2 vUv;
         void main(){
           vec2 uv = (floor(vUv / px) + .5) * px; vec3 c0 = texture2D(t, uv).rgb;
           vec3 m0 = vec3(0.), m1 = vec3(0.), m2 = vec3(0.), m3 = vec3(0.), s0 = vec3(0.), s1 = vec3(0.), s2 = vec3(0.), s3 = vec3(0.);
@@ -8547,6 +8547,7 @@ var Render = (function () {
         vSMat: { value: [0, 1, 2, 3].map(() => new THREE.Matrix4()) }, vLP: { value: [0, 1, 2, 3].map(() => new THREE.Vector4()) }, vLC: { value: [0, 1, 2, 3].map(() => new THREE.Vector3()) }, vLD: { value: [0, 1, 2, 3].map(() => new THREE.Vector4()) } },   // [luci4]
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
       fragmentShader: `
+        precision highp float; precision highp sampler2D;   // [telefono] i campionatori sono lowp per difetto: la profondità letta a 10 bit faceva righe su ogni piano
         uniform float uFoc9; uniform vec2 uFogNF; uniform sampler2D tC; uniform sampler2D tD; uniform vec2 res; uniform float near; uniform float far; uniform float letter; uniform float pillar; uniform float fade; uniform float flash; uniform float hurt; uniform float sat; uniform float dusk; uniform float night; uniform float uReg; uniform vec4 uWx; uniform vec3 uHz;
         uniform sampler2D tBloom; uniform sampler2D tBloom2; uniform sampler2D tBlur; uniform vec4 aK; uniform vec4 aK2; uniform vec2 aFoc; uniform float aTime;   // [amb2] aK: espos., bloom, dof, grana; aK2: aberr., nitidezza, contorni, vignetta
         uniform sampler2D sSM; uniform mat4 sSMat; uniform vec3 sCol; uniform float sOn;
@@ -8777,7 +8778,7 @@ var Render = (function () {
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
-    PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, ch * dpr / (PHONE ? 540 : 1080));   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
+    PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 540 : 1080));   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
     PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     GPUT.px = W + '×' + H;   /* [prestazioni] */
@@ -12309,7 +12310,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       pitch = lerp(pitch, 1.15, cam.lift);
     }
     const fov = lerp(30, onVespa ? 40 : 40, ease) * (1 + (pveh ? Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) : 0) / 18 * .16 * ease);
-    const viewH = VIEW * cam.zoom;
+    const viewH = VIEW * cam.zoom * (H > W * 1.05 ? .78 : 1);   // [telefono] in verticale la visuale si stringe: il personaggio non è un puntino
     const walkDist = (viewH / 2) / Math.tan(30 * Math.PI / 360);
     let driveDist = ((onVespa ? 26 : 32) * (ui.zoom || 1)) + (pveh ? Math.min(14, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .5) : 0);
     if (false) {

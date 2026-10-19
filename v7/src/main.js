@@ -52,6 +52,16 @@
   cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { mouse.down = false; const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width; if (nx < .08) mouse.nx = 0; else if (nx > .92) mouse.nx = 1; else mouse.active = false; } });
   // [monte] tenendo premuta la rotella del mouse e trascinando, la visuale gira attorno al giocatore
   let camDrag = null; ui.drag = 0;
+  // [telefono] due dita sullo schermo: pizzico per lo zoom (il secondo dito non cammina, non spara, non spruzza)
+  const pin = new Map(); let pinD = 0;
+  const pinDist = () => { const [a, b] = [...pin.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+  cv.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') return; pin.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pin.size === 2) { pinD = pinDist(); if (tp.id !== null) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } mouse.pressed = false; click.t = null; ui.mark = null; }
+    if (pin.size >= 2) e.stopImmediatePropagation(); });
+  cv.addEventListener('pointermove', e => { const q = pin.get(e.pointerId); if (!q) return; q.x = e.clientX; q.y = e.clientY;
+    if (pin.size === 2) { const d = pinDist(); zoomBy(pinD / d); pinD = d; e.stopImmediatePropagation(); } });
+  const pinUp = e => { pin.delete(e.pointerId); };
+  addEventListener('pointerup', pinUp); addEventListener('pointercancel', pinUp);
   cv.addEventListener('pointerdown', e => { if (e.button === 1) { camDrag = e.clientX; e.preventDefault(); } });
   addEventListener('pointermove', e => { if (camDrag !== null) { ui.drag += (e.clientX - camDrag) * .008; camDrag = e.clientX; } });
   addEventListener('pointerup', e => { if (e.button === 1) camDrag = null; });
