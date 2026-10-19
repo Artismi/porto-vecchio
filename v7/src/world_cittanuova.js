@@ -833,7 +833,7 @@ var World = (function () {
       CITY.rail = smooth(RAIL, 4); const ry = x => yOn(CITY.rail, x); CITY.railY = ry;
       // la Via della Stazione: dalla Costiera Nord passa i binari al passaggio a livello e corre fra la ferrovia e la città fino al Corso
       const N0 = nordP[0], SV = [N0.slice(), [N0[0] + 12, N0[1] + 10]]; for (let x = 800; x <= 976; x += 12) SV.push([x, RAILY(x) + 21]); SV.push([988, RAILY(976) + 21]);
-      const STAZ = chaikin(smooth(SV, 2), 3); add('via_alta', 'Via della Stazione', 7, 'citta', STAZ, { era: 'E3' });
+      const STAZ = chaikin(smooth(SV, 2), 3); CITY.staz = STAZ; add('via_alta', 'Via della Stazione', 7, 'citta', STAZ, { era: 'E3' });
       // il lungomare del boom (Via del Porto): dalla Costiera Sud lungo gli alberghi, poi sul porto davanti agli isolati murattiani
       const L0 = litP[litP.length - 1], LG = [L0.slice()]; for (let x = 792; x <= 852; x += 12) LG.push([x, SouthY(x) - 11]);
       LG.push([866, 199], [880, 189], [894, 185]); for (let x = 906; x <= 978; x += 12) LG.push([x, 185]); LG.push([990, 185]);
@@ -884,10 +884,10 @@ var World = (function () {
       CITY.piazzette = [[1108, 124, 6], [1046, 167, 5]];
       CITY.rects = [[1064, 172, 1086, 184]];
       GOV.piazza = [993, 124, 1023, 162];
-      CITY.octa = [950, 143, 23];
+      CITY.octa = [954, 143, 16];   // [borgo] una piazza, non un piazzale: 32 m da lato a lato
       // le scenografie dei nodi: il rendering le arreda (banchi, tettoia, palco, pennoni, tavolini, bitte, reti), così ogni nodo
       // si riconosce da lontano e la gerarchia si legge dall'arredo
-      CITY.sets = [{ k: 'mercato', x: 950, y: 143, r: 23 }, { k: 'sagrato', x0: 1050, y0: 97, x1: 1076, y1: 109 }, { k: 'adunata', x0: 993, y0: 124, x1: 1023, y1: 162 },
+      CITY.sets = [{ k: 'mercato', x: 954, y: 143, r: 16 }, { k: 'sagrato', x0: 1050, y0: 97, x1: 1076, y1: 109 }, { k: 'adunata', x0: 993, y0: 124, x1: 1023, y1: 162 },
         { k: 'piazzetta', x: 1108, y: 124, r: 6, bar: true }, { k: 'piazzetta', x: 1046, y: 167, r: 5, forno: true }, { k: 'marina', x0: 1064, y0: 172, x1: 1086, y1: 184 },
         { k: 'calata', x0: 1000, x1: 1088 }];
       CITY.spian0 = 1143;   // E1 la spianata: il bordo di levante del borgo demolito fino a qui
@@ -1382,33 +1382,60 @@ var World = (function () {
       WF('corso', 0, { w: [4, 6], wLow: 3, h: [5, 6], hLow: 3, era: 'E3', rk: 3 });
       // E6 le sostituzioni del boom sul Viale della Tutela: palazzoni coi fianchi ciechi al posto di metà della cortina
       WF('via_governo', 0, { w: [5, 7], wLow: 5, h: [6, 6], hLow: 5, norot: true, era: 'E6', rk: 2, fl: [7, 9], dens: .5, cont: false }, -1);
-      // E3 la griglia murattiana: cortina perimetrale profonda dieci metri attorno agli isolati, la corte in mezzo, gli angoli pieni
-      const MUR = { w: [4, 6], wLow: 2, h: [5, 5], hLow: 3, norot: true, era: 'E3', rk: 2 };
-      WF('via_nazionale', 0, MUR); WF('via_cavour', 0, MUR); WF('via_governo', 0, MUR, -1);
-      WF('via_alta', 0, Object.assign({ x0: 876 }, MUR), 1); WF('via_porto', 0, Object.assign({ x0: 876 }, MUR), -1);
-      // la cortina del Mercato: due file dritte sopra e sotto l'ottagono (gli spigoli tagliati restano slarghi)
-      if (CITY.octa) { const [ox, oy, orr] = CITY.octa, row = y => { const o = []; for (let x = ox - orr - 2; x <= ox + orr + 2; x += 2) o.push([x, y]); return o; };
-        WP(row(oy - orr), -1, Object.assign({}, MUR, { rk: 3 })); WP(row(oy + orr + 1), 1, Object.assign({}, MUR, { rk: 3 })); }
+      const MUR = { w: [4, 6], wLow: 2, h: [5, 5], hLow: 3, norot: true, era: 'E3', rk: 2 };   // [borgo] gli isolati murattiani li costruisce PIENO, più sotto
       // E3 fra i binari e la Via della Stazione: magazzini e depositi bassi, con gli orti in mezzo
       WF('via_alta', 0, { w: [4, 7], wLow: 3, h: [3, 4], hLow: 2, norot: true, era: 'E3', rk: 1, fl: [1, 2], dens: .7, cont: false, ex: { low: true } }, -1);
       // E6 il lungomare a ponente: alberghi e condomini alti uno staccato dall'altro (Miami); dal lato del mare la spiaggia resta libera
       WF('via_porto', 0, { w: [6, 9], wLow: 5, h: [6, 8], hLow: 5, gap: 1, era: 'E6', rk: 2, fl: [6, 9], x1: 866 }, -1);
-      // E0 il borgo: prima la Rua (case strette e alte, le botteghe), poi la marina (E2, le case dei pescatori), la Via di Mezzo e i vicoli
-      WF('rua', -2.3, { w: [2, 4], wLow: 2, h: [3, 5], hLow: 2, flat: false, jog: .12, era: 'E0', rk: 2 });
-      WF('marina', -2.3, { w: [2, 3], wLow: 2, h: [3, 5], hLow: 2, era: 'E2', rk: 2 }, -1);
-      WF('mezzo', -2.3, { w: [2, 3], wLow: 2, h: [2, 4], flat: false, jog: .1, era: 'E0', rk: 1 });
-      roads.filter(rd => /^vic_/.test(rd.id)).forEach(rd => BOTH.forEach(s => walkFront(rd.pts, rd.w, -2.3, s, 2, 3, 2, 3, 0, 1, { cont: true, flat: false, jog: .1, era: 'E0', rk: 1, wLow: 2, hLow: 1 })));
-      // il borgo pieno: quello che resta si chiude con case piccole in aderenza (si appoggiano a una strada o a un'altra casa);
-      // quello che non si riempie resta corte lastricata
-      const FB = [[3, 3], [2, 3], [3, 2], [2, 2]];
-      for (let pass = 0; pass < FB.length; pass++) { const [fw, fh] = FB[pass];
-        for (let ty = 2; ty < GH - 6; ty++) for (let tx = T2i(998); tx < T2i(CITY.spian0 || 1143) - fw; tx++) {
-          const i = ty * GW + tx; if (zone[i] !== Z.CITTA || !free(tx, ty, fw, fh, 0) || !flatOK(tx, ty, fw, fh, 1.4)) continue;
-          let nb = 0; for (let k = -1; k <= fw; k++) for (const yy of [ty - 1, ty + fh]) { const j = yy * GW + tx + k; if (roadW[j] > 0 || bIndex[j] >= 0) nb++; }
-          for (let k = 0; k < fh; k++) for (const xx of [tx - 1, tx + fw]) { const j = (ty + k) * GW + xx; if (roadW[j] > 0 || bIndex[j] >= 0) nb++; }
-          if (nb < 3) continue;
-          stamp({ id: 'casa_' + (nH++), x: tx, y: ty, w: fw, h: fh, fl: 2, style: CSTY[Math.floor(r() * CSTY.length)], house: true, rk: 1, era: 'E0' });
-        } }
+      // [borgo] IL COSTRUITO PIENO E SCAVATO (tappe 2 e 4). Non si posano case lungo le strade: ogni isolato si costruisce tutto, a lotti in
+      // aderenza col fronte sulla strada e la profondità verso dentro, a filo griglia (una via storta dà da sola i dentini delle facciate);
+      // poi si scavano le corti. o: { x0, x1 (metri), inZ(tx, ty), ring (profondità della cortina: oltre è corte; senza, corti a caso nei cuori),
+      // f: [fronte min, max], d: [profondità min, max] in caselle, mk(L, tx, ty) → campi della casa, tag }
+      const PIENO = o => {
+        const X0 = T2i(o.x0), X1 = T2i(o.x1), Y0 = 2, Y1 = GH - 2, open = v => v === T.WALK || v === T.PIAZZA || v === T.VIA || v === T.QUAY || v === T.GRAVEL || v === T.SAND || v === T.PIER;
+        const inR = i => { const tx = i % GW, ty = (i / GW) | 0; if (tx < X0 || tx >= X1 || zone[i] !== Z.CITTA || roadW[i] > 0 || bIndex[i] >= 0 || (o.inZ && !o.inZ(tx, ty))) return false; const v = grid[i]; return !(open(v) || v === T.WATER || v === T.CLIFF || v === T.FOUNT || v === T.BLD); };
+        const own = new Int32Array(N).fill(-1), D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+        // la distanza dalla strada (in caselle): le caselle più lontane sono il cuore dell'isolato, dove si scava la corte
+        const dS = new Int16Array(N).fill(99), q = [];
+        for (let ty = Y0; ty < Y1; ty++) for (let tx = X0; tx < X1; tx++) { const i = ty * GW + tx; if (!inR(i)) continue;
+          if (D4.some(([dx, dy]) => { const j = (ty + dy) * GW + tx + dx; return roadW[j] > 0 || open(grid[j]); })) { dS[i] = 0; q.push(i); } }
+        for (let h = 0; h < q.length; h++) { const i = q[h], tx = i % GW, ty = (i / GW) | 0; for (const [dx, dy] of D4) { const j = (ty + dy) * GW + tx + dx; if (dS[j] > dS[i] + 1 && inR(j)) { dS[j] = dS[i] + 1; q.push(j); } } }
+        let nCorti = 0;
+        if (o.ring) { for (let ty = Y0; ty < Y1; ty++) for (let tx = X0; tx < X1; tx++) { const i = ty * GW + tx; if (dS[i] >= o.ring && dS[i] !== 99) { reserved[i] = 1; grid[i] = T.COB; nCorti++; } } }
+        else { const seen = new Uint8Array(N);   // le corti del borgo: i cuori a 4 caselle o più dalla strada, uno su due, ognuno col suo passaggio
+          for (let ty = Y0; ty < Y1; ty++) for (let tx = X0; tx < X1; tx++) { const i0 = ty * GW + tx; if (seen[i0] || dS[i0] < 4 || dS[i0] === 99) continue;
+            const comp = [i0], st = [i0]; seen[i0] = 1; while (st.length) { const i = st.pop(), x = i % GW, y = (i / GW) | 0; for (const [dx, dy] of D4) { const j = (y + dy) * GW + x + dx; if (!seen[j] && dS[j] >= 3 && dS[j] !== 99) { seen[j] = 1; comp.push(j); st.push(j); } } }
+            if (comp.length < 6 || hash2(tx, ty, 1701) > .55) continue;
+            comp.forEach(i => { reserved[i] = 1; grid[i] = T.COB; });
+            let i = comp.reduce((m, j) => dS[j] < dS[m] ? j : m, comp[0]);   // il passaggio: giù per le distanze fino alla strada
+            for (let g = 0; g < 8 && dS[i] > 0; g++) { const x = i % GW, y = (i / GW) | 0; let nx = -1; for (const [dx, dy] of D4) { const j = (y + dy) * GW + x + dx; if (dS[j] < dS[i] && (nx < 0 || dS[j] < dS[nx])) nx = j; } if (nx < 0) break; i = nx; reserved[i] = 1; }
+            nCorti++; } }
+        // da che parte sta la strada: il fronte del lotto corre lungo la strada, la profondità entra nell'isolato
+        const vert = (tx, ty) => { let dv = 99, dh = 99; for (let k = 1; k < 12; k++) { if (dv === 99 && [ty - k, ty + k].some(y => { const j = y * GW + tx; return roadW[j] > 0 || open(grid[j]); })) dv = k; if (dh === 99 && [tx - k, tx + k].some(x => { const j = ty * GW + x; return roadW[j] > 0 || open(grid[j]); })) dh = k; } return dv <= dh; };
+        const ok = i => inR(i) && !reserved[i] && own[i] < 0, LOT = [];
+        // prima si disegnano tutti i lotti, poi si costruiscono: così ogni porta cade sulla strada e non su un lotto ancora da fare
+        for (let ty = Y0; ty < Y1; ty++) for (let tx = X0; tx < X1; tx++) { const i = ty * GW + tx; if (!ok(i)) continue;
+          const F = o.f[0] + Math.floor(hash2(tx, ty, 1702) * (o.f[1] - o.f[0] + 1)), Dp = o.d[0] + Math.floor(hash2(tx, ty, 1703) * (o.d[1] - o.d[0] + 1)), hz = vert(tx, ty);
+          const WM = hz ? F : Dp, HM = hz ? Dp : F;
+          let w = 1; while (w < WM && ok(i + w) && flatOK(tx, ty, w + 1, 1, 1.4)) w++;
+          let h = 1; for (; h < HM; h++) { let full = true; for (let k = 0; k < w && full; k++) if (!ok((ty + h) * GW + tx + k)) full = false; if (!full || !flatOK(tx, ty, w, h + 1, 1.4)) break; }
+          for (let y = ty; y < ty + h; y++) for (let x = tx; x < tx + w; x++) own[y * GW + x] = LOT.length;
+          LOT.push({ x: tx, y: ty, w, h });
+        }
+        LOT.forEach(L => { for (let y = L.y; y < L.y + L.h; y++) for (let x = L.x; x < L.x + L.w; x++) grid[y * GW + x] = T.BLD; });
+        let nOk = 0; LOT.forEach(L => {
+          const b = stamp(Object.assign({ id: 'casa_' + (nH++), x: L.x, y: L.y, w: L.w, h: L.h, fl: 2, style: CSTY[Math.floor(r() * CSTY.length)], house: true, rk: 1 }, o.mk(L, L.x, L.y), L.w * L.h < 2 ? { fl: 1, flFix: true, annesso: true } : {}));
+          if (b) nOk++; else for (let y = L.y; y < L.y + L.h; y++) for (let x = L.x; x < L.x + L.w; x++) grid[y * GW + x] = T.COB;
+        });
+        if (typeof process !== 'undefined' && process.env && process.env.PV_DBG) console.log('[borgo]', o.tag, 'lotti', nOk, 'corti', nCorti);
+      };
+      // E3 la griglia murattiana: cortina continua profonda dieci metri, angoli pieni, la corte in mezzo; palazzi larghi 8-14 m
+      PIENO({ tag: 'ottocento', x0: 873, x1: 998, ring: 5, f: [4, 7], d: [5, 5], inZ: (tx, ty) => !CITY.staz || ty * TS > CITY.yOn(CITY.staz, tx * TS) + 2,
+        mk: () => ({ era: 'E3', rk: 2, norot: true }) });
+      // E0 il borgo: lotti stretti (fronte 4-6 m, profondi fino a 8 m); sulla marina le case dei pescatori (E2); agli incroci le case-torre
+      PIENO({ tag: 'borgo', x0: 998, x1: CITY.spian0 || 1143, f: [2, 3], d: [2, 4], mk: (L, tx, ty) => {
+        const mar = CITY.marina && ty * TS > CITY.yOn(CITY.marina, tx * TS) - 12, torre = L.w >= 2 && L.h >= 2 && !mar && hash2(tx, ty, 1704) < .05;
+        return Object.assign({ era: mar ? 'E2' : 'E0' }, torre ? { fl: 5 + (hash2(tx, ty, 1706) < .4 ? 1 : 0), flFix: true, torre: true } : {}); } });
       // E7 le baracche fra la ferrovia e il mare: lamiera, uno o due piani, una addosso all'altra, passaggi di una casella
       // (ogni baracca tiene libero il suo lato nord o il suo lato ovest)
       const SHSTY = [3, 4, 5, 7, 8, 11, 14, 19]; let nShack = 0;
