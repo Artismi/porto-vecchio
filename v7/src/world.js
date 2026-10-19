@@ -287,20 +287,13 @@ var World = (function () {
     if (x < XC) return Math.max(.4, monte(347.9, y).h);
     return rawElevO(x - DXC, y);
   }
-  const CITY_W0 = 750;   // [città2] il bordo ovest della città (prima XG - 64)
   function zoneAt(x, y) {
     { const b = isleAt(x, y); if (b && b.q.d > 0 && !OnLand0(x, y)) { const k = isleKind(b.I, b.q.a); return (k === 'spiaggia' || k === 'cala') && b.q.d < 9 ? Z.SPIAGGIA : Z.MACCHIA; } }   // [arcipelago]
     if (!OnLand(x, y)) return Z.MARE;
     if (x < XF) { const f = bosco(x, y).f; return f & BF.TOP ? Z.DESERTO : f & BF.RIVA ? Z.SPIAGGIA : f & BF.RADURA ? Z.CAMPAGNA : Z.MACCHIA; }
-    if (x < XG) { const z0 = zoneO(x - DXF, y);
-      // [città2] un po' meno bosco: la metropoli si allarga verso ovest fin dove il terreno sale (le alture restano verdi)
-      if (x >= CITY_W0 && z0 !== Z.MARE && rawElev(x, y) < 7 + 4 * sstep(CITY_W0, XG, x)) return Z.CITTA;
-      return z0; }
+    if (x < XG) return zoneO(x - DXF, y);
     if (x < XC) return Z.CITTA;
-    const z = zoneO(x - DXC, y);
-    // [città2] il borgo sale sulla collina sotto la Rocca: dentro la Strada delle Mura il monte è città (case a gradoni e scalinate)
-    if (z === Z.MONTE && x < 1158 && dist(x, y, 1156, 140) < 104) return Z.CITTA;
-    return z;
+    return zoneO(x - DXC, y);
   }
 
   // ---------------- ZONE ----------------
@@ -539,7 +532,7 @@ var World = (function () {
     ['osteria', 'Osteria del Porto', 7, 4, 4, 5, [394, 168], { sign: { t: 'OSTERIA', c: '#ffb35c' } }],
     ['miramare', 'Hotel Miramare', 6, 5, 7, 6, [426, 168], { sign: { t: 'HOTEL MIRAMARE', c: '#ff7ad9' }, deco: true }],
     ['sirena', 'Bar Sirena', 5, 4, 3, 17, [374, 178], { sign: { t: 'BAR SIRENA', c: '#35ffc0' }, shop: true, deco: true }],
-    ['magazzino', 'Magazzino Neri', 9, 5, 3, 11, [1040, 186], { sign: { t: 'MAGAZZINO NERI', c: '#ff6a3b' }, warehouse: true, nuovo: true }],   // [città2] sulla calata del porto vecchio
+    ['magazzino', 'Magazzino Neri', 9, 5, 3, 11, [446, 180], { sign: { t: 'MAGAZZINO NERI', c: '#ff6a3b' }, warehouse: true }],
     ['cantiere', 'Cantiere navale', 8, 4, 3, 11, [356, 184], { warehouse: true, sign: { t: 'CANTIERE NAVALE', c: '#ff8a3b' } }],
     // periferia ovest
     ['disco', 'Discoteca Luna', 9, 5, 3, 12, [330, 88], { sign: { t: 'DISCOTECA LUNA', c: '#c05cff' }, deco: true }],
@@ -764,8 +757,6 @@ var World = (function () {
     // strade
     const roads = [], TUNNELS = []; let CARR = null;   // CARR: vertici delle carreggiate già spianate
     const CITY = { roads: [], piazza: [390 + DXC, 108, 428 + DXC, 126] };   // [isola] la pianta organica si disegna più sotto, dopo le costiere
-    // [città2] i confini del gradiente: metropoli a ovest di CITY_XM, borgo a est di CITY_XB (sotto le mura del Muro e della Base)
-    const CITY_XM = 930, CITY_XB = 1030, CITY_PARK = [818, 156, 850, 186];   // il parco della metropoli: due isolati per due
     // [isola] la costiera fa il giro intero: dal Muro lungo la riva nord, attorno alla testa di bosco, e indietro lungo la riva sud.
     // Una sola linea liscia, divisa in due nomi sulla punta ovest (lì le due metà si toccano con la stessa tangente e la stessa quota).
     const RING = (() => {
@@ -792,63 +783,31 @@ var World = (function () {
     // Niente isolati a griglia: i nodi stanno su un reticolo sghembo di ~13 m, i lati sono vicoli di 2-3 m che serpeggiano, qualcuno manca.
     {
       // gli edifici con nome della città hanno il loro posto: i vicoli ci girano attorno
-      const HOLD = NAMED.filter(q => !q[7].kiosk && !q[7].lighthouse && (q[7].nuovo ? q[6][0] : xn(q[6][0])) >= XG - 64).map(q => { const x = q[7].nuovo ? q[6][0] : xn(q[6][0]); return [x, q[6][1], Math.max(q[2], q[3]) * TS / 2 + (Math.max(q[2], q[3]) >= 7 ? 6 : 3)]; });   // [città2] attorno agli edifici grandi più margine
+      const HOLD = NAMED.filter(q => !q[7].kiosk && !q[7].lighthouse && (q[7].nuovo ? q[6][0] : xn(q[6][0])) >= XG - 64).map(q => { const x = q[7].nuovo ? q[6][0] : xn(q[6][0]); return [x, q[6][1], Math.max(q[2], q[3]) * TS / 2 + 3]; });
       const cityOK0 = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return false; return zone[ty * GW + tx] === Z.CITTA && Inland(x, y) > 8; };
       const cityOK = (x, y) => cityOK0(x, y) && !HOLD.some(([hx, hy, hr]) => dist(x, y, hx, hy) < hr);
-      const X0c = CITY_W0 + 4, X1c = xn(552) - 8;
-      // [città2] LO SCHELETRO: le strade maestre partono a ventaglio dalla Porta della Rocca (a est, sul Muro) e scendono storte
-      // verso il porto, la costa di tramontana e la metropoli; la Strada delle Mura gira attorno al borgo dove c'erano i bastioni
-      // vecchi; il corso serpeggia da una piazza all'altra; nella metropoli due viali dritti (il peso del regime: assi lunghi e vuoti).
-      const PG = [1156, 140], WALLR = 96, wall = []; for (let a = -62; a <= 62; a += 8) { const r0 = a * Math.PI / 180; wall.push([PG[0] - WALLR * Math.cos(r0), PG[1] + WALLR * Math.sin(r0) * 1.02]); }
-      [['corso', 'Corso della Vittoria', 8, [ringNear(XG - 40, SouthY(XG - 40)), [850, 150], [884, 141], [918, 134], [950, 140], [984, 131], [1012, 127], [1040, 129], [1068, 137], [1098, 131], [1126, 138], PG]],
-       ['via_porto', 'Via del Porto', 7, [[PG[0] - 4, PG[1] + 6], [1128, 160], [1098, 176], [1072, 192], [1050, 208], ringNear(1040, SouthY(1040))]],
-       ['via_alta', 'Via Alta', 6, [[PG[0] - 4, PG[1] - 6], [1132, 121], [1112, 111], [1088, 105], [1064, 90], [1046, 76], ringNear(1036, NorthY(1036))]],
-       ['via_governo', 'Viale della Tutela', 8, [ringNear(XG + 20, NorthY(XG + 20)), [XG + 20, 100], [XG + 20, 134], [XG + 20, 170], ringNear(XG + 20, SouthY(XG + 20))]],
-       ['via_mura', 'Strada delle Mura', 6, [ringNear(wall[0][0], NorthY(wall[0][0]))].concat(wall, [ringNear(wall[wall.length - 1][0], SouthY(wall[wall.length - 1][0]))])],
-       ['via_rocco', 'Salita San Rocco', 6, [[1012, 112], [1004, 94], [992, 76], ringNear(985, NorthY(985))]],
-       ['via_nuova', 'Via Nuova', 7, [[1000, 132], [978, 156], [958, 178], [944, 198], ringNear(940, SouthY(940))]],
-       ['viale_ovest', 'Viale dell\'Avvenire', 7, [ringNear(846, NorthY(846)), [846, 100], [846, 150], ringNear(846, SouthY(846))]]]
-        .forEach(([id, name, w, cp]) => {   // [città2] le strade maestre girano attorno ai lotti degli edifici con nome (il punto si scosta dal centro)
-          const cp2 = cp.map((q, k) => { if (k === 0 || k === cp.length - 1) return q; let [x, y] = q; HOLD.forEach(([hx, hy, hr]) => { const d = dist(x, y, hx, hy), R = hr + w / 2 + 1; if (d < R) { const ux = d ? (x - hx) / d : 0, uy = d ? (y - hy) / d : 1; x = hx + ux * R; y = hy + uy * R; } }); return [x, y]; });
-          const pts = chaikin(cp2, 3).filter((q, k, P) => k === 0 || k === P.length - 1 || !HOLD.some(([hx, hy, hr]) => dist(q[0], q[1], hx, hy) < hr - 2) || true);
-          CITY.roads.push({ id, name, w, kind: 'citta', pts, main: true }); });
-      const VIA_M = ['Ventiquattro Maggio', 'della Disciplina', 'dell\'Industria', 'della Concordia', 'del Progresso', 'dei Mille', 'Quattro Novembre', 'della Tutela', 'dell\'Avvenire', 'del Lavoro', 'della Ricostruzione', 'Venti Settembre'];
+      const X0c = XG - 64, X1c = xn(552) - 8;
+      [['corso', 'Corso della Vittoria', 8, [ringNear(XG - 40, SouthY(XG - 40)), [XG - 14, 150], [XG + 20, 132], [XC + 24, 131], [xn(392), 128], [xn(430), 130], [xn(470), 137], [xn(512), 131], [xn(548), yc(548)]]],
+       ['via_porto', 'Via del Porto', 7, [[xn(404), 129], [xn(399), 152], [xn(406), 180]]],
+       ['via_alta', 'Via Alta', 7, [[xn(440), 130], [xn(435), 108], [xn(441), 88], ringNear(xn(440), northY(440))]],
+       ['via_governo', 'Via del Governo', 7, [ringNear(XG + 20, NorthY(XG + 20)), [XG + 22, 104], [XG + 18, 131], [XG + 26, 160], ringNear(XG + 28, SouthY(XG + 28))]]]
+        .forEach(([id, name, w, cp]) => CITY.roads.push({ id, name, w, kind: 'citta', pts: chaikin(cp, 3), main: true }));
       const VIC = ['Vicolo dei Lanternini', 'Vicolo dei Chiodi', 'Vicolo delle Lampade', 'Caruggio dei Pescatori', 'Vicolo Storto', 'Vico dei Cordai', 'Salita dei Gatti', 'Vico Lungo', 'Vico del Pozzo', 'Vicolo delle Reti', 'Vico della Fame', 'Vicolo del Fango', 'Vico delle Lamiere', 'Vicolo Cieco'];
-      // [città2] LA CITTÀ CHE CAMBIA ALLONTANANDOSI DALLA ROCCAFORTE. Sotto le mura (a est, verso il Muro e la Base) il BORGO
-      // alla genovese: maglia fitta e storta, caruggi di due metri, piazzette che si aprono all'improvviso. Al centro la città di
-      // mezzo, come prima. Lontano dalle mura (a ovest, verso il quartiere del governo civile) la METROPOLI: isolati regolari a
-      // filo della griglia (niente facciate a scalini), strade larghe, palazzi alti, un parco. Tre maglie con indici separati.
       const SP = 13, nodes = [], NM = new Map(), key = (a, b) => a * 1000 + b;
-      const REG = [   // nome, da x, a x, passo, sghembo, indice di partenza
-        { id: 'metropoli', x0: X0c, x1: CITY_XM, sp: 18, jit: 0, i0: 0 },
-        { id: 'mezzo', x0: CITY_XM, x1: CITY_XB, sp: SP, jit: .75, i0: 200 },
-        { id: 'borgo', x0: CITY_XB, x1: X1c, sp: 10, jit: .95, i0: 400 }];
-      REG.forEach(R => { const xs = R.jit ? R.x0 + R.sp / 2 : Math.ceil(R.x0 / R.sp) * R.sp, ys = R.jit ? 56 : Math.ceil(56 / R.sp) * R.sp;
-        for (let j = 0, y = ys; y < 250; y += R.sp, j++) for (let i = R.i0, x = xs; x < R.x1; x += R.sp, i++) {
-          const jx = x + (hash2(i, j, 801) - .5) * R.sp * R.jit, jy = y + (hash2(i, j, 802) - .5) * R.sp * R.jit;
-          if (!cityOK(jx, jy) || dist(jx, jy, xn(409), 117) < 16) continue;
-          if (CITY_PARK && jx > CITY_PARK[0] - 2 && jx < CITY_PARK[2] + 2 && jy > CITY_PARK[1] - 2 && jy < CITY_PARK[3] + 2) continue;   // il parco: niente vicoli dentro
-          const n = { x: jx, y: jy, i, j, deg: 0, reg: R.id }; nodes.push(n); NM.set(key(i, j), n);
-        } });
+      for (let j = 0, y = 56; y < 250; y += SP, j++) for (let i = 0, x = X0c; x < X1c; x += SP, i++) {
+        const jx = x + (hash2(i, j, 801) - .5) * SP * .75, jy = y + (hash2(i, j, 802) - .5) * SP * .75;
+        if (!cityOK(jx, jy) || dist(jx, jy, xn(409), 117) < 16) continue; const n = { x: jx, y: jy, i, j, deg: 0 }; nodes.push(n); NM.set(key(i, j), n);
+      }
       // [isola] la rete dei vicoli: prima i lati candidati, poi gli attacchi alle strade larghe; si tengono solo i pezzi
       // che portano da qualche parte (collegati a una strada) e si potano i monconi ciechi che non sbucano da nessuna parte
       const E = [];
       nodes.forEach(n => [[1, 0], [0, 1], [1, 1], [1, -1]].forEach(([di, dj], q) => {
-        const m = NM.get(key(n.i + di, n.j + dj)); if (!m || m.reg !== n.reg) return; const h = hash2(n.i * 7 + di * 3, n.j * 13 + dj * 5, 803 + q);
-        if (n.reg === 'metropoli') {   // la metropoli: solo strade dritte a filo griglia, quasi tutte, larghe; una ogni tre è un viale
-          if (q >= 2 || h > .92) return;
-          for (let t = .2; t < 1; t += .2) if (!cityOK(n.x + (m.x - n.x) * t, n.y + (m.y - n.y) * t)) return;
-          E.push({ a: n, b: m, mx: (n.x + m.x) / 2, my: (n.y + m.y) / 2, w: ((q ? n.i : n.j) % 3 === 0) ? 4 : 3, dritta: true }); return; }
-        if (n.reg === 'borgo' ? (q >= 2 ? h > .3 : h > .84) : (q >= 2 ? h > .14 : h > .76)) return;   // nel borgo più lati e più diagonali: la maglia si infittisce
-        const wob = n.reg === 'borgo' ? 4 : 6, mx = (n.x + m.x) / 2 + (hash2(n.i, n.j, 804 + q) - .5) * wob, my = (n.y + m.y) / 2 + (hash2(n.j, n.i, 805 + q) - .5) * wob;
+        const m = NM.get(key(n.i + di, n.j + dj)); if (!m) return; const h = hash2(n.i * 7 + di * 3, n.j * 13 + dj * 5, 803 + q);
+        if (q >= 2 ? h > .14 : h > .76) return;   // un lato su quattro manca, poche diagonali
+        const mx = (n.x + m.x) / 2 + (hash2(n.i, n.j, 804 + q) - .5) * 6, my = (n.y + m.y) / 2 + (hash2(n.j, n.i, 805 + q) - .5) * 6;
         if (!cityOK(mx, my)) return;
-        // [città2] tutto il vicolo (non solo il mezzo) sta fuori dai lotti degli edifici con nome
-        for (let t = .2; t < 1; t += .2) { const u = t < .5 ? t * 2 : (t - .5) * 2, px = t < .5 ? n.x + (mx - n.x) * u : mx + (m.x - mx) * u, py = t < .5 ? n.y + (my - n.y) * u : my + (m.y - my) * u; if (!cityOK(px, py)) return; }
-        E.push({ a: n, b: m, mx, my, w: n.reg === 'borgo' ? 2 : hash2(n.i, n.j, 806 + q) < .22 ? 3 : 2 });
+        E.push({ a: n, b: m, mx, my, w: hash2(n.i, n.j, 806 + q) < .22 ? 3 : 2 });
       }));
-      // [città2] le cuciture fra le tre maglie: ogni nodo sul bordo si lega al nodo più vicino della maglia accanto
-      nodes.forEach(n => { if (n.__cuc) return; let b = null, bd = 1e9; nodes.forEach(m => { if (m.reg === n.reg) return; const d = dist(n.x, n.y, m.x, m.y); if (d < bd) { bd = d; b = m; } });
-        if (b && bd < 17 && !b.__cuc && cityOK((n.x + b.x) / 2, (n.y + b.y) / 2)) { n.__cuc = b.__cuc = true; E.push({ a: n, b, mx: (n.x + b.x) / 2, my: (n.y + b.y) / 2, w: 3 }); } });
       const MAINP = []; CITY.roads.forEach(rd => rd.pts.forEach(q => MAINP.push([q[0], q[1], rd.w]))); RING.forEach(q => MAINP.push([q[0], q[1], 9]));
       nodes.forEach(n => { let b = null, bd = 1e9; MAINP.forEach(q => { const d = dist(q[0], q[1], n.x, n.y) - q[2] / 2; if (d < bd) { bd = d; b = q; } });
         if (b && bd < SP * .8) { const ux = (n.x - b[0]) / (dist(n.x, n.y, b[0], b[1]) || 1), uy = (n.y - b[1]) / (dist(n.x, n.y, b[0], b[1]) || 1); n.att = [b[0] + ux * (b[2] / 2 - .5), b[1] + uy * (b[2] / 2 - .5)]; if (!cityOK0((n.x + n.att[0]) / 2, (n.y + n.att[1]) / 2)) n.att = null; } });
@@ -859,14 +818,11 @@ var World = (function () {
       const live = new Set(); nodes.forEach(n => { if (n.att && deg(n) > 0) live.add(find(n)); });
       let na = 0;
       const vic = (pts, w, seed) => { CITY.roads.push({ id: 'vic_' + na, name: VIC[na % VIC.length], w, kind: 'vicolo', pts }); na++; };
-      E.forEach(e => { if (e.cut || !live.has(find(e.a))) return; e.a.deg++; e.b.deg++; vic(e.dritta ? chaikin([[e.a.x, e.a.y], [e.b.x, e.b.y]], 0) : chaikin([[e.a.x, e.a.y], [e.mx, e.my], [e.b.x, e.b.y]], 2), e.w); if (e.dritta) CITY.roads[CITY.roads.length - 1].name = (e.w >= 4 ? 'Viale ' : 'Via ') + VIA_M[na % VIA_M.length]; });
+      E.forEach(e => { if (e.cut || !live.has(find(e.a))) return; e.a.deg++; e.b.deg++; vic(chaikin([[e.a.x, e.a.y], [e.mx, e.my], [e.b.x, e.b.y]], 2), e.w); });
       // dove un vicolo arriva vicino a una strada larga, ci sbuca
       nodes.forEach(n => { if (!n.att || !n.deg || hash2(n.i, n.j, 809) > .8) return; const mx = (n.x + n.att[0]) / 2 + (hash2(n.i, n.j, 810) - .5) * 2, my = (n.y + n.att[1]) / 2 + (hash2(n.j, n.i, 811) - .5) * 2; n.deg++; vic(chaikin([[n.x, n.y], [mx, my], n.att], 2), 2 + (hash2(n.i, n.j, 812) < .3 ? 1 : 0)); });
       // le piazzette: dove si incrociano tre o più vicoli, una su quattro
-      // [città2] nel borgo le piazzette sono più frequenti e più piccole (uno slargo davanti alla chiesetta, al forno, alla fontana)
-      CITY.piazzette = nodes.filter(n => n.reg !== 'metropoli' && n.deg >= 3 && hash2(n.i, n.j, 807) < (n.reg === 'borgo' ? .38 : .22)).map(n => [n.x, n.y, (n.reg === 'borgo' ? 3 : 4) + hash2(n.i, n.j, 808) * 3]);
-      CITY.park = CITY_PARK;
-      if (typeof process !== 'undefined' && process.env && process.env.PV_DBG) { const c = {}; nodes.forEach(n => c[n.reg] = (c[n.reg] || 0) + 1); const ce = {}; E.forEach(e => { const k = e.a.reg + (e.cut ? ' tagliato' : live.has(find(e.a)) ? '' : ' morto'); ce[k] = (ce[k] || 0) + 1; }); console.log('[città2] nodi', JSON.stringify(c), 'lati', JSON.stringify(ce)); }
+      CITY.piazzette = nodes.filter(n => n.deg >= 3 && hash2(n.i, n.j, 807) < .22).map(n => [n.x, n.y, 4 + hash2(n.i, n.j, 808) * 3]);
     }
     CITY.roads.forEach(rd => roads.push(rd));
     ROADS0.filter(q => !['deserto', 'miniera', 'stazione2', 'saline', 'faro', 'crinale_e', 'sent_o1', 'sent_o2', 'sent_e1', 'sent_e2', 'anello_on', 'anello_os', 'mulattiera_o', 'anello_en', 'anello_es', 'mulattiera_e'].includes(q[0])).forEach(([id, name, w, kind, cp]) => roads.push({ id, name, w, kind, pts: rounded(rel(cp).map(q => [xn(q[0]), q[1]]), w > 5 ? 16 : 8, false) }));
@@ -1071,14 +1027,6 @@ var World = (function () {
     // piazza San Rocco e fontana
     { const q = CITY.piazza; for (let ty = T2i(q[1]); ty < T2i(q[3]); ty++) for (let tx = T2i(q[0]); tx < T2i(q[2]); tx++) { const i = ty * GW + tx; if (grid[i] !== T.VIA && grid[i] !== T.WATER) { grid[i] = T.PIAZZA; roadW[i] = 0; } } }
     blob(xn(409), 117, 3, 3, i => { grid[i] = T.FOUNT; });
-    // [città2] il parco della metropoli: prato, alberi in filari lungo i bordi e a macchie dentro, due vialetti in croce e uno in diagonale,
-    // la vasca in mezzo. Le caselle restano riservate: niente case dentro.
-    if (CITY.park) { const q = CITY.park, x0 = T2i(q[0]), y0 = T2i(q[1]), x1 = T2i(q[2]), y1 = T2i(q[3]), cx = (x0 + x1) >> 1, cy = (y0 + y1) >> 1;
-      for (let ty = y0; ty < y1; ty++) for (let tx = x0; tx < x1; tx++) { const i = ty * GW + tx; if (grid[i] === T.VIA || grid[i] === T.WATER) continue;
-        const edge = tx === x0 || ty === y0 || tx === x1 - 1 || ty === y1 - 1, path = tx === cx || ty === cy || Math.abs((tx - x0) - (ty - y0) * (x1 - x0) / (y1 - y0)) < .7;
-        grid[i] = path ? T.WALK : edge ? ((tx + ty) % 3 === 0 ? T.TREE : T.GRASS) : (hash2(tx, ty, 1601) < .14 ? T.TREE : hash2(tx, ty, 1602) < .1 ? T.SHRUB : T.GRASS);
-        roadW[i] = 0; reserved[i] = 1; }
-      blob((cx + .5) * TS, (cy + .5) * TS, 2.4, 2.4, i => { grid[i] = T.FOUNT; }); }
     (CITY.piazzette || []).forEach(([x, y, rr]) => blob(x, y, rr, rr * .8, i => { if (grid[i] !== T.VIA && grid[i] !== T.WATER && grid[i] !== T.BLD) { grid[i] = T.PIAZZA; roadW[i] = 0; } }));   // [isola] le piazzette dei vicoli
     { const q = GOV.piazza; for (let ty = T2i(q[1]); ty < T2i(q[3]); ty++) for (let tx = T2i(q[0]); tx < T2i(q[2]); tx++) { const i = ty * GW + tx; if (grid[i] !== T.VIA && grid[i] !== T.WATER) { grid[i] = T.PIAZZA; roadW[i] = 0; } } }   // [isola] Piazza del Governo
     blob(xn(205), 108, 7, 5, i => { if (grid[i] !== T.VIA) grid[i] = T.PIAZZA; });            // piazzetta di San Giacomo
@@ -1174,7 +1122,6 @@ var World = (function () {
       }
       if (!s) { const q = site(at[0], at[1], w, h, 1); if (q) s = [q[0], q[1], w, h]; }
       if (!s) { const q = site(at[0], at[1], w, h, 0) || site(at[0], at[1], h, w, 0); if (q) s = [q[0], q[1], w, h]; }   // [isola] in città lo spazio è poco
-      if (!s && typeof process !== 'undefined' && process.env && process.env.PV_DBG) { const c = {}; const cx = Math.floor(at[0] / TS), cy = Math.floor(at[1] / TS); for (let j = cy - 8; j <= cy + 8; j++) for (let i = cx - 8; i <= cx + 8; i++) { const k = j * GW + i; const why = bIndex[k] >= 0 ? 'casa' : roadW[k] > 0 ? 'strada' : reserved[k] ? 'riserv' : 'g' + grid[k] + 'z' + zone[k]; c[why] = (c[why] || 0) + 1; } console.log('[città2] intorno a', id, at, JSON.stringify(c)); }
       if (!s) { if (typeof console !== 'undefined') console.warn('[world] niente posto per', id); return; }
       stamp(Object.assign({ id, name, x: s[0], y: s[1], w: s[2], h: s[3], fl, style }, ex));
     });
@@ -1242,13 +1189,10 @@ var World = (function () {
         const P = []; for (let k = 0; k < ch.length - 1; k++) { const L = dist(ch[k][0], ch[k][1], ch[k + 1][0], ch[k + 1][1]); for (let u = 0; u < L; u += TS) P.push([ch[k][0] + (ch[k + 1][0] - ch[k][0]) * u / L, ch[k][1] + (ch[k + 1][1] - ch[k][1]) * u / L]); }
         let i = 2, lastEnd = -1e9, left = 2 + Math.floor(r() * 5), cOff = o && o.flat ? 0 : r() < .5 ? 0 : 2 * (1 + Math.floor(r() * 2));
         while (i < P.length - 3) {
-          // [città2] la misura delle case dipende dalla zona: nella metropoli fronti larghi e corpi profondi, nel borgo case strette
-          const rgx = P[i][0], RG = rgx < CITY_XM ? 'M' : rgx > CITY_XB ? 'B' : '';
-          let w = RG === 'M' ? 4 + Math.floor(r() * 3) : RG === 'B' ? 2 + Math.floor(r() * 2) : wMin + Math.floor(r() * (wMax - wMin + 1));
-          const h = RG === 'M' ? 3 + Math.floor(r() * 2) : RG === 'B' ? 3 + Math.floor(r() * 2) : hMin + Math.floor(r() * (hMax - hMin + 1)), extra = extra0 + cOff + (r() < (o ? o.jog : .2) ? 2 : 0);
+          let w = wMin + Math.floor(r() * (wMax - wMin + 1)); const h = hMin + Math.floor(r() * (hMax - hMin + 1)), extra = extra0 + cOff + (r() < (o ? o.jog : .2) ? 2 : 0);
           let placed = false;
           if (dens < 1 && r() > dens) { i += 2 + Math.floor(r() * 3); continue; }
-          for (; w >= Math.min(wMin, RG === 'B' ? 2 : wMin) && !placed; w--) {
+          for (; w >= wMin && !placed; w--) {
             const mid = Math.min(P.length - 2, i + Math.floor(w / 2)), dx = P[mid + 1][0] - P[mid - 1][0], dy = P[mid + 1][1] - P[mid - 1][1], L = Math.hypot(dx, dy) || 1, nx = -dy / L * side, ny = dx / L * side;
             const off = rdw / 2 + 2.5 + extra, nex = P[mid][0] + nx * off, ney = P[mid][1] + ny * off, horiz = Math.abs(dx) >= Math.abs(dy);
             let x, y, bw, bh;
@@ -1256,14 +1200,8 @@ var World = (function () {
             else { y = Math.max(Math.floor(P[i][1] / TS), lastEnd); bw = h; bh = w; x = nx > 0 ? Math.round(nex / TS) : Math.round(nex / TS) - h; }
             if (!perif(zone[Math.max(0, Math.min(GH - 1, y)) * GW + Math.max(0, Math.min(GW - 1, x))])) continue;
             if (!free(x, y, bw, bh, 0)) continue;
-            // [città2] la casa segue la strada: l'angolo della via rispetto alla griglia (fino a 32°) diventa la rotazione del palazzo;
-            // le case in fila hanno il centro sulla linea della strada, così ruotate fanno una cortina continua sul filo della via
-            const ang = Math.atan2(dy, dx); let rot = ang - Math.round(ang / (Math.PI / 2)) * (Math.PI / 2); if (Math.abs(rot) < .06 || Math.abs(rot) > .56) rot = 0;
-            // ogni tanto la regola si rompe, se no sembra finto: una casa girata di qualche grado per conto suo, una rimasta dritta
-            { const q = r(); if (q < .12) rot += (r() - .5) * .14; else if (q < .2 && rot) rot = 0; else if (q < .26 && !rot && RG !== 'M') rot = (r() - .5) * .12; }
-            stamp({ id: 'casa_' + (nH++), x, y, w: bw, h: bh, fl: 2 + Math.floor(r() * 2), style: CSTY[Math.floor(r() * CSTY.length)], house: true, rk: o ? o.rk : 0, rot: Math.round(rot * 1000) / 1000 });
-            // [città2] i vicoletti: nel borgo e nel centro fra una casa e l'altra si apre spesso un passaggio di una casella
-            const gap = r() < (RG === 'B' ? .3 : RG === '' ? .22 : rowGap) ? 1 + (r() < .25 ? 1 : 0) : 0; lastEnd = (horiz ? x + bw : y + bh) + gap; placed = true; i += w + gap;
+            stamp({ id: 'casa_' + (nH++), x, y, w: bw, h: bh, fl: 2 + Math.floor(r() * 2), style: CSTY[Math.floor(r() * CSTY.length)], house: true, rk: o ? o.rk : 0 });
+            const gap = r() < rowGap ? 1 + Math.floor(r() * 2) : 0; lastEnd = (horiz ? x + bw : y + bh) + gap; placed = true; i += w + gap;
           }
           if (placed && !(o && o.cont) && --left <= 0) { const gp = 3 + Math.floor(r() * 7); lastEnd += gp; i += gp; left = 2 + Math.floor(r() * 5); cOff = r() < .5 ? 0 : 2 * (1 + Math.floor(r() * 2)); }
           if (!placed) i++;
@@ -1277,21 +1215,6 @@ var World = (function () {
       CITY.roads.filter(rd => rd.main).sort((a, b) => RK(b) - RK(a)).forEach(rd => [-1, 1].forEach(side => walkFront(rd.pts, rd.w, 0, side, 3, 5, RK(rd) === 3 ? 5 : 4, RK(rd) === 3 ? 6 : 5, 0, 1, { cont: true, flat: true, jog: 0, rk: RK(rd) })));
       CITY.roads.filter(rd => !rd.main).forEach(rd => [-1, 1].forEach(side => walkFront(rd.pts, rd.w, -2.3, side, 2, 4, 3, 4, .12, 1, { cont: true, flat: false, jog: .15, rk: 1 })));
       CITY.roads.forEach(rd => [-1, 1].forEach(side => walkFront(rd.pts, rd.w, rd.main ? 0 : -2.3, side, 2, 3, 2, 3, .2, 1, { cont: true, flat: !!rd.main, jog: 0, rk: RK(rd) }))); }
-    // [città2] la metropoli piena: dove dopo i fronti strada resta un lotto vuoto dentro l'isolato, un palazzo che lo riempie tutto
-    // (dal più grande al più piccolo, senza spazio fra l'uno e l'altro: i cortili della metropoli sono pozzi di luce, non prati)
-    // anche nel centro e nel borgo i lotti vuoti si chiudono, con case più piccole; nel centro un lotto su sei resta cortile o orto
-    const FILL = { M: [[6, 6], [5, 5], [4, 5], [5, 4], [4, 4], [3, 4], [4, 3], [3, 3]], C: [[4, 4], [3, 4], [4, 3], [3, 3], [2, 3], [3, 2]], B: [[3, 3], [2, 3], [3, 2], [2, 2]] };
-    for (let pass = 0; pass < 8; pass++)
-      for (let ty = 2; ty < GH - 6; ty++) for (let tx = Math.floor(CITY_W0 / TS); tx < Math.floor((xn(552) - 8) / TS); tx++) {
-        const RGf = tx * TS < CITY_XM ? 'M' : tx * TS > CITY_XB ? 'B' : 'C', sz = FILL[RGf][pass]; if (!sz) continue; const [fw, fh] = sz;
-        const i = ty * GW + tx; if (zone[i] !== Z.CITTA || (CITY.park && tx * TS >= CITY.park[0] - 2 && tx * TS <= CITY.park[2] + 2 && ty * TS >= CITY.park[1] - 2 && ty * TS <= CITY.park[3] + 2)) continue;
-        if (RGf === 'C' && hash2(tx >> 2, ty >> 2, 1603) < .17) continue;
-        if (!free(tx, ty, fw, fh, 0) || !flatOK(tx, ty, fw, fh, RGf === 'B' ? 2.6 : 1.8)) continue;
-        let road = false; for (let k = -1; k <= fw && !road; k++) for (const yy of [ty - 1, ty + fh]) { const j = yy * GW + tx + k; if (roadW[j] > 0 || bIndex[j] >= 0) road = true; }
-        for (let k = 0; k < fh && !road; k++) for (const xx of [tx - 1, tx + fw]) { const j = (ty + k) * GW + xx; if (roadW[j] > 0 || bIndex[j] >= 0) road = true; }
-        if (!road) continue;   // si appoggia a una strada o a un altro palazzo: niente case isolate nel prato
-        stamp({ id: 'casa_' + (nH++), x: tx, y: ty, w: fw, h: fh, fl: RGf === 'M' ? 4 : 2, style: CSTY[Math.floor(r() * CSTY.length)], house: true, rk: RGf === 'M' ? 2 : 1 });
-      }
     // [isola] la baraccopoli: dentro gli isolati, nel quartiere del governo e nelle periferie le baracche si ammucchiano una addosso all'altra,
     // di misure diverse, con passaggi di una casella che girano storti (ogni baracca tiene libero il suo lato nord e il suo lato ovest).
     const SHSTY = [3, 4, 5, 7, 8, 11, 14, 19];
@@ -1361,10 +1284,6 @@ var World = (function () {
       const nb = hash2(Math.floor(cx / 12), Math.floor(cy / 12), 33); f += nb < .3 ? -1 : nb > .82 ? 1 : 0; if (hash2(b.x, b.y, 34) < .12) f--;   // qualche casetta bassa in mezzo
       b.fl = Math.max(1, Math.min(4, f));
       if (b.w * b.h < 9) b.fl = Math.min(b.fl, 2);
-      // [città2] il gradiente: nel borgo sotto le mura case strette e alte (tre-cinque piani, come i caruggi di Genova),
-      // nella metropoli palazzi da quattro a sette piani, i più alti sui viali e agli angoli
-      if (cx > CITY_XB && b.w * b.h >= 6) b.fl = Math.max(3, Math.min(5, f + 1 + (Math.min(b.w, b.h) <= 3 ? 1 : 0)));
-      else if (cx < CITY_XM && b.w * b.h >= 12) b.fl = Math.max(4, Math.min(7, f + 2 + (sides >= 2 ? 1 : 0) + (hash2(b.x, b.y, 35) < .25 ? 1 : 0)));
     });
     // [isola] i palazzi crescono per aggiunte: sopra il corpo pieno, un volume più piccolo e spostato (il terrazzo resta davanti, sulla strada),
     // e ogni tanto una stanzetta in cima. b.tiers: [{ x, y, w, h (caselle), f0 (piano da cui parte), fl }]; b.fl resta il numero di piani del corpo intero.

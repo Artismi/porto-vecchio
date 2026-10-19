@@ -2,7 +2,7 @@
 // Serve a disegnare l'urbanistica in fretta: strade, marciapiedi, piazze, case (più scure se più alte), verde, acqua, binari.
 const path = require('path'), fs = require('fs'), zlib = require('zlib');
 const src = path.join(__dirname, '..', 'src');
-global.World = require(path.join(src, 'world.js')); global.Interior = require(path.join(src, 'interiors.js')); global.Game = require(path.join(src, 'game.js'));
+global.World = require(path.join(src, process.env.PV_CITTANUOVA ? 'world_cittanuova.js' : 'world.js')); global.Interior = require(path.join(src, 'interiors.js')); global.Game = require(path.join(src, 'game.js'));
 const G = Game, T = G.T, GW = G.GW, GH = G.GH, TS = G.TS, B = G.BUILDINGS;
 const [out = 'pianta.png', a0, b0, a1, b1, sc0] = process.argv.slice(2);
 const X0 = Math.floor((+a0 || 0) / TS), Y0 = Math.floor((+b0 || 0) / TS), X1 = Math.ceil((+a1 || GW * TS) / TS), Y1 = Math.ceil((+b1 || GH * TS) / TS), S = +sc0 || 3;
