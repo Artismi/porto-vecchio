@@ -46,6 +46,11 @@
       });
     },
   });
+  // [leggera] prima il gemello binario .glb (strumenti/pack_glb.js: un terzo più piccolo, niente atob); se manca, il .json di sempre.
+  // Da file:// fetch non può leggere i .glb: lì si va dritti al .json (file_shim.js lo serve dal .json.js).
+  const GLB_OK = typeof location === 'undefined' || location.protocol !== 'file:';
+  const fetchModel = window.__pvFetchModel = url => (GLB_OK && /\.json$/.test(url) ? fetch(url.replace(/\.json$/, '.glb')).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null) : Promise.resolve(null))
+    .then(ab => ab || fetch(url).then(r => { if (!r.ok) throw new Error(r.status + ' ' + url); return r.text(); }));
   const P = THREE.GLTFLoader.prototype, load0 = P.load, parse0 = P.parse;
   P.parse = function (data, path, onLoad, onError) {
     if (!this.__pvReg) { this.register(imagePlugin); this.__pvReg = true; }
@@ -54,7 +59,7 @@
   };
   P.load = function (url, onLoad, onProgress, onError) {
     const self = this;
-    fetch(url).then(r => { if (!r.ok) throw new Error(r.status + ' ' + url); return r.text(); })
+    fetchModel(url)
       .then(txt => self.parse(txt, '', onLoad, e => { console.warn('GLTF', url, e); if (onError) onError(e); }))
       .catch(e => { console.warn('GLTF', url, e); if (onError) onError(e); });
   };
@@ -93,7 +98,7 @@ var Kit = (function () {
     if (typeof THREE === 'undefined' || !THREE.GLTFLoader) return false;
     const L = new THREE.GLTFLoader();
     await Promise.all(kits.map(async k => {
-      const buf = await (await fetch(base + 'kit_' + k + '.json')).text();
+      const buf = await (window.__pvFetchModel ? window.__pvFetchModel(base + 'kit_' + k + '.json') : (await fetch(base + 'kit_' + k + '.json')).text());   // [leggera] .glb se c'è
       const g = await new Promise((res, rej) => L.parse(buf, '', res, rej));
       g.scene.updateMatrixWorld(true);
       for (const c of [...g.scene.children]) { c.traverse(o => { if (o.isMesh) { dequant(o.geometry); o.material = fixMat(o.material); } }); LIB[k + '/' + c.name] = c; }
