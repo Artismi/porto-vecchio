@@ -118,3 +118,28 @@ Ogni casella e ogni edificio porta la sua **epoca** (`era`): da lì, non da un h
 Il ventaglio di strade larghe verso la Rocca; l'anello costiero continuo; il prato come riempitivo; le case isolate nel borgo;
 la stessa casa in tutte le epoche; neon e scale antincendio nel borgo; la rotazione senza una causa; le piazzette per hash;
 le transizioni sfumate; le infrastrutture senza appoggio; il regime senza edifici; la metropoli che è un parco.
+
+## 10. I dettagli (richiesta del committente)
+
+Il livello del dettaglio fa parte del progetto, non viene dopo. Per ogni epoca e quartiere:
+
+- **Asfalto e suoli**: rattoppi, crepe, tombini e caditoie, strisce consumate, segni di gesso dei bambini, olio sotto le auto,
+  basoli lucidati dal passaggio al centro del vicolo, il porfido a coda di pavone, la terra battuta coi solchi delle ruote.
+- **Segnaletica**: cartelli stradali italiani anni '80 (divieti, sensi unici, passi carrabili), targhe delle vie per epoca,
+  numeri civici neri e rossi, segnaletica del regime (settori, zone di controllo), frecce della ferrovia, la "P" dei parcheggi.
+- **Tag, sticker, poster**: tag a pennarello sui portoni e sulle cabine, sticker della Risacca e delle crew sui pali e sui
+  semafori, manifesti stratificati e strappati (elezioni, concerti, il Garante, la controcultura), buff grigio del regime.
+- **I dehors dei bar**: tavolini e sedie di metallo o plastica, ombrelloni con la marca della birra, fioriere di confine,
+  la pedana in legno sui vicoli in pendenza, la lavagna col menù, il frigo dei gelati fuori.
+- **Le botteghe dentro i palazzi abitati**: la bottega sta **al piano terra (al massimo al primo-secondo piano)** di un
+  palazzo dove si abita; dalla strada si vedono **il portone di casa e accanto la vetrina** o il fronte dedicato all'attività
+  (serranda, insegna, tenda, merce fuori). Dentro: il locale con il banco, **il retrobottega**, il bagno, a volte una saletta o
+  il laboratorio; sopra, gli appartamenti. Il palazzo ha l'androne, la scala, i pianerottoli.
+- **Facciate**: per epoca (calce e persiane, bugnato e cornicioni, travertino e portici, cemento e balconi in serie, lamiera),
+  con usura (colature, umidità alla base, intonaco caduto, rappezzi), panni stesi, vasi, parabole, condizionatori.
+- **Interni dei palazzi**: androni con le cassette della posta, scale coi gradini consumati, ballatoi, appartamenti diversi
+  per epoca e per chi ci abita.
+- **Scorci**: ogni piazzetta, ogni sbocco di vicolo e ogni affaccio è un'inquadratura: un fondale (un landmark, il mare,
+  una facciata), una quinta, una luce. Cinematografico.
+- **Texture e materiali**: dipinti a mano, coerenti per epoca, mai lo stesso modulo ovunque; prestazioni prima di tutto
+  (atlanti, istanze).
