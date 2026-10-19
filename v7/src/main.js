@@ -213,7 +213,7 @@
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (stick.x || stick.y) { // touch: la levetta segue lo schermo
       const B = R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
-      return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : aimAngle() };
+      return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode ? Math.atan2(y, x) : aimAngle() };   // [telefono] con la levetta guarda dove va
     }
     let f = 0, s = 0;
     const ar = !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick

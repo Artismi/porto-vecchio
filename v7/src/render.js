@@ -8528,7 +8528,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: .97 /* [lucido1] più luce */ /* [plastica1] senza contorni era troppo chiaro (1.06) */, bloom: .7 /* [plastica1] era 1: l'alone attorno alle luci */, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: .4 /* [scena1] col sole pieno la nebbia luminosa era un velo latte */, sharp: 0 /* [plastica1] la maschera di nitidezza faceva alone (era .32) */, outline: 0, vig: .3 /* [scena1] era .7: angoli scuri del 44% */, paint: 0, pal: 0, sat: 1.45 /* [colore1] più colore (era 1.25) */ /* [plastica1] 1.62 dava l'erba fluo */, ink: 0, rim: .35 /* [plastica1] */, cav: .4 /* [plastica1] un po' di volume nelle pieghe */, clar: 0 /* [plastica1] il contrasto locale (colore meno sfocato) è un alone attorno a ogni sagoma */, luc: 1.15, spec: 1.15, coat: 1.05, trans: 1.1, /* [colore1] miniature di plastica: più lacca, punto di luce, traslucenza (erano 1, .9, .8, 1) */ ol: 0 /* [plastica1] niente contorno scuro: miniature di plastica, non fumetto (era .85) */, prato: 1 /* [prato1] */, crisp: .55, film: .028, hal: .5 /* [sviluppo] nitidezza senza aloni, grana fine al pixel vero, alone rosso della pellicola sulle luci */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: .9 /* [illustra1] meno slavato */ /* [lucido1] più luce */ /* [plastica1] senza contorni era troppo chiaro (1.06) */, bloom: .4 /* [illustra1] */ /* [plastica1] era 1: l'alone attorno alle luci */, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: .4 /* [scena1] col sole pieno la nebbia luminosa era un velo latte */, sharp: 0 /* [plastica1] la maschera di nitidezza faceva alone (era .32) */, outline: 0, vig: 0 /* [illustra1] */ /* [scena1] era .7: angoli scuri del 44% */, paint: 0, pal: 0, sat: 1.45 /* [colore1] più colore (era 1.25) */ /* [plastica1] 1.62 dava l'erba fluo */, ink: 0, rim: .35 /* [plastica1] */, cav: .4 /* [plastica1] un po' di volume nelle pieghe */, clar: 0 /* [plastica1] il contrasto locale (colore meno sfocato) è un alone attorno a ogni sagoma */, luc: .4, spec: .2, coat: .15, trans: .5, /* [illustra1] opaco come un'illustrazione dipinta, non plastica bagnata (erano 1.15, 1.15, 1.05, 1.1) */ /* [colore1] miniature di plastica: più lacca, punto di luce, traslucenza (erano 1, .9, .8, 1) */ ol: 1 /* [illustra1] contorni sottili marrone scuro: le cose si staccano invece di mischiarsi */ /* [plastica1] niente contorno scuro: miniature di plastica, non fumetto (era .85) */, prato: 1 /* [prato1] */, crisp: .55, film: .028, hal: .5 /* [sviluppo] nitidezza senza aloni, grana fine al pixel vero, alone rosso della pellicola sulle luci */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -8745,7 +8745,7 @@ var Render = (function () {
               // e le pieghe: spigoli e cambi di piano dentro la sagoma (seconda derivata della profondità, in proporzione al texel), più leggere
               float far9 = max(max(d1 - d, d2 - d), max(d3 - d, d4 - d)), near9 = max(max(d - d1, d - d2), max(d - d3, d - d4));
               float tS9 = d * .536 / res.y * .55 + .004, s9 = max(abs(d1 + d2 - 2. * d), abs(d3 + d4 - 2. * d));
-              float ol9 = smoothstep(.02 * d + .28, .035 * d + .5, far9);
+              float ol9 = smoothstep(.012 * d + .2, .022 * d + .38, far9);   /* [illustra1] la sagoma si segna anche da lontano */
               float cr9 = smoothstep(tS9 * 1.7, tS9 * 2.6, s9) * (1. - smoothstep(.02 * d + .28, .035 * d + .5, near9)) * .6;   // sul lato di fondo di una sagoma no: la linea c'è già
               float gr9 = step(c.r * .9, c.g) * step(c.b * 1.05, c.g) * smoothstep(.02, .08, c.g - min(c.r, c.b));   // nel fogliame la linea si alleggerisce
               float farK9 = 1. - smoothstep(dc * 1.3, dc * 2.2, d) * .6;
@@ -8760,7 +8760,7 @@ var Render = (function () {
                 // il volume delle facciate: ogni faccia un poco più chiara o più scura secondo quanto guarda il sole
                 c *= mix(1., .84 + .28 * clamp(ndl * .5 + .5, 0., 1.), .3 * ok9 * day9 * lK.x); }   /* [plastica2] era .6: segnava ogni faccia dei modelli e li faceva più spigolosi */
               float line9 = max(ol9, cr9) * (1. - gr9 * .7) * farK9 * lOl * (1. - coc) * (1. - smoothstep(uFogNF.x, uFogNF.y, d) * .95);   /* [nebbia_zoom1] */
-              c = mix(c, c * .32 + vec3(.012,.016,.04), clamp(line9 * .85, 0., 1.)); }   /* [colore1] contorno della tinta, non nero pieno */   // blu notte scurito della tinta dell'oggetto
+              c = mix(c, c * .28 + vec3(.05,.032,.022), clamp(line9 * .85, 0., 1.)); }   /* [illustra1] contorno bruno caldo, non blu notte */   /* [colore1] contorno della tinta, non nero pieno */   // blu notte scurito della tinta dell'oggetto
           }
           if (vOn > .01) {   // [luci4] ombre nella nebbia
             float z0 = texture2D(tD, uv).r; vec4 wp = vInvVP * vec4(uv * 2. - 1., z0 * 2. - 1., 1.); wp.xyz /= wp.w;
@@ -8819,7 +8819,7 @@ var Render = (function () {
           c = clamp((c * (2.51 * c + .03)) / (c * (2.43 * c + .59) + .14), 0., 1.);
           { float gn = fract(sin(dot(floor(vUv * res) + fract(aTime * 7.13) * 91.7, vec2(12.9898, 78.233))) * 43758.5453) - .5; float lg = dot(c, vec3(.3,.59,.11));
             c += gn * aK.w * (1. - lg * .6) * (1. - pK.x); }
-          { float chF = (max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b))) / max(max(c.r, max(c.g, c.b)), .05); c = max(mix(vec3(dot(c, vec3(.3,.59,.11))), c, mix(1., 1.24, smoothstep(.05, .2, chF))), 0.); }   /* [scena1] */   /* [unione11] un filo più saturi */   /* [colore1] 1.24 (era 1.14) */
+          { float chF = (max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b))) / max(max(c.r, max(c.g, c.b)), .05); c = max(mix(vec3(dot(c, vec3(.3,.59,.11))), c, mix(1., .92, smoothstep(.05, .2, chF))), 0.); }   /* [illustra1] colori smorzati e caldi come nel riferimento (era 1.24) */   /* [scena1] */   /* [unione11] un filo più saturi */   /* [colore1] 1.24 (era 1.14) */
           if (pK.x > .01) {   // [amb3] colori saturi, ma in palette
             vec3 o = okl(c); float L = o.x; vec2 ab = o.yz * pK.y;   // spinta del colore
             vec3 q = vec3(L, ab); float d1 = 1e9, d2 = 1e9; vec3 p1 = c, p2 = c, o1 = q, o2 = q;
@@ -12435,6 +12435,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     // bordo dello schermo: la visuale gira (a piedi)
     cam.uy = cam.uy || 0; if (ui.edge && !pveh) cam.uy -= ui.edge * dt * 1.4;   // alla guida il bordo no: il puntatore serve a sterzare
     if (ui.rot) cam.uy += ui.rot * dt * 1.7; if (ui.drag) cam.uy += ui.drag;   // [monte] la visuale gira; [varco1] anche in auto, in Vespa e in bici (la guida non dipende dalla visuale)
+    if (PHONE && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc) {   // [telefono] la visuale va alle spalle di chi si muove: inquadra il suo davanti (piano a piedi, più svelta sui mezzi)
+      const vs = pveh ? Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
+      const hd = pveh ? (vs > 1 && (pveh.speed || 0) > -.5 ? Math.atan2(pveh.vy || Math.sin(pveh.ang), pveh.vx || Math.cos(pveh.ang)) : null) : vs > .6 ? Math.atan2(cam.pvy, cam.pvx) : null;
+      if (hd !== null) { const tgt = Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW; cam.uy = angLerp(cam.uy, tgt, Math.min(1, dt * (pveh ? 1.4 : .8) * Math.min(1, vs / (pveh ? 6 : 3)))); } }
     cam.yaw = YAW + cam.uy; // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa
     let pitch = lerp(PITCH, onVespa ? .78 : .82, ease);
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
