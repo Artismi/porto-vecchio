@@ -47628,7 +47628,9 @@ var Render = (function () {
   // così si legge dove stava il muro tagliato, e il suo taglio ha la campitura (le facce rovesce in un colore pieno). Fuori dal
   // cerchio, e dietro di lui, non si tocca niente.
   // Restano interi terreno, cielo, gente e mezzi. k.y > 0: acceso.
-  const VARCO = { p: { value: new THREE.Vector3(0, -999, 0) }, c: { value: new THREE.Vector3(0, 100, 0) }, k: { value: new THREE.Vector4(0, 0, 1, 0) }, S: { value: new THREE.Vector4(-1e4, -1e4, 0, 0) }, cap: { value: new THREE.Color('#3b3430') }, done: new WeakSet(), t: -9 };
+  // [sezione5] spento: come Diablo e Baldur's Gate 3 la casa davanti sbiadisce intera e il giocatore si vede come sagoma (sotto, «edifici
+  // tra la camera e il giocatore»). Il foro resta qui, fermo (off), se un giorno servisse per gli interni.
+  const VARCO = { off: true, p: { value: new THREE.Vector3(0, -999, 0) }, c: { value: new THREE.Vector3(0, 100, 0) }, k: { value: new THREE.Vector4(0, 0, 1, 0) }, S: { value: new THREE.Vector4(-1e4, -1e4, 0, 0) }, cap: { value: new THREE.Color('#3b3430') }, done: new WeakSet(), t: -9 };
   function varcoMat1(m) {
     if (VARCO.done.has(m)) return; VARCO.done.add(m);
     if (m.isShaderMaterial || m.isPointsMaterial || m.isLineBasicMaterial || m.isSpriteMaterial) return;
@@ -59426,7 +59428,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); camera.updateProjectionMatrix(); }   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
     if (dyn.sky) dyn.sky.position.copy(camera.position);
 
-    // edifici tra la camera e il giocatore: col foro acceso (VARCO) restano pieni e si bucano attorno a te; trasparenti solo a foro spento
+    // edifici tra la camera e il giocatore: sbiadiscono interi (a foro spento, VARCO.off) e il giocatore si vede come sagoma
     const hitv = new THREE.Vector3();
     const feet0 = window.Tetti && p.lv && (p.lv.k === 'tetto' || p.lv.k === 'scala') ? Livelli.heightOf(st, p) : null, roofB0 = window.Tetti ? Tetti.roofB(st) : null;   // [writer] sul tetto: i raggi partono dai piedi veri, la casa sotto non sparisce
     const rays = focus.map(([fx, fz], k) => { const o = new THREE.Vector3(fx, (k === 0 && feet0 !== null ? feet0 : groundH(fx, fz)) + .9, fz); return new THREE.Ray(o, V3.copy(camera.position).sub(o).normalize().clone()); });
@@ -59438,10 +59440,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         const t = Math.max(0, Math.min(1, ((bx - sx0) * sdx + (bz - sz0) * sdz) / sl2)), ex = sx0 + sdx * t - bx, ez = sz0 + sdz * t - bz; if (ex * ex + ez * ez > br * br) { B.fade = 0; return; } }
       const hit = !(feet0 !== null && (B.b === roofB0 || (roofB0 && B.b && B.b.id === roofB0.id) || B.box3.max.y - 2.5 < feet0 + .8)) && rays.some(ry => ry.intersectBox(B.box3, hitv) !== null); if (hit && rays[0].intersectBox(B.box3, hitv) !== null) covered = true;
       const target = hit && VARCO.off ? 1 : 0; B.fade += (target - B.fade) * Math.min(1, dt * 8); fadeTick1(B);   /* [pulitore1] */
-      const op = 1 - B.fade * .9;
-      B.__op = op; B.mats.forEach(m => { const kt = m.userData.keepTr, tr = op < .99 || !!kt; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !tr; if (m.emissiveMap) m.emissiveIntensity = dyn.__ne * op; });   // [case] keepTr
+      const op = 1 - B.fade * .65;   // [sezione5] sbiadisce al 35%: resta il contorno chiaro della casa, non sparisce
+      B.__op = op; B.mats.forEach(m => { const kt = m.userData.keepTr, tr = op < .99 || !!kt; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !kt;   /* [sezione5] la casa sbiadita scrive ancora la profondità: si vede solo la sua pelle davanti, non i muri e i solai dietro (la «casa nera») */ if (m.emissiveMap) m.emissiveIntensity = dyn.__ne * op; });   // [case] keepTr
     });
-    if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = covered && !pveh && !!VARCO.off);
+    if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = covered && !pveh);   // [sezione5] la sagoma del giocatore attraverso i muri
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }   /* [pulitore1] */
 
     INDOOR.quad = Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2) - .5) & 3;
@@ -59449,7 +59451,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     let ugNow = false;
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { ugNow = true; scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
     {   // [sezione2] il foro: solo quello che sta fra te e la camera, dentro il cerchio attorno a te
-      if (time - VARCO.t > 1.5) { VARCO.t = time; varcoScan1(); }
+      if (!VARCO.off && time - VARCO.t > 1.5) { VARCO.t = time; varcoScan1(); }
       const on = !VARCO.off && !ui.intro && !ui.studio && !ui.focus && !p.indoor && !indoorNow && !ugNow, fy = (feet0 !== null ? feet0 : groundH(focus[0][0], focus[0][1]));
       const rW = lerp(Math.min(3.4, Math.max(2.3, viewH * .035)), 3.6, ease);   // [sezione2] il raggio del foro in metri attorno al giocatore: a piedi la persona, alla guida il mezzo
       const pc = V3.set(focus[0][0], fy + .9, focus[0][1]), dC = pc.distanceTo(camera.position); VARCO.p.value.copy(pc); VARCO.c.value.copy(camera.position);
