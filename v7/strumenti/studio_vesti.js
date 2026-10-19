@@ -46,6 +46,13 @@ const GRUPPI = {
     ['hawaii', [['camicia_hawaii', { col: '#1a6a7a' }], ['pantaloni', { col: '#ece6d8' }], 'mocassini', 'catenina']],
     ['pelliccia', [['dolcevita', { col: '#101012' }], ['leggings', { col: '#101012' }], 'pelliccia', 'stivali_pelle', 'occhiali_sole'], 'donna'],
   ],
+  catene: [
+    ['catenone', [['canotta_basket', { col: '#f4f2ee' }], 'pantaloni_tuta', 'collana_oro', 'scarpe_air']],
+    ['catenina_tuta', [['giacca_tuta', { col: '#16161a' }], 'pantaloni_tuta', 'catenina', 'scarpe_air']],
+    ['perle', [['dolcevita', { col: '#101012' }], 'gonna', 'collana_perle', 'tacchi'], 'donna'],
+    ['dolcevita_jeans', [['dolcevita', { col: '#101012' }], 'jeans', 'tacchi'], 'donna'],
+    ['camicia_gonna', ['camicia', 'gonna', 'tacchi'], 'donna'],
+  ],
   borse: [
     ['tracolla_tuta', [['giacca_tuta', { col: '#16161a' }], 'pantaloni_tuta', ['marsupio_tracolla', { col: '#1a1a1e' }], 'scarpe_air']],
     ['tracolla_piumino', ['maglietta', 'cargo', ['piumino_oca', { col: '#0e0e10' }], ['marsupio_tracolla', { col: '#c8c0b0' }], 'scarpe_air']],
@@ -91,7 +98,7 @@ for (const [g, list] of Object.entries(GRUPPI)) {
     if (only && !only.includes(g) && !only.includes(nome)) continue;
     const vesti = ids.map(x => Array.isArray(x) ? capo(x[0], x[1]) : capo(x));
     const pose = ANG.map(a => ({ nome: '', look: M[chi || 'uomo'], vesti, ang: a }));
-    shots.push({ nome: g + '_' + nome, t: .3, cols: 4, sp: .78, pose, cam: zoom ? [0, zoom, +(process.env.DIST || 2.3), 0, zoom - .05, 0] : [0, 1.1, 4.1, 0, .95, 0] });
+    shots.push({ nome: g + '_' + nome, t: process.env.RIPOSO ? 0 : .3, cols: 4, sp: .78, pose, cam: zoom ? [0, zoom, +(process.env.DIST || 2.3), 0, zoom - .05, 0] : [0, 1.1, 4.1, 0, .95, 0] });
   }
 }
 const tmp = path.join(out, '_scene.json'); fs.mkdirSync(out, { recursive: true }); fs.writeFileSync(tmp, JSON.stringify(shots));

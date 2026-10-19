@@ -147,6 +147,9 @@ var Pittura = (function () {
     const F = frame(B), tb = F.tubes[r], q = axial(tb, out), fr = S().frameAt(tb, q.s), R = ironed(tb), rr = shape(B, tb, q.s, q.a, ironRadius(R, tb, q.s, q.a)); q.r = q.r !== undefined ? q.r : out.clone().sub(fr.p).length(); q.i = q.s / tb.ds;
     // vicino a mani, piedi, collo (dove il corpo resta com'è) lo stiro sfuma
     let k = 1; if (r > 0) k = cl((tb.L - q.i * tb.ds) / .06, 0, 1) * cl(q.i * tb.ds / .05, 0, 1); else { const ny = S().neckY(B); k = cl((ny - out.y) / .04, 0, 1) * cl((out.y - (B.crotch + .02)) / .07, 0, 1); const j = B.bones['UpperArm' + (out.x - (B.bones.Hips ? B.bones.Hips.x : 0) > 0 === (B.bones.UpperArmL && B.bones.UpperArmL.x > (B.bones.Hips ? B.bones.Hips.x : 0)) ? 'L' : 'R')]; if (j) k *= cl((out.distanceTo(j) - .06) / .12, 0, 1); }   // vicino al giro manica il busto resta com'è (niente punte verso il braccio)   // al cavallo, tra le gambe, il corpo resta com'è
+    // [forma] l'avambraccio verso il polso: affusolato (niente svasature dei polsini del kit); il raggio scende in linea verso quello del polso vero
+    if (r === 1 || r === 2) { const w = B.bones['Wrist' + (r === 1 ? 'L' : 'R')], sw = w ? tb.sNear(w) : tb.L, s0 = sw - .14;
+      if (q.s > s0) { const t = cl((q.s - s0) / (sw - s0), 0, 1), r0 = ironRadius(R, tb, s0, q.a), cap = lerp(r0, Math.min(r0, .03), t) * (1 + .1 * Math.abs(Math.sin(q.a))); const tgt = Math.min(Math.max(q.r, rr * k + q.r * (1 - k)), cap); if (Math.abs(tgt - q.r) < 1e-5 || q.r < 1e-4) return out; const dir = out.clone().sub(fr.p); dir.addScaledVector(fr.t, -dir.dot(fr.t)); dir.normalize(); return out.addScaledVector(dir, tgt - q.r); } }
     const d = cl(rr - q.r, -.06, .045) * k; if (Math.abs(d) < 1e-5 || q.r < 1e-4) return out;
     const dir = out.clone().sub(fr.p); dir.addScaledVector(fr.t, -dir.dot(fr.t)); dir.normalize(); return out.addScaledVector(dir, d);
   }
@@ -765,9 +768,41 @@ var Pittura = (function () {
     const R0 = raw + cl(rr - raw, -.06, .045) * k + off;
     return fr.p.clone().addScaledVector(fr.f, Math.cos(a) * R0).addScaledVector(fr.sd, Math.sin(a) * R0);
   }
+  // il raggio della pelle dipinta attorno a un anello (s) di braccio o gamba, per n angoli (il più esterno entro ±1,2 cm; buchi riempiti dai vicini)
+  function limbRing(B, r, s, n) {
+    const F = frame(B), tb = F.tubes[r], I = ironAll(B), fr = S().frameAt(tb, s); B._lax = B._lax || {};
+    if (!B._lax[r]) { const L = []; const v = new THREE.Vector3(); for (let g = 0; g < B.part.length; g++) { if (regionOf(B, g) !== r) continue; v.set(I[g * 3], I[g * 3 + 1], I[g * 3 + 2]); L.push(axial(tb, v).s, g); } B._lax[r] = L; }
+    const L = B._lax[r], pts = []; for (let k = 0; k < L.length; k += 2) if (Math.abs(L[k] - s) < .018) { const g = L[k + 1], p = new THREE.Vector3(I[g * 3], I[g * 3 + 1], I[g * 3 + 2]), d = p.sub(fr.p); pts.push([d.dot(fr.f), d.dot(fr.sd)]); }
+    const R = new Float32Array(n); let cx = 0, cy = 0;
+    if (pts.length >= 4) { let x0 = 9, x1 = -9, y0 = 9, y1 = -9; pts.forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }); cx = (x0 + x1) / 2; cy = (y0 + y1) / 2;
+      pts.forEach(([x, y]) => { const a = Math.atan2(y - cy, x - cx), b = ((Math.floor((a + Math.PI) / (Math.PI * 2) * n) % n) + n) % n, d = Math.hypot(x - cx, y - cy); if (d > R[b]) R[b] = d; });
+      for (let it = 0; it < n; it++) for (let k = 0; k < n; k++) if (!R[k]) R[k] = Math.max(R[(k + 1) % n], R[(k + n - 1) % n]); }
+    else for (let k = 0; k < n; k++) R[k] = surfI(B, r, s, -Math.PI + (k + .5) / n * Math.PI * 2, 0).distanceTo(fr.p);
+    const sm = Array.from(R, (x, k) => Math.max(x, (R[(k + n - 1) % n] + R[(k + 1) % n]) / 2));
+    return { R: sm, c: fr.p.clone().addScaledVector(fr.f, cx).addScaledVector(fr.sd, cy), fr };
+  }
+  // l'anello sull'avambraccio: asse dell'osso (gomito → polso), raggio dalla pelle vera attorno (70° percentile, a ellisse un po' più larga ai lati)
+  function armRing(B, r, s, n) {
+    const sd = r === 1 ? 'L' : 'R', j0 = B.bones['LowerArm' + sd], j1 = B.bones['Wrist' + sd], tb = frame(B).tubes[r], fr0 = S().frameAt(tb, s); if (!j0 || !j1) return limbRing(B, r, s, n);
+    const ax = j1.clone().sub(j0), Lx = ax.length(); ax.normalize(); const t = cl(fr0.p.clone().sub(j0).dot(ax), 0, Lx), c = j0.clone().addScaledVector(ax, t), I = ironAll(B);
+    // il centro: quello della pelle attorno (l'osso del kit non sta al centro dell'avambraccio)
+    const near = []; for (let g = 0; g < B.part.length; g++) { if (B.part[g] !== 'avambracci' || B.side[g] !== (r === 1 ? 1 : -1)) continue; const v = new THREE.Vector3(I[g * 3], I[g * 3 + 1], I[g * 3 + 2]), along = v.clone().sub(j0).dot(ax); if (Math.abs(along - t) < .05) near.push(v); }
+    if (near.length) { const m = near.reduce((a, v) => a.add(v), new THREE.Vector3()).divideScalar(near.length), d0 = m.sub(c); c.add(d0.addScaledVector(ax, -d0.dot(ax))); }
+    const ds = near.map(v => { const d = v.clone().sub(c); d.addScaledVector(ax, -d.dot(ax)); return d.length(); });
+    ds.sort((a, b) => a - b); const R0 = ds.length ? ds[Math.floor(ds.length * .7)] : .03;
+    const f = new THREE.Vector3(0, 0, 1).addScaledVector(ax, -ax.z).normalize(), sv = ax.clone().cross(f).normalize(), R = [];
+    for (let k = 0; k < n; k++) { const a = -Math.PI + (k + .5) / n * Math.PI * 2; R.push(R0 * (1 + .08 * Math.abs(Math.sin(a)))); }
+    return { R, c, fr: { f, sd: sv, t: ax, p: c } };
+  }
   // il bordino in rilievo di un orlo: anello a n facce attorno alla regione r, all'altezza s (metri sul tubo), alto h, spesso th
   function orlo(B, r, s, h, off, th, n, mat) {
-    const P = [], ring = (ds, o) => { const q = []; for (let k = 0; k < n; k++) q.push(surfI(B, r, s + ds, -Math.PI + (k + .5) / n * Math.PI * 2, o)); return q; };
+    if (r === 1 || r === 2) { const tb = frame(B).tubes[r], w = B.bones['Wrist' + (r === 1 ? 'L' : 'R')]; if (w && tb.sNear) s = Math.min(s, tb.sNear(w) - h / 2 - .035); }   // mai sul polso (lì la pelle segue la mano) (lì il tubo prende la mano)
+    // [forma] l'anello non segue le punte del corpo (in fondo alla manica il tubo prende anche la mano e le dita): raggio limitato attorno alla mediana, poi lisciato
+    // sulle braccia e le gambe l'anello si misura sulla pelle vera dipinta (vertici stirati di quella zona, mani e piedi esclusi):
+    // il tubo, vicino al polso e alla caviglia, prende anche le dita e il tallone
+    const P = [], ring = (ds, o) => { if (r === 0) { const q = []; for (let k = 0; k < n; k++) q.push(surfI(B, r, s + ds, -Math.PI + (k + .5) / n * Math.PI * 2, o)); return q; }
+      const LR = r <= 2 ? armRing(B, r, s + ds, n) : limbRing(B, r, s + ds, n), fr = LR.fr, q = [];
+      for (let k = 0; k < n; k++) { const a = -Math.PI + (k + .5) / n * Math.PI * 2; q.push(LR.c.clone().addScaledVector(fr.f, Math.cos(a) * (LR.R[k] + o)).addScaledVector(fr.sd, Math.sin(a) * (LR.R[k] + o))); } return q; };
     const ob = ring(-h / 2, off), ot = ring(h / 2, off), ib = ring(-h / 2, off - th), it = ring(h / 2, off - th);
     const quad = (a, b, c, d) => P.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, d.x, d.y, d.z);
     for (let k = 0; k < n; k++) { const j = (k + 1) % n; quad(ob[k], ob[j], ot[j], ot[k]); quad(ot[k], ot[j], it[j], it[k]); quad(ib[k], ib[j], ob[j], ob[k]); }
@@ -833,5 +868,5 @@ var Pittura = (function () {
   }
   // il raggio della superficie dipinta del busto (stirata) a (s, angolo) sul tubo del tronco: le falde in rilievo ci si raccordano a filo
   function raggio(B, s, a) { const tb = frame(B).tubes[0]; return shape(B, tb, s, a, ironRadius(ironed(tb), tb, s, a)); }
-  return { forma: k => { FORMA_K = k; IRON.clear(); }, offAt, ringOff, topOf, stackOff, raggio, ironAll, cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
+  return { limbRing, forma: k => { FORMA_K = k; IRON.clear(); }, offAt, ringOff, topOf, stackOff, raggio, ironAll, cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
 })();
