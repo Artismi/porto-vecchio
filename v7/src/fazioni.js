@@ -67,7 +67,7 @@ var Fazioni = (function () {
     let lav = B.filter(b => b.door && b.use === 'lavanderia').sort((a, c) => dist(...ctr(a), sx, sy) - dist(...ctr(c), sx, sy))[0];
     if (!lav || dist(...ctr(lav), sx, sy) > 40) {
       const near = B.filter(b => b.door && b.use === 'casa' && !b.name && dist(...ctr(b), sx, sy) < 45).sort((a, c) => dist(...ctr(a), sx, sy) - dist(...ctr(c), sx, sy))[0];
-      if (near) { near.use = 'lavanderia'; near.name = 'Lavanderia Stella'; near.label = near.name; near.shop = true; near.sign = { t: 'ПРАЧЕЧНАЯ 세탁', c: '#8affd0' }; lav = near; }
+      if (near) { near.use = 'lavanderia'; near.name = 'Lavanderia Stella'; near.label = near.name; near.shop = true; near.sign = { t: 'LAVANDERIA STELLA', c: '#8affd0' }; lav = near; }
     }
     return lav ? { lav: lav.id, sala: sala.id } : null;
   })();

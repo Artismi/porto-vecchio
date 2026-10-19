@@ -50,7 +50,7 @@ var Ordine = (function () {
       const free = B.filter(b => b.door && b.use === 'casa' && !b.home && !b.farm && !b.trade && !b.name && b.w * b.h >= 12)
         .map(b => ({ b, d: dist(b.door[0] * TS, b.door[1] * TS, pz.x, pz.y), a: b.w * b.h })).filter(x => x.d < 140)
         .sort((p, q) => (q.a - p.a) * 1.5 + (p.d - q.d) * .25);
-      if (free[0]) { sb = free[0].b; sb.use = 'supermercato'; sb.trade = 'supermercato'; sb.name = 'Supermercato del Popolo «La Spiga»'; sb.label = sb.name; sb.shop = true; sb.sign = { t: 'УНИВЕРСАМ 슈퍼', c: '#ffd23b' }; sb.superm = true; }
+      if (free[0]) { sb = free[0].b; sb.use = 'supermercato'; sb.trade = 'supermercato'; sb.name = 'Supermercato del Popolo «La Spiga»'; sb.label = sb.name; sb.shop = true; sb.sign = { t: 'SUPERMERCATO LA SPIGA', c: '#ffd23b' }; sb.superm = true; }
     }
     if (!sb) return null;
     const door = { x: sb.door[0] * TS + TS / 2, y: sb.door[1] * TS + TS / 2 };

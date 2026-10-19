@@ -116,7 +116,7 @@ var OrdineArte = (function () {
     const mesh = meshOf(P); g.add(mesh);
     const bach = panel(textTex(['AVVISI', 'RICERCATI', 'COPRIFUOCO 23:00'], 128, 96, '#e8e2cc', '#2a1a1a', { border: '#8a1e1e' }), 1.45, 1); bach.position.set(-3.4, 1.5, .15); g.add(bach);
     // la lampada blu della Guardia sopra la porta
-    const lamp = panel(textTex('ГВАРДИЯ · GUARDIA', 192, 40, '#1a3a8a', '#e8f0ff'), 1.9, .4, { basic: true }); lamp.position.set(0, 3.1, .18); g.add(lamp);
+    const lamp = panel(textTex('GUARDIA', 192, 40, '#1a3a8a', '#e8f0ff'), 1.9, .4, { basic: true }); lamp.position.set(0, 3.1, .18); g.add(lamp);
     const lb = new THREE.Mesh(new THREE.BoxGeometry(2, .5, .26), new THREE.MeshLambertMaterial({ color: '#1a2030' })); lb.position.set(0, 3.1, .05); g.add(lb);
     LAMPS.push({ m: lamp.material, on: '#ffffff', off: '#5a6a8a' });
     // le strisce dei parcheggi delle volanti
@@ -240,7 +240,7 @@ var OrdineArte = (function () {
     for (let i = 0; i < 6; i++) bx(P, .52, .09, .09, i % 2 ? '#f4f4f4' : '#d81818', 2.35 - i * .52, 1.15, 3.5);
     cy(P, .04, 1.6, '#3a3a3a', -2.4, .8, -2.6, 0, 0, 0, 6);
     const g = new THREE.Group(); g.add(meshOf(P)); const lamps = meshOf(L, { basic: true, noShadow: true }); g.add(lamps);
-    const sign = panel(textTex(['ALT', 'ПОСТ · CONTROLLO'], 128, 96, '#d81818', '#ffffff', { border: '#ffffff' }), .9, .68, { side: THREE.DoubleSide }); sign.position.set(-2.4, 1.75, -2.6); g.add(sign);
+    const sign = panel(textTex(['ALT', 'CONTROLLO'], 128, 96, '#d81818', '#ffffff', { border: '#ffffff' }), .9, .68, { side: THREE.DoubleSide }); sign.position.set(-2.4, 1.75, -2.6); g.add(sign);
     g.visible = false; scene.add(g);
     return { g, lamps };
   }
