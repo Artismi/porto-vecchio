@@ -644,8 +644,36 @@ var Vesti3D = (function () {
     return g;
   }
   const sm0 = t => { t = cl0(t); return t * t * (3 - 2 * t); };
+  // [corpo] il piede nudo: il kit ha solo scarpe. Pianta del piede vera (tallone tondo, arco, pianta larga, dita), il collo del piede
+  // che sale verso la caviglia e un moncone di caviglia che entra nella gamba; le dita sono cinque cuscinetti, l'alluce più grosso
+  function piedeGeo(L, W, inner) {
+    const nu = 22, P = [], I = [], ring = [];
+    const top = u => u < .22 ? lerp0(.062, .088, sm0(u / .22)) : u < .55 ? lerp0(.088, .058, sm0((u - .22) / .33)) : u < .8 ? lerp0(.058, .034, sm0((u - .55) / .25)) : lerp0(.034, .02, sm0((u - .8) / .2));
+    for (let i = 0; i <= nu; i++) { const u = i / nu, z = -L / 2 + u * L, w = W / 2 * pianta(u, 0) * (u < .06 ? .55 + .45 * Math.sqrt(u / .06) : 1) * (u > .94 ? .7 + .3 * Math.sqrt((1 - u) / .06) : 1), h = top(u) * (u < .04 ? .75 + .25 * u / .04 : 1), arch = u > .3 && u < .65 ? .006 * Math.sin((u - .3) / .35 * Math.PI) : 0, r0 = P.length / 3;
+      const n = 18; for (let j = 0; j < n; j++) { const t = j / n * Math.PI * 2, ct = Math.cos(t), st2 = Math.sin(t);
+        const x = w * Math.sign(ct) * Math.pow(Math.abs(ct), .7), y = st2 >= 0 ? h * Math.pow(st2, .75) : .0015 + (x * inner > 0 ? arch * Math.pow(-st2, .5) : 0) * 0 + 0;   // sotto: la pianta piatta (l'arco dentro si alza appena)
+        P.push(x + (st2 >= 0 ? -inner * .1 * w * st2 * cl0((u - .2) / .5) : 0), st2 >= 0 ? y : .0015 + (x * inner > 0 ? arch : 0), z); }
+      ring.push(r0); }
+    const n = 18; for (let i = 0; i < nu; i++) for (let j = 0; j < n; j++) { const a = ring[i] + j, b = ring[i] + (j + 1) % n, c = ring[i + 1] + j, d = ring[i + 1] + (j + 1) % n; I.push(a, c, b, b, c, d); }
+    const cap = (r, z, back) => { const k = P.length / 3; P.push(0, top(back ? 0 : 1) * .45, z); for (let j = 0; j < n; j++) back ? I.push(k, r + j, r + (j + 1) % n) : I.push(k, r + (j + 1) % n, r + j); };
+    cap(ring[0], -L / 2 - .003, 1); cap(ring[nu], L / 2 + .002, 0);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex(I); g.computeVertexNormals(); return g;
+  }
+  function piedi(g, B, AT, col) {
+    const mat = new THREE.MeshStandardMaterial({ color: col, roughness: .415, metalness: 0 }); mat.emissive = new THREE.Color(col).multiplyScalar(.3);
+    for (const sd of ['L', 'R']) { const F = footBox(B, sd); if (!F) continue; const inner = sd === 'L' ? -1 : 1, L = Math.min(.25, F.L * .86), W = Math.min(.09, F.w * .88), o = new THREE.Group(), q = new THREE.Group();
+      q.add(new THREE.Mesh(piedeGeo(L, W, inner), mat));
+      // la caviglia: dal collo del piede su dentro la gamba (malleoli appena accennati)
+      const an = B.ankle[sd] || new THREE.Vector3(F.cx, .1, F.cz - L * .28), ank = new THREE.Mesh(new THREE.LatheGeometry([[.034, .02], [.033, .05], [.031, .08], [.03, .125]].map(p => new THREE.Vector2(p[0], p[1])), 16), mat); ank.position.set(an.x - F.cx, 0, an.z - F.cz); o.add(ank);   // sull'asse vero della caviglia (la gamba finisce lì)
+      // le dita: l'alluce dentro, poi a scalare verso fuori, appena staccate e schiacciate
+      const TO = [[.0125, .0], [.0085, .27], [.008, .5], [.0075, .7], [.0068, .88]];
+      TO.forEach(([r, f]) => { const x = inner * W * .38 - inner * f * W * .76, u = .9 - .07 * f * f, z = -L / 2 + u * L + (f === 0 ? .004 : 0), t = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 7), mat); t.scale.set(.95, .62, 1.9); t.position.set(x, r * .62, z); q.add(t); });   // le dita: cuscinetti allungati che escono dalla pianta
+      q.rotation.y = F.yaw; o.add(q); o.position.set(F.cx, 0, F.cz); o.userData.piedeNudo = true; AT('Foot' + sd, o); }
+  }
   function scarpe(g, outfit, B, AT) {
-    const c = outfit.find(o => SH_STYLE[o.id]); if (!c) return null; const st = SH_STYLE[c.id];
+    const c = outfit.find(o => SH_STYLE[o.id]);
+    if (!c || SH_STYLE[c.id].sandalo || SH_STYLE[c.id].ciabatta) { let col = '#dcae88'; g.traverse(o => { if (o.isMesh && /Head/i.test(o.name)) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m && /^Skin$/i.test(m.name || '') && m.color) col = '#' + m.color.getHexString(); }); }); piedi(g, B, AT, col); }
+    if (!c) return null; const st = SH_STYLE[c.id];
     const up = Pittura.blockMat(c.id === 'stivali' ? 'gomma' : 'pelle', c.col, c.col, c.col, { vc: false, liscio: 1 }), soleM = lm(st.suola || sh(c.col, .3)), dark = lm(sh(c.col, .5));
     for (const sd of ['L', 'R']) {
       const F = footBox(B, sd); if (!F) continue; const o = new THREE.Group(), inner = new THREE.Group(), so = st.sole, L = F.L + (st.largo ? .01 : 0), W = F.w + (st.largo || 0);
