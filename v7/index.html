@@ -47620,33 +47620,36 @@ var Render = (function () {
   const NAT = { ok: false, models: {}, mats: {} };
   // le chiome tra la camera e il giocatore si aprono (retinatura): il giocatore nel bosco si vede sempre
   const NATU = { pl: { value: new THREE.Vector3(0, -999, 0) }, cm: { value: new THREE.Vector3(0, 100, 0) } };
-  // [varco1] lo stesso varco per tutto il resto (come The Sims, Divinity, Diablo): non si spegne la casa intera, si apre a retino
-  // una capsula lungo la linea giocatore → camera su ogni materiale (case, tetti, balconi, insegne, roba sui tetti, muraglioni).
-  // Restano interi terreno, cielo, gente e mezzi; sotto il metro dai piedi non si buca niente. p: dove guarda, c: la camera,
-  // k: raggio pieno, raggio aperto (0 = spento), dove comincia lungo la linea, quota minima
-  const VARCO = { p: { value: new THREE.Vector3(0, -999, 0) }, c: { value: new THREE.Vector3(0, 100, 0) }, k: { value: new THREE.Vector4(0, 0, 1, 0) }, done: new WeakSet(), t: -9 };
+  // [sezione1] LA SEZIONE: i palazzi fra te e la camera si tagliano in orizzontale (come una pianta d'architetto), non si sbriciolano.
+  // Un corridoio diritto dal giocatore verso la camera (in pianta, largo k.x); dentro, tutto quello che sta sopra la quota di taglio
+  // (k.w, poco sopra i piedi) sparisce con un bordo netto, e dove il taglio scopre l'interno dei muri (le facce rovesce) si vede la
+  // campitura di sezione, un colore pieno. Restano interi terreno, cielo, gente e mezzi. k: mezza larghezza, acceso (> 0), da dove
+  // comincia lungo il corridoio, quota di taglio.
+  const VARCO = { p: { value: new THREE.Vector3(0, -999, 0) }, c: { value: new THREE.Vector3(0, 100, 0) }, k: { value: new THREE.Vector4(0, 0, 1, 0) }, cap: { value: new THREE.Color('#5a4e46') }, done: new WeakSet(), t: -9 };
   function varcoMat1(m) {
     if (VARCO.done.has(m)) return; VARCO.done.add(m);
     if (m.isShaderMaterial || m.isPointsMaterial || m.isLineBasicMaterial || m.isSpriteMaterial) return;
     const prev = m.onBeforeCompile, pk = m.customProgramCacheKey;
     const wrap = function (sh, r) { prev.call(m, sh, r);
-      if (!sh.vertexShader.includes('#include <project_vertex>') || !sh.fragmentShader.includes('#include <clipping_planes_fragment>')) return;
-      sh.uniforms.uVcP = VARCO.p; sh.uniforms.uVcC = VARCO.c; sh.uniforms.uVcK = VARCO.k;
+      if (!sh.vertexShader.includes('#include <project_vertex>') || !sh.fragmentShader.includes('#include <clipping_planes_fragment>') || !sh.fragmentShader.includes('#include <dithering_fragment>')) return;
+      sh.uniforms.uVcP = VARCO.p; sh.uniforms.uVcC = VARCO.c; sh.uniforms.uVcK = VARCO.k; sh.uniforms.uVcCap = VARCO.cap;
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1;').replace('#include <project_vertex>', `#include <project_vertex>
         { vec4 w1 = vec4(transformed, 1.);
         #ifdef USE_INSTANCING
           w1 = instanceMatrix * w1;
         #endif
           vVc1 = (modelMatrix * w1).xyz; }`);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1; uniform vec3 uVcP; uniform vec3 uVcC; uniform vec4 uVcK;')
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1; uniform vec3 uVcP; uniform vec3 uVcC; uniform vec4 uVcK; uniform vec3 uVcCap; float vcIn1 = 0.;')
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-        if (uVcK.y > 0.) { vec3 ab = uVcC - uVcP; float L = length(ab); vec3 u = ab / L; float s = dot(vVc1 - uVcP, u); float d = length(vVc1 - uVcP - u * s);
-          float open = (1. - smoothstep(uVcK.x, uVcK.y, d)) * smoothstep(uVcK.z, uVcK.z + 1.5, s) * step(s, L - 1.) * step(uVcK.w, vVc1.y);
-          vec2 q = floor(gl_FragCoord.xy); float dth = fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453);
-          if (open > dth * .9 + .1) discard; }`); };
-    wrap.toString = () => prev.toString() + '|vc1';   // la chiave del programma di default legge onBeforeCompile.toString()
+        if (uVcK.y > 0.) { vec2 ab = uVcC.xz - uVcP.xz; float L = max(length(ab), .01); vec2 u = ab / L; vec2 w = vVc1.xz - uVcP.xz; float s = dot(w, u); float d = abs(w.x * u.y - w.y * u.x);
+          vcIn1 = step(d, uVcK.x) * step(uVcK.z, s);
+          if (vcIn1 > .5 && vVc1.y > uVcK.w) discard; }`)
+        .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+        if (vcIn1 > .5 && !gl_FrontFacing) gl_FragColor = vec4(uVcCap * (.85 + .15 * smoothstep(uVcK.w - 3., uVcK.w, vVc1.y)), gl_FragColor.a);`); };
+    wrap.toString = () => prev.toString() + '|sez1';   // la chiave del programma di default legge onBeforeCompile.toString()
     m.onBeforeCompile = wrap;
-    if (pk !== THREE.Material.prototype.customProgramCacheKey) m.customProgramCacheKey = function () { return pk.call(m) + '|vc1'; };
+    if (pk !== THREE.Material.prototype.customProgramCacheKey) m.customProgramCacheKey = function () { return pk.call(m) + '|sez1'; };
+    if (m.side === THREE.FrontSide && !m.transparent) { m.side = THREE.DoubleSide; m.shadowSide = THREE.FrontSide; }   // le facce rovesce servono alla campitura (l'ombra resta quella di prima)
     m.needsUpdate = true;
   }
   function varcoScan1() {   // ogni tanto: i materiali nuovi entrano nel varco (le case si costruiscono a pezzi, i tetti si arredano)
@@ -52398,7 +52401,7 @@ var Render = (function () {
     const T = G.T, X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS;
     const LEAF = ['#e8f0e0', '#f4f2e4', '#e0ead8', '#fff8e8', '#f0e8c8'];
     alberiCitta35().forEach(t => { if (t.x < X0 || t.x >= X1 || t.z < Y0 || t.z >= Y1) return; const r = rng((Math.round(t.x * 13) + Math.round(t.z * 7)) >>> 0);
-      const name = t.kind === 'cortile' && r() < .35 ? pick(r, NM.olive) : t.kind === 'viale' && r() < .2 ? pick(r, NM.bare) : pick(r, NM.oak);
+      const name = t.kind === 'cortile' && r() < .35 ? pick(r, NM.olive) : pick(r, NM.oak);   // [verde4] in città niente alberi secchi
       add(name, t.x, groundH(t.x, t.z) - .05, t.z, (/Twisted/.test(name) ? .22 : /Dead/.test(name) ? .26 : t.s) * (.92 + r() * .16), r() * 6.28, { rx: (r() - .5) * .05, rz: (r() - .5) * .05, col: pick(r, LEAF) });
       if (t.kind !== 'viale') for (let q = 0; q < (t.kind === 'cortile' ? 3 : 1); q++) add(q ? 'Grass_Common_Tall' : 'Bush_Common',   /* [unione11] */ t.x + (r() - .5) * 2.4, 0, t.z + (r() - .5) * 2.4, q ? .7 + r() * .4 : .45 + r() * .2, r() * 6.28, { ground: true, col: pick(r, LEAF) }); });
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
@@ -54184,13 +54187,38 @@ var Render = (function () {
     for (let k = 0; k < 6; k++) { const a = k * 1.1, rr = k ? 1.6 + r() * .8 : 0; const c = add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(1.8 + r() * .6, 0), pick(r, cm)), tx + Math.cos(a) * rr, h + .2 + r() * .5, Math.sin(a) * rr); c.scale.set(1.3, .45, 1.3); }
     return place(g, x, z, r() * 6);
   }
-  function leafyTree(x, z, r, big) { // [inverno] tiglio spoglio, rami coperti di neve
-    const g = G0(), s = big ? 1.3 : 1, tm = sm('#4a3e36'), snow = NEVE ? sl('#e2e6ec') : NOSNOW;
-    add(g, cyl(.2 * s, .3 * s, 3 * s, 7, tm), 0, 1.5 * s, 0);
-    for (let k = 0; k < 5; k++) { const a = k * 1.26 + r(), br = add(g, cyl(.05 * s, .1 * s, 2 * s, 5, tm), Math.cos(a) * .5 * s, 3.4 * s, Math.sin(a) * .5 * s); br.rotation.set(Math.sin(a) * .6, 0, -Math.cos(a) * .6); }
-    add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(1.3 * s, 0), sl('#3a3430')), 0, 4.3 * s, 0).scale.set(1, .6, 1);
-    add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(1.1 * s, 0), snow), 0, 4.75 * s, 0).scale.set(1, .35, 1);
-    add(g, cyl(1.1, 1.1, .3, 10, PM.stone()), 0, .15, 0); add(g, cyl(.95, .95, .31, 10, snow), 0, .16, 0);
+  // [verde4] gli alberi di città sono il verde mediterraneo d'inverno: lecci, aranci amari, pini domestici, palme (prima un tiglio spoglio
+  // con una palla marrone). Chiome a ciuffi: sfere suddivise e un po' deformate, tre verdi per pianta, il tronco che si apre in rami.
+  const CHIOMA4 = {};
+  function chioma4(rad, seed) {   // una sfera bitorzoluta, in cache per seme (8 varianti)
+    const k = rad.toFixed(2) + '|' + (seed & 7); if (CHIOMA4[k]) return CHIOMA4[k];
+    const g = new THREE.IcosahedronGeometry(rad, 1), P = g.attributes.position, rr = rng(seed * 7919 + 13);
+    const off = new Map(); for (let i = 0; i < P.count; i++) { const key = P.getX(i).toFixed(3) + P.getY(i).toFixed(3) + P.getZ(i).toFixed(3); if (!off.has(key)) off.set(key, .82 + rr() * .3); const f = off.get(key); P.setXYZ(i, P.getX(i) * f, P.getY(i) * f * .9, P.getZ(i) * f); }
+    g.computeVertexNormals(); return (CHIOMA4[k] = g);
+  }
+  function leafyTree(x, z, r, big) {
+    const g = G0(), s = big ? 1.25 : 1, q = r(), bark = sm('#5b4a3c'), VERDI = [['#2e4a2c', '#3c5c34', '#4d6e3e'], ['#34502e', '#456639', '#587a44'], ['#2a4430', '#38583a', '#4a6c46']][Math.floor(r() * 3)];
+    const ciuffi = (n, cx, cy, cz, R, sp, fl) => { for (let k = 0; k < n; k++) { const a = r() * 6.28, d = sp * Math.sqrt(r()), h = (r() - .35) * sp * fl, m = add(g, new THREE.Mesh(chioma4(R * (.7 + r() * .4), Math.floor(r() * 8)), sl(VERDI[k % 3])), cx + Math.cos(a) * d, cy + h, cz + Math.sin(a) * d); m.rotation.y = r() * 6.28; } };
+    const ramo = (y0, len, a, tilt, rt) => { const b = add(g, cyl(rt * .6, rt, len, 6, bark), 0, 0, 0); b.position.set(Math.cos(a) * Math.sin(tilt) * len / 2, y0 + Math.cos(tilt) * len / 2, Math.sin(a) * Math.sin(tilt) * len / 2); b.rotation.set(Math.sin(a) * tilt, 0, -Math.cos(a) * tilt); return [Math.cos(a) * Math.sin(tilt) * len, y0 + Math.cos(tilt) * len, Math.sin(a) * Math.sin(tilt) * len]; };
+    if (q < .4) {   // leccio: tronco corto e storto, tre-quattro rami, chioma scura larga e bassa
+      add(g, cyl(.2 * s, .3 * s, 2.2 * s, 8, bark), 0, 1.1 * s, 0);
+      for (let k = 0, n = 3 + Math.floor(r() * 2); k < n; k++) { const e = ramo(2 * s, 1.5 * s, k * 6.28 / n + r() * .6, .55 + r() * .3, .12 * s); ciuffi(3, e[0], e[1] + .5 * s, e[2], 1.05 * s, .7 * s, .6); }
+      ciuffi(4, 0, 3.7 * s, 0, 1.15 * s, 1.1 * s, .5);
+    } else if (q < .62) {   // arancio amaro in piazza: piccolo, palla compatta potata, le arance
+      add(g, cyl(.11 * s, .15 * s, 1.6 * s, 7, bark), 0, .8 * s, 0);
+      ciuffi(7, 0, 2.5 * s, 0, .75 * s, .65 * s, .7);
+      const ar = sl('#e8892a'); for (let k = 0; k < 14; k++) { const a = r() * 6.28, u = r() * 1.2 - .4, R = 1.15 * s; add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(.07 * s, 0), ar), Math.cos(a) * R * Math.cos(u), 2.5 * s + Math.sin(u) * R * .85, Math.sin(a) * R * Math.cos(u)); }
+    } else if (q < .82) {   // pino domestico: fusto alto e un po' piegato, l'ombrello piatto in cima
+      const lean = (r() - .5) * .25, tr = add(g, cyl(.16 * s, .26 * s, 6.5 * s, 8, sm('#6a5444')), -Math.sin(lean) * 3.25 * s, Math.cos(lean) * 3.25 * s, 0); tr.rotation.z = lean;   // il piede resta in terra
+      const tx = -Math.sin(lean) * 6.5 * s;
+      for (let k = 0; k < 9; k++) { const a = r() * 6.28, d = 1.9 * s * Math.sqrt(r()), m = add(g, new THREE.Mesh(chioma4(1.15 * s, k), sl(VERDI[k % 3])), tx + Math.cos(a) * d, 6.9 * s + (r() - .5) * .35 * s, Math.sin(a) * d); m.scale.set(1.15, .42, 1.15); }
+    } else {   // palma (Washingtonia): fusto a squame che si stringe, il ciuffo di foglie a ventaglio e la gonna secca
+      const H = (6.5 + r() * 2.5) * s; for (let k = 0; k < 8; k++) add(g, cyl(.24 * s - k * .008, .26 * s - k * .008, H / 8 * 1.02, 9, sm(k & 1 ? '#7a6650' : '#6c5a46')), 0, H / 8 * (k + .5), 0);
+      add(g, cyl(.42 * s, .3 * s, .9 * s, 9, sl('#8a7a58')), 0, H - .2 * s, 0);
+      const fg = new THREE.ConeGeometry(.55 * s, 2.2 * s, 5, 1, true); fg.translate(0, 1.1 * s, 0);
+      for (let k = 0; k < 14; k++) { const a = k * 6.28 / 14 + r() * .2, f = add(g, new THREE.Mesh(fg, sl(VERDI[k % 3])), 0, H + .2 * s, 0); f.rotation.set(0, -a, 0); f.rotateZ(-(1.0 + r() * .7)); f.scale.set(1, 1, .25); }
+    }
+    add(g, cyl(1.1, 1.15, .32, 14, PM.stone()), 0, .16, 0); add(g, cyl(.98, .98, .33, 14, sl('#4a3b2c')), 0, .17, 0);   // l'aiuola: cordolo di pietra e la terra
     return place(g, x, z, r() * 6);
   }
 
@@ -59396,7 +59424,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); camera.updateProjectionMatrix(); }   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
     if (dyn.sky) dyn.sky.position.copy(camera.position);
 
-    // edifici tra la camera e il giocatore: diventano trasparenti
+    // edifici tra la camera e il giocatore: con la sezione accesa (VARCO) restano pieni e si tagliano; trasparenti solo a sezione spenta
     const hitv = new THREE.Vector3();
     const feet0 = window.Tetti && p.lv && (p.lv.k === 'tetto' || p.lv.k === 'scala') ? Livelli.heightOf(st, p) : null, roofB0 = window.Tetti ? Tetti.roofB(st) : null;   // [writer] sul tetto: i raggi partono dai piedi veri, la casa sotto non sparisce
     const rays = focus.map(([fx, fz], k) => { const o = new THREE.Vector3(fx, (k === 0 && feet0 !== null ? feet0 : groundH(fx, fz)) + .9, fz); return new THREE.Ray(o, V3.copy(camera.position).sub(o).normalize().clone()); });
@@ -59407,23 +59435,23 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (!(B.fade > .001)) { const bx = (B.box3.min.x + B.box3.max.x) / 2, bz = (B.box3.min.z + B.box3.max.z) / 2, br = Math.hypot(B.box3.max.x - B.box3.min.x, B.box3.max.z - B.box3.min.z) / 2 + 6;
         const t = Math.max(0, Math.min(1, ((bx - sx0) * sdx + (bz - sz0) * sdz) / sl2)), ex = sx0 + sdx * t - bx, ez = sz0 + sdz * t - bz; if (ex * ex + ez * ez > br * br) { B.fade = 0; return; } }
       const hit = !(feet0 !== null && (B.b === roofB0 || (roofB0 && B.b && B.b.id === roofB0.id) || B.box3.max.y - 2.5 < feet0 + .8)) && rays.some(ry => ry.intersectBox(B.box3, hitv) !== null); if (hit && rays[0].intersectBox(B.box3, hitv) !== null) covered = true;
-      const target = hit ? 1 : 0; B.fade += (target - B.fade) * Math.min(1, dt * 8); fadeTick1(B);   /* [pulitore1] */
+      const target = hit && VARCO.off ? 1 : 0; B.fade += (target - B.fade) * Math.min(1, dt * 8); fadeTick1(B);   /* [pulitore1] */
       const op = 1 - B.fade * .9;
       B.__op = op; B.mats.forEach(m => { const kt = m.userData.keepTr, tr = op < .99 || !!kt; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !tr; if (m.emissiveMap) m.emissiveIntensity = dyn.__ne * op; });   // [case] keepTr
     });
-    if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = covered && !pveh);
+    if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = covered && !pveh && !!VARCO.off);   // [sezione1] con la sezione accesa la casa davanti non si fa trasparente: è tagliata
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }   /* [pulitore1] */
 
     INDOOR.quad = Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2) - .5) & 3;
     const indoorNow = indoorPass(st); if (indoorNow) { scene.fog.near = 200; scene.fog.far = 400; }
     let ugNow = false;
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { ugNow = true; scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
-    {   // [varco1] la capsula fra te e la camera: a piedi stretta e vicina, alla guida più larga e oltre il muso del mezzo
+    {   // [sezione1] il corridoio di sezione fra te e la camera: a piedi largo mezza via, alla guida oltre il muso del mezzo
       if (time - VARCO.t > 1.5) { VARCO.t = time; varcoScan1(); }
       const on = !VARCO.off && !ui.intro && !ui.studio && !ui.focus && !p.indoor && !indoorNow && !ugNow, fy = (feet0 !== null ? feet0 : groundH(focus[0][0], focus[0][1]));
-      const rOut = lerp(Math.min(6, Math.max(2.4, viewH * .075)), 4.2, ease);
+      const half = lerp(Math.min(7, Math.max(3.5, viewH * .09)), 5.5, ease);   // [sezione1] a piedi mezza via, alla guida il corridoio del mezzo
       VARCO.p.value.set(focus[0][0], fy + .9, focus[0][1]); VARCO.c.value.copy(camera.position);
-      VARCO.k.value.set(rOut * .5, on ? rOut : 0, lerp(1.2, 3.5, ease), fy + 1);
+      VARCO.k.value.set(half, on ? 1 : 0, lerp(1.5, 3.5, ease), fy + 1.3);
     }
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     ombre1(st, night);   /* [ombre1] */
