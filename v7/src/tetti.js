@@ -127,7 +127,8 @@ var Tetti = (function () {
         runs.forEach((R, bj) => {
           const c = B[bj], key = Math.min(bi, bj) + ':' + Math.max(bi, bj);
           if (!okB(c) || pairs.has(key) || Math.abs(roofRule(b) - roofRule(c)) > 2.4) return;
-          if ((per.get(bi) || 0) >= 3 || (per.get(bj) || 0) >= 3) return;
+          const pmax = b.era || c.era ? 1 : 3;   // [città2] nella città per epoche una passerella per casa: le assi non devono coprire i vicoli
+          if ((per.get(bi) || 0) >= pmax || (per.get(bj) || 0) >= pmax) return;
           const cnt = {}; R.forEach(q => cnt[q.g] = (cnt[q.g] || 0) + 1); const g = +Object.keys(cnt).sort((u, v) => cnt[v] - cnt[u])[0], R2 = R.filter(q => q.g === g);
           if (R2.length < 2) return;   // almeno due caselle di muro dritto di fronte
           const m = R2[Math.floor(R2.length / 2)], [wx, wy] = sd.wall(m.k);
