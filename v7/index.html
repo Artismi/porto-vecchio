@@ -50707,7 +50707,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: .97 /* [lucido1] più luce */ /* [plastica1] senza contorni era troppo chiaro (1.06) */, bloom: .7 /* [plastica1] era 1: l'alone attorno alle luci */, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: 0 /* [plastica1] la maschera di nitidezza faceva alone (era .32) */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.45 /* [colore1] più colore (era 1.25) */ /* [plastica1] 1.62 dava l'erba fluo */, ink: 0, rim: .35 /* [plastica1] */, cav: .4 /* [plastica1] un po' di volume nelle pieghe */, clar: 0 /* [plastica1] il contrasto locale (colore meno sfocato) è un alone attorno a ogni sagoma */, luc: 1.15, spec: 1.15, coat: 1.05, trans: 1.1, /* [colore1] miniature di plastica: più lacca, punto di luce, traslucenza (erano 1, .9, .8, 1) */ ol: 0 /* [plastica1] niente contorno scuro: miniature di plastica, non fumetto (era .85) */, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: .97 /* [lucido1] più luce */ /* [plastica1] senza contorni era troppo chiaro (1.06) */, bloom: .7 /* [plastica1] era 1: l'alone attorno alle luci */, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: 0 /* [plastica1] la maschera di nitidezza faceva alone (era .32) */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.45 /* [colore1] più colore (era 1.25) */ /* [plastica1] 1.62 dava l'erba fluo */, ink: 0, rim: .35 /* [plastica1] */, cav: .4 /* [plastica1] un po' di volume nelle pieghe */, clar: 0 /* [plastica1] il contrasto locale (colore meno sfocato) è un alone attorno a ogni sagoma */, luc: 1.15, spec: 1.15, coat: 1.05, trans: 1.1, /* [colore1] miniature di plastica: più lacca, punto di luce, traslucenza (erano 1, .9, .8, 1) */ ol: 0 /* [plastica1] niente contorno scuro: miniature di plastica, non fumetto (era .85) */, prato: 1 /* [prato1] */, crisp: .55, film: .028, hal: .5 /* [sviluppo] nitidezza senza aloni, grana fine al pixel vero, alone rosso della pellicola sulle luci */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -50728,13 +50728,14 @@ var Render = (function () {
     APS.rts.forEach(r => r.dispose());
     const mk2 = (w, h) => new THREE.WebGLRenderTarget(Math.max(8, w), Math.max(8, h), { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType, depthBuffer: false });
     const h2 = [W >> 1, H >> 1], h4 = [W >> 2, H >> 2], h8 = [W >> 3, H >> 3];
-    APS.rts = PHONE ? [] : [mk2(...h2), mk2(...h2), mk2(...h4), mk2(...h4), mk2(...h8), mk2(...h8), mk2(...h4), mk2(...h4)];   /* [fluido] sul telefono niente bagliore */
+    APS.rts = PHONE ? [mk2(...h4), mk2(...h4)] /* [sviluppo] sul telefono un bagliore solo, a un quarto: senza, le luci erano piatte */ : [mk2(...h2), mk2(...h2), mk2(...h4), mk2(...h4), mk2(...h8), mk2(...h8), mk2(...h4), mk2(...h4)];   /* [fluido] sul telefono niente bagliore */
   }
   function ambPass(src, dst, dx, dy, thr) {
     const U = APS.mat.uniforms; U.t.value = src; U.dir.value.set(dx / dst.width, dy / dst.height); U.thr.value = thr || 0;
     renderer.setRenderTarget(dst); renderer.render(APS.scene, APS.cam); }
   function ambPasses() {
     if (!APS.rts.length) return;
+    if (APS.rts.length === 2) { ambPass(rt.texture, APS.rts[0], 1.4, 0, AMB.thr || .8); ambPass(APS.rts[0].texture, APS.rts[1], 0, 1.4); renderer.setRenderTarget(null); return; }   // [sviluppo] telefono
     const [a, b, c, d, e, f, g, h] = APS.rts;
     ambPass(rt.texture, a, 1, 0, AMB.thr || .8); ambPass(a.texture, b, 0, 1);         // mezza: soglia e prima sfocatura
     ambPass(b.texture, c, 1.2, 0); ambPass(c.texture, d, 0, 1.2);               // un quarto
@@ -50785,7 +50786,7 @@ var Render = (function () {
     postScene = new THREE.Scene(); postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     postMat = new THREE.ShaderMaterial({
       uniforms: { uFoc9: { value: 30 }, uFogNF: { value: new THREE.Vector2(100, 300) },   /* [nebbia_zoom1] */ lK: { value: new THREE.Vector4(1, .9, .8, 1) }, lSun: { value: new THREE.Vector3(.4, .8, .3) }, lSunC: { value: new THREE.Vector3(1, 1, 1) }, lOl: { value: .85 },   /* [lucido1] */ tC: { value: null }, tD: { value: null },   /* [unione9] */ res: { value: new THREE.Vector2(1, 1) }, near: { value: 1 }, far: { value: 300 }, letter: { value: 0 }, pillar: { value: 0 }, fade: { value: 0 }, flash: { value: 0 }, hurt: { value: 0 }, sat: { value: 1 }, pK: { value: new THREE.Vector4(.5, 1.25, .5, .5) }, pC: { value: new THREE.Vector2(1, .45) }, palC: { value: [[0.0471,0.0431,0.0706],[0.1020,0.0980,0.1333],[0.1647,0.1569,0.1961],[0.2353,0.2275,0.2627],[0.3255,0.3176,0.3529],[0.4275,0.4157,0.4314],[0.5412,0.5255,0.5176],[0.6667,0.6392,0.5961],[0.7961,0.7608,0.6980],[0.9176,0.8824,0.8039],[0.1804,0.0706,0.0863],[0.3529,0.1020,0.1176],[0.5569,0.1373,0.1490],[0.7608,0.2275,0.1882],[0.9098,0.4000,0.2902],[0.9569,0.6275,0.5020],[0.2275,0.1490,0.0784],[0.4000,0.2667,0.1255],[0.6039,0.4157,0.1725],[0.8000,0.5882,0.2510],[0.9412,0.7647,0.3529],[1.0000,0.8980,0.5882],[0.0627,0.1255,0.1020],[0.1020,0.2078,0.1412],[0.1569,0.3098,0.1725],[0.2431,0.4314,0.2039],[0.3843,0.5686,0.2431],[0.5765,0.7059,0.3216],[0.7686,0.8314,0.4784],[0.0471,0.1333,0.1882],[0.0902,0.2431,0.2980],[0.1490,0.3686,0.4078],[0.2471,0.5216,0.5255],[0.4549,0.6902,0.6431],[0.0706,0.0863,0.1882],[0.1216,0.1569,0.3137],[0.1961,0.2471,0.4549],[0.2980,0.3608,0.5882],[0.4941,0.5490,0.7216],[0.1725,0.1020,0.2275],[0.2902,0.1725,0.3373],[0.4314,0.2667,0.4627],[0.6039,0.4157,0.5804],[1.0000,0.2902,0.5961],[1.0000,0.8235,0.2431],[0.3373,0.8784,0.8471],[1.0000,0.4784,0.1647],[0.8863,0.6588,0.5176],[0.7059,0.4549,0.3373],[0.4784,0.2902,0.2275],[0.8627,0.7765,0.5647],[0.7216,0.6118,0.3843]].map(a => new THREE.Vector3(...a)) }, palO: { value: [[0.1071,0.0066,-0.0188],[0.1888,0.0070,-0.0198],[0.2644,0.0085,-0.0190],[0.3436,0.0074,-0.0154],[0.4367,0.0069,-0.0141],[0.5295,0.0055,-0.0050],[0.6267,0.0038,0.0043],[0.7229,0.0032,0.0174],[0.8212,0.0032,0.0237],[0.9140,0.0016,0.0278],[0.2011,0.0521,0.0134],[0.3119,0.0942,0.0380],[0.4278,0.1352,0.0628],[0.5474,0.1567,0.0862],[0.6670,0.1394,0.0948],[0.7851,0.0807,0.0730],[0.2713,0.0225,0.0417],[0.4127,0.0303,0.0673],[0.5646,0.0337,0.0969],[0.7130,0.0277,0.1197],[0.8402,0.0078,0.1333],[0.9276,-0.0040,0.1012],[0.1996,-0.0281,0.0065],[0.2863,-0.0458,0.0221],[0.3819,-0.0658,0.0444],[0.4886,-0.0828,0.0691],[0.6069,-0.0886,0.0939],[0.7285,-0.0764,0.1098],[0.8414,-0.0529,0.1035],[0.2182,-0.0216,-0.0378],[0.3324,-0.0379,-0.0379],[0.4467,-0.0544,-0.0326],[0.5746,-0.0698,-0.0207],[0.7169,-0.0655,-0.0006],[0.1826,0.0023,-0.0599],[0.2751,0.0005,-0.0812],[0.3771,0.0007,-0.0971],[0.4877,0.0008,-0.0983],[0.6494,0.0006,-0.0684],[0.2365,0.0433,-0.0548],[0.3390,0.0617,-0.0600],[0.4526,0.0764,-0.0615],[0.5911,0.0756,-0.0419],[0.6861,0.2263,-0.0077],[0.8809,-0.0050,0.1640],[0.8324,-0.1180,-0.0205],[0.7254,0.1233,0.1364],[0.7812,0.0498,0.0674],[0.6226,0.0645,0.0676],[0.4585,0.0573,0.0475],[0.8359,0.0017,0.0745],[0.7091,0.0072,0.0844]].map(a => new THREE.Vector3(...a)) },   /* [amb3] */ dusk: { value: 0 }, night: { value: 1 }, uReg: { value: .7 }, uWx: { value: new THREE.Vector4() }, uHz: { value: new THREE.Color() },   /* [amb1] */
-        tBloom: { value: null }, tBloom2: { value: null }, tBlur: { value: null }, aK: { value: new THREE.Vector4(1, .9, .75, .022) }, aK2: { value: new THREE.Vector4(.5, .3, .3, .75) }, aFoc: { value: new THREE.Vector2(.5, .5) }, aTime: { value: 0 },
+        tBloom: { value: null }, tBloom2: { value: null }, tBlur: { value: null }, aK: { value: new THREE.Vector4(1, .9, .75, .022) }, aK2: { value: new THREE.Vector4(.5, .3, .3, .75) }, aFoc: { value: new THREE.Vector2(.5, .5) }, aTime: { value: 0 }, aHal: { value: 0 },
         sSM: { value: null }, sSMat: { value: new THREE.Matrix4() }, sCol: { value: new THREE.Vector3() }, sOn: { value: 0 },   /* [amb2] */
         vInvVP: { value: new THREE.Matrix4() }, vCam: { value: new THREE.Vector3() }, vOn: { value: 0 }, vSM0: { value: null }, vSM1: { value: null }, vSM2: { value: null }, vSM3: { value: null },
         vSMat: { value: [0, 1, 2, 3].map(() => new THREE.Matrix4()) }, vLP: { value: [0, 1, 2, 3].map(() => new THREE.Vector4()) }, vLC: { value: [0, 1, 2, 3].map(() => new THREE.Vector3()) }, vLD: { value: [0, 1, 2, 3].map(() => new THREE.Vector4()) } },   // [luci4]
@@ -50793,7 +50794,7 @@ var Render = (function () {
       fragmentShader: `
         precision highp float; precision highp sampler2D;   // [telefono] i campionatori sono lowp per difetto: la profondità letta a 10 bit faceva righe su ogni piano
         uniform float uFoc9; uniform vec2 uFogNF; uniform sampler2D tC; uniform sampler2D tD; uniform vec2 res; uniform float near; uniform float far; uniform float letter; uniform float pillar; uniform float fade; uniform float flash; uniform float hurt; uniform float sat; uniform float dusk; uniform float night; uniform float uReg; uniform vec4 uWx; uniform vec3 uHz;
-        uniform sampler2D tBloom; uniform sampler2D tBloom2; uniform sampler2D tBlur; uniform vec4 aK; uniform vec4 aK2; uniform vec2 aFoc; uniform float aTime;   // [amb2] aK: espos., bloom, dof, grana; aK2: aberr., nitidezza, contorni, vignetta
+        uniform sampler2D tBloom; uniform sampler2D tBloom2; uniform sampler2D tBlur; uniform vec4 aK; uniform vec4 aK2; uniform vec2 aFoc; uniform float aTime; uniform float aHal;   // [amb2] aK: espos., bloom, dof, grana; aK2: aberr., nitidezza, contorni, vignetta
         uniform sampler2D sSM; uniform mat4 sSMat; uniform vec3 sCol; uniform float sOn;
         uniform vec4 lK; uniform vec3 lSun; uniform vec3 lSunC; uniform float lOl;   // [lucido1]
         uniform vec4 pK; uniform vec2 pC;   // [amb3] pC: cavità, chiarezza palette, saturazione, inchiostro, luce sui profili
@@ -50992,6 +50993,7 @@ var Render = (function () {
           c = mix(c, vec3(.55,.02,.05), vg*hurt*.75);
           // ===== [amb2] bloom, esposizione, curva filmica ACES, grana =====
           c += (texture2D(tBloom, vUv).rgb * .55 + texture2D(tBloom2, vUv).rgb * .75) * aK.y;
+          c += texture2D(tBloom, vUv).rgb * vec3(.34, .08, .035) * aK.y * aHal;   // [sviluppo] alone della pellicola: attorno alle luci forti un filo rosso-arancio, come l'emulsione
           c *= aK.x;
           c = clamp((c * (2.51 * c + .03)) / (c * (2.43 * c + .59) + .14), 0., 1.);
           { float gn = fract(sin(dot(floor(vUv * res) + fract(aTime * 7.13) * 91.7, vec2(12.9898, 78.233))) * 43758.5453) - .5; float lg = dot(c, vec3(.3,.59,.11));
@@ -51017,6 +51019,41 @@ var Render = (function () {
     });
     postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
   }
+  // ---------------- [sviluppo] lo sviluppo: dall'immagine interna allo schermo vero ----------------
+  // Prima il browser stendeva l'immagine interna (540 righe sul telefono) in modo bilineare: morbida, impastata.
+  // Qui l'ingrandimento lo fa la scheda video, con una nitidezza adattiva alla AMD CAS: il punto non esce mai dal minimo
+  // e dal massimo dei vicini, quindi niente aloni né contorni chiari. Poi la grana fine, al pixel vero dello schermo
+  // (sul telefono 2-3 volte più fine dei pixel della scena), più forte nei toni medi e quasi niente nei neri e nei bianchi:
+  // fa anche da retino contro le bande nei gradienti del cielo.
+  const DEV = { rt: null, scene: null, cam: null, mat: null };
+  function devInit() {
+    DEV.scene = new THREE.Scene(); DEV.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    DEV.mat = new THREE.ShaderMaterial({
+      uniforms: { t: { value: null }, src: { value: new THREE.Vector2(1, 1) }, k: { value: .5 }, g: { value: 0 }, tm: { value: 0 } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
+      fragmentShader: `precision highp float; precision highp sampler2D;
+        uniform sampler2D t; uniform vec2 src; uniform float k; uniform float g; uniform float tm; varying vec2 vUv;
+        float h21(vec2 p){ p = fract(p * vec2(443.897, 441.423)); p += dot(p, p.yx + 19.19); return fract((p.x + p.y) * p.x); }
+        void main(){
+          vec2 e = 1. / src;
+          vec3 c = texture2D(t, vUv).rgb;
+          vec3 n = texture2D(t, vUv - vec2(0., e.y)).rgb, s = texture2D(t, vUv + vec2(0., e.y)).rgb, w = texture2D(t, vUv - vec2(e.x, 0.)).rgb, r = texture2D(t, vUv + vec2(e.x, 0.)).rgb;
+          vec3 mn = min(c, min(min(n, s), min(w, r))), mx = max(c, max(max(n, s), max(w, r)));
+          vec3 amp = sqrt(clamp(min(mn, 1. - mx) / max(mx, 1e-4), 0., 1.));   // dove c'è già contrasto forte si spinge poco: niente aloni
+          vec3 wt = amp * (-1. / mix(8., 5., k));
+          vec3 o = clamp((c + (n + s + w + r) * wt) / (1. + 4. * wt), mn, mx);
+          if (g > 0.) { vec2 fp = floor(gl_FragCoord.xy); float fr = floor(tm * 24.);   // la grana cambia 24 volte al secondo, come la pellicola
+            float gr = h21(fp + fr * 17.31) + h21(fp * 1.37 + fr * 7.13 + 3.1) - 1.;   // triangolare: morbida, senza puntini isolati
+            float l = dot(o, vec3(.299, .587, .114));
+            o += gr * g * (.12 + 3.5 * l * (1. - l)); }
+          gl_FragColor = vec4(o, 1.); }`,
+      depthTest: false, depthWrite: false });
+    DEV.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), DEV.mat));
+  }
+  function devPass() {
+    const U = DEV.mat.uniforms; U.t.value = DEV.rt.texture; U.k.value = AMB.crisp || 0; U.g.value = AMB.film || 0; U.tm.value = performance.now() / 1000;
+    renderer.setRenderTarget(null); renderer.render(DEV.scene, DEV.cam);
+  }
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
   function setRes(k) { k = Math.max(.7, Math.min(1, k));   /* [colore1] non sotto il 70% (a metà era pastoso) */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
@@ -51026,11 +51063,14 @@ var Render = (function () {
     PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     GPUT.px = W + '×' + H;   /* [prestazioni] */
-    renderer.setSize(W, H, false);   /* [colore1] l'immagine finale esce alla risoluzione interna (prima a quella CSS della finestra: con lo schermo scalato il browser la ingrandiva a blocchi); il CSS la stende morbida */
+    if (!DEV.mat) devInit(); if (DEV.rt) DEV.rt.dispose();
+    DEV.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false }); DEV.mat.uniforms.src.value.set(W, H);
+    const FW = LOWQ.on ? W : Math.max(W, Math.floor(cw * dpr)), FH = LOWQ.on ? H : Math.max(H, Math.floor(ch * dpr));   // [sviluppo] la tela è grande quanto lo schermo vero
+    renderer.setSize(FW, FH, false);   /* [sviluppo] */   /* [colore1] l'immagine finale esce alla risoluzione interna (prima a quella CSS della finestra: con lo schermo scalato il browser la ingrandiva a blocchi); il CSS la stende morbida */
     if (rt) rt.dispose();
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
     ambResize(W, H); paintResize(W, H);   /* [amb3] */
-    rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = THREE.UnsignedIntType;
+    rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = renderer.capabilities.isWebGL2 ? THREE.FloatType : THREE.UnsignedIntType;   /* [telefono] profondità a 32 bit in virgola mobile: su alcuni telefoni quella intera arrivava a gradini e i contorni dalla profondità facevano righe che tremolano */
     postMat.uniforms.res.value.set(W, H);
     camera.aspect = W / H; camera.updateProjectionMatrix();
   }
@@ -54515,6 +54555,21 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const D = cam.drive, ease = D * D * (3 - 2 * D);
     let tx = p.x, ty = p.y, tz = ui.zoom || 1;
     if (!pveh && ui.aimPoint && !ui.intro && !ui.dialogNpc) { const la = p.cur !== 'pugni' ? .28 : .12; const dx = ui.aimPoint.x - p.x, dy = ui.aimPoint.y - p.y, l = Math.hypot(dx, dy), m = Math.min(l * la, p.cur !== 'pugni' ? 5 : 2.5); if (l > .1) { tx += dx / l * m; ty += dy / l * m; } tz *= p.cur !== 'pugni' ? 1.12 : 1; }
+    {   // [telefono] la visuale guarda dove vai (a piedi) e si trascina col dito per guardarsi attorno
+      const vw = VIEW * (ui.zoom || 1), fresh = cam.ppx === undefined || Math.hypot(p.x - cam.ppx, p.y - cam.ppy) > 6;
+      const ivx = fresh || !(dt > 0) ? 0 : (p.x - cam.ppx) / dt, ivy = fresh || !(dt > 0) ? 0 : (p.y - cam.ppy) / dt; cam.ppx = p.x; cam.ppy = p.y;
+      const kv = Math.min(1, dt * 2.2); cam.pvx = (cam.pvx || 0) + (ivx - (cam.pvx || 0)) * kv; cam.pvy = (cam.pvy || 0) + (ivy - (cam.pvy || 0)) * kv;
+      const spd = Math.hypot(cam.pvx, cam.pvy), leadOn = PHONE && !pveh && !ui.intro && !ui.dialogNpc && !ui.focus && !p.indoor;
+      const lm = leadOn ? Math.min(1, spd / 6) * vw * .2 : 0, lx = spd > .3 ? cam.pvx / spd * lm : 0, ly = spd > .3 ? cam.pvy / spd * lm : 0;
+      const kl = Math.min(1, dt * 1.6); cam.lx = (cam.lx || 0) + (lx - (cam.lx || 0)) * kl; cam.ly = (cam.ly || 0) + (ly - (cam.ly || 0)) * kl;
+      cam.panX = cam.panX || 0; cam.panY = cam.panY || 0;
+      if (ui.pan && !ui.intro && !ui.focus) { const pitch0 = PITCH, fx = -Math.sin(cam.yaw || YAW), fz = -Math.cos(cam.yaw || YAW), asp = W / Math.max(1, H), vh = vw * (H > W * 1.05 ? .78 : 1);
+        const mx = -ui.pan.dx * vh * asp, my = ui.pan.dy * vh / Math.sin(pitch0);   // il mondo segue il dito: a destra il dito, la visuale va a sinistra
+        cam.panX += -fz * mx + fx * my; cam.panY += fx * mx + fz * my;
+        const pl = Math.hypot(cam.panX, cam.panY), pm = vh * 1.2; if (pl > pm) { cam.panX *= pm / pl; cam.panY *= pm / pl; } }
+      if (spd > 1 || pveh || ui.dialogNpc || ui.intro) { const kd = Math.pow(.25, dt); cam.panX *= kd; cam.panY *= kd; }   // appena ti muovi la visuale torna su di te
+      if (!pveh && !ui.intro && !ui.focus) { tx += cam.lx + cam.panX; ty += cam.ly + cam.panY; }
+    }
     if (pveh) {
       const vsp = pveh.vx !== undefined ? Math.hypot(pveh.vx, pveh.vy) : Math.abs(pveh.speed);
       const head = vsp > 3 && pveh.speed > -1 ? angLerp(pveh.ang, Math.atan2(pveh.vy, pveh.vx), .6) : pveh.ang;
@@ -54628,8 +54683,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       for (; j < 4; j++) { U['vSM' + j].value = null; U.vLC.value[j].set(0, 0, 0); }
     }
     {   // [amb2] la macchina da presa
-      const A = AMB, dk = 1 - night; U.tBloom.value = APS.rts[3] ? APS.rts[3].texture : null; U.tBloom2.value = APS.rts[5] ? APS.rts[5].texture : null; U.tBlur.value = APS.rts[7] ? APS.rts[7].texture : null;
-      A.thr = A.thrDay + (A.thrNight - A.thrDay) * night; U.aK.value.set(A.expo * (.84 + night * .5) /* [unione7] */, A.bloom * (.22 + night * .78), A.dof * (pveh ? .45 : 1) * (p.indoor ? 0 : 1) * (1 - A.pal * .55), A.grain); U.aK2.value.set(A.ca, A.sharp, A.outline, A.vig); U.aTime.value = time; U.pK.value.set(A.pal, A.sat, A.ink, A.rim); U.pC.value.set(A.cav, A.clar);   /* [amb3] */
+      const A = AMB, dk = 1 - night; U.tBloom.value = APS.rts[3] ? APS.rts[3].texture : APS.rts[1] ? APS.rts[1].texture : null; U.tBloom2.value = APS.rts[5] ? APS.rts[5].texture : null; U.tBlur.value = APS.rts[7] ? APS.rts[7].texture : null;
+      A.thr = A.thrDay + (A.thrNight - A.thrDay) * night; U.aK.value.set(A.expo * (.84 + night * .5) /* [unione7] */, A.bloom * (.22 + night * .78), A.dof * (pveh ? .45 : 1) * (p.indoor ? 0 : 1) * (1 - A.pal * .55), A.grain); U.aK2.value.set(A.ca, A.sharp, A.outline, A.vig); U.aTime.value = time; U.aHal.value = A.hal || 0; U.pK.value.set(A.pal, A.sat, A.ink, A.rim); U.pC.value.set(A.cav, A.clar);   /* [amb3] */
       PRATO9.k.value = A.prato === undefined ? 1 : A.prato;   /* [prato1] */
       { U.lK.value.set(A.luc, A.spec * (indoorNow || p.indoor ? .5 : 1), A.coat, A.trans); U.lOl.value = A.ol;   /* [lucido1] il sole per la lacca */
         U.lSun.value.subVectors(moon.position, moon.target.position).normalize(); const sk = (.55 * dk + .12 * night) * Math.min(1.4, moon.intensity);
@@ -54641,7 +54696,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         const k = (.07 + dyn.meteo.w[2] * .12 + dusk * .06) * moon.intensity; U.sCol.value.set(moon.color.r * k, moon.color.g * k * .97, moon.color.b * k * .9); }
       if (!sOK) U.sSM.value = null;
     }
-    gpuB('post'); renderer.render(postScene, postCam); gpuE();
+    gpuB('post'); renderer.setRenderTarget(DEV.rt); renderer.render(postScene, postCam); devPass(); gpuE();   /* [sviluppo] */
   }
 
   const pv3 = new THREE.Vector3();
@@ -56027,13 +56082,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // [monte] tenendo premuta la rotella del mouse e trascinando, la visuale gira attorno al giocatore
   let camDrag = null; ui.drag = 0;
   // [telefono] due dita sullo schermo: pizzico per lo zoom (il secondo dito non cammina, non spara, non spruzza)
-  const pin = new Map(); let pinD = 0;
+  const pin = new Map(); let pinD = 0, pinA = 0;
   const pinDist = () => { const [a, b] = [...pin.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+  const pinAng = () => { const [a, b] = [...pin.values()]; return Math.atan2(b.y - a.y, b.x - a.x); };
   cv.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') return; pin.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pin.size === 2) { pinD = pinDist(); if (tp.id !== null) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } mouse.pressed = false; click.t = null; ui.mark = null; }
+    if (pin.size === 2) { pinD = pinDist(); pinA = pinAng(); tg = null; if (tp.id !== null) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } mouse.pressed = false; click.t = null; ui.mark = null; }
     if (pin.size >= 2) e.stopImmediatePropagation(); });
   cv.addEventListener('pointermove', e => { const q = pin.get(e.pointerId); if (!q) return; q.x = e.clientX; q.y = e.clientY;
-    if (pin.size === 2) { const d = pinDist(); zoomBy(pinD / d); pinD = d; e.stopImmediatePropagation(); } });
+    if (pin.size === 2) { const d = pinDist(), a = pinAng(); let da = a - pinA; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; zoomBy(pinD / d); ui.drag = (ui.drag || 0) + da; pinD = d; pinA = a; e.stopImmediatePropagation(); } });   // due dita: pizzico = zoom, torsione = la visuale gira
   const pinUp = e => { pin.delete(e.pointerId); };
   addEventListener('pointerup', pinUp); addEventListener('pointercancel', pinUp);
   cv.addEventListener('pointerdown', e => { if (e.button === 1) { camDrag = e.clientX; e.preventDefault(); } });
@@ -56046,7 +56102,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (e.button === 0 && !busy && window.Skate && Skate.on(st)) { tpGrab(e, 'skate', nx, ny); mouse.nx = nx; mouse.ny = ny; return; }   // [mobile] in tavola: tieni premuto e spingi verso quel punto
     if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; tpGrab(e, 'spray', nx, ny); return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
     if (e.button === 0 && !busy && e.pointerType !== 'mouse' && tapShoots()) { tpGrab(e, 'fire', nx, ny); touchAimAt(nx, ny); touchFire = true; mouse.pressed = true; return; }   // [mobile] arma in mano: spari dove tocchi
+    if (e.button === 0 && e.pointerType === 'touch' && !busy) { tg = { id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, nx, ny, drag: false }; try { cv.setPointerCapture(e.pointerId); } catch (x) { } return; }   // [telefono] il tocco decide al rilascio: tocco = vai lì, trascinamento = guardati attorno
     if (e.button === 0) { mouse.nx = nx; mouse.ny = ny; onClick(nx, ny, e.detail >= 2); } });
+  // [telefono] un dito che si sposta più di 10 px trascina la visuale; se no, al rilascio è un tocco (due tocchi vicini e svelti: doppio)
+  let tg = null, lastTap = { t: 0, x: 0, y: 0 };
+  cv.addEventListener('pointermove', e => { if (!tg || e.pointerId !== tg.id) return;
+    if (!tg.drag && Math.hypot(e.clientX - tg.x, e.clientY - tg.y) > 10) { tg.drag = true; tg.lx = e.clientX; tg.ly = e.clientY; }
+    if (tg.drag) { const r = cv.getBoundingClientRect(); ui.pan = ui.pan || { dx: 0, dy: 0 }; ui.pan.dx += (e.clientX - tg.lx) / r.width; ui.pan.dy += (e.clientY - tg.ly) / r.height; tg.lx = e.clientX; tg.ly = e.clientY; } });
+  const tgUp = e => { if (!tg || e.pointerId !== tg.id) return; const g = tg; tg = null; if (g.drag || e.type === 'pointercancel') return;
+    const now = performance.now(), dbl = now - lastTap.t < 320 && Math.hypot(g.x - lastTap.x, g.y - lastTap.y) < 30; lastTap = { t: dbl ? 0 : now, x: g.x, y: g.y };
+    mouse.nx = g.nx; mouse.ny = g.ny; onClick(g.nx, g.ny, dbl); };
+  cv.addEventListener('pointerup', tgUp); cv.addEventListener('pointercancel', tgUp);
   // [mobile] il dito che tiene premuto: spruzza, spara o spinge la tavola seguendo dove si sposta
   const tp = { id: null, mode: null, nx: .5, ny: .5, aim: null };
   function tpGrab(e, mode, nx, ny) { tp.id = e.pointerId; tp.mode = mode; tp.nx = nx; tp.ny = ny; try { cv.setPointerCapture(e.pointerId); } catch (x) { } }
@@ -56803,7 +56869,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     ui.desat = st.slowmo > 0;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();

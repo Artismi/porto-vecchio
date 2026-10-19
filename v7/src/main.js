@@ -53,13 +53,14 @@
   // [monte] tenendo premuta la rotella del mouse e trascinando, la visuale gira attorno al giocatore
   let camDrag = null; ui.drag = 0;
   // [telefono] due dita sullo schermo: pizzico per lo zoom (il secondo dito non cammina, non spara, non spruzza)
-  const pin = new Map(); let pinD = 0;
+  const pin = new Map(); let pinD = 0, pinA = 0;
   const pinDist = () => { const [a, b] = [...pin.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+  const pinAng = () => { const [a, b] = [...pin.values()]; return Math.atan2(b.y - a.y, b.x - a.x); };
   cv.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') return; pin.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pin.size === 2) { pinD = pinDist(); if (tp.id !== null) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } mouse.pressed = false; click.t = null; ui.mark = null; }
+    if (pin.size === 2) { pinD = pinDist(); pinA = pinAng(); tg = null; if (tp.id !== null) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } mouse.pressed = false; click.t = null; ui.mark = null; }
     if (pin.size >= 2) e.stopImmediatePropagation(); });
   cv.addEventListener('pointermove', e => { const q = pin.get(e.pointerId); if (!q) return; q.x = e.clientX; q.y = e.clientY;
-    if (pin.size === 2) { const d = pinDist(); zoomBy(pinD / d); pinD = d; e.stopImmediatePropagation(); } });
+    if (pin.size === 2) { const d = pinDist(), a = pinAng(); let da = a - pinA; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; zoomBy(pinD / d); ui.drag = (ui.drag || 0) + da; pinD = d; pinA = a; e.stopImmediatePropagation(); } });   // due dita: pizzico = zoom, torsione = la visuale gira
   const pinUp = e => { pin.delete(e.pointerId); };
   addEventListener('pointerup', pinUp); addEventListener('pointercancel', pinUp);
   cv.addEventListener('pointerdown', e => { if (e.button === 1) { camDrag = e.clientX; e.preventDefault(); } });
@@ -72,7 +73,17 @@
     if (e.button === 0 && !busy && window.Skate && Skate.on(st)) { tpGrab(e, 'skate', nx, ny); mouse.nx = nx; mouse.ny = ny; return; }   // [mobile] in tavola: tieni premuto e spingi verso quel punto
     if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; tpGrab(e, 'spray', nx, ny); return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
     if (e.button === 0 && !busy && e.pointerType !== 'mouse' && tapShoots()) { tpGrab(e, 'fire', nx, ny); touchAimAt(nx, ny); touchFire = true; mouse.pressed = true; return; }   // [mobile] arma in mano: spari dove tocchi
+    if (e.button === 0 && e.pointerType === 'touch' && !busy) { tg = { id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, nx, ny, drag: false }; try { cv.setPointerCapture(e.pointerId); } catch (x) { } return; }   // [telefono] il tocco decide al rilascio: tocco = vai lì, trascinamento = guardati attorno
     if (e.button === 0) { mouse.nx = nx; mouse.ny = ny; onClick(nx, ny, e.detail >= 2); } });
+  // [telefono] un dito che si sposta più di 10 px trascina la visuale; se no, al rilascio è un tocco (due tocchi vicini e svelti: doppio)
+  let tg = null, lastTap = { t: 0, x: 0, y: 0 };
+  cv.addEventListener('pointermove', e => { if (!tg || e.pointerId !== tg.id) return;
+    if (!tg.drag && Math.hypot(e.clientX - tg.x, e.clientY - tg.y) > 10) { tg.drag = true; tg.lx = e.clientX; tg.ly = e.clientY; }
+    if (tg.drag) { const r = cv.getBoundingClientRect(); ui.pan = ui.pan || { dx: 0, dy: 0 }; ui.pan.dx += (e.clientX - tg.lx) / r.width; ui.pan.dy += (e.clientY - tg.ly) / r.height; tg.lx = e.clientX; tg.ly = e.clientY; } });
+  const tgUp = e => { if (!tg || e.pointerId !== tg.id) return; const g = tg; tg = null; if (g.drag || e.type === 'pointercancel') return;
+    const now = performance.now(), dbl = now - lastTap.t < 320 && Math.hypot(g.x - lastTap.x, g.y - lastTap.y) < 30; lastTap = { t: dbl ? 0 : now, x: g.x, y: g.y };
+    mouse.nx = g.nx; mouse.ny = g.ny; onClick(g.nx, g.ny, dbl); };
+  cv.addEventListener('pointerup', tgUp); cv.addEventListener('pointercancel', tgUp);
   // [mobile] il dito che tiene premuto: spruzza, spara o spinge la tavola seguendo dove si sposta
   const tp = { id: null, mode: null, nx: .5, ny: .5, aim: null };
   function tpGrab(e, mode, nx, ny) { tp.id = e.pointerId; tp.mode = mode; tp.nx = nx; tp.ny = ny; try { cv.setPointerCapture(e.pointerId); } catch (x) { } }
@@ -829,7 +840,7 @@
     ui.desat = st.slowmo > 0;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
