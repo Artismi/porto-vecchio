@@ -1299,16 +1299,17 @@ var Writing = (function () {
   // il pannello: la foto a tutto schermo, il disegno sopra, gli strumenti
   function tavPad(st, shot, Rc, A) {
     if (typeof document === 'undefined') return;
+    const TOUCH = matchMedia('(pointer: coarse)').matches;   // [graffiti3] sul telefono: pulsanti e colori grandi da dito
     const pw = shot.width, ph = shot.height, strokes = []; let cur = null, tool = A.tool, colI = Math.max(0, TAV_COLS.findIndex(c => c[0] === A.col)), cm = tool === 'pennarello' ? 2.5 : 4;
-    const box = document.createElement('div'); box.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,9,8,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font:14px system-ui,sans-serif;color:#eee;user-select:none';
+    const box = document.createElement('div'); box.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,9,8,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font:14px system-ui,sans-serif;color:#eee;user-select:none;-webkit-user-select:none;touch-action:none;padding:env(safe-area-inset-top,0) 8px env(safe-area-inset-bottom,0);box-sizing:border-box';
     const bar = document.createElement('div'); bar.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center';
     const wrap = document.createElement('div'); wrap.style.cssText = 'position:relative;touch-action:none;box-shadow:0 0 0 2px #ffe14a';
     const bg = document.createElement('canvas'), ink = document.createElement('canvas'), live = document.createElement('canvas');
     [bg, ink, live].forEach((c, i) => { c.width = pw; c.height = ph; c.style.cssText = (i ? 'position:absolute;left:0;top:0;' : 'display:block;') + 'width:100%;height:100%'; wrap.appendChild(c); });
     bg.getContext('2d').drawImage(shot, 0, 0);
-    const fit = () => { const k = Math.min((innerWidth - 40) / pw, (innerHeight - 160) / ph); wrap.style.width = pw * k + 'px'; wrap.style.height = ph * k + 'px'; };
-    fit(); addEventListener('resize', fit);
-    const btn = (t, f, hot, par) => { const b = document.createElement('button'); b.textContent = t; b.style.cssText = 'padding:7px 14px;border-radius:5px;border:1px solid #555;cursor:pointer;color:#fff;background:' + (hot ? '#d8402a' : '#34312c'); b.onclick = f; (par || bar).appendChild(b); return b; };
+    const fit = () => { const used = (head.offsetHeight || 40) + (bar.offsetHeight || 60) + 40, k = Math.min((innerWidth - 20) / pw, Math.max(80, innerHeight - used) / ph); wrap.style.width = pw * k + 'px'; wrap.style.height = ph * k + 'px'; };   // [graffiti3] lo spazio vero: sul telefono la barra va su più righe
+    addEventListener('resize', fit);
+    const btn = (t, f, hot, par) => { const b = document.createElement('button'); b.textContent = t; b.style.cssText = 'padding:' + (TOUCH ? '11px 16px;font-size:15px;' : '7px 14px;') + 'border-radius:5px;border:1px solid #555;cursor:pointer;color:#fff;background:' + (hot ? '#d8402a' : '#34312c'); b.onclick = f; (par || bar).appendChild(b); return b; };
     // [graffiti2] in cima: dove sei, quanto è grande, che lavoro diventa, come si usa
     const head = document.createElement('div'); head.style.cssText = 'text-align:center;line-height:1.45';
     const W0 = S(st), styleOf = () => tool === 'pennarello' ? 'mtag' : Rc.W * Rc.H > 3.5 ? 'pezzo' : Rc.W * Rc.H > 1.2 ? 'throw' : 'tag';
@@ -1319,7 +1320,7 @@ var Writing = (function () {
     const tb = btn('', () => { const nt = tool === 'pennarello' ? 'bomboletta' : 'pennarello'; if (OG() && !(inv0()[nt] > 0)) { info.textContent = nt === 'bomboletta' ? 'Non hai bombolette.' : 'Non hai pennarelli.'; return; } tool = nt; upd(); render(); });
     // i colori: tutti in vista, si sceglie con un clic (o coi tasti 1-8)
     const pal = document.createElement('span'); pal.style.cssText = 'display:inline-flex;gap:4px'; bar.appendChild(pal);
-    const sw = TAV_COLS.map((c, i) => { const b = document.createElement('button'); b.title = c[1] + ' (' + (i + 1) + ')'; b.style.cssText = 'width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid #222;background:' + c[0]; b.onclick = () => { colI = i; upd(); render(); }; pal.appendChild(b); return b; });
+    const sw = TAV_COLS.map((c, i) => { const b = document.createElement('button'); b.title = c[1] + ' (' + (i + 1) + ')'; b.style.cssText = (TOUCH ? 'width:36px;height:36px;' : 'width:26px;height:26px;') + 'border-radius:50%;cursor:pointer;border:2px solid #222;background:' + c[0]; b.onclick = () => { colI = i; upd(); render(); }; pal.appendChild(b); return b; });
     const sl = document.createElement('input'); sl.type = 'range'; sl.min = 1; sl.max = 30; sl.value = cm; sl.oninput = () => { cm = +sl.value; upd(); drawLive(); render(); };
     const lab = document.createElement('label'); lab.style.color = '#bbb'; lab.append('spessore ', sl); bar.appendChild(lab);
     btn('Annulla tratto', () => { strokes.pop(); drawLive(); render(); });
@@ -1331,10 +1332,10 @@ var Writing = (function () {
       const sty = STYLES[styleOf()], inv = inv0();
       head.innerHTML = '';
       const t1 = document.createElement('div'); t1.style.cssText = 'font-size:16px;color:#ffe14a'; t1.textContent = `Tavoletta${place ? ' · ' + place : ''} · ${Rc.W.toFixed(2)} × ${Rc.H.toFixed(2)} m → ${sty ? sty.nome : ''} di ${playerAka(st)}${W0.crew ? ' ' + W0.crew : ''}`;
-      const t2 = document.createElement('div'); t2.style.cssText = 'color:#aaa;font-size:12px'; t2.textContent = `Disegna col mouse o con la penna (la pressione conta). Colori 1-8 · Ctrl+Z annulla · Invio salva sul muro · Esc esce. ${tool === 'pennarello' ? 'Pennarelli: ' + (inv.pennarello || 0) : 'Bombolette: ' + (inv.bomboletta || 0)}`;
+      const t2 = document.createElement('div'); t2.style.cssText = 'color:#aaa;font-size:12px'; t2.textContent = `${TOUCH ? 'Disegna col dito o con la penna.' : 'Disegna col mouse o con la penna (la pressione conta). Colori 1-8 · Ctrl+Z annulla · Invio salva sul muro · Esc esce.'} ${tool === 'pennarello' ? 'Pennarelli: ' + (inv.pennarello || 0) : 'Bombolette: ' + (inv.bomboletta || 0)}`;
       head.append(t1, t2); info.textContent = `${cm} cm`; };
     upd();
-    box.appendChild(bar); box.appendChild(wrap); document.body.appendChild(box);
+    box.appendChild(bar); box.appendChild(wrap); document.body.appendChild(box); fit();
     const pxm = pw / Rc.W, wpx = () => cm / 100 * pxm;
     const pos = e => { const b = live.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * pw, (e.clientY - b.top) / b.height * ph]; };
     live.addEventListener('pointerdown', e => { live.setPointerCapture(e.pointerId); const [x, y] = pos(e); cur = [[x, y, e.timeStamp, e.pressure || .5]]; strokes.push(cur); drawLive(); });
