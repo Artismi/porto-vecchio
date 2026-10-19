@@ -8846,10 +8846,55 @@ var Render = (function () {
     place(g, x, z, rot); addLight(x + Math.sin(rot) * 2, groundH(x, z) + 1.2, z + Math.cos(rot) * 2, '#ffb060', 1.2, 6, .1).always = true;
   }
   function concrete(c) { return sm(c || '#8a8a88', { roughness: 1 }); }
+  // [città2] LA ROCCAFORTE DEL SEICENTO (solo con la città nuova: World.FORT): bastioni a punta di freccia sul fronte di terra.
+  // Muro a scarpa in pietra (più largo alla base), cordone di pietra chiara, parapetto sulle facce, terrapieno erboso in cima, la
+  // garitta sulla punta; sopra, le cose del regime che li ha riusati: il riflettore e la bandiera. Il Muro di cemento corre fra i bastioni.
+  function buildFortezza() {
+    const W0 = M.world, F = W0 && W0.FORT; if (!F || !F.bastions || !F.bastions.length) return 0;
+    const stoneM = std({ map: stoneTexture(), color: '#a89a84', roughness: .95 }), capM = sm('#b8ab8c', { roughness: .9 }), earthM = sm('#4e5238', { roughness: 1 }), darkM = sm('#3a3832', { roughness: .8 });
+    const lampM = new THREE.MeshBasicMaterial({ color: '#fff2c8', toneMapped: false }), flagM = sm('#9e1f1a', { roughness: .9, side: THREE.DoubleSide });
+    const X = W0.WALL.x; let n = 0;
+    F.bastions.forEach((P, bi) => {
+      const big = P.length >= 5, H = big ? 7.2 : 6.2, h0 = Math.min(...P.map(([x, z]) => groundH(x, z))) - .3, cx = P.reduce((s2, q) => s2 + q[0], 0) / P.length, cz = P.reduce((s2, q) => s2 + q[1], 0) / P.length;
+      const outer = (i, j) => !(Math.abs(P[i][0] - X) < .5 && Math.abs(P[j][0] - X) < .5);   // la gola sul Muro non è una faccia
+      const off = (q, k) => { const dx = q[0] - cx, dz = q[1] - cz, L = Math.hypot(dx, dz) || 1; return [q[0] + dx / L * k, q[1] + dz / L * k]; };
+      const pos = [], uv = [], push = (a2, b2, c2) => { pos.push(...a2, ...b2, ...c2); };
+      for (let i = 0; i < P.length; i++) { const j = (i + 1) % P.length; if (!outer(i, j)) continue;
+        const A = off(P[i], 1.4), B2 = off(P[j], 1.4), At = P[i], Bt = P[j], L = Math.hypot(Bt[0] - At[0], Bt[1] - At[1]);
+        const a0 = [A[0], h0, A[1]], b0 = [B2[0], h0, B2[1]], a1 = [At[0], h0 + H, At[1]], b1 = [Bt[0], h0 + H, Bt[1]];
+        push(a0, b0, b1); push(a0, b1, a1); uv.push(0, 0, L / 3, 0, L / 3, H / 3, 0, 0, L / 3, H / 3, 0, H / 3); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.computeVertexNormals();
+      const wallMesh = new THREE.Mesh(geo, stoneM); wallMesh.material.side = THREE.DoubleSide; wallMesh.castShadow = wallMesh.receiveShadow = true; scene.add(wallMesh);
+      // il terrapieno in cima
+      const shp = new THREE.Shape(P.map(([x, z]) => new THREE.Vector2(x, z))), top = new THREE.ShapeGeometry(shp); top.rotateX(Math.PI / 2); top.translate(0, h0 + H, 0);
+      const topM = new THREE.Mesh(top, earthM); topM.material.side = THREE.DoubleSide; topM.receiveShadow = true; scene.add(topM);
+      // cordone e parapetto sulle facce
+      const g = G0();
+      for (let i = 0; i < P.length; i++) { const j = (i + 1) % P.length; if (!outer(i, j)) continue;
+        const [ax, az] = P[i], [bx, bz] = P[j], L = Math.hypot(bx - ax, bz - az), ang = Math.atan2(bz - az, bx - ax), mx = (ax + bx) / 2, mz = (az + bz) / 2, nx = Math.sin(ang), nz = -Math.cos(ang), sg = (mx - cx) * nx + (mz - cz) * nz > 0 ? 1 : -1;
+        const cord = box(L + .3, .32, .5, capM); cord.position.set(mx + nx * sg * .18, h0 + H - 1.3, mz + nz * sg * .18); cord.rotation.y = -ang; g.add(cord);
+        const par = box(L, .95, .9, stoneM); par.position.set(mx - nx * sg * .45, h0 + H + .47, mz - nz * sg * .45); par.rotation.y = -ang; g.add(par);
+        const cap = box(L, .12, 1.0, capM); cap.position.set(mx - nx * sg * .45, h0 + H + .98, mz - nz * sg * .45); cap.rotation.y = -ang; g.add(cap); }
+      // la garitta sulla punta (il vertice più lontano dal Muro)
+      let sp = 0; P.forEach((q, k) => { if (Math.abs(q[0] - X) > Math.abs(P[sp][0] - X)) sp = k; });
+      { const [gx, gz] = P[sp], u = off([gx, gz], -1.1), y = h0 + H; const body = cyl(.75, .8, 2.1, 10, stoneM); body.position.set(u[0], y + 1.05, u[1]); g.add(body);
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(.85, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), capM); dome.position.set(u[0], y + 2.1, u[1]); g.add(dome);
+        const slit = box(.12, .5, .2, darkM); slit.position.set(u[0] - .78, y + 1.3, u[1]); g.add(slit);
+        const knob = cyl(.08, .08, .4, 6, capM); knob.position.set(u[0], y + 3.0, u[1]); g.add(knob); }
+      // le cose del regime: riflettore e bandiera sui bastioni grandi
+      if (big) { const rx = cx + 2, rz = cz; const pole = cyl(.08, .1, 4.2, 6, darkM); pole.position.set(rx, h0 + H + 2.1, rz); g.add(pole);
+        const head = box(.6, .45, .55, darkM); head.position.set(rx - .2, h0 + H + 4.3, rz); g.add(head); const lens = box(.05, .36, .44, lampM); lens.position.set(rx - .52, h0 + H + 4.3, rz); g.add(lens);
+        addLight(rx - 3, h0 + H + 3.5, rz, '#fff2c8', 2.2, 18, 0);
+        const fp = cyl(.06, .07, 6, 6, darkM); fp.position.set(cx + 4, h0 + H + 3, cz + 3); g.add(fp); const fl = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.1), flagM); fl.position.set(cx + 4.9, h0 + H + 5.4, cz + 3); g.add(fl); }
+      shadowed(g); scene.add(mergeGroup(g)); n++;
+    });
+    return n;
+  }
   function buildWinter() {
     const W0 = M.world; if (!W0 || !W0.WALL) return;
     const P = G.PLACES, r = rng(1953), T = G.T;
     const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
+    buildFortezza();   // [città2] i bastioni (solo con la città nuova)
     // ---- il Muro: lastre di cemento, filo spinato, scritte del regime e della Risacca, torri coi riflettori ----
     const WL = W0.WALL, slabM = [concrete('#7e7e7c'), concrete('#8a8a86'), concrete('#747472')], wire = sl('#2a2a2e');
     const posters = ['ORDINE', 'LAVORO', 'OBBEDIRE', 'LA TUTELA', 'IL GARANTE VEGLIA'];

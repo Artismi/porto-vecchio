@@ -1106,6 +1106,20 @@ var World = (function () {
     }
     for (let y = WALL.y0 + 8; y < WALL.y1 - 4; y += 26) if (Math.abs(y - yc(WALLX)) > 12) WALL.towers.push([WALL.x, y]);
     WALL.towers.push([WALL.x, WALL.gate[0] - 3], [WALL.x, WALL.gate[1] + 3]);
+    // [città2] LA ROCCAFORTE: il Muro di cemento del regime corre sul fronte di terra della vecchia fortezza del Seicento. Due bastioni
+    // a punta di freccia (le facce, i fianchi, la gola sul Muro) ai due capi della cortina e un mezzo bastione per lato vicino alla porta:
+    // masse di terra rivestite di pietra, non si passa. La grafica li disegna da FORT.bastions (render.js buildFortezza).
+    const FORT = { bastions: [] };
+    { const X = WALL.x, yg = (WALL.gate[0] + WALL.gate[1]) / 2;
+      const bast = (yb, half, out, flank) => [[X, yb - half], [X - flank, yb - half - 1.5], [X - out, yb], [X - flank, yb + half + 1.5], [X, yb + half]];
+      const ys = [WALL.y0 + (yg - WALL.y0) * .42, yg + (WALL.y1 - yg) * .58];
+      ys.forEach(yb => FORT.bastions.push(bast(yb, 11, 22, 7)));
+      FORT.bastions.push([[X, WALL.gate[0] - 3], [X - 6, WALL.gate[0] - 4], [X - 9, WALL.gate[0] - 12], [X, WALL.gate[0] - 15]]);   // i due mezzi bastioni che stringono la porta
+      FORT.bastions.push([[X, WALL.gate[1] + 3], [X - 6, WALL.gate[1] + 4], [X - 9, WALL.gate[1] + 12], [X, WALL.gate[1] + 15]]);
+      const inPoly = (x, y, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+      FORT.bastions.forEach(P => { let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; P.forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
+        for (let ty = Math.floor(y0 / TS); ty <= Math.floor(y1 / TS); ty++) for (let tx = Math.floor(x0 / TS); tx <= Math.floor(x1 / TS); tx++) {
+          const i = ty * GW + tx; if (!inPoly(tx * TS + 1, ty * TS + 1, P) || (grid[i] === T.WATER && zone[i] === Z.MARE)) continue; grid[i] = T.BLD; roadW[i] = 0; reserved[i] = 1; } }); }
     // ---- pareti di roccia e muri a secco: dove il terreno cade di colpo non si passa (le strade restano) ----
     for (let ty = 1; ty < GH - 1; ty++) for (let tx = 2; tx < XG / TS; tx++) {   // [isola] tutta la testa, il collo e il Monte Scuro
       const i = ty * GW + tx, v = grid[i]; if (v === T.WATER || v === T.BLD || v === T.PIER || v === T.QUAY || roadW[i] > 0 || zone[i] === Z.CITTA) continue;
@@ -1796,7 +1810,7 @@ var World = (function () {
       { id: 'eremo', name: 'Eremo del Romito', mouth: 'imbocco', exit: 'pozzo', path: [[162.5, 158.5], [165.5, 158.5], [168.5, 156.5], [171.5, 154], [174.5, 152.5]], rooms: [[166.5, 159, 2.6, 2.4, 'eremo']] },
     ];
     const CAVES = CAVES0.map(c => Object.assign({}, c, { path: c.path.map(q => [xn(q[0]), q[1]]), rooms: c.rooms.map(q => [xn(q[0])].concat(q.slice(1))) }));
-    return { eco, ECO, monte, MF, feat, BRIDGES, CAVES, WALL, HILLS, VILLAGES: VILLAGES.map(q => [xn(q[0])].concat(q.slice(1))), districtAt: DistrictAt, yc: Yc, northY: NorthY, southY: SouthY, onLand: OnLand, inland: Inland, LAKE,
+    return { eco, ECO, monte, MF, feat, BRIDGES, CAVES, WALL, FORT, HILLS, VILLAGES: VILLAGES.map(q => [xn(q[0])].concat(q.slice(1))), districtAt: DistrictAt, yc: Yc, northY: NorthY, southY: SouthY, onLand: OnLand, inland: Inland, LAKE,
       DXF, DXC, XF, XG, XC, XE, xo, xn, SEA, COSTA, coastKind, ISOLE, LAGUNE, isleAt, isleIn, HEAD, TAV, CANALI, GOV, BF, bosco, RING, TUNNELS, tavR, canHalf, CAN0, CAN1, canFloor, TS, GW, GH, SIZE, SX, SY, T, Z, ZNAME, grid, zone, elev, velev, vh, VW, reach, bIndex, roadW, roads, lanes, BUILDINGS: B, PLACES, zoneAt, rawElev, CX, CY };
   }
 
@@ -1822,6 +1836,7 @@ var World = (function () {
     (W.TUNNELS || []).forEach(t => sp(t.pts)); sp(W.RING);
     W.BUILDINGS.forEach(b => { b.x += OTX; b.y += OTY; if (b.door && !seen.has(b.door)) { seen.add(b.door); b.door[0] += OTX; b.door[1] += OTY; } (b.tiers || []).forEach(t => { t.x += OTX; t.y += OTY; }); });
     Object.values(W.PLACES).forEach(p => { p.tx += OTX; p.ty += OTY; p.x += OX; p.y += OY; if (p.want) p.want = [p.want[0] + OX, p.want[1] + OY]; });
+    if (W.FORT) W.FORT = { bastions: W.FORT.bastions.map(P => P.map(([x, y]) => [x + OX, y + OY])) };   // [città2]
     const WL0 = W.WALL; W.WALL = Object.assign({}, WL0, { x: WL0.x + OX, tx: WL0.tx + OTX, gate: [WL0.gate[0] + OY, WL0.gate[1] + OY], y0: WL0.y0 + OY, y1: WL0.y1 + OY, towers: WL0.towers.map(q => [q[0] + OX, q[1] + OY]) });
     W.CAVES = W.CAVES.map(c => Object.assign({}, c, { path: c.path.map(q => [q[0] + OX, q[1] + OY]), rooms: c.rooms.map(q => [q[0] + OX, q[1] + OY].concat(q.slice(2))) }));
     W.VILLAGES = W.VILLAGES.map(q => [q[0] + OX, q[1] + OY].concat(q.slice(2)));
