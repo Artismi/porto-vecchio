@@ -42,7 +42,7 @@ const GRUPPI = {
   trap: [   // [stile] il guardaroba trap/anni 2000: tuta da nazionale, polo col catenone e jeans larghi, pelliccia
     ['nazionale', [['giacca_tuta', { col: '#1e3a8a', id: 'giacca_tuta_fascia' }], ['pantaloni_tuta', { col: '#1e3a8a' }], ['scarpe_air', { col: '#f6f4f0' }], 'occhiali_mascherina']],
     ['polo_catena', [['polo', { col: '#141416' }], ['jeans_larghi', { col: '#5a7090' }], 'collana_oro', ['cappellino', { col: '#101012' }], 'scarpe_air']],
-    ['scarface', [['camicia', { var: { collo: 'camicia_aperta' } }], ['pantaloni_completo', { col: '#b8bcc4' }], ['giacca_completo', { col: '#b8bcc4' }], 'collana_oro', 'occhiali_sole', 'scarpe_eleganti']],
+    ['scarface', [['camicia', { col: '#4a1222', var: { collo: 'camicia_aperta' } }], ['pantaloni_completo', { col: '#e8e6e0' }], ['giacca_completo', { col: '#e8e6e0' }], 'collana_oro', 'occhiali_sole', 'scarpe_eleganti']],
   ],
   street: [   // le sottoculture: un completo tipico per ciascuna
     ['maranza', [['giacca_tuta', { col: '#16161a' }], ['pantaloni_tuta', { col: '#16161a' }], ['calze_sport', { when: 2 }], ['scarpe_air', { col: '#16161a' }], 'marsupio_tracolla', ['cappellino', { col: '#101012' }], 'occhiali_mascherina']],

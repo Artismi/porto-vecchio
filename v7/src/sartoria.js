@@ -343,7 +343,7 @@ var Sartoria = (function () {
         const Rr = raw.map((r, i) => { const o = new Float32Array(RINGS); for (let q = 0; q < RINGS; q++) { const a = raw[Math.max(0, i - 1)][q], b = raw[Math.min(ns, i + 1)][q]; o[q] = Math.max(r[q], (a + 2 * r[q] + b) / 4); } return o; });
         const tb = { kind, S, T, F, Sd, R: Rr, W: hit.W, ns, L, ds, first: hh.indexOf(true), last: hh.lastIndexOf(true), onT, proj };
         tb.y = S.map(p => p.y);
-        tb.sAtY = y => { let best = 0, bd = 9; for (let i = 0; i <= ns; i++) { const d = Math.abs(S[i].y - y); if (d < bd) { bd = d; best = i; } } return best * ds; };
+        tb.sAtY = y => { let best = 0, bd = 9; for (let i = 0; i <= ns; i++) { const d = Math.abs(S[i].y - y); if (d < bd) { bd = d; best = i; } } const dn = best < ns ? S[best + 1].y - S[best].y : 0, j = (y - S[best].y) * dn > 0 ? best + 1 : best - 1; if (j < 0 || j > ns) return best * ds; const dy = S[j].y - S[best].y; return (best + (Math.abs(dy) > 1e-6 ? Math.max(0, Math.min(1, (y - S[best].y) / dy)) * (j - best) : 0)) * ds; };   /* continuo: a scatti di ds i bordi in diagonale (revers, scollo) venivano a dente di sega */
         tb.sNear = p => { const q = proj(p); return q.i * ds; };
         B.tubes[kind] = tb; return tb;
       }
@@ -359,7 +359,7 @@ var Sartoria = (function () {
     for (let i = 0; i <= ns; i++) hull(R3[i]);
     const tb = { kind, S, T, F, Sd, R: R3, ns, L, ds, first, last, onT, proj };
     tb.y = S.map(p => p.y);
-    tb.sAtY = y => { let best = 0, bd = 9; for (let i = 0; i <= ns; i++) { const d = Math.abs(S[i].y - y); if (d < bd) { bd = d; best = i; } } return best * ds; };   // per il tronco
+    tb.sAtY = y => { let best = 0, bd = 9; for (let i = 0; i <= ns; i++) { const d = Math.abs(S[i].y - y); if (d < bd) { bd = d; best = i; } } const dn = best < ns ? S[best + 1].y - S[best].y : 0, j = (y - S[best].y) * dn > 0 ? best + 1 : best - 1; if (j < 0 || j > ns) return best * ds; const dy = S[j].y - S[best].y; return (best + (Math.abs(dy) > 1e-6 ? Math.max(0, Math.min(1, (y - S[best].y) / dy)) * (j - best) : 0)) * ds; };   /* continuo: a scatti di ds i bordi in diagonale (revers, scollo) venivano a dente di sega */   // per il tronco
     tb.sNear = p => { const q = proj(p); return q.i * ds; };
     B.tubes[kind] = tb; return tb;
   }
