@@ -51220,7 +51220,7 @@ var Render = (function () {
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
-    PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 720 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
+    PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 640 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
     PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     GPUT.px = W + '×' + H;   /* [prestazioni] */
@@ -54729,7 +54729,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (leadOn && ui.stick) {   // [telefono] la levetta comanda lo sguardo: si inquadra subito dove la spingi (a piedi, in bici, in auto)
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, asp = W / Math.max(1, H), m = Math.min(1, Math.hypot(ui.stick.x, ui.stick.y));
         const vh = pveh ? 2 * (cam.cd || 30) * Math.tan(camera.fov * Math.PI / 360) : vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
-        const sx = ui.stick.x / (m || 1), sy = -ui.stick.y / (m || 1), k = .42 * m;
+        const ha = pveh ? pveh.ang : (p.face || 0), ux = Math.cos(ha), uy = Math.sin(ha), sx = ux * rx + uy * rz, sy = ux * fx + uy * fz, k = .42 * m;   // [camera2] avanti è dove va il personaggio (la visuale gli gira dietro)
         lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; }
       else if (leadOn && spd > .3) {
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, ux = cam.pvx / spd, uy = cam.pvy / spd, asp = W / Math.max(1, H);
@@ -54777,8 +54777,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (ui.rot) cam.uy += ui.rot * dt * 1.7; if (ui.drag) cam.uy += ui.drag;   // [monte] la visuale gira; [varco1] anche in auto, in Vespa e in bici (la guida non dipende dalla visuale)
     if (PHONE && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc) {   // [telefono] la visuale va alle spalle di chi si muove: inquadra il suo davanti (piano a piedi, più svelta sui mezzi)
       const vs = pveh ? Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
-      const hd = pveh ? (vs > 1 && (pveh.speed || 0) > -.5 ? Math.atan2(pveh.vy || Math.sin(pveh.ang), pveh.vx || Math.cos(pveh.ang)) : null) : vs > .6 ? Math.atan2(cam.pvy, cam.pvx) : null;
-      if (hd !== null) { const tgt = Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW; cam.uy = angLerp(cam.uy, tgt, Math.min(1, dt * (pveh ? 1.4 : .8) * Math.min(1, vs / (pveh ? 6 : 3)))); } }
+      // [camera2] la direzione è quella del personaggio (dove guarda: con la levetta, dove va) o il muso del mezzo, non la velocità
+      // stimata fotogramma per fotogramma (rumorosa: la visuale andava a scatti). Rapida e morbida: punta avanti, non si trascina dietro
+      const hd = pveh ? ((pveh.speed || 0) > .8 ? pveh.ang : null) : vs > .4 && p.face !== undefined ? p.face : null;
+      if (hd !== null) { const tgt = Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW; cam.uy = angLerp(cam.uy, tgt, 1 - Math.exp(-dt * (pveh ? 3.2 : 4.5))); } }
     cam.yaw = YAW + cam.uy; // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa
     let pitch = lerp(PITCH, onVespa ? .78 : .82, ease);
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
@@ -54804,7 +54806,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(0, 1, ease) + cam.jz;
     camera.position.set(cx + ox, cy + oy, cz + oz); camera.lookAt(cx, cy, cz);
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
-    if (ease < .02) {
+    if (ease < .02 && !PHONE) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti
       const texel = viewH / H; camera.updateMatrixWorld();
       const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0), up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
       const pos = camera.position.clone(), a = pos.dot(right), b = pos.dot(up);
@@ -56384,7 +56386,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
 
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
-  const stick = { x: 0, y: 0 };
+  const stick = { x: 0, y: 0 }; let stickB = null;   // [camera2] la visuale gira dietro al personaggio: mentre tieni la levetta il suo «su» non cambia (se no si gira in tondo)
   let lastAim = null, touchFire = false, touchRun = false, touchBoost = false; const touchTrick = { wheelie: false, peg: 0 };
   function aimAngle() {
     const p = st.player;
@@ -56421,7 +56423,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   function input0() {
     const sprint = !!keys.shift || touchRun || touchBoost, brakeKey = !!keys[' '] || touchBrake;
     if (st.player.vehicle && touchMode && Math.hypot(stick.x, stick.y) > .2) {   // [telefono] guida «verso dove spingi»: la levetta è una direzione dello schermo, non gas e sterzo
-      const v = st.vehicles.find(q => q.id === st.player.vehicle), B = R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));
+      const v = st.vehicles.find(q => q.id === st.player.vehicle), B = stickB || R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));
       if (v) { const want = Math.atan2(wy, wx), ad = a => Math.atan2(Math.sin(a), Math.cos(a)), d = ad(want - v.ang), spd = Math.abs(v.speed || Math.hypot(v.vx || 0, v.vy || 0));
         const two = G.VK[v.kind] && (G.VK[v.kind].two || G.VK[v.kind].pocket);
         if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: m > .35 ? 1 : 0, steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint } };   // avanti verso lì, sterzando
@@ -56429,7 +56431,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
         return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (stick.x || stick.y) { // touch: la levetta segue lo schermo
-      const B = R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
+      const B = stickB || R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
       return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode ? Math.atan2(y, x) : aimAngle() };   // [telefono] con la levetta guarda dove va
     }
     let f = 0, s = 0;
@@ -56944,9 +56946,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     $('touch').hidden = false; $('bookBtn').style.display = 'none';
     $('debt').addEventListener('click', () => { if (!ui.intro && !ui.over) toggleBook(); });   // il taccuino: tocca i soldi e l'ora
     const sEl = $('stick'), kn = $('knob'); let sid = null;
-    sEl.addEventListener('pointerdown', e => { A.init(); sid = e.pointerId; sEl.setPointerCapture(sid); mv(e); });
+    sEl.addEventListener('pointerdown', e => { A.init(); sid = e.pointerId; sEl.setPointerCapture(sid); stickB = R.camBasis(); mv(e); });   // [camera2] le direzioni della levetta restano quelle di quando la tocchi
     sEl.addEventListener('pointermove', e => { if (e.pointerId === sid) mv(e); });
-    const end = () => { sid = null; stick.x = stick.y = 0; kn.style.left = '43px'; kn.style.top = '43px'; };
+    const end = () => { sid = null; stickB = null; stick.x = stick.y = 0; kn.style.left = '43px'; kn.style.top = '43px'; };
     sEl.addEventListener('pointerup', end); sEl.addEventListener('pointercancel', end);
     function mv(e) { const r = sEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 65) / 50, dy = (e.clientY - r.top - 65) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } stick.x = dx; stick.y = dy; kn.style.left = 43 + dx * 40 + 'px'; kn.style.top = 43 + dy * 40 + 'px'; }
   }
@@ -57024,12 +57026,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   try { const M0 = R.__models; if (M0 && M0.renderer && M0.scene && R.getCamera) M0.renderer.compile(M0.scene, R.getCamera()); } catch (e) { console.warn('[compile]', e); }
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
   const loop = typeof Misura !== 'undefined' ? Misura.timed(loop0, 'main:ciclo') : loop0;   // [misura]
+  // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
+  // sembra più fluido di un 45 che oscilla (era il tremolio), e la risoluzione dinamica che scendeva era la «perdita di risoluzione»
+  const FC = { on: false, t: 0, n: 0 };
   function loop0(now) {
+    if (FC.on && now - last < 30) { requestAnimationFrame(loop); return; }
     const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
+    if (touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
-    if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && R.res <= .72) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
+    if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (touchMode || R.res <= .72)) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
     // [fluido] risoluzione dinamica: media mobile del fotogramma; sopra i 22 ms si scende di un gradino, sotto i 14 ms per 4 s si risale (al massimo un cambio ogni 1,5 s)
-    if (R.setRes && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
+    if (R.setRes && !touchMode && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
       // [fluido2] tre gradini soli (100, 85, 72%) e con calma: ogni cambio rifà tutte le immagini intermedie della grafica
       // (uno scatto, e sul telefono memoria che si rimescola). Prima poteva cambiare ogni 1,5 s, proprio quando acceleri o zoomi
       const RL = [1, .85, .72], ri = RL.reduce((b, v, i) => Math.abs(v - R.res) < Math.abs(RL[b] - R.res) ? i : b, 0);

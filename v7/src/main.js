@@ -167,7 +167,7 @@
 
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
-  const stick = { x: 0, y: 0 };
+  const stick = { x: 0, y: 0 }; let stickB = null;   // [camera2] la visuale gira dietro al personaggio: mentre tieni la levetta il suo «su» non cambia (se no si gira in tondo)
   let lastAim = null, touchFire = false, touchRun = false, touchBoost = false; const touchTrick = { wheelie: false, peg: 0 };
   function aimAngle() {
     const p = st.player;
@@ -204,7 +204,7 @@
   function input0() {
     const sprint = !!keys.shift || touchRun || touchBoost, brakeKey = !!keys[' '] || touchBrake;
     if (st.player.vehicle && touchMode && Math.hypot(stick.x, stick.y) > .2) {   // [telefono] guida «verso dove spingi»: la levetta è una direzione dello schermo, non gas e sterzo
-      const v = st.vehicles.find(q => q.id === st.player.vehicle), B = R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));
+      const v = st.vehicles.find(q => q.id === st.player.vehicle), B = stickB || R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));
       if (v) { const want = Math.atan2(wy, wx), ad = a => Math.atan2(Math.sin(a), Math.cos(a)), d = ad(want - v.ang), spd = Math.abs(v.speed || Math.hypot(v.vx || 0, v.vy || 0));
         const two = G.VK[v.kind] && (G.VK[v.kind].two || G.VK[v.kind].pocket);
         if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: m > .35 ? 1 : 0, steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint } };   // avanti verso lì, sterzando
@@ -212,7 +212,7 @@
         return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (stick.x || stick.y) { // touch: la levetta segue lo schermo
-      const B = R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
+      const B = stickB || R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
       return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode ? Math.atan2(y, x) : aimAngle() };   // [telefono] con la levetta guarda dove va
     }
     let f = 0, s = 0;
@@ -727,9 +727,9 @@
     $('touch').hidden = false; $('bookBtn').style.display = 'none';
     $('debt').addEventListener('click', () => { if (!ui.intro && !ui.over) toggleBook(); });   // il taccuino: tocca i soldi e l'ora
     const sEl = $('stick'), kn = $('knob'); let sid = null;
-    sEl.addEventListener('pointerdown', e => { A.init(); sid = e.pointerId; sEl.setPointerCapture(sid); mv(e); });
+    sEl.addEventListener('pointerdown', e => { A.init(); sid = e.pointerId; sEl.setPointerCapture(sid); stickB = R.camBasis(); mv(e); });   // [camera2] le direzioni della levetta restano quelle di quando la tocchi
     sEl.addEventListener('pointermove', e => { if (e.pointerId === sid) mv(e); });
-    const end = () => { sid = null; stick.x = stick.y = 0; kn.style.left = '43px'; kn.style.top = '43px'; };
+    const end = () => { sid = null; stickB = null; stick.x = stick.y = 0; kn.style.left = '43px'; kn.style.top = '43px'; };
     sEl.addEventListener('pointerup', end); sEl.addEventListener('pointercancel', end);
     function mv(e) { const r = sEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 65) / 50, dy = (e.clientY - r.top - 65) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } stick.x = dx; stick.y = dy; kn.style.left = 43 + dx * 40 + 'px'; kn.style.top = 43 + dy * 40 + 'px'; }
   }
@@ -807,12 +807,17 @@
   try { const M0 = R.__models; if (M0 && M0.renderer && M0.scene && R.getCamera) M0.renderer.compile(M0.scene, R.getCamera()); } catch (e) { console.warn('[compile]', e); }
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
   const loop = typeof Misura !== 'undefined' ? Misura.timed(loop0, 'main:ciclo') : loop0;   // [misura]
+  // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
+  // sembra più fluido di un 45 che oscilla (era il tremolio), e la risoluzione dinamica che scendeva era la «perdita di risoluzione»
+  const FC = { on: false, t: 0, n: 0 };
   function loop0(now) {
+    if (FC.on && now - last < 30) { requestAnimationFrame(loop); return; }
     const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
+    if (touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
-    if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && R.res <= .72) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
+    if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (touchMode || R.res <= .72)) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
     // [fluido] risoluzione dinamica: media mobile del fotogramma; sopra i 22 ms si scende di un gradino, sotto i 14 ms per 4 s si risale (al massimo un cambio ogni 1,5 s)
-    if (R.setRes && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
+    if (R.setRes && !touchMode && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
       // [fluido2] tre gradini soli (100, 85, 72%) e con calma: ogni cambio rifà tutte le immagini intermedie della grafica
       // (uno scatto, e sul telefono memoria che si rimescola). Prima poteva cambiare ogni 1,5 s, proprio quando acceleri o zoomi
       const RL = [1, .85, .72], ri = RL.reduce((b, v, i) => Math.abs(v - R.res) < Math.abs(RL[b] - R.res) ? i : b, 0);
