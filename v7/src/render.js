@@ -8402,7 +8402,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.25, ink: 0, rim: .6, cav: .85, clar: .32, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.5 /* [colore1] più colore (era 1.25) */, ink: 0, rim: .6, cav: .6 /* [colore1] era .85 */, clar: .18 /* [colore1] era .32: il contrasto locale faceva grana */, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -8626,13 +8626,13 @@ var Render = (function () {
               { vec3 LW9 = vec3(.3,.59,.11); float l09 = dot(texture2D(tC, uv).rgb, LW9);
                 float la9 = dot(texture2D(tC, uv + vec2(px.x, 0.)).rgb, LW9), lb9 = dot(texture2D(tC, uv - vec2(px.x, 0.)).rgb, LW9), lc9 = dot(texture2D(tC, uv + vec2(0., px.y)).rgb, LW9), ld9 = dot(texture2D(tC, uv - vec2(0., px.y)).rgb, LW9);
                 float hi9 = max(max(la9, lb9), max(lc9, ld9)), lo9 = min(min(la9, lb9), min(lc9, ld9));
-                float dk9 = clamp((hi9 - l09) / max(hi9, .04) * 2.8 - .14, 0., 1.), lt9 = clamp((l09 - lo9) / max(l09, .04) * 2.2 - .2, 0., 1.);
+                float dk9 = clamp((hi9 - l09) / max(hi9, .04) * 2.4 - .3, 0., 1.), lt9 = clamp((l09 - lo9) / max(l09, .04) * 2.2 - .3, 0., 1.);   /* [colore1] solo i bordi netti: la grana delle texture non diventa puntinato */
                 float dK9 = (1. - smoothstep(dc * 1.25, dc * 2.6, d)) * (1. - gr9 * .75) * (1. - coc) * lK.x * (1. - ol9);
-                c *= 1. - dk9 * .5 * dK9; c *= 1. + lt9 * .14 * dK9;
+                c *= 1. - dk9 * .26 * dK9; c *= 1. + lt9 * .1 * dK9;   /* [colore1] era .5 */
                 // il volume delle facciate: ogni faccia un poco più chiara o più scura secondo quanto guarda il sole
                 c *= mix(1., .84 + .28 * clamp(ndl * .5 + .5, 0., 1.), .6 * ok9 * day9 * lK.x); }
               float line9 = max(ol9, cr9) * (1. - gr9 * .7) * farK9 * lOl * (1. - coc) * (1. - smoothstep(uFogNF.x, uFogNF.y, d) * .95);   /* [nebbia_zoom1] */
-              c = mix(c, c * .14 + vec3(.012,.016,.04), clamp(line9, 0., 1.)); }   // blu notte scurito della tinta dell'oggetto
+              c = mix(c, c * .32 + vec3(.012,.016,.04), clamp(line9 * .85, 0., 1.)); }   /* [colore1] contorno della tinta, non nero pieno */   // blu notte scurito della tinta dell'oggetto
           }
           if (vOn > .01) {   // [luci4] ombre nella nebbia
             float z0 = texture2D(tD, uv).r; vec4 wp = vInvVP * vec4(uv * 2. - 1., z0 * 2. - 1., 1.); wp.xyz /= wp.w;
@@ -8648,8 +8648,8 @@ var Render = (function () {
               float lit = acc / max(wsum, 1e-3);
               c = c * mix(1., .86, sOn * (1. - lit)) + sCol * lit * sOn; } }   // manopola: densità della nebbia con le ombre
           { float far01 = smoothstep(dc*1.02, dc*1.7, d), lc0 = dot(c, vec3(.3,.59,.11));   /* [amb1] prospettiva aerea: lontano più chiaro, meno colore, il colore del cielo */
-            vec3 hz = mix(uHz*.92, vec3(.02,.022,.026), night), cd = mix(c, vec3(lc0), .25 + uWx.z*.3);   /* [lucido1] */
-            c = mix(c, mix(cd, hz, .45 + uWx.z*.2), far01 * (.12 + uWx.x*.05 + uWx.z*.16 - night*.06)); }   /* [nebbia_zoom1] */   /* [lucido1] */
+            vec3 hz = mix(uHz*.92, vec3(.02,.022,.026), night), cd = mix(c, vec3(lc0), .1 + uWx.z*.15);   /* [colore1] lontano resta colore */   /* [lucido1] */
+            c = mix(c, mix(cd, hz, .45 + uWx.z*.2), far01 * (.06 + uWx.x*.03 + uWx.z*.1 - night*.04));   /* [colore1] meno foschia */ }   /* [nebbia_zoom1] */   /* [lucido1] */
           // ===== [amb1] COLORE UNICO: ora (night, dusk), peso del regime (uReg), tempo (uWx: nuvole, bagnato, nebbia, tempesta) =====
           { float l = dot(c, vec3(.299,.587,.114));
             float sunK = (1.-night)*(1.-uWx.x*.82);                               // quanto sole c'è
@@ -8671,7 +8671,7 @@ var Render = (function () {
             // 3) saturazione: natura piena ma sobria; il regime spegne tutto tranne rossi, lampade e neon
             float lu = dot(c, vec3(.3,.59,.11));
             float keep = max(max(rosso*1.05, hot), warmL*.9);
-            float sN = mix(1., 1.14, sunK) * (1. - uWx.z*.18), sR = .9 + sunK*.06;   /* [lucido1] il regime non spegne più i colori */
+            float sN = mix(1.12, 1.3, sunK) * (1. - uWx.z*.08), sR = 1.05 + sunK*.08;   /* [colore1] più colore anche col coperto e col regime */   /* [lucido1] il regime non spegne più i colori */
             float sv = max(mix(sN, sR, uReg), keep*mix(1.15, 1.05, uReg));
             c = mix(vec3(lu), c, sv*sat);
             c = mix(c, vec3(dot(c, vec3(.3,.59,.11)))*vec3(.98,1.,.98), uReg*.03*(1.-keep));   /* [lucido1] */   // cemento appena verdastro, da caserma
@@ -8690,7 +8690,7 @@ var Render = (function () {
           c = clamp((c * (2.51 * c + .03)) / (c * (2.43 * c + .59) + .14), 0., 1.);
           { float gn = fract(sin(dot(floor(vUv * res) + fract(aTime * 7.13) * 91.7, vec2(12.9898, 78.233))) * 43758.5453) - .5; float lg = dot(c, vec3(.3,.59,.11));
             c += gn * aK.w * (1. - lg * .6) * (1. - pK.x); }
-          c = max(mix(vec3(dot(c, vec3(.3,.59,.11))), c, 1.14), 0.);   /* [unione11] un filo più saturi */
+          c = max(mix(vec3(dot(c, vec3(.3,.59,.11))), c, 1.24), 0.);   /* [unione11] un filo più saturi */   /* [colore1] 1.24 (era 1.14) */
           if (pK.x > .01) {   // [amb3] colori saturi, ma in palette
             vec3 o = okl(c); float L = o.x; vec2 ab = o.yz * pK.y;   // spinta del colore
             vec3 q = vec3(L, ab); float d1 = 1e9, d2 = 1e9; vec3 p1 = c, p2 = c, o1 = q, o2 = q;
@@ -8712,11 +8712,11 @@ var Render = (function () {
     postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
   }
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
-  function setRes(k) { k = Math.max(.5, Math.min(1, k)); if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
+  function setRes(k) { k = Math.max(.7, Math.min(1, k));   /* [colore1] non sotto il 70% (a metà era pastoso) */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
-    PX = LOWQ.on ? Math.max(2, Math.round(dpr) * 2) : Math.max(1, ch * dpr / (PHONE ? 480 : 720));   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
+    PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, ch * dpr / (PHONE ? 540 : 1080));   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
     PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     GPUT.px = W + '×' + H;   /* [prestazioni] */
