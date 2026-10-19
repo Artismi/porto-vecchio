@@ -490,7 +490,7 @@ var World = (function () {
     ['saline', 'Pista delle saline', 3, 'sterrato', [[100, 40], [76, 52], [62, 58]]],
     ['faro', 'Pista della Punta', 3, 'sterrato', [[44, 0], [26, 2]]],
     // oltre il Muro: dalla porta alla Base e al porto cargo
-    ['porto', 'Viale della Tutela', 10, 'strada', [[548, 0], [600, 0], [652, 0]]],
+    ['porto', 'Viale della Tutela', 10, 'strada', [[548, 0], [600, 0], [640, 0]]],   // [città2] finisce sulla piazza d'armi, davanti al comando
   ];
   // ---- le strade e i sentieri del Monte Scuro: coordinate assolute, la terza cifra è la quota voluta (tornanti, cenge) ----
   const MONTI = [
@@ -566,12 +566,12 @@ var World = (function () {
     ['garante', 'Uffici del Garante', 5, 5, 3, 2, [953, 152], { gov: true, sign: { t: 'UFFICI DEL GARANTE', c: '#b84a3c' }, nuovo: true }],
     ['archivio', 'Archivio di Stato', 8, 6, 5, 10, [887, 155], { gov: true, nuovo: true }],
     // la Base della Tutela, oltre il Muro
-    ['rocca', 'Rocca della Tutela', 14, 10, 5, 10, [618, 122], { sign: { t: 'ROCCA DELLA TUTELA', c: '#ff3b3b' }, military: true }],
-    ['caserma_p', 'Caserma della Tutela', 10, 5, 2, 10, [584, 112], { military: true }],
-    ['hangar1', 'Hangar degli elicotteri', 9, 8, 3, 11, [640, 166], { warehouse: true, military: true }],
-    ['hangar2', 'Deposito della Base', 8, 6, 2, 11, [652, 124], { warehouse: true, military: true }],
-    ['deposito_n', 'Magazzino del porto cargo', 9, 6, 2, 11, [638, 106], { warehouse: true, military: true }],
-    ['deposito_s', 'Dogana del porto cargo', 9, 6, 2, 11, [638, 176], { warehouse: true, military: true }],
+    ['rocca', 'Rocca della Tutela', 12, 8, 5, 10, [1266, 143], { sign: { t: 'ROCCA DELLA TUTELA', c: '#ff3b3b' }, military: true, nuovo: true }],   // [città2] il comando in fondo sull'asse della porta
+    ['caserma_p', 'Caserma della Tutela', 10, 4, 2, 10, [1224, 116], { military: true, nuovo: true }],   // [città2] in fila lungo le mura a nord
+    ['hangar1', 'Hangar degli elicotteri', 8, 6, 3, 11, [1252, 168], { warehouse: true, military: true, nuovo: true }],   // [città2] verso la Porta a Mare
+    ['hangar2', 'Deposito della Base', 7, 4, 2, 11, [1248, 116], { warehouse: true, military: true, nuovo: true }],   // [città2] a nord, accanto alla caserma
+    ['deposito_n', 'Magazzino del porto cargo', 7, 4, 2, 11, [1222, 170], { warehouse: true, military: true, nuovo: true }],   // [città2] a sud lungo le mura
+    ['deposito_s', 'Dogana del porto cargo', 7, 4, 2, 11, [1276, 172], { warehouse: true, military: true, nuovo: true }],   // [città2] sulla Porta a Mare
     // foresta: San Giacomo e il Borgo dei Carbonai
     ['chiesa_sg', 'Chiesa di San Giacomo', 6, 5, 4, 9, [199, 97], { church: true }],
     ['osteria_sg', 'Osteria di San Giacomo', 5, 4, 3, 5, [211, 106], { sign: { t: 'OSTERIA', c: '#ffb35c' }, shop: true }],
@@ -1085,8 +1085,8 @@ var World = (function () {
     (CITY.piazzette || []).forEach(([x, y, rr]) => blob(x, y, rr, rr * .8, i => { if (grid[i] !== T.VIA && grid[i] !== T.WATER && grid[i] !== T.BLD) { grid[i] = T.PIAZZA; roadW[i] = 0; } }));   // [isola] le piazzette dei vicoli
     { const q = GOV.piazza; for (let ty = T2i(q[1]); ty < T2i(q[3]); ty++) for (let tx = T2i(q[0]); tx < T2i(q[2]); tx++) { const i = ty * GW + tx; if (grid[i] !== T.VIA && grid[i] !== T.WATER) { grid[i] = T.PIAZZA; roadW[i] = 0; } } }   // [isola] Piazza del Governo
     blob(xn(205), 108, 7, 5, i => { if (grid[i] !== T.VIA) grid[i] = T.PIAZZA; });            // piazzetta di San Giacomo
-    blob(xn(598), 142, 10, 6, i => { if (grid[i] !== T.VIA) grid[i] = T.PIAZZA; });          // piazzale d'armi della Rocca
-    blob(xn(632), 134, 6, 6, i => { if (grid[i] !== T.VIA) grid[i] = T.PIAZZA; });       // eliporto
+    // [città2] la piazza d'armi sta dentro la Rocca (blocco della Rocca, più sotto)
+    // [città2] l'eliporto della Base non c'è più: dentro la Rocca non ci sta
     blob(xn(532), 152, 9, 7, i => { if (grid[i] !== T.VIA && grid[i] !== T.DIRT) grid[i] = T.ROCK; });   // la cava
     blob(xn(548), 184, 8, 5, i => { if (grid[i] !== T.VIA) grid[i] = T.DIRT; });              // discarica
     blob(xn(164), 102, 7, 5, i => { if (grid[i] !== T.VIA && grid[i] !== T.DIRT) grid[i] = T.GRASS; });   // radura dell'ovile
@@ -1098,6 +1098,7 @@ var World = (function () {
     // radure sulle colline: bivacchi, monolite, spiazzi da campeggio (alberi tolti, si vede chi c'è)
     [[284, 132, 5], [322, 142, 5], [260, 146, 4], [486, 138, 5], [528, 128, 4], [518, 134, 3], [544, 140, 3], [262, 154, 4], [300, 110, 5], [336, 168, 4], [496, 108, 4], [512, 160, 5], [470, 150, 3], [240, 128, 4]].forEach(([x, y, rr]) => blob(xn(x), y, rr, rr, i => { if (grid[i] === T.TREE || grid[i] === T.SHRUB) grid[i] = T.GRASS; }));
     // ---- il Muro: dalla riva nord alla riva sud, un solo varco sul Viale della Tutela ----
+    let FORT_X = 0;   // [città2] dentro la Rocca solo edifici militari (lo fissa il blocco della Rocca, lo legge stamp)
     const WALL = { x: xn(WALLX), tx: Math.floor(xn(WALLX) / TS), gate: [yc(WALLX) - 6, yc(WALLX) + 6], y0: northY(WALLX), y1: southY(WALLX), towers: [] };
     for (let ty = 0; ty < GH; ty++) {
       const y = ty * TS + 1; if (y < WALL.y0 - 2 || y > WALL.y1 + 2) continue;
@@ -1106,20 +1107,43 @@ var World = (function () {
     }
     for (let y = WALL.y0 + 8; y < WALL.y1 - 4; y += 26) if (Math.abs(y - yc(WALLX)) > 12) WALL.towers.push([WALL.x, y]);
     WALL.towers.push([WALL.x, WALL.gate[0] - 3], [WALL.x, WALL.gate[1] + 3]);
-    // [città2] LA ROCCAFORTE: il Muro di cemento del regime corre sul fronte di terra della vecchia fortezza del Seicento. Due bastioni
-    // a punta di freccia (le facce, i fianchi, la gola sul Muro) ai due capi della cortina e un mezzo bastione per lato vicino alla porta:
-    // masse di terra rivestite di pietra, non si passa. La grafica li disegna da FORT.bastions (render.js buildFortezza).
-    const FORT = { bastions: [] };
-    { const X = WALL.x, yg = (WALL.gate[0] + WALL.gate[1]) / 2;
-      const bast = (yb, half, out, flank) => [[X, yb - half], [X - flank, yb - half - 1.5], [X - out, yb], [X - flank, yb + half + 1.5], [X, yb + half]];
-      const ys = [WALL.y0 + (yg - WALL.y0) * .42, yg + (WALL.y1 - yg) * .58];
-      ys.forEach(yb => FORT.bastions.push(bast(yb, 11, 22, 7)));
-      FORT.bastions.push([[X, WALL.gate[0] - 3], [X - 6, WALL.gate[0] - 4], [X - 9, WALL.gate[0] - 12], [X, WALL.gate[0] - 15]]);   // i due mezzi bastioni che stringono la porta
-      FORT.bastions.push([[X, WALL.gate[1] + 3], [X - 6, WALL.gate[1] + 4], [X - 9, WALL.gate[1] + 12], [X, WALL.gate[1] + 15]]);
+    // [città2] LA ROCCA (riferimenti: Fort St Elmo, la Cittadella di Messina, il castello di Otranto; v. HANDOFF_citta2.md).
+    // Dalla città verso la punta: il Muro di cemento del regime (resta dov'è) → la SPIANATA vuota, il campo di tiro → il FOSSATO →
+    // il RIVELLINO triangolare davanti alla porta (diviso in due dalla strada) → il FRONTE BASTIONATO (due bastioni d'angolo a punta
+    // di freccia verso la città, la cortina, la porta in mezzo) → le MURA A MARE che seguono la costa fino alla punta, con la
+    // PORTA A MARE sui moli a sud. Dentro: la piazza d'armi, il comando in fondo sull'asse, caserme e depositi lungo le mura.
+    const FORT = { bastions: [], ravelin: [], walls: [], gates: [], ditch: [], x: 0, y: 0 };
+    { const XF = WALL.x + 30, gy = 143, inset = 2.6;   // il fronte a 30 m dal Muro: la spianata
+      const yN = x => NorthY(x) + inset, yS = x => SouthY(x) - inset;
+      let xT = XF; while (xT < XF + 160 && SouthY(xT + 3) - NorthY(xT + 3) > 14) xT += 3;   // la punta
+      FORT.x = XF; FORT.y = gy; FORT.tip = xT; FORT_X = WALL.x;
+      const bast = (yb, dir) => [[XF, yb - 8 * dir], [XF - 5, yb - 9 * dir], [XF - 16, yb + 2 * dir], [XF - 5, yb + 11 * dir], [XF, yb + 9 * dir]];
+      const bN = yN(XF) + 9, bS = yS(XF) - 9;
+      FORT.bastions.push(bast(bN, 1), bast(bS, -1).reverse());
+      FORT.ravelin.push([[XF - 7, gy - 22], [XF - 26, gy - 5.5], [XF - 7, gy - 5.5]], [[XF - 7, gy + 5.5], [XF - 26, gy + 5.5], [XF - 7, gy + 22]]);
+      FORT.ditch = [XF - 7, Math.min(bN - 9, yN(XF)), XF - .5, Math.max(bS + 9, yS(XF))];   // il fossato davanti alla cortina (rettangolo, la strada lo passa sul ponte)
+      // la cortina con la porta, poi le mura a mare: una polilinea chiusa sulla costa
+      FORT.walls.push([[XF, bN + 9], [XF, gy - 6]], [[XF, gy + 6], [XF, bS - 9]]);
+      const north = [], south = []; for (let x = XF; x <= xT; x += 3) { north.push([x, yN(x)]); south.push([x, yS(x)]); }
+      const tipY = (yN(xT) + yS(xT)) / 2; north.push([xT + 2, tipY]);
+      FORT.walls.push([[XF, yN(XF)]].concat(north));
+      const sg = Math.floor(south.length * .72);   // la Porta a Mare: un varco nelle mura a sud, verso i moli
+      FORT.walls.push([[xT + 2, tipY]].concat(south.slice(sg + 2).reverse()), south.slice(0, sg).concat([]).reverse().concat([[XF, yS(XF)]]).reverse());
+      FORT.gates.push({ x: XF, y: gy, ang: 0, kind: 'terra' }, { x: (south[sg][0] + south[sg + 2][0]) / 2, y: (south[sg][1] + south[sg + 2][1]) / 2, ang: Math.PI / 2, kind: 'mare' });
       const inPoly = (x, y, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
-      FORT.bastions.forEach(P => { let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; P.forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
-        for (let ty = Math.floor(y0 / TS); ty <= Math.floor(y1 / TS); ty++) for (let tx = Math.floor(x0 / TS); tx <= Math.floor(x1 / TS); tx++) {
-          const i = ty * GW + tx; if (!inPoly(tx * TS + 1, ty * TS + 1, P) || (grid[i] === T.WATER && zone[i] === Z.MARE)) continue; grid[i] = T.BLD; roadW[i] = 0; reserved[i] = 1; } }); }
+      const block = i => { if (grid[i] === T.WATER && zone[i] === Z.MARE) return; grid[i] = T.BLD; roadW[i] = 0; reserved[i] = 1; };
+      FORT.bastions.concat(FORT.ravelin).forEach(P => { let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; P.forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
+        for (let ty = Math.floor(y0 / TS); ty <= Math.floor(y1 / TS); ty++) for (let tx = Math.floor(x0 / TS); tx <= Math.floor(x1 / TS); tx++) if (inPoly(tx * TS + 1, ty * TS + 1, P)) block(ty * GW + tx); });
+      FORT.walls.forEach(L => { for (let k = 0; k < L.length - 1; k++) { const [ax, ay] = L[k], [bx, by] = L[k + 1], n = Math.ceil(dist(ax, ay, bx, by) / .7); for (let q = 0; q <= n; q++) { const tx = Math.floor((ax + (bx - ax) * q / n) / TS), ty = Math.floor((ay + (by - ay) * q / n) / TS); if (tx >= 0 && ty >= 0 && tx < GW && ty < GH) block(ty * GW + tx); } } });
+      // la piazza d'armi: lastricata, fra la porta e il comando
+      blob(XF + 34, gy, 15, 11, i => { if (grid[i] !== T.VIA && grid[i] !== T.BLD && grid[i] !== T.WATER) { grid[i] = T.PIAZZA; roadW[i] = 0; } });
+      // il suolo: la spianata lastricata per le adunate, dentro la Rocca cortili di ciottoli (niente prati)
+      for (let ty = 0; ty < GH; ty++) for (let tx = Math.floor((WALL.x + 2) / TS); tx <= Math.floor((xT + 4) / TS); tx++) { const i = ty * GW + tx, v = grid[i];
+        if (tx * TS < XF - 7) { if (v !== T.VIA && v !== T.BLD && v !== T.WATER && v !== T.PIER && v !== T.QUAY) grid[i] = T.PIAZZA; }
+        else if (v === T.GRASS || v === T.SHRUB || v === T.TREE || v === T.DIRT || v === T.FIELD) grid[i] = T.COB; }
+      // la spianata: fra il Muro e il fossato nessuno costruisce
+      for (let ty = 0; ty < GH; ty++) for (let tx = Math.floor((WALL.x + 2) / TS); tx < Math.floor((XF - 7) / TS); tx++) reserved[ty * GW + tx] = 1;
+    }
     // ---- pareti di roccia e muri a secco: dove il terreno cade di colpo non si passa (le strade restano) ----
     for (let ty = 1; ty < GH - 1; ty++) for (let tx = 2; tx < XG / TS; tx++) {   // [isola] tutta la testa, il collo e il Monte Scuro
       const i = ty * GW + tx, v = grid[i]; if (v === T.WATER || v === T.BLD || v === T.PIER || v === T.QUAY || roadW[i] > 0 || zone[i] === Z.CITTA) continue;
@@ -1142,6 +1166,7 @@ var World = (function () {
       return true;
     };
     const stamp = (b) => {
+      if (FORT_X && (b.x + b.w) * TS > FORT_X - 8 && !b.military && !b.lighthouse && !b.kiosk) return null;
       const k = B.length; b.i = k; B.push(b);
       let hmin = 1e9; for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) hmin = Math.min(hmin, elev[ty * GW + tx]);
       b.base = Math.max(.3, hmin);
@@ -1246,7 +1271,7 @@ var World = (function () {
       for (const [w, h] of [[4, 4], [3, 4], [4, 3], [3, 3]]) { let ok = false; for (const [ox, oy] of [[0, 0], [1 - w, 0], [0, 1 - h], [1 - w, 1 - h]]) if (free(tx + ox, ty + oy, w, h, 0)) { stamp({ id: 'casa_' + (nH++), x: tx + ox, y: ty + oy, w, h, fl: 2 + Math.floor(r() * 3), style: CSTY[Math.floor(r() * CSTY.length)], house: true }); ok = true; break; } if (ok) break; }
     }
     // cortili: quello che resta dentro gli isolati diventa orto o cortile
-    for (let i = 0; i < N; i++) if (zone[i] === Z.CITTA && grid[i] === T.COB && roadW[i] === 0) { const tx = i % GW, ty = (i / GW) | 0; let walk = false; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const v = grid[(ty + dy) * GW + tx + dx]; if (v === T.WALK || v === T.PIAZZA || v === T.VIA || v === T.QUAY) walk = true; } if (!walk) grid[i] = T.GRASS; }
+    for (let i = 0; i < N; i++) if (zone[i] === Z.CITTA && grid[i] === T.COB && roadW[i] === 0) { const tx = i % GW, ty = (i / GW) | 0; let walk = false; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const v = grid[(ty + dy) * GW + tx + dx]; if (v === T.WALK || v === T.PIAZZA || v === T.VIA || v === T.QUAY) walk = true; } if (!walk && !(FORT_X && tx * TS > FORT_X)) grid[i] = T.GRASS; }   // [città2] nella Rocca niente giardini
     // periferie: le costiere, con le case tra la strada e il mare o dalla parte della collina
     const perif = z => z === Z.CITTA;
     // [inverno] agglomerati come nei paesi: gruppi di case attaccate, la cui facciata segue la strada su una linea sola (scatta di una casella solo
@@ -1358,7 +1383,7 @@ var World = (function () {
       FISHP.push([id, name, cx, cy]);
     });
     // la Base: baracche in fila
-    for (let k = 0; k < 6; k++) { const s = site(xn(580) + (k % 3) * 13, 164 - (k > 2 ? 48 : 0), 6, 3, 1); if (s) stamp({ id: 'casa_' + (nH++), x: s[0], y: s[1], w: 6, h: 3, fl: 1, style: 10, military: true, barrack: true }); }
+    // [città2] niente baracche sparse: i soldati stanno nella caserma della Rocca
     // ---------------- ALTEZZE: un paese basso ----------------
     // quasi tutto a uno o due piani; poche eccezioni che si vedono da lontano
     const ALTI = { chiesa: 3, rocca: 5, faro: 7, miramare: 3, oceano: 4, stella: 3, santuario: 3, cultura: 3, pietra: 3, governo: 3, ministero: 3, garante: 3, archivio: 2 };
@@ -1836,7 +1861,9 @@ var World = (function () {
     (W.TUNNELS || []).forEach(t => sp(t.pts)); sp(W.RING);
     W.BUILDINGS.forEach(b => { b.x += OTX; b.y += OTY; if (b.door && !seen.has(b.door)) { seen.add(b.door); b.door[0] += OTX; b.door[1] += OTY; } (b.tiers || []).forEach(t => { t.x += OTX; t.y += OTY; }); });
     Object.values(W.PLACES).forEach(p => { p.tx += OTX; p.ty += OTY; p.x += OX; p.y += OY; if (p.want) p.want = [p.want[0] + OX, p.want[1] + OY]; });
-    if (W.FORT) W.FORT = { bastions: W.FORT.bastions.map(P => P.map(([x, y]) => [x + OX, y + OY])) };   // [città2]
+    if (W.FORT) { const F0 = W.FORT, sh = P => P.map(([x, y]) => [x + OX, y + OY]);   // [città2]
+      W.FORT = { bastions: F0.bastions.map(sh), ravelin: F0.ravelin.map(sh), walls: F0.walls.map(sh), gates: F0.gates.map(g => Object.assign({}, g, { x: g.x + OX, y: g.y + OY })),
+        ditch: [F0.ditch[0] + OX, F0.ditch[1] + OY, F0.ditch[2] + OX, F0.ditch[3] + OY], x: F0.x + OX, y: F0.y + OY, tip: F0.tip + OX }; }
     const WL0 = W.WALL; W.WALL = Object.assign({}, WL0, { x: WL0.x + OX, tx: WL0.tx + OTX, gate: [WL0.gate[0] + OY, WL0.gate[1] + OY], y0: WL0.y0 + OY, y1: WL0.y1 + OY, towers: WL0.towers.map(q => [q[0] + OX, q[1] + OY]) });
     W.CAVES = W.CAVES.map(c => Object.assign({}, c, { path: c.path.map(q => [q[0] + OX, q[1] + OY]), rooms: c.rooms.map(q => [q[0] + OX, q[1] + OY].concat(q.slice(2))) }));
     W.VILLAGES = W.VILLAGES.map(q => [q[0] + OX, q[1] + OY].concat(q.slice(2)));

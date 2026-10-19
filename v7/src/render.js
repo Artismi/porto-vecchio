@@ -8852,44 +8852,62 @@ var Render = (function () {
   function buildFortezza() {
     const W0 = M.world, F = W0 && W0.FORT; if (!F || !F.bastions || !F.bastions.length) return 0;
     const stoneM = std({ map: stoneTexture(), color: '#a89a84', roughness: .95 }), capM = sm('#b8ab8c', { roughness: .9 }), earthM = sm('#4e5238', { roughness: 1 }), darkM = sm('#3a3832', { roughness: .8 });
-    const lampM = new THREE.MeshBasicMaterial({ color: '#fff2c8', toneMapped: false }), flagM = sm('#9e1f1a', { roughness: .9, side: THREE.DoubleSide });
-    const X = W0.WALL.x; let n = 0;
-    F.bastions.forEach((P, bi) => {
-      const big = P.length >= 5, H = big ? 7.2 : 6.2, h0 = Math.min(...P.map(([x, z]) => groundH(x, z))) - .3, cx = P.reduce((s2, q) => s2 + q[0], 0) / P.length, cz = P.reduce((s2, q) => s2 + q[1], 0) / P.length;
-      const outer = (i, j) => !(Math.abs(P[i][0] - X) < .5 && Math.abs(P[j][0] - X) < .5);   // la gola sul Muro non è una faccia
+    const lampM = new THREE.MeshBasicMaterial({ color: '#fff2c8', toneMapped: false }), flagM = sm('#9e1f1a', { roughness: .9, side: THREE.DoubleSide }), gravelM = sm('#5a5448', { roughness: 1 });
+    stoneM.side = THREE.DoubleSide; earthM.side = THREE.DoubleSide;
+    const X = F.x; let n = 0; const g = G0();
+    // un tratto di muro a scarpa da A a B: più largo alla base, il cordone, il parapetto e la copertina; il camminamento dietro
+    const wallSeg = (ax, az, bx, bz, H, th) => {
+      const L = Math.hypot(bx - ax, bz - az); if (L < .2) return; const ang = Math.atan2(bz - az, bx - ax), mx = (ax + bx) / 2, mz = (az + bz) / 2, y0 = Math.min(groundH(ax, az), groundH(bx, bz), groundH(mx, mz)) - .4;
+      const lo = box(L + .2, H * .55, th + .9, stoneM); lo.position.set(mx, y0 + H * .275, mz); lo.rotation.y = -ang; g.add(lo);   // la scarpa
+      const hi = box(L + .1, H * .5, th, stoneM); hi.position.set(mx, y0 + H * .75, mz); hi.rotation.y = -ang; g.add(hi);
+      const co = box(L + .3, .28, th + .5, capM); co.position.set(mx, y0 + H * .55, mz); co.rotation.y = -ang; g.add(co);   // il cordone
+      const pa = box(L, .9, .55, stoneM); pa.position.set(mx, y0 + H + .45, mz); pa.rotation.y = -ang; g.add(pa);
+      const cp = box(L, .1, .65, capM); cp.position.set(mx, y0 + H + .95, mz); cp.rotation.y = -ang; g.add(cp);
+      return y0 + H; };
+    // un bastione o un rivellino: prisma a scarpa, terrapieno in cima, parapetto sulle facce, la garitta sulla punta
+    const prism = (P, H, gar) => {
+      const h0 = Math.min(...P.map(([x, z]) => groundH(x, z))) - .4, cx = P.reduce((a2, q) => a2 + q[0], 0) / P.length, cz = P.reduce((a2, q) => a2 + q[1], 0) / P.length;
       const off = (q, k) => { const dx = q[0] - cx, dz = q[1] - cz, L = Math.hypot(dx, dz) || 1; return [q[0] + dx / L * k, q[1] + dz / L * k]; };
-      const pos = [], uv = [], push = (a2, b2, c2) => { pos.push(...a2, ...b2, ...c2); };
-      for (let i = 0; i < P.length; i++) { const j = (i + 1) % P.length; if (!outer(i, j)) continue;
-        const A = off(P[i], 1.4), B2 = off(P[j], 1.4), At = P[i], Bt = P[j], L = Math.hypot(Bt[0] - At[0], Bt[1] - At[1]);
-        const a0 = [A[0], h0, A[1]], b0 = [B2[0], h0, B2[1]], a1 = [At[0], h0 + H, At[1]], b1 = [Bt[0], h0 + H, Bt[1]];
-        push(a0, b0, b1); push(a0, b1, a1); uv.push(0, 0, L / 3, 0, L / 3, H / 3, 0, 0, L / 3, H / 3, 0, H / 3); }
+      const pos = [], uv = [];
+      for (let i = 0; i < P.length; i++) { const j = (i + 1) % P.length, A = off(P[i], 1.2), B2 = off(P[j], 1.2), L = Math.hypot(P[j][0] - P[i][0], P[j][1] - P[i][1]);
+        pos.push(A[0], h0, A[1], B2[0], h0, B2[1], P[j][0], h0 + H, P[j][1], A[0], h0, A[1], P[j][0], h0 + H, P[j][1], P[i][0], h0 + H, P[i][1]); uv.push(0, 0, L / 3, 0, L / 3, H / 3, 0, 0, L / 3, H / 3, 0, H / 3);
+        // parapetto sulle facce che guardano fuori (non sulla gola verso l'interno)
+        if (P[i][0] < X - .3 || P[j][0] < X - .3) { const ang = Math.atan2(P[j][1] - P[i][1], P[j][0] - P[i][0]), mx = (P[i][0] + P[j][0]) / 2, mz = (P[i][1] + P[j][1]) / 2, nx = Math.sin(ang), nz = -Math.cos(ang), sg = (mx - cx) * nx + (mz - cz) * nz > 0 ? 1 : -1;
+          const pa = box(L, .9, .6, stoneM); pa.position.set(mx - nx * sg * .4, h0 + H + .45, mz - nz * sg * .4); pa.rotation.y = -ang; g.add(pa);
+          const co = box(L + .3, .3, .45, capM); co.position.set(mx + nx * sg * .2, h0 + H - 1.2, mz + nz * sg * .2); co.rotation.y = -ang; g.add(co); } }
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.computeVertexNormals();
-      const wallMesh = new THREE.Mesh(geo, stoneM); wallMesh.material.side = THREE.DoubleSide; wallMesh.castShadow = wallMesh.receiveShadow = true; scene.add(wallMesh);
-      // il terrapieno in cima
-      const shp = new THREE.Shape(P.map(([x, z]) => new THREE.Vector2(x, z))), top = new THREE.ShapeGeometry(shp); top.rotateX(Math.PI / 2); top.translate(0, h0 + H, 0);
-      const topM = new THREE.Mesh(top, earthM); topM.material.side = THREE.DoubleSide; topM.receiveShadow = true; scene.add(topM);
-      // cordone e parapetto sulle facce
-      const g = G0();
-      for (let i = 0; i < P.length; i++) { const j = (i + 1) % P.length; if (!outer(i, j)) continue;
-        const [ax, az] = P[i], [bx, bz] = P[j], L = Math.hypot(bx - ax, bz - az), ang = Math.atan2(bz - az, bx - ax), mx = (ax + bx) / 2, mz = (az + bz) / 2, nx = Math.sin(ang), nz = -Math.cos(ang), sg = (mx - cx) * nx + (mz - cz) * nz > 0 ? 1 : -1;
-        const cord = box(L + .3, .32, .5, capM); cord.position.set(mx + nx * sg * .18, h0 + H - 1.3, mz + nz * sg * .18); cord.rotation.y = -ang; g.add(cord);
-        const par = box(L, .95, .9, stoneM); par.position.set(mx - nx * sg * .45, h0 + H + .47, mz - nz * sg * .45); par.rotation.y = -ang; g.add(par);
-        const cap = box(L, .12, 1.0, capM); cap.position.set(mx - nx * sg * .45, h0 + H + .98, mz - nz * sg * .45); cap.rotation.y = -ang; g.add(cap); }
-      // la garitta sulla punta (il vertice più lontano dal Muro)
-      let sp = 0; P.forEach((q, k) => { if (Math.abs(q[0] - X) > Math.abs(P[sp][0] - X)) sp = k; });
-      { const [gx, gz] = P[sp], u = off([gx, gz], -1.1), y = h0 + H; const body = cyl(.75, .8, 2.1, 10, stoneM); body.position.set(u[0], y + 1.05, u[1]); g.add(body);
+      const m1 = new THREE.Mesh(geo, stoneM); m1.castShadow = m1.receiveShadow = true; scene.add(m1);
+      const top = new THREE.ShapeGeometry(new THREE.Shape(P.map(([x, z]) => new THREE.Vector2(x, z)))); top.rotateX(Math.PI / 2); top.translate(0, h0 + H, 0); const m2 = new THREE.Mesh(top, earthM); m2.receiveShadow = true; scene.add(m2);
+      if (gar) { let sp = 0; P.forEach((q, k) => { if (q[0] < P[sp][0]) sp = k; }); const u = off(P[sp], -1.1), y = h0 + H;
+        const body = cyl(.75, .8, 2.1, 10, stoneM); body.position.set(u[0], y + 1.05, u[1]); g.add(body);
         const dome = new THREE.Mesh(new THREE.SphereGeometry(.85, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), capM); dome.position.set(u[0], y + 2.1, u[1]); g.add(dome);
-        const slit = box(.12, .5, .2, darkM); slit.position.set(u[0] - .78, y + 1.3, u[1]); g.add(slit);
-        const knob = cyl(.08, .08, .4, 6, capM); knob.position.set(u[0], y + 3.0, u[1]); g.add(knob); }
-      // le cose del regime: riflettore e bandiera sui bastioni grandi
-      if (big) { const rx = cx + 2, rz = cz; const pole = cyl(.08, .1, 4.2, 6, darkM); pole.position.set(rx, h0 + H + 2.1, rz); g.add(pole);
-        const head = box(.6, .45, .55, darkM); head.position.set(rx - .2, h0 + H + 4.3, rz); g.add(head); const lens = box(.05, .36, .44, lampM); lens.position.set(rx - .52, h0 + H + 4.3, rz); g.add(lens);
-        addLight(rx - 3, h0 + H + 3.5, rz, '#fff2c8', 2.2, 18, 0);
-        const fp = cyl(.06, .07, 6, 6, darkM); fp.position.set(cx + 4, h0 + H + 3, cz + 3); g.add(fp); const fl = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.1), flagM); fl.position.set(cx + 4.9, h0 + H + 5.4, cz + 3); g.add(fl); }
-      shadowed(g); scene.add(mergeGroup(g)); n++;
-    });
+        const slit = box(.12, .5, .2, darkM); slit.position.set(u[0] - .78, y + 1.3, u[1]); g.add(slit); }
+      return { h0, H, cx, cz }; };
+    F.bastions.forEach(P => { const q = prism(P, 7.2, true); n++;
+      // le cose del regime sui bastioni: il riflettore verso la spianata e la bandiera
+      const pole = cyl(.08, .1, 4.2, 6, darkM); pole.position.set(q.cx + 2, q.h0 + q.H + 2.1, q.cz); g.add(pole);
+      const head = box(.6, .45, .55, darkM); head.position.set(q.cx + 1.8, q.h0 + q.H + 4.3, q.cz); g.add(head); const lens = box(.05, .36, .44, lampM); lens.position.set(q.cx + 1.48, q.h0 + q.H + 4.3, q.cz); g.add(lens);
+      addLight(q.cx - 4, q.h0 + q.H + 3, q.cz, '#fff2c8', 2.2, 20, 0);
+      const fp = cyl(.06, .07, 6, 6, darkM); fp.position.set(q.cx + 4, q.h0 + q.H + 3, q.cz); g.add(fp); const fl = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.1), flagM); fl.position.set(q.cx + 4.9, q.h0 + q.H + 5.4, q.cz); g.add(fl); });
+    F.ravelin.forEach(P => { prism(P, 5.2, false); n++; });
+    F.walls.forEach(L => { for (let k = 0; k < L.length - 1; k++) wallSeg(L[k][0], L[k][1], L[k + 1][0], L[k + 1][1], 6.2, 1.8); n++; });
+    // il fossato: fondo di ghiaia scura e la controscarpa bassa in pietra dalla parte della spianata (la strada lo passa sul ponte)
+    if (F.ditch) { const [x0, z0, x1, z1] = F.ditch, gy = F.y, w = x1 - x0;
+      [[z0, gy - 6], [gy + 6, z1]].forEach(([a, b]) => { if (b - a < 1) return; const fl2 = box(w, .06, b - a, gravelM); fl2.position.set((x0 + x1) / 2, groundH((x0 + x1) / 2, (a + b) / 2) + .04, (a + b) / 2); g.add(fl2);
+        const cs = box(.5, .9, b - a, stoneM); cs.position.set(x0, groundH(x0, (a + b) / 2) + .45, (a + b) / 2); g.add(cs); });
+      [-1, 1].forEach(sd => { const pr = box(w + 1, .7, .3, darkM); pr.position.set((x0 + x1) / 2, groundH((x0 + x1) / 2, gy) + .9, gy + sd * 5.5); g.add(pr); }); }   // le spallette del ponte
+    // le porte: il portale di pietra (due piloni, l'arco, il frontone con l'occhio del Garante) sulla porta di terra, più semplice quella a mare
+    (F.gates || []).forEach(G1 => { const y0 = groundH(G1.x, G1.y), big = G1.kind === 'terra', wdt = big ? 12 : 7, H = big ? 8.5 : 6.6, gg = G0();
+      [-1, 1].forEach(sd => { const p1 = box(2.4, H, 2.6, stoneM); p1.position.set(0, H / 2, sd * (wdt / 2 + .2)); gg.add(p1); const c1 = box(2.7, .3, 2.9, capM); c1.position.set(0, H + .15, sd * (wdt / 2 + .2)); gg.add(c1); });
+      const lint = box(2.4, 1.6, wdt + 2.8, stoneM); lint.position.set(0, H - .8, 0); gg.add(lint);
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(wdt / 2 - .3, .35, 6, 16, Math.PI), capM); arch.rotation.y = Math.PI / 2; arch.position.set(-1.25, H - 2.2 - (wdt / 2 - .3) + 1.6, 0); gg.add(arch);
+      if (big) { const ped = box(2.2, 2.2, 6, stoneM); ped.position.set(-.1, H + 1.1, 0); gg.add(ped); const plq = new THREE.Mesh(new THREE.PlaneGeometry(4, 1.8), new THREE.MeshLambertMaterial({ map: signTexture('ROCCA DELLA TUTELA', '#e8dcc0', '#7e1118', 2.2) }));
+        plq.rotation.y = -Math.PI / 2; plq.position.set(-1.25, H - .8, 0); gg.add(plq); const eye = new THREE.Mesh(new THREE.CircleGeometry(.7, 16), sm('#9e1f1a')); eye.rotation.y = -Math.PI / 2; eye.position.set(-1.22, H + 1.2, 0); gg.add(eye); }
+      gg.position.set(G1.x, y0 - .2, G1.y); gg.rotation.y = -(G1.ang || 0); g.add(gg); });
+    shadowed(g); scene.add(mergeGroup(g));
     return n;
   }
+
   function buildWinter() {
     const W0 = M.world; if (!W0 || !W0.WALL) return;
     const P = G.PLACES, r = rng(1953), T = G.T;
