@@ -380,6 +380,20 @@ var Pittura = (function () {
   const FIN = { pelle: .38, gomma: .45, nylon: .35, piumino: .32, raso: .3, ripstop: .55, cordura: .6, denim: .8, cotone: .85, jersey: .9, pique: .88, tela: .8,
     panno: .95, lana: .97, feltro: .98, spina: .93, gessato: .9, galles: .93, pied: .93, tartan: .92, vichy: .88, madras: .88, trecce: .98, costine: .96, velluto: .7, scamosciato: .98, pelo: .9, montone: .97, maculato: .9 };
   // il capo più esterno in un punto (per spessore e finitura)
+  // [strati] lo spessore vero in un punto: il capo che si vede più quelli che gli stanno sotto, schiacciati.
+  // Chi sta fuori passa sopra a tutto (strati annidati, niente compenetrazioni); un capo stretto messo sopra uno più largo
+  // (le mutande sopra i pantaloni larghi, l'elastico sopra il maglione) lo strizza: sotto conta solo lo spessore della stoffa.
+  function stackOff(B, plans, ri, L, nY) {
+    const F = frame(B), R = REG[ri], tb = F.tubes[ri], xm = (L.a + Math.PI) / (Math.PI * 2) * F.circ[ri], cov = [];
+    for (let k = 0; k < plans.length; k++) if (paintAt(B, plans[k], R, ri, L.a, L.s, L.p[1], xm, nY, tb)) cov.push(plans[k]);
+    if (!cov.length) return { C: null, off: 0 };
+    const C = cov[cov.length - 1]; let off = spessore(C) + spalla(B, C, ri, L, nY) + volume(B, C, ri, L);
+    for (let k = 0; k < cov.length - 1; k++) { const U = cov[k], tight = (C.cl || 0) < (U.cl || 0), vu = Math.max(0, volume(B, U, ri, L));
+      off += tight ? spessore(U) * .75 + vu * .3 : spessore(U) * .35 + vu * .5; }
+    return { C, off, cov };
+  }
+  // lo spessore vero in un punto della superficie (per i pezzi in rilievo: cinture, orli, sciarpe, tracolle stanno sopra l'ultimo strato)
+  function offAt(B, plans, r, s, a) { const p = surfI(B, r, s, a, 0); return stackOff(B, plans, r, { s, a, p: [p.x, p.y, p.z] }, S().neckY(B)).off; }
   function topAt(B, plans, ri, a, sv, y, nY) {
     const F = frame(B), R = REG[ri], tb = F.tubes[ri], xm = (a + Math.PI) / (Math.PI * 2) * F.circ[ri];
     for (let k = plans.length - 1; k >= 0; k--) if (paintAt(B, plans[k], R, ri, a, sv, y, xm, nY, tb)) return plans[k];
@@ -557,7 +571,7 @@ var Pittura = (function () {
     // i punti nello stesso posto (doppioni tra busto e gambe, anche in mesh diverse) si staccano insieme: stessa direzione, lo spessore maggiore
     const pk = L => Math.round(L.p[0] * 2e4) + ',' + Math.round(L.p[1] * 2e4) + ',' + Math.round(L.p[2] * 2e4), J = new Map(), memo = new Map();
     srcs.forEach((src, si) => { const pg = paintGeo(B, src, si); if (!pg) return;
-      for (let w0 = 0; w0 < pg.VI.length; w0++) { const L = pg.VI[w0]; if (!L) continue; let off = memo.get(L); if (off === undefined) { const C = topAt(B, plans, pg.VR[w0], L.a, L.s, L.p[1], nY); off = C ? spessore(C) + spalla(B, C, pg.VR[w0], L, nY) + volume(B, C, pg.VR[w0], L) : 0; if (C && C.smanicato && (pg.VR[w0] === 1 || pg.VR[w0] === 2)) off = 0; if (off && pg.VR[w0] === 0) off *= armFade(L.p); memo.set(L, off); }
+      for (let w0 = 0; w0 < pg.VI.length; w0++) { const L = pg.VI[w0]; if (!L) continue; let off = memo.get(L); if (off === undefined) { const SO = stackOff(B, plans, pg.VR[w0], L, nY), C = SO.C; off = SO.off; if (C && C.smanicato && (pg.VR[w0] === 1 || pg.VR[w0] === 2)) off = 0; if (off && pg.VR[w0] === 0) off *= armFade(L.p); memo.set(L, off); }
         const k = pk(L); let j = J.get(k); if (!j) J.set(k, j = { o: 0, d: new THREE.Vector3(), seen: new Set() }); j.o = Math.max(j.o, off); if (!j.seen.has(L)) { j.seen.add(L); j.d.x += L.d[0]; j.d.y += L.d[1]; j.d.z += L.d[2]; } } });
     J.forEach(j => j.d.normalize());
     // dove un capo spesso finisce su uno sottile (giro manica dello smanicato, orlo del piumino) lo scalino diventa uno smusso: niente pareti a punta
@@ -648,17 +662,37 @@ var Pittura = (function () {
     return new THREE.Mesh(g, mat);
   }
   // i bordi netti di un vestito dipinto: fine manica, orlo della maglia, orlo dei pantaloni (solo il capo più esterno di ogni zona)
+  // lo spessore più alto attorno a un anello (s fisso) della regione r: il bordino in rilievo ci sta sopra in ogni punto
+  function ringOff(B, plans, r, s, n) { let m = 0; n = n || 12; for (let k = 0; k < n; k++) m = Math.max(m, offAt(B, plans, r, s, -Math.PI + (k + .5) / n * Math.PI * 2)); return m; }
+  // il capo che si vede in un punto (a, s) della regione r
+  function topOf(B, plans, r, s, a) { const p = surfI(B, r, s, a, 0); return topAt(B, plans, r, a, s, p.y, S().neckY(B)); }
+  // i bordi netti di un vestito dipinto: fine manica, orlo dei pantaloni, elastico dell'intimo.
+  // Ogni capo ha il suo bordo dove finisce e si vede (non solo il più esterno: le mutande sopra i jeans hanno il loro elastico
+  // e i jeans sotto il loro orlo), e il bordo sta sopra la superficie vera, cioè sopra tutti gli strati in quel punto.
   function bordi(g, B, outfit, AT) {
     const P = paintPlans(B, outfit), Sa = S(), F = frame(B); if (!P) return;
-    const outer = R => { for (let k = P.length - 1; k >= 0; k--) if (P[k].L[R]) return P[k]; return null; };
     const mat = C => blockMat(C.fab, '#' + new THREE.Color().setRGB(C.A[0] * .9, C.A[1] * .9, C.A[2] * .9).getHexString(), '#' + new THREE.Color().setRGB(C.B[0], C.B[1], C.B[2]).getHexString(), null, { vc: false });
     const LO = legOrder(outfit), boots = LO.bootsOver || LO.socksOver;   // pantaloni dentro stivali o calzini: niente orlo in rilievo
+    const shows = (C, r, s) => [0, Math.PI / 2, Math.PI, -Math.PI / 2].some(a => topOf(B, P, r, s, a) === C);   // a quell'altezza il capo è quello di sopra (almeno da un lato)
     for (const sd of ['L', 'R']) {
-      const RA = 'A' + sd, CA = outer(RA); if (CA && !(CA.polsi && CA.L[RA].s1 > CA.L[RA].la)) { const Ls = CA.L[RA], ri = sd === 'L' ? 1 : 2, o = new THREE.Group(); o.add(orlo(B, ri, Ls.s1 - .008, .016, .0045 + spessore(CA), .005 + spessore(CA), 10, mat(CA))); AT(Ls.s1 < Ls.la - .02 ? 'UpperArm' + sd : 'LowerArm' + sd, o); }
-      const RL = 'L' + sd, CL = outer(RL); if (CL && CL.L[RL].falda === undefined && !boots && !CL.risvolto) { const Ls = CL.L[RL], ri = sd === 'L' ? 3 : 4; if (Ls.s1 < F.tubes[ri].L + .01) { const o = new THREE.Group(); o.add(orlo(B, ri, Ls.s1 - .01, .02, .005 + spessore(CL) + (CL.largo ? .024 : 0), .006 + spessore(CL), 12, mat(CL))); AT((Ls.s1 < Ls.kn - .02 ? 'UpperLeg' : 'LowerLeg') + sd, o); } }
+      const RA = 'A' + sd, ri = sd === 'L' ? 1 : 2;
+      P.forEach(CA => { if (!CA.L[RA] || (CA.polsi && CA.L[RA].s1 > CA.L[RA].la)) return; const Ls = CA.L[RA], sH = Ls.s1 - .008; if (!shows(CA, ri, sH - .01)) return;
+        const off = ringOff(B, P, ri, sH - .006), o = new THREE.Group(); o.add(orlo(B, ri, sH, .016, off + .0035, .005 + spessore(CA), 10, mat(CA))); AT(Ls.s1 < Ls.la - .02 ? 'UpperArm' + sd : 'LowerArm' + sd, o); });
+      const RL = 'L' + sd, rl = sd === 'L' ? 3 : 4;
+      P.forEach(CL => { if (!CL.L[RL] || CL.L[RL].falda !== undefined || CL.risvolto) return; const Ls = CL.L[RL]; if (Ls.s1 >= F.tubes[rl].L + .01) return;
+        const last = !P.slice(P.indexOf(CL) + 1).some(o => o.L[RL] && o.L[RL].falda === undefined && o.L[RL].s1 > Ls.s1 - .02 && (o.cl || 0) >= (CL.cl || 0));   // l'orlo in fondo alla gamba: solo se nessuno ci scende sopra
+        if (CL.cl === 2 && boots && last) return; const sH = Ls.s1 - .01; if (!shows(CL, rl, sH - .012)) return;
+        const el = CL.elastico, off = ringOff(B, P, rl, sH - .008) + (el ? .0015 : .004), o = new THREE.Group();
+        o.add(orlo(B, rl, sH, el ? .014 : .02, off, el ? .004 : .006 + spessore(CL), 12, el ? blockMat('costine', '#' + new THREE.Color().setRGB(C2h(CL.A, .92)[0], C2h(CL.A, .92)[1], C2h(CL.A, .92)[2]).getHexString(), null, null, { vc: false }) : mat(CL)));
+        AT((Ls.s1 < Ls.kn - .02 ? 'UpperLeg' : 'LowerLeg') + sd, o); });
     }
-    // (l'orlo del busto è dipinto, anche sulle cosce: niente anello in rilievo, che non può seguire le gambe divise)
+    // l'elastico in vita dell'intimo (e della tuta) quando sta sopra un altro capo: una fascia a costine in rilievo che stringe
+    const tb = F.tubes[0];
+    P.forEach(C => { if (!C.elastico || !C.L.T || C.L.T.p1 === undefined) return; const s = C.L.T.p1 - .012; if (!shows(C, 0, s - .01)) return;
+      const off = ringOff(B, P, 0, s - .01, 16), o = new THREE.Group(), col = '#' + new THREE.Color().setRGB(...C2h(C.A, .9)).getHexString();
+      o.add(orlo(B, 0, s, .026, off + .002, .005, 20, blockMat('costine', col, col, col, { vc: false }))); AT('Hips', o); });
   }
+  const C2h = (A, k) => [A[0] * k, A[1] * k, A[2] * k];
   // l'ordine degli strati: di norma per tipo (intimo, maglie, pantaloni, giacche, cappotti), ma nella stessa zona del guardaroba
   // vale l'ordine in cui li hai indossati: le mutande sopra i pantaloni stanno sopra, il gilet sotto la camicia sta sotto
   function rankOutfit(list, CUT) {
@@ -685,5 +719,5 @@ var Pittura = (function () {
   }
   // il raggio della superficie dipinta del busto (stirata) a (s, angolo) sul tubo del tronco: le falde in rilievo ci si raccordano a filo
   function raggio(B, s, a) { const tb = frame(B).tubes[0]; return shape(B, tb, s, a, ironRadius(ironed(tb), tb, s, a)); }
-  return { raggio, ironAll, cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
+  return { offAt, ringOff, topOf, stackOff, raggio, ironAll, cutY, plan, paintPlans, legOrder, rankOutfit, sopra, spessore, dipingi, spoglia, paint, paintGeo, frame, blockMat, bordi, surfI, orlo };
 })();

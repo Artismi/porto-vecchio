@@ -702,7 +702,7 @@ var Sartoria = (function () {
 
   // il capo: tutte le pezze e le finiture in un'unica geometria a gruppi (materiali: 0 stoffa, 1 secondo colore, 2 metallo, 3 scuro, 4 pelle/cuoio, 5 bianco, 6 costine)
   function cut(B, C, parti, off, seedk) {
-    const key = [B.key, C.id, C.var || 0, C.faldaTop || 0, C.sotto || '', C.coperto ? 1 : 0, C.infilata ? 1 : 0, C.stretti ? 1 : 0, parti.join(''), Object.keys(off).map(k => k + (off[k] * 1e4 | 0)).join()].join('|');
+    const key = [B.key, C.id, C.var || 0, C.faldaTop || 0, C.sotto || '', C.osig || '', C.coperto ? 1 : 0, C.infilata ? 1 : 0, C.stretti ? 1 : 0, parti.join(''), Object.keys(off).map(k => k + (off[k] * 1e4 | 0)).join()].join('|');
     let G = B.geos.get(key); if (G) return G;
     const bd = Builder(), P = new Set(parti);
     if (C.giacchetta && window.Pittura) { faldaGiacca(bd, B, C); G = toGeometry(bd, B); B.geos.set(key, G); return G; }
@@ -854,14 +854,16 @@ var Sartoria = (function () {
     const th = heavy ? .013 : .007, yTop = B.waist + .06, yb = Math.min(B.bones.Hips.y - .15, B.crotch - .01), sTop = tb.sAtY(yTop), sBot = tb.sAtY(yb);
     const rows = Math.max(12, Math.round((sTop - sBot) / .011) + 1), RG = 48, yC = B.crotch + .03;
     const sOf = i => lerp(sTop, sBot, i / (rows - 1)), tOf = i => i / (rows - 1);
+    // [strati] lo spessore vero della giacca dipinta in vita, angolo per angolo (con quello che ha sotto): la falda esce a filo
+    const PL = C._outfit ? Pt.paintPlans(B, C._outfit) : null, OQ = new Float32Array(RG); for (let q = 0; q < RG; q++) OQ[q] = PL ? Math.max(off0, Pt.offAt(B, PL, 0, sTop, q / RG * Math.PI * 2)) : off0;
     // il profilo di ogni riga: la giacca dipinta in alto, poi mai più stretta (passa sopra glutei e cosce), con un filo d'agio verso l'orlo
     const R = [], carry = new Float32Array(RG), body = [];
     const FP = []; (C._falde || []).forEach(f => { const pa = f.geo.attributes.position, v = new THREE.Vector3(); for (let k = 0; k < pa.count; k++) FP.push(v.fromBufferAttribute(pa, k).applyMatrix4(B.rel).clone()); });
     const IP = Pt.ironAll(B); for (let k = 0; k < B.part.length; k++) { const pt = B.part[k]; if (/torso|bacino|cosce/.test(pt || '')) body.push(k); }
     for (let i = 0; i < rows; i++) { const s = sOf(i), fr = frameAt(tb, s), y = fr.p.y, r = new Float32Array(RG);
-      for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2; r[q] = (y > yC ? Pt.raggio(B, s, a) : carry[q]) + off0; }
+      for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2; r[q] = (y > yC ? Pt.raggio(B, s, a) : carry[q]) + OQ[q]; }
       // la superficie dipinta vera (vertici stirati) e quello che sporge a questa altezza (fianchi, glutei, cosce): resta tutto dentro
-      for (const k of body) { const dy = IP[k * 3 + 1] - y; if (Math.abs(dy) > .013) continue; const dx = IP[k * 3] - fr.p.x, dz = IP[k * 3 + 2] - fr.p.z, x = dx * fr.sd.x + dz * fr.sd.z, z = dx * fr.f.x + dz * fr.f.z, a = Math.atan2(x, z), q = ((Math.round(a / (Math.PI * 2) * RG) % RG) + RG) % RG, rr = Math.hypot(x, z) + off0 + .0008;
+      for (const k of body) { const dy = IP[k * 3 + 1] - y; if (Math.abs(dy) > .013) continue; const dx = IP[k * 3] - fr.p.x, dz = IP[k * 3 + 2] - fr.p.z, x = dx * fr.sd.x + dz * fr.sd.z, z = dx * fr.f.x + dz * fr.f.z, a = Math.atan2(x, z), q = ((Math.round(a / (Math.PI * 2) * RG) % RG) + RG) % RG, rr = Math.hypot(x, z) + OQ[q] + .0008;
         for (const qq of y > B.waist - .01 ? [q] : [q - 1, q, q + 1]) { const m = (qq + RG) % RG; if (rr > r[m]) r[m] = rr; } }
       for (const P of FP) { if (Math.abs(P.y - y) > .015) continue; const dx = P.x - fr.p.x, dz = P.z - fr.p.z, x = dx * fr.sd.x + dz * fr.sd.z, z = dx * fr.f.x + dz * fr.f.z, q = ((Math.round(Math.atan2(x, z) / (Math.PI * 2) * RG) % RG) + RG) % RG, rr = Math.hypot(x, z) + .006;
         for (const qq of [q - 1, q, q + 1]) { const m = (qq + RG) % RG; if (rr > r[m]) r[m] = rr; } }
@@ -869,7 +871,7 @@ var Sartoria = (function () {
       if (y < B.waist) hull(r);
       if (y < B.waist) for (let it = 0; it < 3; it++) { const sm3 = r.slice(); for (let q = 0; q < RG; q++) r[q] = Math.max(r[q], (sm3[(q + RG - 1) % RG] + 2 * sm3[q] + sm3[(q + 1) % RG]) / 4); }
       { const s5 = r.slice(); for (let q = 0; q < RG; q++) { let a = 0; for (let k = -3; k <= 3; k++) a += s5[(q + k + RG) % RG]; r[q] = Math.max(s5[q] - (y > B.waist ? .0005 : .002), a / 7); } }
-      if (y > yC) for (let q = 0; q < RG; q++) carry[q] = r[q] - off0;
+      if (y > yC) for (let q = 0; q < RG; q++) carry[q] = r[q] - OQ[q];
       R.push(r); }
     // lungo l'altezza: linee dritte (niente onde)
     for (let it = 0; it < 4; it++) for (let i = 1; i < rows - 1; i++) for (let q = 0; q < RG; q++) R[i][q] = Math.max(R[i][q], (R[i - 1][q] + R[i + 1][q]) / 2);
@@ -1245,7 +1247,7 @@ var Sartoria = (function () {
       ['torso', 'braccia', 'avambracci', 'bacino', 'cosce', 'polpacci', 'collo'].forEach(p => { off[p] = (thick.includes(p) ? b0 : (th[p] || b0)) + .0025 + c.sp * .16; });
       thick.forEach(p => { th[p] = t; });
       try {
-        if (C.giacchetta) { C.sotto = B._falde.map(f => f.id).join(); C._falde = B._falde.slice(); }   // la falda della giacca passa sopra le gonne messe prima
+        if (C.giacchetta) { C.sotto = B._falde.map(f => f.id).join(); C._falde = B._falde.slice(); C._outfit = outfit; C.osig = outfit.map(o => o.id + (o.when || 0)).join(); }   // la falda della giacca passa sopra le gonne messe prima
         const geo = cut(B, C, parti, off, seed); if ((C.gonna || C.poncho) && !C.giacchetta) B._falde.push({ id: c.id, geo });
         const m = new THREE.SkinnedMesh(geo, mats(C, c.col)); m.userData.vesti = true; m.userData.capo = c.id; m.castShadow = true; m.frustumCulled = false;
         out.push(m); cover.push({ C, parti }); lay.push({ id: c.id, cl: C.cl, t, off, collo: C.collo, parti });
