@@ -87,7 +87,12 @@ var Tetti = (function () {
         if (got.length >= take) break;
         if (got.some(g => g.sd.f === c.sd.f)) continue;
         got.push(c); used.add(c.ty * GW + c.tx);
-        const [wx, wy] = c.sd.wall(c.k), [ox, oy] = c.sd.out;
+        let [wx, wy] = c.sd.wall(c.k), [ox, oy] = c.sd.out;
+        // [città2] la casa che segue la strada è girata attorno al suo centro (render.js rotRec): la scala gira con il muro
+        const rot = b.rot && !b.sign && !b.shop ? b.rot : 0;
+        if (rot) { const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, co = Math.cos(rot), si = Math.sin(rot), qx = wx - cx, qy = wy - cy;
+          wx = cx + qx * co - qy * si; wy = cy + qx * si + qy * co; const nx = ox * co - oy * si, ny = ox * si + oy * co; ox = nx; oy = ny;
+          if (c.foot < 0 && !G.walkM(wx + ox * .55, wy + oy * .55)) { got.pop(); used.delete(c.ty * GW + c.tx); continue; } }
         LADDERS.push({ i: LADDERS.length, bi, f: c.sd.f, x: wx, y: wy, ox, oy, fx: wx + ox * .55, fy: wy + oy * .55, tx: wx - ox * .8, ty: wy - oy * .8, footB: c.foot, ang: Math.atan2(oy, ox) });
       }
     });
