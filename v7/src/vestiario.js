@@ -767,6 +767,7 @@ var Vesti3D = (function () {
     const sLo = tb.sAtY(y0 - .02), sHi = tb.sAtY(y1 + .01);
     for (let sv = Math.min(sLo, sHi); sv <= Math.max(sLo, sHi); sv += .004) for (let k = 0; k < 96; k++) { const a = -Math.PI + k / 96 * Math.PI * 2, p = Pt.surfI(B, 0, sv, a, Pt.offAt(B, PL, 0, sv, a)); put(p.x, p.y, p.z, .002); }
     for (let k = 0; k < B.head.length; k += 3) put(B.head[k], B.head[k + 1], B.head[k + 2], .004);   // collo e mandibola della mesh della testa
+    if (B._guscioPts) for (let k = 0; k < B._guscioPts.length; k += 3) put(B._guscioPts[k], B._guscioPts[k + 1], B._guscioPts[k + 2], .003);   // il guscio della giacca
     if (!window.Pittura) for (let k = 0; k < B.part.length; k++) if (B.part[k] === 'collo' || B.part[k] === 'torso') put(B.P[k * 3], B.P[k * 3 + 1], B.P[k * 3 + 2], .003);   // [corpo] coi vestiti dipinti il corpo del kit non c'è più (il cappuccio e gli orli del kit gonfiavano la misura: colletti a gorgiera)
     else for (let k = 0; k < 64; k++) { const a = k / 64 * Math.PI * 2; for (let y = nY - .03; y < nY + .06; y += .004) put(nx + Math.sin(a) * B.neckR, y, nz + Math.cos(a) * B.neckR, .002); }   // il collo del corpo continuo
     if (outfit.some(o2 => (Sa.CUT_()[o2.id] || {}).collo === 'cappuccio')) for (let j = 0; j < NY; j++) { const y = y0 + j * dy; if (Math.abs(y - (nY - .015)) < .04) for (let i = 0; i < NA; i++) RG[j][i] = Math.max(RG[j][i], B.neckR + .075); }   // il rotolo del cappuccio
@@ -1133,7 +1134,7 @@ var Vesti3D = (function () {
     const torsoOut = (th.torso || 0) + .006;
     let kh = 0;
     { const hat = outfit.find(c => c.acc && /^(beanie|flat|fedora|ushanka|casco|elmetto|cap|snapback|docker|basco|police|paglia|hard|cowboy|scarf|passamontagna|pm_\w+)$/.test(c.acc)); if (hat && T) try { schiacciaCapelli(g, T, hat.acc); } catch (e) { console.error('[Vesti3D] capelli', e); } }
-    let scolloFatto = false; try { scolloFatto = scollo(outfit, B, T, AT); } catch (e) { console.error('[Vesti3D] scollo', e); }   // prima di catene e sciarpe: si posano sopra
+    let scolloFatto = false; if (!g.userData.guscio) try { scolloFatto = scollo(outfit, B, T, AT); } catch (e) { console.error('[Vesti3D] scollo', e); }   // prima di catene e sciarpe: si posano sopra
     outfit.forEach(c => {
       if (!c.acc) return;
       if (c.acc === 'cravatta' && scolloFatto === 'cravatta') return;   // la cravatta è un pezzo dello scollo
@@ -1268,6 +1269,10 @@ var Vesti3D = (function () {
       const R = Math.max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]); unit = g.userData.vUnit = R > 0 && R < 1e8 ? 1.75 / R : .01; }
     g.traverse(o => { if (o.isSkinnedMesh && !o.userData.vesti) analyze(o); });   // prima si sgonfiano i corpi
     yield;
+    // [giacche] il capo di fuori del busto fatto a guscio (con la sua tela: dentro la V camicia e cravatta): la giacca e la cravatta
+    // non passano più dalla pittura e dai pezzi; il corpo sotto il guscio si toglie
+    const GU = window.Giacche && window.Pittura ? Giacche.scegli(outfit) : null; g.userData.guscio = GU;
+    if (GU) outfit = outfit.filter(c => c !== GU.J && c !== GU.tie);
     let D = null;
     if (window.Sartoria) try {
       { const CUT = Sartoria.CUT_(), B0 = Sartoria.body(g, PARTI); outfit.forEach(c => { const Cc = CUT[c.id] || {}; if (!Cc.solo_gonna || !B0) return;   // la maglia fuori dalla gonna: la gonna comincia sotto il suo orlo
@@ -1289,7 +1294,10 @@ var Vesti3D = (function () {
     yield;
     if (window.Pittura) try { Pittura.dipingi(g, outfit, look, PARTI); } catch (e) { console.error('[Vesti3D] pittura', e); }   // i vestiti dipinti sul corpo
     yield;
+    // il guscio prima dei pezzi: catene e sciarpe ci si posano sopra (le sue misure entrano in quella del collo)
+    let guscio = null; if (D && D.B) { D.B._guscioPts = null; D.B._mc = null; if (GU) try { guscio = Giacche.costruisci(D.B, GU, look); const pts = []; guscio.traverse(m => { if (m.isMesh) pts.push(...m.geometry.attributes.position.array); }); D.B._guscioPts = pts; } catch (e) { console.error('[Vesti3D] giacca', e); } }
     try { accessories(g, outfit, held, D); } catch (e) { console.error('[Vesti3D] pezzi', e); }
+    if (guscio) try { pelle(g, guscio, D.B); } catch (e) { console.error('[Vesti3D] giacca', e); }
     if (window.Officina) try { Officina.onDress(g, outfit); } catch (e) { console.error('[Vesti3D] officina', e); }   // [studio]
     proporzioni(g, true);
   }

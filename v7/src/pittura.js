@@ -774,6 +774,7 @@ var Pittura = (function () {
     let P = null, M = MCACHE.get(sig); if (!M) { P = paint(B, outfit, skin); M = mats(sig, P); }
     if (!B.welded) { B.welded = 1; weld(B, g, srcs); }
     const plans = paintPlans(B, outfit), nY = Sa.neckY(B);
+    const GU = typeof Giacche !== 'undefined' ? g.userData.guscio : null;
     // sotto l'ascella e lungo il fianco, dove il braccio sta attaccato al busto, lo spessore si assottiglia (non entra nel braccio)
     const armFade = p => { let f = 1; for (const sd of ['L', 'R']) { const j = B.bones['UpperArm' + sd], e = B.bones['LowerArm' + sd]; if (!j || !e) continue; const ax = e.clone().sub(j), L2 = ax.lengthSq(), v = new THREE.Vector3(p[0], p[1], p[2]).sub(j), t = cl(v.dot(ax) / L2, -.2, 1), d = v.sub(ax.multiplyScalar(t)).length(); f = Math.min(f, .25 + .75 * cl((d - .06) / .06, 0, 1)); } return f; };
     // i punti nello stesso posto (doppioni tra busto e gambe, anche in mesh diverse) si staccano insieme: stessa direzione, lo spessore maggiore
@@ -803,6 +804,7 @@ var Pittura = (function () {
       const wristCut = q => wristUp(q);   // i triangoli a cavallo mano/avambraccio (le punte)
       const wristUp = q => q.some(x => { const b = gmS[x]; if (!(b >= 0) || B.part[b] !== 'mani') return false; const sd = B.side[b] > 0 ? 'L' : 'R'; if (!longSleeve[sd] && !CORPO_ON) return false; const w = B.bones['Wrist' + sd], e = B.bones['LowerArm' + sd], ax = w.clone().sub(e).normalize(); return (B.P[b * 3] - w.x) * ax.x + (B.P[b * 3 + 1] - w.y) * ax.y + (B.P[b * 3 + 2] - w.z) * ax.z < (longSleeve[sd] ? -.03 : -.004); });   // [corpo] col corpo continuo sempre: il braccio arriva fino al polso
       const keepT = (w0, reg) => { if (pg.dropT.has(w0 / 3)) return false;
+        if (GU && (reg === 1 || reg === 2 || reg === 3) && [0, 1, 2].every(j => Giacche.copre(B, GU, reg, pg.VI[w0 + j]))) return false;   // sotto il guscio della giacca il corpo non c'è
         const q = [pg.SRC[w0], pg.SRC[w0 + 1], pg.SRC[w0 + 2]]; if (hid && hid.length && q.every(x => hid[x])) return false;
         if (wristCut(q)) return false;
         if (reg === 0) { const q0 = q; if (q0.every(clothV) && q0.some(x => { const b = gmS[x]; return b >= 0 && B.part[b] === 'mani'; })) return false; }   // i polsini del kit, rimasti sulle mani const q = [pg.SRC[w0], pg.SRC[w0 + 1], pg.SRC[w0 + 2]]; if (hid && hid.length && q.every(x => hid[x])) return false;
