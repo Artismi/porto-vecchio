@@ -2740,7 +2740,7 @@ var Render = (function () {
     // porto: bitte, casse, reti sulla Calata ([costa] le barche hanno il loro posto: vedi buildCosta)
     for (let k = 0; k < 260; k++) { const tx = 175 + Math.floor(r() * 55) + (r() < .4 ? 135 : 0) + ((M.world && M.world.DXC) || 0) / TS, ty = (r() < .5 ? 55 : 80) + Math.floor(r() * 30) + ((M.world && M.world.OY) || 0) / TS, v = G.tileAt(tx, ty); if (v !== T.QUAY) continue; const x = tx * TS + 1, z = ty * TS + 1; const w = r(); if (w < .25) bitta(x, z); else if (w < .4) crateStack(x, z, 1 + Math.floor(r() * 4), r, pick(r, ['fish', 'fruit', 'none'])); else if (w < .5) nets(x, z, r); else if (w < .56) drumGroup(x, z, r); }
     // spiaggia del Lido: ombrelloni e lettini
-    if (P.spiaggia) { const q = P.spiaggia; let n = 0; for (let k = 0; k < 90 && n < 18; k++) { const x = q.x - 30 + r() * 60, z = q.y - 6 + r() * 24, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v !== T.SAND) continue; const ca = pick(r, ['#ff6aa0', '#40c0e0', '#f0c030', '#8a60e0']); beachUmbrella(x, z, r, ca, '#f4f0e8'); sunbed(x + 1.1, z + .6, 0, ca, r); n++; } if (n) lifeguardTower(q.x, q.y + 4); }
+    if (P.spiaggia) { const q = P.spiaggia; let n = 0; for (let k = 0; k < 90 && n < 18; k++) { const x = q.x - 30 + r() * 60, z = q.y - 6 + r() * 24, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v !== T.SAND || !free(x, z, 1.6) || !free(x + 1.1, z + .6, 1.1) || q.__u && q.__u.some(([ux, uz]) => Math.hypot(ux - x, uz - z) < 3.4)) continue; (q.__u = q.__u || []).push([x, z]);   /* [leggera] distanti fra loro e dalle case */ const ca = pick(r, ['#ff6aa0', '#40c0e0', '#f0c030', '#8a60e0']); beachUmbrella(x, z, r, ca, '#f4f0e8'); sunbed(x + 1.1, z + .6, 0, ca, r); n++; } if (n) lifeguardTower(q.x, q.y + 4); }
     // cantiere navale
     if (P.cantiere) { const q = P.cantiere; if (free(q.x + 6, q.y + 4)) hullOnCradle(q.x + 6, q.y + 6, Math.PI / 2); if (free(q.x - 6, q.y + 3)) crane(q.x - 6, q.y + 4, 0, '#d86a2a'); }
     // poligono: carri armati abbandonati, container, recinzioni
@@ -4502,7 +4502,8 @@ var Render = (function () {
   }
   const solid1 = (x, z) => { const T = G.T, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return v === T.BLD || v === T.WATER || v === T.CLIFF || v === T.FOUNT || v === T.TREE || v === undefined; };
   function busy1(x, z, r) { let hit = false; hashNear(x, z, r + 2, rec => { if (hit || rec.gone35 || rec.state !== 0) return; if (Math.abs(rec.c.x - x) < rec.he.x + r && Math.abs(rec.c.z - z) < rec.he.z + r) hit = true; }); return hit; }
-  const okSpot1 = (x, z, r) => !solid1(x, z) && !onCarr1(x, z, .15) && !busy1(x, z, r || .3);
+  const solidR1 = (x, z, d) => [[0, 0], [d, 0], [-d, 0], [0, d], [0, -d]].some(([u, w]) => solid1(x + u, z + w));   // [leggera] anche attorno, non solo al centro
+  const okSpot1 = (x, z, r) => !solidR1(x, z, Math.max(.4, r || .3)) && !onCarr1(x, z, .15) && !busy1(x, z, r || .3);
 
   // ================= PITTURA DEL SUOLO =================
   // pattern a 8 px/m: sampietrini a coda di pavone (esagerati: 25 cm), allineati al mondo come quelli di [isola35]
@@ -4869,7 +4870,7 @@ var Render = (function () {
     // 6) new jersey ai posti di blocco della Tutela e alla Base: file di cemento con lo spazio per passare
     [G.PLACES.varco, G.PLACES.piazza_gov, G.PLACES.muro, G.PLACES.eliporto, G.PLACES.molo_cargo].forEach((p, pi) => { if (!p) return;
       for (let row = 0; row < 2; row++) { const a = pi * 1.1 + row * Math.PI, cx = p.x + Math.cos(a) * 11, cz = p.y + Math.sin(a) * 11, tx = -Math.sin(a), tz = Math.cos(a);
-        for (let q = -3; q <= 3; q++) { if (q === 0) continue; const x = cx + tx * q * 2, z = cz + tz * q * 2; if (!okSpot1(x, z, .5)) continue; jersey1(x, z, Math.atan2(tx, tz), false); n++; } } });
+        for (let q = -3; q <= 3; q++) { if (q === 0) continue; const x = cx + tx * q * 2, z = cz + tz * q * 2; if (!okSpot1(x, z, .5) || solidR1(x, z, 1.05)) continue; jersey1(x, z, Math.atan2(tx, tz), false); n++;   /* il jersey è lungo 2 m */ } } });
     if (window.__dbg35) console.log('[dbg] strade1', n, 'semafori', JSON.stringify(junc1().filter(j => j.signal).map(j => [Math.round(j.x), Math.round(j.y)])), 'cantieri', JSON.stringify(works1().map(w => [Math.round(w.x), Math.round(w.y)])), 'buche', holes1List().length);
     return n;
   }
@@ -8815,7 +8816,10 @@ var Render = (function () {
       const ant = G0(); add(ant, box(.5, 22, .5, sl('#b8201c')), 0, 11, 0); for (let k = 1; k < 7; k++) add(ant, box(1.6 - k * .15, .12, .12, sl('#e8e4dc')), 0, k * 3, 0);
       const top = add(ant, new THREE.Mesh(new THREE.SphereGeometry(.25, 6, 4), new THREE.MeshBasicMaterial({ color: '#ff2020', toneMapped: false })), 0, 22.2, 0); WX.blink.push({ m: top, ph: 0, slow: true });
       place(ant, R0.x - 18, R0.y + 22, 0);
-      [-6, 0, 6].forEach(o => { const g = G0(); add(g, box(.12, 9, .12, sl('#3a3a40')), 0, 4.5, 0); add(g, box(2.2, 1.3, .03, sb('#a81818')), 1.1, 8.2, 0); add(g, box(.5, .5, .035, sb('#f2d84a')), 1.1, 8.2, .02); place(g, R0.x + o, R0.y + 12, 0); });
+      { // [leggera] le tre bandiere davanti al portone della Rocca (prima a 12 m dal punto del posto, cioè dentro l'edificio)
+        const bR = (G.BUILDINGS || []).find(b => b.id === 'rocca' && b.door); let fx = R0.x, fz = R0.y + 12, nx0 = 0, nz0 = 1;
+        if (bR) { const cx = (bR.x + bR.w / 2) * TS, cz = (bR.y + bR.h / 2) * TS, dx = (bR.door[0] + .5) * TS, dz = (bR.door[1] + .5) * TS; if (Math.abs(dx - cx) / bR.w > Math.abs(dz - cz) / bR.h) { nx0 = Math.sign(dx - cx); nz0 = 0; } else { nx0 = 0; nz0 = Math.sign(dz - cz); } fx = dx + nx0 * 5; fz = dz + nz0 * 5; }
+        [-6, 0, 6].forEach(o => { const g = G0(); add(g, box(.12, 9, .12, sl('#3a3a40')), 0, 4.5, 0); add(g, box(2.2, 1.3, .03, sb('#a81818')), 1.1, 8.2, 0); add(g, box(.5, .5, .035, sb('#f2d84a')), 1.1, 8.2, .02); const x = fx - nz0 * o, z = fz + nx0 * o; if (free(x, z, .3)) place(g, x, z, 0); }); }
       if (P.eliporto) { // [ordine1] l'eliporto in uno spiazzo libero vero (prima stava in mezzo alla strada, fra le case)
         const T0 = G.T, okPad = (x, z) => { for (let a = -6; a <= 6; a += 2) for (let c = -6; c <= 6; c += 2) { const v = G.tileAt(Math.floor((x + a) / TS), Math.floor((z + c) / TS)); if (v === T0.BLD || v === T0.VIA || v === T0.WATER || v === T0.TREE || v === T0.FOUNT || v === undefined) return false; } return true; };
         let best = null; for (let rr2 = 0; rr2 <= 50 && !best; rr2 += 2) for (let k = 0; k < 16 && !best; k++) { const a = k / 16 * Math.PI * 2, x = P.eliporto.x + Math.cos(a) * rr2, z = P.eliporto.y + Math.sin(a) * rr2; if (okPad(x, z)) best = { x, y: z }; }

@@ -42,12 +42,15 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
       const { G, R, st } = window.__pv, DZ = R.__dz, TS = G.TS, T = G.T, B = G.BUILDINGS;
       const out = { dentro_edificio: [], su_strada: [], in_acqua: [], sospesi: [], affondati: [], sovrapposti: [] };
       const bAt = new Map(); B.forEach((b, i) => { for (let x = b.x; x < b.x + b.w; x++) for (let y = b.y; y < b.y + b.h; y++) bAt.set(x + ',' + y, b.id || b.name || 'b' + i); });
+      // la carreggiata vera (le caselle VIA comprendono anche i marciapiedi): punti delle strade ogni metro, con la loro larghezza
+      const RG = new Map(); (G.MAP.roads || []).filter(rd => !/vicolo|sterrato/.test(rd.kind || '')).forEach(rd => (rd.pts || []).forEach((q, i) => { const w = (rd.ws && rd.ws[i]) || rd.w || 6, k = Math.floor(q[0] / 8) + ',' + Math.floor(q[1] / 8); (RG.get(k) || RG.set(k, []).get(k)).push([q[0], q[1], w / 2]); }));
+      const onCarr = (x, z) => { const gx = Math.floor(x / 8), gz = Math.floor(z / 8); for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const [qx, qz, hw] of RG.get((gx + i) + ',' + (gz + j)) || []) if (Math.hypot(qx - x, qz - z) < hw - .35) return true; return false; };
       const all = DZ.props.map(p => ({ c: p.c0 || p.c, he: p.he, base: p.base, who: p.who, big: false })).concat(DZ.big.map(p => ({ c: p.c, he: p.he, base: p.base, who: p.who, big: true })));
       const row = (p, extra) => Object.assign({ chi: p.who, x: +p.c.x.toFixed(1), y: +p.c.z.toFixed(1), misura: [2 * p.he.x, 2 * p.he.y, 2 * p.he.z].map(v => +v.toFixed(1)), grande: p.big }, extra || {});
       all.forEach(p => {
         const t = G.tileAt(Math.floor(p.c.x / TS), Math.floor(p.c.z / TS));
         for (const [fx, fz] of [[0, 0], [-.7, -.7], [.7, .7], [-.7, .7], [.7, -.7]]) { const k = Math.floor((p.c.x + fx * p.he.x) / TS) + ',' + Math.floor((p.c.z + fz * p.he.z) / TS); if (bAt.has(k)) { out.dentro_edificio.push(row(p, { edificio: bAt.get(k) })); break; } }
-        if (t === T.VIA) out.su_strada.push(row(p));
+        if (onCarr(p.c.x, p.c.z)) out.su_strada.push(row(p));   /* in carreggiata, non sul marciapiede */
         if (T.WATER !== undefined && t === T.WATER) out.in_acqua.push(row(p));
         const hmin = Math.min(...[[0, 0], [-.8, -.8], [.8, .8], [-.8, .8], [.8, -.8]].map(([u, w]) => R.groundH(p.c.x + u * p.he.x, p.c.z + w * p.he.z))), d = p.base - hmin, held = d > .35 && all.some(q => q !== p && q.base + 2 * q.he.y > p.base - .15 && q.base < p.base && Math.abs(q.c.x - p.c.x) < q.he.x + p.he.x * .5 && Math.abs(q.c.z - p.c.z) < q.he.z + p.he.z * .5); if (d > .35 && !held) out.sospesi.push(row(p, { scarto: +d.toFixed(2) })); if (d < -.5) out.affondati.push(row(p, { scarto: +d.toFixed(2) }));   /* sotto anche lo spigolo più basso: sepolto */
       });
