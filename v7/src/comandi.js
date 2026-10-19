@@ -102,12 +102,12 @@ const Comandi = (() => {
     ['graffiti', 'Bomboletta · tavoletta', '', graffiti, 'tch'],
     ['bomboletta', 'Bomboletta', '6', bomboletta, 'pc'],
     ['tavoletta', 'Tavoletta (bomboletta o pennarello)', '7', tavoletta, 'pc'],
-    ['ruote', 'BMX · skate', '', ruote, 'tch'],
+    ['ruote', typeof Skate !== 'undefined' ? 'BMX · skate' : 'BMX', '', ruote, 'tch'],
     ['bmx', 'BMX', '8', bmx, 'pc'],
-    ['skate', 'Skate', '9', skate, 'pc'],
+    ...(typeof Skate !== 'undefined' ? [['skate', 'Skate', '9', skate, 'pc']] : []),   // [pausa] lo skate è fuori dalla build per ora
     ['zaino', 'Zaino', 'I', zaino, ''],
   ];
-  const KEYS = { '6': bomboletta, '7': tavoletta, '8': bmx, '9': skate };
+  const KEYS = { '6': bomboletta, '7': tavoletta, '8': bmx }; if (typeof Skate !== 'undefined') KEYS['9'] = skate;
   addEventListener('keydown', e => {
     const k = e.key, pv = PV(); if (!KEYS[k] || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !pv || !ST()) return;
     const ui = pv.ui, tag = (e.target && e.target.tagName) || ''; if (/INPUT|TEXTAREA|SELECT/.test(tag) || e.target.isContentEditable) return;

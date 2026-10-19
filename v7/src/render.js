@@ -47,7 +47,17 @@ var Render = (function () {
   // [leggera] una texture che non si ridipinge più: mandata alla scheda video, il canvas in memoria si svuota (se il contesto
   // si perde il gioco ricarica la pagina, vedi webglcontextlost)
   function freeAfterUpload(t) { t.onUpdate = () => { t.onUpdate = null; const im = t.image; if (im && im.getContext) { im.width = 1; im.height = 1; } }; return t; }
-  function canvasTex(c) { const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; }
+  function canvasTex(c) { const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; return t; }   /* [plastica2] morbide con le mipmap (prima a blocchi: NearestFilter a 8 px per metro, da vicino ogni pixel diventava un quadrato) */
+  // [plastica2] tutte le texture del mondo morbide e con le mipmap, e sulle superfici dipinte un rilievo ricavato dalla texture stessa
+  // (bumpMap = map): il sole fa risaltare tegole, mattoni, intonaco e assi invece di illuminare un foglio piatto. Ogni materiale una volta.
+  const SMOOTH2 = new WeakSet();
+  function smooth2(root) {
+    root.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : null; if (!ms) return;
+      for (const m of ms) { if (!m || SMOOTH2.has(m)) continue; SMOOTH2.add(m);
+        for (const k of ['map', 'emissiveMap', 'roughnessMap']) { const t = m[k]; if (!t || !t.isTexture || t.isDataTexture || t.isRenderTargetTexture || t.isDepthTexture) continue; const im = t.image; if (!im || !(im.width > 4)) continue;
+          if (t.magFilter === THREE.NearestFilter || t.minFilter === THREE.NearestFilter || t.minFilter === THREE.NearestMipmapNearestFilter) { t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true; } }
+        if (!PHONE && m.isMeshStandardMaterial && m.map && !m.bumpMap && !m.transparent && !o.isSkinnedMesh && !o.isInstancedMesh && m.map.image && m.map.image.width > 4) { m.bumpMap = m.map; m.bumpScale = .45; m.needsUpdate = true; } } });
+  }
   function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
   const std = (o) => new THREE.MeshStandardMaterial(Object.assign({ roughness: .9, metalness: 0 }, o));
   const lam = (c) => new THREE.MeshLambertMaterial({ color: c });
@@ -11172,6 +11182,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
+    TT('morbide2', () => smooth2(scene));   /* [plastica2] */
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
     if (window.Models) try { Models.attach({ scene, G, groundH }); } catch (e) { console.warn(e); }
     if (window.OrdineArte) try { OrdineArte.attach({ scene, G, groundH }); } catch (e) { console.warn('[ordine_arte]', e); }   /* [ordine] */
@@ -11999,6 +12010,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     });
   }
   function frame(st, dt, ui) {
+    if (!(frame.__sm2 > 0)) { frame.__sm2 = 3; try { smooth2(scene); } catch (e) { } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
     SHMOV.st = st;   // [fluido] per le ombre dei faretti
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
