@@ -727,7 +727,7 @@
     $('touch').hidden = false; $('bookBtn').style.display = 'none';
     $('debt').addEventListener('click', () => { if (!ui.intro && !ui.over) toggleBook(); });   // il taccuino: tocca i soldi e l'ora
     const sEl = $('stick'), kn = $('knob'); let sid = null;
-    sEl.addEventListener('pointerdown', e => { A.init(); sid = e.pointerId; sEl.setPointerCapture(sid); stickB = R.camBasis(); mv(e); });   // [camera2] le direzioni della levetta restano quelle di quando la tocchi
+    sEl.addEventListener('pointerdown', e => { A.init(); sid = e.pointerId; sEl.setPointerCapture(sid); mv(e); });   // [camera3] la levetta è sempre relativa a quello che vedi: in su dritto, di lato curvi
     sEl.addEventListener('pointermove', e => { if (e.pointerId === sid) mv(e); });
     const end = () => { sid = null; stickB = null; stick.x = stick.y = 0; kn.style.left = '43px'; kn.style.top = '43px'; };
     sEl.addEventListener('pointerup', end); sEl.addEventListener('pointercancel', end);
