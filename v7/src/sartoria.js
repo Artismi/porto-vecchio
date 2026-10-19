@@ -629,6 +629,7 @@ var Sartoria = (function () {
     smanicato: { cl: 4, fab: 'piumino', collo: 'alto_zip', fronte: 'zip', smanicato: 1, agio: .01, lucido: 1, tasche: ['fianchi_zip'] },   // il gilet imbottito: fino al fianco, giro manica pulito
     piumino_oca: { cl: 4, fab: 'piumino', collo: 'alto_zip', fronte: 'zip', costine: 1, agio: .016, lucido: 1, oca: 1, tasche: ['fianchi_zip'] },   // il piumino d'oca: più gonfio, lucido, spicchi larghi
     giacca_tuta: { cl: 3, fab: 'nylon', collo: 'alto_zip', fronte: 'zip', costine: 1, bande: D, lucido: 1, tasche: ['fianchi_zip'] },
+    giacca_tuta_fascia: { cl: 3, fab: 'nylon', collo: 'alto_zip', fronte: 'zip', costine: 1, bande: D, fascia: '#ece8e0', fascia2: '#c8303a', lucido: 1, tasche: ['fianchi_zip'] },   // [stile] la tuta da nazionale: fascia bianca e rossa sul petto
     pantaloni_tuta: { cl: 2, fab: 'nylon', banda: D, lucido: 1, stretti: 1, polsino: 1, morbido: 1 },   // stretti in fondo con l'elastico (dentro i calzini, volendo)
     maglietta_oversize: { cl: 1, fab: 'jersey', collo: 'giro', stampa: 1, oversize: 1, agio: .008, stampe: ['tavola', 'fiamme', 'tag', 'palme', 'teschio', 'ottantasei'] },
     felpa_skate: { cl: 3, fab: 'jersey', collo: 'cappuccio', costine: 1, tasche: ['canguro'], agio: .014, oversize: 1, stampa: 1, stampe: ['tavola', 'tag', 'fiamme'] },

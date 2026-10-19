@@ -655,6 +655,7 @@ var Pittura = (function () {
         if (v >= 0 && v < 1 && X >= x0 && X < -x0) { const di = Math.floor((X - x0) / dw), u = ((X - x0) - di * dw) / dw, SEG = [0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f][+ds[di]], t = .17;
           const on = (k, hit) => (SEG >> k & 1) && hit, ink = (on(0, v < t && u > .1 && u < .9) || on(1, u > .78 && u < .95 && v > .05 && v < .5) || on(2, u > .78 && u < .95 && v > .5 && v < .95) || on(3, v > 1 - t && u > .1 && u < .9) || on(4, u > .05 && u < .22 && v > .5 && v < .95) || on(5, u > .05 && u < .22 && v > .05 && v < .5) || on(6, Math.abs(v - .5) < t / 2 && u > .1 && u < .9));
           if (ink) { c = rgb(C.bande || C.c2 || '#ece8e0'); h = .55; } } }
+      if (C.fascia) { const yF = B.bones.Chest.y + .02, d = y - yF; if (d > -.045 && d < .045) { const t = Math.abs(d); c = t < .036 ? rgb(C.fascia) : rgb(C.fascia2 || C.bande || '#c8303a'); h = .6; if (t > .033 && t < .039) c = mul(c, .82); } }   // [stile] la fascia a contrasto sul petto
       // la stampa sul petto (come la stampa della Sartoria): un disegno che copre il davanti
       if (C.stampa) { const PX = stampaPix(C), big = C.oversize ? 1.2 : 1, yT = B.bones.Chest.y + .05, u = (a + .62 * big) / (1.24 * big), v = (yT - y) / (.22 * big);
         if (PX && u >= 0 && u < 1 && v >= 0 && v < 1) { const k = (Math.floor(v * PX.n) * PX.n + Math.floor(u * PX.n)) * 4, q = [PX.d[k] / 255, PX.d[k + 1] / 255, PX.d[k + 2] / 255]; if (Math.abs(q[0] - C.A[0]) + Math.abs(q[1] - C.A[1]) + Math.abs(q[2] - C.A[2]) > .1) { c = q; h = .45; } } }
@@ -721,6 +722,7 @@ var Pittura = (function () {
       const Ls = L[R], end = Ls.s1;
       if (C.polsi && end - sv < .045 && end > Ls.la) { c = mul(C.A, 1.04); h = .7; if (end - sv > .042 || end - sv < .003) { s *= .7; h = .1; } }
       if (C.costine && end - sv < .05 && end > Ls.la) { const rib = .5 + .5 * Math.sin(xm / .006 * Math.PI); c = mul(C.A, .82 + rib * .22); h = rib; }
+      if (C.fascia) { const yF = B.bones.Chest.y + .02, d = y - yF; if (d > -.045 && d < .045) { const t = Math.abs(d); c = t < .036 ? rgb(C.fascia) : rgb(C.fascia2 || C.bande || '#c8303a'); h = .6; if (t > .033 && t < .039) c = mul(c, .82); } }   // [stile] la fascia a contrasto sul petto, da tuta della nazionale
       if (C.bande && sv < end - (C.costine ? .05 : .01)) { const k = tre((Math.abs(a) - R2) * F0(ri) / (Math.PI * 2)); if (k) { c = k > 1 ? mul(rgb(C.bande), .8) : rgb(C.bande); h = k > 1 ? .2 : .65; } }   // le tre strisce lungo la manica
       // pieghe al gomito (dentro) e alla spalla: archi più scuri
 
