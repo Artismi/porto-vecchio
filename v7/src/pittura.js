@@ -530,8 +530,16 @@ var Pittura = (function () {
   // [vestibilità] la caduta dei pantaloni: la stoffa scende dritta dalla coscia invece di seguire ginocchio e polpaccio.
   // Per ogni angolo il raggio voluto è quello della coscia piena × la caduta; dentro, verso l'altra gamba, poco (le gambe non si toccano)
   const CADUTA = { jeans_larghi: 1.14, cargo: 1.06, pantaloni_tuta: .95, pantaloni: .92, pantaloni_completo: .92, pantaloni_grigi: .92, bermuda: .98, pantaloni_lavoro: .9, jeans: .86, velluto: .88, salopette: .95 };
+  const CADUTA_T = { giacca_completo: 1, giacca: 1, cappotto: 1.01, trench: 1.01, pelliccia: 1.02, pelliccia_volpe: 1.02, montone: 1.01 };
   const CADUTA_A = { felpa: .97, felpa_skate: 1.02, felpa_zip: .97, maglione: .95, maglione_v: .95, giacca_completo: .92, giacca: .92, cappotto: .95, camicia: .88, camicia_quadri: .9, camicia_hawaii: .95, dolcevita: .85, giacca_tuta: .94, pelliccia: 1, pelliccia_volpe: 1 };
   function caduta(B, C, r, L) {
+    if (r === 0) {   // il busto dei capi strutturati: dal petto in giù la stoffa scende dritta (la giacca non fa la clessidra)
+      const kt = C.cadutaT || CADUTA_T[C.id] || 0; if (!kt) return 0;
+      const tb = frame(B).tubes[0], R = ironed(tb), yC = B.bones.Chest.y, key = 'cadT'; let T = B[key];
+      if (!T) { T = B[key] = new Float32Array(64); for (let q = 0; q < 64; q++) { const a = q / 64 * Math.PI * 2 - Math.PI; let m = 0; for (let y0 = yC - .02; y0 <= yC + .06; y0 += .02) m = Math.max(m, ironRadius(R, tb, tb.sAtY(y0), a)); T[q] = m; } }
+      const y = L.p[1]; if (y > yC + .04) return 0;
+      const qi = ((Math.round((L.a + Math.PI) / (Math.PI * 2) * 64) % 64) + 64) % 64, rb = ironRadius(R, tb, L.s, L.a), want = T[qi] * kt;
+      return Math.max(0, want - rb) * sm(cl((yC + .04 - y) / .06, 0, 1)); }
     if (r === 1 || r === 2) {   // la manica: dal pieno del braccio scende in linea (niente campanella che si strizza)
       const ka = C.cadutaA || CADUTA_A[C.id] || (C.oversize ? 1 : 0); if (!ka) return 0;
       const tb = frame(B).tubes[r], R = ironed(tb), key = 'cadA' + r; let T = B[key];
@@ -586,7 +594,7 @@ var Pittura = (function () {
   }
   // il cuore: cosa c'è dipinto nel punto (a, sv) della regione R per il capo C (null = il capo non copre qui)
   // il giro manica dei capi senza maniche (gilet, smanicati): quanto un punto sta oltre il piano verticale dell'attaccatura del braccio (>0: è braccio)
-  const gapF = t => .03 + .32 * Math.pow(cl((t - .66) / .34, 0, 1), 2);   // l'apertura davanti della falda della giacca (come in Sartoria)
+  const gapF = t => .025 + .13 * Math.pow(cl((t - .7) / .3, 0, 1), 2);   // [stile] abbottonata: i quarti si aprono appena verso l'orlo   // l'apertura davanti della falda della giacca (come in Sartoria)
   const giroManica = C => C.smanicato && C.collo !== 'canotta' && !C.spalline_sottili;
   function armSide(B, p) {
     let best = -9; for (const sd of ['L', 'R']) { const j = B.bones['UpperArm' + sd], c = B.bones.Chest || B.bones.Hips; if (!j || !c) continue; const n = j.clone().sub(c).setY(0).normalize(); const lo = j.y - .085 - p.y; best = Math.max(best, p.clone().sub(j).dot(n) + .004 - (lo > 0 ? lo * 1.5 + lo * lo * 40 : 0)); }   // sotto l'ascella il giro manica si chiude in tondo
@@ -899,10 +907,10 @@ var Pittura = (function () {
   const BMAT = new Map();
   function blockMat(fab, col, c2, c3, opt) {
     opt = opt || {}; const key = [fab, col, c2, c3, opt.dark || 0, opt.liscio ? 1 : 0].join('|'); if (BMAT.has(key)) return BMAT.get(key);
-    const C = { fab, A: rgb(col || '#808080'), B: rgb(c2 || col || '#808080'), C: rgb(c3 || col || '#808080') }, N = 64, sz = .45, cv = document.createElement('canvas'); cv.width = cv.height = N;
+    const C = { fab, A: rgb(col || '#808080'), B: rgb(c2 || col || '#808080'), C: rgb(c3 || col || '#808080') }, N = 192, sz = .45, cv = document.createElement('canvas'); cv.width = cv.height = N;   // [stile] 2,3 mm per texel (era 7): le righe dei pezzi in rilievo come quelle dipinte
     const x = cv.getContext('2d'), id = x.createImageData(N, N);
-    for (let py = 0; py < N; py++) for (let px = 0; px < N; px++) { const f = fabric(C, (px + .5) / N * sz, (py + .5) / N * sz), i = (py * N + px) * 4, k = opt.dark ? .72 : 1; id.data[i] = f[0] * 255 * k; id.data[i + 1] = f[1] * 255 * k; id.data[i + 2] = f[2] * 255 * k; id.data[i + 3] = 255; }
-    x.putImageData(id, 0, 0); const T = new THREE.CanvasTexture(cv); T.wrapS = T.wrapT = THREE.RepeatWrapping; T.magFilter = THREE.NearestFilter; T.minFilter = THREE.NearestMipmapLinearFilter; T.repeat.set(1 / sz, 1 / sz);
+    for (let py = 0; py < N; py++) for (let px = 0; px < N; px++) { const f = fabricAA(C, (px + .5) / N * sz, (py + .5) / N * sz), i = (py * N + px) * 4, k = opt.dark ? .72 : 1; id.data[i] = f[0] * 255 * k; id.data[i + 1] = f[1] * 255 * k; id.data[i + 2] = f[2] * 255 * k; id.data[i + 3] = 255; }
+    x.putImageData(id, 0, 0); const T = new THREE.CanvasTexture(cv); T.wrapS = T.wrapT = THREE.RepeatWrapping; T.magFilter = THREE.LinearFilter; T.minFilter = THREE.LinearMipmapLinearFilter; T.anisotropy = 8; T.repeat.set(1 / sz, 1 / sz);
     const m = opt.liscio ? new THREE.MeshStandardMaterial({ map: T, vertexColors: opt.vc !== false, side: THREE.DoubleSide, roughness: 1, metalness: 0 }) : new THREE.MeshLambertMaterial({ map: T, vertexColors: opt.vc !== false, side: THREE.DoubleSide, flatShading: true });
     m.emissiveMap = T; m.emissive = new THREE.Color(.3, .3, .3); BMAT.set(key, m); return m;   // le falde con la stessa luce del vestito dipinto (colore × 0,3, come mats)
   }
@@ -974,7 +982,7 @@ var Pittura = (function () {
       P.forEach(CA => { if (!CA.L[RA] || (CA.polsi && CA.L[RA].s1 > CA.L[RA].la)) return; const Ls = CA.L[RA], sH = Ls.s1 - .008; if (!shows(CA, ri, sH - .01)) return;
         const lng = Ls.s1 > Ls.la, tbA = F.tubes[ri], wA = B.bones['Wrist' + sd], sW = wA ? tbA.sNear(wA) : sH, off = ringOff(B, P, ri, sH - .006), o = new THREE.Group();
         // il polsino delle maniche lunghe: alto (5-6 cm), dalla fine della manica dipinta fino al polso, chiude l'attacco della mano
-        o.add(lng ? orlo(B, ri, sW - .016, .066, off + .0035, .006 + spessore(CA), 14, mat(CA)) : orlo(B, ri, sH, .016, off + .0035, .005 + spessore(CA), 12, mat(CA))); AT(Ls.s1 < Ls.la - .02 ? 'UpperArm' + sd : 'LowerArm' + sd, o); });
+        o.add(lng ? orlo(B, ri, sW - .014, CA.cl >= 4 ? .042 : .06, off + .002, .004 + spessore(CA) * .35, 14, mat(CA)) : orlo(B, ri, sH, .014, off + .0025, .0035 + spessore(CA) * .35, 12, mat(CA)));   /* [stile] fascia sottile a filo della manica, non un rotolo */ AT(Ls.s1 < Ls.la - .02 ? 'UpperArm' + sd : 'LowerArm' + sd, o); });
       const RL = 'L' + sd, rl = sd === 'L' ? 3 : 4;
       P.forEach(CL => { if (!CL.L[RL] || CL.L[RL].falda !== undefined || CL.risvolto) return; const Ls = CL.L[RL]; if (Ls.s1 >= F.tubes[rl].L + .01) return;
         const last = !P.slice(P.indexOf(CL) + 1).some(o => o.L[RL] && o.L[RL].falda === undefined && o.L[RL].s1 > Ls.s1 - .02 && (o.cl || 0) >= (CL.cl || 0));   // l'orlo in fondo alla gamba: solo se nessuno ci scende sopra

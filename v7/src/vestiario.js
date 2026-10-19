@@ -933,9 +933,9 @@ var Vesti3D = (function () {
     const at = (R, a) => { const f = (((a + Math.PI) / (Math.PI * 2) * NA) % NA + NA) % NA, i0 = Math.floor(f), t = f - i0; return lerp0(R[i0], R[(i0 + 1) % NA], t); };
     // il listino (la fascia che sale dritta attorno al collo) e la vela che si rovescia sopra; davanti si apre (la polo sui bottoni, l'aperta di più)
     // [stile] colletti bassi e morbidi, da strada: la camicia sbottonata in cima (il collo si vede), listino appena accennato, la vela posata piatta
-    const gap = polo ? .26 : aperta ? .42 : revers ? .1 : .3, stH = polo ? .01 : revers ? .016 : .012, yS0 = nY - .006, yS1 = yS0 + stH, th = .0024;
+    const gap = polo ? .26 : aperta ? .42 : revers ? .14 : .3, stH = polo ? .01 : revers ? .012 : .012, yS0 = nY - .006, yS1 = yS0 + stH, th = .0024;
     const RS = ring(yS0 - .006, yS1, .0035);   // il listino sta sopra il collo
-    const Wb = revers ? .02 : polo ? .026 : .028, Wp = aperta ? .04 : polo ? .016 : .03;   // la vela: dietro, e quanto in più verso le punte
+    const Wb = revers ? .013 : polo ? .026 : .028, Wp = aperta ? .04 : polo ? .016 : revers ? .014 : .03;   // la vela: dietro, e quanto in più verso le punte
     const pf = a => { const x = Math.max(0, 1 - (Math.PI - Math.abs(a)) / 2.3); return 0; };
     const fr = a => { const x = Math.max(0, 1 - Math.abs(a) / 1.15); return x * x * (3 - 2 * x); };   // 1 davanti alle punte, 0 dietro
     const W = a => Wb + Wp * fr(a) - .006 * Math.pow(Math.max(0, -Math.cos(a)), 2);
@@ -951,7 +951,8 @@ var Vesti3D = (function () {
       for (const i of [0, NAi]) for (let j = 0; j < NT; j++) I.push(id(i, j, 0), id(i, j + 1, 0), id(i, j, 1), id(i, j, 1), id(i, j + 1, 0), id(i, j + 1, 1));
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); return new THREE.Mesh(g, mt); };
     const o = new THREE.Group();
-    for (const [a0, a1] of [[gap, Math.PI], [-Math.PI, -gap]]) { o.add(sheet(ptS, 3, a0, a1, 30)); o.add(sheet(pt, 7, a0, a1, 30)); }
+    const aMax = revers ? .95 : Math.PI;   // sotto la giacca il colletto si vede solo davanti, nello scollo dei revers
+    for (const [a0, a1] of [[gap, aMax], [-aMax, -gap]]) { o.add(sheet(ptS, 3, a0, a1, revers ? 12 : 30)); o.add(sheet(pt, 7, a0, a1, revers ? 12 : 30)); }
     // la punta: la vela davanti finisce a punta (taglio obliquo), non a lembo dritto
     // il bottone del listino, e nella polo il bordino a contrasto lungo l'orlo
     if (false) { const q = ptS(0, .5, .0015); o.add(Sp(.0035, lm(sh(col, .82)), q.x, q.y, q.z)); }
@@ -1059,17 +1060,17 @@ var Vesti3D = (function () {
         const P0 = window.Pittura, CUT = Sartoria.CUT_(), nY = Sartoria.neckY(B), sp = C0 => P0 ? P0.spessore(C0) : .004;
         const plans = outfit.filter(o => o.parti && o.parti.includes('torso')).map(o => Object.assign({ id: o.id }, CUT[o.id] || { cl: 1 }, (o.var && typeof o.var === 'object') ? o.var : {}));
         const shirt = plans.filter(p => p.cl <= 1).pop(), outer = plans.filter(p => p.cl >= 3 && !p.solo_gonna && !p.davanti).pop();
-        const vDrop = outer ? ({ v: .11, revers: .2, revers_pelle: .2, camicia_aperta: .11 }[outer.collo] || 0) : .5;   // con un maglione girocollo o a collo alto la cravatta non si vede
+        const vDrop = outer ? ({ v: .11, revers: .25, revers_pelle: .25, camicia_aperta: .11 }[outer.collo] || 0) : .5;   // con un maglione girocollo o a collo alto la cravatta non si vede
         if (vDrop > .03) {
           const dis = c.dis || 'raso', C2 = { regimental: '#c8b070', pois: '#ece8dc', paisley: '#e8c070', liberty: '#e8d8b0', costine: c.col }[dis] || c.col, C3 = { paisley: '#2a3a6a', liberty: '#c83a4a', regimental: '#1a1a1e' }[dis] || C2;
           const mt = P0 ? P0.blockMat(dis, c.col, C2, C3, { vc: false }) : FM('raso', c.col), off = (shirt ? sp(shirt) : 0) + .003, o = new THREE.Group(), tb = Pittura.frame(B).tubes[0];
           const at = (y, a, d) => Pittura.surfI(B, 0, tb.sAtY(y), a, off + (d || 0));
-          const yK = nY - .018, yEnd = Math.max(B.waist - .03, nY - vDrop + .01), tip = yEnd > B.waist ? 0 : .03;
+          const yK = nY - .018, yEnd = Math.max(B.waist - .03, nY - vDrop + .01), tip = yEnd > B.waist || outer ? 0 : .03;   // sotto la giacca la pala sparisce dietro l'abbottonatura, senza punta a vista
           // il nodo: un trapezio rigonfio
-          const k = at(yK, 0, .006), knot = new THREE.Mesh(new THREE.CylinderGeometry(.017, .009, .03, 4, 1), mt); knot.rotation.y = Math.PI / 4; knot.scale.set(1, 1, .55); knot.position.copy(k); o.add(knot);
+          const k = at(yK, 0, .005), knot = new THREE.Mesh(new THREE.CylinderGeometry(.012, .007, .024, 4, 1), mt); knot.rotation.y = Math.PI / 4; knot.scale.set(1, 1, .5); knot.position.copy(k); o.add(knot);   // il nodo piccolo e curato
           // la pala: nastro sulla superficie, da 1,4 a 3,8 cm, con la punta
           const n = 10, V = [], U = [], I = [];
-          for (let i = 0; i <= n; i++) { const t = i / n, y = lerp0(yK - .015, yEnd, t), w = .007 + t * .012, c0 = at(y, 0, .001), cl = at(y, -w / .14, .001), cr = at(y, w / .14, .001); V.push(cl.x, cl.y, cl.z, cr.x, cr.y, cr.z); U.push(0, t * .5, .05, t * .5); }
+          for (let i = 0; i <= n; i++) { const t = i / n, y = lerp0(yK - .012, yEnd, t), w = .006 + t * .009, c0 = at(y, 0, .001), cl = at(y, -w / .14, .001), cr = at(y, w / .14, .001); V.push(cl.x, cl.y, cl.z, cr.x, cr.y, cr.z); U.push(0, t * .5, .05, t * .5); }
           if (tip) { const tp = at(yEnd - tip, 0, .001); V.push(tp.x, tp.y, tp.z); U.push(.025, .55); }
           for (let i = 0; i < n; i++) I.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2); if (tip) I.push(n * 2, n * 2 + 1, n * 2 + 2);
           const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(V, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); gg.setIndex(I); gg.computeVertexNormals();

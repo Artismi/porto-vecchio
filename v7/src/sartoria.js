@@ -884,11 +884,11 @@ var Sartoria = (function () {
     // lungo l'altezza: linee dritte (niente onde)
     for (let it = 0; it < 4; it++) for (let i = 1; i < rows - 1; i++) for (let q = 0; q < RG; q++) R[i][q] = Math.max(R[i][q], (R[i - 1][q] + R[i + 1][q]) / 2);
     const rad = (i, a) => { const f = ((a / (Math.PI * 2)) * RG % RG + RG) % RG, q0 = Math.floor(f), q1 = (q0 + 1) % RG, u = f - q0, i0 = Math.min(rows - 1, Math.floor(i)), i1 = Math.min(rows - 1, i0 + 1), v = i - i0; return lerp(lerp(R[i0][q0], R[i0][q1], u), lerp(R[i1][q0], R[i1][q1], u), v); };
-    const gap = i => .03 + .32 * Math.pow(cl((tOf(i) - .66) / .34, 0, 1), 2), cols = 44;   // chiusa fino all'ultimo bottone, poi i quarti davanti si arrotondano verso l'orlo
+    const gap = i => .025 + .13 * Math.pow(cl((tOf(i) - .7) / .3, 0, 1), 2), cols = 44;   // [stile] come gapF in pittura   // chiusa fino all'ultimo bottone, poi i quarti davanti si arrotondano verso l'orlo
     const angOf = (i, j) => { const g = gap(i); return g + j / cols * (Math.PI * 2 - 2 * g); };
     const pt = (i, a, dO) => { const s = sOf(i), fr = frameAt(tb, s), t = tOf(i), fe = Math.min(a, Math.PI * 2 - a);
-      let r = rad(i, a) + dO + .003 * t * t;   // cade dritta
-      if (fe < .4) r += (.4 - fe) * .006 * t;   // i lembi davanti appena staccati
+      let r = rad(i, a) + dO + .0012 * t;   // cade dritta, niente campana
+      if (fe < .25) r += (.25 - fe) * .004 * t;   // i lembi davanti appena staccati
       r += .0015 + .004 * cl(t / .3, 0, 1);   // appena fuori dalla giacca dipinta (che sotto si toglie): attacco netto, niente sfarfallio
       const d = fr.f.clone().multiplyScalar(Math.cos(a)).addScaledVector(fr.sd, Math.sin(a)), ta = fr.f.clone().multiplyScalar(-Math.sin(a)).addScaledVector(fr.sd, Math.cos(a));
       return { p: fr.p.clone().addScaledVector(d, r), d, ta, fr, s }; };
@@ -909,7 +909,7 @@ var Sartoria = (function () {
       for (const sd of [1, -1]) {
         grid(bd, 3, 7, (k, j) => { const a0 = sd > 0 ? .78 + j / 6 * .62 : Math.PI * 2 - .78 - j / 6 * .62, i = iP + k / 2 * h, q = pt(i, a0, .004 - (k === 2 ? .0015 : 0)); return { p: q.p, out: q.d, u: a0 * .2, v: q.s, c: k === 2 ? .62 : .92 }; }, W, 0);   // la pattina
         grid(bd, 2, 7, (k, j) => { const a0 = sd > 0 ? .78 + j / 6 * .62 : Math.PI * 2 - .78 - j / 6 * .62, q = pt(iP + h, a0, k ? .0005 : .004); return { p: q.p, out: q.fr.t.clone().negate(), u: a0 * .2, v: q.s, c: .45 }; }, W, 0); }   // il bordo sotto, in ombra
-      if (/bottoni|doppio/.test(C.fronte || '')) { const q = pt((rows - 1) * cl(.06 / (yTop - yb), 0, 1), gap(0) + .06, .004), g = new THREE.CylinderGeometry(.0095, .0095, .004, 10); g.rotateX(Math.PI / 2); solid(bd, place(g, q.p, q.d, new THREE.Vector3(0, 1, 0)), W, q.p, 3, .9); } }
+      if (/bottoni|doppio/.test(C.fronte || '')) { const q = pt((rows - 1) * cl(.06 / (yTop - yb), 0, 1), gap(0) + .05, .003), g = new THREE.CylinderGeometry(.0065, .0065, .003, 10); g.rotateX(Math.PI / 2); solid(bd, place(g, q.p, q.d, new THREE.Vector3(0, 1, 0)), W, q.p, 3, .9); } }
     grid(bd, 2, cols + 1, (k, j) => { const a = angOf(0, j), q = pt(0, a, k ? -th : 0); return { p: q.p, out: q.fr.t.clone(), u: a / (Math.PI * 2) * ringC, v: q.s + k * th, c: .7 }; }, W, 0);
     grid(bd, 2, cols + 1, (k, j) => { const a = angOf(rows - 1, j), q = pt(rows - 1, a, k ? -th : 0); return { p: q.p, out: q.fr.t.clone().negate(), u: a / (Math.PI * 2) * ringC, v: q.s - k * th, c: .75 }; }, W, 0);
   }
