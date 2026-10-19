@@ -46,6 +46,22 @@ La build normale resta con la mappa vecchia (`world.js`).
 - **Procida, Marina Corricella** — case a colori impilate sul porticciolo, lungomare senza auto, reti e barche.
   [Colorful Procida](https://darylhunterpolyhistor.substack.com/p/colorful-procida-italy)
 
+### Puglia
+- **Otranto** — castello aragonese a pianta **pentagonale**, tre torri cilindriche e **fossato** attorno; verso il mare un
+  bastione **a punta di lancia**; la porta col **ponte levatoio** protetta da un'opera **triangolare** (rivellino) sul
+  fossato; castello e mura sono **un solo sistema**; si entra dal mare per la **Porta Alfonsina**; i **Bastioni dei
+  Pelasgi** guardano il porto. [Italia.it](https://www.italia.it/it/puglia/otranto/monumenti/castello-aragonese) ·
+  [Il Tacco di Bacco](https://iltaccodibacco.it/otranto/castello-aragonese-di-otranto) ·
+  [SiViaggia](https://siviaggia.it/idee-di-viaggio/otranto-incanto-del-salento/116518/)
+- **Monopoli** — il **Castello Carlo V** compatto e massiccio sulla punta (Punta Penna), poi carcere; il **porto vecchio**
+  coi pescatori che rammendano le reti e le barche; le mura col **Torrione**; il centro un labirinto di vicoli bianchi
+  di calce; la cala-spiaggia appena fuori dalle mura. [The Wom](https://travel.thewom.it/italia/puglia/borgo-sul-mare-piu-affascinante-della-puglia.html) ·
+  [Travel365](https://www.travel365.it/monopoli-cosa-vedere.htm)
+- **Molfetta** — il **Borgo Vecchio a spina di pesce**: una via dorsale e i vicoli paralleli che ne escono a pettine,
+  pensati contro il vento e i pirati. [Italo](https://blog.italotreno.com/idee-di-viaggio/cosa-fare-cosa-visitare-molfetta-dintorni/)
+- **Polignano a Mare** — il borgo sulla scogliera, la **Porta Grande** col ponte levatoio, le terrazze a balcone sul mare.
+  [Italia.it](https://italia.it/en/puglia/bari/centro-storico-di-polignano-a-mare)
+
 ### Il mercato
 - **Porta Palazzo, Torino** — la piazza ottagonale più grande della città, tettoie coperte (la tettoia dei contadini)
   circondate da ~750 banchi su carretti, il mercato coperto accanto.
@@ -72,14 +88,16 @@ La build normale resta con la mappa vecchia (`world.js`).
 
 ## Regole di progetto che ne vengono
 
-1. **La Rocca è un recinto chiuso sulla punta**, come St Elmo e la Cittadella di Messina: fronte di terra bastionato verso
+1. **La Rocca è un recinto chiuso sulla punta** (Otranto e Monopoli: il castello sulla punta, fossato, rivellino triangolare
+   davanti alla porta, ponte levatoio), come St Elmo e la Cittadella di Messina: fronte di terra bastionato verso
    la città (due bastioni interi, la cortina, la porta nel mezzo, un **rivellino** davanti alla porta, il **fossato**),
    **mura a mare** che seguono la costa con mezzi bastioni agli angoli, la **Porta a Mare** sul porto militare.
    Dentro: la **piazza d'armi** al centro, il **palazzo del comando** in fondo sull'asse della porta, le **caserme in fila
    lungo le cortine** che guardano la piazza, la cappella, la polveriera, le cisterne. Niente prati né palazzine sparse.
 2. **La spianata**: fra la Rocca e la città 40-60 m vuoti (il campo di tiro). È la grande scena del regime: lastricata,
    il Muro e il posto di blocco sul bordo, i pali coi riflettori, i ritratti del Garante. Nessuna casa.
-3. **Il borgo comincia subito dopo la spianata** (Bari Vecchia, Gallipoli, Trapani): labirinto di vicoli e **corti**,
+3. **Il borgo comincia subito dopo la spianata** (Bari Vecchia, Gallipoli, Trapani, Monopoli): labirinto di vicoli e **corti**,
+   con quartieri **a spina di pesce** come Molfetta (una dorsale e i vicoli a pettine), bianchi di calce,
    piazzette davanti alle chiese, uno o due **assi dritti antichi** che lo tagliano (Rua Grande / Rua Nova), le **mura di
    tramontana** sulla costa nord col camminamento sopra, la marina coi colori di Procida sul porto vecchio.
 4. **Un solo corso largo** separa il borgo dalla città a griglia (Corso Vittorio Emanuele a Bari). Lì, sulla cucitura,
