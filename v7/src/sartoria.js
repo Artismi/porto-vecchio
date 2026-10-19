@@ -718,10 +718,17 @@ var Sartoria = (function () {
       const BOX = {}; let tb = boxTube(tube(B, trunkKind), C.box !== undefined ? C.box : (BOX[C.cl] || 0));
       if (C.blocchi && trunkKind === 'gonna') {   // la falda: un ovale pulito per ogni altezza (largo quanto bacino e gambe, con agio), pareti lisce
         const t0 = tb, RG = t0.R[0].length, n = t0.ns, ext = [];
+        // [forma] si misura sul corpo come si vede (stirato e modellato dalla Pittura), non sul modello grezzo con la sua gonna e la pancia di stoffa
+        const PP = window.Pittura ? window.Pittura.ironAll(B) : B.P, pad = window.Pittura ? .004 : 0;
         for (let i = 0; i <= n; i++) { const S0 = t0.S[i]; let W = 0, Df = 0, Db = 0;
-          for (let k = 0; k < B.part.length; k++) { const pt = B.part[k]; if (!(C.poncho ? /torso|bacino|collo/ : /torso|bacino|cosce|polpacci/).test(pt || '')) continue; const y = B.P[k * 3 + 1]; if (Math.abs(y - S0.y) > .03) continue;
-            const dx = Math.abs(B.P[k * 3] - S0.x), dz = B.P[k * 3 + 2] - S0.z; W = Math.max(W, dx); if (dz > 0) Df = Math.max(Df, dz); else Db = Math.max(Db, -dz); }
-          ext.push([W, Df, Db]); }
+          for (let k = 0; k < B.part.length; k++) { const pt = B.part[k]; if (!(C.poncho ? /torso|bacino|collo/ : /torso|bacino|cosce|polpacci/).test(pt || '')) continue; const y = PP[k * 3 + 1]; if (Math.abs(y - S0.y) > .03) continue;
+            const dx = Math.abs(PP[k * 3] - S0.x), dz = PP[k * 3 + 2] - S0.z; W = Math.max(W, dx); if (dz > 0) Df = Math.max(Df, dz); else Db = Math.max(Db, -dz); }
+          ext.push([W + pad, Df + pad, Db + pad]); }
+        // [forma] niente pancia: dalla vita al punto più largo dei fianchi la stoffa scende in linea (davanti piatto, ai lati la curva dell'anca),
+        // mai più larga della linea; si allarga solo da lì in giù
+        if (!C.poncho) { const iW = Math.min(n, Math.round(t0.sAtY(B.waist) / t0.ds)), iG = Math.max(0, Math.round(t0.sAtY((B.bones.Hips.y + B.crotch) / 2) / t0.ds));
+          if (iW > iG + 1) for (let k = 0; k < 3; k++) { let ib = iG; for (let i = iG; i < iW; i++) if (ext[i][k] > ext[ib][k]) ib = i;   // il punto più largo (glutei dietro, anche ai lati, davanti il bacino)
+            for (let i = ib + 1; i < iW; i++) { const t = (i - ib) / (iW - ib), line = lerp(ext[ib][k], ext[iW][k], k === 1 ? t : Math.pow(t, 1.6)); ext[i][k] = Math.min(ext[i][k], line) + 0; ext[i][k] = Math.max(ext[i][k], line * (k === 1 ? 1 : .985)); } } }
         const hipI = Math.round(t0.sAtY(B.bones.Hips.y) / t0.ds);
         if (C.poncho) { const top = Math.round(t0.sAtY(neckY(B)) / t0.ds); for (let i = Math.min(n, top) - 1; i >= 0; i--) for (let k = 0; k < 3; k++) ext[i][k] = Math.max(ext[i][k] + .002, ext[i + 1][k]);   // la mantella si allarga dal collo e poi cade dritta
           for (let i = 0; i <= n; i++) { const yy = t0.S[i].y, sh = cl((neckY(B) - yy) / .1, 0, 1); ext[i][0] += .02 + .11 * sh; ext[i][1] += .03; ext[i][2] += .03; } }   // le spalle e le braccia che stanno sotto
@@ -729,7 +736,7 @@ var Sartoria = (function () {
         for (let it = 0; it < 3; it++) for (let i = 1; i < n; i++) for (let k = 0; k < 3; k++) ext[i][k] = Math.max(ext[i][k], (ext[i - 1][k] + ext[i + 1][k]) / 2);
         // linee dritte: dal bacino all'orlo la misura va in linea retta (niente onde dalle gambe), con agio al fondo per il passo
         if (!C.poncho) { let lo = 0; for (let i = 0; i <= hipI; i++) if (ext[i][0] > 0) { lo = i; break; } const A0 = ext[lo], A1 = ext[Math.min(n, hipI)];
-          const coatF = C.cl >= 5, ease = C.giacchetta ? [.014, .04, .012] : coatF ? [.045, .11, .07] : [.045, .085, .065];   // il cappotto si apre (passo lungo), la gonna scende quasi dritta
+          const coatF = C.cl >= 5, sv0 = C.svasa || .1, ease = C.giacchetta ? [.014, .04, .012] : coatF ? [.045, .11, .07] : [.012 + sv0 * .12, .02 + sv0 * .18, .016 + sv0 * .14];   // [forma] la gonna: dritta dal fianco, appena aperta per il passo (più svasata solo se il modello lo è)   // il cappotto si apre (passo lungo), la gonna scende quasi dritta
           for (let i = lo; i < hipI; i++) { const t = (i - lo) / Math.max(1, hipI - lo); for (let k = 0; k < 3; k++) ext[i][k] = Math.max(lerp(A0[k] + ease[k], A1[k], t), coatF ? lerp(ext[i][k], A1[k], .5) : A1[k] * .96); } }
         const M = t0.R.map((r, i) => { const [W, Df, Db] = ext[i], o = new Float32Array(RG); for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a), D = ca >= 0 ? Df : Db, e = C.cl >= 5 ? 3 : 2.8;
           o[q] = 1 / Math.pow(Math.pow(Math.abs(ca) / Math.max(D, .02), e) + Math.pow(Math.abs(sa) / Math.max(W, .02), e), 1 / e); } return o; });
@@ -764,7 +771,7 @@ var Sartoria = (function () {
         if (coat) { const fe = Math.min(a, Math.PI * 2 - a); if (fe < .5) o += (.5 - fe) * .03 * cl((B.waist - y) / .4, 0, 1); }   // i lembi davanti si staccano verso il basso
         if (C.blocchi) { o += cl((B.waist - y) / .12, 0, 1) * (coat ? .02 : C.giacchetta ? .001 : .003); o *= .35 + .65 * cl((Ls.yt - y) / .08, 0, 1); }   // staccata dalle gambe, raccordata al busto in alto
         if (C.blocchi && !C.poncho && !C.giacchetta && y < hipY) { const dn = cl((hipY - y) / .45, 0, 1), nf = coat ? 6 : 9, ph = coat ? 1.3 : .4;   // pieghe morbide che si aprono verso l'orlo (stoffa che pende)
-          o += (.5 + .5 * Math.cos(a * nf + ph)) * (coat ? .016 : .02) * dn * dn; }
+          o += (.5 + .5 * Math.cos(a * nf + ph)) * (coat ? .016 : .008 + (C.svasa || .1) * .05) * dn * dn; }
         if (C.pieghe && !C.blocchi && y < hipY) o += (.5 + .5 * Math.cos(a * 14)) * .006 * cl((hipY - y) / .25, 0, 1);
         if (C.poncho) o += cl((B.neck - y) / .3, 0, 1) * (C.blocchi ? .04 : .1) * (.6 + .4 * Math.abs(Math.sin(a)));   // il poncho scende largo sulle braccia
         const p = surf(tb, s, a, o), out = p.clone().sub(fr.p);

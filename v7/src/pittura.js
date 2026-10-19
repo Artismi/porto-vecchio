@@ -66,32 +66,35 @@ var Pittura = (function () {
     R = R.map((r, i) => { if (tb.kind === 'tronco' && tb.S[i].y < yW + .04) return r; let W = 0, Df = 0, Db = 0; for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, x = Math.abs(Math.sin(a)) * r[q], z = Math.cos(a) * r[q]; W = Math.max(W, x); if (z > 0) Df = Math.max(Df, z); else Db = Math.max(Db, -z); }
       const o = new Float32Array(RG); for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a)), D = Math.cos(a) >= 0 ? Df : Db;
         const rb = 1 / Math.pow(Math.pow(ca / Math.max(D, .01), e) + Math.pow(sa / Math.max(W, .01), e), 1 / e); o[q] = lerp(r[q], Math.min(rb, r[q] + .03), kb); } return o; });
-    if (tb.kind === 'tronco' && tb.Bref) sartoriaForma(tb, R);
+    if (tb.Bref && (tb.kind === 'tronco' || /^gamba/.test(tb.kind || ''))) sartoriaForma(tb, R);
     IRON.set(tb, R); return R;
   }
   // [forma] il modellato di un capo ben tagliato: non un tubo, ma la linea che valorizza il corpo.
   // Uomo: spalle e torace pieni, petto a piano, si stringe in vita (la V), glutei tondi. Donna: vita segnata, fianchi e glutei pieni.
   // Fattori sul raggio stirato per altezza e angolo (davanti, fianchi, dietro), con transizioni morbide (gaussiane).
   const FEMMINE = /^(Casual|Formal)$/;
-  let FORMA_K = 2;   // l'intensità del modellato (1 = appena accennato)
+  let FORMA_K = 3.5;   // l'intensità del modellato (1 = appena accennato)
   function sartoriaForma(tb, R) {
-    const B0 = tb.Bref, fem = FEMMINE.test(B0.key), n = tb.ns, RG = R[0].length, b = B0.bones, nY = S().neckY(B0);
+    const B0 = tb.Bref, leg = tb.kind !== 'tronco', fem = FEMMINE.test(B0.key), n = tb.ns, RG = R[0].length, b = B0.bones, nY = S().neckY(B0);
     const yW = B0.waist, yH = b.Hips.y, yC = b.Chest.y, yCr = B0.crotch, g = (y, c, w) => Math.exp(-((y - c) * (y - c)) / (2 * w * w));
     const yG = Math.min(yH - .05, (yH + yCr) / 2 + .02);   // il punto più pieno dei glutei
-    for (let i = 0; i <= n; i++) { const y = tb.S[i].y; if (y > nY - .02 || y < yCr - .12) continue; const r = R[i], cut = cl((nY - .02 - y) / .06, 0, 1);
+    for (let i = 0; i <= n; i++) { const y = tb.S[i].y; if (y > nY - .02 || y < yCr - .12 || leg && y < yCr - .15) continue; const r = R[i], cut = cl((nY - .02 - y) / .06, 0, 1);
       for (let q = 0; q < RG; q++) { const a = q / RG * Math.PI * 2, ca = Math.cos(a), sa = Math.abs(Math.sin(a)), fr = Math.max(0, ca), bk = Math.max(0, -ca), side = sa * sa;
         let k = 1; const A = FORMA_K;
-        if (fem) {
-          k += side * (- A * .1 * g(y, yW, .055) + A * .06 * g(y, yG + .01, .06));        // vita segnata, fianchi
+        if (leg) {   // la coscia in alto: qui sta il sedere vero (nel modello i glutei sono delle cosce)
+          k += bk * A * (fem ? .08 : .09) * g(y, yG, .05) - fr * A * .015 * g(y, yG, .05);
+          if (fem) k += side * A * .035 * g(y, yG + .02, .05);
+        } else if (fem) {
+          k += side * (- A * .1 * g(y, yW, .055) + A * .05 * g(y, yG + .02, .06));        // vita segnata, fianchi
           k += fr * (- A * .05 * g(y, yW - .01, .05));                                  // pancia piatta
-          k += bk * (- A * .05 * g(y, yW + .01, .05) + A * .1 * g(y, yG, .055));            // la curva della schiena, i glutei
+          k += bk * (- A * .05 * g(y, yW + .01, .05) + A * .06 * g(y, yG + .02, .05));      // la curva della schiena, l'attacco dei glutei
         } else {
-          k += side * ( A * .05 * g(y, yC - .02, .07) - A * .065 * g(y, yW, .06));         // torace largo, vita stretta: la V
-          k += fr * ( A * .035 * g(y, yC + .01, .05) - A * .04 * g(y, yW - .01, .05));      // il petto a piano, la pancia piatta
-          k += bk * ( A * .03 * g(y, yC + .03, .06) - A * .035 * g(y, yW + .02, .05) + A * .075 * g(y, yG, .05));   // le scapole, la schiena che rientra, i glutei
+          k += side * ( A * .04 * g(y, yC - .03, .08) - A * .06 * g(y, yW, .06));          // torace largo, vita stretta: la V
+          k += fr * ( A * .012 * g(y, yC + .02, .09) - A * .04 * g(y, yW - .01, .05));      // il petto appena pieno e largo (a piano, non a seno), la pancia piatta
+          k += bk * ( A * .025 * g(y, yC + .03, .07) - A * .035 * g(y, yW + .02, .05) + A * .045 * g(y, yG + .02, .05));   // le scapole, la schiena che rientra, l'attacco dei glutei
         }
         // tra i glutei, sotto: la stoffa aderente segue il solco (appena)
-        if (ca < -.9 && y < yG + .02 && y > yCr - .02) k -= .035 * (1 - (Math.PI - Math.abs(a - Math.PI)) * 0) * cl((-ca - .9) / .1, 0, 1) * g(y, yG - .03, .05);
+        if (!leg && ca < -.9 && y < yG + .02 && y > yCr - .02) k -= .035 * (1 - (Math.PI - Math.abs(a - Math.PI)) * 0) * cl((-ca - .9) / .1, 0, 1) * g(y, yG - .03, .05);
         r[q] *= 1 + (k - 1) * cut; } }
     // il giro lisciato attorno (niente spigoli dalle gaussiane)
     for (let i = 0; i <= n; i++) { const r = R[i], c0 = r.slice(); for (let q = 0; q < RG; q++) r[q] = (c0[(q + RG - 1) % RG] + 2 * c0[q] + c0[(q + 1) % RG]) / 4; }
@@ -300,6 +303,27 @@ var Pittura = (function () {
     else if (f === 'pelo' || f === 'montone') { c = mul(A, .85 + hsh(Math.floor(xm / .015), Math.floor(ym / .04)) * .3); }
     return [...mul(c, tone), h];
   }
+  // [forma] la mappa delle posizioni: per ogni pixel di ogni tela il punto vero del corpo (stirato, a riposo), dai triangoli rasterizzati
+  // nelle coordinate di stoffa. I dettagli che vivono nello spazio del corpo (tasche dietro, sprone) si disegnano su questa: niente strappi
+  // dove il corpo esce dal tubo (glutei pieni) o passa dal busto alle cosce.
+  function posMap(B, srcs) {
+    if (B.posMap) return B.posMap; const M = {};
+    REG.forEach(R => { const [W, H] = SIZE[R]; M[R] = { W, H, P: new Float32Array(W * H * 3).fill(NaN) }; });
+    srcs.forEach((src, si) => { const pg = paintGeo(B, src, si); if (!pg) return; const UV = pg.geo.attributes.uv.array;
+      pg.groups.forEach(gr => { const ri = gr.materialIndex - 1; if (ri < 0 || ri > 4) return; const T = M[REG[ri]], W = T.W, H = T.H;
+        for (let w0 = gr.start; w0 < gr.start + gr.count; w0 += 3) { const L0 = pg.VI[w0], L1 = pg.VI[w0 + 1], L2 = pg.VI[w0 + 2]; if (!L0 || !L1 || !L2 || pg.dropT.has(w0 / 3)) continue;
+          const X = [0, 1, 2].map(k => UV[(w0 + k) * 2] * W - .5), Y = [0, 1, 2].map(k => UV[(w0 + k) * 2 + 1] * H - .5), Ls = [L0, L1, L2];
+          const x0 = Math.floor(Math.min(...X)), x1 = Math.ceil(Math.max(...X)), y0 = Math.max(0, Math.floor(Math.min(...Y))), y1 = Math.min(H - 1, Math.ceil(Math.max(...Y)));
+          const d = (X[1] - X[0]) * (Y[2] - Y[0]) - (X[2] - X[0]) * (Y[1] - Y[0]); if (Math.abs(d) < 1e-9 || x1 - x0 > W / 2) continue;
+          for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+            const b1 = ((px - X[0]) * (Y[2] - Y[0]) - (X[2] - X[0]) * (py - Y[0])) / d, b2 = ((X[1] - X[0]) * (py - Y[0]) - (px - X[0]) * (Y[1] - Y[0])) / d, b0 = 1 - b1 - b2;
+            if (b0 < -.02 || b1 < -.02 || b2 < -.02) continue; const q = ((py * W) + ((px % W) + W) % W) * 3;
+            for (let k = 0; k < 3; k++) T.P[q + k] = b0 * Ls[0].p[k] + b1 * Ls[1].p[k] + b2 * Ls[2].p[k]; } } }); });
+    // i buchi (pixel che nessun triangolo tocca): dal vicino
+    REG.forEach(R => { const T = M[R], W = T.W, H = T.H; for (let it = 0; it < 3; it++) { const P0 = T.P.slice(); for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) { const q = (py * W + px) * 3; if (!isNaN(P0[q])) continue;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const yy = py + dy; if (yy < 0 || yy >= H) continue; const q2 = (yy * W + ((px + dx + W) % W)) * 3; if (!isNaN(P0[q2])) { T.P[q] = P0[q2]; T.P[q + 1] = P0[q2 + 1]; T.P[q + 2] = P0[q2 + 2]; break; } } } } });
+    B.posMap = M; return M;
+  }
   // dipinge le cinque tele di una persona. W[reg] = { c: Uint8ClampedArray rgba, h: bump }
   function paint(B, outfit, skin) {
     const F = frame(B), SK = rgb(skin || '#dcae88'), Sa = S(), CUT = Sa.CUT_();
@@ -318,6 +342,7 @@ var Pittura = (function () {
         const sv = lerp(s0, s1, (py + .5) / H), fr = S().frameAt(tb, sv), y0 = fr.p.y;
         for (let px = 0; px < W; px++) {
           const u = (px + .5) / W, a = u * Math.PI * 2 - Math.PI, xm = u * circ, i = (py * W + px) * 4;
+          const PM = B.posMap && B.posMap[R], pq = (py * W + px) * 3; CUR.p = PM && !isNaN(PM.P[pq]) ? CUR.v.set(PM.P[pq], PM.P[pq + 1], PM.P[pq + 2]) : null;
           const y = R[0] === 'L' ? surfY(tb, sv, a) : y0;   // sulle gambe l'altezza vera del punto (l'asse è inclinato): orli dritti tra busto e gambe
           let c = SK, h = .5, shade = 1;
           // ombre del corpo: ascelle, inforcatura, interno coscia
@@ -441,6 +466,15 @@ var Pittura = (function () {
     let r = null; try { const im = Sa.printMat(k, C.col || '#d8d0c0').map.image, x = im.getContext('2d'); r = { n: im.width, d: x.getImageData(0, 0, im.width, im.height).data }; } catch (e) { r = null; }
     PXC.set(key, r); return r;
   }
+  // distanza dal bordo della tasca dietro (dentro: >= 0; fuori: -1). Il pentagono: in alto sotto lo sprone, la punta in basso sul gluteo
+  const CUR = { p: null, v: new THREE.Vector3() };   // il punto vero del corpo per il pixel che si sta dipingendo (dalla mappa delle posizioni)
+  function backPocket(B, p) {
+    const b = B.bones, hx = b.Hips.x, fem = FEMMINE.test(B.key), yTop = B.waist - .05, yBot = (b.Hips.y + B.crotch) / 2 - (fem ? .005 : .02), w = fem ? .056 : .062;
+    if (p.z > b.Hips.z - .03) return -1; const dx = Math.abs(p.x - hx), cx = fem ? .075 : .082, X = (dx - cx) * (p.x > hx ? 1 : -1) * 1, t = (yTop - p.y) / (yTop - yBot);
+    if (t < 0 || t > 1.18) return -1; const tilt = (fem ? .18 : .12) * (yTop - p.y), xx = Math.abs(dx - cx - tilt * 0) + 0, half = w * (1 - .1 * t);
+    if (xx > half) return -1; const tip = t > 1 ? (t - 1) / .18 : 0; if (tip > 0 && xx > half * (1 - tip)) return -1;
+    const eSide = (half - xx), eTop = (p.y > yTop - .001 ? 0 : yTop - p.y), eBot = t > 1 ? (half * (1 - tip) - xx) * .7 : 9; return Math.min(eSide, eTop, eBot, t <= 1 ? 9 : 9);
+  }
   function paintAt(B, C, R, ri, a, sv, y, xm, nY, tb) {
     const L = C.L, dark = (c, k) => mul(c, k);
     const line = (d, w) => Math.abs(d) < w;   // una cucitura larga w metri
@@ -542,7 +576,6 @@ var Pittura = (function () {
         if (a > .03 && a < .2 && y > B.crotch + .015 && line(a - (.2 - Math.pow(cl((B.crotch + .07 - y) / .055, 0, 1), 3) * .17), .012)) { s *= .72; h = .1; }   // la patta a J
         if (line(a, .008) && y < B.crotch + .08) { s *= .82; }
         if ((C.tasche || []).includes('oblique') || (C.tasche || []).includes('jeans')) for (const sd of [-1, 1]) { const aa = a * sd, t0 = (B.waist - y) / .09; if (t0 > 0 && t0 < 1 && line(aa - lerp(.62, 1.3, t0), .03)) { s *= .62; h = .1; } }
-        if ((C.tasche || []).includes('jeans')) for (const sd of [-1, 1]) { const aa = Math.PI - a * sd; if (aa > .2 && aa < .75 && y < B.waist - .03 && y > B.waist - .14) { const e = Math.min((aa - .2) * .14, (.75 - aa) * .14, B.waist - .03 - y, y - B.waist + .14); if (e < .008) { c = C.cuciture ? rgb(C.cuciture) : c; s *= C.cuciture ? 1 : .7; h = .1; } } }
       }
       // pettorina della salopette e bretelle
       if (L.T.bib) { if (Math.abs(a) < .72 && y > B.bones.Chest.y + .03) { s *= .7; } }
@@ -557,6 +590,8 @@ var Pittura = (function () {
 
       if (sv < .02) { s *= .8; h = .15; }   // l'attaccatura alla spalla
     }
+    // le tasche dietro dei jeans: pentagoni sui glutei (non sulla vita), con la doppia cucitura; misurate nello spazio del corpo,
+    // così passano senza strappi dal bacino alle cosce (nel modello il sedere sta nelle cosce)
     if (R[0] === 'L') {
       const Ls = L[R], end = Ls.s1, sg = R === 'LL' ? 1 : -1;
       if (line(Math.abs(a) - R2, .02)) { s *= C.cuciture ? 1 : .82; if (C.cuciture) c = mixc(c, rgb(C.cuciture), .7); h = .15; }   // cucitura laterale
@@ -591,6 +626,7 @@ var Pittura = (function () {
     const srcs = []; g.traverse(o => { if (o.isSkinnedMesh && !o.userData.vesti) srcs.push(o); });
     const skin = (look && look.skin) || '#dcae88';
     const sig = B.key + '|' + skin + '|' + JSON.stringify(outfit.map(c => [c.id, c.col, c.parti]));
+    posMap(B, srcs);
     let P = null, M = MCACHE.get(sig); if (!M) { P = paint(B, outfit, skin); M = mats(sig, P); }
     if (!B.welded) { B.welded = 1; weld(B, g, srcs); }
     const plans = paintPlans(B, outfit), nY = Sa.neckY(B);
@@ -633,11 +669,55 @@ var Pittura = (function () {
         for (let w0 = 0; w0 < pos.count; w0++) { const L = pg.VI[w0]; if (!L) continue; const j = J.get(pk(L)); let off = j.o;
           if (jkF && pg.VR[w0] === 0 && L.p[1] < yTopF - .002) { const t = cl((yTopF - L.p[1]) / (yTopF - ybF), 0, 1), g = gapF(t), ax = tc.S[0], ang = Math.abs(Math.atan2(L.p[0] - ax.x, L.p[2] - ax.z)); if (ang > g + .07) off -= .007 * cl((yTopF - .002 - L.p[1]) / .006, 0, 1); }   // sotto la falda il busto rientra: la falda passa sopra pulita
           if (!off) continue; v3.set(L.p[0] + j.d.x * off, L.p[1] + j.d.y * off, L.p[2] + j.d.z * off).applyMatrix4(B.reli); pos.setXYZ(w0, v3.x, v3.y, v3.z); }
-        pgeo.setAttribute('position', pos); } grp.forEach(g0 => pgeo.addGroup(g0[0], g0[1], g0[2]));
+        pgeo.setAttribute('position', pos); decals(src, pg, pos, idx, B, plans, outfit); } grp.forEach(g0 => pgeo.addGroup(g0[0], g0[1], g0[2]));
       pgeo.boundingSphere = pg.geo.boundingSphere; pgeo.userData.pittura = true;
       src.geometry = pgeo; src.material = [Array.isArray(src.material) ? src.material[0] : src.material, ...M];
     });
     return { B, sig };
+  }
+  // =====================================================================================
+  // LE DECALCOMANIE: dettagli netti sopra il vestito dipinto (tasche dietro dei jeans, …)
+  // Si prendono i triangoli veri del corpo sotto il dettaglio (stessi pesi dello scheletro: si piegano col corpo),
+  // staccati di un filo, e ci si proietta sopra un disegno nitido (proiezione piana nello spazio del corpo a riposo).
+  // =====================================================================================
+  const DTEX = new Map();
+  function decalTex(kind, col, col2) {
+    const key = kind + '|' + col + '|' + col2; if (DTEX.has(key)) return DTEX.get(key);
+    const N = 256, cv = document.createElement('canvas'); cv.width = cv.height = N; const x = cv.getContext('2d');
+    if (kind === 'tasca') {   // la tasca a pentagono: bordo appena in ombra, doppia cucitura, il ricamo ad arco al centro
+      const P = (k) => { const m = k * N; return [[m, m], [N - m, m], [N - m, N * .8 - m * .4], [N / 2, N - m], [m, N * .8 - m * .4]]; };
+      const path = pts => { x.beginPath(); pts.forEach((p, i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1])); x.closePath(); };
+      path(P(.0)); x.fillStyle = col2; x.globalAlpha = 1; x.fill();   // la stoffa della tasca (stesso colore, appena più scura: è un altro strato)
+      x.globalAlpha = 1; x.lineWidth = 7; x.strokeStyle = 'rgba(0,0,0,.35)'; path(P(.012)); x.stroke();
+      x.setLineDash([9, 6]); x.lineWidth = 4; x.strokeStyle = col; path(P(.05)); x.stroke(); path(P(.1)); x.stroke();
+      x.beginPath(); x.moveTo(N * .22, N * .42); x.quadraticCurveTo(N * .5, N * .28, N * .78, N * .42); x.moveTo(N * .22, N * .5); x.quadraticCurveTo(N * .5, N * .36, N * .78, N * .5); x.stroke();
+      x.setLineDash([]); }
+    const T = new THREE.CanvasTexture(cv); T.anisotropy = 4; T.wrapS = T.wrapT = THREE.ClampToEdgeWrapping; DTEX.set(key, T); return T;
+  }
+  function decals(src, pg, pos, idx, B, plans, outfit) {
+    const jeans = plans.filter(C => C.cl === 2 && (C.tasche || []).includes('jeans')).pop(); if (!jeans) return;
+    // la tasca si vede solo se in quel punto i jeans sono il capo di sopra
+    const b = B.bones, hx = b.Hips.x, fem = FEMMINE.test(B.key), yTop = B.waist - .045, yBot = (b.Hips.y + B.crotch) / 2 - (fem ? 0 : .015), w = fem ? .105 : .125, cxo = fem ? .088 : .085;
+    const nY = S().neckY(B), u2l = new THREE.Vector3(1, 0, 0).applyMatrix3(new THREE.Matrix3().setFromMatrix4(B.reli)).length() * .0012, nor = pg.geo.attributes.normal, si = pg.geo.attributes.skinIndex, sw = pg.geo.attributes.skinWeight;
+    for (const sd of [1, -1]) {
+      const x0 = hx + sd * cxo - w / 2, P = [], N = [], U = [], SI = [], SW = [];
+      for (let k = 0; k < idx.length; k += 3) { const t = [idx[k], idx[k + 1], idx[k + 2]], L = t.map(q => pg.VI[q]); if (L.some(l => !l)) continue;
+        const inside = L.some(l => l.p[2] < b.Hips.z - .02 && l.p[1] < yTop + .01 && l.p[1] > yBot - .03 && l.p[0] > x0 - .01 && l.p[0] < x0 + w + .01); if (!inside) continue;
+        if (!L.every(l => l.p[2] < b.Hips.z)) continue;
+        const top = topAt(B, plans, pg.VR[t[0]], L[0].a, L[0].s, L[0].p[1], nY); if (top !== jeans) continue;
+        for (const q of t) { const l = pg.VI[q]; P.push(pos.getX(q) + nor.getX(q) * u2l, pos.getY(q) + nor.getY(q) * u2l, pos.getZ(q) + nor.getZ(q) * u2l); N.push(nor.getX(q), nor.getY(q), nor.getZ(q));
+          let u = (l.p[0] - x0) / w; if (sd < 0) u = 1 - u; U.push(u, 1 - (yTop - l.p[1]) / (yTop - yBot + .025)); for (let j = 0; j < 4; j++) { SI.push(si.array[q * 4 + j]); SW.push(sw.array[q * 4 + j]); } } }
+      if (!P.length) continue;
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
+      g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(SW, 4));
+      const A = jeans.A, dk = '#' + new THREE.Color().setRGB(A[0] * .96, A[1] * .96, A[2] * .96).getHexString();
+      const m = new THREE.MeshStandardMaterial({ map: decalTex('tasca', jeans.cuciture || '#c8a050', dk), transparent: false, alphaTest: .5, roughness: .95, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2 }); m.emissive = new THREE.Color('#2a2622');
+      // fuori dal pentagono trasparente: l'alpha dal disegno
+      m.alphaMap = null; m.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <alphatest_fragment>', 'if (vUv.x < 0. || vUv.x > 1. || vUv.y < 0. || vUv.y > 1. || diffuseColor.a < .5) discard;'); };
+      m.map.premultiplyAlpha = false; m.transparent = false; m.alphaTest = .5;
+      const mesh = new THREE.SkinnedMesh(g, m); mesh.userData.vesti = true; mesh.frustumCulled = false; mesh.castShadow = false;
+      mesh.position.copy(src.position); mesh.quaternion.copy(src.quaternion); mesh.scale.copy(src.scale); src.parent.add(mesh); mesh.bind(src.skeleton, src.bindMatrix);
+    }
   }
   // le normali saldate su tutto il modello (i pezzi del kit — busto, gambe, piedi — sono mesh diverse: senza questo, righe scure dove si toccano)
   function weld(B, g, srcs) {
