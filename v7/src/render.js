@@ -8402,7 +8402,7 @@ var Render = (function () {
 
 
   // ================= [amb2] LA MACCHINA DA PRESA: bloom, sfocatura per la profondità di campo, raggi di sole =================
-  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.5 /* [colore1] più colore (era 1.25) */, ink: 0, rim: .6, cav: .6 /* [colore1] era .85 */, clar: .18 /* [colore1] era .32: il contrasto locale faceva grana */, luc: 1, spec: .9, coat: .8, trans: 1, ol: .85, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
+  const AMB = { expo: 1.06 /* [lucido1] più luce */, bloom: 1, thrDay: 1.05, thrNight: .6, dof: 0, grain: 0, ca: 0, shafts: 1, sharp: .32 /* [lucido1] nitidezza fine */, outline: 0, vig: .7, paint: 0, pal: 0, sat: 1.62 /* [colore1] più colore (era 1.25) */, ink: 0, rim: .72, cav: .6 /* [colore1] era .85 */, clar: .18 /* [colore1] era .32: il contrasto locale faceva grana */, luc: 1.15, spec: 1.15, coat: 1.05, trans: 1.1, /* [colore1] miniature di plastica: più lacca, punto di luce, traslucenza (erano 1, .9, .8, 1) */ ol: .85, prato: 1 /* [prato1] */ };   /* [lucido1] via pennellata, tavolozza e inchiostro prugna */   /* [amb3] paint, pal, sat, ink, rim, cav, clar */
   if (typeof window !== 'undefined') window.__AMB = AMB;
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
   function ambInit() {
@@ -8602,7 +8602,7 @@ var Render = (function () {
               float ndv = clamp(dot(n9, V9), 0., 1.), ndl = dot(n9, L9), day9 = 1. - night;
               float lu9 = dot(c, vec3(.3,.59,.11));
               // 1) colori bagnati: più saturi, i medi più profondi, i neri restano colore
-              vec3 sat9 = max(mix(vec3(lu9), c, 1.5), 0.);
+              vec3 sat9 = max(mix(vec3(lu9), c, 1.6), 0.);   /* [colore1] era 1.5 */
               c = mix(c, sat9 * (1. - .1 * smoothstep(.5, .05, lu9)), lK.x);
               // 2) traslucenza: in ombra il materiale si accende del suo colore, come plastica che lascia passare la luce
               float sh9 = 1. - smoothstep(.05, .38, lu9); vec3 hue9 = max(c, 1e-4) / max(max(max(c.r, c.g), c.b), 1e-4);
@@ -8720,7 +8720,7 @@ var Render = (function () {
     PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     GPUT.px = W + '×' + H;   /* [prestazioni] */
-    renderer.setSize(cw, ch, false);
+    renderer.setSize(W, H, false);   /* [colore1] l'immagine finale esce alla risoluzione interna (prima a quella CSS della finestra: con lo schermo scalato il browser la ingrandiva a blocchi); il CSS la stende morbida */
     if (rt) rt.dispose();
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
     ambResize(W, H); paintResize(W, H);   /* [amb3] */
