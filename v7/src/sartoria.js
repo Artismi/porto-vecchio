@@ -598,7 +598,7 @@ var Sartoria = (function () {
     maglia_calcio: { cl: 1, fab: 'righe_v', c2: D, collo: 'polo', numero: 1 },
     felpa_zip: { cl: 3, fab: 'jersey', collo: 'alto_zip', fronte: 'zip', costine: 1, bande: D, tasche: ['fianchi_zip'] },
     giacca_completo: { cl: 4, fab: 'gessato', c2: '#9a9aa4', collo: 'revers', fronte: 'bottoni', tasche: ['giacca', 'pochette'], orlo: 'giacca', agio: .005 },
-    pelliccia: { cl: 5, fab: 'maculato', c2: '#2a1a10', c3: '#8a5a2a', collo: 'pelo', gonna: 1, len: 'ginocchio', svasa: .16, agio: .016 },
+    pelliccia: { cl: 5, fab: 'maculato', c2: '#1a120c', c3: '#a8642a', collo: 'pelo', orlo: 'pelo', gonna: 1, len: 'ginocchio', svasa: .1, agio: .02 },
     pelliccia_volpe: { cl: 5, fab: 'pelo', collo: 'pelo', agio: .02, orlo: 'pelo' },
     poncho: { cl: 6, fab: 'etnico', c2: '#e8c880', c3: '#2a2a30', collo: 'poncho', poncho: 1, frange: 1 },
     vestito_corto: { cl: 1, fab: 'raso', collo: 'v', gonna: 1, len: 'coscia', svasa: .2, lucido: 1, smanicato: 1, spalline_sottili: 1 },

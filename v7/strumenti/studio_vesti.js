@@ -46,6 +46,10 @@ const GRUPPI = {
     ['hawaii', [['camicia_hawaii', { col: '#1a6a7a' }], ['pantaloni', { col: '#ece6d8' }], 'mocassini', 'catenina']],
     ['pelliccia', [['dolcevita', { col: '#101012' }], ['leggings', { col: '#101012' }], 'pelliccia', 'stivali_pelle', 'occhiali_sole'], 'donna'],
   ],
+  pellicce: [
+    ['leopardo', [['dolcevita', { col: '#101012' }], ['leggings', { col: '#101012' }], ['pelliccia', { col: '#d8a860' }], 'stivali_pelle', 'occhiali_mascherina', 'collana_oro'], 'donna'],
+    ['volpe_rosa', [['maglietta', { col: '#101012' }], 'jeans', ['pelliccia_volpe', { col: '#e890b8' }], 'scarpe_air', 'occhiali_ovali'], 'donna'],
+  ],
   catene: [
     ['catenone', [['canotta_basket', { col: '#f4f2ee' }], 'pantaloni_tuta', 'collana_oro', 'scarpe_air']],
     ['catenina_tuta', [['giacca_tuta', { col: '#16161a' }], 'pantaloni_tuta', 'catenina', 'scarpe_air']],
@@ -98,6 +102,8 @@ for (const [g, list] of Object.entries(GRUPPI)) {
     if (only && !only.includes(g) && !only.includes(nome)) continue;
     const vesti = ids.map(x => Array.isArray(x) ? capo(x[0], x[1]) : capo(x));
     const pose = ANG.map(a => ({ nome: '', look: M[chi || 'uomo'], vesti, ang: a }));
+    const DT = { pancia: [.25, 1.0, .75, 0, .98, 0], polsino: [-.15, .88, .45, -.22, .88, 0], orlo: [.05, 1.0, .9, .05, .98, 0], braccio: [-.15, 1.2, .9, -.15, 1.15, 0], polso: [-.2, .95, .7, -.2, .92, 0], polsi: [0, 1.0, 1.5, 0, .95, 0], collo: [0, 1.5, 1.3, 0, 1.45, 0], vita: [0, 1.05, 1.5, 0, 1.0, 0] }[process.env.DETT || ''];
+    if (DT) { shots.push({ nome: g + '_' + nome + '_' + process.env.DETT, t: process.env.RIPOSO ? 0 : .3, cols: 4, sp: .78, pose, cam: DT }); continue; }
     shots.push({ nome: g + '_' + nome, t: process.env.RIPOSO ? 0 : .3, cols: 4, sp: .78, pose, cam: zoom ? [0, zoom, +(process.env.DIST || 2.3), 0, zoom - .05, 0] : [0, 1.1, 4.1, 0, .95, 0] });
   }
 }

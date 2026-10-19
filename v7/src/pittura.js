@@ -149,7 +149,8 @@ var Pittura = (function () {
     let k = 1; if (r > 0) k = cl((tb.L - q.i * tb.ds) / .06, 0, 1) * cl(q.i * tb.ds / .05, 0, 1); else { const ny = S().neckY(B); k = cl((ny - out.y) / .04, 0, 1) * cl((out.y - (B.crotch + .02)) / .07, 0, 1); const j = B.bones['UpperArm' + (out.x - (B.bones.Hips ? B.bones.Hips.x : 0) > 0 === (B.bones.UpperArmL && B.bones.UpperArmL.x > (B.bones.Hips ? B.bones.Hips.x : 0)) ? 'L' : 'R')]; if (j) k *= cl((out.distanceTo(j) - .06) / .12, 0, 1); }   // vicino al giro manica il busto resta com'è (niente punte verso il braccio)   // al cavallo, tra le gambe, il corpo resta com'è
     // [forma] l'avambraccio verso il polso: affusolato (niente svasature dei polsini del kit); il raggio scende in linea verso quello del polso vero
     if (r === 1 || r === 2) { const w = B.bones['Wrist' + (r === 1 ? 'L' : 'R')], sw = w ? tb.sNear(w) : tb.L, s0 = sw - .14;
-      if (q.s > s0) { const t = cl((q.s - s0) / (sw - s0), 0, 1), r0 = ironRadius(R, tb, s0, q.a), cap = lerp(r0, Math.min(r0, .03), t) * (1 + .1 * Math.abs(Math.sin(q.a))); const tgt = Math.min(Math.max(q.r, rr * k + q.r * (1 - k)), cap); if (Math.abs(tgt - q.r) < 1e-5 || q.r < 1e-4) return out; const dir = out.clone().sub(fr.p); dir.addScaledVector(fr.t, -dir.dot(fr.t)); dir.normalize(); return out.addScaledVector(dir, tgt - q.r); } }
+      const kw = cl((sw - .012 - q.s) / .035, 0, 1); k *= kw;   // al polso il corpo resta com'è (la mano non si tocca: niente punte)
+      if (q.s > s0 && kw > 0) { const t = cl((q.s - s0) / (sw - s0), 0, 1), r0 = ironRadius(R, tb, s0, q.a), cap = lerp(r0, Math.min(r0, .03), t) * (1 + .1 * Math.abs(Math.sin(q.a))); const tgt = lerp(q.r, Math.min(Math.max(q.r, rr * k + q.r * (1 - k)), cap), kw); if (Math.abs(tgt - q.r) < 1e-5 || q.r < 1e-4) return out; const dir = out.clone().sub(fr.p); dir.addScaledVector(fr.t, -dir.dot(fr.t)); dir.normalize(); return out.addScaledVector(dir, tgt - q.r); } }
     const d = cl(rr - q.r, -.06, .045) * k; if (Math.abs(d) < 1e-5 || q.r < 1e-4) return out;
     const dir = out.clone().sub(fr.p); dir.addScaledVector(fr.t, -dir.dot(fr.t)); dir.normalize(); return out.addScaledVector(dir, d);
   }
@@ -212,12 +213,13 @@ var Pittura = (function () {
           // i bordi dei vestiti del kit (risvolti, orli che girano dentro): facce rivolte all'asse o in su/giù. Stirate si accartoccerebbero: via
           if (kc) { const P3 = c.map(q => { const g = gm[q]; return g >= 0 ? new THREE.Vector3(B.P[g * 3], B.P[g * 3 + 1], B.P[g * 3 + 2]) : new THREE.Vector3().fromBufferAttribute(attrs.position, q).applyMatrix4(B.rel); });
             const n = P3[1].clone().sub(P3[0]).cross(P3[2].clone().sub(P3[0])), ln = n.length(); if (ln > 1e-12) { n.divideScalar(ln); const cc = P3[0].clone().add(P3[1]).add(P3[2]).divideScalar(3), ax = axial(tb, cc), fr = S().frameAt(tb, ax.s), rd = cc.clone().sub(fr.p); rd.addScaledVector(fr.t, -rd.dot(fr.t)); rd.normalize();
-              if (n.dot(rd) < -.7 && (cc.y < B.waist + .1 || reg === 1 || reg === 2)) dropT.add(w / 3);   /* anche i polsini del kit */ else if (Math.abs(n.dot(fr.t)) > .8 && n.dot(rd) < .3) noN.add(w / 3); } }
+              if (reg === 0 && rd.z > .25 && cc.y > B.crotch + .06 && cc.y < B.waist + .14 && n.dot(rd) < .8) dropT.add(w / 3);   // [strati] la tasca canguro della felpa del kit: le sue pareti e il bordo (tutto ciò che non guarda fuori) via
+              else if (n.dot(rd) < -.7 && (cc.y < B.waist + .1 || reg === 1 || reg === 2)) dropT.add(w / 3);   /* anche i polsini del kit */ else if (Math.abs(n.dot(fr.t)) > .8 && n.dot(rd) < .3) { if (reg === 0 && cc.y < B.waist + .16 && cc.y > B.crotch + .1 && rd.z > .3) dropT.add(w / 3); else noN.add(w / 3); } } }   // [strati] le tasche e i risvolti del kit sulla pancia (la canguro della felpa): via, sennò fanno un lembo
         }
         c.forEach((q, k) => { keys.forEach(a => { const sz = attrs[a].itemSize; for (let j = 0; j < sz; j++) arr[a][w * sz + j] = attrs[a].array[q * sz + j]; });
-          const g = gm[q]; if (g >= 0 && reg < 5) { let L = ironCache[q]; if (!L) { const bp = ironPos(B, g, new THREE.Vector3()), tb = F.tubes[reg], ax = axial(tb, bp), fr = S().frameAt(tb, ax.s), d = bp.clone().sub(fr.p); d.addScaledVector(fr.t, -d.dot(fr.t)); d.normalize();
+          const g = gm[q], rv = reg < 5 ? reg : (g >= 0 ? regionOf(B, g) : -1); if (g >= 0 && rv >= 0 && rv < 5) { let L = ironCache[q]; if (!L) { const bp = ironPos(B, g, new THREE.Vector3()), tb = F.tubes[rv], ax = axial(tb, bp), fr = S().frameAt(tb, ax.s), d = bp.clone().sub(fr.p); d.addScaledVector(fr.t, -d.dot(fr.t)); d.normalize();
               L = ironCache[q] = { l: bp.clone().applyMatrix4(B.reli).toArray(), p: bp.toArray(), d: d.toArray(), s: ax.s, a: ax.a }; }
-            arr.position[w * 3] = L.l[0]; arr.position[w * 3 + 1] = L.l[1]; arr.position[w * 3 + 2] = L.l[2]; VI[w] = L; VR[w] = reg; }
+            arr.position[w * 3] = L.l[0]; arr.position[w * 3 + 1] = L.l[1]; arr.position[w * 3 + 2] = L.l[2]; VI[w] = L; VR[w] = rv; }   // [strati] anche i vertici del corpo nei triangoli di mano e piede: stessa posizione dei vicini (niente punte)
           SRC[w] = q; UV[w * 2] = uu[k]; UV[w * 2 + 1] = vv[k]; w++; });
       });
       groups.push({ start, count: w - start, materialIndex: reg < 5 ? 1 + reg : 0 });
@@ -298,12 +300,17 @@ var Pittura = (function () {
     else if (f === 'tartan' || f === 'madras' || f === 'galles') { const bx = md(xm, .14) < .045, by = md(ym, .14) < .045, tx = md(xm, .14) > .09 && md(xm, .14) < .1, ty = md(ym, .14) > .09 && md(ym, .14) < .1; c = bx && by ? mul(B, .85) : bx || by ? mixc(A, B, .6) : A; if (tx || ty) c = mixc(c, Cc, .8); }
     else if (f === 'vichy' || f === 'pied') { const bx = md(xm, .05) < .025, by = md(ym, .05) < .025; c = bx && by ? B : bx || by ? mixc(A, B, .5) : A; }
     else if (f === 'fiori' || f === 'liberty' || f === 'paisley' || f === 'pois') { const cs = f === 'fiori' ? .09 : .05, cx = Math.floor(xm / cs), cy = Math.floor(ym / cs), r = hsh(cx * 7 + 3, cy * 13 + 1), ox = (hsh(cx, cy * 3) - .5) * cs * .4, oy = (hsh(cx * 5, cy) - .5) * cs * .4, d = Math.hypot(md(xm, cs) - cs / 2 - ox, md(ym, cs) - cs / 2 - oy); if (d < cs * (f === 'pois' ? .2 : .32)) c = r < .5 ? B : Cc; else if (f === 'fiori' && d < cs * .45 && r > .6) c = mixc(Cc, [.15, .3, .15], .5); }
-    else if (f === 'maculato') { const cs = .06, cx = Math.floor(xm / cs), cy = Math.floor(ym / cs), ox = (hsh(cx, cy * 3) - .5) * cs * .5, oy = (hsh(cx * 5, cy) - .5) * cs * .5, d = Math.hypot(md(xm, cs) - cs / 2 - ox, md(ym, cs) - cs / 2 - oy); if (d < cs * .16) c = Cc; else if (d < cs * .3) c = B; }
+    else if (f === 'maculato') {   // [drip] leopardo vero: rosette a C spezzate (2-4 macchie attorno a un cuore più caldo), punti pieni sparsi, pelo a ciocche
+      const cs = .075, gx = xm / cs, gy = ym / cs * 1.15, cx = Math.floor(gx), cy = Math.floor(gy); let best = 9, bx = 0, by = 0, bid = 0;
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const X = cx + i, Y = cy + j, px = X + .2 + .6 * hsh(X * 7 + 1, Y * 3 + 2), py = Y + .2 + .6 * hsh(X * 5 + 3, Y * 11 + 7), d = Math.hypot(gx - px, gy - py); if (d < best) { best = d; bx = gx - px; by = gy - py; bid = X * 131 + Y; } }
+      const rr = .3 + .08 * hsh(bid, 5), solid = hsh(bid, 9) < .22, ang = Math.atan2(by, bx), seg = Math.sin(ang * (2 + Math.floor(hsh(bid, 4) * 2)) + hsh(bid, 6) * 6) > -.35;
+      c = A; if (solid) { if (best < rr * .55) c = B; } else if (best < rr * .62) c = mixc(A, Cc, .85); else if (best < rr && seg) c = B;
+      c = mul(c, .9 + .2 * hsh(Math.floor(xm / .006), Math.floor(ym / .018))); h = .5 + .3 * hsh(Math.floor(xm / .006), Math.floor(ym / .018)); }
     else if (f === 'etnico') { const y0 = md(ym, .2); if (y0 < .02 || (y0 > .1 && y0 < .115)) c = Cc; else if (y0 > .03 && y0 < .08) { const z = Math.abs(md(xm, .06) - .03) + Math.abs(y0 - .055); c = z < .022 ? B : A; } }
     else if (f === 'piumino') { const P = C.oca ? .095 : .07, t = md(ym, P); c = mul(A, t < .008 ? .55 : .86 + .24 * Math.sin(t / P * Math.PI)); h = t < .008 ? .1 : .5 + .4 * Math.sin(t / P * Math.PI); }
     else if (f === 'velluto' || f === 'costine' || f === 'trecce') { if (md(xm, .02) < .007) { c = mul(A, .86); h = .3; } else h = .7; }
     else if (f === 'denim') c = mul(A, md(xm + ym, .007) < .0035 ? .97 : 1.02);   // saia sottile, uniforme
-    else if (f === 'pelo' || f === 'montone') { c = mul(A, .85 + hsh(Math.floor(xm / .015), Math.floor(ym / .04)) * .3); }
+    else if (f === 'pelo' || f === 'montone') { const q = hsh(Math.floor(xm / .007), Math.floor(ym / .022 + hsh(Math.floor(xm / .007), 3))), tip = hsh(Math.floor(xm / .014), Math.floor(ym / .05)); c = mul(A, .78 + q * .32 + (tip > .8 ? .12 : 0)); h = .35 + q * .55; }   // [drip] il pelo: ciocche lunghe con le punte più chiare
     return [...mul(c, tone), h];
   }
   // [forma] la mappa delle posizioni: per ogni pixel di ogni tela il punto vero del corpo (stirato, a riposo), dai triangoli rasterizzati
@@ -379,7 +386,7 @@ var Pittura = (function () {
           col[i] = c[0] * 255 * shade; col[i + 1] = c[1] * 255 * shade; col[i + 2] = c[2] * 255 * shade; col[i + 3] = 255;
           const Ct = top >= 0 ? plans[top] : null, rf = Ct ? (FIN[Ct.fab] !== undefined ? FIN[Ct.fab] : .85) : .75;
           // grana della finitura: la lana ha il pelo, la pelle la grana, il nylon un riflesso più pulito
-          if (Ct && /lana|panno|feltro|trecce|costine|scamosciato|montone|pelo/.test(Ct.fab)) { const n = hsh(px * 7 + ri, py * 13) - .5; col[i] = cl(col[i] * (1 + n * .07), 0, 255); col[i + 1] = cl(col[i + 1] * (1 + n * .07), 0, 255); col[i + 2] = cl(col[i + 2] * (1 + n * .07), 0, 255); h += n * .15; }
+          if (Ct && /lana|panno|feltro|trecce|costine|scamosciato|montone|pelo/.test(Ct.fab)) { const n = (hsh(px * 7 + ri, py * 13) - .5) * (/panno|feltro/.test(Ct.fab) ? .3 : 1); col[i] = cl(col[i] * (1 + n * .07), 0, 255); col[i + 1] = cl(col[i + 1] * (1 + n * .07), 0, 255); col[i + 2] = cl(col[i + 2] * (1 + n * .07), 0, 255); h += n * .15; }   // il panno è liscio: appena una grana
           if (Ct && /pelle|gomma/.test(Ct.fab)) h += (hsh(px >> 1, py >> 1) - .5) * .2;
           hh[i] = hh[i + 2] = cl(h, 0, 1) * 255; hh[i + 1] = rf * 255; hh[i + 3] = 255;
         }
@@ -657,7 +664,18 @@ var Pittura = (function () {
       const m0 = Array.isArray(src.userData.pitOrig.mat) ? src.userData.pitOrig.mat[0] : src.material;
       // quello che sta sotto scarpe e guanti (e i resti dei vestiti del kit sotto i nostri) si toglie davvero: un indice per persona
       const hid = src.userData.hid, gpos = pg.geo.attributes.position, idx = [], grp = [], gmS = B.gmaps[si] || [], closed = outfit.some(c => /^(scarpe|scarpe_eleganti|scarpe_tela|scarpe_corsa|mocassini|tacchi|stivali|stivali_pelle|stivali_cowboy|scarpe_skate|scarpe_air)$/.test(c.id)), pumps = outfit.some(c => c.id === 'tacchi');
-      const keepT = (w0, reg) => { if (pg.dropT.has(w0 / 3)) return false; const q = [pg.SRC[w0], pg.SRC[w0 + 1], pg.SRC[w0 + 2]]; if (hid && hid.length && q.every(x => hid[x])) return false;
+      // [strati] il materiale originale di ogni vertice (i resti dei polsini del kit sulle mani sono stoffa, non pelle)
+      const om = src.userData.pitOrig.mat, oms = Array.isArray(om) ? om : [om], og = src.userData.pitOrig.geo, vMat = new Uint8Array(og.attributes.position.count);
+      if (og.groups && og.groups.length && og.index) og.groups.forEach(gr => { for (let k = gr.start; k < gr.start + gr.count; k++) vMat[og.index.array[k]] = gr.materialIndex; });
+      const clothV = x => { const m = oms[vMat[x]] || oms[0]; return m && !/^(Skin|Eye|Eyebrows|Hair|Moustache)/i.test(m.name || ''); };
+      // le maniche lunghe: i triangoli della mano che risalgono nell'avambraccio (le punte del polso del kit) si tolgono, la manica li copre
+      const longSleeve = {}; ['L', 'R'].forEach((sd, k) => { const tb = frame(B).tubes[k + 1], w = B.bones['Wrist' + sd]; longSleeve[sd] = w && plans.some(C => C.L['A' + sd] && C.L['A' + sd].s1 > tb.sNear(w) - .07); });
+      const wristCut = q => wristUp(q);   // i triangoli a cavallo mano/avambraccio (le punte)
+      const wristUp = q => q.some(x => { const b = gmS[x]; if (b < 0 || B.part[b] !== 'mani') return false; const sd = B.side[b] > 0 ? 'L' : 'R'; if (!longSleeve[sd]) return false; const w = B.bones['Wrist' + sd], e = B.bones['LowerArm' + sd], ax = w.clone().sub(e).normalize(); return (B.P[b * 3] - w.x) * ax.x + (B.P[b * 3 + 1] - w.y) * ax.y + (B.P[b * 3 + 2] - w.z) * ax.z < -.03; });
+      const keepT = (w0, reg) => { if (pg.dropT.has(w0 / 3)) return false;
+        const q = [pg.SRC[w0], pg.SRC[w0 + 1], pg.SRC[w0 + 2]]; if (hid && hid.length && q.every(x => hid[x])) return false;
+        if (wristCut(q)) return false;
+        if (reg === 0) { const q0 = q; if (q0.every(clothV) && q0.some(x => { const b = gmS[x]; return b >= 0 && B.part[b] === 'mani'; })) return false; }   // i polsini del kit, rimasti sulle mani const q = [pg.SRC[w0], pg.SRC[w0 + 1], pg.SRC[w0 + 2]]; if (hid && hid.length && q.every(x => hid[x])) return false;
         if (closed && q.some(x => { const b = gmS[x]; return b >= 0 && (B.part[b] === 'piedi' || B.part[b] === 'polpacci' && B.P[b * 3 + 1] < .06) && !(pumps && !pg.kitCloth && B.P[b * 3 + 1] > .04); })) return false;   // anche il tallone (che il modello mette nel polpaccio)   // con le décolleté resta il collo del piede   // dentro le scarpe vere
         if (closed && reg === 0 && pg.kitCloth && /Feet/i.test(src.name)) return false;   // le scarpe del kit (col calzino bianco): via del tutto
         if (reg === 0 && pg.kitCloth) { const y = (gpos.getY(w0) + gpos.getY(w0 + 1) + gpos.getY(w0 + 2)) / 3; const yy = new THREE.Vector3(gpos.getX(w0), y, gpos.getZ(w0)).applyMatrix4(B.rel).y; if (yy > .3) return false; }   // vestiti del kit fuori dalle regioni (non i piedi)
@@ -783,10 +801,11 @@ var Pittura = (function () {
   }
   // l'anello sull'avambraccio: asse dell'osso (gomito → polso), raggio dalla pelle vera attorno (70° percentile, a ellisse un po' più larga ai lati)
   function armRing(B, r, s, n) {
-    const sd = r === 1 ? 'L' : 'R', j0 = B.bones['LowerArm' + sd], j1 = B.bones['Wrist' + sd], tb = frame(B).tubes[r], fr0 = S().frameAt(tb, s); if (!j0 || !j1) return limbRing(B, r, s, n);
+    const sd = r === 1 ? 'L' : 'R', tb = frame(B).tubes[r], fr0 = S().frameAt(tb, s), el = B.bones['LowerArm' + sd], upper = el && s < tb.sNear(el);   // sopra il gomito: il braccio (spalla → gomito), sotto: l'avambraccio
+    const j0 = upper ? B.bones['UpperArm' + sd] : el, j1 = upper ? el : B.bones['Wrist' + sd], partName = upper ? 'braccia' : 'avambracci'; if (!j0 || !j1) return limbRing(B, r, s, n);
     const ax = j1.clone().sub(j0), Lx = ax.length(); ax.normalize(); const t = cl(fr0.p.clone().sub(j0).dot(ax), 0, Lx), c = j0.clone().addScaledVector(ax, t), I = ironAll(B);
     // il centro: quello della pelle attorno (l'osso del kit non sta al centro dell'avambraccio)
-    const near = []; for (let g = 0; g < B.part.length; g++) { if (B.part[g] !== 'avambracci' || B.side[g] !== (r === 1 ? 1 : -1)) continue; const v = new THREE.Vector3(I[g * 3], I[g * 3 + 1], I[g * 3 + 2]), along = v.clone().sub(j0).dot(ax); if (Math.abs(along - t) < .05) near.push(v); }
+    const near = []; for (let g = 0; g < B.part.length; g++) { if (B.part[g] !== partName || B.side[g] !== (r === 1 ? 1 : -1)) continue; const v = new THREE.Vector3(I[g * 3], I[g * 3 + 1], I[g * 3 + 2]), along = v.clone().sub(j0).dot(ax); if (Math.abs(along - t) < .05) near.push(v); }
     if (near.length) { const m = near.reduce((a, v) => a.add(v), new THREE.Vector3()).divideScalar(near.length), d0 = m.sub(c); c.add(d0.addScaledVector(ax, -d0.dot(ax))); }
     const ds = near.map(v => { const d = v.clone().sub(c); d.addScaledVector(ax, -d.dot(ax)); return d.length(); });
     ds.sort((a, b) => a - b); const R0 = ds.length ? ds[Math.floor(ds.length * .7)] : .03;
@@ -796,7 +815,7 @@ var Pittura = (function () {
   }
   // il bordino in rilievo di un orlo: anello a n facce attorno alla regione r, all'altezza s (metri sul tubo), alto h, spesso th
   function orlo(B, r, s, h, off, th, n, mat) {
-    if (r === 1 || r === 2) { const tb = frame(B).tubes[r], w = B.bones['Wrist' + (r === 1 ? 'L' : 'R')]; if (w && tb.sNear) s = Math.min(s, tb.sNear(w) - h / 2 - .035); }   // mai sul polso (lì la pelle segue la mano) (lì il tubo prende la mano)
+    if (r === 1 || r === 2) { const tb = frame(B).tubes[r], w = B.bones['Wrist' + (r === 1 ? 'L' : 'R')]; if (w && tb.sNear) s = Math.min(s, tb.sNear(w) - h / 2 + .018); }   // fino al polso: copre l'attacco della mano (lì il tubo prende la mano)
     // [forma] l'anello non segue le punte del corpo (in fondo alla manica il tubo prende anche la mano e le dita): raggio limitato attorno alla mediana, poi lisciato
     // sulle braccia e le gambe l'anello si misura sulla pelle vera dipinta (vertici stirati di quella zona, mani e piedi esclusi):
     // il tubo, vicino al polso e alla caviglia, prende anche le dita e il tallone
@@ -826,7 +845,9 @@ var Pittura = (function () {
     for (const sd of ['L', 'R']) {
       const RA = 'A' + sd, ri = sd === 'L' ? 1 : 2;
       P.forEach(CA => { if (!CA.L[RA] || (CA.polsi && CA.L[RA].s1 > CA.L[RA].la)) return; const Ls = CA.L[RA], sH = Ls.s1 - .008; if (!shows(CA, ri, sH - .01)) return;
-        const off = ringOff(B, P, ri, sH - .006), o = new THREE.Group(); o.add(orlo(B, ri, sH, .016, off + .0035, .005 + spessore(CA), 10, mat(CA))); AT(Ls.s1 < Ls.la - .02 ? 'UpperArm' + sd : 'LowerArm' + sd, o); });
+        const lng = Ls.s1 > Ls.la, tbA = F.tubes[ri], wA = B.bones['Wrist' + sd], sW = wA ? tbA.sNear(wA) : sH, off = ringOff(B, P, ri, sH - .006), o = new THREE.Group();
+        // il polsino delle maniche lunghe: alto (5-6 cm), dalla fine della manica dipinta fino al polso, chiude l'attacco della mano
+        o.add(lng ? orlo(B, ri, sW - .016, .066, off + .0035, .006 + spessore(CA), 14, mat(CA)) : orlo(B, ri, sH, .016, off + .0035, .005 + spessore(CA), 12, mat(CA))); AT(Ls.s1 < Ls.la - .02 ? 'UpperArm' + sd : 'LowerArm' + sd, o); });
       const RL = 'L' + sd, rl = sd === 'L' ? 3 : 4;
       P.forEach(CL => { if (!CL.L[RL] || CL.L[RL].falda !== undefined || CL.risvolto) return; const Ls = CL.L[RL]; if (Ls.s1 >= F.tubes[rl].L + .01) return;
         const last = !P.slice(P.indexOf(CL) + 1).some(o => o.L[RL] && o.L[RL].falda === undefined && o.L[RL].s1 > Ls.s1 - .02 && (o.cl || 0) >= (CL.cl || 0));   // l'orlo in fondo alla gamba: solo se nessuno ci scende sopra

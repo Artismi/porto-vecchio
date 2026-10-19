@@ -76,6 +76,12 @@ var Vesti3D = (function () {
     for (let i = 0; i < n; i++) { if (!has[i]) continue; const f = fac[main[i]]; if (f === undefined) continue;
       const r = Math.hypot(off[i * 3], off[i * 3 + 1], off[i * 3 + 2]) || 1, r2 = Math.min(r * f, cap[main[i]]), k = r2 / r - 1; if (k > -.001) continue;
       pos.setXYZ(i, pos.getX(i) + off[i * 3] * k, pos.getY(i) + off[i * 3 + 1] * k, pos.getZ(i) + off[i * 3 + 2] * k); }
+    // [forma] il polso: l'avambraccio si stringe, il pezzo di mano che sale nel polso no, e faceva gli spigoli a punta. Lo si stringe con lui, sfumando verso il palmo
+    for (const sd of ['L', 'R']) { const La = line['LowerArm' + sd], hc = cen['Wrist' + sd], f = fac['LowerArm' + sd]; if (!La || !hc || f === undefined) continue;
+      const D = hc.clone().sub(La.c).dot(La.d); if (D >= -1e-6) continue;   // il polso sta dalla parte opposta al gomito
+      for (let i = 0; i < n; i++) { if (main[i] !== 'Wrist' + sd) continue; v.fromBufferAttribute(pos, i).sub(La.c); const al = v.dot(La.d), u = al / D; if (u > .8) continue;
+        const w = 1 - Math.min(1, Math.max(0, (u - .5) / .3)); v.addScaledVector(La.d, -al); const r = v.length() || 1, r2 = Math.min(r, Math.max(r * f, cap['LowerArm' + sd] || r)), k = (r2 / r - 1) * w; if (k > -.001) continue;
+        pos.setXYZ(i, pos.getX(i) + v.x * k, pos.getY(i) + v.y * k, pos.getZ(i) + v.z * k); } }
     pos.needsUpdate = true; geo.computeBoundingSphere();
     if (window.__vestiDbg) console.log('[vestiti] stretta', mesh.name, JSON.stringify(fac));
   }
@@ -509,10 +515,17 @@ var Vesti3D = (function () {
       const C = cut(c);
       // la cintura vera, con la fibbia
       if (C.cl === 2 && C.cintura && !C.gonna && !coversTorso(c)) {
-        const tb = Pittura.frame(B).tubes[0], s = tb.sAtY(B.waist + .012), leather = /cuoio|jeans/.test(C.cintura), col = leather ? (C.cintura === 'jeans' ? '#5a3a22' : '#3a2418') : c.col;
-        const o = new THREE.Group(); const ob = RO(0, s, 16) + .004; o.add(Pittura.orlo(B, 0, s, C.cintura === 'cuoio_fine' ? .026 : .036, ob, .006, 16, Pittura.blockMat('pelle', col, col, col, { vc: false })));
-        const fr = Sartoria.frameAt(tb, s), p = Pittura.surfI(B, 0, s, 0, ob + .005), n = p.clone().sub(fr.p).normalize(), bk = new THREE.Mesh(new THREE.BoxGeometry(.05, .046, .01), lm('#c8b070'));
-        bk.position.copy(p); bk.lookAt(p.clone().add(n)); const hole = new THREE.Mesh(new THREE.BoxGeometry(.032, .028, .012), lm('#2a2016')); hole.position.copy(p).addScaledVector(n, .001); hole.lookAt(p.clone().add(n)); o.add(bk, hole); AT('Hips', o);
+        const tb = Pittura.frame(B).tubes[0], s = tb.sAtY(B.waist + .014), leather = /cuoio|jeans/.test(C.cintura), col = leather ? (C.cintura === 'jeans' ? '#5a3a22' : '#3a2418') : c.col;
+        const o = new THREE.Group(); const ob = RO(0, s, 40) + .004; o.add(Pittura.orlo(B, 0, s, C.cintura === 'cuoio_fine' ? .03 : .042, ob, .006, 32, Pittura.blockMat('pelle', col, col, col, { vc: false })));
+        const fr = Sartoria.frameAt(tb, s), p = Pittura.surfI(B, 0, s, 0, ob + .003), n = p.clone().sub(fr.p).normalize(), side = new THREE.Vector3(0, 1, 0).cross(n).normalize();
+        // la fibbia: cornice sottile in metallo con l'ardiglione, posata sulla cinghia (non una piastra)
+        const met = new THREE.MeshStandardMaterial({ color: '#c8b070', roughness: .3, metalness: .9 }); met.emissive = new THREE.Color('#3a2e14');
+        const bw = .042, bh = C.cintura === 'cuoio_fine' ? .03 : .04, fs = new THREE.Shape(); fs.moveTo(-bw / 2, -bh / 2); fs.lineTo(bw / 2, -bh / 2); fs.lineTo(bw / 2, bh / 2); fs.lineTo(-bw / 2, bh / 2); fs.lineTo(-bw / 2, -bh / 2);
+        const hole = new THREE.Path(), ih = .006; hole.moveTo(-bw / 2 + ih, -bh / 2 + ih); hole.lineTo(-bw / 2 + ih, bh / 2 - ih); hole.lineTo(bw / 2 - ih, bh / 2 - ih); hole.lineTo(bw / 2 - ih, -bh / 2 + ih); fs.holes.push(hole);
+        const bg = new THREE.ExtrudeGeometry(fs, { depth: .003, bevelEnabled: true, bevelThickness: .0012, bevelSize: .0012, bevelSegments: 1 }), bk = new THREE.Mesh(bg, met);
+        const M0 = new THREE.Matrix4().makeBasis(side, new THREE.Vector3(0, 1, 0), n); bk.quaternion.setFromRotationMatrix(M0); bk.position.copy(p); o.add(bk);
+        const tongue = new THREE.Mesh(new THREE.BoxGeometry(.003, bh - .008, .0025), met); tongue.quaternion.copy(bk.quaternion); tongue.position.copy(p).addScaledVector(side, -.004).addScaledVector(n, .002); o.add(tongue);
+        AT('Hips', o);
       }
       // il cinturino della gonna
       if (C.solo_gonna && !coversTorso(c)) { const tb = Pittura.frame(B).tubes[0], s = tb.sAtY(B.waist + .01), o = new THREE.Group();
@@ -984,7 +997,7 @@ var Vesti3D = (function () {
   function accessories(g, outfit, held, D) {
     if (!window.Sartoria || !D || !D.B) return accessoriesOld(g, outfit, held);
     if (window.Pittura) try { scarpe(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); } catch (e) { console.error('[Vesti3D] scarpe', e); }
-    const ATP = (bone, obj) => /^(Head|Wrist|Foot)/.test(bone) ? Sartoria.attach(g, PARTI, bone, obj) : pelle(g, obj, D.B);   // [strati] tutto quello che sta sul corpo si piega col corpo (pesi della pelle sotto), non rigido su un osso
+    const ATP = (bone, obj) => /^(Chest|Hips|Torso|Abdomen|Neck)$/.test(bone) ? pelle(g, obj, D.B) : Sartoria.attach(g, PARTI, bone, obj);   // sul busto la pelle sotto; sugli arti l'osso (un anello sta su un segmento solo)   // [strati] tutto quello che sta sul corpo si piega col corpo (pesi della pelle sotto), non rigido su un osso
     if (window.Pittura) try { volumi(g, outfit, D.B, ATP); Pittura.bordi(g, D.B, outfit, ATP); cappuccio(g, outfit, D.B, ATP); } catch (e) { console.error('[Vesti3D] volumi', e); }
     curPL = window.Pittura ? Pittura.paintPlans(D.B, outfit) : null;
     const B = D.B, T = Sartoria.testa(g, PARTI), bn = B.bones, AT = ATP;
