@@ -833,32 +833,32 @@ var World = (function () {
       CITY.rail = smooth(RAIL, 4); const ry = x => yOn(CITY.rail, x); CITY.railY = ry;
       // la Via della Stazione: dalla Costiera Nord passa i binari al passaggio a livello e corre fra la ferrovia e la città fino al Corso
       const N0 = nordP[0], SV = [N0.slice(), [N0[0] + 12, N0[1] + 10]]; for (let x = 800; x <= 976; x += 12) SV.push([x, RAILY(x) + 21]); SV.push([988, RAILY(976) + 21]);
-      const STAZ = chaikin(smooth(SV, 2), 3); add('via_alta', 'Via della Stazione', 7, 'citta', STAZ);
+      const STAZ = chaikin(smooth(SV, 2), 3); add('via_alta', 'Via della Stazione', 7, 'citta', STAZ, { era: 'E3' });
       // il lungomare del boom (Via del Porto): dalla Costiera Sud lungo gli alberghi, poi sul porto davanti agli isolati murattiani
       const L0 = litP[litP.length - 1], LG = [L0.slice()]; for (let x = 792; x <= 852; x += 12) LG.push([x, SouthY(x) - 11]);
       LG.push([866, 199], [880, 189], [894, 185]); for (let x = 906; x <= 978; x += 12) LG.push([x, 185]); LG.push([990, 185]);
-      const LUNGO = chaikin(smooth(LG, 1), 3); add('via_porto', 'Via del Porto', 8, 'citta', LUNGO, { alberi: 'palme' });
+      const LUNGO = chaikin(smooth(LG, 1), 3); add('via_porto', 'Via del Porto', 8, 'citta', LUNGO, { alberi: 'palme', era: 'E6' });
       // E3 il Corso: dove c'erano le mura di terra, ad arco da costa a costa (dalla ferrovia al porto)
-      add('corso', 'Corso Garibaldi', 10, 'citta', chaikin([[999, ry(999) + 9], [991, 100], [985, 121], [982, 143], [984, 165], [990, 179], [996, SouthY(996) - 5]], 3), { alberi: 'tigli' });
+      add('corso', 'Corso Garibaldi', 10, 'citta', chaikin([[999, ry(999) + 9], [991, 100], [985, 121], [982, 143], [984, 165], [990, 179], [996, SouthY(996) - 5]], 3), { alberi: 'tigli', era: 'E3' });
       // E3 la griglia murattiana a filo (mai ruotata): Via Nazionale sull'asse della Vittoria, Via Cavour di traverso
-      add('via_nazionale', 'Via Nazionale', 8, 'citta', line(870, 925, 143));
-      add('via_cavour', 'Via Cavour', 7, 'citta', vline(918, yOn(STAZ, 918), yOn(LUNGO, 918)));
+      add('via_nazionale', 'Via Nazionale', 8, 'citta', line(870, 925, 143), { era: 'E3' });
+      add('via_cavour', 'Via Cavour', 7, 'citta', vline(918, yOn(STAZ, 918), yOn(LUNGO, 918)), { era: 'E3' });
       // E6 il viale del boom ai piedi della collina (il regime lo chiama della Tutela)
-      add('via_governo', 'Viale della Tutela', 12, 'citta', vline(870, yOn(STAZ, 870), yOn(LUNGO, 870)), { alberi: 'tigli' });
+      add('via_governo', 'Viale della Tutela', 12, 'citta', vline(870, yOn(STAZ, 870), yOn(LUNGO, 870)), { alberi: 'tigli', era: 'E6' });
       // E4 lo sventramento: un solo asse dritto di 18 m dal Corso alla Porta della Rocca, col cannocchiale sulla porta
-      add('vittoria', 'Via della Vittoria', 12, 'citta', line(990, 1162, 143), { pennoni: true });
+      add('vittoria', 'Via della Vittoria', 12, 'citta', line(990, 1162, 143), { pennoni: true, era: 'E4' });
       // E0 il borgo: la Rua Maestra storta dalla porta di terra alla spianata; E2 la marina sul porto vecchio; la Via di Mezzo a sud
       const RUA = chaikin([[995, 108], [1012, 104], [1034, 107], [1050, 111], [1063, 110], [1078, 107], [1094, 111], [1110, 114], [1126, 110], [1146, 113]], 3);
-      add('rua', 'Rua Maestra', 5, 'vicolo', RUA, { fogna: true });
+      add('rua', 'Rua Maestra', 5, 'vicolo', RUA, { fogna: true, era: 'E0' });
       const MAR = chaikin([[998, 186], [1030, 185], [1060, 185.5], [1085, 186], [1100, 193], [1118, 201], [1140, 205], [1160, 207]], 3);
-      add('marina', 'Via della Marina', 5, 'vicolo', MAR, { fogna: true });
+      add('marina', 'Via della Marina', 5, 'vicolo', MAR, { fogna: true, era: 'E2' });
       const MEZ = chaikin([[1026, 171], [1048, 169], [1070, 172], [1092, 174], [1112, 180], [1138, 187]], 3);
-      add('mezzo', 'Via di Mezzo', 4, 'vicolo', MEZ);
+      add('mezzo', 'Via di Mezzo', 4, 'vicolo', MEZ, { era: 'E0' });
       // i vicoli a pettine (Molfetta): ogni 10-14 m, paralleli e storti tutti dalla stessa parte, dalla Rua alle mura di tramontana
       // e dalla Rua alla marina. La Vittoria li ha tagliati: i due monconi restano in fila ai due lati dell'asse.
       const VIC = ['Vicolo dei Lanternini', 'Vico dei Chiodi', 'Vico delle Lampade', 'Caruggio dei Pescatori', 'Vicolo Storto', 'Vico dei Cordai', 'Vico dei Gatti', 'Vico Lungo', 'Vico del Pozzo', 'Vicolo delle Reti', 'Vico della Fame', 'Vico dell\'Arco', 'Vico dei Bottai', 'Vicolo Cieco', 'Vico delle Monache', 'Vico del Sale', 'Vico dei Tonnaroti', 'Vico Scuro'];
       const MURA_IN = x => ry(x) + 9, LEAN = .16, VS = [];
-      let nv = 0; const vic = (pts, w) => add('vic_' + nv, VIC[(nv++) % VIC.length], w || 3, 'vicolo', chaikin(pts, 2));   // tre metri: dall'alto il vicolo si legge
+      let nv = 0; const vic = (pts, w) => add('vic_' + nv, VIC[(nv++) % VIC.length], w || 3, 'vicolo', chaikin(pts, 2), { era: 'E0' });   // tre metri: dall'alto il vicolo si legge
       for (let xk = 1004, kk = 0; xk < 1138; kk++) {
         const h = s => hash2(kk, s, 8101), y0 = yOn(RUA, xk), X = y => xk + LEAN * (y0 - y);
         const vseg = (ya, yb, s) => { const ym = (ya + yb) / 2; return [[X(ya), ya], [X(ym) + (h(s) - .5) * 2.4, ym], [X(yb), yb]]; };
