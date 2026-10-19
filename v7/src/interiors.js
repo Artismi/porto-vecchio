@@ -61,6 +61,12 @@ var Interior = (function () {
       : /porto/.test(d) ? ['pescatore', 'pescatore', 'operaio', 'famiglia', 'anziana', 'kommunalka']
       : /base/.test(d) ? ['funzionario', 'operaio', 'famiglia']
       : ['famiglia', 'famiglia', 'operaio', 'operaio', 'anziana', 'kommunalka', 'kommunalka', 'pescatore', 'intellettuale'];
+    // [botteghe] nella città per epoche chi ci abita viene dalla strada: nel borgo pescatori e vecchie, nell'Ottocento il salotto buono,
+    // sotto i portici i funzionari, nel boom le famiglie giovani, fra le baracche gli operai e le stanze in comune
+    const ERA_POOL = { E0: ['pescatore', 'anziana', 'famiglia', 'kommunalka', 'operaio', 'anziana'], E2: ['pescatore', 'pescatore', 'famiglia', 'anziana', 'operaio'],
+      E3: ['famiglia', 'funzionario', 'intellettuale', 'anziana', 'anziana', 'famiglia'], E4: ['funzionario', 'funzionario', 'famiglia', 'anziana', 'intellettuale'],
+      E6: ['famiglia', 'famiglia', 'operaio', 'intellettuale', 'funzionario'], E7: ['operaio', 'kommunalka', 'kommunalka', 'pescatore', 'famiglia'] };
+    if (b.era && ERA_POOL[b.era]) return pick(r, ERA_POOL[b.era]);
     const coast = W && W.yc && Math.abs((b.y + b.h / 2) * TS - W.yc((b.x + b.w / 2) * TS)) > 40;
     if (coast && r() < .2) return 'pescatore';
     return pick(r, pool);
@@ -87,6 +93,12 @@ var Interior = (function () {
   function program(b, kind, f, nF, r) {
     const home = mood => ({ names: HOME[mood][f === 0 ? 0 : 1], mood });
     const up = () => { const mr = rng(((b.x * 2654435761) ^ (b.y * 40503) ^ (f * 977 + 999)) >>> 0); mr(); mr(); return home(moodOf(b, f, mr)); };   // sopra le botteghe ci vive qualcuno (o ci tengono la roba)
+    // [botteghe] la bottega al primo piano: sotto l'androne del palazzo, al primo piano la bottega (il suo programma del piano terra), sopra le case
+    const SF = b.shopFront; if (SF && SF.piano === 1 && b.door && !program.__sf) {
+      if (f === 0) return { names: ['androne', 'portineria', 'cantine', 'ripostiglio'], mood: 'condominio' };
+      if (f >= 2) return up();
+      program.__sf = true; try { return program(b, kind, 0, nF, r); } finally { program.__sf = false; }
+    }
     const ex = EXTRA.names[kind]; if (ex) return { names: ex[Math.min(f, ex.length - 1)] || ex[0], mood: kind };
     const P = (n0, n1, n2) => ({ names: f === 0 ? n0 : f === nF - 1 && n2 ? n2 : n1, mood: kind });
     switch (kind) {
