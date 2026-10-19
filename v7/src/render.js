@@ -3625,7 +3625,12 @@ var Render = (function () {
     P = { prog, ins: hi < .4 ? 'cartellone' : hi < .72 ? 'serbatoio' : 'neon', x0, z0, w, d, occ: [], n: {}, lim: { antenna: 1, dish: prog === 'tecnico' ? 2 : 1, ac: prog === 'tecnico' ? 3 : 2, tank: 1, volume: 1, torrino: 1 } };
     // le scale di Tetti arrivano sul bordo: lì resta libero
     if (window.Tetti && Tetti.LADDERS) { if (!RP1lad) { RP1lad = new Map(); Tetti.LADDERS.forEach(L => { const bb = G.BUILDINGS[L.bi]; (RP1lad.get(bb) || RP1lad.set(bb, []).get(bb)).push(L); }); }
-      (RP1lad.get(b.__tierOf || b) || []).forEach(L => P.occ.push([L.tx, L.ty, 1.1])); }
+      (RP1lad.get(b.__tierOf || b) || []).forEach(L => P.occ.push([L.tx, L.ty, 1.1]));
+      // [tetti2] gli arrivi delle passerelle (la rampa e il bordo) e la panca del belvedere: lì niente roba
+      const bb0 = b.__tierOf || b, bi0 = G.BUILDINGS.indexOf(bb0);
+      (Tetti.PLANKS || []).forEach(Q => { if (Q.a === bi0) { P.occ.push([Q.wa[0] - Q.ox * .5, Q.wa[1] - Q.oy * .5, 1.0]); P.occ.push([Q.x0, Q.y0, .9]); }
+        if (Q.b === bi0) { P.occ.push([Q.wb[0] + Q.ox * .5, Q.wb[1] + Q.oy * .5, 1.0]); P.occ.push([Q.wb[0] + Q.ox * 1.5, Q.wb[1] + Q.oy * 1.5, .9]); } });
+      (Tetti.BELV || []).forEach(V => { if (V.bi === bi0) P.occ.push([V.x, V.y, 1.8]); }); }
     RP1.set(b, P); return P;
   }
   const rp1 = rec => rec && rec.b ? rpB(rec.b, !!rec.flat, rec.geo ? rec.geo.x0 : rec.box3.min.x, rec.geo ? rec.geo.z0 : rec.box3.min.z, rec.geo ? rec.geo.w : rec.box3.max.x - rec.box3.min.x, rec.geo ? rec.geo.d : rec.box3.max.z - rec.box3.min.z) : null;

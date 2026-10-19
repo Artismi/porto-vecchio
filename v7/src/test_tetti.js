@@ -62,5 +62,32 @@ if (tall) {
   ok(p.hp < 100 || h - T.roofRule({ base: 0 }) < 4.5, `una caduta da ${Math.round(h)} m fa male (vita ${p.hp})`);
 }
 
+// [tetti2] le passerelle: assi sui vicoli larghi, si cammina da un tetto all'altro senza saltare
+console.log(`passerelle: ${T.PLANKS.length}, belvederi: ${T.BELV.length}`);
+ok(T.PLANKS.length >= 10, 'ci sono le passerelle sui vicoli larghi');
+ok(T.PLANKS.every(P => P.gap >= 4 && P.gap <= 6), 'solo dove il salto non basta (4–6 m)');
+const PK = T.PLANKS.find(P => Math.abs(T.roofRule(B[P.a]) - T.roofRule(B[P.b])) < .3) || T.PLANKS[0];
+if (PK) {
+  const mid = T.plankAt(PK.x0 + PK.ox * PK.L / 2, PK.y0 + PK.oy * PK.L / 2); ok(mid && mid.h > 2, `sopra il vicolo la passerella regge (quota ${mid && mid.h.toFixed(1)} m)`);
+  p.lv = { k: 'tetto', b: PK.a, h: T.roofH(PK.a, PK.x0 - PK.ox, PK.y0 - PK.oy) ?? T.roofRule(B[PK.a]) }; p.x = PK.x0 - PK.ox * .8; p.y = PK.y0 - PK.oy * .8; calm(); clear(); p.jz = 0; p.jvz = 0;
+  run(6, { x: PK.ox, y: PK.oy });
+  ok(p.lv && p.lv.k === 'tetto' && p.lv.b === PK.b, `camminando sulle assi si arriva sull'altro tetto (${B[PK.a].id} → ${B[PK.b].id}, ora ${p.lv ? 'tetto ' + p.lv.b : 'a terra'})`);
+  ok(p.hp === 100, 'senza cadere');
+  // di lato si resta sulle assi: niente passi nel vuoto
+  p.lv = { k: 'tetto', b: PK.a, h: mid.h }; p.x = PK.x0 + PK.ox * PK.L / 2; p.y = PK.y0 + PK.oy * PK.L / 2; T.settle(st); calm(); p.jz = 0; p.jvz = 0;
+  run(1.5, { x: PK.px, y: PK.py }); ok(p.lv && p.lv.k === 'tetto', 'di lato la passerella non si lascia (non si cade camminando)');
+}
+// [tetti2] i belvederi: arrivarci è una scoperta, ci si siede a guardare
+ok(T.BELV.length >= 5, 'un belvedere nei quartieri');
+const V = T.BELV[0];
+if (V) {
+  st.me = st.me || { need: { svago: .8 } }; if (st.me.need) st.me.need.svago = .8;
+  p.lv = { k: 'tetto', b: V.bi, h: T.roofRule(B[V.bi]) }; p.x = V.x; p.y = V.y; T.settle(st); calm(); run(.2, {});
+  ok(st.tetti && st.tetti.belv[V.i] !== undefined, `il belvedere si scopre: ${V.name}`);
+  ok(st.me.need.svago < .8, `passa la noia (${st.me.need.svago.toFixed(2)})`);
+  const act = Azioni.playerActions(st).find(a => a.id === 'belvedere'); ok(!!act, 'l\'azione «Siediti a guardare il porto»');
+  const t0 = st.t, msg = act && act.run(); ok(st.t > t0 && typeof msg === 'string', `seduti: ${msg}`);
+}
+
 console.log(fail ? `\n${fail} prove fallite` : '\ntutto bene');
 process.exit(fail ? 1 : 0);
