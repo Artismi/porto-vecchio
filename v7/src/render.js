@@ -6916,6 +6916,17 @@ var Render = (function () {
   // bordo della strada, ritagliato con una curva di livello liscia (niente gradini della griglia), alto 15 cm con il cordolo
   // dritto in pietra verso la strada. Poi il verde come in una città lasciata andare: erba nelle crepe lungo i cordoli e i
   // muri, cespugli, alberi cresciuti dove c'è terra. Agli incroci: paletti agli angoli, tombini, caditoie, erbacce.
+  // [fluido4] una mesh grande (senza indice) divisa in riquadri di lato T secondo il centro di ogni triangolo: ogni riquadro ha il suo
+  // ingombro e il ritaglio della camera lo scarta quando è fuori schermo. Stessi materiali, stessa ombra
+  function tileSplit4(m, T) {
+    const g = m.geometry, A = g.attributes, P = A.position.array, nT = A.position.count / 3, buckets = new Map();
+    for (let t = 0; t < nT; t++) { const o = t * 9, k = Math.floor((P[o] + P[o + 3] + P[o + 6]) / 3 / T) + ',' + Math.floor((P[o + 2] + P[o + 5] + P[o + 8]) / 3 / T); let b = buckets.get(k); if (!b) buckets.set(k, b = []); b.push(t); }
+    const out = [];
+    buckets.forEach(tris => { const ng = new THREE.BufferGeometry();
+      for (const n in A) { const a = A[n], isz = a.itemSize, src = a.array, dst = new src.constructor(tris.length * 3 * isz); tris.forEach((t, q) => dst.set(src.subarray(t * 3 * isz, (t + 1) * 3 * isz), q * 3 * isz)); ng.setAttribute(n, new THREE.BufferAttribute(dst, isz, a.normalized)); }
+      ng.computeBoundingSphere(); const nm = new THREE.Mesh(ng, m.material); nm.receiveShadow = m.receiveShadow; nm.castShadow = m.castShadow; out.push(nm); });
+    g.dispose(); return out;
+  }
   function marciapiedi38(F) {
     if (!F || !F.S38) return 0;
     const { R, NW, NH, S38, D38, C38 } = F;
@@ -6946,7 +6957,7 @@ var Render = (function () {
     const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.Float32BufferAttribute(wpos, 3)); g2.setAttribute('color', new THREE.Float32BufferAttribute(wcol, 3)); g2.computeVertexNormals();
     const top = new THREE.Mesh(g1, new THREE.MeshLambertMaterial({ map: lastre35(), vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
     const wall = new THREE.Mesh(g2, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
-    [top, wall].forEach(m => { m.receiveShadow = true; m.frustumCulled = false; scene.add(m); });
+    [top, wall].forEach(m => { m.receiveShadow = true; tileSplit4(m, 64).forEach(t => scene.add(t)); });   // [fluido4] a riquadri: si disegna solo quello che si vede
     return nt;
   }
 
@@ -9181,8 +9192,18 @@ var Render = (function () {
       const a = vert(i, j), b = vert(i + 1, j), d = vert(i, j + 1), e = vert(i + 1, j + 1); ind.push(a, d, b, b, d, e);
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv35, 2)); geo.setIndex(ind); geo.computeVertexNormals();
-    geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(G.WW / 2, 0, G.WH / 2), Math.hypot(G.WW, G.WH));
-    const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: lastre35(), vertexColors: true, emissive: NEVE ? '#34363c' : '#121214', polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); mesh.receiveShadow = true; mesh.frustumCulled = false; scene.add(mesh);
+    // [fluido4] a riquadri da 64 m con gli stessi vertici (indice proprio): si disegna solo quello che si vede. Prima era una mesh
+    // sola, disegnata intera a ogni fotogramma anche fuori schermo
+    const sMat = new THREE.MeshLambertMaterial({ map: lastre35(), vertexColors: true, emissive: NEVE ? '#34363c' : '#121214', polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    { const PA = geo.attributes.position.array, TILE = 64, buckets = new Map();
+      for (let t = 0; t < ind.length; t += 3) { const a0 = ind[t] * 3, cx = (PA[a0] + PA[ind[t + 1] * 3] + PA[ind[t + 2] * 3]) / 3, cz = (PA[a0 + 2] + PA[ind[t + 1] * 3 + 2] + PA[ind[t + 2] * 3 + 2]) / 3, k = Math.floor(cx / TILE) + ',' + Math.floor(cz / TILE);
+        let b = buckets.get(k); if (!b) buckets.set(k, b = []); b.push(ind[t], ind[t + 1], ind[t + 2]); }
+      const nV = PA.length / 3;
+      buckets.forEach((idx, k) => { const [i, j] = k.split(',').map(Number), g = new THREE.BufferGeometry(); for (const n in geo.attributes) g.setAttribute(n, geo.attributes[n]);
+        g.setIndex(new THREE.BufferAttribute(nV < 65536 ? new Uint16Array(idx) : new Uint32Array(idx), 1));
+        let y0 = 1e9, y1 = -1e9; for (let q = 0; q < idx.length; q++) { const y = PA[idx[q] * 3 + 1]; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        g.boundingSphere = new THREE.Sphere(new THREE.Vector3((i + .5) * TILE, (y0 + y1) / 2, (j + .5) * TILE), Math.hypot(TILE / 2 + 1, TILE / 2 + 1, (y1 - y0) / 2 + 1));
+        const m = new THREE.Mesh(g, sMat); m.receiveShadow = true; scene.add(m); }); }
     // [memoria] le griglie di lavoro dei marciapiedi non servono più: a gioco resta solo l'altezza (H, per swH). ~130 MB
     if (SWF35) { SWF35.m = SWF35.Hn = SWF35.S38 = SWF35.D38 = SWF35.C38 = null; } S1.ramp = null;
     return ind.length / 3;
@@ -12505,6 +12526,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     ombre1(st, night);   /* [ombre1] */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
+    if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     renderer.setRenderTarget(rt); renderer.render(scene, camera);
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
     gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE();   /* [amb2] */
