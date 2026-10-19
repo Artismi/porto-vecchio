@@ -1255,7 +1255,10 @@ var Writing = (function () {
     if (!TAV.a) {
       const list = cands(p.x, p.y); if (GFX.train) GFX.train.cars.forEach(c => c.sides.forEach(s => list.push(s.mesh)));   // [writer] anche le fiancate del treno
       const vis = h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); };
-      const hits = rc.intersectObjects(list, false), h = hits.find(h => vis(h) && hyp(h.point.x - p.x, h.point.z - p.y) <= 14);
+      // [graffiti3] prima un muro (faccia verticale) sotto il dito, anche se davanti c'è terra, erba o un oggetto piccolo; la terra solo se muri non ce ne sono
+      const hits = rc.intersectObjects(list, false), near14 = h => vis(h) && hyp(h.point.x - p.x, h.point.z - p.y) <= 14;
+      const upright = h => { const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); return Math.abs(n.y) < .5; };
+      const h = hits.find(h => near14(h) && upright(h)) || hits.find(near14);
       if (!h) { const far = hits.find(vis); return far && hyp(far.point.x - p.x, far.point.z - p.y) < 40 ? { msg: 'Troppo lontano per la tavoletta: avvicinati al muro.' } : false; }
       const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (n.dot(rc.ray.direction) > 0) n.negate();
       if (!TAV.told) { TAV.told = true; try { G.feed(st, 'Tavoletta: tieni premuto e trascina per aprire la finestra sul muro, poi lascia e disegni.'); } catch (e) { } }

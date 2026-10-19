@@ -1022,7 +1022,7 @@ var Render = (function () {
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSnow; varying vec3 vWP2; varying float vLi2;\nfloat lfH2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\nfloat lfN2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(lfH2(i), lfH2(i + vec2(1., 0.)), f.x), mix(lfH2(i + vec2(0., 1.)), lfH2(i + 1.), f.x), f.y); }')
         .replace('#include <color_fragment>', `#include <color_fragment>
           { float cl = lfN2(vWP2.xz * 1.3 + vWP2.y * .8) * .6 + lfN2(vWP2.xz * 4.1 - vWP2.y * 2.3) * .4;   // [verde2] grana e ciuffi dal mondo, una tinta per pianta
-            diffuseColor.rgb *= (.8 + .4 * cl) * mix(vec3(1.06, 1.03, .86), vec3(.87, 1., 1.05), vLi2); }
+            diffuseColor.rgb *= (.9 + .2 * cl) * mix(vec3(1.03, 1.01, .95), vec3(.96, 1., 1.02), vLi2); }
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.8' : '0.'});`);
     };
     return m;
@@ -1117,8 +1117,8 @@ var Render = (function () {
           ${leafy ? `{   // [verde2] le chiome hanno volume e grana: dentro e sotto più scure, in cima più chiare, ciuffi di luce e d'ombra
             // dal mondo (non si ripetono fra una pianta e l'altra) e ogni pianta una tinta sua, dal giallo-oliva al verde-azzurro
             float cl = lfN(vWP.xz * 1.1 + vWP.y * .7) * .65 + lfN(vWP.xz * 3.3 - vWP.y * 1.9) * .35;
-            lfS = mix(.58, 1.14, smoothstep(.05, .95, vLh)) * (.8 + .4 * cl);
-            diffuseColor.rgb *= lfS * mix(vec3(1.07, 1.03, .84), vec3(.86, 1., 1.05), vLi); }` : ''}
+            lfS = mix(.66, 1.1, smoothstep(.05, .95, vLh)) * (.9 + .2 * cl);
+            diffuseColor.rgb *= lfS * mix(vec3(1.03, 1.01, .95), vec3(.96, 1., 1.02), vLi); }   /* [verde3] tinte vicine: la scena si tiene insieme */` : ''}
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.6' : '0.'});
           { vec3 ab = uCm - uPl; float t = clamp(dot(vWP - uPl, ab) / dot(ab, ab), 0., 1.); float d = length(vWP - (uPl + ab * t));
             float open = (1. - smoothstep(1.6, 3.4, d)) * step(.04, t) * step(vWP.y, uPl.y + 30.) * step(uPl.y + .9, vWP.y);
@@ -5034,9 +5034,11 @@ var Render = (function () {
   // pile di giornali; ciuffi d'erba che spuntano fra cordolo e asfalto, fra le lastre, fra i basoli dei vicoli. Tutto fuso nella geometria
   // statica (non si urta): solo le cose più grandi occupano posto (OCC35) e non finiscono addosso agli arredi.
   function grassTex1(kind) {
-    const key = 'gr' + kind; if (S1.tex[key]) return S1.tex[key]; const c = mk(32, 32), x = c.getContext('2d'), r = rng(kind * 17 + 3); x.clearRect(0, 0, 32, 32);
-    const cols = [['#6a7a3a', '#56682e', '#8a8a48', '#4a5a2a'], ['#9a8a52', '#8a7444', '#b0a066', '#76663c'], ['#4e6a34', '#3e5a2a', '#62803e', '#2e4a22']][kind];
-    for (let i = 0; i < 26; i++) { const bx = 4 + r() * 24, h = 10 + r() * 21, lean = (r() - .5) * 10; x.strokeStyle = pick(r, cols); x.lineWidth = 1 + (r() < .3 ? 1 : 0); x.beginPath(); x.moveTo(bx, 32); x.quadraticCurveTo(bx + lean * .3, 32 - h * .6, bx + lean, 32 - h); x.stroke(); }
+    // [verde2] una famiglia sola di verdi (prima oliva, paglia e verde scuro a caso: si mischiavano), fili più spessi su 64 px
+    // che a distanza restano fili invece di sgranarsi
+    const key = 'gr' + kind; if (S1.tex[key]) return S1.tex[key]; const c = mk(64, 64), x = c.getContext('2d'), r = rng(kind * 17 + 3); x.clearRect(0, 0, 64, 64);
+    const cols = [['#66763a', '#5a6a32', '#74823f', '#52622e'], ['#72783e', '#667036', '#7e8444', '#5c6634'], ['#5a6e36', '#4e6230', '#66783c', '#48582c']][kind];
+    for (let i = 0; i < 22; i++) { const bx = 8 + r() * 48, h = 22 + r() * 40, lean = (r() - .5) * 18; x.strokeStyle = pick(r, cols); x.lineWidth = 2.5 + r() * 1.5; x.lineCap = 'round'; x.beginPath(); x.moveTo(bx, 64); x.quadraticCurveTo(bx + lean * .3, 64 - h * .6, bx + lean, 64 - h); x.stroke(); }
     const t = canvasTex(c); return (S1.tex[key] = t);
   }
   let TUFT1 = null;
@@ -8870,7 +8872,7 @@ var Render = (function () {
     DEV.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), DEV.mat));
   }
   function devPass() {
-    const U = DEV.mat.uniforms; U.t.value = DEV.rt.texture; U.k.value = AMB.crisp || 0; U.g.value = AMB.film || 0; U.tm.value = performance.now() / 1000;
+    const U = DEV.mat.uniforms; U.t.value = DEV.rt.texture; U.k.value = AMB.crisp || 0; U.g.value = PHONE ? 0 : AMB.film || 0;   /* [grafica3] sul telefono niente grana: sullo schermo piccolo sembrava sgranato */ U.tm.value = performance.now() / 1000;
     renderer.setRenderTarget(null); renderer.render(DEV.scene, DEV.cam);
   }
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
@@ -8878,7 +8880,7 @@ var Render = (function () {
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
-    PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 540 : 1080));   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
+    PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 720 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
     PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     GPUT.px = W + '×' + H;   /* [prestazioni] */

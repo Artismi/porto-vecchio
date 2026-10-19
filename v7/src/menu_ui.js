@@ -436,6 +436,7 @@ var MenuUI = (function () {
 #mu .tile .q { top: 2px; bottom: auto; }
 #mu .tile[draggable="true"] { cursor: grab; } #mu .dragging { opacity: .35; } #mu .over { box-shadow: 0 0 0 2px var(--ott) !important; background: rgba(176,141,87,.1) !important; }
 #mu .addosso { display: grid; gap: 12px; }
+#mu [data-drag] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 #mu .ah { display: flex; align-items: baseline; gap: 14px; } #mu .ah .nmw { font: 400 30px var(--fs); }
 #mu .dress2 { display: grid; grid-template-columns: 1fr 190px 1fr; gap: 10px; align-items: center; }
 #mu .zc { display: grid; gap: 8px; align-content: center; }
@@ -494,6 +495,16 @@ var MenuUI = (function () {
   #mu button.b { padding: 11px 16px; }
   #mu .msg { max-width: 90%; bottom: 90px; }
   #mu, #mu .dim { font-size: 15px; }
+  /* [menu3] i vestiti sempre in vista: «Addosso» in alto, compatto, fermo mentre la borsa scorre sotto */
+  #mu .inv, #mu .roba { display: flex; flex-direction: column; gap: 14px; }
+  #mu .inv .addosso, #mu .roba .addosso { order: -1; position: sticky; top: -6px; z-index: 2; background: var(--vetro); padding: 6px 0 8px; box-shadow: 0 8px 12px -8px rgba(0,0,0,.7); gap: 6px; }
+  #mu .addosso .ah .dim, #mu .addosso .ab2 { display: none; }
+  #mu .addosso .nmw { font-size: 20px; }
+  #mu .dress2 { grid-template-columns: 1fr 96px 1fr; gap: 6px; }
+  #mu .dress2 .nino canvas { width: 96px !important; height: 160px !important; }
+  #mu .zc { gap: 4px; } #mu .zr { min-height: 34px; padding: 3px 6px; } #mu .zr label { font-size: 9px; margin-bottom: 1px; } #mu .inv .hands { display: none; }
+  #mu .hands { transform: scale(.85); transform-origin: top center; margin-bottom: -10px; }
+  #mu .inv .bag, #mu .roba .bag { --c: calc((100vw - 92px) / 6); } #mu .roba .bag { --c: calc((100vw - 92px) / 5); }
 }
 `;
 
@@ -516,6 +527,18 @@ var MenuUI = (function () {
     m.addEventListener('dragend', () => { U.drag = null; m.querySelectorAll('.dragging,.over').forEach(x => x.classList.remove('dragging', 'over')); render(true); });
     m.addEventListener('dragover', e => { const t = e.target.closest('[data-drop]'); if (!t || !U.drag) return; e.preventDefault(); m.querySelectorAll('.over').forEach(x => { if (x !== t) x.classList.remove('over'); }); t.classList.add('over'); });
     m.addEventListener('drop', e => { const t = e.target.closest('[data-drop]'); if (!t || !U.drag) return; e.preventDefault(); const src = U.drag; U.drag = null; dropOn(src, t, e.clientX); render(true); });
+    // [menu3] col dito: tieni premuto un attimo su un oggetto (o un capo), poi trascinalo dove vuoi. Prima si poteva solo col mouse
+    { let T = null; const clear = () => { if (T) { clearTimeout(T.tm); if (T.gh) T.gh.remove(); m.querySelectorAll('.dragging,.over').forEach(x => x.classList.remove('dragging', 'over')); } T = null; };
+      m.addEventListener('touchstart', e => { const d = e.target.closest('[data-drag]'); if (!d || e.touches.length > 1) return; const t0 = e.touches[0];
+        T = { d, src: d.dataset.drag, x: t0.clientX, y: t0.clientY, on: false, tm: setTimeout(() => { if (!T) return; T.on = true; d.classList.add('dragging');
+          const gh = d.cloneNode(true); gh.style.cssText = 'position:fixed;z-index:10000;pointer-events:none;opacity:.85;transform:translate(-50%,-50%) scale(1.15);width:' + d.offsetWidth + 'px;height:' + d.offsetHeight + 'px;left:' + T.x + 'px;top:' + T.y + 'px'; m.appendChild(gh); T.gh = gh;
+          try { navigator.vibrate && navigator.vibrate(15); } catch (x) { } }, 260) }; }, { passive: true });
+      m.addEventListener('touchmove', e => { if (!T) return; const t0 = e.touches[0];
+        if (!T.on) { if (Math.hypot(t0.clientX - T.x, t0.clientY - T.y) > 10) clear(); return; }   // si stava scorrendo: niente trascinamento
+        e.preventDefault(); T.x = t0.clientX; T.y = t0.clientY; T.gh.style.left = T.x + 'px'; T.gh.style.top = T.y + 'px';
+        const el = document.elementFromPoint(T.x, T.y), tg = el && el.closest('[data-drop]'); m.querySelectorAll('.over').forEach(x => { if (x !== tg) x.classList.remove('over'); }); if (tg) tg.classList.add('over'); }, { passive: false });
+      m.addEventListener('touchend', e => { if (!T || !T.on) { clear(); return; } const x = T.x, y = T.y, src = T.src; clear(); const el = document.elementFromPoint(x, y), tg = el && el.closest('[data-drop]'); if (tg) { e.preventDefault(); dropOn(src, tg, x); render(true); } });
+      m.addEventListener('touchcancel', clear); }
     return true;
   }
   function open(tab, arg) {
@@ -585,7 +608,7 @@ var MenuUI = (function () {
   function pZaino(st, mode) {
     const all = bagItems(st), pv = all.pv, GR0 = typeof Guardaroba !== 'undefined' ? Guardaroba : null;
     // nell'equipaggiamento accanto a Nino c'è solo la roba che si indossa o si tiene in mano
-    const items = mode === 'equip' ? all.items.filter(i => (GR0 && GR0.CAPO[i.id]) || i.eq || (O().canHold && O().canHold(i.id))) : all.items, P = pack(items, mode === 'equip' ? 5 : 9);
+    const items = mode === 'equip' ? all.items.filter(i => (GR0 && GR0.CAPO[i.id]) || i.eq || (O().canHold && O().canHold(i.id))) : all.items, NC = mode === 'equip' ? 5 : matchMedia('(max-width: 640px)').matches ? 6 : 9, P = pack(items, NC);   // [menu3] in verticale 6 colonne: a 9 i nomi si accavallavano
     if (!U.sel || !items.some(i => i.id === U.sel)) U.sel = items[0] ? items[0].id : null;
     const sel = items.find(i => i.id === U.sel);
     const tiles = P.put.map(o => { const i = o.it, wide = o.w === 2 && o.h === 1, big = o.h === 2;
@@ -602,10 +625,10 @@ var MenuUI = (function () {
       <div class="hands">${hand('dx', GW.dx, 'destra')}<div class="hb">${btn('scambia_mani', 'Scambia')}${GW.sx ? btn('usa_sinistra', 'Usa sinistra') : ''}</div>${hand('sx', GW.sx, 'sinistra')}</div>
       <div class="ab2"><div class="stat" style="grid-template-columns:1fr auto 1fr auto;column-gap:14px"><span>Caldo</span><em>${Math.round(GW.calore * 100)}</em><span>Protezione</span><em>${Math.round(GW.arm * 100)}%</em></div>
         <div class="row">${btn('spogliati', 'Spogliati', { tutto: false })}${btn('spogliati', 'Nudo', { tutto: true }, 'bad')}</div></div></div>` : '';
-    const bagH = `<div class="bag ${inCovo(st) ? 'covo' : 'strada'}" data-drop="bag" style="grid-template-columns:repeat(${mode === 'equip' ? 5 : 9},var(--c));grid-template-rows:repeat(${P.rows},var(--c))">${tiles}</div>`;
+    const bagH = `<div class="bag ${inCovo(st) ? 'covo' : 'strada'}" data-drop="bag" style="grid-template-columns:repeat(${NC},var(--c));grid-template-rows:repeat(${P.rows},var(--c))">${tiles}</div>`;
     if (mode === 'equip') return `<div class="roba"><div class="lft"><h4>Da indossare e da tenere · trascina su Nino</h4>${bagH}<div class="det" style="margin-top:14px">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Niente da indossare in borsa.</div>'}</div></div>${addosso}</div>`;
     return `<div class="inv"><div>${bagH}<div class="dim" style="margin:8px 0 0">${items.length} cose · ${pv.peso} kg su ${pv.cap}. Quello che indossi non pesa nella borsa.${pv.base ? ' ' + btn('deposita', 'Tutto al covo', { id: '*' }) : ''}</div></div>
-        <div class="det">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Tasche vuote.</div>'}</div></div>`;
+        <div class="det">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Tasche vuote.</div>'}</div>${addosso}</div>`;   // [menu3] i vestiti si trascinano anche dall'inventario
   }
   function bar(l, v, max, cls, inv) { const f = Math.max(0, Math.min(1, v / max)), c = inv ? (f > .85 ? 'r' : f > .6 ? 'w' : '') : (f < .25 ? 'r' : f < .5 ? 'w' : cls || ''); return `<div class="stat"><span>${esc(l)}</span><em>${Math.round(v)}${max === 100 ? '%' : ''}</em><i><b class="${c}" style="width:${Math.round(f * 100)}%"></b></i></div>`; }
   function describe(id) {

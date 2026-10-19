@@ -14881,6 +14881,11 @@ var World = (function () {
       ISOLE.push({ id, name: NOMI[(n - 1) % NOMI.length] + (n > NOMI.length ? ' II' : ''), x, y, rx: rr, ry: rr * (.72 + r() * .26), rot: r() * 3.14, h: Math.min(26, rr * (tema === 'nuda' || tema === 'uccelli' ? .8 : 1.15) + 2), dome: true, amp: .2, seed: 100 + n, def: tema === 'palmeto' ? 'cala' : 'reef', kinds: r() < .35 ? [[r() * 6.28 - 3.14, .45, 'cala']] : [], veg: tema === 'pini' ? 'macchia' : tema === 'uccelli' ? 'nuda' : tema, tema, small: rr < 9, arco: rr > 9 && r() < .22, grotta: rr > 10 && r() < .25 });
       k--; } });
   }
+  // [isole2] dell'arcipelago restano due isole, le più belle: l'Isola delle Palme (piccola, davanti al porto) e l'Isola Grande
+  // del Sud (la montagna di giungla della tribù). Il resto (basi, villaggi, boomerang, creste, panettoni) non si genera più:
+  // meno terra da costruire e da disegnare, meno gente da muovere. Le definizioni restano qui sopra.
+  { const KEEP = new Set(['palme', 'grande_sud']); const keep = ISOLE.filter(I => KEEP.has(I.id)); ISOLE.length = 0; ISOLE.push(...keep);
+    LAGUNE.splice(0, 1); }   // la laguna dietro l'Isola Lunga
   let ISLES_ON = false;   // [arcipelago] durante la generazione dell'isola grande le isole non ci sono: le aggiunge expand() sulla mappa grande
   // [arcipelago] forme organiche: ogni isola è un corpo principale più alcuni lobi che ci si saldano sopra (come colline che si
   // fondono), su cui passa una deformazione a più scale: penisole, golfi, promontori; le creste serpeggiano.
@@ -16624,10 +16629,10 @@ var World = (function () {
       if (I.tema === 'uccelli') S.features.push({ type: 'colonia', id: 'colonia_' + I.id, x: I.x + OX, y: I.y + OY, r: Math.max(I.rx, I.ry) });
     });
     // la torre saracena sull'Isolotto della Torre, il relitto del Santa Rosalia sulla secca dell'Isola del Relitto
-    { const IT = ISOLE.find(I => I.id === 'torre'), x = IT.x + IT.top[0] * IT.rx + OX, y = IT.y + IT.top[1] * IT.ry + OY; S.ruins.push({ type: 'torre', id: 'torre_saracena', name: 'Torre saracena', x, y, r: 3.4 });
+    if (ISOLE.some(I => I.id === 'torre')) { const IT = ISOLE.find(I => I.id === 'torre'), x = IT.x + IT.top[0] * IT.rx + OX, y = IT.y + IT.top[1] * IT.ry + OY; S.ruins.push({ type: 'torre', id: 'torre_saracena', name: 'Torre saracena', x, y, r: 3.4 });
       for (let ty = Math.floor((y - 3.4) / TS); ty <= Math.floor((y + 3.4) / TS); ty++) for (let tx = Math.floor((x - 3.4) / TS); tx <= Math.floor((x + 3.4) / TS); tx++) if (Math.hypot(tx * TS + 1 - x, ty * TS + 1 - y) < 3.2) grid[ix(tx, ty)] = T_.CLIFF;
       place1(IT, 'torre_saracena', 'Torre saracena', x + 4.5, y + 1); }
-    { const IR = ISOLE.find(I => I.id === 'relitto'), sp0 = shoreB(IR, Math.PI + .15); S.ruins.push({ type: 'relitto', id: 'relitto', name: 'Il relitto del Santa Rosalia', x: sp0.x - 7, y: sp0.y + 2, ang: -.5 }); place1(IR, 'relitto', 'Il relitto del Santa Rosalia', sp0.x - 1, sp0.y); }
+    if (ISOLE.some(I => I.id === 'relitto')) { const IR = ISOLE.find(I => I.id === 'relitto'), sp0 = shoreB(IR, Math.PI + .15); S.ruins.push({ type: 'relitto', id: 'relitto', name: 'Il relitto del Santa Rosalia', x: sp0.x - 7, y: sp0.y + 2, ang: -.5 }); place1(IR, 'relitto', 'Il relitto del Santa Rosalia', sp0.x - 1, sp0.y); }
     // si pesca dagli scogli delle isole, si fa il bagno sulle loro spiagge
     ISOLE.forEach((I, n) => { if (I.arc || I.small || (I.dome && !I.use && Math.max(I.rx, I.ry) < 30)) return; let m = 0; const mx = I.use || !I.dome ? 2 : 1; /* solo le isole vere: niente pescate su ogni scoglio */ for (let k = 0; k < 16 && m < mx; k++) { const a = -Math.PI + k / 16 * Math.PI * 2 + n * .3, kd = isleKind(I, a); if (kd !== 'scogli' && kd !== 'falesia' && kd !== 'reef') continue;
       const sp0 = shoreB(I, a, 1.2); if (!walkB(Math.floor(sp0.x / TS), Math.floor(sp0.y / TS)) && !walkB(Math.floor((sp0.x - sp0.dx) / TS), Math.floor((sp0.y - sp0.dy) / TS))) continue;
@@ -41088,7 +41093,10 @@ var Writing = (function () {
     if (!TAV.a) {
       const list = cands(p.x, p.y); if (GFX.train) GFX.train.cars.forEach(c => c.sides.forEach(s => list.push(s.mesh)));   // [writer] anche le fiancate del treno
       const vis = h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); };
-      const hits = rc.intersectObjects(list, false), h = hits.find(h => vis(h) && hyp(h.point.x - p.x, h.point.z - p.y) <= 14);
+      // [graffiti3] prima un muro (faccia verticale) sotto il dito, anche se davanti c'è terra, erba o un oggetto piccolo; la terra solo se muri non ce ne sono
+      const hits = rc.intersectObjects(list, false), near14 = h => vis(h) && hyp(h.point.x - p.x, h.point.z - p.y) <= 14;
+      const upright = h => { const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); return Math.abs(n.y) < .5; };
+      const h = hits.find(h => near14(h) && upright(h)) || hits.find(near14);
       if (!h) { const far = hits.find(vis); return far && hyp(far.point.x - p.x, far.point.z - p.y) < 40 ? { msg: 'Troppo lontano per la tavoletta: avvicinati al muro.' } : false; }
       const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (n.dot(rc.ray.direction) > 0) n.negate();
       if (!TAV.told) { TAV.told = true; try { G.feed(st, 'Tavoletta: tieni premuto e trascina per aprire la finestra sul muro, poi lascia e disegni.'); } catch (e) { } }
@@ -43354,7 +43362,7 @@ var Render = (function () {
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSnow; varying vec3 vWP2; varying float vLi2;\nfloat lfH2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\nfloat lfN2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(lfH2(i), lfH2(i + vec2(1., 0.)), f.x), mix(lfH2(i + vec2(0., 1.)), lfH2(i + 1.), f.x), f.y); }')
         .replace('#include <color_fragment>', `#include <color_fragment>
           { float cl = lfN2(vWP2.xz * 1.3 + vWP2.y * .8) * .6 + lfN2(vWP2.xz * 4.1 - vWP2.y * 2.3) * .4;   // [verde2] grana e ciuffi dal mondo, una tinta per pianta
-            diffuseColor.rgb *= (.8 + .4 * cl) * mix(vec3(1.06, 1.03, .86), vec3(.87, 1., 1.05), vLi2); }
+            diffuseColor.rgb *= (.9 + .2 * cl) * mix(vec3(1.03, 1.01, .95), vec3(.96, 1., 1.02), vLi2); }
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.8' : '0.'});`);
     };
     return m;
@@ -43449,8 +43457,8 @@ var Render = (function () {
           ${leafy ? `{   // [verde2] le chiome hanno volume e grana: dentro e sotto più scure, in cima più chiare, ciuffi di luce e d'ombra
             // dal mondo (non si ripetono fra una pianta e l'altra) e ogni pianta una tinta sua, dal giallo-oliva al verde-azzurro
             float cl = lfN(vWP.xz * 1.1 + vWP.y * .7) * .65 + lfN(vWP.xz * 3.3 - vWP.y * 1.9) * .35;
-            lfS = mix(.58, 1.14, smoothstep(.05, .95, vLh)) * (.8 + .4 * cl);
-            diffuseColor.rgb *= lfS * mix(vec3(1.07, 1.03, .84), vec3(.86, 1., 1.05), vLi); }` : ''}
+            lfS = mix(.66, 1.1, smoothstep(.05, .95, vLh)) * (.9 + .2 * cl);
+            diffuseColor.rgb *= lfS * mix(vec3(1.03, 1.01, .95), vec3(.96, 1., 1.02), vLi); }   /* [verde3] tinte vicine: la scena si tiene insieme */` : ''}
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.6' : '0.'});
           { vec3 ab = uCm - uPl; float t = clamp(dot(vWP - uPl, ab) / dot(ab, ab), 0., 1.); float d = length(vWP - (uPl + ab * t));
             float open = (1. - smoothstep(1.6, 3.4, d)) * step(.04, t) * step(vWP.y, uPl.y + 30.) * step(uPl.y + .9, vWP.y);
@@ -47366,9 +47374,11 @@ var Render = (function () {
   // pile di giornali; ciuffi d'erba che spuntano fra cordolo e asfalto, fra le lastre, fra i basoli dei vicoli. Tutto fuso nella geometria
   // statica (non si urta): solo le cose più grandi occupano posto (OCC35) e non finiscono addosso agli arredi.
   function grassTex1(kind) {
-    const key = 'gr' + kind; if (S1.tex[key]) return S1.tex[key]; const c = mk(32, 32), x = c.getContext('2d'), r = rng(kind * 17 + 3); x.clearRect(0, 0, 32, 32);
-    const cols = [['#6a7a3a', '#56682e', '#8a8a48', '#4a5a2a'], ['#9a8a52', '#8a7444', '#b0a066', '#76663c'], ['#4e6a34', '#3e5a2a', '#62803e', '#2e4a22']][kind];
-    for (let i = 0; i < 26; i++) { const bx = 4 + r() * 24, h = 10 + r() * 21, lean = (r() - .5) * 10; x.strokeStyle = pick(r, cols); x.lineWidth = 1 + (r() < .3 ? 1 : 0); x.beginPath(); x.moveTo(bx, 32); x.quadraticCurveTo(bx + lean * .3, 32 - h * .6, bx + lean, 32 - h); x.stroke(); }
+    // [verde2] una famiglia sola di verdi (prima oliva, paglia e verde scuro a caso: si mischiavano), fili più spessi su 64 px
+    // che a distanza restano fili invece di sgranarsi
+    const key = 'gr' + kind; if (S1.tex[key]) return S1.tex[key]; const c = mk(64, 64), x = c.getContext('2d'), r = rng(kind * 17 + 3); x.clearRect(0, 0, 64, 64);
+    const cols = [['#66763a', '#5a6a32', '#74823f', '#52622e'], ['#72783e', '#667036', '#7e8444', '#5c6634'], ['#5a6e36', '#4e6230', '#66783c', '#48582c']][kind];
+    for (let i = 0; i < 22; i++) { const bx = 8 + r() * 48, h = 22 + r() * 40, lean = (r() - .5) * 18; x.strokeStyle = pick(r, cols); x.lineWidth = 2.5 + r() * 1.5; x.lineCap = 'round'; x.beginPath(); x.moveTo(bx, 64); x.quadraticCurveTo(bx + lean * .3, 64 - h * .6, bx + lean, 64 - h); x.stroke(); }
     const t = canvasTex(c); return (S1.tex[key] = t);
   }
   let TUFT1 = null;
@@ -51202,7 +51212,7 @@ var Render = (function () {
     DEV.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), DEV.mat));
   }
   function devPass() {
-    const U = DEV.mat.uniforms; U.t.value = DEV.rt.texture; U.k.value = AMB.crisp || 0; U.g.value = AMB.film || 0; U.tm.value = performance.now() / 1000;
+    const U = DEV.mat.uniforms; U.t.value = DEV.rt.texture; U.k.value = AMB.crisp || 0; U.g.value = PHONE ? 0 : AMB.film || 0;   /* [grafica3] sul telefono niente grana: sullo schermo piccolo sembrava sgranato */ U.tm.value = performance.now() / 1000;
     renderer.setRenderTarget(null); renderer.render(DEV.scene, DEV.cam);
   }
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
@@ -51210,7 +51220,7 @@ var Render = (function () {
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
-    PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 540 : 1080));   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
+    PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 720 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
     PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     GPUT.px = W + '×' + H;   /* [prestazioni] */
@@ -56406,6 +56416,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   }
   function input0() {
     const sprint = !!keys.shift || touchRun || touchBoost, brakeKey = !!keys[' '] || touchBrake;
+    if (st.player.vehicle && touchMode && Math.hypot(stick.x, stick.y) > .2) {   // [telefono] guida «verso dove spingi»: la levetta è una direzione dello schermo, non gas e sterzo
+      const v = st.vehicles.find(q => q.id === st.player.vehicle), B = R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));
+      if (v) { const want = Math.atan2(wy, wx), ad = a => Math.atan2(Math.sin(a), Math.cos(a)), d = ad(want - v.ang), spd = Math.abs(v.speed || Math.hypot(v.vx || 0, v.vy || 0));
+        const two = G.VK[v.kind] && (G.VK[v.kind].two || G.VK[v.kind].pocket);
+        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: m > .35 ? 1 : 0, steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint } };   // avanti verso lì, sterzando
+        if (spd > 2 && (v.speed || 0) > 0) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: 0, hb: brakeKey, boost: false } };   // dalla parte opposta: prima frena
+        return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (stick.x || stick.y) { // touch: la levetta segue lo schermo
       const B = R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
@@ -63767,6 +63784,7 @@ var MenuUI = (function () {
 #mu .tile .q { top: 2px; bottom: auto; }
 #mu .tile[draggable="true"] { cursor: grab; } #mu .dragging { opacity: .35; } #mu .over { box-shadow: 0 0 0 2px var(--ott) !important; background: rgba(176,141,87,.1) !important; }
 #mu .addosso { display: grid; gap: 12px; }
+#mu [data-drag] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 #mu .ah { display: flex; align-items: baseline; gap: 14px; } #mu .ah .nmw { font: 400 30px var(--fs); }
 #mu .dress2 { display: grid; grid-template-columns: 1fr 190px 1fr; gap: 10px; align-items: center; }
 #mu .zc { display: grid; gap: 8px; align-content: center; }
@@ -63825,6 +63843,16 @@ var MenuUI = (function () {
   #mu button.b { padding: 11px 16px; }
   #mu .msg { max-width: 90%; bottom: 90px; }
   #mu, #mu .dim { font-size: 15px; }
+  /* [menu3] i vestiti sempre in vista: «Addosso» in alto, compatto, fermo mentre la borsa scorre sotto */
+  #mu .inv, #mu .roba { display: flex; flex-direction: column; gap: 14px; }
+  #mu .inv .addosso, #mu .roba .addosso { order: -1; position: sticky; top: -6px; z-index: 2; background: var(--vetro); padding: 6px 0 8px; box-shadow: 0 8px 12px -8px rgba(0,0,0,.7); gap: 6px; }
+  #mu .addosso .ah .dim, #mu .addosso .ab2 { display: none; }
+  #mu .addosso .nmw { font-size: 20px; }
+  #mu .dress2 { grid-template-columns: 1fr 96px 1fr; gap: 6px; }
+  #mu .dress2 .nino canvas { width: 96px !important; height: 160px !important; }
+  #mu .zc { gap: 4px; } #mu .zr { min-height: 34px; padding: 3px 6px; } #mu .zr label { font-size: 9px; margin-bottom: 1px; } #mu .inv .hands { display: none; }
+  #mu .hands { transform: scale(.85); transform-origin: top center; margin-bottom: -10px; }
+  #mu .inv .bag, #mu .roba .bag { --c: calc((100vw - 92px) / 6); } #mu .roba .bag { --c: calc((100vw - 92px) / 5); }
 }
 `;
 
@@ -63847,6 +63875,18 @@ var MenuUI = (function () {
     m.addEventListener('dragend', () => { U.drag = null; m.querySelectorAll('.dragging,.over').forEach(x => x.classList.remove('dragging', 'over')); render(true); });
     m.addEventListener('dragover', e => { const t = e.target.closest('[data-drop]'); if (!t || !U.drag) return; e.preventDefault(); m.querySelectorAll('.over').forEach(x => { if (x !== t) x.classList.remove('over'); }); t.classList.add('over'); });
     m.addEventListener('drop', e => { const t = e.target.closest('[data-drop]'); if (!t || !U.drag) return; e.preventDefault(); const src = U.drag; U.drag = null; dropOn(src, t, e.clientX); render(true); });
+    // [menu3] col dito: tieni premuto un attimo su un oggetto (o un capo), poi trascinalo dove vuoi. Prima si poteva solo col mouse
+    { let T = null; const clear = () => { if (T) { clearTimeout(T.tm); if (T.gh) T.gh.remove(); m.querySelectorAll('.dragging,.over').forEach(x => x.classList.remove('dragging', 'over')); } T = null; };
+      m.addEventListener('touchstart', e => { const d = e.target.closest('[data-drag]'); if (!d || e.touches.length > 1) return; const t0 = e.touches[0];
+        T = { d, src: d.dataset.drag, x: t0.clientX, y: t0.clientY, on: false, tm: setTimeout(() => { if (!T) return; T.on = true; d.classList.add('dragging');
+          const gh = d.cloneNode(true); gh.style.cssText = 'position:fixed;z-index:10000;pointer-events:none;opacity:.85;transform:translate(-50%,-50%) scale(1.15);width:' + d.offsetWidth + 'px;height:' + d.offsetHeight + 'px;left:' + T.x + 'px;top:' + T.y + 'px'; m.appendChild(gh); T.gh = gh;
+          try { navigator.vibrate && navigator.vibrate(15); } catch (x) { } }, 260) }; }, { passive: true });
+      m.addEventListener('touchmove', e => { if (!T) return; const t0 = e.touches[0];
+        if (!T.on) { if (Math.hypot(t0.clientX - T.x, t0.clientY - T.y) > 10) clear(); return; }   // si stava scorrendo: niente trascinamento
+        e.preventDefault(); T.x = t0.clientX; T.y = t0.clientY; T.gh.style.left = T.x + 'px'; T.gh.style.top = T.y + 'px';
+        const el = document.elementFromPoint(T.x, T.y), tg = el && el.closest('[data-drop]'); m.querySelectorAll('.over').forEach(x => { if (x !== tg) x.classList.remove('over'); }); if (tg) tg.classList.add('over'); }, { passive: false });
+      m.addEventListener('touchend', e => { if (!T || !T.on) { clear(); return; } const x = T.x, y = T.y, src = T.src; clear(); const el = document.elementFromPoint(x, y), tg = el && el.closest('[data-drop]'); if (tg) { e.preventDefault(); dropOn(src, tg, x); render(true); } });
+      m.addEventListener('touchcancel', clear); }
     return true;
   }
   function open(tab, arg) {
@@ -63916,7 +63956,7 @@ var MenuUI = (function () {
   function pZaino(st, mode) {
     const all = bagItems(st), pv = all.pv, GR0 = typeof Guardaroba !== 'undefined' ? Guardaroba : null;
     // nell'equipaggiamento accanto a Nino c'è solo la roba che si indossa o si tiene in mano
-    const items = mode === 'equip' ? all.items.filter(i => (GR0 && GR0.CAPO[i.id]) || i.eq || (O().canHold && O().canHold(i.id))) : all.items, P = pack(items, mode === 'equip' ? 5 : 9);
+    const items = mode === 'equip' ? all.items.filter(i => (GR0 && GR0.CAPO[i.id]) || i.eq || (O().canHold && O().canHold(i.id))) : all.items, NC = mode === 'equip' ? 5 : matchMedia('(max-width: 640px)').matches ? 6 : 9, P = pack(items, NC);   // [menu3] in verticale 6 colonne: a 9 i nomi si accavallavano
     if (!U.sel || !items.some(i => i.id === U.sel)) U.sel = items[0] ? items[0].id : null;
     const sel = items.find(i => i.id === U.sel);
     const tiles = P.put.map(o => { const i = o.it, wide = o.w === 2 && o.h === 1, big = o.h === 2;
@@ -63933,10 +63973,10 @@ var MenuUI = (function () {
       <div class="hands">${hand('dx', GW.dx, 'destra')}<div class="hb">${btn('scambia_mani', 'Scambia')}${GW.sx ? btn('usa_sinistra', 'Usa sinistra') : ''}</div>${hand('sx', GW.sx, 'sinistra')}</div>
       <div class="ab2"><div class="stat" style="grid-template-columns:1fr auto 1fr auto;column-gap:14px"><span>Caldo</span><em>${Math.round(GW.calore * 100)}</em><span>Protezione</span><em>${Math.round(GW.arm * 100)}%</em></div>
         <div class="row">${btn('spogliati', 'Spogliati', { tutto: false })}${btn('spogliati', 'Nudo', { tutto: true }, 'bad')}</div></div></div>` : '';
-    const bagH = `<div class="bag ${inCovo(st) ? 'covo' : 'strada'}" data-drop="bag" style="grid-template-columns:repeat(${mode === 'equip' ? 5 : 9},var(--c));grid-template-rows:repeat(${P.rows},var(--c))">${tiles}</div>`;
+    const bagH = `<div class="bag ${inCovo(st) ? 'covo' : 'strada'}" data-drop="bag" style="grid-template-columns:repeat(${NC},var(--c));grid-template-rows:repeat(${P.rows},var(--c))">${tiles}</div>`;
     if (mode === 'equip') return `<div class="roba"><div class="lft"><h4>Da indossare e da tenere · trascina su Nino</h4>${bagH}<div class="det" style="margin-top:14px">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Niente da indossare in borsa.</div>'}</div></div>${addosso}</div>`;
     return `<div class="inv"><div>${bagH}<div class="dim" style="margin:8px 0 0">${items.length} cose · ${pv.peso} kg su ${pv.cap}. Quello che indossi non pesa nella borsa.${pv.base ? ' ' + btn('deposita', 'Tutto al covo', { id: '*' }) : ''}</div></div>
-        <div class="det">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Tasche vuote.</div>'}</div></div>`;
+        <div class="det">${sel ? itemDetail(st, sel, pv) : '<div class="dim">Tasche vuote.</div>'}</div>${addosso}</div>`;   // [menu3] i vestiti si trascinano anche dall'inventario
   }
   function bar(l, v, max, cls, inv) { const f = Math.max(0, Math.min(1, v / max)), c = inv ? (f > .85 ? 'r' : f > .6 ? 'w' : '') : (f < .25 ? 'r' : f < .5 ? 'w' : cls || ''); return `<div class="stat"><span>${esc(l)}</span><em>${Math.round(v)}${max === 100 ? '%' : ''}</em><i><b class="${c}" style="width:${Math.round(f * 100)}%"></b></i></div>`; }
   function describe(id) {
