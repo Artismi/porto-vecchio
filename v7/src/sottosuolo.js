@@ -44,8 +44,17 @@ var Sottosuolo = (function () {
   const LIGHT = { cantina: '#ffb060', cisterna: '#4fa8b8', catacomba: '#ffa050', cappella: '#ffc070', ossario: '#d8c8a0', sepolta: '#c8a070', grotta: '#7fb0c8', fiume: '#4fa8b8', cunicolo: '#ff9040', miniera: '#ffc080', relitto: '#4f90b8',
     dino: '#d8d0b0', bus: '#ffd890', barca: '#80b0c0', anfore: '#c8a070', monete: '#ffd060', statua: '#d8d8e0', campana: '#c8a040', auto: '#a0a090', partigiani: '#ffb060', regime: '#e8e0c0', bottiglie: '#80c080', cani: '#d8c8a0', ossa: '#d8d0b0' };
   function buildStrati(C) {
-    const { ug, fl, kind, portals, rooms, put, corridor, toSewer, place, lamp, B } = C;
+    const { ug, fl, kind, portals, rooms, place, lamp, B, sewer } = C;
     const E = (tx, ty) => EL[idx(tx, ty)];
+    // [sotto2] le fondamenta di oggi: sotto una casa si scava solo la sua cantina, o più giù di sei metri (catacombe, miniere, grotte)
+    const DEEP = 6, put = (tx, ty, f, k, force) => { if (!inb(tx, ty)) return false; if (k !== K.CANTINA && G.tileAt(tx, ty) === T.BLD && E(tx, ty) - f < DEEP) return false; return C.put(tx, ty, f, k, force); };
+    const corridor = (ax, ay, bx, by, fa, fb, k) => {
+      const pts = []; let x = ax, y = ay; pts.push([x, y]);
+      while (x !== bx) { x += Math.sign(bx - x); pts.push([x, y]); }
+      while (y !== by) { y += Math.sign(by - y); pts.push([x, y]); }
+      pts.forEach(([tx, ty], q) => { if (G.tileAt(tx, ty) === T.WATER && !ug[idx(tx, ty)]) return; put(tx, ty, fa + (fb - fa) * q / Math.max(1, pts.length - 1), k); });
+    };
+    const toSewer = (tx, ty, f, k) => { let best = null, bd = 1e9; sewer.forEach(([sx, sy]) => { const d = Math.abs(sx - tx) + Math.abs(sy - ty); if (d < bd) { bd = d; best = [sx, sy]; } }); if (best && bd < 160) corridor(tx, ty, best[0], best[1], f, fl[idx(best[0], best[1])], k); return best; };
     const free = (tx, ty) => inb(tx, ty) && !ug[idx(tx, ty)] && G.tileAt(tx, ty) !== T.WATER;
     const rectFree = (x0, y0, w, h, noBld) => { for (let ty = y0; ty < y0 + h; ty++) for (let tx = x0; tx < x0 + w; tx++) { if (!free(tx, ty)) return false; if (noBld && G.tileAt(tx, ty) === T.BLD) return false; } return true; };
     const minE = (x0, y0, w, h) => { let m = 1e9; for (let ty = y0; ty < y0 + h; ty++) for (let tx = x0; tx < x0 + w; tx++) m = Math.min(m, E(tx, ty)); return m; };
@@ -64,8 +73,9 @@ var Sottosuolo = (function () {
     // ---------------- 0/−2: LE CANTINE delle case di oggi ----------------
     // una casa su tre, in città, tra quelle col portone: la cantina occupa la pianta meno un bordo, la scala sale al piano terra
     W.BUILDINGS.forEach((b, bi) => {
-      if (!b.house || !b.door || b.w < 4 || b.h < 4 || W.zone[idx(b.x, b.y)] !== ZC || hash(b.x, b.y, 21) > .32 || out.cantine >= 26) return;
-      const x0 = b.x + 1, y0 = b.y + 1, tw = b.w - 2, th = b.h - 2; if (!rectFree(x0, y0, tw, th)) return;
+      if (!b.house || !b.door || b.w < 3 || b.h < 3 || b.shack || W.zone[idx(b.x, b.y)] !== ZC || hash(b.x, b.y, 21) > .34 || out.cantine >= 30) return;
+      const ix = b.w >= 5 ? 1 : 0, iy = b.h >= 5 ? 1 : 0, x0 = b.x + ix, y0 = b.y + iy, tw = b.w - 2 * ix, th = b.h - 2 * iy;   // le case strette del borgo: la cantina prende tutta la pianta
+      if (!rectFree(x0, y0, tw, th)) return;
       const f = E(b.x + (b.w >> 1), b.y + (b.h >> 1)) - 2.8;
       const R = rm(x0, y0, tw, th, f, K.CANTINA, 'cantina', { bi, seed: hash(b.x, b.y, 22) });
       portals.push({ kind: 'interno', s: [x0 + tw - 1, y0 + th - 1], u: [x0 + tw - 1, y0 + th - 1], bi, name: b.name || 'casa' });
@@ -75,15 +85,59 @@ var Sottosuolo = (function () {
     // ---------------- −2/−6: LA CITTÀ SEPOLTA ----------------
     // una casa sepolta: muri perimetrali (le caselle attorno restano terra), dentro due o tre stanze separate da un muro con la porta,
     // la soglia dove stava il portone, in qualcuna il pozzo (una casella più fonda) o il mosaico (lo disegna la grafica)
-    const casa = (x0, y0, tw, th, f, stile, name) => {
+    const casa = (x0, y0, tw, th, f, stile, name, ex) => {
       if (!rectFree(x0, y0, tw, th, true)) return null;
-      const sx = x0 + Math.max(2, Math.floor(tw / 2)), doorY = y0 + Math.floor(th / 2);   // il muro divisorio, con la porta a metà
-      for (let ty = y0; ty < y0 + th; ty++) for (let tx = x0; tx < x0 + tw; tx++) { if (tx === sx && ty !== doorY) continue; put(tx, ty, f, K.SEPOLTA, true); }
-      const seed = hash(x0, y0, 23), well = seed < .35 ? [x0 + (seed < .17 ? 0 : tw - 1), y0 + th - 1] : null;
+      const div = tw >= 5, sx = x0 + Math.max(2, Math.floor(tw / 2)), doorY = y0 + Math.floor(th / 2);   // il muro divisorio (solo nelle case larghe), con la porta a metà
+      for (let ty = y0; ty < y0 + th; ty++) for (let tx = x0; tx < x0 + tw; tx++) { if (div && tx === sx && ty !== doorY) continue; put(tx, ty, f, K.SEPOLTA, true); }
+      const seed = hash(x0, y0, 23), well = seed < .3 ? [x0 + (seed < .15 ? 0 : tw - 1), y0 + (seed * 40 % 1 < .5 ? 0 : th - 1)] : null;
       if (well) fl[idx(well[0], well[1])] = f - 1.2;
-      const R = { x: cen(x0) + (tw - 1) * TS / 2, y: cen(y0) + (th - 1) * TS / 2, f, deco: 'sepolta', stile, w: tw * TS, h: th * TS, x0, y0, tw, th, wall: sx, door: doorY, well, mosaico: stile === 'ottocento' || seed > .7, soglia: [x0, doorY], light: LIGHT.sepolta, name };
+      const R = Object.assign({ x: cen(x0) + (tw - 1) * TS / 2, y: cen(y0) + (th - 1) * TS / 2, f, deco: 'sepolta', stile, w: tw * TS, h: th * TS, x0, y0, tw, th, wall: div ? sx : null, door: doorY, well, mosaico: stile === 'ottocento' || stile === 'sventramento' ? seed > .25 : seed > .7, soglia: [x0, doorY], light: LIGHT.sepolta, name, seed }, ex || {});
       rooms.push(R); out.sepolte++; return R;
     };
+    const CN = !!W.sets && !!W.FORT;   // [sotto2] la città nuova (?cittanuova): le epoche sono vere, la città sepolta le segue
+    if (CN) {
+      // ---- IL BORGO RASO NEL 1660 SOTTO LA SPIANATA: i vicoli continuano sotto terra dove sopra c'è il vuoto ----
+      // a pettine come il borgo vivo: un vicolo est-ovest largo una casella, a nord e a sud le case a schiera (fronte 6 m, fondo 8 m)
+      // col muro comune (una casella di terra fra l'una e l'altra), la soglia sul vicolo; ogni tanto una casa crollata resta terra.
+      const SPX = W.FORT.ditch[0] - 48, X0 = Math.ceil(SPX / TS) + 1, X1 = Math.floor(W.FORT.ditch[0] / TS) - 3;
+      const lanes = []; let first = null;
+      for (let yL = Math.floor(W.FORT.ditch[1] / TS) + 6; yL < Math.floor(W.FORT.ditch[3] / TS) + 2; yL += 12) {
+        let m = 1e9; for (let tx = X0; tx <= X1; tx++) if (inb(tx, yL) && G.tileAt(tx, yL) !== T.WATER) m = Math.min(m, E(tx, yL)); if (m > 1e8) continue;
+        const f = m - 4.4, lane = []; for (let tx = X0; tx <= X1; tx++) { if (ug[idx(tx, yL)] && kind[idx(tx, yL)] === K.FOGNA && lane.length) { lane.push(tx); continue; }   // la fogna sotto la strada della spianata: il vicolo ci sbuca e prosegue
+          if (!free(tx, yL) || G.tileAt(tx, yL) === T.BLD) { if (lane.length > 3) break; lane.length = 0; continue; } lane.push(tx); }
+        if (lane.length < 5) continue; lane.forEach(tx => { if (kind[idx(tx, yL)] !== K.FOGNA) put(tx, yL, f, K.SEPOLTA, true); });
+        const Rl = { x: cen((lane[0] + lane[lane.length - 1]) / 2), y: cen(yL), f, deco: 'vicolo_sepolto', w: lane.length * TS, h: TS, x0: lane[0], y0: yL, tw: lane.length, th: 1, light: LIGHT.sepolta, name: 'Il borgo sepolto' }; rooms.push(Rl);
+        let nh = 0;
+        for (let x = lane[0]; x + 3 <= lane[lane.length - 1] + 1; x += 4) for (const sd of [-1, 1]) {
+          if (hash(x, yL + sd, 51) < .22) continue;   // crollata: resta terra
+          const y0 = sd < 0 ? yL - 5 : yL + 2, R = casa(x, y0, 3, 4, f + (hash(x, sd, 52) - .5) * .3, 'borgo', 'Il borgo sepolto', { lane: yL, side: sd }); if (!R) continue;
+          const dx = x + 1, dy = yL + sd; put(dx, dy, f, K.SEPOLTA, true); R.soglia = [dx, dy]; R.door = dy; nh++;
+          if (nh % 3 === 1) lamp(R.x, R.y, R.f + 1.6, '#c8a070', 'lume');
+        }
+        lanes.push({ yL, lane, f, R: Rl }); if (!first) first = Rl;
+      }
+      // il vicolo nord-sud che li cuce, sul bordo dove il borgo è stato tagliato; le grate sulla spianata; la fogna
+      lanes.forEach((q, k) => { if (k) corridor(q.lane[0], lanes[k - 1].yL, q.lane[0], q.yL, lanes[k - 1].f, q.f, K.SEPOLTA);
+        if (k % 2 === 0) { const ex = exitOn(q.lane[2], q.yL, q.lane.length - 4, 1, 'grata', 'Il borgo sepolto'); if (!ex) { const n2 = nearWalk(q.lane[q.lane.length >> 1], q.yL, 3); if (n2) { corridor(q.lane[q.lane.length >> 1], q.yL, n2[0], n2[1], q.f, E(n2[0], n2[1]) - 3, K.SEPOLTA); portal('grata', n2, 'Il borgo sepolto'); } } }
+        lamp(cen(q.lane[1]), cen(q.yL), q.f + 1.7, '#ffa050', 'torcia'); });
+      if (lanes.length) { const q = lanes[lanes.length >> 1]; toSewer(q.lane[0], q.yL, q.f, K.SEPOLTA); place('borgo_sepolto', 'Il borgo sepolto (raso nel 1660)', first.x, first.y, 10, 'sepolta'); }
+      // ---- LE CASE DELLO SVENTRAMENTO (1932) SOTTO LA VIA DELLA VITTORIA: cantine e pianterreni del borgo tagliato ----
+      // a destra e a sinistra della fogna, case di 6×4 m, ciascuna con la sua porta sulla fogna (il vecchio vicolo)
+      const vt = (W.roads || []).find(r => r.id === 'vittoria') || (W.roads || []).find(r => r.era === 'E4');
+      if (vt && vt.pts && vt.pts.length > 1) {
+        const a0 = vt.pts[0], a1 = vt.pts[vt.pts.length - 1], Lv = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]), ux = (a1[0] - a0[0]) / Lv, uy = (a1[1] - a0[1]) / Lv;
+        let n = 0, firstV = null;
+        for (let s2 = 14; s2 < Lv - 6 && n < 14; s2 += 9) for (const sd of [-1, 1]) {
+          if (hash(Math.round(s2), sd, 53) < .2) continue;
+          const cx = a0[0] + ux * s2 - uy * sd * 3.6, cy = a0[1] + uy * s2 + ux * sd * 3.6, [tx, ty] = ti(cx, cy), x0 = tx - 1, y0 = ty - (sd < 0 ? 1 : 0);
+          if (!inb(tx, ty) || W.zone[idx(tx, ty)] !== ZC) continue;
+          const f = minE(x0, y0, 3, 2) - 3.9, R = casa(x0, y0, 3, 2, f, 'sventramento', 'Le case dello sventramento', { side: sd }); if (!R) continue; n++;
+          toSewer(x0 + 1, sd < 0 ? y0 + 1 : y0, f, K.SEPOLTA); if (n % 3 === 1) lamp(R.x, R.y, f + 1.5, '#d8b080', 'lume');
+          if (!firstV) firstV = R;
+        }
+        if (firstV) { exitOn(firstV.x0, firstV.y0, firstV.tw, firstV.th, 'grata', 'Le case dello sventramento'); place('sventramento', 'Le case dello sventramento (1932)', firstV.x, firstV.y, 9, 'sepolta'); }
+      }
+    } else {
     // il borgo medievale raso nel Seicento (le caselle BORGO, dove oggi non c'è una casa): vicoli e case di pietra a −4,4
     const MF = W.MF || {}, borgo = []; let prev = null;
     if (W.feat && MF.BORGO) {
@@ -96,7 +150,7 @@ var Sottosuolo = (function () {
         prev = R;
       }
       borgo.forEach((R, k) => { if (k % 2 === 0) exitOn(R.x0, R.y0, R.tw, R.th, 'grata', 'Il borgo sepolto'); if (k % 3 === 0) lamp(R.x, R.y, R.f + 1.6, '#c8a070', 'lume'); });
-      if (borgo.length) place('borgo_sepolto', 'Il borgo sepolto', borgo[0].x, borgo[0].y, 9, 'sepolta');
+      if (borgo.length) { toSewer(borgo[0].x0, borgo[0].door, borgo[0].f, K.SEPOLTA); place('borgo_sepolto', 'Il borgo sepolto', borgo[0].x, borgo[0].y, 9, 'sepolta'); }
     }
     // lo sventramento dell'Ottocento: sotto il corso e la piazza, le case buttate giù per fare largo (intonaci, mosaici)
     const pz = G.PLACES.piazza; if (pz) {
@@ -108,6 +162,7 @@ var Sottosuolo = (function () {
         toSewer(tx, ty + 1, f, K.SEPOLTA); exitOn(tx, ty, tw, th, 'grata', 'Le case dello sventramento'); lamp(R.x, R.y, f + 1.5, '#c8a070', 'lume');
         if (n === 1) place('sventramento', 'Le case dello sventramento', R.x, R.y, 8, 'sepolta');
       }
+    }
     }
     // i vuoti delle bombe: dove in città oggi c'è erba o terra, sotto restano le cantine delle case saltate (macerie, una stufa)
     { let n = 0; for (let ty = 60; ty < GH - 60 && n < 8; ty += 7) for (let tx = 540; tx < 800 && n < 8; tx += 7) {
@@ -133,7 +188,8 @@ var Sottosuolo = (function () {
     const catacomba = (id, name, bid, depth, len, exitKind) => {
       const b = bld(bid); if (!b || !b.door) return;
       const [dx0, dy0] = b.door, cxb = b.x + (b.w >> 1), cyb = b.y + (b.h >> 1), ox = Math.sign(dx0 - cxb) * (dx0 < b.x || dx0 >= b.x + b.w ? 1 : 0), oy = Math.sign(dy0 - cyb) * (dy0 < b.y || dy0 >= b.y + b.h ? 1 : 0);
-      const ux = ox || 0, uy = ox ? 0 : (oy || 1), nx = -uy, ny = ux, f = E(dx0, dy0) - depth;   // u: fuori dalla porta, n: di lato
+      const u0 = [ox || 0, ox ? 0 : (oy || 1)], land = ([ux, uy]) => { let n = 0; for (let a = 1; a <= len + 4; a++) for (let l = -5; l <= 3; l++) { const tx = dx0 + ux * a - uy * l, ty = dy0 + uy * a + ux * l; if (inb(tx, ty) && G.tileAt(tx, ty) !== T.WATER) n++; } return n; };
+      const [ux, uy] = [u0, [-u0[0], -u0[1]], [-u0[1], u0[0]], [u0[1], -u0[0]]].map(d => [d, land(d)]).sort((p0, p1) => p1[1] - p0[1] || 0)[0][0], nx = -uy, ny = ux, f = E(dx0, dy0) - depth;   // u: fuori dalla porta (o dove c'è terra: mai sotto il mare), n: di lato
       const at = (a, l) => [dx0 + ux * a + nx * l, dy0 + uy * a + ny * l];
       const gal = (a0, a1, l) => { for (let a = a0; a <= a1; a++) { const [tx, ty] = at(a, l); if (free(tx, ty) || ug[idx(tx, ty)]) put(tx, ty, f, K.CATACOMBA); } };
       gal(1, len, 0); gal(2, len - 1, 2); gal(2, len - 1, -2); gal(2, len - 1, 3); gal(2, len - 1, -3);   // la galleria di mezzo e le due laterali (larghe due)
@@ -153,6 +209,7 @@ var Sottosuolo = (function () {
     };
     catacomba('catacombe', 'Le catacombe di San Rocco', 'chiesa', 7, 9, 'grata');
     catacomba('catacombe_sg', 'Le catacombe di San Giacomo', 'chiesa_sg', 6.5, 7, 'botola');
+    catacomba('catacombe_conv', 'Le catacombe del convento', 'santuario', 7.5, 7, 'grata');   // [sotto2] i frati del Santuario: sotto il chiostro, rilegate alla cripta dei marinai
 
     // ---------------- −6/−14: LA GROTTA con le stalattiti e IL FIUME SOTTERRANEO della Collina Nera ----------------
     const gr = G.PLACES.grotta, sp = G.PLACES.spiaggia; if (gr) {
@@ -178,8 +235,11 @@ var Sottosuolo = (function () {
       const ex = nearWalk(mx, my, 8); if (ex) { corridor(mx, my, ex[0], ex[1], f, f, K.MINIERA); portal('pozzo', ex, name); }
       place(id, name, cen(mx), cen(my), 12, 'miniera'); rooms.push({ x: cen(mx), y: cen(my), f, deco: 'miniera', light: LIGHT.miniera, dir, len, name });
       for (let a = -len + 1; a < len; a += 5) { const [tx, ty] = at(a, 0); lamp(cen(tx), cen(ty), f + 2, '#ffc080', 'lume'); }
+      return { mx, my, f };
     };
-    const cv = G.PLACES.cava, mn = G.PLACES.miniera; if (cv) miniera('miniera_cava', 'La miniera della cava', cv.x, cv.y, 16, 7); if (mn) miniera('miniera_nord', 'La vecchia miniera del Nord', mn.x, mn.y, 18, 6);
+    const cv = G.PLACES.cava, mn = G.PLACES.miniera, mc = cv ? miniera('miniera_cava', 'La miniera della cava', cv.x, cv.y, 16, 7) : null; if (mn) miniera('miniera_nord', 'La vecchia miniera del Nord', mn.x, mn.y, 18, 6);
+    // [sotto2] la fessura: dalla grotta delle stalattiti scende nella miniera della cava (i minatori l'hanno trovata così)
+    if (mc && gr) { const [gx, gy] = ti(gr.x, gr.y), d = Math.abs(mc.mx - gx) + Math.abs(mc.my - gy); if (d < 70) { const pts = tunnel(gx + 7, gy + 3, mc.mx, mc.my, E(gx, gy) - 9.5, mc.f, K.GROTTA); const q = pts[pts.length >> 1]; if (q) lamp(cen(q[0]), cen(q[1]), fl[idx(q[0], q[1])] + .5, '#7fb0c8', 'acqua'); } }
 
     // ---------------- SOTTO IL MARE: IL RELITTO davanti alla calata ----------------
     const ca = G.PLACES.calata; if (ca) {
@@ -219,6 +279,10 @@ var Sottosuolo = (function () {
       hint: 'Un muro di mattoni nuovi, dentro la terra. Troppo nuovi.', msg: 'Una stanza murata: gli schedari del regime, i fascicoli che non dovevano esistere, i timbri, le foto. Li hanno nascosti qui sotto l\'Archivio.' },
     { id: 'cani', name: 'Il cimitero dei cani', kind: 'cani', near: 'giardini', tw: 3, th: 2, d: 3, items: { catena: 1 },
       hint: 'Una crocetta di legno, un collare. Ossa piccole.', msg: 'Il cimitero dei cani dei giardini: croci di legno coi nomi, Fido, Lampo, Nerina. Un collare col campanello.' },
+    { id: 'armi', name: 'Il deposito d\'armi', kind: 'armi', near: 'carbonaia', tw: 3, th: 2, d: 4.5, zones: [3, 5], items: { moschetto: 2, munizioni: 3, pistola: 1 },
+      hint: 'La pala fa scintille: ferro. Un bidone, un altro bidone, unti d\'olio.', msg: 'Una buca foderata di tavole: casse di moschetti avvolti nei teli cerati, bidoni di cartucce, una pistola nell\'olio. Nascoste nel \'45 per «la prossima volta».' },
+    { id: 'brigante', name: 'Il nascondiglio del brigante', kind: 'brigante', near: 'paese_vecchio', tw: 3, th: 2, d: 5, items: { valuta: 3, gioielli: 1, coltello: 1, lupara: 1 },
+      hint: 'Un ferro di cavallo, una fibbia, il fondo di una pipa. Qualcuno ci ha vissuto, qui sotto.', msg: 'La tana del brigante Cuccu: un giaciglio di paglia marcia, la sella, una cassa coi soldi dei Borboni e la lupara appesa a un chiodo.' },
     // i piccoli: n copie, a caso ma sempre uguali, nei posti e nelle fasce di quota giuste
     { id: 'anfore', name: 'Le anfore', kind: 'anfore', n: 5, among: ['calata', 'scalo', 'cantiere', 'spiaggia', 'caletta', 'marina', 'chiesa_sg', 'vigne'], tw: 1, th: 1, d: [4, 5.5], items: { anfora: 1 }, hint: 'Un collo di terracotta spunta dalla terra.', msg: 'Un\'anfora romana intera, col tappo di pece. Dentro, sabbia e una moneta.' },
     { id: 'monete', name: 'Il tesoretto', kind: 'monete', n: 6, among: ['piazza', 'vico', 'caruggio', 'chiesa_sg', 'ovile', 'rudere_o', 'ruderi', 'sangiacomo'], tw: 1, th: 1, d: [3, 5.5], items: { moneta_romana: 1, valuta: 1 }, hint: 'Qualcosa tintinna sotto la pala.', msg: 'Una pentola di coccio piena di monete: romane, spagnole, un dollaro. Il tesoretto di qualcuno che non è tornato.' },
@@ -412,7 +476,7 @@ var Sottosuolo = (function () {
       Object.assign(metro, { ok: true, R, A, B: Bn, ux, uy, nx, ny, L: Math.hypot(Bn.x - A.x, Bn.y - A.y) });
     }
     // [sotto2] gli strati e i ritrovamenti: dopo fogne, posti e metropolitana (chi c'era prima resta)
-    const strati = buildStrati({ ug, fl, kind, portals, rooms, put, corridor, toSewer, place, lamp, B });
+    const strati = buildStrati({ ug, fl, kind, portals, rooms, put, place, lamp, B, sewer });
     const finds = buildFinds({ ug, fl, kind, portals });
     return { ug, fl, kind, portals, rooms, places, folk, crates, lamps, metro, strati, finds };
   })();

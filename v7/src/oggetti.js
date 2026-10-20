@@ -480,6 +480,7 @@ var Oggetti = (function () {
     ['anfora', 'anfora romana', 12, 4, 0, {}],
     ['moneta_romana', 'monete romane', 8, .1, 0, {}],
     ['medaglia', 'medaglia della guerra', 4, .05, 0, {}],
+    ['moschetto', 'moschetto 91 arrugginito', 30, 4, 0, { ill: 1 }],
   ]);
   grp('rottami', 'Roba vecchia e rottami', [
     ['frigo_rotto', 'frigorifero rotto', 0, 40, 0, {}],
