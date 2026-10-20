@@ -45492,7 +45492,7 @@ var Rete = (function () {
           else if (s > prossima) {   // la mensola: sulla prima casa che il lato lontano incontra entro 3 m dal bordo
             let bi = -1, px = 0, pz = 0; for (let o = rd.w / 2 + .3; o < rd.w / 2 + 3.2 && bi < 0; o += .7) { px = x + nx * far * o; pz = z + nz * far * o; bi = bAt(px, pz); }
             if (bi >= 0 && B[bi] && (B[bi].era || B[bi].shack)) { const b = B[bi], fc = faccia(b, px, pz); if ((fc.f === 'S' && -far * nz > 0) || (fc.f === 'E' && -far * nx > 0)) { const m = mensolaDi(b, bi, fc);
-              if (prev && prev !== m && libero(prev.x, prev.z, m.x, m.z, prev.bi, bi)) { const dd = Math.hypot(prev.x - m.x, prev.z - m.z); if (dd < 18 && !attraversaLarga(prev.x, prev.z, m.x, m.z)) seg(prev, m, 'dorsale', { rd: rd.id }); else if (dd < 26 && prevBi !== bi && !attraversaLarga(prev.x, prev.z, m.x, m.z)) seg(prev, m, 'dorsale', { rd: rd.id, lunga: true }); }
+              if (prev && prev !== m && libero(prev.x, prev.z, m.x, m.z, prev.bi, bi)) { const dd = Math.hypot(prev.x - m.x, prev.z - m.z); if (dd < 18 && !attraversaLarga(prev.x, prev.z, m.x, m.z)) seg(prev, m, 'dorsale', { rd: rd.id });  }
               prev = m; prevS = s; prevBi = bi; prossima = s + 8 + hash(ri, k, 5) * 4; } else prossima = s + 2; } else prossima = s + 2; }
           // la traversata: ogni 40-60 m il filo passa dall'altra parte (mai su una via ≥ 10 m), con la mensola di là sulla faccia che vede la via
           if (!interr && !vic && rd.w < 10 && s > prossTrav && prev && s - prevS < 6) { prossTrav = s + 40 + hash(ri, k, 7) * 20;
