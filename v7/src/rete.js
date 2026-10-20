@@ -78,6 +78,15 @@ var Rete = (function () {
       const ct = nodo('contatore', m.f === 'S' ? x0 + u : x0 + w, m.f === 'S' ? z0 + d : z0 + d - u, Y_CONT, { bi, f: m.f, u, yaw: m.yaw }); c.contatore = ct; seg(m, ct, 'allaccio'); if (Scena && Scena.attivo()) Scena.nota(ct.x, ct.z, 'contatore'); });
     // ---- 3) gli allacci abusivi: la logica del disordine. Dalla mensola (o dal lampione) vicina alla finestra, al balcone, al tetto ----
     const sorgenti = R.nodi.filter(n => (n.k === 'mensola' && !n.traversata) || n.k === 'lampione');
+    // [borgo] le baracche fra la ferrovia e il mare stanno lontane dalle facciate: la corrente rubata ci arriva con una fila di pali di legno
+    // (uno ogni 22 m, su terreno libero) che parte dalla mensola o dal lampione più vicino; poi le baracche si allacciano ai pali
+    B.forEach(b => { if (!b.shack) return; const cx = b.x * TS + b.w, cz = b.y * TS + b.h; if (sorgenti.some(n => Math.hypot(n.x - cx, n.z - cz) < 25)) return;
+      let s0 = null, sd = 1e9; sorgenti.forEach(n => { if (n.k === 'palo') return; const d = Math.hypot(n.x - cx, n.z - cz); if (d < sd) { sd = d; s0 = n; } }); if (!s0 || sd > 160) return;
+      let prev = s0; const steps = Math.ceil((sd - 12) / 22);
+      for (let k = 1; k <= steps; k++) { const t = Math.min(1, k * 22 / sd); let px = s0.x + (cx - s0.x) * t, pz = s0.z + (cz - s0.z) * t, ok = false;
+        for (let rr = 0; rr < 6 && !ok; rr += 1.5) for (const [ox, oz] of [[0, 0], [rr, 0], [-rr, 0], [0, rr], [0, -rr]]) if (!ok && open(tl(Math.floor((px + ox) / TS), Math.floor((pz + oz) / TS))) && bAt(px + ox, pz + oz) < 0) { px += ox; pz += oz; ok = true; }
+        if (!ok || attraversaLarga(prev.x, prev.z, px, pz)) break;
+        const p = nodo('palo', px, pz, 6.2, { era: 'E7', yaw: Math.atan2(cx - s0.x, cz - s0.z) }); seg(prev, p, 'abusivo', { era: 'E7', derivazione: true }); sorgenti.push(p); prev = p; } });
     B.forEach((b, bi) => { const era = b.shack ? 'E7' : b.era; if (!era) return; const dens = ABUSO[era] || 0, h = hash(bi, 13, 1986); const x0 = b.x * TS, z0 = b.y * TS, w = b.w * TS, d = b.h * TS, top = topOf(b);
       const c = R.perCasa.get(bi);
       if (era === 'E4') { let ms = c ? c.mensole.filter(q => !q.traversata).slice(0, 1) : []; if (!ms.length && h < .5 && open(tl(b.x + Math.floor(b.w / 2), b.y + b.h))) ms = [nodo('mensola', x0 + w - 1, z0 + d, Math.min(Y_MENS, top - .3), { bi, f: 'S', u: w - 1, yaw: 0, vecchia: true })];   // la mensola di prima della rete interrata, senza più la dorsale
