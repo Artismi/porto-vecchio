@@ -43,12 +43,27 @@ var Writing = (function () {
     gotico: { nome: 'gotico', rank: 1, W: 1.4, H: 3.2, dur: 16, cans: .5, fame: 6 },   // la calligrafia verticale (piloni, spigoli alti)
     mostro: { nome: 'personaggio', rank: 2, W: 3, H: 2.6, dur: 40, cans: 2.6, fame: 12 },   // il mostro coi denti
     wholecar: { nome: 'whole car', rank: 4, W: 16, H: 2.9, dur: 110, cans: 7, fame: 45 },
+    // [graffiti3] il ventaglio della strada (il disegno in writer_arte.js): il rullo, i verticali sui palazzi, l'estintore, lo stencil,
+    // la scritta a pennello, il manifesto, gli adesivi, il murale, il calligraffiti. `over`: si fa sopra a tutto senza crossare nessuno
+    rullo: { nome: 'rullo', rank: 3, W: 9, H: 2.4, dur: 45, cans: 0, fame: 22 },
+    verticale: { nome: 'verticale', rank: 3, W: 2, H: 7, dur: 50, cans: 3, fame: 24 },
+    estintore: { nome: 'tag a estintore', rank: 2, W: 3, H: 4, dur: 6, cans: 0, fame: 10, over: true },
+    stencil: { nome: 'stencil', rank: 1, W: 1, H: 1.1, dur: 4, cans: .15, fame: 3, over: true },
+    scritta: { nome: 'scritta', rank: 1, W: 4.5, H: .75, dur: 8, cans: .3, fame: 3, over: true },
+    manifesto: { nome: 'manifesto', rank: 0, W: 1.2, H: 1.4, dur: 3, cans: 0, fame: 2, over: true },
+    adesivi: { nome: 'adesivi', rank: 0, W: .6, H: .5, dur: 2, cans: 0, fame: 1, over: true },
+    murale: { nome: 'murale', rank: 3, W: 6.5, H: 4, dur: 90, cans: 5, fame: 28 },
+    calli: { nome: 'calligraffiti', rank: 2, W: 4.2, H: 2.2, dur: 20, cans: 1.2, fame: 10 },
   };
+  const SMALL = /^(tag|mtag|gotico|estintore|stencil|scritta|manifesto|adesivi)$/;   // [graffiti3] i lavori che vanno sopra a tutto e non contano come crossaggio
+  // [graffiti3] l'altezza da terra del centro (metri, da..a) per i lavori che stanno ad altezza d'uomo; decisa dal seme
+  const EYE = { adesivi: [.5, 1.6], stencil: [.7, 1.7], manifesto: [.9, 1.8], scritta: [1.0, 2.0], calli: [1.3, 1.6], murale: [2.1, 2.4] };
   const MODES = ['libero', 'tag', 'throw', 'pezzo', 'burner', 'tavoletta'];
   const MODE_TXT = { libero: 'a mano libera', tag: 'tag', throw: 'throw-up', pezzo: 'pezzo', burner: 'burner (sul treno: whole car)', tavoletta: 'tavoletta (trascina sul muro la finestra, poi disegni)' };
   const RANKS = [[0, 'toy'], [25, 'writer'], [120, 'king della zona'], [400, 'king della linea'], [1000, 'all city king']];
   const rankOf = f => RANKS.filter(r => f >= r[0]).pop()[1];
-  const un = k => (k === 'tag' || k === 'mtag' ? 'una ' : 'un ') + STYLES[k].nome;   // una tag, un pezzo
+  const ART = { tag: 'una ', mtag: 'una ', scritta: 'una ', estintore: 'una ', stencil: 'uno ', adesivi: 'degli ' };
+  const un = k => (ART[k] || 'un ') + STYLES[k].nome;   // una tag, un pezzo, uno stencil, degli adesivi
   const CREWS = [
     { id: 'PVK', nome: 'Porto Vecchio Kings', col: 0 },
     { id: 'BDS', nome: 'Banda della Scogliera', col: 3 },
@@ -329,6 +344,12 @@ var Writing = (function () {
     if (style === 'tag' || style === 'mtag') { const k = .8 + rnd() * .55; w.tagK = k; }
     if (style === 'tag' || style === 'mtag') { if (rnd() < .3) w.sign = pick(WA.SIGNS); }
     else if (style === 'burner' && rnd() < .3) w.words = pick(WA.WORDS);
+    // [graffiti3] gli stili nuovi: la scritta di chi è politico parla di politica, gli altri d'amore o di strada; lo stencil di un
+    // writer è sempre lo stesso (la sua mascherina, ripetuta per la città); il rullo e il verticale dicono la crew o una parola
+    else if (style === 'scritta') { const pol = (dna && dna.pol != null) ? dna.pol : .4; w.kind = rnd() < pol ? 'politica' : pick(['amore', 'ultras', 'strada', 'amore']); if (w.kind === 'strada' && wr.crew) w.words = pick([wr.crew + ' IN CASA', 'ZONA ' + wr.crew, wr.crew + ' ' + wr.aka]); }
+    else if (style === 'stencil') { w.motifSeed = (wr.hand || seed) ^ 0x5a5a; }
+    else if (style === 'rullo' || style === 'verticale') { if (rnd() < .4 && wr.crew) w.words = wr.crew; else if (rnd() < .2) w.words = pick(WA.WORDS); }
+    else if (style === 'murale' && rnd() < .3) w.words = pick(WA.SLOGANS);
     return Object.assign(w, extra || {});
   }
   function addWork(st, w) {
@@ -718,12 +739,15 @@ var Writing = (function () {
     const gh = R.groundH(sp.x, sp.y), list = cands(sp.x, sp.y); if (!list.length) return false;
     const d = new THREE.Vector3(Math.cos(sp.face), 0, Math.sin(sp.face)), sty = STYLES[w.style];
     const y0 = sp.h != null ? sp.h : gh + 1.4, hit = rayWall(new THREE.Vector3(sp.x, y0, sp.y), d, sp.h != null ? 6 : 3, list); if (!hit || Math.abs(hit.n.y) > .4) return false;
-    const k = w.tagK || 1, H = sty.H * k, n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), c = hit.p.clone(); c.y = sp.h != null ? sp.h : gh + .2 + H / 2 + (w.style === 'tag' || w.style === 'mtag' ? .3 + rnd() * 1.4 : 0);
-    const fitR = wallRect(c, n, sty.W * k, H, list); if (!fitR) return false;
+    // [graffiti3] la misura può venire dal sito (i verticali alti quanto la facciata); l'altezza del centro dal sito (sp.h), o ad altezza
+    // d'uomo (EYE, dal seme: ricaricando sta nello stesso punto), o appoggiato a terra
+    const k = w.tagK || 1, W0 = (w.W0 || sty.W) * k, H = (w.H0 || sty.H) * k, n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), c = hit.p.clone(), ey = EYE[w.style], d0 = mulberry((w.seed || 1) ^ 0x3e3)();
+    c.y = sp.h != null ? sp.h : ey ? gh + ey[0] + (ey[1] - ey[0]) * d0 : w.style === 'estintore' ? gh + 1.2 + H / 2 : gh + .2 + H / 2 + (w.style === 'tag' || w.style === 'mtag' ? .3 + rnd() * 1.4 : 0);
+    const fitR = wallRect(c, n, W0, H, list); if (!fitR) return false;
     w.W = fitR.W; w.H = fitR.H; w.gfxRect = { c, n, r: fitR.r, W: fitR.W, H: fitR.H }; w.pos = { x: c.x, y: c.y, z: c.z };
     // [writer] i muri sono a strati: le tag vanno sopra a tutto; un pezzo va sopra a uno di rango più basso (quasi sempre), sopra
     // a uno dello stesso rango a volte (è un crossaggio), sopra a uno più alto solo un toy, e di rado. Deciso dal seme: ricaricando, il muro è lo stesso
-    const under = /^(tag|mtag|gotico)$/.test(w.style) ? [] : overlapCheck(GFX.st, w).filter(o => !/^(tag|mtag|gotico)$/.test(o.style));
+    const under = SMALL.test(w.style) ? [] : overlapCheck(GFX.st, w).filter(o => !SMALL.test(o.style));
     if (under.length) { const R = sty.rank, d0 = mulberry((w.seed || 1) ^ 0x5eed)(), toy = (w.q != null ? w.q : .7) < .35, top = Math.max(...under.map(o => STYLES[o.style].rank));
       const ok = top < R ? d0 < .8 : top === R ? d0 < .3 : toy && d0 < .12; if (!ok) { w.gfxRect = null; return false; }
       under.forEach(o => { o.covered = true; }); w.over = under.map(o => o.id); }
