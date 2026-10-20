@@ -35,7 +35,7 @@
       list.forEach((d, i) => {
         const g = Models.person(d.look || { top: '#8a3a2a', bottom: '#2a3a5a', skin: '#d8a888', hair: '#2a1a12', hat: 'none', extra: '' }, d.who || null);
         // vestiti: d.vesti = capi del Guardaroba (oggetti come Guardaroba.outfitOf, dal più interno al più esterno)
-        if (d.vesti && window.Vesti3D) Vesti3D.dress(g, d.vesti.map(c => Object.assign({}, c)), d.look || null);
+        if (d.vesti && window.Vesti3D) Vesti3D.dress(g, d.vesti.map(c => Object.assign({}, c)), d.look || null, null, d.seed);
         const c = i % cols, r = Math.floor(i / cols);
         g.position.set((c - (cols - 1) / 2) * sp, 0, -r * sp * 1.3); g.rotation.y = d.ang !== undefined ? d.ang : (opts.ang !== undefined ? opts.ang : .5);
         scene.add(g); people.push({ g, d });

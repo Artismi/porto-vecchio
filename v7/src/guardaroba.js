@@ -277,6 +277,8 @@ var Guardaroba = (function () {
   // secondo chi sono: mestiere, parte, età, donna o uomo, soldi. Il colore di fuori resta quello del loro aspetto (look.top/bottom),
   // così chi li ricorda «con la giacca rossa» li riconosce.
   const PAL = ['#3a3e4a', '#5a4a3a', '#2a3a2e', '#6a3a2a', '#4a4a52', '#7a6a4a', '#2e3a4e', '#5a2a2a', '#8a7a5a', '#3a2e2a', '#6a6a60', '#2a2a2e'];
+  // i colori dei ragazzi: lo streetwear (giallo senape, verde bosco, bordeaux, cobalto, arancio, lilla, crema, nero)
+  const VIVO = ['#c8a03a', '#3a5a3a', '#6a1e2a', '#1e3a8a', '#c8582a', '#7a5a9a', '#e8e2d4', '#141418', '#2a7a7a', '#a83a5a', '#5a6a2a', '#d8c8a0'];
   function outfitOf(n, fem) {
     const L = n.look || {}, h = hash((n.id || '') + (L.top || '') + (L.skin || '')), r = (k, m) => ((h >>> k) % m), pk = (a, k) => a[r(k, a.length)];
     const job = String((n.pop && n.pop.job && (n.pop.job.base || n.pop.job.title)) || n.role || '').toLowerCase(), age = (n.pop && n.pop.age) || 35, rich = n.pop && n.pop.money > 60;
@@ -304,15 +306,15 @@ var Guardaroba = (function () {
       const legs = (id, col) => { const i = o.findIndex(x => x.zona === 'gambe' && !/mutande|calze|calzamaglia/.test(x.id)); const v = Object.assign({}, CAPO[id], col ? { col } : {}); if (i >= 0) o[i] = v; else o.push(v); return v; };
       if (r(13, 3) === 0) {   // skater: oversize, felpa larga, jeans larghi o cargo, scarpe da skate, berretto corto o cappellino
         legs(r(14, 3) ? 'jeans_larghi' : 'cargo', r(14, 3) ? pk(['#6a8ab8', '#2a3a5a', '#1a1a1e'], 15) : pk(['#4a5038', '#8a7a5a', '#2a2a2e'], 15));
-        put('maglietta_oversize', pk(['#ece8e0', '#1a1a1e', '#c8b88a', '#5a7a9a', '#8a2a2a'], 8)); if (r(9, 2)) put('felpa_skate', pk(['#3a5a3a', '#5a5e66', '#8a3a2a', '#2a3a5a', '#c8a03a'], 9));
+        put('maglietta_oversize', pk(['#ece8e0', '#1a1a1e', '#c8b88a', '#5a7a9a', '#8a2a2a', '#e8c040', '#3a6a4a', '#7a5a9a', '#c8582a'], 8)); if (r(9, 2)) put('felpa_skate', pk(['#3a5a3a', '#5a5e66', '#8a3a2a', '#2a3a5a', '#c8a03a'], 9));
         put('scarpe_skate', pk(['#1a1a1e', '#8a2a2a', '#2a3a5a', '#ece6da'], 10)); if (r(11, 2)) put(r(12, 2) ? 'berretto_corto' : 'cappellino_dritto', pk(['#c83a2a', '#e8a020', '#1a1a1e', '#2a5a3a'], 12));
       } else {   // maranza: tuta nera lucida, calze bianche sopra i pantaloni, smanicato o piumino d'oca, sneakers bianche, borsello, cappellino dritto, catenina
         const pa = legs('pantaloni_tuta', pk(['#141418', '#1e2a4a', '#2a2a2e'], 15)); pa.when = 1; const cs = o.find(x => x.id === 'calzini'); if (cs) Object.assign(cs, CAPO.calze_sport, { when: 2 });
         put(r(8, 2) ? 'maglietta' : 'canotta_basket', pk(['#f4f2ee', '#141418', '#e8a020'], 8));
-        put(r(9, 3) === 0 ? 'giacca_tuta' : r(9, 3) === 1 ? 'smanicato' : 'piumino_oca', pk(['#141418', '#1e2a4a', '#3a3e44', '#e8e4dc'], 9));
+        put(r(9, 3) === 0 ? 'giacca_tuta' : r(9, 3) === 1 ? 'smanicato' : 'piumino_oca', pk(['#141418', '#1e2a4a', '#3a3e44', '#e8e4dc', '#6a1e2a', '#1e5a3a', '#c8a03a'], 9));
         put('scarpe_air'); put('cappellino_dritto', pk(['#141418', '#1e2a4a', '#e8e4dc'], 12)); if (r(16, 2)) put('occhiali_mascherina'); put(r(10, 2) ? 'borsello' : 'marsupio_tracolla', pk(['#141418', '#2a2a30', '#5a4a3a'], 11)); if (r(11, 2)) put(r(12, 3) ? 'catenina' : 'collana_oro');
       } }
-    else if (age < 26) { put(r(8, 2) ? 'felpa' : 'maglione', pk(PAL, 8)); put(r(9, 3) ? 'giubbotto_jeans' : r(9, 2) ? 'giacca_pelle' : 'piumino', top); put(r(10, 2) ? 'scarpe_tela' : 'scarpe'); if (r(11, 3) === 0) put('berretto', pk(PAL, 12)); }
+    else if (age < 26) { put(r(8, 2) ? 'felpa' : 'maglione', r(21, 3) ? pk(VIVO, 8) : pk(PAL, 8)); put(r(9, 3) ? 'giubbotto_jeans' : r(9, 2) ? 'giacca_pelle' : 'piumino', top); put(r(10, 2) ? 'scarpe_tela' : 'scarpe'); if (r(11, 3) === 0) put('berretto', pk(PAL, 12)); }
     else if (fem) { put('camicia', pk(['#f0ece2', '#e8d8d0', '#d8e0e8'], 8)); put(r(8, 2) ? 'maglione' : 'scialle', pk(PAL, 9)); put('cappotto', top); put(age > 50 ? 'scarpe_eleganti' : 'scarpe_tela', '#2a2020'); if (age > 50 || r(10, 2)) put('fazzoletto', pk(['#8a3a5a', '#3a5a8a', '#6a4a2a', '#2a2a2e'], 11)); }
     else { put(r(8, 2) ? 'camicia' : 'camicia_quadri', pk(['#f0ece2', '#8a2a24', '#2a4a6a'], 7)); put('maglione', pk(PAL, 9)); put(r(10, 2) ? 'giacca' : 'cappotto', top); put('scarpe'); if (r(11, 3) === 0) put(pk(['coppola', 'berretto', 'cappello'], 12)); if (r(12, 3) === 0) put('sciarpa', pk(['#a83a3a', '#2a2a2e', '#3a5a8a'], 13)); }
     if (n.faction && /famiglia|marsiglia|squalo/.test(n.faction)) { o.forEach(x => { if (x.id === 'cappotto' || x.id === 'giacca') x.col = '#1a1a1e'; }); put('guanti'); put(r(15, 2) ? 'collana_oro' : 'cravatta'); if (r(16, 3) === 0) put('occhiali_sole'); if (r(17, 4) === 0) { const c0 = o.find(x => x.id === 'cappotto'); if (c0) Object.assign(c0, CAPO.pelliccia_volpe); } }

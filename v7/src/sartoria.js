@@ -153,6 +153,37 @@ var Sartoria = (function () {
     pied: { tile: .04, px: 32, bump: .4, f(x, y, N, A, B) {   // pied-de-poule
       const u = x & 15, v = y & 15, ch = (u < 8) === (v < 8), tooth = (u >= 8 && v < 8 && (u - 8) + v < 8) || (u < 8 && v >= 8 && u + (v - 8) > 7);
       return [...((ch !== tooth) ? B : A), .5]; } },
+    // --- streetwear: mimetici, tie-dye, scacchi, animalier, rombi ---
+    mimetico: { tile: .34, px: 128, bump: .4, f(x, y, N, A, B, C) {   // bosco: macchie morbide a tre toni sul fondo, la più scura sopra
+      const w = fbm(x, y, N, 4, 2, 211) * 18, n1 = fbm(x + w, y, N, 4, 3, 213), n2 = fbm(x, y + w, N, 4, 3, 217), n3 = fbm(x - w, y - w, N, 8, 2, 219);
+      let c = A; if (n1 > .53) c = B; if (n2 > .57) c = C; if (n3 > .64) c = mul(mixc(A, B, .5), .35);
+      return [...mul(c, .95 + fbm(x, y, N, 32, 1, 223) * .08), .5]; } },
+    digitale: { tile: .26, px: 128, bump: .3, f(x, y, N, A, B, C) {   // mimetico digitale: gli stessi toni a quadretti
+      const qx = x & ~5, qy = y & ~5; return TESS.mimetico.f(qx, qy, N, A, B, C); } },
+    tiedye: { tile: .42, px: 128, bump: .3, f(x, y, N, A, B, C) {   // tie-dye a spirale: anelli che girano, colori che sfumano col bianco nelle pieghe
+      const dx = x - N / 2, dy = y - N / 2, r = Math.hypot(dx, dy) / N, a = Math.atan2(dy, dx), t = Math.sin(r * 26 + a * 3 + fbm(x, y, N, 4, 2, 227) * 5);
+      let c = t > .35 ? A : t > -.35 ? B : C; c = mixc(c, t > .35 ? B : t > -.35 ? C : A, sm(cl(Math.abs(Math.abs(t) - .35) < .12 ? .5 : 0, 0, 1)));
+      if (Math.abs(t - .35) < .08 || Math.abs(t + .35) < .08) c = mixc(c, [.96, .95, .92], .45);
+      return [...c, .5]; } },
+    scacchi: { tile: .08, px: 32, bump: .3, f(x, y, N, A, B) { const k = ((x >> 3) + (y >> 3)) & 1; return [...mul(k ? B : A, .96 + hs(x, y) * .05), .5]; } },   // gli scacchi da skate: quadri di 2 cm
+    zebra: { tile: .3, px: 128, bump: .5, f(x, y, N, A, B) {   // strisce che si biforcano e si assottigliano
+      const w = fbm(x, y, N, 4, 3, 229) * 2.6, t = Math.sin((x / N) * Math.PI * 2 * 5 + w * 3 + Math.sin(y / N * Math.PI * 2) * 1.2);
+      return [...(t > .1 + fbm(x, y, N, 8, 2, 233) * .4 ? B : A), .5]; } },
+    tigre: { tile: .32, px: 128, bump: .6, f(x, y, N, A, B, C) {   // fondo caldo, ventre più chiaro, strisce scure a punta
+      const w = fbm(x, y, N, 4, 3, 239) * 3, t = Math.sin((y / N) * Math.PI * 2 * 4 + w * 2.2), th = .72 + fbm(x, y, N, 8, 2, 241) * .2;
+      let c = mixc(A, C || A, sm(fbm(x, y, N, 2, 1, 243))); if (t > th) c = B; return [...mul(c, .92 + vn(x * .5, y * 4, 64, 245) * .14), .5]; } },
+    pitone: { tile: .16, px: 128, bump: 1, f(x, y, N, A, B, C) {   // squame: celle col bordo scuro, chiazze più scure a gruppi
+      const [d1, d2, id] = wor(x, y * 1.6, N, 12, 251), e = d2 - d1, patch = fbm(x, y, N, 4, 2, 253);
+      let c = mixc(A, C || A, hs(id, 5) * .5); if (patch > .58) c = mixc(c, B, .75); if (e < .07) c = mul(c, .5);
+      return [...c, e < .07 ? .2 : .8]; } },
+    argyle: { tile: .16, px: 128, bump: .6, f(x, y, N, A, B, C) {   // rombi a maglia con le righine incrociate
+      const u = ((x % 64) + 64) % 64 - 32, v = (((y * .6) % 64) + 64) % 64 - 32, inD = Math.abs(u) + Math.abs(v) < 32, k = (((x >> 6) + (Math.floor(y * .6) >> 6)) & 1);
+      let c = inD ? (k ? B : mixc(A, B, .45)) : A; const l1 = (((x + y * .6) % 32) + 32) % 32, l2 = (((x - y * .6) % 32) + 32) % 32; if (l1 < 1.4 || l2 < 1.4) c = C;
+      return TESS.jersey.f(x, y, N, c); } },
+    stelle: { tile: .1, px: 64, bump: .3, f(x, y, N, A, B) {   // stelline a cinque punte, sfalsate
+      let c = A; for (const [ox, oy] of [[16, 16], [48, 48]]) { const dx = ((x - ox + 96) % 64) - 32, dy = ((y - oy + 96) % 64) - 32, a = Math.atan2(dy, dx), r = Math.hypot(dx, dy), R = 7 * (.55 + .45 * Math.cos(5 * (a + Math.PI / 2)));
+        if (r < Math.max(3.2, R)) c = B; }
+      return TESS.cotone.f(x, y, N, c); } },
   };
   // la cache delle texture: per tessuto e colori
   const TEX = new Map();
@@ -639,16 +670,29 @@ var Sartoria = (function () {
   };
   // varianti per gli abitanti (lo stesso capo, tagli e motivi diversi): scelte dall'id della persona
   const VARIANTI = {
-    maglietta: [{}, { fab: 'righe', c2: D }, { fab: 'righe', c2: '#2a2a30' }, { collo: 'v' }, { fab: 'pique', collo: 'polo', fronte: 'polo' }],
+    maglietta: [{}, { fab: 'righe', c2: D }, { fab: 'righe', c2: '#2a2a30' }, { collo: 'v' }, { fab: 'pique', collo: 'polo', fronte: 'polo' }, { stampa: 1 }, { stampa: 1 }, { stampa: 1, stampe: ['tag', 'teschio', 'fiamme', 'palme'] }, { fab: 'tiedye', c2: '#e8583a', c3: '#2aa8b8' }, { fab: 'righe', c2: '#e8c040' }, { fab: 'scacchi', c2: '#ece8e0' }, { fab: 'mimetico', c2: '#5a6040', c3: '#8a7a5a' }],
+    maglietta_oversize: [{}, { stampa: 0 }, { fab: 'tiedye', c2: '#e8583a', c3: '#2aa8b8', stampa: 0 }, { fab: 'tiedye', c2: '#8a3ab8', c3: '#e8c040', stampa: 0 }, { fab: 'righe', c2: '#1a1a1e', stampa: 0 }, { fab: 'scacchi', c2: '#1a1a1e', stampa: 0 }, { fab: 'stelle', c2: '#e8c040', stampa: 0 }, { stampe: ['faro', 'onda', 'gabbiani', 'tramonto'] }],
+    felpa_skate: [{}, { stampa: 0, fab: 'tiedye', c2: '#e8c040', c3: '#3a8a5a' }, { stampa: 0, fab: 'mimetico', c2: '#4a5038', c3: '#8a7a5a' }, { stampe: ['teschio', 'palme', 'tramonto'] }, { stampa: 0, fab: 'scacchi', c2: '#ece8e0' }],
+    canotta_basket: [{}, { c2: '#e8c040' }, { c2: '#c8303a' }, { c2: '#1e3a8a' }, { fab: 'righe_v', c2: '#ece8e0' }],
+    cargo: [{}, {}, {}, { fab: 'ripstop' }, { fab: 'mimetico', c2: '#5a6040', c3: '#8a7a5a' }, { fab: 'digitale', c2: '#7a7e86', c3: '#2a2a2e' }, { fab: 'mimetico', c2: '#2a2a2e', c3: '#5a5e66' }, { fab: 'ripstop' }, { fab: 'digitale', c2: '#c8b48a', c3: '#6a5a3a' }],
+    pantaloni_tuta: [{}, { c2: '#ece8e0' }, { c2: '#c8303a' }, { c2: '#e8c040' }, { c2: '#2a8ab8' }],
+    giacca_tuta: [{}, { c2: '#ece8e0' }, { c2: '#c8303a' }, { c2: '#e8c040' }, { c2: '#2a8ab8' }, { fascia: '#ece8e0', fascia2: '#c8303a' }],
+    piumino_oca: [{}, { fab: 'mimetico', c2: '#2a2a2e', c3: '#5a5e66' }, {}],
+    smanicato: [{}, { fab: 'mimetico', c2: '#4a5038', c3: '#8a7a5a' }, {}],
+    leggings: [{}, { fab: 'zebra', c2: '#141416' }, { fab: 'maculato', c2: '#1a120c', c3: '#a8642a' }, { fab: 'pitone', c2: '#2a2a2a', c3: '#c8c0a8' }],
+    pelliccia: [{}, { fab: 'zebra', c2: '#141416' }, { fab: 'tigre', c2: '#1a120c', c3: '#f0e0c0' }, { fab: 'pitone', c2: '#3a3a3a', c3: '#e8e0d0' }],
+    camicia_hawaii: [{}, { fab: 'paisley', c2: '#e8c070', c3: '#2a3a6a' }, { fab: 'fiori', c2: '#f0c0d0', c3: '#2a5a3a' }, { fab: 'stelle', c2: '#e8c040' }, { fab: 'tigre', c2: '#141416', c3: '#f0d8a8' }, { fab: 'zebra', c2: '#141416' }],
+    scarpe_air: [{}, { c2: '#c8303a' }, { c2: '#1e3a8a' }, { c2: '#e8c040' }, { c2: '#141418' }, { c2: '#3a8a5a' }],
+    scarpe_skate: [{}, { c2: '#ece8e0' }, { fab: 'scacchi', c2: '#ece8e0' }, { c2: '#c8303a' }],
     camicia: [{}, {}, { fab: 'vichy', c2: D }, { fab: 'righe_v', c2: D }, { fab: 'righe_v', c2: '#2a4a8a' }, { fab: 'denim', cuciture: '#c8903a' }, { fab: 'pois', c2: D }, { fab: 'tartan', c2: '#1a1a1e', c3: '#d8c890' }, { fab: 'liberty', c2: '#c83a4a', c3: '#3a6a4a' }],
     camicia_quadri: [{}, { c2: '#1e2a1e', c3: '#c8a83a' }, { fab: 'vichy', c2: '#1a1a1e' }, { fab: 'madras', c2: '#2a3a6a', c3: '#e8c840' }],
-    maglione: [{}, { fab: 'costine' }, { fab: 'lana', c2: '#d8c8a0', c3: '#5a3a2a' }, { collo: 'v', fab: 'costine' }, { collo: 'v', fab: 'trecce' }, { fab: 'righe', c2: '#d8d0b8' }, { collo: 'alto' }, { collo: 'alto', fab: 'costine' }],
+    maglione: [{}, { fab: 'costine' }, { fab: 'lana', c2: '#d8c8a0', c3: '#5a3a2a' }, { collo: 'v', fab: 'costine' }, { collo: 'v', fab: 'trecce' }, { fab: 'righe', c2: '#d8d0b8' }, { collo: 'alto' }, { collo: 'alto', fab: 'costine' }, { collo: 'v', fab: 'argyle', c2: '#d8c8a0', c3: '#7a1a1e' }, { fab: 'argyle', c2: '#2a3a5a', c3: '#e8c040' }],
     maglione_v: [{}, { fab: 'trecce' }, { fab: 'lana', c2: '#d8c8a0', c3: '#5a3a2a' }, { fab: 'righe', c2: '#d8d0b8' }],
     maglione_collo_alto: [{}, { fab: 'costine' }, { fab: 'lana', c2: '#d8c8a0', c3: '#2a2a2a' }],
     camicia_righe: [{}, { c2: '#2a4a8a' }, { c2: '#8a2a2a' }],
     camicia_vichy: [{}, { c2: '#2a4a8a' }, { c2: '#3a6a3a' }],
     camicia_fiori: [{}, { fab: 'fiori', c2: '#e8c840', c3: '#2a5a3a' }, { fab: 'paisley', c2: '#e8c070', c3: '#2a3a6a' }],
-    felpa: [{}, { collo: 'alto_zip', fronte: 'zip', tasche: ['fianchi_zip'] }, { bande: D }],
+    felpa: [{}, { collo: 'alto_zip', fronte: 'zip', tasche: ['fianchi_zip'] }, { bande: D }, { stampa: 1 }, { stampa: 1, stampe: ['tag', 'teschio', 'tavola'] }, { fab: 'mimetico', c2: '#4a5038', c3: '#8a7a5a' }, { fab: 'tiedye', c2: '#e8583a', c3: '#e8c040' }, { fab: 'digitale', c2: '#7a7e86', c3: '#2a2a2e' }],
     giacca: [{}, { fab: 'lana', c2: '#c8b070', c3: '#2a2a30' }, { fab: 'velluto' }, { fab: 'tartan', c2: '#2a2a30', c3: '#c8a050' }, { fronte: 'doppio' }],
     cappotto: [{}, { fab: 'spina' }, { fab: 'lana', c2: '#d8c8a0', c3: '#2a2a2a' }, { fronte: 'bottoni', len: 'polpaccio' }, { collo: 'montone' }],
     pantaloni: [{}, { fab: 'spina' }, { fab: 'gessato', c2: '#8a8a90' }, { fab: 'velluto' }],
@@ -659,7 +703,7 @@ var Sartoria = (function () {
     giacca_completo: [{}, { fab: 'panno' }, { fab: 'galles', c2: '#5a5a60', c3: '#7a2a2a' }, { fronte: 'doppio' }, { fab: 'pied', c2: '#d8d0c0' }],
     pantaloni_completo: [{}, { fab: 'panno' }, { fab: 'galles', c2: '#5a5a60', c3: '#7a2a2a' }],
     panciotto: [{}, { fab: 'panno' }, { fab: 'raso' }, { fab: 'galles', c2: '#5a5a60', c3: '#7a2a2a' }],
-    polo: [{}, { fab: 'righe', c2: D }, { fab: 'pique', bande: null }],
+    polo: [{}, { fab: 'righe', c2: D }, { fab: 'pique', bande: null }, { fab: 'righe', c2: '#e8c040' }, { fab: 'argyle', c2: '#ece8e0', c3: '#c8303a' }, { fab: 'scacchi', c2: '#ece8e0' }],
     salopette: [{}, { fab: 'tela' }, { fab: 'velluto', cuciture: null }],
     giaccone: [{}, { fab: 'lana', c2: '#c8b070', c3: '#2a2a30' }, { fab: 'tartan', c2: '#1a1a1e', c3: '#c83a3a', collo: 'camicia' }, { fab: 'cordura', c2: '#2a2a2a', collo: 'alto_zip', fronte: 'zip' }],
   };

@@ -52,6 +52,16 @@ const GRUPPI = {
     ['hawaii', [['camicia_hawaii', { col: '#1a6a7a' }], ['pantaloni', { col: '#ece6d8' }], 'mocassini', 'catenina']],
     ['pelliccia', [['dolcevita', { col: '#101012' }], ['leggings', { col: '#101012' }], 'pelliccia', 'stivali_pelle', 'occhiali_sole'], 'donna'],
   ],
+  varieta: [   // [stile] tessuti e stampe della libreria sui pezzi del kit: una variante per manichino
+    ['stampe', [['maglietta_oversize', { col: '#ece8e0', stampaK: 1 }], ['cargo', { col: '#4a5038', var: { fab: 'mimetico', c2: '#6a7048', c3: '#8a7a5a' } }], ['scarpe_skate', { var: { fab: 'scacchi', c2: '#ece8e0' } }]]],
+    ['tiedye', [['maglietta_oversize', { col: '#e8c040', var: { fab: 'tiedye', c2: '#e8583a', c3: '#2aa8b8', stampa: 0 } }], ['jeans_larghi', { col: '#6a8ab8' }], ['scarpe_air', { var: { c2: '#c8303a' } }]]],
+    ['digitale', [['felpa', { col: '#7a7e86', var: { fab: 'digitale', c2: '#a8acb0', c3: '#2a2a2e' } }], ['pantaloni_tuta', { col: '#141418', var: { c2: '#e8c040' } }], 'scarpe_air']],
+    ['argyle', [['camicia', { col: '#f0ece2' }], ['maglione', { col: '#1e2a4a', var: { collo: 'v', fab: 'argyle', c2: '#d8c8a0', c3: '#7a1a1e' } }], ['pantaloni', { col: '#8a7a5a' }], 'mocassini']],
+    ['tigre', [['camicia_hawaii', { col: '#e8a040', var: { fab: 'tigre', c2: '#141416', c3: '#f0d8a8' } }], ['pantaloni', { col: '#141416' }], 'mocassini', 'occhiali_sole']],
+    ['zebra', [['dolcevita', { col: '#101012' }], ['leggings', { col: '#ece8e0', var: { fab: 'zebra', c2: '#141416' } }], ['pelliccia', { col: '#f0ece4', var: { fab: 'pitone', c2: '#3a3a3a', c3: '#e8e0d0' } }], 'stivali_pelle'], 'donna'],
+    ['madras', [['camicia', { col: '#e8c040', var: { fab: 'madras', c2: '#2a3a6a', c3: '#c8303a' } }], ['bermuda', { col: '#c8b48a' }], 'mocassini']],
+    ['stelle', [['maglietta_oversize', { col: '#1e2a5a', var: { fab: 'stelle', c2: '#e8c040', stampa: 0 } }], ['jeans_larghi', { col: '#2a3a5a' }], ['scarpe_skate', { col: '#c8303a' }]]],
+  ],
   pellicce: [
     ['leopardo', [['dolcevita', { col: '#101012' }], ['leggings', { col: '#101012' }], ['pelliccia', { col: '#d8a860' }], 'stivali_pelle', 'occhiali_mascherina', 'collana_oro'], 'donna'],
     ['volpe_rosa', [['maglietta', { col: '#101012' }], 'jeans', ['pelliccia_volpe', { col: '#e890b8' }], 'scarpe_air', 'occhiali_ovali'], 'donna'],

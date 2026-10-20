@@ -82,6 +82,7 @@ var Taglio = (function () {
   const NON_VESTE = /^(mutande|calzini|calze_sport|calze_nylon|calzamaglia)$/;   // stanno sotto: non danno il taglio
   const taglioDi = (tab, id, lib) => { for (const [re, t] of tab) if (re.test(id) && lib[t]) return t; return Object.keys(lib)[0]; };
   // la stoffa di un capo: motivo e dettagli dipinti (dal tessuto della Sartoria e da quello che il capo è)
+  const hsh = t => { let h = 2166136261; for (const c of t) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
   function stoffaDi(C, sotto) {
     const CUT = (typeof Sartoria !== 'undefined' && Sartoria.CUT_()[C.id]) || {}, V = Object.assign({}, CUT, C.var && typeof C.var === 'object' ? C.var : {});
     const fab = V.fab || '', id = C.id, s = { motivo: 0, dett: {} };
@@ -99,7 +100,11 @@ var Taglio = (function () {
     if (/alto/.test(collo)) d.collo_alto = 1;
     if (V.numero || /basket|calcio/.test(id)) d.numero = 1;
     if (V.costine || /maglione|felpa|dolcevita/.test(id)) d.costine = 1;
-    s.A = C.col || '#808080'; s.B = C.col2 || V.c2 || (s.motivo === 2 ? '#ece8e0' : '#ece8e0'); s.C = V.c3 || s.B;
+    // il tessuto vero della libreria (tartan, madras, mimetico, tie-dye, scacchi, animalier…): una piastrella in metri sul pezzo
+    if (fab && typeof Sartoria !== 'undefined' && Sartoria.TESS[fab] && !/^(maculato|pelo|piumino|denim|jersey|cotone|panno|tela|nylon|pique|raso|feltro|gomma|spugna|cordura|ripstop|scamosciato|pelle)$/.test(fab)) s.fab = fab;
+    // la stampa sul petto (disegni inventati): quale, dal seme del capo
+    if (V.stampa) { const L = V.stampe || (typeof Sartoria !== 'undefined' ? Sartoria.STAMPE : []); if (L.length) s.stampa = L[((C.stampaK !== undefined ? C.stampaK : V.stampaK) >>> 0 || hsh(String(C.col) + id)) % L.length]; }
+    s.A = C.col || '#808080'; if (V.oversize) s.big = 1.2; s.B = C.col2 || V.c2 || (s.motivo === 2 ? '#ece8e0' : '#ece8e0'); s.C = V.c3 || s.B;
     s.S = sotto ? (sotto.col || '#ece8e0') : null; if (s.motivo === 9) s.S = V.c3 || '#a8642a'; s.T = null; s.SB = sotto && /quadri|righe|vichy/.test(sotto.id) ? 1 : 0;
     return s;
   }
@@ -216,12 +221,14 @@ var Taglio = (function () {
     const U = { uA: { value: col3(s.A) }, uB: { value: col3(s.B) }, uS: { value: col3(s.S || s.A) }, uMot: { value: s.motivo }, uNeck: { value: M.neckY }, uChest: { value: M.chestY }, uHips: { value: M.hipsY },
       uD: { value: new THREE.Vector4(s.dett.vScollo || 0, s.dett.revers ? 1 : 0, s.dett.zip ? 1 : 0, s.dett.bande ? 1 : 0) },
       uE: { value: new THREE.Vector4(s.dett.colletto ? 1 : 0, s.dett.bottoni ? 1 : 0, s.dett.fascia ? 1 : 0, s.dett.costine ? 1 : 0) },
-      uT: { value: col3(s.T || '#000') }, uP: { value: col3(s.P || '#000') }, uWr: { value: s.P ? M.wrX - .018 : 9. }, uF: { value: new THREE.Vector4(s.T ? 1 : 0, s.dett.listino ? 1 : 0, s.Mu ? 1 : 0, 0) }, uMu: { value: col3(s.Mu || '#000') } };
+      uT: { value: col3(s.T || '#000') }, uP: { value: col3(s.P || '#000') }, uWr: { value: s.P ? M.wrX - .018 : 9. }, uF: { value: new THREE.Vector4(s.T ? 1 : 0, s.dett.listino ? 1 : 0, s.Mu ? 1 : 0, 0) }, uMu: { value: col3(s.Mu || '#000') }, uTex: { value: null }, uPr: { value: null }, uG: { value: new THREE.Vector4(0, 1, 0, 0) } };
+    if (s.fab) { const t = Sartoria.texFor(s.fab, s.A, s.B, s.C); U.uTex.value = t.map; U.uG.value.x = 1; U.uG.value.y = t.F.tile; }
+    if (s.stampa) { const pm = Sartoria.printMat(s.stampa, s.A); U.uPr.value = pm.map; U.uG.value.z = 1; U.uG.value.w = s.big || 1; }
     m.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, U);
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aStoffa; varying vec4 vSt;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvSt = aStoffa;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-varying vec4 vSt; uniform vec3 uA, uB, uS, uT, uP, uMu; uniform float uWr; uniform float uMot, uNeck, uChest, uHips; uniform vec4 uD, uE, uF;
+varying vec4 vSt; uniform vec3 uA, uB, uS, uT, uP, uMu; uniform sampler2D uTex, uPr; uniform vec4 uG; uniform float uWr; uniform float uMot, uNeck, uChest, uHips; uniform vec4 uD, uE, uF;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float ln(float x, float w) { return step(abs(x), w); }
 vec3 stoffa() {
@@ -241,6 +248,9 @@ vec3 stoffa() {
     c = uA * (.84 + .22 * mix(a, h21(vec2(cx + 1., floor(q))), smoothstep(.0, 1., fract(u / .007)))) * (.9 + .14 * smoothstep(.2, 1., f));
     if (uMot < 9.5) { vec2 p = vec2(u, v) / .06, ce = floor(p), fp = fract(p) - .5 + (vec2(h21(ce), h21(ce + 5.)) - .5) * .35; float r = length(fp), an = atan(fp.y, fp.x);
       if (r < .16) c = mix(c, uS * 1.3 + vec3(.25, .1, 0.), .55); else if (r < .3 && fract(an / 6.2832 * 4. + h21(ce)) < .72) c = vec3(.07, .05, .04) * (.8 + .4 * a); } }
+  if (uG.x > 0.) c = texture2D(uTex, vec2(u, v) / uG.y).rgb;   // il tessuto della libreria
+  // la stampa sul petto: una toppa larga una spanna e mezza, sotto lo scollo
+  if (uG.z > 0. && R < .5) { float w = .095 * uG.w, h = .22 * uG.w, y1 = uChest + .05; vec2 q = vec2(u / w * .5 + .5, (v - (y1 - h)) / h); if (q.x > 0. && q.x < 1. && q.y > 0. && q.y < 1.) c = texture2D(uPr, q).rgb; }
   float front = R < .5 ? 1. - step(.55 * .15 * 3.1416, abs(u)) : 0.;
   // lo scollo a V: dentro si vede lo strato sotto (camicia, maglia)
   if (R < .5 && uD.x > 0.) { float dv = uNeck - v, w = dv < 0. ? 0. : (1. - dv / uD.x) * .065; if (dv >= 0. && dv < uD.x && abs(u) < w) c = uS; if (dv >= 0. && dv < uD.x && abs(abs(u) - w) < .004) c *= .45; }

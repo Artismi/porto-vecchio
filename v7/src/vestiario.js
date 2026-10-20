@@ -1265,6 +1265,8 @@ var Vesti3D = (function () {
   function proporzioni(g, on) { const m = g.userData.model && g.userData.model.isObject3D ? g.userData.model : g; for (const n in PROP) { const b = m.getObjectByName(n); if (b && b.isBone) b.scale.setScalar(on ? PROP[n] : 1); } }
   function dress(g, outfit, look, held, seed) { const it = dressGen(g, outfit, look, held, seed); while (!it.next().done); }
   function* dressGen(g, outfit, look, held, seed) {
+    // gli abitanti: ogni capo nella sua variante (scollo a V, collo alto, righe, quadri, mimetico, stampa…), sempre la stessa per persona
+    if (seed !== undefined && window.Sartoria) outfit.forEach(c => { const V = Sartoria.VARIANTI[c.id]; if (V && !c.var) c.var = V[hsh(String(seed) + c.id) % V.length]; if (c.stampaK === undefined) c.stampaK = hsh(String(seed) + 'stampa' + c.id); });
     if (window.Taglio && Taglio.attivo && Taglio.dress(g, outfit, look)) {   // [taglio] i vestiti a pezzi modellati del kit; sopra, gli accessori
       g.traverse(o => { if (o.userData && o.userData.corredo && o.userData.corredo !== 'baffi') o.visible = false; });
       const rm = []; g.traverse(o => { if (o.userData && o.userData.vesti && !o.userData.taglio) rm.push(o); }); rm.forEach(o => o.parent && o.parent.remove(o));
@@ -1272,8 +1274,6 @@ var Vesti3D = (function () {
       if (acc.length && window.Sartoria) try { const B = Sartoria.body(g, PARTI); if (B) { B._guscioPts = Taglio.punti(g, B); B._mc = null; accessories(g, acc, held, { B, soloAcc: true }); } } catch (e) { console.error('[Vesti3D] accessori', e); }
       return; }
     proporzioni(g, false); strip(g); bare(g, look);
-    // gli abitanti: ogni capo nella sua variante (scollo a V, collo alto, righe, quadri…), sempre la stessa per persona
-    if (seed !== undefined && window.Sartoria) outfit.forEach(c => { const V = Sartoria.VARIANTI[c.id]; if (V && !c.var) c.var = V[hsh(String(seed) + c.id) % V.length]; });
     // il corredo a scatole di models.js: via (resta solo quello che non è un vestito, come i baffi)
     g.traverse(o => { if (o.userData && o.userData.corredo && o.userData.corredo !== 'baffi') o.visible = false; });
     // unità: quanti metri vale un'unità della geometria (il personaggio è alto 1,8 m)
