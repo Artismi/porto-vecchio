@@ -635,6 +635,35 @@ var World = (function () {
     return { roads, piazza: [390, 108, 428, 126] };
   }
 
+  // [botteghe] IL FRONTE DELLA BOTTEGA ACCANTO AL PORTONE. Sul lato del portone (b.door) la bottega prende fino a quattro caselle
+  // dalla parte più lunga, con un pilastro pieno fra portone e bottega se il fronte è largo. Riempie b.shopFront:
+  //   face 'S'|'N'|'E'|'W' · door [tx,ty] la casella davanti alla porta della bottega · span [[tx,ty],[tx,ty]] le caselle estreme del fronte
+  //   · k0, k1, kd gli indici lungo il lato (da b.x verso est, da b.y verso sud) · portone kd del portone.
+  // Se il portone sta in mezzo a un fronte corto, si sposta all'estremità (fixed: no, a partita iniziata le porte non si muovono).
+  // Al primo piano (piano 1) la bottega non ha fronte: c'è la targa accanto al portone e ci si sale dall'androne.
+  function shopGeom(b, grid, reach, GWx, GHx, fixed, doors) {
+    const S = b.shopFront; if (!S || !b.door) return false;
+    const [dx, dy] = b.door, face = dy === b.y + b.h ? 'S' : dy === b.y - 1 ? 'N' : dx === b.x + b.w ? 'E' : dx === b.x - 1 ? 'W' : null; if (!face) return false;
+    const NS = face === 'S' || face === 'N', n = NS ? b.w : b.h; S.face = face;
+    const tileK = k => NS ? [b.x + k, face === 'S' ? b.y + b.h : b.y - 1] : [face === 'E' ? b.x + b.w : b.x - 1, b.y + k];
+    const ok = k => { const [tx, ty] = tileK(k); if (tx < 0 || ty < 0 || tx >= GWx || ty >= GHx) return false; const v = grid[ty * GWx + tx]; return v !== T.BLD && v !== T.WATER && v !== T.TREE && v !== T.FOUNT && v !== T.CLIFF; };
+    const okR = k => ok(k) && !!reach[tileK(k)[1] * GWx + tileK(k)[0]] && !(doors && doors.has(tileK(k)[1] * GWx + tileK(k)[0]) && k !== dk0) && !(doors && doors.shop && doors.shop.has(tileK(k)[1] * GWx + tileK(k)[0]));   // [botteghe] la porta di una bottega non si divide mai, neanche col portone vecchio del vicino
+    const dk0 = NS ? dx - b.x : dy - b.y; let dk = dk0;
+    if (S.piano) { S.door = null; S.span = null; S.portone = dk; return n >= 2; }
+    if (n < 3) return false;
+    const room = k => Math.max(k, n - 1 - k);
+    if (room(dk) < 2) { if (fixed) return false; const alt = [0, n - 1].filter(k => okR(k)).sort((a, c) => hash2(b.x, b.y + a, 67) - hash2(b.x, b.y + c, 67))[0]; if (alt === undefined) return false; dk = alt; }
+    const right = n - 1 - dk, dir = right > dk || (right === dk && hash2(b.x, b.y, 66) < .5) ? 1 : -1, free = dir > 0 ? right : dk;
+    const gap = free >= 4 ? 1 : 0, len = Math.min(4, free - gap), ka = dk + dir * (1 + gap), kb = dk + dir * (gap + len);
+    const k0 = Math.min(ka, kb), k1 = Math.max(ka, kb), h = hash2(b.x, b.y, 68);
+    const want = len === 1 ? [ka] : len === 2 ? (h < .5 ? [kb, ka] : [ka, kb]) : len === 3 ? [ka + dir, ka, kb] : [ka + dir * (h < .5 ? 1 : 2), ka + dir * (h < .5 ? 2 : 1), ka, kb];   // la porta in mezzo alle vetrine quando ci stanno
+    const kd = want.find(k => okR(k)); if (kd === undefined) return false;
+    if (dk !== dk0) { if (doors) { doors.delete(dy * GWx + dx); } b.door = tileK(dk); if (doors) doors.add(b.door[1] * GWx + b.door[0]); }
+    S.door = tileK(kd); S.span = [tileK(k0), tileK(k1)]; S.k0 = k0; S.k1 = k1; S.kd = kd; S.portone = dk;
+    if (doors) { doors.add(S.door[1] * GWx + S.door[0]); if (doors.shop) doors.shop.add(S.door[1] * GWx + S.door[0]); }
+    return true;
+  }
+
   // ---------------- GENERAZIONE ----------------
   function generate() {
     const N = GW * GH;
@@ -1559,7 +1588,34 @@ var World = (function () {
     // ogni porta porta da qualche parte: case con il nome di chi ci abita, botteghe, uffici, palestre, il teatro, fabbriche
     const COGNOMI = ['Esposito', 'Russo', 'Ferrara', 'Greco', 'Marino', 'Rizzo', 'Lombardi', 'Gallo', 'Costa', 'Fontana', 'Conti', 'De Luca', 'Mancini', 'Caruso', 'Serra', 'Pinna', 'Sanna', 'Melis', 'Deiana', 'Murru', 'Piras', 'Loi', 'Cocco', 'Porcu', 'Fadda', 'Atzori', 'Mura', 'Lai', 'Usai', 'Carta'];
     const NOMI = ['Bruno', 'Tina', 'Gavino', 'Nello', 'Pina', 'Efisio', 'Rosaria', 'Totò', 'Lella', 'Mario'];
-    const city = B.filter(b => !b.name && !b.military && !b.block && b.door && zone[b.y * GW + b.x] === Z.CITTA && (q => q > 262 && q < 550)(b.x * TS >= XF ? xo(b.x * TS) : 0)).sort((a, c) => hash2(a.x, a.y, 11) - hash2(c.x, c.y, 11));
+    // [botteghe] LE BOTTEGHE STANNO SOTTO CASA (PIANO_CITTA.md §10). Un palazzo non è più tutto bottega: la bottega sta al piano terra
+    // (raramente al primo) di un palazzo dove si abita, e sulla strada ha il suo fronte accanto al portone di casa. b.door resta il portone
+    // (androne, scala, appartamenti); la bottega è
+    //   b.shopFront = { use, name, sign: {t, c}, era: 'E0'|'E2'|'E3'|'E4'|'E6'|'E7', piano: 0|1,
+    //                   door: [tx,ty] la casella davanti alla porta della bottega, span: [[tx,ty],[tx,ty]] le caselle estreme del fronte,
+    //                   face: 'S'|'N'|'E'|'W', k0, k1, kd, portone (indici lungo il lato) }
+    // door/span/face li fissa shopGeom quando le porte sono definitive (al primo piano door e span sono null: c'è la targa al portone).
+    // b.abitato = true: sopra si abita. b.use/b.shop/b.sign restano quelli della bottega: missioni, mestieri ed economia non cambiano;
+    // PLACES[b.id] punta alla porta della bottega. Interni: Interior.layout dà L.ent (portone→androne) e L.ent2 (porta→bottega), L.shop.
+    // Esterno: render.js buildModular apre porta e vetrine, fronteBottega mette insegna per epoca, serrande, tenda, citofono.
+    // Dove: fitte sulla Rua Maestra, sul Corso, sotto i portici della Vittoria e sulla marina, agli angoli degli isolati murattiani;
+    // pescherie e osterie entro 40 m dall'acqua; nei vicoli e fra le baracche poche; molti palazzi restano solo case.
+    const segDB = (x, y, a, c) => { const dx = c[0] - a[0], dy = c[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(x - a[0] - dx * t, y - a[1] - dy * t); };
+    const STRADA_B = { rua: 3, corso: 3, vittoria: 3.2, marina: 2.6, via_nazionale: 2, via_cavour: 1.9, via_alta: 1.5, via_porto: 1.6, via_governo: 1.2, mezzo: 1.3 };
+    const viaDi = b => { if (!b.door) return null; const x = b.door[0] * TS + 1, y = b.door[1] * TS + 1; let best = null, bd = 1e9;
+      CITY.roads.forEach(rd => { if (!rd.pts) return; for (let k = 0; k < rd.pts.length - 1; k++) { const d = segDB(x, y, rd.pts[k], rd.pts[k + 1]) - rd.w / 2; if (d < bd) { bd = d; best = rd; } } }); return bd < 5 ? best : null; };
+    const acqua40 = b => { const cx = Math.floor(b.x + b.w / 2), cy = Math.floor(b.y + b.h / 2); for (let r2 = 0; r2 <= 20; r2++) for (let a = -r2; a <= r2; a++) for (const [tx, ty] of [[cx + a, cy - r2], [cx + a, cy + r2], [cx - r2, cy + a], [cx + r2, cy + a]]) { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const v = grid[ty * GW + tx]; if ((v === T.WATER && zone[ty * GW + tx] === Z.MARE) || v === T.QUAY || v === T.PIER) return true; } return false; };
+    const lati = b => { let s = 0; [[0, -1, b.w, 1], [0, b.h, b.w, 1], [-1, 0, 1, b.h], [b.w, 0, 1, b.h]].forEach(([ox, oy, w, h]) => { let rd = false; for (let k = 0; k < Math.max(w, h) && !rd; k++) { const tx = b.x + ox + (w > 1 ? k : 0), ty = b.y + oy + (h > 1 ? k : 0); if (tx >= 0 && ty >= 0 && tx < GW && ty < GH && roadW[ty * GW + tx] > 0) rd = true; } if (rd) s++; }); return s; };
+    const fronte = b => !b.door ? 0 : (b.door[1] === b.y - 1 || b.door[1] === b.y + b.h) ? b.w : b.h;
+    const vocB = new Map();   // quanto un palazzo chiama la bottega
+    const city = B.filter(b => !b.name && !b.military && !b.block && b.door && zone[b.y * GW + b.x] === Z.CITTA && (q => q > 262 && q < 550)(b.x * TS >= XF ? xo(b.x * TS) : 0));
+    city.forEach(b => { const rd = viaDi(b), ang = lati(b), w0 = acqua40(b); b.__via = rd ? rd.id : null; b.__acqua = w0;
+      let s = rd ? (STRADA_B[rd.id] || (rd.kind === 'vicolo' ? .35 : .9)) : 0;
+      if (ang >= 2) s += b.era === 'E3' ? 1.8 : 1.1;                    // l'angolo dell'isolato: la bottega che guarda due strade
+      if (w0) s += .8; if (b.portico) s += .8; if (b.era === 'E7') s -= 2; if (b.shack) s -= 3;
+      if (fronte(b) < 3) s -= 1.5; if ((b.fl || 1) < 2) s -= .6;        // sotto una casa di un piano non c'è un palazzo
+      vocB.set(b, s + hash2(b.x, b.y, 11) * .9); });
+    city.sort((a, c) => vocB.get(c) - vocB.get(a));
     const big = city.slice().sort((a, c) => c.w * c.h - a.w * a.h);
     const USES = [
       // uso, insegna, colore neon, quante
@@ -1570,18 +1626,57 @@ var World = (function () {
       ['autorimessa', 'AUTORIMESSA', '#ffd23b', 1, 'Autorimessa Centrale'], ['armeria', 'ARMERIA', '#ff4a3b', 1, 'Armeria del Cacciatore'], ['abbigliamento', 'ABBIGLIAMENTO', '#ff7ad9', 1, 'Abiti e Confezioni'], ['pub', 'BIRRERIA', '#ffb030', 1, 'Birreria del Porto'],
     ];
     const taken = new Set();
+    // [botteghe] chi occupa tutto il palazzo (teatro, scuola, uffici, autorimessa) e chi sta al primo piano (si sale dall'androne: targa al portone)
+    const INTERO = { teatro: 1, scuola: 1, ufficio: 1, autorimessa: 1 }, PRIMO = { sartoria: .5, palestra: .5, circolo: .6, tipografia: .3, barbiere: .15 };
+    const sottoCasa = (b, use, name, sign) => { if (INTERO[use] || fronte(b) < 3 || (b.fl || 1) < 2) return;
+      b.abitato = true; b.shopFront = { use, name, sign, era: b.era || (b.__acqua ? 'E2' : 'E0'), piano: (b.fl || 1) >= 3 && hash2(b.x, b.y, 61) < (PRIMO[use] || 0) ? 1 : 0 }; };
+    const pref = use => use === 'teatro' || use === 'autorimessa' ? big : use === 'pescheria' || use === 'pub' ? city.filter(q => q.__acqua).concat(city) : use === 'scuola' || use === 'ufficio' ? city.slice().reverse() : city;
     USES.forEach(([use, sign, col, n, label], k) => {
       for (let i = 0; i < n; i++) {
-        const b = (use === 'teatro' || use === 'autorimessa' ? big : city).find(q => !taken.has(q)); if (!b) return; taken.add(b);
+        const b = pref(use).find(q => !taken.has(q)); if (!b) return; taken.add(b);
         b.use = use; b.shop = true;
         b.name = label || (use.charAt(0).toUpperCase() + use.slice(1)) + ' ' + NOMI[(k * 3 + i) % NOMI.length];
         b.sign = { t: !label && use !== 'ufficio' && /^[A-Z ]+$/.test(sign) && b.name.length <= 16 ? b.name.toUpperCase() : sign, c: col };   // insegna col nome della bottega quando ci sta: «FERRAMENTA BRUNO»
+        sottoCasa(b, use, b.name, b.sign);
       }
     });
+    // [botteghe] le botteghe di tutti i giorni, per epoca della strada: il borgo ha drogherie e calzolai, la marina osterie e pescherie,
+    // l'Ottocento farmacie, orologiai e caffè, i portici del regime tabacchi e abiti, il boom elettrodomestici e profumerie
+    const MINORI = {
+      E0: [['drogheria', 'DROGHERIA', 'Drogheria'], ['calzolaio', 'CALZOLAIO', 'Calzolaio'], ['latteria', 'LATTERIA', 'Latteria'], ['merceria', 'MERCERIA', 'Merceria'], ['trattoria', 'VINI E CUCINA', 'Osteria'], ['bar', 'BAR', 'Bar'], ['fruttivendolo', 'FRUTTA E VERDURA', 'Frutta e verdura']],
+      E2: [['trattoria', 'OSTERIA', 'Osteria'], ['bar', 'BAR', 'Bar'], ['pescheria', 'PESCHERIA', 'Pescheria'], ['drogheria', 'COLONIALI', 'Coloniali'], ['ferramenta', 'ATTREZZI DA PESCA', 'Attrezzi']],
+      E3: [['bar', 'CAFFÈ', 'Caffè'], ['orologiaio', 'OROLOGERIA', 'Orologeria'], ['cartoleria', 'CARTOLERIA', 'Cartoleria'], ['merceria', 'MERCERIA', 'Merceria'], ['profumeria', 'PROFUMERIA', 'Profumeria'], ['drogheria', 'DROGHERIA', 'Drogheria'], ['calzolaio', 'CALZATURE', 'Calzature']],
+      E4: [['bar', 'BAR', 'Bar'], ['abbigliamento', 'MODE', 'Mode'], ['tabacchi', 'TABACCHI', 'Tabacchi'], ['calzolaio', 'CALZATURE', 'Calzature'], ['orologiaio', 'GIOIELLERIA', 'Gioielleria'], ['cartoleria', 'LIBRERIA', 'Libreria']],
+      E6: [['elettrodomestici', 'ELETTRODOMESTICI', 'Elettrodomestici'], ['bar', 'BAR', 'Bar'], ['profumeria', 'PROFUMERIA', 'Profumeria'], ['mobili', 'MOBILI', 'Mobili'], ['abbigliamento', 'BOUTIQUE', 'Boutique']],
+      E7: [['drogheria', 'ALIMENTARI', 'Alimentari'], ['bar', 'BAR', 'Bar']],
+    };
+    const COLB = { drogheria: '#ffb35c', calzolaio: '#d8a060', latteria: '#e8f0ff', merceria: '#ff7ad9', trattoria: '#ffb35c', bar: '#35e6ff', fruttivendolo: '#8aff6a', pescheria: '#35e6ff', ferramenta: '#ff8a3b', orologiaio: '#ffd23b', cartoleria: '#e8e0d0', profumeria: '#ff9ad0', abbigliamento: '#ff7ad9', tabacchi: '#5aff9a', elettrodomestici: '#7ab8ff', mobili: '#d8a060' };
+    let nMin = 0; const contaU = {}, giro = {}, nomiB = new Set(B.filter(b => b.name).map(b => b.name));
+    city.forEach(b => {
+      if (taken.has(b) || vocB.get(b) < 2.1 || fronte(b) < 3 || (b.fl || 1) < 2 || b.shack) return;
+      const e = MINORI[b.era] ? b.era : 'E3', L = MINORI[e], h = hash2(b.x, b.y, 63);
+      giro[e] = giro[e] === undefined ? Math.floor(h * L.length) : giro[e] + 1;   // in fila per la strada, mai sei librerie di seguito
+      let use, sign, nm;
+      for (let t = 0; t < L.length; t++) { [use, sign, nm] = L[(giro[e] + t) % L.length];
+        if ((use === 'trattoria' || use === 'pescheria') && !b.__acqua && e !== 'E0') continue;
+        if ((contaU[use] || 0) >= 5) continue; giro[e] += t; break; }
+      if ((contaU[use] = (contaU[use] || 0) + 1) > 5) return;
+      taken.add(b); nMin++;
+      const chi = k => (h < .5 ? NOMI : COGNOMI)[(Math.floor(hash2(b.x, b.y, 64) * 40) + k) % (h < .5 ? NOMI : COGNOMI).length];
+      b.use = use; b.shop = true;
+      let k2 = 0; do { b.name = nm + ' ' + (use === 'trattoria' ? 'da ' : '') + chi(k2++); } while (nomiB.has(b.name) && k2 < 30); nomiB.add(b.name);
+      b.sign = { t: b.name.length <= 18 && use !== 'trattoria' ? b.name.toUpperCase() : sign, c: COLB[use] || '#ffd23b' };
+      sottoCasa(b, use, b.name, b.sign);
+    });
+    // i locali con nome dentro un palazzo di due o più piani: il bar, l'alimentari, l'osteria stanno sotto casa anche loro
+    B.forEach(b => { if (!b.name || b.military || b.gov || b.deco && !/video|gelateria/.test(b.id) || !/^(bar|wu|osteria|sirena|car_2|gelateria|video)$/.test(b.id)) return;
+      if ((b.fl || 1) >= 2 && fronte(b) >= 3) { b.abitato = true; b.shopFront = { use: b.use || b.id, name: b.name, sign: b.sign, era: b.era || (acqua40(b) ? 'E2' : 'E0'), piano: 0 }; } });
+    if (typeof process !== 'undefined' && process.env && process.env.PV_DBG) console.log('[botteghe] botteghe minori', nMin, contaU);
     // fuori città: due fabbriche nei capannoni più grandi della campagna, il resto case e cascine
     const rural = B.filter(b => !b.name && !b.military && b.door && zone[b.y * GW + b.x] !== Z.CITTA).sort((a, c) => c.w * c.h - a.w * a.h);
     [['fabbrica', 'Conservificio Sanna'], ['fabbrica', 'Mattonificio Piras']].forEach(([use, label], i) => { const b = rural[i]; if (b) { b.use = use; b.name = label; b.sign = { t: i ? 'MATTONIFICIO PIRAS' : 'CONSERVIFICIO SANNA', c: '#ff8a3b' }; } });
     B.forEach((b, i) => { if (b.barrack) { b.use = 'baracca'; b.name = 'Baracca della Tutela'; } if (!b.use) b.use = b.name ? null : b.farm ? 'cascina' : 'casa'; if (!b.name) b.label = (b.farm ? 'Cascina ' : 'Casa ') + COGNOMI[Math.floor(hash2(b.x, b.y, 21) * COGNOMI.length)]; else b.label = b.name; });
+    city.forEach(b => { delete b.__via; delete b.__acqua; });
 
 
     // ---------------- [costa] SCOGLI IN MARE, FONDALE, PESCA, BAGNI, ROTTE ----------------
@@ -1752,9 +1847,13 @@ var World = (function () {
       });
       if (typeof process !== 'undefined' && process.env && process.env.STRADE_DBG) console.log('[ordine1] vialetti', nv);
     }
+    // [botteghe] le porte sono definitive: ogni bottega sotto casa prende il suo fronte accanto al portone (se non ci sta, il palazzo resta bottega intera)
+    { const doors = new Set(); doors.shop = new Set(); B.forEach(b => { if (b.door) doors.add(b.door[1] * GW + b.door[0]); });
+      B.forEach(b => { if (b.shopFront && !shopGeom(b, grid, reach, GW, GH, false, doors)) { delete b.shopFront; delete b.abitato; } }); }
     Object.values(PLACES).forEach(p => { if (p.isola) return; /* [arcipelago] sulle isole si arriva per mare */ if (!reach[p.ty * GW + p.tx]) { const q = nearReach(p.tx, p.ty); if (q) { p.tx = q[0]; p.ty = q[1]; } } });
     B.forEach(b => { if (b.name && b.door && !b.barrack && !PLACES[b.id]) PLACES[b.id] = { id: b.id, name: b.name, tx: b.door[0], ty: b.door[1] }; });   // [isola] chi ha avuto la porta dopo
     B.forEach(b => { if (b.name && b.door && PLACES[b.id]) { PLACES[b.id].tx = b.door[0]; PLACES[b.id].ty = b.door[1]; } });
+    B.forEach(b => { const S = b.shopFront; if (S && S.door && PLACES[b.id]) { PLACES[b.id].tx = S.door[0]; PLACES[b.id].ty = S.door[1]; } });   // [botteghe] il luogo è la porta della bottega, non il portone
     Object.values(PLACES).forEach(p => { p.x = p.tx * TS + TS / 2; p.y = p.ty * TS + TS / 2; });
     // quote ai vertici dalle caselle (strade e edifici spianati): il terreno che si vede
     const vh = new Float32Array(VW * (GH + 1));
@@ -1999,7 +2098,8 @@ var World = (function () {
     W.roads.forEach(rd => { sp(rd.pts); if (rd.rect) rd.rect = [rd.rect[0] + OTX, rd.rect[1] + OTY, rd.rect[2] + OTX, rd.rect[3] + OTY]; });
     W.lanes.forEach(l => sp(l.pts));
     (W.TUNNELS || []).forEach(t => sp(t.pts)); sp(W.RING);
-    W.BUILDINGS.forEach(b => { b.x += OTX; b.y += OTY; if (b.door && !seen.has(b.door)) { seen.add(b.door); b.door[0] += OTX; b.door[1] += OTY; } (b.tiers || []).forEach(t => { t.x += OTX; t.y += OTY; }); });
+    W.BUILDINGS.forEach(b => { b.x += OTX; b.y += OTY; if (b.door && !seen.has(b.door)) { seen.add(b.door); b.door[0] += OTX; b.door[1] += OTY; } (b.tiers || []).forEach(t => { t.x += OTX; t.y += OTY; });
+      const S = b.shopFront; if (S) [S.door].concat(S.span || []).forEach(q => { if (q && !seen.has(q)) { seen.add(q); q[0] += OTX; q[1] += OTY; } }); });   // [botteghe]
     Object.values(W.PLACES).forEach(p => { p.tx += OTX; p.ty += OTY; p.x += OX; p.y += OY; if (p.want) p.want = [p.want[0] + OX, p.want[1] + OY]; });
     if (W.FORT) { const F0 = W.FORT, sh = P => P.map(([x, y]) => [x + OX, y + OY]);   // [città2]
       W.FORT = { bastions: F0.bastions.map(sh), ravelin: F0.ravelin.map(sh), walls: F0.walls.map(sh), gates: F0.gates.map(g => Object.assign({}, g, { x: g.x + OX, y: g.y + OY })),
@@ -2234,6 +2334,12 @@ var World = (function () {
 
   const W = expand(generate());
   W.preview = s => preview(W, s);
+  // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
+  // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
+  W.apriBottega = (b, piano) => { if (!b || !b.door || b.shopFront || (b.fl || 1) < 2 || W.zone[b.y * W.GW + b.x] !== W.Z.CITTA) return false;
+    b.shopFront = { use: b.use, name: b.name, sign: b.sign, era: b.era || 'E3', piano: piano || 0 }; b.abitato = true;
+    if (!shopGeom(b, W.grid, W.reach, W.GW, W.GH, true, null)) { delete b.shopFront; delete b.abitato; return false; } return true; };
+  W.shopGeom = shopGeom;
   W.hash2 = hash2; W.fbm = fbm; W.rng = rng; W.monte = monte; W.MF = MF;
   return W;
 })();

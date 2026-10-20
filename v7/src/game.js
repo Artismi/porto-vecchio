@@ -42,16 +42,19 @@ var Game = (function () {
   // ---- interni: la porta di strada di ogni edificio porta dentro ----
   const INT = typeof Interior !== 'undefined' ? Interior : (typeof require !== 'undefined' ? require('./interior.js') : null);
   const DOOR_OF = new Map(); W0.BUILDINGS.forEach((b, i) => { if (b.door) DOOR_OF.set(b.door[1] * W0.GW + b.door[0], i); });
-  function enterBuilding(st, bi) {
+  // [botteghe] la porta della bottega sotto casa (b.shopFront.door) porta nel suo locale, il portone nell'androne: stesso edificio, due ingressi (L.ent, L.ent2)
+  const SHOP_T = new Set(); W0.BUILDINGS.forEach((b, i) => { const S = b.shopFront; if (S && S.door) { const k = S.door[1] * W0.GW + S.door[0]; DOOR_OF.set(k, i); SHOP_T.add(k); } });
+  const entNear = (L, o) => L.ent2 && (!L.ent || Math.hypot(o.x - L.ent2.in[0], o.y - L.ent2.in[1]) < Math.hypot(o.x - L.ent.in[0], o.y - L.ent.in[1])) ? L.ent2 : L.ent;
+  function enterBuilding(st, bi, shop) {
     const p = st.player, b = W0.BUILDINGS[bi]; if (!INT || !b || p.vehicle) return false;
-    const L = INT.layout(b); if (!L.ent) return false;
-    p.indoor = { b: bi, f: 0 }; p.x = L.ent.in[0]; p.y = L.ent.in[1]; p.path = [];
+    const L = INT.layout(b), e = shop && L.ent2 ? L.ent2 : L.ent; if (!e) return false;
+    p.indoor = { b: bi, f: 0 }; p.x = e.in[0]; p.y = e.in[1]; p.path = [];
     if (HOOKS.indoor) HOOKS.indoor(st, b, true);
     return true;
   }
   function exitBuilding(st) {
     const p = st.player; if (!p.indoor) return false; const b = W0.BUILDINGS[p.indoor.b], L = INT.layout(b);
-    p.indoor = null; p.x = L.ent.out[0]; p.y = L.ent.out[1];
+    const e = entNear(L, p); p.indoor = null; p.x = e.out[0]; p.y = e.out[1];   // [botteghe] si esce dalla porta da cui si è vicini
     if (HOOKS.indoor) HOOKS.indoor(st, b, false);
     return true;
   }
@@ -1535,7 +1538,7 @@ var Game = (function () {
       if (LVm && LVm.moved(st, ix / l, iy / l, hitWall)) { /* [monte] gestito dai livelli */ }
       else if (p.indoor) {
         const L = indoorL(p);
-        const e = L.ent, ox = e.out[0] - e.in[0], oy = e.out[1] - e.in[1], ol = Math.hypot(ox, oy) || 1;
+        const e = entNear(L, p), ox = e.out[0] - e.in[0], oy = e.out[1] - e.in[1], ol = Math.hypot(ox, oy) || 1;   // [botteghe] portone o porta della bottega
         const doorX = e.side === 'N' || e.side === 'S' ? e.x : e.side === 'W' ? L.box[0] : L.box[0] + L.box[2], doorY = e.side === 'W' || e.side === 'E' ? e.y : e.side === 'N' ? L.box[1] : L.box[1] + L.box[3];
         if (INT.outside(L, p.x, p.y) || (p.indoor.f === 0 && Math.hypot(p.x - doorX, p.y - doorY) < 1.1 && (ix * ox + iy * oy) / (l * ol) > .3)) exitBuilding(st);
         else if (L.stairs && INT.stairGo) { const g = INT.stairGo(L, p.indoor.f, p.x, p.y); if (g) { p.indoor.f = g.f; p.x = g.x; p.y = g.y; p.path = []; if (HOOKS.indoor) HOOKS.indoor(st, L.b, true); } }   // [interni] scale di più piani
@@ -1544,9 +1547,9 @@ var Game = (function () {
         // contro la facciata, sulla soglia di una porta: si entra
         const tx = Math.floor(p.x / TS), ty = Math.floor(p.y / TS);
         for (const [ox, oy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const bi = DOOR_OF.get((ty + oy) * GW + tx + ox); if (bi === undefined) continue;
-          const b = W0.BUILDINGS[bi], cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, dc = Math.hypot(cx - p.x, cy - p.y);
-          if (((cx - p.x) * ix + (cy - p.y) * iy) / (dc * l) > .35 && Math.hypot((b.door[0] + .5) * TS - p.x, (b.door[1] + .5) * TS - p.y) < 1.6) { enterBuilding(st, bi); break; }
+          const kT = (ty + oy) * GW + tx + ox, bi = DOOR_OF.get(kT); if (bi === undefined) continue;
+          const b = W0.BUILDINGS[bi], sh = SHOP_T.has(kT), dr = sh ? b.shopFront.door : b.door, cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, dc = Math.hypot(cx - p.x, cy - p.y);
+          if (((cx - p.x) * ix + (cy - p.y) * iy) / (dc * l) > .35 && Math.hypot((dr[0] + .5) * TS - p.x, (dr[1] + .5) * TS - p.y) < 1.6) { enterBuilding(st, bi, sh); break; }   // [botteghe]
         }
       }
       const back = inp.aim !== undefined && Math.abs(angDiff(Math.atan2(iy, ix), inp.aim)) > 2.2;
@@ -2307,6 +2310,7 @@ var Game = (function () {
     });
     st.fires = st.fires.filter(f => {
       if (st.clock > f.until) return false;
+      if (f.calmo) return true;   // [vita2] il bidone acceso fra le baracche: ci si scalda, non brucia nessuno (le fiamme stanno nel bidone)
       st.npcs.forEach(n => { if (!n.dead && !n.inside && dist(n.x, n.y, f.x, f.y) < f.r) { n.burn = 2; } });
       const p = st.player; if (!p.vehicle && dist(p.x, p.y, f.x, f.y) < f.r && st.clock - (p.fireT || -99) > .5) { p.fireT = st.clock; damagePlayer(st, 9, 0, 'fuoco'); }
       st.vehicles.forEach(v => { if (!v.wreck && !v.hidden && dist(v.x, v.y, f.x, f.y) < f.r + VK[v.kind].r) damageVehicle(st, v, 30 * dt, f.owner); });
@@ -2441,7 +2445,7 @@ var Game = (function () {
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
     tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
-    attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
+    attitude, enterBuilding, exitBuilding, DOOR_OF, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
     LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
