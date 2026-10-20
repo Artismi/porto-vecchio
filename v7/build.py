@@ -1,4 +1,4 @@
-# Ricompone index.html dai sorgenti in src/ (ogni /*nome.js*/ diventa il contenuto del file; [modelli2] anche i nomi con le cifre: oggetti3d.js, veicoli3d.js)
+# Ricompone index.html dai sorgenti in src/ (ogni /*nome.js*/ diventa il contenuto del file; i nomi possono avere cifre: oggetti3d.js, veicoli3d.js, arredo3d.js)
 # e editor.html, lo Studio: lo stesso gioco con window.PV_STUDIO acceso (mappa, interni, hangar dei modelli; vedi src/studio.js)
 import re
 h = open('src/index.src.html', encoding='utf-8', errors='ignore').read()
