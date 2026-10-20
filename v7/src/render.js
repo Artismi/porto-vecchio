@@ -1238,7 +1238,73 @@ var Render = (function () {
   const ugMats = {};
   const ugM = (c, o) => ugMats[c + JSON.stringify(o || {})] || (ugMats[c + JSON.stringify(o || {})] = new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 1, metalness: 0, flatShading: true }, o || {})));
   // [sottosuolo] i materiali dei posti di sotto: mattoni delle fogne, pietra delle cripte e delle carceri, cemento di bunker e metropolitana
-  const UGK = { 1: 'roccia', 2: 'terra', 3: 'mattoni', 4: 'pietra', 5: 'pietra', 6: 'cemento', 7: 'piastrelle', 8: 'mattoni', 9: 'piastrelle' };
+  const UGK = { 1: 'roccia', 2: 'terra', 3: 'mattoni', 4: 'pietra', 5: 'pietra', 6: 'cemento', 7: 'piastrelle', 8: 'mattoni', 9: 'piastrelle',
+    // [sotto2] gli strati (sottosuolo.js K): cantine a volta, cisterne di cocciopesto, catacombe coi loculi, la città sepolta intonacata,
+    // grotte di calcare bagnato, il cunicolo di pietra, la miniera nella roccia, il relitto e il fiume nella roccia umida, la cavità del ritrovamento nella terra
+    10: 'volta', 11: 'cocciopesto', 12: 'loculi', 13: 'intonaco', 14: 'calcare', 15: 'pietra', 16: 'roccia', 17: 'umida', 18: 'terra', 19: 'umida' };
+  const UGF = { 10: 'cotto', 11: 'cocciopesto', 12: 'terra_pav', 13: 'lastricato', 14: 'calcare', 15: 'pietra', 16: 'terra_pav', 17: 'umida', 18: 'terra_pav', 19: 'umida' };   // [sotto2] i pavimenti
+  const UGH = { 7: 4.2, 10: 2.7, 11: 3.6, 12: 2.6, 13: 2.9, 14: 3.9, 15: 2.4, 16: 2.6, 17: 3.4, 18: 3.8, 19: 3.3 };   // [sotto2] l'altezza delle pareti (fino alla volta)
+  // [sotto2] LA TERRA IN SEZIONE: sopra le pareti di fondo, fino al livello della strada, si vedono gli strati (16 px per metro, 32 m):
+  // terra di coltivo e radici, il riporto coi cocci, lo strato bruciato del 1660, le macerie della città sepolta, l'argilla coi ciottoli, la roccia
+  function sectionTex() {
+    if (ugMats.__sez) return ugMats.__sez;
+    const c = mk(64, 512), x = c.getContext('2d'), r = rng(1660), P = 16, band = (m0, m1, col) => { x.fillStyle = col; x.fillRect(0, Math.round(m0 * P), 64, Math.ceil((m1 - m0) * P)); };
+    band(0, .4, '#3a2a1c'); band(.4, 2.1, '#5a4430'); band(2.1, 2.5, '#2a2018'); band(2.5, 6, '#625446'); band(6, 9, '#7a6040'); band(9, 14, '#8a6a44'); band(14, 22, '#5e5a54'); band(22, 32, '#4c4844');
+    const wav = (m, col, th) => { x.fillStyle = col; for (let i = 0; i < 64; i++) { const y = m * P + Math.sin(i / 64 * 6.283 * 2 + m) * 2 + Math.sin(i / 64 * 6.283 * 5) * 1; x.fillRect(i, Math.round(y), 1, th); } };
+    wav(.4, '#2e2016', 2); wav(2.1, '#1a1410', 3); wav(2.5, '#3a2c20', 1); wav(6, '#4a3a28', 2); wav(9, '#6a5236', 1); wav(14, '#3a3634', 2); wav(18, '#4a4642', 1); wav(22, '#2e2c2a', 2); wav(27, '#3e3a36', 1);
+    const dots = (m0, m1, n, cols, w, h) => { for (let i = 0; i < n; i++) { x.fillStyle = cols[Math.floor(r() * cols.length)]; x.fillRect(Math.floor(r() * 64), Math.floor((m0 + r() * (m1 - m0)) * P), w + Math.floor(r() * 2), h); } };
+    dots(0, 2, 60, ['#4a3828', '#2a1e14', '#6a5038'], 1, 1);
+    dots(.5, 2.1, 22, ['#8a3a28', '#a84a30', '#7a2e20'], 3, 2);            // cocci e mattoni rotti del riporto
+    dots(2.1, 2.5, 30, ['#0e0a08', '#3a2a20', '#5a3a2a'], 2, 1);           // il carbone dell'incendio del 1660
+    dots(2.6, 6, 40, ['#b8b0a0', '#d0c8b8', '#9a948a'], 3, 2);             // calce e malta della città sepolta
+    dots(2.6, 6, 26, ['#7a7468', '#6a645a', '#8a8478'], 4, 3);             // pietre squadrate delle macerie
+    dots(6, 14, 90, ['#9a8058', '#6a5034', '#a89070', '#5a4630'], 2, 1);   // argilla e ciottoli
+    dots(6, 14, 18, ['#8a8478', '#9a9488', '#6e6a62'], 3, 2);
+    dots(14, 32, 120, ['#6e6a64', '#4a4642', '#7a766e', '#3a3836'], 2, 1);
+    x.strokeStyle = 'rgba(28,20,12,.9)'; x.lineWidth = 1; for (let i = 0; i < 9; i++) { let px = r() * 64, py = r() * 8; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 7; k++) { px += (r() - .5) * 6; py += 3 + r() * 6; x.lineTo(px, py); } x.stroke(); }   // radici
+    x.strokeStyle = 'rgba(20,18,16,.7)'; for (let i = 0; i < 8; i++) { let px = r() * 64, py = 14 * P + r() * 16 * P; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 4; k++) { px += (r() - .5) * 10; py += 4 + r() * 8; x.lineTo(px, py); } x.stroke(); }   // crepe nella roccia
+    const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearFilter; t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
+    return (ugMats.__sez = new THREE.MeshStandardMaterial({ map: t, emissiveMap: t, emissive: '#ffffff', emissiveIntensity: .1, roughness: 1, metalness: 0, side: THREE.DoubleSide }));
+  }
+  // [sotto2] i materiali veri degli strati: 64 px = 2 m (una casella), il basso del canvas è il pavimento
+  const UG2 = (() => {
+    const fin = (c, o) => { const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping; return new THREE.MeshStandardMaterial(Object.assign({ map: t, roughness: .95, metalness: 0 }, o || {})); };
+    const noise = (x, r, n, cols, w, h) => { for (let i = 0; i < n; i++) { x.fillStyle = cols[Math.floor(r() * cols.length)]; x.fillRect(Math.floor(r() * 64), Math.floor(r() * 64), w || 2, h || 1); } };
+    const damp = (x, r, y0, a) => { const g = x.createLinearGradient(0, y0, 0, 64); g.addColorStop(0, 'rgba(30,40,30,0)'); g.addColorStop(1, `rgba(30,44,32,${a})`); x.fillStyle = g; x.fillRect(0, y0, 64, 64 - y0); for (let i = 0; i < 6; i++) { x.fillStyle = `rgba(20,30,24,${a * .6})`; const px = Math.floor(r() * 64); x.fillRect(px, y0 + Math.floor(r() * 8), 1, 64); } };
+    return {
+      // la cantina: mattoni pieni a corsi, calce bianca a chiazze, l'umidità che sale dal basso
+      volta: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1010); x.fillStyle = '#4a3226'; x.fillRect(0, 0, 64, 64);
+        for (let j = 0; j < 16; j++) for (let i = -1; i < 6; i++) { x.fillStyle = pick(r, ['#8a5a3e', '#7a4e36', '#946646', '#6e4430', '#8e6448']); x.fillRect(i * 12 + (j % 2) * 6 + 1, j * 4 + 1, 10, 3); }
+        for (let k = 0; k < 7; k++) { x.fillStyle = 'rgba(214,206,186,.55)'; x.beginPath(); x.ellipse(r() * 64, r() * 40, 4 + r() * 9, 3 + r() * 6, 0, 0, 6.3); x.fill(); }
+        damp(x, r, 40, .55); return fin(c); },
+      // la cisterna: cocciopesto rosato, la riga dell'acqua, il verde sotto
+      cocciopesto: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1011); x.fillStyle = '#9a6a56'; x.fillRect(0, 0, 64, 64); noise(x, r, 500, ['#a87664', '#8a5c4a', '#b8846e', '#7a5040', '#c09078'], 1, 1);
+        x.fillStyle = 'rgba(40,60,50,.6)'; x.fillRect(0, 40, 64, 2); x.fillStyle = 'rgba(40,70,56,.45)'; x.fillRect(0, 42, 64, 22); damp(x, r, 30, .35); return fin(c, { roughness: .7 }); },
+      // le catacombe: il tufo giallo scavato, tre file di loculi; i più aperti con le ossa, gli altri chiusi da lastre con la scritta rossa
+      loculi: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1012); x.fillStyle = '#a08c66'; x.fillRect(0, 0, 64, 64); noise(x, r, 420, ['#b09a72', '#8a7856', '#c0aa80', '#968260'], 2, 1);
+        for (const yb of [52, 33, 14]) { const open = r() < .55, x0 = 6, w = 52, h = 14, y = yb - h;
+          if (open) { x.fillStyle = '#1e1810'; x.fillRect(x0, y, w, h); x.fillStyle = '#3a2e20'; x.fillRect(x0, y + h - 3, w, 3);
+            x.fillStyle = '#e4dcc4'; x.fillRect(x0 + 4, y + h - 5, 30, 2); x.fillRect(x0 + 8, y + h - 7, 2, 4); x.fillRect(x0 + 22, y + h - 7, 2, 3); x.beginPath(); x.arc(x0 + w - 9, y + h - 6, 4, 0, 6.3); x.fill(); x.fillStyle = '#1e1810'; x.fillRect(x0 + w - 11, y + h - 7, 1, 1); x.fillRect(x0 + w - 8, y + h - 7, 1, 1); }
+          else { x.fillStyle = pick(r, ['#d8d0bc', '#c8bea6', '#e0d8c4']); x.fillRect(x0, y, w, h); x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(x0, y + h - 1, w, 1); x.fillRect(x0 + w - 1, y, 1, h); x.fillStyle = '#8a2a1e'; for (let k = 0; k < 6; k++) x.fillRect(x0 + 6 + k * 7, y + 5, 4, 1); x.fillRect(x0 + 10, y + 8, 18, 1); x.fillRect(x0 + w / 2 - 1, y + 2, 2, 5); x.fillRect(x0 + w / 2 - 3, y + 3, 6, 1); }
+          x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(x0 - 1, y - 1, w + 2, 1); }
+        damp(x, r, 52, .4); return fin(c); },
+      // la città sepolta: intonaco vecchio a due colori (zoccolo rosso pompeiano), scrostato fino alle pietre, una riga di fumo
+      intonaco: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1013); x.fillStyle = '#c8b48a'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#8a3a2a'; x.fillRect(0, 44, 64, 20); x.fillStyle = '#5a2a1e'; x.fillRect(0, 43, 64, 2);
+        noise(x, r, 300, ['#d4c098', '#b8a47a', '#a0302a', '#c8b48a'], 2, 1);
+        for (let k = 0; k < 5; k++) { const px = r() * 64, py = r() * 50, w = 8 + r() * 14, h = 6 + r() * 10; x.fillStyle = '#6a645a'; x.fillRect(px, py, w, h); for (let j = 0; j < h; j += 4) for (let i = 0; i < w; i += 7) { x.fillStyle = pick(r, ['#8a8478', '#7a7468', '#9a9488']); x.fillRect(px + i + (j % 8 ? 3 : 0), py + j, 6, 3); } }
+        x.fillStyle = 'rgba(20,16,12,.35)'; x.fillRect(0, 0, 64, 6); damp(x, r, 50, .35); return fin(c); },
+      // la grotta: calcare grigio azzurro, colate più chiare, bagnato
+      calcare: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1014); x.fillStyle = '#6a7276'; x.fillRect(0, 0, 64, 64); noise(x, r, 500, ['#7a8286', '#5a6266', '#8a9296', '#4e5458'], 2, 1);
+        for (let k = 0; k < 9; k++) { const px = Math.floor(r() * 64), w = 2 + Math.floor(r() * 4); const g = x.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, 'rgba(220,226,222,.5)'); g.addColorStop(1, 'rgba(220,226,222,0)'); x.fillStyle = g; x.fillRect(px, 0, w, 30 + r() * 34); }
+        return fin(c, { roughness: .45, metalness: .05 }); },
+      // la roccia bagnata del fiume e del relitto
+      umida: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1015); x.fillStyle = '#3e4644'; x.fillRect(0, 0, 64, 64); noise(x, r, 520, ['#4a5452', '#323a38', '#56605c', '#2a302e'], 2, 1);
+        for (let k = 0; k < 6; k++) { x.fillStyle = 'rgba(30,70,60,.35)'; x.fillRect(0, Math.floor(r() * 64), 64, 1); } damp(x, r, 44, .5); return fin(c, { roughness: .35, metalness: .1 }); },
+      // pavimenti: il cotto della cantina, il lastricato del borgo
+      cotto: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1016); x.fillStyle = '#3a2418'; x.fillRect(0, 0, 64, 64); for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { x.fillStyle = pick(r, ['#8a4a30', '#7a4028', '#965438', '#6e3a24']); x.fillRect(i * 16 + 1, j * 16 + 1, 14, 14); } noise(x, r, 120, ['rgba(0,0,0,.2)', 'rgba(255,230,200,.08)'], 2, 1); return fin(c); },
+      lastricato: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1017); x.fillStyle = '#2e2a26'; x.fillRect(0, 0, 64, 64); for (let j = 0; j < 4; j++) { let i = -(j % 2) * 10; while (i < 64) { const w = 14 + Math.floor(r() * 12); x.fillStyle = pick(r, ['#7a746a', '#6a645a', '#847e72', '#5e5850']); x.fillRect(i + 1, j * 16 + 1, w - 2, 14); i += w; } } noise(x, r, 160, ['rgba(0,0,0,.25)', 'rgba(90,70,50,.3)'], 2, 1); return fin(c); },
+    };
+  })();
   // [sottosuolo] la terra delle gallerie: strati, sassi, radici; il pavimento battuto coi solchi delle carriole
   function earthTex() {
     const c = mk(64, 64), x = c.getContext('2d'), r = rng(91);
@@ -1259,6 +1325,7 @@ var Render = (function () {
       ugMats['texterra_pav'] = new THREE.MeshStandardMaterial({ map: t, roughness: 1, metalness: 0 });
     }
     if (ugMats['tex' + kind]) return ugMats['tex' + kind];
+    if (UG2[kind]) return (ugMats['tex' + kind] = UG2[kind]());
     const c = mk(32, 32), x = c.getContext('2d'), r = rng(kind.length * 31 + 5);
     if (kind === 'mattoni') { x.fillStyle = '#3a2a22'; x.fillRect(0, 0, 32, 32); for (let j = 0; j < 8; j++) for (let i = -1; i < 4; i++) { x.fillStyle = pick(r, ['#6a3a2a', '#5a3224', '#74442e', '#4e2c20', '#6e4a36']); x.fillRect(i * 10 + (j % 2) * 5 + 1, j * 4 + 1, 8, 3); } for (let k = 0; k < 6; k++) { x.fillStyle = 'rgba(60,90,60,.35)'; x.fillRect(Math.floor(r() * 32), 26 + Math.floor(r() * 6), 3, 6); } }
     else if (kind === 'pietra') { x.fillStyle = '#4a4640'; x.fillRect(0, 0, 32, 32); for (let j = 0; j < 4; j++) for (let i = -1; i < 3; i++) { x.fillStyle = pick(r, ['#6e6a62', '#625e56', '#7a766c', '#58544c']); x.fillRect(i * 14 + (j % 2) * 7 + 1, j * 8 + 1, 12, 6); } }
@@ -1303,24 +1370,28 @@ var Render = (function () {
     const fpos = [], fuv = [], WB = {};   // [sottosuolo] pareti per materiale
     const fB = {};   // pavimenti per materiale
     const wallQuad = (arr, uv, x0, z0, x1, z1, y0, y1) => { arr.push(x0, y0, z0, x1, y0, z1, x1, y1, z1, x0, y0, z0, x1, y1, z1, x0, y1, z0); const L2 = Math.hypot(x1 - x0, z1 - z0) / 2, H2 = (y1 - y0) / 2; uv.push(0, 0, L2, 0, L2, H2, 0, 0, L2, H2, 0, H2); };
-    const props = [], rocks = [];
+    const props = [], rocks = [], SEC = [[], []];
     for (let ty = Math.max(0, wy0); ty <= Math.min(G.GH - 1, wy1); ty++) for (let tx = Math.max(0, wx0); tx <= Math.min(G.GW - 1, wx1); tx++) {
       const i = ty * GWd + tx; if (!L.ug[i]) continue;
       const x0 = tx * TS, z0 = ty * TS, x1 = x0 + TS, z1 = z0 + TS, h00 = floorV(tx, ty, 0, 0), h10 = floorV(tx, ty, 1, 0), h01 = floorV(tx, ty, 0, 1), h11 = floorV(tx, ty, 1, 1);
-      const kd = L.kind[i], made = kd >= 3, fm = made ? (kd === 7 || kd === 9 ? 'piastrelle' : kd === 3 || kd === 8 ? 'mattoni' : kd === 6 ? 'cemento' : 'pietra') : kd === 2 ? 'terra_pav' : 'terra';
+      const kd = L.kind[i], made = kd >= 3, fm = UGF[kd] || (made ? (kd === 7 || kd === 9 ? 'piastrelle' : kd === 3 || kd === 8 ? 'mattoni' : kd === 6 ? 'cemento' : 'pietra') : kd === 2 ? 'terra_pav' : 'terra');
       const fa = fB[fm] = fB[fm] || [[], []]; fa[0].push(x0, h00, z0, x0, h01, z1, x1, h11, z1, x0, h00, z0, x1, h11, z1, x1, h10, z0); fa[1].push(0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0);
       const rockK = !made && (gT(tx, ty) === T.ROCK || gT(tx, ty) === T.CLIFF || kd === 1), wm = made ? UGK[kd] : rockK ? 'roccia' : 'terra', wb = WB[wm] = WB[wm] || [[], []], arr = wb[0], uv = wb[1], f = L.fl[i];
       // pareti dove finisce lo scavo; quelle verso la camera sono basse (si vede dentro)
       const cy2 = Math.cos(cam.yaw), sy2 = Math.sin(cam.yaw);
       [[0, -1, x0, z0, x1, z0], [0, 1, x1, z1, x0, z1], [-1, 0, x0, z1, x0, z0], [1, 0, x1, z0, x1, z1]].forEach(([dx, dy, a, b, c2, d]) => {
         if (has(tx + dx, ty + dy) || kd === 9) return; const P = L.portals.find(P => P.kind === 'imbocco' && P.u[0] === tx && P.u[1] === ty && P.s[0] === tx + dx && P.s[1] === ty + dy); if (P) return;
-        const toCam = dx * sy2 + dy * cy2 > .3, top = f + (toCam ? .55 : kd === 7 ? 4.2 : 2.7);
+        const toCam = dx * sy2 + dy * cy2 > .3, top = f + (toCam ? .55 : UGH[kd] || 2.7);
         wallQuad(arr, uv, a, b, c2, d, f - .2, top);
+        // [sotto2] la terra in sezione: sopra la parete di fondo, fino alla strada (al massimo 14 m), gli strati con la loro quota vera
+        if (!toCam) { const surf = Math.min(M.elev[i], top + 14); if (surf - top > .4) { const L2 = Math.hypot(c2 - a, d - b) / 4, va = 1 - (M.elev[i] - top) / 32, vb = 1 - (M.elev[i] - surf) / 32, ua = (dx ? z0 : x0) / 4;
+          SEC[0].push(a, top, b, c2, top, d, c2, surf, d, a, top, b, c2, surf, d, a, surf, b); SEC[1].push(ua, va, ua + L2, va, ua + L2, vb, ua, va, ua + L2, vb, ua, vb); } }
         if (!made && !toCam && hash2i(tx * 3 + dx, ty * 3 + dy) < .35) rocks.push([(a + c2) / 2 - dx * .2, f + .3, (b + d) / 2 - dy * .2]);
       });
       // [sottosuolo] l'armatura di legno delle gallerie scavate a mano: telai a passo di 2 m nei tratti dritti, pali contro le pareti nelle stanze
-      if (kd === 2) props.push([tx, ty, f]);
+      if (kd === 2 || kd === 16) props.push([tx, ty, f]);   // [sotto2] anche la miniera è armata di legno
     }
+    if (SEC[0].length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(SEC[0], 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(SEC[1], 2)); g.computeVertexNormals(); grp.add(new THREE.Mesh(g, sectionTex())); }
     const mkGeo = (pos, uv) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals(); return g; };
     Object.entries(fB).forEach(([k, [pos, uv]]) => { const m = new THREE.Mesh(mkGeo(pos, uv), ugTex(k)); m.receiveShadow = true; grp.add(m); });
     Object.entries(WB).forEach(([k, [pos, uv]]) => { if (!pos.length) return; const m = new THREE.Mesh(mkGeo(pos, uv), ugTex(k)); m.material.side = THREE.DoubleSide; grp.add(m); });
@@ -1343,6 +1414,7 @@ var Render = (function () {
     L.rooms.forEach(R => {
       if (R.x < wx0 * TS - 6 || R.x > wx1 * TS + 6 || R.y < wy0 * TS - 6 || R.y > wy1 * TS + 6) return;
       const g = new THREE.Group(); g.position.set(R.x, R.f, R.y);
+      if (R.light && UGR.lights.length < 24) UGR.lights.push([R.x, R.f + (R.deco === 'grotta' || R.deco === 'fiume' ? 1.2 : 2.1), R.y, R.light, 1]);   // [sotto2] la luce di scena di ogni cavità (il colore lo dà sottosuolo.js LIGHT)
       if (R.deco === 'toro' || R.deco === 'eremo') {
         const pic = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), ugPicture(R.deco)); pic.position.set(0, 1.4, -1.85); g.add(pic);
         if (R.deco === 'eremo') { const alt = new THREE.Mesh(new THREE.BoxGeometry(1.4, .9, .6), ugM('#8a8276')); alt.position.set(0, .45, -1.4); g.add(alt); for (let k = 0; k < 5; k++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, .22, 6), ugMats.__cand || (ugMats.__cand = new THREE.MeshBasicMaterial({ color: '#f0e6c8' }))); c.position.set(-.5 + k * .25, 1, -1.35); g.add(c); } const cr = new THREE.Mesh(new THREE.BoxGeometry(.06, .7, .06), wood); cr.position.set(0, 2.4, -1.8); g.add(cr); const cr2 = new THREE.Mesh(new THREE.BoxGeometry(.4, .06, .06), wood); cr2.position.set(0, 2.55, -1.8); g.add(cr2); }
@@ -1415,7 +1487,9 @@ var Render = (function () {
     const near = UGR.lights.map(q => [q, (q[0] - p.x) ** 2 + (q[2] - p.y) ** 2]).sort((a, b) => a[1] - b[1]);
     PPOOL.forEach((l, i) => {
       if (i === 0) { l.position.set(p.x + Math.cos(p.face) * .4, h + 1.7, p.y + Math.sin(p.face) * .4); l.color.set('#ffc070'); l.distance = 20; l.decay = 1.2; l.intensity = 2.8 + Math.sin(st.clock * 9) * .08; return; }
-      const q = near[i - 1]; if (!q) { l.intensity = 0; return; } const [x, y, z, c] = q[0]; l.position.set(x, y, z); l.color.set(c); l.distance = 14; l.decay = 1.3; l.intensity = 2.2; });
+      const q = near[i - 1]; if (!q) { l.intensity = 0; return; } const [x, y, z, c, scena] = q[0]; l.position.set(x, y, z); l.color.set(c); l.distance = scena ? 19 : 14; l.decay = 1.3; l.intensity = scena ? 2.6 : 2.2; });
+    // [sotto2] un po' di nebbia, del colore della cavità più vicina (ambra nelle catacombe, azzurra nelle grotte, verde nelle cisterne)
+    { const q = near.find(n => n[0][4]); UGR.fogC = UGR.fogC || new THREE.Color(); UGR.fogC.set('#0c0b0a'); if (q && q[1] < 900) UGR.fogC.lerp((UGR.tc = UGR.tc || new THREE.Color()).set(q[0][3]), .2 * (1 - Math.sqrt(q[1]) / 30)); }
     scene.children.forEach(o => { if (o === UGR.grp || o === pg || LPOOL.includes(o) || o.userData.ugKeep) return; if (o.isLight && o !== moon && o !== hemi && o !== fillAmb) { if (o.visible) { o.visible = false; o.userData.__hidUG = true; } return; } if (o.isLight) return; if (o.visible) { o.visible = false; o.userData.__hidUG = true; } });
     UGR.grp.visible = true; if (pg) pg.visible = true;
     return true;
@@ -13380,7 +13454,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     INDOOR.quad = Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2) - .5) & 3;
     const indoorNow = indoorPass(st); if (indoorNow) { scene.fog.near = 200; scene.fog.far = 400; }
     let ugNow = false;
-    if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { ugNow = true; scene.fog.near = dist + 6; scene.fog.far = dist + 55; scene.fog.color.set('#0c0b0a'); scene.background.set('#0c0b0a'); } }   // [monte]
+    if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { ugNow = true; scene.fog.near = dist + 3; scene.fog.far = dist + 46; scene.fog.color.copy(UGR.fogC || tmpC.set('#0c0b0a')); scene.background.copy(scene.fog.color); } }   // [monte] [sotto2] la nebbia prende il colore della cavità
     {   // [varco1] la capsula fra te e la camera: a piedi stretta e vicina, alla guida più larga e oltre il muso del mezzo
       if (time - VARCO.t > 1.5) { VARCO.t = time; varcoScan1(); }
       const on = !VARCO.off && !ui.intro && !ui.studio && !ui.focus && !p.indoor && !indoorNow && !ugNow, fy = (feet0 !== null ? feet0 : groundH(focus[0][0], focus[0][1]));
