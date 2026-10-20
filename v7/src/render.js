@@ -2357,6 +2357,10 @@ var Render = (function () {
     pedalo(r) { const g = G0(), col = pick(r, ['#f4a6c0', '#7fd6e0', '#f0d060']); [-.55, .55].forEach(o => add(g, box(.5, .45, 2.5, sm(col)), o, .05, 0)); add(g, box(1.5, .14, 1.4, PM.white()), 0, .35, -.1); add(g, box(1.1, .55, .1, PM.white()), 0, .65, -.62); add(g, new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, .08, 10, 1, false, 0, Math.PI), sm('#f4f0e6')), 0, .5, .6, 0, 0, Math.PI / 2); return g; },
   };
   BOATS.secca = r => BOATS.gozzo(r);
+  // [modelli2] gozzo, lancia, motoscafo, peschereccio e traghetto vengono da veicoli3d.js (fasciame, falchetta, bitte, timone, cabine, reti e nasse);
+  // quelli qui sopra restano di riserva. Il traghetto non ha ancora un ormeggio in world.js.
+  DRAFT.traghetto = 1.3;
+  ['gozzo', 'lancia', 'motoscafo', 'peschereccio', 'traghetto'].forEach(k => { const old = BOATS[k]; BOATS[k] = (r, o) => { const B = window.Veicoli3D && Veicoli3D.barca(k, r, o); if (!B) return old ? old(r, o) : G0(); COSTA.lastH = B.H; return B.g; }; });
   // [costa] la sagoma invisibile alla linea di galleggiamento: si disegna prima del mare e scrive solo la profondità,
   // così il piano dell'acqua non entra negli scafi aperti (gozzi, lance, pozzetti). Segue la sezione vera dello scafo.
   const MASKM = new THREE.MeshBasicMaterial({ colorWrite: false });
@@ -9002,6 +9006,18 @@ var Render = (function () {
     ud.len = L;
     return finishVehicle(g, ud);
   }
+  // [modelli2] i mezzi di veicoli3d.js (le auto del 1986, furgoni, camion, Ape, Vespa, bici): il livello alto fuso per materiale
+  // (restano a parte scocca, parabrezza, paraurti, fari, ruote, tergicristalli, pedivelle) e quello basso, in un LOD.
+  // I modelli vecchi qui sotto (CARS, apeMesh...) restano solo se veicoli3d.js manca.
+  const V3LOD = 70;   // oltre questa distanza dalla camera, il livello basso
+  function lod3d(R) {
+    const u = R.ud; R.alto.updateMatrixWorld(true);
+    u.tails = u.tails.map(t => ({ position: t.getWorldPosition(new THREE.Vector3()) }));   // i bagliori dei fanali stanno dove sono i fanali, anche dentro i loro gruppi
+    const alto = finishVehicle(R.alto, u), basso = mergeGroup(R.basso), g = new THREE.LOD();
+    g.addLevel(alto, 0); g.addLevel(basso, V3LOD); g.userData = u; u.v3d = true; return g;
+  }
+  function veicolo3d(v) { if (!window.Veicoli3D) return null; try { const R = Veicoli3D.perVeicolo(v); return R ? lod3d(R) : null; } catch (e) { console.warn('[modelli2]', v.kind, e); return null; } }
+  function mezzo3d(id, color) { if (!window.Veicoli3D) return null; try { const R = Veicoli3D.costruisci(id, Veicoli3D.epoca(color), {}); return R ? lod3d(R) : null; } catch (e) { console.warn('[modelli2]', id, e); return null; } }
   // fonde i pezzi fissi del mezzo: restano separati scocca (ammaccature), ruote, parabrezza, fari e paraurti
   function finishVehicle(g, ud) {
     if (ud.body) ud.body.userData.keep = true; if (ud.ws) ud.ws.userData.keep = true; if (ud.parts.bumper) ud.parts.bumper.userData.keep = true;
@@ -9009,6 +9025,7 @@ var Render = (function () {
     const out = mergeGroup(g); out.userData = ud; return out;
   }
   function apeMesh(color) {
+    { const m = mezzo3d('ape', color); if (m) return m; }   // [modelli2]
     const g = G0(), paint = std({ color, roughness: .35, metalness: .3 }), dark = sl('#141218'), chrome = std({ color: '#d0d0d8', metalness: .8, roughness: .2 });
     const glass = std({ color: '#1e2a3a', roughness: .08, metalness: .5, emissive: '#0a1422' }), hl = new THREE.MeshBasicMaterial({ color: '#fff4d0', toneMapped: false }), tl = new THREE.MeshBasicMaterial({ color: '#b01818', toneMapped: false });
     const ud = { paint: [paint], glass, lamps: [], tails: [], tlMat: tl, wheels: [], front: [], dents: 0, parts: {} };
@@ -9036,6 +9053,7 @@ var Render = (function () {
   }
   // Vespa: scudo, scocca posteriore bombata, sella, faro sul manubrio
   function vespaMesh(color) {
+    { const m = mezzo3d('vespa', color); if (m) return m; }   // [modelli2]
     const g = G0(), c = std({ color, roughness: .32, metalness: .3 }), dark = sl('#141218'), chrome = std({ color: '#d0d0d8', metalness: .8, roughness: .2 });
     const ud = { paint: [c], lamps: [[0, 1.26, .78]], tails: [], wheels: [], front: [], two: true, dents: 0, parts: {} };
     const rearS = sideShape([[.05, .42], [.08, .62], [-.05, .8], [-.35, .9], [-.7, .86], [-.9, .72], [-.97, .5], [-.95, .34]], [[-.6, .24]], .34);
@@ -9159,8 +9177,9 @@ var Render = (function () {
   function vehicleMesh(v) {
     const K = G.VK[v.kind];
     const glb = K.glb && window.Models && Models.has(K.glb) ? Models.vehicle(K.glb, K, v.color) : null;
-    const g = glb || (v.kind === 'vespa' ? vespaMesh(v.color) : v.kind === 'bmx' ? bmxMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
-    if (K.scale && !glb) g.scale.set(K.scale[0], K.scale[1], K.scale[2]);
+    const v3 = glb ? null : veicolo3d(v);   // [modelli2] il modello vero di quel mezzo (126 o Panda, Ritmo o Uno...)
+    const g = glb || v3 || (v.kind === 'vespa' ? vespaMesh(v.color) : v.kind === 'bmx' ? bmxMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
+    if (K.scale && !glb && !v3) g.scale.set(K.scale[0], K.scale[1], K.scale[2]);
     g.userData.glbWait = !!K.glb && !glb;
     g.userData.glb = !!glb;   // [animazioni-mondo] le auto dai modelli non hanno il profilo del parabrezza
     if (window.RisaccaUI && RisaccaUI.dressVehicle) { try { RisaccaUI.dressVehicle(g, v, THREE); } catch (e) { } } // corazze, rostri, insegne militari
@@ -11920,7 +11939,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   function vehDoor(g, v, u) {   // [animazioni-mondo] la portiera del guidatore (lato -x, quello da cui si scende), fatta solo quando serve
     const K = G.VK[v.kind], D = !u.glb ? CARS[K.mesh || v.kind] : null, s = -1;
     let hw, zf, zb, yb, yt, yw, cw;
-    if (D) { hw = D.W / 2; cw = D.CW / 2; zf = D.win[0][0] - .02; zb = D.cab.length > 3 ? Math.max(D.win[3][0] + .25, (D.win[1][0] + D.win[2][0]) / 2 - .05) : D.win[3][0]; yb = D.yb + .06; yt = D.win[0][1]; yw = (D.win[1][1] + D.win[2][1]) / 2 - .04; if (D.L < 3.4) zb = Math.min(zb, zf - 1.05); }
+    if (u.porta) ({ hw, cw, zf, zb, yb, yt, yw } = u.porta);   // [modelli2] la portiera del modello di veicoli3d.js
+    else if (D) { hw = D.W / 2; cw = D.CW / 2; zf = D.win[0][0] - .02; zb = D.cab.length > 3 ? Math.max(D.win[3][0] + .25, (D.win[1][0] + D.win[2][0]) / 2 - .05) : D.win[3][0]; yb = D.yb + .06; yt = D.win[0][1]; yw = (D.win[1][1] + D.win[2][1]) / 2 - .04; if (D.L < 3.4) zb = Math.min(zb, zf - 1.05); }
     else { const sc = g.scale.x || 1; hw = K.wid / 2 / sc; cw = hw * .86; zf = K.len * .14; zb = -K.len * .1; yb = .32; yt = .82; yw = 1.18; }
     const L = Math.max(.7, zf - zb), rig = new THREE.Group(), piv = new THREE.Group();
     const panel = box(.05, yt - yb, L, u.paint[0]); panel.position.set(0, (yb + yt) / 2, -L / 2); piv.add(panel);
