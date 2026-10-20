@@ -2099,7 +2099,10 @@ var Popolo = (function () {
     if (st.fires) for (const n of st.npcs) { const q = n.__posto; if (!q || !q.arrived || q.p.k !== 'fuoco') continue; const f = st.fires.find(f => f.ev && dist(f.x, f.y, q.p.x, q.p.y) < 2); if (f) f.until = Math.max(f.until, st.clock + 30); else st.fires.push({ x: q.p.x, y: q.p.y, r: .45, until: st.clock + 30, owner: null, ev: true, calmo: true }); }
     if (p.indoor) return;
     const posti = P0.near(p.x, p.y, FILL.r).filter(q => q.__d > 5 && P0.openAt(q, st.t) && (q.tetto ? q.h3 != null : G.walkM(q.x, q.y)) && (P0.TIPI[q.k] || {}).who !== 'cop');
-    posti.sort((a, b) => (a.__d + ((a.__j = a.__j || Math.random() * 24))) - (b.__d + (b.__j || (b.__j = Math.random() * 24))));
+    // la varietà: un tipo di posto che attorno non ha ancora nessuno passa avanti (il retrobottega, la facciata, l'edicola non restano vuoti perché le panchine si sono prese tutti)
+    const kHave = {}; for (const n of st.npcs) if (n.__posto) kHave[n.__posto.p.k] = (kHave[n.__posto.p.k] || 0) + 1;
+    const key = q => q.__d + (q.__j = q.__j || Math.random() * 24) - (kHave[q.k] ? 0 : 30) + Math.min(kHave[q.k] || 0, 12) * 1.5;
+    posti.sort((a, b) => key(a) - key(b));
     let placed = 0;
     for (const q of posti) {
       if (total >= FILL.maxIn || placed >= 2) break;

@@ -345,7 +345,7 @@ var Eventi = (function () {
     const E = S(st), ago = st.clock - (E.seen[D.id] || -1e9);
     if (D.player && st.clock - E.lastPlayer < CFG.playerEvery) return 0;   // [leggera] chi viene verso di te: di rado
     if (E.day[D.id + '|' + districtOf(st.player.x, st.player.y)] === Math.floor(st.t / 1440)) return 0;   // [leggera] già successa qui oggi
-    return (D.w || 1) * (ago < 240 ? .15 : 1) * (D.posto && !D.soft ? 1.6 : 1);   // la stessa scena non torna subito; [vita2] dove c'è il suo posto, la scena del posto passa avanti
+    return (D.w || 1) * (ago < 240 ? .15 : 1) * (D.posto && !D.soft ? 1.6 : 1);   // la stessa scena non torna subito; [vita2] dove c'è il suo posto, la scena del posto pesa di più
   }
   function step(st, dt) {
     const E = S(st), p = st.player;
@@ -357,7 +357,9 @@ var Eventi = (function () {
     if (st.clock < E.next) return;
     if (p.indoor || (p.lv && p.lv.k !== 'tetto') || st.chase || st.over || E.live.length >= CFG.max) { E.next = st.clock + 4; return; }
     // a sorte secondo il peso; se una scena non trova i suoi attori se ne prova un'altra
-    const pool = SCENE.map(D => [D, weight(st, D)]).filter(x => x[1] > 0);
+    let pool = SCENE.map(D => [D, weight(st, D)]).filter(x => x[1] > 0);
+    // [vita2] una volta su due la regia sceglie fra le scene del posto (quelle che hanno qui il loro posto e la loro ora): la città vive dei suoi luoghi
+    E.alt = !E.alt; if (E.alt) { const own = pool.filter(x => x[0].posto && !x[0].soft); if (own.length) pool = own; }
     for (let k = 0; k < 6 && pool.length; k++) {
       let tot = pool.reduce((s, x) => s + x[1], 0), r = rnd() * tot, j = 0; while (j < pool.length - 1 && (r -= pool[j][1]) > 0) j++;
       const D = pool.splice(j, 1)[0][0]; if (run(st, D.id, true)) break;
@@ -644,6 +646,13 @@ var Eventi = (function () {
       { all: [{ slot: 'b', i: 0, n: 2, sp: 1.3, face: 'out' }, { slot: 'c', i: 1, n: 2, sp: 1.3, face: 'out' }] }, { go: 'a', to: 'spot', sp: 1.3, d: 2, t: 18 }, { pose: 'a', p: 'saluta_su' }, SAY('a', 'Buongiorno a tutti!', 'Salute, gioventù!', 'Oh, la bella compagnia!'),
       { look: 'b', at: 'a' }, { look: 'c', at: 'a' }, { pose: 'b', p: 'saluta_su' }, SAY('b', 'Don Ciccio! Come va la gamba?', 'Buongiorno, maestro!', 'Sempre in giro, eh?'), { pose: 'c', p: 'saluta_su' }, SAY('c', 'Salutami la signora!', 'Passa dopo, c\'è il caffè.'),
       { pose: 'a' }, SAY('a', 'Si tira avanti. Si tira avanti.', 'Ci vediamo al bar!'), { pose: 'b' }, { pose: 'c' }, { go: 'a', to: 'away', sp: 1.3, d: 2.5, t: 12 }, { wait: 1 }] },
+    { id: 'sagrato_vespro', w: 3, posto: 'sagrato', ora: [15.5, 19.5], roles: [{ id: 'a', f: 'old' }, { id: 'b', near: 'a', f: 'f|old', r: 20 }, { id: 'c', near: 'a', f: 'young|any', r: 22 }], beats: [
+      // il sagrato prima del vespro: due vecchie con la borsa della spesa aspettano il parroco, un ragazzo passa e viene preso di mira
+      { hand: 'a', id: 'borsa' }, { all: [{ slot: 'a', i: 0, n: 3, sp: 1.1 }, { slot: 'b', i: 1, n: 3, sp: 1.1 }] }, { look: 'a', at: 'b' }, { look: 'b', at: 'a' }, { pose: 'a', p: 'braccia_su' }, { pose: 'b', p: 'discute_su' },
+      SAY('b', 'Don Peppino oggi è in ritardo.', 'Hai visto chi c\'era alla messa del Garante? Tutti in prima fila.', 'La figlia della Pina non viene più a messa.'), SAY('a', 'Lo chiamano in Curia, dicono.', 'In prima fila, e poi la sera al Bar Sirena.', 'Con chi va, quella, lo sa tutto il borgo.'), { wait: 2 },
+      { slot: 'c', i: 2, n: 3, sp: 1.4 }, { look: 'a', at: 'c' }, { look: 'b', at: 'c' }, { pose: 'b', p: 'indica_su' }, SAY('b', 'E tu? Quand\'è che ti vediamo in chiesa?', 'Guarda questo, coi capelli lunghi come una femmina.', 'Salutala, la signora Rosa! Non hai educazione?'),
+      { look: 'c', at: 'b' }, { pose: 'c', p: 'saluta_su' }, SAY('c', 'Buonasera, signora Rosa.', 'Domenica, giuro.', 'Mia madre la saluta.'), { pose: 'c' }, { pose: 'b' }, { go: 'c', to: 'away', sp: 1.5, d: 2, t: 10 },
+      SAY('a', 'Una volta i giovani si toglievano il cappello.', 'Bravo ragazzo, però. Il padre era del porto.'), { wait: 3 }, { pose: 'a' }, { hand: 'a', id: null }] },
     { id: 'stenditoio', w: 2, posto: 'stenditoio', ora: [[9, 12], [16, 18.5]], roles: [{ id: 'a', f: 'f|any', r: 30 }], beats: [
       { put: 'a', to: 'spot' }, { wrH: 'a', h: 'posto' }, { pose: 'a', p: 'lavora' }, SAY('a', 'Con questo vento asciuga in un\'ora.', 'Le lenzuola, poi le camicie.', 'Oh! Le mollette!'), { wait: 6 },
       { pose: 'a', p: 'braccia_su' }, SAY('a', 'Si vede fino al Mercato, da qui.', 'Ecco i Grigi, in piazza. Di nuovo.', 'Pina! Pina! Il sugo!'), { wait: 5 }, { pose: 'a', p: 'lavora' }, { wait: 4 }, { pose: 'a' }] },
