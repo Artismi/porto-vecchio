@@ -135,13 +135,13 @@ var PezziCitta = (function () {
   { float fd = 1. - smoothstep(.01, .04, px), sl = fract(vPzW.y / .065); c *= mix(1., .72 + .4 * smoothstep(0., .8, sl), fd) * (.85 + fn * .25); c = mix(c, vec3(.5, .52, .44), smoothstep(.68, .72, pzF(p * 4.)) * .5); H = sl * fd; }
 #endif
 #if ${G} <= 5
-  { float uz = ${U}, nb = pzF(p * vec2(1.3, .5) + 1.7);
+  { float uz = ${U}, nb = pzN(p * vec2(1.3, .5) + 1.7), n2 = pzF(p * 2.2 + 9.);   // (due rumori soli per tutta l'usura)
     float um = (1. - smoothstep(.1, .9 + nb * 1.1, hB)) * ver; c = mix(c, c * vec3(.6, .63, .58), um * .8 * uz);   // l'umido che sale da terra
-    c = mix(c, vec3(.24, .29, .17), um * smoothstep(.5, .75, pzF(p * 3.1 + 2.)) * .6 * uz);   // il muschio
+    c = mix(c, vec3(.24, .29, .17), um * smoothstep(.5, .75, n2) * .6 * uz);   // il muschio
     float cl = floor(p.x * 2.4), lc = .5 + pzH1(vec2(cl, 7.)) * 3.2, sk = step(.5, pzH1(vec2(cl, 1.3))) * (1. - smoothstep(0., lc, dT)) * smoothstep(.2, .7, pzN(vec2(p.x * 6., dT * .7)));
     c *= 1. - sk * .26 * uz * ver;   // le colature sotto il bordo di cima
-    float cr = (1. - smoothstep(.04, .3 + nb * .45, dT)) * smoothstep(.25, .6, pzF(p * 2.2 + 9.)) * ver; c = mix(c, c * vec3(.36, .35, .34), cr * .7 * uz);   // la crosta nera dove la pioggia non lava
-    float up = step(.6, nW.y); c *= 1. - up * (1. - fn) * .22 * uz; c = mix(c, vec3(.56, .55, .43), up * smoothstep(.7, .74, pzF(p * 3.7)) * .5 * uz);   // sopra: sporco e licheni
+    float cr = (1. - smoothstep(.04, .3 + nb * .45, dT)) * smoothstep(.25, .6, n2) * ver; c = mix(c, c * vec3(.36, .35, .34), cr * .7 * uz);   // la crosta nera dove la pioggia non lava
+    float up = step(.6, nW.y); c *= 1. - up * (1. - fn) * .22 * uz; c = mix(c, vec3(.56, .55, .43), up * smoothstep(.68, .74, n2) * .5 * uz);   // sopra: sporco e licheni
     c *= 1. - step(.6, -nW.y) * .2; }
 #endif
   diffuseColor.rgb = c; pzH = H; }`;
@@ -155,9 +155,9 @@ var PezziCitta = (function () {
         .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n{ vec4 w4 = vec4(transformed, 1.);\n#ifdef USE_INSTANCING\n w4 = instanceMatrix * w4;\n#endif\n vPzW = (modelMatrix * w4).xyz; vPzN = normalize(mat3(modelMatrix) * objectNormal); vPzU = uv; }');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
 varying vec3 vPzW; varying vec3 vPzN; varying vec2 vPzU; float pzH = 1.;
-float pzH1(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float pzH1(vec2 p) { vec3 q = fract(vec3(p.xyx) * .1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }   // senza seno: costa poco anche sui processori grafici deboli
 float pzN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(pzH1(i), pzH1(i + vec2(1., 0.)), f.x), mix(pzH1(i + vec2(0., 1.)), pzH1(i + vec2(1., 1.)), f.x), f.y); }
-float pzF(vec2 p) { return pzN(p) * .55 + pzN(p * 2.13 + 7.1) * .3 + pzN(p * 4.7 + 3.3) * .15; }`)
+float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
         .replace('#include <map_fragment>', '#include <map_fragment>\n' + frag)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 { vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition); float hx = dFdx(pzH) * .012, hy = dFdy(pzH) * .012;
