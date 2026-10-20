@@ -379,13 +379,14 @@ var Tetti = (function () {
     // [tetti2] leggibilità: fascia gialla ai piedi delle scale, lanterna calda in cima; assi, corda, panca e bandierina
     const yell = new T3.MeshStandardMaterial({ color: '#e8b828', roughness: .6 }), lamp = new T3.MeshBasicMaterial({ color: '#ffd27a', toneMapped: false });
     const wood = new T3.MeshStandardMaterial({ color: '#8a6a44', roughness: .9 }), rope = new T3.MeshStandardMaterial({ color: '#c8b48a', roughness: 1 }), flag = new T3.MeshStandardMaterial({ color: '#c8302a', roughness: .8, side: T3.DoubleSide });
-    return { box, iron, rust, yell, lamp, wood, rope, flag };
+    const staffa = new T3.MeshStandardMaterial({ color: '#6e5c4e', metalness: .2, roughness: .85 });   // [facciate2] le staffe murate: ferro arrugginito del colore del muro sporco, non segni neri
+    return { box, iron, rust, yell, lamp, wood, rope, flag, staffa };
   }
   // le scale: due montanti, i pioli ogni 30 cm, la gabbia sopra i 2,5 m, il corrimano che scavalca il bordo del tetto
   function buildLaddersGfx(R) {
     const T3 = THREE, scene = R.__models.scene; if (!scene) return;
     if (GFX.meshes) GFX.meshes.forEach(m => { scene.remove(m); });
-    const G3 = GFX.geo || (GFX.geo = ladderGeo()), rails = [], rungs = [], hoops = [], yel = [], lamps = [], boards = [], ropes = [], flags = [];
+    const G3 = GFX.geo || (GFX.geo = ladderGeo()), rails = [], rungs = [], staffe = [], hoops = [], yel = [], lamps = [], boards = [], ropes = [], flags = [];
     const m4 = new T3.Matrix4(), q = new T3.Quaternion(), e = new T3.Euler(), s3 = new T3.Vector3(), p3 = new T3.Vector3();
     const put = (arr, x, y, z, sx, sy, sz, yaw) => { e.set(0, yaw, 0); q.setFromEuler(e); arr.push(m4.compose(p3.set(x, y, z), q, s3.set(sx, sy, sz)).clone()); };
     LADDERS.forEach(L => {
@@ -395,7 +396,7 @@ var Tetti = (function () {
       const bb = B[L.bi], old = bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');
       if (old) {   // [epoche] nel borgo, sull'Ottocento e sul regime niente scala di ferro: le staffe alla marinara murate nella parete (pioli a U, ruggine)
         const wx = L.x + L.ox * .02, wz = L.y + L.oy * .02;
-        for (let y = y0 + .35; y < y1 - .85; y += .32) { put(rungs, wx + L.ox * .16, y, wz + L.oy * .16, .03, .03, .4, yaw); for (const s of [-1, 1]) put(rungs, wx + L.ox * .08 + sx * s * .9, y, wz + L.oy * .08 + sz * s * .9, .16, .03, .03, yaw); }
+        for (let y = y0 + .35; y < y1 - .85; y += .32) { put(staffe, wx + L.ox * .14, y, wz + L.oy * .14, .022, .022, .36, yaw); for (const s of [-1, 1]) put(staffe, wx + L.ox * .07 + sx * s * .8, y, wz + L.oy * .07 + sz * s * .8, .13, .022, .022, yaw); }   // [facciate2] più sottili
         for (const s of [-1, 1]) put(rails, cx - L.ox * .3 + sx * s, y1 - .3, cz - L.oy * .3 + sz * s, .04, .6, .04, yaw);   // i due ferri che aiutano a scavalcare il parapetto
         put(lamps, wx + L.ox * .1, y1 - .2, wz + L.oy * .1, .1, .12, .1, yaw); return;
       }
@@ -441,8 +442,8 @@ var Tetti = (function () {
       lamps.push(m4.compose(p3.set(fx, y + 2.86, fz), q, s3.set(.1, .1, .1)).clone());
     });
     const mk = (arr, m) => { const im = new T3.InstancedMesh(G3.box, m, Math.max(1, arr.length)); arr.forEach((mm, i) => im.setMatrixAt(i, mm)); im.count = arr.length; im.castShadow = true; im.receiveShadow = true; im.userData.noRoof = true; im.frustumCulled = false; scene.add(im); return im; };
-    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag)];
-    GFX.meshes[4].castShadow = false;
+    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(staffe, G3.staffa), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag)];
+    GFX.meshes[5].castShadow = false;   // la lanterna (dopo le staffe [facciate2])
   }
   function frame() {
     try {
