@@ -246,6 +246,6 @@ vec3 stoffa() {
     g.traverse(o => { if (!o.isSkinnedMesh || o.userData.zona !== 'busto') return; const P = o.geometry.attributes.position, I = o.geometry.index, M = new THREE.Matrix4().multiplyMatrices(gi, o.matrixWorld);
       const n = I ? I.count : P.count; for (let k = 0; k < n; k++) { v.fromBufferAttribute(P, I ? I.getX(k) : k).applyMatrix4(M); out.push(v.x, v.y, v.z); } });
     return out; }
-  return { dress, punti, PEZZI, attivo: true };
+  return { dress, punti, PEZZI, attivo: false };   // [via di mezzo] spento: la base è il vestito dipinto con le giacche a guscio; i pezzi del kit restano come riserva
 })();
 if (typeof module !== 'undefined') module.exports = Taglio;
