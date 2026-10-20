@@ -11339,7 +11339,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // dei pezzi urbani (un materiale, nessuna chiamata in più)
   function f2Tufo() {
     if (typeof PezziCitta === 'undefined' || !PezziCitta || !PezziCitta.mat || F2.tufo) return; F2.tufo = true;
-    [['tufo', '#bba684', 1], ['tufoScuro', '#9a8869', .6]].forEach(([nome, hex, k]) => { const m = PezziCitta.mat(nome); if (!m) return; m.color.set(hex); m.roughness = .95;
+    [['tufo', '#bba684', 1, .35, .62], ['tufoScuro', '#9a8869', .6, .35, .62], ['travertino', '#ddd3bb', .5, .6, 1.2], ['travertinoScuro', '#b4a990', .5, .6, 1.2]].forEach(([nome, hex, k, RH, RL]) => {   // [facciate2] anche il travertino del regime: lastre da 60 × 120 coi giunti const m = PezziCitta.mat(nome); if (!m) return; m.color.set(hex); m.roughness = .95;
       m.customProgramCacheKey = () => 'f2-tufo' + nome;
       m.onBeforeCompile = sh => {
         sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTW; varying vec3 vTN;').replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvTW = (modelMatrix * vec4(transformed, 1.0)).xyz; vTN = normalize(mat3(modelMatrix) * objectNormal);');
@@ -11347,10 +11347,10 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
 varying vec3 vTW; varying vec3 vTN;
 float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`).replace('#include <map_fragment>', `#include <map_fragment>
 { vec3 n = abs(normalize(vTN)); vec2 p = n.y > .6 ? vTW.xz : (n.x > n.z ? vec2(vTW.z, vTW.y) : vec2(vTW.x, vTW.y));
-  float row = floor(p.y / .35), bx = p.x / .62 + mod(row, 2.) * .5, ci = floor(bx);
+  float row = floor(p.y / ${RH.toFixed(2)}), bx = p.x / ${RL.toFixed(2)} + mod(row, 2.) * .5, ci = floor(bx);
   float tone = tH(vec2(ci, row)), g = tH(floor(p * 18.)) - .5, pit = step(.93, tH(floor(p * 9.) + 3.1));
   vec3 c = diffuseColor.rgb * (.9 + tone * .16) * (1. + g * .07) * (1. - pit * .18);
-  if (n.y < .6) { float j = min(fract(bx), 1. - fract(bx)) * .62, jy = min(fract(p.y / .35), 1. - fract(p.y / .35)) * .35; c *= mix(.72, 1., smoothstep(.0, ${(.018 * k).toFixed(3)}, min(j, jy))); }
+  if (n.y < .6) { float j = min(fract(bx), 1. - fract(bx)) * ${RL.toFixed(2)}, jy = min(fract(p.y / ${RH.toFixed(2)}), 1. - fract(p.y / ${RH.toFixed(2)})) * ${RH.toFixed(2)}; c *= mix(.72, 1., smoothstep(.0, ${(.018 * k).toFixed(3)}, min(j, jy))); }
   diffuseColor.rgb = c; }`);
       };
       m.needsUpdate = true; });
