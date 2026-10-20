@@ -56987,7 +56987,7 @@ var Render = (function () {
     e.objs.forEach(o => { if (o.parent) { o.parent.getWorldQuaternion(q); o.position.add(d.clone().applyQuaternion(q.invert())); o.updateMatrixWorld(true); } });
     const B = e.B, du = dx * B.c - dz * B.s, dv = dx * B.s + dz * B.c; B.u0 += du; B.u1 += du; B.v0 += dv; B.v1 += dv; B.y0 += dy; B.y1 += dy;
     if (e.vx) for (let i = 0; i < e.vx.length; i += 3) { e.vx[i] += dx; e.vx[i + 1] += dy; e.vx[i + 2] += dz; }
-    e.hull = null; proj2(e);
+    e.hull = null;   // [carico] il contorno sullo schermo lo rifà viol2 quando serve (prima a ogni prova di spostamento: 10 s di avvio)
     if (e.rec) { e.rec.c.add(d); e.rec.c0.add(d); e.rec.base += dy; if (e.rec.obj) { e.rec.obj.position.add(d); e.rec.obj.updateMatrixWorld(true); } hashPut(e.rec, e.rec.c.x, e.rec.c.z); }
   }
   function togli2(e) {
