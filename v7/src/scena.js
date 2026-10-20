@@ -123,7 +123,7 @@ var Scena = (function () {
       const near = vicine(p, 25), near15 = vicine(p, 40);
       let pref = cand.filter(c => c.nome === 'testata_del_regime' && !vicine(p, 40).some(o => o.imp.nome === 'testata_del_regime'));
       if (pref.length && h2 < .8) cand = pref;
-      const usate = near.slice().sort((a, c) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(c.x - p.x, c.z - p.z)).slice(0, 2).map(o => o.imp.nome);
+      const usate = near.slice().sort((a, c) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(c.x - p.x, c.z - p.z)).slice(0, 2).map(o => o.imp.nome).concat(p.era === "E7" ? [] : near.filter(o => o.via === p.via && Math.hypot(o.x - p.x, o.z - p.z) < 8).map(o => o.imp.nome));   // [borgo] coi lotti stretti del borgo pieno tre pareti stanno in 7 m: nessuna ripete quelle della stessa via (fra le baracche sì: lamiera e fili ovunque)
       let scelte = cand.filter(c => usate.indexOf(c.nome) < 0 && !(c.dom && near15.some(o => o.imp.dom && FAMIGLIA[o.imp.dom] === FAMIGLIA[c.dom] && Math.hypot(o.x - p.x, o.z - p.z) < RAGGIO[FAMIGLIA[c.dom]])));
       // se le pagine vicine hanno già preso tutte le famiglie, questa tace: materiale e un accento (è il vuoto che fa leggere le altre)
       if (!scelte.length) scelte = L.filter(c => c.tipo === p.tipo && c.quiete && (!c.ere || c.ere.indexOf(p.era) >= 0)); if (!scelte.length) scelte = cand.length ? cand : [{ nome: 'vuota', tipo: p.tipo, quiete: true, acc: [] }];
