@@ -12972,6 +12972,123 @@ var PezziCitta = (function () {
     g.userData.misure = [W + .6, Hc + (o.torri ? 3 : 0) + 2.9, D + (o.torri ? 3.6 : 1)]; return g;
   };
 
+
+  // ================= 6. IL BOOM: sopraelevata, Vele, INA-Casa, torri (E5-E6) =================
+  // antenne della televisione sui tetti piani: n pali con due o tre traverse, sparsi in un rettangolo (x0..x1, z0..z1) sul piano y
+  function antenne(g, n, x0, x1, z0, z1, y, seme) {
+    if (LOD) return; const r = caso(seme);
+    for (let i = 0; i < n; i++) { const x = x0 + r() * (x1 - x0), z = z0 + r() * (z1 - z0), h = 2.5 + r() * 2.5, a = r() * PI; blocco(g, .05, h, .05, 'ferro', x, y, z);
+      for (let k = 0; k < 2 + (r() < .5 ? 1 : 0); k++) { const b = blocco(g, 1.4 - k * .35, .03, .03, 'alluminio', x, y + h - .25 - k * .45, z); b.rotation.y = a; } }
+  }
+  // panni stesi (usura viva): n panni colorati appesi a una faccia che guarda +Z, fra x0 e x1, alla quota y
+  const PANNI = ['bianco', 'azzurro', 'rosso', 'giallo', 'bianco', 'blu', 'arancio'];
+  function panni(g, n, x0, x1, y, z, seme) { if (LOD) return; const r = caso(seme); for (let i = 0; i < n; i++) blocco(g, .5 + r() * .5, .5 + r() * .4, .03, PANNI[(r() * PANNI.length) | 0], x0 + r() * (x1 - x0), y - .6, z + .02); }
+
+  DOC.sopraelevata = { L: 50, h: 7, w: 10, passo: 25, lampioni: true, nota: 'segmento di sopraelevata lungo X (si accosta traslando di L): pile di cemento ogni passo (25 m) con il plinto, il pulvino a martello, gli appoggi, il pluviale e le colature di ruggine; travi prefabbricate a doppio T, soletta, cordoli, guardrail a lama, rete sul bordo, asfalto con le strisce e i giunti, lampioni a braccio di cemento sopra le pile. h = quota del piano stradale' };
+  T.sopraelevata = o => {
+    o = def(o, DOC.sopraelevata); const g = new THREE.Group(), L = o.L, H = o.h, W = o.w, sl = .3, hT = 1.4, yS = H - sl, yT = yS - hT, np = Math.max(1, Math.round(L / o.passo)), nb = Math.max(3, Math.round(W / 2.4)), r = caso(L + W * 7 + H);
+    for (let i = 0; i < np; i++) { const x = (i + .5) * L / np, yP = yT - 1.2;
+      blocco(g, 2.6, .5, 4.6, 'cemento', x, 0, 0, LOD ? 0 : .05); blocco(g, 1.3, yP - .5, 3.2, 'cemento', x, .5, 0, LOD ? 0 : .12);   // plinto e pila
+      sezione(g, [[-1.6, yP], [1.6, yP], [W / 2 - .2, yT - .4], [W / 2 - .2, yT], [-W / 2 + .2, yT], [-W / 2 + .2, yT - .4]], 1.8, 'cemento', x - .9, 0, 0);   // pulvino a martello
+      if (!LOD) { for (let j = 0; j < nb; j++) blocco(g, 1.2, .1, .6, 'ferroScuro', x, yT - .1, -W / 2 + (j + .5) * W / nb);   // appoggi
+        cil(g, .08, .08, yT - .9, 8, 'lamiera', x - .72, .5, 1.5); for (let k = 0; k < 3; k++) blocco(g, .25 + r() * .3, 1.5 + r() * 2.5, .03, k ? 'cementoScuro' : 'ruggine', x - .4 + r() * .8, Math.max(.6, yP - 4.4 + r() * 1.4), 1.615); } }   // pluviale e colature
+    for (let j = 0; j < nb; j++) { const z = -W / 2 + (j + .5) * W / nb; blocco(g, L, hT, .28, 'cemento', L / 2, yT, z); if (!LOD) { blocco(g, L, .22, .8, 'cemento', L / 2, yT, z); blocco(g, L, .16, .9, 'cemento', L / 2, yS - .16, z); } }   // travi a doppio T
+    blocco(g, L, sl, W, 'cemento', L / 2, yS, 0); blocco(g, L, .06, W - 1.2, 'asfalto', L / 2, H, 0);  // soletta e asfalto
+    for (const s of [-1, 1]) { blocco(g, L, .45, .6, 'cemento', L / 2, H, s * (W / 2 - .3), LOD ? 0 : .04);   // cordoli
+      blocco(g, L, LOD ? .72 : .32, .06, 'alluminio', L / 2, LOD ? H : H + .4, s * (W / 2 - .85)); if (!LOD) for (let x = 1; x < L; x += 2) blocco(g, .1, .72, .12, 'ferro', x, H, s * (W / 2 - .76));   // guardrail a lama sui paletti
+      ringhiera(g, L, 1.1, 'ferro', 0, H + .45, s * (W / 2 - .12), 0, 2.5);                             // la rete del bordo (montanti e correnti)
+      blocco(g, L, .02, .15, 'bianco', L / 2, H + .06, s * (W / 2 - 1.3)); }                           // strisce di margine
+    if (!LOD) { for (let x = 1.5; x < L - 3; x += 12) blocco(g, 4.5, .02, .15, 'bianco', x + 2.25, H + .06, 0);   // la mezzeria tratteggiata
+      for (let i = 0; i <= np; i++) blocco(g, .1, .025, W - 1.2, 'buio', Math.min(L - .05, Math.max(.05, i * L / np)), H + .05, 0); }   // giunti
+    if (o.lampioni) for (let i = 0; i < np; i++) { const s = i % 2 ? 1 : -1, gl = lampione(g, 'boom', (i + .5) * L / np, s * (W / 2 - .3), 9); gl.position.y = H + .45; gl.rotation.y = s > 0 ? PI : 0; }
+    g.userData.misure = [L, H + (o.lampioni ? 10.5 : 1.6), W + 1.4]; return g;
+  };
+
+  DOC.vele = { L: 100, piani: 14, passerelle: 3, gap: 9, base: 14, nota: 'una Vela: due stecche di cemento a gradoni (un gradone ogni due piani, dalla base larga 14 m alla cima stretta) che si guardano attraverso il canyon interno; finestre a nastro e terrazze col parapetto sui gradoni, ballatoi (gallerie) su ogni piano nel canyon, passerelle ogni n piani, torri delle scale, cassoni e antenne in cima, panni stesi e colature. Asse lungo X, simmetrica in z' };
+  T.vele = o => {
+    o = def(o, DOC.vele); const g = new THREE.Group(), L = o.L, N = o.piani, hp = 2.9, G = o.gap, d0 = o.base, H = N * hp, ns = Math.ceil(N / 2), r = caso(L * 3 + N);
+    const d = j => d0 - (d0 - 3.6) * j / Math.max(1, ns - 1), yj = j => Math.min(N, 2 * j) * hp;
+    for (const s of [-1, 1]) {
+      const pts = [[G / 2, 0]]; for (let j = 0; j < ns; j++) { pts.push([G / 2 + d(j), yj(j)]); pts.push([G / 2 + d(j), yj(j + 1)]); } pts.push([G / 2, H]);
+      sezione(g, pts.map(p => [s * p[0], p[1]]), L, 'cemento', 0, 0, 0);                                // la stecca a gradoni
+      for (let f = 0; f < N; f++) { const j = f >> 1, z = s * (G / 2 + d(j) + .02);                 // finestre a nastro sui gradoni
+        blocco(g, L - 1.2, 1.15, .05, 'buio', L / 2, f * hp + .95, z); }
+      for (let j = 0; j < ns - 1; j++) { const z = s * (G / 2 + d(j + 1) + (d(j) - d(j + 1)) - .1); blocco(g, L, 1, .16, 'intonacoGrigio', L / 2, yj(j + 1), z);   // parapetti delle terrazze
+        if (!LOD) for (let k = 0; k < 3; k++) { const hh = 1.5 + r() * 2.5; blocco(g, .3 + r() * .3, hh, .03, 'cementoScuro', 2 + r() * (L - 4), yj(j + 1) - .2 - hh, s * (G / 2 + d(j) + .04)); }   // colature
+        panni(g, Math.round(L / 25), 2, L - 2, yj(j + 1) + 1.2, s > 0 ? G / 2 + d(j) - .04 : -(G / 2 + d(j)) - .01, j * 7 + s); }   // panni stesi sui parapetti
+      for (let f = 1; f < N; f++) { blocco(g, L, .16, 1.6, 'cemento', L / 2, f * hp - .16, s * (G / 2 - .8));   // ballatoi nel canyon
+        if (!LOD) blocco(g, L, 1, .1, 'intonacoGrigio', L / 2, f * hp, s * (G / 2 - 1.55)); }
+      if (!LOD) for (let f = 0; f < N; f++) blocco(g, L - 1, .9, .04, 'buio', L / 2, f * hp + 1.2, s * (G / 2 - .02));
+      blocco(g, L, .9, .2, 'intonacoGrigio', L / 2, H, s * (G / 2 + d(ns - 1) - .1));                  // parapetto in cima
+      for (let x = 6; x < L - 4; x += 14) blocco(g, 1.4, 1.3, 1.4, 'cementoScuro', x, H, s * (G / 2 + d(ns - 1) / 2));   // cassoni dell'acqua
+      antenne(g, Math.round(L / 10), 2, L - 2, s * (G / 2 + .5), s * (G / 2 + d(ns - 1) - .5), H, L + s * 5);
+    }
+    const nt = Math.max(1, Math.round(L / 40)); for (let i = 0; i < nt; i++) { const x = (i + .5) * L / nt;   // le torri delle scale nel canyon
+      blocco(g, 4.2, H + 2.4, G - 3.2, 'cemento', x, 0, 0, LOD ? 0 : .05); if (!LOD) for (const s of [-1, 1]) blocco(g, .6, H - 2, .04, 'buio', x + s * 1.2, 1.5, 0).position.z = G / 2 - 1.58; }
+    const pf = Math.max(1, o.passerelle); for (let f = pf; f < N; f += pf) for (let x = 10; x < L - 5; x += 20) { if (Array.from({ length: nt }, (_, i) => (i + .5) * L / nt).some(xt => Math.abs(xt - x) < 4)) continue;   // passerelle fra le gallerie
+      blocco(g, 2, .2, G - 3.2, 'cemento', x, f * hp - .2, 0); if (!LOD) for (const s of [-1, 1]) blocco(g, .08, 1, G - 3.2, 'intonacoGrigio', x + s * .96, f * hp, 0); }
+    g.userData.misure = [L, H + 5, G + 2 * d0]; return g;
+  };
+
+  DOC.ina_casa = { L: 48, piani: 4, scale: 2, p: 10, colore: 'ocra', nota: 'stecca INA-Casa degli anni Cinquanta: piano terra rialzato in mattoni, piani sopra intonacati (colore), tetto a capanna di tegole con le gronde, vani scala con la griglia di mattoni, ingresso con la pensilina sottile e la targa di maiolica, finestre con le tapparelle a mezz\'asta, balconi con la ringhiera a correnti, marciapiede; il retro (−Z) più semplice' };
+  T.ina_casa = o => {
+    o = def(o, DOC.ina_casa); const g = new THREE.Group(), L = o.L, P = o.p, N = o.piani, hp = 3, h0 = .6, H = h0 + N * hp, zF = P / 2, ns = Math.max(1, o.scale), r = caso(L * 5 + N * 3 + ns);
+    blocco(g, L, h0 + hp, P, 'mattone', L / 2, 0, 0); blocco(g, L, H - h0 - hp, P, o.colore, L / 2, h0 + hp, 0);   // piano terra in mattoni, sopra l'intonaco
+    blocco(g, L + .1, .18, P + .1, 'cemento', L / 2, h0 + hp - .1, 0);                                // il marcapiano di cemento
+    tettoFalde(g, L, P, 2.4, 'tegole', 0, H, 0, .55);
+    for (const xe of [.15, L - .15]) { const tri = new THREE.Shape(); tri.moveTo(-zF, 0); tri.lineTo(zF, 0); tri.lineTo(0, 2.4); tri.lineTo(-zF, 0); const geo = new THREE.ExtrudeGeometry(tri, { depth: .3, bevelEnabled: false }); geo.translate(0, 0, -.15); add(g, geo, o.colore, xe, H, 0, 0, HP); }   // i timpani
+    blocco(g, L + 2, .15, 1.6, 'cemento', L / 2, 0, zF + .8);                                        // marciapiede
+    const xs = Array.from({ length: ns }, (_, k) => L * (k + .5) / ns);
+    xs.forEach((x, k) => { blocco(g, 1.6, H - h0 - hp - .4, .08, LOD ? 'buio' : 'mattone', x, h0 + hp + .2, zF + .04);   // la griglia del vano scala
+      if (!LOD) { for (let y = h0 + hp + .5; y < H - .4; y += .45) blocco(g, 1.4, .2, .02, 'buio', x, y, zF + .09); }
+      vano(g, 1.6, 2.5, 'rett', 'vetro', x, h0, zF + .04, .06); blocco(g, 2.6, .12, 1.4, 'cemento', x, h0 + 2.7, zF + .7);   // portone vetrato e pensilina
+      blocco(g, 2, h0, 1, 'pietraChiara', x, 0, zF + .5); if (!LOD) { blocco(g, .5, .5, .04, 'azzurro', x + 1.3, 1.9, zF + .02); blocco(g, .4, .4, .02, 'bianco', x + 1.3, 1.95, zF + .05); } });   // scalino e targa di maiolica
+    const finestre = (zf, fronte) => { for (let f = 0; f < N; f++) { const y = h0 + f * hp + .9;
+      for (let x = 1.8; x < L - 1; x += 3.2) { if (xs.some(xx => Math.abs(xx - x) < 1.8)) continue;
+        const gq = grp(g, x, 0, zf, fronte ? 0 : PI); finestra(gq, 1.2, 1.4, 0, y, 0, { cornice: 'cemento', cimasa: false });
+        if (!LOD) { const ht = .2 + r() * .9; blocco(gq, 1.2, ht, .04, 'intonacoGrigio', 0, y + 1.4 - ht, .07); }   // tapparella calata a mezz'asta
+        if (fronte && f > 0 && Math.floor(x / 3.2) % 2 === 0) { blocco(gq, 2.6, .15, 1.2, 'cemento', 0, y - .9, .6); if (!LOD) { for (const yy of [.35, .65, .95]) blocco(gq, 2.6, .04, .04, 'ferro', 0, y - .75 + yy, 1.18); for (const dx of [-1.28, 1.28]) blocco(gq, .05, 1, .05, 'ferro', dx, y - .75, 1.18); } } } } };   // balconi
+    finestre(zF, true); finestre(-zF, false);
+    for (const s of [-1, 1]) for (let f = 1; f < N; f++) finestra(grp(g, s > 0 ? L : 0, 0, 0, s * HP), .7, 1, 0, h0 + f * hp + 1, 0, { cornice: 'cemento', cimasa: false });   // finestrelle sui timpani
+    if (!LOD) for (let x = 4; x < L - 2; x += 9) cil(g, .25, .25, 1.6, 6, o.colore, x, H + .9, -zF + 1.8);   // comignoli
+    g.userData.misure = [L + 2, H + 2.6, P + 1.6]; return g;
+  };
+
+  DOC.torre_boom = { piani: 12, lato: 18, parcheggio: true, negozi: true, nota: 'torre della speculazione (1960-80): piano terra di negozi con le serrande, le insegne e la pensilina, androne vetrato; sopra balconi a nastro con i parapetti, portefinestre e tapparelle a caso, fianchi ciechi con le colature; tetto piano col parapetto, il locale macchine, i cassoni e la selva di antenne; davanti (+Z) il parcheggio d\'asfalto con gli stalli, il cordolo e il lampione' };
+  T.torre_boom = o => {
+    o = def(o, DOC.torre_boom); const g = new THREE.Group(), N = o.piani, Lx = o.lato, Pz = Math.round(o.lato * .8), hp = 3, h0 = 4.2, H = h0 + (N - 1) * hp, zF = Pz / 2, r = caso(N * 31 + Lx);
+    blocco(g, Lx, H, Pz, 'intonacoGrigio', Lx / 2, 0, 0);                                            // il corpo
+    blocco(g, Lx + .3, .25, Pz + .3, 'cemento', Lx / 2, h0 - .25, 0);
+    for (const s of [1, -1]) { const gs = grp(g, Lx / 2, 0, 0, s > 0 ? 0 : PI);                      // fronte e retro
+      for (let f = 1; f < N; f++) { const y = h0 + (f - 1) * hp, wb = Lx * .72;
+        blocco(gs, Lx - 1.2, 2.3, .04, 'buio', 0, y + .2, zF + .02);                                  // portefinestre
+        if (!LOD) for (let k = 0; k < 5; k++) { const hh = .3 + r() * 1.8; blocco(gs, (Lx - 1.2) / 5 - .1, hh, .05, 'alluminio', -Lx / 2 + .6 + (k + .5) * (Lx - 1.2) / 5, y + 2.5 - hh, zF + .05); }   // tapparelle
+        blocco(gs, wb, .18, 1.5, 'cemento', 0, y, zF + .75); blocco(gs, wb, 1, .1, f % 2 ? 'intonaco' : 'bianco', 0, y + .18, zF + 1.45);   // balcone a nastro col parapetto
+        if (!LOD) for (const dx of [-wb / 2 + .05, wb / 2 - .05]) blocco(gs, .1, 1, 1.4, 'intonaco', dx, y + .18, zF + .75);
+        if (!LOD && r() < .35) panni(gs, 2, -wb / 2 + 1, wb / 2 - 1, y + 1.25, zF + 1.5, f * 13 + s); }
+      if (!LOD) for (let k = 0; k < 4; k++) blocco(gs, .3, 3 + r() * 8, .03, 'cementoScuro', -Lx / 2 + 1 + r() * (Lx - 2), h0 + r() * (H - h0 - 10), zF + .01); }
+    for (const s of [-1, 1]) { const gs = grp(g, Lx / 2, 0, 0, s * HP);                                // fianchi ciechi: solo i bagni e le colature
+      for (let f = 1; f < N; f++) blocco(gs, .6, .8, .04, 'buio', Pz * .25, h0 + (f - 1) * hp + 1.4, Lx / 2 + .02);
+      if (!LOD) for (let k = 0; k < 3; k++) blocco(gs, .4, 4 + r() * 10, .03, 'cementoScuro', -Pz / 2 + 1 + r() * (Pz - 2), h0 + r() * (H - h0 - 14), Lx / 2 + .01); }
+    if (o.negozi) { const nn = Math.max(2, Math.round(Lx / 5)), wn = Lx / nn, ins = ['BAR', 'TABACCHI', 'FERRAMENTA', 'ALIMENTARI', 'PARRUCCHIERE', 'ELETTRODOMESTICI'];
+      for (let i = 0; i < nn; i++) { const x = (i + .5) * wn, mid = i === Math.floor(nn / 2);
+        if (mid) { vano(g, wn - 1, 3, 'rett', 'vetro', x, 0, zF + .04, .06); continue; }               // l'androne vetrato
+        const su = r() < .5; vano(g, wn - .8, 3, 'rett', su ? 'vetro' : 'alluminio', x, 0, zF + .04, .06);   // serranda alzata (vetrina) o abbassata
+        if (!LOD) { if (su) blocco(g, wn - .8, .4, .08, 'alluminio', x, 2.6, zF + .1); const c = ['rosso', 'blu', 'giallo', 'verde', 'arancio'][(r() * 5) | 0]; blocco(g, wn - .6, .6, .12, c, x, 3.25, zF + .06); scritta(g, ins[(i * 5 + N) % ins.length], wn - 1, .45, x, 3.55, zF + .13, 0, '#ffffff'); } }   // insegne
+      blocco(g, Lx + 1, .15, 1.6, 'cemento', Lx / 2, 3.9, zF + .8); }                                    // pensilina
+    blocco(g, Lx, .9, .2, 'intonacoGrigio', Lx / 2, H, zF - .1); blocco(g, Lx, .9, .2, 'intonacoGrigio', Lx / 2, H, -zF + .1);   // parapetti del tetto
+    for (const s of [-1, 1]) blocco(g, .2, .9, Pz, 'intonacoGrigio', s > 0 ? Lx - .1 : .1, H, 0);
+    blocco(g, 3.4, 2.8, 3, 'intonacoGrigio', Lx * .35, H, -zF * .2);                                 // locale macchine
+    for (let k = 0; k < 4; k++) blocco(g, 1.3, 1.1, 1, 'cementoScuro', Lx * .6 + (k % 2) * 1.6, H, -zF * .3 + (k >> 1) * 1.3);   // cassoni
+    antenne(g, Math.round(Lx * .6), 1, Lx - 1, -zF + 1, zF - 1, H, N * 7 + Lx);
+    if (o.parcheggio) { const Dp = 16;                                                              // il parcheggio davanti
+      blocco(g, Lx + 6, .06, Dp, 'asfalto', Lx / 2, 0, zF + 1.6 + Dp / 2); blocco(g, Lx + 6, .15, .3, 'cemento', Lx / 2, 0, zF + 1.6 + Dp - .15);
+      blocco(g, Lx + 2, .15, 1.6, 'cemento', Lx / 2, 0, zF + .8);
+      if (!LOD) for (let x = -2; x <= Lx + 2.01; x += 2.5) { blocco(g, .1, .02, 5, 'bianco', x, .06, zF + 1.6 + 3); blocco(g, .1, .02, 5, 'bianco', x, .06, zF + 1.6 + Dp - 3.2); }
+      const gl = lampione(g, 'boom', Lx + 2, zF + 1.6 + Dp / 2, 8); gl.rotation.y = -HP; }
+    g.userData.misure = [o.parcheggio ? Lx + 6 : Lx + 1, H + 7, Pz + (o.parcheggio ? 18 : 2)]; return g;
+  };
+
   const TIPI = Object.keys(T);
   function make(tipo, opzioni) {
     if (!T[tipo]) return null; LOD = !!(opzioni && opzioni.lod === 'basso');
