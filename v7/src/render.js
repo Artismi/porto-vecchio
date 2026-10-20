@@ -5165,7 +5165,9 @@ var Render = (function () {
     worklamp(g) { g.add(fL([[.07, 0], [.07, .04], [.055, .06], [.06, .16], [.04, .19], [.001, .2]], 10, C1.yellow, 'plastic')); g.add(at1(fT(.062, .006, 10, C1.black, 'solid'), 0, .11, 0)); return g; },
   };
   function signPost1(x, z, rot, plates, r) {
-    if (!okSpot1(x, z, .2)) return null; const g = G0(), tilt = r() < .15 ? (r() - .5) * .35 : (r() - .5) * .05; MD1.pole(g, 2.62, .038);
+    if (!okSpot1(x, z, .2)) return null; const tilt = r() < .15 ? (r() - .5) * .35 : (r() - .5) * .05;
+    if (ARR3()) { const g = pm3('cartello', { targhe: plates.map(([kind, text]) => { const [w, h] = signDim1(kind); return { w, h, tonda: kind === 'stop' || kind === 'speed' || kind === 'noentry' || kind === 'nopark', mat: signMat1(kind, text) }; }) }); g.rotation.z = tilt; return place(g, x, z, rot); }   // [modelli1] palo, piastre, nervature e fascette di Arredo3D
+    const g = G0(); MD1.pole(g, 2.62, .038);
     g.add(at1(fL([[.11, 0], [.11, .03], [.06, .06], [.001, .07]], 10, C1.conc, 'concrete'), 0, -.02, 0));   // il piede di cemento
     let y = 2.5; plates.forEach(([kind, text]) => { const [w, h] = signDim1(kind); MD1.plate(g, kind, text, y - h / 2, .038); y -= h + .07; });
     g.rotation.z = tilt; return place(g, x, z, rot);
@@ -5173,14 +5175,14 @@ var Render = (function () {
   function semaforo1(J, a, phase) {
     const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, d = J.r + 2.4, off = a.w / 2 + .75, x0 = J.x + ux * d + rx * off, z0 = J.y + uy * d + ry * off; let x = x0, z = z0;
     for (const sh of [0, .9, -.9, 1.8]) { const x2 = x0 + ux * sh, z2 = z0 + uy * sh; if (!solid1(x2, z2) && !onCarr1(x2, z2, .1) && !busy1(x2, z2, .35)) { x = x2; z = z2; break; } if (sh === 1.8) return false; }   // non sopra un lampione o un arredo
-    const g = G0(), rot = Math.atan2(ux, uy); MD1.pole(g, 3.4, .07); g.add(at1(fC(.13, .15, .3, 10, C1.conc, 'concrete'), 0, .15, 0));
+    const g = G0(); let rot = Math.atan2(ux, uy); if (ARR3()) g.add(pm3('semaforo')); else { MD1.pole(g, 3.4, .07); g.add(at1(fC(.13, .15, .3, 10, C1.conc, 'concrete'), 0, .15, 0));
     MD1.lantern(g, 3.0); [3.35, 2.65].forEach(yy => MD1.clamp(g, yy, .07));
     g.add(at1(fB(.22, .5, .16, C1.green, 'paint', .02), -.32, 1.75, .06)); g.add(at1(fB(.24, .04, .14, C1.green, 'paint', 0), -.32, 2.02, .16)); g.add(at1(fB(.14, .22, .1, C1.yellow, 'paint', .02), .0, 1.15, .1));   // il pedonale spento e la scatola del pulsante
-    MD1.plate(g, 'ped', '', 2.32, .07); g.children[g.children.length - 1].rotation.y = 0;
-    const o = place(g, x, z, rot), last = DZ.props[DZ.props.length - 1], rec = last && last.obj === o ? last : null, gy = groundH(x, z);
+    MD1.plate(g, 'ped', '', 2.32, .07); g.children[g.children.length - 1].rotation.y = 0; }   // [modelli1] il semaforo di Arredo3D (lanterna, visiere, pedonale, pulsante)
+    const o = place(g, x, z, rot), LZ = (rot = o.rotation.y, ARR3() ? .295 : .26), last = DZ.props[DZ.props.length - 1], rec = last && last.obj === o ? last : null, gy = groundH(x, z);
     // le tre lenti: mesh vive (cambiano colore), più l'alone
     const lens = ['#3a0c0a', '#3a2a08', '#0a2a14'].map((c, i) => { const m = new THREE.Mesh(new THREE.CircleGeometry(.1, 10), new THREE.MeshBasicMaterial({ color: c, toneMapped: false, fog: false }));
-      m.position.set(x + Math.sin(rot) * .26, gy + 3.32 - i * .32, z + Math.cos(rot) * .26); m.rotation.y = rot; scene.add(m); return m; });
+      m.position.set(x + Math.sin(rot) * LZ, gy + 3.32 - i * .32, z + Math.cos(rot) * LZ); m.rotation.y = rot; scene.add(m); return m; });
     const gl = glow(x + Math.sin(rot) * .32, gy + 3.0, z + Math.cos(rot) * .32, '#ffffff', 1.3, false); gl.material.opacity = 0;
     S1.heads.push({ lens, gl, phase, rec, ofs: (Math.round(J.x + J.y) % 7) * 1.3, gy }); return true;
   }
@@ -5201,6 +5203,7 @@ var Render = (function () {
   let JG1 = null;
   function jersey1(x, z, rot, plastic, col) {
     if (!JG1) { const s2 = new THREE.Shape(); [[-.3, 0], [.3, 0], [.28, .08], [.12, .26], [.08, .8], [-.08, .8], [-.12, .26], [-.28, .08]].forEach(([a, b], i) => i ? s2.lineTo(a, b) : s2.moveTo(a, b)); JG1 = new THREE.ExtrudeGeometry(s2, { depth: 1.9, bevelEnabled: true, bevelThickness: .02, bevelSize: .015, bevelSegments: 1 }); JG1.translate(0, 0, -.95); }
+    if (ARR3()) { const g = pm3('jersey', { plastica: plastic, col }); g.userData.free2 = true; return place(g, x, z, rot); }   // [modelli1]
     const hex = plastic ? (col || '#c8c2b6') : C1.conc, m = new THREE.Mesh(fGeo('jersey1', () => JG1.clone(), hex, plastic ? 'plastic' : 'concrete', 'box'), FA.mat), g = G0(); if (plastic) m.scale.y = .9; g.add(m);
     if (plastic) { g.add(at1(fC(.06, .06, .03, 8, hex, 'plastic'), 0, .73, .5)); g.add(at1(fC(.06, .06, .03, 8, hex, 'plastic'), 0, .73, -.5)); } else { [-.7, .7].forEach(o => g.add(at1(fB(.62, .04, .12, C1.black, 'rubber', 0), 0, .02, o))); g.add(at1(fT(.05, .01, 8, C1.galv, 'rust'), 0, .82, .8)); }   // tappi dell'acqua / ganci di sollevamento
     g.userData.free2 = true;   /* [pulitore2] il verso lo decide chi la mette in fila */
@@ -7438,12 +7441,9 @@ var Render = (function () {
     const g = new THREE.Group(), iron = sm('#2a2a2e', { roughness: .7, metalness: .3 }), cer = sm('#e8e4d8', { roughness: .35 }), grey = sm('#8e8c84', { roughness: .6, metalness: .2 }), conc = sm('#b4ab9a', { roughness: 1 }), door = sm('#56665a', { roughness: .6, metalness: .3 });
     const putG = (o, p, yaw) => { o.position.set(p[0], p[1], p[2]); o.rotation.y = yaw || 0; g.add(o); return o; };
     N.forEach(n => { const yaw = n.f && NRM1[n.f] ? Math.atan2(NRM1[n.f][0], NRM1[n.f][1]) : (n.yaw || 0);
-      if (n.k === 'mensola') { const p = nodoXYZ1(n), q = new THREE.Group(); add(q, box(.05, .05, .36, iron), 0, 0, -.16); add(q, box(.06, .26, .03, iron), 0, -.08, -.33); add(q, box(.03, .03, .22, iron), 0, -.1, -.22, .7, 0, 0);
-        [-.07, .07].forEach(o => add(q, cyl(.032, .045, .09, 7, cer), o * 0, .065, -.02 + o)); putG(q, p, yaw); cnt.mensole++; }
-      else if (n.k === 'contatore') { const p = nodoXYZ1(n), q = new THREE.Group(); add(q, box(.32, .42, .12, grey), 0, 0, -.02); add(q, box(.16, .08, .01, sm('#1a1c1e', { roughness: .2 })), 0, .07, .045); add(q, box(.03, .03, .01, sm('#b02020')), .1, -.14, .045); putG(q, p, yaw); cnt.contatori++; }
-      else if (n.k === 'cabina') { const x0 = n.x, z0 = n.z, q = new THREE.Group(); add(q, box(2.0, 2.4, 1.3, conc), 0, 1.2, 0); add(q, box(2.2, .14, 1.5, sm('#8a8478', { roughness: 1 })), 0, 2.47, 0); add(q, box(.9, 1.9, .04, door), -.35, .98, .66); add(q, box(.5, .3, .04, door), .6, 1.9, .66);
-        const tri = new THREE.Mesh(new THREE.PlaneGeometry(.3, .27), texS1('pericolo', 32, 32, (x) => { x.fillStyle = '#e8c020'; x.beginPath(); x.moveTo(16, 2); x.lineTo(30, 29); x.lineTo(2, 29); x.fill(); x.strokeStyle = '#141210'; x.lineWidth = 2; x.stroke(); x.fillStyle = '#141210'; x.beginPath(); x.moveTo(17, 9); x.lineTo(12, 19); x.lineTo(16, 19); x.lineTo(14, 26); x.lineTo(20, 15); x.lineTo(16, 15); x.fill(); })); tri.position.set(-.35, 1.5, .69); q.add(tri);
-        const lab = new THREE.Mesh(new THREE.PlaneGeometry(.7, .2), texS1('enel', 64, 18, (x, W, H) => { x.fillStyle = '#f2f0ea'; x.fillRect(0, 0, W, H); x.fillStyle = '#1e4a8a'; x.font = 'bold 14px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('ENEL', W / 2, H / 2 + 1); })); lab.position.set(.6, 2.2, .67); q.add(lab);
+      if (n.k === 'mensola') { const p = nodoXYZ1(n), N0 = NRM1[n.f] || [0, 0], q = pm3('mensola', { n: 2 }), a = q.userData.attacco || [0, 0, 0]; putG(q, [p[0] - N0[0] * a[2], p[1] - a[1], p[2] - N0[1] * a[2]], yaw); cnt.mensole++; }   // [modelli1] la mensola vera: le teste degli isolatori dove arrivano i fili
+      else if (n.k === 'contatore') { const p = nodoXYZ1(n), N0 = NRM1[n.f] || [0, 0], q = pm3('contatore'); putG(q, [p[0] - N0[0] * .08, p[1], p[2] - N0[1] * .08], yaw); cnt.contatori++; }   // [modelli1] il contatore vero, col retro al muro
+      else if (n.k === 'cabina') { const x0 = n.x, z0 = n.z, q = pm3('cabina_enel');   // [modelli1] la cabina vera
         place(q, x0, z0, yaw); cnt.cabine++; }
       else if (n.k === 'moncone') { const p = nodoXYZ1(n), q = new THREE.Group(); add(q, box(.05, .05, .05, sm('#141416')), 0, 0, 0); putG(q, p, yaw); }
       else if (n.k === 'antenna' && n.bi !== null) { const b = B[n.bi], [, y1] = quoteS1(n.bi), hh = Math.max(1.8, n.y - (Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF)), an = oAntenna(hh, (n.bi * .37) % 6.28, rng(n.bi * 53 + 1)); an.position.set(n.x, y1, n.z); g.add(an); cnt.antenne++; }
@@ -7452,30 +7452,30 @@ var Render = (function () {
     // ---- 3) i lampioni per epoca, a interasse fisso; i cartelli stradali anni '80 sui pali (mai pali nuovi) ----
     let li = 0; R.lampioni.forEach(n => { const yaw = n.f && NRM1[n.f] ? Math.atan2(NRM1[n.f][0], NRM1[n.f][1]) : (n.yaw || 0);
       if (n.modello === 'braccio') { const p = nodoXYZ1(n); streetLamp(n.x, n.z, 'wall', yaw); cnt.lampioni++; return; }
-      if (!okSpot1(n.x, n.z, .3)) return; streetLamp(n.x, n.z, n.modello === 'ghisa' ? 'genovese' : 'sodium', yaw); cnt.lampioni++; li++;
+      if (!okSpot1(n.x, n.z, .3)) return; streetLamp(n.x, n.z, n.modello === 'ghisa' ? 'genovese' : n.modello === 'regime' ? 'regime' : 'sodium', yaw); cnt.lampioni++; li++;
       if (li % 2) return; const vit = (M.roads || []).find(q => q.id === 'vittoria'), nearV = vit && vit.pts.some(p => Math.hypot(p[0] - n.x, p[1] - n.z) < 50);
       const k = nearV ? 'settore' : n.era === 'E6' ? (li % 6 === 0 ? 'P' : li % 4 === 0 ? 'fermata' : 'divieto') : (li % 4 === 0 ? 'sensounico' : 'divieto');
-      const q = new THREE.Group(), pl = new THREE.Mesh(new THREE.PlaneGeometry(.6, .6), cartelloS1(k)); pl.position.set(0, 2.3, .09); q.add(pl); add(q, box(.62, .62, .015, sm('#8a8c8e', { metalness: .5, roughness: .5 })), 0, 2.3, .075); [-.18, .18].forEach(o => add(q, box(.14, .03, .1, iron), 0, 2.3 + o, .03));
-      if (k === 'divieto' && n.era === 'E3' && li % 3 === 0) { const st = new THREE.Mesh(new THREE.PlaneGeometry(.34, .34), texS1('sticker|' + li, 32, 32, (x) => { x.fillStyle = '#1a1a1a'; x.fillRect(2, 6, 28, 20); x.fillStyle = '#38e8ff'; x.font = 'bold 9px Impact, sans-serif'; x.textAlign = 'center'; x.fillText('RISACCA', 16, 19); })); st.position.set(.0, 1.55, .1); q.add(st); }   // lo sticker della Risacca sul palo
-      placeYS1(q, n.x, groundH(n.x, n.z), n.z, yaw + Math.PI / 2); cnt.cartelli++; });
+      const RP = n.modello === 'ghisa' ? .076 : .132, q = pm3('staffa_cartello', { r: RP, targhe: [{ w: .6, h: .6, tonda: k === 'divieto' || k === 'fermata', retro: { sensounico: [.58, .27], P: [.53, .53], settore: [.57, .34] }[k], mat: cartelloS1(k) }] });   // [modelli1] la piastra stretta al palo del lampione con le fascette
+      if (k === 'divieto' && n.era === 'E3' && li % 3 === 0) { const st = new THREE.Mesh(new THREE.PlaneGeometry(.34, .34), texS1('sticker|' + li, 32, 32, (x) => { x.fillStyle = '#1a1a1a'; x.fillRect(2, 6, 28, 20); x.fillStyle = '#38e8ff'; x.font = 'bold 9px Impact, sans-serif'; x.textAlign = 'center'; x.fillText('RISACCA', 16, 19); })); st.position.set(.0, 1.55 - 2.3, RP + .006); q.add(st); }   // lo sticker della Risacca sul palo
+      placeYS1(q, n.x, groundH(n.x, n.z) + 2.3, n.z, yaw + Math.PI / 2); cnt.cartelli++; });
     // ---- 4) il piano dell'arredo: bidoni nei vicoli, cassonetti a coppie, bucato, dehors, targhe, civici ----
     const PA = Scena.piano(), bidM = sm('#3c4a40', { roughness: .8 }), bidL = sm('#2c3830', { roughness: .8 });
-    PA.bidoni.forEach(q => { if (solidR1(q.x, q.z, .3)) return;   /* nel vicolo non c'è marciapiede: basta che non sia dentro un muro */ const o = G0(); add(o, cyl(.27, .24, .78, 10, bidM), 0, .39, 0); add(o, cyl(.29, .29, .06, 10, bidL), 0, .8, 0); add(o, box(.12, .04, .04, bidL), 0, .85, 0); place(o, q.x, q.z, q.yaw); cnt.bidoni++; });
+    PA.bidoni.forEach(q => { if (solidR1(q.x, q.z, .3)) return;   /* nel vicolo non c'è marciapiede: basta che non sia dentro un muro */ const o = pm3('bidone'); place(o, q.x, q.z, q.yaw); cnt.bidoni++; });   // [modelli1] il bidone di zinco vero
     PA.cassonetti.forEach(q => { if (!okSpot1(q.x, q.z, .5)) return; bin(q.x, q.z, 'dumpster', q.yaw); cnt.cassonetti++; });
     PA.bucato.forEach(q => { laundry(q.x, q.z, groundH(q.x, q.z) + q.y, q.len, Math.abs(q.ux) > Math.abs(q.uz), rng(Math.round(q.x * 7 + q.z))); cnt.bucato++; });
     PA.dehors.forEach(d => { const b = B[d.bi], hs = d.tavoli.map(t => groundH(t.x, t.z)), hmin = Math.min(...hs, 99), hmax = Math.max(...hs, -99), pedana = hmax - hmin > .12, top = hmax + (pedana ? .12 : 0), era = b.shack ? 'E7' : b.era;
       const kind = era === 'E3' || era === 'E4' ? 'marmo' : era === 'E6' ? 'plastica' : 'ferro', topM = kind === 'marmo' ? PM.marble() : kind === 'plastica' ? sm('#f0eee8', { roughness: .5 }) : sm('#c8c2b6'), legM = kind === 'plastica' ? sm('#f0eee8', { roughness: .5 }) : PM.iron(), seatM = kind === 'plastica' ? sm('#f0eee8', { roughness: .5 }) : sm(pick(r, ['#8a3a2e', '#3a4a5a', '#2f5a44']));
       if (pedana && d.tavoli.length) { const us = d.tavoli.map(t => t.u), u0 = Math.min(...us) - .8, u1 = Math.max(...us) + .8, P0 = Scena.paginaMuro(d.bi, d.f), a = P0.at((u0 + u1) / 2), Nn = NRM1[d.f], pd = G0(); add(pd, box(u1 - u0, top - hmin + .05, 1.9, PM.woodD()), 0, -(top - hmin) / 2 + .02, 0); for (let k = -3; k <= 3; k++) add(pd, box(.04, .04, 1.9, PM.wood()), k * (u1 - u0) / 7, .03, 0);
         placeYS1(pd, a[0] + Nn[0] * 1.1, top, a[1] + Nn[1] * 1.1, d.yaw); }   // la pedana di legno sul vicolo in pendenza
-      d.tavoli.forEach((t, i) => { const y = pedana ? top : groundH(t.x, t.z), o = G0(); add(o, cyl(.36, .36, .04, 14, topM), 0, .74, 0); add(o, cyl(.03, .03, .72, 6, legM), 0, .37, 0); add(o, cyl(.2, .24, .03, 10, legM), 0, .015, 0);
-        tableItems(o, .76, pick(r, [['caffe', 'caffe', 'posacenere'], ['birra', 'birra'], ['caffe', 'giornale'], ['boccale', 'posacenere']]), r);
-        [-1, 1].forEach(s => { const c = new THREE.Group(); add(c, box(.4, .04, .38, seatM), 0, .45, 0); add(c, box(.4, .36, .03, seatM), 0, .66, -.19); [[-.17, -.16], [.17, -.16], [-.17, .16], [.17, .16]].forEach(([a, b2]) => add(c, box(.03, .45, .03, legM), a, .225, b2)); c.position.set(s * .62, 0, 0); c.rotation.y = s * Math.PI / 2 + (r() - .5) * .3; o.add(c); });
+      d.tavoli.forEach((t, i) => { const y = pedana ? top : groundH(t.x, t.z), o = pm3('tavolino', { tipo: kind === 'marmo' ? 'marmo' : kind === 'plastica' ? 'plastica' : 'ferro' });   // [modelli1] tavolino e sedie veri
+        tableItems(o, .755, pick(r, [['caffe', 'caffe', 'posacenere'], ['birra', 'birra'], ['caffe', 'giornale'], ['boccale', 'posacenere']]), r);
+        [-1, 1].forEach(s => { const c = pm3('sedia', { tipo: kind === 'plastica' ? 'plastica' : 'bistrot' }); c.position.set(s * .62, 0, 0); c.rotation.y = s * Math.PI / 2 + (r() - .5) * .3; o.add(c); });
         placeYS1(o, t.x, y, t.z, d.yaw); cnt.tavolini++; });
-      d.fioriere.forEach(f => { const o = G0(); add(o, box(.95, .42, .36, sm('#9a5a3a', { roughness: .95 })), 0, .21, 0); add(o, box(.88, .14, .3, PM.leaf()), 0, .48, 0); for (let k = 0; k < 4; k++) add(o, new THREE.Mesh(new THREE.IcosahedronGeometry(.13, 0), pick(r, [PM.leaf2(), PM.leaf3(), sm('#c8384a')])), -.33 + k * .22, .58, (r() - .5) * .1);
+      d.fioriere.forEach(f => { const o = pm3('fioriera', { w: .95, cotto: true });   // [modelli1] la fioriera di cotto vera
         placeYS1(o, f.x, pedana ? top : groundH(f.x, f.z), f.z, d.yaw + Math.PI / 2 * (d.f === 'E' ? 1 : 0)); });
       d.ombrelloni.forEach(u => parasol(u.x, u.z, '#b0283c', '#e9e0cf', 2.4));
-      if (d.lavagna) { const o = G0(); [-1, 1].forEach(s => add(o, box(.5, .75, .03, sm('#1e2420', { roughness: .9 })), 0, .36, s * .12, s * .16, 0, 0)); add(o, box(.4, .5, .005, texS1('menu', 32, 40, (x) => { x.fillStyle = '#1e2420'; x.fillRect(0, 0, 32, 40); x.fillStyle = 'rgba(240,236,224,.85)'; x.font = '6px sans-serif'; ['CAFFÈ 600', 'CORNETTO', 'BIRRA 1500', 'PANINI', 'GELATI'].forEach((t, i) => x.fillText(t, 2, 8 + i * 7)); })), 0, .4, .14, .16, 0, 0); place(o, d.lavagna.x, d.lavagna.z, d.yaw); }
-      if (d.frigo) { const o = G0(); add(o, box(.95, .82, .62, sm('#f0eee8', { roughness: .4 })), 0, .41, 0); add(o, box(.85, .03, .52, sm('#a8c8d8', { roughness: .1, transparent: true, opacity: .6 })), 0, .835, 0); add(o, box(.96, .2, .01, sm('#c8302a')), 0, .6, .315); place(o, d.frigo.x, d.frigo.z, d.yaw); }
+      if (d.lavagna) { const o = pm3('lavagna'); place(o, d.lavagna.x, d.lavagna.z, d.yaw); }
+      if (d.frigo) { const o = pm3('frigo_gelati'); place(o, d.frigo.x, d.frigo.z, d.yaw); }
     });
     PA.targhe.forEach(t => { const w = t.era === 'E4' ? 1.2 : .9, h = t.era === 'E4' ? .3 : .24, [y0] = quoteS1(t.bi); wallPlaneS1(targaS1(t.testo, t.era), w, h, t.x - (t.f === 'S' ? w / 2 : 0), y0 + t.y, t.z - (t.f === 'E' ? -w / 2 : 0), t.yaw, .04); cnt.targhe++; });
     PA.civici.forEach(c => { const [y0] = quoteS1(c.bi); wallPlaneS1(civicoS1(c.n, c.era, c.rosso), .2, .15, c.x, y0 + c.y, c.z, c.yaw, .04); cnt.civici++; });
@@ -8058,6 +8058,19 @@ var Render = (function () {
   };
   function G0() { return new THREE.Group(); }
   function add(g, mesh, x, y, z, rx, ry, rz) { mesh.position.set(x || 0, y || 0, z || 0); if (rx || ry || rz) mesh.rotation.set(rx || 0, ry || 0, rz || 0); g.add(mesh); return mesh; }
+  // [modelli1] l'arredo di strada viene da Arredo3D (src/arredo3d.js): i modelli rifiniti (collegati, a terra, con viti, staffe e
+  // cerniere), vestiti con l'atlante delle materie di [case] FORME (vernice scheggiata, zinco, legno, cemento...: un materiale solo
+  // che si fonde con il resto della geometria statica). Restano a parte i vetri, le luci, i teli a due facce e le targhe scritte.
+  const KIND3 = { ghisa: 'paint', zinco: 'galv', vernice: 'paint', ottone: 'copper', legno: 'wood', cemento: 'concrete', pietra: 'concrete', plastica: 'plastic', gomma: 'rubber', tela: 'cloth', carta: 'paper', porcellana: 'plastic' };
+  function vesti3(g) {
+    g.traverse(o => { if (!o.isMesh) return; const m = o.material, kind = m && KIND3[m.name]; if (!kind || m.map || m.transparent || m.side === THREE.DoubleSide) return;
+      const hex = '#' + m.color.getHexString(), mode = /Extrude|Box|Icosahedron|Polyhedron|Plane|Circle/.test(o.geometry.type) ? 'box' : undefined;
+      if (o.geometry.type === 'TubeGeometry') o.geometry = fUV(o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, fCell(hex, kind), mode);   // i cavi sono fatti su misura: niente cache
+      else { const src = o.geometry; o.geometry = fGeo('A3' + src.uuid, () => src.clone(), hex, kind, mode); }
+      o.material = FA.mat; });
+    return g; }
+  function pm3(tipo, o) { const g = typeof Arredo3D !== 'undefined' && Arredo3D ? Arredo3D.make(tipo, o) : null; return g ? vesti3(g) : G0(); }
+  const ARR3 = () => typeof Arredo3D !== 'undefined' && !!Arredo3D;
   // piazza un oggetto sul terreno e lo manda alla geometria statica
   // [pulitore2] il verso delle cose: allineate alla strada vicina o alla griglia, mai a un angolo a caso
   const RS2 = { h: null, box: new THREE.Box3(), v: new THREE.Vector3() };
@@ -8094,7 +8107,26 @@ var Render = (function () {
     const d = y0 - lo; if (d > .04 && d < .6) o.position.y = y0 - d;
   }
   // --- lampioni ---
+  // [modelli1] i lampioni per epoca da Arredo3D: a braccio in ghisa nel borgo (wall), a palo in ghisa sul Corso (genovese), del regime
+  // sulla Vittoria (regime: anche i 'deco' chiesti lungo la via dei pennoni), a stelo di cemento nel boom (sodium), il globo del lungomare (deco)
+  const LAMP3 = { wall: 'lampione_muro', genovese: 'lampione_corso', sodium: 'lampione_boom', deco: 'lampione_deco', regime: 'lampione_regime' };
+  let PEN3 = null;
+  const suPennoni3 = (x, z) => (PEN3 || (PEN3 = (M.roads || []).filter(rd => rd.pennoni && rd.pts))).some(rd => rd.pts.some(p => Math.hypot(p[0] - x, p[1] - z) < (rd.w || 8) / 2 + 6));
+  function streetLamp3(x, z, kind, rot) {
+    if (kind === 'deco' && suPennoni3(x, z)) kind = 'regime';
+    const wall = kind === 'wall', g = pm3(LAMP3[kind] || 'lampione_corso'), y0 = groundH(x, z), hy = wall ? 4.15 : 0, Ls = g.userData.luci || [[0, 3.7, 0]];
+    const col = kind === 'regime' ? '#fff0d8' : kind === 'deco' ? '#ffb85c' : kind === 'sodium' ? '#ffa84a' : '#ffb35c', hq = th(Math.round(x), Math.round(z), 71), lampOff = kind !== 'deco' && kind !== 'regime' && hq < .33;   // [inverno30] coprifuoco
+    if (lampOff) g.traverse(o => { if (o.isMesh && o.name === 'luce') o.material = sm('#2e2e34'); });
+    g.position.set(x, y0 + hy, z); g.rotation.y = rot || 0; const tag = wall ? null : newTag(); curTag = tag; addStatic(g, 'lamp'); curTag = null;
+    const c = Math.cos(rot || 0), s = Math.sin(rot || 0), W3 = q => [x + q[0] * c + q[2] * s, y0 + hy + q[1], z - q[0] * s + q[2] * c], P0 = W3(Ls[0]);
+    const gls = Ls.map(q => { const w = W3(q); return glow(w[0], w[1], w[2], kind === 'regime' ? '#f4f0ff' : col, kind === 'deco' || kind === 'regime' ? 2.4 : 2.0); });
+    const L = addLight(P0[0], P0[1] - .3, P0[2], col, kind === 'sodium' ? 2.0 : 1.6, kind === 'sodium' || kind === 'regime' ? 10 : 7.5, !lampOff && hq < .48 ? .75 : .03);
+    if (lampOff) { L.off = true; L.base = 0; gls.forEach(q => { q.visible = false; }); }
+    if (tag) { const rec = regProp(g, tag, 'lamp'); if (rec) { rec.light = L; rec.lbase = L.base; rec.glowS = gls[0]; rec.mass = 1.2; rec.fragile = false; } }
+    return L;
+  }
   function streetLamp(x, z, kind, rot) {
+    if (ARR3()) return streetLamp3(x, z, kind, rot);
     const g = G0(), iron = PM.iron(), y0 = groundH(x, z);
     let lx = 0, ly = 4.2, lz = 0, col = '#ffb35c', lcol = '#ffd08a';
     if (kind === 'deco') { // Lungomare: palo alto con il globo e l'anello al neon
@@ -8160,6 +8192,7 @@ var Render = (function () {
 
   // --- panchine ---
   function bench(x, z, rot, kind) {
+    if (ARR3()) return place(pm3(kind === 'marble' ? 'panchina_marmo' : kind === 'deco' ? 'panchina_cemento' : 'panchina_ghisa'), x, z, rot);   // [modelli1]
     const g = G0(), slat = kind === 'marble' ? PM.marble() : kind === 'deco' ? sm('#f2eee6') : PM.woodL(), leg = kind === 'deco' ? sm('#f4a6c0') : PM.ironG();
     if (kind === 'marble') { add(g, box(2, .14, .6, slat), 0, .5, 0); [-.7, .7].forEach(o => add(g, box(.2, .45, .5, slat), o, .22, 0)); return place(g, x, z, rot); }
     for (let k = 0; k < 3; k++) add(g, box(2, .06, .16, slat), 0, .48, -.2 + k * .19);
@@ -8239,6 +8272,7 @@ var Render = (function () {
     return n;
   }
   function stall(x, z, rot, ca, cb, goods, r) {
+    if (ARR3()) { const g = pm3('bancarella', { col: mute(ca, .7), col2: mute(cb, .85), merci: (goods || []).map(c => mute(c, .5)) }); place(g, x, z, rot); const q = (g.userData.luci || [[0, 2.15, 0]])[0], c = Math.cos(g.rotation.y), s = Math.sin(g.rotation.y); glow(x + q[0] * c + q[2] * s, groundH(x, z) + q[1], z - q[0] * s + q[2] * c, '#ffe4b0', 1.6); return g; }   // [modelli1]
     const g = G0(), wood = PM.wood(), iron = PM.iron();
     add(g, box(2.4, .1, 1.3, PM.woodL()), 0, .9, 0); add(g, box(2.4, .8, .1, wood), 0, .45, .6); add(g, box(2.3, .06, 1.2, wood), 0, .3, 0);
     [[-1.15, -.6], [1.15, -.6], [-1.15, .6], [1.15, .6]].forEach(([ox, oz]) => add(g, box(.07, 2.4, .07, iron), ox, 1.2, oz));
@@ -8295,6 +8329,7 @@ var Render = (function () {
 
   // --- tavolini e sedie ---
   function chair(x, z, rot, kind) {
+    if (ARR3()) return place(pm3('sedia', { tipo: kind === 'plastic' || kind === 'deco' ? 'plastica' : 'bistrot' }), x, z, rot);   // [modelli1]
     const g = G0();
     if (kind === 'plastic') { const m = sm('#f4f2ee', { roughness: .5 }); add(g, box(.46, .06, .44, m), 0, .44, 0); add(g, box(.46, .46, .05, m), 0, .7, -.22, -.12, 0, 0); [[-.2, .19], [.2, .19], [-.2, -.19], [.2, -.19]].forEach(([a, b]) => add(g, box(.05, .44, .05, m), a, .22, b)); [-.23, .23].forEach(a => add(g, box(.04, .05, .38, m), a, .6, 0)); }
     else if (kind === 'deco') { const m = sm('#7fe0e0'), c = sm('#f4a6c0'); add(g, cyl(.22, .22, .08, 10, c), 0, .46, 0); add(g, box(.42, .36, .05, m), 0, .72, -.2); [[-.16, .16], [.16, .16], [-.16, -.16], [.16, -.16]].forEach(([a, b]) => add(g, cyl(.02, .02, .45, 4, m), a, .22, b)); }
@@ -8319,6 +8354,8 @@ var Render = (function () {
     });
   }
   function table(x, z, kind, items, r, seats) {
+    if (ARR3() && kind !== 'wood') { const g = pm3('tavolino', { tipo: kind === 'marble' ? 'marmo' : kind === 'plastic' || kind === 'deco' ? 'plastica' : 'ferro' }); tableItems(g, .755, items || [], r); place(g, x, z, r ? r() * 6 : 0);   // [modelli1]
+      const n = seats === undefined ? 2 : seats; for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2 + .4; chair(x + Math.cos(a) * .72, z + Math.sin(a) * .72, -a - Math.PI / 2, kind === 'plastic' || kind === 'deco' ? 'plastic' : 'bistro'); } return g; }
     const g = G0(), topM = kind === 'marble' ? PM.marble() : kind === 'plastic' ? sm('#f4f2ee', { roughness: .5 }) : kind === 'deco' ? sm('#f7c6d4') : kind === 'wood' ? PM.woodL() : sm('#dcd4c4');
     if (kind === 'wood') { add(g, box(1.3, .06, .8, topM), 0, .75, 0); [[-.55, -.3], [.55, -.3], [-.55, .3], [.55, .3]].forEach(([a, b]) => add(g, box(.06, .74, .06, PM.woodD()), a, .37, b)); add(g, box(1.32, .02, .82, stripeMat('#e8e2d4', '#c83a3a')), 0, .79, 0); }
     else { add(g, cyl(.42, .42, .05, 12, topM), 0, .75, 0); add(g, cyl(.04, .04, .72, 6, PM.iron()), 0, .38, 0); add(g, cyl(.25, .28, .04, 10, PM.iron()), 0, .02, 0); }
@@ -8328,7 +8365,7 @@ var Render = (function () {
     for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2 + .4; chair(x + Math.cos(a) * .72, z + Math.sin(a) * .72, -a - Math.PI / 2, ck); }
     return g;
   }
-  function parasol(x, z, ca, cb, h) { const g = G0(), hh = h || 2.3; add(g, cyl(.03, .03, hh, 5, PM.iron()), 0, hh / 2, 0); const t = add(g, new THREE.Mesh(new THREE.ConeGeometry(1.4, .5, 8), stripeMat(ca, cb)), 0, hh, 0); add(g, cyl(.15, .2, .1, 6, PM.iron()), 0, .05, 0); return place(g, x, z, Math.random() * 6); }
+  function parasol(x, z, ca, cb, h) { if (ARR3()) return place(pm3('ombrellone', { col: ca, col2: cb, h: h || 2.3 }), x, z, Math.random() * 6);   /* [modelli1] */ const g = G0(), hh = h || 2.3; add(g, cyl(.03, .03, hh, 5, PM.iron()), 0, hh / 2, 0); const t = add(g, new THREE.Mesh(new THREE.ConeGeometry(1.4, .5, 8), stripeMat(ca, cb)), 0, hh, 0); add(g, cyl(.15, .2, .1, 6, PM.iron()), 0, .05, 0); return place(g, x, z, Math.random() * 6); }
   function cafe(x, z, r, kind, n, pal) { for (let k = 0; k < n; k++) { const items = pick(r, [['caffe', 'caffe', 'posacenere'], ['birra', 'birra', 'boccale'], ['caffe', 'giornale'], ['boccale', 'boccale', 'posacenere'], ['vino', 'vino', 'fiasco', 'pane'], ['caffe', 'caffe', 'birra'], ['fiori', 'caffe']]); const px = x + k * 1.9, pz = z + (k % 2) * .3; table(px, pz, kind, kind === 'deco' ? pick(r, [['gelato', 'gelato'], ['birra', 'gelato'], ['caffe', 'gelato', 'giornale']]) : items, r, 2); if (pal) parasol(px, pz, pal[0], pal[1]); } }
 
   // --- vasi e fioriere ---
@@ -8346,6 +8383,7 @@ var Render = (function () {
 
   // --- cestini e cassonetti ---
   function bin(x, z, kind, rot) {
+    if (ARR3()) return place(pm3(kind === 'dumpster' ? 'cassonetto' : kind === 'glass' ? 'campana' : kind === 'beach' ? 'bidone' : 'cestino'), x, z, rot || 0);   // [modelli1]
     const g = G0();
     if (kind === 'dumpster') { const m = sm('#3a6a3a', { roughness: .6 }); add(g, box(1.6, 1.1, .9, m), 0, .65, 0); add(g, box(1.7, .1, 1.0, sm('#2f5a2f')), 0, 1.25, 0, -.08, 0, 0); [-.6, .6].forEach(o => add(g, cyl(.1, .1, .08, 8, PM.iron()), o, .1, .35, 0, 0, Math.PI / 2)); add(g, box(.6, .25, .01, PM.white()), 0, .8, .455); add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(.3, 0), sl('#1a1a20')), .95, .25, .3); add(g, box(.4, .3, .3, sm('#b8905a')), -1, .15, .2); }
     else if (kind === 'glass') { const m = sm('#2f7a4a'); add(g, cyl(.55, .6, 1.3, 10, m), 0, .65, 0); add(g, new THREE.Mesh(new THREE.SphereGeometry(.55, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), m), 0, 1.3, 0); add(g, cyl(.12, .12, .05, 8, PM.iron()), 0, 1.3, .5, Math.PI / 2, 0, 0); }
@@ -8357,7 +8395,7 @@ var Render = (function () {
   // --- arredo urbano ---
   // [ordine1] la cabina del telefono anni '80: telaio d'alluminio, tre lati di vetro a riquadri, tetto col cassonetto luminoso TELEFONO,
   // l'apparecchio a gettoni con la cornetta e l'elenco, la porta a soffietto, la base di cemento
-  function phoneBooth(x, z, rot) { const g = G0(), al = '#b8bcc0', W = 1.0, H = 2.3;
+  function phoneBooth(x, z, rot) { if (ARR3()) return place(pm3('cabina_sip'), x, z, rot);   /* [modelli1] */ const g = G0(), al = '#b8bcc0', W = 1.0, H = 2.3;
     fAt(g, fB(W + .16, .1, W + .16, '#8a8680', 'concrete', .02), 0, .05, 0);
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => fAt(g, fB(.06, H, .06, al, 'galv', .01), a * W / 2, .1 + H / 2, b * W / 2));
     [[0, -W / 2, 0], [-W / 2, 0, Math.PI / 2], [W / 2, 0, Math.PI / 2], [0, W / 2, 0]].forEach(([px, pz, ry], k) => { [.5, 1.3, 2.05].forEach(y => fAt(g, fB(W, .04, .04, al, 'galv', 0), px, .1 + y, pz, 0, ry, 0)); if (k !== 3) { const gl = fB(W - .08, 1.9, .015, '#7aa4b4', 'glass', 0); gl.position.set(px, 1.18, pz); gl.rotation.y = ry; g.add(gl); } });
@@ -8368,12 +8406,13 @@ var Render = (function () {
     fAt(g, fB(.24, .04, .3, '#d8d0b8', 'paper', .01), .25, 1.05, -W / 2 + .2);
     return place(g, x, z, rot); }
   // la cassetta delle lettere rossa: piantana, cassa col tetto tondo, la feritoia, la targhetta degli orari
-  function mailbox(x, z, rot) { const g = G0(), red = '#b8282a';
+  function mailbox(x, z, rot) { if (ARR3()) return place(pm3('cassetta_postale'), x, z, rot);   /* [modelli1] */ const g = G0(), red = '#b8282a';
     fAt(g, fC(.045, .055, 1.0, 8, '#3a3c40', 'paint'), 0, .5, 0); fAt(g, fB(.5, .55, .32, red, 'paint', .03), 0, 1.25, 0);
     const top = fC(.25, .25, .32, 12, red, 'paint'); top.rotation.x = Math.PI / 2; top.position.set(0, 1.52, 0); g.add(top);
     fAt(g, fB(.3, .035, .02, '#1a1a1c', 'solid', 0), 0, 1.42, .17); fAt(g, fB(.26, .12, .01, '#e8e4d8', 'paper', 0), 0, 1.15, .165); fAt(g, fB(.08, .08, .01, '#e0c040', 'paint', 0), .15, 1.32, .165);
     return place(g, x, z, rot); }
   function newsstand(x, z, rot, r) { // edicola: riviste, giornali, un barattolo di matite colorate
+    if (ARR3()) { const g = place(pm3('edicola'), x, z, rot), a = g.rotation.y; glow(x + Math.sin(a) * .9, groundH(x, z) + 2.35, z + Math.cos(a) * .9, '#ffe0a0', 2); return g; }   // [modelli1]
     const g = G0(), m = sm('#3a6a4a'), tex = magazineTexture();
     add(g, box(2.4, 2.4, 1.6, m), 0, 1.2, 0); add(g, box(2.8, .12, 2.1, sm('#2a4a3a')), 0, 2.46, .1);
     add(g, box(2.2, 1.6, .06, std({ map: tex, roughness: .6 })), 0, 1.3, .82);
@@ -8391,14 +8430,15 @@ var Render = (function () {
     for (let y = 0; y < 48; y += 12) for (let k = 0; k < 64; k += 8) { const col = pick(r, ['#e84a4a', '#f0e0c0', '#4a8ae8', '#f0c040', '#e870b0', '#50c0a0', '#ffffff']); x.fillStyle = col; x.fillRect(k + 1, y + 1, 7, 10); x.fillStyle = 'rgba(0,0,0,.4)'; x.fillRect(k + 2, y + 2, 5, 2); x.fillStyle = pick(r, ['#f4d0b0', '#c89070', '#2a2a2a']); x.fillRect(k + 3, y + 5, 3, 4); }
     return canvasTex(c);
   }
-  function busStop(x, z, rot) { const g = G0(), m = sm('#d8d4cc'); add(g, box(3, .1, 1.2, sm('#f0c020')), 0, 2.4, 0); [-1.4, 1.4].forEach(o => add(g, box(.08, 2.4, .08, m), o, 1.2, -.5)); add(g, box(2.9, 1.8, .04, std({ color: '#b8d8e8', transparent: true, opacity: .45 })), 0, 1.3, -.55); add(g, box(2, .08, .35, PM.woodL()), 0, .5, -.3); add(g, cyl(.04, .04, 2.6, 5, m), 1.7, 1.3, .3); add(g, cyl(.3, .3, .04, 12, sm('#f0c020')), 1.7, 2.5, .3, Math.PI / 2, 0, 0); return place(g, x, z, rot); }
-  function bollard(x, z) { const g = G0(); MD1.bollard(g); return place(g, x, z, 0); }
+  function busStop(x, z, rot) { if (ARR3()) return place(pm3('fermata'), x, z, rot);   /* [modelli1] */ const g = G0(), m = sm('#d8d4cc'); add(g, box(3, .1, 1.2, sm('#f0c020')), 0, 2.4, 0); [-1.4, 1.4].forEach(o => add(g, box(.08, 2.4, .08, m), o, 1.2, -.5)); add(g, box(2.9, 1.8, .04, std({ color: '#b8d8e8', transparent: true, opacity: .45 })), 0, 1.3, -.55); add(g, box(2, .08, .35, PM.woodL()), 0, .5, -.3); add(g, cyl(.04, .04, 2.6, 5, m), 1.7, 1.3, .3); add(g, cyl(.3, .3, .04, 12, sm('#f0c020')), 1.7, 2.5, .3, Math.PI / 2, 0, 0); return place(g, x, z, rot); }
+  function bollard(x, z) { if (ARR3()) return place(pm3('paletto'), x, z, 0);   /* [modelli1] */ const g = G0(); MD1.bollard(g); return place(g, x, z, 0); }
   // [ordine1] la bitta d'ormeggio dei moli: ghisa tornita col fungo e la piastra imbullonata, la cima arrotolata a volte
-  function bitta(x, z) { const g = G0(), col = '#2e2c30'; g.add(fL([[.0, 0], [.34, 0], [.34, .05], [.2, .07], [.17, .12], [.15, .36], [.19, .42], [.26, .46], [.26, .52], [.2, .56], [0, .57]], 12, col, 'paint'));
+  function bitta(x, z) { if (ARR3()) return place(pm3('bitta'), x, z, 0);   /* [modelli1] */ const g = G0(), col = '#2e2c30'; g.add(fL([[.0, 0], [.34, 0], [.34, .05], [.2, .07], [.17, .12], [.15, .36], [.19, .42], [.26, .46], [.26, .52], [.2, .56], [0, .57]], 12, col, 'paint'));
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => { const bl = fC(.03, .03, .03, 6, '#4a4a4e', 'rust'); bl.position.set(a * .24, .055, b * .24); g.add(bl); });
     if (th(Math.round(x), Math.round(z), 2190) < .35) { const t = fT(.2, .035, 12, '#c8b88a', 'cloth'); t.position.y = .2; g.add(t); }
     return place(g, x, z, 0); }   // [ordine1] il paletto di ghisa tornito (prima un cilindro scuro da 60 cm: sembravano bidoni)
   function shrine(x, z, y, rotY) { // edicola votiva con le candele
+    if (ARR3()) { const g = pm3('edicola_votiva'); g.position.set(x - Math.sin(rotY) * .125, y, z - Math.cos(rotY) * .125); g.rotation.y = rotY; addStatic(g); glow(x + Math.sin(rotY) * .3, y - .2, z + Math.cos(rotY) * .3, '#ffb040', 2.2); addLight(x + Math.sin(rotY) * .6, y - .2, z + Math.cos(rotY) * .6, '#ffa23a', 2.2, 7, .35); return; }   // [modelli1] il fondo della nicchia sul muro
     const g = G0(); add(g, box(.9, 1.2, .25, sm('#d8c8aa')), 0, 0, 0); add(g, box(.6, .8, .1, sl('#2a1c24')), 0, 0, .1); add(g, box(.35, .5, .02, std({ color: '#3a5aa8', emissive: '#223366' })), 0, 0, .16);
     const cand = box(.08, .15, .08, sb('#ffd070')); add(g, cand, -.15, -.28, .2); add(g, cand.clone(), .15, -.28, .2); add(g, box(1.1, .12, .4, sm('#8a5d4e')), 0, .66, 0);
     for (let k = 0; k < 3; k++) add(g, box(.12, .12, .12, sl(pick(rng(k), ['#e0405a', '#f0f0f0', '#f0c040']))), -.25 + k * .25, -.5, .22);
@@ -8410,7 +8450,7 @@ var Render = (function () {
   function scooterParts(x, z, r) { const g = G0(); for (let k = 0; k < 4; k++) add(g, new THREE.Mesh(new THREE.TorusGeometry(.26, .09, 5, 10), sl('#1a1a1e')), 0, .1 + k * .18, 0, Math.PI / 2, 0, 0); add(g, box(.6, .35, .35, sm('#c83a2a')), .8, .18, 0); add(g, box(.08, .12, .3, PM.chrome()), .8, .42, 0); return place(g, x, z, r() * 6); }
   function tireStack(x, z, n) { const g = G0(); for (let k = 0; k < n; k++) add(g, new THREE.Mesh(new THREE.TorusGeometry(.32, .12, 5, 10), sl('#18181c')), 0, .12 + k * .24, 0, Math.PI / 2, 0, 0); return place(g, x, z); }
   function pallet(x, z, r, load) { const g = G0(), w = PM.woodL(); for (let k = 0; k < 5; k++) add(g, box(1.2, .03, .16, w), 0, .14, -.4 + k * .2); [-.5, 0, .5].forEach(o => add(g, box(.12, .12, 1, PM.woodD()), o, .06, 0)); if (load) add(g, box(1.1, .9, .9, sm(pick(r, ['#c8b898', '#a8c0d0', '#d8d0c0']))), 0, .6, 0); return place(g, x, z, r() * .4); }
-  function nets(x, z, r) { const g = G0(); add(g, box(2.2, .25, 1.4, sl('#2f4a3a')), 0, .12, 0); add(g, box(1.4, .3, 1, sl('#3a5a4a')), .2, .3, .1); for (let k = 0; k < 5; k++) add(g, box(.22, .22, .22, sl('#f06a2a')), -.8 + k * .4, .32, (r() - .5) * .8); add(g, new THREE.Mesh(new THREE.TorusGeometry(.3, .07, 5, 10), sl('#c8a868')), -.9, .08, .4, Math.PI / 2, 0, 0); return place(g, x, z, r() * 6); }
+  function nets(x, z, r) { if (ARR3()) return place(pm3('reti'), x, z, r() * 6);   /* [modelli1] */ const g = G0(); add(g, box(2.2, .25, 1.4, sl('#2f4a3a')), 0, .12, 0); add(g, box(1.4, .3, 1, sl('#3a5a4a')), .2, .3, .1); for (let k = 0; k < 5; k++) add(g, box(.22, .22, .22, sl('#f06a2a')), -.8 + k * .4, .32, (r() - .5) * .8); add(g, new THREE.Mesh(new THREE.TorusGeometry(.3, .07, 5, 10), sl('#c8a868')), -.9, .08, .4, Math.PI / 2, 0, 0); return place(g, x, z, r() * 6); }
   function lifebuoy(x, z, y, rot) { const g = G0(); add(g, box(.08, 1.4, .08, sm('#d8d0c0')), 0, .7, 0); add(g, new THREE.Mesh(new THREE.TorusGeometry(.32, .09, 6, 12), stripeMat('#e8302a', '#f4f0e6')), 0, 1.2, .08); return place(g, x, z, rot); }
 
   // --- spiaggia ---
@@ -8465,7 +8505,7 @@ var Render = (function () {
   function posterBoard(x, z, rot, r) { const g = G0(), c = mk(24, 36), cx = c.getContext('2d'); cx.fillStyle = pick(r, ['#2a1a4a', '#4a1a2a', '#1a3a4a']); cx.fillRect(0, 0, 24, 36); cx.fillStyle = pick(r, ['#ff4fa3', '#35e6ff', '#ffd23b']); cx.fillRect(2, 2, 20, 4); cx.fillStyle = pick(r, ['#f4d0b0', '#e8a080']); cx.fillRect(7, 10, 10, 12); cx.fillStyle = '#111'; cx.fillRect(7, 13, 10, 3); cx.fillStyle = '#fff'; cx.fillRect(3, 28, 18, 2); cx.fillRect(5, 31, 14, 1); add(g, box(1.2, 1.8, .08, sm('#c8a040')), 0, 1.6, 0); add(g, box(1, 1.6, .02, std({ map: canvasTex(c), emissive: '#ffffff', emissiveMap: canvasTex(c), emissiveIntensity: .35 })), 0, 1.6, .05); return place(g, x, z, rot); }
   function stanchions(x, z, n) { const g = G0(); for (let k = 0; k < n; k++) { add(g, cyl(.04, .04, 1, 6, sm('#e8c040', { metalness: .7, roughness: .3 })), k * 1.1, .5, 0); add(g, cyl(.15, .15, .05, 8, sm('#e8c040', { metalness: .7 })), k * 1.1, .02, 0); if (k) add(g, box(1.1, .06, .06, sm('#c8203a')), k * 1.1 - .55, .85, 0); } return place(g, x, z, 0); }
   function binoculars(x, z, rot) { const g = G0(), m = sm('#3a7a8a', { metalness: .4, roughness: .4 }); add(g, cyl(.08, .12, 1.1, 6, m), 0, .55, 0); add(g, box(.5, .3, .35, m), 0, 1.2, 0); [-.12, .12].forEach(o => add(g, cyl(.08, .08, .4, 8, m), o, 1.25, .25, Math.PI / 2, 0, 0)); return place(g, x, z, rot); }
-  function drinkFountain(x, z) { const g = G0(), m = sm('#2f4a3a', { metalness: .4 }); add(g, cyl(.2, .25, 1.1, 8, m), 0, .55, 0); add(g, box(.08, .08, .3, m), 0, .95, .2); add(g, box(.5, .05, .5, sm('#8a8478')), 0, .02, .3); return place(g, x, z); }
+  function drinkFountain(x, z) { if (ARR3()) return place(pm3('fontanella'), x, z);   /* [modelli1] */ const g = G0(), m = sm('#2f4a3a', { metalness: .4 }); add(g, cyl(.2, .25, 1.1, 8, m), 0, .55, 0); add(g, box(.08, .08, .3, m), 0, .95, .2); add(g, box(.5, .05, .5, sm('#8a8478')), 0, .02, .3); return place(g, x, z); }
   function picnicTable(x, z, rot, r) { const g = G0(), w = PM.woodL(); add(g, box(2, .08, .8, w), 0, .75, 0); [-.7, .7].forEach(o => add(g, box(2, .06, .3, w), 0, .45, o)); [-.8, .8].forEach(o => { add(g, box(.08, .75, .08, PM.woodD()), o, .37, 0); add(g, box(.08, .06, 1.7, PM.woodD()), o, .3, 0); }); tableItems(g, .79, ['birra', 'pane', 'birra'], r); return place(g, x, z, rot); }
 
   // ---------------- DISPOSIZIONE DEGLI OGGETTI NEI QUARTIERI ----------------
@@ -10826,6 +10866,7 @@ var Render = (function () {
   }
   // bombola del gas: tornita con la spalla, collare di protezione forato, valvola, piede ad anello; vernice scheggiata
   function oGas(r, col) {
+    if (ARR3()) return pm3('bombola', { col: col || pick(r, ['#c03a2a', '#d0a040', '#4a6a8a', '#8a8a86']) });   // [modelli1]
     const g = new THREE.Group(); col = col || pick(r, ['#c03a2a', '#d0a040', '#4a6a8a', '#8a8a86']); const R = .15, H = .62;
     fAt(g, fL([[R * .9, 0], [R * .95, .05], [R * .9, .06]], 12, '#3a3a3e', 'rust'), 0, 0, 0);
     fAt(g, fL([[0, .05], [R - .01, .05], [R, .08], [R, H - .12], [R * .8, H - .04], [.035, H], [0, H]], 14, col, 'paint'), 0, 0, 0);
@@ -10861,6 +10902,7 @@ var Render = (function () {
   }
   // antenna TV: piede a treppiede imbullonato, palo zincato con le fascette, culla con gli elementi e l'isolatore, cavo che scende
   function oAntenna(hh, ry, r) {
+    if (ARR3()) return pm3('antenna_tv', { h: hh, ry });   // [modelli1]
     const g = new THREE.Group(), z = '#7a7a7c';
     fAt(g, fB(.22, .03, .22, '#5a5a5e', 'galv', .01), 0, .015, 0); [0, 2.09, 4.19].forEach(a => fRod(g, [Math.cos(a) * .35, .02, Math.sin(a) * .35], [0, .7, 0], .014, z, 'galv'));
     fAt(g, fC(.025, .03, hh, 6, z, 'galv'), 0, hh / 2, 0); for (let y = .7; y < hh - .3; y += .9) fAt(g, fC(.034, .034, .05, 6, '#4a4a4e', 'rust'), 0, y, 0);

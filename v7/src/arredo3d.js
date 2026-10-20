@@ -156,17 +156,17 @@ var Arredo3D = (function () {
     slab(g, .22, .5, .16, VD, -.32, 1.75, .06, .02); slab(g, .24, .04, .14, VD, -.32, 2.02, .16, 0); asta(g, [-.06, 1.75, 0], [-.21, 1.75, .06], .018, ZS); [1.88, 1.62].forEach(ly => put(g, cylG(.06, .06, .01, 10), mat(ly > 1.7 ? '#3a0c0a' : '#0a2a14', 'luce'), -.32, ly, .145, PI / 2, 0, 0));   // il pedonale spento, sulla sua staffa
     slab(g, .14, .22, .1, GL, 0, 1.15, .1, .02); put(g, cylG(.03, .03, .012, 8), NR, 0, 1.15, .155, PI / 2, 0, 0); return g; };
   // la piastra di un cartello stretta al palo di raggio r0 (asse in x = 0, z = 0): faccia dipinta, lamiera di zinco col bordo, nervatura, due fascette imbullonate.
-  // t = { w, h, tonda, mat (materiale dipinto di render.js) | testo, bg, fg }
+  // t = { w, h, tonda, retro: [w, h], mat (materiale dipinto di render.js) | testo, bg, fg }
   function piastra(g, t, yc, r0) {
     const fm = t.mat || targaMat(t.testo || '', t.bg || C.bianco, t.fg || C.ghisa, t.w, t.h);
     put(g, geo(t.tonda ? 'dk' + q3(t.w) : 'p' + [t.w, t.h].map(q3), () => t.tonda ? new THREE.CircleGeometry(t.w / 2, 18) : new THREE.PlaneGeometry(t.w, t.h)), fm, 0, yc, r0 + .03);
-    if (t.tonda) put(g, cylG(t.w * .48, t.w * .48, .018, 18), ZN, 0, yc, r0 + .018, PI / 2, 0, 0); else slab(g, t.w * .98, t.h * .98, .018, ZN, 0, yc, r0 + .018, 0);
+    if (t.tonda) put(g, cylG(t.w * .48, t.w * .48, .018, 18), ZN, 0, yc, r0 + .018, PI / 2, 0, 0); else slab(g, t.retro ? t.retro[0] : t.w * .98, t.retro ? t.retro[1] : t.h * .98, .018, ZN, 0, yc, r0 + .018, 0);   // t.retro: la lamiera più piccola della faccia (le facce dipinte con il bordo trasparente)
     slab(g, Math.min(t.w * .7, .5), .04, .03, ZN, 0, yc, r0 + .005, 0); [t.h * .3, -t.h * .3].forEach(d => { slab(g, .04, .03, .03, ZN, 0, yc + d, r0 + .005, 0); if (F()) fascetta(g, yc + d, r0); else tor(g, r0 + .01, .009, 8, ZS, 0, yc + d, 0); }); }
   // il cartello: palo zincato tornito sul piede di cemento; o.targhe dall'alto in basso (render.js passa le sue facce dipinte), o.h l'altezza del palo
   T.cartello = (o) => { const g = new THREE.Group(), r0 = .03, H = (o && o.h) || 2.62, targhe = (o && o.targhe) || [{ w: .6, h: .6, tonda: true, testo: '30', bg: '#e4e0d6', fg: '#b8282a' }];
     palo(g, H, r0); piedeCem(g, .11); let y = H - .12; targhe.forEach(t => { piastra(g, t, y - t.h / 2, r0); y -= t.h + .07; }); return g; };
   // le sole piastre, da stringere a un palo che c'è già (i cartelli sui pali dei lampioni): origine sull'asse del palo, all'altezza della prima piastra
-  T.staffa_cartello = (o) => { const g = new THREE.Group(); g.userData.aPalo = true; const r0 = (o && o.r) || .075, targhe = (o && o.targhe) || [{ w: .6, h: .6, tonda: true, testo: 'P', bg: '#2a4a8a', fg: '#e8e4d8' }]; let y = 0;
+  T.staffa_cartello = (o) => { const g = new THREE.Group(); g.userData.aPalo = true; const r0 = g.userData.r = (o && o.r) || .075, targhe = (o && o.targhe) || [{ w: .6, h: .6, tonda: true, testo: 'P', bg: '#2a4a8a', fg: '#e8e4d8' }]; let y = 0;
     targhe.forEach(t => { piastra(g, t, y, r0); y -= t.h + .07; }); return g; };
   T.targa_via = (o) => {   // targa toponomastica in marmo (60 × 35) con la scritta incisa e i quattro tasselli; a muro
     const g = new THREE.Group(); g.userData.aMuro = true; const t = (o && o.testo) || 'VIA DEI\nPESCATORI', m = mat('#e8e2d4', 'pietra');
@@ -335,7 +335,7 @@ var Arredo3D = (function () {
     [-1, 1].forEach(s => { const x = s * .55; tor(g, R, .018, 18, GH, x, ry, .2, 0, PI / 2, 0); put(g, cylG(.05, .05, .07, 8), LS, x, ry, .2, 0, 0, PI / 2); for (let i = 0; i < 10; i++) { const a = i / 10 * PI * 2; asta(g, [x, ry, .2], [x, ry + Math.cos(a) * (R - .01), .2 + Math.sin(a) * (R - .01)], .009, LGG, 4); } });   // ruote a raggi
     [-.35, .35].forEach(x => asta(g, [x, .52, L / 2 - .1], [x, .62, L / 2 + .9], .022, LS)); asta(g, [-.35, .62, L / 2 + .9], [.35, .62, L / 2 + .9], .018, LS);   // le stanghe col manico
     asta(g, [.3, .47, -.55], [.3, .03, -.62], .02, GH, 4); put(g, cylG(.04, .04, .03, 6), GM, .3, .015, -.62); return g; };
-  T.bancarella = (o) => {   // bancarella del mercato: piano su quattro gambe col ripiano basso, tenda a strisce sul telaio, cassette inclinate con la merce, bilancia, cartellini dei prezzi
+  T.bancarella = (o) => {   // bancarella del mercato: piano su quattro gambe col ripiano basso, tenda a strisce sul telaio, cassette inclinate con la merce, bilancia, cartellini dei prezzi, la lampadina
     const g = new THREE.Group(), ca = (o && o.col) || C.verde, cb = (o && o.col2) || C.bianco, mT = mat(ca, 'tela'), mT2 = mat(cb, 'tela'), W = 2.4, D = 1.3, merci = (o && o.merci) || ['#c84a2a', '#e0b030', '#4a8a3a', '#d06a2a'];
     slab(g, W, .05, D, LGG, 0, .9, 0, .008); slab(g, W - .1, .035, D - .2, LG, 0, .3, 0, .005); [[-1.15, -.6], [1.15, -.6], [-1.15, .6], [1.15, .6]].forEach(([x, z]) => { slab(g, .07, .88, .07, LS, x, .44, z, .006); asta(g, [x, .9, z], [x * .97, 2.35, z * .9], .02, GH, 4); });
     slab(g, W, .55, .025, LG, 0, .6, D / 2 - .03, .004);   // la pannellatura davanti
@@ -344,6 +344,7 @@ var Arredo3D = (function () {
     for (let k = 0; k < 4; k++) { const x = -.9 + k * .6, c0 = [x, 1.0, .15]; slab(g, .5, .14, .36, LGG, c0[0], c0[1], c0[2], .006, .3, 0, 0); const mm = mat(merci[k % merci.length], 'tela'); for (let q = 0; q < 6; q++) { const p = sulPiano(c0, .3, (q > 2 ? .07 : -.07), .1); put(g, icoG(.055, 0), mm, x - .14 + (q % 3) * .14, p[1], p[2]); } }
     slab(g, .3, .1, .22, BC, .95, .975, -.4, .01); put(g, cylG(.14, .14, .02, 10), ZN, .95, 1.1, -.4); asta(g, [.95, 1.02, -.4], [.95, 1.09, -.4], .02, ZS, 4);   // la bilancia
     for (let k = 0; k < 3; k++) { if (F()) targa(g, ['1200', '800', '1500'][k], .14, .09, -.8 + k * .7, .85, D / 2 + .008, 0, '#f0ead8', '#2a2a2e', 0); }
+    asta(g, [0, 2.35, -.54], [0, 2.35, .54], .015, GH, 4); cavo(g, [[0, 2.34, 0], [.01, 2.27, 0], [0, 2.2, 0]], .004, NR, 4); put(g, sphG(.05, 6), LU, 0, 2.15, 0).name = 'luce'; luci(g, 0, 2.15, 0, '#ffe4b0');   // la lampadina appesa al telaio
     return g; };
   // il tavolino da bar: piano tondo (marmo, plastica bianca o lamiera), colonna e piede (ghisa a tre zampe, o disco); Ø 70
   T.tavolino = (o) => { const g = new THREE.Group(), tipo = (o && o.tipo) || 'marmo';
@@ -397,7 +398,7 @@ var Arredo3D = (function () {
     if (legno) { slab(g, W, .02, D, m, 0, .01, 0, 0); [-1, 1].forEach(s => { slab(g, W, .06, .015, m, 0, .05, s * (D / 2 - .008), 0); slab(g, W, .06, .015, m, 0, .12, s * (D / 2 - .008), 0); slab(g, .015, .14, D, m, s * (W / 2 - .008), .08, 0, 0); }); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => slab(g, .03, H, .03, LS, a * (W / 2 - .02), H / 2, b * (D / 2 - .02), 0)); }
     else { slab(g, W, H, D, m, 0, H / 2, 0, .015); slab(g, W - .06, .02, D - .06, mat('#dcdad2', 'plastica'), 0, H - .005, 0, 0); if (F()) [-1, 1].forEach(s => slab(g, .08, .03, .04, mat('#c8c6be', 'plastica'), s * (W / 2 - .06), H - .06, D / 2 + .01, 0)); }
     put(g, slabG(W - .08, .03, D - .08, .01), mat('#dfe8ee', 'vetro'), 0, H - .02, 0);
-    for (let k = 0; k < 6; k++) { const f = put(g, latheG([[.001, 0], [.025, .05], [.03, .15], [.02, .22], [.008, .26], [.001, .27]], 6), mat(k % 2 ? '#9ab0c0' : '#b8c8d0', 'zinco'), -.13 + (k % 3) * .13, H, -.09 + Math.floor(k / 3) * .17, PI / 2, 0, (k % 3 - 1) * .3); f.scale.z = .5; f.position.x -= .12; }
+    for (let k = 0; k < 6; k++) { const f = put(g, latheG([[.001, 0], [.025, .05], [.03, .15], [.02, .22], [.008, .26], [.001, .27]], 6), mat(k % 2 ? '#9ab0c0' : '#b8c8d0', 'zinco'), -.19 + k * .076, H - .004, -.13 + (k % 2) * .02); f.rotation.order = 'YXZ'; f.rotation.set(PI / 2, (k % 3 - 1) * .12, 0); f.scale.z = .5; }   // distesi sul ghiaccio, la testa verso il davanti
     return g; };
   // ================= CANTIERE E TETTI =================
   T.scala_pioli = () => {   // scala a pioli di legno da 3 m appoggiata (15°): due montanti, dieci pioli, i piedini di gomma, i due tiranti di ferro
