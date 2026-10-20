@@ -59719,7 +59719,7 @@ var Render = (function () {
     ariaGiorno: .04, ariaNotte: .03, coloreLontano: .15,   // prospettiva aerea: quanta aria fra noi e il lontano, quanta ne resta di notte, quanto colore perde il lontano
     vicinoContrasto: .12,           // attorno al personaggio il salto dei toni cresce di tanto: il primo piano si stacca
     lontanoFreddo: [.96, .99, 1.05], lontanoChiaro: .025,   // i piani lontani: un filo più freddi e più chiari (la separazione dei piani)
-    gialliQuieti: .22,              // il tufo e le facciate gialle perdono questo tanto di colore (gli aranci dei coppi no)
+    gialliQuieti: .28,              // il tufo e le facciate gialle perdono questo tanto di colore (gli aranci dei coppi no)
     varcoContorno: 1,               // [varco2] quanto si toglie il contorno di profondità sul bordo dell'ellisse (1 = niente filo scuro)
     varcoTaglio: .14,               // l'ombra sullo spessore tagliato di muri e tetti (l'anello beige)
     varcoLuce: .5,                  // quanto si schiariscono le facce scure rimaste dentro il buco
@@ -59808,7 +59808,7 @@ var Render = (function () {
   // lontano dietro una sagoma non conta, quindi niente alone. Si scurisce solo dove la geometria si chiude: l'angolo fra muro e suolo,
   // sotto balconi, cornicioni e portici, negli sguinci, ai piedi di gente, mezzi e oggetti (fa da ombra di contatto); le superfici aperte
   // restano pulite. In uscita: occlusione, profondità (per la ricomposizione che rispetta i bordi) e quanto il pixel è suolo.
-  const OCCL = { raggio: .9, forza: .62, tinta: [.62, .52, .44], suoloScuro: .09, campioni: 6 };   // la tinta: ombra calda-scura, mai grigia
+  const OCCL = { raggio: 1, forza: .78, tinta: [.62, .52, .44], suoloScuro: .12 };   // la tinta: ombra calda-scura, mai grigia
   if (typeof window !== 'undefined') window.__OCCL = OCCL;
   const OCC = { rt: null, scene: null, cam: null, mat: null };
   function occInit() {
@@ -59827,7 +59827,7 @@ var Render = (function () {
           vec3 dx = dot(ax, ax) < dot(bx, bx) ? ax : bx, dy = dot(ay, ay) < dot(by, by) ? ay : by;   // il lato più vicino: la normale non scavalca i bordi
           vec3 n = normalize(cross(dx, dy)); if (dot(n, cp - p) < 0.) n = -n;
           float vz = lin(z), rp = clamp(R * ps * res.y * .5 / vz, 1.5, 22.);   // il raggio in pixel di questa passata
-          float ang = fract(sin(dot(floor(vUv * res), vec2(12.9898, 78.233))) * 43758.5453) * 6.2832, ao = 0.;
+          vec2 ip = mod(floor(vUv * res), 4.); float ang = (mod(ip.x * 2. + ip.y * 3. + ip.x * ip.y, 4.) / 4. + mod(ip.y, 2.) * .125) * 6.2832, ao = 0.;   // rotazione a trama 4×4 (non a caso): la ricomposizione 3×3 la scioglie
           for (int k = 0; k < ${PHONE ? 4 : 6}; k++) { float t = (float(k) + .5) / ${PHONE ? '4.' : '6.'}, a = ang + float(k) * 2.3998;
             vec3 v = wp(vUv + vec2(cos(a), sin(a)) * rp * t * e) - p; float l2 = dot(v, v);
             ao += max(0., dot(v, n) - .03 * sqrt(l2) - .02) / (l2 + .05) * (1. - smoothstep(R * R * .45, R * R, l2)); }
@@ -60073,9 +60073,9 @@ var Render = (function () {
               c = c * mix(1., .86, sOn * (1. - lit)) + sCol * lit * sOn; } }   // manopola: densità della nebbia con le ombre
           float occA = 0., occG = 0.;
           if (occK.x + occK.y > 0.) {   // [regia2] l'ombra degli angoli: quattro texel della passata a metà, pesati sulla profondità (i bordi restano netti, niente alone)
-            vec2 oe = 1. / occRes, ob = (floor(vUv * occRes - .5) + .5) * oe; float ws = 0.;
-            for (int k = 0; k < 4; k++) { vec2 ou = ob + vec2(float(k - k / 2 * 2), float(k / 2)) * oe; vec4 o = texture2D(tOcc, ou);
-              vec2 fw = 1. - abs(vUv - ou) * occRes; float w = max(fw.x, 0.) * max(fw.y, 0.) * exp(-abs(o.g * far - d) / (d * .02 + .08)) + 1e-4;
+            vec2 oe = 1. / occRes, ob = (floor(vUv * occRes) + .5) * oe; float ws = 0.;
+            for (int k = 0; k < 9; k++) { vec2 ou = ob + vec2(float(k - k / 3 * 3 - 1), float(k / 3 - 1)) * oe; vec4 o = texture2D(tOcc, ou);   // 3×3 texel: l'ombra si scioglie, il peso della profondità tiene i bordi
+              vec2 fw = 1. - abs(vUv - ou) * occRes * .5; float w = max(fw.x, 0.) * max(fw.y, 0.) * exp(-abs(o.g * far - d) / (d * .02 + .08)) + 1e-4;
               occA += o.r * w; occG += o.b * w; ws += w; }
             occA /= ws; occG /= ws;
             c *= mix(vec3(1.), occC, occA * occK.x * (1. - coc));   // calda-scura, più densa negli angoli stretti, nulla sulle superfici aperte
