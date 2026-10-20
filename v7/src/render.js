@@ -1058,33 +1058,41 @@ var Render = (function () {
   const NAT = { ok: false, models: {}, mats: {} };
   // le chiome tra la camera e il giocatore si aprono (retinatura): il giocatore nel bosco si vede sempre
   const NATU = { pl: { value: new THREE.Vector3(0, -999, 0) }, cm: { value: new THREE.Vector3(0, 100, 0) } };
-  // [varco1] lo stesso varco per tutto il resto (come The Sims, Divinity, Diablo): non si spegne la casa intera, si apre a retino
-  // una capsula lungo la linea giocatore → camera su ogni materiale (case, tetti, balconi, insegne, roba sui tetti, muraglioni).
-  // Restano interi terreno, cielo, gente e mezzi; sotto il metro dai piedi non si buca niente. p: dove guarda, c: la camera,
-  // k: raggio pieno, raggio aperto (0 = spento), dove comincia lungo la linea, quota minima
-  const VARCO = { p: { value: new THREE.Vector3(0, -999, 0) }, c: { value: new THREE.Vector3(0, 100, 0) }, k: { value: new THREE.Vector4(0, 0, 1, 0) }, done: new WeakSet(), t: -9 };
+  // [varco1] lo stesso varco per tutto il resto (come The Sims, Divinity, Diablo): non si spegne la casa intera, si apre
+  // [varco2] il varco è un'ellisse netta attorno al personaggio, sullo schermo: dentro si scarta solo quello che sta davvero davanti
+  // (in pianta, fra il personaggio e la camera) e sopra i piedi. Prima era una capsula con un retino a caso per pixel: ogni puntino
+  // lasciava un salto di profondità e il contorno del post (lOl) lo segnava di bruno, una pioggia di punti scuri; e la capsula
+  // inclinata bucava anche i piani alti delle case dietro, che mostravano il dentro scuro. Più in alto, più largo: il tetto si apre
+  // prima e più ampio delle pareti. Restano interi terreno, cielo, gente e mezzi. Uniform condivisi: un programma per materiale, mai
+  // ricompilato. a: centro (NDC) e semiassi (NDC); b: verso la camera in pianta (x, z), quota minima, quanto è aperto (0 = spento);
+  // p: il personaggio a mezza altezza, w: quanto davanti comincia
+  const VARCO = { a: { value: new THREE.Vector4(0, 0, .1, .1) }, b: { value: new THREE.Vector4(0, 1, 0, 0) }, p: { value: new THREE.Vector4(0, -999, 0, .35) }, done: new WeakSet(), t: -9, amt: 0, last: false, v: new THREE.Vector3() };
+  const VC_DECL = 'uniform vec4 uVcA; uniform vec4 uVcB; uniform vec4 uVcP;';
+  // sotto il centro l'ellisse è corta (quello che sta sotto i piedi sullo schermo non copre nessuno); le facce di dietro vicino al
+  // taglio (il dentro di un muro o di un solaio spessi, buio e in ombra) si scartano anche loro: il taglio resta pulito, senza fasce nere
+  const vcFrag2 = (w, s, bf) => `if (uVcB.w > 0. && ${s}.z > 0.) { vec2 e1 = (${s}.xy / ${s}.z - uVcA.xy) / uVcA.zw; if (e1.y < 0.) e1.y *= 1.8; float up1 = smoothstep(uVcP.y + 1.5, uVcP.y + 5., ${w}.y);
+          float r1 = clamp(uVcB.w * 2. - 1. + up1, 0., 1.) * (1. + up1 * .45), f1 = dot(${w}.xz - uVcP.xz, uVcB.xy), q1 = dot(e1, e1);
+          if (q1 < r1 * r1 && f1 > uVcP.w && ${w}.y > uVcB.z) discard;${bf ? `
+          if (!gl_FrontFacing && q1 < r1 * r1 * 1.6 && f1 > uVcP.w - 1.5) discard;` : ''} }`;
+  function varcoUni2(sh) { sh.uniforms.uVcA = VARCO.a; sh.uniforms.uVcB = VARCO.b; sh.uniforms.uVcP = VARCO.p; }
   function varcoMat1(m) {
     if (VARCO.done.has(m)) return; VARCO.done.add(m);
     if (m.isShaderMaterial || m.isPointsMaterial || m.isLineBasicMaterial || m.isSpriteMaterial) return;
     const prev = m.onBeforeCompile, pk = m.customProgramCacheKey;
     const wrap = function (sh, r) { prev.call(m, sh, r);
-      if (!sh.vertexShader.includes('#include <project_vertex>') || !sh.fragmentShader.includes('#include <clipping_planes_fragment>')) return;
-      sh.uniforms.uVcP = VARCO.p; sh.uniforms.uVcC = VARCO.c; sh.uniforms.uVcK = VARCO.k;
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1;').replace('#include <project_vertex>', `#include <project_vertex>
+      if (!sh.vertexShader.includes('#include <project_vertex>') || !sh.fragmentShader.includes('#include <clipping_planes_fragment>') || sh.fragmentShader.includes('uVcA')) return;
+      varcoUni2(sh);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1; varying vec3 vVcS;').replace('#include <project_vertex>', `#include <project_vertex>
         { vec4 w1 = vec4(transformed, 1.);
         #ifdef USE_INSTANCING
           w1 = instanceMatrix * w1;
         #endif
-          vVc1 = (modelMatrix * w1).xyz; }`);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1; uniform vec3 uVcP; uniform vec3 uVcC; uniform vec4 uVcK;')
-        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-        if (uVcK.y > 0.) { vec3 ab = uVcC - uVcP; float L = length(ab); vec3 u = ab / L; float s = dot(vVc1 - uVcP, u); float d = length(vVc1 - uVcP - u * s);
-          float open = (1. - smoothstep(uVcK.x, uVcK.y, d)) * smoothstep(uVcK.z, uVcK.z + 1.5, s) * step(s, L - 1.) * step(uVcK.w, vVc1.y);
-          vec2 q = floor(gl_FragCoord.xy); float dth = fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453);
-          if (open > dth * .9 + .1) discard; }`); };
-    wrap.toString = () => prev.toString() + '|vc1';   // la chiave del programma di default legge onBeforeCompile.toString()
+          vVc1 = (modelMatrix * w1).xyz; vVcS = gl_Position.xyw; }`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vVc1; varying vec3 vVcS; ' + VC_DECL)
+        .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n        ' + vcFrag2('vVc1', 'vVcS', true)); };
+    wrap.toString = () => prev.toString() + '|vc2';   // la chiave del programma di default legge onBeforeCompile.toString()
     m.onBeforeCompile = wrap;
-    if (pk !== THREE.Material.prototype.customProgramCacheKey) m.customProgramCacheKey = function () { return pk.call(m) + '|vc1'; };
+    if (pk !== THREE.Material.prototype.customProgramCacheKey) m.customProgramCacheKey = function () { return pk.call(m) + '|vc2'; };
     m.needsUpdate = true;
   }
   function varcoScan1() {   // ogni tanto: i materiali nuovi entrano nel varco (le case si costruiscono a pezzi, i tetti si arredano)
@@ -1103,16 +1111,16 @@ var Render = (function () {
     const m = new THREE.MeshLambertMaterial({ map, color: tint || '#ffffff', alphaTest: leafy ? .5 : 0, side: leafy ? THREE.DoubleSide : THREE.FrontSide });
     if (leafy) { m.color.multiplyScalar(1.55); m.emissive = new THREE.Color('#34482c'); m.emissiveMap = map; m.emissiveIntensity = .45; }   /* [verde2] era .7: la luce propria appiattiva le chiome */ else m.color.multiplyScalar(1.15);   // [isola33] il bosco vivo
     m.onBeforeCompile = sh => {
-      sh.uniforms.vTime = VEGU.time; sh.uniforms.uPl = NATU.pl; sh.uniforms.uCm = NATU.cm; sh.uniforms.wG = VENTO.g;   // [animazioni-mondo]
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; uniform float wG; varying float vSnow; varying vec3 vWP; varying float vLh; varying float vLi;')   /* [animazioni-mondo] wG */   /* [verde2] vLh, vLi */
+      sh.uniforms.vTime = VEGU.time; sh.uniforms.uPl = NATU.pl; sh.uniforms.uCm = NATU.cm; sh.uniforms.wG = VENTO.g; varcoUni2(sh);   /* [varco2] */   // [animazioni-mondo]
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; uniform float wG; varying float vSnow; varying vec3 vWP; varying float vLh; varying float vLi; varying vec3 vVcS;')   /* [animazioni-mondo] wG */   /* [verde2] vLh, vLi */
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           vSnow = aSnow; vLh = clamp(aSway / 1.6 + .35, 0., 1.); vLi = fract(sin(instanceMatrix[3].x * 12.9898 + instanceMatrix[3].z * 78.233) * 43758.5453);   // [verde2] quota nella chioma, ogni pianta la sua tinta
           float ph = instanceMatrix[3].x * .37 + instanceMatrix[3].z * .29;
           float gw = wG * (.55 + .45 * sin(vTime * .8 - instanceMatrix[3].x * .045 - instanceMatrix[3].z * .015));   // [animazioni-mondo] la raffica passa sul bosco da ovest
           transformed.x += ((sin(vTime * 1.3 + ph) * .05 + sin(vTime * 3.1 + ph * 2.) * .014) * (.5 + gw * 1.5) + gw * .08) * aSway;   // [animazioni-mondo] più forte e piegato col vento
           transformed.z += (cos(vTime * 1.1 + ph) * .04 * (.5 + gw * 1.5) + gw * .03) * aSway;   // [animazioni-mondo]`).replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
-          vWP = (modelMatrix * instanceMatrix * vec4(transformed, 1.)).xyz;`);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSnow; varying vec3 vWP; uniform vec3 uPl; uniform vec3 uCm; varying float vLh; varying float vLi;\nfloat lfH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\nfloat lfN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(lfH(i), lfH(i + vec2(1., 0.)), f.x), mix(lfH(i + vec2(0., 1.)), lfH(i + 1.), f.x), f.y); }')
+          vWP = (modelMatrix * instanceMatrix * vec4(transformed, 1.)).xyz;`).replace('#include <project_vertex>', '#include <project_vertex>\n          vVcS = gl_Position.xyw;');   /* [varco2] */
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSnow; varying vec3 vWP; uniform vec3 uPl; uniform vec3 uCm; varying float vLh; varying float vLi; varying vec3 vVcS; ' + VC_DECL + '\nfloat lfH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\nfloat lfN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(lfH(i), lfH(i + vec2(1., 0.)), f.x), mix(lfH(i + vec2(0., 1.)), lfH(i + 1.), f.x), f.y); }')
         .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance *= lfS;')
         .replace('#include <color_fragment>', `#include <color_fragment>
           float lfS = 1.;
@@ -1122,10 +1130,7 @@ var Render = (function () {
             lfS = mix(.66, 1.1, smoothstep(.05, .95, vLh)) * (.9 + .2 * cl);
             diffuseColor.rgb *= lfS * mix(vec3(1.03, 1.01, .95), vec3(.96, 1., 1.02), vLi); }   /* [verde3] tinte vicine: la scena si tiene insieme */` : ''}
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.6' : '0.'});
-          { vec3 ab = uCm - uPl; float t = clamp(dot(vWP - uPl, ab) / dot(ab, ab), 0., 1.); float d = length(vWP - (uPl + ab * t));
-            float open = (1. - smoothstep(1.6, 3.4, d)) * step(.04, t) * step(vWP.y, uPl.y + 30.) * step(uPl.y + .9, vWP.y);
-            vec2 q = floor(gl_FragCoord.xy); float dth = fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453);
-            if (open > dth * .9 + .1) discard; }`);
+          ${vcFrag2('vWP', 'vVcS')}   /* [varco2] le chiome si aprono come le case, nette, senza retino a caso */`);
     };
     m.customProgramCacheKey = () => 'natMat' + (leafy ? 'L' : 'B');   // [verde2] chiome e tronchi hanno lo stesso testo di shader: senza chiave three darebbe a tutti il primo programma compilato
     NAT.mats[k] = m; return m;
@@ -2352,6 +2357,10 @@ var Render = (function () {
     pedalo(r) { const g = G0(), col = pick(r, ['#f4a6c0', '#7fd6e0', '#f0d060']); [-.55, .55].forEach(o => add(g, box(.5, .45, 2.5, sm(col)), o, .05, 0)); add(g, box(1.5, .14, 1.4, PM.white()), 0, .35, -.1); add(g, box(1.1, .55, .1, PM.white()), 0, .65, -.62); add(g, new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, .08, 10, 1, false, 0, Math.PI), sm('#f4f0e6')), 0, .5, .6, 0, 0, Math.PI / 2); return g; },
   };
   BOATS.secca = r => BOATS.gozzo(r);
+  // [modelli2] gozzo, lancia, motoscafo, peschereccio e traghetto vengono da veicoli3d.js (fasciame, falchetta, bitte, timone, cabine, reti e nasse);
+  // quelli qui sopra restano di riserva. Il traghetto non ha ancora un ormeggio in world.js.
+  DRAFT.traghetto = 1.3;
+  ['gozzo', 'lancia', 'motoscafo', 'peschereccio', 'traghetto'].forEach(k => { const old = BOATS[k]; BOATS[k] = (r, o) => { const B = window.Veicoli3D && Veicoli3D.barca(k, r, o); if (!B) return old ? old(r, o) : G0(); COSTA.lastH = B.H; return B.g; }; });
   // [costa] la sagoma invisibile alla linea di galleggiamento: si disegna prima del mare e scrive solo la profondità,
   // così il piano dell'acqua non entra negli scafi aperti (gozzi, lance, pozzetti). Segue la sezione vera dello scafo.
   const MASKM = new THREE.MeshBasicMaterial({ colorWrite: false });
@@ -9000,6 +9009,18 @@ var Render = (function () {
     ud.len = L;
     return finishVehicle(g, ud);
   }
+  // [modelli2] i mezzi di veicoli3d.js (le auto del 1986, furgoni, camion, Ape, Vespa, bici): il livello alto fuso per materiale
+  // (restano a parte scocca, parabrezza, paraurti, fari, ruote, tergicristalli, pedivelle) e quello basso, in un LOD.
+  // I modelli vecchi qui sotto (CARS, apeMesh...) restano solo se veicoli3d.js manca.
+  const V3LOD = 70;   // oltre questa distanza dalla camera, il livello basso
+  function lod3d(R) {
+    const u = R.ud; R.alto.updateMatrixWorld(true);
+    u.tails = u.tails.map(t => ({ position: t.getWorldPosition(new THREE.Vector3()) }));   // i bagliori dei fanali stanno dove sono i fanali, anche dentro i loro gruppi
+    const alto = finishVehicle(R.alto, u), basso = mergeGroup(R.basso), g = new THREE.LOD();
+    g.addLevel(alto, 0); g.addLevel(basso, V3LOD); g.userData = u; u.v3d = true; return g;
+  }
+  function veicolo3d(v) { if (!window.Veicoli3D) return null; try { const R = Veicoli3D.perVeicolo(v); return R ? lod3d(R) : null; } catch (e) { console.warn('[modelli2]', v.kind, e); return null; } }
+  function mezzo3d(id, color) { if (!window.Veicoli3D) return null; try { const R = Veicoli3D.costruisci(id, Veicoli3D.epoca(color), {}); return R ? lod3d(R) : null; } catch (e) { console.warn('[modelli2]', id, e); return null; } }
   // fonde i pezzi fissi del mezzo: restano separati scocca (ammaccature), ruote, parabrezza, fari e paraurti
   function finishVehicle(g, ud) {
     if (ud.body) ud.body.userData.keep = true; if (ud.ws) ud.ws.userData.keep = true; if (ud.parts.bumper) ud.parts.bumper.userData.keep = true;
@@ -9007,6 +9028,7 @@ var Render = (function () {
     const out = mergeGroup(g); out.userData = ud; return out;
   }
   function apeMesh(color) {
+    { const m = mezzo3d('ape', color); if (m) return m; }   // [modelli2]
     const g = G0(), paint = std({ color, roughness: .35, metalness: .3 }), dark = sl('#141218'), chrome = std({ color: '#d0d0d8', metalness: .8, roughness: .2 });
     const glass = std({ color: '#1e2a3a', roughness: .08, metalness: .5, emissive: '#0a1422' }), hl = new THREE.MeshBasicMaterial({ color: '#fff4d0', toneMapped: false }), tl = new THREE.MeshBasicMaterial({ color: '#b01818', toneMapped: false });
     const ud = { paint: [paint], glass, lamps: [], tails: [], tlMat: tl, wheels: [], front: [], dents: 0, parts: {} };
@@ -9034,6 +9056,7 @@ var Render = (function () {
   }
   // Vespa: scudo, scocca posteriore bombata, sella, faro sul manubrio
   function vespaMesh(color) {
+    { const m = mezzo3d('vespa', color); if (m) return m; }   // [modelli2]
     const g = G0(), c = std({ color, roughness: .32, metalness: .3 }), dark = sl('#141218'), chrome = std({ color: '#d0d0d8', metalness: .8, roughness: .2 });
     const ud = { paint: [c], lamps: [[0, 1.26, .78]], tails: [], wheels: [], front: [], two: true, dents: 0, parts: {} };
     const rearS = sideShape([[.05, .42], [.08, .62], [-.05, .8], [-.35, .9], [-.7, .86], [-.9, .72], [-.97, .5], [-.95, .34]], [[-.6, .24]], .34);
@@ -9157,8 +9180,9 @@ var Render = (function () {
   function vehicleMesh(v) {
     const K = G.VK[v.kind];
     const glb = K.glb && window.Models && Models.has(K.glb) ? Models.vehicle(K.glb, K, v.color) : null;
-    const g = glb || (v.kind === 'vespa' ? vespaMesh(v.color) : v.kind === 'bmx' ? bmxMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
-    if (K.scale && !glb) g.scale.set(K.scale[0], K.scale[1], K.scale[2]);
+    const v3 = glb ? null : veicolo3d(v);   // [modelli2] il modello vero di quel mezzo (126 o Panda, Ritmo o Uno...)
+    const g = glb || v3 || (v.kind === 'vespa' ? vespaMesh(v.color) : v.kind === 'bmx' ? bmxMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
+    if (K.scale && !glb && !v3) g.scale.set(K.scale[0], K.scale[1], K.scale[2]);
     g.userData.glbWait = !!K.glb && !glb;
     g.userData.glb = !!glb;   // [animazioni-mondo] le auto dai modelli non hanno il profilo del parabrezza
     if (window.RisaccaUI && RisaccaUI.dressVehicle) { try { RisaccaUI.dressVehicle(g, v, THREE); } catch (e) { } } // corazze, rostri, insegne militari
@@ -11989,7 +12013,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   function vehDoor(g, v, u) {   // [animazioni-mondo] la portiera del guidatore (lato -x, quello da cui si scende), fatta solo quando serve
     const K = G.VK[v.kind], D = !u.glb ? CARS[K.mesh || v.kind] : null, s = -1;
     let hw, zf, zb, yb, yt, yw, cw;
-    if (D) { hw = D.W / 2; cw = D.CW / 2; zf = D.win[0][0] - .02; zb = D.cab.length > 3 ? Math.max(D.win[3][0] + .25, (D.win[1][0] + D.win[2][0]) / 2 - .05) : D.win[3][0]; yb = D.yb + .06; yt = D.win[0][1]; yw = (D.win[1][1] + D.win[2][1]) / 2 - .04; if (D.L < 3.4) zb = Math.min(zb, zf - 1.05); }
+    if (u.porta) ({ hw, cw, zf, zb, yb, yt, yw } = u.porta);   // [modelli2] la portiera del modello di veicoli3d.js
+    else if (D) { hw = D.W / 2; cw = D.CW / 2; zf = D.win[0][0] - .02; zb = D.cab.length > 3 ? Math.max(D.win[3][0] + .25, (D.win[1][0] + D.win[2][0]) / 2 - .05) : D.win[3][0]; yb = D.yb + .06; yt = D.win[0][1]; yw = (D.win[1][1] + D.win[2][1]) / 2 - .04; if (D.L < 3.4) zb = Math.min(zb, zf - 1.05); }
     else { const sc = g.scale.x || 1; hw = K.wid / 2 / sc; cw = hw * .86; zf = K.len * .14; zb = -K.len * .1; yb = .32; yt = .82; yw = 1.18; }
     const L = Math.max(.7, zf - zb), rig = new THREE.Group(), piv = new THREE.Group();
     const panel = box(.05, yt - yb, L, u.paint[0]); panel.position.set(0, (yb + yt) / 2, -L / 2); piv.add(panel);
@@ -13523,11 +13548,11 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (!(B.fade > .001)) { const bx = (B.box3.min.x + B.box3.max.x) / 2, bz = (B.box3.min.z + B.box3.max.z) / 2, br = Math.hypot(B.box3.max.x - B.box3.min.x, B.box3.max.z - B.box3.min.z) / 2 + 6;
         const t = Math.max(0, Math.min(1, ((bx - sx0) * sdx + (bz - sz0) * sdz) / sl2)), ex = sx0 + sdx * t - bx, ez = sz0 + sdz * t - bz; if (ex * ex + ez * ez > br * br) { B.fade = 0; return; } }
       const hit = !(feet0 !== null && (B.b === roofB0 || (roofB0 && B.b && B.b.id === roofB0.id) || B.box3.max.y - 2.5 < feet0 + .8)) && rays.some(ry => ry.intersectBox(B.box3, hitv) !== null); if (hit && rays[0].intersectBox(B.box3, hitv) !== null) covered = true;
-      const target = hit ? 1 : 0; B.fade += (target - B.fade) * Math.min(1, dt * 8); fadeTick1(B);   /* [pulitore1] */
+      const target = hit && !VARCO.last ? 1 : 0; B.fade += (target - B.fade) * Math.min(1, dt * 8); fadeTick1(B);   /* [pulitore1] */
       const op = 1 - B.fade * .9;
       B.__op = op; B.mats.forEach(m => { const kt = m.userData.keepTr, tr = op < .99 || !!kt; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !tr; if (m.emissiveMap) m.emissiveIntensity = dyn.__ne * op; });   // [case] keepTr
     });
-    if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = covered && !pveh);
+    if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = covered && !pveh && !VARCO.last);   // [varco2] col varco aperto il personaggio si vede davvero: niente sagoma arancione sopra
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }   /* [pulitore1] */
 
     INDOOR.quad = Math.round(((cam.yaw % 6.2832) + 6.2832) % 6.2832 / (Math.PI / 2) - .5) & 3;
@@ -13537,9 +13562,15 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     {   // [varco1] la capsula fra te e la camera: a piedi stretta e vicina, alla guida più larga e oltre il muso del mezzo
       if (time - VARCO.t > 1.5) { VARCO.t = time; varcoScan1(); }
       const on = !VARCO.off && !ui.intro && !ui.studio && !ui.focus && !p.indoor && !indoorNow && !ugNow, fy = (feet0 !== null ? feet0 : groundH(focus[0][0], focus[0][1]));
-      const rOut = lerp(Math.min(6, Math.max(2.4, viewH * .075)), 4.2, ease);
-      VARCO.p.value.set(focus[0][0], fy + .9, focus[0][1]); VARCO.c.value.copy(camera.position);
-      VARCO.k.value.set(rOut * .5, on ? rOut : 0, lerp(1.2, 3.5, ease), fy + 1);
+      // [varco2] l'ellisse sullo schermo: centro dove sta il personaggio, semiassi da metri a NDC alla sua distanza; la casa intera non
+      // sfuma più (VARCO.last: col varco acceso il ciclo delle case lascia tutto pieno, niente trasparenze né ricompilazioni)
+      VARCO.last = on; VARCO.amt += ((on ? 1 : 0) - VARCO.amt) * Math.min(1, dt * 5); if (!on && VARCO.amt < .02) VARCO.amt = 0;
+      const R = lerp(Math.min(4, Math.max(1.6, viewH * .06)), 4.2, ease), v = VARCO.v.set(focus[0][0], fy + .9, focus[0][1]);
+      const ce = camera.matrixWorld.elements, vz = -((v.x - camera.position.x) * ce[8] + (v.y - camera.position.y) * ce[9] + (v.z - camera.position.z) * ce[10]); v.project(camera);
+      const ky = 1 / (Math.max(.5, vz) * Math.tan(camera.fov * Math.PI / 360)), kx = ky / camera.aspect;
+      const tx = camera.position.x - focus[0][0], tz = camera.position.z - focus[0][1], tl = Math.hypot(tx, tz) || 1;
+      VARCO.a.value.set(v.x, v.y, R * kx, R * 1.3 * ky); VARCO.b.value.set(tx / tl, tz / tl, fy + .35, VARCO.amt);
+      VARCO.p.value.set(focus[0][0], fy + .9, focus[0][1], lerp(.35, 2.5, ease));
     }
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     ombre1(st, night);   /* [ombre1] */
