@@ -1,26 +1,275 @@
 [
- { "nome": "auto_davanti", "celle": true, "cols": 5, "side": 0.62, "el": 0.42, "pose": [
-  { "nome": "Fiat 126", "src": "veicoli:f126", "col": "#e9e4d6" },
-  { "nome": "Fiat Panda", "src": "veicoli:panda", "col": "#b5221c" },
-  { "nome": "Fiat 127", "src": "veicoli:f127", "col": "#2e4a7a" },
-  { "nome": "Fiat Uno", "src": "veicoli:uno", "col": "#a8acb0" },
-  { "nome": "Fiat Ritmo", "src": "veicoli:ritmo", "col": "#c8762a" },
-  { "nome": "Lancia Delta", "src": "veicoli:delta", "col": "#3c5a3a" },
-  { "nome": "Alfa 33", "src": "veicoli:alfa33", "col": "#8a1c1c" },
-  { "nome": "Alfa Giulietta", "src": "veicoli:giulietta", "col": "#c9b27a" },
-  { "nome": "Fiat 131 della Tutela", "src": "veicoli:f131", "col": "#6c7684", "opz": { "livrea": "tutela" } },
-  { "nome": "Alfetta volante", "src": "veicoli:alfetta", "col": "#8fb4d8", "opz": { "livrea": "polizia" } }
- ] },
- { "nome": "auto_dietro", "celle": true, "cols": 5, "side": 2.5, "el": 0.42, "pose": [
-  { "nome": "Fiat 126", "src": "veicoli:f126", "col": "#e9e4d6" },
-  { "nome": "Fiat Panda", "src": "veicoli:panda", "col": "#b5221c" },
-  { "nome": "Fiat 127", "src": "veicoli:f127", "col": "#2e4a7a" },
-  { "nome": "Fiat Uno", "src": "veicoli:uno", "col": "#a8acb0" },
-  { "nome": "Fiat Ritmo", "src": "veicoli:ritmo", "col": "#c8762a" },
-  { "nome": "Lancia Delta", "src": "veicoli:delta", "col": "#3c5a3a" },
-  { "nome": "Alfa 33", "src": "veicoli:alfa33", "col": "#8a1c1c" },
-  { "nome": "Alfa Giulietta", "src": "veicoli:giulietta", "col": "#c9b27a" },
-  { "nome": "Fiat 131 della Tutela", "src": "veicoli:f131", "col": "#6c7684", "opz": { "livrea": "tutela" } },
-  { "nome": "Alfetta volante", "src": "veicoli:alfetta", "col": "#8fb4d8", "opz": { "livrea": "polizia" } }
- ] }
+ {
+  "nome": "auto_davanti",
+  "celle": true,
+  "cols": 5,
+  "side": 0.62,
+  "el": 0.42,
+  "pose": [
+   {
+    "nome": "Fiat 126",
+    "src": "veicoli:f126",
+    "col": "#e9e4d6"
+   },
+   {
+    "nome": "Fiat Panda",
+    "src": "veicoli:panda",
+    "col": "#b5221c"
+   },
+   {
+    "nome": "Fiat 127",
+    "src": "veicoli:f127",
+    "col": "#2e4a7a"
+   },
+   {
+    "nome": "Fiat Uno",
+    "src": "veicoli:uno",
+    "col": "#a8acb0"
+   },
+   {
+    "nome": "Fiat Ritmo",
+    "src": "veicoli:ritmo",
+    "col": "#c8762a"
+   },
+   {
+    "nome": "Lancia Delta",
+    "src": "veicoli:delta",
+    "col": "#3c5a3a"
+   },
+   {
+    "nome": "Alfa 33",
+    "src": "veicoli:alfa33",
+    "col": "#8a1c1c"
+   },
+   {
+    "nome": "Alfa Giulietta",
+    "src": "veicoli:giulietta",
+    "col": "#c9b27a"
+   },
+   {
+    "nome": "Fiat 131 della Tutela",
+    "src": "veicoli:f131",
+    "col": "#6c7684",
+    "opz": {
+     "livrea": "tutela"
+    }
+   },
+   {
+    "nome": "Alfetta volante",
+    "src": "veicoli:alfetta",
+    "col": "#8fb4d8",
+    "opz": {
+     "livrea": "polizia"
+    }
+   }
+  ]
+ },
+ {
+  "nome": "auto_dietro",
+  "celle": true,
+  "cols": 5,
+  "side": 2.5,
+  "el": 0.42,
+  "pose": [
+   {
+    "nome": "Fiat 126",
+    "src": "veicoli:f126",
+    "col": "#e9e4d6"
+   },
+   {
+    "nome": "Fiat Panda",
+    "src": "veicoli:panda",
+    "col": "#b5221c"
+   },
+   {
+    "nome": "Fiat 127",
+    "src": "veicoli:f127",
+    "col": "#2e4a7a"
+   },
+   {
+    "nome": "Fiat Uno",
+    "src": "veicoli:uno",
+    "col": "#a8acb0"
+   },
+   {
+    "nome": "Fiat Ritmo",
+    "src": "veicoli:ritmo",
+    "col": "#c8762a"
+   },
+   {
+    "nome": "Lancia Delta",
+    "src": "veicoli:delta",
+    "col": "#3c5a3a"
+   },
+   {
+    "nome": "Alfa 33",
+    "src": "veicoli:alfa33",
+    "col": "#8a1c1c"
+   },
+   {
+    "nome": "Alfa Giulietta",
+    "src": "veicoli:giulietta",
+    "col": "#c9b27a"
+   },
+   {
+    "nome": "Fiat 131 della Tutela",
+    "src": "veicoli:f131",
+    "col": "#6c7684",
+    "opz": {
+     "livrea": "tutela"
+    }
+   },
+   {
+    "nome": "Alfetta volante",
+    "src": "veicoli:alfetta",
+    "col": "#8fb4d8",
+    "opz": {
+     "livrea": "polizia"
+    }
+   }
+  ]
+ },
+ {
+  "nome": "mezzi",
+  "celle": true,
+  "cols": 4,
+  "side": 0.7,
+  "el": 0.42,
+  "pose": [
+   {
+    "nome": "Fiat Ducato",
+    "src": "veicoli:ducato",
+    "col": "#e9e4d6"
+   },
+   {
+    "nome": "OM telonato",
+    "src": "veicoli:om",
+    "col": "#2e4a7a"
+   },
+   {
+    "nome": "Camion col cassone",
+    "src": "veicoli:cassonato",
+    "col": "#c8762a"
+   },
+   {
+    "nome": "Camion dei rifiuti",
+    "src": "veicoli:rifiuti",
+    "col": "#efece2"
+   },
+   {
+    "nome": "Camion della Tutela",
+    "src": "veicoli:telonato",
+    "col": "#5a6250",
+    "opz": {
+     "military": true
+    }
+   },
+   {
+    "nome": "Blindato della Guardia",
+    "src": "veicoli:blindato",
+    "col": "#4a5446"
+   },
+   {
+    "nome": "Campagnola dei Grigi",
+    "src": "veicoli:campagnola",
+    "col": "#5c6650",
+    "opz": {
+     "military": true
+    }
+   },
+   {
+    "nome": "Autobus",
+    "src": "veicoli:autobus",
+    "col": "#e26a1a"
+   }
+  ]
+ },
+ {
+  "nome": "due_ruote",
+  "celle": true,
+  "cols": 5,
+  "side": 1.1,
+  "el": 0.3,
+  "pose": [
+   {
+    "nome": "Ape",
+    "src": "veicoli:ape",
+    "col": "#3a6a8a",
+    "opz": {
+     "seme": 0
+    }
+   },
+   {
+    "nome": "Vespa",
+    "src": "veicoli:vespa",
+    "col": "#8fb0c4"
+   },
+   {
+    "nome": "Ciao",
+    "src": "veicoli:ciao",
+    "col": "#b5221c"
+   },
+   {
+    "nome": "Bici da donna",
+    "src": "veicoli:bici",
+    "col": "#1f3a5f"
+   },
+   {
+    "nome": "BMX",
+    "src": "veicoli:bmx",
+    "col": "#f0e2a8"
+   }
+  ]
+ },
+ {
+  "nome": "barche",
+  "celle": true,
+  "cols": 3,
+  "side": 0.75,
+  "el": 0.5,
+  "pose": [
+   {
+    "nome": "Gozzo con le nasse",
+    "src": "veicoli:gozzo",
+    "opz": {
+     "seme": 3
+    }
+   },
+   {
+    "nome": "Gozzo con la rete",
+    "src": "veicoli:gozzo",
+    "opz": {
+     "seme": 11
+    }
+   },
+   {
+    "nome": "Lancia a motore",
+    "src": "veicoli:lancia",
+    "opz": {
+     "seme": 4
+    }
+   },
+   {
+    "nome": "Motoscafo",
+    "src": "veicoli:motoscafo",
+    "opz": {
+     "seme": 2
+    }
+   },
+   {
+    "nome": "Peschereccio",
+    "src": "veicoli:peschereccio",
+    "opz": {
+     "seme": 6
+    }
+   },
+   {
+    "nome": "Traghetto",
+    "src": "veicoli:traghetto",
+    "opz": {
+     "seme": 9
+    }
+   }
+  ]
+ }
 ]

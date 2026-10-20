@@ -1,4 +1,4 @@
-# Ricompone index.html dai sorgenti in src/ (ogni /*nome.js*/ diventa il contenuto del file)
+# Ricompone index.html dai sorgenti in src/ (ogni /*nome.js*/ diventa il contenuto del file; [modelli2] anche i nomi con le cifre: oggetti3d.js, veicoli3d.js)
 # e editor.html, lo Studio: lo stesso gioco con window.PV_STUDIO acceso (mappa, interni, hangar dei modelli; vedi src/studio.js)
 import re
 h = open('src/index.src.html', encoding='utf-8', errors='ignore').read()
@@ -9,8 +9,8 @@ SOLO_STUDIO = {'studio.js'}
 # [pausa] moduli messi da parte per ora (il codice resta in src/, con le sue prove): fuori sia dal gioco sia dallo Studio.
 # Per rimetterlo basta togliere il nome da qui.
 IN_PAUSA = {'skate.js'}
-out = re.sub(r'/\*([a-z_.]+\.js)\*/', lambda m: '' if m.group(1) in SOLO_STUDIO or m.group(1) in IN_PAUSA else sub(m), h)
-studio = re.sub(r'/\*([a-z_.]+\.js)\*/', lambda m: '' if m.group(1) in IN_PAUSA else sub(m), h)
+out = re.sub(r'/\*([a-z0-9_.]+\.js)\*/', lambda m: '' if m.group(1) in SOLO_STUDIO or m.group(1) in IN_PAUSA else sub(m), h)
+studio = re.sub(r'/\*([a-z0-9_.]+\.js)\*/', lambda m: '' if m.group(1) in IN_PAUSA else sub(m), h)
 open('index.html', 'w', encoding='utf-8').write(out)
 print('index.html', len(out))
 st = studio.replace('<title>Porto Vecchio — Isola</title>', '<title>Porto Vecchio — Studio</title>', 1)

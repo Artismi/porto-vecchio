@@ -321,7 +321,7 @@ var Veicoli3D = (function () {
     }
     D.wells.forEach(([z, R]) => {   // il passaruota (mezzo cilindro, sopra) e la sospensione: semiasse e montante che reggono la ruota
       M(alto, new THREE.CylinderGeometry(R - .012, R - .012, D.W - .1, 8, 1, true, 0, PI), passa(), 0, D.r, z, 0, 0, PI / 2);
-      [-1, 1].forEach(s => { const xi = s * (hw0 - .045 - (D.cerchi === 'lega' ? .035 : .012)), xm = s * (hw0 - .42); asta(alto, [xi, D.r, z], [xm, D.r, z], .035, C.scuro, 4); asta(alto, [xm, D.r - .03, z], [xm, D.r + R - .02, z], .03, C.scuro, 4); });
+      if (!D.noSosp) [-1, 1].forEach(s => { const xi = s * (hw0 - D.tw / 2 - .03 + D.tw / 2 + ({ camion: -.01, lega: -.045, coppa: -.015 }[D.cerchi] || -.02)), xm = s * (hw0 - .42); asta(alto, [xi, D.r, z], [xm, D.r, z], .035, C.scuro, 4); asta(alto, [xm, D.r - .03, z], [xm, D.r + R - .02, z], .03, C.scuro, 4); });
     });
     // interni, visti dai vetri: il pianale, i sedili coi poggiatesta, il divano, il cruscotto, il volante
     const zW = Cb.w0[0], zL = Cb.r0[0], yAt = z => ytAt(D, z) + (D.crown || 0) + .004, hb = z => hwAt(D, z) - Cb.inset - .04;
@@ -400,7 +400,7 @@ var Veicoli3D = (function () {
     // ---- il livello basso: poche facce, stessa vernice ----
     M(basso, loft(stazioniBasse(D), { sh: D.sh, tuck: 0, crown: D.crown, basso: true }), paint);
     const Pb = padiglione(D, Cb, true); if (Pb.tetto) M(basso, Pb.tetto, paint); if (Pb.vetro) M(basso, Pb.vetro, C.vetroscuro);
-    RU.forEach(([x, z]) => M(basso, CY(D.r, D.r, D.tw, 6), C.gomma, x, D.r, z, 0, 0, PI / 2));
+    RU.forEach(([x, z]) => M(basso, CY(D.r, D.r, D.tw, 6), C.gomma, x, D.r, z, 0, 0, PI / 2)); D.asse.forEach(z => M(basso, CY(.05, .05, D.W - .1, 5), C.scuro, 0, D.r, z, 0, 0, PI / 2));   // gli assali tengono le ruote
     [-1, 1].forEach(s => { M(basso, BX(.2, .12, .03), C.faro, s * (hw0 - .25), ud.lamps[0] ? ud.lamps[0][1] : .6, zf + .01); if (!D.soloCabina) M(basso, BX(.22, .1, .03), tl, s * (hw0 - .25), .65, zr - .01); });
     M(basso, BX(D.W + .02, D.paraurti.h, .1), mat(D.paraurti.tipo === 'cromo' ? '#d4d6dc' : (D.paraurti.col || '#1c1c20'), D.paraurti.tipo === 'cromo' ? 'cromo' : 'plastica'), 0, D.paraurti.y + D.paraurti.h / 2, zf + .02);
     if (!D.soloCabina) M(basso, BX(D.W + .02, D.paraurti.h, .1), mat(D.paraurti.tipo === 'cromo' ? '#d4d6dc' : (D.paraurti.col || '#1c1c20'), D.paraurti.tipo === 'cromo' ? 'cromo' : 'plastica'), 0, D.paraurti.y + D.paraurti.h / 2, zr - .02);
@@ -409,7 +409,7 @@ var Veicoli3D = (function () {
   function stazioniBasse(D) {
     const T = D.top, zf = T[0][0], zr = T[T.length - 1][0], Z = new Set([zf, zr, zf - D.rf * .5, zr + D.rr * .5]);
     T.forEach(p => Z.add(p[0])); D.wells.forEach(([z, R]) => { Z.add(z - R); Z.add(z); Z.add(z + R); });
-    return [...Z].filter(z => z <= zf && z >= zr).sort((a, b) => a - b).map(z => ({ z, hw: hwAt(D, z), yb: Math.min(ybAt(D, z), ytAt(D, z) - .1), yt: ytAt(D, z) }));
+    return [...Z].filter(z => z <= zf && z >= zr).sort((a, b) => a - b).map(z => ({ z, hw: hwAt(D, z), yb: Math.min(D.sill + (z > zf - .16 ? D.ybF - D.sill : z < zr + .16 ? D.ybR - D.sill : 0), ytAt(D, z) - .1), yt: ytAt(D, z) }));
   }
   // livree: la Polizia (fascia bianca con la scritta, barra dei lampeggianti) e la Tutela (fascia scura, due lampeggianti, la scritta)
   function livrea(k, tipo) {
@@ -516,12 +516,543 @@ var Veicoli3D = (function () {
     porte: [[.82, -.18], [-.18, -1.04]], paraurti: { y: .32, h: .1, t: .07, wrap: .38, tipo: 'cromo' }, fasce: [{ y: .58, h: .04, z0: -1.9, z1: 1.9 }], cerchi: 'lega', colCerchi: '#9a9ca0', interni: '#2e2a28', maniglia: 'cromo',
     muso(k) { k.davanti(griglia(1.36, .16, 4), 0, .62); k.fari([['tondo', .6, .62, .072], ['tondo', .42, .62, .066]]); k.davanti(scudetto(.2), 0, .58, .012); k.frecce(.66, .45, .1, .04); },
     coda(k) { k.fanali(.52, .74, .36, .14, 'frb'); } }; };
+  // Fiat Ducato (1981): muso corto inclinato, tetto alto, porta scorrevole, porte dietro a due ante coi vetri
+  AUTO.ducato = () => { const zf = 2.29, zr = -2.29; return {
+    id: 'ducato', nome: 'Fiat Ducato', L: 4.7, W: 1.96, r: .33, tw: .185, asse: [1.53, -1.39], R: .38, sill: .4, ybF: .44, ybR: .46, rf: .1, rr: .05, sh: .06, tuck: .05, crown: .02,
+    top: [[zf, .62], [zf, .96], [zf - .1, 1.0], [1.55, 1.12], [-2.2, 1.2], [zr, 1.18], [zr, .6]],
+    cab: { w0: [1.55, 1.12], w1: [.9, 2.12], r1: [-2.272, 2.2], r0: [-2.285, 1.2], inset: .04, tumble: .06, S: .5, pw: .07, crown: .03, lunVetro: false },
+    porte: [[1.48, .52]], paraurti: { y: .38, h: .2, t: .08, wrap: .3 }, cerchi: 'acciaio', colCerchi: '#d8d8dc', interni: '#3a3a3c', sedile: .92, divano: 99, antenna: 1.75,
+    muso(k) { const p = k.davanti(new THREE.Group(), 0, .83); M(p, BX(1.76, .3, .02), C.scuro, 0, 0, 0); k.fari([['rett', .72, .83, .22, .16]]); const gr = griglia(.9, .2, 6); gr.position.z = .012; p.add(gr); p.add(stemmaFiat(.14).translateZ(.025)); k.frecce(.78, .62, .12, .06); },
+    coda(k) {
+      const D = k.D; k.fanali(.86, .58, .12, .26, 'rfb', true);
+      const ln = (y0, y1, x) => k.g.add(posa(new THREE.Mesh(BX(.008, y1 - y0, .01), C.scuro), D, x, (y0 + y1) / 2, -1, .002));
+      ln(.5, 2.1, 0); [-1, 1].forEach(s => { k.g.add(posa(new THREE.Mesh(BX(.62, .42, .012), C.vetroscuro), D, s * .42, 1.72, -1, .004)); k.g.add(posa(new THREE.Mesh(BX(.03, .12, .03), C.nero), D, s * .08, 1.1, -1, .012)); });
+      k.g.add(posa(new THREE.Mesh(BX(.52, .115, .008), targa(true, 1)), D, 0, .78, -1, .004));
+    },
+    fianchi(k) {   // la porta scorrevole sul lato del passeggero, con la guida in alto
+      const D = k.D, x = hwAt(D, 0) + .002; [.4, -.62].forEach(z => { M(k.g, BX(.008, 1.2 - .46, .008), C.scuro, x, (1.2 + .46) / 2, z); lista(k.g, [x - D.cab.inset + .004, 1.21, z], [x - D.cab.inset - D.cab.tumble + .006, 1.9, z], .008, .008, C.scuro); });
+      lista(k.g, [x - D.cab.inset - D.cab.tumble + .01, 1.86, -.6], [x - D.cab.inset - D.cab.tumble + .01, 1.86, -2.1], .03, .03, C.nero);
+      M(k.g, BX(.012, .03, .14), C.nero, x + .004, 1.0, .25);
+    } }; };
+  // Fiat Campagnola (1974-87): il fuoristrada della Guardia, cassone squadrato, parafanghi piatti, fari tondi nella griglia, capote di tela
+  AUTO.campagnola = () => { const zf = 1.97, zr = -1.99; return {
+    id: 'campagnola', nome: 'Fiat Campagnola', L: 4.03, W: 1.62, r: .37, tw: .2, asse: [1.18, -1.12], R: .42, sill: .56, ybF: .62, ybR: .62, rf: .05, rr: .05, sh: .04, tuck: .04, crown: .01,
+    top: [[zf, .62], [zf, 1.08], [zf - .05, 1.11], [.66, 1.15], [-1.95, 1.15], [zr, 1.12], [zr, .62]],
+    cab: { w0: [.66, 1.15], w1: [.56, 1.64], r1: [-1.9, 1.88], r0: [-1.975, 1.16], inset: .04, tumble: .05, B: [-.3], S: -.6, pw: .05, crown: .03 },
+    porte: [[.6, -.32]], paraurti: { y: .5, h: .14, t: .06, wrap: .15, col: '#2a2a2a' }, cerchi: 'camion', colCerchi: '#3a3e34', interni: '#2e2e2a', sedile: .85, divano: 99, antenna: -1.6, tergi: 2, maniglia: 'cromo',
+    muso(k) {
+      const p = k.davanti(griglia(1.0, .34, 9, C.scuro, true), 0, .86); void p;
+      k.fari([['tondo', .62, .9, .085]]); k.frecce(.62, .74, .07, .05);
+      [-1, 1].forEach(s => { asta(k.g, [s * .5, .5, 1.96], [s * .5, .4, 2.0], .025, C.scuro, 4); });   // i ganci di traino
+    },
+    coda(k) { k.fanali(.68, .7, .1, .16, 'rf', true); const sc = ruota(.37, .2, 'camion', '#3a3e34', 1, false); sc.position.set(0, ytAt(k.D, 1.3) + k.D.crown + .1, 1.3); sc.rotation.z = PI / 2; k.g.add(sc); },   // la ruota di scorta sul cofano
+    opz(D, o) { if (o.military) D.tetto = '#4f553e'; },
+    fianchi(k) {   // i parafanghi piatti sporgenti
+      const D = k.D; D.asse.forEach(z => [-1, 1].forEach(s => { const x = s * (D.W / 2 + .04); M(k.g, BX(.1, .05, .95), k.paint, x, D.r + D.R + .02, z); M(k.g, BX(.1, .2, .05), k.paint, x, D.r + D.R - .08, z + s * 0 + .46); M(k.g, BX(.1, .2, .05), k.paint, x, D.r + D.R - .08, z - .46); }));
+      if (k.D.tetto) [-1, 1].forEach(s => { for (let z = -1.6; z <= .1; z += .85) M(k.g, BX(.01, .7, .03), mat('#3c4232', 'tela'), s * (D.W / 2 - D.cab.inset - .02), 1.5, z); });   // le cuciture della capote
+    } }; };
+  // l'autobus urbano (Fiat 421, arancio ministeriale): finestrini in fila, tre porte a libro sul lato del marciapiede, la linea sopra il parabrezza
+  AUTO.autobus = () => { const zf = 5.36, zr = -5.36, B = []; for (let z = 4.25; z > -4.6; z -= 1.06) B.push(+z.toFixed(2)); return {
+    id: 'autobus', nome: 'Autobus', L: 10.8, W: 2.5, r: .48, tw: .28, asse: [3.0, -2.6], R: .56, sill: .32, ybF: .4, ybR: .42, rf: .14, rr: .12, sh: .05, tuck: .04, crown: .01,
+    top: [[zf, .42], [zf, 1.15], [zf - .04, 1.2], [-5.3, 1.22], [zr, 1.2], [zr, .42]],
+    cab: { w0: [5.33, 1.2], w1: [5.12, 2.86], r1: [-5.22, 2.9], r0: [-5.33, 1.3], inset: .03, tumble: .07, B, bw: .12, S: -5.0, pw: .08, crown: .06 },
+    porte: [[5.0, 4.0]], paraurti: { y: .3, h: .22, t: .06, wrap: .3, col: '#2a2a2a' }, cerchi: 'camion', colCerchi: '#c8c8cc', interni: '#5a5a5a', sedile: .95, divano: 99, antenna: false, tergi: 2,
+    muso(k) {
+      const p = k.davanti(new THREE.Group(), 0, 2.6); M(p, BX(1.7, .28, .1), C.scuro, 0, .2, 0); M(p, BX(1.5, .2, .02), scritta('7  CORSO', '#141414', '#ffb020', 256, 32), 0, .2, .055);   // la linea
+      M(k.g, BX(.05, 1.6, .04), C.scuro, 0, 2.02, k.zf - .08);   // il montante in mezzo al parabrezza
+      k.fari([['tondo', 1.0, .72, .085], ['tondo', .78, .72, .085]]); k.davanti(griglia(.9, .22, 5), 0, .7); k.frecce(1.12, .5, .1, .06);
+    },
+    coda(k) { k.fanali(1.08, .9, .14, .5, 'rrfb', true); k.dietro(griglia(1.4, .5, 8), 0, 1.3); k.dietro(new THREE.Mesh(BX(.5, .115, .008), targa(true, 2)), 0, .62); },
+    fianchi(k) {
+      const D = k.D, dark = C.vetroscuro;
+      [[4.95, 4.0], [1.3, .25], [-3.85, -4.9]].forEach(([a, b]) => {   // le porte a libro, sul lato del marciapiede (+x)
+        const zm = (a + b) / 2, x = hwAt(D, zm) + .004; M(k.g, BX(.012, 2.3, a - b), dark, x, .45 + 1.15, zm); M(k.g, BX(.016, 2.3, .03), C.nero, x + .002, 1.6, zm); M(k.g, BX(.3, .06, a - b), C.nero, x - .14, .3, zm);
+      });
+      for (let z = 3.6; z > -4.4; z -= .8) [-1, 1].forEach(s => { if (s > 0 && (Math.abs(z - .78) < .7 || z < -3.6)) return; lista(k.g, [s * .8, 1.23, z], [s * .8, 1.7, z - .1], .7, .08, mat('#7a5a3a', 'plastica')); });   // i sedili in fila
+      [1.2, -2.6].forEach(z => M(k.g, BX(.7, .1, .7), mat('#d8d4c8', 'plastica'), 0, 2.97, z));   // i lucernai
+      [-1, 1].forEach(s => M(k.g, BX(.01, .12, 8.8), mat('#f2efe6', 'plastica'), s * (D.W / 2 + .004), 1.05, 0));
+    } }; };
   const ALTRI = {};
+  // ================= I CABINATI: la cabina sopra le ruote davanti, il telaio, le ruote dietro (gemellate sui camion), il cassone =================
+  // S: { id, nome, L, Wc (cabina), Wb (cassone), r, tw, zf, zc (dietro la cabina), zr, aF, aR (assali), belt, tetto, sill, yBed, gemelle, cassone, coloreCassone }
+  function cabinato(S, col, o) {
+    o = o || {};
+    const D = { id: S.id, nome: S.nome, L: S.L, W: S.Wc, r: S.r, tw: S.tw, asse: [S.aF], R: S.r + .07, sill: S.sill, ybF: S.sill + .05, ybR: S.sill + .1, rf: .08, rr: .03, sh: .07, tuck: .04, crown: .02,
+      top: [[S.zf, S.sill + .08], [S.zf, S.belt - .06], [S.zf - .06, S.belt], [S.zc + .03, S.belt + .01], [S.zc, S.belt - .02], [S.zc, S.sill + .2]],
+      cab: { w0: [S.zf - .07, S.belt], w1: [S.zf - .3, S.tetto - .06], r1: [S.zc + .07, S.tetto], r0: [S.zc + .015, S.belt + .01], inset: .035, tumble: .07, S: S.zc + .55, pw: .07, crown: .05, lunVetro: false },
+      porte: [[S.zf - .2, S.zc + .15]], paraurti: { y: S.sill - .12, h: .24, t: .08, wrap: .2, col: '#2a2a2c' }, cerchi: 'camion', colCerchi: S.colCerchi || '#c8c8cc', interni: '#3a3a3a', sedile: .7, divano: 99, antenna: false,
+      soloCabina: true, tergi: 2, muso: S.muso };
+    const R = auto(D, col, o), { alto, basso, ud } = R, k = R.ctx, Wb = S.Wb, hb = Wb / 2, y0 = S.yBed, z0 = S.zc - .07, z1 = S.zr + .06, Lb = z0 - z1;
+    const rail = .4, yRail = y0 - .2;   // il telaio: due longheroni sotto il cassone, dalla cabina alla coda
+    [-1, 1].forEach(s => M(alto, BX(.11, .2, S.zf - .5 - (S.zr + .1)), C.scuro, s * rail, yRail + .1 - .1, (S.zf - .5 + S.zr + .1) / 2));
+    M(alto, BX(Wb - .1, .12, .1), C.scuro, 0, yRail - .02, S.zr + .1);   // la traversa di coda
+    // gli assali e le ruote dietro (gemellate o no)
+    const gem = S.gemelle, xo = hb - S.tw / 2 - .02;
+    asta(alto, [-(xo + S.tw / 2 - .01), S.r, S.aR], [xo + S.tw / 2 - .01, S.r, S.aR], .05, C.scuro, 6); asta(alto, [-(hwAt(D, S.aF) - .03), S.r, S.aF], [hwAt(D, S.aF) - .03, S.r, S.aF], .045, C.scuro, 6);
+    [-1, 1].forEach(s => {
+      const piv = new THREE.Group(); piv.position.set(s * xo, S.r, S.aR); const wh = new THREE.Group(); wh.add(ruota(S.r, S.tw, 'camion', S.colCerchi, s));
+      if (gem) wh.add(ruota(S.r, S.tw, 'camion', S.colCerchi, s).translateX(-s * (S.tw + .03))); piv.add(wh); alto.add(piv); ud.wheels.push({ wh, piv, front: false, r: S.r });
+      const xg = s * (xo - (gem ? (S.tw + .03) / 2 : 0)), wg = gem ? 2 * S.tw + .1 : S.tw + .08;   // il parafango sopra, attaccato al pianale con due staffe
+      M(alto, new THREE.CylinderGeometry(S.r + .08, S.r + .08, wg, 10, 1, true, 0, PI), passa(), xg, S.r, S.aR, 0, 0, PI / 2);
+      M(alto, BX(.05, y0 - .1 - (2 * S.r + .08) + .02, .05), C.scuro, xg, (y0 - .1 + 2 * S.r + .08) / 2, S.aR);
+      asta(alto, [s * (rail + .05), yRail + .05, S.aR], [xg, S.r, S.aR], .03, C.scuro, 4);   // la balestra
+      M(alto, BX(.04, S.r * 1.4, .02), mat('#1a1a1a', 'gomma'), xg, S.r * .7, S.aR - S.r - .12);   // il paraspruzzi
+      asta(alto, [xg, S.r * 1.4, S.aR - S.r - .12], [xg, y0 - .1, S.aR - S.r - .12], .015, C.scuro, 4);
+    });
+    // serbatoio, cassetta della batteria, tubo di scarico dietro la cabina
+    M(alto, CY(.22, .22, .7, 10), mat('#3a3a3e', 'metallo'), -(rail + .27), yRail - .02, (S.zc + S.aR) / 2 + .2, PI / 2);
+    M(alto, BX(.36, .3, .4), C.scuro, rail + .23, yRail - .02, (S.zc + S.aR) / 2 + .2);
+    asta(alto, [rail + .05, yRail, S.zc - .1], [hb - .35, yRail, S.zc - .1], .045, C.acciaio, 6); asta(alto, [hb - .35, yRail - .04, S.zc - .1], [hb - .35, S.tetto + .25, S.zc - .1], .045, C.acciaio, 6); M(alto, BX(.1, S.tetto - yRail, .04), C.scuro, hb - .35, (S.tetto + yRail) / 2, S.zc - .03);   // lo scarico verticale dietro la cabina
+    // le luci di coda sulla traversa, la targa, il paraincastro
+    const tl = ud.tlMat;
+    [-1, 1].forEach(s => { const f = fanale(.22, .1, s > 0 ? 'frb' : 'bfr', tl); f.position.set(s * (hb - .25), yRail - .02, S.zr + .05 - .015); f.rotation.y = PI; alto.add(f); if (f.userData.rosso) ud.tails.push(f.userData.rosso); });
+    const tg = new THREE.Mesh(BX(.52, .115, .008), targa(true, o.targa || 0)); tg.position.set(0, yRail - .17, S.zr + .045); tg.rotation.y = PI; alto.add(tg); M(alto, BX(.04, .12, .04), C.scuro, 0, yRail - .08, S.zr + .07);
+    M(alto, BX(Wb - .5, .1, .08), C.scuro, 0, .5, S.zr + .12); [-1, 1].forEach(s => M(alto, BX(.06, yRail - .1 - .5, .06), C.scuro, s * rail, (yRail - .1 + .5) / 2, S.zr + .12));
+    // il cassone
+    const cc = S.coloreCassone || col, cm = S.coloreCassone ? mat(S.coloreCassone, S.coloreCassone === '#8a6a44' ? 'legno' : 'metallo') : k.paint;
+    M(alto, BX(Wb, .1, Lb), mat('#5a4a38', 'legno'), 0, y0 - .05, (z0 + z1) / 2);
+    for (let z = z1 + .3; z < z0; z += .7) M(alto, BX(Wb - .1, .08, .08), C.scuro, 0, y0 - .14, z);   // le traverse sotto il pianale
+    if (S.cassone === 'cassone' || S.cassone === 'telone') {
+      const hs = S.cassone === 'telone' ? .42 : .55;
+      [-1, 1].forEach(s => { M(alto, BX(.04, hs, Lb), cm, s * (hb - .02), y0 + hs / 2, (z0 + z1) / 2); for (let z = z1 + .02; z <= z0; z += Lb / 4) M(alto, BX(.05, hs, .05), C.scuro, s * (hb - .01), y0 + hs / 2, Math.min(z, z0 - .025)); });
+      M(alto, BX(Wb, hs + .25, .05), cm, 0, y0 + (hs + .25) / 2, z0 - .025); M(alto, BX(Wb, hs, .04), cm, 0, y0 + hs / 2, z1 + .02);   // la sponda davanti (più alta) e la sponda dietro
+      for (let i = 0; i < 3; i++) M(alto, BX(Wb - .02, .02, .06), C.scuro, 0, y0 + hs * (i + .5) / 3, z1 - .002);
+      if (S.cassone === 'cassone' && S.carico !== false) [[-.58, 0, -.45], [0, 0, -.45], [.58, 0, -.45], [-.3, 1, -.45], [.3, 1, -.45], [-.58, 0, -1.0], [0, 0, -1.02]].forEach(([x, l, z], i) => M(alto, BX(.55, .4, .45), mat(['#8a6440', '#7a5430', '#a07a50'][i % 3], 'legno'), x, y0 + .2 + l * .4, z0 + z, 0, (i % 3 - 1) * .06, 0));   // le casse del carico
+      if (S.cassone === 'telone') {   // il telone sugli archi, con le corde
+        const tc = mat(S.tela || '#4a5a3c', 'tela'), yT = S.tetto + .1;
+        M(alto, loft([{ z: z1 + .01, hw: hb - .005, yb: y0 + hs - .05, yt: yT }, { z: z0 - .02, hw: hb - .005, yb: y0 + hs - .05, yt: yT }], { sh: .22, tuck: 0, crown: .04 }), tc);
+        [-1, 1].forEach(s => { for (let z = z1 + .3; z < z0 - .1; z += .55) M(alto, BX(.012, .5, .015), C.scuro, s * (hb + .002), y0 + hs + .2, z); });
+        M(alto, BX(Wb * .8, .015, .012), C.scuro, 0, y0 + hs + .3, z1 + .002);
+      }
+    } else if (S.cassone === 'rifiuti') {   // il compattatore: cassa bombata, la bocca di carico dietro, i bracci alzacassonetti, le pedane
+      const yT = S.tetto + .15, zb = z1 + .75;
+      M(alto, loft([{ z: zb, hw: hb - .02, yb: y0, yt: yT }, { z: (zb + z0) / 2, hw: hb - .01, yb: y0, yt: yT + .05 }, { z: z0 - .02, hw: hb - .02, yb: y0, yt: yT }], { sh: .45, tuck: .04, crown: .06 }), cm);
+      [-1, 1].forEach(s => { M(alto, BX(.01, .14, z0 - zb - .2), mat('#e07018', 'plastica'), s * (hb - .01), y0 + .55, (zb + z0) / 2); M(alto, new THREE.PlaneGeometry(.6, .3), scritta('N.U.', '#e8e4d8', '#2a5a2a', 128, 64), s * (hb - .005), y0 + 1.05, (zb + z0) / 2, 0, s * PI / 2, 0); });
+      [-1, 1].forEach(s => { for (let z = zb + .3; z < z0 - .2; z += .55) M(alto, BX(.03, yT - y0 - .55, .05), C.scuro, s * (hb - .01), y0 + .05 + (yT - y0 - .55) / 2, z); });   // le nervature
+      const hop = new THREE.Group(); hop.position.set(0, y0, zb); alto.add(hop);   // la bocca di carico, inclinata
+      M(hop, BX(Wb - .08, yT - y0 - .1, .74), cm, 0, (yT - y0 - .1) / 2, -.37, -.12);
+      M(hop, BX(Wb - .4, .5, .05), C.scuro, 0, .45, -.762, -.12); M(hop, BX(Wb - .3, .06, .06), mat('#e07018', 'plastica'), 0, .73, -.77, -.12);
+      [-1, 1].forEach(s => { asta(alto, [s * (hb - .25), y0 + .2, zb - .76], [s * (hb - .25), y0 - .45, zb - .95], .04, C.scuro, 4); M(alto, BX(.3, .05, .3), mat('#8a8a90', 'metallo'), s * (hb - .3), .5, S.zr + .2); asta(alto, [s * (hb - .12), .5, S.zr + .2], [s * (hb - .12), 1.5, zb - .75], .018, C.acciaio, 4); });
+      const fl = new THREE.Mesh(BX(.18, .12, .18), mat('#ff8a1a', 'lente')); fl.position.set(0, S.tetto + D.cab.crown + .06, (S.zc + S.zf) / 2); alto.add(fl);   // il lampeggiante sulla cabina
+    }
+    // ---- livello basso del resto ----
+    M(basso, BX(Wb, (S.cassone === 'cassone' ? .6 : S.tetto + .1 - y0), Lb), S.cassone === 'telone' ? mat(S.tela || '#4a5a3c', 'tela') : cm, 0, y0 + (S.cassone === 'cassone' ? .3 : (S.tetto + .1 - y0) / 2), (z0 + z1) / 2);
+    [-1, 1].forEach(s => M(basso, CY(S.r, S.r, gem ? 2 * S.tw : S.tw, 6), C.gomma, s * (xo - (gem ? S.tw / 2 : 0)), S.r, S.aR, 0, 0, PI / 2));
+    M(basso, BX(Wb, .2, .1), C.scuro, 0, yRail, S.zr + .1);
+    ud.len = S.L; void cc;
+    return { alto, basso, ud };
+  }
+  const muscoCamion = k => { const p = k.davanti(new THREE.Group(), 0, k.D.sill + .42); M(p, BX(k.D.W - .3, .34, .02), C.scuro, 0, 0, 0); const gr = griglia(1.0, .26, 6, C.cromo); gr.position.z = .012; p.add(gr); k.fari([['rett', k.D.W / 2 - .26, k.D.sill + .3, .2, .14]]); k.frecce(k.D.W / 2 - .12, k.D.sill + .5, .1, .08); };
+  const CAB = {
+    om: { id: 'om', nome: 'OM Leoncino telonato', L: 4.75, Wc: 1.84, Wb: 1.9, r: .36, tw: .19, zf: 2.32, zc: 1.0, zr: -2.375, aF: 1.62, aR: -1.22, belt: 1.32, tetto: 2.2, sill: .66, yBed: 1.0, gemelle: false, cassone: 'telone', tela: '#3e5a7a', coloreCassone: '#8a6a44', muso: muscoCamion },
+    cassonato: { id: 'cassonato', nome: 'Camion col cassone', L: 5.9, Wc: 2.02, Wb: 2.1, r: .45, tw: .24, zf: 2.89, zc: 1.25, zr: -2.95, aF: 1.98, aR: -1.55, belt: 1.55, tetto: 2.55, sill: .8, yBed: 1.18, gemelle: true, cassone: 'cassone', coloreCassone: '#8a6a44', muso: muscoCamion },
+    telonato: { id: 'telonato', nome: 'Camion militare telonato', L: 5.9, Wc: 2.02, Wb: 2.1, r: .45, tw: .24, zf: 2.89, zc: 1.25, zr: -2.95, aF: 1.98, aR: -1.55, belt: 1.55, tetto: 2.55, sill: .8, yBed: 1.18, gemelle: true, cassone: 'telone', tela: '#4a5038', colCerchi: '#3a3e34', muso: muscoCamion },
+    rifiuti: { id: 'rifiuti', nome: 'Camion dei rifiuti', L: 5.9, Wc: 2.02, Wb: 2.08, r: .45, tw: .24, zf: 2.89, zc: 1.25, zr: -2.95, aF: 1.98, aR: -1.55, belt: 1.55, tetto: 2.55, sill: .8, yBed: 1.12, gemelle: true, cassone: 'rifiuti', coloreCassone: '#5f7a5a', muso: muscoCamion },
+  };
+  for (const id in CAB) ALTRI[id] = { nome: CAB[id].nome, L: CAB[id].L, W: CAB[id].Wb, tipo: 'cabinato', make: (col, o) => cabinato(CAB[id], id === 'rifiuti' ? '#efece2' : col, o) };
+  // ================= IL BLINDATO DELLA GUARDIA (sul tipo del Fiat 6614): scafo a spigoli, ruote grandi fuori dallo scafo, torretta con la mitragliatrice =================
+  function blindato(col, o) {
+    o = o || {};
+    const alto = new THREE.Group(), basso = new THREE.Group(), paint = vernice(col), glass = new THREE.MeshStandardMaterial({ color: '#1c2834', roughness: .1, metalness: .3 }), tl = fanaleMat();
+    const ud = { paint: [paint], glass, lamps: [], tails: [], tlMat: tl, wheels: [], front: [], dents: 0, parts: {} };
+    const W = 2.22, r = .5, tw = .32, aF = 1.55, aR = -1.45, hw = W / 2;
+    const D = { W, r, sill: .62, ybF: .78, ybR: .72, rf: .14, rr: .1, top: [[2.66, .95], [2.6, 1.22], [1.42, 1.7], [-2.55, 1.76], [-2.66, 1.6], [-2.66, .9]], wells: [[aF, .64], [aR, .64]] };
+    ud.body = M(alto, loft(stazioni(D, .5), { sh: .28, tuck: .34, crown: .03 }), paint);   // lo scafo: i fianchi bassi rientrano, quelli alti si smussano
+    D.wells.forEach(([z, R]) => { M(alto, new THREE.CylinderGeometry(R - .01, R - .01, W - .2, 8, 1, true, 0, PI), passa(), 0, r, z, 0, 0, PI / 2); [-1, 1].forEach(s => { asta(alto, [s * .72, r, z], [s * (hw - .02), r, z], .06, C.scuro, 6); asta(alto, [s * .75, r - .03, z], [s * .75, r + R - .03, z], .06, C.scuro, 6); }); });
+    [aF, aR].forEach(z => [-1, 1].forEach(s => { const piv = new THREE.Group(); piv.position.set(s * (hw - tw / 2 - .02), r, z); const wh = ruota(r, tw, 'camion', '#2e3228', s); piv.add(wh); alto.add(piv); ud.wheels.push({ wh, piv, front: z > 0, r }); }));
+    const yAt = z => ytAt(D, z) + .03, slope = Math.atan2(1.7 - 1.22, 2.6 - 1.42);
+    // le feritoie del pilota sul piano inclinato davanti (una è il «parabrezza» che si incrina)
+    [-.45, .05].forEach((x, i) => { const z = 1.62, m = M(alto, BX(.36, .14, .05), glass, x, ytAt(D, z) + .045, z, -Math.atan2(1.18, .48)); if (!i) ud.ws = m; });
+    [-1, 1].forEach(s => { for (const z of [.6, -.6, -1.7]) M(alto, BX(.04, .1, .22), C.vetroscuro, s * (hw + .005), 1.4, z); });   // le feritoie sui fianchi
+    void slope;   // le feritoie sui fianchi, sotto lo smusso
+    // sul tetto: la botola del pilota, la cupola con la mitragliatrice, le botole dietro, le antenne
+    M(alto, CY(.27, .29, .1, 12), paint, -.45, yAt(1.15), 1.15); M(alto, CY(.25, .25, .06, 12), paint, -.45, yAt(1.15) + .1, 1.0, .5);
+    const tu = new THREE.Group(); tu.position.set(.1, yAt(-.3) - .02, -.3); alto.add(tu);
+    M(tu, CY(.48, .52, .32, 14), paint, 0, .16, 0); M(tu, CY(.5, .5, .04, 14), C.scuro, 0, .02, 0); M(tu, CY(.3, .3, .06, 12), paint, -.1, .35, -.1);
+    M(tu, BX(.6, .38, .04), paint, 0, .5, .38, -.15); M(tu, BX(.16, .14, .5), C.scuro, 0, .45, .12); asta(tu, [0, .47, .3], [0, .5, 1.25], .022, C.scuro, 6); M(tu, CY(.03, .03, .12, 8), C.scuro, 0, .5, 1.2, PI / 2);   // la scudatura e la canna
+    M(tu, BX(.12, .12, .2), mat('#4a4a30', 'metallo'), .14, .42, .1);
+    [-1, 1].forEach(s => M(alto, BX(.6, .06, .55), paint, s * .45, yAt(-1.7) + .03, -1.7));
+    [[-.75, -2.2], [.75, -2.2]].forEach(([x, z]) => { M(alto, CY(.04, .05, .08, 8), C.scuro, x, yAt(z) + .02, z); const a = asta(alto, [x, yAt(z) + .06, z], [x, yAt(z) + 2.1, z - .25], .006, C.scuro, 4); a.userData.sporge = true; });
+    // i lanciafumogeni sugli spigoli davanti
+    [-1, 1].forEach(s => { const y = ytAt(D, 1.2) + .03; M(alto, BX(.14, .08, .34), paint, s * (hw - .42), y + .02, 1.2); for (let i = 0; i < 3; i++) M(alto, CY(.04, .04, .2, 8), C.scuro, s * (hw - .42), y + .08, 1.32 - i * .1, -.6); });
+    // davanti: fari con la grata, paraurti a tubo, verricello, ganci, targa
+    [-1, 1].forEach(s => { const f = faroTondo(.08, C.scuro); f.position.set(s * .78, 1.08, zFaccia(D, s * .78, 1) - .02); f.rotation.x = -.35; alto.add(f); ud.front.push(f.userData.lente); ud.lamps.push([s * .78, 1.08, 2.7]);
+      for (let k = 0; k < 3; k++) M(alto, BX(.012, .2, .012), C.scuro, s * .78 - .06 + k * .06, 1.08, zFaccia(D, s * .78, 1) + .02); M(alto, BX(.2, .012, .012), C.scuro, s * .78, 1.17, zFaccia(D, s * .78, 1) + .02); });
+    ud.parts.bumper = M(alto, BX(2.0, .12, .12), C.scuro, 0, .82, 2.69); [-1, 1].forEach(s => { M(ud.parts.bumper, BX(.08, .12, .2), C.scuro, s * .7, 0, -.12); asta(alto, [s * .45, .79, 2.7], [s * .45, .68, 2.77], .03, C.scuro, 4); });
+    M(alto, BX(.5, .26, .2), C.scuro, 0, 1.02, 2.68); const tg = new THREE.Mesh(BX(.36, .1, .008), targa(false, o.targa || 0)); tg.position.set(0, 1.0, 2.79); alto.add(tg);
+    // dietro: la porta grande, i fanali con la grata, le taniche
+    M(alto, BX(1.2, .9, .04), paint, 0, 1.15, -2.68); M(alto, BX(.04, .2, .06), C.scuro, .45, 1.15, -2.71);
+    [-1, 1].forEach(s => { const f = fanale(.12, .1, 'rf', tl); f.position.set(s * .85, 1.05, -2.67); f.rotation.y = PI; alto.add(f); ud.tails.push(f.userData.rosso);
+      M(alto, BX(.32, .4, .16), mat('#4a5238', 'metallo'), s * .72, ytAt(D, -2.3) + .23, -2.3); M(alto, BX(.36, .03, .18), C.scuro, s * .72, ytAt(D, -2.3) + .3, -2.3); });   // le taniche sul tetto, legate
+    // il portello sul fianco, la fascia della Guardia
+    [-1, 1].forEach(s => { M(alto, BX(.02, .7, .85), paint, s * (hw + .005), 1.15, -.55); M(alto, BX(.03, .03, .14), C.scuro, s * (hw + .02), 1.2, -.85);
+      M(alto, new THREE.PlaneGeometry(1.2, .16), scritta('GUARDIA', '#3a4038', '#d8d4c4', 256, 32), s * (hw + .012), 1.45, 1.0, 0, s * PI / 2, 0); });
+    ud.seat = [-.45, 1.25, 1.15]; ud.seat2 = [.1, 1.3, -.3]; ud.len = 5.4; ud.wipers = null;
+    ud.porta = { hw, cw: hw - .1, zf: -.12, zb: -.98, yb: .8, yt: 1.5, yw: 1.55 };
+    M(basso, loft(stazioniBasse(D), { sh: .28, tuck: 0, crown: .03, basso: true }), paint); M(basso, CY(.5, .5, .3, 8), paint, .1, yAt(-.3) + .13, -.3);
+    [aF, aR].forEach(z => [-1, 1].forEach(s => M(basso, CY(r, r, tw, 6), C.gomma, s * (hw - tw / 2 - .02), r, z, 0, 0, PI / 2)));
+    return { alto, basso, ud };
+  }
+  ALTRI.blindato = { nome: 'Blindato della Guardia', L: 5.4, W: 2.25, tipo: 'blindato', make: blindato };
+
+  // ================= L'APE (Piaggio Ape P50): cabina tonda col faro in mezzo, ruota singola davanti, cassone con le sponde =================
+  function ape(col, o) {
+    o = o || {};
+    const D = { id: 'ape', nome: 'Ape Piaggio', L: 2.8, W: 1.22, r: .23, tw: .11, asse: [1.02], ruote: [[0, 1.02, true]], R: .3, sill: .36, ybF: .5, ybR: .38, rf: .3, rr: .05, sh: .12, tuck: .04, crown: .05, noSosp: true,
+      top: [[1.38, .5], [1.4, .7], [1.34, .84], [1.2, .9], [.3, .91], [.28, .88], [.28, .4]],
+      cab: { w0: [1.31, .9], w1: [1.1, 1.58], r1: [.42, 1.64], r0: [.3, .92], inset: .05, tumble: .1, S: .62, pw: .06, crown: .04 },
+      porte: [[1.2, .62]], paraurti: { y: .3, h: .06, t: .04, wrap: .2, tipo: 'cromo', noTarga: true }, cerchi: 'acciaio', colCerchi: '#c8c8cc', interni: '#3a3632', sedile: .82, divano: 99, antenna: false, tergi: 1, manubrio: true, soloCabina: true };
+    const R = auto(D, col, o), { alto, basso, ud } = R, k = R.ctx;
+    // la forcella della ruota davanti e il parafango
+    [-1, 1].forEach(s => asta(alto, [s * .075, D.r, 1.02], [s * .075, D.r + .28, .98], .02, C.scuro, 5));
+    M(alto, new THREE.CylinderGeometry(.27, .27, .16, 10, 1, true, -.3, PI * .9), k.paint, 0, D.r, 1.02, 0, 0, PI / 2);
+    const f = faroTondo(.075); posa(f, D, 0, .74, 1, .002); alto.add(f); ud.front.push(f.userData.lente); ud.lamps = [[0, .74, 1.45]];
+    k.frecce(.5, .74, .06, .04);
+    const tgF = new THREE.Mesh(BX(.2, .1, .008), targa(false, o.targa || 0)); posa(tgF, D, 0, .58, 1, .006); alto.add(tgF);
+    // il telaio, il cassone, l'assale dietro coi parafanghi
+    const y0 = .64, z0 = .25, z1 = -1.38, Wb = 1.3, hb = Wb / 2, Lb = z0 - z1;
+    M(alto, BX(.16, .14, 1.85), C.scuro, 0, .44, -.5);   // la trave centrale
+    M(alto, BX(Wb, .06, Lb), mat('#6a5a48', 'legno'), 0, y0 - .03, (z0 + z1) / 2); M(alto, BX(Wb - .2, .1, .08), C.scuro, 0, y0 - .08, z1 + .3); M(alto, BX(Wb - .2, .1, .08), C.scuro, 0, y0 - .08, z0 - .2);
+    M(alto, BX(.08, .14, Lb - .3), C.scuro, 0, y0 - .1, (z0 + z1) / 2);
+    const hs = .32; [-1, 1].forEach(s => { M(alto, BX(.03, hs, Lb), k.paint, s * (hb - .015), y0 + hs / 2, (z0 + z1) / 2); for (const z of [z1 + .03, (z0 + z1) / 2, z0 - .03]) M(alto, BX(.04, hs, .04), C.scuro, s * (hb - .01), y0 + hs / 2, z); });
+    M(alto, BX(Wb, hs, .03), k.paint, 0, y0 + hs / 2, z0 - .015); M(alto, BX(Wb, hs, .03), k.paint, 0, y0 + hs / 2, z1 + .015);
+    asta(alto, [-.605, D.r, -.95], [.605, D.r, -.95], .03, C.scuro, 5); asta(alto, [0, D.r, -.95], [0, .44, -.8], .04, C.scuro, 4);
+    [-1, 1].forEach(s => { const piv = new THREE.Group(); piv.position.set(s * .57, D.r, -.95); const wh = ruota(D.r, .12, 'acciaio', '#c8c8cc', s); piv.add(wh); alto.add(piv); ud.wheels.push({ wh, piv, front: false, r: D.r });
+      M(alto, new THREE.CylinderGeometry(.29, .29, .16, 8, 1, true, 0, PI), passa(), s * .57, D.r, -.95, 0, 0, PI / 2); M(alto, BX(.04, y0 - .06 - (D.r + .29) + .02, .04), C.scuro, s * .57, (y0 - .06 + D.r + .29) / 2, -.95); });
+    [-1, 1].forEach(s => { const fl = fanale(.1, .08, 'rf', ud.tlMat); fl.position.set(s * .5, y0 + .07, z1 - .01); fl.rotation.y = PI; alto.add(fl); ud.tails.push(fl.userData.rosso); });
+    const tg = new THREE.Mesh(BX(.28, .12, .008), targa(true, o.targa || 0)); tg.position.set(0, y0 + .12, z1 - .006); tg.rotation.y = PI; alto.add(tg);
+    // il carico: cassette di frutta o bombole del gas
+    const sd = (o.seme || 1) % 3;
+    if (sd === 0) [[-.32, -.25], [.32, -.25], [-.32, -.8], [.32, -.8], [0, -.52, 1]].forEach(([x, z, l]) => { const c = M(alto, BX(.5, .26, .36), mat('#a07a50', 'legno'), x, y0 + .13 + (l ? .26 : 0), z); for (let i = 0; i < 6; i++) M(c, new THREE.IcosahedronGeometry(.055, 0), mat(['#e0a020', '#d04a20', '#7a9a3a'][(i + (l || 0)) % 3], 'plastica'), -.16 + (i % 3) * .16, .14, -.09 + Math.floor(i / 3) * .18); });
+    else if (sd === 1) for (let i = 0; i < 6; i++) { const b = M(alto, CY(.15, .15, .55, 10), mat(i % 2 ? '#c8402a' : '#e8e4da', 'metallo'), -.4 + (i % 3) * .4, y0 + .28, -.35 - Math.floor(i / 3) * .5); M(b, CY(.05, .06, .08, 8), C.acciaio, 0, .3, 0); }
+    else { M(alto, BX(1.0, .36, 1.2), mat('#4a5a3a', 'tela'), 0, y0 + .18, -.55); }
+    ud.seat = [0, .62, .58]; ud.len = 2.8;
+    M(basso, BX(Wb, hs + .06, Lb), k.paint, 0, y0 + hs / 2 - .03, (z0 + z1) / 2); [-1, 1].forEach(s => M(basso, CY(D.r, D.r, .12, 6), C.gomma, s * .57, D.r, -.95, 0, 0, PI / 2));
+    return { alto, basso, ud };
+  }
+  ALTRI.ape = { nome: 'Ape Piaggio', L: 2.8, W: 1.3, tipo: 'ape', make: ape };
+  // ================= LE DUE RUOTE =================
+  const due = col => { const p = vernice(col); p.side = THREE.DoubleSide; const tl = fanaleMat(); return { alto: new THREE.Group(), basso: new THREE.Group(), p, tl, ud: { paint: [p], lamps: [], tails: [], tlMat: tl, wheels: [], front: [], two: true, dents: 0, parts: {} } }; };
+  // ruota a raggi: gomma (toro), cerchio, raggi incrociati, mozzo; asse lungo x
+  function ruotaRaggi(R, sez, rimM, n, hubW, tasselli) {
+    const w = new THREE.Group(); M(w, new THREE.TorusGeometry(R - sez, sez, 5, 18), C.gomma, 0, 0, 0, 0, PI / 2, 0);
+    if (tasselli) for (let k = 0; k < 18; k++) { const a = k / 18 * PI * 2; M(w, BX(sez * 1.6, .012, .03), C.gomma, 0, Math.cos(a) * (R - .004), Math.sin(a) * (R - .004), -a, 0, 0); }   // il battistrada a tasselli
+    M(w, new THREE.TorusGeometry(R - 2 * sez - .006, .013, 3, 18), rimM, 0, 0, 0, 0, PI / 2, 0);
+    const rr = R - 2 * sez - .012; for (let k = 0; k < n; k++) M(w, BX(.004, rr * 2, .004), C.acciaio, (k % 2 ? 1 : -1) * .01, 0, 0, k / n * PI, 0, 0);
+    M(w, CY(.024, .024, hubW || .09, 8), C.acciaio, 0, 0, 0, 0, 0, PI / 2); return w;
+  }
+  function parafango(g, R, w, z, y, t0, tl, m) { return M(g, new THREE.CylinderGeometry(R, R, w, 12, 1, true, t0, tl), m, 0, y, z, 0, 0, PI / 2); }
+  function mettiRuota(ud, g, wh, z, r, front) { const piv = new THREE.Group(); piv.position.set(0, r, z); piv.add(wh); g.add(piv); ud.wheels.push({ wh, piv, front, r }); return piv; }
+
+  // Vespa PX (1977): scudo, scocca bombata coi cofani, sella lunga, faro nel manubrio. Le misure dei punti di contatto sono quelle della posa in_vespa
+  // (anim_lotta.js: sella a .98, manopole a ±.33 alte 1.30 e avanti .70, pedana a .37).
+  function vespa(col) {
+    const { alto: g, basso, p, tl, ud } = due(col), nero = C.nero, sella = mat('#2a1c16', 'plastica');
+    M(g, BX(.42, .06, .6), p, 0, .31, .32); M(g, BX(.38, .02, .54), mat('#2a2a2a', 'gomma'), 0, .355, .32);   // la pedana col tappetino
+    for (let i = 0; i < 5; i++) M(g, BX(.012, .014, .54), C.cromo, -.15 + i * .075, .37, .32);
+    M(g, new THREE.CylinderGeometry(.46, .46, .8, 12, 1, true, -.62, 1.24), p, 0, .76, .3, -.12);   // lo scudo
+    M(g, BX(.09, .2, .04), mat('#9a9ca2', 'metallo'), 0, .92, .76, -.12);   // la cravatta del clacson
+    asta(g, [0, 1.2, .7], [0, .5, .8], .035, p, 8);   // il piantone dello sterzo
+    const cap = M(g, new THREE.SphereGeometry(1, 12, 8), p, 0, 1.27, .72); cap.scale.set(.17, .09, .15);   // il manubrio carenato
+    const f = faroTondo(.062, C.cromo); f.position.set(0, 1.27, .855); g.add(f); ud.front.push(f.userData.lente); ud.lamps.push([0, 1.27, .9]);
+    M(g, CY(.045, .045, .03, 10), nero, 0, 1.355, .66, -.6);   // il tachimetro
+    [-1, 1].forEach(s => {
+      asta(g, [s * .14, 1.29, .7], [s * .3, 1.3, .7], .018, p, 6); M(g, CY(.032, .032, .07, 8), nero, s * .33, 1.3, .7, 0, 0, PI / 2);
+      lista(g, [s * .2, 1.31, .72], [s * .32, 1.33, .78], .02, .012, C.cromo);   // le leve
+      asta(g, [s * .22, 1.31, .7], [s * .25, 1.5, .67], .006, C.cromo, 4); M(g, CY(.05, .05, .014, 10), C.cromo, s * .25, 1.52, .665, PI / 2);   // gli specchietti
+    });
+    const fe = M(g, new THREE.SphereGeometry(.26, 10, 6, 0, PI * 2, 0, PI / 2), p, 0, .22, .86); fe.scale.set(.55, 1, 1);   // il parafango davanti
+    asta(g, [0, .52, .8], [-.07, .5, .82], .025, C.scuro, 5); asta(g, [-.07, .5, .82], [-.07, .22, .86], .022, C.scuro, 5);   // il braccio della sospensione
+    ud.body = M(g, new THREE.SphereGeometry(1, 14, 10).scale(.31, .25, .4).translate(0, .64, -.4), p);   // la scocca coi cofani (la misura dentro la geometria: le ammaccature lavorano in metri)
+    [-1, 1].forEach(s => M(g, BX(.01, .03, .3), C.cromo, s * .3, .62, -.42));   // i fregi sui cofani
+    M(g, BX(.24, .28, .34), p, 0, .48, -.06);   // il tunnel
+    M(g, BX(.16, .26, .12), C.scuro, 0, .76, .05);
+    lista(g, [0, .93, .13], [0, .93, -.64], .3, .1, sella); M(g, BX(.3, .01, .08), C.cromo, 0, .9, -.45);
+    [-1, 1].forEach(s => asta(g, [s * .12, .96, -.6], [s * .12, .96, -.82], .01, C.cromo, 4)); asta(g, [-.12, .96, -.82], [.12, .96, -.82], .01, C.cromo, 4); asta(g, [0, .96, -.82], [0, .74, -.8], .01, C.cromo, 4);   // il portapacchi
+    const t = M(g, BX(.16, .07, .05), tl, 0, .72, -.8); ud.tails.push(t);
+    const tg = M(g, BX(.22, .1, .01), targa(true, 0), 0, .55, -.78); tg.rotation.y = PI;
+    M(g, BX(.14, .18, .42), mat('#5a5c62', 'metallo'), -.12, .3, -.5); M(g, CY(.06, .07, .36, 10), C.scuro, -.22, .3, -.62, PI / 2); asta(g, [-.12, .25, -.3], [-.22, .28, -.45], .02, C.scuro, 4);   // il motore e la marmitta
+    mettiRuota(ud, g, ruota(.22, .1, 'acciaio', '#c8c8cc', 1), .86, .22, true); mettiRuota(ud, g, ruota(.22, .1, 'acciaio', '#c8c8cc', -1), -.6, .22, false);
+    ud.len = 1.9;
+    const b = M(basso, new THREE.SphereGeometry(1, 6, 4), p, 0, .64, -.4); b.scale.set(.31, .25, .4); M(basso, BX(.4, .8, .1), p, 0, .76, .72); M(basso, BX(.3, .1, .7), sella, 0, .93, -.25);
+    [.86, -.6].forEach(z => M(basso, CY(.22, .22, .1, 6), C.gomma, 0, .22, z, 0, 0, PI / 2));
+    return { alto: g, basso, ud };
+  }
+  ALTRI.vespa = { nome: 'Vespa', L: 1.9, W: .7, tipo: 'due', make: vespa };
+
+  // Piaggio Ciao: il motorino col telaio a trave di lamiera, il serbatoio sotto la sella, i pedali da bicicletta
+  function ciao(col) {
+    const { alto: g, basso, p, tl, ud } = due(col), R = .3, zF = .56, zR = -.5;
+    asta(g, [0, .97, .35], [0, .7, .42], .032, p, 8);   // il cannotto dello sterzo
+    lista(g, [0, .74, .4], [0, .34, .06], .09, .07, p); lista(g, [0, .34, .06], [0, .8, -.28], .09, .08, p);   // la trave
+    ud.body = M(g, new THREE.SphereGeometry(1, 10, 8).scale(.12, .1, .2).translate(0, .72, -.32), mat('#ece8dc', 'plastica'));   // il serbatoio
+    asta(g, [0, .8, -.28], [0, .86, -.32], .02, C.cromo, 6); M(g, BX(.2, .07, .32), mat('#1e1e20', 'plastica'), 0, .9, -.34);   // la sella
+    [-1, 1].forEach(s => asta(g, [s * .05, .74, .41], [s * .05, R, zF], .016, C.cromo, 6));   // la forcella
+    asta(g, [0, .97, .35], [0, 1.0, .35], .02, C.cromo, 6); asta(g, [-.28, 1.0, .33], [.28, 1.0, .33], .012, C.cromo, 6);
+    [-1, 1].forEach(s => { M(g, CY(.02, .02, .1, 8), C.nero, s * .31, 1.0, .33, 0, 0, PI / 2); lista(g, [s * .18, 1.0, .35], [s * .28, 1.0, .4], .02, .01, C.nero); });
+    const f = faroTondo(.055, C.cromo); f.position.set(0, .93, .405); g.add(f); ud.front.push(f.userData.lente); ud.lamps.push([0, .93, .45]);
+    M(g, BX(.18, .2, .26), mat('#6a6c72', 'metallo'), 0, .28, .02); for (let i = 0; i < 4; i++) M(g, CY(.075, .075, .012, 10), mat('#8a8c92', 'metallo'), 0, .4 + i * .025, .08, -.5);   // il motore con le alette
+    asta(g, [-.06, .24, -.08], [-.12, .3, -.5], .018, C.scuro, 5); M(g, CY(.04, .04, .24, 8), C.scuro, -.12, .3, -.6, PI / 2);
+    [-1, 1].forEach(s => { asta(g, [s * .1, .28, .02], [s * .1, .28 - s * .14, .02 + s * .04], .012, C.scuro, 4); M(g, BX(.08, .02, .05), C.nero, s * .14, .28 - s * .14, .02 + s * .04); });   // i pedali
+    M(g, BX(.008, .04, .5), C.scuro, -.1, .3, -.24);   // la catena
+    [-1, 1].forEach(s => { asta(g, [s * .05, .8, -.3], [s * .05, R, zR], .014, p, 5); asta(g, [s * .06, .82, -.42], [s * .06, .82, -.78], .01, C.cromo, 4); asta(g, [s * .06, .82, -.76], [s * .05, R, zR], .009, C.cromo, 4); });   // gli steli dietro e il portapacchi
+    asta(g, [-.06, .82, -.78], [.06, .82, -.78], .01, C.cromo, 4); const t = M(g, BX(.08, .05, .03), tl, 0, .8, -.8); ud.tails.push(t);
+    parafango(g, R + .025, .07, zF, R, .35, 1.9, p); parafango(g, R + .025, .07, zR, R, PI / 2 - .3, 2.0, p);
+    mettiRuota(ud, g, ruotaRaggi(R, .026, C.cromo, 16, .1), zF, R, true); mettiRuota(ud, g, ruotaRaggi(R, .028, C.cromo, 16, .1), zR, R, false);
+    ud.len = 1.65;
+    lista(basso, [0, .74, .4], [0, .34, .06], .09, .07, p); lista(basso, [0, .34, .06], [0, .86, -.3], .1, .1, p); [zF, zR].forEach(z => M(basso, CY(R, R, .05, 8), C.gomma, 0, R, z, 0, 0, PI / 2));
+    return { alto: g, basso, ud };
+  }
+  ALTRI.ciao = { nome: 'Piaggio Ciao', L: 1.65, W: .72, tipo: 'due', make: ciao };
+
+  // la bicicletta da donna: telaio aperto, manubrio all'indietro, cestino, portapacchi, parafanghi cromati, fanale a dinamo
+  function bici(col) {
+    const { alto: g, basso, p, tl, ud } = due(col), R = .335, zF = .54, zR = -.54, bb = [0, .3, -.02];
+    asta(g, [0, .93, .35], [0, .76, .4], .022, p, 8);
+    asta(g, [0, .82, .37], [0, .48, .16], .02, p, 6); asta(g, [0, .48, .16], bb, .02, p, 6);   // il tubo basso piegato
+    asta(g, bb, [0, .86, -.2], .019, p, 6);
+    [-1, 1].forEach(s => { asta(g, [s * .02, .3, -.02], [s * .05, R, zR], .011, p, 5); asta(g, [s * .015, .84, -.19], [s * .05, R, zR], .01, p, 5); asta(g, [s * .03, .77, .4], [s * .05, R, zF], .013, p, 6); });
+    M(g, CY(.04, .04, .07, 10), p, 0, .3, -.02, 0, 0, PI / 2);
+    asta(g, [0, .93, .35], [0, 1.02, .33], .014, C.cromo, 6);
+    const bar = [[-.29, 1.0, .2], [-.12, 1.02, .33], [.12, 1.02, .33], [.29, 1.0, .2]]; for (let i = 0; i < 3; i++) asta(g, bar[i], bar[i + 1], .011, C.cromo, 5);
+    [-1, 1].forEach(s => M(g, CY(.018, .018, .1, 8), mat('#5a3a24', 'plastica'), s * .31, 1.0, .17, 0, s * .6, PI / 2)); M(g, CY(.025, .025, .02, 10), C.cromo, .14, 1.04, .32);   // le manopole e il campanello
+    asta(g, [0, .86, -.2], [0, .92, -.22], .012, C.cromo, 6); M(g, BX(.17, .06, .26), mat('#5a3a24', 'plastica'), 0, .95, -.25); [-1, 1].forEach(s => M(g, CY(.012, .012, .05, 6), C.cromo, s * .05, .905, -.32));   // la sella con le molle
+    [-1, 1].forEach(s => { asta(g, [s * .07, .8, -.22], [s * .07, .8, -.8], .008, C.cromo, 4); asta(g, [s * .07, .8, -.62], [s * .05, R, zR], .007, C.cromo, 4); }); for (const z of [-.3, -.5, -.7]) asta(g, [-.07, .8, z], [.07, .8, z], .007, C.cromo, 4);   // il portapacchi
+    const ce = new THREE.Group(); ce.position.set(0, .86, .52); g.add(ce);   // il cestino di fil di ferro
+    const cw = .32, ch = .2, cd = .24; M(ce, BX(cw, .006, cd), C.acciaio, 0, -ch / 2, 0);
+    for (const y of [-ch / 2, 0, ch / 2]) { M(ce, BX(cw, .006, .006), C.acciaio, 0, y, cd / 2); M(ce, BX(cw, .006, .006), C.acciaio, 0, y, -cd / 2); M(ce, BX(.006, .006, cd), C.acciaio, cw / 2, y, 0); M(ce, BX(.006, .006, cd), C.acciaio, -cw / 2, y, 0); }
+    for (let i = 0; i < 5; i++) { M(ce, BX(.005, ch, .005), C.acciaio, -cw / 2 + i * cw / 4, 0, cd / 2); M(ce, BX(.005, ch, .005), C.acciaio, -cw / 2 + i * cw / 4, 0, -cd / 2); }
+    asta(g, [0, .8, .4], [0, .78, .4], .01, C.scuro, 4);
+    const f = faroTondo(.032, C.cromo); f.position.set(-.06, .6, .47); g.add(f); ud.front.push(f.userData.lente); ud.lamps.push([-.06, .6, .5]); asta(g, [-.06, .6, .45], [-.04, .6, .43], .01, C.cromo, 4);
+    asta(g, [-.07, .8, -.8], [.07, .8, -.8], .007, C.cromo, 4); const t = M(g, BX(.06, .04, .02), tl, 0, .78, -.81); ud.tails.push(t);
+    parafango(g, R + .02, .055, zF, R, .3, 2.0, C.cromo); parafango(g, R + .02, .055, zR, R, PI / 2 - .4, 2.1, C.cromo);
+    M(g, BX(.01, .06, .48), p, -.07, .33, -.27);   // il carter della catena
+    [-1, 1].forEach(s => { asta(g, [s * .035, .3, -.02], [s * .07, .3 + s * .15, -.02 - s * .04], .01, C.scuro, 4); M(g, BX(.09, .02, .05), C.nero, s * .11, .3 + s * .15, -.02 - s * .04); });
+    mettiRuota(ud, g, ruotaRaggi(R, .02, C.cromo, 18, .1), zF, R, true); mettiRuota(ud, g, ruotaRaggi(R, .021, C.cromo, 18, .1), zR, R, false);
+    ud.len = 1.75; ud.body = null;
+    asta(basso, [0, .82, .37], bb, .03, p, 4); asta(basso, bb, [0, .86, -.2], .03, p, 4); [zF, zR].forEach(z => M(basso, CY(R, R, .04, 8), C.gomma, 0, R, z, 0, 0, PI / 2));
+    return { alto: g, basso, ud };
+  }
+  ALTRI.bici = { nome: 'Bicicletta da donna', L: 1.75, W: .7, tipo: 'due', make: bici };
+
+  // la BMX tascabile: ruote da 20" con le gomme grasse a tasselli e i cerchi viola, telaio a diamante, manubrio alto, pegs, la tabella del numero.
+  // Le misure sono quelle di BMX_GEO in render.js (la posa in_bmx ci mette mani e piedi): non cambiarle da una parte sola.
+  const BMXG = { R: .26, zF: .47, zR: -.47, bbY: .29, bbZ: -.04, crank: .17, pedX: .17, seatY: .81, seatZ: -.27, gripY: 1.04, gripZ: .22, gripX: .34 };
+  function bmx(col) {
+    const { alto: g, basso, p: c, ud } = due(col), Gm = BMXG, R = Gm.R, blk = mat('#16151a', 'plastica'), rimM = mat('#8a5ad8', 'metallo'), steel = mat('#3a3a42', 'metallo');
+    ud.lamps = []; ud.tlMat = null;
+    const bb = [0, Gm.bbY, Gm.bbZ], st = [0, .66, -.21], ht = [0, .73, .29], hb = [0, .56, .34];
+    asta(g, bb, st, .024, c, 8); asta(g, st, ht, .026, c, 8); asta(g, bb, hb, .03, c, 8); asta(g, hb, ht, .034, c, 8);
+    [-1, 1].forEach(s => { asta(g, [s * .03, Gm.bbY, Gm.bbZ], [s * .065, R, Gm.zR], .016, c, 6); asta(g, [s * .025, .65, -.22], [s * .065, R, Gm.zR], .014, c, 6); });
+    ud.body = M(g, CY(.035, .035, .1, 10), c, 0, Gm.bbY, Gm.bbZ, 0, 0, PI / 2);
+    [-1, 1].forEach(s => asta(g, [s * .045, .57, .35], [s * .065, R, Gm.zF], .018, blk, 6));
+    asta(g, [0, .73, .29], [0, .82, .27], .02, blk, 6); M(g, BX(.1, .05, .1), blk, 0, .82, .28);
+    [-1, 1].forEach(s => { asta(g, [s * .06, .82, .28], [s * .2, Gm.gripY, Gm.gripZ], .014, blk, 6); asta(g, [s * .2, Gm.gripY, Gm.gripZ], [s * .35, Gm.gripY, Gm.gripZ], .014, blk, 6); M(g, CY(.02, .02, .08, 8), blk, s * Gm.gripX, Gm.gripY, Gm.gripZ, 0, 0, PI / 2); });
+    asta(g, [-.13, .94, .25], [.13, .94, .25], .011, blk, 6);
+    const tab = M(g, BX(.2, .17, .01), mat('#f0ece0', 'plastica'), 0, .9, .3, -.25); M(tab, BX(.1, .1, .004), mat('#1a1a1a', 'plastica'), 0, 0, .007);   // la tabella col numero
+    asta(g, [0, .66, -.21], [0, .78, -.25], .016, C.cromo, 6); M(g, BX(.13, .05, .27), blk, 0, Gm.seatY - .02, Gm.seatZ, .1); M(g, BX(.07, .04, .06), blk, 0, Gm.seatY - .03, Gm.seatZ + .15);
+    M(g, CY(.075, .075, .012, 14), steel, -.06, Gm.bbY, Gm.bbZ, 0, 0, PI / 2);
+    asta(g, [-.06, Gm.bbY + .07, Gm.bbZ], [-.06, R + .03, Gm.zR], .006, steel, 4); asta(g, [-.06, Gm.bbY - .07, Gm.bbZ], [-.06, R - .03, Gm.zR], .006, steel, 4);
+    M(g, BX(.06, .04, .05), steel, .0, .6, -.24); asta(g, [0, .6, -.24], [.05, .8, .26], .004, blk, 4);   // il freno dietro e il suo cavo
+    [Gm.zF, Gm.zR].forEach(z => [-1, 1].forEach(s => M(g, CY(.026, .026, .1, 8), steel, s * .13, R, z, 0, 0, PI / 2)));
+    const cr = new THREE.Group(); cr.position.set(0, Gm.bbY, Gm.bbZ); cr.userData.keepTree = true;
+    [[-1, 1], [1, -1]].forEach(([s, v]) => { M(cr, BX(.022, Gm.crank + .03, .03), blk, s * .06, v * Gm.crank / 2, 0); asta(cr, [s * .06, v * Gm.crank, 0], [s * (Gm.pedX - .04), v * Gm.crank, 0], .008, steel, 4); const ped = new THREE.Group(); ped.position.set(s * Gm.pedX, v * Gm.crank, 0); cr.add(ped); M(ped, BX(.1, .022, .095), blk); ped.userData.ped = true; (ud.pedals = ud.pedals || []).push(ped); });
+    g.add(cr); ud.crank = cr;
+    mettiRuota(ud, g, ruotaRaggi(R, .05, rimM, 9, .1, true), Gm.zF, R, true); mettiRuota(ud, g, ruotaRaggi(R, .05, rimM, 9, .1, true), Gm.zR, R, false);
+    ud.len = 1.5;
+    asta(basso, bb, ht, .03, c, 4); asta(basso, bb, [0, R, Gm.zR], .025, c, 4); [Gm.zF, Gm.zR].forEach(z => M(basso, CY(R, R, .1, 8), C.gomma, 0, R, z, 0, 0, PI / 2));
+    return { alto: g, basso, ud };
+  }
+  ALTRI.bmx = { nome: 'BMX', L: 1.5, W: .74, tipo: 'due', make: bmx };
+
+  // ================= LE BARCHE =================
+  // Gli scafi di [costa] (render.js) rifatti qui: sezioni che si stringono verso prua, il fasciame (le tavole del legno disegnate
+  // sullo scafo), la falchetta che corre lungo il bordo, le bitte, il timone, le cabine coi vetri, reti e nasse.
+  // Prua verso +z, la linea di galleggiamento a y = 0 (render.js mette il gruppo a pelo d'acqua + pescaggio).
+  // Veicoli3D.barca(tipo, r, o) → { g, H, draft }: H serve a render.js per la sagoma che tiene fuori l'acqua.
+  const PESCAGGIO = { gozzo: .27, lancia: .3, motoscafo: .28, peschereccio: .62, traghetto: 1.3 };   // come DRAFT in render.js
+  const pickR = (r, a) => a[Math.floor(r() * a.length) % a.length];
+  function scafoForma(L, B, D, pointed) {   // come hullShape di render.js
+    const hw = t => pointed ? B / 2 * Math.pow(Math.max(.02, Math.sin(PI * (.03 + t * .94))), .55) : B / 2 * (t < .5 ? .84 + .16 * Math.sin(t / .5 * PI / 2) : Math.pow(Math.max(0, Math.cos((t - .5) / .5 * PI / 2)), .75) * .98 + .02);
+    const sh = t => D * .32 * Math.pow(t, 3) + (pointed ? D * .22 * Math.pow(1 - t, 3) : 0);
+    const kd = t => D * (t > .78 ? 1 - Math.pow((t - .78) / .22, 1.6) * .75 : pointed && t < .14 ? 1 - Math.pow((.14 - t) / .14, 1.6) * .6 : 1);
+    return { hw, sh, kd, L, B, D, pointed };
+  }
+  const sP = (H, t, u, s) => { const ph = u * PI / 2; return [H.hw(t) * Math.pow(Math.sin(ph), .55) * s, H.sh(t) - (H.kd(t) + H.sh(t)) * Math.pow(Math.cos(ph), 1.6), -H.L / 2 + t * H.L]; };
+  // la fascia dello scafo fra u0 e u1 (0 chiglia, 1 bordo), con le uv per il fasciame: u lungo la barca in metri, v una tavola ogni 1/8 di sezione
+  function scafoGeo(H, u0, u1, cap) {
+    const NS = 20, NU = 6, pos = [], uv = [];
+    const put = (t, u, s) => { pos.push(...sP(H, t, u, s)); uv.push(t * H.L / 2, u * 8); };
+    for (const s of [1, -1]) for (let i = 0; i < NS; i++) for (let j = 0; j < NU; j++) {
+      const t0 = i / NS, t1 = (i + 1) / NS, v0 = u0 + (u1 - u0) * j / NU, v1 = u0 + (u1 - u0) * (j + 1) / NU, Q = [[t0, v0], [t1, v0], [t1, v1], [t0, v1]];
+      const o = s > 0 ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2]; o.forEach(k => put(Q[k][0], Q[k][1], s));
+    }
+    for (const te of H.pointed ? [0, 1] : cap ? [0] : []) for (let j = 0; j < NU; j++) { const v0 = u0 + (u1 - u0) * j / NU, v1 = u0 + (u1 - u0) * (j + 1) / NU; [[v0, 1], [v1, 1], [v1, -1], [v0, 1], [v1, -1], [v0, -1]].forEach(([u, s]) => put(te, u, s)); }   // lo specchio di poppa (e i due dritti chiusi del gozzo)
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals(); return g;
+  }
+  function ponteGeo(H, y, ins, t0, t1) {   // il ponte o il pagliolato alla quota y, ristretto di ins
+    const sh = new THREE.Shape(), N = 16, a = t0 || 0, b = t1 || 1;
+    for (let i = 0; i <= N; i++) { const t = a + (b - a) * i / N, x = Math.max(.02, H.hw(t) - ins), z = -H.L / 2 + t * H.L; i ? sh.lineTo(x, z) : sh.moveTo(x, z); }
+    for (let i = N; i >= 0; i--) { const t = a + (b - a) * i / N; sh.lineTo(-Math.max(.02, H.hw(t) - ins), -H.L / 2 + t * H.L); }
+    const g = new THREE.ShapeGeometry(sh); g.rotateX(PI / 2); g.translate(0, y, 0);
+    const ix = g.index.array; for (let k = 0; k < ix.length; k += 3) { const q = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = q; } const n = g.attributes.normal.array; for (let k = 0; k < n.length; k++) n[k] = -n[k]; return g;
+  }
+  // il fasciame: una trama grigia (tavole con i comenti scuri) che moltiplica il colore dello scafo
+  let FASC = null;
+  function fasciame() {
+    if (FASC !== null) return FASC; if (!DOC) return (FASC = undefined);
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64; const x = c.getContext('2d');
+    x.fillStyle = '#f0f0f0'; x.fillRect(0, 0, 64, 64);
+    for (let i = 0; i < 8; i++) { x.fillStyle = 'rgba(0,0,0,.28)'; x.fillRect(0, i * 8, 64, 1); x.fillStyle = 'rgba(255,255,255,.35)'; x.fillRect(0, i * 8 + 1, 64, 1); for (let k = 0; k < 2; k++) { const xx = ((i * 37 + k * 29) % 60); x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(xx, i * 8 + 1, 1, 7); } }
+    FASC = new THREE.CanvasTexture(c); FASC.wrapS = FASC.wrapT = THREE.RepeatWrapping; FASC.anisotropy = 4; return FASC;
+  }
+  const DS = THREE.DoubleSide;
+  function matScafo(col, legno) { const k = col + '|scafo' + (legno ? 'L' : ''); if (MC[k]) return MC[k]; const o = { color: col, roughness: legno ? .7 : .4, side: DS }; if (legno && fasciame()) o.map = fasciame(); return (MC[k] = new THREE.MeshStandardMaterial(o)); }
+  const legnoM = c => { const k = (c || '#8a6040') + '|legnoDS'; return MC[k] || (MC[k] = new THREE.MeshStandardMaterial({ color: c || '#8a6040', roughness: .8, side: DS })); };
+  // le tre fasce dello scafo: antivegetativa, colore, fascia sotto il bordo
+  function scafoMesh(g, H, colLow, colBand, band, cap, draft, anti, legno) {
+    const sh = H.sh(.5), kd = H.kd(.5), uw = Math.min(.8, Math.acos(Math.pow(clamp((sh + draft - .12) / (kd + sh), 0, 1), 1 / 1.6)) * 2 / PI);
+    M(g, scafoGeo(H, 0, uw, cap), matScafo(anti || '#7a2a22', false)); const corpo = M(g, scafoGeo(H, uw, 1 - band, cap), matScafo(colLow, legno)); M(g, scafoGeo(H, 1 - band, 1, cap), matScafo(colBand, legno));
+    return corpo;
+  }
+  // la falchetta: il listello di legno che corre sul bordo, dai due lati
+  function falchetta(g, H, w, h, m, t0, t1) {
+    const pos = [], N = 24, a = t0 || 0, b = t1 === undefined ? 1 : t1;
+    for (const s of [1, -1]) for (let i = 0; i < N; i++) {
+      const T = [a + (b - a) * i / N, a + (b - a) * (i + 1) / N].map(t => sP(H, t, 1, s));
+      const C4 = p => [[p[0] - s * w * .5, p[1] + h * .7, p[2]], [p[0] + s * w * .5, p[1] + h * .7, p[2]], [p[0] + s * w * .5, p[1] - h * .3, p[2]], [p[0] - s * w * .5, p[1] - h * .3, p[2]]];
+      const A = C4(T[0]), B = C4(T[1]); for (let k = 0; k < 4; k++) { const k2 = (k + 1) % 4; pos.push(...A[k], ...B[k], ...B[k2], ...A[k], ...B[k2], ...A[k2]); }
+    }
+    return M(g, geoDa(pos), m);
+  }
+  function bitta(g, x, y, z) { M(g, CY(.035, .045, .12, 8), C.scuro, x, y + .06, z); M(g, CY(.06, .06, .025, 8), C.scuro, x, y + .12, z); }
+  function rete(g, x, y, z, w, d, r, col) {   // la rete ammucchiata coi sugheri arancioni
+    const m = M(g, new THREE.IcosahedronGeometry(1, 1), mat(col || '#2f4a3a', 'tela'), x, y + .1, z); m.scale.set(w / 2, .2, d / 2);
+    for (let k = 0; k < 7; k++) { const a = r() * PI * 2, rr = .75 + r() * .2; M(g, new THREE.SphereGeometry(.05, 6, 4), mat('#f06a2a', 'plastica'), x + Math.cos(a) * w / 2 * rr, y + .1 + r() * .08, z + Math.sin(a) * d / 2 * rr); }
+    return m;
+  }
+  function nassa(g, x, y, z, ry) {   // la nassa di giunco: un cilindro a maglie con la bocca a imbuto
+    const n = new THREE.Group(); n.position.set(x, y + .17, z); n.rotation.set(0, ry || 0, PI / 2); g.add(n);
+    M(n, CY(.17, .17, .55, 10, true), mat('#9a7a48', 'tela')); for (const yy of [-.27, 0, .27]) M(n, new THREE.TorusGeometry(.17, .012, 3, 12), mat('#6a5030', 'legno'), 0, yy, 0, PI / 2);
+    M(n, CY(.17, .05, .16, 10, true), mat('#8a6a3a', 'tela'), 0, .2, 0);
+  }
+  function parabordo(g, x, y, z) { M(g, CY(.07, .07, .4, 10), mat('#f2f2ee', 'plastica'), x, y - .25, z).userData.sporge = true; asta(g, [x, y + .01, z], [x, y - .06, z], .008, mat('#d8cfae', 'tela'), 4).userData.sporge = true; }
+  // il fuoribordo appeso allo specchio di poppa (z0): staffa, calotta, gambo, elica
+  function fuoribordo(g, x, y, z0, w, h, L) {
+    const fb = new THREE.Group(); fb.position.set(x, y, z0); g.add(fb);
+    M(fb, BX(.2, .2, .03), C.scuro, 0, -.02, -.015); M(fb, BX(w, h, w), mat('#1a1a20', 'plastica'), 0, .1, -.03 - w / 2);
+    const yb = .1 - h / 2; M(fb, BX(w * .32, L, w * .36), C.scuro, 0, yb - L / 2 + .01, -.03 - w * .6); M(fb, CY(.035, .035, .16, 8), C.scuro, 0, yb - L + .04, -.03 - w * .75, PI / 2);
+    for (let k = 0; k < 3; k++) M(fb, BX(.02, .2, .06), C.acciaio, 0, yb - L + .04, -.03 - w * .75 - .09, k * PI * 2 / 3, 0, 0);
+  }
+  // la cabina: un blocco coi vetri su tre lati, il tetto che sporge, la porta
+  function cabina(g, w, h, d, x, y, z, col, vetri) {
+    const c = new THREE.Group(); c.position.set(x, y, z); g.add(c);
+    M(c, BX(w, h, d), mat(col, 'plastica'), 0, h / 2, 0); M(c, BX(w + .12, .06, d + .14), mat(col, 'plastica'), 0, h + .03, 0);
+    const vy = h * .68, vh = h * .3, vm = vetri || C.vetroscuro;
+    M(c, BX(w * .86, vh, .02), vm, 0, vy, d / 2 + .005); [-1, 1].forEach(s => { M(c, BX(.02, vh, d * .7), vm, s * (w / 2 + .005), vy, .02); M(c, BX(.01, h * .85, .03), C.scuro, s * (w / 2 + .01), h * .45, -d / 2 + .25); });
+    M(c, BX(w * .4, h * .8, .02), mat('#3a3a3e', 'plastica'), w * .2, h * .42, -d / 2 - .005); M(c, BX(w * .32, vh * .7, .02), vm, w * .2, vy, -d / 2 - .012);
+    return c;
+  }
+  const BARCHE = {
+    // il gozzo: legno a punta da tutte e due le parti, il dritto di prua alto, banchi, remi negli scalmi, reti o nasse, il timone con la barra
+    gozzo(r, o) {
+      const g = new THREE.Group(), H = scafoForma(5, 1.75, .78, true), col = o && o.col || pickR(r, ['#f2eee4', '#f2eee4', '#2f6aa0', '#3a8a6a', '#e8d8a8']), band = o && o.band || pickR(r, ['#2a5a9a', '#c83a2a', '#2a8a6a', '#e0b040', '#1a2a4a']), dr = PESCAGGIO.gozzo;
+      const corpo = scafoMesh(g, H, col, band, .2, false, dr, null, true);
+      M(g, ponteGeo(H, -dr + .06, .12, .08, .92), legnoM('#a07448'));   // il pagliolato
+      falchetta(g, H, .07, .06, legnoM('#6a4428'));
+      [.3, .5, .7].forEach(t => M(g, BX(H.hw(t) * 2 - .14, .05, .24), legnoM('#a07448'), 0, H.sh(t) - .2, -2.5 + t * 5));   // i banchi
+      M(g, BX(.08, .62, .12), mat(band, 'plastica'), 0, H.sh(1) + .1, 2.44, -.2); M(g, BX(.08, .42, .12), mat(band, 'plastica'), 0, H.sh(0) + .04, -2.44, .2);   // il dritto di prua alto, alla ligure
+      [-1, 1].forEach(s => { const t = .52, x = s * H.hw(t), y = H.sh(t) + .06; asta(g, [x, y, -2.5 + t * 5], [x, y + .12, -2.5 + t * 5], .015, legnoM('#5a3a26'), 4); lista(g, [x - s * .06, y + .1, -2.5 + t * 5 + .9], [x - s * .26, H.sh(.3) - .17, -2.5 + t * 5 - 1.6], .05, .03, legnoM('#8a6040')); });   // scalmi e remi tirati in barca
+      [[.2, 1], [.82, 1], [.2, -1], [.82, -1]].forEach(([t, s]) => bitta(g, s * (H.hw(t) - .06), H.sh(t) + .03, -2.5 + t * 5));
+      M(g, BX(.03, .55, .18), legnoM('#7a5236'), 0, -.18, -2.53); M(g, BX(.04, .12, .06), legnoM('#5a3a26'), 0, H.sh(0) + .02, -2.47); asta(g, [0, H.sh(0) + .06, -2.47], [0, H.sh(0) + .18, -1.7], .022, legnoM('#a07448'), 5);   // il timone con la barra
+      if (r() < .55) rete(g, .15, -dr + .07, -1.3, .8, .7, r); else { nassa(g, -.25, -dr + .07, -1.25, .2); nassa(g, .3, -dr + .07, -1.4, -.1); nassa(g, .02, -dr + .4, -1.3, .05); }
+      if (r() < .5) { M(g, BX(.4, .3, .5), mat('#3a3a40', 'metallo'), 0, -dr + .2, .3); M(g, BX(.42, .04, .52), legnoM('#6a4428'), 0, -dr + .36, .3); }   // il motorino entrobordo nella sua cassa
+      M(g, new THREE.TorusGeometry(.09, .02, 4, 8), mat('#4a4a50', 'metallo'), 0, -dr + .085, 1.9, PI / 2);   // l'ancorotto e la cima
+      void corpo; return { g, H };
+    },
+    // la lancia a motore: specchio di poppa, cabinetta a prua coi vetri, fuoribordo, parabordi
+    lancia(r, o) {
+      const g = new THREE.Group(), H = scafoForma(5.6, 2.1, .9, false), Z = t => -2.8 + t * 5.6, col = o && o.col || pickR(r, ['#f2eee4', '#e8e4da', '#3a6a9a']), band = pickR(r, ['#2a5a9a', '#c8402a', '#1f3a5a']), dr = PESCAGGIO.lancia;
+      scafoMesh(g, H, col, band, .18, true, dr, null, true);
+      M(g, ponteGeo(H, -dr + .06, .1), legnoM('#a07448')); M(g, ponteGeo(H, H.sh(.8) - .04, .04, .72, 1), mat('#e8e2d6', 'plastica'));   // pagliolato e ponte di prua
+      falchetta(g, H, .07, .06, legnoM('#6a4428'));
+      cabina(g, 1.4, .62, 1.3, 0, -dr + .06, 1.1, '#f2eee6');
+      [.15, .5].forEach(t => M(g, BX(H.hw(t) * 2 - .12, .06, .3), legnoM('#a07448'), 0, H.sh(t) - .25, Z(t)));
+      fuoribordo(g, 0, H.sh(0), Z(0), .36, .4, .7);
+      [[.15, 1], [.85, 1], [.15, -1], [.85, -1]].forEach(([t, s]) => bitta(g, s * (H.hw(t) - .07), H.sh(t) + .03, Z(t)));
+      [.35, .6].forEach(t => [-1, 1].forEach(s => parabordo(g, s * (H.hw(t) + .05), H.sh(t) + .02, Z(t))));
+      return { g, H };
+    },
+    // il motoscafo: vetroresina bianca con la fascia di colore, parabrezza, sedili imbottiti, prendisole, tientibene cromati
+    motoscafo(r) {
+      const g = new THREE.Group(), H = scafoForma(6.6, 2.4, .95, false), c2 = pickR(r, ['#c83a2a', '#1f3a6a', '#2a6a8a', '#e0b040', '#1a1a22']), dr = PESCAGGIO.motoscafo;
+      scafoMesh(g, H, '#f4f2ee', c2, .22, true, dr, '#1f2a3a', false);
+      M(g, ponteGeo(H, H.sh(.5) - .02, .04, .52, 1), mat('#f4f2ee', 'plastica')); M(g, ponteGeo(H, -dr + .07, .14, 0, .52), mat('#c8b89a', 'plastica'));
+      falchetta(g, H, .05, .04, C.cromo, .02, .98);
+      const yd = H.sh(.5); lista(g, [-.95, yd - .03, .45], [-.95, yd + .5, .3], .1, .06, C.cromo); lista(g, [.95, yd - .03, .45], [.95, yd + .5, .3], .1, .06, C.cromo);
+      M(g, BX(1.9, .5, .03), mat('#3a4a5a', 'vetroscuro'), 0, yd + .26, .38, -.3);   // il parabrezza
+      M(g, BX(.7, .45, .55), mat('#e8e2d6', 'plastica'), .5, -dr + .3, -.3); M(g, BX(.55, .12, .5), mat('#8a2a24', 'stoffa'), .5, -dr + .58, -.3); M(g, BX(.55, .4, .1), mat('#8a2a24', 'stoffa'), .5, -dr + .75, -.55);   // il posto di guida
+      M(g, new THREE.TorusGeometry(.14, .015, 4, 12), C.nero, .5, yd + .1, .05, -.9); M(g, BX(.5, .25, .3), mat('#e8e2d6', 'plastica'), .5, -dr + .45, .12);
+      M(g, BX(.6, .45, .55), mat('#e8e2d6', 'plastica'), -.5, -dr + .3, -.3); M(g, BX(.55, .12, .5), mat('#8a2a24', 'stoffa'), -.5, -dr + .58, -.3);
+      M(g, BX(1.8, .3, 1.1), mat('#e8e2d6', 'plastica'), 0, -dr + .22, -2.1); M(g, BX(1.7, .1, 1.0), mat('#8a2a24', 'stoffa'), 0, -dr + .42, -2.1);   // il prendisole
+      fuoribordo(g, 0, H.sh(0), -3.3, .5, .62, .75);
+      [[.1, 1], [.9, 1], [.1, -1], [.9, -1]].forEach(([t, s]) => bitta(g, s * (H.hw(t) - .07), H.sh(t) + .02, -3.3 + t * 6.6));
+      asta(g, [.7, H.sh(0) - .05, -3.28], [.7, H.sh(0) + .9, -3.3], .012, C.cromo, 4); M(g, BX(.004, .22, .32), mat('#2a8a3a', 'tela'), .7, H.sh(0) + .78, -3.45);   // l'asta della bandiera
+      return { g, H };
+    },
+    // il peschereccio: scafo di legno, murata, timoneria coi vetri su tre lati, albero coi fanali, portale di poppa, verricello con la rete, cassette
+    peschereccio(r) {
+      const g = new THREE.Group(), H = scafoForma(11, 3.7, 1.7, false), col = pickR(r, ['#2a5a9a', '#c83a2a', '#2a8a6a', '#f0e8d8', '#1f3a5a']), dr = PESCAGGIO.peschereccio;
+      scafoMesh(g, H, col, pickR(r, ['#f2eee6', '#e8c040', '#f2eee6']), .16, true, dr, null, true);
+      const yd = H.sh(.45) - .45; M(g, ponteGeo(H, yd, .08), legnoM('#9a7a58'));
+      falchetta(g, H, .1, .08, legnoM('#5a3a26'));
+      for (let t = .06; t < .98; t += .09) [-1, 1].forEach(s => M(g, BX(.06, .45, .06), legnoM('#5a3a26'), s * (H.hw(t) - .05), H.sh(t) - .2, -5.5 + t * 11));   // gli scalmotti della murata
+      const ch = cabina(g, 2.3, 1.9, 2.4, 0, yd, 1.2, '#ece6d8', mat('#203040', 'vetroscuro')); void ch;
+      M(g, BX(2.5, .14, 2.6), mat(col, 'plastica'), 0, yd + 1.97, 1.2);
+      asta(g, [0, yd + 2.0, 1.6], [0, yd + 5.8, 1.6], .08, mat('#26242c', 'metallo'), 6); M(g, BX(1.6, .06, .06), mat('#26242c', 'metallo'), 0, yd + 5.2, 1.6); [-.7, .7].forEach(s => M(g, BX(.14, .14, .14), mat(s < 0 ? '#e04030' : '#30c050', 'lente'), s, yd + 5.3, 1.6));   // l'albero coi fanali
+      M(g, BX(1.2, .08, .14), C.scuro, 0, yd + 2.25, 1.6); M(g, BX(.3, .06, .04), C.scuro, 0, yd + 2.3, 1.6);   // il radar
+      [-1.4, 1.4].forEach(s => M(g, BX(.16, 3.2, .16), mat('#e8a020', 'metallo'), s, yd + 1.6, -4.4)); M(g, BX(3, .18, .18), mat('#e8a020', 'metallo'), 0, yd + 3.2, -4.4);   // il portale di poppa
+      const vr = new THREE.Group(); vr.position.set(0, yd + .65, -3.1); g.add(vr);   // il verricello con la rete avvolta
+      M(vr, CY(.55, .55, 2, 12), mat('#2f4a3a', 'tela'), 0, 0, 0, 0, 0, PI / 2); [-1.05, 1.05].forEach(x => M(vr, CY(.62, .62, .1, 12), mat('#8a2a20', 'metallo'), x, 0, 0, 0, 0, PI / 2)); [-1.05, 1.05].forEach(x => M(vr, BX(.1, .65, .3), mat('#8a2a20', 'metallo'), x, -.32, 0));
+      rete(g, -.9, yd, -1.6, 1.0, 1.2, r); rete(g, .8, yd, -.6, .8, .9, r, '#5a3a2a');
+      for (let k = 0; k < 6; k++) M(g, BX(.5, .25, .38), mat(pickR(r, ['#4a8ab0', '#e8e0d0', '#e04030']), 'plastica'), -1 + (k % 3) * .55, yd + .13, -.2 - (k % 2) * .42);
+      for (let k = 0; k < 4; k++) [-1, 1].forEach(s => { M(g, new THREE.TorusGeometry(.3, .1, 5, 10), C.gomma, s * (H.hw(.25 + k * .15) + .06), H.sh(.3) - .4, -3 + k * 1.6, 0, PI / 2, 0).userData.sporge = true; });   // i copertoni appesi fuori
+      [[.12, 1], [.92, 1], [.12, -1], [.92, -1], [.55, 1], [.55, -1]].forEach(([t, s]) => bitta(g, s * (H.hw(t) - .25), yd, -5.5 + t * 11));
+      M(g, CY(.25, .25, .7, 10), mat('#f2f2ee', 'plastica'), 1.0, yd + 2.2, 2.0, 0, 0, PI / 2);   // la zattera di salvataggio
+      M(g, BX(.06, 1.1, .7), legnoM('#5a3a26'), 0, -1.2, -5.58);   // il timone
+      return { g, H };
+    },
+    // il traghetto per il continente: prua a portellone, ponte delle auto aperto con le auto a bordo, sovrastruttura coi finestrini, plancia, fumaiolo, scialuppe
+    traghetto(r) {
+      const g = new THREE.Group(), H = scafoForma(40, 10, 3.6, false), dr = PESCAGGIO.traghetto;
+      scafoMesh(g, H, '#1f3a6a', '#f2efe6', .32, true, dr, '#8a2a20', false);
+      const yd = H.sh(.4) + .2; M(g, ponteGeo(H, yd, .25), mat('#5a5a56', 'plastica'));   // il ponte delle auto
+      falchetta(g, H, .3, .9, mat('#f2efe6', 'plastica'), .0, .97);   // la murata alta
+      const sv = new THREE.Group(); sv.position.set(0, yd, -9); g.add(sv);   // la sovrastruttura a poppa
+      M(sv, BX(8.4, 2.6, 14), mat('#f2efe6', 'plastica'), 0, 1.3 + 2.6, 0); for (let i = 0; i < 12; i++) [-1, 1].forEach(s => M(sv, BX(.04, .7, .8), mat('#1c2834', 'vetroscuro'), s * 4.21, 4.2, -6 + i * 1.1));
+      [-1, 1].forEach(s => { M(sv, BX(.3, 2.6, .3), mat('#f2efe6', 'plastica'), s * 4, 1.3, 6.8); M(sv, BX(.3, 2.6, .3), mat('#f2efe6', 'plastica'), s * 4, 1.3, -6.8); });   // i pilastri sopra il ponte delle auto
+      M(sv, BX(7, 2.2, 5), mat('#f2efe6', 'plastica'), 0, 6.3, 3.5); M(sv, BX(7.04, .8, 5.04), mat('#1c2834', 'vetroscuro'), 0, 6.7, 3.5); M(sv, BX(10, .3, 2), mat('#f2efe6', 'plastica'), 0, 7.5, 5);   // la plancia con le alette
+      M(sv, CY(1.0, 1.2, 3.5, 12), mat('#c83a2a', 'plastica'), 0, 6.94, -3); M(sv, CY(1.02, 1.02, .8, 12), C.scuro, 0, 8.9, -3); M(sv, BX(2.1, .3, 2.1), mat('#f2efe6', 'plastica'), 0, 7.3, -3);   // il fumaiolo rosso
+      [-1, 1].forEach(s => { const lb = M(sv, CY(.7, .7, 4, 10), mat('#f06a1a', 'plastica'), s * 4.6, 5.6, -2, PI / 2); lb.scale.set(1, 1, .8); asta(sv, [s * 4.2, 5.2, -3.4], [s * 4.6, 6.4, -3.4], .06, C.acciaio, 4); asta(sv, [s * 4.2, 5.2, -.6], [s * 4.6, 6.4, -.6], .06, C.acciaio, 4); M(sv, BX(.4, .12, 4.2), C.acciaio, s * 4.4, 6.4, -2); });   // le scialuppe sulle gru
+      asta(sv, [0, 7.38, 3.5], [0, 12, 3.5], .1, C.scuro, 6); M(sv, BX(2.4, .12, .12), C.scuro, 0, 10.5, 3.5);   // l'albero
+      M(g, BX(6, 4, .5), mat('#f2efe6', 'plastica'), 0, yd + 2, 19.3, -.25);   // il portellone di prua alzato
+      // le auto a bordo, nella loro fila (i modelli lontani: bastano)
+      const fila = ['f126', 'panda', 'ritmo', 'uno', 'f127', 'ducato'], cols = TAVOLOZZA;
+      for (let i = 0; i < 6; i++) { const id = fila[i], R = COSTR[id] && COSTR[id](pickR(r, cols), {}); if (!R) continue; const a = R.basso; a.position.set(i % 2 ? 2 : -2, yd - .03, 12 - Math.floor(i / 2) * 5); g.add(a); }
+      [[.06, 1], [.06, -1], [.95, 1], [.95, -1]].forEach(([t, s]) => { const x = s * (H.hw(t) - .6); M(g, CY(.18, .22, .5, 8), C.scuro, x, yd + .25, -20 + t * 40); M(g, CY(.3, .3, .06, 8), C.scuro, x, yd + .52, -20 + t * 40); });
+      [-1, 1].forEach(s => M(g, BX(.5, 1.5, .1), mat('#f2efe6', 'plastica'), s * 2.5, -.9, -20.05));   // i timoni gemelli
+      return { g, H };
+    },
+  };
+  function barca(tipo, r, o) { const f = BARCHE[tipo]; if (!f) return null; const B = f(r, o || {}); B.draft = PESCAGGIO[tipo]; return B; }
+  const rngSeme = s => { let x = (s >>> 0) || 7; return () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); };
+  const LUNGHEZZE = { gozzo: [5, 1.75], lancia: [6, 2.1], motoscafo: [7, 2.4], peschereccio: [11, 3.7], traghetto: [40, 10.5] };
+  for (const id in BARCHE) ALTRI[id] = { nome: id[0].toUpperCase() + id.slice(1), L: LUNGHEZZE[id][0], W: LUNGHEZZE[id][1], tipo: 'barca', make: (col, o) => { o = o || {}; const B = barca(id, rngSeme(o.seme || 5), { col: o.colScafo }); const basso = new THREE.Group(); return { alto: B.g, basso, ud: { barca: true, pescaggio: B.draft, H: B.H, wheels: [] } }; } };
 
   // ================= scelta e costruzione =================
   const COSTR = {};   // id → (colore, opzioni) → { alto, basso, ud }
-  for (const id in AUTO) COSTR[id] = (col, o) => auto(AUTO[id](), col, o);
-  //@@ALTRI@@
+  for (const id in AUTO) COSTR[id] = (col, o) => { const D = AUTO[id](); if (D.opz) D.opz(D, o || {}); return auto(D, col, o); };
+  for (const id in ALTRI) COSTR[id] = ALTRI[id].make;
   // per ogni tipo di mezzo del gioco (VK) i modelli che ci stanno dentro (entro il 5% di lunghezza e larghezza)
   const VARIANTI = { cinquecento: ['f126', 'f126', 'panda'], ritmo: ['ritmo', 'f127', 'uno', 'uno', 'delta'], giulia: ['giulietta', 'alfa33', 'f131'], polizia: ['alfetta', 'f131'],
     furgone: ['ducato', 'om'], fuoristrada: ['campagnola'], campagnola: ['campagnola'], camion: ['rifiuti', 'cassonato', 'telonato'], blindato: ['blindato'], ape: ['ape'], vespa: ['vespa'], bmx: ['bmx'] };
@@ -543,6 +1074,6 @@ var Veicoli3D = (function () {
   function costruisci(id, col, o) { const f = COSTR[id]; if (!f) return null; const r = f(col, o || {}); r.ud.modello = id; return r; }
   const MODELLI = {}; for (const id in AUTO) { const D = AUTO[id](); MODELLI[id] = { nome: D.nome, L: D.L, W: D.W, tipo: 'auto' }; }
   for (const id in ALTRI) MODELLI[id] = { nome: ALTRI[id].nome, L: ALTRI[id].L, W: ALTRI[id].W, tipo: ALTRI[id].tipo };
-  return { costruisci, scegli, perVeicolo, epoca, MODELLI, VARIANTI, get ids() { return Object.keys(COSTR); },
+  return { costruisci, scegli, perVeicolo, epoca, barca, PESCAGGIO, MODELLI, VARIANTI, get ids() { return Object.keys(COSTR); },
     __core: { mat, C, nastro, loft, padiglione, ruota, ytAt, hwAt } };
 })();

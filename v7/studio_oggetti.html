@@ -39,7 +39,7 @@
     else if (lib === 'st') { const m = OggettiUI.stModel(fn); if (m) g.add(m); }
     else if (lib === 'scaricato') { await Scaricati.load(fn); Scaricati.put(g, fn); }
     else if (lib === 'file') { const id = '_' + fn; Scaricati.CAT[id] = [fn, (d.fit || ['h', 1])[0], (d.fit || ['h', 1])[1], d.ry || 0, d.rx || 0, d.rz || 0]; await Scaricati.load(id); Scaricati.put(g, id); }
-    else if (lib === 'veicoli') { const R = Veicoli3D.costruisci(fn, d.col || '#b5221c', d.opz || {}); g.add(d.basso ? R.basso : R.alto); g.userData.mezzo = true; }   // [modelli2] veicoli:ritmo (col, opz: { livrea }, basso: il livello lontano)
+    else if (lib === 'veicoli') { const R = Veicoli3D.costruisci(fn, d.col || '#b5221c', d.opz || {}); g.add(d.basso ? R.basso : R.alto); if (R.ud.barca) R.alto.position.y = R.ud.H.D; g.userData.mezzo = true; }   // la barca posata sulla chiglia   // [modelli2] veicoli:ritmo (col, opz: { livrea }, basso: il livello lontano)
     else if (lib === 'kit') { await (window.__kits = window.__kits || Kit.load('assets/mk/', ['food', 'urban', 'urbano', 'casa', 'stazione', 'arcade', 'grave', 'natura', 'tortura', 'train']).catch(() => {})); g.add(Kit.get(fn)); }
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     if (!nudo && !g.userData.mezzo) Superfici.vesti(g);   // i mezzi nel gioco non hanno la veste   // "nudo": true (nella voce o nella scena) per vederli senza veste
