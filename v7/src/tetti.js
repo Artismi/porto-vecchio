@@ -87,7 +87,13 @@ var Tetti = (function () {
         if (got.length >= take) break;
         if (got.some(g => g.sd.f === c.sd.f)) continue;
         got.push(c); used.add(c.ty * GW + c.tx);
-        const [wx, wy] = c.sd.wall(c.k), [ox, oy] = c.sd.out;
+        let [wx, wy] = c.sd.wall(c.k), [ox, oy] = c.sd.out;
+        // [città2] la casa che segue la strada è girata attorno al suo centro (render.js rotRec): la scala gira con il muro
+        const rot = b.rot && !b.sign && !b.shop ? b.rot : 0;
+        if (rot) { const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, co = Math.cos(rot), si = Math.sin(rot), qx = wx - cx, qy = wy - cy;
+          wx = cx + qx * co - qy * si; wy = cy + qx * si + qy * co; const nx = ox * co - oy * si, ny = ox * si + oy * co; ox = nx; oy = ny;
+          const fx2 = wx + ox * .55, fy2 = wy + oy * .55, d0 = b.door ? hyp(fx2 - (b.door[0] + .5) * TS, fy2 - (b.door[1] + .5) * TS) : 99;
+          if ((c.foot < 0 && !G.walkM(fx2, fy2)) || bAt(wx - ox * .8, wy - oy * .8) !== bi || bAt(wx - ox * 1.6, wy - oy * 1.6) !== bi || d0 < 2.6) { got.pop(); used.delete(c.ty * GW + c.tx); continue; } }
         LADDERS.push({ i: LADDERS.length, bi, f: c.sd.f, x: wx, y: wy, ox, oy, fx: wx + ox * .55, fy: wy + oy * .55, tx: wx - ox * .8, ty: wy - oy * .8, footB: c.foot, ang: Math.atan2(oy, ox) });
       }
     });
@@ -104,7 +110,7 @@ var Tetti = (function () {
   function buildPlanks() {
     PLANKS.length = 0; PCELL.clear();
     const pairs = new Set(), per = new Map(), ladTops = LADDERS.map(L => [L.tx, L.ty]);
-    const okB = b => b && !b.lighthouse && !b.kiosk && !b.barrack && !b.military && !b.church && b.w >= 2 && b.h >= 2;
+    const okB = b => b && !b.lighthouse && !b.kiosk && !b.barrack && !b.military && !b.church && !b.rot && b.w >= 2 && b.h >= 2;   // [città2] non sulle case girate
     B.forEach((b, bi) => {
       if (!okB(b)) return;
       sidesOf(b).forEach(sd => {
@@ -121,7 +127,8 @@ var Tetti = (function () {
         runs.forEach((R, bj) => {
           const c = B[bj], key = Math.min(bi, bj) + ':' + Math.max(bi, bj);
           if (!okB(c) || pairs.has(key) || Math.abs(roofRule(b) - roofRule(c)) > 2.4) return;
-          if ((per.get(bi) || 0) >= 3 || (per.get(bj) || 0) >= 3) return;
+          const pmax = b.era || c.era ? 1 : 3;   // [città2] nella città per epoche una passerella per casa: le assi non devono coprire i vicoli
+          if ((per.get(bi) || 0) >= pmax || (per.get(bj) || 0) >= pmax) return;
           const cnt = {}; R.forEach(q => cnt[q.g] = (cnt[q.g] || 0) + 1); const g = +Object.keys(cnt).sort((u, v) => cnt[v] - cnt[u])[0], R2 = R.filter(q => q.g === g);
           if (R2.length < 2) return;   // almeno due caselle di muro dritto di fronte
           const m = R2[Math.floor(R2.length / 2)], [wx, wy] = sd.wall(m.k);
@@ -385,6 +392,13 @@ var Tetti = (function () {
       const y0 = footH(L), y1 = topH(L) + .95, Hh = y1 - y0; if (Hh < .5 || Hh > 40) return;
       const off = .2, cx = L.x + L.ox * off, cz = L.y + L.oy * off, yaw = -L.ang;   // 20 cm fuori dal muro
       const sx = -L.oy * .22, sz = L.ox * .22;   // i due montanti, 44 cm l'uno dall'altro
+      const bb = B[L.bi], old = bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');
+      if (old) {   // [epoche] nel borgo, sull'Ottocento e sul regime niente scala di ferro: le staffe alla marinara murate nella parete (pioli a U, ruggine)
+        const wx = L.x + L.ox * .02, wz = L.y + L.oy * .02;
+        for (let y = y0 + .35; y < y1 - .85; y += .32) { put(rungs, wx + L.ox * .16, y, wz + L.oy * .16, .03, .03, .4, yaw); for (const s of [-1, 1]) put(rungs, wx + L.ox * .08 + sx * s * .9, y, wz + L.oy * .08 + sz * s * .9, .16, .03, .03, yaw); }
+        for (const s of [-1, 1]) put(rails, cx - L.ox * .3 + sx * s, y1 - .3, cz - L.oy * .3 + sz * s, .04, .6, .04, yaw);   // i due ferri che aiutano a scavalcare il parapetto
+        put(lamps, wx + L.ox * .1, y1 - .2, wz + L.oy * .1, .1, .12, .1, yaw); return;
+      }
       for (const s of [-1, 1]) put(rails, cx + sx * s, y0 + Hh / 2, cz + sz * s, .05, Hh, .05, yaw);
       for (let y = y0 + .3; y < y1 - .9; y += .3) put(rungs, cx, y, cz, .03, .03, .44, yaw);
       // il corrimano ad arco sopra il bordo: due montanti che piegano verso il tetto

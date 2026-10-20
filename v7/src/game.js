@@ -42,16 +42,19 @@ var Game = (function () {
   // ---- interni: la porta di strada di ogni edificio porta dentro ----
   const INT = typeof Interior !== 'undefined' ? Interior : (typeof require !== 'undefined' ? require('./interior.js') : null);
   const DOOR_OF = new Map(); W0.BUILDINGS.forEach((b, i) => { if (b.door) DOOR_OF.set(b.door[1] * W0.GW + b.door[0], i); });
-  function enterBuilding(st, bi) {
+  // [botteghe] la porta della bottega sotto casa (b.shopFront.door) porta nel suo locale, il portone nell'androne: stesso edificio, due ingressi (L.ent, L.ent2)
+  const SHOP_T = new Set(); W0.BUILDINGS.forEach((b, i) => { const S = b.shopFront; if (S && S.door) { const k = S.door[1] * W0.GW + S.door[0]; DOOR_OF.set(k, i); SHOP_T.add(k); } });
+  const entNear = (L, o) => L.ent2 && (!L.ent || Math.hypot(o.x - L.ent2.in[0], o.y - L.ent2.in[1]) < Math.hypot(o.x - L.ent.in[0], o.y - L.ent.in[1])) ? L.ent2 : L.ent;
+  function enterBuilding(st, bi, shop) {
     const p = st.player, b = W0.BUILDINGS[bi]; if (!INT || !b || p.vehicle) return false;
-    const L = INT.layout(b); if (!L.ent) return false;
-    p.indoor = { b: bi, f: 0 }; p.x = L.ent.in[0]; p.y = L.ent.in[1]; p.path = [];
+    const L = INT.layout(b), e = shop && L.ent2 ? L.ent2 : L.ent; if (!e) return false;
+    p.indoor = { b: bi, f: 0 }; p.x = e.in[0]; p.y = e.in[1]; p.path = [];
     if (HOOKS.indoor) HOOKS.indoor(st, b, true);
     return true;
   }
   function exitBuilding(st) {
     const p = st.player; if (!p.indoor) return false; const b = W0.BUILDINGS[p.indoor.b], L = INT.layout(b);
-    p.indoor = null; p.x = L.ent.out[0]; p.y = L.ent.out[1];
+    const e = entNear(L, p); p.indoor = null; p.x = e.out[0]; p.y = e.out[1];   // [botteghe] si esce dalla porta da cui si è vicini
     if (HOOKS.indoor) HOOKS.indoor(st, b, false);
     return true;
   }
@@ -1359,7 +1362,7 @@ var Game = (function () {
     }
     if (a === 'affronta') {
       if (dist(n.x, n.y, p.x, p.y) > 1.6) { if (!n.path.length || dist(n.goal.x, n.goal.y, p.x, p.y) > 2) goTo(n, p.x, p.y); stepAlong(n, 2.2, dt); }
-      else { n.face = Math.atan2(p.y - n.y, p.x - n.x); n.speedNow = 0; if (n.framedAngry && n.tr.cor > .7 && st.clock > (n.shoveAt || 0) && !p.vehicle) { n.shoveAt = st.clock + 6; p.stun = .8; damagePlayer(st, 8, n.face, n.id); say(st, n, 'Questa è per le voci che metti in giro!'); } }
+      else { n.face = Math.atan2(p.y - n.y, p.x - n.x); n.speedNow = 0; if (n.framedAngry && n.tr.cor > .7 && st.clock > (n.shoveAt || 0) && !p.vehicle) { n.shoveAt = st.clock + 6; p.kbx = Math.cos(n.face) * 5.5; p.kby = Math.sin(n.face) * 5.5; damagePlayer(st, 8, n.face, n.id); /* [anim] lo spintone ti manda indietro di un metro e barcolli; prima p.stun = .8 = a terra come morto */ say(st, n, 'Questa è per le voci che metti in giro!'); } }
       return;
     }
     if (a === 'insegue') {
@@ -1535,7 +1538,7 @@ var Game = (function () {
       if (LVm && LVm.moved(st, ix / l, iy / l, hitWall)) { /* [monte] gestito dai livelli */ }
       else if (p.indoor) {
         const L = indoorL(p);
-        const e = L.ent, ox = e.out[0] - e.in[0], oy = e.out[1] - e.in[1], ol = Math.hypot(ox, oy) || 1;
+        const e = entNear(L, p), ox = e.out[0] - e.in[0], oy = e.out[1] - e.in[1], ol = Math.hypot(ox, oy) || 1;   // [botteghe] portone o porta della bottega
         const doorX = e.side === 'N' || e.side === 'S' ? e.x : e.side === 'W' ? L.box[0] : L.box[0] + L.box[2], doorY = e.side === 'W' || e.side === 'E' ? e.y : e.side === 'N' ? L.box[1] : L.box[1] + L.box[3];
         if (INT.outside(L, p.x, p.y) || (p.indoor.f === 0 && Math.hypot(p.x - doorX, p.y - doorY) < 1.1 && (ix * ox + iy * oy) / (l * ol) > .3)) exitBuilding(st);
         else if (L.stairs && INT.stairGo) { const g = INT.stairGo(L, p.indoor.f, p.x, p.y); if (g) { p.indoor.f = g.f; p.x = g.x; p.y = g.y; p.path = []; if (HOOKS.indoor) HOOKS.indoor(st, L.b, true); } }   // [interni] scale di più piani
@@ -1544,9 +1547,9 @@ var Game = (function () {
         // contro la facciata, sulla soglia di una porta: si entra
         const tx = Math.floor(p.x / TS), ty = Math.floor(p.y / TS);
         for (const [ox, oy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const bi = DOOR_OF.get((ty + oy) * GW + tx + ox); if (bi === undefined) continue;
-          const b = W0.BUILDINGS[bi], cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, dc = Math.hypot(cx - p.x, cy - p.y);
-          if (((cx - p.x) * ix + (cy - p.y) * iy) / (dc * l) > .35 && Math.hypot((b.door[0] + .5) * TS - p.x, (b.door[1] + .5) * TS - p.y) < 1.6) { enterBuilding(st, bi); break; }
+          const kT = (ty + oy) * GW + tx + ox, bi = DOOR_OF.get(kT); if (bi === undefined) continue;
+          const b = W0.BUILDINGS[bi], sh = SHOP_T.has(kT), dr = sh ? b.shopFront.door : b.door, cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, dc = Math.hypot(cx - p.x, cy - p.y);
+          if (((cx - p.x) * ix + (cy - p.y) * iy) / (dc * l) > .35 && Math.hypot((dr[0] + .5) * TS - p.x, (dr[1] + .5) * TS - p.y) < 1.6) { enterBuilding(st, bi, sh); break; }   // [botteghe]
         }
       }
       const back = inp.aim !== undefined && Math.abs(angDiff(Math.atan2(iy, ix), inp.aim)) > 2.2;
@@ -2194,9 +2197,11 @@ var Game = (function () {
     const roadAt = x => { let k = 0, bd = 1e9; RP.forEach((q, i) => { const d = Math.abs(q[0] - x); if (d < bd) { bd = d; k = i; } }); const a = RP[Math.max(0, k - 2)], b = RP[Math.min(RP.length - 1, k + 2)]; let tx = b[0] - a[0], ty = b[1] - a[1]; const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l; let nx = -ty, ny = tx; if (ny < 0) { nx = -nx; ny = -ny; } return { x: RP[k][0], y: RP[k][1], nx, ny }; };
     const coastY = (x, y0) => { for (let y = y0; y > y0 - 60; y -= 1) if (tile0(x, y) === T.WATER) return y; return y0 - 14; };
     const cp = [[542, 279], [556, 279]];
-    for (let x = 572; x <= 1070; x += 14) { const r = roadAt(x); cp.push([r.x + r.nx * 15, r.y + r.ny * 15]); }   // nel bosco, a monte della strada
-    for (let x = 1112; x <= 1500; x += 14) { const r = roadAt(x); cp.push([x, coastY(x, r.y) - 10]); }   // sul mare, davanti alla città
-    cp.push([1514, 250], [1524, 262], [1527, 280], [1530, 296], [1538, 306], [1552, 310], [1568, 310], [1578, 310]);   // oltre il Muro, giù lungo il pontile, sulla banchina
+    for (let x = 572; x <= 1070; x += 14) { const r = roadAt(x); if (r) cp.push([r.x + r.nx * 15, r.y + r.ny * 15]); }   // nel bosco, a monte della strada
+    // [città2] con la città nuova la ferrovia corre a terra sulla costa nord, sul rilevato fra le baracche e la città (MAP.railCity)
+    if (MAP.world.railCity) { const RC = MAP.world.railCity; while (cp.length > 2 && cp[cp.length - 1][0] > RC[0][0] - 8) cp.pop(); RC.forEach((q, k) => { if (k % 2 === 0 || k === RC.length - 1) cp.push(q.slice()); }); }
+    else for (let x = 1112; x <= 1500; x += 14) { const r = roadAt(x); cp.push([x, coastY(x, r.y) - 10]); }   // sul mare, davanti alla città
+    if (!MAP.world.railCity) cp.push([1514, 250], [1524, 262], [1527, 280], [1530, 296], [1538, 306], [1552, 310], [1568, 310], [1578, 310]);   // [città2] con la città nuova finisce sul tronchino contro il Muro   // oltre il Muro, giù lungo il pontile, sulla banchina
     // arrotondata (Chaikin) e campionata ogni metro
     let P = cp; for (let it = 0; it < 4; it++) { const Q = [P[0]]; for (let k = 0; k < P.length - 1; k++) { const a = P[k], b = P[k + 1]; Q.push([.75 * a[0] + .25 * b[0], .75 * a[1] + .25 * b[1]], [.25 * a[0] + .75 * b[0], .25 * a[1] + .75 * b[1]]); } Q.push(P[P.length - 1]); P = Q; }
     const pts = [[P[0][0], P[0][1]]]; let acc = 0;
@@ -2305,6 +2310,7 @@ var Game = (function () {
     });
     st.fires = st.fires.filter(f => {
       if (st.clock > f.until) return false;
+      if (f.calmo) return true;   // [vita2] il bidone acceso fra le baracche: ci si scalda, non brucia nessuno (le fiamme stanno nel bidone)
       st.npcs.forEach(n => { if (!n.dead && !n.inside && dist(n.x, n.y, f.x, f.y) < f.r) { n.burn = 2; } });
       const p = st.player; if (!p.vehicle && dist(p.x, p.y, f.x, f.y) < f.r && st.clock - (p.fireT || -99) > .5) { p.fireT = st.clock; damagePlayer(st, 9, 0, 'fuoco'); }
       st.vehicles.forEach(v => { if (!v.wreck && !v.hidden && dist(v.x, v.y, f.x, f.y) < f.r + VK[v.kind].r) damageVehicle(st, v, 30 * dt, f.owner); });
@@ -2439,7 +2445,7 @@ var Game = (function () {
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
     tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
-    attitude, enterBuilding, exitBuilding, DOOR_OF, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
+    attitude, enterBuilding, exitBuilding, DOOR_OF, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
     LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche

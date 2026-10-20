@@ -123,8 +123,8 @@
   if (VITA0 && !VITA0.__vp) Anim.def('vita', { fade: VITA0.fade, __vp: true, fn(P, A) { const m = P.R.vp; if (m) for (const k in m) if (m[k]) m[k].visible = false; VITA0.fn(P, A); } });
 
   // ---------------- gli attrezzi ----------------
-  // impugnatura: nel pugno l'asse degli oggetti lunghi corre lungo X (dal pollice al mignolo), a ~8 cm lungo le dita e 3 cm verso il palmo
-  const GY = .075, GZ = .03;
+  // impugnatura: nel pugno l'asse degli oggetti lunghi corre lungo X (dal pollice al mignolo), a ~10 cm lungo le dita e 2 cm verso il palmo (GY, GZ)
+  const GY = .1, GZ = .02;   // [mani] il centro del pugno chiuso (misurato: 11,8 cm lungo le dita e 2,2 verso il palmo, per 0,85 di scala)
   vprop('sigaretta', 'R', () => { const g = new THREE.Group(); cyl(g, .005, .005, .07, '#f4f0e6', 0, .1, .01, 0, 0, PI / 2, 5); cyl(g, .0055, .0055, .012, '#ff5a1a', -.04, .1, .01, 0, 0, PI / 2, 5, '#a02000'); return g; });
   // bicchiere da osteria: vetro trasparente, il vino dentro, il fondo spesso (l'apertura verso il pollice, +X)
   const VETRO = new THREE.MeshLambertMaterial({ color: '#d8ecf0', transparent: true, opacity: .45, depthWrite: false });
@@ -251,8 +251,15 @@
   });
 
   // ---- BRACCIA CONSERTE ----
+  // [anim] braccia conserte: gli avambracci uno sull'altro davanti al petto, la destra infilata sotto il braccio sinistro,
+  // la sinistra sul bicipite destro (prima gli avambracci affondavano nel petto e le mani uscivano di lato, aperte)
+  const _ch = new THREE.Vector3();
+  function chestY(P) { const c = P.R.b.Chest; if (!c) return 1.25; c.getWorldPosition(_ch); return P.g.worldToLocal(_ch).y; }
   def('braccia', { fade: .35 }, (P) => {
-    arm(P, 'R', .25, -.85, .35, -.95, .2, .3); arm(P, 'L', .25, -.85, .3, -.95, .05, .35);
+    const y = chestY(P) - .14, b = P.bulk || 0;
+    // la destra: il palmo contro il fianco sinistro, le dita all'indietro sotto il braccio; la sinistra: il palmo sul bicipite destro
+    P.grab('R', .16 + b, y, .1 + b, [0, 1, 0], [.25, 0, -1], [-1, -.4, -.3]); P.grab('L', -.16 - b, y + .04, .12 + b, [0, -1, 0], [-.6, 0, -1], [1, -.4, -.3]);
+    P.fingers('R', .5, .4); P.fingers('L', .7, .6); P.rot('Chest', -.03, 0, 0);
   });
 
   // ---- MANI IN TASCA ----
@@ -310,6 +317,7 @@
   def('orologio', { fade: .3 }, (P) => { arm(P, 'L', .2, -.8, .4, -.7, .45, .55); P.rot('Head', .35, .15, 0); });
   // ---- PORTA UNA CASSA: due mani sotto, braccia piegate davanti alla pancia; schiena un po' indietro ----
   def('porta', { fade: .3 }, (P) => {
+    if (Anim.POSES.tiene) return Anim.POSES.tiene.fn(P, { tiene: 'casse' });   // [anim] la cassa a due mani, ai lati, davanti alla pancia (anim_mano.js): prima saliva davanti alla faccia
     arm(P, 'R', .15, -.75, .5, -.1, .05, 1); arm(P, 'L', .15, -.75, .5, -.1, .05, 1);
     P.rot('Abdomen', -.1, 0, 0); show(P, 'cassa');
   });

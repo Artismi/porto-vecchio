@@ -31,14 +31,18 @@
   const strike = k => k <= 0 || k >= 1 ? 0 : k < .3 ? smooth(k / .3) : 1 - smooth((k - .3) / .7);   // veloce all'andata, lento al ritorno
 
   // ---------------- ARMI ----------------
-  // la molotov: bottiglia con lo straccio, nella mano destra
-  Anim.prop('molotov', () => {
-    const g = new THREE.Group(), M = c => new THREE.MeshLambertMaterial({ color: c });
-    const b = new THREE.Mesh(new THREE.CylinderGeometry(.04, .045, .17, 8), M('#3c6a3a')); g.add(b);
-    const n = new THREE.Mesh(new THREE.CylinderGeometry(.016, .03, .08, 6), M('#3c6a3a')); n.position.y = .12; g.add(n);
-    const r = new THREE.Mesh(new THREE.BoxGeometry(.035, .07, .03), M('#d8cfb4')); r.position.y = .18; r.rotation.z = .3; g.add(r);
+  // la molotov: bottiglia con lo straccio acceso, stretta nel pugno destro (il collo verso il pollice)
+  // [mani] prima era agganciata al polso con uno scostamento a occhio e restava dietro la mano aperta
+  function molotovMake(GY, GZ) {
+    const g = new THREE.Group(), M = c => new THREE.MeshLambertMaterial({ color: c, transparent: c === '#3c6a3a', opacity: .85 });
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(.029, .031, .13, 10), M('#3c6a3a')); b.rotation.z = -Math.PI / 2; b.position.set(-.02, GY, GZ + .005); g.add(b);
+    const liq = new THREE.Mesh(new THREE.CylinderGeometry(.026, .028, .08, 10), M('#c8902a')); liq.rotation.z = -Math.PI / 2; liq.position.set(-.04, GY, GZ + .005); g.add(liq);
+    const n = new THREE.Mesh(new THREE.CylinderGeometry(.012, .028, .07, 8), M('#3c6a3a')); n.rotation.z = -Math.PI / 2; n.position.set(.08, GY, GZ + .005); g.add(n);
+    const r = new THREE.Mesh(new THREE.BoxGeometry(.05, .022, .028), M('#d8cfb4')); r.position.set(.13, GY + .01, GZ + .005); r.rotation.z = .4; g.add(r);
+    const f = new THREE.Mesh(new THREE.ConeGeometry(.016, .05, 6), new THREE.MeshBasicMaterial({ color: '#ffb040' })); f.position.set(.155, GY + .035, GZ + .005); g.add(f);
     return g;
-  }, 'WristR', [0, .11, .03], [0, 0, 0]);
+  }
+  function molotovInHand(P) { if (Anim.mano) Anim.mano.inHand(P, 'molotov', molotovMake); P.fingers('R', .85, .8); }
 
   // ---- strumenti: la mano in un punto (due ossa, gomito verso il «polo») e la canna dell'arma in una direzione ----
   const V3 = () => new THREE.Vector3();
@@ -148,14 +152,14 @@
     P.rot('Abdomen', .12 + e * .1, -.15 + e * .25, 0);
     reachS(P, -1, lerp(.06, .2, e), lerp(-.18, -.04, e), lerp(.32, .55, e), -.7, -.6, 0);
     aimGun(P, 'coltello', 0, lerp(.6, .1, e), 1);
-    reachS(P, 1, -.1, -.06 + e * .05, lerp(.3, .12, e), -.6, -.7, 0);
+    reachS(P, 1, -.1, -.06 + e * .05, lerp(.3, .12, e), -.6, -.7, 0); P.fingers('L', .55, .4);   // la sinistra in guardia, semichiusa
   }
   // molotov pronta: bottiglia alta dietro la spalla (il caricamento), la sinistra avanti a prendere la mira
   function molotovPronta(P, A, w) {
     P.rot('Chest', -.06 * w, -.3 * w, 0);
     AIM(P, 'UpperArmR', -.9, .12, -.35, w); AIM(P, 'LowerArmR', .05, 1, -.3, w); AIM(P, 'WristR', 0, 1, -.1, w);
     AIM(P, 'UpperArmL', .3, -.05, 1, w); AIM(P, 'LowerArmL', .1, .1, 1, w);
-    P.prop('molotov');
+    molotovInHand(P);
   }
   D('mira', { fade: .15, fn(P, A) {
     const w = armaDi(P.o);
@@ -194,30 +198,14 @@
     if (a < 1) { AIM(P, 'UpperArmR', lerp(-.85, -.2, a), lerp(.35, .7, a), lerp(-.3, .7, a)); AIM(P, 'LowerArmR', lerp(-.05, .1, a), lerp(1, .3, a), lerp(-.35, 1, a)); }
     else { AIM(P, 'UpperArmR', lerp(-.2, .1, f), lerp(.7, -.6, f), lerp(.7, .8, f)); AIM(P, 'LowerArmR', .1, lerp(.3, -.7, f), lerp(1, .6, f)); }
     AIM(P, 'UpperArmL', lerp(.3, .8, a), lerp(-.05, -.55, a), lerp(1, -.35, a)); AIM(P, 'LowerArmL', lerp(.1, .3, a), lerp(.1, -.5, a), lerp(1, .3, a));
-    if (k < .3) P.prop('molotov');
+    if (k < .3) molotovInHand(P); else P.fingers('R', .15 * (1 - k), .2);   // lasciata: la mano si apre
   } });
 
   // ---------------- CORPO A CORPO ----------------
   // guardia da pugile: pugni al mento, sinistro avanti; A.colpoK/A.colpoLato fanno partire il pugno
-  // ---- le dita: pugno chiuso (k 0-1). Le dita che la clip non anima terrebbero la rotazione di ieri: si ricorda
-  // la rotazione di base e quella messa da noi; se nessuno l'ha toccata nel frattempo, si riparte dalla base ----
-  const FING = ['Index1', 'Index2', 'Index3', 'Middle1', 'Middle2', 'Middle3', 'Ring1', 'Ring2', 'Ring3', 'Pinky1', 'Pinky2', 'Pinky3', 'Thumb1', 'Thumb2'];
-  const _fq = new THREE.Quaternion(), _fx = new THREE.Vector3(1, 0, 0);
-  function dita(P, side) {
-    const R = P.R, key = side > 0 ? 'fL' : 'fR'; if (R[key]) return R[key];
-    const out = [], L = side > 0 ? 'L' : 'R';
-    FING.forEach(n => { const b = R.m.getObjectByName(n + L); if (b) out.push({ b, base: b.quaternion.clone(), mine: b.quaternion.clone(), th: /^Thumb/.test(n) }); });
-    return (R[key] = out);
-  }
-  function pugno(P, side, k) {
-    const F = dita(P, side), ww = (k === undefined ? 1 : k) * P.w;
-    for (let i = 0; i < F.length; i++) {
-      const f = F[i], q = f.b.quaternion;
-      if (!q.equals(f.mine)) f.base.copy(q);              // l'ha mossa la clip: quella è la nuova base
-      _fq.setFromAxisAngle(_fx, (f.th ? .7 : 1.25) * ww);
-      q.copy(f.base).multiply(_fq); f.mine.copy(q);
-    }
-  }
+  // ---- le dita: pugno chiuso (k 0-1), col motore (P.fingers piega le dita verso il palmo; la vecchia rotazione sull'asse X
+  // delle ossa le piegava di lato: mani «a papera») ----
+  function pugno(P, side, k) { P.fingers(side > 0 ? 'L' : 'R', 1, 1, k === undefined ? 1 : k); }
   // un pugno chiuso davanti al mento; e (0-1) lo porta in avanti, teso, verso il centro
   function fist(P, side, fwd, e, w) {
     reachS(P, side, lerp(.1, .2, e), lerp(.02, .08, e), lerp(fwd, .62, e), -.5, -.85, -.1, w);
@@ -286,12 +274,17 @@
   // rialzarsi da terra: da un ginocchio a terra, la mano sul ginocchio, si spinge su
   D('rialza', { fade: .04, base: 'Idle', fn(P, A) {
     const k = clamp(P.t / .95, 0, 1), d = 1 - smooth(clamp((k - .25) / .75, 0, 1));   // d: quanto è ancora giù
-    P.body({ y: -.48 * d, rx: .3 * d });
-    P.rot('Abdomen', .4 * d, 0, 0); P.rot('Chest', .2 * d, 0, 0); P.rot('Head', -.3 * d, 0, 0);
-    AIM(P, 'UpperLegR', 0, -.25, 1, d); AIM(P, 'LowerLegR', 0, -1, .1, d);                  // piede destro avanti, piantato
-    AIM(P, 'UpperLegL', 0, -1, -.05, d); AIM(P, 'LowerLegL', 0, -.15, -1, d); AIM(P, 'FootL', 0, -.3, -1, d);   // ginocchio sinistro a terra
-    AIM(P, 'UpperArmR', -.15, -.75, .65, d); AIM(P, 'LowerArmR', .1, -.95, .2, d);          // mano sul ginocchio
-    AIM(P, 'UpperArmL', .4, -.8, .4, d); AIM(P, 'LowerArmL', 0, -1, .1, d);
+    const By = -.48 * d; P.body({ y: By, z: .04 * d });
+    P.rot('Abdomen', .55 * d, 0, 0); P.rot('Chest', .3 * d, 0, 0); P.rot('Head', -.35 * d, 0, 0);
+    // [anim] gambe con l'IK (coordinate prima dello spostamento del corpo): il piede destro piantato avanti, il ginocchio
+    // sinistro a terra con la punta del piede appoggiata dietro. Prima le ossa puntate a mano col corpo inclinato
+    // mandavano lo stinco sotto il pavimento.
+    P.legTo('R', -.13, .05 - By, .3, 0, .3, 1, 0, .1, d);
+    P.legTo('L', .13, .12 - By, -.38, 0, -.6, .4, -1.1, 0, d);
+    // la mano destra sul ginocchio destro, la sinistra pronta a spingere da terra
+    if (local(P, 'LowerLegR', _G)) reach(P, -1, _G.x + .02, _G.y + .06, _G.z + .02, -.6, .2, -.3, d);
+    if (local(P, 'UpperArmL', _B)) reach(P, 1, _B.x + .05, _B.y - .5, _B.z + .18, .6, 0, -.3, d);
+    P.fingers('R', .5, .4, d); P.fingers('L', .2, .2, d);
   } });
 
   // ---------------- PAURA E RESA ----------------
@@ -310,7 +303,13 @@
     P.rot('Abdomen', .55, 0, 0); P.rot('Chest', .4, 0, t); P.rot('Neck', .4, 0, 0); P.rot('Head', .3, 0, 0);
     AIM(P, 'UpperLegL', .2, -.1, 1); AIM(P, 'UpperLegR', -.2, -.1, 1); AIM(P, 'LowerLegL', .05, -1, -.35); AIM(P, 'LowerLegR', -.05, -1, -.35);
     AIM(P, 'FootL', 0, -.2, 1); AIM(P, 'FootR', 0, -.2, 1);
-    AIM(P, 'UpperArmL', .45, .55, .6); AIM(P, 'LowerArmL', -.75, .3, -.1); AIM(P, 'UpperArmR', -.45, .55, .6); AIM(P, 'LowerArmR', .75, .3, -.1);
+    // le mani intrecciate sulla nuca, i gomiti avanti ai lati della faccia (prima gli avambracci facevano una X sopra la testa)
+    if (local(P, 'Neck', _B) && local(P, 'Head', _G)) {
+      _B.subVectors(_G, _B).normalize();                                     // l'asse della testa (china in avanti)
+      const hx = _G.x + _B.x * .1, hy = _G.y + _B.y * .1 + .03, hz = _G.z + _B.z * .1 - .02;   // la nuca (reach usa _G e _u: si copia prima)
+      reach(P, 1, hx + .07, hy, hz, .5, -.4, 1); reach(P, -1, hx - .07, hy, hz, -.5, -.4, 1);
+      P.fingers('L', .35, .2); P.fingers('R', .35, .2);
+    }
   } });
   // fuga: sulla corsa, un braccio sopra la testa a ripararsi, l'altro che si agita
   D('fuga', { fade: .2, fn(P, A) {
@@ -327,7 +326,7 @@
     if (z < .2) { x = x < 0 ? -.9 : .9; z = .2; }   // dietro di sé non si indica: si resta di lato
     const jab = .06 * Math.max(0, P.wave(2.2));
     P.rot('Chest', -.04, clamp(Math.atan2(x, z) * .35, -.4, .4), 0);
-    AIM(P, 'UpperArmR', x, .12 + jab, z); AIM(P, 'LowerArmR', x, .18 + jab, z); AIM(P, 'WristR', x, .2, z);
+    AIM(P, 'UpperArmR', x, .12 + jab, z); AIM(P, 'LowerArmR', x, .18 + jab, z); AIM(P, 'WristR', x, .2, z); P.fingerEach('R', [0, .95, 1, 1], .8);   // [mani] l'indice teso, le altre chiuse
     AIM(P, 'UpperArmL', .45, -.85, -.15, .8); AIM(P, 'LowerArmL', -.55, -.1, -.4, .8);
   } });
   // alt: Guardia o Tutela, braccio sinistro teso col palmo avanti, la destra sulla fondina
@@ -352,18 +351,9 @@
   // ammanettato: le mani dietro la schiena, le spalle indietro, la testa bassa
   D('ammanettato', { fade: .25, fn(P, A) {
     P.rot('Chest', -.08, 0, 0); P.rot('Neck', .2, 0, 0); P.rot('Head', .25, 0, 0);
-    AIM(P, 'UpperArmL', .25, -.85, -.45); AIM(P, 'LowerArmL', -.8, -.15, -.35); AIM(P, 'WristL', -1, 0, -.1, .6);
-    AIM(P, 'UpperArmR', -.25, -.85, -.45); AIM(P, 'LowerArmR', .8, -.15, -.35); AIM(P, 'WristR', 1, 0, -.1, .6);
-  } });
-
-  // ---------------- IN VESPA ----------------
-  // seduto, le mani al manubrio, i piedi sulla pedana; il corpo è già alzato di 35 cm da render.js
-  D('in_vespa', { fade: .1, base: 'Idle', fn(P, A) {
-    P.body({ y: -.3, z: -.12 });
-    P.rot('Abdomen', .08, 0, 0); P.rot('Chest', .06, 0, 0);
-    AIM(P, 'UpperLegL', .12, -.15, 1); AIM(P, 'UpperLegR', -.12, -.15, 1); AIM(P, 'LowerLegL', 0, -1, .3); AIM(P, 'LowerLegR', 0, -1, .3);
-    AIM(P, 'FootL', 0, -.1, 1); AIM(P, 'FootR', 0, -.1, 1);
-    AIM(P, 'UpperArmL', .3, -.5, .8); AIM(P, 'LowerArmL', .15, -.05, 1); AIM(P, 'UpperArmR', -.3, -.5, .8); AIM(P, 'LowerArmR', -.15, -.05, 1);
+    // [anim] i polsi uniti dietro la schiena, sopra il sedere, i gomiti in fuori (prima un braccio restava di lato)
+    if (local(P, 'Hips', _G)) { P.reach('R', _G.x - .035, _G.y + .02, _G.z - .2, [-1, -.2, -.6]); P.reach('L', _G.x + .035, _G.y + .02, _G.z - .2, [1, -.2, -.6]); }
+    P.fingers('R', .4, .4); P.fingers('L', .4, .4);
   } });
 
   // ---------------- IN BMX ----------------
@@ -371,7 +361,7 @@
   // l'angolo delle pedivelle (A.crank, lo stesso che render.js dà al modello), le ginocchia salgono e scendono come nei
   // fotogrammi di una pedalata vera. A.carica (0-1): si accuccia prima del bunny hop; A.aria: in aria tira su il manubrio.
   // Le misure sono quelle di bmxMesh (BMX_GEO in render.js); il corpo è già alzato di 35 cm da render.js (LIFT).
-  const BMX = { bbY: .29, bbZ: -.04, crank: .17, pedX: .14, seatY: .81, seatZ: -.27, gripY: 1.04, gripZ: .22, gripX: .32, pegX: .19, pegY: .31, pegZ: -.5, LIFT: .35 };
+  const BMX = { bbY: .29, bbZ: -.04, crank: .17, pedX: .16, seatY: .81, seatZ: -.27, gripY: 1.04, gripZ: .22, gripX: .36, pegX: .19, pegY: .31, pegZ: -.5, LIFT: .35 };
   const _bp = new THREE.Vector3(), _bs = new THREE.Vector3(), _be = new THREE.Vector3(), _bt = new THREE.Vector3(), _bw = new THREE.Vector3();
   const bmxLocal = (P, bone, out) => { P.R.b[bone].getWorldPosition(out); return P.g.worldToLocal(out); };
   // braccio a due ossa: il polso in (tx,ty,tz) nello spazio del personaggio, gomito verso il basso e in fuori
@@ -387,14 +377,15 @@
     AIM(P, ub, _be.x, _be.y, _be.z, 1);
     bmxLocal(P, lb, _be); _bt.sub(_be); AIM(P, lb, _bt.x, _bt.y, _bt.z, 1);
   }
-  D('in_bmx', { fade: .12, base: 'Idle', fn(P, A) {
+  D('in_bmx', { fade: .12, base: 'Idle', air: true, fn(P, A) {
     const R = P.R, th = A.crank || 0, ck = A.carica || 0, air = A.aria || 0, wk = A.impenna || 0, pk = Math.abs(A.peg || 0), ps = (A.peg || 0) > 0 ? 1 : -1;
     // impennata (freccia giù): il corpo ruota già con la bici (render.js); qui ci si tira indietro a braccia tese.
     // pedalina (frecce destra/sinistra): in piedi, il piede di quel lato sul peg dietro, il corpo fuori da quel lato
     if (R.hipY === undefined && R.b.Hips) { bmxLocal(P, 'Hips', _bp); R.hipY = _bp.y; R.hipZ = _bp.z; }
     // il sedere sul sellino; caricando si abbassa e va indietro, in aria si raccoglie in avanti
     const By = (BMX.seatY + .08 - BMX.LIFT) - (R.hipY || .95) + .06 * ck + .08 * air + .1 * pk, Bz = BMX.seatZ - .06 - (R.hipZ || 0) - .1 * ck + .06 * air - .05 * wk - .04 * pk, Bx = ps * .09 * pk;   // carica: su dal sellino e indietro, come prima di un bunny hop
-    P.body({ x: Bx, y: By, z: Bz, rz: .035 * Math.sin(th) * (1 - air) * (1 - pk) - ps * .05 * pk });
+    P.body({ x: Bx, y: By, z: Bz, rz: -ps * .05 * pk });
+    P.rot('Hips', 0, 0, .05 * Math.sin(th) * (1 - air) * (1 - pk));   // [mani] il bacino ondeggia con la pedalata, non tutto il corpo: le mani restano sul manubrio
     P.rot('Abdomen', .45 + .3 * ck + .1 * air - .3 * wk + .3 * pk, 0, 0); P.rot('Chest', .2, .06 * Math.sin(th), 0); P.rot('Neck', -.3 - .1 * ck, 0, 0); P.rot('Head', -.25, 0, 0);
     // i piedi sui pedali: destra a th, sinistra di fronte (th + π); la caviglia sta 7 cm sopra il pedale, la punta in avanti
     [['R', -1, th], ['L', 1, th + Math.PI]].forEach(([sd, sg, a]) => {
@@ -403,7 +394,32 @@
       P.legTo(sd, px - Bx, py - BMX.LIFT - By, pz - Bz, sg * .2, .4, 1, .12 * Math.sin(a) - .05, .05);
     });
     // le mani sulle manopole: il polso sta dietro la manopola, così la mano la stringe (in aria le tira verso il petto)
-    ['L', 'R'].forEach(sd => { const sg = sd === 'L' ? 1 : -1; armTo(P, sd, sg * BMX.gripX - Bx, BMX.gripY + .02 - BMX.LIFT - By + .08 * air, BMX.gripZ - .08 - Bz - .06 * air); P.fingers(sd, .85, .7); });
+    grips(P, BMX.gripX, BMX.gripY - BMX.LIFT + .08 * air, BMX.gripZ - .06 * air, Bx, By, Bz);
+  } });
+  // [mani] le mani sulle manopole (una barra di traverso, x = ±gx, nello spazio del personaggio dopo il sollevamento):
+  // la manopola sta nel palmo, 7 cm davanti al polso e un filo sotto; le nocche guardano avanti, le dita la avvolgono
+  function grips(P, gx, gy, gz, Bx, By, Bz) {
+    ['L', 'R'].forEach(sd => {
+      const sg = sd === 'L' ? 1 : -1;
+      // la manopola nel pugno: il pollice verso il centro del manubrio (per la sinistra il sistema della mano è specchiato:
+      // in tutti e due i casi X va verso +x), le dita avanti e giù sopra la barra, il gomito in fuori e in basso
+      P.grab(sd, sg * gx - Bx, gy - By, gz - Bz, [1, 0, 0], [0, -.55, 1], [sg * .7, -1, -.2]);
+      P.fingers(sd, .92, .85);
+    });
+  }
+  // ---------------- IN VESPA ----------------
+  // seduti sulla sella, le mani alle manopole, i piedi sulla pedana. Misure di vespaMesh (render.js); il corpo è già
+  // alzato di 35 cm da render.js. Prima le braccia andavano avanti «a occhio» e le mani, aperte, restavano 20 cm dentro.
+  const VESPA = { seatY: .98, seatZ: .02, gripX: .33, gripY: 1.3, gripZ: .7, floorY: .37, footX: .13, footZ: .3, LIFT: .35 };
+  D('in_vespa', { fade: .1, base: 'Idle', air: true, fn(P, A) {
+    const R = P.R, V = VESPA;
+    if (R.hipY === undefined && R.b.Hips) { bmxLocal(P, 'Hips', _bp); R.hipY = _bp.y; R.hipZ = _bp.z; }
+    const By = (V.seatY + .08 - V.LIFT) - (R.hipY || .95), Bz = V.seatZ - (R.hipZ || 0);
+    P.body({ y: By, z: Bz });
+    P.rot('Abdomen', .42, 0, 0); P.rot('Chest', .22, 0, 0); P.rot('Neck', -.36, 0, 0); P.rot('Head', -.2, 0, 0);
+    P.rot('ShoulderL', 0, -.18, 0); P.rot('ShoulderR', 0, .18, 0);   // le spalle in avanti, verso il manubrio
+    [['L', 1], ['R', -1]].forEach(([sd, sg]) => P.legTo(sd, sg * V.footX, V.floorY + .075 - V.LIFT - By, V.footZ - Bz, sg * .15, .5, 1, .1, .12));
+    grips(P, V.gripX, V.gripY - V.LIFT, V.gripZ, 0, By, Bz);
   } });
   // ---------------- SALTO A PIEDI ----------------
   // [salto] carica: ci si accuccia (più carichi, più giù), le braccia indietro; in aria: ginocchia al petto, braccia su
@@ -413,7 +429,7 @@
     P.legTo('L', .13, .09 + dn, .06, .1, 0, 1, 0, .1); P.legTo('R', -.13, .09 + dn, .06, -.1, 0, 1, 0, .1);
     AIMS(P, 1, 'UpperArm', .2, -.7, -.5 * k); AIMS(P, -1, 'UpperArm', .2, -.7, -.5 * k); AIMS(P, 1, 'LowerArm', .1, -.6, -.2); AIMS(P, -1, 'LowerArm', .1, -.6, -.2);
   } });
-  D('salto', { fade: .06, fn(P, A) {
+  D('salto', { fade: .06, air: true, fn(P, A) {
     const up = A.su ? 1 : 0, tuck = A.raccolto || 0;
     P.rot('Abdomen', .15 + .2 * tuck, 0, 0);
     P.legTo('L', .12, .25 + .3 * tuck, .12 + .1 * tuck, .1, .3, 1, .2, .1); P.legTo('R', -.12, .15 + .25 * tuck, -.05, -.1, .3, 1, -.1, .1);
@@ -442,8 +458,10 @@
     P.rot('ShoulderL', 0, .12, .18); P.rot('ShoulderR', 0, -.12, -.18);
     P.rot('Chest', .1, t2, t); P.rot('Neck', .1, 0, 0); P.rot('Head', .05 + t, 0, 0);
     if (!A.upper && !(A.act && A.act !== 'ubriaco')) {
-      AIM(P, 'UpperArmL', .2, -.75, .45); AIM(P, 'LowerArmL', -.9, .25 + t, .25);
-      AIM(P, 'UpperArmR', -.2, -.75, .45); AIM(P, 'LowerArmR', .9, .35 + t2, .3);
+      // [anim] le braccia strette al petto, le mani che stringono le braccia (fuori dal busto, coi vestiti)
+      const c = P.R.b.Chest; let cy = 1.25; if (c) { c.getWorldPosition(_G); cy = P.g.worldToLocal(_G).y; } const b = P.bulk || 0;
+      P.grab('R', .16 + b, cy - .14 + t, .1 + b, [0, 1, 0], [.25, 0, -1], [-1, -.5, -.2]); P.grab('L', -.16 - b, cy - .1 + t2, .12 + b, [0, -1, 0], [-.6, 0, -1], [1, -.5, -.2]);
+      P.fingers('R', .75, .6); P.fingers('L', .75, .6);
     }
   } });
   // ferito: si tiene il fianco con la sinistra, piegato da quella parte; zoppica camminando
@@ -542,7 +560,7 @@
       s.act = 'colpito'; s.colpitoK = 1;
       const fx = Math.cos(n.face), fz = Math.sin(n.face);
       s.dietro = dP < 30 && fx * dx + fz * dz < 0;
-    } else if (sinceHit < 1.6 && n.hp < (n.maxHp || 60) * .5 && sp < 2) s.act = 'barcolla';
+    } else if ((sinceHit < 1.6 && n.hp < (n.maxHp || 60) * .5 && sp < 2) || Math.hypot(n.kbx || 0, n.kby || 0) > 1.2) s.act = 'barcolla';   // [anim] anche spinto via
     // la Guardia: perquisizione, manette, l'alt
     if (n.cop && a === 'perquisisce' && sp < .3) s.act = 'perquisisce';
     if (st.moments && st.moments.length) for (let i = 0; i < st.moments.length; i++) { const M = st.moments[i]; if (M.kind === 'jail' && M.until > clock && M.npcs && M.npcs[1] === n.id) s.act = 'ammanetta'; }
@@ -619,6 +637,7 @@
     if (st.moments) for (let i = 0; i < st.moments.length; i++) { const Mo = st.moments[i]; if (Mo.kind === 'arrest' && Mo.until > clock) { s.act = 'ammanettato'; s.upper = null; return; } }
     if (afterFall(m, clock, s)) return;
     if (clock - (p.hurtT || -99) < .4) { s.act = 'colpito'; s.colpitoK = .8; s.dietro = false; }
+    else if (Math.hypot(p.kbx || 0, p.kby || 0) > 1.2) s.act = 'barcolla';   // [anim] spinto via (spintone, urto): barcolla finché scivola
     const WP = W_(), W = WP[p.cur];
     // molotov: lancio, poi di nuovo pronta (se ne restano)
     if (clock - m.throwT < .6) { s.upper = 'lancia'; s.lancioK = (clock - m.throwT) / .6; return; }
