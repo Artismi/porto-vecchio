@@ -21,7 +21,7 @@ var PezziCitta = (function () {
     tufo: '#bba684', tufoScuro: '#9a8869', travertino: '#ddd3bb', travertinoScuro: '#b4a990',   /* [pezzi2] il tufo vero, grigio-giallo spento (era #c9a86a) */ travertinoChiaro: '#ece4d0', intradosso: '#a89e88', tenda: '#d8ccb0', tendaRossa: '#a8483a', tapparella: '#cbc2aa',   // [facciate2]
     pietra: '#8d8378', pietraScura: '#6e665c', pietraChiara: '#a9a090',   // la pietra di zoccoli, cornici, chiavi di volta (era finita nel commento qui sopra)
     ghisa: '#2f4a3a', cemento: '#9a968e', cementoScuro: '#7c7873', ferro: '#4a4c50', ferroScuro: '#2e3034', ruggine: '#7a4a30',
-    maiolica: '#2e7d5a', intonaco: '#d3c5a3', calce: '#ddd7c8', intonacoRosso: '#b5604a', ocra: '#c99a4e', coppi: '#8f6656', tegole: '#9b5a3c', legno: '#7a5a38',
+    maiolica: '#2e7d5a', intonaco: '#d3c5a3', calce: '#ddd7c8', intonacoRosso: '#b5604a', ocra: '#c29a5e', coppi: '#8f6656', tegole: '#9b5a3c', legno: '#7a5a38',
     vetro: '#7fa3b8', asfalto: '#4a4a48', massicciata: '#7d7467', terra: '#8b7355', acqua: '#3f6f7a', bianco: '#e8e4da', rosso: '#b8322a',
     buio: '#1c1a18', lampada: '#ffe9b0', verde: '#3e6b3a', ottone: '#b08d4a', alluminio: '#b9bcc0', arancio: '#d8772a', giallo: '#e3b23c', blu: '#2a4a7a',
     zinco: '#8c9298', piombo: '#64676a', castano: '#6a3d2c', castanoScuro: '#4a2c22', isabella: '#d6c49a', erba: '#6f7a4a', rotaia: '#8a8580',
@@ -115,7 +115,7 @@ var PezziCitta = (function () {
     c = mix(c * (1. + gr * .1), vec3(.24, .15, .1), ch * .8); c = mix(c, vec3(.3, .18, .11), st * .35 * ver); H = -ch * .6; }
 #elif ${G} == 7
   { float u = ver > .5 ? p.x : pf.x, on = sin(u * 82.), fd = 1. - smoothstep(.015, .05, px);
-    c *= (1. + on * .09 * fd) * (.86 + fn * .22) * (1. + gr * .06); c = mix(c, vec3(.42, .3, .22), smoothstep(.72, .76, pzF(p * 2.3 + 7.)) * .5); H = on * .5 * fd; }
+    c *= (1. + on * .09 * fd) * (.86 + fn * .22) * (1. + gr * .06); c = mix(c, vec3(.42, .3, .22), smoothstep(.7, .8, pzF(p * .9 + 7.)) * .45); c *= 1. - smoothstep(.55, .75, pzF(vec2(p.x * 1.5, p.y * .3) + 2.)) * .12; H = on * .5 * fd; }   // la ruggine a chiazze larghe, le colate scure
 #elif ${G} == 8
   { float u = pf.x / .23, v = pf.y / .42, cu = floor(u), cv = floor(v + mod(cu, 2.) * .5), t = pzH1(vec2(cu, cv)), fu = fract(u) * 2. - 1., fd = 1. - smoothstep(.02, .08, px);
     float sh = mix(1., .72 + .34 * sqrt(max(0., 1. - fu * fu)), fd);
