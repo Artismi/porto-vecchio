@@ -14,23 +14,29 @@
   aderenza con corti e case-torre, griglia murattiana a cortina continua con la corte, Mercato da 46 a 32 m. Copertura borgo 32→51%,
   Ottocento 25→41%. `rd.era` su tutte le strade.
 
-## Filoni: lavoro salvato su rami `claude/wip-*` (WIP, da verificare prima di unire)
-| Ramo | Filone | Stato |
-|---|---|---|
-| `claude/wip-k-vita` | K città viva: `posti.js`, scene legate a posto e ora, riempimento | il più avanti; provare `test_posti.js`, `test_citta_viva.js`, `test_eventi.js` |
-| `claude/wip-c-botteghe` | C botteghe al piano terra (`b.shopFront`) e interni | parziale |
-| `claude/wip-d-segni` | D regista delle pagine `scena.js`, rete elettrica `rete.js`, suoli, segni, dehors | parziale |
-| `claude/wip-m4-pezzi` | M4 libreria `pezzi_citta.js` (campanile, portici, stazione, Rocca, Vele...) | appena iniziato |
-| `claude/wip-s-sottosuolo` | S sottosuolo stratificato, ritrovamenti (dinosauro, autobus), catacombe | appena iniziato |
-| `claude/wip-m1-oggetti` | M1 oggetti di strada rifiniti | appena iniziato |
-| — | M3 facciate e tetti per epoca | era in corso, nessun commit salvato: rilanciare |
-| — | M2 veicoli e barche | fermato in lettura: rilanciare |
-I brief completi dei filoni sono ricostruibili da `PIANO_LAVORO.md` + `LEGGIBILITA.md` + `PROTOCOLLO_AGENTI.md`.
+## Filoni
+**Uniti nel ramo base (20 ottobre)**, con le prove verdi salvo dove detto:
+- **M3 facciate e tetti per epoca** (`render.js` `[epoche] L'ARCHITETTURA PER EPOCA`, `tetti.js`): `b.era` decide tavolozza, finestre, porte,
+  tetti, portici, scale; pezzi modellati (cornici, ringhiere, conci, coppi); via il kit NY dalle case storiche; corretta la rotazione
+  dei corpi in `buildModular` (le «falde che spuntano»). Restano: 35 coppie di case del borgo con dislivello > 1 piano (lo decide il
+  generatore), angoli smussati dell'Ottocento, pannelli beige su una casa-torre della marina, draw call ~800-1150 (obiettivo 300 lontano già prima).
+- **D regista delle pagine e rete elettrica** (`scena.js`, `rete.js`, `render.js` `[segni]`, `test_segni.js`): 30 impaginazioni,
+  rete come grafo con allacci abusivi, suoli/segni/targhe/civici/lampioni per epoca, dehors. **Prova rossa**: con il borgo pieno gli
+  abusivi delle baracche scendono a 6 (contro 16 nel borgo): ritarare le sorgenti vicino alle baracche in `rete.js` sez. 3.
+  Restano: tavolini dei dehors poco visibili, basoli poco leggibili a zoom 0,4, stencil del regime, tag/sticker di `writing.js`, transenne e semafori fuori dal regista.
+- **C botteghe sotto casa e interni** (`b.shopFront`, `interiors.js` con bottega + androne, 9 mestieri nuovi, `fronteBottega`, `test_botteghe.js`):
+  74 botteghe. Restano: il fronte da fuori mai visto in foto; solo sul kit modulare; insegne lunghe.
+- **K città viva** (`posti.js` 246 posti di 17 tipi, 49 scene legate a posto e ora, riempimento in `popolo.js`, `test_posti.js`, `test_citta_viva.js`).
+  Restano: le foto non mostrano la gente (lo strumento teletrasporta e scatta subito: riempire i posti all'arrivo o aspettare minuti di gioco),
+  l'auto che frena in `due_vetri`, il bastone, `test_eventi.js` a volte instabile.
+
+**Da rilanciare** (lavoro parziale sui rami): `claude/wip-m4-pezzi` (pezzi urbani grandi), `claude/wip-s-sottosuolo`,
+`claude/wip-m1-oggetti`; M2 veicoli da zero.
 
 ## Prossimi passi
-1. Per ogni ramo WIP: unire su un ramo di prova, far girare le prove, guardare 3-4 foto; tenere solo ciò che regge.
-2. Ordine di unione: M4 → M3 → M1/M2 → D → C → K → S (scheletro e pezzi prima, superfici poi, vita alla fine).
-3. Rilanciare M3 (decisivo: oggi tutte le case usano lo stesso kit NY con scale antincendio, anche nel borgo) e poi E/F/G del piano
+1. **Il varco a retino** (la pioggia di puntini neri e la casa trasparente fra camera e personaggio) domina ogni foto ravvicinata: va rifatto prima di giudicare le superfici.
+2. Ritarare gli abusivi delle baracche (prova rossa di `test_segni.js`); foto mirate del fronte delle botteghe e delle scene di K.
+3. Rilanciare M4, M1, M2, S dai loro rami; poi E/F/G del piano
    (marina e stazione, Novecento e boom sulla collina ovest, Rocca e spianata frastagliata).
 4. Difetti noti da togliere: nuvola nera di particelle nel borgo (1400,312 e 1420,365), casa nera trasparente (varco a retino acceso),
    terreno a colori sbagliati sulla collina ovest (1190,330).
