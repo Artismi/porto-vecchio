@@ -47,3 +47,39 @@ Nel kit i piedi (`FootL/R`) e i poli delle ginocchia (`PTL/R`) stanno sotto Root
 ## Aperto
 - `index.html` non è rifatto (lo rifà chi unisce, con `python3 build.py`).
 - Nel container lo schermo del gioco è risultato nero a un fotogramma ogni 6 s (browser software). Le pose costano ~0,2 ms a persona e non danno errori. Da guardare su un browser vero.
+
+## Mani, articolazioni, gesti (19 ottobre)
+- **Motore** (`animazioni.js`):
+  - il polso punta lungo la mano (`CHILD.Wrist* = Middle2*`: prima puntava a Index1, che sta di lato, e la mano girava di traverso);
+  - mani all'85% (`Anim.HAND`, in `rig`/`apply`);
+  - dita: il pollice si chiude sull'indice; `P.fingerEach(lato, [i, m, a, mi], pollice)` per indicare;
+  - `P.reach(lato, x, y, z, polo)`: il polso in un punto (IK a due ossa);
+  - `P.grab(lato, x, y, z, X, Y, polo)`: il centro del pugno nel punto, la mano orientata (X dal mignolo al pollice per la destra, specchiato per la sinistra, Y lungo le dita). Si usa per manubri, strette di mano, braccia conserte.
+  - **Passaggi finali per tutte le pose**, in `limits`:
+    - torsioni distribuite (braccio entro 26° sul suo asse, mano 60/40 fra avambraccio e polso);
+    - gomiti e mani fuori dal busto (un'ellisse) e dalla testa (una sfera);
+    - polso entro 69° in avanti e 20/35° di lato;
+    - ginocchia mai al contrario;
+    - piedi a terra quando la posa abbassa il corpo (non per le pose `air: true`: BMX, Vespa, salto).
+  - Transizioni: si entra in una posa in almeno 0,1 s e se ne esce in almeno 0,18 s; una posa chiesta a fotogrammi alterni resta accesa per 0,12 s.
+- **Centro del pugno**: 10 cm lungo le dita, 2 cm verso il palmo (`GY`, `GZ` in `anim_vita.js` e `anim_mano.js`). Gli attrezzi prima stavano contro il palmo.
+- **`models.js`**:
+  - armi del kit a misura vera (`GUN_LEN`);
+  - camminata e corsa con margine sulle soglie (corsa sopra i 3,8 m/s);
+  - il passo riprende da dove si era fermato;
+  - dissolvenze più lunghe tra camminata e corsa, velocità della clip che cambia per gradi.
+- **`render.js`**:
+  - le persone si girano verso la direzione voluta invece di scattare (`turnTo`);
+  - manubrio della Vespa a misura vera (manopole a ±33 cm).
+- **Nuovi moduli**:
+  - `anim_mano.js`: qualsiasi oggetto in mano (`n.hand`, `p.hand`) ha un modello e una presa per famiglia (`MenuUI.famOf`): pugno, lungo, appeso, piatto, regge;
+  - `anim_gesti.js`: gesti casuali da fermi (grattarsi, sbadigliare, allacciarsi una scarpa, colletto, tasche, naso, capelli, guardare lontano; il giocatore dopo 8 s fermo), stretta di mano tra amici che si incrociano (`popolo.js`: `greet.shake`, `n.__pausa`), pacca sulla spalla in crocchio.
+- **BMX e Vespa**: mani sulle manopole con `grab` (entro 2 cm); il bacino ondeggia con la pedalata, non tutto il corpo.
+- **Spintone** (`game.js`): ti manda indietro di un metro e barcolli (prima `p.stun` = a terra come morto).
+- **Anteprime del Menu** (`menu_ui.js`):
+  - 192 px, inquadratura sulla sfera dell'oggetto girato (niente tagli), ombra morbida, metalli meno scuri;
+  - modelli nuovi per maglia, scarpe, cappello, zaino, cassa, orologio, gioielli, torcia, thermos.
+- **Studio**:
+  - `strumenti_inverno/studio_anim.js` accetta `"mk"` (segnaposti: manopole, pedali, sedili);
+  - `MenuUI.anteprima(id)` restituisce l'anteprima di un oggetto.
+- **Da fare**: `index.html` non è rifatto (`python3 build.py`). Mancano ancora le prove nel gioco vero (BMX, Vespa, risse) e i test della logica dopo lo spintone (`node test_*.js`).

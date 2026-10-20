@@ -3,7 +3,7 @@
 // scene.json: [{ "nome": "bottino", "cols": 5, "sp": 1.6, "ang": 0, "side": .35, "el": .55,
 //               "pose": [{ "nome": "cestino", "src": "bottino:cestino" }, { "nome": "pallet", "src": "pezzi:pallet", "args": [...] }] }]
 // Ogni voce fa un'immagine <nome>.png con i modelli in fila (src = libreria:funzione; args = argomenti dopo il gruppo).
-// Librerie: bottino:, pezzi:, st: (postazioni di oggetti_ui.js), scaricato: (voci di src/scaricati.js), kit:food/fish (nodi dei kit),
+// Librerie: bottino:, pezzi:, st: (postazioni di oggetti_ui.js), pm: (l'arredo di strada di src/arredo3d.js: "pm:lampione_corso", "opz": {...}, "liv": 0|1), scaricato: (voci di src/scaricati.js), kit:food/fish (nodi dei kit),
 //   file:mj/s_Tent con "fit": ["h", 1.2] (un file qualsiasi di assets/, adattato a quella misura).
 // "precarica": true carica prima tutti i modelli scaricati (sennò si vedono i modelli fatti a mano di ripiego).
 // Nelle voci pezzi:, "st": "st_macchina_cucire" passa quella postazione come argomento (tessile, stamperia).
