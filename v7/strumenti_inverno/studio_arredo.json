@@ -1,0 +1,271 @@
+[
+ {
+  "nome": "arredo_strada",
+  "celle": true,
+  "cols": 7,
+  "side": 0.6,
+  "el": 0.38,
+  "pose": [
+   {
+    "nome": "lampione_muro",
+    "src": "pm:lampione_muro"
+   },
+   {
+    "nome": "lampione_corso",
+    "src": "pm:lampione_corso"
+   },
+   {
+    "nome": "lampione_regime",
+    "src": "pm:lampione_regime"
+   },
+   {
+    "nome": "lampione_boom",
+    "src": "pm:lampione_boom"
+   },
+   {
+    "nome": "lampione_deco",
+    "src": "pm:lampione_deco"
+   },
+   {
+    "nome": "semaforo",
+    "src": "pm:semaforo"
+   },
+   {
+    "nome": "cartello",
+    "src": "pm:cartello",
+    "opz": {
+     "targhe": [
+      {
+       "w": 0.6,
+       "h": 0.6,
+       "tonda": true,
+       "testo": "50",
+       "bg": "#e4e0d6",
+       "fg": "#b8282a"
+      },
+      {
+       "w": 0.6,
+       "h": 0.25,
+       "testo": "VIA ROMA",
+       "bg": "#2a4a8a",
+       "fg": "#e8e4d8"
+      }
+     ]
+    }
+   },
+   {
+    "nome": "staffa_cartello",
+    "src": "pm:staffa_cartello"
+   },
+   {
+    "nome": "targa_via",
+    "src": "pm:targa_via"
+   },
+   {
+    "nome": "civico",
+    "src": "pm:civico"
+   },
+   {
+    "nome": "panchina_ghisa",
+    "src": "pm:panchina_ghisa"
+   },
+   {
+    "nome": "panchina_cemento",
+    "src": "pm:panchina_cemento"
+   },
+   {
+    "nome": "panchina_marmo",
+    "src": "pm:panchina_marmo"
+   },
+   {
+    "nome": "cassonetto",
+    "src": "pm:cassonetto"
+   },
+   {
+    "nome": "bidone",
+    "src": "pm:bidone"
+   },
+   {
+    "nome": "cestino",
+    "src": "pm:cestino"
+   },
+   {
+    "nome": "campana",
+    "src": "pm:campana"
+   },
+   {
+    "nome": "cabina_sip",
+    "src": "pm:cabina_sip"
+   },
+   {
+    "nome": "cassetta_postale",
+    "src": "pm:cassetta_postale"
+   },
+   {
+    "nome": "fermata",
+    "src": "pm:fermata"
+   },
+   {
+    "nome": "edicola",
+    "src": "pm:edicola"
+   },
+   {
+    "nome": "chiosco",
+    "src": "pm:chiosco"
+   },
+   {
+    "nome": "transenna",
+    "src": "pm:transenna"
+   },
+   {
+    "nome": "jersey",
+    "src": "pm:jersey",
+    "opz": {
+     "plastica": true,
+     "col": "#a83a2a"
+    }
+   },
+   {
+    "nome": "paletti_catena",
+    "src": "pm:paletti_catena"
+   },
+   {
+    "nome": "fioriera",
+    "src": "pm:fioriera"
+   },
+   {
+    "nome": "fontanella",
+    "src": "pm:fontanella"
+   },
+   {
+    "nome": "idrante",
+    "src": "pm:idrante"
+   }
+  ]
+ },
+ {
+  "nome": "arredo_vita",
+  "celle": true,
+  "cols": 7,
+  "side": 0.6,
+  "el": 0.38,
+  "pose": [
+   {
+    "nome": "isolatore",
+    "src": "pm:isolatore"
+   },
+   {
+    "nome": "mensola",
+    "src": "pm:mensola"
+   },
+   {
+    "nome": "contatore",
+    "src": "pm:contatore"
+   },
+   {
+    "nome": "cabina_enel",
+    "src": "pm:cabina_enel"
+   },
+   {
+    "nome": "bombola",
+    "src": "pm:bombola"
+   },
+   {
+    "nome": "carretto",
+    "src": "pm:carretto"
+   },
+   {
+    "nome": "bancarella",
+    "src": "pm:bancarella"
+   },
+   {
+    "nome": "tavolino",
+    "src": "pm:tavolino"
+   },
+   {
+    "nome": "sedia",
+    "src": "pm:sedia"
+   },
+   {
+    "nome": "ombrellone",
+    "src": "pm:ombrellone",
+    "opz": {
+     "col": "#b0283c",
+     "col2": "#e9e0cf"
+    }
+   },
+   {
+    "nome": "lavagna",
+    "src": "pm:lavagna"
+   },
+   {
+    "nome": "frigo_gelati",
+    "src": "pm:frigo_gelati"
+   },
+   {
+    "nome": "bitta",
+    "src": "pm:bitta"
+   },
+   {
+    "nome": "reti",
+    "src": "pm:reti"
+   },
+   {
+    "nome": "nassa",
+    "src": "pm:nassa"
+   },
+   {
+    "nome": "cassetta_pesce",
+    "src": "pm:cassetta_pesce"
+   },
+   {
+    "nome": "scala_pioli",
+    "src": "pm:scala_pioli"
+   },
+   {
+    "nome": "impalcatura",
+    "src": "pm:impalcatura"
+   },
+   {
+    "nome": "cavalletto",
+    "src": "pm:cavalletto"
+   },
+   {
+    "nome": "antenna_tv",
+    "src": "pm:antenna_tv"
+   },
+   {
+    "nome": "cassone",
+    "src": "pm:cassone"
+   },
+   {
+    "nome": "comignolo",
+    "src": "pm:comignolo"
+   },
+   {
+    "nome": "edicola_votiva",
+    "src": "pm:edicola_votiva"
+   },
+   {
+    "nome": "pozzo",
+    "src": "pm:pozzo"
+   },
+   {
+    "nome": "tombino",
+    "src": "pm:tombino"
+   },
+   {
+    "nome": "caditoia",
+    "src": "pm:caditoia"
+   },
+   {
+    "nome": "bastone",
+    "src": "pm:bastone"
+   },
+   {
+    "nome": "paletto",
+    "src": "pm:paletto"
+   }
+  ]
+ }
+]

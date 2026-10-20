@@ -129,6 +129,37 @@ var Models = (function () {
     const guns = {}; let parent = null; S.root.traverse(o => { if (/^(AK|Pistol|Shotgun|SMG|Knife_1|Revolver)$/.test(o.name)) { guns[o.name] = o; parent = o.parent; } });
     GUNTPL = { guns, boneScale: parent ? (() => { S.root.updateMatrixWorld(true); const v = new THREE.Vector3(); parent.getWorldScale(v); return v.x * S.k; })() : 1 };
   }
+  // [armi] le armi del Toon Shooter sono fatte per i suoi soldatini (mani e armi enormi): in mano ai personaggi veri la
+  // pistola misurava 60 cm e il coltello più di un metro. Si riportano alla lunghezza vera (metri), attorno all'impugnatura.
+  const GUN_LEN = { Pistol: .22, Revolver: .25, SMG: .45, Shotgun: .7, AK: .88, Knife_1: .3 };
+  function trueSize(g, guns) {
+    g.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4(), m = new THREE.Matrix4(), box = new THREE.Box3(), tmp = new THREE.Box3(), sc = new THREE.Vector3();
+    for (const k in guns) {
+      const gn = guns[k], L = GUN_LEN[k] / ((window.Anim && Anim.HAND) || 1); if (!L) continue;   // le mani poi si rimpiccioliscono (Anim.HAND): l'arma, figlia del dito, con loro
+      inv.copy(gn.matrixWorld).invert(); box.makeEmpty();
+      gn.traverse(o => { if (o.isMesh) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); tmp.copy(o.geometry.boundingBox).applyMatrix4(m.multiplyMatrices(inv, o.matrixWorld)); box.union(tmp); } });
+      if (box.isEmpty()) continue;
+      const sz = box.getSize(new THREE.Vector3()), len = Math.max(sz.x, sz.y, sz.z) * gn.getWorldScale(sc).x;
+      if (len > 1e-4) { gn.scale.multiplyScalar(L / len); gn.updateMatrixWorld(true); }
+    }
+  }
+  // [modelli] le armi del kit sono blocchi; al loro posto i modelli definiti di oggetti3d.js, nel pugno destro (la canna lungo
+  // le dita, il sopra verso il pollice, l'impugnatura al centro del pugno). Le pose (anim_lotta.js) ne leggono l'asse come prima.
+  const ARMI_VERE = { Pistol: 'pistola', Revolver: 'pistola', SMG: 'mitra', Shotgun: 'lupara', AK: 'fucile', Knife_1: 'coltello' };
+  function armiVere(g, m, guns) {
+    if (typeof Oggetti3D === 'undefined' || !Oggetti3D) return;
+    const wr = m.getObjectByName('WristR'); if (!wr) return;
+    g.updateMatrixWorld(true); const ws = new THREE.Vector3(), gs = new THREE.Vector3(); wr.getWorldScale(ws); g.getWorldScale(gs);
+    const HAND = (window.Anim && Anim.HAND) || 1, QH = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+    for (const k in ARMI_VERE) {
+      if (!guns[k]) continue;
+      const holder = new THREE.Group(); holder.quaternion.copy(QH); holder.scale.setScalar(gs.x / (ws.x || 1) / HAND);   // in metri, a mano già rimpicciolita
+      const root = Oggetti3D.armaInMano(ARMI_VERE[k], .1, .02); holder.add(root); wr.add(holder);
+      root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+      guns[k].visible = false; guns[k].userData.vecchia = true; root.visible = false; guns[k] = root;   // il kit resta spento
+    }
+  }
   function parallel(a, b, cb) { cb(a, b); for (let i = 0; i < a.children.length; i++) parallel(a.children[i], b.children[i], cb); }
   function cloneSkinned(src) {
     const sl = new Map(), cl = new Map(), c = src.clone(true);
@@ -170,7 +201,7 @@ var Models = (function () {
     // armi del soldato: sono già nella mano, si accende solo quella giusta
     const guns = {}; m.traverse(o => { if (/^(AK|Pistol|Revolver|Revolver_Small|Shotgun|SMG|Sniper|Sniper_2|Knife_1|Knife_2|GrenadeLauncher|RocketLauncher|ShortCannon|Shovel)$/.test(o.name)) { guns[o.name] = o; o.visible = false; } });
     // i civili non hanno armi nel modello: si prendono quelle del kit (stesse ossa Quaternius) e si agganciano all'indice destro
-    if (!Object.keys(guns).length && GUNTPL) { const bone = m.getObjectByName('Index1R'); if (bone) { const f = GUNTPL.boneScale / boneScaleOf(CM, 'Index1R'); for (const k in GUNTPL.guns) { const t = GUNTPL.guns[k], gn = t.clone(true); gn.position.copy(t.position).multiplyScalar(f); gn.quaternion.copy(t.quaternion); gn.scale.copy(t.scale).multiplyScalar(f); gn.visible = false; gn.traverse(o => { if (o.isMesh) o.castShadow = true; }); bone.add(gn); guns[k] = gn; } } }
+    if (!Object.keys(guns).length && GUNTPL) { const bone = m.getObjectByName('Index1R'); if (bone) { const f = GUNTPL.boneScale / boneScaleOf(CM, 'Index1R'); for (const k in GUNTPL.guns) { const t = GUNTPL.guns[k], gn = t.clone(true); gn.position.copy(t.position).multiplyScalar(f); gn.quaternion.copy(t.quaternion); gn.scale.copy(t.scale).multiplyScalar(f); gn.visible = false; gn.traverse(o => { if (o.isMesh) o.castShadow = true; }); bone.add(gn); guns[k] = gn; } trueSize(g, guns); armiVere(g, m, guns); } }
     const mixer = new THREE.AnimationMixer(m), acts = {};
     for (const k in CM.clips) acts[k] = mixer.clipAction(CM.clips[k]);
     const sh = new THREE.Mesh(new THREE.CircleGeometry(.42, 12), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .35, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = .02; g.add(sh);
@@ -266,11 +297,17 @@ var Models = (function () {
     }
     if (handL && (ex.includes('bag') || ex.includes('paper'))) { const hp2 = new THREE.Vector3(); handL.getWorldPosition(hp2); const bag = ex.includes('bag') ? B(.22, .26, .1, ['#c43c52', '#e8d8b0', '#2a3b66', '#f4f1ea'][Math.floor(r() * 4)]) : B(.04, .3, .2, '#e8e2d0'); tagC(pin(g, handL, bag, hp2.x, hp2.y - .18, hp2.z)); g.userData.carryBag = bag; }
   }
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+  // [anim] dissolvenze: tra camminata e corsa più lunghe (cambia anche il ritmo), verso la caduta un filo più svelte
+  const LOCO = { Walk: 1, Run: 1, Walk_Shoot: 1, Run_Gun: 1, Run_Shoot: 1, Idle: 1 };
   function play(g, name, once) {
     const u = g.userData, a = u.acts[name] || u.acts.Idle; if (!a || u.cur === a) return;
     a.reset(); a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); a.clampWhenFinished = !!once; a.play();
-    if (!once && a.getClip) a.time = Math.random() * a.getClip().duration;   // [passo] ognuno al suo punto del passo: non camminano a tempo
-    if (u.cur) u.cur.crossFadeTo(a, .18, false); u.cur = a;
+    // [passo] ognuno al suo punto del passo (non camminano a tempo); [anim] ma solo la prima volta: chi si ferma e riparte
+    // riprende il passo da dove l'aveva lasciato, invece di saltare a un punto a caso (i piedi scattavano)
+    if (!once && a.getClip) { u.ph = u.ph || {}; if (u.ph[name] === undefined) u.ph[name] = Math.random() * a.getClip().duration; a.time = u.ph[name]; }
+    if (u.cur) { if (u.cur.getClip && u.ph) u.ph[u.cur.getClip().name] = u.cur.time; const both = LOCO[u.cur.getClip ? u.cur.getClip().name : ''] && LOCO[name]; u.cur.crossFadeTo(a, once ? .22 : both ? .3 : .2, false); }
+    u.cur = a;
   }
   // stato → animazione
   function animPerson(g, o, dt) {
@@ -284,16 +321,20 @@ var Models = (function () {
     if (o.down) clip = 'Death';
     else if (o.punch > 0) clip = u.acts.Punch ? 'Punch' : 'Punch_Right';
     else if (o.hit > .5) clip = u.acts.HitReact ? 'HitReact' : 'HitRecieve';
-    else if (sp > 4.5) clip = o.weapon ? (u.acts.Run_Gun ? 'Run_Gun' : 'Run_Shoot') : 'Run';
-    else if (sp > .25) clip = o.weapon && u.acts.Walk_Shoot ? 'Walk_Shoot' : 'Walk';
+    // [anim] soglie con un margine: chi va piano attorno alla soglia non passa da una clip all'altra a ogni fotogramma;
+    // oltre i 3,8 m/s si corre (il passo veloce del giocatore, 4,2 m/s, sembrava una camminata a 2,6× di velocità)
+    else if (sp > (u.gait === 2 ? 3.3 : 3.8)) { clip = o.weapon ? (u.acts.Run_Gun ? 'Run_Gun' : 'Run_Shoot') : 'Run'; u.gait = 2; }
+    else if (sp > (u.gait >= 1 ? .15 : .35)) { clip = o.weapon && u.acts.Walk_Shoot ? 'Walk_Shoot' : 'Walk'; u.gait = 1; }
     else if (o.handsUp) clip = u.acts.Wave ? 'Wave' : 'Idle';
     else if (o.weapon) clip = u.acts.Idle_Shoot ? 'Idle_Shoot' : u.acts.Idle_Gun ? 'Idle_Gun' : 'Idle';
     else if (o.idle && u.acts[o.idle]) clip = o.idle;
+    if (sp <= .15 || o.down) u.gait = 0;
     // [animazioni] una posa di tutto il corpo può chiedere la sua clip di base (es. Idle per sedersi)
     const wb = window.Anim && Anim.want(g, o); if (wb && !o.down && !(o.punch > 0) && !(o.hit > .5) && u.acts[wb]) clip = wb;
     play(g, clip, clip === 'Death');
-    if (u.cur && (clip === 'Walk' || clip === 'Run' || clip === 'Walk_Shoot' || clip === 'Run_Gun' || clip === 'Run_Shoot')) u.cur.timeScale = clip.startsWith('Walk') ? Math.max(.5, sp / 1.6) : Math.max(.6, sp / 5);
-    else if (u.cur) u.cur.timeScale = 1;
+    let ts = 1;
+    if (u.cur && (clip === 'Walk' || clip === 'Run' || clip === 'Walk_Shoot' || clip === 'Run_Gun' || clip === 'Run_Shoot')) ts = clip.startsWith('Walk') ? clamp(sp / 1.6, .55, 2.2) : clamp(sp / 5, .7, 1.6);   // [anim] la camminata veloce non va oltre 2,2× (prima arrivava a 2,8 e il passo frullava)
+    if (u.cur) u.cur.timeScale += (ts - u.cur.timeScale) * Math.min(1, dt * 8);   // [anim] il ritmo cambia per gradi
     if (window.Anim) Anim.restore(g);   // [animazioni]
     u.mixer.update(dt);
     if (window.Anim) Anim.apply(g, o, dt, performance.now() / 1000);   // [animazioni] lo strato procedurale sopra la clip
