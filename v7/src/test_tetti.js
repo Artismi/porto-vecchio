@@ -16,7 +16,9 @@ ok(T.LADDERS.every(L => L.footB >= 0 || G.walkT(Math.floor(L.fx / TS), Math.floo
 ok(T.LADDERS.every(L => { const b = B[L.bi]; if (!b.door) return true; return Math.hypot(L.fx - (b.door[0] + .5) * TS, L.fy - (b.door[1] + .5) * TS) > 2.5; }), 'nessuna scala davanti a una porta');
 
 // una casa di due o tre piani con la scala da terra e un vicino oltre un vicolo stretto
-const L = T.LADDERS.find(L => L.footB < 0 && B[L.bi].fl >= 2 && B[L.bi].w >= 3 && B[L.bi].h >= 3);
+// [città2] una casa isolata (nessun tetto vicino attaccato: altrimenti camminando si passa giustamente sull'altro)
+const alone = b => { const BI = G.MAP.world.bIndex, k = B.indexOf(b); for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) { const o = BI[ty * G.GW + tx]; if (o >= 0 && o !== k) return false; } return true; };
+const L = T.LADDERS.find(L => L.footB < 0 && B[L.bi].fl >= 2 && B[L.bi].w >= 3 && B[L.bi].h >= 3 && !B[L.bi].rot && alone(B[L.bi])) || T.LADDERS.find(L => L.footB < 0 && B[L.bi].fl >= 2 && B[L.bi].w >= 3 && B[L.bi].h >= 3);
 const b = B[L.bi]; console.log(`casa: ${b.id} (${b.fl} piani) scala sul lato ${L.f}`);
 p.x = L.fx; p.y = L.fy; p.lv = null; p.indoor = null; calm(); clear();
 const ctx = G.context(st).find(c => c.key === 'V'); ok(ctx && /Sali/.test(ctx.label), `il suggerimento: «V: ${ctx && ctx.label}»`);
@@ -70,7 +72,7 @@ const PK = T.PLANKS.find(P => Math.abs(T.roofRule(B[P.a]) - T.roofRule(B[P.b])) 
 if (PK) {
   const mid = T.plankAt(PK.x0 + PK.ox * PK.L / 2, PK.y0 + PK.oy * PK.L / 2); ok(mid && mid.h > 2, `sopra il vicolo la passerella regge (quota ${mid && mid.h.toFixed(1)} m)`);
   p.lv = { k: 'tetto', b: PK.a, h: T.roofH(PK.a, PK.x0 - PK.ox, PK.y0 - PK.oy) ?? T.roofRule(B[PK.a]) }; p.x = PK.x0 - PK.ox * .8; p.y = PK.y0 - PK.oy * .8; calm(); clear(); p.jz = 0; p.jvz = 0;
-  run(6, { x: PK.ox, y: PK.oy });
+  for (let k = 0; k < 8 * 30 && !(p.lv && p.lv.b === PK.b && Math.hypot(p.x - PK.wb[0], p.y - PK.wb[1]) > 1.2); k++) G.step(st, DT, { x: PK.ox, y: PK.oy });   // fino all'altro tetto
   ok(p.lv && p.lv.k === 'tetto' && p.lv.b === PK.b, `camminando sulle assi si arriva sull'altro tetto (${B[PK.a].id} → ${B[PK.b].id}, ora ${p.lv ? 'tetto ' + p.lv.b : 'a terra'})`);
   ok(p.hp === 100, 'senza cadere');
   // di lato si resta sulle assi: niente passi nel vuoto
