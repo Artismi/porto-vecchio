@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><title>Studio dei pezzi della città</title>
+<style>html,body{margin:0;background:#3a3f48;overflow:hidden}#lab{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;font:12px monospace;color:#fff}</style></head>
+<body><div id="lab"></div>
+<!-- [pezzi_citta] Studio dei pezzi urbani grandi: node strumenti_inverno/studio_pezzi.js cartella scene.json [W H]  (vedi quel file).
+     Da studio_oggetti.html, con la scala della città: griglia da 2 m (una casella), luce da pomeriggio, ombre lunghe, modalità "celle" con le misure. -->
+<script>window.__pvStudio = true;</script>
+<script src="src/three.min.js"></script>
+<script src="src/pezzi_citta.js"></script>
+<script>
+(function () {
+  const W = innerWidth, H = innerHeight;
+  const ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); ren.setSize(W, H); ren.shadowMap.enabled = true; ren.shadowMap.type = THREE.PCFSoftShadowMap; ren.autoClear = false; document.body.appendChild(ren.domElement);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color('#3a3f48');
+  scene.add(new THREE.HemisphereLight('#dfe6ee', '#4a4238', .7));
+  const sun = new THREE.DirectionalLight('#fff0d8', 1.0); sun.position.set(40, 60, 50); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -.0008; sun.shadow.normalBias = .02;
+  Object.assign(sun.shadow.camera, { left: -80, right: 80, top: 80, bottom: -80, far: 400 }); scene.add(sun); scene.add(sun.target);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshLambertMaterial({ color: '#6a6660' })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const grid = new THREE.GridHelper(2000, 1000, '#5e5a55', '#605c57'); grid.position.y = .005; scene.add(grid);   // quadretti da 2 m: la casella della città
+  const cam = new THREE.PerspectiveCamera(28, W / H, .1, 3000);
+  let items = [];
+  // voce: { nome, tipo, opzioni: {...}, ang } → PezziCitta.make(tipo, opzioni)
+  function make(d) { const g = PezziCitta.make(d.tipo, d.opzioni || {}); if (!g) throw new Error('tipo sconosciuto ' + d.tipo); return g; }
+  function clearLabels() { const lab = document.getElementById('lab'); lab.innerHTML = ''; return lab; }
+  function label(lab, txt, x, y, extra) { const e = document.createElement('div'); e.textContent = txt; e.style.cssText = `position:absolute;left:${x}px;top:${y}px;transform:translateX(-50%);background:rgba(0,0,0,.55);padding:1px 4px;white-space:nowrap;${extra || ''}`; lab.appendChild(e); }
+  function tri(g) { let n = 0; g.traverse(o => { if (o.isMesh) { const ge = o.geometry; n += (ge.index ? ge.index.count : ge.attributes.position.count) / 3; } }); return n | 0; }
+  function sole(ctr, r) { sun.position.set(ctr.x + r * .8, r * 1.3 + 10, ctr.z + r); sun.target.position.copy(ctr); const sc = Math.max(10, r * 1.3); Object.assign(sun.shadow.camera, { left: -sc, right: sc, top: sc, bottom: -sc, far: r * 6 + 100 }); sun.shadow.camera.updateProjectionMatrix(); }
+  window.studio = {
+    // tutti in fila nella stessa scena, da sinistra a destra lungo x (sp = passo in metri)
+    async run(list, opts) {
+      opts = opts || {}; if (opts.celle) return this.celle(list, opts);
+      items.forEach(g => scene.remove(g)); items = [];
+      let x = 0; const sp = opts.sp || 6;
+      for (const d of list) { const g = make(d); g.rotation.y = d.ang || opts.ang || 0; const bb = new THREE.Box3().setFromObject(g), sz = bb.getSize(new THREE.Vector3()); g.position.set(x - bb.min.x, -(g.userData.quotaPosa || 0), -(bb.min.z + bb.max.z) / 2); scene.add(g); items.push(g); g.userData.nome = d.nome || d.tipo; g.userData.sz = sz; x += sz.x + sp; }
+      const tot = new THREE.Box3(); items.forEach(g => tot.expandByObject(g)); const ctr = tot.getCenter(new THREE.Vector3()), r = tot.getSize(new THREE.Vector3()).length() / 2;
+      const side = opts.side !== undefined ? opts.side : .7, el = opts.el !== undefined ? opts.el : .5, dist = r / Math.sin(THREE.MathUtils.degToRad(cam.fov / 2)) * 1.05;
+      ren.setViewport(0, 0, W, H); ren.setScissorTest(false); cam.aspect = W / H; cam.updateProjectionMatrix();
+      cam.position.set(ctr.x + Math.sin(side) * Math.cos(el) * dist, ctr.y + Math.sin(el) * dist, ctr.z + Math.cos(side) * Math.cos(el) * dist); cam.lookAt(ctr); sole(ctr, r);
+      ren.clear(); ren.render(scene, cam);
+      const lab = clearLabels();
+      items.forEach(g => { const v = g.position.clone(); v.x += g.userData.sz.x / 2; v.y = g.userData.sz.y + 1; v.project(cam); label(lab, `${g.userData.nome}  ${g.userData.sz.x.toFixed(1)}×${g.userData.sz.y.toFixed(1)}×${g.userData.sz.z.toFixed(1)} m`, (v.x + 1) / 2 * W, (1 - v.y) / 2 * H); });
+      return true;
+    },
+    // una cella per pezzo: inquadratura automatica sul suo ingombro, misure in metri e triangoli sotto, avviso se la base non è a terra
+    async celle(list, opts) {
+      items.forEach(g => scene.remove(g)); items = [];
+      const n = list.length, cols = opts.cols || Math.ceil(Math.sqrt(n * W / H)), rows = Math.ceil(n / cols), cw = Math.floor(W / cols), chh = Math.floor(H / rows);
+      const side = opts.side !== undefined ? opts.side : .65, el = opts.el !== undefined ? opts.el : .42, lab = clearLabels();
+      ren.setScissorTest(true); ren.setViewport(0, 0, W, H); ren.setScissor(0, 0, W, H); ren.clear();
+      for (let i = 0; i < n; i++) {
+        const d = list[i], g = make(d); g.rotation.y = d.ang !== undefined ? d.ang : (opts.ang || 0); g.position.y = -(g.userData.quotaPosa || 0); scene.add(g);   // le opere a mare e il fossato si alzano fino al loro piede
+        const bb = new THREE.Box3().setFromObject(g), sz = bb.getSize(new THREE.Vector3()), ctr = bb.getCenter(new THREE.Vector3());
+        const r = Math.max(1, sz.length() / 2), c = i % cols, row = Math.floor(i / cols), x0 = c * cw, y0 = H - (row + 1) * chh;
+        cam.aspect = cw / chh; cam.updateProjectionMatrix();
+        const dist = r / Math.sin(THREE.MathUtils.degToRad(cam.fov / 2)) * (cam.aspect < 1 ? 1 / cam.aspect : 1) * 1.04;
+        const s = d.side !== undefined ? d.side : side, e = d.el !== undefined ? d.el : el;
+        cam.position.set(ctr.x + Math.sin(s) * Math.cos(e) * dist, ctr.y + Math.sin(e) * dist, ctr.z + Math.cos(s) * Math.cos(e) * dist); cam.lookAt(ctr); sole(ctr, r);
+        ren.setViewport(x0, y0, cw, chh); ren.setScissor(x0, y0, cw, chh); ren.render(scene, cam);
+        scene.remove(g);
+        label(lab, `${d.nome || d.tipo}  ${sz.x.toFixed(1)}×${sz.y.toFixed(1)}×${sz.z.toFixed(1)} m · ${tri(g)} tri`, x0 + cw / 2, H - y0 - 18);
+        if (Math.abs(bb.min.y) > .02) label(lab, `base a ${bb.min.y.toFixed(2)} m`, x0 + cw / 2, H - y0 - chh + 4, 'color:#ffb040');
+        const ln = document.createElement('div'); ln.style.cssText = `position:absolute;left:${x0}px;top:${H - y0 - chh}px;width:${cw - 1}px;height:${chh - 1}px;border-right:1px solid #2a2e36;border-bottom:1px solid #2a2e36`; lab.appendChild(ln);
+      }
+      ren.setScissorTest(false);
+      return true;
+    }
+  };
+  window.studioReady = true;
+})();
+</script></body></html>

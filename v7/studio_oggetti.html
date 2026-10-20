@@ -13,6 +13,8 @@
 <script src="src/bottino.js"></script>
 <script src="src/pezzi.js"></script>
 <script src="src/oggetti_ui.js"></script>
+<script src="src/veicoli3d.js"></script>
+<script src="src/arredo3d.js"></script>
 <script>
 (function () {
   const W = innerWidth, H = innerHeight;
@@ -25,7 +27,7 @@
   const grid = new THREE.GridHelper(400, 800, '#5e5a55', '#625e59'); grid.position.y = .001; scene.add(grid);   // quadretti da 50 cm: si legge la misura
   const cam = new THREE.PerspectiveCamera(30, W / H, .02, 300);
   let items = [];
-  // voce: { nome, src: 'bottino:vicolo' | 'pezzi:pallet' (args: [...]) | 'st:st_forgia' | 'scaricato:radio' | 'kit:food/fish', locked }
+  // voce: { nome, src: 'bottino:vicolo' | 'pezzi:pallet' (args: [...]) | 'st:st_forgia' | 'scaricato:radio' | 'kit:food/fish' | 'pm:lampione_corso' (opz: {...}, liv: 0|1), locked }
   // per un file qualsiasi: { src: 'file:mj/s_Tent', fit: ['h', 1.2] }
   async function make(d) {
     const nudo = d.nudo === undefined ? !!window.__nudo : !!d.nudo, S = window.Superfici; if (nudo) window.Superfici = undefined;   // nudo: senza veste, anche dove il modello se la mette da sé
@@ -35,12 +37,14 @@
     const g = new THREE.Group(), i = d.src.indexOf(':'), lib = d.src.slice(0, i), fn = d.src.slice(i + 1);
     if (lib === 'bottino') Bottino.MODEL[fn](g, { locked: !!d.locked, ref: d.nome });
     else if (lib === 'pezzi') Pezzi[fn].apply(null, [g].concat(d.st ? [OggettiUI.stModel(d.st)] : d.args || []));   // st: la postazione che la composizione prende come argomento
+    else if (lib === 'pm') { const m = Arredo3D.make(fn, Object.assign({}, d.opz || {}, d.liv !== undefined ? { liv: d.liv } : {})); if (m) { if (m.userData.aMuro) { const b = new THREE.Box3().setFromObject(m); m.position.y = -b.min.y; } else if (m.userData.aPalo) { const b = new THREE.Box3().setFromObject(m); m.position.y = -b.min.y; const p = new THREE.Mesh(new THREE.CylinderGeometry(m.userData.r || .075, m.userData.r || .075, b.max.y - b.min.y + .4, 10), new THREE.MeshStandardMaterial({ color: '#555' })); p.position.y = (b.max.y - b.min.y + .4) / 2; g.add(p); } g.add(m); } }   // [modelli1] l'arredo di strada (a muro e sui pali: alzati da terra; sul palo, un palo finto per vedere la presa)
     else if (lib === 'st') { const m = OggettiUI.stModel(fn); if (m) g.add(m); }
     else if (lib === 'scaricato') { await Scaricati.load(fn); Scaricati.put(g, fn); }
     else if (lib === 'file') { const id = '_' + fn; Scaricati.CAT[id] = [fn, (d.fit || ['h', 1])[0], (d.fit || ['h', 1])[1], d.ry || 0, d.rx || 0, d.rz || 0]; await Scaricati.load(id); Scaricati.put(g, id); }
+    else if (lib === 'veicoli') { const R = Veicoli3D.costruisci(fn, d.col || '#b5221c', d.opz || {}); g.add(d.basso ? R.basso : R.alto); if (R.ud.barca) R.alto.position.y = R.ud.H.D; g.userData.mezzo = true; }   // la barca posata sulla chiglia   // [modelli2] veicoli:ritmo (col, opz: { livrea }, basso: il livello lontano)
     else if (lib === 'kit') { await (window.__kits = window.__kits || Kit.load('assets/mk/', ['food', 'urban', 'urbano', 'casa', 'stazione', 'arcade', 'grave', 'natura', 'tortura', 'train']).catch(() => {})); g.add(Kit.get(fn)); }
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    if (!nudo) Superfici.vesti(g);   // "nudo": true (nella voce o nella scena) per vederli senza veste
+    if (!nudo && !g.userData.mezzo) Superfici.vesti(g);   // i mezzi nel gioco non hanno la veste   // "nudo": true (nella voce o nella scena) per vederli senza veste
     return g;
   }
   function clearLabels() { const lab = document.getElementById('lab'); lab.innerHTML = ''; return lab; }
@@ -69,7 +73,7 @@
       ren.setScissorTest(true); ren.setViewport(0, 0, W, H); ren.setScissor(0, 0, W, H); ren.clear();
       for (let i = 0; i < n; i++) {
         const d = list[i], g = await make(d); g.rotation.y = d.ang !== undefined ? d.ang : (opts.ang || 0); scene.add(g);
-        const bb = new THREE.Box3().setFromObject(g), sz = bb.getSize(new THREE.Vector3()), ctr = bb.getCenter(new THREE.Vector3());
+        const bb = new THREE.Box3().setFromObject(g, true), sz = bb.getSize(new THREE.Vector3()), ctr = bb.getCenter(new THREE.Vector3());
         const r = Math.max(.15, sz.length() / 2), c = i % cols, row = Math.floor(i / cols), x0 = c * cw, y0 = H - (row + 1) * chh;
         cam.aspect = cw / chh; cam.updateProjectionMatrix();
         const dist = r / Math.sin(THREE.MathUtils.degToRad(cam.fov / 2)) * (cam.aspect < 1 ? 1 / cam.aspect : 1) * 1.05;

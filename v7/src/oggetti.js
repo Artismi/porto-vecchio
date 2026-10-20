@@ -475,6 +475,12 @@ var Oggetti = (function () {
     ['profumo', 'profumo francese', 20, .2, 0, { imp: 1 }],
     ['calze_nylon', 'calze di nylon', 8, .05, 0, { imp: 1 }],
     ['marlboro', 'stecca di sigarette americane', 10, .2, 0, { imp: 1, ill: 1, res: 'merce:.5' }],
+    // [sotto2] quello che si tira fuori dalla terra scavando (sottosuolo.js, RITROVAMENTI): roba da collezionisti e da ricettatori
+    ['fossile', 'osso fossile di dinosauro', 25, 3, 0, {}],
+    ['anfora', 'anfora romana', 12, 4, 0, {}],
+    ['moneta_romana', 'monete romane', 8, .1, 0, {}],
+    ['medaglia', 'medaglia della guerra', 4, .05, 0, {}],
+    ['moschetto', 'moschetto 91 arrugginito', 30, 4, 0, { ill: 1 }],
   ]);
   grp('rottami', 'Roba vecchia e rottami', [
     ['frigo_rotto', 'frigorifero rotto', 0, 40, 0, {}],

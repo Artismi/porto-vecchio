@@ -19,7 +19,7 @@ const srv = http.createServer((req, res) => {
   pg.on('pageerror', e => console.log('[errore]', e.message, (e.stack || '').split('\n').slice(0, 4).join(' | ')));
   pg.on('console', m => { if (m.type() === 'error' || /\[dbg\]|oggetti35|scontri/.test(m.text())) console.log('[console]', m.text().slice(0, 300)); });
   await pg.addInitScript(() => { window.__dbg35 = true; });
-  await pg.goto(`http://localhost:${port}/index.html`);
+  await pg.goto(`http://localhost:${port}/index.html${process.env.PV_QUERY || ""}`);   // PV_QUERY=?cittanuova per la città in prova
   await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: 240000 });
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(1500);
   console.log('tempi', JSON.stringify(await pg.evaluate(() => window.__rt)));

@@ -1,0 +1,11 @@
+# Censimento dei rami (20 ottobre)
+
+Rami con commit che non sono nel ramo base `claude/gallant-dijkstra-sa2548` (contati con `git cherry`, cioè lavoro davvero mancante).
+Tutto il resto (porto, costa, stazione abbandonata, tetti da esplorare, graffiti, Rocca, animazioni, vestiti di bold-goldberg fino al 19/10) è già dentro.
+
+| Gruppo | Rami | Cosa contengono | Stato | Decisione |
+|---|---|---|---|---|
+| **Fluidità e prestazioni** (10-11 ottobre) | `wonderful-davinci-vhtx28` (contiene già `nifty-gauss`, `wizardly-bardeen`, `blissful-noether`), `keen-turing-peeudm` | 30 fotogrammi fissi, numero di luci costante (niente ricompilazioni), ombre a metà dei disegni, ombra del sole a fotogrammi alterni, isola lontana in una mesh sola (245 → 1 chiamate), case a tinta unita col colore nei vertici, contatore F9, oggetti fermi non ricalcolati, grafica divisa per pezzo (F3), «il doppio degli abitanti», alleggerimento senza perdere nulla, `aloni1` (manopola dell'occlusione solo a contatto), finitura dei pavimenti, skate in giro, ferrovia a cassone | mai entrati in `main`; in conflitto con `render.js` di oggi (è cambiato moltissimo) | **da portare a mano** pezzo per pezzo, misurando prima/dopo: molto utile (la città ora pesa ~800-1150 draw call) |
+| **Documenti** | `nifty-gauss-8lb4a9` | `MANIFESTO_NARRATIVO.md` (culture dell'isola, dottrina dell'Ordine, sintesi per il gameplay) | — | **recuperato** (`v7/MANIFESTO_NARRATIVO.md`) |
+| **Visuale e alberi** (sessione parallela del 19/10) | `dreamy-thompson-jvbwyr` | ha unito i nostri WIP e poi: sezione dei palazzi sulla linea giocatore-camera «come Diablo e Baldur's Gate 3» (la casa davanti sbiadisce intera, sagoma del personaggio dove è coperto), **alberi di città sempreverdi mediterranei** | alternativa al nostro varco a ellisse (`[varco2]`) | **da decidere col committente**: quale visuale; gli alberi si possono portare comunque |
+| **Vestiti e personaggi** (sessioni attive, 19-20/10) | `zealous-edison-xfh9fr` (giacca in Blender), `bold-mendel-2m4y52`, `bold-goldberg-miqexo` | corpo continuo sotto i vestiti, colletti, vestibilità streetwear, capi rifiniti in Blender, look Scarface | ancora in lavorazione da altre chat; in conflitto fra loro e col base | **non toccare** finché quelle chat non chiudono; poi un'unione unica |

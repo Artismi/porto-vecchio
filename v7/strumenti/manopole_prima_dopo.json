@@ -1,0 +1,13 @@
+{
+  "nota": "[regia2] Le manopole di render.js (QUADRO, SCENA) come erano prima del filone regia2 (\"prima\") e come sono nel codice (\"dopo\", vuoto: i valori del codice). GALLERIA_VARIANTI=strumenti/manopole_prima_dopo.json node strumenti/galleria.js <cartella>",
+  "prima": {
+    "QUADRO": { "contrastoCoperto": 1.14, "contrastoSole": 1.46, "contrastoNotte": 1.14, "pernoMedi": 0.36, "spallaBianchi": 0.7, "pavimentoNeri": 0.25, "ariaNeri": [0.010, 0.012, 0.016], "ombraFredda": [0.97, 0.99, 1.03], "luceCalda": [1.07, 1.035, 0.93], "satCoperto": 1.12, "satSole": 1.3, "tettoCroma": 1, "quieteGrigi": 0, "piedeNeri": 0, "luceCrepuscolo": 0, "ariaGiorno": 0.06, "ariaNotte": 0.04, "coloreLontano": 0.1, "vicinoContrasto": 0, "lontanoFreddo": [1, 1, 1], "lontanoChiaro": 0, "gialliQuieti": 0 },
+    "OCCL": { "forza": 0, "suoloScuro": 0 },
+    "SCENA": {
+      "borgo": { "sole": 1, "cielo": 1, "esposizione": 1, "saturazione": 1, "contrasto": 1, "velo": 0, "espNotte": 1, "finestre": 1, "cieloNotte": 1 },
+      "metropoli": { "sole": 1, "cielo": 1, "esposizione": 1, "saturazione": 1, "contrasto": 1, "velo": 0, "espNotte": 1, "finestre": 1, "cieloNotte": 1 },
+      "spianata": { "sole": 1, "cielo": 1, "esposizione": 1, "saturazione": 1, "contrasto": 1, "velo": 0, "espNotte": 1, "finestre": 1, "cieloNotte": 1, "fari": 0 }
+    }
+  },
+  "dopo": {}
+}
