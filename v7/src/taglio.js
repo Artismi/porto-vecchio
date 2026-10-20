@@ -25,6 +25,7 @@ var Taglio = (function () {
         maniche_lunghe: { f: 'Casual_2', re: /Body/, r: { LightBrown: 'A', Skin: 'AP' }, op: { largo: .006 } },   // la maglietta con la manica dipinta fino al polso (lo scollo resta pulito)
         piumino: { f: 'Casual_2', re: /Body/, r: { LightBrown: 'A', Skin: 'AP' }, op: { largo: .03 } },
         gilet: { f: 'Worker', re: /Body/, r: { Worker_Vest: 'A', Worker_Yellow: 'B', LightBrown: 'S', Skin: 'P' } },
+        giacca: { f: 'Casual_2', re: /Body/, capo: 'giacca', r: { Giacca: 'A', Camicia: 'S', Cravatta: 'T', Skin: 'P' } },   // modellata in Blender (strumenti/capi_giacca.py): maniche, falda, V, revers, camicia e cravatta veri
       },
       gambe: {
         pantaloni: { f: 'Casual_2', re: /Legs/, r: { LightBlue: 'A' } },
@@ -65,6 +66,7 @@ var Taglio = (function () {
     [/^(piumino|piumino_oca|smanicato|montone|pelliccia|pelliccia_volpe|pelliccia_lunga|giaccone)$/, 'piumino'],
     [/^(felpa|felpa_skate)$/, 'felpa'],
     [/^(gilet|grembiule|panciotto)$/, 'gilet'],
+    [/^(giacca|giacca_completo|giacca_galles|giacca_pied|divisa|divisa_postino|camice|cappotto|impermeabile|giacca_pelle|giubbotto_jeans)$/, 'giacca'],
     [/^vestit/, 'vestito'],
     [/^(felpa_zip|maglione|maglione_v|maglione_collo_alto|dolcevita|giacca|giacca_completo|giacca_galles|giacca_pied|giacca_pelle|giubbotto|giubbotto_jeans|divisa|divisa_postino|cappotto|impermeabile|camice|giacca_tuta|giacca_tuta_fascia|tuta_ginnastica|tuta|camicia|camicia_quadri|camicia_righe|camicia_vichy|camicia_jeans|camicia_fiori|poncho|scialle)$/, 'maniche_lunghe'],
     [/./, 'maglietta'] ];
@@ -121,6 +123,15 @@ var Taglio = (function () {
       ...['Casual_2', 'Casual_Hoodie', 'Worker', 'Casual', 'Formal'].map(f => get('assets/mc/capi_' + f + '.json').then(d => { if (d) CAPI[f] = d; }))]);
     return pronto; }
   const dec = (b, T) => { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return new T(u.buffer); };
+  function primGeo(p) {
+    if (p._geo) return p._geo; const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(dec(p.pos, Float32Array), 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(Float32Array.from(dec(p.nor, Int8Array), x => x / 127), 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(dec(p.uv, Float32Array), 2));
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(Array.from(dec(p.j, Uint8Array)), 4));
+    g.setAttribute('skinWeight', new THREE.BufferAttribute(Float32Array.from(dec(p.w, Uint8Array), x => x / 255), 4));
+    g.setIndex(new THREE.BufferAttribute(dec(p.idx, p.i32 ? Uint32Array : Uint16Array), 1)); g.computeBoundingSphere();
+    return (p._geo = g); }
   function capoGeo(file, src) {
     const C = CAPI[file]; if (!C) return null; const nm = nomeDi(src), k = Object.keys(C.pezzi).find(k => nm.includes(k)); if (!k) return null;
     const mat = (Array.isArray(src.material) ? src.material[0] : src.material).name, p = C.pezzi[k].find(q => q.mat === mat); if (!p) return null;
@@ -138,9 +149,9 @@ var Taglio = (function () {
     const T = { d: mk(S.d), n: mk(S.n) }; T.pronto = Promise.all(att); return (TEX[nome] = T); }
   // ---------------- I PEZZI RICAVATI E LE COORDINATE DI STOFFA ----------------
   const GEO = new Map();
-  function geometria(src, file, zona, op) {
-    const key = src.uuid + '|' + JSON.stringify(op || {}) + (CAPI[file] ? '|c' : ''); if (GEO.has(key)) return GEO.get(key);
-    const M = misure(file, src), W = src.matrixWorld.clone(), Wi = W.clone().invert(), gs = (!window.NOCAPI && capoGeo(file, src)) || src.geometry, g0 = gs.index ? gs.toNonIndexed() : gs.clone();
+  function geometria(src, file, zona, op, over) {
+    const key = (over ? over.key : src.uuid) + '|' + JSON.stringify(op || {}) + (CAPI[file] ? '|c' : ''); if (GEO.has(key)) return GEO.get(key);
+    const M = misure(file, src), W = src.matrixWorld.clone(), Wi = W.clone().invert(), gs = over ? over.geo : (!window.NOCAPI && capoGeo(file, src)) || src.geometry, g0 = gs.index ? gs.toNonIndexed() : gs.clone();
     const P = g0.attributes.position, n = P.count, Bp = new Float32Array(n * 3), v = new THREE.Vector3();
     for (let i = 0; i < n; i++) { v.fromBufferAttribute(P, i).applyMatrix4(W); Bp[i * 3] = v.x; Bp[i * 3 + 1] = v.y; Bp[i * 3 + 2] = v.z; }
     const reg = (x, y) => zona === 'gambe' ? (x >= 0 ? 3 : 4) : zona === 'piedi' ? 5 : (Math.abs(x) > M.shX * .85 && y > M.chestY - .14 ? (x > 0 ? 1 : 2) : 0);
@@ -172,6 +183,7 @@ var Taglio = (function () {
     // di nuovo nello spazio del pezzo
     for (let i = 0; i < n; i++) { v.set(Bp[i * 3], Bp[i * 3 + 1], Bp[i * 3 + 2]).applyMatrix4(Wi); P.setXYZ(i, v.x, v.y, v.z); }
     const g = new THREE.BufferGeometry(); for (const k in g0.attributes) g.setAttribute(k, g0.attributes[k]); g.setAttribute('aStoffa', new THREE.Float32BufferAttribute(T, 4));
+    { const UV = new Float32Array(n * 2); for (let i = 0; i < n; i++) { UV[i * 2] = T[i * 4]; UV[i * 2 + 1] = T[i * 4 + 1]; } g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); }   // la trama in metri sul corpo: l'ordito scende dritto (le isole di Blender la giravano a caso)
     const idx = []; for (let t = 0; t < n / 3; t++) if (keep[t]) idx.push(t * 3, t * 3 + 1, t * 3 + 2); g.setIndex(idx);
     if (op && (op.largo || op.gambe_larghe || op.lungo)) g.computeVertexNormals();
     g.computeBoundingSphere(); g.userData.misure = M;
@@ -182,7 +194,7 @@ var Taglio = (function () {
   const col3 = c => new THREE.Color(c || '#808080');
   function stoffaMat(m0, s, M) {
     const key = m0.uuid + '|' + JSON.stringify(s); if (MAT.has(key)) return MAT.get(key);
-    const m = m0.clone(); m.color.set('#ffffff'); if (m.emissive) m.emissive.set('#000000');
+    const m = m0.clone(); m.color.set('#ffffff'); if (m.emissive) m.emissive.set('#000000'); m.side = THREE.DoubleSide;
     const tx = window.NOTEX ? null : s.tex && tessuto(s.tex); if (tx) { m.map = tx.d; m.normalMap = tx.n; m.normalScale = new THREE.Vector2(.7, .7); } m.roughness = s.lucido ? .5 : .92; m.metalness = 0; if (window.DBG2) m.side = THREE.DoubleSide;
     const U = { uA: { value: col3(s.A) }, uB: { value: col3(s.B) }, uS: { value: col3(s.S || s.A) }, uMot: { value: s.motivo }, uNeck: { value: M.neckY }, uChest: { value: M.chestY }, uHips: { value: M.hipsY },
       uD: { value: new THREE.Vector4(s.dett.vScollo || 0, s.dett.revers ? 1 : 0, s.dett.zip ? 1 : 0, s.dett.bande ? 1 : 0) },
@@ -249,11 +261,18 @@ vec3 stoffa() {
       // la parte del corpo della persona si nasconde: il pezzo ne prende il posto
       root.traverse(o => { if (o.isSkinnedMesh && reCorpo.test(nomeDi(o)) && !o.userData.taglio) { o.visible = false; o.userData.taglioHid = true; } });
       const s = stoffaDi(C, sotto), col = { A: s.A, B: s.B, S: s.S, P: skin }; const tie = zona === 'busto' && ord.find(c => /^cravatta/.test(c.acc || '')); if (tie && s.dett.vScollo) s.T = tie.col || '#a01c28';
-      for (const src of srcs) {
-        const geo = geometria(src, Pz.f, zona, Pz.op), M = geo.userData.misure;
-        const ms = (Array.isArray(src.material) ? src.material : [src.material]).map(m => { const r = Pz.r[m.name]; return r === 'A' && !window.DBG4 ? stoffaMat(m, s, M) : r === 'AP' ? stoffaMat(m, Object.assign({}, s, { P: skin }), M) : r && col[r] ? tinta(m, col[r]) : m; });
-        const sm = new THREE.SkinnedMesh(geo, Array.isArray(src.material) ? ms : ms[0]);
-        if (window.DBG3 && (Array.isArray(src.material) ? src.material[0] : src.material).name !== window.DBG3) sm.visible = false;
+      // un capo modellato a parte: i suoi materiali, sullo scheletro del primo pezzo del kit
+      const capo = Pz.capo && CAPI[Pz.f] && CAPI[Pz.f].capi && CAPI[Pz.f].capi[Pz.capo];
+      const lista = capo ? capo.prims.map(p => ({ src: srcs[0], over: { key: Pz.f + '|' + Pz.capo + '|' + p.mat, geo: primGeo(p) }, mat: p.mat })) : srcs.map(src => ({ src }));
+      if (capo) { s.dett = Object.assign({}, s.dett, { revers: 0, vScollo: 0, colletto: 0, bottoni: 1 }); }   // V, revers, camicia e cravatta sono veri: non si dipingono
+      for (const { src, over, mat } of lista) {
+        const geo = geometria(src, Pz.f, zona, Pz.op, over), M = geo.userData.misure;
+        const base = Array.isArray(src.material) ? src.material[0] : src.material, srcMs = over ? [Object.assign(base.clone(), { name: mat })] : (Array.isArray(src.material) ? src.material : [src.material]);
+        if (over && mat === 'Camicia') { srcMs[0] = stoffaMat(base, { motivo: 0, dett: {}, A: (sotto && sotto.col) || '#ece8e0', B: '#ffffff', tex: 'stretch_poplin' }, M); }
+        if (over && mat === 'Revers') { srcMs[0] = stoffaMat(base, Object.assign({}, s, { A: '#' + new THREE.Color(s.A).multiplyScalar(1.18).getHexString(), dett: {} }), M); }
+        if (over && mat === 'Cravatta') { const tc = s.T || (sotto && sotto.col) || '#ece8e0'; srcMs[0] = stoffaMat(base, { motivo: 0, dett: {}, A: tc, B: tc, tex: s.T ? 'crepe_satin' : 'stretch_poplin', lucido: s.T ? 1 : 0 }, M); }
+        const ms = srcMs.map(m => { if (m.isMaterial && m.userData && m.userData.fatto) return m; const r = Pz.r[m.name]; if (over && (mat === 'Camicia' || mat === 'Cravatta' || mat === 'Revers')) return m; return r === 'A' && !window.DBG4 ? stoffaMat(m, s, M) : r === 'AP' ? stoffaMat(m, Object.assign({}, s, { P: skin }), M) : r && col[r] ? tinta(m, col[r]) : m; });
+        const sm = new THREE.SkinnedMesh(geo, over ? ms[0] : Array.isArray(src.material) ? ms : ms[0]);
         sm.name = 'Taglio_' + zona; sm.userData.taglio = t; sm.userData.vesti = true; sm.userData.zona = zona; sm.castShadow = true; sm.frustumCulled = false;
         const bones = src.skeleton.bones.map(b => ossa[b.name]); if (bones.some(b => !b)) { console.warn('[Taglio] ossa diverse', Pz.f); return; }
         // stesso posto nella gerarchia del pezzo originale (il gruppo del pezzo porta la scala e la rotazione del kit)
