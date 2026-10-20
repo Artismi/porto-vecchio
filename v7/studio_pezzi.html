@@ -31,7 +31,7 @@
       opts = opts || {}; if (opts.celle) return this.celle(list, opts);
       items.forEach(g => scene.remove(g)); items = [];
       let x = 0; const sp = opts.sp || 6;
-      for (const d of list) { const g = make(d); g.rotation.y = d.ang || opts.ang || 0; const bb = new THREE.Box3().setFromObject(g), sz = bb.getSize(new THREE.Vector3()); g.position.set(x - bb.min.x, 0, -(bb.min.z + bb.max.z) / 2); scene.add(g); items.push(g); g.userData.nome = d.nome || d.tipo; g.userData.sz = sz; x += sz.x + sp; }
+      for (const d of list) { const g = make(d); g.rotation.y = d.ang || opts.ang || 0; const bb = new THREE.Box3().setFromObject(g), sz = bb.getSize(new THREE.Vector3()); g.position.set(x - bb.min.x, -(g.userData.quotaPosa || 0), -(bb.min.z + bb.max.z) / 2); scene.add(g); items.push(g); g.userData.nome = d.nome || d.tipo; g.userData.sz = sz; x += sz.x + sp; }
       const tot = new THREE.Box3(); items.forEach(g => tot.expandByObject(g)); const ctr = tot.getCenter(new THREE.Vector3()), r = tot.getSize(new THREE.Vector3()).length() / 2;
       const side = opts.side !== undefined ? opts.side : .7, el = opts.el !== undefined ? opts.el : .5, dist = r / Math.sin(THREE.MathUtils.degToRad(cam.fov / 2)) * 1.05;
       ren.setViewport(0, 0, W, H); ren.setScissorTest(false); cam.aspect = W / H; cam.updateProjectionMatrix();
@@ -48,7 +48,7 @@
       const side = opts.side !== undefined ? opts.side : .65, el = opts.el !== undefined ? opts.el : .42, lab = clearLabels();
       ren.setScissorTest(true); ren.setViewport(0, 0, W, H); ren.setScissor(0, 0, W, H); ren.clear();
       for (let i = 0; i < n; i++) {
-        const d = list[i], g = make(d); g.rotation.y = d.ang !== undefined ? d.ang : (opts.ang || 0); scene.add(g);
+        const d = list[i], g = make(d); g.rotation.y = d.ang !== undefined ? d.ang : (opts.ang || 0); g.position.y = -(g.userData.quotaPosa || 0); scene.add(g);   // le opere a mare e il fossato si alzano fino al loro piede
         const bb = new THREE.Box3().setFromObject(g), sz = bb.getSize(new THREE.Vector3()), ctr = bb.getCenter(new THREE.Vector3());
         const r = Math.max(1, sz.length() / 2), c = i % cols, row = Math.floor(i / cols), x0 = c * cw, y0 = H - (row + 1) * chh;
         cam.aspect = cw / chh; cam.updateProjectionMatrix();
@@ -58,7 +58,7 @@
         ren.setViewport(x0, y0, cw, chh); ren.setScissor(x0, y0, cw, chh); ren.render(scene, cam);
         scene.remove(g);
         label(lab, `${d.nome || d.tipo}  ${sz.x.toFixed(1)}×${sz.y.toFixed(1)}×${sz.z.toFixed(1)} m · ${tri(g)} tri`, x0 + cw / 2, H - y0 - 18);
-        const q = g.userData.quotaPosa || 0; if (Math.abs(bb.min.y - q) > .02) label(lab, `base a ${bb.min.y.toFixed(2)} m`, x0 + cw / 2, H - y0 - chh + 4, 'color:#ffb040');
+        if (Math.abs(bb.min.y) > .02) label(lab, `base a ${bb.min.y.toFixed(2)} m`, x0 + cw / 2, H - y0 - chh + 4, 'color:#ffb040');
         const ln = document.createElement('div'); ln.style.cssText = `position:absolute;left:${x0}px;top:${H - y0 - chh}px;width:${cw - 1}px;height:${chh - 1}px;border-right:1px solid #2a2e36;border-bottom:1px solid #2a2e36`; lab.appendChild(ln);
       }
       ren.setScissorTest(false);

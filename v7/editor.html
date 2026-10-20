@@ -12616,7 +12616,7 @@ var PezziCitta = (function () {
     const gg = grp(g, x, y0, z, ry); blocco(gg, .7, .1, .7, 'pietraChiara', 0, 0, 0, LOD ? 0 : .02);
     if (LOD) { cil(gg, .16, .24, h, 6, 'ferroScuro', 0, .1, 0); return gg; }
     tornito(gg, [[0, 0], [.27, 0], [.27, .05], [.18, .1], [.15, .3], [.14, h - .2], [.2, h - .12], [.25, h - .07], [.24, h - .02], [.18, h], [0, h]], 12, 'ferroScuro', 0, .1, 0);
-    if (cima && !LOD) { add(gg, new THREE.TorusGeometry(.19, .035, 4, 12), 'corda', 0, .1 + h - .25, 0, HP); asta(gg, [0, .1 + h - .25, .2], [0, .02, 1.6], .03, 'corda'); }
+    if (cima && !LOD) { add(gg, new THREE.TorusGeometry(.19, .035, 4, 12), 'corda', 0, .1 + h - .25, 0, HP); asta(gg, [0, .1 + h - .25, .2], [0, .06, .55], .022, 'corda'); asta(gg, [0, .06, .55], [.15, .03, 1.6], .022, 'corda'); }
     return gg;
   }
   // scaletta alla marinara di ferro sulla faccia di un muro che guarda +Z (in un gruppo girato per le altre): dal pelo del piano y = 0 giù fino a y1
@@ -12829,7 +12829,7 @@ var PezziCitta = (function () {
     g.userData.misure = [G + hc * .4, h + (o.garitta ? 3.7 : .1), F + df + hc * .2 + .6]; return g;
   };
 
-  DOC.fossato = { L: 30, w: 15, prof: 5, ponte: true, rivellino: true, nota: 'fossato asciutto lungo X: fondo d\'erba a −prof (quotaPosa), escarpa a scarpa sul lato −Z (la Rocca), controscarpa diritta con la copertina e il parapetto sul lato +Z; ponte in muratura ad archi con l\'ultimo tratto levatoio di legno con le catene; oltre la controscarpa il rivellino triangolare con l\'androne a volta. Il piano della città è y = 0' };
+  DOC.fossato = { L: 30, w: 15, prof: 5, ponte: true, rivellino: true, nota: 'fossato asciutto lungo X: fondo d\'erba a −prof (quotaPosa), escarpa a scarpa sul lato −Z (la Rocca), controscarpa diritta con la copertina e il parapetto sul lato +Z; ponte in muratura ad archi con l\'ultimo tratto levatoio di legno con le catene; oltre la controscarpa il rivellino triangolare, tronco in punta, con l\'androne a volta che la strada passa da parte a parte. Il piano della città è y = 0' };
   T.fossato = o => {
     o = def(o, DOC.fossato); const g = new THREE.Group(), L = o.L, w = o.w, pr = o.prof, xc = L / 2;
     blocco(g, L, .3, w + 1, 'erba', xc, -pr, w / 2);                                                  // il fondo
@@ -12847,8 +12847,7 @@ var PezziCitta = (function () {
       const half = s => [[xc + s * wp, z0], [xc + s * R, z0], [xc + s * wp, z0 + Dr * (1 - wp / R)]];
       for (const s of [-1, 1]) { const p = half(s), sgn = areaP(p) > 0 ? 1 : -1; tronco(g, allarga(p, [0, .6, 0]), p, hR, 'tufo', 0, 0, 0); const gq = sulLato(g, p[1], p[2], sgn, hR); blocco(gq, gq.userData.l + .6, .9, .7, 'tufo', 0, 0, -.35); }
       pareteArchi(g, wp * 2 + .2, hR, dT, [{ x: wp + .1, w: 3.6, h: 3.4 }], 'tufo', xc - wp - .1, 0, z0 + dT / 2);   // l'androne a volta
-      prisma(g, [[xc - wp - .1, z0 + Dr * (1 - wp / R)], [xc + wp + .1, z0 + Dr * (1 - wp / R)], [xc, z0 + Dr]], hR, 'tufo', 0, 0, 0);
-      if (!LOD) { conci(g, 1.8, .4, 7, 'pietraChiara', xc, 1.6, z0 + .1); blocco(g, 1.2, .45, .04, 'pietraChiara', xc, 3.65, z0 - .02); } }
+      if (!LOD) { for (const zc of [z0 + .1, z0 + dT - .1]) conci(g, 1.8, .4, 7, 'pietraChiara', xc, 1.6, zc); blocco(g, 1.2, .45, .04, 'pietraChiara', xc, 3.65, z0 - .02); blocco(g, wp * 2 + .4, .12, .5, 'pietraChiara', xc, hR, z0 + dT - .25); } }   // le ghiere dei due fornici (il rivellino è tronco in punta: la strada lo passa da parte a parte)
     g.userData.quotaPosa = -pr; g.userData.misure = [L, pr + 3.3, w + 2 + (o.rivellino ? 12 : 0)]; return g;
   };
 
