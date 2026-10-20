@@ -323,7 +323,9 @@ var Models = (function () {
     else if (o.hit > .5) clip = u.acts.HitReact ? 'HitReact' : 'HitRecieve';
     // [anim] soglie con un margine: chi va piano attorno alla soglia non passa da una clip all'altra a ogni fotogramma;
     // oltre i 3,8 m/s si corre (il passo veloce del giocatore, 4,2 m/s, sembrava una camminata a 2,6× di velocità)
-    else if (sp > (u.gait === 2 ? 3.3 : 3.8)) { clip = o.weapon ? (u.acts.Run_Gun ? 'Run_Gun' : 'Run_Shoot') : 'Run'; u.gait = 2; }
+    // [fluido] la corsa da 3,5 m/s (3,1 scendendo): la camminata arriva al massimo a 2,2× (3,5 m/s), oltre i piedi scivolavano sul selciato
+    // (col passo armato a 3,8 m/s e con la levetta a metà corsa: il personaggio sembrava camminare in ritardo su sé stesso)
+    else if (sp > (u.gait === 2 ? 3.1 : 3.5)) { clip = o.weapon ? (u.acts.Run_Gun ? 'Run_Gun' : 'Run_Shoot') : 'Run'; u.gait = 2; }
     else if (sp > (u.gait >= 1 ? .15 : .35)) { clip = o.weapon && u.acts.Walk_Shoot ? 'Walk_Shoot' : 'Walk'; u.gait = 1; }
     else if (o.handsUp) clip = u.acts.Wave ? 'Wave' : 'Idle';
     else if (o.weapon) clip = u.acts.Idle_Shoot ? 'Idle_Shoot' : u.acts.Idle_Gun ? 'Idle_Gun' : 'Idle';
@@ -333,8 +335,8 @@ var Models = (function () {
     const wb = window.Anim && Anim.want(g, o); if (wb && !o.down && !(o.punch > 0) && !(o.hit > .5) && u.acts[wb]) clip = wb;
     play(g, clip, clip === 'Death');
     let ts = 1;
-    if (u.cur && (clip === 'Walk' || clip === 'Run' || clip === 'Walk_Shoot' || clip === 'Run_Gun' || clip === 'Run_Shoot')) ts = clip.startsWith('Walk') ? clamp(sp / 1.6, .55, 2.2) : clamp(sp / 5, .7, 1.6);   // [anim] la camminata veloce non va oltre 2,2× (prima arrivava a 2,8 e il passo frullava)
-    if (u.cur) u.cur.timeScale += (ts - u.cur.timeScale) * Math.min(1, dt * 8);   // [anim] il ritmo cambia per gradi
+    if (u.cur && (clip === 'Walk' || clip === 'Run' || clip === 'Walk_Shoot' || clip === 'Run_Gun' || clip === 'Run_Shoot')) ts = clip.startsWith('Walk') ? clamp(sp / 1.6, .55, 2.2) : clamp(sp / 5, .6, 1.6);   // [anim] la camminata veloce non va oltre 2,2× (prima arrivava a 2,8 e il passo frullava)
+    if (u.cur) u.cur.timeScale += (ts - u.cur.timeScale) * (1 - Math.exp(-dt * 10));   // [anim] il ritmo cambia per gradi   // [fluido] senza dipendere dai fotogrammi
     if (window.Anim) Anim.restore(g);   // [animazioni]
     u.mixer.update(dt);
     if (window.Anim) Anim.apply(g, o, dt, performance.now() / 1000);   // [animazioni] lo strato procedurale sopra la clip

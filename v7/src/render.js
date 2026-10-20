@@ -51,14 +51,21 @@ var Render = (function () {
   // [plastica2] tutte le texture del mondo morbide e con le mipmap, e sulle superfici dipinte un rilievo ricavato dalla texture stessa
   // (bumpMap = map): il sole fa risaltare tegole, mattoni, intonaco e assi invece di illuminare un foglio piatto. Ogni materiale una volta.
   const SMOOTH2 = new WeakSet();
-  function smooth2(root) {
-    root.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : null; if (!ms) return;
+  function smooth2o(o) { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : null; if (!ms) return;
       for (const m of ms) { if (!m || SMOOTH2.has(m)) continue; SMOOTH2.add(m);
         for (const k of ['map', 'emissiveMap', 'roughnessMap']) { const t = m[k]; if (!t || !t.isTexture || t.isDataTexture || t.isRenderTargetTexture || t.isDepthTexture) continue; const im = t.image; if (!im || !(im.width > 4)) continue;
           if (t.magFilter === THREE.NearestFilter || t.minFilter === THREE.NearestFilter || t.minFilter === THREE.NearestMipmapNearestFilter) { t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true; } }
-        } });   /* [plastica2] via il rilievo dalla texture (bumpMap = map): sul terreno e sulle facciate era rumore che luccicava */
-    root.traverse(thin2);
+        } }   /* [plastica2] via il rilievo dalla texture (bumpMap = map): sul terreno e sulle facciate era rumore che luccicava */
+  function smooth2(root) { root.traverse(smooth2o); root.traverse(thin2); }
+  // [fluido] GIRI DELLA SCENA A RATE: chi deve riguardare ogni oggetto della città (~30.000) lo fa a pezzi, n oggetti per fotogramma,
+  // invece di fermare il gioco a intervalli fissi (smooth2 ogni 3 s faceva due giri interi, il ritaglio delle istanze uno ogni secondo:
+  // erano i fotogrammi lunghi a ritmo regolare). W = { stack }: true quando il giro è finito
+  function sliceWalk(W, root, n, fn) {
+    if (!W.stack) W.stack = [root]; const S = W.stack;
+    while (n-- > 0 && S.length) { const o = S.pop(), c = o.children; for (let i = c.length - 1; i >= 0; i--) S.push(c[i]); fn(o); }
+    if (S.length) return false; W.stack = null; return true;
   }
+  const SM2W = { stack: null, t: 0 };
   // [plastica2] i pezzi sottili (tubi della bici, cavi, raggi, aste) non fanno ombra: sulla mappa a 4,5 cm venivano trine a puntini
   const _b2 = new THREE.Vector3();
   function thin2(o) { if (!o.isMesh || !o.castShadow || o.isInstancedMesh || o.userData.thin2 || !o.geometry) return; o.userData.thin2 = 1; const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox(); if (!g.boundingBox) return;
@@ -13172,11 +13179,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function instCull() {
     if (IC.off) return;   // [prova] R.__ic.off = true la spegne (solo per le misure)
     const now = performance.now();
-    if (now > IC.t) { IC.t = now + 1000; IC.list = []; scene.traverse(o => { if (o.isInstancedMesh && !o.__icPart && (!o.frustumCulled || o.__icS || o.__icParts)) IC.list.push(o);
-      if (o.userData.model && o.userData.mixer) o.traverse(q => { if ((q.isMesh || q.isSkinnedMesh) && !q.frustumCulled && !q.__icR && !q.isInstancedMesh) { q.__icR = o; q.frustumCulled = true; } }); }); }   // i personaggi (e i vestiti e gli oggetti in mano attaccati dopo)
+    if (now > IC.t) {   // [fluido] il giro della scena a rate (3000 oggetti per fotogramma), la lista nuova sostituisce la vecchia a giro finito
+      if (!IC.W) { IC.W = { stack: null }; IC.next = []; }
+      if (sliceWalk(IC.W, scene, 3000, o => { if (o.isInstancedMesh && !o.__icPart && (!o.frustumCulled || o.__icS || o.__icParts)) IC.next.push(o);
+        if (o.userData.model && o.userData.mixer) o.traverse(q => { if ((q.isMesh || q.isSkinnedMesh) && !q.frustumCulled && !q.__icR && !q.isInstancedMesh) { q.__icR = o; q.frustumCulled = true; } }); })) { IC.list = IC.next; IC.W = null; IC.next = null; IC.t = now + 1000; } }   // i personaggi (e i vestiti e gli oggetti in mano attaccati dopo)
     for (const o of IC.list) {   // ferme da un secondo e mezzo: si accende il controllo; appena cambiano, si spegne
-      const ver = o.instanceMatrix.version + ':' + o.count + ':' + (o.geometry && o.geometry.id);
-      if (o.__icV !== ver) { o.__icV = ver; o.__icT = now; if (o.__icS) { o.__icS = null; o.frustumCulled = false; } if (o.__icParts) icUnsplit(o); continue; }
+      const v1 = o.instanceMatrix.version, v2 = o.count, v3 = o.geometry && o.geometry.id;   // [fluido] tre numeri invece di una stringa nuova per gruppo a ogni fotogramma
+      if (o.__icV !== v1 || o.__icV2 !== v2 || o.__icV3 !== v3) { o.__icV = v1; o.__icV2 = v2; o.__icV3 = v3; o.__icT = now; if (o.__icS) { o.__icS = null; o.frustumCulled = false; } if (o.__icParts) icUnsplit(o); continue; }
       if (!o.__icS && !o.__icParts && now - o.__icT > 1500 && o.count > 0) { const S = icSphere(o); if (S) { if (S.radius > 70 && o.count >= 32 && icSplit(o)) continue; o.__icS = S; o.frustumCulled = true; } }
     }
   }
@@ -14067,7 +14076,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     });
   }
   function frame(st, dt, ui) {
-    if (!(frame.__sm2 > 0)) { frame.__sm2 = 3; try { smooth2(scene); } catch (e) { } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */
+    if (SM2W.stack || !(frame.__sm2 > 0)) { if (!SM2W.stack) frame.__sm2 = 3; try { sliceWalk(SM2W, scene, 2000, o => { smooth2o(o); thin2(o); }); } catch (e) { SM2W.stack = null; } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */   // [fluido] a rate
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
     SHMOV.st = st;   // [fluido] per le ombre dei faretti
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
@@ -14290,28 +14299,28 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const vw = VIEW * (ui.zoom || 1), fresh = cam.ppx === undefined || Math.hypot(p.x - cam.ppx, p.y - cam.ppy) > 6;
       const ivx = fresh || !(dt > 0) ? 0 : (p.x - cam.ppx) / dt, ivy = fresh || !(dt > 0) ? 0 : (p.y - cam.ppy) / dt; cam.ppx = p.x; cam.ppy = p.y;
       const kv = Math.min(1, dt * 2.2); cam.pvx = (cam.pvx || 0) + (ivx - (cam.pvx || 0)) * kv; cam.pvy = (cam.pvy || 0) + (ivy - (cam.pvy || 0)) * kv;
-      const spd = Math.hypot(cam.pvx, cam.pvy), leadOn = false;   // [camera3] niente sguardo avanti: il personaggio è il perno, sempre al centro
+      const spd = Math.hypot(cam.pvx, cam.pvy), leadOn = !!ui.lead && !pveh;   // [camera3] niente sguardo avanti dalla velocità: il personaggio è il perno   // [fluido] ma con la levetta (controller o schermo) la visuale guarda subito dove la spingi
       // lo sguardo avanti è una parte dello schermo, non dei metri: in verticale di lato c'è poco posto, in alto e in basso tanto.
       // Si scompone la direzione di marcia nei due assi dello schermo e ognuno prende fino al 42% della sua mezza inquadratura
       let lx = 0, ly = 0;
-      if (leadOn && ui.stick) {   // [telefono] la levetta comanda lo sguardo: si inquadra subito dove la spingi (a piedi, in bici, in auto)
-        const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, asp = W / Math.max(1, H), m = Math.min(1, Math.hypot(ui.stick.x, ui.stick.y));
-        const vh = pveh ? 2 * (cam.cd || 30) * Math.tan(camera.fov * Math.PI / 360) : vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
-        const sx = ui.stick.x / (m || 1), sy = -ui.stick.y / (m || 1), k = .45 * m;   // [levetta] l'angolo della levetta è il davanti dell'inquadratura, la distanza dal centro quanto si sposta
+      if (leadOn) {   // [telefono] la levetta comanda lo sguardo: si inquadra subito dove la spingi   // [fluido] ui.lead: la direzione nel mondo data al motore in questo fotogramma (main.js leadOf)
+        const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, asp = W / Math.max(1, H);
+        const vh = vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
+        const ux = ui.lead.x, uy = ui.lead.y, sx = ux * rx + uy * rz, sy = ux * fx + uy * fz, k = .3 * ui.lead.m;   // [levetta] l'angolo della levetta è il davanti dell'inquadratura, la distanza dal centro quanto si sposta
         lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; }
       else if (leadOn && spd > .3) {
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, ux = cam.pvx / spd, uy = cam.pvy / spd, asp = W / Math.max(1, H);
         const vh = pveh ? 2 * (cam.cd || 30) * Math.tan(camera.fov * Math.PI / 360) : vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
         const k = .42 * Math.min(1, spd / (pveh ? 10 : 5)), sx = ux * rx + uy * rz, sy = ux * fx + uy * fz;
         lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; }
-      const kl = Math.min(1, dt * (pveh ? 1.2 : 1.6)); cam.lx = (cam.lx || 0) + (lx - (cam.lx || 0)) * kl; cam.ly = (cam.ly || 0) + (ly - (cam.ly || 0)) * kl;
+      const kl = 1 - Math.exp(-dt * (leadOn ? 16 : pveh ? 1.2 : 5)); cam.lx = (cam.lx || 0) + (lx - (cam.lx || 0)) * kl; cam.ly = (cam.ly || 0) + (ly - (cam.ly || 0)) * kl;   // [fluido] 1 - e^-k·dt: dietro alla levetta in ~0,06 s
       cam.panX = cam.panX || 0; cam.panY = cam.panY || 0;
       if (ui.pan && !ui.intro && !ui.focus) { const pitch0 = PITCH, fx = -Math.sin(cam.yaw || YAW), fz = -Math.cos(cam.yaw || YAW), asp = W / Math.max(1, H), vh = vw * (H > W * 1.05 ? .78 : 1);
         const mx = -ui.pan.dx * vh * asp, my = ui.pan.dy * vh / Math.sin(pitch0);   // il mondo segue il dito: a destra il dito, la visuale va a sinistra
         cam.panX += -fz * mx + fx * my; cam.panY += fx * mx + fz * my;
         const pl = Math.hypot(cam.panX, cam.panY), pm = vh * 1.2; if (pl > pm) { cam.panX *= pm / pl; cam.panY *= pm / pl; } }
       if (spd > 1 || pveh || ui.dialogNpc || ui.intro) { const kd = Math.pow(.25, dt); cam.panX *= kd; cam.panY *= kd; }   // appena ti muovi la visuale torna su di te
-      if (!pveh && !ui.intro && !ui.focus) { tx += cam.lx + cam.panX; ty += cam.ly + cam.panY; }
+      cam.addX = 0; cam.addY = 0; if (!pveh && !ui.intro && !ui.focus) { cam.addX = cam.lx + cam.panX; cam.addY = cam.ly + cam.panY; }   // [fluido] sommati dopo lo smorzamento (sotto)
     }
     if (pveh) {
       const vsp = pveh.vx !== undefined ? Math.hypot(pveh.vx, pveh.vy) : Math.abs(pveh.speed);
@@ -14335,7 +14344,16 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (ui.intro) { tx = G.PLACES.piazza.x + Math.sin(time * .08) * 30; ty = G.PLACES.piazza.y - 6 + Math.cos(time * .06) * 8; tz = 1.25; }
     if (ui.focus) { tx = ui.focus.x; ty = ui.focus.y; tz = (ui.zoom || 1) * (p.indoor ? .5 : 1); focus[0] = [tx, ty]; }   // [editor] la camera segue il punto dell'editor
     const kf = 1 - Math.pow(pveh ? .004 : PHONE ? .0004 : .02, dt);   // [camera3] sul telefono la visuale sta addosso al personaggio (prima ~0,25 s di ritardo)
-    cam.x += (tx - cam.x) * kf; cam.y += (ty - cam.y) * kf; cam.zoom += (tz - cam.zoom) * (1 - Math.pow(.05, dt));
+    // [fluido] la camera è legata al personaggio (o al mezzo) nella sua posizione di questo stesso fotogramma: prima lo inseguiva con
+    // ~0,25 s di ritardo (sul computer), così camminando il personaggio scivolava nell'inquadratura e, coi fotogrammi irregolari,
+    // tremava avanti e indietro (la camera «se lo trascina a scatti»). Si smorza solo lo scarto voluto (mira, dialogo, momenti);
+    // lo sguardo della levetta e il dito sono già smorzati sopra e si sommano dopo
+    const anc = ui.intro || ui.focus ? null : (pveh || p);
+    if (anc) {
+      if (cam.anc !== anc || cam.ax === undefined || !isFinite(cam.ax)) { cam.anc = anc; cam.ax = cam.x - (cam.addX || 0) - anc.x; cam.ay = cam.y - (cam.addY || 0) - anc.y; if (Math.hypot(cam.ax, cam.ay) > 40) cam.ax = cam.ay = 0; }
+      cam.ax += (tx - anc.x - cam.ax) * kf; cam.ay += (ty - anc.y - cam.ay) * kf;
+      cam.x = anc.x + cam.ax + (cam.addX || 0); cam.y = anc.y + cam.ay + (cam.addY || 0);
+    } else { cam.anc = null; cam.x += (tx - cam.x) * kf; cam.y += (ty - cam.y) * kf; } cam.zoom += (tz - cam.zoom) * (1 - Math.pow(.05, dt));
     { const lh = !ui.intro && typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; cam.h += ((lh !== null && !ui.focus ? lh : groundH(ui.intro || ui.focus ? tx : p.x, ui.intro || ui.focus ? ty : p.y)) - cam.h) * Math.min(1, dt * 4); }
     let kx = 0, ky = 0;
     if (st.kick) { const k = Math.max(0, 1 - (st.clock - st.kick.t) * 9); kx = -Math.cos(st.kick.a) * st.kick.amt * k * 1.2; ky = -Math.sin(st.kick.a) * st.kick.amt * k * 1.2; }
@@ -14346,7 +14364,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (PHONE && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc) {   // [camera3] la visuale gira attorno al personaggio, dietro alla direzione di marcia
       const vs = pveh ? Math.abs(pveh.speed || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
       const hd = pveh ? (vs > .8 && (pveh.speed || 0) > 0 ? pveh.ang : null) : (vs > .4 && ui.stick ? p.face : null);
-      if (hd !== null) { const tgt = Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW; cam.uy = angLerp(cam.uy, tgt, 1 - Math.exp(-dt * (pveh ? 2.6 : 2.2))); } }
+      // [fluido] a piedi: se tiri la levetta indietro il personaggio si volta e la visuale guarda subito là (sguardo avanti), senza il
+      // mezzo giro lento della camera alle spalle (era l'arco largo e il ritardo); nelle curve la segue più pronta (2,2 → 3,2)
+      const tgt = hd === null ? 0 : Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW, far = hd !== null && !pveh && Math.abs(Math.atan2(Math.sin(tgt - cam.uy), Math.cos(tgt - cam.uy))) > 1.75;
+      if (hd !== null && !far) cam.uy = angLerp(cam.uy, tgt, 1 - Math.exp(-dt * (pveh ? 2.6 : 3.2))); }
     cam.yaw = YAW + cam.uy; // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa
     let pitch = lerp(PITCH, onVespa ? .78 : .82, ease);
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
@@ -14373,10 +14394,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     camera.position.set(cx + ox, cy + oy, cz + oz); camera.lookAt(cx, cy, cz);
     posaTick1(cx, cz);   // [posa] il livello pieno dei pezzi vicino al punto guardato
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
-    if (ease < .02 && !PHONE) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti
-      const texel = viewH / H; camera.updateMatrixWorld();
-      const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0), up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
-      const pos = camera.position.clone(), a = pos.dot(right), b = pos.dot(up);
+    if (cam.uyS !== cam.uy) { cam.uyS = cam.uy; cam.rotT = time; }   // [fluido] quando la visuale ha girato l'ultima volta
+    if (ease < .02 && !PHONE && !(time - (cam.rotT || -9) < .25)) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti   // [fluido] nemmeno sul computer mentre gira (levetta destra, tasti)
+      const texel = viewH / H; camera.updateMatrixWorld(); const SV = cam.__sv || (cam.__sv = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]);
+      const right = SV[0].setFromMatrixColumn(camera.matrixWorld, 0), up = SV[1].setFromMatrixColumn(camera.matrixWorld, 1);
+      const pos = SV[2].copy(camera.position), a = pos.dot(right), b = pos.dot(up);
       pos.addScaledVector(right, Math.round(a / texel) * texel - a).addScaledVector(up, Math.round(b / texel) * texel - b);
       camera.position.copy(pos);
     }

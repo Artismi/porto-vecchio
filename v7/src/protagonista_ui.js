@@ -43,8 +43,8 @@
     const sig = bars + bits.join('|');
     if (sig !== last) { last = sig; box.innerHTML = bars; line.textContent = bits.join(' · '); }
     const W = M.warp;
-    warp.hidden = !W;
-    if (W) warp.innerHTML = `${W.kind === 'sonno' ? 'Dormi…' : W.kind === 'lavoro' ? 'Al lavoro…' : (W.label[0].toUpperCase() + W.label.slice(1) + '…')}<small>${pv.G.clockStr(st.t)} · U o Tasche per fermarti</small>`;
+    if (warp.hidden !== !W) warp.hidden = !W;   // [fluido] il documento si tocca solo se cambia
+    if (W) { const h = `${W.kind === 'sonno' ? 'Dormi…' : W.kind === 'lavoro' ? 'Al lavoro…' : (W.label[0].toUpperCase() + W.label.slice(1) + '…')}<small>${pv.G.clockStr(st.t)} · U o Tasche per fermarti</small>`; if (warp.__h !== h) { warp.__h = h; warp.innerHTML = h; } }
   }
   setInterval(draw, 250);
 })();
