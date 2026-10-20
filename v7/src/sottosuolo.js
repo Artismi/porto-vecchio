@@ -1314,7 +1314,7 @@ var Sottosuolo = (function () {
     const ride = p.lv.ride; GFX.trains.forEach((m, j) => m.traverse(o => { if (o.name === 'tetto') o.visible = ride !== j; }));
     (GFX.tubes || []).forEach((tb, j) => { const o = ride !== undefined && ride !== j ? .12 : 1; tb.material.opacity = o; tb.material.depthWrite = o > .5; });
     // [sotto2] gli arredi si costruiscono quando ti avvicini (al massimo tre stanze per fotogramma); le cavità dei ritrovamenti appena aperte
-    if (GFX.pend && GFX.pend.length) { let n = 0; for (let k = GFX.pend.length - 1; k >= 0 && n < 3; k--) { const Rm = GFX.pend[k]; if (Math.hypot(Rm.x - p.x, Rm.y - p.y) > 80) continue; GFX.pend.splice(k, 1); const g = decor(Rm); if (g) addChunk(GFX.root, g, Rm.x, Rm.y); n++; } }
+    if (GFX.pend && GFX.pend.length) { const near = GFX.pend.map(Rm => [Math.hypot(Rm.x - p.x, Rm.y - p.y), Rm]).filter(q => q[0] < 80).sort((a, b) => a[0] - b[0]).slice(0, 3); near.forEach(([, Rm]) => { GFX.pend.splice(GFX.pend.indexOf(Rm), 1); const g = decor(Rm); if (g) addChunk(GFX.root, g, Rm.x, Rm.y); }); }   // prima le più vicine
     GFX.findsBuilt = GFX.findsBuilt || {}; L.rooms.forEach(Rm => { if (!Rm.find || GFX.findsBuilt[Rm.find]) return; GFX.findsBuilt[Rm.find] = 1; const g = decor(Rm); if (g) { g.userData.find = Rm; addChunk(GFX.root, g, Rm.x, Rm.y); } });
     const yaw = (R.cam && R.cam.yaw !== undefined ? R.cam.yaw : Math.PI / 4), sy = Math.sin(yaw), cyw = Math.cos(yaw);
     GFX.chunks.forEach(c => { c.visible = Math.hypot(c.userData.cx - p.x, c.userData.cy - p.y) < 72; if (!c.visible) return;

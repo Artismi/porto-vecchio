@@ -1264,7 +1264,7 @@ var Render = (function () {
     x.strokeStyle = 'rgba(28,20,12,.9)'; x.lineWidth = 1; for (let i = 0; i < 9; i++) { let px = r() * 64, py = r() * 8; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 7; k++) { px += (r() - .5) * 6; py += 3 + r() * 6; x.lineTo(px, py); } x.stroke(); }   // radici
     x.strokeStyle = 'rgba(20,18,16,.7)'; for (let i = 0; i < 8; i++) { let px = r() * 64, py = 14 * P + r() * 16 * P; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 4; k++) { px += (r() - .5) * 10; py += 4 + r() * 8; x.lineTo(px, py); } x.stroke(); }   // crepe nella roccia
     const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearFilter; t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
-    return (ugMats.__sez = new THREE.MeshStandardMaterial({ map: t, emissiveMap: t, emissive: '#ffffff', emissiveIntensity: .1, roughness: 1, metalness: 0, side: THREE.DoubleSide }));
+    return (ugMats.__sez = new THREE.MeshStandardMaterial({ map: t, emissiveMap: t, emissive: '#ffffff', emissiveIntensity: .05, roughness: 1, metalness: 0, side: THREE.DoubleSide }));
   }
   // [sotto2] i materiali veri degli strati: 64 px = 2 m (una casella), il basso del canvas è il pavimento
   const UG2 = (() => {
@@ -1281,7 +1281,7 @@ var Render = (function () {
       cocciopesto: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1011); x.fillStyle = '#9a6a56'; x.fillRect(0, 0, 64, 64); noise(x, r, 500, ['#a87664', '#8a5c4a', '#b8846e', '#7a5040', '#c09078'], 1, 1);
         x.fillStyle = 'rgba(40,60,50,.6)'; x.fillRect(0, 40, 64, 2); x.fillStyle = 'rgba(40,70,56,.45)'; x.fillRect(0, 42, 64, 22); damp(x, r, 30, .35); return fin(c, { roughness: .7 }); },
       // le catacombe: il tufo giallo scavato, tre file di loculi; i più aperti con le ossa, gli altri chiusi da lastre con la scritta rossa
-      loculi: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1012); x.fillStyle = '#a08c66'; x.fillRect(0, 0, 64, 64); noise(x, r, 420, ['#b09a72', '#8a7856', '#c0aa80', '#968260'], 2, 1);
+      loculi: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1012); x.fillStyle = '#8a7856'; x.fillRect(0, 0, 64, 64); noise(x, r, 420, ['#b09a72', '#8a7856', '#c0aa80', '#968260'], 2, 1);
         for (const yb of [52, 33, 14]) { const open = r() < .55, x0 = 6, w = 52, h = 14, y = yb - h;
           if (open) { x.fillStyle = '#1e1810'; x.fillRect(x0, y, w, h); x.fillStyle = '#3a2e20'; x.fillRect(x0, y + h - 3, w, 3);
             x.fillStyle = '#e4dcc4'; x.fillRect(x0 + 4, y + h - 5, 30, 2); x.fillRect(x0 + 8, y + h - 7, 2, 4); x.fillRect(x0 + 22, y + h - 7, 2, 3); x.beginPath(); x.arc(x0 + w - 9, y + h - 6, 4, 0, 6.3); x.fill(); x.fillStyle = '#1e1810'; x.fillRect(x0 + w - 11, y + h - 7, 1, 1); x.fillRect(x0 + w - 8, y + h - 7, 1, 1); }
@@ -1289,8 +1289,8 @@ var Render = (function () {
           x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(x0 - 1, y - 1, w + 2, 1); }
         damp(x, r, 52, .4); return fin(c); },
       // la città sepolta: intonaco vecchio a due colori (zoccolo rosso pompeiano), scrostato fino alle pietre, una riga di fumo
-      intonaco: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1013); x.fillStyle = '#c8b48a'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#8a3a2a'; x.fillRect(0, 44, 64, 20); x.fillStyle = '#5a2a1e'; x.fillRect(0, 43, 64, 2);
-        noise(x, r, 300, ['#d4c098', '#b8a47a', '#a0302a', '#c8b48a'], 2, 1);
+      intonaco: () => { const c = mk(64, 64), x = c.getContext('2d'), r = rng(1013); x.fillStyle = '#9a8a6a'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#6a2e22'; x.fillRect(0, 44, 64, 20); x.fillStyle = '#5a2a1e'; x.fillRect(0, 43, 64, 2);
+        noise(x, r, 300, ['#a8966e', '#8a7a5a', '#7a2a22', '#9a8a6a'], 2, 1);
         for (let k = 0; k < 5; k++) { const px = r() * 64, py = r() * 50, w = 8 + r() * 14, h = 6 + r() * 10; x.fillStyle = '#6a645a'; x.fillRect(px, py, w, h); for (let j = 0; j < h; j += 4) for (let i = 0; i < w; i += 7) { x.fillStyle = pick(r, ['#8a8478', '#7a7468', '#9a9488']); x.fillRect(px + i + (j % 8 ? 3 : 0), py + j, 6, 3); } }
         x.fillStyle = 'rgba(20,16,12,.35)'; x.fillRect(0, 0, 64, 6); damp(x, r, 50, .35); return fin(c); },
       // la grotta: calcare grigio azzurro, colate più chiare, bagnato
