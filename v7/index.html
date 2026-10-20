@@ -21179,11 +21179,13 @@ var World = (function () {
       // la piazza d'adunata sull'innesto della Vittoria (oggi Piazza del Governo), il Mercato ottagonale sulla vecchia porta di terra
       CITY.piazzette = [[1108, 124, 6], [1046, 167, 5]];
       CITY.rects = [[1064, 172, 1086, 184]];
-      GOV.piazza = [993, 124, 1023, 162];
+      // [volumi2] la piazza d'adunata si stringe dal lato lontano dalla camera (nord): 30 × 33 m invece di 30 × 38; il palco sta contro il
+      // bordo nord, la torre littoria ne fa lo spigolo, il resto del fronte è borgo in aderenza (nessuno slargo senza bordo)
+      GOV.piazza = [993, 129, 1023, 162];
       CITY.octa = [954, 143, 16];   // [borgo] una piazza, non un piazzale: 32 m da lato a lato
       // le scenografie dei nodi: il rendering le arreda (banchi, tettoia, palco, pennoni, tavolini, bitte, reti), così ogni nodo
       // si riconosce da lontano e la gerarchia si legge dall'arredo
-      CITY.sets = [{ k: 'mercato', x: 954, y: 143, r: 16 }, { k: 'sagrato', x0: 1050, y0: 97, x1: 1076, y1: 109 }, { k: 'adunata', x0: 993, y0: 124, x1: 1023, y1: 162 },
+      CITY.sets = [{ k: 'mercato', x: 954, y: 143, r: 16 }, { k: 'sagrato', x0: 1050, y0: 97, x1: 1076, y1: 109 }, { k: 'adunata', x0: 993, y0: 129, x1: 1023, y1: 162 },
         { k: 'piazzetta', x: 1108, y: 124, r: 6, bar: true }, { k: 'piazzetta', x: 1046, y: 167, r: 5, forno: true }, { k: 'marina', x0: 1064, y0: 172, x1: 1086, y1: 184 },
         { k: 'calata', x0: 1000, x1: 1088 }];
       CITY.spian0 = 1143;   // E1 la spianata: il bordo di levante del borgo demolito fino a qui
@@ -21458,7 +21460,8 @@ var World = (function () {
     const POSA = { PZ, pzW, pzL, pzAt, pzCells, pzRis };
     if (CITY.rail && CITY.spian0) {
       // E4 la torre littoria sull'angolo della piazza d'adunata dove la Vittoria riparte verso la Rocca; l'arengario guarda l'asse
-      { const q = GOV.piazza, p = PZ('torre_littoria', q[2] - 8.5, q[1] + 4.3, 0, { h: 34, scritta: 'ORDINE', orologio: true, balcone: true, antenna: true }, { nome: 'Torre littoria' }); pzRis(p, 'B', -.3, 8.3, -4.3, 4.3); }
+      // [volumi2] la torre sta nella cortina nord della piazza (ristretta) e ne sporge di un metro con l'arengario: è l'unico alto della Vittoria
+      { const q = GOV.piazza, p = PZ('torre_littoria', q[2] - 10, q[1] - 3.3, 0, { h: 34, scritta: 'ORDINE', orologio: true, balcone: true, antenna: true }, { nome: 'Torre littoria' }); pzRis(p, 'B', -.3, 8.3, -4.3, 4.3); }
       // E4 i portici della Vittoria: la fascia fra il marciapiede (8,5 m dall'asse) e le case (13 m) resta libera; le case si arretrano
       POSA.port = { x0: 1024, x1: CITY.spian0 - .5, d0: 8.5, d1: 13 };
       for (let ty = T2i(VY - 14); ty <= T2i(VY + 14); ty++) for (let tx = T2i(POSA.port.x0); tx < T2i(POSA.port.x1); tx++) { const i = ty * GW + tx, d = Math.abs(ty * TS + 1 - VY);
@@ -21812,13 +21815,15 @@ var World = (function () {
       WF('vittoria', POSA.port ? POSA.port.d1 - POSA.port.d0 : 0, { w: [4, 4], wLow: 2, h: [5, 5], hLow: 3, norot: true, era: 'E4', rk: 3, x0: 1024, ex: POSA.port ? { vittoria: true } : { portico: true } });
       // E3 il Corso: palazzi dell'Ottocento in cortina che seguono l'arco
       WF('corso', 0, { w: [4, 6], wLow: 3, h: [5, 6], hLow: 3, era: 'E3', rk: 3 });
-      // E6 le sostituzioni del boom sul Viale della Tutela: palazzoni coi fianchi ciechi al posto di metà della cortina
-      WF('via_governo', 0, { w: [5, 7], wLow: 5, h: [6, 6], hLow: 5, norot: true, era: 'E6', rk: 2, fl: [7, 9], dens: .5, cont: false }, -1);
+      // E6 le sostituzioni del boom sul Viale della Tutela: palazzine coi fianchi ciechi al posto di metà della cortina
+      // [volumi2] niente palazzoni in centro: 4-5 piani, arretrate di 4 m dal filo (il giardinetto davanti), così non chiudono il viale
+      WF('via_governo', 4, { w: [5, 7], wLow: 5, h: [6, 6], hLow: 5, norot: true, era: 'E6', rk: 2, fl: [4, 5], dens: .5, cont: false }, -1);
       const MUR = { w: [4, 6], wLow: 2, h: [5, 5], hLow: 3, norot: true, era: 'E3', rk: 2 };   // [borgo] gli isolati murattiani li costruisce PIENO, più sotto
       // E3 fra i binari e la Via della Stazione: magazzini e depositi bassi, con gli orti in mezzo
       WF('via_alta', 0, { w: [4, 7], wLow: 3, h: [3, 4], hLow: 2, norot: true, era: 'E3', rk: 1, fl: [1, 2], dens: .7, cont: false, ex: { low: true } }, -1);
       // E6 il lungomare a ponente: alberghi e condomini alti uno staccato dall'altro (Miami); dal lato del mare la spiaggia resta libera
-      WF('via_porto', 0, { w: [6, 9], wLow: 5, h: [6, 8], hLow: 5, gap: 1, era: 'E6', rk: 2, fl: [6, 9], x1: 866 }, -1);
+      // [volumi2] non più torri da 6-9 piani: 4-5 piani arretrati di 3 m (lo spiazzo dell'albergo), staccati uno dall'altro
+      WF('via_porto', 3, { w: [6, 9], wLow: 5, h: [6, 8], hLow: 5, gap: 1, era: 'E6', rk: 2, fl: [4, 5], x1: 866 }, -1);
       // [borgo] IL COSTRUITO PIENO E SCAVATO (tappe 2 e 4). Non si posano case lungo le strade: ogni isolato si costruisce tutto, a lotti in
       // aderenza col fronte sulla strada e la profondità verso dentro, a filo griglia (una via storta dà da sola i dentini delle facciate);
       // poi si scavano le corti. o: { x0, x1 (metri), inZ(tx, ty), ring (profondità della cortina: oltre è corte; senza, corti a caso nei cuori),
@@ -21866,8 +21871,9 @@ var World = (function () {
         mk: () => ({ era: 'E3', rk: 2, norot: true }) });
       // E0 il borgo: lotti stretti (fronte 4-6 m, profondi fino a 8 m); sulla marina le case dei pescatori (E2); agli incroci le case-torre
       PIENO({ tag: 'borgo', x0: 998, x1: CITY.spian0 || 1143, f: [2, 3], d: [2, 4], mk: (L, tx, ty) => {
-        const mar = CITY.marina && ty * TS > CITY.yOn(CITY.marina, tx * TS) - 12, torre = L.w >= 2 && L.h >= 2 && !mar && hash2(tx, ty, 1704) < .05;
-        return Object.assign({ era: mar ? 'E2' : 'E0' }, torre ? { fl: 5 + (hash2(tx, ty, 1706) < .4 ? 1 : 0), flFix: true, torre: true } : {}); } });
+        // [volumi2] le case-torre poche e strette (lato 4-6 m) e di quattro piani: un piano sopra il borgo, non un palazzone in un vicolo
+        const mar = CITY.marina && ty * TS > CITY.yOn(CITY.marina, tx * TS) - 12, torre = L.w >= 2 && L.h >= 2 && L.w <= 3 && L.h <= 3 && !mar && hash2(tx, ty, 1704) < .05;
+        return Object.assign({ era: mar ? 'E2' : 'E0' }, torre ? { fl: 4, flFix: true, torre: true } : {}); } });
       // E7 le baracche fra la ferrovia e il mare: lamiera, uno o due piani, una addosso all'altra, passaggi di una casella
       // (ogni baracca tiene libero il suo lato nord o il suo lato ovest)
       const SHSTY = [3, 4, 5, 7, 8, 11, 14, 19]; let nShack = 0;
@@ -21956,7 +21962,7 @@ var World = (function () {
         if (b.era === 'E0') { b.fl = clamp((b.rk >= 2 ? 3 : 2) + (nb < .3 ? -1 : nb > .8 ? 1 : 0), 2, 3); if (b.w * b.h < 6) b.fl = Math.min(b.fl, 2); }   // il borgo è basso: dall'alto si vedono i vicoli
         else if (b.era === 'E2') b.fl = 3 + (q < .4 ? 1 : 0);
         else if (b.era === 'E3') b.fl = 3 + (b.rk >= 3 || q < .35 ? 1 : 0);
-        else if (b.era === 'E4') b.fl = 5;
+        else if (b.era === 'E4') b.fl = 3;   // [volumi2] dietro i portici tre piani: la cortina la fanno i portici, a corpi con la loro quota
         return;
       }
       // [isola] la città sale e scende: case basse e palazzine alte una accanto all'altra, più alte verso il quartiere del governo
@@ -21972,6 +21978,37 @@ var World = (function () {
       b.fl = Math.max(1, Math.min(4, f));
       if (b.w * b.h < 9) b.fl = Math.min(b.fl, 2);
     });
+    // [volumi2] ALTEZZE LEGGIBILI (LEGGIBILITA.md sez. 1). La camera sta a sud-est e guarda in diagonale: una casa alta H sul lato sud o est
+    // di una strada ne nasconde 0,8 × H metri. Quindi per tipo di via un tetto massimo sul lato camera (vicoli 3 piani, Rua e marina 3,
+    // vie dell'Ottocento e Corso 4, Vittoria 3 coi portici), poi i tetti del borgo si raccordano: fra due case attaccate al più un piano
+    // (i tetti sono un livello esplorabile, si salta da uno all'altro).
+    { const CR = roads.filter(rd => CITY.roads.includes(rd) && rd.pts && rd.pts.length > 1), SG = [];
+      CR.forEach(rd => { for (let k = 0; k < rd.pts.length - 1; k++) SG.push([rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd.w / 2, rd.id]); });
+      const dSg = (x, y, q) => { const vx = q[2] - q[0], vy = q[3] - q[1], L2 = vx * vx + vy * vy || 1, u = clamp(((x - q[0]) * vx + (y - q[1]) * vy) / L2, 0, 1); return dist(x, y, q[0] + u * vx, q[1] + u * vy); };
+      const viaA = (x, y) => { let id = null, bd = 1e9; for (const q of SG) { if (x < Math.min(q[0], q[2]) - 9 || x > Math.max(q[0], q[2]) + 9 || y < Math.min(q[1], q[3]) - 9 || y > Math.max(q[1], q[3]) + 9) continue; const d = dSg(x, y, q) - q[4]; if (d < bd) { bd = d; id = q[5]; } } return bd < 1.2 ? id : null; };
+      const TETTO = id => /^vic_/.test(id) || id === 'mezzo' || id === 'cavour_sotto' ? 3 : id === 'rua' || id === 'marina' ? 3 : id === 'vittoria' ? 3 : id === 'corso' || /^via_/.test(id) ? 4 : 9;
+      // il lato camera: la strada sta a nord o a ovest della casa (fino a 3 m oltre il filo, dove c'è il marciapiede)
+      // sulle vie dell'Ottocento (7-8 m) il fronte verso la camera sta a 3 piani e solo gli angoli (la casa su due strade) salgono a 4: il
+      // fronte lontano resta a 3-4, così la via si legge a gradoni (basso davanti, alto dietro) invece che come un canyon
+      const capOf = b => { let cap = 9; const ids = new Set(); for (let d = .5; d <= 3.5; d += 1) {
+        for (let tx = b.x; tx < b.x + b.w; tx++) { const id = viaA(tx * TS + 1, b.y * TS - d); if (id) { cap = Math.min(cap, TETTO(id)); ids.add(id); } }
+        for (let ty = b.y; ty < b.y + b.h; ty++) { const id = viaA(b.x * TS - d, ty * TS + 1); if (id) { cap = Math.min(cap, TETTO(id)); ids.add(id); } } }
+        if (b.era === 'E3' && [...ids].some(id => /^via_/.test(id)) && ids.size < 2) cap = Math.min(cap, 3);
+        return cap; };
+      let nCap = 0; B.forEach(b => { if (!b.house || b.shack || !b.era || zone[b.y * GW + b.x] !== Z.CITTA) return; const c = capOf(b); if (b.fl > c) { b.fl = c; nCap++; } });
+      // il raccordo dei tetti del borgo: chi sta più su di due piani scende; se è una casa-torre (o una casa già alzata) sale il vicino;
+      // un annesso di un piano accanto a una casa di tre diventa il vano scala di due
+      const borgo = b => b.house && !b.shack && (b.era === 'E0' || b.era === 'E2'), NB = new Map();
+      B.forEach((a, ka) => { if (!borgo(a)) return; const s = new Set();
+        for (let ty = a.y; ty < a.y + a.h; ty++) for (let tx = a.x; tx < a.x + a.w; tx++) for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) { const j = (ty + dy) * GW + tx + dx, kb = bIndex[j]; if (kb >= 0 && kb !== ka && B[kb] && borgo(B[kb])) s.add(kb); }
+        NB.set(ka, [...s]); });
+      const alto = new Set(); let nGiu = 0, nSu = 0;
+      for (let it = 0; it < 30; it++) { let mosse = 0;
+        NB.forEach((nb, ka) => nb.forEach(kb => { const a = B[ka], c = B[kb]; if (a.fl - c.fl <= 1) return;   // a più alta di c di due piani o più
+          if (a.torre || alto.has(ka) || c.annesso) { c.fl = a.fl - 1; alto.add(kb); nSu++; } else { a.fl = c.fl + 1; nGiu++; } mosse++; }));
+        if (!mosse) break; }
+      if (typeof process !== 'undefined' && process.env && process.env.PV_DBG) console.log('[volumi2] tetti al limite del lato camera', nCap, 'raccordi: scese', nGiu, 'salite', nSu);
+    }
     // [isola] i palazzi crescono per aggiunte: sopra il corpo pieno, un volume più piccolo e spostato (il terrazzo resta davanti, sulla strada),
     // e ogni tanto una stanzetta in cima. b.tiers: [{ x, y, w, h (caselle), f0 (piano da cui parte), fl }]; b.fl resta il numero di piani del corpo intero.
     B.forEach(b => {
@@ -22261,14 +22298,26 @@ var World = (function () {
     // [posa] dopo le case: i portici dove la cortina della Vittoria è continua (a tratti di 2-3 campate che seguono la salita), gli archi di
     // contrasto nei vicoli stretti fra due case, le edicole votive sugli spigoli delle piazzette
     if (POSA.port) {
-      const P = POSA.port, sides = [[], []], LET = ['MINISTERO DELL\'ORDINE', 'ISTITUTO DI PREVIDENZA', 'CASA DEL LAVORO', 'OPERA DELLA GIOVENTÙ', 'BANCA DELL\'ISOLA', 'ASSICURAZIONI DELLO STATO'];
+      const P = POSA.port, sides = [[], []], LET = ['DOPOLAVORO', 'PREFETTURA', 'ESATTORIA', 'ANNONARIA', 'POSTE', 'MILIZIA', 'PREVIDENZA'];   // [volumi2] parole corte: i corpi sono di 8-12 m
       let nl = 0;
+      // [volumi2] sotto i portici va anche la casa del borgo che si è presa un tratto del fronte (prima restava senza portico, col lastricato
+      // vuoto davanti): ogni casa col lato lungo il bordo della fascia dei portici entra nella cortina, coi suoi tre piani al più
+      B.forEach(b => { if (b.vittoria) return; if (!b.house || b.shack || b.pezzo || b.x * TS < P.x0 || (b.x + b.w) * TS > P.x1) return;
+        const nord = (b.y + b.h) * TS <= VY, ty = nord ? b.y + b.h : b.y - 1; let nW = 0;
+        for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx, d = Math.abs(ty * TS + 1 - VY); if (grid[i] === T.WALK && d > P.d0 && d < P.d1) nW++; }
+        if (nW * 2 >= b.w && b.w >= 2) { b.vittoria = true; b.fl = Math.min(b.fl, 3); } });
       B.forEach(b => { if (b.vittoria) sides[b.y * TS < VY ? 0 : 1].push(b); });
       sides.forEach((L, sd) => { L.sort((a, b) => a.x - b.x); const runs = []; let cur = null;
         L.forEach(b => { const xa = b.x * TS, xb = (b.x + b.w) * TS; if (cur && xa - cur.xb <= 4.2) { cur.xb = Math.max(cur.xb, xb); cur.bs.push(b); } else runs.push(cur = { xa, xb, bs: [b] }); });
-        runs.forEach(R => { const Lr = R.xb - R.xa; if (Lr < 6) return; const nS = Math.max(1, Math.round(Lr / 12)), Ls = Lr / nS, camp = Math.max(2, Math.round(Ls / 4)), fl = Math.max(...R.bs.map(b => b.fl || 5)), piani = Math.max(1, Math.round((fl * 3 - 7) / 3.4));
-          for (let k = 0; k < nS; k++) { const xs = R.xa + k * Ls, lt = k === Math.floor((nS - 1) / 2) ? LET[nl++ % LET.length] : '';
-            PZ('portico', sd ? xs + Ls : xs, sd ? VY + P.d1 - 2.5 : VY - P.d1 + 2.5, sd ? Math.PI : 0, { campate: camp, campata: Ls / camp, h: 5, piani, profondita: 4, pilastro: .8, lettere: lt.length * .9 < Ls * .8 ? lt : '' }, { nome: 'Portici della Vittoria', lato: sd }); }
+        // [volumi2] non più un blocco unico: il tratto si divide in corpi di 2-3 campate (8-12 m), ognuno col suo cornicione e la sua quota,
+        // arcate + 1 o 2 piani (al più tre piani in tutto) che si alternano; sul lato sud (verso la camera) prevalgono i corpi bassi, così
+        // la strada si vede; il corpo più lungo del tratto porta le lettere. La torre littoria resta l'unica cosa alta.
+        runs.forEach((R, kr) => { const Lr = R.xb - R.xa; if (Lr < 6) return; const nC = Math.max(2, Math.round(Lr / 4)), cw = Lr / nC, corpi = [];
+          for (let c = 0; c < nC;) { const left = nC - c, n = left <= 3 ? left : left === 4 ? 2 : hash2(kr * 31 + c, sd, 1990) < .5 ? 2 : 3; corpi.push(n); c += n; }
+          const iL = corpi.indexOf(Math.max(...corpi)), alt0 = hash2(kr, sd, 1991) < .5 ? 0 : 1; let xs = R.xa;
+          corpi.forEach((n, k) => { const Ls = n * cw, lt = k === iL ? LET[nl++ % LET.length] : '', piani = sd ? ((k + alt0) % 3 === 2 ? 2 : 1) : ((k + alt0) % 2 ? 2 : 1);
+            PZ('portico', sd ? xs + Ls : xs, sd ? VY + P.d1 - 2.5 : VY - P.d1 + 2.5, sd ? Math.PI : 0, { campate: n, campata: cw, h: 5, piani, profondita: 4, pilastro: .8, lettere: lt.length * .9 < Ls * .8 ? lt : '' }, { nome: 'Portici della Vittoria', lato: sd });
+            xs += Ls; });
           R.bs.forEach(b => { delete b.portico; b.sottoPortico = true; }); }); });
       // gli archi di contrasto: nei vicoli che non hanno già la casa col sottopasso, a metà, dove le due case si guardano
       // il varco del vicolo in un punto: quanto c'è di libero a destra e a sinistra prima del muro di una casa (o di un pezzo chiuso)
@@ -49894,6 +49943,7 @@ var Scena = (function () {
   // le famiglie dei dominanti (mai due della stessa famiglia a meno di 15 m)
   // il raggio entro cui due dominanti della stessa famiglia non stanno insieme (i ritratti e i cantieri sono rari per definizione)
   const RAGGIO = { insegna: 15, ritratto: 40, carta: 15, cantiere: 60, filo: 10, arredo: 10, nicchia: 12, palo: 10, portone: 0 };
+  const RMAX = Math.max(...Object.values(RAGGIO));   // [volumi2] la ricerca dei vicini deve coprire il raggio di famiglia più grande
   const FAMIGLIA = { insegna: 'insegna', ritratto: 'ritratto', manifesti: 'carta', tag: 'carta', bucato: 'filo', abusivo: 'filo', rete: 'filo', dehors: 'arredo', merce: 'arredo', edicola_votiva: 'nicchia', portone: 'portone', impalcatura: 'cantiere', cassonetti: 'arredo', lampione: 'palo', bitta: 'arredo', motorino: 'arredo' };
   // l'altezza della riga di ogni voce sulla parete (dalla base della casa) e la colonna preferita
   const RIGA = { insegna: MG - .55, lampada_braccio: 3.9, tenda: MG - .9, merce: 0, targa: 2.5, civico: 2.2, vaso: 1.1, manifesti: 1.5, tag: 1.6, sticker: 1.4, buff: 1.5, ritratto: 0, stencil: 1.2, edicola_votiva: 2.6, bucato: MG + 1.0, abusivo: MG + 1.2, antenna: 0, dehors: 0, cassonetti: 0, bidone: 0, cassetta_postale: 1.3, cabina_sip: 0, moncone: MG - .2, cartello: 2.2, impalcatura: 0, lampione: 0, portone: 0, mensola: MG - .2, lavagna: 0, rete: 2.4, fioriera: 0, motorino: 0, paletti: 0 };
@@ -49952,7 +50002,7 @@ var Scena = (function () {
         const quiete = cand.filter(c => c.quiete), vive = cand.filter(c => !c.quiete);
         if ((h < .2 && !(p.bottega && p.porta !== null)) || !vive.length) cand = quiete.length ? quiete : cand; else cand = vive; }
       // la testata del regime prima di tutto dove può stare (ma non due a meno di 40 m); mai la stessa impaginazione delle 2 pagine vicine
-      const near = vicine(p, 25), near15 = vicine(p, 40);
+      const near = vicine(p, 25), near15 = vicine(p, RMAX);   // [volumi2] il raggio di ricerca copre il raggio di famiglia più grande (il cantiere, 60 m): con 40 due impalcature a 49 m passavano
       let pref = cand.filter(c => c.nome === 'testata_del_regime' && !vicine(p, 40).some(o => o.imp.nome === 'testata_del_regime'));
       if (pref.length && h2 < .8) cand = pref;
       const usate = near.slice().sort((a, c) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(c.x - p.x, c.z - p.z)).slice(0, 2).map(o => o.imp.nome).concat(p.era === "E7" ? [] : near.filter(o => o.via === p.via && Math.hypot(o.x - p.x, o.z - p.z) < 8).map(o => o.imp.nome));   // [borgo] coi lotti stretti del borgo pieno tre pareti stanno in 7 m: nessuna ripete quelle della stessa via (fra le baracche sì: lamiera e fili ovunque)
