@@ -83,7 +83,11 @@ Giudizio: ✗ manca · ◐ c'è ma da rifare · ✓ va bene. Chi: la chat che lo
 
 La chat L scrive `strumenti/leggibilita.js`: per ogni casella di strada calcola se il suolo è visibile dalla camera senza varco (ray dalla
 camera, contro le scatole degli edifici e i loro sbalzi), e stampa la percentuale per tipo di strada e una mappa delle zone cieche. Soglie:
-vicoli ≥ 60% visibili col varco, vie ≥ 90% senza, corsi e piazze 100%. Conta anche cavi per 100 m di strada (≤ 6), bidoni per 100 m
+vicoli ≥ 60% visibili col varco, vie ≥ 90% senza, corsi e piazze 100%.
+**Revisione del 20 ottobre** (misura vera con `strumenti/leggibilita.js`): con questa camera una casa alta H sul lato sud/est nasconde
+~0,8·H m di strada, quindi le soglie «senza varco» sono incompatibili con le altezze della sez. 1. Le soglie si contano **col varco aperto
+attorno al personaggio** (il varco nuovo è un'ellisse pulita): il suolo deve essere visibile entro il varco o fuori dall'ombra dei fronti;
+senza varco valgono come indicazione (oggi: vie 74%, corso 62%, piazze 90%, vicoli 25%). Conta anche cavi per 100 m di strada (≤ 6), bidoni per 100 m
 (≤ 4), oggetti sopra 1,2 m sul bordo dei tetti lato camera (0). Gira prima e dopo ogni unione.
 
 ## 5. La composizione: ogni scorcio è una pagina (richiesta del committente)

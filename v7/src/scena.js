@@ -62,6 +62,7 @@ var Scena = (function () {
   // le famiglie dei dominanti (mai due della stessa famiglia a meno di 15 m)
   // il raggio entro cui due dominanti della stessa famiglia non stanno insieme (i ritratti e i cantieri sono rari per definizione)
   const RAGGIO = { insegna: 15, ritratto: 40, carta: 15, cantiere: 60, filo: 10, arredo: 10, nicchia: 12, palo: 10, portone: 0 };
+  const RMAX = Math.max(...Object.values(RAGGIO));   // [volumi2] la ricerca dei vicini deve coprire il raggio di famiglia più grande
   const FAMIGLIA = { insegna: 'insegna', ritratto: 'ritratto', manifesti: 'carta', tag: 'carta', bucato: 'filo', abusivo: 'filo', rete: 'filo', dehors: 'arredo', merce: 'arredo', edicola_votiva: 'nicchia', portone: 'portone', impalcatura: 'cantiere', cassonetti: 'arredo', lampione: 'palo', bitta: 'arredo', motorino: 'arredo' };
   // l'altezza della riga di ogni voce sulla parete (dalla base della casa) e la colonna preferita
   const RIGA = { insegna: MG - .55, lampada_braccio: 3.9, tenda: MG - .9, merce: 0, targa: 2.5, civico: 2.2, vaso: 1.1, manifesti: 1.5, tag: 1.6, sticker: 1.4, buff: 1.5, ritratto: 0, stencil: 1.2, edicola_votiva: 2.6, bucato: MG + 1.0, abusivo: MG + 1.2, antenna: 0, dehors: 0, cassonetti: 0, bidone: 0, cassetta_postale: 1.3, cabina_sip: 0, moncone: MG - .2, cartello: 2.2, impalcatura: 0, lampione: 0, portone: 0, mensola: MG - .2, lavagna: 0, rete: 2.4, fioriera: 0, motorino: 0, paletti: 0 };
@@ -120,7 +121,7 @@ var Scena = (function () {
         const quiete = cand.filter(c => c.quiete), vive = cand.filter(c => !c.quiete);
         if ((h < .2 && !(p.bottega && p.porta !== null)) || !vive.length) cand = quiete.length ? quiete : cand; else cand = vive; }
       // la testata del regime prima di tutto dove può stare (ma non due a meno di 40 m); mai la stessa impaginazione delle 2 pagine vicine
-      const near = vicine(p, 25), near15 = vicine(p, 40);
+      const near = vicine(p, 25), near15 = vicine(p, RMAX);   // [volumi2] il raggio di ricerca copre il raggio di famiglia più grande (il cantiere, 60 m): con 40 due impalcature a 49 m passavano
       let pref = cand.filter(c => c.nome === 'testata_del_regime' && !vicine(p, 40).some(o => o.imp.nome === 'testata_del_regime'));
       if (pref.length && h2 < .8) cand = pref;
       const usate = near.slice().sort((a, c) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(c.x - p.x, c.z - p.z)).slice(0, 2).map(o => o.imp.nome).concat(p.era === "E7" ? [] : near.filter(o => o.via === p.via && Math.hypot(o.x - p.x, o.z - p.z) < 8).map(o => o.imp.nome));   // [borgo] coi lotti stretti del borgo pieno tre pareti stanno in 7 m: nessuna ripete quelle della stessa via (fra le baracche sì: lamiera e fili ovunque)
