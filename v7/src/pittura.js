@@ -680,13 +680,13 @@ var Pittura = (function () {
         if (dy < wcol && dy >= 0) { c = mul(C.A, 1.06); if (dy > wcol - .008 || dy < .007) { s *= .68; h = .1; } else h = .7; if (Math.abs(a) < .05) { s *= .7; } }
       }
       // revers: due ali a V dal collo fino al primo bottone, larghe al petto e strette in basso, con la tacca (lo scollo dove si incontrano collo e revers)
-      if (/revers/.test(C.collo || '') && L.T.s0 !== undefined && y > nY - .21 && Math.cos(a) > 0) {
+      if (/revers/.test(C.collo || '') && C.revers3d === 0 && L.T.s0 !== undefined && y > nY - .21 && Math.cos(a) > 0) {   // [sartoria] i revers ora sono in rilievo (Vesti3D.reversGiacca): dipinti solo se tolti
         const X = Math.abs(a) * .14, k = cl((y - (nY - .2)) / .2, 0, 1), w0 = .098 * k, notchY = nY - .068, lw = y > notchY ? .03 + (y - notchY) * .1 : .066 * sm(cl((y - (nY - .2)) / .1, 0, 1)), d = X - w0;
         if (d >= 0 && d < lw) { c = mul(C.A, 1.09); h = .75; if (d > lw - .006) { s *= .6; h = .05; } else if (d < .004) s *= .8;
           if (y < notchY + .006 && y > notchY - .012 && d > .026) { s *= .5; h = .05; } }   // la tacca
         else if (d >= lw && d < lw + .01) s *= .84;   // l'ombra sotto il revers
       }
-      if (/revers/.test(C.collo || '') && L.T.s0 !== undefined && Math.cos(a) <= 0) { const dy = nY - neckDrop(C, a) - y; if (dy >= 0 && dy < .032) { c = mul(C.A, 1.06); h = .7; if (dy > .027) { s *= .6; h = .05; } } }   // il collo dietro
+      if (/revers/.test(C.collo || '') && C.revers3d === 0 && L.T.s0 !== undefined && Math.cos(a) <= 0) { const dy = nY - neckDrop(C, a) - y; if (dy >= 0 && dy < .032) { c = mul(C.A, 1.06); h = .7; if (dy > .027) { s *= .6; h = .05; } } }   // il collo dietro
       // giacche e giacconi aperti sotto l'ultimo bottone: il bordo davanti che si divide (linea scura che si allarga verso l'orlo)
       if (C.cl >= 4 && !C.gonna && !C.falda3d && L.T.s0 !== undefined && /bottoni|doppio/.test(C.fronte || '') && y < B.waist + .06) { const t = cl((B.waist + .06 - y) / .12, 0, 1), ea = .03 + t * .2;
         if (Math.abs(a) < ea - .02) return null; if (Math.abs(Math.abs(a) - ea) < .025) { s *= .5; h = .05; } }

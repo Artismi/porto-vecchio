@@ -42,6 +42,9 @@ const GRUPPI = {
   trap: [   // [stile] il guardaroba trap/anni 2000: tuta da nazionale, polo col catenone e jeans larghi, pelliccia
     ['nazionale', [['giacca_tuta', { col: '#1e3a8a', id: 'giacca_tuta_fascia' }], ['pantaloni_tuta', { col: '#1e3a8a' }], ['scarpe_air', { col: '#f6f4f0' }], 'occhiali_mascherina']],
     ['polo_catena', [['polo', { col: '#141416' }], ['jeans_larghi', { col: '#5a7090' }], 'collana_oro', ['cappellino', { col: '#101012' }], 'scarpe_air']],
+    ['rev_A', ['camicia', ['pantaloni_completo', { col: '#c8c0ae', var: { fab: 'panno' } }], ['giacca_completo', { col: '#c8c0ae', var: { fab: 'panno', revers3d: 0 } }], ['cravatta', { col: '#7a1e26' }]]],
+    ['rev_B', ['camicia', ['pantaloni_completo', { col: '#c8c0ae', var: { fab: 'panno' } }], ['giacca_completo', { col: '#c8c0ae', var: { fab: 'panno' } }], ['cravatta', { col: '#7a1e26' }]]],
+    ['rev_C', ['camicia', ['pantaloni_completo', { col: '#c8c0ae', var: { fab: 'panno' } }], ['giacca_completo', { col: '#c8c0ae', var: { fab: 'panno', revers_raso: '#e8e2d4' } }], ['cravatta', { col: '#7a1e26' }]]],
     ['scarface', [['camicia', { col: '#dfe6ee' }], ['pantaloni_completo', { col: '#c8c0ae', var: { fab: 'panno' } }], ['giacca_completo', { col: '#c8c0ae', var: { fab: 'panno' } }], ['cravatta', { col: '#7a1e26' }], 'collana_oro', 'occhiali_sole', ['scarpe_eleganti', { col: '#e8e2d4' }]]],
   ],
   street: [   // le sottoculture: un completo tipico per ciascuna
