@@ -392,6 +392,13 @@ var Tetti = (function () {
       const y0 = footH(L), y1 = topH(L) + .95, Hh = y1 - y0; if (Hh < .5 || Hh > 40) return;
       const off = .2, cx = L.x + L.ox * off, cz = L.y + L.oy * off, yaw = -L.ang;   // 20 cm fuori dal muro
       const sx = -L.oy * .22, sz = L.ox * .22;   // i due montanti, 44 cm l'uno dall'altro
+      const bb = B[L.bi], old = bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');
+      if (old) {   // [epoche] nel borgo, sull'Ottocento e sul regime niente scala di ferro: le staffe alla marinara murate nella parete (pioli a U, ruggine)
+        const wx = L.x + L.ox * .02, wz = L.y + L.oy * .02;
+        for (let y = y0 + .35; y < y1 - .85; y += .32) { put(rungs, wx + L.ox * .16, y, wz + L.oy * .16, .03, .03, .4, yaw); for (const s of [-1, 1]) put(rungs, wx + L.ox * .08 + sx * s * .9, y, wz + L.oy * .08 + sz * s * .9, .16, .03, .03, yaw); }
+        for (const s of [-1, 1]) put(rails, cx - L.ox * .3 + sx * s, y1 - .3, cz - L.oy * .3 + sz * s, .04, .6, .04, yaw);   // i due ferri che aiutano a scavalcare il parapetto
+        put(lamps, wx + L.ox * .1, y1 - .2, wz + L.oy * .1, .1, .12, .1, yaw); return;
+      }
       for (const s of [-1, 1]) put(rails, cx + sx * s, y0 + Hh / 2, cz + sz * s, .05, Hh, .05, yaw);
       for (let y = y0 + .3; y < y1 - .9; y += .3) put(rungs, cx, y, cz, .03, .03, .44, yaw);
       // il corrimano ad arco sopra il bordo: due montanti che piegano verso il tetto
