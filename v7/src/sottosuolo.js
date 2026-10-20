@@ -47,7 +47,8 @@ var Sottosuolo = (function () {
     const { ug, fl, kind, portals, rooms, place, lamp, B, sewer } = C;
     const E = (tx, ty) => EL[idx(tx, ty)];
     // [sotto2] le fondamenta di oggi: sotto una casa si scava solo la sua cantina, o più giù di sei metri (catacombe, miniere, grotte)
-    const DEEP = 6, put = (tx, ty, f, k, force) => { if (!inb(tx, ty)) return false; if (k !== K.CANTINA && G.tileAt(tx, ty) === T.BLD && E(tx, ty) - f < DEEP) return false; return C.put(tx, ty, f, k, force); };
+    let OWN = -9;   // l'edificio di cui si sta scavando il sotto (la chiesa delle sue catacombe): sotto di lui si può
+    const DEEP = 6, put = (tx, ty, f, k, force) => { if (!inb(tx, ty)) return false; if (k !== K.CANTINA && G.tileAt(tx, ty) === T.BLD && E(tx, ty) - f < DEEP && W.bIndex[idx(tx, ty)] !== OWN) return false; return C.put(tx, ty, f, k, force); };
     const corridor = (ax, ay, bx, by, fa, fb, k) => {
       const pts = []; let x = ax, y = ay; pts.push([x, y]);
       while (x !== bx) { x += Math.sign(bx - x); pts.push([x, y]); }
@@ -186,9 +187,9 @@ var Sottosuolo = (function () {
     // ---------------- −6/−7: LE CATACOMBE sotto il sagrato di San Rocco e sotto San Giacomo ----------------
     // un pettine di gallerie larghe una casella, i loculi nelle pareti (li disegna la grafica), in fondo la cappella, di lato l'ossario
     const catacomba = (id, name, bid, depth, len, exitKind) => {
-      const b = bld(bid); if (!b || !b.door) return;
+      const b = bld(bid); if (!b || !b.door) return; OWN = B(bid);
       const [dx0, dy0] = b.door, cxb = b.x + (b.w >> 1), cyb = b.y + (b.h >> 1), ox = Math.sign(dx0 - cxb) * (dx0 < b.x || dx0 >= b.x + b.w ? 1 : 0), oy = Math.sign(dy0 - cyb) * (dy0 < b.y || dy0 >= b.y + b.h ? 1 : 0);
-      const u0 = [ox || 0, ox ? 0 : (oy || 1)], land = ([ux, uy]) => { let n = 0; for (let a = 1; a <= len + 4; a++) for (let l = -5; l <= 3; l++) { const tx = dx0 + ux * a - uy * l, ty = dy0 + uy * a + ux * l; if (inb(tx, ty) && G.tileAt(tx, ty) !== T.WATER) n++; } return n; };
+      const u0 = [ox || 0, ox ? 0 : (oy || 1)], land = ([ux, uy]) => { let n = 0; for (let a = 1; a <= len + 4; a++) for (let l = -5; l <= 3; l++) { const tx = dx0 + ux * a - uy * l, ty = dy0 + uy * a + ux * l; if (inb(tx, ty) && G.tileAt(tx, ty) !== T.WATER && !ug[idx(tx, ty)]) n++; } return n; };   // terra vergine: non sotto il mare, non dentro un posto che c'è già
       const [ux, uy] = [u0, [-u0[0], -u0[1]], [-u0[1], u0[0]], [u0[1], -u0[0]]].map(d => [d, land(d)]).sort((p0, p1) => p1[1] - p0[1] || 0)[0][0], nx = -uy, ny = ux, f = E(dx0, dy0) - depth;   // u: fuori dalla porta (o dove c'è terra: mai sotto il mare), n: di lato
       const at = (a, l) => [dx0 + ux * a + nx * l, dy0 + uy * a + ny * l];
       const gal = (a0, a1, l) => { for (let a = a0; a <= a1; a++) { const [tx, ty] = at(a, l); if (free(tx, ty) || ug[idx(tx, ty)]) put(tx, ty, f, K.CATACOMBA); } };
@@ -200,12 +201,13 @@ var Sottosuolo = (function () {
       const [ox1, oy1] = at(Math.floor(len / 2), -5), oss = rm(ox1 - (ux ? 1 : 0), oy1 - (uy ? 1 : 0), 2, 2, f, K.CATACOMBA, 'ossario', { name }); corridor(at(Math.floor(len / 2), -3)[0], at(Math.floor(len / 2), -3)[1], oss.x0, oss.y0, f, f, K.CATACOMBA);
       // rilegate alla cripta che c'è già (sotto la chiesa), e su, per una grata del sagrato o una botola
       const cr = rooms.find(R => R.deco === 'cripta' && R.bi === B(bid)); if (cr) corridor(at(1, 0)[0], at(1, 0)[1], cr.x0 + (cr.tw >> 1), cr.y0 + cr.th - 1, f, cr.f, K.CATACOMBA);
-      let ex = null; for (let a = 2; a <= len && !ex; a++) { const [tx, ty] = at(a, 0); if (ug[idx(tx, ty)] && G.walkT(tx, ty) && !taken(tx, ty)) ex = [tx, ty]; }
+      let ex = null; for (let a = 2; a <= len && !ex; a++) { const [tx, ty] = at(a, 0); if (ug[idx(tx, ty)] && G.walkT(tx, ty) && !taken(tx, ty)) ex = [tx, ty]; } if (ex) portal(exitKind, ex, name);
+      if (!ex) { const n2 = nearWalk(dx0, dy0, 6); if (n2) { const [sx1, sy1] = at(1, 0); corridor(sx1, sy1, n2[0], n2[1], f, f, K.CATACOMBA); portal(exitKind, n2, name); ex = n2; } }   // [sotto2] se la galleria gira verso la chiesa: la scala scende accanto alla porta
       if (!ex) ex = exitOn(Math.min(...[at(1, -3), at(len, 3)].map(q => q[0])), Math.min(...[at(1, -3), at(len, 3)].map(q => q[1])), Math.abs(ux) * len + 7, Math.abs(uy) * len + 7, exitKind, name);
-      else portal(exitKind, ex, name);
+      // (il portale della prima uscita lo mette il ciclo qui sopra)
       const [mx, my] = at(Math.floor(len / 2), 0); place(id, name, cen(mx), cen(my), 10, 'catacomba');
       rooms.push({ x: cen(mx), y: cen(my), f, deco: 'catacomba', w: len * TS, h: 7 * TS, name, light: LIGHT.catacomba, ux, uy, len });
-      for (let a = 3; a < len; a += 4) { const [tx, ty] = at(a, 0); lamp(cen(tx), cen(ty), f + 1.6, '#ffa050', 'torcia'); } lamp(capp.x, capp.y, f + 1.2, '#ffc070', 'lume'); out.catacombe++;
+      for (let a = 3; a < len; a += 4) { const [tx, ty] = at(a, 0); lamp(cen(tx), cen(ty), f + 1.6, '#ffa050', 'torcia'); } lamp(capp.x, capp.y, f + 1.2, '#ffc070', 'lume'); out.catacombe++; OWN = -9;
     };
     catacomba('catacombe', 'Le catacombe di San Rocco', 'chiesa', 7, 9, 'grata');
     catacomba('catacombe_sg', 'Le catacombe di San Giacomo', 'chiesa_sg', 6.5, 7, 'botola');
@@ -955,7 +957,7 @@ var Sottosuolo = (function () {
   // il raccoglitore delle istanze: forma k, colore c (o materiale), posizione, rotazione (Euler YXZ), scala
   function IB() {
     const B = {}, M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(0, 0, 0, 'YXZ'), V = new THREE.Vector3(), S = new THREE.Vector3();
-    const add = (k, c, o, x, y, z, sx, sy, sz, ry, rx, rz) => { const key = k + '|' + c + '|' + JSON.stringify(o || 0); (B[key] = B[key] || { k, c, o, l: [] }).l.push([x, y, z, sx, sy, sz, ry || 0, rx || 0, rz || 0]); };
+    const add = (k, c, o, x, y, z, sx, sy, sz, ry, rx, rz) => { const key = k + '|' + (c && c.isMaterial ? c.uuid : c) + '|' + JSON.stringify(o || 0); (B[key] = B[key] || { k, c, o, l: [] }).l.push([x, y, z, sx, sy, sz, ry || 0, rx || 0, rz || 0]); };
     return {
       box: (w, h, d, c, x, y, z, ry, rx, rz, o) => add('b', c, o, x, y, z, w, h, d, ry, rx, rz),
       cyl: (r, h, c, x, y, z, ry, rx, rz, o) => add('c', c, o, x, y, z, r, h, r, ry, rx, rz),
@@ -1193,7 +1195,7 @@ var Sottosuolo = (function () {
   // il dinosauro in piedi nella cavità: la colonna a tre metri e mezzo, le costole ad arco sopra il passaggio, il collo e il cranio
   // coi denti a un capo, la coda che scende fino a terra all'altro, le zampe come pilastri. Si cammina sotto le costole.
   function dinoDecor(ib, w, h) {
-    const along = w >= h, L0 = Math.max(w, h), b0 = '#d8ceb0', b1 = '#c4b894', P = (s, lat) => along ? [s, lat] : [lat, s], ry = along ? Math.PI / 2 : 0;
+    const along = w >= h, L0 = Math.max(w, h), b0 = mat('#d8ceb0', { emissive: '#4a4434' }), b1 = mat('#c4b894', { emissive: '#3a3428' }), P = (s, lat) => along ? [s, lat] : [lat, s], ry = along ? Math.PI / 2 : 0;
     // la colonna: vertebre dalla coda (s = -L/2) al collo
     const spine = s => { const t = (s + L0 / 2) / L0; return t < .35 ? .5 + t / .35 * 2.9 : t < .7 ? 3.4 : 3.4 + (t - .7) / .3 * .9; };
     for (let s = -L0 / 2 + .3; s <= L0 / 2 - 1.4; s += .32) { const t = (s + L0 / 2) / L0, r = t < .35 ? .07 + t * .35 : t > .75 ? .12 : .17, [x, z] = P(s, 0), y = spine(s); ib.sph(r, b0, x, y, z, 1); if (t > .2 && t < .8) { const [x2, z2] = P(s, 0); ib.box(.05, r * 2.2, .1, b1, x2, y + r * 1.4, z2, ry); } }
@@ -1341,7 +1343,7 @@ var Sottosuolo = (function () {
     });
     // le luci: le quattro lampade più vicine
     const near = TPL.lamps.map(Lp => [Math.hypot(Lp.x - p.x, Lp.y - p.y), Lp]).filter(([d]) => d < 34).sort((a, b) => a[0] - b[0]).slice(0, 4);
-    GFX.lights.forEach((l, k) => { const q = near[k]; if (!q) { l.intensity = 0; return; } const Lp = q[1]; l.position.set(Lp.x, Lp.f + .3, Lp.y); l.color.set(Lp.c); l.intensity = (Lp.k === 'fuoco' ? 2.4 + Math.sin(t * 13 + k) * .3 : 2.2) * (1 - q[0] / 45); });
+    GFX.lights.forEach((l, k) => { const q = near[k]; if (!q) { l.intensity = 0; return; } const Lp = q[1]; l.position.set(Lp.x, Lp.f + .3, Lp.y); l.color.set(Lp.c); l.intensity = (Lp.k === 'fuoco' ? 2 + Math.sin(t * 13 + k) * .3 : 1.6) * (1 - q[0] / 45); });
   }
   function fallbackPerson(look) { const g = new THREE.Group(); cy(g, .22, .26, .9, (look && look.bottom) || '#3a3a3a', 0, .45, 0); cy(g, .26, .22, .7, (look && look.top) || '#5a5a5a', 0, 1.25, 0); sp(g, .17, (look && look.skin) || '#c8946a', 0, 1.75, 0); return g; }
   function crateMesh(c) {

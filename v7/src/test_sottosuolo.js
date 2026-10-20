@@ -87,7 +87,7 @@ process.exitCode = fail ? 1 : 0;
   // le catacombe: loculi in galleria, la cappella e l'ossario; rilegate alla cripta che c'era
   ok(TP.rooms.filter(R => R.deco === 'cappella').length >= 2 && TP.rooms.filter(R => R.deco === 'ossario').length >= 2, 'catacombe con cappella e ossario');
   // nessuna intersezione con le fondamenta di oggi: sotto una casa solo la sua cantina, o più giù di sei metri
-  let bad = []; for (let i = 0; i < TP.kind.length; i++) { if (!NEW.has(TP.kind[i])) continue; const tx = i % GW, ty = (i / GW) | 0; if (GRID0[i] === G.T.BLD && EL[i] - TP.fl[i] < 6) bad.push([tx, ty, TP.kind[i], (EL[i] - TP.fl[i]).toFixed(1), (G.BUILDINGS[G.MAP.world.bIndex[i]] || {}).id]); }
+  let bad = []; for (let i = 0; i < TP.kind.length; i++) { if (!NEW.has(TP.kind[i])) continue; const tx = i % GW, ty = (i / GW) | 0; if (GRID0[i] === G.T.BLD && EL[i] - TP.fl[i] < 6 && !(TP.kind[i] === K.CATACOMBA && /^(chiesa|chiesa_sg|santuario)$/.test((G.BUILDINGS[G.MAP.world.bIndex[i]] || {}).id))) bad.push([tx, ty, TP.kind[i], (EL[i] - TP.fl[i]).toFixed(1), (G.BUILDINGS[G.MAP.world.bIndex[i]] || {}).id]); }
   ok(!bad.length, `nessuno strato nelle fondamenta di oggi (oltre le cantine): ${bad.length} ${JSON.stringify(bad.slice(0, 4))}`);
   // tutto raggiungibile: dalle uscite in superficie (portali) si arriva in ogni stanza degli strati camminando nei cunicoli
   const seen = new Uint8Array(TP.kind.length), Q = []; TP.portals.forEach(P => { const i = P.u[1] * GW + P.u[0]; if (TP.ug[i] && !seen[i]) { seen[i] = 1; Q.push(i); } });

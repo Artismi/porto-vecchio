@@ -1243,7 +1243,7 @@ var Render = (function () {
     // grotte di calcare bagnato, il cunicolo di pietra, la miniera nella roccia, il relitto e il fiume nella roccia umida, la cavità del ritrovamento nella terra
     10: 'volta', 11: 'cocciopesto', 12: 'loculi', 13: 'intonaco', 14: 'calcare', 15: 'pietra', 16: 'roccia', 17: 'umida', 18: 'terra', 19: 'umida' };
   const UGF = { 10: 'cotto', 11: 'cocciopesto', 12: 'terra_pav', 13: 'lastricato', 14: 'calcare', 15: 'pietra', 16: 'terra_pav', 17: 'umida', 18: 'terra_pav', 19: 'umida' };   // [sotto2] i pavimenti
-  const UGH = { 7: 4.2, 10: 2.7, 11: 3.6, 12: 2.6, 13: 2.9, 14: 3.9, 15: 2.4, 16: 2.6, 17: 3.4, 18: 3.8, 19: 3.3 };   // [sotto2] l'altezza delle pareti (fino alla volta)
+  const UGH = { 7: 4.2, 10: 2.7, 11: 3.6, 12: 2.6, 13: 2.6, 14: 3.9, 15: 2.4, 16: 2.6, 17: 3.4, 18: 3.8, 19: 3.3 };   // [sotto2] l'altezza delle pareti (fino alla volta)
   // [sotto2] LA TERRA IN SEZIONE: sopra le pareti di fondo, fino al livello della strada, si vedono gli strati (16 px per metro, 32 m):
   // terra di coltivo e radici, il riporto coi cocci, lo strato bruciato del 1660, le macerie della città sepolta, l'argilla coi ciottoli, la roccia
   function sectionTex() {
@@ -1383,8 +1383,8 @@ var Render = (function () {
         if (has(tx + dx, ty + dy) || kd === 9) return; const P = L.portals.find(P => P.kind === 'imbocco' && P.u[0] === tx && P.u[1] === ty && P.s[0] === tx + dx && P.s[1] === ty + dy); if (P) return;
         const toCam = dx * sy2 + dy * cy2 > .3, top = f + (toCam ? .55 : UGH[kd] || 2.7);
         wallQuad(arr, uv, a, b, c2, d, f - .2, top);
-        // [sotto2] la terra in sezione: sopra la parete di fondo, fino alla strada (al massimo 14 m), gli strati con la loro quota vera
-        if (!toCam) { const surf = Math.min(M.elev[i], top + 14); if (surf - top > .4) { const L2 = Math.hypot(c2 - a, d - b) / 4, va = 1 - (M.elev[i] - top) / 32, vb = 1 - (M.elev[i] - surf) / 32, ua = (dx ? z0 : x0) / 4;
+        // [sotto2] la terra in sezione: sopra la parete di fondo, una fascia di 1,6 m (fino alla strada se è più vicina), gli strati con la loro quota vera
+        if (!toCam) { const surf = Math.min(M.elev[i], top + 1.6); if (surf - top > .4) { const L2 = Math.hypot(c2 - a, d - b) / 4, va = 1 - (M.elev[i] - top) / 32, vb = 1 - (M.elev[i] - surf) / 32, ua = (dx ? z0 : x0) / 4;
           SEC[0].push(a, top, b, c2, top, d, c2, surf, d, a, top, b, c2, surf, d, a, surf, b); SEC[1].push(ua, va, ua + L2, va, ua + L2, vb, ua, va, ua + L2, vb, ua, vb); } }
         if (!made && !toCam && hash2i(tx * 3 + dx, ty * 3 + dy) < .35) rocks.push([(a + c2) / 2 - dx * .2, f + .3, (b + d) / 2 - dy * .2]);
       });
@@ -1487,7 +1487,7 @@ var Render = (function () {
     const near = UGR.lights.map(q => [q, (q[0] - p.x) ** 2 + (q[2] - p.y) ** 2]).sort((a, b) => a[1] - b[1]);
     PPOOL.forEach((l, i) => {
       if (i === 0) { l.position.set(p.x + Math.cos(p.face) * .4, h + 1.7, p.y + Math.sin(p.face) * .4); l.color.set('#ffc070'); l.distance = 20; l.decay = 1.2; l.intensity = 2.8 + Math.sin(st.clock * 9) * .08; return; }
-      const q = near[i - 1]; if (!q) { l.intensity = 0; return; } const [x, y, z, c, scena] = q[0]; l.position.set(x, y, z); l.color.set(c); l.distance = scena ? 19 : 14; l.decay = 1.3; l.intensity = scena ? 2.6 : 2.2; });
+      const q = near[i - 1]; if (!q) { l.intensity = 0; return; } const [x, y, z, c, scena] = q[0]; l.position.set(x, y, z); l.color.set(c); l.distance = scena ? 16 : 13; l.decay = 1.4; l.intensity = scena ? 1.5 : 1.7; });
     // [sotto2] un po' di nebbia, del colore della cavità più vicina (ambra nelle catacombe, azzurra nelle grotte, verde nelle cisterne)
     { const q = near.find(n => n[0][4]); UGR.fogC = UGR.fogC || new THREE.Color(); UGR.fogC.set('#0c0b0a'); if (q && q[1] < 900) UGR.fogC.lerp((UGR.tc = UGR.tc || new THREE.Color()).set(q[0][3]), .2 * (1 - Math.sqrt(q[1]) / 30)); }
     scene.children.forEach(o => { if (o === UGR.grp || o === pg || LPOOL.includes(o) || o.userData.ugKeep) return; if (o.isLight && o !== moon && o !== hemi && o !== fillAmb) { if (o.visible) { o.visible = false; o.userData.__hidUG = true; } return; } if (o.isLight) return; if (o.visible) { o.visible = false; o.userData.__hidUG = true; } });
