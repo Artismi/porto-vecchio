@@ -76,6 +76,12 @@ var Vesti3D = (function () {
     for (let i = 0; i < n; i++) { if (!has[i]) continue; const f = fac[main[i]]; if (f === undefined) continue;
       const r = Math.hypot(off[i * 3], off[i * 3 + 1], off[i * 3 + 2]) || 1, r2 = Math.min(r * f, cap[main[i]]), k = r2 / r - 1; if (k > -.001) continue;
       pos.setXYZ(i, pos.getX(i) + off[i * 3] * k, pos.getY(i) + off[i * 3 + 1] * k, pos.getZ(i) + off[i * 3 + 2] * k); }
+    // [forma] il polso: l'avambraccio si stringe, il pezzo di mano che sale nel polso no, e faceva gli spigoli a punta. Lo si stringe con lui, sfumando verso il palmo
+    for (const sd of ['L', 'R']) { const La = line['LowerArm' + sd], hc = cen['Wrist' + sd], f = fac['LowerArm' + sd]; if (!La || !hc || f === undefined) continue;
+      const D = hc.clone().sub(La.c).dot(La.d); if (D >= -1e-6) continue;   // il polso sta dalla parte opposta al gomito
+      for (let i = 0; i < n; i++) { if (main[i] !== 'Wrist' + sd) continue; v.fromBufferAttribute(pos, i).sub(La.c); const al = v.dot(La.d), u = al / D; if (u > .8) continue;
+        const w = 1 - Math.min(1, Math.max(0, (u - .5) / .3)); v.addScaledVector(La.d, -al); const r = v.length() || 1, r2 = Math.min(r, Math.max(r * f, cap['LowerArm' + sd] || r)), k = (r2 / r - 1) * w; if (k > -.001) continue;
+        pos.setXYZ(i, pos.getX(i) + v.x * k, pos.getY(i) + v.y * k, pos.getZ(i) + v.z * k); } }
     pos.needsUpdate = true; geo.computeBoundingSphere();
     if (window.__vestiDbg) console.log('[vestiti] stretta', mesh.name, JSON.stringify(fac));
   }
@@ -428,17 +434,33 @@ var Vesti3D = (function () {
   const hsh = s => { let h = 7; for (const ch of String(s)) h = h * 31 + ch.charCodeAt(0) | 0; return h >>> 0; };
   function headAcc2(kind, c, T, k) {   // gli altri copricapi
     const h = new THREE.Group(), r = T.r * (1 + k * .04) + .004, H = Math.max(.09, T.top - T.brow) + .012 + k * .006;
-    if (kind === 'cap') {   // cappellino da baseball: sei spicchi, visiera curva, bottone, il retro con la regolazione
-      const mt = FM('cotone', c), d = lathe([[r + .005, -.008], [r + .006, .03], [r * .95, H * .62], [r * .68, H * .9], [0, H + .012]], mt, 30);
-      const sm = lathe([[r + .0065, .0], [r + .0065, .004]], lm(sh(c, .7)), 30);
-      for (let i = 0; i < 6; i++) { const s0 = M_(new THREE.TorusGeometry(r * .82, .0018, 3, 16, Math.PI * .5), lm(sh(c, .65))); s0.rotation.y = i * Math.PI / 3; s0.rotation.z = Math.PI / 2; s0.position.y = H * .1; s0.scale.set(1.16, 1, 1); h.add(s0); }
-      const v = cutVisor(visor(r * .98, .075, 1.2, .02, FM('cotone', sh(c, .92))), 1.2); v.position.set(0, -.002, .0);
-      h.add(d, sm, v, Cy(.01, .012, .008, sh(c, .8), 0, H + .012, 0, 10)); return h; }
-    if (kind === 'snapback') {   // cappellino a visiera piatta: corona alta e dritta davanti, visiera piatta col bollino, la chiusura dietro
-      const mt = FM('cotone', c), d = lathe([[r + .005, -.008], [r + .008, .04], [r * .98, H * .7], [r * .74, H * .98], [0, H + .02]], mt, 30); d.scale.set(1, 1, 1.04);
-      const v = cutVisor(visor(r * .98, .085, 1.25, .001, FM('cotone', sh(c, .85))), 1.25), stk = Cy(.012, .012, .001, '#d8c050', 0, .003, r + .045, 12);
-      const back = Bx(.05, .015, .006, '#1a1a1c', 0, .01, -r - .006), btn = Cy(.01, .012, .008, sh(c, .8), 0, H + .02, 0, 10);
-      const logo = Bx(.06, .03, .004, lm(/^#[0-3]/.test(c) ? '#e8e4dc' : '#1a1a1c'), 0, H * .45, r + .006); logo.rotation.x = -.18; h.add(d, v, stk, back, btn, logo); return h; }
+    if (kind === 'cap' || kind === 'snapback') {   // il cappellino: sei spicchi, davanti strutturato e alto, dietro scende sulla nuca; visiera a D (curva o piatta)
+      const flat = kind === 'snapback', mt = FM('cotone', c), dk = lm(sh(c, .62)), NA = 48, NT = 12, P = [], U = [], I = [];
+      const Rb = a => r * (1 + .02 * Math.cos(a)) * (Math.cos(a) < 0 ? 1.06 : 1.03), yb = a => -.004 - .03 * Math.pow(Math.max(0, -Math.cos(a)), 1.5) + .002 * Math.max(0, Math.cos(a));   // il bordo: dietro più basso, sulla nuca
+      const Ht = H + (flat ? .012 : -.002), crown = (a, t) => { const fr = Math.max(0, Math.cos(a)), e = flat ? .6 : .75, rr = Rb(a) * Math.pow(Math.cos(t * Math.PI / 2), e) * (1 + (flat ? .06 : .04) * fr * Math.sin(Math.PI * t)), y = yb(a) + (Ht - yb(a)) * Math.pow(Math.sin(t * Math.PI / 2), flat ? .7 : .85);
+        return new THREE.Vector3(Math.sin(a) * rr, y, Math.cos(a) * rr * 1.04 + .004 * fr); };
+      for (let i = 0; i <= NA; i++) for (let j = 0; j <= NT; j++) { const a = -Math.PI + i / NA * Math.PI * 2, p = crown(a, j / NT); P.push(p.x, p.y, p.z); U.push(i / NA * 4, j / NT); }
+      for (let i = 0; i < NA; i++) for (let j = 0; j < NT; j++) { const a = i * (NT + 1) + j, b = a + 1, cc = a + NT + 1, d = cc + 1; I.push(a, cc, b, b, cc, d); }
+      const g0 = new THREE.BufferGeometry(); g0.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g0.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g0.setIndex(I); g0.computeVertexNormals(); h.add(new THREE.Mesh(g0, mt));
+      // le cuciture degli spicchi (meridiani) e la fascia interna
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + Math.PI / 6, L = []; for (let j = 0; j <= 10; j++) L.push(crown(a, j / 10 * .98).multiplyScalar(1.004)); h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L), 12, .0013, 3), dk)); }
+      { const L = []; for (let i = 0; i <= 40; i++) { const a = -Math.PI + i / 40 * Math.PI * 2; L.push(crown(a, 0).multiplyScalar(1.003)); } h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L, true), 40, .0022, 3, true), dk)); }
+      h.add(Cy(.0085, .0095, .006, sh(c, .85), 0, Ht + .001, 0, 10));   // il bottone
+      // la visiera: a D, attaccata al bordo davanti, curva (o piatta), spessa, il sotto scuro
+      const VL = flat ? .1 : .095, VA = 1.2, NV = 24, NW = 6, VP = [], VU = [], VI = [], vth = .006;
+      const vpt = (u, w, d) => { const a = -VA + u * 2 * VA, base = crown(a, 0), out = new THREE.Vector3(Math.sin(a), 0, Math.cos(a) * 1.04).normalize(), len = VL * Math.pow(Math.max(0, Math.cos(a / VA * Math.PI / 2)), .55) * w;
+        const p = base.clone().addScaledVector(out, len); const side = Math.abs(a) / VA; p.y += (flat ? -.004 * w : -.012 * w * w - .03 * side * side * w) - d; p.z += .002; return p; };
+      for (const d of [0, vth]) for (let i = 0; i <= NV; i++) for (let w = 0; w <= NW; w++) { const p = vpt(i / NV, w / NW, d); VP.push(p.x, p.y, p.z); VU.push(i / NV, w / NW); }
+      const vid = (d, i, w) => (d * (NV + 1) + i) * (NW + 1) + w;
+      for (let i = 0; i < NV; i++) for (let w = 0; w < NW; w++) { const a = vid(0, i, w), b = vid(0, i + 1, w), cc = vid(0, i, w + 1), d = vid(0, i + 1, w + 1); VI.push(a, b, cc, b, d, cc); }
+      const VI2 = []; for (let i = 0; i < NV; i++) { for (let w = 0; w < NW; w++) { const a = vid(1, i, w), b = vid(1, i + 1, w), cc = vid(1, i, w + 1), d = vid(1, i + 1, w + 1); VI2.push(a, cc, b, b, cc, d); } const a = vid(0, i, NW), b = vid(0, i + 1, NW), cc = vid(1, i, NW), d = vid(1, i + 1, NW); VI.push(a, cc, b, b, cc, d); }
+      const vg = new THREE.BufferGeometry(); vg.setAttribute('position', new THREE.Float32BufferAttribute(VP, 3)); vg.setAttribute('uv', new THREE.Float32BufferAttribute(VU, 2)); vg.setIndex(VI); vg.computeVertexNormals(); h.add(new THREE.Mesh(vg, FM('cotone', sh(c, .95))));
+      const vg2 = new THREE.BufferGeometry(); vg2.setAttribute('position', new THREE.Float32BufferAttribute(VP, 3)); vg2.setIndex(VI2); vg2.computeVertexNormals(); h.add(new THREE.Mesh(vg2, lm(flat ? '#2a3a2a' : sh(c, .45))));   // il sotto della visiera
+      { const L = []; for (let i = 0; i <= 16; i++) L.push(vpt(i / 16, .82, -.0005)); h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L), 20, .0011, 3), dk)); }   // l'impuntura della visiera
+      // dietro: l'apertura a mezzaluna con la regolazione
+      { const L = []; for (let i = 0; i <= 10; i++) { const a = Math.PI - .32 + i / 10 * .64, p = crown(a, .0).multiplyScalar(1.006); p.y += .028 * Math.sin(i / 10 * Math.PI); L.push(p); } h.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L), 12, .003, 4), lm('#1a1a1c'))); }
+      if (flat) { const logo = Bx(.055, .028, .003, lm(/^#[0-3]/.test(c) ? '#e8e4dc' : '#1a1a1c'), 0, H * .5, 0); const q = crown(0, .45); logo.position.copy(q).add(new THREE.Vector3(0, 0, .002)); logo.rotation.x = -.25; h.add(logo, Cy(.011, .011, .001, '#d8c050', 0, vpt(.5, .6, -.0005).y + .0006, vpt(.5, .6, 0).z, 12)); }   // il ricamo davanti e il bollino sulla visiera
+      return h; }
     if (kind === 'docker') {   // berretto corto da pescatore: alto sopra le orecchie, risvolto largo a costine
       const mt = lana(c, 'costine', 30, 2), d = lathe([[r + .004, .03], [r + .005, .05], [r * .96, H * .64], [r * .7, H * .92], [r * .3, H + .012], [0, H + .016]], mt, 28), cuff = lathe([[r + .012, .026], [r + .015, .045], [r + .015, .068], [r + .009, .072]], lana(sh(c, .9), 'costine', 34, 1), 28);
       h.add(d, cuff, Bx(.03, .016, .004, '#e8e4dc', 0, .05, r + .016)); return h; }
@@ -466,7 +488,13 @@ var Vesti3D = (function () {
     return h;
   }
   // il nodo e i pezzi sul petto: si posano sulla superficie del tronco, allo spessore giusto
-  function trunkAt(B, y, a, off) { const tb = Sartoria.tube(B, 'tronco'), s = tb.sAtY(y), fr = Sartoria.frameAt(tb, s); return { p: Sartoria.surf(tb, s, a, off), fr }; }
+  // [strati] con i vestiti dipinti il punto sta sulla superficie vera (sopra tutti gli strati in quel punto) + `off`
+  let curPL = null;
+  function trunkAt(B, y, a, off) { const tb = Sartoria.tube(B, 'tronco'), s = tb.sAtY(y), fr = Sartoria.frameAt(tb, s);
+    if (window.Pittura && curPL) return { p: Pittura.surfI(B, 0, s, a, Pittura.offAt(B, curPL, 0, s, a) + off), fr };
+    return { p: Sartoria.surf(tb, s, a, off), fr }; }
+  // lo stesso su braccia e gambe (r: 1 manica sinistra, 2 destra, 3 gamba sinistra, 4 destra)
+  function limbAt(B, r, s, a, off) { const tb = Pittura.frame(B).tubes[r]; return { p: Pittura.surfI(B, r, s, a, (curPL ? Pittura.offAt(B, curPL, r, s, a) : 0) + off), fr: Sartoria.frameAt(tb, s) }; }
   // ---------------- I VOLUMI A FACCE (con i vestiti dipinti): cintura, risvolti dei polsi e delle caviglie ----------------
   // un anello a fascia attorno a un tubo della Sartoria: n facce, alto h, staccato `off` dal corpo, spesso `th`
   function ringBand(tb, s, h, off, th, n, mat) {
@@ -481,22 +509,30 @@ var Vesti3D = (function () {
   function volumi(g, outfit, B, AT) {
     const CUT = Sartoria.CUT_(), cut = c => CUT[c.id] || {}, RK = Pittura.rankOutfit(outfit.filter(c => c.parti && c.parti.length), CUT), after = (c, f) => RK.slice(RK.indexOf(c) + 1).some(f), LO = Pittura.legOrder(outfit);
     // la vita coperta da qualcosa messo dopo: maglioni, giacche, una maglia lasciata fuori, mutande sopra i pantaloni
+    const PL = Pittura.paintPlans(B, outfit), RO = (r, s, n) => Pittura.ringOff(B, PL, r, s, n);   // [strati] i pezzi in rilievo stanno sopra la superficie vera (tutti gli strati in quel punto)
     const coversTorso = c => after(c, o => (((o.parti || []).includes('torso') && !cut(o).corto && !cut(o).davanti && !(cut(o).cl <= 1 && after(o, p => cut(p).cl === 2 && (p.parti || []).includes('bacino')))) || (o.parti || []).includes('bacino') && !cut(o).gonna));
     outfit.forEach(c => {
       const C = cut(c);
       // la cintura vera, con la fibbia
       if (C.cl === 2 && C.cintura && !C.gonna && !coversTorso(c)) {
-        const tb = Pittura.frame(B).tubes[0], s = tb.sAtY(B.waist + .012), leather = /cuoio|jeans/.test(C.cintura), col = leather ? (C.cintura === 'jeans' ? '#5a3a22' : '#3a2418') : c.col;
-        const o = new THREE.Group(); o.add(Pittura.orlo(B, 0, s, C.cintura === 'cuoio_fine' ? .026 : .036, .006 + Pittura.spessore(C), .006, 16, Pittura.blockMat('pelle', col, col, col, { vc: false })));
-        const fr = Sartoria.frameAt(tb, s), p = Pittura.surfI(B, 0, s, 0, .013 + Pittura.spessore(C)), n = p.clone().sub(fr.p).normalize(), bk = new THREE.Mesh(new THREE.BoxGeometry(.05, .046, .01), lm('#c8b070'));
-        bk.position.copy(p); bk.lookAt(p.clone().add(n)); const hole = new THREE.Mesh(new THREE.BoxGeometry(.032, .028, .012), lm('#2a2016')); hole.position.copy(p).addScaledVector(n, .001); hole.lookAt(p.clone().add(n)); o.add(bk, hole); AT('Hips', o);
+        const tb = Pittura.frame(B).tubes[0], s = tb.sAtY(B.waist + .014), leather = /cuoio|jeans/.test(C.cintura), col = leather ? (C.cintura === 'jeans' ? '#5a3a22' : '#3a2418') : c.col;
+        const o = new THREE.Group(); const ob = RO(0, s, 40) + .004; o.add(Pittura.orlo(B, 0, s, C.cintura === 'cuoio_fine' ? .03 : .042, ob, .006, 32, Pittura.blockMat('pelle', col, col, col, { vc: false })));
+        const fr = Sartoria.frameAt(tb, s), p = Pittura.surfI(B, 0, s, 0, ob + .003), n = p.clone().sub(fr.p).normalize(), side = new THREE.Vector3(0, 1, 0).cross(n).normalize();
+        // la fibbia: cornice sottile in metallo con l'ardiglione, posata sulla cinghia (non una piastra)
+        const met = new THREE.MeshStandardMaterial({ color: '#c8b070', roughness: .3, metalness: .9 }); met.emissive = new THREE.Color('#3a2e14');
+        const bw = .042, bh = C.cintura === 'cuoio_fine' ? .03 : .04, fs = new THREE.Shape(); fs.moveTo(-bw / 2, -bh / 2); fs.lineTo(bw / 2, -bh / 2); fs.lineTo(bw / 2, bh / 2); fs.lineTo(-bw / 2, bh / 2); fs.lineTo(-bw / 2, -bh / 2);
+        const hole = new THREE.Path(), ih = .006; hole.moveTo(-bw / 2 + ih, -bh / 2 + ih); hole.lineTo(-bw / 2 + ih, bh / 2 - ih); hole.lineTo(bw / 2 - ih, bh / 2 - ih); hole.lineTo(bw / 2 - ih, -bh / 2 + ih); fs.holes.push(hole);
+        const bg = new THREE.ExtrudeGeometry(fs, { depth: .003, bevelEnabled: true, bevelThickness: .0012, bevelSize: .0012, bevelSegments: 1 }), bk = new THREE.Mesh(bg, met);
+        const M0 = new THREE.Matrix4().makeBasis(side, new THREE.Vector3(0, 1, 0), n); bk.quaternion.setFromRotationMatrix(M0); bk.position.copy(p); o.add(bk);
+        const tongue = new THREE.Mesh(new THREE.BoxGeometry(.003, bh - .008, .0025), met); tongue.quaternion.copy(bk.quaternion); tongue.position.copy(p).addScaledVector(side, -.004).addScaledVector(n, .002); o.add(tongue);
+        AT('Hips', o);
       }
       // il cinturino della gonna
       if (C.solo_gonna && !coversTorso(c)) { const tb = Pittura.frame(B).tubes[0], s = tb.sAtY(B.waist + .01), o = new THREE.Group();
-        o.add(Pittura.orlo(B, 0, s, .032, Pittura.spessore(C) + .005, .006, 16, Pittura.blockMat(C.fab || 'lana', c.col, C.c2, C.c3, { vc: false }))); AT('Hips', o); }
+        o.add(Pittura.orlo(B, 0, s, .032, RO(0, s, 16) + .003, .006, 16, Pittura.blockMat(C.fab || 'lana', c.col, C.c2, C.c3, { vc: false }))); AT('Hips', o); }
       // la cintura del trench: fascia di stoffa sopra il cappotto, fibbia, il capo libero che pende
       if (C.cintura === 'trench') {
-        const tb = Pittura.frame(B).tubes[0], s = tb.sAtY(B.waist + .02), off = Pittura.spessore(C) + .006, mt = Pittura.blockMat(C.fab || 'cotone', c.col, c.col, c.col, { vc: false }), o = new THREE.Group();
+        const tb = Pittura.frame(B).tubes[0], s = tb.sAtY(B.waist + .02), off = RO(0, s, 16) + .004, mt = Pittura.blockMat(C.fab || 'cotone', c.col, c.col, c.col, { vc: false }), o = new THREE.Group();
         o.add(Pittura.orlo(B, 0, s, .04, off, .007, 16, mt));
         const fr = Sartoria.frameAt(tb, s), p = Pittura.surfI(B, 0, s, -.2, off + .004), n = p.clone().sub(fr.p).normalize();
         const bk = new THREE.Mesh(new THREE.BoxGeometry(.05, .05, .008), lm(sh(c.col, .55))); bk.position.copy(p); bk.lookAt(p.clone().add(n)); const hole = new THREE.Mesh(new THREE.BoxGeometry(.034, .034, .01), mt); hole.position.copy(p).addScaledVector(n, .001); hole.lookAt(p.clone().add(n)); o.add(bk, hole);
@@ -506,23 +542,50 @@ var Vesti3D = (function () {
       // i polsini rimboccati delle camicie (se nessuno ci va sopra)
       if ((C.polsi || C.risvolto_maniche) && (c.parti || []).includes('avambracci') && !after(c, o => (o.parti || []).includes('avambracci') && cut(o).cl >= 0 && cut(o).cl >= 3)) for (const sd of ['L', 'R']) {
         const tb = Sartoria.tube(B, 'manica' + sd), Ls = Sartoria.lengths(B, tb, 'manica' + sd, C, c.parti); if (Ls.s1 < Ls.la) continue;
-        const o = new THREE.Group(); o.add(Pittura.orlo(B, sd === 'L' ? 1 : 2, Ls.s1 - .022, .04, .008, .008, 10, Pittura.blockMat(C.fab || 'cotone', c.col, C.c2, C.c3, { vc: false }))); AT('LowerArm' + sd, o);
+        const o = new THREE.Group(); o.add(Pittura.orlo(B, sd === 'L' ? 1 : 2, Ls.s1 - .022, .04, RO(sd === 'L' ? 1 : 2, Ls.s1 - .03) + .004, .008, 10, Pittura.blockMat(C.fab || 'cotone', c.col, C.c2, C.c3, { vc: false }))); AT('LowerArm' + sd, o);
       }
       // il risvolto dei pantaloni
       if (C.cl === 2 && C.risvolto && !after(c, o => cut(o).gonna) && !LO.socksOver && !LO.bootsOver) for (const sd of ['L', 'R']) {
         const tb = Sartoria.tube(B, 'gamba' + sd), Ls = Sartoria.lengths(B, tb, 'gamba' + sd, C, c.parti);
-        const o = new THREE.Group(); o.add(Pittura.orlo(B, sd === 'L' ? 3 : 4, Math.min(Ls.s1, tb.L - .03) - .025, .045, .01, .01, 12, Pittura.blockMat(C.fab || 'cotone', c.col, C.c2, C.c3, { vc: false }))); AT('LowerLeg' + sd, o);
+        const o = new THREE.Group(); o.add(Pittura.orlo(B, sd === 'L' ? 3 : 4, Math.min(Ls.s1, tb.L - .03) - .025, .045, RO(sd === 'L' ? 3 : 4, Math.min(Ls.s1, tb.L - .03) - .05) + .005, .01, 12, Pittura.blockMat(C.fab || 'cotone', c.col, C.c2, C.c3, { vc: false }))); AT('LowerLeg' + sd, o);
       }
     });
   }
-  // il cappuccio abbassato delle felpe: un rotolo di stoffa attorno al collo e la sacca che ricade sulla schiena
+  // il cappuccio abbassato delle felpe: un rotolo morbido attorno al collo (spesso dietro, sottile davanti dove si incrocia o si apre la zip)
+  // e la sacca del cappuccio stesa sulla schiena, sopra la superficie vera della felpa, con l'apertura in ombra verso l'alto
   function cappuccio(g, outfit, B, AT) {
     const CUT = Sartoria.CUT_(), c = outfit.find(o => (CUT[o.id] || {}).collo === 'cappuccio'); if (!c) return;
-    Sartoria.neckY(B); const [nx, nz] = B.neckC, ny = B.neckY, rn = B.neckR + .03, mt = Pittura.blockMat('jersey', c.col, c.col, c.col, { vc: false }), o = new THREE.Group();
-    const pts = []; for (let k = 0; k <= 12; k++) { const t = lerp0(.32, 1.68, k / 12) * Math.PI, back = Math.max(0, -Math.cos(t)); pts.push(new THREE.Vector3(nx + Math.sin(t) * (rn + .012), ny - .015 - back * .02, nz + Math.cos(t) * (rn + .012))); }
-    const roll = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, .028, 6, false), mt); roll.scale.set(1, 1, 1); o.add(roll);
-    const sac = new THREE.Mesh(new THREE.SphereGeometry(.1, 8, 6), mt); sac.scale.set(1.15, .95, .45); sac.position.set(nx, ny - .085, nz - rn - .035); sac.rotation.x = .25; o.add(sac);
-    const inner = new THREE.Mesh(new THREE.SphereGeometry(.06, 6, 4), lm(sh(c.col, .45))); inner.scale.set(1.2, .5, .3); inner.position.set(nx, ny - .03, nz - rn - .03); o.add(inner);
+    const Pt = window.Pittura, T = Sartoria.testa(g, PARTI), PL = Pt.paintPlans(B, outfit.filter(o => o !== c || true)), nY = Sartoria.neckY(B), [nx, nz] = B.neckC, tb = Pt.frame(B).tubes[0];
+    const zip = /zip/.test((CUT[c.id] || {}).fronte || '') || (c.var && c.var.fronte === 'zip'), mt = Pt.blockMat('jersey', c.col, c.col, c.col, { vc: false, liscio: 1 }), inn = lm(sh(c.col, .42)), o = new THREE.Group();
+    const M = misuraCollo(B, T, outfit.filter(o2 => o2 !== c), Pt.paintPlans(B, outfit.filter(o2 => o2 !== c)));
+    // 1) il rotolo: sezione tonda, spessa dietro
+    const NA = 64, NS = 10, P = [], U = [], I = [], yc0 = nY - .004;
+    for (let i = 0; i <= NA; i++) { const a = -Math.PI + i / NA * Math.PI * 2, bk = Math.max(0, -Math.cos(a)), fr = Math.max(0, Math.cos(a)), th = .012 + .03 * Math.pow(bk, 1.3) + .004 * (1 - fr), hh = .03 + .03 * bk, yc = yc0 - .012 * fr * fr + .01 * bk;
+      const rin = M.maxR(a, yc - hh / 2, yc + hh / 2) + .002;
+      for (let k = 0; k <= NS; k++) { const t = k / NS * Math.PI * 2, r = rin + th / 2 + Math.cos(t) * th / 2 * (Math.cos(t) < 0 ? .3 : 1), y = yc + Math.sin(t) * hh / 2; P.push(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r); U.push(i / NA * 3, k / NS * .5); } }
+    for (let i = 0; i < NA; i++) { const a = -Math.PI + (i + .5) / NA * Math.PI * 2; if (zip && Math.abs(a) < .1) continue; for (let k = 0; k < NS; k++) { const q = i * (NS + 1) + k, r2 = q + NS + 1; I.push(q, r2, q + 1, q + 1, r2, r2 + 1); } }
+    { const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); gg.setIndex(I); gg.computeVertexNormals(); o.add(new THREE.Mesh(gg, mt)); }
+    // 2) la sacca sulla schiena: un cuscino a U sopra la felpa, largo in cima, tondo in fondo
+    const NU = 16, NV = 12, top = nY - .006, depth = .21, wid = .27, Q = [], seam = [], QU = [], QI = [], rim = [];
+    const sAt = y => tb.sAtY(y), half = v => wid / 2 * Math.sqrt(Math.max(0, 1 - Math.pow(Math.max(0, v - .35) / .65, 2.2)));
+    for (let j = 0; j <= NV; j++) { const v = j / NV, y = top - depth * v, sv = sAt(y);
+      for (let i = 0; i <= NU; i++) { const u = i / NU - .5, X = u * 2 * Math.max(.02, half(v)), rr = Math.max(.08, Pt.raggio(B, sv, Math.PI)), a = Math.PI + X / rr;
+        const bul = .04 * Math.pow(Math.sin(Math.PI * (i / NU)), .7) * Math.pow(Math.sin(Math.PI * Math.min(1, v * 1.05 + .08)), .8) + .004, p = Pt.surfI(B, 0, sv, a, Pt.offAt(B, PL, 0, sv, a) + .003 + bul);
+        Q.push(p.x, p.y, p.z); QU.push(i / NU * wid * 5, v * depth * 5); if (j === 0) rim.push(p); if (i === NU >> 1) seam.push(p); } }
+    o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(seam.map(p => p.clone())), 20, .0025, 4), lm(sh(c.col, .6))));   // la cucitura in mezzo al cappuccio
+    for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) { const a = j * (NU + 1) + i, b = a + 1, cc = a + NU + 1, d = cc + 1; QI.push(a, cc, b, b, cc, d); }
+    { const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(Q, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(QU, 2)); gg.setIndex(QI); gg.computeVertexNormals(); o.add(new THREE.Mesh(gg, Pt.blockMat('jersey', sh(c.col, .9), sh(c.col, .9), sh(c.col, .9), { vc: false, liscio: 1 }))); }
+    { const edge = [], at = (i, j) => new THREE.Vector3(Q[(j * (NU + 1) + i) * 3], Q[(j * (NU + 1) + i) * 3 + 1], Q[(j * (NU + 1) + i) * 3 + 2]);   // il contorno della sacca: un filo d'ombra dove si posa sulla felpa
+      for (let j = 0; j <= NV; j++) edge.push(at(0, j)); for (let i = 1; i <= NU; i++) edge.push(at(i, NV)); for (let j = NV - 1; j >= 0; j--) edge.push(at(NU, j));
+      o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(edge), 60, .004, 4), lm(sh(c.col, .55)))); }
+    // l'apertura: in cima la bocca del cappuccio, un'ellisse scura appena dentro, e il bordo orlato
+    { const nP = 18, E = [], EU = [], EI = []; const c0 = rim[NU >> 1].clone(); for (let k = 0; k <= nP; k++) { const t = k / nP, p = rim[Math.round(t * NU)].clone(); E.push(p.x, p.y + .002, p.z); EU.push(t, 0); const q = p.clone().lerp(c0, .55); q.y -= .045 * Math.sin(Math.PI * t) + .004; q.z += .006; E.push(q.x, q.y, q.z); EU.push(t, 1); }
+      for (let k = 0; k < nP; k++) { const a = k * 2; EI.push(a, a + 1, a + 2, a + 2, a + 1, a + 3); }
+      const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(E, 3)); gg.setIndex(EI); gg.computeVertexNormals(); const m = new THREE.Mesh(gg, inn); m.material.side = THREE.DoubleSide; o.add(m);
+      o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rim.map(p => p.clone().add(new THREE.Vector3(0, .002, 0)))), 24, .006, 5, false), mt)); }
+    // i cordini (felpa chiusa): due lacci che pendono davanti
+    if (!zip) for (const sx of [-1, 1]) { const a0 = sx * .28, y0 = yc0 - .016, s0 = tb.sAtY(y0), L = []; for (let k = 0; k <= 6; k++) { const y = y0 - k * .022, sv = tb.sAtY(y), a = a0 + sx * k * .01; L.push(Pt.surfI(B, 0, sv, a, Pt.offAt(B, PL, 0, sv, a) + .006)); }
+      o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L), 12, .0028, 4), lm('#ece8dc'))); const tip = Cy(.0035, .0035, .014, '#d8d4cc', L[6].x, L[6].y - .006, L[6].z, 6); o.add(tip); }
     AT('Chest', o);
   }
   const lerp0 = (a, b, t) => a + (b - a) * t;
@@ -642,11 +705,302 @@ var Vesti3D = (function () {
         if (nx !== v.x || ny !== v.y || nz !== v.z) { v.set(nx, ny, nz).applyMatrix4(Mi); P.setXYZ(i, v.x, v.y, v.z); ch++; } }
       if (ch) { P.needsUpdate = true; geo.computeBoundingSphere(); } });
   }
+  // ---------------- LA SCIARPA ----------------
+  // Si misura tutto quello che c'è attorno al collo (la superficie vera dei vestiti, con tutti gli strati; il collo e la mandibola)
+  // in coordinate cilindriche attorno al collo: per ogni angolo e altezza il raggio più esterno. Su quella misura si avvolgono
+  // due giri di maglia morbida (sezione a cuscino, mai dentro niente: ogni giro sta sopra la misura e sopra il giro di prima),
+  // il secondo più basso davanti, posato sulle spalle; i due capi scendono sul petto sopra l'ultimo strato, il corto sopra il lungo, con le frange.
+  const MAGLIA = new Map();
+  function magliaMat(col, col2, passo) {   // maglia a coste lungo la sciarpa (v = lunghezza in metri), a righe se col2
+    const key = col + '|' + (col2 || '') + '|' + (passo || 0); if (MAGLIA.has(key)) return MAGLIA.get(key);
+    const N = 128, cv = document.createElement('canvas'); cv.width = cv.height = N; const x = cv.getContext('2d'), id = x.createImageData(N, N), d = id.data, A = new THREE.Color(col), Bc = new THREE.Color(col2 || col);
+    const H = new Uint8ClampedArray(N * N);
+    for (let py = 0; py < N; py++) for (let px = 0; px < N; px++) {
+      const cx = px % 8, u = (cx + .5) / 8 - .5, w = ((py % 8) + .5) / 8, leg = Math.abs(Math.abs(u) - (.08 + w * .3)), rib = Math.floor(px / 8) % 2;   // punti a V in colonne, una colonna rovescia ogni due
+      let v = rib ? .5 + .5 * Math.max(0, 1 - leg / .17) - (Math.abs(u) < .045 ? .32 : 0) : .28 + .12 * Math.sin(py / 4 * Math.PI) ;
+      v += (hs2(px, py) - .5) * .12; v = Math.max(0, Math.min(1, v));
+      const stripe = col2 && passo ? Math.floor(py / (N / 2)) % 2 : 0, C0 = stripe ? Bc : A, k = .55 + .5 * v, q = (py * N + px) * 4;
+      d[q] = Math.min(255, C0.r * 255 * k); d[q + 1] = Math.min(255, C0.g * 255 * k); d[q + 2] = Math.min(255, C0.b * 255 * k); d[q + 3] = 255; H[py * N + px] = v * 255; }
+    x.putImageData(id, 0, 0); const T = new THREE.CanvasTexture(cv); T.wrapS = T.wrapT = THREE.RepeatWrapping; T.anisotropy = 4;
+    const cb = document.createElement('canvas'); cb.width = cb.height = N; const xb = cb.getContext('2d'), ib = xb.createImageData(N, N); for (let k = 0; k < N * N; k++) { ib.data[k * 4] = ib.data[k * 4 + 1] = ib.data[k * 4 + 2] = H[k]; ib.data[k * 4 + 3] = 255; } xb.putImageData(ib, 0, 0);
+    const TB = new THREE.CanvasTexture(cb); TB.wrapS = TB.wrapT = THREE.RepeatWrapping;
+    // la piastrella: 8 colonne = 4 cm di larghezza, in altezza 4 cm (con le righe: due bande di passo/2)
+    const rv = passo ? 1 / passo : 1 / .04; T.repeat.set(1 / .04, rv); TB.repeat.copy(T.repeat);
+    const m = new THREE.MeshStandardMaterial({ map: T, bumpMap: TB, bumpScale: .004, roughness: 1, metalness: 0, side: THREE.DoubleSide }); m.emissive = A.clone().multiplyScalar(.1); MAGLIA.set(key, m); return m;
+  }
+  // la misura attorno al collo: per ogni angolo e altezza il raggio più esterno di tutto quello che c'è (vestiti con tutti gli strati,
+  // collo, mandibola), attorno all'asse verticale del collo. Sciarpe, colletti, cappucci ci stanno sopra.
+  function misuraCollo(B, T, outfit, PL) {
+    const key = outfit.map(o => o.id + (o.when || 0)).join() + '|' + (B.key || ''); B._mc = B._mc || new Map(); if (B._mc.has(key)) return B._mc.get(key);
+    const Pt = window.Pittura, Sa = Sartoria, nY = Sa.neckY(B), [nx, nz] = B.neckC, tb = Pt.frame(B).tubes[0];
+    // 1) la misura: raggio più esterno per angolo e altezza, attorno all'asse verticale del collo
+    const NA = 64, y0 = nY - .2, y1 = Math.min(T.chin + .02, nY + .12), dy = .004, NY = Math.round((y1 - y0) / dy) + 1, RG = Array.from({ length: NY }, () => new Float32Array(NA));
+    const put = (x, y, z, pad) => { const j = Math.round((y - y0) / dy); if (j < 0 || j >= NY) return; const ddx = x - nx, ddz = z - nz, r = Math.hypot(ddx, ddz) + (pad || 0), i = ((Math.round((Math.atan2(ddx, ddz) + Math.PI) / (Math.PI * 2) * NA) % NA) + NA) % NA; if (r > RG[j][i]) RG[j][i] = r; };
+    const sLo = tb.sAtY(y0 - .02), sHi = tb.sAtY(y1 + .01);
+    for (let sv = Math.min(sLo, sHi); sv <= Math.max(sLo, sHi); sv += .004) for (let k = 0; k < 96; k++) { const a = -Math.PI + k / 96 * Math.PI * 2, p = Pt.surfI(B, 0, sv, a, Pt.offAt(B, PL, 0, sv, a)); put(p.x, p.y, p.z, .002); }
+    for (let k = 0; k < B.head.length; k += 3) put(B.head[k], B.head[k + 1], B.head[k + 2], .004);   // collo e mandibola della mesh della testa
+    for (let k = 0; k < B.part.length; k++) if (B.part[k] === 'collo' || B.part[k] === 'torso') put(B.P[k * 3], B.P[k * 3 + 1], B.P[k * 3 + 2], .003);
+    if (outfit.some(o2 => (Sa.CUT_()[o2.id] || {}).collo === 'cappuccio')) for (let j = 0; j < NY; j++) { const y = y0 + j * dy; if (Math.abs(y - (nY - .015)) < .04) for (let i = 0; i < NA; i++) RG[j][i] = Math.max(RG[j][i], B.neckR + .075); }   // il rotolo del cappuccio
+    // buchi (angoli senza punti) e conche: si riempiono, la maglia passa tesa sopra
+    for (let j = 0; j < NY; j++) { const R = RG[j]; for (let it = 0; it < NA; it++) for (let i = 0; i < NA; i++) if (!R[i]) R[i] = Math.max(R[(i + 1) % NA], R[(i + NA - 1) % NA]) * .999;
+      for (let it = 0; it < 4; it++) for (let i = 0; i < NA; i++) R[i] = Math.max(R[i], (R[(i + 1) % NA] + R[(i + NA - 1) % NA]) / 2); }
+    const rAt = (a, y) => { const fj = Math.max(0, Math.min(NY - 1, (y - y0) / dy)), j0 = Math.floor(fj), j1 = Math.min(NY - 1, j0 + 1), u = fj - j0, fi = (((a + Math.PI) / (Math.PI * 2) * NA) % NA + NA) % NA, i0 = Math.floor(fi), i1 = (i0 + 1) % NA, v = fi - i0;
+      return lerp0(lerp0(RG[j0][i0], RG[j0][i1], v), lerp0(RG[j1][i0], RG[j1][i1], v), u); };
+    const maxR = (a, ya, yb) => { let m = 0; for (let y = ya; y <= yb + 1e-6; y += dy) m = Math.max(m, rAt(a, y)); return m; };
+    const out = { rAt, maxR }; B._mc.set(key, out); return out;
+  }
+  // ---------------- CATENE E COLLANE ----------------
+  // Maglie vere (la grumetta: anelli schiacciati che si alternano di 90°, ruotati come una catena cubana), posate sopra tutto quello che c'è
+  // attorno al collo e sul petto (misura del collo), il punto più basso davanti; il catenone ha la medaglia, la catenina il ciondolo, le perle sono perle.
+  let ORO = null;
+  function metallo(col) { ORO = ORO || new Map(); if (ORO.has(col)) return ORO.get(col); const m = new THREE.MeshStandardMaterial({ color: col, roughness: .22, metalness: 1 }); m.emissive = new THREE.Color(col).multiplyScalar(.28); ORO.set(col, m); return m; }
+  function catena(c, B, T, outfit) {
+    const PL = curPL || window.Pittura.paintPlans(B, outfit), M = misuraCollo(B, T, outfit, PL), nY = Sartoria.neckY(B), [nx, nz] = B.neckC, o = new THREE.Group();
+    const kind = c.acc, drop = kind === 'collana' ? .13 : kind === 'perle' ? .07 : .085, lift = kind === 'collana' ? .006 : .003;
+    // la linea: dietro alta sul collo, davanti scende (curva a catenaria)
+    const N = 96, L = [];
+    for (let i = 0; i <= N; i++) { const a = -Math.PI + i / N * Math.PI * 2, f = Math.max(0, Math.cos(a)), y = nY - .012 - drop * Math.pow(f, 1.6), r = M.maxR(a, y - .008, y + .008) + lift; L.push(new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r)); }
+    for (let it = 0; it < 3; it++) { const c0 = L.map(v => v.clone()); for (let i = 0; i <= N; i++) { const a = c0[(i + N - 1) % N], b = c0[(i + 1) % N]; L[i].copy(c0[i]).multiplyScalar(2).add(a).add(b).multiplyScalar(.25); const ang = -Math.PI + i / N * Math.PI * 2, y = L[i].y, rr = M.maxR(ang, y - .008, y + .008) + lift, d = Math.hypot(L[i].x - nx, L[i].z - nz); if (d < rr) { L[i].x = nx + (L[i].x - nx) * rr / d; L[i].z = nz + (L[i].z - nz) * rr / d; } } }
+    const curve = new THREE.CatmullRomCurve3(L, true), len = curve.getLength();
+    if (kind === 'perle') { const n = Math.round(len / .0145); for (let k = 0; k < n; k++) { const p = curve.getPointAt(k / n); o.add(Sp(.0068, new THREE.MeshStandardMaterial({ color: '#f4f0e6', roughness: .25, metalness: .1, emissive: '#3a3630' }), p.x, p.y, p.z)); } return o; }
+    // la grumetta: maglie schiacciate in un'unica geometria
+    const big = kind === 'collana', R = big ? .0058 : .0028, tube = big ? .0019 : .0009, pitch = R * 1.55, n = Math.round(len / pitch), geos = [], up = new THREE.Vector3(), nrm = new THREE.Vector3();
+    const link = new THREE.TorusGeometry(R, tube, 4, 8); link.scale(1, .62, 1);
+    for (let k = 0; k < n; k++) { const t = k / n, p = curve.getPointAt(t), tg = curve.getTangentAt(t); nrm.set(p.x - nx, 0, p.z - nz).normalize(); up.crossVectors(tg, nrm).normalize();
+      const m = new THREE.Matrix4().makeBasis(tg, k % 2 ? nrm : up, k % 2 ? up.clone().negate() : nrm), rot = new THREE.Matrix4().makeRotationAxis(tg, .5); m.premultiply(new THREE.Matrix4()); const g0 = link.clone(); g0.applyMatrix4(new THREE.Matrix4().multiplyMatrices(rot, m)); g0.translate(p.x, p.y, p.z); geos.push(g0); }
+    const merged = mergeGeos(geos); o.add(new THREE.Mesh(merged, metallo(c.col || '#e8c040')));
+    // la medaglia (catenone) o il ciondolo (catenina), che pende dal punto più basso
+    const p0 = curve.getPointAt(.5), dn = new THREE.Vector3(p0.x - nx, 0, p0.z - nz).normalize();
+    if (big) { const md = new THREE.Mesh(new THREE.CylinderGeometry(.021, .021, .004, 20), metallo(c.col || '#e8c040')); md.rotation.x = Math.PI / 2; md.lookAt(p0.clone().add(dn)); md.rotateX(Math.PI / 2); md.position.copy(p0).add(new THREE.Vector3(0, -.026, 0)).addScaledVector(dn, .004); o.add(md);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(.021, .0025, 5, 24), metallo(sh(c.col || '#e8c040', .85))); rim.position.copy(md.position); rim.lookAt(md.position.clone().add(dn)); o.add(rim);
+      const bail = new THREE.Mesh(new THREE.TorusGeometry(.0045, .0015, 4, 10), metallo(c.col || '#e8c040')); bail.position.copy(p0).add(new THREE.Vector3(0, -.004, 0)); bail.lookAt(bail.position.clone().add(new THREE.Vector3(-dn.z, 0, dn.x))); o.add(bail); }
+    else { const pd = new THREE.Mesh(new THREE.OctahedronGeometry(.006, 0), metallo(c.col || '#d8d8dc')); pd.scale.set(.8, 1.3, .5); pd.position.copy(p0).add(new THREE.Vector3(0, -.01, 0)).addScaledVector(dn, .003); o.add(pd); }
+    return o;
+  }
+  function mergeGeos(list) {   // unisce geometrie non indicizzate o indicizzate (posizione, normale) in una sola
+    let nv = 0, ni = 0; list.forEach(g => { nv += g.attributes.position.count; ni += g.index ? g.index.count : g.attributes.position.count; });
+    const P = new Float32Array(nv * 3), Nn = new Float32Array(nv * 3), I = new Uint32Array(ni); let ov = 0, oi = 0;
+    list.forEach(g => { P.set(g.attributes.position.array, ov * 3); Nn.set(g.attributes.normal.array, ov * 3); const ix = g.index ? g.index.array : Array.from({ length: g.attributes.position.count }, (_, i) => i); for (let k = 0; k < ix.length; k++) I[oi + k] = ix[k] + ov; ov += g.attributes.position.count; oi += ix.length; });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.BufferAttribute(Nn, 3)); g.setIndex(new THREE.BufferAttribute(I, 1)); return g;
+  }
+  // ---------------- LE BORSE A TRACOLLA ----------------
+  // La cinghia è una fettuccia piatta (3 cm) posata sulla superficie vera dei vestiti, lungo un percorso (altezza, angolo) attorno al busto:
+  // sopra la spalla, giù per la schiena, di nuovo davanti. La borsa segue la cinghia: il marsupio di traverso sul petto (a banana),
+  // il borsello sul fianco (verticale, con la patta). Zip con il tiretto, toppa del marchio (generica), fibbia di regolazione.
+  function fettuccia(B, PL, path, w, th, lift, mat, n) {
+    const Pt = window.Pittura, tb = Pt.frame(B).tubes[0], sp = new THREE.CatmullRomCurve3(path.map(([y, a]) => new THREE.Vector3(a, y, 0))), N = n || 80;
+    const S = (y, a, d) => { const s0 = tb.sAtY(y); return Pt.surfI(B, 0, s0, a, Pt.offAt(B, PL, 0, s0, a) + d); };
+    const P = [], I = [], U = [], C = [], NN = [];
+    // la linea e le normali della superficie sotto, poi lisciate: la fettuccia non segue i pixel dello spessore
+    for (let i = 0; i <= N; i++) { const q = sp.getPoint(i / N), y = q.y, a = q.x, pa = S(y, a + .03, lift), pb = S(y, a - .03, lift), py = S(y + .015, a, lift), pz = S(y - .015, a, lift);
+      C.push(S(y, a, lift)); NN.push(pa.clone().sub(pb).cross(py.clone().sub(pz)).normalize()); }
+    for (let it = 0; it < 6; it++) for (const A0 of [C, NN]) { const c0 = A0.map(v => v.clone()); for (let i = 1; i < N; i++) A0[i].copy(c0[i - 1]).add(c0[i]).add(c0[i]).add(c0[i + 1]).multiplyScalar(.25); }
+    for (let i = 0; i <= N; i++) { const p0 = S(sp.getPoint(i / N).y, sp.getPoint(i / N).x, lift), d = p0.clone().sub(C[i]).dot(NN[i].normalize()); if (d > 0) C[i].addScaledVector(NN[i], d); }   // mai sotto la superficie
+    let len = 0, prevA = null;
+    for (let i = 0; i <= N; i++) { const p = C[i], tg = C[Math.min(N, i + 1)].clone().sub(C[Math.max(0, i - 1)]).normalize(), nrm = NN[i].clone().normalize(); let ac = nrm.clone().cross(tg).normalize();
+      if (prevA && ac.dot(prevA) < 0) ac.negate(); prevA = ac; if (i) len += p.distanceTo(C[i - 1]);
+      for (const [sx, d] of [[-1, 0], [1, 0], [-1, th], [1, th]]) { const v = p.clone().addScaledVector(ac, sx * w / 2).addScaledVector(nrm, d); P.push(v.x, v.y, v.z); U.push(sx > 0 ? 1 : 0, len * 8); } }
+    for (let i = 0; i < N; i++) { const b = i * 4, c2 = b + 4; I.push(b + 2, c2 + 2, b + 3, b + 3, c2 + 2, c2 + 3, b, b + 1, c2, b + 1, c2 + 1, c2, b, c2, b + 2, b + 2, c2, c2 + 2, b + 1, b + 3, c2 + 1, b + 3, c2 + 3, c2 + 1); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals();
+    return { mesh: new THREE.Mesh(g, mat), at: t => C[Math.round(t * N)].clone() };
+  }
+  let WEB = null;
+  function webMat(col) {   // la fettuccia: trama a spina con i bordi in rilievo
+    WEB = WEB || new Map(); if (WEB.has(col)) return WEB.get(col); const N = 32, cv = document.createElement('canvas'); cv.width = cv.height = N; const x = cv.getContext('2d'), id = x.createImageData(N, N), C = new THREE.Color(col);
+    for (let py = 0; py < N; py++) for (let px = 0; px < N; px++) { const edge = px < 3 || px > N - 4, v = edge ? .75 : .9 + .12 * (((px + py) >> 1) % 2), q = (py * N + px) * 4; id.data[q] = C.r * 255 * v + 14; id.data[q + 1] = C.g * 255 * v + 14; id.data[q + 2] = C.b * 255 * v + 14; id.data[q + 3] = 255; }
+    x.putImageData(id, 0, 0); const T = new THREE.CanvasTexture(cv); T.wrapS = T.wrapT = THREE.RepeatWrapping; const m = new THREE.MeshStandardMaterial({ map: T, roughness: .8, metalness: 0 }); m.emissive = C.clone().multiplyScalar(.15); WEB.set(col, m); return m;
+  }
+  function tracolla(c, B, outfit) {
+    const Pt = window.Pittura, PL = curPL || Pt.paintPlans(B, outfit), nY = Sartoria.neckY(B), cY = B.bones.Chest.y, o = new THREE.Group(), T2 = Math.PI * 2;
+    const chest = c.acc === 'tracolla', col = c.col || '#1a1a1e', mt = FM('nylon', col, col, col, 1), dark = lm('#141416'), strapCol = /^#[0-3]/.test(col) ? '#18181a' : sh(col, .6);
+    // il percorso della cinghia (altezza, angolo; angoli continui): il marsupio sale dal petto alla spalla sinistra, scende per la schiena e torna dal fianco destro
+    const path = chest
+      ? [[cY - .015, .5], [nY - .07, .75], [nY - .025, 1.25], [nY - .05, 2.1], [cY + .02, 2.75], [cY - .1, 3.6], [cY - .16, 4.5], [cY - .13, 5.6], [cY - .08, T2 - .22]]
+      : [[B.waist + .1, -1.45], [cY - .1, -1.05], [cY + .02, -.55], [nY - .07, .6], [nY - .025, 1.25], [nY - .05, 2.1], [cY - .02, 2.75], [B.waist + .14, -1.75 + T2], [B.waist + .1, -1.5 + T2]];
+    const F = fettuccia(B, PL, path, .03, .003, .003, webMat(strapCol), 120); o.add(F.mesh);
+    // la fibbia sulla spalla davanti
+    { const p = F.at(chest ? .08 : .33), b = Bx(.036, .022, .006, lm('#2a2a2e'), p.x, p.y, p.z); b.lookAt(p.clone().add(p.clone().sub(new THREE.Vector3(B.neckC[0], p.y, B.neckC[1])).normalize())); o.add(b); }
+    // la borsa
+    const tb = Pt.frame(B).tubes[0], S0 = (y, a, d) => { const s0 = tb.sAtY(y); return Pt.surfI(B, 0, s0, a, Pt.offAt(B, PL, 0, s0, a) + d); };
+    const yB = chest ? cY - .055 : B.waist + .05, aB = chest ? .05 : -1.45, W = chest ? .23 : .13, H = chest ? .1 : .17, D = chest ? .055 : .045;
+    const p0 = S0(yB, aB, 0), pa = S0(yB, aB + .05, 0), pb = S0(yB, aB - .05, 0), py = S0(yB + .02, aB, 0), pz = S0(yB - .02, aB, 0), nrm = pa.clone().sub(pb).cross(py.clone().sub(pz)).normalize();
+    const pv = new THREE.Group(); pv.position.copy(p0).addScaledVector(nrm, D / 2 + .002); pv.lookAt(pv.position.clone().add(nrm));
+    const tilt = chest ? -.42 : 0; const inner = new THREE.Group(); inner.rotation.z = tilt; pv.add(inner);
+    // il corpo: a banana (il marsupio, più alto al centro e curvo sotto) o rettangolare morbido (il borsello)
+    const geo = sacca(W, H, D, chest ? .045 : .02, chest ? .012 : .008); if (chest) { const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i) / (W / 2), y = p.getY(i); p.setY(i, y + .018 * (1 - x * x) * (y < 0 ? 1 : .3)); } geo.computeVertexNormals(); }
+    const body = new THREE.Mesh(geo, mt); inner.add(body);
+    // la zip (con il tiretto) lungo il bordo alto, la tasca davanti con la seconda zip, la toppa del marchio, la cucitura del bordo
+    const zipLine = (yy, w2, zz) => { const L = []; for (let k = 0; k <= 12; k++) { const x = -w2 / 2 + k / 12 * w2; L.push(new THREE.Vector3(x, yy + (chest ? .012 * (1 - (2 * x / W) ** 2) : 0), zz)); } return L; };
+    const z1 = zipLine(H * .32, W * .86, D / 2 + .004); inner.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(z1), 16, .0026, 4), dark));
+    const z2 = zipLine(-H * .05, W * .66, D / 2 + .012); inner.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(z2), 16, .0022, 4), dark));
+    for (const z of [z1, z2]) { const e = z[z.length - 2], pull = Bx(.007, .022, .004, lm('#c8c8cc'), e.x, e.y - .011, e.z + .002); inner.add(pull); }
+    const tag = Bx(chest ? .036 : .03, .016, .003, lm(/^#[0-3]/.test(col) ? '#d8d4cc' : '#1a1a1c'), chest ? -W * .18 : 0, -H * .27, D / 2 + .011); inner.add(tag);
+    if (!chest) { const flap = new THREE.Mesh(sacca(W * .98, H * .36, .012, .015, .003), mt); flap.position.set(0, H * .31, D / 2 + .003); inner.add(flap); }
+    // i due attacchi della cinghia ai lati della borsa
+    for (const sx of [-1, 1]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(.009, .0022, 4, 10), lm('#2a2a2e')); ring.position.set(sx * (W / 2 + .004), chest ? .01 : H / 2, 0); ring.rotation.y = Math.PI / 2; inner.add(ring); }
+    o.add(pv); return o;
+  }
+  // ---------------- GLI OCCHIALI DA SOLE ----------------
+  // Misurati sul viso vero (davanti degli occhi, larghezza del cranio, orecchie): la montatura segue la curva del viso, le lenti a specchio
+  // riflettono un cielo finto (gradiente), le stanghette vanno alle orecchie sopra i capelli.
+  //   occhiali: a goccia, montatura dorata sottile · mascherina: avvolgente, una lente sola a fascia, montatura nera lucida (quella dei ragazzi)
+  //   ovali: piccoli anni '90, montatura spessa · shield: visiera unica, senza montatura sopra
+  let LENTI = null;
+  function lenteMat(tinta) {
+    LENTI = LENTI || new Map(); if (LENTI.has(tinta)) return LENTI.get(tinta);
+    const N = 64, cv = document.createElement('canvas'); cv.width = cv.height = N; const x = cv.getContext('2d'), gr = x.createLinearGradient(0, 0, 0, N), T0 = { scuro: ['#3a4a5a', '#0a0c10', '#141820'], fumo: ['#5a5048', '#1a1612', '#2a221a'], blu: ['#7ad0ff', '#1a3a8a', '#0e1a3a'], fuoco: ['#ffe070', '#e8502a', '#5a1a10'], verde: ['#8ae0a0', '#1a5a3a', '#0a2a1a'] }[tinta] || ['#3a4a5a', '#0a0c10', '#141820'];
+    gr.addColorStop(0, T0[0]); gr.addColorStop(.45, T0[1]); gr.addColorStop(1, T0[2]); x.fillStyle = gr; x.fillRect(0, 0, N, N);
+    x.fillStyle = 'rgba(255,255,255,.55)'; x.beginPath(); x.ellipse(N * .3, N * .28, N * .16, N * .05, -.5, 0, Math.PI * 2); x.fill();   // il riflesso
+    const T = new THREE.CanvasTexture(cv); const m = new THREE.MeshStandardMaterial({ map: T, roughness: .12, metalness: .55, side: THREE.DoubleSide }); m.emissive = new THREE.Color(T0[1]).multiplyScalar(.5); LENTI.set(tinta, m); return m;
+  }
+  function occhiali(c, T, B) {
+    const kind = c.acc, o = new THREE.Group(), y = T.eyeY - T.brow - .002, zf = T.eyeZ - T.cz + .016, rs = T.rSkull, sc = T.sc || 1;
+    const met = kind === 'occhiali' ? new THREE.MeshStandardMaterial({ color: '#d8b860', roughness: .3, metalness: .9 }) : new THREE.MeshStandardMaterial({ color: c.col || '#101012', roughness: .25, metalness: .1 });
+    if (kind === 'occhiali' || kind === 'mascherina' || kind === 'shield') met.emissive = new THREE.Color(kind === 'occhiali' ? '#3a2a10' : '#0a0a0a');
+    // la curva del davanti: a x (metri dal centro) la profondità del viso (z), più avvolta per mascherina e shield
+    const wrap = kind === 'mascherina' || kind === 'shield' ? 1 : kind === 'ovali' ? .25 : .45, zAt = x => zf - wrap * (x * x) * 3.2 - .0;
+    const pane = (outline, mat, d) => {   // una lente: contorno 2D [x,y] proiettato sulla curva, triangolato a ventaglio dal centro
+      const cx = outline.reduce((a, p) => a + p[0], 0) / outline.length, cy = outline.reduce((a, p) => a + p[1], 0) / outline.length, P = [cx, cy, zAt(cx) + (d || 0)], U = [.5, .5], I = [];
+      const bx = [Math.min(...outline.map(p => p[0])), Math.max(...outline.map(p => p[0]))], by = [Math.min(...outline.map(p => p[1])), Math.max(...outline.map(p => p[1]))];
+      outline.forEach(p => { P.push(p[0], p[1], zAt(p[0]) + (d || 0)); U.push((p[0] - bx[0]) / (bx[1] - bx[0] || 1), 1 - (p[1] - by[0]) / (by[1] - by[0] || 1)); });
+      for (let k = 0; k < outline.length; k++) I.push(0, 1 + k, 1 + (k + 1) % outline.length);
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); return new THREE.Mesh(g, mat); };
+    const rim = (outline, r, mat) => new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(outline.map(p => new THREE.Vector3(p[0], p[1], zAt(p[0]) + .001)), true), outline.length * 2, r, 5, true), mat);
+    const ell = (cx, cy, rx, ry, n, e, tilt) => { const L = []; for (let k = 0; k < n; k++) { const t = k / n * Math.PI * 2, ct = Math.cos(t), st = Math.sin(t), X = Math.sign(ct) * Math.pow(Math.abs(ct), e || 1) * rx, Y = Math.sign(st) * Math.pow(Math.abs(st), e || 1) * ry; L.push([cx + X, cy + Y + (tilt || 0) * X]); } return L; };
+    const ex = .034 * sc; let hingeX = rs * .92, hingeY = y + .006, lensT = 'scuro';
+    if (kind === 'occhiali') {   // a goccia: lenti grandi che scendono verso l'esterno, ponte doppio
+      lensT = 'fumo'; for (const s0 of [-1, 1]) { const L = ell(s0 * ex, y - .004, .028, .024, 22, 1, 0).map(p => [p[0], p[1] - (p[1] < y - .004 ? .006 * Math.max(0, (p[0] * s0 - ex + .028) / .056) : 0)]); o.add(pane(L, lenteMat(lensT)), rim(L, .0022, met)); }
+      o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(-ex + .022, y + .016, zAt(0) + .002), new THREE.Vector3(0, y + .019, zAt(0) + .003), new THREE.Vector3(ex - .022, y + .016, zAt(0) + .002)]), 8, .0018, 4), met)); hingeX = ex + .028; hingeY = y + .012; }
+    if (kind === 'ovali') {   // piccoli ovali: lenti strette e allungate, montatura spessa
+      lensT = c.lente || 'fuoco'; for (const s0 of [-1, 1]) { const L = ell(s0 * (ex + .002), y, .023, .012, 20, .9, 0); o.add(pane(L, lenteMat(lensT)), rim(L, .0032, met)); }
+      o.add(Bx(.02, .004, .004, met, 0, y + .004, zAt(0) + .002)); hingeX = ex + .026; hingeY = y + .003; }
+    if (kind === 'mascherina' || kind === 'shield') {   // una lente sola a fascia, avvolgente fino alle tempie; la mascherina col bordo sopra spesso
+      lensT = c.lente || (kind === 'shield' ? 'blu' : 'scuro'); const W = rs * .98, top = y + .02, L = [];
+      for (let k = 0; k <= 24; k++) { const x = -W + k / 24 * 2 * W; L.push([x, top + .002 * Math.cos(x / W * Math.PI)]); }
+      for (let k = 24; k >= 0; k--) { const x = -W + k / 24 * 2 * W, ax = Math.abs(x), nose = Math.max(0, 1 - ax / .016) * .014; L.push([x, y - .022 + .012 * Math.pow(ax / W, 2.2) + nose]); }   // sotto: scende sulle guance, sale sul naso
+      o.add(pane(L, lenteMat(lensT)));
+      if (kind === 'mascherina') { const R = []; for (let k = 0; k <= 30; k++) { const x = -W - .002 + k / 30 * 2 * (W + .002); R.push(new THREE.Vector3(x, top + .003 + .002 * Math.cos(x / W * Math.PI), zAt(x) + .002)); } o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(R), 40, .0045, 5), met)); }   // il ciglio della montatura
+      hingeX = W; hingeY = top - .006; }
+    // le stanghette: dalla cerniera, lungo la tempia (sopra i capelli), fino all'orecchio
+    for (const s0 of [-1, 1]) { const p0 = new THREE.Vector3(s0 * hingeX, hingeY, zAt(hingeX) - .002), p1 = new THREE.Vector3(s0 * (rs + .012), hingeY + .002, (zAt(hingeX) + 0) * .3), p2 = new THREE.Vector3(s0 * (rs + .01), hingeY - .012, -.02);
+      o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([p0, p1, p2]), 10, kind === 'occhiali' ? .0018 : .003, 4), met)); }
+    return o;
+  }
+  // ---------------- I COLLETTI ----------------
+  // Il colletto di camicie e polo è una vela vera: parte dalla piega in cima al collo, si rovescia e si posa sopra quello che c'è sotto
+  // (misura attorno al collo: mai dentro), dietro stretto e alto, davanti scende in punte. La polo resta aperta sui due bottoni.
+  function colletti(outfit, B, T, AT) {
+    const Pt = window.Pittura; if (!Pt || !T) return; const PL = curPL || Pt.paintPlans(B, outfit), nY = Sartoria.neckY(B), [nx, nz] = B.neckC;
+    const tipi = /^(camicia|polo|camicia_aperta)$/, copre = /^(alto|cappuccio|alto_zip|montone|pelo|poncho|scialle)$/;
+    const idx = PL.map((C, i) => i).filter(i => tipi.test(PL[i].collo || '') && !PL.slice(i + 1).some(O => copre.test(O.collo || '') || tipi.test(O.collo || ''))).pop();
+    if (idx === undefined) return; const C = PL[idx], polo = C.collo === 'polo', aperta = C.collo === 'camicia_aperta', revers = PL.slice(idx + 1).some(O => /revers/.test(O.collo || ''));
+    // sotto una giacca coi revers il colletto sta sulla camicia (dentro il collo della giacca): si misura solo quello che sta sotto
+    const sub = revers ? outfit.filter(o => { const k = PL.findIndex(P0 => P0.id === o.id); return k < 0 || k <= idx; }) : outfit;
+    const M = revers ? misuraCollo(B, T, sub, Pt.paintPlans(B, sub)) : misuraCollo(B, T, outfit, PL), col = '#' + new THREE.Color().setRGB(C.A[0], C.A[1], C.A[2]).getHexString(), c2 = C.B ? '#' + new THREE.Color().setRGB(C.B[0], C.B[1], C.B[2]).getHexString() : col;
+    const mt = Pt.blockMat(C.fab === 'tartan' || C.fab === 'vichy' || C.fab === 'righe_v' || C.fab === 'fiori' || C.fab === 'liberty' ? C.fab : C.fab === 'pique' ? 'cotone' : C.fab || 'cotone', col, c2, C.C ? '#' + new THREE.Color().setRGB(C.C[0], C.C[1], C.C[2]).getHexString() : col, { vc: false, liscio: 1 });
+    const gap = polo ? .16 : aperta ? .3 : .05, yF = nY + (polo ? .028 : .032) - (aperta ? .014 : 0), NA = 56, NT = 5, th = .0032;
+    const pf = a => { const x = Math.max(0, 1 - Math.abs(a) / 1.1); return x * x; };   // quanto si è verso le punte
+    const pt = (a, t, d) => { const f = pf(a), W = (revers ? .022 : .036) + (aperta ? .05 : polo ? .028 : .036) * f, out = .3 + .12 * f;   // larghezza della vela; quanto si apre (poco: ricade sul collo, non si allarga a gorgiera)
+      const aa = a * (1 + .12 * f * t), yf = yF - (polo ? .016 : .024) * Math.pow(Math.max(0, Math.cos(a)), 2), y = yf - W * t * Math.sqrt(1 - out * out), r0 = M.maxR(aa, nY - .02, yf + .004) + .004;   // davanti la piega scende sotto il mento
+      let r = r0 + W * t * out + .003 * Math.sin(Math.PI * t) + d; const rf = M.maxR(aa, y - .006, y + .006) + .003 + d; if (r < rf) r = rf;
+      return new THREE.Vector3(nx + Math.sin(aa) * r, y, nz + Math.cos(aa) * r); };
+    const P = [], U = [], I = [], rows = [];
+    for (const side of [0, 1]) for (let i = 0; i <= NA; i++) { const a = side === 0 ? -Math.PI + (Math.PI - gap) * i / NA : gap + (Math.PI - gap) * i / NA; for (let j = 0; j <= NT; j++) for (const d of [0, th]) { const p = pt(a, j / NT, d); P.push(p.x, p.y, p.z); U.push(a * .12 * 6, j / NT * .04 * 6); } }
+    const id = (side, i, j, d) => ((side * (NA + 1) + i) * (NT + 1) + j) * 2 + d;
+    for (const side of [0, 1]) for (let i = 0; i < NA; i++) for (let j = 0; j < NT; j++) { const a = id(side, i, j, 1), b = id(side, i + 1, j, 1), c = id(side, i, j + 1, 1), d = id(side, i + 1, j + 1, 1); I.push(a, c, b, b, c, d);
+      const a2 = id(side, i, j, 0), b2 = id(side, i + 1, j, 0), c2_ = id(side, i, j + 1, 0), d2 = id(side, i + 1, j + 1, 0); I.push(a2, b2, c2_, b2, d2, c2_); }
+    for (const side of [0, 1]) { for (let i = 0; i < NA; i++) { const a = id(side, i, NT, 0), b = id(side, i + 1, NT, 0), c = id(side, i, NT, 1), d = id(side, i + 1, NT, 1); I.push(a, b, c, b, d, c); }   // lo spessore all'orlo
+      for (const ii of side ? [NA] : [0]) if ((side === 0 && ii === NA) || (side === 1 && ii === 0)) continue; }
+    // le punte davanti: il bordo che chiude ogni metà verso il centro
+    for (const [side, ii] of [[0, NA], [1, 0]]) for (let j = 0; j < NT; j++) { const a = id(side, ii, j, 0), b = id(side, ii, j + 1, 0), c = id(side, ii, j, 1), d = id(side, ii, j + 1, 1); I.push(a, b, c, b, d, c); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals();
+    const o = new THREE.Group(); o.add(new THREE.Mesh(g, mt));
+    // la piega (il filo d'ombra dove il colletto si rovescia) e, nella polo, il bordino a contrasto
+    if (C.fab === 'pique' || polo) { const L = []; for (let i = 0; i <= 40; i++) { const a = -Math.PI + i / 40 * Math.PI * 2; if (Math.abs(a) < gap) continue; L.push(pt(a, .88, th + .0006)); }
+      if (C.tipping !== false) { const cc = C.tip || (C.A[0] * .3 + C.A[1] * .59 + C.A[2] * .11 > .5 ? '#1e2a4a' : '#ece8dc'); [L.slice(0, L.length / 2), L.slice(L.length / 2)].forEach(seg => { if (seg.length > 2) o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(seg), seg.length * 2, .0016, 3), lm(cc))); }); } }
+    AT('Chest', o);
+  }
+  function sciarpa(c, B, T, outfit, opt) {
+    opt = opt || {};
+    const Pt = window.Pittura, Sa = Sartoria, PL = Pt.paintPlans(B, outfit), nY = Sa.neckY(B), [nx, nz] = B.neckC, tb = Pt.frame(B).tubes[0];
+    const righe = c.id === 'sciarpa_righe', mt = opt.mat || magliaMat(c.col, righe ? '#ece8dc' : null, righe ? .09 : 0), o = new THREE.Group();
+    const { rAt, maxR } = misuraCollo(B, T, outfit, PL);
+    // 2) i due giri: centro (altezza) per angolo, sezione a cuscino; il raggio interno sta sopra la misura su tutta l'altezza della sezione
+    const NS = 14, Rolls = [], front0 = {};
+    const roll = (yc, H, Th, drop, under) => {
+      const NAr = 72, inner = new Float32Array(NAr), ycA = new Float32Array(NAr);
+      for (let i = 0; i < NAr; i++) { const a = -Math.PI + i / NAr * Math.PI * 2, fa = Math.max(0, Math.cos(a)); ycA[i] = Math.min(yc - drop * fa * fa, T.chin - .012 - H / 2 * (fa > .3 ? 1 : 0) + (1 - fa) * .2);
+        let r = maxR(a, ycA[i] - H / 2, ycA[i] + H / 2) + .003; if (under) r = Math.max(r, under(a, ycA[i] - H / 2, ycA[i] + H / 2) + .001); inner[i] = r; }
+      for (let it = 0; it < 6; it++) { const c0 = inner.slice(); for (let i = 0; i < NAr; i++) inner[i] = Math.max(c0[i], (c0[(i + 1) % NAr] + c0[(i + NAr - 1) % NAr]) / 2); }   // giro tondo, niente denti
+      const P = [], U = [], I = [], prof = k => { const t = k / NS * Math.PI * 2, ct = Math.cos(t), st = Math.sin(t), e = .55; return [Math.sign(ct) * Math.pow(Math.abs(ct), e), Math.sign(st) * Math.pow(Math.abs(st), e)]; };   // superellisse: fianchi dritti, angoli tondi
+      let arc = 0; for (let i = 0; i <= NAr; i++) { const ii = i % NAr, a = -Math.PI + i / NAr * Math.PI * 2, wob = .0025 * Math.sin(a * 5 + yc * 40) + .0015 * Math.sin(a * 11);   // la maglia fa piccole onde
+        if (i) arc += (inner[ii] + Th / 2) * Math.PI * 2 / NAr;
+        for (let k = 0; k <= NS; k++) { const [pr, py] = prof(k), r = inner[ii] + Th / 2 + pr * Th / 2 + (pr > 0 ? wob : 0), y = ycA[ii] + py * H / 2; P.push(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r); U.push((k / NS) * (H + Th) * 1.3, arc); } }
+      for (let i = 0; i < NAr; i++) for (let k = 0; k < NS; k++) { const a = i * (NS + 1) + k, b = a + 1, cc = a + NS + 1, d = cc + 1; I.push(a, cc, b, b, cc, d); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); o.add(new THREE.Mesh(g, mt));
+      const outer = (a, ya, yb) => { const fi = (((a + Math.PI) / (Math.PI * 2) * NAr) % NAr + NAr) % NAr, i0 = Math.floor(fi) % NAr; const yc0 = ycA[i0]; return ya > yc0 + H / 2 || yb < yc0 - H / 2 ? 0 : inner[i0] + Th + .004; };
+      Rolls.push({ inner, ycA, H, Th, NAr }); return outer; };
+    const Th = .019, H1 = .058;
+    if (!opt.foulard) { const o1 = roll(nY + .03, H1, Th, .0, null); roll(nY - .006, H1 + .006, Th + .002, .028, o1);
+     const R2 = Rolls[1], iF = Math.round(R2.NAr / 2); Object.assign(front0, { y: R2.ycA[iF] - R2.H / 2 + .012, r: R2.inner[iF] }); }
+    // 3) i capi: nastri spessi che scendono sopra l'ultimo strato del petto, dal sotto del secondo giro; il corto sopra il lungo
+    const front = front0;
+    const tail = (aC, yEnd, wid, lift, flip, punta) => {
+      const n = 22, m = 6, th = opt.th || .011, PTS = [], yTop = front.y + .008, sOf = y => tb.sAtY(y);
+      for (let i = 0; i <= n; i++) { const t = i / n, y = lerp0(yTop, yEnd, t), sv = sOf(y), row = [];
+        for (let j = 0; j <= m; j++) { const a = aC + (j / m - .5) * wid / Math.max(.08, Pt.raggio(B, sv, aC)) * (punta ? Math.max(.04, 1 - t) : 1 - .12 * t), off = Pt.offAt(B, PL, 0, sv, a) + .004 + lift + .002 * Math.sin(t * 9 + j);   // le onde del lembo
+          let p = Pt.surfI(B, 0, sv, a, off); if (i === 0 || t < .12) { const q = new THREE.Vector3(nx + Math.sin(a) * (front.r + .004), y, nz + Math.cos(a) * (front.r + .004)); p = p.lerp(q, .5 * (1 - t / .12)); }   // la radice esce da sotto il giro
+          row.push(p); } PTS.push(row); }
+      const P = [], U = [], I = [], nrm = (i, j) => { const fr = Sa.frameAt(tb, sOf(lerp0(yTop, yEnd, i / n))), d = PTS[i][j].clone().sub(fr.p); d.addScaledVector(fr.t, -d.dot(fr.t)); return d.normalize(); };
+      const add = (p, u, v) => { P.push(p.x, p.y, p.z); U.push(u, v); return P.length / 3 - 1; };
+      const F = [], Bk = [];
+      for (let i = 0; i <= n; i++) { F.push([]); Bk.push([]); for (let j = 0; j <= m; j++) { const p = PTS[i][j], d = nrm(i, j), v = i / n * (front.y - yEnd), u = j / m * wid; F[i].push(add(p.clone().addScaledVector(d, th), u, v)); Bk[i].push(add(p, u, v)); } }
+      for (let i = 0; i < n; i++) for (let j = 0; j < m; j++) { I.push(F[i][j], F[i + 1][j], F[i][j + 1], F[i][j + 1], F[i + 1][j], F[i + 1][j + 1]); I.push(Bk[i][j], Bk[i][j + 1], Bk[i + 1][j], Bk[i][j + 1], Bk[i + 1][j + 1], Bk[i + 1][j]); }
+      for (const j of [0, m]) for (let i = 0; i < n; i++) I.push(F[i][j], Bk[i][j], F[i + 1][j], F[i + 1][j], Bk[i][j], Bk[i + 1][j]);
+      for (let j = 0; j < m; j++) I.push(F[n][j], Bk[n][j], F[n][j + 1], F[n][j + 1], Bk[n][j], Bk[n][j + 1]);
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); o.add(new THREE.Mesh(g, mt));
+      // le frange: ciuffi di filo che pendono dall'orlo
+      if (punta) return wid; const fm = lm(sh(c.col, .9)); for (let j = 0; j <= 7; j++) { const t = j / 7, p = PTS[n][0].clone().lerp(PTS[n][m], t), d = nrm(n, Math.round(t * m)); p.addScaledVector(d, th * .5); const L = .03 + .006 * hs2(j, 3), fr0 = new THREE.Mesh(new THREE.CylinderGeometry(.0022, .0016, L, 4), fm); fr0.position.copy(p).add(new THREE.Vector3(0, -L / 2 + .002, 0)); fr0.position.addScaledVector(d, .001); o.add(fr0); }
+      return wid;
+    };
+    if (opt.foulard) {   // il fazzoletto al collo: un giro sottile arrotolato, il triangolo che scende davanti e il nodo
+      roll(nY - .004, .026, .011, .012, null); const R0 = Rolls[0], iF = Math.round(R0.NAr / 2), fy = R0.ycA[iF] - R0.H / 2 + .006, fr0 = { y: fy, r: R0.inner[iF] };
+      Object.assign(front0, fr0); tail(0, fy - .11, .13, .0, 0, 1);
+      const kn = new THREE.Mesh(new THREE.SphereGeometry(.016, 10, 8), mt); kn.scale.set(1.3, .9, .8); kn.position.set(nx, R0.ycA[iF] - .004, nz + R0.inner[iF] + .014); o.add(kn); return o; }
+    tail(.32, B.waist + .07, .085, .0, 0);            // il capo lungo, sul petto a sinistra (di chi guarda: a destra)
+    tail(-.08, B.bones.Chest.y - .06, .08, .013, 1);   // il capo corto, sopra
+    return o;
+  }
+  // ---------------- LA PELLE DEI PEZZI ----------------
+  // Un pezzo costruito nello spazio del personaggio a riposo diventa una SkinnedMesh con i pesi della pelle più vicina
+  // (media dei 4 vertici del corpo più vicini, mani, piedi e testa esclusi se c'è altro): si piega col corpo come la stoffa dipinta sotto.
+  function pelle(g, obj, B) {
+    let ref = null; g.traverse(o => { if (!ref && o.isSkinnedMesh && !o.userData.vesti && /Body/i.test(o.name)) ref = o; }); if (!ref) g.traverse(o => { if (!ref && o.isSkinnedMesh && !o.userData.vesti) ref = o; }); if (!ref) return null;
+    if (!B._hash) { const H = new Map(), C = .04, I = window.Pittura ? Pittura.ironAll(B) : B.P; for (let i = 0; i < B.part.length; i++) { const pt = B.part[i]; if (!pt || /mani|piedi/.test(pt)) continue; const k = Math.floor(I[i * 3] / C) + ',' + Math.floor(I[i * 3 + 1] / C) + ',' + Math.floor(I[i * 3 + 2] / C); let a = H.get(k); if (!a) H.set(k, a = []); a.push(i); } B._hash = { H, C, I }; }
+    const { H, C, I } = B._hash, near = (x, y, z) => { const best = []; const cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C);
+      for (let r = 1; r <= 3 && best.length < 4; r++) { best.length = 0; for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) for (let k = -r; k <= r; k++) { const a = H.get((cx + i) + ',' + (cy + j) + ',' + (cz + k)); if (a) for (const q of a) { const d = (I[q * 3] - x) ** 2 + (I[q * 3 + 1] - y) ** 2 + (I[q * 3 + 2] - z) ** 2; best.push([d, q]); } } }
+      best.sort((a, b) => a[0] - b[0]); return best.slice(0, 4); };
+    obj.updateMatrixWorld(true); const v = new THREE.Vector3(), out = new THREE.Group(); out.userData.vesti = true;
+    const nm = new THREE.Matrix3().getNormalMatrix(B.reli);
+    obj.traverse(m => {
+      if (!m.isMesh) return; const g0 = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone(); if (!g0.attributes.normal) g0.computeVertexNormals(); g0.applyMatrix4(m.matrixWorld);
+      const n = g0.attributes.position.count, SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4), P = g0.attributes.position, N = g0.attributes.normal;
+      for (let i = 0; i < n; i++) { const L = near(P.getX(i), P.getY(i), P.getZ(i)), acc = new Map(); let tw = 0;
+        L.forEach(([d, q]) => { const f = 1 / (Math.sqrt(d) + .004); B.wts[q].forEach(([bi, w]) => { acc.set(bi, (acc.get(bi) || 0) + w * f); tw += w * f; }); });
+        const e = [...acc.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4); let s4 = 0; e.forEach(x => { s4 += x[1]; }); e.forEach((x, k) => { SI[i * 4 + k] = x[0]; SW[i * 4 + k] = x[1] / (s4 || 1); }); if (!e.length) SW[i * 4] = 1;
+        v.fromBufferAttribute(P, i).applyMatrix4(B.reli); P.setXYZ(i, v.x, v.y, v.z); v.fromBufferAttribute(N, i).applyMatrix3(nm).normalize(); N.setXYZ(i, v.x, v.y, v.z); }
+      g0.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(SI, 4)); g0.setAttribute('skinWeight', new THREE.Float32BufferAttribute(SW, 4));
+      const mat = m.material; const sm = new THREE.SkinnedMesh(g0, mat); sm.userData.vesti = true; sm.castShadow = true; sm.frustumCulled = false;
+      sm.position.copy(ref.position); sm.quaternion.copy(ref.quaternion); sm.scale.copy(ref.scale); ref.parent.add(sm); sm.bind(ref.skeleton, ref.bindMatrix); });
+    return out;
+  }
   function accessories(g, outfit, held, D) {
     if (!window.Sartoria || !D || !D.B) return accessoriesOld(g, outfit, held);
     if (window.Pittura) try { scarpe(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); } catch (e) { console.error('[Vesti3D] scarpe', e); }
-    if (window.Pittura) try { volumi(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); Pittura.bordi(g, D.B, outfit, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); cappuccio(g, outfit, D.B, (bone, obj) => Sartoria.attach(g, PARTI, bone, obj)); } catch (e) { console.error('[Vesti3D] volumi', e); }
-    const B = D.B, T = Sartoria.testa(g, PARTI), bn = B.bones, AT = (bone, obj) => Sartoria.attach(g, PARTI, bone, obj);
+    const ATP = (bone, obj) => /^(Chest|Hips|Torso|Abdomen|Neck)$/.test(bone) ? pelle(g, obj, D.B) : Sartoria.attach(g, PARTI, bone, obj);   // sul busto la pelle sotto; sugli arti l'osso (un anello sta su un segmento solo)   // [strati] tutto quello che sta sul corpo si piega col corpo (pesi della pelle sotto), non rigido su un osso
+    if (window.Pittura) try { volumi(g, outfit, D.B, ATP); Pittura.bordi(g, D.B, outfit, ATP); cappuccio(g, outfit, D.B, ATP); } catch (e) { console.error('[Vesti3D] volumi', e); }
+    curPL = window.Pittura ? Pittura.paintPlans(D.B, outfit) : null;
+    const B = D.B, T = Sartoria.testa(g, PARTI), bn = B.bones, AT = ATP;
     const lay = D.lay || [], outer = lay.reduce((m, l) => Math.max(m, l.t || 0), 0) + .004, th = D.th || {};
     // spessore sotto la giacca: la cravatta sta sopra la camicia e sotto il revers
     const underJ = lay.filter(l => l.cl < 4 && l.parti.includes('torso')).reduce((m, l) => Math.max(m, l.t), 0) + .004;
@@ -657,21 +1011,8 @@ var Vesti3D = (function () {
       if (!c.acc) return;
       const isHat = /^(pm_\w+|beanie|flat|fedora|scarf|ushanka|casco|elmetto|passamontagna|bandana|antigas|cap|snapback|docker|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc);
       if (isHat && T) { const o = /^(passamontagna|pm_)/.test(c.acc) ? balaclava(c, T, B) : /^(cap|snapback|docker|basco|fascia|police|paglia|hard|cowboy)$/.test(c.acc) ? headAcc2(c.acc, c.col, T, kh) : headAcc(c.acc, c.col, T, kh); kh++; o.position.set(T.cx, T.brow, T.cz); AT('Head', o); return; }
-      if (c.acc === 'occhiali' && T) {   // occhiali a goccia: lenti scure, montatura dorata, stanghette fino alle orecchie
-        const o = new THREE.Group(), y = T.eyeY - T.brow, z = T.eyeZ - T.cz + .014, lens = sx => { const L = new THREE.Mesh(new THREE.CircleGeometry(.026, 16), new THREE.MeshLambertMaterial({ color: '#0e1012', emissive: '#1a1e24', side: THREE.DoubleSide })); L.scale.set(1.1, .95, 1); L.position.set(sx, y - .004, z); L.rotation.y = sx > 0 ? .12 : -.12; return L; };
-        const fr = sx => { const f = new THREE.Mesh(new THREE.TorusGeometry(.027, .0025, 4, 18), lm('#c8a860')); f.scale.set(1.1, .95, 1); f.position.set(sx, y - .004, z + .001); f.rotation.y = sx > 0 ? .12 : -.12; return f; };
-        o.add(lens(-.034), lens(.034), fr(-.034), fr(.034), Bx(.022, .003, .003, '#c8a860', 0, y + .012, z + .002));
-        for (const sx of [-1, 1]) { const st = Bx(.003, .003, T.eyeZ - T.cz + .01, '#c8a860', sx * (T.rSkull + .004), y + .006, (T.eyeZ - T.cz) / 2 - .01); o.add(st); }
-        o.position.set(T.cx, T.brow, T.cz); AT('Head', o); return; }
-      if ((c.acc === 'sciarpa') && T) {   // sciarpa: due giri attorno al collo, i capi che scendono davanti, frange
-        const o = new THREE.Group(), mt = FM(c.id === 'sciarpa_righe' ? 'righe' : 'costine', c.col, c.id === 'sciarpa_righe' ? '#ece8dc' : c.col), nb = bn.Neck, R = Math.max(.072, (th.collo || 0) + .07);
-        const y0 = B.neck - .01; for (let i = 0; i < 2; i++) { const t = new THREE.Mesh(new THREE.TorusGeometry(R + i * .012, .026 - i * .004, 8, 24), mt); t.rotation.x = Math.PI / 2 + .12; t.position.set(nb.x, y0 + i * .03, nb.z - .005); t.scale.set(1.05, 1, .98); o.add(t); }
-        const P1 = trunkAt(B, B.bones.Chest.y - .05, .35, outer + .01), P2 = trunkAt(B, B.waist + .05, .3, outer + .012);
-        const end = (from, to, w) => { const cu = new THREE.CatmullRomCurve3([from, from.clone().lerp(to, .5).add(new THREE.Vector3(0, 0, .01)), to]), tg = new THREE.TubeGeometry(cu, 8, .022, 6); tg.scale(1, 1, 1); const m = new THREE.Mesh(tg, mt); m.scale.set(1, 1, .5); m.position.z = from.z * .5; return m; };
-        o.add(end(new THREE.Vector3(nb.x + .04, y0 - .01, nb.z + R * .8), P1.p.clone().add(new THREE.Vector3(.0, 0, .008))));
-        o.add(end(new THREE.Vector3(nb.x + .015, y0 - .01, nb.z + R * .9), P2.p.clone().add(new THREE.Vector3(-.02, 0, .01))));
-        for (let i = 0; i < 6; i++) o.add(Bx(.003, .03, .003, c.col, P2.p.x - .03 + i * .01, P2.p.y - .025, P2.p.z * .5 + .012));
-        AT('Chest', o); return; }
+      if (/^(occhiali|mascherina|ovali|shield)$/.test(c.acc) && T) { try { const o = occhiali(c, T, B); o.position.set(T.cx, T.brow, T.cz); AT('Head', o); } catch (e) { console.error('[Vesti3D] occhiali', e); } return; }
+      if ((c.acc === 'sciarpa') && T) { try { AT('Chest', sciarpa(c, B, T, outfit)); } catch (e) { console.error('[Vesti3D] sciarpa', e); } return; }
       if (c.acc === 'cravatta') {   // cravatta: nodo, pala che si allarga fino alla punta; sulla camicia, e si vede solo nello scollo di maglioni e giacche
         const P0 = window.Pittura, CUT = Sartoria.CUT_(), nY = Sartoria.neckY(B), sp = C0 => P0 ? P0.spessore(C0) : .004;
         const plans = outfit.filter(o => o.parti && o.parti.includes('torso')).map(o => Object.assign({ id: o.id }, CUT[o.id] || { cl: 1 }, (o.var && typeof o.var === 'object') ? o.var : {}));
@@ -694,68 +1035,47 @@ var Vesti3D = (function () {
           AT('Chest', o);
         }
         return; }
-      if (c.acc === 'papillon') { const o = new THREE.Group(), q = trunkAt(B, B.neck - .012, 0, underJ + .006), mt = FM('raso', c.col);
+      if (c.acc === 'papillon') { const o = new THREE.Group(), q = trunkAt(B, B.neck - .012, 0, .006), mt = FM('raso', c.col);
         [-1, 1].forEach(k => { const w = new THREE.Mesh(new THREE.ConeGeometry(.024, .05, 4), mt); w.rotation.z = k * Math.PI / 2; w.scale.set(1, 1, .45); w.position.copy(q.p).add(new THREE.Vector3(k * .026, 0, 0)); o.add(w); });
         o.add(Sp(.01, mt, q.p.x, q.p.y, q.p.z + .004)); AT('Chest', o); return; }
-      if (c.acc === 'collana' || c.acc === 'perle') {   // catenone che scende sul petto con la medaglia / filo di perle
-        const o = new THREE.Group(), pts = []; for (let i = 0; i <= 16; i++) { const a = -1.25 + i / 16 * 2.5, y = B.neck - .015 - Math.cos(a / 1.25 * Math.PI / 2) * (c.acc === 'perle' ? .05 : .09); pts.push(trunkAt(B, y, a, torsoOut + .003).p); }
-        const back = trunkAt(B, B.neck + .005, Math.PI, torsoOut + .003).p, l1 = trunkAt(B, B.neck, 1.9, torsoOut + .003).p, l2 = trunkAt(B, B.neck, -1.9, torsoOut + .003).p;
-        const all = [l2, ...pts, l1]; if (c.acc === 'perle') all.forEach((p, i) => { o.add(Sp(.0075, '#f4f0e6', p.x, p.y, p.z)); if (i < all.length - 1) { const m = p.clone().lerp(all[i + 1], .5); o.add(Sp(.0075, '#f4f0e6', m.x, m.y, m.z)); } });
-        else { const cu = new THREE.CatmullRomCurve3(all), tg = new THREE.TubeGeometry(cu, 40, .0035, 5, false); o.add(new THREE.Mesh(tg, lm(c.col))); const md = Cy(.016, .016, .004, c.col, pts[8].x, pts[8].y - .02, pts[8].z + .004, 12); md.rotation.x = Math.PI / 2; o.add(md); }
-        AT('Chest', o); return; }
-      if (c.acc === 'foulard') { const o = new THREE.Group(), q = trunkAt(B, B.neck - .01, 0, torsoOut + .004), mt = FM('paisley', c.col, sh(c.col, 1.5), '#2a2a3a');
-        const t = new THREE.Mesh(new THREE.TorusGeometry(.07, .014, 6, 18), mt); t.rotation.x = Math.PI / 2 + .2; t.position.set(bn.Neck.x, B.neck, bn.Neck.z); o.add(t);
-        const tri = new THREE.Mesh(new THREE.ConeGeometry(.045, .09, 3), mt); tri.rotation.x = Math.PI; tri.scale.z = .3; tri.position.copy(q.p).add(new THREE.Vector3(.01, -.04, .006)); o.add(tri); AT('Chest', o); return; }
+      if (c.acc === 'collana' || c.acc === 'perle' || c.acc === 'catenina') { try { AT('Chest', catena(c, B, Sartoria.testa(g, PARTI), outfit)); } catch (e) { console.error('[Vesti3D] catena', e); } return; }
+      if (c.acc === 'foulard') { try { AT('Chest', sciarpa(c, B, T, outfit, { foulard: 1, th: .004, mat: FM('paisley', c.col, sh(c.col, 1.5), '#2a2a3a') })); } catch (e) { console.error('[Vesti3D] foulard', e); } return; }
       if (c.acc === 'paraspalle') for (const s of ['L', 'R']) { const sg = s === 'L' ? 1 : -1, sp = bn['UpperArm' + s], o = new THREE.Group(), mt = FM('pelle', c.col);
-        const d = lathe([[.085, 0], [.08, .025], [.05, .045], [0, .05]], mt, 18); d.scale.set(1, .8, 1.15); d.rotation.z = -sg * .5; d.position.set(sp.x + sg * .005, sp.y + .02 + (th.braccia || 0), sp.z); o.add(d);
-        const strap = new THREE.Mesh(new THREE.TorusGeometry(.075 + (th.braccia || 0), .006, 4, 20), lm(sh(c.col, .6))); strap.position.set(sp.x + sg * .03, sp.y - .07, sp.z); strap.rotation.z = -sg * .35; strap.rotation.x = Math.PI / 2; o.add(strap); AT('UpperArm' + s, o); }
-      if (c.acc === 'paraginocchia') for (const s of ['L', 'R']) { const tb = Sartoria.tube(B, 'gamba' + s), sk = tb.sNear(bn['LowerLeg' + s]), q = Sartoria.surf(tb, sk, 0, (th.cosce || th.polpacci || 0) + .006), fr = Sartoria.frameAt(tb, sk), o = new THREE.Group();
+        const d = lathe([[.085, 0], [.08, .025], [.05, .045], [0, .05]], mt, 18); d.scale.set(1, .8, 1.15); d.rotation.z = -sg * .5; d.position.set(sp.x + sg * .005, sp.y + .02 + (curPL ? Pittura.offAt(B, curPL, s === 'L' ? 1 : 2, .03, Math.PI / 2) : th.braccia || 0), sp.z); o.add(d);
+        const strap = new THREE.Mesh(new THREE.TorusGeometry(.075 + (curPL ? Pittura.offAt(B, curPL, s === 'L' ? 1 : 2, .08, 0) : th.braccia || 0), .006, 4, 20), lm(sh(c.col, .6))); strap.position.set(sp.x + sg * .03, sp.y - .07, sp.z); strap.rotation.z = -sg * .35; strap.rotation.x = Math.PI / 2; o.add(strap); AT('UpperArm' + s, o); }
+      if (c.acc === 'paraginocchia') for (const s of ['L', 'R']) { const tb = Sartoria.tube(B, 'gamba' + s), sk = tb.sNear(bn['LowerLeg' + s]), q = limbAt(B, s === 'L' ? 3 : 4, sk, 0, .006).p, fr = Sartoria.frameAt(tb, sk), o = new THREE.Group();
         const pad = lathe([[.05, 0], [.048, .015], [.03, .025], [0, .028]], FM('gomma', c.col), 16); pad.scale.set(1, 1, 1.25); pad.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), q.clone().sub(fr.p).normalize()); pad.position.copy(q); o.add(pad);
         const st = new THREE.Mesh(new THREE.TorusGeometry(.07, .007, 4, 18), lm('#1a1a1c')); st.position.copy(fr.p).addScaledVector(fr.t, -.04); st.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), fr.t); o.add(st); AT('LowerLeg' + s, o); }
       if (c.acc === 'zaino') {   // zaino militare: corpo morbido, patta con le cinghie, tasche laterali, spallacci
-        const o = new THREE.Group(), mt = FM('tela', c.col, sh(c.col, .7)), q = trunkAt(B, bn.Chest.y - .06, Math.PI, outer), back = q.p, d = .16;
+        const o = new THREE.Group(), mt = FM('tela', c.col, sh(c.col, .7)), q = trunkAt(B, bn.Chest.y - .06, Math.PI, 0), back = q.p, d = .16;
         const body = new THREE.Mesh(new THREE.BoxGeometry(.32, .38, d, 4, 4, 2), mt); const bp = body.geometry.attributes.position; for (let i = 0; i < bp.count; i++) { const x = bp.getX(i), y = bp.getY(i), z = bp.getZ(i); bp.setZ(i, z * (1 - .25 * Math.pow(Math.abs(x) / .16, 3)) * (1 - .2 * Math.pow(Math.abs(y) / .19, 3))); } body.geometry.computeVertexNormals();
         body.position.set(back.x, back.y, back.z - d / 2 + .005); o.add(body);
         const flap = Bx(.3, .14, .03, FM('tela', sh(c.col, .9)), back.x, back.y + .13, back.z - d - .005); o.add(flap);
         for (const sx of [-1, 1]) { o.add(Bx(.025, .2, .006, '#2a2a22', back.x + sx * .08, back.y + .03, back.z - d - .02), Bx(.035, .022, .01, '#8a8a80', back.x + sx * .08, back.y - .06, back.z - d - .022));
           o.add(Bx(.05, .16, .09, mt, back.x + sx * .185, back.y - .07, back.z - d / 2)); }
-        for (const s of ['L', 'R']) { const sg = s === 'L' ? 1 : -1, f1 = trunkAt(B, B.neck - .03, sg * 2.4, outer + .002).p, f2 = trunkAt(B, B.neck - .02, sg * 1.2, outer + .004).p, f3 = trunkAt(B, bn.Chest.y - .1, sg * .9, outer + .004).p, f4 = trunkAt(B, B.waist + .08, sg * 1.6, outer + .003).p;
+        for (const s of ['L', 'R']) { const sg = s === 'L' ? 1 : -1, f1 = trunkAt(B, B.neck - .03, sg * 2.4, .002).p, f2 = trunkAt(B, B.neck - .02, sg * 1.2, .004).p, f3 = trunkAt(B, bn.Chest.y - .1, sg * .9, .004).p, f4 = trunkAt(B, B.waist + .08, sg * 1.6, .003).p;
           const cu = new THREE.CatmullRomCurve3([f1, f2, f3, f4]); const tg = new THREE.TubeGeometry(cu, 16, .012, 4); o.add(new THREE.Mesh(tg, lm('#2a2a22'))); }
         AT('Chest', o); }
       if (c.acc === 'marsupio') {   // marsupio: cintura che gira attorno, tasca con la zip davanti
-        const o = new THREE.Group(), tb = Sartoria.tube(B, 'tronco'), y = B.waist - .02, s = tb.sAtY(y), P = []; for (let i = 0; i <= 32; i++) P.push(Sartoria.surf(tb, s, -Math.PI + i / 32 * Math.PI * 2, outer + .002));
+        const o = new THREE.Group(), tb = Sartoria.tube(B, 'tronco'), y = B.waist - .02, s = tb.sAtY(y), P = []; for (let i = 0; i <= 32; i++) P.push(trunkAt(B, y, -Math.PI + i / 32 * Math.PI * 2, .003).p);
         o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(P, true), 40, .008, 4, true), lm('#1e1e24')));
-        const q = trunkAt(B, y - .01, .15, outer + .03).p, po = new THREE.Mesh(sacca(.2, .09, .05, .04, .012), FM('nylon', c.col, c.col, c.col, 1)); po.position.copy(q); o.add(po, Bx(.13, .004, .005, '#1a1a1a', q.x, q.y + .025, q.z + .025)); AT('Hips', o); }
-      if (c.acc === 'borsello' || c.acc === 'tracolla') {   // borsello (sul fianco, davanti) e marsupio a tracolla (di traverso sul petto): tela tecnica, zip, cinghia sottile sulla spalla opposta
-        const o = new THREE.Group(), chest = c.acc === 'tracolla', mt = FM('nylon', c.col, c.col, c.col, 1), sp = bn.ShoulderR || bn.UpperArmR;
-        const at = chest ? trunkAt(B, bn.Chest.y - .03, -.25, outer + (chest ? .028 : .035)) : trunkAt(B, B.waist + .04, .7, outer + .035), q = at.p, nrm = q.clone().sub(at.fr.p).setY(0).normalize();
-        const body = chest ? new THREE.Mesh(sacca(.2, .085, .045, .038, .012), mt) : new THREE.Mesh(sacca(.13, .17, .04, .02, .01), mt);
-        if (chest) body.rotation.z = -.55;
-        const pv = new THREE.Group(); pv.add(body); pv.position.copy(q); pv.lookAt(q.clone().add(nrm)); o.add(pv);
-        // la zip e la toppa
-        const zip = Bx(chest ? .15 : .11, .004, .004, '#141416', 0, chest ? .018 : .045, chest ? .026 : .024); if (chest) { zip.rotation.z = -.55; zip.position.set(0, 0, .026); } pv.add(zip);
-        const tag = Bx(.03, .02, .003, lm(/^#[0-3]/.test(c.col) ? '#d8d4cc' : '#1a1a1c'), chest ? -.02 : 0, chest ? -.01 : -.02, chest ? .027 : .024); pv.add(tag);
-        const top = new THREE.Vector3(sp.x - .01, sp.y + .055 + outer, sp.z), backP = trunkAt(B, bn.Chest.y - .02, Math.PI - .5, outer + .006).p, frontP = trunkAt(B, bn.Chest.y + .02, -.9, outer + .006).p, side = trunkAt(B, chest ? bn.Chest.y - .07 : B.waist + .06, chest ? 1.4 : 1.6, outer + .008).p;
-        const cu = new THREE.CatmullRomCurve3([q.clone().add(new THREE.Vector3(-.05, .04, -.01)), frontP, top, backP, trunkAt(B, chest ? bn.Chest.y - .08 : B.waist + .05, Math.PI - 2, outer + .006).p, side, q.clone().add(new THREE.Vector3(.06, .03, -.01))]);
-        o.add(new THREE.Mesh(new THREE.TubeGeometry(cu, 48, .0045, 4), lm('#141416'))); AT('Chest', o); }
-      if (c.acc === 'catenina') {   // catenina sottile d'argento, corta, col ciondolo
-        const o = new THREE.Group(), pts = []; for (let i = 0; i <= 16; i++) { const a = -1.3 + i / 16 * 2.6, y = B.neck - .01 - Math.cos(a / 1.3 * Math.PI / 2) * .05; pts.push(trunkAt(B, y, a, torsoOut + .002).p); }
-        const l1 = trunkAt(B, B.neck + .005, 2, torsoOut + .002).p, l2 = trunkAt(B, B.neck + .005, -2, torsoOut + .002).p, cu = new THREE.CatmullRomCurve3([l2, ...pts, l1]);
-        o.add(new THREE.Mesh(new THREE.TubeGeometry(cu, 40, .0018, 4), lm(c.col))); o.add(Sp(.006, c.col, pts[8].x, pts[8].y - .008, pts[8].z + .003)); AT('Chest', o); }
+        const q = trunkAt(B, y - .01, .15, .03).p, po = new THREE.Mesh(sacca(.2, .09, .05, .04, .012), FM('nylon', c.col, c.col, c.col, 1)); po.position.copy(q); o.add(po, Bx(.13, .004, .005, '#1a1a1a', q.x, q.y + .025, q.z + .025)); AT('Hips', o); }
+      if (c.acc === 'borsello' || c.acc === 'tracolla') { try { AT('Chest', tracolla(c, B, outfit)); } catch (e) { console.error('[Vesti3D] tracolla', e); } }
       if (c.acc === 'borsetta') {   // borsetta: corpo con la patta, chiusura dorata, tracolla alla spalla
-        const o = new THREE.Group(), mt = FM('pelle', c.col, c.col, c.col, 1), sp = bn.ShoulderL, hip = trunkAt(B, bn.Hips.y + .02, 1.7, outer + .03).p;
+        const o = new THREE.Group(), mt = FM('pelle', c.col, c.col, c.col, 1), sp = bn.ShoulderL, hip = trunkAt(B, bn.Hips.y + .02, 1.7, .03).p;
         const bb = new THREE.Mesh(sacca(.2, .12, .05, .03, .008), mt); bb.rotation.y = Math.PI / 2 - .3; bb.position.copy(hip); o.add(bb);
         const fl = Bx(.16, .05, .012, mt, hip.x, hip.y + .03, hip.z); fl.rotation.y = Math.PI / 2 - .3; o.add(fl); o.add(Bx(.015, .012, .006, '#d8b860', hip.x + .02, hip.y + .01, hip.z + .03));
-        const top = new THREE.Vector3(sp.x + .02, sp.y + .06 + outer, sp.z), cu = new THREE.CatmullRomCurve3([hip.clone().add(new THREE.Vector3(0, .04, -.03)), new THREE.Vector3(top.x + .04, (top.y + hip.y) / 2, top.z - .06), top, new THREE.Vector3(top.x - .06, top.y - .02, top.z + .09), hip.clone().add(new THREE.Vector3(-.01, .04, .04))]);
+        const top = trunkAt(B, Sartoria.neckY(B) - .03, 1.3, .007).p, cu = new THREE.CatmullRomCurve3([hip.clone().add(new THREE.Vector3(0, .04, -.03)), new THREE.Vector3(top.x + .04, (top.y + hip.y) / 2, top.z - .06), top, new THREE.Vector3(top.x - .06, top.y - .02, top.z + .09), hip.clone().add(new THREE.Vector3(-.01, .04, .04))]);
         o.add(new THREE.Mesh(new THREE.TubeGeometry(cu, 24, .005, 4), lm('#2a1a14'))); AT('Chest', o); }
       if (c.acc === 'orologio') { const tb = Sartoria.tube(B, 'manicaL'), s = tb.sNear(bn.WristL) - .035, fr = Sartoria.frameAt(tb, s), o = new THREE.Group(); let best = 0, bx = -9; for (let a = -Math.PI; a < Math.PI; a += .2) { const p = Sartoria.surf(tb, s, a, 0); if (p.x > bx) { bx = p.x; best = a; } }
-        const ring = []; for (let i = 0; i <= 16; i++) ring.push(Sartoria.surf(tb, s, -Math.PI + i / 16 * Math.PI * 2, (th.avambracci || 0) + .004)); o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ring, true), 20, .006, 4, true), lm('#2a2a2e')));
-        const fp = Sartoria.surf(tb, s, best, (th.avambracci || 0) + .009), face = Cy(.016, .016, .008, c.col, fp.x, fp.y, fp.z, 14); face.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), fp.clone().sub(fr.p).normalize()); o.add(face);
+        const ring = []; for (let i = 0; i <= 16; i++) ring.push(limbAt(B, 1, s, -Math.PI + i / 16 * Math.PI * 2, .004).p); o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ring, true), 20, .006, 4, true), lm('#2a2a2e')));
+        const fp = limbAt(B, 1, s, best, .009).p, face = Cy(.016, .016, .008, c.col, fp.x, fp.y, fp.z, 14); face.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), fp.clone().sub(fr.p).normalize()); o.add(face);
         const dial = Cy(.012, .012, .009, '#f0ece0', fp.x, fp.y, fp.z, 14); dial.quaternion.copy(face.quaternion); o.add(dial); AT('WristL', o); }
       if (c.acc === 'anelli') for (const s of ['L', 'R']) { const w = bn['Wrist' + s], o = new THREE.Group(), sg = s === 'L' ? 1 : -1; const t = new THREE.Mesh(new THREE.TorusGeometry(.011, .003, 5, 10), lm(c.col)); t.position.set(w.x + sg * .012, w.y - .085, w.z + .02); t.rotation.x = Math.PI / 2; o.add(t); AT('Wrist' + s, o); }
       if (c.acc === 'tacco' && !window.Pittura) for (const s of ['L', 'R']) { const f = bn['Foot' + s], o = new THREE.Group(); let mz = 9, mx = 0; for (let i = 0; i < B.part.length; i++) if (B.part[i] === 'piedi' && B.side[i] === (s === 'L' ? 1 : -1) && B.P[i * 3 + 1] < .05) { if (B.P[i * 3 + 2] < mz) { mz = B.P[i * 3 + 2]; mx = B.P[i * 3]; } }
         if (mz < 9) { o.add(Cy(.012, .008, .055, c.col, mx, .028, mz + .02, 8)); AT('Foot' + s, o); } }
     });
+    try { colletti(outfit, B, T, AT); } catch (e) { console.error('[Vesti3D] colletti', e); }
     // nella sinistra
     if (held) { const wL = bn.WristL, o = new THREE.Group(), p = wL.clone().add(new THREE.Vector3(.01, -.08, .04)); const C0 = typeof Oggetti !== 'undefined' && Oggetti.CAT[held]; const big = C0 && C0.peso > 1;
       const om = window.Officina && Officina.held(held); let m = om || null;
@@ -803,9 +1123,14 @@ var Vesti3D = (function () {
   // [fluido] vestire è un lavoro in fasi (sartoria, parti coperte, gusci, pittura, accessori): dressGen le fa una per volta.
   // dress le fa tutte subito (il giocatore, i ritratti); gli abitanti in strada le fanno una per fotogramma (render.js, a
   // budget) e restano invisibili finché non sono vestiti: niente fotogramma lungo quando qualcuno entra in scena.
+  // [proporzioni] il manichino del kit ha la testa grossa e le braccia corte ed esili (il polso finisce sopra l'inguine).
+  // Dopo aver vestito (le misure e gli agganci si fanno sul corpo a riposo) si scalano le ossa: testa più piccola, braccio
+  // più lungo e più pieno, la mano di nuovo della sua misura. Le animazioni non toccano le scale. A ogni vestizione si riparte da 1
+  const PROP = { Head: .9, UpperArmL: 1.18, UpperArmR: 1.18, WristL: 1 / 1.18, WristR: 1 / 1.18 };
+  function proporzioni(g, on) { const m = g.userData.model && g.userData.model.isObject3D ? g.userData.model : g; for (const n in PROP) { const b = m.getObjectByName(n); if (b && b.isBone) b.scale.setScalar(on ? PROP[n] : 1); } }
   function dress(g, outfit, look, held, seed) { const it = dressGen(g, outfit, look, held, seed); while (!it.next().done); }
   function* dressGen(g, outfit, look, held, seed) {
-    strip(g); bare(g, look);
+    proporzioni(g, false); strip(g); bare(g, look);
     // gli abitanti: ogni capo nella sua variante (scollo a V, collo alto, righe, quadri…), sempre la stessa per persona
     if (seed !== undefined && window.Sartoria) outfit.forEach(c => { const V = Sartoria.VARIANTI[c.id]; if (V && !c.var) c.var = V[hsh(String(seed) + c.id) % V.length]; });
     // il corredo a scatole di models.js: via (resta solo quello che non è un vestito, come i baffi)
@@ -839,6 +1164,7 @@ var Vesti3D = (function () {
     yield;
     try { accessories(g, outfit, held, D); } catch (e) { console.error('[Vesti3D] pezzi', e); }
     if (window.Officina) try { Officina.onDress(g, outfit); } catch (e) { console.error('[Vesti3D] officina', e); }   // [studio]
+    proporzioni(g, true);
   }
   const npcByLook = new WeakMap(); let npcSt = null;
   function npcOf(look) {
@@ -873,5 +1199,5 @@ var Vesti3D = (function () {
     requestAnimationFrame(loop);
   }
   const iv = setInterval(() => { if (hook()) { clearInterval(iv); requestAnimationFrame(loop); } }, 50);
-  return { dress, strip, players, analyze, PARTI, fromLook, EXTRA };
+  return { dress, strip, proporzioni, players, analyze, PARTI, fromLook, EXTRA };
 })();

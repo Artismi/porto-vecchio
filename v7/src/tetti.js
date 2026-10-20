@@ -59,6 +59,11 @@ var Tetti = (function () {
     if (d[1] >= b.y + b.h) return 'S'; if (d[1] < b.y) return 'N'; if (d[0] >= b.x + b.w) return 'E'; if (d[0] < b.x) return 'W'; return null;
   }
   const LADDERS = [];
+  // [pulizia2] i pezzi urbani grandi della città nuova (W.pezzi, le caselle che riservano): una scala che ci sta dietro, vista dalla camera
+  // (che guarda da sud-est), non si vede; meglio un altro lato
+  const PZ = (W.pezzi || []).filter(p => p.imp && p.tipo !== 'binari' && p.tipo !== 'bitta'), CAM = Math.SQRT1_2;
+  const inPz = (x, y, pad0) => PZ.some(p => { const pad = /portico|porta_terra|tettoia/.test(p.tipo) ? pad0 + 2 : pad0, c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c; return p.imp.some(r => l >= r[1] - pad && l <= r[2] + pad && z >= r[3] - pad && z <= r[4] + pad); });   // le volte dei portici sporgono oltre le caselle riservate
+  const coperta = (wx, wy, ox, oy) => { if (!PZ.length) return false; for (let a = .3; a <= 2.3; a += .5) for (let b = 0; b <= 8; b += 1) if (inPz(wx + ox * a + CAM * b, wy + oy * a + CAM * b, .3)) return true; return false; };
   function buildLadders() {
     LADDERS.length = 0;
     const used = new Set();
@@ -75,9 +80,11 @@ var Tetti = (function () {
           if (other >= 0 && other !== bi && B[other]) { if (roofRule(B[other]) < roofRule(b) - 1.5) foot = other; else continue; }   // dal tetto più basso del vicino
           else if (!G.walkT(tx, ty)) continue;
           let s = (sd.f === front ? -4 : 0) + (k === 0 || k === sd.n - 1 ? 2 : 0) + (sd.f === 'E' || sd.f === 'W' ? 1 : 0) + (foot >= 0 ? -3 : 0);
+          // [pulizia2] davanti alla scala, verso la camera, non deve esserci un pezzo grande (arco, portico, mura, tettoia): la coprirebbe
+          const cop = (() => { const [wx0, wy0] = sd.wall(k), [ox0, oy0] = sd.out; return coperta(wx0, wy0, ox0, oy0); })(); if (cop) s -= 8;
           // la casella davanti alla scala deve avere un po' di spazio (non un budello fra due muri ciechi)
           if (foot < 0) { const [ox, oy] = sd.out; if (!G.walkT(tx + ox, ty + oy)) s -= 1.5; }
-          cand.push({ s, sd, k, tx, ty, foot });
+          cand.push({ s, sd, k, tx, ty, foot, cop });
         }
       });
       if (!cand.length) return;
@@ -85,9 +92,15 @@ var Tetti = (function () {
       const take = b.w * b.h >= 30 ? 2 : 1, got = [];
       for (const c of cand) {
         if (got.length >= take) break;
-        if (got.some(g => g.sd.f === c.sd.f)) continue;
+        if (got.some(g => g.sd.f === c.sd.f) || (c.cop && got.length)) continue;   // [pulizia2] la seconda scala solo se si vede
         got.push(c); used.add(c.ty * GW + c.tx);
-        const [wx, wy] = c.sd.wall(c.k), [ox, oy] = c.sd.out;
+        let [wx, wy] = c.sd.wall(c.k), [ox, oy] = c.sd.out;
+        // [città2] la casa che segue la strada è girata attorno al suo centro (render.js rotRec): la scala gira con il muro
+        const rot = b.rot && !b.sign && !b.shop ? b.rot : 0;
+        if (rot) { const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, co = Math.cos(rot), si = Math.sin(rot), qx = wx - cx, qy = wy - cy;
+          wx = cx + qx * co - qy * si; wy = cy + qx * si + qy * co; const nx = ox * co - oy * si, ny = ox * si + oy * co; ox = nx; oy = ny;
+          const fx2 = wx + ox * .55, fy2 = wy + oy * .55, d0 = b.door ? hyp(fx2 - (b.door[0] + .5) * TS, fy2 - (b.door[1] + .5) * TS) : 99;
+          if ((c.foot < 0 && !G.walkM(fx2, fy2)) || bAt(wx - ox * .8, wy - oy * .8) !== bi || bAt(wx - ox * 1.6, wy - oy * 1.6) !== bi || d0 < 2.6) { got.pop(); used.delete(c.ty * GW + c.tx); continue; } }
         LADDERS.push({ i: LADDERS.length, bi, f: c.sd.f, x: wx, y: wy, ox, oy, fx: wx + ox * .55, fy: wy + oy * .55, tx: wx - ox * .8, ty: wy - oy * .8, footB: c.foot, ang: Math.atan2(oy, ox) });
       }
     });
@@ -104,7 +117,7 @@ var Tetti = (function () {
   function buildPlanks() {
     PLANKS.length = 0; PCELL.clear();
     const pairs = new Set(), per = new Map(), ladTops = LADDERS.map(L => [L.tx, L.ty]);
-    const okB = b => b && !b.lighthouse && !b.kiosk && !b.barrack && !b.military && !b.church && b.w >= 2 && b.h >= 2;
+    const okB = b => b && !b.lighthouse && !b.kiosk && !b.barrack && !b.military && !b.church && !b.rot && b.w >= 2 && b.h >= 2;   // [città2] non sulle case girate
     B.forEach((b, bi) => {
       if (!okB(b)) return;
       sidesOf(b).forEach(sd => {
@@ -121,7 +134,8 @@ var Tetti = (function () {
         runs.forEach((R, bj) => {
           const c = B[bj], key = Math.min(bi, bj) + ':' + Math.max(bi, bj);
           if (!okB(c) || pairs.has(key) || Math.abs(roofRule(b) - roofRule(c)) > 2.4) return;
-          if ((per.get(bi) || 0) >= 3 || (per.get(bj) || 0) >= 3) return;
+          const pmax = b.era || c.era ? 1 : 3;   // [città2] nella città per epoche una passerella per casa: le assi non devono coprire i vicoli
+          if ((per.get(bi) || 0) >= pmax || (per.get(bj) || 0) >= pmax) return;
           const cnt = {}; R.forEach(q => cnt[q.g] = (cnt[q.g] || 0) + 1); const g = +Object.keys(cnt).sort((u, v) => cnt[v] - cnt[u])[0], R2 = R.filter(q => q.g === g);
           if (R2.length < 2) return;   // almeno due caselle di muro dritto di fronte
           const m = R2[Math.floor(R2.length / 2)], [wx, wy] = sd.wall(m.k);
@@ -160,6 +174,24 @@ var Tetti = (function () {
     return null;
   }
   buildPlanks();
+
+  // [pulizia2] I SALTI FATTIBILI: dove fra due tetti di quota simile (entro 1,2 m) c'è un vicolo di una casella (2 m, si salta), i due
+  // bordi hanno la copertina color crema: lo stesso segno delle teste delle passerelle e del gradino ai piedi delle scale. Il percorso
+  // sui tetti si legge così, con un linguaggio solo: ferro color minio per salire, crema per dove si passa. Solo grafica (le regole restano).
+  const JUMPS = [];
+  function buildJumps() {
+    JUMPS.length = 0; const seen = new Set(), okJ = b => b && !b.lighthouse && !b.kiosk && !b.church && !b.rot && !b.pezzo && b.w >= 2 && b.h >= 2;
+    B.forEach((b, bi) => { if (!okJ(b)) return;
+      sidesOf(b).forEach(sd => { const [ox, oy] = sd.out; let run = null;
+        const flush = () => { if (run && run.k1 > run.k0) { JUMPS.push(run); seen.add(run.bi + ':' + run.bj); } run = null; };
+        for (let k = 0; k < sd.n; k++) { const [tx, ty] = sd.tile(k), tx2 = tx + ox, ty2 = ty + oy, o = inb(tx2, ty2) ? BI[ty2 * GW + tx2] : -1;
+          const gap = inb(tx, ty) && BI[ty * GW + tx] < 0 && G.walkT(tx, ty), c = o >= 0 ? B[o] : null;
+          const ok = gap && c && o !== bi && okJ(c) && Math.abs(roofRule(b) - roofRule(c)) <= 1.2 && !seen.has(o + ':' + bi);
+          if (ok && run && run.bj === o && run.k1 === k - 1) run.k1 = k; else { flush(); if (ok) run = { bi, bj: o, sd, k0: k, k1: k, ox, oy }; } }
+        flush(); });
+    });
+  }
+  buildJumps();
 
   // ---------------- [tetti2] I BELVEDERI: i tetti più alti di ogni quartiere ----------------
   // Un motivo per salire: in cima ai palazzi più alti c'è un angolo con la panca e la bandierina. Arrivarci la prima volta
@@ -368,23 +400,33 @@ var Tetti = (function () {
   function scanRoof(R, bi) { const J = scanStart(R, bi); if (J === null) return true; if (!J) return false; return scanWork(J, Infinity); }
   function ladderGeo() {
     const T3 = THREE, box = new T3.BoxGeometry(1, 1, 1);
-    const iron = new T3.MeshStandardMaterial({ color: '#3b3a3c', metalness: .55, roughness: .55 }), rust = new T3.MeshStandardMaterial({ color: '#6a3c28', metalness: .3, roughness: .8 });
+    // [pulizia2] il ferro delle scale è color minio (l'antiruggine): stacca da ogni intonaco, chiaro o scuro, e si legge da lontano
+    const iron = new T3.MeshStandardMaterial({ color: '#b8462a', metalness: .35, roughness: .55 }), rust = new T3.MeshStandardMaterial({ color: '#7a3a24', metalness: .3, roughness: .8 });
+    const crema = new T3.MeshStandardMaterial({ color: '#efe6cc', roughness: .7, emissive: '#3a3628', emissiveIntensity: .5 });
     // [tetti2] leggibilità: fascia gialla ai piedi delle scale, lanterna calda in cima; assi, corda, panca e bandierina
     const yell = new T3.MeshStandardMaterial({ color: '#e8b828', roughness: .6 }), lamp = new T3.MeshBasicMaterial({ color: '#ffd27a', toneMapped: false });
     const wood = new T3.MeshStandardMaterial({ color: '#8a6a44', roughness: .9 }), rope = new T3.MeshStandardMaterial({ color: '#c8b48a', roughness: 1 }), flag = new T3.MeshStandardMaterial({ color: '#c8302a', roughness: .8, side: T3.DoubleSide });
-    return { box, iron, rust, yell, lamp, wood, rope, flag };
+    return { box, iron, rust, yell, lamp, wood, rope, flag, crema };
   }
   // le scale: due montanti, i pioli ogni 30 cm, la gabbia sopra i 2,5 m, il corrimano che scavalca il bordo del tetto
   function buildLaddersGfx(R) {
     const T3 = THREE, scene = R.__models.scene; if (!scene) return;
     if (GFX.meshes) GFX.meshes.forEach(m => { scene.remove(m); });
-    const G3 = GFX.geo || (GFX.geo = ladderGeo()), rails = [], rungs = [], hoops = [], yel = [], lamps = [], boards = [], ropes = [], flags = [];
+    const G3 = GFX.geo || (GFX.geo = ladderGeo()), rails = [], rungs = [], hoops = [], yel = [], lamps = [], boards = [], ropes = [], flags = [], crema = [];
     const m4 = new T3.Matrix4(), q = new T3.Quaternion(), e = new T3.Euler(), s3 = new T3.Vector3(), p3 = new T3.Vector3();
     const put = (arr, x, y, z, sx, sy, sz, yaw) => { e.set(0, yaw, 0); q.setFromEuler(e); arr.push(m4.compose(p3.set(x, y, z), q, s3.set(sx, sy, sz)).clone()); };
     LADDERS.forEach(L => {
       const y0 = footH(L), y1 = topH(L) + .95, Hh = y1 - y0; if (Hh < .5 || Hh > 40) return;
       const off = .2, cx = L.x + L.ox * off, cz = L.y + L.oy * off, yaw = -L.ang;   // 20 cm fuori dal muro
       const sx = -L.oy * .22, sz = L.ox * .22;   // i due montanti, 44 cm l'uno dall'altro
+      const bb = B[L.bi], old = bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');
+      put(crema, L.x + L.ox * .38, y0 + .06, L.y + L.oy * .38, .5, .12, .78, yaw);   // [pulizia2] il primo gradino, chiaro, ai piedi della scala
+      if (old) {   // [epoche] nel borgo, sull'Ottocento e sul regime niente scala di ferro: le staffe alla marinara murate nella parete (pioli a U, ruggine)
+        const wx = L.x + L.ox * .02, wz = L.y + L.oy * .02;
+        for (let y = y0 + .35; y < y1 - .85; y += .32) { put(rungs, wx + L.ox * .16, y, wz + L.oy * .16, .03, .03, .4, yaw); for (const s of [-1, 1]) put(rungs, wx + L.ox * .08 + sx * s * .9, y, wz + L.oy * .08 + sz * s * .9, .16, .03, .03, yaw); }
+        for (const s of [-1, 1]) put(rails, cx - L.ox * .3 + sx * s, y1 - .3, cz - L.oy * .3 + sz * s, .04, .6, .04, yaw);   // i due ferri che aiutano a scavalcare il parapetto
+        put(lamps, wx + L.ox * .1, y1 - .2, wz + L.oy * .1, .1, .12, .1, yaw); put(lamps, wx + L.ox * .1, y0 + 2.3, wz + L.oy * .1, .08, .1, .08, yaw); return;   // [pulizia2] e una lucina all'attacco, a 2,3 m
+      }
       for (const s of [-1, 1]) put(rails, cx + sx * s, y0 + Hh / 2, cz + sz * s, .05, Hh, .05, yaw);
       for (let y = y0 + .3; y < y1 - .9; y += .3) put(rungs, cx, y, cz, .03, .03, .44, yaw);
       // il corrimano ad arco sopra il bordo: due montanti che piegano verso il tetto
@@ -408,12 +450,18 @@ var Tetti = (function () {
       for (let k = 0; k < 3; k++) { const [x1, z1] = pt(S[k]), [x2, z2] = pt(S[k + 1]);
         for (const t of [-.32, .32]) seg(boards, x1 + P.px * t, h[k] - .06, z1 + P.py * t, x2 + P.px * t, h[k + 1] - .06, z2 + P.py * t, .1, .1, yaw);   // le travi
         const L = S[k + 1] - S[k]; for (let u = .12; u < L; u += .28) { const s2 = S[k] + u, [x, z] = pt(s2); e.set(0, yaw, 0); q.setFromEuler(e); boards.push(m4.compose(p3.set(x, plankH(P, s2) - .02, z), q, s3.set(.22, .04, .96)).clone()); } }
+      for (const s2 of [P.s1, P.s2]) { const [x, z] = pt(s2); e.set(0, yaw, 0); q.setFromEuler(e); crema.push(m4.compose(p3.set(x, plankH(P, s2) + .01, z), q, s3.set(.3, .05, 1.0)).clone()); }   // [pulizia2] le teste chiare sui due bordi
       for (const t of [-1, 1]) {   // paletti e corda solo sul tratto sospeso
         const [xa, za] = pt(S[1]), [xb, zb] = pt(S[2]), oa = [xa + P.px * t * .5, za + P.py * t * .5], ob = [xb + P.px * t * .5, zb + P.py * t * .5];
         put(ropes, oa[0], h[1] + .45, oa[1], .06, .9, .06, yaw); put(ropes, ob[0], h[2] + .45, ob[1], .06, .9, .06, yaw);
         seg(ropes, oa[0], h[1] + .88, oa[1], ob[0], h[2] + .88, ob[1], .03, .03, yaw);
       }
     });
+    // [pulizia2] i salti fattibili: la copertina crema sui due bordi del vicolo
+    JUMPS.forEach(J => { const yaw = -Math.atan2(J.oy, J.ox);
+      for (let k = J.k0; k <= J.k1; k++) { const [wx, wy] = J.sd.wall(k), bx = wx + J.ox * TS, by = wy + J.oy * TS;
+        const ha = edgeH(J.bi, wx, wy, J.ox, J.oy), hb = edgeH(J.bj, bx, by, -J.ox, -J.oy);
+        put(crema, wx - J.ox * .16, ha + .03, wy - J.oy * .16, .32, .06, TS - .06, yaw); put(crema, bx + J.ox * .16, hb + .03, by + J.oy * .16, .32, .06, TS - .06, yaw); } });
     // [tetti2] i belvederi: la panca verso il panorama, il palo con la bandierina rossa
     BELV.forEach(v => {
       const y = roofH(v.bi, v.x, v.y) ?? roofRule(B[v.bi]), yaw = (v.i * 1.7) % 6.283;
@@ -427,7 +475,7 @@ var Tetti = (function () {
       lamps.push(m4.compose(p3.set(fx, y + 2.86, fz), q, s3.set(.1, .1, .1)).clone());
     });
     const mk = (arr, m) => { const im = new T3.InstancedMesh(G3.box, m, Math.max(1, arr.length)); arr.forEach((mm, i) => im.setMatrixAt(i, mm)); im.count = arr.length; im.castShadow = true; im.receiveShadow = true; im.userData.noRoof = true; im.frustumCulled = false; scene.add(im); return im; };
-    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag)];
+    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema)];
     GFX.meshes[4].castShadow = false;
   }
   function frame() {
@@ -460,6 +508,6 @@ var Tetti = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { LADDERS, PLANKS, BELV, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
+  return { LADDERS, PLANKS, BELV, JUMPS, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
 })();
 if (typeof module !== 'undefined') module.exports = Tetti;
