@@ -30,7 +30,7 @@ const srv = http.createServer((req, res) => {
   pg.on('pageerror', e => console.log('[errore]', e.message, (e.stack || '').split('\n').slice(0, 3).join(' | ')));
   pg.on('console', m => { if (m.type() === 'error') console.log('[console]', m.text().slice(0, 240)); });
   if (PULITA) await pg.addInitScript(() => { window.__pulita = true; });   // render.js e main.js: niente etichette dei luoghi
-  await pg.goto(`http://localhost:${port}/index.html${process.env.PV_QUERY !== undefined ? process.env.PV_QUERY : '?cittanuova'}`);
+  await pg.goto(`http://localhost:${port}/${process.env.PV_PAGINA || 'index.html'}${process.env.PV_QUERY !== undefined ? process.env.PV_QUERY : '?cittanuova'}`);
   await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: 300000 });
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(1500);
   if (PULITA) await pg.addStyleTag({ content: '#app > *:not(#cv) { visibility: hidden !important; } #bubbles, #hover, #moment, #xhair, #ring, #touch { display: none !important; }' });
@@ -46,21 +46,23 @@ const srv = http.createServer((req, res) => {
       p.vehicle = null; p.indoor = null; p.lv = null; p.x = s.x; p.y = s.y; p.path = []; if (p.vx !== undefined) { p.vx = 0; p.vy = 0; }
       if (s.ora !== undefined) { let t = Math.floor(st.t / 1440) * 1440 + s.ora; if (t < st.t - 1) t += 1440; st.t = t; }   // l'orologio non torna indietro
       window.__meteo = s.meteo || null;
-      ui.focus = { x: s.x + (s.dx || 0), y: s.y + (s.dy || 0) }; ui.zoom = s.zoom || 1;
-      if (R && R.cam) { R.cam.x = R.cam.tx = ui.focus.x; R.cam.y = R.cam.ty = ui.focus.y; R.cam.zoom = R.cam.tz = ui.zoom; R.cam.uy = (s.giro || 0) * Math.PI / 180; }
+      const fx = s.x + (s.dx || 0), fy = s.y + (s.dy || 0); ui.focus = s.segui ? null : { x: fx, y: fy }; ui.zoom = s.zoom || 1;   // "segui": la camera segue il personaggio (col varco acceso)
+      if (R && R.cam) { R.cam.x = R.cam.tx = fx; R.cam.y = R.cam.ty = fy; R.cam.zoom = R.cam.tz = ui.zoom; R.cam.uy = (s.giro || 0) * Math.PI / 180; }
     }, s);
-    await pg.waitForTimeout(2500);   // chi è vicino si accorge del giocatore (pop.near), i blocchi cominciano a costruirsi
+    const log = m => { if (process.env.GALLERIA_DBG) console.log('  ', s.nome, m, ((Date.now() - ts) / 1000).toFixed(0) + ' s'); };
+    log('posto'); await pg.waitForTimeout(2500);   // chi è vicino si accorge del giocatore (pop.near), i blocchi cominciano a costruirsi
     // 2) la scena si riempie: il riempimento di popolo.js gira subito più volte; chi ha preso un posto ci arriva
     const pieni = await pg.evaluate(() => {
       const pv = window.__pv, st = pv.st; if (typeof Popolo === 'undefined' || !Popolo.fillStep || !Popolo.FILL) return -1;
-      for (let k = 0; k < 30; k++) { if (st.pop) st.pop.fillAt = 0; try { Popolo.fillStep(st, 0); } catch (e) { break; } }
+      const t0 = performance.now(); for (let k = 0; k < 30 && performance.now() - t0 < 4000; k++) { if (st.pop) st.pop.fillAt = 0; try { Popolo.fillStep(st, 0); } catch (e) { break; } }   // al massimo 4 s di riempimento
       let n = 0; st.npcs.forEach(m => { const q = m.__posto; if (!q) return; n++; if (q.arrived) return; if (q.tetto) return;
         m.x = q.slot.x; m.y = q.slot.y; m.inside = false; m.path = []; m.speedNow = 0; m.face = q.slot.face; q.arrived = true; });
       return n;
     });
+    log('riempita ' + pieni);
     // i blocchi della città attorno (render.js ISO.job: uno alla volta) finiti per due controlli di fila
-    for (let k = 0, quiet = 0; k < 90 && quiet < 2; k++) { await pg.waitForTimeout(1000); quiet = (await pg.evaluate(() => !(window.__pv.R.ISO && window.__pv.R.ISO.job))) ? quiet + 1 : 0; }
-    await pg.waitForTimeout(s.attesa || 4500);
+    for (let k = 0, quiet = 0; k < 45 && quiet < 2; k++) { await pg.waitForTimeout(1000); quiet = (await pg.evaluate(() => !(window.__pv.R.ISO && window.__pv.R.ISO.job))) ? quiet + 1 : 0; }
+    log('blocchi'); await pg.waitForTimeout(s.attesa || 4500);
     // 3) la foto e le misure
     const file = path.join(outDir, s.nome + '.png');
     const buf = await pg.screenshot({ path: file, timeout: 240000 });
