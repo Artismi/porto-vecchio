@@ -42,7 +42,7 @@ var Posti = (function () {
     lotto_vuoto: { h: [[9, 20]], cap: 4, who: 'young', pose: 'aspetta', lay: 'cerchio', r: 1.6, dens: .6 },
     fuoco:     { h: [[17.5, 27]], cap: 4, who: 'm', pose: 'scalda', lay: 'cerchio', r: 1.3, dens: 1 },
     porta_della_citta: { h: [[0, 24]], cap: 3, who: 'cop', pose: 'aspetta', lay: 'riga', r: 1.4, dens: .3 },
-    mercato:   { h: [[6.5, 13.5]], cap: 4, who: 'any', pose: 'merce', lay: 'banco', r: 1.3, giorni: [2, 5], dens: 1.2 },
+    mercato:   { h: [[6.5, 13.5]], cap: 4, who: 'any', pose: 'merce', lay: 'banco', r: 1.3, giorni: [0, 1, 2, 3, 4, 5], dens: 1.2 },   // il mercato coperto: tutte le mattine, la domenica no
     sagrato:   { h: [[7, 21]], cap: 4, who: 'old', pose: 'aspetta', lay: 'cerchio', r: 1.1, dens: .8 },
     calata:    { h: [[5, 12], [16, 19]], cap: 3, who: 'm', pose: 'lavora', lay: 'riga', r: 1.3, dens: 1 },
     portone:   { h: [[8, 22]], cap: 2, who: 'f', pose: 'braccia_su', lay: 'riga', r: .9, dens: .9 },

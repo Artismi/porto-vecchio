@@ -23249,7 +23249,7 @@ var Posti = (function () {
     lotto_vuoto: { h: [[9, 20]], cap: 4, who: 'young', pose: 'aspetta', lay: 'cerchio', r: 1.6, dens: .6 },
     fuoco:     { h: [[17.5, 27]], cap: 4, who: 'm', pose: 'scalda', lay: 'cerchio', r: 1.3, dens: 1 },
     porta_della_citta: { h: [[0, 24]], cap: 3, who: 'cop', pose: 'aspetta', lay: 'riga', r: 1.4, dens: .3 },
-    mercato:   { h: [[6.5, 13.5]], cap: 4, who: 'any', pose: 'merce', lay: 'banco', r: 1.3, giorni: [2, 5], dens: 1.2 },
+    mercato:   { h: [[6.5, 13.5]], cap: 4, who: 'any', pose: 'merce', lay: 'banco', r: 1.3, giorni: [0, 1, 2, 3, 4, 5], dens: 1.2 },   // il mercato coperto: tutte le mattine, la domenica no
     sagrato:   { h: [[7, 21]], cap: 4, who: 'old', pose: 'aspetta', lay: 'cerchio', r: 1.1, dens: .8 },
     calata:    { h: [[5, 12], [16, 19]], cap: 3, who: 'm', pose: 'lavora', lay: 'riga', r: 1.3, dens: 1 },
     portone:   { h: [[8, 22]], cap: 2, who: 'f', pose: 'braccia_su', lay: 'riga', r: .9, dens: .9 },
@@ -45766,7 +45766,7 @@ var Eventi = (function () {
       { hand: 'a', id: 'giornale' }, { all: [{ go: 'a', to: 'spot', sp: 1.8, d: 1.1, t: 18 }, { slot: 'b', i: 0, n: 1, sp: 1.4, face: 'out' }] }, { look: 'a', at: 'b' }, SAY('a', 'Posta!', 'Signora, c\'è una raccomandata.', 'Una lettera dalla Germania!'),
       { pose: 'a', p: 'porge', w: 1.6 }, { pose: 'b', p: 'porge', w: 1.2 }, { pose: 'a' }, { pose: 'b' }, SAY('b', 'Sarà la bolletta, come sempre.', 'Mio figlio! Finalmente scrive.', 'Se è dello Squalo la butti via.'),
       { p: .5, then: [{ pose: 'b', p: 'legge_su' }, SAY('b', 'Ma guarda... che scrive.', 'Mamma mia, quanto chiedono.'), { wait: 3 }, { pose: 'b' }] }, SAY('a', 'Buona giornata!', 'Al prossimo portone.'), { go: 'a', to: 'posto2', sp: 1.8, d: 1.2, t: 14 }, SAY('a', 'Posta!', 'C\'è nessuno?'), { wait: 2 }] },
-    { id: 'mercato_monta', w: 3, posto: 'mercato', ora: [6, 8.5], giorni: [2, 5], roles: [{ id: 'a', f: 'm' }, { id: 'b', near: 'a', r: 20 }], beats: [
+    { id: 'mercato_monta', w: 3, posto: 'mercato', ora: [6, 8.5], giorni: [0, 1, 2, 3, 4, 5], roles: [{ id: 'a', f: 'm' }, { id: 'b', near: 'a', r: 20 }], beats: [
       { hand: 'a', id: 'cassa' }, { hand: 'b', id: 'sacco_farina' }, { all: [{ slot: 'a', i: 0, n: 2, sp: 1.3 }, { slot: 'b', i: 1, n: 2, sp: 1.3 }] }, SAY('a', 'Le arance davanti, che si vedono.', 'Oggi si vende, c\'è il sole.', 'Mettimi i cartelli dei prezzi.'),
       { pose: 'a', p: 'raccoglie', w: 1.4 }, { hand: 'a', id: null }, { pose: 'a', p: 'merce' }, { pose: 'b', p: 'raccoglie', w: 1.4 }, { hand: 'b', id: null }, { pose: 'b' },
       SAY('b', 'Il camion delle patate non è arrivato.', 'A quanto le mettiamo, le sarde?', 'Il banco del formaggio ha preso il nostro posto!'), { van: 'spot', kind: 'ape' }, { go: 'b', to: 'van', sp: 1.6, d: 1.7, t: 12 }, { pose: 'b', p: 'raccoglie', w: 1.2 }, { hand: 'b', id: 'cassa' }, { pose: 'b' }, { go: 'b', to: 'spot', sp: 1.3, d: 1.2, t: 12 }, { pose: 'b', p: 'raccoglie', w: 1.2 }, { hand: 'b', id: null }, { pose: 'b', p: 'merce' },

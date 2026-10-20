@@ -39,7 +39,7 @@ ok(same <= all.length * .02, `quasi mai due persone nello stesso punto (${same})
 ok(inLine <= all.length * .05, `quasi mai due persone in fila lungo la visuale a meno di 1,2 m (${inLine})`);
 // le ore: il mercato solo nei giorni di mercato, i fuochi la sera, i dehors non all'alba
 const MIN = (d, h) => d * 1440 + h * 60;
-ok(P.ofType('mercato').every(p => P.openAt(p, MIN(1, 9)) && !P.openAt(p, MIN(0, 9))), 'il mercato è vivo il mercoledì alle 9, non il martedì');
+ok(P.ofType('mercato').every(p => P.openAt(p, MIN(1, 9)) && !P.openAt(p, MIN(5, 9)) && !P.openAt(p, MIN(1, 15))), 'il mercato coperto: vivo alle 9 nei giorni feriali, non la domenica né il pomeriggio');
 ok(P.ofType('fuoco').every(p => P.openAt(p, MIN(0, 21)) && P.openAt(p, MIN(0, 1)) && !P.openAt(p, MIN(0, 10))), 'i fuochi: la sera e la notte, non la mattina');
 ok(P.ofType('dehors').every(p => !P.openAt(p, MIN(0, 5))), 'i dehors chiusi alle 5');
 // la ricerca attorno a un punto
