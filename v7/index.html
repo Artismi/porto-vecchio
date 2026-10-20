@@ -60373,13 +60373,13 @@ var Render = (function () {
   //  - il sole di lato alla visuale e mai a picco, con l'ombra a misura della visuale: le ombre fra case fanno leggere i salti.
   // window.__PROF per le prove dal vivo; la galleria lo azzera per il «prima» (strumenti/manopole_profondita.json).
   const PROF = {
-    bordo: .62,                 // il filo caldo-scuro sul piano basso oltre il ciglio (0 = niente)
+    bordo: .75,                 // il filo caldo-scuro sul piano basso oltre il ciglio (0 = niente)
     bordoTinta: [.42, .33, .28],// la sua tinta (moltiplica il colore: bruno caldo, mai nero)
-    ciglio: .34,                // il filo di luce sul ciglio del tetto più alto (la copertina, il cornicione che prendono luce)
+    ciglio: .45,                // il filo di luce sul ciglio del tetto più alto (la copertina, il cornicione che prendono luce)
     salto: [.7, 4.5],           // metri di salto: da qui il bordo nasce, qui è pieno
     passo: 1.5,                 // la distanza in pixel a cui si guarda il vicino (lo spessore del filo)
     sagome: 1,                  // 1: il contorno di profondità (AMB.ol) solo dove la sagoma sta più in alto di quello che ha dietro; 0: com'era (ogni sagoma)
-    quotaValore: .2,            // il valore per quota: al suolo -60% di questo, all'altezza piena +40% (0 = piatto)
+    quotaValore: .2,            // il valore per quota: al suolo -45% di questo, all'altezza piena +55% (0 = piatto)
     quotaAlta: 13,              // metri sopra il suolo della camera dove il valore è pieno (quattro piani)
     quotaTinta: .5,             // quanto la quota scalda in alto e raffredda in basso (0 = solo valore)
     nebbiaVicoli: .1,           // il velo d'aria fredda che sale dal basso nei vicoli in ombra
@@ -60579,12 +60579,13 @@ var Render = (function () {
           float edge = max(max(d1-d, d2-d), max(d3-d, d4-d));
           // [profondita] i salti di quota attorno al pixel: quattro vicini a pfC.y pixel, in metri di mondo. pfLow: un vicino sta davanti e più in
           // alto (qui è il piano basso appena oltre il ciglio); pfUp: un vicino sta dietro e più in basso (qui è il ciglio del più alto)
-          float pfH = 0., pfLow = 0., pfUp = 0., pfOk = 0.;
+          float pfH = 0., pfLow = 0., pfLow2 = 0., pfUp = 0., pfOk = 0.;   // pfLow2: lo stesso a due volte e mezzo la distanza (la sfumatura del filo scuro)
           if (pfA.x + pfA.y + pfA.z + pfA.w + pfS > 0. && texture2D(tD, uv).r < .9999) {
             vec3 q0 = wpos9(uv); float r0 = distance(q0, vCam), mg = .2 + r0 * .004; pfH = q0.y - pfC.x; pfOk = 1.;
-            for (int k = 0; k < 4; k++) { vec2 o = (k == 0 ? vec2(1., 0.) : k == 1 ? vec2(-1., 0.) : k == 2 ? vec2(0., 1.) : vec2(0., -1.)) * px * pfC.y;
+            for (int k = 0; k < 8; k++) { vec2 o = (k - k / 4 * 4 == 0 ? vec2(1., 0.) : k - k / 4 * 4 == 1 ? vec2(-1., 0.) : k - k / 4 * 4 == 2 ? vec2(0., 1.) : vec2(0., -1.)) * px * pfC.y * (k < 4 ? 1. : 2.5);
               if (texture2D(tD, uv + o).r > .9999) continue;   // il cielo: nessun salto
               vec3 qk = wpos9(uv + o); float dh = qk.y - q0.y, dr = distance(qk, vCam) - r0;
+              if (k >= 4) { if (dr < -mg) pfLow2 = max(pfLow2, dh); continue; }
               if (dr < -mg) pfLow = max(pfLow, dh); else if (dr > mg) pfUp = max(pfUp, -dh); } }
           float ol = smoothstep(.45*(1.+d*.01), .9*(1.+d*.012), edge);
           if (aK2.z > .001) {   /* [unione11] inchiostro col peso della mano */   /* [pulito1] spento (outline 0): non si calcola nemmeno (8+8 letture di profondità per pixel: aloni grigi attorno a tutto) */
@@ -60712,13 +60713,13 @@ var Render = (function () {
           if (pfOk > .5) {   // [profondita] la separazione dei livelli
             float fK = (1. - coc) * (1. - smoothstep(uFogNF.x, uFogNF.y, d) * .9) * (1. - vcRing(vUv) * qV.x), dayP = 1. - night * .6;
             // 1) il valore per quota: in basso più scuro e freddo, in alto più chiaro e caldo (prospettiva aerea verticale)
-            float tq = clamp(pfH / max(pfB.z, 1.), 0., 1.), vq = 1. + pfA.z * (tq - .6) * dayP;
+            float tq = clamp(pfH / max(pfB.z, 1.), 0., 1.), vq = 1. + pfA.z * (tq - .45) * dayP;
             c *= vq * mix(vec3(1.), mix(vec3(.95, .98, 1.05), vec3(1.035, 1.005, .955), tq), pfC.z * step(.001, pfA.z) * dayP);
             // 2) il velo d'aria fredda che sale dal fondo dei vicoli (solo dove è in ombra: la strada al sole resta pulita)
             { float lq = dot(c, vec3(.3,.59,.11)), nk = (1. - smoothstep(0., pfC.w, pfH)) * (1. - smoothstep(.12, .45, lq)) * pfA.w * fK;
               c = mix(c, mix(uHz, vec3(.5, .56, .66), .55) * (.42 * (1. - night) + .08), nk); }
             // 3) il bordo dei volumi: il filo caldo-scuro sul piano basso, il filo di luce sul ciglio, a misura del salto
-            float bl = smoothstep(pfB.x, pfB.y, pfLow) * pfA.x * fK, bu = smoothstep(pfB.x, pfB.y, pfUp) * pfA.y * fK * (1. - bl);
+            float bl = max(smoothstep(pfB.x, pfB.y, pfLow), smoothstep(pfB.x, pfB.y, pfLow2) * .5) * pfA.x * fK, bu = smoothstep(pfB.x, pfB.y, pfUp) * pfA.y * fK * (1. - bl);
             c = mix(c, c * pfT, clamp(bl, 0., 1.));
             c += (c * .55 + vec3(.05, .042, .03)) * mix(vec3(1.06, 1., .88), vec3(.8, .9, 1.1), night) * bu * dayP; }
           if (vcB > .01) {   // [regia2] il varco: lo spessore tagliato di muri e tetti (l'anello attorno all'ellisse, davanti al personaggio) prende un filo

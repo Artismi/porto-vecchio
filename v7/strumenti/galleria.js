@@ -39,7 +39,7 @@ const srv = http.createServer((req, res) => {
   pg.on('console', m => { if (m.type() === 'error') console.log('[console]', m.text().slice(0, 240)); });
   if (PULITA) await pg.addInitScript(() => { window.__pulita = true; });   // render.js e main.js: niente etichette dei luoghi
   await pg.goto(`http://localhost:${port}/${process.env.PV_PAGINA || 'index.html'}${process.env.PV_QUERY !== undefined ? process.env.PV_QUERY : '?cittanuova'}`);
-  await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: 300000 });
+  await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: +(process.env.GALLERIA_CARICO || 300000) });   // GALLERIA_CARICO: ms per caricare (sotto carico 300 s non bastano)
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(1500);
   if (PULITA) await pg.addStyleTag({ content: '#app > *:not(#cv) { visibility: hidden !important; } #bubbles, #hover, #moment, #xhair, #ring, #touch { display: none !important; }' });
   await pg.evaluate(() => { const pv = window.__pv, st = pv.st; st.deadline = 1e12; if (pv.R.gpuTiming) pv.R.gpuTiming(true);
