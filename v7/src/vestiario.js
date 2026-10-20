@@ -785,25 +785,29 @@ var Vesti3D = (function () {
   function metallo(col) { ORO = ORO || new Map(); if (ORO.has(col)) return ORO.get(col); const m = new THREE.MeshStandardMaterial({ color: col, roughness: .22, metalness: 1 }); m.emissive = new THREE.Color(col).multiplyScalar(.28); ORO.set(col, m); return m; }
   function catena(c, B, T, outfit) {
     const PL = curPL || window.Pittura.paintPlans(B, outfit), M = misuraCollo(B, T, outfit, PL), nY = Sartoria.neckY(B), [nx, nz] = B.neckC, o = new THREE.Group();
-    const kind = c.acc, drop = kind === 'collana' ? .13 : kind === 'perle' ? .07 : .085, lift = kind === 'collana' ? .006 : .003;
-    // la linea: dietro alta sul collo, davanti scende (curva a catenaria)
-    const N = 96, L = [];
-    for (let i = 0; i <= N; i++) { const a = -Math.PI + i / N * Math.PI * 2, f = Math.max(0, Math.cos(a)), y = nY - .012 - drop * Math.pow(f, 1.6), r = M.maxR(a, y - .008, y + .008) + lift; L.push(new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r)); }
-    for (let it = 0; it < 3; it++) { const c0 = L.map(v => v.clone()); for (let i = 0; i <= N; i++) { const a = c0[(i + N - 1) % N], b = c0[(i + 1) % N]; L[i].copy(c0[i]).multiplyScalar(2).add(a).add(b).multiplyScalar(.25); const ang = -Math.PI + i / N * Math.PI * 2, y = L[i].y, rr = M.maxR(ang, y - .008, y + .008) + lift, d = Math.hypot(L[i].x - nx, L[i].z - nz); if (d < rr) { L[i].x = nx + (L[i].x - nx) * rr / d; L[i].z = nz + (L[i].z - nz) * rr / d; } } }
-    const curve = new THREE.CatmullRomCurve3(L, true), len = curve.getLength();
+    const kind = c.acc, big = kind === 'collana', drop = big ? .12 : kind === 'perle' ? .07 : .09, lift = big ? .0045 : .0025, gold = metallo(c.col || (big ? '#e8c040' : '#d8d8dc'));
+    // [stile] la linea: dietro e ai lati sta alla base del collo, sul trapezio (mai sulla punta della spalla); davanti scende a U sul petto (catenaria)
+    const N = 120, L = [], rN = B.neckR + .012;
+    for (let i = 0; i <= N; i++) { const a = -Math.PI + i / N * Math.PI * 2, f = Math.max(0, Math.cos(a)), u = Math.pow(f, 2.2), y = nY + .004 - .016 * Math.pow(Math.abs(Math.sin(a)), 2) * (1 - u) - drop * u;
+      const r = Math.max(M.maxR(a, y - .005, y + .005) + lift, rN + .02 * u); L.push(new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r)); }
+    for (let it = 0; it < 5; it++) { const c0 = L.map(v => v.clone()); for (let i = 0; i < N; i++) { const a = c0[(i + N - 1) % N], b = c0[(i + 1) % N]; L[i].copy(c0[i]).multiplyScalar(2).add(a).add(b).multiplyScalar(.25); const ang = -Math.PI + i / N * Math.PI * 2, y = L[i].y, rr = M.maxR(ang, y - .005, y + .005) + lift, d = Math.hypot(L[i].x - nx, L[i].z - nz); if (d < rr) { L[i].x = nx + (L[i].x - nx) * rr / d; L[i].z = nz + (L[i].z - nz) * rr / d; } } L[N].copy(L[0]); }
+    L.pop(); const curve = new THREE.CatmullRomCurve3(L, true), len = curve.getLength();
     if (kind === 'perle') { const n = Math.round(len / .0145); for (let k = 0; k < n; k++) { const p = curve.getPointAt(k / n); o.add(Sp(.0068, new THREE.MeshStandardMaterial({ color: '#f4f0e6', roughness: .25, metalness: .1, emissive: '#3a3630' }), p.x, p.y, p.z)); } return o; }
-    // la grumetta: maglie schiacciate in un'unica geometria
-    const big = kind === 'collana', R = big ? .0058 : .0028, tube = big ? .0019 : .0009, pitch = R * 1.55, n = Math.round(len / pitch), geos = [], up = new THREE.Vector3(), nrm = new THREE.Vector3();
-    const link = new THREE.TorusGeometry(R, tube, 4, 8); link.scale(1, .62, 1);
-    for (let k = 0; k < n; k++) { const t = k / n, p = curve.getPointAt(t), tg = curve.getTangentAt(t); nrm.set(p.x - nx, 0, p.z - nz).normalize(); up.crossVectors(tg, nrm).normalize();
-      const m = new THREE.Matrix4().makeBasis(tg, k % 2 ? nrm : up, k % 2 ? up.clone().negate() : nrm), rot = new THREE.Matrix4().makeRotationAxis(tg, .5); m.premultiply(new THREE.Matrix4()); const g0 = link.clone(); g0.applyMatrix4(new THREE.Matrix4().multiplyMatrices(rot, m)); g0.translate(p.x, p.y, p.z); geos.push(g0); }
-    const merged = mergeGeos(geos); o.add(new THREE.Mesh(merged, metallo(c.col || '#e8c040')));
-    // la medaglia (catenone) o il ciondolo (catenina), che pende dal punto più basso
-    const p0 = curve.getPointAt(.5), dn = new THREE.Vector3(p0.x - nx, 0, p0.z - nz).normalize();
-    if (big) { const md = new THREE.Mesh(new THREE.CylinderGeometry(.021, .021, .004, 20), metallo(c.col || '#e8c040')); md.rotation.x = Math.PI / 2; md.lookAt(p0.clone().add(dn)); md.rotateX(Math.PI / 2); md.position.copy(p0).add(new THREE.Vector3(0, -.026, 0)).addScaledVector(dn, .004); o.add(md);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(.021, .0025, 5, 24), metallo(sh(c.col || '#e8c040', .85))); rim.position.copy(md.position); rim.lookAt(md.position.clone().add(dn)); o.add(rim);
-      const bail = new THREE.Mesh(new THREE.TorusGeometry(.0045, .0015, 4, 10), metallo(c.col || '#e8c040')); bail.position.copy(p0).add(new THREE.Vector3(0, -.004, 0)); bail.lookAt(bail.position.clone().add(new THREE.Vector3(-dn.z, 0, dn.x))); o.add(bail); }
-    else { const pd = new THREE.Mesh(new THREE.OctahedronGeometry(.006, 0), metallo(c.col || '#d8d8dc')); pd.scale.set(.8, 1.3, .5); pd.position.copy(p0).add(new THREE.Vector3(0, -.01, 0)).addScaledVector(dn, .003); o.add(pd); }
+    // [stile] la cubana: maglie spesse e fitte, schiacciate sul petto, ognuna ruotata sull'altra (si legge come un cordone d'oro pieno, non un filo)
+    const R = big ? .0062 : .0026, tube = big ? .0027 : .0009, pitch = R * (big ? 1.18 : 1.5), n = Math.round(len / pitch), geos = [], up = new THREE.Vector3(), nrm = new THREE.Vector3();
+    const link = new THREE.TorusGeometry(R, tube, 6, 10); link.scale(1, .58, 1);
+    for (let k = 0; k < n; k++) { const t = k / n, p = curve.getPointAt(t), tg = curve.getTangentAt(t); nrm.set(p.x - nx, 0, p.z - nz).normalize(); up.crossVectors(tg, nrm).normalize(); nrm.crossVectors(up, tg).normalize();
+      const m = new THREE.Matrix4().makeBasis(tg, k % 2 ? nrm : up, k % 2 ? up.clone().negate() : nrm), rot = new THREE.Matrix4().makeRotationAxis(tg, big ? .75 : .4); const g0 = link.clone(); g0.applyMatrix4(new THREE.Matrix4().multiplyMatrices(rot, m)); g0.translate(p.x, p.y, p.z); geos.push(g0); }
+    o.add(new THREE.Mesh(mergeGeos(geos), gold));
+    // la medaglia (catenone) o il ciondolo (catenina): pende dal punto più basso, posata sul petto (inclinata come il petto)
+    const p0 = curve.getPointAt(.5), tbT = window.Pittura.frame(B).tubes[0], yM = p0.y - (big ? .03 : .012), sM = tbT.sAtY(yM), off = window.Pittura.offAt(B, PL, 0, sM, 0);
+    const q0 = window.Pittura.surfI(B, 0, sM, 0, off + (big ? .0055 : .003)), q1 = window.Pittura.surfI(B, 0, tbT.sAtY(yM + .02), 0, off), q2 = window.Pittura.surfI(B, 0, tbT.sAtY(yM - .02), 0, off), upS = q1.clone().sub(q2).normalize(), fw = new THREE.Vector3(q0.x - nx, 0, q0.z - nz).normalize(), nS = fw.clone().addScaledVector(upS, -fw.dot(upS)).normalize();
+    const place = (m, p) => { m.position.copy(p); m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().crossVectors(upS, nS), upS, nS)); o.add(m); return m; };
+    if (big) { const Rm = .02, prof = [[0, -.0032], [Rm * .7, -.0032], [Rm, -.0024], [Rm + .0006, 0], [Rm, .0024], [Rm * .86, .003], [Rm * .8, .0018], [Rm * .45, .0022], [0, .0034]].map(v => new THREE.Vector2(v[0], v[1]));
+      const md = new THREE.LatheGeometry(prof, 28); md.rotateX(Math.PI / 2); place(new THREE.Mesh(md, gold), q0);   // il disco col bordo rilevato e il centro bombato
+      const star = new THREE.CylinderGeometry(.009, .009, .0016, 5); star.rotateX(Math.PI / 2); place(new THREE.Mesh(star, metallo(sh(c.col || '#e8c040', 1.12))), q0.clone().addScaledVector(nS, .0032));
+      const bail = new THREE.TorusGeometry(.0042, .0016, 6, 12); bail.rotateY(Math.PI / 2); place(new THREE.Mesh(bail, gold), q0.clone().addScaledVector(upS, Rm + .004)); }
+    else { const pd = new THREE.Mesh(new THREE.OctahedronGeometry(.006, 0), gold); pd.scale.set(.8, 1.3, .5); place(pd, q0); }
     return o;
   }
   function mergeGeos(list) {   // unisce geometrie non indicizzate o indicizzate (posizione, normale) in una sola
@@ -924,40 +928,99 @@ var Vesti3D = (function () {
     const idx = PL.map((C, i) => i).filter(i => tipi.test(PL[i].collo || '') && !PL.slice(i + 1).some(O => copre.test(O.collo || '') || tipi.test(O.collo || ''))).pop();
     if (idx === undefined) return; const C = PL[idx], polo = C.collo === 'polo', aperta = C.collo === 'camicia_aperta', revers = PL.slice(idx + 1).some(O => /revers/.test(O.collo || '')), sopra = PL.slice(idx + 1).some(O => (O.parti || []).includes('torso'));
     const sub = revers ? outfit.filter(o => { const k = PL.findIndex(P0 => P0.id === o.id); return k < 0 || k <= idx; }) : outfit;
-    const M = revers ? misuraCollo(B, T, sub, Pt.paintPlans(B, sub)) : misuraCollo(B, T, outfit, PL), hx = c => '#' + new THREE.Color().setRGB(c[0], c[1], c[2]).getHexString(), col = hx(C.A), c2 = C.B ? hx(C.B) : col;
+    const M = revers && !aperta ? misuraCollo(B, T, sub, Pt.paintPlans(B, sub)) : misuraCollo(B, T, outfit, PL), hx = c => '#' + new THREE.Color().setRGB(c[0], c[1], c[2]).getHexString(), col = hx(C.A), c2 = C.B ? hx(C.B) : col;
     const mt = Pt.blockMat(/^(tartan|vichy|righe_v|fiori|liberty)$/.test(C.fab) ? C.fab : C.fab === 'pique' ? 'cotone' : C.fab || 'cotone', col, c2, C.C ? hx(C.C) : col, { vc: false, liscio: 1 });
-    // la misura lisciata attorno al giro (niente denti): per ogni angolo il raggio di quello che c'è sotto a una quota
-    const NA = 72, smooth = R => { for (let it = 0; it < 3; it++) { const c0 = R.slice(); for (let i = 0; i < NA; i++) R[i] = Math.max(c0[i], (c0[(i + 1) % NA] + c0[(i + NA - 1) % NA]) / 2); }
-        for (let it = 0; it < 6; it++) { const c0 = R.slice(); for (let i = 0; i < NA; i++) R[i] = (c0[(i + 2) % NA] + 2 * c0[(i + 1) % NA] + 3 * c0[i] + 2 * c0[(i + NA - 1) % NA] + c0[(i + NA - 2) % NA]) / 9; } return R; };
-    const ring = (ya, yb, pad) => smooth(Float32Array.from({ length: NA }, (_, i) => M.maxR(-Math.PI + i / NA * Math.PI * 2, ya, yb) + pad));
-    const at = (R, a) => { const f = (((a + Math.PI) / (Math.PI * 2) * NA) % NA + NA) % NA, i0 = Math.floor(f), t = f - i0; return lerp0(R[i0], R[(i0 + 1) % NA], t); };
-    // il listino (la fascia che sale dritta attorno al collo) e la vela che si rovescia sopra; davanti si apre (la polo sui bottoni, l'aperta di più)
-    // [stile] colletti bassi e morbidi, da strada: la camicia sbottonata in cima (il collo si vede), listino appena accennato, la vela posata piatta
-    const gap = polo ? .26 : aperta ? .42 : revers ? .14 : .3, stH = polo ? .01 : revers ? .012 : .012, yS0 = nY - .006, yS1 = yS0 + stH, th = .0024;
-    const RS = ring(yS0 - .006, yS1, .0035);   // il listino sta sopra il collo
-    const Wb = revers ? .013 : polo ? .026 : .028, Wp = aperta ? .04 : polo ? .016 : revers ? .014 : .03;   // la vela: dietro, e quanto in più verso le punte
-    const pf = a => { const x = Math.max(0, 1 - (Math.PI - Math.abs(a)) / 2.3); return 0; };
-    const fr = a => { const x = Math.max(0, 1 - Math.abs(a) / 1.15); return x * x * (3 - 2 * x); };   // 1 davanti alle punte, 0 dietro
-    const W = a => Wb + Wp * fr(a) - .006 * Math.pow(Math.max(0, -Math.cos(a)), 2);
-    const RE = Float32Array.from({ length: NA }, (_, i) => { const a = -Math.PI + i / NA * Math.PI * 2, ye = yS1 - W(a) * .92; return M.maxR(a, ye - .008, yS1) + .004; }); smooth(RE);
-    const pt = (a, t, d) => {   // t: 0 = la piega in cima, 1 = l'orlo della vela
-      const f = fr(a), aa = a * (1 - .1 * f * t * t) , rs = at(RS, a) + th + .0008, re = Math.max(at(RE, a), rs + .006), y = yS1 + .001 - W(a) * (.55 * t + .35 * t * t), r = rs + (re - rs) * Math.pow(t, .8) + .002 * Math.sin(t * Math.PI) + d;   // si apre subito e si posa: niente vela in piedi
-      return new THREE.Vector3(nx + Math.sin(aa) * r, y, nz + Math.cos(aa) * r); };
-    const ptS = (a, t, d) => { const r = at(RS, a) + d, y = lerp0(yS0, yS1 + .002, t); return new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r); };
-    const sheet = (fn, NT, a0, a1, NAi) => { const P = [], U = [], I = [], id = (i, j, d) => (i * (NT + 1) + j) * 2 + d;
-      for (let i = 0; i <= NAi; i++) { const a = lerp0(a0, a1, i / NAi); for (let j = 0; j <= NT; j++) for (const d of [0, th]) { const p = fn(a, j / NT, d); P.push(p.x, p.y, p.z); U.push(a * .07 * 6, j / NT * .04 * 6); } }
-      for (let i = 0; i < NAi; i++) for (let j = 0; j < NT; j++) { I.push(id(i, j, 1), id(i, j + 1, 1), id(i + 1, j, 1), id(i + 1, j, 1), id(i, j + 1, 1), id(i + 1, j + 1, 1)); I.push(id(i, j, 0), id(i + 1, j, 0), id(i, j + 1, 0), id(i + 1, j, 0), id(i + 1, j + 1, 0), id(i, j + 1, 0)); }
-      for (let i = 0; i < NAi; i++) for (const j of [0, NT]) I.push(id(i, j, 0), id(i, j, 1), id(i + 1, j, 0), id(i + 1, j, 0), id(i, j, 1), id(i + 1, j, 1));
-      for (const i of [0, NAi]) for (let j = 0; j < NT; j++) I.push(id(i, j, 0), id(i, j + 1, 0), id(i, j, 1), id(i, j, 1), id(i, j + 1, 0), id(i, j + 1, 1));
-      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); return new THREE.Mesh(g, mt); };
+    // [sartoria] il colletto rifatto da modello: un listino aderente al collo e una vela che ci si rovescia sopra e resta posata
+    // (si allarga solo quanto serve a non entrare in quello che c'è sotto: mai sollevata, mai a campana). Davanti il listino si chiude
+    // (o si apre di poco), le punte scendono e si aprono verso l'esterno
+    const NA = 96, A = i => -Math.PI + i / NA * Math.PI * 2, idxA = a => (((a + Math.PI) / (Math.PI * 2) * NA) % NA + NA) % NA;
+    const at = (R, a) => { const f = idxA(a), i0 = Math.floor(f) % NA, t = f - Math.floor(f); return lerp0(R[i0], R[(i0 + 1) % NA], t); };
+    const avg = (R, it) => { for (let k = 0; k < it; k++) { const c0 = R.slice(); for (let i = 0; i < NA; i++) R[i] = (c0[(i + NA - 1) % NA] + 2 * c0[i] + c0[(i + 1) % NA]) / 4; } return R; };
+    const th = .0022, stH = polo ? .016 : aperta ? .016 : .022, yS0 = nY - .01, yS1 = yS0 + stH;
+    // il collo sotto il listino: un giro tondo e liscio (il collo è un cilindro, il listino non prende le pieghe di quello che c'è sotto)
+    const RS = avg(Float32Array.from({ length: NA }, (_, i) => Math.max(B.neckR + .004, M.maxR(A(i), yS0 - .004, yS0 + .006)) + .0025), 12);
+    { const m = Math.max(...RS), mn = Math.min(...RS); for (let i = 0; i < NA; i++) RS[i] = lerp0(RS[i], (m + mn) / 2, .5); }
+    // la vela: quanto scende per angolo (dietro copre il listino e poco più, davanti le punte)
+    const tipL = aperta ? .046 : polo ? .036 : revers ? .048 : .042, Wb = stH + .003;   // [stile] la vela finisce appena tornata giù: copre il listino e poco più (niente lembo che continua sul petto)
+    const gapS = polo ? .2 : aperta ? .42 : .045, gapV = polo ? .22 : aperta ? .44 : .085, spread = aperta ? .3 : polo ? .3 : .34;
+    const fr = a => { const x = Math.max(0, 1 - (Math.abs(a) - gapV) / 1.0); return x * x * (3 - 2 * x); };
+    const W = a => Wb + (tipL - Wb) * fr(a);
+    // sotto la vela: la superficie a ogni quota (lisciata per angolo e mai più stretta scendendo): la vela ci sta sopra di un filo
+    const NT = 10, SV = []; for (let j = 0; j <= NT; j++) { const t = j / NT, R = new Float32Array(NA); for (let i = 0; i < NA; i++) { const a = A(i), y = yS1 - W(a) * t; R[i] = M.maxR(a, y - .003, y + .003) + .0018; } { const c0 = R.slice(); avg(R, 10); for (let i = 0; i < NA; i++) R[i] = Math.max(R[i], c0[i] - .0015); } SV.push(R); }   // posata sulla superficie: lisciata (niente onde) ma mai dentro
+    const pt = (a, t, d) => { const j = Math.min(NT - 1, Math.floor(t * NT)), u = t * NT - j, rs = at(RS, a) + th + .0008, sv = lerp0(at(SV[j], a), at(SV[j + 1], a), u);
+      const r = Math.max(rs + .004 * Math.sin(Math.min(1, t * 2.2) * Math.PI / 2), sv + .0012) + d, y = yS1 + .0012 - W(a) * t;   // si rovescia stretta sul listino e poi si posa
+      return new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r); };
+    const ptS = (a, t, d) => { const r = at(RS, a) + d - .0012 * t, y = lerp0(yS0, yS1 + .0012, t); return new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r); };
+    // un foglio con spessore: righe lungo t, colonne lungo l'angolo (a0(t) → a1)
+    const sheet = (fn, NTs, a0F, a1, NAi) => { const P = [], U = [], I = [], id = (i, j, d) => (i * (NTs + 1) + j) * 2 + d;
+      for (let i = 0; i <= NAi; i++) for (let j = 0; j <= NTs; j++) { const t = j / NTs, a = lerp0(a0F(t), a1, i / NAi); for (const d of [0, th]) { const p = fn(a, t, d); P.push(p.x, p.y, p.z); U.push(a * .42, t * .24); } }
+      for (let i = 0; i < NAi; i++) for (let j = 0; j < NTs; j++) for (const d of [0, 1]) I.push(id(i, j, d), id(i + 1, j, d), id(i + 1, j + 1, d), id(i, j, d), id(i + 1, j + 1, d), id(i, j + 1, d));
+      for (let i = 0; i < NAi; i++) for (const j of [0, NTs]) I.push(id(i, j, 0), id(i + 1, j, 0), id(i + 1, j, 1), id(i, j, 0), id(i + 1, j, 1), id(i, j, 1));
+      for (const i of [0, NAi]) for (let j = 0; j < NTs; j++) I.push(id(i, j, 0), id(i, j + 1, 0), id(i, j + 1, 1), id(i, j, 0), id(i, j + 1, 1), id(i, j, 1));
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); return new THREE.Mesh(g, mt2); };
+    const mt2 = mt.clone(); mt2.side = THREE.DoubleSide;
     const o = new THREE.Group();
-    const aMax = revers ? .95 : Math.PI;   // sotto la giacca il colletto si vede solo davanti, nello scollo dei revers
-    for (const [a0, a1] of [[gap, aMax], [-aMax, -gap]]) { o.add(sheet(ptS, 3, a0, a1, revers ? 12 : 30)); o.add(sheet(pt, 7, a0, a1, revers ? 12 : 30)); }
-    // la punta: la vela davanti finisce a punta (taglio obliquo), non a lembo dritto
-    // il bottone del listino, e nella polo il bordino a contrasto lungo l'orlo
-    if (false) { const q = ptS(0, .5, .0015); o.add(Sp(.0035, lm(sh(col, .82)), q.x, q.y, q.z)); }
+    for (const sg of [1, -1]) {
+      o.add(sheet((a, t, d) => ptS(sg * a, t, d), 3, () => gapS, Math.PI, 40));
+      o.add(sheet((a, t, d) => pt(sg * a, t, d), NT, t => gapV + spread * t * t * .6, revers ? (aperta ? 1.5 : .95) : Math.PI, revers ? 24 : 48)); }   // [sartoria] sotto la giacca la vela si vede solo nello scollo: dietro la copre il collo della giacca (resta il listino, un dito sopra)
+    // il bottone del listino (camicia chiusa) e l'ombra dentro lo scollo
+    if (!aperta && !polo) { const q = ptS(0, .5, .0015); o.add(Sp(.0032, lm(sh(col, .85)), q.x, q.y, q.z)); }
     if (polo && C.tipping !== false) { const cc = C.tip || (C.A[0] * .3 + C.A[1] * .59 + C.A[2] * .11 > .5 ? '#1e2a4a' : '#ece8dc');
-      for (const [a0, a1] of [[gap, Math.PI], [-Math.PI, -gap]]) { const L = []; for (let i = 0; i <= 24; i++) L.push(pt(lerp0(a0, a1, i / 24), .9, th + .0005)); o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L), 48, .0015, 3), lm(cc))); } }
+      for (const sg of [1, -1]) { const L = []; for (let i = 0; i <= 24; i++) L.push(pt(sg * lerp0(gapV + spread * .81 * .6, Math.PI, i / 24), .9, th + .0005)); o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L), 48, .0015, 3), lm(cc))); } }
+    AT('Chest', o);
+  }
+  // il collo alto con la zip (tute, felpe zip, piumini): una fascia che sale dritta attorno al collo, appena svasata in cima,
+  // aperta davanti sulla zip abbassata di un dito; il bordo in cima col filetto a contrasto se il capo ce l'ha
+  function colloAlto(outfit, B, T, AT) {
+    const Pt = window.Pittura; if (!Pt || !T) return; const PL = curPL || Pt.paintPlans(B, outfit), nY = Sartoria.neckY(B), [nx, nz] = B.neckC;
+    const copre = /^(cappuccio|montone|pelo|poncho|scialle|camicia|polo|camicia_aperta|revers|revers_pelle)$/, idx = PL.map((C, i) => i).filter(i => PL[i].collo === 'alto_zip' && !PL.slice(i + 1).some(O => O.collo && O.collo !== 'alto_zip' && (O.parti || []).includes('torso') && copre.test(O.collo))).pop();
+    if (idx === undefined) return; const C = PL[idx], sub = outfit.filter(o => { const k = PL.findIndex(P0 => P0.id === o.id); return k < 0 || k <= idx; });
+    const M = misuraCollo(B, T, sub, Pt.paintPlans(B, sub)), hx = c => '#' + new THREE.Color().setRGB(c[0], c[1], c[2]).getHexString(), col = hx(C.A), puff = C.fab === 'piumino';
+    const mt2 = Pt.blockMat(C.fab === 'piumino' ? 'nylon' : C.fab || 'jersey', col, col, col, { vc: false, liscio: 1 }).clone(); mt2.side = THREE.DoubleSide;
+    const NA = 72, H = puff ? .052 : .042, y0 = nY - .022, th = puff ? .008 : .004, R = new Float32Array(NA);
+    for (let i = 0; i < NA; i++) { const a = -Math.PI + i / NA * Math.PI * 2; R[i] = Math.max(M.maxR(a, y0, y0 + .02), B.neckR + .012) + .002; }
+    for (let it = 0; it < 6; it++) { const c0 = R.slice(); for (let i = 0; i < NA; i++) R[i] = Math.max(c0[i], (c0[(i + 1) % NA] + c0[(i + NA - 1) % NA]) / 2); }
+    const at = a => { const f = (((a + Math.PI) / (Math.PI * 2) * NA) % NA + NA) % NA, i0 = Math.floor(f), t = f - i0; return lerp0(R[i0], R[(i0 + 1) % NA], t); };
+    // davanti la zip è abbassata: le due ali si aprono a V verso l'alto e la fascia è più bassa
+    const gapA = t => .05 + .32 * t * t, hAt = a => H * (1 - .3 * Math.pow(Math.max(0, Math.cos(a)), 4)) - .01 * Math.pow(Math.max(0, -Math.cos(a)), 2) * 0;
+    const pt = (a, t, d) => { const r = at(a) + .0035 * t + .004 * t * t + d - .003 * Math.pow(Math.max(0, Math.cos(a)), 2) * t, y = y0 + hAt(a) * t; return new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r); };
+    const NT = 6, NAi = 40, o = new THREE.Group();
+    for (const sg of [1, -1]) { const P = [], I = [], U = [], id = (i, j, d) => (i * (NT + 1) + j) * 2 + d;
+      for (let i = 0; i <= NAi; i++) for (let j = 0; j <= NT; j++) { const t = j / NT, a = sg * lerp0(gapA(t), Math.PI, i / NAi); for (const d of [th, 0]) { const p = pt(a, t, d); P.push(p.x, p.y, p.z); U.push(a * .3, t * H * 6); } }
+      for (let i = 0; i < NAi; i++) for (let j = 0; j < NT; j++) for (const d of [0, 1]) I.push(id(i, j, d), id(i + 1, j, d), id(i + 1, j + 1, d), id(i, j, d), id(i + 1, j + 1, d), id(i, j + 1, d));
+      for (let i = 0; i < NAi; i++) I.push(id(i, NT, 0), id(i + 1, NT, 0), id(i + 1, NT, 1), id(i, NT, 0), id(i + 1, NT, 1), id(i, NT, 1));
+      for (let j = 0; j < NT; j++) I.push(id(0, j, 0), id(0, j + 1, 0), id(0, j + 1, 1), id(0, j, 0), id(0, j + 1, 1), id(0, j, 1));
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); o.add(new THREE.Mesh(g, mt2));
+      // dentro in ombra (fodera), il filetto in cima, la zip che sale sul bordo davanti
+      const IN = []; for (let i = 0; i <= NAi; i++) { const a = sg * lerp0(gapA(1), Math.PI, i / NAi); IN.push(pt(a, 1, th * .5)); }
+      o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(IN), 60, th * .5 + .0012, 4), C.fascia2 ? lm(C.fascia2) : C.banda ? lm(C.banda) : lm(sh(col, .8))));
+      const Z = []; for (let j = 0; j <= NT; j++) { const t = j / NT; Z.push(pt(sg * gapA(t), t, th * .5)); } o.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(Z), 12, .0028, 4), lm(sh(col, .45))));
+    }
+    // il tiretto della zip
+    { const p = pt(0, 0, th + .002), tir = new THREE.Mesh(new THREE.BoxGeometry(.008, .016, .003), new THREE.MeshStandardMaterial({ color: '#b8b8bc', metalness: .8, roughness: .3 })); tir.position.copy(p).add(new THREE.Vector3(0, -.006, 0)); tir.lookAt(p.clone().add(new THREE.Vector3(p.x - nx, 0, p.z - nz))); o.add(tir); }
+    AT('Chest', o);
+  }
+  // il collo della giacca: dietro e ai lati una fascia che sale sul collo (sopra il colletto della camicia, che esce di un dito)
+  // e si rovescia giù; davanti scende e si perde nei revers dipinti
+  function colloGiacca(outfit, B, T, AT) {
+    const Pt = window.Pittura; if (!Pt || !T) return; const PL = curPL || Pt.paintPlans(B, outfit), nY = Sartoria.neckY(B), [nx, nz] = B.neckC;
+    const tors = PL.filter(C => (C.parti || []).includes('torso')), J = tors[tors.length - 1]; if (!J || !/revers/.test(J.collo || '')) return;
+    const M = misuraCollo(B, T, outfit, PL), hx = c => '#' + new THREE.Color().setRGB(c[0], c[1], c[2]).getHexString(), col = hx(J.A);
+    const mt = Pt.blockMat(J.fab || 'lana', col, J.B ? hx(J.B) : col, col, { vc: false }).clone(); mt.side = THREE.DoubleSide;
+    const NA = 96, aL = .78, th = .004, yTop = nY + .002, yBase = nY - .03, rIn = B.neckR + .019, R0 = new Float32Array(NA);
+    for (let i = 0; i < NA; i++) { const a = -Math.PI + i / NA * Math.PI * 2; R0[i] = Math.max(rIn + .006, M.maxR(a, yBase - .004, yBase + .006) + .0015); }
+    for (let it = 0; it < 10; it++) { const c0 = R0.slice(); for (let i = 0; i < NA; i++) R0[i] = (c0[(i + NA - 1) % NA] + 2 * c0[i] + c0[(i + 1) % NA]) / 4; }
+    const at = a => { const f = (((a + Math.PI) / (Math.PI * 2) * NA) % NA + NA) % NA, i0 = Math.floor(f) % NA, t = f - Math.floor(f); return lerp0(R0[i0], R0[(i0 + 1) % NA], t); };
+    // profilo per angolo: t 0→.5 il piede sale dalla spalla alla piega, .5→1 la vela torna giù di fuori; davanti (verso aL) più basso
+    const hk = a => { const x = cl0((Math.abs(a) - aL) / .7); return .45 + .55 * x * x * (3 - 2 * x); };
+    const pt = (a, t, d) => { const k = hk(a), yt = lerp0(yBase + .012, yTop, k), rb = at(a), rt = rIn + (1 - k) * .012;
+      let y, r; if (t <= .5) { const u = t / .5; y = lerp0(yBase, yt, u); r = lerp0(rb, rt, Math.pow(u, .7)); } else { const u = (t - .5) / .5; y = lerp0(yt + .002, yBase - .006 * k, u); r = lerp0(rt + th, rb + .006, Math.pow(u, 1.4)) + .002 * Math.sin(u * Math.PI); }
+      r += d; return new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r); };
+    const NT = 12, NAi = 64, o = new THREE.Group();
+    for (const sg of [1, -1]) { const P = [], I = [], U = [], id = (i, j) => i * (NT + 1) + j;
+      for (let i = 0; i <= NAi; i++) for (let j = 0; j <= NT; j++) { const a = sg * lerp0(aL, Math.PI, i / NAi), p = pt(a, j / NT, 0); P.push(p.x, p.y, p.z); U.push(a * .4, j / NT * .1); }
+      for (let i = 0; i < NAi; i++) for (let j = 0; j < NT; j++) I.push(id(i, j), id(i + 1, j), id(i + 1, j + 1), id(i, j), id(i + 1, j + 1), id(i, j + 1));
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); o.add(new THREE.Mesh(g, mt)); }
     AT('Chest', o);
   }
   function sciarpa(c, B, T, outfit, opt) {
@@ -1065,16 +1128,22 @@ var Vesti3D = (function () {
           const dis = c.dis || 'raso', C2 = { regimental: '#c8b070', pois: '#ece8dc', paisley: '#e8c070', liberty: '#e8d8b0', costine: c.col }[dis] || c.col, C3 = { paisley: '#2a3a6a', liberty: '#c83a4a', regimental: '#1a1a1e' }[dis] || C2;
           const mt = P0 ? P0.blockMat(dis, c.col, C2, C3, { vc: false }) : FM('raso', c.col), off = (shirt ? sp(shirt) : 0) + .003, o = new THREE.Group(), tb = Pittura.frame(B).tubes[0];
           const at = (y, a, d) => Pittura.surfI(B, 0, tb.sAtY(y), a, off + (d || 0));
-          const yK = nY - .018, yEnd = Math.max(B.waist - .03, nY - vDrop + .01), tip = yEnd > B.waist || outer ? 0 : .03;   // sotto la giacca la pala sparisce dietro l'abbottonatura, senza punta a vista
-          // il nodo: un trapezio rigonfio
-          const k = at(yK, 0, .005), knot = new THREE.Mesh(new THREE.CylinderGeometry(.012, .007, .024, 4, 1), mt); knot.rotation.y = Math.PI / 4; knot.scale.set(1, 1, .5); knot.position.copy(k); o.add(knot);   // il nodo piccolo e curato
-          // la pala: nastro sulla superficie, da 1,4 a 3,8 cm, con la punta
-          const n = 10, V = [], U = [], I = [];
-          for (let i = 0; i <= n; i++) { const t = i / n, y = lerp0(yK - .012, yEnd, t), w = .006 + t * .009, c0 = at(y, 0, .001), cl = at(y, -w / .14, .001), cr = at(y, w / .14, .001); V.push(cl.x, cl.y, cl.z, cr.x, cr.y, cr.z); U.push(0, t * .5, .05, t * .5); }
-          if (tip) { const tp = at(yEnd - tip, 0, .001); V.push(tp.x, tp.y, tp.z); U.push(.025, .55); }
-          for (let i = 0; i < n; i++) I.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2); if (tip) I.push(n * 2, n * 2 + 1, n * 2 + 2);
-          const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(V, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); gg.setIndex(I); gg.computeVertexNormals();
-          const blade = new THREE.Mesh(gg, mt); blade.material = mt; o.add(blade);
+          // [stile] il nodo: un four-in-hand pieno (3,6 cm in alto, 2,2 in basso, 4 cm), bombato, con la fossetta sotto; esce dal colletto chiuso
+          const yK = nY - .004, hK = .036, yEnd = Math.max(B.waist - .02, nY - vDrop + .01), tip = yEnd > B.waist || outer ? 0 : .045, base = at(yK - hK / 2, 0, 0), kN = new THREE.Vector3(base.x - B.neckC[0], 0, base.z - B.neckC[1]).normalize();
+          { const KP = [], KI = [], NK = 8, NR = 6;
+            for (let j = 0; j <= NK; j++) { const v = j / NK, y = yK - hK * v, w = lerp0(.018, .011, v), q = at(y, 0, .006 + .006 * Math.sin(v * Math.PI));
+              for (let i = 0; i <= NR; i++) { const u = i / NR * 2 - 1, x = u * w, bulge = (1 - u * u) * .006 * (1 - .4 * v); KP.push(q.x + kN.z * x + kN.x * bulge, q.y + .0025 * u * u, q.z - kN.x * x + kN.z * bulge); } }
+            for (let j = 0; j < NK; j++) for (let i = 0; i < NR; i++) { const a = j * (NR + 1) + i; KI.push(a, a + NR + 1, a + 1, a + 1, a + NR + 1, a + NR + 2); }
+            const kg = new THREE.BufferGeometry(); kg.setAttribute('position', new THREE.Float32BufferAttribute(KP, 3)); kg.setIndex(KI); kg.computeVertexNormals(); const km = mt.clone(); km.side = THREE.DoubleSide; o.add(new THREE.Mesh(kg, km)); }
+          // la pala: da 3,4 cm sotto il nodo a 8 cm (larga, anni '80), bombata al centro e con lo spessore; punta a freccia
+          const n = 16, V = [], I = [], NC = 6, rows = [];
+          for (let i = 0; i <= n; i++) { const t = i / n, y = lerp0(yK - hK + .004, yEnd, t), w = lerp0(.017, .04, Math.pow(t, .85)), row = [];
+            for (let k = 0; k <= NC; k++) { const u = k / NC * 2 - 1, p = at(y, u * w / .14, .0015 + .0035 * (1 - u * u) + .006 * (1 - t) * (1 - t)); row.push(p); } rows.push(row); }
+          if (tip) { const row = []; for (let k = 0; k <= NC; k++) { const u = k / NC * 2 - 1; row.push(at(yEnd - tip * (1 - Math.abs(u)), u * .04 * Math.abs(u) / .14, .0015 + .0035 * (1 - u * u))); } rows.push(row); }   // la punta a freccia
+          const nr = rows.length; rows.forEach(r => r.forEach(p => V.push(p.x, p.y, p.z)));
+          for (let i = 0; i < nr - 1; i++) for (let k = 0; k < NC; k++) { const a = i * (NC + 1) + k; I.push(a, a + NC + 1, a + 1, a + 1, a + NC + 1, a + NC + 2); }
+          const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(V, 3)); const U = []; rows.forEach((r, i) => r.forEach((p, k) => U.push(k / NC * .08, i / (nr - 1) * .5))); gg.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); gg.setIndex(I); gg.computeVertexNormals();
+          const bm = mt.clone(); bm.side = THREE.DoubleSide; o.add(new THREE.Mesh(gg, bm));
           AT('Chest', o);
         }
         return; }
@@ -1119,6 +1188,7 @@ var Vesti3D = (function () {
         if (mz < 9) { o.add(Cy(.012, .008, .055, c.col, mx, .028, mz + .02, 8)); AT('Foot' + s, o); } }
     });
     try { colletti(outfit, B, T, AT); } catch (e) { console.error('[Vesti3D] colletti', e); }
+    try { colloAlto(outfit, B, T, AT); } catch (e) { console.error('[Vesti3D] colloAlto', e); }
     // nella sinistra
     if (held) { const wL = bn.WristL, o = new THREE.Group(), p = wL.clone().add(new THREE.Vector3(.01, -.08, .04)); const C0 = typeof Oggetti !== 'undefined' && Oggetti.CAT[held]; const big = C0 && C0.peso > 1;
       const om = window.Officina && Officina.held(held); let m = om || null;

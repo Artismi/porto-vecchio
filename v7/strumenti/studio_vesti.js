@@ -42,7 +42,7 @@ const GRUPPI = {
   trap: [   // [stile] il guardaroba trap/anni 2000: tuta da nazionale, polo col catenone e jeans larghi, pelliccia
     ['nazionale', [['giacca_tuta', { col: '#1e3a8a', id: 'giacca_tuta_fascia' }], ['pantaloni_tuta', { col: '#1e3a8a' }], ['scarpe_air', { col: '#f6f4f0' }], 'occhiali_mascherina']],
     ['polo_catena', [['polo', { col: '#141416' }], ['jeans_larghi', { col: '#5a7090' }], 'collana_oro', ['cappellino', { col: '#101012' }], 'scarpe_air']],
-    ['scarface', ['camicia', ['pantaloni_completo', { col: '#b8bcc4' }], ['giacca_completo', { col: '#b8bcc4' }], 'collana_oro', 'occhiali_sole', 'scarpe_eleganti']],
+    ['scarface', [['camicia', { col: '#16161a', var: { collo: 'camicia_aperta', lucido: 1 } }], ['pantaloni_completo', { col: '#c8c0ae', var: { fab: 'panno' } }], ['giacca_completo', { col: '#c8c0ae', var: { fab: 'panno' } }], 'collana_oro', 'occhiali_sole', ['scarpe_eleganti', { col: '#e8e2d4' }]]],
   ],
   street: [   // le sottoculture: un completo tipico per ciascuna
     ['maranza', [['giacca_tuta', { col: '#16161a' }], ['pantaloni_tuta', { col: '#16161a' }], ['calze_sport', { when: 2 }], ['scarpe_air', { col: '#16161a' }], 'marsupio_tracolla', ['cappellino', { col: '#101012' }], 'occhiali_mascherina']],
@@ -108,7 +108,7 @@ for (const [g, list] of Object.entries(GRUPPI)) {
     if (only && !only.includes(g) && !only.includes(nome)) continue;
     const vesti = ids.map(x => Array.isArray(x) ? capo(x[0], x[1]) : capo(x));
     const pose = ANG.map(a => ({ nome: '', look: M[chi || 'uomo'], vesti, ang: a }));
-    const DT = { pancia: [.25, 1.0, .75, 0, .98, 0], polsino: [-.15, .88, .45, -.22, .88, 0], orlo: [.05, 1.0, .9, .05, .98, 0], braccio: [-.15, 1.2, .9, -.15, 1.15, 0], polso: [-.2, .95, .7, -.2, .92, 0], polsi: [0, 1.0, 1.5, 0, .95, 0], collo: [0, 1.5, 1.3, 0, 1.45, 0], vita: [0, 1.05, 1.5, 0, 1.0, 0] }[process.env.DETT || ''];
+    const DT = { pancia: [.25, 1.0, .75, 0, .98, 0], polsino: [-.15, .88, .45, -.22, .88, 0], orlo: [.05, 1.0, .9, .05, .98, 0], braccio: [-.15, 1.2, .9, -.15, 1.15, 0], polso: [-.2, .95, .7, -.2, .92, 0], polsi: [0, 1.0, 1.5, 0, .95, 0], collo: [0, 1.5, 1.3, 0, 1.45, 0], petto: [-.24, 1.4, .8, -.24, 1.36, 0], schiena: [.9, 1.45, -1.2, .7, 1.3, 0], vita: [0, 1.05, 1.5, 0, 1.0, 0] }[process.env.DETT || ''];
     if (DT) { shots.push({ nome: g + '_' + nome + '_' + process.env.DETT, t: process.env.RIPOSO ? 0 : .3, cols: 4, sp: .78, pose, cam: DT }); continue; }
     shots.push({ nome: g + '_' + nome, t: process.env.RIPOSO ? 0 : .3, cols: 4, sp: .78, pose, cam: zoom ? [0, zoom, +(process.env.DIST || 2.3), 0, zoom - .05, 0] : [0, 1.1, 4.1, 0, .95, 0] });
   }
