@@ -67,7 +67,7 @@ console.log(fail ? `\n${fail} prove fallite` : '\nTutto bene.');
 process.exitCode = fail ? 1 : 0;
 // 11) scavare a clic: dal fondo di una fogna verso un punto nella terra, il personaggio ci arriva scavando
 {
-  const L2 = LV.S(st); let P0 = null, dir = null; for (const Q of L2.portals) { if (Q.kind !== 'tombino') continue; const d = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([a, b]) => [1, 2, 3, 4, 5].every(k => !L2.ug[(Q.u[1] + b * k) * G.GW + Q.u[0] + a * k] && G.tileAt(Q.u[0] + a * k, Q.u[1] + b * k) !== G.T.WATER)); if (d) { P0 = Q; dir = d; break; } }
+  const L2 = LV.S(st); let P0 = null, dir = null; for (const Q of L2.portals) { if (Q.kind !== 'tombino') continue; const d = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([a, b]) => [1, 2, 3, 4, 5].every(k => !L2.ug[(Q.u[1] + b * k) * G.GW + Q.u[0] + a * k] && G.tileAt(Q.u[0] + a * k, Q.u[1] + b * k) !== G.T.WATER && !SS.findAt(Q.u[0] + a * k, Q.u[1] + b * k))); if (d) { P0 = Q; dir = d; break; } }
   p.indoor = null; p.lv = { k: 'ug' }; p.x = (P0.u[0] + .5) * TS; p.y = (P0.u[1] + .5) * TS; const bag = Oggetti.inv(st); bag.pala = 1; bag.piccone = 1;
   const gx = (P0.u[0] + dir[0] * 5 + .5) * TS, gy = (P0.u[1] + dir[1] * 5 + .5) * TS, r = LV.digTo(st, gx, gy); ok(r && r.ok, 'scavo a clic: ' + (r && r.msg));
   for (let k = 0; k < 120 * 10 && L2.route; k++) { const T0 = LV.routeTarget(st); let inp = { x: 0, y: 0 }; if (T0 && !T0.wait) { const a = Math.atan2(T0.y - p.y, T0.x - p.x); inp = { x: Math.cos(a), y: Math.sin(a), aim: a }; } else if (T0) inp = { x: 0, y: 0, aim: T0.aim }; G.step(st, 1 / 10, inp); }
