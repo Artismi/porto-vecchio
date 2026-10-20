@@ -103,7 +103,7 @@ var Scena = (function () {
     W.sets.forEach(q => { if (q.k === 'calata') return; const x = q.x !== undefined ? q.x : (q.x0 + q.x1) / 2, z = q.y !== undefined ? q.y : (q.y0 + q.y1) / 2, r = q.r || Math.max(q.x1 - q.x0, q.y1 - q.y0) / 2;
       reg({ tipo: 'piazzetta', set: q.k, bar: !!q.bar, forno: !!q.forno, era: q.k === 'adunata' ? 'E4' : q.k === 'mercato' ? 'E3' : q.k === 'marina' ? 'E2' : 'E0', rango: 3, x, z, r, fondale: fondale(x, z) }); });
     // ---- l'impaginazione per ogni pagina ----
-    const vicine = (p, R) => { const out = [], k0 = cella(p.x, p.z); for (const o of S.celle.get(k0) || []) if (o !== p && o.imp && Math.hypot(o.x - p.x, o.z - p.z) < R) out.push(o); return out; };
+    const vicine = (p, R) => { const out = [], n = Math.max(0, Math.ceil(R / 12) - 1), seen = new Set(); for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) for (const o of S.celle.get(cella(p.x + i * 12, p.z + j * 12)) || []) { if (o === p || !o.imp || seen.has(o)) continue; seen.add(o); if (Math.hypot(o.x - p.x, o.z - p.z) < R) out.push(o); } return out; };
     // ordine di assegnazione: per via e progressiva, così «mai la stessa a meno di 3 pagine» vale lungo la strada
     const ord = S.pagine.slice().sort((a, c) => (a.via || '') < (c.via || '') ? -1 : (a.via || '') > (c.via || '') ? 1 : (a.x + a.z) - (c.x + c.z));
     const L = Object.keys(CATALOGO).map(k => CATALOGO[k]);
