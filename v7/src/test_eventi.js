@@ -2,7 +2,7 @@
 global.World = require('./world.js'); global.Interior = require('./interiors.js');
 global.Game = require('./game.js'); global.Risacca = require('./risacca.js'); global.Popolo = require('./popolo.js'); global.Azioni = require('./azioni.js');
 global.Economia = require('./economia.js'); global.Fazioni = require('./fazioni.js'); global.Soldi = require('./soldi.js'); global.Oggetti = require('./oggetti.js');
-global.Graffiti = require('./graffiti.js'); global.Livelli = require('./livelli.js'); global.Sottosuolo = require('./sottosuolo.js'); global.Tetti = require('./tetti.js');
+global.Graffiti = require('./graffiti.js'); global.Livelli = require('./livelli.js'); global.Sottosuolo = require('./sottosuolo.js'); global.Tetti = require('./tetti.js'); global.Posti = require('./posti.js');   // [vita2]
 global.WriterArte = require('./writer_arte.js'); global.Writing = require('./writing.js'); global.WriterVita = require('./writer_vita.js');
 global.Eventi = require('./eventi.js');
 const G = Game, EV = Eventi, st = G.create(1), p = st.player;
@@ -15,7 +15,9 @@ const res = {};
 for (const id of EV.list()) {
   // il giocatore torna al punto di partenza e l'ora va a mezzogiorno o a mezzanotte secondo la scena
   const D = EV.SCENE.find(s => s.id === id); p.x = home.x; p.y = home.y; p.indoor = null; p.lv = null; p.vehicle = null;
-  st.t = day0 + (D.when === 'night' ? 23 : D.when === 'day' ? 11 : 17) * 60;
+  // [vita2] le scene con la loro fascia oraria si provano a metà della fascia
+  const ora = D.ora ? (Array.isArray(D.ora[0]) ? D.ora[0] : D.ora) : null;
+  st.t = day0 + (ora ? ((ora[0] + ora[1]) / 2 % 24) : D.when === 'night' ? 23 : D.when === 'day' ? 11 : 17) * 60;
   let sc = null; for (let k = 0; k < 40 && !sc; k++) { sc = EV.run(st, id); if (!sc) step(1); }
   if (!sc) { const r = st.npcs.filter(n => Math.hypot(n.x - p.x, n.y - p.y) < 34); res[id] = `non parte (entro 34 m: ${r.length}, fuori ${r.filter(n => !n.inside).length}, liberi ${r.filter(n => !n.inside && n.action.name === 'routine' && !n.__ev && !(n.pop && n.pop.emer)).length}, in scena ${st.npcs.filter(n => n.__ev).length}, scene ${E.live.length}, ore ${((st.t / 60) % 24).toFixed(1)}, giocatore ${p.x.toFixed(0)},${p.y.toFixed(0)} hp ${p.hp} ${p.indoor ? 'dentro' : ''})`; continue; }
   if (D.solo) { res[id] = 'parte (da solo)'; step(2); continue; }
@@ -27,7 +29,9 @@ for (const id of EV.list()) {
      `${id}: ${res[id]}`);
   if (said > 0) console.log('      «' + [...seen].slice(0, 3).join('» «') + '»');
 }
-Object.entries(res).filter(([, v]) => !/finita|solo/.test(v)).forEach(([k, v]) => ok(v !== 'non parte' || ['spaccio', 'innamorati', 'due_ubriachi', 'graffito', 'scala', 'polizia_insegue', 'perquisizione'].includes(k), `${k}: ${v}`));
+Object.entries(res).filter(([, v]) => !/finita|solo/.test(v)).forEach(([k, v]) => ok(v !== 'non parte' || ['spaccio', 'innamorati', 'due_ubriachi', 'graffito', 'scala', 'polizia_insegue', 'perquisizione', 'posto_blocco', 'pattuglia_notte'].includes(k), `${k}: ${v}`));   // [vita2] le scene coi Grigi partono solo se una pattuglia è vicina
+// [vita2] le scene legate ai posti: quante hanno trovato il loro posto (sulla mappa vecchia i posti sono quelli che si leggono)
+console.log(`    scene coi posti: ${EV.SCENE.filter(D => D.posto).length}, di cui nuove (strette) ${EV.SCENE.filter(D => D.posto && !D.soft).length}; posti letti: ${Posti.all().length}`);
 // la regia da sola: in due minuti di gioco qualcosa succede
 // [leggera] la regia da sola: in 8 minuti qualcosa succede (una scena ogni 50-120 s), mai la stessa due volte nello stesso posto,
 // e le scene che vengono verso il giocatore al massimo una ogni 10 minuti
