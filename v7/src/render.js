@@ -9493,7 +9493,7 @@ var Render = (function () {
   // Il banco di prova è la galleria degli scorci: node strumenti/galleria.js <cartella> (venti fotogrammi fissi con le misure).
   // QUADRO è la pellicola, uguale dappertutto: contrasto e gamma, neri e bianchi, ombre fredde e luci calde, saturazione, aria.
   const QUADRO = {
-    contrastoCoperto: 1.24, contrastoSole: 1.66, contrastoNotte: 1.04, pernoMedi: .41,   // la pendenza dei toni attorno al perno: col sole il salto luce-ombra è deciso
+    contrastoCoperto: 1.24, contrastoSole: 1.66, contrastoNotte: 1.04, pernoMedi: .37,   // la pendenza dei toni attorno al perno: col sole il salto luce-ombra è deciso
     spallaBianchi: .75,             // da qui in su i chiari si piegano dolcemente invece di bruciare
     pavimentoNeri: .32,            // un'ombra non scende mai sotto questa frazione della sua luce di partenza: niente neri chiusi
     ariaNeri: [.014, .017, .024],   // un filo d'aria fredda sollevata nei neri, di giorno
@@ -9507,7 +9507,7 @@ var Render = (function () {
     ariaGiorno: .04, ariaNotte: .03, coloreLontano: .15,   // prospettiva aerea: quanta aria fra noi e il lontano, quanta ne resta di notte, quanto colore perde il lontano
     vicinoContrasto: .12,           // attorno al personaggio il salto dei toni cresce di tanto: il primo piano si stacca
     lontanoFreddo: [.96, .99, 1.05], lontanoChiaro: .025,   // i piani lontani: un filo più freddi e più chiari (la separazione dei piani)
-    gialliQuieti: .28,              // il tufo e le facciate gialle perdono questo tanto di colore (gli aranci dei coppi no)
+    gialliQuieti: .4,               // il tufo e le facciate gialle perdono questo tanto di colore (gli aranci dei coppi no)
     varcoContorno: 1,               // [varco2] quanto si toglie il contorno di profondità sul bordo dell'ellisse (1 = niente filo scuro)
     varcoTaglio: .14,               // l'ombra sullo spessore tagliato di muri e tetti (l'anello beige)
     varcoLuce: .5,                  // quanto si schiariscono le facce scure rimaste dentro il buco
@@ -9517,7 +9517,7 @@ var Render = (function () {
   // case attorno alla camera (b.era) e si mescola piano mentre la camera si sposta. Fuori dalla città nuova i pesi sono zero.
   const SCENA = {
     borgo:     { sole: 1.15, cielo: .84, esposizione: 1.03, saturazione: 1.07, contrasto: 1, velo: 0, espNotte: .9, finestre: .8, cieloNotte: .95 },   // calce al sole pieno; di notte poche finestre
-    metropoli: { sole: .88, cielo: 1.1, esposizione: .98, saturazione: .86, contrasto: .9, velo: .06, espNotte: 1.1, finestre: 1.4, cieloNotte: 1.25 },   // opaca di giorno (velo, meno sole), accesa di notte
+    metropoli: { sole: .94, cielo: 1.1, esposizione: 1, saturazione: .86, contrasto: .9, velo: .06, espNotte: 1.1, finestre: 1.4, cieloNotte: 1.25 },   // opaca di giorno (velo, meno sole), accesa di notte
     spianata:  { sole: 1.12, cielo: .95, esposizione: 1.03, saturazione: .82, contrasto: 1.05, velo: 0, espNotte: 1, finestre: 1, cieloNotte: 1, fari: .45, fariColore: '#d8e2ee' },   // sempre a giorno: di notte i fari della Rocca
     raggio: 36, mescola: 1.5,       // metri attorno a ogni casa che pesano sulla zona; velocità del cambio di luce
   };
@@ -9596,7 +9596,7 @@ var Render = (function () {
   // lontano dietro una sagoma non conta, quindi niente alone. Si scurisce solo dove la geometria si chiude: l'angolo fra muro e suolo,
   // sotto balconi, cornicioni e portici, negli sguinci, ai piedi di gente, mezzi e oggetti (fa da ombra di contatto); le superfici aperte
   // restano pulite. In uscita: occlusione, profondità (per la ricomposizione che rispetta i bordi) e quanto il pixel è suolo.
-  const OCCL = { raggio: 1, forza: .78, tinta: [.62, .52, .44], suoloScuro: .12 };   // la tinta: ombra calda-scura, mai grigia
+  const OCCL = { raggio: 1, forza: .78, tinta: [.62, .52, .44], suoloScuro: .1 };   // la tinta: ombra calda-scura, mai grigia
   if (typeof window !== 'undefined') window.__OCCL = OCCL;
   const OCC = { rt: null, scene: null, cam: null, mat: null };
   function occInit() {
