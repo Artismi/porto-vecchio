@@ -21,8 +21,8 @@ var Scena = (function () {
     casa_del_borgo: { tipo: 'parete', ere: ['E0'], dom: 'bucato', sec: ['abusivo', 'bidone', 'lampada_braccio'], acc: ['civico', 'vaso'] },
     bar_col_dehors: { tipo: 'parete', bar: true, porta: true, dom: 'dehors', sec: ['tenda', 'fioriera', 'lavagna'], acc: ['civico', 'targa'] },
     palinsesto_del_vicolo: { tipo: 'parete', ere: ['E0', 'E2'], dom: 'manifesti', sec: ['tag', 'abusivo', 'bidone'], acc: ['civico', 'sticker'] },
-    lampada_e_targa: { tipo: 'parete', ere: ['E0', 'E2'], dom: 'lampada_braccio', sec: ['bucato', 'bidone', 'vaso'], acc: ['civico', 'targa'] },
-    muro_di_calce: { tipo: 'parete', ere: ['E0', 'E2'], quiete: true, acc: ['targa'] },
+    lampada_e_targa: { tipo: 'parete', ere: ['E0', 'E2'], dom: 'lampada_braccio', sec: ['targa', 'bucato', 'bidone'], acc: ['civico', 'antenna'] },
+    muro_di_calce: { tipo: 'parete', ere: ['E0', 'E2'], quiete: true, acc: ['antenna'] },
     angolo_nudo: { tipo: 'angolo', quiete: true, acc: ['targa'] },
     spigolo_con_edicola: { tipo: 'angolo', ere: ['E0'], dom: 'edicola_votiva', sec: ['lampada_braccio', 'targa'], acc: ['civico'] },
     // E2 la marina

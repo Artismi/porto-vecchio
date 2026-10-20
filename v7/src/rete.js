@@ -36,6 +36,8 @@ var Rete = (function () {
       const u = Math.max(1, Math.min(d - 1, Math.round((z0 + d - z - 1) / TS) * TS + 1)); return { f: 'E', u, x: x0 + w, z: z0 + d - u, yaw: Math.PI / 2, nx: 1, nz: 0 }; };
     // una traversata o un filo non attraversa mai una via ≥ 10 m
     const attraversaLarga = (ax, az, bx, bz) => (M.roads || []).some(q => q.w >= 10 && q.pts && q.pts.some((p, i) => { if (!i) return false; const o = q.pts[i - 1]; const d1 = (bx - ax) * (o[1] - az) - (bz - az) * (o[0] - ax), d2 = (bx - ax) * (p[1] - az) - (bz - az) * (p[0] - ax), d3 = (p[0] - o[0]) * (az - o[1]) - (p[1] - o[1]) * (ax - o[0]), d4 = (p[0] - o[0]) * (bz - o[1]) - (p[1] - o[1]) * (bx - o[0]); return d1 * d2 < 0 && d3 * d4 < 0; }));
+    // un filo non passa dentro le case: fra i due estremi solo strada, cortile o le due case che collega
+    const libero = (ax, az, bx, bz, b1, b2) => { const L = Math.hypot(bx - ax, bz - az); for (let t = 1; t < L - 1; t += .7) { const x = ax + (bx - ax) * t / L, z = az + (bz - az) * t / L, i = bAt(x, z); if (i >= 0 && i !== b1 && i !== b2) return false; } return true; };
     const mensolaDi = (b, bi, fc) => { const key = bi + '|' + fc.f + '|' + fc.u; let m = R.mensole.find(q => q.key === key); if (m) return m;
       m = nodo('mensola', fc.x, fc.z, Math.min(Y_MENS, topOf(b) - .3), { bi, f: fc.f, u: fc.u, yaw: fc.yaw, key }); R.mensole.push(m); if (!R.perCasa.has(bi)) R.perCasa.set(bi, { mensole: [], contatore: null, abusivi: 0, antenna: null }); R.perCasa.get(bi).mensole.push(m); if (Scena && Scena.attivo()) Scena.nota(fc.x, fc.z, 'mensola'); return m; };
     // ---- 1) le dorsali lungo le vie, mensola ogni 8-12 m sul lato lontano dalla camera; cabine; pozzetti dove è interrata ----
@@ -48,7 +50,7 @@ var Rete = (function () {
           else if (s > prossima) {   // la mensola: sulla prima casa che il lato lontano incontra entro 3 m dal bordo
             let bi = -1, px = 0, pz = 0; for (let o = rd.w / 2 + .3; o < rd.w / 2 + 3.2 && bi < 0; o += .7) { px = x + nx * far * o; pz = z + nz * far * o; bi = bAt(px, pz); }
             if (bi >= 0 && B[bi] && (B[bi].era || B[bi].shack)) { const b = B[bi], fc = faccia(b, px, pz); if ((fc.f === 'S' && -far * nz > 0) || (fc.f === 'E' && -far * nx > 0)) { const m = mensolaDi(b, bi, fc);
-              if (prev && prev !== m) { const dd = Math.hypot(prev.x - m.x, prev.z - m.z); if (dd < 18 && !attraversaLarga(prev.x, prev.z, m.x, m.z)) seg(prev, m, 'dorsale', { rd: rd.id }); else if (dd < 26 && prevBi !== bi && !attraversaLarga(prev.x, prev.z, m.x, m.z)) seg(prev, m, 'dorsale', { rd: rd.id, lunga: true }); }
+              if (prev && prev !== m && libero(prev.x, prev.z, m.x, m.z, prev.bi, bi)) { const dd = Math.hypot(prev.x - m.x, prev.z - m.z); if (dd < 18 && !attraversaLarga(prev.x, prev.z, m.x, m.z)) seg(prev, m, 'dorsale', { rd: rd.id }); else if (dd < 26 && prevBi !== bi && !attraversaLarga(prev.x, prev.z, m.x, m.z)) seg(prev, m, 'dorsale', { rd: rd.id, lunga: true }); }
               prev = m; prevS = s; prevBi = bi; prossima = s + 8 + hash(ri, k, 5) * 4; } else prossima = s + 2; } else prossima = s + 2; }
           // la traversata: ogni 40-60 m il filo passa dall'altra parte (mai su una via ≥ 10 m), con la mensola di là sulla faccia che vede la via
           if (!interr && !vic && rd.w < 10 && s > prossTrav && prev && s - prevS < 6) { prossTrav = s + 40 + hash(ri, k, 7) * 20;
@@ -83,14 +85,15 @@ var Rete = (function () {
       if (h >= dens) return;
       // la sorgente: la mensola o il lampione più vicino (anche di un'altra casa), entro 25 m e senza attraversare una via larga
       const cand = sorgenti.filter(n => n.bi !== bi && Math.hypot(n.x - (x0 + w / 2), n.z - (z0 + d / 2)) < 25).sort((p, q) => Math.hypot(p.x - x0 - w / 2, p.z - z0 - d / 2) - Math.hypot(q.x - x0 - w / 2, q.z - z0 - d / 2));
-      const src = (c && c.mensole.filter(q => !q.traversata)[0]) || cand[0]; if (!src) return;
+      const src = (c && c.mensole.filter(q => !q.traversata)[0]) || cand.find(n => libero(n.x, n.z, x0 + w / 2, z0 + d, n.bi, bi) || libero(n.x, n.z, x0 + w, z0 + d / 2, n.bi, bi)); if (!src) return;
       const n = era === 'E7' ? 2 + Math.floor(hash(bi, 14, 1986) * 4) : 1;   // le matasse delle baracche
       for (let i = 0; i < n; i++) { const hh = hash(bi, 20 + i, 1986), facce = []; if (open(tl(b.x + Math.floor(b.w / 2), b.y + b.h))) facce.push('S'); if (open(tl(b.x + b.w, b.y + Math.floor(b.h / 2)))) facce.push('E'); if (!facce.length) facce.push(src.f === 'E' ? 'E' : 'S');
         const f = facce[Math.floor(hh * facce.length)], len = f === 'S' ? w : d, kind = hh < .55 ? 'finestra' : hh < .85 ? 'balcone' : 'tetto', fl = Math.max(1, b.fl || 1), piano = fl > 1 ? 1 + Math.floor(hash(bi, 30 + i, 7) * (fl - 1)) : 0;
         let u = (Math.floor(hash(bi, 40 + i, 7) * Math.round(len / TS))) * TS + 1, y = kind === 'tetto' ? top + .25 : MG + (piano - 1) * MF + (kind === 'balcone' ? .9 : 1.5); if (piano === 0 && kind !== 'tetto') y = 2.1;
         const tx = f === 'S' ? x0 + u : x0 + w, tz = f === 'S' ? z0 + d : z0 + d - u;
+        if (attraversaLarga(src.x, src.z, tx, tz) || Math.hypot(src.x - tx, src.z - tz) > 14 || !libero(src.x, src.z, tx, tz, src.bi, bi)) continue;   // prima di chiedere il posto
         if (Scena && Scena.attivo()) { const sl = Scena.chiedi(tx, tz, 'abusivo', { max: 5 }); if (!sl) continue; if (sl.u !== undefined && kind !== 'tetto') { u = sl.u; } }
-        const px = f === 'S' ? x0 + u : x0 + w, pz = f === 'S' ? z0 + d : z0 + d - u; if (attraversaLarga(src.x, src.z, px, pz)) continue;
+        const px = f === 'S' ? x0 + u : x0 + w, pz = f === 'S' ? z0 + d : z0 + d - u; if (attraversaLarga(src.x, src.z, px, pz) || Math.hypot(src.x - px, src.z - pz) > 14 || !libero(src.x, src.z, px, pz, src.bi, bi)) continue;   // corto e per aria libera: si vede da dove viene
         const t = nodo(kind, px, pz, y, { bi, f, u, yaw: f === 'S' ? 0 : Math.PI / 2 }); seg(src, t, 'abusivo', { era, matassa: n > 1 }); if (c) c.abusivi++; } });
     // ---- 4) le antenne TV sui tetti e il cavo che scende lungo la facciata fino a una finestra ----
     B.forEach((b, bi) => { const era = b.shack ? 'E7' : b.era; if (!era || (b.fl || 1) < 2 && !b.shack) return; const h = hash(bi, 50, 1986); if (h > (era === 'E7' ? .5 : era === 'E4' ? .35 : .72)) return;

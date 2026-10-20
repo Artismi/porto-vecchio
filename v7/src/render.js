@@ -1854,14 +1854,15 @@ var Render = (function () {
         const wallK = (b.__gwall[sd.f] || []).filter(k => freeK(sd, k)).sort((a, c) => a - c);
         // 1) murale: su una fila di almeno 3 moduli ciechi del piano terra
         let run = [], best = []; wallK.forEach(k => { if (run.length && k === run[run.length - 1] + 1) run.push(k); else run = [k]; if (run.length > best.length) best = run.slice(); });
-        if (best.length >= 2 && !reg && r() < .6) {
+        if (best.length >= 2 && !reg && r() < .6 && (!SEG1.ok || vuoleS1(b, sd.f, 'tag'))) {   // [segni] il murale solo dove la pagina lo vuole
           const mw = best.length * TS - .5, mh = Math.min(MG - .5, mw / 3), u = (best[0] + best.length / 2) * TS;
           const m = new THREE.Mesh(new THREE.PlaneGeometry(mw, mh), PT(Math.floor(r() * 6))); place(m, sd, u, base + .35 + mh / 2, .045); addStatic(m, true); cnt.murales++;
           best.forEach(k => { const i = wallK.indexOf(k); if (i >= 0) wallK.splice(i, 1); });
         }
         // 2) manifesti: incollati a strati sul muro pieno del piano terra, uno sull'altro
+        const okMan = !SEG1.ok || vuoleS1(b, sd.f, 'manifesti'); wallK.__uno = 0;   // [segni] un gruppo di manifesti solo dove la pagina lo prevede
         wallK.forEach(k => {
-          if (r() > (reg ? .25 : .55)) return;
+          if (!okMan || r() > (reg ? .25 : .55) || (SEG1.ok && wallK.__uno++)) return;   // [segni] una composizione per parete
           const n = 2 + Math.floor(r() * 5), u0 = k * TS + .35 + r() * (TS - 1.2);
           for (let j = 0; j < n; j++) {
             const kk = reg ? (r() < .7 ? 0 : 5) : Math.floor(r() * 12), pw = .52 + r() * .2, ph = pw * 1.4;
@@ -1871,7 +1872,7 @@ var Render = (function () {
           }
         });
         // 3) stendardo: dal cornicione, su un'asta con due staffe; il regime ne mette di più
-        if (fl >= 2 && r() < (reg ? .8 : .18) && sd.len >= 4) {
+        if (fl >= 2 && r() < (reg ? .8 : .18) && sd.len >= 4 && (!SEG1.ok || (pagS1(b, sd.f) && pagS1(b, sd.f).era === 'E4'))) {   // [segni] gli stendardi solo sulla Vittoria
           const bw = Math.min(1.7, sd.len * .25), bh = Math.min(hgt - MG + .4, bw * 3), u = TS * (1 + Math.floor(r() * Math.max(1, sd.n - 2))) , ytop = b.__top - .5;
           if (bh > 1.6) {
             const g = new THREE.Group(); place(g, sd, Math.min(sd.len - bw / 2 - .2, Math.max(bw / 2 + .2, u)), ytop, 0);
@@ -2832,7 +2833,7 @@ var Render = (function () {
     const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
     // lampioni e palme lungo le strade
     (M.roads || []).forEach(rd => {
-      if (rd.kind === 'sterrato') return;
+      if (rd.kind === 'sterrato' || (rd.era && SEG1.ok)) return;   // [segni] nella città nuova i lampioni li mette la rete, per epoca
       let acc = 0, side = 1;
       const step = rd.kind === 'litoranea' ? 30 : rd.kind === 'vicolo' ? 16 : 20;
       for (let k = 0; k < rd.pts.length - 1; k++) {
@@ -5379,7 +5380,7 @@ var Render = (function () {
       for (let k = 1; k < g.n; k++) { const L = g.s[k] - g.s[k - 1]; if (L > 0 && Math.abs(rd.h[k] - rd.h[k - 1]) / L > .15 && nearJ1(P[k][0], P[k][1], 0) > 0) { if (!run.length) run.push(k - 1); run.push(k); } else flush(); } flush(); });
     // 2) impalcature su qualche facciata verso strada: tubi, tavole, diagonali, rete verde, il cartello; la porta resta libera
     const net = new THREE.MeshLambertMaterial({ color: '#3a5a3e', transparent: true, opacity: .55, side: THREE.DoubleSide, depthWrite: false }), tube = sm('#8a8c8e', { metalness: .6, roughness: .4 }), plank = sm('#8a6a44', { roughness: 1 });
-    const cand = dyn.buildings.filter(rec => rec.b && rec.box3 && !rec.shack && !rec.special && cityAt1((rec.b.x + rec.b.w / 2) * TS, (rec.b.y + rec.b.h / 2) * TS) && (rec.b.fl || 1) >= 2);
+    const cand = dyn.buildings.filter(rec => rec.b && rec.box3 && !rec.shack && !rec.special && cityAt1((rec.b.x + rec.b.w / 2) * TS, (rec.b.y + rec.b.h / 2) * TS) && (rec.b.fl || 1) >= 2 && (!SEG1.ok || ['S', 'E'].some(f => { const p = pagS1(rec.b, f); return p && p.nome === 'cantiere'; })));   // [segni] nella città nuova solo le facciate in riparazione (2-3)
     for (let tries = 0; tries < 60 && ni < 6 && cand.length; tries++) { const rec = pick(r, cand), b = rec.b, bb = rec.box3; if (rec.__imp) continue;
       const sides = [[0, -1], [0, 1], [-1, 0], [1, 0]].filter(([a, c]) => { const tx = a > 0 ? b.x + b.w : a < 0 ? b.x - 1 : b.x + Math.floor(b.w / 2), ty = c > 0 ? b.y + b.h : c < 0 ? b.y - 1 : b.y + Math.floor(b.h / 2), v = G.tileAt(tx, ty); return v === T.WALK || v === T.VIA || v === T.PIAZZA; }); if (!sides.length) continue;
       const [a, c] = pick(r, sides), along = a ? [0, 1] : [1, 0], L = a ? bb.max.z - bb.min.z : bb.max.x - bb.min.x, H = Math.min(bb.max.y - bb.min.y - .3, 9.5), y0 = bb.min.y;
@@ -5990,7 +5991,7 @@ var Render = (function () {
     // sul retro e sui fianchi delle case: il punto dei bidoni (sempre all'angolo, vicino a una strada) e la roba vecchia nei cortili
     let bins = 0;
     (G.BUILDINGS || []).forEach((b, bi) => {
-      if (b.gov || b.shack || zoneT(b.x, b.y) !== ZN.CITTA) return; const rr = rng(bi * 4111 + 35); if (rr() > .3) return;
+      if (b.gov || b.shack || zoneT(b.x, b.y) !== ZN.CITTA || SEG1.ok) return; const rr = rng(bi * 4111 + 35); if (rr() > .3) return;   // [segni] bidoni e cassonetti dal piano
       const dside = b.door ? (b.door[1] < b.y ? 0 : b.door[0] >= b.x + b.w ? 1 : b.door[1] >= b.y + b.h ? 2 : 3) : -1;
       const sides = [0, 1, 2, 3].filter(k => k !== dside).sort(() => rr() - .5);
       for (const k of sides) {
@@ -7098,6 +7099,132 @@ var Render = (function () {
       x.save(); x.lineWidth = 2; [[-1, 0], [1, .6]].forEach(([s2, ph]) => { x.beginPath(); for (let t = 0; t <= 20; t++) { const a = t / 20 * 1.6 + ph, R0 = 14 + s2 * .9; x.lineTo(cx(X - 4 - Math.sin(a) * R0), cz(Z + s2 * 2 + (1 - Math.cos(a)) * R0 * .7)); } x.strokeStyle = 'rgba(24,22,22,.22)'; x.stroke(); }); x.restore(); });
   }
 
+  // ================= [segni] LA SCENA, LA RETE, LA SEGNALETICA, L'ARREDO (solo nella città nuova) =================
+  // Il regista delle pagine (scena.js) decide per ogni parete, angolo, sbocco e piazzetta un'impaginazione dal catalogo; la rete
+  // elettrica (rete.js) è un grafo di nodi veri. Qui si disegna soltanto: i fili dal grafo (mai un filo senza due estremi), le mensole
+  // a isolatori, i contatori, le cabine, i monconi, le antenne, i lampioni per epoca coi cartelli sui pali; dal piano dell'arredo i
+  // bidoni, i cassonetti a coppie, il bucato, i dehors, le targhe delle vie e i civici; sulle testate del regime lo stencil e il buff.
+  const SEG1 = { ok: false, tex: {} };
+  const cnS1 = () => cn1() && typeof Scena !== 'undefined' && typeof Rete !== 'undefined';
+  function segniInit1() {
+    if (!cnS1()) return; const B = G.BUILDINGS;
+    Scena.init(G, { cieche: (bi, f) => (B[bi].__gwall && B[bi].__gwall[f]) || null, ritratto: (bi, f) => !!(B[bi].__prop && B[bi].__prop.f === f) });
+    // il ritratto del Garante solo dove la pagina è la testata del regime: le altre testate restano muro (il modulo cieco resta cieco)
+    B.forEach((b, bi) => { if (!b.__prop) return; const p = Scena.paginaMuro(bi, b.__prop.f); if (!p || p.nome !== 'testata_del_regime') b.__prop = null; else Scena.chiedi(p.x, p.z, 'ritratto', { pagina: p }); });
+    Scena.piano(); Rete.init(G, Scena); SEG1.ok = true;
+    if (window.__dbg35) console.log('[dbg] segni testate', Scena.pagine().filter(p => p.nome === 'testata_del_regime').length, 'ritratti possibili', B.filter(b => b.__prop).length, 'scena', JSON.stringify(Scena.conteggio()), 'arredo', JSON.stringify(Scena.contaArredo()), 'rete', JSON.stringify(Rete.conteggio()));
+  }
+  const pagS1 = (b, f) => SEG1.ok && b && b.i !== undefined ? Scena.paginaMuro(b.i, f) : null;
+  // una voce su una parete chiesta da un sistema vecchio: nella città nuova passa dal regista, altrove sempre sì
+  const vuoleS1 = (b, f, voce) => { if (!SEG1.ok) return true; const p = pagS1(b, f); return !!(p && Scena.chiedi(p.x, p.z, voce, { pagina: p })); };
+  const NRM1 = { S: [0, 1], E: [1, 0], N: [0, -1], W: [-1, 0] };
+  function quoteS1(bi) { const rec = DZ.bRec[bi], b = G.BUILDINGS[bi]; if (rec && rec.geo) return [rec.geo.y0, rec.geo.y0 + rec.geo.H]; const y0 = groundH((b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS); return [y0, y0 + Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF]; }
+  const TETTO1 = { antenna: 1, gronda: 1, tetto: 1 }, SPORGE1 = { mensola: .32, spigolo: .32, moncone: .32, contatore: .08, finestra: .14, balcone: .75, gronda: .12, lampione: .7, tetto: .1 };
+  function nodoXYZ1(n) {
+    if (n.bi === null || n.bi === undefined || n.bi < 0) return [n.x, groundH(n.x, n.z) + n.y, n.z];
+    const b = G.BUILDINGS[n.bi], [y0, y1] = quoteS1(n.bi), rel = Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF;
+    const y = TETTO1[n.k] ? (n.k === 'antenna' ? y1 + .6 : y1 + (n.y - rel)) : y0 + Math.min(n.y, y1 - y0 - .25), o = n.f && NRM1[n.f] ? SPORGE1[n.k] || 0 : 0, N = n.f ? NRM1[n.f] || [0, 0] : [0, 0];
+    if (n.k === 'spigolo') return [n.x + .32, y, n.z + .32];
+    return [n.x + N[0] * o, y, n.z + N[1] * o];
+  }
+  // le tavole dei segni: cartelli stradali anni '80, targhe delle vie per epoca, civici
+  function texS1(key, W, H, draw) { if (SEG1.tex[key]) return SEG1.tex[key]; const c = mk(W, H), x = c.getContext('2d'); draw(x, W, H); const t = canvasTex(c);
+    return (SEG1.tex[key] = new THREE.MeshLambertMaterial({ map: t, transparent: true, alphaTest: .3, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); }
+  const usuraS1 = (x, W, H, k, n) => { const r = rng(k); x.globalCompositeOperation = 'destination-out'; for (let i = 0; i < (n || 40); i++) { x.fillStyle = `rgba(0,0,0,${(r() * .5).toFixed(2)})`; x.fillRect(r() * W, r() * H, 1 + r() * 3, 1); } x.globalCompositeOperation = 'source-over'; };
+  function cartelloS1(k) {
+    return texS1('cart|' + k, 64, 64, (x, W, H) => { x.clearRect(0, 0, W, H); const disc = (f, s) => { x.beginPath(); x.arc(32, 32, 30, 0, 6.3); x.fillStyle = f; x.fill(); if (s) { x.lineWidth = 7; x.strokeStyle = s; x.beginPath(); x.arc(32, 32, 26, 0, 6.3); x.stroke(); } };
+      if (k === 'divieto') { disc('#1f4f9a', '#c8241e'); x.strokeStyle = '#c8241e'; x.lineWidth = 6; x.beginPath(); x.moveTo(14, 14); x.lineTo(50, 50); x.stroke(); }   // divieto di sosta
+      else if (k === 'fermata') { disc('#1f4f9a', '#c8241e'); x.strokeStyle = '#c8241e'; x.lineWidth = 6; [[14, 14, 50, 50], [50, 14, 14, 50]].forEach(([a, b, c, d]) => { x.beginPath(); x.moveTo(a, b); x.lineTo(c, d); x.stroke(); }); }   // divieto di fermata
+      else if (k === 'sensounico') { x.fillStyle = '#1f4f9a'; x.fillRect(2, 18, 60, 28); x.fillStyle = '#f2f0ea'; x.beginPath(); x.moveTo(8, 29); x.lineTo(42, 29); x.lineTo(42, 23); x.lineTo(56, 32); x.lineTo(42, 41); x.lineTo(42, 35); x.lineTo(8, 35); x.fill(); }
+      else if (k === 'P') { x.fillStyle = '#1f4f9a'; x.fillRect(4, 4, 56, 56); x.strokeStyle = '#f2f0ea'; x.lineWidth = 2; x.strokeRect(7, 7, 50, 50); x.fillStyle = '#f2f0ea'; x.font = 'bold 44px Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('P', 32, 34); }
+      else if (k === 'settore') { x.fillStyle = '#ece6da'; x.fillRect(2, 14, 60, 36); x.strokeStyle = '#a8201c'; x.lineWidth = 3; x.strokeRect(4, 16, 56, 32); x.fillStyle = '#a8201c'; x.font = 'bold 11px Impact, "Arial Black", sans-serif'; x.textAlign = 'center'; x.fillText('ZONA DI', 32, 28); x.fillText('CONTROLLO', 32, 42); }
+      usuraS1(x, W, H, k.length * 31, 60); }); }
+  const settoreS1 = (x, z) => { const F = M.world.FORT, fx = F ? F.x : 1500, fz = F ? F.y : 300; return 'SETTORE ' + (1 + Math.floor(Math.hypot(x - fx, z - fz) / 80)) + '-' + String.fromCharCode(65 + Math.max(0, Math.min(5, Math.floor((z - fz + 120) / 40)))); };
+  function targaS1(testo, era) {
+    const k = 'targa|' + era + '|' + testo; return texS1(k, 256, 64, (x, W, H) => { x.textAlign = 'center'; x.textBaseline = 'middle'; const t = testo.toUpperCase(); let fs = 30;
+      if (era === 'E3') { x.fillStyle = '#ece8e0'; x.fillRect(0, 0, W, H); const r = rng(t.length * 7); for (let i = 0; i < 6; i++) { x.strokeStyle = 'rgba(120,118,112,.35)'; x.beginPath(); x.moveTo(r() * W, 0); x.bezierCurveTo(r() * W, H / 2, r() * W, H / 2, r() * W, H); x.stroke(); }
+        x.strokeStyle = '#3a3836'; x.lineWidth = 2; x.strokeRect(5, 5, W - 10, H - 10); x.font = `${fs}px Georgia, serif`; while (x.measureText(t).width > W - 24 && fs > 12) x.font = `${--fs}px Georgia, serif`; x.fillStyle = '#1a1816'; x.fillText(t, W / 2, H / 2 + 2); }   // marmo, lettere incise
+      else if (era === 'E4') { x.fillStyle = '#d8ccb0'; x.fillRect(0, 0, W, H); x.font = `bold ${fs}px "Times New Roman", serif`; while (x.measureText(t).width > W - 20 && fs > 12) x.font = `bold ${--fs}px "Times New Roman", serif`; x.fillStyle = 'rgba(255,250,236,.7)'; x.fillText(t, W / 2 + 1, H / 2 + 3); x.fillStyle = '#5a4e3a'; x.fillText(t, W / 2, H / 2 + 2); }   // travertino, lapidarie
+      else if (era === 'E6') { x.fillStyle = '#f2f0ea'; x.fillRect(0, 0, W, H); x.fillStyle = '#1e4a8a'; x.fillRect(3, 3, W - 6, H - 6); x.font = `bold ${fs}px Arial, sans-serif`; while (x.measureText(t).width > W - 20 && fs > 12) x.font = `bold ${--fs}px Arial, sans-serif`; x.fillStyle = '#f2f0ea'; x.fillText(t, W / 2, H / 2 + 1); }   // smalto blu
+      else { x.fillStyle = '#efe8da'; x.fillRect(0, 0, W, H); x.strokeStyle = '#2a4a8a'; x.lineWidth = 4; x.strokeRect(4, 4, W - 8, H - 8); x.font = `italic ${fs}px Georgia, serif`; while (x.measureText(t).width > W - 26 && fs > 12) x.font = `italic ${--fs}px Georgia, serif`; x.fillStyle = '#2a4a8a'; x.fillText(t, W / 2, H / 2 + 2); }   // maiolica del borgo
+      usuraS1(x, W, H, t.length * 13, 90); }); }
+  function civicoS1(n, era, rosso) {
+    return texS1('civ|' + era + '|' + n + '|' + (rosso ? 1 : 0), 64, 48, (x, W, H) => { x.textAlign = 'center'; x.textBaseline = 'middle'; const ink = rosso ? '#a8201c' : '#141210';
+      if (era === 'E3' || era === 'E4') { x.fillStyle = era === 'E4' ? '#d8ccb0' : '#ece8e0'; x.fillRect(2, 2, W - 4, H - 4); x.strokeStyle = '#3a3836'; x.strokeRect(4, 4, W - 8, H - 8); x.font = 'bold 28px Georgia, serif'; x.fillStyle = ink; x.fillText(n + (rosso ? 'r' : ''), W / 2, H / 2 + 2); }
+      else if (era === 'E6') { x.fillStyle = '#1e4a8a'; x.fillRect(4, 6, W - 8, H - 12); x.font = 'bold 26px Arial, sans-serif'; x.fillStyle = '#f2f0ea'; x.fillText(n, W / 2, H / 2 + 1); }
+      else { x.fillStyle = '#efe8da'; x.beginPath(); x.ellipse(W / 2, H / 2, W / 2 - 3, H / 2 - 3, 0, 0, 6.3); x.fill(); x.font = 'bold 26px Georgia, serif'; x.fillStyle = '#141210'; x.fillText(n, W / 2, H / 2 + 2); }
+      usuraS1(x, W, H, n * 17 + 3, 20); }); }
+  // un oggetto posato a una quota data (pedane, muri): niente settle
+  function placeYS1(o, x, y, z, rot) { o.position.set(x, y, z); o.rotation.y = rot || 0; const tag = newTag(); curTag = tag; addStatic(o); curTag = null; regProp(o, tag); return o; }
+  function wallPlaneS1(mat, w, h, x, y, z, yaw, off) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat), N = [Math.sin(yaw), Math.cos(yaw)]; m.position.set(x + N[0] * (off || .05), y, z + N[1] * (off || .05)); m.rotation.y = yaw; addStatic(m, true); return m; }
+  function buildSegni1() {
+    if (!SEG1.ok) return 0; const R = Rete.grafo(), N = R.nodi, B = G.BUILDINGS, r = rng(1986 * 3), cnt = { fili: 0, mensole: 0, contatori: 0, cabine: 0, lampioni: 0, cartelli: 0, antenne: 0, bidoni: 0, cassonetti: 0, bucato: 0, tavolini: 0, targhe: 0, civici: 0, stencil: 0 };
+    // ---- 1) i fili: catenarie dal grafo, un po' più molli gli abusivi, dritti i cavi che scendono in facciata ----
+    const pts = [], SAG = { dorsale: .018, traversata: .03, allaccio: .0, lampione: .03, abusivo: .06, antenna: .04, moncone: 0 };
+    R.segmenti.forEach((s, si) => { const a = N[s.a], b = N[s.b], A = nodoXYZ1(a), Bp = nodoXYZ1(b); if (s.matassa) { const d = (si % 5) * .06; A[1] -= d; Bp[1] -= d * .5; }
+      const L = Math.hypot(Bp[0] - A[0], Bp[2] - A[2]), sag = (s.facciata ? 0 : SAG[s.k] || .03) * Math.max(L, 2) + (s.k === 'abusivo' ? .15 : 0), n = L < 1.5 || !sag ? 1 : 8;
+      if (s.k === 'allaccio') {   // dalla mensola scende in verticale lungo il muro, poi in orizzontale al contatore
+        const C = [Bp[0], A[1] - .02, Bp[2]]; pts.push(A[0], A[1], A[2], C[0] + (A[0] - Bp[0]) * 0, C[1], C[2]); pts.push(C[0], C[1], C[2], Bp[0], Bp[1] + .21, Bp[2]); cnt.fili++; return; }
+      let prev = A; for (let k = 1; k <= n; k++) { const t = k / n, cur = [A[0] + (Bp[0] - A[0]) * t, A[1] + (Bp[1] - A[1]) * t - Math.sin(t * Math.PI) * sag, A[2] + (Bp[2] - A[2]) * t]; pts.push(prev[0], prev[1], prev[2], cur[0], cur[1], cur[2]); prev = cur; } cnt.fili++;
+      if (s.k === 'abusivo' && L > 4 && r() < .35) { const t = .5, mx = A[0] + (Bp[0] - A[0]) * t, my = A[1] + (Bp[1] - A[1]) * t - sag, mz = A[2] + (Bp[2] - A[2]) * t; pts.push(mx, my, mz, mx + .05, my - .55, mz + .05); }   // la cordicella che regge il cavo volante
+    });
+    if (pts.length) { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)); geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(G.WW / 2, 0, G.WH / 2), Math.hypot(G.WW, G.WH)); scene.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: '#17171a' }))); }
+    // ---- 2) le cose della rete: mensole a isolatori, contatori col sigillo, cabine ENEL, monconi, antenne, la ciabatta della baracca ----
+    const g = new THREE.Group(), iron = sm('#2a2a2e', { roughness: .7, metalness: .3 }), cer = sm('#e8e4d8', { roughness: .35 }), grey = sm('#8e8c84', { roughness: .6, metalness: .2 }), conc = sm('#b4ab9a', { roughness: 1 }), door = sm('#56665a', { roughness: .6, metalness: .3 });
+    const putG = (o, p, yaw) => { o.position.set(p[0], p[1], p[2]); o.rotation.y = yaw || 0; g.add(o); return o; };
+    N.forEach(n => { const yaw = n.f && NRM1[n.f] ? Math.atan2(NRM1[n.f][0], NRM1[n.f][1]) : (n.yaw || 0);
+      if (n.k === 'mensola') { const p = nodoXYZ1(n), q = new THREE.Group(); add(q, box(.05, .05, .36, iron), 0, 0, -.16); add(q, box(.06, .26, .03, iron), 0, -.08, -.33); add(q, box(.03, .03, .22, iron), 0, -.1, -.22, .7, 0, 0);
+        [-.07, .07].forEach(o => add(q, cyl(.032, .045, .09, 7, cer), o * 0, .065, -.02 + o)); putG(q, p, yaw); cnt.mensole++; }
+      else if (n.k === 'contatore') { const p = nodoXYZ1(n), q = new THREE.Group(); add(q, box(.32, .42, .12, grey), 0, 0, -.02); add(q, box(.16, .08, .01, sm('#1a1c1e', { roughness: .2 })), 0, .07, .045); add(q, box(.03, .03, .01, sm('#b02020')), .1, -.14, .045); putG(q, p, yaw); cnt.contatori++; }
+      else if (n.k === 'cabina') { const x0 = n.x, z0 = n.z, q = new THREE.Group(); add(q, box(2.0, 2.4, 1.3, conc), 0, 1.2, 0); add(q, box(2.2, .14, 1.5, sm('#8a8478', { roughness: 1 })), 0, 2.47, 0); add(q, box(.9, 1.9, .04, door), -.35, .98, .66); add(q, box(.5, .3, .04, door), .6, 1.9, .66);
+        const tri = new THREE.Mesh(new THREE.PlaneGeometry(.3, .27), texS1('pericolo', 32, 32, (x) => { x.fillStyle = '#e8c020'; x.beginPath(); x.moveTo(16, 2); x.lineTo(30, 29); x.lineTo(2, 29); x.fill(); x.strokeStyle = '#141210'; x.lineWidth = 2; x.stroke(); x.fillStyle = '#141210'; x.beginPath(); x.moveTo(17, 9); x.lineTo(12, 19); x.lineTo(16, 19); x.lineTo(14, 26); x.lineTo(20, 15); x.lineTo(16, 15); x.fill(); })); tri.position.set(-.35, 1.5, .69); q.add(tri);
+        const lab = new THREE.Mesh(new THREE.PlaneGeometry(.7, .2), texS1('enel', 64, 18, (x, W, H) => { x.fillStyle = '#f2f0ea'; x.fillRect(0, 0, W, H); x.fillStyle = '#1e4a8a'; x.font = 'bold 14px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('ENEL', W / 2, H / 2 + 1); })); lab.position.set(.6, 2.2, .67); q.add(lab);
+        place(q, x0, z0, yaw); cnt.cabine++; }
+      else if (n.k === 'moncone') { const p = nodoXYZ1(n), q = new THREE.Group(); add(q, box(.05, .05, .05, sm('#141416')), 0, 0, 0); putG(q, p, yaw); }
+      else if (n.k === 'antenna' && n.bi !== null) { const b = B[n.bi], [, y1] = quoteS1(n.bi), hh = Math.max(1.8, n.y - (Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF)), an = oAntenna(hh, (n.bi * .37) % 6.28, rng(n.bi * 53 + 1)); an.position.set(n.x, y1, n.z); g.add(an); cnt.antenne++; }
+      else if (n.k === 'finestra' && R.segmenti.some(s => s.b === n.id && s.k === 'abusivo') && B[n.bi] && B[n.bi].shack) { const p = nodoXYZ1(n), q = new THREE.Group(); add(q, box(.3, .05, .06, sm('#e8e4dc')), 0, -.2, .05); putG(q, p, yaw); }   // la ciabatta sul davanzale
+    });
+    // ---- 3) i lampioni per epoca, a interasse fisso; i cartelli stradali anni '80 sui pali (mai pali nuovi) ----
+    let li = 0; R.lampioni.forEach(n => { const yaw = n.f && NRM1[n.f] ? Math.atan2(NRM1[n.f][0], NRM1[n.f][1]) : (n.yaw || 0);
+      if (n.modello === 'braccio') { const p = nodoXYZ1(n); streetLamp(n.x, n.z, 'wall', yaw); cnt.lampioni++; return; }
+      if (!okSpot1(n.x, n.z, .3)) return; streetLamp(n.x, n.z, n.modello === 'ghisa' ? 'genovese' : 'sodium', yaw); cnt.lampioni++; li++;
+      if (li % 2) return; const vit = (M.roads || []).find(q => q.id === 'vittoria'), nearV = vit && vit.pts.some(p => Math.hypot(p[0] - n.x, p[1] - n.z) < 50);
+      const k = nearV ? 'settore' : n.era === 'E6' ? (li % 6 === 0 ? 'P' : li % 4 === 0 ? 'fermata' : 'divieto') : (li % 4 === 0 ? 'sensounico' : 'divieto');
+      const q = new THREE.Group(), pl = new THREE.Mesh(new THREE.PlaneGeometry(.6, .6), cartelloS1(k)); pl.position.set(0, 2.3, .09); q.add(pl); add(q, box(.62, .62, .015, sm('#8a8c8e', { metalness: .5, roughness: .5 })), 0, 2.3, .075); [-.18, .18].forEach(o => add(q, box(.14, .03, .1, iron), 0, 2.3 + o, .03));
+      if (k === 'divieto' && n.era === 'E3' && li % 3 === 0) { const st = new THREE.Mesh(new THREE.PlaneGeometry(.34, .34), texS1('sticker|' + li, 32, 32, (x) => { x.fillStyle = '#1a1a1a'; x.fillRect(2, 6, 28, 20); x.fillStyle = '#38e8ff'; x.font = 'bold 9px Impact, sans-serif'; x.textAlign = 'center'; x.fillText('RISACCA', 16, 19); })); st.position.set(.0, 1.55, .1); q.add(st); }   // lo sticker della Risacca sul palo
+      placeYS1(q, n.x, groundH(n.x, n.z), n.z, yaw + Math.PI / 2); cnt.cartelli++; });
+    // ---- 4) il piano dell'arredo: bidoni nei vicoli, cassonetti a coppie, bucato, dehors, targhe, civici ----
+    const PA = Scena.piano(), bidM = sm('#3c4a40', { roughness: .8 }), bidL = sm('#2c3830', { roughness: .8 });
+    PA.bidoni.forEach(q => { if (solidR1(q.x, q.z, .3)) return;   /* nel vicolo non c'è marciapiede: basta che non sia dentro un muro */ const o = G0(); add(o, cyl(.27, .24, .78, 10, bidM), 0, .39, 0); add(o, cyl(.29, .29, .06, 10, bidL), 0, .8, 0); add(o, box(.12, .04, .04, bidL), 0, .85, 0); place(o, q.x, q.z, q.yaw); cnt.bidoni++; });
+    PA.cassonetti.forEach(q => { if (!okSpot1(q.x, q.z, .5)) return; bin(q.x, q.z, 'dumpster', q.yaw); cnt.cassonetti++; });
+    PA.bucato.forEach(q => { laundry(q.x, q.z, groundH(q.x, q.z) + q.y, q.len, Math.abs(q.ux) > Math.abs(q.uz), rng(Math.round(q.x * 7 + q.z))); cnt.bucato++; });
+    PA.dehors.forEach(d => { const b = B[d.bi], hs = d.tavoli.map(t => groundH(t.x, t.z)), hmin = Math.min(...hs, 99), hmax = Math.max(...hs, -99), pedana = hmax - hmin > .12, top = hmax + (pedana ? .12 : 0), era = b.shack ? 'E7' : b.era;
+      const kind = era === 'E3' || era === 'E4' ? 'marmo' : era === 'E6' ? 'plastica' : 'ferro', topM = kind === 'marmo' ? PM.marble() : kind === 'plastica' ? sm('#f0eee8', { roughness: .5 }) : sm('#c8c2b6'), legM = kind === 'plastica' ? sm('#f0eee8', { roughness: .5 }) : PM.iron(), seatM = kind === 'plastica' ? sm('#f0eee8', { roughness: .5 }) : sm(pick(r, ['#8a3a2e', '#3a4a5a', '#2f5a44']));
+      if (pedana && d.tavoli.length) { const us = d.tavoli.map(t => t.u), u0 = Math.min(...us) - .8, u1 = Math.max(...us) + .8, P0 = Scena.paginaMuro(d.bi, d.f), a = P0.at((u0 + u1) / 2), Nn = NRM1[d.f], pd = G0(); add(pd, box(u1 - u0, top - hmin + .05, 1.9, PM.woodD()), 0, -(top - hmin) / 2 + .02, 0); for (let k = -3; k <= 3; k++) add(pd, box(.04, .04, 1.9, PM.wood()), k * (u1 - u0) / 7, .03, 0);
+        placeYS1(pd, a[0] + Nn[0] * 1.1, top, a[1] + Nn[1] * 1.1, d.yaw); }   // la pedana di legno sul vicolo in pendenza
+      d.tavoli.forEach((t, i) => { const y = pedana ? top : groundH(t.x, t.z), o = G0(); add(o, cyl(.36, .36, .04, 14, topM), 0, .74, 0); add(o, cyl(.03, .03, .72, 6, legM), 0, .37, 0); add(o, cyl(.2, .24, .03, 10, legM), 0, .015, 0);
+        tableItems(o, .76, pick(r, [['caffe', 'caffe', 'posacenere'], ['birra', 'birra'], ['caffe', 'giornale'], ['boccale', 'posacenere']]), r);
+        [-1, 1].forEach(s => { const c = new THREE.Group(); add(c, box(.4, .04, .38, seatM), 0, .45, 0); add(c, box(.4, .36, .03, seatM), 0, .66, -.19); [[-.17, -.16], [.17, -.16], [-.17, .16], [.17, .16]].forEach(([a, b2]) => add(c, box(.03, .45, .03, legM), a, .225, b2)); c.position.set(s * .62, 0, 0); c.rotation.y = s * Math.PI / 2 + (r() - .5) * .3; o.add(c); });
+        placeYS1(o, t.x, y, t.z, d.yaw); cnt.tavolini++; });
+      d.fioriere.forEach(f => { const o = G0(); add(o, box(.95, .42, .36, sm('#9a5a3a', { roughness: .95 })), 0, .21, 0); add(o, box(.88, .14, .3, PM.leaf()), 0, .48, 0); for (let k = 0; k < 4; k++) add(o, new THREE.Mesh(new THREE.IcosahedronGeometry(.13, 0), pick(r, [PM.leaf2(), PM.leaf3(), sm('#c8384a')])), -.33 + k * .22, .58, (r() - .5) * .1);
+        placeYS1(o, f.x, pedana ? top : groundH(f.x, f.z), f.z, d.yaw + Math.PI / 2 * (d.f === 'E' ? 1 : 0)); });
+      d.ombrelloni.forEach(u => parasol(u.x, u.z, '#b0283c', '#e9e0cf', 2.4));
+      if (d.lavagna) { const o = G0(); [-1, 1].forEach(s => add(o, box(.5, .75, .03, sm('#1e2420', { roughness: .9 })), 0, .36, s * .12, s * .16, 0, 0)); add(o, box(.4, .5, .005, texS1('menu', 32, 40, (x) => { x.fillStyle = '#1e2420'; x.fillRect(0, 0, 32, 40); x.fillStyle = 'rgba(240,236,224,.85)'; x.font = '6px sans-serif'; ['CAFFÈ 600', 'CORNETTO', 'BIRRA 1500', 'PANINI', 'GELATI'].forEach((t, i) => x.fillText(t, 2, 8 + i * 7)); })), 0, .4, .14, .16, 0, 0); place(o, d.lavagna.x, d.lavagna.z, d.yaw); }
+      if (d.frigo) { const o = G0(); add(o, box(.95, .82, .62, sm('#f0eee8', { roughness: .4 })), 0, .41, 0); add(o, box(.85, .03, .52, sm('#a8c8d8', { roughness: .1, transparent: true, opacity: .6 })), 0, .835, 0); add(o, box(.96, .2, .01, sm('#c8302a')), 0, .6, .315); place(o, d.frigo.x, d.frigo.z, d.yaw); }
+    });
+    PA.targhe.forEach(t => { const w = t.era === 'E4' ? 1.2 : .9, h = t.era === 'E4' ? .3 : .24, [y0] = quoteS1(t.bi); wallPlaneS1(targaS1(t.testo, t.era), w, h, t.x - (t.f === 'S' ? w / 2 : 0), y0 + t.y, t.z - (t.f === 'E' ? -w / 2 : 0), t.yaw, .04); cnt.targhe++; });
+    PA.civici.forEach(c => { const [y0] = quoteS1(c.bi); wallPlaneS1(civicoS1(c.n, c.era, c.rosso), .2, .15, c.x, y0 + c.y, c.z, c.yaw, .04); cnt.civici++; });
+    // ---- 5) le testate del regime: sotto il ritratto lo stencil del settore in basso a destra e il buff grigio che copre un tag ----
+    Scena.pagine().filter(p => p.nome === 'testata_del_regime').forEach(p => { const [y0] = quoteS1(p.bi), st = Scena.chiedi(p.x, p.z, 'stencil', { pagina: p, lato: 1 }), bf = Scena.chiedi(p.x, p.z, 'buff', { pagina: p, lato: -1 });
+      if (st) wallPlaneS1(texS1('stencil|' + settoreS1(p.x, p.z), 128, 40, (x, W, H) => { x.clearRect(0, 0, W, H); x.fillStyle = 'rgba(236,230,218,.92)'; x.fillRect(0, 0, W, H); x.fillStyle = '#a8201c'; x.font = 'bold 20px Impact, "Arial Black", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(settoreS1(p.x, p.z), W / 2, H / 2 + 1); x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000'; for (let i = 1; i < 9; i++) x.fillRect(i * 14, 0, 2, H); x.globalCompositeOperation = 'source-over'; usuraS1(x, W, H, 5, 80); }), 1.1, .34, st.x, y0 + 1.2, st.z, p.yaw, .06), cnt.stencil++;
+      if (bf) wallPlaneS1(texS1('buff', 64, 40, (x, W, H) => { const r2 = rng(9); for (let i = 0; i < 30; i++) { x.fillStyle = `rgba(${130 + r2() * 14},${128 + r2() * 12},${122 + r2() * 10},.9)`; x.fillRect(r2() * W - 8, r2() * H - 6, 14 + r2() * 20, 10 + r2() * 12); } x.globalCompositeOperation = 'destination-in'; x.fillStyle = '#000'; x.fillRect(3, 3, W - 6, H - 6); }), 1.5, .9, bf.x, y0 + 1.5, bf.z, p.yaw, .055); });
+    scene.add(shadowed(mergeGroup(g), false, false));
+    const C = Scena.conteggio(), via = Scena.pulisci();
+    if (window.__dbg35) console.log('[dbg] segni disegnati', JSON.stringify(cnt), 'pagine', JSON.stringify({ presi: C.presi, negati: C.negati, sforano: C.sforano, quiete: C.quietePct }), 'da pulire', via.length);
+    window.__segni = { cnt, scena: C, rete: Rete.conteggio(), arredo: Scena.contaArredo() };
+    return cnt;
+  }
+
   // ================= [isola38] IL MARCIAPIEDE VERO, IL VERDE CHE SI RIPRENDE LA CITTÀ, GLI INCROCI CURATI =================
   // Il marciapiede non si sfuma più (la sfocatura lo mangiava e lo spargeva sulla carreggiata): è il tratto fra 0 e 2,1 m dal
   // bordo della strada, ritagliato con una curva di livello liscia (niente gradini della griglia), alto 15 cm con il cordolo
@@ -7688,7 +7815,7 @@ var Render = (function () {
         for (let x = q.x0 + 4; x < q.x1 - 3; x += 2.6) if (ok(x, q.y1 - 2)) { const g2 = G0(); add(g2, box(2.2, .06, .06, PM.iron()), 0, 1, 0); add(g2, box(2.2, .06, .06, PM.iron()), 0, .55, 0); [-1, 1].forEach(o => add(g2, box(.05, 1.05, .45, PM.iron()), o * 1.05, .52, 0)); place(g2, x, q.y1 - 2, 0); n++; }
       } else if (q.k === 'piazzetta') {
         // la piazzetta: i tavolini del bar o le cassette del forno, una panchina, il gatto, i vasi
-        if (q.bar) cafe(q.x - 2.5, q.y + q.r * .45, r, 'marble', 3, ['#b0283c', '#e9e0cf']);
+        if (q.bar && !SEG1.ok) cafe(q.x - 2.5, q.y + q.r * .45, r, 'marble', 3, ['#b0283c', '#e9e0cf']);   // [segni] il dehors lo compone il piano
         if (q.forno) { if (ok(q.x - q.r * .5, q.y)) crateStack(q.x - q.r * .5, q.y, 3, r, '#c8a060'); if (ok(q.x + q.r * .4, q.y - 1)) bench(q.x + q.r * .4, q.y - 1, Math.PI / 2, 'wood'); }
         for (let k = 0; k < 4; k++) { const a = r() * 6.28, x = q.x + Math.cos(a) * (q.r - .6), z = q.y + Math.sin(a) * (q.r - .6); if (ok(x, z, .4)) pot(x, z, r, pick(r, ['lemon', 'geranio', 'palm'])); }
         cat(q.x + 1, q.y - 1, r); n += 4;
@@ -7709,9 +7836,9 @@ var Render = (function () {
       let acc = 4 + r() * 8;
       for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < 9) continue;
         const nx = -(bz - az) / L, nz = (bx - ax) / L, d = rd.w / 2 + 1, L1 = tl(ax + nx * d, az + nz * d) === T.BLD, R1 = tl(ax - nx * d, az - nz * d) === T.BLD;
-        if (L1 && R1 && r() < .75) { laundry(ax, az, 4.6 + r() * 1.6, rd.w + 2.2, Math.abs(nx) > Math.abs(nz), r); acc = 0; n++; }
-        else if ((L1 || R1) && r() < .12) { const sd = L1 ? 1 : -1, wx = ax + nx * sd * (rd.w / 2 + .25), wz = az + nz * sd * (rd.w / 2 + .25); shrine(wx, wz, 2.4, Math.atan2(-nx * sd, -nz * sd)); acc = 0; n++; }
-        else if ((L1 || R1) && r() < .1) { const sd = L1 ? 1 : -1, wx = ax + nx * sd * (rd.w / 2 - .3), wz = az + nz * sd * (rd.w / 2 - .3); if (ok(wx, wz, .3)) { bin(wx, wz, r() < .3 ? 'dumpster' : 'pole', Math.atan2(nx, nz)); if (r() < .3) cat(wx + .6, wz, r); } acc = 0; n++; } }
+        if (L1 && R1 && r() < .75 && !SEG1.ok) { laundry(ax, az, 4.6 + r() * 1.6, rd.w + 2.2, Math.abs(nx) > Math.abs(nz), r); acc = 0; n++; }
+        else if ((L1 || R1) && r() < .12) { const sd = L1 ? 1 : -1, wx = ax + nx * sd * (rd.w / 2 + .25), wz = az + nz * sd * (rd.w / 2 + .25); if (SEG1.ok && !Scena.chiedi(wx, wz, 'edicola_votiva')) continue; shrine(wx, wz, 2.4, Math.atan2(-nx * sd, -nz * sd)); acc = 0; n++; }
+        else if ((L1 || R1) && r() < .1 && !SEG1.ok) { const sd = L1 ? 1 : -1, wx = ax + nx * sd * (rd.w / 2 - .3), wz = az + nz * sd * (rd.w / 2 - .3); if (ok(wx, wz, .3)) { bin(wx, wz, r() < .3 ? 'dumpster' : 'pole', Math.atan2(nx, nz)); if (r() < .3) cat(wx + .6, wz, r); } acc = 0; n++; } }
     });
     return n;
   }
@@ -9613,7 +9740,7 @@ var Render = (function () {
     });
     // cavi tesi da un tetto all'altro, con qualche lampada appesa
     const pts = []; const rc = rng(5151), lampM = ['#9fe8dc', '#d8f0e8', '#38e8ff'].map(c => animMat(new THREE.MeshBasicMaterial({ color: c }), 'tutto:pendolo:1.6')), lg = new THREE.Group(), banM = animMat(eyeMat('banner').clone(), 'giu:panno:2.2');   // [animazioni-mondo] lampade e striscioni appesi al cavo si muovono col vento
-    anchors.forEach((A, i) => { let links = 0; for (let j = i + 1; j < anchors.length && links < 1; j++) { const B = anchors[j], dx = B.cx - A.cx, dz = B.cz - A.cz, L = Math.hypot(dx, dz); if (L < 11 || L > 22 || rc() < .8) continue;   // [città2] pochi cavi e corti: nelle zone fitte tagliavano la visuale
+    anchors.forEach((A, i) => { let links = 0; for (let j = i + 1; j < anchors.length && links < 1 && !SEG1.ok; j++) { /* [segni] nella città nuova i fili sono solo quelli della rete */ const B = anchors[j], dx = B.cx - A.cx, dz = B.cz - A.cz, L = Math.hypot(dx, dz); if (L < 11 || L > 22 || rc() < .8) continue;   // [città2] pochi cavi e corti: nelle zone fitte tagliavano la visuale
       const edge = (P, sx, sz) => { const k = Math.min(P.hx / (Math.abs(sx) || 1e-6), P.hz / (Math.abs(sz) || 1e-6)); return [P.cx + sx * k, P.cz + sz * k]; }, ux = dx / L, uz = dz / L, p0 = edge(A, ux, uz), p1 = edge(B, -ux, -uz), y0 = A.y, y1 = B.y, Ln = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]); if (Ln < 4) continue;
       let prev = [p0[0], y0, p0[1]]; for (let k = 1; k <= 7; k++) { const t = k / 7, sag = Math.sin(t * Math.PI) * Ln * .04, cur = [p0[0] + (p1[0] - p0[0]) * t, y0 + (y1 - y0) * t - sag, p0[1] + (p1[1] - p0[1]) * t]; pts.push(prev[0], prev[1], prev[2], cur[0], cur[1], cur[2]); prev = cur; }
       links++; if (rc() < .3) { const mx = (p0[0] + p1[0]) / 2, mz = (p0[1] + p1[1]) / 2, my = (y0 + y1) / 2 - Ln * .04 - .3, m = new THREE.Mesh(new THREE.SphereGeometry(.16, 6, 5), lampM[Math.floor(rc() * 3)]); m.position.set(mx, my, mz); lg.add(m); if (rc() < .18) { const bn = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.3, 1, 4), banM);   /* [ordine1] meno striscioni appesi a mezz'aria */ /* [animazioni-mondo] */ bn.position.set(mx, my - 1.3, mz); bn.rotation.y = Math.atan2(ux, uz); lg.add(bn); } if (rc() < .6) addLight(mx, my, mz, '#8fd8d0', 1.4, 9, .05); } } });
@@ -9925,7 +10052,7 @@ var Render = (function () {
       if (g.children.length) { const gm = shadowed(mergeGroup(g), false, false); ownMats(gm, rec); scene.add(gm); rec.det2Grp = gm; n++; }
     });
     // bucato steso tra le case, attraverso i vicoli
-    const lg = new THREE.Group(), pts = [], rl = rng(8181), bs = dyn.buildings.filter(q => q.b && q.b.fl >= 2);
+    const lg = new THREE.Group(), pts = [], rl = rng(8181), bs = SEG1.ok ? [] : dyn.buildings.filter(q => q.b && q.b.fl >= 2);   // [segni] nella città nuova il bucato sta solo nei vicoli (piano)
     for (let i = 0; i < bs.length; i++) { let links = 0; for (let j = i + 1; j < bs.length && links < 1; j++) {
       const A = bs[i].box3, B = bs[j].box3, ax = (A.min.x + A.max.x) / 2, az = (A.min.z + A.max.z) / 2, bx = (B.min.x + B.max.x) / 2, bz = (B.min.z + B.max.z) / 2, L = Math.hypot(bx - ax, bz - az);
       const gap = Math.max(B.min.x - A.max.x, A.min.x - B.max.x, B.min.z - A.max.z, A.min.z - B.max.z); if (gap < 3 || gap > 9 || L > 34 || rl() < .55) continue;
@@ -10051,7 +10178,7 @@ var Render = (function () {
         const yaw = w >= d ? 0 : Math.PI / 2, tx = x0 + 1.55 + r() * Math.min(1.2, w * .12), tz = z0 + 1.55 + r() * Math.min(1.2, d * .12);
         if (rpTake(P, 'torrino', tx, tz, 1.45)) { const door = torrino1(g, tx, top + .06, tz, yaw, wallHex, r); rec.roofHatch = [door.x, door.z]; P.occ.push([door.x, door.z, .75]); near = [tx, tz]; }
       }
-      const antenna = (x, z) => { const q = rpNear(P, 'antenna', x, z, .5); if (!q) return; const an = oAntenna(2.6 + r() * 1.4, r() * 6, rng(bi * 53 + 1)); put(an, q[0], 0, q[1]);
+      const antenna = (x, z) => { if (SEG1.ok) return; const q = rpNear(P, 'antenna', x, z, .5); if (!q) return; /* [segni] le antenne sono nodi della rete */ const an = oAntenna(2.6 + r() * 1.4, r() * 6, rng(bi * 53 + 1)); put(an, q[0], 0, q[1]);
         if (r() < .4) put(new THREE.Mesh(new THREE.SphereGeometry(.07, 6, 5), new THREE.MeshBasicMaterial({ color: '#ff3030' })), q[0], an.children.length ? 2.6 : 2.6, q[1]); };
       if (prog === 'pulito') {
         if (r() < .6) antenna(near[0] + 1.9, near[1] - .4);
@@ -10897,13 +11024,13 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       // [pulizia] al massimo UN gruppo per lato, ordinato in fila, sul muro pieno più vicino allo spigolo; soprattutto dove c'è una bottega
       const F = FACES[f], pq = F.open ? ((b.shop || b.sign) ? .8 : borgo ? .3 : .15) : .08;
       const spots = (kitHouse ? [1, F.L - 1].filter(u => u > .5 && u < F.L - .5) : ((b.__gwall && b.__gwall[f]) || []).map(k => k * TS + 1)).filter(u0 => !inMural(f, u0) && Math.abs(u0 - dU(f)) >= 1.3);
-      if (spots.length && r() < pq) {
+      if (spots.length && r() < pq && (!SEG1.ok || vuoleS1(b, f, 'manifesti'))) {   // [segni] la pagina decide
         const u0 = spots.reduce((a, c) => Math.min(c, F.L - c) < Math.min(a, F.L - a) ? c : a), n = 2 + Math.floor(r() * 2), w = .52, h = .78, yc = base + 1.5;
         for (let q = 0; q < n; q++) { const i = (() => { let k; do k = Math.floor(r() * 80); while (k % 10 === 8 || k % 10 === 9); return k; })();
           const p = poster(w, h, i); p.rotation.z = (r() - .5) * .05; at(f, p, u0 - (n - 1) * (w + .05) / 2 + q * (w + .05), yc + (r() - .5) * .05, .074 + q * .003); }
       }
       // tabellone delle affissioni del Comune: telaio di ferro, manifesti in fila, quelli vecchi sotto
-      if (!kitHouse && F.open && r() < .18) { const ks = ((b.__gwall && b.__gwall[f]) || []).filter(k => !inMural(f, k * TS + 1) && Math.abs(k * TS + 1 - dU(f)) > 1.6); if (ks.length) { const u = pick(r, ks) * TS + 1, y = base + 1.55;
+      if (!kitHouse && F.open && r() < .18 && (!SEG1.ok || vuoleS1(b, f, 'manifesti'))) { const ks = ((b.__gwall && b.__gwall[f]) || []).filter(k => !inMural(f, k * TS + 1) && Math.abs(k * TS + 1 - dU(f)) > 1.6); if (ks.length) { const u = pick(r, ks) * TS + 1, y = base + 1.55;
         at(f, fB(1.9, 1.3, .05, '#3a3c40', 'paint', .01), u, y, .1); at(f, fB(2.02, .07, .09, '#2a2a2e', 'rust', .01), u, y + .68, .11); at(f, fB(2.02, .06, .09, '#2a2a2e', 'rust', .01), u, y - .68, .11);
         [-1, 1].forEach(s2 => { at(f, fB(.06, 1.8, .06, '#2a2a2e', 'rust', .01), u + s2 * .98, base + .9, .12); });
         const hdr = poster(1.8, .18, 5 * 10 + 5); hdr.scale.y = .5; at(f, hdr, u, y + .55, .135);
@@ -10920,7 +11047,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       if (r() < .05) at(W0.f, decal(D[0] + .5, 1.1, Math.floor(r() * 4), CT.dec2M), W0.u, yc + D[1] / 2 + .55, .073);       // fuliggine: stufa, incendio vecchio
       else if (r() < .06) at(W0.f, decal(D[0] + .2, .7, 4 + Math.floor(r() * 4), CT.dec2M), W0.u, yc - D[1] / 2 - .45, .073); });   // ruggine dalla grata
     // 3) cavi elettrici lungo la facciata, sulle staffe, con la discesa al contatore
-    if (r() < (borgo ? .25 : .12)) { const cand = showF.filter(f => FACES[f].cam); if (cand.length) { const f = pick(r, cand), F = FACES[f], y = top - .38;
+    if (!SEG1.ok && r() < (borgo ? .25 : .12)) { const cand = showF.filter(f => FACES[f].cam); /* [segni] nella città nuova i cavi sono la rete */ if (cand.length) { const f = pick(r, cand), F = FACES[f], y = top - .38;
       for (let u = .3; u < F.L - .2; u += 1.9) at(f, fB(.04, .14, .12, '#3a3a3e', 'paint', 0), u, y, .06);
       [.13, .2].forEach((z, q) => { for (let u = .3; u < F.L - 1.9; u += 1.9) fRod(fr(f), [u, y - q * .05, z], [Math.min(F.L - .3, u + 1.9), y - q * .05, z], .012, '#141416', 'rubber'); });
       const ud = r() < .5 ? .3 : F.L - .3; fRod(fr(f), [ud, y, .16], [ud, base + 2.2, .16], .014, '#141416', 'rubber'); at(f, fB(.28, .36, .12, '#6a6a64', 'paint', .02), ud, base + 2.05, .1); } }
@@ -10950,7 +11077,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         at(face0, tb, us, base, .75);
         const bd = new THREE.Group(); fAt(bd, fB(.5, .7, .03, '#1e2420', 'paint', .01), 0, .5, 0).rotation.x = .2; fAt(bd, poster(.38, .5, 5 * 10 + 5), 0, .52, .03).rotation.x = .2; [-1, 1].forEach(s => fRod(bd, [s * .24, 0, .14], [s * .24, .9, -.04], .015, WOODD, 'wood'));   // lavagnetta
         at(face0, bd, Math.min(F.L - .4, Math.max(.4, du - side * 1.6)), base, .9);
-      } else if (bar) {   // dehors: tavolini, sedie, posacenere, il menù
+      } else if (bar && !SEG1.ok) {   // dehors: tavolini, sedie, posacenere, il menù ([segni] nella città nuova lo compone il piano)
         for (let q = 0; q < 2; q++) { const tg = new THREE.Group(), tu = Math.min(F.L - .7, Math.max(.7, du + side * (1.7 + q * 1.5)));
           fAt(tg, fC(.32, .32, .03, 12, '#c8c4b8', 'paint'), 0, .74, 0); fAt(tg, fC(.03, .03, .72, 6, IRON, 'paint'), 0, .37, 0); fAt(tg, fC(.2, .22, .03, 10, IRON, 'paint'), 0, .015, 0);
           fAt(tg, fC(.04, .05, .02, 8, '#8a8a86', 'galv'), .08, .77, 0); fAt(tg, fC(.03, .025, .09, 8, '#c8a050', 'glass'), -.1, .8, .05);
@@ -11134,7 +11261,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     }
     // ---- vicoli: un cavo con una lampadina e un po' di roba ----
     const alleys = []; let na = 0;
-    for (let ty = 2; ty < G.GH - 2 && na < 70; ty++) for (let tx = 2; tx < G.GW - 2 && na < 70; tx++) {
+    for (let ty = 2; ty < G.GH - 2 && na < (SEG1.ok ? 0 : 70); ty++) for (let tx = 2; tx < G.GW - 2 && na < 70; tx++) {   // [segni]
       const v = G.tileAt(tx, ty); if (!(v === T.COB || v === T.WALK || v === T.PIAZZA || v === T.DIRT)) continue;
       const B2 = (a, b) => G.tileAt(a, b) === T.BLD, ew = (B2(tx - 1, ty) || B2(tx - 2, ty)) && (B2(tx + 1, ty) || B2(tx + 2, ty)), ns2 = (B2(tx, ty - 1) || B2(tx, ty - 2)) && (B2(tx, ty + 1) || B2(tx, ty + 2));
       if (!ew && !ns2) continue; const px = (tx + .5) * TS, pz = (ty + .5) * TS;
@@ -11690,7 +11817,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     const TT = (n, f) => { const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
-    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
+    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
