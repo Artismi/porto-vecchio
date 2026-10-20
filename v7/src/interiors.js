@@ -721,7 +721,7 @@ var Interior = (function () {
     const inVB = (q, v) => q.x + q.w / 2 > v.x * TS && q.x + q.w / 2 < (v.x + v.w) * TS && q.y + q.h / 2 > v.y * TS && q.y + q.h / 2 < (v.y + v.h) * TS;
     // la pianta del piano terra: una sola, oppure bottega + androne col muro pieno in mezzo (le porte interne per parte, più sotto)
     const ground = (nP, homeP) => { if (!SP) return splitFloor(vb, kind, 0, r, null, nP, entM, homeP);
-      const PS = splitFloor(SP.s, shopKind, 0, r, null, progS.names.length, ent2M, false), PP = splitFloor(SP.p, kind, 0, r, null, nP, entM, homeP);
+      const PS = splitFloor(SP.s, OPEN[shopKind] || OPEN0[shopKind] || /^(bar|trattoria|pub)$/.test(shopKind) ? 'bottega' : shopKind, 0, r, null, progS.names.length, ent2M, false)   /* sotto casa anche il bar ha il suo retro: niente sala unica */, PP = splitFloor(SP.p, kind, 0, r, null, nP, entM, homeP);
       const wall = SP.v ? { a: [SP.line, Y0], b: [SP.line, Y0 + H], v: true, gap: null } : { a: [X0, SP.line], b: [X0 + W, SP.line], v: false, gap: null };
       return { rooms: PS.rooms.concat(PP.rooms), inner: PS.inner.concat(PP.inner, [wall]), PS, PP, wall }; };
     let P0 = ground(prog0.names.length, homeOf(prog0));

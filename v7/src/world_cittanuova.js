@@ -1563,8 +1563,14 @@ var World = (function () {
     const NOMI = ['Bruno', 'Tina', 'Gavino', 'Nello', 'Pina', 'Efisio', 'Rosaria', 'Totò', 'Lella', 'Mario'];
     // [botteghe] LE BOTTEGHE STANNO SOTTO CASA (PIANO_CITTA.md §10). Un palazzo non è più tutto bottega: la bottega sta al piano terra
     // (raramente al primo) di un palazzo dove si abita, e sulla strada ha il suo fronte accanto al portone di casa. b.door resta il portone
-    // (androne, scala, appartamenti); b.shopFront = { use, name, sign, piano, door, span, face } è la bottega (door e span li fissa
-    // shopGeom quando le porte sono definitive). b.use/b.shop/b.sign restano quelli della bottega: missioni, mestieri ed economia non cambiano.
+    // (androne, scala, appartamenti); la bottega è
+    //   b.shopFront = { use, name, sign: {t, c}, era: 'E0'|'E2'|'E3'|'E4'|'E6'|'E7', piano: 0|1,
+    //                   door: [tx,ty] la casella davanti alla porta della bottega, span: [[tx,ty],[tx,ty]] le caselle estreme del fronte,
+    //                   face: 'S'|'N'|'E'|'W', k0, k1, kd, portone (indici lungo il lato) }
+    // door/span/face li fissa shopGeom quando le porte sono definitive (al primo piano door e span sono null: c'è la targa al portone).
+    // b.abitato = true: sopra si abita. b.use/b.shop/b.sign restano quelli della bottega: missioni, mestieri ed economia non cambiano;
+    // PLACES[b.id] punta alla porta della bottega. Interni: Interior.layout dà L.ent (portone→androne) e L.ent2 (porta→bottega), L.shop.
+    // Esterno: render.js buildModular apre porta e vetrine, fronteBottega mette insegna per epoca, serrande, tenda, citofono.
     // Dove: fitte sulla Rua Maestra, sul Corso, sotto i portici della Vittoria e sulla marina, agli angoli degli isolati murattiani;
     // pescherie e osterie entro 40 m dall'acqua; nei vicoli e fra le baracche poche; molti palazzi restano solo case.
     const segDB = (x, y, a, c) => { const dx = c[0] - a[0], dy = c[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(x - a[0] - dx * t, y - a[1] - dy * t); };
@@ -1596,7 +1602,7 @@ var World = (function () {
     // [botteghe] chi occupa tutto il palazzo (teatro, scuola, uffici, autorimessa) e chi sta al primo piano (si sale dall'androne: targa al portone)
     const INTERO = { teatro: 1, scuola: 1, ufficio: 1, autorimessa: 1 }, PRIMO = { sartoria: .5, palestra: .5, circolo: .6, tipografia: .3, barbiere: .15 };
     const sottoCasa = (b, use, name, sign) => { if (INTERO[use] || fronte(b) < 3 || (b.fl || 1) < 2) return;
-      b.abitato = true; b.shopFront = { use, name, sign, piano: (b.fl || 1) >= 3 && hash2(b.x, b.y, 61) < (PRIMO[use] || 0) ? 1 : 0 }; };
+      b.abitato = true; b.shopFront = { use, name, sign, era: b.era || (b.__acqua ? 'E2' : 'E0'), piano: (b.fl || 1) >= 3 && hash2(b.x, b.y, 61) < (PRIMO[use] || 0) ? 1 : 0 }; };
     const pref = use => use === 'teatro' || use === 'autorimessa' ? big : use === 'pescheria' || use === 'pub' ? city.filter(q => q.__acqua).concat(city) : use === 'scuola' || use === 'ufficio' ? city.slice().reverse() : city;
     USES.forEach(([use, sign, col, n, label], k) => {
       for (let i = 0; i < n; i++) {
@@ -1637,7 +1643,7 @@ var World = (function () {
     });
     // i locali con nome dentro un palazzo di due o più piani: il bar, l'alimentari, l'osteria stanno sotto casa anche loro
     B.forEach(b => { if (!b.name || b.military || b.gov || b.deco && !/video|gelateria/.test(b.id) || !/^(bar|wu|osteria|sirena|car_2|gelateria|video)$/.test(b.id)) return;
-      if ((b.fl || 1) >= 2 && fronte(b) >= 3) { b.abitato = true; b.shopFront = { use: b.use || b.id, name: b.name, sign: b.sign, piano: 0 }; } });
+      if ((b.fl || 1) >= 2 && fronte(b) >= 3) { b.abitato = true; b.shopFront = { use: b.use || b.id, name: b.name, sign: b.sign, era: b.era || (acqua40(b) ? 'E2' : 'E0'), piano: 0 }; } });
     if (typeof process !== 'undefined' && process.env && process.env.PV_DBG) console.log('[botteghe] botteghe minori', nMin, contaU);
     // fuori città: due fabbriche nei capannoni più grandi della campagna, il resto case e cascine
     const rural = B.filter(b => !b.name && !b.military && b.door && zone[b.y * GW + b.x] !== Z.CITTA).sort((a, c) => c.w * c.h - a.w * a.h);
@@ -2304,7 +2310,7 @@ var World = (function () {
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
   W.apriBottega = (b, piano) => { if (!b || !b.door || b.shopFront || (b.fl || 1) < 2 || W.zone[b.y * W.GW + b.x] !== W.Z.CITTA) return false;
-    b.shopFront = { use: b.use, name: b.name, sign: b.sign, piano: piano || 0 }; b.abitato = true;
+    b.shopFront = { use: b.use, name: b.name, sign: b.sign, era: b.era || 'E3', piano: piano || 0 }; b.abitato = true;
     if (!shopGeom(b, W.grid, W.reach, W.GW, W.GH, true, null)) { delete b.shopFront; delete b.abitato; return false; } return true; };
   W.shopGeom = shopGeom;
   W.hash2 = hash2; W.fbm = fbm; W.rng = rng; W.monte = monte; W.MF = MF;
