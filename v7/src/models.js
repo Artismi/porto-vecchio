@@ -373,6 +373,7 @@ var Models = (function () {
     if (P.commissariato) { const c = P.commissariato; guard(c.x - 3, c.y + 4.5, 0, 'SMG'); guard(c.x + 3, c.y + 4.5, 0, 'AK'); }
     if (P.caserma_p) guard(P.caserma_p.x, P.caserma_p.y + 3, 0, 'AK');
     ['Casual', 'Casual_2', 'Casual_Hoodie', 'Formal', 'Worker'].forEach(loadChar);
+    if (window.Taglio) Taglio.carica();   // [taglio] i capi rifiniti e i tessuti
     // auto anni '70-'80: si caricano dopo, i veicoli si rifanno da soli
     ['rx7', 'gtr', 'bursley'].forEach(load);
     ready = true;

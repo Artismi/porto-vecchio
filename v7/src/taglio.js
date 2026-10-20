@@ -76,7 +76,14 @@ var Taglio = (function () {
   function stoffaDi(C, sotto) {
     const CUT = (typeof Sartoria !== 'undefined' && Sartoria.CUT_()[C.id]) || {}, V = Object.assign({}, CUT, C.var && typeof C.var === 'object' ? C.var : {});
     const fab = V.fab || '', id = C.id, s = { motivo: 0, dett: {} };
-    s.motivo = /fiori|hawaii|liberty/.test(fab + id) ? 8 : /gessato/.test(fab) || /completo/.test(id) ? 2 : /tartan|quadri|madras|vichy|galles|pied/.test(fab + id) ? 3 : /righe_v/.test(fab) ? 1 : /righe|marinara/.test(fab + id) ? 4 : /velluto/.test(fab + id) ? 5 : /piumino/.test(fab + id) || /piumino|smanicato/.test(id) ? 6 : /denim|jeans/.test(fab + id) ? 7 : 0;
+    s.motivo = /gessato/.test(fab) || /completo/.test(id) ? 2 : /righe_v/.test(fab) ? 1 : /righe|marinara/.test(fab + id) ? 4 : /piumino/.test(fab + id) || /piumino|smanicato/.test(id) ? 6 : 0;
+    // il tessuto fotografico (Poly Haven, CC0): la trama vera, tinta col colore del capo
+    const T = fab + ' ' + id;
+    s.tex = /denim|jeans/.test(T) ? 'denim_fabric' : /tartan|quadri|madras|vichy/.test(T) ? 'gingham_check' : /galles|pied/.test(T) ? 'wool_boucle' : /velluto/.test(T) ? 'ribbed_corduroy' : /pelle|montone|stivali|mocassini|scarpe_eleganti/.test(T) ? 'fabric_leather_01'
+      : /pellicc|teddy/.test(T) ? 'curly_teddy_natural' : /piumino|smanicato|nylon|impermeabile/.test(T) ? 'crepe_satin' : /tuta|acetato/.test(T) ? 'bi_stretch' : /fiori|hawaii|liberty/.test(T) ? 'floral_jacquard'
+      : /maglione|dolcevita|lana_maglia/.test(T) ? 'knitted_fleece' : /felpa|jogging|pantaloni_tuta/.test(T) ? 'jogging_melange' : /polo|pique|maglia_calcio/.test(T) ? 'waffle_pique_cotton' : /camicia|popeline/.test(T) ? 'stretch_poplin'
+      : /lino/.test(T) ? 'rough_linen' : /giacca|completo|cappotto|divisa|gessato|lana|gilet|panciotto|pantaloni/.test(T) ? 'caban' : /scarpe_tela/.test(T) ? 'rough_linen' : /scarpe|sneaker|air|skate|corsa/.test(T) ? 'fabric_leather_01' : 'cotton_jersey';
+    s.lucido = /crepe_satin|bi_stretch|fabric_leather/.test(s.tex) ? 1 : 0;
     const d = s.dett, collo = V.collo || '';
     if (/revers/.test(collo)) { d.revers = 1; d.vScollo = .2; d.bottoni = 1; }
     else if (collo === 'v') d.vScollo = .1;
@@ -97,19 +104,43 @@ var Taglio = (function () {
   // ---------------- LE MISURE DEL KIT ----------------
   // nello spazio del kit (posa a T, metri): y in alto, z davanti
   const MIS = {};
-  function misure(file) {
-    if (MIS[file]) return MIS[file]; const C = Models.chars[file]; C.root.updateMatrixWorld(true); const b = {}, v = new THREE.Vector3();
-    C.root.traverse(o => { if (o.isBone) { o.getWorldPosition(v); b[o.name] = v.clone(); } });
+  // dalla posa d'aggancio (le matrici inverse delle ossa), non dalla posa di riposo delle ossa del kit: i pezzi sono a T
+  function misure(file, src) {
+    if (MIS[file]) return MIS[file]; if (!src) { Models.chars[file].root.traverse(o => { if (!src && o.isSkinnedMesh) src = o; }); }
+    Models.chars[file].root.updateMatrixWorld(true); const b = {}; src.skeleton.bones.forEach((bo, i) => { b[bo.name] = new THREE.Vector3().setFromMatrixPosition(src.matrixWorld.clone().multiply(src.skeleton.boneInverses[i].clone().invert())); });   // glTF: l'osso al momento dell'aggancio = nodo del pezzo × inversa della bind
     const pick = (...n) => { for (const k of n) if (b[k]) return b[k]; return new THREE.Vector3(); };
-    const hips = pick('Hips'), neck = pick('Neck'), chest = pick('Chest'), ua = pick('UpperArmL', 'UpperArm.L'), ul = pick('UpperLegL', 'UpperLeg.L'), ll = pick('LowerLegL', 'LowerLeg.L');
-    const wr = pick('WristL', 'Wrist.L');
+    const hips = pick('Hips'), neck = pick('Neck'), chest = pick('Chest'), ua = pick('UpperArmL', 'UpperArm.L'), ul = pick('UpperLegL', 'UpperLeg.L'), ll = pick('LowerLegL', 'LowerLeg.L'), wr = pick('WristL', 'Wrist.L');
     return (MIS[file] = { wrX: Math.abs(wr.x), hipsY: hips.y, neckY: neck.y, chestY: chest.y, zc: hips.z, shX: Math.abs(ua.x), armY: ua.y, armZ: ua.z, legX: Math.abs(ul.x), legZ: ul.z, kneeY: ll.y });
   }
+  // ---------------- I PEZZI RIFINITI (Blender) E I TESSUTI ----------------
+  // capi_<kit>.json (strumenti/capi_blender.py): i pezzi del kit suddivisi e lisci, uv in metri; stoffe.json: i tessuti tingibili
+  const CAPI = {}, STOFFE = {}, TEX = {}; let pronto = null;
+  function carica() {
+    if (pronto) return pronto; const get = u => fetch(u).then(r => r.ok ? r.json() : null).catch(() => null);
+    pronto = Promise.all([get('assets/mc/stoffe.json').then(d => { if (d) Object.assign(STOFFE, d); return Promise.all(Object.keys(STOFFE).map(k => tessuto(k).pronto)); }),
+      ...['Casual_2', 'Casual_Hoodie', 'Worker', 'Casual', 'Formal'].map(f => get('assets/mc/capi_' + f + '.json').then(d => { if (d) CAPI[f] = d; }))]);
+    return pronto; }
+  const dec = (b, T) => { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return new T(u.buffer); };
+  function capoGeo(file, src) {
+    const C = CAPI[file]; if (!C) return null; const nm = nomeDi(src), k = Object.keys(C.pezzi).find(k => nm.includes(k)); if (!k) return null;
+    const mat = (Array.isArray(src.material) ? src.material[0] : src.material).name, p = C.pezzi[k].find(q => q.mat === mat); if (!p) return null;
+    if (p._geo) return p._geo; const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(dec(p.pos, Float32Array), 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(Float32Array.from(dec(p.nor, Int8Array), x => x / 127), 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(dec(p.uv, Float32Array), 2));
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(Array.from(dec(p.j, Uint8Array)), 4));
+    g.setAttribute('skinWeight', new THREE.BufferAttribute(Float32Array.from(dec(p.w, Uint8Array), x => x / 255), 4));
+    g.setIndex(new THREE.BufferAttribute(dec(p.idx, p.i32 ? Uint32Array : Uint16Array), 1)); g.computeBoundingSphere();
+    return (p._geo = g); }
+  function tessuto(nome) {
+    if (TEX[nome] !== undefined) return TEX[nome]; const S = STOFFE[nome]; if (!S) return (TEX[nome] = null);
+    const att = [], mk = b => { const img = new Image(), t = new THREE.Texture(img); att.push(new Promise(r => { img.onload = () => { t.needsUpdate = true; r(); }; img.onerror = r; })); img.src = 'data:image/jpeg;base64,' + b; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; t.repeat.set(1000 / S.mm[0], 1000 / S.mm[1]); return t; };
+    const T = { d: mk(S.d), n: mk(S.n) }; T.pronto = Promise.all(att); return (TEX[nome] = T); }
   // ---------------- I PEZZI RICAVATI E LE COORDINATE DI STOFFA ----------------
   const GEO = new Map();
   function geometria(src, file, zona, op) {
-    const key = src.uuid + '|' + JSON.stringify(op || {}); if (GEO.has(key)) return GEO.get(key);
-    const M = misure(file), W = src.matrixWorld.clone(), Wi = W.clone().invert(), g0 = src.geometry.index ? src.geometry.toNonIndexed() : src.geometry.clone();
+    const key = src.uuid + '|' + JSON.stringify(op || {}) + (CAPI[file] ? '|c' : ''); if (GEO.has(key)) return GEO.get(key);
+    const M = misure(file, src), W = src.matrixWorld.clone(), Wi = W.clone().invert(), gs = (!window.NOCAPI && capoGeo(file, src)) || src.geometry, g0 = gs.index ? gs.toNonIndexed() : gs.clone();
     const P = g0.attributes.position, n = P.count, Bp = new Float32Array(n * 3), v = new THREE.Vector3();
     for (let i = 0; i < n; i++) { v.fromBufferAttribute(P, i).applyMatrix4(W); Bp[i * 3] = v.x; Bp[i * 3 + 1] = v.y; Bp[i * 3 + 2] = v.z; }
     const reg = (x, y) => zona === 'gambe' ? (x >= 0 ? 3 : 4) : zona === 'piedi' ? 5 : (Math.abs(x) > M.shX * .85 && y > M.chestY - .14 ? (x > 0 ? 1 : 2) : 0);
@@ -152,6 +183,7 @@ var Taglio = (function () {
   function stoffaMat(m0, s, M) {
     const key = m0.uuid + '|' + JSON.stringify(s); if (MAT.has(key)) return MAT.get(key);
     const m = m0.clone(); m.color.set('#ffffff'); if (m.emissive) m.emissive.set('#000000');
+    const tx = window.NOTEX ? null : s.tex && tessuto(s.tex); if (tx) { m.map = tx.d; m.normalMap = tx.n; m.normalScale = new THREE.Vector2(.7, .7); } m.roughness = s.lucido ? .5 : .92; m.metalness = 0; if (window.DBG2) m.side = THREE.DoubleSide;
     const U = { uA: { value: col3(s.A) }, uB: { value: col3(s.B) }, uS: { value: col3(s.S || s.A) }, uMot: { value: s.motivo }, uNeck: { value: M.neckY }, uChest: { value: M.chestY }, uHips: { value: M.hipsY },
       uD: { value: new THREE.Vector4(s.dett.vScollo || 0, s.dett.revers ? 1 : 0, s.dett.zip ? 1 : 0, s.dett.bande ? 1 : 0) },
       uE: { value: new THREE.Vector4(s.dett.colletto ? 1 : 0, s.dett.bottoni ? 1 : 0, s.dett.fascia ? 1 : 0, s.dett.costine ? 1 : 0) },
@@ -168,13 +200,8 @@ vec3 stoffa() {
   // il motivo, in metri
   if (uMot == 1.) c = mix(uA, uB, step(.5, fract(u / .03)));                                   // righe verticali
   if (uMot == 2.) c = mix(uA, uB, ln(fract(u / .016) - .5, .045) * .85);                        // gessato: filo ogni 1,6 cm
-  if (uMot == 3.) { float a = step(.5, fract(u / .05)), b = step(.5, fract(v / .05)); c = mix(uA, mix(uA, uB, .5), a + b - a * b); c = mix(c, uB * .8, a * b); c = mix(c, uB, ln(fract(u / .05) - .5, .03) * .6); }   // quadri
   if (uMot == 4.) { float s = R > .5 && R < 2.5 ? v : v; c = mix(uA, uB, step(.5, fract(s / .06))); }   // righe orizzontali (marinara); sulle braccia in giro
-  if (uMot == 5.) c = uA * (.88 + .16 * step(.5, fract(u / .006)));                             // velluto a coste
   if (uMot == 6.) c = uA * (1. - .22 * smoothstep(.0, .012, abs(fract(v / .09) - .5) - .45 + .012));   // piumino: le trapuntature
-  if (uMot == 7.) c = uA * (.92 + .1 * step(.5, fract((u + v) / .004)));                        // denim: diagonale
-  if (uMot == 8.) { vec2 q = vec2(u, v) / .07, cl = floor(q), f = fract(q) - .5; vec2 o = vec2(h21(cl), h21(cl + 7.)) - .5; vec2 d = f - o * .5; float a = atan(d.y, d.x), r = length(d), pet = .2 + .1 * cos(a * 5. + h21(cl) * 6.);   // fiori grandi a cinque petali
-    if (r < pet) c = mix(uB, vec3(.95, .85, .3), step(r, .06)); if (r < .07 && r > .055) c *= .6; float lf = abs(dot(d - vec2(.2, -.2), normalize(vec2(1., 1.)))); if (r > pet && r < .42 && lf < .05 && d.x > 0. && d.y < 0.) c = mix(uA, vec3(.15, .4, .2), .7); }
   float front = R < .5 ? 1. - step(.55 * .15 * 3.1416, abs(u)) : 0.;
   // lo scollo a V: dentro si vede lo strato sotto (camicia, maglia)
   if (R < .5 && uD.x > 0.) { float dv = uNeck - v, w = dv < 0. ? 0. : (1. - dv / uD.x) * .065; if (dv >= 0. && dv < uD.x && abs(u) < w) c = uS; if (dv >= 0. && dv < uD.x && abs(abs(u) - w) < .004) c *= .45; }
@@ -201,7 +228,7 @@ vec3 stoffa() {
   return c;
 }`).replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= stoffa();');
     };
-    m.customProgramCacheKey = () => 'stoffa'; MAT.set(key, m); return m;
+    m.customProgramCacheKey = () => 'stoffa' + (tx ? 't' : ''); MAT.set(key, m); return m;
   }
   function tinta(m0, col) { const k = m0.uuid + '|' + col; if (!MAT.has(k)) { const m = m0.clone(); m.color.set(col); if (m.emissive) m.emissive.copy(m.color).multiplyScalar(.3); MAT.set(k, m); } return MAT.get(k); }
   // ---------------- IL MONTAGGIO ----------------
@@ -224,8 +251,9 @@ vec3 stoffa() {
       const s = stoffaDi(C, sotto), col = { A: s.A, B: s.B, S: s.S, P: skin }; const tie = zona === 'busto' && ord.find(c => /^cravatta/.test(c.acc || '')); if (tie && s.dett.vScollo) s.T = tie.col || '#a01c28';
       for (const src of srcs) {
         const geo = geometria(src, Pz.f, zona, Pz.op), M = geo.userData.misure;
-        const ms = (Array.isArray(src.material) ? src.material : [src.material]).map(m => { const r = Pz.r[m.name]; return r === 'A' ? stoffaMat(m, s, M) : r === 'AP' ? stoffaMat(m, Object.assign({}, s, { P: skin }), M) : r && col[r] ? tinta(m, col[r]) : m; });
+        const ms = (Array.isArray(src.material) ? src.material : [src.material]).map(m => { const r = Pz.r[m.name]; return r === 'A' && !window.DBG4 ? stoffaMat(m, s, M) : r === 'AP' ? stoffaMat(m, Object.assign({}, s, { P: skin }), M) : r && col[r] ? tinta(m, col[r]) : m; });
         const sm = new THREE.SkinnedMesh(geo, Array.isArray(src.material) ? ms : ms[0]);
+        if (window.DBG3 && (Array.isArray(src.material) ? src.material[0] : src.material).name !== window.DBG3) sm.visible = false;
         sm.name = 'Taglio_' + zona; sm.userData.taglio = t; sm.userData.vesti = true; sm.userData.zona = zona; sm.castShadow = true; sm.frustumCulled = false;
         const bones = src.skeleton.bones.map(b => ossa[b.name]); if (bones.some(b => !b)) { console.warn('[Taglio] ossa diverse', Pz.f); return; }
         // stesso posto nella gerarchia del pezzo originale (il gruppo del pezzo porta la scala e la rotazione del kit)
@@ -236,6 +264,8 @@ vec3 stoffa() {
       }
     };
     monta('busto', BUSTO, /Body/); monta('gambe', GAMBE, /Legs/); monta('piedi', PIEDI, /Feet/);
+    // la testa della persona: la sua versione rifinita (stessa geometria del kit, liscia)
+    root.traverse(o => { if (!o.isSkinnedMesh || o.userData.taglio || !/Head/i.test(nomeDi(o))) return; const G = capoGeo(file, o); if (G && o.geometry !== G && !o.userData.pmGeo) { o.userData.geoKit = o.userData.geoKit || o.geometry; o.geometry = G; } });
     // senza niente sopra: la pelle (busto nudo e gambe nude restano i pezzi della persona, tinti di pelle)
     root.traverse(o => { if (!o.isSkinnedMesh || o.userData.taglio || o.userData.taglioHid || /Head/i.test(nomeDi(o))) return; const ms = Array.isArray(o.material) ? o.material : [o.material]; const nm = ms.map(m => /^Skin/.test(m.name) ? m : tinta(m, skin)); o.material = Array.isArray(o.material) ? nm : nm[0]; });
     return true;
@@ -246,6 +276,6 @@ vec3 stoffa() {
     g.traverse(o => { if (!o.isSkinnedMesh || o.userData.zona !== 'busto') return; const P = o.geometry.attributes.position, I = o.geometry.index, M = new THREE.Matrix4().multiplyMatrices(gi, o.matrixWorld);
       const n = I ? I.count : P.count; for (let k = 0; k < n; k++) { v.fromBufferAttribute(P, I ? I.getX(k) : k).applyMatrix4(M); out.push(v.x, v.y, v.z); } });
     return out; }
-  return { dress, punti, PEZZI, attivo: true };
+  return { dress, punti, carica, misure, PEZZI, attivo: true };
 })();
 if (typeof module !== 'undefined') module.exports = Taglio;

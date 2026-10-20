@@ -19,7 +19,7 @@ const srv = http.createServer((req, res) => {
   const pg = await b.newPage({ viewport: { width: W, height: H } });
   pg.on('pageerror', e => console.log('[errore]', e.message));
   pg.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') console.log('[console]', m.text().slice(0, 400)); });
-  await pg.goto(`http://localhost:${port}/studio_anim.html`);
+  await pg.goto(`http://localhost:${port}/studio_anim.html${process.env.HASH || ""}`);
   await pg.waitForFunction(() => window.studioReady, null, { timeout: 120000 });
   // POSE_EXTRA: pose di prova definite al volo (solo per lo studio)
   await pg.evaluate(() => { const A = window.studio.Anim; if (!A.POSES.dita) A.def('dita', { fn(P) { P.fingers('R', 1, 1); P.fingers('L', 1, 1); } }); });

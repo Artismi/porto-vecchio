@@ -23,6 +23,8 @@
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({ color: '#5a6068' })); floor.rotation.x = -Math.PI / 2; scene.add(floor);
   const grid = new THREE.GridHelper(200, 200, '#6a7078', '#6a7078'); grid.position.y = .005; scene.add(grid);
   await Promise.all(['Casual', 'Casual_2', 'Casual_Hoodie', 'Formal', 'Worker', 'Soldier'].map(f => Models.loadChar(f)));
+  if (location.hash === '#notex') window.NOTEX = 1; if (location.hash === '#dbl') window.DBG2 = 1; if (location.hash === '#plain') window.DBG4 = 1; if (location.hash.startsWith('#solo=')) window.DBG3 = location.hash.slice(6);
+  if (window.Taglio) await Taglio.carica();
   Models.prepGuns();   // le armi del soldato, da agganciare ai civili
   const cam = new THREE.PerspectiveCamera(30, W / H, .1, 200);
   const people = [];
