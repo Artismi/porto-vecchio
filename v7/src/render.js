@@ -6200,6 +6200,8 @@ var Render = (function () {
       const x = tx * TS + 1, z = ty * TS + 1; if (onRoad(x, z) || !roomy(x, z, 3) || TREES35.some(t => Math.hypot(t.x - x, t.z - z) < 4.5)) continue;
       TREES35.push({ x, z, kind: v === T.PIAZZA ? 'piazza' : 'cortile', s: .42 + th(tx, ty, 356) * .2 });
     }
+    if (window.__dbg35) window.__alb4 = TREES35;   // [verde4] per le sonde
+    if (window.__dbg35) { const k = {}; TREES35.forEach(t => { const q = t.kind + (t.sp ? ':' + t.sp : ''); k[q] = (k[q] || 0) + 1; }); console.log('[dbg] verde4 alberi', JSON.stringify(k), 'giardini', ALB4.length, 'strade alberate', (M.roads || []).filter(rd => rd.alberi).map(rd => rd.name + ':' + rd.alberi + ':' + rd.pts.length).join(' ')); }
     return TREES35;
   }
   // [verde4] un albero di città istanziato: la specie del posto, la sua scala, l'ombra morbida sotto la chioma
