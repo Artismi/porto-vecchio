@@ -762,7 +762,7 @@ var Vesti3D = (function () {
     const key = outfit.map(o => o.id + (o.when || 0)).join() + '|' + (B.key || ''); B._mc = B._mc || new Map(); if (B._mc.has(key)) return B._mc.get(key);
     const Pt = window.Pittura, Sa = Sartoria, nY = Sa.neckY(B), [nx, nz] = B.neckC, tb = Pt.frame(B).tubes[0];
     // 1) la misura: raggio più esterno per angolo e altezza, attorno all'asse verticale del collo
-    const NA = 64, y0 = nY - .2, y1 = Math.min(T.chin + .02, nY + .12), dy = .004, NY = Math.round((y1 - y0) / dy) + 1, RG = Array.from({ length: NY }, () => new Float32Array(NA));
+    const NA = 64, y0 = nY - .45, y1 = Math.min(T.chin + .02, nY + .12), dy = .004, NY = Math.round((y1 - y0) / dy) + 1, RG = Array.from({ length: NY }, () => new Float32Array(NA));
     const put = (x, y, z, pad) => { const j = Math.round((y - y0) / dy); if (j < 0 || j >= NY) return; const ddx = x - nx, ddz = z - nz, r = Math.hypot(ddx, ddz) + (pad || 0), i = ((Math.round((Math.atan2(ddx, ddz) + Math.PI) / (Math.PI * 2) * NA) % NA) + NA) % NA; if (r > RG[j][i]) RG[j][i] = r; };
     const sLo = tb.sAtY(y0 - .02), sHi = tb.sAtY(y1 + .01);
     for (let sv = Math.min(sLo, sHi); sv <= Math.max(sLo, sHi); sv += .004) for (let k = 0; k < 96; k++) { const a = -Math.PI + k / 96 * Math.PI * 2, p = Pt.surfI(B, 0, sv, a, Pt.offAt(B, PL, 0, sv, a)); if (B._guscioPts && p.y < nY + .01) continue; put(p.x, p.y, p.z, .002); }   /* sotto il guscio della giacca il corpo non c'è: conta il guscio */
@@ -1078,7 +1078,9 @@ var Vesti3D = (function () {
       const n = 22, m = 6, th = opt.th || .011, PTS = [], yTop = front.y + .008, sOf = y => tb.sAtY(y);
       for (let i = 0; i <= n; i++) { const t = i / n, y = lerp0(yTop, yEnd, t), sv = sOf(y), row = [];
         for (let j = 0; j <= m; j++) { const a = aC + (j / m - .5) * wid / Math.max(.08, Pt.raggio(B, sv, aC)) * (punta ? Math.max(.04, 1 - t) : 1 - .12 * t), off = Pt.offAt(B, PL, 0, sv, a) + .004 + lift + .002 * Math.sin(t * 9 + j);   // le onde del lembo
-          let p = Pt.surfI(B, 0, sv, a, off); if (i === 0 || t < .12) { const q = new THREE.Vector3(nx + Math.sin(a) * (front.r + .004), y, nz + Math.cos(a) * (front.r + .004)); p = p.lerp(q, .5 * (1 - t / .12)); }   // la radice esce da sotto il giro
+          let p = Pt.surfI(B, 0, sv, a, off);
+          if (B._guscioPts) { const pa = Math.atan2(p.x - nx, p.z - nz), d = Math.hypot(p.x - nx, p.z - nz), need = maxR(pa, y - .012, y + .012) + .004 + lift; if (d < need) { p.x = nx + (p.x - nx) * need / d; p.z = nz + (p.z - nz) * need / d; } }   // sopra il pezzo vero (cappotto, piumino), non sul corpo dipinto
+          if (i === 0 || t < .12) { const q = new THREE.Vector3(nx + Math.sin(a) * (front.r + .004), y, nz + Math.cos(a) * (front.r + .004)); p = p.lerp(q, .5 * (1 - t / .12)); }   // la radice esce da sotto il giro
           row.push(p); } PTS.push(row); }
       const P = [], U = [], I = [], nrm = (i, j) => { const fr = Sa.frameAt(tb, sOf(lerp0(yTop, yEnd, i / n))), d = PTS[i][j].clone().sub(fr.p); d.addScaledVector(fr.t, -d.dot(fr.t)); return d.normalize(); };
       const add = (p, u, v) => { P.push(p.x, p.y, p.z); U.push(u, v); return P.length / 3 - 1; };

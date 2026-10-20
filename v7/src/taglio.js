@@ -25,6 +25,8 @@ var Taglio = (function () {
         maniche_lunghe: { f: 'Casual_2', re: /Body/, r: { LightBrown: 'A', Skin: 'AP' }, op: { largo: .006 } },   // la maglietta con la manica dipinta fino al polso (lo scollo resta pulito)
         piumino: { f: 'Casual_2', re: /Body/, r: { LightBrown: 'A', Skin: 'AP' }, op: { largo: .03 } },
         cappotto: { f: 'Casual_2', re: /Body/, r: { LightBrown: 'A', Skin: 'AP' }, op: { largo: .014, falda: { len: .44, svasa: .32, agio: .03, davanti: .08 } } },
+        pelliccia: { f: 'Casual_2', re: /Body/, r: { LightBrown: 'A', Skin: 'AP' }, op: { largo: .036, falda: { len: .36, svasa: .3, agio: .04, davanti: .06 } } },
+        pelliccia_corta: { f: 'Casual_2', re: /Body/, r: { LightBrown: 'A', Skin: 'AP' }, op: { largo: .04, falda: { len: .12, svasa: .2, agio: .035, anelli: 3 } } },
         gilet: { f: 'Worker', re: /Body/, r: { Worker_Vest: 'A', Worker_Yellow: 'B', LightBrown: 'S', Skin: 'P' } },
       },
       gambe: {
@@ -47,6 +49,8 @@ var Taglio = (function () {
         maniche_lunghe: { f: 'Casual', re: /Body/, r: { White: 'A', Skin: 'AP' }, op: { largo: .006 } },
         piumino: { f: 'Casual', re: /Body/, r: { White: 'A', Skin: 'AP' }, op: { largo: .03 } },
         cappotto: { f: 'Casual', re: /Body/, r: { White: 'A', Skin: 'AP' }, op: { largo: .012, falda: { len: .42, svasa: .34, agio: .035, davanti: .08 } } },
+        pelliccia: { f: 'Casual', re: /Body/, r: { White: 'A', Skin: 'AP' }, op: { largo: .032, falda: { len: .36, svasa: .32, agio: .04, davanti: .06 } } },
+        pelliccia_corta: { f: 'Casual', re: /Body/, r: { White: 'A', Skin: 'AP' }, op: { largo: .036, falda: { len: .12, svasa: .2, agio: .035, anelli: 3 } } },
         vestito: { f: 'Formal', re: /Body/, r: { LimeGreen: 'A', Gold: 'B', Skin: 'P' } },
       },
       gambe: {
@@ -64,7 +68,9 @@ var Taglio = (function () {
   const BUSTO = [
     [/^(canotta|canotta_basket)$/, 'canotta'],
     [/^(maglietta_oversize)$/, 'oversize'],
-    [/^(cappotto|impermeabile|camice|pelliccia_lunga)$/, 'cappotto'],
+    [/^(cappotto|impermeabile|camice)$/, 'cappotto'],
+    [/^(pelliccia|pelliccia_lunga)$/, 'pelliccia'],
+    [/^(pelliccia_volpe|montone)$/, 'pelliccia_corta'],
     [/^(piumino|piumino_oca|smanicato|montone|pelliccia|pelliccia_volpe|giaccone)$/, 'piumino'],
     [/^(felpa|felpa_skate)$/, 'felpa'],
     [/^(gilet|grembiule|panciotto)$/, 'gilet'],
@@ -79,7 +85,7 @@ var Taglio = (function () {
   function stoffaDi(C, sotto) {
     const CUT = (typeof Sartoria !== 'undefined' && Sartoria.CUT_()[C.id]) || {}, V = Object.assign({}, CUT, C.var && typeof C.var === 'object' ? C.var : {});
     const fab = V.fab || '', id = C.id, s = { motivo: 0, dett: {} };
-    s.motivo = /fiori|hawaii|liberty/.test(fab + id) ? 8 : /gessato/.test(fab) || /completo/.test(id) ? 2 : /tartan|quadri|madras|vichy|galles|pied/.test(fab + id) ? 3 : /righe_v/.test(fab) ? 1 : /righe|marinara/.test(fab + id) ? 4 : /velluto/.test(fab + id) ? 5 : /piumino/.test(fab + id) || /piumino|smanicato/.test(id) ? 6 : /denim|jeans/.test(fab + id) ? 7 : 0;
+    s.motivo = /maculato|leopard/.test(fab) ? 9 : /^pelo$/.test(fab) || /volpe|montone/.test(id) ? 10 : /fiori|hawaii|liberty/.test(fab + id) ? 8 : /gessato/.test(fab) || /completo/.test(id) ? 2 : /tartan|quadri|madras|vichy|galles|pied/.test(fab + id) ? 3 : /righe_v/.test(fab) ? 1 : /righe|marinara/.test(fab + id) ? 4 : /velluto/.test(fab + id) ? 5 : /piumino/.test(fab + id) || /piumino|smanicato/.test(id) ? 6 : /denim|jeans/.test(fab + id) ? 7 : 0;
     const d = s.dett, collo = V.collo || '';
     if (/revers/.test(collo)) { d.revers = 1; d.vScollo = .2; d.bottoni = 1; }
     else if (collo === 'v') d.vScollo = .1;
@@ -94,7 +100,7 @@ var Taglio = (function () {
     if (V.numero || /basket|calcio/.test(id)) d.numero = 1;
     if (V.costine || /maglione|felpa|dolcevita/.test(id)) d.costine = 1;
     s.A = C.col || '#808080'; s.B = C.col2 || V.c2 || (s.motivo === 2 ? '#ece8e0' : '#ece8e0'); s.C = V.c3 || s.B;
-    s.S = sotto ? (sotto.col || '#ece8e0') : null; s.T = null; s.SB = sotto && /quadri|righe|vichy/.test(sotto.id) ? 1 : 0;
+    s.S = sotto ? (sotto.col || '#ece8e0') : null; if (s.motivo === 9) s.S = V.c3 || '#a8642a'; s.T = null; s.SB = sotto && /quadri|righe|vichy/.test(sotto.id) ? 1 : 0;
     return s;
   }
   // ---------------- LE MISURE DEL KIT ----------------
@@ -133,7 +139,7 @@ var Taglio = (function () {
       if (op.gambe_larghe && zona === 'gambe') { const cx = Math.sign(x || 1) * M.legX, dx = x - cx, dz = z - M.legZ, d = Math.hypot(dx, dz) || 1, k = Math.min(1, Math.max(0, (M.hipsY - .05 - y) / .25)); const rr = d + op.gambe_larghe * k; Bp[i * 3] = cx + dx / d * rr; Bp[i * 3 + 2] = M.legZ + dz / d * rr; }   // [stile] dritto dalla coscia, largo fino in fondo
     }
     // la falda (cappotto, pelliccia lunga): l'orlo del pezzo prolungato fino al ginocchio, svasato, metà sui fianchi e metà sulle cosce
-    if (op && op.falda && !ap) { const F = falda(g0, Bp, n, M, op.falda, src); if (F) { const k0 = keep; ({ n, Bp } = F); P = g0.attributes.position; keep = new Uint8Array(n / 3).fill(1); keep.set(k0); } }
+    if (op && op.falda && !ap) { const F = falda(g0, Bp, n, M, op.falda, src, file); if (F) { const k0 = keep; ({ n, Bp } = F); P = g0.attributes.position; keep = new Uint8Array(n / 3).fill(1); keep.set(k0); } }
     // la manica dipinta sulla pelle del braccio: spessa quanto la manica del pezzo, così non c'è lo scalino all'orlo; al polsino rientra
     if (ap) { const a = M.ua, w = M.wr, ax = new THREE.Vector3(), q = new THREE.Vector3(), d = new THREE.Vector3();
       const lungo = (x, y, z) => { const sg = Math.sign(x); ax.set(w.x * sg - a.x * sg, w.y - a.y, w.z - a.z).normalize(); return q.set(x - a.x * sg, y - a.y, z - a.z).dot(ax); };
@@ -163,20 +169,27 @@ var Taglio = (function () {
     GEO.set(key, g); return g;
   }
   // la falda: anelli sotto l'orlo, ogni vertice dell'orlo scende dritto (svasando) fino a una riga piana; i pesi passano dal bacino alle cosce
-  function falda(g0, Bp, n, M, F, src) {
+  function falda(g0, Bp, n, M, F, src, file) {
     // l'orlo del pezzo è chiuso (ha spessore): si prende l'anello più basso, il vertice più esterno per ogni spicchio
     let yb = 9; for (let i = 0; i < n; i++) if (Math.abs(Bp[i * 3]) < M.shX + .08) yb = Math.min(yb, Bp[i * 3 + 1]);
-    const NB = F.spicchi || 36, best = new Array(NB).fill(-1), rad = i => Math.hypot(Bp[i * 3], Bp[i * 3 + 2] - M.zc), ang = i => Math.atan2(Bp[i * 3], Bp[i * 3 + 2] - M.zc);
-    for (let i = 0; i < n; i++) { if (Bp[i * 3 + 1] > yb + .03) continue; const k = Math.min(NB - 1, Math.floor((ang(i) + Math.PI) / (Math.PI * 2) * NB)); if (best[k] < 0 || rad(i) > rad(best[k])) best[k] = i; }
+    const NB = F.spicchi || 28, best = new Array(NB).fill(-1), rad = i => Math.hypot(Bp[i * 3], Bp[i * 3 + 2] - M.zc), ang = i => Math.atan2(Bp[i * 3], Bp[i * 3 + 2] - M.zc);
+    // per spicchio: il punto più basso del pezzo (dietro l'orlo può stare più su che davanti), e lì il più esterno
+    const bin = i => Math.min(NB - 1, Math.floor((ang(i) + Math.PI) / (Math.PI * 2) * NB)), lo = new Array(NB).fill(9);
+    for (let i = 0; i < n; i++) if (Math.abs(Bp[i * 3]) < M.shX + .08 && Bp[i * 3 + 1] < yb + .08) { const k = bin(i); lo[k] = Math.min(lo[k], Bp[i * 3 + 1]); }
+    for (let i = 0; i < n; i++) { if (Math.abs(Bp[i * 3]) >= M.shX + .08) continue; const k = bin(i); if (Bp[i * 3 + 1] > Math.min(lo[k] + .015, yb + .08)) continue; if (best[k] < 0 || rad(i) > rad(best[k])) best[k] = i; }
     const L = best.filter(i => i >= 0), m = L.length; if (m < 8) return null;
     let y0 = 9; for (const i of L) y0 = Math.min(y0, Bp[i * 3 + 1]); const yF = y0 - F.len, N = F.anelli || 7;
     const bi = nm => src.skeleton.bones.findIndex(b => b.name === nm), gL = bi('UpperLegL'), gR = bi('UpperLegR');
     const SI = g0.attributes.skinIndex, SW = g0.attributes.skinWeight;
     // un punto della falda: anello k (0 = orlo), vertice j dell'orlo
-    const pt = (j, k) => { const i = L[j % m], t = k / N, x = Bp[i * 3], y = Bp[i * 3 + 1], z = Bp[i * 3 + 2] - M.zc, d = Math.hypot(x, z) || 1, a = Math.atan2(x, z);
+    let pt = (j, k) => { const i = L[j % m], t = k / N, x = Bp[i * 3], y = Bp[i * 3 + 1], z = Bp[i * 3 + 2] - M.zc, d = Math.hypot(x, z) || 1, a = Math.atan2(x, z);
       const fr = Math.cos(a) > 0 ? 1 - (F.davanti || 0) * Math.cos(a) * t : 1;   // davanti scende un poco meno (si apre al passo)
-      const s = 1 + F.svasa * t, ag = F.agio * Math.min(1, t * 2.5);
+      const s = 1 + F.svasa * t, ag = F.agio * Math.min(1, t * 5);
       return { i, t, x: x * s + x / d * ag, y: y + (yF - y) * t * fr, z: M.zc + z * s + z / d * ag, a }; };
+    // non deve bucare il corpo sotto: per ogni punto, almeno il raggio delle gambe del kit (sedere, cosce) più un dito d'aria
+    const LG = [], v = new THREE.Vector3(); Models.chars[file].root.traverse(o => { if (o.isSkinnedMesh && /Legs/.test(o.name)) { const Po = o.geometry.attributes.position; o.updateMatrixWorld(true); for (let i = 0; i < Po.count; i += 1) { v.fromBufferAttribute(Po, i).applyMatrix4(o.matrixWorld); LG.push(v.x, v.y, v.z - M.zc); } } });
+    const minR = (x, y, z) => { const a = Math.atan2(x, z); let r = 0; for (let i = 0; i < LG.length; i += 3) { if (Math.abs(LG[i + 1] - y) > .04) continue; let da = Math.abs(Math.atan2(LG[i], LG[i + 2]) - a); if (da > Math.PI) da = Math.PI * 2 - da; if (da < .3) r = Math.max(r, Math.hypot(LG[i], LG[i + 2])); } return r; };
+    const pt0 = pt, cache = new Map(); pt = (j, k) => { const key = (j % m) + ',' + k; if (cache.has(key)) return cache.get(key); const p = pt0(j, k); if (k > 0) { const z = p.z - M.zc, d = Math.hypot(p.x, z) || 1, need = minR(p.x, p.y, z) + .03; if (d < need) { p.x *= need / d; p.z = M.zc + z * need / d; } } cache.set(key, p); return p; };
     const tris = []; for (let k = 0; k < N; k++) for (let j = 0; j < m; j++) { const a = pt(j, k), b = pt(j + 1, k), c = pt(j, k + 1), d = pt(j + 1, k + 1); if (j === m - 1 && false) continue; tris.push(a, c, b, b, c, d); }
     // il verso dei triangoli: la faccia guarda fuori
     const flip = (() => { const [a, c, b] = tris; const ux = c.x - a.x, uy = c.y - a.y, uz = c.z - a.z, vx = b.x - a.x, vy = b.y - a.y, vz = b.z - a.z; const nx = uy * vz - uz * vy, nz = ux * vy - uy * vx; return nx * a.x + nz * (a.z - M.zc) < 0; })();
@@ -184,7 +197,7 @@ var Taglio = (function () {
     const n2 = n + tris.length, B2 = new Float32Array(n2 * 3); B2.set(Bp);
     for (const nm in g0.attributes) { const A = g0.attributes[nm], is = A.itemSize, arr = new A.array.constructor(n2 * is); for (let i = 0; i < n; i++) for (let c = 0; c < is; c++) arr[i * is + c] = A.getComponent ? A.getComponent(i, c) : A.array[i * is + c];
       tris.forEach((p, q) => { const o = (n + q) * is; for (let c = 0; c < is; c++) arr[o + c] = A.array[p.i * is + c]; });
-      if (nm === 'skinIndex' || nm === 'skinWeight') tris.forEach((p, q) => { const o = (n + q) * 4, gb = (F.gamba || .6) * p.t, bL = gb * Math.min(1, Math.max(0, .5 + p.x / .16)), bR = gb - bL, w = [];
+      if (nm === 'skinIndex' || nm === 'skinWeight') tris.forEach((p, q) => { const o = (n + q) * 4, gb = p.t ? Math.min(.95, (.2 + (F.gamba || .55) * p.t) * (1 + .7 * Math.max(0, Math.cos(p.a)))) : 0, bL = gb * Math.min(1, Math.max(0, .5 + p.x / .16)), bR = gb - bL, w = [];
         for (let c = 0; c < 4; c++) w.push([SI.array[p.i * 4 + c], SW.array[p.i * 4 + c] * (1 - gb)]); w.push([gL, bL], [gR, bR]);
         const ws = {}; for (const [b, x] of w) ws[b] = (ws[b] || 0) + x; const top = Object.entries(ws).sort((a, b) => b[1] - a[1]).slice(0, 4), sum = top.reduce((s, e) => s + e[1], 0) || 1;
         for (let c = 0; c < 4; c++) arr[o + c] = nm === 'skinIndex' ? (top[c] ? +top[c][0] : 0) : (top[c] ? top[c][1] / sum : 0); });
@@ -223,6 +236,11 @@ vec3 stoffa() {
   if (uMot == 7.) c = uA * (.92 + .1 * step(.5, fract((u + v) / .004)));                        // denim: diagonale
   if (uMot == 8.) { vec2 q = vec2(u, v) / .07, cl = floor(q), f = fract(q) - .5; vec2 o = vec2(h21(cl), h21(cl + 7.)) - .5; vec2 d = f - o * .5; float a = atan(d.y, d.x), r = length(d), pet = .2 + .1 * cos(a * 5. + h21(cl) * 6.);   // fiori grandi a cinque petali
     if (r < pet) c = mix(uB, vec3(.95, .85, .3), step(r, .06)); if (r < .07 && r > .055) c *= .6; float lf = abs(dot(d - vec2(.2, -.2), normalize(vec2(1., 1.)))); if (r > pet && r < .42 && lf < .05 && d.x > 0. && d.y < 0.) c = mix(uA, vec3(.15, .4, .2), .7); }
+  // il pelo: ciuffi lunghi che scendono, punte più chiare, solchi scuri; il leopardo: rosette spezzate col cuore caldo, sul pelo
+  if (uMot > 8.5) { float cx = floor(u / .007), sh = h21(vec2(cx, 3.)), q = v / .05 + sh, a = h21(vec2(cx, floor(q))), f = fract(q);
+    c = uA * (.84 + .22 * mix(a, h21(vec2(cx + 1., floor(q))), smoothstep(.0, 1., fract(u / .007)))) * (.9 + .14 * smoothstep(.2, 1., f));
+    if (uMot < 9.5) { vec2 p = vec2(u, v) / .06, ce = floor(p), fp = fract(p) - .5 + (vec2(h21(ce), h21(ce + 5.)) - .5) * .35; float r = length(fp), an = atan(fp.y, fp.x);
+      if (r < .16) c = mix(c, uS * 1.3 + vec3(.25, .1, 0.), .55); else if (r < .3 && fract(an / 6.2832 * 4. + h21(ce)) < .72) c = vec3(.07, .05, .04) * (.8 + .4 * a); } }
   float front = R < .5 ? 1. - step(.55 * .15 * 3.1416, abs(u)) : 0.;
   // lo scollo a V: dentro si vede lo strato sotto (camicia, maglia)
   if (R < .5 && uD.x > 0.) { float dv = uNeck - v, w = dv < 0. ? 0. : (1. - dv / uD.x) * .065; if (dv >= 0. && dv < uD.x && abs(u) < w) c = uS; if (dv >= 0. && dv < uD.x && abs(abs(u) - w) < .004) c *= .45; }
@@ -296,7 +314,10 @@ vec3 stoffa() {
   function punti(g) {
     g.updateMatrixWorld(true); const gi = new THREE.Matrix4().copy(g.matrixWorld).invert(), v = new THREE.Vector3(), out = [];
     g.traverse(o => { if (!o.isSkinnedMesh || o.userData.zona !== 'busto') return; const P = o.geometry.attributes.position, I = o.geometry.index, M = new THREE.Matrix4().multiplyMatrices(gi, o.matrixWorld);
-      const n = I ? I.count : P.count; for (let k = 0; k < n; k++) { v.fromBufferAttribute(P, I ? I.getX(k) : k).applyMatrix4(M); out.push(v.x, v.y, v.z); } });
+      // fitto: anche dentro i triangoli (i pezzi sono radi: sennò sciarpe e catene ci affondano tra un vertice e l'altro)
+      const n = I ? I.count : P.count, a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), at = k => I ? I.getX(k) : k;
+      for (let k = 0; k + 2 < n; k += 3) { a.fromBufferAttribute(P, at(k)).applyMatrix4(M); b.fromBufferAttribute(P, at(k + 1)).applyMatrix4(M); c.fromBufferAttribute(P, at(k + 2)).applyMatrix4(M);
+        for (const [x, y] of [[1, 0], [0, 1], [0, 0], [.33, .33], [.5, .5], [.5, 0], [0, .5], [.2, .6], [.6, .2], [.2, .2]]) { const w = 1 - x - y; out.push(a.x * x + b.x * y + c.x * w, a.y * x + b.y * y + c.y * w, a.z * x + b.z * y + c.z * w); } } });
     return out; }
   return { dress, punti, PEZZI, attivo: true };   // [via di mezzo] la base sono i pezzi modellati del kit (scelta dopo il confronto: più vicina allo stile voluto)
 })();
