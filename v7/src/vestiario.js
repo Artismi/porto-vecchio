@@ -1032,9 +1032,9 @@ var Vesti3D = (function () {
     const tors = PL.filter(C => (C.parti || []).includes('torso')), J = tors[tors.length - 1]; if (!J || !/revers/.test(J.collo || '') || J.revers3d === 0) return;
     const tb = Pt.frame(B).tubes[0], hx = c => '#' + new THREE.Color().setRGB(c[0], c[1], c[2]).getHexString(), col = hx(J.A);
     const top = Pt.blockMat(J.fab || 'lana', col, J.B ? hx(J.B) : col, J.C ? hx(J.C) : col, { vc: false }).clone(); top.side = THREE.DoubleSide;
-    const lap = J.revers_raso ? new THREE.MeshStandardMaterial({ color: J.revers_raso, roughness: .32, metalness: .05, emissive: new THREE.Color(J.revers_raso).multiplyScalar(.25), side: THREE.DoubleSide }) : top;
+    const lapT = top.clone(); lapT.color = new THREE.Color(1.07, 1.07, 1.07); const lap = J.revers_raso ? new THREE.MeshStandardMaterial({ color: J.revers_raso, roughness: .32, metalness: .05, emissive: new THREE.Color(J.revers_raso).multiplyScalar(.25), side: THREE.DoubleSide }) : lapT;
     const und = new THREE.MeshLambertMaterial({ color: sh(col, .42), emissive: new THREE.Color(sh(col, .42)).multiplyScalar(.2), side: THREE.DoubleSide });
-    const yB = nY - .19, notchY = nY - .068, X0 = y => .098 * cl0((y - (nY - .2)) / .2), LW = y => .005 + .04 * Math.pow(cl0((y - yB) / .13), .8);   // [stile] revers classico: 4,5 cm alla tacca, il bordo a ~10 cm dal centro
+    const yB = nY - .235, notchY = nY - .07, X0 = y => .82 * .14 * cl0((y - (nY - .25)) / .25), LW = y => .005 + .042 * Math.pow(cl0((y - yB) / .15), .75);   // [stile] revers classico: 4,5 cm alla tacca, il bordo a ~10 cm dal centro
     // la superficie della giacca attorno all'asse del collo (misura liscia: niente salti tra uno strato e l'altro)
     const M = misuraCollo(B, T, outfit, PL), rS = (a, y) => { let m = 0, n = 0; for (const da of [-.06, -.03, 0, .03, .06]) for (const dy of [-.006, 0, .006]) { m += M.rAt(a + da, y + dy); n++; } return Math.max(m / n, M.rAt(a, y) - .002); };
     const at = (a, y, r) => new THREE.Vector3(nx + Math.sin(a) * r, y, nz + Math.cos(a) * r);
@@ -1048,18 +1048,18 @@ var Vesti3D = (function () {
       for (const i of [0, NU]) for (let j = 0; j < NV; j++) Iu.push(id(i, j, 0), id(i, j + 1, 0), id(i, j + 1, 1), id(i, j, 0), id(i, j + 1, 1), id(i, j, 1));
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(V, 3)); const U = []; for (let k = 0; k < V.length / 3; k++) U.push(V[k * 3] * 3 + V[k * 3 + 2] * 3, V[k * 3 + 1] * 3); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
       g.setIndex([...It, ...Iu]); g.addGroup(0, It.length, 0); g.addGroup(It.length, Iu.length, 1); g.computeVertexNormals(); o.add(new THREE.Mesh(g, [mTop, und])); };
-    const rFold = B.neckR + .024, yFold = nY + .002;
+    const rFold = B.neckR + .023, yFold = nY - .008;
     for (const sg of [1, -1]) {
       // il revers: u lungo (0 = punto di rottura, 1 = in cima), v di traverso (0 = il rotolo, 1 = il bordo fuori)
       const aTop = v => angX(X0(notchY + .03 * (1 - v)) + v * LW(notchY), notchY + .03 * (1 - v));
       piece((u, v, d) => { const yT = notchY + .03 * (1 - v) + .002 * v, y = lerp0(yB, yT, u), X = X0(y) + v * LW(y), a = sg * angX(X, y), aS = sg * angX(Math.max(X, X0(y) + .016), y);
-        const lift = d ? .0006 : .0034 + .0026 * (1 - v) * Math.sin(Math.min(1, u * 1.4) * Math.PI / 2);   // più alto sul rotolo, che si gonfia appena sopra il bottone
+        const lift = d ? .0008 : .0042;   // [stile] piatto e pieno, posato: niente rotolo a salamella
         return at(a, y, Math.max(rS(a, y), rS(aS, y)) + lift); }, 20, 6, lap);
       // il collo: u di traverso (0 = la piega in alto, 1 = il bordo fuori), v lungo l'angolo (dalla tacca a dietro)
       const aIn = angX(X0(notchY + .032) - .002, notchY + .032), aCt = angX(X0(notchY + .012) + LW(notchY) * .62, notchY + .012);
       piece((u, v, d) => { const f0 = lerp0(aIn, aCt, u), phi = lerp0(f0, Math.PI, v), b = Math.pow(v, .5);
-        const yIn = lerp0(notchY + .032, yFold, b), yOut = lerp0(notchY + .012, nY - .024, Math.pow(v, .4)), y = lerp0(yIn, yOut, u);
-        const rIn = lerp0(rS(f0, notchY + .032) + .004, rFold, b), rOut = Math.min(rS(phi, y) + .004, rFold + .034), r = Math.max(lerp0(rIn, rOut, Math.pow(u, .8)), rS(phi, y) * (1 - b) + .004 * (1 - b)) + (d ? -.0028 : .0018 * (1 - u));
+        const yIn = lerp0(notchY + .032, yFold, b), yOut = lerp0(notchY + .012, nY - .034, Math.pow(v, .4)), y = lerp0(yIn, yOut, u);
+        const rIn = lerp0(rS(f0, notchY + .032) + .0042, rFold, b), r = Math.max(rS(phi, y) + .0042, lerp0(rIn, 0, Math.min(1, u * 3))) + (d ? -.0034 : 0);   // posato sulla giacca: dalla piega scende piatto, niente tubo
         return at(sg * phi, y, r); }, 6, 36, top); }
     AT('Chest', o);
   }
@@ -1163,7 +1163,7 @@ var Vesti3D = (function () {
         const P0 = window.Pittura, CUT = Sartoria.CUT_(), nY = Sartoria.neckY(B), sp = C0 => P0 ? P0.spessore(C0) : .004;
         const plans = outfit.filter(o => o.parti && o.parti.includes('torso')).map(o => Object.assign({ id: o.id }, CUT[o.id] || { cl: 1 }, (o.var && typeof o.var === 'object') ? o.var : {}));
         const shirt = plans.filter(p => p.cl <= 1).pop(), outer = plans.filter(p => p.cl >= 3 && !p.solo_gonna && !p.davanti).pop();
-        const vDrop = outer ? ({ v: .11, revers: .25, revers_pelle: .25, camicia_aperta: .11 }[outer.collo] || 0) : .5;   // con un maglione girocollo o a collo alto la cravatta non si vede
+        const vDrop = outer ? ({ v: .11, revers: .29, revers_pelle: .29, camicia_aperta: .11 }[outer.collo] || 0) : .5;   // con un maglione girocollo o a collo alto la cravatta non si vede
         if (vDrop > .03) {
           const dis = c.dis || 'raso', C2 = { regimental: '#c8b070', pois: '#ece8dc', paisley: '#e8c070', liberty: '#e8d8b0', costine: c.col }[dis] || c.col, C3 = { paisley: '#2a3a6a', liberty: '#c83a4a', regimental: '#1a1a1e' }[dis] || C2;
           const mt = P0 ? P0.blockMat(dis, c.col, C2, C3, { vc: false }) : FM('raso', c.col), off = (shirt ? sp(shirt) : 0) + .003, o = new THREE.Group(), tb = Pittura.frame(B).tubes[0];

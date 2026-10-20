@@ -370,7 +370,7 @@ var Pittura = (function () {
   // lo scollo (quanto scende dalla base del collo) per angolo, come nella Sartoria
   function neckDrop(C, a) {
     const fa = Math.cos(a), c = C.collo; let d = 0;
-    if (c === 'v' || c === 'revers' || c === 'revers_pelle' || c === 'camicia_aperta') { const w = c === 'v' ? .55 : .7, dep = c === 'v' ? .1 : c === 'camicia_aperta' ? .11 : .2; if (Math.abs(a) < w) d = dep * (1 - Math.abs(a) / w); }
+    if (c === 'v' || c === 'revers' || c === 'revers_pelle' || c === 'camicia_aperta') { const r3 = /revers/.test(c) && C.revers3d !== 0, w = c === 'v' ? .55 : r3 ? .82 : .7, dep = c === 'v' ? .1 : c === 'camicia_aperta' ? .11 : r3 ? .25 : .2; /* [stile] la giacca aperta in un V profondo: camicia e cravatta si vedono */ if (Math.abs(a) < w) d = dep * (1 - Math.abs(a) / w); }
     if (c === 'giro' || c === 'polo' || c === 'camicia' || c === 'alto_zip' || c === 'cappuccio' || c === 'giro') d = Math.max(0, fa) * .025;
     if (c === 'barca') d = Math.max(0, Math.abs(fa)) * .02;
     if (c === 'canotta' || C.spalline_sottili) { const sa = Math.abs(Math.abs(a) - Math.PI / 2);   // scollo dritto davanti e dietro, giro manica largo: niente buco a goccia
