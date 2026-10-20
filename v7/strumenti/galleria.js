@@ -44,6 +44,9 @@ const srv = http.createServer((req, res) => {
   console.log('caricato in', ((Date.now() - t0) / 1000).toFixed(0), 's');
   const out = [];
   for (const s of SCORCI) {
+    // GALLERIA_RIPRENDI=1: gli scorci già fatti in tutte le varianti (la loro scheda .json accanto alla foto) non si rifanno
+    const schede = VARIANTI.map(v => path.join(v.nome ? path.join(outDir, v.nome) : outDir, s.nome + '.json'));
+    if (process.env.GALLERIA_RIPRENDI && schede.every(f => fs.existsSync(f))) { VARIANTI.forEach((v, i) => v.out.push(JSON.parse(fs.readFileSync(schede[i], 'utf8')))); console.log('già fatto', s.nome); continue; }
     const ts = Date.now();
     // 1) il posto, l'ora, il tempo, la camera
     await pg.evaluate(s => {
@@ -79,10 +82,10 @@ const srv = http.createServer((req, res) => {
       const dir = v.nome ? path.join(outDir, v.nome) : outDir; fs.mkdirSync(dir, { recursive: true });
       const file = path.join(dir, s.nome + '.png');
       // la foto si prende dalla tela del gioco subito dopo il suo fotogramma (requestAnimationFrame registrato dopo quello del gioco):
-      // con SwiftShader sotto carico un fotogramma può durare decine di secondi e lo screenshot della pagina scadeva. Due fotogrammi:
-      // il primo porta le manopole nuove (le finestre si riaccendono solo quando cambia il loro valore)
-      const shot = await pg.evaluate(() => new Promise(res => { const t0 = performance.now(); requestAnimationFrame(() => requestAnimationFrame(() => { const cv = document.getElementById('cv'); res({ url: cv.toDataURL('image/png'), ms: Math.round(performance.now() - t0) }); })); }));
-      const buf = Buffer.from(shot.url.split(',')[1], 'base64'); fs.writeFileSync(file, buf); log('foto ' + (v.nome || '') + ' (due fotogrammi ' + shot.ms + ' ms)');
+      // con SwiftShader sotto carico un fotogramma può durare decine di secondi e lo screenshot della pagina scadeva. Un fotogramma:
+      // le manopole nuove entrano nel fotogramma che segue (anche le finestre, che si riaccendono quando cambia il loro valore)
+      const shot = await pg.evaluate(() => new Promise(res => { const t0 = performance.now(); requestAnimationFrame(() => { const cv = document.getElementById("cv"); res({ url: cv.toDataURL("image/png"), ms: Math.round(performance.now() - t0) }); }); }));
+      const buf = Buffer.from(shot.url.split(',')[1], 'base64'); fs.writeFileSync(file, buf); log('foto ' + (v.nome || '') + ' (fotogramma ' + shot.ms + ' ms)');
       const m = await pg.evaluate(async ({ b64, MIS }) => {
         const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
         const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0);
@@ -94,7 +97,7 @@ const srv = http.createServer((req, res) => {
           drawCall: info && info.calls || null, triangoli: info && info.tris || null, ora: Math.round(pv.st.t % 1440), notte: +(pv.R.nightLevel(pv.st.t)).toFixed(2), gente: pv.st.npcs.filter(n => !n.inside && !n.dead && Math.hypot(n.x - pv.st.player.x, n.y - pv.st.player.y) < 40).length };
       }, { b64: buf.toString('base64'), MIS });
       const rec = Object.assign({ nome: s.nome, titolo: s.titolo || s.nome, luce: s.luce || null, meteo: s.meteo || null, nelPosto: pieni }, m);
-      v.out.push(rec);
+      v.out.push(rec); fs.writeFileSync(file.replace(/\.png$/, '.json'), JSON.stringify(rec));
       console.log(`ok ${(v.nome ? v.nome + ' ' : '') + s.nome.padEnd(22)} lum ${m.luminosita} contr ${m.contrasto} neri ${m.quasiNeri}% bianchi ${m.quasiBianchi}% sat ${m.saturazione} dc ${m.drawCall} gente ${m.gente} nei posti ${pieni} (${((Date.now() - ts) / 1000).toFixed(0)} s)`);
     }
   }
