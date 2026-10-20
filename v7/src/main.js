@@ -790,7 +790,13 @@
   buildMinimap(); introScreen(); showHud(false);
   // i moduli degli edifici (Kenney Building Kit) arrivano prima della scena: la città nasce già montata
   const goBtn = $('go'); if (goBtn) { goBtn.disabled = true; goBtn.dataset.label = goBtn.textContent; goBtn.textContent = 'Carico il porto…'; }
-  const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura', 'urbano', 'casa', 'stazione', 'garage', 'tortura']), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
+  // [ospite] dentro un altro sito (artismidesignstudio.com) il caricamento lo mostra la pagina che ospita il gioco:
+  // le si dice a che punto siamo e quando il menu è pronto, così i caricamenti diventano uno solo
+  const host = (p, ready) => { try { if (window.parent !== window) window.parent.postMessage({ pv: ready ? 'pronto' : 'carico', p }, '*'); } catch (e) { } };
+  const KITS = ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura', 'urbano', 'casa', 'stazione', 'garage', 'tortura'];
+  if (window.__pvFetchModel) { const f0 = window.__pvFetchModel; let kd = 0; window.__pvFetchModel = url => { const r = f0(url); if (/kit_/.test(url)) r.then(() => host(.15 + .7 * ++kd / KITS.length), () => { }); return r; }; }
+  host(.15);
+  const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', KITS), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
   Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
   function boot() {
   if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
@@ -798,6 +804,7 @@
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }
   if (!glOk) {
     $('screen').innerHTML = `<div class="in"><div class="logo" style="font-size:clamp(34px,6vw,64px)">Porto Vecchio</div><div class="story"><p>Il gioco usa la grafica 3D del browser (WebGL) e qui non è riuscito ad avviarla.</p><p>Prova ad aprire la pagina in Chrome, Edge o Firefox aggiornati, con l'accelerazione hardware attiva nelle impostazioni del browser.</p></div></div>`;
+    host(1, true);   // [ospite] che si legga l'avviso
     return;
   }
   setTimeout(() => { try { softwareCheck(); } catch (e) { } }, 4000);   // [prestazioni] avvisa se si disegna senza scheda video
@@ -806,6 +813,7 @@
   new ResizeObserver(size).observe(app); size();
   // [fluido] i programmi della scheda video si preparano adesso, durante il caricamento, non a scatti mentre si gioca
   try { const M0 = R.__models; if (M0 && M0.renderer && M0.scene && R.getCamera) M0.renderer.compile(M0.scene, R.getCamera()); } catch (e) { console.warn('[compile]', e); }
+  requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il menu è disegnato: si può mostrare
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
   const loop = typeof Misura !== 'undefined' ? Misura.timed(loop0, 'main:ciclo') : loop0;   // [misura]
   // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
