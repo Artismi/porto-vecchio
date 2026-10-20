@@ -7285,7 +7285,7 @@ var Render = (function () {
   // (placche e fessure), chioma a masse lisce (la normale mescola la massa e l'involucro: la chioma si illumina come un volume solo,
   // non a facce), una frangia di carte di foglie o d'aghi che rompe il contorno, la formella di pietra ai piedi e l'ombra morbida a
   // terra (Ombra4). Tutto con il materiale della vegetazione (vdMat): vento, nebbia e varco come il resto del verde.
-  const PAL4 = { leccio: [vdH('#16261a'), vdH('#2e4a2c'), vdH('#5e7c4e')], pino: [vdH('#18281a'), vdH('#365426'), vdH('#6e8a40')] };
+  const PAL4 = { leccio: [vdH('#0c160e'), vdH('#1c2e1e'), vdH('#3c5236')], pino: [vdH('#0e180e'), vdH('#22341a'), vdH('#46582a')] };   // scuri: il materiale li schiarisce (×1,3) e la luce del gioco è piena
   const BARK4 = { leccio: { a: vdH('#4e443a'), b: vdH('#5e5246'), d: vdH('#241e1a'), fis: .3 }, pino: { a: vdH('#7a4c34'), b: vdH('#93603f'), d: vdH('#33241c'), fis: .38 } };
   const WU4 = [VDWUV[0], VDWUV[1]], nrm4 = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
   function acc4() {   // triangoli con normale, colore, uv e vento per vertice (le normali le diamo noi: lisce)
@@ -7342,7 +7342,7 @@ var Render = (function () {
       const N = nrm4([ne[0] + d[0], ne[1] + d[1] + .2, ne[2] + d[2]]); let t1 = nrm4([-N[2], 0, N[0]]); if (!isFinite(t1[0])) t1 = [1, 0, 0];
       const t2 = [N[1] * t1[2] - N[2] * t1[1], N[2] * t1[0] - N[0] * t1[2], N[0] * t1[1] - N[1] * t1[0]], an = r() * 6.28, ca = Math.cos(an), sa = Math.sin(an);
       const u = [t1[0] * ca + t2[0] * sa, t1[1] * ca + t2[1] * sa, t1[2] * ca + t2[2] * sa], v = [t2[0] * ca - t1[0] * sa, t2[1] * ca - t1[1] * sa, t2[2] * ca - t1[2] * sa], s = sz * (.75 + r() * .5);
-      const tc = tinta4(P, N, env, pal, r()), c = vdK(vdL([.62, .66, .56], tc, .35), .55 + Math.min(1, N[1] * .5 + .5) * .7), w = Math.max(0, P[1]) / H * .4;   // la carta ha già il suo verde: la tinta la scurisce o la schiarisce
+      const tc = tinta4(P, N, env, pal, r()), c = vdK(vdL([.36, .4, .32], tc, .4), .5 + Math.min(1, N[1] * .5 + .5) * .45), w = Math.max(0, P[1]) / H * .4;   // la carta ha già il suo verde: la tinta la scurisce o la schiarisce
       const Q = (a, b) => [P[0] + u[0] * a * s + v[0] * b * s, P[1] + u[1] * a * s + v[1] * b * s, P[2] + u[2] * a * s + v[2] * b * s];
       const a = Q(-1, -1), b = Q(1, -1), cc = Q(1, 1), dd = Q(-1, 1);
       A.v(a, N, c, uA, w); A.v(b, N, c, uB, w); A.v(cc, N, c, uC, w); A.v(a, N, c, uA, w); A.v(cc, N, c, uC, w); A.v(dd, N, c, uD, w);
