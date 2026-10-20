@@ -2095,6 +2095,8 @@ var Popolo = (function () {
     const p = st.player, occ = {}; let total = 0;
     // chi ha finito, o è stato chiamato altrove, lascia il posto
     for (const n of st.npcs) { const q = n.__posto; if (!q) continue; if (st.t > q.until || n.dead || n.__ev || (n.pop && (n.pop.emer || !n.pop.near)) || n.panic > 0 || n.jailedUntil > st.t || n.inVeh) { endPosto(st, n); continue; } occ[q.id] = (occ[q.id] || 0) + 1; total++; }
+    // il fuoco fra le baracche: finché qualcuno ci si scalda, il bidone brucia (lo stesso fuoco della scena, eventi.js)
+    if (st.fires) for (const n of st.npcs) { const q = n.__posto; if (!q || !q.arrived || q.p.k !== 'fuoco') continue; const f = st.fires.find(f => f.ev && dist(f.x, f.y, q.p.x, q.p.y) < 2); if (f) f.until = Math.max(f.until, st.clock + 30); else st.fires.push({ x: q.p.x, y: q.p.y, r: .45, until: st.clock + 30, owner: null, ev: true, calmo: true }); }
     if (p.indoor) return;
     const posti = P0.near(p.x, p.y, FILL.r).filter(q => q.__d > 5 && P0.openAt(q, st.t) && (q.tetto ? q.h3 != null : G.walkM(q.x, q.y)) && (P0.TIPI[q.k] || {}).who !== 'cop');
     posti.sort((a, b) => (a.__d + ((a.__j = a.__j || Math.random() * 24))) - (b.__d + (b.__j || (b.__j = Math.random() * 24))));

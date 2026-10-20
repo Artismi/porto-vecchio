@@ -108,7 +108,10 @@ var Eventi = (function () {
       if (m.look === 'around') { if (m.f0 === undefined) { m.f0 = n.face; m.ph = rnd() * 6; } n.face = m.f0 + Math.sin(st.clock * .8 + m.ph) * 1.2 + Math.sin(st.clock * 2.3 + m.ph) * .25; return; }   // [vita2] circospetto: lo sguardo gira
       if (m.face != null) { n.face = m.face; return; }
       const t = where(st, sc, m.look); if (t && t !== n) n.face = Math.atan2(t.y - n.y, t.x - n.x); return; }
-    if (m.k === 'go') { const t = where(st, sc, m.to); if (!t) { m.done = true; return; } if (hyp(t.x - n.x, t.y - n.y) <= (m.d || 1.1)) { m.done = true; n.speedNow = 0; if (m.face != null) n.face = m.face; else if (t !== n && m.to !== 'away' && !(m.to && m.to.x !== undefined)) n.face = Math.atan2(t.y - n.y, t.x - n.x); return; } m.done = false; if (go(st, n, t.x, t.y, m.sp || 1.6, dt)) { m.done = true; n.speedNow = 0; if (m.face != null) n.face = m.face; } return; }
+    if (m.k === 'go') { const t = where(st, sc, m.to); if (!t) { m.done = true; return; } if (hyp(t.x - n.x, t.y - n.y) <= (m.d || 1.1)) { m.done = true; n.speedNow = 0; if (m.face != null) n.face = m.face; else if (t !== n && m.to !== 'away' && !(m.to && m.to.x !== undefined)) n.face = Math.atan2(t.y - n.y, t.x - n.x); return; } m.done = false; if (go(st, n, t.x, t.y, m.sp || 1.6, dt)) { m.done = true; n.speedNow = 0; if (m.face != null) n.face = m.face; }
+      // [vita2] incastrato (un furgone di traverso, uno spigolo): dopo due secondi senza avanzare si considera arrivato e la scena va avanti da lì
+      if (m.lx === undefined || hyp(n.x - m.lx, n.y - m.ly) > .12) { m.lx = n.x; m.ly = n.y; m.lt = st.clock; } else if (st.clock - m.lt > 2) { m.done = true; n.speedNow = 0; if (m.face != null) n.face = m.face; else n.face = Math.atan2(t.y - n.y, t.x - n.x); }
+      return; }
     if (m.k === 'follow') { const t = where(st, sc, m.who); if (!t) return; if (hyp(t.x - n.x, t.y - n.y) > (m.d || 1.4)) go(st, n, t.x, t.y, m.sp || 1.7, dt); else { n.speedNow = 0; n.face = Math.atan2(t.y - n.y, t.x - n.x); } return; }
     if (m.k === 'flee') { const f = where(st, sc, m.from) || st.player; if (!m.pt || hyp(m.pt.x - n.x, m.pt.y - n.y) < 2) m.pt = fleePoint(n, f, 30) || wanderPoint(n.x, n.y, 20); go(st, n, m.pt.x, m.pt.y, m.sp || 3.6, dt); return; }
     if (m.k === 'wander') { if (!m.pt || hyp(m.pt.x - n.x, m.pt.y - n.y) < .8 || st.clock - (m.pt.t || 0) > 9) { m.pt = wanderPoint(m.ax, m.ay, m.r || 5); m.pt.t = st.clock; } go(st, n, m.pt.x, m.pt.y, m.sp || 1, dt); return; }
@@ -178,18 +181,18 @@ var Eventi = (function () {
     put: { start(st, sc, b) { const n = actor(sc, b.put); if (!n || !n.__ev) return; if (b.to === 'spot' && !sc.posto) return; const t = where(st, sc, b.to); if (!t) return; n.x = t.x; n.y = t.y; n.path = []; if (b.face != null) n.face = b.face; else if (sc.posto) n.face = sc.posto.dir; setMv(n, { k: 'lock' }); n.__ev.put = true; }, wait: () => 0 },
     van: {   // un furgone (o un'Ape) in doppia fila sulla carreggiata più vicina al posto
       start(st, sc, b) { const c = where(st, sc, b.van || 'spot'); if (!c) return; let best = null, bd = 1e9; const tx0 = Math.floor(c.x / G.TS), ty0 = Math.floor(c.y / G.TS);
-        for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) { const tx = tx0 + dx, ty = ty0 + dy; if (G.tileAt(tx, ty) !== G.T.VIA) continue; const d = dx * dx + dy * dy; if (d < bd) { bd = d; best = [tx, ty]; } }
+        for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) { const tx = tx0 + dx, ty = ty0 + dy; if (G.tileAt(tx, ty) !== G.T.VIA) continue; const d = dx * dx + dy * dy; if (d < 4) continue; if (d < bd) { bd = d; best = [tx, ty]; } }   // non addosso al posto: il furgone non deve chiudere il passaggio
         if (!best) return; const [tx, ty] = best, horiz = G.tileAt(tx + 1, ty) === G.T.VIA && G.tileAt(tx - 1, ty) === G.T.VIA && !(G.tileAt(tx, ty + 1) === G.T.VIA && G.tileAt(tx, ty - 1) === G.T.VIA), ang = horiz ? 0 : Math.PI / 2;
         const kind = b.kind || (bd > 16 ? 'ape' : 'furgone'), x = tx * G.TS + G.TS / 2, y = ty * G.TS + G.TS / 2;
         if (st.vehicles.some(v => !v.hidden && hyp(v.x - x, v.y - y) < 4)) { sc.van = st.vehicles.find(v => !v.hidden && hyp(v.x - x, v.y - y) < 4); return; }
-        const v = G.makeVehicle(st, { id: 'ev_van' + Math.floor(st.clock * 1000) + '_' + Math.floor(rnd() * 99), kind, x, y, ang, color: pick(['#e8e0d0', '#d8d0c0', '#9ab07a', '#c8642a', '#f2ead6']), ev: true });
+        const v = G.makeVehicle(st, { id: 'ev_van' + Math.floor(st.clock * 1000) + '_' + Math.floor(rnd() * 99), kind, x, y, ang, color: kind === 'vespa' ? pick(['#e8d9a8', '#58b8a6', '#d8473f', '#9ab8d0']) : pick(['#e8e0d0', '#d8d0c0', '#9ab07a', '#c8642a', '#f2ead6']), ev: true });
         st.vehicles.push(v); S(st).vans.push({ id: v.id, t: st.clock }); sc.van = v; },
       wait: () => 0,
     },
     fire: { start(st, sc, b) { let c = where(st, sc, b.fire || 'spot'); if (!c) return;
         // senza un posto «fuoco» il punto della scena è dove sta il primo attore: il fuoco va a un passo e mezzo, dove nessuno si brucia
         if (!sc.posto && c === sc.spot) { let best = null, bs = -1; for (let k = 0; k < 8; k++) { const a = k / 8 * 2 * Math.PI, x = c.x + Math.cos(a) * 1.6, y = c.y + Math.sin(a) * 1.6; if (!G.walkM(x, y)) continue; const m = Math.min(...sc.cast.map(n => hyp(n.x - x, n.y - y)), 9); if (m > bs) { bs = m; best = { x, y }; } } if (best && bs > .9) { sc.spot = best; sc.slots = null; c = best; } }
-        st.fires.push({ x: c.x, y: c.y, r: b.r || .45, until: st.clock + (b.t || 45), owner: null, ev: true }); sc.fire = true; }, wait: () => 0 },
+        const f0 = st.fires.find(f => f.ev && hyp(f.x - c.x, f.y - c.y) < 2); if (f0) f0.until = Math.max(f0.until, st.clock + (b.t || 45)); else st.fires.push({ x: c.x, y: c.y, r: b.r || .45, until: st.clock + (b.t || 45), owner: null, ev: true, calmo: true }); sc.fire = true; }, wait: () => 0 },
     ladder: {
       start(st, sc, b) { const n = actor(sc, b.ladder), L = sc.L, TT = Tetti; b._a = TT._.footH(L); b._b = TT._.topH(L); b._g = tileH(L.fx, L.fy); b._T = Math.max(2.5, Math.abs(b._b - b._a) / 1.1); setMv(n, { k: 'lock' }); n.__ev.wrH = true; },
       tick(st, sc, b) { const n = actor(sc, b.ladder), L = sc.L; if (!n || !n.__ev) return 'abort'; const f = clamp((st.clock - b._t) / b._T, 0, 1);
@@ -325,6 +328,8 @@ var Eventi = (function () {
     // chi è stato colpito, stordito per davvero o è entrato da qualche parte esce di scena; i primi due ruoli la reggono
     sc.cast.forEach(n => { if (n.__ev && n.__ev.down) { if (n.__ev.down > st.clock) n.stun = Math.max(n.stun, .05); else { n.__ev.down = 0; n.stun = 0; } } });
     if (sc.esc && sc.esc.__ev && sc.esc.inside) delete sc.esc.__ev;   // chi scappa e si infila in un portone esce di scena (l'inseguimento lo vede)
+    // [vita2] chi se ne sta andando (verso 'away', o scappa) e infila un portone ha solo finito la sua parte: esce di scena, la scena va avanti
+    for (const n of sc.cast) if (n.__ev && n.inside && !n.dead && n.__ev.mv && (n.__ev.mv.k === 'flee' || n.__ev.mv.to === 'away') && n !== sc.esc) { n.__ev.mv.done = true; delete n.__ev; }
     for (const n of sc.cast) if (n.__ev && (n.dead || n.inside || (n.stun > 0 && !(n.__ev.down > st.clock)))) { if (sc.cast.indexOf(n) < 2) { sc.why = `${n.__ev.role}: ${n.dead ? 'morto' : n.inside ? 'entrato' : 'colpito'}`; return false; } delete n.__ev; }
     if (st.clock - sc.t0 > 90) { sc.why = 'troppo lunga'; return false; }
     let guard = 0;
@@ -340,7 +345,7 @@ var Eventi = (function () {
     const E = S(st), ago = st.clock - (E.seen[D.id] || -1e9);
     if (D.player && st.clock - E.lastPlayer < CFG.playerEvery) return 0;   // [leggera] chi viene verso di te: di rado
     if (E.day[D.id + '|' + districtOf(st.player.x, st.player.y)] === Math.floor(st.t / 1440)) return 0;   // [leggera] già successa qui oggi
-    return (D.w || 1) * (ago < 240 ? .15 : 1);   // la stessa scena non torna subito
+    return (D.w || 1) * (ago < 240 ? .15 : 1) * (D.posto && !D.soft ? 1.6 : 1);   // la stessa scena non torna subito; [vita2] dove c'è il suo posto, la scena del posto passa avanti
   }
   function step(st, dt) {
     const E = S(st), p = st.player;
@@ -557,7 +562,7 @@ var Eventi = (function () {
     { id: 'serranda_su', w: 2, posto: 'vetrina', ora: [7, 9.5], roles: [{ id: 'a', f: 'shop|m' }, { id: 'b', near: 'a', r: 22 }], beats: [
       { slot: 'a', i: 0, n: 2, sp: 1.5 }, { pose: 'a', p: 'forza', w: 2.6 }, { fn: (st, sc) => st.sfx.push({ k: 'thud', x: sc.spot.x, y: sc.spot.y }) }, SAY('a', 'Su, che è tardi.', 'Un\'altra giornata.', 'Questa serranda, prima o poi...'), { pose: 'a', p: 'spazza', w: 1 },
       { slot: 'b', i: 1, n: 2, sp: 1.4 }, SAY('b', 'Buongiorno! Già aperto?', 'Il pane è caldo?', 'Mi dà il giornale?'), { pose: 'a' }, SAY('a', 'Per lei sempre.', 'Caldo caldo, entri.', 'Un momento, finisco il marciapiede.'), { pose: 'a', p: 'spazza' }, { wait: 4 }, { pose: 'a' }] },
-    { id: 'reti', w: 3, posto: 'calata', ora: [6, 11.5], roles: [{ id: 'a', f: 'm' }, { id: 'b', near: 'a', f: 'm', r: 20 }, { id: 'c', near: 'a', r: 20 }], beats: [
+    { id: 'reti', w: 3, posto: 'calata', ora: [5, 11.5], roles: [{ id: 'a', f: 'm' }, { id: 'b', near: 'a', f: 'm', r: 20 }, { id: 'c', near: 'a', r: 20 }], beats: [
       { all: [{ slot: 'a', i: 0, n: 3, sp: 1.3 }, { slot: 'b', i: 1, n: 3, sp: 1.3 }] }, { pose: 'a', p: 'siede_terra' }, { pose: 'b', p: 'lavora' }, SAY('a', 'Questa rete ha più buchi che maglie.', 'Stanotte c\'era vento di levante.', 'Sarde, e poco altro.'),
       { hand: 'c', id: 'pesce' }, { slot: 'c', i: 2, n: 3, sp: 1.5 }, SAY('c', 'Che si è preso stanotte?', 'Tonino, me ne dai due per la cena?', 'Il peschereccio di Gavino è rientrato?'), SAY('b', 'Sarde, e vento.', 'Prenditele, tanto non le compra nessuno.', 'Rientra a mezzogiorno, se il motore regge.'),
       { wait: 3 }, { hand: 'c', id: null }, { go: 'c', to: 'away', sp: 1.4, d: 2, t: 10 }, SAY('a', 'Passami lo spago.', 'Domani si esce alle quattro.'), { wait: 3 }, { pose: 'a' }, { pose: 'b' }] },
@@ -573,10 +578,10 @@ var Eventi = (function () {
     // --- il pomeriggio: i vecchi, le madri, chi ripara, chi porta i vetri, il barbiere sulla porta ---
     { id: 'vecchi_panchina', w: 3, posto: 'panchina', ora: [14, 19.5], roles: [{ id: 'a', f: 'old' }, { id: 'b', near: 'a', f: 'old|any', r: 20 }, { id: 'c', near: 'a', f: 'old|any', r: 20 }], beats: [
       { all: [{ slot: 'a', i: 0, n: 3, sp: 1.1 }, { slot: 'b', i: 1, n: 3, sp: 1.1 }] }, { pose: 'a', p: 'siede' }, { pose: 'b', p: 'siede' }, SAY('a', 'Una volta qui c\'era il mare fino alla chiesa.', 'Mio nipote vuole andare in Germania.', 'Il Garante? Ne ho visti passare tre.'),
-      { slot: 'c', i: 2, n: 3, sp: 1.1 }, { pose: 'c', p: 'legge_su' }, SAY('b', 'E dove andava il mare, scusa?', 'Tutti vogliono andare via.', 'Parla piano, Peppino.'), { wait: 3 },
-      SAY('c', 'Qui dice che la Vittoria la allargano.', 'Il Bollettino, come sempre: tutto bene.'), SAY('a', 'Allargano, allargano. E noi?', 'Ai miei tempi il pane costava cento lire.'), { wait: 4 }, SAY('b', 'Andiamo, che si fa fresco.'), { pose: 'a' }, { pose: 'b' }, { pose: 'c' }, { wait: 1 }] },
+      { hand: 'c', id: 'giornale' }, { slot: 'c', i: 2, n: 3, sp: 1.1 }, { pose: 'c', p: 'legge_su' }, SAY('b', 'E dove andava il mare, scusa?', 'Tutti vogliono andare via.', 'Parla piano, Peppino.'), { wait: 3 },
+      SAY('c', 'Qui dice che la Vittoria la allargano.', 'Il Bollettino, come sempre: tutto bene.'), SAY('a', 'Allargano, allargano. E noi?', 'Ai miei tempi il pane costava cento lire.'), { wait: 4 }, SAY('b', 'Andiamo, che si fa fresco.'), { pose: 'a' }, { pose: 'b' }, { pose: 'c' }, { hand: 'c', id: null }, { wait: 1 }] },
     { id: 'madri_pensilina', w: 3, posto: ['pensilina', 'fermata'], ora: [15, 18.5], roles: [{ id: 'a', f: 'f' }, { id: 'b', near: 'a', f: 'f|any', r: 22 }], beats: [
-      { all: [{ slot: 'a', i: 0, n: 2, sp: 1.3 }, { slot: 'b', i: 1, n: 2, sp: 1.3 }] }, { pose: 'a', p: 'orologio_su' }, { pose: 'b', p: 'braccia_su' }, SAY('a', 'Il sette è in ritardo di venti minuti.', 'Con questo autobus non si arriva mai.', 'I bambini escono alle cinque.'),
+      { hand: 'b', id: 'borsa' }, { all: [{ slot: 'a', i: 0, n: 2, sp: 1.3 }, { slot: 'b', i: 1, n: 2, sp: 1.3 }] }, { pose: 'a', p: 'orologio_su' }, { pose: 'b', p: 'aspetta' }, SAY('a', 'Il sette è in ritardo di venti minuti.', 'Con questo autobus non si arriva mai.', 'I bambini escono alle cinque.'),
       SAY('b', 'Ieri non è passato proprio.', 'Mia figlia ha preso otto in italiano.', 'Hai visto i Grigi stamattina al Mercato?'), { pose: 'a', p: 'discute_su' }, SAY('a', 'Otto! Brava. La mia solo in ginnastica.', 'Li ho visti. Hanno preso il figlio della Pina.'), { wait: 3 },
       { pose: 'a' }, { pose: 'b' }, { look: 'a', at: 'away' }, SAY('b', 'Eccolo! Il sette!', 'Finalmente, arriva.'), { all: [{ go: 'a', to: 'away', sp: 1.9, d: 2, t: 9 }, { go: 'b', to: 'away', sp: 1.8, d: 2, t: 9 }] }] },
     { id: 'lamiera_scala', w: 3, posto: 'facciata_in_riparazione', ora: [9, 17.5], roles: [{ id: 'a', f: 'm' }, { id: 'b', near: 'a', r: 20 }], beats: [
@@ -597,11 +602,11 @@ var Eventi = (function () {
     // --- la sera: i dehors pieni, la gang all'angolo, il pizzo, il ricettatore, il capo al tavolino, il fuoco, il posto di blocco ---
     { id: 'dehors_pieni', w: 3, posto: 'dehors', ora: [18, 24.5], roles: [{ id: 'a', f: 'adult|any' }, { id: 'b', near: 'a', f: 'adult|any', r: 20 }, { id: 'c', near: 'a', r: 22 }, { id: 'd', near: 'a', f: 'shop|any', r: 20 }], beats: [
       { all: [{ slot: 'a', i: 0, n: 3, sp: 1.3 }, { slot: 'b', i: 1, n: 3, sp: 1.3 }, { slot: 'c', i: 2, n: 3, sp: 1.3 }] }, { pose: 'a', p: 'siede' }, { pose: 'b', p: 'siede' }, { pose: 'c', p: 'siede' },
-      SAY('a', 'Tre birre! E un\'amaro per Peppe.', 'Oste! Si muore di sete.'), { hand: 'd', id: 'birra' }, { go: 'd', to: 'spot', sp: 1.5, d: 1.1, t: 14 }, { pose: 'd', p: 'porge', w: 1.6 }, { hand: 'd', id: null }, { pose: 'd' }, SAY('d', 'Ecco. Stasera si paga, eh.', 'Fresche fresche.'),
-      { pose: 'b', p: 'beve_su' }, SAY('b', 'Alla salute!', 'Al Garante, che gli venga un colpo.', 'A chi non c\'è più.'), { pose: 'c', p: 'discute_su' }, SAY('c', 'Piano con la bocca, Peppe.', 'Hai sentito del Mercato? Li hanno presi in tre.', 'Domenica c\'è la partita, venite?'),
+      SAY('a', 'Tre birre! E un\'amaro per Peppe.', 'Oste! Si muore di sete.'), { hand: 'd', id: 'birra' }, { go: 'd', to: 'spot', sp: 1.5, d: 1.1, t: 14 }, { pose: 'd', p: 'porge', w: 1.6 }, { hand: 'd', id: null }, { hand: 'b', id: 'birra' }, { hand: 'c', id: 'carta' }, { pose: 'd' }, SAY('d', 'Ecco. Stasera si paga, eh.', 'Fresche fresche.'),
+      { pose: 'b', p: 'beve_su' }, { pose: 'a', p: 'fuma_su' }, SAY('b', 'Alla salute!', 'Al Garante, che gli venga un colpo.', 'A chi non c\'è più.'), { pose: 'c', p: 'discute_su' }, SAY('c', 'Piano con la bocca, Peppe.', 'Hai sentito del Mercato? Li hanno presi in tre.', 'Domenica c\'è la partita, venite?'),
       { go: 'd', to: 'away', sp: 1.4, d: 3, t: 8 }, { wait: 3 }, { pose: 'b', p: 'siede' }, { pose: 'c', p: 'siede' }, SAY('a', 'Un\'altra! Tanto domani è domenica.', 'Chi paga questo giro?'), { wait: 4 }, { pose: 'a' }, { pose: 'b' }, { pose: 'c' }] },
     { id: 'gang_angolo', w: 3, posto: 'angolo', ora: [17, 27], roles: [{ id: 'a', f: 'young|m' }, { id: 'b', near: 'a', f: 'young|m', r: 20 }, { id: 'c', near: 'a', f: 'young|any', r: 20 }], beats: [
-      { all: [{ slot: 'a', i: 0, n: 3, sp: 1.3, face: 'out' }, { slot: 'b', i: 1, n: 3, sp: 1.3 }, { slot: 'c', i: 2, n: 3, sp: 1.3 }] }, { pose: 'a', p: 'appoggiato' }, { pose: 'b', p: 'fuma_su' }, { pose: 'c', p: 'tasche_su' },
+      { van: 'spot', kind: 'vespa' }, { all: [{ slot: 'a', i: 0, n: 3, sp: 1.3, face: 'out' }, { slot: 'b', i: 1, n: 3, sp: 1.3 }, { slot: 'c', i: 2, n: 3, sp: 1.3 }] }, { pose: 'a', p: 'appoggiato' }, { pose: 'b', p: 'fuma_su' }, { pose: 'c', p: 'siede' },
       SAY('a', 'Stasera alla Luna?', 'Hai visto la Vespa nuova di Nico?', 'Il Grigio della piazza mi ha guardato male.'), SAY('b', 'Senza soldi che ci vai a fare?', 'Rubata, sicuro.', 'Quello guarda male tutti.'), { wait: 3 },
       { look: 'a', at: 'player' }, { look: 'c', at: 'player' }, { p: .4, then: [SAY('a', 'Che guardi?', 'Ehi. Non sei di qui.', 'Giri alla larga, amico.'), { wait: 2 }], else: [SAY('c', 'Lascialo stare, è uno del porto.', 'Ssh. Guarda chi arriva.'), { wait: 2 }] },
       { look: 'a', at: 'b' }, { look: 'c', at: 'a' }, SAY('b', 'Dammi una sigaretta.', 'Andiamo al Flipper, dai.'), { wait: 4 }, { pose: 'a' }, { pose: 'b' }, { pose: 'c' }] },
