@@ -18,9 +18,10 @@ var Scena = (function () {
   const CATALOGO = {
     // E0 il borgo
     bottega_del_borgo: { tipo: 'parete', ere: ['E0', 'E2'], porta: true, bottega: true, dom: 'insegna', sec: ['lampada_braccio', 'tenda', 'merce'], acc: ['targa', 'vaso'] },
-    casa_del_borgo: { tipo: 'parete', ere: ['E0'], dom: 'bucato', sec: ['abusivo', 'vaso', 'lampada_braccio'], acc: ['civico', 'edicola_votiva'] },
-    palinsesto_del_vicolo: { tipo: 'parete', ere: ['E0', 'E2'], dom: 'manifesti', sec: ['tag', 'abusivo', 'antenna'], acc: ['civico', 'sticker'] },
-    lampada_e_targa: { tipo: 'parete', ere: ['E0', 'E2'], dom: 'lampada_braccio', sec: ['targa', 'vaso', 'antenna'], acc: ['civico'] },
+    casa_del_borgo: { tipo: 'parete', ere: ['E0'], dom: 'bucato', sec: ['abusivo', 'bidone', 'lampada_braccio'], acc: ['civico', 'vaso'] },
+    bar_col_dehors: { tipo: 'parete', bar: true, porta: true, dom: 'dehors', sec: ['tenda', 'fioriera', 'lavagna'], acc: ['civico', 'targa'] },
+    palinsesto_del_vicolo: { tipo: 'parete', ere: ['E0', 'E2'], dom: 'manifesti', sec: ['tag', 'abusivo', 'bidone'], acc: ['civico', 'sticker'] },
+    lampada_e_targa: { tipo: 'parete', ere: ['E0', 'E2'], dom: 'lampada_braccio', sec: ['bucato', 'bidone', 'vaso'], acc: ['civico', 'targa'] },
     muro_di_calce: { tipo: 'parete', ere: ['E0', 'E2'], quiete: true, acc: ['targa'] },
     angolo_nudo: { tipo: 'angolo', quiete: true, acc: ['targa'] },
     spigolo_con_edicola: { tipo: 'angolo', ere: ['E0'], dom: 'edicola_votiva', sec: ['lampada_braccio', 'targa'], acc: ['civico'] },
@@ -64,16 +65,18 @@ var Scena = (function () {
   const FAMIGLIA = { insegna: 'insegna', ritratto: 'ritratto', manifesti: 'carta', tag: 'carta', bucato: 'filo', abusivo: 'filo', rete: 'filo', dehors: 'arredo', merce: 'arredo', edicola_votiva: 'nicchia', portone: 'portone', impalcatura: 'cantiere', cassonetti: 'arredo', lampione: 'palo', bitta: 'arredo', motorino: 'arredo' };
   // l'altezza della riga di ogni voce sulla parete (dalla base della casa) e la colonna preferita
   const RIGA = { insegna: MG - .55, lampada_braccio: 3.9, tenda: MG - .9, merce: 0, targa: 2.5, civico: 2.2, vaso: 1.1, manifesti: 1.5, tag: 1.6, sticker: 1.4, buff: 1.5, ritratto: 0, stencil: 1.2, edicola_votiva: 2.6, bucato: MG + 1.0, abusivo: MG + 1.2, antenna: 0, dehors: 0, cassonetti: 0, bidone: 0, cassetta_postale: 1.3, cabina_sip: 0, moncone: MG - .2, cartello: 2.2, impalcatura: 0, lampione: 0, portone: 0, mensola: MG - .2, lavagna: 0, rete: 2.4, fioriera: 0, motorino: 0, paletti: 0 };
-  let S = null, G = null, cieche = null;
+  // chi mette i tavolini fuori (b.use o b.shopFront.use del filone C)
+  const DEHORS = { bar: 1, caffe: 1, caffè: 1, trattoria: 1, osteria: 1, gelateria: 1, pub: 1, pizzeria: 1, pasticceria: 1, latteria: 1 };
+  let S = null, G = null, cieche = null, ritratto = null;
   const open = v => v === G.T.VIA || v === G.T.WALK || v === G.T.PIAZZA || v === G.T.COB || v === G.T.QUAY || v === G.T.DIRT;
   const tl = (tx, ty) => (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) ? -1 : G.tileAt(tx, ty);
   // il fondale di una pagina: cosa c'è dietro il muro guardando dalla camera (verso nord-ovest): il mare, il cielo (niente), una facciata
   function fondale(x, z) { const TS = G.TS; let bld = 0; for (let d = 4; d <= 40; d += 2) { const v = tl(Math.floor((x - d * .7) / TS), Math.floor((z - d * .7) / TS)); if (v === G.T.WATER) return 'mare'; if (v === G.T.BLD) bld++; } return bld > 3 ? 'facciata' : 'cielo'; }
   // ---- costruzione delle pagine ----
   function init(G0, opt) {
-    G = G0; opt = opt || {}; cieche = opt.cieche || null; const TS = G.TS, M = G.MAP, W = M.world, B = G.BUILDINGS, roads = M.roads || [];
+    G = G0; opt = opt || {}; cieche = opt.cieche || null; ritratto = opt.ritratto || null; const TS = G.TS, M = G.MAP, W = M.world, B = G.BUILDINGS, roads = M.roads || [];
     if (!W || !W.sets) { S = null; return null; }
-    S = { pagine: [], muro: new Map(), celle: new Map(), presi: 0, negati: 0, perVoce: {}, rari: {} };
+    PIANO = null; S = { pagine: [], muro: new Map(), celle: new Map(), presi: 0, negati: 0, perVoce: {}, rari: {} };
     const cella = (x, z) => Math.floor(x / 12) * 65536 + Math.floor(z / 12);
     const reg = p => { S.pagine.push(p); p.id = S.pagine.length - 1; p.presi = { dom: [], sec: [], acc: [] }; p.extra = [];
       for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const k = cella(p.x + i * 12, p.z + j * 12); (S.celle.get(k) || S.celle.set(k, []).get(k)).push(p); } return p; };
@@ -86,7 +89,7 @@ var Scena = (function () {
         // il davanti: via (quale, quanto larga), piazza, cortile
         let rd = null, bd = 1e9; roads.forEach(q => { if (!q.pts) return; for (const p of q.pts) { const dd = Math.hypot(p[0] - c[0], p[1] - c[1]); if (dd < bd && dd < q.w / 2 + 3.5) { bd = dd; rd = q; } } });
         const kk = cieche ? cieche(bi, f) : null, ciecaL = kk ? (() => { let run = 0, best = 0; for (let k = 0; k < n; k++) { run = kk.indexOf(k) >= 0 ? run + 1 : 0; best = Math.max(best, run); } return best * TS; })() : (du === null ? len : 0);
-        reg({ tipo: 'parete', bi, b, f, era, rango: b.rk || 0, x: c[0], z: c[1], len, n, at, yaw, fl, porta: dF === f ? du : null, bottega: !!(b.shop || b.sign || (b.use && b.use !== 'casa')), ciechi: kk, cieca: ciecaL, via: rd ? rd.id : null, viaW: rd ? rd.w : 0, vicolo: !!(rd && rd.kind === 'vicolo'), fondale: fondale(c[0], c[1]), colonne: Array.from({ length: n }, (_, k) => k * TS + 1) });
+        reg({ tipo: 'parete', bi, b, f, era, rango: b.rk || 0, x: c[0], z: c[1], len, n, at, yaw, fl, porta: dF === f ? du : null, bottega: !!(b.shop || b.sign || (b.use && b.use !== 'casa')), bar: !!(DEHORS[b.use] || (b.shopFront && DEHORS[b.shopFront.use || b.use])), ciechi: kk, cieca: ciecaL, via: rd ? rd.id : null, viaW: rd ? rd.w : 0, vicolo: !!(rd && rd.kind === 'vicolo'), fondale: fondale(c[0], c[1]), colonne: Array.from({ length: n }, (_, k) => k * TS + 1) });
       });
       // l'angolo di sud-est, se tutte e due le facce guardano una strada
       const sOk = open(tl(b.x + b.w - 1, b.y + b.h)), eOk = open(tl(b.x + b.w, b.y + b.h - 1));
@@ -109,7 +112,8 @@ var Scena = (function () {
     const L = Object.keys(CATALOGO).map(k => CATALOGO[k]);
     ord.forEach(p => {
       const h = hash(Math.round(p.x * 2), Math.round(p.z * 2), 1986), h2 = hash(Math.round(p.x * 2), Math.round(p.z * 2), 1987);
-      let cand = L.filter(c => c.tipo === p.tipo && (!c.ere || c.ere.indexOf(p.era) >= 0) && (!c.set || c.set === p.set) && (c.bar === undefined || c.bar === p.bar) && (!c.porta || p.porta !== null) && (!c.bottega || p.bottega) && (!c.cieca || (p.cieca >= c.cieca && p.fl >= 2)) && (!c.fondale || c.fondale === p.fondale) && (!c.raro || (S.rari[c.nome] || 0) < c.raro));
+      let cand = L.filter(c => c.tipo === p.tipo && (!c.ere || c.ere.indexOf(p.era) >= 0) && (!c.set || c.set === p.set) && (c.bar === undefined || c.bar === !!p.bar) && (!c.porta || p.porta !== null) && (!c.bottega || p.bottega) && (!c.cieca || (p.cieca >= c.cieca && p.fl >= 2 && (!ritratto || ritratto(p.bi, p.f)))) && (!c.fondale || c.fondale === p.fondale) && (!c.raro || (S.rari[c.nome] || 0) < c.raro));
+      if (p.tipo === 'parete' && p.bar && p.porta !== null) { p.imp = CATALOGO.bar_col_dehors; return; }   // il bar: la pagina è il dehors
       if (p.tipo === 'piazzetta' && p.set === 'piazzetta' && !p.bar) cand = cand.filter(c => c.nome !== 'piazzetta_col_bar');
       if (p.tipo === 'angolo') { const quiete = cand.filter(c => c.quiete), vive = cand.filter(c => !c.quiete); cand = (h < .5 || !vive.length) && quiete.length ? quiete : vive; }   // metà degli angoli nudi: una targa e basta
       if (p.tipo === 'parete') {   // la quiete al 35%: solo materiale e un accento (non sulle botteghe con la porta: lì la pagina è la bottega)
@@ -135,7 +139,7 @@ var Scena = (function () {
   function paginaAt(x, z, tipo) {
     if (!S) return null; const k0 = Math.floor(x / 12) * 65536 + Math.floor(z / 12); let best = null, bd = 1e9;
     for (const p of S.celle.get(k0) || []) { if (tipo && p.tipo !== tipo) continue; let dd;
-      if (p.tipo === 'parete') { const a = p.at(0), b = p.at(p.len), L = p.len, t = Math.max(0, Math.min(1, ((x - a[0]) * (b[0] - a[0]) + (z - a[1]) * (b[1] - a[1])) / (L * L))); dd = Math.hypot(a[0] + (b[0] - a[0]) * t - x, a[1] + (b[1] - a[1]) * t - z); if (dd > 1.6) continue; }
+      if (p.tipo === 'parete') { const a = p.at(0), b = p.at(p.len), L = p.len, t = Math.max(0, Math.min(1, ((x - a[0]) * (b[0] - a[0]) + (z - a[1]) * (b[1] - a[1])) / (L * L))); dd = Math.hypot(a[0] + (b[0] - a[0]) * t - x, a[1] + (b[1] - a[1]) * t - z); if (dd > 2.2) continue; }
       else if (p.tipo === 'sbocco') { dd = Math.hypot(p.x - x, p.z - z); if (dd > 5) continue; }
       else if (p.tipo === 'piazzetta') { dd = Math.hypot(p.x - x, p.z - z); if (dd > p.r + 1) continue; dd += 2; }
       else { dd = Math.hypot(p.x - x, p.z - z); if (dd > 3) continue; dd += 1; }
@@ -181,6 +185,61 @@ var Scena = (function () {
   }
   // la pulizia: via i secondari dall'ultimo e gli accenti oltre il limite (torna la lista di cosa togliere; chi ha posato toglie)
   function pulisci() { if (!S) return []; const via = []; S.pagine.forEach(p => { while (p.presi.sec.length > 3) via.push({ pagina: p, voce: p.presi.sec.pop() }); while (p.presi.acc.length > 2) via.push({ pagina: p, voce: p.presi.acc.pop() }); while (p.presi.dom.length > 1) via.push({ pagina: p, voce: p.presi.dom.pop() }); }); return via; }
-  return { init, attivo, pagine, paginaMuro, paginaAt, chiedi, nota, conteggio, pulisci, classe, CATALOGO, RIGA, FAMIGLIA, RAGGIO, MG, MF };
+  // ---- IL PIANO DELL'ARREDO: dove vanno bidoni, cassonetti, bucato, dehors, targhe, civici. Solo dati (render disegna), ogni cosa
+  // chiede il suo slot; le regole della sez. 2: bidoni solo nei vicoli (1 ogni 30 m), cassonetti a coppie ogni 60 m sulle vie, bucato
+  // solo nei vicoli ≤ 5 m fra due case (uno ogni 15-20 m, a 4-5 m, 3-6 capi), dehors ≤ 2 m dal muro e mai in carreggiata ----
+  let PIANO = null;
+  function piano() {
+    if (!S) return null; if (PIANO) return PIANO; const TS = G.TS, M = G.MAP, roads = (M.roads || []).filter(q => q.pts && q.era), T = G.T;
+    const P = PIANO = { bidoni: [], cassonetti: [], bucato: [], dehors: [], targhe: [], civici: [], metriVicoli: 0, metriVie: 0 };
+    const at = (x, z) => tl(Math.floor(x / TS), Math.floor(z / TS)), bld = (x, z) => at(x, z) === T.BLD;
+    const lungo = (rd, f) => { const Pt = rd.pts; let s = 0; for (let k = 0; k < Pt.length - 1; k++) { const [ax, az] = Pt[k], [bx, bz] = Pt[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, ux = (bx - ax) / L, uz = (bz - az) / L; for (let t = 0; t < L; t += 1, s += 1) f(ax + ux * t, az + uz * t, -uz, ux, s, ux, uz); } return s; };
+    roads.forEach((rd, ri) => { const vic = rd.kind === 'vicolo';
+      if (vic) { let nb = 8 + hash(ri, 1, 61) * 10, nl = 6 + hash(ri, 2, 61) * 8;
+        P.metriVicoli += lungo(rd, (x, z, nx, nz, s, ux, uz) => {
+          // il bidone: contro il muro (lato lontano dalla camera), nella fascia, sulla pagina che lo prevede
+          if (s > nb) { const far = (nx + nz) < 0 ? 1 : -1, o = rd.w / 2 - .45, bx = x + nx * far * o, bz = z + nz * far * o; if (bld(x + nx * far * (rd.w / 2 + .6), z + nz * far * (rd.w / 2 + .6)) && open(at(bx, bz))) {
+              const sl = chiedi(x + nx * far * (rd.w / 2 + .3), z + nz * far * (rd.w / 2 + .3), 'bidone', { tipo: 'parete' }); if (sl) { P.bidoni.push({ x: bx, z: bz, yaw: Math.atan2(nx * far, nz * far), via: rd.id }); nb = s + 30; } else nb = s + 4; } else nb = s + 3; }
+          // il bucato: solo dove due case si guardano a meno di 5 m
+          if (rd.w <= 5 && s > nl) { const d = rd.w / 2 + .9; if (bld(x + nx * d, z + nz * d) && bld(x - nx * d, z - nz * d)) { const far = (nx + nz) < 0 ? 1 : -1, sl = chiedi(x + nx * far * (rd.w / 2 + .3), z + nz * far * (rd.w / 2 + .3), 'bucato', { tipo: 'parete' });
+              if (sl) { P.bucato.push({ x, z, y: 4.2 + hash(ri, Math.round(s), 62) * .8, len: rd.w + 1.6, ux: nx, uz: nz, capi: 3 + Math.floor(hash(ri, Math.round(s), 63) * 4), via: rd.id }); nl = s + 15 + hash(ri, Math.round(s), 64) * 5; } else nl = s + 5; } else nl = s + 2; } }); }
+      else { let nc = 20 + hash(ri, 3, 61) * 30;
+        P.metriVie += lungo(rd, (x, z, nx, nz, s, ux, uz) => { if (s < nc) return; const far = (nx + nz) < 0 ? 1 : -1, o = rd.w / 2 + .7, cx = x + nx * far * o, cz = z + nz * far * o;
+          // la coppia di cassonetti sul marciapiede lontano, a filo del cordolo, lontano dalle porte
+          const c2x = cx + ux * 1.8, c2z = cz + uz * 1.8, porta = G.BUILDINGS.some(b => b.door && Math.hypot((b.door[0] + .5) * TS - cx, (b.door[1] + .5) * TS - cz) < 3.5);
+          if (!porta && [at(cx, cz), at(c2x, c2z)].every(v => v === T.WALK || v === T.PIAZZA)) { P.cassonetti.push({ x: cx, z: cz, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }, { x: c2x, z: c2z, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }); nota(cx, cz, 'cassonetti'); nc = s + 60; } else nc = s + 4; }); } });
+    // i dehors: dove la pagina è il bar col dehors, e sulla piazzetta col bar (davanti alla casa che la guarda)
+    S.pagine.forEach(p => { if (p.tipo === 'parete' && p.nome === 'bar_col_dehors') { const sl = chiedi(p.x, p.z, 'dehors', { pagina: p }); if (sl) P.dehors.push(dehorsDi(p, p.porta, p.b.use || (p.b.shopFront && p.b.shopFront.use))); } });
+    S.pagine.filter(p => p.tipo === 'piazzetta' && p.bar).forEach(q => { let best = null, bd = 1e9; S.pagine.forEach(p => { if (p.tipo !== 'parete') return; const d = Math.hypot(p.x - q.x, p.z - q.z); if (d < q.r + 6 && d < bd && p.len >= 4) { bd = d; best = p; } });
+      if (best) { best.nome = 'bar_col_dehors'; best.imp = CATALOGO.bar_col_dehors; best.dom = 'dehors'; best.sec = best.imp.sec.slice(); best.acc = best.imp.acc.slice(); best.presi = { dom: [], sec: [], acc: [] }; const sl = chiedi(best.x, best.z, 'dehors', { pagina: best }); if (sl) P.dehors.push(dehorsDi(best, best.porta !== null ? best.porta : best.len / 2, 'bar', q)); } });
+    // le targhe delle vie: all'angolo di ogni isolato (le pagine d'angolo), a 2,5 m, sulla faccia S vicino allo spigolo, col nome della via davanti
+    const nomeVia = (x, z) => { let rd = null, bd = 1e9; roads.forEach(q => q.pts.forEach(pp => { const d = Math.hypot(pp[0] - x, pp[1] - z); if (d < bd) { bd = d; rd = q; } })); return bd < 12 ? rd : null; };
+    S.pagine.forEach(p => { if (p.tipo !== 'angolo') return; const b = p.b, w = b.w * TS, d = b.h * TS, x0 = b.x * TS, z0 = b.y * TS;
+      [['S', x0 + w - .45, z0 + d, 0], ['E', x0 + w, z0 + d - .45, Math.PI / 2]].some(([f, x, z, yaw]) => { const rd = nomeVia(x + (f === 'E' ? 4 : 0), z + (f === 'S' ? 4 : 0)); if (!rd) return false; const sl = chiedi(p.x, p.z, 'targa', { pagina: p }); if (!sl) return true;
+        P.targhe.push({ x, z, y: 2.5, yaw, f, bi: p.bi, testo: rd.name, era: p.era }); return true; }); });
+    // i civici: accanto al portone, a 2,2 m; per via in ordine, pari da un lato e dispari dall'altro; nell'Ottocento rossi le botteghe e neri le case
+    const perVia = {}; S.pagine.forEach(p => { if (p.tipo !== 'parete' || p.porta === null || !p.via) return; (perVia[p.via] = perVia[p.via] || []).push(p); });
+    for (const v in perVia) { const L = perVia[v].sort((a, c) => (a.x + a.z) - (c.x + c.z)); let n = 1; L.forEach(p => { const sl = chiedi(p.x, p.z, 'civico', { pagina: p }); n++; if (!sl) return; const u = Math.min(p.len - .3, Math.max(.3, p.porta + (p.porta + 1 < p.len - .3 ? .85 : -.85))), q = p.at(u);
+      P.civici.push({ x: q[0], z: q[1], y: 2.25, yaw: p.yaw, bi: p.bi, n: n - 1, rosso: p.era === 'E3' && p.bottega, era: p.era }); }); }
+    return P;
+  }
+  // un dehors davanti alla porta: tavolini a 1,1 m dal muro (≤ 2 m), dai due lati del portone, fioriere ai capi, la lavagna, il frigo dei gelati
+  function dehorsDi(p, du, use, q) {
+    const TS = G.TS, T = G.T, L = p.len, nx = p.f === 'S' ? 0 : 1, nz = p.f === 'S' ? 1 : 0, out = { bi: p.bi, f: p.f, yaw: p.yaw, use: use || 'bar', tavoli: [], fioriere: [], lavagna: null, frigo: null, ombrelloni: [], piazzetta: !!q };
+    const pos = (u, o) => { const a = p.at(u); return [a[0] + nx * o, a[1] + nz * o]; }, ok = (x, z) => { const v = tl(Math.floor(x / TS), Math.floor(z / TS)); return v === T.WALK || v === T.PIAZZA || v === T.COB; };
+    const prof = (() => { let o = .5; while (o < 4.5 && ok(...pos(du, o + .5))) o += .5; return o; })();   // quanto è profonda la fascia libera davanti
+    const o = Math.min(1.1, Math.max(.75, prof - .6)); if (prof < 1.2) return out;
+    const us = []; for (let k = 1; k <= 3; k++) [-1, 1].forEach(s2 => { const u = du + s2 * (.6 + k * 1.25); if (u > .55 && u < L - .55 && us.length < 4) us.push(u); });
+    us.forEach(u => { const [x, z] = pos(u, o); if (ok(x, z)) out.tavoli.push({ x, z, u }); });
+    if (out.tavoli.length) { const umin = Math.min(...out.tavoli.map(t => t.u)), umax = Math.max(...out.tavoli.map(t => t.u)); [umin - .75, umax + .75].forEach(u => { if (u < .3 || u > L - .3) return; const [x, z] = pos(u, o); if (ok(x, z)) out.fioriere.push({ x, z }); });
+      if (prof >= 3) out.tavoli.filter((t, i) => i % 2 === 0).slice(0, 2).forEach(t => out.ombrelloni.push({ x: t.x, z: t.z })); }   // gli ombrelloni solo se c'è spazio (non sbattono sulla tenda)
+    { const [x, z] = pos(du + (du + 1 < L ? .75 : -.75), .35); out.lavagna = { x, z }; }
+    if (out.use === 'gelateria' || out.use === 'bar') { const u = du + (du > L / 2 ? -1.1 : 1.1); if (u > .4 && u < L - .4) { const [x, z] = pos(u, .45); if (ok(x, z) && !out.tavoli.some(t => Math.hypot(t.x - x, t.z - z) < 1)) out.frigo = { x, z }; } }
+    return out;
+  }
+  // il conteggio dell'arredo per 100 m
+  function contaArredo() { const P = piano(); if (!P) return null; const v = Math.max(1, P.metriVicoli) / 100, w = Math.max(1, P.metriVie) / 100;
+    return { bidoni: P.bidoni.length, bidoniPer100mVicolo: +(P.bidoni.length / v).toFixed(1), cassonetti: P.cassonetti.length, coppiePer100mVia: +(P.cassonetti.length / 2 / w).toFixed(2), bucato: P.bucato.length, bucatoPer100mVicolo: +(P.bucato.length / v).toFixed(1), dehors: P.dehors.length, tavolini: P.dehors.reduce((a, d) => a + d.tavoli.length, 0), targhe: P.targhe.length, civici: P.civici.length }; }
+  return { init, attivo, piano, contaArredo, DEHORS, pagine, paginaMuro, paginaAt, chiedi, nota, conteggio, pulisci, classe, CATALOGO, RIGA, FAMIGLIA, RAGGIO, MG, MF };
 })();
 if (typeof module !== 'undefined') module.exports = Scena;
