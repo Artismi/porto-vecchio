@@ -9505,6 +9505,9 @@ var Render = (function () {
     piedeNeri: .045,                 // il piede della curva: quanto salgono i quasi neri (solo loro), un filo freddo
     luceCrepuscolo: .2,             // all'alba e al tramonto l'esposizione sale di tanto (il mare e le ombre lunghe non chiudono nel nero)
     ariaGiorno: .04, ariaNotte: .03, coloreLontano: .15,   // prospettiva aerea: quanta aria fra noi e il lontano, quanta ne resta di notte, quanto colore perde il lontano
+    vicinoContrasto: .12,           // attorno al personaggio il salto dei toni cresce di tanto: il primo piano si stacca
+    lontanoFreddo: [.96, .99, 1.05], lontanoChiaro: .025,   // i piani lontani: un filo più freddi e più chiari (la separazione dei piani)
+    gialliQuieti: .22,              // il tufo e le facciate gialle perdono questo tanto di colore (gli aranci dei coppi no)
     varcoContorno: 1,               // [varco2] quanto si toglie il contorno di profondità sul bordo dell'ellisse (1 = niente filo scuro)
     varcoTaglio: .14,               // l'ombra sullo spessore tagliato di muri e tetti (l'anello beige)
     varcoLuce: .5,                  // quanto si schiariscono le facce scure rimaste dentro il buco
@@ -9585,6 +9588,51 @@ var Render = (function () {
   function ambPass(src, dst, dx, dy, thr) {
     const U = APS.mat.uniforms; U.t.value = src; U.dir.value.set(dx / dst.width, dy / dst.height); U.thr.value = thr || 0;
     renderer.setRenderTarget(dst); renderer.render(APS.scene, APS.cam); }
+  // ================= [regia2] L'OMBRA DEGLI ANGOLI: occlusione leggera, a metà risoluzione, senza aloni =================
+  // Il volume che mancava (le vecchie AO e ombre di contatto del post furono spente da 1a00df2 «via gli aloni grigi»: 8+8 letture per
+  // pixel a piena risoluzione, confronto di profondità puro, anelli grigi attorno a ogni sagoma che tremavano). Qui: una passata a metà
+  // risoluzione (un quarto dei pixel; sul telefono a un quarto, un sedicesimo), sei campioni in un raggio piccolo in METRI (OCCL.raggio)
+  // attorno al punto, contati solo se stanno davanti alla superficie (normale ricostruita dalla profondità) e dentro il raggio: un muro
+  // lontano dietro una sagoma non conta, quindi niente alone. Si scurisce solo dove la geometria si chiude: l'angolo fra muro e suolo,
+  // sotto balconi, cornicioni e portici, negli sguinci, ai piedi di gente, mezzi e oggetti (fa da ombra di contatto); le superfici aperte
+  // restano pulite. In uscita: occlusione, profondità (per la ricomposizione che rispetta i bordi) e quanto il pixel è suolo.
+  const OCCL = { raggio: .9, forza: .62, tinta: [.62, .52, .44], suoloScuro: .09, campioni: 6 };   // la tinta: ombra calda-scura, mai grigia
+  if (typeof window !== 'undefined') window.__OCCL = OCCL;
+  const OCC = { rt: null, scene: null, cam: null, mat: null };
+  function occInit() {
+    OCC.scene = new THREE.Scene(); OCC.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    OCC.mat = new THREE.ShaderMaterial({
+      uniforms: { tD: { value: null }, inv: { value: new THREE.Matrix4() }, cp: { value: new THREE.Vector3() }, res: { value: new THREE.Vector2(1, 1) }, near: { value: 1 }, far: { value: 300 }, ps: { value: 1 }, R: { value: 1 }, gY: { value: 0 } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
+      fragmentShader: `precision highp float; precision highp sampler2D;
+        uniform sampler2D tD; uniform mat4 inv; uniform vec3 cp; uniform vec2 res; uniform float near; uniform float far; uniform float ps; uniform float R; uniform float gY; varying vec2 vUv;
+        vec3 wp(vec2 u){ vec4 q = inv * vec4(u * 2. - 1., texture2D(tD, u).r * 2. - 1., 1.); return q.xyz / q.w; }
+        float lin(float d){ float z = d*2.-1.; return 2.*near*far/(far+near-z*(far-near)); }
+        void main(){
+          float z = texture2D(tD, vUv).r; if (z > .9999) { gl_FragColor = vec4(0., 1., 0., 1.); return; }
+          vec2 e = 1. / res; vec3 p = wp(vUv);
+          vec3 ax = wp(vUv + vec2(e.x, 0.)) - p, bx = p - wp(vUv - vec2(e.x, 0.)), ay = wp(vUv + vec2(0., e.y)) - p, by = p - wp(vUv - vec2(0., e.y));
+          vec3 dx = dot(ax, ax) < dot(bx, bx) ? ax : bx, dy = dot(ay, ay) < dot(by, by) ? ay : by;   // il lato più vicino: la normale non scavalca i bordi
+          vec3 n = normalize(cross(dx, dy)); if (dot(n, cp - p) < 0.) n = -n;
+          float vz = lin(z), rp = clamp(R * ps * res.y * .5 / vz, 1.5, 22.);   // il raggio in pixel di questa passata
+          float ang = fract(sin(dot(floor(vUv * res), vec2(12.9898, 78.233))) * 43758.5453) * 6.2832, ao = 0.;
+          for (int k = 0; k < ${PHONE ? 4 : 6}; k++) { float t = (float(k) + .5) / ${PHONE ? '4.' : '6.'}, a = ang + float(k) * 2.3998;
+            vec3 v = wp(vUv + vec2(cos(a), sin(a)) * rp * t * e) - p; float l2 = dot(v, v);
+            ao += max(0., dot(v, n) - .03 * sqrt(l2) - .02) / (l2 + .05) * (1. - smoothstep(R * R * .45, R * R, l2)); }
+          ao = clamp(ao * ${PHONE ? '.5' : '.33'} * R, 0., 1.); ao = ao * ao * (3. - 2. * ao);
+          float ground = smoothstep(.82, .95, n.y) * (1. - smoothstep(gY + .5, gY + 1.6, p.y));
+          gl_FragColor = vec4(ao, vz / far, ground, 1.); }`,
+      depthTest: false, depthWrite: false });
+    OCC.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), OCC.mat));
+  }
+  function occResize(W, H) { if (!OCC.scene) occInit(); if (OCC.rt) OCC.rt.dispose(); const s = PHONE ? 4 : 2;
+    OCC.rt = new THREE.WebGLRenderTarget(Math.max(8, Math.floor(W / s)), Math.max(8, Math.floor(H / s)), { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: THREE.HalfFloatType, depthBuffer: false });
+    OCC.mat.uniforms.res.value.set(OCC.rt.width, OCC.rt.height); }
+  function occPass(gY) {
+    if (!OCC.rt || !(OCCL.forza > 0 || OCCL.suoloScuro > 0)) return null;
+    const U = OCC.mat.uniforms; U.tD.value = rt.depthTexture; U.inv.value.multiplyMatrices(camera.matrixWorld, camera.projectionMatrixInverse); U.cp.value.copy(camera.position);
+    U.near.value = camera.near; U.far.value = camera.far; U.ps.value = camera.projectionMatrix.elements[5]; U.R.value = OCCL.raggio; U.gY.value = gY;
+    renderer.setRenderTarget(OCC.rt); renderer.render(OCC.scene, OCC.cam); return OCC.rt.texture; }
   function ambPasses() {
     if (!APS.rts.length) return;
     if (APS.rts.length === 2) { ambPass(rt.texture, APS.rts[0], 1.4, 0, AMB.thr || .8); ambPass(APS.rts[0].texture, APS.rts[1], 0, 1.4); renderer.setRenderTarget(null); return; }   // [sviluppo] telefono
@@ -9637,7 +9685,7 @@ var Render = (function () {
   function buildPost() {
     postScene = new THREE.Scene(); postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     postMat = new THREE.ShaderMaterial({
-      uniforms: { uFoc9: { value: 30 }, uFogNF: { value: new THREE.Vector2(100, 300) },   /* [nebbia_zoom1] */ lK: { value: new THREE.Vector4(1, .9, .8, 1) }, lSun: { value: new THREE.Vector3(.4, .8, .3) }, lSunC: { value: new THREE.Vector3(1, 1, 1) }, lOl: { value: .85 },   /* [lucido1] */ qC: { value: new THREE.Vector4(1.14, 1.46, .36, .7) }, qO: { value: new THREE.Vector3(.97, .99, 1.03) }, qL: { value: new THREE.Vector3(1.07, 1.035, .93) }, qN: { value: new THREE.Vector4(.01, .012, .016, .25) }, qS: { value: new THREE.Vector4(1.12, 1.3, 1, 0) }, qA: { value: new THREE.Vector4(.06, .04, .1, 0) }, vcA: { value: new THREE.Vector4(0, 0, .1, .1) }, vcB: { value: 0 }, qV: { value: new THREE.Vector4(1, .14, .5, 0) }, qT: { value: new THREE.Vector4(0, 1.14, 0, 0) },   /* [regia2] QUADRO e il varco */ tC: { value: null }, tD: { value: null },   /* [unione9] */ res: { value: new THREE.Vector2(1, 1) }, near: { value: 1 }, far: { value: 300 }, letter: { value: 0 }, pillar: { value: 0 }, fade: { value: 0 }, flash: { value: 0 }, hurt: { value: 0 }, sat: { value: 1 }, pK: { value: new THREE.Vector4(.5, 1.25, .5, .5) }, pC: { value: new THREE.Vector2(1, .45) }, palC: { value: [[0.0471,0.0431,0.0706],[0.1020,0.0980,0.1333],[0.1647,0.1569,0.1961],[0.2353,0.2275,0.2627],[0.3255,0.3176,0.3529],[0.4275,0.4157,0.4314],[0.5412,0.5255,0.5176],[0.6667,0.6392,0.5961],[0.7961,0.7608,0.6980],[0.9176,0.8824,0.8039],[0.1804,0.0706,0.0863],[0.3529,0.1020,0.1176],[0.5569,0.1373,0.1490],[0.7608,0.2275,0.1882],[0.9098,0.4000,0.2902],[0.9569,0.6275,0.5020],[0.2275,0.1490,0.0784],[0.4000,0.2667,0.1255],[0.6039,0.4157,0.1725],[0.8000,0.5882,0.2510],[0.9412,0.7647,0.3529],[1.0000,0.8980,0.5882],[0.0627,0.1255,0.1020],[0.1020,0.2078,0.1412],[0.1569,0.3098,0.1725],[0.2431,0.4314,0.2039],[0.3843,0.5686,0.2431],[0.5765,0.7059,0.3216],[0.7686,0.8314,0.4784],[0.0471,0.1333,0.1882],[0.0902,0.2431,0.2980],[0.1490,0.3686,0.4078],[0.2471,0.5216,0.5255],[0.4549,0.6902,0.6431],[0.0706,0.0863,0.1882],[0.1216,0.1569,0.3137],[0.1961,0.2471,0.4549],[0.2980,0.3608,0.5882],[0.4941,0.5490,0.7216],[0.1725,0.1020,0.2275],[0.2902,0.1725,0.3373],[0.4314,0.2667,0.4627],[0.6039,0.4157,0.5804],[1.0000,0.2902,0.5961],[1.0000,0.8235,0.2431],[0.3373,0.8784,0.8471],[1.0000,0.4784,0.1647],[0.8863,0.6588,0.5176],[0.7059,0.4549,0.3373],[0.4784,0.2902,0.2275],[0.8627,0.7765,0.5647],[0.7216,0.6118,0.3843]].map(a => new THREE.Vector3(...a)) }, palO: { value: [[0.1071,0.0066,-0.0188],[0.1888,0.0070,-0.0198],[0.2644,0.0085,-0.0190],[0.3436,0.0074,-0.0154],[0.4367,0.0069,-0.0141],[0.5295,0.0055,-0.0050],[0.6267,0.0038,0.0043],[0.7229,0.0032,0.0174],[0.8212,0.0032,0.0237],[0.9140,0.0016,0.0278],[0.2011,0.0521,0.0134],[0.3119,0.0942,0.0380],[0.4278,0.1352,0.0628],[0.5474,0.1567,0.0862],[0.6670,0.1394,0.0948],[0.7851,0.0807,0.0730],[0.2713,0.0225,0.0417],[0.4127,0.0303,0.0673],[0.5646,0.0337,0.0969],[0.7130,0.0277,0.1197],[0.8402,0.0078,0.1333],[0.9276,-0.0040,0.1012],[0.1996,-0.0281,0.0065],[0.2863,-0.0458,0.0221],[0.3819,-0.0658,0.0444],[0.4886,-0.0828,0.0691],[0.6069,-0.0886,0.0939],[0.7285,-0.0764,0.1098],[0.8414,-0.0529,0.1035],[0.2182,-0.0216,-0.0378],[0.3324,-0.0379,-0.0379],[0.4467,-0.0544,-0.0326],[0.5746,-0.0698,-0.0207],[0.7169,-0.0655,-0.0006],[0.1826,0.0023,-0.0599],[0.2751,0.0005,-0.0812],[0.3771,0.0007,-0.0971],[0.4877,0.0008,-0.0983],[0.6494,0.0006,-0.0684],[0.2365,0.0433,-0.0548],[0.3390,0.0617,-0.0600],[0.4526,0.0764,-0.0615],[0.5911,0.0756,-0.0419],[0.6861,0.2263,-0.0077],[0.8809,-0.0050,0.1640],[0.8324,-0.1180,-0.0205],[0.7254,0.1233,0.1364],[0.7812,0.0498,0.0674],[0.6226,0.0645,0.0676],[0.4585,0.0573,0.0475],[0.8359,0.0017,0.0745],[0.7091,0.0072,0.0844]].map(a => new THREE.Vector3(...a)) },   /* [amb3] */ dusk: { value: 0 }, night: { value: 1 }, uReg: { value: .7 }, uWx: { value: new THREE.Vector4() }, uHz: { value: new THREE.Color() },   /* [amb1] */
+      uniforms: { uFoc9: { value: 30 }, uFogNF: { value: new THREE.Vector2(100, 300) },   /* [nebbia_zoom1] */ lK: { value: new THREE.Vector4(1, .9, .8, 1) }, lSun: { value: new THREE.Vector3(.4, .8, .3) }, lSunC: { value: new THREE.Vector3(1, 1, 1) }, lOl: { value: .85 },   /* [lucido1] */ qC: { value: new THREE.Vector4(1.14, 1.46, .36, .7) }, qO: { value: new THREE.Vector3(.97, .99, 1.03) }, qL: { value: new THREE.Vector3(1.07, 1.035, .93) }, qN: { value: new THREE.Vector4(.01, .012, .016, .25) }, qS: { value: new THREE.Vector4(1.12, 1.3, 1, 0) }, qA: { value: new THREE.Vector4(.06, .04, .1, 0) }, vcA: { value: new THREE.Vector4(0, 0, .1, .1) }, vcB: { value: 0 }, qV: { value: new THREE.Vector4(1, .14, .5, 0) }, qT: { value: new THREE.Vector4(0, 1.14, 0, 0) }, tOcc: { value: null }, occRes: { value: new THREE.Vector2(1, 1) }, occK: { value: new THREE.Vector4(0, 0, 0, 0) }, occC: { value: new THREE.Vector3(1, 1, 1) }, qF: { value: new THREE.Vector4(1, 1, 1, 0) },   /* [regia2] QUADRO e il varco */ tC: { value: null }, tD: { value: null },   /* [unione9] */ res: { value: new THREE.Vector2(1, 1) }, near: { value: 1 }, far: { value: 300 }, letter: { value: 0 }, pillar: { value: 0 }, fade: { value: 0 }, flash: { value: 0 }, hurt: { value: 0 }, sat: { value: 1 }, pK: { value: new THREE.Vector4(.5, 1.25, .5, .5) }, pC: { value: new THREE.Vector2(1, .45) }, palC: { value: [[0.0471,0.0431,0.0706],[0.1020,0.0980,0.1333],[0.1647,0.1569,0.1961],[0.2353,0.2275,0.2627],[0.3255,0.3176,0.3529],[0.4275,0.4157,0.4314],[0.5412,0.5255,0.5176],[0.6667,0.6392,0.5961],[0.7961,0.7608,0.6980],[0.9176,0.8824,0.8039],[0.1804,0.0706,0.0863],[0.3529,0.1020,0.1176],[0.5569,0.1373,0.1490],[0.7608,0.2275,0.1882],[0.9098,0.4000,0.2902],[0.9569,0.6275,0.5020],[0.2275,0.1490,0.0784],[0.4000,0.2667,0.1255],[0.6039,0.4157,0.1725],[0.8000,0.5882,0.2510],[0.9412,0.7647,0.3529],[1.0000,0.8980,0.5882],[0.0627,0.1255,0.1020],[0.1020,0.2078,0.1412],[0.1569,0.3098,0.1725],[0.2431,0.4314,0.2039],[0.3843,0.5686,0.2431],[0.5765,0.7059,0.3216],[0.7686,0.8314,0.4784],[0.0471,0.1333,0.1882],[0.0902,0.2431,0.2980],[0.1490,0.3686,0.4078],[0.2471,0.5216,0.5255],[0.4549,0.6902,0.6431],[0.0706,0.0863,0.1882],[0.1216,0.1569,0.3137],[0.1961,0.2471,0.4549],[0.2980,0.3608,0.5882],[0.4941,0.5490,0.7216],[0.1725,0.1020,0.2275],[0.2902,0.1725,0.3373],[0.4314,0.2667,0.4627],[0.6039,0.4157,0.5804],[1.0000,0.2902,0.5961],[1.0000,0.8235,0.2431],[0.3373,0.8784,0.8471],[1.0000,0.4784,0.1647],[0.8863,0.6588,0.5176],[0.7059,0.4549,0.3373],[0.4784,0.2902,0.2275],[0.8627,0.7765,0.5647],[0.7216,0.6118,0.3843]].map(a => new THREE.Vector3(...a)) }, palO: { value: [[0.1071,0.0066,-0.0188],[0.1888,0.0070,-0.0198],[0.2644,0.0085,-0.0190],[0.3436,0.0074,-0.0154],[0.4367,0.0069,-0.0141],[0.5295,0.0055,-0.0050],[0.6267,0.0038,0.0043],[0.7229,0.0032,0.0174],[0.8212,0.0032,0.0237],[0.9140,0.0016,0.0278],[0.2011,0.0521,0.0134],[0.3119,0.0942,0.0380],[0.4278,0.1352,0.0628],[0.5474,0.1567,0.0862],[0.6670,0.1394,0.0948],[0.7851,0.0807,0.0730],[0.2713,0.0225,0.0417],[0.4127,0.0303,0.0673],[0.5646,0.0337,0.0969],[0.7130,0.0277,0.1197],[0.8402,0.0078,0.1333],[0.9276,-0.0040,0.1012],[0.1996,-0.0281,0.0065],[0.2863,-0.0458,0.0221],[0.3819,-0.0658,0.0444],[0.4886,-0.0828,0.0691],[0.6069,-0.0886,0.0939],[0.7285,-0.0764,0.1098],[0.8414,-0.0529,0.1035],[0.2182,-0.0216,-0.0378],[0.3324,-0.0379,-0.0379],[0.4467,-0.0544,-0.0326],[0.5746,-0.0698,-0.0207],[0.7169,-0.0655,-0.0006],[0.1826,0.0023,-0.0599],[0.2751,0.0005,-0.0812],[0.3771,0.0007,-0.0971],[0.4877,0.0008,-0.0983],[0.6494,0.0006,-0.0684],[0.2365,0.0433,-0.0548],[0.3390,0.0617,-0.0600],[0.4526,0.0764,-0.0615],[0.5911,0.0756,-0.0419],[0.6861,0.2263,-0.0077],[0.8809,-0.0050,0.1640],[0.8324,-0.1180,-0.0205],[0.7254,0.1233,0.1364],[0.7812,0.0498,0.0674],[0.6226,0.0645,0.0676],[0.4585,0.0573,0.0475],[0.8359,0.0017,0.0745],[0.7091,0.0072,0.0844]].map(a => new THREE.Vector3(...a)) },   /* [amb3] */ dusk: { value: 0 }, night: { value: 1 }, uReg: { value: .7 }, uWx: { value: new THREE.Vector4() }, uHz: { value: new THREE.Color() },   /* [amb1] */
         tBloom: { value: null }, tBloom2: { value: null }, tBlur: { value: null }, aK: { value: new THREE.Vector4(1, .9, .75, .022) }, aK2: { value: new THREE.Vector4(.5, .3, .3, .75) }, aFoc: { value: new THREE.Vector2(.5, .5) }, aTime: { value: 0 }, aHal: { value: 0 },
         sSM: { value: null }, sSMat: { value: new THREE.Matrix4() }, sCol: { value: new THREE.Vector3() }, sOn: { value: 0 },   /* [amb2] */
         vInvVP: { value: new THREE.Matrix4() }, vCam: { value: new THREE.Vector3() }, vOn: { value: 0 }, vSM0: { value: null }, vSM1: { value: null }, vSM2: { value: null }, vSM3: { value: null },
@@ -9650,7 +9698,8 @@ var Render = (function () {
         uniform sampler2D sSM; uniform mat4 sSMat; uniform vec3 sCol; uniform float sOn;
         uniform vec4 lK; uniform vec3 lSun; uniform vec3 lSunC; uniform float lOl;   // [lucido1]
         uniform vec4 qC; uniform vec3 qO; uniform vec3 qL; uniform vec4 qN; uniform vec4 qS; uniform vec4 qA;   // [regia2] le manopole dell'immagine (QUADRO, vedi sotto AMB)
-        uniform vec4 vcA; uniform float vcB; uniform vec4 qV; uniform vec4 qT;   // [regia2] il varco ([varco2]) visto dal post: centro e semiassi in NDC, quanto è aperto; qV: manopole del varco
+        uniform vec4 vcA; uniform float vcB; uniform vec4 qV; uniform vec4 qT;
+        uniform sampler2D tOcc; uniform vec2 occRes; uniform vec4 occK; uniform vec3 occC; uniform vec4 qF;   // [regia2] l'ombra degli angoli (OCCL), il suolo, i piani (vicino/lontano), i gialli   // [regia2] il varco ([varco2]) visto dal post: centro e semiassi in NDC, quanto è aperto; qV: manopole del varco
         float vcQ(vec2 u){ if (vcB <= 0.) return 1e3; vec2 e = (u * 2. - 1. - vcA.xy) / max(vcA.zw, vec2(1e-4)); if (e.y < 0.) e.y *= 1.8; float r0 = clamp(vcB * 2. - 1., .05, 1.); return dot(e, e) / (r0 * r0); }   // < 1 dentro il varco a terra; fino a 2,1 dove il tetto si apre più largo
         float vcRing(vec2 u){ float q = vcQ(u); return smoothstep(.72, .95, q) * (1. - smoothstep(1.9, 2.4, q)); }
         uniform vec4 pK; uniform vec2 pC;   // [amb3] pC: cavità, chiarezza palette, saturazione, inchiostro, luce sui profili
@@ -9810,6 +9859,15 @@ var Render = (function () {
               for (int k = 0; k < 18; k++) { vec3 qq = wq.xyz + rv * (float(k) + jt) * stp; float hh = qq.y - wq.y, dn = exp(-hh * .16); acc += vSh(sSM, sSMat, qq) * dn; wsum += dn; }
               float lit = acc / max(wsum, 1e-3);
               c = c * mix(1., .86, sOn * (1. - lit)) + sCol * lit * sOn; } }   // manopola: densità della nebbia con le ombre
+          float occA = 0., occG = 0.;
+          if (occK.x + occK.y > 0.) {   // [regia2] l'ombra degli angoli: quattro texel della passata a metà, pesati sulla profondità (i bordi restano netti, niente alone)
+            vec2 oe = 1. / occRes, ob = (floor(vUv * occRes - .5) + .5) * oe; float ws = 0.;
+            for (int k = 0; k < 4; k++) { vec2 ou = ob + vec2(float(k - k / 2 * 2), float(k / 2)) * oe; vec4 o = texture2D(tOcc, ou);
+              vec2 fw = 1. - abs(vUv - ou) * occRes; float w = max(fw.x, 0.) * max(fw.y, 0.) * exp(-abs(o.g * far - d) / (d * .02 + .08)) + 1e-4;
+              occA += o.r * w; occG += o.b * w; ws += w; }
+            occA /= ws; occG /= ws;
+            c *= mix(vec3(1.), occC, occA * occK.x * (1. - coc));   // calda-scura, più densa negli angoli stretti, nulla sulle superfici aperte
+            c *= 1. - occG * occK.y * (1. - night * .7); }   // il suolo un poco più scuro delle facciate: le strade si leggono dall'alto
           if (vcB > .01) {   // [regia2] il varco: lo spessore tagliato di muri e tetti (l'anello attorno all'ellisse, davanti al personaggio) prende un filo
             // d'ombra e torna verso la tinta media del materiale; dentro il buco le facce scure rimaste (il dentro di un muro) si schiariscono
             float q = vcQ(vUv), lv = dot(c, vec3(.3,.59,.11)), front = 1. - smoothstep(dc * .95, dc * 1.15, d);
@@ -9818,7 +9876,8 @@ var Render = (function () {
             c += (c * .8 + vec3(.03, .028, .026)) * inside * dark * qV.z; }
           { float far01 = smoothstep(dc*1.02, dc*1.7, d), lc0 = dot(c, vec3(.3,.59,.11));   /* [amb1] prospettiva aerea: lontano più chiaro, meno colore, il colore del cielo */
             vec3 hz = mix(uHz*.92, vec3(.02,.022,.026), night), cd = mix(c, vec3(lc0), qA.z + uWx.z*.15);   /* [colore1] lontano resta colore */   /* [lucido1] */   /* [regia2] qA.z: quanto colore perde il lontano */
-            c = mix(c, mix(cd, hz, .45 + uWx.z*.2), far01 * (qA.x + qA.w + uWx.x*.03 + uWx.z*.1 - night*qA.y));   /* [colore1] meno foschia */ }   /* [nebbia_zoom1] */   /* [lucido1] */   /* [regia2] qA.x aria di giorno, qA.y quanta se ne toglie di notte, qA.w il velo della metropoli */
+            c = mix(c, mix(cd, hz, .45 + uWx.z*.2), far01 * (qA.x + qA.w + uWx.x*.03 + uWx.z*.1 - night*qA.y));
+            c = mix(c, c * qF.rgb + qF.w * (1. - night), far01 * (1. - night * .8));   /* [regia2] QUADRO.lontanoFreddo, lontanoChiaro: i piani lontani più freddi e più chiari */   /* [colore1] meno foschia */ }   /* [nebbia_zoom1] */   /* [lucido1] */   /* [regia2] qA.x aria di giorno, qA.y quanta se ne toglie di notte, qA.w il velo della metropoli */
           // ===== [amb1] COLORE UNICO: ora (night, dusk), peso del regime (uReg), tempo (uWx: nuvole, bagnato, nebbia, tempesta) =====
           { float l = dot(c, vec3(.299,.587,.114));
             float sunK = (1.-night)*(1.-uWx.x*.82);                               // quanto sole c'è
@@ -9827,7 +9886,7 @@ var Render = (function () {
             float warmL = smoothstep(.06,.16,c.r-c.b)*smoothstep(.08,.28,mxc)*smoothstep(.55,.95,night);   // luce calda di notte
             float rosso = smoothstep(.12,.3,c.r-c.g)*smoothstep(.06,.2,c.r-c.b);    // il rosso del potere e delle lampade
             // 1) valore: salto deciso fra luce e ombra col sole, più morbido col coperto; la tinta non cambia
-            float k = mix(mix(qC.x, qC.y, sunK), qT.y, night), lo = qC.z;   /* [lucido1] contrasto pieno */   /* [regia2] qC: contrasto col coperto, col sole, perno dei medi */
+            float k = mix(mix(qC.x, qC.y, sunK), qT.y, night) * (1. + occK.z * (1. - smoothstep(dc * 1.05, dc * 1.9, d)) * (1. - night * .5)), lo = qC.z;   /* [regia2] occK.z: più contrasto vicino al personaggio */   /* [lucido1] contrasto pieno */   /* [regia2] qC: contrasto col coperto, col sole, perno dei medi */
             float l2 = max((l - lo)*k + lo, l*qN.w);   /* [regia2] qN.w: il pavimento dei neri (le ombre non chiudono sotto questa frazione della luce di partenza) */
             l2 = l2 / (1. + max(l2 - qC.w, 0.)*1.2);   /* [regia2] qC.w: dove comincia la spalla dei bianchi */
             c *= l2 / max(l, 1e-4);
@@ -9843,6 +9902,8 @@ var Render = (function () {
             float sN = mix(qS.x, qS.y, sunK) * (1. - uWx.z*.08), sR = 1.05 + sunK*.08;   /* [colore1] più colore anche col coperto e col regime */   /* [lucido1] il regime non spegne più i colori */   /* [regia2] qS.xy: saturazione col coperto e col sole */
             float sv = max(mix(sN, sR, uReg), keep*mix(1.15, 1.05, uReg));
             { float ch0 = (max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b))) / max(max(c.r, max(c.g, c.b)), .05); c = mix(vec3(lu), c, mix(1. - qS.w, sv*sat, smoothstep(.05, .2, ch0))); }   /* [scena1] i grigi restano grigi: il filo di viola di asfalto e cemento, saturato tre volte, diventava lilla */   /* [regia2] qS.w: travertino e cemento quieti (i quasi grigi perdono ancora un filo di colore) */
+            { float mxy = max(max(c.r,c.g),c.b), mny = min(min(c.r,c.g),c.b), hy = (c.g - mny) / max(c.r - mny, 1e-3), yel = smoothstep(.55, .82, hy) * step(c.b, c.g) * step(c.g, c.r * 1.05) * smoothstep(.1, .3, (mxy - mny) / max(mxy, .05));   /* [regia2] occK.w: i gialli (tufo, facciate gialle) più quieti; gli aranci dei coppi no */
+              c = mix(c, vec3(dot(c, vec3(.3,.59,.11))), yel * occK.w * (1. - keep)); }
             if (qS.z < .99) { float mxq = max(max(c.r,c.g),c.b), lq = dot(c, vec3(.3,.59,.11)), crq = (mxq - min(min(c.r,c.g),c.b)) / max(mxq, .05);   /* [regia2] qS.z: il tetto della saturazione, i pastelli vivi ma non acidi */
               float over = max(crq - qS.z, 0.); c = mix(c, vec3(lq), clamp(over / max(crq, .05), 0., 1.) * (1. - keep*.8)); }
             c = mix(c, vec3(dot(c, vec3(.3,.59,.11)))*vec3(.98,1.,.98), uReg*.03*(1.-keep));   /* [lucido1] */   // cemento appena verdastro, da caserma
@@ -9934,7 +9995,7 @@ var Render = (function () {
     renderer.setSize(FW, FH, false);   /* [sviluppo] */   /* [colore1] l'immagine finale esce alla risoluzione interna (prima a quella CSS della finestra: con lo schermo scalato il browser la ingrandiva a blocchi); il CSS la stende morbida */
     if (rt) rt.dispose();
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
-    ambResize(W, H); paintResize(W, H);   /* [amb3] */
+    ambResize(W, H); paintResize(W, H); occResize(W, H);   /* [amb3] */   /* [regia2] l'ombra degli angoli */
     rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = renderer.capabilities.isWebGL2 ? THREE.FloatType : THREE.UnsignedIntType;   /* [telefono] profondità a 32 bit in virgola mobile: su alcuni telefoni quella intera arrivava a gradini e i contorni dalla profondità facevano righe che tremolano */
     postMat.uniforms.res.value.set(W, H);
     camera.aspect = W / H; camera.updateProjectionMatrix();
@@ -13713,6 +13774,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
     gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE();   /* [amb2] */
     const U = postMat.uniforms;
+    gpuB('occlusione'); U.tOcc.value = occPass(cam.h); gpuE(); if (OCC.rt) U.occRes.value.set(OCC.rt.width, OCC.rt.height);   /* [regia2] l'ombra degli angoli */
     gpuB('pittura'); U.tC.value = paintPass(); gpuE(); U.tD.value = rt.depthTexture;   /* [amb3] la scena dipinta */ U.near.value = camera.near; U.far.value = camera.far;
     U.letter.value += ((ui.letterbox ? 1 : 0) - U.letter.value) * Math.min(1, dt * 5);
     U.pillar.value = ease; U.dusk.value = dusk; U.night.value = night; U.uReg.value = METEO.reg; U.uWx.value.set(WXc, WXwet, WXfog, WXst); U.uHz.value.copy(scene.fog.color); U.uFogNF.value.set(scene.fog.near, scene.fog.far);   /* [amb1] [nebbia_zoom1] */ U.uFoc9.value = camera.position.distanceTo(V3.set(cam.x, groundH(cam.x, cam.y), cam.y));   /* [unione9] */
@@ -13740,7 +13802,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         U.aK.value.x *= (1 + dk * (scenaK('esposizione') - 1) + night * (scenaK('espNotte') - 1)) * (1 + dusk * Q.luceCrepuscolo); U.sat.value *= 1 + dk * (scenaK('saturazione') - 1);
         U.qC.value.set(1 + (Q.contrastoCoperto - 1) * ct, 1 + (Q.contrastoSole - 1) * ct, Q.pernoMedi, Q.spallaBianchi); U.qO.value.fromArray(Q.ombraFredda); U.qL.value.fromArray(Q.luceCalda);
         U.qN.value.set(Q.ariaNeri[0], Q.ariaNeri[1], Q.ariaNeri[2], Q.pavimentoNeri); U.qS.value.set(Q.satCoperto, Q.satSole, Q.tettoCroma, Q.quieteGrigi); U.qA.value.set(Q.ariaGiorno, Q.ariaNotte, Q.coloreLontano, scenaK('velo', 0) * dk);
-        U.vcA.value.copy(VARCO.a.value); U.vcB.value = VARCO.b.value.w; U.qV.value.set(Q.varcoContorno, Q.varcoTaglio, Q.varcoLuce, 0); U.qT.value.set(Q.piedeNeri, 1 + (Q.contrastoNotte - 1) * ct, 0, 0); }
+        U.vcA.value.copy(VARCO.a.value); U.vcB.value = VARCO.b.value.w; U.qV.value.set(Q.varcoContorno, Q.varcoTaglio, Q.varcoLuce, 0); U.qT.value.set(Q.piedeNeri, 1 + (Q.contrastoNotte - 1) * ct, 0, 0);
+        U.occK.value.set(U.tOcc.value ? OCCL.forza : 0, U.tOcc.value ? OCCL.suoloScuro : 0, Q.vicinoContrasto, Q.gialliQuieti); U.occC.value.fromArray(OCCL.tinta); U.qF.value.set(Q.lontanoFreddo[0], Q.lontanoFreddo[1], Q.lontanoFreddo[2], Q.lontanoChiaro); }
       { U.lK.value.set(A.luc, A.spec * (indoorNow || p.indoor ? .5 : 1), A.coat, A.trans); U.lOl.value = A.ol;   /* [lucido1] il sole per la lacca */
         U.lSun.value.subVectors(moon.position, moon.target.position).normalize(); const sk = (.55 * dk + .12 * night) * Math.min(1.4, moon.intensity);
         U.lSunC.value.set(moon.color.r * sk, moon.color.g * sk, moon.color.b * sk); }

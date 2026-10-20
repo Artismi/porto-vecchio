@@ -72,10 +72,9 @@ const srv = http.createServer((req, res) => {
     // 3) le foto e le misure, una per variante delle manopole (stessa scena, stessa gente, stesso istante)
     for (const v of VARIANTI) {
       await pg.evaluate(o => {   // ogni variante parte dalle manopole del codice e cambia solo le sue
-        const cp = x => JSON.parse(JSON.stringify(x)); window.__Q0 = window.__Q0 || cp(window.__QUADRO || {}); window.__S0 = window.__S0 || cp(window.__SCENA || {});
+        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL']; window.__M0 = window.__M0 || Object.fromEntries(K.map(k => [k, cp(window['__' + k] || {})]));
         const put = (dst, src) => { for (const k in src) { if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) && dst[k]) put(dst[k], src[k]); else dst[k] = cp(src[k]); } };
-        if (window.__QUADRO) { put(window.__QUADRO, window.__Q0); put(window.__QUADRO, o.QUADRO || {}); }
-        if (window.__SCENA) { put(window.__SCENA, window.__S0); put(window.__SCENA, o.SCENA || {}); }
+        K.forEach(k => { const w = window['__' + k]; if (!w) return; put(w, window.__M0[k]); put(w, o[k] || {}); });   // QUADRO e SCENA (luce e colore), OCCL (l'ombra degli angoli)
       }, v.manopole);
       const dir = v.nome ? path.join(outDir, v.nome) : outDir; fs.mkdirSync(dir, { recursive: true });
       const file = path.join(dir, s.nome + '.png');
