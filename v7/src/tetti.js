@@ -469,7 +469,9 @@ var Tetti = (function () {
     // [tetti2] leggibilità: fascia gialla ai piedi delle scale, lanterna calda in cima; assi, corda, panca e bandierina
     const yell = new T3.MeshStandardMaterial({ color: '#e8b828', roughness: .6 }), lamp = new T3.MeshBasicMaterial({ color: '#ffd27a', toneMapped: false });
     const wood = new T3.MeshStandardMaterial({ color: '#8a6a44', roughness: .9 }), rope = new T3.MeshStandardMaterial({ color: '#c8b48a', roughness: 1 }), flag = new T3.MeshStandardMaterial({ color: '#c8302a', roughness: .8, side: T3.DoubleSide });
-    return { box, iron, rust, yell, lamp, wood, rope, flag, crema };
+    // [percorsi] la traccia dei passi sui lastrici: un velo della famiglia del crema, appena più scuro, mezzo trasparente
+    const traccia = new T3.MeshStandardMaterial({ color: '#e2d8bc', roughness: .95, transparent: true, opacity: .5, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    return { box, iron, rust, yell, lamp, wood, rope, flag, crema, traccia };
   }
   // le scale: due montanti, i pioli ogni 30 cm, la gabbia sopra i 2,5 m, il corrimano che scavalca il bordo del tetto
   function buildLaddersGfx(R) {
@@ -538,8 +540,40 @@ var Tetti = (function () {
       flags.push(m4.compose(p3.set(fx + .32, y + 2.5, fz), q, s3.set(.6, .38, .02)).clone());
       lamps.push(m4.compose(p3.set(fx, y + 2.86, fz), q, s3.set(.1, .1, .1)).clone());
     });
+    // [percorsi] I CIRCUITI SUI TETTI SI VEDONO (percorsi.js): la traccia più chiara sul lastrico fra una scala e l'altra (i passi
+    // consumano lo sporco), una lanterna su un ferro color minio a ogni svolta, il bucato teso lungo il tratto più lungo, la corda annodata
+    // dove si sale di un gradino col salto, la cassa e l'asse appoggiate ai piedi della scala da cui si parte. Stesso linguaggio:
+    // minio per salire, crema per dove si passa; solo i materiali di qui.
+    const PD = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null, traccia = [];
+    if (PD) {
+      const giri = PD.circuiti.filter(c => c.k === 'tetti').concat(PD.porte.map(q => q.alternativa).filter(a => a && a.k === 'tetti' && !a.camm));
+      giri.forEach((c, ci) => {
+        const P = c.pts.slice(1, -1), ok = new Set(c.edifici), hAt = (x, y) => { const q = roofAt(x, y); return q && (ok.has(q.bi) || q.plank !== undefined) ? q.h : null; };
+        // la traccia: una lastra chiara ogni 90 cm, girata lungo il passo, alla quota del lastrico
+        for (let k = 0; k < P.length - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L = hyp(bx - ax, by - ay), yaw = -Math.atan2(by - ay, bx - ax);
+          for (let s = .45; s < L; s += .9) { const x = ax + (bx - ax) * s / L, y = ay + (by - ay) * s / L, h = hAt(x, y); if (h === null) continue; put(traccia, x, h + .015, y, .78, .02, .5, yaw); } }
+        // le svolte: la lanterna sul ferro minio, mezzo metro fuori dalla svolta
+        for (let k = 1; k < P.length - 1; k++) { const [ax, ay] = P[k - 1], [x, y] = P[k], [bx, by] = P[k + 1], a1 = Math.atan2(y - ay, x - ax), a2 = Math.atan2(by - y, bx - x);
+          let d = Math.abs(a2 - a1); if (d > Math.PI) d = 2 * Math.PI - d; if (d < .6 || hyp(x - ax, y - ay) < 1.5) continue;
+          const mx = Math.cos(a1) - Math.cos(a2), my = Math.sin(a1) - Math.sin(a2), ml = hyp(mx, my) || 1, px = x + mx / ml * .6, py = y + my / ml * .6, h = hAt(px, py); if (h === null) continue;
+          put(rails, px, h + .45, py, .05, .9, .05, 0); put(lamps, px, h + .96, py, .13, .15, .13, 0); }
+        // il bucato sul tratto più lungo del giro (almeno 4 m): due paletti, la corda, i panni color crema
+        let bk = -1, bl = 4; for (let k = 0; k < P.length - 1; k++) { const l = hyp(P[k + 1][0] - P[k][0], P[k + 1][1] - P[k][1]); if (l > bl) { bl = l; bk = k; } }
+        if (bk >= 0) { const [ax, ay] = P[bk], [bx, by] = P[bk + 1], ux = (bx - ax) / bl, uy = (by - ay) / bl, sx = -uy * .9, sy = ux * .9, x0 = ax + ux * 1 + sx, y0 = ay + uy * 1 + sy, x1 = bx - ux * 1 + sx, y1 = by - uy * 1 + sy, h0 = hAt(x0, y0), h1 = hAt(x1, y1);
+          if (h0 !== null && h1 !== null) { const yaw = -Math.atan2(uy, ux); put(ropes, x0, h0 + .85, y0, .05, 1.7, .05, yaw); put(ropes, x1, h1 + .85, y1, .05, 1.7, .05, yaw); seg(ropes, x0, h0 + 1.66, y0, x1, h1 + 1.66, y1, .02, .02, yaw);
+            const n = Math.max(2, Math.min(6, Math.floor((bl - 2) / 1.1))); for (let i = 1; i <= n; i++) { const t = i / (n + 1), x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t, hh = h0 + (h1 - h0) * t + 1.66 - .05 * Math.sin(t * Math.PI); put(crema, x, hh - .26, y, .38 + (i % 2) * .12, .48 - (i % 3) * .08, .02, yaw); } } }
+        // la corda dove si sale di un gradino: dal bordo del tetto alto, annodata
+        (c.passi || []).forEach(e => { if (e.k !== 'gradino') return; const ha = roofRule(B[e.a]), hb = roofRule(B[e.b]); const qa = roofAt(e.x - e.ux * .3, e.y - e.uy * .3), qb = roofAt(e.x + e.ux * .3, e.y + e.uy * .3), h0 = qa ? qa.h : ha, h1 = qb ? qb.h : hb;
+          const x = e.x + e.ux * .08 - e.uy * .5, y = e.y + e.uy * .08 + e.ux * .5, yaw = -Math.atan2(e.uy, e.ux); put(ropes, x, (h0 + h1) / 2 + .25, y, .04, h1 - h0 + .5, .04, yaw); for (let t = h0 + .3; t < h1; t += .35) put(ropes, x, t, y, .08, .06, .08, yaw); });
+        // dove si sale: la cassa e l'asse appoggiate al muro, un metro accanto alla scala
+        const L0 = LADDERS[c.sali]; if (L0 && L0.footB < 0) { const sx = -L0.oy, sy = L0.ox, g0 = footH(L0), yaw = -L0.ang, cx = L0.x + L0.ox * .4 + sx * 1.15, cy = L0.y + L0.oy * .4 + sy * 1.15;
+          if (G.walkM(cx, cy) && bAt(cx, cy) < 0) { put(boards, cx, g0 + .26, cy, .55, .52, .6, yaw + .2); put(boards, cx, g0 + .53, cy, .58, .03, .63, yaw + .2);
+            const ax = L0.x + L0.ox * .75 - sx * 1.1, ay = L0.y + L0.oy * .75 - sy * 1.1; if (G.walkM(ax, ay) && bAt(ax, ay) < 0) seg(boards, ax, g0 + .02, ay, L0.x + L0.ox * .08 - sx * 1.1, g0 + 1.7, L0.y + L0.oy * .08 - sy * 1.1, .26, .04, -Math.atan2(-L0.oy, -L0.ox)); } }
+      });
+    }
     const mk = (arr, m) => { const im = new T3.InstancedMesh(G3.box, m, Math.max(1, arr.length)); arr.forEach((mm, i) => im.setMatrixAt(i, mm)); im.count = arr.length; im.castShadow = true; im.receiveShadow = true; im.userData.noRoof = true; im.frustumCulled = false; scene.add(im); return im; };
-    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema)];
+    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema), mk(traccia, G3.traccia)];
+    GFX.meshes[9].castShadow = false; GFX.meshes[9].renderOrder = 1;   // [percorsi] la traccia è un velo sul lastrico
     GFX.meshes[4].castShadow = false;
   }
   function frame() {
