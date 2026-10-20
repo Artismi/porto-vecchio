@@ -1129,7 +1129,7 @@ float pzF(vec2 p) { return pzN(p) * .55 + pzN(p * 2.13 + 7.1) * .3 + pzN(p * 4.7
     g.userData.misure = [L, h + (o.merli ? 1.2 : .12), T2 + hs * .2 + (o.scala ? 1.4 : 0)]; return g;
   };
 
-  DOC.porta_terra = { w: 6, h: 9, torri: true, nota: 'Porta di Terra della cinta medievale: corpo con il fornice a sesto acuto, la ghiera di conci, la saracinesca alzata che si vede in alto, l\'edicola col santo e la lapide sopra, beccatelli e merli ghibellini; le due torri quadrate avanzate con le feritoie, i beccatelli e i merli' };
+  DOC.porta_terra = { w: 6, h: 9, torri: true, addossate: false, nota: 'addossate: sul retro delle torri le casupole a una falda (in città no: lì ci sono già le case vere del tassellatore). Porta di Terra della cinta medievale: corpo con il fornice a sesto acuto, la ghiera di conci, la saracinesca alzata che si vede in alto, l\'edicola col santo e la lapide sopra, beccatelli e merli ghibellini; le due torri quadrate avanzate con le feritoie, i beccatelli e i merli' };
   T.porta_terra = o => {
     o = def(o, DOC.porta_terra); const g = new THREE.Group(), w = o.w, h = o.h, D = 6, Wc = w + 4, Hc = h + .22 * w + 4.4, tw = o.torri ? 6.5 : 0, W = Wc + 2 * tw, xc = W / 2, zF = D / 2;
     pareteArchi(g, Wc, Hc, D, [{ x: Wc / 2, w, h, tipo: 'sesto' }], 'tufo', tw, 0, 0);
@@ -1148,6 +1148,11 @@ float pzF(vec2 p) { return pzN(p) * .55 + pzN(p * 2.13 + 7.1) * .3 + pzN(p * 4.7
       blocco(g, tw + .6, 1.2, D + 3.6, 'tufo', x0 + tw / 2, Ht, 1.5); merli(g, tw + .6, 1.3, .9, 1.7, 'tufo', x0 - .3, Ht + 1.2, zF + 3.05, 0, 'ghibellino', true);
       if (!LOD) { for (const sx of [-1, 1]) cantonali(g, x0 + tw / 2 + sx * tw / 2, zF + 3, 1.2, Ht, sx, 1, 'pietraChiara'); for (let y = 3; y < Ht - 2; y += 4) blocco(g, .5, .12, .2, 'pietraChiara', x0 + tw / 2, y - .12, zF + 3.08); } }   // [pezzi2] i cantonali bugnati delle torri, i davanzali delle feritoie
     capperi(g, 5, W, 1, h, zF + (o.torri ? 0 : 0), 0, w * 7 + h, 0);
+    if (o.torri && o.addossate) for (const s of [0, 1]) {   // [pezzi2] le casupole addossate al retro delle torri: intonaco, porta, finestrella, falda di coppi
+      const x0 = s ? Wc + tw : 0, lw = tw - .8, xm = x0 + tw / 2, z0 = -zF - .43, hh = 2.6 + s * .5;
+      blocco(g, lw, hh, .86, 'intonaco', xm, 0, z0); sezione(g, [[-zF + .02, hh + .55], [-zF - .98, hh - .05], [-zF - .98, hh + .04], [-zF + .02, hh + .66]], lw + .3, 'coppi', xm - lw / 2 - .15, 0, 0);
+      if (!LOD) { vano(g, .9, 2.1, 'rett', 'legno', xm - lw * .22, 0, -zF - .88, .05); blocco(g, 1.06, .1, .08, 'pietraChiara', xm - lw * .22, 2.1, -zF - .89); vano(g, .6, .7, 'rett', s ? 'finestraAccesa' : 'buio', xm + lw * .22, 1.4, -zF - .88, .05); blocco(g, .76, .06, .14, 'pietraChiara', xm + lw * .22, 1.34, -zF - .9);
+        blocco(g, lw + .02, .3, .88, 'pietraScura', xm, 0, z0); } }
     if (!LOD) { stemma(g, 1.2, 'pietraChiara', xc, h + .22 * w - .05, zF + .02, 0); for (const s of [-1, 1]) cantonali(g, xc + s * (w / 2 + .25), zF, 0, h - w * .65, -s, 1, 'pietraChiara', 0, .5); }   // [pezzi2] lo stemma della città sulla chiave e gli stipiti bugnati del fornice
     g.userData.misure = [W + .6, Hc + (o.torri ? 3 : 0) + 2.9, D + (o.torri ? 3.6 : 1)]; return g;
   };
