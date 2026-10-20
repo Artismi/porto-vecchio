@@ -40,7 +40,9 @@ var Tetti = (function () {
   function roofAt(x, y) {
     const bi = bAt(x, y), h = bi < 0 ? null : roofH(bi, x, y), q = h === null ? null : { bi, h };
     const pk = PLANKS.length ? plankAt(x, y) : null;   // [tetti2] sulla passerella vale la quota delle assi (anche sopra il vicolo)
-    return pk && (!q || pk.h >= q.h - .05) ? pk : q;
+    const r = pk && (!q || pk.h >= q.h - .05) ? pk : q;
+    const cm = CAMM.length ? cammAt(x, y) : null;   // [percorsi] sul camminamento delle mura, sopra il rilevato
+    return cm && (!r || cm.h >= r.h - .05) ? cm : r;
   }
 
   // ---------------- LE SCALE ----------------
@@ -193,6 +195,67 @@ var Tetti = (function () {
   }
   buildJumps();
 
+  // ---------------- [percorsi] I CAMMINAMENTI: le mura di tramontana e il rilevato sopra il sottopasso ----------------
+  // Sui pezzi grandi della città nuova (W.pezzi) due superfici si camminano come un tetto: il camminamento di ronda delle mura di
+  // tramontana (dietro il parapetto coi merli, a 1,4 m sotto la cima) e il piano del rilevato sopra il sottopasso della Via Cavour.
+  // Ci si sale dalla scala di ronda di pietra e da due scale di ferro color minio murate sul lato della città (le mura); sul
+  // rilevato da due scale di ferro, una per parte (l'alternativa al sottopasso: si scavalca la ferrovia). Una catena di campi:
+  // { i, tipo, p (il pezzo), x0..x1, z0..z1 (locali), h (quota assoluta), L, a, b (i capi, metri), bi (l'edificio che fa da lv.b) }.
+  const CAMM = [], CCELL = new Map();
+  const pzW = (p, lx, lz) => { const c = Math.cos(p.rot), s = Math.sin(p.rot); return [p.x + lx * c + lz * s, p.y - lx * s + lz * c]; };
+  const pzL = (p, x, y) => { const c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y; return [dx * c - dy * s, dx * s + dy * c]; };
+  function cammAt(x, y) {
+    if (!inb(Math.floor(x / TS), Math.floor(y / TS))) return null; const L = CCELL.get(Math.floor(y / TS) * GW + Math.floor(x / TS)); if (!L) return null;
+    let best = null; for (const c of L) { const [l, z] = pzL(c.p, x, y); if (l < c.x0 || l > c.x1 || z < c.z0 || z > c.z1) continue; if (!best || c.h > best.h) best = c; }
+    return best ? { bi: best.bi, h: best.h, camm: best.i } : null;
+  }
+  function buildCamm() {
+    CAMM.length = 0; CCELL.clear(); const PZ0 = W.pezzi || []; if (!PZ0.length) return;
+    const vicinoB = (x, y) => { let bi = -1, bd = 1e9; B.forEach((b, i) => { if (b.lighthouse || !b.door) return; const d = hyp((b.x + b.w / 2) * TS - x, (b.y + b.h / 2) * TS - y); if (d < bd) { bd = d; bi = i; } }); return bi; };
+    const campo = (p, tipo, x0, x1, z0, z1, h, bi) => { const c = { i: CAMM.length, tipo, p, x0, x1, z0, z1, h, bi, L: x1 - x0, a: pzW(p, x0, (z0 + z1) / 2), b: pzW(p, x1, (z0 + z1) / 2) }; CAMM.push(c);
+      for (let lx = x0; lx <= x1 + .01; lx += .5) for (let lz = z0; lz <= z1 + .01; lz += .5) { const [x, y] = pzW(p, lx, lz), k = Math.floor(y / TS) * GW + Math.floor(x / TS); const A = CCELL.get(k) || CCELL.set(k, []).get(k); if (A.indexOf(c) < 0) A.push(c); }
+      return c; };
+    // una scala di ferro murata sulla faccia z = zf del pezzo, al punto lx; i piedi sulla prima casella percorribile verso fuori (sz: il verso)
+    const scalaCamm = (c, lx, zf, sz, ex) => {
+      const [wx, wy] = pzW(c.p, lx, zf), [ex0, ey0] = pzW(c.p, lx, zf + sz), ox = ex0 - wx, oy = ey0 - wy; let fx = null, fy = null;
+      for (let d = .55; d <= 2.2; d += .15) { const x = wx + ox * d, y = wy + oy * d; if (G.walkM(x, y) && bAt(x, y) < 0) { fx = x; fy = y; break; } }
+      if (fx === null) return null; const [tx, ty] = pzW(c.p, lx, zf - sz * .8);
+      const L = Object.assign({ i: LADDERS.length, bi: c.bi, f: 'camm', x: wx, y: wy, ox, oy, fx, fy, tx, ty, footB: -1, ang: Math.atan2(oy, ox), camm: c, hTop: c.h }, ex || {}); LADDERS.push(L); return L;
+    };
+    // le mura di tramontana, da levante a ponente; i tratti si sormontano di 40 cm ai giunti
+    const mura = PZ0.filter(p => p.tipo === 'mura_tramontana' && p.opz && p.opz.L).sort((a, b) => b.x - a.x);
+    if (mura.length) {
+      const m = mura[Math.floor(mura.length / 2)], bi = vicinoB(m.x, m.y + 8), C = mura.map(p => campo(p, 'mura_tramontana', -.4, p.opz.L + .4, -1.25, .62, (p.q || 0) + (p.opz.h || 8) - 1.4, bi));
+      // la scala di ronda di pietra (il pezzo la disegna): i piedi davanti al primo gradino, la cima sul camminamento
+      mura.forEach((p, k) => { if (!p.opz.scala) return; const hw = (p.opz.h || 8) - 1.4, n = Math.ceil(hw / .2), x0 = Math.max(.5, p.opz.L - n * .3 - 1.6);
+        for (let d = .6; d <= 2.6; d += .2) { const [fx, fy] = pzW(p, x0 - d, -2.0); if (!G.walkM(fx, fy) || bAt(fx, fy) >= 0) continue; const [wx, wy] = pzW(p, x0, -2.0), [tx, ty] = pzW(p, Math.min(p.opz.L - .6, x0 + n * .3 + .5), -.4), [ax, ay] = pzW(p, x0 + 1, -2.0);
+          LADDERS.push({ i: LADDERS.length, bi, f: 'camm', x: wx, y: wy, ox: wx - ax, oy: wy - ay, fx, fy, tx, ty, footB: -1, ang: Math.atan2(wy - ay, wx - ax), camm: C[k], hTop: C[k].h, rampa: true }); break; } });
+      // le due scale di ferro ai capi: sul lato della città (−z), a un metro e mezzo dalla testata
+      const e = C[0], o = C[C.length - 1]; scalaCamm(e, 1.6, -1.3, -1); scalaCamm(o, o.p.opz.L - 1.6, -1.3, -1);
+    }
+    // il rilevato sopra il sottopasso: il piano dentro i parapetti, una scala di ferro per parte accanto al fornice
+    PZ0.filter(p => p.tipo === 'sottopasso').forEach(p => { const L = Math.max(p.opz.L || 14, (p.opz.w || 4) + 6), Hr = Math.max(p.opz.hRilevato || 4.8, (p.opz.h || 3.2) + 1.6);
+      const c = campo(p, 'sottopasso', .3, L - .3, -4.05, 4.05, (p.q || 0) + Hr, vicinoB(p.x + L / 2, p.y)); scalaCamm(c, 1.4, 4.5, 1); scalaCamm(c, 1.4, -4.5, -1); });
+  }
+  buildCamm();
+  // [percorsi] IL GRAFO DEI TETTI per i percorsi (percorsi.js): per ogni tetto gli archi orientati verso i tetti dove si passa, col punto
+  // del passaggio. k: 'tetto' (si tocca, dislivello entro un gradino), 'gradino' (si tocca, si sale col salto fino a 1,2 m), 'salto'
+  // (il vicolo di una casella coi bordi crema, JUMPS), 'passerella' (PLANKS), 'scala' (la scala di ferro fra un tetto basso e uno alto).
+  // Si scende sempre fino alla caduta senza danni (SAFE).
+  function grafo() {
+    const E = new Map(), add = (a, b, k, x, y, i, ux, uy) => { const L = E.get(a) || E.set(a, []).get(a); if (!L.some(e => e.b === b && e.k === k)) L.push({ a, b, k, x, y, i, ux, uy }); };   // ux, uy: il verso del passaggio
+    const seen = new Map();
+    B.forEach((b, bi) => { if (b.lighthouse) return; for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) { if (BI[ty * GW + tx] !== bi) continue;
+      for (const [dx, dy] of [[1, 0], [0, 1]]) { const x2 = tx + dx, y2 = ty + dy; if (!inb(x2, y2)) continue; const o = BI[y2 * GW + x2]; if (o < 0 || o === bi || !B[o]) continue;
+        const key = Math.min(bi, o) + ':' + Math.max(bi, o), L = seen.get(key) || seen.set(key, []).get(key); L.push([(tx + .5 + dx * .5) * TS, (ty + .5 + dy * .5) * TS, bi, dx, dy]); } } });
+    seen.forEach((P, key) => { const [a, b] = key.split(':').map(Number), m = P[Math.floor(P.length / 2)], ha = roofRule(B[a]), hb = roofRule(B[b]);
+      for (const [p, q, dh] of [[a, b, hb - ha], [b, a, ha - hb]]) { if (dh > 1.2 || dh < -SAFE) continue; const sg = m[2] === p ? 1 : -1; add(p, q, dh > STEP ? 'gradino' : 'tetto', m[0], m[1], undefined, m[3] * sg, m[4] * sg); } });
+    JUMPS.forEach((J, i) => { const k = Math.floor((J.k0 + J.k1) / 2), [wx, wy] = J.sd.wall(k), x = wx + J.ox * TS / 2, y = wy + J.oy * TS / 2; add(J.bi, J.bj, 'salto', x, y, i, J.ox, J.oy); add(J.bj, J.bi, 'salto', x, y, i, -J.ox, -J.oy); });
+    PLANKS.forEach(P => { const x = (P.wa[0] + P.wb[0]) / 2, y = (P.wa[1] + P.wb[1]) / 2; add(P.a, P.b, 'passerella', x, y, P.i, P.ox, P.oy); add(P.b, P.a, 'passerella', x, y, P.i, -P.ox, -P.oy); });
+    LADDERS.forEach(L => { if (L.footB < 0 || L.camm) return; add(L.footB, L.bi, 'scala', L.fx, L.fy, L.i); add(L.bi, L.footB, 'scala', L.tx, L.ty, L.i); });
+    return E;
+  }
+
   // ---------------- [tetti2] I BELVEDERI: i tetti più alti di ogni quartiere ----------------
   // Un motivo per salire: in cima ai palazzi più alti c'è un angolo con la panca e la bandierina. Arrivarci la prima volta
   // è una piccola scoperta (passa la noia); poi ci si può sedere a guardare il porto.
@@ -239,7 +302,7 @@ var Tetti = (function () {
     if (any && G.wantedLevel && G.wantedLevel(st) > 0 && !(st.tetti && st.tetti.hint)) { (st.tetti || (st.tetti = { belv: {}, sat: {} })).hint = true; G.feed(st, 'Quassù non ti vedono. Stai giù e lasciali perdere.'); }
   }
   const footH = L => L.footB >= 0 ? (roofH(L.footB, L.fx, L.fy) ?? roofRule(B[L.footB])) : tileH(L.fx, L.fy);
-  const topH = L => { const h = roofH(L.bi, L.tx, L.ty); return h === null ? roofRule(B[L.bi]) : h; };
+  const topH = L => { if (L.hTop != null) return L.hTop; const h = roofH(L.bi, L.tx, L.ty); return h === null ? roofRule(B[L.bi]) : h; };   // [percorsi] la scala dei camminamenti arriva alla loro quota
   // la scala più vicina: ai piedi (per salire) o in cima (per scendere)
   function ladderNear(st, top, r) {
     const p = st.player; let best = null, bd = r || 1.5;
@@ -419,7 +482,8 @@ var Tetti = (function () {
       const y0 = footH(L), y1 = topH(L) + .95, Hh = y1 - y0; if (Hh < .5 || Hh > 40) return;
       const off = .2, cx = L.x + L.ox * off, cz = L.y + L.oy * off, yaw = -L.ang;   // 20 cm fuori dal muro
       const sx = -L.oy * .22, sz = L.ox * .22;   // i due montanti, 44 cm l'uno dall'altro
-      const bb = B[L.bi], old = bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');
+      const bb = B[L.bi], old = !L.camm && bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');   // [percorsi] sui camminamenti la scala di ferro
+      if (L.rampa) { put(crema, L.fx, y0 + .06, L.fy, .5, .12, .9, yaw); return; }   // [percorsi] la scala di ronda è di pietra (il pezzo): solo il primo gradino chiaro
       put(crema, L.x + L.ox * .38, y0 + .06, L.y + L.oy * .38, .5, .12, .78, yaw);   // [pulizia2] il primo gradino, chiaro, ai piedi della scala
       if (old) {   // [epoche] nel borgo, sull'Ottocento e sul regime niente scala di ferro: le staffe alla marinara murate nella parete (pioli a U, ruggine)
         const wx = L.x + L.ox * .02, wz = L.y + L.oy * .02;
@@ -508,6 +572,9 @@ var Tetti = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { LADDERS, PLANKS, BELV, JUMPS, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
+  const API = { LADDERS, PLANKS, BELV, JUMPS, CAMM, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, grafo, edgeH, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
+  // [percorsi] la rete dei percorsi (percorsi.js) lega i circuiti sui tetti e le alternative delle porte, ora che le scale ci sono
+  if (typeof Percorsi !== 'undefined' && Percorsi.attivo) try { Percorsi.lega({ Tetti: API, Sottosuolo: typeof Sottosuolo !== 'undefined' ? Sottosuolo : null, Game: G }); } catch (e) { if (typeof console !== 'undefined') console.warn('[percorsi]', e); }
+  return API;
 })();
 if (typeof module !== 'undefined') module.exports = Tetti;
