@@ -18,7 +18,7 @@ var PezziCitta = (function () {
   const PI = Math.PI, HP = PI / 2;
   // ---------------- tavolozza: pochi materiali condivisi per genere ----------------
   const COL = {
-    tufo: '#bba684', tufoScuro: '#9a8869', travertino: '#ddd3bb', travertinoScuro: '#b4a990',   /* [pezzi2] il tufo vero, grigio-giallo spento (era #c9a86a) */ travertinoChiaro: '#ece4d0', intradosso: '#a89e88', tenda: '#d8ccb0', tendaRossa: '#a8483a', tapparella: '#cbc2aa',   // [facciate2]
+    tufo: '#b2a283', tufoScuro: '#958667', travertino: '#ddd3bb', travertinoScuro: '#b4a990',   /* [pezzi2] il tufo vero, grigio-giallo spento (era #c9a86a) */ travertinoChiaro: '#ece4d0', intradosso: '#a89e88', tenda: '#d8ccb0', tendaRossa: '#a8483a', tapparella: '#cbc2aa',   // [facciate2]
     pietra: '#8d8378', pietraScura: '#6e665c', pietraChiara: '#a9a090',   // la pietra di zoccoli, cornici, chiavi di volta (era finita nel commento qui sopra)
     ghisa: '#2f4a3a', cemento: '#9a968e', cementoScuro: '#7c7873', ferro: '#4a4c50', ferroScuro: '#2e3034', ruggine: '#7a4a30',
     maiolica: '#2e7d5a', intonaco: '#d3c5a3', calce: '#ddd7c8', intonacoRosso: '#b5604a', ocra: '#c29a5e', coppi: '#8f6656', tegole: '#9b5a3c', legno: '#7a5a38',
@@ -62,7 +62,7 @@ var PezziCitta = (function () {
   };
   COL.persiana = '#41584a';   // [pezzi2] le persiane di legno verde, con le stecche (genere lamelle)
   const VESTI = {
-    tufo: { g: 'conci', rh: .35, rl: .62, gi: .02, tono: .2, manca: .003, u: 1 }, tufoScuro: { g: 'conci', rh: .35, rl: .62, gi: .02, tono: .2, manca: .004, u: 1 },
+    tufo: { g: 'conci', rh: .35, rl: .62, gi: .02, tono: .34, manca: .003, u: 1 }, tufoScuro: { g: 'conci', rh: .35, rl: .62, gi: .02, tono: .3, manca: .004, u: 1 },
     travertino: { g: 'conci', rh: .6, rl: 1.2, gi: .009, tono: .1, manca: 0, u: .45 }, travertinoScuro: { g: 'conci', rh: .6, rl: 1.2, gi: .009, tono: .1, manca: 0, u: .45 },
     mattone: { g: 'conci', rh: .075, rl: .26, gi: .011, tono: .34, manca: .006, u: .8 },
     pietra: { g: 'pietra', rh: .5, rl: 1.05, gi: .016, tono: .16, la: .62, u: .8 }, pietraScura: { g: 'pietra', rh: .5, rl: 1.05, gi: .016, tono: .16, la: .62, u: .8 },
@@ -87,10 +87,10 @@ var PezziCitta = (function () {
   { float rh = ${RH}, rl = ${RL}, gi = ${GI};
     vec2 q = p; if (${G} == 2 && ver < .5) { rh = ${LA}; rl = ${LA}; }
     float row = floor(q.y / rh), bx = q.x / rl + mod(row, 2.) * .5 + (pzH1(vec2(row, 3.7)) - .5) * .3, ci = floor(bx), tn = pzH1(vec2(ci, row));
-    float fd = 1. - smoothstep(rh * .12, rh * .26, px);   // il giunto resta almeno di un pixel finché il corso è alto otto pixel, poi svanisce
+    float fd = 1. - smoothstep(rh * .2, rh * .45, px);   // il giunto resta almeno di un pixel finché il corso è alto cinque pixel, poi svanisce
     float jx = min(fract(bx), 1. - fract(bx)) * rl, jy = min(fract(q.y / rh), 1. - fract(q.y / rh)) * rh, jm = smoothstep(0., max(gi, px * .85), min(jx, jy));
     jm = mix(1., jm, fd);
-    c *= (1. - ${TO} * .5 + tn * ${TO}) * (1. + gr * .1) * mix(.66, 1., jm) * mix(1., .93, 1. - fd);
+    c *= (1. - ${TO} * .5 + tn * ${TO}) * (1. + gr * .1) * mix(.68, 1., jm) * mix(1., .92, 1. - fd) * (.88 + pzN(p * .3 + 4.) * .24);   // (le zone di pietra di cava diversa: si leggono a ogni distanza)
     c *= 1. - step(.94, pzH1(floor(q * 11.) + 3.1)) * .16;   // i pori
     float ma = step(tn, ${MA}) * ver; c = mix(c, c * .45, ma);   // la pietra mancante
     H = jm * .7 + gr * .12 - ma; }
@@ -120,7 +120,7 @@ var PezziCitta = (function () {
   { float u = pf.x / .23, v = pf.y / .42, cu = floor(u), cv = floor(v + mod(cu, 2.) * .5), t = pzH1(vec2(cu, cv)), fu = fract(u) * 2. - 1., fd = 1. - smoothstep(.02, .08, px);
     float sh = mix(1., .72 + .34 * sqrt(max(0., 1. - fu * fu)), fd);
     c *= sh * (.86 + t * .24) * mix(1., .82, fd * (1. - smoothstep(0., .1, fract(v + mod(cu, 2.) * .5))));
-    c = mix(c, vec3(.74, .4, .24), step(.95, t) * .8);   // i coppi nuovi
+    c = mix(c, vec3(.7, .42, .28), step(.975, t) * .6);   // i coppi nuovi
     c = mix(c, vec3(.55, .54, .44), smoothstep(.7, .74, pzF(p * 1.6 + 4.)) * .55);   // i licheni
     H = sh; }
 #elif ${G} == 9
