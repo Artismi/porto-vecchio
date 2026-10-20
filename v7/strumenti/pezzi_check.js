@@ -10,7 +10,7 @@ const P = require(path.join(src, 'pezzi_citta.js'));
 const PROVE = {
   campanile: [{}, { h: 22, lato: 4, campane: 1, orologio: false }, { h: 34, lato: 6, cuspide: false }],
   facciata_chiesa: [{}, { w: 10, h: 12, rosone: false, gradini: 2 }, { w: 18, h: 20, corpo: 30 }],
-  portico: [{}, { campate: 3, piani: 2, lettere: '' }, { campate: 10, piani: 5, h: 6 }],
+  portico: [{}, { campate: 3, piani: 2, lettere: '' }, { campate: 6, piani: 3, h: 6 }],   // [volumi2] in città i corpi del portico hanno 2-3 campate e al più 3 piani: il caso largo resta a 6 × 3
   torre_littoria: [{}, { h: 24, orologio: false, antenna: false }, { h: 36, lato: 10 }],
   tettoia_mercato: [{}, { diametro: 24, h: 6 }, { diametro: 40, h: 8 }],
   stazione: [{}, { L: 28, piani: 1, piazzale: false }, { L: 52, binari: 4 }],

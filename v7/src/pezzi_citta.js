@@ -18,7 +18,8 @@ var PezziCitta = (function () {
   const PI = Math.PI, HP = PI / 2;
   // ---------------- tavolozza: pochi materiali condivisi per genere ----------------
   const COL = {
-    tufo: '#c9a86a', tufoScuro: '#a88a52', travertino: '#e2d8c0', pietra: '#8d8378', pietraScura: '#6e665c', pietraChiara: '#a9a090',
+    tufo: '#c9a86a', tufoScuro: '#a88a52', travertino: '#e2d8c0', travertinoScuro: '#b8ad96', travertinoChiaro: '#ece4d0', intradosso: '#a89e88', tenda: '#d8ccb0', tendaRossa: '#a8483a', tapparella: '#cbc2aa',   // [facciate2]
+    pietra: '#8d8378', pietraScura: '#6e665c', pietraChiara: '#a9a090',   // la pietra di zoccoli, cornici, chiavi di volta (era finita nel commento qui sopra)
     ghisa: '#2f4a3a', cemento: '#9a968e', cementoScuro: '#7c7873', ferro: '#4a4c50', ferroScuro: '#2e3034', ruggine: '#7a4a30',
     maiolica: '#2e7d5a', intonaco: '#d9c9a3', intonacoRosso: '#b5604a', ocra: '#c99a4e', coppi: '#a8623a', tegole: '#9b5a3c', legno: '#7a5a38',
     vetro: '#7fa3b8', asfalto: '#4a4a48', massicciata: '#7d7467', terra: '#8b7355', acqua: '#3f6f7a', bianco: '#e8e4da', rosso: '#b8322a',
@@ -232,21 +233,51 @@ var PezziCitta = (function () {
 
   // ================= 2. IL REGIME: portico razionalista e torre littoria (E4) =================
   DOC.portico = { campate: 6, campata: 4, h: 5, piani: 4, profondita: 4, pilastro: .8, lettere: 'MINISTERO DELL\'ORDINE', nota: 'pilastri quadrati di travertino a passo di campata, trabeazione con le lettere lapidarie, cortina di travertino sopra con le finestre a nastro; il retro è cieco; L = campate × campata' };
+  // [facciate2] il portico vero: pilastri con la base e il capitello, l'intradosso con le travi fra i pilastri (e la sua ombra), il
+  // marcapiano al piano delle arcate, la cortina di travertino a lastre (i giunti li disegna il materiale) con le finestre incassate
+  // (lo sguincio è lo spessore del muro), la cornice piatta razionalista e il davanzale, le tapparelle a più altezze, il cornicione con
+  // l'aggetto e le mensole; qualche segno di vita composto: una bandiera, i vasi su un davanzale, le tende dietro i vetri.
   T.portico = o => {
-    o = def(o, DOC.portico); const g = new THREE.Group(), L = o.campate * o.campata, P = o.profondita, H = o.h, pl = o.pilastro, hP = o.piani * 3.4, zF = P / 2 - pl / 2;
+    o = def(o, DOC.portico); const g = new THREE.Group(), L = o.campate * o.campata, P = o.profondita, H = o.h, pl = o.pilastro, hP = o.piani * 3.4, zF = P / 2 - pl / 2, cw = o.campata;
+    const hs = (a, b) => { let h = (a * 374761393 + b * 668265263 + L * 97) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
     blocco(g, L, .15, P + .5, 'travertino', L / 2, 0, -.25);                                 // il pavimento del portico
-    for (let i = 0; i <= o.campate; i++) { const x = i * o.campata + (i === 0 ? pl / 2 : i === o.campate ? -pl / 2 : 0); blocco(g, pl, H - .15, pl, 'travertino', x, .15, zF, .03); if (!LOD) { blocco(g, pl + .14, .3, pl + .14, 'travertino', x, .15, zF, .02); blocco(g, pl + .12, .25, pl + .12, 'travertino', x, H - .25, zF, .02); } }   // pilastri con zoccolo e abaco
-    const porte = []; for (let i = 0; i < o.campate; i++) porte.push({ x: i * o.campata + o.campata / 2, w: i % 2 ? 2.4 : 2.2, h: i % 2 ? 4 : 3.2, tipo: 'rett', h0: i % 2 ? 0 : .8 });
+    for (let i = 0; i <= o.campate; i++) { const x = i * cw + (i === 0 ? pl / 2 : i === o.campate ? -pl / 2 : 0);
+      blocco(g, pl, H - .15, pl, 'travertino', x, .15, zF, .03);
+      if (!LOD) { blocco(g, pl + .2, .45, pl + .2, 'travertinoScuro', x, .15, zF, .03); blocco(g, pl + .26, .12, pl + .26, 'travertino', x, .6, zF, .02);   // la base a due gradi, sporca in basso
+        blocco(g, pl + .18, .14, pl + .18, 'travertino', x, H - .42, zF, .02); blocco(g, pl + .34, .22, pl + .34, 'travertino', x, H - .28, zF, .03); }   // il capitello: collarino e abaco
+      if (!LOD && i > 0 && i < o.campate) blocco(g, pl * .9, .55, P - pl, 'intradosso', x, H - .55, zF - (P - pl) / 2 - pl / 2); }   // la trave dell'intradosso fra pilastro e muro
+    const porte = []; for (let i = 0; i < o.campate; i++) porte.push({ x: i * cw + cw / 2, w: i % 2 ? 2.4 : 2.2, h: i % 2 ? 4 : 3.2, tipo: 'rett', h0: i % 2 ? 0 : .8 });
     pareteArchi(g, L, H, .5, porte, 'travertino', 0, 0, -P / 2 - .25);                      // la parete di fondo: portoni alti e vetrine
     if (!LOD) porte.forEach(a => { if (a.h0) blocco(g, a.w, a.h - a.h0, .08, 'vetro', a.x, a.h0, -P / 2 - .25); else { blocco(g, a.w, a.h, .1, 'legno', a.x, 0, -P / 2 - .3); blocco(g, .06, a.h, .12, 'ottone', a.x, 0, -P / 2 - .3); } });   // vetrine e portoni a due ante
-    blocco(g, L, .6, P + .5, 'travertino', L / 2, H, -.25);                                 // il soffitto
+    blocco(g, L, .6, P + .5, 'intradosso', L / 2, H, -.25);                                 // il soffitto (l'intradosso, in ombra)
+    if (!LOD) blocco(g, L - .1, .5, .3, 'travertino', L / 2, H - .5, P / 2 - .15);          // l'architrave sul filo dei pilastri
     blocco(g, L, 1.4, .7, 'travertino', L / 2, H + .6, P / 2 - .35, .03);                   // trabeazione (la fascia delle lettere)
     if (o.lettere) scritta(g, o.lettere, Math.min(L * .8, o.lettere.length * .9), .9, L / 2, H + 1.3, P / 2 + .01, 0, '#5a5248');
-    blocco(g, L, hP, P + .5, 'travertino', L / 2, H + 2, -.25);                             // la cortina sopra
-    for (let p = 0; p < o.piani; p++) { const y = H + 2 + p * 3.4 + 1.2; blocco(g, L - 1.6, 1.5, .12, 'buio', L / 2, y, P / 2 - .04); if (!LOD) { for (let x = .8; x <= L - .8; x += 1.6) blocco(g, .1, 1.5, .14, 'alluminio', x, y, P / 2 - .02); blocco(g, L - 1.6, .12, .3, 'travertino', L / 2, y - .12, P / 2 + .06); } }   // finestre a nastro coi montanti e il davanzale
-    cornice(g, L, P + .5, .35, .6, 'travertino', 0, H + 2 + hP, -.25);
-    blocco(g, L + .7, .9, .4, 'travertino', L / 2, H + 2.6 + hP, P / 2 + .2);               // parapetto del lastrico sul fronte
-    g.userData.misure = [L + .7, H + 3.5 + hP, P + .5]; return g;
+    blocco(g, L + .3, .22, .95, 'travertino', L / 2, H + 2, P / 2 - .3, .02);              // il marcapiano al piano delle arcate
+    // la cortina: il nucleo dietro e il fronte di travertino coi vani (30 cm di spessore: lo sguincio)
+    blocco(g, L, hP, P - .1, 'travertino', L / 2, H + 2, -.5);
+    const T0 = .32, zW = P / 2 - .45 + T0 / 2, vani = [], wW = 1.15, wH = 1.75, perC = cw >= 3.6 ? 2 : 1;
+    for (let p = 0; p < o.piani; p++) for (let i = 0; i < o.campate; i++) for (let k = 0; k < perC; k++) vani.push({ x: i * cw + cw * (k + .5) / perC, w: wW, h: p * 3.4 + 2.55, h0: p * 3.4 + .8, tipo: 'rett', p, i, k });
+    pareteArchi(g, L, hP, T0, vani, 'travertino', 0, H + 2, zW);
+    const zFr = zW + T0 / 2;   // il filo del fronte
+    if (!LOD) { let flag = false, vasi = false;
+      vani.forEach(v => { const y0 = H + 2 + v.h0, h = v.h - v.h0, q = hs(v.i * 3 + v.k, v.p);
+        blocco(g, v.w, h, .05, 'buio', v.x, y0, zW - T0 / 2 + .06);                         // il vetro in fondo allo sguincio
+        if (q < .3) { const c = ['tenda', 'tendaRossa'][Math.floor(q * 7) % 2]; for (const s of [-1, 1]) blocco(g, v.w * .28, h - .1, .03, c, v.x + s * (v.w / 2 - v.w * .14), y0 + .05, zW - T0 / 2 + .1); }
+        const tp = q < .25 ? 0 : q < .5 ? .35 : q < .72 ? .6 : q < .86 ? 1 : .15;            // la tapparella: alzata, a un terzo, a metà, giù, appena scesa
+        if (tp > 0) blocco(g, v.w - .02, h * tp, .04, 'tapparella', v.x, y0 + h * (1 - tp), zW + T0 / 2 - .1);
+        for (const s of [-1, 1]) blocco(g, .14, h + .14, .07, 'travertinoChiaro', v.x + s * (v.w / 2 + .07), y0 - .07, zFr + .03);   // la cornice piatta
+        blocco(g, v.w + .42, .14, .07, 'travertinoChiaro', v.x, y0 + h, zFr + .03);
+        blocco(g, v.w + .36, .09, .22, 'travertino', v.x, y0 - .09, zFr + .08);                // il davanzale col gocciolatoio
+        if (!vasi && v.p === 0 && q > .55 && q < .7) { vasi = true; for (let k = 0; k < 3; k++) { cil(g, .07, .09, .16, 8, 'coppi', v.x - .32 + k * .32, y0, zFr + .12); cil(g, .1, .06, .14, 6, 'verde', v.x - .32 + k * .32, y0 + .16, zFr + .12); cil(g, .05, .03, .06, 6, 'rosso', v.x - .32 + k * .32, y0 + .28, zFr + .12); } }
+        if (!flag && v.p === o.piani - 1 && v.i === Math.floor(o.campate / 2) && v.k === 0) { flag = true; const ga = grp(g, v.x + .7, y0 + .2, zFr + .1); ga.rotation.x = .6;   // il tricolore all'ultimo piano
+          blocco(ga, .04, 1.9, .04, 'bianco', 0, 0, 0); ['verde', 'bianco', 'rosso'].forEach((c, n) => blocco(ga, .02, .7, .3, c, .03, 1.1, .17 + n * .3)); }
+      });
+      for (let x = .6; x < L; x += 1.2) mensola(g, .45, .35, .18, 'travertino', x, H + 2 + hP + .02, zFr, 0);   // le mensole sotto il cornicione
+    }
+    cornice(g, L, P + .2, .55, .7, 'travertino', 0, H + 2 + hP, -.35);                     // il cornicione con l'aggetto
+    blocco(g, L + .7, .9, .4, 'travertino', L / 2, H + 2.7 + hP, P / 2 + .2);               // parapetto del lastrico sul fronte
+    g.userData.misure = [L + .7, H + 3.6 + hP, P + .5]; return g;
   };
   DOC.torre_littoria = { h: 30, lato: 8, orologio: true, balcone: true, antenna: true, scritta: 'ORDINE', nota: 'torre di travertino su zoccolo di pietra, fenditura di finestre sul fronte, arengario su mensole a 7 m, orologio, loggia in cima e traliccio dell\'antenna col faro rosso' };
   T.torre_littoria = o => {

@@ -568,7 +568,8 @@
     let i = 0;
     const get = () => { let el = pool[i]; if (!el) { el = document.createElement('div'); layer.appendChild(el); pool.push(el); } el.hidden = false; el.style.transform = ''; i++; return el; };
     const p = st.player;
-    if (!ui.intro) st.npcs.forEach(n => {
+    const sotto = !!(p.lv && p.lv.k === 'ug');   // [regia2] sotto terra la gente di sopra non si vede: niente nomi né fumetti
+    if (!ui.intro && !sotto && !window.__pulita) st.npcs.forEach(n => {
       if ((n.inside && !inRoom(n)) || n.dead) return;
       if (p.indoor && !inRoom(n)) return;   // dentro un edificio il fuori non si vede (chi è nella stanza sì)
       const d = Math.hypot(n.x - p.x, n.y - p.y); if (d > 30) return;   // [fluido] oltre i 30 m niente fumetti né icone: inutile proiettarli

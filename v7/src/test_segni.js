@@ -54,6 +54,11 @@ const TS = G.TS, carr = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS
 ok(A.dehors >= 1 && PA.dehors.every(d => d.tavoli.every(t => !carr(t.x, t.z))), `dehors (${A.dehors}, ${A.tavolini} tavolini) mai in carreggiata`);
 ok(PA.dehors.every(d => d.tavoli.every(t => { const b = B[d.bi], wx = d.f === 'S' ? (b.y + b.h) * TS : (b.x + b.w) * TS; return Math.abs((d.f === 'S' ? t.z : t.x) - wx) <= 2; })), 'i tavolini a ≤ 2 m dal muro');
 ok(A.targhe > 20 && A.civici > 40, `targhe delle vie agli angoli (${A.targhe}) e civici accanto ai portoni (${A.civici})`);
+// [facciate2] i segni di vita delle facciate: al massimo 3 per parete, il 40% delle pareti quiete, il condizionatore solo nel boom
+const V = Scena.contaVita(); console.log('vita', JSON.stringify(V));
+ok(V.max <= 3 && V.quietePct >= 35 && V.quietePct <= 48, `segni di vita: ≤ 3 per facciata (max ${V.max}), ${V.quietePct}% delle pareti quiete`);
+ok(par.every(p => (p.vita || []).indexOf('condizionatore') < 0 || p.era === 'E6'), 'il condizionatore solo sulle case del boom');
+ok(par.every(p => (p.vita || []).indexOf('bucato') < 0 || p.fl >= 2), 'il bucato solo dove c\'è un piano sopra');
 const C2 = Scena.conteggio(); ok(C2.sforano === 0, `dopo l'arredo e la rete nessuna pagina sfora (voci prese ${C2.presi}, negate ${C2.negati})`);
 console.log(fail ? `\n${fail} prove fallite` : '\ntutte le prove passano');
 process.exit(fail ? 1 : 0);

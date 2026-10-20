@@ -238,9 +238,44 @@ var Scena = (function () {
     if (out.use === 'gelateria' || out.use === 'bar') { const u = du + (du > L / 2 ? -1.1 : 1.1); if (u > .4 && u < L - .4) { const [x, z] = pos(u, .45); if (ok(x, z) && !out.tavoli.some(t => Math.hypot(t.x - x, t.z - z) < 1)) out.frigo = { x, z }; } }
     return out;
   }
+  // ---- [facciate2] I SEGNI DI VITA DI UNA FACCIATA: il regista ne sceglie al massimo 3 per parete, il 40% delle pareti resta quieta ----
+  // Le voci: gerani sul davanzale, bucato fra due finestre, una gabbia, un condizionatore (solo nel boom), una bandiera, una tenda da sole,
+  // una luce accesa dentro (la stanza con le tende e la lampada). Le pareti quiete del catalogo sono quiete anche qui; le altre tacciono
+  // per hash fino al 40%. Mai il bucato dove la pagina ha già il filo del vicolo, mai due bandiere a meno di 40 m.
+  const VITA = {
+    E0: [['gerani', 5], ['bucato', 4], ['gabbia', 2], ['luce', 3], ['tenda_sole', 1], ['bandiera', .5]],
+    E2: [['gerani', 4], ['bucato', 4], ['gabbia', 2], ['luce', 3], ['tenda_sole', 2], ['bandiera', .5]],
+    E3: [['gerani', 4], ['luce', 4], ['tenda_sole', 2], ['bandiera', 1], ['gabbia', .5]],
+    E4: [['luce', 3], ['bandiera', 1.5], ['tenda_sole', 2], ['gerani', 1]],
+    E6: [['condizionatore', 5], ['tenda_sole', 4], ['luce', 3], ['gerani', 2], ['bucato', 1.5]],
+  };
+  const VITA_QUIETE = .4;
+  function vita(bi, f) {
+    if (!S) return []; const p = S.muro.get(bi + '|' + f); if (!p || p.tipo !== 'parete') return [];
+    if (p.vita) return p.vita;
+    const L = VITA[p.era]; p.vita = []; if (!L) return p.vita;
+    const h = hash(Math.round(p.x * 2), Math.round(p.z * 2), 2203), quiete = !!p.imp.quiete;
+    // la quota di quiete: le pareti quiete del catalogo, poi per hash le altre (calcolata sul totale, così fa il 40%)
+    if (S.qCat === undefined) { const par = S.pagine.filter(q => q.tipo === 'parete' && VITA[q.era]); S.qCat = par.filter(q => q.imp.quiete).length / Math.max(1, par.length); }
+    const qPct = S.qCat;
+    if (quiete || h < Math.max(0, (VITA_QUIETE - qPct) / Math.max(.01, 1 - qPct))) { p.vitaQuieta = true; return p.vita; }
+    const h2 = hash(Math.round(p.x * 2), Math.round(p.z * 2), 2204), n = h2 < .35 ? 1 : h2 < .8 ? 2 : 3;
+    const cand = L.filter(([v]) => !(v === 'bucato' && (p.dom === 'bucato' || p.presi.dom.concat(p.presi.sec).indexOf('bucato') >= 0 || p.fl < 2))
+      && !((v === 'gabbia' || v === 'condizionatore' || v === 'tenda_sole') && p.fl < 2)
+      && !(v === 'bandiera' && S.pagine.some(q => q !== p && q.vita && q.vita.indexOf('bandiera') >= 0 && Math.hypot(q.x - p.x, q.z - p.z) < 40))).map(q => q.slice());
+    for (let k = 0; k < n && cand.length; k++) { let tot = 0; cand.forEach(q => tot += q[1]); let t = hash(Math.round(p.x * 2) + k * 17, Math.round(p.z * 2), 2205 + k) * tot, j = 0;
+      for (; j < cand.length - 1; j++) { t -= cand[j][1]; if (t < 0) break; } p.vita.push(cand[j][0]); cand.splice(j, 1); }
+    S.vitaN = (S.vitaN || 0) + 1; return p.vita;
+  }
+  // il conteggio dei segni di vita sulle pareti (dopo che render li ha chiesti tutti, o chiedendoli qui)
+  function contaVita() {
+    if (!S) return null; const par = S.pagine.filter(p => p.tipo === 'parete' && VITA[p.era]), out = { pareti: par.length, quiete: 0, per: {}, max: 0 };
+    par.forEach(p => { const v = vita(p.bi, p.f); if (!v.length) out.quiete++; out.max = Math.max(out.max, v.length); v.forEach(x => out.per[x] = (out.per[x] || 0) + 1); });
+    out.quietePct = Math.round(100 * out.quiete / Math.max(1, par.length)); return out;
+  }
   // il conteggio dell'arredo per 100 m
   function contaArredo() { const P = piano(); if (!P) return null; const v = Math.max(1, P.metriVicoli) / 100, w = Math.max(1, P.metriVie) / 100;
     return { bidoni: P.bidoni.length, bidoniPer100mVicolo: +(P.bidoni.length / v).toFixed(1), cassonetti: P.cassonetti.length, coppiePer100mVia: +(P.cassonetti.length / 2 / w).toFixed(2), bucato: P.bucato.length, bucatoPer100mVicolo: +(P.bucato.length / v).toFixed(1), dehors: P.dehors.length, tavolini: P.dehors.reduce((a, d) => a + d.tavoli.length, 0), targhe: P.targhe.length, civici: P.civici.length }; }
-  return { init, attivo, piano, contaArredo, DEHORS, pagine, paginaMuro, paginaAt, chiedi, nota, conteggio, pulisci, classe, CATALOGO, RIGA, FAMIGLIA, RAGGIO, MG, MF };
+  return { init, attivo, piano, contaArredo, vita, contaVita, VITA, DEHORS, pagine, paginaMuro, paginaAt, chiedi, nota, conteggio, pulisci, classe, CATALOGO, RIGA, FAMIGLIA, RAGGIO, MG, MF };
 })();
 if (typeof module !== 'undefined') module.exports = Scena;
