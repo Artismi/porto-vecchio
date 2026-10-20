@@ -12083,7 +12083,7 @@ var PezziCitta = (function () {
     vetro: '#7fa3b8', asfalto: '#4a4a48', massicciata: '#7d7467', terra: '#8b7355', acqua: '#3f6f7a', bianco: '#e8e4da', rosso: '#b8322a',
     buio: '#1c1a18', lampada: '#ffe9b0', verde: '#3e6b3a', ottone: '#b08d4a', alluminio: '#b9bcc0', arancio: '#d8772a', giallo: '#e3b23c', blu: '#2a4a7a',
     zinco: '#8c9298', piombo: '#64676a', castano: '#6a3d2c', castanoScuro: '#4a2c22', isabella: '#d6c49a', erba: '#6f7a4a', rotaia: '#8a8580',
-    mattone: '#9a5a40', lamiera: '#7d8288', intonacoGrigio: '#b9b4aa', azzurro: '#8fb0c0', verdeScuro: '#2c3d2e', corda: '#b8a27a', legnoScuro: '#5a4028'
+    mattone: '#9a5a40', lamiera: '#7d8288', intonacoGrigio: '#b9b4aa', azzurro: '#8fb0c0', verdeScuro: '#2c3d2e', corda: '#b8a27a', legnoScuro: '#5a4028', tela: '#a8936a'
   };
   const MC = {};
   function mat(nome) {
@@ -12154,7 +12154,7 @@ var PezziCitta = (function () {
   function ringhiera(g, L, h, m, x, y0, z, ry, passo) {
     const gg = grp(g, x, y0, z, ry), n = Math.max(1, Math.round(L / (passo || 1.5)));
     blocco(gg, L, .05, .05, m, L / 2, h - .05, 0); if (!LOD) blocco(gg, L, .03, .03, m, L / 2, .12, 0);
-    if (!LOD) for (let i = 0; i <= n; i++) blocco(gg, .05, h, .05, m, i * L / n, 0, 0);
+    for (let i = 0; i <= n; i++) if (!LOD || i === 0 || i === n) blocco(gg, .05, h, .05, m, i * L / n, 0, 0);
     return gg;
   }
   // merli lungo +X sopra un muro: hm alti, wm larghi, passo (merlo + vuoto); se tipo 'guelfo' sono squadrati, 'ghibellino' a coda di rondine
@@ -13086,6 +13086,154 @@ var PezziCitta = (function () {
       if (!LOD) for (let x = -2; x <= Lx + 2.01; x += 2.5) { blocco(g, .1, .02, 5, 'bianco', x, .06, zF + 1.6 + 3); blocco(g, .1, .02, 5, 'bianco', x, .06, zF + 1.6 + Dp - 3.2); }
       const gl = lampione(g, 'boom', Lx + 2, zF + 1.6 + Dp / 2, 8); gl.rotation.y = -HP; }
     g.userData.misure = [o.parcheggio ? Lx + 6 : Lx + 1, H + 7, Pz + (o.parcheggio ? 18 : 2)]; return g;
+  };
+
+
+  // ================= 7. LE PIETRE MINUTE E IL GARANTE: gradoni, archi, edicole, acqua, Muro, riflettori =================
+  DOC.gradone = { L: 12, h: 2.4, P: 4, rampa: true, scala: false, ringhiera: true, nota: 'gradone con il muro di sostegno lungo X: muro di tufo a scarpa col fronte a +Z (il piano basso), terrapieno dietro (−Z) fino a quota h, copertina, ringhiera, barbacani con le colature, capperi; la cordonata (rampa coi cordoni) o la scala addossata al fronte che sale lungo +X' };
+  T.gradone = o => {
+    o = def(o, DOC.gradone); const g = new THREE.Group(), L = o.L, h = o.h, P = o.P, k = .12;
+    sezione(g, [[h * k, 0], [0, h], [-P, h], [-P, 0]], L, 'tufo', 0, 0, 0);                         // muro e terrapieno
+    blocco(g, L, .05, P - .5, 'terra', L / 2, h, -P / 2 - .25);
+    blocco(g, L, .16, .6, 'pietraChiara', L / 2, h, -.2, LOD ? 0 : .03);                            // copertina
+    if (o.ringhiera) ringhiera(g, L, 1, 'ferro', 0, h + .16, -.2, 0, 1.2);
+    if (!LOD) for (let x = 1.5; x < L - .5; x += 3) { blocco(g, .12, .12, .3, 'buio', x, h * .3, h * k * .7 - .1); blocco(g, .25, h * .3 - .1, .03, 'tufoScuro', x, .05, h * k * .85 + .01).rotation.x = -Math.atan(k); }   // barbacani e colature
+    capperi(g, Math.max(1, Math.round(L / 5)), L, .3, h - .4, h * k, k, L * 17 + h);
+    if (o.scala || o.rampa) { const W = 1.8, z0 = h * k * .5 + W / 2, cord = !o.scala;                  // la cordonata o la scala addossata
+      const a = cord ? .14 : .17, n = Math.ceil(h / a), pd = Math.min(cord ? .9 : .32, (L - 1.6) / n), aa = h / n, pts = [[0, 0]]; let x = Math.max(0, L - n * pd - 1.4), xi = x; pts[0] = [x, 0];
+      for (let i = 0; i < n; i++) { if (cord) { pts.push([x, aa * i + aa * .4]); x += pd; pts.push([x, aa * (i + 1)]); } else { pts.push([x, aa * (i + 1)]); x += pd; pts.push([x, aa * (i + 1)]); } }
+      pts.push([Math.min(L, x + 1.4), h], [Math.min(L, x + 1.4), 0]); profilo(g, pts, W, cord ? 'pietra' : 'pietraChiara', 0, 0, z0);
+      if (cord && !LOD) for (let i = 0; i < n; i++) blocco(g, .14, .14, W, 'pietraChiara', xi + i * pd + .07, Math.max(0, aa * i + aa * .4 - .1), z0);   // i cordoni
+      if (!LOD) asta(g, [xi + .3, 1, z0 + W / 2 - .05], [x, h + 1, z0 + W / 2 - .05], .03, 'ferro');
+      if (!LOD) { cil(g, .03, .03, 1, 6, 'ferro', xi + .3, 0, z0 + W / 2 - .05); cil(g, .03, .03, 1, 6, 'ferro', x, h, z0 + W / 2 - .05); } }
+    g.userData.misure = [L, h + (o.ringhiera ? 1.16 : .16), P + h * k + (o.scala || o.rampa ? 1.8 : 0)]; return g;
+  };
+
+  DOC.arco_sottopasso = { w: 3, h: 3.4, p: 9, piani: 2, nota: 'casa del borgo traversata da un sottopasso a volta (la strada lungo Z): fornice con la ghiera di conci e la chiave sui due fronti, volta a botte, basoli consumati, lampada sotto la volta, piani sopra con le finestre e le persiane, intonaco scrostato con il tufo che affiora, terrazzo col parapetto' };
+  T.arco_sottopasso = o => {
+    o = def(o, DOC.arco_sottopasso); const g = new THREE.Group(), w = o.w, h = o.h, P = o.p, W = w + 4.4, hp = 3.1, Hh = h + 1 + o.piani * hp, xc = W / 2, r = caso(w * 13 + P);
+    pareteArchi(g, W, Hh, P, [{ x: xc, w, h }], 'intonaco', 0, 0, 0);
+    blocco(g, w + .4, .06, P + 2, 'pietra', xc, 0, 0);                                                 // basoli
+    if (!LOD) for (let z = -P / 2 - .8; z < P / 2 + 1; z += .6) blocco(g, w - .2, .02, .04, 'pietraScura', xc, .06, z);
+    for (const s of [1, -1]) { const gg = grp(g, xc, 0, 0, s > 0 ? 0 : PI);
+      conci(gg, w / 2, .4, 9, 'tufo', 0, h - w / 2, P / 2 - .12); for (const d of [-1, 1]) blocco(gg, .5, h - w / 2, .3, 'tufo', d * (w / 2 + .25), 0, P / 2 - .1, LOD ? 0 : .02);
+      for (let f = 0; f < o.piani; f++) { const y = h + 1.8 + f * hp; for (const d of [-1, 1]) finestra(gg, .9, 1.4, d * (w / 2 + .6), y, P / 2, { persiane: f % 2 ? 'verde' : 'verdeScuro', cimasa: false }); }
+      if (!LOD) for (let k = 0; k < 5; k++) { const ww = .5 + r() * 1.1, hh = .3 + r() * .7, x = -W / 2 + .4 + r() * (W - .8 - ww) + ww / 2, y = .8 + r() * (Hh - 2); if (Math.abs(x) < w / 2 + .6 + ww / 2 && y < h + .6) continue; blocco(gg, ww, hh, .02, 'tufo', x, y, P / 2 + .005); } }   // l'intonaco scrostato
+    blocco(g, W + .1, .9, .3, 'intonaco', xc, Hh, P / 2 - .15); blocco(g, W + .1, .9, .3, 'intonaco', xc, Hh, -P / 2 + .15); blocco(g, W + .2, .1, P + .2, 'pietraChiara', xc, Hh - .1, 0);   // terrazzo col parapetto
+    if (!LOD) { blocco(g, .3, .25, .3, 'ferro', xc, h - .25, 0); blocco(g, .2, .12, .2, 'lampada', xc, h - .37, 0); }
+    g.userData.misure = [W + .2, Hh + .9, P + 2]; return g;
+  };
+
+  DOC.arco_contrasto = { w: 2.6, h: 4, doppio: false, nota: 'arco di contrasto fra due case di un vicolo (il vicolo corre lungo Z, l\'arco scavalca lungo X): le due fette di muro, l\'arco ribassato con la ghiera e il rinfianco murato sopra; doppio = un secondo arco più in alto' };
+  T.arco_contrasto = o => {
+    o = def(o, DOC.arco_contrasto); const g = new THREE.Group(), w = o.w, h = o.h, D = .9, hT = h + w / 2 + 1.8 + (o.doppio ? 3.2 : 0), t = .7;
+    for (const x of [t / 2, t + w + t / 2]) { blocco(g, t, hT, D + .6, 'intonaco', x, 0, 0); if (!LOD) blocco(g, t + .02, .5, D + .62, 'tufoScuro', x, 0, 0); }   // le fette dei muri, con l'umido
+    const geo = geoCache(`AC${w}|${D}|${LOD}`, () => { const s = new THREE.Shape(); s.moveTo(0, 0); s.lineTo(0, w / 2 + .7); s.lineTo(w, w / 2 + .7); s.lineTo(w, 0); s.absarc(w / 2, 0, w / 2, 0, PI, false);
+      const e = new THREE.ExtrudeGeometry(s, { depth: D, bevelEnabled: false, curveSegments: LOD ? 5 : 10 }); e.translate(0, 0, -D / 2); return e; });
+    const arco = y => { add(g, geo, 'tufo', t, y, 0); conci(g, w / 2, D + .08, 7, 'pietraChiara', t + w / 2, y, 0); if (!LOD) blocco(g, w, .12, D + .1, 'pietraChiara', t + w / 2, y + w / 2 + .7, 0); };   // l'arco col rinfianco e la copertina
+    arco(h); if (o.doppio) arco(h + 3.2);
+    g.userData.misure = [w + 2 * t, hT, D + .6]; return g;
+  };
+
+  DOC.edicola_votiva = { h: 2, lume: true, tettuccio: true, nota: 'edicola votiva (centrata nell\'origine) su pilastro d\'angolo: zoccolo, fusto intonacato, nicchia con la cornice di pietra, il quadretto della Madonna con l\'aureola, la mensolina coi fiori e il lume rosso col filo, tettuccio di coppi; h = quota del davanzale della nicchia' };
+  T.edicola_votiva = o => {
+    o = def(o, DOC.edicola_votiva); const g = new THREE.Group(), h = o.h, W = 1.1, D = .6, hn = 1.2, Ht = h + hn + .5;
+    blocco(g, W + .2, .4, D + .2, 'pietra', 0, 0, 0, LOD ? 0 : .03); blocco(g, W, Ht - .4, D, 'intonaco', 0, .4, 0);   // pilastro
+    vano(g, .9, hn + .2, 'arco', 'pietraChiara', 0, h - .1, D / 2 + .03, .06); vano(g, .7, hn, 'arco', 'buio', 0, h, D / 2 + .065, .02);   // cornice e fondo della nicchia
+    blocco(g, .55, .75, .03, 'azzurro', 0, h + .15, D / 2 + .09);                                    // il quadretto
+    if (!LOD) { cil(g, .12, .07, .5, 8, 'bianco', 0, h + .2, D / 2 + .13); add(g, new THREE.SphereGeometry(.07, 8, 6), 'intonaco', 0, h + .76, D / 2 + .13); toro(g, .12, .015, 12, 'ottone', 0, h + .78, D / 2 + .11, 0, 0); }   // la Madonna con l'aureola
+    blocco(g, 1.0, .08, .35, 'pietraChiara', 0, h - .15, D / 2 + .17);                              // la mensolina
+    if (!LOD) { const fio = ['rosso', 'giallo', 'bianco', 'rosso']; fio.forEach((c, i) => { blocco(g, .04, .25, .04, 'verde', -.38 + i * .08, h - .07, D / 2 + .22); add(g, new THREE.SphereGeometry(.06, 6, 4), c, -.38 + i * .08, h + .2, D / 2 + .22); }); blocco(g, .14, .14, .14, 'vetro', -.38 + .12, h - .07, D / 2 + .22); }   // fiori nel vasetto
+    if (o.lume) { cil(g, .06, .05, .16, 8, 'faro', .3, h - .07, D / 2 + .22); if (!LOD) asta(g, [.3, h + .09, D / 2 + .22], [.45, Ht - .1, D / 2 + .02], .01, 'buio'); }   // il lume rosso e il filo
+    if (o.tettuccio) { sezione(g, [[-D / 2 - .1, 0], [D / 2 + .45, 0], [D / 2 + .45, .1], [-D / 2 - .1, .45]], W + .3, 'coppi', -W / 2 - .15, Ht, 0); }
+    else blocco(g, W + .15, .15, D + .15, 'pietraChiara', 0, Ht, 0);
+    g.userData.misure = [W + .3, Ht + .45, D + .9]; return g;
+  };
+
+  DOC.pozzo = { r: .8, arco: true, nota: 'pozzo (centrato nell\'origine): piattaforma con lo scalino, puteale tondo di pietra con l\'orlo, archetto di ferro battuto con la carrucola, la catena e il secchio di zinco appoggiato; senza arco, il coperchio di legno' };
+  T.pozzo = o => {
+    o = def(o, DOC.pozzo); const g = new THREE.Group(), r = o.r, hP = .9;
+    cil(g, r + .8, r + .8, .15, 16, 'pietra', 0, 0, 0);                                                // la piattaforma
+    tornito(g, [[r - .15, 0], [r + .18, 0], [r + .18, hP - .12], [r + .25, hP - .1], [r + .25, hP], [r - .2, hP], [r - .2, hP - .1], [r - .15, hP - .12], [r - .15, 0]], 18, 'pietraChiara', 0, .15, 0);   // puteale con l'orlo
+    add(g, new THREE.CircleGeometry(r - .15, 16), 'buio', 0, .3, 0, -HP);                              // il buio del pozzo
+    if (o.arco) { for (const s of [-1, 1]) blocco(g, .05, 1.6, .05, 'ferroScuro', s * (r + .05), .15 + hP, 0);
+      toro(g, r + .05, .025, 16, 'ferroScuro', 0, .15 + hP + 1.6, 0, 0, 0, PI);                          // l'archetto
+      if (!LOD) { const yc = .15 + hP + 1.6 + r + .05 - .12; cilZ(g, .12, .05, 10, 'ferro', 0, yc, 0); blocco(g, .02, r + .8, .02, 'ferro', .12, yc - (r + .8), 0);
+        tornito(g, [[0, 0], [.13, 0], [.17, .28], [0, .28]], 10, 'zinco', .12, yc - (r + .8) - .28, 0); } }   // carrucola, catena e secchio
+    else { cil(g, r + .2, r + .2, .08, 16, 'legno', 0, .15 + hP, 0); }
+    if (!LOD) tornito(g, [[0, 0], [.14, 0], [.18, .3], [0, .3]], 10, 'zinco', r + .5, .15, .3);         // un secchio a terra
+    g.userData.misure = [2 * r + 1.6, .15 + hP + (o.arco ? 1.6 + r + .03 : .08), 2 * r + 1.6]; return g;
+  };
+
+  DOC.lavatoio = { L: 6, tettoia: true, nota: 'lavatoio pubblico: vasca lunga di pietra con l\'acqua, le lastre inclinate per sfregare sui due lati lunghi, la cannella di ghisa in testa col suo pilastrino, lo scolo; tettoia su pilastri di tufo con le travi e i coppi; selciato' };
+  T.lavatoio = o => {
+    o = def(o, DOC.lavatoio); const g = new THREE.Group(), L = o.L, W = 1.6, hv = .85, xc = L / 2 + .6;
+    blocco(g, L + 3.2, .08, W + 3.4, 'pietra', xc, 0, 0);                                             // selciato
+    blocco(g, L, hv, W, 'pietraChiara', xc, .08, 0, LOD ? 0 : .03); blocco(g, L - .3, .03, W - .3, 'acqua', xc, .08 + hv - .15, 0);   // vasca e acqua
+    if (!LOD) for (const s of [-1, 1]) for (let x = .6; x < L; x += 1.1) { const b = blocco(g, .9, .06, .5, 'pietra', xc - L / 2 + x, .08 + hv - .05, s * (W / 2 - .05)); b.rotation.x = s * .35; }   // lastre per sfregare
+    blocco(g, .4, 1.5, .4, 'pietraChiara', xc - L / 2 - .2, .08, 0); cilX(g, .04, .4, 6, 'ghisa', xc - L / 2 + .2, .08 + 1.2, 0);   // pilastrino e cannella
+    if (!LOD) cil(g, .015, .015, 1.2 - hv + .15, 6, 'acqua', xc - L / 2 + .38, .08 + hv - .15, 0);     // il filo d'acqua
+    if (o.tettoia) { const hT = 2.6, Wt = W + 2.6;
+      for (const x of [-L / 2 - .8, L / 2 + .8]) for (const s of [-1, 1]) blocco(g, .4, hT, .4, 'tufo', xc + x, .08, s * (Wt / 2 - .3), LOD ? 0 : .03);
+      for (const s of [-1, 1]) blocco(g, L + 2.4, .22, .2, 'legno', xc, .08 + hT, s * (Wt / 2 - .3));
+      if (!LOD) for (let x = -L / 2 - .8; x <= L / 2 + .81; x += .9) blocco(g, .12, .12, Wt, 'legno', xc + x, .08 + hT + .22, 0);
+      tettoFalde(g, L + 2.4, Wt - .4, .9, 'coppi', xc - L / 2 - 1.2, .08 + hT + (LOD ? .22 : .34), 0, .35); }
+    g.userData.misure = [L + 3.2, o.tettoia ? 4.1 : 1.6, W + 3.4]; return g;
+  };
+
+  DOC.fontana = { h: 2.6, lati: 8, cannelle: 2, r: 2.2, nota: 'fontana di piazza (centrata nell\'origine): gradino, vasca poligonale di pietra con l\'orlo e l\'acqua, fusto con la tazza alta, il pomo, le cannelle di ghisa a mascherone coi fili d\'acqua nella vasca' };
+  T.fontana = o => {
+    o = def(o, DOC.fontana); const g = new THREE.Group(), R = o.r, n = Math.max(4, o.lati), H = o.h, hv = .6, ry = PI / n;
+    add(g, new THREE.CylinderGeometry(R + .5, R + .55, .18, n), 'pietra', 0, .09, 0, 0, ry);                  // gradino
+    add(g, new THREE.CylinderGeometry(R, R, hv, n), 'pietraChiara', 0, .18 + hv / 2, 0, 0, ry);              // vasca
+    add(g, new THREE.CylinderGeometry(R + .08, R + .08, .1, n), 'pietraChiara', 0, .18 + hv + .05, 0, 0, ry);   // orlo
+    add(g, new THREE.CylinderGeometry(R - .15, R - .15, .02, n), 'acqua', 0, .18 + hv + .02, 0, 0, ry);
+    tornito(g, [[0, 0], [.42, 0], [.42, .2], [.28, .35], [.22, H - .8], [.3, H - .6], [.25, H - .5], [0, H - .5]], 12, 'pietraChiara', 0, .18 + hv, 0);   // fusto
+    tornito(g, [[0, 0], [.2, 0], [.75, .25], [.8, .35], [0, .35]], 14, 'pietraChiara', 0, .18 + hv + H - .6, 0);   // tazza
+    tornito(g, [[0, 0], [.14, 0], [.18, .15], [.08, .3], [.1, .38], [0, .45]], 10, 'pietraChiara', 0, .18 + hv + H - .25, 0);   // pomo
+    for (let k = 0; k < o.cannelle; k++) { const gk = grp(g, 0, 0, 0, k * 2 * PI / o.cannelle), yc = .18 + hv + 1;
+      if (!LOD) add(gk, new THREE.SphereGeometry(.13, 8, 6), 'pietraChiara', 0, yc, .27);               // mascherone
+      cilZ(gk, .035, .35, 6, 'ghisa', 0, yc, .42);
+      if (!LOD) cil(gk, .02, .02, 1 - .02, 6, 'acqua', 0, .18 + hv + .02, .58); }                         // filo d'acqua
+    g.userData.misure = [2 * R + 1.1, .18 + hv + H - .25 + .45, 2 * R + 1.1]; return g;
+  };
+
+  DOC.muro_garante = { L: 24, h: 3.6, posto_blocco: true, riflettore: true, settore: 'SETTORE 4', nota: 'il Muro del Garante: lastre prefabbricate di cemento a L coi giunti, la fascia dipinta e la scritta del settore a stencil, filo spinato a spirale sui bracci; il varco del posto di blocco in mezzo (strada lungo Z) con la sbarra, la garitta di lamiera, i cavalli di Frisia, i sacchi di sabbia, il cartello ALT; il palo col riflettore. Il fronte (+Z) è il lato dei controllati' };
+  T.muro_garante = o => {
+    o = def(o, DOC.muro_garante); const g = new THREE.Group(), L = o.L, h = o.h, pw = 1.2, wv = o.posto_blocco ? 6 : 0, xv = L / 2, r = caso(L * 3 + h);
+    blocco(g, L, .05, 2.2, 'cemento', L / 2, 0, -.6);                                                 // la platea
+    const lastre = []; for (let x = 0; x + pw <= L + .01; x += pw) if (!wv || x + pw <= xv - wv / 2 + .01 || x >= xv + wv / 2 - .01) lastre.push(x);
+    lastre.forEach(x => { blocco(g, pw - .03, h, .2, 'cemento', x + pw / 2, .05, 0); if (!LOD) { blocco(g, pw - .03, .2, 1.2, 'cemento', x + pw / 2, .05, -.7); blocco(g, pw - .03, .5, .02, (Math.floor(x / pw) % 2) ? 'giallo' : 'buio', x + pw / 2, .9, .11); } });   // lastre a L e la fascia
+    if (!LOD) { lastre.forEach((x, i) => { if (i % 2 === 0) { blocco(g, .04, .45, .5, 'ferro', x + pw / 2, h + .05, 0).rotation.x = .5; toro(g, .25, .015, 10, 'ferroScuro', x + pw / 2, h + .45, .15, 0, HP); } });   // bracci e filo spinato
+      blocco(g, L, .02, .02, 'ferroScuro', L / 2, h + .45, .2); blocco(g, L, .02, .02, 'ferroScuro', L / 2, h + .3, .1);
+      const xs = lastre[Math.min(2, lastre.length - 1)] + .1; scritta(g, o.settore, 2.6, .5, xs + 1.2, 2.2, .11, 0, '#e8e4da');
+      for (let k = 0; k < 4; k++) blocco(g, .3, 1 + r() * 1.5, .02, 'cementoScuro', r() * L, h - 2.4 + r(), .11); }
+    if (wv) { const zb = 2.2; blocco(g, wv + 7, .05, 6, 'cemento', xv, 0, 2.8);   // la piazzola del posto di blocco
+      blocco(g, wv, .06, 9, 'asfalto', xv, 0, 0); blocco(g, wv, .02, .2, 'bianco', xv, .06, zb + .4);   // la strada nel varco e la linea d'arresto
+      const xp = xv - wv / 2 + .4; blocco(g, .5, 1, .5, 'cemento', xp, 0, zb); const sb = blocco(g, wv - .6, .12, .12, strisce('rosso', 'bianco', 5, false), xp + (wv - .6) / 2, 1, zb); sb.position.y = 1.06;   // la sbarra
+      const gk = grp(g, xv + wv / 2 + 1.5, 0, 2.4); blocco(gk, 1.8, 2.3, 1.8, 'lamiera', 0, .1, 0); blocco(gk, 2.1, .12, 2.1, 'lamiera', 0, 2.4, 0); blocco(gk, 1.9, .1, 1.9, 'cemento', 0, 0, 0);   // la garitta
+      blocco(gk, 1.4, .7, .04, 'vetro', 0, 1.3, .91); blocco(gk, .04, .7, 1.2, 'vetro', -.91, 1.3, 0); vano(gk, .7, 1.9, 'rett', 'ferroScuro', .5, .1, -.92, .04);
+      if (!LOD) { blocco(gk, .06, .06, .7, 'ferro', .5, 2.52, 0); blocco(gk, .3, .22, .22, 'ferroScuro', .5, 2.52, .35); }   // il faretto sul tetto
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 2 - (i % 2); j++) blocco(g, .6, .25, .35, 'tela', xv - wv / 2 - 1.2 + j * .62 + (i % 2) * .31, i * .25, 1.2, LOD ? 0 : .06);   // sacchi di sabbia
+      for (const dx of [-wv / 2 - 2.6, wv / 2 + 3.8]) { const gf = grp(g, xv + dx, 0, 4.2, .4); for (let k = 0; k < 3; k++) { const b = blocco(gf, .1, 1.6, .1, 'ferro', 0, -.3, 0); b.rotation.set(k ? .7 : 0, k * PI / 3, k ? 0 : .7); b.position.y = .65; } }   // cavalli di Frisia
+      const gc = grp(g, xv - wv / 2 - .4, 0, zb + 1.4); cil(gc, .04, .04, 2.2, 6, 'ferro', 0, 0, 0); blocco(gc, 1, .6, .04, 'rosso', 0, 1.6, .05); scritta(gc, 'ALT', .8, .45, 0, 1.9, .08, 0, '#ffffff');   // il cartello
+      for (const s of [-1, 1]) blocco(g, .5, h + .6, .5, 'cemento', xv + s * (wv / 2 + .25), .05, 0, LOD ? 0 : .03); }
+    if (o.riflettore) { const xr = Math.min(L - .6, (wv ? xv + wv / 2 + .25 : L / 2)); cil(g, .09, .07, h + 3, 8, 'ferro', xr, .05, -.4);
+      for (const s of [-1, 1]) { const gr2 = grp(g, xr + s * .35, h + 3, -.2); blocco(gr2, .45, .35, .3, 'ferroScuro', 0, 0, 0).rotation.x = .5; blocco(gr2, .38, .28, .02, 'lampada', 0, .08, .17).rotation.x = .5; }
+      blocco(g, .9, .06, .06, 'ferro', xr, h + 2.95, -.3); }
+    g.userData.misure = [L + (wv ? 2.6 : 0), h + (o.riflettore ? 3.5 : .7), wv ? 9 : 2.2]; return g;
+  };
+
+  DOC.palo_riflettori = { h: 12, n: 4, nota: 'palo dei riflettori del Garante: plinto di cemento, cassetta elettrica, fusto tronco-conico zincato con i pioli e il cavo, corona in cima e n riflettori in file da tre puntati in basso verso +Z' };
+  T.palo_riflettori = o => {
+    o = def(o, DOC.palo_riflettori); const g = new THREE.Group(), h = o.h, n = Math.max(1, o.n), rb = .14 + h * .006;
+    blocco(g, 1, .5, 1, 'cemento', 0, 0, 0, LOD ? 0 : .04); cil(g, rb, .08, h - .5, 10, 'alluminio', 0, .5, 0);   // plinto e fusto
+    if (!LOD) { blocco(g, .4, .55, .22, 'lamiera', 0, .9, -rb - .1); for (let y = 2.5; y < h - .5; y += .4) blocco(g, .3, .03, .1, 'ferro', 0, y, -(rb - (rb - .08) * (y - .5) / (h - .5)) - .03); cil(g, .02, .02, h - 1.5, 6, 'buio', rb - .02, 1, 0); }   // cassetta, pioli, cavo
+    const nr = Math.ceil(n / 3), wq = Math.min(3, n) * .6 + .2;
+    blocco(g, wq, .08, .4, 'ferroScuro', 0, h, .1); for (let k = 1; k < nr; k++) blocco(g, wq, .08, .08, 'ferroScuro', 0, h + k * .55, .1); if (nr > 1) for (const s of [-1, 1]) blocco(g, .06, nr * .55 - .5, .06, 'ferroScuro', s * (wq / 2 - .03), h, .1);   // la corona
+    for (let i = 0; i < n; i++) { const row = Math.floor(i / 3), col = i % 3, nc = Math.min(3, n - row * 3), gr2 = grp(g, (col - (nc - 1) / 2) * .6, h + .08 + row * .55, .25);
+      const b = blocco(gr2, .48, .4, .3, 'ferroScuro', 0, 0, 0); b.rotation.x = .45; const v = blocco(gr2, .4, .32, .02, 'lampada', 0, .04, .16); v.rotation.x = .45; }
+    g.userData.misure = [Math.max(1, wq), h + nr * .55 + .2, 1]; return g;
   };
 
   const TIPI = Object.keys(T);
