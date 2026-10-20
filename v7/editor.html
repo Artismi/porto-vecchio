@@ -49074,7 +49074,7 @@ var Render = (function () {
     X.roof = torre || X.annesso ? 'flat' : era === 'E0' ? (hq < .58 ? 'cotto' : 'flat') : era === 'E3' ? (hq < .8 ? 'cotto' : 'flat') : 'flat';
     X.lowParapet = era === 'E0' || era === 'E2';
     if (era === 'E4' && b.portico && fl >= 2) X.portico = faceOf(b);
-    if (era === 'E2' && fl >= 2 && b.door && b.w * TS >= 6 && r() < .6) X.scala = { f: faceOf(b) };
+    if (era === 'E2' && fl >= 2 && r() < .85) X.scala = {};   // il lato lo sceglie buildModular: il primo lato libero sulla strada dove la scala ci sta
     X.r = r; return X;
   }
   // ---- i pezzi, tutti nell'atlante delle parti (fB): si fondono col resto della casa ----
@@ -49266,9 +49266,11 @@ var Render = (function () {
         else { ground.push([doorK, X ? X.door : kind === 'civic' ? 'wall-doorway-round' : 'wall-doorway-square', 1]); used.add(doorK); }
       }
       // [epoche] la marina: la scala esterna sale lungo la facciata della porta fino al primo piano; i moduli sotto i gradini restano muro pieno
-      if (X && X.scala && sd.f === X.scala.f && doorK >= 0 && !shop && !(PP && PP.f === sd.f) && !X.scala.ok) { const run = EP_RUN(), L = sd.n * TS, uD = doorK * TS + 1;
-        for (const dir of [1, -1]) { const uS = uD, uE = uS + dir * (.65 + run); if (uE > .25 && uE < L - .25 && uS - .65 > .1 && uS + .65 < L - .1) { Object.assign(X.scala, { ok: true, u: uS, dir }); break; } }
-        if (X.scala.ok) for (let k = 0; k < sd.n; k++) { const u = k * TS + 1, a = Math.min(X.scala.u - .9, X.scala.u + X.scala.dir * (.65 + run)), c = Math.max(X.scala.u + .9, X.scala.u + X.scala.dir * (.65 + run)); if (k !== doorK && u > a - 1 && u < c + 1) used.add(k), ground.push([k, 'wall', 1]); } }
+      if (X && X.scala && sd.n >= 3 && !shop && !(PP && PP.f === sd.f) && !X.scala.ok) { const run = EP_RUN(), L = sd.n * TS, T0 = G.T;
+        const free = k => { const v = G.tileAt(...sd.tile(k)); return v === T0.VIA || v === T0.WALK || v === T0.PIAZZA || v === T0.COB || v === T0.QUAY || v === T0.DIRT; };
+        const ks = doorK >= 0 ? [doorK] : Array.from({ length: sd.n }, (_, k) => k);   // il pianerottolo sopra la porta, se c'è; se no dove ci sta
+        for (const kk of ks) { if (X.scala.ok) break; const uD = kk * TS + 1; for (const dir of [1, -1]) { const uE = uD + dir * (.65 + run); if (uE > .25 && uE < L - .25 && uD - .65 > .1 && uD + .65 < L - .1 && free(kk) && free(Math.min(sd.n - 1, Math.max(0, Math.floor((uD + dir * 2.2) / TS))))) { Object.assign(X.scala, { ok: true, u: uD, dir, f: sd.f }); break; } } }
+        if (X.scala.ok) for (let k = 0; k < sd.n; k++) { const u = k * TS + 1, a = Math.min(X.scala.u - .9, X.scala.u + X.scala.dir * (.65 + run)), c = Math.max(X.scala.u + .9, X.scala.u + X.scala.dir * (.65 + run)); if (k !== doorK && u > a - 1 && u < c + 1) used.add(k), ground.push([k, 'wall', 1]); } }   // sotto i gradini e il pianerottolo, muro pieno
       for (let k = 0; k < sd.n; k++) if (!used.has(k)) ground.push([k, inMural(sd, k, base) ? 'wall' : X && X.era === 'E0' && th(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45 ? 'wall' : (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
       // nota: sul piano terra le finestre si alternano col muro pieno, partendo dalla porta (ritmo regolare)
       ground.forEach(([k, name, span]) => {
@@ -49348,6 +49350,7 @@ var Render = (function () {
     shadowed(grp);
     const merged = mergeGroup(grp); shadowed(merged); scene.add(merged);
     const rec = { b, flat: roofKind === 'flat', grp: merged, fade: 0, box3: new THREE.Box3(new THREE.Vector3(x0 + .3, low, z0 + .3), new THREE.Vector3(x0 + w - .3, top + 2.5, z0 + d - .3)), mats: [] };
+    if (!b.__tierOf && !b.__tierBase) rotRec(rec, merged);   // [epoche] la casa che segue la strada gira tutta: prima giravano solo facciate, dettagli e tetti, e le falde dritte spuntavano dalle facciate girate
     ownMats(merged, rec); dyn.buildings.push(rec);
     rec.geo = { x0, z0, w, d, y0: base, H: hgt }; if (!b.__tierOf) DZ.bRec[i] = rec; rec.tier = !!b.__tierOf;
     if (b.sign) addSign(b, base, w, d, x0, z0, top, base + 3.0, base + 2.55);
