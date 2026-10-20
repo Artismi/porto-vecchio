@@ -3680,10 +3680,11 @@ var Render = (function () {
     let prog = 'falde';
     if (flat) {
       const Wt = [['pulito', 4], ['tecnico', 18], ['vissuto', borgo ? 18 : 8], ['colombaia', 9], ['orto', borgo ? 11 : 7], ['ritrovo', 10], ['cantiere', 6],   /* [ordine1] ci si sale su ogni tetto: ognuno ha la sua storia */ ['giardino', borgo && w >= 5 && d >= 5 ? 8 : 0], ['pergola', borgo && w >= 5 && d >= 5 ? 5 : 0],
-        ['volume', big && fl >= 2 ? 22 : 0], ['insegna', fl >= 3 && big && b.use ? 9 : 0], ['regime', civic(kd) ? 60 : dd === 'centro' ? 7 : 4]];
+        ['volume', big && fl >= 2 ? 22 : 0], ['insegna', fl >= 3 && big && b.use && (!b.era || b.era === 'E6') ? 9 : 0], ['regime', civic(kd) ? 60 : b.era && b.era !== 'E4' ? 1 : dd === 'centro' ? 7 : 4]];   // [epoche] le insegne sui tetti solo nel boom, il regime sui palazzi suoi
       let tot = 0; Wt.forEach(q => tot += q[1]); let t = th(b.x || 0, b.y || 0, 977) * tot; prog = Wt[Wt.length - 1][0];
       for (const q of Wt) { t -= q[1]; if (t < 0) { prog = q[0]; break; } }
       if (w < 3.6 || d < 3.6) prog = 'pulito';
+      if (b.era && b.era !== 'E7' && th(b.x || 0, b.y || 0, 2203) < .4) prog = 'vuoto';   // [epoche] quattro tetti su dieci sono vuoti (solo il lastrico col suo tempo): si legge la città, non il ciarpame
     }
     const hi = th(b.x || 0, b.y || 0, 1979);
     P = { prog, ins: hi < .4 ? 'cartellone' : hi < .72 ? 'serbatoio' : 'neon', x0, z0, w, d, occ: [], n: {}, lim: { antenna: 1, dish: prog === 'tecnico' ? 2 : 1, ac: prog === 'tecnico' ? 3 : 2, tank: 1, volume: 1, torrino: 1 } };
@@ -3787,6 +3788,203 @@ var Render = (function () {
     const pos = sd.f === 'S' ? { x: x0 + mid, z: z0 + d, yaw: 0 } : { x: x0 + w, z: z0 + d - mid, yaw: Math.PI / 2 };
     return { f: sd.f, k0, k1: k0 + span, pw, ph, yc: base + .3 + H / 2, ...pos, defaced: r() < .22, top: base + H, mural: !civic && r() < .5 };   /* [unione3] [muri1] metà delle case comuni: il murale della gente */
   }
+  // ================= [epoche] L'ARCHITETTURA PER EPOCA =================
+  // Nella città nuova ogni casa porta b.era (world_cittanuova.js) e da lì discendono tinte, finestre, tetto e i pezzi di rilievo: tutti
+  // modellati (cornici con spessore e smusso, davanzali col gocciolatoio, persiane a stecche, ringhiere coi montanti, pilastri, archi coi
+  // conci, comignoli, coppi con l'onda) e fusi nell'atlante delle parti (FA.mat): un solo materiale in più per casa, zero decalcomanie finte.
+  // E0 borgo: calce e pastelli sbiaditi, cantonali di pietra, finestre piccole fuori griglia, persiane verde Genova, portoncini ad arco coi
+  //    conci, balconcini ≤ 0,8 m, archetti di contrasto fra case opposte nei vicoli, coppi a falda bassa (colmo lungo la via) o lastrico col
+  //    parapetto basso; le case-torre in pietra, strette, con poche finestre.
+  // E2 marina: case strette e alte coi colori di Procida, finestre ad arco, scala esterna con la volta sotto, archi dei magazzini, terrazzi.
+  // E3 Ottocento: rosso Genova e ocra, bugnato a fasce al piano terra, marcapiani e cornicione, finestre allineate con cornice e timpano al
+  //    piano nobile, balconi in ferro battuto ≤ 1 m, portone ad arco coi conci, tegole con gli abbaini.
+  // E4 regime: travertino, portico a pilastri quadrati (b.portico) aperto alle testate, finestre a nastro, cornicione piatto, lettere lapidarie
+  //    sull'attico, lastrico. E6 boom: cemento, balconi continui 1,5 m coi pannelli arancio e verde, tapparelle, lastrico col torrino.
+  // E7 (baracche, buildShack): lamiera, mattoni forati, pilastri di cemento coi ferri d'armatura che spuntano.
+  // Usura: la stessa delle altre case (plasterize sui moduli, decalcomanie di buildCase), non uniforme; la pietra ha la grana dell'atlante.
+  const EPOCHE = {
+    E0: { pal: [['#efe8da', '#e2d9c6'], ['#ebe2d0', '#ddd2bc'], ['#e6d8c0', '#d6c6a8'], ['#e4cdb6', '#d2b89e'], ['#dcd7c6', '#cac4b0'], ['#e9dcc6', '#d9c9ae'], ['#e2d2c4', '#cfbcaa'], ['#ded8c8', '#cfc7b2'], ['#e8dfd0', '#d8cdb8']],
+      torre: [['#b5aa96', '#c8bfae'], ['#aa9f8c', '#bfb5a2'], ['#bcb09a', '#cfc4b0']], persiane: ['#2f5a3e', '#346a48', '#3b6650', '#2c5240', '#3a5e46'], pietra: '#a89e8c', pietraS: '#948a78' },
+    E2: { pal: [['#e8b47c', '#f0dcb8'], ['#d98d6c', '#efd4bc'], ['#efd3a0', '#f6ead0'], ['#c9bfd6', '#e6e0ee'], ['#a9c3b0', '#d6e2d6'], ['#ebe4d4', '#f4f0e6'], ['#d86c6a', '#f0cfc4'], ['#e4a06a', '#f2d9bc'], ['#8fb0c4', '#d2e0e8']],
+      persiane: ['#2f5a3e', '#4a6a8a', '#6a4a3a', '#3b6650', '#2c4a6a'], pietra: '#c9bfae', pietraS: '#b0a692' },
+    E3: { pal: [['#c4614a', '#efe6d4'], ['#c96a52', '#f0e8d8'], ['#d9a35c', '#f2ead8'], ['#e2bf86', '#f4ecdc'], ['#e5c98a', '#f6efe0'], ['#cdc3b2', '#f0ebe0'], ['#bf5b46', '#ece2d0'], ['#d08a58', '#f0e4d0']],
+      persiane: ['#4a5a3e', '#58626a', '#3e4e3a', '#6a5a4a', '#3a4a48'], pietra: '#d8cfbe', pietraS: '#c4baa8' },
+    E4: { pal: [['#e2d8c0', '#ece4d0'], ['#dcd2ba', '#e8e0cc'], ['#e6ddc8', '#efe8d6']], pietra: '#d4c9b0', pietraS: '#c6baa0',
+      lapidi: ['ORDINE E LAVORO', 'CASA DEL POPOLO', 'ISTITUTO DI PREVIDENZA', 'PALAZZO DELLE POSTE', 'OPERA DI TUTELA', 'ANNO XIV', 'CREDERE OBBEDIRE', 'DISCIPLINA'] },
+    E6: { pal: [['#9a968e', '#b4b0a8'], ['#a8a49c', '#c0bcb4'], ['#8e8a84', '#a8a49c'], ['#b0aca0', '#c6c2b8'], ['#a49c90', '#bcb4a8']], pannelli: ['#c8702e', '#4f7a56', '#b85a28', '#5e7e5a', '#d08a3c', '#3f6a48'], pietra: '#8a8680', pietraS: '#76726c' },
+  };
+  const EPL = {};   // lettere lapidarie: un materiale per parola, condiviso fra i palazzi
+  function epLapide(text, hex) {
+    const key = text + hex; if (EPL[key]) return EPL[key];
+    const c = mk(512, 64), x = c.getContext('2d'); x.fillStyle = hex; x.fillRect(0, 0, 512, 64);
+    const r = rng(text.length * 77); for (let i = 0; i < 300; i++) { x.fillStyle = shade(hex, .92 + r() * .14); x.fillRect(Math.floor(r() * 512), Math.floor(r() * 64), 2, 1); }
+    let fz = 40; x.font = '400 ' + fz + 'px "Times New Roman", Georgia, serif'; while (fz > 14 && x.measureText(text).width > 470) x.font = '400 ' + (--fz) + 'px "Times New Roman", Georgia, serif';
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillStyle = 'rgba(255,250,240,.55)'; x.fillText(text, 257, 34);                 // il bordo inciso che prende la luce
+    x.fillStyle = shade(hex, .42); x.fillText(text, 255, 32);                         // il fondo dell'incisione
+    const t = canvasTex(c); return EPL[key] = std({ map: t, roughness: .9, polygonOffset: true, polygonOffsetFactor: -1 });
+  }
+  // il piano dell'epoca, deciso PRIMA di montare i moduli: tavolozza, finestre, tetto, dove va il portico e la scala esterna
+  function epPiano(b, i) {
+    const EP = b.era && EPOCHE[b.era]; if (!EP) return null;
+    const r = rng(i * 557 + 23), era = b.era, torre = !!b.torre, fl = Math.max(1, b.fl || 1);
+    const P = torre ? EP.torre : EP.pal, pal = P[(i * 7 + (b.style || 0)) % P.length];
+    const X = { era, EP, pal, torre, annesso: !!b.annesso, portico: null, scala: null, stone: EP.pietra, stoneS: EP.pietraS || shade(EP.pietra, .86) };
+    X.persiane = EP.persiane ? EP.persiane[Math.floor(r() * EP.persiane.length)] : null;
+    // finestre: piccole fuori griglia (E0), ad arco (E2), con la cornice (E3), a nastro (E4, E6)
+    X.upper = era === 'E0' ? (r() < .6 ? 'wall-window-square' : 'wall-window-round') : era === 'E2' ? 'wall-window-round' : era === 'E3' ? 'wall-window-square-detailed' : 'wall-window-wide-square';
+    X.winP = era === 'E0' ? (torre ? .32 : .62) : era === 'E2' ? .75 : 1;   // quante colonne hanno davvero la finestra
+    X.door = era === 'E4' || era === 'E6' ? 'wall-doorway-square' : 'wall-doorway-round';
+    // tetto: coppi a falda bassa o lastrico nel borgo, terrazzi sulla marina, tegole con abbaini nell'Ottocento, lastrico per regime e boom
+    const hq = th(b.x, b.y, 1511);
+    X.roof = torre || X.annesso ? 'flat' : era === 'E0' ? (hq < .58 ? 'cotto' : 'flat') : era === 'E3' ? (hq < .8 ? 'cotto' : 'flat') : 'flat';
+    X.lowParapet = era === 'E0' || era === 'E2';
+    if (era === 'E4' && b.portico && fl >= 2) X.portico = faceOf(b);
+    if (era === 'E2' && fl >= 2 && r() < .85) X.scala = {};   // il lato lo sceglie buildModular: il primo lato libero sulla strada dove la scala ci sta
+    X.r = r; return X;
+  }
+  // ---- i pezzi, tutti nell'atlante delle parti (fB): si fondono col resto della casa ----
+  const epAt = (fr, o, u, y, z) => { o.position.set(u, y, z); fr.add(o); return o; };
+  // cornice con spessore e smusso: la fascia e sotto il gocciolatoio più stretto
+  function epCornice(fr, u, y, L, out, h, hex) { epAt(fr, fB(L, h, out, hex, 'concrete', .02), u, y, out / 2 - .04); epAt(fr, fB(L - .04, h * .55, out * .55, shade(hex, .9), 'concrete', .015), u, y - h * .75, out * .275 - .04); }
+  // davanzale: lastra sporgente e il gocciolatoio
+  function epDavanzale(fr, u, y, ww, hex) { epAt(fr, fB(ww + .3, .07, .24, hex, 'concrete', .015), u, y, .08); epAt(fr, fB(ww + .18, .05, .1, shade(hex, .8), 'concrete', .01), u, y - .06, .03); }
+  // timpano: la trabeazione e le due falde di pietra che si incontrano al centro
+  function epTimpano(fr, u, y, ww, hex) {
+    const W = ww + .4; epAt(fr, fB(W, .1, .16, hex, 'concrete', .015), u, y, .06);
+    const a = .42, L = W / 2 / Math.cos(a) + .02;
+    [-1, 1].forEach(s => { const f = fB(L, .09, .16, hex, 'concrete', .015); f.rotation.z = -s * a; epAt(fr, f, u + s * W / 4, y + .12 + Math.tan(a) * W / 4, .06); });
+  }
+  // ringhiera di ferro: due correnti, i montanti ogni 13 cm, la fascia in mezzo
+  function epRinghiera(fr, u, y, L, h, hex, z) {
+    epAt(fr, fB(L, .04, .04, hex, 'rust', 0), u, y + h, z); epAt(fr, fB(L, .03, .03, hex, 'rust', 0), u, y + .07, z); epAt(fr, fB(L, .025, .025, hex, 'rust', 0), u, y + h * .55, z);
+    const n = Math.max(2, Math.round(L / .13)); for (let k = 0; k <= n; k++) epAt(fr, fB(.02, h, .02, hex, 'rust', 0), u - L / 2 + k * L / n, y + h / 2, z);
+  }
+  // balcone: lastra di pietra con lo smusso, due mensole, ringhiera sui tre lati
+  function epBalcone(fr, u, y, L, deep, stone, iron, h) {
+    epAt(fr, fB(L, .12, deep, stone, 'concrete', .02), u, y, deep / 2 - .02); epAt(fr, fB(L - .1, .05, deep - .12, shade(stone, .82), 'concrete', .01), u, y - .085, deep / 2 - .06);
+    [-1, 1].forEach(s => epAt(fr, fB(.14, .24, deep - .2, shade(stone, .9), 'concrete', .015), u + s * (L / 2 - .2), y - .18, (deep - .2) / 2 - .02));
+    epRinghiera(fr, u, y + .06, L - .04, h, iron, deep - .05);
+    [-1, 1].forEach(s => { const g = new THREE.Group(); g.position.set(u + s * (L / 2 - .02), 0, (deep - .07) / 2); g.rotation.y = Math.PI / 2; fr.add(g); epRinghiera(g, 0, y + .06, deep - .1, h, iron, 0); });
+  }
+  // arco coi conci attorno a un vano: i piedritti e la ghiera di n conci, ognuno girato col suo angolo
+  function epArco(fr, u, ySpr, R, dep, hex, n, yBase, zc) {
+    const t = .26, Rm = R + t / 2, wT = 2 * Rm * Math.sin(Math.PI / (2 * n)) + .015, z = zc !== undefined ? zc : dep / 2 - .04;
+    for (let k = 0; k < n; k++) { const a = Math.PI * (k + .5) / n, c = fB(wT, t, dep, k === Math.floor(n / 2) ? shade(hex, .92) : hex, 'concrete', .015); c.rotation.z = a - Math.PI / 2; epAt(fr, c, u + Math.cos(a) * Rm, ySpr + Math.sin(a) * Rm, z); }
+    if (yBase !== undefined) [-1, 1].forEach(s => { epAt(fr, fB(t, ySpr - yBase, dep, hex, 'concrete', .015), u + s * Rm, (ySpr + yBase) / 2, z); epAt(fr, fB(t + .1, .12, dep + .04, shade(hex, .9), 'concrete', .015), u + s * Rm, ySpr - .06, z + .02); });
+  }
+  // piattabanda: conci in fila a ventaglio sopra un vano largo
+  function epPiattabanda(fr, u, y, W, dep, hex) { const n = Math.max(5, Math.round(W / .32)) | 1; for (let k = 0; k < n; k++) { const t = (k + .5) / n - .5, c = fB(W / n + .01, .3, dep, k === (n >> 1) ? shade(hex, .9) : hex, 'concrete', .012); c.rotation.z = -t * .5; epAt(fr, c, u + t * W, y + Math.abs(t) * .04, dep / 2 - .04); } }
+  // cantonali di pietra a uno spigolo: blocchi alterni lunghi e corti dal basso in alto
+  function epCantonali(fr, u, s, y0, H, hex) { for (let y = y0 + .22, j = 0; y < y0 + H - .2; y += .46, j++) { const bw = j % 2 ? .36 : .58; epAt(fr, fB(bw, .43, .2, j % 3 === 1 ? shade(hex, .93) : hex, 'concrete', .02), u + s * bw / 2, y, .06); } }
+  // bugnato a fasce del piano terra: blocchi in rilievo, il giunto fra una fascia e l'altra, niente sopra i vani
+  function epBugnato(fr, L, y0, H, hex, holes) {
+    const rowH = .46, bl = .92;
+    for (let y = y0 + rowH / 2, j = 0; y < y0 + H - .1; y += rowH, j++) {
+      const off = (j % 2) * bl / 2; for (let u = -off + bl / 2; u < L + bl / 2; u += bl) {
+        const uA = Math.max(0, u - bl / 2), uB = Math.min(L, u + bl / 2); if (uB - uA < .2) continue;
+        if (holes.some(h => uB > h[0] && uA < h[1] && y - y0 < h[2])) continue;
+        epAt(fr, fB(uB - uA - .035, rowH - .035, .14, j % 4 === 2 ? shade(hex, .94) : hex, 'concrete', .025), (uA + uB) / 2, y, .03);
+      }
+    }
+  }
+  // pilastro quadrato del portico, con la base e il capitello piatto
+  function epPilastro(fr, u, y, h, s, hex, z) { epAt(fr, fB(s, h, s, hex, 'concrete', .02), u, y + h / 2, z); epAt(fr, fB(s + .12, .14, s + .12, shade(hex, .9), 'concrete', .02), u, y + .07, z); epAt(fr, fB(s + .1, .1, s + .1, shade(hex, .95), 'concrete', .015), u, y + h - .05, z); }
+  // la scala esterna della marina: pianerottolo davanti alla porta del primo piano, gradini lungo la facciata, il parapetto, la volta sotto
+  const EP_RUN = () => Math.round((MG - .2) / .26) * .22;   // quanto corre la scala lungo la facciata (13 gradini da 22 cm di pedata)
+  // la scala esterna della marina: il pianerottolo a sbalzo sopra il portoncino (con le mensole), i gradini di muratura piena lungo la
+  // facciata, il sottoscala con la volta ad arco e i conci, il parapetto in pendenza con la copertina, la ringhiera sul pianerottolo
+  function epScala(fr, u, base, H, dir, hex, railC) {
+    const n = Math.round((H - .2) / .26), step = .22, hs = H / (n + 1), run = n * step;
+    epAt(fr, fB(1.3, .18, 1.1, hex, 'concrete', .02), u, base + H - .09, .55);
+    [-1, 1].forEach(s => { const m = fB(.16, .34, .8, shade(hex, .9), 'concrete', .02); epAt(fr, m, u + s * .5, base + H - .35, .4); });
+    for (let j = 0; j < n; j++) { const yT = base + H - (j + 1) * hs, uj = u + dir * (.65 + step / 2 + j * step); epAt(fr, fB(step + .01, yT - base, 1.0, hex, 'concrete', .01), uj, base + (yT - base) / 2, .5); epAt(fr, fB(step + .04, .03, 1.04, shade(hex, 1.06), 'concrete', 0), uj, yT - .015, .52); }
+    const ua = u + dir * 1.3; epArco(fr, ua, base + 1.0, .4, .12, shade(hex, .86), 7, base, .97); epAt(fr, fB(.8, 1.4, .02, '#1c1814', 'solid', 0), ua, base + .7, 1.005);   // la volta del sottoscala
+    const ang = Math.atan2(n * hs, run), Lp = Math.hypot(run, n * hs), um = u + dir * (.65 + run / 2), ym = base + H - n * hs / 2;
+    const pw = fB(Lp, .8, .12, hex, 'concrete', .012); pw.rotation.z = -dir * ang; epAt(fr, pw, um, ym + .4 - hs / 2, .94);
+    const cp = fB(Lp + .06, .06, .18, shade(hex, .86), 'concrete', .01); cp.rotation.z = -dir * ang; epAt(fr, cp, um, ym + .82 - hs / 2, .94);
+    epRinghiera(fr, u - dir * .02, base + H, 1.26, .9, railC, 1.07); return true;
+  }
+  // l'archetto di contrasto fra due case opposte in un vicolo (uno ogni trenta metri): la ghiera di conci che scavalca la via, sopra la lastra
+  function epArchetto(fr, u, ySpr, gap, hex) {
+    const ag = new THREE.Group(); ag.position.set(u, 0, 0); ag.rotation.y = -Math.PI / 2; fr.add(ag);   // nel telaio dell'arco x corre verso la casa di fronte
+    const R = gap / 2 - .02; epArco(ag, gap / 2, ySpr, R, .6, hex, 9, undefined, 0);
+    epAt(fr, fB(.66, .18, gap + .36, shade(hex, .86), 'concrete', .02), u, ySpr + R + .26 + .09, gap / 2);
+  }
+  // il piano terra visto da sopra: quali moduli di muro hanno un vano, per il bugnato
+  function epHoles(b, f, L) { const H = []; (b.__win || []).forEach(W0 => { if (W0.f !== f || !W0.g || W0.name === 'wall' || W0.name === 'wall-low') return; const D = WIN[W0.name]; H.push([W0.u - (D ? D[0] / 2 : 1) - .12, W0.u + (D ? D[0] / 2 : 1) + .12, W0.name.includes('doorway') ? 2.5 : 2.2]); }); return H; }
+  // i rilievi della casa, dopo i moduli: per lato un telaio come in buildCase (u lungo il muro, z verso fuori)
+  function epDecora(b, i, X, grp, G0) {
+    const { x0, z0, w, d, base, top, fl } = G0, r = rng(i * 911 + 41), era = X.era, EP = X.EP, stone = X.stone, stoneS = X.stoneS, iron = '#26262c', T = G.T;
+    const open = (tx, ty) => { const v = G.tileAt(tx, ty); return v === T.VIA || v === T.WALK || v === T.PIAZZA || v === T.COB || v === T.QUAY || v === T.DIRT; };
+    const FACES = {
+      S: { L: w, p: [x0, z0 + d], yaw: 0, tile: k => [b.x + k, b.y + b.h], n: b.w, N: [0, 1] },
+      N: { L: w, p: [x0 + w, z0], yaw: Math.PI, tile: k => [b.x + b.w - 1 - k, b.y - 1], n: b.w, N: [0, -1] },
+      E: { L: d, p: [x0 + w, z0 + d], yaw: Math.PI / 2, tile: k => [b.x + b.w, b.y + b.h - 1 - k], n: b.h, N: [1, 0] },
+      W: { L: d, p: [x0, z0], yaw: -Math.PI / 2, tile: k => [b.x - 1, b.y + k], n: b.h, N: [-1, 0] },
+    };
+    Object.keys(FACES).forEach(f => { const F = FACES[f]; let o = 0, v = 0; for (let k = 0; k < F.n; k++) { const t = G.tileAt(...F.tile(k)); if (open(...F.tile(k))) o++; if (t !== T.BLD) v++; } F.open = o / F.n >= .5; F.vis = v / F.n >= .5; F.cam = f === 'S' || f === 'E'; });
+    const frames = {}, fr = f => { if (frames[f]) return frames[f]; const F = FACES[f], a = new THREE.Group(); a.position.set(F.p[0], 0, F.p[1]); a.rotation.y = F.yaw; grp.add(a); return frames[f] = a; };
+    const face0 = faceOf(b), PP = b.__prop, inMural = (f, u) => PP && PP.f === f && u > PP.k0 * TS - .3 && u < PP.k1 * TS + .3;
+    const wins = (b.__win || []).filter(W0 => FACES[W0.f].vis && !inMural(W0.f, W0.u) && W0.name.includes('window') && !W0.po);
+    const showF = Object.keys(FACES).filter(f => FACES[f].vis), camF = showF.filter(f => FACES[f].cam || FACES[f].open);
+    const hgt = top - base, floorY = f => base + MG + (f - 1) * MF;
+    b.__epTrim = true;   // buildCase: davanzali e architravi li fa qui l'epoca
+    // ---- davanzali su tutte le finestre che si vedono (pietra dell'epoca); le finestre a nastro hanno la soglia continua ----
+    wins.forEach(W0 => { const D = WIN[W0.name]; if (!D || (W0.g && X.portico === W0.f)) return; const yc = W0.y + D[2]; if (W0.name.includes('wide')) { if (era === 'E6') return; epAt(fr(W0.f), fB(D[0] + .2, .06, .18, stone, 'concrete', .012), W0.u, yc - D[1] / 2 - .04, .05); } else epDavanzale(fr(W0.f), W0.u, yc - D[1] / 2 - .05, D[0], stone); });
+    if (era === 'E0' || era === 'E2') {
+      // cantonali di pietra agli spigoli che si vedono (sulle case-torre su tutti), più fitti in basso
+      showF.forEach(f => { const F = FACES[f]; if (!F.cam && !X.torre) return; [0, F.L].forEach((u, q) => { if (!X.torre && r() > .7) return; epCantonali(fr(f), u, q === 0 ? 1 : -1, base, X.torre ? hgt : Math.min(hgt, MG + MF * (1 + Math.floor(r() * 2))), stoneS); }); });
+      // il portoncino ad arco coi conci di pietra
+      (b.__win || []).filter(W0 => W0.g && W0.name === 'wall-doorway-round' && FACES[W0.f].vis).forEach(W0 => epArco(fr(W0.f), W0.u, base + 1.6, .56, .22, stoneS, 7, base));
+      (b.__win || []).filter(W0 => W0.g && W0.name === 'wall-doorway-wide-round' && FACES[W0.f].vis).forEach(W0 => { epArco(fr(W0.f), W0.u, base + 1.05, 1.62, .22, stoneS, 11, base); });   // l'arco del magazzino
+      // cornicetta sopra le finestre piccole (una lastra di pietra), balconcini corti, non più di uno per piano
+      wins.forEach(W0 => { const D = WIN[W0.name]; if (!D || W0.g || W0.name.includes('wide')) return; if (r() < .55) epAt(fr(W0.f), fB(D[0] + .24, .09, .16, stone, 'concrete', .015), W0.u, W0.y + D[2] + D[1] / 2 + .08, .04); });
+      for (let f = 1; f < fl; f++) { const cand = wins.filter(W0 => !W0.g && FACES[W0.f].cam && FACES[W0.f].open && Math.abs(W0.y - floorY(f)) < .01 && W0.u > .9 && W0.u < FACES[W0.f].L - .9); if (cand.length && r() < (era === 'E2' ? .55 : .4)) { const W0 = pick(r, cand), D = WIN[W0.name]; epBalcone(fr(W0.f), W0.u, W0.y + D[2] - D[1] / 2 - .1, D[0] + .7, era === 'E2' ? .75 : .6, stone, iron, .85); } }
+      // l'archetto di contrasto: dal lato S o E, se di fronte, oltre un vicolo di una o due caselle, c'è un'altra casa del borgo
+      if (era === 'E0' && !X.torre && fl >= 2) ['S', 'E'].forEach(f => { const F = FACES[f]; if (!F.vis || F.n < 2) return;
+        const k = Math.floor(F.n / 2), t0 = F.tile(k); if (!open(...t0)) return; let gap = 0;
+        for (let q = 1; q <= 2 && !gap; q++) { const tx = t0[0] + F.N[0] * q, ty = t0[1] + F.N[1] * q, v = G.tileAt(tx, ty); if (v === T.BLD) { const bi = M.world && M.world.bIndex ? M.world.bIndex[ty * G.GW + tx] : -1, ob = bi >= 0 ? G.BUILDINGS[bi] : null; if (ob && ob !== b && ob.era === 'E0' && Math.max(1, ob.fl || 1) >= 2) gap = q * TS; } else if (!open(tx, ty)) break; }
+        if (!gap || th(t0[0], t0[1], 4040) > .14) return;
+        epArchetto(fr(f), k * TS + 1, base + MG + .9, gap, stoneS); });
+    }
+    if (era === 'E3') {
+      // bugnato a fasce al piano terra, marcapiani a ogni piano, cornicione coi due gradi
+      camF.forEach(f => { const F = FACES[f]; epBugnato(fr(f), F.L, base + .05, MG - .12, shade(X.pal[1], .96), epHoles(b, f, F.L)); });
+      showF.forEach(f => { const F = FACES[f]; for (let q = 1; q < fl; q++) epCornice(fr(f), F.L / 2, floorY(q) - .02, F.L + .06, .14, .16, X.pal[1]); epCornice(fr(f), F.L / 2, top - .18, F.L + .3, X.roof === 'flat' ? .32 : .22, .3, X.pal[1]); });
+      // il piano nobile: timpano sulle finestre; sopra, la cornice piana; il portone ad arco coi conci
+      wins.forEach(W0 => { const D = WIN[W0.name]; if (!D || W0.g) return; const yT = W0.y + D[2] + D[1] / 2 + .1; if (Math.abs(W0.y - floorY(1)) < .01) epTimpano(fr(W0.f), W0.u, yT, D[0], stone); else epAt(fr(W0.f), fB(D[0] + .3, .1, .14, stone, 'concrete', .015), W0.u, yT, .04); });
+      (b.__win || []).filter(W0 => W0.g && W0.name.includes('doorway') && FACES[W0.f].vis).forEach(W0 => { if (W0.name.includes('wide')) epPiattabanda(fr(W0.f), W0.u, base + 2.32, 3.4, .2, stone); else epArco(fr(W0.f), W0.u, base + 1.62, .58, .22, stone, 9, base); });
+      // balconi in ferro battuto al piano nobile, allineati alle finestre, mai più lunghi di un metro di sbalzo
+      const cand = wins.filter(W0 => !W0.g && FACES[W0.f].cam && FACES[W0.f].open && Math.abs(W0.y - floorY(1)) < .01 && W0.u > 1 && W0.u < FACES[W0.f].L - 1);
+      cand.forEach((W0, q) => { if (q % 2 !== (i % 2) || r() > .75) return; const D = WIN[W0.name]; epBalcone(fr(W0.f), W0.u, W0.y + D[2] - D[1] / 2 - .1, D[0] + .9, .95, stone, iron, .95); });
+    }
+    if (era === 'E4') {
+      // cornicione piatto, fascia dell'attico con le lettere lapidarie sul fronte, zoccolo di travertino
+      showF.forEach(f => { const F = FACES[f]; epAt(fr(f), fB(F.L + .36, .22, .42, X.pal[1], 'concrete', .02), F.L / 2, top - .11, .15); epAt(fr(f), fB(F.L + .1, .5, .08, X.pal[1], 'concrete', .01), F.L / 2, top - .55, .03); if (!X.portico || X.portico !== f) epAt(fr(f), fB(F.L + .06, .6, .1, stoneS, 'concrete', .015), F.L / 2, base + .3, .03); });
+      const ff = FACES[face0] && FACES[face0].vis ? face0 : camF[0]; if (ff && FACES[ff].L >= 8 && fl >= 3) { const txt = EP.lapidi[(i * 3 + b.x) % EP.lapidi.length], pl = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(FACES[ff].L * .7, 11), .66), epLapide(txt, X.pal[1])); pl.userData.keep = true; epAt(fr(ff), pl, FACES[ff].L / 2, top - .55, .075); }
+    }
+    if (era === 'E6') {
+      // balconi continui sui lati che si vedono e danno sulla strada: soletta 1,5 m, parapetto coi pannelli colorati e tratti di ringhiera
+      const cem = X.pal[0], pan = EP.pannelli[(i * 5) % EP.pannelli.length], pan2 = EP.pannelli[(i * 5 + 3) % EP.pannelli.length];
+      camF.filter(f => FACES[f].open && FACES[f].L >= 6 && !(PP && PP.f === f)).forEach(f => { const F = FACES[f], L = F.L - .3; if (f !== face0 && r() < .4) return;
+        for (let q = 1; q < fl; q++) { const y = floorY(q) - .09; epAt(fr(f), fB(L, .18, 1.5, cem, 'concrete', .02), F.L / 2, y, .73);
+          for (let k = 0; k < F.n; k++) { const u = k * TS + 1, pw = Math.min(TS - .1, L - Math.abs(u - F.L / 2) * 2); if (pw < .6) continue; const panel = (k + q + i) % 3 !== 0;
+            if (panel) { epAt(fr(f), fB(pw - .08, .92, .06, (k + q) % 2 ? pan : pan2, 'plastic', .01), u, y + .56, 1.44); epAt(fr(f), fB(pw - .02, .05, .1, cem, 'concrete', .01), u, y + 1.04, 1.44); }
+            else epRinghiera(fr(f), u, y + .09, pw - .06, .95, '#3a3c40', 1.44); } } });
+      // tapparelle: una su due abbassata a metà, davanti al vetro
+      wins.forEach(W0 => { const D = WIN[W0.name]; if (!D || W0.g || r() > .55) return; const hh = D[1] * (.3 + r() * .5); epAt(fr(W0.f), fB(D[0] - .06, hh, .04, pick(r, ['#d9d2bc', '#c8c0a8', '#b8b0a0']), 'slat', .005), W0.u, W0.y + D[2] + D[1] / 2 - hh / 2, .03); epAt(fr(W0.f), fB(D[0] + .1, .14, .12, cem, 'concrete', .01), W0.u, W0.y + D[2] + D[1] / 2 + .06, .04); });
+    }
+    if (era === 'E2' && X.scala && X.scala.ok) { const S = X.scala; epScala(fr(S.f), S.u, base, MG, S.dir, shade(X.pal[1], .98), iron); }
+    // il portico del regime: pilastri quadrati ogni quattro metri sul filo della facciata (le testate aperte), la trave, il soffitto e il
+    // pavimento di travertino; il muro del piano terra sta due metri dentro (lo montano i moduli spostati in buildModular)
+    if (X.portico) { const f = X.portico, F = FACES[f], g = fr(f), trav = X.pal[1], s = .7, hp = MG - .38;
+      for (let u = 0; u <= F.L + .01; u += 2 * TS) epPilastro(g, Math.min(u, F.L), base, hp, u === 0 || u >= F.L - .01 ? .8 : s, trav, -.36);
+      if ((F.n % 2) === 1) epPilastro(g, F.L, base, hp, .8, trav, -.36);
+      epAt(g, fB(F.L + .4, .38, TS + .1, trav, 'concrete', .02), F.L / 2, base + MG - .2, -TS / 2 + .02);
+      epAt(g, fB(F.L + .2, .1, TS, shade(trav, .94), 'concrete', .01), F.L / 2, base + .05, -TS / 2);
+    }
+  }
   function buildModular(b, i, base, low, plinth) {
     if (b.tiers && !b.__tierOf && !b.__tierBase) {   // [isola31] il corpo pieno fino al primo gradone, poi i volumi sopra (con il terrazzo davanti)
       const t0 = b.tiers[0], bb = Object.create(b); bb.fl = t0.f0; bb.__tierBase = true; buildModular(bb, i, base, low, plinth);
@@ -3796,15 +3994,23 @@ var Render = (function () {
       return;
     }
     const r = rng(i * 97 + 11), w = b.w * TS, d = b.h * TS, x0 = b.x * TS, z0 = b.y * TS, cx = x0 + w / 2, cz = z0 + d / 2;
-    const kind = modKind(b), P = PALS[kind], pal = P[(i * 7 + (b.style || 0) + (b.__tierOf ? 3 + b.__tierK * 5 : 0)) % P.length];
+    const kind = modKind(b), P = PALS[kind], X = kind === 'borgo' && !b.__tierOf && !b.__tierBase ? epPiano(b, i) : null;   // [epoche] l'epoca decide tinte, finestre e tetto
+    const pal = X ? X.pal : P[(i * 7 + (b.style || 0) + (b.__tierOf ? 3 + b.__tierK * 5 : 0)) % P.length];
     // tetto: in città coppi, qualche ardesia e qualche terrazzo piano; magazzini in lamiera; caserme e palazzi civici piani
-    const roofKind = b.__tierBase ? 'flat' : b.__tierOf ? pick(r, ['flat', 'flat', 'tin']) : kind === 'port' ? 'tin' : kind === 'mil' || kind === 'civic' ? 'flat' : kind === 'farm' ? 'cotto' : pick(r, ['flat', 'flat', 'flat', 'flat', 'slate', 'slate']);   // [inverno] tetti piatti quasi ovunque
-    const PA = [pal[0], pal[1], roofKind === 'flat' ? '#a8a29a' : '#5a5560', kind === 'port' ? '#7a7f88' : '#3a3a44'], mat = palMat(PA);
-    const CS = caseScheme(b, i, kind, PA, Math.max(1, b.fl)), matG = CS.g || mat, matF = f => CS.split && f >= CS.split ? CS.u : mat; let LW = null; b.__win = [];   // [case]
+    const roofKind0 = b.__tierBase ? 'flat' : b.__tierOf ? pick(r, ['flat', 'flat', 'tin']) : kind === 'port' ? 'tin' : kind === 'mil' || kind === 'civic' ? 'flat' : kind === 'farm' ? 'cotto' : pick(r, ['flat', 'flat', 'flat', 'flat', 'slate', 'slate']);   // [inverno] tetti piatti quasi ovunque
+    const roofKind = X ? X.roof : roofKind0;
+    const PA = [pal[0], pal[1], roofKind === 'flat' ? (X ? shade(pal[1], .9) : '#a8a29a') : '#5a5560', kind === 'port' ? '#7a7f88' : '#3a3a44'], mat = palMat(PA);
+    const CS = X ? (X.torre || X.era === 'E4' || X.era === 'E6' ? {} : { g: palMat([X.era === 'E3' ? shade(pal[1], .92) : shade(pal[0], .9), pal[1], PA[2], PA[3]]) }) : caseScheme(b, i, kind, PA, Math.max(1, b.fl)), matG = CS.g || mat, matF = f => CS.split && f >= CS.split ? CS.u : mat; let LW = null; b.__win = [];   // [case] [epoche] lo zoccolo dell'epoca: intonaco più scuro, il bugnato dell'Ottocento è chiaro
     const fl = Math.max(1, b.fl), hgt = MG + (fl - 1) * MF, top = base + hgt, grp = new THREE.Group();
-    const upper = kind === 'port' ? 'wall-window-wide-square' : kind === 'civic' ? (b.gov ? 'wall-window-wide-square' : 'wall-window-round-detailed') : kind === 'mil' ? 'wall-window-square' : kind === 'farm' ? 'wall-window-square' : pick(r, ['wall-window-square-detailed', 'wall-window-square-detailed', 'wall-window-square', 'wall-window-round-detailed']);
+    const upper = X ? X.upper : kind === 'port' ? 'wall-window-wide-square' : kind === 'civic' ? (b.gov ? 'wall-window-wide-square' : 'wall-window-round-detailed') : kind === 'mil' ? 'wall-window-square' : kind === 'farm' ? 'wall-window-square' : pick(r, ['wall-window-square-detailed', 'wall-window-square-detailed', 'wall-window-square', 'wall-window-round-detailed']);
     const lit = litMat(pick(r, LIT)), litShop = litMat('#ffd890'), dark = std({ color: '#100c16', roughness: 1 });
-    const shutM = null; // [inverno] niente persiane liguri
+    const shutM = null; // [inverno] niente persiane liguri ([epoche] le persiane a stecche le monta buildCase, del colore dell'epoca)
+    if (X) { b.__ep = X; b.__epPers = X.persiane; }
+    // [epoche] il portico del regime: il piano terra del lato sotto i pilastri arretra di una casella; le testate restano aperte
+    const PO = X && X.portico, poIn = (sd, k) => { if (!PO) return false; if (sd.f === PO) return false; const q = sd.at(k); return PO === 'S' ? q[1] > z0 + d - TS : PO === 'N' ? q[1] < z0 + TS : PO === 'E' ? q[0] > x0 + w - TS : q[0] < x0 + TS; };
+    const poShift = (sd, q) => { if (!PO || sd.f !== PO) return q; const N = { S: [0, -1], N: [0, 1], E: [-1, 0], W: [1, 0] }[PO]; return [q[0] + N[0] * TS, q[1] + N[1] * TS]; };
+    // [epoche] la finestra di un modulo esiste davvero? Il borgo ha le finestre piccole e rade, non in griglia: decide la colonna e il piano
+    const winHere = (sd, k, f) => !X || X.winP >= 1 || th(b.x * 31 + k + (sd.f.charCodeAt(0) << 4), b.y + f * 3, 1601) < X.winP || (f === 1 && k === Math.floor(sd.n / 2));
     const face0 = faceOf(b);
     const PP = b.__prop !== undefined ? b.__prop : (b.__prop = propPlan(b, i, kind, fl, base, x0, z0, w, d)); b.__top = top; b.__gwall = {}; b.__wallHex = pal[0];   // [inverno24] [ordine1] la tinta per i torrini
     const inMural = (sd, k, y) => PP && PP.f === sd.f && k >= PP.k0 && k < PP.k1;   // tutta l'altezza: piano terra compreso
@@ -3823,21 +4029,28 @@ var Render = (function () {
       const used = new Set(), ground = [];
       if (doorK >= 0) {
         if ((shop || b.warehouse) && sd.n >= 2) { const k2 = doorK + 1 < sd.n ? doorK : doorK - 1; ground.push([k2, b.warehouse ? 'wall-doorway-wide-square' : 'wall-doorway-wide-round', 2]); used.add(k2); used.add(k2 + 1); }
-        else { ground.push([doorK, kind === 'civic' ? 'wall-doorway-round' : 'wall-doorway-square', 1]); used.add(doorK); }
+        else { ground.push([doorK, X ? X.door : kind === 'civic' ? 'wall-doorway-round' : 'wall-doorway-square', 1]); used.add(doorK); }
       }
-      for (let k = 0; k < sd.n; k++) if (!used.has(k)) ground.push([k, inMural(sd, k, base) ? 'wall' : (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
+      // [epoche] la marina: la scala esterna sale lungo la facciata della porta fino al primo piano; i moduli sotto i gradini restano muro pieno
+      if (X && X.scala && sd.n >= 3 && !shop && !(PP && PP.f === sd.f) && !X.scala.ok) { const run = EP_RUN(), L = sd.n * TS, T0 = G.T;
+        const free = k => { const v = G.tileAt(...sd.tile(k)); return v === T0.VIA || v === T0.WALK || v === T0.PIAZZA || v === T0.COB || v === T0.QUAY || v === T0.DIRT; };
+        const ks = doorK >= 0 ? [doorK] : Array.from({ length: sd.n }, (_, k) => k);   // il pianerottolo sopra la porta, se c'è; se no dove ci sta
+        for (const kk of ks) { if (X.scala.ok) break; const uD = kk * TS + 1; for (const dir of [1, -1]) { const uE = uD + dir * (.65 + run); if (uE > .25 && uE < L - .25 && uD - .65 > .1 && uD + .65 < L - .1 && free(kk) && free(Math.min(sd.n - 1, Math.max(0, Math.floor((uD + dir * 2.2) / TS))))) { Object.assign(X.scala, { ok: true, u: uD, dir, f: sd.f }); break; } } }
+        if (X.scala.ok) for (let k = 0; k < sd.n; k++) { const u = k * TS + 1, a = Math.min(X.scala.u - .9, X.scala.u + X.scala.dir * (.65 + run)), c = Math.max(X.scala.u + .9, X.scala.u + X.scala.dir * (.65 + run)); if (k !== doorK && u > a - 1 && u < c + 1) used.add(k), ground.push([k, 'wall', 1]); } }   // sotto i gradini e il pianerottolo, muro pieno
+      for (let k = 0; k < sd.n; k++) if (!used.has(k)) ground.push([k, inMural(sd, k, base) ? 'wall' : X && X.era === 'E0' && th(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45 ? 'wall' : (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
       // nota: sul piano terra le finestre si alternano col muro pieno, partendo dalla porta (ritmo regolare)
       ground.forEach(([k, name, span]) => {
-        const isWin = name.includes('window'), gm = shop ? litShop : (r() < .3 ? lit : null); if (name === 'wall') for (let s2 = 0; s2 < span; s2++) if (!inMural(sd, k + s2, base)) (b.__gwall[sd.f] = b.__gwall[sd.f] || []).push(k + s2);
-        const pc = modPiece(grp, name, matG, ...xyz(span === 2 ? sd.at(k + .5) : sd.at(k), base), sd.rot, isWin ? gm : null);
-        b.__win.push({ f: sd.f, k, u: (span === 2 ? k + .5 : k) * TS + 1, y: base, name, g: true, lit: !!(isWin && gm), shop });   // [case]
+        if (poIn(sd, k) || (span === 2 && poIn(sd, k + 1))) return;   // [epoche] sotto il portico la testata è aperta
+        const isWin = name.includes('window'), gm = shop ? litShop : (r() < .3 ? lit : null); if (name === 'wall' && !(PO && PO === sd.f)) for (let s2 = 0; s2 < span; s2++) if (!inMural(sd, k + s2, base)) (b.__gwall[sd.f] = b.__gwall[sd.f] || []).push(k + s2);
+        const pc = modPiece(grp, name, matG, ...xyz(poShift(sd, span === 2 ? sd.at(k + .5) : sd.at(k)), base), sd.rot, isWin ? gm : null);
+        b.__win.push({ f: sd.f, k, u: (span === 2 ? k + .5 : k) * TS + 1, y: base, name, g: true, lit: !!(isWin && gm), shop, po: PO === sd.f });   // [case]
         if (name === 'wall-doorway-square' || name === 'wall-doorway-round') { const dr = Kit.get('bkit/door-rotate-square-a'); dr.traverse(m => { if (m.isMesh) m.material = mat; }); dr.position.set(-.06, 0, -.46); pc.add(dr); }
         if (name.includes('doorway')) litPanel(pc, name, shop || b.warehouse ? litShop : dark);
         { const N = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[sd.f], q = span === 2 ? sd.at(k + .5) : sd.at(k);   // [inverno30] luce che esce
           if (name.includes('doorway') && shop) addSpill(q[0] + N[0] * .7, q[1] + N[1] * .7, N[0], N[1], '#ffc070', 2.2, 7);
           else if (isWin && gm) addSpill(q[0] + N[0] * .6, q[1] + N[1] * .6, N[0], N[1], gm === litShop ? '#ffc880' : '#ffb060', 1.1, 5); }
         if (shutM && name === 'wall-window-square') shutters(pc, shutM);
-        for (let s = 0; s < span; s++) modPiece(grp, 'wall-low', matG, ...xyz(sd.at(k + s), base + MF), sd.rot);
+        for (let s = 0; s < span; s++) modPiece(grp, 'wall-low', matG, ...xyz(poShift(sd, sd.at(k + s)), base + MF), sd.rot);
       });
       row('border', sd, base + MG - .02);
       // piani superiori: lo stesso modulo su tutta la colonna
@@ -3850,7 +4063,8 @@ var Render = (function () {
           for (; k + 1 < sd.n; k += 2) { if (inMural(sd, k, y) || inMural(sd, k + 1, y)) { modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k), y), sd.rot); modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k + 1), y), sd.rot); continue; } modPiece(grp, upper, matF(f), ...xyz(sd.at(k + .5), y), sd.rot, LW = r() < .35 ? lit : null); b.__win.push({ f: sd.f, k, u: (k + .5) * TS + 1, y, name: upper, lit: !!LW }); }
         } else for (let k = 0; k < sd.n; k++) {
           // sul retro (nord e ovest, visti solo quando la camera gira) una finestra semplice ogni due moduli
-          const back = sd.f === 'N' || sd.f === 'W', nm = inMural(sd, k, y) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
+          const back = sd.f === 'N' || sd.f === 'W', stD = X && X.scala && X.scala.ok && sd.f === X.scala.f && f === 1 && Math.abs(k * TS + 1 - X.scala.u) < .1;   // [epoche] la porta del pianerottolo della scala esterna
+          const nm = inMural(sd, k, y) ? 'wall' : stD ? 'wall-doorway-round' : !winHere(sd, k, f) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
           const pc = modPiece(grp, nm, matF(f), ...xyz(sd.at(k), y), sd.rot, LW = r() < .3 ? lit : null); b.__win.push({ f: sd.f, k, u: k * TS + 1, y, name: nm, lit: !!LW });   // [case]
           if (nm !== 'wall' && shutM && !back) shutters(pc, shutM);
         }
@@ -3861,36 +4075,48 @@ var Render = (function () {
     [[x0, z0], [x0 + w, z0], [x0, z0 + d], [x0 + w, z0 + d]].forEach(([px, pz], q) => {
       for (let y = 0; y < hgt - .01; y += MF) { const c = Kit.get('bkit/column-thin'); c.traverse(m => { if (m.isMesh) m.material = mat; }); c.position.set(px, base + y, pz); c.scale.y = Math.min(1, (hgt - y) / MF); grp.add(c); }
     });
-    const core = box(w - .5, hgt - .1, d - .5, dark); core.position.set(cx, base + hgt / 2, cz); grp.add(core);
+    if (!PO) { const core = box(w - .5, hgt - .1, d - .5, dark); core.position.set(cx, base + hgt / 2, cz); grp.add(core); }
+    else {   // [epoche] il nucleo scuro: al piano terra arretra col muro del portico
+      const core = box(w - .5, hgt - MG, d - .5, dark); core.position.set(cx, base + MG + (hgt - MG) / 2 - .05, cz); grp.add(core);
+      const sx = PO === 'E' || PO === 'W' ? TS : 0, sz = PO === 'S' || PO === 'N' ? TS : 0, gx = PO === 'E' ? -TS / 2 : PO === 'W' ? TS / 2 : 0, gz = PO === 'S' ? -TS / 2 : PO === 'N' ? TS / 2 : 0;
+      const c2 = box(w - .5 - sx, MG, d - .5 - sz, dark); c2.position.set(cx + gx, base + MG / 2, cz + gz); grp.add(c2); }
+    if (X) epDecora(b, i, X, grp, { x0, z0, w, d, base, top, fl });   // [epoche] i rilievi dell'epoca, fusi con la casa
     if (roofKind === 'flat') {   // [ordine1] lastrico in scala vera, parapetto con la copertina, bocchettoni; le cose sopra le mette il programma del tetto (buildRoofs)
       const deck = box(w, .12, d, deckMat1(flatKind1(b, i), w, d)); deck.position.set(cx, top + .02, cz); grp.add(deck);
+      if (X && X.lowParapet) {   // [epoche] il lastrico del borgo e della marina: parapetto basso (50 cm) che si vede ma non nasconde
+        const pt = .28, ph = .5; [[cx, z0 + pt / 2, w, pt], [cx, z0 + d - pt / 2, w, pt], [x0 + pt / 2, cz, pt, d - 2 * pt], [x0 + w - pt / 2, cz, pt, d - 2 * pt]].forEach(([px, pz, pw, pd]) => { const m = fB(pw, ph, pd, pal[0], 'concrete', .02); m.position.set(px, top + ph / 2, pz); grp.add(m); });
+        copertina1(grp, x0 + pt / 2 - .14, z0 + pt / 2 - .14, w - pt + .28, d - pt + .28, top + ph, .3, X.stone);
+      } else {
       sides.forEach(sd => row('border-high', sd, top));
-      if (!b.__tierBase) copertina1(grp, x0, z0, w, d, top + kitH1('bkit/border-high'), .32, kind === 'civic' ? '#d8d2c6' : shade(pal[1] || '#d8d2c4', .82));
+      if (!b.__tierBase) copertina1(grp, x0, z0, w, d, top + kitH1('bkit/border-high'), .32, kind === 'civic' ? '#d8d2c6' : shade(pal[1] || '#d8d2c4', .82)); }
       r(); r(); if (kind === 'borgo' && r() < .6) for (let k = 0; k < 12; k++) r();   // (serbatoio e vasi di prima: il caso resta quello, la città disposta uguale)
     } else {   // [ordine1] falde vere: coppi, ardesia o lamiera; capanna, padiglione o falda unica; gronde, pluviali, comignoli sul colmo
       if (roofKind !== 'tin') { for (let k = 0; k < 1 + Math.floor(r() * 2); k++) { r(); r(); r(); } if (r() < .6) r(); }
       const r2 = rng(i * 733 + 5), rk = roofKind === 'tin' ? 'lamiera' : roofKind === 'slate' ? (r2() < .45 ? 'ardesia' : 'coppi') : 'coppi', sq = Math.min(w, d) >= 6 && Math.abs(w - d) <= 4.1;
       const shape = rk === 'lamiera' ? (b.__tierOf ? 'falda' : 'capanna') : kind === 'farm' ? 'capanna' : sq && r2() < .55 ? 'padiglione' : 'capanna';
       const p0 = rk === 'lamiera' ? .2 : rk === 'ardesia' ? .5 : .38, pitch = Math.min(p0, Math.atan(3.2 / (Math.min(w, d) / 2)));
-      const T = tetto1({ x0, z0, w, d, y: top, base: low, kind: rk, shape, pitch, ov: rk === 'lamiera' ? .35 : .5, wallHex: pal[0], r: r2, chim: rk === 'lamiera' ? 0 : 1 + Math.floor(r2() * 2), kindV: rk === 'lamiera' ? (kind === 'port' ? 0 : Math.floor(r2() * 3)) : r2() < .3 ? 1 : 0,
-        tint: rk === 'lamiera' && kind === 'mil' ? '#a4aa90' : null, gutter: kind === 'farm' ? 'rame' : true, rafters: rk === 'coppi', sky: rk !== 'lamiera' && r2() < .22, dormer: rk !== 'lamiera' && kind !== 'farm' && r2() < .4 });
+      const EPT = X ? (X.era === 'E3' ? { pitch: Math.min(.42, pitch), shape: sq && r2() < .5 ? 'padiglione' : 'capanna', ov: .55, dormer: r2() < .7, sky: false, kindV: 0 }   // [epoche] Ottocento: tegole col cornicione, abbaini
+        : { pitch: Math.min(.3, pitch), shape: 'capanna', ov: .32, dormer: false, sky: r2() < .1, kindV: r2() < .5 ? 1 : 0 }) : null;   // borgo: coppi a falda bassa, colmo lungo, comignoli
+      const T = tetto1({ x0, z0, w, d, y: top, base: low, kind: rk, shape: EPT ? EPT.shape : shape, pitch: EPT ? EPT.pitch : pitch, ov: EPT ? EPT.ov : rk === 'lamiera' ? .35 : .5, wallHex: pal[0], r: r2, chim: rk === 'lamiera' ? 0 : 1 + Math.floor(r2() * 2), kindV: EPT ? EPT.kindV : rk === 'lamiera' ? (kind === 'port' ? 0 : Math.floor(r2() * 3)) : r2() < .3 ? 1 : 0,
+        tint: rk === 'lamiera' && kind === 'mil' ? '#a4aa90' : null, gutter: kind === 'farm' ? 'rame' : true, rafters: rk === 'coppi', sky: EPT ? EPT.sky : rk !== 'lamiera' && r2() < .22, dormer: EPT ? EPT.dormer : rk !== 'lamiera' && kind !== 'farm' && r2() < .4 });
       grp.add(T.grp); b.__ridge = T.ridge; b.__chims = T.chims;
       { const n = r2() < .45 ? 1 + Math.floor(r2() * 4) : 0, A = T.ridge[0], B = T.ridge[1]; for (let k = 0; k < n; k++) { const t = .1 + r2() * .8, pg = oPiccione1(r2); pg.position.set(A.x + (B.x - A.x) * t, A.y + .14, A.z + (B.z - A.z) * t); pg.rotation.y = r2() * 6; grp.add(pg); } }   // [ordine1] i piccioni sul colmo
-      if (rk !== 'lamiera' && r2() < .55) { const s0 = T.slots[Math.floor(r2() * T.slots.length)], an = oAntenna(2.2 + r2() * 1.2, r2() * 6, r2); an.position.set(s0.x, s0.y + .05, s0.z); grp.add(an); }   // un'antenna sola, sul colmo
+      if (rk !== 'lamiera' && r2() < (X ? .3 : .55)) { const s0 = T.slots[Math.floor(r2() * T.slots.length)], an = oAntenna(2.2 + r2() * 1.2, r2() * 6, r2); an.position.set(s0.x, s0.y + .05, s0.z); grp.add(an); }   // un'antenna sola, sul colmo
     }
     // balconi ai piani alti, sui lati che si vedono, allineati alle finestre
-    if (kind === 'borgo') {
+    if (kind === 'borgo' && !X) {   // [epoche] le case con l'epoca hanno i balconi loro (epDecora)
       const ok = (px, pz) => { const v = G.tileAt(Math.floor(px / TS), Math.floor(pz / TS)); return v !== G.T.BLD; };
       for (let f = 1; f < fl; f++) {
         if (r() < .55) { const k = Math.floor(r() * b.w), bx = x0 + k * TS + 1; if (ok(bx, z0 + d + 1)) addBalcony(grp, bx, base + MG + (f - 1) * MF - .06, z0 + d, 1.8, 'S', r); }
         if (r() < .4) { const k = Math.floor(r() * b.h), bz = z0 + k * TS + 1; if (ok(x0 + w + 1, bz)) addBalcony(grp, x0 + w, base + MG + (f - 1) * MF - .06, bz, 1.8, 'E', r); }
       }
     }
-    if (roofKind === 'flat' && fl >= 3 && !b.__tierBase && r() < .12 || (roofKind === 'flat' && !b.__tierBase && !b.__tierOf && rpB(b, true, x0, z0, w, d).prog === 'insegna' && rpB(b, true, x0, z0, w, d).ins === 'cartellone')) { const P = rpB(b, true, x0, z0, w, d); if (P.prog === 'insegna' && P.ins === 'cartellone') roofBillboard(grp, i, top + .1, x0, z0, w, d, r, P); }   // [isola31] [isola34] niente coronamenti in città; [ordine1] il cartellone solo dove il tetto è suo
+    if (X && X.era !== 'E6') { } else if (roofKind === 'flat' && fl >= 3 && !b.__tierBase && r() < .12 || (roofKind === 'flat' && !b.__tierBase && !b.__tierOf && rpB(b, true, x0, z0, w, d).prog === 'insegna' && rpB(b, true, x0, z0, w, d).ins === 'cartellone')) { const P = rpB(b, true, x0, z0, w, d); if (P.prog === 'insegna' && P.ins === 'cartellone') roofBillboard(grp, i, top + .1, x0, z0, w, d, r, P); }   // [isola31] [isola34] niente coronamenti in città; [ordine1] il cartellone solo dove il tetto è suo
     if (plinth > 0) { const pl = box(w + .2, plinth + .1, d + .2, std({ map: stoneTexture() })); pl.position.set(cx, low + plinth / 2, cz); grp.add(pl); }
     shadowed(grp);
     const merged = mergeGroup(grp); shadowed(merged); scene.add(merged);
     const rec = { b, flat: roofKind === 'flat', grp: merged, fade: 0, box3: new THREE.Box3(new THREE.Vector3(x0 + .3, low, z0 + .3), new THREE.Vector3(x0 + w - .3, top + 2.5, z0 + d - .3)), mats: [] };
+    if (!b.__tierOf && !b.__tierBase) rotRec(rec, merged);   // [epoche] la casa che segue la strada gira tutta: prima giravano solo facciate, dettagli e tetti, e le falde dritte spuntavano dalle facciate girate
     ownMats(merged, rec); dyn.buildings.push(rec);
     rec.geo = { x0, z0, w, d, y0: base, H: hgt }; if (!b.__tierOf) DZ.bRec[i] = rec; rec.tier = !!b.__tierOf;
     if (b.sign) addSign(b, base, w, d, x0, z0, top, base + 3.0, base + 2.55);
@@ -4040,6 +4266,18 @@ var Render = (function () {
     if (r() < .55) { const tw = 1.8 + r(), td = 1.2 + r() * .5, tela = box(N[0] ? td : tw, .03, N[0] ? tw : td, sm(pick(r, ['#4a5a6a', '#6a6448', '#5a4a40', '#3e4e48', '#6e5040']), { roughness: 1 }));
       tela.position.set(fx + N[0] * td / 2, base + 2.15, fz + N[1] * td / 2); tela.rotation.set(N[1] * .18, 0, -N[0] * .18); grp.add(tela);
       [-1, 1].forEach(s2 => { const p = box(.06, 2.1, .06, PM.woodD()); p.position.set(fx + N[0] * td + (N[1] ? s2 * tw / 2 : 0), base + 1.02, fz + N[1] * td + (N[0] ? s2 * tw / 2 : 0)); p.rotation.z = (r() - .5) * .1; grp.add(p); }); }
+    // [epoche] E7, l'abuso: un fianco tirato su a mattoni forati senza intonaco (la malta che sborda, il bordo a gradoni non finito coi buchi
+    // dei forati in vista) e il pilastro di cemento d'angolo coi ferri d'armatura che aspettano il piano di sopra
+    if (b.era === 'E7') { const re = rng(i * 271 + 9), sF = face === 'E' || face === 'W' ? (re() < .5 ? 'S' : 'N') : (re() < .5 ? 'E' : 'W');
+      if (re() < .45) { const along = sF === 'S' || sF === 'N', Lw = (along ? w : d) - .3, sg = sF === 'S' || sF === 'E' ? 1 : -1, nC = Math.floor(Lw / .26), nR = Math.floor(H1 / .25), fw = new THREE.Group();
+        for (let rr = 0; rr < nR; rr++) { const cut = rr >= nR - 3 ? Math.floor(nC * (.35 + re() * .4)) : nC; for (let c = 0; c < cut; c++) { const off = (rr % 2) * .13, u = -Lw / 2 + off + c * .26 + .12; if (u > Lw / 2 - .12) continue;
+          fAt(fw, fB(.245, .235, .14, pick(re, ['#b8643e', '#ad5c3a', '#c06c44', '#a45636']), 'clay', 0), u, rr * .25 + .12, 0);
+          if (c === cut - 1 && cut < nC) for (let hq = 0; hq < 3; hq++) fAt(fw, fB(.02, .05, .1, '#2a1a14', 'solid', 0), u + .124, rr * .25 + .06 + hq * .065, 0); } }   // i buchi dei forati sul bordo non finito
+        for (let rr = 1; rr < nR; rr++) fAt(fw, fB(Lw * (rr >= nR - 3 ? .5 : 1), .02, .15, '#8a8478', 'concrete', 0), rr >= nR - 3 ? -Lw / 4 : 0, rr * .25, .005);   // la malta che sborda
+        fw.position.set(along ? cx : cx + sg * (w / 2 - .02), base, along ? cz + sg * (d / 2 - .02) : cz); fw.rotation.y = along ? 0 : Math.PI / 2; grp.add(fw); }
+      if (re() < .6) { const sx2 = re() < .5 ? -1 : 1, sz2 = re() < .5 ? -1 : 1, px = cx + sx2 * (w / 2 - .12), pz = cz + sz2 * (d / 2 - .12), Hp = H1 + .25;
+        fAt(grp, fB(.3, Hp, .3, '#9a968e', 'concrete', .02), px, base + Hp / 2, pz);
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a2, c2]) => { const tx = px + a2 * .09, tz = pz + c2 * .09, L2 = .6 + re() * .5, lx = (re() - .5) * .16, lz = (re() - .5) * .16; fRod(grp, [tx, base + Hp - .05, tz], [tx + lx, base + Hp + L2, tz + lz], .012, '#6a3a24', 'rust'); }); } }
     shadowed(grp); const merged = mergeGroup(grp); shadowed(merged); scene.add(merged);
     const topY = base + H1 + (fl > 1 ? 2.6 : 0) + .4;
     const rec = { b, flat: false, shack: true, grp: merged, fade: 0, box3: new THREE.Box3(new THREE.Vector3(x0 + .2, low, z0 + .2), new THREE.Vector3(x0 + w - .2, topY + 1, z0 + d - .2)), mats: [] };
@@ -4525,6 +4763,7 @@ var Render = (function () {
   function usaKit34(b) {
     if (!Kit.has || !Kit.has('urbano/wall-a') || !b.house || b.shack || b.fisher || b.farm || b.block || b.tiers || b.name) return false;
     const z = zoneT(b.x, b.y); if (z !== ZN.CITTA) return false;
+    if (b.era) return b.era === 'E6' && th(b.x, b.y, 341) < .3;   // [epoche] mattoni, pannelli e scale antincendio solo nel boom: il borgo, l'Ottocento e il regime hanno l'architettura loro
     return th(b.x, b.y, 341) < .58;
   }
   function casaKit(b, i, base, low, plinth) {
@@ -9406,7 +9645,7 @@ var Render = (function () {
       const ad = (a, o, x, y, z) => { o.position.set(x, y, z); a.add(o); return o; };
       if (sides.length && fl >= 2) {
         // scala antincendio
-        if (fl >= 3 && r() < .5) { const sd = sides[Math.floor(r() * sides.length)], u = Math.min(sd.len - 1.6, 1 + r() * (sd.len - 3)), a = mkA(sd, u + .8);
+        if (fl >= 3 && r() < .5 && (!b.era || b.era === 'E6')) { const sd = sides[Math.floor(r() * sides.length)], u = Math.min(sd.len - 1.6, 1 + r() * (sd.len - 3)), a = mkA(sd, u + .8);
           for (let f = 1; f < fl; f++) { const y = base + MG + (f - 1) * MF - .05; ad(a, box(1.8, .07, .85, st), 0, y, .43); ad(a, box(1.8, .05, .04, st), 0, y + .9, .85); ad(a, box(.04, .9, .04, st), -.9, y + .45, .85); ad(a, box(.04, .9, .04, st), .9, y + .45, .85);
             if (f < fl - 1) { const s2 = f % 2 ? 1 : -1, stp = box(1.9, .06, .6, st); ad(a, stp, -s2 * .05, y + MF / 2, .45).rotation.z = s2 * Math.atan(MF / 1.9); } } }
         // tubi lungo il muro
@@ -10366,11 +10605,12 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       const fr = f => { if (frames[f]) return frames[f]; const F = FACES[f], a = new THREE.Group(); a.position.set(F.p[0], 0, F.p[1]); a.rotation.y = F.yaw; g.add(a); return frames[f] = a; };
       const at = (f, o, u, y, z) => { o.position.set(u, y, z); fr(f).add(o); return o; };
       const inMural = (f, u) => PP && PP.f === f && u > PP.k0 * TS - .3 && u < PP.k1 * TS + .3;
-      const wins = WINS.filter(W0 => FACES[W0.f].vis && !inMural(W0.f, W0.u));
+      const wins = WINS.filter(W0 => FACES[W0.f].vis && !inMural(W0.f, W0.u) && !W0.po);   // [epoche] sotto il portico il muro è arretrato
       const showF = Object.keys(FACES).filter(f => FACES[f].vis && (FACES[f].cam || FACES[f].open));
 
       // ---- persiane: un colore per casa, quasi tutte aperte, qualcuna socchiusa o chiusa, una che manca ----
-      const shut = borgo ? r() < .58 : r() < .35, shutC = pick(r, SHUTC), flowers = r() < .5, blinds = r() < .7;
+      const EPc = b.__ep, shut0 = borgo ? r() < .58 : r() < .35, shutC0 = pick(r, SHUTC), flowers = r() < .5, blinds = r() < .7;
+      const shut = EPc ? !!EPc.persiane && (EPc.era !== 'E3' || shut0 || r() < .5) : shut0, shutC = EPc && EPc.persiane ? EPc.persiane : shutC0;   // [epoche] persiane verde Genova nel borgo, colori di mare sulla marina; niente sul regime e sul boom
       wins.forEach(W0 => {
         if (!W0.name.includes('window') || W0.name.includes('wide')) return;
         const D = WIN[W0.name]; if (!D) return;
@@ -10416,7 +10656,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         (shopLike ? [uA + .15, um, uB - .15] : [uA + .1, uB - .1]).forEach(uu => { at(face0, fB(.08, .42, .07, WOODD, 'wood', .01), uu, yT - .42, .05); const br = fB(.07, .07, dep * 1.1, WOODD, 'wood', 0); br.rotation.x = -.66; at(face0, br, uu, yT - .5, dep * .42); });   // mensole
       }
       // bovindo dipinto (crema, salvia, cotto, legno sbiancato): finestra accesa, fioriera, tettuccio; mai sulla fascia della tettoia
-      if (!kitHouse && borgo && fl >= 2 && r() < (fl >= 3 ? .45 : .28)) {
+      if (!kitHouse && borgo && !b.__ep && fl >= 2 && r() < (fl >= 3 ? .45 : .28)) {   // [epoche] il bovindo di legno non è del Mediterraneo
         const cand = showF.filter(f => FACES[f].cam && FACES[f].n >= 2 && !(pent && f === face0 && fl < 3)); if (cand.length) {
           const f = pick(r, cand), F = FACES[f], wide = F.n >= 4 && r() < .4, k = Math.floor(r() * (F.n - (wide ? 1 : 0))), u = k * TS + (wide ? 2 : 1);
           if (!inMural(f, u) && !(pent && f === face0 && Math.abs(u - du0) < 3.5 && fl < 3)) {
@@ -10441,7 +10681,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
         }
       }
       // ---- lanterne di carta rossa ai lati dell'insegna dei locali ----
-      if (borgo && F0 && F0.open && b.door && (b.shop || b.sign) && r() < .65) {
+      if (borgo && !b.__ep && F0 && F0.open && b.door && (b.shop || b.sign) && r() < .65) {
         const du = { S: (b.door[0] - b.x) * TS + 1, N: (b.x + b.w - 1 - b.door[0]) * TS + 1, E: (b.y + b.h - 1 - b.door[1]) * TS + 1, W: (b.door[1] - b.y) * TS + 1 }[face0];
         const yL = base + (pent ? MG - .55 : 2.85), zL = pent ? .75 : .55, pts = [];
         [-1, 1].forEach(s => { for (let q = 0; q < 2; q++) { const uu = du + s * (2.0 + q * .55); if (uu < .3 || uu > F0.L - .3) continue; pts.push(uu); } });
@@ -10513,7 +10753,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
 
       // ---- rilievo: davanzali di pietra e architravi su tutte le finestre che si vedono ----
       const sillC = pick(r, ['#b8b0a2', '#a89e8e', '#c4bcae', '#8e877c']), linC = r() < .5 ? sillC : shade(sillC, .85);
-      wins.forEach(W0 => {
+      if (!b.__epTrim) wins.forEach(W0 => {   // [epoche] sulle case con l'epoca davanzali e cornici li fa epDecora
         if (!W0.name.includes('window')) return; const D = WIN[W0.name]; if (!D) return;
         const yc = W0.y + D[2], ww = D[0], hh = D[1];
         at(W0.f, cbox(ww + .26, .08, .2, sillC), W0.u, yc - hh / 2 - .06, .1); at(W0.f, cbox(ww + .1, .05, .06, shade(sillC, .7)), W0.u, yc - hh / 2 - .12, .05);
