@@ -56858,7 +56858,7 @@ var Render = (function () {
     ALB4.forEach(t => { if (t.x < X0 || t.x >= X1 || t.z < Y0 || t.z >= Y1) return; albero4(add, t, rng((Math.round(t.x * 13) + Math.round(t.z * 7) + 4) >>> 0)); });   // [verde4]
     const LEAF = ['#e8f0e0', '#f4f2e4', '#e0ead8', '#fff8e8', '#f0e8c8'];
     alberiCitta35().forEach(t => { if (t.x < X0 || t.x >= X1 || t.z < Y0 || t.z >= Y1) return; const r = rng((Math.round(t.x * 13) + Math.round(t.z * 7)) >>> 0);
-      if (t.kind !== 'cortile') { albero4(add, t, r); return; }   // [verde4] viali, filari e piazze: i sempreverdi mediterranei
+      if (t.kind !== 'cortile' || NUOVA4()) { albero4(add, t, r); return; }   // [verde4] viali, filari e piazze: i sempreverdi mediterranei   // [chiarezza] nella città nuova anche i cortili: niente querce lime
       const name = r() < .35 ? pick(r, NM.olive) : pick(r, NM.oak);
       add(name, t.x, groundH(t.x, t.z) - .05, t.z, (/Twisted/.test(name) ? .22 : /Dead/.test(name) ? .26 : t.s) * (.92 + r() * .16), r() * 6.28, { rx: (r() - .5) * .05, rz: (r() - .5) * .05, col: pick(r, LEAF) });
       if (t.kind !== 'viale') for (let q = 0; q < (t.kind === 'cortile' ? 3 : 1); q++) add(q ? 'Grass_Common_Tall' : 'Bush_Common',   /* [unione11] */ t.x + (r() - .5) * 2.4, 0, t.z + (r() - .5) * 2.4, q ? .7 + r() * .4 : .45 + r() * .2, r() * 6.28, { ground: true, col: pick(r, LEAF) }); });
@@ -58711,7 +58711,8 @@ var Render = (function () {
     const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS, LEAF = ['#e8f0e0', '#f4f2e4', '#e0ead8', '#fff8e8', '#f0e8c8'];
     (M.roads || []).forEach((rd, ri) => {
       if (!(rd.kind === 'citta' || rd.kind === 'litoranea' || rd.kind === 'vicolo')) return;
-      const P = rd.pts, offs = rd.kind === 'vicolo' ? [rd.w / 2 - .15] : [rd.w / 2 + .12, rd.w / 2 + 2.0];
+      const P = rd.pts, offs = rd.kind === 'vicolo' ? [rd.w / 2 - .15] : NUOVA4() ? [rd.w / 2 + .12] : [rd.w / 2 + .12, rd.w / 2 + 2.0];   // [chiarezza] nella città nuova le erbacce solo nella fuga del cordolo, non in mezzo al marciapiede
+      if (NUOVA4() && rd.pennoni) return;   // [chiarezza] la Vittoria del regime è spazzata: niente ciuffi
       let acc = 0;
       for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / L, nz = (bx - ax) / L;
         for (let s = 0; s < L; s += .9) { acc += .9; const x0 = ax + (bx - ax) * s / L, z0 = az + (bz - az) * s / L; if (x0 < X0 - 3 || x0 >= X1 + 3 || z0 < Y0 - 3 || z0 >= Y1 + 3) continue;
@@ -59404,9 +59405,19 @@ var Render = (function () {
       } else if (q.k === 'adunata') {
         // il palco del Garante contro il Ministero, i pennoni in fila sui due lati, le transenne per l'adunata
         const cx = (q.x0 + q.x1) / 2, pz = q.y0 + 3; const g = G0(), pietra = sm('#e2d8c0', { roughness: .9 }), rosso = sm('#a8282a', { roughness: .95 });
+        // [chiarezza] nella città nuova, se sulla piazza c'è la torre littoria col balcone, il Garante parla da lì: niente palco (era una
+        // lastra chiara con una riga rossa davanti al portone del Palazzo, e il fondale rosso una fascia senza senso sulla facciata).
+        // Altrimenti il palco si legge come tribuna: gradini, leggio col microfono, il drappo col simbolo della Tutela, due bandiere.
+        if (NUOVA4() && po1Has('torre_littoria', cx, q.y0, 26)) { /* la tribuna è il balcone della torre */ }
+        else if (NUOVA4()) {
+          add(g, box(9, 1.1, 4, pietra), 0, .55, 0); add(g, box(9.2, .12, 4.2, sm('#c8bea6', { roughness: .9 })), 0, 1.16, 0); for (let k = 0; k < 4; k++) add(g, box(3, .275, .45, pietra), 0, .1375 + k * .275, 2.2 + (3 - k) * .42);
+          add(g, box(.7, 1.15, .45, sm('#4a3426', { roughness: .8 })), 0, 1.8, .9); add(g, cyl(.012, .012, .45, 4, PM.iron()), 0, 2.55, .85); add(g, box(.06, .06, .1, sm('#1a1a1a')), 0, 2.78, .82);   // il leggio e il microfono
+          const dr = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 4.2), eyeMat('banner')); add(g, dr, 0, 3.4, -1.9); [-1, 1].forEach(o => { add(g, cyl(.05, .07, 5.4, 6, sm('#d8d6cc')), o * 3.6, 3.8, -1.6); add(g, box(.03, 1.2, 1.8, sm('#b8302a', { roughness: .9 })), o * 3.6, 5.6, -.7); });
+          place(g, cx, pz, 0); n++;
+        } else {
         add(g, box(9, 1.3, 4, pietra), 0, .65, 0); add(g, box(9.05, 1.1, .05, rosso), 0, .6, 2.02); for (let k = 0; k < 3; k++) add(g, box(3, .22, .5, pietra), 0, .11 + k * .22 * 1.9, 2.3 + (2 - k) * .45);
         add(g, box(.12, 3.2, .12, PM.iron()), -3.8, 2.9, -1.6); add(g, box(.12, 3.2, .12, PM.iron()), 3.8, 2.9, -1.6); add(g, box(7.8, 1.4, .05, rosso), 0, 3.8, -1.6);
-        place(g, cx, pz, 0); n++;
+        place(g, cx, pz, 0); n++; }
         for (let z = q.y0 + 8; z <= q.y1 - 3; z += 7) [q.x0 + 1.5, q.x1 - 1.5].forEach(x => { if (!ok(x, z)) return; const f = G0(); add(f, cyl(.06, .09, 8, 6, sm('#d8d6cc')), 0, 4, 0); add(f, box(.04, 1.3, 2, sm('#b8302a', { roughness: .9 })), 0, 7.1, 1); place(f, x, z, 0); n++; });
         for (let x = q.x0 + 4; x < q.x1 - 3; x += 2.6) if (ok(x, q.y1 - 2)) { const g2 = G0(); add(g2, box(2.2, .06, .06, PM.iron()), 0, 1, 0); add(g2, box(2.2, .06, .06, PM.iron()), 0, .55, 0); [-1, 1].forEach(o => add(g2, box(.05, 1.05, .45, PM.iron()), o * 1.05, .52, 0)); place(g2, x, q.y1 - 2, 0); n++; }
       } else if (q.k === 'piazzetta') {
@@ -61877,7 +61888,11 @@ var Render = (function () {
       const mkA = (sd, u) => { const a = new THREE.Group(), p = sd.at(u); a.position.set(p[0], base - .1, p[1]); a.rotation.y = sd.yaw; g.add(a); return a; };
       const ad = (a, o, x, y, z) => { o.position.set(x, y, z); a.add(o); return o; };
       sides.forEach(sd => {
-        if (sd.len > 5 && r() < .4) { const a = mkA(sd, 1.6 + r() * (sd.len - 3.2)), k = Math.floor(r() * 12), m = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.1), lam('m' + (k % 6), muralTex(k))); ad(a, m, 0, 1.5 + r() * .5, .09); }
+        if (sd.len > 5 && r() < .4) { const u = 1.6 + r() * (sd.len - 3.2), k = Math.floor(r() * 12), yy = 1.5 + r() * .5;
+          // [chiarezza] nella città nuova il murale non va accanto a una porta né su una vetrina (si leggeva come un anello azzurro di
+          // interfaccia vicino al portone) e non sui palazzi del governo: lì la Tutela non lascia dipingere
+          const nn = [Math.sin(sd.yaw), Math.cos(sd.yaw)], FR = NUOVA4() ? fronti4() : null, copre = FR && (b.gov || [-1.9, 0, 1.9].some(o => { const q = sd.at(Math.max(0, Math.min(sd.len, u + o))); return Chiarezza.davanti(FR, q[0] + nn[0] * 1.2, q[1] + nn[1] * 1.2, .4); }));
+          if (!copre) { const a = mkA(sd, u), m = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.1), lam('m' + (k % 6), muralTex(k))); ad(a, m, 0, yy, .09); } }
         if (fl >= 3 && r() < .3) { const a = mkA(sd, 1 + r() * (sd.len - 2)), f = 1 + Math.floor(r() * (fl - 1)), y = base + MG + (f - 1) * MF + .3, k = [0, 3, 5][Math.floor(r() * 3)];
           const m = new THREE.Mesh(new THREE.PlaneGeometry(.8, 2.4), lam('b' + k, posterTex(k))); ad(a, m, 0, y + 1.2, .5); ad(a, box(.05, .05, .9, metal), 0, y + 2.45, .45); m.rotation.y = r() < .5 ? 0 : 0; m.rotation.x = -.04; const m2 = m.clone(); m2.rotation.y = Math.PI; m2.position.z = .52; a.add(m2); }
         if (fl >= 3 && r() < .28) { const f = 2 + Math.floor(r() * (fl - 2)), a = mkA(sd, 1.2 + r() * (sd.len - 2.4)), y = base + MG + (f - 1) * MF; ad(a, box(1.7, 1.5, .8, sm(WALLC[Math.floor(r() * 4)], { roughness: 1 })), 0, y + .75, .4); ad(a, box(1.8, .1, .9, sm('#bcc0c6', { roughness: 1 })), 0, y + 1.55, .42); ad(a, new THREE.Mesh(new THREE.PlaneGeometry(1.3, .9), glowM(r() < .6 ? '#ffd890' : '#38e8ff')), 0, y + .8, .81); }
