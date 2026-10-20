@@ -9458,6 +9458,7 @@ var Render = (function () {
     satCoperto: 1.12, satSole: 1.3, // saturazione della natura e del borgo col coperto e col sole
     tettoCroma: 1,                  // la croma massima: sopra si smorza (i pastelli restano vivi ma non acidi); 1 = nessun tetto
     quieteGrigi: 0,                 // travertino, cemento, asfalto: i quasi grigi perdono questo tanto di colore (non diventano lilla né verdognoli)
+    luceCrepuscolo: 0,              // all'alba e al tramonto l'esposizione sale di tanto (il mare e le ombre lunghe non chiudono nel nero)
     ariaGiorno: .06, ariaNotte: .04, coloreLontano: .1,   // prospettiva aerea: quanta aria fra noi e il lontano, quanta ne resta di notte, quanto colore perde il lontano
     varcoContorno: 1,               // [varco2] quanto si toglie il contorno di profondità sul bordo dell'ellisse (1 = niente filo scuro)
     varcoTaglio: .14,               // l'ombra sullo spessore tagliato di muri e tetti (l'anello beige)
@@ -13621,7 +13622,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       PRATO9.k.value = A.prato === undefined ? 1 : A.prato;   /* [prato1] */
       {   // [regia2] la pellicola (QUADRO) e la luce di scena della zona (SCENA) nel colore finale
         const Q = QUADRO, ct = scenaK('contrasto');
-        U.aK.value.x *= 1 + dk * (scenaK('esposizione') - 1) + night * (scenaK('espNotte') - 1); U.sat.value *= 1 + dk * (scenaK('saturazione') - 1);
+        U.aK.value.x *= (1 + dk * (scenaK('esposizione') - 1) + night * (scenaK('espNotte') - 1)) * (1 + dusk * Q.luceCrepuscolo); U.sat.value *= 1 + dk * (scenaK('saturazione') - 1);
         U.qC.value.set(1 + (Q.contrastoCoperto - 1) * ct, 1 + (Q.contrastoSole - 1) * ct, Q.pernoMedi, Q.spallaBianchi); U.qO.value.fromArray(Q.ombraFredda); U.qL.value.fromArray(Q.luceCalda);
         U.qN.value.set(Q.ariaNeri[0], Q.ariaNeri[1], Q.ariaNeri[2], Q.pavimentoNeri); U.qS.value.set(Q.satCoperto, Q.satSole, Q.tettoCroma, Q.quieteGrigi); U.qA.value.set(Q.ariaGiorno, Q.ariaNotte, Q.coloreLontano, scenaK('velo', 0) * dk);
         U.vcA.value.copy(VARCO.a.value); U.vcB.value = VARCO.b.value.w; U.qV.value.set(Q.varcoContorno, Q.varcoTaglio, Q.varcoLuce, 0); }
