@@ -184,8 +184,8 @@ var Game = (function () {
   };
   const VK = {
     vespa: { r: .6, len: 1.9, wid: .7, max: 12.5, accel: 9, turn: 3.3, hp: 60, label: 'Vespa', two: true },
-    cinquecento: { r: .95, len: 3.0, wid: 1.4, max: 13, accel: 7, turn: 2.7, hp: 100, label: 'Fiat 500' },
-    ritmo: { r: 1.05, len: 3.9, wid: 1.65, max: 16, accel: 8, turn: 2.4, hp: 120, label: 'Fiat Ritmo' },
+    cinquecento: { r: .95, len: 3.24, wid: 1.44, max: 13, accel: 7, turn: 2.7, hp: 100, label: 'Fiat 126' },   // [modelli2] la 126 o la Panda (veicoli3d.js)
+    ritmo: { r: 1.05, len: 3.78, wid: 1.6, max: 16, accel: 8, turn: 2.4, hp: 120, label: 'Fiat Ritmo' },   // [modelli2] Ritmo, 127, Uno o Delta
     giulia: { r: 1.05, len: 4.1, wid: 1.6, max: 17, accel: 8.5, turn: 2.4, hp: 130, label: 'Alfa Giulia' },
     ape: { r: .9, len: 2.8, wid: 1.3, max: 9, accel: 5, turn: 2.8, hp: 70, label: 'Ape Piaggio' },
     polizia: { r: 1.05, len: 4.3, wid: 1.66, max: 18, accel: 9, turn: 2.5, hp: 160, label: 'Alfetta della Polizia' },

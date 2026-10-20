@@ -1,0 +1,26 @@
+[
+ { "nome": "auto_davanti", "celle": true, "cols": 5, "side": 0.62, "el": 0.42, "pose": [
+  { "nome": "Fiat 126", "src": "veicoli:f126", "col": "#e9e4d6" },
+  { "nome": "Fiat Panda", "src": "veicoli:panda", "col": "#b5221c" },
+  { "nome": "Fiat 127", "src": "veicoli:f127", "col": "#2e4a7a" },
+  { "nome": "Fiat Uno", "src": "veicoli:uno", "col": "#a8acb0" },
+  { "nome": "Fiat Ritmo", "src": "veicoli:ritmo", "col": "#c8762a" },
+  { "nome": "Lancia Delta", "src": "veicoli:delta", "col": "#3c5a3a" },
+  { "nome": "Alfa 33", "src": "veicoli:alfa33", "col": "#8a1c1c" },
+  { "nome": "Alfa Giulietta", "src": "veicoli:giulietta", "col": "#c9b27a" },
+  { "nome": "Fiat 131 della Tutela", "src": "veicoli:f131", "col": "#6c7684", "opz": { "livrea": "tutela" } },
+  { "nome": "Alfetta volante", "src": "veicoli:alfetta", "col": "#8fb4d8", "opz": { "livrea": "polizia" } }
+ ] },
+ { "nome": "auto_dietro", "celle": true, "cols": 5, "side": 2.5, "el": 0.42, "pose": [
+  { "nome": "Fiat 126", "src": "veicoli:f126", "col": "#e9e4d6" },
+  { "nome": "Fiat Panda", "src": "veicoli:panda", "col": "#b5221c" },
+  { "nome": "Fiat 127", "src": "veicoli:f127", "col": "#2e4a7a" },
+  { "nome": "Fiat Uno", "src": "veicoli:uno", "col": "#a8acb0" },
+  { "nome": "Fiat Ritmo", "src": "veicoli:ritmo", "col": "#c8762a" },
+  { "nome": "Lancia Delta", "src": "veicoli:delta", "col": "#3c5a3a" },
+  { "nome": "Alfa 33", "src": "veicoli:alfa33", "col": "#8a1c1c" },
+  { "nome": "Alfa Giulietta", "src": "veicoli:giulietta", "col": "#c9b27a" },
+  { "nome": "Fiat 131 della Tutela", "src": "veicoli:f131", "col": "#6c7684", "opz": { "livrea": "tutela" } },
+  { "nome": "Alfetta volante", "src": "veicoli:alfetta", "col": "#8fb4d8", "opz": { "livrea": "polizia" } }
+ ] }
+]
