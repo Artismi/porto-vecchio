@@ -6296,7 +6296,8 @@ var Render = (function () {
   function faccia2(b, rec, f, u) {
     const g = rec.geo, x0 = g.x0, z0 = g.z0, w = g.w, d = g.d; let p = f === 'S' ? [x0 + u, z0 + d] : f === 'N' ? [x0 + w - u, z0] : f === 'E' ? [x0 + w, z0 + d - u] : [x0, z0 + u];
     const a = rec.tier ? 0 : rotOf(b), yaw = FYAW2[f] - a; if (a) { const cx = (b.x + b.w / 2) * TS, cz = (b.y + b.h / 2) * TS, qx = p[0] - cx, qz = p[1] - cz, c = Math.cos(a), s = Math.sin(a); p = [cx + qx * c - qz * s, cz + qx * s + qz * c]; }
-    return { p, yaw, u: [Math.cos(yaw), -Math.sin(yaw)], n: [Math.sin(yaw), Math.cos(yaw)] };
+    const n = [Math.sin(yaw), Math.cos(yaw)]; if (b.__ep && b.__ep.portico === f) p = [p[0] - n[0] * TS, p[1] - n[1] * TS];   // sotto il portico il muro è arretrato di una casella
+    return { p, yaw, u: [Math.cos(yaw), -Math.sin(yaw)], n };
   }
   // la scatola orientata: yaw del frame, estensioni in u (x locale), v (z locale), y
   function box2(cx, cz, yaw, hu, hv, y0, y1) { const c = Math.cos(yaw), s = Math.sin(yaw), uc = cx * c - cz * s, vc = cx * s + cz * c; return { c, s, u0: uc - hu, u1: uc + hu, v0: vc - hv, v1: vc + hv, y0, y1 }; }
@@ -6405,6 +6406,7 @@ var Render = (function () {
     return I;
   }
   const terra2 = e => !MURO2.has(e.k) && e.k !== 'grande' && e.k !== 'tettoia';
+  const palo2 = e => e.k === 'lampione' && e.B.y1 - e.B.y0 > 2.5 && Math.max(e.B.u1 - e.B.u0, e.B.v1 - e.B.v0) < 2.2 && Math.abs(e.B.y0 - groundH(...ctr2(e.B))) < .4;   // il lampione a palo (non il braccio a muro): davanti a un praticabile se ne va
   const pezzo2 = o => o && o.k === 'grande' && !!o.tipo;   // un pezzo urbano grande di [posa]: architettura, non arredo
   function vertIn2(e, B, m) { const v = e.vx; if (!v) return 0; let n = 0; for (let i = 0; i < v.length; i += 3) if (inB2(B, v[i], v[i + 1], v[i + 2], m)) n++; return n; }
   function urto2(a, b) {   // due voci si compenetrano oltre 3 cm?
@@ -6440,9 +6442,20 @@ var Render = (function () {
     if (!PRAT2.has(e.k) && e.k !== 'gradino') { if (!e.hull) proj2(e); I.near(I.P, B, p => { if (e.dep <= p.dep + .05) return;
       if (p.k === 'porta' || p.k === 'scala') { const n = p.k === 'porta' ? p.info.F.n : [p.info.L.ox, p.info.L.oy], q = p.k === 'porta' ? p.info.F.p : [p.info.L.x, p.info.L.y]; if ((cx - q[0]) * n[0] + (cz - q[1]) * n[1] < -.05) return; }
       if ((e.k === 'portale' || e.k === 'serranda' || e.k === 'citofono') && p.k === 'porta') return;   // le parti della porta stessa
-      const cut = clip2(e.hull, p.hull), a = cut.length >= 3 ? area2(cut) : 0; if (a > p.harea * .12) out.push({ t: pezzo2(e) ? 'pezzo' : 'coperto', p, a: a / p.harea }); }, 14);
+      const cut = clip2(e.hull, p.hull), a = cut.length >= 3 ? area2(cut) : 0; if (a <= p.harea * .12) return;
+      if (pezzo2(e)) { const f = raggi2(e, p); if (f > .2) out.push({ t: 'pezzo', p, a: f }); return; }   // un portico, un arco, una tettoia sono vuoti: si guarda coi raggi attraverso i fornici
+      out.push({ t: 'coperto', p, a: a / p.harea }); }, 14);
     }
     return out;
+  }
+  // la parte del praticabile che un pezzo grande copre davvero: raggi dalla camera verso una griglia di 5×5 punti sulla sua faccia
+  const RC2 = new THREE.Raycaster(), _o2 = new THREE.Vector3(), _d2 = new THREE.Vector3();
+  function raggi2(e, p) {
+    const B = p.B, key = e.id + ':' + p.id; if (P2.rc && P2.rc.has(key)) return P2.rc.get(key); let hit = 0, n = 0; _d2.set(CAM2.d[0], CAM2.d[1], CAM2.d[2]).normalize();
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) { const a = (i + .5) / 5, c = (j + .5) / 5, u = B.u0 + (B.u1 - B.u0) * a, piano = p.k === 'tombino' || p.k === 'passerella';
+      const v = piano ? B.v0 + (B.v1 - B.v0) * c : B.v1, y = piano ? B.y1 : B.y0 + (B.y1 - B.y0) * c, x = u * B.c + v * B.s, z = -u * B.s + v * B.c;
+      _o2.set(x, y, z).addScaledVector(_d2, -80); RC2.set(_o2, _d2); RC2.far = 79.9; n++; if (RC2.intersectObjects(e.objs, true).length) hit++; }
+    const f = hit / n; (P2.rc = P2.rc || new Map()).set(key, f); return f;
   }
   const vicino2 = (A, B, d) => { const g = Object.assign({}, B, { u0: B.u0 - d, u1: B.u1 + d, v0: B.v0 - d, v1: B.v1 + d }); return sat2(A, g) > 0; };
   function carr2(x, z) { onCarr1(0, 0, 0); const i0 = Math.floor(x / 8), j0 = Math.floor(z / 8); for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) for (const q of CH1.get(i * 4096 + j) || []) { const rd = q[5]; if (rd.kind === 'vicolo' || rd.kind === 'sterrato') continue; const dx = q[2] - q[0], dz = q[3] - q[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - q[0]) * dx + (z - q[1]) * dz) / L2, 0, 1); if (Math.hypot(q[0] + dx * t - x, q[1] + dz * t - z) < q[4] - .3) return true; } return false; }
@@ -6454,7 +6467,7 @@ var Render = (function () {
       V.forEach(v => { if (v.o) { const key = Math.min(e.id, v.o.id) + ':' + Math.max(e.id, v.o.id); if (coppie.has(key)) return; coppie.add(key); }
         if (v.t === 'coperto' || (v.t === 'pezzo' && v.p)) { const ck = v.t + v.p.id; if (coperti.has(ck)) return; coperti.add(ck); }
         rep.per[v.t]++; rep.tot++; const kk = v.t + ':' + e.k + (v.o ? '/' + v.o.k : v.p ? '/' + v.p.k : ''); rep.perVoce[kk] = (rep.perVoce[kk] || 0) + 1; const ps = v.t + ':' + e.src; rep.perPasso[ps] = (rep.perPasso[ps] || 0) + 1;
-        const [x, z] = ctr2(e.B); pts.push([v.t, Math.round(x * 10) / 10, Math.round(z * 10) / 10, e.k + (e.tipo ? ':' + e.tipo : ''), e.src, v.o ? v.o.k + (v.o.tipo ? ':' + v.o.tipo : '') : v.p ? v.p.k : v.z ? v.z.t : v.h ? 'casa ' + (v.h.b.id || v.h.b.i) + (v.h.b === e.b ? ' (sua)' : '') + ' ' + v.n + 'v ' + (e.vx.length / 3) + ' ' + (e.B.u1 - e.B.u0).toFixed(2) + 'x' + (e.B.v1 - e.B.v0).toFixed(2) + 'x' + (e.B.y1 - e.B.y0).toFixed(2) : '', Math.round(e.B.y0 * 10) / 10]); }); });
+        const [x, z] = ctr2(e.B); pts.push([v.t, Math.round(x * 10) / 10, Math.round(z * 10) / 10, e.k + (e.tipo ? ':' + e.tipo : ''), e.src, v.o ? v.o.k + (v.o.tipo ? ':' + v.o.tipo : '') : v.p ? v.p.k : v.z ? v.z.t : v.h ? 'casa ' + (v.h.b.id || v.h.b.i) + (v.h.b === e.b ? ' (sua)' : '') + ' [' + ['u0', 'u1', 'v0', 'v1', 'y0', 'y1'].map(k => v.h.B[k].toFixed(2)).join(',') + '] F' + (e.F ? e.F.p.map(q => q.toFixed(2)) + '/' + e.F.n : '-') + ' ' + v.n + 'v ' + (e.vx.length / 3) + ' ' + (e.B.u1 - e.B.u0).toFixed(2) + 'x' + (e.B.v1 - e.B.v0).toFixed(2) + 'x' + (e.B.y1 - e.B.y0).toFixed(2) : '', Math.round(e.B.y0 * 10) / 10]); }); });
     rep.praticabili = { porte: R.P.filter(p => p.k === 'porta').length, scale: R.P.filter(p => p.k === 'scala').length, tombini: R.P.filter(p => p.k === 'tombino').length, passerelle: R.P.filter(p => p.k === 'passerella').length, coperti: [...coperti].filter(k => k[0] === 'c').length, dietroPezzi: [...coperti].filter(k => k[0] === 'p').length };
     rep.case = R.H.length; return { rep, pts };
   }
@@ -6482,7 +6495,7 @@ var Render = (function () {
     const SCIVOLA2 = new Set(['arredo', 'dehors', 'tabellone', 'applique', 'insegna', 'pluviale', 'citofono', 'ingombro']);
     for (let giro = 0; giro < 5; giro++) {
       const I = p2Indici(R), bad = [];
-      const vv = e => { const V = viol2(e, R, I, false); return FISSI2.has(e.k) ? V.filter(v => (v.t === 'muro' && e.k !== 'gradino') || (v.t === 'pezzo' && v.o) || (e.k === 'rete' && terra2(e) && e.B.y1 - e.B.y0 > 1.5 && v.t !== 'pezzo')) : V; };   // i fissi si mettono solo a filo del muro, e cedono soltanto ai pezzi grandi
+      const vv = e => { const V = viol2(e, R, I, false); return FISSI2.has(e.k) ? V.filter(v => (v.t === 'muro' && e.k !== 'gradino') || (v.t === 'pezzo' && v.o) || (e.k === 'rete' && terra2(e) && e.B.y1 - e.B.y0 > 1.5 && v.t !== 'pezzo') || ((palo2(e) || e.k === 'lampione' || e.k === 'rete') && (/coperto|porta|scala|tombino/.test(v.t) || (v.t === 'urto' && /rete|lampione/.test(v.o.k))))) : V; };   // i fissi si mettono solo a filo del muro, e cedono soltanto ai pezzi grandi
       R.E.forEach(e => { if (e.gone || e.k === 'grande') return; const V = vv(e); if (V.length) bad.push([e, V]); });
       if (!bad.length) break;
       bad.sort((a, b) => (PRIO2[a[0].k] || 10) - (PRIO2[b[0].k] || 10) || a[0].vol - b[0].vol);
@@ -6496,8 +6509,8 @@ var Render = (function () {
           const ds = [[u - H.u0, [-H.c, H.s]], [H.u1 - u, [H.c, -H.s]], [v - H.v0, [-H.s, -H.c]], [H.v1 - v, [H.s, H.c]]].sort((p, q) => p[0] - q[0]), [dd, nn] = ds[0];
           const ext = Math.abs((e.B.u1 - e.B.u0) / 2 * (nn[0] * e.B.c - nn[1] * e.B.s)) + Math.abs((e.B.v1 - e.B.v0) / 2 * (nn[0] * e.B.s + nn[1] * e.B.c)), push = clamp(dd + ext - .01, .02, FISSI2.has(e.k) ? .25 : 1.0);   // a filo della faccia del muro (un centimetro dentro)
           cand.push([nn[0] * push, 0, nn[1] * push]);
-          if (e.F && vm.h.b === e.b) { const n = e.F.n, d0 = (cx - e.F.p[0]) * n[0] + (cz - e.F.p[1]) * n[1], ex = Math.abs((e.B.u1 - e.B.u0) / 2 * (n[0] * e.B.c - n[1] * e.B.s)) + Math.abs((e.B.v1 - e.B.v0) / 2 * (n[0] * e.B.s + n[1] * e.B.c)), p2 = clamp((P2.kit || 0) + ex - d0 - .01, .02, .5); cand.unshift([n[0] * p2, 0, n[1] * p2]); } }   // sul filo della sua facciata
-        if (e.k === 'rete' && terra2(e) && e.B.y1 - e.B.y0 > 1.5) for (const s of [.4, .8, 1.2]) for (let a = 0; a < 8; a++) cand.push([Math.cos(a * Math.PI / 4) * s, 0, Math.sin(a * Math.PI / 4) * s]);   // la cabina: un passo, non di più
+          if (e.F && vm.h.b === e.b) { const n = e.F.n, d0 = (cx - e.F.p[0]) * n[0] + (cz - e.F.p[1]) * n[1], ex = Math.abs((e.B.u1 - e.B.u0) / 2 * (n[0] * e.B.c - n[1] * e.B.s)) + Math.abs((e.B.v1 - e.B.v0) / 2 * (n[0] * e.B.s + n[1] * e.B.c)), p2 = clamp((P2.kit || 0) + ex - d0 - .01, .02, .5); cand.unshift([n[0] * p2, 0, n[1] * p2]); for (const t of [.1, .2, .3]) cand.push([n[0] * t, 0, n[1] * t]); } }   // sul filo della sua facciata
+        if (e.k === 'rete' && terra2(e) && e.B.y1 - e.B.y0 > 1.5) for (const s of [.4, .8, 1.2, 1.8, 2.5]) for (let a = 0; a < 8; a++) cand.push([Math.cos(a * Math.PI / 4) * s, 0, Math.sin(a * Math.PI / 4) * s]);   // la cabina: qualche passo, non di più
         if (SCIVOLA2.has(e.k) && !fisso) {
           if (e.F) { const n = e.F.n, u = e.F.u; for (const s of [.3, .6, .9, 1.2, 1.6, 2.0, 2.5, 3.0]) for (const sg of [1, -1]) { cand.push([u[0] * s * sg, 0, u[1] * s * sg]); if (terra2(e)) cand.push([u[0] * s * sg + n[0] * .15, 0, u[1] * s * sg + n[1] * .15]); } }
           if (terra2(e) && !e.F) for (const s of [.35, .7, 1.1, 1.6, 2.2]) for (let a = 0; a < 8; a++) cand.push([Math.cos(a * Math.PI / 4) * s, 0, Math.sin(a * Math.PI / 4) * s]);
@@ -6507,7 +6520,10 @@ var Render = (function () {
           sposta2(e, dx, dy, dz); const V2 = vv(e);
           if (!V2.length) { conta(az.spostati, e.k); I.put(I.E, e.B, e); return; }
           sposta2(e, -dx, -dy, -dz); }
-        if (fisso && !V.some(v => v.t === 'pezzo' && v.o)) { conta(az.fermi = az.fermi || {}, e.k); return; }
+        let nascosto = V.some(v => v.t === 'muro' && v.h.b !== e.b && v.n * 3 >= e.vx.length / 3);   // murato dentro la casa accanto: non si vede, se ne va
+        if (!nascosto && e.F && V.some(v => v.t === 'muro')) { const px = cx + e.F.n[0] * .3, pz = cz + e.F.n[1] * .3, q = box2(px, pz, 0, .01, .01, (e.B.y0 + e.B.y1) / 2 - .01, (e.B.y0 + e.B.y1) / 2 + .01); I.near(I.H, q, h => { if (h.b !== e.b && inB2(h.B, px, (e.B.y0 + e.B.y1) / 2, pz, 0)) { nascosto = true; return false; } }); }   // la sua facciata dà contro la casa accanto
+        if (fisso && !nascosto && V.every(v => v.t === 'muro')) { conta(az.fermi = az.fermi || {}, e.k); return; }
+        if (palo2(e)) R.E.forEach(o => { if (o.k === 'cartello' && !o.gone) { const [ox, oz] = ctr2(o.B); if (Math.hypot(ox - cx, oz - cz) < .6) { togli2(o); conta(az.tolti, o.k); } } });   // il cartello sul palo se ne va col palo
         togli2(e); conta(az.tolti, e.k);
       });
     }
@@ -8175,6 +8191,7 @@ var Render = (function () {
   function fronteBottega(b, base, x0, z0, w, d) {
     const S = b.shopFront, B0 = b.__bot, f = B0.face, era = S.era || b.era || 'E3', stile = ERA_INS[era] || 'marmo', r = rng(b.x * 131 + b.y * 7);
     const F = { S: [x0, z0 + d, 0], N: [x0 + w, z0, Math.PI], E: [x0 + w, z0 + d, Math.PI / 2], W: [x0, z0, -Math.PI / 2] }[f], L = B0.n * TS;
+    if (b.__ep && b.__ep.portico === f) { F[0] -= Math.sin(F[2]) * TS; F[1] -= Math.cos(F[2]) * TS; }   // [pulizia2] sotto il portico il fronte sta sul muro arretrato, non sul filo dei pilastri
     const g = new THREE.Group(), a = new THREE.Group(); a.position.set(F[0], 0, F[1]); a.rotation.y = F[2]; g.add(a);
     let K2 = 'portale'; const at = (o, u, y, z) => { o.position.set(u, y, z); a.add(o); return mk2(o, K2, b, f); };   // [pulizia2] ogni pezzo col suo nome, per il regista
     const N = [Math.sin(F[2]), Math.cos(F[2])], T2 = [Math.cos(F[2]), -Math.sin(F[2])], wp = (u, z) => [F[0] + T2[0] * u + N[0] * z, F[1] + T2[1] * u + N[1] * z];

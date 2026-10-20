@@ -320,8 +320,8 @@ var Sottosuolo = (function () {
     const sewer = [];
     // [pulizia2] i pezzi urbani grandi (archi, portici, tettoie, mura): un tombino lì sotto, visto dalla camera, non si vede
     const PZ = (W.pezzi || []).filter(p => p.imp && p.tipo !== 'binari' && p.tipo !== 'bitta'), CAM = Math.SQRT1_2;
-    const inPz = (x, y, pad) => PZ.some(p => { const c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c; return p.imp.some(r => l >= r[1] - pad && l <= r[2] + pad && z >= r[3] - pad && z <= r[4] + pad); });
-    const sottoPezzo = (x, y) => { if (!PZ.length) return false; for (let b = 0; b <= 6; b += 1) for (const o of [-.6, 0, .6]) if (inPz(x + CAM * b + o, y + CAM * b - o, .3)) return true; return false; };
+    const inPz = (x, y, pad0) => PZ.some(p => { const pad = /portico|porta_terra|tettoia/.test(p.tipo) ? pad0 + 2 : pad0, c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c; return p.imp.some(r => l >= r[1] - pad && l <= r[2] + pad && z >= r[3] - pad && z <= r[4] + pad); });   // le volte dei portici sporgono oltre le caselle riservate
+    const sottoPezzo = (x, y) => { if (!PZ.length) return false; for (let b = 0; b <= 12; b += 1) for (const o of [-.6, 0, .6]) if (inPz(x + CAM * b + o, y + CAM * b - o, 1.5)) return true; return false; };
     (W.roads || []).forEach(rd => {
       if (!rd.pts || rd.pts.length < 2 || (!rd.fogna && (!/^(citta|strada|litoranea)$/.test(rd.kind || '') || (rd.w || 0) < 6))) return;   // [città2] rd.fogna: la chiavica sotto la Rua e la marina del borgo
       let last = null, run = 0, tomb = -24;
