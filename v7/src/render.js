@@ -2421,7 +2421,7 @@ var Render = (function () {
     const S = M.world.SEA, list = [], r = rng(5151);
     const push = (x, y, z, s, sy, col) => list.push([x, y, z, s, sy, r() * 6, r() * 6, col]);
     S.structs.forEach(st => {
-      if (st.type !== 'molo' || !st.rocks) return; const P = st.rocks;
+      if (st.type !== 'molo' || !st.rocks || (st.pezzo && po1List().length)) return; const P = st.rocks;
       for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / L, nz = (bx - ax) / L;
         for (let s = 0; s < L; s += 1.25) for (const o of [-1.5, 0, 1.5]) { const x = ax + (bx - ax) * s / L + nx * (o + (r() - .5) * .8), z = az + (bz - az) * s / L + nz * (o + (r() - .5) * .8), sz = .8 + r() * .8; push(x, (o === 0 ? .1 : o * -.2 * st.sea > 0 ? .3 : -.5) + (r() - .5) * .5, z, sz, .7 + r() * .4, pick(r, ['#6e6a64', '#7a756d', '#625e59', '#837d74'])); } }
     });
@@ -2586,7 +2586,8 @@ var Render = (function () {
     (W0.ISOLE || []).forEach(I => { for (let k = 0; k < 6; k++) { const a = r() * 6.28, x = I.x + (W0.OX || 0) + Math.cos(a) * I.rx * .8, z = I.y + (W0.OY || 0) + Math.sin(a) * I.ry * .8, tx = Math.floor(x / TS), tz = Math.floor(z / TS); if (G.tileAt(tx, tz) !== G.T.SAND) continue;
       const t = cyl(.14 + r() * .1, .18 + r() * .1, 2 + r() * 2.5, 7, sm('#9a8a72')); t.position.set(x, groundH(x, z) + .14, z); t.rotation.set(Math.PI / 2, r() * 3, 0, 'YXZ'); t.rotation.z = Math.PI / 2; t.rotation.y = r() * 3; addStatic(t); } });
     buildQuayWalls(); buildRocks();
-    S.structs.forEach(st => { if (st.type === 'molo') buildMolo(st, r); else if (st.type === 'pontile') buildPontile(st, r); else if (st.type === 'scalo') buildScalo(st); });
+    S.structs.forEach(st => { if (st.pezzo && po1List().length) return;   // [posa] il Molo di Levante e lo scalo li fa il loro pezzo
+      if (st.type === 'molo') buildMolo(st, r); else if (st.type === 'pontile') buildPontile(st, r); else if (st.type === 'scalo') buildScalo(st); });
     // le barche al loro posto, con le cime: di poppa ai pontili (due cime incrociate), di fianco ai moli (a prua e a poppa)
     const lineM = sl('#d8cfae');
     S.moorings.forEach(m => {
@@ -2922,7 +2923,7 @@ var Render = (function () {
       }
     });
     // piazza San Rocco: fontana, panchine, alberi, edicola, cabina
-    const pz = P.fontana; if (pz) { let fx = 0, fz = 0, c = 0; for (let ty = pz.ty - 8; ty < pz.ty + 8; ty++) for (let tx = pz.tx - 8; tx < pz.tx + 8; tx++) if (G.tileAt(tx, ty) === T.FOUNT) { fx += tx * TS + 1; fz += ty * TS + 1; c++; } if (c) buildFountain1(fx / c, fz / c);   /* [strade1] */ }
+    const pz = P.fontana; if (pz && !po1Has('pozzo', pz.x, pz.y, 10)) {   /* [posa] in città nuova lì c'è il pozzo (pezzo) */ let fx = 0, fz = 0, c = 0; for (let ty = pz.ty - 8; ty < pz.ty + 8; ty++) for (let tx = pz.tx - 8; tx < pz.tx + 8; tx++) if (G.tileAt(tx, ty) === T.FOUNT) { fx += tx * TS + 1; fz += ty * TS + 1; c++; } if (c) buildFountain1(fx / c, fz / c);   /* [strade1] */ }
     if (P.piazza) { const q = P.piazza; for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, x = q.x + Math.cos(a) * 11, z = q.y + Math.sin(a) * 8; if (free(x, z) && free(x, z - 2.5) && free(x, z + 2.5) && free(x - 2.5, z) && free(x + 2.5, z)) { if (k % 2) bench(x, z, -a + Math.PI / 2, 'iron'); else leafyTree(x, z, r, k === 0); } } if (free(q.x + 6, q.y - 6)) newsstand(q.x + 6, q.y - 6, 0, r); if (free(q.x - 7, q.y + 5)) phoneBooth(q.x - 7, q.y + 5, 0); }
     // tavolini fuori da bar e osterie
     ['bar', 'osteria', 'sirena', 'gelateria', 'osteria_sg', 'car_2'].forEach((id, k) => { const q = P[id]; if (!q) return; for (let t = 0; t < 4; t++) { const x = q.x + (t - 1.5) * 1.8, z = q.y + 1.6; if (free(x, z)) table(x, z, 'cafe', ['caffe', 'birra'], r, 2); } });
@@ -7676,6 +7677,7 @@ var Render = (function () {
       if (low > 50) low = base; low = Math.min(low, base);
       const plinth = base - low, hgt = b.fl * 3;
       b.base = base;
+      if (b.pezzo && po1List().length) return;   // [posa] la chiesa e le scatole della Rocca: le disegna il loro pezzo
       if (b.lighthouse) { buildLighthouse(b, cx, cz, base); return; }
       if (b.kiosk) { buildKiosk(b, i, cx, cz, base, w, d); return; }
       if (b.id === 'rocca') { buildFortress(b, cx, cz, base, low, w, d); return; }
@@ -8260,10 +8262,11 @@ var Render = (function () {
       if (q.k === 'mercato') {
         // la tettoia: colonne di ghisa verdi su due file, il tetto a due falde di vetro, il colmo; sotto quattro file di banchi
         const tw = q.r * 1.15, td = q.r * .72, gt = G0(), iron = sm('#2f5a44', { metalness: .4, roughness: .6 }), vetro = sm('#a8c4b4', { roughness: .3, transparent: true, opacity: .5 });
+        if (!po1Has('tettoia_mercato', q.x, q.y, q.r)) {   // [posa] c'è la tettoia ottagonale in ghisa (pezzo): la vecchia a due falde non serve
         for (let i = -3; i <= 3; i++) for (const j of [-1, 1]) add(gt, cyl(.13, .17, 5, 8, iron), i * tw / 6, 2.5, j * td / 2);
         [-1, 1].forEach(j => { add(gt, box(tw + 1, .3, .35, iron), 0, 5.1, j * td / 2); add(gt, box(tw + 1.6, .1, td / 2 + 1.4, vetro), 0, 5.8, j * (td / 4 + .2), -j * .32, 0, 0); });
         add(gt, box(tw + 1.8, .35, .35, iron), 0, 6.35, 0); for (let i = -3; i <= 3; i++) add(gt, box(.12, .9, td + .4, iron), i * tw / 6, 5.6, 0);
-        place(gt, q.x, q.y, 0); n++;
+        place(gt, q.x, q.y, 0); n++; }
         for (const zz of [-td / 4, td / 4]) for (let x = -tw / 2 + 1.6; x <= tw / 2 - 1.6; x += 3.1) stallAt(q.x + x, q.y + zz + (zz < 0 ? -.9 : .9), zz < 0 ? Math.PI : 0);
         // l'anello dei banchi all'aperto, rivolti verso la tettoia; cassette e bidoni dietro
         for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2 + .1, rr = q.r - 3.2, x = q.x + Math.cos(a) * rr, z = q.y + Math.sin(a) * rr;
@@ -8287,18 +8290,19 @@ var Render = (function () {
       } else if (q.k === 'piazzetta') {
         // la piazzetta: i tavolini del bar o le cassette del forno, una panchina, il gatto, i vasi
         if (q.bar && !SEG1.ok) cafe(q.x - 2.5, q.y + q.r * .45, r, 'marble', 3, ['#b0283c', '#e9e0cf']);   // [segni] il dehors lo compone il piano
-        if (q.forno) { if (ok(q.x - q.r * .5, q.y)) crateStack(q.x - q.r * .5, q.y, 3, r, '#c8a060'); if (ok(q.x + q.r * .4, q.y - 1)) bench(q.x + q.r * .4, q.y - 1, Math.PI / 2, 'wood'); }
+        if (q.forno) { const fo = po1Has('fontana', q.x, q.y, 3) ? 1.75 : 1;   // [posa] con la fontana in mezzo le cassette e la panchina vanno al bordo
+          if (ok(q.x - q.r * .5 * fo, q.y)) crateStack(q.x - q.r * .5 * fo, q.y, 3, r, '#c8a060'); if (ok(q.x + q.r * .4 * fo, q.y - 1)) bench(q.x + q.r * .4 * fo, q.y - 1, Math.PI / 2, 'wood'); }
         for (let k = 0; k < 4; k++) { const a = r() * 6.28, x = q.x + Math.cos(a) * (q.r - .6), z = q.y + Math.sin(a) * (q.r - .6); if (ok(x, z, .4)) pot(x, z, r, pick(r, ['lemon', 'geranio', 'palm'])); }
         cat(q.x + 1, q.y - 1, r); n += 4;
       } else if (q.k === 'marina') {
         // la Piazza della Marina: i tavoli di legno dell'osteria sotto gli ombrelloni, le reti stese, le casse del pesce
-        for (let k = 0; k < 3; k++) { const x = q.x0 + 4 + k * 4, z = q.y0 + 4; if (ok(x, z)) { table(x, z, 'wood', ['vino', 'vino', 'fiasco', 'pane'], r, 2); parasol(x, z, '#e0cdb0', '#2f5a3e'); n++; } }
+        for (let k = 0; k < 3; k++) { const x = q.x0 + 4 + k * 4, z = q.y0 + 4; if (k === 2 && po1Has('lavatoio', x, z, 8)) continue; if (ok(x, z)) { table(x, z, 'wood', ['vino', 'vino', 'fiasco', 'pane'], r, 2); parasol(x, z, '#e0cdb0', '#2f5a3e'); n++; } }
         if (ok(q.x1 - 3, q.y1 - 3, 1)) nets(q.x1 - 3, q.y1 - 3, r); if (ok(q.x0 + 2, q.y1 - 2)) crateStack(q.x0 + 2, q.y1 - 2, 4, r, 'fish');
       } else if (q.k === 'calata') {
         // la calata: le bitte sul ciglio ogni otto metri; fra l'una e l'altra casse di pesce, reti, barili, fusti
         let last = -1e9, k = 0;
         for (let x = q.x0; x <= q.x1; x += 1) { let z = null; for (let zz = 150 + (M.world.OY || 0); zz < 260 + (M.world.OY || 0); zz += 1) if (tl(x, zz) === T.QUAY && tl(x, zz + 1.5) === T.WATER) { z = zz; break; }
-          if (z === null || x - last < 8) continue; last = x; bitta(x, z - .2); n++; k++;
+          if (z === null || x - last < 8) continue; last = x; if (!po1Has('bitta')) bitta(x, z - .2); n++; k++;   // [posa] le bitte sono pezzi
           const ix = x + 4, iz = z - 3; if (!ok(ix, iz, 1)) continue; const c = k % 4; if (c === 0) crateStack(ix, iz, 3, r, 'fish'); else if (c === 1) nets(ix, iz, r); else if (c === 2) barrel(ix, iz, r, r() < .3); else drumGroup(ix, iz, r, ['#2a5ab8', '#c8302a']); }
       }
     });
@@ -9833,6 +9837,7 @@ var Render = (function () {
     const lampM = new THREE.MeshBasicMaterial({ color: '#fff2c8', toneMapped: false }), flagM = sm('#9e1f1a', { roughness: .9, side: THREE.DoubleSide }), gravelM = sm('#5a5448', { roughness: 1 });
     stoneM.side = THREE.DoubleSide; earthM.side = THREE.DoubleSide;
     const X = F.x; let n = 0; const g = G0();
+    const PO = po1Has('cortina');   // [posa] il fronte di terra (bastioni, rivellino, cortina, fossato, porta) lo fanno i pezzi; restano le mura a mare
     // un tratto di muro a scarpa da A a B: più largo alla base, il cordone, il parapetto e la copertina; il camminamento dietro
     const wallSeg = (ax, az, bx, bz, H, th) => {
       const L = Math.hypot(bx - ax, bz - az); if (L < .2) return; const ang = Math.atan2(bz - az, bx - ax), mx = (ax + bx) / 2, mz = (az + bz) / 2, y0 = Math.min(groundH(ax, az), groundH(bx, bz), groundH(mx, mz)) - .4;
@@ -9861,21 +9866,21 @@ var Render = (function () {
         const dome = new THREE.Mesh(new THREE.SphereGeometry(.85, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), capM); dome.position.set(u[0], y + 2.1, u[1]); g.add(dome);
         const slit = box(.12, .5, .2, darkM); slit.position.set(u[0] - .78, y + 1.3, u[1]); g.add(slit); }
       return { h0, H, cx, cz }; };
-    F.bastions.forEach(P => { const q = prism(P, 7.2, true); n++;
+    if (!PO) F.bastions.forEach(P => { const q = prism(P, 7.2, true); n++;
       // le cose del regime sui bastioni: il riflettore verso la spianata e la bandiera
       const pole = cyl(.08, .1, 4.2, 6, darkM); pole.position.set(q.cx + 2, q.h0 + q.H + 2.1, q.cz); g.add(pole);
       const head = box(.6, .45, .55, darkM); head.position.set(q.cx + 1.8, q.h0 + q.H + 4.3, q.cz); g.add(head); const lens = box(.05, .36, .44, lampM); lens.position.set(q.cx + 1.48, q.h0 + q.H + 4.3, q.cz); g.add(lens);
       addLight(q.cx - 4, q.h0 + q.H + 3, q.cz, '#fff2c8', 2.2, 20, 0);
       const fp = cyl(.06, .07, 6, 6, darkM); fp.position.set(q.cx + 4, q.h0 + q.H + 3, q.cz); g.add(fp); const fl = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.1), flagM); fl.position.set(q.cx + 4.9, q.h0 + q.H + 5.4, q.cz); g.add(fl); });
-    F.ravelin.forEach(P => { prism(P, 5.2, false); n++; });
-    F.walls.forEach(L => { for (let k = 0; k < L.length - 1; k++) wallSeg(L[k][0], L[k][1], L[k + 1][0], L[k + 1][1], 6.2, 1.8); n++; });
+    if (!PO) F.ravelin.forEach(P => { prism(P, 5.2, false); n++; });
+    F.walls.forEach(L => { if (PO && L.every(q => Math.abs(q[0] - F.x) < .01)) return; for (let k = 0; k < L.length - 1; k++) wallSeg(L[k][0], L[k][1], L[k + 1][0], L[k + 1][1], 6.2, 1.8); n++; });
     // il fossato: fondo di ghiaia scura e la controscarpa bassa in pietra dalla parte della spianata (la strada lo passa sul ponte)
-    if (F.ditch) { const [x0, z0, x1, z1] = F.ditch, gy = F.y, w = x1 - x0;
+    if (F.ditch && !PO) { const [x0, z0, x1, z1] = F.ditch, gy = F.y, w = x1 - x0;
       [[z0, gy - 6], [gy + 6, z1]].forEach(([a, b]) => { if (b - a < 1) return; const fl2 = box(w, .06, b - a, gravelM); fl2.position.set((x0 + x1) / 2, groundH((x0 + x1) / 2, (a + b) / 2) + .04, (a + b) / 2); g.add(fl2);
         const cs = box(.5, .9, b - a, stoneM); cs.position.set(x0, groundH(x0, (a + b) / 2) + .45, (a + b) / 2); g.add(cs); });
       [-1, 1].forEach(sd => { const pr = box(w + 1, .7, .3, darkM); pr.position.set((x0 + x1) / 2, groundH((x0 + x1) / 2, gy) + .9, gy + sd * 5.5); g.add(pr); }); }   // le spallette del ponte
     // le porte: il portale di pietra (due piloni, l'arco, il frontone con l'occhio del Garante) sulla porta di terra, più semplice quella a mare
-    (F.gates || []).forEach(G1 => { const y0 = groundH(G1.x, G1.y), big = G1.kind === 'terra', wdt = big ? 12 : 7, H = big ? 8.5 : 6.6, gg = G0();
+    (F.gates || []).forEach(G1 => { if (PO && G1.kind === 'terra') return; const y0 = groundH(G1.x, G1.y), big = G1.kind === 'terra', wdt = big ? 12 : 7, H = big ? 8.5 : 6.6, gg = G0();
       [-1, 1].forEach(sd => { const p1 = box(2.4, H, 2.6, stoneM); p1.position.set(0, H / 2, sd * (wdt / 2 + .2)); gg.add(p1); const c1 = box(2.7, .3, 2.9, capM); c1.position.set(0, H + .15, sd * (wdt / 2 + .2)); gg.add(c1); });
       const lint = box(2.4, 1.6, wdt + 2.8, stoneM); lint.position.set(0, H - .8, 0); gg.add(lint);
       const arch = new THREE.Mesh(new THREE.TorusGeometry(wdt / 2 - .3, .35, 6, 16, Math.PI), capM); arch.rotation.y = Math.PI / 2; arch.position.set(-1.25, H - 2.2 - (wdt / 2 - .3) + 1.6, 0); gg.add(arch);
@@ -9884,6 +9889,71 @@ var Render = (function () {
       gg.position.set(G1.x, y0 - .2, G1.y); gg.rotation.y = -(G1.ang || 0); g.add(gg); });
     shadowed(g); scene.add(mergeGroup(g));
     return n;
+  }
+
+  // ================= [posa] I PEZZI URBANI GRANDI AL LORO POSTO (W.pezzi di world_cittanuova.js, i modelli di pezzi_citta.js) =================
+  // Ogni pezzo si fa due volte (pieno e livello basso), si posa alla sua quota (q), si gira (rot) e si fonde per materiale in settori di
+  // 96 m: un settore vicino al punto guardato mostra le mesh piene, uno lontano quelle basse (stessa sagoma, un decimo dei triangoli).
+  // Le collisioni stanno nelle caselle (world_cittanuova riserva BLD sotto i volumi chiusi, strada sotto portici, archi e sottopassi).
+  // Dove un pezzo prende il posto di un segnaposto (la chiesa con la guglia, le scatole della Rocca, la tettoia vecchia del Mercato,
+  // le bitte della calata, il Molo di Levante, lo scalo del cantiere, il fronte di terra della Rocca) il segnaposto non si disegna più.
+  const PO1 = { on: false, sec: [], SEC: 96, NEAR: 150, n: 0, mesh: 0, tri: 0 };
+  const po1List = () => (typeof location !== 'undefined' && /nopezzi/.test(location.search)) ? [] : (M.world && M.world.pezzi) || [];   // ?nopezzi: la città coi segnaposto (per confrontare)
+  const po1Has = (tipo, x, z, r) => po1List().some(p => p.tipo === tipo && (x === undefined || Math.hypot(p.x - x, p.y - z) < r));
+  // i binari dei pezzi che stanno sulla linea del treno (il passaggio a livello): le rotaie e la massicciata le disegna già la ferrovia
+  function po1Strip(g) {
+    const out = []; g.traverse(o => { if (o.isMesh && o.material && o.material.name === 'massicciata') out.push(o); else if (o.isGroup && o.children.some(c => c.isMesh && c.material && c.material.name === 'rotaia')) out.push(o); });
+    out.forEach(o => o.parent && o.parent.remove(o));
+  }
+  // la navata della Chiesa Madre: muri intonacati e il tetto a capanna di coppi col colmo perpendicolare alla facciata, l'abside in fondo
+  function po1Navata(g, o) {
+    const A = PezziCitta._aiuti, W = o.w, S = o.spessore || 1.2, D = o.corpo, h1 = o.h * .56 - .3, gS = (o.gradini || 3) * .17;
+    A.blocco(g, W - .4, h1, D, 'intonaco', W / 2, gS, -S / 2 - D / 2 + .05);
+    A.cornice(g, D, W - .4, .15, .35, 'tufoScuro', W / 2, gS + h1 - .35, -S / 2 + .05, 0).rotation.y = Math.PI / 2;
+    const r = new THREE.Group(); r.rotation.y = Math.PI / 2; r.position.set(W / 2, gS + h1, -S / 2 + .05); g.add(r);
+    A.tettoFalde(r, D - .3, W - .4, 2.4, 'coppi', 0, 0, 0, .35);
+    A.cil(g, (W - 1.6) / 2, (W - 1.6) / 2, h1 * .8, 16, 'intonaco', W / 2, gS, -S / 2 - D + .4);   // l'abside
+    A.cil(g, (W - 1.4) / 2, 0, 1.6, 16, 'coppi', W / 2, gS + h1 * .8, -S / 2 - D + .4);
+    for (let z = -S / 2 - 2.2; z > -S / 2 - D + 1.2; z -= 3.2) for (const s of [0, 1]) A.blocco(g, .12, 1.8, .9, 'buio', s ? W - .15 : .15, gS + h1 - 3, z);   // le finestre alte della navata
+  }
+  function posaPezzi1() {
+    const L = po1List(); if (!L.length || typeof PezziCitta === 'undefined' || !PezziCitta) return 0;
+    PO1.on = true; const B = new Map(), SEC = PO1.SEC;
+    const take = (g, lev, sk) => { g.updateMatrixWorld(true);
+      g.traverse(o => { if (!o.isMesh || Array.isArray(o.material) || !o.geometry || !o.geometry.attributes.position) return;
+        const k = o.material.uuid + '|' + sk + '|' + lev; let b = B.get(k); if (!b) B.set(k, b = { m: o.material, lev, sk, geos: [], shadow: o.castShadow });
+        const src = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(), gg = new THREE.BufferGeometry();
+        gg.setAttribute('position', src.attributes.position); if (src.attributes.normal) gg.setAttribute('normal', src.attributes.normal); else { gg.computeVertexNormals(); }
+        gg.setAttribute('uv', src.attributes.uv || new THREE.BufferAttribute(new Float32Array(src.attributes.position.count * 2), 2));
+        gg.applyMatrix4(o.matrixWorld); b.geos.push(gg); PO1.tri += gg.attributes.position.count / 3; }); };
+    L.forEach(p => {
+      const sk = Math.floor(p.x / SEC) + ',' + Math.floor(p.y / SEC);
+      for (const lev of ['alto', 'basso']) {
+        const o = Object.assign({}, p.opz, lev === 'basso' ? { lod: 'basso' } : {});
+        if (p.tipo === 'facciata_chiesa' && p.navata) o.corpo = 0;
+        let g; try { g = PezziCitta.make(p.tipo, o); } catch (e) { console.warn('[posa]', p.tipo, e); continue; }
+        if (!g) continue;
+        if (p.tipo === 'passaggio_livello') po1Strip(g);
+        if (p.tipo === 'facciata_chiesa' && p.navata) po1Navata(g, Object.assign({}, p.opz, { corpo: p.opz.corpo }));
+        const root = new THREE.Group(); root.position.set(p.x, p.q || 0, p.y); root.rotation.y = p.rot || 0; root.add(g);
+        take(root, lev, sk);
+      }
+      PO1.n++;
+    });
+    // le mesh fuse: una per materiale, settore e livello
+    const S = new Map();
+    B.forEach(b => { const geo = packNormals(mergeGeos(b.geos)); b.geos = [];
+      const m = new THREE.Mesh(geo, b.m); m.castShadow = b.shadow && !b.m.transparent; m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); m.userData.posa1 = b.lev;
+      m.visible = b.lev === 'basso'; scene.add(m); PO1.mesh++;
+      let s = S.get(b.sk); if (!s) { const [i, j] = b.sk.split(',').map(Number); S.set(b.sk, s = { x: (i + .5) * SEC, z: (j + .5) * SEC, alto: [], basso: [], near: null }); } s[b.lev].push(m); });
+    PO1.sec = [...S.values()];
+    if (window.__dbg35) console.log('[posa] pezzi', PO1.n, 'mesh fuse', PO1.mesh, 'settori', PO1.sec.length, 'triangoli', Math.round(PO1.tri));
+    return PO1.n;
+  }
+  // ogni fotogramma: i settori vicini al punto guardato col livello pieno, gli altri col basso
+  function posaTick1(x, z) {
+    if (!PO1.on) return;
+    for (const s of PO1.sec) { const near = Math.max(Math.abs(x - s.x), Math.abs(z - s.z)) < PO1.NEAR; if (near === s.near) continue; s.near = near; s.alto.forEach(m => { m.visible = near; }); s.basso.forEach(m => { m.visible = !near; }); }
   }
 
   function buildWinter() {
@@ -12291,7 +12361,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     const TT = (n, f) => { const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
-    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
+    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
@@ -13421,6 +13491,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     cam.jz = (cam.jz || 0) + ((p.jz || 0) * .6 - (cam.jz || 0)) * Math.min(1, dt * 6);   // [salto] la visuale sale un po' col salto
     const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(0, 1, ease) + cam.jz;
     camera.position.set(cx + ox, cy + oy, cz + oz); camera.lookAt(cx, cy, cz);
+    posaTick1(cx, cz);   // [posa] il livello pieno dei pezzi vicino al punto guardato
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
     if (ease < .02 && !PHONE) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti
       const texel = viewH / H; camera.updateMatrixWorld();
