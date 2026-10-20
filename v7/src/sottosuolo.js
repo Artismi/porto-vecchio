@@ -318,6 +318,10 @@ var Sottosuolo = (function () {
 
     // ---------------- LE FOGNE: sotto le strade grandi della città ----------------
     const sewer = [];
+    // [pulizia2] i pezzi urbani grandi (archi, portici, tettoie, mura): un tombino lì sotto, visto dalla camera, non si vede
+    const PZ = (W.pezzi || []).filter(p => p.imp && p.tipo !== 'binari' && p.tipo !== 'bitta'), CAM = Math.SQRT1_2;
+    const inPz = (x, y, pad0) => PZ.some(p => { const pad = /portico|porta_terra|tettoia/.test(p.tipo) ? pad0 + 2 : pad0, c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c; return p.imp.some(r => l >= r[1] - pad && l <= r[2] + pad && z >= r[3] - pad && z <= r[4] + pad); });   // le volte dei portici sporgono oltre le caselle riservate
+    const sottoPezzo = (x, y) => { if (!PZ.length) return false; for (let b = 0; b <= 12; b += 1) for (const o of [-.6, 0, .6]) if (inPz(x + CAM * b + o, y + CAM * b - o, 1.5)) return true; return false; };
     (W.roads || []).forEach(rd => {
       if (!rd.pts || rd.pts.length < 2 || (!rd.fogna && (!/^(citta|strada|litoranea)$/.test(rd.kind || '') || (rd.w || 0) < 6))) return;   // [città2] rd.fogna: la chiavica sotto la Rua e la marina del borgo
       let last = null, run = 0, tomb = -24;
@@ -331,7 +335,7 @@ var Sottosuolo = (function () {
           if (put(tx, ty, EL[idx(tx, ty)] - 4.4, K.FOGNA)) sewer.push([tx, ty]);
           last = [tx, ty];
           // un tombino ogni trenta metri, sulla carreggiata, mai troppo vicino a un altro
-          if (run - tomb > 30 && G.tileAt(tx, ty) === T.VIA && !portals.some(Q => Q.kind === 'tombino' && Math.hypot(Q.s[0] - tx, Q.s[1] - ty) < 8)) { portals.push({ kind: 'tombino', s: [tx, ty], u: [tx, ty], name: rd.name }); tomb = run; }
+          if (run - tomb > 30 && G.tileAt(tx, ty) === T.VIA && !portals.some(Q => Q.kind === 'tombino' && Math.hypot(Q.s[0] - tx, Q.s[1] - ty) < 8) && !sottoPezzo((tx + .5) * TS, (ty + .5) * TS)) { /* [pulizia2] mai sotto un arco, un portico, una tettoia */ portals.push({ kind: 'tombino', s: [tx, ty], u: [tx, ty], name: rd.name }); tomb = run; }
         }
       }
     });
@@ -1279,9 +1283,17 @@ var Sottosuolo = (function () {
     const g = new THREE.Group(); g.name = 'sottosuolo_sopra'; const L = LV.S(st);
     const tomb = L.portals.filter(P => P.kind === 'tombino'), iron = mat('#2e2e30', { metalness: .5, roughness: .6 });
     if (tomb.length) {
-      const tex = canvasTex(64, 64, (x, w, h) => { x.fillStyle = '#3a3a3c'; x.beginPath(); x.arc(32, 32, 31, 0, 6.3); x.fill(); x.strokeStyle = '#1e1e20'; x.lineWidth = 3; for (let i = 8; i < 60; i += 8) { x.beginPath(); x.moveTo(i, 4); x.lineTo(i, 60); x.stroke(); } x.fillStyle = '#505052'; x.font = 'bold 10px Arial'; x.textAlign = 'center'; x.fillText('S.P.Q.', 32, 36); });
-      const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(.42, .42, .05, 16), new THREE.MeshStandardMaterial({ map: tex, metalness: .5, roughness: .6 }), tomb.length), m4 = new THREE.Matrix4();
-      tomb.forEach((P, k) => { const x = cen(P.s[0]), z = cen(P.s[1]); m4.makeTranslation(x, R.groundH(x, z) + .03, z); im.setMatrixAt(k, m4); }); im.receiveShadow = true; g.add(im);
+      // [pulizia2] il tombino che si apre si trova al primo sguardo: l'anello di ghisa in rilievo, chiaro e lucido (il bordo che riflette),
+      // il disco scuro un po' più in basso con la croce e la scritta, l'ombra morbida attorno. Quelli dipinti delle strade restano piatti.
+      const tex = canvasTex(64, 64, (x, w, h) => { x.fillStyle = '#1c1c1f'; x.fillRect(0, 0, 64, 64); x.strokeStyle = '#3a3a3e'; x.lineWidth = 3; for (let i = 8; i < 60; i += 8) { x.beginPath(); x.moveTo(i, 4); x.lineTo(i, 60); x.stroke(); } x.strokeStyle = '#4a4a50'; x.lineWidth = 2; x.beginPath(); x.arc(32, 32, 27, 0, 6.3); x.stroke(); x.fillStyle = '#5a5a60'; x.font = 'bold 10px Arial'; x.textAlign = 'center'; x.fillText('S.P.Q.', 32, 36); });
+      const sh = canvasTex(64, 64, (x) => { const g = x.createRadialGradient(32, 32, 14, 32, 32, 32); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); });
+      const n = tomb.length, m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)), V = new THREE.Vector3(), S1 = new THREE.Vector3(1, 1, 1);
+      const ombra = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: sh, transparent: true, depthWrite: false }), n);
+      const anello = new THREE.InstancedMesh(new THREE.CylinderGeometry(.5, .53, .07, 20), new THREE.MeshStandardMaterial({ color: '#a8a8a2', metalness: .75, roughness: .28, emissive: '#3a3a34', emissiveIntensity: .6 }), n);
+      const disco = new THREE.InstancedMesh(new THREE.CylinderGeometry(.41, .41, .07, 18), new THREE.MeshStandardMaterial({ map: tex, color: '#9a9aa0', metalness: .6, roughness: .22 }), n);
+      tomb.forEach((P, k) => { const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z);
+        m4.compose(V.set(x, y + .012, z), q, S1); ombra.setMatrixAt(k, m4); m4.makeTranslation(x, y + .035, z); anello.setMatrixAt(k, m4); m4.makeTranslation(x, y + .03, z); disco.setMatrixAt(k, m4); });
+      ombra.renderOrder = 1; anello.receiveShadow = disco.receiveShadow = true; [ombra, anello, disco].forEach(o => { o.frustumCulled = false; g.add(o); });
     }
     L.portals.filter(P => P.kind === 'grata').forEach(P => { const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z); const q = new THREE.Group(); q.position.set(x, y, z); bx(q, 1.1, .05, .8, '#141414', 0, .01, 0); for (let i = -4; i <= 4; i++) bx(q, .05, .06, .8, iron, i * .12, .04, 0); g.add(q); });
     L.portals.filter(P => P.kind === 'scala').forEach(P => {
@@ -1292,7 +1304,7 @@ var Sottosuolo = (function () {
       const tot = new THREE.Group(); tot.position.set(-1.8, 0, 1.1); cy(tot, .07, .07, 2.6, '#3a3a40', 0, 1.3, 0); const sn = new THREE.Mesh(new THREE.PlaneGeometry(2.2, .55), new THREE.MeshBasicMaterial({ map: signTex(S.name), side: THREE.DoubleSide })); sn.position.set(0, 2.75, 0); tot.add(sn); bx(tot, .5, .5, .5, glow('#c8202a', .8), 0, 3.3, 0); q.add(tot);
       g.add(q);
     });
-    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    g.traverse(o => { if (o.isMesh && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; } });   // [pulizia2] l'ombra dipinta non fa ombra
     return g;
   }
 
