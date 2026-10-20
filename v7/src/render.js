@@ -141,6 +141,28 @@ var Render = (function () {
     m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); m.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     m.computeBoundingSphere(); m.computeBoundingBox(); return m;
   }
+  // [carico] toNonIndexed() (o clone()) e applyMatrix4() in un passo solo: gli stessi conti di three, stessi numeri al bit, ma
+  // senza la copia intermedia e i getX/setX vertice per vertice (era il grosso dell'avvio di case e fusione). Fuori dal caso
+  // solito (attributi impacchettati o intrecciati, altri attributi, morph) si torna alla strada di three
+  const _nm1 = new THREE.Matrix3();
+  function flatXf(g0, M) {
+    const A = g0.attributes, P = A.position, N = A.normal, U = A.uv, ix = g0.index;
+    const ok = a => !a || (a.array instanceof Float32Array && !a.normalized && !a.isInterleavedBufferAttribute);
+    let plain = !!P && ok(P) && ok(N) && ok(U) && P.itemSize === 3 && (!N || N.itemSize === 3) && (!U || U.itemSize === 2) && !(g0.morphAttributes && Object.keys(g0.morphAttributes).length);
+    if (plain) for (const k in A) if (k !== 'position' && k !== 'normal' && k !== 'uv') { plain = false; break; }
+    if (!plain) { const g = ix ? g0.toNonIndexed() : g0.clone(); g.applyMatrix4(M); return g; }
+    const I = ix ? ix.array : null, n = I ? I.length : P.array.length / 3, e = M.elements, pa = P.array, pos = new Float32Array(n * 3), g = new THREE.BufferGeometry();
+    for (let k = 0; k < n; k++) { const s = (I ? I[k] : k) * 3, x = pa[s], y = pa[s + 1], z = pa[s + 2], w = 1 / (e[3] * x + e[7] * y + e[11] * z + e[15]);
+      pos[k * 3] = (e[0] * x + e[4] * y + e[8] * z + e[12]) * w; pos[k * 3 + 1] = (e[1] * x + e[5] * y + e[9] * z + e[13]) * w; pos[k * 3 + 2] = (e[2] * x + e[6] * y + e[10] * z + e[14]) * w; }
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    if (N) { const r = _nm1.getNormalMatrix(M).elements, na = N.array, nor = new Float32Array(n * 3);
+      for (let k = 0; k < n; k++) { const s = (I ? I[k] : k) * 3, x0 = na[s], y0 = na[s + 1], z0 = na[s + 2], x = r[0] * x0 + r[3] * y0 + r[6] * z0, y = r[1] * x0 + r[4] * y0 + r[7] * z0, z = r[2] * x0 + r[5] * y0 + r[8] * z0, q = 1 / (Math.sqrt(x * x + y * y + z * z) || 1);
+        nor[k * 3] = x * q; nor[k * 3 + 1] = y * q; nor[k * 3 + 2] = z * q; }
+      g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); }
+    if (U) { const ua = U.array, uv = I ? new Float32Array(n * 2) : ua.slice(); if (I) for (let k = 0; k < n; k++) { const s = I[k] * 2; uv[k * 2] = ua[s]; uv[k * 2 + 1] = ua[s + 1]; }
+      g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); }
+    return g;
+  }
   // ================= [pulitore1] FUSIONE: le case per materiale uguale, la trasparenza a retino =================
   const FD1 = { tex: null, data: null, W: 1, u: { value: null }, idx: new Map(), emis: [], canon: new Map(), dirty: true, sigs: new Map() };
   const MSKIP1 = new Set(['uuid', 'name', 'id', 'version', 'userData', 'onBeforeCompile', 'customProgramCacheKey', 'onBuild', 'onBeforeRender', '_listeners', 'type']);
@@ -217,7 +239,7 @@ var Render = (function () {
         if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || Array.isArray(o.material) || !o.visible || o.renderOrder || o.customDepthMaterial || o.userData.keep) return;
         const m = o.material; if (m.transparent || m.userData.keepTr || live.mats.has(m) || !okGeo(o.geometry) || isLive(o)) return;
         const sig = matSig1(m); if (!sig) return;
-        const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(o.matrixWorld);
+        const g = flatXf(o.geometry, o.matrixWorld);   // [carico]
         g.computeBoundingBox(); g.boundingBox.getCenter(_wp);   // il settore dal centro vero (i gruppi delle case stanno tutti in 0,0)
         const key = sig + '|' + Math.floor(_wp.x / 32) + ',' + Math.floor(_wp.z / 32) + '|' + o.castShadow + o.receiveShadow;
         let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow });
@@ -288,7 +310,7 @@ var Render = (function () {
       for (const c of o.children) {
         const e = c.userData.p2 && P2.on && cn1() ? (() => { const q = p2New(c.userData.p2); q.yaw0 = yawM2(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); q.mp = []; E2.push(q); return q; })() : e2;   // [pulizia2] le parti segnate: dove finiscono nella mesh fusa
         if (c.userData.keepTree || c.isSprite || c.isLight || (c.isMesh && (Array.isArray(c.material) || c.userData.keep))) { keep.push(c); if (e && (c.isMesh || c.userData.keepTree)) e.objs.push(c); continue; }
-        if (c.isMesh) { let b = by.get(c.material); if (!b) { b = []; by.set(c.material, b); } const g = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); b.push(g); if (e) e.mp.push([b, b.length - 1, g.attributes.position.count]); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
+        if (c.isMesh) { let b = by.get(c.material); if (!b) { b = []; by.set(c.material, b); } const g = flatXf(c.geometry, new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld));   // [carico] b.push(g); if (e) e.mp.push([b, b.length - 1, g.attributes.position.count]); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
         walk(c, e);
       }
     };
@@ -6118,9 +6140,13 @@ var Render = (function () {
             if (d < DM[kk]) { DM[kk] = d; HW[kk] = rd.w / 2; } } } });
       for (let kk = 0; kk < DM.length; kk++) { const x = (kk % NW) * R, z = Math.floor(kk / NW) * R, tx = Math.floor(x / TS), tz = Math.floor(z / TS);
         if (zoneT(tx, tz) !== ZN.CITTA) continue; C38[kk] = 1; m[kk] = 0; if (DM[kk] > 1e8) continue; const d = DM[kk], h0 = HW[kk]; D38[kk] = d - h0; S38[kk] = Math.min(d - h0 - .02, h0 + 2.1 - d); } }   // [isola35] in città solo la fascia lungo le vie
+    // [carico] le colonne si sommano tutte insieme riga per riga (prima una colonna alla volta, saltando in memoria): stessi conti
+    // nello stesso ordine per ogni colonna, quindi stessi numeri, ma 4 s in meno all'avvio della città nuova
+    const CS = new Float64Array(NW);
     const blur = (src, rad) => { const t = new Float32Array(src.length), o = new Float32Array(src.length), n = 2 * rad + 1;
-      for (let j = 0; j < NH; j++) { let s = 0; for (let i = -rad; i <= rad; i++) s += src[j * NW + Math.max(0, i)]; for (let i = 0; i < NW; i++) { t[j * NW + i] = s / n; s += src[j * NW + Math.min(NW - 1, i + rad + 1)] - src[j * NW + Math.max(0, i - rad)]; } }
-      for (let i = 0; i < NW; i++) { let s = 0; for (let j = -rad; j <= rad; j++) s += t[Math.max(0, j) * NW + i]; for (let j = 0; j < NH; j++) { o[j * NW + i] = s / n; s += t[Math.min(NH - 1, j + rad + 1) * NW + i] - t[Math.max(0, j - rad) * NW + i]; } }
+      for (let j = 0; j < NH; j++) { const r = j * NW; let s = 0; for (let i = -rad; i <= rad; i++) s += src[r + Math.max(0, i)]; for (let i = 0; i < NW; i++) { t[r + i] = s / n; s += src[r + Math.min(NW - 1, i + rad + 1)] - src[r + Math.max(0, i - rad)]; } }
+      CS.fill(0); for (let j = -rad; j <= rad; j++) { const r = Math.max(0, j) * NW; for (let i = 0; i < NW; i++) CS[i] += t[r + i]; }
+      for (let j = 0; j < NH; j++) { const r = j * NW, ra = Math.min(NH - 1, j + rad + 1) * NW, rb = Math.max(0, j - rad) * NW; for (let i = 0; i < NW; i++) { o[r + i] = CS[i] / n; CS[i] += t[ra + i] - t[rb + i]; } }
       return o; };
     // scorrimento per curvatura: sfuma e riaffila più volte, così i gradini a 2 m delle strade fuori griglia diventano curve
     // e gli angoli si arrotondano senza assottigliare i marciapiedi stretti
