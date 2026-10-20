@@ -12084,7 +12084,7 @@ var PezziCitta = (function () {
     vetro: '#7fa3b8', asfalto: '#4a4a48', massicciata: '#7d7467', terra: '#8b7355', acqua: '#3f6f7a', bianco: '#e8e4da', rosso: '#b8322a',
     buio: '#1c1a18', lampada: '#ffe9b0', verde: '#3e6b3a', ottone: '#b08d4a', alluminio: '#b9bcc0', arancio: '#d8772a', giallo: '#e3b23c', blu: '#2a4a7a',
     zinco: '#8c9298', piombo: '#64676a', castano: '#6a3d2c', castanoScuro: '#4a2c22', isabella: '#d6c49a', erba: '#6f7a4a', rotaia: '#8a8580',
-    mattone: '#9a5a40', lamiera: '#7d8288', intonacoGrigio: '#b9b4aa', azzurro: '#8fb0c0', verdeScuro: '#2c3d2e', corda: '#b8a27a'
+    mattone: '#9a5a40', lamiera: '#7d8288', intonacoGrigio: '#b9b4aa', azzurro: '#8fb0c0', verdeScuro: '#2c3d2e', corda: '#b8a27a', legnoScuro: '#5a4028'
   };
   const MC = {};
   function mat(nome) {
@@ -12752,6 +12752,224 @@ var PezziCitta = (function () {
       asta(g, [w / 2, .82, -1.6 + .15], [w / 2, yE * .3 + .3, L * .3], .02, 'ferroScuro'); }       // il cavo fino al gancio
     bittaG(g, -.6, .15, -1.5, .5, false);
     g.userData.quotaPosa = yF; g.userData.misure = [w + 2.4, -yF + 1.3, L + 3]; return g;
+  };
+
+
+  // ================= 5. LA ROCCA SPAGNOLA E LE MURA (E0-E1) =================
+  // area con segno di un poligono in pianta [[x, z], ...] (positiva = il verso di tronco e allarga)
+  function areaP(pts) { let a = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; a += p[0] * q[1] - q[0] * p[1]; } return a; }
+  // poligono allargato verso fuori: il lato i (da i a i+1) si sposta di d[i] (0 = fermo); i vertici stanno all'incrocio dei lati spostati
+  function allarga(pts, d) {
+    const n = pts.length, sg = areaP(pts) > 0 ? 1 : -1;
+    const nor = i => { const a = pts[i], b = pts[(i + 1) % n], dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz); return [sg * dz / l, -sg * dx / l]; };
+    return pts.map((v, i) => { const j = (i - 1 + n) % n, n1 = nor(j), n2 = nor(i), d1 = d[j], d2 = d[i], det = n1[0] * n2[1] - n1[1] * n2[0];
+      if (Math.abs(det) < 1e-6) return [v[0] + n2[0] * d2, v[1] + n2[1] * d2];
+      return [v[0] + (d1 * n2[1] - d2 * n1[1]) / det, v[1] + (n1[0] * d2 - n2[0] * d1) / det]; });
+  }
+  // tronco di prisma: poligono pb alla base (y0) e pt in cima (y0 + h), stessi vertici; fianchi a scarpa e coperchio
+  function tronco(g, pb, pt, h, m, x, y0, z) {
+    if (areaP(pt) < 0) { pb = pb.slice().reverse(); pt = pt.slice().reverse(); }
+    const P = [], n = pt.length, B = i => [pb[i % n][0], 0, pb[i % n][1]], Tt = i => [pt[i % n][0], h, pt[i % n][1]];
+    for (let i = 0; i < n; i++) P.push(...B(i), ...Tt(i + 1), ...B(i + 1), ...B(i), ...Tt(i), ...Tt(i + 1));
+    THREE.ShapeUtils.triangulateShape(pt.map(p => new THREE.Vector2(p[0], p[1])), []).forEach(([a, b, c]) => { const A = Tt(a), Bv = Tt(b), C = Tt(c), ny = (Bv[2] - A[2]) * (C[0] - A[0]) - (Bv[0] - A[0]) * (C[2] - A[2]); if (ny >= 0) P.push(...A, ...Bv, ...C); else P.push(...A, ...C, ...Bv); });
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.computeVertexNormals();
+    return add(g, geo, m, x || 0, y0 || 0, z || 0);
+  }
+  // un gruppo sul lato a-b di un poligono in pianta: origine a metà lato, +X lungo il lato, +Z verso fuori (out = segno del verso)
+  function sulLato(g, a, b, sg, y) { const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz), ox = sg * dz / l, oz = -sg * dx / l; const gq = grp(g, (a[0] + b[0]) / 2, y || 0, (a[1] + b[1]) / 2, Math.atan2(ox, oz)); gq.userData.l = l; return gq; }
+  // stemma: scudo con la partizione e la corona, alto s, sulla faccia che guarda +Z, centro in (x, y)
+  function stemma(g, s, m, x, y, z, ry) {
+    const gg = grp(g, x, y, z, ry), w = s * .74;
+    const geo = geoCache(`ST${s}`, () => { const sh = new THREE.Shape(); sh.moveTo(-w / 2, s * .42); sh.lineTo(w / 2, s * .42); sh.lineTo(w / 2, -s * .05); sh.quadraticCurveTo(w / 2, -s * .42, 0, -s * .5); sh.quadraticCurveTo(-w / 2, -s * .42, -w / 2, -s * .05); sh.lineTo(-w / 2, s * .42);
+      const e = new THREE.ExtrudeGeometry(sh, { depth: .14, bevelEnabled: false, curveSegments: 5 }); return e; });
+    add(gg, geo, m, 0, 0, 0);
+    if (!LOD) { blocco(gg, .06, s * .8, .06, m, 0, -s * .42, .15); blocco(gg, w * .9, .06, .06, m, 0, .05, .15);   // la partizione in quarti
+      blocco(gg, w * .8, .14, .2, m, 0, s * .44, .07); for (const dx of [-.3, 0, .3]) blocco(gg, .1, .2 + (dx ? 0 : .08), .1, m, dx * w, s * .58, .07);   // la corona
+      blocco(gg, w * 1.2, .16, .18, m, 0, -s * .62, .07); }   // il cartiglio sotto
+    return gg;
+  }
+  // ciuffi d'erba e di capperi sui muri vecchi (usura): n ciuffi su una faccia che guarda +Z larga L, fra y0 e y1, a scarpa k (z = z0 - k·y)
+  function capperi(g, n, L, y0, y1, z0, k, seme, x0) {
+    if (LOD) return; const r = caso(seme);
+    for (let i = 0; i < n; i++) { const y = y0 + r() * (y1 - y0), s = .3 + r() * .35; blocco(g, s, s * .7, .25, r() < .5 ? 'erba' : 'verde', (x0 || 0) + .5 + r() * (L - 1), y, z0 - k * y + .05); }
+  }
+
+  DOC.cortina = { L: 40, h: 12, cordone: true, cannoniere: 0, terrapieno: 9, nota: 'cortina della Rocca: muro di tufo a scarpa fino al cordone, parapetto spesso con le cannoniere (0 = una ogni 10 m), banchina e camminamento sul terrapieno, muretto interno, doccioni con le colature, capperi. Il piede del fronte sta a z = 0 (il fronte guarda +Z, il fossato), il terrapieno verso −Z' };
+  T.cortina = o => {
+    o = def(o, DOC.cortina); const g = new THREE.Group(), L = o.L, h = o.h, hc = h - 2.4, hT = h - 1.9, zc = -hc * .2, D = o.terrapieno, nc = o.cannoniere || Math.max(1, Math.round(L / 10));
+    sezione(g, [[0, 0], [zc, hc], [zc, hT], [zc - D, hT], [zc - D, 0]], L, 'tufo', 0, 0, 0);          // muro a scarpa e terrapieno
+    blocco(g, L, .7, 3, 'tufo', L / 2, hT, zc - 1.5);                                                 // parapetto, parte bassa
+    const gap = 1.1; let xa = 0;
+    for (let i = 0; i <= nc; i++) { const xb = i < nc ? (i + .5) * L / nc - gap / 2 : L; if (xb - xa > .1) { blocco(g, xb - xa, h - hT - .7, 3, 'tufo', (xa + xb) / 2, hT + .7, zc - 1.5); if (!LOD) blocco(g, xb - xa, .1, 3.1, 'pietraChiara', (xa + xb) / 2, h, zc - 1.5); } xa = xb + gap; }   // i merloni fra le cannoniere
+    if (o.cordone) cilX(g, .32, L, 10, 'pietraChiara', L / 2, hc, zc + .06);
+    blocco(g, L, .06, D - 3, 'pietra', L / 2, hT, zc - 3 - (D - 3) / 2); blocco(g, L, .9, .5, 'tufo', L / 2, hT, zc - D + .25);   // camminamento e muretto interno
+    if (!LOD) for (let x = 4; x < L - 1; x += 8) { blocco(g, .3, .25, 1, 'pietraChiara', x, hT - .5, zc + .35); blocco(g, .45, hc * .55, .03, 'pietraScura', x, hc * .3, -.2 * hc * .575 + .02).rotation.x = -Math.atan(.2); }   // doccioni e colature
+    capperi(g, Math.round(L / 6), L, 1, hc - 1, 0, .2, L * 3 + h);
+    g.userData.misure = [L, h + .1, -zc + D]; return g;
+  };
+
+  DOC.bastione = { faccia: 36, fianco: 12, h: 12, garitta: true, nota: 'bastione pentagonale: la gola sta su z = 0 fra x = 0 e x = gola, i fianchi e le facce sporgono verso +Z fino al saliente; muro a scarpa col cordone, parapetto con le cannoniere sui fianchi, garitta pensile sul saliente, stemma su una faccia, doccioni e capperi' };
+  T.bastione = o => {
+    o = def(o, DOC.bastione); const g = new THREE.Group(), F = o.fianco, h = o.h, hc = h - 2.4, hT = h - 1.9, G = Math.max(16, o.faccia * .8), df = Math.sqrt(Math.max(1, o.faccia ** 2 - (G / 2) ** 2));
+    const pt = [[0, 0], [G, 0], [G, F], [G / 2, F + df], [0, F]], sg = areaP(pt) > 0 ? 1 : -1, pb = allarga(pt, [0, hc * .2, hc * .2, hc * .2, hc * .2]);
+    tronco(g, pb, pt, hc, 'tufo', 0, 0, 0); prisma(g, pt, hT - hc, 'tufo', 0, hc, 0);                // la scarpa e il terrapieno
+    for (let i = 1; i < 5; i++) { const a = pt[i], b = pt[(i + 1) % 5], gq = sulLato(g, a, b, sg), l = gq.userData.l, fianco = i === 1 || i === 4;
+      cilX(gq, .32, l + .5, 10, 'pietraChiara', 0, hc, .05);                          // cordone
+      blocco(gq, l + 2.4, .7, 3, 'tufo', 0, hT, -1.5);                                                  // parapetto basso
+      const nc = fianco ? Math.max(1, Math.round(l / 6)) : 0, gap = 1.1; let xa = -l / 2 - 1.2;
+      for (let k = 0; k <= nc; k++) { const xb = k < nc ? -l / 2 + (k + .5) * l / nc - gap / 2 : l / 2 + 1.2; blocco(gq, xb - xa, h - hT - .7, 3, 'tufo', (xa + xb) / 2, hT + .7, -1.5); xa = xb + gap; }   // merloni e cannoniere
+      if (!LOD) { blocco(gq, l + 2.4, .1, 3.1, 'pietraChiara', 0, h, -1.5); for (let x = -l / 2 + 4; x < l / 2 - 2; x += 9) blocco(gq, .3, .25, 1, 'pietraChiara', x, hT - .5, .35); }
+      capperi(gq, Math.round(l / 8), l, 1, hc - 1, hc * .2, .2, i * 17 + l, -l / 2);
+      if (i === 2 && !LOD) stemma(gq, 2.2, 'pietraChiara', 0, hc - 2.2, .2 * 2.2 + .18, 0); }
+    prisma(g, allarga(pt, [0, -3, -3, -3, -3]), .06, 'terra', 0, hT, 0);                               // il terrapieno di terra battuta
+    if (o.garitta) { const gr = grp(g, G / 2, hT, F + df - .2);
+      add(gr, geoCache(`GR${LOD}`, () => new THREE.CylinderGeometry(1.1, .2, 1.8, LOD ? 8 : 14)), 'pietraChiara', 0, -.9, .4);   // la mensola a cono
+      cil(gr, 1.0, 1.0, 2.4, 14, 'tufo', 0, 0, .4); if (!LOD) for (const t of [-.8, 0, .8]) blocco(gr, .12, .5, .2, 'buio', Math.sin(t) * .95, 1.2, .4 + Math.cos(t) * .95).rotation.y = t;
+      add(gr, new THREE.SphereGeometry(1.12, LOD ? 8 : 14, LOD ? 4 : 7, 0, PI * 2, 0, HP), 'pietraChiara', 0, 2.4, .4); add(gr, new THREE.SphereGeometry(.14, 8, 6), 'pietraChiara', 0, 3.55, .4); }
+    g.userData.misure = [G + hc * .4, h + (o.garitta ? 3.7 : .1), F + df + hc * .2 + .6]; return g;
+  };
+
+  DOC.fossato = { L: 30, w: 15, prof: 5, ponte: true, rivellino: true, nota: 'fossato asciutto lungo X: fondo d\'erba a −prof (quotaPosa), escarpa a scarpa sul lato −Z (la Rocca), controscarpa diritta con la copertina e il parapetto sul lato +Z; ponte in muratura ad archi con l\'ultimo tratto levatoio di legno con le catene; oltre la controscarpa il rivellino triangolare con l\'androne a volta. Il piano della città è y = 0' };
+  T.fossato = o => {
+    o = def(o, DOC.fossato); const g = new THREE.Group(), L = o.L, w = o.w, pr = o.prof, xc = L / 2;
+    blocco(g, L, .3, w + 1, 'erba', xc, -pr, w / 2);                                                  // il fondo
+    sezione(g, [[pr * .2, -pr], [0, 0], [-1.5, 0], [-1.5, -pr]], L, 'tufo', 0, 0, 0);   // l'escarpa a scarpa (la cortina ci sale sopra)
+    blocco(g, L, pr, 1.6, 'tufo', xc, -pr, w + .8); blocco(g, L, .18, 1.9, 'pietraChiara', xc, 0, w + .8, LOD ? 0 : .03); for (const s of [-1, 1]) { const lp2 = o.ponte ? L / 2 - 2.6 : L / 2; blocco(g, lp2, .7, .5, 'tufo', xc + s * (L / 2 - lp2 / 2), .18, w + 1.4); }   // controscarpa, copertina e parapetto (aperto sul ponte)
+    capperi(g, Math.round(L / 6), L, -pr + .6, -.6, w - .1, 0, L * 5 + w, 0);
+    if (!LOD) { blocco(g, L, .35, .03, 'verdeScuro', xc, -pr + .3, w - .015); blocco(g, L, .35, .03, 'verdeScuro', xc, -pr + .3, .2 * (pr - .475) + .02).rotation.x = -Math.atan(.2); }   // l'umido al piede
+    if (o.ponte) { const wb = 4.6, lp = Math.min(5, w * .35), zs = lp, ls = w - zs;                 // il ponte: archi di pietra fino a zs, poi il levatoio
+      const na = Math.max(1, Math.round(ls / 6)), wa = ls / na - 1.4, gp = grp(g, xc, -pr, zs, -HP);
+      pareteArchi(gp, ls, pr - .3, wb, Array.from({ length: na }, (_, i) => ({ x: (i + .5) * ls / na, w: Math.min(wa, pr * 1.4), h: Math.min(pr - 1.1, Math.min(wa, pr * 1.4) / 2 + pr * .45) })), 'tufo', 0, .3, 0);
+      for (const s of [-1, 1]) blocco(g, .45, .9, ls, 'tufo', xc + s * (wb / 2 - .22), 0, zs + ls / 2); blocco(g, wb - .9, .06, ls, 'pietra', xc, 0, zs + ls / 2);   // parapetti e selciato
+      blocco(g, wb - .6, .3, lp + .2, 'legno', xc, -.3, lp / 2); if (!LOD) { for (let z = .4; z < lp; z += .5) blocco(g, wb - .6, .04, .1, 'legnoScuro', xc, 0, z); for (const s of [-1, 1]) { cil(g, .25, .25, 3.2, 8, 'pietraChiara', xc + s * (wb / 2 + .1), 0, -.4); asta(g, [xc + s * (wb / 2 - .4), 0, lp - .2], [xc + s * (wb / 2 + .1), 3.1, -.4], .04, 'ferroScuro'); } }   // il levatoio con le catene sui piloni
+      if (!LOD) for (let i = 0; i < na; i++) blocco(gp, .3, pr * .5, .03, 'pietraScura', (i + 1) * ls / na - .7 * (i < na - 1 ? 1 : 0) - .2, .5, wb / 2 + .01); }
+    if (o.rivellino) { const R = Math.min(12, L * .4), Dr = R * .9, hR = 4.2, z0 = w + 1.6, wp = 2.6, dT = Dr * (1 - wp / R);  // il rivellino: due metà a scarpa e l'androne in mezzo
+      const half = s => [[xc + s * wp, z0], [xc + s * R, z0], [xc + s * wp, z0 + Dr * (1 - wp / R)]];
+      for (const s of [-1, 1]) { const p = half(s), sgn = areaP(p) > 0 ? 1 : -1; tronco(g, allarga(p, [0, .6, 0]), p, hR, 'tufo', 0, 0, 0); const gq = sulLato(g, p[1], p[2], sgn, hR); blocco(gq, gq.userData.l + .6, .9, .7, 'tufo', 0, 0, -.35); }
+      pareteArchi(g, wp * 2 + .2, hR, dT, [{ x: wp + .1, w: 3.6, h: 3.4 }], 'tufo', xc - wp - .1, 0, z0 + dT / 2);   // l'androne a volta
+      prisma(g, [[xc - wp - .1, z0 + Dr * (1 - wp / R)], [xc + wp + .1, z0 + Dr * (1 - wp / R)], [xc, z0 + Dr]], hR, 'tufo', 0, 0, 0);
+      if (!LOD) { conci(g, 1.8, .4, 7, 'pietraChiara', xc, 1.6, z0 + .1); blocco(g, 1.2, .45, .04, 'pietraChiara', xc, 3.65, z0 - .02); } }
+    g.userData.quotaPosa = -pr; g.userData.misure = [L, pr + 3.3, w + 2 + (o.rivellino ? 12 : 0)]; return g;
+  };
+
+  DOC.torrione = { r: 7, h: 16, lanterna: true, nota: 'torrione tondo aragonese: scarpa troncoconica, cordone, fusto con le feritoie, beccatelli di pietra sotto il parapetto sporgente, merli; sulla terrazza la lanterna bianca col ballatoio; porta ad arco verso −Z, cannoniere e stemma verso +Z. Centro in (raggio di base, 0, 0)' };
+  T.torrione = o => {
+    o = def(o, DOC.torrione); const g = new THREE.Group(), r = o.r, H = o.h, hs = H * .42, rb = r + hs * .18, cx = rb, seg = LOD ? 16 : 28, yB = H - 1.6;
+    cil(g, rb, r, hs, seg, 'tufo', cx, 0, 0); toro(g, r + .02, .3, seg, 'pietraChiara', cx, hs, 0, HP, 0);   // scarpa e cordone
+    cil(g, r, r, yB - hs, seg, 'tufo', cx, hs, 0);                                                     // il fusto
+    const nb = Math.round(2 * PI * r / 1.3); if (!LOD) for (let k = 0; k < nb; k++) mensola(grp(g, cx, 0, 0, k * 2 * PI / nb), .75, 1, .45, 'pietraChiara', 0, yB, r - .02);   // beccatelli
+    tornito(g, [[r - .4, 0], [r + .75, 0], [r + .75, 1.6], [r - .4, 1.6], [r - .4, 0]], seg, 'tufo', cx, yB, 0);   // parapetto sporgente
+    const nm = Math.round(2 * PI * (r + .2) / 2); for (let k = 0; k < nm; k++) blocco(grp(g, cx, 0, 0, k * 2 * PI / nm), 1, 1.1, 1, 'tufo', 0, H, r + .18, LOD ? 0 : .04);   // merli
+    if (!LOD) { for (let k = 0; k < 4; k++) blocco(grp(g, cx, 0, 0, PI / 4 + k * HP), .25, 1.5, .12, 'buio', 0, hs + 2 + k * 1.6, r - .02);   // feritoie
+      for (const t of [-.5, 0, .5]) blocco(grp(g, cx, 0, 0, t), .6, .45, .4, 'buio', 0, 1.6, rb - .5);   // cannoniere sulla scarpa
+      stemma(g, 2, 'pietraChiara', cx, yB - 2.6, r - .02, 0); }
+    const gd = grp(g, cx, 0, 0, PI); vano(gd, 2, 2.9, 'arco', 'pietraChiara', 0, 0, rb - .12, .3); vano(gd, 1.4, 2.5, 'arco', 'legno', 0, 0, rb - .05, .3);   // la porta
+    if (o.lanterna) { const gl = grp(g, cx, yB, 0);
+      cil(gl, 1.7, 1.7, 2.4, 16, 'bianco', 0, 0, 0); vano(gl, .8, 1.8, 'arco', 'legno', 0, 0, 1.68, .06);
+      cil(gl, 2.1, 2.1, .15, 16, 'pietraChiara', 0, 2.4, 0); if (!LOD) { for (let i = 0; i < 12; i++) { const t = i * PI / 6; blocco(gl, .04, .9, .04, 'ferro', Math.cos(t) * 2, 2.55, Math.sin(t) * 2); } toro(gl, 2, .03, 24, 'ferro', 0, 3.43, 0, HP, 0); }
+      cil(gl, 1.1, 1.1, 1.5, 12, 'vetro', 0, 2.55, 0); add(gl, new THREE.SphereGeometry(.35, 10, 8), 'lampada', 0, 3.3, 0);
+      cil(gl, 1.25, .15, .9, 12, 'piombo', 0, 4.05, 0); add(gl, new THREE.SphereGeometry(.15, 8, 6), 'ottone', 0, 5, 0); }
+    else { blocco(g, .1, 6, .1, 'ferro', cx, yB, 0); }
+    g.userData.misure = [2 * rb, H + (o.lanterna ? 3.6 : 4.4), 2 * rb]; return g;
+  };
+
+  DOC.caserma = { L: 60, piani: 2, p: 10, nota: 'caserma spagnola lunga addossata alla cortina (il retro cieco a −Z): zoccolo, cantonali di tufo, finestre con le cornici e le inferriate al piano terra, porte ad arco, portale col bugnato, la ghiera e lo stemma, fasce marcapiano, tetto di coppi a una falda verso la piazza d\'armi (+Z), gronda, comignoli in fila' };
+  T.caserma = o => {
+    o = def(o, DOC.caserma); const g = new THREE.Group(), L = o.L, P = o.p, hp = 4.2, hW = o.piani * hp + .6, zF = P / 2, nB = Math.max(3, Math.round(L / 4)), bay = L / nB, im = Math.floor(nB / 2), r = caso(L * 11 + o.piani);
+    blocco(g, L, .7, P + .2, 'pietra', L / 2, 0, 0, .03); blocco(g, L, hW - .7, P, 'intonaco', L / 2, .7, 0);
+    for (let i = 0; i < nB; i++) { const x = (i + .5) * bay;
+      if (i === im) { vano(g, 3.6, 4.2, 'arco', 'pietraChiara', x, 0, zF + .06, .12); vano(g, 2.6, 3.6, 'arco', 'legno', x, 0, zF + .1, .06); conci(g, 1.3, .3, 9, 'pietraChiara', x, 2.3, zF + .1); if (o.piani > 1) stemma(g, 1.6, 'pietraChiara', x, 5.3, zF, 0); continue; }   // il portale
+      if (i % 3 === 1) { vano(g, 1.5, 2.8, 'arco', 'legno', x, .3, zF + .03, .06); blocco(g, 1.7, .3, .4, 'pietraChiara', x, 0, zF + .2); }
+      else { finestra(g, 1, 1.3, x, 1.5, zF, { cimasa: false }); if (!LOD) for (let k = 0; k < 4; k++) blocco(g, .04, 1.34, .04, 'ferro', x - .37 + k * .25, 1.46, zF + .1); }   // finestre con l'inferriata
+      for (let p = 1; p < o.piani; p++) finestra(g, 1, 1.6, x, p * hp + 1.3, zF, { cimasa: false, vetro: r() < .3 ? 'legno' : 'buio' }); }
+    for (let p = 1; p < o.piani; p++) blocco(g, L, .2, .2, 'pietraChiara', L / 2, p * hp + .55, zF + .08);   // fasce marcapiano
+    if (!LOD) for (const [xe, s] of [[0, 1], [L, -1]]) for (let y = .7, k = 0; y < hW - .3; y += .45, k++) { const lx = k % 2 ? .9 : .5, lz = k % 2 ? .5 : .9; blocco(g, lx, .42, lz, 'tufo', xe + s * (lx / 2 - .03), y, zF - lz / 2 + .03); }   // cantonali
+    sezione(g, [[-zF - .2, hW + 1.6], [zF + .7, hW - .1], [zF + .7, hW + .05], [-zF - .2, hW + 1.75]], L + .4, 'coppi', -.2, 0, 0);   // tetto a una falda
+    sezione(g, [[-zF, hW], [zF, hW], [-zF, hW + 1.62]], L, 'intonaco', 0, 0, 0);                       // il sottotetto
+    if (!LOD) cilX(g, .1, L + .4, 6, 'zinco', L / 2, hW - .12, zF + .7);                               // la gronda
+    for (let x = 4; x < L - 2; x += 8) { cil(g, .35, .35, 1.4, 6, 'intonaco', x, hW + 1.2, -zF + 1); if (!LOD) blocco(g, .9, .1, .9, 'coppi', x, hW + 2.6, -zF + 1); }   // comignoli
+    g.userData.misure = [L + .4, hW + 2.8, P + .9]; return g;
+  };
+
+  DOC.polveriera = { L: 12, p: 8, cinta: true, nota: 'polveriera: aula a muri spessi con i contrafforti a scarpa, tetto a capanna di lastre di pietra, timpani, porta di ferro con la cornice, feritoie d\'aerazione a baionetta, parafulmini e la lapide; muro di cinta a 3 m con il cancello verso +Z e il cortile di terra battuta' };
+  T.polveriera = o => {
+    o = def(o, DOC.polveriera); const g = new THREE.Group(), L = o.L, P = o.p, hW = 4.5, d = 3, xc = L / 2 + (o.cinta ? d + .5 : 0), zF = P / 2;
+    blocco(g, L, hW, P, 'tufo', xc, 0, 0); tettoFalde(g, L, P, P * .32, 'pietra', xc - L / 2, hW, 0, .35);   // aula e tetto di lastre
+    for (const s of [-1, 1]) { const tri = new THREE.Shape(); tri.moveTo(-P / 2, 0); tri.lineTo(P / 2, 0); tri.lineTo(0, P * .32); tri.lineTo(-P / 2, 0); const geo = new THREE.ExtrudeGeometry(tri, { depth: .4, bevelEnabled: false }); geo.translate(0, 0, -.2); add(g, geo, 'tufo', xc + s * (L / 2 - .2), hW, 0, 0, HP); }   // i timpani
+    const nc = Math.max(2, Math.round(L / 4)); for (let i = 0; i <= nc; i++) for (const s of [-1, 1]) { const x = xc - L / 2 + .5 + i * (L - 1) / nc; sezione(g, [[0, 0], [1.4, 0], [.3, hW - .4], [0, hW - .4]].map(p => [s * (zF + p[0] - .02), p[1]]), .9, 'tufo', x - .45, 0, 0);   // contrafforti
+      if (!LOD && i < nc) { const gq = grp(g, x + (L - 1) / nc / 2, 0, 0, s > 0 ? 0 : PI); blocco(gq, .14, .9, .06, 'buio', 0, 2.6, zF + .02); blocco(gq, .5, .14, .06, 'buio', .18, 2.6 + .9, zF + .02); } }   // feritoie a baionetta
+    if (!LOD) { vano(g, 2, 2.8, 'rett', 'pietraChiara', xc, 0, zF + .05, .1); }
+    vano(g, 1.4, 2.4, 'rett', 'ferroScuro', xc, 0, zF + .1, .06);                                     // la porta di ferro
+    if (!LOD) { for (let y = .4; y < 2.4; y += .5) blocco(g, 1.4, .04, .04, 'ferro', xc, y, zF + .14); blocco(g, 1.6, .5, .08, 'pietraChiara', xc, 3.1, zF + .04); scritta(g, 'POLVERIERA 1678', 1.5, .3, xc, 3.35, zF + .09, 0, '#4a4036');
+      for (const s of [-1, 1]) { blocco(g, .04, 2.2, .04, 'ferro', xc + s * (L / 2 - .5), hW + P * .32 - .5, 0); add(g, new THREE.SphereGeometry(.08, 6, 4), 'ottone', xc + s * (L / 2 - .5), hW + P * .32 + 1.72, 0); } }   // lapide e parafulmini
+    if (o.cinta) { const W = L + 2 * d + 1, Dz = P + 2 * d + 1, hc = 3, ga = 2.6;                      // il muro di cinta e il cortile
+      blocco(g, W, .05, Dz, 'terra', W / 2, 0, 0);
+      for (const s of [-1, 1]) { blocco(g, .5, hc, Dz, 'tufo', s > 0 ? W - .25 : .25, 0, 0); blocco(g, .6, .12, Dz + .1, 'pietraChiara', s > 0 ? W - .25 : .25, hc, 0); }
+      blocco(g, W, hc, .5, 'tufo', W / 2, 0, -Dz / 2 + .25); blocco(g, W + .1, .12, .6, 'pietraChiara', W / 2, hc, -Dz / 2 + .25);
+      for (const s of [-1, 1]) { const lw = (W - ga) / 2 - .6; blocco(g, lw, hc, .5, 'tufo', s > 0 ? W - lw / 2 : lw / 2, 0, Dz / 2 - .25); blocco(g, lw + .1, .12, .6, 'pietraChiara', s > 0 ? W - lw / 2 : lw / 2, hc, Dz / 2 - .25);
+        blocco(g, .7, hc + .6, .7, 'pietraChiara', xc + s * (ga / 2 + .35), 0, Dz / 2 - .25, LOD ? 0 : .03); }
+      if (!LOD) for (let x = -ga / 2 + .1; x <= ga / 2 - .1; x += .16) blocco(g, .03, 2.2, .03, 'ferroScuro', xc + x, 0, Dz / 2 - .25);   // il cancello
+      blocco(g, ga, .06, d + .5, 'pietra', xc, 0, zF + (d + .5) / 2); }
+    g.userData.misure = o.cinta ? [L + 2 * d + 1, hW + P * .32 + 1.8, P + 2 * d + 1] : [L, hW + P * .32 + 1.8, P + 2.8]; return g;
+  };
+
+  DOC.porta_monumentale = { w: 10, h: 12, fornice: 4.2, merli: true, scritta: 'ANNO MDCLXXXII', nota: 'la porta della Rocca: massa di tufo profonda 6 m con l\'androne, paraste bugnate, ghiera di conci col mascherone in chiave, le fessure dei bolzoni del ponte levatoio, trabeazione con la scritta, attico con lo stemma coronato fra le volute, merli (o pinnacoli); ante aperte nell\'androne, lanterna a braccio' };
+  T.porta_monumentale = o => {
+    o = def(o, DOC.porta_monumentale); const g = new THREE.Group(), W = o.w, H = o.h, D = 6, wf = Math.min(o.fornice, W * .45), hf = Math.min(H * .55, wf * 1.55), zF = D / 2, hE = hf + 1.6, xc = W / 2;
+    pareteArchi(g, W, H, D, [{ x: xc, w: wf, h: hf }], 'tufo', 0, 0, 0);
+    conci(g, wf / 2, .5, 11, 'pietraChiara', xc, hf - wf / 2, zF - .15);
+    for (const s of [-1, 1]) { const xp = xc + s * (wf / 2 + 1.1);                                     // paraste bugnate
+      for (let y = 0, k = 0; y < hE - .1; y += .55, k++) blocco(g, k % 2 ? 1.5 : 1.9, .5, .35, 'pietraChiara', xp, y, zF + .08, LOD ? 0 : .06);
+      if (!LOD) blocco(g, .22, hE - hf - .4, .06, 'buio', xc + s * (wf / 2 - .4), hf + .2, zF + .01); }   // fessure dei bolzoni
+    if (!LOD) add(g, new THREE.SphereGeometry(.32, 10, 8), 'pietraChiara', xc, hf + .25, zF + .35);   // mascherone in chiave
+    blocco(g, W + .4, 1, .6, 'pietraChiara', xc, hE, zF, LOD ? 0 : .04); cornice(g, W, D, .3, .5, 'pietraChiara', 0, hE + 1, 0);   // trabeazione e cornice
+    if (o.scritta) scritta(g, o.scritta, Math.min(W * .7, o.scritta.length * .45), .6, xc, hE + .5, zF + .31, 0, '#4a4036');
+    const yS = hE + 1.5 + (H - hE - 1.5) * .45; stemma(g, Math.min(2.6, (H - hE) * .55), 'pietraChiara', xc, yS, zF, 0);
+    if (!LOD) for (const s of [-1, 1]) sezione(g, [[zF, 0], [zF + .3, 0], [zF + .3, .5], [zF, 1.6]], .5, 'pietraChiara', xc + s * 2 - .25, hE + 1.5, 0);   // volute (a cuneo)
+    blocco(g, W + .2, .3, D + .2, 'pietraChiara', xc, H, 0);
+    if (o.merli) merli(g, W, 1.2, .9, 1.6, 'tufo', 0, H + .3, zF - .3, 0, 'ghibellino');
+    else for (const x of [.4, W - .4]) { blocco(g, .5, .5, .5, 'pietraChiara', x, H + .3, zF - .3); add(g, new THREE.SphereGeometry(.28, 8, 6), 'pietraChiara', x, H + 1.05, zF - .3); }
+    if (!LOD) { for (const s of [-1, 1]) blocco(g, .15, hf - wf / 2, wf / 2 - .1, 'legno', xc + s * (wf / 2 - .1), 0, zF - 1.2 - wf / 4);   // ante spalancate nell'androne
+      const xl = xc + wf / 2 + 1.1; asta(g, [xl, 4.2, zF + .24], [xl, 4.2, zF + 1.1], .03, 'ferro'); blocco(g, .25, .35, .25, 'vetro', xl, 3.85, zF + 1.1); blocco(g, .3, .06, .3, 'ferroScuro', xl, 4.2, zF + 1.1); }   // la lanterna a braccio sulla parasta
+    conci(g, wf / 2, .4, 9, 'pietraChiara', xc, hf - wf / 2, -zF + .1);
+    g.userData.misure = [W + .4, H + (o.merli ? 1.9 : 1.33), D + .9]; return g;
+  };
+
+  DOC.mura_tramontana = { L: 30, h: 8, merli: true, scala: true, nota: 'segmento delle mura di tramontana lungo X: fronte a scarpa verso il mare (+Z) poi diritto, camminamento di ronda dietro il parapetto con i merli guelfi, rampa di scale addossata dal lato della città (−Z), feritoie, doccioni, capperi e l\'umido' };
+  T.mura_tramontana = o => {
+    o = def(o, DOC.mura_tramontana); const g = new THREE.Group(), L = o.L, h = o.h, hs = h * .35, hw = h - 1.4, T2 = 2.6, zo = 1.3;
+    sezione(g, [[zo + hs * .2, 0], [zo, hs], [zo, hw], [zo - T2, hw], [zo - T2, 0]], L, 'tufo', 0, 0, 0);   // il muro
+    blocco(g, L, 1.4, .6, 'tufo', L / 2, hw, zo - .3);                                                // parapetto
+    if (o.merli) merli(g, L, 1.2, 1.1, 2.2, 'tufo', 0, h, zo - .3, 0, 'guelfo'); else blocco(g, L, .12, .7, 'pietraChiara', L / 2, h, zo - .3);
+    blocco(g, L, .06, T2 - .6, 'pietra', L / 2, hw, zo - .6 - (T2 - .6) / 2);                        // il camminamento
+    if (!LOD) { for (let x = 3; x < L - 1; x += 6) { blocco(g, .2, 1, .1, 'buio', x, hw + .25, zo + .01); blocco(g, .3, .22, .8, 'pietraChiara', x + 3, hw - .4, zo + .3); blocco(g, .4, hw * .5, .03, 'pietraScura', x + 3, hs, zo + .02); }   // feritoie, doccioni e colature
+      blocco(g, L, .5, .03, 'tufoScuro', L / 2, 0, zo + hs * .2 - .03).rotation.x = -Math.atan(.2); }
+    capperi(g, Math.round(L / 5), L, .8, hs - .3, zo + hs * .2, .2, L * 13 + h);
+    if (o.scala) { const n = Math.ceil(hw / .2), a = hw / n, pd = .3, x0 = Math.max(.5, L - n * pd - 1.6), pts = [[x0, 0]]; let x = x0, y = 0;   // la scala addossata, senza parapetto
+      for (let i = 0; i < n; i++) { y += a; pts.push([x, y]); x += pd; pts.push([x, y]); } pts.push([Math.min(L, x + 1.2), y], [Math.min(L, x + 1.2), 0]);
+      profilo(g, pts, 1.4, 'pietraChiara', 0, 0, zo - T2 - .7); }
+    g.userData.misure = [L, h + (o.merli ? 1.2 : .12), T2 + hs * .2 + (o.scala ? 1.4 : 0)]; return g;
+  };
+
+  DOC.porta_terra = { w: 6, h: 9, torri: true, nota: 'Porta di Terra della cinta medievale: corpo con il fornice a sesto acuto, la ghiera di conci, la saracinesca alzata che si vede in alto, l\'edicola col santo e la lapide sopra, beccatelli e merli ghibellini; le due torri quadrate avanzate con le feritoie, i beccatelli e i merli' };
+  T.porta_terra = o => {
+    o = def(o, DOC.porta_terra); const g = new THREE.Group(), w = o.w, h = o.h, D = 6, Wc = w + 4, Hc = h + .22 * w + 4.4, tw = o.torri ? 6.5 : 0, W = Wc + 2 * tw, xc = W / 2, zF = D / 2;
+    pareteArchi(g, Wc, Hc, D, [{ x: Wc / 2, w, h, tipo: 'sesto' }], 'tufo', tw, 0, 0);
+    const hs = h - w * .65;                                                                          // la ghiera dell'arco acuto: due archi di conci
+    if (!LOD) for (const s of [-1, 1]) { const cxA = xc - s * w / 2, gk = grp(g, cxA, hs, zF - .1); for (let i = 0; i < 6; i++) { const t = (s > 0 ? 0 : PI) + s * (i + .5) * (PI / 3) / 6, b = blocco(gk, .45, .5, .4, 'pietraChiara', 0, 0, 0); b.position.set(Math.cos(t) * (w + .25), Math.sin(t) * (w + .25), 0); b.rotation.z = t - HP; } }
+    if (!LOD) { blocco(g, w - .1, .25, .3, 'ferroScuro', xc, h - .8, zF - .8); for (let x = -w / 2 + .3; x < w / 2 - .2; x += .45) blocco(g, .08, .7, .08, 'ferroScuro', xc + x, h - 1.4, zF - .8); }   // la saracinesca alzata
+    const yL = h + .22 * w + .7, yE = yL + 1; vano(g, 1.5, 2.2, 'arco', 'pietraChiara', xc, yE, zF + .05, .1); vano(g, 1.1, 1.9, 'arco', 'buio', xc, yE + .1, zF + .07, .06);   // l'edicola col santo
+    if (!LOD) { cil(g, .2, .16, 1.1, 8, 'bianco', xc, yE + .15, zF - .02); add(g, new THREE.SphereGeometry(.13, 8, 6), 'bianco', xc, yE + 1.38, zF - .02); blocco(g, 1.6, .12, .4, 'pietraChiara', xc, yE - .1, zF + .2); }
+    blocco(g, 2.4, .7, .08, 'pietraChiara', xc, yL, zF + .04); scritta(g, 'PORTA DI TERRA', 2.2, .4, xc, yL + .35, zF + .09, 0, '#4a4036');
+    const coro = (gx, L2, D2, y, zf) => { if (!LOD) for (let x = .4; x < L2; x += 1.1) mensola(g, .5, .7, .35, 'pietraChiara', gx + x, y, zf); blocco(g, L2 + .1, 1.2, D2 + 1, 'tufo', gx + L2 / 2, y, 0); merli(g, L2, 1.3, .9, 1.7, 'tufo', gx, y + 1.2, zf + .2, 0, 'ghibellino'); };
+    coro(tw, Wc, D, Hc, zF);                                                                         // beccatelli e merli del corpo
+    if (o.torri) for (const s of [0, 1]) { const x0 = s ? Wc + tw : 0, Ht = Hc + 3;                  // le torri, avanzate di 1,5 m
+      blocco(g, tw, Ht, D + 3, 'tufo', x0 + tw / 2, 0, 1.5, LOD ? 0 : .05); blocco(g, tw + .5, 1.2, D + 3.5, 'tufo', x0 + tw / 2, 0, 1.5);   // con lo zoccolo
+      if (!LOD) for (let y = 3; y < Ht - 2; y += 4) blocco(g, .22, 1.3, .08, 'buio', x0 + tw / 2, y, zF + 3.01);
+      const gt = grp(g, 0, 0, 1.5); for (let x = .4; x < tw && !LOD; x += 1.1) mensola(gt, .5, .7, .35, 'pietraChiara', x0 + x, Ht, (D + 3) / 2);
+      blocco(g, tw + .6, 1.2, D + 3.6, 'tufo', x0 + tw / 2, Ht, 1.5); merli(g, tw + .6, 1.3, .9, 1.7, 'tufo', x0 - .3, Ht + 1.2, zF + 3.05, 0, 'ghibellino'); }
+    capperi(g, 5, W, 1, h, zF + (o.torri ? 0 : 0), 0, w * 7 + h, 0);
+    g.userData.misure = [W + .6, Hc + (o.torri ? 3 : 0) + 2.9, D + (o.torri ? 3.6 : 1)]; return g;
   };
 
   const TIPI = Object.keys(T);
