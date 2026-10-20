@@ -4,6 +4,7 @@ import re
 h = open('src/index.src.html', encoding='utf-8', errors='ignore').read()
 def sub(m):
     return open('src/' + m.group(1), encoding='utf-8', errors='ignore').read()
+# pezzi_citta.js (la libreria dei pezzi urbani grandi) entra dopo oggetti3d.js: dipende solo da THREE
 # lo Studio sta fuori dal gioco: studio.js solo in editor.html (nel gioco l'editor non si apre, applica solo i ritocchi)
 SOLO_STUDIO = {'studio.js'}
 # [pausa] moduli messi da parte per ora (il codice resta in src/, con le sue prove): fuori sia dal gioco sia dallo Studio.
