@@ -11339,7 +11339,8 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // dei pezzi urbani (un materiale, nessuna chiamata in più)
   function f2Tufo() {
     if (typeof PezziCitta === 'undefined' || !PezziCitta || !PezziCitta.mat || F2.tufo) return; F2.tufo = true;
-    [['tufo', '#bba684', 1, .35, .62], ['tufoScuro', '#9a8869', .6, .35, .62], ['travertino', '#ddd3bb', .5, .6, 1.2], ['travertinoScuro', '#b4a990', .5, .6, 1.2]].forEach(([nome, hex, k, RH, RL]) => {   // [facciate2] anche il travertino del regime: lastre da 60 × 120 coi giunti const m = PezziCitta.mat(nome); if (!m) return; m.color.set(hex); m.roughness = .95;
+    [['tufo', '#bba684', 1, .35, .62], ['tufoScuro', '#9a8869', .6, .35, .62], ['travertino', '#ddd3bb', .5, .6, 1.2], ['travertinoScuro', '#b4a990', .5, .6, 1.2]].forEach(([nome, hex, k, RH, RL]) => {   // [facciate2] anche il travertino del regime: lastre da 60 × 120 coi giunti
+      const m = PezziCitta.mat(nome); if (!m) return; m.color.set(hex); m.roughness = .95;
       m.customProgramCacheKey = () => 'f2-tufo' + nome;
       m.onBeforeCompile = sh => {
         sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTW; varying vec3 vTN;').replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvTW = (modelMatrix * vec4(transformed, 1.0)).xyz; vTN = normalize(mat3(modelMatrix) * objectNormal);');
