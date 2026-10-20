@@ -1282,7 +1282,7 @@ var Vesti3D = (function () {
     yield;
     // [giacche] il capo di fuori del busto fatto a guscio (con la sua tela: dentro la V camicia e cravatta): la giacca e la cravatta
     // non passano più dalla pittura e dai pezzi; il corpo sotto il guscio si toglie
-    const GU = window.Giacche && window.Pittura ? Giacche.scegli(outfit) : null; g.userData.guscio = GU;
+    const GU = window.Giacche && window.Pittura && !window.__noGiacche ? Giacche.scegli(outfit) : null; g.userData.guscio = GU;
     if (GU) outfit = outfit.filter(c => c !== GU.J && c !== GU.tie);
     let D = null;
     if (window.Sartoria) try {
