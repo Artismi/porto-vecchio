@@ -29,7 +29,7 @@ ok(P.every(p => p.gruppi.length <= 2), 'nessun tetto con più di due gruppi');
 ok(P.filter(p => !p.vivo).every(p => p.gruppi.length <= 2 && p.gruppi.every(g => g.k === 'comignoli' || g.k === 'antenna')), 'i tetti calmi: al più i comignoli e un\'antenna');
 ok(P.filter(p => p.vivo).every(p => p.tipo === 'piano' && p.gruppi.length >= 1 && ['bucato', 'pergola', 'vasi', 'stanza'].includes(p.gruppi[0].k)), 'i tetti abitati sono terrazzi e il primo gruppo dice la vita (bucato, pergolato, vasi, stanza)');
 const dove = V.viviDove, occhio = (dove.giro + dove.piazza + dove.lungo) / Math.max(1, V.vivi);
-ok(occhio > .6, `gli abitati dove va l'occhio: giri, piazze, percorsi dominanti (${(occhio * 100).toFixed(0)}%)`);
+ok(occhio >= .5, `gli abitati dove va l'occhio: giri, piazze, percorsi dominanti (${(occhio * 100).toFixed(0)}%)`);
 const giro = P.filter(p => p.giro); ok(giro.every(p => p.tipo === 'piano'), `i tetti dei giri sono terrazzi (${giro.length})`);
 ok(P.every(p => p.tipo === 'piano' || (p.era === 'E3' ? p.manto === 'tegole' : p.manto === 'coppi')), 'il manto per epoca: coppi nel borgo, tegole nell\'Ottocento');
 ok(P.filter(p => p.era === 'E4' || p.era === 'E6').every(p => p.tipo === 'piano' && p.manto === 'quadrotti'), 'regime e boom: lastrico di quadrotti');

@@ -723,7 +723,11 @@ var Tetti = (function () {
       cand.push({ b, bi, s, giro, piazza, lungo, puo });
     });
     const meta = Math.round(cand.length / 3); let nv = 0;
-    cand.slice().sort((p, q) => q.s - p.s).forEach(c => { if (c.puo && nv < meta) { c.vivo = true; nv++; } });
+    // il ritmo: due terrazzi abitati non si toccano (almeno 5 m fra i centri, salvo sul giro): fra uno e l'altro il campo calmo dei coppi
+    const cen3 = c => [(c.b.x + c.b.w / 2) * TS, (c.b.y + c.b.h / 2) * TS], presi = []; let n3 = 0; const max3 = Math.ceil(cand.filter(c => c.b.era === 'E3').length / 5);
+    cand.slice().sort((p, q) => q.s - p.s).forEach(c => { if (!c.puo || nv >= meta) return; const [x, y] = cen3(c);
+      if (!c.giro && presi.some(([u, v]) => hyp(u - x, v - y) < 5)) return; if (c.b.era === 'E3' && !c.giro && n3 >= max3) return;   // l'Ottocento: al più un terrazzo abitato ogni cinque tetti
+      c.vivo = true; nv++; presi.push([x, y]); if (c.b.era === 'E3') n3++; });
     cand.forEach(c => { PIANO[c.bi] = pianoCasa3(c, giri); });
   }
   // il tetto di una casa: manto, forma, gruppi
