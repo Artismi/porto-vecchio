@@ -70,7 +70,8 @@ function percorri(c) {
   esito.push(scendi(L1) ? 'giù' : 'NOgiù'); return esito;
 }
 const giri = D.circuiti.filter(c => c.k === 'tetti'), borgo = (x, y) => x > D.borgo.x0 && x < D.borgo.x1 && y > D.borgo.y0 && y < D.borgo.y1;
-ok(giri.length >= 3 && giri.every(c => borgo(c.pts[0][0], c.pts[0][1])), `almeno tre giri sui tetti nel borgo (${giri.length})`);
+ok(giri.filter(c => !c.fuoriBorgo).length >= 3 && giri.filter(c => !c.fuoriBorgo).every(c => borgo(c.pts[0][0], c.pts[0][1])), `almeno tre giri sui tetti nel borgo (${giri.length})`);
+ok(giri.some(c => c.id === 'giro_mercato'), 'il giro del Mercato sui tetti dell\'Ottocento ([mappa_compatta])');
 giri.forEach(c => { const L0 = T.LADDERS[c.sali], L1 = T.LADDERS[c.scendi], es = percorri(c), crema = c.passi.filter(e => e.k === 'salto' || e.k === 'passerella' || e.k === 'scala').length;
   ok(!es.some(s => /^NO/.test(s)) && crema >= 1 && hyp(L0.fx - L1.fx, L0.fy - L1.fy) >= 18, `${c.nome}: ${Math.round(c.L)} m, ${c.edifici.length} tetti, ${crema} passaggi crema; sale e scende da un'altra parte (${Math.round(hyp(L0.fx - L1.fx, L0.fy - L1.fy))} m): ${es.join(' ')}`); });
 // il camminamento delle mura: dalla scala di levante a quella di ponente, a piedi sul camminamento
@@ -92,12 +93,18 @@ if (mura) {
 
 // ---------------- 4. le porte della città e la loro alternativa ----------------
 ok(D.porte.length >= 5 && ['porta_terra', 'sottoportico', 'sottopasso', 'scala_pescatori', 'posto_blocco'].every(id => D.porte.some(q => q.id === id)), 'le cinque porte: Porta di Terra, sottoportico, sottopasso, scala dei pescatori, posto di blocco');
+ok(D.porte.some(q => q.id === 'passaggio_livello'), 'la sesta porta: il passaggio a livello ([mappa_compatta])');
+['stazione', 'scalo', 'baracche', 'radio', 'covo'].forEach(id => ok(D.nodi.some(n => n.id === id), `il nodo nuovo: ${id} ([mappa_compatta])`));
+['officina', 'baracche', 'mura', 'stazione'].forEach(id => ok(D.percorsi.some(q => q.id === id), `il secondario: ${id} ([mappa_compatta])`));
+['gru_porto', 'torre_acqua'].forEach(t => ok(D.landmark.some(q => q.tipo === t), `il landmark nuovo: ${t} ([mappa_compatta])`));
 const SO = Sottosuolo.TPL, ug = SO.ug;
 const sottoterra = (a, b) => { const s = Math.floor(a[1] / TS) * GW + Math.floor(a[0] / TS), t = Math.floor(b[1] / TS) * GW + Math.floor(b[0] / TS), seen = new Set([s]), Q = [s];
   for (let k = 0; k < Q.length; k++) { const i = Q[k]; if (i === t) return true; for (const d of [1, -1, GW, -GW]) { const j = i + d; if (!seen.has(j) && ug[j]) { seen.add(j); Q.push(j); } } } return false; };
 D.porte.forEach(Pt => {
   const A = Pt.alternativa; if (!A) { ok(false, `${Pt.nome}: nessuna alternativa`); return; }
   const [a, z] = Pt.lati, ux = z[0] - a[0], uy = z[1] - a[1], lato = (x, y) => Math.sign((x - Pt.x) * ux + (y - Pt.y) * uy);
+  if (A.k === 'porta') { const Q = D.porte.find(q => q.id === A.porta);   // [mappa_compatta] l'altra porta che passa lo stesso ostacolo (il sottopasso per il passaggio a livello)
+    ok(Q && Q.id !== Pt.id && hyp(Q.x - Pt.x, Q.y - Pt.y) < 80 && Q.alternativa && Q.alternativa.k !== 'porta', `${Pt.nome}: l'alternativa è ${A.nome}, a ${Q ? Math.round(hyp(Q.x - Pt.x, Q.y - Pt.y)) : '?'} m`); return; }
   if (A.k === 'tombino') { const pa = SO.portals.find(P => hyp((P.s[0] + .5) * TS - A.entra[0], (P.s[1] + .5) * TS - A.entra[1]) < .1), pz = SO.portals.find(P => hyp((P.s[0] + .5) * TS - A.esce[0], (P.s[1] + .5) * TS - A.esce[1]) < .1);
     ok(pa && pz && lato(...A.entra) !== lato(...A.esce) && sottoterra(A.entra, A.esce), `${Pt.nome}: l'alternativa è sotto terra (${A.via}), un'apertura per parte, collegate`); return; }
   const L0 = T.LADDERS[A.sali], L1 = T.LADDERS[A.scendi], es = [];
@@ -114,6 +121,7 @@ const davanti = t => { const [ax, ay] = t.pts[0], r = t.richiamo; let a = Math.a
 // la vista ricontrollata con le quote dei tetti di tetti.js (la regola dei piani) e dei pezzi grandi
 const coperto = t => { const [ax, ay] = t.pts[0], r = t.richiamo; return !PC.vista(ax, ay, PC.occhio(ax, ay), r.x, r.y, r.z, r.r || 1); };
 const brutti = D.tratti.filter(t => t.richiamo && (!davanti(t) || coperto(t) || (t.borgo && t.richiamo.d > 60)));
+if (process.env.V) brutti.forEach(t => console.log(t.id, JSON.stringify(t.pts.map(q => q.map(Math.round))), JSON.stringify(t.richiamo), t.sguardo, davanti(t), coperto(t)));
 ok(!brutti.length, 'ogni richiamo sta davanti, non è coperto, nel borgo è a meno di 60 m' + (brutti.length ? ': ' + brutti.map(t => t.id + ' ' + t.richiamo.k).join(', ') : ''));
 const kinds = {}; D.tratti.forEach(t => kinds[t.richiamo.k] = (kinds[t.richiamo.k] || 0) + 1);
 ok(kinds.landmark >= 3 && kinds.mare >= 2 && kinds.luce >= 2, `i richiami sono di più tipi: ${JSON.stringify(kinds)}`);
