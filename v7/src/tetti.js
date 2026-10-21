@@ -40,7 +40,9 @@ var Tetti = (function () {
   function roofAt(x, y) {
     const bi = bAt(x, y), h = bi < 0 ? null : roofH(bi, x, y), q = h === null ? null : { bi, h };
     const pk = PLANKS.length ? plankAt(x, y) : null;   // [tetti2] sulla passerella vale la quota delle assi (anche sopra il vicolo)
-    return pk && (!q || pk.h >= q.h - .05) ? pk : q;
+    const r = pk && (!q || pk.h >= q.h - .05) ? pk : q;
+    const cm = CAMM.length ? cammAt(x, y) : null;   // [percorsi] sul camminamento delle mura, sopra il rilevato
+    return cm && (!r || cm.h >= r.h - .05) ? cm : r;
   }
 
   // ---------------- LE SCALE ----------------
@@ -193,6 +195,67 @@ var Tetti = (function () {
   }
   buildJumps();
 
+  // ---------------- [percorsi] I CAMMINAMENTI: le mura di tramontana e il rilevato sopra il sottopasso ----------------
+  // Sui pezzi grandi della città nuova (W.pezzi) due superfici si camminano come un tetto: il camminamento di ronda delle mura di
+  // tramontana (dietro il parapetto coi merli, a 1,4 m sotto la cima) e il piano del rilevato sopra il sottopasso della Via Cavour.
+  // Ci si sale dalla scala di ronda di pietra e da due scale di ferro color minio murate sul lato della città (le mura); sul
+  // rilevato da due scale di ferro, una per parte (l'alternativa al sottopasso: si scavalca la ferrovia). Una catena di campi:
+  // { i, tipo, p (il pezzo), x0..x1, z0..z1 (locali), h (quota assoluta), L, a, b (i capi, metri), bi (l'edificio che fa da lv.b) }.
+  const CAMM = [], CCELL = new Map();
+  const pzW = (p, lx, lz) => { const c = Math.cos(p.rot), s = Math.sin(p.rot); return [p.x + lx * c + lz * s, p.y - lx * s + lz * c]; };
+  const pzL = (p, x, y) => { const c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y; return [dx * c - dy * s, dx * s + dy * c]; };
+  function cammAt(x, y) {
+    if (!inb(Math.floor(x / TS), Math.floor(y / TS))) return null; const L = CCELL.get(Math.floor(y / TS) * GW + Math.floor(x / TS)); if (!L) return null;
+    let best = null; for (const c of L) { const [l, z] = pzL(c.p, x, y); if (l < c.x0 || l > c.x1 || z < c.z0 || z > c.z1) continue; if (!best || c.h > best.h) best = c; }
+    return best ? { bi: best.bi, h: best.h, camm: best.i } : null;
+  }
+  function buildCamm() {
+    CAMM.length = 0; CCELL.clear(); const PZ0 = W.pezzi || []; if (!PZ0.length) return;
+    const vicinoB = (x, y) => { let bi = -1, bd = 1e9; B.forEach((b, i) => { if (b.lighthouse || !b.door) return; const d = hyp((b.x + b.w / 2) * TS - x, (b.y + b.h / 2) * TS - y); if (d < bd) { bd = d; bi = i; } }); return bi; };
+    const campo = (p, tipo, x0, x1, z0, z1, h, bi) => { const c = { i: CAMM.length, tipo, p, x0, x1, z0, z1, h, bi, L: x1 - x0, a: pzW(p, x0, (z0 + z1) / 2), b: pzW(p, x1, (z0 + z1) / 2) }; CAMM.push(c);
+      for (let lx = x0; lx <= x1 + .01; lx += .5) for (let lz = z0; lz <= z1 + .01; lz += .5) { const [x, y] = pzW(p, lx, lz), k = Math.floor(y / TS) * GW + Math.floor(x / TS); const A = CCELL.get(k) || CCELL.set(k, []).get(k); if (A.indexOf(c) < 0) A.push(c); }
+      return c; };
+    // una scala di ferro murata sulla faccia z = zf del pezzo, al punto lx; i piedi sulla prima casella percorribile verso fuori (sz: il verso)
+    const scalaCamm = (c, lx, zf, sz, ex) => {
+      const [wx, wy] = pzW(c.p, lx, zf), [ex0, ey0] = pzW(c.p, lx, zf + sz), ox = ex0 - wx, oy = ey0 - wy; let fx = null, fy = null;
+      for (let d = .55; d <= 2.2; d += .15) { const x = wx + ox * d, y = wy + oy * d; if (G.walkM(x, y) && bAt(x, y) < 0) { fx = x; fy = y; break; } }
+      if (fx === null) return null; const [tx, ty] = pzW(c.p, lx, zf - sz * .8);
+      const L = Object.assign({ i: LADDERS.length, bi: c.bi, f: 'camm', x: wx, y: wy, ox, oy, fx, fy, tx, ty, footB: -1, ang: Math.atan2(oy, ox), camm: c, hTop: c.h }, ex || {}); LADDERS.push(L); return L;
+    };
+    // le mura di tramontana, da levante a ponente; i tratti si sormontano di 40 cm ai giunti
+    const mura = PZ0.filter(p => p.tipo === 'mura_tramontana' && p.opz && p.opz.L).sort((a, b) => b.x - a.x);
+    if (mura.length) {
+      const m = mura[Math.floor(mura.length / 2)], bi = vicinoB(m.x, m.y + 8), C = mura.map(p => campo(p, 'mura_tramontana', -.4, p.opz.L + .4, -1.25, .62, (p.q || 0) + (p.opz.h || 8) - 1.4, bi));
+      // la scala di ronda di pietra (il pezzo la disegna): i piedi davanti al primo gradino, la cima sul camminamento
+      mura.forEach((p, k) => { if (!p.opz.scala) return; const hw = (p.opz.h || 8) - 1.4, n = Math.ceil(hw / .2), x0 = Math.max(.5, p.opz.L - n * .3 - 1.6);
+        for (let d = .6; d <= 2.6; d += .2) { const [fx, fy] = pzW(p, x0 - d, -2.0); if (!G.walkM(fx, fy) || bAt(fx, fy) >= 0) continue; const [wx, wy] = pzW(p, x0, -2.0), [tx, ty] = pzW(p, Math.min(p.opz.L - .6, x0 + n * .3 + .5), -.4), [ax, ay] = pzW(p, x0 + 1, -2.0);
+          LADDERS.push({ i: LADDERS.length, bi, f: 'camm', x: wx, y: wy, ox: wx - ax, oy: wy - ay, fx, fy, tx, ty, footB: -1, ang: Math.atan2(wy - ay, wx - ax), camm: C[k], hTop: C[k].h, rampa: true }); break; } });
+      // le due scale di ferro ai capi: sul lato della città (−z), a un metro e mezzo dalla testata
+      const e = C[0], o = C[C.length - 1]; scalaCamm(e, 1.6, -1.3, -1); scalaCamm(o, o.p.opz.L - 1.6, -1.3, -1);
+    }
+    // il rilevato sopra il sottopasso: il piano dentro i parapetti, una scala di ferro per parte accanto al fornice
+    PZ0.filter(p => p.tipo === 'sottopasso').forEach(p => { const L = Math.max(p.opz.L || 14, (p.opz.w || 4) + 6), Hr = Math.max(p.opz.hRilevato || 4.8, (p.opz.h || 3.2) + 1.6);
+      const c = campo(p, 'sottopasso', .3, L - .3, -4.05, 4.05, (p.q || 0) + Hr, vicinoB(p.x + L / 2, p.y)); scalaCamm(c, 1.4, 4.5, 1); scalaCamm(c, 1.4, -4.5, -1); });
+  }
+  buildCamm();
+  // [percorsi] IL GRAFO DEI TETTI per i percorsi (percorsi.js): per ogni tetto gli archi orientati verso i tetti dove si passa, col punto
+  // del passaggio. k: 'tetto' (si tocca, dislivello entro un gradino), 'gradino' (si tocca, si sale col salto fino a 1,2 m), 'salto'
+  // (il vicolo di una casella coi bordi crema, JUMPS), 'passerella' (PLANKS), 'scala' (la scala di ferro fra un tetto basso e uno alto).
+  // Si scende sempre fino alla caduta senza danni (SAFE).
+  function grafo() {
+    const E = new Map(), add = (a, b, k, x, y, i, ux, uy) => { const L = E.get(a) || E.set(a, []).get(a); if (!L.some(e => e.b === b && e.k === k)) L.push({ a, b, k, x, y, i, ux, uy }); };   // ux, uy: il verso del passaggio
+    const seen = new Map();
+    B.forEach((b, bi) => { if (b.lighthouse) return; for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) { if (BI[ty * GW + tx] !== bi) continue;
+      for (const [dx, dy] of [[1, 0], [0, 1]]) { const x2 = tx + dx, y2 = ty + dy; if (!inb(x2, y2)) continue; const o = BI[y2 * GW + x2]; if (o < 0 || o === bi || !B[o]) continue;
+        const key = Math.min(bi, o) + ':' + Math.max(bi, o), L = seen.get(key) || seen.set(key, []).get(key); L.push([(tx + .5 + dx * .5) * TS, (ty + .5 + dy * .5) * TS, bi, dx, dy]); } } });
+    seen.forEach((P, key) => { const [a, b] = key.split(':').map(Number), m = P[Math.floor(P.length / 2)], ha = roofRule(B[a]), hb = roofRule(B[b]);
+      for (const [p, q, dh] of [[a, b, hb - ha], [b, a, ha - hb]]) { if (dh > 1.2 || dh < -SAFE) continue; const sg = m[2] === p ? 1 : -1; add(p, q, dh > STEP ? 'gradino' : 'tetto', m[0], m[1], undefined, m[3] * sg, m[4] * sg); } });
+    JUMPS.forEach((J, i) => { const k = Math.floor((J.k0 + J.k1) / 2), [wx, wy] = J.sd.wall(k), x = wx + J.ox * TS / 2, y = wy + J.oy * TS / 2; add(J.bi, J.bj, 'salto', x, y, i, J.ox, J.oy); add(J.bj, J.bi, 'salto', x, y, i, -J.ox, -J.oy); });
+    PLANKS.forEach(P => { const x = (P.wa[0] + P.wb[0]) / 2, y = (P.wa[1] + P.wb[1]) / 2; add(P.a, P.b, 'passerella', x, y, P.i, P.ox, P.oy); add(P.b, P.a, 'passerella', x, y, P.i, -P.ox, -P.oy); });
+    LADDERS.forEach(L => { if (L.footB < 0 || L.camm) return; add(L.footB, L.bi, 'scala', L.fx, L.fy, L.i); add(L.bi, L.footB, 'scala', L.tx, L.ty, L.i); });
+    return E;
+  }
+
   // ---------------- [tetti2] I BELVEDERI: i tetti più alti di ogni quartiere ----------------
   // Un motivo per salire: in cima ai palazzi più alti c'è un angolo con la panca e la bandierina. Arrivarci la prima volta
   // è una piccola scoperta (passa la noia); poi ci si può sedere a guardare il porto.
@@ -239,7 +302,7 @@ var Tetti = (function () {
     if (any && G.wantedLevel && G.wantedLevel(st) > 0 && !(st.tetti && st.tetti.hint)) { (st.tetti || (st.tetti = { belv: {}, sat: {} })).hint = true; G.feed(st, 'Quassù non ti vedono. Stai giù e lasciali perdere.'); }
   }
   const footH = L => L.footB >= 0 ? (roofH(L.footB, L.fx, L.fy) ?? roofRule(B[L.footB])) : tileH(L.fx, L.fy);
-  const topH = L => { const h = roofH(L.bi, L.tx, L.ty); return h === null ? roofRule(B[L.bi]) : h; };
+  const topH = L => { if (L.hTop != null) return L.hTop; const h = roofH(L.bi, L.tx, L.ty); return h === null ? roofRule(B[L.bi]) : h; };   // [percorsi] la scala dei camminamenti arriva alla loro quota
   // la scala più vicina: ai piedi (per salire) o in cima (per scendere)
   function ladderNear(st, top, r) {
     const p = st.player; let best = null, bd = r || 1.5;
@@ -406,7 +469,9 @@ var Tetti = (function () {
     // [tetti2] leggibilità: fascia gialla ai piedi delle scale, lanterna calda in cima; assi, corda, panca e bandierina
     const yell = new T3.MeshStandardMaterial({ color: '#e8b828', roughness: .6 }), lamp = new T3.MeshBasicMaterial({ color: '#ffd27a', toneMapped: false });
     const wood = new T3.MeshStandardMaterial({ color: '#8a6a44', roughness: .9 }), rope = new T3.MeshStandardMaterial({ color: '#c8b48a', roughness: 1 }), flag = new T3.MeshStandardMaterial({ color: '#c8302a', roughness: .8, side: T3.DoubleSide });
-    return { box, iron, rust, yell, lamp, wood, rope, flag, crema };
+    // [percorsi] la traccia dei passi sui lastrici: un velo della famiglia del crema, appena più scuro, mezzo trasparente
+    const traccia = new T3.MeshStandardMaterial({ color: '#e2d8bc', roughness: .95, transparent: true, opacity: .5, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    return { box, iron, rust, yell, lamp, wood, rope, flag, crema, traccia };
   }
   // le scale: due montanti, i pioli ogni 30 cm, la gabbia sopra i 2,5 m, il corrimano che scavalca il bordo del tetto
   function buildLaddersGfx(R) {
@@ -419,7 +484,8 @@ var Tetti = (function () {
       const y0 = footH(L), y1 = topH(L) + .95, Hh = y1 - y0; if (Hh < .5 || Hh > 40) return;
       const off = .2, cx = L.x + L.ox * off, cz = L.y + L.oy * off, yaw = -L.ang;   // 20 cm fuori dal muro
       const sx = -L.oy * .22, sz = L.ox * .22;   // i due montanti, 44 cm l'uno dall'altro
-      const bb = B[L.bi], old = bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');
+      const bb = B[L.bi], old = !L.camm && bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');   // [percorsi] sui camminamenti la scala di ferro
+      if (L.rampa) { put(crema, L.fx, y0 + .06, L.fy, .5, .12, .9, yaw); return; }   // [percorsi] la scala di ronda è di pietra (il pezzo): solo il primo gradino chiaro
       put(crema, L.x + L.ox * .38, y0 + .06, L.y + L.oy * .38, .5, .12, .78, yaw);   // [pulizia2] il primo gradino, chiaro, ai piedi della scala
       if (old) {   // [epoche] nel borgo, sull'Ottocento e sul regime niente scala di ferro: le staffe alla marinara murate nella parete (pioli a U, ruggine)
         const wx = L.x + L.ox * .02, wz = L.y + L.oy * .02;
@@ -474,8 +540,40 @@ var Tetti = (function () {
       flags.push(m4.compose(p3.set(fx + .32, y + 2.5, fz), q, s3.set(.6, .38, .02)).clone());
       lamps.push(m4.compose(p3.set(fx, y + 2.86, fz), q, s3.set(.1, .1, .1)).clone());
     });
+    // [percorsi] I CIRCUITI SUI TETTI SI VEDONO (percorsi.js): la traccia più chiara sul lastrico fra una scala e l'altra (i passi
+    // consumano lo sporco), una lanterna su un ferro color minio a ogni svolta, il bucato teso lungo il tratto più lungo, la corda annodata
+    // dove si sale di un gradino col salto, la cassa e l'asse appoggiate ai piedi della scala da cui si parte. Stesso linguaggio:
+    // minio per salire, crema per dove si passa; solo i materiali di qui.
+    const PD = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null, traccia = [];
+    if (PD) {
+      const giri = PD.circuiti.filter(c => c.k === 'tetti').concat(PD.porte.map(q => q.alternativa).filter(a => a && a.k === 'tetti' && !a.camm));
+      giri.forEach((c, ci) => {
+        const P = c.pts.slice(1, -1), ok = new Set(c.edifici), hAt = (x, y) => { const q = roofAt(x, y); return q && (ok.has(q.bi) || q.plank !== undefined) ? q.h : null; };
+        // la traccia: una lastra chiara ogni 90 cm, girata lungo il passo, alla quota del lastrico
+        for (let k = 0; k < P.length - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L = hyp(bx - ax, by - ay), yaw = -Math.atan2(by - ay, bx - ax);
+          for (let s = .45; s < L; s += .9) { const x = ax + (bx - ax) * s / L, y = ay + (by - ay) * s / L, h = hAt(x, y); if (h === null) continue; put(traccia, x, h + .015, y, .78, .02, .5, yaw); } }
+        // le svolte: la lanterna sul ferro minio, mezzo metro fuori dalla svolta
+        for (let k = 1; k < P.length - 1; k++) { const [ax, ay] = P[k - 1], [x, y] = P[k], [bx, by] = P[k + 1], a1 = Math.atan2(y - ay, x - ax), a2 = Math.atan2(by - y, bx - x);
+          let d = Math.abs(a2 - a1); if (d > Math.PI) d = 2 * Math.PI - d; if (d < .6 || hyp(x - ax, y - ay) < 1.5) continue;
+          const mx = Math.cos(a1) - Math.cos(a2), my = Math.sin(a1) - Math.sin(a2), ml = hyp(mx, my) || 1, px = x + mx / ml * .6, py = y + my / ml * .6, h = hAt(px, py); if (h === null) continue;
+          put(rails, px, h + .45, py, .05, .9, .05, 0); put(lamps, px, h + .96, py, .13, .15, .13, 0); }
+        // il bucato sul tratto più lungo del giro (almeno 4 m): due paletti, la corda, i panni color crema
+        let bk = -1, bl = 4; for (let k = 0; k < P.length - 1; k++) { const l = hyp(P[k + 1][0] - P[k][0], P[k + 1][1] - P[k][1]); if (l > bl) { bl = l; bk = k; } }
+        if (bk >= 0) { const [ax, ay] = P[bk], [bx, by] = P[bk + 1], ux = (bx - ax) / bl, uy = (by - ay) / bl, sx = -uy * .9, sy = ux * .9, x0 = ax + ux * 1 + sx, y0 = ay + uy * 1 + sy, x1 = bx - ux * 1 + sx, y1 = by - uy * 1 + sy, h0 = hAt(x0, y0), h1 = hAt(x1, y1);
+          if (h0 !== null && h1 !== null) { const yaw = -Math.atan2(uy, ux); put(ropes, x0, h0 + .85, y0, .05, 1.7, .05, yaw); put(ropes, x1, h1 + .85, y1, .05, 1.7, .05, yaw); seg(ropes, x0, h0 + 1.66, y0, x1, h1 + 1.66, y1, .02, .02, yaw);
+            const n = Math.max(2, Math.min(6, Math.floor((bl - 2) / 1.1))); for (let i = 1; i <= n; i++) { const t = i / (n + 1), x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t, hh = h0 + (h1 - h0) * t + 1.66 - .05 * Math.sin(t * Math.PI); put(crema, x, hh - .26, y, .38 + (i % 2) * .12, .48 - (i % 3) * .08, .02, yaw); } } }
+        // la corda dove si sale di un gradino: dal bordo del tetto alto, annodata
+        (c.passi || []).forEach(e => { if (e.k !== 'gradino') return; const ha = roofRule(B[e.a]), hb = roofRule(B[e.b]); const qa = roofAt(e.x - e.ux * .3, e.y - e.uy * .3), qb = roofAt(e.x + e.ux * .3, e.y + e.uy * .3), h0 = qa ? qa.h : ha, h1 = qb ? qb.h : hb;
+          const x = e.x + e.ux * .08 - e.uy * .5, y = e.y + e.uy * .08 + e.ux * .5, yaw = -Math.atan2(e.uy, e.ux); put(ropes, x, (h0 + h1) / 2 + .25, y, .04, h1 - h0 + .5, .04, yaw); for (let t = h0 + .3; t < h1; t += .35) put(ropes, x, t, y, .08, .06, .08, yaw); });
+        // dove si sale: la cassa e l'asse appoggiate al muro, un metro accanto alla scala
+        const L0 = LADDERS[c.sali]; if (L0 && L0.footB < 0) { const sx = -L0.oy, sy = L0.ox, g0 = footH(L0), yaw = -L0.ang, cx = L0.x + L0.ox * .4 + sx * 1.15, cy = L0.y + L0.oy * .4 + sy * 1.15;
+          if (G.walkM(cx, cy) && bAt(cx, cy) < 0) { put(boards, cx, g0 + .26, cy, .55, .52, .6, yaw + .2); put(boards, cx, g0 + .53, cy, .58, .03, .63, yaw + .2);
+            const ax = L0.x + L0.ox * .75 - sx * 1.1, ay = L0.y + L0.oy * .75 - sy * 1.1; if (G.walkM(ax, ay) && bAt(ax, ay) < 0) seg(boards, ax, g0 + .02, ay, L0.x + L0.ox * .08 - sx * 1.1, g0 + 1.7, L0.y + L0.oy * .08 - sy * 1.1, .26, .04, -Math.atan2(-L0.oy, -L0.ox)); } }
+      });
+    }
     const mk = (arr, m) => { const im = new T3.InstancedMesh(G3.box, m, Math.max(1, arr.length)); arr.forEach((mm, i) => im.setMatrixAt(i, mm)); im.count = arr.length; im.castShadow = true; im.receiveShadow = true; im.userData.noRoof = true; im.frustumCulled = false; scene.add(im); return im; };
-    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema)];
+    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema), mk(traccia, G3.traccia)];
+    GFX.meshes[9].castShadow = false; GFX.meshes[9].renderOrder = 1;   // [percorsi] la traccia è un velo sul lastrico
     GFX.meshes[4].castShadow = false;
   }
   function frame() {
@@ -508,6 +606,9 @@ var Tetti = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { LADDERS, PLANKS, BELV, JUMPS, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
+  const API = { LADDERS, PLANKS, BELV, JUMPS, CAMM, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, grafo, edgeH, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
+  // [percorsi] la rete dei percorsi (percorsi.js) lega i circuiti sui tetti e le alternative delle porte, ora che le scale ci sono
+  if (typeof Percorsi !== 'undefined' && Percorsi.attivo) try { Percorsi.lega({ Tetti: API, Sottosuolo: typeof Sottosuolo !== 'undefined' ? Sottosuolo : null, Game: G }); } catch (e) { if (typeof console !== 'undefined') console.warn('[percorsi]', e); }
+  return API;
 })();
 if (typeof module !== 'undefined') module.exports = Tetti;

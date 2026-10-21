@@ -162,7 +162,8 @@ var Eventi = (function () {
         got.forEach(n => { cast(sc, n, 'folla'); sc.crowd.push(n); n.__ev.mv = { k: 'ring', around: b.around, sp: 1.6 + rnd() * .8 }; n.__ev.pose = b.p || null; }); },
       wait: b => b.w || 0,
     },
-    fall: { start(st, sc, b) { const n = actor(sc, b.fall); if (!n) return; n.__ev.pose = null; n.__ev.down = st.clock + (b.t || 2.6); n.stun = Math.max(n.stun || 0, .05); n.hitT = st.clock; st.sfx.push({ k: 'thud', x: n.x, y: n.y }); setMv(n, { k: 'stay' }); }, wait: b => b.w !== undefined ? b.w : 1 },
+    fall: { start(st, sc, b) { const n = actor(sc, b.fall); if (!n || !n.__ev) return;   // chi è già uscito dalla scena (andato via) non cade più
+      n.__ev.pose = null; n.__ev.down = st.clock + (b.t || 2.6); n.stun = Math.max(n.stun || 0, .05); n.hitT = st.clock; st.sfx.push({ k: 'thud', x: n.x, y: n.y }); setMv(n, { k: 'stay' }); }, wait: b => b.w !== undefined ? b.w : 1 },
     up: { start(st, sc, b) { const n = actor(sc, b.up); if (n && n.__ev) { n.__ev.down = 0; n.stun = 0; n.__ev.pose = 'rialza'; } }, wait: () => 1.2, after(st, sc, b) { const n = actor(sc, b.up); if (n && n.__ev && n.__ev.pose === 'rialza') n.__ev.pose = null; } },
     brawl: { start(st, sc, b) { const A = AZ(), x = actor(sc, b.brawl[0]), y = b.brawl[1] === 'player' ? 'player' : actor(sc, b.brawl[1]); sc.over = true; if (!A || !A.brawl || !x || !x.pop || (y !== 'player' && !(y && y.pop))) return; sc.after = () => { try { A.brawl(st, x, y, { why: sc.def.id }); } catch (e) { } }; }, wait: () => 0 },
     jail: { start(st, sc, b) { const n = actor(sc, b.jail); if (n) { n.jailedUntil = st.t + 180; sayEv(st, n, pick(['Chiamo il mio avvocato!', 'Non ho fatto niente!', 'Ve ne pentirete!']), 3); } }, wait: () => 0 },
