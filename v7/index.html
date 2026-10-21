@@ -51167,19 +51167,21 @@ var Vievive = (function () {
     const chk = (x, y, r, rl) => { const dx = x - v.x, dy = y - v.y, al = dx * fx + dy * fy, la = Math.abs(-dx * fy + dy * fx); if (al > K.len / 2 - .2 && al < K.len / 2 + look + r && la < half + (rl === undefined ? r : rl)) best = Math.min(best, al - K.len / 2 - r); };
     // la gente ferma solo chi guida se sta in carreggiata (chi aspetta sul marciapiede, anche quando il muso dell'autobus gira l'angolo, no);
     // sulle vie minori (senza marciapiede) tutti
-    const inStrada = (x, y) => v.guida === 'minore' || tile(x, y) === T.VIA;
+    const inStrada = (x, y, n) => v.guida === 'minore' || tile(x, y) === T.VIA || (n && n.__ev);
     if (!st.player.indoor && !(st.player.lv && st.player.lv.k === 'ug') && inStrada(st.player.x, st.player.y)) chk(st.player.x, st.player.y, .35);
-    for (const n of st.npcs) { if (n.inside || n.dead || n.vigile || Math.abs(n.x - v.x) > look + 8 || Math.abs(n.y - v.y) > look + 8 || !inStrada(n.x, n.y)) continue; chk(n.x, n.y, .3); }
+    for (const n of st.npcs) { if (n.inside || n.dead || n.vigile || Math.abs(n.x - v.x) > look + 8 || Math.abs(n.y - v.y) > look + 8 || !inStrada(n.x, n.y, n)) continue; chk(n.x, n.y, .3); }
     for (const o of st.vehicles) { if (o === v || o.hidden || (soloGente && (o.traffic || o.guida)) || Math.abs(o.x - v.x) > look + 12 || Math.abs(o.y - v.y) > look + 12) continue; if (Math.cos(angDiff(o.ang, v.ang)) < -.3 && (o.traffic || o.guida)) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > half + .4) continue; } const KO = G.VK[o.kind] || { len: 3, wid: 1.6 }, c = Math.abs(Math.cos(angDiff(o.ang || 0, v.ang))), sn = Math.sqrt(Math.max(0, 1 - c * c)); chk(o.x, o.y, c * KO.len / 2 + sn * KO.wid / 2, sn * KO.len / 2 + c * KO.wid / 2 - .1); }
     return best;
   }
   // lo stesso, ma lungo il percorso dell'autobus (in curva e nell'inversione a U guarda dove andrà, non dritto davanti al muso):
   // gli ostacoli come capsule (un'auto in sosta lungo il cordolo è lunga e stretta), i punti del percorso a mezzo metro
-  function liberoPercorso(st, v, L, s0, look, half, soloGente) {
+  function liberoPercorso(st, v, L, s0, look, half, soloGente, senzaMezzi) {
     const K = G.VK[v.kind], ob = [], R = look + K.len, inStrada = (x, y) => tile(x, y) === T.VIA;
+    // la gente conta se sta in carreggiata, o se recita una scena, o se è a meno di un metro dal percorso (in curva l'autobus taglia l'angolo)
+    const vicinoP = (x, y) => { for (let d = 0; d <= look; d += 1) { const q = lAt(L, (s0 + K.len / 2 + d) % L.L); if (hyp(q.x - x, q.y - y) < half + 1) return true; } return false; };
     if (!st.player.indoor && !(st.player.lv && st.player.lv.k === 'ug') && inStrada(st.player.x, st.player.y) && hyp(st.player.x - v.x, st.player.y - v.y) < R) ob.push([st.player.x, st.player.y, 0, 0, 0, .35]);
-    for (const n of st.npcs) { if (n.inside || n.dead || n.vigile || Math.abs(n.x - v.x) > R || Math.abs(n.y - v.y) > R || !inStrada(n.x, n.y)) continue; ob.push([n.x, n.y, 0, 0, 0, .3]); }
-    for (const o of st.vehicles) { if (o === v || o.hidden || (soloGente && (o.traffic || o.guida)) || Math.abs(o.x - v.x) > R + 6 || Math.abs(o.y - v.y) > R + 6) continue; const KO = G.VK[o.kind] || { len: 3, wid: 1.6 };
+    for (const n of st.npcs) { if (n.inside || n.dead || n.vigile || Math.abs(n.x - v.x) > R || Math.abs(n.y - v.y) > R || !(inStrada(n.x, n.y) || n.__ev || vicinoP(n.x, n.y))) continue; ob.push([n.x, n.y, 0, 0, 0, .3]); }
+    if (!senzaMezzi) for (const o of st.vehicles) { if (o === v || o.hidden || (soloGente && (o.traffic || o.guida)) || Math.abs(o.x - v.x) > R + 6 || Math.abs(o.y - v.y) > R + 6) continue; const KO = G.VK[o.kind] || { len: 3, wid: 1.6 };
       if ((o.traffic || o.guida) && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const fx = Math.cos(v.ang), fy = Math.sin(v.ang), dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > half + .4) continue; }   // chi viene incontro sulla sua corsia
       ob.push([o.x, o.y, Math.cos(o.ang), Math.sin(o.ang), Math.max(0, KO.len / 2 - KO.wid / 2), KO.wid / 2]); }
     if (!ob.length) return look;
@@ -51188,7 +51190,8 @@ var Vievive = (function () {
     return look;
   }
   function muovi(st, v, x, y, ang, sp, dt) { v.vx = (x - v.x) / Math.max(dt, 1e-3); v.vy = (y - v.y) / Math.max(dt, 1e-3); if (hyp(v.vx, v.vy) > 30) { v.vx = Math.cos(ang) * sp; v.vy = Math.sin(ang) * sp; } v.x = x; v.y = y; v.ang = ang; v.speed = sp; v._spd = sp; v.w = 0; v.skid = 0; v.steer = 0;
-    if (sp > 2.5 && G.runOver) { const vx = v.vx, vy = v.vy; try { G.runOver(st, v, 'traffic'); } catch (e) { } v.vx = vx; v.vy = vy; } }
+    // niente G.runOver: chi è guidato da qui frena davanti alla gente (liberoPercorso, liberoDavanti), non la investe
+  }
   function stepBus(st, v, dt) {
     const Lb = lineaBus(), B = v.bus, L = Lb.giro, V = S(st);
     if (B.sosta > 0) {   // ferma: le porte, chi sale e chi scende
@@ -51206,7 +51209,7 @@ var Vievive = (function () {
     v.speed = v.speed < want ? Math.min(want, v.speed + K.accel * dt) : Math.max(want, v.speed - 4 * dt);
     if (v.speed < .3 && free < 2) { v.stuck = (v.stuck || 0) + dt; B.blocco = (B.blocco || 0) + dt; if (v.stuck > 4) { v.stuck = 0; B.forza = st.clock + 3; if (st.clock > (v.honk || 0)) { v.honk = st.clock + 6; st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } } } else { v.stuck = 0; if (v.speed > 2) B.blocco = 0; }
     if (B.blocco > 30 && free < 2 && hyp(v.x - st.player.x, v.y - st.player.y) > 4) { B.blocco = 0; B.fantasma = st.clock + 4; }   // bloccato da mezzo minuto (un mezzo in panne, una scena in mezzo alla via): passa, lento
-    if (st.clock < (B.fantasma || 0)) { v.speed = Math.max(v.speed, 1.2); }
+    if (st.clock < (B.fantasma || 0) && liberoPercorso(st, v, L, B.s, 4, 1.15, true, true) > 1.5) { v.speed = Math.max(v.speed, 1.2); }   // passa piano i mezzi fermi, mai la gente
     const ds = Math.min(v.speed * dt, nx ? Math.max(0, dn) : 99); B.s += ds; if (B.s >= L.L) B.s -= L.L;
     if (nx && dn - ds < .25 && v.speed < 1.2) {   // arrivata: accosta, apre, sale e scende chi deve
       B.servita = nx.id; B.f = nx; B.fatto = false; const [a, b] = nx.capolinea ? CFG.autobus.capolinea : CFG.autobus.sosta; B.sosta = B.sosta0 = a + Math.random() * (b - a);
@@ -51222,7 +51225,7 @@ var Vievive = (function () {
   function saliScendi(st, v, f) {
     const V = S(st), PO = typeof Posti !== 'undefined' ? Posti : null, Po = typeof Popolo !== 'undefined' ? Popolo : null; if (!f) return;
     const door = { x: v.x + Math.cos(v.ang + PI / 2) * 1.8, y: v.y + Math.sin(v.ang + PI / 2) * 1.8 }, ok = G.walkM(door.x, door.y) ? door : { x: f.x, y: f.y };
-    st.npcs.forEach(n => { const q = n.__posto; if (!q || !q.p || (q.p.vvf !== f.id && hyp(q.p.x - f.x, q.p.y - f.y) > 3) || !q.arrived) return;
+    st.npcs.forEach(n => { const q = n.__posto; if (!q || !q.p || n.__ev || n.dead || n.inVeh || (q.p.vvf !== f.id && hyp(q.p.x - f.x, q.p.y - f.y) > 3) || !q.arrived) return;
       try { if (Po && Po.endPosto) Po.endPosto(st, n); } catch (e) { }
       n.x = ok.x; n.y = ok.y; n.inside = true; n.path = []; if (n.pop) { n.pop.goalSet = false; n.pop.near = false; if (n.pop.homeT) { n.x = n.pop.homeT.x; n.y = n.pop.homeT.y; } }
       V.stats.saliti++; });
