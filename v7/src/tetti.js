@@ -469,15 +469,18 @@ var Tetti = (function () {
     // [tetti2] leggibilità: fascia gialla ai piedi delle scale, lanterna calda in cima; assi, corda, panca e bandierina
     const yell = new T3.MeshStandardMaterial({ color: '#e8b828', roughness: .6 }), lamp = new T3.MeshBasicMaterial({ color: '#ffd27a', toneMapped: false });
     const wood = new T3.MeshStandardMaterial({ color: '#8a6a44', roughness: .9 }), rope = new T3.MeshStandardMaterial({ color: '#c8b48a', roughness: 1 }), flag = new T3.MeshStandardMaterial({ color: '#c8302a', roughness: .8, side: T3.DoubleSide });
-    // [percorsi] la traccia dei passi sui lastrici: un velo della famiglia del crema, appena più scuro, mezzo trasparente
-    const traccia = new T3.MeshStandardMaterial({ color: '#e2d8bc', roughness: .95, transparent: true, opacity: .5, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-    return { box, iron, rust, yell, lamp, wood, rope, flag, crema, traccia };
+    // [percorsi] la traccia dei passi sui lastrici. [percorsi2] Il velo crema al 50% non si vedeva sul lastrico chiaro: ora è il
+    // cocciopesto che affiora dove i passi hanno consumato la calce bianca, una striscia continua color mattone, opaca al 78%
+    const traccia = new T3.MeshStandardMaterial({ color: '#a8694a', roughness: .9, transparent: true, opacity: .78, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    // [percorsi2] la base scura sotto il primo gradino: il piede della scala stacca anche sul selciato chiaro
+    const fondo = new T3.MeshStandardMaterial({ color: '#2a2420', roughness: 1 });
+    return { box, iron, rust, yell, lamp, wood, rope, flag, crema, traccia, fondo };
   }
   // le scale: due montanti, i pioli ogni 30 cm, la gabbia sopra i 2,5 m, il corrimano che scavalca il bordo del tetto
   function buildLaddersGfx(R) {
     const T3 = THREE, scene = R.__models.scene; if (!scene) return;
     if (GFX.meshes) GFX.meshes.forEach(m => { scene.remove(m); });
-    const G3 = GFX.geo || (GFX.geo = ladderGeo()), rails = [], rungs = [], hoops = [], yel = [], lamps = [], boards = [], ropes = [], flags = [], crema = [];
+    const G3 = GFX.geo || (GFX.geo = ladderGeo()), rails = [], rungs = [], hoops = [], yel = [], lamps = [], boards = [], ropes = [], flags = [], crema = [], fondo = [];
     const m4 = new T3.Matrix4(), q = new T3.Quaternion(), e = new T3.Euler(), s3 = new T3.Vector3(), p3 = new T3.Vector3();
     const put = (arr, x, y, z, sx, sy, sz, yaw) => { e.set(0, yaw, 0); q.setFromEuler(e); arr.push(m4.compose(p3.set(x, y, z), q, s3.set(sx, sy, sz)).clone()); };
     LADDERS.forEach(L => {
@@ -486,6 +489,7 @@ var Tetti = (function () {
       const sx = -L.oy * .22, sz = L.ox * .22;   // i due montanti, 44 cm l'uno dall'altro
       const bb = B[L.bi], old = !L.camm && bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');   // [percorsi] sui camminamenti la scala di ferro
       if (L.rampa) { put(crema, L.fx, y0 + .06, L.fy, .5, .12, .9, yaw); return; }   // [percorsi] la scala di ronda è di pietra (il pezzo): solo il primo gradino chiaro
+      put(fondo, L.x + L.ox * .38, y0 + .015, L.y + L.oy * .38, .74, .03, 1.0, yaw);   // [percorsi2] la base scura, più larga del gradino
       put(crema, L.x + L.ox * .38, y0 + .06, L.y + L.oy * .38, .5, .12, .78, yaw);   // [pulizia2] il primo gradino, chiaro, ai piedi della scala
       if (old) {   // [epoche] nel borgo, sull'Ottocento e sul regime niente scala di ferro: le staffe alla marinara murate nella parete (pioli a U, ruggine)
         const wx = L.x + L.ox * .02, wz = L.y + L.oy * .02;
@@ -549,9 +553,9 @@ var Tetti = (function () {
       const giri = PD.circuiti.filter(c => c.k === 'tetti').concat(PD.porte.map(q => q.alternativa).filter(a => a && a.k === 'tetti' && !a.camm));
       giri.forEach((c, ci) => {
         const P = c.pts.slice(1, -1), ok = new Set(c.edifici), hAt = (x, y) => { const q = roofAt(x, y); return q && (ok.has(q.bi) || q.plank !== undefined) ? q.h : null; };
-        // la traccia: una lastra chiara ogni 90 cm, girata lungo il passo, alla quota del lastrico
-        for (let k = 0; k < P.length - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L = hyp(bx - ax, by - ay), yaw = -Math.atan2(by - ay, bx - ax);
-          for (let s = .45; s < L; s += .9) { const x = ax + (bx - ax) * s / L, y = ay + (by - ay) * s / L, h = hAt(x, y); if (h === null) continue; put(traccia, x, h + .015, y, .78, .02, .5, yaw); } }
+        // la traccia: [percorsi2] una striscia continua larga 72 cm (pezzi di 60 cm accostati, senza sovrapporsi), alla quota del lastrico
+        for (let k = 0; k < P.length - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L = hyp(bx - ax, by - ay), yaw = -Math.atan2(by - ay, bx - ax), n = Math.max(1, Math.round(L / .6)), l = L / n;
+          for (let i = 0; i < n; i++) { const s = (i + .5) * l, x = ax + (bx - ax) * s / L, y = ay + (by - ay) * s / L, h = hAt(x, y); if (h === null) continue; put(traccia, x, h + .015, y, l, .02, .72, yaw); } }
         // le svolte: la lanterna sul ferro minio, mezzo metro fuori dalla svolta
         for (let k = 1; k < P.length - 1; k++) { const [ax, ay] = P[k - 1], [x, y] = P[k], [bx, by] = P[k + 1], a1 = Math.atan2(y - ay, x - ax), a2 = Math.atan2(by - y, bx - x);
           let d = Math.abs(a2 - a1); if (d > Math.PI) d = 2 * Math.PI - d; if (d < .6 || hyp(x - ax, y - ay) < 1.5) continue;
@@ -570,10 +574,15 @@ var Tetti = (function () {
           if (G.walkM(cx, cy) && bAt(cx, cy) < 0) { put(boards, cx, g0 + .26, cy, .55, .52, .6, yaw + .2); put(boards, cx, g0 + .53, cy, .58, .03, .63, yaw + .2);
             const ax = L0.x + L0.ox * .75 - sx * 1.1, ay = L0.y + L0.oy * .75 - sy * 1.1; if (G.walkM(ax, ay) && bAt(ax, ay) < 0) seg(boards, ax, g0 + .02, ay, L0.x + L0.ox * .08 - sx * 1.1, g0 + 1.7, L0.y + L0.oy * .08 - sy * 1.1, .26, .04, -Math.atan2(-L0.oy, -L0.ox)); } }
       });
+      // [percorsi2] anche il camminamento delle mura ha la sua traccia consumata, da una scala all'altra (la quota la dà il camminamento)
+      PD.circuiti.filter(c => c.k === 'mura').forEach(c => { const P = c.pts.slice(1, -1), hAt = (x, y) => { const q = roofAt(x, y); return q ? q.h : null; };
+        for (let k = 0; k < P.length - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L = hyp(bx - ax, by - ay); if (L < .3) continue; const yaw = -Math.atan2(by - ay, bx - ax), n = Math.max(1, Math.round(L / .6)), l = L / n;
+          for (let i = 0; i < n; i++) { const s = (i + .5) * l, x = ax + (bx - ax) * s / L, y = ay + (by - ay) * s / L, h = hAt(x, y); if (h === null) continue; put(traccia, x, h + .015, y, l, .02, .72, yaw); } } });
     }
     const mk = (arr, m) => { const im = new T3.InstancedMesh(G3.box, m, Math.max(1, arr.length)); arr.forEach((mm, i) => im.setMatrixAt(i, mm)); im.count = arr.length; im.castShadow = true; im.receiveShadow = true; im.userData.noRoof = true; im.frustumCulled = false; scene.add(im); return im; };
-    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema), mk(traccia, G3.traccia)];
+    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema), mk(traccia, G3.traccia), mk(fondo, G3.fondo)];
     GFX.meshes[9].castShadow = false; GFX.meshes[9].renderOrder = 1;   // [percorsi] la traccia è un velo sul lastrico
+    GFX.meshes[10].castShadow = false;   // [percorsi2] la base del piede della scala è piatta
     GFX.meshes[4].castShadow = false;
   }
   function frame() {
