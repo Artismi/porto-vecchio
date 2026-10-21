@@ -1,0 +1,24 @@
+{
+ "nota": "[visuale3] Tre varianti sulla stessa scena e nello stesso istante: «prima» è il gioco com'era (l'ellisse [varco2], il velo freddo nei vicoli, niente rimbalzo, niente composizione, niente alone); «sezione» è ?visuale=sezione ([visuale]) con la luce nuova; «taglio» è il modo nuovo di difetto, con la luce e la composizione nuove.",
+ "prima": {
+  "VISUALE": "ellisse",
+  "PROF": {
+   "nebbiaVicoli": 0.1,
+   "rimbalzo": 0
+  },
+  "COMPOSIZIONE": {
+   "max": 0,
+   "zoomAperto": 1
+  },
+  "ALONE3": {
+   "forza": 0,
+   "riempi": 0
+  }
+ },
+ "sezione": {
+  "VISUALE": "sezione"
+ },
+ "taglio": {
+  "VISUALE": "taglio"
+ }
+}

@@ -79,10 +79,12 @@ const srv = http.createServer((req, res) => {
     // 3) le foto e le misure, una per variante delle manopole (stessa scena, stessa gente, stesso istante)
     for (const v of VARIANTI) {
       await pg.evaluate(o => {   // ogni variante parte dalle manopole del codice e cambia solo le sue
-        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL', 'PROF']; window.__M0 = window.__M0 || Object.fromEntries(K.map(k => [k, cp(window['__' + k] || {})]));
+        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL', 'PROF', 'TAGLIO', 'COMPOSIZIONE', 'ALONE3'];   // [visuale3] il taglio, la composizione, l'alone window.__M0 = window.__M0 || Object.fromEntries(K.map(k => [k, cp(window['__' + k] || {})]));
         const put = (dst, src) => { for (const k in src) { if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) && dst[k]) put(dst[k], src[k]); else dst[k] = cp(src[k]); } };
         K.forEach(k => { const w = window['__' + k]; if (!w) return; put(w, window.__M0[k]); put(w, o[k] || {}); });   // QUADRO e SCENA (luce e colore), OCCL (l'ombra degli angoli), PROF (la separazione dei livelli)
+        const R = window.__pv.R; if (R.setVisuale) R.setVisuale(o.VISUALE || window.__vis0 || (window.__vis0 = R.setVisuale()), true);   // [visuale3] "VISUALE": ellisse, sezione o taglio sulla stessa scena (subito: niente transizioni)
       }, v.manopole);
+      if (v.manopole.VISUALE || process.env.GALLERIA_DUE) await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));   // [visuale3] due fotogrammi: il modo nuovo entra (programmi, taglio, sagoma)
       const dir = v.nome ? path.join(outDir, v.nome) : outDir; fs.mkdirSync(dir, { recursive: true });
       const file = path.join(dir, s.nome + '.png');
       // la foto si prende dalla tela del gioco subito dopo il suo fotogramma (requestAnimationFrame registrato dopo quello del gioco):

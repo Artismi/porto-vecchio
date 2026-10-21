@@ -1,0 +1,123 @@
+{
+ "nota": "[visuale3] Le inquadrature del filone (strumenti/galleria.js con GALLERIA_VARIANTI=strumenti/visuale3_varianti.json): i due fotogrammi del giudizio del committente (il giro della Porta dall'alto, la Vittoria davanti al Palazzo del Governo), tre vicoli del borgo in ombra alle 10 e alle 17, una piazza larga. Tutte con la visuale che segue il personaggio (segui), come si gioca. \"js\" costruisce i blocchi di corsa (come percorsi2_scene.json).",
+ "pulita": true,
+ "scorci": [
+  {
+   "nome": "p4_giro_tetti",
+   "titolo": "Il giro della Porta: dove si sale",
+   "x": 1351,
+   "y": 287,
+   "zoom": 0.4,
+   "ora": 700,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "segui": true,
+   "attesa": 25000,
+   "js": "const TSg=pv.G.TS; pv.G.BUILDINGS.forEach((b,bi)=>{ if (Math.hypot((b.x+b.w/2)*TSg-st.player.x,(b.y+b.h/2)*TSg-st.player.y)<40) try { Tetti.scanRoof(pv.R,bi); } catch(e){} }); Tetti._.GFX.dirty=true; Tetti._.GFX.stableT=0; Tetti._.GFX.builtT=0; const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "v1_vittoria_governo",
+   "titolo": "Via della Vittoria (Palazzo del Governo)",
+   "x": 1325,
+   "y": 336,
+   "zoom": 0.4,
+   "ora": 600,
+   "meteo": "sereno",
+   "luce": "metropoli",
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);",
+   "segui": true
+  },
+  {
+   "nome": "a1_vico_scuro_10",
+   "titolo": "Vico Scuro, ore 10",
+   "x": 1431,
+   "y": 293,
+   "zoom": 0.4,
+   "ora": 600,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "segui": true,
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "a1_vico_scuro_17",
+   "titolo": "Vico Scuro, ore 17",
+   "x": 1431,
+   "y": 293,
+   "zoom": 0.4,
+   "ora": 1020,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "segui": true,
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "a2_vicolo_reti_10",
+   "titolo": "Vicolo delle Reti, ore 10",
+   "x": 1386,
+   "y": 322,
+   "zoom": 0.4,
+   "ora": 600,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "segui": true,
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "a2_vicolo_reti_17",
+   "titolo": "Vicolo delle Reti, ore 17",
+   "x": 1386,
+   "y": 322,
+   "zoom": 0.4,
+   "ora": 1020,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "segui": true,
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "a3_vico_sale_10",
+   "titolo": "Vico del Sale, ore 10",
+   "x": 1414,
+   "y": 318,
+   "zoom": 0.4,
+   "ora": 600,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "segui": true,
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "a3_vico_sale_17",
+   "titolo": "Vico del Sale, ore 17",
+   "x": 1414,
+   "y": 318,
+   "zoom": 0.4,
+   "ora": 1020,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "segui": true,
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "q1_piazza_san_rocco",
+   "titolo": "Piazza San Rocco",
+   "x": 1383,
+   "y": 303,
+   "zoom": 0.4,
+   "ora": 660,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "segui": true,
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  }
+ ]
+}
