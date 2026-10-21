@@ -875,12 +875,12 @@ var World = (function () {
       nodoR('Piazzale della Stazione', ...CITY.pzStaz); nodoR('Scalo', 958, 180, 998, 193); nodoR('Spianata', 1143, 56, 1190, 198); nodoR('Giardini di Ponente', 902, 88, 930, 192); nodoC('Lotto del fuoco', 966, 71, 5);
       // la Costiera Nord passa i binari al passaggio a livello e si ferma sul piazzale (resta l'id via_alta: la leggono posti, popolo, percorsi)
       const N0 = nordP[0], STAZ = chaikin([N0.slice(), [N0[0] - 4, N0[1] + 8], [922, 94], [928, 103], [936, 108]], 2); CITY.staz = STAZ;
-      add('via_alta', 'Via della Stazione', 7, 'citta', STAZ, { era: 'E3' });
+      add('via_alta', 'Via della Stazione', 7, 'citta', STAZ, { era: 'E3', nudo: true });
       // la Costiera Sud corre sulla riva fino allo Scalo (l'id via_porto resta)
       const L0 = litP[litP.length - 1], LUNGO = chaikin([L0.slice(), [L0[0] + 10, 187], [944, 186], [956, 186], [966, 186.5]], 2);
-      add('via_porto', 'Via del Porto', 7, 'citta', LUNGO, { era: 'E6' });
+      add('via_porto', 'Via del Porto', 7, 'citta', LUNGO, { era: 'E6', nudo: true });
       // E3 il Corso: dove c'erano le mura di terra, ad arco dal piazzale della stazione allo Scalo (7 m, un filare)
-      add('corso', 'Corso Garibaldi', 7, 'citta', chaikin([[970, 109], [982, 118], [982, 128], [979, 143], [981, 158], [986, 174], [990, 187]], 2), { alberi: 'tigli', era: 'E3' });
+      add('corso', 'Corso Garibaldi', 7, 'citta', chaikin([[970, 109], [982, 118], [982, 128], [979, 143], [981, 158], [986, 174], [990, 187]], 2), { alberi: 'tigli', era: 'E3', alberiLato: -1 });
       // E3 il sottopasso Cavour: dal piazzale scende a scalini, passa sotto il rilevato e sbuca sul lotto del fuoco fra le baracche
       CITY.cavS = { x: 972, y0: 71, y1: 105 };
       add('cavour_sotto', 'Sottopasso Cavour', 3, 'vicolo', [[972, 105]].concat(vline(972, 78, 102).reverse(), [[969, 74.5], [967, 72]]), { era: 'E3', sottopasso: true });

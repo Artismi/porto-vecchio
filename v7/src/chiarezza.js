@@ -79,7 +79,8 @@ var Chiarezza = (function () {
     (roads || []).forEach((rd, ri) => {
       if (!rd || !rd.pts || rd.pennoni) return;
       if (rd.alberi) { const sp = rd.alberi === 'palme' ? 'palma' : rd.era === 'E6' ? 'pino' : 'leccio';
-        out.push({ rd, kind: 'filare', sp, passo: sp === 'palma' ? 10 : PASSO, off: rd.w / 2 + 1.1, lati: [-1, 1], inizio: PASSO / 2 }); return; }
+        out.push({ rd, kind: 'filare', sp, passo: sp === 'palma' ? 10 : PASSO, off: rd.w / 2 + 1.1, lati: rd.alberiLato ? [rd.alberiLato] : [-1, 1], inizio: PASSO / 2 }); return; }
+      if (rd.nudo) return;   // [mappa_compatta] le vie della città compatta senza alberi (filari solo sul Corso, da un lato, e ai Giardini)
       if ((rd.kind === 'citta' || rd.kind === 'litoranea') && rd.w >= 7) out.push({ rd, kind: 'viale', passo: 14, off: rd.w / 2 + 1.25, lati: [hash(ri, 7, 351) < .5 ? -1 : 1], inizio: 5 + hash(ri, 0, 352) * 8 });
     });
     return out;
