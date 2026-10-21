@@ -1,0 +1,32 @@
+[
+ {
+  "scorcio": "a1_vittoria_0830",
+  "titolo": "Via della Vittoria, 08:30",
+  "prima": {
+   "weber": -0.09,
+   "campioni": 20
+  },
+  "dopo": {
+   "weber": -0.288,
+   "campioni": 15
+  }
+ },
+ {
+  "scorcio": "b1_corso_0830",
+  "titolo": "Corso Garibaldi, 08:30",
+  "prima": {
+   "weber": 0.035,
+   "campioni": 7
+  },
+  "dopo": {
+   "weber": 2.264,
+   "campioni": 6
+  }
+ },
+ {
+  "scorcio": "d1_stazione_0830",
+  "titolo": "Piazzale della Stazione, 08:30",
+  "prima": null,
+  "dopo": null
+ }
+]
