@@ -52508,8 +52508,11 @@ var Render = (function () {
     const P32 = new THREE.Float32BufferAttribute(pos, 3), UV2 = new THREE.Float32BufferAttribute(uv, 2), grp = new THREE.Group(); ISO.basePieces = {};
     // [memoria] le normali una volta sola per tutta l'isola, condivise dai pezzi (prima ogni pezzo le calcolava per tutti i vertici: ~80 MB)
     const NRM = (() => { const g0 = new THREE.BufferGeometry(); g0.setAttribute('position', P32); g0.setIndex([].concat(...Object.values(PIECE))); g0.computeVertexNormals(); packNormals(g0); const a = g0.attributes.normal; g0.setIndex(null); return a; })();
-    Object.keys(PIECE).forEach(key => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', P32); geo.setAttribute('uv', UV2); geo.setAttribute('normal', NRM); geo.setIndex(PIECE[key]); geo.computeBoundingSphere();
-      const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; grp.add(mesh); ISO.basePieces[key] = mesh; });
+    // [fluido] una mesh sola invece di un pezzo per blocco (dal ramo wonderful-davinci): ogni pezzo aveva la sfera di tutta l'isola
+    // (three la calcola sui vertici, non sull'indice), quindi nessuno veniva mai scartato e ognuno era una chiamata (~140 a fotogramma).
+    // Stessi vertici, stesse normali condivise, stessi triangoli: l'indice si ricompone solo quando cambiano i blocchi caricati
+    { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', P32); geo.setAttribute('uv', UV2); geo.setAttribute('normal', NRM); geo.setIndex([].concat(...Object.values(PIECE))); geo.computeBoundingSphere();
+      const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; grp.add(mesh); ISO.baseMesh = mesh; ISO.basePiece = PIECE; ISO.baseSig = -1; }
     scene.add(grp); ISO.base = grp;
   }
   // carica i blocchi vicini alla camera (uno per fotogramma, il più vicino prima) e scarica quelli lontani
@@ -52533,7 +52536,10 @@ var Render = (function () {
         if (r.done) { const old = ISO.chunks.get(J.key); if (old) dropChunk(old); if (J.dirty) r.value.rev = -1; ISO.chunks.set(J.key, r.value); ISO.job = null; break; }   // cambiata la mappa a metà: si rifà
       }
       if (steps) BUD.add(performance.now() - t0, 'piante'); }
-    if (ISO.basePieces) for (const key in ISO.basePieces) ISO.basePieces[key].visible = !ISO.chunks.has(key);   // [inverno17]
+    if (ISO.baseMesh) {   // [inverno17] l'isola lontana si nasconde dove il blocco vero è caricato   // [fluido] ricomponendo l'indice della mesh sola
+      const P = ISO.basePiece; let sig = 7, i = 0; for (const k in P) { i++; if (!ISO.chunks.has(k)) sig = (sig * 31 + i) % 2147483647; }   // un numero, non una stringa nuova a ogni fotogramma
+      if (sig !== ISO.baseSig) { ISO.baseSig = sig; let n = 0; for (const k in P) if (!ISO.chunks.has(k)) n += P[k].length; const ix = new Uint32Array(n); let o = 0; for (const k in P) if (!ISO.chunks.has(k)) { ix.set(P[k], o); o += P[k].length; }
+        ISO.baseMesh.geometry.setIndex(new THREE.BufferAttribute(ix, 1)); ISO.baseMesh.visible = n > 0; } }
   }
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
   function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true; }
@@ -63648,6 +63654,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    renderer.debug.checkShaderErrors = typeof location !== 'undefined' && /[?&]shaderdebug/.test(location.search);   // [fluido] dal ramo wonderful-davinci: leggere subito il registro di ogni shader compilato costringe ad aspettarne la compilazione (centinaia di ms per materiale nuovo, camminando); solo con ?shaderdebug
     renderer.setPixelRatio(1);
     canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); try { localStorage.setItem('pvLow', '1'); } catch (x) {} console.warn('[grafica] contesto perso: ricarico in qualità ridotta'); setTimeout(() => location.reload(), 400); });   /* [unione10] */
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;   /* [plastica2] ombre morbide da plastico: le dure a punti di 4,5 cm facevano trine e scalini */
@@ -64472,17 +64479,23 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       on.sort((a, b) => a.d2 - b.d2);
       const sp = [], pp = [];
       on.forEach(L => { const fire = L.flick >= .25 && L.y - L.gy < 2.2; if (!fire && sp.length < SPOOL.length) sp.push(L); else if (pp.length < PPOOL.length) pp.push(L); });
-      dyn.lsp = sp; dyn.lpp = pp;
+      // [fluido] ogni faretto resta sulla sua lampada finché questa è fra le scelte (dal ramo keen-turing): l'ordine per distanza le
+      // rimescolava a ogni passo e ogni rimescolata ridisegnava l'ombra di quasi tutti i faretti, anche di giorno a luce spenta
+      { const old = dyn.lslot || [], keep = new Set(sp), slot = new Array(SPOOL.length).fill(null), used = new Set();
+        old.forEach((L, i) => { if (L && keep.has(L) && i < slot.length) { slot[i] = L; used.add(L); } });
+        let j = 0; sp.forEach(L => { if (used.has(L)) return; while (j < slot.length && slot[j]) j++; if (j < slot.length) slot[j++] = L; });
+        dyn.lslot = slot; dyn.lsp = slot.filter(Boolean); }
+      dyn.lpp = pp;
     }
     const kOf = L => { let k = L.always ? .06 + night * .94 : night * night;
       if (L.flick) k *= 1 - L.flick * .5 * (Math.sin(time * 13 + L.phase) * .5 + .5) * (Math.sin(time * 3.7 + L.phase * 2) > .3 ? 1 : .2);
       return k; };
     SPOOL.forEach((l, i) => {
-      const L = dyn.lsp[i], cone = l.userData.cone;
+      const L = dyn.lslot[i], cone = l.userData.cone;
       if (!L) { l.intensity = 0; cone.visible = false; return; }
       const k = kOf(L), hh = Math.max(1.2, L.y - L.gy);
       if (l.userData.src !== L) { l.userData.src = L; l.position.set(L.x, L.y, L.z); l.target.position.set(L.x, L.gy - 2, L.z); l.target.updateMatrixWorld(); l.color.copy(L.color);
-        l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.shadow.needsUpdate = true; }
+        l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.userData.shDirty = true; }   // [fluido] l'ombra si rifà sotto, se la luce fa luce
       if (L.nb === undefined) { L.nb = 0; LSRC.forEach(o => { if (o !== L && Math.abs(o.x - L.x) < 7 && Math.abs(o.z - L.z) < 7) L.nb++; }); }   // [inverno29] vicine: si dividono la luce
       l.intensity = L.base * k * .55 / Math.sqrt(1 + L.nb * .6);   // [inverno30] la pozza a terra la fa la luce cotta
       const tall = hh > 2.8 && night > .25;
@@ -64496,7 +64509,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       for (const n of st.npcs) { if (n.dead || n.inside || (n.pop && !n.pop.near)) continue; movers.push(n.x, n.y, (n.speedNow || 0) + (n.gesture > 0 || n.stun > 0 || n.airT ? 1 : 0)); }
       for (const v of st.vehicles) { if (v.hidden) continue; movers.push(v.x, v.y, Math.abs(v.vx || 0) + Math.abs(v.vy || 0) + Math.abs(v.w || 0)); }
       const want = [];
-      SPOOL.forEach(l => { if (!(l.intensity > 0)) return; const u = l.userData, r = (l.distance || 10) + 2, lx = l.position.x, lz = l.position.z; let busy = false;
+      SPOOL.forEach(l => { if (!(l.intensity > 0)) return; if (l.userData.shDirty) { l.userData.shDirty = false; l.shadow.needsUpdate = true; l.userData.shT = now; return; }   // [fluido] spostata su un'altra lampada: subito, come prima (spenta, l'ombra non si vede e aspetta)
+        const u = l.userData, r = (l.distance || 10) + 2, lx = l.position.x, lz = l.position.z; let busy = false;
         for (let i = 0; i < movers.length; i += 3) { if (movers[i + 2] > .05 && Math.abs(movers[i] - lx) < r && Math.abs(movers[i + 1] - lz) < r) { busy = true; break; } }
         if (busy) want.push([0, l]); else if (now - (u.shT || 0) > 500) want.push([now - (u.shT || 0), l]); });
       want.sort((a, b) => (a[0] === 0 ? -1 : 0) - (b[0] === 0 ? -1 : 0) || b[0] - a[0]);
@@ -67357,10 +67371,11 @@ var RisaccaUI = (function () {
     $('rs-hud').hidden = PV().ui.intro || PV().ui.over;
     $('rs-mo').style.width = S.morale + '%';
     $('rs-rp').querySelectorAll('i').forEach((p, i) => p.classList.toggle('on', i < S.level));
-    $('rs-cash').textContent = Math.floor(st.ris.cassa).toLocaleString('it-IT') + '.000';
-    const sb = $('rs-sneak'); const sn = !!st.player.sneak && !st.player.vehicle; sb.innerHTML = (sn ? 'Strisci' : 'Cammina') + ' <kbd>X</kbd>'; sb.style.borderColor = sn ? 'var(--cyan)' : '';
-    const al = S.raid ? `Perquisizione a ${S.raid.name} fra ${S.raid.mins} minuti` : '';
-    $('rs-alarm').hidden = !al; $('rs-alarm').textContent = al;
+    // [fluido] il documento si tocca solo se cambia
+    const cs = Math.floor(st.ris.cassa).toLocaleString('it-IT') + '.000', ce = $('rs-cash'); if (ce.textContent !== cs) ce.textContent = cs;
+    const sb = $('rs-sneak'); const sn = !!st.player.sneak && !st.player.vehicle; if (sb.__sn !== sn) { sb.__sn = sn; sb.innerHTML = (sn ? 'Strisci' : 'Cammina') + ' <kbd>X</kbd>'; sb.style.borderColor = sn ? 'var(--cyan)' : ''; }
+    const al = S.raid ? `Perquisizione a ${S.raid.name} fra ${S.raid.mins} minuti` : '', ae = $('rs-alarm');
+    if (ae.hidden !== !al) ae.hidden = !al; if (ae.textContent !== al) ae.textContent = al;
     // azioni sul posto
     const ui = PV().ui, list = (ui.intro || ui.over || ui.dialog || U.chat || U.panel) ? [] : RS.here(st);
     const key = list.map(a => a.id + a.arg + a.label).join('|');
@@ -67645,13 +67660,13 @@ var RisaccaUI = (function () {
   // ---------------- ETICHETTE NEL MONDO ----------------
   function labels(st) {
     const box = $('rs-labels'), R0 = PV().R, cv = $('cv'); if (!R0 || !R0.project || !cv) return;
-    const ui = PV().ui; if (ui.intro || ui.over) { box.innerHTML = ''; return; }
+    const ui = PV().ui; if (ui.intro || ui.over) { labPut(box, []); return; }
     const rc = cv.getBoundingClientRect(), ra = $('app').getBoundingClientRect(), p = st.player, out = [];
     // dentro: dove sei
-    const ib = $('rs-indoor'); if (ib) { if (p.indoor) { const b = G.BUILDINGS[p.indoor.b], L = G.INT.layout(b), room = G.INT.roomAt(L, p.indoor.f, p.x, p.y); ib.hidden = false; ib.textContent = (b.label || b.name) + (L.floors.length > 1 ? ' · ' + (G.INT.floorLabel ? G.INT.floorLabel(p.indoor.f) : (p.indoor.f ? 'primo piano' : 'piano terra')) : '') + (room ? ' · ' + (G.INT.roomLabel ? G.INT.roomLabel(room.name) : room.name.replace('_', ' ')) : '') + (p.indoor.f === 0 ? ' — esci dalla porta arancione' : '') + (L.stairs ? (p.indoor.f === 0 ? ', sali dal tappeto giallo della scala' : p.indoor.f < L.floors.length - 1 ? ' — tappeto giallo: sali · azzurro: scendi' : ' — scendi dal tappeto azzurro') : ''); /* [interni] */ } else ib.hidden = true; }
-    if (p.indoor) { box.innerHTML = ''; return; }
-    if ((p.lv && p.lv.k === 'ug') || window.__pulita) { box.innerHTML = ''; return; }   // [regia2] sotto terra le porte e i luoghi di sopra non ci sono; con la foto pulita (strumenti/galleria.js) nemmeno
-    const put = (x, y, h, cls, text, maxD) => { if (maxD && Math.hypot(x - p.x, y - p.y) > maxD) return; const q = R0.project(x, h, y); if (q.behind || q.x < -.05 || q.x > 1.05 || q.y < -.05 || q.y > 1.05) return; out.push(`<div class="rs-lab ${cls}" style="left:${(rc.left - ra.left + q.x * rc.width).toFixed(0)}px;top:${(rc.top - ra.top + q.y * rc.height).toFixed(0)}px">${esc(text)}</div>`); };
+    const ib = $('rs-indoor'); if (ib) { if (p.indoor) { const b = G.BUILDINGS[p.indoor.b], L = G.INT.layout(b), room = G.INT.roomAt(L, p.indoor.f, p.x, p.y); if (ib.hidden) ib.hidden = false; const ibt = (b.label || b.name) + (L.floors.length > 1 ? ' · ' + (G.INT.floorLabel ? G.INT.floorLabel(p.indoor.f) : (p.indoor.f ? 'primo piano' : 'piano terra')) : '') + (room ? ' · ' + (G.INT.roomLabel ? G.INT.roomLabel(room.name) : room.name.replace('_', ' ')) : '') + (p.indoor.f === 0 ? ' — esci dalla porta arancione' : '') + (L.stairs ? (p.indoor.f === 0 ? ', sali dal tappeto giallo della scala' : p.indoor.f < L.floors.length - 1 ? ' — tappeto giallo: sali · azzurro: scendi' : ' — scendi dal tappeto azzurro') : ''); if (ib.textContent !== ibt) ib.textContent = ibt; /* [interni] */ /* [fluido] solo se cambia */ } else if (!ib.hidden) ib.hidden = true; }
+    if (p.indoor) { labPut(box, []); return; }
+    if ((p.lv && p.lv.k === 'ug') || window.__pulita) { labPut(box, []); return; }   // [regia2] sotto terra le porte e i luoghi di sopra non ci sono; con la foto pulita (strumenti/galleria.js) nemmeno
+    const put = (x, y, h, cls, text, maxD) => { if (maxD && Math.hypot(x - p.x, y - p.y) > maxD) return; const q = R0.project(x, h, y); if (q.behind || q.x < -.05 || q.x > 1.05 || q.y < -.05 || q.y > 1.05) return; out.push(['rs-lab ' + cls, text, Math.round(rc.left - ra.left + q.x * rc.width), Math.round(rc.top - ra.top + q.y * rc.height)]); };
     st.ris.bases.forEach(b => { if (b.alive) put(b.cx || b.x, b.cy || b.y, b.cx ? 3.6 : 2.6, 'base', `≋ ${b.name}`, 60); });
     for (const [id, S] of Object.entries(st.ris.spaces)) if (S.found && !S.base) put(S.x, S.y, 2.2, 'space', `□ spazio libero`, 40);
     st.ris.sites.forEach(s => { if (s.done) return; const c = RS.lotCenter(RS.LOTS.find(l => l.id === s.lot)); put(c.x, c.y, 3, 'site', `⚒ ${Math.floor(s.progress)}/${s.hours} ore`, 60); });
@@ -67664,7 +67679,18 @@ var RisaccaUI = (function () {
     // porte vicine: dove si entra e che posto è
     if (!p.indoor && !p.vehicle) G.BUILDINGS.forEach(b => { if (!b.door) return; const x = (b.door[0] + .5) * G.TS, y = (b.door[1] + .5) * G.TS; if (Math.hypot(x - p.x, y - p.y) < 9) put(x, y, 1.9, 'door', '▸ ' + (b.label || b.name || 'Porta'), 9); });
 
-    box.innerHTML = out.join('');
+    labPut(box, out);
+  }
+  // [fluido] le etichette nel mondo: prima si riscriveva tutto il riquadro (innerHTML) a ogni fotogramma, ricreando ogni etichetta.
+  // Ora gli stessi nodi si riusano; testo e classe cambiano solo se cambiano, la posizione è una sola scrittura (left/top come prima)
+  function labPut(box, out) {
+    const P = box.__pool || (box.__pool = []);
+    out.forEach(([cls, text, x, y], i) => {
+      let el = P[i]; if (!el) { el = document.createElement('div'); box.appendChild(el); P.push(el); }
+      if (el.hidden) el.hidden = false; if (el.__c !== cls) { el.__c = cls; el.className = cls; } if (el.__t !== text) { el.__t = text; el.textContent = text; }
+      if (el.__x !== x || el.__y !== y) { el.__x = x; el.__y = y; el.style.left = x + 'px'; el.style.top = y + 'px'; }
+    });
+    for (let i = out.length; i < P.length; i++) if (!P[i].hidden) P[i].hidden = true;
   }
 
   // ---------------- COSTRUZIONI IN 3D ----------------

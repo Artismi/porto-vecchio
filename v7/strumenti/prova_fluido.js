@@ -80,10 +80,16 @@ const srv = http.createServer((req, res) => {
       const alloc = R.map(f => Math.max(0, (f.h1 || 0) - (f.h0 || 0)) / 1024);
       const domW = {}; R.forEach(f => { for (const k in f.dom) domW[k] = (domW[k] || 0) + f.dom[k]; });
       const js = R.map(f => f.step + f.frame).sort((a, b) => a - b);
-      const dc = await pg.evaluate(() => new Promise(res => { const R = window.__pv.R, rd = R.__models.renderer, S = R.__models.scene, f0 = rd.renderBufferDirect, cnt = {}, pass = {}; let on = false;
-        const top = o => { let q = o; while (q.parent && q.parent !== S) q = q.parent; return q === o && !o.parent ? 'fuori scena' : (q.name || (q.userData && Object.keys(q.userData).filter(x => !/^__/.test(x)).slice(0, 2).join(',')) || q.type); };
-        rd.renderBufferDirect = function (cam, sc, geo, mat, obj, grp) { if (on) { const k = top(obj); cnt[k] = (cnt[k] || 0) + 1; const pk = cam && cam.isOrthographicCamera ? 'ombra/orto' : mat && (mat.isMeshDepthMaterial || mat.isMeshDistanceMaterial) ? 'ombra' : sc === S ? 'scena' : 'altro'; pass[pk] = (pass[pk] || 0) + 1; } return f0.apply(this, arguments); };
-        const F = window.__fr, n0 = F.n; const w = () => { if (F.n === n0 + 1) on = true; if (F.n >= n0 + 2) { rd.renderBufferDirect = f0; res({ passate: pass, rami: Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 14) }); } else setTimeout(w, 20); }; w(); }));
+      // da dove vengono i disegni: le mesh visibili nell'inquadratura per ramo (una chiamata per materiale), più chi fa ombra
+      const dc = await pg.evaluate(() => { const R = window.__pv.R, S = R.__models.scene, cam = R.getCamera(), fr = new THREE.Frustum(), M = new THREE.Matrix4();
+        cam.updateMatrixWorld(); M.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); fr.setFromProjectionMatrix(M);
+        const cnt = {}, sh = {}; let tot = 0, tsh = 0;
+        const key = o => { let q = o; while (q.parent && q.parent !== S) q = q.parent; return (q.name || (q.userData && Object.keys(q.userData).filter(x => !/^__/.test(x)).slice(0, 2).join(',')) || '') + ':' + q.type; };
+        S.traverseVisible(o => { if (!(o.isMesh || o.isSprite || o.isLine || o.isPoints) || !o.layers.test(cam.layers)) return; const nm = Array.isArray(o.material) ? (o.geometry && o.geometry.groups.length || o.material.length) : 1;
+          if (o.castShadow && o.isMesh) { const k = key(o); sh[k] = (sh[k] || 0) + nm; tsh += nm; }
+          if (o.frustumCulled && !fr.intersectsObject(o)) return; const k = key(o); cnt[k] = (cnt[k] || 0) + nm; tot += nm; });
+        const top = m => Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        return { in_vista: tot, rami: top(cnt), fanno_ombra: tsh, ombra_rami: top(sh), congelati: R.__frz ? R.__frz.list.filter(o => o.__frz && o.__frz.frozen).length : 0, in_prova: R.__frz ? R.__frz.list.length : 0 }; });
       out[nome] = { disegni_dettaglio: dc, js_p50_ms: +js[Math.floor(js.length / 2)].toFixed(1), js_p95_ms: +js[Math.floor(js.length * .95)].toFixed(1), js_max_ms: +js[js.length - 1].toFixed(1), logica_ms: +med(R.map(f => f.step)).toFixed(2), grafica_ms: +med(R.map(f => f.frame)).toFixed(1), di_cui_render_ms: +med(R.map(f => f.render)).toFixed(1), resto_grafica_ms: +med(R.map(f => f.frame - f.render)).toFixed(1),
         disegni: med(R.map(f => f.calls)), disegni_scena: med(R.map(f => f.sceneCalls)), triangoli_k: Math.round(med(R.map(f => f.tris)) / 1000), programmi: R[R.length - 1].progs,
         scena: sc, alloc_kb_fot: +med(alloc).toFixed(0), dom_scritture_fot: +(Object.values(domW).reduce((a, b) => a + b, 0) / R.length).toFixed(1),

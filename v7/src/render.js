@@ -2129,8 +2129,11 @@ var Render = (function () {
     const P32 = new THREE.Float32BufferAttribute(pos, 3), UV2 = new THREE.Float32BufferAttribute(uv, 2), grp = new THREE.Group(); ISO.basePieces = {};
     // [memoria] le normali una volta sola per tutta l'isola, condivise dai pezzi (prima ogni pezzo le calcolava per tutti i vertici: ~80 MB)
     const NRM = (() => { const g0 = new THREE.BufferGeometry(); g0.setAttribute('position', P32); g0.setIndex([].concat(...Object.values(PIECE))); g0.computeVertexNormals(); packNormals(g0); const a = g0.attributes.normal; g0.setIndex(null); return a; })();
-    Object.keys(PIECE).forEach(key => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', P32); geo.setAttribute('uv', UV2); geo.setAttribute('normal', NRM); geo.setIndex(PIECE[key]); geo.computeBoundingSphere();
-      const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; grp.add(mesh); ISO.basePieces[key] = mesh; });
+    // [fluido] una mesh sola invece di un pezzo per blocco (dal ramo wonderful-davinci): ogni pezzo aveva la sfera di tutta l'isola
+    // (three la calcola sui vertici, non sull'indice), quindi nessuno veniva mai scartato e ognuno era una chiamata (~140 a fotogramma).
+    // Stessi vertici, stesse normali condivise, stessi triangoli: l'indice si ricompone solo quando cambiano i blocchi caricati
+    { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', P32); geo.setAttribute('uv', UV2); geo.setAttribute('normal', NRM); geo.setIndex([].concat(...Object.values(PIECE))); geo.computeBoundingSphere();
+      const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; grp.add(mesh); ISO.baseMesh = mesh; ISO.basePiece = PIECE; ISO.baseSig = -1; }
     scene.add(grp); ISO.base = grp;
   }
   // carica i blocchi vicini alla camera (uno per fotogramma, il più vicino prima) e scarica quelli lontani
@@ -2154,7 +2157,10 @@ var Render = (function () {
         if (r.done) { const old = ISO.chunks.get(J.key); if (old) dropChunk(old); if (J.dirty) r.value.rev = -1; ISO.chunks.set(J.key, r.value); ISO.job = null; break; }   // cambiata la mappa a metà: si rifà
       }
       if (steps) BUD.add(performance.now() - t0, 'piante'); }
-    if (ISO.basePieces) for (const key in ISO.basePieces) ISO.basePieces[key].visible = !ISO.chunks.has(key);   // [inverno17]
+    if (ISO.baseMesh) {   // [inverno17] l'isola lontana si nasconde dove il blocco vero è caricato   // [fluido] ricomponendo l'indice della mesh sola
+      const P = ISO.basePiece; let sig = 7, i = 0; for (const k in P) { i++; if (!ISO.chunks.has(k)) sig = (sig * 31 + i) % 2147483647; }   // un numero, non una stringa nuova a ogni fotogramma
+      if (sig !== ISO.baseSig) { ISO.baseSig = sig; let n = 0; for (const k in P) if (!ISO.chunks.has(k)) n += P[k].length; const ix = new Uint32Array(n); let o = 0; for (const k in P) if (!ISO.chunks.has(k)) { ix.set(P[k], o); o += P[k].length; }
+        ISO.baseMesh.geometry.setIndex(new THREE.BufferAttribute(ix, 1)); ISO.baseMesh.visible = n > 0; } }
   }
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
   function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true; }
@@ -13269,6 +13275,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    renderer.debug.checkShaderErrors = typeof location !== 'undefined' && /[?&]shaderdebug/.test(location.search);   // [fluido] dal ramo wonderful-davinci: leggere subito il registro di ogni shader compilato costringe ad aspettarne la compilazione (centinaia di ms per materiale nuovo, camminando); solo con ?shaderdebug
     renderer.setPixelRatio(1);
     canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); try { localStorage.setItem('pvLow', '1'); } catch (x) {} console.warn('[grafica] contesto perso: ricarico in qualità ridotta'); setTimeout(() => location.reload(), 400); });   /* [unione10] */
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;   /* [plastica2] ombre morbide da plastico: le dure a punti di 4,5 cm facevano trine e scalini */
@@ -14093,17 +14100,23 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       on.sort((a, b) => a.d2 - b.d2);
       const sp = [], pp = [];
       on.forEach(L => { const fire = L.flick >= .25 && L.y - L.gy < 2.2; if (!fire && sp.length < SPOOL.length) sp.push(L); else if (pp.length < PPOOL.length) pp.push(L); });
-      dyn.lsp = sp; dyn.lpp = pp;
+      // [fluido] ogni faretto resta sulla sua lampada finché questa è fra le scelte (dal ramo keen-turing): l'ordine per distanza le
+      // rimescolava a ogni passo e ogni rimescolata ridisegnava l'ombra di quasi tutti i faretti, anche di giorno a luce spenta
+      { const old = dyn.lslot || [], keep = new Set(sp), slot = new Array(SPOOL.length).fill(null), used = new Set();
+        old.forEach((L, i) => { if (L && keep.has(L) && i < slot.length) { slot[i] = L; used.add(L); } });
+        let j = 0; sp.forEach(L => { if (used.has(L)) return; while (j < slot.length && slot[j]) j++; if (j < slot.length) slot[j++] = L; });
+        dyn.lslot = slot; dyn.lsp = slot.filter(Boolean); }
+      dyn.lpp = pp;
     }
     const kOf = L => { let k = L.always ? .06 + night * .94 : night * night;
       if (L.flick) k *= 1 - L.flick * .5 * (Math.sin(time * 13 + L.phase) * .5 + .5) * (Math.sin(time * 3.7 + L.phase * 2) > .3 ? 1 : .2);
       return k; };
     SPOOL.forEach((l, i) => {
-      const L = dyn.lsp[i], cone = l.userData.cone;
+      const L = dyn.lslot[i], cone = l.userData.cone;
       if (!L) { l.intensity = 0; cone.visible = false; return; }
       const k = kOf(L), hh = Math.max(1.2, L.y - L.gy);
       if (l.userData.src !== L) { l.userData.src = L; l.position.set(L.x, L.y, L.z); l.target.position.set(L.x, L.gy - 2, L.z); l.target.updateMatrixWorld(); l.color.copy(L.color);
-        l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.shadow.needsUpdate = true; }
+        l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.userData.shDirty = true; }   // [fluido] l'ombra si rifà sotto, se la luce fa luce
       if (L.nb === undefined) { L.nb = 0; LSRC.forEach(o => { if (o !== L && Math.abs(o.x - L.x) < 7 && Math.abs(o.z - L.z) < 7) L.nb++; }); }   // [inverno29] vicine: si dividono la luce
       l.intensity = L.base * k * .55 / Math.sqrt(1 + L.nb * .6);   // [inverno30] la pozza a terra la fa la luce cotta
       const tall = hh > 2.8 && night > .25;
@@ -14117,7 +14130,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       for (const n of st.npcs) { if (n.dead || n.inside || (n.pop && !n.pop.near)) continue; movers.push(n.x, n.y, (n.speedNow || 0) + (n.gesture > 0 || n.stun > 0 || n.airT ? 1 : 0)); }
       for (const v of st.vehicles) { if (v.hidden) continue; movers.push(v.x, v.y, Math.abs(v.vx || 0) + Math.abs(v.vy || 0) + Math.abs(v.w || 0)); }
       const want = [];
-      SPOOL.forEach(l => { if (!(l.intensity > 0)) return; const u = l.userData, r = (l.distance || 10) + 2, lx = l.position.x, lz = l.position.z; let busy = false;
+      SPOOL.forEach(l => { if (!(l.intensity > 0)) return; if (l.userData.shDirty) { l.userData.shDirty = false; l.shadow.needsUpdate = true; l.userData.shT = now; return; }   // [fluido] spostata su un'altra lampada: subito, come prima (spenta, l'ombra non si vede e aspetta)
+        const u = l.userData, r = (l.distance || 10) + 2, lx = l.position.x, lz = l.position.z; let busy = false;
         for (let i = 0; i < movers.length; i += 3) { if (movers[i + 2] > .05 && Math.abs(movers[i] - lx) < r && Math.abs(movers[i + 1] - lz) < r) { busy = true; break; } }
         if (busy) want.push([0, l]); else if (now - (u.shT || 0) > 500) want.push([now - (u.shT || 0), l]); });
       want.sort((a, b) => (a[0] === 0 ? -1 : 0) - (b[0] === 0 ? -1 : 0) || b[0] - a[0]);
