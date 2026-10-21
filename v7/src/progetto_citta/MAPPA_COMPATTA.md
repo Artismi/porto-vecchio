@@ -6,8 +6,9 @@ Questa è solo la fase 1, cioè il progetto. Il generatore non si tocca. Coordin
 generatore lavora spostato di OX=320, OY=200: una x finale di 1250 è 930 nel generatore.
 
 Le immagini (`node strumenti/mappa_compatta.js` le rifà dai dati scritti nello script):
-- `_immagini/mappa_compatta/progetto.png`: la mappa come la riceverebbe il giocatore;
-- `_immagini/mappa_compatta/confronto.png`: la stessa cornice sopra la pianta di oggi, con sotto la città intera di oggi.
+- `_immagini/mappa_compatta/progetto_v2.png`: la mappa come la riceverebbe il giocatore, con le correzioni del committente (sez. 11:
+  incroci veri e la Rocca a mare); `progetto.png` è la prima versione, tenuta per confronto;
+- `_immagini/mappa_compatta/confronto_v2.png`: la stessa cornice sopra la pianta di oggi, con sotto la città intera di oggi.
 
 ---
 
@@ -41,7 +42,7 @@ Con la darsena, i moli e la calata la città occupa 184 m da nord a sud: il valo
 | **Marina** (E2) | x 1318-1480 | **uguale** (y 375-426 con la calata e lo scalo) | lo scalo d'alaggio (1292-1316 × 393-410) diventa il capo ovest. La gru sulla darsena |
 | **Vittoria e piazza d'adunata** (E4) | asse di 12 m da 1310 a 1481, portici di 5 piani, piazza 30 × 33 m | **asse di 10 m da 1290 a 1508**, portici 3 piani, piazza 25 × 30 m (1313-1338 × 328-358) | l'asse parte dal Mercato (assorbe Via Nazionale) e arriva al ponte della Rocca |
 | **Spianata** (E1) | 1463-1518, Raccordo del Muro asfaltato largo 8 m | **1466-1508**, 42 m, terra battuta e lastricato | il raccordo diventa la pista di pattuglia in terra (palco.js la disegna già) |
-| **Rocca** (E1) | 1505-1610, Viale della Tutela da 10 m dentro | **uguale** (1508-1606) | il viale interno diventa la piazza d'armi lastricata (1524-1584 × 326-360): nella Rocca non c'è più asfalto |
+| **Rocca** (E1) | 1505-1610, Viale della Tutela da 10 m dentro, fronte bastionato simmetrico | **castello a mare** su uno scoglio (1525-1610 × 289-400), staccato dalla spianata dal canale (1508-1526) | sez. 11: masse a gradoni, mastio col faro, torrione tondo, darsena allagata col ponte ad arco; la piazza d'armi lastricata (1534-1580 × 314-348); nella Rocca non c'è più asfalto |
 | **Giardini di Ponente** | x 1197, dentro il boom | **x 1222-1250**, una fascia di 28 m sul bordo ovest | il verde progettato che chiude la città: la vasca vuota dello skate, gli orti sulla scarpata, la Città dei Topi sotto |
 
 Fuori dalla cornice l'isola resta com'è: la Collina dei Pini, il Monte, San Giacomo, il bosco, il Tavolato, le isole. Diventa
@@ -83,7 +84,7 @@ nel progetto e la prova nuova le misura con `Percorsi.vista` (sez. 9).
 | Orologio della stazione | 1270, 289 | 14 m | quadrante giallo | Mercato (in fondo alla Galleria), Corso, baracche |
 | Torre dell'acqua con l'antenna di Radio Luna | 1310, 272 | 18 m | lampada bianca che lampeggia | Mercato, Porta di Terra, camminamento delle mura |
 | Gru del porto sulla darsena | 1372, 414 | 22 m | luce arancio in punta al braccio | Piazza della Marina, Forno, Scalo, sbocco del sottoportico sulla Vittoria |
-| Torrione della Rocca col riflettore | 1596, 326 | 16 m + lanterna | **rosso** | il cannocchiale della Vittoria, il Pozzo, il Molo Vecchio, la spianata |
+| Mastio della Rocca col faro (il «torrione col riflettore») | 1594, 327 | 24 m + lanterna | **rosso** | il cannocchiale della Vittoria, il Pozzo, il Molo Vecchio, la spianata |
 
 Due landmark bassi, che si leggono dall'alto e dalla mappa: la **tettoia verde del Mercato** (7 m) e il **pennacchio di vapore** della grata delle baracche.
 
@@ -152,7 +153,7 @@ ognuna con la sua alternativa. Le lunghezze qui sotto sono misurate sulle linee 
 | Baracche (10) → Covo (6) | gli scogli sotto le mura, con la bassa marea | — | **il camminamento delle mura** di tramontana, 137 m: dalla scala di ronda alla vedetta |
 | Chiesa (3) → Covo (6) | Rua e Vico dell'Arco | — | **sotto**: cripta, catacombe, rifugio sotto l'adunata, cunicolo fino al bunker, 201 m |
 | Bar (1) → spianata (11) | la fine della Rua, 41 m | — | i tetti delle case mozzate sul bordo, 35 m: si guarda il posto di blocco dall'alto |
-| Spianata → Rocca (12) | ponte e Porta, 69 m, sorvegliato | — | **per mare**: dal Molo Vecchio nel fossato allagato fino all'arco di comunicazione, 187 m |
+| Spianata → Rocca (12) | ponte e Porta, 69 m, sorvegliato | — | **per mare**: dal Molo Vecchio lungo il canale fino alla porta d'acqua della darsena, 190 m |
 
 Le **porte** restano le cinque di oggi: Porta di Terra, sottoportico dei Bottai, sottopasso Cavour, scala dei pescatori, posto di blocco.
 Se ne aggiunge una sesta, il **passaggio a livello**, con l'alternativa del sottopasso. Ognuna ha accanto i tetti o un tombino.
@@ -422,3 +423,64 @@ Gli **interni** (`interiors.js`) seguono il loro edificio.
    Corso (110 m) sono le uniche corse lunghe, e vanno bene per questo. La fuga lunga diventa i tetti e il sotto.
 7. **La ferrovia sotto le mura.** Resta fino al Muro: rilevato, mura e baracche si toccano a 15 m dalla riva. Le baracche hanno solo 13-16 m:
    due file, non tre.
+
+---
+
+## 11. Le correzioni del committente (v2): gli incroci e la Rocca a mare
+
+### 11.1 Le strade si incontrano come strade vere
+
+Il committente: «le strade non si incrociano e fondono in modo realistico, ma a volte continuano con un tondo o altre cose strane: la forma
+delle strade e dei bivi è fondamentale», e poi: «alcune vie finiscono in vicoli ciechi perché continuano oltre l'incrocio ma non finiscono da
+nessuna parte». Le regole, per la pianta e per il gioco:
+
+- **Ogni capo ha un perché.** Una strada finisce su un'altra (incrocio a T, o a Y dove due vie si separano), dentro un nodo (piazza,
+  piazzetta, spianata, Giardini) o **contro qualcosa di dichiarato nei dati**: una scala (sale sulle mura, scende alla spiaggia), una porta o un
+  arco (la Porta della Rocca, il sottopasso), un luogo in fondo (la discarica delle baracche), un affaccio sul mare con la banchina, l'uscita
+  verso l'entroterra. Mai un tondo, mai un moncone.
+- **Niente monconi oltre l'incrocio.** Se il tratto dopo l'ultimo incrocio non porta a niente si accorcia fino all'incrocio, che diventa una T.
+  Un vicolo cieco resta solo se è voluto (nascondiglio, corte, porta, scala sui tetti, affaccio) e lungo almeno 6 m, con la chiusura scritta.
+- **Angoli veri.** Fra due bracci vicini almeno 40°: la T fra 60° e 120°, la Y fra 40° e 60°. Niente cunei.
+- **Il cordolo gira l'angolo.** Ogni angolo fra due bracci ha lo smusso (raggio 1,6 m sui vicoli, 3 m sulle vie) oppure lo spigolo di una casa;
+  il cordolo è continuo e si apre solo dove entra un'altra strada. I vicoli laterali si aprono dal fronte, non sono attaccati sopra.
+
+Nella rete v2 i vicoli a pettine del nord non muoiono più contro le mura: finiscono sulla **Via delle Mura**, il vicolo che corre dentro la
+cinta (il pomerio), con la scala di ronda della Porta di Terra a ovest e la spianata a est. I pettini del sud si aprono sulla Vittoria; quelli
+sotto la Vittoria sulla Via di Mezzo; la Via di Mezzo entra nel Corso e nella Via della Marina. La Rua parte dal Corso (sotto la Porta di
+Terra) e finisce sulla spianata. La Vittoria va dal Mercato alla spianata; il **Ponte della Rocca** passa il canale e finisce sulla Porta.
+
+Il controllo è `strumenti/incroci.js` (lo usano la pianta del progetto e la prova del gioco): conta incroci per tipo, capi per tipo di chiusura,
+angoli sotto i 40°, capi aperti e monconi, e calcola gli smussi. **La rete v2: 37 strade, 50 incroci (47 a T, 1 a Y, 2 a croce), 74 capi:
+48 su una strada, 19 in un nodo, 7 chiusi (3 scale, 1 porta, 1 luogo, 2 uscite verso l'entroterra), 0 capi aperti, 0 monconi.** Il gioco di oggi
+(`node strumenti/incroci.js`): 43 strade, 39 capi aperti (vicoli che muoiono a metà, la Via Nazionale che finisce nel nulla, il Raccordo del Muro).
+
+Nella pianta i capi sono tagliati dritti e ogni chiusura ha il suo segno (gradini, arco, facciata, freccia); nel gioco le vie si stendono con
+i capi dritti (non più `lineCap: round`) e ogni strada porta i suoi `capi` nei dati.
+
+### 11.2 La Rocca: un castello aragonese a mare
+
+«La fortezza adesso non ci sta.» I riferimenti (`_immagini/riferimenti/fortezza_da_fuori.png`, `fortezza_da_dentro.webp`) sono un castello a mare
+su uno scoglio basso, cinto da un frangiflutti di massi e staccato dalla città dall'acqua. La Rocca v2 (coordinate finali):
+
+| Parte | Dove | Alto | Com'è |
+|---|---|---|---|
+| Canale | 1508-1526, da riva a riva | — | il vecchio fossato diventa mare: la Rocca è un'isola. Ci si arriva solo dal **Ponte della Rocca** (8 m, a y 343, sull'asse della Vittoria) o per mare |
+| Scoglio e frangiflutti | 1520-1616 × 284-406 | — | roccia bassa e un anello di massi tondi e scogli rotolati fra le mura e il mare |
+| Fronte di terra con la Porta | 1526-1534 × 320-366 | 14 m | muro dritto, poche finestre piccole, la porta a fornice sull'asse col ponte (il cannocchiale della Vittoria ci arriva) |
+| Rivellino di ponente | 1527-1536 × 300-322 | 6 m | basso, a scarpa, l'erba sulla terrazza |
+| Cortina nord e caserma | 1532-1580 × 297-316 | 12 e 15 m | masse a gradoni di conci dorati (tufo, carparo), parapetto merlato |
+| **Mastio col faro** | 1587-1601 × 318-336 | 24 m + lanterna | il volume più alto, a picco sul mare: in cima la lanterna rossa (il «torrione col riflettore» del landmark). Si vede dalla Vittoria, dal Pozzo, dal Molo, dalla spianata |
+| Raccordo e corpo di levante | 1578-1603 × 299-366 | 18 e 13 m | i gradini fra il mastio e il resto; erba sulla terrazza bassa |
+| Rivellino di scirocco | 1580-1601 × 358-388 | 7 m | basso, a scarpa, erba |
+| **Torrione** tondo e tozzo | 1538, 386, r 10 | 10 m | sull'angolo verso la città e il porto, come nel riferimento |
+| Piazza d'armi | 1534-1580 × 314-348 | — | lastricata, il luogo-missione 12 |
+| **Darsena** | 1548-1578 × 352-384 | — | il bacino allagato dentro le mura; la **porta d'acqua** a volta (1558-1564) la apre sul mare a sud |
+| **Ponte ad arco** | da 1546 a 1580 a y 366 | — | il grande arco tondo di pietra che scavalca la darsena |
+| Banchina coi gradini | 1548-1578 × 348-352 | — | i gradini scendono all'acqua |
+| **Portale monumentale** | 1566, 346 | 8 m | lo stemma scolpito e la pensilina di ferro, sulla banchina |
+| Molo della Rocca | 1586-1590 × 392-420 | — | fuori dalla porta d'acqua: la nave dell'Impero (lunedì e giovedì), la motovedetta |
+
+Nel gioco si usano e si allungano i pezzi di `pezzi_citta.js`: `cortina` (le masse, con l'altezza per gradone e la scarpa), `bastione` (i
+rivellini), `torrione` (il torrione tondo e, più alto e a pianta quadra, il mastio con la lanterna), `caserma`, `porta_monumentale` (il portale
+con lo stemma e la pensilina), `fossato` (il canale col ponte). Il cunicolo di fuga e la cisterna (sotto) restano; il segreto per mare entra
+dalla porta d'acqua della darsena invece che dal fossato.
