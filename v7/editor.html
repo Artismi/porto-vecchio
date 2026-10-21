@@ -67718,7 +67718,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       else if (mo.kind === 'jail') { const tn = G.byId(st, mo.npcs[0]); m.innerHTML = `${esc(tn.first)} finisce dentro.<small>Per una cosa che hai fatto tu.</small>`; }
       m.hidden = false;
     }
-    if (ui.time > ui.momentUntil) $('moment').hidden = true;
+    if (ui.time > ui.momentUntil) setHid($('moment'), true);   // [fluido] solo se cambia
   }
   function crosshair() {
     const x = $('xhair'), p = st.player;
