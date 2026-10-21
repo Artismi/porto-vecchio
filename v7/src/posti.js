@@ -111,7 +111,10 @@ var Posti = (function () {
     (W.sets || []).forEach(s => { if (s.k !== 'piazzetta' || !s.bar) return; for (let k = 0; k < 2; k++) { const a = PI * .25 + k * PI, q = freeNear(s.x + Math.cos(a) * s.r * .6, s.y + Math.sin(a) * s.r * .6, 2); if (q) add('dehors', cx(q[0]), cx(q[1]), dirTo(cx(q[0]), cx(q[1]), s.x, s.y), { set: 'piazzetta' }); } });
 
     // --- pensiline e fermate: sulle vie della città (≥ 7 m), ogni ~75 m, sul marciapiede, rivolte alla strada ---
-    const CITYROADS = (W.roads || []).filter(rd => rd.pts && !rd.monte && rd.w >= 7 && (rd.kind === 'citta' || (rd.kind === 'litoranea' && rd.era)));
+    // [vievive] nella città nuova le fermate sono quelle della linea 1 (vievive.js): l'autobus ci arriva davvero, la gente ci aspetta
+    const VV = typeof Vievive !== 'undefined' && Vievive.attivo ? Vievive : null;
+    if (VV) VV.fermate().forEach(f => add(f.pensilina ? 'pensilina' : 'fermata', f.x, f.y, f.dir, { vvf: f.id, via: f.nome, linea: 1 }));
+    const CITYROADS = VV ? [] : (W.roads || []).filter(rd => rd.pts && !rd.monte && rd.w >= 7 && (rd.kind === 'citta' || (rd.kind === 'litoranea' && rd.era)));
     CITYROADS.forEach(rd => {
       const P = rd.pts, cum = [0]; for (let k = 1; k < P.length; k++) cum.push(cum[k - 1] + hyp(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1]));
       const L = cum[cum.length - 1], step = 75, n = Math.max(1, Math.floor(L / step)), off = (hash2(P[0][0] | 0, P[0][1] | 0, 5) * .6 + .2) * step;
@@ -249,7 +252,8 @@ var Posti = (function () {
     });
 
     // --- edicole: al Mercato, alla Stazione, sul Corso ---
-    { const pts = []; const mk = (W.sets || []).find(s => s.k === 'mercato'); if (mk) pts.push([mk.x - mk.r - 3, mk.y, 'Mercato']);
+    if (VV) VV.edicole().forEach(e => add('edicola', e.x, e.y, e.dir, { nome: e.nome, vvk: true }));   // [vievive] la fila davanti al chiosco, rivolta al bancone
+    else { const pts = []; const mk = (W.sets || []).find(s => s.k === 'mercato'); if (mk) pts.push([mk.x - mk.r - 3, mk.y, 'Mercato']);
       const va = RD('via_alta'); if (va && va.pts) { const p = va.pts[Math.min(6, va.pts.length - 1)], q = va.pts[Math.min(7, va.pts.length - 1)], ang = Math.atan2(q[1] - p[1], q[0] - p[0]); pts.push([p[0] - Math.sin(ang) * (va.w / 2 + 2), p[1] + Math.cos(ang) * (va.w / 2 + 2), 'Stazione']); }
       const co = RD('corso'); if (co && co.pts) { const p = co.pts[Math.floor(co.pts.length / 2)], q = co.pts[Math.floor(co.pts.length / 2) + 1], ang = Math.atan2(q[1] - p[1], q[0] - p[0]); pts.push([p[0] + Math.sin(ang) * (co.w / 2 + 2), p[1] - Math.cos(ang) * (co.w / 2 + 2), 'Corso']); }
       if (!pts.length && PL.piazza) pts.push([PL.piazza.x + 5, PL.piazza.y - 4, 'Piazza']);

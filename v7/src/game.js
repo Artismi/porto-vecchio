@@ -203,12 +203,16 @@ var Game = (function () {
     motoscafo: { r: 1.4, len: 7, wid: 2.4, max: 17, accel: 5, turn: 1.1, hp: 120, label: 'Motoscafo', boat: true, art: 'il', m0: true },
     // [bmx] la bici tascabile: si tira fuori con P quando vuoi e quando scendi torna in tasca. Niente motore, niente fari, non brucia.
     bmx: { r: .5, len: 1.5, wid: .74, max: 9, accel: 6, turn: 3.8, hp: 45, label: 'BMX', two: true, pocket: true },
+    // [vievive] l'autobus urbano della linea 1 (Fiat 421) e il Ciao, il motorino di tutti
+    autobus: { r: 1.6, len: 10.8, wid: 2.5, max: 11, accel: 1.6, turn: 1.2, hp: 420, label: 'Autobus', mesh: 'ritmo', scale: [1.56, 2, 2.86] },
+    ciao: { r: .5, len: 1.65, wid: .72, max: 8.5, accel: 6, turn: 3.4, hp: 45, label: 'Piaggio Ciao', two: true },
   };
   // fisica: massa (kg) e aderenza laterale (m/s²). Vespa e Ape scivolano meno, le berline derapano.
   Object.assign(VK.vespa, { m: 150, grip: 24 }); Object.assign(VK.cinquecento, { m: 560, grip: 19 }); Object.assign(VK.ritmo, { m: 860, grip: 20 });
   Object.assign(VK.giulia, { m: 1050, grip: 21 }); Object.assign(VK.ape, { m: 420, grip: 15 }); Object.assign(VK.polizia, { m: 1150, grip: 22 });
   Object.assign(VK.furgone, { m: 1900, grip: 18 }); Object.assign(VK.fuoristrada, { m: 1600, grip: 24 }); Object.assign(VK.camion, { m: 3600, grip: 17 }); Object.assign(VK.campagnola, { m: 1500, grip: 23 }); Object.assign(VK.blindato, { m: 6200, grip: 21 });
   Object.assign(VK.gozzo, { m: 700, grip: 2.6 }); Object.assign(VK.lancia, { m: 950, grip: 2.8 }); Object.assign(VK.motoscafo, { m: 1200, grip: 3.4 });
+  Object.assign(VK.autobus, { m: 9000, grip: 18 }); Object.assign(VK.ciao, { m: 70, grip: 22 });   // [vievive]
   Object.assign(VK.bmx, { m: 95, grip: 23 }); Object.assign(VK.rx7, { m: 1250, grip: 22 }); Object.assign(VK.gtr, { m: 1400, grip: 23 }); Object.assign(VK.bursley, { m: 1600, grip: 19 });
   for (const k in VK) VK[k].I = (VK[k].len * VK[k].len + VK[k].wid * VK[k].wid) / 12; // inerzia / massa
   const PICKUP_LABEL = { pistola: 'Beretta 92', lupara: 'Lupara', mitra: 'Skorpion', molotov: 'Molotov', munizioni: 'Munizioni', salute: 'Cassetta del pronto soccorso', soldi: 'Soldi', valigetta: 'Valigetta dei Marsigliesi' };
@@ -1766,6 +1770,7 @@ var Game = (function () {
   function massOf(v) { return VK[v.kind].m * (v.wreck ? 1.4 : 1); }
   function collideVehicles(st, a, b) {
     const KA = VK[a.kind], KB = VK[b.kind];
+    if ((a.guida || b.guida) && a.rider !== 'player' && b.rider !== 'player' && (a.traffic || a.guida) && (b.traffic || b.guida)) return;   // [vievive] l'autobus e i motorini guidati da vievive.js si fanno largo fra i mezzi in corsa: si sfiorano, non si speronano
     if (Math.abs(a.x - b.x) > (KA.len + KB.len) / 2 || Math.abs(a.y - b.y) > (KA.len + KB.len) / 2) return;
     const axes = [[Math.cos(a.ang), Math.sin(a.ang)], [-Math.sin(a.ang), Math.cos(a.ang)], [Math.cos(b.ang), Math.sin(b.ang)], [-Math.sin(b.ang), Math.cos(b.ang)]];
     const ext = (K, ang, ax) => K.len / 2 * Math.abs(Math.cos(ang) * ax[0] + Math.sin(ang) * ax[1]) + K.wid / 2 * Math.abs(-Math.sin(ang) * ax[0] + Math.cos(ang) * ax[1]);
@@ -1896,11 +1901,12 @@ var Game = (function () {
     const fx = Math.cos(v.ang), fy = Math.sin(v.ang);
     const check = (x, y, r) => { const dx = x - v.x, dy = y - v.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx); if (along > 0 && along < 9 && lat < 1.3 + Math.min(r, .5)) block = Math.min(block, along - r); };
     if (!st.player.vehicle) check(st.player.x, st.player.y, .4);
-    for (const n of st.npcs) { if (n.inside || Math.abs(n.x - v.x) > 10 || Math.abs(n.y - v.y) > 10) continue; check(n.x, n.y, n.dead ? .3 : .4); }   // [fluido] solo chi è a portata
+    for (const n of st.npcs) { if (n.inside || n.vigile || Math.abs(n.x - v.x) > 10 || Math.abs(n.y - v.y) > 10) continue; check(n.x, n.y, n.dead ? .3 : .4); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
     st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1); });
     const K = VK[v.kind];
     let want = target;
+    if (HOOKS.corsa) want = HOOKS.corsa(st, v, want);   // [vievive] la velocità per rango di strada
     if (block < 7) want = Math.max(0, (block - 2.2) * 1.6);
     if (v.speed < want) v.speed = Math.min(want, v.speed + K.accel * .6 * dt); else v.speed = Math.max(want, v.speed - 14 * dt);
     if (block < 3 && v.speed < .5) { v.stuck += dt; if (v.stuck > 2.5 && st.clock > v.honk) { v.honk = st.clock + 3; st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } } else v.stuck = 0;
@@ -1908,7 +1914,7 @@ var Game = (function () {
     const Lr = v.lane; Lr.s += v.speed * dt * Lr.dir;
     if (!Ln.closed && (Lr.s > Ln.L - 3 || Lr.s < 3)) {
       const e = Lr.s > Ln.L - 3 ? 1 : 0, opts = (e === 1) === (Lr.dir > 0) ? Ln.conn[e] : null;
-      if (opts && opts.length) { const o = opts[Math.floor(st.rng() * opts.length)]; v.lane = { i: o.j, s: o.s + o.dir * 1, dir: o.dir }; v.speed = Math.min(v.speed, 5); }
+      if (opts && opts.length) { const o = (HOOKS.svolta && HOOKS.svolta(st, v, opts)) || opts[Math.floor(st.rng() * opts.length)];   /* [vievive] chi gira in città sceglie la svolta per rango */ v.lane = { i: o.j, s: o.s + o.dir * 1, dir: o.dir }; v.speed = Math.min(v.speed, 5); }
       else if (opts) { Lr.dir *= -1; Lr.s = clamp(Lr.s, 3, Ln.L - 3); }
     }
     const q = lanePos(Ln, Lr.s, Lr.dir), q2 = lanePos(Ln, Lr.s + Lr.dir * 5, Lr.dir);
@@ -2382,6 +2388,7 @@ var Game = (function () {
       if (!v.traffic && !v.rider && !v.burning && !inBubble(B, v.x, v.y) && Math.abs(v.vx || 0) + Math.abs(v.vy || 0) + Math.abs(v.w || 0) < .05) continue;   // fermo e lontano: niente da calcolare
       if (v.wreck) { freeRoll(st, v, dt, true); continue; }
       if (v.driveTo && v.rider === 'npc' && !v.traffic) continue;   // [ordine] lo guida ordine.js (volanti, Campagnola, camion della nave)
+      if (v.guida && v.rider === 'npc' && !v.traffic) continue;   // [vievive] lo guida vievive.js (l'autobus della linea, i motorini delle vie minori)
       if (v.traffic) updateTraffic(st, v, dt);
       else if (v.police && v.rider === 'npc') updatePoliceCar(st, v, dt);
       else if (v.rider !== 'player') { freeRoll(st, v, dt, !v.rider); if (Math.hypot(v.vx, v.vy) > 5.5) runOver(st, v, v.lastHitBy === 'player' ? 'player' : 'loose'); }

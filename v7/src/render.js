@@ -5269,18 +5269,21 @@ var Render = (function () {
       x.strokeStyle = `rgba(${col},${(.5 + (h - wear * .7) * .4).toFixed(2)})`; x.beginPath(); x.moveTo((wx - X0) * PPM, (wy - Y0) * PPM); x.lineTo((ax + (bx - ax) * t1 - X0) * PPM, (ay + (by - ay) * t1 - Y0) * PPM); x.stroke(); }
   }
   const WHITE1 = '226,222,206', YEL1 = '214,170,60';
+  const vvSeg1 = rd => (cn1() && typeof Vievive !== 'undefined' && Vievive && Vievive.attivo) ? Vievive.segnaletica(rd) : null;   // [vievive]
   function marks1(x, tx0, ty0, n, m) {
     const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS;
     (M.roads || []).forEach((rd, ri) => {
       if (!bitume1(rd) || !rd.pts || rd.pts.length < 3) return; const g = geo1(rd), P = rd.pts, city0 = urb1(rd);   // [segni] bitume1
       const wear = rd.kind === 'litoranea' ? .2 : rd.kind === 'strada' ? .28 : .34;
       for (let k = 0; k < g.n - 1; k++) {
-        const [ax, ay] = P[k], [bx, by] = P[k + 1]; if (!inBox1(ax, ay, X0, Y0, X1, Y1, rd.w + 6)) continue;
+        let [ax, ay] = P[k], [bx, by] = P[k + 1]; if (!inBox1(ax, ay, X0, Y0, X1, Y1, rd.w + 6)) continue;
         const mx = (ax + bx) / 2, my = (ay + by) / 2, dj = nearJ1(mx, my, 0); if (dj < .5) continue;   // dentro l'incrocio niente linee
         const nx = -g.uy[k], ny = g.ux[k], city = cityAt1(mx, my), s = g.s[k];
         if (onCarr1(mx, my, -.3, rd)) continue;   // dentro un'altra strada
         // mezzeria: tratteggiata, continua in curva, sulle salite cieche e prima degli incroci (fuori città)
-        if (rd.w >= 5.5) {
+        const SGv = vvSeg1(rd);   // [vievive] le corsie vere della via: la mezzeria solo con due corsie, al centro della carreggiata (spostata dalla sosta)
+        if (SGv && SGv.asse) { ax += nx * SGv.asse; ay += ny * SGv.asse; bx += nx * SGv.asse; by += ny * SGv.asse; }
+        if (SGv ? SGv.mezzeria : rd.w >= 5.5) {
           const curve = Math.abs(g.cv[k]) > (city ? 9 : .42), appr = !city && dj < 18, cont = curve || appr, period = city ? 6 : 9, on = city ? 3 : 4.5;
           if (cont) { dotLine1(x, X0, Y0, ax, ay, bx, by, wear, WHITE1, 2, 41); if (!city && Math.abs(g.cv[k]) > .7) { dotLine1(x, X0, Y0, ax + nx * .3, ay + ny * .3, bx + nx * .3, by + ny * .3, wear, WHITE1, 2, 43); } }   // doppia continua nelle curve strette
           else if ((s % period) < on) dotLine1(x, X0, Y0, ax, ay, bx, by, wear, WHITE1, 2, 41);
@@ -5288,7 +5291,7 @@ var Render = (function () {
         // linee di margine: solo fuori città, e non sulla bocca degli incroci
         if (!city && dj > 3 && (rd.kind === 'strada' || rd.kind === 'litoranea')) [-1, 1].forEach(sd => { const o = sd * (rd.w / 2 - .35); if (onCarr1(mx + nx * (o + sd * .6), my + ny * (o + sd * .6), 0, rd) || onCarr1(mx + nx * o, my + ny * o, -.2, rd)) return; dotLine1(x, X0, Y0, ax + nx * o, ay + ny * o, bx + nx * o, by + ny * o, wear + .08, WHITE1, 2, 47 + sd); });
         // stalli di sosta lungo le vie larghe di città: una tacca ogni 5 m sul bordo destro e sinistro
-        if (city && city0 && rd.w >= 8 && dj > 8 && Math.floor(s / 5) !== Math.floor(g.s[k + 1] / 5)) [1].forEach(sd => { const o = sd * (rd.w / 2 - .1), o2 = sd * (rd.w / 2 - 1.9);   /* un lato solo: restano 6 m di corsie */ dotLine1(x, X0, Y0, ax + nx * o, ay + ny * o, ax + nx * o2, ay + ny * o2, wear + .1, WHITE1, 2, 49); });
+        if (!SGv && city && city0 && rd.w >= 8 && dj > 8 && Math.floor(s / 5) !== Math.floor(g.s[k + 1] / 5)) [1].forEach(sd => { const o = sd * (rd.w / 2 - .1), o2 = sd * (rd.w / 2 - 1.9);   /* un lato solo: restano 6 m di corsie */ dotLine1(x, X0, Y0, ax + nx * o, ay + ny * o, ax + nx * o2, ay + ny * o2, wear + .1, WHITE1, 2, 49); });
       }
     });
     // agli incroci: STOP o triangoli sulle strade che danno la precedenza, frecce sulle altre in città
@@ -6566,7 +6569,8 @@ var Render = (function () {
     off(0, VIT2.fascia * 2, 'rgba(84,80,72,.72)');
     [-1, 1].forEach(sd => off(sd * (VIT2.fascia + VIT2.listello / 2), VIT2.listello, 'rgba(240,232,214,.9)'));
     // i giunti longitudinali dei lastroni (ogni 2 m fuori dalla fascia) e la canaletta scura lungo i cordoli
-    for (let o = VIT2.fascia + VIT2.listello + VIT2.lastra[1]; o < h - .4; o += VIT2.lastra[1]) [-1, 1].forEach(sd => off(sd * o, .1, 'rgba(70,60,46,.5)'));
+    // [vievive] i giunti lungo la via appena accennati: forti com'erano si leggevano come righe di corsia (quattro corsie su una via che ne ha due)
+    for (let o = VIT2.fascia + VIT2.listello + VIT2.lastra[1]; o < h - .4; o += VIT2.lastra[1]) [-1, 1].forEach(sd => off(sd * o, .06, 'rgba(70,60,46,.16)'));
     [-1, 1].forEach(sd => { off(sd * (h - .2), .4, 'rgba(46,40,32,.55)'); off(sd * (h - .45), .1, 'rgba(70,60,46,.4)'); });
     off(0, .1, 'rgba(60,56,50,.5)');   // il giunto in asse della fascia
     // i giunti trasversali ogni 3 m (sfalsati fra le file) e la traversa di marmo nella fascia a ogni campata dei pennoni
@@ -8200,7 +8204,8 @@ var Render = (function () {
   let SGL1 = null;
   function segniList1() {
     if (SGL1) return SGL1; SGL1 = { gesso: [], rattoppi: [], grate: [], olio: [], gialle: [], tombini: [], caditoie: [], stalli: [], pozzetti: [] };
-    const r = rng(1986 * 7), sets = (M.world && M.world.sets) || [];
+    const r = rng(1986 * 7), sets = (M.world && M.world.sets) || [], VVst = typeof Vievive !== 'undefined' && Vievive && Vievive.attivo;   // [vievive] gli stalli li decide vievive.js
+    if (VVst) Vievive.stalli().forEach((q, i) => { const L0 = Vievive.CFG.stallo, ux = Math.cos(q.ang), uz = Math.sin(q.ang); [-1, 1].forEach(e => SGL1.stalli.push([q.cx + ux * e * L0 / 2, q.cy + uz * e * L0 / 2, q.nx, q.ny, q.ang, q.w, e > 0 && i % 6 === 2, e < 0 ? L0 : 0])); });
     // il gesso dei bambini: la campana e i disegni sulle piazzette del borgo, sul sagrato, sulla marina
     sets.forEach(q => { if (q.k !== 'piazzetta' && q.k !== 'sagrato' && q.k !== 'marina') return; const cx = q.x !== undefined ? q.x : (q.x0 + q.x1) / 2, cz = q.y !== undefined ? q.y : (q.y0 + q.y1) / 2;
       SGL1.gesso.push({ x: cx + (r() - .5) * 4, z: cz + (r() - .5) * 3, a: r() * 6.28, k: 'campana', s: Math.floor(r() * 1e6) }); if (r() < .7) SGL1.gesso.push({ x: cx + (r() - .5) * 6, z: cz + (r() - .5) * 5, a: r() * 6.28, k: 'disegno', s: Math.floor(r() * 1e6) }); });
@@ -8213,7 +8218,7 @@ var Render = (function () {
           continue; }
         if (nearJ1(x0, z0, 1) < 0) continue;
         if (s > (rd.__tb1 || 0)) { rd.__tb1 = s + 20; SGL1.tombini.push([x0, z0, ang, rd.era === 'E4' ? 'quadro' : 'tondo', Math.floor(rr() * 1e6)]); }   // un tombino ogni 20 m in asse
-        if (rd.era === 'E6' && rd.w >= 8 && s > (rd.__st1 || 12)) { rd.__st1 = s + 5.2; const sd = (nx + nz) < 0 ? 1 : -1; SGL1.stalli.push([x0, z0, nx * sd, nz * sd, ang, rd.w, Math.floor(s / 5.2) % 6 === 0]); }   // gli stalli sul lato lontano, la P ogni sei
+        if (!VVst && rd.era === 'E6' && rd.w >= 8 && s > (rd.__st1 || 12)) { rd.__st1 = s + 5.2; const sd = (nx + nz) < 0 ? 1 : -1; SGL1.stalli.push([x0, z0, nx * sd, nz * sd, ang, rd.w, Math.floor(s / 5.2) % 6 === 0]); }   // gli stalli sul lato lontano, la P ogni sei
         if (rd.era === 'E6' && s > nx0) { nx0 = s + 7 + rr() * 16; const len = 1.4 + rr() * 3.6, wid = .9 + rr() * 1.6, lat = (rr() - .5) * (rd.w - wid - .6); SGL1.rattoppi.push([x0 + nx * lat, z0 + nz * lat, len, wid, ang + (rr() - .5) * .08, Math.floor(rr() * 1e6)]); }   // rattoppi di bitume nuovo
         if ((rd.era === 'E6' || rd.era === 'E3') && rd.w >= 7 && s > no) { no = s + 4 + rr() * 9; const sd = rr() < .5 ? 1 : -1, lat = sd * (rd.w / 2 - 1.1); if (rr() < .6) SGL1.olio.push([x0 + nx * lat + g.ux[k] * (rr() - .5), z0 + nz * lat + g.uy[k] * (rr() - .5), ang, Math.floor(rr() * 1e6)]); }   // l'olio sotto le auto in sosta
       } });
@@ -8245,8 +8250,9 @@ var Render = (function () {
     (typeof Rete !== 'undefined' && Rete.attivo() ? Rete.grafo().pozzetti.map(q => [q.x, q.z]) : []).forEach(([px, pz]) => {   // letti al momento: la rete nasce dopo il primo blocco di suolo
       if (!inb(px, pz, 2)) return; x.save(); x.translate(cx(px), cz(pz)); x.fillStyle = '#4a4642'; x.fillRect(-.3 * PPM, -.3 * PPM, .6 * PPM, .6 * PPM); x.strokeStyle = '#26221e'; x.lineWidth = 1; x.strokeRect(-.3 * PPM + .5, -.3 * PPM + .5, .6 * PPM - 1, .6 * PPM - 1); x.fillStyle = 'rgba(30,26,22,.7)'; x.font = 'bold 6px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('ENEL', 0, 0); x.restore(); });
     // gli stalli del boom: le tacche bianche consumate sul lato lontano e la P dipinta ogni tanto
-    L.stalli.forEach(([px, pz, nx, nz, ang, w, P]) => { if (!inb(px, pz, 4)) return; const o = w / 2 - 2.1, ax = px + nx * o, az = pz + nz * o, bx = px + nx * (w / 2 - .3), bz = pz + nz * (w / 2 - .3);
+    L.stalli.forEach(([px, pz, nx, nz, ang, w, P, lun]) => { if (!inb(px, pz, 6)) return; const o = w / 2 - 2.1, ax = px + nx * o, az = pz + nz * o, bx = px + nx * (w / 2 - .3), bz = pz + nz * (w / 2 - .3);
       dotLine1(x, X0, Y0, ax, az, bx, bz, .35, WHITE1, 1.4, Math.round(px * 3));
+      if (lun) dotLine1(x, X0, Y0, ax, az, ax + Math.cos(ang) * lun, az + Math.sin(ang) * lun, .4, WHITE1, 1.4, Math.round(pz * 3));   // [vievive] la linea lunga del bordo dello stallo
       if (P) { x.save(); x.translate(cx((ax + bx) / 2 + Math.cos(ang) * 2.6), cz((az + bz) / 2 + Math.sin(ang) * 2.6)); x.rotate(ang + Math.PI / 2); x.fillStyle = 'rgba(226,222,210,.55)'; x.font = 'bold ' + Math.round(1.3 * PPM) + 'px Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('P', 0, 0); x.restore(); } });
     // le grate di ghisa sulla canaletta dei vicoli
     L.grate.forEach(([px, pz, ang]) => { if (!inb(px, pz, 2)) return; x.save(); x.translate(cx(px), cz(pz)); x.rotate(ang); x.fillStyle = '#1a1816'; x.fillRect(-2.5, -2, 5, 4); x.fillStyle = '#4a4440'; for (let i = -2; i <= 2; i += 2) x.fillRect(i, -2, 1, 4); x.restore(); });
@@ -13313,6 +13319,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (t >= 1.95 && t - dt < 1.95) { u.hv = (u.hv || 0) + .5; u.rv = (u.rv || 0) + d.s * .25; }   // il colpo dello sportello sulla scocca
       if (t > 3) d.rig.visible = false;
     }
+    // [vievive] le porte a libro dell'autobus: si aprono in fermata (v.porte da 0 a 1, lo decide vievive.js)
+    if (u.porteBus) { const a = Math.max(0, Math.min(1, v.porte || 0)), e = a * a * (3 - 2 * a); if (u.porteA !== e) { u.porteA = e; u.porteBus.forEach(d => { d.piv.rotation.y = -d.sg * 1.25 * e; }); } }
     // motore al minimo: la scocca trema appena
     if (on && near && Math.abs(v.speed || 0) < .3) { g.position.y += Math.sin(time * 57 + u.spin) * .007; g.rotation.z += Math.sin(time * 41) * .0035; }
     // tergicristalli quando nevica (le auto disegnate da noi: serve il profilo del parabrezza)
