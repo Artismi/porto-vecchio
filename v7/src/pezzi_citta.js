@@ -38,6 +38,7 @@ var PezziCitta = (function () {
     if (nome === 'rosso') Object.assign(o, { roughness: .6 });
     if (nome === 'faro') Object.assign(o, { color: '#ff3a2a', emissive: '#ff2a1a', emissiveIntensity: 1 });   // la lampada rossa in cima alle antenne
     if (nome === 'neon') Object.assign(o, { color: '#5ab8ff', emissive: '#3a8aff', emissiveIntensity: .9 });
+    if (nome === 'vapore') Object.assign(o, { color: '#e8e6e0', roughness: 1, transparent: true, opacity: .35, depthWrite: false });   // [mappa_compatta] il pennacchio della grata
     if (NOTTE[nome]) Object.assign(o, NOTTE[nome]);   // [pezzi2] le finestre accese, i quadranti e la cella: chi posa ne regola l'emissione con la notte
     const m = new THREE.MeshStandardMaterial(o); m.name = nome; veste(m, nome); return (MC[nome] = m);
   }
@@ -1206,6 +1207,52 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       const b = add(g, geo, m, x, y0 + .9 + s * sy * .6, z, r() * 3, r() * 3, r() * 3); b.scale.set(s * (.8 + r() * .4), s * sy, s * (.8 + r() * .4)); b.updateMatrix(); b.updateMatrixWorld(true);
       const bb = new THREE.Box3().setFromObject(b); if (bb.min.y < y0 + .05) b.position.y += y0 + .05 - bb.min.y; }
     g.userData.quotaPosa = y0; g.userData.misure = [L, 2.6, w]; return g;
+  };
+
+
+  // ================= [mappa_compatta] I TRE SEGNI NUOVI DELLA CITTÀ COMPATTA (MAPPA_COMPATTA.md sez. 2 e 7, passo 4) =================
+  DOC.torre_acqua = { h: 18, r: 3.2, antenna: true, nota: 'la torre dell\'acqua della ferrovia (centrata nell\'origine): quattro gambe di cemento controventate, il serbatoio cilindrico di lamiera rivettata col ballatoio e la scaletta, il tetto a cono; in cima l\'antenna a traliccio di Radio Luna con la lampada bianca che lampeggia' };
+  T.torre_acqua = o => {
+    o = def(o, DOC.torre_acqua); const g = new THREE.Group(), H = o.h, r = o.r, hs = H * .62, ht = H * .3, lg = r * .72;
+    blocco(g, 2 * lg + 1.6, .5, 2 * lg + 1.6, 'cemento', 0, 0, 0, .04);                                 // il plinto
+    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) blocco(g, .55, hs, .55, 'cemento', sx * lg, .5, sz * lg);   // le gambe
+    for (let y = 3; y < hs; y += 3.4) for (let k = 0; k < 4; k++) { const gq = grp(g, 0, y + .5, 0, k * HP); blocco(gq, 2 * lg, .3, .3, 'cementoScuro', 0, 0, lg); }   // i traversi
+    cil(g, r, r, .35, 16, 'cemento', 0, hs + .5, 0);                                                     // la soletta
+    cil(g, r * .96, r * .96, ht, 18, 'lamiera', 0, hs + .85, 0);                                          // il serbatoio
+    if (!LOD) { for (let y = hs + 1.6; y < hs + ht; y += 1.4) toro(g, r * .97, .05, 18, 'ferroScuro', 0, y, 0, HP, 0);   // i giunti rivettati
+      toro(g, r + .55, .04, 20, 'ferro', 0, hs + 1.35, 0, HP, 0); cil(g, r + .6, r + .6, .08, 18, 'ferro', 0, hs + .5, 0);   // il ballatoio
+      for (let y = 1; y < hs + ht; y += .35) blocco(g, .5, .04, .04, 'ferro', 0, y, -lg - .3); for (const s of [-1, 1]) blocco(g, .04, hs + ht, .04, 'ferro', s * .25, .5, -lg - .3); }   // la scaletta
+    tornito(g, [[r * 1.02, 0], [r * 1.02, .2], [.3, r * .55], [0, r * .6]], 18, 'zinco', 0, hs + .85 + ht, 0);   // il tetto a cono
+    const yt = hs + .85 + ht + r * .55;
+    if (o.antenna) { traliccio(g, 1.1, .3, 7.5, 'ferro', 0, yt, 0, 1.25); add(g, new THREE.SphereGeometry(.22, 8, 6), 'lampada', 0, yt + 7.7, 0);
+      if (!LOD) for (const a of [0, 2.1, 4.2]) asta(g, [0, yt + 5, 0], [Math.cos(a) * r * .9, yt + .2, Math.sin(a) * r * .9], .015, 'ferroScuro'); }   // i tiranti
+    g.userData.misure = [Math.max(2 * r + 1.2, 2 * lg + 1.6), yt + (o.antenna ? 8 : .5), Math.max(2 * r + 1.2, 2 * lg + 1.6)]; return g;
+  };
+
+  DOC.gru_porto = { h: 22, braccio: 18, nota: 'la gru del porto (il piede centrato nell\'origine): il portale a quattro gambe di ferro sulla banchina, la torre a traliccio, la cabina, il braccio a traliccio lungo +X col tirante, il contrappeso dietro, il cavo col gancio; in punta la luce arancio' };
+  T.gru_porto = o => {
+    o = def(o, DOC.gru_porto); const g = new THREE.Group(), H = o.h, B = o.braccio, hp = 4.5;
+    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { blocco(g, .5, hp, .5, 'ferroScuro', sx * 2, 0, sz * 2); if (!LOD) blocco(g, .9, .3, .9, 'cemento', sx * 2, 0, sz * 2); }   // il portale
+    blocco(g, 4.6, .6, 4.6, 'ferroScuro', 0, hp, 0);
+    traliccio(g, 2, 1.6, H - hp - 3, 'ferro', 0, hp + .6, 0, 2);                                          // la torre
+    const yc = H - 2.4; blocco(g, 2.6, 2.2, 2.4, 'giallo', .4, yc, 0, .05); if (!LOD) blocco(g, 2.62, .9, 1.6, 'vetro', .4, yc + 1, .1);   // la cabina
+    const yb = H; asta(g, [0, yb, -.6], [B, yb - .6, -.4], .07, 'giallo'); asta(g, [0, yb, .6], [B, yb - .6, .4], .07, 'giallo'); asta(g, [0, yb + 1.2, 0], [B, yb - .3, 0], .06, 'giallo');   // il braccio
+    if (!LOD) for (let x = 2; x < B - 1; x += 2) { asta(g, [x, yb - x * .033, -.55], [x + 2, yb + 1.2 - (x + 2) * .083, 0], .03, 'giallo'); asta(g, [x, yb - x * .033, .55], [x + 2, yb + 1.2 - (x + 2) * .083, 0], .03, 'giallo'); }
+    asta(g, [0, yb + 3.4, 0], [B * .8, yb - .4, 0], .03, 'ferroScuro'); blocco(g, .4, 3.6, .4, 'ferro', 0, yb, 0);   // la cuspide e il tirante
+    asta(g, [0, yb, 0], [-5.5, yb, 0], .08, 'giallo'); blocco(g, 2, 1.6, 1.8, 'cemento', -5.2, yb - 1.4, 0, .05);   // il contrappeso
+    blocco(g, .04, 7, .04, 'ferroScuro', B * .7, yb - 7.4, 0); blocco(g, .3, .45, .3, 'ferroScuro', B * .7, yb - 7.85, 0);   // il cavo e il gancio
+    add(g, new THREE.SphereGeometry(.2, 8, 6), 'faro', B, yb - .3, 0);
+    g.userData.misure = [B + 6.6, H + 3.6, 4.6]; return g;
+  };
+
+  DOC.grata_vapore = { w: 2.4, nota: 'la grata del vapore fra le baracche (centrata nell\'origine): il cordolo di cemento, la griglia di ferro, il tubo spezzato che ci esce accanto; sopra il pennacchio (sbuffi chiari, il resto lo fa la scena)' };
+  T.grata_vapore = o => {
+    o = def(o, DOC.grata_vapore); const g = new THREE.Group(), w = o.w;
+    blocco(g, w + .5, .25, w * .7 + .5, 'cemento', 0, 0, 0, .03);
+    if (!LOD) for (let x = -w / 2 + .15; x <= w / 2 - .1; x += .2) blocco(g, .06, .05, w * .7, 'ferroScuro', x, .25, 0); else blocco(g, w, .05, w * .7, 'ferroScuro', 0, .25, 0);
+    cilX(g, .18, 1.2, 8, 'ruggine', w / 2 + .5, .32, 0);                                                  // il tubo della centrale
+    const r = caso(7); for (let i = 0; i < (LOD ? 2 : 5); i++) { const s = .5 + i * .35, sp = add(g, new THREE.SphereGeometry(1, 8, 6), 'vapore', (r() - .5) * .5, .4 + i * .9 + s * .5, (r() - .5) * .5); sp.scale.set(s, s * .8, s); sp.castShadow = false; }
+    g.userData.misure = [w + 1.4, 5, w * .7 + .5]; return g;
   };
 
   DOC.mura_tramontana = { L: 30, h: 8, merli: true, scala: true, nota: 'segmento delle mura di tramontana lungo X: fronte a scarpa verso il mare (+Z) poi diritto, camminamento di ronda dietro il parapetto con i merli guelfi, rampa di scale addossata dal lato della città (−Z), feritoie, doccioni, capperi e l\'umido' };

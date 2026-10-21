@@ -51,7 +51,10 @@ const PROVE = {
   corpo_rocca: [{}, { L: 14, P: 10, h: 7, scarpa: true, erba: true }, { L: 30, P: 16, h: 15, merli: true, finestre: 3 }],
   ponte_arco: [{}, { L: 20, h: 5 }, { L: 36, w: 6, h: 8 }],
   porta_acqua: [{}, { L: 8, fornice: 4 }, { L: 16, h: 13, fornice: 8 }],
-  scogliera: [{}, { L: 6, w: 3, n: 6 }, { L: 16, w: 5, n: 20, seme: 4 }]
+  scogliera: [{}, { L: 6, w: 3, n: 6 }, { L: 16, w: 5, n: 20, seme: 4 }],
+  torre_acqua: [{}, { h: 14, antenna: false }, { h: 22, r: 4 }],   // [mappa_compatta]
+  gru_porto: [{}, { h: 16, braccio: 12 }, { h: 26, braccio: 22 }],
+  grata_vapore: [{}, { w: 1.6 }]
 };
 const solo = process.argv[2], SOGLIA = { pieno: 12000, basso: 2000 };
 let fail = 0, totali = 0;

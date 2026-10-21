@@ -1277,6 +1277,14 @@ var World = (function () {
         for (let ty = T2i(py) - 1; ty <= T2i(py); ty++) for (let tx = T2i(px) - 1; tx <= T2i(px); tx++) grid[ty * GW + tx] = T.FOUNT; }
       { const [fx, fy] = CITY.piazzette[1]; PZ('fontana', fx, fy, 0, { r: 1.8, h: 2.4, lati: 8, cannelle: 2 }, { nome: 'Fontana del Forno' }); blob(fx, fy, 2.3, 2.3, i => { if (grid[i] !== T.BLD && roadW[i] === 0) grid[i] = T.FOUNT; }); }
       { const q = CITY.rects[0]; const p = PZ('lavatoio', q[2] - 9.6, q[1] + 4.6, 0, { L: 5, tettoia: true }, { nome: 'Lavatoio' }); pzRis(p, 'B', -1, 7.2, -2.5, 2.5); }
+      // [mappa_compatta] passo 4, i tre segni nuovi: la torre dell'acqua della ferrovia con l'antenna di Radio Luna (fra i binari e gli scogli),
+      // la gru del porto sulla banchina di levante della darsena (il braccio sull'acqua), la grata del vapore sul lotto del fuoco
+      { const posto = (cx, cy, hw, hd, R) => { for (let r = 0; r <= R; r += 1) for (let a = 0; a < 16; a++) { const x = cx + Math.cos(a * Math.PI / 8) * r, y = cy + Math.sin(a * Math.PI / 8) * r; let ok = true;
+            for (let ty = T2i(y - hd); ty <= T2i(y + hd) && ok; ty++) for (let tx = T2i(x - hw); tx <= T2i(x + hw); tx++) { const i = ty * GW + tx; if (roadW[i] > 0 || reserved[i] || bIndex[i] >= 0 || grid[i] === T.WATER || grid[i] === T.BLD || grid[i] === T.PIAZZA) ok = false; }
+            if (ok) return [x, y]; } return null; };
+        const ta = posto(1000, 72, 3.2, 3.2, 16); if (ta) { const p = PZ('torre_acqua', ta[0], ta[1], 0, { h: 18, r: 3.2, antenna: true }, { nome: 'Torre dell\'acqua e antenna di Radio Luna' }); pzRis(p, 'B', -3.1, 3.1, -3.1, 3.1); }
+        { const p = PZ('gru_porto', DARS.x1 - 3, PV.qy + 16, Math.PI, { h: 22, braccio: 16 }, { nome: 'Gru del porto' }); pzRis(p, 'Q', -2.6, 2.6, -2.6, 2.6); }
+        const gv = posto(962, 74, 1.6, 1.4, 10); if (gv) { const p = PZ('grata_vapore', gv[0], gv[1], 0, { w: 2.4 }, { nome: 'Grata del vapore' }); pzRis(p, 'C', -1.5, 1.5, -1.2, 1.2); } }
       // E0 le case traversate da un sottopasso a volta: una ogni due vicoli lunghi verso il mare, a metà strada (le corti e i passaggi)
       // (la casa scavalca solo il suo vicolo: niente altre strade, piazze o acqua sotto la sua impronta)
       { let k = 0, ultimo = -99; CITY.roads.filter(rd => /^vic_/.test(rd.id) && rd.pts.length > 2).forEach(rd => { const P = rd.pts;
