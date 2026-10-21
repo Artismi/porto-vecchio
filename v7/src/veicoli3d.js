@@ -565,7 +565,8 @@ var Veicoli3D = (function () {
     coda(k) { k.fanali(1.08, .9, .14, .5, 'rrfb', true); k.dietro(griglia(1.4, .5, 8), 0, 1.3); k.dietro(new THREE.Mesh(BX(.5, .115, .008), targa(true, 2)), 0, .62); },
     fianchi(k) {
       const D = k.D, dark = C.vetroscuro;
-      // [vievive] le porte a libro sul lato del marciapiede: con la rotazione di render.js (rotation.y = π/2 - ang) la destra di chi guida è -x.
+      // [vievive] le porte a libro sul lato del marciapiede: con la rotazione di render.js (rotation.y = π/2 - ang) +x è la sinistra di chi guida,
+      // la destra (il marciapiede) è -x: verificato a schermo (strumenti/vievive_guida.json).
       // Ogni porta ha due ante di vetro col telaio, incernierate ai montanti: ud.porteBus le apre (render.js, vehMondo) quando l'autobus è in fermata
       const ante = []; k.ud.porteBus = ante;
       [[4.95, 4.0], [1.3, .25], [-3.85, -4.9]].forEach(([a, b]) => {

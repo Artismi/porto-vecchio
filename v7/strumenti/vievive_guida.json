@@ -2,7 +2,7 @@
  "nota": "[vievive] Il lato del posto di guida, a schermo: una Ritmo ferma sulla Vittoria verso est (ang 0) e l'autobus fermo dietro, da vicino. Il guidatore deve stare a sinistra di chi guida (verso nord, in alto a sinistra dello schermo) e le porte dell'autobus a destra (verso il marciapiede sud).",
  "pulita": true,
  "scorci": [
-  { "nome": "g1_posto_di_guida", "titolo": "Il lato del posto di guida (si va verso est)", "x": 1400, "y": 346, "zoom": 2.2, "ora": 720, "meteo": "sereno", "luce": "metropoli", "attesa": 8000,
+  { "nome": "g1_posto_di_guida", "titolo": "Il lato del posto di guida (si va verso est)", "x": 1386, "y": 347, "zoom": 0.2, "ora": 720, "meteo": "sereno", "luce": "metropoli", "attesa": 8000,
     "js": "const G=pv.G; const mk=(o)=>{ const v=G.makeVehicle(st,o); st.vehicles.push(v); return v; }; mk({id:'prova_guida',kind:'ritmo',x:1400,y:346,ang:0,color:'#c8302a',rider:'npc',guida:'ferma',driverLook:{top:'#2a6ad0',skin:'#e0b894',hair:'#111'}}); mk({id:'prova_bus',kind:'autobus',x:1388,y:347.5,ang:0,color:'#e88a2a',rider:'npc',guida:'ferma',porte:1}); const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 30000);" }
  ]
 }
