@@ -37,7 +37,9 @@ const m = C.misura(F, tenuti);
 ok(m.porta + m.vetrina + m.scala === 0, `nessun albero davanti a un fronte (${JSON.stringify(m)})`);
 ok(tenuti.every(t => !porte.some(q => { const dx = t.x - q.x, dz = t.z - q.z, v = dx * q.nx + dz * q.nz, u = Math.abs(-dx * q.nz + dz * q.nx); return v > 0 && v < C.PROF && u < 2; })), 'ogni albero ad almeno 2 m dall\'asse di ogni porta');
 const corso = tenuti.filter(t => /Corso/.test(t.rd));
-ok(corso.length >= 10, `il Corso resta alberato (${corso.length} lecci)`);
+// [mappa_compatta] il Corso della città compatta è lungo 110 m (prima 170): si contano i lecci ogni 100 m
+const rdC = (W.roads || []).find(r => r.id === 'corso'), lC = rdC ? rdC.pts.reduce((L, q, i, P) => i ? L + Math.hypot(q[0] - P[i - 1][0], q[1] - P[i - 1][1]) : 0, 0) : 1;
+ok(corso.length / lC * 100 >= 7, `il Corso resta alberato (${corso.length} lecci su ${Math.round(lC)} m)`);
 // passo: due alberi dello stesso lato della stessa via non stanno più vicini del passo
 const vicini = tenuti.filter((a, i) => tenuti.some((b, j) => j !== i && a.rd === b.rd && a.sd === b.sd && Math.hypot(a.x - b.x, a.z - b.z) < a.passo - 2)).length;
 ok(vicini <= tenuti.length * .05, `il passo del filare si legge (${vicini} troppo vicini su ${tenuti.length})`);

@@ -66,7 +66,7 @@ var Percorsi = (function () {
 
   if (DBG) console.error('[percorsi] t', 65, Date.now() - T0);
   // ================= IL CAMMINO A TERRA (per misurare scorciatoie e secondari) =================
-  const BOX = { tx0: Math.floor(1080 / TS), tx1: Math.ceil(1620 / TS), ty0: Math.floor(236 / TS), ty1: Math.ceil(424 / TS) };
+  const BOX = { tx0: Math.floor(1240 / TS),   /* [mappa_compatta] la città finisce alla stazione */ tx1: Math.ceil(1620 / TS), ty0: Math.floor(236 / TS), ty1: Math.ceil(424 / TS) };
   const NB = (BOX.tx1 - BOX.tx0) * (BOX.ty1 - BOX.ty0), bw = BOX.tx1 - BOX.tx0;
   const bIdx = (tx, ty) => (ty - BOX.ty0) * bw + (tx - BOX.tx0), inBox = (tx, ty) => tx >= BOX.tx0 && ty >= BOX.ty0 && tx < BOX.tx1 && ty < BOX.ty1;
   // le caselle di ogni strada (il corridoio della sua larghezza)
@@ -143,7 +143,7 @@ var Percorsi = (function () {
   const LUCE_N = { mercato: 'del Mercato', adunata: 'della piazza d\'adunata', sagrato: 'del sagrato', pozzo: 'del bar del Pozzo', forno: 'della piazzetta del Forno', piazza_marina: 'della Piazza della Marina' };
   const LUCI = NODI.filter(n => n.k === 'piazza').map(n => ({ k: 'luce', nome: 'la luce ' + (LUCE_N[n.id] || 'della piazza'), x: n.x, y: n.y, z: elevAt(n.x, n.y) + 3.5, r: 2, nodo: n.id }));
   // il mare: le caselle d'acqua lungo la riva sud del borgo e della città (a quota del mare)
-  const MARE = []; for (let x = 1160; x <= 1480; x += 6) for (let y = 380; y < 424; y += 2) { const i = tI(x, y); if (i >= 0 && W.grid[i] === T.WATER) { MARE.push({ k: 'mare', nome: 'il mare', x, y, z: .6, r: 1 }); break; } }
+  const MARE = []; for (let x = 1250; x <= 1480; x += 6) for (let y = 380; y < 424; y += 2) { const i = tI(x, y); if (i >= 0 && W.grid[i] === T.WATER) { MARE.push({ k: 'mare', nome: 'il mare', x, y, z: .6, r: 1 }); break; } }
   for (let x = 1320; x <= 1470; x += 6) for (let y = 270; y > 240; y -= 2) { const i = tI(x, y); if (i >= 0 && W.grid[i] === T.WATER) { MARE.push({ k: 'mare', nome: 'il mare di tramontana', x, y, z: .6, r: 1 }); break; } }
   // le porte che si possono accendere: i portoni delle case (la lampadina sopra c'è già, [pulizia2]); la più vicina al fondo del tratto
   const PORTONI = []; B.forEach((b, bi) => { if (!b.door || b.lighthouse) return; const [dx, dy] = b.door; PORTONI.push({ bi, x: (dx + .5) * TS, y: (dy + .5) * TS }); });
@@ -196,11 +196,11 @@ var Percorsi = (function () {
     if (MAR) percorso('marina', 'Via della Marina', 'secondario', MAR.pts, { lega: ['corso', 'piazza_marina'] });
     if (MEZ) percorso('mezzo', 'Via di Mezzo', 'secondario', MEZ.pts, { lega: ['forno', 'marina'] });
     // il Pozzo: dalla piazzetta del bar sulla Rua, poi giù per il Caruggio dei Pescatori sotto il portico fino alla Vittoria
-    secondario('pozzo', 'Dal Pozzo alla Vittoria', ['pozzo', capo('vic_21', false), capo('vic_21', true), vicino('vittoria', 1437, 343)], { lega: ['pozzo', 'rua', 'vittoria'] });
+    secondario('pozzo', 'Dal Pozzo alla Vittoria', ['pozzo', capo('vic_pozzo', false), capo('vic_pozzo', true), vicino('vittoria', 1437, 343)], { lega: ['pozzo', 'rua', 'vittoria'] });
     // il Forno: dalla Vittoria alla fontana del Forno e giù per la scalinata alla marina
-    secondario('forno', 'Dal Forno alla marina', [vicino('vittoria', 1366, 343), 'forno', capo('vic_7', false), capo('vic_7', true), vicino('marina', 1349, 386)], { lega: ['vittoria', 'forno', 'marina'] });
+    secondario('forno', 'Dal Forno alla marina', [vicino('vittoria', 1360, 343), 'forno', capo('vic_forno', false), capo('vic_forno', true), vicino('marina', 1349, 386)], { lega: ['vittoria', 'forno', 'marina'] });
     // il sagrato: dalla Rua al sagrato, poi su per il Vico dell'Arco fino alle mura
-    secondario('sagrato', 'Dal sagrato alle mura', [vicino('rua', 1383, 308), 'sagrato', capo('vic_11', false), capo('vic_11', true)], { lega: ['rua', 'sagrato', 'mura'] });
+    secondario('sagrato', 'Dal sagrato alle mura', [vicino('rua', 1383, 308), 'sagrato', capo('vic_lanternini', false), capo('vic_lanternini', true)], { lega: ['rua', 'sagrato', 'mura'] });
     // la stazione: dal Corso alla Via della Stazione e al piazzale
     const VA = road('via_alta'); if (VA) secondario('stazione', 'Dal Corso alla stazione', [vicino('corso', 1318, 300), [VA.pts[Math.floor(VA.pts.length * .55)][0], VA.pts[Math.floor(VA.pts.length * .55)][1]]], { lega: ['corso', 'stazione'] });
     // la calata: dalla Piazza della Marina lungo l'acqua fino al Molo
@@ -233,9 +233,9 @@ var Percorsi = (function () {
   // lati: due punti a terra, uno per parte; l'alternativa li deve collegare senza passare dalla porta
   porta('porta_terra', 'Porta di Terra', 'porta', ptC[0] - 6, ptC[1], [[ptC[0] - 14, ptC[1] + 2], [ptC[0] + 10, ptC[1] + 1]]);
   // il sottoportico: il Vico dei Bottai passa sotto il portico e attraversa la Vittoria (il collo è la carreggiata sorvegliata)
-  { const v = road('vic_12'), s = v ? v.pts[v.pts.length - 1] : [1398, 335]; porta('sottoportico', 'Il sottoportico della Vittoria (Vico dei Bottai)', 'sottoportico', s[0], 343, [[s[0], 324], [s[0], 362]], { vic: 'vic_12', imbocco: s }); }
+  { const v = road('vic_bottai'), s = v ? v.pts[v.pts.length - 1] : [1398, 335]; porta('sottoportico', 'Il sottoportico della Vittoria (Vico dei Bottai)', 'sottoportico', s[0], 343, [[s[0], 324], [s[0], 362]], { vic: 'vic_bottai', imbocco: s }); }
   { const C = road('cavour_sotto'), p = pz('sottopasso')[0]; if (C && p) { const a = C.pts[0], z = C.pts[C.pts.length - 1], c = pzW(p, 7, 0); porta('sottopasso', 'Il sottopasso della ferrovia (Via Cavour)', 'sottopasso', c[0], c[1], [[a[0], a[1] - 1], [z[0], z[1] + 2]]); } }
-  { const p = (W.pezzi || []).find(q => q.tipo === 'scalinata' && q.vicolo === 'vic_25'); if (p) { const v = road('vic_25'), a = v.pts[0], z = v.pts[v.pts.length - 1]; porta('scala_pescatori', 'La scala dei pescatori (Vico Lungo)', 'scala', p.x, p.y, [[a[0], a[1]], [z[0], z[1] + 3]], { vic: 'vic_25' }); } }
+  { const p = (W.pezzi || []).find(q => q.tipo === 'scalinata' && q.vicolo === 'vic_lungo'); if (p) { const v = road('vic_lungo'), a = v.pts[0], z = v.pts[v.pts.length - 1]; porta('scala_pescatori', 'La scala dei pescatori (Vico Lungo)', 'scala', p.x, p.y, [[a[0], a[1]], [z[0], z[1] + 3]], { vic: 'vic_lungo' }); } }
   porta('posto_blocco', 'Il posto di blocco sulla Vittoria', 'blocco', mgC[0], mgC[1], [[mgC[0] - 16, mgC[1]], [mgC[0] + 14, mgC[1]]]);
 
   if (DBG) console.error('[percorsi] t', 225, Date.now() - T0);
@@ -283,7 +283,7 @@ var Percorsi = (function () {
       scale.forEach(L => {
         // il cammino migliore da questa scala: si premiano i passaggi crema (salti, passerelle, scale fra tetti) e la lunghezza
         const prev = new Map([[L.bi, null]]), Q = [L.bi];
-        for (let k = 0; k < Q.length; k++) { const a = Q[k]; (E.get(a) || []).forEach(e => { if (prev.has(e.b) || !inZ(Z, e.b) || usati.has(e.b)) return; prev.set(e.b, { a, e }); Q.push(e.b); }); }
+        for (let k = 0; k < Q.length; k++) { const a = Q[k]; (E.get(a) || []).forEach(e => { if (prev.has(e.b) || !inZ(Z, e.b) || usati.has(e.b) || BB[e.b].annesso) return; prev.set(e.b, { a, e }); Q.push(e.b); }); }   /* [mappa_compatta] niente annessi da 2 m: ci si cade oltre */
         scale.forEach(M => { if (M.bi === L.bi || !prev.has(M.bi) || usati.has(M.bi)) return; const dd = hyp(M.fx - L.fx, M.fy - L.fy); if (dd < 18) return;
           const pass = []; let c = M.bi; while (prev.get(c)) { const q = prev.get(c); pass.unshift(q.e); c = q.a; }
           const crema = pass.filter(e => e.k === 'salto' || e.k === 'passerella' || e.k === 'scala').length; if (!crema) return;

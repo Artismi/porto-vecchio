@@ -27,17 +27,17 @@ const EPOCA = {
 // o dentro un nodo (piazza, piazzetta, spianata), o contro qualcosa di dichiarato (capi: scala, porta, arco, luogo, affaccio, fuori),
 // mai con un tondo né oltre l'incrocio. La controlla strumenti/incroci.js, che calcola anche gli smussi degli angoli.
 const yOn = (P, x) => { for (let k = 0; k < P.length - 1; k++) { const a = P[k], b = P[k + 1]; if ((x - a[0]) * (x - b[0]) <= 0 && a[0] !== b[0]) return a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]); } return x < P[0][0] ? P[0][1] : P[P.length - 1][1]; };
-const RUA = [[1300, 306], [1318, 303], [1334, 302], [1352, 305], [1368, 310], [1383, 312], [1398, 309], [1414, 312], [1426, 317], [1446, 313], [1468, 313]];
-const MURA_V = [[1330, 292], [1342, 286], [1370, 280], [1400, 276], [1430, 273], [1468, 271]];   // la Via delle Mura: il vicolo dentro le mura (il pomerio)
-const MEZZO = [[1305, 372], [1324, 372], [1340, 372], [1356, 370], [1372, 369], [1390, 372], [1412, 374], [1432, 380], [1450, 392], [1455, 403]];
-const MARINA = [[1308, 400], [1316, 391], [1332, 388], [1360, 386], [1385, 387], [1400, 393], [1420, 400], [1446, 404], [1478, 406]];
+const RUA = [[1292, 309], [1318, 303], [1334, 302], [1352, 305], [1368, 310], [1383, 312], [1398, 309], [1414, 312], [1426, 317], [1446, 313], [1468, 313]];
+const MURA_V = [[1367, 282], [1385, 279], [1400, 276], [1430, 273], [1468, 271]];   // la Via delle Mura: il vicolo dentro le mura (il pomerio)
+const MEZZO = [[1305, 370.5], [1324, 370], [1340, 370], [1356, 370], [1372, 369], [1390, 372], [1412, 374], [1432, 380], [1450, 392], [1455, 403]];
+const MARINA = [[1310, 387], [1318, 386], [1350, 385], [1380, 385.5], [1405, 386], [1420, 393], [1438, 401], [1460, 405], [1478, 406.5]];
 const LEAN = .16;   // i vicoli a pettine pendono tutti dalla stessa parte (Molfetta)
 // un vicolo a pettine dalla polilinea A (all'ascissa xk) fino alla polilinea B: il capo cade esattamente sull'asse di B
 const pettine = (xk, A, B, yB) => { const y0 = yOn(A, xk), X = y => xk + LEAN * (y0 - y); let y = yB !== undefined ? yB : yOn(B, xk); for (let it = 0; it < 6; it++) y = yB !== undefined ? yB : yOn(B, X(y));
   const ym = (y0 + y) / 2; return [[xk, +y0.toFixed(2)], [+(X(ym) + .6).toFixed(2), +ym.toFixed(2)], [+X(y).toFixed(2), +y.toFixed(2)]]; };
 const VIC = (id, nome, P, w, capi) => ['vicolo', w || 3, nome, P, capi || null, id];
-const PN = [1338, 1352, 1364, 1406, 1420, 1442, 1456], PS1 = [1346, 1376, 1398, 1432, 1452], PS2 = [1352, 1368, 1386, 1400, 1440];
-const nomiN = ['Vicolo dei Lanternini', 'Vico dei Chiodi', 'Vico delle Lampade', "Vico dell'Arco", 'Vico delle Monache', 'Vico Scuro', 'Vico dei Cordai'];
+const PN = [1370, 1406, 1420, 1442, 1456], PS1 = [1346, 1376, 1398, 1432, 1452], PS2 = [1352, 1360, 1386, 1400, 1440];
+const nomiN = ['Vicolo dei Lanternini', "Vico dell'Arco", 'Vico delle Monache', 'Vico Scuro', 'Vico dei Cordai'];
 const nomiS1 = ['Caruggio dei Pescatori', 'Vico dei Gatti', 'Vico dei Bottai', 'Vico del Pozzo', 'Vico del Sale'];
 const nomiS2 = ['Vicolo Storto', 'Vico della Fame', 'Vicolo delle Reti', 'Vico dei Tonnaroti', 'Vico delle Sorelle'];
 const VN = PN.map((x, i) => VIC('pn' + i, nomiN[i], pettine(x, RUA, MURA_V))), VS1 = PS1.map((x, i) => VIC('ps' + i, nomiS1[i], pettine(x, RUA, null, 339.5))),
@@ -63,21 +63,20 @@ const D = {
   // la rete: [livello, larghezza m, nome, punti, capi, id]. livello: asse | via | vicolo. capi: [chiusura del primo capo, dell'ultimo] o null
   // (null: il capo sta su un'altra strada o dentro un nodo; lo verifica incroci.js)
   strade: [
-    ['asse', 10, 'Via della Vittoria (asse di parata, 10 m)', [[1288, 343], [1468, 343]], null, 'vittoria'],
-    ['asse', 8, 'Ponte della Rocca (sul canale)', [[1500, 343], [1531, 343]], [null, { tipo: 'porta', perche: 'la Porta della Rocca, col ponte levatoio sul canale' }], 'ponte'],
-    ['via', 7, 'Corso Garibaldi (7 m)', [[1290, 301], [1302, 312], [1302, 328], [1299, 343], [1301, 358], [1306, 374], [1311, 388], [1308, 398]], null, 'corso'],
+    ['asse', 10, 'Via della Vittoria (asse di parata, 10 m; passa la spianata e il canale sul ponte)', [[1288, 343], [1530, 343]], [null, { tipo: 'porta', perche: 'la Porta della Rocca, col ponte sul canale' }], 'vittoria'],
+    ['via', 7, 'Corso Garibaldi (7 m)', [[1290, 309], [1302, 318], [1302, 328], [1299, 343], [1301, 358], [1306, 374], [1310, 387]], null, 'corso'],
     ['via', 5, 'Rua Maestra (5 m)', RUA, null, 'rua'],
     ['via', 5, 'Via della Marina (5 m)', MARINA, [null, { tipo: 'scala', perche: 'scende alla spiaggetta del Lido e al Santuario del Mare' }], 'marina'],
-    ['via', 6, 'Costiera Nord (passaggio a livello)', [[1222, 286], [1240, 289], [1256, 300]], [{ tipo: 'fuori', perche: "la Costiera Nord verso l'entroterra" }, null], 'nord'],
-    ['via', 6, 'Costiera Sud', [[1222, 398], [1250, 396], [1280, 398], [1296, 401]], [{ tipo: 'fuori', perche: "la Costiera Sud verso l'entroterra" }, null], 'sud'],
+    ['via', 7, 'Costiera Nord e Via della Stazione (passaggio a livello)', [[1222, 276], [1249, 273], [1245, 281], [1242, 294], [1248, 303], [1256, 308]], [{ tipo: 'fuori', perche: "la Costiera Nord verso l'entroterra" }, null], 'nord'],
+    ['via', 7, 'Costiera Sud', [[1222, 388], [1249, 387], [1264, 386.5], [1286, 386.5]], [{ tipo: 'fuori', perche: "la Costiera Sud verso l'entroterra" }, null], 'sud'],
     VIC('mezzo', 'Via di Mezzo', MEZZO),
-    VIC('mura', 'Via delle Mura (il pomerio)', MURA_V, 2.5, [{ tipo: 'scala', perche: 'la scala di ronda della Porta di Terra: sale sul camminamento delle mura' }, null]),
-    VIC('galleria', 'Galleria del Mercato (coperta)', [[1272, 304], [1272, 329]]),
-    VIC('cavour', 'Vico Cavour (sottopasso)', [[1288, 302], [1287, 275]]),
-    VIC('carceri', 'Vico delle Carceri', [[1272, 357], [1272, 386], [1296, 396]]),
+    VIC('mura', 'Via delle Mura (il pomerio)', MURA_V, 2.5, [{ tipo: 'scala', perche: 'la scala di ferro delle mura: sale sul camminamento di tramontana' }, null]),
+    VIC('galleria', 'Galleria del Mercato (coperta)', [[1272, 311], [1272, 329]]),
+    VIC('cavour', 'Vico Cavour (sottopasso)', [[1292, 305], [1292, 278], [1289, 274.5], [1287, 272]]),
+    VIC('carceri', 'Vico delle Carceri', [[1272, 357], [1272, 376], [1282, 385]]),
     VIC('giardini', 'Vico dei Giardini', [[1246, 337], [1260, 338]]),
-    VIC('baracche', 'Passo delle Baracche', [[1232, 272], [1260, 271], [1286, 271], [1312, 274], [1336, 278]], 2.5, [{ tipo: 'luogo', perche: "la discarica in testa alle baracche (sotto, l'autobus sepolto)" }, { tipo: 'scala', perche: 'la scala di ronda: sale sul camminamento delle mura (il segreto verso il Covo)' }]),
-    VIC('forno_scala', 'Scalinata del Forno', [[1355, 372], [1354.5, 380], [1354, yOn(MARINA, 1354)]], 2.5),
+    VIC('baracche', 'Passo delle Baracche', [[1249.5, 273.2], [1262, 273.5], [1276, 272.5], [1286, 271]], 2.5),
+    VIC('forno_scala', 'Scalinata del Forno', [[1353, 366], [1353.5, 376], [1354, yOn(MARINA, 1354)]], 2.5),
     VLUNGO,
     ...VN, ...VS1, ...VS2,
   ],
@@ -86,14 +85,14 @@ const D = {
   mura: [[1324, 286], [1340, 279], [1370, 274], [1400, 270], [1430, 267], [1462, 265]],
   muro: [[1488, 256], [1488, 337], null, [1488, 349], [1488, 420]],
   piazze: [
-    ['otto', 'Mercato', 1274, 343, 16], ['rect', 'Piazzale della Stazione', 1252, 296, 1294, 306], ['rect', "Piazza d'adunata", 1313, 328, 1338, 358],
-    ['rect', 'Sagrato', 1368, 296, 1396, 307], ['tondo', 'Pozzo', 1428, 324, 6], ['tondo', 'Forno', 1356, 370, 5], ['rect', 'Piazza della Marina', 1386, 375, 1410, 387],
-    ['tondo', 'Lotto del fuoco', 1286, 271, 5], ['rect', 'Scalo', 1292, 393, 1316, 410],
+    ['otto', 'Mercato', 1274, 343, 16], ['rect', 'Piazzale della Stazione', 1250, 304, 1296, 313], ['rect', "Piazza d'adunata", 1313, 328, 1338, 358],
+    ['rect', 'Sagrato', 1368, 296, 1396, 307], ['tondo', 'Pozzo', 1428, 324, 6], ['tondo', 'Forno', 1356, 367, 5], ['rect', 'Piazza della Marina', 1386, 375, 1410, 387],
+    ['tondo', 'Lotto del fuoco', 1286, 271, 5], ['rect', 'Scalo', 1278, 380, 1318, 393],
   ],
   // i volumi che contano (rettangoli scuri)
   volumi: [
-    ['Stazione', 1254, 287, 1290, 295, '#5b4a3e'], ['Chiesa Madre', 1370, 285, 1389, 296, '#7a5a3a'], ['Magazzini a volta', 1318, 377, 1350, 384, '#6a5a48'], ['Magazzini a volta', 1358, 377, 1376, 384, '#6a5a48'],
-    ['Radio Luna', 1298, 279, 1316, 284, '#4a3a5a'], ['Autosalone', 1254, 382, 1278, 392, '#7fa3c0'], ['Ministero', 1311, 319, 1330, 327, '#8a8270'],
+    ['Stazione', 1252, 287, 1282, 304, '#5b4a3e'], ['Chiesa Madre', 1370, 285, 1389, 296, '#7a5a3a'], ['Magazzino Neri', 1316, 373, 1334, 382, '#6a5a48'], ['Magazzini a volta', 1336, 374, 1349, 382, '#6a5a48'], ['Magazzini a volta', 1358, 374, 1378, 382, '#6a5a48'],
+    ['Radio Luna', 1296, 264, 1314, 274, '#4a3a5a'], ['Autosalone', 1254, 382, 1278, 392, '#7fa3c0'], ['Ministero', 1311, 319, 1330, 327, '#8a8270'],
     ['Caserma della Guardia', 1316, 360, 1338, 368, '#6b6b5b'],
   ],
   stecca: [1270, 371, 34, 8, -.2],   // l'unica stecca del boom: centro, lungo, largo, rotazione (3 piani)
@@ -105,10 +104,9 @@ const D = {
     scoglio: [[1527, 300], [1550, 289], [1580, 293], [1601, 309], [1610, 334], [1606, 362], [1592, 388], [1566, 400], [1536, 399], [1526, 384], [1525, 316]],
     frangiflutti: [[1522, 296], [1550, 284], [1583, 288], [1606, 305], [1616, 334], [1612, 365], [1597, 393], [1568, 406], [1534, 405], [1520, 388], [1519, 314]],
     masse: [
-      ['Mastio col faro', [[1587, 318], [1600, 320], [1601, 335], [1587, 336]], 24, false, false],
-      ['Raccordo del mastio', [[1578, 299], [1592, 305], [1601, 320], [1587, 318], [1584, 336], [1580, 336], [1580, 314]], 18, false, false],
-      ['Corpo di levante', [[1580, 336], [1603, 335], [1600, 362], [1580, 366]], 13, false, true],
-      ['Caserma sulla cortina nord', [[1548, 297], [1578, 299], [1580, 314], [1548, 314]], 15, false, false],
+      ['Mastio col faro', [[1582, 314], [1598, 316], [1600, 338], [1582, 338]], 24, false, false],
+      ['Corpo di levante', [[1580, 338], [1602, 338], [1600, 362], [1580, 366]], 14, false, false],
+      ['Caserma sulla cortina nord', [[1548, 297], [1578, 298], [1582, 314], [1548, 314]], 16, false, false],
       ['Cortina nord', [[1532, 302], [1548, 297], [1548, 314], [1534, 316]], 12, false, false],
       ['Rivellino di ponente', [[1527, 304], [1534, 300], [1536, 318], [1528, 322]], 6, true, true],
       ['Fronte di terra con la Porta', [[1526, 322], [1534, 320], [1534, 366], [1526, 366]], 14, false, false],
@@ -117,7 +115,7 @@ const D = {
       ['Corpo del ponte', [[1534, 350], [1546, 350], [1546, 376], [1534, 376]], 10, false, true],
     ],
     torrione: [1538, 386, 10, 10],   // il bastione tondo e tozzo: x, y, raggio, altezza
-    piazzaArmi: [[1534, 314], [1580, 314], [1580, 348], [1534, 348]],
+    piazzaArmi: [[1536, 318], [1580, 318], [1580, 346], [1536, 346]],
     darsena: [[1548, 352], [1578, 352], [1578, 384], [1564, 384], [1564, 400], [1558, 400], [1558, 384], [1548, 384]],   // il bacino allagato, con la porta d'acqua verso il mare
     arcone: [[1546, 366], [1580, 366]],   // il grande ponte ad arco tondo sulla darsena
     banchine: [[1548, 348, 1578, 352]],   // la banchina coi gradini che scendono all'acqua
@@ -136,14 +134,14 @@ const D = {
   // i 12 luoghi-missione: [n, nome breve, x, y, ruoli, icona, dx, dy (etichetta)]
   luoghi: [
     [1, 'Bar Da Gino', 1428, 324, ['hub'], 'tazza', 12, -14],
-    [2, 'Forno di Lella', 1356, 370, ['hub', 'premio'], 'pane', -14, 18],
+    [2, 'Forno di Lella', 1356, 367, ['hub', 'premio'], 'pane', -14, 18],
     [3, 'San Rocco e la cripta', 1381, 300, ['segreto'], 'croce', -4, -16],
     [4, 'Pescheria e calata', 1398, 381, ['hub', 'premio'], 'pesce', 14, 16],
-    [5, 'Officina dello Scalo', 1304, 401, ['premio'], 'chiave', 10, 16],
+    [5, 'Officina dello Scalo', 1296, 377, ['premio'], 'chiave', 10, 16],
     [6, 'Covo nel bunker delle mura', 1438, 280, ['segreto'], 'foglia', 10, -12],
-    [7, 'Radio Luna', 1307, 281, ['segreto', 'premio'], 'antenna', 10, -14],
+    [7, 'Radio Luna', 1305, 269, ['segreto', 'premio'], 'antenna', 10, -14],
     [8, 'Mercato', 1274, 343, ['hub', 'pericolo'], 'otto', -16, 22],
-    [9, 'Stazione e scalo merci', 1270, 301, ['pericolo', 'premio'], 'orologio', -18, -16],
+    [9, 'Stazione e scalo merci', 1267, 297, ['pericolo', 'premio'], 'orologio', -18, -16],
     [10, 'Baracche e grata del vapore', 1284, 270, ['hub', 'segreto'], 'fiamma', -26, -14],
     [11, 'Posto di blocco', 1478, 343, ['pericolo'], 'sbarra', 6, -16],
     [12, 'La Rocca', 1556, 332, ['pericolo'], 'torre', 4, -18],

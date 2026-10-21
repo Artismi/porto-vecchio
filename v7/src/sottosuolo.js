@@ -335,7 +335,7 @@ var Sottosuolo = (function () {
           if (put(tx, ty, EL[idx(tx, ty)] - 4.4, K.FOGNA)) sewer.push([tx, ty]);
           last = [tx, ty];
           // un tombino ogni trenta metri, sulla carreggiata, mai troppo vicino a un altro
-          if (run - tomb > 30 && G.tileAt(tx, ty) === T.VIA && !portals.some(Q => Q.kind === 'tombino' && Math.hypot(Q.s[0] - tx, Q.s[1] - ty) < 8) && !sottoPezzo((tx + .5) * TS, (ty + .5) * TS)) { /* [pulizia2] mai sotto un arco, un portico, una tettoia */ portals.push({ kind: 'tombino', s: [tx, ty], u: [tx, ty], name: rd.name }); tomb = run; }
+          if (run - tomb > 30 && (G.tileAt(tx, ty) === T.VIA || (rd.fogna && G.tileAt(tx, ty) === T.COB)) &&   /* [mappa_compatta] anche sulla Rua e sulla Marina (la chiavica del borgo) */ !portals.some(Q => Q.kind === 'tombino' && Math.hypot(Q.s[0] - tx, Q.s[1] - ty) < 8) && !sottoPezzo((tx + .5) * TS, (ty + .5) * TS)) { /* [pulizia2] mai sotto un arco, un portico, una tettoia */ portals.push({ kind: 'tombino', s: [tx, ty], u: [tx, ty], name: rd.name }); tomb = run; }
         }
       }
     });

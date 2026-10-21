@@ -8068,6 +8068,7 @@ var Render = (function () {
   }
   // le vie: i vicoli di basoli col centro lucidato e la canaletta, le strade col materiale della loro epoca
   function strade1Era(x, pass, X0, Y0, vic, strd) {
+    x.lineCap = 'butt';   // [incroci] i capi tagliati dritti: una via finisce su un'altra (ci entra fino all'asse), in un nodo o contro la sua chiusura, mai con un tondo
     const kOf = rd => rd.era === 'E3' ? 'porfido' : rd.era === 'E4' ? 'travertino' : 'asfalto';
     pass(vic, rd => rd.w + .6, () => 'rgba(62,56,48,.9)');
     pass(vic, rd => rd.w, () => segPat1(x, 'basoli', X0, Y0));
