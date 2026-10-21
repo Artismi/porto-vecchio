@@ -39,12 +39,15 @@ var Palco = (function () {
     const posa = (x, z, hx, hz, k) => { occ.push({ x, z, hx, hz, k }); };
     // l'asse: le caselle di strada della Vittoria che passano la Porta, da tenere libere (con 1,5 m di rispetto)
     const asse = { z0: gy - 6, z1: gy + 6 }; { let a = gy, b = gy; for (let z = gy; z > gy - 12 && ty(F.x + 14, z) === T.VIA; z -= .5) a = z; for (let z = gy; z < gy + 12 && ty(F.x + 14, z) === T.VIA; z += .5) b = z; asse.z0 = a - 1.5; asse.z1 = b + 1.5; }
+    // [mappa_compatta] la piazza d'armi della Rocca a mare è lastricata (PIAZZA, non VIA): se la Vittoria non passa la Porta, l'asse è il fornice
+    // della porta_monumentale (la luce del portale e 1,5 m di rispetto per parte)
+    if (ty(F.x + 14, gy) !== T.VIA) { const pm = F.porta || (W.pezzi || []).find(p => p.tipo === 'porta_monumentale' && p.rocca === 'spianata'); if (pm) { const lw = (pm.opz && pm.opz.fornice) || 4.2; asse.z0 = gy - lw / 2 - 1.5; asse.z1 = gy + lw / 2 + 1.5; asse.porta = true; } }
     // 1) l'ELIPORTO: al centro della corte nord (fra la Porta e il comando, sopra l'asse); si cerca il posto più vicino al centro voluto
     const cerca = (cx, cz, ok, passo, R) => { for (let r = 0; r <= R; r += passo) for (let k = 0; k < Math.max(1, Math.round(r * 2)); k++) { const a = k / Math.max(1, Math.round(r * 2)) * Math.PI * 2, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r; if (ok(x, z)) return { x, z }; } return null; };
     const eliporto = cerca(F.x + 27, asse.z0 - PAD - .5, (x, z) => dentro(x, z) && libero(x, z, PAD, PAD) && z + PAD < asse.z0, 1, 16);
     if (eliporto) posa(eliporto.x, eliporto.z, PAD, PAD, 'eliporto');
     // 2) l'ANTENNA: nell'angolo nord-ovest della corte (contro la cortina, lontano dalla camera che guarda da sud-est), ≥ 9 m dalla piazzola
-    const antenna = cerca(F.x + 13, asse.z0 - ANT.r - 6, (x, z) => dentro(x, z) && libero(x, z, ANT.r, ANT.r) && z + ANT.r < asse.z0 && !sovr(x, z, ANT.r, ANT.r) && (!eliporto || Math.hypot(x - eliporto.x, z - eliporto.z) > PAD + ANT.r + 2), 1, 14);
+    const antenna = cerca(F.x + 13, asse.z0 - ANT.r - 6, (x, z) => dentro(x, z) && libero(x, z, ANT.r, ANT.r) && z + ANT.r < asse.z0 && !sovr(x, z, ANT.r, ANT.r) && (!eliporto || Math.hypot(x - eliporto.x, z - eliporto.z) > PAD + ANT.r + 2), 1, asse.porta ? 30 : 14);   // [mappa_compatta] nella Rocca a mare si cerca in tutta la corte
     if (antenna) { antenna.h = ANT.h; antenna.r = ANT.r; posa(antenna.x, antenna.z, ANT.r, ANT.r, 'antenna'); }
     // 3) i CARRI: in fila nel parco mezzi a sud dell'asse, muso a nord verso la strada (rot π), a passo fisso; la fila si sposta in blocco
     let carri = [];

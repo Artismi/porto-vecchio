@@ -47,6 +47,7 @@ ok(vicini <= tenuti.length * .05, `il passo del filare si legge (${vicini} tropp
 ok(['consegna', 'cantiere'].every(k => C.SCENE_A_TERRA.includes(k)), 'pannelli e cartoni solo nelle scene: ' + C.SCENE_A_TERRA.join(', '));
 // 5) [spianata2] il palco del potere (palco.js): le cose disegnate al loro posto, le vie libere, le cose a terra solo nelle scene
 { const PA = require(path.join(src, 'palco.js')), Pl = PA.piano(W, W.BUILDINGS, tile, W.T, TS), T = W.T;
+  if (process.env.V) console.log("palco", JSON.stringify({ asse: Pl && Pl.asse, eli: Pl && Pl.eliporto, ant: Pl && Pl.antenna, F: [W.FORT.x, W.FORT.y, W.FORT.tip] }));
   ok(!!Pl && Pl.carri.length === PA.CARRO.n && Pl.container.length === PA.CONT.n && !!Pl.eliporto && !!Pl.antenna, `il palco ha i suoi pezzi (carri ${Pl && Pl.carri.length}, container ${Pl && Pl.container.length}, eliporto, antenna)`);
   const sotto = (x, z, hx, hz) => { const S = new Set(); for (let a = -hx; a <= hx + .01; a += .5) for (let b = -hz; b <= hz + .01; b += .5) S.add(tile(Math.floor((x + a) / TS), Math.floor((z + b) / TS))); return [...S]; };
   const pezzi = [].concat(Pl.carri.map(c => ['carro', c.x, c.z, PA.CARRO.hx, PA.CARRO.hz]), Pl.container.map(c => ['container', c.x, c.z, PA.CONT.hx, PA.CONT.hz]), [['eliporto', Pl.eliporto.x, Pl.eliporto.z, PA.PAD, PA.PAD], ['antenna', Pl.antenna.x, Pl.antenna.z, PA.ANT.r, PA.ANT.r]]);
