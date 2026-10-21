@@ -31,7 +31,7 @@ var Visuale = (function () {
     alza: .45,            // s: il taglio risale (di almeno `salto`) solo se la quota più alta resta buona per tanto
     salto: .75,           // m
     apri: .22, chiudi: .32, // s: quanto dura lo scivolare del piano in giù e in su
-    poche: '#3b2a22',     // il poché: bruno caldo scuro, la sezione piena del muro
+    poche: '#47342a',     // il poché: bruno caldo scuro, la sezione piena del muro (non nero: si legge come materia, non come buco)
     filo: '#eadcc2',      // il filo chiaro sul bordo della sezione
     filoLargo: .07,       // m
   };

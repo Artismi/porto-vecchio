@@ -176,7 +176,7 @@ var Render = (function () {
       const sig = live.mats.has(b.mat) ? null : matSig1(b.mat); if (!sig) return;
       const k2 = sig + key.slice(key.indexOf('|'));
       const t = into.get(k2); if (!t) { into.set(k2, b); return; }
-      moved.set(b, { t, base: t.geos.length }); t.geos.push(...b.geos); STATIC.delete(key); });
+      moved.set(b, b.__mv3 = { t, base: t.geos.length }); /* [visuale3] dove è finito il secchio (il taglio ritrova le cose del registro) */ t.geos.push(...b.geos); STATIC.delete(key); });
     if (!moved.size) return;
     TAGS.forEach(t => t.parts.forEach(p => { const mv = moved.get(p.b); if (mv) { p.b = mv.t; p.gi += mv.base; } }));
     if (window.__dbg35) console.log('[dbg] coalesce1: secchi uniti', moved.size, 'restano', STATIC.size);
@@ -1165,12 +1165,36 @@ var Render = (function () {
       if (i !== undefined && FD1.data) { const code = Math.max(1, Math.min(65535, Math.round((y + 50) * 100))), hi = code >> 8, lo = code & 255; if (FD1.data[i * 4 + 1] !== hi || FD1.data[i * 4 + 2] !== lo) { FD1.data[i * 4 + 1] = hi; FD1.data[i * 4 + 2] = lo; FD1.dirty = true; } }
       if (!B.__pl3) B.__pl3 = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
       B.__pl3.constant = y; if (!B.__cl3) { B.__cl3 = true; B.mats.forEach(m => { m.clippingPlanes = [B.__pl3]; }); }
-      const cap = vis3Cap(B); cap.visible = !s.nodisc && s.a > 0; cap.position.y = y + .004; });
+      const cap = vis3Cap(B); cap.visible = !s.nodisc && s.a > 0; cap.position.y = y + .004;
+      if (B.__y3 === undefined || Math.abs(B.__y3 - s.y) > .3) { vis3Cose(B, false); B.__y3 = s.y; vis3Cose(B, true, s.y); } });
     prima.forEach(B => { if (VIS3.vivi.has(B)) return;
       const i = FD1.idx.get(B); if (i !== undefined && FD1.data) { FD1.data[i * 4 + 1] = 0; FD1.data[i * 4 + 2] = 0; FD1.dirty = true; }
       if (B.__cl3) { B.__cl3 = false; B.mats.forEach(m => { m.clippingPlanes = null; }); }
-      const cap = VIS3.caps.get(B); if (cap) cap.visible = false; });
+      const cap = VIS3.caps.get(B); if (cap) cap.visible = false; vis3Cose(B, false); B.__y3 = undefined; });
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }
+  }
+  // [visuale3] le cose del registro di pulizia2 (VIS3.reg) che stanno sulla pianta della casa tagliata e salgono sopra il piano (l'antenna e
+  // la mensola della rete sul tetto, il pluviale, l'insegna in alto) si spengono intere: i loro vertici nella mesh fusa della città si
+  // chiudono in un punto (come hideTagObj) e tornano quando la casa si richiude. Un indice a celle di 8 m, fatto la prima volta
+  function vis3Parti(e) {
+    return e.parts.map(p => { if (p.M) return p.M.geometry ? [p.M.geometry.attributes.position, p.s, p.n] : null;
+      let bk = p.bk, gi = p.gi; while (bk && bk.__mv3) { gi += bk.__mv3.base; bk = bk.__mv3.t; }
+      return bk && bk.mesh && bk.offs && bk.offs[gi] !== undefined ? [bk.mesh.geometry.attributes.position, bk.offs[gi], p.n] : null; }).filter(Boolean);
+  }
+  function vis3Cose(B, on, y) {
+    if (!on) { (B.__cose3 || []).forEach(e => { if (--e.__h3 > 0) return;
+        (e.__bak3 || []).forEach(([a, s, bak]) => { a.array.set(bak, s * 3); a.needsUpdate = true; }); e.__bak3 = null; e.objs.forEach(o => { o.visible = true; }); });
+      B.__cose3 = null; return; }
+    if (!VIS3.reg) return;
+    if (!VIS3.idx) { VIS3.idx = new Map(); VIS3.reg.forEach(e => { const [x, z] = ctr2(e.B), k = Math.floor(x / 8) * 4096 + Math.floor(z / 8); e.__c3 = [x, z]; (VIS3.idx.get(k) || VIS3.idx.set(k, []).get(k)).push(e); }); }
+    const b3 = B.box3, m = Visuale.TAGLIO.allarga, out = [];
+    for (let i = Math.floor((b3.min.x - m) / 8); i <= Math.floor((b3.max.x + m) / 8); i++) for (let j = Math.floor((b3.min.z - m) / 8); j <= Math.floor((b3.max.z + m) / 8); j++)
+      (VIS3.idx.get(i * 4096 + j) || []).forEach(e => { const [x, z] = e.__c3; if (x < b3.min.x - m || x > b3.max.x + m || z < b3.min.z - m || z > b3.max.z + m || e.B.y1 < y + .1) return;
+        const dentro = x > b3.min.x && x < b3.max.x && z > b3.min.z && z < b3.max.z; if (!dentro && !(e.B.y0 > y - .2 || e.k === 'pluviale' || e.B.y1 - e.B.y0 > 3)) return;   // sul filo del muro: solo quello che sta in alto o sale lungo la facciata (il bidone a terra resta)
+        out.push(e); if ((e.__h3 = (e.__h3 || 0) + 1) > 1) return;
+        e.__bak3 = vis3Parti(e).map(([a, s, n]) => { const bak = a.array.slice(s * 3, (s + n) * 3); for (let k = s * 3; k < (s + n) * 3; k += 3) { a.array[k] = 0; a.array[k + 1] = -80; a.array[k + 2] = 0; } a.needsUpdate = true; return [a, s, bak]; });
+        e.objs.forEach(o => { o.visible = false; }); });
+    B.__cose3 = out;
   }
   // [visuale3] il personaggio si stacca anche in ombra: quando il sole non lo prende (un raggio verso il sole contro le case vicine) o è
   // notte, la sua luce propria sale (riempimento: l'emissivo dei suoi materiali, che diventano suoi) e attorno alla sagoma compare un alone
@@ -7047,6 +7071,7 @@ var Render = (function () {
     const az = off ? { spento: true } : p2Regista(R), dopo = off ? prima : p2Misura(R);
     window.__pulizia2 = { prima: prima.rep, dopo: dopo.rep, azioni: az, punti: { prima: prima.pts, dopo: dopo.pts }, kit: P2.kit, spento: off };
     if (window.__dbg35) console.log('[dbg] pulizia2 prima', JSON.stringify(prima.rep.per), 'dopo', JSON.stringify(dopo.rep.per), 'azioni', JSON.stringify(az));
+    VIS3.reg = R.E.filter(e => !e.gone && e.B);   // [visuale3] il registro resta al taglio: le cose sui tetti e sulle facciate che non stanno nei gruppi della casa (antenne e mensole della rete, insegne, pluviali)
     P2.list = []; P2.on = false; return dopo.rep.tot;
   }
   // occupazione a mezzo metro per gli oggetti nuovi: niente sopra gli arredi tenuti, le case, la carreggiata
