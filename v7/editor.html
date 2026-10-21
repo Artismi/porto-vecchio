@@ -26841,6 +26841,7 @@ var Game = (function () {
       if (n.inside || n.dead || n.jailedUntil > st.t) continue;
       const d = dist(n.x, n.y, v.x, v.y);
       if (insideVehicle(v, n.x, n.y, .3)) {
+        if (n.__ev && by === 'traffic') { pushOutOfVehicles(st, n, .35); continue; }   // [eventi] il traffico di fondo non investe chi recita: lo scansa (frena prima, vedi updateTraffic)
         const vsp = v.vx !== undefined ? Math.hypot(v.vx, v.vy) : Math.abs(v.speed);
         if (vsp > 5.5) {
           n.stun = 3; const a = v.vx !== undefined ? Math.atan2(v.vy, v.vx) : v.ang; launch(st, n, v);
@@ -26892,9 +26893,10 @@ var Game = (function () {
     const Ln = LANES[v.lane.i], target = (panic ? 13 : 0) || (Ln.id === 'litoranea' ? 10 : 7.5);
     let block = 99;
     const fx = Math.cos(v.ang), fy = Math.sin(v.ang);
-    const check = (x, y, r) => { const dx = x - v.x, dy = y - v.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx); if (along > 0 && along < 9 && lat < 1.3 + Math.min(r, .5)) block = Math.min(block, along - r); };
+    const check = (x, y, r, lat0, look) => { const dx = x - v.x, dy = y - v.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx); if (along > 0 && along < (look || 9) && lat < (lat0 || 1.3) + Math.min(r, .5)) block = Math.min(block, along - r); };
     if (!st.player.vehicle) check(st.player.x, st.player.y, .4);
-    for (const n of st.npcs) { if (n.inside || n.vigile || Math.abs(n.x - v.x) > 10 || Math.abs(n.y - v.y) > 10) continue; check(n.x, n.y, n.dead ? .3 : .4); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
+    // [eventi] chi recita una scena non guarda la strada (la scena lo porta dritto dove deve andare): l'auto lo vede prima e più largo
+    for (const n of st.npcs) { if (n.inside || n.vigile || Math.abs(n.x - v.x) > 13 || Math.abs(n.y - v.y) > 13) continue; if (n.__ev) check(n.x, n.y, .4, 2.4, 12); else check(n.x, n.y, n.dead ? .3 : .4); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
     st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1); });
     const K = VK[v.kind];
@@ -30137,7 +30139,9 @@ var Popolo = (function () {
       if (!n.pop || n.dead) continue;
       const d = dist(n.x, n.y, p.x, p.y), P = n.pop;
       const want = mustBeNear(st, n) || d < CFG.near || (P.near && d < CFG.far);
-      list.push([n, want ? (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato) ? 0 : d) : 1e9]);   // [ordine] chi è in piazza o in fila resta vivo anche lontano
+      list.push([n, want ? (n.__ev || (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato)) ? 0 : d) : 1e9]);   // [ordine] chi è in piazza o in fila resta vivo anche lontano
+      // [eventi] e chi recita una scena passa davanti a tutti: con la città compatta piena i vicini arrivano al tetto (maxNear) e l'attore
+      // un po' più lontano degli altri veniva addormentato (snapFar lo mette «dentro» casa) a metà scena: la scena si rompeva con «entrato»
     }
     list.sort((a, b) => a[1] - b[1]);
     let nearN = 0;
@@ -51302,6 +51306,10 @@ if (typeof module !== 'undefined') module.exports = Chiarezza;
      sopra quelle in sosta.
    - LA SOSTA: stalli lungo il cordolo delle vie (5 m l'uno), più fitti al Mercato e al piazzale della Stazione; mai nei vicoli, agli
      incroci, alle fermate, davanti a una porta, a una vetrina o a una scala. Sugli stalli le auto parcheggiate.
+     [mappa_compatta] Con le vie da 7 m (il Corso) la sosta sta su un lato solo (2 m di stallo e due corsie da 2,5), ma il Corso ha porte
+     e vetrine quasi su tutto il cordolo: la sosta vera sta nelle piazze, lungo i muri del piazzale della Stazione, dello Scalo e del
+     Mercato (W.luoghi, W.sets; al Mercato la tettoia occupa la piazza e non ci sta niente). La linea 1 si appoggia alla rete legata
+     all'asse (il Corso e la Vittoria): i monconi delle costiere (Via della Stazione, Via del Porto) non ci entrano.
    - IL TRAFFICO PER ORA: auto, l'Ape, la Vespa e il Ciao sulle vie e sull'asse; sulle vie minori solo due ruote e Ape (le guida questo
      modulo, a passo d'uomo quando c'è gente); la volante della Tutela gira sempre, anche di notte. Il punto (07-09:30), il vuoto del
      pranzo, la passeggiata (17:30-20:30), la notte vuota.
@@ -51434,17 +51442,25 @@ var Vievive = (function () {
 
   // ================= GLI ANCORAGGI (i luoghi) =================
   // la Stazione (il pezzo), il Mercato (la scenografia), la Marina (la scenografia o il luogo), l'asse (la piazza d'adunata o il mezzo)
+  // [mappa_compatta] prima i luoghi-missione (W.luoghi) e le scenografie nuove (W.sets: 'stazione' è il piazzale, 'scalo' il capo
+  // ovest della marina), poi i pezzi e i posti con nome della mappa di prima. La marina ha più candidati: la linea prende quello che la
+  // strada dei mezzi raggiunge (la Via della Marina è da Ape, l'autobus si ferma dove il Corso la incontra, allo Scalo).
+  let ANC = null;
   function ancore() {
-    const out = {}, sets = W.sets || [], pz = W.pezzi || [], PL = G.PLACES || {};
+    if (ANC) return ANC;
+    const out = {}, sets = W.sets || [], pz = W.pezzi || [], PL = G.PLACES || {}, LG = W.luoghi || [];
     const c = s => s.x !== undefined ? { x: s.x, y: s.y } : { x: (s.x0 + s.x1) / 2, y: (s.y0 + s.y1) / 2 };
-    const st = pz.find(p => p.tipo === 'stazione'); if (st) out.stazione = { x: st.x, y: st.y, nome: 'Stazione' };
+    const lg = id => LG.find(l => l.id === id), set = k => sets.find(s => s.k === k && (s.x !== undefined || s.y0 !== undefined));
+    const stz = set('stazione'), lst = lg('stazione'), st = pz.find(p => p.tipo === 'stazione');
+    if (stz || lst) out.stazione = Object.assign(c(stz || lst), { nome: 'Stazione', set: stz || null });
+    else if (st) out.stazione = { x: st.x, y: st.y, nome: 'Stazione' };
     else { const p = Object.values(PL).find(q => /stazione/i.test(q.name || '') && zonaCitta(q.x, q.y)); if (p) out.stazione = { x: p.x, y: p.y, nome: 'Stazione' }; }
-    const mk = sets.find(s => s.k === 'mercato'); if (mk) out.mercato = Object.assign(c(mk), { nome: 'Mercato', r: mk.r || 14 });
+    const mk = set('mercato'), lmk = lg('mercato'); if (mk || lmk) out.mercato = Object.assign(c(mk || lmk), { nome: 'Mercato', r: (mk && mk.r) || 14 });
     const asse = ROADS().find(rd => rango(rd) === 'asse');
-    if (asse) { const ad = sets.find(s => s.k === 'adunata'), L = rdLinea(asse), q = ad ? lAt(L, lNear(L, c(ad).x, c(ad).y).s) : lAt(L, L.L * .35); out.asse = { x: q.x, y: q.y, nome: asse.name ? asse.name.replace(/^Via (della |del )?/, '') : 'Vittoria', rd: asse }; }
-    const mar = [sets.find(s => s.k === 'marina'), PL.marina, PL.calata].filter(Boolean).map(c);
+    if (asse) { const ad = set('adunata'), L = rdLinea(asse), q = ad ? lAt(L, lNear(L, c(ad).x, c(ad).y).s) : lAt(L, L.L * .35); out.asse = { x: q.x, y: q.y, nome: asse.name ? asse.name.replace(/^Via (della |del )?/, '') : 'Vittoria', rd: asse }; }
+    const mar = [lg('pescheria'), set('marina'), set('scalo'), lg('officina'), PL.marina, PL.calata].filter(Boolean).map(c);
     if (mar.length) out.marina = Object.assign(mar, { nome: 'Marina' });
-    return out;
+    return (ANC = out);
   }
 
   // ================= LA LINEA 1: il percorso, le fermate =================
@@ -51459,7 +51475,12 @@ var Vievive = (function () {
       for (let k = 0; k <= n; k++) { const s = L.L * k / n, p = G.laneAt(L, s), q = { i: N.length, li, s, x: p.x, y: p.y, w: L.w, rd, adj: [] }; N.push(q); if (prev) { const d = hyp(q.x - prev.x, q.y - prev.y); q.adj.push([prev.i, d]); prev.adj.push([q.i, d]); } prev = q; } });
     for (let a = 0; a < N.length; a++) for (let b = a + 1; b < N.length; b++) { const A = N[a], B = N[b]; if (A.li === B.li) continue; const d = hyp(A.x - B.x, A.y - B.y); if (d < Math.max(A.w, B.w) / 2 + 2.5) { A.adj.push([b, d + 4]); B.adj.push([a, d + 4]); } }
     if (N.length < 4) return LIN;
-    const snap = (x, y) => { let best = null, bd = 1e9; N.forEach(q => { const d = hyp(q.x - x, q.y - y); if (d < bd) { bd = d; best = q; } }); return { q: best, d: bd }; };
+    // [mappa_compatta] solo la rete legata all'asse: nella città compatta la Via della Stazione e la Via del Porto sono monconi delle
+    // costiere che muoiono sul piazzale e sullo scalo, senza corsia verso il Corso; una fermata lì sarebbe irraggiungibile
+    const comp = new Int32Array(N.length).fill(-1); let nc = 0;
+    N.forEach(q0 => { if (comp[q0.i] >= 0) return; const stk = [q0.i]; comp[q0.i] = nc; while (stk.length) { const u = stk.pop(); for (const [v] of N[u].adj) if (comp[v] < 0) { comp[v] = nc; stk.push(v); } } nc++; });
+    const qa = N.find(q => rango(q.rd) === 'asse'), cMain = qa ? comp[qa.i] : comp[0];
+    const snap = (x, y) => { let best = null, bd = 1e9; N.forEach(q => { if (comp[q.i] !== cMain) return; const d = hyp(q.x - x, q.y - y); if (d < bd) { bd = d; best = q; } }); return { q: best, d: bd }; };
     const dijkstra = (a, b) => { const D = new Float64Array(N.length).fill(Infinity), P = new Int32Array(N.length).fill(-1), done = new Uint8Array(N.length); D[a] = 0;
       for (;;) { let u = -1, bd = Infinity; for (let i = 0; i < N.length; i++) if (!done[i] && D[i] < bd) { bd = D[i]; u = i; } if (u < 0 || u === b) break; done[u] = 1; for (const [v, c] of N[u].adj) if (D[u] + c < D[v]) { D[v] = D[u] + c; P[v] = u; } }
       if (!isFinite(D[b])) return null; const out = []; for (let v = b; v >= 0; v = P[v]) out.unshift(v); return out; };
@@ -51547,7 +51568,41 @@ var Vievive = (function () {
           const pz = (mk && hyp(mk.x - x, mk.y - y) < (mk.r || 14) + 34) ? 'mercato' : (sz && hyp(sz.x - x, sz.y - y) < 46) ? 'stazione' : 'via';
           STL.push({ x, y, ang: c.ang + (sd > 0 ? 0 : PI) * 0, rd: rd.id, sd, s, cx: c.x, cy: c.y, nx, ny, w: rd.w, dove: pz });
         } }); });
+    stalliPiazza(L1, ed);
     return STL;
+  }
+  // [mappa_compatta] gli stalli delle piazze: nella città compatta le vie da 7 m hanno porte e vetrine su quasi tutto il cordolo, e la
+  // sosta vera sta al piazzale della Stazione e attorno al Mercato (W.luoghi, W.sets). Lo stallo è in fila lungo un muro della piazza
+  // (il muro alle spalle, la piazza davanti), sulle caselle di piazza o di via, fuori dalla tettoia, dalla strada dell'autobus, dalle
+  // fermate e dalle edicole, mai davanti a porte, vetrine e scale. Il campo `piazza` dice che il cordolo è il muro (nx, ny verso il muro).
+  function stalliPiazza(L1, ed) {
+    const A = ancore(), LG = W.luoghi || [], sets = W.sets || [];
+    const oct = (mk, x, y) => { const dx = Math.abs(x - mk.x), dy = Math.abs(y - mk.y); return Math.max(dx, dy, (dx + dy) / Math.SQRT2); };
+    const zone = [];
+    if (A.stazione) { const s = A.stazione.set; zone.push({ dove: 'stazione', x0: (s ? s.x0 : A.stazione.x - 18) - 4, x1: (s ? s.x1 : A.stazione.x + 18) + 4, y0: (s ? s.y0 : A.stazione.y - 8) - 4, y1: (s ? s.y1 : A.stazione.y + 8) + 4 }); }
+    if (A.mercato) { const r = A.mercato.r || 14, l = LG.find(q => q.id === 'mercato') || A.mercato; zone.push({ dove: 'mercato', x0: l.x - r - 8, x1: l.x + r + 8, y0: l.y - r - 8, y1: l.y + r + 8, mk: { x: l.x, y: l.y, r: r - 2 } }); }
+    { const s = sets.find(q => q.k === 'scalo' && q.y0 !== undefined); if (s) zone.push({ dove: 'scalo', x0: s.x0 - 4, x1: s.x1 + 4, y0: s.y0 - 4, y1: s.y1 + 4 }); }   // l'angolo del boom (MAPPA_COMPATTA 8.5)
+    const suolo = (x, y) => { const v = tile(x, y); return (v === T.PIAZZA || v === T.VIA) && G.walkM(x, y); };
+    // mai su una corsia del traffico (i monconi delle costiere entrano nel piazzale e nello scalo)
+    const inCorsia = (x, y) => (G.LANES || []).some(Lc => { const P = Lc.pts; for (let k = 0; k < P.length - 1; k++) { const ax = P[k][0], ay = P[k][1], dx = P[k + 1][0] - ax, dy = P[k + 1][1] - ay, l2 = dx * dx + dy * dy || 1e-9, t = clamp(((x - ax) * dx + (y - ay) * dy) / l2, 0, 1); if (hyp(ax + dx * t - x, ay + dy * t - y) < Lc.w / 2 + D / 2 + .2) return true; } return false; });
+    const L0 = CFG.stallo, D = CFG.sosta;
+    zone.forEach(Z => {
+      for (let y = Math.ceil(Z.y0); y <= Z.y1; y += .5) for (let x = Math.ceil(Z.x0); x <= Z.x1; x += .5) for (const [nx, ny] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+        // il centro dello stallo sta a D/2 dal muro: il muro alle spalle (n), la piazza davanti
+        if (tile(x + nx * (D / 2 + .6), y + ny * (D / 2 + .6)) !== T.BLD) continue;
+        const ux = -ny, uy = nx; let okk = true;
+        for (const a of [-L0 / 2, -L0 / 4, 0, L0 / 4, L0 / 2]) for (const b of [-D / 2 + .15, 0, D / 2 - .15]) { const px = x + ux * a + nx * b, py = y + uy * a + ny * b;
+          if (!suolo(px, py) || !zonaCitta(px, py) || (Z.mk && oct(Z.mk, px, py) < Z.mk.r + 1.5) || davanti(px, py, .3)) { okk = false; break; } }
+        if (!okk) continue;
+        // davanti allo stallo (dove si apre la portiera) e lungo il muro: niente fronti
+        for (const a of [-L0 / 2, 0, L0 / 2]) if (okk && (davanti(x + ux * a - nx * (D / 2 + .8), y + uy * a - ny * (D / 2 + .8), .2) || [.3, 1.1, 1.6].some(o => davanti(x + ux * a + nx * (D / 2 + o), y + uy * a + ny * (D / 2 + o), .2)))) okk = false;
+        if (!okk || vicinoIncrocio(x, y, 1)) continue;
+        if (L1.fermate.some(f => hyp(f.x - x, f.y - y) < 10) || ed.some(e => hyp(e.kx - x, e.ky - y) < 4.5 || hyp(e.x - x, e.y - y) < 3.5)) continue;   // il chiosco e la sua fila
+        if (L1.giro && lNear(L1.giro, x, y).d < D / 2 + 1.25 + .85 + .4) continue;
+        if (STL.some(q => hyp(q.x - x, q.y - y) < L0 + .2) || inCorsia(x, y)) continue;
+        // la segnaletica (render.js) disegna dal punto (cx, cy) a w/2 - 2,1 … w/2 - 0,3 verso n: con w = 2D lo stallo è il tratto fra -D/2 e +D/2
+        STL.push({ x, y, ang: Math.atan2(uy, ux), rd: null, sd: 0, s: 0, cx: x - nx * (D - D / 2), cy: y - ny * (D - D / 2), nx, ny, w: 2 * D, dove: Z.dove, piazza: true });
+      } });
   }
 
   // ================= LE EDICOLE =================
@@ -51561,7 +51616,7 @@ var Vievive = (function () {
     if (vie[0]) { const L = rdLinea(vie[0]), q = lAt(L, L.L / 2); anc.push({ x: q.x, y: q.y, r0: vie[0].w / 2 + 1, r1: vie[0].w / 2 + 9, nome: vie[0].name || 'Corso' }); }
     const VIA = (x, y) => tile(x, y) === T.VIA;
     anc.forEach(a => {
-      if (EDI.some(e => hyp(e.kx - a.x, e.ky - a.y) < 50)) return;
+      if (EDI.some(e => hyp(e.kx - a.x, e.ky - a.y) < 30)) return;   // [mappa_compatta] 30 m: nella città compatta il piazzale e il Mercato stanno a 35 m
       let best = null, bs = -1e9;
       for (let r = a.r0; r <= a.r1; r += 1) for (let k = 0; k < 24; k++) { const t = k / 24 * 2 * PI, x = Math.round((a.x + Math.cos(t) * r) * 2) / 2, y = Math.round((a.y + Math.sin(t) * r) * 2) / 2;
         if (!libero(x, y, 1.6) || davanti(x, y, 2) || vicinoIncrocio(x, y, 2)) continue;
@@ -51846,7 +51901,9 @@ var Vievive = (function () {
       { look: 'a', at: 'around' }, { pose: 'a', p: 'lavora', w: 3.2 }, { fn: (st, sc) => { const a = sc.roles.a, m = muroVicino(a.x, a.y); if (m) S(st).affissi.push({ x: m.x, y: m.y, nx: m.nx, ny: m.ny, t: st.t, titolo: titolo(st.t, 'disgelo') }); } },
       { pose: 'a' }, SAY('a', 'Leggete il Disgelo!', 'Il ghiaccio si rompe.', '...'), { flee: 'a', from: 'spot', sp: 2.6 }, { wait: 3 }] },
     { id: 'vv_raschia', w: 3, posto: ['angolo', 'vetrina', 'fermata'], postoF: q => vicinoAsse(q.x, q.y, 10), roles: [{ id: 'a', f: 'cop|old' }], beats: [
-      { fn: (st, sc) => { const A = S(st).affissi.filter(a => !a.raschiato), a = sc.roles.a; let best = null, bd = 60; A.forEach(z => { const d = hyp(z.x - a.x, z.y - a.y); if (d < bd) { bd = d; best = z; } }); sc.vvAff = best; if (!best) sc.over = true; } },
+      // il foglio più vicino al posto della scena (dove sta il giocatore), non a dove l'attore stava prima: con la città compatta sulla
+      // Vittoria i fogli sono più d'uno a poche decine di metri, e si raschiava quello lontano dalla vista
+      { fn: (st, sc) => { const A = S(st).affissi.filter(a => !a.raschiato), a = sc.spot || sc.roles.a; let best = null, bd = 60; A.forEach(z => { const d = hyp(z.x - a.x, z.y - a.y); if (d < bd) { bd = d; best = z; } }); sc.vvAff = best; if (!best) sc.over = true; } },
       { fn: (st, sc) => { if (sc.vvAff) { sc.vvTo = { x: sc.vvAff.x + sc.vvAff.nx * .7, y: sc.vvAff.y + sc.vvAff.ny * .7 }; sc.spot = sc.vvTo; } } }, { go: 'a', to: 'spot', sp: 1.6, d: .6, t: 18 },
       SAY('a', 'Ancora questa porcheria.', 'Via, via. Ordine del Comune.', 'Sempre di notte, questi.'), { pose: 'a', p: 'raccoglie', w: 3 }, { fn: (st, sc) => { if (sc.vvAff) sc.vvAff.raschiato = st.t; } }, { pose: 'a' }, { wait: 2 }] },
   ];
@@ -52466,10 +52523,12 @@ var Visuale = (function () {
   // la quota chiesta a una casa dai suoi raggi: entrate = [{ y: quota d'ingresso del raggio, suolo: è un punto dell'anello }]; piedi
   // (sopra K.massimo dai piedi la quota scende a piani interi, K.piano: la casa lontana perde i suoi piani alti, non si affetta a caso)
   function chiesta(entrate, piedi, K) {
-    K = K || TAGLIO; let y = Infinity;
-    entrate.forEach(e => { const lo = piedi + (e.suolo ? K.moncone : K.minimo); y = Math.min(y, Math.max(lo, e.y - K.margine)); });
+    K = K || TAGLIO; let y = Infinity, ylo = Infinity;
+    entrate.forEach(e => { const lo = piedi + (e.suolo ? K.moncone : K.minimo); ylo = Math.min(ylo, lo); y = Math.min(y, Math.max(lo, e.y - K.margine)); });
     if (y - piedi > K.massimo) return piedi + Math.max(K.massimo, Math.floor((y - piedi) / K.piano) * K.piano);
-    return Math.floor(y / K.passo) * K.passo;
+    // [mappa_compatta] l'arrotondamento al passo non scende sotto il pavimento del taglio: prima, a ridosso del muro (nei vicoli da 2-3 m
+    // della città compatta succede spesso) la quota tenuta a 0,15 m dai piedi finiva arrotondata in giù a 0 (un taglio raso terra)
+    return Math.max(ylo, Math.floor(y / K.passo) * K.passo);
   }
   // dove un raggio (o: origine, d: direzione unitaria) entra in una scatola { min: {x,y,z}, max: {x,y,z} }: la quota y del punto d'ingresso
   // (l'origine stessa se ci sta dentro), o null se la manca
