@@ -16,6 +16,7 @@
 // e salva il json (reports/compenetrazioni.json) e la pianta dei punti prima/dopo (reports/compenetrazioni.png).
 //   node strumenti/compenetrazioni.js [--spento] [uscita.json]
 //   --spento: il regista misura soltanto (?nopulizia2), per vedere com'era.
+// [tetti3] in più i tetti (window.__tetti3): oggetti per tetto e compenetrazioni dei gruppi del piano; TETTI3_ESIGI=1 esce con errore se non sono zero.
 const path = require('path'), http = require('http'), fs = require('fs');
 const { chromium } = require(process.env.PW || '/opt/node22/lib/node_modules/playwright');
 const root = path.resolve(__dirname, '..'), args = process.argv.slice(2), spento = args.includes('--spento');
@@ -31,9 +32,17 @@ const srv = http.createServer((req, res) => {
   pg.on('pageerror', e => console.log('[errore]', e.message, (e.stack || '').split('\n').slice(0, 3).join(' | ')));
   pg.on('console', m => { if (m.type() === 'error' || /pulizia2/.test(m.text())) console.log('[console]', m.text().slice(0, 400)); });
   await pg.addInitScript(() => { window.__dbg35 = true; });
-  await pg.goto(`http://localhost:${srv.address().port}/index.html?cittanuova${spento ? '&nopulizia2' : ''}`);
+  await pg.goto(`http://localhost:${srv.address().port}/${process.env.PV_PAGINA || 'index.html'}?cittanuova${spento ? '&nopulizia2' : ''}`);   // [tetti3] PV_PAGINA=altra.html: un'altra build (il prima)
   await pg.waitForFunction(() => window.__pulizia2, null, { timeout: 900000, polling: 2000 });
   const R = await pg.evaluate(() => window.__pulizia2);
+  // [tetti3] I TETTI: il conto degli oggetti per tetto (case con l'epoca) e le compenetrazioni misurate sul modello vero dei gruppi del piano
+  const T3 = await pg.evaluate(() => window.__tetti3 ? window.__tetti3() : null);
+  if (T3) { console.log('\n[tetti3] tetti', T3.tetti, 'oggetti', T3.oggetti, 'media per tetto', T3.media, 'massimo', T3.max, 'tetti vuoti', T3.vuoti, 'piano', T3.piano);
+    console.log('[tetti3] istogramma (oggetti: tetti)', JSON.stringify(T3.istogramma), 'per epoca', JSON.stringify(T3.perEra));
+    if (T3.verifica) console.log('[tetti3] piano', JSON.stringify(T3.verifica));
+    const ut = {}; (T3.urti || []).forEach(u => ut[u[2]] = (ut[u[2]] || 0) + 1);
+    console.log('[tetti3] compenetrazioni sui tetti', (T3.urti || []).length, JSON.stringify(ut)); (T3.urti || []).slice(0, 30).forEach(u => console.log('  ' + u.join('  ')));
+    if (process.env.TETTI3_ESIGI && (T3.urti || []).length) process.exitCode = 1; }
   console.log('caricato in', Math.round((Date.now() - t0) / 1000), 's; voci', R.prima.voci, '→', R.dopo.voci, '; case', R.prima.case, '; il muro del kit sporge', (R.kit || 0).toFixed(3), 'm');
   console.log('praticabili', JSON.stringify(R.prima.praticabili));
   const tipi = Object.keys(R.prima.per), pad = (s, n) => String(s).padEnd(n), lp = (s, n) => String(s).padStart(n);
@@ -46,7 +55,7 @@ const srv = http.createServer((req, res) => {
   console.log('\ndopo, per voce:', top(R.dopo.perVoce, 24) || '—'); console.log('dopo, per passo:', top(R.dopo.perPasso, 16) || '—');
   if (R.punti.dopo.length) { console.log('\nquello che resta (tipo, x, z, voce, passo, contro, quota):'); R.punti.dopo.slice(0, 60).forEach(p => console.log('  ' + p.join('  '))); }
   fs.mkdirSync(path.dirname(outJ), { recursive: true });
-  fs.writeFileSync(outJ, JSON.stringify({ quando: new Date().toISOString(), spento, prima: R.prima, dopo: R.dopo, azioni: R.azioni, punti: R.punti }, null, 1));
+  fs.writeFileSync(outJ, JSON.stringify({ quando: new Date().toISOString(), spento, prima: R.prima, dopo: R.dopo, azioni: R.azioni, punti: R.punti, tetti3: T3 }, null, 1));
   // la pianta: le case, i punti per tipo, prima a sinistra e dopo a destra
   const png = await pg.evaluate(R => {
     const G = window.__pv.G, B = G.BUILDINGS, TS = G.TS, all = R.punti.prima.concat(R.punti.dopo);
