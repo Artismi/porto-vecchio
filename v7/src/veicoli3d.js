@@ -336,7 +336,7 @@ var Veicoli3D = (function () {
     });
     const zr2 = zs - (D.divano || .85), hd = zr2 > zL ? Math.min(.34, P.yR(zr2 - .1) - yAt(zr2) - .07) : 0; if (zr2 > zL + .05 && hd > .12) lista(alto, [0, yAt(zr2) - .006, zr2], [0, yAt(zr2) + hd, zr2 - .1], hb(zr2) * 2 - .04, .1, seatCol);
     const zd = zW - .17, yd = yAt(zd); M(alto, BX(hb(zd) * 2 - .02, .09, .26), C.nero, 0, yd + .04, zd);
-    const zv = zW - .4, yv = yAt(zv) + .2, vol = D.manubrio ? M(alto, CY(.015, .015, .62, 6), C.nero, -xs * 0, yv, zv, 0, 0, PI / 2) : M(alto, new THREE.TorusGeometry(.16, .013, 4, 14), C.nero, -xs, yv, zv, -1.05); if (!D.manubrio) { M(vol, BX(.31, .03, .012), C.nero); M(vol, BX(.03, .14, .012), C.nero, 0, -.07, 0); M(vol, CY(.04, .04, .03, 10), C.nero, 0, 0, 0, PI / 2); }   // il volante con le razze
+    const zv = zW - .4, yv = yAt(zv) + .2, vol = D.manubrio ? M(alto, CY(.015, .015, .62, 6), C.nero, -xs * 0, yv, zv, 0, 0, PI / 2) : M(alto, new THREE.TorusGeometry(.16, .013, 4, 14), C.nero, xs, yv, zv, -1.05); if (!D.manubrio) { M(vol, BX(.31, .03, .012), C.nero); M(vol, BX(.03, .14, .012), C.nero, 0, -.07, 0); M(vol, CY(.04, .04, .03, 10), C.nero, 0, 0, 0, PI / 2); }   // il volante con le razze
     asta(alto, [D.manubrio ? 0 : -xs, yv, zv], [D.manubrio ? 0 : -xs, yd + .06, zd - .1], .018, C.nero);
     // porte: le fessure, le maniglie; specchietti, antenna, tappo della benzina
     const linea = (s, z, y0, y1) => M(alto, BX(.006, y1 - y0, .007), C.scuro, s * (hwAt(D, z) + .001), (y0 + y1) / 2, z);
@@ -394,7 +394,7 @@ var Veicoli3D = (function () {
     if (D.muso) D.muso(ctx); if (D.coda) D.coda(ctx); if (D.fianchi) D.fianchi(ctx);
     if (o.livrea) livrea(ctx, o.livrea);
     // sedili per chi guida (render.js ci mette il guidatore) e la portiera che si apre
-    ud.seat = [-xs, ys + .02, zs + .12]; ud.seat2 = [xs, ys + .02, zs + .12];
+    ud.seat = [xs, ys + .02, zs + .12]; ud.seat2 = [-xs, ys + .02, zs + .12];   // guida a sinistra (+x: col muso verso +z, la destra è -x)
     ud.porta = { hw: hwAt(D, zs), cw: hwAt(D, zs) - Cb.inset - Cb.tumble * .5, zf: D.porte[0][0] - .02, zb: D.porte[0][1] + .02, yb: D.sill + .06, yt: ytAt(D, zs), yw: P.yR(zs) - .05 };
     ud.len = D.L;
     // ---- il livello basso: poche facce, stessa vernice ----
@@ -694,7 +694,7 @@ var Veicoli3D = (function () {
     // il portello sul fianco, la fascia della Guardia
     [-1, 1].forEach(s => { M(alto, BX(.02, .7, .85), paint, s * (hw + .005), 1.15, -.55); M(alto, BX(.03, .03, .14), C.scuro, s * (hw + .02), 1.2, -.85);
       M(alto, new THREE.PlaneGeometry(1.2, .16), scritta('GUARDIA', '#3a4038', '#d8d4c4', 256, 32), s * (hw + .012), 1.45, 1.0, 0, s * PI / 2, 0); });
-    ud.seat = [-.45, 1.25, 1.15]; ud.seat2 = [.1, 1.3, -.3]; ud.len = 5.4; ud.wipers = null;
+    ud.seat = [.45, 1.25, 1.15]; ud.seat2 = [.1, 1.3, -.3]; ud.len = 5.4; ud.wipers = null;
     ud.porta = { hw, cw: hw - .1, zf: -.12, zb: -.98, yb: .8, yt: 1.5, yw: 1.55 };
     M(basso, loft(stazioniBasse(D), { sh: .28, tuck: 0, crown: .03, basso: true }), paint); M(basso, CY(.5, .5, .3, 8), paint, .1, yAt(-.3) + .13, -.3);
     [aF, aR].forEach(z => [-1, 1].forEach(s => M(basso, CY(r, r, tw, 6), C.gomma, s * (hw - tw / 2 - .02), r, z, 0, 0, PI / 2)));

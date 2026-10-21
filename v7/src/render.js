@@ -10090,7 +10090,7 @@ var Render = (function () {
       const sirenS = box(.3, .12, .2, sm('#cfcfd8')); sirenS.position.set(0, 1.58, -.2); g.add(sirenS);
       ud.beacons = [bl, bl2];
     }
-    ud.seat = [-.32, D.yb + .35, (D.win[0][0] + D.win[3][0]) / 2 + .15]; ud.seat2 = [.32, D.yb + .35, (D.win[0][0] + D.win[3][0]) / 2 + .15];
+    ud.seat = [.32, D.yb + .35, (D.win[0][0] + D.win[3][0]) / 2 + .15]; ud.seat2 = [-.32, D.yb + .35, (D.win[0][0] + D.win[3][0]) / 2 + .15];
     ud.len = L;
     return finishVehicle(g, ud);
   }
@@ -13535,8 +13535,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   }
   // ---- veicoli: portiere, tergicristalli, scarico, motore, lampeggianti ----
   const VDARK = new THREE.MeshBasicMaterial({ color: '#0a0909' });
-  function vehDoor(g, v, u) {   // [animazioni-mondo] la portiera del guidatore (lato -x, quello da cui si scende), fatta solo quando serve
-    const K = G.VK[v.kind], D = !u.glb ? CARS[K.mesh || v.kind] : null, s = -1;
+  function vehDoor(g, v, u) {   // [animazioni-mondo] la portiera del guidatore (lato +x, la sinistra: in Italia si guida a sinistra), fatta solo quando serve
+    const K = G.VK[v.kind], D = !u.glb ? CARS[K.mesh || v.kind] : null, s = 1;
     let hw, zf, zb, yb, yt, yw, cw;
     if (u.porta) ({ hw, cw, zf, zb, yb, yt, yw } = u.porta);   // [modelli2] la portiera del modello di veicoli3d.js
     else if (D) { hw = D.W / 2; cw = D.CW / 2; zf = D.win[0][0] - .02; zb = D.cab.length > 3 ? Math.max(D.win[3][0] + .25, (D.win[1][0] + D.win[2][0]) / 2 - .05) : D.win[3][0]; yb = D.yb + .06; yt = D.win[0][1]; yw = (D.win[1][1] + D.win[2][1]) / 2 - .04; if (D.L < 3.4) zb = Math.min(zb, zf - 1.05); }

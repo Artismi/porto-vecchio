@@ -566,7 +566,8 @@ var Game = (function () {
       for (let rr = .5; rr < 4.6 && !done; rr += .5) for (let k = 0; k < 16 && !done; k++) { const a = v.ang + k / 16 * Math.PI * 2, x = v.x + Math.cos(a) * (ext(a) + rr), y = v.y + Math.sin(a) * (ext(a) + rr); if (walkM(x, y)) { p.x = x; p.y = y; done = true; } }
       if (!done) { p.x = v.x + Math.cos(v.ang + Math.PI / 2) * (VK[v.kind].wid / 2 + .7); p.y = v.y + Math.sin(v.ang + Math.PI / 2) * (VK[v.kind].wid / 2 + .7); p.swim = true; }
     } else
-    for (const off of [Math.PI / 2, -Math.PI / 2, Math.PI, 0]) { const x = v.x + Math.cos(v.ang + off) * r, y = v.y + Math.sin(v.ang + off) * r; if (walkM(x, y)) { p.x = x; p.y = y; break; } }
+    for (const off of [-Math.PI / 2, Math.PI / 2, Math.PI, 0]) {   // prima dal lato del guidatore, la sinistra
+    const x = v.x + Math.cos(v.ang + off) * r, y = v.y + Math.sin(v.ang + off) * r; if (walkM(x, y)) { p.x = x; p.y = y; break; } }
     scaleVel(v, .3);
     if (VK[v.kind].pocket) st.vehicles = st.vehicles.filter(k => k !== v);   // [bmx] la pieghi e la rimetti in tasca
   }
