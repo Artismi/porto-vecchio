@@ -10927,7 +10927,7 @@ var Render = (function () {
         let g; try { g = PezziCitta.make(p.tipo, o); } catch (e) { console.warn('[posa]', p.tipo, e); continue; }
         if (!g) continue;
         if (p.tipo === 'passaggio_livello') po1Strip(g);
-        if (p.tipo === 'facciata_chiesa' && p.navata) po1Navata(g, Object.assign({}, p.opz, { corpo: p.opz.corpo }));
+        if (p.tipo === 'facciata_chiesa' && p.navata) { po1Navata(g, Object.assign({}, p.opz, { corpo: p.opz.corpo })); if (PezziCitta.vestiUV) PezziCitta.vestiUV(g); }   // [pezzi2] anche la navata col suo uv (base e cima) per l'usura
         const root = new THREE.Group(); root.position.set(p.x, p.q || 0, p.y); root.rotation.y = p.rot || 0; root.add(g);
         take(root, lev, sk); if (lev === 'basso' && p.tipo !== 'binari') { const e2 = p2Obj(root, 'grande', null, null, true); if (e2) e2.tipo = p.tipo; }   // [pulizia2] i pezzi grandi occupano posto
       }
@@ -10940,6 +10940,9 @@ var Render = (function () {
       m.visible = b.lev === 'basso'; scene.add(m); PO1.mesh++;
       let s = S.get(b.sk); if (!s) { const [i, j] = b.sk.split(',').map(Number); S.set(b.sk, s = { x: (i + .5) * SEC, z: (j + .5) * SEC, alto: [], basso: [], near: null }); } s[b.lev].push(m); });
     PO1.sec = [...S.values()];
+    // [pezzi2] di notte i pezzi seguono le case: le finestre accese delle caserme, della stazione e della torre, i quadranti degli
+    // orologi, la cella del campanile e le lampade della tettoia si accendono con la stessa curva delle finestre delle case (FD1.emis)
+    (PezziCitta.NOTTE || []).forEach(n => { const m = PezziCitta.mat(n); if (m && !FD1.emis.includes(m)) FD1.emis.push(m); });
     if (window.__dbg35) console.log('[posa] pezzi', PO1.n, 'mesh fuse', PO1.mesh, 'settori', PO1.sec.length, 'triangoli', Math.round(PO1.tri));
     return PO1.n;
   }
@@ -12193,7 +12196,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   // coi conci a corsi (35 cm, giunti di malta, ogni concio il suo tono) e la grana porosa, in coordinate di mondo sul materiale condiviso
   // dei pezzi urbani (un materiale, nessuna chiamata in più)
   function f2Tufo() {
-    if (typeof PezziCitta === 'undefined' || !PezziCitta || !PezziCitta.mat || F2.tufo) return; F2.tufo = true;
+    if (typeof PezziCitta === 'undefined' || !PezziCitta || !PezziCitta.mat || F2.tufo || PezziCitta.vesti) return; F2.tufo = true;   // [pezzi2] i materiali dei pezzi portano già la loro veste (tufo, travertino, pietra, intonaco...): pezzi_citta.js
     [['tufo', '#bba684', 1, .35, .62], ['tufoScuro', '#9a8869', .6, .35, .62], ['travertino', '#ddd3bb', .5, .6, 1.2], ['travertinoScuro', '#b4a990', .5, .6, 1.2]].forEach(([nome, hex, k, RH, RL]) => {   // [facciate2] anche il travertino del regime: lastre da 60 × 120 coi giunti
       const m = PezziCitta.mat(nome); if (!m) return; m.color.set(hex); m.roughness = .95;
       m.customProgramCacheKey = () => 'f2-tufo' + nome;
