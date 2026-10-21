@@ -6,7 +6,8 @@
    alle > 24 = dopo mezzanotte), giorni (facoltativo, 0 = lunedì), zona (borgo, marina, ottocento, boom, baracche, vittoria,
    spianata, rocca), bi (l'edificio, se c'è), uso (della bottega), tetto/h3 (sui tetti: la quota), scala (c'è una scala appoggiata) }.
    Tipi: dehors, pensilina, fermata, panchina, angolo, retrobottega, facciata_in_riparazione, lotto_vuoto, fuoco, porta_della_citta,
-   mercato, sagrato, calata, portone, vetrina, edicola, stenditoio.
+   mercato, sagrato, calata, portone, vetrina, edicola, stenditoio; [mappa_compatta] cypher (alla grata del vapore), fila (al Forno e da
+   Wu), carico (lo Scalo e lo scalo merci), banco_pesce (la pescheria), parata (la Vittoria, la domenica alle 11).
    Posti.all() li costruisce la prima volta che servono (così Tetti, caricato dopo, c'è già); Posti.near(x, y, r, k) li cerca;
    Posti.openAt(p, t) dice se a quell'ora il posto è vivo; Posti.slots(p, n) dispone n persone in modo leggibile dalla camera
    (fov stretto, yaw π/4: la camera sta a sud-est e guarda a nord-ovest; lo schermo va da sud-ovest a nord-est): mai in fila
@@ -49,6 +50,12 @@ var Posti = (function () {
     vetrina:   { h: [[8.5, 20.5]], cap: 2, who: 'any', pose: 'osserva', lay: 'riga', r: 1, dens: .8 },
     edicola:   { h: [[6, 20]], cap: 3, who: 'adult', pose: 'legge_su', lay: 'riga', r: 1, dens: .8 },
     stenditoio: { h: [[9, 12], [16, 18.5]], cap: 2, who: 'f', pose: 'lavora', lay: 'riga', r: 1, dens: .7, tetto: true },
+    // [mappa_compatta] i tipi nuovi della città compatta (MAPPA_COMPATTA.md sez. 6)
+    cypher:    { h: [[20, 26]], cap: 8, who: 'young', pose: 'appoggiato', lay: 'cerchio', r: 1.8, dens: 1 },   // il cerchio dei ragazzi attorno alla grata del vapore
+    fila:      { h: [[6, 9]], cap: 6, who: 'any', pose: 'aspetta', lay: 'riga', r: .8, dens: 1 },             // la coda del pane e della tessera
+    carico:    { h: [[5, 11]], cap: 4, who: 'm', pose: 'raccoglie', lay: 'riga', r: 1.3, dens: 1 },           // casse e sacchi allo Scalo e ai carri merci
+    banco_pesce: { h: [[5, 12]], cap: 4, who: 'any', pose: 'merce', lay: 'banco', r: 1.3, dens: 1.2 },      // il banco davanti alla pescheria
+    parata:    { h: [[10.5, 12.5]], cap: 8, who: 'any', pose: 'aspetta', lay: 'riga', r: 1, giorni: [6], dens: 1 },   // la domenica: la folla ai bordi della Vittoria
   };
   // le botteghe dove si beve e si mangia, e quelle con la vetrina
   const BARS = /^(bar|sirena|osteria|osteria_sg|car_2|gelateria|chiosco)$/, BARUSE = /^(pub|circolo|bar|trattoria|gelateria|osteria)$/;
@@ -76,11 +83,13 @@ var Posti = (function () {
     if (b && (b.era === 'E0' || b.era === 'E4')) return 'borgo';
     if (b && b.era === 'E3') return 'ottocento';
     if (b && (b.era === 'E6' || b.era === 'E7')) return 'boom';
-    if (vit) { const corso = RD('corso'), via = RD('via_governo'); if (corso && x > corso.pts[0][0] + 20) return y > (W.sets ? 370 : 1e9) ? 'marina' : 'borgo'; if (via && x < via.pts[0][0] + 10) return 'boom'; return 'ottocento'; }
+    if (vit) { const corso = RD('corso'), via = RD('via_governo') || null, vp = RD('via_porto'); if (corso && x > corso.pts[0][0] + 20) return y > (W.sets ? 370 : 1e9) ? 'marina' : 'borgo';
+      if (via && x < via.pts[0][0] + 10) return 'boom'; if (!via && vp && distRoad(vp, x, y) < 12) return 'boom';   // [mappa_compatta] il boom resta solo nell'angolo della Via del Porto
+      return 'ottocento'; }
     return 'centro';
   }
   function nearestB(x, y, r) { let best = -1, bd = r * r; const a = tx(x), b0 = tx(y), R = Math.ceil(r / TS); for (let j = -R; j <= R; j++) for (let i = -R; i <= R; i++) { const bi = bAt(a + i, b0 + j); if (bi < 0) continue; const d = (i * TS) ** 2 + (j * TS) ** 2; if (d < bd) { bd = d; best = bi; } } return best; }
-  const DENS = { borgo: 1, marina: 1, ottocento: .7, boom: .5, baracche: .6, vittoria: .15, spianata: .1, rocca: 0, centro: .8 };
+  const DENS = { borgo: 1, marina: 1, ottocento: 1, boom: .8, baracche: 1.2, vittoria: .15, spianata: .1, rocca: 0, centro: .8 };   // [mappa_compatta] più gente per m²: ottocento .7→1, boom .5→.8, baracche .6→1,2; la Vittoria resta vuota
 
   // ---------------- LA COSTRUZIONE ----------------
   let ALL = null, BYK = null, GRID = null;
@@ -202,8 +211,10 @@ var Posti = (function () {
         cand.push({ x: cx(a), y: cx(c), sh, s: sh * 2 + walls + hash2(a, c, 77) });
       }
       cand.sort((p, q) => q.s - p.s); const got = [];
-      for (const q of cand) { if (got.length >= 12) break; if (got.some(g => hyp(g.x - q.x, g.y - q.y) < 16)) continue; got.push(q); }
-      got.forEach((q, i) => add(i < 5 ? 'fuoco' : 'lotto_vuoto', q.x, q.y, hash2(q.x | 0, q.y | 0, 3) * 6.283, { baracche: q.sh }));
+      for (const sep of [16, 11]) for (const q of cand) { if (got.length >= 12) break; if (got.some(g => hyp(g.x - q.x, g.y - q.y) < sep)) continue; got.push(q); }
+      // [mappa_compatta] nella città compatta le baracche sono poche: i fuochi restano 3-5, ma almeno due lotti restano vuoti per i ragazzi
+      const nF = Math.max(3, Math.min(5, got.length - 2));
+      got.forEach((q, i) => add(i < nF ? 'fuoco' : 'lotto_vuoto', q.x, q.y, hash2(q.x | 0, q.y | 0, 3) * 6.283, { baracche: q.sh }));
     }
 
     // --- le porte della città: la Porta di Terra della Rocca, il varco del Muro, i capi della Vittoria, il passaggio della ferrovia, la scala dei pescatori ---
@@ -258,6 +269,26 @@ var Posti = (function () {
       const co = RD('corso'); if (co && co.pts) { const p = co.pts[Math.floor(co.pts.length / 2)], q = co.pts[Math.floor(co.pts.length / 2) + 1], ang = Math.atan2(q[1] - p[1], q[0] - p[0]); pts.push([p[0] + Math.sin(ang) * (co.w / 2 + 2), p[1] - Math.cos(ang) * (co.w / 2 + 2), 'Corso']); }
       if (!pts.length && PL.piazza) pts.push([PL.piazza.x + 5, PL.piazza.y - 4, 'Piazza']);
       pts.forEach(([x, y, nome]) => { const q = freeNear(x, y, 3); if (!q) return; let dir = 0; for (let d = 1; d <= 4; d++) for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (tile(q[0] + ox * d, q[1] + oy * d) === T.VIA) dir = Math.atan2(oy, ox); add('edicola', cx(q[0]), cx(q[1]), dir, { nome }); });
+    }
+
+    // --- [mappa_compatta] i posti nuovi della città compatta ---
+    { const pzT = t => (W.pezzi || []).filter(q => q.tipo === t), setK = k => (W.sets || []).find(q => q.k === k);
+      const davantiA = (b, n, k, ex) => { const d = doorOf(b); if (!d) return; for (let j = 1; j <= 3; j++) { const a = d.tx + d.ox * j, c = d.ty + d.oy * j; if (!standT(a, c)) continue; add(k, cx(a), cx(c), Math.atan2(-d.oy, -d.ox), Object.assign({ bi: B.indexOf(b), nome: b.name || b.label }, ex || {})); return; } };
+      // il cypher: alla grata del vapore fra le baracche, la sera (20-02)
+      pzT('grata_vapore').forEach(g => { const q = freeNear(g.x + 2.5, g.y, 3); if (q) add('cypher', cx(q[0]), cx(q[1]), dirTo(cx(q[0]), cx(q[1]), g.x, g.y), { nome: 'la grata del vapore' }); });
+      // la fila: davanti al forno della piazzetta e all'alimentari Wu (la tessera)
+      { const fs = (W.sets || []).find(q => q.k === 'piazzetta' && q.forno); let fb = null, fd = 1e9; if (fs) B.forEach(b => { if (b.shack || !b.door || !(b.use === 'panetteria' || /forno/.test(b.id || ''))) return; const d = hyp(cx(b.x) - fs.x, cx(b.y) - fs.y); if (d < fd) { fd = d; fb = b; } });
+        if (fb && fd < 40) davantiA(fb, 'fila', 'fila', { set: 'forno' }); else if (fs) { const q = freeNear(fs.x, fs.y + 2, 3); if (q) add('fila', cx(q[0]), cx(q[1]), 0, { set: 'forno' }); }
+        const wu = B.find(b => b.id === 'wu' || b.use === 'wu'); if (wu) davantiA(wu, 'fila', 'fila', { nome: 'la tessera da Wu' }); }
+      // il carico: lo Scalo dell'officina e i carri merci sul tronchino della stazione
+      { const sc = setK('scalo'); if (sc) { const q = freeNear((sc.x0 + sc.x1) / 2, (sc.y0 + sc.y1) / 2, 4); if (q) add('carico', cx(q[0]), cx(q[1]), PI / 2, { set: 'scalo' }); }
+        pzT('carro_merci').forEach(c => { for (const dy of [4, -4, 6, -6]) { const q = freeNear(c.x, c.y + dy, 2); if (q) { add('carico', cx(q[0]), cx(q[1]), dirTo(cx(q[0]), cx(q[1]), c.x, c.y), { nome: 'lo scalo merci' }); break; } } }); }
+      // il banco del pesce: davanti alla pescheria (o sulla Piazza della Marina)
+      { const pe = B.find(b => b.use === 'pescheria' && !b.shack); if (pe) davantiA(pe, 'banco_pesce', 'banco_pesce');
+        if (!pe || !seen.some(q => q.k === 'banco_pesce')) { const m = setK('marina'); if (m) { const q = freeNear((m.x0 + m.x1) / 2, (m.y0 + m.y1) / 2, 3); if (q) add('banco_pesce', cx(q[0]), cx(q[1]), PI / 2, { set: 'marina' }); } } }
+      // la parata: la domenica la folla sui due marciapiedi della Vittoria, a un terzo e a due terzi
+      { const vit = RD('vittoria'); if (vit && vit.pts && vit.pts.length > 3) [.33, .66].forEach(f => { const k = Math.floor((vit.pts.length - 1) * f), p0 = vit.pts[k], p1 = vit.pts[k + 1], L = hyp(p1[0] - p0[0], p1[1] - p0[1]) || 1, nx = -(p1[1] - p0[1]) / L, ny = (p1[0] - p0[0]) / L;
+          [-1, 1].forEach(sd => { const q = freeNear(p0[0] + nx * sd * (vit.w / 2 + 1.5), p0[1] + ny * sd * (vit.w / 2 + 1.5), 2); if (q) add('parata', cx(q[0]), cx(q[1]), Math.atan2(-ny * sd, -nx * sd), { nome: 'la parata della Vittoria' }); }); }); }
     }
 
     // --- stenditoi sui tetti: le case basse del borgo, una su sei ---

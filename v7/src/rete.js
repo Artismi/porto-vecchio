@@ -43,7 +43,7 @@ var Rete = (function () {
       m = nodo('mensola', fc.x, fc.z, Math.min(Y_MENS, topOf(b) - .3), { bi, f: fc.f, u: fc.u, yaw: fc.yaw, key }); R.mensole.push(m); if (!R.perCasa.has(bi)) R.perCasa.set(bi, { mensole: [], contatore: null, abusivi: 0, antenna: null }); R.perCasa.get(bi).mensole.push(m); if (Scena && Scena.attivo()) Scena.nota(fc.x, fc.z, 'mensola'); return m; };
     // ---- 1) le dorsali lungo le vie, mensola ogni 8-12 m sul lato lontano dalla camera; cabine; pozzetti dove è interrata ----
     let sPoz = 0;
-    roads.forEach((rd, ri) => { const P = rd.pts, interr = !!INTERRATA[rd.id] || rd.era === 'E4', vic = rd.kind === 'vicolo'; let s = 0, sCab = 50 + hash(ri, 4, 3) * 40, prossima = 6 + hash(ri, 1, 3) * 4, prossTrav = 40 + hash(ri, 2, 3) * 20, prev = null, prevS = -1e9, prevBi = -1; const lamp = PASSO_LAMP[rd.era] || 0; let prossLamp = lamp ? 6 : 1e9, lato = 0;
+    roads.forEach((rd, ri) => { const P = rd.pts, interr = !!INTERRATA[rd.id] || rd.era === 'E4', vic = rd.kind === 'vicolo'; let s = 0, sCab = 30 + hash(ri, 4, 3) * 30, prossima = 6 + hash(ri, 1, 3) * 4, prossTrav = 40 + hash(ri, 2, 3) * 20, prev = null, prevS = -1e9, prevBi = -1; const lamp = PASSO_LAMP[rd.era] || 0; let prossLamp = lamp ? 6 : 1e9, lato = 0;
       for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, ux = (bx - ax) / L, uz = (bz - az) / L, nx = -uz, nz = ux;
         const far = (nx + nz) < 0 ? 1 : -1;   // il lato lontano dalla camera (verso nord-ovest): le facce S ed E guardano la via
         for (let t = 0; t < L; t += 1) { const x = ax + ux * t, z = az + uz * t; s += 1; (vic ? (R.kmVicoli += .001) : 0); R.km += .001;
@@ -60,8 +60,8 @@ var Rete = (function () {
               const n2 = nodo('mensola', nx ? x0 + (far * nx > 0 ? w : 0) : px, nz ? z0 + (far * nz > 0 ? d : 0) : pz, Math.min(Y_TRAV, topOf(b) - .3), { bi, f: nx ? (far * nx > 0 ? 'E' : 'W') : (far * nz > 0 ? 'S' : 'N'), traversata: true });
               seg(prev, n2, 'traversata', { rd: rd.id }); } }
           // la cabina ENEL di quartiere: sulle vie, ogni 150-200 m, sul marciapiede lontano, allacciata alla mensola più vicina
-          if (!vic && !interr && s > sCab && prev && s - prevS < 8) { sCab = s + 150 + hash(ri, k, 9) * 50; const cx = x + nx * far * (rd.w / 2 + 1.6), cz = z + nz * far * (rd.w / 2 + 1.6);
-            const vPorta = B.some(b => [b.door, b.shopFront && b.shopFront.door].some(dt => dt && Math.hypot((dt[0] + .5) * TS - cx, (dt[1] + .5) * TS - cz) < 3.2)); if (vPorta) sCab = s + 8;   /* [pulizia2] mai davanti a un portone: si riprova più avanti */
+          if ((!vic || rd.w >= 5) && !interr && s > sCab && prev && s - prevS < 8) {   /* [mappa_compatta] nella città compatta anche la Rua e la Marina (5 m) sono vie */ sCab = s + 150 + hash(ri, k, 9) * 50; const oc = vic ? rd.w / 2 - 1.1 : rd.w / 2 + 1.6, cx = x + nx * far * oc, cz = z + nz * far * oc;   /* [mappa_compatta] sulla Rua e sulla Marina contro il muro (non c'è marciapiede) */
+            const vPorta = B.some(b => [b.door, b.shopFront && b.shopFront.door].some(dt => dt && Math.hypot((dt[0] + .5) * TS - cx, (dt[1] + .5) * TS - cz) < (vic ? 2 : 3.2))); if (vPorta) sCab = s + (vic ? 2 : 8);   /* [pulizia2] mai davanti a un portone: si riprova più avanti */
             if (!vPorta && open(tl(Math.floor(cx / TS), Math.floor(cz / TS))) && bAt(cx, cz) < 0) { const c = nodo('cabina', cx, cz, 2.3, { yaw: Math.atan2(-nx * far, -nz * far) }); seg(c, prev, 'dorsale', { cabina: true }); } }
           // i lampioni per epoca a interasse fisso, sul lato lontano: nel borgo a braccio sul muro (dalla mensola), altrove a palo sul marciapiede
           if (lamp && s > prossLamp) { prossLamp = s + lamp; const braccio = rd.era === 'E0' || rd.era === 'E2';
@@ -83,7 +83,7 @@ var Rete = (function () {
     const sorgenti = R.nodi.filter(n => (n.k === 'mensola' && !n.traversata) || n.k === 'lampione');
     // [borgo] le baracche fra la ferrovia e il mare stanno lontane dalle facciate: la corrente rubata ci arriva con una fila di pali di legno
     // (uno ogni 22 m, su terreno libero) che parte dalla mensola o dal lampione più vicino; poi le baracche si allacciano ai pali
-    B.forEach(b => { if (!b.shack) return; const cx = b.x * TS + b.w, cz = b.y * TS + b.h; if (sorgenti.some(n => Math.hypot(n.x - cx, n.z - cz) < 25)) return;
+    B.forEach(b => { if (!b.shack) return; const cx = b.x * TS + b.w, cz = b.y * TS + b.h; if (sorgenti.some(n => Math.hypot(n.x - cx, n.z - cz) < 14)) return;   /* [mappa_compatta] il filo rubato è corto (≤ 14 m): il palo arriva fin lì */
       let s0 = null, sd = 1e9; sorgenti.forEach(n => { if (n.k === 'palo') return; const d = Math.hypot(n.x - cx, n.z - cz); if (d < sd) { sd = d; s0 = n; } }); if (!s0 || sd > 160) return;
       let prev = s0; const steps = Math.ceil((sd - 12) / 22);
       for (let k = 1; k <= steps; k++) { const t = Math.min(1, k * 22 / sd); let px = s0.x + (cx - s0.x) * t, pz = s0.z + (cz - s0.z) * t, ok = false;

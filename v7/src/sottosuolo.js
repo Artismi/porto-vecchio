@@ -277,7 +277,7 @@ var Sottosuolo = (function () {
       hint: 'Un parafango, un faro rotto. Una macchina sotto terra.', msg: 'Una vettura militare della guerra, finita in una buca e coperta. Dentro un elmetto, le cartucce, una medaglia nel cruscotto.' },
     { id: 'partigiani', name: 'Il rifugio dei partigiani', kind: 'partigiani', near: 'bivacco_o', tw: 4, th: 3, d: 6.5, zones: [3, 5], items: { radiolina: 1, coperta: 2, mappa: 1, pistola: 1, volantini: 1 },
       hint: 'Tavole, una porta di legno sepolta. Qualcuno ha scavato qui prima di te.', msg: 'Il rifugio dei partigiani del \'44: le brande, la radio, la bandiera, le scritte sulla parete. Se ne sono andati di corsa.' },
-    { id: 'regime', name: 'La stanza murata del regime', kind: 'regime', near: 'archivio', tw: 3, th: 3, d: 4, zones: [1], items: { fascicolo: 3, prove: 1, documenti: 1, timbro_falso: 1 },
+    { id: 'regime', name: 'La stanza murata del regime', kind: 'regime', near: 'archivio', prima: 'stazione',   /* [mappa_compatta] sotto la stazione, se c'è */ tw: 3, th: 3, d: 4, zones: [1], items: { fascicolo: 3, prove: 1, documenti: 1, timbro_falso: 1 },
       hint: 'Un muro di mattoni nuovi, dentro la terra. Troppo nuovi.', msg: 'Una stanza murata: gli schedari del regime, i fascicoli che non dovevano esistere, i timbri, le foto. Li hanno nascosti qui sotto l\'Archivio.' },
     { id: 'cani', name: 'Il cimitero dei cani', kind: 'cani', near: 'giardini', tw: 3, th: 2, d: 3, items: { catena: 1 },
       hint: 'Una crocetta di legno, un collare. Ossa piccole.', msg: 'Il cimitero dei cani dei giardini: croci di legno coi nomi, Fido, Lampo, Nerina. Un collare col campanello.' },
@@ -301,7 +301,7 @@ var Sottosuolo = (function () {
       const d = Array.isArray(q.d) ? q.d[0] + hash(x0, y0, 36) * (q.d[1] - q.d[0]) : q.d;
       out.push({ id: q.n ? q.id + '_' + k : q.id, name: q.name, kind: q.kind, x0, y0, tw: q.tw, th: q.th, f: e - d, d, items: q.items, hint: q.hint, msg: q.msg, light: LIGHT[q.kind], x: cen(x0) + (q.tw - 1) * TS / 2, y: cen(y0) + (q.th - 1) * TS / 2 }); };
     FINDS_DEF.forEach(q => {
-      if (!q.n) { const P = G.PLACES[q.near]; if (!P) return; const s = spot(P.x, P.y, q, 35); if (s) add(q, s[0], s[1], 0); return; }
+      if (!q.n) { const P = (q.prima && G.PLACES[q.prima]) || G.PLACES[q.near]; if (!P) return; const s = spot(P.x, P.y, q, 35); if (s) add(q, s[0], s[1], 0); return; }
       let k = 0; for (let t = 0; t < q.among.length * 3 && k < q.n; t++) { const P = G.PLACES[q.among[(t * 7 + 3) % q.among.length]]; if (!P) continue; const s = spot(P.x + (hash(t, q.id.length, 37) - .5) * 30, P.y + (hash(t, q.id.length, 38) - .5) * 30, q, 39 + t); if (s) { add(q, s[0], s[1], k); k++; } }
     });
     return out;
@@ -335,7 +335,7 @@ var Sottosuolo = (function () {
           if (put(tx, ty, EL[idx(tx, ty)] - 4.4, K.FOGNA)) sewer.push([tx, ty]);
           last = [tx, ty];
           // un tombino ogni trenta metri, sulla carreggiata, mai troppo vicino a un altro
-          if (run - tomb > 30 && G.tileAt(tx, ty) === T.VIA && !portals.some(Q => Q.kind === 'tombino' && Math.hypot(Q.s[0] - tx, Q.s[1] - ty) < 8) && !sottoPezzo((tx + .5) * TS, (ty + .5) * TS)) { /* [pulizia2] mai sotto un arco, un portico, una tettoia */ portals.push({ kind: 'tombino', s: [tx, ty], u: [tx, ty], name: rd.name }); tomb = run; }
+          if (run - tomb > 30 && (G.tileAt(tx, ty) === T.VIA || (rd.fogna && G.tileAt(tx, ty) === T.COB)) &&   /* [mappa_compatta] anche sulla Rua e sulla Marina (la chiavica del borgo) */ !portals.some(Q => Q.kind === 'tombino' && Math.hypot(Q.s[0] - tx, Q.s[1] - ty) < 8) && !sottoPezzo((tx + .5) * TS, (ty + .5) * TS)) { /* [pulizia2] mai sotto un arco, un portico, una tettoia */ portals.push({ kind: 'tombino', s: [tx, ty], u: [tx, ty], name: rd.name }); tomb = run; }
         }
       }
     });
@@ -455,12 +455,16 @@ var Sottosuolo = (function () {
     const cityAt = (() => { const xs = [], ys = []; for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) if (W.zone[idx(tx, ty)] === ZC) { xs.push(tx); ys.push(ty); }
       if (!xs.length) return () => null; const q = (a, k) => a.slice().sort((m, n) => m - n)[Math.floor(a.length * k)], X0 = q(xs, .1), X1 = q(xs, .9), Y0 = q(ys, .1), Y1 = q(ys, .9);
       return (fx, fy) => { const gx = X0 + (X1 - X0) * fx, gy = Y0 + (Y1 - Y0) * fy; let b = null, bd = 1e9; for (let i = 0; i < xs.length; i++) { const d = (xs[i] - gx) ** 2 + (ys[i] - gy) ** 2; if (d < bd) { bd = d; b = i; } } return [cen(xs[b]), cen(ys[b])]; }; })();
-    const aS = cityAt(.2, .92), aN = cityAt(.8, .08);
+    // [mappa_compatta] nella città compatta la linea va dal Mercato (accanto alla tettoia, verso i Giardini) alle Mura (la Via delle Mura, sotto la vedetta)
+    const MKT = (W.sets || []).find(s => s.k === 'mercato'), VM = (W.roads || []).find(r => r.id === 'vic_mura');
+    const VMq = VM ? VM.pts.reduce((b, q) => (!b || Math.hypot(q[0] - 1455, q[1] - 288) < Math.hypot(b[0] - 1455, b[1] - 288) ? q : b), null) : null;
+    const COMP = !!(W.luoghi && MKT && VMq);
+    const aS = COMP ? [MKT.x - 12, MKT.y + 9] : cityAt(.2, .92), aN = COMP ? [VMq[0], VMq[1] + 6] : cityAt(.8, .08);
     const S0 = aS && spot(...aS), N0 = aN && spot(...aN), metro = { ok: false };
     if (S0 && N0) {
       const ax = cen(S0[0]), ay = cen(S0[1]), bx = cen(N0[0]), by = cen(N0[1]), Ld = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / Ld, uy = (by - ay) / Ld, nx = -uy, ny = ux;
       const R = 4.4, OFF = 11;   // raggio dell'elica (mezza distanza tra le gallerie); la banchina comincia 11 m oltre l'ingresso
-      const st = [{ id: 'sud', name: 'Periferia Sud', ent: S0, sgn: 1 }, { id: 'nord', name: 'Periferia Nord', ent: N0, sgn: -1 }];
+      const st = [{ id: 'sud', name: COMP ? 'Mercato' : 'Periferia Sud', ent: S0, sgn: 1 }, { id: 'nord', name: COMP ? 'Mura' : 'Periferia Nord', ent: N0, sgn: -1 }];
       st.forEach(S => {
         const ex = cen(S.ent[0]), ey = cen(S.ent[1]); S.x = ex + ux * OFF * S.sgn; S.y = ey + uy * OFF * S.sgn;
         let lo = 1e9; for (let a = -10; a <= 10; a += 2) for (let l = -3; l <= 3; l += 3) { const [tx, ty] = ti(S.x + ux * a + nx * l, S.y + uy * a + ny * l); if (inb(tx, ty)) lo = Math.min(lo, EL[idx(tx, ty)]); }

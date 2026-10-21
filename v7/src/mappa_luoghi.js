@@ -1,6 +1,7 @@
 // Mappa dei luoghi: l'isola dalle caselle vere, con tutti i posti evidenziati per categoria.
 // Uso (dalla cartella src): node mappa_luoghi.js  →  scrive ../mappa_luoghi.html (pagina unica, si apre nel browser)
-global.World = require('./world.js'); global.Interior = require('./interiors.js'); global.Game = require('./game.js');
+// [mappa_compatta] PV_CITTANUOVA=1: la città compatta, coi suoi luoghi-missione
+global.World = require(process.env.PV_CITTANUOVA === '1' ? './world_cittanuova.js' : './world.js'); global.Interior = require('./interiors.js'); global.Game = require('./game.js');
 const fs = require('fs'), path = require('path');
 const G = Game, M = G.MAP, GW = G.GW, GH = G.GH, TS = G.TS;
 
@@ -25,6 +26,8 @@ const catOf = p => {
   return 'natura';
 };
 const places = Object.values(G.PLACES).filter(p => p.name).map(p => { const b = BI[p.id]; return [p.name, catOf(p), Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10, b ? [b.x, b.y, b.w, b.h] : 0]; });
+// [mappa_compatta] i dodici luoghi-missione (W.luoghi, MAPPA_COMPATTA.md sez. 4): un segno ciascuno, col numero e i ruoli
+(World.luoghi || []).forEach(l => places.push([l.n + '. ' + l.nome + ' (' + l.ruoli.join(', ') + ')', 'missione', l.x, l.y, 0]));
 const zone = Buffer.from(M.zone);
 const data = { GW, GH, TS, T: G.T, Z: M.Z, grid: grid.toString('base64'), elev: elev.toString('base64'), zone: zone.toString('base64'), places };
 

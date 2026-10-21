@@ -30,6 +30,11 @@ var Popolo = (function () {
     maxProj: 2,        // progetti in testa contemporaneamente
     mind: null,        // (st, n, riassunto) => … : qui si aggancerà il modello linguistico per la riflessione notturna
   };
+  // [mappa_compatta] la città compatta è più piena (MAPPA_COMPATTA.md sez. 6): ~4,8 abitanti ogni 1000 m² invece di ~2. Vale solo sulla
+  // mappa che ha i luoghi-missione (W.luoghi); la mappa vecchia, più larga, resta com'era (con più gente le scene si rompono)
+  const COMPATTA = !!(W && W.luoghi);
+  if (COMPATTA) Object.assign(CFG, { max: 260, nearR: 190, nearShare: .85, maxNear: 84 });
+
 
   // ---------------- CALENDARIO ----------------
   // la partita comincia martedì alle 18: il giorno 0 è un martedì
@@ -2072,6 +2077,7 @@ var Popolo = (function () {
   // quasi tutte sparite.
   const PO = () => (typeof Posti !== 'undefined' ? Posti : null);
   const FILL = { every: 1.1, r: 64, maxIn: 42, dur: [40, 110], hide: 7, cfg: true };   // secondi reali fra due giri; raggio dal giocatore; quanti al massimo nei posti; minuti di gioco per sosta; porta a meno di 7 m dal giocatore: non si esce da lì
+  if (COMPATTA) Object.assign(FILL, { r: 56, maxIn: 56 });   // [mappa_compatta] i posti più pieni, in un raggio più stretto
   // le pose per tipo di posto (anim_vita.js; _su: solo le braccia) e quello che si ha in mano (anim_mano.js: si vede da fermi, senza una posa che impegni le mani)
   const FPOSE = {
     dehors: ['siede', 'siede', 'siede', 'fuma_su'], pensilina: ['aspetta', 'orologio_su', 'braccia_su', 'aspetta'], fermata: ['aspetta', 'orologio_su', 'tasche_su'], panchina: ['siede', 'siede', 'legge_su', 'siede'],

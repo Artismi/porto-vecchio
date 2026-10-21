@@ -37,7 +37,11 @@ const m = C.misura(F, tenuti);
 ok(m.porta + m.vetrina + m.scala === 0, `nessun albero davanti a un fronte (${JSON.stringify(m)})`);
 ok(tenuti.every(t => !porte.some(q => { const dx = t.x - q.x, dz = t.z - q.z, v = dx * q.nx + dz * q.nz, u = Math.abs(-dx * q.nz + dz * q.nx); return v > 0 && v < C.PROF && u < 2; })), 'ogni albero ad almeno 2 m dall\'asse di ogni porta');
 const corso = tenuti.filter(t => /Corso/.test(t.rd));
-ok(corso.length >= 10, `il Corso resta alberato (${corso.length} lecci)`);
+// [mappa_compatta] il Corso della città compatta è lungo 110 m (prima 170): si contano i lecci ogni 100 m
+const rdC = (W.roads || []).find(r => r.id === 'corso'), lC = rdC ? rdC.pts.reduce((L, q, i, P) => i ? L + Math.hypot(q[0] - P[i - 1][0], q[1] - P[i - 1][1]) : 0, 0) : 1;
+// [mappa_compatta] passo 8: il filare del Corso sta su un lato solo (MAPPA_COMPATTA sez. 7): ogni 12 m al più 8,3 ogni 100 m, se ne vogliono 5
+ok(corso.length / lC * 100 >= 5 && corso.every(t => t.sd === corso[0].sd), `il Corso resta alberato, da un lato (${corso.length} lecci su ${Math.round(lC)} m)`);
+ok(!S.some(s => s.rd.nudo), 'niente alberi sulle vie nude della città compatta (Via della Stazione, Via del Porto)');
 // passo: due alberi dello stesso lato della stessa via non stanno più vicini del passo
 const vicini = tenuti.filter((a, i) => tenuti.some((b, j) => j !== i && a.rd === b.rd && a.sd === b.sd && Math.hypot(a.x - b.x, a.z - b.z) < a.passo - 2)).length;
 ok(vicini <= tenuti.length * .05, `il passo del filare si legge (${vicini} troppo vicini su ${tenuti.length})`);
@@ -45,6 +49,7 @@ ok(vicini <= tenuti.length * .05, `il passo del filare si legge (${vicini} tropp
 ok(['consegna', 'cantiere'].every(k => C.SCENE_A_TERRA.includes(k)), 'pannelli e cartoni solo nelle scene: ' + C.SCENE_A_TERRA.join(', '));
 // 5) [spianata2] il palco del potere (palco.js): le cose disegnate al loro posto, le vie libere, le cose a terra solo nelle scene
 { const PA = require(path.join(src, 'palco.js')), Pl = PA.piano(W, W.BUILDINGS, tile, W.T, TS), T = W.T;
+  if (process.env.V) console.log("palco", JSON.stringify({ asse: Pl && Pl.asse, eli: Pl && Pl.eliporto, ant: Pl && Pl.antenna, F: [W.FORT.x, W.FORT.y, W.FORT.tip] }));
   ok(!!Pl && Pl.carri.length === PA.CARRO.n && Pl.container.length === PA.CONT.n && !!Pl.eliporto && !!Pl.antenna, `il palco ha i suoi pezzi (carri ${Pl && Pl.carri.length}, container ${Pl && Pl.container.length}, eliporto, antenna)`);
   const sotto = (x, z, hx, hz) => { const S = new Set(); for (let a = -hx; a <= hx + .01; a += .5) for (let b = -hz; b <= hz + .01; b += .5) S.add(tile(Math.floor((x + a) / TS), Math.floor((z + b) / TS))); return [...S]; };
   const pezzi = [].concat(Pl.carri.map(c => ['carro', c.x, c.z, PA.CARRO.hx, PA.CARRO.hz]), Pl.container.map(c => ['container', c.x, c.z, PA.CONT.hx, PA.CONT.hz]), [['eliporto', Pl.eliporto.x, Pl.eliporto.z, PA.PAD, PA.PAD], ['antenna', Pl.antenna.x, Pl.antenna.z, PA.ANT.r, PA.ANT.r]]);

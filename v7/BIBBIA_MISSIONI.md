@@ -122,6 +122,41 @@ Per ogni regione: carattere, chi ci sta, come ci si arriva, e alcuni spunti di m
 **I. Il porto cargo e militare (x 1240–1300).** Moli di pietra larghi, gru, container, **Molo dell'Impero** con la nave, motovedette, rimorchiatore, **Eliporto** e hangar degli elicotteri, deposito della Base.
 - Spunti: lo sbarco del lunedì all'alba; una cassa che non deve arrivare al Supermercato del Popolo; un passaggio clandestino verso il continente.
 
+### 3.2bis La città compatta (la città nuova, `?cittanuova`) — [mappa_compatta]
+La città nuova è stata **compattata** (progetto in `src/progetto_citta/MAPPA_COMPATTA.md`): sta tutta fra **x 1222 e 1610**, y 250-452 (coordinate
+di gioco della città nuova, non quelle della mappa vecchia qui sopra). Le regioni **D**, **E** e **G** cambiano così:
+- **D (periferia ovest)**: niente più quartiere a ovest della stazione. A ovest di x 1250 ci sono i **Giardini di Ponente** (sotto: la
+  **Città dei Topi**), la pineta e gli orti. Officina, Discoteca/Radio Luna e il covo si sono spostati dentro la città (vedi sotto).
+- **E (quartiere del governo)**: tolto come quartiere. Il **Palazzo del Governo** sta sul Corso, l'**Archivio** e la **Biblioteca** sul
+  piazzale della stazione; la **stanza murata del regime** è sotto la stazione. Il boom resta solo lungo la **Via del Porto**.
+- **G (periferia est, Lido)**: gli alberghi (Flamingo, Paradiso, Oceano, Miramare, Gabbiano, Stella) stanno nel borgo e sulla marina; la
+  **discarica** è alle **baracche** dietro il rilevato della ferrovia (sotto: l'**autobus sepolto**).
+- **H/I (la Rocca)**: la Rocca è un **castello aragonese a mare** su uno scoglio, oltre un canale, col ponte e la Porta, il **mastio col faro
+  rosso**, il torrione, il bastione, la darsena interna con l'arcone e la **porta d'acqua**. Ci si entra dal ponte (sorvegliato) o per mare.
+
+**I dodici luoghi-missione** (sono anche dato: `World.luoghi`, con ruoli, icona, firma, landmark, ingressi e segreto; la mappa dei luoghi li
+segna in rosa con `PV_CITTANUOVA=1 node src/mappa_luoghi.js`):
+
+| n | luogo | dove (x, y) | ruoli | il segreto |
+|---|---|---|---|---|
+| 1 | Bar Da Gino, Piazzetta del Pozzo | 1428, 324 | hub | i tetti dal giro della Porta |
+| 2 | Forno di Lella, Piazzetta del Forno | 1356, 367 | hub, premio | la cantina calda, dalla cisterna del Pozzo |
+| 3 | San Rocco e la cripta | 1386, 292 | segreto | cripta e catacombe verso il rifugio |
+| 4 | Pescheria e calata, Piazza della Marina | 1395, 378 | hub, premio | la grata sotto il Magazzino Neri |
+| 5 | Officina dello Scalo | 1292, 377 | premio | in gozzo dalla darsena allo scivolo |
+| 6 | Covo nel bunker delle mura | 1445, 299 | segreto | il cunicolo dal rifugio sotto l'adunata |
+| 7 | Radio Luna (la torre dell'acqua) | 1301, 271 | segreto, premio | sopra il rilevato, sui carri merci |
+| 8 | Mercato ottagonale | 1274, 343 | hub, pericolo | i tetti dell'Ottocento (il giro del Mercato) |
+| 9 | Stazione e scalo merci | 1273, 309 | pericolo, premio | la stanza murata sotto il fabbricato |
+| 10 | Baracche e grata del vapore | 1286, 271 | hub, segreto | l'autobus sepolto sotto la discarica |
+| 11 | Posto di blocco della Vittoria | 1469, 343 | pericolo | i tetti delle case mozzate |
+| 12 | La Rocca | 1556, 334 | pericolo | per mare fino alla porta d'acqua; il cunicolo e la cisterna |
+
+Le **porte** della città sono sei (Porta di Terra, sottoportico dei Bottai, sottopasso Cavour, scala dei pescatori, posto di blocco,
+**passaggio a livello**), ognuna con l'alternativa (tetti, fogna o l'altra porta). I giri sui tetti: Porta, Forno, campanile, marina,
+**Mercato**, e il camminamento delle mura. Tipi di posto nuovi per le scene: `cypher` (alla grata, 20-02), `fila` (Forno, Wu, 6-9),
+`carico` (Scalo, carri merci), `banco_pesce`, `parata` (la Vittoria, la domenica alle 11).
+
 ### 3.3 Il mare e la costa
 - **Tipi di riva**: spiagge (Spiaggia Lunga, Spiaggetta del Gabbiano, Lido), cale (di tramontana, delle Case della Tramontana, di San Giacomo, caletta della fiumara), scogli (Punta Scogli, collo nord, sotto il Monte, lungomare nord, periferia est), falesie (costa alta di tramontana, sotto il Monte), porti.
 - Fondale: piano davanti alle spiagge, medio sotto gli scogli, subito fondo sotto la falesia; bacini dei porti dragati a 4,5 m.
@@ -132,7 +167,7 @@ Per ogni regione: carattere, chi ci sta, come ci si arriva, e alcuni spunti di m
 - **Fogne** sotto le strade grandi della città, con 52 tombini ogni ~30 m.
 - **Posti di sotto**: Cripta di San Rocco, Cripta dei marinai (Santuario), Vecchie carceri (sotto la caserma, si sale in caserma), Rifugio antiaereo (sotto la Piazza del Governo, si sale nel Palazzo), Bunker della guerra (Collina Nera, botola nel bosco), Deposito dei contrabbandieri (sotto il Magazzino Neri, grata sulla calata), Spaccio sotto il Flipper, Mercato di sotto (sotto la piazza), Città dei Topi (cisterna sotto i giardini). Tutti collegati alle fogne.
 - **Gente di sotto**: 13 persone, tra cui Tonino «Bavaglio» (contrabbando: sigarette americane, jeans, cassette, vodka, riviste proibite) e Gerri; quattro banchi (contrabbando, spaccio, ricettatore, Topi).
-- **Metropolitana**: da Periferia Sud a Periferia Nord, circa 293 m, due gallerie a mezza elica (a metà una sopra l'altra, a −16,6 e −24,7 m), due treni che fanno la spola.
+- **Metropolitana**: da Periferia Sud a Periferia Nord, circa 293 m (nella città compatta: dal **Mercato** alle **Mura**, 187 m), due gallerie a mezza elica (a metà una sopra l'altra, a −16,6 e −24,7 m), due treni che fanno la spola.
 - **Grotte naturali**: Grotta del Romito (dal fondo della Gola del Lupo a un pozzo sul ciglio, col toro inciso) ed Eremo del Romito (dalla cengia all'altopiano).
 - **Roba sepolta**: la cassa del brigante sotto il Paese Vecchio, la roba della guerra sotto i ruderi, più altri due punti.
 - **Sotto terra nessuno ti vede.**
