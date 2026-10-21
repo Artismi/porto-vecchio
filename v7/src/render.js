@@ -5,7 +5,7 @@
 var Render = (function () {
   'use strict';
   const G = Game, TS = G.TS, M = G.MAP, OX = G.OX;
-  let renderer, scene, camera, rt, postScene, postCam, postMat;
+  let renderer, scene, camera, rt, postScene, postCam, postMat, PSC = null;
   let hemi, moon, fillAmb;
   const FOGTEAL = new THREE.Color('#2c5a62');
   const dyn = { people: {}, vespas: {}, lights: [], flicker: [], signs: [], buildings: [], water: null, rain: null, motes: null, laundry: [], markers: null, boats: [], gulls: [], beams: [], chasers: [], spin: [], sky: null };
@@ -13235,6 +13235,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     renderer.setPixelRatio(1);
+    // [carico] three controlla ogni programma della scheda video subito dopo averlo avviato, e così li aspetta uno alla volta
+    // (190 nella città nuova: era il grosso dell'attesa all'avvio). Senza il controllo il browser li prepara insieme, su più
+    // processori, mentre il menu resta vivo (KHR_parallel_shader_compile). Gli errori degli shader si vedono con ?debug
+    renderer.debug.checkShaderErrors = /[?&]debug\b/.test(location.search);
+    try { PSC = renderer.getContext().getExtension('KHR_parallel_shader_compile'); } catch (e) { PSC = null; }
     canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); try { localStorage.setItem('pvLow', '1'); } catch (x) {} console.warn('[grafica] contesto perso: ricarico in qualità ridotta'); setTimeout(() => location.reload(), 400); });   /* [unione10] */
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;   /* [plastica2] ombre morbide da plastico: le dure a punti di 4,5 cm facevano trine e scalini */
     scene = new THREE.Scene(); scene.background = new THREE.Color('#0d0b1a');
@@ -14510,5 +14515,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { VARCO, DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { get __lazy1() { return LAZY1; }, get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  // [carico] quanti programmi della scheda video sono già pronti (0..1): chiederlo non fa aspettare. Senza l'estensione si
+  // risponde 1 e il primo fotogramma li aspetta come sempre
+  function shadersPronti() {
+    const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
+    const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
+  }
+  return { get __lazy1() { return LAZY1; }, get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, shadersPronti, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
