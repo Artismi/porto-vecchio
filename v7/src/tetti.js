@@ -718,7 +718,7 @@ var Tetti = (function () {
     B.forEach((b, bi) => { if (!ok3(b)) return;
       const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, W1 = b.w * TS, D1 = b.h * TS;
       const giro = sulGiro.has(bi), piazza = piazze.some(n => hyp(n.x - cx, n.y - cy) < 30), lungo = dom.some(p => p.pts.some(q => hyp(q[0] - cx, q[1] - cy) < (p.k === 'dominante' ? 12 : 9)));
-      const s = (giro ? 3 : 0) + (piazza ? 2 : 0) + (lungo ? 1.5 : 0) + h3(b.x, b.y, 31) * .9 - (W1 * D1 < 20 ? .8 : 0);   // i terrazzini di 4 × 4 m vengono dopo
+      const s = (giro ? 3 : 0) + (piazza ? 2 : 0) + (lungo ? 1.5 : 0) + h3(b.x, b.y, 31) * .9 - (W1 * D1 < 20 ? .8 : 0) - (b.era === 'E3' ? 1.2 : 0);   // i terrazzini di 4 × 4 m vengono dopo; l'Ottocento è soprattutto tegole
       const puo = b.era !== 'E4' && W1 >= 4 && D1 >= 4;
       cand.push({ b, bi, s, giro, piazza, lungo, puo });
     });
@@ -729,7 +729,7 @@ var Tetti = (function () {
   // il tetto di una casa: manto, forma, gruppi
   function pianoCasa3(c, giri) {
     const { b, bi } = c, era = b.era, x0 = b.x * TS, y0 = b.y * TS, W1 = b.w * TS, D1 = b.h * TS, fl = Math.max(1, b.fl || 1), q = s => h3(b.x, b.y, s);
-    const piano = era === 'E2' || era === 'E4' || era === 'E6' || b.torre || b.annesso || c.vivo || c.giro || (era === 'E0' ? q(41) < .12 : q(41) < .15);
+    const piano = era === 'E2' || era === 'E4' || era === 'E6' || b.torre || b.annesso || c.vivo || c.giro;   // i calmi del borgo e dell'Ottocento sono tutti falde: il campo di coppi e di tegole che ripete
     const P = { bi, era, vivo: !!c.vivo, giro: c.giro, piazza: c.piazza, lungo: c.lungo, tipo: piano ? 'piano' : 'falde', manto: piano ? (era === 'E4' || era === 'E6' ? 'quadrotti' : 'pianelle') : MANTO3[era] || 'coppi', gruppi: [], riserve: [], corr: [],
       rect: { x0: x0 + M3, y0: y0 + M3, x1: x0 + W1 - M3, y1: y0 + D1 - M3 } };
     if (!piano) {   // la falda: forma, colmo (lungo il lato lungo, al centro), pendenza come render.js

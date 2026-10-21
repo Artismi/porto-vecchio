@@ -43930,7 +43930,7 @@ var Tetti = (function () {
     B.forEach((b, bi) => { if (!ok3(b)) return;
       const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, W1 = b.w * TS, D1 = b.h * TS;
       const giro = sulGiro.has(bi), piazza = piazze.some(n => hyp(n.x - cx, n.y - cy) < 30), lungo = dom.some(p => p.pts.some(q => hyp(q[0] - cx, q[1] - cy) < (p.k === 'dominante' ? 12 : 9)));
-      const s = (giro ? 3 : 0) + (piazza ? 2 : 0) + (lungo ? 1.5 : 0) + h3(b.x, b.y, 31) * .9 - (W1 * D1 < 20 ? .8 : 0);   // i terrazzini di 4 × 4 m vengono dopo
+      const s = (giro ? 3 : 0) + (piazza ? 2 : 0) + (lungo ? 1.5 : 0) + h3(b.x, b.y, 31) * .9 - (W1 * D1 < 20 ? .8 : 0) - (b.era === 'E3' ? 1.2 : 0);   // i terrazzini di 4 × 4 m vengono dopo; l'Ottocento è soprattutto tegole
       const puo = b.era !== 'E4' && W1 >= 4 && D1 >= 4;
       cand.push({ b, bi, s, giro, piazza, lungo, puo });
     });
@@ -43941,7 +43941,7 @@ var Tetti = (function () {
   // il tetto di una casa: manto, forma, gruppi
   function pianoCasa3(c, giri) {
     const { b, bi } = c, era = b.era, x0 = b.x * TS, y0 = b.y * TS, W1 = b.w * TS, D1 = b.h * TS, fl = Math.max(1, b.fl || 1), q = s => h3(b.x, b.y, s);
-    const piano = era === 'E2' || era === 'E4' || era === 'E6' || b.torre || b.annesso || c.vivo || c.giro || (era === 'E0' ? q(41) < .12 : q(41) < .15);
+    const piano = era === 'E2' || era === 'E4' || era === 'E6' || b.torre || b.annesso || c.vivo || c.giro;   // i calmi del borgo e dell'Ottocento sono tutti falde: il campo di coppi e di tegole che ripete
     const P = { bi, era, vivo: !!c.vivo, giro: c.giro, piazza: c.piazza, lungo: c.lungo, tipo: piano ? 'piano' : 'falde', manto: piano ? (era === 'E4' || era === 'E6' ? 'quadrotti' : 'pianelle') : MANTO3[era] || 'coppi', gruppi: [], riserve: [], corr: [],
       rect: { x0: x0 + M3, y0: y0 + M3, x1: x0 + W1 - M3, y1: y0 + D1 - M3 } };
     if (!piano) {   // la falda: forma, colmo (lungo il lato lungo, al centro), pendenza come render.js
@@ -63313,9 +63313,9 @@ var Render = (function () {
   function vitaTetto1(P, g, top, r, bi, low, prog) {
     const W = P.w, D = P.d, ins = (x, z, m) => x > P.x0 + m && x < P.x0 + W - m && z > P.z0 + m && z < P.z0 + D - m;
     // acqua ferma nelle conche del lastrico, toppe di guaina nuova, muschio negli angoli
-    for (let k = 0, n = 1 + Math.floor(r() * 3); k < n; k++) { const x = P.x0 + 1 + r() * (W - 2), z = P.z0 + 1 + r() * (D - 2); const m = new THREE.Mesh(blobGeo1(.5 + r() * .9, .4 + r() * .6, r), puddleMat1()); m.position.set(x, top + .09, z); m.rotation.y = r() * 3; g.add(m); }
-    for (let k = 0, n = Math.floor(r() * 3); k < n; k++) { const pw = .9 + r() * 1.4, pd = .7 + r() * 1.1, x = P.x0 + 1 + r() * (W - 2 - pw), z = P.z0 + 1 + r() * (D - 2 - pd); if (!ins(x, z, .8)) continue; const m = new THREE.Mesh(new THREE.PlaneGeometry(pw, pd).rotateX(-Math.PI / 2), patchMat1(pick(r, ['#2e2c30', '#3a383c', '#5a5a5e']))); m.position.set(x + pw / 2, top + .085, z + pd / 2); m.rotation.y = (r() - .5) * .2; g.add(m); }
-    [[P.x0 + .6, P.z0 + .6], [P.x0 + W - .6, P.z0 + .6], [P.x0 + .6, P.z0 + D - .6]].forEach(([x, z]) => { if (r() < .55) { const m = new THREE.Mesh(blobGeo1(.45 + r() * .3, .35 + r() * .3, r), patchMat1(pick(r, ['#4a5a34', '#56603a', '#3e4a30']))); m.position.set(x, top + .088, z); g.add(m); } });
+    for (let k = 0, n = P.chiuso ? 0 : 1 + Math.floor(r() * 3); k < n; k++) { /* [tetti3] il lastrico del piano è pulito: niente macchie scure sparse */ const x = P.x0 + 1 + r() * (W - 2), z = P.z0 + 1 + r() * (D - 2); const m = new THREE.Mesh(blobGeo1(.5 + r() * .9, .4 + r() * .6, r), puddleMat1()); m.position.set(x, top + .09, z); m.rotation.y = r() * 3; g.add(m); }
+    for (let k = 0, n = P.chiuso ? 0 : Math.floor(r() * 3); k < n; k++) { const pw = .9 + r() * 1.4, pd = .7 + r() * 1.1, x = P.x0 + 1 + r() * (W - 2 - pw), z = P.z0 + 1 + r() * (D - 2 - pd); if (!ins(x, z, .8)) continue; const m = new THREE.Mesh(new THREE.PlaneGeometry(pw, pd).rotateX(-Math.PI / 2), patchMat1(pick(r, ['#2e2c30', '#3a383c', '#5a5a5e']))); m.position.set(x + pw / 2, top + .085, z + pd / 2); m.rotation.y = (r() - .5) * .2; g.add(m); }
+    [[P.x0 + .6, P.z0 + .6], [P.x0 + W - .6, P.z0 + .6], [P.x0 + .6, P.z0 + D - .6]].forEach(([x, z]) => { if (r() < .55 && !P.chiuso) { const m = new THREE.Mesh(blobGeo1(.45 + r() * .3, .35 + r() * .3, r), patchMat1(pick(r, ['#4a5a34', '#56603a', '#3e4a30']))); m.position.set(x, top + .088, z); g.add(m); } });
     // la canalina dei cavi lungo il parapetto nord con la scatola di derivazione, e i cavi che scendono
     const q1 = cn1() && prog !== 'vissuto' && prog !== 'ritrovo' && prog !== 'tecnico';   // [facciate2] nella città nuova la roba sui tetti è del programma: sugli altri solo il lastrico col suo tempo
     if (r() < .7 && !q1) { const L = W - 2.4; if (L > 1.5) { const cz = P.z0 + .48; const cb = fB(L, .07, .1, '#8a8a86', 'galv', .01); cb.position.set(P.x0 + 1.2 + L / 2, top + .14, cz); g.add(cb); const jb = fB(.28, .24, .14, '#c8c4b4', 'plastic', .02); jb.position.set(P.x0 + 1.2 + L * (.2 + r() * .6), top + .24, cz + .04); g.add(jb); } }
