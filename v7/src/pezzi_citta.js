@@ -18,7 +18,7 @@ var PezziCitta = (function () {
   const PI = Math.PI, HP = PI / 2;
   // ---------------- tavolozza: pochi materiali condivisi per genere ----------------
   const COL = {
-    tufo: '#b2a283', tufoScuro: '#958667', travertino: '#ddd3bb', travertinoScuro: '#b4a990',   /* [pezzi2] il tufo vero, grigio-giallo spento (era #c9a86a) */ travertinoChiaro: '#ece4d0', intradosso: '#a89e88', tenda: '#d8ccb0', tendaRossa: '#a8483a', tapparella: '#cbc2aa',   // [facciate2]
+    tufo: '#b2a283', tufoScuro: '#958667', carparo: '#c2a167', carparoScuro: '#a1834f',   /* [rocca2] il carparo dorato del castello a mare */ travertino: '#ddd3bb', travertinoScuro: '#b4a990',   /* [pezzi2] il tufo vero, grigio-giallo spento (era #c9a86a) */ travertinoChiaro: '#ece4d0', intradosso: '#a89e88', tenda: '#d8ccb0', tendaRossa: '#a8483a', tapparella: '#cbc2aa',   // [facciate2]
     pietra: '#8d8378', pietraScura: '#6e665c', pietraChiara: '#a9a090',   // la pietra di zoccoli, cornici, chiavi di volta (era finita nel commento qui sopra)
     ghisa: '#2f4a3a', cemento: '#9a968e', cementoScuro: '#7c7873', ferro: '#4a4c50', ferroScuro: '#2e3034', ruggine: '#7a4a30',
     maiolica: '#2e7d5a', intonaco: '#d3c5a3', calce: '#ddd7c8', intonacoRosso: '#b5604a', ocra: '#c29a5e', coppi: '#8f6656', tegole: '#9b5a3c', legno: '#7a5a38',
@@ -62,7 +62,7 @@ var PezziCitta = (function () {
   };
   COL.persiana = '#41584a';   // [pezzi2] le persiane di legno verde, con le stecche (genere lamelle)
   const VESTI = {
-    tufo: { g: 'conci', rh: .35, rl: .62, gi: .02, tono: .34, manca: .003, u: 1 }, tufoScuro: { g: 'conci', rh: .35, rl: .62, gi: .02, tono: .3, manca: .004, u: 1 },
+    tufo: { g: 'conci', rh: .35, rl: .62, gi: .02, tono: .34, manca: .003, u: 1 }, carparo: { g: 'conci', rh: .42, rl: .82, gi: .018, tono: .3, manca: .002, u: 1 }, carparoScuro: { g: 'conci', rh: .42, rl: .82, gi: .018, tono: .28, manca: .003, u: 1 }, tufoScuro: { g: 'conci', rh: .35, rl: .62, gi: .02, tono: .3, manca: .004, u: 1 },
     travertino: { g: 'conci', rh: .6, rl: 1.2, gi: .009, tono: .1, manca: 0, u: .45 }, travertinoScuro: { g: 'conci', rh: .6, rl: 1.2, gi: .009, tono: .1, manca: 0, u: .45 },
     mattone: { g: 'conci', rh: .075, rl: .26, gi: .011, tono: .34, manca: .006, u: .8 },
     pietra: { g: 'pietra', rh: .5, rl: 1.05, gi: .016, tono: .16, la: .62, u: .8 }, pietraScura: { g: 'pietra', rh: .5, rl: 1.05, gi: .016, tono: .16, la: .62, u: .8 },
@@ -822,7 +822,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
   DOC.bitta = { h: .6, cima: true, nota: 'bitta di ghisa a fungo sul suo blocco di pietra, con la cima avvolta al collo che scende verso +Z' };
   T.bitta = o => { o = def(o, DOC.bitta); const g = new THREE.Group(); bittaG(g, 0, 0, 0, o.h, o.cima); g.userData.misure = [.7, o.h + .1, o.cima ? 1.7 : .7]; return g; };
 
-  DOC.darsena = { L: 40, W: 30, hq: 1.4, banchina: 6, scalette: 2, nota: 'darsena (L lungo X × W lungo Z, la bocca verso +Z): tre banchine di pietra col piano a y = 0, ciglio, testate tonde, bitte ogni 8 m, scalette alla marinara, parabordi di copertoni, fascia di alghe al pelo dell\'acqua (a −hq), lampioni; quotaPosa = piede dei muri' };
+  DOC.darsena = { L: 40, W: 30, hq: 1.4, banchina: 6, scalette: 2, rocca: false, gradini: 2, nota: '[rocca2] rocca: la darsena del castello (gradini di pietra all\'acqua invece di bitte, copertoni e lampioni). darsena (L lungo X × W lungo Z, la bocca verso +Z): tre banchine di pietra col piano a y = 0, ciglio, testate tonde, bitte ogni 8 m, scalette alla marinara, parabordi di copertoni, fascia di alghe al pelo dell\'acqua (a −hq), lampioni; quotaPosa = piede dei muri' };
   T.darsena = o => {
     o = def(o, DOC.darsena); const g = new THREE.Group(), L = o.L, W = o.W, hq = o.hq, B = o.banchina, yF = -hq - 1.2, Lt = L + 2 * B, xc = Lt / 2;
     blocco(g, Lt, -yF, B, 'pietra', xc, yF, -W / 2 - B / 2);                                         // banchina di fondo
@@ -830,11 +830,16 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     blocco(g, L + .6, .15, .6, 'pietraChiara', xc, 0, -W / 2 - .3); for (const s of [-1, 1]) blocco(g, .6, .15, W, 'pietraChiara', xc + s * (L / 2 + .3), 0, 0);   // ciglio
     blocco(g, L, .04, W + 3, 'acqua', xc, -hq - .04, 1.5);                                           // lo specchio d'acqua
     if (!LOD) { blocco(g, L, .5, .03, 'verdeScuro', xc, -hq - .15, -W / 2 + .015); for (const s of [-1, 1]) blocco(g, .03, .5, W, 'verdeScuro', xc + s * (L / 2 - .015), -hq - .15, 0); }   // le alghe
+    if (o.rocca) {   // [rocca2] la darsena del castello: i gradini di pietra che scendono all'acqua dalla banchina di fondo, qualche anello di ferro
+      const ng = o.gradini || 2, n = 6, pd = .4, hT = hq + .3;
+      for (let k = 0; k < ng; k++) { const x = xc - L / 2 + L * (k + .5) / ng; scala(g, 3.2, hT, n, pd, 'pietraChiara', x, -hT, -W / 2 + n * pd, PI); if (!LOD) blocco(g, 3.4, .12, .3, 'pietra', x, 0, -W / 2 + .1); }
+      if (!LOD) for (let i = 0; i < 5; i++) toro(g, .14, .03, 10, 'ferroScuro', xc - L / 2 + 2 + i * (L - 4) / 4, -.35, -W / 2 + .03); }
+    else {
     const nb = Math.max(1, Math.floor(L / 8)); for (let i = 0; i <= nb; i++) { const x = xc - L / 2 + .8 + i * (L - 1.6) / nb; bittaG(g, x, 0, -W / 2 - .9, .55, i % 3 === 1); parabordo(g, x + 2 > xc + L / 2 - 1 ? x - 2 : x + 2, -.7, -W / 2); }
     const ns = Math.max(1, Math.floor(W / 8)); for (const s of [-1, 1]) for (let i = 0; i <= ns; i++) { const z = -W / 2 + 1 + i * (W - 2) / ns; bittaG(g, xc + s * (L / 2 + .9), 0, z, .55, false); parabordo(g, xc + s * (L / 2), -.7, z + 2.5 > W / 2 - 1 ? z - 2.5 : z + 2.5, -s * HP); }
     for (let k = 0; k < o.scalette; k++) { const lato = k % 3, t = (Math.floor(k / 3) + .5) / Math.ceil(o.scalette / 3);
       if (lato === 0) scaletta(g, xc - L / 2 + L * (.3 + .4 * t), yF + .3, -W / 2); else { const s = lato === 1 ? -1 : 1; scaletta(g, xc + s * L / 2, yF + .3, -W / 2 + W * (.35 + .3 * t), -s * HP); } }
-    lampione(g, 'ghisa', xc - L / 2 - B / 2, -W / 2 - B / 2); lampione(g, 'ghisa', xc + L / 2 + B / 2, -W / 2 - B / 2);
+    lampione(g, 'ghisa', xc - L / 2 - B / 2, -W / 2 - B / 2); lampione(g, 'ghisa', xc + L / 2 + B / 2, -W / 2 - B / 2); }
     g.userData.quotaPosa = yF; g.userData.misure = [Lt, -yF + 4.6, W + B + B / 2]; return g;
   };
 
@@ -986,14 +991,14 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     g.userData.misure = [G + hc * .4, h + (o.garitta ? 3.7 : .1), F + df + hc * .2 + .6]; return g;
   };
 
-  DOC.fossato = { L: 30, w: 15, prof: 5, ponte: true, rivellino: true, nota: 'fossato asciutto lungo X: fondo d\'erba a −prof (quotaPosa), escarpa a scarpa sul lato −Z (la Rocca), controscarpa diritta con la copertina e il parapetto sul lato +Z; ponte in muratura ad archi con l\'ultimo tratto levatoio di legno con le catene; oltre la controscarpa il rivellino triangolare, tronco in punta, con l\'androne a volta che la strada passa da parte a parte. Il piano della città è y = 0' };
+  DOC.fossato = { L: 30, w: 15, prof: 5, ponte: true, rivellino: true, acqua: false, nota: '[rocca2] acqua: il canale di mare della Rocca (niente fondo d\'erba; pelo = quanto sta sotto il piano il pelo dell\'acqua). fossato asciutto lungo X: fondo d\'erba a −prof (quotaPosa), escarpa a scarpa sul lato −Z (la Rocca), controscarpa diritta con la copertina e il parapetto sul lato +Z; ponte in muratura ad archi con l\'ultimo tratto levatoio di legno con le catene; oltre la controscarpa il rivellino triangolare, tronco in punta, con l\'androne a volta che la strada passa da parte a parte. Il piano della città è y = 0' };
   T.fossato = o => {
     o = def(o, DOC.fossato); const g = new THREE.Group(), L = o.L, w = o.w, pr = o.prof, xc = L / 2;
-    blocco(g, L, .3, w + 1, 'erba', xc, -pr, w / 2);                                                  // il fondo
+    if (!o.acqua) blocco(g, L, .3, w + 1, 'erba', xc, -pr, w / 2);                                   // il fondo (il canale della Rocca è mare: niente fondo d'erba) [rocca2]
     sezione(g, [[pr * .2, -pr], [0, 0], [-1.5, 0], [-1.5, -pr]], L, 'tufo', 0, 0, 0);   // l'escarpa a scarpa (la cortina ci sale sopra)
     blocco(g, L, pr, 1.6, 'tufo', xc, -pr, w + .8); blocco(g, L, .18, 1.9, 'pietraChiara', xc, 0, w + .8, LOD ? 0 : .03); for (const s of [-1, 1]) { const lp2 = o.ponte ? L / 2 - 2.6 : L / 2; blocco(g, lp2, .7, .5, 'tufo', xc + s * (L / 2 - lp2 / 2), .18, w + 1.4); }   // controscarpa, copertina e parapetto (aperto sul ponte)
     capperi(g, Math.round(L / 6), L, -pr + .6, -.6, w - .1, 0, L * 5 + w, 0);
-    if (!LOD) { blocco(g, L, .35, .03, 'verdeScuro', xc, -pr + .3, w - .015); blocco(g, L, .35, .03, 'verdeScuro', xc, -pr + .3, .2 * (pr - .475) + .02).rotation.x = -Math.atan(.2); }   // l'umido al piede
+    if (!LOD) { const yu = o.acqua ? -(o.pelo || pr - 1.8) - .2 : -pr + .3; blocco(g, L, .35, .03, 'verdeScuro', xc, yu, w - .015); blocco(g, L, .35, .03, 'verdeScuro', xc, yu, .2 * (-yu - .175) + .02).rotation.x = -Math.atan(.2); }   // l'umido al piede (o al pelo del mare)
     if (o.ponte) { const wb = 4.6, lp = Math.min(5, w * .35), zs = lp, ls = w - zs;                 // il ponte: archi di pietra fino a zs, poi il levatoio
       const na = Math.max(1, Math.round(ls / 6)), wa = ls / na - 1.4, gp = grp(g, xc, -pr, zs, -HP);
       pareteArchi(gp, ls, pr - .3, wb, Array.from({ length: na }, (_, i) => ({ x: (i + .5) * ls / na, w: Math.min(wa, pr * 1.4), h: Math.min(pr - 1.1, Math.min(wa, pr * 1.4) / 2 + pr * .45) })), 'tufo', 0, .3, 0);
@@ -1087,7 +1092,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     g.userData.misure = o.cinta ? [L + 2 * d + 1, hW + P * .32 + 1.8, P + 2 * d + 1] : [L, hW + P * .32 + 1.8, P + 2.8]; return g;
   };
 
-  DOC.porta_monumentale = { w: 10, h: 12, fornice: 4.2, merli: true, scritta: 'ANNO MDCLXXXII', nota: 'la porta della Rocca: massa di tufo profonda 6 m con l\'androne, paraste bugnate, ghiera di conci col mascherone in chiave, le fessure dei bolzoni del ponte levatoio, trabeazione con la scritta, attico con lo stemma coronato fra le volute, merli (o pinnacoli); ante aperte nell\'androne, lanterna a braccio' };
+  DOC.porta_monumentale = { w: 10, h: 12, fornice: 4.2, merli: true, scritta: 'ANNO MDCLXXXII', pensilina: false, nota: '[rocca2] pensilina: la tettoia di ferro sopra il fornice (il portale sulla banchina della darsena). la porta della Rocca: massa di tufo profonda 6 m con l\'androne, paraste bugnate, ghiera di conci col mascherone in chiave, le fessure dei bolzoni del ponte levatoio, trabeazione con la scritta, attico con lo stemma coronato fra le volute, merli (o pinnacoli); ante aperte nell\'androne, lanterna a braccio' };
   T.porta_monumentale = o => {
     o = def(o, DOC.porta_monumentale); const g = new THREE.Group(), W = o.w, H = o.h, D = 6, wf = Math.min(o.fornice, W * .45), hf = Math.min(H * .55, wf * 1.55), zF = D / 2, hE = hf + 1.6, xc = W / 2;
     pareteArchi(g, W, H, D, [{ x: xc, w: wf, h: hf }], 'tufo', 0, 0, 0);
@@ -1107,9 +1112,100 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       const xl = xc + wf / 2 + 1.1; asta(g, [xl, 4.2, zF + .24], [xl, 4.2, zF + 1.1], .03, 'ferro'); blocco(g, .25, .35, .25, 'vetro', xl, 3.85, zF + 1.1); blocco(g, .3, .06, .3, 'ferroScuro', xl, 4.2, zF + 1.1); }   // la lanterna a braccio sulla parasta
     conci(g, wf / 2, .4, 9, 'pietraChiara', xc, hf - wf / 2, -zF + .1);
     blocco(g, W + .3, .6, D + .2, 'pietraScura', xc, 0, 0, LOD ? 0 : .03);   // [pezzi2] lo zoccolo
+    if (o.pensilina) { const yp = hf + .35, dp = 2.2;   // [rocca2] la pensilina di ferro sul portale: la lastra, i tiranti alla parete, la frangia
+      blocco(g, wf + 2.4, .12, dp, 'ferroScuro', xc, yp, zF + dp / 2); if (!LOD) { blocco(g, wf + 2.5, .22, .06, 'ferro', xc, yp - .1, zF + dp); for (const s of [-1, 1]) asta(g, [xc + s * (wf / 2 + .9), yp + .12, zF + dp - .1], [xc + s * (wf / 2 + .9), yp + 2.1, zF + .05], .035, 'ferroScuro'); } }
     if (!LOD) { for (const s of [-1, 1]) { const xp = xc + s * (wf / 2 + .35); cil(g, .26, .18, .75, 10, 'pietraChiara', xp, 0, zF + .5); add(g, new THREE.SphereGeometry(.18, 8, 6), 'pietraChiara', xp, .75, zF + .5); }   // i paracarri ai lati del fornice
       for (const s of [-1, 1]) cantonali(g, xc + s * W / 2, zF, .6, hE, s, 1, 'pietraChiara', 0, .5); blocco(g, wf + .2, .2, D - .2, 'pietra', xc, 0, 0); }   // i cantonali e la soglia del fornice
     g.userData.misure = [W + .4, H + (o.merli ? 1.9 : 1.33), D + .9]; return g;
+  };
+
+
+  // ================= [rocca2] IL CASTELLO A MARE (riferimenti del committente: _immagini/riferimenti/fortezza_da_fuori.png, _da_dentro.webp) =================
+  // Un castello aragonese su uno scoglio basso: masse a gradoni di conci dorati di carparo, muri alti e a picco con poche finestrelle, il
+  // parapetto merlato o liscio, i rivellini bassi a scarpa con l'erba sulle terrazze, il mastio col faro, il torrione tondo e tozzo (T.torrione),
+  // dentro la darsena allagata (T.darsena) col grande ponte ad arco, la porta d'acqua a volta e il portale con lo stemma e la pensilina.
+  // le facce di una massa L × P (x da 0 a L, z centrata): [x, z, ry, larghezza] (ogni gruppo ha +X lungo la faccia e +Z verso fuori)
+  const facceMassa = (L, P) => [[0, P / 2, 0, L], [L, -P / 2, PI, L], [L, P / 2, HP, P], [0, -P / 2, -HP, P]];
+  // finestrelle rade su una faccia che guarda +Z, larga l: n vani piccoli col davanzale, fra y0 e y1
+  function finestrelle(g, l, y0, y1, n, seme) {
+    if (LOD || y1 - y0 < 2) return; const r = caso(seme);
+    for (let i = 0; i < n; i++) { const w = .5 + r() * .35, h = .8 + r() * .55, x = 1 + w / 2 + r() * Math.max(.1, l - 2 - w), y = y0 + r() * Math.max(.1, y1 - y0 - h);
+      blocco(g, w, h, .08, 'buio', x, y, .03); blocco(g, w + .34, .14, .22, 'pietraChiara', x, y - .14, .1); blocco(g, w + .3, .16, .12, 'pietraChiara', x, y + h, .05); }
+  }
+  // il coronamento di una massa: il parapetto (merlato o liscio) che sporge sui beccatelli, a filo sui lati, e il piano di cima (pietra o erba)
+  function coronamento(g, L, P, H, o, seme) {
+    const sp = o.beccatelli ? .45 : 0, hp = 1.1;
+    facceMassa(L, P).forEach(([x, z, ry, l], i) => { const gf = grp(g, x, H, z, ry);
+      blocco(gf, l + 2 * sp, hp, .55, 'carparo', l / 2, 0, sp - .27);
+      if (sp && !LOD) for (let s = .6; s < l - .3; s += 1.3) mensola(gf, sp + .1, .9, .4, 'pietraChiara', s, 0, -.02);
+      if (o.merli) merli(gf, l + 2 * sp, .9, .8, 1.7, 'carparo', -sp, hp, sp - .27, 0, 'guelfo', true);
+      else if (!LOD) blocco(gf, l + 2 * sp + .06, .1, .62, 'pietraChiara', l / 2, hp, sp - .27); });
+    blocco(g, L - .4, .06, P - .4, o.erba ? 'erba' : 'pietra', L / 2, H, 0);
+    if (o.erba && !LOD) { const r = caso(seme); for (let i = 0; i < Math.round(L * P / 30); i++) blocco(g, .6 + r() * 1.2, .25 + r() * .3, .6 + r() * 1.2, r() < .5 ? 'verde' : 'verdeScuro', .8 + r() * (L - 1.6), H + .02, (r() - .5) * (P - 1.6), .05); }
+  }
+
+  DOC.mastio = { L: 14, P: 18, h: 24, merli: true, lanterna: true, nota: 'il mastio del castello a mare: torre quadra di conci di carparo (L lungo X da x = 0, P lungo Z centrata), il piede a scarpa col cordone, poche finestrelle, il parapetto merlato sui beccatelli; in cima il faro: il casotto di pietra, il castelletto di ferro a traliccio e la cabina di vetro con la luce rossa (il riflettore della Tutela)' };
+  T.mastio = o => {
+    o = def(o, DOC.mastio); const g = new THREE.Group(), L = o.L, P = o.P, H = o.h, hs = Math.min(5, H * .22), sc = hs * .2;
+    const base = [[0, -P / 2], [L, -P / 2], [L, P / 2], [0, P / 2]];
+    tronco(g, allarga(base, [sc, sc, sc, sc]), base, hs, 'carparo', 0, 0, 0);                         // il piede a scarpa
+    blocco(g, L, H - hs, P, 'carparo', L / 2, hs, 0);                                                   // il fusto a picco
+    if (!LOD) blocco(g, L + .5, .45, P + .5, 'pietraChiara', L / 2, hs - .1, 0, .08);                  // il cordone
+    facceMassa(L, P).forEach(([x, z, ry, l], i) => { const gf = grp(g, x, 0, z, ry); finestrelle(gf, l, hs + 2, H - 3, i < 2 ? 3 : 2, L * 13 + i * 7 + H);
+      if (i === 0 && !LOD) stemma(gf, 1.8, 'pietraChiara', l / 2, H - 4, 0, 0); });
+    coronamento(g, L, P, H, { merli: o.merli, beccatelli: true }, L + P);
+    if (o.lanterna) { const xl = L * .62, zl = -P * .12, hb = 2.6, ht = 5.2;                         // il faro: casotto, traliccio, cabina
+      blocco(g, 3.4, hb, 3.4, 'carparo', xl, H, zl); vano(g, .9, 1.9, 'arco', 'legno', xl, H, zl + 1.72, .06);
+      blocco(g, 3.8, .2, 3.8, 'pietraChiara', xl, H + hb, zl);
+      traliccio(g, 2.8, 1.6, ht, 'ferro', xl, H + hb + .2, zl, 1.3);
+      const yc = H + hb + .2 + ht; blocco(g, 2.2, .14, 2.2, 'ferroScuro', xl, yc, zl);
+      if (!LOD) ringhiera(g, 2.2, .8, 'ferro', xl - 1.1, yc + .14, zl + 1.1);
+      cil(g, .75, .75, 1.3, 10, 'vetro', xl, yc + .14, zl); add(g, new THREE.SphereGeometry(.42, 10, 8), 'faro', xl, yc + .75, zl);
+      cil(g, .95, .12, .7, 10, 'piombo', xl, yc + 1.44, zl); add(g, new THREE.SphereGeometry(.12, 8, 6), 'ottone', xl, yc + 2.2, zl); }
+    g.userData.misure = [L + 2 * sc, H + (o.lanterna ? 11 : 2), P + 2 * sc]; return g;
+  };
+
+  DOC.corpo_rocca = { L: 20, P: 12, h: 12, scarpa: false, merli: false, erba: false, finestre: 2, nota: 'una massa del castello a mare (L lungo X da x = 0, P lungo Z centrata): conci di carparo a picco, o a scarpa per tutta l\'altezza (i rivellini bassi); poche finestrelle, il parapetto merlato o liscio, la terrazza di lastre o d\'erba' };
+  T.corpo_rocca = o => {
+    o = def(o, DOC.corpo_rocca); const g = new THREE.Group(), L = o.L, P = o.P, H = o.h, base = [[0, -P / 2], [L, -P / 2], [L, P / 2], [0, P / 2]];
+    if (o.scarpa) { const sc = H * .22; tronco(g, allarga(base, [sc, sc, sc, sc]), base, H, 'carparo', 0, 0, 0); if (!LOD) for (let i = 0; i < 4; i++) { const [x, z, ry, l] = facceMassa(L, P)[i]; capperi(grp(g, x, 0, z, ry), Math.round(l / 7), l, .8, H - 1, H * .22, .22, L * 5 + i, 0); } }
+    else { blocco(g, L, H, P, 'carparo', L / 2, 0, 0); if (!LOD) blocco(g, L + .3, .5, P + .3, 'pietraScura', L / 2, 0, 0, .03);   // il piede di pietra
+      facceMassa(L, P).forEach(([x, z, ry, l], i) => finestrelle(grp(g, x, 0, z, ry), l, 2.2, H - 2, Math.max(0, Math.round(o.finestre * l / 14)), L * 11 + P * 3 + i)); }
+    coronamento(g, L, P, H, { merli: o.merli, beccatelli: !o.scarpa && H >= 10, erba: o.erba }, L * 3 + P + H);
+    const sc = o.scarpa ? H * .22 : 0; g.userData.misure = [L + 2 * sc, H + (o.merli ? 2 : 1.2), P + 2 * sc]; return g;
+  };
+
+  DOC.ponte_arco = { L: 30, w: 4.6, h: 7, acqua: 1.6, nota: 'il grande ponte a tutto sesto della darsena (lungo X da x = 0, largo w lungo Z centrato): l\'arcone dal pelo dell\'acqua (a −acqua sotto la banchina) al piano del ponte a h, la ghiera di conci sulle due fronti, i rinfianchi pieni, il parapetto e il lastricato in cima' };
+  T.ponte_arco = o => {
+    o = def(o, DOC.ponte_arco); const g = new THREE.Group(), L = o.L, w = o.w, H = o.h + o.acqua, y0 = -o.acqua, luce = Math.min(L * .78, 2 * (H - 1.2)), r = luce / 2;
+    pareteArchi(g, L, H, w, [{ x: L / 2, w: luce, h: Math.min(H - .9, r + H * .25) }], 'carparo', 0, y0, 0);
+    if (!LOD) for (const z of [w / 2 - .1, -w / 2 + .1]) conci(g, r, .45, 15, 'pietraChiara', L / 2, y0 + Math.min(H - .9, r + H * .25) - r, z);
+    blocco(g, L, .08, w - .5, 'pietra', L / 2, y0 + H, 0);                                             // il lastricato
+    for (const s of [-1, 1]) { blocco(g, L, .95, .4, 'carparo', L / 2, y0 + H, s * (w / 2 - .2)); if (!LOD) blocco(g, L + .1, .1, .48, 'pietraChiara', L / 2, y0 + H + .95, s * (w / 2 - .2)); }
+    if (!LOD) for (const s of [-1, 1]) blocco(g, L, .5, .1, 'verdeScuro', L / 2, y0, s * (w / 2 + .02));   // l'umido al pelo dell'acqua
+    g.userData.quotaPosa = y0; g.userData.misure = [L, H + 1.05, w]; return g;
+  };
+
+  DOC.porta_acqua = { L: 12, h: 11, fornice: 6, acqua: 1.6, P: 4, nota: 'la porta d\'acqua: un tratto di cortina di carparo (lungo X da x = 0, spesso P centrato) col grande fornice a volta che scende fino all\'acqua (a −acqua), la ghiera di conci, la saracinesca di ferro alzata sotto la volta, il parapetto merlato' };
+  T.porta_acqua = o => {
+    o = def(o, DOC.porta_acqua); const g = new THREE.Group(), L = o.L, H = o.h + o.acqua, y0 = -o.acqua, wf = Math.min(o.fornice, L * .6), hf = Math.min(H * .7, wf * .5 + H * .4);
+    pareteArchi(g, L, H, o.P, [{ x: L / 2, w: wf, h: hf }], 'carparo', 0, y0, 0);
+    if (!LOD) { conci(g, wf / 2, .5, 13, 'pietraChiara', L / 2, y0 + hf - wf / 2, o.P / 2 - .2); conci(g, wf / 2, .5, 13, 'pietraChiara', L / 2, y0 + hf - wf / 2, -o.P / 2 + .2);
+      for (let x = -wf / 2 + .25; x <= wf / 2 - .2; x += .45) blocco(g, .08, 1.6, .08, 'ferroScuro', L / 2 + x, y0 + hf - wf / 2 - 1.2, 0); blocco(g, wf, .12, .12, 'ferroScuro', L / 2, y0 + hf - wf / 2 - 1.2, 0);   // la saracinesca alzata
+      blocco(g, L, .5, .12, 'verdeScuro', L / 2, y0, o.P / 2 + .04); }
+    merli(g, L, .9, .8, 1.7, 'carparo', 0, y0 + H, o.P / 2 - .3, 0, 'guelfo', true);
+    g.userData.quotaPosa = y0; g.userData.misure = [L, H + .9, o.P]; return g;
+  };
+
+  DOC.scogliera = { L: 10, w: 4, n: 12, seme: 1, nota: 'un tratto di frangiflutti: massi rotolati e scogli tondi di pietra chiara e scura (lungo X da x = 0, larghi w lungo Z centrati), dal fondo (a −1,6) fino a un metro sopra l\'acqua' };
+  T.scogliera = o => {
+    o = def(o, DOC.scogliera); const g = new THREE.Group(), L = o.L, w = o.w, r = caso(o.seme * 977 + L * 13), n = LOD ? Math.max(3, o.n >> 1) : o.n, y0 = -1.6;
+    blocco(g, L, .9, w * .8, 'pietraScura', L / 2, y0, 0);                                               // il letto di pietrame
+    for (let i = 0; i < n; i++) { const s = .7 + r() * 1.1, x = Math.min(L - s * .5, Math.max(s * .5, (i + .5) * L / n + (r() - .5) * 1.2)), z = (r() - .5) * (w - s), m = ['pietra', 'pietraChiara', 'pietraScura', 'tufo'][(r() * 4) | 0];
+      const geo = geoCache(`SC${(i % 5)}|${LOD}`, () => new THREE.DodecahedronGeometry(1, 0)), sy = .55 + r() * .4;
+      const b = add(g, geo, m, x, y0 + .9 + s * sy * .6, z, r() * 3, r() * 3, r() * 3); b.scale.set(s * (.8 + r() * .4), s * sy, s * (.8 + r() * .4)); b.updateMatrix(); b.updateMatrixWorld(true);
+      const bb = new THREE.Box3().setFromObject(b); if (bb.min.y < y0 + .05) b.position.y += y0 + .05 - bb.min.y; }
+    g.userData.quotaPosa = y0; g.userData.misure = [L, 2.6, w]; return g;
   };
 
   DOC.mura_tramontana = { L: 30, h: 8, merli: true, scala: true, nota: 'segmento delle mura di tramontana lungo X: fronte a scarpa verso il mare (+Z) poi diritto, camminamento di ronda dietro il parapetto con i merli guelfi, rampa di scale addossata dal lato della città (−Z), feritoie, doccioni, capperi e l\'umido' };

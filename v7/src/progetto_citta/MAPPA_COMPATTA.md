@@ -462,25 +462,27 @@ i capi dritti (non più `lineCap: round`) e ogni strada porta i suoi `capi` nei 
 «La fortezza adesso non ci sta.» I riferimenti (`_immagini/riferimenti/fortezza_da_fuori.png`, `fortezza_da_dentro.webp`) sono un castello a mare
 su uno scoglio basso, cinto da un frangiflutti di massi e staccato dalla città dall'acqua. La Rocca v2 (coordinate finali):
 
-| Parte | Dove | Alto | Com'è |
-|---|---|---|---|
-| Canale | 1508-1526, da riva a riva | — | il vecchio fossato diventa mare: la Rocca è un'isola. Ci si arriva solo dal **Ponte della Rocca** (8 m, a y 343, sull'asse della Vittoria) o per mare |
-| Scoglio e frangiflutti | 1520-1616 × 284-406 | — | roccia bassa e un anello di massi tondi e scogli rotolati fra le mura e il mare |
-| Fronte di terra con la Porta | 1526-1534 × 320-366 | 14 m | muro dritto, poche finestre piccole, la porta a fornice sull'asse col ponte (il cannocchiale della Vittoria ci arriva) |
-| Rivellino di ponente | 1527-1536 × 300-322 | 6 m | basso, a scarpa, l'erba sulla terrazza |
-| Cortina nord e caserma | 1532-1580 × 297-316 | 12 e 15 m | masse a gradoni di conci dorati (tufo, carparo), parapetto merlato |
-| **Mastio col faro** | 1587-1601 × 318-336 | 24 m + lanterna | il volume più alto, a picco sul mare: in cima la lanterna rossa (il «torrione col riflettore» del landmark). Si vede dalla Vittoria, dal Pozzo, dal Molo, dalla spianata |
-| Raccordo e corpo di levante | 1578-1603 × 299-366 | 18 e 13 m | i gradini fra il mastio e il resto; erba sulla terrazza bassa |
-| Rivellino di scirocco | 1580-1601 × 358-388 | 7 m | basso, a scarpa, erba |
-| **Torrione** tondo e tozzo | 1538, 386, r 10 | 10 m | sull'angolo verso la città e il porto, come nel riferimento |
-| Piazza d'armi | 1534-1580 × 314-348 | — | lastricata, il luogo-missione 12 |
-| **Darsena** | 1548-1578 × 352-384 | — | il bacino allagato dentro le mura; la **porta d'acqua** a volta (1558-1564) la apre sul mare a sud |
-| **Ponte ad arco** | da 1546 a 1580 a y 366 | — | il grande arco tondo di pietra che scavalca la darsena |
-| Banchina coi gradini | 1548-1578 × 348-352 | — | i gradini scendono all'acqua |
-| **Portale monumentale** | 1566, 346 | 8 m | lo stemma scolpito e la pensilina di ferro, sulla banchina |
-| Molo della Rocca | 1586-1590 × 392-420 | — | fuori dalla porta d'acqua: la nave dell'Impero (lunedì e giovedì), la motovedetta |
+| Parte | Dove | Alto | Com'è | Nel gioco |
+|---|---|---|---|---|
+| Canale | 1504-1518, da riva a riva | — | il vecchio fossato diventa mare: la Rocca è un'isola. Ci si arriva solo dalla Vittoria, sul ponte in muratura col levatoio, o per mare | `fossato` con `acqua` |
+| Scoglio e frangiflutti | 1518-1603 × 301-381 | — | la riva di roccia bassa e, a 2,5 m in mare, un anello di massi tondi e scogli rotolati (non davanti alla porta d'acqua e ai moli) | caselle `ROCK`, 21 tratti di `scogliera` |
+| Fronte di terra con la Porta | 1518-1526 × 316-372 | 14 m | muro a picco, poche finestrelle, parapetto merlato; la porta con lo stemma sull'asse della Vittoria (il cannocchiale ci arriva) | 2 `corpo_rocca`, `porta_monumentale` |
+| Rivellino di ponente | 1518-1528 × 306-316 | 6 m | basso, a scarpa, l'erba sulla terrazza | `corpo_rocca` con `scarpa`, `erba` |
+| Caserma sulla cortina nord | 1530-1570 × 310-320 | 2 piani | la caserma lunga contro il mare di tramontana, il fronte sulla piazza d'armi | `caserma` (edificio `caserma_p`) |
+| Raccordo | 1570-1578 × 316-328 | 17 m | il gradone fra la caserma e il mastio, merlato | `corpo_rocca` (`hangar2`) |
+| **Mastio col faro** (il comando) | 1578-1592 × 324-340 | 24 m + faro | il volume più alto, a picco: piede a scarpa, cordone, finestrelle rade, merli sui beccatelli, lo stemma; in cima il casotto, il castelletto di ferro a traliccio e la lanterna rossa (il «torrione col riflettore» del landmark) | `mastio` (edificio `rocca`) |
+| Corpo di levante | 1580-1592 × 340-356 | 13 m | la massa sulla punta, finestre rade | `corpo_rocca` (`hangar1`) |
+| Rivellino di scirocco | 1584-1600 × 358-374 | 7 m | il bastione basso a punta verso il mare, con la garitta | `bastione` |
+| **Torrione** tondo e tozzo | 1532, 372, r 9 | 10 m | sull'angolo di libeccio, verso la città e il porto, come nel riferimento | `torrione` senza lanterna |
+| Piazza d'armi | 1542-1570 × 322-345 | — | lastricata, il luogo-missione 12; la polveriera (1528-1540 × 324-332) nell'angolo | caselle `PIAZZA`, `polveriera` |
+| **Darsena** | acqua 1544-1574 × 350-372 | — | il bacino allagato dentro le mura, le banchine di carparo coi gradini che scendono all'acqua | `darsena` con `rocca` (caselle d'acqua e `QUAY`) |
+| **Ponte ad arco** | da 1543 a 1575 a y 359 | 7 m | il grande arco a tutto sesto di pietra che scavalca la darsena | `ponte_arco` |
+| **Porta d'acqua** | 1544-1574 × 372-376, fornice 1554-1563 | 11 m | la volta che apre la darsena sul mare, fra i due moli; la saracinesca alzata | `porta_acqua` |
+| Corpo del ponte e **portale** | 1526-1538 × 346-362; portale a 1538, 348-357 | 10 m | la massa con l'erba in cima; sulla faccia verso la darsena (e la camera) il portale con lo stemma e la pensilina di ferro | `corpo_rocca` (`deposito_n`), `porta_monumentale` con `pensilina` |
+| Moli | 1546 e 1572, da 380 a 414 | — | il molo militare (motovedette, rimorchiatore) e quello della nave dell'Impero (lunedì e giovedì) | `molo` (i due moli a nord e la testata non ci sono più) |
 
-Nel gioco si usano e si allungano i pezzi di `pezzi_citta.js`: `cortina` (le masse, con l'altezza per gradone e la scarpa), `bastione` (i
-rivellini), `torrione` (il torrione tondo e, più alto e a pianta quadra, il mastio con la lanterna), `caserma`, `porta_monumentale` (il portale
-con lo stemma e la pensilina), `fossato` (il canale col ponte). Il cunicolo di fuga e la cisterna (sotto) restano; il segreto per mare entra
+Nel gioco: i pezzi di `pezzi_citta.js` allungati (`fossato` col mare, `darsena` del castello coi gradini, `porta_monumentale` con la
+pensilina, `torrione` tozzo, `bastione` basso, `caserma`, `polveriera`) e cinque nuovi: `mastio`, `corpo_rocca`, `ponte_arco`,
+`porta_acqua`, `scogliera`, tutti di carparo dorato (`COL.carparo`, la sua veste a conci). Gli edifici militari del gioco (comando,
+caserma, depositi) restano edifici (porte, interni, missioni) e la loro grafica la fa la massa del castello (`b.pezzo`). Il cunicolo di fuga e la cisterna (sotto) restano; il segreto per mare entra
 dalla porta d'acqua della darsena invece che dal fossato.

@@ -51,6 +51,11 @@ var Palco = (function () {
     for (let dz = 0; dz <= 6 && !carri.length; dz += 1) for (let dx = 0; dx <= 16 && !carri.length; dx += 2) {
       const z = asse.z1 + 3 + CARRO.hz + dz, xs = []; for (let i = 0; i < CARRO.n; i++) xs.push(F.x + 12 + dx + i * CARRO.passo);
       if (xs.every(x => dentro(x, z) && libero(x, z, CARRO.hx, CARRO.hz) && !sovr(x, z, CARRO.hx, CARRO.hz))) carri = xs.map(x => ({ x, z, rot: Math.PI })); }
+    // [rocca2] nella Rocca a mare la piazza d'armi è piccola (a sud dell'asse c'è la darsena): il parco mezzi va sulla spianata, a sud
+    // dell'asse fra la città e il Muro, coi carri in fila a passo fisso
+    for (let dz = 0; dz <= 16 && !carri.length; dz += 1) for (let dx = 0; dx <= 6 && !carri.length; dx += 1) {
+      const z = asse.z1 + 3 + CARRO.hz + dz, xs = []; for (let i = 0; i < CARRO.n; i++) xs.push(WL.x - 21 + dx + i * CARRO.passo);
+      if (xs.every(x => zona(x, z) && x + CARRO.hx < WL.x - .5 && libero(x, z, CARRO.hx, CARRO.hz) && !sovr(x, z, CARRO.hx, CARRO.hz))) carri = xs.map(x => ({ x, z, rot: Math.PI })); }
     carri.forEach(c => posa(c.x, c.z, CARRO.hx, CARRO.hz, 'carro'));
     // 4) i CONTAINER: contro il Muro, a sud del varco, il lato lungo parallelo al Muro, lontano dalle torri
     const torri = (WL.towers || []).map(([x, z]) => ({ x: x + 1.6, z }));

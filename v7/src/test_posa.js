@@ -23,7 +23,8 @@ console.log('pezzi', P.length, JSON.stringify(conta));
 
 // 1) tutti i pezzi del filone, con una quota vera
 const VOLUTI = { facciata_chiesa: 1, campanile: 1, portico: 6, torre_littoria: 1, tettoia_mercato: 1, stazione: 1, binari: 1, sottopasso: 1, passaggio_livello: 1, carro_merci: 1, locomotiva: 1,
-  magazzini_volta: 1, scalinata: 3, bitta: 3, darsena: 1, molo_vecchio: 1, scalo_alaggio: 1, cortina: 2, bastione: 2, fossato: 1, torrione: 1, caserma: 2, polveriera: 1, porta_monumentale: 1,
+  magazzini_volta: 1, scalinata: 3, bitta: 3, darsena: 2, molo_vecchio: 1, scalo_alaggio: 1, bastione: 1, fossato: 1, torrione: 1, caserma: 1, polveriera: 1, porta_monumentale: 2,
+  mastio: 1, corpo_rocca: 6, ponte_arco: 1, porta_acqua: 1, scogliera: 10,   // [rocca2] il castello a mare
   mura_tramontana: 3, porta_terra: 1, arco_sottopasso: 2, arco_contrasto: 3, edicola_votiva: 3, pozzo: 1, fontana: 1, lavatoio: 1, muro_garante: 1, palo_riflettori: 3 };
 const manca = Object.keys(VOLUTI).filter(t => (conta[t] || 0) < VOLUTI[t]);
 ok(!manca.length, 'ci sono tutti i pezzi del filone' + (manca.length ? ' (mancano: ' + manca.map(t => t + ' ' + (conta[t] || 0) + '/' + VOLUTI[t]).join(', ') + ')' : ''));
@@ -74,7 +75,7 @@ P.forEach(p => {
 ok(!dentro.length, 'nessuna casa del tassellatore dentro un pezzo' + (dentro.length ? ` (${dentro.length}): ` + dentro.slice(0, process.env.V ? 99 : 8).join(' · ') : ''));
 
 // 4) in mare solo le opere a mare
-const ACQUA = ['darsena', 'molo_vecchio', 'scalo_alaggio', 'bitta'];
+const ACQUA = ['darsena', 'molo_vecchio', 'scalo_alaggio', 'bitta', 'scogliera', 'ponte_arco', 'porta_acqua', 'fossato'];   // [rocca2] il frangiflutti, la darsena e il canale della Rocca
 const bagnati = P.filter(p => !ACQUA.includes(p.tipo)).filter(p => { const i = cell(p.x, p.y), r = (p.imp || []).flatMap(([k, x0, x1, z0, z1]) => [[x0, z0], [x1, z0], [x1, z1], [x0, z1], [(x0 + x1) / 2, (z0 + z1) / 2]]);
   return (i >= 0 && W.grid[i] === T.WATER && W.zone[i] === W.Z.MARE) || r.filter(([a, b]) => { const j = cell(...wpos(p, a, b)); return j >= 0 && W.grid[j] === T.WATER && W.zone[j] === W.Z.MARE; }).length > 2; });
 ok(!bagnati.length, 'nessun pezzo in mare tranne le opere a mare' + (bagnati.length ? ': ' + bagnati.map(p => p.tipo + '@' + Math.round(p.x) + ',' + Math.round(p.y)).join(', ') : ''));

@@ -22,16 +22,16 @@ const PROVE = {
   magazzini_volta: [{}, { n: 1 }, { n: 7, w: 7, p: 14, h: 5 }],
   scalinata: [{}, { w: 3, dislivello: 4, pianerottoli: 0, lampada: false }, { w: 5, dislivello: 14, pianerottoli: 3 }],
   bitta: [{}, { h: .7 }],
-  darsena: [{}, { L: 24, W: 20 }, { L: 60, W: 40, scalette: 4 }],
+  darsena: [{}, { L: 24, W: 20 }, { L: 60, W: 40, scalette: 4 }, { L: 30, W: 22, rocca: true, gradini: 3 }],
   molo_vecchio: [{}, { L1: 24, L2: 0, lanterna: false }, { L1: 60, L2: 40, w: 8 }],
   scalo_alaggio: [{}, { L: 8, w: 5 }, { L: 16, w: 10, argano: false }],
   cortina: [{}, { L: 20, h: 9, cordone: false }, { L: 60, h: 14, cannoniere: 6 }],
   bastione: [{}, { faccia: 28, fianco: 10, h: 9 }, { faccia: 44, fianco: 16, garitta: false }],
-  fossato: [{}, { L: 20, ponte: false, rivellino: false }, { L: 44, w: 20, prof: 6 }],
+  fossato: [{}, { L: 20, ponte: false, rivellino: false }, { L: 44, w: 20, prof: 6 }, { L: 88, w: 14, prof: 6, acqua: true, pelo: 4.2, rivellino: false }],
   torrione: [{}, { r: 5, h: 12, lanterna: false }, { r: 9, h: 20 }],
   caserma: [{}, { L: 36, piani: 1 }, { L: 80, piani: 3 }],
   polveriera: [{}, { L: 8, p: 6, cinta: false }, { L: 16, p: 10 }],
-  porta_monumentale: [{}, { w: 8, h: 10, merli: false }, { w: 12, h: 14 }],
+  porta_monumentale: [{}, { w: 8, h: 10, merli: false }, { w: 12, h: 14, pensilina: true }],
   mura_tramontana: [{}, { L: 20, scala: false, merli: false }, { L: 60, h: 10 }],
   porta_terra: [{}, { w: 5, h: 8, torri: false }, { w: 8, h: 11, addossate: true }],   // [pezzi2] le casupole addossate (in città no)
   sopraelevata: [{}, { L: 25, lampioni: false }, { L: 100, h: 9, w: 12 }],
@@ -46,7 +46,12 @@ const PROVE = {
   lavatoio: [{}, { L: 4, tettoia: false }, { L: 9 }],
   fontana: [{}, { h: 2, lati: 6 }, { h: 3.2, lati: 8, cannelle: 4 }],
   muro_garante: [{}, { L: 16, posto_blocco: false }, { L: 48, h: 5, riflettore: false }],
-  palo_riflettori: [{}, { h: 8, n: 2 }, { h: 16, n: 6 }]
+  palo_riflettori: [{}, { h: 8, n: 2 }, { h: 16, n: 6 }],
+  mastio: [{}, { L: 10, P: 12, h: 18, lanterna: false }, { L: 16, P: 20, h: 26, merli: false }],   // [rocca2]
+  corpo_rocca: [{}, { L: 14, P: 10, h: 7, scarpa: true, erba: true }, { L: 30, P: 16, h: 15, merli: true, finestre: 3 }],
+  ponte_arco: [{}, { L: 20, h: 5 }, { L: 36, w: 6, h: 8 }],
+  porta_acqua: [{}, { L: 8, fornice: 4 }, { L: 16, h: 13, fornice: 8 }],
+  scogliera: [{}, { L: 6, w: 3, n: 6 }, { L: 16, w: 5, n: 20, seme: 4 }]
 };
 const solo = process.argv[2], SOGLIA = { pieno: 12000, basso: 2000 };
 let fail = 0, totali = 0;

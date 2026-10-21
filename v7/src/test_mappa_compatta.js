@@ -49,5 +49,19 @@ const camera = caseC.filter(b => !b.torre && !b.shack && VIE.some(rd => { for (l
 const camAlte = camera.filter(b => b.fl > 2);
 ok(camera.length > 20 && !camAlte.length, `sulle vie il fronte lato camera ha al più 2 piani (${camera.length} case, ${camAlte.length} più alte${camAlte.length ? ': ' + camAlte.slice(0, 4).map(b => b.id + '@' + cen(b).map(Math.round) + ' ' + b.fl).join(' ') : ''})`);
 
+// ---------------- la Rocca a mare (sez. 11.2) ----------------
+{ const F = W.FORT, T = W.T, cellA = (x, y) => Math.floor(y / TS) * W.GW + Math.floor(x / TS), mare = (x, y) => { const i = cellA(x, y); return W.grid[i] === T.WATER && W.zone[i] === W.Z.MARE; };
+  const xc = (F.ditch[0] + F.ditch[2]) / 2; let asciutto = 0, ponte = 0; for (let y = 290; y <= 390; y += 2) { if (Math.abs(y - F.y) < 4) { if (!mare(xc, y)) ponte++; continue; } if (!mare(xc, y)) asciutto++; }
+  ok(!asciutto && ponte > 0, `lo scoglio è staccato dalla città dal canale (${asciutto} caselle asciutte nel canale), passato dal ponte`);
+  const PZ = W.pezzi.filter(p => p.x > F.ditch[0] - 4), n = t => PZ.filter(p => p.tipo === t).length;
+  ok(n('mastio') === 1 && PZ.find(p => p.tipo === 'mastio').opz.lanterna && n('torrione') === 1 && n('corpo_rocca') >= 6 && n('bastione') >= 1 && n('porta_monumentale') === 2 && n('porta_acqua') === 1 && n('ponte_arco') === 1,
+    `le masse del castello: mastio col faro, torrione, ${n('corpo_rocca')} masse di carparo, rivellino, porta, portale, porta d'acqua, ponte ad arco`);
+  ok(n('scogliera') >= 10, `il frangiflutti di massi attorno allo scoglio (${n('scogliera')} tratti)`);
+  // la darsena è mare dentro le mura e la porta d'acqua la apre sul mare aperto
+  const D = PZ.find(p => p.tipo === 'darsena'), s0 = cellA(D.x + 20, D.y); let aperto = false; { const seen = new Set([s0]), q = [s0]; for (let h = 0; h < q.length && h < 20000 && !aperto; h++) { const i = q[h], y = Math.floor(i / W.GW) * TS; if (y > 392) aperto = true; for (const d of [1, -1, W.GW, -W.GW]) { const j = i + d; if (!seen.has(j) && W.grid[j] === T.WATER) { seen.add(j); q.push(j); } } } }
+  ok(mare(D.x + 20, D.y) && aperto, 'la darsena allagata dentro le mura esce in mare dalla porta d\'acqua');
+  const mil = W.BUILDINGS.filter(b => b.military && b.x * TS > F.ditch[2] - 2); ok(mil.length >= 6 && mil.every(b => b.pezzo), `gli edifici della Rocca sono masse del castello (${mil.map(b => b.id + ':' + b.pezzo).join(' ')})`);
+}
+
 console.log(fail ? `\n${fail} prove non passate` : '\ntutte le prove passano');
 process.exit(fail ? 1 : 0);

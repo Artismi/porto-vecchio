@@ -100,27 +100,31 @@ const D = {
   // LA ROCCA (v2): un castello a mare aragonese su uno scoglio basso, staccato dalla città dal canale (riferimenti in _immagini/riferimenti).
   // Masse a gradoni di conci dorati (tufo/carparo), non un ottagono: [nome, poligono, altezza m, scarpa (muro inclinato), erba sulla terrazza]
   rocca: {
-    canale: [[1508, 240], [1526, 240], [1526, 452], [1508, 452]],
-    scoglio: [[1527, 300], [1550, 289], [1580, 293], [1601, 309], [1610, 334], [1606, 362], [1592, 388], [1566, 400], [1536, 399], [1526, 384], [1525, 316]],
-    frangiflutti: [[1522, 296], [1550, 284], [1583, 288], [1606, 305], [1616, 334], [1612, 365], [1597, 393], [1568, 406], [1534, 405], [1520, 388], [1519, 314]],
+    canale: [[1504, 240], [1518, 240], [1518, 452], [1504, 452]],
+    scoglio: [[1518, 301], [1530, 306], [1560, 307], [1586, 309], [1596, 317], [1601, 329], [1603, 347], [1599, 362], [1592, 373], [1578, 377], [1566, 381], [1546, 381], [1530, 381], [1518, 376]],
+    frangiflutti: [[1515, 297], [1530, 302], [1560, 303], [1587, 305], [1599, 313], [1605, 328], [1607, 348], [1603, 364], [1595, 377], [1580, 381], [1566, 385], [1546, 385], [1530, 385], [1515, 380]],
     masse: [
-      ['Mastio col faro', [[1582, 314], [1598, 316], [1600, 338], [1582, 338]], 24, false, false],
-      ['Corpo di levante', [[1580, 338], [1602, 338], [1600, 362], [1580, 366]], 14, false, false],
-      ['Caserma sulla cortina nord', [[1548, 297], [1578, 298], [1582, 314], [1548, 314]], 16, false, false],
-      ['Cortina nord', [[1532, 302], [1548, 297], [1548, 314], [1534, 316]], 12, false, false],
-      ['Rivellino di ponente', [[1527, 304], [1534, 300], [1536, 318], [1528, 322]], 6, true, true],
-      ['Fronte di terra con la Porta', [[1526, 322], [1534, 320], [1534, 366], [1526, 366]], 14, false, false],
-      ['Rivellino di scirocco', [[1584, 366], [1601, 358], [1594, 384], [1580, 388]], 7, true, true],
-      ['Cortina a mare con la porta d\'acqua', [[1548, 384], [1580, 384], [1580, 392], [1548, 392]], 12, false, false],
-      ['Corpo del ponte', [[1534, 350], [1546, 350], [1546, 376], [1534, 376]], 10, false, true],
+      ['Mastio col faro', [[1578, 324], [1592, 324], [1592, 340], [1578, 340]], 24, false, false],
+      ['Raccordo', [[1570, 316], [1578, 316], [1578, 328], [1570, 328]], 17, false, false],
+      ['Corpo di levante', [[1580, 340], [1592, 340], [1592, 356], [1580, 356]], 13, false, false],
+      ['Caserma sulla cortina nord', [[1530, 310], [1570, 310], [1570, 320], [1530, 320]], 10, false, false],
+      ['Rivellino di ponente', [[1518, 306], [1528, 306], [1528, 316], [1518, 316]], 6, true, true],
+      ['Fronte di terra', [[1518, 316], [1526, 316], [1526, 337.5], [1518, 337.5]], 14, false, false],
+      ['Fronte di terra', [[1518, 348.5], [1526, 348.5], [1526, 372], [1518, 372]], 14, false, false],
+      ['Porta della Rocca', [[1518, 337.5], [1524, 337.5], [1524, 348.5], [1518, 348.5]], 13, false, false],
+      ['Polveriera', [[1528, 324], [1540, 324], [1540, 332], [1528, 332]], 6, false, false],
+      ['Corpo del ponte', [[1526, 346], [1538, 346], [1538, 362], [1526, 362]], 10, false, true],
+      ['Rivellino di scirocco', [[1584, 358], [1592, 358], [1599.5, 366], [1592, 374], [1584, 374]], 7, true, true],
+      ['Cortina a mare con la porta d\'acqua', [[1544, 372], [1554, 372], [1554, 376], [1544, 376]], 11, false, false],
+      ['Cortina a mare con la porta d\'acqua', [[1564, 372], [1574, 372], [1574, 376], [1564, 376]], 11, false, false],
     ],
-    torrione: [1538, 386, 10, 10],   // il bastione tondo e tozzo: x, y, raggio, altezza
-    piazzaArmi: [[1536, 318], [1580, 318], [1580, 346], [1536, 346]],
-    darsena: [[1548, 352], [1578, 352], [1578, 384], [1564, 384], [1564, 400], [1558, 400], [1558, 384], [1548, 384]],   // il bacino allagato, con la porta d'acqua verso il mare
-    arcone: [[1546, 366], [1580, 366]],   // il grande ponte ad arco tondo sulla darsena
-    banchine: [[1548, 348, 1578, 352]],   // la banchina coi gradini che scendono all'acqua
-    portale: [1566, 346],   // la porta monumentale con lo stemma scolpito e la pensilina di ferro, sulla banchina
-    molo: [[1586, 392], [1590, 420]],   // il molo della Rocca, fuori dalla porta d'acqua (la nave dell'Impero il lunedì e il giovedì)
+    torrione: [1532, 372, 8.8, 10],   // il torrione tondo e tozzo: x, y, raggio, altezza
+    piazzaArmi: [[1542, 322], [1570, 322], [1570, 345], [1542, 345]],
+    darsena: [[1544, 350], [1574, 350], [1574, 372], [1564, 372], [1564, 386], [1554, 386], [1554, 372], [1544, 372]],   // il bacino allagato, con la porta d'acqua verso il mare
+    arcone: [[1543, 359], [1575, 359]],   // il grande ponte ad arco tondo sulla darsena
+    banchine: [[1538, 344, 1580, 350]],   // la banchina coi gradini che scendono all'acqua
+    portale: [1538, 352],   // la porta monumentale con lo stemma scolpito e la pensilina di ferro, sulla banchina
+    moli: [[[1546, 380], [1546, 414]], [[1572, 380], [1572, 414]]],   // il molo militare e quello dei rimorchiatori, ai lati della porta d'acqua
   },
   // i landmark: [nome, x, y, altezza m, colore di notte, viste: [[x, y], ...]]
   landmark: [
@@ -129,7 +133,7 @@ const D = {
     ["Orologio della stazione (14 m)", 1270, 289, 14, '#ffd27a', [[1272, 330], [1303, 368], [1288, 272]]],
     ['Torre dell\'acqua e antenna (18 m)', 1310, 272, 18, '#9ff0ff', [[1282, 332], [1323, 302], [1386, 272]]],
     ['Gru del porto (22 m)', 1372, 414, 22, '#ff9a3c', [[1398, 380], [1356, 370], [1304, 398], [1398, 352]]],
-    ['Mastio col faro (24 m + lanterna)', 1590, 326, 24, '#ff3b30', [[1320, 343], [1440, 318], [1402, 398], [1480, 300]]],
+    ['Mastio col faro (24 m + lanterna)', 1585, 332, 24, '#ff3b30', [[1320, 343], [1440, 318], [1402, 398], [1480, 300]]],
   ],
   // i 12 luoghi-missione: [n, nome breve, x, y, ruoli, icona, dx, dy (etichetta)]
   luoghi: [
@@ -144,7 +148,7 @@ const D = {
     [9, 'Stazione e scalo merci', 1267, 297, ['pericolo', 'premio'], 'orologio', -18, -16],
     [10, 'Baracche e grata del vapore', 1284, 270, ['hub', 'segreto'], 'fiamma', -26, -14],
     [11, 'Posto di blocco', 1478, 343, ['pericolo'], 'sbarra', 6, -16],
-    [12, 'La Rocca', 1556, 332, ['pericolo'], 'torre', 4, -18],
+    [12, 'La Rocca', 1556, 334, ['pericolo'], 'torre', 4, -18],
   ],
   // le vie fra i luoghi: [tipo, nome, punti]. tipo: principale | scorciatoia | tetti | sotto | acqua (seguono le strade della rete)
   vie: [
@@ -166,8 +170,8 @@ const D = {
     ['sotto', 'Cripta → rifugio sotto l\'adunata → bunker (cunicolo)', [[1384, 298], [1356, 318], [1326, 344], [1360, 330], [1410, 296], [1436, 282]]],
     ['principale', 'Bar → spianata (fine della Rua)', [[1430, 318], [1446, 313], [1470, 313]]],
     ['tetti', 'Bar → spianata (le case mozzate)', [[1432, 320], [1450, 330], [1464, 326]]],
-    ['principale', 'Spianata → Rocca (ponte e Porta, sorvegliato)', [[1476, 343], [1512, 343], [1545, 336]]],
-    ['acqua', 'Molo Vecchio → canale → porta d\'acqua della darsena', [[1402, 398], [1430, 432], [1500, 436], [1517, 410], [1540, 412], [1561, 404]]],
+    ['principale', 'Spianata → Rocca (ponte e Porta, sorvegliato)', [[1476, 343], [1512, 343], [1548, 336]]],
+    ['acqua', 'Molo Vecchio → canale → porta d\'acqua della darsena', [[1402, 398], [1430, 432], [1500, 436], [1511, 400], [1540, 398], [1559, 390]]],
   ],
   // le rivelazioni: [n, x, y, verso dove si guarda (rad), cosa]
   rivela: [
@@ -197,7 +201,7 @@ function disegna(cv, D, F, terra, rail, EPOCA, modo, sfondo) {
   if (modo === 'progetto') { ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; for (let y = 6; y < H0; y += 12) { ctx.beginPath(); for (let x = 0; x < W0; x += 24) { ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 6, y - 3, x + 12, y); } ctx.stroke(); } }
   // la terra (maschera)
   const mask = document.createElement('canvas'); mask.width = W0; mask.height = H0; const m = mask.getContext('2d');
-  terra.forEach((row, j) => row.forEach((v, i) => { if (modo === 'progetto' && F.x0 + i * 2 >= 1508) return; if (v) { m.fillStyle = v === 2 ? '#c9c4b8' : '#f3eee2'; m.fillRect(i * 2 * S, j * 2 * S, 2 * S + .5, 2 * S + .5); } }));
+  terra.forEach((row, j) => row.forEach((v, i) => { if (modo === 'progetto' && F.x0 + i * 2 >= 1504 && F.x0 + i * 2 < 1518) return;   /* il canale della Rocca */ if (v) { m.fillStyle = v === 2 ? '#c9c4b8' : '#f3eee2'; m.fillRect(i * 2 * S, j * 2 * S, 2 * S + .5, 2 * S + .5); } }));
   if (modo === 'progetto') ctx.drawImage(mask, 0, 0);
   else ctx.drawImage(sfondo, 0, 0, W0, H0);
   // i distretti per epoca, solo sulla terra
@@ -250,7 +254,7 @@ function disegna(cv, D, F, terra, rail, EPOCA, modo, sfondo) {
     { const [[ax, ay], [bx, by]] = Rk.arcone; ctx.strokeStyle = '#5a4428'; ctx.lineWidth = 4.2 * S; ctx.lineCap = 'butt'; ctx.beginPath(); ctx.moveTo(X(ax), Y(ay)); ctx.lineTo(X(bx), Y(by)); ctx.stroke();
       ctx.strokeStyle = '#d8c18c'; ctx.lineWidth = 3.2 * S; ctx.stroke(); ctx.strokeStyle = 'rgba(70,50,30,.7)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(X((ax + bx) / 2), Y(ay) + 2.6 * S, (bx - ax) * .36 * S, 2.2 * S, 0, Math.PI, 0); ctx.stroke(); }
     // la porta d'acqua a volta nella cortina a mare
-    { const P = Rk.darsena, [x0, y0] = P[4], [x1] = P[3]; ctx.strokeStyle = '#2f2a24'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X((x0 + x1) / 2), Y(388), (x1 - x0) / 2 * S, Math.PI, 0); ctx.stroke(); }
+    { const P = Rk.darsena, [x0] = P[5], [x1] = P[4]; ctx.strokeStyle = '#2f2a24'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X((x0 + x1) / 2), Y(376), (x1 - x0) / 2 * S, Math.PI, 0); ctx.stroke(); }
     // il portale monumentale con lo stemma e la pensilina di ferro
     { const [x, y] = Rk.portale; ctx.fillStyle = '#efe2bd'; ctx.fillRect(X(x - 3), Y(y - 3), 6 * S, 3 * S); ctx.strokeStyle = '#2f2a24'; ctx.lineWidth = 1.5; ctx.strokeRect(X(x - 3), Y(y - 3), 6 * S, 3 * S);
       ctx.fillStyle = '#3b3b40'; ctx.fillRect(X(x - 3.6), Y(y), 7.2 * S, 1.6 * S); ctx.beginPath(); ctx.arc(X(x), Y(y - 1.6), 1 * S, 0, 7); ctx.fillStyle = '#b8862b'; ctx.fill(); }
@@ -258,9 +262,9 @@ function disegna(cv, D, F, terra, rail, EPOCA, modo, sfondo) {
     { const M = Rk.masse[0][1], cx = M.reduce((s, p) => s + p[0], 0) / 4, cy = M.reduce((s, p) => s + p[1], 0) / 4; ctx.fillStyle = '#e9e1cc'; ctx.fillRect(X(cx - 2), Y(cy - 2), 4 * S, 4 * S); ctx.strokeStyle = '#2f2a24'; ctx.lineWidth = 1.5; ctx.strokeRect(X(cx - 2), Y(cy - 2), 4 * S, 4 * S);
       ctx.beginPath(); ctx.arc(X(cx), Y(cy), 1.2 * S, 0, 7); ctx.fillStyle = '#ff3b30'; ctx.fill(); }
     // il molo della Rocca
-    { const [[ax, ay], [bx, by]] = Rk.molo; ctx.strokeStyle = '#8e8676'; ctx.lineWidth = 4 * S; ctx.lineCap = 'butt'; ctx.beginPath(); ctx.moveTo(X(ax), Y(ay)); ctx.lineTo(X(bx), Y(by)); ctx.stroke(); ctx.strokeStyle = '#c9c4b8'; ctx.lineWidth = 3 * S; ctx.stroke(); }
+    Rk.moli.forEach(([[ax, ay], [bx, by]]) => { ctx.strokeStyle = '#8e8676'; ctx.lineWidth = 9 * S; ctx.lineCap = 'butt'; ctx.beginPath(); ctx.moveTo(X(ax), Y(ay)); ctx.lineTo(X(bx), Y(by)); ctx.stroke(); ctx.strokeStyle = '#c9c4b8'; ctx.lineWidth = 8 * S; ctx.stroke(); });
     // le etichette della Rocca
-    [['mastio col faro', 1594, 342], ['torrione', 1538, 401.5], ['darsena', 1563, 376], ['porta d\'acqua', 1561, 406], ['piazza d\'armi', 1558, 324], ['rivellino', 1531, 297], ['canale', 1517, 300]].forEach(([t, x, y]) => halo(t, X(x), Y(y), 'italic 10.5px Inter', '#3a2a1a', 'center'));
+    [['mastio col faro', 1585, 320.5], ['torrione', 1532, 386], ['darsena', 1559, 368], ['porta d\'acqua', 1559, 392], ['piazza d\'armi', 1556, 326], ['rivellino', 1523, 302], ['canale', 1511, 300]].forEach(([t, x, y]) => halo(t, X(x), Y(y), 'italic 10.5px Inter', '#3a2a1a', 'center'));
   }
   // [incroci] LE STRADE COME SI INCONTRANO DAVVERO. Tutte le carreggiate e le piazze prima col bordo (il cordolo), poi tutte col fondo:
   // così il cordolo gira l'angolo senza interrompersi e si apre solo dove entra un'altra strada. I capi sono tagliati dritti (mai un

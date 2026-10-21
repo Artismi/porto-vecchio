@@ -136,6 +136,7 @@ var Percorsi = (function () {
   lm('tettoia_mercato', 'la tettoia verde del Mercato', 14, 0, 7, 15);
   lm('porta_monumentale', 'la Porta della Rocca', 5.5, 0, 11, 5);
   lm('torrione', 'il torrione della Rocca', 7, 0, 15, 8);
+  lm('mastio', 'il faro del mastio della Rocca', 8.7, -2, 31, 7);   // [rocca2] il mastio col faro
   lm('stazione', 'l\'orologio della stazione', 16, -6, 10, 10);
   lm('muro_garante', 'il riflettore del posto di blocco', 12, 0, 6.5, 3);
   lm('molo_vecchio', 'la lanterna del molo', 0, 0, 5, 4);

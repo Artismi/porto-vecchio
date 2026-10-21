@@ -12266,7 +12266,7 @@ var PezziCitta = (function () {
   const PI = Math.PI, HP = PI / 2;
   // ---------------- tavolozza: pochi materiali condivisi per genere ----------------
   const COL = {
-    tufo: '#b2a283', tufoScuro: '#958667', travertino: '#ddd3bb', travertinoScuro: '#b4a990',   /* [pezzi2] il tufo vero, grigio-giallo spento (era #c9a86a) */ travertinoChiaro: '#ece4d0', intradosso: '#a89e88', tenda: '#d8ccb0', tendaRossa: '#a8483a', tapparella: '#cbc2aa',   // [facciate2]
+    tufo: '#b2a283', tufoScuro: '#958667', carparo: '#c2a167', carparoScuro: '#a1834f',   /* [rocca2] il carparo dorato del castello a mare */ travertino: '#ddd3bb', travertinoScuro: '#b4a990',   /* [pezzi2] il tufo vero, grigio-giallo spento (era #c9a86a) */ travertinoChiaro: '#ece4d0', intradosso: '#a89e88', tenda: '#d8ccb0', tendaRossa: '#a8483a', tapparella: '#cbc2aa',   // [facciate2]
     pietra: '#8d8378', pietraScura: '#6e665c', pietraChiara: '#a9a090',   // la pietra di zoccoli, cornici, chiavi di volta (era finita nel commento qui sopra)
     ghisa: '#2f4a3a', cemento: '#9a968e', cementoScuro: '#7c7873', ferro: '#4a4c50', ferroScuro: '#2e3034', ruggine: '#7a4a30',
     maiolica: '#2e7d5a', intonaco: '#d3c5a3', calce: '#ddd7c8', intonacoRosso: '#b5604a', ocra: '#c29a5e', coppi: '#8f6656', tegole: '#9b5a3c', legno: '#7a5a38',
@@ -12310,7 +12310,7 @@ var PezziCitta = (function () {
   };
   COL.persiana = '#41584a';   // [pezzi2] le persiane di legno verde, con le stecche (genere lamelle)
   const VESTI = {
-    tufo: { g: 'conci', rh: .35, rl: .62, gi: .02, tono: .34, manca: .003, u: 1 }, tufoScuro: { g: 'conci', rh: .35, rl: .62, gi: .02, tono: .3, manca: .004, u: 1 },
+    tufo: { g: 'conci', rh: .35, rl: .62, gi: .02, tono: .34, manca: .003, u: 1 }, carparo: { g: 'conci', rh: .42, rl: .82, gi: .018, tono: .3, manca: .002, u: 1 }, carparoScuro: { g: 'conci', rh: .42, rl: .82, gi: .018, tono: .28, manca: .003, u: 1 }, tufoScuro: { g: 'conci', rh: .35, rl: .62, gi: .02, tono: .3, manca: .004, u: 1 },
     travertino: { g: 'conci', rh: .6, rl: 1.2, gi: .009, tono: .1, manca: 0, u: .45 }, travertinoScuro: { g: 'conci', rh: .6, rl: 1.2, gi: .009, tono: .1, manca: 0, u: .45 },
     mattone: { g: 'conci', rh: .075, rl: .26, gi: .011, tono: .34, manca: .006, u: .8 },
     pietra: { g: 'pietra', rh: .5, rl: 1.05, gi: .016, tono: .16, la: .62, u: .8 }, pietraScura: { g: 'pietra', rh: .5, rl: 1.05, gi: .016, tono: .16, la: .62, u: .8 },
@@ -13070,7 +13070,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
   DOC.bitta = { h: .6, cima: true, nota: 'bitta di ghisa a fungo sul suo blocco di pietra, con la cima avvolta al collo che scende verso +Z' };
   T.bitta = o => { o = def(o, DOC.bitta); const g = new THREE.Group(); bittaG(g, 0, 0, 0, o.h, o.cima); g.userData.misure = [.7, o.h + .1, o.cima ? 1.7 : .7]; return g; };
 
-  DOC.darsena = { L: 40, W: 30, hq: 1.4, banchina: 6, scalette: 2, nota: 'darsena (L lungo X × W lungo Z, la bocca verso +Z): tre banchine di pietra col piano a y = 0, ciglio, testate tonde, bitte ogni 8 m, scalette alla marinara, parabordi di copertoni, fascia di alghe al pelo dell\'acqua (a −hq), lampioni; quotaPosa = piede dei muri' };
+  DOC.darsena = { L: 40, W: 30, hq: 1.4, banchina: 6, scalette: 2, rocca: false, gradini: 2, nota: '[rocca2] rocca: la darsena del castello (gradini di pietra all\'acqua invece di bitte, copertoni e lampioni). darsena (L lungo X × W lungo Z, la bocca verso +Z): tre banchine di pietra col piano a y = 0, ciglio, testate tonde, bitte ogni 8 m, scalette alla marinara, parabordi di copertoni, fascia di alghe al pelo dell\'acqua (a −hq), lampioni; quotaPosa = piede dei muri' };
   T.darsena = o => {
     o = def(o, DOC.darsena); const g = new THREE.Group(), L = o.L, W = o.W, hq = o.hq, B = o.banchina, yF = -hq - 1.2, Lt = L + 2 * B, xc = Lt / 2;
     blocco(g, Lt, -yF, B, 'pietra', xc, yF, -W / 2 - B / 2);                                         // banchina di fondo
@@ -13078,11 +13078,16 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     blocco(g, L + .6, .15, .6, 'pietraChiara', xc, 0, -W / 2 - .3); for (const s of [-1, 1]) blocco(g, .6, .15, W, 'pietraChiara', xc + s * (L / 2 + .3), 0, 0);   // ciglio
     blocco(g, L, .04, W + 3, 'acqua', xc, -hq - .04, 1.5);                                           // lo specchio d'acqua
     if (!LOD) { blocco(g, L, .5, .03, 'verdeScuro', xc, -hq - .15, -W / 2 + .015); for (const s of [-1, 1]) blocco(g, .03, .5, W, 'verdeScuro', xc + s * (L / 2 - .015), -hq - .15, 0); }   // le alghe
+    if (o.rocca) {   // [rocca2] la darsena del castello: i gradini di pietra che scendono all'acqua dalla banchina di fondo, qualche anello di ferro
+      const ng = o.gradini || 2, n = 6, pd = .4, hT = hq + .3;
+      for (let k = 0; k < ng; k++) { const x = xc - L / 2 + L * (k + .5) / ng; scala(g, 3.2, hT, n, pd, 'pietraChiara', x, -hT, -W / 2 + n * pd, PI); if (!LOD) blocco(g, 3.4, .12, .3, 'pietra', x, 0, -W / 2 + .1); }
+      if (!LOD) for (let i = 0; i < 5; i++) toro(g, .14, .03, 10, 'ferroScuro', xc - L / 2 + 2 + i * (L - 4) / 4, -.35, -W / 2 + .03); }
+    else {
     const nb = Math.max(1, Math.floor(L / 8)); for (let i = 0; i <= nb; i++) { const x = xc - L / 2 + .8 + i * (L - 1.6) / nb; bittaG(g, x, 0, -W / 2 - .9, .55, i % 3 === 1); parabordo(g, x + 2 > xc + L / 2 - 1 ? x - 2 : x + 2, -.7, -W / 2); }
     const ns = Math.max(1, Math.floor(W / 8)); for (const s of [-1, 1]) for (let i = 0; i <= ns; i++) { const z = -W / 2 + 1 + i * (W - 2) / ns; bittaG(g, xc + s * (L / 2 + .9), 0, z, .55, false); parabordo(g, xc + s * (L / 2), -.7, z + 2.5 > W / 2 - 1 ? z - 2.5 : z + 2.5, -s * HP); }
     for (let k = 0; k < o.scalette; k++) { const lato = k % 3, t = (Math.floor(k / 3) + .5) / Math.ceil(o.scalette / 3);
       if (lato === 0) scaletta(g, xc - L / 2 + L * (.3 + .4 * t), yF + .3, -W / 2); else { const s = lato === 1 ? -1 : 1; scaletta(g, xc + s * L / 2, yF + .3, -W / 2 + W * (.35 + .3 * t), -s * HP); } }
-    lampione(g, 'ghisa', xc - L / 2 - B / 2, -W / 2 - B / 2); lampione(g, 'ghisa', xc + L / 2 + B / 2, -W / 2 - B / 2);
+    lampione(g, 'ghisa', xc - L / 2 - B / 2, -W / 2 - B / 2); lampione(g, 'ghisa', xc + L / 2 + B / 2, -W / 2 - B / 2); }
     g.userData.quotaPosa = yF; g.userData.misure = [Lt, -yF + 4.6, W + B + B / 2]; return g;
   };
 
@@ -13234,14 +13239,14 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     g.userData.misure = [G + hc * .4, h + (o.garitta ? 3.7 : .1), F + df + hc * .2 + .6]; return g;
   };
 
-  DOC.fossato = { L: 30, w: 15, prof: 5, ponte: true, rivellino: true, nota: 'fossato asciutto lungo X: fondo d\'erba a −prof (quotaPosa), escarpa a scarpa sul lato −Z (la Rocca), controscarpa diritta con la copertina e il parapetto sul lato +Z; ponte in muratura ad archi con l\'ultimo tratto levatoio di legno con le catene; oltre la controscarpa il rivellino triangolare, tronco in punta, con l\'androne a volta che la strada passa da parte a parte. Il piano della città è y = 0' };
+  DOC.fossato = { L: 30, w: 15, prof: 5, ponte: true, rivellino: true, acqua: false, nota: '[rocca2] acqua: il canale di mare della Rocca (niente fondo d\'erba; pelo = quanto sta sotto il piano il pelo dell\'acqua). fossato asciutto lungo X: fondo d\'erba a −prof (quotaPosa), escarpa a scarpa sul lato −Z (la Rocca), controscarpa diritta con la copertina e il parapetto sul lato +Z; ponte in muratura ad archi con l\'ultimo tratto levatoio di legno con le catene; oltre la controscarpa il rivellino triangolare, tronco in punta, con l\'androne a volta che la strada passa da parte a parte. Il piano della città è y = 0' };
   T.fossato = o => {
     o = def(o, DOC.fossato); const g = new THREE.Group(), L = o.L, w = o.w, pr = o.prof, xc = L / 2;
-    blocco(g, L, .3, w + 1, 'erba', xc, -pr, w / 2);                                                  // il fondo
+    if (!o.acqua) blocco(g, L, .3, w + 1, 'erba', xc, -pr, w / 2);                                   // il fondo (il canale della Rocca è mare: niente fondo d'erba) [rocca2]
     sezione(g, [[pr * .2, -pr], [0, 0], [-1.5, 0], [-1.5, -pr]], L, 'tufo', 0, 0, 0);   // l'escarpa a scarpa (la cortina ci sale sopra)
     blocco(g, L, pr, 1.6, 'tufo', xc, -pr, w + .8); blocco(g, L, .18, 1.9, 'pietraChiara', xc, 0, w + .8, LOD ? 0 : .03); for (const s of [-1, 1]) { const lp2 = o.ponte ? L / 2 - 2.6 : L / 2; blocco(g, lp2, .7, .5, 'tufo', xc + s * (L / 2 - lp2 / 2), .18, w + 1.4); }   // controscarpa, copertina e parapetto (aperto sul ponte)
     capperi(g, Math.round(L / 6), L, -pr + .6, -.6, w - .1, 0, L * 5 + w, 0);
-    if (!LOD) { blocco(g, L, .35, .03, 'verdeScuro', xc, -pr + .3, w - .015); blocco(g, L, .35, .03, 'verdeScuro', xc, -pr + .3, .2 * (pr - .475) + .02).rotation.x = -Math.atan(.2); }   // l'umido al piede
+    if (!LOD) { const yu = o.acqua ? -(o.pelo || pr - 1.8) - .2 : -pr + .3; blocco(g, L, .35, .03, 'verdeScuro', xc, yu, w - .015); blocco(g, L, .35, .03, 'verdeScuro', xc, yu, .2 * (-yu - .175) + .02).rotation.x = -Math.atan(.2); }   // l'umido al piede (o al pelo del mare)
     if (o.ponte) { const wb = 4.6, lp = Math.min(5, w * .35), zs = lp, ls = w - zs;                 // il ponte: archi di pietra fino a zs, poi il levatoio
       const na = Math.max(1, Math.round(ls / 6)), wa = ls / na - 1.4, gp = grp(g, xc, -pr, zs, -HP);
       pareteArchi(gp, ls, pr - .3, wb, Array.from({ length: na }, (_, i) => ({ x: (i + .5) * ls / na, w: Math.min(wa, pr * 1.4), h: Math.min(pr - 1.1, Math.min(wa, pr * 1.4) / 2 + pr * .45) })), 'tufo', 0, .3, 0);
@@ -13335,7 +13340,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     g.userData.misure = o.cinta ? [L + 2 * d + 1, hW + P * .32 + 1.8, P + 2 * d + 1] : [L, hW + P * .32 + 1.8, P + 2.8]; return g;
   };
 
-  DOC.porta_monumentale = { w: 10, h: 12, fornice: 4.2, merli: true, scritta: 'ANNO MDCLXXXII', nota: 'la porta della Rocca: massa di tufo profonda 6 m con l\'androne, paraste bugnate, ghiera di conci col mascherone in chiave, le fessure dei bolzoni del ponte levatoio, trabeazione con la scritta, attico con lo stemma coronato fra le volute, merli (o pinnacoli); ante aperte nell\'androne, lanterna a braccio' };
+  DOC.porta_monumentale = { w: 10, h: 12, fornice: 4.2, merli: true, scritta: 'ANNO MDCLXXXII', pensilina: false, nota: '[rocca2] pensilina: la tettoia di ferro sopra il fornice (il portale sulla banchina della darsena). la porta della Rocca: massa di tufo profonda 6 m con l\'androne, paraste bugnate, ghiera di conci col mascherone in chiave, le fessure dei bolzoni del ponte levatoio, trabeazione con la scritta, attico con lo stemma coronato fra le volute, merli (o pinnacoli); ante aperte nell\'androne, lanterna a braccio' };
   T.porta_monumentale = o => {
     o = def(o, DOC.porta_monumentale); const g = new THREE.Group(), W = o.w, H = o.h, D = 6, wf = Math.min(o.fornice, W * .45), hf = Math.min(H * .55, wf * 1.55), zF = D / 2, hE = hf + 1.6, xc = W / 2;
     pareteArchi(g, W, H, D, [{ x: xc, w: wf, h: hf }], 'tufo', 0, 0, 0);
@@ -13355,9 +13360,100 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       const xl = xc + wf / 2 + 1.1; asta(g, [xl, 4.2, zF + .24], [xl, 4.2, zF + 1.1], .03, 'ferro'); blocco(g, .25, .35, .25, 'vetro', xl, 3.85, zF + 1.1); blocco(g, .3, .06, .3, 'ferroScuro', xl, 4.2, zF + 1.1); }   // la lanterna a braccio sulla parasta
     conci(g, wf / 2, .4, 9, 'pietraChiara', xc, hf - wf / 2, -zF + .1);
     blocco(g, W + .3, .6, D + .2, 'pietraScura', xc, 0, 0, LOD ? 0 : .03);   // [pezzi2] lo zoccolo
+    if (o.pensilina) { const yp = hf + .35, dp = 2.2;   // [rocca2] la pensilina di ferro sul portale: la lastra, i tiranti alla parete, la frangia
+      blocco(g, wf + 2.4, .12, dp, 'ferroScuro', xc, yp, zF + dp / 2); if (!LOD) { blocco(g, wf + 2.5, .22, .06, 'ferro', xc, yp - .1, zF + dp); for (const s of [-1, 1]) asta(g, [xc + s * (wf / 2 + .9), yp + .12, zF + dp - .1], [xc + s * (wf / 2 + .9), yp + 2.1, zF + .05], .035, 'ferroScuro'); } }
     if (!LOD) { for (const s of [-1, 1]) { const xp = xc + s * (wf / 2 + .35); cil(g, .26, .18, .75, 10, 'pietraChiara', xp, 0, zF + .5); add(g, new THREE.SphereGeometry(.18, 8, 6), 'pietraChiara', xp, .75, zF + .5); }   // i paracarri ai lati del fornice
       for (const s of [-1, 1]) cantonali(g, xc + s * W / 2, zF, .6, hE, s, 1, 'pietraChiara', 0, .5); blocco(g, wf + .2, .2, D - .2, 'pietra', xc, 0, 0); }   // i cantonali e la soglia del fornice
     g.userData.misure = [W + .4, H + (o.merli ? 1.9 : 1.33), D + .9]; return g;
+  };
+
+
+  // ================= [rocca2] IL CASTELLO A MARE (riferimenti del committente: _immagini/riferimenti/fortezza_da_fuori.png, _da_dentro.webp) =================
+  // Un castello aragonese su uno scoglio basso: masse a gradoni di conci dorati di carparo, muri alti e a picco con poche finestrelle, il
+  // parapetto merlato o liscio, i rivellini bassi a scarpa con l'erba sulle terrazze, il mastio col faro, il torrione tondo e tozzo (T.torrione),
+  // dentro la darsena allagata (T.darsena) col grande ponte ad arco, la porta d'acqua a volta e il portale con lo stemma e la pensilina.
+  // le facce di una massa L × P (x da 0 a L, z centrata): [x, z, ry, larghezza] (ogni gruppo ha +X lungo la faccia e +Z verso fuori)
+  const facceMassa = (L, P) => [[0, P / 2, 0, L], [L, -P / 2, PI, L], [L, P / 2, HP, P], [0, -P / 2, -HP, P]];
+  // finestrelle rade su una faccia che guarda +Z, larga l: n vani piccoli col davanzale, fra y0 e y1
+  function finestrelle(g, l, y0, y1, n, seme) {
+    if (LOD || y1 - y0 < 2) return; const r = caso(seme);
+    for (let i = 0; i < n; i++) { const w = .5 + r() * .35, h = .8 + r() * .55, x = 1 + w / 2 + r() * Math.max(.1, l - 2 - w), y = y0 + r() * Math.max(.1, y1 - y0 - h);
+      blocco(g, w, h, .08, 'buio', x, y, .03); blocco(g, w + .34, .14, .22, 'pietraChiara', x, y - .14, .1); blocco(g, w + .3, .16, .12, 'pietraChiara', x, y + h, .05); }
+  }
+  // il coronamento di una massa: il parapetto (merlato o liscio) che sporge sui beccatelli, a filo sui lati, e il piano di cima (pietra o erba)
+  function coronamento(g, L, P, H, o, seme) {
+    const sp = o.beccatelli ? .45 : 0, hp = 1.1;
+    facceMassa(L, P).forEach(([x, z, ry, l], i) => { const gf = grp(g, x, H, z, ry);
+      blocco(gf, l + 2 * sp, hp, .55, 'carparo', l / 2, 0, sp - .27);
+      if (sp && !LOD) for (let s = .6; s < l - .3; s += 1.3) mensola(gf, sp + .1, .9, .4, 'pietraChiara', s, 0, -.02);
+      if (o.merli) merli(gf, l + 2 * sp, .9, .8, 1.7, 'carparo', -sp, hp, sp - .27, 0, 'guelfo', true);
+      else if (!LOD) blocco(gf, l + 2 * sp + .06, .1, .62, 'pietraChiara', l / 2, hp, sp - .27); });
+    blocco(g, L - .4, .06, P - .4, o.erba ? 'erba' : 'pietra', L / 2, H, 0);
+    if (o.erba && !LOD) { const r = caso(seme); for (let i = 0; i < Math.round(L * P / 30); i++) blocco(g, .6 + r() * 1.2, .25 + r() * .3, .6 + r() * 1.2, r() < .5 ? 'verde' : 'verdeScuro', .8 + r() * (L - 1.6), H + .02, (r() - .5) * (P - 1.6), .05); }
+  }
+
+  DOC.mastio = { L: 14, P: 18, h: 24, merli: true, lanterna: true, nota: 'il mastio del castello a mare: torre quadra di conci di carparo (L lungo X da x = 0, P lungo Z centrata), il piede a scarpa col cordone, poche finestrelle, il parapetto merlato sui beccatelli; in cima il faro: il casotto di pietra, il castelletto di ferro a traliccio e la cabina di vetro con la luce rossa (il riflettore della Tutela)' };
+  T.mastio = o => {
+    o = def(o, DOC.mastio); const g = new THREE.Group(), L = o.L, P = o.P, H = o.h, hs = Math.min(5, H * .22), sc = hs * .2;
+    const base = [[0, -P / 2], [L, -P / 2], [L, P / 2], [0, P / 2]];
+    tronco(g, allarga(base, [sc, sc, sc, sc]), base, hs, 'carparo', 0, 0, 0);                         // il piede a scarpa
+    blocco(g, L, H - hs, P, 'carparo', L / 2, hs, 0);                                                   // il fusto a picco
+    if (!LOD) blocco(g, L + .5, .45, P + .5, 'pietraChiara', L / 2, hs - .1, 0, .08);                  // il cordone
+    facceMassa(L, P).forEach(([x, z, ry, l], i) => { const gf = grp(g, x, 0, z, ry); finestrelle(gf, l, hs + 2, H - 3, i < 2 ? 3 : 2, L * 13 + i * 7 + H);
+      if (i === 0 && !LOD) stemma(gf, 1.8, 'pietraChiara', l / 2, H - 4, 0, 0); });
+    coronamento(g, L, P, H, { merli: o.merli, beccatelli: true }, L + P);
+    if (o.lanterna) { const xl = L * .62, zl = -P * .12, hb = 2.6, ht = 5.2;                         // il faro: casotto, traliccio, cabina
+      blocco(g, 3.4, hb, 3.4, 'carparo', xl, H, zl); vano(g, .9, 1.9, 'arco', 'legno', xl, H, zl + 1.72, .06);
+      blocco(g, 3.8, .2, 3.8, 'pietraChiara', xl, H + hb, zl);
+      traliccio(g, 2.8, 1.6, ht, 'ferro', xl, H + hb + .2, zl, 1.3);
+      const yc = H + hb + .2 + ht; blocco(g, 2.2, .14, 2.2, 'ferroScuro', xl, yc, zl);
+      if (!LOD) ringhiera(g, 2.2, .8, 'ferro', xl - 1.1, yc + .14, zl + 1.1);
+      cil(g, .75, .75, 1.3, 10, 'vetro', xl, yc + .14, zl); add(g, new THREE.SphereGeometry(.42, 10, 8), 'faro', xl, yc + .75, zl);
+      cil(g, .95, .12, .7, 10, 'piombo', xl, yc + 1.44, zl); add(g, new THREE.SphereGeometry(.12, 8, 6), 'ottone', xl, yc + 2.2, zl); }
+    g.userData.misure = [L + 2 * sc, H + (o.lanterna ? 11 : 2), P + 2 * sc]; return g;
+  };
+
+  DOC.corpo_rocca = { L: 20, P: 12, h: 12, scarpa: false, merli: false, erba: false, finestre: 2, nota: 'una massa del castello a mare (L lungo X da x = 0, P lungo Z centrata): conci di carparo a picco, o a scarpa per tutta l\'altezza (i rivellini bassi); poche finestrelle, il parapetto merlato o liscio, la terrazza di lastre o d\'erba' };
+  T.corpo_rocca = o => {
+    o = def(o, DOC.corpo_rocca); const g = new THREE.Group(), L = o.L, P = o.P, H = o.h, base = [[0, -P / 2], [L, -P / 2], [L, P / 2], [0, P / 2]];
+    if (o.scarpa) { const sc = H * .22; tronco(g, allarga(base, [sc, sc, sc, sc]), base, H, 'carparo', 0, 0, 0); if (!LOD) for (let i = 0; i < 4; i++) { const [x, z, ry, l] = facceMassa(L, P)[i]; capperi(grp(g, x, 0, z, ry), Math.round(l / 7), l, .8, H - 1, H * .22, .22, L * 5 + i, 0); } }
+    else { blocco(g, L, H, P, 'carparo', L / 2, 0, 0); if (!LOD) blocco(g, L + .3, .5, P + .3, 'pietraScura', L / 2, 0, 0, .03);   // il piede di pietra
+      facceMassa(L, P).forEach(([x, z, ry, l], i) => finestrelle(grp(g, x, 0, z, ry), l, 2.2, H - 2, Math.max(0, Math.round(o.finestre * l / 14)), L * 11 + P * 3 + i)); }
+    coronamento(g, L, P, H, { merli: o.merli, beccatelli: !o.scarpa && H >= 10, erba: o.erba }, L * 3 + P + H);
+    const sc = o.scarpa ? H * .22 : 0; g.userData.misure = [L + 2 * sc, H + (o.merli ? 2 : 1.2), P + 2 * sc]; return g;
+  };
+
+  DOC.ponte_arco = { L: 30, w: 4.6, h: 7, acqua: 1.6, nota: 'il grande ponte a tutto sesto della darsena (lungo X da x = 0, largo w lungo Z centrato): l\'arcone dal pelo dell\'acqua (a −acqua sotto la banchina) al piano del ponte a h, la ghiera di conci sulle due fronti, i rinfianchi pieni, il parapetto e il lastricato in cima' };
+  T.ponte_arco = o => {
+    o = def(o, DOC.ponte_arco); const g = new THREE.Group(), L = o.L, w = o.w, H = o.h + o.acqua, y0 = -o.acqua, luce = Math.min(L * .78, 2 * (H - 1.2)), r = luce / 2;
+    pareteArchi(g, L, H, w, [{ x: L / 2, w: luce, h: Math.min(H - .9, r + H * .25) }], 'carparo', 0, y0, 0);
+    if (!LOD) for (const z of [w / 2 - .1, -w / 2 + .1]) conci(g, r, .45, 15, 'pietraChiara', L / 2, y0 + Math.min(H - .9, r + H * .25) - r, z);
+    blocco(g, L, .08, w - .5, 'pietra', L / 2, y0 + H, 0);                                             // il lastricato
+    for (const s of [-1, 1]) { blocco(g, L, .95, .4, 'carparo', L / 2, y0 + H, s * (w / 2 - .2)); if (!LOD) blocco(g, L + .1, .1, .48, 'pietraChiara', L / 2, y0 + H + .95, s * (w / 2 - .2)); }
+    if (!LOD) for (const s of [-1, 1]) blocco(g, L, .5, .1, 'verdeScuro', L / 2, y0, s * (w / 2 + .02));   // l'umido al pelo dell'acqua
+    g.userData.quotaPosa = y0; g.userData.misure = [L, H + 1.05, w]; return g;
+  };
+
+  DOC.porta_acqua = { L: 12, h: 11, fornice: 6, acqua: 1.6, P: 4, nota: 'la porta d\'acqua: un tratto di cortina di carparo (lungo X da x = 0, spesso P centrato) col grande fornice a volta che scende fino all\'acqua (a −acqua), la ghiera di conci, la saracinesca di ferro alzata sotto la volta, il parapetto merlato' };
+  T.porta_acqua = o => {
+    o = def(o, DOC.porta_acqua); const g = new THREE.Group(), L = o.L, H = o.h + o.acqua, y0 = -o.acqua, wf = Math.min(o.fornice, L * .6), hf = Math.min(H * .7, wf * .5 + H * .4);
+    pareteArchi(g, L, H, o.P, [{ x: L / 2, w: wf, h: hf }], 'carparo', 0, y0, 0);
+    if (!LOD) { conci(g, wf / 2, .5, 13, 'pietraChiara', L / 2, y0 + hf - wf / 2, o.P / 2 - .2); conci(g, wf / 2, .5, 13, 'pietraChiara', L / 2, y0 + hf - wf / 2, -o.P / 2 + .2);
+      for (let x = -wf / 2 + .25; x <= wf / 2 - .2; x += .45) blocco(g, .08, 1.6, .08, 'ferroScuro', L / 2 + x, y0 + hf - wf / 2 - 1.2, 0); blocco(g, wf, .12, .12, 'ferroScuro', L / 2, y0 + hf - wf / 2 - 1.2, 0);   // la saracinesca alzata
+      blocco(g, L, .5, .12, 'verdeScuro', L / 2, y0, o.P / 2 + .04); }
+    merli(g, L, .9, .8, 1.7, 'carparo', 0, y0 + H, o.P / 2 - .3, 0, 'guelfo', true);
+    g.userData.quotaPosa = y0; g.userData.misure = [L, H + .9, o.P]; return g;
+  };
+
+  DOC.scogliera = { L: 10, w: 4, n: 12, seme: 1, nota: 'un tratto di frangiflutti: massi rotolati e scogli tondi di pietra chiara e scura (lungo X da x = 0, larghi w lungo Z centrati), dal fondo (a −1,6) fino a un metro sopra l\'acqua' };
+  T.scogliera = o => {
+    o = def(o, DOC.scogliera); const g = new THREE.Group(), L = o.L, w = o.w, r = caso(o.seme * 977 + L * 13), n = LOD ? Math.max(3, o.n >> 1) : o.n, y0 = -1.6;
+    blocco(g, L, .9, w * .8, 'pietraScura', L / 2, y0, 0);                                               // il letto di pietrame
+    for (let i = 0; i < n; i++) { const s = .7 + r() * 1.1, x = Math.min(L - s * .5, Math.max(s * .5, (i + .5) * L / n + (r() - .5) * 1.2)), z = (r() - .5) * (w - s), m = ['pietra', 'pietraChiara', 'pietraScura', 'tufo'][(r() * 4) | 0];
+      const geo = geoCache(`SC${(i % 5)}|${LOD}`, () => new THREE.DodecahedronGeometry(1, 0)), sy = .55 + r() * .4;
+      const b = add(g, geo, m, x, y0 + .9 + s * sy * .6, z, r() * 3, r() * 3, r() * 3); b.scale.set(s * (.8 + r() * .4), s * sy, s * (.8 + r() * .4)); b.updateMatrix(); b.updateMatrixWorld(true);
+      const bb = new THREE.Box3().setFromObject(b); if (bb.min.y < y0 + .05) b.position.y += y0 + .05 - bb.min.y; }
+    g.userData.quotaPosa = y0; g.userData.misure = [L, 2.6, w]; return g;
   };
 
   DOC.mura_tramontana = { L: 30, h: 8, merli: true, scala: true, nota: 'segmento delle mura di tramontana lungo X: fronte a scarpa verso il mare (+Z) poi diritto, camminamento di ronda dietro il parapetto con i merli guelfi, rampa di scale addossata dal lato della città (−Z), feritoie, doccioni, capperi e l\'umido' };
@@ -21095,12 +21191,12 @@ var World = (function () {
     ['garante', 'Uffici del Garante', 5, 5, 3, 2, [953, 152], { gov: true, sign: { t: 'UFFICI DEL GARANTE', c: '#b84a3c' }, nuovo: true }],
     ['archivio', 'Archivio di Stato', 8, 6, 5, 10, [887, 155], { gov: true, nuovo: true }],
     // la Base della Tutela, oltre il Muro
-    ['rocca', 'Rocca della Tutela', 12, 8, 5, 10, [1266, 143], { sign: { t: 'ROCCA DELLA TUTELA', c: '#ff3b3b' }, military: true, nuovo: true }],   // [città2] il comando in fondo sull'asse della porta
-    ['caserma_p', 'Caserma della Tutela', 10, 4, 2, 10, [1224, 116], { military: true, nuovo: true }],   // [città2] in fila lungo le mura a nord
-    ['hangar1', 'Hangar degli elicotteri', 8, 6, 3, 11, [1252, 168], { warehouse: true, military: true, nuovo: true }],   // [città2] verso la Porta a Mare
-    ['hangar2', 'Deposito della Base', 7, 4, 2, 11, [1248, 116], { warehouse: true, military: true, nuovo: true }],   // [città2] a nord, accanto alla caserma
-    ['deposito_n', 'Magazzino del porto cargo', 7, 4, 2, 11, [1222, 170], { warehouse: true, military: true, nuovo: true }],   // [città2] a sud lungo le mura
-    ['deposito_s', 'Dogana del porto cargo', 7, 4, 2, 11, [1276, 172], { warehouse: true, military: true, nuovo: true }],   // [città2] sulla Porta a Mare
+    ['rocca', 'Rocca della Tutela', 7, 8, 5, 10, [1265, 131], { sign: { t: 'ROCCA DELLA TUTELA', c: '#ff3b3b' }, military: true, nuovo: true }],   // [città2] il comando in fondo sull'asse della porta
+    ['caserma_p', 'Caserma della Tutela', 20, 5, 2, 10, [1230, 115], { military: true, nuovo: true }],   // [città2] in fila lungo le mura a nord
+    ['hangar1', 'Hangar degli elicotteri', 6, 8, 3, 11, [1266, 148], { warehouse: true, military: true, nuovo: true }],   // [città2] verso la Porta a Mare
+    ['hangar2', 'Deposito della Base', 4, 6, 2, 11, [1254, 122], { warehouse: true, military: true, nuovo: true }],   // [città2] a nord, accanto alla caserma
+    ['deposito_n', 'Magazzino del porto cargo', 6, 8, 2, 11, [1212, 154], { warehouse: true, military: true, nuovo: true }],   // [città2] a sud lungo le mura
+    ['deposito_s', 'Dogana del porto cargo', 6, 4, 2, 11, [1214, 128], { warehouse: true, military: true, nuovo: true }],   // [città2] sulla Porta a Mare
     // foresta: San Giacomo e il Borgo dei Carbonai
     ['chiesa_sg', 'Chiesa di San Giacomo', 6, 5, 4, 9, [199, 97], { church: true }],
     ['osteria_sg', 'Osteria di San Giacomo', 5, 4, 3, 5, [211, 106], { sign: { t: 'OSTERIA', c: '#ffb35c' }, shop: true }],
@@ -21669,19 +21765,17 @@ var World = (function () {
     // lo scalo del cantiere: scivolo di cemento con le rotaie, una barca in secca sul carrello in cima
     SEA.structs.push({ type: 'scalo', id: 'scalo_cantiere', name: 'Scalo del cantiere', pts: [[970, PV.qy - 4], [970, PV.qy + 12]], w: 6, pezzo: 'scalo_alaggio' });
     // -- il porto cargo e militare, oltre la Base: moli di pietra larghi, la nave dell'Impero di fianco al molo nord, le motovedette
-    const mc1 = molo('molo_cargo_n1', 'Molo cargo nord', [[1218, northY(606) + 4], [1218, northY(606) - 34]], 9, 1.4, 0, 'rosso');
-    const mc2 = molo('molo_cargo_n2', 'Molo dell\'Impero', [[1244, northY(632) + 4], [1244, northY(632) - 34]], 9, 1.4, 0, 'verde');
+    // [rocca2] lo scoglio della Rocca ha i due moli a sud, ai lati della porta d'acqua della darsena (a nord e in punta il frangiflutti)
     molo('molo_cargo_s1', 'Molo militare', [[1226, southY(614) - 4], [1226, southY(614) + 34]], 9, 1.4, 0, 'rosso');
     molo('molo_cargo_s2', 'Molo dei rimorchiatori', [[1252, southY(640) - 4], [1252, southY(640) + 34]], 9, 1.4, 0, 'verde');
-    molo('molo_testa', 'Testata del porto cargo', [[1276, 140], [1297, 140]], 12, 1.4, 0);
-    SEA.moorings.push({ kind: 'nave', x: 1244 + 4.5 + 6.5, y: northY(632) - 14, ang: -Math.PI / 2, len: BOATLEN.nave, at: 'molo_cargo_n2' });
+    SEA.moorings.push({ kind: 'nave', x: 1252 + 4.5 + 6.5, y: southY(640) + 24, ang: Math.PI / 2, len: BOATLEN.nave, at: 'molo_cargo_s2' });
     [0, 1].forEach(k => SEA.moorings.push({ kind: 'motovedetta', x: 1226 - 4.5 - 2.4, y: southY(614) + 9 + k * 15, ang: Math.PI / 2, len: BOATLEN.motovedetta, at: 'molo_cargo_s1' }));
-    SEA.moorings.push({ kind: 'rimorchiatore', x: 1252 + 4.5 + 2.8, y: southY(640) + 16, ang: Math.PI / 2, len: BOATLEN.rimorchiatore, at: 'molo_cargo_s2' });
-    SEA.moorings.push({ kind: 'peschereccio', x: 1218 - 4.5 - 2.6, y: northY(606) - 16, ang: -Math.PI / 2, len: BOATLEN.peschereccio, at: 'molo_cargo_n1' });
+    SEA.moorings.push({ kind: 'rimorchiatore', x: 1226 + 4.5 + 2.8, y: southY(614) + 22, ang: Math.PI / 2, len: BOATLEN.rimorchiatore, at: 'molo_cargo_s1' });
+    SEA.moorings.push({ kind: 'peschereccio', x: 1252 - 4.5 - 2.6, y: southY(640) + 26, ang: Math.PI / 2, len: BOATLEN.peschereccio, at: 'molo_cargo_s2' });
     // -- il Lido: un pontiletto per i pedalò e le barche a remi del bagnino
     { const lx = 1124, ly = SouthY(1124); pontile('pontile_lido', 'Pontile del Lido', [[lx, ly - 3], [lx, ly + 12]], 1.8, .6);
       [-1, 1].forEach(sg => [4, 7.5].forEach(s => SEA.moorings.push({ kind: 'pedalo', x: lx + sg * 2.6, y: ly + s, ang: sg > 0 ? Math.PI : 0, len: BOATLEN.pedalo, at: 'pontile_lido' }))); }
-    void mVecchio; void mLevante; void mc1; void mc2;
+    void mVecchio; void mLevante;
     SEA.ruins = [];   // [arcipelago] le rovine delle isole le mette expand()
     // piazza San Rocco e fontana
     { const q = CITY.piazza; for (let ty = T2i(q[1]); ty < T2i(q[3]); ty++) for (let tx = T2i(q[0]); tx < T2i(q[2]); tx++) { const i = ty * GW + tx; if (grid[i] !== T.VIA && grid[i] !== T.WATER) { grid[i] = T.PIAZZA; roadW[i] = 0; } } }
@@ -21830,62 +21924,76 @@ var World = (function () {
     }
     for (let y = WALL.y0 + 8; y < WALL.y1 - 4; y += 26) if (Math.abs(y - yc(WALLX)) > 12) WALL.towers.push([WALL.x, y]);
     WALL.towers.push([WALL.x, WALL.gate[0] - 3], [WALL.x, WALL.gate[1] + 3]);
-    // [città2] LA ROCCA (riferimenti: Fort St Elmo, la Cittadella di Messina, il castello di Otranto; v. HANDOFF_citta2.md).
-    // Dalla città verso la punta: il Muro di cemento del regime (resta dov'è) → la SPIANATA vuota, il campo di tiro → il FOSSATO →
-    // il RIVELLINO triangolare davanti alla porta (diviso in due dalla strada) → il FRONTE BASTIONATO (due bastioni d'angolo a punta
-    // di freccia verso la città, la cortina, la porta in mezzo) → le MURA A MARE che seguono la costa fino alla punta, con la
-    // PORTA A MARE sui moli a sud. Dentro: la piazza d'armi, il comando in fondo sull'asse, caserme e depositi lungo le mura.
+    // [rocca2] LA ROCCA: UN CASTELLO ARAGONESE A MARE (riferimenti del committente in _immagini/riferimenti; MAPPA_COMPATTA.md sez. 11.2).
+    // Dalla città verso la punta: il Muro del regime → la SPIANATA vuota → il CANALE di mare che stacca lo scoglio dalla terra, passato dal
+    // ponte in muratura col levatoio (la Vittoria ci arriva sopra) → la PORTA della Rocca nel fronte di terra. Lo scoglio basso è cinto dal
+    // FRANGIFLUTTI di massi; sopra, masse a gradoni di conci di carparo: il fronte di terra, il rivellino di ponente basso a scarpa con
+    // l'erba, la caserma sulla cortina nord, il raccordo, il MASTIO col faro (il comando), il corpo di levante, il rivellino di scirocco
+    // (bastione basso), il TORRIONE tondo e tozzo sull'angolo verso la città e il porto. Dentro: la piazza d'armi e la DARSENA allagata col
+    // grande ponte ad arco, la banchina coi gradini, il portale con lo stemma e la pensilina; la PORTA D'ACQUA a volta apre la darsena sul
+    // mare fra i due moli. Le masse che sono edifici del gioco (comando, caserma, depositi) le posa il blocco dopo gli edifici con nome.
     const FORT = { bastions: [], ravelin: [], walls: [], gates: [], ditch: [], x: 0, y: 0 };
-    { const XF = WALL.x + 30, gy = 143, inset = 2.6;   // il fronte a 30 m dal Muro: la spianata
-      const yN = x => NorthY(x) + inset, yS = x => SouthY(x) - inset;
+    { const XF = WALL.x + 30, gy = 143, CW = 14;   // il fronte di terra a 30 m dal Muro; il canale largo 14 m davanti
       let xT = XF; while (xT < XF + 160 && SouthY(xT + 3) - NorthY(xT + 3) > 14) xT += 3;   // la punta
       FORT.x = XF; FORT.y = gy; FORT.tip = xT; FORT_X = WALL.x;
-      // [posa] il fronte di terra con i pezzi della Rocca (pezzi_citta.js): due bastioni con la gola di 16 m sulla linea della cortina, simmetrici
-      // sull'asse della Vittoria (cannocchiale sulla porta); fra i due il fossato di 8 m col ponte e il rivellino tronco; la cortina ai due lati
-      // della porta monumentale. I poligoni (le caselle che si urtano) hanno la stessa forma dei pezzi.
-      const BG = 16, BF = 5, BD = BF + Math.sqrt(15 * 15 - (BG / 2) ** 2), DW = 8, DH = 20;
-      const bast = y0 => [[XF, y0], [XF, y0 + BG], [XF - BF, y0 + BG], [XF - BD, y0 + BG / 2], [XF - BF, y0]];
-      const bN = gy - DH - BG, bS = gy + DH;
-      FORT.bastions.push(bast(bN), bast(bS));
-      { const R = 12, wp = 2.6, z0 = DW + 1.6, dT = R * .9 * (1 - wp / R); FORT.ravelin.push([[XF - z0, gy - wp], [XF - z0, gy - R], [XF - z0 - dT, gy - wp]], [[XF - z0, gy + wp], [XF - z0, gy + R], [XF - z0 - dT, gy + wp]]); }
-      FORT.ditch = [XF - DW, gy - DH, XF, gy + DH];   // il fossato davanti alla cortina (la strada lo passa sul ponte)
-      // la cortina con la porta, poi le mura a mare: una polilinea chiusa sulla costa
-      FORT.walls.push([[XF, yN(XF)], [XF, bN]], [[XF, gy - DH], [XF, gy - 5.5]], [[XF, gy + 5.5], [XF, gy + DH]]);
-      FORT.posa = { XF, gy, BG, BF, DW, DH, bN, bS, yN0: yN(XF) };
-      const north = [], south = []; for (let x = XF; x <= xT; x += 3) { north.push([x, yN(x)]); south.push([x, yS(x)]); }
-      const tipY = (yN(xT) + yS(xT)) / 2; north.push([xT + 2, tipY]);
-      FORT.walls.push([[XF, yN(XF)]].concat(north));
-      const sg = Math.floor(south.length * .72);   // la Porta a Mare: un varco nelle mura a sud, verso i moli
-      FORT.walls.push([[xT + 2, tipY]].concat(south.slice(sg + 2).reverse()), south.slice(0, sg).concat([]).reverse().concat([[XF, yS(XF)]]).reverse());
-      FORT.gates.push({ x: XF, y: gy, ang: 0, kind: 'terra' }, { x: (south[sg][0] + south[sg + 2][0]) / 2, y: (south[sg][1] + south[sg + 2][1]) / 2, ang: Math.PI / 2, kind: 'mare' });
-      const inPoly = (x, y, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+      FORT.ditch = [XF - CW, gy - 46, XF, gy + 46];   // il canale (lo leggono palco, sottosuolo e render per il bordo della spianata)
+      FORT.canale = { x0: XF - CW, x1: XF, gy, ponte: 2.4 };
+      FORT.posa = { XF, gy, CW };
       const block = i => { if (grid[i] === T.WATER && zone[i] === Z.MARE) return; grid[i] = T.BLD; roadW[i] = 0; reserved[i] = 1; };
-      FORT.bastions.concat(FORT.ravelin).forEach(P => { let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; P.forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
-        for (let ty = Math.floor(y0 / TS); ty <= Math.floor(y1 / TS); ty++) for (let tx = Math.floor(x0 / TS); tx <= Math.floor(x1 / TS); tx++) if (inPoly(tx * TS + 1, ty * TS + 1, P)) block(ty * GW + tx); });
-      FORT.walls.forEach(L => { for (let k = 0; k < L.length - 1; k++) { const [ax, ay] = L[k], [bx, by] = L[k + 1], n = Math.ceil(dist(ax, ay, bx, by) / .7); for (let q = 0; q <= n; q++) { const tx = Math.floor((ax + (bx - ax) * q / n) / TS), ty = Math.floor((ay + (by - ay) * q / n) / TS); if (tx >= 0 && ty >= 0 && tx < GW && ty < GH) block(ty * GW + tx); } } });
-      // la piazza d'armi: lastricata, fra la porta e il comando
-      blob(XF + 34, gy, 15, 11, i => { if (grid[i] !== T.VIA && grid[i] !== T.BLD && grid[i] !== T.WATER) { grid[i] = T.PIAZZA; roadW[i] = 0; } });
-      // il suolo: la spianata lastricata per le adunate, dentro la Rocca cortili di ciottoli (niente prati)
-      for (let ty = 0; ty < GH; ty++) for (let tx = Math.floor((CITY.spian0 || WALL.x + 2) / TS); tx <= Math.floor((xT + 4) / TS); tx++) { const i = ty * GW + tx, v = grid[i];   // [città2] la spianata comincia dove il borgo è stato demolito
-        if (tx * TS < XF - 7) { if (v !== T.VIA && v !== T.BLD && v !== T.WATER && v !== T.PIER && v !== T.QUAY && v !== T.GRAVEL && v !== T.SAND) grid[i] = T.PIAZZA; }
-        else if (v === T.GRASS || v === T.SHRUB || v === T.TREE || v === T.DIRT || v === T.FIELD) grid[i] = T.COB; }
-      // la spianata: fra il Muro e il fossato nessuno costruisce
-      for (let ty = 0; ty < GH; ty++) for (let tx = Math.floor((CITY.spian0 || WALL.x + 2) / TS); tx < Math.floor((XF - 7) / TS); tx++) reserved[ty * GW + tx] = 1;
-      // [posa] i pezzi della Rocca: bastioni con le garitte, fossato col ponte e il rivellino, cortina a scarpa col terrapieno, porta monumentale
-      // verso la spianata, il torrione tondo con la lanterna sulla punta di tramontana. Il fossato e il terrapieno sono caselle che si urtano
-      // (il ponte e l'androne restano strada); le quote (fondo del fossato 5 m sotto la spianata) le mette la passata finale.
-      { const F = FORT.posa, R3 = -Math.PI / 2;
-        F.pz = [];
-        F.pz.push(PZ('bastione', XF, F.bN, R3, { faccia: 15, fianco: F.BF, h: 12, garitta: true }, { nome: 'Bastione di San Giacomo', rocca: 'fondo' }), PZ('bastione', XF, F.bS, R3, { faccia: 15, fianco: F.BF, h: 12, garitta: true }, { nome: 'Bastione della Marina', rocca: 'fondo' }));
-        F.fos = PZ('fossato', XF, gy - F.DH, R3, { L: 2 * F.DH, w: F.DW, prof: 5, ponte: true, rivellino: true }, { nome: 'Fossato e rivellino', rocca: 'spianata' });
-        const cort = (y0, L) => { if (L < 2) return; const p = PZ('cortina', XF - 1.05, y0, R3, { L, h: 12, cordone: true, terrapieno: 9 }, { nome: 'Cortina', rocca: 'fondo' }); pzRis(p, 'B', 0, L, -11, 1); F.pz.push(p); };
-        cort(F.yN0, F.bN - F.yN0); cort(gy - F.DH, F.DH - 5.5); cort(gy + 5.5, F.DH - 5.5);
-        F.porta = PZ('porta_monumentale', XF + 2.8, gy - 5.5, R3, { w: 11, h: 12, fornice: 4.2, merli: true, scritta: 'ANNO MDCLXXXII' }, { nome: 'Porta della Rocca', rocca: 'spianata' });
-        F.porta.imp = [['B', 0, 3.2, -3.3, 4.3], ['B', 7.8, 11, -3.3, 4.3]]; pzRis(F.porta, 'B', 0, 3.3, -3.3, 4.3); pzRis(F.porta, 'B', 7.7, 11, -3.3, 4.3);
-        for (let ty = T2i(gy - F.DH); ty < T2i(gy + F.DH); ty++) for (let tx = T2i(XF - F.DW); tx < T2i(XF); tx++) { const i = ty * GW + tx; if (Math.abs(ty * TS + 1 - gy) < 2.4) { grid[i] = T.PIAZZA; roadW[i] = 0; continue; } block(i); }
-        // il torrione: sulla costa di tramontana a 14 m dalla punta, dentro le mura
-        const xt = xT - 14, rb = 7 + 16 * .42 * .18, yt = yN(xt) + rb + 1.2; F.torr = PZ('torrione', xt + rb, yt, Math.PI, { r: 7, h: 16, lanterna: true }, { nome: 'Torrione di tramontana' });
-        for (let ty = T2i(yt - rb) - 1; ty <= T2i(yt + rb); ty++) for (let tx = T2i(xt - rb) - 1; tx <= T2i(xt + rb); tx++) if (dist(tx * TS + 1, ty * TS + 1, xt, yt) < rb + .3) block(ty * GW + tx); }
+      const mare = i => { grid[i] = T.WATER; zone[i] = Z.MARE; roadW[i] = 0; reserved[i] = 1; elev[i] = -2; };
+      // il canale: da riva a riva, il mare; resta il ponte (la carreggiata della Vittoria) a quota della spianata
+      for (let ty = 0; ty < GH; ty++) for (let tx = T2i(XF - CW); tx < T2i(XF); tx++) { const i = ty * GW + tx; if (grid[i] === T.WATER && zone[i] === Z.MARE) continue; if (zone[i] === Z.MARE) continue;
+        if (Math.abs(ty * TS + 1 - gy) < FORT.canale.ponte) { grid[i] = T.PIAZZA; roadW[i] = 0; reserved[i] = 1; continue; } mare(i); }
+      FORT.gates.push({ x: XF, y: gy, ang: 0, kind: 'terra' }, { x: 1239, y: 177, ang: Math.PI / 2, kind: 'mare' });
+      // il suolo: la spianata in terra battuta fino al canale; sullo scoglio cortili lastricati e, sulla riva, la roccia bassa
+      for (let ty = 0; ty < GH; ty++) for (let tx = Math.floor((CITY.spian0 || WALL.x + 2) / TS); tx <= Math.floor((xT + 4) / TS); tx++) { const i = ty * GW + tx, v = grid[i];
+        if (tx * TS < XF - CW) { if (v !== T.VIA && v !== T.BLD && v !== T.WATER && v !== T.PIER && v !== T.QUAY && v !== T.GRAVEL && v !== T.SAND) grid[i] = T.PIAZZA; }
+        else if (tx * TS >= XF && (v === T.GRASS || v === T.SHRUB || v === T.TREE || v === T.DIRT || v === T.FIELD || v === T.VIA)) { grid[i] = T.COB; roadW[i] = 0; } }
+      // la banchina del vecchio porto cargo sulla riva dello scoglio torna scoglio (restano le radici dei due moli a sud)
+      for (let ty = 1; ty < GH - 1; ty++) for (let tx = T2i(XF); tx <= T2i(xT + 4); tx++) { const i = ty * GW + tx, x = tx * TS + 1, y = ty * TS + 1; if (grid[i] !== T.QUAY || zone[i] !== Z.CITTA) continue;
+        if (y > SouthY(x) - 3 && (Math.abs(x - 1226) < 6 || Math.abs(x - 1252) < 6)) continue; grid[i] = T.COB; elev[i] = Math.max(elev[i], 1.2); }
+      for (let ty = 1; ty < GH - 1; ty++) for (let tx = T2i(XF); tx <= T2i(xT + 4); tx++) { const i = ty * GW + tx; if (grid[i] === T.WATER || grid[i] === T.QUAY || grid[i] === T.PIER) continue;
+        let riva = false; for (let a = -1; a <= 1 && !riva; a++) for (let b = -1; b <= 1; b++) { const j = (ty + b) * GW + tx + a; if (grid[j] === T.WATER && zone[j] === Z.MARE) { riva = true; break; } }
+        if (riva) { grid[i] = T.ROCK; reserved[i] = 1; } }
+      // la spianata: fra il Muro e il canale nessuno costruisce
+      for (let ty = 0; ty < GH; ty++) for (let tx = Math.floor((CITY.spian0 || WALL.x + 2) / TS); tx < Math.floor((XF - CW) / TS); tx++) reserved[ty * GW + tx] = 1;
+      // la piazza d'armi lastricata, dalla porta al mastio
+      for (let ty = T2i(122); ty < T2i(145); ty++) for (let tx = T2i(1222); tx < T2i(1250); tx++) { const i = ty * GW + tx; if (grid[i] === T.COB || grid[i] === T.ROCK) { grid[i] = T.PIAZZA; roadW[i] = 0; reserved[i] = 1; } }
+      // la darsena allagata (30 × 22 m d'acqua fra le banchine, la bocca a sud) e la porta d'acqua che la apre sul mare fra i due moli
+      const DS = { x0: 1218, L: 30, B: 6, yc: 161, W: 22 }; FORT.darsena = DS;
+      for (let ty = T2i(DS.yc - DS.W / 2); ty < T2i(DS.yc + DS.W / 2); ty++) for (let tx = T2i(DS.x0 + DS.B); tx < T2i(DS.x0 + DS.B + DS.L); tx++) mare(ty * GW + tx);
+      for (let ty = T2i(DS.yc + DS.W / 2); ty < T2i(DS.yc + DS.W / 2 + 14); ty++) for (let tx = T2i(1234); tx < T2i(1244); tx++) { const i = ty * GW + tx; if (!(grid[i] === T.WATER && zone[i] === Z.MARE)) mare(i); }   // il canale della porta d'acqua fino al mare
+      const qua = (x0, y0, x1, y1) => { for (let ty = T2i(y0); ty < T2i(y1); ty++) for (let tx = T2i(x0); tx < T2i(x1); tx++) { const i = ty * GW + tx; if (grid[i] === T.WATER) continue; grid[i] = T.QUAY; roadW[i] = 0; reserved[i] = 1; } };
+      qua(DS.x0, DS.yc - DS.W / 2 - DS.B, DS.x0 + DS.L + 2 * DS.B, DS.yc - DS.W / 2); qua(DS.x0, DS.yc - DS.W / 2, DS.x0 + DS.B, DS.yc + DS.W / 2); qua(DS.x0 + DS.B + DS.L, DS.yc - DS.W / 2, DS.x0 + DS.L + 2 * DS.B, DS.yc + DS.W / 2);
+      { const R3 = -Math.PI / 2, F = FORT.posa; F.pz = [];
+        // il canale col ponte in muratura e il levatoio (il fossato pieno di mare: niente fondo d'erba, niente rivellino)
+        F.fos = PZ('fossato', XF, gy - 44, R3, { L: 88, w: CW, prof: 6, ponte: true, rivellino: false, acqua: true }, { nome: 'Canale e ponte della Rocca', rocca: 'canale', acqua: true });
+        // il fronte di terra: due masse a picco ai lati della porta monumentale
+        const massa = (x, y, rot, o, ex) => { const p = PZ('corpo_rocca', x, y, rot, o, Object.assign({ nome: 'Rocca' }, ex || {})); pzRis(p, 'B', 0, o.L, -o.P / 2, o.P / 2); F.pz.push(p); return p; };
+        massa(XF + 4, 116, R3, { L: 21.5, P: 8, h: 14, merli: true, finestre: 1 }, { nome: 'Fronte di terra' });
+        massa(XF + 4, 148.5, R3, { L: 23.5, P: 8, h: 14, merli: true, finestre: 1 }, { nome: 'Fronte di terra' });
+        F.porta = PZ('porta_monumentale', XF + 3, gy - 5.5, R3, { w: 11, h: 13, fornice: 4.2, merli: true, scritta: 'ANNO MDCLXXXII' }, { nome: 'Porta della Rocca', rocca: 'spianata' });
+        F.porta.imp = [['B', 0, 3.2, -3.3, 2.9], ['B', 7.8, 11, -3.3, 2.9]]; pzRis(F.porta, 'B', 0, 3.3, -3.3, 2.9); pzRis(F.porta, 'B', 7.7, 11, -3.3, 2.9);
+        // il rivellino di ponente: basso, a scarpa, l'erba sulla terrazza
+        massa(XF + 5, 106, R3, { L: 10, P: 10, h: 6, scarpa: true, erba: true }, { nome: 'Rivellino di ponente' });
+        // il torrione tondo e tozzo sull'angolo di libeccio, verso la città e il porto
+        { const r = 8, h = 10, rb = r + h * .42 * .18, xt = 1212, yt = 172; F.torr = PZ('torrione', xt - rb, yt, 0, { r, h, lanterna: false }, { nome: 'Torrione di libeccio' });
+          for (let ty = T2i(yt - rb) - 1; ty <= T2i(yt + rb); ty++) for (let tx = T2i(xt - rb) - 1; tx <= T2i(xt + rb); tx++) if (dist(tx * TS + 1, ty * TS + 1, xt, yt) < rb + .3) block(ty * GW + tx); }
+        // il rivellino di scirocco: il bastione basso a punta verso il mare
+        { const p = PZ('bastione', 1264, 174, Math.PI / 2, { faccia: 14, fianco: 4, h: 7, garitta: true }, { nome: 'Rivellino di scirocco' }); F.pz.push(p); pzRis(p, 'B', 0, 16, 0, 15); }
+        // la darsena, il ponte ad arco, la porta d'acqua
+        PZ('darsena', DS.x0, DS.yc, 0, { L: DS.L, W: DS.W, banchina: DS.B, scalette: 0, rocca: true, gradini: 3 }, { nome: 'Darsena della Rocca', acqua: true });
+        PZ('ponte_arco', DS.x0 + DS.B - 1, DS.yc - 2, 0, { L: DS.L + 2, w: 4.6, h: 7, acqua: 1.6 }, { nome: 'Ponte della darsena', acqua: true });
+        { const p = PZ('porta_acqua', DS.x0 + DS.B, DS.yc + DS.W / 2 + 2, 0, { L: DS.L, h: 11, fornice: 9, acqua: 1.6, P: 4 }, { nome: 'Porta d\'acqua', acqua: true }); pzRis(p, 'B', 0, 10.5, -2, 2); pzRis(p, 'B', 19.5, DS.L, -2, 2); }
+        // il frangiflutti: tratti di massi rotolati lungo la riva dello scoglio, a due metri in mare (non davanti alla porta d'acqua e ai moli)
+        { // la riva vera dello scoglio (dalle caselle): dal centro si cammina verso fuori finché si trova il mare; il frangiflutti 2,5 m più in là
+          const cx = (XF + xT) / 2 - 6, cy = gy, riva = []; let k = 0;
+          for (let d = 0; d < 360; d += 9) { const a = d * Math.PI / 180, ux = Math.cos(a), uy = Math.sin(a); let r = 4;
+            for (; r < 90; r += .5) { const x = cx + ux * r, y = cy + uy * r, i = T2i(y - 1) * GW + T2i(x - 1); if (grid[i] === T.WATER && zone[i] === Z.MARE && !(x > DS.x0 + DS.B - 1 && x < DS.x0 + DS.B + DS.L + 1 && y > DS.yc - DS.W / 2 - 1 && y < DS.yc + DS.W / 2 + 16)) break; }   // (la darsena e il suo canale non sono la riva)
+            const x = cx + ux * (r + 2.5), y = cy + uy * (r + 2.5); riva.push(x < XF + 3 || (y > gy + 20 && x > 1216 && x < 1262) ? null : [x, y]); }
+          riva.forEach((q, i) => { const n = riva[(i + 1) % riva.length]; if (!q || !n) return; const L = dist(q[0], q[1], n[0], n[1]); if (L < 2 || L > 16) return;
+            PZ('scogliera', q[0], q[1], -Math.atan2(n[1] - q[1], n[0] - q[0]), { L: +L.toFixed(2), w: 4, n: Math.max(4, Math.round(L * 1.2)), seme: ++k }, { nome: 'Frangiflutti della Rocca', acqua: true }); }); }
+      }
     }
     // ---- pareti di roccia e muri a secco: dove il terreno cade di colpo non si passa (le strade restano) ----
     for (let ty = 1; ty < GH - 1; ty++) for (let tx = 2; tx < XG / TS; tx++) {   // [isola] tutta la testa, il collo e il Monte Scuro
@@ -21957,6 +22065,7 @@ var World = (function () {
           const d = dist((x + ww / 2) * TS, (y + hh / 2) * TS, at[0], at[1]); if (d < bd && free(x, y, ww, hh, 0)) { bd = d; s = [x, y, ww, hh]; }
         }))));
       }
+      if (ex.military && ex.nuovo) { const x = Math.round(at[0] / TS - w / 2), y = Math.round(at[1] / TS - h / 2); if (free(x, y, w, h, 0)) s = [x, y, w, h]; }   // [rocca2] le masse della Rocca stanno dove le mette il progetto
       if (!s) { const q = site(at[0], at[1], w, h, 1); if (q) s = [q[0], q[1], w, h]; }
       if (!s) { const q = site(at[0], at[1], w, h, 0) || site(at[0], at[1], h, w, 0); if (q) s = [q[0], q[1], w, h]; }   // [isola] in città lo spazio è poco
       if (!s && typeof process !== 'undefined' && process.env && process.env.PV_DBG) { const c = {}; const cx = Math.floor(at[0] / TS), cy = Math.floor(at[1] / TS); for (let j = cy - 8; j <= cy + 8; j++) for (let i = cx - 8; i <= cx + 8; i++) { const k = j * GW + i; const why = bIndex[k] >= 0 ? 'casa' : roadW[k] > 0 ? 'strada' : reserved[k] ? 'riserv' : 'g' + grid[k] + 'z' + zone[k]; c[why] = (c[why] || 0) + 1; } console.log('[città2] intorno a', id, at, JSON.stringify(c)); }
@@ -21980,9 +22089,14 @@ var World = (function () {
       const ch = Bn('chiesa'); if (ch) { const [x0, y0, x1, y1] = rect(ch); ch.pezzo = 'chiesa';
         PZ('facciata_chiesa', x0 + .6, y1 - .7, 0, { w: x1 - x0 - 6.4, h: 15, spessore: 1.2, corpo: y1 - y0 - 1.3, portale: true, rosone: true, timpano: true, gradini: 3 }, { nome: 'Chiesa Madre', b: ch.i, navata: true });
         PZ('campanile', x1 - 4.85, y1 - 2.9, 0, { lato: 4.4, h: 30, campane: 2, orologio: true, cuspide: true }, { nome: 'Campanile della Chiesa Madre', b: ch.i }); }
-      [['caserma_p', 'caserma', 0, { piani: 2 }], ['hangar2', 'caserma', 0, { piani: 1 }], ['deposito_n', 'caserma', Math.PI, { piani: 1 }], ['deposito_s', 'polveriera', Math.PI, { cinta: false }]].forEach(([id, tipo, rot, o]) => {
+      // [rocca2] nella Rocca a mare: il comando è il mastio col faro, la caserma sta sulla cortina nord, il raccordo e il corpo di levante
+      // sono masse di carparo; il corpo del ponte ha l'erba in cima e, sulla faccia verso la darsena, il portale con lo stemma e la pensilina
+      [['caserma_p', 'caserma', 0, { piani: 2 }], ['hangar2', 'corpo_rocca', 0, { h: 17, merli: true, finestre: 1 }], ['deposito_n', 'corpo_rocca', 0, { h: 10, erba: true, finestre: 1 }],
+        ['hangar1', 'corpo_rocca', 0, { h: 13, finestre: 2 }], ['rocca', 'mastio', 0, { h: 24, merli: true, lanterna: true }], ['deposito_s', 'polveriera', Math.PI, { cinta: false }]].forEach(([id, tipo, rot, o]) => {
         const b = Bn(id); if (!b) return; const [x0, y0, x1, y1] = rect(b), yc = (y0 + y1) / 2; b.pezzo = tipo;
         if (tipo === 'caserma') PZ(tipo, rot ? x1 : x0, yc, rot, Object.assign({ L: x1 - x0, p: y1 - y0 - 1 }, o), { nome: b.name, b: b.i });
+        else if (tipo === 'corpo_rocca' || tipo === 'mastio') { PZ(tipo, x0, yc, 0, Object.assign({ L: x1 - x0, P: y1 - y0 }, o), { nome: b.name, b: b.i });
+          if (id === 'deposito_n') PZ('porta_monumentale', x1, y0 + 11, Math.PI / 2, { w: 9, h: 10, fornice: 3.4, merli: false, scritta: 'CASTRVM MARIS', pensilina: true }, { nome: 'Portale della darsena', b: b.i }); }   // sulla faccia a levante, verso la darsena e la camera
         else PZ(tipo, rot ? x1 - 1 : x0 + 1, yc, rot, Object.assign({ L: x1 - x0 - 2, p: y1 - y0 - 2 }, o), { nome: b.name, b: b.i }); });
     }
     // case lungo le strade di città e dei paesi: isolati di forme diverse, affacciati sulla strada
@@ -22503,7 +22617,7 @@ var World = (function () {
     P('spiaggia', 'Spiaggia gelata', 512, 198); P('passeggiata', 'Passeggiata a mare', 492, 194); P('discarica', 'Discarica di levante', 548, 184);
     // il Muro e la Base
     P('muro', 'Il Muro', 548, yc(548), { gate: true }); P('varco', 'Varco del Muro', 562, yc(562));
-    P('poligono', 'Poligono della Base', 588, 166); P('eliporto', 'Eliporto della Base', 632, 134); P('molo_cargo', 'Porto cargo', 664, 140);
+    P('poligono', 'Poligono della Base', 560, 178); P('eliporto', 'Eliporto della Base', 632, 134); P('molo_cargo', 'Porto cargo', 640, 200);   // [rocca2] il porto cargo sul molo a sud dello scoglio
     // la foresta
     P('macchia', 'Pineta dell\'altopiano', 200, 138); P('sentiero', 'Sentiero dei carbonai', 214, 156); P('radura', 'Radura del pastore', 176, 142);
     P('sugheri', 'Valle delle betulle', 202, 168); P('ovile', 'Ovile abbandonato', 176, 124); P('lago', 'Lago gelato', 182, 138);
@@ -22858,9 +22972,10 @@ var World = (function () {
         const t = S.tr; let gq = 1e9; for (let lx = 0; lx <= 32; lx += 4) gq = Math.min(gq, vAt(...pzW(t, lx, 2))); t.q = gq; t.opz.hRilevato = +Math.max(.9, Rf(S.xc) - gq - .6).toFixed(2);
         [S.loco, S.carro].forEach(p => { p.q = Rf(p.x); }); }
       // 4) il fossato della Rocca: 5 m sotto la spianata, il ponte resta in quota
-      const F = FORT.posa; if (F) { const Sp = vAt(F.XF - 14, F.gy), bot = Sp - 5; F.Sp = Sp;
-        eachV(F.XF - F.DW, F.gy - F.DH, F.XF, F.gy + F.DH, (i, j, x, y) => { if (Math.abs(y - F.gy) <= 2.6) return; setV(i, j, bot); });
-        PEZZI.forEach(p => { if (p.rocca === 'fondo') p.q = bot; else if (p.rocca === 'spianata') p.q = Sp; }); }
+      // [rocca2] il canale è mare: il ponte e la porta stanno alla quota della spianata; il pezzo del canale scende sotto il pelo dell'acqua
+      const F = FORT.posa; if (F) { const Sp = vAt(F.XF - F.CW - 3, F.gy); F.Sp = Sp;
+        eachV(F.XF - F.CW, F.gy - 46, F.XF, F.gy + 46, (i, j, x, y) => { if (Math.abs(y - F.gy) <= 2.6) return; setV(i, j, -2); });
+        PEZZI.forEach(p => { if (p.rocca === 'spianata') p.q = Sp; else if (p.rocca === 'canale') { p.q = Sp; p.opz.prof = Math.round((Sp + 1.8) * 100) / 100; p.opz.pelo = Math.round(Sp * 100) / 100; } }); }
       // 4b) la Piazza del Mercato: l'ottagono scende di 3 m da ponente a levante; il basolato della tettoia sta in piano (alla quota di mezzo)
       // e attorno, sui lati dove la piazza resta più alta, un muro di sostegno; dove resta più bassa, il gradone con la scala per salirci
       { const tt = PEZZI.find(p => p.tipo === 'tettoia_mercato'); if (tt && CITY.octa) { const [ox, oy, orr] = CITY.octa, ap = orr - 1.7, oct = (x, y) => { const dx = Math.abs(x - ox), dy = Math.abs(y - oy); return Math.max(dx, dy, (dx + dy) / Math.SQRT2); };
@@ -22872,9 +22987,18 @@ var World = (function () {
           const g = pzAt('gradone', ox + nx * aw(k), oy + ny * aw(k), Math.atan2(fx, fy), L / 2, 0, { L: +L.toFixed(2), h: +Math.abs(d).toFixed(2), P: d > 0 ? .8 : 2.4, rampa: false, scala: d < 0 && k % 2 === 0, ringhiera: d < 0 }, { nome: d > 0 ? 'Muro di sostegno del Mercato' : 'Gradone del Mercato' });
           g.q = +Math.min(qm, ring[k]).toFixed(2); } } }
       // 5) le banchine della darsena alla quota della calata; il molo e lo scalo alla quota del loro piano
-      { const qd = Math.max(.6, vAt((DARS.x0 + DARS.x1) / 2, DARS.y0 - 3)); PEZZI.forEach(p => { if (p.tipo === 'darsena') { p.q = qd; p.opz.hq = +(qd - WLp).toFixed(2); } });
+      { const qd = Math.max(.6, vAt((DARS.x0 + DARS.x1) / 2, DARS.y0 - 3)); PEZZI.forEach(p => { if (p.tipo === 'darsena' && !p.opz.rocca) { p.q = qd; p.opz.hq = +(qd - WLp).toFixed(2); } });
         eachV(DARS.x0, DARS.y0, DARS.x1, DARS.y1, (i, j, x, y) => { if (x <= DARS.x0 + DARS.b || x >= DARS.x1 - DARS.b || y <= DARS.y0 + DARS.b) setV(i, j, qd); });
         const mo = SEA.structs.find(s => s.id === 'molo_levante'); PEZZI.forEach(p => { if (p.tipo === 'molo_vecchio') { p.q = mo ? mo.h : 1.3; p.opz.hq = +(p.q - WLp).toFixed(2); } if (p.tipo === 'scalo_alaggio') { p.q = Math.max(.6, vAt(p.x + 3, p.y - 2)); p.opz.hq = +(p.q - WLp).toFixed(2); } }); }
+      // [rocca2] la Rocca a mare: la darsena, il ponte ad arco e la porta d'acqua alla quota delle banchine (il pelo dell'acqua a WLp);
+      // il frangiflutti al pelo del mare; il canale scende dalla spianata fin sotto l'acqua
+      { const DS = FORT.darsena; if (DS) { const qr = Math.max(.8, vAt(DS.x0 + 2, DS.yc - DS.W / 2 - 2)), hq = +(qr - WLp).toFixed(2);
+          eachV(DS.x0, DS.yc - DS.W / 2 - DS.B, DS.x0 + DS.L + 2 * DS.B, DS.yc + DS.W / 2, (i, j, x, y) => { if (x <= DS.x0 + DS.B || x >= DS.x0 + DS.B + DS.L || y <= DS.yc - DS.W / 2) setV(i, j, qr); });
+          PEZZI.forEach(p => { if (p.tipo === 'darsena' && p.opz.rocca) { p.q = qr; p.opz.hq = hq; } else if (p.tipo === 'ponte_arco' || p.tipo === 'porta_acqua') { p.q = qr; p.opz.acqua = hq; } }); }
+        // le masse di carparo sullo scoglio: la quota dal loro interno (gli spigoli toccano il canale o la riva, che stanno sotto)
+        PEZZI.forEach(p => { if (!/^(corpo_rocca|mastio|caserma|polveriera)$/.test(p.tipo) || p.x < FORT.x - 6 || !p.imp) return; const r = p.imp[0], a = r[1] + 1.5, b = r[2] - 1.5, c = r[3] + 1.5, d = r[4] - 1.5;
+          if (b > a && d > c) p.q = Math.min(...[[a, c], [b, c], [b, d], [a, d], [(a + b) / 2, (c + d) / 2]].map(([u, v]) => vAt(...pzW(p, u, v)))); });
+        PEZZI.forEach(p => { if (p.tipo === 'scogliera') p.q = +(WLp + .7).toFixed(2); else if (p.rocca === 'canale') { p.opz.prof = +(p.q - WLp + 1.2).toFixed(2); p.opz.pelo = +(p.q - WLp).toFixed(2); } }); }
       dirty.forEach(i => { const tx = i % GW, ty = (i / GW) | 0, k = ty * VW + tx; elev[i] = (vh[k] + vh[k + 1] + vh[k + VW] + vh[k + VW + 1]) / 4; });
       // 6) le bitte sul ciglio della calata, una ogni 12 m (non davanti ai pontili, al molo, alla darsena)
       for (let x = 1002; x <= 1088; x += 8) { if ([990, 1013, 1037, 970].some(px => Math.abs(px - x) < 3.5) || (x > DARS.x0 - 2 && x < DARS.x1 + 2) || Math.abs(x - 1080) < 4) continue;
@@ -23314,6 +23438,7 @@ var Percorsi = (function () {
   lm('tettoia_mercato', 'la tettoia verde del Mercato', 14, 0, 7, 15);
   lm('porta_monumentale', 'la Porta della Rocca', 5.5, 0, 11, 5);
   lm('torrione', 'il torrione della Rocca', 7, 0, 15, 8);
+  lm('mastio', 'il faro del mastio della Rocca', 8.7, -2, 31, 7);   // [rocca2] il mastio col faro
   lm('stazione', 'l\'orologio della stazione', 16, -6, 10, 10);
   lm('muro_garante', 'il riflettore del posto di blocco', 12, 0, 6.5, 3);
   lm('molo_vecchio', 'la lanterna del molo', 0, 0, 5, 4);
@@ -50805,6 +50930,11 @@ var Palco = (function () {
     for (let dz = 0; dz <= 6 && !carri.length; dz += 1) for (let dx = 0; dx <= 16 && !carri.length; dx += 2) {
       const z = asse.z1 + 3 + CARRO.hz + dz, xs = []; for (let i = 0; i < CARRO.n; i++) xs.push(F.x + 12 + dx + i * CARRO.passo);
       if (xs.every(x => dentro(x, z) && libero(x, z, CARRO.hx, CARRO.hz) && !sovr(x, z, CARRO.hx, CARRO.hz))) carri = xs.map(x => ({ x, z, rot: Math.PI })); }
+    // [rocca2] nella Rocca a mare la piazza d'armi è piccola (a sud dell'asse c'è la darsena): il parco mezzi va sulla spianata, a sud
+    // dell'asse fra la città e il Muro, coi carri in fila a passo fisso
+    for (let dz = 0; dz <= 16 && !carri.length; dz += 1) for (let dx = 0; dx <= 6 && !carri.length; dx += 1) {
+      const z = asse.z1 + 3 + CARRO.hz + dz, xs = []; for (let i = 0; i < CARRO.n; i++) xs.push(WL.x - 21 + dx + i * CARRO.passo);
+      if (xs.every(x => zona(x, z) && x + CARRO.hx < WL.x - .5 && libero(x, z, CARRO.hx, CARRO.hz) && !sovr(x, z, CARRO.hx, CARRO.hz))) carri = xs.map(x => ({ x, z, rot: Math.PI })); }
     carri.forEach(c => posa(c.x, c.z, CARRO.hx, CARRO.hz, 'carro'));
     // 4) i CONTAINER: contro il Muro, a sud del varco, il lato lungo parallelo al Muro, lontano dalle torri
     const torri = (WL.towers || []).map(([x, z]) => ({ x: x + 1.6, z }));
