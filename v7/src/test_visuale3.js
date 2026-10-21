@@ -23,8 +23,12 @@ const camAt = (x, z, y) => ({ x: x + Math.sin(YAW) * Math.cos(PITCH) * DIST, y: 
 // 2. dieci punti dei vicoli del borgo (strade strette fra case E0)
 const era = (x, z) => { for (let r = 1; r < 6; r++) for (const [dx, dz] of [[r, 0], [-r, 0], [0, r], [0, -r]]) { const tx = Math.floor((x + dx * TS) / TS), ty = Math.floor((z + dz * TS) / TS); if (tile(tx, ty) === W.T.BLD) { const b = W.BUILDINGS.find(b => tx >= b.x && tx < b.x + b.w && ty >= b.y && ty < b.y + b.h); if (b) return b.era; } } return null; };
 const muri = (x, z) => [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dz]) => { for (let s = 1; s <= 2.6; s += .4) if (pieno(x + dx * s, z + dz * s)) return true; return false; }).length;
+// [mappa_compatta] i punti si prendono dai dati, uno per vicolo a giro (W.roads da ≤ 3,5 m fra case del borgo, con muri su almeno due lati):
+// la città compatta ha 22 vicoli nel pettine del borgo e la prova deve toccarne il più possibile, non i primi quattro della lista
+const perVicolo = W.roads.filter(r => r.w <= 3.5 && r.pts && r.pts.length > 1).map(r => {
+  const L = []; r.pts.forEach(([x, z]) => { if (pieno(x, z) || era(x, z) !== 'E0' || muri(x, z) < 2) return; if (L.some(q => Math.hypot(q[0] - x, q[1] - z) < 10)) return; L.push([x, z, r.name]); }); return L; }).filter(L => L.length);
 const posti = [];
-W.roads.filter(r => r.w <= 3.5).forEach(r => r.pts.forEach((p, i) => { if (i % 4) return; const [x, z] = p; if (pieno(x, z) || era(x, z) !== 'E0' || muri(x, z) < 2) return; if (posti.some(q => Math.hypot(q[0] - x, q[1] - z) < 25)) return; posti.push([x, z, r.name]); }));
+for (let k = 0, more = true; more; k++) { more = false; perVicolo.forEach(L => { const q = L[k]; if (!q) return; more = true; if (posti.some(p => Math.hypot(p[0] - q[0], p[1] - q[1]) < 12)) return; posti.push(q); }); }
 const dieci = posti.slice(0, 10);
 ok(dieci.length === 10, `dieci punti nei vicoli del borgo (${posti.length} candidati): ${dieci.map(q => q[2]).filter((v, i, a) => a.indexOf(v) === i).join(', ')}`);
 // un raggio passa se nessuna scatola lo ferma; una casa tagliata vale fino alla sua quota
@@ -47,6 +51,8 @@ let anello = 0, anelloOk = 0; dieci.forEach(([x, z]) => { const cam = camAt(x, z
     anello++; if (!libero(o, cam, T)) anelloOk++; } });
 ok(anelloOk >= anello * .9, `il suolo attorno ai piedi si vede: ${anelloOk}/${anello} punti dell'anello liberi`);
 ok(quote.every(y => y >= K.minimo - 1e-6), `le quote del taglio stanno sopra ${K.minimo} m dai piedi`);
+// a ridosso del muro (il raggio entra a 5 cm): la quota tenuta al minimo non si arrotonda in giù sotto il minimo
+ok([0, 2.6].every(fy => V.chiesta([{ y: fy + .05, suolo: false }], fy, K) >= fy + K.minimo - 1e-6), `a ridosso del muro il taglio resta a ${K.minimo} m dai piedi (${V.chiesta([{ y: .05, suolo: false }], 0, K).toFixed(2)})`);
 // 3. sul tetto niente
 { const [x, z] = dieci[0], T = V.scegli(x, z, 0, camAt(x, z, 0), CASE, K, true); ok(T.size === 0, 'sul tetto non si taglia niente'); }
 // 4. lungo un muro: il primo punto dei dieci con una casa tagliata; si cammina lungo il muro di quella casa per due secondi

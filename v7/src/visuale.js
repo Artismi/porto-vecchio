@@ -59,10 +59,12 @@ var Visuale = (function () {
   // la quota chiesta a una casa dai suoi raggi: entrate = [{ y: quota d'ingresso del raggio, suolo: è un punto dell'anello }]; piedi
   // (sopra K.massimo dai piedi la quota scende a piani interi, K.piano: la casa lontana perde i suoi piani alti, non si affetta a caso)
   function chiesta(entrate, piedi, K) {
-    K = K || TAGLIO; let y = Infinity;
-    entrate.forEach(e => { const lo = piedi + (e.suolo ? K.moncone : K.minimo); y = Math.min(y, Math.max(lo, e.y - K.margine)); });
+    K = K || TAGLIO; let y = Infinity, ylo = Infinity;
+    entrate.forEach(e => { const lo = piedi + (e.suolo ? K.moncone : K.minimo); ylo = Math.min(ylo, lo); y = Math.min(y, Math.max(lo, e.y - K.margine)); });
     if (y - piedi > K.massimo) return piedi + Math.max(K.massimo, Math.floor((y - piedi) / K.piano) * K.piano);
-    return Math.floor(y / K.passo) * K.passo;
+    // [mappa_compatta] l'arrotondamento al passo non scende sotto il pavimento del taglio: prima, a ridosso del muro (nei vicoli da 2-3 m
+    // della città compatta succede spesso) la quota tenuta a 0,15 m dai piedi finiva arrotondata in giù a 0 (un taglio raso terra)
+    return Math.max(ylo, Math.floor(y / K.passo) * K.passo);
   }
   // dove un raggio (o: origine, d: direzione unitaria) entra in una scatola { min: {x,y,z}, max: {x,y,z} }: la quota y del punto d'ingresso
   // (l'origine stessa se ci sta dentro), o null se la manca
