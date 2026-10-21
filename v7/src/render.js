@@ -1258,7 +1258,7 @@ var Render = (function () {
         const im = new THREE.InstancedMesh(g2, p.mat, arr.length);
         arr.forEach((o, k) => { nE.set(o.rx, o.ry, o.rz, 'YXZ'); nQ.setFromEuler(nE); nV.set(o.x, o.y, o.z); nS.set(o.s, o.s * o.sy, o.s); nM4.compose(nV, nQ, nS); im.setMatrixAt(k, nM4); im.setColorAt(k, nC.set(o.col || '#ffffff')); });
         im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
-        im.castShadow = tree && !LOWQ.on && !PHONE; im.receiveShadow = !tree; grp.add(im);
+        im.castShadow = tree && !LOWQ.on && !PHONE && !(p.leafy && /^(Leccio|Pinodom)_/.test(name)); im.receiveShadow = !tree; grp.add(im);   // [chiarezza] la chioma dei lecci e dei pini di città non fa la macchia nera: c'è Ombra4
       });
     }
     return grp;
@@ -4048,6 +4048,35 @@ var Render = (function () {
   // il piano terra visto da sopra: quali moduli di muro hanno un vano, per il bugnato
   function epHoles(b, f, L) { const H = []; (b.__win || []).forEach(W0 => { if (W0.f !== f || !W0.g || W0.name === 'wall' || W0.name === 'wall-low') return; const D = WIN[W0.name]; H.push([W0.u - (D ? D[0] / 2 : 1) - .12, W0.u + (D ? D[0] / 2 : 1) + .12, W0.name.includes('doorway') ? 2.5 : 2.2]); }); return H; }
   // i rilievi della casa, dopo i moduli: per lato un telaio come in buildCase (u lungo il muro, z verso fuori)
+  // [chiarezza] LE FINESTRE CHE SI LEGGONO. Sui palazzi senza epoca (il Palazzo del Governo, i civici) e sul boom (E6) la finestra
+  // del kit era un rettangolo azzurro piatto sul muro: qui prende la mostra (stipiti e architrave), il davanzale che sporge e fa
+  // ombra, la tapparella mezza calata col suo cassonetto (boom) o le persiane socchiuse (palazzi), e la finestra a nastro i montanti
+  // che la dividono in tre luci. Solo sui lati che si vedono, solo sopra il piano terra (porte e vetrine hanno i loro portali).
+  function cornici4(b, i, X, kind, grp, G0) {
+    const { x0, z0, w, d, base } = G0, r = rng(i * 577 + 43), T = G.T, boom = X && X.era === 'E6';
+    const FACES = { S: { p: [x0, z0 + d], yaw: 0, tile: k => [b.x + k, b.y + b.h], n: b.w }, N: { p: [x0 + w, z0], yaw: Math.PI, tile: k => [b.x + b.w - 1 - k, b.y - 1], n: b.w },
+      E: { p: [x0 + w, z0 + d], yaw: Math.PI / 2, tile: k => [b.x + b.w, b.y + b.h - 1 - k], n: b.h }, W: { p: [x0, z0], yaw: -Math.PI / 2, tile: k => [b.x - 1, b.y + k], n: b.h } };
+    Object.keys(FACES).forEach(f => { const F = FACES[f]; let v = 0; for (let k = 0; k < F.n; k++) if (G.tileAt(...F.tile(k)) !== T.BLD) v++; F.vis = v / F.n >= .5; });
+    const frames = {}, fr = f => { if (frames[f]) return frames[f]; const F = FACES[f], a = new THREE.Group(); a.position.set(F.p[0], 0, F.p[1]); a.rotation.y = F.yaw; grp.add(a); return frames[f] = a; };
+    const pietra = boom ? '#c8c4ba' : b.gov || kind === 'civic' ? '#ddd4c0' : '#cfc8b8', ombra = shade(pietra, .78);
+    const tapp = boom ? pick(r, ['#c8b48a', '#b8ae9c', '#9aa49a']) : pick(r, ['#3e5240', '#4a5a44', '#5a4a36']), cass = boom ? '#8a8a86' : shade(tapp, .8);
+    (b.__win || []).forEach(W0 => {
+      if (!FACES[W0.f] || !FACES[W0.f].vis || W0.g || !W0.name.includes('window')) return; const D = WIN[W0.name]; if (!D) return;
+      const a = fr(W0.f), u = W0.u, yc = W0.y + D[2], ww = D[0], hh = D[1], wide = W0.name.includes('wide'), h = th(b.x * 7 + Math.round(u * 3), b.y + Math.round(W0.y), 1777);
+      if (!(boom && wide)) {   // la mostra: due stipiti e l'architrave (il boom a nastro ha la soletta del balcone sopra)
+        [-1, 1].forEach(s2 => epAt(a, fB(.12, hh + .1, .09, pietra, 'concrete', .01), u + s2 * (ww / 2 + .06), yc, .045));
+        epAt(a, fB(ww + .36, .14, .13, pietra, 'concrete', .015), u, yc + hh / 2 + .09, .065);
+      }
+      epAt(a, fB(ww + .34, .07, .3, pietra, 'concrete', .012), u, yc - hh / 2 - .04, .15); epAt(a, fB(ww + .22, .05, .08, ombra, 'concrete', .01), u, yc - hh / 2 - .1, .27);   // il davanzale col gocciolatoio
+      if (wide) [-1, 1].forEach(s2 => epAt(a, fB(.08, hh, .06, boom ? '#5a5c5e' : pietra, 'concrete', 0), u + s2 * ww / 6, yc, .03));   // i montanti: tre luci, non un nastro azzurro
+      const q = h < .55 ? .3 + h * .6 : h < .8 ? 0 : 1;   // quanto è calata: un po' di tutto, mai uguale in fila
+      if (boom) { epAt(a, fB(ww + .1, .2, .16, cass, 'concrete', .01), u, yc + hh / 2 + .1, .08);   // il cassonetto e la tapparella a stecche
+        if (q > 0) { const th2 = hh * Math.min(.95, q); epAt(a, fB(ww - .02, th2, .025, tapp, 'concrete', 0), u, yc + hh / 2 - th2 / 2, .03); } }
+      else if (!wide && q > 0) [-1, 1].forEach(s2 => { const ps = fB(ww / 2, hh, .04, tapp, 'concrete', 0); ps.rotation.y = q >= 1 ? 0 : -s2 * .12; epAt(a, ps, u + s2 * (q >= 1 ? ww / 4 : ww / 2 + .13 + ww / 4), yc, q >= 1 ? .04 : .07); });   // le persiane: chiuse o spalancate contro il muro
+      else if (wide && q > 0) { const th2 = hh * .4 * q; epAt(a, fB(ww - .1, th2, .025, '#d8d0bc', 'concrete', 0), u, yc + hh / 2 - th2 / 2, .03); }   // la tenda alla veneziana del palazzo
+    });
+    b.__cornici4 = true;
+  }
   function epDecora(b, i, X, grp, G0) {
     const { x0, z0, w, d, base, top, fl } = G0, r = rng(i * 911 + 41), era = X.era, EP = X.EP, stone = X.stone, stoneS = X.stoneS, iron = '#26262c', T = G.T;
     const open = (tx, ty) => { const v = G.tileAt(tx, ty); return v === T.VIA || v === T.WALK || v === T.PIAZZA || v === T.COB || v === T.QUAY || v === T.DIRT; };
@@ -4321,6 +4350,7 @@ var Render = (function () {
       const sx = PO === 'E' || PO === 'W' ? TS : 0, sz = PO === 'S' || PO === 'N' ? TS : 0, gx = PO === 'E' ? -TS / 2 : PO === 'W' ? TS / 2 : 0, gz = PO === 'S' ? -TS / 2 : PO === 'N' ? TS / 2 : 0;
       const c2 = box(w - .5 - sx, MG, d - .5 - sz, dark); c2.position.set(cx + gx, base + MG / 2, cz + gz); grp.add(c2); }
     if (X) epDecora(b, i, X, grp, { x0, z0, w, d, base, top, fl });   // [epoche] i rilievi dell'epoca, fusi con la casa
+    if (NUOVA4() && (!X || X.era === 'E6')) cornici4(b, i, X, kind, grp, { x0, z0, w, d, base, top });   // [chiarezza] le finestre del boom e dei palazzi senza epoca si leggono
     if (roofKind === 'flat') {   // [ordine1] lastrico in scala vera, parapetto con la copertina, bocchettoni; le cose sopra le mette il programma del tetto (buildRoofs)
       const deck = box(w, .12, d, deckMat1(flatKind1(b, i), w, d, deckQ1(fl)));   /* [profondita] */ deck.position.set(cx, top + .02, cz); grp.add(deck);
       if (X && X.lowParapet) {   // [epoche] il lastrico del borgo e della marina: parapetto basso (50 cm) che si vede ma non nasconde
@@ -4756,7 +4786,11 @@ var Render = (function () {
       n++;
     }
     // posti di blocco della Tutela: davanti al Muro e alla Piazza del Governo, transenne e sacchi di sabbia
-    [G.PLACES.varco, G.PLACES.piazza_gov, G.PLACES.muro].forEach(p => { if (!p) return; for (let k = 0; k < 4; k++) { const a = k * 1.57 + .4, x = p.x + Math.cos(a) * 6, z = p.y + Math.sin(a) * 6; if (free(x, z)) transenna(x, z, a); }
+    // [chiarezza] nella città nuova le transenne del posto di blocco stanno in fila, parallele alla via più vicina (LEGGIBILITA: «in file
+    // continue, parallele alla strada»), non quattro tavole storte attorno al punto
+    const filaBlocco4 = p => { let best = null, bd = 1e9; (M.roads || []).forEach(rd => { if (!rd.pts || rd.kind === 'sterrato') return; for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz || 1, t = clamp(((p.x - ax) * dx + (p.y - az) * dz) / L2, 0, 1), q = Math.hypot(ax + dx * t - p.x, az + dz * t - p.y); if (q < bd) { bd = q; const L = Math.sqrt(L2); best = [dx / L, dz / L]; } } });
+      if (!best) return false; const [ux, uz] = best; let k0 = 0; for (let k = -1; k <= 1; k++) { const x = p.x + ux * k * 2.05, z = p.y + uz * k * 2.05; if (free(x, z)) { transenna(x, z, Math.atan2(ux, uz)); k0++; } } return k0 > 0; };
+    [G.PLACES.varco, G.PLACES.piazza_gov, G.PLACES.muro].forEach(p => { if (!p) return; if (!(NUOVA4() && filaBlocco4(p))) for (let k = 0; k < 4; k++) { const a = k * 1.57 + .4, x = p.x + Math.cos(a) * 6, z = p.y + Math.sin(a) * 6; if (free(x, z)) transenna(x, z, a); }
       for (let k = 0; k < 2; k++) { const g = G0(); for (let q = 0; q < 7; q++) add(g, box(.7, .3, .4, sm(pick(r, ['#7a6e56', '#6a5e48', '#84785e']), { roughness: 1 })), (q % 4) * .65 - 1, .15 + Math.floor(q / 4) * .3, 0, 0, r() * .2, 0); const x = p.x + (k ? 5 : -5), z = p.y + 4; if (free(x, z)) place(g, x, z, r()); } });
     // arredo delle vie di città: panchine scrostate, paletti, cabine del telefono, buche delle lettere; mai sulla carreggiata
     (M.roads || []).filter(rd => rd.kind === 'citta' || rd.kind === 'litoranea').forEach(rd => {
@@ -6286,6 +6320,10 @@ var Render = (function () {
 
   // ---- il verde in città: alberi dove c'è spazio vero, cespugli e orti nei cortili, erbacce ai piedi dei muri ----
   let TREES35 = null;
+  // [chiarezza] i fronti della città (porte, vetrine, scale) con la loro fascia libera, una volta sola
+  let FRONTI4 = null, NUOVA4V = null;
+  const NUOVA4 = () => NUOVA4V === null ? (NUOVA4V = typeof Chiarezza !== 'undefined' && (G.BUILDINGS || []).some(b => b.era)) : NUOVA4V;   // [chiarezza] la città nuova (le case hanno l'epoca)
+  function fronti4() { if (FRONTI4) return FRONTI4; FRONTI4 = typeof Chiarezza !== 'undefined' ? Chiarezza.fronti(G.BUILDINGS, TS, (tx, ty) => G.tileAt(tx, ty), G.T, G.GW, G.GH, M.world && M.world.pezzi) : []; return FRONTI4; }
   function alberiCitta35() {
     if (TREES35) return TREES35; TREES35 = [];
     const T = G.T, isB = (x, z) => gT(Math.floor(x / TS), Math.floor(z / TS)) === T.BLD;
@@ -6295,6 +6333,19 @@ var Render = (function () {
     // (buildStrade31). Lecci sul Corso e nelle vie dell'Ottocento (il piano dice «alberato», non tigli: d'inverno restano verdi),
     // pini domestici sui viali del boom (E6), palme sul lungomare.
     const freeF = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; });
+    // [chiarezza] nella città nuova i filari li decide Chiarezza.strade (quali vie, che passo, quali lati) e si misurano lungo il tracciato
+    // (Chiarezza.filare, non ai vertici della spezzata); un posto che cade davanti a una porta (2 m dal suo asse), a una vetrina o a una
+    // scala si salta: il fronte è la cosa più chiara della strada. La mappa vecchia resta com'era.
+    const CH = typeof Chiarezza !== 'undefined' && (G.BUILDINGS || []).some(b => b.era) ? Chiarezza : null, FR = CH ? fronti4() : null, scart = { porta: 0, vetrina: 0, scala: 0 };
+    const libero = (x, z) => { const q = CH && CH.davanti(FR, x, z); if (q) scart[q.tipo]++; return !q; };
+    if (CH) CH.strade(M.roads).forEach(S => { const rd = S.rd;
+      CH.filare(rd.pts, S.passo, S.off, S.inizio).forEach(({ x, z, sd }) => { if (S.lati.indexOf(sd) < 0) return;
+        if (S.kind === 'filare') { if (!freeF(x, z) || zoneT(Math.floor(x / TS), Math.floor(z / TS)) !== ZN.CITTA || nearJ(x, z, 1) || !libero(x, z)) return;
+          TREES35.push({ x, z, kind: 'filare', sp: S.sp, s: .94 + th(Math.round(x), Math.round(z), 357) * .12 }); return; }
+        if (zoneT(Math.floor(x / TS), Math.floor(z / TS)) !== ZN.CITTA || onRoad(x, z) || nearJ(x, z, 4) || !roomy(x, z, 2.6) || !libero(x, z)) return;
+        TREES35.push({ x, z, kind: 'viale', s: .36 + th(Math.round(x), Math.round(z), 354) * .14 }); });
+    });
+    else {
     (M.roads || []).filter(rd => rd.alberi && !rd.pennoni).forEach(rd => {
       const sp = rd.alberi === 'palme' ? 'palma' : rd.era === 'E6' ? 'pino' : 'leccio'; let acc = 0;
       for (let k = 1; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < 9) continue; acc = 0;
@@ -6312,32 +6363,34 @@ var Render = (function () {
           TREES35.push({ x, z, kind: 'viale', s: .36 + th(Math.round(x), Math.round(z), 354) * .14 }); });
       }
     });
+    }
     // un albero nelle piazzette e negli slarghi, uno ogni tanto nei cortili grandi
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v !== T.PIAZZA && v !== T.GRASS) continue;
       if (th(tx, ty, 355) > (v === T.PIAZZA ? .05 : .07)) continue;
-      const x = tx * TS + 1, z = ty * TS + 1; if (onRoad(x, z) || !roomy(x, z, 3) || TREES35.some(t => Math.hypot(t.x - x, t.z - z) < 4.5)) continue;
-      TREES35.push({ x, z, kind: v === T.PIAZZA ? 'piazza' : 'cortile', s: .42 + th(tx, ty, 356) * .2 });
+      const x = tx * TS + 1, z = ty * TS + 1; if (onRoad(x, z) || !roomy(x, z, 3) || TREES35.some(t => Math.hypot(t.x - x, t.z - z) < 4.5) || !libero(x, z)) continue;   // [chiarezza]
+      TREES35.push({ x, z, kind: v === T.PIAZZA ? 'piazza' : 'cortile', s: .42 + th(tx, ty, 356) * .2, largo: roomy(x, z, 7) });   // [chiarezza] il pino a ombrello (10 m) solo dove la piazza è larga: altrimenti un leccio
     }
     if (window.__dbg35) window.__alb4 = TREES35;   // [verde4] per le sonde
+    if (window.__dbg35 && CH) console.log('[dbg] chiarezza alberi', TREES35.length, 'saltati davanti ai fronti', JSON.stringify(scart), 'restano davanti', JSON.stringify(CH.misura(FR, TREES35)));
     if (window.__dbg35) { const k = {}; TREES35.forEach(t => { const q = t.kind + (t.sp ? ':' + t.sp : ''); k[q] = (k[q] || 0) + 1; }); console.log('[dbg] verde4 alberi', JSON.stringify(k), 'giardini', ALB4.length, 'strade alberate', (M.roads || []).filter(rd => rd.alberi).map(rd => rd.name + ':' + rd.alberi + ':' + rd.pts.length).join(' ')); }
     return TREES35;
   }
   // [verde4] un albero di città istanziato: la specie del posto, la sua scala, l'ombra morbida sotto la chioma
   const ALB4 = [];   // gli alberi chiesti dalle piazze e dai giardini (leafyTree): si istanziano qui coi blocchi di terreno
   function albero4(add, t, r) {
-    const sp = t.sp || (t.kind === 'piazza' && r() < .35 ? 'pino' : 'leccio'), y = groundH(t.x, t.z), s = (t.kind === 'filare' || t.kind === 'giardino' ? t.s || 1 : .9 + r() * .2) * (t.big ? 1.12 : 1);
+    const sp = t.sp || (t.kind === 'piazza' && r() < .35 && !(NUOVA4() && !t.largo) ? 'pino' : 'leccio'), y = groundH(t.x, t.z), s = (t.kind === 'filare' || t.kind === 'giardino' ? t.s || 1 : .9 + r() * .2) * (t.big ? 1.12 : 1);
     const COL = ['#ffffff', '#f2f4ea', '#f8f6ee', '#eef2e8'], tilt = { rx: (r() - .5) * .04, rz: (r() - .5) * .04, col: pick(r, COL) };
     if (sp === 'palma') { add('Palma_' + Math.floor(r() * 6), t.x, y - .05, t.z, .82 * s, r() * 6.28, tilt); add('Ombra4', t.x, y + .03, t.z, 2.6 * s, 0, {}); return; }
     if (sp === 'pino') { add('Pinodom_' + Math.floor(r() * 3), t.x, y, t.z, s, r() * 6.28, tilt); add('Ombra4', t.x, y + .03, t.z, 4.8 * s, 0, {}); return; }
-    add('Leccio_' + Math.floor(r() * 4), t.x, y, t.z, s, r() * 6.28, tilt); add('Ombra4', t.x, y + .03, t.z, 3.3 * s, 0, {});
+    add('Leccio_' + Math.floor(r() * 4), t.x, y, t.z, s, r() * 6.28, tilt); add('Ombra4', t.x, y + .03, t.z, 2.3 * s, 0, {});   // [chiarezza] l'ombra della chioma stretta
   }
   function verdeCitta35(add, tx0, ty0, n, m) {
     const T = G.T, X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS;
     ALB4.forEach(t => { if (t.x < X0 || t.x >= X1 || t.z < Y0 || t.z >= Y1) return; albero4(add, t, rng((Math.round(t.x * 13) + Math.round(t.z * 7) + 4) >>> 0)); });   // [verde4]
     const LEAF = ['#e8f0e0', '#f4f2e4', '#e0ead8', '#fff8e8', '#f0e8c8'];
     alberiCitta35().forEach(t => { if (t.x < X0 || t.x >= X1 || t.z < Y0 || t.z >= Y1) return; const r = rng((Math.round(t.x * 13) + Math.round(t.z * 7)) >>> 0);
-      if (t.kind !== 'cortile') { albero4(add, t, r); return; }   // [verde4] viali, filari e piazze: i sempreverdi mediterranei
+      if (t.kind !== 'cortile' || NUOVA4()) { albero4(add, t, r); return; }   // [verde4] viali, filari e piazze: i sempreverdi mediterranei   // [chiarezza] nella città nuova anche i cortili: niente querce lime
       const name = r() < .35 ? pick(r, NM.olive) : pick(r, NM.oak);
       add(name, t.x, groundH(t.x, t.z) - .05, t.z, (/Twisted/.test(name) ? .22 : /Dead/.test(name) ? .26 : t.s) * (.92 + r() * .16), r() * 6.28, { rx: (r() - .5) * .05, rz: (r() - .5) * .05, col: pick(r, LEAF) });
       if (t.kind !== 'viale') for (let q = 0; q < (t.kind === 'cortile' ? 3 : 1); q++) add(q ? 'Grass_Common_Tall' : 'Bush_Common',   /* [unione11] */ t.x + (r() - .5) * 2.4, 0, t.z + (r() - .5) * 2.4, q ? .7 + r() * .4 : .45 + r() * .2, r() * 6.28, { ground: true, col: pick(r, LEAF) }); });
@@ -6886,6 +6939,7 @@ var Render = (function () {
         if (q < .3) B35.lattina(g, 0, 0, pick(rr, ['#b03028', '#c8b030', '#3a6a9a', '#d8d8d0']));
         else if (q < .5) B35.bottiglia(g, 0, 0, pick(rr, ['#2a5a2a', '#3a2a14', '#5a6a6a']));
         else if (q < .68) B35.bicchiere(g, 0, 0);
+        else if (q < .9 && NUOVA4()) B35.bicchiere(g, 0, 0);   // [chiarezza] nella città nuova niente cartoni e sacchi sparsi sul cordolo: stanno solo nelle scene (Chiarezza.SCENE_A_TERRA)
         else if (q < .8) B35.cartone(g, 0, 0, rr(), .7, rr() < .5);
         else if (q < .9) B35.sacco(g, 0, 0, rr() * 6, '#1a1a1e');
         else { B35.lattina(g, 0, 0, '#c8b030'); B35.bottiglia(g, .3, .2, '#2a5a2a'); B35.bicchiere(g, -.2, .25); }
@@ -7728,7 +7782,8 @@ var Render = (function () {
   // (placche e fessure), chioma a masse lisce (la normale mescola la massa e l'involucro: la chioma si illumina come un volume solo,
   // non a facce), una frangia di carte di foglie o d'aghi che rompe il contorno, la formella di pietra ai piedi e l'ombra morbida a
   // terra (Ombra4). Tutto con il materiale della vegetazione (vdMat): vento, nebbia e varco come il resto del verde.
-  const PAL4 = { leccio: [vdH('#0c160e'), vdH('#1c2e1e'), vdH('#3c5236')], pino: [vdH('#0c140c'), vdH('#1c2c16'), vdH('#34441e')] };   // scuri: il materiale li schiarisce (×1,3) e la luce del gioco è piena
+  const PAL4 = { leccio: [vdH('#0d100b'), vdH('#1b2017'), vdH('#323a29')],   // [chiarezza] il leccio è verde oliva scuro, opaco: sta dietro al fronte nella gerarchia
+                pino: [vdH('#0b110b'), vdH('#1a2416'), vdH('#2e3820')] };   // scuri: il materiale li schiarisce (×1,3) e la luce del gioco è piena
   const BARK4 = { leccio: { a: vdH('#4e443a'), b: vdH('#5e5246'), d: vdH('#241e1a'), fis: .3 }, pino: { a: vdH('#7a4c34'), b: vdH('#93603f'), d: vdH('#33241c'), fis: .38 } };
   const WU4 = [VDWUV[0], VDWUV[1]], nrm4 = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
   function acc4() {   // triangoli con normale, colore, uv e vento per vertice (le normali le diamo noi: lisce)
@@ -7764,11 +7819,11 @@ var Render = (function () {
     return vdK(c, (.55 + .45 * Math.min(1, inner)) * (e[1] < -.4 ? .82 : 1));
   }
   // una massa della chioma: icosaedro suddiviso, gonfiato a caso (lo stesso spostamento sui vertici in comune: niente crepe)
-  function massa4(A, c, r, env, pal, seed, det, H) {
-    const g = new THREE.IcosahedronGeometry(1, det), p = g.attributes.position;
+  function massa4(A, c, r, env, pal, seed, det, H, amp) {   // [chiarezza] amp: quanto è bozzuta la massa (1 = come prima)
+    const g = new THREE.IcosahedronGeometry(1, det), p = g.attributes.position, am = amp === undefined ? 1 : amp;
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i), y = p.getY(i), z = p.getZ(i), qx = Math.round(x * 6), qy = Math.round(y * 6), qz = Math.round(z * 6);
-      const k = 1 + (vegHash(qx + seed, qy, qz + seed * 3) - .5) * .34 + (vegHash(Math.round(x * 2) + seed, Math.round(y * 2), Math.round(z * 2)) - .5) * .2;
+      const k = 1 + ((vegHash(qx + seed, qy, qz + seed * 3) - .5) * .34 + (vegHash(Math.round(x * 2) + seed, Math.round(y * 2), Math.round(z * 2)) - .5) * .2) * am;
       const P = [c[0] + x * r[0] * k, c[1] + y * r[1] * k, c[2] + z * r[2] * k], nl = nrm4([x / r[0], y / r[1], z / r[2]]), ne = nrm4([(P[0] - env.c[0]) / env.r[0], (P[1] - env.c[1]) / env.r[1], (P[2] - env.c[2]) / env.r[2]]);
       const N = nrm4([nl[0] * .5 + ne[0] * .5, nl[1] * .5 + ne[1] * .5 + .12, nl[2] * .5 + ne[2] * .5]);
       A.v(P, N, tinta4(P, N, env, pal, vegHash(qx, qy + seed, qz)), WU4, Math.max(0, P[1]) / H * .35);
@@ -7776,7 +7831,7 @@ var Render = (function () {
     g.dispose();
   }
   // la frangia: carte di foglie (cella 4) o di ciuffi d'aghi (cella 5) posate sulle masse verso fuori, tangenti all'involucro
-  function frangia4(A, n, lobes, env, cell, sz, r, pal, H, up) {
+  function frangia4(A, n, lobes, env, cell, sz, r, pal, H, up, mix) {   // [chiarezza] mix: quanto la carta prende la tinta della chioma (.4 come prima)
     const uA = vdUV(cell, 0, 0), uB = vdUV(cell, 1, 0), uC = vdUV(cell, 1, 1), uD = vdUV(cell, 0, 1);
     for (let k = 0; k < n; k++) {
       const L = lobes[Math.floor(r() * lobes.length)]; let d; do d = [r() * 2 - 1, r() * 2 - 1 + (up || 0), r() * 2 - 1]; while (Math.hypot(d[0], d[1], d[2]) > 1.3 || Math.hypot(d[0], d[1], d[2]) < .2); d = nrm4(d);
@@ -7785,7 +7840,7 @@ var Render = (function () {
       const N = nrm4([ne[0] + d[0], ne[1] + d[1] + .2, ne[2] + d[2]]); let t1 = nrm4([-N[2], 0, N[0]]); if (!isFinite(t1[0])) t1 = [1, 0, 0];
       const t2 = [N[1] * t1[2] - N[2] * t1[1], N[2] * t1[0] - N[0] * t1[2], N[0] * t1[1] - N[1] * t1[0]], an = r() * 6.28, ca = Math.cos(an), sa = Math.sin(an);
       const u = [t1[0] * ca + t2[0] * sa, t1[1] * ca + t2[1] * sa, t1[2] * ca + t2[2] * sa], v = [t2[0] * ca - t1[0] * sa, t2[1] * ca - t1[1] * sa, t2[2] * ca - t1[2] * sa], s = sz * (.75 + r() * .5);
-      const tc = tinta4(P, N, env, pal, r()), c = vdK(vdL([.36, .4, .32], tc, .4), .5 + Math.min(1, N[1] * .5 + .5) * .45), w = Math.max(0, P[1]) / H * .4;   // la carta ha già il suo verde: la tinta la scurisce o la schiarisce
+      const tc = tinta4(P, N, env, pal, r()), c = vdK(vdL([.36, .4, .32], tc, mix === undefined ? .4 : mix), (.5 + Math.min(1, N[1] * .5 + .5) * .45) * (mix === undefined ? 1 : .8)), w = Math.max(0, P[1]) / H * .4;   // la carta ha già il suo verde: la tinta la scurisce o la schiarisce
       const Q = (a, b) => [P[0] + u[0] * a * s + v[0] * b * s, P[1] + u[1] * a * s + v[1] * b * s, P[2] + u[2] * a * s + v[2] * b * s];
       const a = Q(-1, -1), b = Q(1, -1), cc = Q(1, 1), dd = Q(-1, 1);
       A.v(a, N, c, uA, w); A.v(b, N, c, uB, w); A.v(cc, N, c, uC, w); A.v(a, N, c, uA, w); A.v(cc, N, c, uC, w); A.v(dd, N, c, uD, w);
@@ -7803,20 +7858,21 @@ var Render = (function () {
     for (let k = 0; k < 7; k++) { const x = (r() * 2 - 1) * e * .85, z = (r() * 2 - 1) * e * .85, s = .05 + r() * .04, c = pick(r, [vdH('#7a6034'), vdH('#5a4a2c'), vdH('#8a7444')]);
       A.v([x - s, y + .005, z], up, c, WU4); A.v([x, y + .005, z - s], up, c, WU4); A.v([x + s, y + .005, z], up, c, WU4); A.v([x - s, y + .005, z], up, c, WU4); A.v([x + s, y + .005, z], up, c, WU4); A.v([x, y + .005, z + s], up, c, WU4); }
   }
-  // il leccio da viale: tronco corto un po' storto (potato alto, la chioma sopra la gente), 3-4 branche, cupola larga scura e lucida
+  // il leccio da viale. [chiarezza] Potato alto come i lecci veri dei corsi: fusto libero fin sopra il piano terra (Chiarezza.ALBERO.fusto),
+  // la chioma stretta (≈3,4 m) sopra la gente e sopra la porta, una massa grande con quattro lobi bassi che la gonfiano (una sagoma
+  // sola, non venti bozzi), poche carte di foglie della stessa tinta sul contorno, verde oliva scuro e opaco.
   function leccioGeo(seed, H) {
-    const r = rng(seed), W = acc4(), L = acc4(), TAU = 6.2832, bx = (r() - .5) * .08 * H, bz = (r() - .5) * .08 * H;
-    const env = { c: [bx * .8, H * .62, bz * .8], r: [H * .4, H * .3, H * .4] }, t0 = H * .38, top = [bx * .5, t0, bz * .5];
-    tubo4(W, [[0, -.05, 0], [bx * .1, t0 * .3, bz * .1], [bx * .3, t0 * .7, bz * .3], top], [.034 * H, .028 * H, .025 * H, .022 * H], BARK4.leccio, seed, H);
-    const NB = 3 + Math.floor(r() * 2);
-    for (let k = 0; k < NB; k++) { const a = k / NB * TAU + r() * .7, d = env.r[0] * (.4 + r() * .2), e = [env.c[0] + Math.cos(a) * d, env.c[1] + (r() - .2) * env.r[1] * .4, env.c[2] + Math.sin(a) * d];
-      const m = [top[0] + (e[0] - top[0]) * .45, top[1] + (e[1] - top[1]) * .32, top[2] + (e[2] - top[2]) * .45];
-      tubo4(W, [top, m, e], [.016 * H, .011 * H, .005 * H], BARK4.leccio, seed + k * 5, H); }
-    const lobes = [[env.c[0], env.c[1] + env.r[1] * .38, env.c[2], .56]];   // [x, y, z, raggio relativo all'involucro]
-    for (let k = 0; k < 7; k++) { const a = k / 7 * TAU + r() * .5, d = env.r[0] * (.52 + r() * .14); lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] + (r() - .45) * env.r[1] * .55, env.c[2] + Math.sin(a) * d, .42 + r() * .1]); }
-    for (let k = 0; k < 4; k++) { const a = k / 4 * TAU + r(), d = env.r[0] * .28; lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] - env.r[1] * .32, env.c[2] + Math.sin(a) * d, .36]); }
-    lobes.forEach(([x, y, z, s], k) => massa4(L, [x, y, z], [env.r[0] * s, env.r[1] * s * 1.2, env.r[0] * s], env, PAL4.leccio, seed * 13 + k, k < 8 ? 2 : 1, H));
-    frangia4(L, 110, lobes.slice(0, 8), env, 4, H * .06, r, PAL4.leccio, H, .3);
+    const A4 = (typeof Chiarezza !== 'undefined' && Chiarezza.ALBERO) || { fusto: 3.9, raggio: 1.7, carte: 34 };
+    const r = rng(seed), W = acc4(), L = acc4(), TAU = 6.2832, F = A4.fusto * (.96 + r() * .08), bx = (r() - .5) * .3, bz = (r() - .5) * .3;
+    const ry = Math.max(1.3, (H - F) / 2), rx = A4.raggio / 1.08, env = { c: [bx, F + ry * .95, bz], r: [rx, ry, rx] }, top = [bx * .8, F + .25, bz * .8];
+    tubo4(W, [[0, -.05, 0], [bx * .15, F * .35, bz * .15], [bx * .45, F * .72, bz * .45], top], [.2, .16, .14, .12], BARK4.leccio, seed, H);
+    for (let k = 0; k < 3; k++) { const a = k / 3 * TAU + r() * .8, e = [env.c[0] + Math.cos(a) * rx * .55, env.c[1] - ry * .1, env.c[2] + Math.sin(a) * rx * .55];   // tre branche corte, dentro la chioma
+      const b0 = [top[0] * .9, F - .35, top[2] * .9], m = [b0[0] + (e[0] - b0[0]) * .45, b0[1] + (e[1] - b0[1]) * .4, b0[2] + (e[2] - b0[2]) * .45];
+      tubo4(W, [b0, m, e], [.09, .06, .03], BARK4.leccio, seed + k * 5, H); }
+    const lobes = [[env.c[0], env.c[1] + ry * .12, env.c[2], .84]];   // [x, y, z, raggio relativo all'involucro]: la massa
+    for (let k = 0; k < 4; k++) { const a = k / 4 * TAU + r() * .6, d = rx * (.42 + r() * .08); lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] - ry * (.12 + r() * .12), env.c[2] + Math.sin(a) * d, .56 + r() * .06]); }
+    lobes.forEach(([x, y, z, s], k) => massa4(L, [x, y, z], [rx * s, ry * s * 1.15, rx * s], env, PAL4.leccio, seed * 13 + k, 2, H, .45));
+    frangia4(L, A4.carte, lobes, env, 4, .3, r, PAL4.leccio, H, .2, .85);
     formella4(W, r);
     return { wood: W.build(), leaf: L.build() };
   }
@@ -7838,11 +7894,11 @@ var Render = (function () {
     return { wood: W.build(), leaf: L.build() };
   }
   function abeteModel(name) {
-    if (/^Leccio_/.test(name)) { const v = +name.slice(-1) || 0, H = [7, 7.8, 6.4, 8.4][v % 4], g = leccioGeo(6101 + v * 71, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: vdMat(), leafy: true }], top: H }; }   // [verde4]
+    if (/^Leccio_/.test(name)) { const v = +name.slice(-1) || 0, H = [7.2, 7.6, 7, 7.8][v % 4], g = leccioGeo(6101 + v * 71, H);   /* [chiarezza] fusto libero ≈ 3,9 m + chioma ≈ 3,3 m */ return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: vdMat(), leafy: true }], top: H }; }   // [verde4]
     if (/^Pinodom_/.test(name)) { const v = +name.slice(-1) || 0, H = [11, 12.5, 10][v % 3], g = pinoDomGeo(6907 + v * 89, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: vdMat(), leafy: true }], top: H }; }   // [verde4]
     if (name === 'Ombra4') {   // [verde4] l'ombra morbida sotto la chioma: un disco a terra che sfuma (raggio 1, si scala con la chioma)
       const geo = new THREE.PlaneGeometry(2, 2); geo.rotateX(-Math.PI / 2);
-      const mat = new THREE.MeshBasicMaterial({ color: '#1a1814', alphaMap: blobT2(), transparent: true, opacity: .34, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+      const mat = new THREE.MeshBasicMaterial({ color: '#1a1814', alphaMap: blobT2(), transparent: true, opacity: typeof Chiarezza !== 'undefined' ? Chiarezza.ALBERO.ombra : .34,   /* [chiarezza] chiara e morbida */ depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
       return { parts: [{ geo, mat, leafy: false }], top: .1 }; }
     if (/^Palma_/.test(name)) { const v = +name.slice(-1) || 0, H = [8.5, 10, 7.5, 11, 9, 6.5][v % 6], g = palmaGeo(3301 + v * 61, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: vdMat(), leafy: true }], top: H }; }   // [arcipelago]
     if (/^Quercia_/.test(name)) { const v = +name.slice(-1) || 0, ref = natModel('CommonTree_1'), H = (ref && ref.top ? ref.top * .95 : 9) * [1, 1.1, .85, 1.2, .95, .9, 1, .7][v], g = querciaGeo(8101 + v * 97, H, v); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: crownMat(), leafy: true }], top: H }; }
@@ -8242,7 +8298,8 @@ var Render = (function () {
     const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS, LEAF = ['#e8f0e0', '#f4f2e4', '#e0ead8', '#fff8e8', '#f0e8c8'];
     (M.roads || []).forEach((rd, ri) => {
       if (!(rd.kind === 'citta' || rd.kind === 'litoranea' || rd.kind === 'vicolo')) return;
-      const P = rd.pts, offs = rd.kind === 'vicolo' ? [rd.w / 2 - .15] : [rd.w / 2 + .12, rd.w / 2 + 2.0];
+      const P = rd.pts, offs = rd.kind === 'vicolo' ? [rd.w / 2 - .15] : NUOVA4() ? [rd.w / 2 + .12] : [rd.w / 2 + .12, rd.w / 2 + 2.0];   // [chiarezza] nella città nuova le erbacce solo nella fuga del cordolo, non in mezzo al marciapiede
+      if (NUOVA4() && rd.pennoni) return;   // [chiarezza] la Vittoria del regime è spazzata: niente ciuffi
       let acc = 0;
       for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / L, nz = (bx - ax) / L;
         for (let s = 0; s < L; s += .9) { acc += .9; const x0 = ax + (bx - ax) * s / L, z0 = az + (bz - az) * s / L; if (x0 < X0 - 3 || x0 >= X1 + 3 || z0 < Y0 - 3 || z0 >= Y1 + 3) continue;
@@ -8935,9 +8992,19 @@ var Render = (function () {
       } else if (q.k === 'adunata') {
         // il palco del Garante contro il Ministero, i pennoni in fila sui due lati, le transenne per l'adunata
         const cx = (q.x0 + q.x1) / 2, pz = q.y0 + 3; const g = G0(), pietra = sm('#e2d8c0', { roughness: .9 }), rosso = sm('#a8282a', { roughness: .95 });
+        // [chiarezza] nella città nuova, se sulla piazza c'è la torre littoria col balcone, il Garante parla da lì: niente palco (era una
+        // lastra chiara con una riga rossa davanti al portone del Palazzo, e il fondale rosso una fascia senza senso sulla facciata).
+        // Altrimenti il palco si legge come tribuna: gradini, leggio col microfono, il drappo col simbolo della Tutela, due bandiere.
+        if (NUOVA4() && po1Has('torre_littoria', cx, q.y0, 26)) { /* la tribuna è il balcone della torre */ }
+        else if (NUOVA4()) {
+          add(g, box(9, 1.1, 4, pietra), 0, .55, 0); add(g, box(9.2, .12, 4.2, sm('#c8bea6', { roughness: .9 })), 0, 1.16, 0); for (let k = 0; k < 4; k++) add(g, box(3, .275, .45, pietra), 0, .1375 + k * .275, 2.2 + (3 - k) * .42);
+          add(g, box(.7, 1.15, .45, sm('#4a3426', { roughness: .8 })), 0, 1.8, .9); add(g, cyl(.012, .012, .45, 4, PM.iron()), 0, 2.55, .85); add(g, box(.06, .06, .1, sm('#1a1a1a')), 0, 2.78, .82);   // il leggio e il microfono
+          const dr = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 4.2), eyeMat('banner')); add(g, dr, 0, 3.4, -1.9); [-1, 1].forEach(o => { add(g, cyl(.05, .07, 5.4, 6, sm('#d8d6cc')), o * 3.6, 3.8, -1.6); add(g, box(.03, 1.2, 1.8, sm('#b8302a', { roughness: .9 })), o * 3.6, 5.6, -.7); });
+          place(g, cx, pz, 0); n++;
+        } else {
         add(g, box(9, 1.3, 4, pietra), 0, .65, 0); add(g, box(9.05, 1.1, .05, rosso), 0, .6, 2.02); for (let k = 0; k < 3; k++) add(g, box(3, .22, .5, pietra), 0, .11 + k * .22 * 1.9, 2.3 + (2 - k) * .45);
         add(g, box(.12, 3.2, .12, PM.iron()), -3.8, 2.9, -1.6); add(g, box(.12, 3.2, .12, PM.iron()), 3.8, 2.9, -1.6); add(g, box(7.8, 1.4, .05, rosso), 0, 3.8, -1.6);
-        place(g, cx, pz, 0); n++;
+        place(g, cx, pz, 0); n++; }
         for (let z = q.y0 + 8; z <= q.y1 - 3; z += 7) [q.x0 + 1.5, q.x1 - 1.5].forEach(x => { if (!ok(x, z)) return; const f = G0(); add(f, cyl(.06, .09, 8, 6, sm('#d8d6cc')), 0, 4, 0); add(f, box(.04, 1.3, 2, sm('#b8302a', { roughness: .9 })), 0, 7.1, 1); place(f, x, z, 0); n++; });
         for (let x = q.x0 + 4; x < q.x1 - 3; x += 2.6) if (ok(x, q.y1 - 2)) { const g2 = G0(); add(g2, box(2.2, .06, .06, PM.iron()), 0, 1, 0); add(g2, box(2.2, .06, .06, PM.iron()), 0, .55, 0); [-1, 1].forEach(o => add(g2, box(.05, 1.05, .45, PM.iron()), o * 1.05, .52, 0)); place(g2, x, q.y1 - 2, 0); n++; }
       } else if (q.k === 'piazzetta') {
@@ -11499,7 +11566,11 @@ var Render = (function () {
       const mkA = (sd, u) => { const a = new THREE.Group(), p = sd.at(u); a.position.set(p[0], base - .1, p[1]); a.rotation.y = sd.yaw; g.add(a); return a; };
       const ad = (a, o, x, y, z) => { o.position.set(x, y, z); a.add(o); return o; };
       sides.forEach(sd => {
-        if (sd.len > 5 && r() < .4) { const a = mkA(sd, 1.6 + r() * (sd.len - 3.2)), k = Math.floor(r() * 12), m = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.1), lam('m' + (k % 6), muralTex(k))); ad(a, m, 0, 1.5 + r() * .5, .09); }
+        if (sd.len > 5 && r() < .4) { const u = 1.6 + r() * (sd.len - 3.2), k = Math.floor(r() * 12), yy = 1.5 + r() * .5;
+          // [chiarezza] nella città nuova il murale non va accanto a una porta né su una vetrina (si leggeva come un anello azzurro di
+          // interfaccia vicino al portone) e non sui palazzi del governo: lì la Tutela non lascia dipingere
+          const nn = [Math.sin(sd.yaw), Math.cos(sd.yaw)], FR = NUOVA4() ? fronti4() : null, copre = FR && (b.gov || [-1.9, 0, 1.9].some(o => { const q = sd.at(Math.max(0, Math.min(sd.len, u + o))); return Chiarezza.davanti(FR, q[0] + nn[0] * 1.2, q[1] + nn[1] * 1.2, .4); }));
+          if (!copre) { const a = mkA(sd, u), m = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.1), lam('m' + (k % 6), muralTex(k))); ad(a, m, 0, yy, .09); } }
         if (fl >= 3 && r() < .3) { const a = mkA(sd, 1 + r() * (sd.len - 2)), f = 1 + Math.floor(r() * (fl - 1)), y = base + MG + (f - 1) * MF + .3, k = [0, 3, 5][Math.floor(r() * 3)];
           const m = new THREE.Mesh(new THREE.PlaneGeometry(.8, 2.4), lam('b' + k, posterTex(k))); ad(a, m, 0, y + 1.2, .5); ad(a, box(.05, .05, .9, metal), 0, y + 2.45, .45); m.rotation.y = r() < .5 ? 0 : 0; m.rotation.x = -.04; const m2 = m.clone(); m2.rotation.y = Math.PI; m2.position.z = .52; a.add(m2); }
         if (fl >= 3 && r() < .28) { const f = 2 + Math.floor(r() * (fl - 2)), a = mkA(sd, 1.2 + r() * (sd.len - 2.4)), y = base + MG + (f - 1) * MF; ad(a, box(1.7, 1.5, .8, sm(WALLC[Math.floor(r() * 4)], { roughness: 1 })), 0, y + .75, .4); ad(a, box(1.8, .1, .9, sm('#bcc0c6', { roughness: 1 })), 0, y + 1.55, .42); ad(a, new THREE.Mesh(new THREE.PlaneGeometry(1.3, .9), glowM(r() < .6 ? '#ffd890' : '#38e8ff')), 0, y + .8, .81); }
@@ -12737,8 +12808,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
           dyn.signs.push({ m: mt, gl, flick: r() < .3 });
           if (k === 0 && r() < .5) addLight(a.position.x + Math.sin(sd.yaw) * 1.6, y - H / 2 + 1.4, a.position.z + Math.cos(sd.yaw) * 1.6, col, 2.4, 9, .08);
         }
-        if (r() < .18) { const sd = pick(r, sides), u = 1.2 + r() * Math.max(.1, sd.len - 3.6), a = mkA(gs, sd, u + 1.6), reg = r() < .3, mt = reg ? eyeMat('screen') : adMat(bi), tall = r() < .5, sw = tall ? 1.8 : 3.2, sh = tall ? 3.2 : 1.8;
-          const sc = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), mt); ad(a, sc, 0, Math.max(base + 3, top - sh / 2 - 1.2), .1); ad(a, box(sw + .15, sh + .15, .08, iron), 0, sc.position.y, .04);
+        if (r() < .18) { const sd = pick(r, sides), u = 1.2 + r() * Math.max(.1, sd.len - 3.6), a = mkA(gs, sd, u + 1.6), reg = r() < .3 && (!NUOVA4() || b.gov || b.era === 'E4'), mt = reg ? eyeMat('screen') : adMat(bi), tall = r() < .5, sw = tall ? 1.8 : 3.2, sh = tall ? 3.2 : 1.8;
+          // [chiarezza] lo schermo del Garante solo sui palazzi del regime, sopra il piano terra (mai accanto al portone), dentro una cassa
+          // di lamiera spessa con la mensola: si legge come un televisore appeso, non come un anello azzurro sul muro
+          const CHn = NUOVA4(), sy = CHn ? Math.max(base + MG + .5 + sh / 2, top - sh / 2 - 1.2) : Math.max(base + 3, top - sh / 2 - 1.2), sz = CHn ? .36 : .1;
+          const sc = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), mt); ad(a, sc, 0, sy, sz); ad(a, box(sw + (CHn ? .34 : .15), sh + (CHn ? .34 : .15), CHn ? .32 : .08, iron), 0, sc.position.y, CHn ? .18 : .04);
+          if (CHn) ad(a, box(sw * .5, .12, .5, iron), 0, sy - sh / 2 - .22, .25);
           const gl = glow(a.position.x + Math.sin(sd.yaw) * .4, sc.position.y, a.position.z + Math.cos(sd.yaw) * .4, reg ? '#7ff0e0' : pick(r, CCOL), 5.5); gl.material.opacity = .35; dyn.signs.push({ m: mt, gl, flick: r() < .3 }); }
       }
       if (g.children.length) { const gm = shadowed(mergeGroup(g), true, true); rotRec(rec, gm); ownMats(gm, rec); scene.add(gm); rec.cityGrp = gm; n++; }
