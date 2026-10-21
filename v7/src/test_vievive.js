@@ -43,11 +43,17 @@ let sostaKo = [];
 V.sosta.forEach(id => { const v = st.vehicles.find(z => z.id === id); if (!v) return; const K = G.VK[v.kind], ux = Math.cos(v.ang), uy = Math.sin(v.ang);
   vicoli.forEach(rd => { if (VV.lNear(VV.rdLinea(rd), v.x, v.y).d < rd.w / 2 + .3) sostaKo.push(`${v.id} nel vicolo ${rd.id}`); });
   // il fianco dell'auto verso il marciapiede (dal centro della via verso fuori) e le due teste: nessun fronte (porta, vetrina, scala) dietro
-  const rdv = R.filter(rd => VV.rango(rd) === 'via').map(rd => [rd, VV.lNear(VV.rdLinea(rd), v.x, v.y)]).sort((a, b) => a[1].d - b[1].d)[0], c = VV.lAt(VV.rdLinea(rdv[0]), rdv[1].s);
-  let ox = v.x - c.x, oy = v.y - c.y; const ol = Math.hypot(ox, oy) || 1; ox /= ol; oy /= ol;
+  // [mappa_compatta] lo stallo di piazza (piazzale della Stazione, Mercato, Scalo) ha il suo cordolo: il muro della piazza alle spalle
+  // (q.nx, q.ny); sta sulle caselle di piazza o di via. Gli stalli lungo le vie restano come prima (dal centro della via verso fuori).
+  const qs = VV.stalli().find(q => q.v === v.id); let ox, oy;
+  if (qs && qs.piazza) { ox = qs.nx; oy = qs.ny; }
+  else { const rdv = R.filter(rd => VV.rango(rd) === 'via').map(rd => [rd, VV.lNear(VV.rdLinea(rd), v.x, v.y)]).sort((a, b) => a[1].d - b[1].d)[0], c = VV.lAt(VV.rdLinea(rdv[0]), rdv[1].s);
+    ox = v.x - c.x; oy = v.y - c.y; const ol = Math.hypot(ox, oy) || 1; ox /= ol; oy /= ol; }
   [-1, 0, 1].forEach(a => { const x = v.x + ux * a * K.len / 2 + ox * (K.wid / 2 + 1.2), y = v.y + uy * a * K.len / 2 + oy * (K.wid / 2 + 1.2), q = CH.davanti(F, x, y, 0); if (q) sostaKo.push(`${v.id} davanti a ${q.tipo}`); });
-  if (G.tileAt(Math.floor(v.x / TS), Math.floor(v.y / TS)) !== T.VIA) sostaKo.push(`${v.id} fuori dalla carreggiata`); });
-ok(V.sosta.length >= 8, `auto in sosta sugli stalli: ${V.sosta.length} (${JSON.stringify(VV.stalli().filter(q => q.v).reduce((o, q) => (o[q.dove] = (o[q.dove] || 0) + 1, o), {}))})`);
+  const tv = G.tileAt(Math.floor(v.x / TS), Math.floor(v.y / TS)); if (tv !== T.VIA && !(qs && qs.piazza && tv === T.PIAZZA)) sostaKo.push(`${v.id} fuori dalla carreggiata`); });
+// [mappa_compatta] almeno 4 (prima 8): il Corso da 7 m porta un solo lato di sosta e ha porte e vetrine su quasi tutto il cordolo, le
+// altre vie sono da 5 m (senza auto) e alla tettoia del Mercato non c'è posto; la sosta sta lungo i muri del piazzale della Stazione
+ok(V.sosta.length >= 4, `auto in sosta sugli stalli: ${V.sosta.length} (${JSON.stringify(VV.stalli().filter(q => q.v).reduce((o, q) => (o[q.dove] = (o[q.dove] || 0) + 1, o), {}))})`);
 ok(!sostaKo.length, `nessuna auto in sosta in un vicolo, davanti a una porta, a una vetrina o a una scala (${[...new Set(sostaKo)].slice(0, 4).join('; ') || 'nessuna'})`);
 
 // ---------------- 3. LA LINEA, LE EDICOLE, LE PLANCE, IL SUOLO ----------------
@@ -68,7 +74,10 @@ const sog = [...Su.erba, ...Su.volantini, ...Su.foglie].filter(e => VV.soglia(e.
 ok(!sog.length, `niente erba, foglie e carte sulle soglie delle porte e sulle scale (${sog.length})`);
 
 // ---------------- 4. LA GIORNATA ----------------
-const VIE = R.filter(rd => { const r = VV.rango(rd); return r === 'asse' || r === 'via'; }).sort((a, b) => VV.rdLinea(b).L - VV.rdLinea(a).L);
+// [mappa_compatta] le vie principali sono quelle lunghe almeno 60 m: nella città compatta la Via della Stazione (30 m) e la Via del Porto
+// (36 m) sono i monconi delle costiere che finiscono sul piazzale e sullo scalo; contati ogni 100 m, un'auto della costiera che li
+// attraversa vale 3 mezzi, e la prova misurerebbe l'ingresso in città, non la via. Restano la Vittoria e il Corso.
+const VIE = R.filter(rd => { const r = VV.rango(rd); return (r === 'asse' || r === 'via') && VV.rdLinea(rd).L >= 60; }).sort((a, b) => VV.rdLinea(b).L - VV.rdLinea(a).L);
 const asse = VIE.find(rd => VV.rango(rd) === 'asse'), MAIN = [asse].concat(VIE.filter(rd => rd !== asse).slice(0, 3)).filter(Boolean);
 st.t = Math.floor(st.t / 1440) * 1440 + 1440 + 5 * 60; V.stats.fermate = {}; Eventi.CFG.every = [8, 14]; Eventi.CFG.first = 3;
 const DT = 1 / 20, byHour = [], t0 = Date.now(); let frames = 0;
@@ -91,7 +100,10 @@ const punta = fascia(7, 10), pranzo = fascia(13, 15), passeg = fascia(18, 21), n
 if (punta.length && notte.length) {
   ok(avg(punta, 'giro') >= 1.2, `all'ora di punta almeno 1,2 mezzi in giro ogni 100 m di via principale (${avg(punta, 'giro').toFixed(2)})`);
   ok(avg(passeg, 'giro') >= 1, `alla passeggiata almeno 1 mezzo in giro ogni 100 m (${avg(passeg, 'giro').toFixed(2)})`);
-  ok(avg(pranzo, 'giro') < avg(punta, 'giro'), `a pranzo meno traffico che all'ora di punta (${avg(pranzo, 'giro').toFixed(2)} < ${avg(punta, 'giro').toFixed(2)})`);
+  // [mappa_compatta] con due sole vie misurate (la Vittoria e il Corso, a ore alterne) le ore di una fascia cadono più su una via che
+  // sull'altra: il confronto si fa via per via, poi la media delle vie (ogni via pesa uguale)
+  const perVia = (L, k) => { const by = {}; L.forEach(m => (by[m.rd] = by[m.rd] || []).push(m)); const v = Object.values(by).map(M => avg(M, k)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
+  ok(perVia(pranzo, 'giro') < perVia(punta, 'giro'), `a pranzo meno traffico che all'ora di punta (${perVia(pranzo, 'giro').toFixed(2)} < ${perVia(punta, 'giro').toFixed(2)}, media delle vie)`);
   const civ = L => avg(L, 'giro') - avg(L, 'pattuglie');
   ok(civ(notte) <= .6, `di notte le vie vuote: ${civ(notte).toFixed(2)} mezzi civili in giro ogni 100 m, più le pattuglie (${avg(notte, 'pattuglie').toFixed(2)})`);
   ok(avg(giorno, 'gente') >= 2, `di giorno almeno 2 persone ogni 100 m di via principale (${avg(giorno, 'gente').toFixed(2)})`);
