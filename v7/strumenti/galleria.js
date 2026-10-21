@@ -118,16 +118,21 @@ const srv = http.createServer((req, res) => {
           const R = window.__pv.R, cam3 = R.getCamera(), gY = R.cam.h || 0, v3 = new THREE.Vector3(), roads = window.__pv.G.MAP.world.roads || [], TT = window.Tetti;
           const hq = (px, py) => { const k = ((Hc - 1 - py) * Wc + px) * 4; return Q[k + 3] ? (Q[k] * 256 + Q[k + 1]) / 100 - 50 : NaN; };
           const lum = (px, py) => { let s = 0, n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const j = ((py + dy) * Wc + px + dx) * 4; s += .2126 * D[j] + .7152 * D[j + 1] + .0722 * D[j + 2]; n++; } return s / n; };
-          const pix = (x, y, z) => { v3.set(x, y, z).project(cam3); if (v3.z > 1) return null; const px = Math.round((v3.x + 1) / 2 * Wc), py = Math.round((1 - v3.y) / 2 * Hc); if (px < 2 || py < 2 || px >= Wc - 2 || py >= Hc - 2) return null; return Math.abs(hq(px, py) - (y - gY)) < .45 ? [px, py] : null; };
-          const acc = { suolo: [0, 0], tetti: [0, 0] };
+          // il pixel e lo scarto fra la sua quota (dalla profondità) e quella attesa; lo scarto comune del fotogramma (la quota di riferimento
+          // della camera) si toglie con la mediana, poi contano solo i pixel entro 45 cm
+          const pix = (x, y, z) => { v3.set(x, y, z).project(cam3); if (v3.z > 1) return null; const px = Math.round((v3.x + 1) / 2 * Wc), py = Math.round((1 - v3.y) / 2 * Hc); if (px < 2 || py < 2 || px >= Wc - 2 || py >= Hc - 2) return null; const b = hq(px, py) - (y - gY); return b === b ? [px, py, b] : null; };
+          const acc = { suolo: [0, 0], tetti: [0, 0] }, CAMP = [];
           const linea = (P, o, dove, quota) => { for (let k = 0; k < P.length - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L = Math.hypot(bx - ax, by - ay); if (L < .01) continue; const nx = -(by - ay) / L, ny = (bx - ax) / L;
             for (let s = .5; s < L; s += 1) { const x = ax + (bx - ax) * s / L, y = ay + (by - ay) * s / L, h = quota(x, y); if (h === null) continue; const c = pix(x, h, y); if (!c) continue;
               const fi = [-1, 1].map(sd => { const hx = x + nx * o * sd, hy = y + ny * o * sd, hh = quota(hx, hy); return hh === null || Math.abs(hh - h) > .3 ? null : pix(hx, hh, hy); }).filter(Boolean); if (!fi.length) continue;
-              const Lc = lum(c[0], c[1]), Lf = fi.reduce((a, q) => a + lum(q[0], q[1]), 0) / fi.length; acc[dove][0] += (Lc - Lf) / Math.max(Lf, 8); acc[dove][1]++; } } };
+              CAMP.push({ dove, c, fi }); } } };
           const suolo = (x, y) => R.groundH(x, y), tetto = (x, y) => { const q = TT && TT.roofAt(x, y); return q ? q.h : null; };
           Dg.percorsi.forEach(p => { const rd = roads.find(r => r.id === p.id), w = rd ? rd.w : 3.2; linea(p.pts, Math.max(1.2, Math.min(3.5, w * .42)), 'suolo', suolo); });
           Dg.scorciatoie.forEach(s => { if (s.k !== 'scorciatoia') return; const rd = roads.find(r => r.id === s.vic); linea(s.pts, Math.max(.9, (rd ? rd.w : 2.4) * .4), 'suolo', suolo); });
           Dg.circuiti.forEach(c => linea(c.pts.slice(1, -1), 1.1, 'tetti', tetto));
+          const BS = CAMP.map(q => q.c[2]).sort((a, b) => a - b), med = BS.length ? BS[BS.length >> 1] : 0, buono = q => Math.abs(q[2] - med) < .45;
+          CAMP.forEach(({ dove, c, fi }) => { if (!buono(c)) return; const f2 = fi.filter(buono); if (!f2.length) return;
+            const Lc = lum(c[0], c[1]), Lf = f2.reduce((a, q) => a + lum(q[0], q[1]), 0) / f2.length; acc[dove][0] += (Lc - Lf) / Math.max(Lf, 8); acc[dove][1]++; });
           const fin = a => a[1] ? { weber: +(a[0] / a[1]).toFixed(3), campioni: a[1] } : null, tot = [acc.suolo[0] + acc.tetti[0], acc.suolo[1] + acc.tetti[1]];
           perc = { tutto: fin(tot), suolo: fin(acc.suolo), tetti: fin(acc.tetti) }; }
         return { luminosita: +(mu / 255).toFixed(3), contrasto: +(Math.sqrt(Math.max(0, sl2 / N - mu * mu)) / 255).toFixed(3), quasiNeri: +(nero / N * 100).toFixed(2), quasiBianchi: +(bianco / N * 100).toFixed(2), saturazione: +(ss / N).toFixed(3),

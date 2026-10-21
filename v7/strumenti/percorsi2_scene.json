@@ -1,22 +1,106 @@
 {
-  "nota": "[percorsi2] Le inquadrature del filone (strumenti/galleria.js; il prima con PV_PAGINA). I segni dei percorsi da vicino, allo zoom del gioco (0,4) e con la visuale che segue il personaggio (segui: il varco aperto, come si gioca), in cinque posti scelti dove la camera vede il percorso (Rua, la scorciatoia del Vicolo Cieco, la piazzetta del Pozzo col bar, il piede della scala del giro della Porta, il camminamento delle mura); la Via della Vittoria come scena vuota del regime (il fotogramma del Palazzo del Governo con la porta del borgo e la bici, i portici, il posto di blocco). \"js\" costruisce i blocchi di corsa (come strumenti/chiarezza_scene.json) perché case e alberi ci siano tutti prima dello scatto.",
-  "pulita": true,
-  "scorci": [
-    { "nome": "p1_rua", "titolo": "Rua Maestra", "x": 1454, "y": 311, "zoom": 0.4, "ora": 630, "meteo": "sereno", "luce": "borgo", "segui": true, "attesa": 15000,
-      "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
-    { "nome": "p2_vicolo", "titolo": "Vicolo Cieco (scorciatoia)", "x": 1391, "y": 371, "zoom": 0.4, "ora": 760, "meteo": "sereno", "luce": "borgo", "segui": true, "attesa": 15000,
-      "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
-    { "nome": "p3_piazzetta_bar", "titolo": "La piazzetta del Pozzo col bar", "x": 1434, "y": 329, "zoom": 0.4, "ora": 660, "meteo": "sereno", "luce": "borgo", "segui": true, "attesa": 15000,
-      "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
-    { "nome": "p4_giro_tetti", "titolo": "Il giro della Porta: dove si sale", "x": 1351, "y": 287, "zoom": 0.4, "ora": 700, "meteo": "sereno", "luce": "borgo", "segui": true, "attesa": 25000,
-      "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
-    { "nome": "p5_mura", "titolo": "Il camminamento delle mura", "x": 1425, "y": 271, "zoom": 0.4, "ora": 720, "meteo": "sereno", "luce": "borgo", "attesa": 25000,
-      "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
-    { "nome": "v1_vittoria_governo", "titolo": "Via della Vittoria (Palazzo del Governo)", "x": 1325, "y": 336, "zoom": 0.4, "ora": 600, "meteo": "sereno", "luce": "metropoli", "attesa": 15000,
-      "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
-    { "nome": "v2_vittoria_portici", "titolo": "Via della Vittoria e i portici", "x": 1447, "y": 339, "zoom": 0.55, "ora": 720, "meteo": "sereno", "luce": "metropoli", "attesa": 15000,
-      "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
-    { "nome": "v3_posto_blocco", "titolo": "Il posto di blocco sulla Vittoria", "x": 1348, "y": 336, "zoom": 0.5, "ora": 690, "meteo": "sereno", "luce": "metropoli", "attesa": 15000,
-      "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" }
-  ]
+ "nota": "[percorsi2] Le inquadrature del filone (strumenti/galleria.js; il prima con PV_PAGINA). I segni dei percorsi da vicino, allo zoom del gioco (0,4) e con la visuale che segue il personaggio (segui: il varco aperto, come si gioca), in cinque posti scelti dove la camera vede il percorso (Rua, la scorciatoia del Vicolo Cieco, la piazzetta del Pozzo col bar, il piede della scala del giro della Porta, il camminamento delle mura); la Via della Vittoria come scena vuota del regime (il fotogramma del Palazzo del Governo con la porta del borgo e la bici, i portici, il posto di blocco). \"js\" costruisce i blocchi di corsa (come strumenti/chiarezza_scene.json) perché case e alberi ci siano tutti prima dello scatto. Per i tetti \"js\" misura subito la quota vera dei tetti attorno (Tetti.scanRoof: nel gioco lo fa un edificio alla volta, sotto SwiftShader non finirebbe prima dello scatto) e rifà la grafica delle scale e della traccia.",
+ "pulita": true,
+ "scorci": [
+  {
+   "nome": "p1_rua",
+   "titolo": "Rua Maestra",
+   "x": 1454,
+   "y": 311,
+   "zoom": 0.4,
+   "ora": 630,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "segui": true,
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "p2_vicolo",
+   "titolo": "Vicolo Cieco (scorciatoia)",
+   "x": 1391,
+   "y": 371,
+   "zoom": 0.4,
+   "ora": 760,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "segui": true,
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "p3_piazzetta_bar",
+   "titolo": "La piazzetta del Pozzo col bar",
+   "x": 1434,
+   "y": 329,
+   "zoom": 0.4,
+   "ora": 660,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "segui": true,
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "p4_giro_tetti",
+   "titolo": "Il giro della Porta: dove si sale",
+   "x": 1351,
+   "y": 287,
+   "zoom": 0.4,
+   "ora": 700,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "segui": true,
+   "attesa": 25000,
+   "js": "const TSg=pv.G.TS; pv.G.BUILDINGS.forEach((b,bi)=>{ if (Math.hypot((b.x+b.w/2)*TSg-st.player.x,(b.y+b.h/2)*TSg-st.player.y)<40) try { Tetti.scanRoof(pv.R,bi); } catch(e){} }); Tetti._.GFX.dirty=true; Tetti._.GFX.stableT=0; Tetti._.GFX.builtT=0; const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "p5_mura",
+   "titolo": "Il camminamento delle mura",
+   "x": 1425,
+   "y": 271,
+   "zoom": 0.4,
+   "ora": 720,
+   "meteo": "sereno",
+   "luce": "borgo",
+   "attesa": 25000,
+   "js": "const TSg=pv.G.TS; pv.G.BUILDINGS.forEach((b,bi)=>{ if (Math.hypot((b.x+b.w/2)*TSg-st.player.x,(b.y+b.h/2)*TSg-st.player.y)<40) try { Tetti.scanRoof(pv.R,bi); } catch(e){} }); Tetti._.GFX.dirty=true; Tetti._.GFX.stableT=0; Tetti._.GFX.builtT=0; const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "v1_vittoria_governo",
+   "titolo": "Via della Vittoria (Palazzo del Governo)",
+   "x": 1325,
+   "y": 336,
+   "zoom": 0.4,
+   "ora": 600,
+   "meteo": "sereno",
+   "luce": "metropoli",
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "v2_vittoria_portici",
+   "titolo": "Via della Vittoria e i portici",
+   "x": 1447,
+   "y": 339,
+   "zoom": 0.55,
+   "ora": 720,
+   "meteo": "sereno",
+   "luce": "metropoli",
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  },
+  {
+   "nome": "v3_posto_blocco",
+   "titolo": "Il posto di blocco sulla Vittoria",
+   "x": 1348,
+   "y": 336,
+   "zoom": 0.5,
+   "ora": 690,
+   "meteo": "sereno",
+   "luce": "metropoli",
+   "attesa": 15000,
+   "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);"
+  }
+ ]
 }

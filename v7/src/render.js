@@ -5313,7 +5313,7 @@ var Render = (function () {
     if (WORKS1) return WORKS1; WORKS1 = []; const r = rng(3101), RD = (M.roads || []).filter(rd => asph1(rd) && rd.kind === 'citta' && rd.w >= 7 && rd.pts.length > 30);
     for (let tries = 0; tries < 200 && WORKS1.length < 5 && RD.length; tries++) {
       const rd = pick(r, RD), g = geo1(rd), k = 10 + Math.floor(r() * (g.n - 20)), [x0, y0] = rd.pts[k];
-      if ((rd.pennoni && cn1()) || !cityAt1(x0, y0) ||   /* [percorsi2] la Vittoria resta una scena vuota: niente cantiere con le tavole */ junc1().some(J => (J.arms.length >= 3 || J.arms.some(a => a.minor)) && Math.hypot(J.x - x0, J.y - y0) < J.r + 14) || nearJ1(x0, y0, 3) < 0 || Math.abs(g.cv[k]) > .4 || WORKS1.some(w => Math.hypot(w.x - x0, w.y - y0) < 70)) continue;
+      if ((cn1() && (rd.pennoni || scenaVuotaV2(x0, y0))) || !cityAt1(x0, y0) ||   /* [percorsi2] la Vittoria resta una scena vuota: niente cantiere con le tavole */ junc1().some(J => (J.arms.length >= 3 || J.arms.some(a => a.minor)) && Math.hypot(J.x - x0, J.y - y0) < J.r + 14) || nearJ1(x0, y0, 3) < 0 || Math.abs(g.cv[k]) > .4 || WORKS1.some(w => Math.hypot(w.x - x0, w.y - y0) < 70)) continue;
       const sd = r() < .5 ? 1 : -1, ux = g.ux[k], uy = g.uy[k], nx = -uy * sd, ny = ux * sd, lat = rd.w / 4;
       WORKS1.push({ x: x0 + nx * lat, y: y0 + ny * lat, ux, uy, nx, ny, w: rd.w, len: 5 + r() * 3, wid: 1.4 + r() * .5, rd, seed: tries * 13 + 5 });
     }
@@ -5554,7 +5554,8 @@ var Render = (function () {
       n++;
     });
     // 6) new jersey ai posti di blocco della Tutela e alla Base: file di cemento con lo spazio per passare
-    [G.PLACES.varco, G.PLACES.piazza_gov, G.PLACES.muro, G.PLACES.eliporto, G.PLACES.molo_cargo].forEach((p, pi) => { if (!p) return;
+    // [percorsi2] nella città nuova la Piazza del Governo non ha le file di jersey (si leggevano come tavole chiare): il posto di blocco è quello disegnato
+    [G.PLACES.varco, G.PLACES.piazza_gov, G.PLACES.muro, G.PLACES.eliporto, G.PLACES.molo_cargo].forEach((p, pi) => { if (!p || (pi === 1 && cn1() && vitRoad2())) return;
       for (let row = 0; row < 2; row++) { const a = pi * 1.1 + row * Math.PI, cx = p.x + Math.cos(a) * 11, cz = p.y + Math.sin(a) * 11, tx = -Math.sin(a), tz = Math.cos(a);
         for (let q = -3; q <= 3; q++) { if (q === 0) continue; const x = cx + tx * q * 2, z = cz + tz * q * 2; if (!okSpot1(x, z, .5) || solidR1(x, z, 1.05)) continue; jersey1(x, z, Math.atan2(tx, tz), false); n++;   /* il jersey è lungo 2 m */ } } });
     if (window.__dbg35) console.log('[dbg] strade1', n, 'semafori', JSON.stringify(junc1().filter(j => j.signal).map(j => [Math.round(j.x), Math.round(j.y)])), 'cantieri', JSON.stringify(works1().map(w => [Math.round(w.x), Math.round(w.y)])), 'buche', holes1List().length);
@@ -6340,7 +6341,7 @@ var Render = (function () {
     // (Chiarezza.filare, non ai vertici della spezzata); un posto che cade davanti a una porta (2 m dal suo asse), a una vetrina o a una
     // scala si salta: il fronte è la cosa più chiara della strada. La mappa vecchia resta com'era.
     const CH = typeof Chiarezza !== 'undefined' && (G.BUILDINGS || []).some(b => b.era) ? Chiarezza : null, FR = CH ? fronti4() : null, scart = { porta: 0, vetrina: 0, scala: 0 };
-    const libero = (x, z) => { const q = CH && CH.davanti(FR, x, z); if (q) scart[q.tipo]++; return !q; };
+    const libero = (x, z) => { const q = CH && CH.davanti(FR, x, z); if (q) scart[q.tipo]++; return !q && !scenaVuotaV2(x, z); };   // [percorsi2] e mai sulla Vittoria (anche le vie che la toccano)
     if (CH) CH.strade(M.roads).forEach(S => { const rd = S.rd;
       CH.filare(rd.pts, S.passo, S.off, S.inizio).forEach(({ x, z, sd }) => { if (S.lati.indexOf(sd) < 0) return;
         if (S.kind === 'filare') { if (!freeF(x, z) || zoneT(Math.floor(x / TS), Math.floor(z / TS)) !== ZN.CITTA || nearJ(x, z, 1) || !libero(x, z)) return;
@@ -6503,6 +6504,13 @@ var Render = (function () {
   // (12 m), simmetrici sui due lati; il posto di blocco come oggetto progettato (garitta, sbarra, piazzola, l'ALT dipinto a terra).
   const VIT2 = { passo: 12, fascia: 1.6, listello: .3, lastra: [3, 2], cordolo: .3 };
   const vitRoad2 = () => cn1() ? (M.roads || []).find(r => r.id === 'vittoria' && r.pts) : null;
+  // la scena vuota: il corridoio della Vittoria (carreggiata, marciapiedi e portici) e la piazza d'adunata; qui non vanno né alberi né cantieri
+  function scenaVuotaV2(x, z) {
+    const rd = vitRoad2(); if (!rd) return false; const A = (M.world.sets || []).find(q => q.k === 'adunata');
+    if (A && x > A.x0 - 2 && x < A.x1 + 2 && z > A.y0 - 2 && z < A.y1 + 2) return true;
+    for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz || 1, t = clamp(((x - ax) * dx + (z - az) * dz) / L2, 0, 1); if (Math.hypot(ax + dx * t - x, az + dz * t - z) < rd.w / 2 + 5.5) return true; }
+    return false;
+  }
   // un'altra via (non la Vittoria) che incrocia qui: il cordolo e i pennoni si interrompono
   function incrocioV2(x, z, pad) {
     return (M.roads || []).some(rd => { if (rd.id === 'vittoria' || !rd.pts || rd.kind === 'sterrato') return false; const h = rd.w / 2 + (pad || 0);
