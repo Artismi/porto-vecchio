@@ -51633,20 +51633,22 @@ var Render = (function () {
   // Restano separati: mesh con più materiali, mesh con userData.keep, sottoalberi con userData.keepTree, sprite e luci.
   function mergeGroup(grp) {
     grp.updateMatrixWorld(true);
-    const inv = new THREE.Matrix4().copy(grp.matrixWorld).invert(), by = new Map(), keep = [], E2 = [];
-    const walk = (o, e2) => {
+    const inv = new THREE.Matrix4().copy(grp.matrixWorld).invert(), by = new Map(), keep = [], E2 = [], V3 = [];
+    const walk = (o, e2, v3) => {
       for (const c of o.children) {
+        const vv = c.userData.v3 !== undefined ? c.userData.v3 : v3;   // [visuale3] la casa a cui appartiene la parte (le antenne della rete): il taglio la ritrova nella mesh fusa
         const e = c.userData.p2 && P2.on && cn1() ? (() => { const q = p2New(c.userData.p2); q.yaw0 = yawM2(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); q.mp = []; E2.push(q); return q; })() : e2;   // [pulizia2] le parti segnate: dove finiscono nella mesh fusa
         if (c.userData.keepTree || c.isSprite || c.isLight || (c.isMesh && (Array.isArray(c.material) || c.userData.keep))) { keep.push(c); if (e && (c.isMesh || c.userData.keepTree)) e.objs.push(c); continue; }
-        if (c.isMesh) { let b = by.get(c.material); if (!b) { b = []; by.set(c.material, b); } const g = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); b.push(g); if (e) e.mp.push([b, b.length - 1, g.attributes.position.count]); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
-        walk(c, e);
+        if (c.isMesh) { let b = by.get(c.material); if (!b) { b = []; by.set(c.material, b); } const g = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); b.push(g); if (vv !== undefined) V3.push([vv, b, b.length - 1, g.attributes.position.count]); if (e) e.mp.push([b, b.length - 1, g.attributes.position.count]); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
+        walk(c, e, vv);
       }
     };
-    walk(grp, null);
+    walk(grp, null, undefined);
     const out = new THREE.Group(); out.position.copy(grp.position); out.rotation.copy(grp.rotation); out.scale.copy(grp.scale);
     keep.forEach(o => { const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld); o.parent.remove(o); m.decompose(o.position, o.quaternion, o.scale); out.add(o); });
-    by.forEach((geos, mat) => { if (E2.length) { let o2 = 0; geos.__offs = geos.map(g => { const k = o2; o2 += g.attributes.position.count; return k; }); } const M = new THREE.Mesh(mergeGeos(geos), mat); out.add(M); geos.__M = M; if (window.Officina && Officina.wantParts) Officina.onGroupMerged(grp, mat, M); });   // [studio] dove finisce ogni pezzo della casa
+    by.forEach((geos, mat) => { if (E2.length || V3.length) { let o2 = 0; geos.__offs = geos.map(g => { const k = o2; o2 += g.attributes.position.count; return k; }); } const M = new THREE.Mesh(mergeGeos(geos), mat); out.add(M); geos.__M = M; if (window.Officina && Officina.wantParts) Officina.onGroupMerged(grp, mat, M); });   // [studio] dove finisce ogni pezzo della casa
     E2.forEach(e => { e.parts = e.mp.map(([b, i, n]) => ({ M: b.__M, s: b.__offs[i], n })); e.mp = null; });   // [pulizia2]
+    V3.forEach(([bi, b, i, n]) => { const L = VIS3.parti.get(bi) || VIS3.parti.set(bi, []).get(bi); L.push({ M: b.__M, s: b.__offs[i], n }); });   // [visuale3]
     return out;
   }
 
@@ -52455,7 +52457,7 @@ var Render = (function () {
   // pezzi della casa rimasti fuori dalla fusione (vetri, cose che si muovono) prendono un piano di taglio vero sui materiali propri della
   // casa, solo mentre è tagliata. La faccia tagliata è un coperchio piatto sulla pianta della casa alla quota del piano (il poché, una
   // mesh per casa tagliata, un programma solo) col filo chiaro sul bordo; sotto il piano, sulle pareti, un filo chiaro uguale.
-  const VIS3 = { on: VISUALE === 'taglio', S: new Map(), vivi: new Set(), caps: new Map(), cambi: 0, subito: false, ombra: 0, capMat: null, filo: { value: new THREE.Vector4(.07, .92, .86, .76) } };
+  const VIS3 = { on: VISUALE === 'taglio', parti: new Map(), S: new Map(), vivi: new Set(), caps: new Map(), cambi: 0, subito: false, ombra: 0, capMat: null, filo: { value: new THREE.Vector4(.07, .92, .86, .76) } };
   // la sagoma di riserva tirata di 0,6 m verso la camera: il personaggio non si copre da sé (un braccio davanti al busto), solo una cosa
   // davanti a lui di più di 0,6 m la accende. Nella sezione ([visuale]) la tirata è zero, com'era
   const VIS3P = { value: 0 };
@@ -52533,6 +52535,11 @@ var Render = (function () {
         out.push(e); if ((e.__h3 = (e.__h3 || 0) + 1) > 1) return;
         e.__bak3 = vis3Parti(e).map(([a, s, n]) => { const bak = a.array.slice(s * 3, (s + n) * 3); for (let k = s * 3; k < (s + n) * 3; k += 3) { a.array[k] = 0; a.array[k + 1] = -80; a.array[k + 2] = 0; } a.needsUpdate = true; return [a, s, bak]; });
         e.objs.forEach(o => { o.visible = false; }); });
+    if (B.__bi3 === undefined) B.__bi3 = B.b ? G.BUILDINGS.indexOf(B.b) : -1;
+    const own = VIS3.parti.get(B.__bi3);   // le parti segnate della casa (le antenne della rete), nella mesh fusa della città
+    if (own && own.length) { const e = B.__own3 || (B.__own3 = { parts: own, objs: [] }); out.push(e);
+      if ((e.__h3 = (e.__h3 || 0) + 1) === 1) e.__bak3 = own.filter(p => p.M && p.M.geometry && p.M.geometry.attributes.position).map(p => { const a = p.M.geometry.attributes.position, bak = a.array.slice(p.s * 3, (p.s + p.n) * 3);
+        for (let k = p.s * 3; k < (p.s + p.n) * 3; k += 3) { a.array[k] = 0; a.array[k + 1] = -80; a.array[k + 2] = 0; } a.needsUpdate = true; return [a, p.s, bak]; }); }
     B.__cose3 = out;
   }
   // [visuale3] il personaggio si stacca anche in ombra: quando il sole non lo prende (un raggio verso il sole contro le case vicine) o è
@@ -59853,7 +59860,7 @@ var Render = (function () {
       else if (n.k === 'cabina') { const x0 = n.x, z0 = n.z, q = pm3('cabina_enel');   // [modelli1] la cabina vera
         place(mk2(q, 'rete'), x0, z0, yaw); cnt.cabine++; }
       else if (n.k === 'moncone') { const p = nodoXYZ1(n), q = new THREE.Group(); add(q, box(.05, .05, .05, sm('#141416')), 0, 0, 0); putG(q, p, yaw); }
-      else if (n.k === 'antenna' && n.bi !== null) { const b = B[n.bi], [, y1] = quoteS1(n.bi), hh = Math.max(1.8, n.y - (Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF)), an = oAntenna(hh, (n.bi * .37) % 6.28, rng(n.bi * 53 + 1)); an.position.set(n.x, y1, n.z); g.add(an); cnt.antenne++; }
+      else if (n.k === 'antenna' && n.bi !== null) { const b = B[n.bi], [, y1] = quoteS1(n.bi), hh = Math.max(1.8, n.y - (Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF)), an = oAntenna(hh, (n.bi * .37) % 6.28, rng(n.bi * 53 + 1)); an.position.set(n.x, y1, n.z); an.userData.v3 = n.bi; /* [visuale3] l'antenna è della casa: si taglia con lei */ g.add(an); cnt.antenne++; }
       else if (n.k === 'finestra' && R.segmenti.some(s => s.b === n.id && s.k === 'abusivo') && B[n.bi] && B[n.bi].shack) { const p = nodoXYZ1(n), q = new THREE.Group(); add(q, box(.3, .05, .06, sm('#e8e4dc')), 0, -.2, .05); putG(q, p, yaw); }   // la ciabatta sul davanzale
     });
     // ---- 3) i lampioni per epoca, a interasse fisso; i cartelli stradali anni '80 sui pali (mai pali nuovi) ----
