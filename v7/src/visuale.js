@@ -11,9 +11,7 @@
    La quota del taglio di ogni casa è la più alta che lascia vedere il personaggio e il suolo attorno a lui: il raggio da ogni punto di
    prova (i piedi, il busto, la testa e un anello di suolo attorno) verso la camera entra nella scatola della casa a una certa quota; il
    piano sta un filo sotto la più bassa. Con la camera a 41° il raggio sale di 0,88 m per metro: il muro sul lato camera di un vicolo di
-   2,5 m resta alto un metro o poco più, quanto basta a leggere la pianta della strada.
-   COMPOSIZIONE: nelle vie larghe e nelle piazze l'inquadratura si sposta verso il fronte più vicino che guarda la camera (porte, botteghe)
-   e verso dove si va, così il personaggio sta a un terzo e il fronte riempie il quadro; nei vicoli non si sposta niente. */
+   2,5 m resta alto un metro o poco più, quanto basta a leggere la pianta della strada. */
 var Visuale = (function () {
   'use strict';
   const MODI = ['taglio', 'ellisse', 'sezione'];
@@ -99,51 +97,8 @@ var Visuale = (function () {
       out.set(B, { y, top: b3.max.y }); }
     return out;
   }
-  // ---------------- la composizione ----------------
-  const COMPOSIZIONE = {
-    raggio: 14,           // m: fin dove si cercano i fronti
-    aperto: 7,            // m: una direzione è aperta se il primo muro sta più in là di tanto
-    soglia: [.45, .8],    // la parte di direzioni aperte da cui comincia e dove è piena la composizione (vicolo 0,06-0,25, allo sbocco 0,5; Vittoria e piazze 0,8-1)
-    terzo: 1 / 3,         // il personaggio a un terzo: il centro si sposta di un terzo della mezza inquadratura
-    max: 4,               // m: mai più di tanto
-    marcia: .8,           // il peso della direzione di marcia rispetto al fronte
-    tempo: 1.1,           // s: la costante di tempo dello spostamento (indipendente dai fotogrammi)
-    zoomAperto: .92,      // nelle piazze la visuale si stringe di tanto (1 = niente)
-    direzioni: 16,
-  };
-  // le distanze del primo muro in `direzioni` direzioni (pieno(x, z) dice se lì c'è una casa), a passi di 1 m
-  function sonda(x, z, pieno, K) {
-    K = K || COMPOSIZIONE; const n = K.direzioni, D = new Float32Array(n);
-    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, ux = Math.cos(a), uz = Math.sin(a); let d = K.raggio + 1;
-      for (let s = 1; s <= K.raggio; s += 1) if (pieno(x + ux * s, z + uz * s)) { d = s; break; }
-      D[i] = d; }
-    return D;
-  }
-  // dove va il centro del quadro: D le distanze (sonda), fx, fz il davanti della camera sul suolo (la direzione in cui guarda), vx, vz la
-  // velocità (m/s, 0 se fermo o se già c'è lo sguardo della levetta). Ritorna { ux, uz, k, aperto }: la direzione in cui spostarsi (unitaria),
-  // quanto (0-1) e la parte di direzioni aperte
-  function verso(D, fx, fz, vx, vz, K) {
-    K = K || COMPOSIZIONE; const n = D.length; let ap = 0, Fx = 0, Fz = 0;
-    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, ux = Math.cos(a), uz = Math.sin(a), d = D[i];
-      if (d > K.aperto) ap++;
-      if (d <= K.raggio) { const w = (1 - d / (K.raggio + 1)) * (.35 + .65 * Math.max(0, ux * fx + uz * fz)); Fx += ux * w; Fz += uz * w; } }
-    const aperto = ap / n, k = Math.min(1, Math.max(0, (aperto - K.soglia[0]) / (K.soglia[1] - K.soglia[0])));
-    const fl = Math.hypot(Fx, Fz), sp = Math.hypot(vx, vz), wv = Math.min(1, sp / 3) * K.marcia;
-    let ux = fl > 1e-3 ? Fx / fl : 0, uz = fl > 1e-3 ? Fz / fl : 0;
-    if (wv > 0) { ux = ux * (1 - wv * .5) + vx / sp * wv; uz = uz * (1 - wv * .5) + vz / sp * wv; }
-    const ul = Math.hypot(ux, uz); if (ul < 1e-3) return { ux: 0, uz: 0, k: 0, aperto };
-    return { ux: ux / ul, uz: uz / ul, k: k * liscio(Math.min(1, ul)), aperto };
-  }
-  // lo spostamento in metri sul suolo: la direzione scomposta sugli assi dello schermo (destra rx, rz; su fx, fz), un terzo della mezza
-  // inquadratura su ogni asse (hu: mezza larghezza, hv: mezza altezza sul suolo), al più K.max
-  function spostamento(v, rx, rz, fx, fz, hu, hv, K) {
-    K = K || COMPOSIZIONE; const sx = v.ux * rx + v.uz * rz, sy = v.ux * fx + v.uz * fz;
-    let ox = (rx * sx * hu + fx * sy * hv) * K.terzo * v.k, oz = (rz * sx * hu + fz * sy * hv) * K.terzo * v.k; const l = Math.hypot(ox, oz);
-    if (l > K.max) { ox *= K.max / l; oz *= K.max / l; }
-    return [ox, oz];
-  }
-  const api = { MODI, modo, TAGLIO, passo, quota, chiesta, liscio, entra, scegli, COMPOSIZIONE, sonda, verso, spostamento };
-  if (typeof window !== 'undefined') { window.__TAGLIO = TAGLIO; window.__COMPOSIZIONE = COMPOSIZIONE; }
+  const api = { MODI, modo, TAGLIO, passo, quota, chiesta, liscio, entra, scegli };
+  if (typeof window !== 'undefined') { window.__TAGLIO = TAGLIO; }
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Visuale;

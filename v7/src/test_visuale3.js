@@ -5,7 +5,6 @@
 //      camera non incontrano nessuna casa (le case tagliate contano fino alla quota del piano);
 //   3. sul tetto non si taglia niente;
 //   4. camminando due secondi lungo un muro (60 fotogrammi al secondo, e a 20) il taglio non si accende e spegne più di una volta;
-//   5. la composizione: nei vicoli il quadro non si sposta, sulla Vittoria e nelle piazze sì, mai più di COMPOSIZIONE.max metri.
 // node src/test_visuale3.js   (dalla cartella v7)
 const path = require('path'), src = __dirname;
 global.World = require(path.join(src, 'world_cittanuova.js'));
@@ -72,18 +71,4 @@ function lungo(fps) {
   ok(n === 1 && S.get(C).on, `a intermittenza la casa resta tagliata (${n} cambio in 2 s)`); }
 { const S = new Map(), C = {}; V.passo(S, new Map([[C, { y: 1, top: 9 }]]), 1 / 60, K); const y0 = V.quota(S.get(C)); for (let i = 0; i < 30; i++) V.passo(S, new Map([[C, { y: 1, top: 9 }]]), 1 / 60, K);
   ok(y0 > 8 && Math.abs(V.quota(S.get(C)) - 1) < 1e-6, `il piano scivola dalla cima (${y0.toFixed(2)} m) alla quota (1 m) in ${K.apri} s`); }
-// 5. la composizione
-const C5 = V.COMPOSIZIONE, fx = -Math.sin(YAW), fz = -Math.cos(YAW), rx = -fz, rz = fx;
-const comp = (x, z) => { const v = V.verso(V.sonda(x, z, pieno, C5), fx, fz, 0, 0, C5); return { v, o: V.spostamento(v, rx, rz, fx, fz, 44 * .4 / 2 * 1.6, 44 * .4 / 2 / Math.sin(PITCH), C5) }; };
-const vic = dieci.map(([x, z]) => comp(x, z)); console.log('     vicoli, aperto:', vic.map(c => c.v.aperto.toFixed(2)).join(' ')); const kv = Math.max(...vic.map(c => c.v.k));
-ok(kv < .15, `nei vicoli il quadro non si sposta (k al più ${kv.toFixed(2)})`);
-const vit = W.roads.find(r => r.pennoni) || W.roads.find(r => /Vittoria/.test(r.name));
-const piazze = W.roads.filter(r => r.w >= 10 && r !== vit).slice(0, 3);
-const larghi = [];
-if (vit) { const p = vit.pts[Math.floor(vit.pts.length / 2)]; larghi.push(['Vittoria', p[0], p[1]]); }
-(W.PLACES ? Object.entries(W.PLACES) : []).filter(([k, p]) => p && p.x && /piazza|mercato|sagrato/i.test(k)).slice(0, 3).forEach(([k, p]) => larghi.push([k, p.x, p.y]));
-const larg = larghi.map(([n, x, z]) => ({ n, ...comp(x, z) }));
-larg.forEach(c => console.log(`     ${c.n}: aperto ${c.v.aperto.toFixed(2)}, k ${c.v.k.toFixed(2)}, spostamento ${Math.hypot(c.o[0], c.o[1]).toFixed(2)} m`));
-ok(larg.length && larg.some(c => c.v.k > .5), 'nelle vie larghe e nelle piazze il quadro va verso il fronte');
-ok(larg.every(c => Math.hypot(c.o[0], c.o[1]) <= C5.max + 1e-6), `mai più di ${C5.max} m`);
 console.log(fail ? `\n${fail} prove fallite` : '\ntutto a posto'); process.exit(fail ? 1 : 0);
