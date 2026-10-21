@@ -1,0 +1,65 @@
+[
+ {
+  "scorcio": "t1_borgo_alto",
+  "titolo": "Il borgo dall'alto",
+  "prima": null,
+  "dopo": {
+   "weber": 0.192,
+   "campioni": 207
+  }
+ },
+ {
+  "scorcio": "t2_vicolo",
+  "titolo": "Un vicolo del borgo",
+  "prima": null,
+  "dopo": {
+   "weber": 0.714,
+   "campioni": 25
+  }
+ },
+ {
+  "scorcio": "t3_rua",
+  "titolo": "Rua Maestra",
+  "prima": null,
+  "dopo": {
+   "weber": 0.227,
+   "campioni": 36
+  }
+ },
+ {
+  "scorcio": "t4_piazzetta_bar",
+  "titolo": "La piazzetta col bar",
+  "prima": null,
+  "dopo": {
+   "weber": 0.018,
+   "campioni": 50
+  }
+ },
+ {
+  "scorcio": "t5_marina",
+  "titolo": "La marina",
+  "prima": null,
+  "dopo": {
+   "weber": 0.011,
+   "campioni": 11
+  }
+ },
+ {
+  "scorcio": "t6_ingresso_porta",
+  "titolo": "Dove si sale: il giro della Porta",
+  "prima": null,
+  "dopo": {
+   "weber": 0.08,
+   "campioni": 21
+  }
+ },
+ {
+  "scorcio": "t7_ingresso_campanile",
+  "titolo": "Dove si sale: il giro del campanile",
+  "prima": null,
+  "dopo": {
+   "weber": 0.404,
+   "campioni": 55
+  }
+ }
+]
