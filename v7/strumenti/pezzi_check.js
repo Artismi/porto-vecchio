@@ -33,7 +33,7 @@ const PROVE = {
   polveriera: [{}, { L: 8, p: 6, cinta: false }, { L: 16, p: 10 }],
   porta_monumentale: [{}, { w: 8, h: 10, merli: false }, { w: 12, h: 14 }],
   mura_tramontana: [{}, { L: 20, scala: false, merli: false }, { L: 60, h: 10 }],
-  porta_terra: [{}, { w: 5, h: 8, torri: false }, { w: 8, h: 11 }],
+  porta_terra: [{}, { w: 5, h: 8, torri: false }, { w: 8, h: 11, addossate: true }],   // [pezzi2] le casupole addossate (in città no)
   sopraelevata: [{}, { L: 25, lampioni: false }, { L: 100, h: 9, w: 12 }],
   vele: [{}, { L: 60, piani: 10, passerelle: 2 }, { L: 120, piani: 14 }],
   ina_casa: [{}, { L: 40, piani: 3, scale: 1 }, { L: 60, piani: 5, scale: 3 }],
