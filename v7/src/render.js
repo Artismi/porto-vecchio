@@ -10688,7 +10688,7 @@ var Render = (function () {
             // 1) valore: salto deciso fra luce e ombra col sole, più morbido col coperto; la tinta non cambia
             float k = mix(mix(qC.x, qC.y, sunK), qT.y, night) * (1. + occK.z * (1. - smoothstep(dc * 1.05, dc * 1.9, d)) * (1. - night * .5)), lo = qC.z;   /* [regia2] occK.z: più contrasto vicino al personaggio */   /* [lucido1] contrasto pieno */   /* [regia2] qC: contrasto col coperto, col sole, perno dei medi */
             float l2 = max((l - lo)*k + lo, l*qN.w);   /* [regia2] qN.w: il pavimento dei neri (le ombre non chiudono sotto questa frazione della luce di partenza) */
-            { float ex = max(l2 - qC.w, 0.); l2 = mix(l2 / (1. + ex*1.2), qC.w + ex / (1. + ex*qT.z), qT.w); }   /* [regia2] qC.w: dove comincia la spalla dei bianchi */   /* [spianata2] qT.w: il peso della spianata, dove la spalla piega l'eccesso (sempre crescente, tetto a qC.w + 1/qT.z) */
+            { float ex = max(l2 - qC.w, 0.); l2 = mix(l2 / (1. + ex*1.2), min(l2, qC.w) + ex / (1. + ex*qT.z), qT.w); }   /* [regia2] qC.w: dove comincia la spalla dei bianchi */   /* [spianata2] qT.w: il peso della spianata, dove la spalla piega l'eccesso (sempre crescente, tetto a qC.w + 1/qT.z) */
             c *= l2 / max(l, 1e-4);
             // 2) ombre colorate, non grigie: fredde e appena viola in città, verde-blu nella natura; luci calde dove c'è sole
             float shd = 1. - smoothstep(.04, .46, l2), hil = smoothstep(.32, .82, l2);

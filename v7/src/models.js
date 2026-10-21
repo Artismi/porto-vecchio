@@ -385,7 +385,7 @@ var Models = (function () {
     if (P.commissariato) { const c = P.commissariato; for (let i = -1; i <= 1; i++) if (tileFree(c.x + i * 2.8, c.y + 2.5)) put('newjersey', c.x + i * 2.8, c.y + 2.5, 0); }
     // ---- poligono: carri, trincee, baracche, torretta, cisterna, barili ----
     if (PL) {   // [spianata2] i carri in fila nel parco mezzi, muso alla strada; i sacchi di sabbia ai due capi della fila
-      PL.carri.forEach(c => put('carro', c.x, c.z, c.rot));
+      PL.carri.forEach(c => put('carro', c.x, c.z, c.rot + Math.PI / 2));   // il modello ha lo scafo e il cannone lungo x: girato, la sagoma sta nella fila e il cannone guarda la strada
       if (PL.carri.length) { const a = PL.carri[0], b = PL.carri[PL.carri.length - 1]; put('sacchi', a.x - PL.CARRO.hx - 1.4, a.z + 1.2, Math.PI / 2); put('sacchi', b.x + PL.CARRO.hx + 1.4, b.z - 1.4, Math.PI / 2); }
     } else if (P.poligono) {
       const x = P.poligono.x, z = P.poligono.y;

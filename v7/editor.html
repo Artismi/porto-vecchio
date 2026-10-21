@@ -17464,7 +17464,7 @@ var Models = (function () {
     if (P.commissariato) { const c = P.commissariato; for (let i = -1; i <= 1; i++) if (tileFree(c.x + i * 2.8, c.y + 2.5)) put('newjersey', c.x + i * 2.8, c.y + 2.5, 0); }
     // ---- poligono: carri, trincee, baracche, torretta, cisterna, barili ----
     if (PL) {   // [spianata2] i carri in fila nel parco mezzi, muso alla strada; i sacchi di sabbia ai due capi della fila
-      PL.carri.forEach(c => put('carro', c.x, c.z, c.rot));
+      PL.carri.forEach(c => put('carro', c.x, c.z, c.rot + Math.PI / 2));   // il modello ha lo scafo e il cannone lungo x: girato, la sagoma sta nella fila e il cannone guarda la strada
       if (PL.carri.length) { const a = PL.carri[0], b = PL.carri[PL.carri.length - 1]; put('sacchi', a.x - PL.CARRO.hx - 1.4, a.z + 1.2, Math.PI / 2); put('sacchi', b.x + PL.CARRO.hx + 1.4, b.z - 1.4, Math.PI / 2); }
     } else if (P.poligono) {
       const x = P.poligono.x, z = P.poligono.y;
@@ -50734,7 +50734,7 @@ if (typeof module !== 'undefined') module.exports = Chiarezza;
    Nessuna grafica: gira anche in Node (test_chiarezza.js). Coordinate in metri, x est, z sud. */
 var Palco = (function () {
   'use strict';
-  const CARRO = { hx: 1.8, hz: 3.3, passo: 4.8, n: 3 };   // m: la mezza sagoma di un carro e il passo della fila
+  const CARRO = { hx: 3.1, hz: 3.3, passo: 7.2, n: 3 };   // m: la mezza sagoma di un carro (il modello è largo 6,2 m e lungo 6,5) e il passo della fila
   const CONT = { hx: 1.2, hz: 3, passo: 6.6, n: 3, dalMuro: 4.2 };   // container da 6 m, il fianco a 3 m dal Muro (le torri ci stanno davanti)
   const PAD = 6, ANT = { h: 16, r: 3.6 };   // la piazzola (mezzo lato libero) e l'antenna (altezza, raggio dei tiranti)
   const MUCCHI = { recinto: 24, max: 14 };   // un mucchietto ogni ~24 m al piede del Muro; al massimo tanti in tutto
@@ -61911,7 +61911,7 @@ var Render = (function () {
             // 1) valore: salto deciso fra luce e ombra col sole, più morbido col coperto; la tinta non cambia
             float k = mix(mix(qC.x, qC.y, sunK), qT.y, night) * (1. + occK.z * (1. - smoothstep(dc * 1.05, dc * 1.9, d)) * (1. - night * .5)), lo = qC.z;   /* [regia2] occK.z: più contrasto vicino al personaggio */   /* [lucido1] contrasto pieno */   /* [regia2] qC: contrasto col coperto, col sole, perno dei medi */
             float l2 = max((l - lo)*k + lo, l*qN.w);   /* [regia2] qN.w: il pavimento dei neri (le ombre non chiudono sotto questa frazione della luce di partenza) */
-            { float ex = max(l2 - qC.w, 0.); l2 = mix(l2 / (1. + ex*1.2), qC.w + ex / (1. + ex*qT.z), qT.w); }   /* [regia2] qC.w: dove comincia la spalla dei bianchi */   /* [spianata2] qT.w: il peso della spianata, dove la spalla piega l'eccesso (sempre crescente, tetto a qC.w + 1/qT.z) */
+            { float ex = max(l2 - qC.w, 0.); l2 = mix(l2 / (1. + ex*1.2), min(l2, qC.w) + ex / (1. + ex*qT.z), qT.w); }   /* [regia2] qC.w: dove comincia la spalla dei bianchi */   /* [spianata2] qT.w: il peso della spianata, dove la spalla piega l'eccesso (sempre crescente, tetto a qC.w + 1/qT.z) */
             c *= l2 / max(l, 1e-4);
             // 2) ombre colorate, non grigie: fredde e appena viola in città, verde-blu nella natura; luci calde dove c'è sole
             float shd = 1. - smoothstep(.04, .46, l2), hil = smoothstep(.32, .82, l2);
