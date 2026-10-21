@@ -66,11 +66,35 @@ var Tetti = (function () {
   const PZ = (W.pezzi || []).filter(p => p.imp && p.tipo !== 'binari' && p.tipo !== 'bitta'), CAM = Math.SQRT1_2;
   const inPz = (x, y, pad0) => PZ.some(p => { const pad = /portico|porta_terra|tettoia/.test(p.tipo) ? pad0 + 2 : pad0, c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c; return p.imp.some(r => l >= r[1] - pad && l <= r[2] + pad && z >= r[3] - pad && z <= r[4] + pad); });   // le volte dei portici sporgono oltre le caselle riservate
   const coperta = (wx, wy, ox, oy) => { if (!PZ.length) return false; for (let a = .3; a <= 2.3; a += .5) for (let b = 0; b <= 8; b += 1) if (inPz(wx + ox * a + CAM * b, wy + oy * a + CAM * b, .3)) return true; return false; };
+  // [tetti3] LA CITTÀ NUOVA (le case con l'epoca): le salite si vedono. La camera guarda da sud-est, alta 41°: una scala sui lati
+  // nord e ovest sta dietro la sua casa; una sul lato sud o est si vede, se davanti non c'è un'altra casa più alta o un pezzo grande.
+  const CN3 = B.some(b => b.era), PIT3 = .72, TAN3 = Math.tan(PIT3);
+  const hPz3 = (x, y) => { let h = -1; for (const p of PZ) { const c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c;
+    if (p.imp.some(r => l >= r[1] && l <= r[2] && z >= r[3] && z <= r[4])) h = Math.max(h, (p.q || 0) + ((p.opz && p.opz.h) || 6)); } return h; };
+  // il raggio dalla camera: dal punto (x, y, z) verso la camera, ogni mezzo metro fino a 45 m; true se nessuna casa e nessun pezzo lo taglia
+  function vista3(x, y, z, salta) {
+    for (let d = .5; d <= 45; d += .5) {
+      const px = x + CAM * d, py = y + CAM * d, pz = z + d * TAN3, o = bAt(px, py);
+      if (o >= 0 && o !== salta && roofRule(B[o]) + .6 > pz) return false;
+      if (PZ.length && hPz3(px, py) > pz) return false;
+      if (pz > 40) return true;
+    }
+    return true;
+  }
+  // una scala si vede se almeno due dei tre punti (il piede, la metà, la cima), un palmo fuori dal muro, vedono la camera
+  function scalaVista3(wx, wy, ox, oy, h0, h1) {
+    let n = 0; for (const t of [.12, .5, .9]) if (vista3(wx + ox * .35, wy + oy * .35, h0 + (h1 - h0) * t, -1)) n++;
+    return n >= 2;
+  }
+  // i palazzi del potere, le chiese e le caserme non hanno la scala dalla strada (era la scala antincendio americana sul Governo)
+  const potere3 = b => CN3 && !b.era && (b.gov || b.military || b.church);
+  const vicinoTetto3 = (b, bi) => { for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) { if (!inb(tx, ty)) continue; const o = BI[ty * GW + tx];
+    if (o >= 0 && o !== bi && B[o] && !B[o].lighthouse && Math.abs(roofRule(B[o]) - roofRule(b)) <= 1.2) return true; } return false; };
   function buildLadders() {
     LADDERS.length = 0;
     const used = new Set();
     B.forEach((b, bi) => {
-      if (b.lighthouse) return;
+      if (b.lighthouse || potere3(b)) return;
       const d = DOOR(b), front = frontOf(b), cand = [];
       sidesOf(b).forEach(sd => {
         for (let k = 0; k < sd.n; k++) {
@@ -86,15 +110,25 @@ var Tetti = (function () {
           const cop = (() => { const [wx0, wy0] = sd.wall(k), [ox0, oy0] = sd.out; return coperta(wx0, wy0, ox0, oy0); })(); if (cop) s -= 8;
           // la casella davanti alla scala deve avere un po' di spazio (non un budello fra due muri ciechi)
           if (foot < 0) { const [ox, oy] = sd.out; if (!G.walkT(tx + ox, ty + oy)) s -= 1.5; }
-          cand.push({ s, sd, k, tx, ty, foot, cop });
+          // [tetti3] nella città nuova la scala sta dalla parte della camera (sud, est) e nessuno davanti la copre: il lato della porta va
+          // bene (sta lontana dalla porta), il fianco nascosto no
+          let vis = true;
+          if (CN3) { const [wx0, wy0] = sd.wall(k), [ox0, oy0] = sd.out, h0 = foot >= 0 ? roofRule(B[foot]) : tileH(wx0 + ox0, wy0 + oy0);
+            vis = scalaVista3(wx0, wy0, ox0, oy0, h0, roofRule(b));
+            if (foot < 0) { const o2 = inb(tx + ox0, ty + oy0) ? BI[(ty + oy0) * GW + tx + ox0] : -1; if (o2 >= 0 && o2 !== bi) continue; }   // nel budello di una casella (dove si salta da tetto a tetto) la scala ingombra il salto e non si vede
+            s +=(sd.f === front ? 3 : 0) + (sd.f === 'S' || sd.f === 'E' ? 3 : -3) + (vis ? 6 : 0); }
+          cand.push({ s, sd, k, tx, ty, foot, cop, vis });
         }
       });
       if (!cand.length) return;
       cand.sort((p, q) => q.s - p.s);
+      // [tetti3] una scala che non si vede da nessun lato non serve, se sul tetto si arriva dal vicino attaccato (dislivello entro 1,2 m):
+      // meglio nessuna salita che una salita che non si trova
+      if (CN3 && b.era && !cand.some(c => c.vis) && vicinoTetto3(b, bi)) return;
       const take = b.w * b.h >= 30 ? 2 : 1, got = [];
       for (const c of cand) {
         if (got.length >= take) break;
-        if (got.some(g => g.sd.f === c.sd.f) || (c.cop && got.length)) continue;   // [pulizia2] la seconda scala solo se si vede
+        if (got.some(g => g.sd.f === c.sd.f) || ((c.cop || !c.vis) && got.length)) continue;   // [pulizia2] la seconda scala solo se si vede ([tetti3] anche dalla camera)
         got.push(c); used.add(c.ty * GW + c.tx);
         let [wx, wy] = c.sd.wall(c.k), [ox, oy] = c.sd.out;
         // [città2] la casa che segue la strada è girata attorno al suo centro (render.js rotRec): la scala gira con il muro
@@ -103,7 +137,7 @@ var Tetti = (function () {
           wx = cx + qx * co - qy * si; wy = cy + qx * si + qy * co; const nx = ox * co - oy * si, ny = ox * si + oy * co; ox = nx; oy = ny;
           const fx2 = wx + ox * .55, fy2 = wy + oy * .55, d0 = b.door ? hyp(fx2 - (b.door[0] + .5) * TS, fy2 - (b.door[1] + .5) * TS) : 99;
           if ((c.foot < 0 && !G.walkM(fx2, fy2)) || bAt(wx - ox * .8, wy - oy * .8) !== bi || bAt(wx - ox * 1.6, wy - oy * 1.6) !== bi || d0 < 2.6) { got.pop(); used.delete(c.ty * GW + c.tx); continue; } }
-        LADDERS.push({ i: LADDERS.length, bi, f: c.sd.f, x: wx, y: wy, ox, oy, fx: wx + ox * .55, fy: wy + oy * .55, tx: wx - ox * .8, ty: wy - oy * .8, footB: c.foot, ang: Math.atan2(oy, ox) });
+        LADDERS.push({ i: LADDERS.length, bi, f: c.sd.f, x: wx, y: wy, ox, oy, fx: wx + ox * .55, fy: wy + oy * .55, tx: wx - ox * .8, ty: wy - oy * .8, footB: c.foot, ang: Math.atan2(oy, ox), vis: c.vis });
       }
     });
   }
@@ -249,7 +283,11 @@ var Tetti = (function () {
       for (const [dx, dy] of [[1, 0], [0, 1]]) { const x2 = tx + dx, y2 = ty + dy; if (!inb(x2, y2)) continue; const o = BI[y2 * GW + x2]; if (o < 0 || o === bi || !B[o]) continue;
         const key = Math.min(bi, o) + ':' + Math.max(bi, o), L = seen.get(key) || seen.set(key, []).get(key); L.push([(tx + .5 + dx * .5) * TS, (ty + .5 + dy * .5) * TS, bi, dx, dy]); } } });
     seen.forEach((P, key) => { const [a, b] = key.split(':').map(Number), m = P[Math.floor(P.length / 2)], ha = roofRule(B[a]), hb = roofRule(B[b]);
-      for (const [p, q, dh] of [[a, b, hb - ha], [b, a, ha - hb]]) { if (dh > 1.2 || dh < -SAFE) continue; const sg = m[2] === p ? 1 : -1; add(p, q, dh > STEP ? 'gradino' : 'tetto', m[0], m[1], undefined, m[3] * sg, m[4] * sg); } });
+      for (const [p, q, dh] of [[a, b, hb - ha], [b, a, ha - hb]]) { if (dh > 1.2 || dh < -SAFE) continue; const sg = m[2] === p ? 1 : -1;
+        // [tetti3] scendendo più di un gradino si cade per un po': il tetto d'arrivo deve essere profondo almeno due caselle, se no si scavalca
+        if (dh < -STEP) { const ux = m[3] * sg, uy = m[4] * sg; let tx = Math.floor(m[0] / TS - ux * .4), ty = Math.floor(m[1] / TS - uy * .4), n = 0;
+          if (BI[ty * GW + tx] !== p) { tx += ux; ty += uy; } for (let s2 = 1; s2 <= 3; s2++) { const x2 = tx + ux * s2, y2 = ty + uy * s2; if (inb(x2, y2) && BI[y2 * GW + x2] === q) n++; else break; } if (n < 2) continue; }
+        add(p, q, dh > STEP ? 'gradino' : 'tetto', m[0], m[1], undefined, m[3] * sg, m[4] * sg); } });
     JUMPS.forEach((J, i) => { const k = Math.floor((J.k0 + J.k1) / 2), [wx, wy] = J.sd.wall(k), x = wx + J.ox * TS / 2, y = wy + J.oy * TS / 2; add(J.bi, J.bj, 'salto', x, y, i, J.ox, J.oy); add(J.bj, J.bi, 'salto', x, y, i, -J.ox, -J.oy); });
     PLANKS.forEach(P => { const x = (P.wa[0] + P.wb[0]) / 2, y = (P.wa[1] + P.wb[1]) / 2; add(P.a, P.b, 'passerella', x, y, P.i, P.ox, P.oy); add(P.b, P.a, 'passerella', x, y, P.i, -P.ox, -P.oy); });
     LADDERS.forEach(L => { if (L.footB < 0 || L.camm) return; add(L.footB, L.bi, 'scala', L.fx, L.fy, L.i); add(L.bi, L.footB, 'scala', L.tx, L.ty, L.i); });
@@ -342,7 +380,7 @@ var Tetti = (function () {
   function roofFree(o, r) {
     const lv = o.lv, k = r * .7;
     return (x, y) => {
-      const air = (o.jz || 0) > .15, top = lv.h + STEP + Math.max(0, o.jz || 0);
+      const air = (o.jz || 0) > .15 || ((o.jz || 0) > 0 && (o.jvz || 0) < 0 && !!roofAt(x, y)), top = lv.h + STEP + Math.max(0, o.jz || 0);   // [tetti3] in discesa, col piede già sopra il tetto d'arrivo, il bordo si prende (prima il salto di 2 m moriva sul filo)
       for (const [a, c] of [[x, y], [x - k, y - k], [x + k, y - k], [x - k, y + k], [x + k, y + k]]) {
         const q = roofAt(a, c);
         if (!q) { if (!air) return false; if (bAt(a, c) < 0 && !G.walkM(a, c) && !(G.seaM && G.seaM(a, c))) return false; continue; }
