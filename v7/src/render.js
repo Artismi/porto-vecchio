@@ -51,14 +51,21 @@ var Render = (function () {
   // [plastica2] tutte le texture del mondo morbide e con le mipmap, e sulle superfici dipinte un rilievo ricavato dalla texture stessa
   // (bumpMap = map): il sole fa risaltare tegole, mattoni, intonaco e assi invece di illuminare un foglio piatto. Ogni materiale una volta.
   const SMOOTH2 = new WeakSet();
-  function smooth2(root) {
-    root.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : null; if (!ms) return;
+  function smooth2o(o) { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : null; if (!ms) return;
       for (const m of ms) { if (!m || SMOOTH2.has(m)) continue; SMOOTH2.add(m);
         for (const k of ['map', 'emissiveMap', 'roughnessMap']) { const t = m[k]; if (!t || !t.isTexture || t.isDataTexture || t.isRenderTargetTexture || t.isDepthTexture) continue; const im = t.image; if (!im || !(im.width > 4)) continue;
           if (t.magFilter === THREE.NearestFilter || t.minFilter === THREE.NearestFilter || t.minFilter === THREE.NearestMipmapNearestFilter) { t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true; } }
-        } });   /* [plastica2] via il rilievo dalla texture (bumpMap = map): sul terreno e sulle facciate era rumore che luccicava */
-    root.traverse(thin2);
+        } }   /* [plastica2] via il rilievo dalla texture (bumpMap = map): sul terreno e sulle facciate era rumore che luccicava */
+  function smooth2(root) { root.traverse(smooth2o); root.traverse(thin2); }
+  // [fluido] GIRI DELLA SCENA A RATE: chi deve riguardare ogni oggetto della città (~30.000) lo fa a pezzi, n oggetti per fotogramma,
+  // invece di fermare il gioco a intervalli fissi (smooth2 ogni 3 s faceva due giri interi, il ritaglio delle istanze uno ogni secondo:
+  // erano i fotogrammi lunghi a ritmo regolare). W = { stack }: true quando il giro è finito
+  function sliceWalk(W, root, n, fn) {
+    if (!W.stack) W.stack = [root]; const S = W.stack;
+    while (n-- > 0 && S.length) { const o = S.pop(), c = o.children; for (let i = c.length - 1; i >= 0; i--) S.push(c[i]); fn(o); }
+    if (S.length) return false; W.stack = null; return true;
   }
+  const SM2W = { stack: null, t: 0 };
   // [plastica2] i pezzi sottili (tubi della bici, cavi, raggi, aste) non fanno ombra: sulla mappa a 4,5 cm venivano trine a puntini
   const _b2 = new THREE.Vector3();
   function thin2(o) { if (!o.isMesh || !o.castShadow || o.isInstancedMesh || o.userData.thin2 || !o.geometry) return; o.userData.thin2 = 1; const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox(); if (!g.boundingBox) return;
@@ -2123,8 +2130,11 @@ var Render = (function () {
     const P32 = new THREE.Float32BufferAttribute(pos, 3), UV2 = new THREE.Float32BufferAttribute(uv, 2), grp = new THREE.Group(); ISO.basePieces = {};
     // [memoria] le normali una volta sola per tutta l'isola, condivise dai pezzi (prima ogni pezzo le calcolava per tutti i vertici: ~80 MB)
     const NRM = (() => { const g0 = new THREE.BufferGeometry(); g0.setAttribute('position', P32); g0.setIndex([].concat(...Object.values(PIECE))); g0.computeVertexNormals(); packNormals(g0); const a = g0.attributes.normal; g0.setIndex(null); return a; })();
-    Object.keys(PIECE).forEach(key => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', P32); geo.setAttribute('uv', UV2); geo.setAttribute('normal', NRM); geo.setIndex(PIECE[key]); geo.computeBoundingSphere();
-      const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; grp.add(mesh); ISO.basePieces[key] = mesh; });
+    // [fluido] una mesh sola invece di un pezzo per blocco (dal ramo wonderful-davinci): ogni pezzo aveva la sfera di tutta l'isola
+    // (three la calcola sui vertici, non sull'indice), quindi nessuno veniva mai scartato e ognuno era una chiamata (~140 a fotogramma).
+    // Stessi vertici, stesse normali condivise, stessi triangoli: l'indice si ricompone solo quando cambiano i blocchi caricati
+    { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', P32); geo.setAttribute('uv', UV2); geo.setAttribute('normal', NRM); geo.setIndex([].concat(...Object.values(PIECE))); geo.computeBoundingSphere();
+      const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; grp.add(mesh); ISO.baseMesh = mesh; ISO.basePiece = PIECE; ISO.baseSig = -1; }
     scene.add(grp); ISO.base = grp;
   }
   // carica i blocchi vicini alla camera (uno per fotogramma, il più vicino prima) e scarica quelli lontani
@@ -2148,7 +2158,10 @@ var Render = (function () {
         if (r.done) { const old = ISO.chunks.get(J.key); if (old) dropChunk(old); if (J.dirty) r.value.rev = -1; ISO.chunks.set(J.key, r.value); ISO.job = null; break; }   // cambiata la mappa a metà: si rifà
       }
       if (steps) BUD.add(performance.now() - t0, 'piante'); }
-    if (ISO.basePieces) for (const key in ISO.basePieces) ISO.basePieces[key].visible = !ISO.chunks.has(key);   // [inverno17]
+    if (ISO.baseMesh) {   // [inverno17] l'isola lontana si nasconde dove il blocco vero è caricato   // [fluido] ricomponendo l'indice della mesh sola
+      const P = ISO.basePiece; let sig = 7, i = 0; for (const k in P) { i++; if (!ISO.chunks.has(k)) sig = (sig * 31 + i) % 2147483647; }   // un numero, non una stringa nuova a ogni fotogramma
+      if (sig !== ISO.baseSig) { ISO.baseSig = sig; let n = 0; for (const k in P) if (!ISO.chunks.has(k)) n += P[k].length; const ix = new Uint32Array(n); let o = 0; for (const k in P) if (!ISO.chunks.has(k)) { ix.set(P[k], o); o += P[k].length; }
+        ISO.baseMesh.geometry.setIndex(new THREE.BufferAttribute(ix, 1)); ISO.baseMesh.visible = n > 0; } }
   }
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
   function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true; }
@@ -13453,11 +13466,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function instCull() {
     if (IC.off) return;   // [prova] R.__ic.off = true la spegne (solo per le misure)
     const now = performance.now();
-    if (now > IC.t) { IC.t = now + 1000; IC.list = []; scene.traverse(o => { if (o.isInstancedMesh && !o.__icPart && (!o.frustumCulled || o.__icS || o.__icParts)) IC.list.push(o);
-      if (o.userData.model && o.userData.mixer) o.traverse(q => { if ((q.isMesh || q.isSkinnedMesh) && !q.frustumCulled && !q.__icR && !q.isInstancedMesh) { q.__icR = o; q.frustumCulled = true; } }); }); }   // i personaggi (e i vestiti e gli oggetti in mano attaccati dopo)
+    if (now > IC.t) {   // [fluido] il giro della scena a rate (3000 oggetti per fotogramma), la lista nuova sostituisce la vecchia a giro finito
+      if (!IC.W) { IC.W = { stack: null }; IC.next = []; }
+      if (sliceWalk(IC.W, scene, 3000, o => { if (o.isInstancedMesh && !o.__icPart && (!o.frustumCulled || o.__icS || o.__icParts)) IC.next.push(o);
+        if (o.userData.model && o.userData.mixer) o.traverse(q => { if ((q.isMesh || q.isSkinnedMesh) && !q.frustumCulled && !q.__icR && !q.isInstancedMesh) { q.__icR = o; q.frustumCulled = true; } }); })) { IC.list = IC.next; IC.W = null; IC.next = null; IC.t = now + 1000; } }   // i personaggi (e i vestiti e gli oggetti in mano attaccati dopo)
     for (const o of IC.list) {   // ferme da un secondo e mezzo: si accende il controllo; appena cambiano, si spegne
-      const ver = o.instanceMatrix.version + ':' + o.count + ':' + (o.geometry && o.geometry.id);
-      if (o.__icV !== ver) { o.__icV = ver; o.__icT = now; if (o.__icS) { o.__icS = null; o.frustumCulled = false; } if (o.__icParts) icUnsplit(o); continue; }
+      const v1 = o.instanceMatrix.version, v2 = o.count, v3 = o.geometry && o.geometry.id;   // [fluido] tre numeri invece di una stringa nuova per gruppo a ogni fotogramma
+      if (o.__icV !== v1 || o.__icV2 !== v2 || o.__icV3 !== v3) { o.__icV = v1; o.__icV2 = v2; o.__icV3 = v3; o.__icT = now; if (o.__icS) { o.__icS = null; o.frustumCulled = false; } if (o.__icParts) icUnsplit(o); continue; }
       if (!o.__icS && !o.__icParts && now - o.__icT > 1500 && o.count > 0) { const S = icSphere(o); if (S) { if (S.radius > 70 && o.count >= 32 && icSplit(o)) continue; o.__icS = S; o.frustumCulled = true; } }
     }
   }
@@ -13485,10 +13500,66 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   { const rc1 = THREE.Mesh.prototype.raycast; if (!rc1.__lazy1) { const f = function (r, out) { const L = this.userData && this.userData.lazy1; if (typeof L === 'function') L(); return rc1.call(this, r, out); }; f.__lazy1 = true; f.__bvh = rc1.__bvh; THREE.Mesh.prototype.raycast = f; } }   // [leggera] il pezzo fuso si rifà prima del raggio
   {
   }
+  // [fluido] GLI OGGETTI FERMI NON SI RICALCOLANO (dal ramo keen-turing, generalizzato). La città nuova ha ~50.000 oggetti e three a ogni
+  // fotogramma ricomponeva la matrice di ognuno (anche delle case): circa metà del tempo di disegno lato processore. Ogni ramo della
+  // scena (figlio diretto) che resta del tutto fermo per 10 s si congela: si calcola una volta e poi il giro delle matrici lo salta.
+  // Tre reti: se dentro un ramo congelato si aggiunge qualcosa (add, attach) si scongela subito; un controllo a rotazione (4000
+  // oggetti per fotogramma) riguarda posizione, rotazione e scala di tutti e scongela chi si è mosso; chi si scongela non si
+  // ricongela più. Restano fuori persone, mezzi, ossa e luci. ?nofrz lo spegne (per le misure).
+  const FRZ = { on: typeof location === 'undefined' || !/[?&]nofrz\b/.test(location.search), list: [], ri: 0, oi: 0, t: 0, scene: null };
+  const FRZ_UMW = function (force) { if (force) THREE.Object3D.prototype.updateMatrixWorld.call(this, true); };
+  { const add0 = THREE.Object3D.prototype.add, att0 = THREE.Object3D.prototype.attach;
+    const touch = o => { for (let q = o; q; q = q.parent) if (q.__frz) { frzThaw(q, q.__frz.frozen); break; } };   // in prova: si ricomincia; congelato: resta sciolto
+    THREE.Object3D.prototype.add = function () { const r = add0.apply(this, arguments); if (FRZ.list.length) touch(this); return r; };
+    THREE.Object3D.prototype.attach = function () { const r = att0.apply(this, arguments); if (FRZ.list.length) touch(this); return r; }; }
+  const frzSnap = (o, a, i) => { const P = o.position, Q = o.quaternion, S = o.scale; if (!o.matrixAutoUpdate) { const e = o.matrix.elements; a[i] = e[12] + e[0]; a[i + 1] = e[13] + e[5]; a[i + 2] = e[14] + e[10] + e[2]; } else { a[i] = P.x; a[i + 1] = P.y; a[i + 2] = P.z; } a[i + 3] = Q.x; a[i + 4] = Q.y; a[i + 5] = Q.z; a[i + 6] = Q.w; a[i + 7] = S.x; a[i + 8] = S.y; a[i + 9] = S.z; };
+  const _frzT = new Float64Array(10);
+  function frzThaw(root, no) {
+    const F = root.__frz; if (!F) return; root.__frz = null; if (no) root.__frzNo = true;
+    if (F.frozen) { delete root.updateMatrixWorld; root.updateMatrixWorld(true); }
+    const i = FRZ.list.indexOf(root); if (i >= 0) FRZ.list.splice(i, 1);
+  }
+  function frzOk(o) {
+    if (o.__frzNo || o.__frzBad || o.__frz || o.isLight || o.isCamera || (o.userData && (o.userData.model || o.userData.mixer))) return false;
+    let n = 0, bad = false; o.traverse(q => { n++; if (q.isSkinnedMesh || q.isBone || q.isLight || (q.userData && q.userData.mixer)) bad = true; });
+    if (bad) o.__frzBad = true; return !bad;   // anche le mesh sole, figlie dirette della scena (case fuse, ombre: ~16.000)
+  }
+  function frzScene() {
+    if (FRZ.scene === scene) return; FRZ.scene = scene;
+    const SCN = new Float64Array(10).fill(NaN);
+    scene.updateMatrixWorld = function (force) {   // updateMatrixWorld di three, col salto dei rami congelati
+      // la scena stessa non si muove: three la ricomponeva a ogni fotogramma e questo (matrixWorldNeedsUpdate) obbligava TUTTI i ~50.000
+      // oggetti a rifare la matrice nel mondo, anche quelli fermi. Si ricompone solo se posizione, rotazione o scala cambiano davvero
+      if (this.matrixAutoUpdate) { frzSnap(this, _frzT, 0); let ch = false; for (let q = 0; q < 10; q++) if (_frzT[q] !== SCN[q]) { ch = true; SCN[q] = _frzT[q]; } if (ch) this.updateMatrix(); }
+      if (this.matrixWorldNeedsUpdate || force) { if (this.parent === null) this.matrixWorld.copy(this.matrix); else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); this.matrixWorldNeedsUpdate = false; force = true; }
+      const ch = this.children; for (let i = 0, l = ch.length; i < l; i++) { const c = ch[i]; if (c.__frz && c.__frz.frozen && !force) continue; c.updateMatrixWorld(force); }
+    };
+  }
+  function frzTick() {
+    if (!FRZ.on || !scene) return; frzScene();
+    const now = performance.now();
+    if (now > FRZ.t) { FRZ.t = now + 2000;   // i rami nuovi entrano in prova; quelli tolti dalla scena escono
+      const ex = new Set(Object.values(dyn.people || {}).concat(Object.values(dyn.vehicles || {})));
+      for (const o of scene.children) if (!ex.has(o) && frzOk(o)) { const objs = []; o.traverse(q => objs.push(q)); const snap = new Float64Array(objs.length * 10); objs.forEach((q, k) => frzSnap(q, snap, k * 10)); o.__frz = { objs, snap, frozen: false, since: now }; FRZ.list.push(o); }
+      for (let i = FRZ.list.length - 1; i >= 0; i--) { const o = FRZ.list[i]; if (o.parent !== scene) frzThaw(o, false); else if (!o.__frz.frozen && now - o.__frz.since > 10000) { o.updateMatrixWorld(true); o.__frz.frozen = true; o.updateMatrixWorld = FRZ_UMW; } }
+    }
+    let budget = 4000;   // il controllo a rotazione
+    while (budget > 0 && FRZ.list.length) {
+      if (FRZ.ri >= FRZ.list.length) { FRZ.ri = 0; FRZ.oi = 0; }
+      const root = FRZ.list[FRZ.ri], F = root.__frz;
+      if (!F) { FRZ.ri++; FRZ.oi = 0; continue; }
+      const end = Math.min(F.objs.length, FRZ.oi + budget); let moved = -1;
+      for (let k = FRZ.oi; k < end; k++) { frzSnap(F.objs[k], _frzT, 0); const b = k * 10; for (let q = 0; q < 10; q++) if (_frzT[q] !== F.snap[b + q]) { moved = k; break; } if (moved >= 0) break; }
+      budget -= Math.max(1, end - FRZ.oi);
+      if (moved >= 0) { if (F.frozen) { frzThaw(root, true); FRZ.oi = 0; continue; } frzSnap(F.objs[moved], F.snap, moved * 10); F.since = now; }   // ancora in prova: si ricomincia a contare
+      if (end >= F.objs.length) { FRZ.ri++; FRZ.oi = 0; } else FRZ.oi = end;
+    }
+  }
   const SHMOV = { list: [] };   // [fluido] chi si muove (x, y, velocità), per le ombre dei faretti
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    renderer.debug.checkShaderErrors = typeof location !== 'undefined' && /[?&]shaderdebug/.test(location.search);   // [fluido] dal ramo wonderful-davinci: leggere subito il registro di ogni shader compilato costringe ad aspettarne la compilazione (centinaia di ms per materiale nuovo, camminando); solo con ?shaderdebug
     renderer.setPixelRatio(1);
     canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); try { localStorage.setItem('pvLow', '1'); } catch (x) {} console.warn('[grafica] contesto perso: ricarico in qualità ridotta'); setTimeout(() => location.reload(), 400); });   /* [unione10] */
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;   /* [plastica2] ombre morbide da plastico: le dure a punti di 4,5 cm facevano trine e scalini */
@@ -14313,17 +14384,23 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       on.sort((a, b) => a.d2 - b.d2);
       const sp = [], pp = [];
       on.forEach(L => { const fire = L.flick >= .25 && L.y - L.gy < 2.2; if (!fire && sp.length < SPOOL.length) sp.push(L); else if (pp.length < PPOOL.length) pp.push(L); });
-      dyn.lsp = sp; dyn.lpp = pp;
+      // [fluido] ogni faretto resta sulla sua lampada finché questa è fra le scelte (dal ramo keen-turing): l'ordine per distanza le
+      // rimescolava a ogni passo e ogni rimescolata ridisegnava l'ombra di quasi tutti i faretti, anche di giorno a luce spenta
+      { const old = dyn.lslot || [], keep = new Set(sp), slot = new Array(SPOOL.length).fill(null), used = new Set();
+        old.forEach((L, i) => { if (L && keep.has(L) && i < slot.length) { slot[i] = L; used.add(L); } });
+        let j = 0; sp.forEach(L => { if (used.has(L)) return; while (j < slot.length && slot[j]) j++; if (j < slot.length) slot[j++] = L; });
+        dyn.lslot = slot; dyn.lsp = slot.filter(Boolean); }
+      dyn.lpp = pp;
     }
     const kOf = L => { let k = L.always ? .06 + night * .94 : night * night;
       if (L.flick) k *= 1 - L.flick * .5 * (Math.sin(time * 13 + L.phase) * .5 + .5) * (Math.sin(time * 3.7 + L.phase * 2) > .3 ? 1 : .2);
       return k; };
     SPOOL.forEach((l, i) => {
-      const L = dyn.lsp[i], cone = l.userData.cone;
+      const L = dyn.lslot[i], cone = l.userData.cone;
       if (!L) { l.intensity = 0; cone.visible = false; return; }
       const k = kOf(L), hh = Math.max(1.2, L.y - L.gy);
       if (l.userData.src !== L) { l.userData.src = L; l.position.set(L.x, L.y, L.z); l.target.position.set(L.x, L.gy - 2, L.z); l.target.updateMatrixWorld(); l.color.copy(L.color);
-        l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.shadow.needsUpdate = true; }
+        l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.userData.shDirty = true; }   // [fluido] l'ombra si rifà sotto, se la luce fa luce
       if (L.nb === undefined) { L.nb = 0; LSRC.forEach(o => { if (o !== L && Math.abs(o.x - L.x) < 7 && Math.abs(o.z - L.z) < 7) L.nb++; }); }   // [inverno29] vicine: si dividono la luce
       l.intensity = L.base * k * .55 / Math.sqrt(1 + L.nb * .6);   // [inverno30] la pozza a terra la fa la luce cotta
       const tall = hh > 2.8 && night > .25;
@@ -14337,7 +14414,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       for (const n of st.npcs) { if (n.dead || n.inside || (n.pop && !n.pop.near)) continue; movers.push(n.x, n.y, (n.speedNow || 0) + (n.gesture > 0 || n.stun > 0 || n.airT ? 1 : 0)); }
       for (const v of st.vehicles) { if (v.hidden) continue; movers.push(v.x, v.y, Math.abs(v.vx || 0) + Math.abs(v.vy || 0) + Math.abs(v.w || 0)); }
       const want = [];
-      SPOOL.forEach(l => { if (!(l.intensity > 0)) return; const u = l.userData, r = (l.distance || 10) + 2, lx = l.position.x, lz = l.position.z; let busy = false;
+      SPOOL.forEach(l => { if (!(l.intensity > 0)) return; if (l.userData.shDirty) { l.userData.shDirty = false; l.shadow.needsUpdate = true; l.userData.shT = now; return; }   // [fluido] spostata su un'altra lampada: subito, come prima (spenta, l'ombra non si vede e aspetta)
+        const u = l.userData, r = (l.distance || 10) + 2, lx = l.position.x, lz = l.position.z; let busy = false;
         for (let i = 0; i < movers.length; i += 3) { if (movers[i + 2] > .05 && Math.abs(movers[i] - lx) < r && Math.abs(movers[i + 1] - lz) < r) { busy = true; break; } }
         if (busy) want.push([0, l]); else if (now - (u.shT || 0) > 500) want.push([now - (u.shT || 0), l]); });
       want.sort((a, b) => (a[0] === 0 ? -1 : 0) - (b[0] === 0 ? -1 : 0) || b[0] - a[0]);
@@ -14348,8 +14426,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     });
   }
   function frame(st, dt, ui) {
-    if (!(frame.__sm2 > 0)) { frame.__sm2 = 3; try { smooth2(scene); } catch (e) { } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */
+    if (SM2W.stack || !(frame.__sm2 > 0)) { if (!SM2W.stack) frame.__sm2 = 3; try { sliceWalk(SM2W, scene, 2000, o => { smooth2o(o); thin2(o); }); } catch (e) { SM2W.stack = null; } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */   // [fluido] a rate
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
+    frzTick();   // [fluido] i rami fermi congelati (e il controllo a rotazione)
     SHMOV.st = st;   // [fluido] per le ombre dei faretti
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
     meteoAt(st.t, METEO); { const rg = regimeAt(cam.x, cam.y); METEO.reg += (rg - METEO.reg) * Math.min(1, (dt || .016) * 1.5); } dyn.meteo = METEO;   /* [amb1] */
@@ -14572,28 +14651,28 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const vw = VIEW * (ui.zoom || 1), fresh = cam.ppx === undefined || Math.hypot(p.x - cam.ppx, p.y - cam.ppy) > 6;
       const ivx = fresh || !(dt > 0) ? 0 : (p.x - cam.ppx) / dt, ivy = fresh || !(dt > 0) ? 0 : (p.y - cam.ppy) / dt; cam.ppx = p.x; cam.ppy = p.y;
       const kv = Math.min(1, dt * 2.2); cam.pvx = (cam.pvx || 0) + (ivx - (cam.pvx || 0)) * kv; cam.pvy = (cam.pvy || 0) + (ivy - (cam.pvy || 0)) * kv;
-      const spd = Math.hypot(cam.pvx, cam.pvy), leadOn = false;   // [camera3] niente sguardo avanti: il personaggio è il perno, sempre al centro
+      const spd = Math.hypot(cam.pvx, cam.pvy), leadOn = !!ui.lead && !pveh;   // [camera3] niente sguardo avanti dalla velocità: il personaggio è il perno   // [fluido] ma con la levetta (controller o schermo) la visuale guarda subito dove la spingi
       // lo sguardo avanti è una parte dello schermo, non dei metri: in verticale di lato c'è poco posto, in alto e in basso tanto.
       // Si scompone la direzione di marcia nei due assi dello schermo e ognuno prende fino al 42% della sua mezza inquadratura
       let lx = 0, ly = 0;
-      if (leadOn && ui.stick) {   // [telefono] la levetta comanda lo sguardo: si inquadra subito dove la spingi (a piedi, in bici, in auto)
-        const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, asp = W / Math.max(1, H), m = Math.min(1, Math.hypot(ui.stick.x, ui.stick.y));
-        const vh = pveh ? 2 * (cam.cd || 30) * Math.tan(camera.fov * Math.PI / 360) : vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
-        const sx = ui.stick.x / (m || 1), sy = -ui.stick.y / (m || 1), k = .45 * m;   // [levetta] l'angolo della levetta è il davanti dell'inquadratura, la distanza dal centro quanto si sposta
+      if (leadOn) {   // [telefono] la levetta comanda lo sguardo: si inquadra subito dove la spingi   // [fluido] ui.lead: la direzione nel mondo data al motore in questo fotogramma (main.js leadOf)
+        const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, asp = W / Math.max(1, H);
+        const vh = vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
+        const ux = ui.lead.x, uy = ui.lead.y, sx = ux * rx + uy * rz, sy = ux * fx + uy * fz, k = .3 * ui.lead.m;   // [levetta] l'angolo della levetta è il davanti dell'inquadratura, la distanza dal centro quanto si sposta
         lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; }
       else if (leadOn && spd > .3) {
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, ux = cam.pvx / spd, uy = cam.pvy / spd, asp = W / Math.max(1, H);
         const vh = pveh ? 2 * (cam.cd || 30) * Math.tan(camera.fov * Math.PI / 360) : vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
         const k = .42 * Math.min(1, spd / (pveh ? 10 : 5)), sx = ux * rx + uy * rz, sy = ux * fx + uy * fz;
         lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; }
-      const kl = Math.min(1, dt * (pveh ? 1.2 : 1.6)); cam.lx = (cam.lx || 0) + (lx - (cam.lx || 0)) * kl; cam.ly = (cam.ly || 0) + (ly - (cam.ly || 0)) * kl;
+      const kl = 1 - Math.exp(-dt * (leadOn ? 16 : pveh ? 1.2 : 5)); cam.lx = (cam.lx || 0) + (lx - (cam.lx || 0)) * kl; cam.ly = (cam.ly || 0) + (ly - (cam.ly || 0)) * kl;   // [fluido] 1 - e^-k·dt: dietro alla levetta in ~0,06 s
       cam.panX = cam.panX || 0; cam.panY = cam.panY || 0;
       if (ui.pan && !ui.intro && !ui.focus) { const pitch0 = PITCH, fx = -Math.sin(cam.yaw || YAW), fz = -Math.cos(cam.yaw || YAW), asp = W / Math.max(1, H), vh = vw * (H > W * 1.05 ? .78 : 1);
         const mx = -ui.pan.dx * vh * asp, my = ui.pan.dy * vh / Math.sin(pitch0);   // il mondo segue il dito: a destra il dito, la visuale va a sinistra
         cam.panX += -fz * mx + fx * my; cam.panY += fx * mx + fz * my;
         const pl = Math.hypot(cam.panX, cam.panY), pm = vh * 1.2; if (pl > pm) { cam.panX *= pm / pl; cam.panY *= pm / pl; } }
       if (spd > 1 || pveh || ui.dialogNpc || ui.intro) { const kd = Math.pow(.25, dt); cam.panX *= kd; cam.panY *= kd; }   // appena ti muovi la visuale torna su di te
-      if (!pveh && !ui.intro && !ui.focus) { tx += cam.lx + cam.panX; ty += cam.ly + cam.panY; }
+      cam.addX = 0; cam.addY = 0; if (!pveh && !ui.intro && !ui.focus) { cam.addX = cam.lx + cam.panX; cam.addY = cam.ly + cam.panY; }   // [fluido] sommati dopo lo smorzamento (sotto)
     }
     if (pveh) {
       const vsp = pveh.vx !== undefined ? Math.hypot(pveh.vx, pveh.vy) : Math.abs(pveh.speed);
@@ -14617,7 +14696,16 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (ui.intro) { tx = G.PLACES.piazza.x + Math.sin(time * .08) * 30; ty = G.PLACES.piazza.y - 6 + Math.cos(time * .06) * 8; tz = 1.25; }
     if (ui.focus) { tx = ui.focus.x; ty = ui.focus.y; tz = (ui.zoom || 1) * (p.indoor ? .5 : 1); focus[0] = [tx, ty]; }   // [editor] la camera segue il punto dell'editor
     const kf = 1 - Math.pow(pveh ? .004 : PHONE ? .0004 : .02, dt);   // [camera3] sul telefono la visuale sta addosso al personaggio (prima ~0,25 s di ritardo)
-    cam.x += (tx - cam.x) * kf; cam.y += (ty - cam.y) * kf; cam.zoom += (tz - cam.zoom) * (1 - Math.pow(.05, dt));
+    // [fluido] la camera è legata al personaggio (o al mezzo) nella sua posizione di questo stesso fotogramma: prima lo inseguiva con
+    // ~0,25 s di ritardo (sul computer), così camminando il personaggio scivolava nell'inquadratura e, coi fotogrammi irregolari,
+    // tremava avanti e indietro (la camera «se lo trascina a scatti»). Si smorza solo lo scarto voluto (mira, dialogo, momenti);
+    // lo sguardo della levetta e il dito sono già smorzati sopra e si sommano dopo
+    const anc = ui.intro || ui.focus ? null : (pveh || p);
+    if (anc) {
+      if (cam.anc !== anc || cam.ax === undefined || !isFinite(cam.ax)) { cam.anc = anc; cam.ax = cam.x - (cam.addX || 0) - anc.x; cam.ay = cam.y - (cam.addY || 0) - anc.y; if (Math.hypot(cam.ax, cam.ay) > 40) cam.ax = cam.ay = 0; }
+      cam.ax += (tx - anc.x - cam.ax) * kf; cam.ay += (ty - anc.y - cam.ay) * kf;
+      cam.x = anc.x + cam.ax + (cam.addX || 0); cam.y = anc.y + cam.ay + (cam.addY || 0);
+    } else { cam.anc = null; cam.x += (tx - cam.x) * kf; cam.y += (ty - cam.y) * kf; } cam.zoom += (tz - cam.zoom) * (1 - Math.pow(.05, dt));
     { const lh = !ui.intro && typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; cam.h += ((lh !== null && !ui.focus ? lh : groundH(ui.intro || ui.focus ? tx : p.x, ui.intro || ui.focus ? ty : p.y)) - cam.h) * Math.min(1, dt * 4); }
     let kx = 0, ky = 0;
     if (st.kick) { const k = Math.max(0, 1 - (st.clock - st.kick.t) * 9); kx = -Math.cos(st.kick.a) * st.kick.amt * k * 1.2; ky = -Math.sin(st.kick.a) * st.kick.amt * k * 1.2; }
@@ -14628,7 +14716,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (PHONE && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc) {   // [camera3] la visuale gira attorno al personaggio, dietro alla direzione di marcia
       const vs = pveh ? Math.abs(pveh.speed || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
       const hd = pveh ? (vs > .8 && (pveh.speed || 0) > 0 ? pveh.ang : null) : (vs > .4 && ui.stick ? p.face : null);
-      if (hd !== null) { const tgt = Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW; cam.uy = angLerp(cam.uy, tgt, 1 - Math.exp(-dt * (pveh ? 2.6 : 2.2))); } }
+      // [fluido] a piedi: se tiri la levetta indietro il personaggio si volta e la visuale guarda subito là (sguardo avanti), senza il
+      // mezzo giro lento della camera alle spalle (era l'arco largo e il ritardo); nelle curve la segue più pronta (2,2 → 3,2)
+      const tgt = hd === null ? 0 : Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW, far = hd !== null && !pveh && Math.abs(Math.atan2(Math.sin(tgt - cam.uy), Math.cos(tgt - cam.uy))) > 1.75;
+      if (hd !== null && !far) cam.uy = angLerp(cam.uy, tgt, 1 - Math.exp(-dt * (pveh ? 2.6 : 3.2))); }
     cam.yaw = YAW + cam.uy; // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa
     let pitch = lerp(PITCH, onVespa ? .78 : .82, ease);
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
@@ -14655,10 +14746,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     camera.position.set(cx + ox, cy + oy, cz + oz); camera.lookAt(cx, cy, cz);
     posaTick1(cx, cz);   // [posa] il livello pieno dei pezzi vicino al punto guardato
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
-    if (ease < .02 && !PHONE) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti
-      const texel = viewH / H; camera.updateMatrixWorld();
-      const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0), up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
-      const pos = camera.position.clone(), a = pos.dot(right), b = pos.dot(up);
+    if (cam.uyS !== cam.uy) { cam.uyS = cam.uy; cam.rotT = time; }   // [fluido] quando la visuale ha girato l'ultima volta
+    if (ease < .02 && !PHONE && !(time - (cam.rotT || -9) < .25)) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti   // [fluido] nemmeno sul computer mentre gira (levetta destra, tasti)
+      const texel = viewH / H; camera.updateMatrixWorld(); const SV = cam.__sv || (cam.__sv = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]);
+      const right = SV[0].setFromMatrixColumn(camera.matrixWorld, 0), up = SV[1].setFromMatrixColumn(camera.matrixWorld, 1);
+      const pos = SV[2].copy(camera.position), a = pos.dot(right), b = pos.dot(up);
       pos.addScaledVector(right, Math.round(a / texel) * texel - a).addScaledVector(up, Math.round(b / texel) * texel - b);
       camera.position.copy(pos);
     }
@@ -14770,5 +14862,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { VARCO, DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { get __lazy1() { return LAZY1; }, get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { get __lazy1() { return LAZY1; }, get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
