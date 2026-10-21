@@ -486,3 +486,27 @@ pensilina, `torrione` tozzo, `bastione` basso, `caserma`, `polveriera`) e cinque
 `porta_acqua`, `scogliera`, tutti di carparo dorato (`COL.carparo`, la sua veste a conci). Gli edifici militari del gioco (comando,
 caserma, depositi) restano edifici (porte, interni, missioni) e la loro grafica la fa la massa del castello (`b.pezzo`). Il cunicolo di fuga e la cisterna (sotto) restano; il segreto per mare entra
 dalla porta d'acqua della darsena invece che dal fossato.
+
+## 12. Com'è andata la migrazione (fase 2, i 12 passi)
+
+Fatti tutti e dodici, un commit per passo, con la pianta in `_immagini/mappa_compatta/passo_NN_pianta.png`. I numeri nella cornice
+1222-1610 × 250-450 (prima: la città 1040-1660):
+
+| | prima | dopo |
+|---|---|---|
+| case | 595 (baracche 66) | 463 (baracche 7) |
+| piani 1 / 2 / 3 / 4 | 97 / 308 / 154 / 36 | 60 / 295 / 102 / 6 (le sei case-torre) |
+| strade: asse ≥10 / vie 6-9 / vie 4-5 / vicoli | 457 / 869 / 672 / 891 m | 231 / 208 / 348 / 999 m |
+| capi di strada aperti (`strumenti/incroci.js`) | 39 | 0 (50 incroci: 40 T, 2 Y, 3 X; 72 capi, 0 errori) |
+| grafo dei tetti nel borgo: gradini / salti | 18 / 12 | 25 / 16 |
+| gente fuori entro 50 m dal giocatore (05-16, `test_citta_viva` 12 h) | 37 in media (4,7 ogni 1000 m²) | 53 in media (6,7 ogni 1000 m²), +41% |
+| ms per passo di simulazione (stessa prova) | 2,2 | 2,6 |
+
+Cosa resta e i rischi:
+- **Baracche**: ne restano 7 (il progetto ne voleva ~25): la striscia fra il rilevato e gli scogli è stretta. Il lotto del fuoco ha 3
+  fuochi e 2 lotti vuoti; per averne di più bisogna allargare la striscia a nord del rilevato.
+- **`test_eventi`** era ballerino anche prima (una scena su ~45, a caso, si rompe: l'attore entra in casa o lo investe un mezzo in
+  `runOver`); succede anche coi file di prima del passo 10.
+- **`test_citta_viva`** su 12 ore non vede i posti della sera (fuoco, cypher, parata): va girato su 24 ore.
+- Il **Corso** ha il filare da un lato solo: 5 lecci su 85 m.
+- `BIBBIA_MISSIONI.md` sez. 3.2 resta per la mappa vecchia; la città compatta è nella sez. 3.2bis.
