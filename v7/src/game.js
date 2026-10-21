@@ -1849,6 +1849,7 @@ var Game = (function () {
       if (n.inside || n.dead || n.jailedUntil > st.t) continue;
       const d = dist(n.x, n.y, v.x, v.y);
       if (insideVehicle(v, n.x, n.y, .3)) {
+        if (n.__ev && by === 'traffic') { pushOutOfVehicles(st, n, .35); continue; }   // [eventi] il traffico di fondo non investe chi recita: lo scansa (frena prima, vedi updateTraffic)
         const vsp = v.vx !== undefined ? Math.hypot(v.vx, v.vy) : Math.abs(v.speed);
         if (vsp > 5.5) {
           n.stun = 3; const a = v.vx !== undefined ? Math.atan2(v.vy, v.vx) : v.ang; launch(st, n, v);
@@ -1900,9 +1901,10 @@ var Game = (function () {
     const Ln = LANES[v.lane.i], target = (panic ? 13 : 0) || (Ln.id === 'litoranea' ? 10 : 7.5);
     let block = 99;
     const fx = Math.cos(v.ang), fy = Math.sin(v.ang);
-    const check = (x, y, r) => { const dx = x - v.x, dy = y - v.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx); if (along > 0 && along < 9 && lat < 1.3 + Math.min(r, .5)) block = Math.min(block, along - r); };
+    const check = (x, y, r, lat0, look) => { const dx = x - v.x, dy = y - v.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx); if (along > 0 && along < (look || 9) && lat < (lat0 || 1.3) + Math.min(r, .5)) block = Math.min(block, along - r); };
     if (!st.player.vehicle) check(st.player.x, st.player.y, .4);
-    for (const n of st.npcs) { if (n.inside || n.vigile || Math.abs(n.x - v.x) > 10 || Math.abs(n.y - v.y) > 10) continue; check(n.x, n.y, n.dead ? .3 : .4); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
+    // [eventi] chi recita una scena non guarda la strada (la scena lo porta dritto dove deve andare): l'auto lo vede prima e più largo
+    for (const n of st.npcs) { if (n.inside || n.vigile || Math.abs(n.x - v.x) > 13 || Math.abs(n.y - v.y) > 13) continue; if (n.__ev) check(n.x, n.y, .4, 2.4, 12); else check(n.x, n.y, n.dead ? .3 : .4); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
     st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1); });
     const K = VK[v.kind];

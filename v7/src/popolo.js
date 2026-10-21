@@ -722,7 +722,9 @@ var Popolo = (function () {
       if (!n.pop || n.dead) continue;
       const d = dist(n.x, n.y, p.x, p.y), P = n.pop;
       const want = mustBeNear(st, n) || d < CFG.near || (P.near && d < CFG.far);
-      list.push([n, want ? (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato) ? 0 : d) : 1e9]);   // [ordine] chi è in piazza o in fila resta vivo anche lontano
+      list.push([n, want ? (n.__ev || (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato)) ? 0 : d) : 1e9]);   // [ordine] chi è in piazza o in fila resta vivo anche lontano
+      // [eventi] e chi recita una scena passa davanti a tutti: con la città compatta piena i vicini arrivano al tetto (maxNear) e l'attore
+      // un po' più lontano degli altri veniva addormentato (snapFar lo mette «dentro» casa) a metà scena: la scena si rompeva con «entrato»
     }
     list.sort((a, b) => a[1] - b[1]);
     let nearN = 0;
