@@ -505,8 +505,19 @@ Fatti tutti e dodici, un commit per passo, con la pianta in `_immagini/mappa_com
 Cosa resta e i rischi:
 - **Baracche**: ne restano 7 (il progetto ne voleva ~25): la striscia fra il rilevato e gli scogli è stretta. Il lotto del fuoco ha 3
   fuochi e 2 lotti vuoti; per averne di più bisogna allargare la striscia a nord del rilevato.
-- **`test_eventi`** era ballerino anche prima (una scena su ~45, a caso, si rompe: l'attore entra in casa o lo investe un mezzo in
-  `runOver`); succede anche coi file di prima del passo 10.
-- **`test_citta_viva`** su 12 ore non vede i posti della sera (fuoco, cypher, parata): va girato su 24 ore.
+- **`test_eventi`** era ballerino (una scena su ~45, a caso, si rompeva). Le cause, trovate con una spia sui campi `inside`, `stun`
+  e `dead` degli attori: (1) «entrato»: con la città piena i vicini arrivano al tetto di `popolo.js` (`maxNear`) e l'attore un po'
+  più lontano degli altri veniva addormentato a metà scena (`sleepFar` → `snapFar` lo mette dentro casa); ora chi recita passa
+  davanti a tutti in `updateLod`; (2) «colpito» e «morto»: il traffico di fondo (`G.runOver` con `'traffic'`) investiva l'attore
+  che la scena porta dritto attraverso la via; ora l'auto vede chi recita prima e più largo (12 m, 2,4 m di traverso) e, se lo
+  tocca, lo scansa invece di investirlo. Tutte e due le prove prendono il seme (`--seme=N`, `PV_SEME`, `seme.js`: anche
+  `Math.random`); senza seme se ne sceglie uno e si stampa, così un giro andato male si rifà.
+- **`test_citta_viva`**: il giocatore delle baracche stava ancora a 1150 (fuori città, il cypher non si riempiva mai); ora sta a
+  12-16 m dalla grata (`W.luoghi`). Il giocatore del sagrato stava in mezzo ai tre posti del sagrato, sotto i 9 m da cui partono le
+  scene coi posti: ora sta a 15-20 m. La regia accelerata tiene fino a quattro scene insieme (con due ne faceva 3-5 l'ora, e
+  «almeno una scena nel posto X» cadeva a caso su mercato, fuoco, fermata, sagrato). La parata (solo la domenica) è fra i posti rari.
+- **Le vie vive** (`vievive.js`) nella città compatta: la linea 1 Stazione – Vittoria – Mercato – Marina (267 m, 4 fermate) sul Corso
+  e sulla Vittoria; la sosta lungo i muri del piazzale della Stazione (6 stalli: il Corso ha porte e vetrine su tutto il cordolo, al
+  Mercato la tettoia prende la piazza); le edicole al Mercato, alla Stazione e sulla Vittoria.
 - Il **Corso** ha il filare da un lato solo: 5 lecci su 85 m.
 - `BIBBIA_MISSIONI.md` sez. 3.2 resta per la mappa vecchia; la città compatta è nella sez. 3.2bis.
