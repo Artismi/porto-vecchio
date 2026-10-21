@@ -64384,8 +64384,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   }
   function frzScene() {
     if (FRZ.scene === scene) return; FRZ.scene = scene;
+    const SCN = new Float64Array(10).fill(NaN);
     scene.updateMatrixWorld = function (force) {   // updateMatrixWorld di three, col salto dei rami congelati
-      if (this.matrixAutoUpdate) this.updateMatrix();
+      // la scena stessa non si muove: three la ricomponeva a ogni fotogramma e questo (matrixWorldNeedsUpdate) obbligava TUTTI i ~50.000
+      // oggetti a rifare la matrice nel mondo, anche quelli fermi. Si ricompone solo se posizione, rotazione o scala cambiano davvero
+      if (this.matrixAutoUpdate) { frzSnap(this, _frzT, 0); let ch = false; for (let q = 0; q < 10; q++) if (_frzT[q] !== SCN[q]) { ch = true; SCN[q] = _frzT[q]; } if (ch) this.updateMatrix(); }
       if (this.matrixWorldNeedsUpdate || force) { if (this.parent === null) this.matrixWorld.copy(this.matrix); else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); this.matrixWorldNeedsUpdate = false; force = true; }
       const ch = this.children; for (let i = 0, l = ch.length; i < l; i++) { const c = ch[i]; if (c.__frz && c.__frz.frozen && !force) continue; c.updateMatrixWorld(force); }
     };
