@@ -199,8 +199,10 @@ var Posti = (function () {
         cand.push({ x: cx(a), y: cx(c), sh, s: sh * 2 + walls + hash2(a, c, 77) });
       }
       cand.sort((p, q) => q.s - p.s); const got = [];
-      for (const q of cand) { if (got.length >= 12) break; if (got.some(g => hyp(g.x - q.x, g.y - q.y) < 16)) continue; got.push(q); }
-      got.forEach((q, i) => add(i < 5 ? 'fuoco' : 'lotto_vuoto', q.x, q.y, hash2(q.x | 0, q.y | 0, 3) * 6.283, { baracche: q.sh }));
+      for (const sep of [16, 11]) for (const q of cand) { if (got.length >= 12) break; if (got.some(g => hyp(g.x - q.x, g.y - q.y) < sep)) continue; got.push(q); }
+      // [mappa_compatta] nella città compatta le baracche sono poche: i fuochi restano 3-5, ma almeno due lotti restano vuoti per i ragazzi
+      const nF = Math.max(3, Math.min(5, got.length - 2));
+      got.forEach((q, i) => add(i < nF ? 'fuoco' : 'lotto_vuoto', q.x, q.y, hash2(q.x | 0, q.y | 0, 3) * 6.283, { baracche: q.sh }));
     }
 
     // --- le porte della città: la Porta di Terra della Rocca, il varco del Muro, i capi della Vittoria, il passaggio della ferrovia, la scala dei pescatori ---

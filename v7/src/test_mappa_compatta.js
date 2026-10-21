@@ -49,6 +49,20 @@ const camera = caseC.filter(b => !b.torre && !b.shack && VIE.some(rd => { for (l
 const camAlte = camera.filter(b => b.fl > 2);
 ok(camera.length > 20 && !camAlte.length, `sulle vie il fronte lato camera ha al più 2 piani (${camera.length} case, ${camAlte.length} più alte${camAlte.length ? ': ' + camAlte.slice(0, 4).map(b => b.id + '@' + cen(b).map(Math.round) + ' ' + b.fl).join(' ') : ''})`);
 
+// ---------------- passo 5: i luoghi-missione e i nodi ----------------
+{ const L = W.luoghi || [], T = W.T, walk = i => { const v = W.grid[i]; return i >= 0 && v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.CLIFF && v !== T.TREE; };
+  const aTerra = (x, y) => { for (let r = 0; r <= 8; r += 1) for (let a = 0; a < 16; a++) { const tx = Math.floor((x + Math.cos(a * Math.PI / 8) * r) / TS), ty = Math.floor((y + Math.sin(a * Math.PI / 8) * r) / TS), i = ty * W.GW + tx; if (walk(i)) return i; } return -1; };
+  ok(L.length === 12 && L.every(l => l.ruoli.length && l.icona && l.firma && l.ingressi.length && l.segreto), `i dodici luoghi-missione come dato (W.luoghi: ${L.map(l => l.id).join(', ')})`);
+  const s0 = aTerra(1274, 343), seen = new Uint8Array(W.grid.length), q = [s0]; seen[s0] = 1;
+  for (let h = 0; h < q.length; h++) { const i = q[h], tx = i % W.GW, ty = (i / W.GW) | 0; if (tx * TS < 1180 || tx * TS > 1620 || ty * TS < 240 || ty * TS > 420) continue; for (const d of [1, -1, W.GW, -W.GW]) { const j = i + d; if (!seen[j] && walk(j)) { seen[j] = 1; q.push(j); } } }
+  const lontani = L.filter(l => { const i = aTerra(l.x, l.y); return i < 0 || !seen[i]; });
+  ok(!lontani.length, 'ogni luogo-missione si raggiunge a piedi dal Mercato' + (lontani.length ? ': mancano ' + lontani.map(l => l.id).join(', ') : ''));
+  const C = (W.sets || []).filter(q => /^(mercato|sagrato|adunata|piazzetta|marina)$/.test(q.k)).map(q => [q.k, q.x !== undefined ? q.x : (q.x0 + q.x1) / 2, q.y !== undefined ? q.y : (q.y0 + q.y1) / 2]);
+  let dmin = 1e9, cp = ''; C.forEach((a, i) => C.forEach((b, j) => { if (j <= i) return; const d = Math.hypot(a[1] - b[1], a[2] - b[2]); if (d < dmin) { dmin = d; cp = a[0] + '-' + b[0]; } }));
+  // il progetto ne chiede 40: il Forno sta fra l'adunata e la Piazza della Marina (74 m fra le due), e dall'adunata dista 35 m
+  ok(dmin >= 34, `le piazze del borgo e del centro lontane l'una dall'altra (la più vicina: ${cp} a ${Math.round(dmin)} m; il progetto: 40)`);
+  ok(['stazione', 'scalo', 'baracche', 'armi'].every(k => (W.sets || []).some(q => q.k === k)), 'i nodi nuovi: piazzale della stazione, Scalo, lotto del fuoco, piazza d\'armi'); }
+
 // ---------------- la Rocca a mare (sez. 11.2) ----------------
 { const F = W.FORT, T = W.T, cellA = (x, y) => Math.floor(y / TS) * W.GW + Math.floor(x / TS), mare = (x, y) => { const i = cellA(x, y); return W.grid[i] === T.WATER && W.zone[i] === W.Z.MARE; };
   const xc = (F.ditch[0] + F.ditch[2]) / 2; let asciutto = 0, ponte = 0; for (let y = 290; y <= 390; y += 2) { if (Math.abs(y - F.y) < 4) { if (!mare(xc, y)) ponte++; continue; } if (!mare(xc, y)) asciutto++; }

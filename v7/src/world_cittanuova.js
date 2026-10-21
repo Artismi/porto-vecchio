@@ -544,7 +544,7 @@ var World = (function () {
     ['stella', 'Condominio Stella', 6, 7, 7, 2, [364, 144], { home: true }],
     ['aurora', 'Condominio Aurora', 6, 7, 6, 4, [450, 160], { home: true }],
     ['commissariato', 'Caserma della Guardia', 9, 6, 3, 10, [386, 160], { sign: { t: 'GUARDIA', c: '#5a8aff' } }],
-    ['cinema', 'Cinema Astor', 7, 5, 4, 13, [400, 144], { sign: { t: 'CINEMA ASTOR', c: '#ffd23b' }, deco: true }],
+    ['cinema', 'Cinema Astor', 5, 7, 4, 13, [400, 144], { sign: { t: 'CINEMA ASTOR', c: '#ffd23b' }, deco: true }],
     ['video', 'Videoteca Stella', 4, 5, 3, 27, [426, 96], { sign: { t: 'VIDEO STELLA', c: '#ff5a5a' }, deco: true }],
     // il porto vecchio dei pescatori, sulla riva sud del centro
     ['osteria', 'Osteria del Porto', 7, 4, 4, 5, [394, 168], { sign: { t: 'OSTERIA', c: '#ffb35c' } }],
@@ -597,7 +597,7 @@ var World = (function () {
   // biblioteca e archivio negli isolati murattiani, la Guardia sulla cortina del Mercato
   { const RELOC = {
       chiesa: [1063, 91], bar: [1098, 121], wu: [1040, 118], ambulatorio: [1028, 96], video: [1090, 96],
-      cultura: [1084, 124], flipper: [1062, 160], gelateria: [1096, 160], cinema: [1036, 160], osteria: [1090, 182], car_2: [1110, 190],
+      cultura: [1084, 124], flipper: [1062, 160], gelateria: [1096, 160], cinema: [1087, 163], osteria: [1090, 182], car_2: [1110, 190],
       santuario: [1126, 196], garante: [1134, 124], pietra: [1130, 124], casotto: [1136, 198],
       ministero: [1015, 117], governo: [1003, 123], aurora: [962, 113], commissariato: [952, 172], sirena: [966, 166],
       // [mappa_compatta] la città finisce alla stazione: chi stava a ovest entra nella cornice (MAPPA_COMPATTA.md sez. 8.1). Biblioteca e
@@ -606,7 +606,7 @@ var World = (function () {
       // officina e cantiere sullo Scalo
       biblioteca: [944, 120], archivio: [966, 121], stella: [1016, 93], miramare: [958, 119], benzina: [940, 168],
       oceano: [960, 178], mare: [946, 176], flamingo: [1000, 95], paradiso: [1120, 190], gabbiano: [1104, 187], magazzino: [1008, 177], cantiere: [938, 181],
-      disco: [987, 76], officina: [975, 178] };
+      disco: [987, 76], officina: [972, 175] };
     NAMED.forEach(q => { const p = RELOC[q[0]]; if (p) { q[6] = p; q[7] = Object.assign({}, q[7], { nuovo: true }); } }); }
 
   // ---------------- IL CENTRO ----------------
@@ -949,7 +949,9 @@ var World = (function () {
       // si riconosce da lontano e la gerarchia si legge dall'arredo
       CITY.sets = [{ k: 'mercato', x: 954, y: 143, r: 16 }, { k: 'sagrato', x0: 1050, y0: 97, x1: 1076, y1: 109 }, { k: 'adunata', x0: 993, y0: 129, x1: 1023, y1: 162 },
         { k: 'piazzetta', x: 1108, y: 124, r: 6, bar: true }, { k: 'piazzetta', x: 1036, y: 167, r: 5, forno: true }, { k: 'marina', x0: 1064, y0: 172, x1: 1086, y1: 184 },
-        { k: 'calata', x0: 1000, x1: 1088 }];
+        { k: 'calata', x0: 1000, x1: 1088 },
+        // [mappa_compatta] passo 5: i nodi nuovi della città compatta
+        { k: 'stazione', x0: 930, y0: 104, x1: 976, y1: 113 }, { k: 'scalo', x0: 958, y0: 180, x1: 998, y1: 193 }, { k: 'baracche', x: 966, y: 71, r: 5, fuoco: true }, { k: 'armi', x0: 1222, y0: 122, x1: 1250, y1: 145 }];
       CITY.spian0 = 1143;   // E1 la spianata: il bordo di levante del borgo demolito fino a qui
       CITY.muraY = x => ry(x) + 3;   // le mura di tramontana: dal binario al filo interno dei vicoli
       CITY.yOn = yOn; CITY.marina = MAR; CITY.rua = RUA;
@@ -1239,7 +1241,7 @@ var World = (function () {
         S.carro = PZ('carro_merci', t.x - 13.5, t.y, Math.PI, { aperto: true, colore: 'castano' }, { nome: 'Carro merci', suTronchino: 13.5 }); }
       // E3 la Via Cavour passa sotto il rilevato nel sottopasso; dalla Via della Stazione ci si scende per una scalinata fra due muri
       if (CITY.cavS) { const C = CITY.cavS, y = ryP(C.x);
-        C.p = PZ('sottopasso', C.x - 7, y, 0, { L: 14, w: 4, h: 3.2, binario: false, hRilevato: 4.8 }, { nome: 'Sottopasso della Via Cavour' }); pzRis(C.p, 'B', 0, 14, -4.5, 4.5);
+        C.p = PZ('sottopasso', C.x - 7, y, 0, { L: 14, w: 4, h: 3.2, binario: false, hRilevato: 4.8 }, { nome: 'Sottopasso della Via Cavour' }); pzRis(C.p, 'B', -.5, 14.5, -5.5, 4.5);   // [mappa_compatta] un bordo in più verso le baracche: la casa non morde la spalla del fornice
         for (let ty = T2i(y - 9); ty <= T2i(y - 4.5); ty++) for (let tx = T2i(C.x - 7); tx <= T2i(C.x + 7); tx++) { const i = ty * GW + tx; if (grid[i] !== T.WATER && roadW[i] === 0 && !reserved[i]) { grid[i] = T.COB; reserved[i] = 1; } }   /* [mappa_compatta] lo slargo davanti al fornice, verso le baracche: la scala di ferro del rilevato ci posa i piedi */
         C.ps = PZ('scalinata', C.x, y + 7.5, -Math.PI / 2, { w: 3.6, dislivello: 3, pianerottoli: 1, lampada: true }, { nome: 'Scalinata della Stazione' });
         for (let ty = T2i(y + 4.5); ty <= T2i(C.y1 - 3.5); ty++) for (const tx of [T2i(C.x - 3), T2i(C.x + 3) - 1]) { const i = ty * GW + tx; if (roadW[i] > 0 || grid[i] === T.WATER) continue; grid[i] = T.BLD; reserved[i] = 1; } }
@@ -1456,7 +1458,7 @@ var World = (function () {
           const d = dist((x + ww / 2) * TS, (y + hh / 2) * TS, at[0], at[1]); if (d < bd && free(x, y, ww, hh, 0)) { bd = d; s = [x, y, ww, hh]; }
         }))));
       }
-      if (ex.military && ex.nuovo) { const x = Math.round(at[0] / TS - w / 2), y = Math.round(at[1] / TS - h / 2); if (free(x, y, w, h, 0)) s = [x, y, w, h]; }   // [rocca2] le masse della Rocca stanno dove le mette il progetto
+      if ((ex.military || /^(officina|magazzino|disco|cinema)$/.test(id)) && ex.nuovo) { const x = Math.round(at[0] / TS - w / 2), y = Math.round(at[1] / TS - h / 2); if (free(x, y, w, h, 0)) s = [x, y, w, h]; }   // [rocca2] le masse della Rocca stanno dove le mette il progetto
       if (!s) { const q = site(at[0], at[1], w, h, 1); if (q) s = [q[0], q[1], w, h]; }
       if (!s) { const q = site(at[0], at[1], w, h, 0) || site(at[0], at[1], h, w, 0); if (q) s = [q[0], q[1], w, h]; }   // [isola] in città lo spazio è poco
       if (!s && typeof process !== 'undefined' && process.env && process.env.PV_DBG) { const c = {}; const cx = Math.floor(at[0] / TS), cy = Math.floor(at[1] / TS); for (let j = cy - 8; j <= cy + 8; j++) for (let i = cx - 8; i <= cx + 8; i++) { const k = j * GW + i; const why = bIndex[k] >= 0 ? 'casa' : roadW[k] > 0 ? 'strada' : reserved[k] ? 'riserv' : 'g' + grid[k] + 'z' + zone[k]; c[why] = (c[why] || 0) + 1; } console.log('[città2] intorno a', id, at, JSON.stringify(c)); }
@@ -2004,7 +2006,7 @@ var World = (function () {
     // periferia est e la Collina Nera
     P('salita', 'Salita della Collina Nera', 470, 128); P('monte', 'Collina Nera', 504, 132); P('vetta', 'Cima della Collina Nera', 518, 134);
     P('belvedere', 'Belvedere', 494, 120); P('bivacco_e', 'Bivacco della Collina Nera', 486, 138, { camp: 'bivacco' }); P('campeggio_e', 'Spiazzo della Collina Nera', 528, 128, { camp: 'tende' });
-    P('covo', 'Il covo sulla Collina Nera', 544, 140, { hidden: true }); P('ruderi', 'Ruderi della Collina Nera', 512, 160, { camp: 'rudere' }); P('osservatorio', 'Vecchia vedetta', 496, 108, { camp: 'vedetta' }); P('grotta', 'La grotta', 470, 150, { camp: 'grotta', hidden: true }); P('cava', 'Cava della Collina Nera', 530, 150);
+    P('covo', 'Il covo nel bunker delle mura', 506, 80, { hidden: true });   // [mappa_compatta] L6: sotto la vecchia vedetta, sulle mura di tramontana P('ruderi', 'Ruderi della Collina Nera', 512, 160, { camp: 'rudere' }); P('osservatorio', 'Vecchia vedetta', 496, 108, { camp: 'vedetta' }); P('grotta', 'La grotta', 470, 150, { camp: 'grotta', hidden: true }); P('cava', 'Cava della Collina Nera', 530, 150);
     P('spiaggia', 'Spiaggia gelata', 512, 198); P('passeggiata', 'Passeggiata a mare', 492, 194); P('discarica', 'Discarica di levante', 548, 184);
     // il Muro e la Base
     P('muro', 'Il Muro', 548, yc(548), { gate: true }); P('varco', 'Varco del Muro', 562, yc(562));
@@ -2429,6 +2431,30 @@ var World = (function () {
   // moduli vedono solo la mappa grande e non sanno niente dello spostamento. Le isole dell'arcipelago (coordinate di progetto,
   // anche negative) si generano qui sopra la mappa grande, poi si rifà il fondale di tutto il mare.
   const OX = 320, OY = 200, SX2 = SX + OX + 360, SY2 = SY + OY + 240, GW2 = SX2 / TS, GH2 = SY2 / TS, OTX = OX / TS, OTY = OY / TS;
+  // [mappa_compatta] I DODICI LUOGHI-MISSIONE (MAPPA_COMPATTA.md sez. 4): lo scheletro della città compatta. Ognuno ha i suoi ruoli
+  // (hub, segreto, pericolo, premio), l'icona della mappa, la firma che si vede dalla strada, il landmark del quartiere, gli ingressi e il
+  // segreto. La posizione la prende dal gioco (l'edificio, la scenografia, il pezzo), così resta vera se il generatore sposta le cose.
+  // Lo leggono percorsi.js (i nodi), posti.js, la mappa del giocatore e le missioni.
+  function luoghi(W) {
+    const TSx = W.TS, B = W.BUILDINGS, bc = id => { const b = B.find(q => q.id === id); return b ? [(b.x + b.w / 2) * TSx, (b.y + b.h / 2) * TSx] : null; };
+    const set = (k, f) => { const q = (W.sets || []).find(s => s.k === k && (!f || f(s))); return q ? (q.x !== undefined ? [q.x, q.y] : [(q.x0 + q.x1) / 2, (q.y0 + q.y1) / 2]) : null; };
+    const pz = t => { const p = (W.pezzi || []).find(q => q.tipo === t); return p ? [p.x, p.y] : null; }, pl = id => W.PLACES[id] ? [W.PLACES[id].x, W.PLACES[id].y] : null;
+    const L = [
+      [1, 'bar', 'Bar Da Gino, Piazzetta del Pozzo', set('piazzetta', q => q.bar), ['hub'], 'tazza', 'gli ombrelloni rossi sulla piazzetta, il campanile alle spalle', 'campanile', ['Rua Maestra', 'Vico del Pozzo'], 'i tetti dal giro della Porta'],
+      [2, 'forno', 'Forno di Lella, Piazzetta del Forno', set('piazzetta', q => q.forno), ['hub', 'premio'], 'pane', 'il fumo del comignolo, la bocca del forno di notte', 'gru_porto', ['Via di Mezzo', 'Vico della Fame', 'Scalinata del Forno'], 'la cantina calda del forno, dalla cisterna del Pozzo'],
+      [3, 'chiesa', 'San Rocco e la cripta, il sagrato', bc('chiesa'), ['segreto'], 'croce', 'il campanile a maioliche', 'campanile', ['Rua Maestra', 'il sagrato'], 'la cripta e le catacombe verso il rifugio'],
+      [4, 'pescheria', 'Pescheria e calata, Piazza della Marina', set('marina'), ['hub', 'premio'], 'pesce', 'la gru, la lanterna del Molo Vecchio', 'gru_porto', ['Via della Marina', 'Vico Lungo'], 'la grata del deposito sotto il Magazzino Neri'],
+      [5, 'officina', 'Officina dello Scalo', bc('officina'), ['premio'], 'chiave', 'il portone a volta col pezzo wildstyle, lo scivolo in acqua', 'gru_porto', ['Corso Garibaldi', 'Via della Marina', 'Vico delle Carceri'], 'in gozzo dalla darsena allo scivolo'],
+      [6, 'covo', 'Covo nel bunker delle mura', pl('covo'), ['segreto'], 'foglia', 'solo dal mare e dalle mura: una lanterna verde fra i merli', 'campanile', ['Via delle Mura', 'il camminamento delle mura'], 'il cunicolo dal rifugio sotto l\'adunata'],
+      [7, 'radio', 'Radio Luna', bc('disco'), ['segreto', 'premio'], 'antenna', 'la torre dell\'acqua con l\'antenna e la lampada bianca', 'torre_acqua', ['Passo delle Baracche', 'Sottopasso Cavour'], 'sopra il rilevato, sui tetti dei carri merci'],
+      [8, 'mercato', 'Mercato ottagonale', set('mercato'), ['hub', 'pericolo'], 'otto', 'la tettoia verde in ghisa', 'tettoia_mercato', ['Corso Garibaldi', 'Galleria del Mercato', 'Via della Vittoria', 'Vico delle Carceri'], 'i tetti dell\'Ottocento (il giro del Mercato)'],
+      [9, 'stazione', 'Stazione e scalo merci', set('stazione'), ['pericolo', 'premio'], 'orologio', 'l\'orologio della stazione', 'stazione', ['Via della Stazione', 'il piazzale', 'Corso Garibaldi'], 'la stanza murata del regime sotto il fabbricato'],
+      [10, 'baracche', 'Baracche e grata del vapore', set('baracche'), ['hub', 'segreto'], 'fiamma', 'il pennacchio di vapore, i fuochi di notte', 'torre_acqua', ['Passo delle Baracche', 'Sottopasso Cavour', 'il passaggio a livello'], 'l\'autobus sepolto sotto la discarica'],
+      [11, 'posto_blocco', 'Posto di blocco della Vittoria', pz('muro_garante') && [pz('muro_garante')[0], (W.FORT ? W.FORT.y : 343)], ['pericolo'], 'sbarra', 'il riflettore e i pali in fila', 'mastio', ['Via della Vittoria', 'la spianata'], 'i tetti delle case mozzate sul bordo della spianata'],
+      [12, 'rocca', 'La Rocca', set('armi'), ['pericolo'], 'torre', 'il mastio col faro rosso', 'mastio', ['il ponte e la Porta della Rocca', 'la porta d\'acqua della darsena'], 'per mare dal Molo Vecchio fino alla porta d\'acqua; il cunicolo di fuga e la cisterna'],
+    ];
+    return L.filter(q => q[3]).map(([n, id, nome, xy, ruoli, icona, firma, landmark, ingressi, segreto]) => ({ n, id, nome, x: +xy[0].toFixed(1), y: +xy[1].toFixed(1), ruoli, icona, firma, landmark, ingressi, segreto }));
+  }
   function expand(W) {
     const N2 = GW2 * GH2, VW2 = GW2 + 1, T_ = T;
     const big = (src, Ctor, fill) => { const a = new Ctor(N2); if (fill !== undefined) a.fill(fill); for (let ty = 0; ty < GH; ty++) a.set(src.subarray(ty * GW, ty * GW + GW), (ty + OTY) * GW2 + OTX); return a; };
@@ -2663,6 +2689,7 @@ var World = (function () {
     (S.routes.giro || []).forEach(outIsle);
     S.routes.pesca = [[1020, 228], [1053, 233], [1062, 258], [1046, 292], [1022, 340], [985, 420], [930, 452], [860, 440]].map(([x, y]) => [x + OX, y + OY]); S.routes.pesca.forEach(outIsle);
     W.__isl = isl; W.__vfix = vfix; W.__ix = ix; W.__toD = toD;
+    if (W.sets) W.luoghi = luoghi(W);
     return W;
   }
   // anteprima RGBA dall'alto (per la pianta)
