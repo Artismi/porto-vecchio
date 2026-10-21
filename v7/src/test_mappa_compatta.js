@@ -77,5 +77,14 @@ ok(camera.length > 20 && !camAlte.length, `sulle vie il fronte lato camera ha al
   const mil = W.BUILDINGS.filter(b => b.military && b.x * TS > F.ditch[2] - 2); ok(mil.length >= 6 && mil.every(b => b.pezzo), `gli edifici della Rocca sono masse del castello (${mil.map(b => b.id + ':' + b.pezzo).join(' ')})`);
 }
 
+// ---------------- passo 11: sotto la città compatta ----------------
+{ console.log = () => {}; global.Interior = require(path.join(src, 'interiors.js')); global.Game = require(path.join(src, 'game.js')); global.Livelli = require(path.join(src, 'livelli.js'));
+  const SS = require(path.join(src, 'sottosuolo.js')); console.log = log; const TPL = SS.TPL, M = TPL.metro, pl = id => TPL.places.find(q => q.id === id), PL = Game.PLACES;
+  ok(M.ok && M.A.name === 'Mercato' && M.B.name === 'Mura' && Math.hypot(M.A.x - 1262, M.A.y - 352) < 25 && Math.hypot(M.B.x - 1455, M.B.y - 288) < 25, `la metropolitana dal Mercato alle Mura (${M.ok ? M.A.x.toFixed(0) + ',' + M.A.y.toFixed(0) + ' → ' + M.B.x.toFixed(0) + ',' + M.B.y.toFixed(0) + ', ' + M.L.toFixed(0) + ' m' : 'manca'})`);
+  const topi = pl('topi'); ok(topi && Math.hypot(topi.x - 1236, topi.y - 340) < 15, `la Città dei Topi sotto i Giardini (${topi ? topi.x.toFixed(0) + ',' + topi.y.toFixed(0) : 'manca'})`);
+  const F = TPL.finds || [], fd = id => F.find(q => q.id === id), reg = fd('regime'), bus = fd('bus');
+  ok(reg && PL.stazione && Math.hypot(reg.x - PL.stazione.x, reg.y - PL.stazione.y) < 40, `la stanza murata del regime sotto la stazione (${reg ? reg.x.toFixed(0) + ',' + reg.y.toFixed(0) : 'manca'})`);
+  ok(bus && Math.hypot(bus.x - 1232, bus.y - 266) < 40, `l'autobus sepolto sotto la discarica delle baracche (${bus ? bus.x.toFixed(0) + ',' + bus.y.toFixed(0) : 'manca'})`); }
+
 console.log(fail ? `\n${fail} prove non passate` : '\ntutte le prove passano');
 process.exit(fail ? 1 : 0);

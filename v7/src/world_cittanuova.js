@@ -1987,13 +1987,14 @@ var World = (function () {
     const RELP = { piazza: [1063, 103], fontana: [1108, 124], vico: [1052, 130], fiori: [950, 143], piazzetta: [1046, 167], caruggio: [1085, 95],
       calata: [1030, 190], lungomare: [1100, 198], salita: [1088, 128], monte: [1118, 128], vetta: [1134, 126], belvedere: [1070, 74], osservatorio: [1112, 72],
       bivacco_e: [1136, 206], campeggio_e: [1150, 212], covo: [1124, 98], ruderi: [1118, 170], grotta: [1100, 168], cava: [1150, 168],
-      spiaggia: [1128, 210], passeggiata: [1104, 198], discarica: [770, 64], piazza_gov: [1008, 143] };
+      spiaggia: [1128, 210], passeggiata: [1104, 198], discarica: [912, 66], piazza_gov: [1008, 143], giardini: [916, 140] };   // [mappa_compatta] la discarica è alle baracche, dietro il rilevato; i Giardini di Ponente davanti al Mercato
     const PN0 = PN; PN = (id, name, x, y, ex) => RELP[id] ? PN0(id, name, RELP[id][0], RELP[id][1], ex) : PN0(id, name, x, y, ex);
     const P = (id, name, x, y, ex) => PN(id, name, xn(x), y, ex);   // [isola] i luoghi di prima sono in coordinate vecchie
     // centro
     P('piazza', 'Piazza San Rocco', 400, 117); P('fontana', 'Fontana di San Rocco', 413, 117); P('vico', 'Vicolo dei Lanternini', 382, 118);
     P('fiori', 'Banco dei fiori', 420, 122); P('piazzetta', 'Vico del Campo', 446, 130); P('caruggio', 'Caruggio dei Pescatori', 372, 152);
     P('calata', 'Calata del porto', 404, 186);
+    PN('stazione', 'Stazione', 947, 101);   // [mappa_compatta] il fabbricato della stazione sul piazzale (la stanza murata del regime ci sta sotto)
     // [costa] il porto vecchio rifatto: il molo dei pescatori è il Molo Vecchio (i pescherecci ci stanno di fianco), il Pontile Est è quello dei Marsigliesi
     PN('molo', 'Molo dei pescatori', 1004, 241); PN('pontile', 'Pontile Est', 1037, 214); PN('marina', 'Marina del porto vecchio', 1013, 197);
     PN('lanterna', 'Lanterna del Molo Vecchio', 1040, 241); PN('molo_levante', 'Molo di Levante', 1068, 222); PN('scalo', 'Scalo del cantiere', 966, 190);
