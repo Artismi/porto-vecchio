@@ -10,6 +10,9 @@
 // Con "pulita" (in scorci.json, vero per difetto) niente HUD, fumetti, nomi sopra la gente ed etichette dei luoghi.
 // Esce: una foto per scorcio, il mosaico galleria.png e galleria.json con le misure di ogni foto (luminosità media, contrasto,
 // % di pixel quasi neri e quasi bianchi, saturazione media, draw call della scena).
+// [profondita] e la separazione dei livelli: il contrasto medio di luminosità attraverso i bordi dove la quota salta più di 2 m (la quota
+// di ogni pixel dalla profondità dello stesso fotogramma, R.profQuote) contro quello fra superfici alla stessa quota; il rapporto sale se i
+// livelli si staccano. Il prima e il dopo del filone: GALLERIA_VARIANTI=strumenti/manopole_profondita.json.
 const path = require('path'), http = require('http'), fs = require('fs');
 const { chromium } = require(process.env.PW || '/opt/node22/lib/node_modules/playwright');
 const [outDir, sceneFile0, W0, H0] = process.argv.slice(2);
@@ -36,7 +39,7 @@ const srv = http.createServer((req, res) => {
   pg.on('console', m => { if (m.type() === 'error') console.log('[console]', m.text().slice(0, 240)); });
   if (PULITA) await pg.addInitScript(() => { window.__pulita = true; });   // render.js e main.js: niente etichette dei luoghi
   await pg.goto(`http://localhost:${port}/${process.env.PV_PAGINA || 'index.html'}${process.env.PV_QUERY !== undefined ? process.env.PV_QUERY : '?cittanuova'}`);
-  await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: 300000 });
+  await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: +(process.env.GALLERIA_CARICO || 300000) });   // GALLERIA_CARICO: ms per caricare (sotto carico 300 s non bastano)
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(1500);
   if (PULITA) await pg.addStyleTag({ content: '#app > *:not(#cv) { visibility: hidden !important; } #bubbles, #hover, #moment, #xhair, #ring, #touch { display: none !important; }' });
   await pg.evaluate(() => { const pv = window.__pv, st = pv.st; st.deadline = 1e12; if (pv.R.gpuTiming) pv.R.gpuTiming(true);
@@ -75,16 +78,16 @@ const srv = http.createServer((req, res) => {
     // 3) le foto e le misure, una per variante delle manopole (stessa scena, stessa gente, stesso istante)
     for (const v of VARIANTI) {
       await pg.evaluate(o => {   // ogni variante parte dalle manopole del codice e cambia solo le sue
-        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL']; window.__M0 = window.__M0 || Object.fromEntries(K.map(k => [k, cp(window['__' + k] || {})]));
+        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL', 'PROF']; window.__M0 = window.__M0 || Object.fromEntries(K.map(k => [k, cp(window['__' + k] || {})]));
         const put = (dst, src) => { for (const k in src) { if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) && dst[k]) put(dst[k], src[k]); else dst[k] = cp(src[k]); } };
-        K.forEach(k => { const w = window['__' + k]; if (!w) return; put(w, window.__M0[k]); put(w, o[k] || {}); });   // QUADRO e SCENA (luce e colore), OCCL (l'ombra degli angoli)
+        K.forEach(k => { const w = window['__' + k]; if (!w) return; put(w, window.__M0[k]); put(w, o[k] || {}); });   // QUADRO e SCENA (luce e colore), OCCL (l'ombra degli angoli), PROF (la separazione dei livelli)
       }, v.manopole);
       const dir = v.nome ? path.join(outDir, v.nome) : outDir; fs.mkdirSync(dir, { recursive: true });
       const file = path.join(dir, s.nome + '.png');
       // la foto si prende dalla tela del gioco subito dopo il suo fotogramma (requestAnimationFrame registrato dopo quello del gioco):
       // con SwiftShader sotto carico un fotogramma può durare decine di secondi e lo screenshot della pagina scadeva. Un fotogramma:
       // le manopole nuove entrano nel fotogramma che segue (anche le finestre, che si riaccendono quando cambia il loro valore)
-      const shot = await pg.evaluate(() => new Promise(res => { const t0 = performance.now(); requestAnimationFrame(() => { const cv = document.getElementById("cv"); res({ url: cv.toDataURL("image/png"), ms: Math.round(performance.now() - t0) }); }); }));
+      const shot = await pg.evaluate(() => new Promise(res => { const t0 = performance.now(); requestAnimationFrame(() => { const cv = document.getElementById("cv"); const url = cv.toDataURL("image/png"); try { window.__quote = window.__pv.R.profQuote ? window.__pv.R.profQuote(cv.width, cv.height) : null; } catch (e) { window.__quote = null; } res({ url, ms: Math.round(performance.now() - t0) }); }); }));   // [profondita] con la foto, la quota di ogni pixel dello stesso fotogramma
       const buf = Buffer.from(shot.url.split(',')[1], 'base64'); fs.writeFileSync(file, buf); log('foto ' + (v.nome || '') + ' (fotogramma ' + shot.ms + ' ms)');
       const m = await pg.evaluate(async ({ b64, MIS }) => {
         const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
@@ -93,12 +96,24 @@ const srv = http.createServer((req, res) => {
         for (let i = 0; i < D.length; i += 4) { const r = D[i], g = D[i + 1], bb = D[i + 2], l = .2126 * r + .7152 * g + .0722 * bb, mx = Math.max(r, g, bb), mn = Math.min(r, g, bb);
           sl += l; sl2 += l * l; if (l < MIS.nero) nero++; if (l > MIS.bianco) bianco++; ss += mx > 0 ? (mx - mn) / mx : 0; }
         const mu = sl / N, pv = window.__pv, info = pv.R.gpuTimes && pv.R.gpuTimes.info;
+        // [profondita] la misura di separazione: il salto medio di luminosità (0-255) fra due pixel a 2 px di distanza dove la quota salta più
+        // di 2 m, contro quello fra due pixel alla stessa quota (meno di 15 cm); il rapporto è la separazione (più alto: i livelli si staccano)
+        let sep = null; const Q = window.__quote, Wc = c.width, Hc = c.height;
+        if (Q && Q.length === Wc * Hc * 4) {
+          const L = new Float32Array(Wc * Hc), Hq = new Float32Array(Wc * Hc);
+          for (let y = 0; y < Hc; y++) for (let x = 0; x < Wc; x++) { const i = y * Wc + x, k = ((Hc - 1 - y) * Wc + x) * 4, j = i * 4;
+            L[i] = .2126 * D[j] + .7152 * D[j + 1] + .0722 * D[j + 2]; Hq[i] = Q[k + 3] ? (Q[k] * 256 + Q[k + 1]) / 100 - 50 : NaN; }
+          let sS = 0, nS = 0, sP = 0, nP = 0;
+          for (let y = 0; y < Hc - 2; y++) for (let x = 0; x < Wc - 2; x++) { const i = y * Wc + x, h0 = Hq[i]; if (h0 !== h0) continue;
+            for (const o of [2, 2 * Wc]) { const h1 = Hq[i + o]; if (h1 !== h1) continue; const dh = Math.abs(h1 - h0), dl = Math.abs(L[i + o] - L[i]);
+              if (dh > 2) { sS += dl; nS++; } else if (dh < .15) { sP += dl; nP++; } } }
+          if (nS && nP) sep = { salto: +(sS / nS).toFixed(2), piano: +(sP / nP).toFixed(2), rapporto: +((sS / nS) / (sP / nP)).toFixed(3), quotaSalti: +(nS / (nS + nP) * 100).toFixed(2) }; }
         return { luminosita: +(mu / 255).toFixed(3), contrasto: +(Math.sqrt(Math.max(0, sl2 / N - mu * mu)) / 255).toFixed(3), quasiNeri: +(nero / N * 100).toFixed(2), quasiBianchi: +(bianco / N * 100).toFixed(2), saturazione: +(ss / N).toFixed(3),
-          drawCall: info && info.calls || null, triangoli: info && info.tris || null, ora: Math.round(pv.st.t % 1440), notte: +(pv.R.nightLevel(pv.st.t)).toFixed(2), gente: pv.st.npcs.filter(n => !n.inside && !n.dead && Math.hypot(n.x - pv.st.player.x, n.y - pv.st.player.y) < 40).length };
+          drawCall: info && info.calls || null, triangoli: info && info.tris || null, ora: Math.round(pv.st.t % 1440), notte: +(pv.R.nightLevel(pv.st.t)).toFixed(2), gente: pv.st.npcs.filter(n => !n.inside && !n.dead && Math.hypot(n.x - pv.st.player.x, n.y - pv.st.player.y) < 40).length, separazione: sep };
       }, { b64: buf.toString('base64'), MIS });
       const rec = Object.assign({ nome: s.nome, titolo: s.titolo || s.nome, luce: s.luce || null, meteo: s.meteo || null, nelPosto: pieni }, m);
       v.out.push(rec); fs.writeFileSync(file.replace(/\.png$/, '.json'), JSON.stringify(rec));
-      console.log(`ok ${(v.nome ? v.nome + ' ' : '') + s.nome.padEnd(22)} lum ${m.luminosita} contr ${m.contrasto} neri ${m.quasiNeri}% bianchi ${m.quasiBianchi}% sat ${m.saturazione} dc ${m.drawCall} gente ${m.gente} nei posti ${pieni} (${((Date.now() - ts) / 1000).toFixed(0)} s)`);
+      console.log(`ok ${(v.nome ? v.nome + ' ' : '') + s.nome.padEnd(22)} lum ${m.luminosita} contr ${m.contrasto} neri ${m.quasiNeri}% bianchi ${m.quasiBianchi}% sat ${m.saturazione} dc ${m.drawCall} sep ${m.separazione ? m.separazione.rapporto + ' (' + m.separazione.salto + '/' + m.separazione.piano + ')' : '-'} gente ${m.gente} nei posti ${pieni} (${((Date.now() - ts) / 1000).toFixed(0)} s)`);
     }
   }
   // 4) il mosaico per variante: cinque colonne, la didascalia con le misure sotto ogni foto (in rosso se fuori soglia)
@@ -113,13 +128,14 @@ const srv = http.createServer((req, res) => {
         const X = pad + (i % C) * (tw + pad), Y = top + pad + Math.floor(i / C) * (th + cap + pad); x.drawImage(img, X, Y, tw, th);
         x.fillStyle = '#e8e2d4'; x.font = 'bold 15px sans-serif'; x.fillText(r.titolo, X + 4, Y + th + 16);
         const bad = (r.notte < .5 && r.quasiNeri > 4) || r.quasiBianchi > 2; x.fillStyle = bad ? '#ff8a70' : '#a8b0b8'; x.font = '12px monospace';
-        x.fillText(`L ${r.luminosita} C ${r.contrasto} N ${r.quasiNeri}% B ${r.quasiBianchi}% S ${r.saturazione} dc ${r.drawCall}`, X + 4, Y + th + 32); }
+        x.fillText(`L ${r.luminosita} C ${r.contrasto} N ${r.quasiNeri}% B ${r.quasiBianchi}% S ${r.saturazione} dc ${r.drawCall}${r.separazione ? ' sep ' + r.separazione.rapporto : ''}`, X + 4, Y + th + 32); }
       return c.toDataURL('image/png').split(',')[1];
     }, { files, W, H, tit: v.nome ? 'Galleria degli scorci — ' + v.nome : '' });
     fs.writeFileSync(path.join(dir, 'galleria.png'), Buffer.from(mosaic, 'base64'));
     const day = out.filter(r => r.notte < .5), avg = (L, k) => L.length ? +(L.reduce((a, r) => a + r[k], 0) / L.length).toFixed(3) : null;
     const sintesi = { foto: out.length, giorno: day.length, lumMediaGiorno: avg(day, 'luminosita'), contrastoMedio: avg(out, 'contrasto'), saturazioneMedia: avg(out, 'saturazione'),
-      neriOltre4Giorno: day.filter(r => r.quasiNeri > 4).map(r => r.nome), sovraesposte: out.filter(r => r.quasiBianchi > 2).map(r => r.nome), drawCallMedie: avg(out.filter(r => r.drawCall), 'drawCall') };
+      neriOltre4Giorno: day.filter(r => r.quasiNeri > 4).map(r => r.nome), sovraesposte: out.filter(r => r.quasiBianchi > 2).map(r => r.nome), drawCallMedie: avg(out.filter(r => r.drawCall), 'drawCall'),
+      separazioneMedia: (L => L.length ? +(L.reduce((a, r) => a + r.separazione.rapporto, 0) / L.length).toFixed(3) : null)(out.filter(r => r.separazione)) };
     fs.writeFileSync(path.join(dir, 'galleria.json'), JSON.stringify({ quando: new Date().toISOString(), variante: v.nome || null, manopole: v.manopole, larghezza: W, altezza: H, soglie: MIS, sintesi, foto: out }, null, 1));
     console.log('sintesi', v.nome || '', JSON.stringify(sintesi));
     console.log('mosaico', path.join(dir, 'galleria.png'));
