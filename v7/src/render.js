@@ -310,7 +310,7 @@ var Render = (function () {
       for (const c of o.children) {
         const e = c.userData.p2 && P2.on && cn1() ? (() => { const q = p2New(c.userData.p2); q.yaw0 = yawM2(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); q.mp = []; E2.push(q); return q; })() : e2;   // [pulizia2] le parti segnate: dove finiscono nella mesh fusa
         if (c.userData.keepTree || c.isSprite || c.isLight || (c.isMesh && (Array.isArray(c.material) || c.userData.keep))) { keep.push(c); if (e && (c.isMesh || c.userData.keepTree)) e.objs.push(c); continue; }
-        if (c.isMesh) { let b = by.get(c.material); if (!b) { b = []; by.set(c.material, b); } const g = flatXf(c.geometry, new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld));   // [carico] b.push(g); if (e) e.mp.push([b, b.length - 1, g.attributes.position.count]); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
+        if (c.isMesh) { let b = by.get(c.material); if (!b) { b = []; by.set(c.material, b); } const g = flatXf(c.geometry, new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld));   /* [carico] */ b.push(g); if (e) e.mp.push([b, b.length - 1, g.attributes.position.count]); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
         walk(c, e);
       }
     };
