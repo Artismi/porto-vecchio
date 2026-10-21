@@ -203,6 +203,14 @@
   }
   function input0() {
     const sprint = !!keys.shift || touchRun || touchBoost, brakeKey = !!keys[' '] || touchBrake;
+    // [fluido] il controller: la levetta è una direzione dello schermo con la visuale di adesso (gira con la levetta destra),
+    // l'inclinazione è la velocità (mag: dal passo alla corsa). Si guarda dove si va: girarsi è immediato anche all'indietro
+    if (PAD.on && !st.player.vehicle && PAD.m > 0) {
+      ui.faceIdle = undefined; if (click.t) { click.t = null; ui.mark = null; } if (st.lv && st.lv.route) st.lv.route = null;
+      const B = R.camBasis(), x = B.rx * PAD.x - B.fx * PAD.y, y = B.rz * PAD.x - B.fz * PAD.y, l = Math.hypot(x, y) || 1;
+      return { x: x / l, y: y / l, sprint, brake: brakeKey, aim: Math.atan2(y, x), mag: PAD.m };
+    }
+    if (PAD.on && st.player.vehicle && (PAD.m > 0 || PAD.gas > .05 || PAD.brk > .05)) return { x: 0, y: 0, aim: st.player.face, drive: { thr: PAD.gas - PAD.brk, steer: PAD.m > 0 ? PAD.x * Math.min(1, Math.abs(PAD.x) * 1.4) : 0, hb: brakeKey, boost: sprint, assist: !(PAD.m > 0 && Math.abs(PAD.x) > .1) } };
     if (st.player.vehicle && touchMode && Math.hypot(stick.x, stick.y) > .2) {   // [telefono] guida «verso dove spingi»: la levetta è una direzione dello schermo, non gas e sterzo
       const v = st.vehicles.find(q => q.id === st.player.vehicle), B = stickB || R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));
       if (v) { const want = Math.atan2(wy, wx), ad = a => Math.atan2(Math.sin(a), Math.cos(a)), d = ad(want - v.ang), spd = Math.abs(v.speed || Math.hypot(v.vx || 0, v.vy || 0));
@@ -211,9 +219,9 @@
         if (spd > 2 && (v.speed || 0) > 0) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: 0, hb: brakeKey, boost: false } };   // dalla parte opposta: prima frena
         return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
-    if (stick.x || stick.y) { ui.faceIdle = undefined; // touch: la levetta segue lo schermo
+    if (Math.hypot(stick.x, stick.y) > PAD_DZ) { ui.faceIdle = undefined; // touch: la levetta segue lo schermo   // [fluido] con la stessa zona morta rotonda del controller (prima ogni millimetro spostava)
       const B = stickB || R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
-      return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode ? Math.atan2(y, x) : aimAngle(), mag: touchMode ? Math.min(1, Math.hypot(stick.x, stick.y)) : undefined };   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va
+      return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode ? Math.atan2(y, x) : aimAngle(), mag: touchMode ? stickResp(Math.hypot(stick.x, stick.y)) : undefined };   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
     }
     let f = 0, s = 0;
     const ar = !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick
@@ -411,8 +419,8 @@
       else if (h && h.kind === 'loot') t = h.label;
       else if (h && h.kind === 'car') t = p.vehicle === h.v.id ? 'Scendi' : h.v.traffic ? `Tira giù l'automobilista (${G.VK[h.v.kind].label})` : h.v.lent || h.v.mine ? 'Sali' : `Ruba ${G.vehicleName(st, h.v)}`;
       cv.style.cursor = h && h.kind !== 'move' ? 'pointer' : 'default';
-      hoverEl.hidden = !t; if (t) { hoverEl.textContent = t; hoverEl.style.left = mouse.cx + 'px'; hoverEl.style.top = mouse.cy + 'px'; }
-    } else hoverEl.hidden = true;
+      setHid(hoverEl, !t); if (t) { setT(hoverEl, t); setS(hoverEl, 'left', mouse.cx + 'px'); setS(hoverEl, 'top', mouse.cy + 'px'); }   // [fluido] solo se cambia
+    } else setHid(hoverEl, true);
   }
 
   // ---------- Dialoghi ----------
@@ -563,10 +571,22 @@
 
   // ---------- Fumetti e icone ----------
   const pool = [];
+  // [fluido] fumetti, nomi e icone: a ogni fotogramma si riscrivevano contenuto, classe e posizione (left/top, che rifanno
+  // l'impaginazione) di ogni etichetta. Ora ognuna si ricorda cosa mostra e si tocca solo quello che cambia; la posizione va
+  // in transform (si sposta senza impaginare, a mezzo pixel)
+  function bubSet(el, cls, html, sx, sy, rot) {
+    if (el.hidden) el.hidden = false;
+    if (el.__c !== cls) { el.__c = cls; el.className = cls; }
+    if (el.__h !== html) { el.__h = html; el.innerHTML = html; }
+    const X = Math.round(sx * 2) / 2, Y = Math.round(sy * 2) / 2;
+    if (el.__x !== X || el.__y !== Y || el.__r !== rot) { el.__x = X; el.__y = Y; el.__r = rot;
+      if (el.style.left !== '0px') { el.style.left = '0px'; el.style.top = '0px'; }
+      el.style.transform = `translate(${X}px,${Y}px) translate(-50%,${rot === undefined ? '-100%' : '-50%'})` + (rot === undefined ? '' : ` rotate(${rot}rad)`); }
+  }
   function drawBubbles() {
     const layer = $('bubbles'), W = app.clientWidth, H = app.clientHeight;
     let i = 0;
-    const get = () => { let el = pool[i]; if (!el) { el = document.createElement('div'); layer.appendChild(el); pool.push(el); } el.hidden = false; el.style.transform = ''; i++; return el; };
+    const get = () => { let el = pool[i]; if (!el) { el = document.createElement('div'); layer.appendChild(el); pool.push(el); } i++; return el; };
     const p = st.player;
     const sotto = !!(p.lv && p.lv.k === 'ug');   // [regia2] sotto terra la gente di sopra non si vede: niente nomi né fumetti
     if (!ui.intro && !sotto && !window.__pulita) st.npcs.forEach(n => {
@@ -576,9 +596,8 @@
       const pr = R.project(n.x, 2.35, n.y); if (pr.behind || pr.x < -.05 || pr.x > 1.05 || pr.y < -.05 || pr.y > 1.05) return;
       const sx = pr.x * W, sy = pr.y * H;
       if (n.bark && n.bark.until > st.clock && d < 26) {
-        const el = get(); const hot = ['affronta', 'insegue', 'fugge', 'combatte'].includes(n.action.name) || n.framedAngry; const rum = /^Hai sentito/.test(n.bark.text);
-        el.className = 'bub' + (hot ? ' hot' : rum ? ' rumor' : ''); el.style.left = sx + 'px'; el.style.top = (sy - 6) + 'px';
-        el.innerHTML = `<span class="who">${esc(n.first)}</span>${esc(n.bark.text)}`;
+        const hot = ['affronta', 'insegue', 'fugge', 'combatte'].includes(n.action.name) || n.framedAngry; const rum = /^Hai sentito/.test(n.bark.text);
+        bubSet(get(), 'bub' + (hot ? ' hot' : rum ? ' rumor' : ''), `<span class="who">${esc(n.first)}</span>${esc(n.bark.text)}`, sx, sy - 6);
         return;
       }
       const pm = n.mem.filter(m => m.actor === 'player');
@@ -590,9 +609,9 @@
       else if (pm.some(m => G.NEG[m.type] && !m.silenced)) ico = ['?', 'heard'];
       else if (n.op.trust > .4) ico = ['+', 'friend'];
       if (d < 5.5 && !n.passante && !p.vehicle) {
-        const el = get(); const a = G.attitude(st, n); el.className = 'tag'; el.style.left = sx + 'px'; el.style.top = sy + 'px';
-        el.innerHTML = `${ico ? `<span class="ico ${ico[1]}" style="position:static;transform:none">${ico[0]}</span> ` : ''}${esc(n.first)}<span class="att ${a.tone}">${a.label}</span>`;
-      } else if (ico && d < 30) { const el = get(); el.className = 'ico ' + ico[1]; el.style.left = sx + 'px'; el.style.top = sy + 'px'; el.textContent = ico[0]; }
+        const a = G.attitude(st, n);
+        bubSet(get(), 'tag', `${ico ? `<span class="ico ${ico[1]}" style="position:static;transform:none">${ico[0]}</span> ` : ''}${esc(n.first)}<span class="att ${a.tone}">${a.label}</span>`, sx, sy);
+      } else if (ico && d < 30) bubSet(get(), 'ico ' + ico[1], esc(ico[0]), sx, sy);
     });
     const jt = G.jobTarget(st);
     if (jt && !ui.intro) {
@@ -601,36 +620,55 @@
         let px = pr.x, py = pr.y; if (pr.behind) { px = 1 - px; py = 1 - py; }
         const cx = Math.min(.95, Math.max(.05, px)) * W, cy = Math.min(.92, Math.max(.08, py)) * H;
         const a = Math.atan2(py * H - H / 2, px * W - W / 2);
-        const el = get(); el.className = 'edge'; el.innerHTML = ''; el.style.left = cx + 'px'; el.style.top = cy + 'px'; el.style.transform = `translate(-50%,-50%) rotate(${a}rad)`;
+        bubSet(get(), 'edge', '', cx, cy, Math.round(a * 100) / 100);
       }
     }
-    for (; i < pool.length; i++) pool[i].hidden = true;
+    for (; i < pool.length; i++) if (!pool[i].hidden) pool[i].hidden = true;
   }
 
   // ---------- HUD ----------
   let lastHm = null;
+  // [fluido] la HUD scrive nel documento solo quello che è cambiato. Prima ogni 0,1 s si riscrivevano soldi, cronaca, suggerimenti
+  // e armi: la cronaca («le cose successe») ricreava le sue righe e la loro entrata animata (.fi, 0,3 s) ripartiva da capo
+  // dieci volte al secondo: era il testo che lampeggia. Ora ogni riga nasce una volta e resta lo stesso nodo finché scade.
+  const setH = (el, h) => { if (el && el.__h !== h) { el.__h = h; el.innerHTML = h; } };
+  const setT = (el, t) => { if (el && el.__t !== t) { el.__t = t; el.textContent = t; } };
+  const setS = (el, k, v) => { if (el && el.style[k] !== v) el.style[k] = v; };
+  const setHid = (el, v) => { if (el && el.hidden !== v) el.hidden = v; };
+  const setCls = (el, c) => { if (el && el.className !== c) el.className = c; };
+  function feedDom() {
+    const box = $('feed'); if (!box) return; const items = st.feed.slice(0, 3), was = box.__items;
+    if (was && was.length === items.length && was.every((f, i) => f === items[i])) return;
+    const old = box.__map || new Map(), map = new Map();
+    items.forEach((f, i) => {
+      let el = old.get(f); if (!el) { el = document.createElement('div'); el.className = 'fi ' + (f.kind === 'radio' ? 'rumor' : f.kind); el.textContent = f.text; }
+      map.set(f, el); if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
+    });
+    const keep = new Set(map.values()); for (const el of Array.from(box.children)) if (!keep.has(el)) el.remove();   // le righe scadute (e quello che c'era prima)
+    box.__map = map; box.__items = items;
+  }
   function hud() {
     const p = st.player;
-    $('money').innerHTML = `${fmt(p.money)} <small>/ ${fmt(st.debt)} lire</small>`;
-    $('debtbar').style.width = Math.min(100, p.money / st.debt * 100) + '%';
-    $('hp').style.width = Math.max(0, Math.min(100, p.hp)) + '%'; $('hpbar').classList.toggle('low', p.hp < 35);
-    $('day').textContent = G.dayName(st.t); $('time').textContent = G.clockStr(st.t);
-    const hl = G.hoursLeft(st); $('left').textContent = st.deadline > 1e8 ? 'nessuna scadenza' : hl <= 1 ? 'meno di un\'ora' : `${hl}h all'alba`; $('left').className = hl <= 6 && st.deadline < 1e8 ? 'urgent' : '';
-    const jt = G.jobTarget(st); $('job').hidden = !jt; if (jt) $('job').textContent = jt.label;
-    const w = G.wanted(st); $('wanted').querySelectorAll('.star').forEach((s, i) => s.classList.toggle('on', i < w)); $('wanted').classList.toggle('chase', st.chase);
-    $('feed').innerHTML = st.feed.slice(0, 3).map(f => `<div class="fi ${f.kind === 'radio' ? 'rumor' : f.kind}">${esc(f.text)}</div>`).join('');
+    setH($('money'), `${fmt(p.money)} <small>/ ${fmt(st.debt)} lire</small>`);
+    setS($('debtbar'), 'width', Math.min(100, p.money / st.debt * 100) + '%');
+    setS($('hp'), 'width', Math.max(0, Math.min(100, p.hp)) + '%'); const hpb = $('hpbar'); if (hpb.classList.contains('low') !== (p.hp < 35)) hpb.classList.toggle('low', p.hp < 35);
+    setT($('day'), G.dayName(st.t)); setT($('time'), G.clockStr(st.t));
+    const hl = G.hoursLeft(st); setT($('left'), st.deadline > 1e8 ? 'nessuna scadenza' : hl <= 1 ? 'meno di un\'ora' : `${hl}h all'alba`); setCls($('left'), hl <= 6 && st.deadline < 1e8 ? 'urgent' : '');
+    const jt = G.jobTarget(st); setHid($('job'), !jt); if (jt) setT($('job'), jt.label);
+    const w = G.wanted(st), wEl = $('wanted'); if (wEl.__w !== w) { wEl.__w = w; wEl.querySelectorAll('.star').forEach((s, i) => s.classList.toggle('on', i < w)); } if (wEl.classList.contains('chase') !== !!st.chase) wEl.classList.toggle('chase', !!st.chase);
+    feedDom();
     const cx = (ui.dialog || ui.book || ui.intro) ? [] : G.context(st);
     if (p.money >= st.debt && !ui.intro) { const s = G.byId(st, 'sandro'); if (s && !s.dead && Math.hypot(s.x - p.x, s.y - p.y) > 3) cx.unshift({ key: '★', label: 'Hai i soldi: vai dallo Squalo (Magazzino Neri o sala giochi)' }); }
-    $('ctx').innerHTML = cx.map(c => `<span class="chip ${c.bad ? 'bad' : ''}"><kbd>${c.key}</kbd>${esc(c.label)}</span>`).join('');
+    setH($('ctx'), cx.map(c => `<span class="chip ${c.bad ? 'bad' : ''}"><kbd>${c.key}</kbd>${esc(c.label)}</span>`).join(''));
     // arma
     const W = G.WEAPONS[p.cur], a = p.arms[p.cur] || {};
-    $('weapon').hidden = ui.intro;
-    $('wname').textContent = (p.hand && typeof Azioni !== 'undefined' && Azioni.ITEMS[p.hand] ? Azioni.ITEMS[p.hand].name : W.name) + (p.vehicle && p.cur !== 'pugni' ? ' · dal finestrino' : '');   // [azioni]
-    weaponIcon($('wicon'), p.hand || p.cur);   // [azioni] in mano un attrezzo
-    $('wammo').innerHTML = W.melee ? '<small>G pugno veloce</small>' : W.throw ? `${a.mag || 0} <small>bottiglie</small>` : `${a.mag} <small>/ ${a.reserve}</small>`;
-    $('wammo').className = !W.melee && !W.throw && a.mag === 0 ? 'empty' : '';
-    $('wrel').style.width = p.reload > 0 ? (1 - p.reload / W.reload) * 100 + '%' : '0%';
-    $('wslots').innerHTML = Object.keys(G.WEAPONS).map(k => `<span class="${k === p.cur ? 'on' : p.arms[k] ? '' : 'off'}">${G.WEAPONS[k].slot} ${k === 'pugni' ? 'pugni' : k}</span>`).join('');
+    setHid($('weapon'), !!ui.intro);
+    setT($('wname'), (p.hand && typeof Azioni !== 'undefined' && Azioni.ITEMS[p.hand] ? Azioni.ITEMS[p.hand].name : W.name) + (p.vehicle && p.cur !== 'pugni' ? ' · dal finestrino' : ''));   // [azioni]
+    { const wi = $('wicon'), wk = p.hand || p.cur; if (wi.__w !== wk) { wi.__w = wk; weaponIcon(wi, wk); } }   // [azioni] in mano un attrezzo   // [fluido] si ridisegna quando cambia
+    setH($('wammo'), W.melee ? '<small>G pugno veloce</small>' : W.throw ? `${a.mag || 0} <small>bottiglie</small>` : `${a.mag} <small>/ ${a.reserve}</small>`);
+    setCls($('wammo'), !W.melee && !W.throw && a.mag === 0 ? 'empty' : '');
+    setS($('wrel'), 'width', p.reload > 0 ? (1 - p.reload / W.reload) * 100 + '%' : '0%');
+    setH($('wslots'), Object.keys(G.WEAPONS).map(k => `<span class="${k === p.cur ? 'on' : p.arms[k] ? '' : 'off'}">${G.WEAPONS[k].slot} ${k === 'pugni' ? 'pugni' : k}</span>`).join(''));
     // momento cinematografico
     const mo = st.moments[0];
     if (mo && mo !== ui.lastMoment) {
@@ -642,12 +680,12 @@
       else if (mo.kind === 'jail') { const tn = G.byId(st, mo.npcs[0]); m.innerHTML = `${esc(tn.first)} finisce dentro.<small>Per una cosa che hai fatto tu.</small>`; }
       m.hidden = false;
     }
-    if (ui.time > ui.momentUntil) $('moment').hidden = true;
+    if (ui.time > ui.momentUntil) setHid($('moment'), true);   // [fluido] solo se cambia
   }
   function crosshair() {
     const x = $('xhair'), p = st.player;
     const show = mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.over && !touchMode && !(window.Editor && Editor.active());   // [editor]
-    x.hidden = !show; cv.style.cursor = show ? 'none' : window.Editor && Editor.active() ? Editor.cursor() : 'default';
+    setHid(x, !show); setS(cv, 'cursor', show ? 'none' : window.Editor && Editor.active() ? Editor.cursor() : 'default');   // [fluido] solo se cambia
     if (!show) return;
     x.style.left = mouse.cx + 'px'; x.style.top = mouse.cy + 'px';
     const W = G.WEAPONS[p.cur], spread = W.melee || W.throw ? 0 : W.spread + p.bloom + (Math.abs(p.speed) > .5 ? .03 : 0);
@@ -735,6 +773,44 @@
     function mv(e) { const r = sEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 65) / 50, dy = (e.clientY - r.top - 65) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } stick.x = dx; stick.y = dy; kn.style.left = 43 + dx * 40 + 'px'; kn.style.top = 43 + dy * 40 + 'px'; }
   }
 
+  // ---------- [fluido] Il controller (Gamepad API) ----------
+  // Prima il gioco non leggeva il controller: chi lo usava passava da una mappatura sui tasti (WASD, niente corsa, visuale col mouse).
+  // Ora si legge a ogni fotogramma, prima del passo del motore. La levetta sinistra cammina rispetto a quello che vedi: zona morta
+  // rotonda del 15%, poi una curva (poco inclinata è il passo lento) che arriva alla corsa piena all'85%. La destra gira la visuale
+  // (in orizzontale) e la avvicina o allontana (in verticale). I tasti diventano quelli della tastiera: A salta (Invio nei menu),
+  // B monta o scende, X agisce, Y parla, LB ricarica, RB cambia arma, Back esce, Start il taccuino; il grilletto destro spara dove
+  // guardi (alla guida: destro gas, sinistro freno e retro); la croce su e giù fa lo zoom.
+  const PAD = { on: false, x: 0, y: 0, m: 0, rot: 0, zoom: 0, fire: false, gas: 0, brk: 0, down: [] };
+  const PAD_DZ = .15, PAD_RUN = .85, PAD_KEYS = { 0: ' ', 1: 'f', 2: 'e', 3: 't', 4: 'r', 5: 'q', 8: 'Escape', 9: 'Tab' };
+  // la stessa risposta per il controller e per la levetta a schermo: 0 nella zona morta, 1 (la corsa) da PAD_RUN in su
+  function stickResp(l) { const d = Math.max(0, Math.min(1, (l - PAD_DZ) / (PAD_RUN - PAD_DZ))); return d > 0 ? Math.pow(d, 1.4) : 0; }
+  const axis1 = v => { const a = Math.abs(v); return a < PAD_DZ ? 0 : Math.sign(v) * Math.pow((a - PAD_DZ) / (1 - PAD_DZ), 1.6); };
+  function padKey(i, down) {
+    let k = PAD_KEYS[i]; if (!k) return;
+    if ((i === 0 || i === 9) && (ui.intro || ui.over)) k = 'Enter';
+    if (!down && k === 'Enter') return;
+    document.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { key: k, bubbles: true, cancelable: true }));
+  }
+  function padPoll(dt) {
+    let g = null;
+    try { const L = navigator.getGamepads ? navigator.getGamepads() : null; if (L) for (let i = 0; i < L.length; i++) { const q = L[i]; if (q && q.connected !== false && q.axes && q.axes.length >= 2) { g = q; break; } } } catch (e) { }
+    if (!g) { if (PAD.on) { PAD.on = false; PAD.x = PAD.y = PAD.m = PAD.rot = PAD.zoom = PAD.gas = PAD.brk = 0; PAD.fire = false; PAD.down.forEach((d, i) => { if (d) padKey(i, false); }); PAD.down = []; } return; }
+    const ax = g.axes[0] || 0, ay = g.axes[1] || 0, l = Math.hypot(ax, ay), m = stickResp(l);
+    PAD.m = m; PAD.x = m > 0 ? ax / l : 0; PAD.y = m > 0 ? ay / l : 0;
+    PAD.rot = -axis1(g.axes[2] || 0) * 1.6; PAD.zoom = axis1(g.axes[3] || 0);
+    const B = g.buttons || [], bv = i => { const b = B[i]; return !b ? 0 : typeof b === 'object' ? (b.pressed ? Math.max(.6, b.value || 0) : b.value || 0) : +b; };
+    let any = m > 0 || PAD.rot !== 0 || PAD.zoom !== 0;
+    for (let i = 0; i < B.length && i < 16; i++) {
+      const d = bv(i) > .5; if (d) any = true; if (d === !!PAD.down[i]) continue; PAD.down[i] = d;
+      if (PAD_KEYS[i]) padKey(i, d);
+      else if (d && i === 12) zoomBy(1 / 1.12); else if (d && i === 13) zoomBy(1.12);
+    }
+    PAD.gas = bv(7); PAD.brk = bv(6);
+    const fire = PAD.gas > .5 && !st.player.vehicle && !ui.dialog && !ui.book && !ui.menu; if (fire && !PAD.fire) mouse.pressed = true; PAD.fire = fire;
+    if (PAD.zoom && !ui.intro && !ui.dialog && !ui.book) zoomBy(1 + PAD.zoom * dt * 1.6);
+    if (any) { PAD.on = true; mouse.active = false; mouse.down = false; lastAim = null; ui.aimPoint = null; }
+  }
+
   // ---------- [fluido] Quanto si vede ----------
   // ogni 0,2 s: la distanza dal giocatore dell'angolo di schermo più lontano (sul terreno), più un margine. game.js allarga la
   // bolla del dettaglio fino a lì: a zoom largo chi è sul bordo dello schermo non cammina a scatti. Orizzonte in vista: tutto.
@@ -819,9 +895,23 @@
   // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
   // sembra più fluido di un 45 che oscilla (era il tremolio), e la risoluzione dinamica che scendeva era la «perdita di risoluzione»
   const FC = { on: false, t: 0, n: 0 };
+  const PACE = { avg: 1 / 60, debt: 0 };   // [fluido]
+  // [fluido] lo sguardo avanti della camera: la direzione (nel mondo) che la levetta chiede in questo fotogramma, la stessa data al
+  // motore; render.js la sposta verso quel lato dello schermo subito (pochi centesimi di secondo), non dietro alla velocità
+  const LEAD = { x: 0, y: 0, m: 0 };
+  function leadOf(inp) {
+    if (!inp || inp.mag === undefined || !(inp.x || inp.y) || st.player.vehicle || ui.intro) return null;
+    const l = Math.hypot(inp.x, inp.y); LEAD.x = inp.x / l; LEAD.y = inp.y / l; LEAD.m = .4 + .6 * Math.min(1, inp.mag); return LEAD;
+  }
   function loop0(now) {
     if (FC.on && now - last < 30) { requestAnimationFrame(loop); return; }
-    const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
+    const raw = Math.max(0, (now - last) / 1000); last = now;
+    // [fluido] passo regolare: i fotogrammi quasi uguali (16,4 / 17,1 ms: il ritmo dello schermo letto dal browser) usano la media,
+    // così il movimento non trema; quello che avanza o manca si restituisce a poco a poco (il tempo di gioco non deriva).
+    // I salti veri (un fotogramma lungo) passano com'erano, al massimo 50 ms
+    if (raw > 0 && raw < .25) { PACE.avg += (raw - PACE.avg) * .08; } const near = Math.abs(raw - PACE.avg) < PACE.avg * .2;
+    let dtv = near ? PACE.avg : raw; PACE.debt += raw - dtv; const pay = PACE.debt * .1; dtv += pay; PACE.debt -= pay; if (!near) PACE.debt = 0;
+    const dt = Math.min(.05, Math.max(0, dtv)); ui.time += dt;
     if (touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
     if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (touchMode || R.res <= .72)) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
@@ -832,13 +922,15 @@
       const RL = [1, .85, .72], ri = RL.reduce((b, v, i) => Math.abs(v - R.res) < Math.abs(RL[b] - R.res) ? i : b, 0);
       if (resT > 3 && resAvg > .024 && ri < 2) { R.setRes(RL[ri + 1]); resT = 0; resAvg = .018; }
       else if (resT > 12 && resAvg < .013 && ri > 0) { R.setRes(RL[ri - 1]); resT = 0; } }
+    padPoll(dt);   // [fluido] il controller si legge prima di tutto: il comando di questo fotogramma muove già questo fotogramma
+    let inpF = null;
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
     const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]
     if (slow && !paused && !edOn) G.step(st, dt * .25, { x: 0, y: 0 });
     else if (!paused) {
-      const inp = ui.intro ? { x: 0, y: 0, freeze: true } : input();
-      if (!ui.intro && (mouse.down || touchFire || mouse.pressed)) G.fire(st, inp.aim !== undefined ? inp.aim : aimAngle(), ui.aimPoint, mouse.pressed);
+      const inp = ui.intro ? { x: 0, y: 0, freeze: true } : input(); inpF = inp;   // [fluido] lo stesso comando va al motore e alla camera, nello stesso fotogramma
+      if (!ui.intro && (mouse.down || touchFire || mouse.pressed || PAD.fire)) G.fire(st, inp.aim !== undefined ? inp.aim : aimAngle(), ui.aimPoint, mouse.pressed);
       mouse.pressed = false;
       tickClick(); sprayTick(dt);
       viewRadius(dt);   // [fluido]
@@ -851,7 +943,7 @@
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if (touchMode && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: touchMode && Math.hypot(stick.x, stick.y) > .15 ? stick : null, pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: touchMode && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot, drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();

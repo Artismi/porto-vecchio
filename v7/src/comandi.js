@@ -177,7 +177,7 @@ const Comandi = (() => {
     const pv = PV(), st = ST(); if (!pv || !st || !mount()) return;
     const ui = pv.ui, p = st.player, d = $('dock');
     const hide = ui.intro || ui.over || ui.dialog || ui.book || ui.menu || (typeof Cantiere !== 'undefined' && Cantiere.active()) || (window.Editor && Editor.active && Editor.active());
-    d.style.display = hide ? 'none' : ''; if (hide) return;
+    if (d.style.display !== (hide ? 'none' : '')) d.style.display = hide ? 'none' : ''; if (hide) return;   // [fluido] il documento si tocca solo se cambia
     const spray = p.hand === 'bomboletta' || p.hand === 'pennarello', sk = onSk(st), bm = onBmx(st);
     d.querySelectorAll('button[data-id]').forEach(b => {
       const id = b.dataset.id, c = b.querySelector('canvas');
@@ -187,11 +187,11 @@ const Comandi = (() => {
       if (id === 'bomboletta' || id === 'tavoletta') b.classList.toggle('off', !has('bomboletta') && !has('pennarello'));
       if (id === 'skate') b.classList.toggle('off', !(typeof Skate !== 'undefined' && Skate.S(st).owned));
       if (id === 'graffiti' || id === 'bomboletta') { b.classList.toggle('off', !has('bomboletta') && !has('pennarello')); b.style.setProperty('--col', spray && ui.spray ? pv.SPRAY_COLS[ui.spray.col][0] : 'transparent'); }
-      if (id === 'zaino') { const dot = b.querySelector('.dot'), n = typeof MenuUI !== 'undefined' && MenuUI.quiCount ? MenuUI.quiCount(st) : 0; dot.hidden = !n; dot.textContent = n; }
+      if (id === 'zaino') { const dot = b.querySelector('.dot'), n = typeof MenuUI !== 'undefined' && MenuUI.quiCount ? MenuUI.quiCount(st) : 0; if (dot.hidden !== !n) dot.hidden = !n; if (dot.textContent !== String(n)) dot.textContent = n; }
     });
     // la mano
     const hb = $('dkHand'), Wp = !p.hand && p.cur !== 'pugni' && pv.G.WEAPONS[p.cur], id = spray ? null : p.hand || (Wp ? p.cur : null);
-    hb.hidden = !id; if (!id) { handKey = ''; return; }
+    if (hb.hidden !== !id) hb.hidden = !id; if (!id) { handKey = ''; return; }
     const ammo = Wp && p.arms[p.cur] ? (Wp.throw ? '×' + ((p.arms[p.cur].mag || 0) + (p.arms[p.cur].reserve || 0)) : (p.arms[p.cur].mag || 0) + '/' + (p.arms[p.cur].reserve || 0)) : '';
     const name = Wp ? Wp.name : (typeof Oggetti !== 'undefined' && Oggetti.nm ? Oggetti.nm(id) : id);
     const hint = Wp ? (pv.touchMode ? (Wp.throw ? 'tocca dove lanciarla' : 'tocca dove sparare · qui: ricarica') : (Wp.throw ? 'destro: lancia' : 'destro: spara · clic qui: ricarica'))
