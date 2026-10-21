@@ -149,8 +149,8 @@ due estremi veri (mensola, isolatore, cassetta, palo, contatore): mai nel vuoto.
 ## 7. La visuale sul personaggio e i vicoli in ombra ([visuale3], 21 ottobre)
 
 Giudizio del committente sul giro della Porta: «la zona in mezzo al vicolo all'ombra è completamente illeggibile, e la visuale sul
-personaggio fa solo confusione in più». Due cambi; regole in `src/visuale.js`, prove in `src/test_visuale3.js` (Node) e
-`strumenti/visuale3_check.js` (gioco vero), fogli in `_immagini/visuale3/`.
+personaggio fa solo confusione in più». Due cambi; regole in `src/visuale.js`, prove in `src/test_visuale3.js` (Node: i raggi contro le case in pianta),
+fogli in `_immagini/visuale3/` (strumenti/galleria.js con `visuale3_varianti.json`, strumenti/fogli_visuale3.py).
 
 **Il taglio (la visuale di difetto, `?visuale=taglio`).** Le case fra la camera e il personaggio si tagliano con un piano orizzontale,
 come una pianta d'architetto: sopra il piano non si disegna niente della casa (muri, facciate, balconi, tetto, roba sul tetto, e le cose
@@ -162,7 +162,8 @@ busto, dalla testa e da un anello di suolo di 1,35 m verso la camera (meno 10 cm
 per 0,45 s (isteresi). Sul tetto e sulle scale dei tetti niente taglio. La sagoma arancione resta come riserva (tirata 0,6 m verso la
 camera, così non si accende sul personaggio stesso): si vede solo dove una cosa piccola copre ancora. Costo: nessun programma per
 materiale (la quota sta nella tessitura delle case fuse), un programma per il poché, un piano di taglio sui pochi pezzi della casa fuori
-dalla fusione solo mentre è tagliata. `?visuale=ellisse` e `?visuale=sezione` restano per il confronto.
+dalla fusione solo mentre è tagliata. `?visuale=ellisse` e `?visuale=sezione` restano per il confronto. Limite: i pezzi urbani grandi
+che non sono case del gioco (le masse di pezzi_citta, le mura) e le cose fuori dal registro non si tagliano: lì resta la sagoma.
 
 **L'equilibrio della luce nei vicoli** (le manopole che c'erano, più il rimbalzo nello stesso blocco [profondita]):
 
