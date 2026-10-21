@@ -116,7 +116,8 @@ const srv = http.createServer((req, res) => {
   }
 
   if (MODE === 'pad' || MODE === 'tutto') {
-    const P = PLACES[2]; await go(P[1], P[2]); await pg.waitForTimeout(4000);
+    const P = PLACES[2]; if (!process.env.PAD_STAY) await go(P[1], P[2]); await pg.waitForTimeout(4000);   // PAD_STAY=1: dove si comincia (per la mappa di prima)
+    out.posto = await pg.evaluate(() => { const p = window.__pv.st.player; return { x: Math.round(p.x), y: Math.round(p.y), mare: !!p.swim }; });
     const setPad = (ax, ay) => pg.evaluate(([ax, ay]) => { window.__padOn = true; const p = window.__pad; p.axes[0] = ax; p.axes[1] = ay; p.timestamp++; }, [ax, ay]);
     const ang = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
     // stick world direction: as the game itself converts it (same camera basis)
@@ -155,7 +156,7 @@ const srv = http.createServer((req, res) => {
     await pg.evaluate(() => { window.__padOn = false; });
     await pg.keyboard.down('w'); R = await frames(10); const vk = R[R.length - 1].speed; await pg.keyboard.down('Shift'); R = await frames(10); const vks = R[R.length - 1].speed; await pg.keyboard.up('Shift'); await pg.keyboard.up('w');
     out.tastiera = { passo: +(vk || 0).toFixed(2), corsa: +(vks || 0).toFixed(2), ok: vk > 3 && vk < 5 && vks > 6 }; if (!out.tastiera.ok) fail++;
-    console.log('pad', JSON.stringify(out, ['corsa', 'mezza', 'inversione', 'sguardo', 'sguardo_lato', 'tremolio', 'cronaca_ferma', 'cronaca_nuova', 'tastiera', 'velocita', 'ok', 'volto_s', 's', 'salto_max_m', 'scritture', 'passo']));
+    console.log('pad', JSON.stringify(out, ['posto', 'x', 'y', 'mare', 'corsa', 'mezza', 'inversione', 'sguardo', 'sguardo_lato', 'tremolio', 'cronaca_ferma', 'cronaca_nuova', 'tastiera', 'velocita', 'ok', 'volto_s', 's', 'salto_max_m', 'scritture', 'passo']));
   }
   if (process.env.OUT) fs.writeFileSync(process.env.OUT, JSON.stringify(out, null, 1));
   await b.close(); srv.close(); process.exit(fail ? 1 : 0);
