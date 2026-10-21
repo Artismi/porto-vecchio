@@ -419,8 +419,8 @@
       else if (h && h.kind === 'loot') t = h.label;
       else if (h && h.kind === 'car') t = p.vehicle === h.v.id ? 'Scendi' : h.v.traffic ? `Tira giù l'automobilista (${G.VK[h.v.kind].label})` : h.v.lent || h.v.mine ? 'Sali' : `Ruba ${G.vehicleName(st, h.v)}`;
       cv.style.cursor = h && h.kind !== 'move' ? 'pointer' : 'default';
-      hoverEl.hidden = !t; if (t) { hoverEl.textContent = t; hoverEl.style.left = mouse.cx + 'px'; hoverEl.style.top = mouse.cy + 'px'; }
-    } else hoverEl.hidden = true;
+      setHid(hoverEl, !t); if (t) { setT(hoverEl, t); setS(hoverEl, 'left', mouse.cx + 'px'); setS(hoverEl, 'top', mouse.cy + 'px'); }   // [fluido] solo se cambia
+    } else setHid(hoverEl, true);
   }
 
   // ---------- Dialoghi ----------
