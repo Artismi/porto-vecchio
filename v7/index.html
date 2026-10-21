@@ -56236,7 +56236,7 @@ var Render = (function () {
     if (WORKS1) return WORKS1; WORKS1 = []; const r = rng(3101), RD = (M.roads || []).filter(rd => asph1(rd) && rd.kind === 'citta' && rd.w >= 7 && rd.pts.length > 30);
     for (let tries = 0; tries < 200 && WORKS1.length < 5 && RD.length; tries++) {
       const rd = pick(r, RD), g = geo1(rd), k = 10 + Math.floor(r() * (g.n - 20)), [x0, y0] = rd.pts[k];
-      if (!cityAt1(x0, y0) || junc1().some(J => (J.arms.length >= 3 || J.arms.some(a => a.minor)) && Math.hypot(J.x - x0, J.y - y0) < J.r + 14) || nearJ1(x0, y0, 3) < 0 || Math.abs(g.cv[k]) > .4 || WORKS1.some(w => Math.hypot(w.x - x0, w.y - y0) < 70)) continue;
+      if ((rd.pennoni && cn1()) || !cityAt1(x0, y0) ||   /* [percorsi2] la Vittoria resta una scena vuota: niente cantiere con le tavole */ junc1().some(J => (J.arms.length >= 3 || J.arms.some(a => a.minor)) && Math.hypot(J.x - x0, J.y - y0) < J.r + 14) || nearJ1(x0, y0, 3) < 0 || Math.abs(g.cv[k]) > .4 || WORKS1.some(w => Math.hypot(w.x - x0, w.y - y0) < 70)) continue;
       const sd = r() < .5 ? 1 : -1, ux = g.ux[k], uy = g.uy[k], nx = -uy * sd, ny = ux * sd, lat = rd.w / 4;
       WORKS1.push({ x: x0 + nx * lat, y: y0 + ny * lat, ux, uy, nx, ny, w: rd.w, len: 5 + r() * 3, wid: 1.4 + r() * .5, rd, seed: tries * 13 + 5 });
     }
@@ -62548,7 +62548,10 @@ var Render = (function () {
         else if (use === 'tabacchi') { ad(a, box(.14, .8, .6, sm('#1a3a8a', { roughness: .7 })), -1.2, 3.2, .35); ad(a, box(.16, .55, .1, white), -1.2, 3.2, .34); }
         else if (use === 'teatro' || use === 'cinema') { ad(a, box(4.2, .5, 1.1, dark), 0, 3.4, .6); for (let k = 0; k < 9; k++) ad(a, new THREE.Mesh(new THREE.SphereGeometry(.07, 6, 5), bulb), -1.9 + k * .48, 3.2, 1.18); ad(a, box(.9, 1.3, .06, red), -2.6, 1.4, .1); ad(a, box(.9, 1.3, .06, sm('#2a3a8a', { roughness: .8 })), 2.6, 1.4, .1); lightAt(a, 0, 3, 1.4, '#ffd890', 2, 10); }
         else if (use === 'magazzino') { for (let k = 0; k < 6; k++) ad(a, box(.9, .9, .9, wood), -1.6 + (k % 3) * 1.0, .45 + Math.floor(k / 3) * .9, 1.3).rotation.y = (k - 2) * .1; ad(a, box(1.6, .14, 1.2, wood), 2.4, .1, 1.4); }
-        else if (use === 'casa' || use === 'cascina' || !use) { ad(a, cyl(.22, .18, .35, 8, sm('#7a4a34', { roughness: 1 })), -1.2, .18, .5); ad(a, new THREE.Mesh(new THREE.SphereGeometry(.2, 6, 5), sm('#3a5a34', { roughness: 1 })), -1.2, .5, .5); if (r() < .5) { ad(a, box(.05, .9, 1.7, metal), 1.5, .45, 1.1).rotation.y = Math.PI / 2; ad(a, cyl(.3, .3, .06, 10, dark), 1.5, .35, 1.1).rotation.z = Math.PI / 2; } }
+        else if (use === 'casa' || use === 'cascina' || !use) { ad(a, cyl(.22, .18, .35, 8, sm('#7a4a34', { roughness: 1 })), -1.2, .18, .5); ad(a, new THREE.Mesh(new THREE.SphereGeometry(.2, 6, 5), sm('#3a5a34', { roughness: 1 })), -1.2, .5, .5); if (r() < .5 && !cn1()) B35.bici(a, 1.5, .9, 0); }
+        // [percorsi2] era «la bici» di una volta: una lastra di metallo grigio scuro 1,7 × 0,9 m con un disco nero, ritta a 1,1 m dal muro accanto
+        // alla porta, fusa con i dettagli della casa: nelle foto si leggeva come una lamiera appoggiata. Fuori dalla città nuova ora è la bici
+        // vera (B35.bici); nella città nuova niente, la bici appoggiata accanto alla porta la mette già oggetti35
         else if (use === 'chiesa') { [-1.5, 1.5].forEach(x => { ad(a, cyl(.14, .14, 1.4, 6, white), x, .7, .9); ad(a, new THREE.Mesh(new THREE.SphereGeometry(.12, 6, 5), glowM('#ffb35c')), x, 1.5, .9); }); }
       }
       if (g.children.length) { const gm = shadowed(mergeGroup(g), false, false); rotRec(rec, gm); ownMats(gm, rec); scene.add(gm); rec.detGrp = gm; np++; }
