@@ -37,5 +37,17 @@ ok(C.errori.length === 0, `il controllo degli incroci è pulito (${C.errori.leng
 ok(C.capi.filter(c => c.k === 'chiuso').every(c => c.perche && c.perche.length > 8), 'ogni chiusura dice il suo perché');
 ok(C.conti.T >= 30, `le strade laterali si aprono dai fronti: ${C.conti.T} incroci a T`);
 
+// ---------------- passo 3: le altezze ----------------
+const caseC = citta.filter(b => b.house && inC(...cen(b))), torri = caseC.filter(b => b.torre), alte = caseC.filter(b => b.fl > 3 && !b.torre);
+const ist = {}; caseC.forEach(b => { ist[b.fl] = (ist[b.fl] || 0) + 1; }); console.log('     piani', JSON.stringify(ist), 'case', caseC.length);
+ok(!alte.length, `nessuna casa sopra i 3 piani tranne le case-torre (${alte.length}${alte.length ? ': ' + alte.slice(0, 4).map(b => b.id + ' ' + b.fl).join(' ') : ''})`);
+ok(torri.length === 6 && torri.every(b => b.fl === 4), `sei case-torre di quattro piani (${torri.length})`);
+// il lato camera: la casa che ha la via a nord o a ovest (entro 3 m dal filo) sulla Rua, la Marina, il Corso ha al più 2 piani
+const VIE = ['rua', 'marina', 'corso'].map(id => W.roads.find(r => r.id === id)).filter(Boolean);
+const dVia = (rd, x, y) => { let m = 1e9; for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, ay] = rd.pts[k], [bx, by] = rd.pts[k + 1], vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / L2)); m = Math.min(m, Math.hypot(x - ax - vx * t, y - ay - vy * t)); } return m - rd.w / 2; };
+const camera = caseC.filter(b => !b.torre && !b.shack && VIE.some(rd => { for (let tx = b.x; tx < b.x + b.w; tx++) if (dVia(rd, tx * TS + 1, b.y * TS - 1) < 1.2) return true; for (let ty = b.y; ty < b.y + b.h; ty++) if (dVia(rd, b.x * TS - 1, ty * TS + 1) < 1.2) return true; return false; }));
+const camAlte = camera.filter(b => b.fl > 2);
+ok(camera.length > 20 && !camAlte.length, `sulle vie il fronte lato camera ha al più 2 piani (${camera.length} case, ${camAlte.length} più alte${camAlte.length ? ': ' + camAlte.slice(0, 4).map(b => b.id + '@' + cen(b).map(Math.round) + ' ' + b.fl).join(' ') : ''})`);
+
 console.log(fail ? `\n${fail} prove non passate` : '\ntutte le prove passano');
 process.exit(fail ? 1 : 0);

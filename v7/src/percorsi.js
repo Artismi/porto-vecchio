@@ -283,7 +283,7 @@ var Percorsi = (function () {
       scale.forEach(L => {
         // il cammino migliore da questa scala: si premiano i passaggi crema (salti, passerelle, scale fra tetti) e la lunghezza
         const prev = new Map([[L.bi, null]]), Q = [L.bi];
-        for (let k = 0; k < Q.length; k++) { const a = Q[k]; (E.get(a) || []).forEach(e => { if (prev.has(e.b) || !inZ(Z, e.b) || usati.has(e.b) || BB[e.b].annesso) return; prev.set(e.b, { a, e }); Q.push(e.b); }); }   /* [mappa_compatta] niente annessi da 2 m: ci si cade oltre */
+        for (let k = 0; k < Q.length; k++) { const a = Q[k]; (E.get(a) || []).forEach(e => { if (prev.has(e.b) || !inZ(Z, e.b) || usati.has(e.b) || BB[e.b].annesso || (e.k === 'tetto' && Math.abs(e.ux || 0) * BB[e.b].w * TS + Math.abs(e.uy || 0) * BB[e.b].h * TS < 4.5) || (e.k === 'salto' && TT.roofRule(BB[e.b]) > TT.roofRule(BB[e.a]) + .5)) return; prev.set(e.b, { a, e }); Q.push(e.b); }); }   /* [mappa_compatta] niente annessi da 2 m né tetti stretti nel verso del passo (scendendo ci si cade oltre), niente salti verso un tetto più alto */
         scale.forEach(M => { if (M.bi === L.bi || !prev.has(M.bi) || usati.has(M.bi)) return; const dd = hyp(M.fx - L.fx, M.fy - L.fy); if (dd < 18) return;
           const pass = []; let c = M.bi; while (prev.get(c)) { const q = prev.get(c); pass.unshift(q.e); c = q.a; }
           const crema = pass.filter(e => e.k === 'salto' || e.k === 'passerella' || e.k === 'scala').length; if (!crema) return;
