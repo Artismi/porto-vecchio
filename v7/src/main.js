@@ -895,6 +895,7 @@
   // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
   // sembra più fluido di un 45 che oscilla (era il tremolio), e la risoluzione dinamica che scendeva era la «perdita di risoluzione»
   const FC = { on: false, t: 0, n: 0 };
+  const PACE = { avg: 1 / 60, debt: 0 };   // [fluido]
   // [fluido] lo sguardo avanti della camera: la direzione (nel mondo) che la levetta chiede in questo fotogramma, la stessa data al
   // motore; render.js la sposta verso quel lato dello schermo subito (pochi centesimi di secondo), non dietro alla velocità
   const LEAD = { x: 0, y: 0, m: 0 };
@@ -904,7 +905,13 @@
   }
   function loop0(now) {
     if (FC.on && now - last < 30) { requestAnimationFrame(loop); return; }
-    const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
+    const raw = Math.max(0, (now - last) / 1000); last = now;
+    // [fluido] passo regolare: i fotogrammi quasi uguali (16,4 / 17,1 ms: il ritmo dello schermo letto dal browser) usano la media,
+    // così il movimento non trema; quello che avanza o manca si restituisce a poco a poco (il tempo di gioco non deriva).
+    // I salti veri (un fotogramma lungo) passano com'erano, al massimo 50 ms
+    if (raw > 0 && raw < .25) { PACE.avg += (raw - PACE.avg) * .08; } const near = Math.abs(raw - PACE.avg) < PACE.avg * .2;
+    let dtv = near ? PACE.avg : raw; PACE.debt += raw - dtv; const pay = PACE.debt * .1; dtv += pay; PACE.debt -= pay; if (!near) PACE.debt = 0;
+    const dt = Math.min(.05, Math.max(0, dtv)); ui.time += dt;
     if (touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
     if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (touchMode || R.res <= .72)) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */

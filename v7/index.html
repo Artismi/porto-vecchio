@@ -63592,6 +63592,58 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   { const rc1 = THREE.Mesh.prototype.raycast; if (!rc1.__lazy1) { const f = function (r, out) { const L = this.userData && this.userData.lazy1; if (typeof L === 'function') L(); return rc1.call(this, r, out); }; f.__lazy1 = true; f.__bvh = rc1.__bvh; THREE.Mesh.prototype.raycast = f; } }   // [leggera] il pezzo fuso si rifà prima del raggio
   {
   }
+  // [fluido] GLI OGGETTI FERMI NON SI RICALCOLANO (dal ramo keen-turing, generalizzato). La città nuova ha ~50.000 oggetti e three a ogni
+  // fotogramma ricomponeva la matrice di ognuno (anche delle case): circa metà del tempo di disegno lato processore. Ogni ramo della
+  // scena (figlio diretto) che resta del tutto fermo per 10 s si congela: si calcola una volta e poi il giro delle matrici lo salta.
+  // Tre reti: se dentro un ramo congelato si aggiunge qualcosa (add, attach) si scongela subito; un controllo a rotazione (4000
+  // oggetti per fotogramma) riguarda posizione, rotazione e scala di tutti e scongela chi si è mosso; chi si scongela non si
+  // ricongela più. Restano fuori persone, mezzi, ossa e luci. ?nofrz lo spegne (per le misure).
+  const FRZ = { on: typeof location === 'undefined' || !/[?&]nofrz\b/.test(location.search), list: [], ri: 0, oi: 0, t: 0, scene: null };
+  const FRZ_UMW = function (force) { if (force) THREE.Object3D.prototype.updateMatrixWorld.call(this, true); };
+  { const add0 = THREE.Object3D.prototype.add, att0 = THREE.Object3D.prototype.attach;
+    const touch = o => { for (let q = o; q; q = q.parent) if (q.__frz) { frzThaw(q, q.__frz.frozen); break; } };   // in prova: si ricomincia; congelato: resta sciolto
+    THREE.Object3D.prototype.add = function () { const r = add0.apply(this, arguments); if (FRZ.list.length) touch(this); return r; };
+    THREE.Object3D.prototype.attach = function () { const r = att0.apply(this, arguments); if (FRZ.list.length) touch(this); return r; }; }
+  const frzSnap = (o, a, i) => { const P = o.position, Q = o.quaternion, S = o.scale; if (!o.matrixAutoUpdate) { const e = o.matrix.elements; a[i] = e[12] + e[0]; a[i + 1] = e[13] + e[5]; a[i + 2] = e[14] + e[10] + e[2]; } else { a[i] = P.x; a[i + 1] = P.y; a[i + 2] = P.z; } a[i + 3] = Q.x; a[i + 4] = Q.y; a[i + 5] = Q.z; a[i + 6] = Q.w; a[i + 7] = S.x; a[i + 8] = S.y; a[i + 9] = S.z; };
+  const _frzT = new Float64Array(10);
+  function frzThaw(root, no) {
+    const F = root.__frz; if (!F) return; root.__frz = null; if (no) root.__frzNo = true;
+    if (F.frozen) { delete root.updateMatrixWorld; root.updateMatrixWorld(true); }
+    const i = FRZ.list.indexOf(root); if (i >= 0) FRZ.list.splice(i, 1);
+  }
+  function frzOk(o) {
+    if (o.__frzNo || o.__frzBad || o.__frz || o.isLight || o.isCamera || (o.userData && (o.userData.model || o.userData.mixer))) return false;
+    let n = 0, bad = false; o.traverse(q => { n++; if (q.isSkinnedMesh || q.isBone || q.isLight || (q.userData && q.userData.mixer)) bad = true; });
+    if (bad) o.__frzBad = true; return !bad;   // anche le mesh sole, figlie dirette della scena (case fuse, ombre: ~16.000)
+  }
+  function frzScene() {
+    if (FRZ.scene === scene) return; FRZ.scene = scene;
+    scene.updateMatrixWorld = function (force) {   // updateMatrixWorld di three, col salto dei rami congelati
+      if (this.matrixAutoUpdate) this.updateMatrix();
+      if (this.matrixWorldNeedsUpdate || force) { if (this.parent === null) this.matrixWorld.copy(this.matrix); else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); this.matrixWorldNeedsUpdate = false; force = true; }
+      const ch = this.children; for (let i = 0, l = ch.length; i < l; i++) { const c = ch[i]; if (c.__frz && c.__frz.frozen && !force) continue; c.updateMatrixWorld(force); }
+    };
+  }
+  function frzTick() {
+    if (!FRZ.on || !scene) return; frzScene();
+    const now = performance.now();
+    if (now > FRZ.t) { FRZ.t = now + 2000;   // i rami nuovi entrano in prova; quelli tolti dalla scena escono
+      const ex = new Set(Object.values(dyn.people || {}).concat(Object.values(dyn.vehicles || {})));
+      for (const o of scene.children) if (!ex.has(o) && frzOk(o)) { const objs = []; o.traverse(q => objs.push(q)); const snap = new Float64Array(objs.length * 10); objs.forEach((q, k) => frzSnap(q, snap, k * 10)); o.__frz = { objs, snap, frozen: false, since: now }; FRZ.list.push(o); }
+      for (let i = FRZ.list.length - 1; i >= 0; i--) { const o = FRZ.list[i]; if (o.parent !== scene) frzThaw(o, false); else if (!o.__frz.frozen && now - o.__frz.since > 10000) { o.updateMatrixWorld(true); o.__frz.frozen = true; o.updateMatrixWorld = FRZ_UMW; } }
+    }
+    let budget = 4000;   // il controllo a rotazione
+    while (budget > 0 && FRZ.list.length) {
+      if (FRZ.ri >= FRZ.list.length) { FRZ.ri = 0; FRZ.oi = 0; }
+      const root = FRZ.list[FRZ.ri], F = root.__frz;
+      if (!F) { FRZ.ri++; FRZ.oi = 0; continue; }
+      const end = Math.min(F.objs.length, FRZ.oi + budget); let moved = -1;
+      for (let k = FRZ.oi; k < end; k++) { frzSnap(F.objs[k], _frzT, 0); const b = k * 10; for (let q = 0; q < 10; q++) if (_frzT[q] !== F.snap[b + q]) { moved = k; break; } if (moved >= 0) break; }
+      budget -= Math.max(1, end - FRZ.oi);
+      if (moved >= 0) { if (F.frozen) { frzThaw(root, true); FRZ.oi = 0; continue; } frzSnap(F.objs[moved], F.snap, moved * 10); F.since = now; }   // ancora in prova: si ricomincia a contare
+      if (end >= F.objs.length) { FRZ.ri++; FRZ.oi = 0; } else FRZ.oi = end;
+    }
+  }
   const SHMOV = { list: [] };   // [fluido] chi si muove (x, y, velocità), per le ombre dei faretti
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
   function init(canvas, st) {
@@ -64457,6 +64509,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function frame(st, dt, ui) {
     if (SM2W.stack || !(frame.__sm2 > 0)) { if (!SM2W.stack) frame.__sm2 = 3; try { sliceWalk(SM2W, scene, 2000, o => { smooth2o(o); thin2(o); }); } catch (e) { SM2W.stack = null; } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */   // [fluido] a rate
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
+    frzTick();   // [fluido] i rami fermi congelati (e il controllo a rotazione)
     SHMOV.st = st;   // [fluido] per le ombre dei faretti
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
     meteoAt(st.t, METEO); { const rg = regimeAt(cam.x, cam.y); METEO.reg += (rg - METEO.reg) * Math.min(1, (dt || .016) * 1.5); } dyn.meteo = METEO;   /* [amb1] */
@@ -64885,7 +64938,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { VARCO, DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { get __lazy1() { return LAZY1; }, get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  return { get __lazy1() { return LAZY1; }, get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, get __buildings() { return dyn.buildings; }, get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
 </script>
 <script data-m="ordine_arte">/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
@@ -67098,6 +67151,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
   // sembra più fluido di un 45 che oscilla (era il tremolio), e la risoluzione dinamica che scendeva era la «perdita di risoluzione»
   const FC = { on: false, t: 0, n: 0 };
+  const PACE = { avg: 1 / 60, debt: 0 };   // [fluido]
   // [fluido] lo sguardo avanti della camera: la direzione (nel mondo) che la levetta chiede in questo fotogramma, la stessa data al
   // motore; render.js la sposta verso quel lato dello schermo subito (pochi centesimi di secondo), non dietro alla velocità
   const LEAD = { x: 0, y: 0, m: 0 };
@@ -67107,7 +67161,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   }
   function loop0(now) {
     if (FC.on && now - last < 30) { requestAnimationFrame(loop); return; }
-    const raw = Math.max(0, (now - last) / 1000), dt = Math.min(.05, raw); last = now; ui.time += dt;
+    const raw = Math.max(0, (now - last) / 1000); last = now;
+    // [fluido] passo regolare: i fotogrammi quasi uguali (16,4 / 17,1 ms: il ritmo dello schermo letto dal browser) usano la media,
+    // così il movimento non trema; quello che avanza o manca si restituisce a poco a poco (il tempo di gioco non deriva).
+    // I salti veri (un fotogramma lungo) passano com'erano, al massimo 50 ms
+    if (raw > 0 && raw < .25) { PACE.avg += (raw - PACE.avg) * .08; } const near = Math.abs(raw - PACE.avg) < PACE.avg * .2;
+    let dtv = near ? PACE.avg : raw; PACE.debt += raw - dtv; const pay = PACE.debt * .1; dtv += pay; PACE.debt -= pay; if (!near) PACE.debt = 0;
+    const dt = Math.min(.05, Math.max(0, dtv)); ui.time += dt;
     if (touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
     if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (touchMode || R.res <= .72)) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
