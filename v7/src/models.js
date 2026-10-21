@@ -340,6 +340,8 @@ var Models = (function () {
     if (window.Anim) Anim.apply(g, o, dt, performance.now() / 1000);   // [animazioni] lo strato procedurale sopra la clip
   }
   // ---------------- IL MONDO ----------------
+  // [spianata2] il piano del palco (palco.js), solo nella città nuova
+  function palco() { const W = G.MAP && G.MAP.world; return W && W.WALL && W.FORT && typeof Palco !== 'undefined' ? Palco.piano(W, G.BUILDINGS, (tx, ty) => G.tileAt(tx, ty), G.T, G.TS) : null; }
   function tileFree(x, z) { const T = G.T, v = G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)); return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE; }
   // un posto libero (niente edifici, acqua, alberi) di w×d metri vicino a (x,z)
   function openSpot(x, z, w, d, maxR) {
@@ -370,9 +372,10 @@ var Models = (function () {
     // ---- luna park sulla spiaggia del Lido ----
     if (P.spiaggia) { const q = openSpot(P.spiaggia.x, P.spiaggia.y + 14, 10, 4, 70); if (q) dyn.wheel = put('ruota', q[0], q[1], Math.PI / 2); }
     // ---- la Rocca: elicottero sullo spiazzo, forca, sbarramenti sulla strada ----
+    const PL = palco();   // [spianata2] nella città nuova il palco del potere (palco.js) dice dove stanno i carri e chi li guarda
     if (P.rocca) {
       const rx = P.rocca.x, rz = P.rocca.y;
-      put('elicottero', rx - 14, rz + 4, .6); put('forca', rx + 12, rz + 2, Math.PI / 2);
+      if (!PL) put('elicottero', rx - 14, rz + 4, .6); put('forca', rx + 12, rz + 2, Math.PI / 2);   // [spianata2] sul palco l'elicottero di giorno è quello sulla piazzola (render.js)
       for (let i = -2; i <= 2; i++) put('newjersey', rx + i * 2.8, rz + 16, 0);
       put('transenna', rx - 9, rz + 12, 0); put('transenna', rx + 9, rz + 12, 0); put('sacchi', rx - 5, rz + 9, 0); put('sacchi', rx + 5, rz + 9, 0);
     }
@@ -381,7 +384,10 @@ var Models = (function () {
     // ---- caserma della Guardia in città: barriere ----
     if (P.commissariato) { const c = P.commissariato; for (let i = -1; i <= 1; i++) if (tileFree(c.x + i * 2.8, c.y + 2.5)) put('newjersey', c.x + i * 2.8, c.y + 2.5, 0); }
     // ---- poligono: carri, trincee, baracche, torretta, cisterna, barili ----
-    if (P.poligono) {
+    if (PL) {   // [spianata2] i carri in fila nel parco mezzi, muso alla strada; i sacchi di sabbia ai due capi della fila
+      PL.carri.forEach(c => put('carro', c.x, c.z, c.rot));
+      if (PL.carri.length) { const a = PL.carri[0], b = PL.carri[PL.carri.length - 1]; put('sacchi', a.x - PL.CARRO.hx - 1.4, a.z + 1.2, Math.PI / 2); put('sacchi', b.x + PL.CARRO.hx + 1.4, b.z - 1.4, Math.PI / 2); }
+    } else if (P.poligono) {
       const x = P.poligono.x, z = P.poligono.y;
       put('carro', x - 8, z - 6, .4); put('carro', x + 6, z - 9, -.3); put('baracca', x - 14, z + 8, 0); put('torretta', x + 14, z + 8, 0); put('cisterna', x + 2, z + 12, 0);
       put('sacchi', x - 2, z - 2, 0); put('sacchi2', x + 2, z - 2, .2); put('barriera', x - 18, z - 4, Math.PI / 2);
@@ -410,7 +416,8 @@ var Models = (function () {
     await Promise.all(['Soldier', 'Casual_2', 'Worker'].map(loadChar)); prepGuns();
     const guard = (x, z, ry, gun, who) => { const g = person(null, who || 'cop'); if (!g) return; g.position.set(x, (R.groundH ? R.groundH(x, z) : .4), z); g.rotation.y = ry; scene.add(g); dyn.guards.push({ g, gun }); };
     if (P.rocca) { const rx = P.rocca.x, rz = P.rocca.y; guard(rx - 3, rz + 13, 0, 'AK'); guard(rx + 3, rz + 13, 0, 'AK'); guard(rx - 12, rz + 6, .8, 'SMG'); guard(rx + 10, rz + 4, -.6, 'AK', 'hazmat'); }
-    if (P.poligono) { const x = P.poligono.x, z = P.poligono.y; guard(x - 1, z - 4, 0, 'AK'); guard(x + 3, z - 4, .3, 'AK'); guard(x - 10, z - 4, .5, 'AK'); guard(x + 12, z + 6, -.8, 'SMG', 'hazmat'); }
+    if (PL) { const a = PL.carri[0], c = PL.container[0]; if (a) { guard(a.x - 1, a.z - PL.CARRO.hz - 1.6, 0, 'AK'); guard(a.x + PL.CARRO.passo * 1.5, a.z - PL.CARRO.hz - 1.8, .3, 'AK'); } if (c) guard(c.x + PL.CONT.hx + 1.3, c.z + 1, -Math.PI / 2, 'AK'); }   // [spianata2] di guardia ai carri e ai container
+    else if (P.poligono) { const x = P.poligono.x, z = P.poligono.y; guard(x - 1, z - 4, 0, 'AK'); guard(x + 3, z - 4, .3, 'AK'); guard(x - 10, z - 4, .5, 'AK'); guard(x + 12, z + 6, -.8, 'SMG', 'hazmat'); }
     if (P.commissariato) { const c = P.commissariato; guard(c.x - 3, c.y + 4.5, 0, 'SMG'); guard(c.x + 3, c.y + 4.5, 0, 'AK'); }
     if (P.caserma_p) guard(P.caserma_p.x, P.caserma_p.y + 3, 0, 'AK');
     ['Casual', 'Casual_2', 'Casual_Hoodie', 'Formal', 'Worker'].forEach(loadChar);

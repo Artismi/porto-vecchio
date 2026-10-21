@@ -23,7 +23,7 @@ var Chiarezza = (function () {
   };
   const PORTA = 2.0, VETRINA = .6, SCALA = 2.4, PROF = 7, PASSO = 12;   // m
   const FRONTI = { porta: 3, vetrina: 3, scala: 2 };   // gerarchia del contrasto: fronte 3, suolo 2, alberi e sfondo 1
-  const SCENE_A_TERRA = ['consegna', 'cantiere', 'trasloco', 'mercato', 'baracca', 'discarica'];
+  const SCENE_A_TERRA = ['consegna', 'cantiere', 'trasloco', 'mercato', 'baracca', 'discarica', 'posto_blocco', 'recinto', 'container', 'parco_mezzi'];   // [spianata2] le ultime quattro: il palco del potere (palco.js), a mucchietti
   // il lato di un edificio su cui sta una casella esterna (la porta): 'S' 'N' 'E' 'W' o null
   function lato(b, tx, ty) { return ty === b.y + b.h ? 'S' : ty === b.y - 1 ? 'N' : tx === b.x + b.w ? 'E' : tx === b.x - 1 ? 'W' : null; }
   const NORM = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] };

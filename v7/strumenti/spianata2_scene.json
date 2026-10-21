@@ -1,0 +1,8 @@
+{
+  "nota": "[spianata2] Gli scorci della spianata davanti alla Rocca: il 15 della galleria (giorno pieno, luce di scena spianata) e la stessa vista di notte, coi riflettori.",
+  "pulita": true,
+  "scorci": [
+    { "nome": "15_spianata_rocca", "titolo": "La spianata e la Rocca", "x": 1525, "y": 336, "zoom": 1.3, "ora": 690, "meteo": "sereno", "luce": "spianata" },
+    { "nome": "22_notte_rocca", "titolo": "La spianata di notte", "x": 1525, "y": 336, "zoom": 1.3, "ora": 1380, "meteo": "sereno", "luce": "spianata" }
+  ]
+}

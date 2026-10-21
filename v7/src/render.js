@@ -2975,7 +2975,9 @@ var Render = (function () {
     // cantiere navale
     if (P.cantiere) { const q = P.cantiere; if (free(q.x + 6, q.y + 4)) hullOnCradle(q.x + 6, q.y + 6, Math.PI / 2); if (free(q.x - 6, q.y + 3)) crane(q.x - 6, q.y + 4, 0, '#d86a2a'); }
     // poligono: carri armati abbandonati, container, recinzioni
-    if (P.poligono) { const q = P.poligono; for (let k = 0; k < 5; k++) { const x = q.x - 24 + r() * 48, z = q.y - 14 + r() * 28; if (!free(x, z)) continue; const g = G0(); add(g, box(3.2, 1.1, 5.6, sm('#5a5e4a')), 0, .8, 0); add(g, box(2.2, .8, 2.4, sm('#4e5240')), 0, 1.75, -.3); const gun = add(g, cyl(.13, .13, 4, 6, sm('#3e4234')), 0, 1.8, 1.6); gun.rotation.x = Math.PI / 2 - .1; [-1.5, 1.5].forEach(s => add(g, box(.5, .8, 5.8, sl('#2a2a26')), s, .45, 0)); place(g, x, z, r() * 6); }
+    const PLp = palco2();   // [spianata2] nella città nuova il poligono della mappa vecchia cade sulla Rocca: niente sparso a caso, i container in fila contro il Muro (i carri in fila li posa models.js)
+    if (PLp) PLp.container.forEach(c => container(c.x, c.z, c.rot, c.col));
+    else if (P.poligono) { const q = P.poligono; for (let k = 0; k < 5; k++) { const x = q.x - 24 + r() * 48, z = q.y - 14 + r() * 28; if (!free(x, z)) continue; const g = G0(); add(g, box(3.2, 1.1, 5.6, sm('#5a5e4a')), 0, .8, 0); add(g, box(2.2, .8, 2.4, sm('#4e5240')), 0, 1.75, -.3); const gun = add(g, cyl(.13, .13, 4, 6, sm('#3e4234')), 0, 1.8, 1.6); gun.rotation.x = Math.PI / 2 - .1; [-1.5, 1.5].forEach(s => add(g, box(.5, .8, 5.8, sl('#2a2a26')), s, .45, 0)); place(g, x, z, r() * 6); }
       for (let k = 0; k < 6; k++) { const x = q.x - 30 + r() * 60, z = q.y - 16 + r() * 32; if (free(x, z)) container(x, z, r() < .5 ? 0 : Math.PI / 2, pick(r, ['#5a6a4a', '#7a5a3a', '#4a5a6a'])); } }
     // cava e discarica: rottami e massi
     if (P.discarica) { const q = P.discarica; for (let k = 0; k < 12; k++) { const x = q.x - 10 + r() * 20, z = q.y - 7 + r() * 14; if (!free(x, z)) continue; if (r() < .5) drumGroup(x, z, r); else { const g = G0(); add(g, box(1.6 + r() * 2, .4 + r() * .6, 1 + r() * 2, sm(pick(r, ['#6a4a3a', '#5a5a60', '#8a3a2a']))), 0, .3, 0, (r() - .5) * .4, 0, (r() - .5) * .4); place(g, x, z, r() * 6); } } }
@@ -5599,7 +5601,7 @@ var Render = (function () {
     const can = [sm('#a8322a', { metalness: .6, roughness: .4 }), sm('#b8b8b0', { metalness: .7, roughness: .35 }), sm('#2a5a8a', { metalness: .6, roughness: .4 })], glass = [sm('#2a5a32', { roughness: .2, metalness: .1 }), sm('#6a4a22', { roughness: .2 }), sm('#9aa8a0', { roughness: .15 })];
     const bag = [sm('#1a1a1c', { roughness: .35 }), sm('#3a4a5a', { roughness: .4 }), sm('#d8d4c8', { roughness: .5 })], brick = sm('#8a4a36', { roughness: 1 }), rubble = [concrete('#8a867e'), concrete('#6e6a64'), sm('#7a6a5a', { roughness: 1 })];
     const card = sm('#9a7a4a', { roughness: 1 }), leaf = [sm('#7a5a2a', { roughness: 1 }), sm('#5a4a28', { roughness: 1 }), sm('#8a6a34', { roughness: 1 })];
-    const at = (x, z) => groundH(x, z);
+    const at = (x, z) => groundH(x, z), PLv = palco2();   // [spianata2]
     const stat = (mesh, x, z, ry, y0) => { mesh.position.set(x, at(x, z) + (y0 || 0), z); mesh.rotation.y = ry; addStatic(mesh); n++; };
     const tuft = (x, z, s, kind) => { if (vnz(x / 16 + 3.1, z / 16 - 1.7) + .5 < .56 && th(Math.round(x * 4), Math.round(z * 4), 4251) > .12) return;   /* [ordine1] l'erba cresce a macchie, dove nessuno pulisce: niente velo uguale su ogni marciapiede */
       const m = new THREE.Mesh(tuftGeo1(), tuftMat1(kind)); m.scale.set(s * (.8 + r() * .5), s, s * (.8 + r() * .5)); m.position.set(x, at(x, z) - .02, z); m.rotation.y = r() * 6; addStatic(m, true); nt++; };
@@ -5622,7 +5624,7 @@ var Render = (function () {
       if (!rd.pts || rd.pts.length < 3 || rd.kind === 'sterrato') return; const g = geo1(rd), P = rd.pts, side = sideOf1(rd), vic = rd.kind === 'vicolo', rr = rng(ri * 911 + 3);
       for (let k = 1; k < g.n - 1; k++) {
         if (g.s[k] % 1.3 > (g.s[k] - g.s[k - 1]) + .01 && g.s[k] > 2) continue;   // un passo ogni ~1,3 m
-        const [x0, z0] = P[k]; if (!cityAt1(x0, z0) && !vic) continue; if (nearJ1(x0, z0, 0) < -1) continue;
+        const [x0, z0] = P[k]; if (!cityAt1(x0, z0) && !vic) continue; if (nearJ1(x0, z0, 0) < -1) continue; if (PLv && PLv.zona(x0, z0)) continue;   // [spianata2] sul palco niente sparso
         const nx = -g.uy[k], nz = g.ux[k], ry = Math.atan2(g.ux[k], g.uy[k]);
         [-1, 1].forEach(sd => {
           const off = (o) => [x0 + nx * sd * o, z0 + nz * sd * o];
@@ -5645,9 +5647,22 @@ var Render = (function () {
     // 2) piazze, cortili, soglie: erba nelle fughe, cartacce sparse
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v !== T.PIAZZA && v !== T.WALK && v !== T.COB && v !== T.DIRT) continue;
-      const h = th(tx, ty, 4242); if (h > (v === T.DIRT ? .6 : .3)) continue; const x = tx * TS + .3 + th(tx, ty, 4243) * 1.4, z = ty * TS + .3 + th(tx, ty, 4244) * 1.4; if (solid1(x, z) || busy1(x, z, .15)) continue;
+      const h = th(tx, ty, 4242); if (h > (v === T.DIRT ? .6 : .3)) continue; const x = tx * TS + .3 + th(tx, ty, 4243) * 1.4, z = ty * TS + .3 + th(tx, ty, 4244) * 1.4; if (solid1(x, z) || busy1(x, z, .15)) continue; if (PLv && PLv.zona(x, z)) continue;   // [spianata2] la spianata e la piazza d'armi non hanno cartacce sparse: le cose a terra stanno nei mucchietti delle scene (sotto)
       if (h < .17) { if (v === T.DIRT || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => { const w = gT(tx + a, ty + b); return w === T.BLD || w === T.GRASS || w === T.DIRT; })) tuft(x, z, .2 + h * 2, v === T.DIRT ? 1 : 0); } else if (h < .24) paper(x, z); else smallThing(x, z);   /* [unione11] */
     }
+    // 3) [spianata2] i mucchietti del palco (palco.js), solo nelle scene ammesse da Chiarezza.SCENE_A_TERRA: scuri, raccolti in un raggio
+    // di un metro (lattine schiacciate, cicche, uno straccio, un pezzo di sacco di sabbia, una tanica, la corda, una tavola), mai un foglio chiaro
+    if (PLv) { const SC = typeof Chiarezza !== 'undefined' ? Chiarezza.SCENE_A_TERRA : []; const rr = rng(4243), paperD = new THREE.MeshLambertMaterial({ map: paperTex1(), color: '#6e665a', side: THREE.DoubleSide });
+      PLv.mucchi.forEach(mu => { if (SC.indexOf(mu.scena) < 0) return;
+        for (let i = 0; i < mu.n; i++) { const a = rr() * 6.28, d = Math.sqrt(rr()) * mu.r, x = mu.x + Math.cos(a) * d, z = mu.z + Math.sin(a) * d, q = rr(), g = G0(); if (solid1(x, z)) continue;
+          if (q < .3) { const c = fC(.033, .033, .11, 8, pick(rr, ['#5a4636', '#4a4a44', '#6a3a2a']), 'paint'); c.rotation.z = Math.PI / 2; c.scale.y = .5; g.add(at1(c, 0, .03, 0)); }   // lattina schiacciata
+          else if (q < .45) { for (let k = 0; k < 4; k++) g.add(at1(fC(.006, .006, .03, 5, pick(rr, ['#b8a888', '#8a6a4a']), 'paint'), (rr() - .5) * .3, .006, (rr() - .5) * .3, 0, 0, Math.PI / 2)); }   // cicche
+          else if (q < .58) { const m = new THREE.Mesh(piece1(Math.floor(rr() * 8), .3, .22), paperD); g.add(m); m.position.y = .012; }   // un foglio sporco
+          else if (q < .7) g.add(at1(fB(.55, .14, .32, pick(rr, ['#6a604a', '#5e5844']), 'solid', .04), 0, .07, 0, 0, 0, (rr() - .5) * .3));   // il sacco di sabbia sfondato
+          else if (q < .8) { g.add(at1(fB(.34, .44, .17, '#4a5238', 'paint', .02), 0, .22, 0)); g.add(at1(fB(.12, .04, .04, '#2e3224', 'paint', 0), .06, .46, 0)); }   // la tanica
+          else if (q < .9) { const t = fT(.18, .025, 10, '#5a4e3a', 'solid'); t.rotation.x = Math.PI / 2; g.add(at1(t, 0, .03, 0)); }   // la corda
+          else g.add(at1(fB(1.2, .04, .16, '#4e4232', 'wood', 0), 0, .02, 0));   // una tavola
+          g.position.set(x, at(x, z), z); g.rotation.y = rr() * 6.28; addStatic(g, true); n++; } }); }
     if (window.__dbg35) console.log('[dbg] vita1 oggetti', n, 'ciuffi', nt);
     return n + nt;
   }
@@ -6302,10 +6317,11 @@ var Render = (function () {
   let DOORS35 = null;
   function doors35() { if (DOORS35) return DOORS35; DOORS35 = (G.BUILDINGS || []).filter(b => b.door).map(b => ({ x: (b.door[0] + .5) * TS, y: (b.door[1] + .5) * TS, bar: /bar|osteria|circolo|cinema|tabacchi/.test(b.id + ' ' + (b.use || '')) || (b.shop && /BAR/i.test((b.sign && b.sign.t) || '')), shop: !!b.shop })); return DOORS35; }
   function sporco35(x, tx0, ty0, n, m) {
-    const T = G.T, X0 = tx0 * TS, Y0 = ty0 * TS;
+    const T = G.T, X0 = tx0 * TS, Y0 = ty0 * TS, PLs = palco2();   // [spianata2]
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j; if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v === T.BLD || v === T.WATER) continue;
       const r = rng((tx * 3301 + ty * 7717 + 35) >>> 0), wx = tx * TS + 1, wy = ty * TS + 1;
+      if (PLs && PLs.zona(wx, wy)) { if (r() < .3) { x.fillStyle = 'rgba(26,22,18,.22)'; x.beginPath(); x.ellipse(i * TP + r() * TP, j * TP + r() * TP, 2 + r() * 4, 1.5 + r() * 2.5, r() * 3, 0, 6.3); x.fill(); } continue; }   // [spianata2] sul palco niente cicche e cartacce chiare: solo qualche macchia scura
       let dirt = .12; for (const d of doors35()) { const q = Math.hypot(d.x - wx, d.y - wy); if (q < 6) dirt += (d.bar ? 1.1 : d.shop ? .5 : .25) * (1 - q / 6); }
       const wall = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => gT(tx + a, ty + b) === T.BLD); if (wall) dirt += .25;
       const k = Math.min(9, Math.floor(dirt * 3 + r() * 1.5)), px = i * TP, py = j * TP;
@@ -7956,9 +7972,13 @@ var Render = (function () {
       for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x2 = tx + a, y2 = ty + b; if (x2 < 0 || y2 < 0 || x2 >= GW || y2 >= GH) continue; const j = y2 * GW + x2; if (E[j] || zoneT(x2, y2) !== ZN.CITTA) continue; E[j] = E[i]; D[j] = D[i] + 1; Q.push(j); } }
     const F = M.world.FORT, sx1 = F && F.ditch ? Math.min(F.ditch[0], F.ditch[2]) : 1488;   // la spianata: dal filo delle case demolite al fossato
     for (let ty = 0; ty < GH; ty++) for (let tx = Math.floor(SPIAN1 / TS); tx < Math.ceil(sx1 / TS); tx++) { const i = ty * GW + tx; if (zoneT(tx, ty) === ZN.CITTA && gT(tx, ty) !== T.BLD) E[i] = 9; }
+    { const PL = palco2(); if (PL) for (let ty = 0; ty < GH; ty++) for (let tx = Math.floor(PL.x0 / TS); tx <= Math.min(GW - 1, Math.floor(PL.x1 / TS)); tx++) { const v = gT(tx, ty), wx = tx * TS + 1, wz = ty * TS + 1;   // [spianata2] anche la piazza d'armi è palco: terra battuta e ghiaia, l'asse lastricato resta strada
+      if (zoneT(tx, ty) === ZN.CITTA && PL.dentro(wx, wz) && v !== T.BLD && v !== T.VIA) E[ty * GW + tx] = 9; } }
     for (let i = 0; i < E.length; i++) if (!E[i]) { const x = (i % GW) * TS; E[i] = x < 1215 ? 6 : x < 1330 ? 3 : 1; }
     return (ERA1 = E);
   }
+  // [spianata2] il piano del palco del potere (palco.js): una volta sola, sui dati del mondo; null fuori dalla città nuova
+  const palco2 = () => cn1() && typeof Palco !== 'undefined' && M.world.WALL && M.world.FORT ? Palco.piano(M.world, G.BUILDINGS, (tx, ty) => G.tileAt(tx, ty), G.T, TS) : null;
   const eraAt1 = (x, z) => { const tx = Math.floor(x / TS), tz = Math.floor(z / TS); return tx < 0 || tz < 0 || tx >= G.GW || tz >= G.GH ? 0 : eraField1()[tz * G.GW + tx]; };
   // ---- i materiali: motivi allineati al mondo (8 px per metro), periodici sul loro lato ----
   const SGW1 = { basoli: 16, porfido: 16, travertino: 16, terra: 16, spianata: 24 };
@@ -8005,15 +8025,15 @@ var Render = (function () {
       x.putImageData(img, 0, 0);
       for (let i = 0; i < 380; i++) { x.fillStyle = pick(r, ['rgba(110,102,90,.7)', 'rgba(40,34,26,.6)', 'rgba(90,82,70,.6)', 'rgba(110,60,40,.4)']); x.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1 + (r() < .2 ? 1 : 0), 1); }
       for (let i = 0; i < 6; i++) { const g2 = x.createRadialGradient(0, 0, 0, 0, 0, 1); g2.addColorStop(0, 'rgba(40,30,22,.32)'); g2.addColorStop(1, 'rgba(40,30,22,0)'); x.save(); x.translate(r() * S, r() * S); x.scale(5 + r() * 12, 3 + r() * 7); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, 1, 0, 6.3); x.fill(); x.restore(); }
-    } else if (kind === 'spianata') {   // lastroni di cemento anni '50 a giunti di 6 m: ogni lastra il suo tono, crepe, ruggine, gomme dei blindati
-      const L = 48;
-      for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) { const ci = Math.floor(px / L), cj = Math.floor(py / L), h = th(ci, cj, 651), jt = px % L < 2 || py % L < 2, n = pn(px, py, 24, 652) * 12 + pn(px, py, 6, 653) * 6 + (r() - .5) * 8;
-        const g = jt ? 46 : 78 + h * 10 + n * .7; put(px, py, g, g - 1, g - 3); }
+    } else if (kind === 'spianata') {   // [spianata2] terra battuta e ghiaia, calda e più scura del lastricato di prima (i muri al sole si staccano dal suolo):
+      // la polvere compattata a chiazze larghe, la ghiaia fine scura e chiara, i ciottoli, le pozze asciutte; niente specchi chiari
+      for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) { const n = pn(px, py, 48, 651) * 12 + pn(px, py, 12, 652) * 7 + pn(px, py, 3, 653) * 4 + (r() - .5) * 9, bat = pn(px, py, 24, 654) > .62 ? 5 : 0, g = 76 + n + bat;
+        put(px, py, g + 15, g + 5, g - 9); }
       x.putImageData(img, 0, 0);
-      for (let i = 0; i < 70; i++) { x.fillStyle = 'rgba(70,86,48,.5)'; const a = Math.floor(r() * 4) * L + (r() < .5 ? 0 : 1); r() < .5 ? x.fillRect(a, Math.floor(r() * S), 1, 1 + Math.floor(r() * 2)) : x.fillRect(Math.floor(r() * S), a, 1 + Math.floor(r() * 2), 1); }   // erba nei giunti
-      for (let i = 0; i < 12; i++) { let p = r() * S, q2 = r() * S, a = r() * 6.3; x.beginPath(); x.moveTo(p, q2); for (let k = 0; k < 9; k++) { a += (r() - .5) * 1.1; p += Math.cos(a) * 3; q2 += Math.sin(a) * 3; x.lineTo(p, q2); } x.strokeStyle = 'rgba(40,38,36,.55)'; x.lineWidth = 1; x.stroke(); }
-      for (let i = 0; i < 6; i++) { const p = r() * S, q2 = r() * S, l = 6 + r() * 16, g2 = x.createLinearGradient(p, q2, p, q2 + l); g2.addColorStop(0, 'rgba(120,64,30,.35)'); g2.addColorStop(1, 'rgba(120,64,30,0)'); x.fillStyle = g2; x.fillRect(p, q2, 2 + r() * 3, l); }
-      for (let i = 0; i < 9; i++) { const g2 = x.createRadialGradient(0, 0, 0, 0, 0, 1); g2.addColorStop(0, 'rgba(18,16,16,.22)'); g2.addColorStop(1, 'rgba(18,16,16,0)'); x.save(); x.translate(r() * S, r() * S); x.scale(4 + r() * 10, 2 + r() * 5); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, 1, 0, 6.3); x.fill(); x.restore(); }
+      for (let i = 0; i < 1400; i++) { x.fillStyle = pick(r, ['rgba(54,46,38,.55)', 'rgba(70,62,52,.5)', 'rgba(128,116,96,.35)', 'rgba(96,74,56,.45)']); x.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1, 1); }   // ghiaia
+      for (let i = 0; i < 90; i++) { const p = r() * S, q2 = r() * S; x.fillStyle = 'rgba(40,34,28,.45)'; x.beginPath(); x.ellipse(p + .6, q2 + .6, 1.3, .9, r() * 3, 0, 6.3); x.fill(); x.fillStyle = pick(r, ['rgba(120,108,90,.8)', 'rgba(100,92,80,.8)', 'rgba(132,116,94,.75)']); x.beginPath(); x.ellipse(p, q2, 1.1, .8, r() * 3, 0, 6.3); x.fill(); }   // ciottoli con la loro ombra
+      for (let i = 0; i < 7; i++) { const g2 = x.createRadialGradient(0, 0, 0, 0, 0, 1); g2.addColorStop(0, 'rgba(36,30,24,.26)'); g2.addColorStop(.7, 'rgba(36,30,24,.12)'); g2.addColorStop(1, 'rgba(36,30,24,0)'); x.save(); x.translate(r() * S, r() * S); x.scale(6 + r() * 14, 3 + r() * 7); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, 1, 0, 6.3); x.fill(); x.restore(); }   // pozze asciutte
+      for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(70,84,44,.45)'; x.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1 + Math.floor(r() * 2), 1); }   // erba rada
     }
     return (SG1.pat[kind] = c);
   }
@@ -8116,6 +8136,24 @@ var Render = (function () {
       x.rotate(-Math.PI / 2); x.font = 'bold ' + Math.round(2.4 * PPM) + 'px Impact, "Arial Black", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('ALT', 0, -3.2 * PPM);
       x.globalCompositeOperation = 'destination-out'; const r = rng(77); for (let i = 0; i < 140; i++) { x.fillStyle = `rgba(0,0,0,${(r() * .6).toFixed(2)})`; x.fillRect((r() - .5) * 6 * PPM, -5 * PPM + r() * 4 * PPM, 1 + r() * 2, 1); } x.restore();
       x.save(); x.lineWidth = 2; [[-1, 0], [1, .6]].forEach(([s2, ph]) => { x.beginPath(); for (let t = 0; t <= 20; t++) { const a = t / 20 * 1.6 + ph, R0 = 14 + s2 * .9; x.lineTo(cx(X - 4 - Math.sin(a) * R0), cz(Z + s2 * 2 + (1 - Math.cos(a)) * R0 * .7)); } x.strokeStyle = 'rgba(24,22,22,.22)'; x.stroke(); }); x.restore(); });
+    // [spianata2] i segni del palco (palco.js): le tracce dei cingoli e delle gomme (due solchi scuri, il bordo di terra smossa chiaro),
+    // le canalette di scolo di cemento con le griglie, l'olio sotto i carri. Scuri e caldi: la terra battuta resta quieta, non sporca
+    { const PL = palco2(); if (PL) {
+      const solco = (pts, off, wd, a) => { x.beginPath(); for (let i = 0; i < pts.length; i++) { const [ax, az] = pts[Math.max(0, i - 1)], [bx, bz] = pts[Math.min(pts.length - 1, i + 1)], L = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / L, nz = (bx - ax) / L, X = pts[i][0] + nx * off, Z = pts[i][1] + nz * off; i ? x.lineTo(cx(X), cz(Z)) : x.moveTo(cx(X), cz(Z)); }
+        x.lineWidth = wd * PPM; x.strokeStyle = a; x.stroke(); };
+      x.save(); x.lineCap = 'round'; x.lineJoin = 'round';
+      PL.tracce.forEach(t => { const xs = t.pts.map(q => q[0]), zs = t.pts.map(q => q[1]); if (Math.max(...xs) < X0 - 3 || Math.min(...xs) > X1 + 3 || Math.max(...zs) < Y0 - 3 || Math.min(...zs) > Y1 + 3) return; const cing = t.k === 'cingoli', o = cing ? 1.15 : .85, w = cing ? .55 : .3;
+        [-o, o].forEach(off => { solco(t.pts, off, w + .25, 'rgba(150,132,106,.16)'); solco(t.pts, off, w, cing ? 'rgba(34,28,22,.34)' : 'rgba(34,28,22,.28)'); });
+        if (cing) [-o, o].forEach(off => { x.setLineDash([1, 3]); solco(t.pts, off, w * .8, 'rgba(22,18,14,.3)'); x.setLineDash([]); }); });   // le piastre del cingolo
+      x.restore();
+      PL.canalette.forEach(([ax, az, bx, bz]) => { if (Math.max(ax, bx) < X0 - 2 || Math.min(ax, bx) > X1 + 2 || Math.max(az, bz) < Y0 - 2 || Math.min(az, bz) > Y1 + 2) return;
+        const L = Math.hypot(bx - ax, bz - az) || 1, ux = (bx - ax) / L, uz = (bz - az) / L; x.save(); x.translate(cx(ax), cz(az)); x.rotate(Math.atan2(uz, ux));
+        x.fillStyle = 'rgba(30,26,22,.22)'; x.fillRect(0, -.75 * PPM, L * PPM, 1.5 * PPM);   // l'umido ai lati
+        x.fillStyle = '#7a7468'; x.fillRect(0, -.38 * PPM, L * PPM, .76 * PPM); x.fillStyle = '#26221e'; x.fillRect(0, -.16 * PPM, L * PPM, .32 * PPM);   // il cemento e la gola
+        for (let s2 = 2; s2 < L - 1; s2 += 8) { x.fillStyle = '#1a1816'; x.fillRect(s2 * PPM, -.34 * PPM, .9 * PPM, .68 * PPM); x.fillStyle = '#4e4840'; for (let k = 1; k < 7; k++) x.fillRect(s2 * PPM + k * .13 * PPM, -.3 * PPM, 1, .6 * PPM); }   // le griglie
+        x.restore(); });
+      PL.carri.forEach(c => { if (!inb(c.x, c.z, 5)) return; const r = rng(Math.round(c.x * 31)); for (let i = 0; i < 3; i++) { const g2 = x.createRadialGradient(0, 0, 0, 0, 0, 1); g2.addColorStop(0, 'rgba(14,12,12,.42)'); g2.addColorStop(1, 'rgba(14,12,12,0)'); x.save(); x.translate(cx(c.x + (r() - .5) * 1.6), cz(c.z + (r() - .5) * 3)); x.scale((.8 + r()) * PPM, (.6 + r() * .8) * PPM); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, 1, 0, 6.3); x.fill(); x.restore(); } });   // l'olio dei carri
+    } }
   }
 
   // ================= [segni] LA SCENA, LA RETE, LA SEGNALETICA, L'ARREDO (solo nella città nuova) =================
@@ -10188,7 +10226,8 @@ var Render = (function () {
   const SCENA = {
     borgo:     { sole: 1.15, cielo: .84, esposizione: 1.03, saturazione: 1.07, contrasto: 1, velo: 0, espNotte: .9, finestre: .8, cieloNotte: .95 },   // calce al sole pieno; di notte poche finestre
     metropoli: { sole: .94, cielo: 1.1, esposizione: 1, saturazione: .86, contrasto: .9, velo: .06, espNotte: 1.1, finestre: 1.4, cieloNotte: 1.25 },   // opaca di giorno (velo, meno sole), accesa di notte
-    spianata:  { sole: 1.12, cielo: .95, esposizione: 1.03, saturazione: .82, contrasto: 1.05, velo: 0, espNotte: 1, finestre: 1, cieloNotte: 1, fari: .45, fariColore: '#d8e2ee' },   // sempre a giorno: di notte i fari della Rocca
+    spianata:  { sole: .97, cielo: .9, esposizione: .86, saturazione: .9, contrasto: .94, velo: 0, espNotte: 1, finestre: 1, cieloNotte: 1, fari: .45, fariColore: '#d8e2ee',   // sempre a giorno: di notte i fari della Rocca
+                 spalla: .82, spallaForza: 3.2 },   // [spianata2] al sole pieno i muri non bruciano: meno luce (sole .97, esposizione .86), la spalla dei bianchi parte prima (.82 × QUADRO.spallaBianchi) e piega morbida (eccesso / (1 + eccesso × 3,2)), così i conci restano leggibili; il salto luce-ombra resta duro
     raggio: 36, mescola: 1.5,       // metri attorno a ogni casa che pesano sulla zona; velocità del cambio di luce
   };
   if (typeof window !== 'undefined') { window.__QUADRO = QUADRO; window.__SCENA = SCENA; }
@@ -10649,7 +10688,7 @@ var Render = (function () {
             // 1) valore: salto deciso fra luce e ombra col sole, più morbido col coperto; la tinta non cambia
             float k = mix(mix(qC.x, qC.y, sunK), qT.y, night) * (1. + occK.z * (1. - smoothstep(dc * 1.05, dc * 1.9, d)) * (1. - night * .5)), lo = qC.z;   /* [regia2] occK.z: più contrasto vicino al personaggio */   /* [lucido1] contrasto pieno */   /* [regia2] qC: contrasto col coperto, col sole, perno dei medi */
             float l2 = max((l - lo)*k + lo, l*qN.w);   /* [regia2] qN.w: il pavimento dei neri (le ombre non chiudono sotto questa frazione della luce di partenza) */
-            l2 = l2 / (1. + max(l2 - qC.w, 0.)*1.2);   /* [regia2] qC.w: dove comincia la spalla dei bianchi */
+            { float ex = max(l2 - qC.w, 0.); l2 = mix(l2 / (1. + ex*1.2), qC.w + ex / (1. + ex*qT.z), qT.w); }   /* [regia2] qC.w: dove comincia la spalla dei bianchi */   /* [spianata2] qT.w: il peso della spianata, dove la spalla piega l'eccesso (sempre crescente, tetto a qC.w + 1/qT.z) */
             c *= l2 / max(l, 1e-4);
             // 2) ombre colorate, non grigie: fredde e appena viola in città, verde-blu nella natura; luci calde dove c'è sole
             float shd = 1. - smoothstep(.04, .46, l2), hil = smoothstep(.32, .82, l2);
@@ -11007,10 +11046,24 @@ var Render = (function () {
     if (P.rocca) {
       const R0 = P.rocca, rg = G0(); add(rg, box(1.6, 5, 1.6, concrete('#6a6e66')), 0, 2.5, 0);
       const dish = G0(); add(dish, new THREE.Mesh(new THREE.SphereGeometry(2.2, 12, 6, 0, Math.PI * 2, 0, .9), sm('#c8ccd0', { side: THREE.DoubleSide })), 0, 0, 0, Math.PI / 2 + .4, 0, 0); add(dish, box(.2, .2, 1.6, sl('#3a3a40')), 0, 0, .8); dish.position.y = 5.8; rg.add(dish);
-      place(rg, R0.x + 22, R0.y - 22, 0); WX.radar = dish;
-      const ant = G0(); add(ant, box(.5, 22, .5, sl('#b8201c')), 0, 11, 0); for (let k = 1; k < 7; k++) add(ant, box(1.6 - k * .15, .12, .12, sl('#e8e4dc')), 0, k * 3, 0);
+      const PLr = palco2(), PA = PLr && PLr.antenna;   // [spianata2]
+      { let rx = R0.x + 22, rz = R0.y - 22; if (PA && !free(rx, rz, 1.2)) { rx = PA.x + PA.r + 2.2; rz = PA.z - 1.5; } if (!PA || free(rx, rz, 1.2)) place(rg, rx, rz, 0); WX.radar = dish; }   // [spianata2] il radar non sta in mare: se il suo posto non è terra, accanto all'antenna
+      if (PA) {   // [spianata2] l'antenna radio del comando: traliccio a fasce bianche e rosse (segnalazione aerea), basamento, tre tiranti ai blocchi
+        // d'ancoraggio, la cabina degli apparati al piede; nell'angolo della corte e non sulla piazzola (da lontano era una sbarra rossa storta)
+        const ant = G0(), H = PA.h, nb = 7, cm = concrete('#7a7a72'), red = sl('#a82a20'), wht = sl('#e4e0d6'), steel = sl('#3a3a3e');
+        add(ant, box(1.5, .5, 1.5, cm), 0, .25, 0);
+        for (let k = 0; k < nb; k++) add(ant, box(.34, H / nb, .34, k % 2 ? wht : red), 0, .5 + H / nb * (k + .5), 0);
+        for (let k = 1; k < nb * 2; k++) add(ant, box(.5, .05, .05, steel), 0, .5 + H / nb / 2 * k, 0, 0, k * .9, 0);   // le traverse del traliccio
+        add(ant, box(1.3, .08, 1.3, steel), 0, .5 + H * .66, 0); [[.6, .6], [-.6, .6], [.6, -.6], [-.6, -.6]].forEach(([a, c]) => add(ant, box(.04, .5, .04, steel), a, .75 + H * .66, c));   // il ballatoio
+        add(ant, box(.05, 2.2, .05, steel), 0, .5 + H + 1.1, 0); add(ant, box(.9, .32, .12, sl('#d8d4ca')), .3, .5 + H * .8, 0);   // lo stilo e una parabola piatta
+        const top = add(ant, new THREE.Mesh(new THREE.SphereGeometry(.22, 6, 4), new THREE.MeshBasicMaterial({ color: '#ff2020', toneMapped: false })), 0, .5 + H + 2.25, 0); WX.blink.push({ m: top, ph: 0, slow: true });
+        const tirante = (ax, ay, az, bx, by, bz) => { const L = Math.hypot(bx - ax, by - ay, bz - az), m = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, L, 4), steel); m.position.set((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(bx - ax, by - ay, bz - az).normalize()); ant.add(m); };
+        [0, 2.094, 4.189].forEach(a => { const ax = Math.cos(a + .5) * PA.r, az = Math.sin(a + .5) * PA.r; add(ant, box(.6, .35, .6, cm), ax, .17, az); tirante(ax, .35, az, 0, .5 + H * .62, 0); tirante(ax, .35, az, 0, .5 + H * .95, 0); });
+        const cab = G0(); add(cab, box(2.2, 2.1, 1.7, concrete('#6e7468')), 0, 1.05, 0); add(cab, box(2.4, .14, 1.9, sm('#4a4c4e')), 0, 2.17, 0); add(cab, box(.8, 1.7, .05, sm('#3a3e3a')), -.4, .85, .87); add(cab, box(.3, .2, .05, sb('#ffd890')), .6, 1.6, .87);
+        place(ant, PA.x, PA.z, 0); place(cab, PA.x + 1.4, PA.z + PA.r - .2, 0); }
+      else { const ant = G0(); add(ant, box(.5, 22, .5, sl('#b8201c')), 0, 11, 0); for (let k = 1; k < 7; k++) add(ant, box(1.6 - k * .15, .12, .12, sl('#e8e4dc')), 0, k * 3, 0);
       const top = add(ant, new THREE.Mesh(new THREE.SphereGeometry(.25, 6, 4), new THREE.MeshBasicMaterial({ color: '#ff2020', toneMapped: false })), 0, 22.2, 0); WX.blink.push({ m: top, ph: 0, slow: true });
-      place(ant, R0.x - 18, R0.y + 22, 0);
+      place(ant, R0.x - 18, R0.y + 22, 0); }
       { // [leggera] le tre bandiere davanti al portone della Rocca (prima a 12 m dal punto del posto, cioè dentro l'edificio)
         const bR = (G.BUILDINGS || []).find(b => b.id === 'rocca' && b.door); let fx = R0.x, fz = R0.y + 12, nx0 = 0, nz0 = 1;
         if (bR) { const cx = (bR.x + bR.w / 2) * TS, cz = (bR.y + bR.h / 2) * TS, dx = (bR.door[0] + .5) * TS, dz = (bR.door[1] + .5) * TS; if (Math.abs(dx - cx) / bR.w > Math.abs(dz - cz) / bR.h) { nx0 = Math.sign(dx - cx); nz0 = 0; } else { nx0 = 0; nz0 = Math.sign(dz - cz); } fx = dx + nx0 * 5; fz = dz + nz0 * 5; }
@@ -11018,7 +11071,7 @@ var Render = (function () {
       if (P.eliporto) { // [ordine1] l'eliporto in uno spiazzo libero vero (prima stava in mezzo alla strada, fra le case)
         const T0 = G.T, okPad = (x, z) => { for (let a = -6; a <= 6; a += 2) for (let c = -6; c <= 6; c += 2) { const v = G.tileAt(Math.floor((x + a) / TS), Math.floor((z + c) / TS)); if (v === T0.BLD || v === T0.VIA || v === T0.WATER || v === T0.TREE || v === T0.FOUNT || v === undefined) return false; } return true; };
         let best = null; for (let rr2 = 0; rr2 <= 50 && !best; rr2 += 2) for (let k = 0; k < 16 && !best; k++) { const a = k / 16 * Math.PI * 2, x = P.eliporto.x + Math.cos(a) * rr2, z = P.eliporto.y + Math.sin(a) * rr2; if (okPad(x, z)) best = { x, y: z }; }
-        WX.padAt = best || P.eliporto; }
+        WX.padAt = best || P.eliporto; if (PLr && PLr.eliporto) WX.padAt = { x: PLr.eliporto.x, y: PLr.eliporto.z }; }   // [spianata2] la piazzola al centro della corte nord, dove la vuole il palco
       if (P.eliporto) { const e = WX.padAt || P.eliporto, pad = G0(); add(pad, cyl(5, 5, .06, 24, sm('#5a5a5c')), 0, .03, 0); add(pad, box(.6, .02, 3.4, sb('#e8e4c0')), -1, .07, 0); add(pad, box(.6, .02, 3.4, sb('#e8e4c0')), 1, .07, 0); add(pad, box(2, .02, .6, sb('#e8e4c0')), 0, .07, 0); place(pad, e.x, e.y, 0); }
     }
     // l'elicottero: di giorno a terra sull'eliporto, di notte gira sopra la Base e la periferia est (non va oltre)
@@ -14682,9 +14735,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       {   // [regia2] la pellicola (QUADRO) e la luce di scena della zona (SCENA) nel colore finale
         const Q = QUADRO, ct = scenaK('contrasto');
         U.aK.value.x *= (1 + dk * (scenaK('esposizione') - 1) + night * (scenaK('espNotte') - 1)) * (1 + dusk * Q.luceCrepuscolo); U.sat.value *= 1 + dk * (scenaK('saturazione') - 1);
-        U.qC.value.set(1 + (Q.contrastoCoperto - 1) * ct, 1 + (Q.contrastoSole - 1) * ct, Q.pernoMedi, Q.spallaBianchi); U.qO.value.fromArray(Q.ombraFredda); U.qL.value.fromArray(Q.luceCalda);
+        U.qC.value.set(1 + (Q.contrastoCoperto - 1) * ct, 1 + (Q.contrastoSole - 1) * ct, Q.pernoMedi, Q.spallaBianchi * (1 + dk * (scenaK('spalla') - 1)));   /* [spianata2] */ U.qO.value.fromArray(Q.ombraFredda); U.qL.value.fromArray(Q.luceCalda);
         U.qN.value.set(Q.ariaNeri[0], Q.ariaNeri[1], Q.ariaNeri[2], Q.pavimentoNeri); U.qS.value.set(Q.satCoperto, Q.satSole, Q.tettoCroma, Q.quieteGrigi); U.qA.value.set(Q.ariaGiorno, Q.ariaNotte, Q.coloreLontano, scenaK('velo', 0) * dk);
-        U.vcA.value.copy(VARCO.a.value); U.vcB.value = VARCO.b.value.w; U.qV.value.set(Q.varcoContorno, Q.varcoTaglio, Q.varcoLuce, 0); U.qT.value.set(Q.piedeNeri, 1 + (Q.contrastoNotte - 1) * ct, 0, 0);
+        U.vcA.value.copy(VARCO.a.value); U.vcB.value = VARCO.b.value.w; U.qV.value.set(Q.varcoContorno, Q.varcoTaglio, Q.varcoLuce, 0); U.qT.value.set(Q.piedeNeri, 1 + (Q.contrastoNotte - 1) * ct, SCENA.spianata.spallaForza || 0, SCZ.w.s * dk);   /* [spianata2] la spalla della spianata, solo di giorno */
         U.occK.value.set(U.tOcc.value ? OCCL.forza : 0, U.tOcc.value ? OCCL.suoloScuro : 0, Q.vicinoContrasto, Q.gialliQuieti); U.occC.value.fromArray(OCCL.tinta); U.qF.value.set(Q.lontanoFreddo[0], Q.lontanoFreddo[1], Q.lontanoFreddo[2], Q.lontanoChiaro); }
       {   // [profondita] la separazione dei livelli (PROF): dentro le case niente (la quota non vuol dire niente)
         const P = PROF, inK = indoorNow || p.indoor ? 0 : 1;
