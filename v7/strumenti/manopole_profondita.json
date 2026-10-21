@@ -1,0 +1,5 @@
+{
+  "nota": "[profondita] Il prima e il dopo della separazione dei livelli, sulla stessa scena: GALLERIA_VARIANTI=strumenti/manopole_profondita.json node strumenti/galleria.js <cartella>. Il prima spegne tutte le manopole di PROF (render.js): niente bordo né ciglio, niente valore per quota né velo nei vicoli, niente raccordo, il contorno di profondità su ogni sagoma com'era, il sole e il riquadro dell'ombra di prima.",
+  "prima": { "PROF": { "bordo": 0, "ciglio": 0, "sagome": 0, "quotaValore": 0, "nebbiaVicoli": 0, "raccordo": 0, "sole": 0, "ombraVisuale": 0 } },
+  "dopo": {}
+}

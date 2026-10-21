@@ -1,0 +1,57 @@
+{
+ "quando": "2026-10-21T00:28:29.315Z",
+ "variante": null,
+ "manopole": {},
+ "larghezza": 1280,
+ "altezza": 800,
+ "soglie": {
+  "nero": 12,
+  "bianco": 245
+ },
+ "sintesi": {
+  "foto": 2,
+  "giorno": 2,
+  "lumMediaGiorno": 0.517,
+  "contrastoMedio": 0.213,
+  "saturazioneMedia": 0.321,
+  "neriOltre4Giorno": [],
+  "sovraesposte": [],
+  "drawCallMedie": 5827.5
+ },
+ "foto": [
+  {
+   "nome": "02_vicolo",
+   "titolo": "Un vicolo del borgo",
+   "luce": "borgo",
+   "meteo": "sereno",
+   "nelPosto": 40,
+   "luminosita": 0.53,
+   "contrasto": 0.211,
+   "quasiNeri": 0,
+   "quasiBianchi": 0,
+   "saturazione": 0.334,
+   "drawCall": 2390,
+   "triangoli": 2652221,
+   "ora": 761,
+   "notte": 0,
+   "gente": 40
+  },
+  {
+   "nome": "16_borgo_alto",
+   "titolo": "Il borgo dall'alto",
+   "luce": "borgo",
+   "meteo": "sereno",
+   "nelPosto": 42,
+   "luminosita": 0.504,
+   "contrasto": 0.216,
+   "quasiNeri": 0,
+   "quasiBianchi": 0,
+   "saturazione": 0.307,
+   "drawCall": 9265,
+   "triangoli": 5585401,
+   "ora": 701,
+   "notte": 0,
+   "gente": 37
+  }
+ ]
+}
