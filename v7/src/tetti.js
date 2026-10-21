@@ -533,8 +533,11 @@ var Tetti = (function () {
       if (L.rampa) { put(crema, L.fx, y0 + .06, L.fy, .5, .12, .9, yaw); return; }   // [percorsi] la scala di ronda è di pietra (il pezzo): solo il primo gradino chiaro
       put(fondo, L.x + L.ox * .38, y0 + .015, L.y + L.oy * .38, .74, .03, 1.0, yaw);   // [percorsi2] la base scura, più larga del gradino
       put(crema, L.x + L.ox * .38, y0 + .06, L.y + L.oy * .38, .5, .12, .78, yaw);   // [pulizia2] il primo gradino, chiaro, ai piedi della scala
+      // [tetti3] dove si arriva: la lastra crema sul lastrico (il pianerottolo che si vede da lontano), solo sui terrazzi
+      const PA3 = PIANO[L.bi]; if (CN3 && (!PA3 || PA3.tipo === 'piano') && L.footB < 0) put(crema, L.tx + L.ox * .1, topH(L) + .1, L.ty + L.oy * .1, .9, .04, 1.0, yaw);
       if (old) {   // [epoche] nel borgo, sull'Ottocento e sul regime niente scala di ferro: le staffe alla marinara murate nella parete (pioli a U, ruggine)
         const wx = L.x + L.ox * .02, wz = L.y + L.oy * .02;
+        if (CN3) put(crema, L.x + L.ox * .012, y0 + (y1 - .4 - y0) / 2, L.y + L.oy * .012, .02, y1 - .4 - y0, .72, yaw);   // [tetti3] dietro le staffe la fascia di calce chiara: il minio stacca su ogni intonaco e la salita si legge
         for (let y = y0 + .35; y < y1 - .85; y += .32) { put(rungs, wx + L.ox * .16, y, wz + L.oy * .16, .03, .03, .4, yaw); for (const s of [-1, 1]) put(rungs, wx + L.ox * .08 + sx * s * .9, y, wz + L.oy * .08 + sz * s * .9, .16, .03, .03, yaw); }
         for (const s of [-1, 1]) put(rails, cx - L.ox * .3 + sx * s, y1 - .3, cz - L.oy * .3 + sz * s, .04, .6, .04, yaw);   // i due ferri che aiutano a scavalcare il parapetto
         put(lamps, wx + L.ox * .1, y1 - .2, wz + L.oy * .1, .1, .12, .1, yaw); put(lamps, wx + L.ox * .1, y0 + 2.3, wz + L.oy * .1, .08, .1, .08, yaw); return;   // [pulizia2] e una lucina all'attacco, a 2,3 m
@@ -544,13 +547,16 @@ var Tetti = (function () {
       // il corrimano ad arco sopra il bordo: due montanti che piegano verso il tetto
       for (const s of [-1, 1]) put(rails, cx - L.ox * .35 + sx * s, y1 - .02, cz - L.oy * .35 + sz * s, .7, .05, .05, yaw);
       // la gabbia: anelli a U ogni 70 cm sopra i 2,5 m (le scale lunghe)
-      if (Hh > 4) for (let y = y0 + 2.5; y < y1 - .6; y += .7) {
+      // [tetti3] nella città nuova niente gabbia all'americana: sopra i 6 m la scala di ferro ha i pianerottoli (grigliato e parapetto minio)
+      if (CN3 && Hh > 6) for (let y = y0 + 3.2; y < y1 - 1.6; y += 3.2) { const px = cx + L.ox * .45, pz = cz + L.oy * .45, ex = -L.oy, ez = L.ox;
+        put(rails, px + ex * .55, y, pz + ez * .55, .8, .05, .7, yaw); put(rails, px + ex * .55 + L.ox * .38, y + .5, pz + ez * .55 + L.oy * .38, .05, 1.0, .7, yaw); put(rails, px + ex * .9, y + .5, pz + ez * .9, .8, 1.0, .05, yaw); }
+      else if (Hh > 4) for (let y = y0 + 2.5; y < y1 - .6; y += .7) {
         put(hoops, cx + L.ox * .38, y, cz + L.oy * .38, .03, .03, .62, yaw);
         for (const s of [-1, 1]) put(hoops, cx + L.ox * .2 + sx * s * 1.35, y, cz + L.oy * .2 + sz * s * 1.35, .36, .03, .03, yaw);
       }
       for (const s of [-1, 1]) put(yel, cx + sx * s, y0 + .55, cz + sz * s, .07, .9, .07, yaw);   // [tetti2] i montanti gialli: da lontano si vede dove si sale
       put(lamps, cx - L.ox * .1, y1 + .12, cz - L.oy * .1, .14, .16, .14, yaw); put(rails, cx - L.ox * .1, y1 + .02, cz - L.oy * .1, .2, .04, .2, yaw);   // la lanterna in cima
-      if (Hh > 4) for (const s of [-1, 0, 1]) { const top = y1 - .6, bot = y0 + 2.5; if (top > bot) put(hoops, cx + L.ox * (s ? .2 : .38) + sx * s * 1.35, (top + bot) / 2, cz + L.oy * (s ? .2 : .38) + sz * s * 1.35, .025, top - bot, .025, yaw); }
+      if (Hh > 4 && !(CN3 && Hh > 6)) for (const s of [-1, 0, 1]) { const top = y1 - .6, bot = y0 + 2.5; if (top > bot) put(hoops, cx + L.ox * (s ? .2 : .38) + sx * s * 1.35, (top + bot) / 2, cz + L.oy * (s ? .2 : .38) + sz * s * 1.35, .025, top - bot, .025, yaw); }
     });
     // [tetti2] le passerelle: tavole di traverso su due travi, i paletti alle estremità e la corda tesa ai lati
     const qy = new T3.Quaternion(), qz = new T3.Quaternion(), ax = new T3.Vector3(0, 1, 0), az = new T3.Vector3(0, 0, 1);
@@ -758,8 +764,8 @@ var Tetti = (function () {
         const C = P.colmo; if (C.rl < 1.6) return false;
         const at = t => { const u = (t - .5) * C.rl; return C.along ? [C.cx + u, C.cy] : [C.cx, C.cy + u]; };
         const altri = P.gruppi.map(g => g.t), ts = [.22, .78, .5, .35, .65].filter(t => altri.every(t2 => Math.abs(t2 - t) * C.rl >= 1.6));
-        return metti({ k, falda: true, hx: k === 'comignoli' ? .45 : .2, hy: k === 'comignoli' ? .45 : .2, n: k === 'comignoli' ? (C.rl > 6 && q(47) < .5 ? 2 : 1) : 0 },
-          ts.map(t => { const [x, y] = at(t); return { t, x, y }; }));
+        const n = k === 'comignoli' ? (C.rl > 6 && q(47) < .5 ? 2 : 1) : 0, lu = k === 'comignoli' ? (n === 2 ? .85 : .45) : .2, la = k === 'comignoli' ? .8 : .2;   // lungo il colmo e di traverso (la canna sta sulla falda lontana)
+        return metti({ k, falda: true, n, hx: C.along ? lu : la, hy: C.along ? la : lu }, ts.map(t => { const [x, y] = at(t); return { t, x, y }; }));
       }
       if (k === 'pergola') { const hx = 1.3, hy = 1.1; if (iw < 2 * hx + .2 || id < 2 * hy + .2) return false; return metti({ k, hx, hy }, [[R.x0 + hx, R.y0 + hy], [R.x1 - hx, R.y0 + hy], [R.x0 + hx, R.y1 - hy]].map(([x, y]) => ({ x, y }))); }
       if (k === 'stanza') { const pw = Math.max(2.6, Math.min(iw - 1.6, W1 * .42)), pd = Math.max(2.4, Math.min(id - 1.6, D1 * .42)); if (pw > iw || pd > id) return false;

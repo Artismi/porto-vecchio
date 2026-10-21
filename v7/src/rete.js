@@ -108,9 +108,16 @@ var Rete = (function () {
         const px = f === 'S' ? x0 + u : x0 + w, pz = f === 'S' ? z0 + d : z0 + d - u; if (attraversaLarga(src.x, src.z, px, pz) || Math.hypot(src.x - px, src.z - pz) > 14 || !libero(src.x, src.z, px, pz, src.bi, bi)) continue;   // corto e per aria libera: si vede da dove viene
         const t = nodo(kind, px, pz, y, { bi, f, u, yaw: f === 'S' ? 0 : Math.PI / 2 }); seg(src, t, 'abusivo', { era, matassa: n > 1 }); if (c) c.abusivi++; } });
     // ---- 4) le antenne TV sui tetti e il cavo che scende lungo la facciata fino a una finestra ----
-    B.forEach((b, bi) => { const era = b.shack ? 'E7' : b.era; if (!era || (b.fl || 1) < 2 && !b.shack) return; const h = hash(bi, 50, 1986); if (h > (era === 'E7' ? .5 : era === 'E4' ? .35 : .72)) return;
-      const x0 = b.x * TS, z0 = b.y * TS, w = b.w * TS, d = b.h * TS, top = topOf(b), ax = x0 + w * (.35 + hash(bi, 51, 3) * .3), az = z0 + d * (.35 + hash(bi, 52, 3) * .3);
-      const an = nodo('antenna', ax, az, top + 1.6 + hash(bi, 53, 3) * 1.4, { bi, alta: hash(bi, 54, 3) < .3 }); const c = R.perCasa.get(bi); if (c) c.antenna = an;
+    // [tetti3] nella città nuova l'antenna sta dove la mette il piano dei tetti (Tetti.PIANO): una sola, sul colmo o in fondo al terrazzo,
+    // e solo sui tetti che ce l'hanno (un tetto calmo su quattro, qualche abitato); le baracche tengono la loro selva
+    const T3 = typeof Tetti !== 'undefined' && Tetti.PIANO && Tetti.PIANO.length ? Tetti : null;
+    B.forEach((b, bi) => { const era = b.shack ? 'E7' : b.era; if (!era || (b.fl || 1) < 2 && !b.shack) return; const h = hash(bi, 50, 1986);
+      const PL = T3 && !b.shack ? T3.PIANO[bi] : null, GA = PL ? PL.gruppi.find(q => q.k === 'antenna') : null;
+      if (T3 && !b.shack ? !GA : h > (era === 'E7' ? .5 : era === 'E4' ? .35 : .72)) return;
+      const x0 = b.x * TS, z0 = b.y * TS, w = b.w * TS, d = b.h * TS, top = topOf(b);
+      let ax = x0 + w * (.35 + hash(bi, 51, 3) * .3), az = z0 + d * (.35 + hash(bi, 52, 3) * .3);
+      if (GA) { const a = b.rot && !b.sign && !b.shop ? b.rot : 0, cx = x0 + w / 2, cz = z0 + d / 2, c = Math.cos(a), s2 = Math.sin(a), qx = GA.x - cx, qz = GA.y - cz; ax = cx + qx * c - qz * s2; az = cz + qx * s2 + qz * c; }
+      const an = nodo('antenna', ax, az, top + 1.6 + hash(bi, 53, 3) * 1.4, { bi, alta: hash(bi, 54, 3) < .3, falda: !!(GA && GA.falda) }); const c = R.perCasa.get(bi); if (c) c.antenna = an;
       const f = open(tl(b.x + Math.floor(b.w / 2), b.y + b.h)) ? 'S' : open(tl(b.x + b.w, b.y + Math.floor(b.h / 2))) ? 'E' : null; if (!f) return;
       const len = f === 'S' ? w : d, fl = Math.max(1, b.fl || 1), piano = Math.max(1, fl - 1 - Math.floor(hash(bi, 55, 3) * 2)), u0 = hash(bi, 56, 3) < .5 ? 1 : len - 1, tx = f === 'S' ? x0 + u0 : x0 + w, tz = f === 'S' ? z0 + d : z0 + d - u0;
       const sl = Scena && Scena.attivo() ? Scena.chiedi(tx, tz, 'antenna') : { u: u0 }; if (!sl) return; const u = sl.u !== undefined ? sl.u : u0, px = f === 'S' ? x0 + u : x0 + w, pz = f === 'S' ? z0 + d : z0 + d - u;
