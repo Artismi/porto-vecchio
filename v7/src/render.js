@@ -2054,7 +2054,7 @@ var Render = (function () {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); segniSuolo1(x, tx0, ty0, n, m); sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
+    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); segniSuolo1(x, tx0, ty0, n, m); percorsiSuolo1(x, tx0, ty0, n, m); /* [percorsi] */ sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
     yield;
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
@@ -3822,7 +3822,7 @@ var Render = (function () {
     const hi = th(b.x || 0, b.y || 0, 1979);
     P = { prog, ins: hi < .4 ? 'cartellone' : hi < .72 ? 'serbatoio' : 'neon', x0, z0, w, d, occ: [], n: {}, lim: { antenna: 1, dish: prog === 'tecnico' ? 2 : 1, ac: prog === 'tecnico' ? 3 : 2, tank: 1, volume: 1, torrino: 1 } };
     // le scale di Tetti arrivano sul bordo: lì resta libero
-    if (window.Tetti && Tetti.LADDERS) { if (!RP1lad) { RP1lad = new Map(); Tetti.LADDERS.forEach(L => { const bb = G.BUILDINGS[L.bi]; (RP1lad.get(bb) || RP1lad.set(bb, []).get(bb)).push(L); }); }
+    if (window.Tetti && Tetti.LADDERS) { if (!RP1lad) { RP1lad = new Map(); Tetti.LADDERS.forEach(L => { if (L.camm) return; const bb = G.BUILDINGS[L.bi]; (RP1lad.get(bb) || RP1lad.set(bb, []).get(bb)).push(L); }); }
       (RP1lad.get(b.__tierOf || b) || []).forEach(L => P.occ.push([L.tx, L.ty, 1.1]));
       // [tetti2] gli arrivi delle passerelle (la rampa e il bordo) e la panca del belvedere: lì niente roba
       const bb0 = b.__tierOf || b, bi0 = G.BUILDINGS.indexOf(bb0);
@@ -6403,6 +6403,61 @@ var Render = (function () {
     if (window.__dbg35) console.log('[dbg] ordine1 pulizia finale: tolti', gone, 'tenuti', kept, 'grandi', DZ.big.length);
     return gone;
   }
+  // ================= [percorsi] I PERCORSI SI VEDONO, SENZA HUD (solo nella città nuova) =================
+  // La rete di percorsi.js (W.percorsi) detta il suolo e le luci, con gli strumenti del level design e il linguaggio di [pulizia2]:
+  // - L'USURA E IL CONTRASTO (dipinti nei blocchi del terreno, dopo i segni dell'uso): i dominanti hanno il centro lucidato dai passi, più
+  //   largo e più chiaro dei secondari; le scorciatoie una riga lucidata stretta; i nascondigli (i vicoli ciechi o che non accorciano)
+  //   un velo più scuro. Dove un percorso passa sull'erba, l'erba schiacciata (la terra che affiora). Un filo, mai un segno disegnato.
+  // - L'INQUADRATURA: in fondo a ogni tratto qualcosa che chiama. I landmark e le piazze ci sono già; dove il richiamo è una porta, la
+  //   soglia si accende di più (la lampadina c'è, [pulizia2]); dove non c'è niente, una lanterna a braccio sul muro (o su un palo).
+  // - LE SCORCIATOIE ANNUNCIATE: l'arco, il sottopasso o la scalinata sono già l'indizio; le altre hanno la luce dall'altra parte (la
+  //   stessa lanterna a braccio), così dall'imbocco si vede che il vicolo porta da qualche parte.
+  // I tetti (la traccia chiara sul lastrico, le lanterne alle svolte, il bucato, la corda, la cassa dove si sale) li disegna tetti.js.
+  const pcDati1 = () => (cn1() && M.world.percorsi) || null;
+  function percorsiSuolo1(x, tx0, ty0, n, m) {
+    const D = pcDati1(); if (!D) return; const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS;
+    const linea = (P, w, col) => { if (!P || !P.some(q => inBox1(q[0], q[1], X0, Y0, X1, Y1, w + 3))) return; x.beginPath(); P.forEach((q, i) => { const px = (q[0] - X0) * PPM, py = (q[1] - Y0) * PPM; if (i) x.lineTo(px, py); else x.moveTo(px, py); }); x.lineWidth = w * PPM; x.strokeStyle = col; x.stroke(); };
+    x.save(); x.lineJoin = 'round'; x.lineCap = 'round';
+    D.scorciatoie.forEach(s => { if (s.k === 'nascondiglio') { linea(s.pts, 3.4, 'rgba(16,13,12,.2)'); linea(s.pts, 1.8, 'rgba(16,13,12,.1)'); } });   // il nascondiglio: più scuro
+    D.scorciatoie.forEach(s => { if (s.k === 'scorciatoia') { linea(s.pts, 1.4, 'rgba(244,230,202,.07)'); linea(s.pts, .6, 'rgba(250,240,220,.06)'); } });   // la scorciatoia: la riga dei passi
+    D.percorsi.forEach(p => { const dom = p.k === 'dominante', rd = (M.roads || []).find(r => r.id === p.id), w = rd ? rd.w : 3.2;
+      linea(p.pts, w * (dom ? .6 : .5), dom ? 'rgba(248,232,198,.08)' : 'rgba(244,228,196,.06)');   // il centro lucidato, caldo
+      linea(p.pts, Math.min(1.8, w * .3), dom ? 'rgba(252,242,222,.07)' : 'rgba(250,238,216,.05)');
+      p.pts.forEach(([px, py], k) => { if (k % 2 || !inBox1(px, py, X0, Y0, X1, Y1, 2)) return; const v = gT(Math.floor(px / TS), Math.floor(py / TS)); if (v !== G.T.GRASS && v !== G.T.DIRT) return;   // l'erba schiacciata
+        x.fillStyle = 'rgba(126,108,78,.32)'; x.beginPath(); x.ellipse((px - X0) * PPM, (py - Y0) * PPM, .9 * PPM, .7 * PPM, 0, 0, 6.2832); x.fill(); }); });
+    x.restore();
+  }
+  const PC1 = { n: 0, spill: 0 };
+  // la lanterna a braccio: sul muro più vicino (entro 3 m, una faccia di casella piena), altrimenti su un palo di ferro scuro
+  function lanterna1(x, z, lit, iron, geo) {
+    const T = G.T; let best = null;
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (let d = .4; d <= 3; d += .2) { const tx = Math.floor((x + dx * d) / TS), tz = Math.floor((z + dz * d) / TS); if (gT(tx, tz) !== T.BLD) continue;
+      const fx = dx > 0 ? tx * TS : dx < 0 ? (tx + 1) * TS : x, fz = dz > 0 ? tz * TS : dz < 0 ? (tz + 1) * TS : z; if (!best || d < best.d) best = { d, dx, dz, fx, fz }; break; }
+    const g = new THREE.Group(), M3 = (gg, m, sx, sy, sz, px, py, pz) => { const o = new THREE.Mesh(gg, m); o.scale.set(sx, sy, sz); o.position.set(px, py, pz); g.add(o); return o; };
+    let lx, lz, y;
+    if (best) { lx = best.fx - best.dx * .34; lz = best.fz - best.dz * .34; y = groundH(lx, lz) + 2.75;
+      M3(geo.box, iron, best.dx ? .36 : .04, .04, best.dz ? .36 : .04, best.fx - best.dx * .17, y + .16, best.fz - best.dz * .17);   // il braccio
+      M3(geo.box, iron, .06, .3, .06, best.fx - best.dx * .02, y + .02, best.fz - best.dz * .02); }   // la piastra
+    else { lx = x; lz = z; const g0 = groundH(x, z); y = g0 + 2.75; M3(geo.box, iron, .07, 2.9, .07, x, g0 + 1.45, z); }   // il palo
+    M3(geo.box, iron, .22, .05, .22, lx, y + .16, lz); M3(geo.sph, lit, 1, 1.15, 1, lx, y, lz); M3(geo.box, iron, .03, .1, .03, lx, y + .22, lz);   // il cappello, il vetro acceso, l'anello
+    P2.k = best ? 'applique' : 'lampione'; addStatic(mk2(g, best ? 'applique' : 'lampione')); P2.k = null;
+    addLight(lx, y - .1, lz, '#ffc070', 1.35, 6, .02); PC1.n++;
+    return [lx, lz];
+  }
+  function buildPercorsi1() {
+    const D = pcDati1(); if (!D) return;
+    const iron = sm('#2a2a2e', { metalness: .4, roughness: .6 }), lit = caseLit('#ffc878'), geo = { box: new THREE.BoxGeometry(1, 1, 1), sph: new THREE.SphereGeometry(.085, 8, 6) };
+    const messe = [], lontano = (x, z, r) => messe.every(q => Math.hypot(q[0] - x, q[1] - z) > r);
+    // 1) l'inquadratura: in fondo al tratto la lanterna (dove non c'è altro), la soglia accesa (dove chiama una porta)
+    D.tratti.forEach(t => { const r = t.richiamo; if (!r) return;
+      if (r.k === 'lanterna' && lontano(r.x, r.y, 6)) messe.push(lanterna1(r.x, r.y, lit, iron, geo));
+      if (r.k === 'porta') { const [ax, ay] = t.pts[0], l = Math.hypot(ax - r.x, ay - r.y) || 1; addSpill(r.x, r.y, (ax - r.x) / l, (ay - r.y) / l, '#ffc878', 1.5, 5); PC1.spill++; } });
+    // 2) le scorciatoie senza arco né scalinata: la luce dall'altra parte (all'imbocco lontano)
+    D.scorciatoie.forEach(s => { if (s.k !== 'scorciatoia' || s.indizio.k !== 'luce') return; const Z = s.pts[s.pts.length - 1], A = s.pts[0];
+      if (lontano(Z[0], Z[1], 7)) messe.push(lanterna1(Z[0], Z[1], lit, iron, geo)); });
+    window.__percorsi = { lanterne: PC1.n, soglie: PC1.spill };
+  }
+
   // ================= [pulizia2] IL REGISTRO DI QUELLO CHE SI POSA E IL REGISTA FINALE (solo nella città nuova) =================
   // Ogni sistema posa per conto suo (botteghe, case, soglie, segni, oggetti, strade): qui si tiene nota di tutto quello che arriva
   // a terra o sui muri, con la sua scatola orientata, chi l'ha messo (il passo della costruzione), la casa e il lato a cui appartiene.
@@ -6517,8 +6572,8 @@ var Render = (function () {
         Z.push({ t: 'vetrina', B: box2(fx, fz, F.yaw, e.w / 2 + .1, .5, Math.min(gy, base) - .2, Math.max(gy, base) + 2.3) }); });
     });
     const TT2 = window.Tetti;
-    if (TT2 && TT2.LADDERS) TT2.LADDERS.forEach(L => { const b = G.BUILDINGS[L.bi]; if (!b || b.pezzo) return; const yaw = Math.atan2(L.ox, L.oy), foot = L.footB >= 0 ? TT2.roofRule(G.BUILDINGS[L.footB]) : groundH(L.fx, L.fy), top = TT2.roofRule(b) + .95;
-      const pe = pr('scala', box2(L.x + L.ox * .22, L.y + L.oy * .22, yaw, .3, .2, foot, top), { L });
+    if (TT2 && TT2.LADDERS) TT2.LADDERS.forEach(L => { const b = G.BUILDINGS[L.bi]; if (!b || b.pezzo) return; const yaw = Math.atan2(L.ox, L.oy), foot = L.footB >= 0 ? TT2.roofRule(G.BUILDINGS[L.footB]) : groundH(L.fx, L.fy), top = (L.camm ? L.hTop : TT2.roofRule(b)) + .95;
+      const pe = L.camm ? null : pr('scala', box2(L.x + L.ox * .22, L.y + L.oy * .22, yaw, .3, .2, foot, top), { L });   // [percorsi] la scala dei camminamenti sta sul pezzo grande che la porta: si tiene libero solo il piede
       if (L.footB < 0) Z.push({ t: 'scala', B: box2(L.x + L.ox * .7, L.y + L.oy * .7, yaw, .6, .55, foot - .2, foot + 2.3), p: pe }); });
     if (TT2 && TT2.PLANKS) TT2.PLANKS.forEach(Q => { const h = Math.max(TT2.roofRule(G.BUILDINGS[Q.a]), TT2.roofRule(G.BUILDINGS[Q.b])); pr('passerella', box2(Q.x0 + Q.ox * Q.L / 2, Q.y0 + Q.oy * Q.L / 2, Math.atan2(-Q.oy, Q.ox), Q.L / 2, Q.hw + .1, h - .3, h + 1.0), { Q }); });
     const SS = window.Sottosuolo; if (SS && SS.TPL && SS.TPL.portals) SS.TPL.portals.forEach(Q => { if (Q.kind !== 'tombino') return; const x = (Q.s[0] + .5) * TS, z = (Q.s[1] + .5) * TS, gy = groundH(x, z);
@@ -13329,7 +13384,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     const TT = (n, f) => { P2.src = n; const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
-    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
+    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('percorsi1', buildPercorsi1);   /* [percorsi] */ TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */

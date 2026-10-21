@@ -22918,6 +22918,349 @@ var World = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = World;
  }</script>
+<script data-m="percorsi">if (/[?&]cittanuova/.test(location.search)) { /* Porto Vecchio — i percorsi del level designer (v7, [percorsi]).
+   «Si deve avere la sensazione di essere sempre su un percorso creato da un level designer, anche essendo open world.»
+   La rete dei percorsi della città nuova come DATO (W.percorsi), progettata e non casuale (PIANO_CITTA.md sez. 5, level_designer.md):
+   - I TRE PERCORSI DOMINANTI (Lynch): la Rua Maestra (storta, dalla Porta di Terra alla spianata), la Via della Vittoria (dritta, dal
+     Mercato al cannocchiale sulla Porta della Rocca), il Corso (ad arco, dalla ferrovia al porto). Poi i PERCORSI SECONDARI che li
+     legano attraverso le piazzette e gli sbocchi: la Marina, la Via di Mezzo, il Pozzo, il Forno, il sagrato e le mura, la Stazione.
+   - LE SCORCIATOIE: ogni vicolo si misura contro la strada (il cammino più corto senza vicoli fra i suoi due capi). Se è almeno il 30%
+     più corto è una scorciatoia; altrimenti (o se è cieco) è un NASCONDIGLIO. Ogni vicolo è l'una o l'altra cosa.
+   - I CIRCUITI SUI TETTI (si legano dopo, con Percorsi.lega, quando c'è tetti.js): almeno tre giri nel borgo, ognuno sale da una scala
+     color minio, passa per i salti e le passerelle color crema, scende da un'altra parte; più il camminamento delle mura di tramontana.
+   - LE PORTE DELLA CITTÀ (i colli di bottiglia): Porta di Terra, sottoportico della Vittoria, sottopasso della ferrovia, scala dei
+     pescatori, posto di blocco sulla Vittoria. Ognuna con la sua alternativa (i tetti o un tombino), legata anch'essa in Percorsi.lega.
+   - I PUNTI DI RICHIAMO: ogni percorso è spezzato in TRATTI (agli incroci, ai nodi, dove si perde la vista, al più 45 m nel borgo); per
+     ogni tratto, dove punta lo sguardo: un landmark, il mare, la luce di una piazzetta, una porta accesa in fondo. Il richiamo dev'essere
+     davanti (entro 35°), visibile (nessuna casa lo copre: si guarda da 1,6 m) e nel borgo a meno di 60 m (la regola dei 60 m).
+   Il rendering (render.js [percorsi], tetti.js) legge questo dato e lo fa vedere senza HUD: l'usura del suolo, le briciole minio e
+   crema, le luci in fondo ai tratti, i percorsi un filo più chiari e caldi, i nascondigli più scuri.
+   Coordinate finali in metri (dopo expand: x verso est, y verso sud). Nessuna grafica qui. */
+var Percorsi = (function () {
+  'use strict';
+  const W = typeof World !== 'undefined' ? World : (typeof require !== 'undefined' ? require('./world_cittanuova.js') : null);
+  const VUOTO = { attivo: false, lega() { return null; }, dati: null };
+  if (!W || !W.sets || !W.roads) return VUOTO;   // la mappa vecchia: niente rete
+  const DBG = typeof process !== 'undefined' && process.env && process.env.PV_DBG, T0 = Date.now();
+  const TS = W.TS, GW = W.GW, GH = W.GH, T = W.T, B = W.BUILDINGS, EL = W.elev, BI = W.bIndex;
+  const hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const inb = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH;
+  const tI = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return inb(tx, ty) ? ty * GW + tx : -1; };
+  const walkT = (tx, ty) => { if (!inb(tx, ty)) return false; const v = W.grid[ty * GW + tx]; return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; };   // come game.js
+  const elevAt = (x, y) => { const i = tI(x, y); return i < 0 ? 0 : EL[i]; };
+  const roofTop = b => (b.base || 0) + (b.lighthouse ? 12 : b.kiosk ? 2.8 : b.fl >= 1 ? 3.6 + (b.fl - 1) * 2.4 : 3);   // come Tetti.roofRule
+  const road = id => W.roads.find(r => r.id === id);
+  const lenP = P => { let L = 0; for (let k = 1; k < P.length; k++) L += hyp(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1]); return L; };
+  const pz = tipo => (W.pezzi || []).filter(p => p.tipo === tipo);
+  const pzW = (p, lx, lz) => { const c = Math.cos(p.rot), s = Math.sin(p.rot); return [p.x + lx * c + lz * s, p.y - lx * s + lz * c]; };
+  const pzL = (p, x, y) => { const c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y; return [dx * c - dy * s, dx * s + dy * c]; };
+  const setOf = (k, f) => W.sets.find(q => q.k === k && (!f || f(q)));
+  const cOf = q => q.x !== undefined ? [q.x, q.y] : [(q.x0 + q.x1) / 2, (q.y0 + q.y1) / 2];
+  // il borgo (E0/E2) dove vale la regola dei 60 m: la Vittoria (E4) lo taglia e non ne fa parte
+  const BORGO = { x0: 1312, x1: 1466, y0: 262, y1: 412 };
+  const borgoAt = (x, y) => x > BORGO.x0 && x < BORGO.x1 && y > BORGO.y0 && y < BORGO.y1 && Math.abs(y - 343) > 13;
+
+  if (DBG) console.error('[percorsi] t', 42, Date.now() - T0);
+  // ================= LA VISTA: cosa copre cosa (case, pezzi grandi, archi sopra i vicoli) =================
+  // l'altezza di un pezzo grande che riserva caselle piene (BLD senza casa): torre, porta, stazione, arco
+  const PZH = { torre_littoria: 34, porta_terra: 13, stazione: 11, magazzini_volta: 5.2, sottopasso: 4.8, arco_sottopasso: 9.6, lavatoio: 3, caserma: 10, polveriera: 6, torrione: 16, porta_monumentale: 12, cortina: 12, bastione: 12, muro_garante: 3.6, mura_tramontana: 7, campanile: 30, facciata_chiesa: 16 };
+  const PZBOX = []; (W.pezzi || []).forEach(p => { if (!p.imp) return; p.imp.forEach(r => { if (r[0] !== 'B') return; PZBOX.push({ p, r, h: (p.q || 0) + (PZH[p.tipo] || 8) }); }); });
+  // gli archi e le volte sopra i vicoli: si passa sotto (la vista anche), ma sopra i 3,4 m coprono
+  const VOLTE = []; (W.pezzi || []).forEach(p => { if (p.tipo === 'arco_sottopasso') VOLTE.push({ p, x0: -1, x1: 8.4, z0: -6, z1: 6, y0: (p.q || 0) + 3.2, y1: (p.q || 0) + 9.6 });
+    if (p.tipo === 'arco_contrasto') VOLTE.push({ p, x0: -2, x1: 2, z0: -.6, z1: .6, y0: (p.q || 0) + 3.6, y1: (p.q || 0) + 7.5 });
+    if (p.tipo === 'portico') VOLTE.push({ p, x0: 0, x1: 26, z0: -4.2, z1: .2, y0: (p.q || 0) + 4.6, y1: (p.q || 0) + 17 }); });
+  const pzHAt = (x, y) => { let h = -1; PZBOX.forEach(q => { const [l, z] = pzL(q.p, x, y); if (l >= q.r[1] && l <= q.r[2] && z >= q.r[3] && z <= q.r[4]) h = Math.max(h, q.h); }); return h; };
+  const PZH_CACHE = new Map();
+  const solidH = i => {   // l'altezza assoluta del pieno in una casella (-1: vuota)
+    if (W.grid[i] !== T.BLD) return -1; const bi = BI[i]; if (bi >= 0 && B[bi]) return roofTop(B[bi]);
+    if (PZH_CACHE.has(i)) return PZH_CACHE.get(i); const tx = i % GW, ty = (i - tx) / GW, h = pzHAt(tx * TS + 1, ty * TS + 1), v = h > 0 ? h : EL[i] + 6; PZH_CACHE.set(i, v); return v; };
+  // la vista libera da (ax, ay) a quota assoluta az fino a (bx, by, bz); skip: metri attorno al bersaglio che non contano (ci sta sopra)
+  function vista(ax, ay, az, bx, by, bz, skip) {
+    const L = hyp(bx - ax, by - ay); if (L < .5) return true; let last = -1;
+    for (let s = .8; s < L - (skip || 0); s += .4) { const t = s / L, x = ax + (bx - ax) * t, y = ay + (by - ay) * t, z = az + (bz - az) * t, i = tI(x, y); if (i < 0) return false;
+      if (i !== last) { last = i; const h = solidH(i); if (h > z) return false; }
+      for (const v of VOLTE) { if (z < v.y0 || z > v.y1) continue; const [l, q] = pzL(v.p, x, y); if (l >= v.x0 && l <= v.x1 && q >= v.z0 && q <= v.z1) return false; } }
+    return true;
+  }
+  const occhio = (x, y) => elevAt(x, y) + 1.6;
+
+  if (DBG) console.error('[percorsi] t', 65, Date.now() - T0);
+  // ================= IL CAMMINO A TERRA (per misurare scorciatoie e secondari) =================
+  const BOX = { tx0: Math.floor(1080 / TS), tx1: Math.ceil(1620 / TS), ty0: Math.floor(236 / TS), ty1: Math.ceil(424 / TS) };
+  const NB = (BOX.tx1 - BOX.tx0) * (BOX.ty1 - BOX.ty0), bw = BOX.tx1 - BOX.tx0;
+  const bIdx = (tx, ty) => (ty - BOX.ty0) * bw + (tx - BOX.tx0), inBox = (tx, ty) => tx >= BOX.tx0 && ty >= BOX.ty0 && tx < BOX.tx1 && ty < BOX.ty1;
+  // le caselle di ogni strada (il corridoio della sua larghezza)
+  const corr = new Map();
+  function corridoio(rd, pad) {
+    const k = rd.id + ':' + (pad || 0); if (corr.has(k)) return corr.get(k); const S = new Set(), P = rd.pts, h = rd.w / 2 + (pad || 0);
+    for (let k2 = 0; k2 < P.length - 1; k2++) { const [ax, ay] = P[k2], [bx, by] = P[k2 + 1], L = hyp(bx - ax, by - ay) || 1, nx = -(by - ay) / L, ny = (bx - ax) / L;
+      for (let s = 0; s <= L; s += .5) for (let o = -h; o <= h; o += .5) { const i = tI(ax + (bx - ax) * s / L + nx * o, ay + (by - ay) * s / L + ny * o); if (i >= 0) S.add(i); } }
+    corr.set(k, S); return S;
+  }
+  const VICOLI = W.roads.filter(r => /^vic_/.test(r.id) && r.pts && r.pts.length > 1);
+  // le caselle «di strada»: le vie non vicolo della città (il loro corridoio); quelle dei vicoli sono le altre (una casella di via resta via)
+  const stradaTiles = new Set(); W.roads.filter(r => r.pts && !/^vic_/.test(r.id) && r.era).forEach(rd => corridoio(rd, .5).forEach(i => stradaTiles.add(i)));
+  const vicTiles = new Set(); VICOLI.forEach(rd => corridoio(rd, .3).forEach(i => { if (!stradaTiles.has(i) && W.grid[i] !== T.PIAZZA) vicTiles.add(i); }));
+  // Dijkstra a 8 vicini sulle caselle del riquadro della città; ok(i) dice dove si può passare, cost(i) quanto pesa
+  // il punto calpestabile più vicino (entro 3 m): i capi dei vicoli finiscono a volte su un gradino o contro la vasca
+  const aTerra = (x, y) => { if (walkT(Math.floor(x / TS), Math.floor(y / TS))) return [x, y]; let b = null, bd = 9; for (let dy = -3; dy <= 3; dy += .5) for (let dx = -3; dx <= 3; dx += .5) { const d = hyp(dx, dy); if (d < bd && walkT(Math.floor((x + dx) / TS), Math.floor((y + dy) / TS))) { bd = d; b = [x + dx, y + dy]; } } return b || [x, y]; };
+  function cammino(ax, ay, bx, by, ok, cost) {
+    [ax, ay] = aTerra(ax, ay); [bx, by] = aTerra(bx, by);
+    const s = tI(ax, ay), t = tI(bx, by); if (s < 0 || t < 0) return null;
+    const D = new Float64Array(NB).fill(Infinity), P = new Int32Array(NB).fill(-1), H = [];
+    const push = (i, d) => { H.push([d, i]); let k = H.length - 1; while (k > 0) { const q = (k - 1) >> 1; if (H[q][0] <= H[k][0]) break; [H[q], H[k]] = [H[k], H[q]]; k = q; } };
+    const pop = () => { const top = H[0], last = H.pop(); if (H.length) { H[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < H.length && H[l][0] < H[m][0]) m = l; if (r < H.length && H[r][0] < H[m][0]) m = r; if (m === k) break; [H[m], H[k]] = [H[k], H[m]]; k = m; } } return top; };
+    const sx = s % GW, sy = (s - sx) / GW, txe = t % GW, tye = (t - txe) / GW; if (!inBox(sx, sy) || !inBox(txe, tye)) return null;
+    D[bIdx(sx, sy)] = 0; push(s, 0);
+    while (H.length) { const [d, i] = pop(), tx = i % GW, ty = (i - tx) / GW, bi = bIdx(tx, ty); if (d > D[bi]) continue; if (i === t) break;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const x = tx + dx, y = ty + dy; if (!inBox(x, y) || !walkT(x, y)) continue;
+        const j = y * GW + x; if (j !== t && !ok(j)) continue; if (dx && dy && (!walkT(tx + dx, ty) || !walkT(tx, ty + dy))) continue;   // niente angoli tagliati fra due muri
+        const nd = d + (dx && dy ? Math.SQRT2 : 1) * TS * (cost ? cost(j) : 1), bj = bIdx(x, y); if (nd < D[bj]) { D[bj] = nd; P[bj] = i; push(j, nd); } } }
+    const bt = bIdx(txe, tye); if (!isFinite(D[bt])) return null;
+    const pts = []; let c = t; while (c >= 0) { const cx = c % GW, cy = (c - cx) / GW; pts.push([(cx + .5) * TS, (cy + .5) * TS]); if (c === s) break; c = P[bIdx(cx, cy)]; }
+    pts.reverse(); return { pts, L: D[bt] };
+  }
+  // una polilinea a caselle diventa una linea pulita: si tiene un punto quando la retta dal precedente non resta sul calpestabile
+  function semplifica(P) {
+    if (P.length < 3) return P.slice(); const out = [P[0]]; let a = 0;
+    const libero = (p, q) => { const L = hyp(q[0] - p[0], q[1] - p[1]); for (let s = 0; s <= L; s += .5) { const x = p[0] + (q[0] - p[0]) * s / L, y = p[1] + (q[1] - p[1]) * s / L; if (!walkT(Math.floor(x / TS), Math.floor(y / TS))) return false; } return true; };
+    for (let k = 2; k < P.length; k++) if (!libero(P[a], P[k]) || hyp(P[k][0] - P[a][0], P[k][1] - P[a][1]) > 14) { out.push(P[k - 1]); a = k - 1; }
+    out.push(P[P.length - 1]); return out;
+  }
+
+  if (DBG) console.error('[percorsi] t', 105, Date.now() - T0);
+  // ================= I NODI: piazze, porte, sbocchi =================
+  const NODI = [];
+  const nodo = (id, nome, k, x, y, ex) => { const n = Object.assign({ id, nome, k, x, y }, ex || {}); NODI.push(n); return n; };
+  const pt = pz('porta_terra')[0], ptC = pt ? pzW(pt, 11.5, 6.4) : [1323, 308];
+  nodo('porta_terra', 'Porta di Terra', 'porta', ptC[0], ptC[1]);
+  { const q = setOf('mercato'); if (q) nodo('mercato', 'Piazza del Mercato', 'piazza', q.x, q.y); }
+  { const q = setOf('adunata'); if (q) nodo('adunata', 'Piazza d\'adunata', 'piazza', (q.x0 + q.x1) / 2, (q.y0 + q.y1) / 2); }
+  { const q = setOf('sagrato'); if (q) nodo('sagrato', 'Sagrato della Chiesa Madre', 'piazza', (q.x0 + q.x1) / 2, q.y1 + 1); }
+  { const q = setOf('piazzetta', q => q.bar); if (q) nodo('pozzo', 'Piazzetta del Pozzo (il bar)', 'piazza', q.x, q.y); }
+  { const q = setOf('piazzetta', q => q.forno); if (q) nodo('forno', 'Piazzetta del Forno', 'piazza', q.x, q.y); }
+  { const q = setOf('marina'); if (q) nodo('piazza_marina', 'Piazza della Marina', 'piazza', (q.x0 + q.x1) / 2, (q.y0 + q.y1) / 2); }
+  const mg = pz('muro_garante')[0], mgC = mg ? pzW(mg, 12, 0) : [1469, 343];
+  nodo('posto_blocco', 'Posto di blocco della Vittoria', 'porta', mgC[0], mgC[1]);
+  { const R = road('rua'); if (R) nodo('spianata', 'La spianata della Rocca', 'sbocco', R.pts[R.pts.length - 1][0], R.pts[R.pts.length - 1][1]); }
+  const nodoDi = id => NODI.find(n => n.id === id);
+
+  if (DBG) console.error('[percorsi] t', 121, Date.now() - T0);
+  // ================= I LANDMARK E GLI ALTRI RICHIAMI =================
+  // landmark: [nome, x, y, quota assoluta del punto che si guarda, raggio del pezzo (la vista ci arriva sopra)]
+  const LANDMARK = [];
+  const lm = (tipo, nome, lx, lz, h, r) => pz(tipo).forEach(p => { const [x, y] = pzW(p, lx, lz); LANDMARK.push({ k: 'landmark', tipo, nome, x, y, z: (p.q || 0) + h, r }); });
+  lm('campanile', 'il campanile della Chiesa Madre', 2.2, 0, 26, 3.5);
+  lm('torre_littoria', 'la torre littoria', 4, 0, 30, 5);
+  lm('porta_terra', 'la Porta di Terra', 11.5, 0, 11, 7);
+  lm('tettoia_mercato', 'la tettoia verde del Mercato', 14, 0, 7, 15);
+  lm('porta_monumentale', 'la Porta della Rocca', 5.5, 0, 11, 5);
+  lm('torrione', 'il torrione della Rocca', 7, 0, 15, 8);
+  lm('stazione', 'l\'orologio della stazione', 16, -6, 10, 10);
+  lm('muro_garante', 'il riflettore del posto di blocco', 12, 0, 6.5, 3);
+  lm('molo_vecchio', 'la lanterna del molo', 0, 0, 5, 4);
+  // le luci delle piazze: il lampione in mezzo, a 3,5 m
+  const LUCE_N = { mercato: 'del Mercato', adunata: 'della piazza d\'adunata', sagrato: 'del sagrato', pozzo: 'del bar del Pozzo', forno: 'della piazzetta del Forno', piazza_marina: 'della Piazza della Marina' };
+  const LUCI = NODI.filter(n => n.k === 'piazza').map(n => ({ k: 'luce', nome: 'la luce ' + (LUCE_N[n.id] || 'della piazza'), x: n.x, y: n.y, z: elevAt(n.x, n.y) + 3.5, r: 2, nodo: n.id }));
+  // il mare: le caselle d'acqua lungo la riva sud del borgo e della città (a quota del mare)
+  const MARE = []; for (let x = 1160; x <= 1480; x += 6) for (let y = 380; y < 424; y += 2) { const i = tI(x, y); if (i >= 0 && W.grid[i] === T.WATER) { MARE.push({ k: 'mare', nome: 'il mare', x, y, z: .6, r: 1 }); break; } }
+  for (let x = 1320; x <= 1470; x += 6) for (let y = 270; y > 240; y -= 2) { const i = tI(x, y); if (i >= 0 && W.grid[i] === T.WATER) { MARE.push({ k: 'mare', nome: 'il mare di tramontana', x, y, z: .6, r: 1 }); break; } }
+  // le porte che si possono accendere: i portoni delle case (la lampadina sopra c'è già, [pulizia2]); la più vicina al fondo del tratto
+  const PORTONI = []; B.forEach((b, bi) => { if (!b.door || b.lighthouse) return; const [dx, dy] = b.door; PORTONI.push({ bi, x: (dx + .5) * TS, y: (dy + .5) * TS }); });
+
+  if (DBG) console.error('[percorsi] t', 142, Date.now() - T0);
+  // ================= I PERCORSI E I LORO TRATTI =================
+  const PERCORSI = [], TRATTI = [];
+  // spezza una polilinea in tratti: ai nodi, dove si perde la vista dall'inizio, al più lmax metri
+  function trattiDi(per, P, lmax) {
+    const out = []; let a = 0;
+    const lungo = (i, j) => { let L = 0; for (let k = i + 1; k <= j; k++) L += hyp(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1]); return L; };
+    // ricampiona a passi di ~2 m
+    while (a < P.length - 1) {
+      let b = a + 1;
+      while (b < P.length - 1) {
+        const L = lungo(a, b + 1), [x, y] = P[b + 1], borgo = borgoAt(x, y), lm2 = borgo ? Math.min(lmax, 45) : lmax;
+        if (L > lm2) break;
+        if (L > 14 && !vista(P[a][0], P[a][1], occhio(P[a][0], P[a][1]), x, y, elevAt(x, y) + 2.2, 0)) break;   // la vista si perde: il tratto finisce dove ancora si vede (non prima di 14 m)
+        b++;
+        if (L > 10 && NODI.some(n => hyp(n.x - P[b][0], n.y - P[b][1]) < 5)) break;   // un nodo: il tratto finisce lì
+      }
+      out.push(P.slice(a, b + 1)); a = b;
+    }
+    // l'ultimo pezzetto corto si unisce al precedente
+    if (out.length > 1 && lenP(out[out.length - 1]) < 6) { const u = out.pop(); out[out.length - 1] = out[out.length - 1].concat(u.slice(1)); }
+    return out.map((pts, i) => { const t = { id: per.id + '.' + (i + 1), percorso: per.id, k: per.k, pts, L: lenP(pts) }; t.borgo = borgoAt((pts[0][0] + pts[pts.length - 1][0]) / 2, (pts[0][1] + pts[pts.length - 1][1]) / 2); return t; });
+  }
+  const ricampiona = (P, d) => { const out = [P[0]]; for (let k = 1; k < P.length; k++) { const [ax, ay] = P[k - 1], [bx, by] = P[k], L = hyp(bx - ax, by - ay), n = Math.max(1, Math.round(L / d)); for (let j = 1; j <= n; j++) out.push([ax + (bx - ax) * j / n, ay + (by - ay) * j / n]); } return out; };
+  function percorso(id, nome, k, pts, ex) {
+    const P = ricampiona(pts, 2), per = Object.assign({ id, nome, k, pts: P, L: lenP(P), tratti: [] }, ex || {});
+    trattiDi(per, P, k === 'dominante' && !/rua/.test(id) ? 140 : 60).forEach(t => { per.tratti.push(t.id); TRATTI.push(t); });
+    PERCORSI.push(per); return per;
+  }
+  // i tre dominanti, nel verso del racconto
+  { const R = road('rua'); if (R) percorso('rua', 'Rua Maestra', 'dominante', R.pts, { verso: 'dalla Porta di Terra alla spianata' }); }
+  { const R = road('vittoria'); if (R) percorso('vittoria', 'Via della Vittoria', 'dominante', R.pts, { verso: 'dal Mercato al cannocchiale sulla Porta della Rocca' }); }
+  { const R = road('corso'); if (R) percorso('corso', 'Corso Garibaldi', 'dominante', R.pts, { verso: 'dalla ferrovia al porto' }); }
+  // i secondari: per tappe (nodi o punti), il cammino a terra preferisce le vie e le piazze
+  const sulPercorso = (id, f) => { const P = (PERCORSI.find(p => p.id === id) || {}).pts || (road(id) || {}).pts; if (!P) return null; return f(P); };
+  const vicino = (id, x, y) => sulPercorso(id, P => { let b = null, d = 1e9; P.forEach(q => { const e = hyp(q[0] - x, q[1] - y); if (e < d) { d = e; b = q; } }); return b; });
+  const capo = (vid, fine) => { const r = road(vid); return r ? (fine ? r.pts[r.pts.length - 1] : r.pts[0]) : null; };
+  const costoSec = i => stradaTiles.has(i) ? 1 : vicTiles.has(i) ? 1.15 : 1.8;
+  function secondario(id, nome, tappe, ex) {
+    const T2 = tappe.map(q => typeof q === 'string' ? (nodoDi(q) ? [nodoDi(q).x, nodoDi(q).y] : null) : q).filter(Boolean); if (T2.length < 2) return null;
+    let pts = []; for (let k = 0; k < T2.length - 1; k++) { const c = cammino(T2[k][0], T2[k][1], T2[k + 1][0], T2[k + 1][1], () => true, costoSec); if (!c) return null; pts = pts.concat(k ? c.pts.slice(1) : c.pts); }
+    return percorso(id, nome, 'secondario', semplifica(pts), ex);
+  }
+  {
+    const MAR = road('marina'), MEZ = road('mezzo');
+    if (MAR) percorso('marina', 'Via della Marina', 'secondario', MAR.pts, { lega: ['corso', 'piazza_marina'] });
+    if (MEZ) percorso('mezzo', 'Via di Mezzo', 'secondario', MEZ.pts, { lega: ['forno', 'marina'] });
+    // il Pozzo: dalla piazzetta del bar sulla Rua, poi giù per il Caruggio dei Pescatori sotto il portico fino alla Vittoria
+    secondario('pozzo', 'Dal Pozzo alla Vittoria', ['pozzo', capo('vic_21', false), capo('vic_21', true), vicino('vittoria', 1437, 343)], { lega: ['pozzo', 'rua', 'vittoria'] });
+    // il Forno: dalla Vittoria alla fontana del Forno e giù per la scalinata alla marina
+    secondario('forno', 'Dal Forno alla marina', [vicino('vittoria', 1366, 343), 'forno', capo('vic_7', false), capo('vic_7', true), vicino('marina', 1349, 386)], { lega: ['vittoria', 'forno', 'marina'] });
+    // il sagrato: dalla Rua al sagrato, poi su per il Vico dell'Arco fino alle mura
+    secondario('sagrato', 'Dal sagrato alle mura', [vicino('rua', 1383, 308), 'sagrato', capo('vic_11', false), capo('vic_11', true)], { lega: ['rua', 'sagrato', 'mura'] });
+    // la stazione: dal Corso alla Via della Stazione e al piazzale
+    const VA = road('via_alta'); if (VA) secondario('stazione', 'Dal Corso alla stazione', [vicino('corso', 1318, 300), [VA.pts[Math.floor(VA.pts.length * .55)][0], VA.pts[Math.floor(VA.pts.length * .55)][1]]], { lega: ['corso', 'stazione'] });
+    // la calata: dalla Piazza della Marina lungo l'acqua fino al Molo
+    secondario('calata', 'La calata', ['piazza_marina', vicino('marina', 1440, 400), vicino('marina', 1470, 405)], { lega: ['piazza_marina', 'molo'] });
+  }
+
+  if (DBG) console.error('[percorsi] t', 200, Date.now() - T0);
+  // ================= LE SCORCIATOIE E I NASCONDIGLI =================
+  // la strada fra i due capi di un vicolo: il cammino più corto senza vicoli (solo vie, piazze, lastrico); i primi 3 m dai capi valgono
+  const SCORC = [];
+  VICOLI.forEach(rd => {
+    const P = rd.pts, A = P[0], Z = P[P.length - 1], Lv = lenP(P), mine = corridoio(rd, .3);
+    const ok = i => { if (!vicTiles.has(i)) return true; const tx = i % GW, ty = (i - tx) / GW, x = (tx + .5) * TS, y = (ty + .5) * TS; return mine.has(i) ? false : hyp(x - A[0], y - A[1]) < 3 || hyp(x - Z[0], y - Z[1]) < 3; };
+    // se fra i due capi non c'è una via senza vicoli (il vicolo che lega due vicoli), si misura il giro più corto senza questo vicolo
+    const okA = i => { if (!mine.has(i)) return true; const tx = i % GW, ty = (i - tx) / GW, x = (tx + .5) * TS, y = (ty + .5) * TS; return hyp(x - A[0], y - A[1]) < 3 || hyp(x - Z[0], y - Z[1]) < 3; };
+    let c = cammino(A[0], A[1], Z[0], Z[1], ok, null), come = 'strada'; if (!c) { c = cammino(A[0], A[1], Z[0], Z[1], okA, null); come = 'giro'; }
+    const Ls = c ? c.L : Infinity, g = isFinite(Ls) ? 1 - Lv / Ls : 0;
+    const s = { vic: rd.id, nome: rd.name, pts: P, L: Lv, Lstrada: isFinite(Ls) ? Ls : null, come: c ? come : null, guadagno: isFinite(Ls) ? g : null, k: g >= .3 && isFinite(Ls) ? 'scorciatoia' : 'nascondiglio', cieco: !isFinite(Ls), strada: c ? semplifica(c.pts) : null };
+    // l'indizio che la annuncia: l'arco o il sottopasso già posati sul vicolo, altrimenti la luce dall'altra parte (render.js la accende)
+    const arco = (W.pezzi || []).find(p => (p.tipo === 'arco_sottopasso' || p.tipo === 'arco_contrasto') && p.vicolo === rd.id);
+    const scala = (W.pezzi || []).find(p => p.tipo === 'scalinata' && p.vicolo === rd.id);
+    s.indizio = arco ? { k: arco.tipo === 'arco_sottopasso' ? 'sottopasso' : 'arco', x: arco.x, y: arco.y } : scala ? { k: 'scalinata', x: scala.x, y: scala.y } : { k: 'luce', x: Z[0], y: Z[1] };
+    SCORC.push(s);
+  });
+
+  if (DBG) console.error('[percorsi] t', 215, Date.now() - T0);
+  // ================= LE PORTE DELLA CITTÀ (le alternative si legano in lega) =================
+  const PORTE = [];
+  const porta = (id, nome, k, x, y, lati, ex) => PORTE.push(Object.assign({ id, nome, k, x, y, lati, alternativa: null }, ex || {}));
+  // lati: due punti a terra, uno per parte; l'alternativa li deve collegare senza passare dalla porta
+  porta('porta_terra', 'Porta di Terra', 'porta', ptC[0] - 6, ptC[1], [[ptC[0] - 14, ptC[1] + 2], [ptC[0] + 10, ptC[1] + 1]]);
+  // il sottoportico: il Vico dei Bottai passa sotto il portico e attraversa la Vittoria (il collo è la carreggiata sorvegliata)
+  { const v = road('vic_12'), s = v ? v.pts[v.pts.length - 1] : [1398, 335]; porta('sottoportico', 'Il sottoportico della Vittoria (Vico dei Bottai)', 'sottoportico', s[0], 343, [[s[0], 324], [s[0], 362]], { vic: 'vic_12', imbocco: s }); }
+  { const C = road('cavour_sotto'), p = pz('sottopasso')[0]; if (C && p) { const a = C.pts[0], z = C.pts[C.pts.length - 1], c = pzW(p, 7, 0); porta('sottopasso', 'Il sottopasso della ferrovia (Via Cavour)', 'sottopasso', c[0], c[1], [[a[0], a[1] - 1], [z[0], z[1] + 2]]); } }
+  { const p = (W.pezzi || []).find(q => q.tipo === 'scalinata' && q.vicolo === 'vic_25'); if (p) { const v = road('vic_25'), a = v.pts[0], z = v.pts[v.pts.length - 1]; porta('scala_pescatori', 'La scala dei pescatori (Vico Lungo)', 'scala', p.x, p.y, [[a[0], a[1]], [z[0], z[1] + 3]], { vic: 'vic_25' }); } }
+  porta('posto_blocco', 'Il posto di blocco sulla Vittoria', 'blocco', mgC[0], mgC[1], [[mgC[0] - 16, mgC[1]], [mgC[0] + 14, mgC[1]]]);
+
+  if (DBG) console.error('[percorsi] t', 225, Date.now() - T0);
+  // ================= I RICHIAMI DEI TRATTI =================
+  function richiamo(t) {
+    // lo sguardo: dove si guarda camminando, verso il punto del tratto a 10 m (o il fondo, se il tratto è dritto e lungo)
+    const P = t.pts, [ax, ay] = P[0], [zx, zy] = P[P.length - 1], az = occhio(ax, ay), lmax = t.borgo ? 60 : 320;
+    let q10 = P[P.length - 1]; { let L = 0; for (let k = 1; k < P.length; k++) { L += hyp(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1]); if (L >= 10) { q10 = P[k]; break; } } }
+    const d10 = Math.atan2(q10[1] - ay, q10[0] - ax), dZ = Math.atan2(zy - ay, zx - ax), dd = Math.abs(((d10 - dZ) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI), dir = dd < .3 ? dZ : d10; t.sguardo = dir;
+    const davanti = q => { const d = hyp(q.x - ax, q.y - ay); if (d < 4 || d > lmax) return null; let a = Math.abs(Math.atan2(q.y - ay, q.x - ax) - dir); if (a > Math.PI) a = 2 * Math.PI - a; return a <= .61 ? { d, a } : null; };
+    const prio = { landmark: 3, luce: 2.2, mare: 2, porta: 1 };
+    let best = null;
+    [LANDMARK, LUCI, MARE].forEach(L => L.forEach(q => { const f = davanti(q); if (!f) return; if (!vista(ax, ay, az, q.x, q.y, q.z, q.r)) return;
+      const s = prio[q.k] * 10 - f.a * 8 + (f.d < 15 ? -6 : 0) + Math.min(f.d, 60) / 30; if (!best || s > best.s) best = { s, q, d: f.d }; }));
+    if (best) return { k: best.q.k, nome: best.q.nome, x: best.q.x, y: best.q.y, z: best.q.z, d: best.d, r: best.q.r };
+    // la porta accesa in fondo: il portone più vicino al fondo del tratto, che si veda dall'inizio
+    let pb = null; PORTONI.forEach(q => { const de = hyp(q.x - zx, q.y - zy); if (de > 7) return; const f = davanti(q); if (!f) return; const z = elevAt(q.x, q.y) + 2.6; if (!vista(ax, ay, az, q.x, q.y, z, 1.2)) return; if (!pb || de < pb.de) pb = { q, de, z, d: f.d }; });
+    if (pb) return { k: 'porta', nome: 'la porta accesa di ' + (B[pb.q.bi].name || 'una casa'), x: pb.q.x, y: pb.q.y, z: pb.z, d: pb.d, bi: pb.q.bi, r: 1.2 };
+    // la lanterna in fondo al tratto: la si mette apposta (render.js) sul punto più lontano del tratto che si vede dall'inizio
+    for (let k = P.length - 1; k > 0; k--) { const [x, y] = P[k], z = elevAt(x, y) + 2.4; if (hyp(x - ax, y - ay) > 4 && davanti({ x, y }) && vista(ax, ay, az, x, y, z, .6)) return { k: 'lanterna', nome: 'una lanterna in fondo', x, y, z, d: hyp(x - ax, y - ay), r: .6 }; }
+    return { k: 'lanterna', nome: 'una lanterna in fondo', x: zx, y: zy, z: elevAt(zx, zy) + 2.4, d: hyp(zx - ax, zy - ay), r: .6 };
+  }
+  TRATTI.forEach(t => { t.richiamo = richiamo(t); });
+
+  // ================= LEGA: i tetti e i tombini (quando tetti.js e sottosuolo.js ci sono) =================
+  // api: { Tetti, Sottosuolo, Game }. Calcola i circuiti sui tetti del borgo e le alternative delle porte. Si chiama una volta.
+  const CIRCUITI = [];
+  // le zone dove si cerca un giro (il borgo ha i suoi isolati: ognuno il suo giro)
+  const ZONE = [
+    { id: 'giro_porta', nome: 'Il giro della Porta', x0: 1312, x1: 1362, y0: 278, y1: 326 },
+    { id: 'giro_forno', nome: 'Il giro del Forno', x0: 1312, x1: 1380, y0: 352, y1: 392 },
+    { id: 'giro_campanile', nome: 'Il giro del campanile', x0: 1395, x1: 1465, y0: 262, y1: 326 },
+    { id: 'giro_marina', nome: 'Il giro della marina', x0: 1420, x1: 1466, y0: 350, y1: 410 },
+  ];
+  function lega(api) {
+    if (DATI.legato) return DATI; const TT = api && api.Tetti, SO = api && api.Sottosuolo, G = api && api.Game; if (!TT || !G) return DATI;
+    const BB = G.BUILDINGS, cen = i => [(BB[i].x + BB[i].w / 2) * TS, (BB[i].y + BB[i].h / 2) * TS], GBI = G.MAP.world.bIndex;
+    // il grafo dei tetti: archi orientati (si sale di un gradino o di un salto, si scende fino alla caduta senza danno)
+    const E = TT.grafo();
+    const inZ = (Z, i) => { const [x, y] = cen(i); return x >= Z.x0 && x <= Z.x1 && y >= Z.y0 && y <= Z.y1; };
+    const usati = new Set();
+    ZONE.forEach(Z => {
+      const scale = TT.LADDERS.filter(L => L.footB < 0 && !L.camm && inZ(Z, L.bi));
+      let best = null;
+      scale.forEach(L => {
+        // il cammino migliore da questa scala: si premiano i passaggi crema (salti, passerelle, scale fra tetti) e la lunghezza
+        const prev = new Map([[L.bi, null]]), Q = [L.bi];
+        for (let k = 0; k < Q.length; k++) { const a = Q[k]; (E.get(a) || []).forEach(e => { if (prev.has(e.b) || !inZ(Z, e.b) || usati.has(e.b)) return; prev.set(e.b, { a, e }); Q.push(e.b); }); }
+        scale.forEach(M => { if (M.bi === L.bi || !prev.has(M.bi) || usati.has(M.bi)) return; const dd = hyp(M.fx - L.fx, M.fy - L.fy); if (dd < 18) return;
+          const pass = []; let c = M.bi; while (prev.get(c)) { const q = prev.get(c); pass.unshift(q.e); c = q.a; }
+          const crema = pass.filter(e => e.k === 'salto' || e.k === 'passerella' || e.k === 'scala').length; if (!crema) return;
+          let Lr = hyp(L.tx - cen(L.bi)[0], L.ty - cen(L.bi)[1]); let px = L.tx, py = L.ty; pass.forEach(e => { Lr += hyp(e.x - px, e.y - py); px = e.x; py = e.y; }); Lr += hyp(M.tx - px, M.ty - py);
+          const s = Lr + crema * 12 + dd * .5; if (!best || s > best.s) best = { s, L, M, pass, Lr, crema }; });
+      });
+      if (!best) return;
+      const bs = [best.L.bi].concat(best.pass.map(e => e.b)); bs.forEach(i => usati.add(i));
+      const pts = [[best.L.fx, best.L.fy], [best.L.tx, best.L.ty]].concat(best.pass.map(e => [e.x, e.y])).concat([[best.M.tx, best.M.ty], [best.M.fx, best.M.fy]]);
+      CIRCUITI.push({ id: Z.id, nome: Z.nome, k: 'tetti', sali: best.L.i, scendi: best.M.i, edifici: bs, passi: best.pass.map(e => ({ k: e.k, a: e.a, b: e.b, x: e.x, y: e.y, i: e.i, ux: e.ux, uy: e.uy })), pts, L: best.Lr, crema: best.crema });
+    });
+    // il camminamento delle mura di tramontana: dalla scala di ronda alla scala di ferro dall'altra parte
+    const CM = (TT.CAMM || []).filter(c => c.tipo === 'mura_tramontana');
+    if (CM.length) { const sc = TT.LADDERS.filter(L => L.camm && L.camm.tipo === 'mura_tramontana'); const pts = []; CM.forEach(c => { pts.push(c.a, c.b); });
+      const Lm = CM.reduce((s, c) => s + c.L, 0); CIRCUITI.push({ id: 'mura', nome: 'Il camminamento delle mura di tramontana', k: 'mura', scale: sc.map(L => L.i), camm: CM.map(c => c.i), pts: [sc[0] ? [sc[0].fx, sc[0].fy] : pts[0]].concat(pts).concat(sc[1] ? [[sc[1].fx, sc[1].fy]] : []), L: Lm, crema: 0 }); }
+    // le alternative delle porte: i tetti (una catena di tetti da una scala da una parte a una scala dall'altra) o un tombino
+    const tomb = SO && SO.TPL ? SO.TPL.portals.filter(P => P.kind === 'tombino' || P.kind === 'grata' || P.kind === 'botola' || P.kind === 'pozzo').map(P => ({ P, x: (P.s[0] + .5) * TS, y: (P.s[1] + .5) * TS })) : [];
+    const ugOk = (a, b) => { if (!SO || !SO.TPL) return false; const ug = SO.TPL.ug, s = a.P.s[1] * GW + a.P.s[0], t = b.P.s[1] * GW + b.P.s[0], seen = new Uint8Array(GW * GH), Q = [s]; seen[s] = 1;
+      for (let k = 0; k < Q.length && k < 60000; k++) { const i = Q[k]; if (i === t) return true; const tx = i % GW, ty = (i - tx) / GW; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const j = (ty + dy) * GW + tx + dx; if (!seen[j] && ug[j]) { seen[j] = 1; Q.push(j); } } } return false; };
+    // la parte di una porta da cui sta un punto: il segno della proiezione sull'asse fra i due lati
+    PORTE.forEach(Pt => {
+      const [A, Z] = Pt.lati, ux = Z[0] - A[0], uy = Z[1] - A[1], lato = (x, y) => Math.sign((x - Pt.x) * ux + (y - Pt.y) * uy);   // da che parte della porta
+      const vicinoP = (x, y) => hyp(x - Pt.x, y - Pt.y);
+      // 0) un camminamento che scavalca la porta (il rilevato sopra il sottopasso, le mura): due scale di ferro sulla stessa catena, una per parte
+      const scC = TT.LADDERS.filter(L => L.camm && vicinoP(L.fx, L.fy) < 30);
+      const cA = scC.find(L => lato(L.fx, L.fy) < 0), cZ = cA && scC.find(L => lato(L.fx, L.fy) > 0 && L.camm.tipo === cA.camm.tipo);
+      if (cA && cZ) { Pt.alternativa = { k: 'tetti', nome: cA.camm.tipo === 'sottopasso' ? 'sopra il rilevato: si scavalca la ferrovia' : 'sulle mura', camm: cA.camm.tipo, sali: cA.i, scendi: cZ.i, edifici: [], passi: [], pts: [[cA.fx, cA.fy], [cA.tx, cA.ty], [cZ.tx, cZ.ty], [cZ.fx, cZ.fy]] }; return; }
+      // 1) i tetti: una scala da terra per parte, collegate dal grafo, entro 45 m dalla porta
+      const sc = TT.LADDERS.filter(L => L.footB < 0 && !L.camm && vicinoP(L.fx, L.fy) < 45 && lato(L.fx, L.fy) !== 0);
+      let bestT = null;
+      sc.filter(L => lato(L.fx, L.fy) < 0).forEach(L => { const prev = new Map([[L.bi, null]]), Q = [L.bi];
+        for (let k = 0; k < Q.length && k < 400; k++) { const a = Q[k]; (E.get(a) || []).forEach(e => { if (prev.has(e.b) || vicinoP(...cen(e.b)) > 55) return; prev.set(e.b, { a, e }); Q.push(e.b); }); }
+        sc.filter(M => lato(M.fx, M.fy) > 0 && prev.has(M.bi)).forEach(M => { const pass = []; let c = M.bi; while (prev.get(c)) { const q = prev.get(c); pass.unshift(q.e); c = q.a; }
+          const s = hyp(M.fx - L.fx, M.fy - L.fy) + pass.length * 4; if (!bestT || s < bestT.s) bestT = { s, L, M, pass }; }); });
+      if (bestT) { Pt.alternativa = { k: 'tetti', nome: 'sui tetti', sali: bestT.L.i, scendi: bestT.M.i, edifici: [bestT.L.bi].concat(bestT.pass.map(e => e.b)), passi: bestT.pass.map(e => ({ k: e.k, a: e.a, b: e.b, x: e.x, y: e.y, i: e.i, ux: e.ux, uy: e.uy })),
+        pts: [[bestT.L.fx, bestT.L.fy], [bestT.L.tx, bestT.L.ty]].concat(bestT.pass.map(e => [e.x, e.y])).concat([[bestT.M.tx, bestT.M.ty], [bestT.M.fx, bestT.M.fy]]) }; return; }
+      // 2) un tombino per parte, collegati sotto terra
+      let bestS = null; const tA = tomb.filter(q => lato(q.x, q.y) < 0 && vicinoP(q.x, q.y) < 70), tZ = tomb.filter(q => lato(q.x, q.y) > 0 && vicinoP(q.x, q.y) < 70);
+      tA.forEach(a => tZ.forEach(z => { const s = vicinoP(a.x, a.y) + vicinoP(z.x, z.y); if (bestS && s >= bestS.s) return; if (ugOk(a, z)) bestS = { s, a, z }; }));
+      if (bestS) Pt.alternativa = { k: 'tombino', nome: 'sotto, per la fogna', entra: [bestS.a.x, bestS.a.y], esce: [bestS.z.x, bestS.z.y], pts: [[bestS.a.x, bestS.a.y], [bestS.z.x, bestS.z.y]], via: bestS.a.P.name + ' → ' + bestS.z.P.name };
+    });
+    DATI.legato = true; return DATI;
+  }
+
+  const DATI = { nodi: NODI, percorsi: PERCORSI, tratti: TRATTI, scorciatoie: SCORC, circuiti: CIRCUITI, porte: PORTE, landmark: LANDMARK, luci: LUCI, borgo: BORGO, legato: false };
+  W.percorsi = DATI;
+  // i conti per le prove e la pianta
+  function conteggio() {
+    const sc = SCORC.filter(s => s.k === 'scorciatoia'), na = SCORC.filter(s => s.k === 'nascondiglio');
+    return { percorsi: PERCORSI.length, dominanti: PERCORSI.filter(p => p.k === 'dominante').length, secondari: PERCORSI.filter(p => p.k === 'secondario').length, tratti: TRATTI.length,
+      scorciatoie: sc.length, nascondigli: na.length, guadagnoMedio: sc.length ? sc.reduce((s, q) => s + q.guadagno, 0) / sc.length : 0, circuiti: CIRCUITI.length, porte: PORTE.length,
+      richiami: TRATTI.reduce((o, t) => (o[t.richiamo.k] = (o[t.richiamo.k] || 0) + 1, o), {}) };
+  }
+  return { attivo: true, dati: DATI, lega, vista, occhio, elevAt, borgoAt, cammino, conteggio, roofTop };
+})();
+if (typeof module !== 'undefined') module.exports = Percorsi;
+ }</script>
 <script data-m="interiors">/* Interni [interni 4/10]: ogni edificio si visita, piano per piano (fino a 7, come fuori).
    Ogni piano ha la sua pianta (stanze divise lungo le caselle, porte fra le stanze) e il suo PROGRAMMA:
    un'attività (bar, forno, caserma, banja…) ha le sue stanze col loro arredo; una casa ha la sua famiglia
@@ -42684,7 +43027,9 @@ var Tetti = (function () {
   function roofAt(x, y) {
     const bi = bAt(x, y), h = bi < 0 ? null : roofH(bi, x, y), q = h === null ? null : { bi, h };
     const pk = PLANKS.length ? plankAt(x, y) : null;   // [tetti2] sulla passerella vale la quota delle assi (anche sopra il vicolo)
-    return pk && (!q || pk.h >= q.h - .05) ? pk : q;
+    const r = pk && (!q || pk.h >= q.h - .05) ? pk : q;
+    const cm = CAMM.length ? cammAt(x, y) : null;   // [percorsi] sul camminamento delle mura, sopra il rilevato
+    return cm && (!r || cm.h >= r.h - .05) ? cm : r;
   }
 
   // ---------------- LE SCALE ----------------
@@ -42837,6 +43182,67 @@ var Tetti = (function () {
   }
   buildJumps();
 
+  // ---------------- [percorsi] I CAMMINAMENTI: le mura di tramontana e il rilevato sopra il sottopasso ----------------
+  // Sui pezzi grandi della città nuova (W.pezzi) due superfici si camminano come un tetto: il camminamento di ronda delle mura di
+  // tramontana (dietro il parapetto coi merli, a 1,4 m sotto la cima) e il piano del rilevato sopra il sottopasso della Via Cavour.
+  // Ci si sale dalla scala di ronda di pietra e da due scale di ferro color minio murate sul lato della città (le mura); sul
+  // rilevato da due scale di ferro, una per parte (l'alternativa al sottopasso: si scavalca la ferrovia). Una catena di campi:
+  // { i, tipo, p (il pezzo), x0..x1, z0..z1 (locali), h (quota assoluta), L, a, b (i capi, metri), bi (l'edificio che fa da lv.b) }.
+  const CAMM = [], CCELL = new Map();
+  const pzW = (p, lx, lz) => { const c = Math.cos(p.rot), s = Math.sin(p.rot); return [p.x + lx * c + lz * s, p.y - lx * s + lz * c]; };
+  const pzL = (p, x, y) => { const c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y; return [dx * c - dy * s, dx * s + dy * c]; };
+  function cammAt(x, y) {
+    if (!inb(Math.floor(x / TS), Math.floor(y / TS))) return null; const L = CCELL.get(Math.floor(y / TS) * GW + Math.floor(x / TS)); if (!L) return null;
+    let best = null; for (const c of L) { const [l, z] = pzL(c.p, x, y); if (l < c.x0 || l > c.x1 || z < c.z0 || z > c.z1) continue; if (!best || c.h > best.h) best = c; }
+    return best ? { bi: best.bi, h: best.h, camm: best.i } : null;
+  }
+  function buildCamm() {
+    CAMM.length = 0; CCELL.clear(); const PZ0 = W.pezzi || []; if (!PZ0.length) return;
+    const vicinoB = (x, y) => { let bi = -1, bd = 1e9; B.forEach((b, i) => { if (b.lighthouse || !b.door) return; const d = hyp((b.x + b.w / 2) * TS - x, (b.y + b.h / 2) * TS - y); if (d < bd) { bd = d; bi = i; } }); return bi; };
+    const campo = (p, tipo, x0, x1, z0, z1, h, bi) => { const c = { i: CAMM.length, tipo, p, x0, x1, z0, z1, h, bi, L: x1 - x0, a: pzW(p, x0, (z0 + z1) / 2), b: pzW(p, x1, (z0 + z1) / 2) }; CAMM.push(c);
+      for (let lx = x0; lx <= x1 + .01; lx += .5) for (let lz = z0; lz <= z1 + .01; lz += .5) { const [x, y] = pzW(p, lx, lz), k = Math.floor(y / TS) * GW + Math.floor(x / TS); const A = CCELL.get(k) || CCELL.set(k, []).get(k); if (A.indexOf(c) < 0) A.push(c); }
+      return c; };
+    // una scala di ferro murata sulla faccia z = zf del pezzo, al punto lx; i piedi sulla prima casella percorribile verso fuori (sz: il verso)
+    const scalaCamm = (c, lx, zf, sz, ex) => {
+      const [wx, wy] = pzW(c.p, lx, zf), [ex0, ey0] = pzW(c.p, lx, zf + sz), ox = ex0 - wx, oy = ey0 - wy; let fx = null, fy = null;
+      for (let d = .55; d <= 2.2; d += .15) { const x = wx + ox * d, y = wy + oy * d; if (G.walkM(x, y) && bAt(x, y) < 0) { fx = x; fy = y; break; } }
+      if (fx === null) return null; const [tx, ty] = pzW(c.p, lx, zf - sz * .8);
+      const L = Object.assign({ i: LADDERS.length, bi: c.bi, f: 'camm', x: wx, y: wy, ox, oy, fx, fy, tx, ty, footB: -1, ang: Math.atan2(oy, ox), camm: c, hTop: c.h }, ex || {}); LADDERS.push(L); return L;
+    };
+    // le mura di tramontana, da levante a ponente; i tratti si sormontano di 40 cm ai giunti
+    const mura = PZ0.filter(p => p.tipo === 'mura_tramontana' && p.opz && p.opz.L).sort((a, b) => b.x - a.x);
+    if (mura.length) {
+      const m = mura[Math.floor(mura.length / 2)], bi = vicinoB(m.x, m.y + 8), C = mura.map(p => campo(p, 'mura_tramontana', -.4, p.opz.L + .4, -1.25, .62, (p.q || 0) + (p.opz.h || 8) - 1.4, bi));
+      // la scala di ronda di pietra (il pezzo la disegna): i piedi davanti al primo gradino, la cima sul camminamento
+      mura.forEach((p, k) => { if (!p.opz.scala) return; const hw = (p.opz.h || 8) - 1.4, n = Math.ceil(hw / .2), x0 = Math.max(.5, p.opz.L - n * .3 - 1.6);
+        for (let d = .6; d <= 2.6; d += .2) { const [fx, fy] = pzW(p, x0 - d, -2.0); if (!G.walkM(fx, fy) || bAt(fx, fy) >= 0) continue; const [wx, wy] = pzW(p, x0, -2.0), [tx, ty] = pzW(p, Math.min(p.opz.L - .6, x0 + n * .3 + .5), -.4), [ax, ay] = pzW(p, x0 + 1, -2.0);
+          LADDERS.push({ i: LADDERS.length, bi, f: 'camm', x: wx, y: wy, ox: wx - ax, oy: wy - ay, fx, fy, tx, ty, footB: -1, ang: Math.atan2(wy - ay, wx - ax), camm: C[k], hTop: C[k].h, rampa: true }); break; } });
+      // le due scale di ferro ai capi: sul lato della città (−z), a un metro e mezzo dalla testata
+      const e = C[0], o = C[C.length - 1]; scalaCamm(e, 1.6, -1.3, -1); scalaCamm(o, o.p.opz.L - 1.6, -1.3, -1);
+    }
+    // il rilevato sopra il sottopasso: il piano dentro i parapetti, una scala di ferro per parte accanto al fornice
+    PZ0.filter(p => p.tipo === 'sottopasso').forEach(p => { const L = Math.max(p.opz.L || 14, (p.opz.w || 4) + 6), Hr = Math.max(p.opz.hRilevato || 4.8, (p.opz.h || 3.2) + 1.6);
+      const c = campo(p, 'sottopasso', .3, L - .3, -4.05, 4.05, (p.q || 0) + Hr, vicinoB(p.x + L / 2, p.y)); scalaCamm(c, 1.4, 4.5, 1); scalaCamm(c, 1.4, -4.5, -1); });
+  }
+  buildCamm();
+  // [percorsi] IL GRAFO DEI TETTI per i percorsi (percorsi.js): per ogni tetto gli archi orientati verso i tetti dove si passa, col punto
+  // del passaggio. k: 'tetto' (si tocca, dislivello entro un gradino), 'gradino' (si tocca, si sale col salto fino a 1,2 m), 'salto'
+  // (il vicolo di una casella coi bordi crema, JUMPS), 'passerella' (PLANKS), 'scala' (la scala di ferro fra un tetto basso e uno alto).
+  // Si scende sempre fino alla caduta senza danni (SAFE).
+  function grafo() {
+    const E = new Map(), add = (a, b, k, x, y, i, ux, uy) => { const L = E.get(a) || E.set(a, []).get(a); if (!L.some(e => e.b === b && e.k === k)) L.push({ a, b, k, x, y, i, ux, uy }); };   // ux, uy: il verso del passaggio
+    const seen = new Map();
+    B.forEach((b, bi) => { if (b.lighthouse) return; for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) { if (BI[ty * GW + tx] !== bi) continue;
+      for (const [dx, dy] of [[1, 0], [0, 1]]) { const x2 = tx + dx, y2 = ty + dy; if (!inb(x2, y2)) continue; const o = BI[y2 * GW + x2]; if (o < 0 || o === bi || !B[o]) continue;
+        const key = Math.min(bi, o) + ':' + Math.max(bi, o), L = seen.get(key) || seen.set(key, []).get(key); L.push([(tx + .5 + dx * .5) * TS, (ty + .5 + dy * .5) * TS, bi, dx, dy]); } } });
+    seen.forEach((P, key) => { const [a, b] = key.split(':').map(Number), m = P[Math.floor(P.length / 2)], ha = roofRule(B[a]), hb = roofRule(B[b]);
+      for (const [p, q, dh] of [[a, b, hb - ha], [b, a, ha - hb]]) { if (dh > 1.2 || dh < -SAFE) continue; const sg = m[2] === p ? 1 : -1; add(p, q, dh > STEP ? 'gradino' : 'tetto', m[0], m[1], undefined, m[3] * sg, m[4] * sg); } });
+    JUMPS.forEach((J, i) => { const k = Math.floor((J.k0 + J.k1) / 2), [wx, wy] = J.sd.wall(k), x = wx + J.ox * TS / 2, y = wy + J.oy * TS / 2; add(J.bi, J.bj, 'salto', x, y, i, J.ox, J.oy); add(J.bj, J.bi, 'salto', x, y, i, -J.ox, -J.oy); });
+    PLANKS.forEach(P => { const x = (P.wa[0] + P.wb[0]) / 2, y = (P.wa[1] + P.wb[1]) / 2; add(P.a, P.b, 'passerella', x, y, P.i, P.ox, P.oy); add(P.b, P.a, 'passerella', x, y, P.i, -P.ox, -P.oy); });
+    LADDERS.forEach(L => { if (L.footB < 0 || L.camm) return; add(L.footB, L.bi, 'scala', L.fx, L.fy, L.i); add(L.bi, L.footB, 'scala', L.tx, L.ty, L.i); });
+    return E;
+  }
+
   // ---------------- [tetti2] I BELVEDERI: i tetti più alti di ogni quartiere ----------------
   // Un motivo per salire: in cima ai palazzi più alti c'è un angolo con la panca e la bandierina. Arrivarci la prima volta
   // è una piccola scoperta (passa la noia); poi ci si può sedere a guardare il porto.
@@ -42883,7 +43289,7 @@ var Tetti = (function () {
     if (any && G.wantedLevel && G.wantedLevel(st) > 0 && !(st.tetti && st.tetti.hint)) { (st.tetti || (st.tetti = { belv: {}, sat: {} })).hint = true; G.feed(st, 'Quassù non ti vedono. Stai giù e lasciali perdere.'); }
   }
   const footH = L => L.footB >= 0 ? (roofH(L.footB, L.fx, L.fy) ?? roofRule(B[L.footB])) : tileH(L.fx, L.fy);
-  const topH = L => { const h = roofH(L.bi, L.tx, L.ty); return h === null ? roofRule(B[L.bi]) : h; };
+  const topH = L => { if (L.hTop != null) return L.hTop; const h = roofH(L.bi, L.tx, L.ty); return h === null ? roofRule(B[L.bi]) : h; };   // [percorsi] la scala dei camminamenti arriva alla loro quota
   // la scala più vicina: ai piedi (per salire) o in cima (per scendere)
   function ladderNear(st, top, r) {
     const p = st.player; let best = null, bd = r || 1.5;
@@ -43050,7 +43456,9 @@ var Tetti = (function () {
     // [tetti2] leggibilità: fascia gialla ai piedi delle scale, lanterna calda in cima; assi, corda, panca e bandierina
     const yell = new T3.MeshStandardMaterial({ color: '#e8b828', roughness: .6 }), lamp = new T3.MeshBasicMaterial({ color: '#ffd27a', toneMapped: false });
     const wood = new T3.MeshStandardMaterial({ color: '#8a6a44', roughness: .9 }), rope = new T3.MeshStandardMaterial({ color: '#c8b48a', roughness: 1 }), flag = new T3.MeshStandardMaterial({ color: '#c8302a', roughness: .8, side: T3.DoubleSide });
-    return { box, iron, rust, yell, lamp, wood, rope, flag, crema };
+    // [percorsi] la traccia dei passi sui lastrici: un velo della famiglia del crema, appena più scuro, mezzo trasparente
+    const traccia = new T3.MeshStandardMaterial({ color: '#e2d8bc', roughness: .95, transparent: true, opacity: .5, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    return { box, iron, rust, yell, lamp, wood, rope, flag, crema, traccia };
   }
   // le scale: due montanti, i pioli ogni 30 cm, la gabbia sopra i 2,5 m, il corrimano che scavalca il bordo del tetto
   function buildLaddersGfx(R) {
@@ -43063,7 +43471,8 @@ var Tetti = (function () {
       const y0 = footH(L), y1 = topH(L) + .95, Hh = y1 - y0; if (Hh < .5 || Hh > 40) return;
       const off = .2, cx = L.x + L.ox * off, cz = L.y + L.oy * off, yaw = -L.ang;   // 20 cm fuori dal muro
       const sx = -L.oy * .22, sz = L.ox * .22;   // i due montanti, 44 cm l'uno dall'altro
-      const bb = B[L.bi], old = bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');
+      const bb = B[L.bi], old = !L.camm && bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');   // [percorsi] sui camminamenti la scala di ferro
+      if (L.rampa) { put(crema, L.fx, y0 + .06, L.fy, .5, .12, .9, yaw); return; }   // [percorsi] la scala di ronda è di pietra (il pezzo): solo il primo gradino chiaro
       put(crema, L.x + L.ox * .38, y0 + .06, L.y + L.oy * .38, .5, .12, .78, yaw);   // [pulizia2] il primo gradino, chiaro, ai piedi della scala
       if (old) {   // [epoche] nel borgo, sull'Ottocento e sul regime niente scala di ferro: le staffe alla marinara murate nella parete (pioli a U, ruggine)
         const wx = L.x + L.ox * .02, wz = L.y + L.oy * .02;
@@ -43118,8 +43527,40 @@ var Tetti = (function () {
       flags.push(m4.compose(p3.set(fx + .32, y + 2.5, fz), q, s3.set(.6, .38, .02)).clone());
       lamps.push(m4.compose(p3.set(fx, y + 2.86, fz), q, s3.set(.1, .1, .1)).clone());
     });
+    // [percorsi] I CIRCUITI SUI TETTI SI VEDONO (percorsi.js): la traccia più chiara sul lastrico fra una scala e l'altra (i passi
+    // consumano lo sporco), una lanterna su un ferro color minio a ogni svolta, il bucato teso lungo il tratto più lungo, la corda annodata
+    // dove si sale di un gradino col salto, la cassa e l'asse appoggiate ai piedi della scala da cui si parte. Stesso linguaggio:
+    // minio per salire, crema per dove si passa; solo i materiali di qui.
+    const PD = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null, traccia = [];
+    if (PD) {
+      const giri = PD.circuiti.filter(c => c.k === 'tetti').concat(PD.porte.map(q => q.alternativa).filter(a => a && a.k === 'tetti' && !a.camm));
+      giri.forEach((c, ci) => {
+        const P = c.pts.slice(1, -1), ok = new Set(c.edifici), hAt = (x, y) => { const q = roofAt(x, y); return q && (ok.has(q.bi) || q.plank !== undefined) ? q.h : null; };
+        // la traccia: una lastra chiara ogni 90 cm, girata lungo il passo, alla quota del lastrico
+        for (let k = 0; k < P.length - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L = hyp(bx - ax, by - ay), yaw = -Math.atan2(by - ay, bx - ax);
+          for (let s = .45; s < L; s += .9) { const x = ax + (bx - ax) * s / L, y = ay + (by - ay) * s / L, h = hAt(x, y); if (h === null) continue; put(traccia, x, h + .015, y, .78, .02, .5, yaw); } }
+        // le svolte: la lanterna sul ferro minio, mezzo metro fuori dalla svolta
+        for (let k = 1; k < P.length - 1; k++) { const [ax, ay] = P[k - 1], [x, y] = P[k], [bx, by] = P[k + 1], a1 = Math.atan2(y - ay, x - ax), a2 = Math.atan2(by - y, bx - x);
+          let d = Math.abs(a2 - a1); if (d > Math.PI) d = 2 * Math.PI - d; if (d < .6 || hyp(x - ax, y - ay) < 1.5) continue;
+          const mx = Math.cos(a1) - Math.cos(a2), my = Math.sin(a1) - Math.sin(a2), ml = hyp(mx, my) || 1, px = x + mx / ml * .6, py = y + my / ml * .6, h = hAt(px, py); if (h === null) continue;
+          put(rails, px, h + .45, py, .05, .9, .05, 0); put(lamps, px, h + .96, py, .13, .15, .13, 0); }
+        // il bucato sul tratto più lungo del giro (almeno 4 m): due paletti, la corda, i panni color crema
+        let bk = -1, bl = 4; for (let k = 0; k < P.length - 1; k++) { const l = hyp(P[k + 1][0] - P[k][0], P[k + 1][1] - P[k][1]); if (l > bl) { bl = l; bk = k; } }
+        if (bk >= 0) { const [ax, ay] = P[bk], [bx, by] = P[bk + 1], ux = (bx - ax) / bl, uy = (by - ay) / bl, sx = -uy * .9, sy = ux * .9, x0 = ax + ux * 1 + sx, y0 = ay + uy * 1 + sy, x1 = bx - ux * 1 + sx, y1 = by - uy * 1 + sy, h0 = hAt(x0, y0), h1 = hAt(x1, y1);
+          if (h0 !== null && h1 !== null) { const yaw = -Math.atan2(uy, ux); put(ropes, x0, h0 + .85, y0, .05, 1.7, .05, yaw); put(ropes, x1, h1 + .85, y1, .05, 1.7, .05, yaw); seg(ropes, x0, h0 + 1.66, y0, x1, h1 + 1.66, y1, .02, .02, yaw);
+            const n = Math.max(2, Math.min(6, Math.floor((bl - 2) / 1.1))); for (let i = 1; i <= n; i++) { const t = i / (n + 1), x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t, hh = h0 + (h1 - h0) * t + 1.66 - .05 * Math.sin(t * Math.PI); put(crema, x, hh - .26, y, .38 + (i % 2) * .12, .48 - (i % 3) * .08, .02, yaw); } } }
+        // la corda dove si sale di un gradino: dal bordo del tetto alto, annodata
+        (c.passi || []).forEach(e => { if (e.k !== 'gradino') return; const ha = roofRule(B[e.a]), hb = roofRule(B[e.b]); const qa = roofAt(e.x - e.ux * .3, e.y - e.uy * .3), qb = roofAt(e.x + e.ux * .3, e.y + e.uy * .3), h0 = qa ? qa.h : ha, h1 = qb ? qb.h : hb;
+          const x = e.x + e.ux * .08 - e.uy * .5, y = e.y + e.uy * .08 + e.ux * .5, yaw = -Math.atan2(e.uy, e.ux); put(ropes, x, (h0 + h1) / 2 + .25, y, .04, h1 - h0 + .5, .04, yaw); for (let t = h0 + .3; t < h1; t += .35) put(ropes, x, t, y, .08, .06, .08, yaw); });
+        // dove si sale: la cassa e l'asse appoggiate al muro, un metro accanto alla scala
+        const L0 = LADDERS[c.sali]; if (L0 && L0.footB < 0) { const sx = -L0.oy, sy = L0.ox, g0 = footH(L0), yaw = -L0.ang, cx = L0.x + L0.ox * .4 + sx * 1.15, cy = L0.y + L0.oy * .4 + sy * 1.15;
+          if (G.walkM(cx, cy) && bAt(cx, cy) < 0) { put(boards, cx, g0 + .26, cy, .55, .52, .6, yaw + .2); put(boards, cx, g0 + .53, cy, .58, .03, .63, yaw + .2);
+            const ax = L0.x + L0.ox * .75 - sx * 1.1, ay = L0.y + L0.oy * .75 - sy * 1.1; if (G.walkM(ax, ay) && bAt(ax, ay) < 0) seg(boards, ax, g0 + .02, ay, L0.x + L0.ox * .08 - sx * 1.1, g0 + 1.7, L0.y + L0.oy * .08 - sy * 1.1, .26, .04, -Math.atan2(-L0.oy, -L0.ox)); } }
+      });
+    }
     const mk = (arr, m) => { const im = new T3.InstancedMesh(G3.box, m, Math.max(1, arr.length)); arr.forEach((mm, i) => im.setMatrixAt(i, mm)); im.count = arr.length; im.castShadow = true; im.receiveShadow = true; im.userData.noRoof = true; im.frustumCulled = false; scene.add(im); return im; };
-    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema)];
+    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema), mk(traccia, G3.traccia)];
+    GFX.meshes[9].castShadow = false; GFX.meshes[9].renderOrder = 1;   // [percorsi] la traccia è un velo sul lastrico
     GFX.meshes[4].castShadow = false;
   }
   function frame() {
@@ -43152,7 +43593,10 @@ var Tetti = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { LADDERS, PLANKS, BELV, JUMPS, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
+  const API = { LADDERS, PLANKS, BELV, JUMPS, CAMM, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, grafo, edgeH, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
+  // [percorsi] la rete dei percorsi (percorsi.js) lega i circuiti sui tetti e le alternative delle porte, ora che le scale ci sono
+  if (typeof Percorsi !== 'undefined' && Percorsi.attivo) try { Percorsi.lega({ Tetti: API, Sottosuolo: typeof Sottosuolo !== 'undefined' ? Sottosuolo : null, Game: G }); } catch (e) { if (typeof console !== 'undefined') console.warn('[percorsi]', e); }
+  return API;
 })();
 if (typeof module !== 'undefined') module.exports = Tetti;
 </script>
@@ -52432,7 +52876,7 @@ var Render = (function () {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); segniSuolo1(x, tx0, ty0, n, m); sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
+    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); segniSuolo1(x, tx0, ty0, n, m); percorsiSuolo1(x, tx0, ty0, n, m); /* [percorsi] */ sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
     yield;
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
@@ -54200,7 +54644,7 @@ var Render = (function () {
     const hi = th(b.x || 0, b.y || 0, 1979);
     P = { prog, ins: hi < .4 ? 'cartellone' : hi < .72 ? 'serbatoio' : 'neon', x0, z0, w, d, occ: [], n: {}, lim: { antenna: 1, dish: prog === 'tecnico' ? 2 : 1, ac: prog === 'tecnico' ? 3 : 2, tank: 1, volume: 1, torrino: 1 } };
     // le scale di Tetti arrivano sul bordo: lì resta libero
-    if (window.Tetti && Tetti.LADDERS) { if (!RP1lad) { RP1lad = new Map(); Tetti.LADDERS.forEach(L => { const bb = G.BUILDINGS[L.bi]; (RP1lad.get(bb) || RP1lad.set(bb, []).get(bb)).push(L); }); }
+    if (window.Tetti && Tetti.LADDERS) { if (!RP1lad) { RP1lad = new Map(); Tetti.LADDERS.forEach(L => { if (L.camm) return; const bb = G.BUILDINGS[L.bi]; (RP1lad.get(bb) || RP1lad.set(bb, []).get(bb)).push(L); }); }
       (RP1lad.get(b.__tierOf || b) || []).forEach(L => P.occ.push([L.tx, L.ty, 1.1]));
       // [tetti2] gli arrivi delle passerelle (la rampa e il bordo) e la panca del belvedere: lì niente roba
       const bb0 = b.__tierOf || b, bi0 = G.BUILDINGS.indexOf(bb0);
@@ -56781,6 +57225,61 @@ var Render = (function () {
     if (window.__dbg35) console.log('[dbg] ordine1 pulizia finale: tolti', gone, 'tenuti', kept, 'grandi', DZ.big.length);
     return gone;
   }
+  // ================= [percorsi] I PERCORSI SI VEDONO, SENZA HUD (solo nella città nuova) =================
+  // La rete di percorsi.js (W.percorsi) detta il suolo e le luci, con gli strumenti del level design e il linguaggio di [pulizia2]:
+  // - L'USURA E IL CONTRASTO (dipinti nei blocchi del terreno, dopo i segni dell'uso): i dominanti hanno il centro lucidato dai passi, più
+  //   largo e più chiaro dei secondari; le scorciatoie una riga lucidata stretta; i nascondigli (i vicoli ciechi o che non accorciano)
+  //   un velo più scuro. Dove un percorso passa sull'erba, l'erba schiacciata (la terra che affiora). Un filo, mai un segno disegnato.
+  // - L'INQUADRATURA: in fondo a ogni tratto qualcosa che chiama. I landmark e le piazze ci sono già; dove il richiamo è una porta, la
+  //   soglia si accende di più (la lampadina c'è, [pulizia2]); dove non c'è niente, una lanterna a braccio sul muro (o su un palo).
+  // - LE SCORCIATOIE ANNUNCIATE: l'arco, il sottopasso o la scalinata sono già l'indizio; le altre hanno la luce dall'altra parte (la
+  //   stessa lanterna a braccio), così dall'imbocco si vede che il vicolo porta da qualche parte.
+  // I tetti (la traccia chiara sul lastrico, le lanterne alle svolte, il bucato, la corda, la cassa dove si sale) li disegna tetti.js.
+  const pcDati1 = () => (cn1() && M.world.percorsi) || null;
+  function percorsiSuolo1(x, tx0, ty0, n, m) {
+    const D = pcDati1(); if (!D) return; const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS;
+    const linea = (P, w, col) => { if (!P || !P.some(q => inBox1(q[0], q[1], X0, Y0, X1, Y1, w + 3))) return; x.beginPath(); P.forEach((q, i) => { const px = (q[0] - X0) * PPM, py = (q[1] - Y0) * PPM; if (i) x.lineTo(px, py); else x.moveTo(px, py); }); x.lineWidth = w * PPM; x.strokeStyle = col; x.stroke(); };
+    x.save(); x.lineJoin = 'round'; x.lineCap = 'round';
+    D.scorciatoie.forEach(s => { if (s.k === 'nascondiglio') { linea(s.pts, 3.4, 'rgba(16,13,12,.2)'); linea(s.pts, 1.8, 'rgba(16,13,12,.1)'); } });   // il nascondiglio: più scuro
+    D.scorciatoie.forEach(s => { if (s.k === 'scorciatoia') { linea(s.pts, 1.4, 'rgba(244,230,202,.07)'); linea(s.pts, .6, 'rgba(250,240,220,.06)'); } });   // la scorciatoia: la riga dei passi
+    D.percorsi.forEach(p => { const dom = p.k === 'dominante', rd = (M.roads || []).find(r => r.id === p.id), w = rd ? rd.w : 3.2;
+      linea(p.pts, w * (dom ? .6 : .5), dom ? 'rgba(248,232,198,.08)' : 'rgba(244,228,196,.06)');   // il centro lucidato, caldo
+      linea(p.pts, Math.min(1.8, w * .3), dom ? 'rgba(252,242,222,.07)' : 'rgba(250,238,216,.05)');
+      p.pts.forEach(([px, py], k) => { if (k % 2 || !inBox1(px, py, X0, Y0, X1, Y1, 2)) return; const v = gT(Math.floor(px / TS), Math.floor(py / TS)); if (v !== G.T.GRASS && v !== G.T.DIRT) return;   // l'erba schiacciata
+        x.fillStyle = 'rgba(126,108,78,.32)'; x.beginPath(); x.ellipse((px - X0) * PPM, (py - Y0) * PPM, .9 * PPM, .7 * PPM, 0, 0, 6.2832); x.fill(); }); });
+    x.restore();
+  }
+  const PC1 = { n: 0, spill: 0 };
+  // la lanterna a braccio: sul muro più vicino (entro 3 m, una faccia di casella piena), altrimenti su un palo di ferro scuro
+  function lanterna1(x, z, lit, iron, geo) {
+    const T = G.T; let best = null;
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (let d = .4; d <= 3; d += .2) { const tx = Math.floor((x + dx * d) / TS), tz = Math.floor((z + dz * d) / TS); if (gT(tx, tz) !== T.BLD) continue;
+      const fx = dx > 0 ? tx * TS : dx < 0 ? (tx + 1) * TS : x, fz = dz > 0 ? tz * TS : dz < 0 ? (tz + 1) * TS : z; if (!best || d < best.d) best = { d, dx, dz, fx, fz }; break; }
+    const g = new THREE.Group(), M3 = (gg, m, sx, sy, sz, px, py, pz) => { const o = new THREE.Mesh(gg, m); o.scale.set(sx, sy, sz); o.position.set(px, py, pz); g.add(o); return o; };
+    let lx, lz, y;
+    if (best) { lx = best.fx - best.dx * .34; lz = best.fz - best.dz * .34; y = groundH(lx, lz) + 2.75;
+      M3(geo.box, iron, best.dx ? .36 : .04, .04, best.dz ? .36 : .04, best.fx - best.dx * .17, y + .16, best.fz - best.dz * .17);   // il braccio
+      M3(geo.box, iron, .06, .3, .06, best.fx - best.dx * .02, y + .02, best.fz - best.dz * .02); }   // la piastra
+    else { lx = x; lz = z; const g0 = groundH(x, z); y = g0 + 2.75; M3(geo.box, iron, .07, 2.9, .07, x, g0 + 1.45, z); }   // il palo
+    M3(geo.box, iron, .22, .05, .22, lx, y + .16, lz); M3(geo.sph, lit, 1, 1.15, 1, lx, y, lz); M3(geo.box, iron, .03, .1, .03, lx, y + .22, lz);   // il cappello, il vetro acceso, l'anello
+    P2.k = best ? 'applique' : 'lampione'; addStatic(mk2(g, best ? 'applique' : 'lampione')); P2.k = null;
+    addLight(lx, y - .1, lz, '#ffc070', 1.35, 6, .02); PC1.n++;
+    return [lx, lz];
+  }
+  function buildPercorsi1() {
+    const D = pcDati1(); if (!D) return;
+    const iron = sm('#2a2a2e', { metalness: .4, roughness: .6 }), lit = caseLit('#ffc878'), geo = { box: new THREE.BoxGeometry(1, 1, 1), sph: new THREE.SphereGeometry(.085, 8, 6) };
+    const messe = [], lontano = (x, z, r) => messe.every(q => Math.hypot(q[0] - x, q[1] - z) > r);
+    // 1) l'inquadratura: in fondo al tratto la lanterna (dove non c'è altro), la soglia accesa (dove chiama una porta)
+    D.tratti.forEach(t => { const r = t.richiamo; if (!r) return;
+      if (r.k === 'lanterna' && lontano(r.x, r.y, 6)) messe.push(lanterna1(r.x, r.y, lit, iron, geo));
+      if (r.k === 'porta') { const [ax, ay] = t.pts[0], l = Math.hypot(ax - r.x, ay - r.y) || 1; addSpill(r.x, r.y, (ax - r.x) / l, (ay - r.y) / l, '#ffc878', 1.5, 5); PC1.spill++; } });
+    // 2) le scorciatoie senza arco né scalinata: la luce dall'altra parte (all'imbocco lontano)
+    D.scorciatoie.forEach(s => { if (s.k !== 'scorciatoia' || s.indizio.k !== 'luce') return; const Z = s.pts[s.pts.length - 1], A = s.pts[0];
+      if (lontano(Z[0], Z[1], 7)) messe.push(lanterna1(Z[0], Z[1], lit, iron, geo)); });
+    window.__percorsi = { lanterne: PC1.n, soglie: PC1.spill };
+  }
+
   // ================= [pulizia2] IL REGISTRO DI QUELLO CHE SI POSA E IL REGISTA FINALE (solo nella città nuova) =================
   // Ogni sistema posa per conto suo (botteghe, case, soglie, segni, oggetti, strade): qui si tiene nota di tutto quello che arriva
   // a terra o sui muri, con la sua scatola orientata, chi l'ha messo (il passo della costruzione), la casa e il lato a cui appartiene.
@@ -56895,8 +57394,8 @@ var Render = (function () {
         Z.push({ t: 'vetrina', B: box2(fx, fz, F.yaw, e.w / 2 + .1, .5, Math.min(gy, base) - .2, Math.max(gy, base) + 2.3) }); });
     });
     const TT2 = window.Tetti;
-    if (TT2 && TT2.LADDERS) TT2.LADDERS.forEach(L => { const b = G.BUILDINGS[L.bi]; if (!b || b.pezzo) return; const yaw = Math.atan2(L.ox, L.oy), foot = L.footB >= 0 ? TT2.roofRule(G.BUILDINGS[L.footB]) : groundH(L.fx, L.fy), top = TT2.roofRule(b) + .95;
-      const pe = pr('scala', box2(L.x + L.ox * .22, L.y + L.oy * .22, yaw, .3, .2, foot, top), { L });
+    if (TT2 && TT2.LADDERS) TT2.LADDERS.forEach(L => { const b = G.BUILDINGS[L.bi]; if (!b || b.pezzo) return; const yaw = Math.atan2(L.ox, L.oy), foot = L.footB >= 0 ? TT2.roofRule(G.BUILDINGS[L.footB]) : groundH(L.fx, L.fy), top = (L.camm ? L.hTop : TT2.roofRule(b)) + .95;
+      const pe = L.camm ? null : pr('scala', box2(L.x + L.ox * .22, L.y + L.oy * .22, yaw, .3, .2, foot, top), { L });   // [percorsi] la scala dei camminamenti sta sul pezzo grande che la porta: si tiene libero solo il piede
       if (L.footB < 0) Z.push({ t: 'scala', B: box2(L.x + L.ox * .7, L.y + L.oy * .7, yaw, .6, .55, foot - .2, foot + 2.3), p: pe }); });
     if (TT2 && TT2.PLANKS) TT2.PLANKS.forEach(Q => { const h = Math.max(TT2.roofRule(G.BUILDINGS[Q.a]), TT2.roofRule(G.BUILDINGS[Q.b])); pr('passerella', box2(Q.x0 + Q.ox * Q.L / 2, Q.y0 + Q.oy * Q.L / 2, Math.atan2(-Q.oy, Q.ox), Q.L / 2, Q.hw + .1, h - .3, h + 1.0), { Q }); });
     const SS = window.Sottosuolo; if (SS && SS.TPL && SS.TPL.portals) SS.TPL.portals.forEach(Q => { if (Q.kind !== 'tombino') return; const x = (Q.s[0] + .5) * TS, z = (Q.s[1] + .5) * TS, gy = groundH(x, z);
@@ -63707,7 +64206,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     const TT = (n, f) => { P2.src = n; const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
-    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
+    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('percorsi1', buildPercorsi1);   /* [percorsi] */ TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
