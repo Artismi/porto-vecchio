@@ -1,0 +1,38 @@
+[
+ {
+  "nome": "a_lecci_viale",
+  "x": 1325,
+  "y": 336,
+  "zoom": 0.4,
+  "ora": 600,
+  "attesa": 70000,
+  "js": "st.player.x=1328; st.player.y=338; pv.R.cam.x=pv.R.cam.tx=1325; pv.R.cam.y=pv.R.cam.ty=336;const __ld=setInterval(()=>{ try { Render.ISO.rush=true; pv.R.updateChunks(pv.R.cam.x,pv.R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(__ld), 55000);"
+ },
+ {
+  "nome": "b_corso",
+  "x": 1304,
+  "y": 360,
+  "zoom": 0.5,
+  "ora": 630,
+  "attesa": 60000,
+  "js": "const __ld=setInterval(()=>{ try { Render.ISO.rush=true; pv.R.updateChunks(pv.R.cam.x,pv.R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(__ld), 45000);"
+ },
+ {
+  "nome": "c_vittoria_portici",
+  "x": 1380,
+  "y": 343,
+  "zoom": 0.55,
+  "ora": 720,
+  "attesa": 60000,
+  "js": "const __ld=setInterval(()=>{ try { Render.ISO.rush=true; pv.R.updateChunks(pv.R.cam.x,pv.R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(__ld), 45000);"
+ },
+ {
+  "nome": "d_piazzetta_borgo",
+  "x": 1428,
+  "y": 324,
+  "zoom": 0.55,
+  "ora": 660,
+  "attesa": 60000,
+  "js": "const __ld=setInterval(()=>{ try { Render.ISO.rush=true; pv.R.updateChunks(pv.R.cam.x,pv.R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(__ld), 45000);"
+ }
+]
