@@ -145,3 +145,34 @@ due estremi veri (mensola, isolatore, cassetta, palo, contatore): mai nel vuoto.
 - **Lampioni a braccio** del borgo alimentati dalla dorsale (il filo corto dalla mensola al braccio).
 - Verifica: ogni segmento del grafo ha due nodi; nessun filo attraversa una via ≥ 10 m; conteggio per 100 m (dorsale, allacci, abusivi,
   traversate) stampato prima/dopo; a occhio, in foto, ogni filo deve avere un *perché* leggibile (da dove viene, dove arriva).
+
+## 7. La visuale sul personaggio e i vicoli in ombra ([visuale3], 21 ottobre)
+
+Giudizio del committente sul giro della Porta: «la zona in mezzo al vicolo all'ombra è completamente illeggibile, e la visuale sul
+personaggio fa solo confusione in più». Due cambi; regole in `src/visuale.js`, prove in `src/test_visuale3.js` (Node) e
+`strumenti/visuale3_check.js` (gioco vero), fogli in `_immagini/visuale3/`.
+
+**Il taglio (la visuale di difetto, `?visuale=taglio`).** Le case fra la camera e il personaggio si tagliano con un piano orizzontale,
+come una pianta d'architetto: sopra il piano non si disegna niente della casa (muri, facciate, balconi, tetto, roba sul tetto, e le cose
+del registro di pulizia2 che stanno sulla sua pianta: antenne e mensole della rete, pluviali, insegne alte); la faccia tagliata è un poché
+bruno caldo (`#47342a`) col filo chiaro (7 cm, `#eadcc2`). La quota di ogni casa è la più alta che lascia liberi i raggi dai piedi, dal
+busto, dalla testa e da un anello di suolo di 1,35 m verso la camera (meno 10 cm, a passi di 25 cm; mai sotto 15 cm dai piedi per il corpo,
+55 cm per l'anello: il moncone di muro disegna la pianta della strada); oltre 3,2 m si taglia a piani interi. Il piano scivola giù in
+0,22 s e su in 0,32 s; la casa resta tagliata 0,55 s dopo che ha smesso di coprire e risale solo se la quota buona resta più alta di 0,75 m
+per 0,45 s (isteresi). Sul tetto e sulle scale dei tetti niente taglio. La sagoma arancione resta come riserva (tirata 0,6 m verso la
+camera, così non si accende sul personaggio stesso): si vede solo dove una cosa piccola copre ancora. Costo: nessun programma per
+materiale (la quota sta nella tessitura delle case fuse), un programma per il poché, un piano di taglio sui pochi pezzi della casa fuori
+dalla fusione solo mentre è tagliata. `?visuale=ellisse` e `?visuale=sezione` restano per il confronto.
+
+**L'equilibrio della luce nei vicoli** (le manopole che c'erano, più il rimbalzo nello stesso blocco [profondita]):
+
+| Manopola | Prima | Ora | Perché |
+|---|---|---|---|
+| `PROF.nebbiaVicoli` | 0,1 | 0,03 | il velo freddo dal fondo spegneva la trama del lastrico: era metà del «si mischia tutto» |
+| `PROF.rimbalzo` | — | 0,75 | dove il sole non arriva (mappa d'ombra) ma l'aria sopra è al sole, l'ombra si solleva di una luce calda che moltiplica il colore (la trama resta) |
+| `PROF.rimbalzoFondo` / `rimbalzoAlto` | — | 0,55 / 4 m | più debole a terra (55%), pieno a 4 m, si spegne fra 8 e 16 m: il fondo resta più scuro, mai nero |
+| `PROF.rimbalzoTinta` | — | 1 / 0,86 / 0,64 | la luce che torna dalla calce e dal tufo al sole |
+| `QUADRO.pavimentoNeri`, `OCCL` | 0,32, forza 0,78 | invariati | il rimbalzo solleva anche l'angolo muro-suolo in proporzione: la linea di contatto di OCCL torna a leggersi senza toccarla |
+| `ALONE3` | — | 3 cm, 0,5, ×1,55 | il personaggio in ombra (raggio verso il sole contro le case) o di notte: alone chiaro sottile attorno alla sagoma e luce propria più alta; al sole niente |
+
+La pendenza della visuale a piedi (0,78 rad) si prova più bassa con `?pendenza=0.62` (non attiva per difetto).

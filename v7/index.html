@@ -52504,7 +52504,7 @@ var Render = (function () {
       if (!B.__pl3) B.__pl3 = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
       B.__pl3.constant = y; if (!B.__cl3) { B.__cl3 = true; B.mats.forEach(m => { m.clippingPlanes = [B.__pl3]; }); }
       const cap = vis3Cap(B); cap.visible = !s.nodisc && s.a > 0; cap.position.y = y + .004;
-      if (B.__y3 === undefined || Math.abs(B.__y3 - s.y) > .3) { vis3Cose(B, false); B.__y3 = s.y; vis3Cose(B, true, s.y); } });
+      if (B.__y3 === undefined || Math.abs(B.__y3 - s.y) > .3) { try { vis3Cose(B, false); B.__y3 = s.y; vis3Cose(B, true, s.y); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } } } });
     prima.forEach(B => { if (VIS3.vivi.has(B)) return;
       const i = FD1.idx.get(B); if (i !== undefined && FD1.data) { FD1.data[i * 4 + 1] = 0; FD1.data[i * 4 + 2] = 0; FD1.dirty = true; }
       if (B.__cl3) { B.__cl3 = false; B.mats.forEach(m => { m.clippingPlanes = null; }); }
@@ -52515,9 +52515,9 @@ var Render = (function () {
   // la mensola della rete sul tetto, il pluviale, l'insegna in alto) si spengono intere: i loro vertici nella mesh fusa della città si
   // chiudono in un punto (come hideTagObj) e tornano quando la casa si richiude. Un indice a celle di 8 m, fatto la prima volta
   function vis3Parti(e) {
-    return e.parts.map(p => { if (p.M) return p.M.geometry ? [p.M.geometry.attributes.position, p.s, p.n] : null;
+    return e.parts.map(p => { if (p.M) return p.M.visible && !p.M.userData.lazy1 && p.M.geometry && p.M.geometry.attributes.position ? [p.M.geometry.attributes.position, p.s, p.n] : null;   // il pezzo finito nella fusione di una casa si taglia con la casa
       let bk = p.bk, gi = p.gi; while (bk && bk.__mv3) { gi += bk.__mv3.base; bk = bk.__mv3.t; }
-      return bk && bk.mesh && bk.offs && bk.offs[gi] !== undefined ? [bk.mesh.geometry.attributes.position, bk.offs[gi], p.n] : null; }).filter(Boolean);
+      return bk && bk.mesh && bk.offs && bk.offs[gi] !== undefined && bk.mesh.geometry.attributes.position ? [bk.mesh.geometry.attributes.position, bk.offs[gi], p.n] : null; }).filter(q => q && (q[1] + q[2]) * 3 <= q[0].array.length);
   }
   function vis3Cose(B, on, y) {
     if (!on) { (B.__cose3 || []).forEach(e => { if (--e.__h3 > 0) return;
@@ -66419,7 +66419,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       VARCO.a.value.set(v.x, v.y, R * kx, R * 1.3 * ky); VARCO.b.value.set(tx / tl, tz / tl, fy + .35, VARCO.amt);
       VARCO.p.value.set(focus[0][0], fy + .9, focus[0][1], lerp(.35, 2.5, ease));
       // [visuale3] il taglio: alle stesse condizioni del varco, e mai sul tetto o sulle scale dei tetti (feet0)
-      if (VIS3.on || VIS3.vivi.size) vis3Tick(focus[0][0], focus[0][1], fy, VIS3.on && !ui.intro && !ui.studio && !ui.focus && !p.indoor && !indoorNow && !ugNow && feet0 === null, dt);
+      if (VIS3.on || VIS3.vivi.size) try { vis3Tick(focus[0][0], focus[0][1], fy, VIS3.on && !ui.intro && !ui.studio && !ui.focus && !p.indoor && !indoorNow && !ugNow && feet0 === null, dt); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } }   // un errore del taglio non ferma mai il fotogramma
       vis3Personaggio(dyn.people.__player, p.x, playerH, p.y, night, dt);   // [visuale3] il personaggio si stacca in ombra (in ogni visuale)
     }
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
