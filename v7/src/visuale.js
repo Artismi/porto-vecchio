@@ -188,7 +188,8 @@ var Visuale = (function () {
   }
   // ================= [visuale4] IL TETTO CHE SBIADISCE (A) =================
   const TETTO4 = {
-    resta: .16,           // l'opacità che resta al tetto sbiadito del tutto: si legge ancora la sua forma, mai un buco
+    resta: .3,            // l'opacità che resta al tetto sbiadito del tutto: si legge ancora la sua forma, mai un buco
+    copertina: .82,       // sotto il tetto sbiadito la copertina alla gronda, nel tono del muro scurito a tanto (non il buio della casa)
     allarga: .35,         // m: la scatola della casa si allarga di tanto per la prova (gronde, balconi)
     tieni: .6,            // s: la casa resta col tetto sbiadito tanto dopo che ha smesso di coprire (l'isteresi)
     alza: 9, salto: 99,   // (il tetto non ha quota: la parte di passo() che la segue resta ferma)

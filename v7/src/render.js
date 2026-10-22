@@ -1287,6 +1287,9 @@ var Render = (function () {
       let c = T4M.get(q.m0); if (!c) { c = q.m0.clone(); if (q.m0.userData.plaster) plasterize(c); else if (q.m0.userData.mondo) animMat(c, q.m0.userData.mondo); c.transparent = true; c.depthWrite = false; T4M.set(q.m0, c); }
       c.opacity = op; if (c.emissiveMap) c.emissiveIntensity = (dyn.__ne || 0) * op; q.o.material = c; });
     const cose = a > .5; if (cose !== T.cose) { T.cose = cose; vis3Cose(B, false); if (cose) vis3Cose(B, true, T.gr + .15); }
+    // sotto il tetto sbiadito non il buio della casa (il nucleo scuro): la copertina alla gronda nel tono del muro, col filo chiaro,
+    // come un lastrico pulito; compare quando il tetto è sbiadito oltre un quarto
+    const cap = vis3Cap(B); cap.visible = on && a > .25; if (cap.visible) { cap.position.y = T.gr + .03; cap.material = capMat4(B, K.copertina); }
     if (!on) B.__t4 = null;
   }
   // un fotogramma del tetto che sbiadisce: le case che coprono adesso (Visuale.tetti), l'isteresi e lo sbiadire (Visuale.passo)
@@ -1298,10 +1301,10 @@ var Render = (function () {
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }
   }
   // B: la copertina del muretto, nel tono del muro scurito (MURETTO.tono) col filo chiaro; un materiale per tono, lo stesso programma del poché
-  function capMat4(B) {
-    const K = Visuale.MURETTO, hex = (B.b && B.b.__wallHex) || '#a8988a', key = hex + '|' + K.tono;
+  function capMat4(B, tono) {
+    const K = Visuale.MURETTO, b = B.b || {}, hex = (b.__ep && b.__ep.pal && typeof b.__ep.pal[0] === 'string' && b.__ep.pal[0]) || b.__wallHex || '#b8a084', tn = tono || K.tono, key = hex + '|' + tn;   // il colore del muro: la tavolozza dell'epoca, o quello della casa
     let m = VIS4.caps.get(key); if (m) return m;
-    const c = new THREE.Color(hex).multiplyScalar(K.tono), fc = new THREE.Color(K.filo); VIS4.filo.value.set(Visuale.TAGLIO.filoLargo, fc.r, fc.g, fc.b);
+    const c = new THREE.Color(hex).multiplyScalar(tn), fc = new THREE.Color(K.filo); VIS4.filo.value.set(Visuale.TAGLIO.filoLargo, fc.r, fc.g, fc.b);
     m = new THREE.MeshBasicMaterial({ color: c });
     m.onBeforeCompile = sh => { sh.uniforms.uFilo3 = VIS4.filo;
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 m3; varying vec4 vM3;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvM3 = m3;');

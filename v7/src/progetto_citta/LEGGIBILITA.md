@@ -177,3 +177,39 @@ che non sono case del gioco (le masse di pezzi_citta, le mura) e le cose fuori d
 | `ALONE3` | — | 3 cm, 0,5, ×1,55 | il personaggio in ombra (raggio verso il sole contro le case) o di notte: alone chiaro sottile attorno alla sagoma e luce propria più alta; al sole niente |
 
 La pendenza della visuale a piedi (0,78 rad) si prova più bassa con `?pendenza=0.62` (non attiva per difetto).
+
+## 8. Senza buco: due prototipi a confronto ([visuale4], 22 ottobre)
+
+Giudizio del committente sul taglio e sull'ellisse: «bucano l'immagine, lasciano monconi, anelli e sezioni che nessun fotografo terrebbe».
+Due alternative, tutte e due con la sagoma del personaggio, da scegliere sui fogli `_immagini/visuale4/` (stesse sei inquadrature, quattro
+visuali: taglio, ellisse, A, B; più la striscia del movimento di A). Il modo di difetto resta il taglio. Regole in `src/visuale.js`, prova in
+`src/test_visuale4.js`, il controllo del level designer in `strumenti/copertura_visuale4.js` (esce `_immagini/visuale4/copertura.json`).
+
+**A, `?visuale=camera`: la camera che si adatta.** La stretta si misura dai dati in pianta (`Visuale.mappa`, `Visuale.misura`): la larghezza
+libera attorno al personaggio (la più stretta di quattro coppie di direzioni), la pendenza che chiede il pieno sul lato camera per liberare
+il busto, i vicoli della rete (W.roads ≤ 3,6 m), le volte (portici, archi, sottopassi). Punteggio `s = sW·(0,4 + 0,6·sC)` (+0,12 nel vicolo
+stretto), 0,85 sotto una volta. Nella stretta la pendenza sale da 0,78 a `max(1,08, pendenza chiesta + 0,08)`, al più 1,22 rad, e lo zoom si
+stringe a 0,9. Isteresi: si entra sopra 0,6 per 0,2 s, si esce sotto 0,32 per 0,8 s, e dopo un cambio non se ne fa un altro prima di 2,05 s;
+smorzamento esponenziale (τ 0,26 s: 95% in 0,8 s, uguale a ogni frequenza). Il giro della visuale lungo il vicolo c'è (`CAMERA4.giro`, al
+più 25°) ma è spento: gira i comandi sotto le dita. Cambia solo pendenza e distanza: lo sguardo della levetta e gli scarti di [fluido]
+restano. Il tetto della casa che copre (i raggi del corpo nella sua scatola) sbiadisce intero fino a 0,3 di opacità in 0,35 s, con sotto la
+copertina alla gronda nel tono del muro (non il nucleo scuro della casa), e resta così 0,6 s dopo che ha smesso di coprire; gli oggetti del
+tetto si spengono oltre metà. I muri restano: dove coprono ancora, la sagoma.
+
+**B, `?visuale=muretto`: le case davanti scendono.** Le case col centro sul lato camera (≥ 0,5 m davanti al personaggio) la cui scatola,
+proiettata, tocca il disco di 8 m attorno a lui scendono tutte insieme a un muretto di 1 m sopra la loro base (in 0,5 s; risalgono in 0,65 s,
+0,8 s dopo essere uscite da un disco di 11 m). La copertina è il muro scurito al 52% col filo chiaro. Sul tetto non scende niente. Usa la stessa
+macchina del taglio (la quota nella tessitura delle case fuse, il piano di taglio sui pezzi fuori dalla fusione, il registro delle cose sui tetti).
+
+**La sagoma** (A e B): il modello vero ridisegnato dove è coperto (profondità invertita), tinta piatta calda (`#f0a050`, 0,5) col filo chiaro
+sul contorno (dove la superficie gira di taglio: `#fff4d6`, 0,95), tirata verso la camera 0,6 m (1,4 m sul mezzo) così non si accende su se
+stessa. Anche per chi conta nella scena (i personaggi del momento, chi ti parla) e per il mezzo che guidi.
+
+**La visibilità di una casa passa da un punto solo**, `R.casaVisibile(casa, 'quota' | 'tetto', v)`: la usano taglio, muretto e tetto; chi rifà
+la fusione delle case ([leggero]) la rifà lì.
+
+**Il controllo del level designer** (coperto: almeno due dei tre raggi del corpo fermati; un campione ogni 0,5 m a 1,4 m/s):
+percorsi principali 1.510 m, coperti oggi 32%, con A 17%, con B 2%; scorciatoie 677 m: 71%, 37%, 23%. Tratto coperto più lungo: oggi 104 m
+(Sotto le mura), con A 30 m. I punti peggiori con A, da correggere nella mappa: Sotto le mura 1426-1455 × 273 (case 225, 230, 224: E0 di 3-4
+piani sul lato camera), Vico Scuro e Vico dell'Arco sotto l'arco del sottopasso (la volta non sbiadisce), la Rua a 1375-1393 × 309 (casa 347,
+4 piani) e a 1397-1426 × 308-313, Dal Corso alla stazione 1274-1290 × 310-315 (Condominio Aurora). Elenco intero in `copertura.json`.
