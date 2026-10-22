@@ -259,7 +259,7 @@ var WriterVita = (function () {
     ['VERA', 'RSC'], ['MOLO', 'RSC'], ['ZERO', 'RSC'], ['KAOS', 'FLM'], ['BLUE', 'OGS'], ['TOKE', 'KMT'], ['RUGA', 'SPK'], ['ORZO', 'SPK'], ['NEVA', 'SPK'], ['DUKA', 'CVR'], ['ULTR', 'CVR'], ['BOSS', 'CVR'],
     ['PIX', 'TOY'], ['GEKO', 'TOY'], ['LUPO', 'TOY'], ['MIRO', ''], ['SKAN', ''], ['ATOM', ''], ['ROSA', ''], ['TEO', ''], ['DOGE', 'FLM'], ['NEMO', 'OGS'], ['SALE', 'RSC'], ['TUFO', 'KMT']];
   const BEEF0 = { OGS: 'KMT', KMT: 'OGS', FLM: 'SPK', SPK: 'FLM', CVR: 'RSC', RSC: 'CVR' };   // le vecchie guerre: chi crossa chi
-  const POLW = ['RISACCA', 'LIBERI', 'FUORI', 'RIBELLI', 'MAREA', 'NOMURO', 'DISGELO', 'RESPIRA', 'ISOLA'];
+  const POLW = ['LIBERI', 'FUORI', 'RIBELLI', 'MAREA', 'NOMURO', 'DISGELO', 'RESPIRA', 'ISOLA'];
   const HOT = ['bar', 'osteria', 'flipper', 'disco', 'cinema', 'video', 'stella', 'aurora', 'magazzino', 'cantiere', 'scalo', 'calata', 'giardini', 'piazzetta', 'caruggio', 'vico', 'spiaggia', 'discarica', 'muro', 'varco'];
   const COLD = ['governo', 'ministero', 'garante', 'archivio', 'commissariato', 'rocca', 'caserma_p', 'piazza_gov', 'chiesa', 'santuario', 'cultura'];
   // quanto un muro attira la vernice: i ritrovi, la ferrovia, il Muro, i sottopassi sì; i palazzi del regime no (li ripuliscono)

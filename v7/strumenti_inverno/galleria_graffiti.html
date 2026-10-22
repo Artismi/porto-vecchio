@@ -26,6 +26,8 @@ window.Game = { HOOKS: {}, byId: () => null }; window.Popolo = { _: { errand: fu
     const [style, fam, pal, seed, W, H, words] = it.split(':');
     const w = { style: style || 'pezzo', aka: 'DAKO', crew: 'PVK', seed: +(seed || 1) || 1, pal: +(pal || 0) || 0, q: .8, W: +(W || 0) || undefined, H: +(H || 0) || undefined, by: 'old', hand: (+(seed || 1) || 1) * 13 + 7 };
     if (fam && fam !== '-') w.fam = fam; if (words && words !== '-') w.words = words;
+    if (Q.get('npc')) { const sk = +(pal || 6) / 10, AK = ['DAKO', 'KEOS', 'SPIK', 'RAKE', 'NOTE', 'BLES', 'SNEK', 'KAOS', 'TOXI', 'PHAZ', 'ZORA', 'MOSE', 'VIBE', 'KRAN', 'FUSE', 'RUSK', 'NEMO', 'ZULU', 'TREK', 'ODIO'], aka = AK[w.seed % AK.length];   // come npcWork: il bozzetto del writer (pal = mano ×10)
+      Object.assign(w, WriterArte.conceive({ aka, crew: 'PVK', style: w.style, dna: WriterArte.dnaOf(w.seed * 7 + 3, sk, w.seed % 14), seed: w.seed }), { by: 'old', hand: w.seed * 13 + 7, W: w.W, H: w.H }); if (fam && fam !== '-') w.fam = fam; }
     const D = { tag: [1.1, .55], mtag: [.6, .32], throw: [2.7, 1.3], pezzo: [4.8, 2.05], burner: [6.6, 2.5], gotico: [1.4, 3.2], mostro: [3, 2.6], wholecar: [16, 2.9] };
     const d = (window.WriterArte.DEF && window.WriterArte.DEF[w.style]) || D[w.style] || [3, 2]; if (!w.W) w.W = d[0]; if (!w.H) w.H = d[1];
     w.cons = undefined;

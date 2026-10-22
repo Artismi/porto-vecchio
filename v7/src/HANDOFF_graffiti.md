@@ -120,3 +120,37 @@ mascherina, adesivi, colla.
 **La galleria** (`strumenti_inverno/galleria_graffiti.js out.png "stile:fam:tavolozza:seme:W:H:parole,..." [colonne] [ppm] [1|2]`):
 disegna ogni lavoro con `WriterArte.art` senza il gioco; `1` senza `Graffiti.F` (come era nel worker), `2` dentro un vero
 Web Worker come nel gioco. È il modo per guardare gli stili da vicino prima di toccare la città.
+
+## Graffiti 4 (22 ottobre): l'inchiostro, dai fogli di riferimento e dalle foto dei muri
+Dopo «Graffiti 3» i lavori sembravano ancora generati: lettere da font, contorni tutti uguali, colori da giocattolo. Riferimenti
+usati: le foto di Wikimedia Commons (Roma, Bologna: pezzi sui muri antirumore, hall of fame, throw-up) e i fogli da blackbook
+mandati da Andrea (throw-up a bolle, pezzi semi-wild e wildstyle). Cosa li rende veri, e come è fatto ora (`writer_arte.js`,
+sezione «L'INCHIOSTRO»):
+- **La gerarchia delle linee** (`inkRender`): il contorno esterno grosso, più grosso in basso a destra; le linee interne sottili
+  (dove una lettera passa sopra l'altra: ogni lettera ha il suo anello sottile, disegnato da dietro in avanti, la sinistra sta
+  sopra), i tagli e i buchi che si assottigliano (`taperLine`). Le lettere sono una massa sola.
+- **Ombra e 3D**: l'ombra piatta spostata (throw-up) o il 3D estruso che scurisce (pezzi), fusi col contorno; il **bordo da
+  sticker** (bianco o chiaro, a volte col filo scuro) attorno a tutto; dietro, a volte, l'esplosione o la nuvola a bolle coi
+  puntini (dentro il riquadro: il bordo del velo sfuma, niente tagli dritti).
+- **Il riempimento** (`inkPAT`, un colore solo sotto tutte le lettere): ombra (la parte bassa scura tagliata da un'onda, a volte la
+  luce in alto), sfumato con la grana, tratteggio da pennarello ordinato, liquido con le bolle, puntini, macchie, strisce, mattoni.
+- **Le luci**: archetti bianchi sottili sui lobi col puntino (throw-up); nei pezzi la riga di luce spezzata lungo i bordi alti, due
+  tagli bianchi paralleli per lettera, le stelle a raggi sottili.
+- **I dettagli**: colature col contorno (fanno parte della forma, `dripMask`), asterischi a inchiostro, aureola, linee di velocità,
+  mini-tag dentro una lettera, la crew e l'anno a pennarello sotto.
+- **Le tavolozze** (`inkScheme`): un colore pieno saturo da cui nascono ombra, luce, ombra portata, bordo; la throwie classica nera
+  o bianca, il cromato; una volta su tre le tavolozze dei muri veri (`REAL`, dalle foto: salmone, grigio-azzurro, lilla, menta...).
+- **Le lettere**: throw-up e bolle sulle bolle di sempre (`BUB`) ma più strette e sovrapposte (`bubbleInk`); i pezzi block, heavy,
+  piatto, 3D a blocchi con gli archi veri (`pieceInk`); semi, wild, a spine, astratto e corsivo **a pennellata**
+  (`brushLetters`): lo scheletro ripassato con la punta a scalpello (aste grosse, traverse sottili, estremità svasate tagliate di
+  sbieco; nel wild a punta), le lettere che si sovrappongono, il pezzo che riempie l'altezza del muro.
+- **La resa** (`handify`): col motore a inchiostro la mano trema meno e il bordo resta netto (`crisp`); la vernice è un filo spenta e
+  a passate (il muro si vede sotto le passate scariche); i lavori vecchi della storia (`w.old`) sono sbiaditi, rigati dalla pioggia,
+  scrostati (`age`).
+- Il verticale a bolle passa dallo stesso inchiostro (`stackedBubbleArt` → `bubbleInk` con la disposizione già fatta).
+- Restano ai motori di prima: tag e gotico (`writer_mano.js`), il mostro, il whole car (che però disegna il suo pezzo grande con
+  `art` e quindi con l'inchiostro), rullo, pixo, estintore, stencil, scritte, manifesti, adesivi, murali, calligraffiti.
+- Tolti dai testi «Porto Vecchio» e «Risacca» (nomi provvisori): murali, scritte, manifesti, slogan, parole dei pezzi.
+
+Galleria: `NPC=1 node strumenti_inverno/galleria_graffiti.js out.png "pezzo:-:8:201,throw:-:7:202" 4 80` disegna i lavori come li
+pensano gli NPC (il campo tavolozza diventa la mano ×10); con `2` in fondo, dentro un vero Web Worker come nel gioco.
