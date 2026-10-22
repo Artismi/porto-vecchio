@@ -201,7 +201,7 @@ var Visuale = (function () {
   function tetti(px, pz, fy, cam, case_, K, tetto, out) {
     K = K || TETTO4; out = out || new Map(); out.clear(); if (tetto) return out;
     const R = raggi4(px, pz, fy, cam), A = K.allarga, sdx = cam.x - px, sdz = cam.z - pz, sl2 = sdx * sdx + sdz * sdz || 1;
-    for (const B of case_) { const b3 = B.box3; if (!b3 || b3.max.y < fy + .5) continue;
+    for (const B of case_) { const b3 = B.box3; if (!b3 || b3.max.y < fy + .5 || B.flat) continue;   // il tetto piano (terrazzo, parapetto basso) non copre: resta com'è
       const bx = (b3.min.x + b3.max.x) / 2, bz = (b3.min.z + b3.max.z) / 2, br = Math.hypot(b3.max.x - b3.min.x, b3.max.z - b3.min.z) / 2 + 3;
       const t = cl4(((bx - px) * sdx + (bz - pz) * sdz) / sl2, 0, 1), ex = px + sdx * t - bx, ez = pz + sdz * t - bz; if (ex * ex + ez * ez > br * br) continue;
       const bb = { min: { x: b3.min.x - A, y: b3.min.y, z: b3.min.z - A }, max: { x: b3.max.x + A, y: b3.max.y, z: b3.max.z + A } };
