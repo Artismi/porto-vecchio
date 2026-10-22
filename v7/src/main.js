@@ -875,7 +875,6 @@
   const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', KITS), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
   Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
   function boot() {
-  if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
   let glOk = true;
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }
   if (!glOk) {
@@ -889,7 +888,6 @@
   new ResizeObserver(size).observe(app); size();
   // [fluido] i programmi della scheda video si preparano adesso, durante il caricamento, non a scatti mentre si gioca
   try { const M0 = R.__models; if (M0 && M0.renderer && M0.scene && R.getCamera) M0.renderer.compile(M0.scene, R.getCamera()); } catch (e) { console.warn('[compile]', e); }
-  requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il menu è disegnato: si può mostrare
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
   const loop = typeof Misura !== 'undefined' ? Misura.timed(loop0, 'main:ciclo') : loop0;   // [misura]
   // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
@@ -950,7 +948,17 @@
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); }
     requestAnimationFrame(loop);
   }
-  requestAnimationFrame(loop);
+  // [carico] i programmi della scheda video si preparano insieme (vedi render.js, KHR_parallel_shader_compile): finché non
+  // sono pronti il gioco non disegna (il primo fotogramma li aspetterebbe fermo), il pulsante dice a che punto siamo e la
+  // pagina resta viva. Oltre i 60 s si parte comunque
+  const shT0 = performance.now();
+  (function shWait() {
+    let f = 1; try { f = R.shadersPronti ? R.shadersPronti() : 1; } catch (e) { }
+    if (f < 1 && performance.now() - shT0 < 60000) { if (goBtn) goBtn.textContent = 'Preparo la grafica… ' + Math.round(f * 100) + '%'; host(.85 + .15 * f); setTimeout(shWait, 100); return; }
+    if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
+    last = performance.now(); requestAnimationFrame(loop);
+    requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il menu è disegnato: si può mostrare
+  })();
   window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)
   }
 })();

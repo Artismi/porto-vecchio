@@ -52589,7 +52589,7 @@ if (typeof module !== 'undefined') module.exports = Visuale;
 var Render = (function () {
   'use strict';
   const G = Game, TS = G.TS, M = G.MAP, OX = G.OX;
-  let renderer, scene, camera, rt, postScene, postCam, postMat;
+  let renderer, scene, camera, rt, postScene, postCam, postMat, PSC = null;
   let hemi, moon, fillAmb;
   const FOGTEAL = new THREE.Color('#2c5a62');
   const dyn = { people: {}, vespas: {}, lights: [], flicker: [], signs: [], buildings: [], water: null, rain: null, motes: null, laundry: [], markers: null, boats: [], gulls: [], beams: [], chasers: [], spin: [], sky: null };
@@ -52732,6 +52732,28 @@ var Render = (function () {
     m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); m.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     m.computeBoundingSphere(); m.computeBoundingBox(); return m;
   }
+  // [carico] toNonIndexed() (o clone()) e applyMatrix4() in un passo solo: gli stessi conti di three, stessi numeri al bit, ma
+  // senza la copia intermedia e i getX/setX vertice per vertice (era il grosso dell'avvio di case e fusione). Fuori dal caso
+  // solito (attributi impacchettati o intrecciati, altri attributi, morph) si torna alla strada di three
+  const _nm1 = new THREE.Matrix3();
+  function flatXf(g0, M) {
+    const A = g0.attributes, P = A.position, N = A.normal, U = A.uv, ix = g0.index;
+    const ok = a => !a || (a.array instanceof Float32Array && !a.normalized && !a.isInterleavedBufferAttribute);
+    let plain = !!P && ok(P) && ok(N) && ok(U) && P.itemSize === 3 && (!N || N.itemSize === 3) && (!U || U.itemSize === 2) && !(g0.morphAttributes && Object.keys(g0.morphAttributes).length);
+    if (plain) for (const k in A) if (k !== 'position' && k !== 'normal' && k !== 'uv') { plain = false; break; }
+    if (!plain) { const g = ix ? g0.toNonIndexed() : g0.clone(); g.applyMatrix4(M); return g; }
+    const I = ix ? ix.array : null, n = I ? I.length : P.array.length / 3, e = M.elements, pa = P.array, pos = new Float32Array(n * 3), g = new THREE.BufferGeometry();
+    for (let k = 0; k < n; k++) { const s = (I ? I[k] : k) * 3, x = pa[s], y = pa[s + 1], z = pa[s + 2], w = 1 / (e[3] * x + e[7] * y + e[11] * z + e[15]);
+      pos[k * 3] = (e[0] * x + e[4] * y + e[8] * z + e[12]) * w; pos[k * 3 + 1] = (e[1] * x + e[5] * y + e[9] * z + e[13]) * w; pos[k * 3 + 2] = (e[2] * x + e[6] * y + e[10] * z + e[14]) * w; }
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    if (N) { const r = _nm1.getNormalMatrix(M).elements, na = N.array, nor = new Float32Array(n * 3);
+      for (let k = 0; k < n; k++) { const s = (I ? I[k] : k) * 3, x0 = na[s], y0 = na[s + 1], z0 = na[s + 2], x = r[0] * x0 + r[3] * y0 + r[6] * z0, y = r[1] * x0 + r[4] * y0 + r[7] * z0, z = r[2] * x0 + r[5] * y0 + r[8] * z0, q = 1 / (Math.sqrt(x * x + y * y + z * z) || 1);
+        nor[k * 3] = x * q; nor[k * 3 + 1] = y * q; nor[k * 3 + 2] = z * q; }
+      g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); }
+    if (U) { const ua = U.array, uv = I ? new Float32Array(n * 2) : ua.slice(); if (I) for (let k = 0; k < n; k++) { const s = I[k] * 2; uv[k * 2] = ua[s]; uv[k * 2 + 1] = ua[s + 1]; }
+      g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); }
+    return g;
+  }
   // ================= [pulitore1] FUSIONE: le case per materiale uguale, la trasparenza a retino =================
   const FD1 = { tex: null, data: null, W: 1, u: { value: null }, idx: new Map(), emis: [], canon: new Map(), dirty: true, sigs: new Map() };
   const MSKIP1 = new Set(['uuid', 'name', 'id', 'version', 'userData', 'onBeforeCompile', 'customProgramCacheKey', 'onBuild', 'onBeforeRender', '_listeners', 'type']);
@@ -52812,7 +52834,7 @@ var Render = (function () {
         if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || Array.isArray(o.material) || !o.visible || o.renderOrder || o.customDepthMaterial || o.userData.keep) return;
         const m = o.material; if (m.transparent || m.userData.keepTr || live.mats.has(m) || !okGeo(o.geometry) || isLive(o)) return;
         const sig = matSig1(m); if (!sig) return;
-        const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(o.matrixWorld);
+        const g = flatXf(o.geometry, o.matrixWorld);   // [carico]
         g.computeBoundingBox(); g.boundingBox.getCenter(_wp);   // il settore dal centro vero (i gruppi delle case stanno tutti in 0,0)
         const key = sig + '|' + Math.floor(_wp.x / 32) + ',' + Math.floor(_wp.z / 32) + '|' + o.castShadow + o.receiveShadow;
         let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow });
@@ -52884,7 +52906,7 @@ var Render = (function () {
         const vv = c.userData.v3 !== undefined ? c.userData.v3 : v3;   // [visuale3] la casa a cui appartiene la parte (le antenne della rete): il taglio la ritrova nella mesh fusa
         const e = c.userData.p2 && P2.on && cn1() ? (() => { const q = p2New(c.userData.p2); q.yaw0 = yawM2(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); q.mp = []; E2.push(q); return q; })() : e2;   // [pulizia2] le parti segnate: dove finiscono nella mesh fusa
         if (c.userData.keepTree || c.isSprite || c.isLight || (c.isMesh && (Array.isArray(c.material) || c.userData.keep))) { keep.push(c); if (e && (c.isMesh || c.userData.keepTree)) e.objs.push(c); continue; }
-        if (c.isMesh) { let b = by.get(c.material); if (!b) { b = []; by.set(c.material, b); } const g = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); b.push(g); if (vv !== undefined) V3.push([vv, b, b.length - 1, g.attributes.position.count]); if (e) e.mp.push([b, b.length - 1, g.attributes.position.count]); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
+        if (c.isMesh) { let b = by.get(c.material); if (!b) { b = []; by.set(c.material, b); } const g = flatXf(c.geometry, new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld));   /* [carico] */ b.push(g); if (vv !== undefined) V3.push([vv, b, b.length - 1, g.attributes.position.count]); if (e) e.mp.push([b, b.length - 1, g.attributes.position.count]); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
         walk(c, e, vv);
       }
     };
@@ -58961,9 +58983,13 @@ var Render = (function () {
             if (d < DM[kk]) { DM[kk] = d; HW[kk] = rd.w / 2; } } } });
       for (let kk = 0; kk < DM.length; kk++) { const x = (kk % NW) * R, z = Math.floor(kk / NW) * R, tx = Math.floor(x / TS), tz = Math.floor(z / TS);
         if (zoneT(tx, tz) !== ZN.CITTA) continue; C38[kk] = 1; m[kk] = 0; if (DM[kk] > 1e8) continue; const d = DM[kk], h0 = HW[kk]; D38[kk] = d - h0; S38[kk] = Math.min(d - h0 - .02, h0 + 2.1 - d); } }   // [isola35] in città solo la fascia lungo le vie
+    // [carico] le colonne si sommano tutte insieme riga per riga (prima una colonna alla volta, saltando in memoria): stessi conti
+    // nello stesso ordine per ogni colonna, quindi stessi numeri, ma 4 s in meno all'avvio della città nuova
+    const CS = new Float64Array(NW);
     const blur = (src, rad) => { const t = new Float32Array(src.length), o = new Float32Array(src.length), n = 2 * rad + 1;
-      for (let j = 0; j < NH; j++) { let s = 0; for (let i = -rad; i <= rad; i++) s += src[j * NW + Math.max(0, i)]; for (let i = 0; i < NW; i++) { t[j * NW + i] = s / n; s += src[j * NW + Math.min(NW - 1, i + rad + 1)] - src[j * NW + Math.max(0, i - rad)]; } }
-      for (let i = 0; i < NW; i++) { let s = 0; for (let j = -rad; j <= rad; j++) s += t[Math.max(0, j) * NW + i]; for (let j = 0; j < NH; j++) { o[j * NW + i] = s / n; s += t[Math.min(NH - 1, j + rad + 1) * NW + i] - t[Math.max(0, j - rad) * NW + i]; } }
+      for (let j = 0; j < NH; j++) { const r = j * NW; let s = 0; for (let i = -rad; i <= rad; i++) s += src[r + Math.max(0, i)]; for (let i = 0; i < NW; i++) { t[r + i] = s / n; s += src[r + Math.min(NW - 1, i + rad + 1)] - src[r + Math.max(0, i - rad)]; } }
+      CS.fill(0); for (let j = -rad; j <= rad; j++) { const r = Math.max(0, j) * NW; for (let i = 0; i < NW; i++) CS[i] += t[r + i]; }
+      for (let j = 0; j < NH; j++) { const r = j * NW, ra = Math.min(NH - 1, j + rad + 1) * NW, rb = Math.max(0, j - rad) * NW; for (let i = 0; i < NW; i++) { o[r + i] = CS[i] / n; CS[i] += t[ra + i] - t[rb + i]; } }
       return o; };
     // scorrimento per curvatura: sfuma e riaffila più volte, così i gradini a 2 m delle strade fuori griglia diventano curve
     // e gli angoli si arrotondano senza assottigliare i marciapiedi stretti
@@ -59645,7 +59671,7 @@ var Render = (function () {
     e.objs.forEach(o => { if (o.parent) { o.parent.getWorldQuaternion(q); o.position.add(d.clone().applyQuaternion(q.invert())); o.updateMatrixWorld(true); } });
     const B = e.B, du = dx * B.c - dz * B.s, dv = dx * B.s + dz * B.c; B.u0 += du; B.u1 += du; B.v0 += dv; B.v1 += dv; B.y0 += dy; B.y1 += dy;
     if (e.vx) for (let i = 0; i < e.vx.length; i += 3) { e.vx[i] += dx; e.vx[i + 1] += dy; e.vx[i + 2] += dz; }
-    e.hull = null; proj2(e);
+    e.hull = null;   // [carico] il contorno sullo schermo lo rifà viol2 quando serve (prima a ogni prova di spostamento: 10 s di avvio)
     if (e.rec) { e.rec.c.add(d); e.rec.c0.add(d); e.rec.base += dy; if (e.rec.obj) { e.rec.obj.position.add(d); e.rec.obj.updateMatrixWorld(true); } hashPut(e.rec, e.rec.c.x, e.rec.c.z); }
   }
   function togli2(e) {
@@ -66554,6 +66580,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     renderer.debug.checkShaderErrors = typeof location !== 'undefined' && /[?&]shaderdebug/.test(location.search);   // [fluido] dal ramo wonderful-davinci: leggere subito il registro di ogni shader compilato costringe ad aspettarne la compilazione (centinaia di ms per materiale nuovo, camminando); solo con ?shaderdebug
     renderer.setPixelRatio(1);
+    // [carico] three controlla ogni programma della scheda video subito dopo averlo avviato, e così li aspetta uno alla volta
+    // (190 nella città nuova: era il grosso dell'attesa all'avvio). Senza il controllo il browser li prepara insieme, su più
+    // processori, mentre il menu resta vivo (KHR_parallel_shader_compile). Gli errori degli shader si vedono con ?debug
+    renderer.debug.checkShaderErrors = /[?&]debug\b/.test(location.search);
+    try { PSC = renderer.getContext().getExtension('KHR_parallel_shader_compile'); } catch (e) { PSC = null; }
     canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); try { localStorage.setItem('pvLow', '1'); } catch (x) {} console.warn('[grafica] contesto perso: ricarico in qualità ridotta'); setTimeout(() => location.reload(), 400); });   /* [unione10] */
     renderer.localClippingEnabled = true;   // [visuale3] il piano di taglio sui pezzi della casa fuori dalla fusione (solo mentre è tagliata)
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;   /* [plastica2] ombre morbide da plastico: le dure a punti di 4,5 cm facevano trine e scalini */
@@ -67862,7 +67893,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { VARCO, DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
-  return { get __lazy1() { return LAZY1; }, get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
+  // [carico] quanti programmi della scheda video sono già pronti (0..1): chiederlo non fa aspettare. Senza l'estensione si
+  // risponde 1 e il primo fotogramma li aspetta come sempre
+  function shadersPronti() {
+    const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
+    const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
+  }
+  return { get __lazy1() { return LAZY1; }, get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, shadersPronti, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW };
 })();
 </script>
 <script data-m="ordine_arte">/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
@@ -70243,7 +70280,6 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', KITS), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
   Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
   function boot() {
-  if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
   let glOk = true;
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }
   if (!glOk) {
@@ -70257,7 +70293,6 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   new ResizeObserver(size).observe(app); size();
   // [fluido] i programmi della scheda video si preparano adesso, durante il caricamento, non a scatti mentre si gioca
   try { const M0 = R.__models; if (M0 && M0.renderer && M0.scene && R.getCamera) M0.renderer.compile(M0.scene, R.getCamera()); } catch (e) { console.warn('[compile]', e); }
-  requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il menu è disegnato: si può mostrare
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
   const loop = typeof Misura !== 'undefined' ? Misura.timed(loop0, 'main:ciclo') : loop0;   // [misura]
   // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
@@ -70318,7 +70353,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); }
     requestAnimationFrame(loop);
   }
-  requestAnimationFrame(loop);
+  // [carico] i programmi della scheda video si preparano insieme (vedi render.js, KHR_parallel_shader_compile): finché non
+  // sono pronti il gioco non disegna (il primo fotogramma li aspetterebbe fermo), il pulsante dice a che punto siamo e la
+  // pagina resta viva. Oltre i 60 s si parte comunque
+  const shT0 = performance.now();
+  (function shWait() {
+    let f = 1; try { f = R.shadersPronti ? R.shadersPronti() : 1; } catch (e) { }
+    if (f < 1 && performance.now() - shT0 < 60000) { if (goBtn) goBtn.textContent = 'Preparo la grafica… ' + Math.round(f * 100) + '%'; host(.85 + .15 * f); setTimeout(shWait, 100); return; }
+    if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
+    last = performance.now(); requestAnimationFrame(loop);
+    requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il menu è disegnato: si può mostrare
+  })();
   window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)
   }
 })();
