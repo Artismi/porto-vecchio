@@ -187,3 +187,16 @@ lettere latine; licenze in `assets/fonts_graffiti/licenze`, elenco in `assets/fo
 - **Pezzi** (`pieceInk`, tre su quattro): Knewave, Shrikhand, Bangers, Ranchers, Shojumaru, Carter One, Rubik Wet Paint, Kavoon,
   e le **mani da tag ingrassate** (Sedgwick Ave Display, Permanent Marker, Knewave): il pezzo «dalla tag», coi suoi tagli dentro.
 - Galleria: aspetta i font (`?nofont=1` per vedere i motori di prima); in modalità worker manda i font al worker come il gioco.
+
+### Graffiti 4, quarta passata: l'affinamento su tutti e il murale nuovo
+- Le scritte piccole e accessorie passano dai font (`fontText`): la tag piccola dentro i pezzi, il rullo (`F_ROLL`, a celle o a una
+  o due righe), l'estintore (`extinguisherFont`, alone e colature), la scritta politica (`scrittaFont`), la calligrafia
+  (`calliFont`, pennino largo `broadNib`), il gotico (`goticoFont`), le bolle in verticale (`stackedFontBubble`), le scritte di
+  stencil, manifesti e adesivi. Il pixo ha il tratto più pesante e quasi sempre nero.
+- **Il murale** (`muralModern`) non ha più personaggi da cartone, tramonti né striscioni con lo slogan: è la composizione di un
+  muralista su una tavolozza studiata di cinque tinte (`MPAL`), a campiture piatte col rullo e il nastro, firmato piccolo in basso:
+  `bauhaus` (la griglia di cerchi, mezzelune, quarti, righe e puntini con una forma grande che la rompe), `onde` (le squame a
+  ventaglio e il sole tagliato dalle righe), `ottico` (righe nere, la fascia a gradini di colore, i quadratini che si sciolgono),
+  `fasce` (il nastro di fasce che corre dritto e piega giù, la supergrafica anni '70), `parola` (una parola sola, enorme, in un
+  font pieno, con l'ombra lunga a 45 gradi e la metà alta in un'altra tinta). Il tipo lo sceglie il seme, o `w.mkind`; in
+  galleria si forza col campo fam (`murale:fasce:6:821`). Senza font si torna al `muralArt` di prima.
