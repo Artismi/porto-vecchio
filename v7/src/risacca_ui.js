@@ -144,10 +144,11 @@ var RisaccaUI = (function () {
     $('rs-hud').hidden = PV().ui.intro || PV().ui.over;
     $('rs-mo').style.width = S.morale + '%';
     $('rs-rp').querySelectorAll('i').forEach((p, i) => p.classList.toggle('on', i < S.level));
-    $('rs-cash').textContent = Math.floor(st.ris.cassa).toLocaleString('it-IT') + '.000';
-    const sb = $('rs-sneak'); const sn = !!st.player.sneak && !st.player.vehicle; sb.innerHTML = (sn ? 'Strisci' : 'Cammina') + ' <kbd>X</kbd>'; sb.style.borderColor = sn ? 'var(--cyan)' : '';
-    const al = S.raid ? `Perquisizione a ${S.raid.name} fra ${S.raid.mins} minuti` : '';
-    $('rs-alarm').hidden = !al; $('rs-alarm').textContent = al;
+    // [fluido] il documento si tocca solo se cambia
+    const cs = Math.floor(st.ris.cassa).toLocaleString('it-IT') + '.000', ce = $('rs-cash'); if (ce.textContent !== cs) ce.textContent = cs;
+    const sb = $('rs-sneak'); const sn = !!st.player.sneak && !st.player.vehicle; if (sb.__sn !== sn) { sb.__sn = sn; sb.innerHTML = (sn ? 'Strisci' : 'Cammina') + ' <kbd>X</kbd>'; sb.style.borderColor = sn ? 'var(--cyan)' : ''; }
+    const al = S.raid ? `Perquisizione a ${S.raid.name} fra ${S.raid.mins} minuti` : '', ae = $('rs-alarm');
+    if (ae.hidden !== !al) ae.hidden = !al; if (ae.textContent !== al) ae.textContent = al;
     // azioni sul posto
     const ui = PV().ui, list = (ui.intro || ui.over || ui.dialog || U.chat || U.panel) ? [] : RS.here(st);
     const key = list.map(a => a.id + a.arg + a.label).join('|');
@@ -432,13 +433,13 @@ var RisaccaUI = (function () {
   // ---------------- ETICHETTE NEL MONDO ----------------
   function labels(st) {
     const box = $('rs-labels'), R0 = PV().R, cv = $('cv'); if (!R0 || !R0.project || !cv) return;
-    const ui = PV().ui; if (ui.intro || ui.over) { box.innerHTML = ''; return; }
+    const ui = PV().ui; if (ui.intro || ui.over) { labPut(box, []); return; }
     const rc = cv.getBoundingClientRect(), ra = $('app').getBoundingClientRect(), p = st.player, out = [];
     // dentro: dove sei
-    const ib = $('rs-indoor'); if (ib) { if (p.indoor) { const b = G.BUILDINGS[p.indoor.b], L = G.INT.layout(b), room = G.INT.roomAt(L, p.indoor.f, p.x, p.y); ib.hidden = false; ib.textContent = (b.label || b.name) + (L.floors.length > 1 ? ' · ' + (G.INT.floorLabel ? G.INT.floorLabel(p.indoor.f) : (p.indoor.f ? 'primo piano' : 'piano terra')) : '') + (room ? ' · ' + (G.INT.roomLabel ? G.INT.roomLabel(room.name) : room.name.replace('_', ' ')) : '') + (p.indoor.f === 0 ? ' — esci dalla porta arancione' : '') + (L.stairs ? (p.indoor.f === 0 ? ', sali dal tappeto giallo della scala' : p.indoor.f < L.floors.length - 1 ? ' — tappeto giallo: sali · azzurro: scendi' : ' — scendi dal tappeto azzurro') : ''); /* [interni] */ } else ib.hidden = true; }
-    if (p.indoor) { box.innerHTML = ''; return; }
-    if ((p.lv && p.lv.k === 'ug') || window.__pulita) { box.innerHTML = ''; return; }   // [regia2] sotto terra le porte e i luoghi di sopra non ci sono; con la foto pulita (strumenti/galleria.js) nemmeno
-    const put = (x, y, h, cls, text, maxD) => { if (maxD && Math.hypot(x - p.x, y - p.y) > maxD) return; const q = R0.project(x, h, y); if (q.behind || q.x < -.05 || q.x > 1.05 || q.y < -.05 || q.y > 1.05) return; out.push(`<div class="rs-lab ${cls}" style="left:${(rc.left - ra.left + q.x * rc.width).toFixed(0)}px;top:${(rc.top - ra.top + q.y * rc.height).toFixed(0)}px">${esc(text)}</div>`); };
+    const ib = $('rs-indoor'); if (ib) { if (p.indoor) { const b = G.BUILDINGS[p.indoor.b], L = G.INT.layout(b), room = G.INT.roomAt(L, p.indoor.f, p.x, p.y); if (ib.hidden) ib.hidden = false; const ibt = (b.label || b.name) + (L.floors.length > 1 ? ' · ' + (G.INT.floorLabel ? G.INT.floorLabel(p.indoor.f) : (p.indoor.f ? 'primo piano' : 'piano terra')) : '') + (room ? ' · ' + (G.INT.roomLabel ? G.INT.roomLabel(room.name) : room.name.replace('_', ' ')) : '') + (p.indoor.f === 0 ? ' — esci dalla porta arancione' : '') + (L.stairs ? (p.indoor.f === 0 ? ', sali dal tappeto giallo della scala' : p.indoor.f < L.floors.length - 1 ? ' — tappeto giallo: sali · azzurro: scendi' : ' — scendi dal tappeto azzurro') : ''); if (ib.textContent !== ibt) ib.textContent = ibt; /* [interni] */ /* [fluido] solo se cambia */ } else if (!ib.hidden) ib.hidden = true; }
+    if (p.indoor) { labPut(box, []); return; }
+    if ((p.lv && p.lv.k === 'ug') || window.__pulita) { labPut(box, []); return; }   // [regia2] sotto terra le porte e i luoghi di sopra non ci sono; con la foto pulita (strumenti/galleria.js) nemmeno
+    const put = (x, y, h, cls, text, maxD) => { if (maxD && Math.hypot(x - p.x, y - p.y) > maxD) return; const q = R0.project(x, h, y); if (q.behind || q.x < -.05 || q.x > 1.05 || q.y < -.05 || q.y > 1.05) return; out.push(['rs-lab ' + cls, text, Math.round(rc.left - ra.left + q.x * rc.width), Math.round(rc.top - ra.top + q.y * rc.height)]); };
     st.ris.bases.forEach(b => { if (b.alive) put(b.cx || b.x, b.cy || b.y, b.cx ? 3.6 : 2.6, 'base', `≋ ${b.name}`, 60); });
     for (const [id, S] of Object.entries(st.ris.spaces)) if (S.found && !S.base) put(S.x, S.y, 2.2, 'space', `□ spazio libero`, 40);
     st.ris.sites.forEach(s => { if (s.done) return; const c = RS.lotCenter(RS.LOTS.find(l => l.id === s.lot)); put(c.x, c.y, 3, 'site', `⚒ ${Math.floor(s.progress)}/${s.hours} ore`, 60); });
@@ -451,7 +452,18 @@ var RisaccaUI = (function () {
     // porte vicine: dove si entra e che posto è
     if (!p.indoor && !p.vehicle) G.BUILDINGS.forEach(b => { if (!b.door) return; const x = (b.door[0] + .5) * G.TS, y = (b.door[1] + .5) * G.TS; if (Math.hypot(x - p.x, y - p.y) < 9) put(x, y, 1.9, 'door', '▸ ' + (b.label || b.name || 'Porta'), 9); });
 
-    box.innerHTML = out.join('');
+    labPut(box, out);
+  }
+  // [fluido] le etichette nel mondo: prima si riscriveva tutto il riquadro (innerHTML) a ogni fotogramma, ricreando ogni etichetta.
+  // Ora gli stessi nodi si riusano; testo e classe cambiano solo se cambiano, la posizione è una sola scrittura (left/top come prima)
+  function labPut(box, out) {
+    const P = box.__pool || (box.__pool = []);
+    out.forEach(([cls, text, x, y], i) => {
+      let el = P[i]; if (!el) { el = document.createElement('div'); box.appendChild(el); P.push(el); }
+      if (el.hidden) el.hidden = false; if (el.__c !== cls) { el.__c = cls; el.className = cls; } if (el.__t !== text) { el.__t = text; el.textContent = text; }
+      if (el.__x !== x || el.__y !== y) { el.__x = x; el.__y = y; el.style.left = x + 'px'; el.style.top = y + 'px'; }
+    });
+    for (let i = out.length; i < P.length; i++) if (!P[i].hidden) P[i].hidden = true;
   }
 
   // ---------------- COSTRUZIONI IN 3D ----------------

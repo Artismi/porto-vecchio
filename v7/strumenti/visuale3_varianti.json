@@ -1,0 +1,24 @@
+{
+ "nota": "[visuale3] Quattro varianti sulla stessa scena e nello stesso istante: «prima» è il gioco com'era (l'ellisse [varco2], il velo freddo nei vicoli, niente rimbalzo, niente alone); «sezione» è ?visuale=sezione ([visuale]) con la luce nuova; «taglio» è il modo nuovo di difetto, con la luce nuova; «pendenza» è il taglio con la visuale a piedi più bassa (?pendenza=0.62 invece di 0,78), la prova facoltativa.",
+ "prima": {
+  "VISUALE": "ellisse",
+  "PROF": {
+   "nebbiaVicoli": 0.1,
+   "rimbalzo": 0
+  },
+  "ALONE3": {
+   "forza": 0,
+   "riempi": 0
+  }
+ },
+ "sezione": {
+  "VISUALE": "sezione"
+ },
+ "taglio": {
+  "VISUALE": "taglio"
+ },
+ "pendenza": {
+  "VISUALE": "taglio",
+  "PENDENZA": 0.62
+ }
+}

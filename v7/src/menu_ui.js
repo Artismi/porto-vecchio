@@ -973,9 +973,9 @@ var MenuUI = (function () {
   setInterval(() => { try {
     const app = $('app'), st = ST(), ui = PV() && PV().ui; if (!app || !st || !ui) return; if (!$('mu')) mount();
     let b = $('muBtn'); if (!b) { b = document.createElement('button'); b.id = 'muBtn'; b.innerHTML = '<canvas width="96" height="96"></canvas><span>Zaino<kbd>I</kbd></span><span class="dot" hidden></span>'; app.appendChild(b); b.onclick = () => toggle('zaino'); }
-    b.style.display = ui.intro || ui.over || U.open || (typeof Cantiere !== 'undefined' && Cantiere.active()) ? 'none' : '';
+    const dsp = ui.intro || ui.over || U.open || (typeof Cantiere !== 'undefined' && Cantiere.active()) ? 'none' : ''; if (b.style.display !== dsp) b.style.display = dsp;   // [fluido] solo se cambia
     const c = b.querySelector('canvas'); if (!c.dataset.done) { const t = thumb('zaino'); if (t) { c.getContext('2d').drawImage(t, 0, 0, 96, 96); c.dataset.done = 1; } }
-    const n = quiCount(st), d = b.querySelector('.dot'); d.hidden = !n; d.textContent = n;
+    const n = quiCount(st), d = b.querySelector('.dot'); if (d.hidden !== !n) d.hidden = !n; if (d.textContent !== String(n)) d.textContent = n;
   } catch (e) { } }, 300);
   return { open, close, toggle, render, icon, state: U, quiList, quiCount, thumbFor, famOf, anteprima: id => makeThumb(id) };   // anteprima: per lo studio e le prove
 })();

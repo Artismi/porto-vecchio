@@ -1,0 +1,26 @@
+{
+ "nota": "[vievive] Le inquadrature del filone delle vie vive (strumenti/galleria.js; il prima con PV_PAGINA). La Via della Vittoria nello stesso fotogramma di percorsi2 (v1_vittoria_governo: il Palazzo del Governo), il Corso, la piazza del Mercato, il piazzale della Stazione e la Via della Marina, alle 08:30 (l'ora di punta) e alle 18:00 (la passeggiata). \"js\" costruisce i blocchi di corsa e mette la vita di strada al passo (Vievive.rianima: i mezzi e le scene dell'ora già al loro posto).",
+ "pulita": true,
+ "scorci": [
+  { "nome": "a1_vittoria_0830", "titolo": "Via della Vittoria, 08:30", "x": 1325, "y": 336, "zoom": 0.4, "ora": 510, "meteo": "sereno", "luce": "metropoli", "attesa": 15000,
+    "js": "if (window.Vievive && Vievive.rianima) Vievive.rianima(st); const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "a2_vittoria_1800", "titolo": "Via della Vittoria, 18:00", "x": 1325, "y": 336, "zoom": 0.4, "ora": 1080, "meteo": "sereno", "luce": "metropoli", "attesa": 15000,
+    "js": "if (window.Vievive && Vievive.rianima) Vievive.rianima(st); const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "b1_corso_0830", "titolo": "Corso Garibaldi, 08:30", "x": 1306, "y": 318, "zoom": 0.5, "ora": 510, "meteo": "sereno", "luce": "metropoli", "attesa": 15000,
+    "js": "if (window.Vievive && Vievive.rianima) Vievive.rianima(st); const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "b2_corso_1800", "titolo": "Corso Garibaldi, 18:00", "x": 1306, "y": 318, "zoom": 0.5, "ora": 1080, "meteo": "sereno", "luce": "metropoli", "attesa": 15000,
+    "js": "if (window.Vievive && Vievive.rianima) Vievive.rianima(st); const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "c1_mercato_0830", "titolo": "Piazza del Mercato, 08:30", "x": 1280, "y": 346, "zoom": 0.5, "ora": 510, "meteo": "sereno", "luce": "metropoli", "attesa": 15000,
+    "js": "if (window.Vievive && Vievive.rianima) Vievive.rianima(st); const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "c2_mercato_1800", "titolo": "Piazza del Mercato, 18:00", "x": 1280, "y": 346, "zoom": 0.5, "ora": 1080, "meteo": "sereno", "luce": "metropoli", "attesa": 15000,
+    "js": "if (window.Vievive && Vievive.rianima) Vievive.rianima(st); const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "d1_stazione_0830", "titolo": "Piazzale della Stazione, 08:30", "x": 1200, "y": 308, "zoom": 0.5, "ora": 510, "meteo": "sereno", "luce": "metropoli", "attesa": 15000,
+    "js": "if (window.Vievive && Vievive.rianima) Vievive.rianima(st); const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "d2_stazione_1800", "titolo": "Piazzale della Stazione, 18:00", "x": 1200, "y": 308, "zoom": 0.5, "ora": 1080, "meteo": "sereno", "luce": "metropoli", "attesa": 15000,
+    "js": "if (window.Vievive && Vievive.rianima) Vievive.rianima(st); const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "e1_marina_0830", "titolo": "Via della Marina, 08:30", "x": 1388, "y": 386, "zoom": 0.5, "ora": 510, "meteo": "sereno", "luce": "borgo", "attesa": 15000,
+    "js": "if (window.Vievive && Vievive.rianima) Vievive.rianima(st); const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "e2_marina_1800", "titolo": "Via della Marina, 18:00", "x": 1388, "y": 386, "zoom": 0.5, "ora": 1080, "meteo": "sereno", "luce": "borgo", "attesa": 15000,
+    "js": "if (window.Vievive && Vievive.rianima) Vievive.rianima(st); const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" }
+ ]
+}

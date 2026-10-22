@@ -183,11 +183,11 @@ var TascheUI = (function () {
   function render(force) {
     const st = ST(); if (!st || !mount()) return;
     const p = st.player, held = p.hand || p.cur || 'pugni';
-    icon($('ts-btn').querySelector('canvas'), held);
+    { const c = $('ts-btn').querySelector('canvas'); if (c.__held !== held) { c.__held = held; icon(c, held); } }   // [fluido] l'icona si ridisegna quando cambia
     const A = st.over || (PV().ui && (PV().ui.intro || PV().ui.dialog)) ? [] : acts(st), first = A.find(x => x.run);
     const hint = $('ts-hint');
-    hint.classList.toggle('on', !!first && !U.open && typeof MenuUI === 'undefined');   // [menu] in scena basta il riquadro «Qui»
-    if (first && !U.open) { icon(hint.querySelector('canvas'), held); hint.querySelector('span').textContent = first.label; }
+    const hOn = !!first && !U.open && typeof MenuUI === 'undefined'; if (hint.classList.contains('on') !== hOn) hint.classList.toggle('on', hOn);   // [menu] in scena basta il riquadro «Qui»
+    if (first && !U.open) { const c = hint.querySelector('canvas'), sp = hint.querySelector('span'); if (c.__held !== held) { c.__held = held; icon(c, held); } if (sp.textContent !== first.label) sp.textContent = first.label; }   // [fluido] solo se cambia
     if (!U.open) return;
     const I = items(st);
     if (!I.some(x => x.id === U.sel)) U.sel = '';

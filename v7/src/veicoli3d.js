@@ -336,7 +336,7 @@ var Veicoli3D = (function () {
     });
     const zr2 = zs - (D.divano || .85), hd = zr2 > zL ? Math.min(.34, P.yR(zr2 - .1) - yAt(zr2) - .07) : 0; if (zr2 > zL + .05 && hd > .12) lista(alto, [0, yAt(zr2) - .006, zr2], [0, yAt(zr2) + hd, zr2 - .1], hb(zr2) * 2 - .04, .1, seatCol);
     const zd = zW - .17, yd = yAt(zd); M(alto, BX(hb(zd) * 2 - .02, .09, .26), C.nero, 0, yd + .04, zd);
-    const zv = zW - .4, yv = yAt(zv) + .2, vol = D.manubrio ? M(alto, CY(.015, .015, .62, 6), C.nero, -xs * 0, yv, zv, 0, 0, PI / 2) : M(alto, new THREE.TorusGeometry(.16, .013, 4, 14), C.nero, -xs, yv, zv, -1.05); if (!D.manubrio) { M(vol, BX(.31, .03, .012), C.nero); M(vol, BX(.03, .14, .012), C.nero, 0, -.07, 0); M(vol, CY(.04, .04, .03, 10), C.nero, 0, 0, 0, PI / 2); }   // il volante con le razze
+    const zv = zW - .4, yv = yAt(zv) + .2, vol = D.manubrio ? M(alto, CY(.015, .015, .62, 6), C.nero, -xs * 0, yv, zv, 0, 0, PI / 2) : M(alto, new THREE.TorusGeometry(.16, .013, 4, 14), C.nero, xs, yv, zv, -1.05); if (!D.manubrio) { M(vol, BX(.31, .03, .012), C.nero); M(vol, BX(.03, .14, .012), C.nero, 0, -.07, 0); M(vol, CY(.04, .04, .03, 10), C.nero, 0, 0, 0, PI / 2); }   // il volante con le razze
     asta(alto, [D.manubrio ? 0 : -xs, yv, zv], [D.manubrio ? 0 : -xs, yd + .06, zd - .1], .018, C.nero);
     // porte: le fessure, le maniglie; specchietti, antenna, tappo della benzina
     const linea = (s, z, y0, y1) => M(alto, BX(.006, y1 - y0, .007), C.scuro, s * (hwAt(D, z) + .001), (y0 + y1) / 2, z);
@@ -394,7 +394,7 @@ var Veicoli3D = (function () {
     if (D.muso) D.muso(ctx); if (D.coda) D.coda(ctx); if (D.fianchi) D.fianchi(ctx);
     if (o.livrea) livrea(ctx, o.livrea);
     // sedili per chi guida (render.js ci mette il guidatore) e la portiera che si apre
-    ud.seat = [-xs, ys + .02, zs + .12]; ud.seat2 = [xs, ys + .02, zs + .12];
+    ud.seat = [xs, ys + .02, zs + .12]; ud.seat2 = [-xs, ys + .02, zs + .12];   // guida a sinistra (+x: col muso verso +z, la destra è -x)
     ud.porta = { hw: hwAt(D, zs), cw: hwAt(D, zs) - Cb.inset - Cb.tumble * .5, zf: D.porte[0][0] - .02, zb: D.porte[0][1] + .02, yb: D.sill + .06, yt: ytAt(D, zs), yw: P.yR(zs) - .05 };
     ud.len = D.L;
     // ---- il livello basso: poche facce, stessa vernice ----
@@ -558,17 +558,24 @@ var Veicoli3D = (function () {
     cab: { w0: [5.33, 1.2], w1: [5.12, 2.86], r1: [-5.22, 2.9], r0: [-5.33, 1.3], inset: .03, tumble: .07, B, bw: .12, S: -5.0, pw: .08, crown: .06 },
     porte: [[5.0, 4.0]], paraurti: { y: .3, h: .22, t: .06, wrap: .3, col: '#2a2a2a' }, cerchi: 'camion', colCerchi: '#c8c8cc', interni: '#5a5a5a', sedile: .95, divano: 99, antenna: false, tergi: 2,
     muso(k) {
-      const p = k.davanti(new THREE.Group(), 0, 2.6); M(p, BX(1.7, .28, .1), C.scuro, 0, .2, 0); M(p, BX(1.5, .2, .02), scritta('7  CORSO', '#141414', '#ffb020', 256, 32), 0, .2, .055);   // la linea
+      const p = k.davanti(new THREE.Group(), 0, 2.6); M(p, BX(1.7, .28, .1), C.scuro, 0, .2, 0); M(p, BX(1.5, .2, .02), scritta('1  MARINA', '#141414', '#ffb020', 256, 32), 0, .2, .055);   // la linea [vievive] la linea 1
       M(k.g, BX(.05, 1.6, .04), C.scuro, 0, 2.02, k.zf - .08);   // il montante in mezzo al parabrezza
       k.fari([['tondo', 1.0, .72, .085], ['tondo', .78, .72, .085]]); k.davanti(griglia(.9, .22, 5), 0, .7); k.frecce(1.12, .5, .1, .06);
     },
     coda(k) { k.fanali(1.08, .9, .14, .5, 'rrfb', true); k.dietro(griglia(1.4, .5, 8), 0, 1.3); k.dietro(new THREE.Mesh(BX(.5, .115, .008), targa(true, 2)), 0, .62); },
     fianchi(k) {
       const D = k.D, dark = C.vetroscuro;
-      [[4.95, 4.0], [1.3, .25], [-3.85, -4.9]].forEach(([a, b]) => {   // le porte a libro, sul lato del marciapiede (+x)
-        const zm = (a + b) / 2, x = hwAt(D, zm) + .004; M(k.g, BX(.012, 2.3, a - b), dark, x, .45 + 1.15, zm); M(k.g, BX(.016, 2.3, .03), C.nero, x + .002, 1.6, zm); M(k.g, BX(.3, .06, a - b), C.nero, x - .14, .3, zm);
+      // [vievive] le porte a libro sul lato del marciapiede: con la rotazione di render.js (rotation.y = π/2 - ang) +x è la sinistra di chi guida,
+      // la destra (il marciapiede) è -x: verificato a schermo (strumenti/vievive_guida.json).
+      // Ogni porta ha due ante di vetro col telaio, incernierate ai montanti: ud.porteBus le apre (render.js, vehMondo) quando l'autobus è in fermata
+      const ante = []; k.ud.porteBus = ante;
+      [[4.95, 4.0], [1.3, .25], [-3.85, -4.9]].forEach(([a, b]) => {
+        const zm = (a + b) / 2, x = -(hwAt(D, zm) + .004), L = a - b; M(k.g, BX(.012, 2.3, L), dark, x, .45 + 1.15, zm); M(k.g, BX(.3, .06, L), C.nero, x + .14, .3, zm);   // il vano e il gradino
+        [[a, -1], [b, 1]].forEach(([zc, sg]) => { const piv = new THREE.Group(); piv.position.set(x - .02, 0, zc); piv.userData.keepTree = true; const an = new THREE.Group(); piv.add(an);
+          M(an, BX(.03, 2.24, L / 2 - .02), mat('#2a2a2a', 'metallo'), 0, .45 + 1.12, sg * (L / 4)); M(an, BX(.036, 1.7, L / 2 - .14), C.vetroscuro, 0, .45 + 1.25, sg * (L / 4)); M(an, BX(.04, .03, L / 2 - .1), C.cromo, -.01, 1.5, sg * (L / 4));
+          k.g.add(piv); ante.push({ piv, sg }); });
       });
-      for (let z = 3.6; z > -4.4; z -= .8) [-1, 1].forEach(s => { if (s > 0 && (Math.abs(z - .78) < .7 || z < -3.6)) return; lista(k.g, [s * .8, 1.23, z], [s * .8, 1.7, z - .1], .7, .08, mat('#7a5a3a', 'plastica')); });   // i sedili in fila
+      for (let z = 3.6; z > -4.4; z -= .8) [-1, 1].forEach(s => { if (s < 0 && (Math.abs(z - .78) < .7 || z < -3.6)) return; lista(k.g, [s * .8, 1.23, z], [s * .8, 1.7, z - .1], .7, .08, mat('#7a5a3a', 'plastica')); });   // i sedili in fila
       [1.2, -2.6].forEach(z => M(k.g, BX(.7, .1, .7), mat('#d8d4c8', 'plastica'), 0, 2.97, z));   // i lucernai
       [-1, 1].forEach(s => M(k.g, BX(.01, .12, 8.8), mat('#f2efe6', 'plastica'), s * (D.W / 2 + .004), 1.05, 0));
     } }; };
@@ -687,7 +694,7 @@ var Veicoli3D = (function () {
     // il portello sul fianco, la fascia della Guardia
     [-1, 1].forEach(s => { M(alto, BX(.02, .7, .85), paint, s * (hw + .005), 1.15, -.55); M(alto, BX(.03, .03, .14), C.scuro, s * (hw + .02), 1.2, -.85);
       M(alto, new THREE.PlaneGeometry(1.2, .16), scritta('GUARDIA', '#3a4038', '#d8d4c4', 256, 32), s * (hw + .012), 1.45, 1.0, 0, s * PI / 2, 0); });
-    ud.seat = [-.45, 1.25, 1.15]; ud.seat2 = [.1, 1.3, -.3]; ud.len = 5.4; ud.wipers = null;
+    ud.seat = [.45, 1.25, 1.15]; ud.seat2 = [.1, 1.3, -.3]; ud.len = 5.4; ud.wipers = null;
     ud.porta = { hw, cw: hw - .1, zf: -.12, zb: -.98, yb: .8, yt: 1.5, yw: 1.55 };
     M(basso, loft(stazioniBasse(D), { sh: .28, tuck: 0, crown: .03, basso: true }), paint); M(basso, CY(.5, .5, .3, 8), paint, .1, yAt(-.3) + .13, -.3);
     [aF, aR].forEach(z => [-1, 1].forEach(s => M(basso, CY(r, r, tw, 6), C.gomma, s * (hw - tw / 2 - .02), r, z, 0, 0, PI / 2)));
@@ -1055,7 +1062,7 @@ var Veicoli3D = (function () {
   for (const id in ALTRI) COSTR[id] = ALTRI[id].make;
   // per ogni tipo di mezzo del gioco (VK) i modelli che ci stanno dentro (entro il 5% di lunghezza e larghezza)
   const VARIANTI = { cinquecento: ['f126', 'f126', 'panda'], ritmo: ['ritmo', 'f127', 'uno', 'uno', 'delta'], giulia: ['giulietta', 'alfa33', 'f131'], polizia: ['alfetta', 'f131'],
-    furgone: ['ducato', 'om'], fuoristrada: ['campagnola'], campagnola: ['campagnola'], camion: ['rifiuti', 'cassonato', 'telonato'], blindato: ['blindato'], ape: ['ape'], vespa: ['vespa'], bmx: ['bmx'] };
+    furgone: ['ducato', 'om'], fuoristrada: ['campagnola'], campagnola: ['campagnola'], camion: ['rifiuti', 'cassonato', 'telonato'], blindato: ['blindato'], ape: ['ape'], vespa: ['vespa'], bmx: ['bmx'], autobus: ['autobus'], ciao: ['ciao'] };   // [vievive] l'autobus della linea, il Ciao
   function hash(s) { let h = 0; s = String(s || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h >>> 0; }
   function scegli(v) {
     const k = v.kind, h = hash(v.id);

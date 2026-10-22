@@ -1,0 +1,76 @@
+{
+  "nota": "[tetti3] Gli scorci dei tetti (strumenti/galleria.js): cinque inquadrature dominate dai tetti e due primi piani (zoom 0,4) dell'ingresso di un giro sui tetti, la scala da cui si sale. Per il prima e il dopo: node strumenti/galleria.js _immagini/tetti3/<prima|dopo> strumenti/tetti3_scene.json Gli ingressi dei giri si spostano col lavoro (la scala sale dal lato della camera): t6 e t7 del prima stanno sugli ingressi di prima, quelli del dopo in strumenti/tetti3_scene_dopo.json sugli ingressi nuovi.",
+  "pulita": true,
+  "scorci": [
+    {
+      "nome": "t1_borgo_alto",
+      "titolo": "Il borgo dall'alto",
+      "x": 1392,
+      "y": 325,
+      "zoom": 2.0,
+      "ora": 700,
+      "meteo": "sereno",
+      "luce": "borgo"
+    },
+    {
+      "nome": "t2_vicolo",
+      "titolo": "Un vicolo del borgo",
+      "x": 1420,
+      "y": 365,
+      "zoom": 0.5,
+      "ora": 760,
+      "meteo": "sereno",
+      "luce": "borgo"
+    },
+    {
+      "nome": "t3_rua",
+      "titolo": "Rua Maestra",
+      "x": 1400,
+      "y": 312,
+      "zoom": 0.6,
+      "ora": 630,
+      "meteo": "sereno",
+      "luce": "borgo"
+    },
+    {
+      "nome": "t4_piazzetta_bar",
+      "titolo": "La piazzetta col bar",
+      "x": 1428,
+      "y": 324,
+      "zoom": 0.6,
+      "ora": 660,
+      "meteo": "sereno",
+      "luce": "borgo"
+    },
+    {
+      "nome": "t5_marina",
+      "titolo": "La marina",
+      "x": 1395,
+      "y": 380,
+      "zoom": 0.85,
+      "ora": 540,
+      "meteo": "sereno",
+      "luce": "borgo"
+    },
+    {
+      "nome": "t6_ingresso_porta",
+      "titolo": "Dove si sale: il giro della Porta",
+      "x": 1350,
+      "y": 286,
+      "zoom": 0.4,
+      "ora": 640,
+      "meteo": "sereno",
+      "luce": "borgo"
+    },
+    {
+      "nome": "t7_ingresso_campanile",
+      "titolo": "Dove si sale: il giro del campanile",
+      "x": 1436,
+      "y": 274,
+      "zoom": 0.4,
+      "ora": 640,
+      "meteo": "sereno",
+      "luce": "borgo"
+    }
+  ]
+}

@@ -162,7 +162,8 @@ var Eventi = (function () {
         got.forEach(n => { cast(sc, n, 'folla'); sc.crowd.push(n); n.__ev.mv = { k: 'ring', around: b.around, sp: 1.6 + rnd() * .8 }; n.__ev.pose = b.p || null; }); },
       wait: b => b.w || 0,
     },
-    fall: { start(st, sc, b) { const n = actor(sc, b.fall); if (!n) return; n.__ev.pose = null; n.__ev.down = st.clock + (b.t || 2.6); n.stun = Math.max(n.stun || 0, .05); n.hitT = st.clock; st.sfx.push({ k: 'thud', x: n.x, y: n.y }); setMv(n, { k: 'stay' }); }, wait: b => b.w !== undefined ? b.w : 1 },
+    fall: { start(st, sc, b) { const n = actor(sc, b.fall); if (!n || !n.__ev) return;   // chi è già uscito dalla scena (andato via) non cade più
+      n.__ev.pose = null; n.__ev.down = st.clock + (b.t || 2.6); n.stun = Math.max(n.stun || 0, .05); n.hitT = st.clock; st.sfx.push({ k: 'thud', x: n.x, y: n.y }); setMv(n, { k: 'stay' }); }, wait: b => b.w !== undefined ? b.w : 1 },
     up: { start(st, sc, b) { const n = actor(sc, b.up); if (n && n.__ev) { n.__ev.down = 0; n.stun = 0; n.__ev.pose = 'rialza'; } }, wait: () => 1.2, after(st, sc, b) { const n = actor(sc, b.up); if (n && n.__ev && n.__ev.pose === 'rialza') n.__ev.pose = null; } },
     brawl: { start(st, sc, b) { const A = AZ(), x = actor(sc, b.brawl[0]), y = b.brawl[1] === 'player' ? 'player' : actor(sc, b.brawl[1]); sc.over = true; if (!A || !A.brawl || !x || !x.pop || (y !== 'player' && !(y && y.pop))) return; sc.after = () => { try { A.brawl(st, x, y, { why: sc.def.id }); } catch (e) { } }; }, wait: () => 0 },
     jail: { start(st, sc, b) { const n = actor(sc, b.jail); if (n) { n.jailedUntil = st.t + 180; sayEv(st, n, pick(['Chiamo il mio avvocato!', 'Non ho fatto niente!', 'Ve ne pentirete!']), 3); } }, wait: () => 0 },
@@ -636,6 +637,27 @@ var Eventi = (function () {
       { slot: 'a', i: 0, n: 1, sp: 1.6 }, { pose: 'a', p: 'aspetta' }, { go: 'b', to: 'spot', sp: 1.5, d: 1.8, t: 16 }, { look: 'a', at: 'b' }, { pose: 'a', p: 'indica_su' }, SAY('a', 'Alt. Documenti.', 'Fermo. Dove va a quest\'ora?', 'Posto di blocco. I documenti.'),
       { look: 'b', at: 'a' }, { pose: 'b', p: 'porge', w: 1.5 }, SAY('b', 'Torno a casa, agente.', 'Ecco... sono in ordine.', 'Lavoro al porto, finisco adesso.'), { pose: 'a', p: 'perquisisce', w: 3 },
       { p: .2, then: [SAY('a', 'Questo nome mi dice qualcosa. Vieni con me.'), { pose: 'a', p: 'ammanetta' }, { pose: 'b', p: 'ammanettato' }, { wait: 3 }, { jail: 'b' }], else: [{ pose: 'a' }, { pose: 'b' }, SAY('a', 'Circolare. E a casa prima dell\'Ora Quieta.', 'Vada. E si tagli i capelli.'), SAY('b', 'Grazie, agente.', 'Buonasera.'), { flee: 'b', from: 'a', sp: 1.5 }] }, { pose: 'a', p: 'aspetta' }, { wait: 3 }, { pose: 'a' }] },
+    // --- [mappa_compatta] le scene nuove della città compatta: il cypher alla grata, la fila del pane, la parata della domenica ---
+    { id: 'cypher', w: 3, posto: 'cypher', ora: [20, 26], roles: [{ id: 'a', f: 'young|m' }, { id: 'b', near: 'a', f: 'young|any', r: 24 }, { id: 'c', near: 'a', f: 'young|any', r: 24 }], beats: [
+      { all: [{ slot: 'a', i: 0, n: 3, sp: 1.3 }, { slot: 'b', i: 1, n: 3, sp: 1.3 }, { slot: 'c', i: 2, n: 3, sp: 1.3 }] }, { pose: 'b', p: 'appoggiato' }, { pose: 'c', p: 'fuma_su' },
+      { pose: 'a', p: 'indica_su' }, SAY('a', 'Uno, due... il vapore fa la base, ascolta.', 'Rima per rima, dalla grata alla Rocca.', 'Tocca a me, zitti tutti.'), { wait: 2 },
+      SAY('a', 'Le sbarre alzate, il treno che non passa, la città che dorme e il Garante che ingrassa.', 'Dalle baracche si vede il faro rosso: il mare è libero, io no, ma posso.'), { pose: 'a', p: 'braccia_su' },
+      { crowd: 2, around: 'a', r: 20 }, SAY('folla', 'Ancora!', 'Ohhh!', 'Questa la sento alla Radio Luna.'), { pose: 'b', p: 'indica_su' },
+      SAY('b', 'Adesso io. Dammi la base.', 'Sentite questa.'), { wait: 3 }, SAY('b', 'Pane a tessera e fumo di grata, la mia rima è l\'unica cosa non tassata.'), { pose: 'a', p: 'appoggiato' },
+      { p: .3, then: [{ look: 'c', at: 'around' }, SAY('c', 'Zitti! La ronda al passaggio a livello.', 'Le torce! Via!'), { all: [{ flee: 'a', from: 'spot', sp: 1.7 }, { flee: 'b', from: 'spot', sp: 1.7 }] }],
+        else: [SAY('c', 'Domani la registriamo su cassetta.', 'Radio Luna la deve mandare.'), { wait: 4 }, { pose: 'a' }, { pose: 'b' }, { pose: 'c' }] }] },
+    { id: 'fila_pane', w: 3, posto: 'fila', ora: [6, 9], roles: [{ id: 'a', f: 'f|any' }, { id: 'b', near: 'a', f: 'old|any', r: 22 }, { id: 'c', near: 'a', r: 22 }], beats: [
+      { all: [{ slot: 'a', i: 0, n: 3, sp: 1.3 }, { slot: 'b', i: 1, n: 3, sp: 1.2 }, { slot: 'c', i: 2, n: 3, sp: 1.3 }] }, { pose: 'a', p: 'aspetta' }, { pose: 'b', p: 'orologio_su' },
+      SAY('b', 'Da quando apre alle sei e mezza?', 'Mezz\'ora di fila per due rosette.', 'Con la tessera nuova ne danno di meno.'), SAY('a', 'Lella fa quello che può.', 'Stamattina c\'è anche il pane nero.', 'Almeno qui si sta al caldo.'), { wait: 3 },
+      { p: .4, then: [{ go: 'c', to: 'spot', sp: 1.6, d: .8, t: 10 }, SAY('c', 'Permesso, ho solo una cosa...', 'Sono di fretta, scusate.'), { mood: 'b', m: 'rabbia' }, { pose: 'b', p: 'indica_su' }, SAY('b', 'In fila come tutti!', 'Ehi! La fila è qui dietro!'), { pose: 'b' }, { go: 'c', to: 'away', sp: 1.4, d: 2, t: 8 }],
+        else: [{ pose: 'c', p: 'legge_su' }, SAY('c', 'Il Bollettino dice che il grano arriva lunedì.', 'Hanno chiuso un altro forno, a ponente.'), { wait: 3 }, { pose: 'c' }] },
+      { hand: 'a', id: 'pane' }, SAY('a', 'Finalmente. Buona giornata!', 'A domani, Lella.'), { go: 'a', to: 'away', sp: 1.3, d: 2, t: 10 }, { hand: 'a', id: null }, { pose: 'b' }] },
+    { id: 'parata', w: 2, posto: 'parata', ora: [10.5, 12.5], giorni: [6], roles: [{ id: 'a', f: 'cop', r: 60 }, { id: 'b', near: 'a', r: 30 }, { id: 'c', near: 'a', r: 30 }], beats: [
+      { all: [{ slot: 'b', i: 0, n: 3, sp: 1.3 }, { slot: 'c', i: 1, n: 3, sp: 1.3 }, { go: 'a', to: 'spot', sp: 1.4, d: 3, t: 20 }] }, { crowd: 6, around: 'b', r: 26 }, { pose: 'a', p: 'aspetta' },
+      SAY('a', 'Indietro! Dietro la linea!', 'Fate largo alla banda!', 'Le bandiere in alto, su!'), { look: 'b', at: 'away' }, { look: 'c', at: 'away' },
+      SAY('folla', 'Eccoli che arrivano.', 'Viva... viva il Garante.', 'Mio figlio è in seconda fila!'), { pose: 'b', p: 'braccia_su' }, { wait: 4 },
+      SAY('c', 'Applaudi, che ti guardano.', 'Quanto dura quest\'anno?', 'L\'anno scorso pioveva, almeno.'), { pose: 'c', p: 'discute_su' }, SAY('b', 'Sorridi e stai zitto.', 'Fino a mezzogiorno, come sempre.'), { wait: 4 },
+      { pose: 'b' }, { pose: 'c' }, { pose: 'a', p: 'indica_su' }, SAY('a', 'Circolare! La parata è finita.', 'Tutti a casa, avanti.'), { pose: 'a' }, { all: [{ go: 'b', to: 'away', sp: 1.3, d: 2, t: 10 }, { go: 'c', to: 'away', sp: 1.3, d: 2, t: 10 }] }] },
     // --- la notte: la pattuglia, chi si guarda attorno ---
     { id: 'pattuglia_notte', w: 2, posto: ['porta_della_citta', 'angolo'], ora: [22.5, 29], roles: [{ id: 'a', f: 'cop', r: 34 }, { id: 'b', near: 'a', f: 'cop', r: 30 }], beats: [
       { all: [{ slot: 'a', i: 0, n: 2, sp: 1.3 }, { slot: 'b', i: 1, n: 2, sp: 1.3 }] }, { look: 'a', at: 'around' }, { look: 'b', at: 'around' }, SAY('a', 'Tutto tranquillo.', 'Hai sentito? Lì dietro.', 'Alle due si smonta.'), SAY('b', 'Troppo tranquillo.', 'Gatti. Sono sempre gatti.', 'Il capitano vuole due fermi stanotte.'), { wait: 4 },

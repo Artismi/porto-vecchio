@@ -1,0 +1,13 @@
+{
+  "nota": "[mappa_compatta] Le foto della città compatta (MAPPA_COMPATTA.md sez. 11): la Rocca a mare da fuori e da dentro, un incrocio fitto del borgo, la Vittoria, il Mercato, la marina e la città intera. node strumenti/galleria.js _immagini/mappa_compatta/foto strumenti/scorci_compatta.json (GALLERIA_CARICO=900000).",
+  "pulita": true,
+  "scorci": [
+    { "nome": "c1_rocca_fuori", "titolo": "La Rocca a mare: lo scoglio, il frangiflutti, il canale e il mastio col faro", "x": 1560, "y": 344, "zoom": 1.7, "ora": 980, "meteo": "sereno", "luce": "spianata" },
+    { "nome": "c2_rocca_dentro", "titolo": "Dentro la Rocca: la piazza d'armi, la darsena, il ponte ad arco, il portale con la pensilina", "x": 1556, "y": 345, "zoom": 1.0, "ora": 900, "meteo": "sereno", "luce": "spianata" },
+    { "nome": "c3_borgo_incroci", "titolo": "Il borgo: la Rua, il Pozzo e i vicoli a pettine che si aprono dai fronti", "x": 1424, "y": 322, "zoom": 0.75, "ora": 660, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "c4_vittoria", "titolo": "La Via della Vittoria: l'asse di 10 m, i portici, il cannocchiale sulla Porta", "x": 1410, "y": 343, "zoom": 0.95, "ora": 720, "meteo": "sereno", "luce": "metropoli" },
+    { "nome": "c5_mercato", "titolo": "Il Mercato ottagonale, la Galleria e il Corso", "x": 1278, "y": 340, "zoom": 0.85, "ora": 600, "meteo": "sereno", "luce": "metropoli" },
+    { "nome": "c6_marina", "titolo": "La marina: la calata, i magazzini a volta, la darsena del porto", "x": 1372, "y": 388, "zoom": 0.95, "ora": 420, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "c7_citta", "titolo": "La città compatta intera: dalla stazione alla Rocca", "x": 1420, "y": 340, "zoom": 4, "ora": 840, "meteo": "sereno", "luce": "borgo" }
+  ]
+}

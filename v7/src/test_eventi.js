@@ -1,4 +1,6 @@
 // prova degli eventi vicino al giocatore: ogni scena del catalogo parte, va in fondo e lascia gli attori liberi
+// Uso: node test_eventi.js [seme]   (anche --seme=N o PV_SEME=N: il caso di Math.random si rifà uguale; senza, il seme si stampa)
+require('./seme.js')(process.argv[2]);
 global.World = require('./world.js'); global.Interior = require('./interiors.js');
 global.Game = require('./game.js'); global.Risacca = require('./risacca.js'); global.Popolo = require('./popolo.js'); global.Azioni = require('./azioni.js');
 global.Economia = require('./economia.js'); global.Fazioni = require('./fazioni.js'); global.Soldi = require('./soldi.js'); global.Oggetti = require('./oggetti.js');
