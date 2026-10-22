@@ -13875,12 +13875,17 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const fast = function (rc, out) {
       const g = this.geometry;
       if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) return orig.call(this, rc, out);
-      if (g.boundsTree) { if (g.__bvhVer === verOf(g)) return acc.call(this, rc, out); g.boundsTree = null; g.__bvhNo = true; return orig.call(this, rc, out); }   // è cambiata: si torna al metodo di prima
+      // [leggera] è cambiata (il pulitore sposta e toglie pezzi dentro le mesh fuse, i segni): stessi triangoli in posti nuovi, l'indice si
+      // riadatta (refit: i riquadri tornano a contenere i triangoli, i punti trovati sono gli stessi). Prima si tornava per sempre al
+      // metodo lento: una mesh di 167.000 triangoli provata intera a ogni raggio era tre quarti del costo dei raggi dei graffiti
+      if (g.boundsTree) { if (g.__bvhVer === verOf(g)) return acc.call(this, rc, out);
+        if (g.index && g.index.version === g.__bvhIdx && g.index.count === g.__bvhN) { try { g.boundsTree.refit(); g.__bvhVer = verOf(g); return acc.call(this, rc, out); } catch (e) { } }
+        g.boundsTree = null; g.__bvhSeen = null; g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; return orig.call(this, rc, out); }
       const pos = g.attributes.position, dr = g.drawRange, n = g.index ? g.index.count : pos ? pos.count : 0;
       if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || n < 900) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; return orig.call(this, rc, out); }
       if (!g.__bvhSeen) { g.__bvhSeen = verOf(g); return orig.call(this, rc, out); }   // il primo raggio come prima; dal secondo, l'indice
-      if (g.__bvhSeen !== verOf(g)) { g.__bvhNo = true; return orig.call(this, rc, out); }
-      try { g.boundsTree = new MeshBVHLib.MeshBVH(g); g.__bvhVer = verOf(g); } catch (e) { g.__bvhNo = true; return orig.call(this, rc, out); }
+      if (g.__bvhSeen !== verOf(g)) { g.__bvhSeen = verOf(g); g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; return orig.call(this, rc, out); }   // [leggera] cambiata fra due raggi: si riprova quando sta ferma (prima: mai più)
+      try { g.boundsTree = new MeshBVHLib.MeshBVH(g); g.__bvhVer = verOf(g); g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { g.__bvhNo = true; return orig.call(this, rc, out); }
       return acc.call(this, rc, out);
     };
     fast.__bvh = true; THREE.Mesh.prototype.raycast = fast;
@@ -13945,7 +13950,23 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   }
   const SHMOV = { list: [] };   // [fluido] chi si muove (x, y, velocità), per le ombre dei faretti
   const LPOOL = [], SPOOL = [], PPOOL = [];   // [inverno28]
+  // [leggera] LE LUCI SPENTE NON SI CALCOLANO. three mette nello shader tutte le luci della scena, accese o no (37 sul computer:
+  // faretti, punti, fari, elicottero, sirena, lampi), e ogni pixel le calcolava tutte, ombra compresa. Qui ogni luce a zero si salta
+  // (il colore è un valore unico per tutto il fotogramma: la scelta costa niente) e, per quelle accese, l'ombra e la luce si fanno
+  // solo dove arriva (directLight.visible, che three calcola già). Una luce a zero moltiplica per zero: l'immagine è la stessa.
+  // Misurato in SwiftShader: −5% sulla Vittoria e −14% nel borgo solo per le luci spente.
+  function luciSpente() {
+    const C = THREE.ShaderChunk; if (!C || C.__luciSpente) return; let s = C.lights_fragment_begin; const s0 = s;
+    const iS = s.indexOf('#if ( NUM_SPOT_LIGHTS > 0 )'), iD = s.indexOf('#if ( NUM_DIR_LIGHTS > 0 )'); if (iS < 0 || iD < iS) return;
+    const RE = 'RE_Direct( directLight, geometry, material, reflectedLight );';
+    const wrap = (seg, info, u) => { const a = seg.indexOf(info), b = seg.indexOf(RE); if (a < 0 || b < a) return null;
+      return seg.slice(0, a) + `if ( ${u}.color != vec3( 0.0 ) ) { ${info} if ( directLight.visible ) {` + seg.slice(a + info.length, b) + RE + ' } }' + seg.slice(b + RE.length); };
+    const P = wrap(s.slice(0, iS), 'getPointLightInfo( pointLight, geometry, directLight );', 'pointLight'), Sp = wrap(s.slice(iS, iD), 'getSpotLightInfo( spotLight, geometry, directLight );', 'spotLight');
+    if (!P || !Sp) { console.warn('[leggera] luci spente: il ciclo delle luci di three non è quello atteso, lasciato com\'era'); return; }
+    s = P + Sp + s.slice(iD); C.lights_fragment_begin = s; C.__luciSpente = s0 !== s;
+  }
   function init(canvas, st) {
+    luciSpente();
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     renderer.debug.checkShaderErrors = typeof location !== 'undefined' && /[?&]shaderdebug/.test(location.search);   // [fluido] dal ramo wonderful-davinci: leggere subito il registro di ogni shader compilato costringe ad aspettarne la compilazione (centinaia di ms per materiale nuovo, camminando); solo con ?shaderdebug
     renderer.setPixelRatio(1);
@@ -14787,7 +14808,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     SPOOL.forEach((l, i) => {
       const L = dyn.lslot[i], cone = l.userData.cone;
       if (!L) { l.intensity = 0; cone.visible = false; return; }
-      const k = kOf(L), hh = Math.max(1.2, L.y - L.gy);
+      const k = kOf(L), hh = Math.max(1.2, L.y - L.gy); l.userData.k = k;
       if (l.userData.src !== L) { l.userData.src = L; l.position.set(L.x, L.y, L.z); l.target.position.set(L.x, L.gy - 2, L.z); l.target.updateMatrixWorld(); l.color.copy(L.color);
         l.distance = (L.dist || 8) * 1.6 + hh; l.shadow.camera.far = l.distance; l.shadow.camera.updateProjectionMatrix(); l.userData.shDirty = true; }   // [fluido] l'ombra si rifà sotto, se la luce fa luce
       if (L.nb === undefined) { L.nb = 0; LSRC.forEach(o => { if (o !== L && Math.abs(o.x - L.x) < 7 && Math.abs(o.z - L.z) < 7) L.nb++; }); }   // [inverno29] vicine: si dividono la luce
@@ -14805,7 +14826,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const want = [];
       SPOOL.forEach(l => { if (!(l.intensity > 0)) return; if (l.userData.shDirty) { l.userData.shDirty = false; l.shadow.needsUpdate = true; l.userData.shT = now; return; }   // [fluido] spostata su un'altra lampada: subito, come prima (spenta, l'ombra non si vede e aspetta)
         const u = l.userData, r = (l.distance || 10) + 2, lx = l.position.x, lz = l.position.z; let busy = false;
-        for (let i = 0; i < movers.length; i += 3) { if (movers[i + 2] > .05 && Math.abs(movers[i] - lx) < r && Math.abs(movers[i + 1] - lz) < r) { busy = true; break; } }
+        // [leggera] subito solo se la luce conta: di giorno i lampioni «sempre accesi» stanno al 6% e la loro ombra, sotto il sole, non si
+        // vede cambiare; lì basta la ripresa di due volte al secondo (prima ogni passante la faceva ridisegnare a ogni fotogramma)
+        if (u.k > .3) for (let i = 0; i < movers.length; i += 3) { if (movers[i + 2] > .05 && Math.abs(movers[i] - lx) < r && Math.abs(movers[i + 1] - lz) < r) { busy = true; break; } }
         if (busy) want.push([0, l]); else if (now - (u.shT || 0) > 500) want.push([now - (u.shT || 0), l]); });
       want.sort((a, b) => (a[0] === 0 ? -1 : 0) - (b[0] === 0 ? -1 : 0) || b[0] - a[0]);
       for (let q = 0; q < Math.min(3, want.length); q++) { const l = want[q][1]; l.shadow.needsUpdate = true; l.userData.shT = now; } }
