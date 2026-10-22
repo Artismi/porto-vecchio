@@ -1329,7 +1329,7 @@ var Render = (function () {
   // invertita) come una tinta piatta calda e un filo chiaro sul contorno (dove la superficie gira di taglio rispetto alla vista: niente
   // seconda passata, un programma solo). Tirata verso la camera (0,6 m a piedi, 1,4 m sul mezzo) così non si accende su se stessa: niente
   // tremolio. Vale per il giocatore, per chi conta nella scena (i personaggi del momento, chi parla con te) e per il mezzo che guidi.
-  const SAG4 = { tinta: '#ec8a3c', tintaA: .72, filo: '#fff4d6', filoA: .95, filo0: .5, filo1: .78, tira: .6, tiraMezzo: 1.4 };
+  const SAG4 = { tinta: '#ff7f24', tintaA: .9, filo: '#ffe28c', filoA: 1, filo0: .72, filo1: .9, tira: .6, tiraMezzo: 1.4 };   // la tinta quasi piena (si legge anche piccola, dall'alto), il filo stretto e caldo (non crema: sparirebbe sui muri chiari)
   if (typeof window !== 'undefined') window.__SAG4 = SAG4;
   const SAG4U = { c: { value: new THREE.Vector4() }, f: { value: new THREE.Vector4() }, e: { value: new THREE.Vector2() }, pg: { value: .6 }, mezzo: { value: 1.4 } };
   function sagMat4(k) {

@@ -201,8 +201,8 @@ proiettata, tocca il disco di 8 m attorno a lui scendono tutte insieme a un mure
 0,8 s dopo essere uscite da un disco di 11 m). La copertina è il muro scurito al 52% col filo chiaro. Sul tetto non scende niente. Usa la stessa
 macchina del taglio (la quota nella tessitura delle case fuse, il piano di taglio sui pezzi fuori dalla fusione, il registro delle cose sui tetti).
 
-**La sagoma** (A e B): il modello vero ridisegnato dove è coperto (profondità invertita), tinta piatta calda (`#f0a050`, 0,5) col filo chiaro
-sul contorno (dove la superficie gira di taglio: `#fff4d6`, 0,95), tirata verso la camera 0,6 m (1,4 m sul mezzo) così non si accende su se
+**La sagoma** (A e B): il modello vero ridisegnato dove è coperto (profondità invertita), tinta piatta calda quasi piena (`#ff7f24`, 0,9) col filo
+caldo chiaro sul contorno (dove la superficie gira di taglio: `#ffe28c`; crema spariva sui muri chiari), tirata verso la camera 0,6 m (1,4 m sul mezzo) così non si accende su se
 stessa. Anche per chi conta nella scena (i personaggi del momento, chi ti parla) e per il mezzo che guidi.
 
 **La visibilità di una casa passa da un punto solo**, `R.casaVisibile(casa, 'quota' | 'tetto', v)`: la usano taglio, muretto e tetto; chi rifà
