@@ -1,5 +1,6 @@
 // [leggera] La prova «stessa immagine» (node strumenti/sonda_uguale.js): ferma il gioco su un fotogramma e disegna la scena due volte,
-// col ciclo delle luci di three com'era e con quello che salta le luci spente (render.js luciSpente), poi confronta i pixel.
+// col ciclo delle luci di three com'era e con quello che salta le luci spente (render.js luciSpente, acceso da ?lucispente),
+// cronometra le due scene e confronta i pixel; poi i raggi dei graffiti contro il metodo lento puro.
 // POSTI=nome:x:y,… ORE=15,22 VW=480 VH=300. Esce con 1 se un pixel cambia più di SOGLIA (predefinita 0: identici).
 const path = require('path'), http = require('http'), fs = require('fs');
 const { chromium } = require(process.env.PW || '/opt/node-tools/node_modules/playwright-core');
@@ -22,7 +23,7 @@ const srv = http.createServer((req, res) => {
     pg.on('console', m => { if (/luci spente|shader|THREE\.WebGLProgram/i.test(m.text())) console.log('[console]', m.text().slice(0, 300)); });
     // il ciclo originale, preso prima che render.js lo cambi
     await pg.addInitScript(() => { const k = () => { if (window.THREE && THREE.ShaderChunk) window.__chunk0 = THREE.ShaderChunk.lights_fragment_begin; else setTimeout(k, 1); }; k(); });
-    await pg.goto(`http://localhost:${port}/index.html${process.env.PV_QUERY !== undefined ? process.env.PV_QUERY : '?cittanuova'}`);
+    await pg.goto(`http://localhost:${port}/index.html${process.env.PV_QUERY !== undefined ? process.env.PV_QUERY : '?cittanuova&lucispente'}`);
     await pg.waitForFunction(() => window.__pv && window.__pv.st && window.__pv.R && window.__pv.R.__models.renderer, null, { timeout: 900000 });
     await pg.keyboard.press('Enter'); await pg.waitForTimeout(2500);
     await pg.waitForFunction(() => !window.__pv.ui.intro, null, { timeout: 120000 }).catch(() => log('ancora intro'));
@@ -40,14 +41,20 @@ const srv = http.createServer((req, res) => {
         const remat = () => S.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { m.needsUpdate = true; }); });
         const auto = rd.shadowMap.autoUpdate; rd.shadowMap.autoUpdate = false; rd.shadowMap.needsUpdate = true;   // la stessa ombra nelle due immagini
         let on = 0; S.traverse(o => { if (o.isLight && o.visible && o.intensity > 0) on++; });
-        const nuovo = px(); const nuovo2 = px();
+        const tm = n => { px(); const t = performance.now(); for (let i = 0; i < n; i++) px(); return +((performance.now() - t) / n).toFixed(0); };
+        const nuovo = px(); const nuovo2 = px(); const ms_nuovo = tm(+(window.__NT || 4));
         // la chiave del programma non contiene il testo dei pezzi di shader: si aggiunge un segno, così three compila davvero il ciclo vecchio
         const ks = new Map(); S.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (ks.has(m)) return; const f = m.customProgramCacheKey; ks.set(m, f); m.customProgramCacheKey = function () { return f.call(this) + '|ciclo0'; }; }); });
-        const s1 = C.lights_fragment_begin; C.lights_fragment_begin = window.__chunk0; remat(); const vecchio = px(); C.lights_fragment_begin = s1; ks.forEach((f, m) => { m.customProgramCacheKey = f; }); remat(); px();
+        const s1 = C.lights_fragment_begin; C.lights_fragment_begin = window.__chunk0; remat(); const vecchio = px(); const ms_vecchio = tm(+(window.__NT || 4));
+        // la variante: solo il salto delle luci spente (uguale per tutto lo schermo), senza il ramo per pixel
+        const s2 = s1.replace(/ if \( directLight\.visible \) \{/g, '').replace(/reflectedLight \); \} \}/g, 'reflectedLight ); }');
+        ks.forEach((f, m) => { m.customProgramCacheKey = function () { return f.call(this) + '|ciclo2'; }; }); C.lights_fragment_begin = s2; remat(); const solo = px(); const ms_solo = tm(+(window.__NT || 4)); let dS = 0; for (let i = 0; i < solo.length; i++) if (solo[i] !== vecchio[i]) dS++;
+        window.__solo = { ms_solo, diversi_solo: dS };
+        C.lights_fragment_begin = s1; ks.forEach((f, m) => { m.customProgramCacheKey = f; }); remat(); px();
         rd.shadowMap.autoUpdate = auto; T.dispose();
         let diff = 0, max = 0, rip = 0; for (let i = 0; i < nuovo.length; i++) { const d = Math.abs(nuovo[i] - vecchio[i]); if (d) { diff++; if (d > max) max = d; } if (nuovo[i] !== nuovo2[i]) rip++; }
         let somma = 0; for (let i = 0; i < nuovo.length; i += 4) somma += nuovo[i] + nuovo[i + 1] + nuovo[i + 2];
-        window.requestAnimationFrame = raf0; res({ accese: on, canali_diversi: diff, scarto_max: max, ripetizione_instabile: rip, luminosita_media: +(somma / (W * H * 3)).toFixed(1) });
+        window.requestAnimationFrame = raf0; res(Object.assign({}, { ms_solo_spente: window.__solo.ms_solo, diversi_solo: window.__solo.diversi_solo, ms_scena_vecchio: ms_vecchio, ms_scena_nuovo: ms_nuovo, accese: on, canali_diversi: diff, scarto_max: max, ripetizione_instabile: rip, luminosita_media: +(somma / (W * H * 3)).toFixed(1) }));
       }, 300); }));
     // i raggi dei graffiti: con il filtro del tratto (writing.js segList) e senza, sugli stessi muri
     if (!RAGGI_FATTI) { RAGGI_FATTI = true; const q = await pg.evaluate(() => { const W = window.Writing.__ray, st = window.__pv.st, p = st.player; const rnd = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(7);

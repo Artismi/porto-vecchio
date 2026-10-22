@@ -121,14 +121,18 @@ var Game = (function () {
     const gen = ++PF.gen, came = PF.came, cost = PF.cost, seen = PF.seen, shut = PF.shut;
     const C = i => seen[i] === gen ? cost[i] : 1e9;
     const si = s[1] * GW + s[0], gi = g[1] * GW + g[0];
-    const heap = [], hf = [];
-    const push = (n, f) => { heap.push(n); hf.push(f); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (hf[p] <= hf[i]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; [hf[p], hf[i]] = [hf[i], hf[p]]; i = p; } };
-    const pop = () => { const top = heap[0], lh = heap.pop(), lf = hf.pop(); if (heap.length) { heap[0] = lh; hf[0] = lf; let i = 0; for (; ;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && hf[l] < hf[m]) m = l; if (r < heap.length && hf[r] < hf[m]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; [hf[m], hf[i]] = [hf[i], hf[m]]; i = m; } } return top; };
+    // [leggera] il mucchio in array tipizzati riusati: stesso algoritmo, stessi confronti e stessi scambi di prima (quindi stessi percorsi),
+    // senza i due array nuovi a ogni scambio ([a, b] = [b, a]) che erano quasi metà del tempo della ricerca e lavoro per il raccoglitore
+    if (!PF.hp) { PF.hp = new Int32Array(1 << 15); PF.hfv = new Float64Array(1 << 15); }
+    let hp = PF.hp, hv = PF.hfv, hn = 0;
+    const push = (n, f) => { if (hn === hp.length) { const a = new Int32Array(hn * 2), b = new Float64Array(hn * 2); a.set(hp); b.set(hv); PF.hp = hp = a; PF.hfv = hv = b; }
+      hp[hn] = n; hv[hn] = f; let i = hn++; while (i > 0) { const p = (i - 1) >> 1; if (hv[p] <= hv[i]) break; const tn = hp[p], tf = hv[p]; hp[p] = hp[i]; hv[p] = hv[i]; hp[i] = tn; hv[i] = tf; i = p; } };
+    const pop = () => { const top = hp[0]; hn--; if (hn > 0) { hp[0] = hp[hn]; hv[0] = hv[hn]; let i = 0; for (; ;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < hn && hv[l] < hv[m]) m = l; if (r < hn && hv[r] < hv[m]) m = r; if (m === i) break; const tn = hp[m], tf = hv[m]; hp[m] = hp[i]; hv[m] = hv[i]; hp[i] = tn; hv[i] = tf; i = m; } } return top; };
     seen[si] = gen; cost[si] = 0; came[si] = -1; push(si, 0);
     const hx = g[0], hy = g[1]; let found = si === gi, steps = 0;
     // [fluido] il tetto di caselle esplorate cresce con la distanza: una meta irraggiungibile si scopre subito, non dopo 70.000 caselle (30-40 ms, uno scatto)
     const span = Math.abs(hx - s[0]) + Math.abs(hy - s[1]), cap = Math.min(PF.cap, 1500 + span * span * 3);
-    while (heap.length && !found) {
+    while (hn > 0 && !found) {
       const cur = pop(); if (shut[cur] === gen) continue; shut[cur] = gen; if (cur === gi) { found = true; break; }
       if (++steps > cap) break;
       const cx = cur % GW, cy = (cur / GW) | 0;
