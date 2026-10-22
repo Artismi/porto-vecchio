@@ -11669,10 +11669,6 @@ var Render = (function () {
     // ---- neon sgangherati: tubi rosa, ciano, giallo, azzurro freddo sulle facciate; alcuni rotti o che sfarfallano ----
     const NEON = ['#f0a048', '#d4d0c6', '#f0a048', '#d4d0c6', '#f0a048', '#b84a3c'];
     WX.neon = WX.neon || [];
-    // [leggero] i tubi (una scatola e un disegno per pezzo, ~1.500 nella città compatta) si fondono: quelli accesi per colore e per
-    // settore di 32 m, con un materiale per colore (stesso colore, stesso materiale di base); quelli rotti che sfarfallano per insegna,
-    // col loro materiale che il tempo accende e spegne. Gli stessi vertici, già al loro posto
-    const NEO1 = LEGGERO ? [] : null;
     (G.BUILDINGS || []).forEach((b, bi) => {
       if (!b.door || b.military || b.farm || b.wood) return;
       const d = W0.districtAt ? W0.districtAt(b.x * TS) : 'centro'; if (d === 'prateria' || d === 'foresta' || d === 'base' || d === 'porto') return;
@@ -11685,22 +11681,20 @@ var Render = (function () {
       else if (dx >= b.x + b.w) { ax = bx = x0 + w + .12; az = z0; bz = z0 + dd; nx = 1; nz = 0; }
       else { ax = bx = x0 - .12; az = z0; bz = z0 + dd; nx = -1; nz = 0; }
       const col = pick(r, NEON), mat = new THREE.MeshBasicMaterial({ color: col, toneMapped: false }), y = base + 3.3, L = Math.hypot(bx - ax, bz - az), broken = r() < .3;
-      const segs = Math.max(2, Math.round(L / 1.2));
+      const segs = Math.max(2, Math.round(L / 1.2)), tg = [];   // [leggera] i pezzi di tubo di una bottega in una mesh sola (stessi triangoli, stesso materiale): era una mesh per pezzo, ~1.250 disegni
+      const tubo = (gw, gh, gd, x, yy, z) => { const g = new THREE.BoxGeometry(gw, gh, gd).toNonIndexed(); g.translate(x, yy, z); tg.push(g); };
       for (let k = 0; k < segs; k++) {
         if (broken && r() < .25) continue;                                    // tubo rotto: un pezzo manca
         const t0 = k / segs + .02, t1 = (k + 1) / segs - .02, mx = ax + (bx - ax) * (t0 + t1) / 2, mz = az + (bz - az) * (t0 + t1) / 2, len = L * (t1 - t0);
-        const tube = new THREE.Mesh(new THREE.BoxGeometry(nz ? len : .07, .07, nz ? .07 : len), mat); tube.position.set(mx, y, mz); if (NEO1) NEO1.push([tube, broken ? mat : col]); else scene.add(tube);
+        tubo(nz ? len : .07, .07, nz ? .07 : len, mx, y, mz);
       }
       // un tubo verticale sullo spigolo, e a volte una cornice attorno alla vetrina
-      if (r() < .6) { const v = new THREE.Mesh(new THREE.BoxGeometry(.07, 3, .07), mat); v.position.set(ax + nz * 0, base + 1.8, az); if (NEO1) NEO1.push([v, broken ? mat : col]); else scene.add(v); }
+      if (r() < .6) tubo(.07, 3, .07, ax + nz * 0, base + 1.8, az);
+      if (tg.length) scene.add(new THREE.Mesh(mergeGeos(tg), mat));
       const Lt = addLight(dx * TS + 1 + nx * 1.5, base + 2.6, dy * TS + 1 + nz * 1.5, col, 1.6, 9, broken ? .9 : .05); Lt.always = true;
       glow((ax + bx) / 2 + nx * .3, y, (az + bz) / 2 + nz * .3, col, 3.2);
       if (broken) WX.neon.push({ m: mat, col: new THREE.Color(col), ph: r() * 20, L: Lt });
     });
-    if (NEO1) { const by = new Map(), mats = new Map();
-      NEO1.forEach(([o, k]) => { o.updateMatrixWorld(true); const key = (typeof k === 'string' ? 'c' + k : 'm' + k.uuid) + '|' + Math.floor(o.position.x / 32) + ',' + Math.floor(o.position.z / 32); let q = by.get(key);
-        if (!q) { let m = typeof k === 'string' ? mats.get(k) : k; if (!m) { m = o.material; mats.set(k, m); } by.set(key, q = { m, geos: [] }); } q.geos.push(flatXf(o.geometry, o.matrixWorld)); o.geometry.dispose(); });
-      by.forEach(q => { const me = new THREE.Mesh(mergeGeos(q.geos), q.m); me.matrixAutoUpdate = false; me.userData.leggero = true; scene.add(me); }); }
     // ---- manifesti del Garante lungo le costiere ----
     let nm = 0; (M.roads || []).filter(rd => rd.id === 'nord' || rd.id === 'litoranea' || rd.id === 'porto').forEach(rd => { for (let k = 10; k < rd.pts.length - 2; k += 24) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / L, nz = (bx - ax) / L, x = ax + nx * (rd.w / 2 + 3), z = az + nz * (rd.w / 2 + 3); if (!free(x, z)) continue;
       const g = G0(), ry0 = Math.atan2(nx, nz), h00 = groundH(x, z); [-1.6, 1.6].forEach(o => { const dh = Math.max(0, h00 - groundH(x + o * Math.cos(ry0), z - o * Math.sin(ry0))); add(g, box(.15, 3 + dh, .15, sl('#2a2a30')), o, (3 - dh) / 2, 0); });   // [leggera] sul pendio ogni gamba arriva a terra
@@ -13615,7 +13609,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function tickVolumes(time, night) {
     VEGU.time.value = time;
     VX.cones.forEach(m => { m.material.opacity = night * .045; m.visible = night > .05; });
-    VX.decals.forEach(d => { d.m.material.opacity = (d.always ? night * .045 : night * .02); });
+    VX.decals.forEach(d => { const o = d.always ? night * .045 : night * .02; d.m.material.opacity = o; const L = d.m.layers; if (o <= 0) { if (L.mask) { d.lm = L.mask; L.mask = 0; } } else if (!L.mask && d.lm) { L.mask = d.lm; d.lm = 0; } });   // [leggera] a zero (di giorno) la pozza, che si somma, non si disegna
     VX.steam.forEach(s => { const t = ((time * .3 + s.ph) % 3) / 3, sz = (.7 + t * 3.0) * s.k; s.sp.position.set(s.x + Math.sin(time + s.ph) * .4 * t + t * t * 1.2, s.y + t * 3.8, s.z + t * .8); s.sp.scale.set(sz, sz, 1); s.sp.material.opacity = (s.k < .9 && (Math.floor(s.x * 3 + s.z * 7) & 3) !== 0 && !(dyn.meteo && dyn.meteo.w[2] > .6) ? 0 : .55) * (1 - t) * Math.min(1, t * 5) * (.42 + night * .3) * (dyn.meteo ? .15 + .85 * Math.min(1, night * .35 + dyn.meteo.w[1] * .5 + dyn.meteo.w[2] * .7) : 1); });   /* [amb1] */   // [luci3] vapore più denso
     VX.fog.forEach((pl, k) => { const U = pl.material.uniforms; U.time.value = time; U.col.value.copy(scene.fog.color).lerp(new THREE.Color('#d0d4da'), .3 * (1 - night)); U.ctr.value.set(cam.x, cam.y); const wf = dyn.meteo ? dyn.meteo.w[2] : 0, zs = Math.max(1, cam.zoom || 1); U.zs.value = zs; pl.scale.set(zs, zs, 1); U.amt.value = Math.max(0, (.07 + wf * .2) * (1 - night * .6) - k * .03); /* [nebbia_zoom1] col sereno quasi niente */ pl.position.x = cam.x; pl.position.z = cam.y; });
   }
@@ -14113,8 +14107,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // faretti, punti, fari, elicottero, sirena, lampi), e ogni pixel le calcolava tutte, ombra compresa. Qui ogni luce a zero si salta
   // (il colore è un valore unico per tutto il fotogramma: la scelta costa niente) e, per quelle accese, l'ombra e la luce si fanno
   // solo dove arriva (directLight.visible, che three calcola già). Una luce a zero moltiplica per zero: l'immagine è la stessa.
-  // Misurato in SwiftShader: −5% sulla Vittoria e −14% nel borgo solo per le luci spente.
+  // Spenta di norma: in SwiftShader (senza scheda video) il ramo costa più di quel che salta (scena 3.920 ms contro 3.459, stessa immagine);
+  // su una scheda video vera saltare le luci spente dovrebbe rendere, ma qui non si può misurare. ?lucispente la accende per provarla (F3 con ?perf).
   function luciSpente() {
+    if (typeof location === 'undefined' || !/[?&]lucispente\b/.test(location.search)) return;
     const C = THREE.ShaderChunk; if (!C || C.__luciSpente) return; let s = C.lights_fragment_begin; const s0 = s;
     const iS = s.indexOf('#if ( NUM_SPOT_LIGHTS > 0 )'), iD = s.indexOf('#if ( NUM_DIR_LIGHTS > 0 )'); if (iS < 0 || iD < iS) return;
     const RE = 'RE_Direct( directLight, geometry, material, reflectedLight );';
@@ -15044,7 +15040,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     tickAir(time, night);   // [luci2]
     tickAir2(time, night);   // [luci3]
     MV.t.value = time;   // [muri1] il vento nella stoffa
-    dyn.flicker.forEach(f => { const o = f.base * night * (.85 + Math.sin(time * 9 + f.base * 7) * .15); f.s.material.opacity = o; });   // [proporzioni] di giorno l'alone non c'è: era un disco bianco di un metro e mezzo che faceva i lampioni giganti
+    // [leggera] a opacità zero (di giorno) l'alone, che si somma alla scena, non aggiunge niente ma three lo disegnava lo stesso (~200 disegni):
+    // esce dai livelli che la camera vede e ci torna quando brilla. Non si tocca visible (i lampioni rotti spengono l'alone con quello)
+    dyn.flicker.forEach(f => { const o = f.base * night * (.85 + Math.sin(time * 9 + f.base * 7) * .15); f.s.material.opacity = o; const L = f.s.layers;
+      if (o <= 0) { if (L.mask) { f.lm = L.mask; L.mask = 0; } } else if (!L.mask && f.lm) { L.mask = f.lm; f.lm = 0; } });   // [proporzioni] di giorno l'alone non c'è: era un disco bianco di un metro e mezzo che faceva i lampioni giganti
     dyn.signs.forEach(s => { if (s.flick) { const on = Math.sin(time * 17) > -.85 || Math.sin(time * 2.3) > .2; s.m.color.setScalar(on ? 1 : .35); if (s.gl) s.gl.material.opacity = on ? .45 : .1; } });
     if (dyn.water) { const U = dyn.water.uniforms; U.time.value = time; U.night.value = night; U.dusk.value = dusk; U.fogC.value.copy(tmpC); U.camP.value.copy(camera.position); U.fogN.value = scene.fog.near; U.fogF.value = scene.fog.far; if (U.wx) U.wx.value.set(WXc, WXwet, WXfog, WXst); }
     if (dyn.sky) { dyn.sky.position.copy(camera.position); const U = dyn.sky.material.uniforms; U.night.value = night; U.dusk.value = dusk; U.time.value = time; if (U.wx) U.wx.value.set(WXc, WXwet, WXfog, METEO.reg); const sunA = ((st.t / 60) % 24 - 12) / 12 * Math.PI; U.sun.value.copy(moon.position).sub(moon.target.position).normalize();   /* [unione4] lo stesso sole della luce */ }

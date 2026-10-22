@@ -25112,14 +25112,18 @@ var Game = (function () {
     const gen = ++PF.gen, came = PF.came, cost = PF.cost, seen = PF.seen, shut = PF.shut;
     const C = i => seen[i] === gen ? cost[i] : 1e9;
     const si = s[1] * GW + s[0], gi = g[1] * GW + g[0];
-    const heap = [], hf = [];
-    const push = (n, f) => { heap.push(n); hf.push(f); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (hf[p] <= hf[i]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; [hf[p], hf[i]] = [hf[i], hf[p]]; i = p; } };
-    const pop = () => { const top = heap[0], lh = heap.pop(), lf = hf.pop(); if (heap.length) { heap[0] = lh; hf[0] = lf; let i = 0; for (; ;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && hf[l] < hf[m]) m = l; if (r < heap.length && hf[r] < hf[m]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; [hf[m], hf[i]] = [hf[i], hf[m]]; i = m; } } return top; };
+    // [leggera] il mucchio in array tipizzati riusati: stesso algoritmo, stessi confronti e stessi scambi di prima (quindi stessi percorsi),
+    // senza i due array nuovi a ogni scambio ([a, b] = [b, a]) che erano quasi metà del tempo della ricerca e lavoro per il raccoglitore
+    if (!PF.hp) { PF.hp = new Int32Array(1 << 15); PF.hfv = new Float64Array(1 << 15); }
+    let hp = PF.hp, hv = PF.hfv, hn = 0;
+    const push = (n, f) => { if (hn === hp.length) { const a = new Int32Array(hn * 2), b = new Float64Array(hn * 2); a.set(hp); b.set(hv); PF.hp = hp = a; PF.hfv = hv = b; }
+      hp[hn] = n; hv[hn] = f; let i = hn++; while (i > 0) { const p = (i - 1) >> 1; if (hv[p] <= hv[i]) break; const tn = hp[p], tf = hv[p]; hp[p] = hp[i]; hv[p] = hv[i]; hp[i] = tn; hv[i] = tf; i = p; } };
+    const pop = () => { const top = hp[0]; hn--; if (hn > 0) { hp[0] = hp[hn]; hv[0] = hv[hn]; let i = 0; for (; ;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < hn && hv[l] < hv[m]) m = l; if (r < hn && hv[r] < hv[m]) m = r; if (m === i) break; const tn = hp[m], tf = hv[m]; hp[m] = hp[i]; hv[m] = hv[i]; hp[i] = tn; hv[i] = tf; i = m; } } return top; };
     seen[si] = gen; cost[si] = 0; came[si] = -1; push(si, 0);
     const hx = g[0], hy = g[1]; let found = si === gi, steps = 0;
     // [fluido] il tetto di caselle esplorate cresce con la distanza: una meta irraggiungibile si scopre subito, non dopo 70.000 caselle (30-40 ms, uno scatto)
     const span = Math.abs(hx - s[0]) + Math.abs(hy - s[1]), cap = Math.min(PF.cap, 1500 + span * span * 3);
-    while (heap.length && !found) {
+    while (hn > 0 && !found) {
       const cur = pop(); if (shut[cur] === gen) continue; shut[cur] = gen; if (cur === gi) { found = true; break; }
       if (++steps > cap) break;
       const cx = cur % GW, cy = (cur / GW) | 0;
@@ -64253,10 +64257,6 @@ var Render = (function () {
     // ---- neon sgangherati: tubi rosa, ciano, giallo, azzurro freddo sulle facciate; alcuni rotti o che sfarfallano ----
     const NEON = ['#f0a048', '#d4d0c6', '#f0a048', '#d4d0c6', '#f0a048', '#b84a3c'];
     WX.neon = WX.neon || [];
-    // [leggero] i tubi (una scatola e un disegno per pezzo, ~1.500 nella città compatta) si fondono: quelli accesi per colore e per
-    // settore di 32 m, con un materiale per colore (stesso colore, stesso materiale di base); quelli rotti che sfarfallano per insegna,
-    // col loro materiale che il tempo accende e spegne. Gli stessi vertici, già al loro posto
-    const NEO1 = LEGGERO ? [] : null;
     (G.BUILDINGS || []).forEach((b, bi) => {
       if (!b.door || b.military || b.farm || b.wood) return;
       const d = W0.districtAt ? W0.districtAt(b.x * TS) : 'centro'; if (d === 'prateria' || d === 'foresta' || d === 'base' || d === 'porto') return;
@@ -64269,22 +64269,20 @@ var Render = (function () {
       else if (dx >= b.x + b.w) { ax = bx = x0 + w + .12; az = z0; bz = z0 + dd; nx = 1; nz = 0; }
       else { ax = bx = x0 - .12; az = z0; bz = z0 + dd; nx = -1; nz = 0; }
       const col = pick(r, NEON), mat = new THREE.MeshBasicMaterial({ color: col, toneMapped: false }), y = base + 3.3, L = Math.hypot(bx - ax, bz - az), broken = r() < .3;
-      const segs = Math.max(2, Math.round(L / 1.2));
+      const segs = Math.max(2, Math.round(L / 1.2)), tg = [];   // [leggera] i pezzi di tubo di una bottega in una mesh sola (stessi triangoli, stesso materiale): era una mesh per pezzo, ~1.250 disegni
+      const tubo = (gw, gh, gd, x, yy, z) => { const g = new THREE.BoxGeometry(gw, gh, gd).toNonIndexed(); g.translate(x, yy, z); tg.push(g); };
       for (let k = 0; k < segs; k++) {
         if (broken && r() < .25) continue;                                    // tubo rotto: un pezzo manca
         const t0 = k / segs + .02, t1 = (k + 1) / segs - .02, mx = ax + (bx - ax) * (t0 + t1) / 2, mz = az + (bz - az) * (t0 + t1) / 2, len = L * (t1 - t0);
-        const tube = new THREE.Mesh(new THREE.BoxGeometry(nz ? len : .07, .07, nz ? .07 : len), mat); tube.position.set(mx, y, mz); if (NEO1) NEO1.push([tube, broken ? mat : col]); else scene.add(tube);
+        tubo(nz ? len : .07, .07, nz ? .07 : len, mx, y, mz);
       }
       // un tubo verticale sullo spigolo, e a volte una cornice attorno alla vetrina
-      if (r() < .6) { const v = new THREE.Mesh(new THREE.BoxGeometry(.07, 3, .07), mat); v.position.set(ax + nz * 0, base + 1.8, az); if (NEO1) NEO1.push([v, broken ? mat : col]); else scene.add(v); }
+      if (r() < .6) tubo(.07, 3, .07, ax + nz * 0, base + 1.8, az);
+      if (tg.length) scene.add(new THREE.Mesh(mergeGeos(tg), mat));
       const Lt = addLight(dx * TS + 1 + nx * 1.5, base + 2.6, dy * TS + 1 + nz * 1.5, col, 1.6, 9, broken ? .9 : .05); Lt.always = true;
       glow((ax + bx) / 2 + nx * .3, y, (az + bz) / 2 + nz * .3, col, 3.2);
       if (broken) WX.neon.push({ m: mat, col: new THREE.Color(col), ph: r() * 20, L: Lt });
     });
-    if (NEO1) { const by = new Map(), mats = new Map();
-      NEO1.forEach(([o, k]) => { o.updateMatrixWorld(true); const key = (typeof k === 'string' ? 'c' + k : 'm' + k.uuid) + '|' + Math.floor(o.position.x / 32) + ',' + Math.floor(o.position.z / 32); let q = by.get(key);
-        if (!q) { let m = typeof k === 'string' ? mats.get(k) : k; if (!m) { m = o.material; mats.set(k, m); } by.set(key, q = { m, geos: [] }); } q.geos.push(flatXf(o.geometry, o.matrixWorld)); o.geometry.dispose(); });
-      by.forEach(q => { const me = new THREE.Mesh(mergeGeos(q.geos), q.m); me.matrixAutoUpdate = false; me.userData.leggero = true; scene.add(me); }); }
     // ---- manifesti del Garante lungo le costiere ----
     let nm = 0; (M.roads || []).filter(rd => rd.id === 'nord' || rd.id === 'litoranea' || rd.id === 'porto').forEach(rd => { for (let k = 10; k < rd.pts.length - 2; k += 24) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / L, nz = (bx - ax) / L, x = ax + nx * (rd.w / 2 + 3), z = az + nz * (rd.w / 2 + 3); if (!free(x, z)) continue;
       const g = G0(), ry0 = Math.atan2(nx, nz), h00 = groundH(x, z); [-1.6, 1.6].forEach(o => { const dh = Math.max(0, h00 - groundH(x + o * Math.cos(ry0), z - o * Math.sin(ry0))); add(g, box(.15, 3 + dh, .15, sl('#2a2a30')), o, (3 - dh) / 2, 0); });   // [leggera] sul pendio ogni gamba arriva a terra
@@ -66199,7 +66197,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function tickVolumes(time, night) {
     VEGU.time.value = time;
     VX.cones.forEach(m => { m.material.opacity = night * .045; m.visible = night > .05; });
-    VX.decals.forEach(d => { d.m.material.opacity = (d.always ? night * .045 : night * .02); });
+    VX.decals.forEach(d => { const o = d.always ? night * .045 : night * .02; d.m.material.opacity = o; const L = d.m.layers; if (o <= 0) { if (L.mask) { d.lm = L.mask; L.mask = 0; } } else if (!L.mask && d.lm) { L.mask = d.lm; d.lm = 0; } });   // [leggera] a zero (di giorno) la pozza, che si somma, non si disegna
     VX.steam.forEach(s => { const t = ((time * .3 + s.ph) % 3) / 3, sz = (.7 + t * 3.0) * s.k; s.sp.position.set(s.x + Math.sin(time + s.ph) * .4 * t + t * t * 1.2, s.y + t * 3.8, s.z + t * .8); s.sp.scale.set(sz, sz, 1); s.sp.material.opacity = (s.k < .9 && (Math.floor(s.x * 3 + s.z * 7) & 3) !== 0 && !(dyn.meteo && dyn.meteo.w[2] > .6) ? 0 : .55) * (1 - t) * Math.min(1, t * 5) * (.42 + night * .3) * (dyn.meteo ? .15 + .85 * Math.min(1, night * .35 + dyn.meteo.w[1] * .5 + dyn.meteo.w[2] * .7) : 1); });   /* [amb1] */   // [luci3] vapore più denso
     VX.fog.forEach((pl, k) => { const U = pl.material.uniforms; U.time.value = time; U.col.value.copy(scene.fog.color).lerp(new THREE.Color('#d0d4da'), .3 * (1 - night)); U.ctr.value.set(cam.x, cam.y); const wf = dyn.meteo ? dyn.meteo.w[2] : 0, zs = Math.max(1, cam.zoom || 1); U.zs.value = zs; pl.scale.set(zs, zs, 1); U.amt.value = Math.max(0, (.07 + wf * .2) * (1 - night * .6) - k * .03); /* [nebbia_zoom1] col sereno quasi niente */ pl.position.x = cam.x; pl.position.z = cam.y; });
   }
@@ -66697,8 +66695,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // faretti, punti, fari, elicottero, sirena, lampi), e ogni pixel le calcolava tutte, ombra compresa. Qui ogni luce a zero si salta
   // (il colore è un valore unico per tutto il fotogramma: la scelta costa niente) e, per quelle accese, l'ombra e la luce si fanno
   // solo dove arriva (directLight.visible, che three calcola già). Una luce a zero moltiplica per zero: l'immagine è la stessa.
-  // Misurato in SwiftShader: −5% sulla Vittoria e −14% nel borgo solo per le luci spente.
+  // Spenta di norma: in SwiftShader (senza scheda video) il ramo costa più di quel che salta (scena 3.920 ms contro 3.459, stessa immagine);
+  // su una scheda video vera saltare le luci spente dovrebbe rendere, ma qui non si può misurare. ?lucispente la accende per provarla (F3 con ?perf).
   function luciSpente() {
+    if (typeof location === 'undefined' || !/[?&]lucispente\b/.test(location.search)) return;
     const C = THREE.ShaderChunk; if (!C || C.__luciSpente) return; let s = C.lights_fragment_begin; const s0 = s;
     const iS = s.indexOf('#if ( NUM_SPOT_LIGHTS > 0 )'), iD = s.indexOf('#if ( NUM_DIR_LIGHTS > 0 )'); if (iS < 0 || iD < iS) return;
     const RE = 'RE_Direct( directLight, geometry, material, reflectedLight );';
@@ -67628,7 +67628,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     tickAir(time, night);   // [luci2]
     tickAir2(time, night);   // [luci3]
     MV.t.value = time;   // [muri1] il vento nella stoffa
-    dyn.flicker.forEach(f => { const o = f.base * night * (.85 + Math.sin(time * 9 + f.base * 7) * .15); f.s.material.opacity = o; });   // [proporzioni] di giorno l'alone non c'è: era un disco bianco di un metro e mezzo che faceva i lampioni giganti
+    // [leggera] a opacità zero (di giorno) l'alone, che si somma alla scena, non aggiunge niente ma three lo disegnava lo stesso (~200 disegni):
+    // esce dai livelli che la camera vede e ci torna quando brilla. Non si tocca visible (i lampioni rotti spengono l'alone con quello)
+    dyn.flicker.forEach(f => { const o = f.base * night * (.85 + Math.sin(time * 9 + f.base * 7) * .15); f.s.material.opacity = o; const L = f.s.layers;
+      if (o <= 0) { if (L.mask) { f.lm = L.mask; L.mask = 0; } } else if (!L.mask && f.lm) { L.mask = f.lm; f.lm = 0; } });   // [proporzioni] di giorno l'alone non c'è: era un disco bianco di un metro e mezzo che faceva i lampioni giganti
     dyn.signs.forEach(s => { if (s.flick) { const on = Math.sin(time * 17) > -.85 || Math.sin(time * 2.3) > .2; s.m.color.setScalar(on ? 1 : .35); if (s.gl) s.gl.material.opacity = on ? .45 : .1; } });
     if (dyn.water) { const U = dyn.water.uniforms; U.time.value = time; U.night.value = night; U.dusk.value = dusk; U.fogC.value.copy(tmpC); U.camP.value.copy(camera.position); U.fogN.value = scene.fog.near; U.fogF.value = scene.fog.far; if (U.wx) U.wx.value.set(WXc, WXwet, WXfog, WXst); }
     if (dyn.sky) { dyn.sky.position.copy(camera.position); const U = dyn.sky.material.uniforms; U.night.value = night; U.dusk.value = dusk; U.time.value = time; if (U.wx) U.wx.value.set(WXc, WXwet, WXfog, METEO.reg); const sunA = ((st.t / 60) % 24 - 12) / 12 * Math.PI; U.sun.value.copy(moon.position).sub(moon.target.position).normalize();   /* [unione4] lo stesso sole della luce */ }
@@ -73432,6 +73435,28 @@ var Sartoria = (function () {
   // aggancia `obj` (costruito nello spazio del personaggio a riposo) all'osso, indipendente dalla posa
   // l'oggetto è costruito nello spazio del personaggio nella posa di legame (a T); qui si porta nello spazio dell'osso
   // attraverso la stessa trasformazione dello skinning, quindi vale in qualsiasi posa
+  // [leggera] I PEZZI DI UN ACCESSORIO UNITI PER MATERIALE. Un cappello a maglia, una sciarpa, le borchie: decine di mesh piccole con
+  // pochi materiali, e ogni mesh era un disegno (le persone più vestite arrivavano a ~100). Le foglie dello stesso materiale (e con gli
+  // stessi attributi) diventano una mesh sola: i vertici portati nello spazio dell'accessorio (gli stessi punti, a meno dell'ultima cifra
+  // di un numero a 32 bit), lo stesso materiale. Restano com'erano i trasparenti (conta l'ordine), chi ha figli, chi ha un renderOrder,
+  // le forme che si deformano e chi è segnato (keep, noCast1). ?nofondi lo spegne.
+  const FONDI = { on: typeof location === 'undefined' || !/[?&]nofondi\b/.test(location.search) };
+  const firmaAtt = g => Object.keys(g.attributes).sort().map(k => { const a = g.attributes[k]; return k + a.itemSize + (a.normalized ? 'n' : '') + a.array.constructor.name; }).join('|');
+  function concatGeo(gs) {   // geometrie senza indice con gli stessi attributi
+    const out = new THREE.BufferGeometry(), A0 = gs[0].attributes;
+    for (const k in A0) { let n = 0; gs.forEach(g => { n += g.attributes[k].array.length; }); const a = new A0[k].array.constructor(n); let o = 0; gs.forEach(g => { a.set(g.attributes[k].array, o); o += g.attributes[k].array.length; }); out.setAttribute(k, new THREE.BufferAttribute(a, A0[k].itemSize, A0[k].normalized)); }
+    out.computeBoundingSphere(); out.computeBoundingBox(); return out;
+  }
+  const unibile = m => m.isMesh && !m.isSkinnedMesh && !m.isInstancedMesh && !Array.isArray(m.material) && m.material && !m.material.transparent && !m.renderOrder && !m.children.length && !(m.userData && (m.userData.keep || m.userData.noCast1)) && !(m.geometry.morphAttributes && Object.keys(m.geometry.morphAttributes).length) && m.geometry.attributes.position;
+  function fondi(obj) {
+    if (!FONDI.on || !obj) return obj;
+    obj.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(obj.matrixWorld).invert(), grp = new Map();
+    obj.traverse(m => { if (m === obj || !unibile(m)) return; const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld)); const k = firmaAtt(g); let e = grp.get(m.material); if (!e) grp.set(m.material, e = new Map()); let L = e.get(k); if (!L) e.set(k, L = []); L.push([m, g]); });
+    grp.forEach((e, mat) => e.forEach(L => { if (L.length < 2) { L.forEach(([, g]) => g.dispose()); return; }
+      const cast = L.some(([m]) => m.castShadow), rec = L.some(([m]) => m.receiveShadow), M = new THREE.Mesh(concatGeo(L.map(([, g]) => g)), mat);
+      M.castShadow = cast; M.receiveShadow = rec; M.name = L[0][0].name; L.forEach(([m, g]) => { g.dispose(); if (m.parent) m.parent.remove(m); }); obj.add(M); }));
+    return obj;
+  }
   function attach(g, PARTI, boneName, obj) {
     let ref = null; g.traverse(o => { if (!ref && o.isSkinnedMesh && !o.userData.vesti && /Body/i.test(o.name)) ref = o; }); if (!ref) g.traverse(o => { if (!ref && o.isSkinnedMesh && !o.userData.vesti) ref = o; });
     if (!ref) return null; const i = ref.skeleton.bones.findIndex(b => b.name === boneName); if (i < 0) return null; const bone = ref.skeleton.bones[i];
@@ -73439,7 +73464,7 @@ var Sartoria = (function () {
     const O = new THREE.Matrix4().compose(obj.position, obj.quaternion, obj.scale);
     const L = new THREE.Matrix4().copy(bone.matrixWorld).invert().multiply(ref.matrixWorld).multiply(ref.bindMatrixInverse).multiply(bone.matrixWorld).multiply(ref.skeleton.boneInverses[i]).multiply(ref.bindMatrix)
       .multiply(new THREE.Matrix4().copy(ref.matrixWorld).invert()).multiply(g.matrixWorld).multiply(O);
-    L.decompose(obj.position, obj.quaternion, obj.scale); bone.add(obj); obj.userData.vesti = true;
+    fondi(obj); L.decompose(obj.position, obj.quaternion, obj.scale); bone.add(obj); obj.userData.vesti = true;   // [leggera] prima di spostarlo sull'osso: lo spazio dell'accessorio è quello di quando è stato costruito
     obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
     return obj;
   }
@@ -73502,7 +73527,7 @@ var Sartoria = (function () {
     return flag;
   }
 
-  return { STAMPE, printMat, lengths, neckY, CUT_: () => CUT, dress, covered, body, testa, attach, boneRest, fabMat, solidMat, texFor, TESS, CUT, VARIANTI, tube, surf, frameAt };
+  return { FONDI, fondi, concatGeo, firmaAtt, STAMPE, printMat, lengths, neckY, CUT_: () => CUT, dress, covered, body, testa, attach, boneRest, fabMat, solidMat, texFor, TESS, CUT, VARIANTI, tube, surf, frameAt };
 })();
 if (typeof module !== 'undefined') module.exports = Sartoria;
 </script>
@@ -75394,6 +75419,8 @@ var Vesti3D = (function () {
       for (let r = 1; r <= 3 && best.length < 4; r++) { best.length = 0; for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) for (let k = -r; k <= r; k++) { const a = H.get((cx + i) + ',' + (cy + j) + ',' + (cz + k)); if (a) for (const q of a) { const d = (I[q * 3] - x) ** 2 + (I[q * 3 + 1] - y) ** 2 + (I[q * 3 + 2] - z) ** 2; best.push([d, q]); } } }
       best.sort((a, b) => a[0] - b[0]); return best.slice(0, 4); };
     obj.updateMatrixWorld(true); const v = new THREE.Vector3(), out = new THREE.Group(); out.userData.vesti = true;
+    const grp = new Map(), skinM = (g0, mat) => { const sm = new THREE.SkinnedMesh(g0, mat); sm.userData.vesti = true; sm.castShadow = true; sm.frustumCulled = false;
+      sm.position.copy(ref.position); sm.quaternion.copy(ref.quaternion); sm.scale.copy(ref.scale); ref.parent.add(sm); sm.bind(ref.skeleton, ref.bindMatrix); };
     const nm = new THREE.Matrix3().getNormalMatrix(B.reli);
     obj.traverse(m => {
       if (!m.isMesh) return; const g0 = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone(); if (!g0.attributes.normal) g0.computeVertexNormals(); g0.applyMatrix4(m.matrixWorld);
@@ -75403,8 +75430,12 @@ var Vesti3D = (function () {
         const e = [...acc.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4); let s4 = 0; e.forEach(x => { s4 += x[1]; }); e.forEach((x, k) => { SI[i * 4 + k] = x[0]; SW[i * 4 + k] = x[1] / (s4 || 1); }); if (!e.length) SW[i * 4] = 1;
         v.fromBufferAttribute(P, i).applyMatrix4(B.reli); P.setXYZ(i, v.x, v.y, v.z); v.fromBufferAttribute(N, i).applyMatrix3(nm).normalize(); N.setXYZ(i, v.x, v.y, v.z); }
       g0.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(SI, 4)); g0.setAttribute('skinWeight', new THREE.Float32BufferAttribute(SW, 4));
-      const mat = m.material; const sm = new THREE.SkinnedMesh(g0, mat); sm.userData.vesti = true; sm.castShadow = true; sm.frustumCulled = false;
-      sm.position.copy(ref.position); sm.quaternion.copy(ref.quaternion); sm.scale.copy(ref.scale); ref.parent.add(sm); sm.bind(ref.skeleton, ref.bindMatrix); });
+      const mat = m.material, k = Sartoria.firmaAtt ? Sartoria.firmaAtt(g0) : '', single = Array.isArray(mat) || !Sartoria.concatGeo || !Sartoria.FONDI.on || (mat && mat.transparent) || m.renderOrder;
+      if (single) { skinM(g0, mat); return; }
+      let e = grp.get(mat); if (!e) grp.set(mat, e = new Map()); let L = e.get(k); if (!L) e.set(k, L = []); L.push(g0); });
+    // [leggera] i pezzi dello stesso materiale in una SkinnedMesh sola: stessi vertici, stessi pesi, stesso scheletro e stessa matrice
+    // (prima una per pezzo: ogni pezzo un disegno). I trasparenti restano a parte: per loro conta l'ordine
+    grp.forEach((e, mat) => e.forEach(L => { if (L.length === 1) skinM(L[0], mat); else { const gm = Sartoria.concatGeo(L); L.forEach(g1 => g1.dispose()); skinM(gm, mat); } }));
     return out;
   }
   function accessories(g, outfit, held, D) {
@@ -75542,6 +75573,45 @@ var Vesti3D = (function () {
   const PROP = { Head: .9, UpperArmL: 1.18, UpperArmR: 1.18, WristL: 1 / 1.18, WristR: 1 / 1.18 };
   function proporzioni(g, on) { const m = g.userData.model && g.userData.model.isObject3D ? g.userData.model : g; for (const n in PROP) { const b = m.getObjectByName(n); if (b && b.isBone) b.scale.setScalar(on ? PROP[n] : 1); } }
   function dress(g, outfit, look, held, seed) { const it = dressGen(g, outfit, look, held, seed); while (!it.next().done); }
+  // [leggera] I CAPI IN TINTA UNITA IN UNA MESH SOLA. Dopo la vestizione una persona ha ~50 pezzi con la pelle (bottoni, cuciture, orli,
+  // colli, scarpe…) in MeshStandardMaterial uguali in tutto tranne il colore: ognuno era un disegno. Qui diventano una SkinnedMesh sola
+  // per gruppo (stesso osso, stesso scheletro, stessa matrice, stesso materiale a meno del colore): ogni vertice porta il numero del suo
+  // pezzo e lo shader prende il colore da una tavolozza con gli stessi valori dei materiali di prima, passato senza interpolare (flat):
+  // stesso colore, stessi vertici, stessi pesi. Solo gli abitanti (il giocatore no: il taglio della visuale clona i suoi materiali) e solo
+  // con WebGL2. ?notavolozza lo spegne.
+  const PAL = { on: typeof location === 'undefined' || !/[?&]notavolozza\b/.test(location.search), N: 64, mats: new Map() };
+  const TEXK = ['map', 'normalMap', 'bumpMap', 'roughnessMap', 'metalnessMap', 'alphaMap', 'emissiveMap', 'aoMap', 'lightMap', 'envMap', 'displacementMap'];
+  const PSKIP = new Set(['uuid', 'id', 'name', 'color', 'version', 'userData', '_listeners', 'needsUpdate']);
+  const palSig = m => Object.keys(m).filter(k => !PSKIP.has(k)).sort().map(k => { const v = m[k]; return k + ':' + (v && v.isColor ? v.getHexString() : v && v.isTexture ? v.uuid : typeof v === 'function' ? 'f' + String(v).length : v && typeof v === 'object' ? JSON.stringify(v.toArray ? v.toArray() : v) : v); }).join('|');
+  function palMat(m0) {   // il materiale comune del gruppo: lo stesso del primo pezzo, col colore preso dalla tavolozza
+    const m = m0.clone(), U = { value: Array.from({ length: PAL.N }, () => new THREE.Color()) };
+    m.userData = Object.assign({}, m0.userData, { pal: U });
+    m.onBeforeCompile = sh => { sh.uniforms.uPal = U;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>\nattribute float pal; uniform vec3 uPal[${PAL.N}]; flat varying vec3 vPal;`).replace('#include <begin_vertex>', '#include <begin_vertex>\nvPal = uPal[int(pal + .5)];');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nflat varying vec3 vPal;').replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( vPal, opacity );'); };
+    m.customProgramCacheKey = () => 'tavolozza' + PAL.N; return m;
+  }
+  function tavolozza(g) {
+    if (!PAL.on || !window.Sartoria || !Sartoria.concatGeo) return 0;
+    const rd = window.__pv && window.__pv.R && window.__pv.R.__models && window.__pv.R.__models.renderer; if (!rd || !rd.capabilities.isWebGL2) return 0;
+    const grp = new Map();
+    g.traverse(o => {
+      if (!o.isSkinnedMesh || !o.userData.vesti || !o.visible || !o.parent || o.renderOrder || o.children.length) return; const m = o.material, ge = o.geometry;
+      if (!m || Array.isArray(m) || m.type !== 'MeshStandardMaterial' || m.transparent || m.vertexColors || m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || TEXK.some(k => m[k])) return;
+      if (ge.index || (ge.morphAttributes && Object.keys(ge.morphAttributes).length) || (ge.userData && ge.userData.sartoria) || ge.groups.length) return;
+      const k = [o.parent.uuid, o.skeleton.uuid, o.bindMatrix.elements.join(','), o.position.toArray().join(','), o.quaternion.toArray().join(','), o.scale.toArray().join(','), o.castShadow, o.receiveShadow, Sartoria.firmaAtt(ge), palSig(m)].join('#');
+      let L = grp.get(k); if (!L) grp.set(k, L = []); L.push(o);
+    });
+    let tolti = 0;
+    grp.forEach(L => { for (let a = 0; a + 1 < L.length; a += PAL.N) {
+      const part = L.slice(a, a + PAL.N); if (part.length < 2) break;
+      const geos = part.map((o, i) => { const g1 = o.geometry.clone(); const n = g1.attributes.position.count; g1.setAttribute('pal', new THREE.BufferAttribute(new Uint8Array(n).fill(i), 1)); return g1; });
+      const geo = Sartoria.concatGeo(geos); geos.forEach(g1 => g1.dispose()); const o0 = part[0], mat = palMat(o0.material); part.forEach((o, i) => mat.userData.pal.value[i].copy(o.material.color));
+      const sm = new THREE.SkinnedMesh(geo, mat); sm.userData.vesti = true; sm.userData.tavolozza = part.length; sm.castShadow = o0.castShadow; sm.receiveShadow = o0.receiveShadow; sm.frustumCulled = false;
+      sm.position.copy(o0.position); sm.quaternion.copy(o0.quaternion); sm.scale.copy(o0.scale); o0.parent.add(sm); sm.bind(o0.skeleton, o0.bindMatrix);
+      part.forEach(o => { o.parent.remove(o); o.geometry.dispose(); }); tolti += part.length - 1; } });
+    return tolti;
+  }
   function* dressGen(g, outfit, look, held, seed) {
     proporzioni(g, false); strip(g); bare(g, look);
     // gli abitanti: ogni capo nella sua variante (scollo a V, collo alto, righe, quadri…), sempre la stessa per persona
@@ -75577,6 +75647,7 @@ var Vesti3D = (function () {
     yield;
     try { accessories(g, outfit, held, D); } catch (e) { console.error('[Vesti3D] pezzi', e); }
     if (window.Officina) try { Officina.onDress(g, outfit); } catch (e) { console.error('[Vesti3D] officina', e); }   // [studio]
+    if (seed !== undefined && !(window.PV_STUDIO)) try { tavolozza(g); } catch (e) { console.error('[Vesti3D] tavolozza', e); }   // [leggera] gli abitanti (il giocatore si veste senza seme)
     proporzioni(g, true);
   }
   const npcByLook = new WeakMap(); let npcSt = null;
@@ -75612,7 +75683,7 @@ var Vesti3D = (function () {
     requestAnimationFrame(loop);
   }
   const iv = setInterval(() => { if (hook()) { clearInterval(iv); requestAnimationFrame(loop); } }, 50);
-  return { dress, strip, proporzioni, players, analyze, PARTI, fromLook, EXTRA };
+  return { PAL, tavolozza, dress, strip, proporzioni, players, analyze, PARTI, fromLook, EXTRA };
 })();
 </script>
 <script data-m="pezzi">/* Porto Vecchio — I pezzi: la roba di cui sono fatti i covi (sui riferimenti: The Last of Us II, 60 Nights, i banchi d'officina).

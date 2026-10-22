@@ -1210,6 +1210,28 @@ var Sartoria = (function () {
   // aggancia `obj` (costruito nello spazio del personaggio a riposo) all'osso, indipendente dalla posa
   // l'oggetto è costruito nello spazio del personaggio nella posa di legame (a T); qui si porta nello spazio dell'osso
   // attraverso la stessa trasformazione dello skinning, quindi vale in qualsiasi posa
+  // [leggera] I PEZZI DI UN ACCESSORIO UNITI PER MATERIALE. Un cappello a maglia, una sciarpa, le borchie: decine di mesh piccole con
+  // pochi materiali, e ogni mesh era un disegno (le persone più vestite arrivavano a ~100). Le foglie dello stesso materiale (e con gli
+  // stessi attributi) diventano una mesh sola: i vertici portati nello spazio dell'accessorio (gli stessi punti, a meno dell'ultima cifra
+  // di un numero a 32 bit), lo stesso materiale. Restano com'erano i trasparenti (conta l'ordine), chi ha figli, chi ha un renderOrder,
+  // le forme che si deformano e chi è segnato (keep, noCast1). ?nofondi lo spegne.
+  const FONDI = { on: typeof location === 'undefined' || !/[?&]nofondi\b/.test(location.search) };
+  const firmaAtt = g => Object.keys(g.attributes).sort().map(k => { const a = g.attributes[k]; return k + a.itemSize + (a.normalized ? 'n' : '') + a.array.constructor.name; }).join('|');
+  function concatGeo(gs) {   // geometrie senza indice con gli stessi attributi
+    const out = new THREE.BufferGeometry(), A0 = gs[0].attributes;
+    for (const k in A0) { let n = 0; gs.forEach(g => { n += g.attributes[k].array.length; }); const a = new A0[k].array.constructor(n); let o = 0; gs.forEach(g => { a.set(g.attributes[k].array, o); o += g.attributes[k].array.length; }); out.setAttribute(k, new THREE.BufferAttribute(a, A0[k].itemSize, A0[k].normalized)); }
+    out.computeBoundingSphere(); out.computeBoundingBox(); return out;
+  }
+  const unibile = m => m.isMesh && !m.isSkinnedMesh && !m.isInstancedMesh && !Array.isArray(m.material) && m.material && !m.material.transparent && !m.renderOrder && !m.children.length && !(m.userData && (m.userData.keep || m.userData.noCast1)) && !(m.geometry.morphAttributes && Object.keys(m.geometry.morphAttributes).length) && m.geometry.attributes.position;
+  function fondi(obj) {
+    if (!FONDI.on || !obj) return obj;
+    obj.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(obj.matrixWorld).invert(), grp = new Map();
+    obj.traverse(m => { if (m === obj || !unibile(m)) return; const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld)); const k = firmaAtt(g); let e = grp.get(m.material); if (!e) grp.set(m.material, e = new Map()); let L = e.get(k); if (!L) e.set(k, L = []); L.push([m, g]); });
+    grp.forEach((e, mat) => e.forEach(L => { if (L.length < 2) { L.forEach(([, g]) => g.dispose()); return; }
+      const cast = L.some(([m]) => m.castShadow), rec = L.some(([m]) => m.receiveShadow), M = new THREE.Mesh(concatGeo(L.map(([, g]) => g)), mat);
+      M.castShadow = cast; M.receiveShadow = rec; M.name = L[0][0].name; L.forEach(([m, g]) => { g.dispose(); if (m.parent) m.parent.remove(m); }); obj.add(M); }));
+    return obj;
+  }
   function attach(g, PARTI, boneName, obj) {
     let ref = null; g.traverse(o => { if (!ref && o.isSkinnedMesh && !o.userData.vesti && /Body/i.test(o.name)) ref = o; }); if (!ref) g.traverse(o => { if (!ref && o.isSkinnedMesh && !o.userData.vesti) ref = o; });
     if (!ref) return null; const i = ref.skeleton.bones.findIndex(b => b.name === boneName); if (i < 0) return null; const bone = ref.skeleton.bones[i];
@@ -1217,7 +1239,7 @@ var Sartoria = (function () {
     const O = new THREE.Matrix4().compose(obj.position, obj.quaternion, obj.scale);
     const L = new THREE.Matrix4().copy(bone.matrixWorld).invert().multiply(ref.matrixWorld).multiply(ref.bindMatrixInverse).multiply(bone.matrixWorld).multiply(ref.skeleton.boneInverses[i]).multiply(ref.bindMatrix)
       .multiply(new THREE.Matrix4().copy(ref.matrixWorld).invert()).multiply(g.matrixWorld).multiply(O);
-    L.decompose(obj.position, obj.quaternion, obj.scale); bone.add(obj); obj.userData.vesti = true;
+    fondi(obj); L.decompose(obj.position, obj.quaternion, obj.scale); bone.add(obj); obj.userData.vesti = true;   // [leggera] prima di spostarlo sull'osso: lo spazio dell'accessorio è quello di quando è stato costruito
     obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
     return obj;
   }
@@ -1280,6 +1302,6 @@ var Sartoria = (function () {
     return flag;
   }
 
-  return { STAMPE, printMat, lengths, neckY, CUT_: () => CUT, dress, covered, body, testa, attach, boneRest, fabMat, solidMat, texFor, TESS, CUT, VARIANTI, tube, surf, frameAt };
+  return { FONDI, fondi, concatGeo, firmaAtt, STAMPE, printMat, lengths, neckY, CUT_: () => CUT, dress, covered, body, testa, attach, boneRest, fabMat, solidMat, texFor, TESS, CUT, VARIANTI, tube, surf, frameAt };
 })();
 if (typeof module !== 'undefined') module.exports = Sartoria;
