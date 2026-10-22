@@ -1,0 +1,7 @@
+{
+ "nota": "[visuale4] Le quattro visuali sulla stessa scena e nello stesso istante: «taglio» è il modo di oggi ([visuale3], la sezione architettonica), «ellisse» il buco di [varco2], «camera» il prototipo A (la camera che si adatta, il tetto che sbiadisce, la sagoma), «muretto» il prototipo B (le case davanti scendono a un muretto, la sagoma).",
+ "taglio": { "VISUALE": "taglio" },
+ "ellisse": { "VISUALE": "ellisse" },
+ "camera": { "VISUALE": "camera" },
+ "muretto": { "VISUALE": "muretto" }
+}
