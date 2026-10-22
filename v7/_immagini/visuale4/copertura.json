@@ -1,0 +1,991 @@
+{
+ "quando": "2026-10-22T21:03:49.644Z",
+ "regola": "coperto: almeno 2 dei 3 raggi del corpo fermati; campione ogni 0,5 m a 1,4 m/s; zoom 0,4",
+ "manopole": {
+  "CAMERA4": {
+   "base": 0.78,
+   "stretta": 1.08,
+   "max": 1.22,
+   "margine": 0.08,
+   "larga": 5.6,
+   "strettaL": 3.2,
+   "copre0": 0.62,
+   "copre1": 0.9,
+   "entra": 0.6,
+   "esce": 0.32,
+   "tEntra": 0.2,
+   "tEsce": 0.8,
+   "resta": 2.05,
+   "tau": 0.26,
+   "banda": 0.07,
+   "zoom": 0.9,
+   "giro": 0,
+   "raggio": 12,
+   "passo": 0.3
+  },
+  "TETTO4": {
+   "resta": 0.3,
+   "copertina": 0.82,
+   "allarga": 0.35,
+   "tieni": 0.6,
+   "alza": 9,
+   "salto": 99,
+   "apri": 0.35,
+   "chiudi": 0.55
+  },
+  "MURETTO": {
+   "alto": 1,
+   "raggio": 8,
+   "esce": 11,
+   "davanti": 0.5,
+   "sopra": 0.4,
+   "tieni": 0.8,
+   "alza": 9,
+   "salto": 99,
+   "apri": 0.5,
+   "chiudi": 0.65,
+   "tono": 0.52,
+   "filo": "#f2e6cc"
+  }
+ },
+ "principali": {
+  "L": 1509.5,
+  "oggi": 0.32394832726068234,
+  "A": 0.16694269625703875,
+  "B": 0.02186154355746936,
+  "stretta": 0.24080821464060947
+ },
+ "scorciatoie": {
+  "L": 677,
+  "oggi": 0.7112259970457903,
+  "A": 0.3707533234859675,
+  "B": 0.22451994091580502,
+  "stretta": 0.705317577548006
+ },
+ "percorsi": [
+  {
+   "id": "rua",
+   "nome": "Rua Maestra",
+   "k": "dominante",
+   "L": 220.5,
+   "oggi": 0.764172335600907,
+   "A": 0.36054421768707484,
+   "B": 0,
+   "stretta": 0.40589569160997735,
+   "cambi": 16
+  },
+  {
+   "id": "vittoria",
+   "nome": "Via della Vittoria",
+   "k": "dominante",
+   "L": 231,
+   "oggi": 0,
+   "A": 0,
+   "B": 0,
+   "stretta": 0,
+   "cambi": 0
+  },
+  {
+   "id": "corso",
+   "nome": "Corso Garibaldi",
+   "k": "dominante",
+   "L": 93,
+   "oggi": 0,
+   "A": 0,
+   "B": 0,
+   "stretta": 0,
+   "cambi": 0
+  },
+  {
+   "id": "marina",
+   "nome": "Via della Marina",
+   "k": "secondario",
+   "L": 201.5,
+   "oggi": 0.07692307692307693,
+   "A": 0.052109181141439205,
+   "B": 0,
+   "stretta": 0.034739454094292806,
+   "cambi": 4
+  },
+  {
+   "id": "mezzo",
+   "nome": "Via di Mezzo",
+   "k": "secondario",
+   "L": 182,
+   "oggi": 0.6703296703296703,
+   "A": 0.12912087912087913,
+   "B": 0.005494505494505495,
+   "stretta": 0.8296703296703297,
+   "cambi": 6
+  },
+  {
+   "id": "pozzo",
+   "nome": "Dal Pozzo alla Vittoria",
+   "k": "secondario",
+   "L": 25,
+   "oggi": 0.36,
+   "A": 0.36,
+   "B": 0.3,
+   "stretta": 0,
+   "cambi": 0
+  },
+  {
+   "id": "forno",
+   "nome": "Dal Forno alla marina",
+   "k": "secondario",
+   "L": 55,
+   "oggi": 0.2727272727272727,
+   "A": 0.10909090909090909,
+   "B": 0,
+   "stretta": 0.4090909090909091,
+   "cambi": 4
+  },
+  {
+   "id": "sagrato",
+   "nome": "Dal sagrato alle mura",
+   "k": "secondario",
+   "L": 44,
+   "oggi": 0.6590909090909091,
+   "A": 0.6363636363636364,
+   "B": 0.3409090909090909,
+   "stretta": 0.3522727272727273,
+   "cambi": 2
+  },
+  {
+   "id": "stazione",
+   "nome": "Dal Corso alla stazione",
+   "k": "secondario",
+   "L": 45,
+   "oggi": 0.5,
+   "A": 0.45555555555555555,
+   "B": 0,
+   "stretta": 0,
+   "cambi": 0
+  },
+  {
+   "id": "officina",
+   "nome": "Dalla marina allo Scalo",
+   "k": "secondario",
+   "L": 101,
+   "oggi": 0,
+   "A": 0,
+   "B": 0,
+   "stretta": 0,
+   "cambi": 0
+  },
+  {
+   "id": "baracche",
+   "nome": "Dal piazzale alle baracche",
+   "k": "secondario",
+   "L": 98,
+   "oggi": 0,
+   "A": 0,
+   "B": 0,
+   "stretta": 0.030612244897959183,
+   "cambi": 2
+  },
+  {
+   "id": "mura",
+   "nome": "Sotto le mura",
+   "k": "secondario",
+   "L": 121.5,
+   "oggi": 0.8559670781893004,
+   "A": 0.6172839506172839,
+   "B": 0.07818930041152264,
+   "stretta": 0.6172839506172839,
+   "cambi": 6
+  },
+  {
+   "id": "calata",
+   "nome": "La calata",
+   "k": "secondario",
+   "L": 92,
+   "oggi": 0.03804347826086957,
+   "A": 0,
+   "B": 0,
+   "stretta": 0,
+   "cambi": 0
+  },
+  {
+   "id": "vic_baracche",
+   "nome": "Passo delle Baracche",
+   "k": "scorciatoia",
+   "L": 41.5,
+   "oggi": 0,
+   "A": 0,
+   "B": 0,
+   "stretta": 0.07228915662650602,
+   "cambi": 2
+  },
+  {
+   "id": "vic_lanternini",
+   "nome": "Vicolo dei Lanternini",
+   "k": "scorciatoia",
+   "L": 32,
+   "oggi": 0.546875,
+   "A": 0.53125,
+   "B": 0.53125,
+   "stretta": 0.515625,
+   "cambi": 2
+  },
+  {
+   "id": "vic_arco",
+   "nome": "Vico dell'Arco",
+   "k": "scorciatoia",
+   "L": 39.5,
+   "oggi": 0.9493670886075949,
+   "A": 0.569620253164557,
+   "B": 0.4430379746835443,
+   "stretta": 1,
+   "cambi": 1
+  },
+  {
+   "id": "vic_monache",
+   "nome": "Vico delle Monache",
+   "k": "scorciatoia",
+   "L": 47,
+   "oggi": 0.9787234042553191,
+   "A": 0.32978723404255317,
+   "B": 0.010638297872340425,
+   "stretta": 1,
+   "cambi": 1
+  },
+  {
+   "id": "vic_scuro",
+   "nome": "Vico Scuro",
+   "k": "scorciatoia",
+   "L": 47,
+   "oggi": 0.9148936170212766,
+   "A": 0.723404255319149,
+   "B": 0.425531914893617,
+   "stretta": 0.8829787234042553,
+   "cambi": 2
+  },
+  {
+   "id": "vic_pescatori",
+   "nome": "Caruggio dei Pescatori",
+   "k": "scorciatoia",
+   "L": 39.5,
+   "oggi": 0.6962025316455697,
+   "A": 0.45569620253164556,
+   "B": 0.16455696202531644,
+   "stretta": 0.7341772151898734,
+   "cambi": 2
+  },
+  {
+   "id": "vic_gatti",
+   "nome": "Vico dei Gatti",
+   "k": "scorciatoia",
+   "L": 32,
+   "oggi": 0.671875,
+   "A": 0.484375,
+   "B": 0.203125,
+   "stretta": 0.65625,
+   "cambi": 2
+  },
+  {
+   "id": "vic_bottai",
+   "nome": "Vico dei Bottai",
+   "k": "scorciatoia",
+   "L": 36,
+   "oggi": 0.6527777777777778,
+   "A": 0.19444444444444445,
+   "B": 0.20833333333333334,
+   "stretta": 0.7638888888888888,
+   "cambi": 2
+  },
+  {
+   "id": "vic_pozzo",
+   "nome": "Vico del Pozzo",
+   "k": "scorciatoia",
+   "L": 32,
+   "oggi": 0.59375,
+   "A": 0.328125,
+   "B": 0.1875,
+   "stretta": 0.34375,
+   "cambi": 4
+  },
+  {
+   "id": "vic_sale",
+   "nome": "Vico del Sale",
+   "k": "scorciatoia",
+   "L": 32,
+   "oggi": 0.609375,
+   "A": 0.296875,
+   "B": 0,
+   "stretta": 0.6875,
+   "cambi": 2
+  },
+  {
+   "id": "vic_storto",
+   "nome": "Vicolo Storto",
+   "k": "scorciatoia",
+   "L": 26,
+   "oggi": 0.6346153846153846,
+   "A": 0.4423076923076923,
+   "B": 0.2692307692307692,
+   "stretta": 0.5961538461538461,
+   "cambi": 2
+  },
+  {
+   "id": "vic_fame",
+   "nome": "Vico della Fame",
+   "k": "scorciatoia",
+   "L": 26,
+   "oggi": 0.5192307692307693,
+   "A": 0.17307692307692307,
+   "B": 0,
+   "stretta": 0.34615384615384615,
+   "cambi": 2
+  },
+  {
+   "id": "vic_reti",
+   "nome": "Vicolo delle Reti",
+   "k": "scorciatoia",
+   "L": 32,
+   "oggi": 0.78125,
+   "A": 0.46875,
+   "B": 0.234375,
+   "stretta": 0.71875,
+   "cambi": 1
+  },
+  {
+   "id": "vic_tonnaroti",
+   "nome": "Vico dei Tonnaroti",
+   "k": "scorciatoia",
+   "L": 32,
+   "oggi": 0.78125,
+   "A": 0.46875,
+   "B": 0.21875,
+   "stretta": 0.640625,
+   "cambi": 1
+  },
+  {
+   "id": "vic_sorelle",
+   "nome": "Vico delle Sorelle",
+   "k": "scorciatoia",
+   "L": 42.5,
+   "oggi": 0.8470588235294118,
+   "A": 0.27058823529411763,
+   "B": 0.17647058823529413,
+   "stretta": 0.7176470588235294,
+   "cambi": 1
+  },
+  {
+   "id": "vic_lungo",
+   "nome": "Vico Lungo",
+   "k": "scorciatoia",
+   "L": 48,
+   "oggi": 0.8125,
+   "A": 0.28125,
+   "B": 0.14583333333333334,
+   "stretta": 0.7916666666666666,
+   "cambi": 2
+  },
+  {
+   "id": "vic_forno",
+   "nome": "Scalinata del Forno",
+   "k": "scorciatoia",
+   "L": 20,
+   "oggi": 0.15,
+   "A": 0.1,
+   "B": 0,
+   "stretta": 0.55,
+   "cambi": 2
+  },
+  {
+   "id": "vic_androne",
+   "nome": "Androne del Pozzo Vecchio",
+   "k": "scorciatoia",
+   "L": 15,
+   "oggi": 1,
+   "A": 0.5,
+   "B": 0.36666666666666664,
+   "stretta": 1,
+   "cambi": 1
+  },
+  {
+   "id": "vic_lavatoio",
+   "nome": "Vico del Lavatoio",
+   "k": "scorciatoia",
+   "L": 22,
+   "oggi": 1,
+   "A": 0.7272727272727273,
+   "B": 1,
+   "stretta": 1,
+   "cambi": 1
+  },
+  {
+   "id": "vic_corte",
+   "nome": "Corte dei Pescatori",
+   "k": "scorciatoia",
+   "L": 13,
+   "oggi": 0.8846153846153846,
+   "A": 0.23076923076923078,
+   "B": 0.2692307692307692,
+   "stretta": 1,
+   "cambi": 1
+  },
+  {
+   "id": "vic_corte2",
+   "nome": "Vico della Corte",
+   "k": "scorciatoia",
+   "L": 22,
+   "oggi": 0.9090909090909091,
+   "A": 0.09090909090909091,
+   "B": 0.1590909090909091,
+   "stretta": 1,
+   "cambi": 1
+  }
+ ],
+ "tratti": {
+  "oggi": {
+   "tratti": 56,
+   "piuLungo": 104,
+   "medio": 17.3
+  },
+  "A": {
+   "tratti": 65,
+   "piuLungo": 30,
+   "medio": 7.6
+  }
+ },
+ "peggioriA": [
+  {
+   "percorso": "Sotto le mura",
+   "metri": 30,
+   "secondi": 21.4,
+   "da": [
+    1426.5,
+    273
+   ],
+   "a": [
+    1455.4,
+    274.2
+   ],
+   "case": [
+    "casa 225 (casa_176) E0 4p «Frutta e verdura Rosaria»",
+    "casa 230 (casa_181) E0 3p",
+    "casa 224 (casa_175) E0 3p «Latteria Lella»"
+   ],
+   "ids": [
+    225,
+    230,
+    224
+   ]
+  },
+  {
+   "percorso": "Vico Scuro",
+   "metri": 25,
+   "secondi": 17.9,
+   "da": [
+    1444.9,
+    298.2
+   ],
+   "a": [
+    1447.6,
+    278.3
+   ],
+   "case": [
+    "arco_sottopasso",
+    "casa 242 (casa_193) E0 3p",
+    "casa 304 (casa_255) E0 2p"
+   ],
+   "ids": [
+    "arco_sottopasso",
+    242,
+    304
+   ]
+  },
+  {
+   "percorso": "Rua Maestra",
+   "metri": 21.5,
+   "secondi": 15.4,
+   "da": [
+    1375,
+    310.6
+   ],
+   "a": [
+    1393.3,
+    308
+   ],
+   "case": [
+    "casa 350 (casa_301) E0 2p",
+    "casa 347 (casa_298) E0 4p",
+    "casa 351 (casa_302) E0 2p"
+   ],
+   "ids": [
+    350,
+    347,
+    351
+   ]
+  },
+  {
+   "percorso": "Dal Corso alla stazione",
+   "metri": 20.5,
+   "secondi": 14.6,
+   "da": [
+    1290.3,
+    315
+   ],
+   "a": [
+    1274.3,
+    310.3
+   ],
+   "case": [
+    "casa 8 (aurora)  3p «Condominio Aurora»",
+    "casa 93 (casa_44) E3 2p"
+   ],
+   "ids": [
+    8,
+    93
+   ]
+  },
+  {
+   "percorso": "Rua Maestra",
+   "metri": 17,
+   "secondi": 12.1,
+   "da": [
+    1325.1,
+    304.8
+   ],
+   "a": [
+    1338.2,
+    304.9
+   ],
+   "case": [
+    "casa 31 (ministero)  3p «Ministero dell'Ordine»",
+    "casa 338 (casa_289) E0 2p"
+   ],
+   "ids": [
+    31,
+    338
+   ]
+  },
+  {
+   "percorso": "Vico dell'Arco",
+   "metri": 17,
+   "secondi": 12.1,
+   "da": [
+    1406.7,
+    305.9
+   ],
+   "a": [
+    1409.5,
+    291.4
+   ],
+   "case": [
+    "arco_sottopasso",
+    "casa 334 (casa_285) E0 2p"
+   ],
+   "ids": [
+    "arco_sottopasso",
+    334
+   ]
+  },
+  {
+   "percorso": "Vicolo dei Lanternini",
+   "metri": 16,
+   "secondi": 11.4,
+   "da": [
+    1371.6,
+    297.5
+   ],
+   "a": [
+    1374.2,
+    283.8
+   ],
+   "case": [
+    "arco_sottopasso"
+   ],
+   "ids": [
+    "arco_sottopasso"
+   ]
+  },
+  {
+   "percorso": "Dal sagrato alle mura",
+   "metri": 14.5,
+   "secondi": 10.4,
+   "da": [
+    1373,
+    297.5
+   ],
+   "a": [
+    1374.1,
+    283.9
+   ],
+   "case": [
+    "arco_sottopasso"
+   ],
+   "ids": [
+    "arco_sottopasso"
+   ]
+  },
+  {
+   "percorso": "Sotto le mura",
+   "metri": 14,
+   "secondi": 10,
+   "da": [
+    1371.5,
+    282.3
+   ],
+   "a": [
+    1382.5,
+    280.4
+   ],
+   "case": [
+    "casa 245 (casa_196) E0 2p",
+    "casa 246 (casa_197) E0 3p",
+    "arco_sottopasso"
+   ],
+   "ids": [
+    245,
+    246,
+    "arco_sottopasso"
+   ]
+  },
+  {
+   "percorso": "Dal sagrato alle mura",
+   "metri": 13,
+   "secondi": 9.3,
+   "da": [
+    1385,
+    309
+   ],
+   "a": [
+    1375,
+    310.7
+   ],
+   "case": [
+    "casa 350 (casa_301) E0 2p",
+    "casa 351 (casa_302) E0 2p",
+    "casa 347 (casa_298) E0 4p"
+   ],
+   "ids": [
+    350,
+    351,
+    347
+   ]
+  },
+  {
+   "percorso": "Vicolo Storto",
+   "metri": 11.5,
+   "secondi": 8.2,
+   "da": [
+    1351.7,
+    349.2
+   ],
+   "a": [
+    1350.4,
+    359.2
+   ],
+   "case": [
+    "portico",
+    "casa 79 (casa_30) E4 3p «Lavanderia Pina»"
+   ],
+   "ids": [
+    "portico",
+    79
+   ]
+  },
+  {
+   "percorso": "Caruggio dei Pescatori",
+   "metri": 10,
+   "secondi": 7.1,
+   "da": [
+    1343.8,
+    318.8
+   ],
+   "a": [
+    1342.4,
+    327.6
+   ],
+   "case": [
+    "casa 72 (casa_23) E4 3p",
+    "portico"
+   ],
+   "ids": [
+    72,
+    "portico"
+   ]
+  }
+ ],
+ "peggioriOggi": [
+  {
+   "percorso": "Sotto le mura",
+   "metri": 104,
+   "secondi": 74.3,
+   "da": [
+    1367,
+    283
+   ],
+   "a": [
+    1455.4,
+    274.2
+   ],
+   "case": [
+    "casa 238 (casa_189) E0 3p «Frutta e verdura Usai»",
+    "casa 223 (casa_174) E0 3p",
+    "casa 221 (casa_172) E0 3p «Drogheria Deiana»"
+   ],
+   "ids": [
+    238,
+    223,
+    221
+   ]
+  },
+  {
+   "percorso": "Via di Mezzo",
+   "metri": 43,
+   "secondi": 30.7,
+   "da": [
+    1308.4,
+    370.4
+   ],
+   "a": [
+    1347,
+    370
+   ],
+   "case": [
+    "casa 15 (magazzino)  1p «Magazzino Neri»",
+    "casa 450 (casa_401) E0 2p «Merceria Ferrara»",
+    "casa 451 (casa_402) E0 2p «Merceria Russo»"
+   ],
+   "ids": [
+    15,
+    450,
+    451
+   ]
+  },
+  {
+   "percorso": "Vico delle Monache",
+   "metri": 42,
+   "secondi": 30,
+   "da": [
+    1420.8,
+    308
+   ],
+   "a": [
+    1426.2,
+    273.5
+   ],
+   "case": [
+    "casa 258 (casa_209) E0 2p",
+    "casa 327 (casa_278) E0 2p",
+    "casa 282 (casa_233) E0 2p «Calzolaio Murru»"
+   ],
+   "ids": [
+    258,
+    327,
+    282
+   ]
+  },
+  {
+   "percorso": "Rua Maestra",
+   "metri": 41.5,
+   "secondi": 29.6,
+   "da": [
+    1396.7,
+    307.9
+   ],
+   "a": [
+    1426,
+    313
+   ],
+   "case": [
+    "casa 368 (casa_319) E0 4p «Frutta e verdura Bruno»",
+    "casa 353 (casa_304) E0 2p",
+    "casa 357 (casa_308) E0 2p"
+   ],
+   "ids": [
+    368,
+    353,
+    357
+   ]
+  },
+  {
+   "percorso": "Vico Scuro",
+   "metri": 41,
+   "secondi": 29.3,
+   "da": [
+    1443.1,
+    306.2
+   ],
+   "a": [
+    1448.2,
+    272.8
+   ],
+   "case": [
+    "arco_sottopasso",
+    "casa 242 (casa_193) E0 3p",
+    "casa 243 (casa_194) E0 3p"
+   ],
+   "ids": [
+    "arco_sottopasso",
+    242,
+    243
+   ]
+  },
+  {
+   "percorso": "Vico dell'Arco",
+   "metri": 35.5,
+   "secondi": 25.4,
+   "da": [
+    1406.7,
+    305.9
+   ],
+   "a": [
+    1411.4,
+    275.3
+   ],
+   "case": [
+    "arco_sottopasso",
+    "casa 227 (casa_178) E0 2p «Latteria Nello»",
+    "casa 300 (casa_251) E0 2p"
+   ],
+   "ids": [
+    "arco_sottopasso",
+    227,
+    300
+   ]
+  },
+  {
+   "percorso": "Rua Maestra",
+   "metri": 34.5,
+   "secondi": 24.6,
+   "da": [
+    1342.1,
+    305.4
+   ],
+   "a": [
+    1370.2,
+    310.4
+   ],
+   "case": [
+    "casa 2 (wu)  2p «Alimentari Wu»",
+    "casa 340 (casa_291) E0 2p",
+    "casa 344 (casa_295) E0 2p"
+   ],
+   "ids": [
+    2,
+    340,
+    344
+   ]
+  },
+  {
+   "percorso": "Rua Maestra",
+   "metri": 31.5,
+   "secondi": 22.5,
+   "da": [
+    1316,
+    305.9
+   ],
+   "a": [
+    1340.3,
+    305.2
+   ],
+   "case": [
+    "casa 31 (ministero)  3p «Ministero dell'Ordine»",
+    "casa 337 (casa_288) E0 2p",
+    "casa 336 (casa_287) E0 2p «Merceria Tina»"
+   ],
+   "ids": [
+    31,
+    337,
+    336
+   ]
+  },
+  {
+   "percorso": "Via di Mezzo",
+   "metri": 29.5,
+   "secondi": 21.1,
+   "da": [
+    1408.3,
+    373.9
+   ],
+   "a": [
+    1432.3,
+    381
+   ],
+   "case": [
+    "casa 22 (santuario)  3p «Santuario del Mare»",
+    "casa 470 (casa_421) E0 3p",
+    "casa 469 (casa_420) E0 4p"
+   ],
+   "ids": [
+    22,
+    470,
+    469
+   ]
+  },
+  {
+   "percorso": "Caruggio dei Pescatori",
+   "metri": 27.5,
+   "secondi": 19.6,
+   "da": [
+    1346,
+    305.9
+   ],
+   "a": [
+    1342.1,
+    329.5
+   ],
+   "case": [
+    "casa 72 (casa_23) E4 3p",
+    "casa 340 (casa_291) E0 2p",
+    "casa 364 (casa_315) E0 2p"
+   ],
+   "ids": [
+    72,
+    340,
+    364
+   ]
+  },
+  {
+   "percorso": "Vicolo delle Reti",
+   "metri": 25,
+   "secondi": 17.9,
+   "da": [
+    1385.8,
+    349.3
+   ],
+   "a": [
+    1382.8,
+    367.8
+   ],
+   "case": [
+    "casa 423 (casa_374) E0 2p «Calzolaio Tina»",
+    "casa 401 (casa_352) E0 2p",
+    "portico"
+   ],
+   "ids": [
+    423,
+    401,
+    "portico"
+   ]
+  },
+  {
+   "percorso": "Vico dei Tonnaroti",
+   "metri": 25,
+   "secondi": 17.9,
+   "da": [
+    1399.4,
+    349.4
+   ],
+   "a": [
+    1396.2,
+    369.3
+   ],
+   "case": [
+    "casa 412 (casa_363) E0 2p",
+    "portico",
+    "casa 440 (casa_391) E0 2p"
+   ],
+   "ids": [
+    412,
+    "portico",
+    440
+   ]
+  }
+ ]
+}
