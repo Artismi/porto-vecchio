@@ -7,6 +7,7 @@ if (new URLSearchParams(location.search).get('old')) globalThis.__oldHand = 1; w
 </script>
 <script src="../src/graffiti.js"></script>
 <script>if (new URLSearchParams(location.search).get('stub')) window.Graffiti = undefined;</script>
+<script src="../src/fonts_graffiti.js"></script>
 <script src="../src/writer_mano.js"></script>
 <script src="../src/writer_arte.js"></script>
 <script>
@@ -17,10 +18,11 @@ if (new URLSearchParams(location.search).get('old')) globalThis.__oldHand = 1; w
   // ?worker=1: i disegni li fa un Web Worker come nel gioco (writer_mano.js + writer_arte.js, senza document né Graffiti)
   const useWorker = !!Q.get('worker'); let WK = null, seq = 0; const wait = new Map();
   const workerArt = w => new Promise((res, rej) => { if (!WK) { const src = ['../src/writer_mano.js', '../src/writer_arte.js'].map(u => { const x = new XMLHttpRequest(); x.open('GET', u, false); x.send(); return x.responseText; }).join('\n');
-      WK = new Worker(URL.createObjectURL(new Blob(['const document = { createElement: () => new OffscreenCanvas(1, 1) };\n' + src + "\nonmessage = e => { const m = e.data; let A; try { A = WriterArte.art(m.w); } catch (err) { postMessage({ id: m.id, err: String(err && err.stack || err) }); return; } const tr = [], bm = c => { const b = c.transferToImageBitmap(); tr.push(b); return b; }; postMessage({ id: m.id, A: { stages: A.stages.map(bm), Wp: A.Wp, Hp: A.Hp } }, tr); };"], { type: 'text/javascript' })));
-      WK.onmessage = e => { const cb = wait.get(e.data.id); wait.delete(e.data.id); if (cb) cb(e.data); }; }
+      WK = new Worker(URL.createObjectURL(new Blob(['const document = { createElement: () => new OffscreenCanvas(1, 1) };\n' + src + "\nonmessage = async e => { const m = e.data; if (m.fonts) { self.GraffitiFonts = { D: m.fonts }; return; } let A; await WriterArte.fontsReady(); try { A = WriterArte.art(m.w); } catch (err) { postMessage({ id: m.id, err: String(err && err.stack || err) }); return; } const tr = [], bm = c => { const b = c.transferToImageBitmap(); tr.push(b); return b; }; postMessage({ id: m.id, A: { stages: A.stages.map(bm), Wp: A.Wp, Hp: A.Hp } }, tr); };"], { type: 'text/javascript' })));
+      WK.postMessage({ fonts: GraffitiFonts.D }); WK.onmessage = e => { const cb = wait.get(e.data.id); wait.delete(e.data.id); if (cb) cb(e.data); }; }
     const id = ++seq; wait.set(id, m => m.err ? rej(new Error(m.err)) : res(m.A)); WK.postMessage({ id, w }); });
   (async () => {
+  if (!Q.get('nofont')) await WriterArte.fontsReady();
   let k = 0;
   for (const it of items) {
     const [style, fam, pal, seed, W, H, words] = it.split(':');

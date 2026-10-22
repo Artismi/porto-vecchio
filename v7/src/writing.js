@@ -620,7 +620,7 @@ var Writing = (function () {
   // è identico, arriva qualche fotogramma dopo, e intanto il gioco va avanti. I lavori finiti si tengono (gli ultimi 48),
   // così tornando in una zona non si rifanno. Senza Worker o OffscreenCanvas: come prima, qui.
   const ARTW = { w: null, ok: null, seq: 0, wait: new Map(), cache: new Map(), recSig: '', pend: new Set(), q: [] };
-  const ARTW_MAIN = `onmessage = e => { const m = e.data; if (m.rec) WriterMano.setRecorded(m.rec); if (!m.w) return; let A;
+  const ARTW_MAIN = `onmessage = async e => { const m = e.data; if (m.fonts) self.GraffitiFonts = { D: m.fonts }; if (m.rec) WriterMano.setRecorded(m.rec); if (!m.w) return; let A; try { await WriterArte.fontsReady(); } catch (er) { }
     try { A = WriterArte.art(m.w); } catch (err) { postMessage({ id: m.id, err: String(err && err.message || err) }); return; }
     const tr = [], bm = c => { if (c && typeof c.transferToImageBitmap === 'function') { const b = c.transferToImageBitmap(); tr.push(b); return b; } return c; };
     postMessage({ id: m.id, A: { stages: A.stages.map(bm), paths: A.paths, radii: A.radii, Wp: A.Wp, Hp: A.Hp, ppm: A.ppm } }, tr); };`;
@@ -632,6 +632,7 @@ var Writing = (function () {
       const code = 'const document = { createElement: () => new OffscreenCanvas(1, 1) };\n' + src.textContent + '\n' + ARTW_MAIN;
       ARTW.w = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
       ARTW.w.onmessage = e => { const m = e.data, cb = ARTW.wait.get(m.id); ARTW.wait.delete(m.id); if (cb) cb(m.err ? null : m.A, m.err); };
+      if (typeof GraffitiFonts !== 'undefined') ARTW.w.postMessage({ fonts: GraffitiFonts.D });   // [graffiti4] i font dei graffiti, una volta sola (non copiati nel sorgente del worker)
       ARTW.w.onerror = e => { console.warn('[Writing] disegnatore a parte spento:', e.message); ARTW.ok = false; const cbs = [...ARTW.wait.values()]; ARTW.wait.clear(); cbs.forEach(cb => cb(null, 'worker')); };
       return (ARTW.ok = true);
     } catch (e) { return (ARTW.ok = false); }

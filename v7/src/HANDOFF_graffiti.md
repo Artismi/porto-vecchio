@@ -168,3 +168,22 @@ pensano gli NPC (il campo tavolozza diventa la mano ×10); con `2` in fondo, den
 - `fixInk`: la linea si vede sempre (inchiostro scuro su riempimenti chiari, chiaro su quelli scuri).
 - **Le tag**: colori veri (quasi sempre nere, argento, bianche; a volte rosse, blu, un colore acceso) e la mano a scalpello per due
   writer su tre (aste alte, contrasto, colature: la mano «a movimento» sembrava stampatello); niente più tag tagliate in cima.
+
+### Graffiti 4, terza passata: le lettere dai font veri
+Le lettere costruite qui (bolle `BUB`, blocchi, scheletri a pennellata) restavano primitive per quanto si rifinisse la resa. Ora
+la forma della lettera la dà un **font disegnato da una persona** (liberi: OFL 1.1 e Apache 2.0, da Google Fonts, ridotti alle
+lettere latine; licenze in `assets/fonts_graffiti/licenze`, elenco in `assets/fonts_graffiti/LEGGIMI.md`).
+- `strumenti_inverno/fonts_graffiti.py` → `src/fonts_graffiti.js` (base64, circa 930 KB). La pagina li carica come FontFace
+  (`WriterArte.fontsReady`); al disegnatore a parte arrivano **con un messaggio** (`artWorker` manda `{ fonts }`), non copiati nel
+  suo sorgente; il worker aspetta i font prima di disegnare. Finché i font non sono pronti si disegna coi motori di prima.
+- **Tag** (`fontTagArt`): la mano del writer sceglie il suo font (Sedgwick Ave Display, Sedgwick Ave, Permanent Marker, Rock
+  Salt, Mansalva, Marck Script, Lacquer, Knewave, Covered By Your Grace; col pennarello anche Reenie Beanie), maiuscole o miste,
+  la prima lettera grande, l'inclinazione, l'altezza, la sovrapposizione, il rimbalzo: sempre gli stessi per lui. Lo spray con
+  l'alone, a volte col contorno; le colature dalle lettere; la riga sotto a punta, la corona, l'aureola, l'asterisco, le virgolette
+  secondo la sua mano. Le firme registrate nello studio vincono ancora su tutto.
+- **Throw-up** (`bubbleInk`, quattro su cinque): Modak, Sniglet, Chewy, Freckle Face, Kavoon, Titan One, Luckiest Guy, Londrina
+  Solid; le lettere storte, di misure diverse, molto sovrapposte e **gonfiate** (si fondono in una massa sola); i buchi e le
+  rientranze che il gonfiaggio chiude tornano come **tagli d'inchiostro** dentro la bolla (`fontMasks(...).cuts`).
+- **Pezzi** (`pieceInk`, tre su quattro): Knewave, Shrikhand, Bangers, Ranchers, Shojumaru, Carter One, Rubik Wet Paint, Kavoon,
+  e le **mani da tag ingrassate** (Sedgwick Ave Display, Permanent Marker, Knewave): il pezzo «dalla tag», coi suoi tagli dentro.
+- Galleria: aspetta i font (`?nofont=1` per vedere i motori di prima); in modalità worker manda i font al worker come il gioco.
