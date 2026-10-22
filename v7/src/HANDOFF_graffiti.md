@@ -154,3 +154,17 @@ sezione «L'INCHIOSTRO»):
 
 Galleria: `NPC=1 node strumenti_inverno/galleria_graffiti.js out.png "pezzo:-:8:201,throw:-:7:202" 4 80` disegna i lavori come li
 pensano gli NPC (il campo tavolozza diventa la mano ×10); con `2` in fondo, dentro un vero Web Worker come nel gioco.
+
+### Graffiti 4, seconda passata («di più»)
+- **Personaggi a inchiostro** (`cartoon`): il ragazzo col berretto di lana e gli occhiali tondi, il mostro con l'occhio solo e i
+  denti, la bomba arrabbiata con la miccia, la bomboletta con l'occhio che cola. Campiture piatte, mezzaluna d'ombra, contorno
+  grosso, luce bianca. Stanno accanto ai throw-up (una volta su sette), ai pezzi (una su otto) e ai burner (una su tre); lo stile
+  `mostro` (il personaggio da solo) ora è uno di loro con la nuvola o lo schizzo dietro (`characterArt`, prima `monsterArt`).
+- **Le lettere dentro gli oggetti** (`objectBG`): la bomboletta coricata (fondo a coste, tappo, ugello), la sigaretta (filtro a
+  puntini, brace, fumo); la bomba con la miccia accesa sull'ultima lettera; la corona di punte nere (`crownSpikes`).
+- **Dentro le lettere**: gli occhi con le venette e la palpebra, gli scarabocchi (x, +, =, cuore, puntini, asterisco).
+- **Attorno**: l'alone spruzzato morbido (`aura`), il contorno doppio colorato fra le lettere e il nero (`dbl`), la linea
+  tratteggiata da sticker (`dash`); nei pezzi il riempimento `taglio` (due colori lungo una diagonale con la riga bianca).
+- `fixInk`: la linea si vede sempre (inchiostro scuro su riempimenti chiari, chiaro su quelli scuri).
+- **Le tag**: colori veri (quasi sempre nere, argento, bianche; a volte rosse, blu, un colore acceso) e la mano a scalpello per due
+  writer su tre (aste alte, contrasto, colature: la mano «a movimento» sembrava stampatello); niente più tag tagliate in cima.

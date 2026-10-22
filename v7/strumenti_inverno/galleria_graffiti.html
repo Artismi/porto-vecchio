@@ -3,7 +3,7 @@
 <script>
 // La galleria dei lavori dei writer, senza il gioco: stubs per Game e Popolo (graffiti.js li tocca solo agli agganci).
 // ?s=stile:fam:pal:seed:W:H:parole,...   ?cols=4   ?ppm=60   ?stub=1 (senza Graffiti.F: come dentro il worker)
-window.Game = { HOOKS: {}, byId: () => null }; window.Popolo = { _: { errand: function () { } } };
+if (new URLSearchParams(location.search).get('old')) globalThis.__oldHand = 1; window.Game = { HOOKS: {}, byId: () => null }; window.Popolo = { _: { errand: function () { } } };
 </script>
 <script src="../src/graffiti.js"></script>
 <script>if (new URLSearchParams(location.search).get('stub')) window.Graffiti = undefined;</script>
