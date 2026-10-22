@@ -52841,6 +52841,9 @@ var Render = (function () {
   // la uv resta quella di prima) e nello shader ogni texture2D(map, …) diventa la lettura dello strato. Solo dove lo shader usa `map`
   // soltanto in quelle letture (provato a vuoto, coi pezzi espansi); solo tele (canvas) con un contesto 2D da leggere.
   // Se una tela cambia dopo (la mappa sale di versione) lo strato si rilegge (arrTick1).
+  // [leggero] la manopola del settore delle case fuse (metri): più grande, meno disegni e meno sagome d'ombra, ma più triangoli fuori
+  // campo mandati alla scheda video. ?settore=N per provarne un altro
+  const SETT1 = LEGGERO ? (+((typeof location !== 'undefined' && location.search.match(/[?&]settore=(\d+)/)) || [])[1] || 48) : 32;
   const ARR1 = { on: LEGGERO && !/[?&]nopila/.test(typeof location !== 'undefined' ? location.search : ''), ok: new Map(), gr: new Map(), all: [], MB: 32, n: 0 };
   function incl1(s) { return s.replace(/^[ \t]*#include +<([\w\d./]+)>/gm, (m, i) => incl1(THREE.ShaderChunk[i] || '')); }
   const ARRRE1 = /texture2D\(\s*map\s*,/g;
@@ -52939,7 +52942,7 @@ var Render = (function () {
         g.computeBoundingBox(); g.boundingBox.getCenter(_wp);   // il settore dal centro vero (i gruppi delle case stanno tutti in 0,0)
         const pal = palOk1(m, sig);   // [leggero] materiali uguali a meno del colore: un secchio, il colore nella tavolozza
         const al = pal && arrOk1(m, sig) ? arrLayer1(m.map) : null;   // [leggero] e a meno della mappa: la mappa nella pila
-        const key = (pal ? palSig1(sig) + '|pal1' : sig).replace(al ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + (al ? '|A' + al[0].id : '') + '|' + Math.floor(_wp.x / 32) + ',' + Math.floor(_wp.z / 32) + '|' + o.castShadow + o.receiveShadow;
+        const key = (pal ? palSig1(sig) + '|pal1' : sig).replace(al ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + (al ? '|A' + al[0].id : '') + '|' + Math.floor(_wp.x / SETT1) + ',' + Math.floor(_wp.z / SETT1) + '|' + o.castShadow + o.receiveShadow;
         let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow, pal, arr: al ? al[0] : null });
         g.__bi1 = bi; g.__src1 = o; if (pal) g.__pal1 = palIdx1(m.color); if (al) g.__lay1 = al[1]; b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
       });
@@ -64251,6 +64254,10 @@ var Render = (function () {
     // ---- neon sgangherati: tubi rosa, ciano, giallo, azzurro freddo sulle facciate; alcuni rotti o che sfarfallano ----
     const NEON = ['#f0a048', '#d4d0c6', '#f0a048', '#d4d0c6', '#f0a048', '#b84a3c'];
     WX.neon = WX.neon || [];
+    // [leggero] i tubi (una scatola e un disegno per pezzo, ~1.500 nella città compatta) si fondono: quelli accesi per colore e per
+    // settore di 32 m, con un materiale per colore (stesso colore, stesso materiale di base); quelli rotti che sfarfallano per insegna,
+    // col loro materiale che il tempo accende e spegne. Gli stessi vertici, già al loro posto
+    const NEO1 = LEGGERO ? [] : null;
     (G.BUILDINGS || []).forEach((b, bi) => {
       if (!b.door || b.military || b.farm || b.wood) return;
       const d = W0.districtAt ? W0.districtAt(b.x * TS) : 'centro'; if (d === 'prateria' || d === 'foresta' || d === 'base' || d === 'porto') return;
@@ -64267,14 +64274,18 @@ var Render = (function () {
       for (let k = 0; k < segs; k++) {
         if (broken && r() < .25) continue;                                    // tubo rotto: un pezzo manca
         const t0 = k / segs + .02, t1 = (k + 1) / segs - .02, mx = ax + (bx - ax) * (t0 + t1) / 2, mz = az + (bz - az) * (t0 + t1) / 2, len = L * (t1 - t0);
-        const tube = new THREE.Mesh(new THREE.BoxGeometry(nz ? len : .07, .07, nz ? .07 : len), mat); tube.position.set(mx, y, mz); scene.add(tube);
+        const tube = new THREE.Mesh(new THREE.BoxGeometry(nz ? len : .07, .07, nz ? .07 : len), mat); tube.position.set(mx, y, mz); if (NEO1) NEO1.push([tube, broken ? mat : col]); else scene.add(tube);
       }
       // un tubo verticale sullo spigolo, e a volte una cornice attorno alla vetrina
-      if (r() < .6) { const v = new THREE.Mesh(new THREE.BoxGeometry(.07, 3, .07), mat); v.position.set(ax + nz * 0, base + 1.8, az); scene.add(v); }
+      if (r() < .6) { const v = new THREE.Mesh(new THREE.BoxGeometry(.07, 3, .07), mat); v.position.set(ax + nz * 0, base + 1.8, az); if (NEO1) NEO1.push([v, broken ? mat : col]); else scene.add(v); }
       const Lt = addLight(dx * TS + 1 + nx * 1.5, base + 2.6, dy * TS + 1 + nz * 1.5, col, 1.6, 9, broken ? .9 : .05); Lt.always = true;
       glow((ax + bx) / 2 + nx * .3, y, (az + bz) / 2 + nz * .3, col, 3.2);
       if (broken) WX.neon.push({ m: mat, col: new THREE.Color(col), ph: r() * 20, L: Lt });
     });
+    if (NEO1) { const by = new Map(), mats = new Map();
+      NEO1.forEach(([o, k]) => { o.updateMatrixWorld(true); const key = (typeof k === 'string' ? 'c' + k : 'm' + k.uuid) + '|' + Math.floor(o.position.x / 32) + ',' + Math.floor(o.position.z / 32); let q = by.get(key);
+        if (!q) { let m = typeof k === 'string' ? mats.get(k) : k; if (!m) { m = o.material; mats.set(k, m); } by.set(key, q = { m, geos: [] }); } q.geos.push(flatXf(o.geometry, o.matrixWorld)); o.geometry.dispose(); });
+      by.forEach(q => { const me = new THREE.Mesh(mergeGeos(q.geos), q.m); me.matrixAutoUpdate = false; me.userData.leggero = true; scene.add(me); }); }
     // ---- manifesti del Garante lungo le costiere ----
     let nm = 0; (M.roads || []).filter(rd => rd.id === 'nord' || rd.id === 'litoranea' || rd.id === 'porto').forEach(rd => { for (let k = 10; k < rd.pts.length - 2; k += 24) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / L, nz = (bx - ax) / L, x = ax + nx * (rd.w / 2 + 3), z = az + nz * (rd.w / 2 + 3); if (!free(x, z)) continue;
       const g = G0(), ry0 = Math.atan2(nx, nz), h00 = groundH(x, z); [-1.6, 1.6].forEach(o => { const dh = Math.max(0, h00 - groundH(x + o * Math.cos(ry0), z - o * Math.sin(ry0))); add(g, box(.15, 3 + dh, .15, sl('#2a2a30')), o, (3 - dh) / 2, 0); });   // [leggera] sul pendio ogni gamba arriva a terra
