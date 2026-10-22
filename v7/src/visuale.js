@@ -205,7 +205,7 @@ var Visuale = (function () {
       const bx = (b3.min.x + b3.max.x) / 2, bz = (b3.min.z + b3.max.z) / 2, br = Math.hypot(b3.max.x - b3.min.x, b3.max.z - b3.min.z) / 2 + 3;
       const t = cl4(((bx - px) * sdx + (bz - pz) * sdz) / sl2, 0, 1), ex = px + sdx * t - bx, ez = pz + sdz * t - bz; if (ex * ex + ez * ez > br * br) continue;
       const bb = { min: { x: b3.min.x - A, y: b3.min.y, z: b3.min.z - A }, max: { x: b3.max.x + A, y: b3.max.y, z: b3.max.z + A } };
-      if (R.some(q => entra(q.o, q.d, bb) !== null)) out.set(B, { y: 0, top: 0 }); }
+      if (R.some(q => entra(q.o, q.d, bb) !== null)) out.set(B, { y: 0, top: 0, nodisc: px > b3.min.x && px < b3.max.x && pz > b3.min.z && pz < b3.max.z }); }   // nodisc: il personaggio sta sotto la casa (androne, sottopasso): niente copertina sopra di lui
     return out;
   }
   // quanto è sbiadito il tetto (0-1) dallo stato di passo()

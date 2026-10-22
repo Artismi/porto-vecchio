@@ -1259,20 +1259,20 @@ var Render = (function () {
   // domani i pezzi per zona di [leggero], che tengono il numero della casa su ogni vertice) la rifà qui sotto senza toccare chi la chiama.
   // B: il record della casa (o il suo numero in dyn.buildings). modo 'quota': il piano sopra cui la casa non si disegna (v in m; null: intera);
   // 'tetto': quanto è sbiadito il solo tetto, coi suoi oggetti (0-1; i muri restano pieni)
-  function casaVisibile(B, modo, v) {
+  function casaVisibile(B, modo, v, opz) {
     if (typeof B === 'number') B = dyn.buildings[B]; if (!B) return;
     const i = FD1.idx.get(B);
     if (modo === 'quota') { if (i === undefined || !FD1.data) return;
       const code = v === null || v === undefined ? 0 : Math.max(1, Math.min(65535, Math.round((v + 50) * 100))), hi = code >> 8, lo = code & 255;
       if (FD1.data[i * 4 + 1] !== hi || FD1.data[i * 4 + 2] !== lo) { FD1.data[i * 4 + 1] = hi; FD1.data[i * 4 + 2] = lo; FD1.dirty = true; } return; }
-    if (modo === 'tetto') tetto4(B, i, v || 0);
+    if (modo === 'tetto') tetto4(B, i, v || 0, opz);
   }
   // il tetto che sbiadisce: la casa esce dalla mesh fusa (come la casa che si dissolve, fadeTick1) e torna coi suoi pezzi; i pezzi che stanno
   // sopra la gronda (le falde, il lastrico, il parapetto, i comignoli, gli abbaini) prendono una copia trasparente del loro materiale e
   // sbiadiscono insieme, fino a TETTO4.resta: tutto il tetto, mai un buco, e niente retino (il retino a punti lasciava salti di profondità
   // che il contorno del post segnava di bruno: [varco2]). Le cose del registro sul tetto (antenne, mensole) si spengono oltre metà.
   const T4M = new WeakMap();
-  function tetto4(B, i, a) {
+  function tetto4(B, i, a, opz) {
     let T = B.__t4; const on = a > .002;
     if (!on && !T) return;
     if (!T) {
@@ -1289,14 +1289,14 @@ var Render = (function () {
     const cose = a > .5; if (cose !== T.cose) { T.cose = cose; vis3Cose(B, false); if (cose) vis3Cose(B, true, T.gr + .15); }
     // sotto il tetto sbiadito non il buio della casa (il nucleo scuro): la copertina alla gronda nel tono del muro, col filo chiaro,
     // come un lastrico pulito; compare quando il tetto è sbiadito oltre un quarto
-    const cap = vis3Cap(B); cap.visible = on && a > .25; if (cap.visible) { cap.position.y = T.gr + .03; cap.material = capMat4(B, K.copertina); }
+    const cap = vis3Cap(B); cap.visible = on && a > .25 && !(opz && opz.nodisc); if (cap.visible) { cap.position.y = T.gr + .03; cap.material = capMat4(B, K.copertina); }
     if (!on) B.__t4 = null;
   }
   // un fotogramma del tetto che sbiadisce: le case che coprono adesso (Visuale.tetti), l'isteresi e lo sbiadire (Visuale.passo)
   function vis4Tetti(px, pz, fy, on, dt) {
     const K = Visuale.TETTO4, S = VIS4.T, vuole = Visuale.tetti(px, pz, fy, camera.position, dyn.buildings, K, !on, VIS4.tv || (VIS4.tv = new Map()));
     Visuale.passo(S, vuole, VIS3.subito ? 10 : dt, K);
-    const vivi = new Set(); S.forEach((s, B) => { vivi.add(B); casaVisibile(B, 'tetto', Visuale.sbiadito(s)); });
+    const vivi = new Set(); S.forEach((s, B) => { vivi.add(B); casaVisibile(B, 'tetto', Visuale.sbiadito(s), s); });
     VIS4.tvivi.forEach(B => { if (!vivi.has(B)) casaVisibile(B, 'tetto', 0); }); VIS4.tvivi = vivi;
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }
   }
@@ -1329,7 +1329,7 @@ var Render = (function () {
   // invertita) come una tinta piatta calda e un filo chiaro sul contorno (dove la superficie gira di taglio rispetto alla vista: niente
   // seconda passata, un programma solo). Tirata verso la camera (0,6 m a piedi, 1,4 m sul mezzo) così non si accende su se stessa: niente
   // tremolio. Vale per il giocatore, per chi conta nella scena (i personaggi del momento, chi parla con te) e per il mezzo che guidi.
-  const SAG4 = { tinta: '#f0a050', tintaA: .5, filo: '#fff4d6', filoA: .95, filo0: .5, filo1: .78, tira: .6, tiraMezzo: 1.4 };
+  const SAG4 = { tinta: '#ec8a3c', tintaA: .72, filo: '#fff4d6', filoA: .95, filo0: .5, filo1: .78, tira: .6, tiraMezzo: 1.4 };
   if (typeof window !== 'undefined') window.__SAG4 = SAG4;
   const SAG4U = { c: { value: new THREE.Vector4() }, f: { value: new THREE.Vector4() }, e: { value: new THREE.Vector2() }, pg: { value: .6 }, mezzo: { value: 1.4 } };
   function sagMat4(k) {
