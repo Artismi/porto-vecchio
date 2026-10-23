@@ -44335,7 +44335,7 @@ var Tetti = (function () {
     P.__k = key; return (P.__h = [fa, ea + .04, eb + .04, fb]);
   }
   function plankH(P, s2) {
-    if (P.prof) { const K = P.prof.k; if (s2 <= K[0][0]) return K[0][1]; for (let i = 1; i < K.length; i++) if (s2 <= K[i][0]) { const [a0, h0] = K[i - 1], [a1, h1] = K[i]; return h0 + (h1 - h0) * (s2 - a0) / Math.max(1e-6, a1 - a0); } return K[K.length - 1][1]; }   // [tetti4]
+    if (P.prof) { const K = profCur4(P).k; if (s2 <= K[0][0]) return K[0][1]; for (let i = 1; i < K.length; i++) if (s2 <= K[i][0]) { const [a0, h0] = K[i - 1], [a1, h1] = K[i]; return h0 + (h1 - h0) * (s2 - a0) / Math.max(1e-6, a1 - a0); } return K[K.length - 1][1]; }   // [tetti4]
     const h = plankHs(P);
     if (s2 <= P.s1) return h[0] + (h[1] - h[0]) * (s2 / P.s1);
     if (s2 <= P.s2) return h[1] + (h[2] - h[1]) * ((s2 - P.s1) / (P.s2 - P.s1));
@@ -44807,18 +44807,25 @@ var Tetti = (function () {
   // lungo, cinque per largo) un raggio dall'alto contro i modelli delle case che stanno lì sotto (il corpo, il tetto, la roba del tetto e dei
   // tetti vissuti; non la grafica di tetti.js): se il primo solido sta più di 2 cm sopra il fondo dell'impalcato è un urto. Sulle scalette il
   // fondo è il lastrico (le pedate ci posano). window.__passerelle4() → { passerelle, urti: [{ i, tipo, n, cm, x, y, z, casa }] }.
-  function misuraPasserelle4(R) {
+  function misuraPasserelle4(R, soloImpalcato) {
     const T3 = THREE, rc = new T3.Raycaster(), o = new T3.Vector3(), dn = new T3.Vector3(0, -1, 0), out = { passerelle: 0, urti: [] }, parti = new Map();
     const partiDi = bi => { if (parti.has(bi)) return parti.get(bi); const L = []; recsOf(R, B[bi]).forEach(r => [r.grp, r.roofGrp, r.cityGrp, r.vissutiGrp].forEach(g => { if (g) { g.updateMatrixWorld(true); L.push(g); } })); parti.set(bi, L); return L; };
-    PLANKS.forEach(P => { if (!P.prof) return; out.passerelle++; const sp = P.arco ? .28 : .12, larg = P.hw + (P.arco ? 0 : .06); let n = 0, peggio = 0, dove = null;
-      for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .1) { const sc = P.prof.scala.some(([u0, u1]) => s2 >= u0 - 1e-6 && s2 <= u1 + 1e-6), fondo = sc ? P.prof.pavimento(s2) : plankH(P, s2) - sp;
+    PLANKS.forEach(P => { if (!P.prof) return; profCur4(P); out.passerelle++; const sp = P.arco ? .28 : .12, larg = P.hw + (P.arco ? 0 : .06); let n = 0, peggio = 0, dove = null;
+      for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .1) { const sc = P.prof.scala.some(([u0, u1]) => s2 >= u0 - 1e-6 && s2 <= u1 + 1e-6); if (sc && soloImpalcato) continue; const fondo = sc ? P.prof.pavimento(s2) : plankH(P, s2) - sp;
         for (let t = -larg; t <= larg + 1e-6; t += larg / 2) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t;
           caseSotto4(x, y).forEach(bi => { const L = partiDi(bi); if (!L.length) return; o.set(x, fondo + 6, y); rc.set(o, dn); rc.far = 12;
             const h = rc.intersectObjects(L, true).find(q => !q.object.userData.noRoof && !q.object.userData.velo); if (!h) return; const d = h.point.y - fondo;
             if (sc && d < .1) return;   // la pedata sul lastrico (l'onda del lastrico, i bocchettoni a filo)
             if (d > TOLL4) { n++; if (d > peggio) { peggio = d; dove = { x, y, z: fondo, casa: B[bi].id, s: +s2.toFixed(2), t: +t.toFixed(2), hy: +h.point.y.toFixed(2), rr: +(h.point.y - roofRule(B[bi])).toFixed(2), og: (h.object.name || '') + '|' + (h.object.parent ? h.object.parent.name || h.object.parent.type : '') + '|' + (h.object.geometry && h.object.geometry.attributes.position ? h.object.geometry.attributes.position.count : 0), sc }; } } }); } }
-      if (n) out.urti.push(Object.assign({ i: P.i, tipo: P.tipo4 || 'passerella', n, cm: Math.round(peggio * 100), L: +P.L.toFixed(2), s1: P.s1, s2: +P.s2.toFixed(2), k: P.prof.k.map(q => q.map(v => +v.toFixed(2))) }, dove)); });
+      if (n) out.urti.push(Object.assign({ i: P.i, tipo: P.tipo4 || 'passerella', capi: B[P.a].id + '>' + B[P.b].id, sotto: bAt(dove.x, dove.y) >= 0 ? B[bAt(dove.x, dove.y)].id : '-', fa: +roofRule(B[P.a]).toFixed(2), n, cm: Math.round(peggio * 100), L: +P.L.toFixed(2), s1: P.s1, s2: +P.s2.toFixed(2), k: P.prof.k.map(q => q.map(v => +v.toFixed(2))) }, dove)); });
     return out;
+  }
+  // [tetti4] IL MODELLO VERO DECIDE: prima di disegnare le passerelle, la stessa misura di misuraPasserelle4 sui pianerottoli e sull'impalcato
+  // (non sulle scalette, che posano sul lastrico): se un solido vero sta sopra il fondo, i due pianerottoli si alzano di tanto (+1 cm) e il
+  // profilo si rifà. Il dato resta quello di Node; la pagina aggiunge solo i centimetri che il dato non sapeva (una cosa, un cornicione).
+  function affinaVero4(R) {
+    for (let giro = 0; giro < 3; giro++) { const M = misuraPasserelle4(R, true); if (!M.urti.length) return;
+      M.urti.forEach(u => { const P = PLANKS[u.i]; if (!P || u.sc) return; P.alzaVero4 = (P.alzaVero4 || 0) + u.cm / 100 + .01; profilo4(P); }); }
   }
   if (typeof window !== 'undefined') window.__passerelle4 = () => { const pv = window.__pv; return pv && pv.R && window.THREE ? misuraPasserelle4(pv.R) : null; };
   function scanRoof(R, bi) { const J = scanStart(R, bi); if (J === null) return true; if (!J) return false; return scanWork(J, Infinity); }
@@ -44843,6 +44850,7 @@ var Tetti = (function () {
   // le scale: due montanti, i pioli ogni 30 cm, la gabbia sopra i 2,5 m, il corrimano che scavalca il bordo del tetto
   function buildLaddersGfx(R) {
     const T3 = THREE, scene = R.__models.scene; if (!scene) return;
+    try { if (!GFX.affinato4) { affinaVero4(R); GFX.affinato4 = true; } } catch (e2) { if (!affinaVero4.err) { affinaVero4.err = 1; console.warn('[tetti4]', e2); } }
     if (GFX.meshes) GFX.meshes.forEach(m => { scene.remove(m); });
     const G3 = GFX.geo || (GFX.geo = ladderGeo()), rails = [], rungs = [], hoops = [], yel = [], lamps = [], boards = [], ropes = [], flags = [], crema = [], fondo = [], pietra = [], terra = [], verde = [], lastr = [];
     const m4 = new T3.Matrix4(), q = new T3.Quaternion(), e = new T3.Euler(), s3 = new T3.Vector3(), p3 = new T3.Vector3();
@@ -44913,7 +44921,7 @@ var Tetti = (function () {
     // la scaletta posa sul lastrico: due cosciali di ferro dal lastrico al pianerottolo e le pedate (di pietra, piene, per l'arco). I
     // montanti stanno sui longheroni, il corrimano li segue; i capi chiari sul filo dei due muri.
     function passerella4(P, yaw, pt) {
-      const K = P.prof.k, hw = P.hw, w2 = hw * 2, ferro = P.tipo4 === 'ponte', at = (s2, t, dy) => { const [x, z] = pt(s2); return [x + P.px * t, plankH(P, s2) + (dy || 0), z + P.py * t]; };
+      const K = profCur4(P).k, hw = P.hw, w2 = hw * 2, ferro = P.tipo4 === 'ponte', at = (s2, t, dy) => { const [x, z] = pt(s2); return [x + P.px * t, plankH(P, s2) + (dy || 0), z + P.py * t]; };
       const box4 = (arr, s2, t, y, l, hh, w) => { const [x, , z] = at(s2, t); e.set(0, yaw, 0); q.setFromEuler(e); arr.push(m4.compose(p3.set(x, y, z), q, s3.set(l, hh, w)).clone()); };
       const a0 = K[1][0], b1 = K[4][0];
       // l'impalcato, tratto per tratto fra i nodi
@@ -45271,15 +45279,23 @@ var Tetti = (function () {
     if (!CN3) return;
     PLANKS.forEach(P => {
       if (!PIANO[P.a] || !PIANO[P.b] || PIANO[P.a].tipo !== 'piano' || PIANO[P.b].tipo !== 'piano') return;
+      profilo4(P);
+    });
+  }
+  // [tetti4] nella pagina la quota delle case si assesta dopo (render.js posa le case sul terreno): il profilo si rifà quando cambia la quota
+  // di una delle due case (o di una vicina: si rifà comunque tutto il profilo), al primo uso dopo il cambio
+  function profCur4(P) { const p = P.prof; if (p && (Math.abs(p.ra - roofRule(B[P.a])) > 1e-4 || Math.abs(p.rb - roofRule(B[P.b])) > 1e-4)) profilo4(P); return P.prof; }
+  function profilo4(P) {
+    {
       const sp = (P.arco ? ARCO4 : FONDO4) + .015, larg = P.hw + .06, fa = roofRule(B[P.a]) + .08, fb = roofRule(B[P.b]) + .08;
       const solMax = (u0, u1) => { let m = -Infinity; for (let s2 = u0 - .1; s2 <= u1 + .1 + 1e-6; s2 += .05) for (let t = -larg - .05; t <= larg + .05 + 1e-6; t += (larg + .05) / 4) {   /* un poco più largo e più fitto della misura */ const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t; caseSotto4(x, y).forEach(bi => { m = Math.max(m, solido4(bi, x, y)); }); } return m; };
       const a0 = Math.max(.25, P.s1 - .45), b1 = Math.min(P.L - .25, P.s2 + .45);   // il pianerottolo copre il parapetto (28 cm) e la copertina (21), la scaletta il resto
       let Ha = solMax(a0, P.s1 + .14) + sp, Hb = solMax(P.s2 - .14, b1) + sp;
       // sopra il vicolo: se una gronda vicina sporge sotto la retta, si alzano i due pianerottoli
       let alza = 0; for (let s2 = P.s1 + .14; s2 <= P.s2 - .14 + 1e-6; s2 += .1) { const t0 = (s2 - P.s1 - .14) / Math.max(.1, P.s2 - P.s1 - .28), h = Ha + (Hb - Ha) * t0, m = solMax(s2, s2) + sp; if (m - h > alza) alza = m - h; }
-      Ha += alza; Hb += alza;
-      P.prof = { k: [[0, fa], [a0, Ha], [P.s1 + .14, Ha], [P.s2 - .14, Hb], [b1, Hb], [P.L, fb]], scala: [[0, a0], [b1, P.L]], fa, fb, pavimento: s2 => s2 < P.L / 2 ? fa : fb };
-    });
+      Ha += alza + (P.alzaVero4 || 0); Hb += alza + (P.alzaVero4 || 0);   // [tetti4] nella pagina, quanto chiede il modello vero (affinaVero4)
+      P.prof = { k: [[0, fa], [a0, Ha], [P.s1 + .14, Ha], [P.s2 - .14, Hb], [b1, Hb], [P.L, fb]], scala: [[0, a0], [b1, P.L]], fa, fb, pavimento: s2 => s2 < P.L / 2 ? fa : fb, ra: roofRule(B[P.a]), rb: roofRule(B[P.b]) };
+    }
   }
   profili4();
   // [tetti3] la verifica (test_tetti3.js e render.js): il conto per tetto, gli scopi, le compenetrazioni del piano, le salite che si vedono
@@ -45398,7 +45414,7 @@ var Tetti = (function () {
     const urti = [], perP = [];
     PLANKS.forEach(P => {
       const arco = !!P.arco, spess = arco ? ARCO4 : FONDO4, larg = P.hw + (arco ? .0 : .06); let n = 0, peggio = 0, dove = null;
-      const scala = P.prof ? P.prof.scala : null;   // [s0, s1] della scaletta sul lastrico, ai due capi
+      const scala = P.prof ? profCur4(P).scala : null;   // [s0, s1] della scaletta sul lastrico, ai due capi
       for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .1) {
         const inScala = scala && scala.some(([u0, u1]) => s2 >= u0 - 1e-6 && s2 <= u1 + 1e-6);
         if (arco && (s2 < P.s1 - .3 || s2 > P.s2 + .3) && !P.prof) continue;   // l'arco di prima disegnava solo il tratto sopra il vicolo
