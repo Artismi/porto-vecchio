@@ -102,7 +102,7 @@ var Azioni = (function () {
   const hasIn = (n, k) => !!(n.pop && n.pop.inv && n.pop.inv[k] > 0);
   const hasHome = (n, k) => !!(n.pop && n.pop.casa && n.pop.casa[k] > 0);
   const inHand = (n, k) => n.hand === k;
-  function give(n, k, q) { const P = n.pop; P.inv[k] = (P.inv[k] || 0) + (q || 1); if (ITEMS[k] && ITEMS[k].ammo && !P.ammo[k]) P.ammo[k] = ITEMS[k].ammo; }
+  function give(n, k, q) { const P = n.pop; if (!P) return; P.inv = P.inv || {}; P.ammo = P.ammo || {}; P.inv[k] = (P.inv[k] || 0) + (q || 1); if (ITEMS[k] && ITEMS[k].ammo && !P.ammo[k]) P.ammo[k] = ITEMS[k].ammo; }
   function takeAway(n, k, q) { const P = n.pop; P.inv[k] = Math.max(0, (P.inv[k] || 0) - (q || 1)); if (!P.inv[k]) { delete P.inv[k]; if (n.hand === k) n.hand = null; } }
   function equip(st, n, k) { if (!hasIn(n, k)) return false; n.hand = k; if (ITEMS[k] && ITEMS[k].weapon && ITEMS[k].gun) n.pop.ammo[k] = n.pop.ammo[k] || ITEMS[k].ammo; return true; }
   function unequip(n) { n.hand = null; }

@@ -416,7 +416,7 @@ var Models = (function () {
     if (P.cava) { put('contCorto', P.cava.x + 6, P.cava.y + 4, .5); }
     // guardie della Tutela ai posti di blocco: sentinelle armate, ferme
     await Promise.all(['Soldier', 'Casual_2', 'Worker'].map(loadChar)); prepGuns();
-    const guard = (x, z, ry, gun, who) => { const g = person(null, who || 'cop'); if (!g) return; g.position.set(x, (R.groundH ? R.groundH(x, z) : .4), z); g.rotation.y = ry; scene.add(g); dyn.guards.push({ g, gun }); };
+    const guard = (x, z, ry, gun, who) => { const g = (Models.person && Models.person.__personaggi ? Models.person : person)(null, who || 'cop'); /* [personaggi] le sentinelle sono figure nuove (con ?vecchiagente restano come prima) */ if (!g) return; g.position.set(x, (R.groundH ? R.groundH(x, z) : .4), z); g.rotation.y = ry; scene.add(g); dyn.guards.push({ g, gun }); };
     if (P.rocca) { const rx = P.rocca.x, rz = P.rocca.y; guard(rx - 3, rz + 13, 0, 'AK'); guard(rx + 3, rz + 13, 0, 'AK'); guard(rx - 12, rz + 6, .8, 'SMG'); guard(rx + 10, rz + 4, -.6, 'AK', 'hazmat'); }
     if (PL) { const a = PL.carri[0], c = PL.container[0]; if (a) { guard(a.x - 1, a.z - PL.CARRO.hz - 1.6, 0, 'AK'); guard(a.x + PL.CARRO.passo * 1.5, a.z - PL.CARRO.hz - 1.8, .3, 'AK'); } if (c) guard(c.x + PL.CONT.hx + 1.3, c.z + 1, -Math.PI / 2, 'AK'); }   // [spianata2] di guardia ai carri e ai container
     else if (P.poligono) { const x = P.poligono.x, z = P.poligono.y; guard(x - 1, z - 4, 0, 'AK'); guard(x + 3, z - 4, .3, 'AK'); guard(x - 10, z - 4, .5, 'AK'); guard(x + 12, z + 6, -.8, 'SMG', 'hazmat'); }
