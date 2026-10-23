@@ -114,11 +114,11 @@ function quadro(q, tagli, nx, ny, img) {
 const caseVicine = (x, z, R) => CASA.filter(c => c.x1 > x - R && c.x0 < x + R && c.z1 > z - R && c.z0 < z + R && !c.b.pezzo);
 const BOX = CASA.map(c => ({ c, box3: { min: { x: c.x0, y: c.base, z: c.z0 }, max: { x: c.x1, y: c.gr + 2.5, z: c.z1 } }, geo: { y0: c.base }, b: c.b, i: c.i, gr: c.gr }));
 const boxVicine = (x, z, R) => BOX.filter(o => o.c.x1 > x - R && o.c.x0 < x + R && o.c.z1 > z - R && o.c.z0 < z + R && !o.c.b.pezzo);
-function simula(nome, campioni, tel) {
+function simula(nome, campioni, tel, mappa) {   // mappa: un altro Visuale.mappa (gli strumenti che contano i passi)
   const K = IQ.VARIANTI[nome], S = {}, out = [], dt = PASSO / 1.4;
   campioni.forEach((s, idx) => {
     const fy = suolo(s.x, s.z), dir = s.dir;   // dir: la direzione di marcia in pianta (atan2(dz, dx))
-    const r = IQ.passo(S, { x: s.x, z: s.z, fy, dir, vel: 1.4, tel, yaw0: YAW, base: PITCH, rete: RETE, mappa: M, V, v: K,
+    const r = IQ.passo(S, { x: s.x, z: s.z, fy, dir, vel: 1.4, tel, yaw0: YAW, base: PITCH, rete: RETE, mappa: mappa || M, V, v: K,
       dist: VIEW * ZOOM * (tel ? .78 : 1) / 2 / TAN15, vicine: R => boxVicine(s.x, s.z, R) }, idx === 0 ? 10 : dt);
     const q = { x: s.x, z: s.z, fy, yaw: r.yaw, pitch: r.pitch, z4: r.zoom, tel }, tagli = new Map(); r.tagli.forEach((y, o) => tagli.set(o.i, y));
     const m = quadro(q, tagli);
