@@ -401,7 +401,7 @@ var Percorsi = (function () {
       if (!best) return null;
       const bs = [best.L.bi].concat(best.pass.map(e => e.b)); bs.forEach(i => usati.add(i));
       const pts = [[best.L.fx, best.L.fy], [best.L.tx, best.L.ty]].concat(best.pass.map(e => [e.x, e.y])).concat([[best.M.tx, best.M.ty], [best.M.fx, best.M.fy]]);
-      const c = { id: Z.id, nome: Z.nome, k: 'tetti', fuoriBorgo: !!Z.fuoriBorgo, sali: best.L.i, scendi: best.M.i, edifici: bs, passi: best.pass.map(passo4), pts, L: best.Lr, crema: best.crema };
+      const c = { id: Z.id, nome: Z.nome, k: 'tetti', fuoriBorgo: !!Z.fuoriBorgo || !(pts[0][0] > BORGO.x0 && pts[0][0] < BORGO.x1 && pts[0][1] > BORGO.y0 && pts[0][1] < BORGO.y1), sali: best.L.i, scendi: best.M.i, edifici: bs, passi: best.pass.map(passo4), pts, L: best.Lr, crema: best.crema };
       CIRCUITI.push(c); return c;
     }
     ZONE.forEach(Z => cerca(Z, i => inZ(Z, i)));

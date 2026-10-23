@@ -195,7 +195,7 @@ var Tetti = (function () {
   function edgeH(bi, wx, wy, ox, oy) { let h = -Infinity; for (let d = .15; d <= .9; d += .25) { const v = roofH(bi, wx - ox * d, wy - oy * d); if (v !== null && v > h) h = v; } return h > -Infinity ? h : roofRule(B[bi]); }
   function plankHs(P) {
     const key = (B[P.a].__rH ? 1 : 0) + (B[P.b].__rH ? 2 : 0); if (P.__k === key) return P.__h;
-    const fa = roofH(P.a, P.x0, P.y0) ?? roofRule(B[P.a]), fb = roofH(P.b, P.wb[0] + P.ox * PIN, P.wb[1] + P.oy * PIN) ?? roofRule(B[P.b]);
+    const fa = roofH(P.a, P.x0, P.y0) ?? roofRule(B[P.a]), fb = roofH(P.b, P.wb[0] + P.ox * (P.pin || PIN), P.wb[1] + P.oy * (P.pin || PIN)) ?? roofRule(B[P.b]);   /* [tetti4] P.pin: sulle case di una casella la rampa entra meno */
     const ea = Math.max(fa, edgeH(P.a, P.wa[0], P.wa[1], P.ox, P.oy)), eb = Math.max(fb, edgeH(P.b, P.wb[0], P.wb[1], -P.ox, -P.oy));
     P.__k = key; return (P.__h = [fa, ea + .04, eb + .04, fb]);
   }
@@ -320,7 +320,7 @@ var Tetti = (function () {
           if (v5 && (b.era === 'E3' || c.era === 'E3' || R.length < 2)) return;
           const ha = roofRule(b), hc = roofRule(c), dh = hc - ha; let tipo = null, costo = 0;
           if (g === 0) { if (dh <= 1.2 || dh > 4.9) return; tipo = 'scaletta'; costo = 1 + dh * .15; }   // b più basso, c più alto: la scala sul muro di c
-          else { if (Math.abs(dh) > 2.45 || (R.length < 2 && g > 1) || (ox ? Math.min(b.w, c.w) : Math.min(b.h, c.h)) < 2) return;   // le teste delle assi entrano un metro e mezzo: case profonde almeno due caselle nel verso del passaggio if (g === 1 && Math.abs(dh) <= 1.2 && JUMPS.some(J => (J.bi === bi && J.bj === o) || (J.bi === o && J.bj === bi))) return;
+          else { if (Math.abs(dh) > 2.45 || (R.length < 2 && g > 1)) return; if (g === 1 && Math.abs(dh) <= 1.2 && JUMPS.some(J => (J.bi === bi && J.bj === o) || (J.bi === o && J.bj === bi))) return;
             tipo = v5 ? 'arco' : (b.era === 'E3' || c.era === 'E3') ? (g >= 2 ? 'ponte' : 'passerella') : g <= 2 ? 'arco' : 'passerella'; costo = 1.4 + g * .5 + Math.abs(dh) * .2 + (v5 ? 1.5 : 0); }
           const m = R[Math.floor(R.length / 2)], pk = Math.min(bi, o) + ':' + Math.max(bi, o), q = cand.get(pk);
           const ks = R.slice().sort((u, v) => Math.abs(u - m) - Math.abs(v - m));   // [tetti4] la posizione di mezzo, poi le altre: se una è occupata si prova la vicina
@@ -347,8 +347,9 @@ var Tetti = (function () {
         if (passi.some(([x, y]) => hyp(x - cx, y - cy) < sep)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, '9m']), false);
         if (C.v5 && archi5.some(([x, y]) => hyp(x - cx, y - cy) < 30)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, '30m']), false);   // sopra la Rua e la Marina un arco ogni 30 m (LEGGIBILITA.md)
         if (lad0.some(([x, y]) => hyp(x - wx, y - wy) < 1.8 || hyp(x - wx - ox * gap, y - wy - oy * gap) < 1.8)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'scala vicina2']), false);
-        const P = { i: PLANKS.length, a: C.a, b: C.b, ox, oy, px: -oy, py: ox, hw: C.tipo === 'arco' ? .6 : PHW, gap, x0: wx - ox * PIN, y0: wy - oy * PIN, wa: [wx, wy], wb: [wx + ox * gap, wy + oy * gap], arco: C.tipo === 'arco', tipo4: C.tipo };
-        P.L = PIN * 2 + gap; P.s1 = PIN; P.s2 = PIN + gap;
+        const pin = (ox ? Math.min(B[C.a].w, B[C.b].w) : Math.min(B[C.a].h, B[C.b].h)) >= 2 ? PIN : .9;   // la testa delle assi entra un metro e mezzo; sulle case di una casella (2 m) novanta centimetri
+        const P = { i: PLANKS.length, a: C.a, b: C.b, ox, oy, px: -oy, py: ox, hw: C.tipo === 'arco' ? .6 : PHW, gap, pin, x0: wx - ox * pin, y0: wy - oy * pin, wa: [wx, wy], wb: [wx + ox * gap, wy + oy * gap], arco: C.tipo === 'arco', tipo4: C.tipo };
+        P.L = pin * 2 + gap; P.s1 = pin; P.s2 = pin + gap;
         PLANKS.push(P); passi.push([cx, cy]); if (C.v5) { archi5.push([cx, cy]); P.via5 = true; } (C.tipo === 'arco' ? RETE4.archi : RETE4.passerelle).push(P.i);
         for (let s2 = 0; s2 <= P.L; s2 += .5) for (const t of [-P.hw, 0, P.hw]) { const x = P.x0 + ox * s2 + P.px * t, y = P.y0 + oy * s2 + P.py * t, ck = Math.floor(y / TS) * GW + Math.floor(x / TS);
           const A = PCELL.get(ck) || PCELL.set(ck, []).get(ck); if (A.indexOf(P) < 0) A.push(P); }
