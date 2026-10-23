@@ -3106,6 +3106,17 @@ var World = (function () {
           g[i] = T.QUAY; W.zone[i] = Z.CITTA; W.elev[i] = Math.max(W.elev[i], hq > -9 ? Math.min(hq, 1.2) : .8); nq++;
           for (const [a, c] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const k = (ty + c) * VWx + tx + a; W.vh[k] = Math.max(W.vh[k], W.elev[i]); } } });
       W.SEA.calate = nq; }
+    // [costa] le case del Molo Vecchio seguono la curva del molo: ognuna gira (al più 32°, come le case delle vie storte, b.rot) secondo il
+    // tratto di molo più vicino; se il rettangolo girato urta una vicina l'angolo si dimezza, fino a tre volte, poi resta dritta
+    { const mv = (W.SEA.structs || []).find(st => st.id === 'molo_vecchio'); let nr = 0;
+      if (mv) { const P = mv.pts, rect = (b, a) => { const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, hw = b.w * TS / 2 - .05, hh = b.h * TS / 2 - .05, c = Math.cos(a), sn = Math.sin(a); return [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].map(([x, y]) => [cx + x * c - y * sn, cy + x * sn + y * c]); };
+        const sat = (A, B) => { for (const Q of [A, B]) for (let i = 0; i < 4; i++) { const p0 = Q[i], p1 = Q[(i + 1) % 4], nx = p1[1] - p0[1], ny = p0[0] - p1[0]; let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9; A.forEach(p => { const d = p[0] * nx + p[1] * ny; a0 = Math.min(a0, d); a1 = Math.max(a1, d); }); B.forEach(p => { const d = p[0] * nx + p[1] * ny; b0 = Math.min(b0, d); b1 = Math.max(b1, d); }); if (a1 <= b0 || b1 <= a0) return false; } return true; };
+        const near = b => { const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS; let best = null, bd = 1e9; for (let k = 1; k < P.length; k++) { const [ax, ay] = P[k - 1], [bx, by] = P[k], ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey, t = Math.max(0, Math.min(1, ((cx - ax) * ex + (cy - ay) * ey) / L2)), d = Math.hypot(cx - ax - ex * t, cy - ay - ey * t); if (d < bd) { bd = d; best = Math.atan2(ey, ex); } } return [bd, best]; };
+        const cand = W.BUILDINGS.filter(b => !b.military && !b.rot && near(b)[0] < 12);
+        cand.forEach(b => { let a = near(b)[1]; a = ((a + Math.PI / 4) % (Math.PI / 2) + Math.PI / 2) % (Math.PI / 2) - Math.PI / 4; if (Math.abs(a) < .06) return; a = Math.max(-.56, Math.min(.56, a));
+          const vic = W.BUILDINGS.filter(o => o !== b && Math.abs(o.x - b.x) < 10 && Math.abs(o.y - b.y) < 10);
+          for (let t = 0; t < 4; t++, a /= 2) { const R0 = rect(b, a); if (!vic.some(o => sat(R0, rect(o, o.rot || 0)))) { b.rot = +a.toFixed(3); delete b.norot; nr++; break; } } }); }
+      W.SEA.caseGirate = nr; }
     for (let ty = 1; ty < GHx - 1; ty++) for (let tx = 1; tx < GWx - 1; tx++) { const i = ty * GWx + tx; if (!fatti[i]) continue;
       for (const [a, c, ex, ey, ux, uy] of [[1, 0, 1, 0, 0, 1], [-1, 0, 0, 0, 0, 1], [0, 1, 0, 1, 1, 0], [0, -1, 0, 0, 1, 0]]) { if (g[(ty + c) * GWx + tx + a] !== T.SAND) continue;
         lati.push({ x: (tx + ex) * TS, y: (ty + ey) * TS, ux, uy, L: TS, nx: a, ny: c, citta: tx >= CITTA_X }); } }   // il lato: da (x, y) lungo (ux, uy) per L metri; (nx, ny) verso la sabbia

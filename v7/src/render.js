@@ -2912,11 +2912,58 @@ var Render = (function () {
     return g;
   }
 
+  // [riva] LE BANCHINE CURVE. I muri seguivano i lati delle caselle: ogni tratto in diagonale o in curva era una scala (il committente:
+  // «zone spigolose che dovrebbero essere curve»). Ora il contorno delle banchine si percorre come una catena di lati; dove fa la scala
+  // (un rientro fra due spigoli sporgenti, coi gradini fino a 2 caselle) il muro passa per gli spigoli sporgenti e il dente fra i
+  // gradini si riempie col lastrico alla quota della banchina (le «zeppe»): così il bordo è una linea continua. Restano gli spigoli
+  // veri (le teste dei moli, gli angoli di più di due caselle) e le insenature di una casella (gli scali, i posti barca).
+  function banchineCurve9(sea, quad, pos, uv, apos, auv, edges) {
+    const T = G.T, E = new Map(), key = (x, y) => x + ',' + y;
+    for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) { if (gT(tx, ty) !== T.QUAY) continue;
+      [[0, -1, [0, 0], [1, 0]], [1, 0, [1, 0], [1, 1]], [0, 1, [1, 1], [0, 1]], [-1, 0, [0, 1], [0, 0]]].forEach(([dx, dy, A, B]) => { if (!sea(tx + dx, ty + dy)) return;
+        const a = [tx + A[0], ty + A[1]], b = [tx + B[0], ty + B[1]]; E.set(key(a[0], a[1]) + '>' + dx + ',' + dy, { a, b, dx, dy, used: false }); }); }
+    const out = new Map(); E.forEach(e => { const k = key(e.a[0], e.a[1]); (out.get(k) || out.set(k, []).get(k)).push(e); });
+    const nxt = e => { const L = out.get(key(e.b[0], e.b[1])); if (!L) return null; return L.find(q => !q.used) || null; };
+    const zeppe = [], ZP = [];
+    E.forEach(e0 => { if (e0.used) return;
+      // la catena (chiusa o aperta), vertici in caselle
+      const ch = []; let e = e0; while (e && !e.used) { e.used = true; ch.push(e); e = nxt(e); }
+      if (!ch.length) return; const closed = ch.length > 2 && ch[0].a[0] === ch[ch.length - 1].b[0] && ch[0].a[1] === ch[ch.length - 1].b[1];
+      let V = ch.map(q => q.a.slice()); V.push(ch[ch.length - 1].b.slice());
+      // i lati collineari uniti
+      const merge = P => { const o = [P[0]]; for (let i = 1; i < P.length - 1; i++) { const a = o[o.length - 1], b = P[i], c = P[i + 1]; if ((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]) === 0) continue; o.push(b); } o.push(P[P.length - 1]); return o; };
+      V = merge(V);
+      // i rientri della scala: un vertice concavo fra due convessi, coi lati di 1-2 caselle
+      const cr = (a, b, c) => (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]), len = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const conv = i => { const n = V.length; if (!closed && (i === 0 || i === n - 1)) return true; const a = V[(i - 1 + n - (closed ? 1 : 0)) % (n - (closed ? 1 : 0))], b = V[i], c = V[(i + 1) % (n - (closed ? 1 : 0))]; return cr(a, b, c) > 0; };
+      const togli = new Set(), sposta = new Map(), N = V.length - (closed ? 1 : 0);
+      for (let i = 0; i < N; i++) { if (!closed && (i === 0 || i === N - 1)) continue; const a = V[(i - 1 + N) % N], b = V[i], c = V[(i + 1) % N]; if (cr(a, b, c) >= 0) continue;
+        const ia = (i - 1 + N) % N, ic = (i + 1) % N; if (!conv(ia) || !conv(ic)) continue; const la = len(a, b), lc = len(b, c);
+        if (la <= 2 && lc <= 2) { togli.add(i); zeppe.push([a, b, c]); continue; }   // il gradino della scala: via
+        if (Math.min(la, lc) <= 1) {   // un gradino corto contro un lato lungo: lo smusso, per due caselle lungo il lato lungo
+          const [o, L0] = la < lc ? [c, lc] : [a, la], t = 2 / L0, q = [b[0] + (o[0] - b[0]) * t, b[1] + (o[1] - b[1]) * t]; sposta.set(i, q); zeppe.push(la < lc ? [a, b, q] : [q, b, c]); } }
+      const W2 = []; for (let i = 0; i < V.length; i++) { const ii = i % N; if (togli.has(ii) && !(closed && i === V.length - 1 && !togli.has(0))) continue; W2.push(sposta.has(ii) ? sposta.get(ii) : V[i]); }
+      if (closed && W2.length && (W2[0][0] !== W2[W2.length - 1][0] || W2[0][1] !== W2[W2.length - 1][1])) W2.push(W2[0].slice());
+      // i muri lungo la catena nuova
+      for (let i = 0; i < W2.length - 1; i++) { const [ax0, ay0] = W2[i], [bx0, by0] = W2[i + 1], ax = ax0 * TS, az = ay0 * TS, bx = bx0 * TS, bz = by0 * TS, L = Math.hypot(bx - ax, bz - az); if (L < .01) continue;
+        const ux = (bx - ax) / L, uz = (bz - az) / L, nx = uz, nz = -ux;   // verso il mare (a sinistra della catena)
+        const ha = Math.max(VH(Math.round(ax0), Math.round(ay0)), .3), hb = Math.max(VH(Math.round(bx0), Math.round(by0)), .3), lo = -Math.min(5, seaDepth((ax + bx) / 2 + nx, (az + bz) / 2 + nz) + .5), u0 = (ax + az) / 3, u1 = u0 + L / 3;
+        quad(pos, uv, [bx, hb - .2, bz], [bx, lo, bz], [ax, lo, az], [ax, ha - .2, az], [u1, (hb - .2) / 2], [u1, lo / 2], [u0, lo / 2], [u0, (ha - .2) / 2]);
+        const ox = nx * .02, oz = nz * .02; quad(apos, auv, [bx + ox, WL + .25, bz + oz], [bx + ox, WL - .5, bz + oz], [ax + ox, WL - .5, az + oz], [ax + ox, WL + .25, az + oz], [1, 1], [1, 0], [0, 0], [0, 1]);
+        const obl = Math.abs(ux) > .01 && Math.abs(uz) > .01;
+        for (let s = 0; s < L - .01; s += TS) { const s1 = Math.min(L, s + TS), x0 = ax + ux * s, z0 = az + uz * s, x1 = ax + ux * s1, z1 = az + uz * s1; edges.push({ ax: x0, az: z0, bx: x1, bz: z1, h: (ha + hb) / 2, nx, nz, obl, tx: Math.floor((x0 + x1) / 2 / TS), ty: Math.floor((z0 + z1) / 2 / TS) }); } } });
+    // le zeppe: il lastrico nei denti della scala, alla quota della banchina
+    zeppe.forEach(([a, b, c]) => { const hv0 = p => VH(Math.round(p[0]), Math.round(p[1])), h = Math.max(.3, (hv0(a) + hv0(c)) / 2) + .005; ZP.push(a[0] * TS, h, a[1] * TS, c[0] * TS, h, c[1] * TS, b[0] * TS, h, b[1] * TS); });
+    if (ZP.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(ZP, 3)); g.computeVertexNormals(); const nm = g.attributes.normal; for (let i = 0; i < nm.count; i++) if (nm.getY(i) < 0) { nm.setXYZ(i, 0, 1, 0); }
+      const ms = new THREE.Mesh(g, std({ map: blockTex(), color: '#b4aea4', roughness: .95, side: THREE.DoubleSide })); ms.receiveShadow = true; ms.name = 'zeppe9'; scene.add(ms); }
+    window.__banchine9 = { zeppe: zeppe.length, lati: edges.length };
+  }
   // ---------- muri delle banchine e dei moli: ogni casella QUAY che dà sul mare (o sui massi) ha il suo muro fino al fondale ----------
   function buildQuayWalls() {
     const T = G.T, S = M.world.SEA, pos = [], uv = [], apos = [], auv = [], edges = [];
     const sea = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return true; const i = ty * G.GW + tx, v = gT(tx, ty); return (v === T.WATER && M.zone[i] === ZN.MARE) || (v === T.ROCK && M.zone[i] === ZN.CITTA && tileElev(tx, ty) < .8); };
     const quad = (P, U, a, b, c, d, ua, ub, uc, ud) => { [a, b, c, a, c, d].forEach(p => P.push(p[0], p[1], p[2])); [ua, ub, uc, ua, uc, ud].forEach(q => U.push(q[0], q[1])); };
+    if (RIVA9()) { banchineCurve9(sea, quad, pos, uv, apos, auv, edges); } else
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       if (gT(tx, ty) !== T.QUAY) continue;
       [[0, -1, 0], [1, 0, 1], [0, 1, 2], [-1, 0, 3]].forEach(([dx, dy, side]) => {
@@ -2936,8 +2983,8 @@ var Render = (function () {
     // le copertine di pietra chiara sul bordo, le bitte, le scalette di ferro, i parabordi di copertone sulla Calata
     const capM = sm('#b8b2a6'), iron = PM.iron(), rubber = sl('#141416'); let k = 0;
     edges.forEach(e => {
-      const L = Math.hypot(e.bx - e.ax, e.bz - e.az), cx = (e.ax + e.bx) / 2, cz = (e.az + e.bz) / 2, cap = box(e.nx ? .5 : L + .5, .22, e.nx ? L + .5 : .5, capM);
-      cap.position.set(cx - e.nx * .2, e.h - .08, cz - e.nz * .2); addStatic(cap); k++;
+      const L = Math.hypot(e.bx - e.ax, e.bz - e.az), cx = (e.ax + e.bx) / 2, cz = (e.az + e.bz) / 2, cap = box(e.obl ? .6 : e.nx ? .5 : L + .5, .22, e.obl ? L + .12 : e.nx ? L + .5 : .5, capM);
+      cap.position.set(cx - e.nx * .2, e.h - .08, cz - e.nz * .2); if (e.obl) cap.rotation.y = Math.atan2(e.bx - e.ax, e.bz - e.az); addStatic(cap); k++;   // [riva] sul muro storto la copertina lo segue
       if (k % 5 === 2) bitta(cx - e.nx * .7, cz - e.nz * .7);
       if (k % 13 === 6) { const g = G0(), dn = Math.min(e.h - WL + 1.2, 3.6); [-.22, .22].forEach(o => add(g, box(.05, dn, .05, iron), o, -dn / 2 + .1, 0)); for (let y = 0; y < dn; y += .32) add(g, box(.5, .04, .04, iron), 0, -y, 0); g.position.set(cx + e.nx * .06, e.h, cz + e.nz * .06); g.rotation.y = Math.atan2(e.nx, e.nz); addStatic(g); }
       if (k % 7 === 3 && e.h < 1) { const t = new THREE.Mesh(new THREE.TorusGeometry(.36, .13, 5, 10), rubber); t.position.set(cx + e.nx * .15, e.h - .7, cz + e.nz * .15); t.rotation.y = Math.atan2(e.nz, e.nx) + Math.PI / 2; addStatic(t); }
