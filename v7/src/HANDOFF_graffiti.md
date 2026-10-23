@@ -238,3 +238,17 @@ Il problema non erano le lettere ma il contorno: pupazzi da clip-art, slogan, pa
 - **Adesivi**: via quello con la faccina. **Pixo verticale**: il margine, le lettere non escono più dal muro.
 - Nota per la galleria: le cose piccole (tag, adesivi) vanno guardate a ppm alto (`... 4 200 2`), altrimenti il canvas è di
   pochi pixel stirati e sembrano sgranate anche se nel gioco non lo sono.
+
+### Graffiti 5, quarta passata: la materia e la mano del writer
+- **La materia** (`handify`): la vernice prende la grana del muro da due campi di rumore correlato (la superficie fine, le chiazze
+  delle passate) al posto del rumore pixel per pixel; nei pori dell'intonaco lo spray non entra (puntini d'ombra). La nebbia
+  sfocata dietro il lavoro scende dal 75% al 32% (inchiostro 18%), quella larga dal 20% al 10%; l'overspray sono puntini fitti
+  vicino al bordo che si diradano (`r() * r()`), più numerosi.
+- **Il contorno netto**: il contorno esterno e la linea interna non sono più ruvidi (rough .3 → .06, .12 → .04): è la parte più
+  pulita di un pezzo, fatta per ultima.
+- **`graffitize`** sulle lettere dai font: il calcio che esce dalla prima lettera in basso a sinistra (attaccato al pixel più basso
+  della lettera) e la freccia che parte dall'ultima in alto a destra, solo se c'è spazio nel riquadro. I tagli attraverso il nome
+  sono stati provati e tolti: sembravano un cross.
+- Via il tratteggio a righe che si aggiungeva da solo a un riempimento su tre (sembrava un filtro).
+- Da valutare: la risoluzione dei lavori grandi (`PPM` 100 per metro, `TKS` solo per gli stili piccoli). Un pezzo di 4,8 m è largo
+  480 px; da vicino nel gioco viene stirato. Alzarla a ×1,5 costa circa 2,25 volte la memoria di ogni velo e delle sue 4 tappe.

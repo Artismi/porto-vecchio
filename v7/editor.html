@@ -37432,16 +37432,20 @@ var WriterArte = (function () {
     // [graffiti4] la vernice sul muro: un filo spenta (la polvere, il sole), coperta a passate (dove la passata è scarica il muro
     // si vede sotto), e se il lavoro è vecchio sbiadita, sporca, scrostata
     const age = opt && opt.age ? opt.age : 0, dull = opt && opt.noSpray ? 0 : .1 + age * .3, thin = opt && opt.noSpray ? 0 : .1 + age * .25;
+    // [graffiti5] la materia: la vernice prende la grana del muro (a chiazzette, non pixel per pixel), le passate fanno nuvole più cariche
+    // e più scariche, e nei pori dell'intonaco lo spray non entra (puntini d'ombra)
+    const G1 = noiseField(W, H, seed ^ 0x1f3, Math.max(1.6, H * .0032)).data, G2 = noiseField(W, H, seed ^ 0x2e5, Math.max(3, H * .014)).data;
     for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
       const [dx0, dy0] = f(xx, yy), [dx1, dy1] = f2(xx, yy), sx = clamp(xx + dx0 + dx1, 0, W - 1.001), sy = clamp(yy + dy0 + dy1, 0, H - 1.001), x0 = sx | 0, y0 = sy | 0, ax = sx - x0, ay = sy - y0, i00 = (y0 * W + x0) * 4, i10 = i00 + 4, i01 = i00 + W * 4, i11 = i01 + 4, o = (yy * W + xx) * 4;
       for (let c = 0; c < 4; c++) D[o + c] = (S[i00 + c] * (1 - ax) + S[i10 + c] * ax) * (1 - ay) + (S[i01 + c] * (1 - ax) + S[i11 + c] * ax) * ay;
       if (D[o + 3] > 8 && !(opt && opt.noSpray)) {   // [writer] la vernice copre a nuvole (passate più cariche e più scariche), la grana fine, qualche buco dove si vede il muro
-        const cl = Math.sin(xx * .021 + ph1) * Math.sin(yy * .029 + ph2) + Math.sin((xx + yy * .7) * .013 + ph3) * .6, cl2 = Math.sin(xx * .06 + yy * .011 + ph4) * Math.sin(yy * .05 - xx * .02 + ph1), gr = rg() - .5, m = 1 + cl * .06 + cl2 * .03 + gr * .08;
+        const cl = Math.sin(xx * .021 + ph1) * Math.sin(yy * .029 + ph2) + Math.sin((xx + yy * .7) * .013 + ph3) * .6, cl2 = Math.sin(xx * .06 + yy * .011 + ph4) * Math.sin(yy * .05 - xx * .02 + ph1), gr = rg() - .5, n1 = G1[o] / 255 - .5, n2 = G2[o] / 255 - .5, m = 1 + cl * .05 + cl2 * .025 + n2 * .09 + n1 * .08 + gr * .025;
         let R0 = D[o] * m, G0 = D[o + 1] * m, B0 = D[o + 2] * m; const lu = R0 * .3 + G0 * .59 + B0 * .11;
         R0 += (lu - R0) * dull + (196 - R0) * age * .12; G0 += (lu - G0) * dull + (188 - G0) * age * .12; B0 += (lu - B0) * dull + (172 - B0) * age * .12;   // spenta verso il grigio, e verso il colore del muro se vecchia
         D[o] = clamp(R0, 0, 255); D[o + 1] = clamp(G0, 0, 255); D[o + 2] = clamp(B0, 0, 255);
         const cover = 1 - thin * clamp(.5 - cl * .45 - cl2 * .3 + gr * .5, 0, 1);   // la copertura: il muro passa sotto le passate scariche
         D[o + 3] *= cover; if (rg() < .003 + age * .01) D[o + 3] *= .3;
+        if (n1 > .41) { D[o] *= .78; D[o + 1] *= .78; D[o + 2] *= .78; D[o + 3] *= .9; }   // il poro: l'ombra del buchino dove lo spray non è entrato
       }
     }
     x.putImageData(dst, 0, 0);
@@ -37458,11 +37462,11 @@ var WriterArte = (function () {
     { const k0 = cv(W, H), k0x = k0.getContext('2d'); k0x.filter = `blur(${Math.max(crisp ? .3 : .45, H * (crisp ? .001 : .0022)).toFixed(2)}px)`; k0x.drawImage(cnv, 0, 0); x.clearRect(0, 0, W, H); x.drawImage(k0, 0, 0); }   // [writer] niente bordi da vettoriale: lo spray ammorbidisce sempre un filo
     // 2. la nebbia: una copia sfocata dietro (lo spray non ha mai il bordo netto come un pennarello)
     const k = cv(W, H), kx = k.getContext('2d'); kx.filter = `blur(${Math.max(1, H * .006).toFixed(1)}px)`; kx.drawImage(cnv, 0, 0); kx.filter = 'none';
-    x.save(); x.globalCompositeOperation = 'destination-over'; x.globalAlpha = crisp ? .3 : .75; x.drawImage(k, 0, 0); x.restore();
-    { const m2 = cv(W, H), mx2 = m2.getContext('2d'); mx2.filter = `blur(${Math.max(2, H * .02).toFixed(1)}px)`; mx2.drawImage(cnv, 0, 0); x.save(); x.globalCompositeOperation = 'destination-over'; x.globalAlpha = crisp ? .07 : .2; x.drawImage(m2, 0, 0); x.restore(); }   // [writer] la nebbia larga dell'overspray
+    x.save(); x.globalCompositeOperation = 'destination-over'; x.globalAlpha = crisp ? .18 : .32; x.drawImage(k, 0, 0); x.restore();   // [graffiti5] la nebbia stretta, appena: il resto lo fanno i puntini
+    { const m2 = cv(W, H), mx2 = m2.getContext('2d'); mx2.filter = `blur(${Math.max(2, H * .02).toFixed(1)}px)`; mx2.drawImage(cnv, 0, 0); x.save(); x.globalCompositeOperation = 'destination-over'; x.globalAlpha = crisp ? .05 : .1; x.drawImage(m2, 0, 0); x.restore(); }   // [writer] la nebbia larga dell'overspray
     // 3. la grana: puntini del colore del bordo, appena fuori
-    const r = mulberry(seed ^ 0x3c6ef3), img = x.getImageData(0, 0, W, H).data, n = Math.round(W * H / 45);
-    for (let i = 0; i < n; i++) { const px = Math.floor(r() * W), py = Math.floor(r() * H), j = (py * W + px) * 4; if (img[j + 3] < 200) continue; const a = r() * 6.283, d = 1 + r() * H * .022, qx = px + Math.cos(a) * d, qy = py + Math.sin(a) * d, jj = ((qy | 0) * W + (qx | 0)) * 4; if (qx < 0 || qy < 0 || qx >= W || qy >= H || img[jj + 3] > 60) continue; x.fillStyle = `rgba(${img[j]},${img[j + 1]},${img[j + 2]},${(.35 + r() * .5).toFixed(2)})`; const sz = r() < .15 ? 2 : 1; x.fillRect(qx, qy, sz, sz); }
+    const r = mulberry(seed ^ 0x3c6ef3), img = x.getImageData(0, 0, W, H).data, n = Math.round(W * H / (crisp ? 30 : 20));   // [graffiti5] l'overspray è fatto di puntini: fitti sul bordo, radi più in là
+    for (let i = 0; i < n; i++) { const px = Math.floor(r() * W), py = Math.floor(r() * H), j = (py * W + px) * 4; if (img[j + 3] < 200) continue; const a = r() * 6.283, d = 1 + r() * r() * H * .02, qx = px + Math.cos(a) * d, qy = py + Math.sin(a) * d, jj = ((qy | 0) * W + (qx | 0)) * 4; if (qx < 0 || qy < 0 || qx >= W || qy >= H || img[jj + 3] > 60) continue; x.fillStyle = `rgba(${img[j]},${img[j + 1]},${img[j + 2]},${(.3 + r() * .6).toFixed(2)})`; const sz = r() < .25 ? (H > 500 ? 2 : 1.5) : 1; x.fillRect(qx, qy, sz, sz); }
     return cnv;
   }
   // le passate del riempimento: strisce morbide più chiare e più scure, come le braccia che vanno avanti e indietro
@@ -37735,7 +37739,7 @@ var WriterArte = (function () {
       x.fillStyle = sc.shade; x.globalAlpha = .7; wave(b0 + hh * .82, S * .02, r() * 6, 2.4); x.fill(); x.globalAlpha = 1; }
     else if (kind !== 'piatto') { const y = b0 + hh * (.58 + r() * .14); x.fillStyle = sc.shade; wave(y, S * (.025 + r() * .03), r() * 6, 2 + r() * 2); x.fill();   // 'ombra': la parte bassa più scura, tagliata da un'onda
       if (r() < .4) { x.fillStyle = sc.light; x.globalAlpha = .8; x.beginPath(); x.moveTo(-5, -5); for (let xx = -5; xx <= Wp + 5; xx += S * .05) x.lineTo(xx, b0 + hh * .2 + Math.sin(xx / S * 2.6 + 1) * S * .02); x.lineTo(Wp + 5, -5); x.closePath(); x.fill(); x.globalAlpha = 1; } }   // e a volte la luce in alto
-    if (kind === 'tratteggio' || (kind !== 'sfuma' && kind !== 'macchie' && r() < .3)) {   // le passate del pennarello: parallele, ordinate, ognuna un po' più lunga o più corta
+    if (kind === 'tratteggio') {   // le passate del pennarello: parallele, ordinate, ognuna un po' più lunga o più corta
       const ang = -1.05 + (r() - .5) * .2, ca = Math.cos(ang), sa = Math.sin(ang), nx = -sa, ny = ca, step = S * (.045 + r() * .02), col = r() < .7 ? sc.shade : sc.light, cx0 = (a0 + a1) / 2, cy0 = (b0 + b1) / 2, R0 = hyp(ww, hh) / 2 + S; x.lineCap = 'round'; x.strokeStyle = col;
       for (let t = -R0; t < R0; t += step * (.85 + r() * .3)) { const L = hh * (.22 + r() * .35), o = (r() - .5) * hh * .6, px = cx0 + nx * t + ca * o, py = cy0 + ny * t + sa * o; x.globalAlpha = .35 + r() * .2; x.lineWidth = Math.max(1, S * (.011 + r() * .006)); x.beginPath(); x.moveTo(px - ca * L, py - sa * L); x.lineTo(px + ca * L, py + sa * L); x.stroke(); } x.globalAlpha = 1; }
     return c;
@@ -37773,7 +37777,7 @@ var WriterArte = (function () {
     if (BG) { lb.drawImage(tintTo(grow(BG.mask, ow * .8, .25, NF), sc.ink, Wp, Hp), 0, 0); lb.drawImage(BG.paint, 0, 0); }
     if (o.behind) o.behind(lb, U, box0);   // dietro le lettere (le punte sopra, la miccia)
     // il contorno esterno: grosso, e più grosso in basso a destra (dove cade l'ombra)
-    const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'), dw = o.dbl ? ow * .8 : 0; ox.drawImage(tintTo(grow(ALL, ow + dw, .3, NF), sc.ink, Wp, Hp), 0, 0); ox.drawImage(tintTo(grow(shiftC(ALL, ow * .35, ow * .45), ow + dw, .3, NF), sc.ink, Wp, Hp), 0, 0);
+    const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'), dw = o.dbl ? ow * .8 : 0; ox.drawImage(tintTo(grow(ALL, ow + dw, .06, NF), sc.ink, Wp, Hp), 0, 0); ox.drawImage(tintTo(grow(shiftC(ALL, ow * .35, ow * .45), ow + dw, .06, NF), sc.ink, Wp, Hp), 0, 0);   // [graffiti5] il contorno è la parte più pulita: fatto per ultimo, col tappo fine
     if (o.dbl) ox.drawImage(tintTo(grow(ALL, dw, .2, NF), o.dbl, Wp, Hp), 0, 0);   // il contorno doppio: un anello colorato fra le lettere e il nero
     // l'ombra o il 3D: pieno, il 3D che scurisce verso il fondo
     const SHL = cv(Wp, Hp), sx = SHL.getContext('2d'); if (o.extrude) { const g = cv(Wp, Hp), gx = g.getContext('2d'), gr = gx.createLinearGradient(0, box0[1], o.dx, box0[3] + o.dy); gr.addColorStop(0, sc.shadow); gr.addColorStop(1, mixC(sc.shadow, '#000000', .45)); gx.fillStyle = gr; gx.fillRect(0, 0, Wp, Hp); sx.drawImage(tintTo(SH, g, Wp, Hp), 0, 0);
@@ -37782,7 +37786,7 @@ var WriterArte = (function () {
     // le lettere: il riempimento solo (prima tappa) e poi lettera per lettera, da dietro, ognuna con la sua linea sottile sopra quella dietro
     const LF = cv(Wp, Hp), lf = LF.getContext('2d'), LFL = cv(Wp, Hp), ll = LFL.getContext('2d');
     for (let i = all.length - 1; i >= 0; i--) { const fi = tintTo(all[i], PAT, Wp, Hp); lf.drawImage(fi, 0, 0); ll.drawImage(fi, 0, 0);
-      const ring = minusC(grow(all[i], iw, .12, NF), all[i]); ll.drawImage(tintTo(ring, sc.inner, Wp, Hp), 0, 0);
+      const ring = minusC(grow(all[i], iw, .04, NF), all[i]); ll.drawImage(tintTo(ring, sc.inner, Wp, Hp), 0, 0);
       if (o.inner) o.inner(ll, i); }
     // le luci e i dettagli
     const HL = cv(Wp, Hp), hl = HL.getContext('2d'); if (o.hilite) o.hilite(hl, U);
@@ -38067,6 +38071,17 @@ var WriterArte = (function () {
     });
     return { masks, capH, lw, ids, groups, box: L.box };
   }
+  // ---- [graffiti5] dalle lettere di un font alle lettere di un writer: il calcio della prima che esce a sinistra, la freccia che parte
+  // dall'ultima (i tagli attraverso il nome no: sembravano un cross) ----
+  function graffitize(masks, S, r, Wp, Hp, q) {
+    const mg = Hp * .05, scan = (m, test) => { const A = m.getContext('2d').getImageData(0, 0, Wp, Hp).data, bb = bboxC(m); return test(A, bb); };
+    if (q > .3 && r() < .6) { const m = masks[0], P0 = scan(m, (A, bb) => { for (let y = Math.round(bb[3]); y > bb[3] - S * .25; y -= 2) for (let x = Math.round(bb[0]); x < bb[2]; x++) if (A[(y * Wp + x) * 4 + 3] > 128) return [x + S * .06, y - S * .02, bb]; return null; });   // il calcio
+      if (P0 && P0[0] - S * .45 > mg) { const [x0, y0] = P0, th = S * (.09 + r() * .04), L = S * (.32 + r() * .14), mx = m.getContext('2d'); mx.fillStyle = '#fff'; mx.beginPath(); mx.moveTo(x0 + S * .05, y0 - th * 1.2); mx.lineTo(x0 - L, y0 - th * .2 + S * .04); mx.lineTo(x0 - L - th * .5, y0 + S * .06); mx.lineTo(x0 + S * .05, y0 + S * .01); mx.closePath(); mx.fill(); } }
+    if (q > .35 && r() < .55) { const m = masks[masks.length - 1], P1 = scan(m, (A, bb) => { for (let x = Math.round(bb[2]); x > bb[0]; x -= 2) for (let y = Math.round(bb[1]); y < bb[1] + (bb[3] - bb[1]) * .45; y++) if (A[(y * Wp + x) * 4 + 3] > 128) return [x - S * .06, y + S * .05]; return null; });   // la freccia
+      if (P1 && P1[0] + S * .55 < Wp - mg && P1[1] - S * .45 > mg) { const [x0, y0] = P1, a = -(.55 + r() * .35), L = S * (.3 + r() * .1), ux = Math.cos(a), uy = Math.sin(a), th = S * .12, hx = x0 + ux * L, hy = y0 + uy * L, hs = S * .21, mx = m.getContext('2d');
+        mx.fillStyle = '#fff'; mx.beginPath(); mx.moveTo(x0 - uy * th / 2, y0 + ux * th / 2); mx.lineTo(hx - uy * th / 2, hy + ux * th / 2); mx.lineTo(hx + uy * th / 2, hy - ux * th / 2); mx.lineTo(x0 + uy * th / 2, y0 - ux * th / 2); mx.closePath(); mx.fill();
+        mx.beginPath(); mx.moveTo(hx + ux * hs * 1.1, hy + uy * hs * 1.1); mx.lineTo(hx - uy * hs * .75 - ux * hs * .15, hy + ux * hs * .75 - uy * hs * .15); mx.lineTo(hx + uy * hs * .75 - ux * hs * .15, hy - ux * hs * .75 - uy * hs * .15); mx.closePath(); mx.fill(); } }
+  }
   // ---- il pezzo a inchiostro: lettere costruite (block, semi, wild, a spine, 3D) ----
   function pieceInk(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
     const q = C.q, CN = w.cons || consOf(w.hand || w.seed || 1), sc = inkScheme(r, P), text = DEACC(w.words || w.aka || 'NINO').replace(/[^A-Z0-9]/g, '') || 'NINO';
@@ -38082,6 +38097,7 @@ var WriterArte = (function () {
       const fat = fpick[2] ? .025 + r() * .025 : 0, lay2 = fontLayout(text, fpick[0], { first: 1.1 + r() * .15, jit: .08, bounce: .04 + r() * .04, rot: .08 + r() * .08, skew: .1 + r() * .18, sx: .92 + r() * .2, sy: 1.02 + r() * .18, overlap: fat ? .01 + r() * .04 : .03 + r() * .06, wave: (r() - .5) * .14 }, r);
       const mg = Hp * (fat ? .045 : .025), FM = fontMasks(lay2, Wp, Hp, { x: LX + pad * .6 + mg, y: pad * .45 + mg, w: LWp - pad * 1.2 - Hp * d3k * .7 - mg * 2, h: Hp - pad * .9 - sloganH - Hp * d3k * .55 - mg * 2 }, fat);
       masks = FM.masks; S = FM.S; pieceCuts = FM.cuts; toPx = (l, [u, v]) => { const bb = l.bb; return [bb[0] + (bb[2] - bb[0]) * u / Math.max(.01, l.w), bb[1] + (bb[3] - bb[1]) * v]; }; L = masks.map(m => ({ w: 1, bb: bboxC(m) }));
+      graffitize(masks, S, r, Wp, Hp, q);
     } else if (semi) {   // [graffiti4] semi e wild: le lettere a pennellata
       const BL = brushLetters(text, CN, wild, r, LWp, Hp, Hp * .08, sloganH + Hp * d3k * .7); masks = BL.masks.map(m => { if (m.width === Wp && !LX) return m; const k = cv(Wp, Hp); k.getContext('2d').drawImage(m, LX, 0); return k; }); S = BL.capH;
       toPx = (l, [u, v]) => { const bb = l.bb; return [bb[0] + (bb[2] - bb[0]) * u / Math.max(.01, l.w), bb[1] + (bb[3] - bb[1]) * v]; };
@@ -38108,7 +38124,7 @@ var WriterArte = (function () {
     const bgk = r() < .3 ? 'cloud' : null;
     const border = r() < .55 ? S * (.04 + r() * .04) : 0;
     inkRender({ Wp, Hp, masks, sc, r, S, x, snap, paths, radii, seed: (w.seed || 1) * 7 + 5, ow, iw, dx, dy, extrude: true, border, inner: pieceCuts ? (ctx, i) => { const H = i < masks.length && pieceCuts(i); if (H) ctx.drawImage(tintTo(H, sc.inner, Wp, Hp), 0, 0); } : null, aura: r() < .05 ? mixC(sc.acc, '#ffffff', .2) : null, tone2: r() < .8 ? (r() < .75 ? 1 : -1) : 0, dbl: r() < .14 ? pickR(r, ['#f2d21a', '#3ad6f0', '#ffffff', sc.acc]) : null, dash: border && r() < .3, drips: r() < .2 ? 2 + Math.floor(r() * 4) : 0, dripLen: S * .4, dripW: S * .035, rim: r() < .3,
-      fillKind: pickR(r, (P.fills && r() < .5) ? P.fills.map(f => ({ macchie: 'macchie', sfumato: 'sfuma', strisce: 'strisce', split: 'ombra', scacchi: 'pois' })[f] || 'sfuma') : ['bande', 'bande', 'bande', 'sfuma', 'sfuma', 'ombra', 'ombra', 'taglio', 'taglio', 'strisce', 'mattoni', 'tratteggio', r() < .3 ? 'macchie' : 'bande']),
+      fillKind: pickR(r, (P.fills && r() < .5) ? P.fills.map(f => ({ macchie: 'macchie', sfumato: 'sfuma', strisce: 'strisce', split: 'ombra', scacchi: 'pois' })[f] || 'sfuma') : ['bande', 'bande', 'bande', 'sfuma', 'sfuma', 'ombra', 'ombra', 'taglio', 'taglio', 'strisce', 'mattoni', r() < .3 ? 'macchie' : 'bande']),
       bg: bgk ? (U, bx) => { const m = cv(Wp, Hp), mx = m.getContext('2d'), cx = (bx[0] + bx[2]) / 2, cy = (bx[1] + bx[3]) / 2, mg = Hp * .05, rx = Math.min((bx[2] - bx[0]) * .56, (cx - mg) / 1.3, (Wp - cx - mg) / 1.3), ry = Math.min((bx[3] - bx[1]) * .8, (cy - mg) / 1.3, (Hp - cy - mg) / 1.3); mx.fillStyle = '#fff';   // [graffiti4] dentro il riquadro: niente tagli dritti
           if (bgk === 'burst') { mx.beginPath(); const n = 18 + Math.floor(r() * 10); for (let k = 0; k < n * 2; k++) { const a = k / (n * 2) * PI * 2, rr = k % 2 ? .72 : .98 + r() * .3; mx.lineTo(cx + Math.cos(a) * rx * rr, cy + Math.sin(a) * ry * rr); } mx.closePath(); mx.fill(); }
           else { const ex = (bx[2] - bx[0]) / 2, ey = (bx[3] - bx[1]) / 2, n = 10 + Math.floor(r() * 5); mx.beginPath(); mx.ellipse(cx, cy, ex * .95, ey * .85, 0, 0, 7); mx.fill();   // la nuvola: bolle grosse attorno a un ovale, dentro il riquadro
@@ -40492,16 +40508,20 @@ var WriterArte = (function () {
     // [graffiti4] la vernice sul muro: un filo spenta (la polvere, il sole), coperta a passate (dove la passata è scarica il muro
     // si vede sotto), e se il lavoro è vecchio sbiadita, sporca, scrostata
     const age = opt && opt.age ? opt.age : 0, dull = opt && opt.noSpray ? 0 : .1 + age * .3, thin = opt && opt.noSpray ? 0 : .1 + age * .25;
+    // [graffiti5] la materia: la vernice prende la grana del muro (a chiazzette, non pixel per pixel), le passate fanno nuvole più cariche
+    // e più scariche, e nei pori dell'intonaco lo spray non entra (puntini d'ombra)
+    const G1 = noiseField(W, H, seed ^ 0x1f3, Math.max(1.6, H * .0032)).data, G2 = noiseField(W, H, seed ^ 0x2e5, Math.max(3, H * .014)).data;
     for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
       const [dx0, dy0] = f(xx, yy), [dx1, dy1] = f2(xx, yy), sx = clamp(xx + dx0 + dx1, 0, W - 1.001), sy = clamp(yy + dy0 + dy1, 0, H - 1.001), x0 = sx | 0, y0 = sy | 0, ax = sx - x0, ay = sy - y0, i00 = (y0 * W + x0) * 4, i10 = i00 + 4, i01 = i00 + W * 4, i11 = i01 + 4, o = (yy * W + xx) * 4;
       for (let c = 0; c < 4; c++) D[o + c] = (S[i00 + c] * (1 - ax) + S[i10 + c] * ax) * (1 - ay) + (S[i01 + c] * (1 - ax) + S[i11 + c] * ax) * ay;
       if (D[o + 3] > 8 && !(opt && opt.noSpray)) {   // [writer] la vernice copre a nuvole (passate più cariche e più scariche), la grana fine, qualche buco dove si vede il muro
-        const cl = Math.sin(xx * .021 + ph1) * Math.sin(yy * .029 + ph2) + Math.sin((xx + yy * .7) * .013 + ph3) * .6, cl2 = Math.sin(xx * .06 + yy * .011 + ph4) * Math.sin(yy * .05 - xx * .02 + ph1), gr = rg() - .5, m = 1 + cl * .06 + cl2 * .03 + gr * .08;
+        const cl = Math.sin(xx * .021 + ph1) * Math.sin(yy * .029 + ph2) + Math.sin((xx + yy * .7) * .013 + ph3) * .6, cl2 = Math.sin(xx * .06 + yy * .011 + ph4) * Math.sin(yy * .05 - xx * .02 + ph1), gr = rg() - .5, n1 = G1[o] / 255 - .5, n2 = G2[o] / 255 - .5, m = 1 + cl * .05 + cl2 * .025 + n2 * .09 + n1 * .08 + gr * .025;
         let R0 = D[o] * m, G0 = D[o + 1] * m, B0 = D[o + 2] * m; const lu = R0 * .3 + G0 * .59 + B0 * .11;
         R0 += (lu - R0) * dull + (196 - R0) * age * .12; G0 += (lu - G0) * dull + (188 - G0) * age * .12; B0 += (lu - B0) * dull + (172 - B0) * age * .12;   // spenta verso il grigio, e verso il colore del muro se vecchia
         D[o] = clamp(R0, 0, 255); D[o + 1] = clamp(G0, 0, 255); D[o + 2] = clamp(B0, 0, 255);
         const cover = 1 - thin * clamp(.5 - cl * .45 - cl2 * .3 + gr * .5, 0, 1);   // la copertura: il muro passa sotto le passate scariche
         D[o + 3] *= cover; if (rg() < .003 + age * .01) D[o + 3] *= .3;
+        if (n1 > .41) { D[o] *= .78; D[o + 1] *= .78; D[o + 2] *= .78; D[o + 3] *= .9; }   // il poro: l'ombra del buchino dove lo spray non è entrato
       }
     }
     x.putImageData(dst, 0, 0);
@@ -40518,11 +40538,11 @@ var WriterArte = (function () {
     { const k0 = cv(W, H), k0x = k0.getContext('2d'); k0x.filter = `blur(${Math.max(crisp ? .3 : .45, H * (crisp ? .001 : .0022)).toFixed(2)}px)`; k0x.drawImage(cnv, 0, 0); x.clearRect(0, 0, W, H); x.drawImage(k0, 0, 0); }   // [writer] niente bordi da vettoriale: lo spray ammorbidisce sempre un filo
     // 2. la nebbia: una copia sfocata dietro (lo spray non ha mai il bordo netto come un pennarello)
     const k = cv(W, H), kx = k.getContext('2d'); kx.filter = `blur(${Math.max(1, H * .006).toFixed(1)}px)`; kx.drawImage(cnv, 0, 0); kx.filter = 'none';
-    x.save(); x.globalCompositeOperation = 'destination-over'; x.globalAlpha = crisp ? .3 : .75; x.drawImage(k, 0, 0); x.restore();
-    { const m2 = cv(W, H), mx2 = m2.getContext('2d'); mx2.filter = `blur(${Math.max(2, H * .02).toFixed(1)}px)`; mx2.drawImage(cnv, 0, 0); x.save(); x.globalCompositeOperation = 'destination-over'; x.globalAlpha = crisp ? .07 : .2; x.drawImage(m2, 0, 0); x.restore(); }   // [writer] la nebbia larga dell'overspray
+    x.save(); x.globalCompositeOperation = 'destination-over'; x.globalAlpha = crisp ? .18 : .32; x.drawImage(k, 0, 0); x.restore();   // [graffiti5] la nebbia stretta, appena: il resto lo fanno i puntini
+    { const m2 = cv(W, H), mx2 = m2.getContext('2d'); mx2.filter = `blur(${Math.max(2, H * .02).toFixed(1)}px)`; mx2.drawImage(cnv, 0, 0); x.save(); x.globalCompositeOperation = 'destination-over'; x.globalAlpha = crisp ? .05 : .1; x.drawImage(m2, 0, 0); x.restore(); }   // [writer] la nebbia larga dell'overspray
     // 3. la grana: puntini del colore del bordo, appena fuori
-    const r = mulberry(seed ^ 0x3c6ef3), img = x.getImageData(0, 0, W, H).data, n = Math.round(W * H / 45);
-    for (let i = 0; i < n; i++) { const px = Math.floor(r() * W), py = Math.floor(r() * H), j = (py * W + px) * 4; if (img[j + 3] < 200) continue; const a = r() * 6.283, d = 1 + r() * H * .022, qx = px + Math.cos(a) * d, qy = py + Math.sin(a) * d, jj = ((qy | 0) * W + (qx | 0)) * 4; if (qx < 0 || qy < 0 || qx >= W || qy >= H || img[jj + 3] > 60) continue; x.fillStyle = `rgba(${img[j]},${img[j + 1]},${img[j + 2]},${(.35 + r() * .5).toFixed(2)})`; const sz = r() < .15 ? 2 : 1; x.fillRect(qx, qy, sz, sz); }
+    const r = mulberry(seed ^ 0x3c6ef3), img = x.getImageData(0, 0, W, H).data, n = Math.round(W * H / (crisp ? 30 : 20));   // [graffiti5] l'overspray è fatto di puntini: fitti sul bordo, radi più in là
+    for (let i = 0; i < n; i++) { const px = Math.floor(r() * W), py = Math.floor(r() * H), j = (py * W + px) * 4; if (img[j + 3] < 200) continue; const a = r() * 6.283, d = 1 + r() * r() * H * .02, qx = px + Math.cos(a) * d, qy = py + Math.sin(a) * d, jj = ((qy | 0) * W + (qx | 0)) * 4; if (qx < 0 || qy < 0 || qx >= W || qy >= H || img[jj + 3] > 60) continue; x.fillStyle = `rgba(${img[j]},${img[j + 1]},${img[j + 2]},${(.3 + r() * .6).toFixed(2)})`; const sz = r() < .25 ? (H > 500 ? 2 : 1.5) : 1; x.fillRect(qx, qy, sz, sz); }
     return cnv;
   }
   // le passate del riempimento: strisce morbide più chiare e più scure, come le braccia che vanno avanti e indietro
@@ -40795,7 +40815,7 @@ var WriterArte = (function () {
       x.fillStyle = sc.shade; x.globalAlpha = .7; wave(b0 + hh * .82, S * .02, r() * 6, 2.4); x.fill(); x.globalAlpha = 1; }
     else if (kind !== 'piatto') { const y = b0 + hh * (.58 + r() * .14); x.fillStyle = sc.shade; wave(y, S * (.025 + r() * .03), r() * 6, 2 + r() * 2); x.fill();   // 'ombra': la parte bassa più scura, tagliata da un'onda
       if (r() < .4) { x.fillStyle = sc.light; x.globalAlpha = .8; x.beginPath(); x.moveTo(-5, -5); for (let xx = -5; xx <= Wp + 5; xx += S * .05) x.lineTo(xx, b0 + hh * .2 + Math.sin(xx / S * 2.6 + 1) * S * .02); x.lineTo(Wp + 5, -5); x.closePath(); x.fill(); x.globalAlpha = 1; } }   // e a volte la luce in alto
-    if (kind === 'tratteggio' || (kind !== 'sfuma' && kind !== 'macchie' && r() < .3)) {   // le passate del pennarello: parallele, ordinate, ognuna un po' più lunga o più corta
+    if (kind === 'tratteggio') {   // le passate del pennarello: parallele, ordinate, ognuna un po' più lunga o più corta
       const ang = -1.05 + (r() - .5) * .2, ca = Math.cos(ang), sa = Math.sin(ang), nx = -sa, ny = ca, step = S * (.045 + r() * .02), col = r() < .7 ? sc.shade : sc.light, cx0 = (a0 + a1) / 2, cy0 = (b0 + b1) / 2, R0 = hyp(ww, hh) / 2 + S; x.lineCap = 'round'; x.strokeStyle = col;
       for (let t = -R0; t < R0; t += step * (.85 + r() * .3)) { const L = hh * (.22 + r() * .35), o = (r() - .5) * hh * .6, px = cx0 + nx * t + ca * o, py = cy0 + ny * t + sa * o; x.globalAlpha = .35 + r() * .2; x.lineWidth = Math.max(1, S * (.011 + r() * .006)); x.beginPath(); x.moveTo(px - ca * L, py - sa * L); x.lineTo(px + ca * L, py + sa * L); x.stroke(); } x.globalAlpha = 1; }
     return c;
@@ -40833,7 +40853,7 @@ var WriterArte = (function () {
     if (BG) { lb.drawImage(tintTo(grow(BG.mask, ow * .8, .25, NF), sc.ink, Wp, Hp), 0, 0); lb.drawImage(BG.paint, 0, 0); }
     if (o.behind) o.behind(lb, U, box0);   // dietro le lettere (le punte sopra, la miccia)
     // il contorno esterno: grosso, e più grosso in basso a destra (dove cade l'ombra)
-    const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'), dw = o.dbl ? ow * .8 : 0; ox.drawImage(tintTo(grow(ALL, ow + dw, .3, NF), sc.ink, Wp, Hp), 0, 0); ox.drawImage(tintTo(grow(shiftC(ALL, ow * .35, ow * .45), ow + dw, .3, NF), sc.ink, Wp, Hp), 0, 0);
+    const OUT = cv(Wp, Hp), ox = OUT.getContext('2d'), dw = o.dbl ? ow * .8 : 0; ox.drawImage(tintTo(grow(ALL, ow + dw, .06, NF), sc.ink, Wp, Hp), 0, 0); ox.drawImage(tintTo(grow(shiftC(ALL, ow * .35, ow * .45), ow + dw, .06, NF), sc.ink, Wp, Hp), 0, 0);   // [graffiti5] il contorno è la parte più pulita: fatto per ultimo, col tappo fine
     if (o.dbl) ox.drawImage(tintTo(grow(ALL, dw, .2, NF), o.dbl, Wp, Hp), 0, 0);   // il contorno doppio: un anello colorato fra le lettere e il nero
     // l'ombra o il 3D: pieno, il 3D che scurisce verso il fondo
     const SHL = cv(Wp, Hp), sx = SHL.getContext('2d'); if (o.extrude) { const g = cv(Wp, Hp), gx = g.getContext('2d'), gr = gx.createLinearGradient(0, box0[1], o.dx, box0[3] + o.dy); gr.addColorStop(0, sc.shadow); gr.addColorStop(1, mixC(sc.shadow, '#000000', .45)); gx.fillStyle = gr; gx.fillRect(0, 0, Wp, Hp); sx.drawImage(tintTo(SH, g, Wp, Hp), 0, 0);
@@ -40842,7 +40862,7 @@ var WriterArte = (function () {
     // le lettere: il riempimento solo (prima tappa) e poi lettera per lettera, da dietro, ognuna con la sua linea sottile sopra quella dietro
     const LF = cv(Wp, Hp), lf = LF.getContext('2d'), LFL = cv(Wp, Hp), ll = LFL.getContext('2d');
     for (let i = all.length - 1; i >= 0; i--) { const fi = tintTo(all[i], PAT, Wp, Hp); lf.drawImage(fi, 0, 0); ll.drawImage(fi, 0, 0);
-      const ring = minusC(grow(all[i], iw, .12, NF), all[i]); ll.drawImage(tintTo(ring, sc.inner, Wp, Hp), 0, 0);
+      const ring = minusC(grow(all[i], iw, .04, NF), all[i]); ll.drawImage(tintTo(ring, sc.inner, Wp, Hp), 0, 0);
       if (o.inner) o.inner(ll, i); }
     // le luci e i dettagli
     const HL = cv(Wp, Hp), hl = HL.getContext('2d'); if (o.hilite) o.hilite(hl, U);
@@ -41127,6 +41147,17 @@ var WriterArte = (function () {
     });
     return { masks, capH, lw, ids, groups, box: L.box };
   }
+  // ---- [graffiti5] dalle lettere di un font alle lettere di un writer: il calcio della prima che esce a sinistra, la freccia che parte
+  // dall'ultima (i tagli attraverso il nome no: sembravano un cross) ----
+  function graffitize(masks, S, r, Wp, Hp, q) {
+    const mg = Hp * .05, scan = (m, test) => { const A = m.getContext('2d').getImageData(0, 0, Wp, Hp).data, bb = bboxC(m); return test(A, bb); };
+    if (q > .3 && r() < .6) { const m = masks[0], P0 = scan(m, (A, bb) => { for (let y = Math.round(bb[3]); y > bb[3] - S * .25; y -= 2) for (let x = Math.round(bb[0]); x < bb[2]; x++) if (A[(y * Wp + x) * 4 + 3] > 128) return [x + S * .06, y - S * .02, bb]; return null; });   // il calcio
+      if (P0 && P0[0] - S * .45 > mg) { const [x0, y0] = P0, th = S * (.09 + r() * .04), L = S * (.32 + r() * .14), mx = m.getContext('2d'); mx.fillStyle = '#fff'; mx.beginPath(); mx.moveTo(x0 + S * .05, y0 - th * 1.2); mx.lineTo(x0 - L, y0 - th * .2 + S * .04); mx.lineTo(x0 - L - th * .5, y0 + S * .06); mx.lineTo(x0 + S * .05, y0 + S * .01); mx.closePath(); mx.fill(); } }
+    if (q > .35 && r() < .55) { const m = masks[masks.length - 1], P1 = scan(m, (A, bb) => { for (let x = Math.round(bb[2]); x > bb[0]; x -= 2) for (let y = Math.round(bb[1]); y < bb[1] + (bb[3] - bb[1]) * .45; y++) if (A[(y * Wp + x) * 4 + 3] > 128) return [x - S * .06, y + S * .05]; return null; });   // la freccia
+      if (P1 && P1[0] + S * .55 < Wp - mg && P1[1] - S * .45 > mg) { const [x0, y0] = P1, a = -(.55 + r() * .35), L = S * (.3 + r() * .1), ux = Math.cos(a), uy = Math.sin(a), th = S * .12, hx = x0 + ux * L, hy = y0 + uy * L, hs = S * .21, mx = m.getContext('2d');
+        mx.fillStyle = '#fff'; mx.beginPath(); mx.moveTo(x0 - uy * th / 2, y0 + ux * th / 2); mx.lineTo(hx - uy * th / 2, hy + ux * th / 2); mx.lineTo(hx + uy * th / 2, hy - ux * th / 2); mx.lineTo(x0 + uy * th / 2, y0 - ux * th / 2); mx.closePath(); mx.fill();
+        mx.beginPath(); mx.moveTo(hx + ux * hs * 1.1, hy + uy * hs * 1.1); mx.lineTo(hx - uy * hs * .75 - ux * hs * .15, hy + ux * hs * .75 - uy * hs * .15); mx.lineTo(hx + uy * hs * .75 - ux * hs * .15, hy - ux * hs * .75 - uy * hs * .15); mx.closePath(); mx.fill(); } }
+  }
   // ---- il pezzo a inchiostro: lettere costruite (block, semi, wild, a spine, 3D) ----
   function pieceInk(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
     const q = C.q, CN = w.cons || consOf(w.hand || w.seed || 1), sc = inkScheme(r, P), text = DEACC(w.words || w.aka || 'NINO').replace(/[^A-Z0-9]/g, '') || 'NINO';
@@ -41142,6 +41173,7 @@ var WriterArte = (function () {
       const fat = fpick[2] ? .025 + r() * .025 : 0, lay2 = fontLayout(text, fpick[0], { first: 1.1 + r() * .15, jit: .08, bounce: .04 + r() * .04, rot: .08 + r() * .08, skew: .1 + r() * .18, sx: .92 + r() * .2, sy: 1.02 + r() * .18, overlap: fat ? .01 + r() * .04 : .03 + r() * .06, wave: (r() - .5) * .14 }, r);
       const mg = Hp * (fat ? .045 : .025), FM = fontMasks(lay2, Wp, Hp, { x: LX + pad * .6 + mg, y: pad * .45 + mg, w: LWp - pad * 1.2 - Hp * d3k * .7 - mg * 2, h: Hp - pad * .9 - sloganH - Hp * d3k * .55 - mg * 2 }, fat);
       masks = FM.masks; S = FM.S; pieceCuts = FM.cuts; toPx = (l, [u, v]) => { const bb = l.bb; return [bb[0] + (bb[2] - bb[0]) * u / Math.max(.01, l.w), bb[1] + (bb[3] - bb[1]) * v]; }; L = masks.map(m => ({ w: 1, bb: bboxC(m) }));
+      graffitize(masks, S, r, Wp, Hp, q);
     } else if (semi) {   // [graffiti4] semi e wild: le lettere a pennellata
       const BL = brushLetters(text, CN, wild, r, LWp, Hp, Hp * .08, sloganH + Hp * d3k * .7); masks = BL.masks.map(m => { if (m.width === Wp && !LX) return m; const k = cv(Wp, Hp); k.getContext('2d').drawImage(m, LX, 0); return k; }); S = BL.capH;
       toPx = (l, [u, v]) => { const bb = l.bb; return [bb[0] + (bb[2] - bb[0]) * u / Math.max(.01, l.w), bb[1] + (bb[3] - bb[1]) * v]; };
@@ -41168,7 +41200,7 @@ var WriterArte = (function () {
     const bgk = r() < .3 ? 'cloud' : null;
     const border = r() < .55 ? S * (.04 + r() * .04) : 0;
     inkRender({ Wp, Hp, masks, sc, r, S, x, snap, paths, radii, seed: (w.seed || 1) * 7 + 5, ow, iw, dx, dy, extrude: true, border, inner: pieceCuts ? (ctx, i) => { const H = i < masks.length && pieceCuts(i); if (H) ctx.drawImage(tintTo(H, sc.inner, Wp, Hp), 0, 0); } : null, aura: r() < .05 ? mixC(sc.acc, '#ffffff', .2) : null, tone2: r() < .8 ? (r() < .75 ? 1 : -1) : 0, dbl: r() < .14 ? pickR(r, ['#f2d21a', '#3ad6f0', '#ffffff', sc.acc]) : null, dash: border && r() < .3, drips: r() < .2 ? 2 + Math.floor(r() * 4) : 0, dripLen: S * .4, dripW: S * .035, rim: r() < .3,
-      fillKind: pickR(r, (P.fills && r() < .5) ? P.fills.map(f => ({ macchie: 'macchie', sfumato: 'sfuma', strisce: 'strisce', split: 'ombra', scacchi: 'pois' })[f] || 'sfuma') : ['bande', 'bande', 'bande', 'sfuma', 'sfuma', 'ombra', 'ombra', 'taglio', 'taglio', 'strisce', 'mattoni', 'tratteggio', r() < .3 ? 'macchie' : 'bande']),
+      fillKind: pickR(r, (P.fills && r() < .5) ? P.fills.map(f => ({ macchie: 'macchie', sfumato: 'sfuma', strisce: 'strisce', split: 'ombra', scacchi: 'pois' })[f] || 'sfuma') : ['bande', 'bande', 'bande', 'sfuma', 'sfuma', 'ombra', 'ombra', 'taglio', 'taglio', 'strisce', 'mattoni', r() < .3 ? 'macchie' : 'bande']),
       bg: bgk ? (U, bx) => { const m = cv(Wp, Hp), mx = m.getContext('2d'), cx = (bx[0] + bx[2]) / 2, cy = (bx[1] + bx[3]) / 2, mg = Hp * .05, rx = Math.min((bx[2] - bx[0]) * .56, (cx - mg) / 1.3, (Wp - cx - mg) / 1.3), ry = Math.min((bx[3] - bx[1]) * .8, (cy - mg) / 1.3, (Hp - cy - mg) / 1.3); mx.fillStyle = '#fff';   // [graffiti4] dentro il riquadro: niente tagli dritti
           if (bgk === 'burst') { mx.beginPath(); const n = 18 + Math.floor(r() * 10); for (let k = 0; k < n * 2; k++) { const a = k / (n * 2) * PI * 2, rr = k % 2 ? .72 : .98 + r() * .3; mx.lineTo(cx + Math.cos(a) * rx * rr, cy + Math.sin(a) * ry * rr); } mx.closePath(); mx.fill(); }
           else { const ex = (bx[2] - bx[0]) / 2, ey = (bx[3] - bx[1]) / 2, n = 10 + Math.floor(r() * 5); mx.beginPath(); mx.ellipse(cx, cy, ex * .95, ey * .85, 0, 0, 7); mx.fill();   // la nuvola: bolle grosse attorno a un ovale, dentro il riquadro
