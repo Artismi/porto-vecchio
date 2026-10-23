@@ -3095,8 +3095,8 @@ var Render = (function () {
       for (let k = 0; k < 4; k++) { const a = k * 1.7; P.push([new THREE.BoxGeometry(.32, .01, .04), c2M([Math.cos(a) * .12, .03, Math.sin(a) * .12], [0, -a, .15]), '#8aa894']); }
       F.giglio = [c2Geo(P), false]; }
     // la lastra di calcare: una tavola bassa, spigoli rotti, chiara sopra
-    { const g = new THREE.DodecahedronGeometry(.8, 0); F.lastra = [c2Geo([[g, c2M([0, .05, 0], [0, 0, 0], [1.1, .24, .72]), '#cfc6b2']]), false]; }
-    F.masso = [c2Geo([[new THREE.DodecahedronGeometry(.6, 0), c2M([0, .25, 0], [0, 0, 0], [1, .7, .85]), '#a39c90']]), true];
+    { const g = new THREE.DodecahedronGeometry(.8, 0); F.lastra = [c2Geo([[g, c2M([0, .02, 0], [0, 0, 0], [1.15, .15, .75]), '#a49c8a']]), false]; }
+    F.masso = [c2Geo([[new THREE.DodecahedronGeometry(.6, 0), c2M([0, .22, 0], [0, 0, 0], [1, .65, .85]), '#8e877b']]), true];
     { const g = new THREE.CircleGeometry(.5, 9); g.rotateX(-Math.PI / 2); F.pozza = [c2Geo([[g, c2M([0, .04, 0], [0, 0, 0], [1, 1, .7]), '#3e5e66']]), false]; }
     // il tetrapodo: quattro bracci tronco-conici lungo le diagonali del tetraedro
     { const P = [], D = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]]; D.forEach(d => { const v = new THREE.Vector3(...d).normalize(), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), v), m = new THREE.Matrix4().compose(v.clone().multiplyScalar(.42), q, new THREE.Vector3(1, 1, 1)); P.push([new THREE.CylinderGeometry(.17, .3, .9, 7), m, '#bdb8ac']); });
@@ -8217,7 +8217,7 @@ var Render = (function () {
     FAGGETA: { T: [['tErba', .06], ['tAlta', -.02], ['tFiori', -.06], ['tMuschio', 0]], H: [['felceV', .1], ['felceR', .04], ['felceL', .02], ['foglione', -.08], ['lancia', -.1], ['palmaV', -.12], ['fiori', -.12], ['cespoV', -.05]], hth: -.1, S: [['cespuglio', -.05], ['sambuco', -.12]], sth: .12, g: [64, 84, 40], t: '#f0f4d8', d: 1 },
     VALLONE: { T: [['tMuschio', .1], ['tErba', 0]], H: [['felceV', .12], ['felceL', .1], ['felceR', .06], ['palmaV', .08], ['foglione', .06], ['foglioneS', .02], ['lancia', .04], ['banano', -.02]], hth: -.3, S: [['sambuco', -.05]], sth: .15, g: [40, 84, 32], t: '#e0f8d0', d: 1.15 },
     PINETA: { T: [['tPaglia', .1], ['tErba', -.05]], H: [['cespo', .05], ['palmaV', 0], ['alta', -.1], ['felce', -.1]], hth: .0, S: [['cespuglio', .05], ['ginepro', 0], ['ginestra', -.08]], sth: -.02, g: [104, 82, 52], t: '#fff0d8', d: .8 },
-    DUNA: { T: [['tPaglia', .1], ['tAlta', -.02]], H: [['alta', .08], ['cespo', 0], ['giunco', -.12]], hth: -.08, S: [['ginepro', -.05], ['cespuglio', -.08]], sth: .12, g: [150, 140, 100], t: '#fff4d8', d: .7 },   // [costa2] lo sparto della duna, il ginepro e il lentisco a cuscini
+    DUNA: { T: [['tPaglia', .1], ['tAlta', .02]], H: [['alta', .1], ['cespo', .02], ['giunco', -.1]], hth: -.2, S: [['ginepro', 0], ['cespuglio', -.03]], sth: .02, g: [150, 140, 100], t: '#fff4d8', d: 1.1 },   // [costa2] lo sparto della duna, il ginepro e il lentisco a cuscini
     // [costa2] il canneto (la Foce della Fiumara, le conche dietro le dune): tappeto di canne, giunchi fitti; le canne alte le mette buildCosta2
     CANNETO: { T: [['tCanne', .15], ['tAlta', 0]], H: [['giunco', .2], ['alta', .02]], hth: -.35, S: [['cespuglio', -.25]], sth: .3, g: [96, 100, 66], t: '#eef4d0', d: 1.2 },
     // [costa2] la costa verde sopra gli scogli: erba secca, cuscini di lentisco e ginepro, sassi; i fichi d'india e le agavi le mette buildCosta2

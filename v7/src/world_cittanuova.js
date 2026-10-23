@@ -368,7 +368,7 @@ var World = (function () {
       const t = inl - bw;
       if (k === 'duna') {
         const D = C2DUNA + 8 * n1, al = x + y * .3, ph = t / (7 + 2 * fbm(al / 40, 3, 712, 2)) * Math.PI * 2 + fbm(al / 30, 5, 713, 2) * 4;
-        const env = sstep(0, 5, t) * (1 - sstep(D - 7, D, t)), cr = .5 + .5 * Math.cos(ph), hd = top + env * (.9 + 2 * cr * (.6 + .8 * fbm(al / 18, 7, 714, 2)));
+        const env = sstep(0, 5, t) * (1 - sstep(D - 7, D, t)), cr = .5 + .5 * Math.cos(ph), hd = top + env * (1.2 + 2.8 * cr * (.6 + .8 * fbm(al / 18, 7, 714, 2)));   // creste fino a 4 m
         return t < D ? hd : top + (h - top) * sstep(D, D + 22, t);
       }
       if (k === 'foce') return Math.min(h, top + t * .05);
