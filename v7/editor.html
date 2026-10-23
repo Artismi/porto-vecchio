@@ -55269,7 +55269,7 @@ var Riva = (function () {
     if (R.W === w) return true; if (!w || !w.inland || !w.quotaRiva || !w.coastKind2) { R.on = false; return false; }
     W = R.W = w; GW = w.GW; GH = w.GH; VW = GW + 1; TS = R.TS = w.TS; T = w.T; WL = w.WL !== undefined ? w.WL : -.45; R.WL = WL;
     vD = new Float32Array(VW * (GH + 1)).fill(NaN); vQ = new Float32Array(VW * (GH + 1)).fill(NaN); vN = new Float32Array(VW * (GH + 1)).fill(-1);
-    tF = new Int8Array(GW * GH).fill(-1); tK = new Array(GW * GH); cel = new Map(); vK = null; vK0 = null; vS = null;
+    tF = new Int8Array(GW * GH).fill(-1); tK = new Array(GW * GH); cel = new Map(); vK = null; vK0 = null; vS = null; gD = null;
     // la distanza dalla città (in caselle, fino a 6): case, strade, vicoli, piazze, banchine, pontili, le strade dei veicoli
     const FATTO = new Set([T.BLD, T.VIA, T.COB, T.PIAZZA, T.WALK, T.STAIRS, T.FOUNT, T.QUAY, T.PIER]);
     dF = new Uint8Array(GW * GH); for (let i = 0; i < GW * GH; i++) dF[i] = FATTO.has(w.grid[i]) || (w.roadW && w.roadW[i] > 0) ? 0 : 8;
@@ -55286,11 +55286,25 @@ var Riva = (function () {
   function mV(i, j) { const k = VI(i, j); let v = vM[k]; if (v < 0) { let m = 4; for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) if (a >= 0 && b >= 0 && a < GW && b < GH) m = Math.min(m, dN[b * GW + a]); v = vM[k] = i < 3 || j < 3 || i > GW - 3 || j > GH - 3 ? 0 : Math.max(nV(i, j), sstep(.5, 1.5, m)); } return v; }   // il peso del disegno: almeno quello della forma
   // ---- i valori ai vertici delle caselle (2 m), calcolati una volta ----
   const VI = (i, j) => Math.max(0, Math.min(GH, j)) * VW + Math.max(0, Math.min(GW, i));
-  function dV(i, j) { const k = VI(i, j); let v = vD[k]; if (v !== v) v = vD[k] = W.inland(i * TS, j * TS); return v; }
+  // la distanza dal mare vero delle caselle (dove la città ha fatto terra nuova, le colmate, i moli, la riva non è più quella disegnata):
+  // la distanza euclidea (due passate) dai centri delle caselle di mare, con segno, poi ai vertici e sfumata su 3×3
+  let gD = null;
+  function griglia() {
+    if (gD) return gD; const N = GW * GH, isS = i => W.grid[i] === T.WATER && W.zone[i] === W.Z.MARE, INF = 1e9, dl = new Float32Array(N), ds = new Float32Array(N);
+    for (const [D, src] of [[dl, isS], [ds, i => !isS(i)]]) { const ox = new Int16Array(N), oy = new Int16Array(N);   // la distanza dai centri «sorgente» (mare per la terra, terra per il mare)
+      for (let i = 0; i < N; i++) { if (src(i)) { D[i] = 0; ox[i] = i % GW; oy[i] = (i / GW) | 0; } else { D[i] = INF; ox[i] = -1; } }
+      const rel = (i, j) => { if (ox[j] < 0) return; const x = i % GW, y = (i / GW) | 0, dd = (x - ox[j]) ** 2 + (y - oy[j]) ** 2; if (dd < D[i]) { D[i] = dd; ox[i] = ox[j]; oy[i] = oy[j]; } };
+      for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { const i = y * GW + x; if (x) rel(i, i - 1); if (y) { rel(i, i - GW); if (x) rel(i, i - GW - 1); if (x < GW - 1) rel(i, i - GW + 1); } }
+      for (let y = GH - 1; y >= 0; y--) for (let x = GW - 1; x >= 0; x--) { const i = y * GW + x; if (x < GW - 1) rel(i, i + 1); if (y < GH - 1) { rel(i, i + GW); if (x < GW - 1) rel(i, i + GW + 1); if (x) rel(i, i + GW - 1); } } }
+    const tile = i => isS(i) ? -(Math.sqrt(ds[i]) - .5) * TS : (Math.sqrt(dl[i]) - .5) * TS, V0 = new Float32Array(VW * (GH + 1));
+    for (let j = 0; j <= GH; j++) for (let i = 0; i <= GW; i++) { let t = 0, c = 0; for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) if (a >= 0 && b >= 0 && a < GW && b < GH) { t += tile(b * GW + a); c++; } V0[j * VW + i] = c ? t / c : 0; }
+    gD = new Float32Array(VW * (GH + 1)); for (let j = 0; j <= GH; j++) for (let i = 0; i <= GW; i++) { let t = 0, c = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const ii = i + a, jj = j + b; if (ii < 0 || jj < 0 || ii > GW || jj > GH) continue; t += V0[jj * VW + ii]; c++; } gD[j * VW + i] = t / c; }
+    return gD; }
+  function dV(i, j) { const k = VI(i, j); let v = vD[k]; if (v !== v) { const a = W.inland(i * TS, j * TS), g = griglia()[k]; v = vD[k] = a + (g - a) * sstep(1.5, 3.5, Math.abs(g - a)); } return v; }   // la riva disegnata, o quella delle caselle dove la città l'ha cambiata
   let vS = null;
   function qS(i, j) { if (!vS) vS = new Float32Array(VW * (GH + 1)).fill(NaN); const k = VI(i, j); let v = vS[k]; if (v !== v) { let t = 0; for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) t += qV(i + a, j + b); v = vS[k] = t / 25; } return v; }   // la quota di prima sfocata (4 m): il bersaglio liscio dentro la fascia
   function qV(i, j) { const k = VI(i, j); let v = vQ[k]; if (v !== v) v = vQ[k] = W.quotaRiva(i, j); return v; }
-  function nV(i, j) { const k = VI(i, j); let v = vN[k]; if (v < 0) { let m = 8; for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) if (a >= 0 && b >= 0 && a < GW && b < GH) m = Math.min(m, dF[b * GW + a]); v = vN[k] = i < 3 || j < 3 || i > GW - 3 || j > GH - 3 ? 0 : sstep(1.5, 5, m); } return v; }   // e spenta sul bordo della mappa   // 0 accanto alla città, 1 a 10 m
+  function nV(i, j) { const k = VI(i, j); let v = vN[k]; if (v < 0) { let m = 8; for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) if (a >= 0 && b >= 0 && a < GW && b < GH) m = Math.min(m, dF[b * GW + a]); v = vN[k] = i < 3 || j < 3 || i > GW - 3 || j > GH - 3 ? 0 : sstep(1, 3.5, m); } return v; }   // e spenta sul bordo della mappa; da 2 a 7 m dalla città sale fino a 1   // 0 accanto alla città, 1 a 10 m
   function famT(tx, ty) { const i = ty * GW + tx; let f = tF[i]; if (f < 0) { const k = W.coastKind2(tx * TS + 1, ty * TS + 1); tK[i] = k; f = tF[i] = FAM[k] || 0; } return f; }
   const kindT = (tx, ty) => (famT(tx, ty), tK[ty * GW + tx]);
   // i tipi ai vertici (2 m), da interpolare: così fra una casella di sabbia e una di scogli la forma passa piano, senza gradino
@@ -55349,13 +55363,31 @@ var Riva = (function () {
     for (let f = 1; f <= 3; f++) { const wf = K[f - 1]; if (wf <= 0) continue; const w = wn * wf * peso(f, d, du, ca); if (w > 0) h += (forma(f, x, y, d, qs, du, ca) - q) * w; }
     return h;
   }
+  // ---- il piede delle opere sul mare: dove la città arriva all'acqua con un muro (banchine, case, piazze, mura) su una riva di scogli,
+  // al piede ci sono i massi che l'onda ha scalzato e quelli buttati giù a protezione; non nei bacini dei porti (lì si ormeggia),
+  // non dove la pianta ha già la sua scogliera (Scogliera del Lungomare), non davanti ai pontili ----
+  let SCP = null;
+  function piede(tx0, ty0, n, m) {
+    const out = [], FATTO = new Set([T.BLD, T.QUAY, T.PIAZZA, T.WALK, T.COB, T.VIA, T.STAIRS]);
+    if (!SCP) SCP = (W.pezzi || []).filter(p => p.tipo === 'scogliera').map(p => ({ x: p.x, y: p.y, r: (p.opz && p.opz.L || 12) / 2 + 7 }));
+    const bas = (W.SEA && W.SEA.basins || []).map(B => B.poly), inP = (x, y, Q) => { let c = false; for (let a = 0, b = Q.length - 1; a < Q.length; b = a++) if ((Q[a][1] > y) !== (Q[b][1] > y) && x < (Q[b][0] - Q[a][0]) * (y - Q[a][1]) / (Q[b][1] - Q[a][1]) + Q[a][0]) c = !c; return c; };
+    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (tx < 2 || ty < 2 || tx >= GW - 2 || ty >= GH - 2) continue; const ii = ty * GW + tx;
+      if (!(W.grid[ii] === T.WATER && W.zone[ii] === W.Z.MARE)) continue;
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const jj = (ty + b) * GW + tx + a; if (!FATTO.has(W.grid[jj])) continue; const k = W.coastKind2((tx + a) * TS + 1, (ty + b) * TS + 1); if (!(k === 'scogli' || k === 'falesia' || k === 'frangiflutti')) continue;
+        { let aperto = true; for (let q = 2; q <= 5; q++) { const kk = (ty - b * q) * GW + tx - a * q; if (kk < 0 || kk >= GW * GH || !(W.grid[kk] === T.WATER && W.zone[kk] === W.Z.MARE)) aperto = false; } if (!aperto) continue; }   // solo verso il mare aperto (non nei canali stretti)
+        for (let c = 0; c < 3; c++) { const hh = h2(tx * 3 + c, ty * 5 + a + b * 2, 640); if (hh > .72) continue; const t = h2(tx, ty, 641 + c), o = .4 + h2(tx, ty, 642 + c) * 1.7;   // lungo il muro, a 40 cm - 2,1 m dal piede
+          const wx = (tx + .5 + a * .5) * TS, wy = (ty + .5 + b * .5) * TS, x = wx - a * o + (b ? (t - .5) * TS : 0), y = wy - b * o + (a ? (t - .5) * TS : 0);
+          if (bas.some(Q => inP(x, y, Q)) || SCP.some(q => Math.hypot(x - q.x, y - q.y) < q.r)) continue;
+          const r = .5 + h2(tx, ty, 643 + c) * 1.1; out.push({ x: +x.toFixed(2), y: +y.toFixed(2), r: +r.toFixed(2), h: +(.5 + h2(tx, ty, 644 + c) * .9).toFixed(2), z: +(WL - .55 - o * .25).toFixed(2), ry: +(h2(tx, ty, 645 + c) * 6.283).toFixed(3), v: Math.floor(h2(tx, ty, 646 + c) * 8), f: 2 }); } } }
+    return out;
+  }
   // ---- il blocco (32 caselle): la maschera, la griglia fine delle quote, gli scogli, i ciottoli ----
   const CH = 32;
   function blocco(ci, cj) {
     const key = ci + ',' + cj; let B = cel.get(key); if (B) return B;
     const tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, GW - tx0), m = Math.min(CH, GH - ty0), mask = new Uint8Array(n * m); let any = 0;
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) if (inBanda(tx0 + i, ty0 + j)) { mask[j * n + i] = 1; any++; }
-    B = { ci, cj, tx0, ty0, n, m, mask, any, NX: n * SUB + 1, NY: m * SUB + 1, h: null, scogli: [], ciottoli: [], idx: null };
+    B = { ci, cj, tx0, ty0, n, m, mask, any, NX: n * SUB + 1, NY: m * SUB + 1, h: null, scogli: [], ciottoli: [], idx: null, piede: piede(tx0, ty0, n, m) };
     cel.set(key, B); if (!any) return B;
     // la quota nuda ai nodi fini (solo attorno alle caselle della fascia)
     const NX = B.NX, NY = B.NY, H = B.h = new Float32Array(NX * NY).fill(NaN);
@@ -55559,9 +55591,18 @@ var Riva = (function () {
   // il sopra chiaro e i fianchi scuri; per render.js (buildRocks), al posto dell'icosaedro liscio a venti facce
   let GM = null;
   function geoMasso() { if (GM) return GM; return (GM = sasso(41, 3, true)); }
+  function fondiScogli(L) {
+    if (!L.length) return null; const THREE = window.THREE, P = [], N2 = [], C = [], IX = [], M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), SC = new THREE.Vector3(), nm = new THREE.Matrix3(), vv = new THREE.Vector3();
+    L.forEach(s => { const F = formaScoglio(s.v, s.f, s.r > .9), tl = (h2(Math.round(s.x * 7), Math.round(s.y * 7), 811) - .5) * .12; E.set(tl, s.ry, tl * .6, 'YXZ'); Q.setFromEuler(E); V.set(s.x, s.z, s.y); SC.set(s.r * 1.15, s.h, s.r * .85); M4.compose(V, Q, SC); nm.getNormalMatrix(M4);
+      const tint = .9 + h2(Math.round(s.x * 3), Math.round(s.y * 3), 812) * .2;
+      F.forEach(g => { const pa = g.attributes.position, na = g.attributes.normal, ca = g.attributes.color, o = P.length / 3; for (let i = 0; i < pa.count; i++) { vv.set(pa.getX(i), pa.getY(i), pa.getZ(i)).applyMatrix4(M4); P.push(vv.x, vv.y, vv.z); vv.set(na.getX(i), na.getY(i), na.getZ(i)).applyMatrix3(nm).normalize(); N2.push(vv.x, vv.y, vv.z); C.push(ca.getX(i) * tint, ca.getY(i) * tint, ca.getZ(i) * tint * .98); }
+        const ix = g.index.array; for (let i = 0; i < ix.length; i++) IX.push(ix[i] + o); }); });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N2, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setIndex(IX); g.computeBoundingSphere(); return g; }
   function costruisci(tx0, ty0, n, m, base, prep) {
     if (!R.on || !W || typeof window === 'undefined' || !window.THREE) return null; const THREE = window.THREE;
-    const B = blocco(Math.floor(tx0 / CH), Math.floor(ty0 / CH)); if (!B.any) return null;
+    const B = blocco(Math.floor(tx0 / CH), Math.floor(ty0 / CH)); if (!B.any && !B.piede.length) return null;
+    if (!B.any) { const grp = new THREE.Group(), g = fondiScogli(B.piede); if (g) { const ms = new THREE.Mesh(g, matRoccia()); ms.castShadow = ms.receiveShadow = true; ms.name = 'riva9s'; grp.add(ms); } R.stat.piede = (R.stat.piede || 0) + B.piede.length;
+      return { grp, mat: { emissiveIntensity: 0, envMapIntensity: 0, dispose() {} }, tri: 0, scogli: 0, ciottoli: 0, dispose() { grp.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } }; }
     const NX = B.NX, H = B.h, pos = [], uv = [], aS = [], aD = [], idx = [], map = new Int32Array(NX * B.NY).fill(-1);
     const vtx = (gi, gj) => { const k = gj * NX + gi; let q = map[k]; if (q >= 0) return q; q = map[k] = pos.length / 3; const tx = tx0 + Math.min(n - 1, Math.floor(gi / SUB)), ty = ty0 + Math.min(m - 1, Math.floor(gj / SUB)), x = (tx0 + gi / SUB) * TS, y = (ty0 + gj / SUB) * TS, h = H[k];
       pos.push(x, h, y); uv.push(gi / SUB / n, 1 - gj / SUB / m); const s = suolo(tx, ty, x, y, h); aS.push(s[0], s[1], s[2], s[3]); aD.push(s[4]); return q; };
@@ -55571,14 +55612,8 @@ var Riva = (function () {
     geo.setAttribute('aRS', new THREE.Float32BufferAttribute(aS, 4)); geo.setAttribute('aRD', new THREE.Float32BufferAttribute(aD, 1)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
     const mat = materiale(base, prep), mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; mesh.name = 'riva9';
     const grp = new THREE.Group(); grp.add(mesh); let tri = idx.length / 3;
-    // gli scogli del blocco, fusi in una geometria sola
-    if (B.scogli.length) { const P = [], N2 = [], C = [], IX = [], M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), SC = new THREE.Vector3(), nm = new THREE.Matrix3(), vv = new THREE.Vector3();
-      B.scogli.forEach(s => { const F = formaScoglio(s.v, s.f, s.r > .9), tl = (h2(Math.round(s.x * 7), Math.round(s.y * 7), 811) - .5) * .12; E.set(tl, s.ry, tl * .6, 'YXZ'); Q.setFromEuler(E); V.set(s.x, s.z, s.y); SC.set(s.r * 1.15, s.h, s.r * .85); M4.compose(V, Q, SC); nm.getNormalMatrix(M4);
-        const tint = .9 + h2(Math.round(s.x * 3), Math.round(s.y * 3), 812) * .2;
-        F.forEach(g => { const pa = g.attributes.position, na = g.attributes.normal, ca = g.attributes.color, o = P.length / 3; for (let i = 0; i < pa.count; i++) { vv.set(pa.getX(i), pa.getY(i), pa.getZ(i)).applyMatrix4(M4); P.push(vv.x, vv.y, vv.z); vv.set(na.getX(i), na.getY(i), na.getZ(i)).applyMatrix3(nm).normalize(); N2.push(vv.x, vv.y, vv.z); C.push(ca.getX(i) * tint, ca.getY(i) * tint, ca.getZ(i) * tint * .98); }
-          const ix = g.index.array; for (let i = 0; i < ix.length; i++) IX.push(ix[i] + o); }); });
-      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N2, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setIndex(IX); g.computeBoundingSphere();
-      const ms = new THREE.Mesh(g, matRoccia()); ms.castShadow = ms.receiveShadow = true; ms.name = 'riva9s'; grp.add(ms); tri += IX.length / 3; }
+    // gli scogli del blocco (e del piede delle opere), fusi in una geometria sola
+    { const L = B.scogli.concat(B.piede), g = fondiScogli(L); if (g) { const ms = new THREE.Mesh(g, matRoccia()); ms.castShadow = ms.receiveShadow = true; ms.name = 'riva9s'; grp.add(ms); tri += g.index.count / 3; } }
     // i ciottoli: un'istanza per sasso, appoggiati sul suolo fine
     if (B.ciottoli.length) { if (!MATC) { MATC = new THREE.MeshStandardMaterial({ roughness: .8, metalness: 0 }); }
       const g = new THREE.SphereGeometry(1, 9, 6), im = new THREE.InstancedMesh(g, MATC, B.ciottoli.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), SC = new THREE.Vector3(), Cc = new THREE.Color();
