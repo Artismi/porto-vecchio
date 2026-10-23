@@ -140,7 +140,7 @@ var Scorci = (function () {
       ore: { aperto: [[8, 13], [16.5, 20]], mezza: [13, 16.5], merce: [8.5, 19.5], luci: [18.5, 23] } },
     { id: 'pescheria_marina', nome: 'Il banco del pesce sulla Marina', luogo: 'pescheria', aggancio: { tipo: 'spazio', set: q => q.k === 'marina' },
       ispirato: 'angolo_diorama', focale: 'banco_pesce',
-      cose: [['banco_pesce', 'spazio', { pref: 'centro', gruppo: 'banco' }], ['polistirolo', 'spazio', { pref: 'accanto', di: 'banco_pesce' }], ['cassette', 'spazio', { pref: 'accanto2', di: 'banco_pesce', merce: 'pesce' }]],
+      cose: [['banco_pesce', 'spazio', { pref: 'bordo', gruppo: 'banco' }], ['polistirolo', 'spazio', { pref: 'accanto', di: 'banco_pesce' }], ['cassette', 'spazio', { pref: 'accanto2', di: 'banco_pesce', merce: 'pesce' }]],
       posti: [['banco_pesce', 'banco_pesce']],
       ore: { banco: [5, 13], luci: [5, 7.5] } },
     { id: 'officina_scalo', nome: 'Il piazzale dell\'Officina dello Scalo', luogo: 'officina', aggancio: { tipo: 'spazio', set: q => q.k === 'scalo' },
@@ -302,7 +302,7 @@ var Scorci = (function () {
   }
   function agganciaPorta(R) {
     const b = G.BUILDINGS.find(q => q.id === R.aggancio.id); if (!b || !b.door) return null; const f = CH.lato(b, b.door[0], b.door[1]); if (f !== 'S' && f !== 'E') return null;
-    const fr = fronte(b, f), [x, z] = fr.wp(fr.uTile(b.door[0], b.door[1]), 1); if (cucitura(x, z)) return null; return { b, bi: G.BUILDINGS.indexOf(b), fr, x, z };
+    const fr = fronte(b, f), ud = fr.uTile(b.door[0], b.door[1]), [x, z] = fr.wp(ud, 1); if (cucitura(x, z)) return null; return { b, bi: G.BUILDINGS.indexOf(b), fr, x, z, vi: vista(fr, Math.max(.3, ud - 3), Math.min(fr.L - .3, ud + 3)) };
   }
   function agganciaSpazio(R) {
     const s = setOf(R.aggancio.set); if (!s) return null; const [cx, cz] = setC(s), r = setR(s);
@@ -410,7 +410,8 @@ var Scorci = (function () {
       // se di lato non c'è posto (la banchina stretta, le porte in fila): attorno, a raggi crescenti, allineato agli assi del suolo
       for (let r = 1.2; r <= 6; r += .4) for (let a = 0; a < 16; a++) { const an = a / 16 * PI * 2 + (lato > 0 ? 0 : PI); C.push([di.x + Math.cos(an) * r, di.z + Math.sin(an) * r, a % 2 ? 0 : PI / 2]); } }
     else if (ag.fr) { const fr = ag.fr, um = (sc.ua + sc.ub) / 2; for (let v = .9; v <= 5.5; v += .25) for (let du = 0; du <= (sc.ub - sc.ua) / 2 + 2; du += .25) for (const sd of [1, -1]) { const u = um + sd * du + (o.pref === 'camera' ? -1 : 0), [x, z] = fr.wp(u, v + K.d / 2); C.push([x, z, fr.rot]); } }
-    else { const s = ag.set, R0 = ag.r; for (let r = 0; r <= R0 + 2; r += .75) for (let a = 0; a < 16; a++) { const an = a / 16 * PI * 2 + PI / 4, x = ag.x + Math.cos(an) * r, z = ag.z + Math.sin(an) * r; if (!inSet(s, x, z, 2)) continue; C.push([x, z, rot]); } }
+    else { const s = ag.set, R0 = ag.r, RR = []; for (let r = 0; r <= R0 + 2; r += .75) RR.push(r); if (o.pref === 'bordo') RR.reverse();   // sul bordo: lascia libero il centro della piazza (la pianta, il lavatoio)
+      for (const r of RR) for (let a = 0; a < 16; a++) { const an = a / 16 * PI * 2 + PI / 4, x = ag.x + Math.cos(an) * r, z = ag.z + Math.sin(an) * r; if (!inSet(s, x, z, 2)) continue; C.push([x, z, rot]); } }
     for (const [x, z, yaw] of C) { if (cucitura(x, z)) continue; if (!prova(k, x, z, yaw, { strada: false, w: K.w + .3, d: K.d + .3 })) return { x, z, yaw }; }
     return null;
   }

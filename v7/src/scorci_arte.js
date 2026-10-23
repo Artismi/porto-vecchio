@@ -382,12 +382,12 @@ var ScorciArte = (function () {
     // gli oggetti a muro: sul fronte, un poco fuori dal filo; le cose davanti alle aperture vere si accorciano o saltano
     const sulMuro = (k, c, o2) => { const [x, z] = fr.wp(c.u, WO), g = KIT.make(k, Object.assign({}, c.opz, { w: c.w }, o2 || {})); if (!g) return null; return metti(g, c, x, base + (c.y || 0), z, fr.rot); };
     const coperta = (u0, u1, y0, y1) => ap.some(a => a.u1 > u0 + .05 && a.u0 < u1 - .05 && a.y1 > y0 + .05 && a.y0 < y1 - .05);
-    let alone = null; const fatte = new Set();
+    let alone = null; const fatte = new Set(), spost = {}, usati = [], occupato = (u0, u1, y0, y1) => usati.some(q => q[1] > u0 && q[0] < u1 && q[3] > y0 && q[2] < y1);
     s.cose.forEach(c => {
       if (c.k === 'luminarie') { const fili = c.fili ? c.fili.map(f => ({ a: [f.a[0] + fr.N[0] * WO, f.a[1] + fr.N[1] * WO], b: f.b, y: base + f.y })) : [(() => { const [ax, az] = fr.wp(c.u - c.w / 2, WO + .06), [bx, bz] = fr.wp(c.u + c.w / 2, WO + .06); return { a: [ax, az], b: [bx, bz], y: base + c.y }; })()];
         const g = KIT.make('luminarie', { fili }); metti(g, c, 0, 0, 0, 0); return; }
       if (c.muro) {
-        let o2 = {};
+        let o2 = {}; if (c.opz && c.opz.di && spost[c.opz.di]) { c.u += spost[c.opz.di]; const q2 = fr.wp(c.u, 0); c.x = q2[0]; c.z = q2[1]; }   // i lumini seguono la loro edicola
         if (c.k === 'zoccolo') { const a = c.u - c.w / 2, z = c.u + c.w / 2, T0 = []; let u = a; ap.filter(q => q.y0 < .5 && q.u1 > a && q.u0 < z).sort((p, q) => p.u0 - q.u0).forEach(q => { if (q.u0 > u) T0.push([u - c.u, q.u0 - c.u]); u = Math.max(u, q.u1); }); if (z > u) T0.push([u - c.u, z - c.u]); o2.tratti = T0; }
         if (c.k === 'serranda' || c.k === 'griglia' || c.k === 'vetrofania' || c.k === 'pannello_forato' || c.k === 'manifesti' && c.opz.carta === 'strati') {   // sulla sua apertura vera (la porta 1,1 m, la vetrina 0,95 o larga 3,1): una per apertura
           let e = null; if (bot) bot.ents.forEach(q => { if (Math.abs(q.u - c.u) < 1.1 && (!e || Math.abs(q.u - c.u) < Math.abs(e.u - c.u))) e = q; });
@@ -396,7 +396,11 @@ var ScorciArte = (function () {
         if (c.k === 'tenda' && bot) { const V = bot.ents.filter(q => q.role === 'vetrina'); if (V.length) { const a = Math.min(...V.map(q => q.u - q.w / 2)) - .1, z = Math.max(...V.map(q => q.u + q.w / 2)) + .1; c.u = (a + z) / 2; c.w = z - a; } }
         // le cose appese che cadrebbero su una finestra o una porta vera: saltano (la regola: mai su porte e vetrine)
         const libero = ['fascia', 'insegna2', 'bandiera', 'palo_barbiere', 'lampada', 'serranda', 'griglia', 'vetrofania', 'pannello_forato', 'zoccolo', 'festoni', 'manifesti'].includes(c.k) && !(c.k === 'manifesti' && !c.opz.carta);
-        if (!libero && coperta(c.u - (c.w || .5) / 2, c.u + (c.w || .5) / 2, c.y, c.y + (c.h || .5))) { s.scarti.push(c.k + ': sopra un\'apertura vera'); return; }
+        if (!libero && coperta(c.u - (c.w || .5) / 2, c.u + (c.w || .5) / 2, c.y, c.y + (c.h || .5))) {   // sopra una finestra vera: si sposta lungo il muro sul pieno più vicino, dentro il tratto dello scorcio
+          const w2 = (c.w || .5) / 2, y0 = c.y, y1 = c.y + (c.h || .5), lo = Math.max(.3, (s.ua || 0) - .5) + w2, hi = Math.min(fr.L - .3, (s.ub || fr.L) + .5) - w2; let nu = null;
+          for (let d = .1; d <= 3 && nu === null; d += .1) for (const sg of [1, -1]) { const u = c.u + sg * d; if (u < lo || u > hi) continue; if (coperta(u - w2, u + w2, y0, y1) || occupato(u - w2, u + w2, y0, y1)) continue; nu = u; break; }
+          if (nu === null) { s.scarti.push(c.k + ': sopra un\'apertura vera'); return; } spost[c.k] = nu - c.u; c.u = nu; const q2 = fr.wp(nu, 0); c.x = q2[0]; c.z = q2[1]; }
+        if (!libero) usati.push([c.u - (c.w || .5) / 2, c.u + (c.w || .5) / 2, c.y, c.y + (c.h || .5)]);
         const p = sulMuro(c.k, c, o2); if (c.k === 'lampada' && p) { const [ax, az] = fr.wp(c.u, 1.4); alone = { x: ax, z: az }; }
         if (c.k === 'serranda' && p && c.opz.sempre) p.sempre = true;
         return; }
