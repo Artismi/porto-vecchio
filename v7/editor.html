@@ -59506,13 +59506,13 @@ var Render = (function () {
   // i vetri del kit sono mesh a parte (materiale "glass"): diventano il vetro dell'edificio, acceso o spento
   let darkGlass = null;
   function modPiece(grp, name, mat, x, y, z, rot, glass) {
-    if (!darkGlass) darkGlass = std({ color: '#2c3850', roughness: .35, metalness: .1, emissive: '#0a0c14', emissiveMap: (litMat('#000'), litTex), emissiveIntensity: 1 });
+    if (!darkGlass) darkGlass = std({ color: '#2c3850', roughness: .35, metalness: .1, emissive: '#0a0c14', emissiveMap: (litMat('#000'), litTex), emissiveIntensity: 1 }); darkGlass.userData.vetro = 1;
     const o = Kit.get('bkit/' + name); o.traverse(m => { if (m.isMesh) m.material = m.material.name === 'glass' ? (glass || darkGlass) : mat; });
     o.position.set(x, y, z); o.rotation.y = rot; grp.add(o); return o;
   }
   // finestre accese: un pannello dietro al vetro, si accende di notte con gli altri emissivi
   let litTex = null;
-  const litMat = c => { if (!litTex) { const cc = mk(2, 2), x = cc.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 2, 2); litTex = canvasTex(cc); } return std({ color: '#0b0a12', emissive: c, emissiveMap: litTex, emissiveIntensity: 1, roughness: 1 }); };
+  const litMat = c => { if (!litTex) { const cc = mk(2, 2), x = cc.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 2, 2); litTex = canvasTex(cc); } const m = std({ color: '#0b0a12', emissive: c, emissiveMap: litTex, emissiveIntensity: 1, roughness: 1 }); m.userData.vetro = 1; return m; };   /* [peso] il marchio del vetro */
   const LIT = ['#ffb050', '#ffc470', '#fff0d8', '#ffa040', '#ffc880', '#e4e8ea', '#ffe27a', '#ff9040', '#f0d0a0', '#ffb860'];   // [inverno27] finestre di toni diversi   // [inverno24] finestre calde   // [inverno] fluorescenti malati, ogni tanto un sodio
   // vano luce di ogni modulo: larghezza, altezza, quota del centro (metri, misurati sul kit)
   const WIN = { 'wall-window-square': [.95, 1.35, 1.3], 'wall-window-square-detailed': [.95, 1.35, 1.3], 'wall-window-round': [.95, 1.45, 1.3], 'wall-window-round-detailed': [.95, 1.45, 1.3], 'wall-window-wide-square': [3.1, 1.3, 1.3], 'wall-window-wide-square-detailed': [3.1, 1.3, 1.3], 'wall-window-wide-round': [3.1, 1.4, 1.3], 'wall-window-wide-round-detailed': [3.1, 1.4, 1.3], 'wall-doorway-wide-round': [3.2, 2.1, 1.05], 'wall-doorway-wide-square': [3.2, 2.1, 1.05], 'wall-doorway-square': [1, 2.1, 1.05], 'wall-doorway-round': [1, 2.2, 1.1] };
@@ -64318,7 +64318,7 @@ var Render = (function () {
     for (let k = 0; k < sd.n; k++) { const t = sd.tile(k); if (t[0] >= Math.min(a[0], c[0]) && t[0] <= Math.max(a[0], c[0]) && t[1] >= Math.min(a[1], c[1]) && t[1] <= Math.max(a[1], c[1])) ks.push(k); if (S.door && t[0] === S.door[0] && t[1] === S.door[1]) kd = k; }
     return { ks, kd };
   }
-  function vetroBottega() { if (!BOT.vetro) { BOT.vetro = std({ color: '#c8d8e0', roughness: .08, metalness: .2, transparent: true, opacity: .16, depthWrite: false }); BOT.vetro.userData.keepTr = true; } return BOT.vetro; }
+  function vetroBottega() { if (!BOT.vetro) { BOT.vetro = std({ color: '#c8d8e0', roughness: .08, metalness: .2, transparent: true, opacity: .16, depthWrite: false }); BOT.vetro.userData.keepTr = true; BOT.vetro.userData.vetro = 1; } return BOT.vetro; }
   const MERCE_DI = u => /drogh|alimentar|^wu|emporio|supermerc/.test(u) ? 'dispensa' : /latter/.test(u) ? 'latte' : /merceria|abbigl|sartor/.test(u) ? 'stoffe' : /calzol/.test(u) ? 'scarpe'
     : /orolog/.test(u) ? 'orologi' : /cartol|tabacc|tipograf/.test(u) ? 'carta' : /profum|farmac/.test(u) ? 'boccette' : /elettrod|video/.test(u) ? 'elettro' : /mobili/.test(u) ? 'mobili'
     : /frutt/.test(u) ? 'frutta' : /pesch/.test(u) ? 'pesce' : /panett|forno/.test(u) ? 'pane' : /ferram|armeria|fabbro/.test(u) ? 'attrezzi' : /bar|tratt|oster|pub|gelat|car_2|sirena|circolo/.test(u) ? 'bottiglie' : 'tendina';
