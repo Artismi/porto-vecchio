@@ -4927,7 +4927,7 @@ var Render = (function () {
     if (NUOVA4() && (!X || X.era === 'E6')) cornici4(b, i, X, kind, grp, { x0, z0, w, d, base, top });   // [chiarezza] le finestre del boom e dei palazzi senza epoca si leggono
     if (roofKind === 'flat') {   // [ordine1] lastrico in scala vera, parapetto con la copertina, bocchettoni; le cose sopra le mette il programma del tetto (buildRoofs)
       const deck = box(w, .12, d, deckMat1(flatKind1(b, i), w, d, deckQ1(fl)));   /* [profondita] */ deck.position.set(cx, top + .02, cz); grp.add(deck);
-      if (X && X.lowParapet) {   // [epoche] il lastrico del borgo e della marina: parapetto basso (50 cm) che si vede ma non nasconde
+      if (X && (X.lowParapet || (X.piano3 && X.piano3.parapetti))) {   /* [tetti4] anche i terrazzi dell'Ottocento col parapetto del piano: le passerelle ci posano sopra a misura */   // [epoche] il lastrico del borgo e della marina: parapetto basso (50 cm) che si vede ma non nasconde
         const pt = .28, PP4 = X.piano3 && X.piano3.parapetti;
         if (!PP4) { const ph = .5; [[cx, z0 + pt / 2, w, pt], [cx, z0 + d - pt / 2, w, pt], [x0 + pt / 2, cz, pt, d - 2 * pt], [x0 + w - pt / 2, cz, pt, d - 2 * pt]].forEach(([px, pz, pw, pd]) => { const m = fB(pw, ph, pd, pal[0], 'concrete', .02); m.position.set(px, top + ph / 2, pz); grp.add(m); });
           copertina1(grp, x0 + pt / 2 - .14, z0 + pt / 2 - .14, w - pt + .28, d - pt + .28, top + ph, .3, X.stone); }
