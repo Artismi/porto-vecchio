@@ -8,7 +8,7 @@
 var PesoLontano = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
-  const ON = !/[?&]nopesolontano\b/.test(Q);
+  const ON = !/[?&]nopeso(lontano)?\b/.test(Q);
   const P = { px: .5, rMax: 2.5 };
   const ST = { tagliati: 0, provati: 0 };
   let K = null, attivo = true, pronto = false, inMain = 0, inShadow = 0, kpx = 0, cx = 0, cy = 0, cz = 0, s = null;

@@ -343,7 +343,7 @@ var Render = (function () {
   }
   // [peso] le parti trasparenti delle case (decalcomanie con l'ordine di disegno, vetri delle vetrine) entrano anche loro nei secchi per settore,
   // trasparenti come prima (la casa che si dissolve le ritrova come le altre). ?nopesotrasp: come prima; window.__pesoAB.trasp per il banco
-  const PESOTR = { on: LEGGERO && !/[?&]nopesotrasp\b/.test(typeof location !== 'undefined' ? location.search : ''), list: [] };
+  const PESOTR = { on: LEGGERO && !/[?&]nopeso(trasp)?\b/.test(typeof location !== 'undefined' ? location.search : ''), list: [] };
   if (typeof window !== 'undefined') (window.__pesoAB = window.__pesoAB || {}).trasp = v => PESOTR.list.forEach(([m, srcs]) => { m.visible = v; srcs.forEach(o => { o.visible = !v; }); });
   function fusione1() {
     const before = (() => { let n = 0; scene.traverse(o => { if (o.isMesh) n++; }); return n; })();
@@ -353,12 +353,13 @@ var Render = (function () {
     FD1.data = new Uint8Array(FD1.W * 4); FD1.tex = new THREE.DataTexture(FD1.data, FD1.W, 1, THREE.RGBAFormat); FD1.tex.needsUpdate = true; FD1.u.value = FD1.tex;
     const B = new Map(), SH = new Map(), moved = [];
     const okGeo = g => { if (!g || !g.attributes.position) return false; for (const k in g.attributes) if (k !== 'position' && k !== 'normal' && k !== 'uv') return false; return !g.morphAttributes || !Object.keys(g.morphAttributes).length; };
+    const recOf1 = new Map(dyn.buildings.map(r => [r.b, r]));   // [peso] i fronti delle botteghe ritrovano la loro casa
     scene.children.slice().forEach(top => {
-      const rec = top.userData.fgRec1; if (!rec || !FD1.idx.has(rec) || isLive(top)) return;
+      const rec = top.userData.fgRec1 || (top.userData.pesoBot && recOf1.get(top.userData.pesoBot)); if (!rec || !FD1.idx.has(rec) || isLive(top)) return;
       const bi = FD1.idx.get(rec); top.updateMatrixWorld(true);
       top.traverse(o => {
-        if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || Array.isArray(o.material) || !o.visible || o.renderOrder || o.customDepthMaterial || o.userData.keep) return;
-        const m = o.material, tr = PESOTR.on && m.transparent && m.userData.keepTr;   // [peso] le decalcomanie e i vetri delle vetrine (sempre trasparenti): un secchio per settore
+        if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || Array.isArray(o.material) || !o.visible || o.customDepthMaterial || o.userData.keep) return;   // [peso] l'ordine di disegno lo guarda la riga sotto
+        const m = o.material, tr = PESOTR.on && m.transparent && (m.userData.keepTr || !(rec.__ms1 || (rec.__ms1 = new Set(rec.mats || []))).has(m));   // (o trasparenti per sempre: fuori dai materiali che la casa che sbiadisce tocca)   // [peso] le decalcomanie e i vetri delle vetrine (sempre trasparenti): un secchio per settore
         if ((m.transparent || m.userData.keepTr) && !tr) return; if (live.mats.has(m) || !okGeo(o.geometry) || isLive(o)) return;
         if (o.renderOrder && !tr) return;
         const sig = matSig1(m); if (!sig) return;
@@ -9265,6 +9266,9 @@ var Render = (function () {
     const c = mk(64, 8), x = c.getContext('2d'); for (let k = 0; k < 8; k++) { x.fillStyle = k % 2 ? c2 : a; x.fillRect(k * 8, 0, 8, 8); }
     return BOT.tenda[era] = std({ map: canvasTex(c), roughness: 1, side: THREE.DoubleSide });
   }
+  // [peso] il fronte della bottega porta il segno della sua casa: fusione1 lo mette nei secchi del settore (stessi materiali di prima,
+  // fuori da quelli che la casa che sbiadisce rende trasparenti: resta pieno come prima). ?nopesobotteghe: come prima
+  const botTag1 = (o, b) => { if (o && !/[?&]nopeso(botteghe)?\b/.test(typeof location !== 'undefined' ? location.search : '')) o.userData.pesoBot = b; return o; };
   function fronteBottega(b, base, x0, z0, w, d) {
     const S = b.shopFront, B0 = b.__bot, f = B0.face, era = S.era || b.era || 'E3', stile = ERA_INS[era] || 'marmo', r = rng(b.x * 131 + b.y * 7);
     const F = { S: [x0, z0 + d, 0], N: [x0 + w, z0, Math.PI], E: [x0 + w, z0 + d, Math.PI / 2], W: [x0, z0, -Math.PI / 2] }[f], L = B0.n * TS;
@@ -9286,10 +9290,10 @@ var Render = (function () {
       at(box(.28, .2, .09, sm(era === 'E6' ? '#a8a49a' : '#2f4a38', { roughness: .7 })), cu, base + 1.0, .045); at(box(.2, .015, .02, sm('#1a1a1a')), cu, base + 1.06, .095); }   // la cassetta delle lettere
     K2 = 'insegna'; if (S.piano === 1 || !ents.length) {   // la bottega al primo piano: la targa d'ottone accanto al portone
       const tu = pu + sid * .9 <= L - .3 && pu + sid * .9 >= .3 ? pu + sid * .9 : pu - sid * .9, tx = insegnaTex(S.name || '', 'marmo', null, 1.8), pl = new THREE.Mesh(new THREE.PlaneGeometry(.5, .28), std({ map: tx.t, roughness: .5, color: '#e8d098' }));
-      at(pl, tu, base + 1.62, .025); scene.add(mergeGroup(g)); return;
+      at(pl, tu, base + 1.62, .025); scene.add(botTag1(mergeGroup(g), b)); return;
     }
     const u0 = Math.min(...ents.map(e => e.u - e.w / 2)), u1 = Math.max(...ents.map(e => e.u + e.w / 2)), um = (u0 + u1) / 2;
-    if (SCX) { { const q = wp(um, .9); addLight(q[0], base + 2.2, q[1], '#ffd890', 1.1, 6, .02); } scene.add(mergeGroup(g)); return; }   // [scorci] la vetrina accesa la sera resta
+    if (SCX) { { const q = wp(um, .9); addLight(q[0], base + 2.2, q[1], '#ffd890', 1.1, 6, .02); } scene.add(botTag1(mergeGroup(g), b)); return; }   // [scorci] la vetrina accesa la sera resta
     // ---- l'insegna sulla fascia, a tutta luce della bottega ----
     const iw = Math.min(u1 - u0 + .2, 6.2), ih = stile === 'lapidaria' ? .42 : .52, it = insegnaTex(S.sign && S.sign.t || S.name || '', stile, S.sign && S.sign.c, iw / ih);
     const im = std({ map: it.t, transparent: it.alpha, alphaTest: it.alpha ? .4 : 0, roughness: stile === 'marmo' ? .35 : .9, emissive: stile === 'plexi' ? '#ffffff' : '#000000', emissiveMap: stile === 'plexi' ? it.t : null, emissiveIntensity: stile === 'plexi' ? .9 : 0 });
@@ -9319,7 +9323,7 @@ var Render = (function () {
       else if (cat !== 'elettro' && cat !== 'mobili' && cat !== 'attrezzi') { const v2 = new THREE.Group(), vs = new THREE.Mesh(new THREE.CylinderGeometry(.18, .13, .38, 10), sm('#a8583a')); vs.position.y = .19; v2.add(vs); const fo = new THREE.Mesh(new THREE.SphereGeometry(.27, 8, 6), sm('#4a6a38')); fo.position.y = .55; fo.scale.y = .8; v2.add(fo); at(v2, Math.max(.35, Math.min(L - .35, u1 + (u1 > pu ? .3 : 0) - (u1 > pu ? 0 : 0))), base, .3); }   // un vaso accanto alla vetrina
     }
     { const q = wp(um, .9); const lr = addLight(q[0], base + 2.2, q[1], '#ffd890', 1.1, 6, .02); }   // la vetrina accesa la sera
-    scene.add(mergeGroup(g));
+    scene.add(botTag1(mergeGroup(g), b));
   }
   function addSign(b, base, w, d, x0, z0, top, signY, awnY) {
     const face = faceOf(b);
@@ -12611,7 +12615,7 @@ var Render = (function () {
   // richiesta (gli oggetti prendevano il colore dell'ultima). Ora l'atlante è 1024 × 2048 (32 colonne × 64 righe, 2.048 celle; 2048 è il
   // lato che ogni scheda WebGL2 regge): ogni cella ha gli stessi 32 × 32 texel di prima, quindi lo stesso campione (cambia solo dove sta),
   // e quelle oltre la 255 hanno finalmente la loro. ?nopesoatlante: come prima
-  const FA = /[?&]nopesoatlante\b/.test(typeof location !== 'undefined' ? location.search : '') ? { n: 0, map: {}, W: 512, H: 512 } : { n: 0, map: {}, W: 1024, H: 2048 };
+  const FA = /[?&]nopeso(atlante)?\b/.test(typeof location !== 'undefined' ? location.search : '') ? { n: 0, map: {}, W: 512, H: 512 } : { n: 0, map: {}, W: 1024, H: 2048 };
   FA.C = FA.W / 32; FA.N = FA.C * FA.H / 32;
   function faAtlas() { if (FA.c) return; FA.c = mk(FA.W, FA.H); FA.x = FA.c.getContext('2d'); FA.tex = canvasTex(FA.c); FA.mat = std({ map: FA.tex, roughness: .85 }); }
   // una cella di materia: colore + grana + usura, decisa dal tipo

@@ -10,7 +10,7 @@
 var PesoVetro = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
-  const ON = !/[?&](nopesovetro|noleggero)\b/.test(Q);
+  const ON = !/[?&](nopeso|nopesovetro|noleggero)\b/.test(Q);
   const V = { col: [], idx: new Map(), ok: new Map(), W: 256, u: { value: null }, s: { value: null }, tex: null };
   const R = {
     dif: 'vec4 diffuseColor = vec4( diffuse, opacity );',

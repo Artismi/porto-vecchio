@@ -69,6 +69,7 @@ const srv = http.createServer((req, res) => {
   OUTJ.avvio = await pg.evaluate(() => ({ fusione: window.__fusione1 || null, luci: window.__luci || null, tempi: window.__rt || null, atlanti: window.__atlanti ? window.__atlanti() : null, vetro: window.PesoVetro ? PesoVetro.voci : null }));
   for (const s of SCATTI) {
     const ts = Date.now();
+    const R0 = {};
     // 1) il posto, l'ora, il tempo, la camera (il giorno dopo quello di partenza: le pagine nuove partono dallo stesso orologio)
     await pg.evaluate(s => { const pv = window.__pv, st = pv.st, p = st.player, R = pv.R, ui = pv.ui;
       p.vehicle = null; p.indoor = null; p.lv = null; p.x = s.x; p.y = s.y; p.path = []; if (p.vx !== undefined) { p.vx = 0; p.vy = 0; }
@@ -80,6 +81,8 @@ const srv = http.createServer((req, res) => {
       let n = 0; st.npcs.forEach(m => { const q = m.__posto; if (!q) return; n++; if (q.arrived || q.tetto) return; m.x = q.slot.x; m.y = q.slot.y; m.inside = false; m.path = []; m.speedNow = 0; m.face = q.slot.face; q.arrived = true; }); return n; }));
     for (let k = 0, quiet = 0, tb = Date.now(); Date.now() - tb < 90000 && quiet < 2; k++) { await pg.waitForTimeout(1000); quiet = (await pg.evaluate(() => !(window.__pv.R.ISO && window.__pv.R.ISO.job))) ? quiet + 1 : 0; }
     await pg.waitForTimeout(4000);
+    // il regime: le persone che il gioco fonderebbe in pochi secondi, fuse subito (qui un fotogramma dura mezzo secondo)
+    R0.regime = await pg.evaluate(() => window.PesoGente && PesoGente.completa ? PesoGente.completa() : null);
     // 2) i tempi: N fotogrammi veri
     const campiona = n => pg.evaluate(n => new Promise(res => { const pv = window.__pv, R = pv.R, G = pv.G, f0 = R.frame, s0 = G.step, rd = R.__models.renderer, sm = rd.shadowMap, r0 = rd.render, sh0 = sm.render; let fr = 0, sp = 0, tot = 0, tt = 0, shc = 0, sht = 0, nmap = 0, cot = 0;
       R.frame = function () { const a = performance.now(); try { return f0.apply(this, arguments); } finally { fr += performance.now() - a; } };
@@ -94,7 +97,7 @@ const srv = http.createServer((req, res) => {
           res({ intervallo_ms: +md(A.dt).toFixed(1), frame_ms: +md(A.fr).toFixed(1), logica_ms: +md(A.sp).toFixed(2), disegni: md(A.tot), principale: md(A.main), ombre: +mean(A.sh).toFixed(0), post: md(A.post),
             mappe_ombra: +mean(A.nmap).toFixed(2), cotture: A.cot.reduce((x, y) => x + y, 0), ombre_senza_cotture: (() => { const q = A.sh.filter((x, j) => !A.cot[j]); return q.length ? Math.round(mean(q)) : null; })(), triangoli_k: Math.round(md(A.ttri) / 1000), principale_tri_k: Math.round(md(A.mtri) / 1000), ombre_tri_k: Math.round(mean(A.shtri) / 1000) }); } };
       requestAnimationFrame(f); }), n);
-    const R = { scatto: s };
+    const R = Object.assign({ scatto: s }, R0);
     await pg.evaluate(() => { if (window.PesoOmbre) { PesoOmbre.azzera(); PesoOmbre.diag(true); } if (window.PesoLontano) PesoLontano.azzera(); });
     R.tempi = await campiona(NF);
     R.peso_ombre = await pg.evaluate(() => window.PesoOmbre ? Object.assign(PesoOmbre.conto(), PesoOmbre.diag(false)) : null);

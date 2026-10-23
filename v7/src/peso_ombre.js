@@ -16,7 +16,7 @@
 var PesoOmbre = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
-  const ON = !/[?&]nopesoombre\b/.test(Q);
+  const ON = !/[?&]nopeso(ombre)?\b/.test(Q);
   const P = { M: 8, ang: .0026, ferma: 90, giro: 8, lotto: 250 };
   const MOT = { chiave: 0, firma: 0, misura: 0, aggancio: 0 }, DIAG = { on: false, mob: new Map(), firma: new Map() };
   const ST = { cotture: 0, sottofondo: 0, lotti: 0, riprese: 0, dinamici: 0, fermi: 0, lanciatori: 0, luci: 0, ms: 0, fotogrammi: 0 };

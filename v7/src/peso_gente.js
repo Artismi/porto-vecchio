@@ -13,9 +13,9 @@
 var PesoGente = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
-  const ON = !/[?&]nopesogente\b/.test(Q);
+  const ON = !/[?&]nopeso(gente)?\b/.test(Q);
   const P = { attesa: 20, ms: 2, riprova: 120, lontanoPx: 28 };
-  const LONTANO = !/[?&]nopesolontane\b/.test(Q);
+  const LONTANO = !/[?&]nopeso(lontane)?\b/.test(Q);
   const ST = { fuse: 0, sciolte: 0, pezzi: 0, disegni: 0, ms: 0, scartate: 0, lontane: 0 };
   let T3 = null, attivo = true, frame = 0;
   const CANON = new Map(), LIVE = new Set();
@@ -177,7 +177,7 @@ var PesoGente = (function () {
     const watch = new Set(); P0.fonti.forEach(o => { for (let q = o; q && q !== g; q = q.parent) watch.add(q); });
     const near = new Set(P0.sources);
     const rec = { made: P0.made, sources: P0.sources.map(o => [o, o.layers.mask]), soli: P0.fonti.filter(o => !near.has(o)).map(o => [o, o.layers.mask]), watch: [], g, piano: P0, far: null, farNo: false, tier: false };
-    watch.forEach(o => { let val = o.visible; Object.defineProperty(o, 'visible', { configurable: true, enumerable: true, get() { return val; }, set(x) { if (x !== val) { val = x; if (!rec.rotta) { rec.rotta = true; const k = (o.name || o.type) + '<' + ((o.parent && (o.parent.name || o.parent.type)) || '-') + (x ? ' acceso' : ' spento'); MOTIVI.set(k, (MOTIVI.get(k) || 0) + 1); } } } }); rec.watch.push(o); });
+    watch.forEach(o => { let val = o.visible; Object.defineProperty(o, 'visible', { configurable: true, enumerable: true, get() { return val; }, set(x) { if (x !== val) { val = x; if (!rec.rotta) { rec.rotta = true; const k = (o.name || o.type) + '<' + ((o.parent && (o.parent.name || o.parent.type)) || '-') + (x ? ' acceso' : ' spento') + ' @' + (new Error().stack || '').split('\n').slice(2, 5).map(l => (l.match(/at (?:Object\.)?([\w$.]+)/) || [])[1]).filter(Boolean).join('<'); MOTIVI.set(k, (MOTIVI.get(k) || 0) + 1); } } } }); rec.watch.push(o); });
     P0.sources.forEach(o => { o.layers.mask = 0; });
     g.__pg = rec; LIVE.add(g); ST.fuse++; ST.pezzi += P0.sources.length; ST.disegni += P0.made.length;
     return true;
@@ -226,8 +226,9 @@ var PesoGente = (function () {
     } catch (e) { console.warn('[peso] gente, scaldare', e); caldo = true; }
     C.t += performance.now() - t0; ST.caldo_ms = Math.round(C.t);
   }
+  let LASTP = null;
   function passo(people, kit) {
-    KIT = kit || KIT; if (!caldo && ON) scalda();
+    KIT = kit || KIT; LASTP = people || LASTP; people = LASTP; if (!people) return; if (!caldo && ON) scalda();
     if (!ON) return; if (!T3) T3 = window.THREE; frame++;
     LIVE.forEach(g => { if (g.__pg && (g.__pg.rotta || !attivo)) sciogli(g); });
     if (!attivo) { JOB = null; return; }
@@ -262,7 +263,12 @@ var PesoGente = (function () {
     }
     ST.ms += performance.now() - t0;
   }
+  // per il banco: tutto quello che il ritmo normale farebbe in qualche secondo, subito (le persone fuse, le versioni lontane)
+  function completa() {
+    const ms = P.ms; P.ms = 1e9; let k = 0;
+    try { for (let i = 0; i < 400; i++) { passo(null, KIT); if (!JOB) { k++; if (k > 3) break; } else k = 0; } } finally { P.ms = ms; }
+    return conto(); }
   function conto() { return Object.assign({ on: ON, attive: LIVE.size, materiali: CANON.size, motivi: [...MOTIVI.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8) }, ST); }
-  return { ON, P, passo, conto, sciogli, fondi, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) [...LIVE].forEach(sciogli); } };
+  return { ON, P, passo, conto, sciogli, fondi, completa, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) [...LIVE].forEach(sciogli); } };
 })();
 if (typeof window !== 'undefined') { window.PesoGente = PesoGente; (window.__pesoAB = window.__pesoAB || {}).gente = v => { PesoGente.attivo = v; }; }

@@ -11,7 +11,7 @@
 var PesoSchermo = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
-  const ON = !/[?&]nopesoschermo\b/.test(Q);
+  const ON = !/[?&]nopeso(schermo)?\b/.test(Q);
   const GRADINI = { bassa: [1, .9, .8, .72], media: [1, .9, .8], alta: [1, .9] };
   const S = { livello: null, nome: '', telefono: false, gradino: 0, buf: [], ultimo: 0, cambio: 0, sopra: 0, sotto: 0, bloccato: false, cambi: 0 };
   function livelloDa(nome) {
