@@ -6033,7 +6033,7 @@ var Render = (function () {
     });
     // 6) new jersey ai posti di blocco della Tutela e alla Base: file di cemento con lo spazio per passare
     // [percorsi2] nella città nuova la Piazza del Governo non ha le file di jersey (si leggevano come tavole chiare): il posto di blocco è quello disegnato
-    [G.PLACES.varco, G.PLACES.piazza_gov, G.PLACES.muro, G.PLACES.eliporto, G.PLACES.molo_cargo].forEach((p, pi) => { if (!p || (pi === 1 && cn1() && vitRoad2())) return;
+    [G.PLACES.varco, G.PLACES.piazza_gov, G.PLACES.muro, G.PLACES.eliporto, G.PLACES.molo_cargo].forEach((p, pi) => { if (!p || (pi === 1 && cn1() && vitRoad2()) || (M.world.recinto && pi !== 1)) return;   // [cucitura] il Recinto ha il suo varco disegnato: niente file di jersey sparse
       for (let row = 0; row < 2; row++) { const a = pi * 1.1 + row * Math.PI, cx = p.x + Math.cos(a) * 11, cz = p.y + Math.sin(a) * 11, tx = -Math.sin(a), tz = Math.cos(a);
         for (let q = -3; q <= 3; q++) { if (q === 0) continue; const x = cx + tx * q * 2, z = cz + tz * q * 2; if (!okSpot1(x, z, .5) || solidR1(x, z, 1.05)) continue; jersey1(x, z, Math.atan2(tx, tz), false); n++;   /* il jersey è lungo 2 m */ } } });
     if (window.__dbg35) console.log('[dbg] strade1', n, 'semafori', JSON.stringify(junc1().filter(j => j.signal).map(j => [Math.round(j.x), Math.round(j.y)])), 'cantieri', JSON.stringify(works1().map(w => [Math.round(w.x), Math.round(w.y)])), 'buche', holes1List().length);

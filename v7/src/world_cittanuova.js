@@ -2088,7 +2088,9 @@ var World = (function () {
     P('spiaggia', 'Spiaggia gelata', 512, 198); P('passeggiata', 'Passeggiata a mare', 492, 194); P('discarica', 'Discarica di levante', 548, 184);
     // il Muro e la Base
     P('muro', 'Il Muro', 548, yc(548), { gate: true }); P('varco', 'Varco del Muro', 562, yc(562));
-    P('poligono', 'Poligono della Base', 560, 178); P('eliporto', 'Eliporto della Base', 632, 134); P('molo_cargo', 'Porto cargo', 640, 200);   // [rocca2] il porto cargo sul molo a sud dello scoglio
+    P('poligono', 'Poligono della Base', 560, 178); P('eliporto', 'Eliporto della Base', 632, 134); P('molo_cargo', 'Porto cargo', 640, 200);
+    // [cucitura] il Muro, il varco e il piazzale dei mezzi stanno nel Recinto del Garante (prima erano punti sulla spianata, con le file di jersey attorno)
+    if (POSA.recinto) { const R = POSA.recinto; PN('muro', 'Il Muro', R.xw - 2, R.yN + 14, { gate: true }); PN('varco', 'Varco del Muro', R.gx - 3, 143); PN('poligono', 'Piazzale del Recinto', R.xe - 13, R.yN + 34); }   // [rocca2] il porto cargo sul molo a sud dello scoglio
     // la foresta
     P('macchia', 'Pineta dell\'altopiano', 200, 138); P('sentiero', 'Sentiero dei carbonai', 214, 156); P('radura', 'Radura del pastore', 176, 142);
     P('sugheri', 'Valle delle betulle', 202, 168); P('ovile', 'Ovile abbandonato', 176, 124); P('lago', 'Lago gelato', 182, 138);
