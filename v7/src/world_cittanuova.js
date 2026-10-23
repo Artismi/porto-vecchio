@@ -2424,11 +2424,11 @@ var World = (function () {
           const pil = []; for (let j = 0; j <= nC; j++) pil.push(R.xa + j * cw);
           R.bs.forEach(b => { delete b.portico; b.sottoPortico = true; if (!b.door) return; const ty = sd ? b.y - 1 : b.y + b.h; if (b.door[1] !== ty) return;
             const lib = x => Math.min(...pil.map(q => Math.abs(q - x))); let bx = b.door[0], bl = lib((bx + .5) * TS);
-            for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx, l = lib((tx + .5) * TS); if (grid[i] === T.BLD || grid[i] === T.WATER) continue; if (b.shopFront && b.shopFront.door && b.shopFront.door[0] === tx && b.shopFront.door[1] === ty) continue; if (l > bl + .3) { bl = l; bx = tx; } }
+            for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx, l = lib((tx + .5) * TS); if (grid[i] === T.BLD || grid[i] === T.WATER) continue; if (b.shopFront && b.shopFront.door && (Math.abs(b.shopFront.door[0] - tx) + Math.abs(b.shopFront.door[1] - ty) < 1 || Math.abs(b.shopFront.door[0] - tx) + Math.abs(b.shopFront.door[1] - ty) > 5)) continue; if (l > bl + .3) { bl = l; bx = tx; } }
             if (bx !== b.door[0]) { b.door = [bx, ty]; const P = PLACES[b.id]; if (P && !(b.shopFront && b.shopFront.door)) { P.tx = bx; P.ty = ty; P.x = bx * TS + TS / 2; P.y = ty * TS + TS / 2; } } }); }); });
       // [pianta] le porte delle case dietro il portico (nei vicoli fra una casa e l'altra, sui fianchi): dalla camera i piani sopra le arcate
       // le coprono; si spostano dove si vedono (la porta sotto il proprio portico no: il portico è il suo atrio)
-      B.forEach(b => { if (!b.door || b.pezzo || b.lighthouse) return; const sd0 = b.sottoPortico && (b.door[1] === b.y + b.h || b.door[1] === b.y - 1); if (sd0) return;
+      B.forEach(b => { if (!b.door || b.pezzo || b.lighthouse) return; const sd0 = b.sottoPortico && (b.door[1] === b.y + b.h || b.door[1] === b.y - 1); if (sd0 || (b.shopFront && b.shopFront.door)) return;   // col fronte di bottega il portone resta accanto alla bottega
         const sf = b.shopFront && b.shopFront.door, atrio = (x, y) => b.sottoPortico && (Math.floor(y / TS) === b.y + b.h || Math.floor(y / TS) === b.y - 1) && Math.floor(x / TS) >= b.x && Math.floor(x / TS) < b.x + b.w;
         const cattiva = (x, y) => (!atrio(x, y) && POSA.velata(x, y)) || (sf && Math.floor(x / TS) === sf[0] && Math.floor(y / TS) === sf[1]);
         if (!POSA.velata((b.door[0] + .5) * TS, (b.door[1] + .5) * TS)) return; if (rePorta(b, cattiva) && !sf) { const P = PLACES[b.id]; if (P) { P.tx = b.door[0]; P.ty = b.door[1]; P.x = P.tx * TS + TS / 2; P.y = P.ty * TS + TS / 2; } } });

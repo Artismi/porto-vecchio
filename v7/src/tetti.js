@@ -63,9 +63,9 @@ var Tetti = (function () {
   const LADDERS = [];
   // [pulizia2] i pezzi urbani grandi della città nuova (W.pezzi, le caselle che riservano): una scala che ci sta dietro, vista dalla camera
   // (che guarda da sud-est), non si vede; meglio un altro lato
-  const PZ = (W.pezzi || []).map(p => p.imp || !p.opz ? p : p.tipo === 'portico' ? Object.assign({}, p, { imp: [[0, 0, p.opz.campate * p.opz.campata, -p.opz.profondita / 2, p.opz.profondita / 2]] }) : p.tipo === 'carro_merci' ? Object.assign({}, p, { imp: [[0, 0, 10, -1.5, 1.5]] }) : p)   // [pianta] il portico e il carro sul tronchino non riservano caselle: l'ingombro dalle misure
+  const PZ = (W.pezzi || []).map(p => p.imp || !p.opz ? p : p.tipo === 'portico' ? Object.assign({}, p, { misura: true, imp: [[0, 0, p.opz.campate * p.opz.campata, -p.opz.profondita / 2, p.opz.profondita / 2]] }) : p.tipo === 'carro_merci' ? Object.assign({}, p, { misura: true, imp: [[0, 0, 10, -1.5, 1.5]] }) : p)   // [pianta] il portico e il carro sul tronchino non riservano caselle: l'ingombro dalle misure
     .filter(p => p.imp && p.tipo !== 'binari' && p.tipo !== 'bitta'), CAM = Math.SQRT1_2;
-  const inPz = (x, y, pad0) => PZ.some(p => { const pad = /portico|porta_terra|tettoia/.test(p.tipo) ? pad0 + 2 : pad0, c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c; return p.imp.some(r => l >= r[1] - pad && l <= r[2] + pad && z >= r[3] - pad && z <= r[4] + pad); });   // le volte dei portici sporgono oltre le caselle riservate
+  const inPz = (x, y, pad0) => PZ.some(p => { const pad = p.misura ? pad0 + .4 : /portico|porta_terra|tettoia/.test(p.tipo) ? pad0 + 2 : pad0, c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c; return p.imp.some(r => l >= r[1] - pad && l <= r[2] + pad && z >= r[3] - pad && z <= r[4] + pad); });   // le volte dei portici sporgono oltre le caselle riservate
   const coperta = (wx, wy, ox, oy) => { if (!PZ.length) return false; for (let a = .3; a <= 2.3; a += .5) for (let b = 0; b <= 8; b += 1) if (inPz(wx + ox * a + CAM * b, wy + oy * a + CAM * b, .3)) return true; return false; };
   // [tetti3] LA CITTÀ NUOVA (le case con l'epoca): le salite si vedono. La camera guarda da sud-est, alta 41°: una scala sui lati
   // nord e ovest sta dietro la sua casa; una sul lato sud o est si vede, se davanti non c'è un'altra casa più alta o un pezzo grande.
@@ -1030,7 +1030,7 @@ var Tetti = (function () {
     B.forEach((b, bi) => { if (!ok3(b)) return;
       const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, W1 = b.w * TS, D1 = b.h * TS;
       const giro = sulGiro.has(bi), piazza = piazze.some(n => hyp(n.x - cx, n.y - cy) < 30), lungo = dom.some(p => p.pts.some(q => hyp(q[0] - cx, q[1] - cy) < (p.k === 'dominante' ? 12 : 9)));
-      const pr = premio.get(bi), s = (giro ? 3 : 0) + (piazza ? 2 : 0) + (lungo ? 1.5 : 0) + h3(b.x, b.y, 31) * .9 - (W1 * D1 < 20 ? .8 : 0) - (b.era === 'E3' ? 1.2 : 0) + (pr === 'terrazza' ? 20 : 0);   // i terrazzini di 4 × 4 m vengono dopo; l'Ottocento è soprattutto tegole; [tetti4] la terrazza nascosta prima di tutte
+      const pr = premio.get(bi), s = (giro ? 3 : 0) + (piazza ? 2 : 0) + (lungo ? 1.5 : 0) + h3(b.x, b.y, 31) * .9 - (W1 * D1 < 20 ? .8 : 0) - (b.era === 'E3' ? 1.2 : 0) + (pr === 'terrazza' ? 20 : 0) + (b.sottoPortico ? 2.5 : 0);   // [pianta] sopra i portici della Vittoria il terrazzo si vede dalla strada: resta abitato anche senza la scala sotto le arcate   // i terrazzini di 4 × 4 m vengono dopo; l'Ottocento è soprattutto tegole; [tetti4] la terrazza nascosta prima di tutte
       const puo = b.era !== 'E4' && W1 >= 4 && D1 >= 4;
       cand.push({ b, bi, s, giro, piazza, lungo, puo, perc: sulPerc.has(bi), premio: pr });
     });
