@@ -26,7 +26,7 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); i
 const C4 = T.copertura4(), Z = C4.zone;
 Object.entries(Z).forEach(([z, s]) => console.log(`${z}: ${s.tetti} tetti, sul giro ${s.giro}, dalla rete ${s.rete}, isole ${s.isola}, irraggiungibili ${s.muro}, muti ${s.muti}, forme ${JSON.stringify(s.forme)}`));
 ok(Z.borgo.raggiungibili >= .7, `nel borgo i tetti raggiungibili dalla rete dei giri: ${Math.round(100 * Z.borgo.raggiungibili)}% (almeno 70%; prima 23%)`);
-ok(Z.marina.raggiungibili >= .6 && Z.ottocento.raggiungibili >= .6, `marina ${Math.round(100 * Z.marina.raggiungibili)}%, Ottocento ${Math.round(100 * Z.ottocento.raggiungibili)}% (almeno 60%; prima 0% e 12%)`);
+ok(Z.marina.raggiungibili >= .7 && Z.ottocento.raggiungibili >= .7, `marina ${Math.round(100 * Z.marina.raggiungibili)}%, Ottocento ${Math.round(100 * Z.ottocento.raggiungibili)}% (almeno 70%; prima 0% e 12%)`);   // [cucitura] alzato a 70%
 ok(Z.borgo.isola + Z.borgo.muro <= 90, `nel borgo isole e irraggiungibili: ${Z.borgo.isola} + ${Z.borgo.muro} (prima 167 + 77)`);
 ok(Z.borgo.attraversati >= .2, `i tetti del borgo attraversati da un giro, da una sua via o da un suo ramo: ${Math.round(100 * Z.borgo.attraversati)}% (prima 3%)`);
 const R4 = T.RETE4; console.log(`la rete: ${R4.scalette.length} scalette fra tetti, ${R4.archi.length} archi, ${R4.passerelle.length} passerelle, ${(R4.salite || []).length} salite nuove da terra, ${R4.anelli} anelli`);
@@ -35,7 +35,7 @@ ok(T.PLANKS.filter(P => P.via5).length <= 4, `sopra la Rua e la Marina pochi arc
 
 // ---------------- 2. i giri, i temi, i premi, le vie ----------------
 const giri = D.circuiti.filter(c => c.k === 'tetti'), tutti = D.circuiti;
-ok(tutti.length >= 8 && tutti.length <= 10, `da otto a dieci giri (${tutti.length}: ${tutti.map(c => c.nome.replace(/^Il (giro )?/, '')).join(', ')})`);
+ok(giri.length >= 8 && giri.length <= 10 && tutti.length === giri.length + 1, `da otto a dieci giri sui tetti, più le mura (${tutti.length}: ${tutti.map(c => c.nome.replace(/^Il (giro )?/, '')).join(', ')})`);
 ok(tutti.every(c => c.tema), 'ogni giro ha il suo tema: ' + tutti.map(c => c.tema).join(' · '));
 ok(giri.every(c => (c.rami || []).length >= 1), 'ogni giro sui tetti ha almeno un ramo che paga: ' + giri.map(c => c.id.replace('giro_', '') + ' ' + c.rami.map(r => r.premio).join('+')).join(' · '));
 const kinds = new Set(); giri.forEach(c => c.rami.forEach(r => kinds.add(r.premio)));

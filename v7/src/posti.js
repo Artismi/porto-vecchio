@@ -77,7 +77,7 @@ var Posti = (function () {
     if (x >= FORTX) return 'rocca';
     if (x >= SPIAN) return 'spianata';
     const bi = nearestB(x, y, 8), b = bi >= 0 ? B[bi] : null;
-    const vit = RD('vittoria'); if (vit && distRoad(vit, x, y) < 9 && !(b && hyp(cx(b.x) + (b.w - 1) * TS / 2 - x, cx(b.y) + (b.h - 1) * TS / 2 - y) < (b.w + b.h) * TS / 2 + 1.5)) return 'vittoria';   // in mezzo alla strada sorvegliata; sotto le case no
+    const vit = RD('vittoria'); if (vit && x < SPIAN && distRoad(vit, x, y) < 9 && !(b && hyp(cx(b.x) + (b.w - 1) * TS / 2 - x, cx(b.y) + (b.h - 1) * TS / 2 - y) < (b.w + b.h) * TS / 2 + 1.5)) return 'vittoria';   // in mezzo alla strada sorvegliata; sotto le case no
     if (b && b.shack) return 'baracche';
     if (b && b.era === 'E2') return 'marina';
     if (b && (b.era === 'E0' || b.era === 'E4')) return 'borgo';
@@ -89,7 +89,7 @@ var Posti = (function () {
     return 'centro';
   }
   function nearestB(x, y, r) { let best = -1, bd = r * r; const a = tx(x), b0 = tx(y), R = Math.ceil(r / TS); for (let j = -R; j <= R; j++) for (let i = -R; i <= R; i++) { const bi = bAt(a + i, b0 + j); if (bi < 0) continue; const d = (i * TS) ** 2 + (j * TS) ** 2; if (d < bd) { bd = d; best = bi; } } return best; }
-  const DENS = { borgo: 1, marina: 1, ottocento: 1, boom: .8, baracche: 1.2, vittoria: .15, spianata: .1, rocca: 0, centro: .8 };   // [mappa_compatta] più gente per m²: ottocento .7→1, boom .5→.8, baracche .6→1,2; la Vittoria resta vuota
+  const DENS = { borgo: 1, marina: 1, ottocento: 1, boom: .8, baracche: 1.2, vittoria: .9, spianata: .1, rocca: 0, centro: .8 };   // [cucitura] la Vittoria è una via vissuta (portici di bottega, caffè, cinema): non più vuota   // [mappa_compatta] più gente per m²: ottocento .7→1, boom .5→.8, baracche .6→1,2; la Vittoria resta vuota
 
   // ---------------- LA COSTRUZIONE ----------------
   let ALL = null, BYK = null, GRID = null;

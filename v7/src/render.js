@@ -6060,7 +6060,7 @@ var Render = (function () {
     });
     // 6) new jersey ai posti di blocco della Tutela e alla Base: file di cemento con lo spazio per passare
     // [percorsi2] nella città nuova la Piazza del Governo non ha le file di jersey (si leggevano come tavole chiare): il posto di blocco è quello disegnato
-    [G.PLACES.varco, G.PLACES.piazza_gov, G.PLACES.muro, G.PLACES.eliporto, G.PLACES.molo_cargo].forEach((p, pi) => { if (!p || (pi === 1 && cn1() && vitRoad2())) return;
+    [G.PLACES.varco, G.PLACES.piazza_gov, G.PLACES.muro, G.PLACES.eliporto, G.PLACES.molo_cargo].forEach((p, pi) => { if (!p || (pi === 1 && cn1() && vitRoad2()) || (M.world.recinto && pi !== 1)) return;   // [cucitura] il Recinto ha il suo varco disegnato: niente file di jersey sparse
       for (let row = 0; row < 2; row++) { const a = pi * 1.1 + row * Math.PI, cx = p.x + Math.cos(a) * 11, cz = p.y + Math.sin(a) * 11, tx = -Math.sin(a), tz = Math.cos(a);
         for (let q = -3; q <= 3; q++) { if (q === 0) continue; const x = cx + tx * q * 2, z = cz + tz * q * 2; if (!okSpot1(x, z, .5) || solidR1(x, z, 1.05)) continue; jersey1(x, z, Math.atan2(tx, tz), false); n++;   /* il jersey è lungo 2 m */ } } });
     if (window.__dbg35) console.log('[dbg] strade1', n, 'semafori', JSON.stringify(junc1().filter(j => j.signal).map(j => [Math.round(j.x), Math.round(j.y)])), 'cantieri', JSON.stringify(works1().map(w => [Math.round(w.x), Math.round(w.y)])), 'buche', holes1List().length);
@@ -7054,6 +7054,9 @@ var Render = (function () {
     const off = (o, w, col) => { x.beginPath(); rd.pts.forEach((q, k) => { const a = rd.pts[Math.max(0, k - 1)], c = rd.pts[Math.min(rd.pts.length - 1, k + 1)], L = Math.hypot(c[0] - a[0], c[1] - a[1]) || 1, nx = -(c[1] - a[1]) / L, nz = (c[0] - a[0]) / L;
       const X = px(q[0] + nx * o), Z = pz(q[1] + nz * o); if (k) x.lineTo(X, Z); else x.moveTo(X, Z); }); x.lineWidth = w * PPM; x.strokeStyle = col; x.stroke(); };
     x.save(); x.lineJoin = 'round'; x.lineCap = 'butt';
+    // [cucitura] la Vittoria viva (rd.viva) è una via di basoli scuri come le altre del centro, coi cordoli e i giunti: niente fascia di
+    // bardiglio né listelli di marmo, niente traverse (erano il segno della parata)
+    if (rd.viva) { off(0, rd.w, 'rgba(92,86,80,.30)'); for (let o = -h + 1; o < h - .4; o += 1) off(o, .05, 'rgba(40,34,28,.22)'); [-1, 1].forEach(sd => { off(sd * (h - .2), .4, 'rgba(46,40,32,.5)'); }); x.restore(); return; }
     off(0, rd.w, 'rgba(226,212,184,.34)');   // il travertino più chiaro e caldo (sotto era quasi grigio)
     // la fascia centrale: pietra scura (bardiglio) fra due listelli di marmo
     off(0, VIT2.fascia * 2, 'rgba(84,80,72,.72)');
@@ -7105,19 +7108,23 @@ var Render = (function () {
       const k = box(VIT2.cordolo, .2, 1.48, cord); k.position.set(cx, y + .1, cz); k.rotation.y = rot; addStatic(k);
       const s = box(.04, .17, 1.48, cordS); s.position.set(cx - q.nx * sd * (VIT2.cordolo / 2 + .01), y + .085, cz - q.nz * sd * (VIT2.cordolo / 2 + .01)); s.rotation.y = rot; addStatic(s); n++; }));   // la faccia in ombra verso la carreggiata
     // pennoni e lampioni del regime alternati, a passo fisso, simmetrici sui due lati; mai davanti a una porta, a un incrocio o nella piazza
-    lungoV2(rd, VIT2.passo, VIT2.passo / 2).forEach((q, i) => [-1, 1].forEach(sd => { const o = h + .95, x = q.x + q.nx * sd * o, z = q.z + q.nz * sd * o;
+    // [cucitura] sulla Vittoria viva niente pennoni: i lampioni a palo dell'Ottocento a passo di 18 m sul lato sud (il nord ha il portico)
+    if (rd.viva) lungoV2(rd, 18, 9).forEach(q => { const o = h + .6, x = q.x + q.nx * o, z = q.z + q.nz * o;
+      if (inAdunata(x, z) || piena(x, z) || incrocioV2(x, z, 1.5) || (typeof Chiarezza !== 'undefined' && Chiarezza.davanti(F, x, z, .3))) return;
+      P2.k = 'lampione'; streetLamp(x, z, 'genovese', Math.atan2(-q.nx, -q.nz)); P2.k = null; n++; });
+    else lungoV2(rd, VIT2.passo, VIT2.passo / 2).forEach((q, i) => [-1, 1].forEach(sd => { const o = h + .95, x = q.x + q.nx * sd * o, z = q.z + q.nz * sd * o;
       if (inAdunata(x, z) || piena(x, z) || incrocioV2(x, z, 1.5) || (typeof Chiarezza !== 'undefined' && Chiarezza.davanti(F, x, z, .3))) return;
       const rot = Math.atan2(-q.nx * sd, -q.nz * sd); P2.k = i % 2 ? 'lampione' : 'cartello'; if (i % 2) streetLamp(x, z, 'regime', rot); else pennoneV2(x, z, Math.atan2(q.ux, q.uz)); P2.k = null; n++; }));
     // il filo dei portici si legge come un colonnato continuo: fra un portico e l'altro (le case senza portico, gli sbocchi dei vicoli) i
     // pilastri di travertino seguono a passo di campata e l'architrave corre da un portico al successivo, alla stessa quota
     const trav = sm('#d9cfb8', { roughness: .8 }), travS = sm('#b8ae98', { roughness: .9 }), PZ = (M.world.pezzi || []).filter(p => p.tipo === 'portico' && p.opz && Math.abs(p.y - rd.pts[0][1]) < 16);
-    [-1, 1].forEach(sd => {
+    if (!rd.viva) [-1, 1].forEach(sd => {   // [cucitura] fra i portici di bottega niente pilastri di travertino
       const L = PZ.filter(p => Math.sign(p.y - rd.pts[0][1]) === sd).map(p => { const lg = p.opz.campate * p.opz.campata, a = Math.abs(p.rot) < .1 ? p.x : p.x - lg; return { a, b: a + lg, z: p.y + (Math.abs(p.rot) < .1 ? -.2 : .2), h: p.opz.h || 5, pl: p.opz.pilastro || .8 }; }).sort((u, v) => u.a - v.a);
       for (let k = 0; k < L.length - 1; k++) { const A = L[k], B = L[k + 1], g = B.a - A.b; if (g < .5 || g > 26) continue; const z = A.z, y0 = groundH((A.b + B.a) / 2, z), nP = Math.max(1, Math.round(g / 4)), st = g / nP;
         for (let i = 1; i < nP; i++) { const x = A.b + i * st; if (incrocioV2(x, z, .6) || piena(x, z) || (typeof Chiarezza !== 'undefined' && Chiarezza.davanti(F, x, z, .2))) continue; /* mai davanti a una porta */ P2.k = 'grande'; const pl = box(A.pl, A.h, A.pl, trav); pl.position.set(x, y0 + A.h / 2, z); addStatic(pl); const ba = box(A.pl + .2, .3, A.pl + .2, travS); ba.position.set(x, y0 + .15, z); addStatic(ba); P2.k = null; n++; }
         P2.k = 'grande'; const ar = box(g + .02, .7, A.pl, trav); ar.position.set((A.b + B.a) / 2, y0 + A.h - .35, z); addStatic(ar); const co = box(g + .02, .12, A.pl + .24, travS); co.position.set((A.b + B.a) / 2, y0 + A.h + .06, z); addStatic(co); P2.k = null; } });
     // il posto di blocco: sulla Vittoria, al bordo lontano dalla camera (nord), all'uscita della piazza verso la Rocca
-    if (G.PLACES && G.PLACES.piazza_gov) { const p = G.PLACES.piazza_gov; let best = null; lungoV2(rd, 1, 0).forEach(q => { if (A && q.x < A.x1 + 3) return; const d = Math.hypot(q.x - p.x, q.z - p.y); if (!best || d < best.d) best = Object.assign({ d }, q); });
+    if (G.PLACES && G.PLACES.piazza_gov && !rd.viva) { const p = G.PLACES.piazza_gov; let best = null; lungoV2(rd, 1, 0).forEach(q => { if (A && q.x < A.x1 + 3) return; const d = Math.hypot(q.x - p.x, q.z - p.y); if (!best || d < best.d) best = Object.assign({ d }, q); });
       if (best) { const sd = best.nz < 0 ? 1 : -1, nx = -best.nx * sd, nz = -best.nz * sd, x = best.x - nx * (h + 1.6), z = best.z - nz * (h + 1.6);   // (nx, nz): dal bordo nord verso il centro della via; la garitta oltre il cordolo
         P2.k = 'grande'; postoBloccoV2(x, z, best.ux, best.uz, nx, nz); P2.k = null; VIT2.blocco = [x, z]; n++; } }
     return n;
@@ -9681,6 +9688,15 @@ var Render = (function () {
         [[q.x0 + 2, q.y0 + 2], [q.x1 - 2, q.y0 + 2]].forEach(([x, z]) => { if (ok(x, z)) { leafyTree(x, z, r, true); n++; } });
         [cx - 4, cx + 4].forEach(x => { if (ok(x, cz + 1.5)) { bench(x, cz + 1.5, Math.PI, 'iron'); n++; } });
         if (ok(q.x1 - 2, q.y1 - 2, 1)) newsstand(q.x1 - 2, q.y1 - 2, -Math.PI / 2, r); if (ok(q.x0 + 1.5, q.y1 - 1.5)) phoneBooth(q.x0 + 1.5, q.y1 - 1.5, Math.PI / 2);
+      } else if (q.k === 'adunata' && q.civica) {
+        // [cucitura] la Piazza Grande (l'ex adunata): la fontana in mezzo alla metà sud (pezzo), attorno le panchine rivolte alla fontana, il
+        // dehors del caffè lungo il filo sud, l'edicola dei giornali e la cabina sull'angolo verso il Mercato; a nord il sagrato del cinema libero
+        const fx = (q.x0 + q.x1) / 2, fz = (q.y1 + (q.y0 + q.y1) / 2 + 3.5) / 2 + 1;
+        [[-5.5, 0], [5.5, 0]].forEach(([dx, dz]) => { const x = fx + dx, z = fz + dz; if (ok(x, z)) { bench(x, z, dx < 0 ? Math.PI / 2 : -Math.PI / 2, 'iron'); n++; } });
+        if (!SEG1.ok) for (let k = 0; k < 3; k++) { const x = q.x0 + 5 + k * 4.5, z = q.y1 - 2.2; if (ok(x, z)) { cafe(x, z, r, 'marble', 2, ['#2f6a4e', '#e9e0cf']); n++; } }
+        if (ok(q.x0 + 2, q.y1 - 2.5, 1)) newsstand(q.x0 + 2, q.y1 - 2.5, Math.PI / 2, r); if (ok(q.x0 + 1.5, (q.y0 + q.y1) / 2 - 6)) phoneBooth(q.x0 + 1.5, (q.y0 + q.y1) / 2 - 6, Math.PI / 2);
+        for (let k = 0; k < 4; k++) { const x = q.x0 + 3 + k * (q.x1 - q.x0 - 6) / 3, z = q.y0 + 1.6; if (ok(x, z, .4)) pot(x, z, r, k % 2 ? 'lemon' : 'geranio'); }
+        cat(fx + 3, fz + 3, r);
       } else if (q.k === 'adunata') {
         // il palco del Garante contro il Ministero, i pennoni in fila sui due lati, le transenne per l'adunata
         const cx = (q.x0 + q.x1) / 2, pz = q.y0 + 3; const g = G0(), pietra = sm('#e2d8c0', { roughness: .9 }), rosso = sm('#a8282a', { roughness: .95 });
@@ -11649,6 +11665,8 @@ var Render = (function () {
     // dalla parte della Base la striscia della morte: sabbia rastrellata, cavalli di Frisia, la pista di pattuglia, i lampioni verso il Muro
     const SL = 1.2, wallG = () => { const c = '#8c8a84'; return c; };
     let si = 0;
+    // [cucitura] nella città nuova il Muro è il Recinto del Garante (W.recinto): muri, torri e varco sono pezzi (pezzi_citta.js), qui niente
+    if (!W0.recinto) {
     for (let y = WL.y0; y < WL.y1; y += SL, si++) {
       if (y + SL / 2 > WL.gate[0] && y + SL / 2 < WL.gate[1]) continue;
       if (WL.towers.some(([tx2, ty2]) => Math.abs(ty2 - (y + SL / 2)) < 1.5) || G.tileAt(Math.floor((WL.x + 1) / TS), Math.floor((y + SL / 2) / TS)) === T.WATER) continue;   // [leggera] la torre ha il suo piede; in mare niente lastre
@@ -11700,6 +11718,13 @@ var Render = (function () {
       const L = addLight(gx, groundH(gx, cy) + 6, cy, '#f0f0ff', 3, 22, .02); L.always = true; glow(gx, groundH(gx, cy) + 6, cy, '#f0f0ff', 3);
       const pole = G0(); add(pole, box(.2, 6, .2, wire), 0, 3, 0); add(pole, box(.8, .4, .5, sl('#2a2a30')), 0, 6, 0); place(pole, gx, cy - 5.5, 0);
     }
+    }   // [cucitura] fine del Muro lungo (solo senza il Recinto)
+    // [cucitura] il Recinto del Garante: dalle torri di guardia (pezzi) il fascio del riflettore che spazza il piazzale e la spianata, la
+    // lampada sul varco; i pali dei riflettori sono pezzi e si accendono da soli
+    else { (W0.pezzi || []).filter(p => p.tipo === 'torre_guardia').forEach((p, k) => { const h = (p.opz && p.opz.h) || 11;
+        const piv = new THREE.Group(), beam = new THREE.Mesh(new THREE.ConeGeometry(2.4, 18, 10, 1, true), new THREE.MeshBasicMaterial({ color: '#f4f0d0', transparent: true, opacity: .1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+        beam.position.y = -9; piv.add(beam); piv.position.set(p.x, groundH(p.x, p.y) + h - 2.5, p.y + 1.6); piv.rotation.z = .9; scene.add(piv); WX.beams.push({ piv, ph: k * 1.7, side: k % 2 ? 1 : -1 }); });
+      const R = W0.recinto, L = addLight(R.gx - 3, groundH(R.gx, (WL.gate[0] + WL.gate[1]) / 2) + 6, (WL.gate[0] + WL.gate[1]) / 2, '#f0f0ff', 3, 22, .02); L.always = true; }
     // ---- la Base: radar, antenna, pennoni, riflettori, eliporto ----
     if (P.rocca) {
       const R0 = P.rocca, rg = G0(); add(rg, box(1.6, 5, 1.6, concrete('#6a6e66')), 0, 2.5, 0);
