@@ -55281,8 +55281,9 @@ var Pavimenti = (function () {
   // [pavimenti] le vie che si interrompono: due capi di via di città vicini (entro 30 m), quasi allineati, con fra loro solo suolo
   // fatto (selciato, banchina, strada: niente case né acqua), si cuciono con un tratto finto, solo per il disegno del suolo
   let VIE = null; const CUCITE = [];
-  function vieTutte() {
-    if (VIE) return VIE; const R = (A.M.roads || []).filter(rd => rd.pts && rd.pts.length > 1), T = A.G.T, TS = A.TS, out = R.slice();
+  function vieTutte(B) {   // B: { roads, gT, TS, T, geo1 } quando la chiede render.js prima di init (i marciapiedi)
+    if (VIE) return VIE; B = B || { roads: A.M.roads, gT: A.gT, TS: A.TS, T: A.G.T, geo1: A.geo1 };
+    const R = (B.roads || []).filter(rd => rd.pts && rd.pts.length > 1), T = B.T, TS = B.TS, out = R.slice(), gT = B.gT;
     const capi = []; R.forEach(rd => { if (rd.kind === 'vicolo' || rd.kind === 'sterrato') return; const P = rd.pts, n = P.length;
       [[0, 1], [n - 1, n - 2]].forEach(([a, b]) => { const dx = P[a][0] - P[b][0], dz = P[a][1] - P[b][1], L = Math.hypot(dx, dz) || 1; capi.push({ rd, x: P[a][0], z: P[a][1], ux: dx / L, uz: dz / L, fine: a > 0 }); }); });
     const toccata = c => R.some(o => o !== c.rd && o.pts.some(q => Math.hypot(q[0] - c.x, q[1] - c.z) < o.w / 2 + 1));   // il capo entra già in un'altra via
@@ -55290,10 +55291,10 @@ var Pavimenti = (function () {
     capi.forEach(a => { if (usati.has(a) || toccata(a)) return; let best = null, bd = 30;
       capi.forEach(b => { if (b === a || b.rd === a.rd || usati.has(b)) return;   /* l'altro capo può stare in un incrocio */ const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz); if (d < 2 || d >= bd) return;
         if ((dx * a.ux + dz * a.uz) / d < .85 || (-dx * b.ux - dz * b.uz) / d < .85) return;   // l'uno davanti all'altro
-        for (let t = .5; t < d; t += .5) { const v = A.gT(Math.floor((a.x + dx * t / d) / TS), Math.floor((a.z + dz * t / d) / TS)); if (v === T.BLD || v === T.WATER) return; }
+        for (let t = .5; t < d; t += .5) { const v = gT(Math.floor((a.x + dx * t / d) / TS), Math.floor((a.z + dz * t / d) / TS)); if (v === T.BLD || v === T.WATER) return; }
         best = b; bd = d; });
       if (!best) return; usati.add(a); usati.add(best);
-      const g0 = A.geo1(a.rd), s0 = a.fine ? g0.s[g0.n - 1] : -bd, w = Math.min(a.rd.w, best.rd.w), pts = a.fine ? [[a.x, a.z], [best.x, best.z]] : [[best.x, best.z], [a.x, a.z]];
+      const g0 = B.geo1(a.rd), s0 = a.fine ? g0.s[g0.n - 1] : -bd, w = Math.min(a.rd.w, best.rd.w), pts = a.fine ? [[a.x, a.z], [best.x, best.z]] : [[best.x, best.z], [a.x, a.z]];
       const cu = { id: 'cucita_' + a.rd.id + '_' + best.rd.id, kind: a.rd.kind, era: a.rd.era, w, pts, __g: { s: [s0, s0 + bd], n: 2 } }; out.push(cu); CUCITE.push([cu.id, Math.round(bd), pts.map(q => q.map(Math.round))]); });
     return (VIE = out);
   }
@@ -55654,7 +55655,7 @@ var Pavimenti = (function () {
   function sonda(x, z) { const C = A.TS * 32, key = Math.floor(x / C) + ',' + Math.floor(z / C), b = BLK.get(key); if (!b) return { key, blocco: false, blocchi: BLK.size, STAT };
     const i = Math.floor((x - b.box.x) / b.box.z * b.res.x), j = Math.floor((z - b.box.y) / b.box.w * b.res.y), d = b.id.image.data, o = (j * b.res.x + i) * 4, pk = d[o + 3];
     return { key, s: d[o], v: d[o + 1], th: d[o + 2], rf: pk % 16, gf: Math.floor(pk / 16) % 16, hw: Math.floor(pk / 256) / 8, blocchi: BLK.size, STAT }; }
-  const API = { cucite: () => (vieTutte(), CUCITE), qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
+  const API = { cucite: () => (vieTutte(), CUCITE), vie: B => ON ? vieTutte(B) : B.roads, qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
   if (typeof window !== 'undefined') window.__PAV = API;
   return API;
 })();
@@ -62336,7 +62337,7 @@ var Render = (function () {
     let m = new Float32Array(NW * NH), any = 0; const S38 = new Float32Array(NW * NH).fill(-9), D38 = new Float32Array(NW * NH).fill(9), C38 = new Uint8Array(NW * NH);   // [isola38]
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) { if (G.tileAt(tx, ty) !== T.WALK) continue; any++; for (let j = 0; j < K; j++) for (let i = 0; i < K; i++) m[(ty * K + j) * NW + tx * K + i] = 1; }
     { const DM = new Float32Array(NW * NH).fill(1e9), HW = new Float32Array(NW * NH);   // [isola31]
-      (M.roads || []).forEach(rd => { if (rd.rect || !rd.pts || !(rd.kind === 'citta' || rd.kind === 'litoranea')) return; const h2 = rd.w / 2 + 3.4;
+      (window.Pavimenti && Pavimenti.on && cn1() ? Pavimenti.vie({ roads: M.roads, gT, TS, T, geo1 }) : (M.roads || [])).forEach(rd => { if (rd.rect || !rd.pts || !(rd.kind === 'citta' || rd.kind === 'litoranea')) return; const h2 = rd.w / 2 + 3.4;   /* [pavimenti] le vie cucite fanno anche il loro marciapiede */
         for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L2 = (bx - ax) * (bx - ax) + (bz - az) * (bz - az) || 1;
           for (let j = Math.max(0, Math.floor((Math.min(az, bz) - h2) / R)); j <= Math.min(NH - 1, Math.ceil((Math.max(az, bz) + h2) / R)); j++) for (let i = Math.max(0, Math.floor((Math.min(ax, bx) - h2) / R)); i <= Math.min(NW - 1, Math.ceil((Math.max(ax, bx) + h2) / R)); i++) {
             const x = i * R, z = j * R, t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / L2)), d = Math.hypot(x - ax - (bx - ax) * t, z - az - (bz - az) * t), kk = j * NW + i;
