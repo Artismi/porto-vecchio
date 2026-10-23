@@ -65528,7 +65528,7 @@ var Render = (function () {
         for (let q = 0; q < n; q++) { const u = -L / 2 + q * step, pot = oPot(r, .85 + r() * .3, pick(r, ['geranio', 'ciuffo', 'cespo', 'geranio', 'fico'])); at(pot, G0.x + (G0.ry ? 0 : u), G0.y + (G0.ry ? u : 0)); }
       } else if (G0.k === 'comignoli') {   // due canne fumarie in fila contro il parapetto di dietro, d'intonaco o di mattoni come la casa
         const kind = r() < .35 ? 'mattoni' : 'intonaco';
-        [-.36, .36].slice(0, Math.max(1, G0.n || 2)).forEach((o, q) => { const c = new THREE.Group(), hh = 1.35 + q * .25; comignolo1(c, 0, 0, 0, hh, kind, wallHex, r, 0, G0.tipo4); at(c, G0.x + (G0.ry ? 0 : o), G0.y + (G0.ry ? o : 0)); if (r() < .6) (P.chim3 || (P.chim3 = [])).push([G0.x + (G0.ry ? 0 : o), y + hh + .45, G0.y + (G0.ry ? o : 0)]); });   // il fumo lo accende initAir2 (girato con la casa)
+        [-.36, .36].slice(0, Math.max(1, G0.n || 2)).forEach((o, q) => { const c = new THREE.Group(), hh = 1.35 + q * .25; comignolo1(c, 0, 0, 0, hh, kind, wallHex, r, 0, G0.tipo4 === 'canne' ? 'lastra' : G0.tipo4); at(c,   /* [tetti4] sul terrazzo niente tubo di stufa di lato: sfora il parapetto */  G0.x + (G0.ry ? 0 : o), G0.y + (G0.ry ? o : 0)); if (r() < .6) (P.chim3 || (P.chim3 = [])).push([G0.x + (G0.ry ? 0 : o), y + hh + .45, G0.y + (G0.ry ? o : 0)]); });   // il fumo lo accende initAir2 (girato con la casa)
       } else if (G0.k === 'stanza') {   // la veranda di lamiera addossata: un vano, la falda di lamiera, la porta verso il terrazzo, la finestrella
         const pw = G0.hx * 2 - .6, pd = G0.hy * 2 - .6, sh = 2.1 + r() * .3,   /* la falda di lamiera sporge: il vano sta 30 cm dentro il suo rettangolo */ col = pick(r, ['#6a6e6a', '#5a6a5c', '#7a5a44', '#4a5a6a']);
         const body = box(pw, sh, pd, corrM(col)); body.position.set(G0.x, y + sh / 2, G0.y); g.add(body); P.cnt++;
@@ -65541,10 +65541,10 @@ var Render = (function () {
           const p2 = fB(.12, H, .12, WOOD3, 'wood', .01); p2.position.set(px + sx * (pw / 2 - .12), y + H / 2 + .1, pz + sz * (pd / 2 - .12)); g.add(p2); });
         [[0, -1], [-1, 0], [1, 0]].forEach(([sx, sz]) => { const rl = fB(sx ? .05 : pw - .2, .05, sx ? pd - .2 : .05, WOOD3, 'wood', 0); rl.position.set(px + sx * (pw / 2 - .12), y + .95, pz + sz * (pd / 2 - .12)); g.add(rl);
           for (let u = -.4; u <= .41; u += .2) { const ba = fB(.03, .8, .03, WOOD3, 'wood', 0); ba.position.set(px + (sx ? sx * (pw / 2 - .12) : u * (pw - .3)), y + .52, pz + (sz ? sz * (pd / 2 - .12) : u * (pd - .3))); g.add(ba); } });
-        const T = tetto1({ x0: px - pw / 2, z0: pz - pd / 2, w: pw, d: pd, y: y + H + .1, kind: 'coppi', shape: 'padiglione', pitch: .42, ov: .25, wallHex, r, chim: 0, gutter: false, kindV: 1 }); g.add(T.grp);
+        const T = tetto1({ x0: px - pw / 2 + .3, z0: pz - pd / 2 + .3, w: pw - .6, d: pd - .6, y: y + H + .1, kind: 'coppi', shape: 'padiglione', pitch: .42, ov: .25,   /* la gronda resta dentro il suo rettangolo */ wallHex, r, chim: 0, gutter: false, kindV: 1 }); g.add(T.grp);
         const bn = fB(pw * .55, .06, .34, '#8a6a44', 'wood', .01); bn.position.set(px, y + .45, pz - pd / 2 + .4); g.add(bn); P.cnt++;   // la panca dentro, contro il lato di dietro
       } else if (G0.k === 'torretta') {   // [tetti4] la colombaia a torretta: il dado d'intonaco, i fori dei piccioni col davanzalino, il tettuccio di coppi
-        const tw = G0.hx * 2 - .1, th2 = 2.2, px = G0.x, pz = G0.y;
+        const tw = G0.hx * 2 - .5, th2 = 2.2, px = G0.x, pz = G0.y;   // il tettuccio sporge 18 cm: il dado sta 25 cm dentro il suo rettangolo
         const body = fB(tw, th2, tw, shade(wallHex, .96), 'concrete', .02); body.position.set(px, y + th2 / 2, pz); g.add(body);
         for (let q = 0; q < 3; q++) { const fo = fB(.14, .16, .03, '#1c1814', 'solid', 0); fo.position.set(px - .25 + q * .25, y + th2 - .55, pz + tw / 2 + .01); g.add(fo); const dv = fB(.2, .03, .1, '#d8d0c0', 'concrete', 0); dv.position.set(px - .25 + q * .25, y + th2 - .64, pz + tw / 2 + .05); g.add(dv); }
         const T = tetto1({ x0: px - tw / 2, z0: pz - tw / 2, w: tw, d: tw, y: y + th2, kind: 'coppi', shape: 'padiglione', pitch: .5, ov: .18, wallHex, r, chim: 0, gutter: false, kindV: 0 }); g.add(T.grp);
