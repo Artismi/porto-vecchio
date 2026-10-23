@@ -96,7 +96,7 @@ var Palco = (function () {
   function recinto(W, F, WL, ty, libero, cerca, posa, sovr, occ, asse, eliporto, antenna, dentro, x1) {
     const R = W.recinto, z1 = Math.max(R.yS + 30, R.yN + 60), xA = R.xw;   // (il filare della passeggiata resta fuori dal palco)
     const dentroR = (x, z) => x > R.xw + .8 && x < R.xe && z > R.yP + .8 && z < z1;
-    const zona = (x, z) => (x >= xA && x <= x1 && z >= (WL.y0 - 80) && z <= z1) || dentro(x, z);
+    const zona = (x, z) => (x >= xA && x <= x1 && z >= (W.glacis ? R.yP - 1 : WL.y0 - 80) && z <= z1) || dentro(x, z);   // [pianta] a nord della testa di ponte ci sono le case del glacis e la Piazza della Rocca
     // 3) i carri: la colonna più lunga che sta sul piazzale (al più CARRO.n), il più vicino possibile al Ministero e al centro del piazzale
     let carri = [];
     for (let n = CARRO.n; n >= 1 && !carri.length; n--) for (let dz = 0; dz <= 30 && !carri.length; dz += 1) for (const dx of [0, -2, 2, -4, 4, -6, 6]) {
