@@ -119,7 +119,10 @@ const prova = (id, x, y, ora, secs, check) => { st.t = Math.floor(st.t / 1440) *
   if (!sc) return { ok: false, why: 'non parte' }; for (let k = 0; k < secs * 20; k++) { p.x = x; p.y = y; G.step(st, DT, { x: 0, y: 0 }); } return { ok: check(sc), why: sc.why || ('battuta ' + sc.i) }; };
 const e0 = VV.edicole()[0]; if (e0) { const r = prova('vv_fila_edicola', e0.x + 4, e0.y + 4, 8, 40, sc => sc.i >= 3); ok(r.ok, `la fila all'edicola ${e0.nome} (${r.why})`); }
 { const f0 = Lb.fermate.find(f => VV.profilo(R.find(r => r.id === f.rd)).rango === 'asse') || Lb.fermate[0], n0 = V.affissi.length;
-  const r = prova('vv_attacchino', f0.x, f0.y - 3, 20, 25, sc => V.affissi.length > n0); ok(r.ok, `l'attacchino del Disgelo sulla Vittoria lascia il suo foglio (${r.why}; affissi ${V.affissi.length})`);
+  // [cucitura] la fermata della Vittoria sta sulla Piazza Grande: l'attacchino va al muro più vicino (entro 4 m da dove si mette)
+  const muro4 = (x, y) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, c]) => { for (let d = .5; d < 4; d += .5) if (G.tileAt(Math.floor((x + a * d) / TS), Math.floor((y + c * d) / TS)) === T.BLD) return true; return false; });
+  let ax = f0.x, ay = f0.y - 3; if (!muro4(ax, ay)) { let bd = 1e9; for (let dx = -16; dx <= 16; dx += 1) for (let dy = -20; dy <= 20; dy += 1) { const x = f0.x + dx, y = f0.y + dy, d = Math.hypot(dx, dy); if (d < bd && G.walkM(x, y) && G.tileAt(Math.floor(x / TS), Math.floor(y / TS)) !== T.VIA && muro4(x, y)) { bd = d; ax = x; ay = y; } } }
+  const r = prova('vv_attacchino', ax, ay, 20, 25, sc => V.affissi.length > n0); ok(r.ok, `l'attacchino del Disgelo sulla Vittoria lascia il suo foglio (${r.why}; affissi ${V.affissi.length})`);
   if (V.affissi.length) { const a0 = V.affissi[V.affissi.length - 1], r2 = prova('vv_raschia', a0.x + a0.nx * 3, a0.y + a0.ny * 3, 21, 40, sc => !!a0.raschiato); ok(r2.ok, `e qualcuno lo raschia via (${r2.why})`); } }
 const lv = Eventi.S(st).log.filter(e => /^vv_/.test(e.id)); console.log(`     scene delle vie: ${Object.entries(lv.reduce((o, e) => (o[e.id] = (o[e.id] || 0) + 1, o), {})).map(([k, v]) => k + ' ' + v).join(', ') || 'nessuna'}`);
 ok(Eventi.SCENE.some(s => s.id === 'vv_fila_edicola') && Eventi.SCENE.some(s => s.id === 'vv_attacchino'), 'le scene delle vie sono nel catalogo di eventi.js');
