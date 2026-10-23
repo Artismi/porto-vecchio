@@ -198,14 +198,14 @@ var Pavimenti = (function () {
         float mid = 1. - smoothstep(.04, .1, mpp), gr = step(.9, pvH(floor(p * 24.) + 7.)) - step(pvH(floor(p * 24.) + 3.), .07);   // gli inerti grossi (4 cm): chiari e scuri, leggibili allo zoom del gioco
         tone = .92 + (pt - .5) * .2 + (ag - .5) * .14 * lod + gr * .07 * mid + ((g1 - .5) * .12 + sp * .22) * fin;
         // le crepe: la curva di livello di un rumore, larga uguale ovunque (distanza in metri dalla curva), solo dove l'asfalto è vecchio
-        vec2 qc = lungo ? q : p; float cn = pvN(qc * vec2(.22, 1.7) + 3.) * .75 + pvN(qc * 2.6) * .25, cdist = abs(cn - .5) * mpp / max(fwidth(cn), 1e-5), cz = smoothstep(.62, .8, pvN(p * .11 + 17.));   // corrono lungo la via
-        float crack = (1. - smoothstep(.005, .005 + mpp, cdist)) * cz; tone -= crack * .3 * lod;
+        vec2 qc = lungo ? q : p; float cn = pvN(qc * vec2(.16, 1.9) + 3.) * .85 + pvN(qc * vec2(.6, 3.)) * .15, cdist = abs(cn - .5) * mpp / max(fwidth(cn), 1e-5), cz = smoothstep(.74, .86, pvN(p * .11 + 17.)) * (lungo ? 1. : .4);   // rade, corrono lungo la via
+        float crack = (1. - smoothstep(.004, .004 + mpp * .8, cdist)) * cz; tone -= crack * .2 * lod;
         if (via) { float lane = abs(av - hw * .5), tr = pvG((lane - .8) / .3), oil = pvG(lane / .35) * step(2.6, hw);
           tone *= 1. + tr * .07 - oil * .1; pvPol = tr * .6;
           float gut = smoothstep(hw - .5, hw - .05, av); tone *= 1. - gut * .14; pvWet = max(pvWet, gut * .35);
           float sk = pvSab;   // la sabbia portata dal vento: lingue dal ciglio verso il centro, a chiazze
-          if (sk > 0.) { float dr = sk * smoothstep(.35, .7, pvN(vec2(s * .35, v * 1.4) + 3.) * .7 + pvN(p * 2.2) * .3 + (av / hw - .55)) ;
-            col = mix(col, vec3(.6, .5, .34) * (.9 + pvN(p * 9.) * .2), clamp(dr, 0., .85)); tone = mix(tone, 1., dr); pvPol = 0.; } }
+          if (sk > 0.) { float dr = sk * sk * smoothstep(.62, .8, pvN(vec2(s * .4, v * 1.6) + 3.) * .6 + pvN(p * 2.2) * .25 + (av / hw - .6) * .8);   // solo lingue rade sul ciglio
+            col = mix(col, vec3(.6, .5, .34) * (.9 + pvN(p * 9.) * .2), clamp(dr, 0., .6)); tone = mix(tone, 1., dr); pvPol = 0.; } }
       } else if (fam < 6.5 || fam > 7.5) {   // terra battuta e spianata: polvere a chiazze, sassolini, le carreggiate delle sterrate
         vec4 S = pvSassi(p / .09, .9); float peb = (1. - smoothstep(.22, .36, length(S.zw))) * step(.7, S.y) * fin;
         tone = .9 + (pvN(p * .9) - .5) * .18 + (pvN(p * 4.) - .5) * .1 + peb * .14; tq = normalize(S.zw + 1e-5) * peb * .7;
