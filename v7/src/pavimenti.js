@@ -131,7 +131,8 @@ var Pavimenti = (function () {
     vec3 pvDett(vec3 base, vec2 p){
       pvTilt = vec2(0.); pvWet = 0.; pvPol = 0.; pvSab = 0.;
       vec2 fw = fwidth(p); float mpp = max(max(fw.x, fw.y), 1e-4);                   // metri per pixel
-      float lod = 1. - smoothstep(.035, .11, mpp), fin = 1. - smoothstep(.006, .022, mpp), aa = mpp * 1.2;   // giunti morbidi: il quadro non ha antialiasing e il post affila
+      float lod = 1. - smoothstep(.07, .2, mpp), fin = 1. - smoothstep(.01, .035, mpp),   // pieno fino allo zoom del gioco (5-6 cm a pixel), sfuma solo dalla città intera in su
+            aa = mpp * 1.2;   // giunti morbidi: il quadro non ha antialiasing e il post affila
       if (lod <= 0.) return base * (.95 + pvN(p * .045) * .08);
       vec2 uv = (p - pvBox.xy) / pvBox.zw; vec4 I = vec4(0.), K = vec4(0.);
       float rf = 0., hw = 0., s = 0., v = 0., best = 1e9; vec2 du = vec2(1., 0.);
@@ -183,7 +184,7 @@ var Pavimenti = (function () {
         tone += (pvN(p * 19.) - .5) * .08 * fin; mean = .9;
       } else if (fam < 4.5) {   // asfalto: la grana degli inerti, le chiazze, le crepe, le ruote sulle corsie, la canaletta
         float g1 = pvN(p * 38.), sp = step(.94, pvH(floor(p * 85.))), pt = pvN(p * .37) * .6 + pvN(p * 1.3) * .4, ag = pvN(p * 9.) * .6 + pvN(p * 17.) * .4;
-        float mid = 1. - smoothstep(.02, .06, mpp), gr = step(.9, pvH(floor(p * 24.) + 7.)) - step(pvH(floor(p * 24.) + 3.), .07);   // gli inerti grossi (4 cm): chiari e scuri, leggibili allo zoom del gioco
+        float mid = 1. - smoothstep(.04, .1, mpp), gr = step(.9, pvH(floor(p * 24.) + 7.)) - step(pvH(floor(p * 24.) + 3.), .07);   // gli inerti grossi (4 cm): chiari e scuri, leggibili allo zoom del gioco
         tone = .92 + (pt - .5) * .2 + (ag - .5) * .14 * lod + gr * .07 * mid + ((g1 - .5) * .12 + sp * .22) * fin;
         // le crepe: la curva di livello di un rumore, larga uguale ovunque (distanza in metri dalla curva), solo dove l'asfalto è vecchio
         vec2 qc = lungo ? q : p; float cn = pvN(qc * vec2(.22, 1.7) + 3.) * .75 + pvN(qc * 2.6) * .25, cdist = abs(cn - .5) * mpp / max(fwidth(cn), 1e-5), cz = smoothstep(.62, .8, pvN(p * .11 + 17.));   // corrono lungo la via
