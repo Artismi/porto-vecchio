@@ -69519,7 +69519,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       const a = tp.aim, n = a.id && G.byId(st, a.id); if (n && !n.dead) { a.x = n.x; a.y = n.y; }
       ui.aimPoint = { x: a.x, y: a.y }; return Math.atan2(a.y - p.y, a.x - p.x);
     }
-    if (touchMode || (CON.on && !mouse.active)) {   // [console] col Game Boy in mano (il mouse fuori dallo schermo) si mira da soli
+    if (CON.on && (touchMode || !mouse.active)) return conAim();   // [console] col Game Boy in mano si mira dove guarda il personaggio
+    if (touchMode) {
       // mira automatica: il nemico più vicino davanti, altrimenti la direzione dello sguardo
       let best = null, bd = 16;
       st.npcs.forEach(n => { if (n.dead || n.inside) return; const d = Math.hypot(n.x - p.x, n.y - p.y); const hos = G.hostile(st, n); const s = d - (hos ? 8 : 0); if (d < 14 && s < bd && (hos || Math.abs(Math.atan2(Math.sin(Math.atan2(n.y - p.y, n.x - p.x) - p.face), Math.cos(Math.atan2(n.y - p.y, n.x - p.x) - p.face))) < .7)) { bd = s; best = n; } });
@@ -70169,8 +70170,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   //               della tastiera: ▼ impenna, ◄ ► un piede sulla pedalina (k: sx dx su giu, si tengono premuti)
   //   A           il pulsante principale di adesso (Salta, Freno, Ollie, Colore); nei dialoghi conferma; all'inizio si gioca
   //               (ricominciare la partita sta nel menu, Chi è; a partita finita c'è il pulsante sullo schermo)
-  //   B           il secondo (Scendi, Impenna, Modo); a piedi: con l'arma spara (mira da sola: nel Game Boy il tocco sullo
-  //               schermo non spara), con un oggetto lo usa (la scritta dice come: Scava, Mangia, Scatta…), a mani libere
+  //   B           il secondo (Scendi, Impenna, Modo); a piedi: con l'arma spara dove guarda il personaggio (conAim; nel Game Boy
+  //               il tocco sullo schermo non spara), con un oggetto lo usa (la scritta dice come: Scava, Mangia, Scatta…), a mani libere
   //               corre finché lo tieni; nei menu, nei dialoghi e nel taccuino torna indietro
   //   bomboletta  la tavoletta dei graffiti (accesa quando ce l'hai in mano)
   //   bici        a piedi → BMX → skate → a piedi (accesa quando pedali; al chiuso niente)
@@ -70222,7 +70223,23 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     CON.sent = '';   // le scritte cambiano subito, non al prossimo giro dell'HUD
   }
   function conLetGo() { Object.keys(CON.held).forEach(k => conKey(k, false)); CON.dir = {}; CON.trick = { wheelie: false, peg: 0 }; CON.rot = CON.zoom = 0; CON.run = CON.fire = false; stick.x = stick.y = 0; }
-  function conTick(dt) { if (CON.zoom && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 + CON.zoom * dt); }   // la croce tenuta: lo zoom
+  function conTick(dt) {
+    if (CON.zoom && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 + CON.zoom * dt);   // la croce tenuta: lo zoom
+    if (CON.rot) ui.rotUser = true;   // la visuale girata con la croce gira anche il personaggio, da fermo (come col dito)
+    if (CON.on && (touchMode || !mouse.active) && !ui.intro) {   // con l'arma in mano il raggio della mira, dove guarda
+      const p = st.player; if (!p.vehicle && !p.hand && p.cur !== 'pugni') conAim(); else ui.aimPoint = null;
+    }
+  }
+  // la mira del Game Boy: dove guardano il personaggio e la visuale (da fermo, dove l'hai girato; camminando, dove vai). Niente
+  // nemico più vicino scelto da solo: solo chi è proprio lì davanti (11 gradi per parte) prende il colpo preciso
+  function conAim() {
+    const p = st.player, f = ui.faceIdle !== undefined && !(stick.x || stick.y) ? ui.faceIdle : p.face, W = G.WEAPONS[p.cur] || {}, R0 = Math.min(W.range || 16, 22);
+    let best = null, bd = 1e9;
+    st.npcs.forEach(n => { if (n.dead || n.inside) return; const dx = n.x - p.x, dy = n.y - p.y, d = Math.hypot(dx, dy); if (d < .4 || d > R0) return;
+      const da = Math.abs(Math.atan2(Math.sin(Math.atan2(dy, dx) - f), Math.cos(Math.atan2(dy, dx) - f))); if (da < .19 && d < bd) { bd = d; best = n; } });
+    if (best) { ui.aimPoint = { x: best.x, y: best.y }; return Math.atan2(best.y - p.y, best.x - p.x); }
+    const L = Math.min(R0, 10); ui.aimPoint = { x: p.x + Math.cos(f) * L, y: p.y + Math.sin(f) * L }; return f;
+  }
   // ogni decimo di secondo, con l'HUD: le scritte dei tasti e il display della console, solo se sono cambiati
   function conLabels() {
     if (!CON.on) return;
@@ -70378,7 +70395,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     ui.desat = st.slowmo > 0;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
-    if (touchMode && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
+    if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
     FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
