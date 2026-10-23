@@ -55210,12 +55210,12 @@ var Pavimenti = (function () {
     const id = tex(I), id2 = tex(I2);
     // le maschere: R muro vicino, G umido della riva, B ombra di contatto, A il raccordo al piede del muro
     const NI2 = n * RMK, MJ2 = m * RMK, q2 = TS / RMK, K = new Uint8Array(NI2 * MJ2 * 4), BLD = (tx, ty) => tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && A.gT(tx, ty) === T.BLD;
-    const near = new Uint8Array((n + 2) * (m + 2)); for (let ty = -1; ty <= m; ty++) for (let tx = -1; tx <= n; tx++) near[(ty + 1) * (n + 2) + tx + 1] = BLD(tx0 + tx, ty0 + ty) ? 1 : 0;
+    const NB = n + 4, near = new Uint8Array(NB * (m + 4)); for (let ty = -2; ty <= m + 1; ty++) for (let tx = -2; tx <= n + 1; tx++) near[(ty + 2) * NB + tx + 2] = BLD(tx0 + tx, ty0 + ty) ? 1 : 0;
     const wetT = new Float32Array(n * 2 * m * 2);   // l'umido a 1 m: la distanza dalla riva costa
     for (let j = 0; j < m * 2; j++) for (let i = 0; i < n * 2; i++) { const tx = tx0 + (i >> 1), ty = ty0 + (j >> 1), v = A.gT(tx, ty); wetT[j * n * 2 + i] = v === T.SAND || v === T.QUAY || v === T.PIER || v === T.ROCK ? A.coastIn(X0 + i + .5, Z0 + j + .5) : 99; }
     for (let j = 0; j < MJ2; j++) for (let i = 0; i < NI2; i++) { const px = X0 + (i + .5) * q2, pz = Z0 + (j + .5) * q2, lx = Math.floor(i / RMK), ly = Math.floor(j / RMK), o = (j * NI2 + i) * 4;
-      let dw = 9; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { if (!near[(ly + b + 1) * (n + 2) + lx + a + 1]) continue; const x0 = (tx0 + lx + a) * TS, z0 = (ty0 + ly + b) * TS, ddx = Math.max(x0 - px, 0, px - x0 - TS), ddz = Math.max(z0 - pz, 0, pz - z0 - TS); dw = Math.min(dw, Math.hypot(ddx, ddz)); }
-      const w = Math.max(0, 1 - dw / 1.4), w2 = Math.max(0, 1 - dw / .32); K[o] = Math.round(255 * w * w); K[o + 3] = Math.round(255 * w2 * w2);   // A: il raccordo, la riga scura proprio al piede
+      let dw = 9; for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { if (!near[(ly + b + 2) * NB + lx + a + 2]) continue; const x0 = (tx0 + lx + a) * TS, z0 = (ty0 + ly + b) * TS, ddx = Math.max(x0 - px, 0, px - x0 - TS), ddz = Math.max(z0 - pz, 0, pz - z0 - TS); dw = Math.min(dw, Math.hypot(ddx, ddz)); }
+      const w2 = Math.max(0, 1 - dw / .32); K[o] = Math.round(255 * Math.max(0, 1 - dw / 3.5));   // R: la distanza dal muro (0-3,5 m) K[o + 3] = Math.round(255 * w2 * w2);   // A: il raccordo, la riga scura proprio al piede
       const ci = wetT[(j >> 2) * n * 2 + (i >> 2)], wr = A.gT(tx0 + lx, ty0 + ly) === T.SAND ? 4 : 1.3; K[o + 1] = ci < wr ? Math.round(255 * Math.max(0, Math.min(1, 1 - ci / wr))) : 0; }   // la sabbia bagnata larga, la banchina solo sul ciglio
     (OMB.get(tx0 / 32 + ',' + ty0 / 32) || []).forEach(([cx, cz, rx, rz, f]) => {   // le ombre di contatto: un ovale sfumato più largo dell'impronta
       const ex = rx * 1.18 + .16, ez = rz * 1.18 + .16, i0 = Math.max(0, Math.floor((cx - ex - X0) / q2)), i1 = Math.min(NI2 - 1, Math.ceil((cx + ex - X0) / q2)), j0 = Math.max(0, Math.floor((cz - ez - Z0) / q2)), j1 = Math.min(MJ2 - 1, Math.ceil((cz + ez - Z0) / q2));
@@ -55325,11 +55325,35 @@ var Pavimenti = (function () {
       // il disegno da lontano si fonde nel suo valore medio (niente moiré)
       tone = mix(mean, tone / mean, lod) ;
       col *= tone * (1. - jt * .34 * lod) * (1. - bv * bv * .16 * lod);   // il bordo a cuscino: la pietra si arrotonda verso il giunto, uguale da ogni lato
-      vec2 tw = (ux * tq.x + uy * tq.y) * .22 * lod;   // la luce radente sullo smusso, leggera
+      vec2 tw = (ux * tq.x + uy * tq.y) * .22 * lod;   // (sotto: il selciato attorno alle case vi aggiunge la sua luce)   // la luce radente sullo smusso, leggera
       // la scala del mondo: due rumori lenti sopra la tinta della tela (niente ripetizione a 16 m)
       col *= .95 + pvN(p * .045) * .08 + (pvN(p * .21) - .5) * .06;
+      // il selciato attorno alle case che stanno su sabbia o terra: ciottoli fitti per un metro circa, il bordo irregolare, qualche sasso
+      // che scappa oltre; così la casa non è una scatola posata sullo spiazzo
+      float dw = (1. - K.r) * 3.5, wall = pow(max(0., 1. - dw / 1.4), 2.);   // la distanza dal muro più vicino e la sua vicinanza
+      if (fam > 6.5 && fam < 7.5 && dw < 3.4) {   // il lungomare: davanti alle case che stanno sulla sabbia, lastre a correre, la cordonata, la sabbia che ci soffia sopra
+        float ed = 2.6 + (pvN(p * .35) - .5) * .25, inL = 1. - smoothstep(ed - aa * 2., ed + aa * 2., dw);
+        vec2 ql = pvRot(p, .785); vec4 F = pvFile(ql + (vec2(pvN(ql * 2.), pvN(ql * 2. + 5.)) - .5) * .015, .45, .5, .85, 77.);
+        float cb = smoothstep(ed - .34, ed - .3, dw) * inL, lj = 1. - smoothstep(.01 - aa, .01 + aa, cb > .5 ? abs(fract(dot(ql, vec2(1., 0.)) / 1.1) - .5) * 1.1 : F.x);
+        vec3 lst = mix(base * vec3(.8, .78, .74), vec3(pvLum(base)) * vec3(.98, .93, .86) * .78, .55) * (.84 + F.y * .24) * (cb > .5 ? 1.18 : 1.);   // pietra calda, più grigia della sabbia
+        float drift = smoothstep(.55, .75, pvN(p * 1.1 + 8.)) * smoothstep(ed - 1.4, ed, dw);   // la sabbia portata dal vento sul bordo
+        lst = mix(lst * (1. - lj * .4) * (1. - (1. - smoothstep(.01, .04, F.x)) * .12), base, drift * .8);
+        col = mix(col, lst, inL * lod); tw += F.zw * (1. - smoothstep(.01, .04, F.x)) * .15 * inL * (1. - drift);
+        col *= 1. - (1. - smoothstep(0., .12, abs(dw - ed - .06))) * .3 * lod;   // la riga in ombra dove la cordonata finisce nella sabbia
+        jt = max(jt, lj * inL);
+      }
+      if (fam > 5.5 && fam < 8.5 && fam != 7. && dw < 1.6) {
+        float edge = .8 + (pvN(p * 1.3) - .5) * .35, inA = 1. - smoothstep(edge - .06, edge + .06, dw);
+        vec4 C = pvSassi(p / .2, .8); float ce = C.x * .2, cj = 1. - smoothstep(.014 - aa, .014 + aa, ce);
+        float stray = (1. - smoothstep(.2, .34, length(C.zw))) * step(.62, C.y) * (1. - smoothstep(edge, edge + .5, dw)) * (1. - inA);
+        vec3 stone = base * vec3(.86, .84, .82) * (.78 + C.y * .3);   // la pietra del posto: la tinta del suolo, più scura e grigia
+        float k = max(inA, stray) * lod;
+        col = mix(col, stone * (1. - cj * .45) * (1. - (1. - smoothstep(.012, .045, ce)) * .14), k);
+        tw += normalize(C.zw + 1e-5) * (1. - smoothstep(.012, .045, ce)) * .18 * k;
+        jt = max(jt, cj * inA);
+      }
       // sporco e umido nei punti giusti
-      float wall = K.r, dirt = wall * (.18 + jt * .3);
+      float dirt = wall * (.18 + jt * .3);
       col = mix(col, col * vec3(1.05, .97, .84), wall * .35); col *= 1. - dirt;
       if (fam < 3.5 || fam > 8.5) col = mix(col, vec3(.2, .26, .13) * (pvLum(base) * 2.2 + .1), jt * wall * .5 * lod);   // muschio nei giunti al piede dei muri
       float pud = smoothstep(.76, .81, pvN(p * .42 + 5.)) * smoothstep(.45, .6, pvN(p * .09 + 2.)) * step(fam, 5.5);   // pozze rade (e piccole) nei punti bassi

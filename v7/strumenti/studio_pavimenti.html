@@ -8,7 +8,8 @@
 <script>
 const Q = new URLSearchParams(location.search), TS = 2, GW = 32, GH = 20;
 const T = { COB: 1, PIAZZA: 2, DIRT: 3, VIA: 4, WALK: 5, QUAY: 6, SAND: 7, BLD: 8, GRASS: 9, PIER: 10, ROCK: 11, GRAVEL: 12, WATER: 13 };
-const tile = (tx, ty) => { if (ty >= 17) return tx < 16 ? T.SAND : T.QUAY; if (tx >= 2 && tx <= 5 && ty >= 1 && ty <= 3) return T.BLD; if (tx >= 26 && tx <= 29 && ty >= 1 && ty <= 3) return T.BLD; return T.COB; };
+const SCAL = [[2, 16], [3, 16], [4, 15], [5, 15], [6, 14], [7, 14]];   // una fila di casette a scaletta sulla sabbia
+const tile = (tx, ty) => { if (SCAL.some(([a, b]) => a === tx && b === ty)) return T.BLD; if (ty >= 17 || (tx < 8 && ty >= 15 + Math.floor((8 - tx) / 2) - 2 && ty > 14)) return tx < 16 ? T.SAND : T.QUAY; if (tx >= 2 && tx <= 5 && ty >= 1 && ty <= 3) return T.BLD; if (tx >= 26 && tx <= 29 && ty >= 1 && ty <= 3) return T.BLD; return T.COB; };
 const kindAt = (tx, ty) => tx < 8 ? 'basoli' : tx < 16 ? 'travertino' : tx < 24 ? 'porfido' : 'spianata';
 const arc = []; for (let k = 0; k <= 64; k++) { const x = k; arc.push([x, 13 - Math.sin(k / 64 * Math.PI) * 4]); }
 const roads = [{ kind: 'vicolo', w: 4, pts: arc }, { kind: 'citta', era: 'E6', w: 8, pts: [[0, 26], [64, 26]] }, { kind: 'citta', era: 'E3', w: 7, pts: [[44, 0], [44, 34]] }, { kind: 'sterrato', w: 3.5, pts: [[0, 5], [20, 7], [40, 5]] }];
@@ -39,6 +40,7 @@ const swM = new THREE.MeshLambertMaterial({ color: '#8a857b' }); if (!/nopavimen
 // gli oggetti posati: casse, panchine, una fioriera, due case
 const bm = new THREE.MeshStandardMaterial({ color: '#8a6a4a', roughness: .8 });
 OB.forEach(([x0, z0, w, d], i) => { const h = i % 2 ? .9 : .45; const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bm); m.position.set(x0, h / 2 + (z0 > 19.9 && z0 < 22 || z0 > 30 && z0 < 32.1 ? .15 : 0), z0); m.castShadow = m.receiveShadow = true; S.add(m); });
+SCAL.forEach(([tx, ty]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(2, 3.2, 2), new THREE.MeshStandardMaterial({ color: '#d89a5a', roughness: .9 })); m.position.set(tx * 2 + 1, 1.6, ty * 2 + 1); m.castShadow = m.receiveShadow = true; S.add(m); });
 [[8, 5], [56, 5]].forEach(([hx, hz]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(8, 9, 6), new THREE.MeshStandardMaterial({ color: "#d8b48a", roughness: .9 })); m.position.set(hx, 4.5, hz); m.castShadow = m.receiveShadow = true; S.add(m); });
 const ang = +(Q.get('ang') || 35) * Math.PI / 180, sun = new THREE.DirectionalLight('#fff2dc', 2.6); sun.position.set(32 + Math.cos(ang) * 30, 40, 20 + Math.sin(ang) * 30); sun.target.position.set(32, 0, 20); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 120 }); sun.shadow.bias = -.0004; S.add(sun, sun.target);
