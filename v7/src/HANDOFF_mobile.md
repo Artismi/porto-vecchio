@@ -42,3 +42,12 @@ fps, fotogramma peggiore, ms della logica e della grafica lato processore, ms ve
 ## Prossimi candidati (sempre senza perdere qualità)
 - Le mesh lunghe e statiche (binari `ferrovia/wr`, settori fusi da 80 m) finiscono intere in ogni mappa d'ombra: spezzarle in celle più piccole.
 - Compilare in anticipo gli shader che oggi nascono durante il gioco (una decina di scatti nei primi minuti).
+
+## Il Game Boy del sito: i comandi sulla plastica (23 ottobre)
+Sul sito di Artismi (repository `Aertismione`, `src/components/ui/GameBoy.tsx`) il gioco sta dentro un Game Boy rosa fatto apposta per Porto Vecchio. Lì **i comandi non sono disegnati sullo schermo**: levetta, croce, A/B, L/R, SELECT/START e la rotella dell'audio sono tasti veri della console. `main.js`, sezione `[console]`.
+- **Aggancio**: la pagina ospite manda `{pvc:'ciao'}` all'iframe; il gioco mette `#app.console` (il CSS nasconde levetta, pulsanti, icone, Taccuino e Audio) e risponde `{pv:'console', v:1}`. Aperto da solo, il gioco resta com'era.
+- **Dalla console al gioco**: `{pvc:'levetta', x, y}` (da −1 a 1, come la levetta a schermo, anche sul computer); `{pvc:'tasto', k, giu}` con `k` tra `a b l r select start su giu sx dx audio`; `{pvc:'lascia'}` rilascia tutto.
+- **Dal gioco alla console**: `{pv:'tasti', t:{a, b, l, r, select, start}, n, audio}`: la scritta di ogni tasto adesso (`null` = ora non fa niente), le cose da fare qui (il numero sullo zaino) e l'audio acceso o spento. Si manda solo quando cambia.
+- **I tasti**: levetta cammina e guida; croce ◄ ► gira la visuale, ▲ ▼ zoom; **A** il pulsante principale di adesso (Salta, Freno, Ollie, Colore), nei dialoghi conferma, all'inizio Gioca; **B** il secondo (Scendi, Impenna, Modo), a piedi con l'arma Spara (mira da sola, la scritta porta i colpi), con un oggetto Usa, a mani libere Corri finché lo tieni; nei menu, nel taccuino e nei dialoghi B è Indietro; **L** le ruote (BMX, skate; al chiuso niente); **R** cambia arma, con un oggetto in mano lo posa; **SELECT** la tavoletta dei graffiti; **START** lo zaino.
+- Sullo schermo restano da toccare le persone, le porte, i posti, la minimappa (la mappa) e i soldi (il taccuino, ora anche col mouse). Uscendo con il mouse dai lati dello schermo la visuale non gira più (ai lati ci sono i tasti).
+- Prova: una pagina ospite che incornicia il gioco e lo comanda con `postMessage` (levetta, croce, zaino, arma, colpo, audio, «lascia»), in vista telefono e computer: tutto passa, nessun errore.

@@ -207,5 +207,7 @@ const Comandi = (() => {
     }
   }
   setInterval(() => { try { upd(false); } catch (e) { if (!upd.err) { upd.err = 1; console.warn('[comandi]', e); } } }, 200);
-  return { bomboletta, tavoletta, bmx, skate, mappa, zaino, usaMano, update: upd };
+  const via = () => { equip(null); say('Mani libere.'); upd(true); };   // la ✕ della mano
+  // [console] graffiti, ruote e via: per i tasti del Game Boy (main.js, sezione [console])
+  return { bomboletta, tavoletta, bmx, skate, mappa, zaino, usaMano, graffiti: () => { graffiti(); upd(true); }, ruote: () => { ruote(); upd(true); }, via, update: upd };
 })();

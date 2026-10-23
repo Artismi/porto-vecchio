@@ -170,6 +170,10 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 #tbtns button.big { width: 84px; height: 84px; font-size: 14px; border-color: rgba(255,210,58,.6); }
 #tbtns button small { display: block; font-size: 8px; opacity: .7; margin-top: 2px; }
 #tbtns button.on { background: rgba(255,210,58,.3); border-color: var(--amber); }
+/* [console] dentro il Game Boy di Porto Vecchio i comandi stanno sulla plastica (main.js, sezione [console]): sullo schermo restano
+   le persone, le porte, la minimappa (la mappa) e i soldi (il taccuino) */
+#app.console #touch, #app.console #dock, #app.console #bookBtn, #app.console #sound { display: none !important; }
+#app.console #debt { pointer-events: auto; cursor: pointer; }
 @media (pointer: coarse) { #mini { top: 96px; bottom: auto; right: 4px; transform: scale(.72); transform-origin: top right; } #ctx { bottom: auto; top: 150px; max-width: calc(100vw - 24px); } #ctx .chip kbd { display: none; } #feed { top: 200px; } }
 @media (prefers-reduced-motion: reduce) { .fi, #wanted.chase .star.on { animation: none; } }
 
