@@ -1139,6 +1139,36 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
   // le piante che nascono fuori dal piano (il verde dei ruderi): si aggiungono prima che la posa le indicizzi
   function aggiungi(list) { if (!PIANO || !list) return; list.forEach(p => PIANO.piante.push(p)); PIANO.__nuove = true; }
 
+  // ================= IL SUOLO ERBOSO: la grana d'erba sul suolo dipinto =================
+  // Fra un ciuffo e l'altro si vede il suolo del gioco (render.js, prato38: quadretti da mezzo metro e quattro trattini per casella):
+  // da vicino è piatto e a quadretti. Qui, sotto il verde nuovo, si tiene il suo colore (la tinta della zona resta quella), si sfuma il
+  // quadretto (media su ≈ 60 cm) e ci si passa sopra la grana dei fili: rumore allungato 1:5 in una direzione che cambia piano (il prato
+  // pettinato dal vento), la punta chiara e calda, il fondo scuro e freddo; più la chiazza larga (≈ 2 m) che fa l'erba più alta e più
+  // bassa. Sentieri e strade (roadW, il varco dei sentieri) restano come sono.
+  function suoloErboso(ctx, tx0, ty0, n, m, PX) {
+    if (SPENTO || !PIANO) return; const P = PIANO, W = P.W, GW = W.GW, GH = W.GH, TS = W.TS, ppm = PX / TS, T = W.T;
+    const ok = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return 0; const i = ty * GW + tx, f = P.form[i]; if (!f || f === F.costa || f === F.urbano || W.roadW[i] > 0) return 0; const v = W.grid[i];
+      if (!(v === T.GRASS || v === T.SHRUB || v === T.TREE || v === T.FIELD)) return 0; return P.dSen[i] < .6 ? 0 : P.dSen[i] < 1.4 ? (P.dSen[i] - .6) / .8 : 1; };
+    let any = 0; for (let j = 0; j < m && !any; j++) for (let i = 0; i < n; i++) if (ok(tx0 + i, ty0 + j)) { any = 1; break; } if (!any) return;
+    const w = n * PX, h = m * PX, img = ctx.getImageData(0, 0, w, h), d = img.data, R = Math.max(2, Math.round(ppm * .3));
+    // la media (sfuma i quadretti): due passate a scatola, orizzontale e verticale, sui tre canali
+    const src = new Float32Array(w * h * 3); for (let k = 0; k < w * h; k++) { src[k * 3] = d[k * 4]; src[k * 3 + 1] = d[k * 4 + 1]; src[k * 3 + 2] = d[k * 4 + 2]; }
+    const tmp = new Float32Array(w * h * 3), blr = new Float32Array(w * h * 3);
+    for (let y = 0; y < h; y++) for (let c = 0; c < 3; c++) { let a = 0; for (let x = -R; x < w; x++) { if (x + R < w) a += src[(y * w + x + R) * 3 + c]; else a += src[(y * w + w - 1) * 3 + c]; if (x - R - 1 >= 0) a -= src[(y * w + x - R - 1) * 3 + c]; else a -= x - R - 1 >= -R - 1 ? src[(y * w) * 3 + c] : 0; if (x >= 0) tmp[(y * w + x) * 3 + c] = a / (2 * R + 1); } }
+    for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) { let a = 0; for (let y = -R; y < h; y++) { if (y + R < h) a += tmp[((y + R) * w + x) * 3 + c]; else a += tmp[((h - 1) * w + x) * 3 + c]; if (y - R - 1 >= 0) a -= tmp[((y - R - 1) * w + x) * 3 + c]; else a -= y - R - 1 >= -R - 1 ? tmp[x * 3 + c] : 0; if (y >= 0) blr[(y * w + x) * 3 + c] = a / (2 * R + 1); } }
+    const smp = (fx, fy) => { const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0; return ok(x0, y0) * (1 - ax) * (1 - ay) + ok(x0 + 1, y0) * ax * (1 - ay) + ok(x0, y0 + 1) * (1 - ax) * ay + ok(x0 + 1, y0 + 1) * ax * ay; };
+    for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
+      const wx = tx0 * TS + px / ppm, wy = ty0 * TS + py / ppm, a = smp(wx / TS - .5, wy / TS - .5); if (a < .02) continue;
+      const ang = fbm(wx / 14, wy / 14, 7981, 2) * 2.4 + .6, ca = Math.cos(ang), sa = Math.sin(ang), u = wx * ca + wy * sa, v = -wx * sa + wy * ca;
+      const g1 = vnoise(u / .5, v / .1, 7982), g2 = vnoise(u / .9, v / .16, 7983), grain = g1 * .65 + g2 * .35;   // i fili: lunghi 0,5-0,9 m, larghi 10-16 cm
+      const alto = fbm(wx / 2.2, wy / 2.2, 7984, 2), lum = .8 + .42 * grain + (alto - .5) * .22, tip = sstep(.62, .9, grain);
+      const k = (py * w + px), q = k * 4, b0 = blr[k * 3], b1 = blr[k * 3 + 1], b2 = blr[k * 3 + 2];
+      const r = b0 * lum + tip * 18, g = b1 * lum + tip * 16, bb = b2 * (lum - .04) - tip * 2;
+      d[q] = d[q] + (Math.min(255, r) - d[q]) * a; d[q + 1] = d[q + 1] + (Math.min(255, g) - d[q + 1]) * a; d[q + 2] = d[q + 2] + (Math.max(0, Math.min(255, bb)) - d[q + 2]) * a;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
   // ================= LA POSA NEL GIOCO: attorno alla camera, per specie =================
   // monta(scene, { W, groundH, telefono }) prepara i gruppi; aggiorna(cx, cz, t) a ogni fotogramma: quando la camera si sposta di qualche
   // metro rifà gli elenchi: vicino (entro R0) il modello intero per specie e variante; a media distanza (R0 … R1) la sagoma per specie;
@@ -1195,7 +1225,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;
