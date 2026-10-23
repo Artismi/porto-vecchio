@@ -159,7 +159,7 @@ var Vegetazione = (function () {
   // Riferimento del bouquet: l'origine al centro, +y verso il sentiero o il centro della radura (da dove si guarda), +x lungo il cammino.
   // Pochi elementi, in rapporti fissi: la massa dietro, il soggetto, la base davanti, il bordo fiorito verso chi passa.
   const BOUQUET = {
-    lecciSosta:    { nome: 'il leccio della sosta', el: [['leccio', 0, -1, .95], ['lentisco', -3, -3.4, .7], ['lentisco', 2.6, -3.2, .5], ['mirto', -2, .6, .4], ['felce', .8, .8, .5], ['felce', -.6, 1.4, .3]] },
+    lecciSosta:    { nome: 'il leccio della sosta', el: [['leccio', 0, -1, .95], ['lentisco', -3, -3.4, .7], ['lentisco', 2.6, -3.2, .5], ['mirto', -2, .6, .4], ['mirto', .8, .9, .4], ['rosmarino', -.6, 1.4, .4]] },
     sogliaPini:    { nome: 'la soglia dei pini', el: [['pino', -5.5, -1.5, .9], ['pino', 5, -2.2, .7], ['ginestra', -3.4, .6, .6], ['ginestra', 3.2, .3, .5], ['rosmarino', -1.6, 1.4, .5], ['rosmarino', 1.8, 1.2, .4]] },
     cipressiSegno: { nome: 'i cipressi del segno', el: [['cipresso', -1.6, -.6, .9], ['cipresso', 0, -1, 1], ['cipresso', 1.7, -.4, .7], ['rosmarino', -.8, 1.2, .5], ['rosmarino', 1, 1.1, .4]] },
     macchiaFiorita:{ nome: 'la macchia fiorita', el: [['lentisco', 0, -1.6, .9], ['lentisco', -2, -.8, .6], ['mirto', 1.8, -.6, .6], ['ginestra', -.6, .9, .7], ['ginestra', 1.1, 1.1, .5], ['rosmarino', -2, 1.4, .5]] },
@@ -240,7 +240,7 @@ var Vegetazione = (function () {
       metti(nome, x, y, hash2(gx, gy, 7959) * 6.28, .8 + hash2(gx, gy, 7960) * .5); }
     // 2) il piede degli alberi, dal lato in ombra
     P.piante.forEach(p => { if (p.x < x0 - 4 || p.x > x1 + 4 || p.y < y0 - 4 || p.y > y1 + 4) return; const S = SP[p.sp]; if (S.strato !== 'A' && S.strato !== 'M') return;
-      const fid = FORM[p.f] ? FORM[p.f].id : ''; if (fid === 'gariga' || hash2(Math.round(p.x * 3), Math.round(p.y * 3), 7963) > .45) return;   /* non ogni albero: il piede fiorito è un accento */ const r = S.chioma * .35 + .6; metti(fid === 'lecceta' || fid === 'riparia' || fid === 'macchia' ? 'piedeAlbero' : 'finocchietto', p.x - r * .7, p.y - r * .7, p.rot, .7); });
+      const fid = FORM[p.f] ? FORM[p.f].id : ''; if (fid === 'gariga' || hash2(Math.round(p.x * 3), Math.round(p.y * 3), 7963) > .45) return;   /* non ogni albero: il piede fiorito è un accento */ const r = S.chioma * .35 + .6; const om = P.ombra ? P.ombra[Math.floor((p.y - r * .7) / TS) * GW + Math.floor((p.x - r * .7) / TS)] || 0 : 0; metti(om > .55 && (fid === 'lecceta' || fid === 'riparia' || fid === 'macchia') ? 'piedeAlbero' : 'finocchietto', p.x - r * .7, p.y - r * .7, p.rot, .7); });   /* le felci solo all'ombra fitta */
     // 3) il bordo dei sentieri
     P.sentieri.forEach((sd, si) => { const Q = sd.pts; let lato = 1;
       for (let k = 1; k < Q.length; k++) { const a = Q[k - 1], b = Q[k], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < .01) continue; const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
@@ -1196,6 +1196,23 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
   function respiro(W, x, y) { const P = W && W.vegetazione; if (!P || SPENTO) return 1; const TS = W.TS, fx = x / TS - .5, fy = y / TS - .5, x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0, R = respiroCampo(P), GW = W.GW, GH = W.GH;
     const g = (a, b) => a < 0 || b < 0 || a >= GW || b >= GH ? 1 : R[b * GW + a]; return g(x0, y0) * (1 - ax) * (1 - ay) + g(x0 + 1, y0) * ax * (1 - ay) + g(x0, y0 + 1) * (1 - ax) * ay + g(x0 + 1, y0 + 1) * ax * ay; }
 
+  // ================= GLI STRATI SI STACCANO =================
+  // Prato, erbe, felci e cespugli con la stessa tinta e la stessa trama diventano una pasta sola. Come in pittura, ogni strato ha il suo
+  // valore: il prato chiaro e caldo (la luce), le erbe alte e i fiori un tono sopra, più verdi; i cespugli masse scure e fredde e compatte;
+  // le felci solo nell'ombra fitta delle chiome (mai nel prato al sole), verde fresco. strato(W, sp, x, y) dice al tappeto a carte se la
+  // pianta può stare lì (false: no) e la tinta da moltiplicare [r, g, b].
+  const FELCI = /^(felce|felceL|felceR|felceV|palmaV|foglione|foglioneS|lancia|banano|tenda|liana)$/;
+  const ARBUSTI = /^(cespuglio|ginepro|ginestra|erica|rovo|sambuco|rosa|spoglio|mucchio)$/;
+  const ERBE = /^(cespo|cespoV|alta|cardo|ombrella|verbasco|fiori|giunco)$/;
+  function strato(W, sp, x, y) {
+    const P = W && W.vegetazione; if (!P || SPENTO) return null; const TS = W.TS, i = Math.floor(y / TS) * W.GW + Math.floor(x / TS), f = P.form[i]; if (!f || f === F.costa || f === F.urbano) return null;
+    if (FELCI.test(sp)) { const o = ombraSuolo(P)[i]; return o > .55 && /^(felce|felceL|felceR|felceV)$/.test(sp) ? [.62, .82, .66] : false; }   // le felci: solo all'ombra, e mai le foglie tropicali
+    if (ARBUSTI.test(sp)) return [.5, .6, .66];       // scuri e freddi
+    if (ERBE.test(sp)) return [1, 1.06, .92];          // un tono sopra il prato, più verdi
+    if (sp[0] === 't') return [1.08, 1.04, .9];        // il prato: chiaro e caldo
+    return null;
+  }
+
   // ================= IL TAPPETO DI PRIMA LEGGE LE FORMAZIONI NUOVE =================
   // Il verde a carte di render.js (verde38) sceglie erbe e cespugli dall'ambiente (eco) del generatore, che sotto il verde nuovo è ancora
   // quello del bosco d'inverno (faggeta, vallone, abetaia: foglioni, felci larghe, palmette di sottobosco umido). Qui la formazione
@@ -1259,7 +1276,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, respiro, ecoTappeto, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, respiro, strato, ecoTappeto, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;
