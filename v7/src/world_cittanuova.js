@@ -1448,6 +1448,14 @@ var World = (function () {
             PZ('scogliera', A[0] + nx * 9, A[1] + ny * 9, rot, { L: +L.toFixed(2), w: 4, n: Math.max(4, Math.round(L * 1.1)), seme: 300 + Math.round(s0) }, { nome: 'Scogliera del Lungomare', acqua: true }); }
           const yr = A[0] > 1030 && A[0] < 1136 ? CITY.railY(M[0]) : null;
           if (yr !== null && Math.abs(M[1] - nx * 0 + 10 - yr) < 4) PZ('parapetto', A[0] - nx * 5.4, A[1] - ny * 5.4, rot, { L: +L.toFixed(2), tipo: 'guardrail' }, { nome: 'Guardrail della ferrovia' }); } }
+      // [pianta] la Via della Marina sul Lido: la ringhiera di pietra e ferro dove sotto c'è la spiaggia (sulla calata no: lì ci sono le bitte);
+      // la Riva della Rocca: il parapetto sul canale, davanti al fronte di terra del castello
+      { const MARp = CITY.marina, S = [0]; for (let k = 1; k < MARp.length; k++) S.push(S[k - 1] + dist(MARp[k - 1][0], MARp[k - 1][1], MARp[k][0], MARp[k][1]));
+        const at = s0 => { let k = 1; while (k < MARp.length - 1 && S[k] < s0) k++; const a = MARp[k - 1], b = MARp[k], t = clamp((s0 - S[k - 1]) / ((S[k] - S[k - 1]) || 1), 0, 1); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; };
+        const sabbia = (x, y) => { const i = T2i(y) * GW + T2i(x); return grid[i] === T.SAND; };
+        for (let s0 = 0; s0 + 10 < S[S.length - 1] - 9; s0 += 10) { const A = at(s0), B = at(s0 + 10); if (A[0] < 1092) continue; const L = dist(A[0], A[1], B[0], B[1]), ux = (B[0] - A[0]) / L, uy = (B[1] - A[1]) / L, nx = -uy, ny = ux;   // n: a destra di chi va a levante, verso il mare
+          if (sabbia((A[0] + B[0]) / 2 + nx * 7, (A[1] + B[1]) / 2 + ny * 7)) PZ('parapetto', A[0] + nx * 5.5, A[1] + ny * 5.5, Math.atan2(-uy, ux), { L: +L.toFixed(2), tipo: 'mare' }, { nome: 'Ringhiera del Lido' }); }
+        if (CITY.glacis) { const xc = CITY.glacis.riva + 4.1; for (let y = 98; y + 9 <= CITY.glacis.piazza[1]; y += 9) PZ('parapetto', xc, y, -Math.PI / 2, { L: 9, tipo: 'mare' }, { nome: 'Parapetto della Riva della Rocca' }); } }
       // E1/E0 le mura di tramontana sugli scogli del borgo, a tratti di 20 m che seguono la costa; la scala di ronda dal lato della città
       { const xs = []; for (let x = 1128; x > 1040; x -= 12) xs.push(x);
         let scala = 3; xs.forEach((xe, k) => { const xw = Math.max(1040, xe - 12); if (xe - xw < 6) return; const P0 = [xe, ryP(xe) + 5.5], P1 = [xw, ryP(xw) + 5.5], L = dist(P0[0], P0[1], P1[0], P1[1]);
