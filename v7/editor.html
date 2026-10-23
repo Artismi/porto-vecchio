@@ -12321,7 +12321,7 @@ var Roba3D = (function () {
     if (!trasp) o.vertexColors = true;
     if (trasp) o.depthWrite = false;
     if (kd === 'liquido') { const c = new T.Color(col), L = c.r * .3 + c.g * .59 + c.b * .11; if (L > .7) o.opacity = .22; }   // acqua, grappa, vodka: si vede attraverso
-    const m = new T.MeshStandardMaterial(o); m.userData.patina = !map && !trasp; m.userData.vc = !trasp; return (MC[k] = m);
+    const m = new T.MeshStandardMaterial(o); m.userData.patina = !map && !trasp; m.userData.vc = !trasp; m.userData.kd = kd; return (MC[k] = m);
   }
   // una mesh in un gruppo: posizione, rotazione, scala (numero o [x, y, z])
   function put(g, geo, m, x, y, z, rx, ry, rz, s) {
@@ -13883,12 +13883,9 @@ var Roba3D = (function () {
   M.mappa = o => {
     const g = G();
     const mp = disegno('mappa' + (o.c || ''), 256, 192, (x) => { x.fillStyle = '#8ab8d8'; x.fillRect(0, 0, 256, 192); x.fillStyle = o.c || '#d8d0a0'; x.beginPath(); x.moveTo(40, 30); x.bezierCurveTo(150, 10, 230, 60, 210, 120); x.bezierCurveTo(190, 180, 80, 175, 50, 140); x.bezierCurveTo(20, 100, 10, 50, 40, 30); x.fill(); x.strokeStyle = '#c83a2a'; x.lineWidth = 3; x.beginPath(); x.moveTo(60, 60); x.lineTo(120, 90); x.lineTo(190, 80); x.stroke(); x.strokeStyle = '#6a8a4a'; x.lineWidth = 2; for (let i = 0; i < 5; i++) { x.beginPath(); x.arc(110 + i * 4, 110, 26 - i * 5, 0, PI * 2); x.stroke(); } x.fillStyle = '#1a1a1a'; x.beginPath(); x.arc(120, 90, 4, 0, PI * 2); x.fill(); x.strokeStyle = 'rgba(60,40,20,.4)'; x.lineWidth = 1; for (let i = 64; i < 256; i += 64) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 192); x.stroke(); } x.beginPath(); x.moveTo(0, 96); x.lineTo(256, 96); x.stroke(); });
-    // quattro pannelli a fisarmonica, ognuno con la sua parte della carta
-    for (let i = 0; i < 4; i++) {
-      const t = mp.clone(); t.needsUpdate = true; t.repeat.set(.25, 1); t.offset.set(i * .25, 0);
-      const m = new T.MeshStandardMaterial({ map: t, roughness: .9, side: T.DoubleSide });
-      const pn = put(g, pia(.07, .18), m, -.105 + i * .07, .012 + (i % 2 ? -.004 : .004), 0, -PI / 2, 0, 0); pn.rotation.y = (i % 2 ? .12 : -.12);
-    }
+    // un foglio solo piegato a fisarmonica (quattro pannelli): la carta intera si legge, le pieghe prendono la luce
+    const geo = new T.PlaneGeometry(.28, .2, 8, 1), P0 = geo.attributes.position; for (let i = 0; i < P0.count; i++) { const x = P0.getX(i), k = Math.round((x + .14) / .035); P0.setZ(i, (k % 2) * .012); } geo.computeVertexNormals();
+    put(g, geo, new T.MeshStandardMaterial({ map: mp, roughness: .9, side: T.DoubleSide }), 0, .002, 0, -PI / 2, 0, 0);
     return g;
   };
   P.mappa = { how: 'piatto' };
@@ -14335,6 +14332,609 @@ var Roba3D = (function () {
   M.piombo = o => { const g = G(), A = mat('#6a6e74', 'metallo'); for (let i = 0; i < 3; i++) put(g, ext([[-.06, 0], [.06, 0], [.05, .03], [-.05, .03]], .04, .004), A, 0, i * .031, (i - 1) * .02, 0, i * .3, 0); put(g, cyl(.018, .018, .25, 14), A, .05, .02, .08, 0, .4, PI / 2, [1, 1, .5]); return g; };
   P.piombo = { how: 'pugno' };
 
+
+  // =====================================================================================================================
+  // [roba3d2] RICONOSCIBILI SENZA IL NOME: le cose che prima erano solo primitive si rifanno con la sagoma e il dettaglio che le dice
+  // (il burro scartato col coltello, la gavetta col cucchiaio dentro, il compensato coi veli sul taglio, il transistor sulla basetta)
+  // =====================================================================================================================
+  // --- cibo ---
+  // la focaccia nella teglia nera, un quadrato tagliato e sollevato, le fossette con l'olio e il rosmarino
+  M.focaccia = o => {
+    const g = G(), W = .26, D = .19, F = mat('#2a2826', 'ghisa'), cr = mat('#d8a04a', 'cibo'), mol = mat('#f0cc78', 'lucido');
+    put(g, ext(rrect(-W / 2, -D / 2, W / 2, D / 2, .015), .012, .002), F, 0, .006, 0, -PI / 2);
+    [[0, D / 2], [0, -D / 2], [W / 2, 0], [-W / 2, 0]].forEach(([x, z], i) => put(g, rbox(i < 2 ? W : .006, .024, i < 2 ? .006 : D, .002), F, x, .017, z));
+    const pezzo = (x, z, w, d, y, rx) => { const s = G(); s.position.set(x, y, z); s.rotation.x = rx || 0; g.add(s); put(s, rbox(w, .024, d, .009), cr, 0, 0, 0); put(s, rbox(w - .008, .002, d - .008, .002), mol, 0, .012, 0); const r = rng(Math.round(x * 999)); for (let i = 0; i < w * d * 2400; i++) { const px = (r() - .5) * (w - .02), pz = (r() - .5) * (d - .02); put(s, sfe(.005, 8, 6, 0, PI * 2, 0, PI / 2), mat('#a8642a', 'cibo'), px, .0125, pz, PI, 0, 0, [1, .5, 1]); if (r() < .3) put(s, box(.012, .002, .002), mat('#3a5a2a', 'cibo'), px + .006, .0135, pz, 0, r() * 3, 0); } for (let i = 0; i < 4; i++) put(s, sfe(.0018, 5, 4), mat('#f4f0e6', 'lucido'), (r() - .5) * (w - .02), .0135, (r() - .5) * (d - .02)); };
+    pezzo(-.04, 0, .16, .17, .026); pezzo(.09, -.035, .075, .085, .03); pezzo(.1, .06, .07, .075, .05, -.35);
+    return g;
+  };
+  P.focaccia = { how: 'regge', w: .28, d: .2 };
+  // la scodella di smalto bianca col bordo blu, la minestra con le verdure a pezzi, il cucchiaio appoggiato
+  M.scodella = o => {
+    const g = G(), R = .075, H = .06, sm = mat('#ece8de', 'ceramica');
+    put(g, lat([[0, 0], [R * .55, 0], [R * .6, .006], [R, H], [R + .004, H + .002], [R - .004, H + .002], [R * .58, .012], [0, .012]], 32), sm);
+    put(g, tor(R + .001, .003, 0, 5, 32), mat('#2a4a8a', 'ceramica'), 0, H + .001, 0, PI / 2);
+    put(g, cyl(R - .006, R - .006, .002, 30), mat(o.brodo || '#b8782a', 'lucido'), 0, H - .008, 0);
+    const r = rng(5); for (let i = 0; i < 14; i++) { const a = r() * PI * 2, d = r() * (R - .02); put(g, rbox(.012, .006, .012, .003), mat(['#e0782a', '#6a9a3a', '#e8d8a0', '#c8a040'][i % 4], 'cibo'), Math.cos(a) * d, H - .006, Math.sin(a) * d, r(), r() * 3, 0); }
+    const cu = G(); cu.position.set(.02, H - .004, .01); cu.rotation.set(0, -.5, .55); g.add(cu);
+    put(cu, ext(rrect(-.004, 0, .004, .13, .003), .002, .0005), mat('#c8ccd4', 'acciaio'), 0, 0, 0, -PI / 2); put(cu, sfe(.016, 12, 8, 0, PI * 2, PI / 2, PI / 2), mat('#c8ccd4', 'acciaio'), 0, -.002, -.012, 0, 0, 0, [1, .4, 1.4]);
+    if (o.verde) for (let i = 0; i < 5; i++) put(g, sfe(.007, 8, 6), mat('#4a8a3a', 'cibo'), Math.cos(i * 2) * .03, H - .005, Math.sin(i * 2) * .03, 0, 0, 0, [1, .5, 1]);
+    return g;
+  };
+  P.scodella = { how: 'regge', w: .18, d: .18 };
+  // la mortadella: il cilindrone rosa nella rete di spago, il taglio coi pistacchi, le fette a ventaglio sulla carta
+  M.mortadella = o => {
+    const g = G(), R = .07, L = .24, f = '#e4a0a0';
+    const ft = disegno('mortafetta', 128, 128, (x) => { x.fillStyle = f; x.beginPath(); x.arc(64, 64, 63, 0, PI * 2); x.fill(); const r = rng(3); x.fillStyle = '#f8e8e0'; for (let i = 0; i < 26; i++) { x.beginPath(); x.arc(14 + r() * 100, 14 + r() * 100, 3 + r() * 4, 0, PI * 2); x.fill(); } x.fillStyle = '#6a8a3a'; for (let i = 0; i < 12; i++) { x.beginPath(); x.arc(18 + r() * 92, 18 + r() * 92, 2.2, 0, PI * 2); x.fill(); } x.strokeStyle = '#c87070'; x.lineWidth = 3; x.beginPath(); x.arc(64, 64, 62, 0, PI * 2); x.stroke(); });
+    put(g, rbox(.34, .002, .24, .001), mat('#e8dcc8', 'carta'), .03, .001, 0, 0, .1, 0);
+    put(g, lat([[0, 0], [R * .55, .01], [R * .92, .05], [R, .12], [R, L], [0, L]], 28), mat('#d89a98', 'lucido'), -.12, R + .002, -.03, 0, 0, -PI / 2);
+    put(g, cyl(R * .99, R * .99, .002, 28), mat('#ffffff', 'cibo', ft), L - .12 + .001, R + .002, -.03, 0, 0, PI / 2);
+    for (let i = 0; i < 6; i++) put(g, tor(R + .002, .0015, 0, 4, 28), mat('#c83a2a', 'tessuto'), -.08 + i * .035, R + .002, -.03, 0, PI / 2, 0);   // la rete
+    for (let i = 0; i < 8; i++) { const a = i / 8 * PI; put(g, tubo([[-.12, R + .002 + Math.cos(a) * R, -.03 + Math.sin(a) * R], [.12, R + .002 + Math.cos(a + .4) * R, -.03 + Math.sin(a + .4) * R]], .0012, 12, 3), mat('#c83a2a', 'tessuto')); }
+    for (let i = 0; i < 4; i++) put(g, cyl(R * .96, R * .96, .003, 28), mat('#ffffff', 'cibo', ft), .1 + i * .025, .004 + i * .0032, .06 + i * .012, 0, i * .3, 0);
+    return g;
+  };
+  P.mortadella = { how: 'regge', w: .34, d: .24 };
+  // il baccalà: la sagoma del merluzzo aperto a farfalla, rigido e bianco di sale, legato con lo spago per la coda
+  M.baccala = o => {
+    const g = G();
+    const s = new T.Shape(); s.moveTo(-.2, 0); s.bezierCurveTo(-.18, .08, -.05, .11, .08, .09); s.bezierCurveTo(.15, .07, .2, .03, .22, .015); s.lineTo(.28, .05); s.lineTo(.27, 0); s.lineTo(.28, -.05); s.lineTo(.22, -.015); s.bezierCurveTo(.2, -.03, .15, -.07, .08, -.09); s.bezierCurveTo(-.05, -.11, -.18, -.08, -.2, 0);
+    put(g, ext(s, .016, .006), mat('#e8dcc0', 'cibo'), 0, .009, 0, -PI / 2);
+    const sc = disegno('sale', 64, 64, (x) => { x.clearRect(0, 0, 64, 64); const r = rng(8); for (let i = 0; i < 260; i++) { x.fillStyle = `rgba(255,255,255,${.4 + r() * .5})`; x.fillRect(r() * 64, r() * 64, 2, 2); } });
+    put(g, ext(s, .002, 0), new T.MeshStandardMaterial({ map: sc, transparent: true, roughness: .5 }), 0, .0185, 0, -PI / 2);
+    put(g, ext([[-.15, 0], [.18, .012], [.18, -.012]], .002, 0), mat('#b8a888', 'cibo'), 0, .0182, 0, -PI / 2);   // la spina dorsale
+    put(g, tor(.012, .003, 0, 5, 12), mat('#d8c8a0', 'tessuto'), .22, .012, 0, 0, PI / 2, 0); put(g, tubo([[.22, .02, 0], [.24, .05, 0], [.26, .07, .01]], .002, 8, 3), mat('#d8c8a0', 'tessuto'));
+    return g;
+  };
+  P.baccala = { how: 'appeso', manico: [.26, .07, .01] };
+  // la gomma da masticare: il pacchetto a strisce e due stecche fuori, una mezza scartata
+  M.gomme = o => {
+    const g = G(), c = o.c || '#e84a8a';
+    put(g, rbox(.075, .02, .03, .002), mat(c, 'carta'), 0, .01, 0);
+    decal(g, etichetta({ bg: c, fg: '#f2f0ea', testo: 'GOMME', band: '#4ac8e8' }), .072, .028, 0, .0202, 0, 0, -PI / 2);
+    for (let i = 0; i < 2; i++) put(g, rbox(.07, .003, .02, .001), mat('#c8ccd4', 'metallo'), .04 + i * .015, .022 + i * .004, .01 - i * .014, 0, .2 + i * .3, 0);
+    put(g, rbox(.035, .0035, .019, .001), mat('#f0c8d8', 'cibo'), .1, .028, -.012, 0, .5, 0);
+    return g;
+  };
+  P.gomme = { how: 'pugno' };
+  // le gallette: biscotti quadri coi buchini, una pila che esce dalla latta militare
+  M.gallette = o => {
+    const g = G(), mb = mat('#d8b878', 'cibo');
+    const gt = disegno('galletta', 64, 64, (x) => { x.fillStyle = '#d8b878'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#9a7238'; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.beginPath(); x.arc(10 + i * 15, 10 + j * 15, 2.2, 0, PI * 2); x.fill(); } x.strokeStyle = '#b89050'; x.strokeRect(2, 2, 60, 60); });
+    put(g, lat([[0, 0], [.055, 0], [.055, .06], [0, .06]], 28), mat('#5a6a3a', 'metallo'), -.03, 0, 0);
+    put(g, cyl(.056, .056, .012, 28), mat('#4a5a2a', 'metallo'), .06, .006, -.06, 0, 0, 0);
+    for (let i = 0; i < 4; i++) { const s = G(); s.position.set(.05 + i * .006, .008 + i * .011, .05 - i * .004); s.rotation.y = i * .15; g.add(s); put(s, rbox(.07, .01, .07, .004), mb, 0, 0, 0); put(s, pia(.066, .066), mat('#ffffff', 'cibo', gt), 0, .0052, 0, -PI / 2); }
+    decal(g, etichetta({ bg: '#5a6a3a', fg: '#e8e0c0', testo: 'RAZIONE', band: '#e8e0c0' }), .1, .035, -.03, .03, .0552);
+    return g;
+  };
+  P.gallette = { how: 'pugno' };
+  // i fichi secchi infilati sulla canna a corona, grossi e a goccia, col fiocco
+  M.collana_fichi = o => {
+    const g = G(), R = .1;
+    for (let i = 0; i < 12; i++) { const a = i / 12 * PI * 2; put(g, lat([[0, 0], [.012, .004], [.02, .016], [.018, .028], [.008, .036], [0, .038]], 12), mat(i % 3 ? '#8a6040' : '#a07450', 'cibo'), Math.cos(a) * R, .016, Math.sin(a) * R, PI / 2, 0, -a + PI / 2, [1, 1, .55]); }
+    put(g, tor(R, .003, 0, 5, 40), mat('#a89060', 'legno'), 0, .016, 0, PI / 2);
+    put(g, tor(.014, .004, 0, 5, 12), mat('#c83a2a', 'tessuto'), 0, .02, -R - .01, 0, 0, 0); put(g, tor(.014, .004, 0, 5, 12), mat('#c83a2a', 'tessuto'), .02, .02, -R - .012, 0, 0, 0);
+    return g;
+  };
+  // la polenta rovesciata sul tagliere tondo, una fetta tagliata col filo e scostata
+  M.polenta = o => {
+    const g = G(), Y = mat('#e8b838', 'cibo');
+    put(g, cyl(.15, .15, .02, 30), mat('#b8905a', 'legno'), 0, .01, 0); put(g, rbox(.06, .02, .04, .008), mat('#b8905a', 'legno'), .17, .01, 0);
+    put(g, new T.SphereGeometry(.11, 26, 12, .4, PI * 2 - .8, 0, PI / 2), Y, 0, .02, 0, 0, 0, 0, [1, .55, 1]);
+    [.4, -.4].forEach(a => { const p = put(g, new T.CircleGeometry(.11, 16, 0, PI / 2), mat('#f0c848', 'cibo'), 0, .02, 0, 0, a + (a > 0 ? -PI / 2 : PI / 2), 0, [1, .55, 1]); p.material.side = T.DoubleSide; });
+    const sl = put(g, new T.SphereGeometry(.11, 10, 8, -.38, .76, 0, PI / 2), Y, .05, .022, .02, 0, 0, 0, [1, .55, 1]); sl.position.set(.07, .02, .03);
+    put(g, tubo([[-.15, .03, .1], [-.05, .05, .02], [.1, .03, -.1]], .0008, 10, 3), mat('#e8e0d0', 'tessuto'));
+    return g;
+  };
+  // --- dispensa ---
+  // il panetto di burro mezzo scartato, il coltello col ricciolo sulla lama
+  M.burro = o => {
+    const g = G(), c = o.c || '#f0dc90', w = .1, h = .035, d = .06;
+    put(g, rbox(w * .55, h, d, .004), mat(c, 'cera'), .025, h / 2, 0);
+    put(g, rbox(w * .5, h + .002, d + .002, .004), mat(o.carta || '#f2f0ea', 'carta'), -.025, h / 2, 0);
+    decal(g, etichetta({ bg: o.carta || '#f2f0ea', fg: o.fgc || '#2a5aa8', testo: o.testo || 'BURRO', band: o.fgc || '#2a5aa8' }), w * .45, d * .9, -.025, h + .0015, 0, 0, -PI / 2);
+    put(g, ext([[0, 0], [.05, .004], [.06, .002], [.05, -.006], [0, -.006]], .004, .001), mat('#e8eaee', 'cromo'), .02, h + .007, .045, -PI / 2, .3, 0);   // la carta aperta
+    const k = G(); k.position.set(.06, .006, .05); k.rotation.y = -.6; g.add(k);
+    put(k, ext([[0, -.008], [.09, -.006], [.1, 0], [.09, .006], [0, .008]], .002, .0005), mat('#c8ccd4', 'cromo'), 0, .001, 0, -PI / 2); put(k, rbox(.07, .012, .016, .005), mat('#3a2a1e', 'legno'), -.04, .004, 0);
+    put(g, tor(.007, .004, PI * 1.5, 6, 12), mat(c, 'cera'), .1, .012, .045, PI / 2, 0, 0);   // il ricciolo
+    return g;
+  };
+  P.burro = { how: 'pugno' };
+  // il cubetto di lievito nella stagnola aperta, sbriciolato in un angolo
+  M.lievito = o => {
+    const g = G(); put(g, rbox(.045, .025, .045, .004), mat('#c8b068', 'cibo'), 0, .0125, 0);
+    for (let i = 0; i < 4; i++) { const a = i / 4 * PI * 2 + .4; put(g, ext([[0, 0], [.035, .01], [.04, -.01], [0, -.02]], .002, 0), mat('#d8dce4', 'cromo'), Math.cos(a) * .028, .002, Math.sin(a) * .028, -PI / 2, -a, 0); }
+    const r = rng(4); for (let i = 0; i < 9; i++) put(g, new T.DodecahedronGeometry(.005, 0), mat('#c8b068', 'cibo'), .035 + r() * .02, .004, .02 + r() * .02, r() * 3, r() * 3, 0);
+    decal(g, etichetta({ bg: '#e8c040', fg: '#c83a2a', testo: 'LIEVITO', w: 256, h: 96 }), .04, .015, 0, .0255, 0, 0, -PI / 2);
+    return g;
+  };
+  P.lievito = { how: 'pugno' };
+  // lo strutto: il pane bianco nella carta oleata aperta, una cucchiaiata tolta, il cucchiaio
+  M.strutto = o => {
+    const g = G(), W = mat('#f4f0e6', 'cera');
+    put(g, rbox(.2, .002, .16, .001), mat('#e8dcb0', 'carta'), 0, .001, 0, 0, .2, 0);
+    put(g, rbox(.11, .06, .075, .012), W, 0, .031, 0);
+    put(g, sfe(.022, 12, 8), mat('#e8e4d8', 'cera'), .03, .062, .01, 0, 0, 0, [1, .5, 1]);
+    const cu = G(); cu.position.set(.06, .01, .05); cu.rotation.y = .5; g.add(cu); put(cu, rbox(.11, .003, .01, .002), mat('#c8ccd4', 'acciaio'), .06, 0, 0); put(cu, sfe(.016, 10, 8, 0, PI * 2, PI / 2, PI / 2), mat('#c8ccd4', 'acciaio'), 0, .006, 0, 0, 0, 0, [1.3, .4, 1]); put(cu, sfe(.012, 8, 6), W, 0, .008, 0, 0, 0, 0, [1.2, .5, 1]);
+    decal(g, etichetta({ bg: '#e8dcb0', fg: '#8a2a2a', testo: 'STRUTTO', w: 256, h: 96 }), .08, .028, -.04, .0022, .06, 0, -PI / 2);
+    return g;
+  };
+  P.strutto = { how: 'regge', w: .2, d: .16 };
+  // il caffè: il mattone sottovuoto aperto in cima, i chicchi sparsi davanti
+  M.caffe = o => {
+    const g = G(), c = '#8a2a1a';
+    put(g, rbox(.07, .1, .045, .006), mat(c, 'metallo'), 0, .05, 0);
+    put(g, ext([[-.035, 0], [.035, 0], [.03, .025], [-.03, .03]], .046, .004), mat(c, 'metallo'), 0, .098, 0);
+    decal(g, etichetta({ bg: c, fg: '#e8c860', testo: 'CAFFÈ', sub: 'moka', band: '#e8c860', w: 256, h: 192 }), .066, .07, 0, .055, .0232);
+    const ch = (x, z, a) => { put(g, sfe(.007, 10, 8), mat('#3a1e10', 'lucido'), x, .005, z, 0, a, 0, [1.2, .7, .9]); put(g, box(.012, .0015, .0015), mat('#1a0e06', 'opaco'), x, .0098, z, 0, a, 0); };
+    const r = rng(9); for (let i = 0; i < 9; i++) ch(-.05 + r() * .1, .04 + r() * .04, r() * 3);
+    return g;
+  };
+  P.caffe = { how: 'pugno' };
+  // il tè: la scatolina di latta col coperchio scostato, le foglie, una bustina col filo e l'etichetta
+  M.te_foglie = o => {
+    const g = G(), c = '#2a5a4a';
+    put(g, rbox(.07, .09, .05, .006), mat(c, 'metallo'), 0, .045, 0);
+    put(g, rbox(.073, .02, .053, .004), mat('#c8a040', 'ottone'), .05, .01, .05, 0, .6, 0);
+    decal(g, etichetta({ bg: c, fg: '#e8c860', testo: 'TÈ', sub: 'di Ceylon', bordo: '#e8c860', w: 192, h: 192 }), .066, .066, 0, .05, .0255);
+    const r = rng(2); for (let i = 0; i < 12; i++) put(g, sfe(.004, 6, 4), mat('#3a2a1a', 'cibo'), -.02 + r() * .04, .091, -.015 + r() * .03, 0, r() * 3, 0, [1.6, .4, .8]);
+    put(g, rbox(.04, .004, .05, .002), mat('#efe8d8', 'carta'), -.06, .002, .05, 0, -.3, 0); put(g, tubo([[-.06, .004, .025], [-.03, .004, .0], [.0, .004, .04]], .0005, 8, 3), mat('#f2f0ea', 'tessuto')); put(g, rbox(.016, .002, .012, .001), mat('#c83a2a', 'carta'), .0, .003, .04);
+    return g;
+  };
+  P.te_foglie = { how: 'pugno' };
+  // le spezie: tre barattolini col tappo di sughero (pepe, peperoncino, origano) e i peperoncini secchi
+  M.spezie = o => {
+    const g = G(); [['#3a2a1e', -.03, 'PEPE'], ['#a8301a', .0, 'PEPERONC.'], ['#5a6a2a', .03, 'ORIGANO']].forEach(([c, x, t], i) => { const s = G(); s.position.set(x, 0, i === 1 ? -.02 : 0); g.add(s); put(s, lat([[0, 0], [.013, 0], [.014, .003], [.014, .05], [.011, .055], [0, .055]], 18), mat('#e8f0ee', 'vetro')); put(s, cyl(.0125, .0125, .042, 16), mat(c, 'cibo'), 0, .024, 0); put(s, cyl(.011, .01, .014, 14), mat('#b8905a', 'legno'), 0, .06, 0); const e = etichetta({ bg: '#f2ead8', fg: c, testo: t, w: 192, h: 64 }); e.offset.x = .5; put(s, cyl(.0145, .0145, .018, 18, true), mat('#ffffff', 'carta', e), 0, .025, 0); });
+    for (let i = 0; i < 3; i++) put(g, new T.CapsuleGeometry(.004, .04, 4, 8), mat('#b8281a', 'lucido'), -.01 + i * .015, .004, .04, PI / 2, i * .4, 0);
+    return g;
+  };
+  P.spezie = { how: 'regge', w: .1, d: .08 };
+  // lo zucchero: la scatola aperta e le zollette davanti
+  M.zucchero = o => { const g = M.pacco({ c: '#f2f0ea', w: .12, h: .14, d: .06, et: { bg: '#f2f0ea', fg: '#2a5aa8', testo: 'ZUCCHERO', sub: 'in zollette', band: '#2a5aa8' } }); for (let i = 0; i < 5; i++) put(g, rbox(.016, .012, .016, .002), mat('#f8f6f0', 'cera'), .08 + (i % 2) * .02, .006 + Math.floor(i / 4) * .012, .04 + (i % 3) * .018, 0, i, 0); return g; };
+  P.zucchero = { how: 'pugno' };
+  // il sale: il pacco col beccuccio aperto e il mucchietto versato
+  M.sale = o => { const g = M.pacco({ c: '#2a6ab0', w: .09, h: .14, d: .05, et: { bg: '#2a6ab0', fg: '#f2f0ea', testo: 'SALE', sub: 'grosso', band: '#f2f0ea' } }); put(g, ext([[0, 0], [.02, 0], [.016, .016]], .02, 0), mat('#c8ccd4', 'metallo'), .03, .14, 0); put(g, sfe(.03, 14, 8, 0, PI * 2, 0, PI / 2), mat('#f4f2ec', 'pietra'), .08, 0, .04, 0, 0, 0, [1, .4, 1]); return g; };
+  P.sale = { how: 'pugno' };
+  // --- combustibili ---
+  // il sacco aperto e rimboccato col carbone a pezzi che si vede (carbone di juta, carbonella di carta)
+  M.sacco_aperto = o => {
+    const g = G(), c = o.c || '#b89a68', R = .16, H = .3, juta = !o.carta;
+    let tx = null; if (juta) { tx = disegno('juta', 64, 64, (x) => { x.fillStyle = '#c8b080'; x.fillRect(0, 0, 64, 64); for (let i = 0; i < 64; i += 2) { x.fillStyle = 'rgba(90,70,40,.25)'; x.fillRect(i, 0, 1, 64); x.fillRect(0, i, 64, 1); } }); }
+    const mm = juta ? new T.MeshStandardMaterial({ color: c, map: tx, roughness: 1 }) : mat(c, 'carta');
+    put(g, lat([[0, 0], [R * .85, 0], [R, .04], [R * 1.04, H * .5], [R * .98, H * .9], [R * 1.05, H], [R * 1.12, H + .01], [R * 1.08, H - .05], [R * .96, H - .06]], 24), mm, 0, 0, 0, 0, 0, 0, [1, 1, .8]).material.side = T.DoubleSide;
+    const mc = mat(o.dentro || '#1e1c1c', 'pietra'), r = rng(6);
+    for (let i = 0; i < 22; i++) { const a = r() * PI * 2, d = r() * R * .85; put(g, new T.DodecahedronGeometry(.022 + r() * .018, 0), mc, Math.cos(a) * d, H - .06 + r() * .04, Math.sin(a) * d * .8, r() * 3, r() * 3, 0); }
+    for (let i = 0; i < 5; i++) put(g, new T.DodecahedronGeometry(.02 + r() * .01, 0), mc, R * .9 + r() * .1, .02, (r() - .5) * .15, r() * 3, r() * 3, 0);
+    if (o.et) decal(g, etichetta(Object.assign({ bg: 'rgba(0,0,0,0)', fg: o.carta ? '#e8c040' : '#2a1a10', w: 256, h: 128 }, o.et)), .2, .1, 0, .15, R * .8 + .012);
+    return g;
+  };
+  P.sacco_aperto = { how: 'regge', w: .36, d: .3 };
+  // il razzo di segnalazione nautico: il tubo rosso con le istruzioni, il tappo a strappo con l'anello, la scintilla
+  M.razzo = o => {
+    const g = G(); put(g, cyl(.02, .02, .22, 18), mat('#c83a2a', 'plastica'), 0, .13, 0); put(g, cyl(.022, .022, .03, 18), mat('#1a1a1a', 'plastica'), 0, .015, 0); put(g, lat([[0, 0], [.022, 0], [.022, .015], [.016, .025], [0, .028]], 18), mat('#e8c040', 'plastica'), 0, .24, 0);
+    put(g, tor(.012, .0025, 0, 6, 14), mat('#c8ccd4', 'metallo'), 0, .275, 0, 0, PI / 2, 0); put(g, tubo([[0, .262, 0], [0, .268, 0]], .002, 2, 4), mat('#c8ccd4', 'metallo'));
+    const t = etichetta({ bg: '#f2ead8', fg: '#c83a2a', testo: 'SOS', sub: 'tirare l\'anello', band: '#c83a2a', w: 256, h: 128 }); t.offset.x = .5; put(g, cyl(.0204, .0204, .08, 18, true), mat('#ffffff', 'carta', t), 0, .14, 0);
+    g.userData.grip = .07; return g;
+  };
+  // --- edilizia ---
+  // il compensato: la pila di pannelli col taglio a veli alterni ben visibile, un pannello appoggiato in piedi
+  M.compensato = o => {
+    const g = G(), c = o.c || '#d8b07a', s = .018, W = .6, D = .4;
+    const veli = disegno('veli' + c, 32, 32, (x) => { for (let i = 0; i < 32; i += 4) { x.fillStyle = (i / 4) % 2 ? shade(c, .7) : shade(c, 1.05); x.fillRect(0, i, 32, 4); } });
+    const mv = new T.MeshStandardMaterial({ color: '#ffffff', map: veli, roughness: .8 });
+    for (let i = 0; i < 4; i++) { const y = s / 2 + i * s, xo = (i % 2) * .012; put(g, box(W, s, D), mat(c, 'legno'), xo, y, 0, 0, i * .015, 0); put(g, pia(D, s), mv, xo + W / 2 + .0006, y, 0, 0, PI / 2, 0); put(g, pia(W, s), mv, xo, y, D / 2 + .0006); }
+    const p = G(); p.position.set(-.1, 0, -D / 2 - .05); p.rotation.x = -.2; g.add(p); put(p, box(W * .8, D, s), mat(shade(c, .95), 'legno'), 0, D / 2, 0); put(p, pia(W * .8, s), mv, 0, D + .0006, 0, -PI / 2);
+    return g;
+  };
+  P.compensato = { how: 'regge', w: .6, d: .12 };
+  // il sughero: i pannelli bruni a grana grossa, uno spezzato col bordo sbriciolato
+  M.sughero = o => {
+    const g = G(), W = .5, D = .35, s = .025;
+    const gr = disegno('sughero', 64, 64, (x) => { x.fillStyle = '#a8784a'; x.fillRect(0, 0, 64, 64); const r = rng(3); for (let i = 0; i < 600; i++) { const v = r(); x.fillStyle = v < .4 ? '#7a5030' : v < .7 ? '#c89a64' : '#5a3a20'; x.fillRect(r() * 64, r() * 64, 1 + r() * 2, 1 + r() * 2); } });
+    gr.repeat.set(3, 3); gr.wrapT = T.RepeatWrapping;
+    const mm = new T.MeshStandardMaterial({ color: '#ffffff', map: gr, bumpMap: gr, bumpScale: .004, roughness: 1 });
+    for (let i = 0; i < 3; i++) put(g, rbox(W, s, D, .004), mm, (i % 2) * .015, s / 2 + i * s, 0, 0, i * .03, 0);
+    put(g, ext([[0, 0], [.2, 0], [.18, .08], [.22, .14], [.15, .2], [0, .2]], s, .004), mm, .05, 3 * s + s / 2, -.05, -PI / 2, .2, 0);
+    return g;
+  };
+  P.sughero = { how: 'regge', w: .5, d: .12 };
+  // la latta: i fogli lucidi, l'angolo arricciato, le cesoie da lattoniere appoggiate sopra
+  M.fogli_latta = o => {
+    const g = G(), W = .5, D = .35, m = mat('#c8ccd2', 'cromo');
+    for (let i = 0; i < 5; i++) put(g, box(W, .002, D), m, (i % 2) * .008, .001 + i * .0022, (i % 3) * .004, 0, i * .02, 0);
+    const geo = new T.PlaneGeometry(.12, .12, 8, 8), P0 = geo.attributes.position; for (let i = 0; i < P0.count; i++) { const x = P0.getX(i) + .06, y = P0.getY(i) + .06, k = Math.max(0, (x + y - .1) / .14); P0.setZ(i, k * k * .05); } geo.computeVertexNormals();
+    const cr = put(g, geo, m, W / 2 - .06, .012, D / 2 - .06, -PI / 2, 0, 0); cr.material = m.clone(); cr.material.side = T.DoubleSide;
+    const c = M.cesoie({}); c.rotation.set(-PI / 2, 0, .6); c.position.set(-.08, .016, .02); c.scale.setScalar(1.3); g.add(c);
+    return g;
+  };
+  P.fogli_latta = { how: 'regge', w: .5, d: .1 };
+  // il tondino da cemento armato: il fascio di barre nervate legato col filo, le punte piegate a uncino
+  M.tondino = o => {
+    const g = G(), m = mat('#6a4a36', 'ruggine'), L = .5, n = 7;
+    const nerv = disegno('nervatura', 16, 64, (x) => { x.fillStyle = '#ffffff'; x.fillRect(0, 0, 16, 64); x.fillStyle = '#8a8a8a'; for (let y = 0; y < 64; y += 6) { x.save(); x.translate(8, y); x.rotate(.5); x.fillRect(-10, 0, 20, 2); x.restore(); } });
+    nerv.repeat.set(1, 18); nerv.wrapT = T.RepeatWrapping; const mn = new T.MeshStandardMaterial({ color: '#7a5038', map: nerv, bumpMap: nerv, bumpScale: .003, roughness: .9 });
+    for (let i = 0; i < n; i++) { const a = i / n * PI * 2, r = i ? .014 : 0, z = Math.cos(a) * r, y = .018 + Math.sin(a) * r + .014; put(g, cyl(.006, .006, L, 8), mn, 0, y, z, 0, 0, PI / 2); put(g, tubo([[L / 2, y, z], [L / 2 + .03, y, z], [L / 2 + .05, y + .02, z], [L / 2 + .04, y + .045, z]], .006, 10, 6), mn); }
+    [-.3, 0, .3].forEach(x => { for (let k = 0; k < 3; k++) put(g, tor(.024, .0012, 0, 4, 14), mat('#5a5a5a', 'acciaio'), x + k * .004, .032, 0, 0, PI / 2, 0); put(g, tubo([[x, .056, 0], [x + .01, .07, .008], [x + .02, .066, .016]], .0012, 6, 3), mat('#5a5a5a', 'acciaio')); });
+    return g;
+  };
+  P.tondino = { how: 'regge', w: .3, d: .1 };
+  // il ferro: profilati a doppia T e a L con le teste in vista, la ruggine e il segno di gesso
+  M.profilati = o => {
+    const g = G(), m = mat('#5a4a40', 'ruggine'), L = .8;
+    const doppiaT = [[-.03, -.04], [.03, -.04], [.03, -.032], [.005, -.032], [.005, .032], [.03, .032], [.03, .04], [-.03, .04], [-.03, .032], [-.005, .032], [-.005, -.032], [-.03, -.032]];
+    [[-.04, 0], [.04, .02]].forEach(([z, x]) => put(g, ext(doppiaT, L, .001), m, x, .04, z, 0, PI / 2, 0));
+    put(g, ext([[0, 0], [.05, 0], [.05, .006], [.006, .006], [.006, .05], [0, .05]], L * .9, .001), m, -.02, .08, .0, 0, PI / 2, 0);
+    put(g, rbox(.08, .001, .015, .0005), mat('#f2f0ea', 'carta'), .1, .0805, .0, 0, .3, 0);   // il segno di gesso
+    return g;
+  };
+  P.profilati = { how: 'regge', w: .3, d: .14 };
+  // il telo cerato: piegato, gli occhielli d'ottone sul bordo, la corda arrotolata sopra
+  M.telo = o => {
+    const g = G(), c = o.c || '#4a6a4a';
+    for (let i = 0; i < 4; i++) put(g, rbox(.4, .022, .3, .009), mat(i % 2 ? shade(c, .88) : c, 'tessuto'), i * .004, .011 + i * .021, (i % 2) * .004, 0, (i - 1.5) * .02, 0);
+    for (let i = 0; i < 4; i++) put(g, tor(.009, .003, 0, 6, 14), mat('#c8a040', 'ottone'), -.15 + i * .1, .085, .14, PI / 2);
+    put(g, rbox(.4, .006, .02, .003), mat(shade(c, .7), 'tessuto'), 0, .084, .14);
+    const r = M.matassa({ c: '#d8c8a0', r: .005, legata: false }); r.scale.setScalar(.7); r.position.set(.02, .086, -.02); g.add(r);
+    return g;
+  };
+  // la lana di vetro: il rotolo gialla e soffice srotolato in parte, la carta kraft sul retro
+  M.isolante = o => {
+    const g = G(), R = .14, L = .6, gi = mat('#e8c048', 'tessuto');
+    const fl = disegno('lanavetro', 64, 64, (x) => { x.fillStyle = '#e8c860'; x.fillRect(0, 0, 64, 64); const r = rng(5); for (let i = 0; i < 400; i++) { x.strokeStyle = r() < .5 ? 'rgba(200,150,40,.5)' : 'rgba(255,240,180,.5)'; x.beginPath(); const X = r() * 64, Y = r() * 64; x.moveTo(X, Y); x.quadraticCurveTo(X + (r() - .5) * 12, Y + (r() - .5) * 12, X + (r() - .5) * 16, Y + (r() - .5) * 16); x.stroke(); } });
+    fl.repeat.set(3, 2); fl.wrapT = T.RepeatWrapping; const mf = new T.MeshStandardMaterial({ color: '#ffffff', map: fl, bumpMap: fl, bumpScale: .006, roughness: 1 });
+    put(g, cyl(R, R, L, 28), mf, 0, R, 0, 0, 0, PI / 2);
+    [-1, 1].forEach(sd => { put(g, cyl(R * .98, R * .98, .002, 28), mf, sd * L / 2, R, 0, 0, 0, PI / 2); for (let j = 1; j < 5; j++) put(g, tor(R * j / 5, .004, 0, 4, 28), mat('#b88a28', 'tessuto'), sd * (L / 2 + .002), R, 0, 0, PI / 2, 0); });
+    put(g, rbox(L, .06, .4, .02), mf, 0, .03, R + .2);   // la parte srotolata
+    put(g, box(L, .002, .4), mat('#b8905a', 'carta'), 0, .001, R + .2);
+    put(g, cyl(R + .002, R + .002, .14, 28, true), mat('#ffffff', 'carta', etichetta({ bg: '#2a5aa8', fg: '#f2f0ea', testo: 'ISOLANTE', w: 256, h: 64 })), 0, R, 0, 0, 0, PI / 2);
+    return g;
+  };
+  // i sacchi di sabbia: tre sacchi di juta pieni, legati in cima, impilati come in trincea
+  M.sacchi_sabbia = o => {
+    const g = G(), c = o.c || '#b8a070';
+    const tx = disegno('juta', 64, 64, (x) => { x.fillStyle = '#c8b080'; x.fillRect(0, 0, 64, 64); for (let i = 0; i < 64; i += 2) { x.fillStyle = 'rgba(90,70,40,.25)'; x.fillRect(i, 0, 1, 64); x.fillRect(0, i, 64, 1); } });
+    const m = new T.MeshStandardMaterial({ color: c, map: tx, roughness: 1 });
+    const sacco = (x, y, z, ry) => { const s = G(); s.position.set(x, y, z); s.rotation.y = ry; g.add(s); put(s, sfe(.1, 18, 12), m, 0, .055, 0, 0, 0, 0, [2.2, .55, 1.35]); put(s, cyl(.02, .035, .05, 10), m, .23, .055, 0, 0, 0, PI / 2); put(s, tor(.022, .004, 0, 5, 10), mat('#7a5a30', 'tessuto'), .21, .055, 0, 0, PI / 2, 0); };
+    sacco(0, 0, -.08, 0); sacco(.02, 0, .08, .05); sacco(.01, .1, 0, -.04);
+    return g;
+  };
+  P.sacchi_sabbia = { how: 'regge', w: .44, d: .3 };
+  // --- ferramenta ---
+  // le fascette: il mazzetto legato con una fascetta chiusa ad anello davanti, la testa col dente
+  M.fascette = o => {
+    const g = G(), K = mat('#1a1a1e', 'plastica'), W = mat('#e8e4d8', 'plastica');
+    for (let i = 0; i < 14; i++) put(g, rbox(.22, .002, .005, .0008), i % 4 ? K : W, (i % 2) * .01, .004 + Math.floor(i / 7) * .0025, (i % 7 - 3) * .006, 0, (i % 7 - 3) * .02, 0);
+    put(g, tor(.026, .0022, 0, 4, 20), K, .02, .012, 0, 0, PI / 2, 0, [1, 1, .6]);   // quella che lega il mazzo
+    const an = G(); an.position.set(-.05, .025, .07); g.add(an); put(an, tor(.03, .0025, 0, 4, 24), W, 0, 0, 0, PI / 2); put(an, rbox(.008, .006, .008, .002), W, .03, 0, 0); put(an, rbox(.05, .002, .005, .0008), W, .056, 0, .004, 0, -.3, 0);
+    return g;
+  };
+  // la carta vetrata: il foglio grigio granuloso con l'angolo piegato, avvolto in parte sul tampone di sughero
+  M.carta_vetrata = o => {
+    const g = G();
+    const gr = disegno('vetrata', 64, 64, (x) => { x.fillStyle = '#8a7a5a'; x.fillRect(0, 0, 64, 64); const r = rng(7); for (let i = 0; i < 1400; i++) { const v = 90 + r() * 120 | 0; x.fillStyle = `rgb(${v},${v - 10},${v - 30})`; x.fillRect(r() * 64, r() * 64, 1, 1); } });
+    const mg = new T.MeshStandardMaterial({ color: '#ffffff', map: gr, bumpMap: gr, bumpScale: .002, roughness: 1 });
+    for (let i = 0; i < 3; i++) put(g, box(.23, .001, .28), i === 2 ? mg : mat('#e8dcc0', 'carta'), (i % 2) * .01, .0006 + i * .0012, 0, 0, i * .05, 0);
+    put(g, rbox(.12, .04, .065, .008), mat('#a8784a', 'legno'), .05, .025, -.06, 0, .3, 0);
+    put(g, box(.12, .042, .002), mg, .05 + Math.sin(.3) * .033, .025, -.06 + Math.cos(.3) * .033, 0, .3, 0);
+    decal(g, etichetta({ bg: '#e8dcc0', fg: '#c83a2a', testo: 'GRANA 80', w: 256, h: 64 }), .09, .022, -.05, .0042, .1, 0, -PI / 2);
+    return g;
+  };
+  // l'oliatore da officina: corpo di latta tornito, il beccuccio lungo, la levetta della pompa, la goccia
+  M.oliatore = o => {
+    const g = G(), m = mat('#a8302a', 'metallo'), A = mat('#c8a040', 'ottone');
+    put(g, lat([[0, 0], [.045, 0], [.05, .008], [.05, .03], [.04, .055], [.016, .068], [0, .07]], 24), m);
+    put(g, tubo([[0, .06, 0], [.04, .1, 0], [.12, .2, 0], [.16, .24, 0]], .0045, 20, 8), A); put(g, cyl(.0022, .001, .02, 6), A, .168, .25, 0, 0, 0, -.8);
+    put(g, tubo([[-.012, .062, 0], [-.05, .09, 0], [-.07, .095, 0]], .004, 10, 6), A); put(g, rbox(.03, .006, .014, .003), mat('#1a1a1e', 'plastica'), -.075, .096, 0);
+    put(g, sfe(.004, 8, 6), mat('#c8a040', 'lucido'), .175, .235, 0, 0, 0, 0, [1, 1.5, 1]);
+    g.userData.grip = .035; return g;
+  };
+  // il moschettone col tratto di corda annodato
+  M.moschettone = o => {
+    const g = G(), A = mat(o.c || '#b8bcc2', 'cromo');
+    const pts = []; for (let i = 0; i < 32; i++) { const a = i / 32 * PI * 2; const r = .028 + Math.cos(a) * .006; pts.push([Math.cos(a) * r * .65, .045 + Math.sin(a) * r * 1.4, 0]); }
+    put(g, tubo(pts, .004, 64, 8, true), A);
+    put(g, cyl(.0045, .0045, .045, 8), mat('#5a5e64', 'acciaio'), .02, .045, 0, 0, 0, .1);   // la leva
+    put(g, tubo([[-.015, .09, 0], [-.03, .1, .01], [-.04, .085, .02], [-.08, .05, .02], [-.12, .03, -.01], [-.16, .03, .02]], .006, 30, 8), mat('#c83a2a', 'tessuto'));
+    return g;
+  };
+  // --- elettrico ---
+  // il transistor: la basetta verde coi componenti saldati (transistor neri a tre zampe, resistenze a strisce, condensatori)
+  M.transistor = o => {
+    const g = G();
+    const pcb = disegno('pcb', 64, 64, (x) => { x.fillStyle = '#2a6a3a'; x.fillRect(0, 0, 64, 64); x.strokeStyle = '#c8a040'; x.lineWidth = 1.5; const r = rng(4); for (let i = 0; i < 14; i++) { x.beginPath(); const X = r() * 64, Y = r() * 64; x.moveTo(X, Y); x.lineTo(X + (r() - .5) * 30, Y); x.lineTo(X + (r() - .5) * 30, Y + (r() - .5) * 30); x.stroke(); x.beginPath(); x.arc(X, Y, 2, 0, PI * 2); x.stroke(); } });
+    put(g, box(.1, .003, .07), new T.MeshStandardMaterial({ map: pcb, roughness: .6 }), 0, .0015, 0);
+    [[-.03, -.02], [0, -.02], [.03, -.02]].forEach(([x, z]) => { put(g, cyl(.005, .005, .009, 12, false), mat('#1a1a1e', 'plastica'), x, .01, z); put(g, box(.0055, .009, .002), mat('#1a1a1e', 'plastica'), x, .01, z + .004); for (let j = -1; j <= 1; j++) put(g, cyl(.0004, .0004, .006, 4), mat('#c8ccd4', 'cromo'), x + j * .0025, .005, z); });
+    for (let i = 0; i < 4; i++) { const x = -.035 + i * .022; put(g, new T.CapsuleGeometry(.0028, .009, 4, 8), mat('#d8c8a0', 'plastica'), x, .006, .015, 0, 0, PI / 2); ['#c83a2a', '#3a3a3a', '#e8a030'].forEach((c, k) => put(g, cyl(.0029, .0029, .0012, 10), mat(c, 'plastica'), x - .003 + k * .003, .006, .015, 0, 0, PI / 2)); }
+    [[.035, .01], [-.04, .025]].forEach(([x, z]) => { put(g, cyl(.005, .005, .014, 14), mat('#2a4a9a', 'plastica'), x, .0085, z); put(g, cyl(.0052, .0052, .002, 14), mat('#c8ccd4', 'metallo'), x, .016, z); });
+    for (let i = 0; i < 3; i++) { const s = G(); s.position.set(.07 + i * .012, .004, -.03 + i * .02); s.rotation.y = i; g.add(s); put(s, cyl(.0055, .0055, .009, 12), mat('#1a1a1e', 'plastica'), 0, 0, 0, 0, 0, PI / 2); for (let j = -1; j <= 1; j++) put(s, cyl(.0004, .0004, .014, 4), mat('#c8ccd4', 'cromo'), .01, 0, j * .0025, 0, 0, PI / 2); }
+    return g;
+  };
+  // il cavo elettrico arrotolato con la spina da una parte
+  M.cavo_spina = o => {
+    const g = M.matassa({ c: o.c || '#1a1a1e', kind: 'gomma', r: o.r || .004, legata: true });
+    const sp = G(); sp.position.set(.16, .01, .1); sp.rotation.y = .5; g.add(sp);
+    put(sp, rbox(.035, .022, .028, .008), mat(o.c2 || '#1a1a1e', 'plastica'), 0, .011, 0);
+    if (o.coax) put(sp, cyl(.006, .006, .02, 12), mat('#c8ccd4', 'cromo'), .025, .011, 0, 0, 0, PI / 2);
+    else [-.006, .006].forEach(z => put(sp, cyl(.002, .002, .018, 8), mat('#c8ccd4', 'cromo'), .025, .011, z, 0, 0, PI / 2));
+    return g;
+  };
+  // la valvola nella sua scatolina aperta, l'altra in piedi accanto (si vede il vetro col filamento acceso)
+  M.valvole = o => { const g = G(); put(g, rbox(.035, .075, .035, .002), mat('#e8dcb0', 'cartone'), -.03, .0375, 0); decal(g, etichetta({ bg: '#e8dcb0', fg: '#c83a2a', testo: 'ECC83', w: 128, h: 192 }), .03, .05, -.03, .045, .018); const v = M.valvola({}); v.scale.setScalar(1.15); v.position.set(.02, 0, .01); g.add(v); put(g, sfe(.004, 6, 4), mat('#ff8a3a', 'luce'), .02, .045, .01); return g; };
+  // l'interruttore murale nella scatola da incasso, coi fili colorati che escono dietro
+  M.interruttore = o => {
+    const g = G(); put(g, rbox(.08, .08, .02, .008), mat('#e8e4d8', 'plastica'), 0, .04, .01); put(g, rbox(.026, .046, .012, .004), mat('#f4f0e6', 'plastica'), 0, .04, .024, .2); put(g, sfe(.0025, 6, 4), mat('#ff9a3a', 'luce'), 0, .026, .03);
+    [-.026, .026].forEach(x => put(g, cyl(.004, .004, .003, 10), mat('#c8ccd4', 'cromo'), x, .04, .0205, PI / 2));
+    [['#2a5aa8', -.01], ['#8a5a2a', 0], ['#e8c040', .01]].forEach(([c, x]) => put(g, tubo([[x, .04, 0], [x * 2, .03, -.03], [x * 4, .01, -.05]], .0022, 10, 5), mat(c, 'plastica')));
+    return g;
+  };
+  // la dinamo da bicicletta: corpo tornito cromato, la rotella zigrinata, la staffa e il filo
+  M.dinamo = o => {
+    const g = G(), C = mat('#c8ccd4', 'cromo');
+    put(g, lat([[0, 0], [.02, 0], [.022, .01], [.022, .06], [.017, .07], [.006, .074], [0, .074]], 20), C, 0, 0, 0, 0, 0, -.35);
+    const ro = put(g, cyl(.012, .012, .012, 18), mat('#1a1a1e', 'gomma'), Math.sin(.35) * .08, Math.cos(.35) * .08, 0); for (let i = 0; i < 12; i++) put(g, box(.0015, .013, .003), mat('#3a3a3e', 'gomma'), ro.position.x + Math.cos(i / 12 * PI * 2) * .012, ro.position.y, Math.sin(i / 12 * PI * 2) * .012);
+    put(g, ext([[0, 0], [.04, 0], [.04, .012], [.012, .012], [.012, .03], [0, .03]], .012, .002, [{ x: .03, y: .006, r: .003 }]), mat('#7a7e86', 'acciaio'), -.035, .02, 0);
+    put(g, tubo([[-.01, .01, 0], [-.04, -.0, .02], [-.08, .0, .05], [-.1, .01, .04]], .0015, 10, 4), mat('#1a1a1e', 'gomma'));
+    return g;
+  };
+  // l'antenna a yagi: il boma con gli elementi di lunghezza scalata, il collare e il cavo
+  M.antenna = o => {
+    const g = G(), A = mat('#c8ccd4', 'metallo');
+    put(g, cyl(.007, .007, .7, 10), A, 0, .02, 0, PI / 2, 0, 0);
+    for (let i = 0; i < 7; i++) { const z = -.32 + i * .1, L = .42 - i * .035; put(g, cyl(.004, .004, L, 8), A, 0, .02, z, 0, 0, PI / 2); }
+    put(g, rbox(.03, .025, .05, .006), mat('#1a1a1e', 'plastica'), 0, .02, -.25);
+    put(g, tubo([[0, .02, -.25], [.05, .005, -.2], [.12, .005, -.1], [.2, .005, -.18]], .003, 14, 5), mat('#e8e4d8', 'plastica'));
+    put(g, cyl(.02, .02, .04, 12), mat('#7a7e86', 'acciaio'), 0, .02, .05, PI / 2, 0, 0);
+    return g;
+  };
+  P.antenna = { how: 'regge', w: .45, d: .2 };
+  // il disturbatore fatto in casa: la cassetta di bachelite aperta coi componenti, due antenne a stilo, la manopola e il led
+  M.disturbatore = o => {
+    const g = G(), b = mat('#3a2a22', 'plastica');
+    put(g, rbox(.18, .06, .12, .006), b, 0, .03, 0);
+    const cop = put(g, rbox(.18, .008, .12, .004), b, 0, .1, -.1, -1.2);
+    const t = M.transistor({}); t.scale.setScalar(1.3); t.position.set(-.01, .06, 0); g.add(t);
+    [-.06, .06].forEach(x => { put(g, cyl(.006, .006, .015, 10), mat('#c8ccd4', 'cromo'), x, .065, -.04); put(g, cyl(.003, .0018, .3, 8), mat('#d8dce4', 'cromo'), x * 1.4, .22, -.05, .15, 0, x > 0 ? -.3 : .3); });
+    put(g, cyl(.014, .016, .014, 18), mat('#1a1a1e', 'plastica'), .06, .03, .062, PI / 2); put(g, box(.003, .012, .002), mat('#f2f0ea', 'plastica'), .06, .036, .07);
+    put(g, sfe(.005, 8, 6), mat('#ff3a2a', 'luce'), -.06, .04, .062);
+    decal(g, etichetta({ bg: '#e8dcb0', fg: '#1a1a1a', testo: 'ON / OFF', w: 192, h: 64 }), .04, .014, -.02, .022, .0605);
+    return g;
+  };
+  // il timer: la sveglia meccanica coi fili colorati attaccati e il nastro nero (si capisce a cosa serve)
+  M.timer = o => {
+    const g = M.sveglia({ c: '#2a2a2e' });
+    [['#c83a2a', -.02], ['#2a5aa8', 0], ['#e8c040', .02]].forEach(([c, x]) => put(g, tubo([[x, .03, -.016], [x * 2, .01, -.05], [x * 4 + .02, .003, -.1], [x * 5 + .05, .003, -.14]], .0022, 14, 5), mat(c, 'plastica')));
+    put(g, rbox(.095, .02, .036, .006), mat('#1a1a1e', 'lucido'), 0, .02, 0);
+    return g;
+  };
+  P.timer = { how: 'pugno' };
+  // --- carta e stampa ---
+  // le buste da lettera: la pila, quella sopra col francobollo dentellato, il timbro postale tondo e l'indirizzo a mano
+  M.buste = o => {
+    const g = G(), c = o.c || '#efe6d2';
+    const fr = disegno('busta' + c, 256, 160, (x) => { x.fillStyle = c; x.fillRect(0, 0, 256, 160); x.fillStyle = '#c83a2a'; x.fillRect(200, 12, 40, 48); x.fillStyle = c; for (let i = 0; i < 10; i++) { x.beginPath(); x.arc(200 + i * 4.2, 12, 1.8, 0, PI * 2); x.arc(200 + i * 4.2, 60, 1.8, 0, PI * 2); x.fill(); x.beginPath(); x.arc(200, 12 + i * 5, 1.8, 0, PI * 2); x.arc(240, 12 + i * 5, 1.8, 0, PI * 2); x.fill(); } x.fillStyle = '#e8d8a0'; x.fillRect(206, 18, 28, 36); x.strokeStyle = 'rgba(30,30,60,.7)'; x.lineWidth = 2; x.beginPath(); x.arc(190, 40, 22, 0, PI * 2); x.stroke(); for (let i = 0; i < 4; i++) { x.beginPath(); x.moveTo(150, 30 + i * 6); x.lineTo(240, 30 + i * 6); x.stroke(); } x.strokeStyle = '#2a2a6a'; x.lineWidth = 2.5; for (let i = 0; i < 3; i++) { x.beginPath(); x.moveTo(70, 90 + i * 20); for (let X = 70; X < 200 - i * 30; X += 6) x.lineTo(X, 90 + i * 20 + Math.sin(X * .5) * 3); x.stroke(); } });
+    for (let i = 0; i < 4; i++) put(g, box(.22, .002, .11), mat(shade(c, .95 + i * .02), 'carta'), (i % 2) * .008, .001 + i * .0022, (i % 3) * .006, 0, (i - 2) * .06, 0);
+    put(g, pia(.22, .11), mat('#ffffff', 'carta', fr), .008, .0098, .006, -PI / 2, 0, .06);
+    return g;
+  };
+  P.buste = { how: 'piatto' };
+  // la carta bollata: il foglio a righe col bollo da 2000 lire in alto, la marca da bollo, la firma
+  M.carta_bollata = o => {
+    const g = G();
+    const t = disegno('bollata', 160, 220, (x) => { x.fillStyle = '#f2ecd8'; x.fillRect(0, 0, 160, 220); x.fillStyle = '#4a7a5a'; x.fillRect(12, 10, 46, 30); x.fillStyle = '#e8e0c0'; x.font = 'bold 12px serif'; x.fillText('L.2000', 16, 30); x.strokeStyle = '#a8301a'; x.lineWidth = 1; for (let y = 54; y < 210; y += 7) { x.beginPath(); x.moveTo(12, y); x.lineTo(148, y); x.stroke(); } x.beginPath(); x.moveTo(26, 50); x.lineTo(26, 212); x.stroke(); x.fillStyle = 'rgba(30,30,70,.7)'; for (let y = 60; y < 150; y += 7) x.fillRect(30, y - 4, 60 + (y * 13) % 50, 1.5); x.strokeStyle = '#2a2a6a'; x.lineWidth = 2; x.beginPath(); x.moveTo(90, 190); x.bezierCurveTo(100, 175, 110, 200, 125, 182); x.bezierCurveTo(130, 178, 135, 192, 145, 186); x.stroke(); x.strokeStyle = 'rgba(160,40,40,.6)'; x.beginPath(); x.arc(110, 30, 18, 0, PI * 2); x.stroke(); });
+    put(g, box(.21, .0015, .297), mat('#f2ecd8', 'carta'), 0, .0008, 0, 0, .08, 0); put(g, pia(.21, .297), mat('#ffffff', 'carta', t), 0, .0017, 0, -PI / 2, 0, .08);
+    return g;
+  };
+  P.carta_bollata = { how: 'piatto' };
+  // i moduli: il blocco a strappo con le caselle e la spirale in cima, una penna
+  M.moduli = o => {
+    const g = G();
+    const t = disegno('modulo', 160, 220, (x) => { x.fillStyle = '#f2ecd8'; x.fillRect(0, 0, 160, 220); x.fillStyle = '#2a4a8a'; x.fillRect(10, 10, 140, 18); x.fillStyle = '#f2ecd8'; x.font = 'bold 12px sans-serif'; x.fillText('MODULO B/7', 20, 23); x.strokeStyle = '#2a4a8a'; x.lineWidth = 1; for (let i = 0; i < 8; i++) { x.strokeRect(10, 40 + i * 20, 140, 16); for (let k = 0; k < 9; k++) x.strokeRect(70 + k * 9, 42 + i * 20, 8, 12); x.fillStyle = 'rgba(42,74,138,.6)'; x.fillRect(14, 46 + i * 20, 40, 3); } });
+    for (let i = 0; i < 6; i++) put(g, box(.15, .0015, .21), mat('#f2ecd8', 'carta'), 0, .001 + i * .0016, 0);
+    put(g, pia(.15, .21), mat('#ffffff', 'carta', t), 0, .0108, 0, -PI / 2); put(g, rbox(.152, .006, .022, .002), mat('#2a4a8a', 'cartone'), 0, .006, -.095);
+    const p = M.penne({}); p.scale.setScalar(.9); p.position.set(.11, 0, .02); p.rotation.y = .9; g.add(p);
+    return g;
+  };
+  P.moduli = { how: 'piatto' };
+  // le matrici del ciclostile: i fogli blu cerati, uno con le lettere incise, la cartavelina sopra
+  M.matrici = o => {
+    const g = G(); const t = disegno('matrice', 160, 220, (x) => { x.fillStyle = '#4a6ab8'; x.fillRect(0, 0, 160, 220); x.fillStyle = '#c8d4f0'; x.font = 'bold 20px monospace'; x.fillText('COMPAGNI!', 14, 40); x.font = '10px monospace'; for (let y = 60; y < 200; y += 10) x.fillText('xxxx xxxxxx xxx xxxxxxx', 12, y); x.fillStyle = '#2a3a7a'; for (let i = 0; i < 6; i++) x.fillRect(i * 28 + 6, 2, 10, 6); });
+    for (let i = 0; i < 4; i++) put(g, box(.2, .0015, .28), mat('#4a6ab8', 'carta'), (i % 2) * .01, .001 + i * .0016, 0, 0, (i - 2) * .05, 0);
+    put(g, pia(.2, .28), mat('#ffffff', 'carta', t), 0, .0075, 0, -PI / 2, 0, .05); put(g, box(.2, .001, .1), mat('#f4f0f0', 'vetro'), .02, .009, -.08, 0, .05, 0);
+    return g;
+  };
+  P.matrici = { how: 'piatto' };
+  // la cartellina dei documenti, aperta: il passaporto, la foto tessera graffettata, i fogli timbrati
+  M.documenti = o => {
+    const g = G(), c = o.c || '#c8a050';
+    put(g, rbox(.24, .004, .32, .002), mat(c, 'cartone'), 0, .002, 0); put(g, rbox(.24, .004, .32, .002), mat(shade(c, .9), 'cartone'), -.24, .002, 0, 0, 0, .04);
+    const fo = disegno('doc' + (o.timbro || ''), 160, 220, (x) => { x.fillStyle = '#f2ecd8'; x.fillRect(0, 0, 160, 220); x.fillStyle = 'rgba(30,30,30,.6)'; for (let y = 20; y < 200; y += 8) x.fillRect(14, y, 90 + (y * 7) % 40, 2); x.fillStyle = '#9aa0a8'; x.fillRect(110, 20, 36, 44); x.fillStyle = '#3a3430'; x.beginPath(); x.arc(128, 36, 8, 0, PI * 2); x.fill(); x.fillRect(116, 46, 24, 18); x.strokeStyle = 'rgba(180,40,40,.8)'; x.lineWidth = 3; x.beginPath(); x.arc(110, 160, 26, 0, PI * 2); x.stroke(); if (o.timbro) { x.fillStyle = 'rgba(180,40,40,.85)'; x.font = 'bold 22px sans-serif'; x.save(); x.translate(80, 120); x.rotate(-.3); x.fillText(o.timbro, -50, 0); x.restore(); } });
+    put(g, box(.21, .002, .29), mat('#f2ecd8', 'carta'), .005, .005, 0, 0, -.04, 0); put(g, pia(.21, .29), mat('#ffffff', 'carta', fo), .005, .0062, 0, -PI / 2, 0, -.04);
+    put(g, rbox(.012, .002, .03, .0006), mat('#c8ccd4', 'cromo'), .07, .0072, -.12);
+    const pp = M.libretto({ c: '#7a1a2a', testo: 'PASSAPORTO', fg: '#d8b848' }); pp.position.set(-.22, .004, .02); pp.rotation.y = .3; g.add(pp);
+    return g;
+  };
+  P.documenti = { how: 'piatto' };
+  // le prove: la busta gialla aperta con le foto in bianco e nero e i negativi che escono
+  M.prove = o => {
+    const g = M.busta({ testo: 'PROVE' });
+    const ft = disegno('fotobn', 96, 72, (x) => { x.fillStyle = '#f4f0e8'; x.fillRect(0, 0, 96, 72); x.fillStyle = '#5a5a5a'; x.fillRect(5, 5, 86, 62); x.fillStyle = '#9a9a9a'; x.fillRect(10, 30, 30, 36); x.fillStyle = '#2a2a2a'; x.beginPath(); x.arc(60, 30, 10, 0, PI * 2); x.fill(); x.fillRect(50, 40, 20, 26); x.fillStyle = '#c8c8c8'; x.fillRect(70, 8, 18, 14); });
+    for (let i = 0; i < 3; i++) { put(g, box(.1, .001, .075), mat('#f4f0e8', 'carta'), .05 + i * .03, .016 + i * .0012, .05 + i * .02, 0, .3 - i * .25, 0); put(g, pia(.1, .075), mat('#ffffff', 'carta', ft), .05 + i * .03, .0168 + i * .0012, .05 + i * .02, -PI / 2, 0, .3 - i * .25); }
+    put(g, box(.15, .0008, .035), mat('#3a2a1a', 'vetroS'), -.06, .016, .07, 0, -.4, 0);
+    return g;
+  };
+  P.prove = { how: 'piatto' };
+  // le fototessere: la striscia di quattro da cabina, grandi, coi visi
+  M.foto = o => {
+    const g = G(); const ft = disegno('fototessera2', 96, 320, (x) => { x.fillStyle = '#f2f0ea'; x.fillRect(0, 0, 96, 320); for (let i = 0; i < 4; i++) { const y = 6 + i * 78; x.fillStyle = '#b8c0c8'; x.fillRect(6, y, 84, 72); x.fillStyle = '#d8b090'; x.beginPath(); x.ellipse(48, y + 30, 15, 19, 0, 0, PI * 2); x.fill(); x.fillStyle = '#3a2a20'; x.beginPath(); x.ellipse(48, y + 16, 16, 9, 0, PI, 0); x.fill(); x.fillStyle = '#4a4a5a'; x.fillRect(22, y + 50, 52, 22); x.fillStyle = '#2a2a2a'; x.fillRect(41, y + 28, 3, 3); x.fillRect(52, y + 28, 3, 3); } });
+    [-1, 1].forEach((s, i) => { put(g, box(.035, .001, .12), mat('#f2f0ea', 'carta'), s * .025, .0005 + i * .0012, 0, 0, s * .15, 0); put(g, pia(.035, .12), mat('#ffffff', 'carta', ft), s * .025, .0012 + i * .0012, 0, -PI / 2, 0, s * .15); });
+    return g;
+  };
+  // la tessera: il cartoncino con la foto, i bollini dei mesi (annonaria) o la stella e il timbro (partito)
+  M.tessera = o => {
+    const g = G(), c = o.c || '#c8b890';
+    const t = disegno('tess' + c + (o.testo || ''), 192, 128, (x) => { x.fillStyle = c; x.fillRect(0, 0, 192, 128); x.fillStyle = o.band || '#7a2a1a'; x.fillRect(0, 0, 192, 22); x.fillStyle = '#f2f0ea'; x.font = 'bold 14px sans-serif'; x.fillText(o.testo || 'TESSERA', 10, 16); x.fillStyle = '#9aa0a8'; x.fillRect(10, 30, 46, 58); x.fillStyle = '#3a3430'; x.beginPath(); x.arc(33, 50, 11, 0, PI * 2); x.fill(); x.fillRect(19, 64, 28, 24); x.fillStyle = o.fg || '#3a2a1a'; for (let y = 38; y < 90; y += 10) x.fillRect(66, y, 70, 2);
+      if (o.bollini) for (let i = 0; i < 12; i++) { x.strokeStyle = o.fg || '#3a2a1a'; x.strokeRect(10 + i * 14.5, 98, 12, 22); if (i < 7) { x.fillStyle = 'rgba(160,40,40,.7)'; x.beginPath(); x.moveTo(10 + i * 14.5, 98); x.lineTo(22 + i * 14.5, 120); x.stroke(); } }
+      else { x.fillStyle = '#e8c040'; x.beginPath(); for (let i = 0; i < 10; i++) { const a = -PI / 2 + i * PI / 5, r = i % 2 ? 7 : 16; x.lineTo(160 + Math.cos(a) * r, 100 + Math.sin(a) * r); } x.fill(); }
+      x.strokeStyle = 'rgba(160,40,40,.75)'; x.lineWidth = 2; x.beginPath(); x.arc(50, 82, 16, 0, PI * 2); x.stroke(); });
+    put(g, rbox(.1, .002, .067, .002), mat(c, 'cartone'), 0, .001, 0); put(g, pia(.1, .067), mat('#ffffff', 'carta', t), 0, .0021, 0, -PI / 2);
+    return g;
+  };
+  // il nastro della macchina da scrivere: la bobina con la stoffa nera e rossa avvolta, nella scatolina di latta aperta
+  M.nastro_mds = o => {
+    const g = G(); put(g, cyl(.035, .035, .012, 24), mat('#c8a040', 'metallo'), -.04, .006, 0); put(g, cyl(.036, .036, .004, 24), mat('#b89030', 'metallo'), -.04, .018, -.04, -1.1);
+    const b = G(); b.position.set(.03, .002, .02); g.add(b); put(b, cyl(.03, .03, .002, 24), mat('#1a1a1e', 'plastica')); put(b, cyl(.026, .026, .012, 24), mat('#1a1a1e', 'tessuto'), 0, .007, 0); put(b, cyl(.0262, .0262, .006, 24, true), mat('#a8201a', 'tessuto'), 0, .01, 0); put(b, cyl(.03, .03, .002, 24), mat('#1a1a1e', 'plastica'), 0, .014, 0); put(b, cyl(.006, .006, .016, 10), mat('#c8ccd4', 'metallo'), 0, .007, 0);
+    put(g, box(.06, .0012, .012), mat('#1a1a1e', 'tessuto'), .07, .002, .05, 0, .4, 0);
+    return g;
+  };
+  // la carta geografica aperta per metà, le pieghe a fisarmonica, la bussola sopra
+  M.mappa2 = o => { const g = M.mappa(o); g.scale.set(1.4, 1, 1.4); const b = M.bussola({}); b.position.set(.06, .012, .03); b.scale.setScalar(1); const w = G(); w.add(g); w.add(b); return w; };
+  P.mappa2 = { how: 'piatto' };
+  // --- medicine ---
+  // le garze: la busta sterile strappata e due quadrati piegati fuori
+  M.garze = o => { const g = G(); put(g, rbox(.11, .008, .11, .003), mat('#e8eef2', 'carta'), 0, .004, 0); decal(g, etichetta({ bg: '#e8eef2', fg: '#2a5aa8', testo: 'GARZA', sub: 'sterile 10×10', band: '#c83a2a' }), .1, .07, 0, .0085, .015, 0, -PI / 2); const tx = disegno('garza', 32, 32, (x) => { x.fillStyle = '#f4f2ec'; x.fillRect(0, 0, 32, 32); x.fillStyle = '#d8d4c8'; for (let i = 0; i < 32; i += 3) { x.fillRect(i, 0, 1, 32); x.fillRect(0, i, 32, 1); } }); tx.repeat.set(3, 3); tx.wrapT = T.RepeatWrapping; const mg = new T.MeshStandardMaterial({ map: tx, roughness: 1 }); [0, 1].forEach(i => put(g, rbox(.08, .006, .08, .003), mg, .07 + i * .02, .003 + i * .006, .06 - i * .015, 0, .3 + i * .4, 0)); return g; };
+  // i cerotti: la scatolina aperta e due cerotti fuori, color carne col cuscinetto bianco
+  M.cerotti = o => { const g = M.scatola_farmaco({ c: '#e8a040', testo: 'CEROTTI', sub: 'assortiti', w: .08, h: .03, d: .05 }); [0, 1].forEach(i => { const s = G(); s.position.set(.07 + i * .012, .002 + i * .002, .03 + i * .02); s.rotation.y = .3 + i * .7; g.add(s); put(s, rbox(.07, .0015, .019, .008), mat('#d8a880', 'plastica')); put(s, rbox(.022, .002, .014, .002), mat('#f4f2ec', 'tessuto'), 0, .0008, 0); for (let k = 0; k < 6; k++) put(s, cyl(.001, .001, .0018, 4), mat('#b88860', 'plastica'), -.03 + k * .012, .0006, (k % 2 - .5) * .008); }); return g; };
+  // il laccio emostatico di gomma, annodato a fiocco come quando si stringe il braccio
+  M.laccio = o => { const g = G(), m = mat('#c8905a', 'gomma'); put(g, tor(.035, .006, 0, 8, 24), m, 0, .006, 0, PI / 2, 0, 0, [1, 1.2, 1]); put(g, tubo([[.03, .006, .02], [.08, .008, .04], [.13, .006, .02], [.17, .004, .05]], .006, 16, 8), m); put(g, tubo([[.03, .008, -.01], [.07, .012, -.05], [.1, .006, -.08]], .006, 12, 8), m); return g; };
+  // la stecca: la ferula di alluminio imbottita, avvolta a metà con la benda
+  M.stecca = o => { const g = G(); put(g, rbox(.08, .004, .4, .003), mat('#c8ccd2', 'metallo'), 0, .002, 0); put(g, rbox(.072, .014, .38, .006), mat('#e88a3a', 'gomma'), 0, .011, 0); for (let i = 0; i < 6; i++) put(g, tor(.045, .006, 0, 6, 16), mat('#f4f0e8', 'tessuto'), 0, .01, -.05 + i * .025, 0, 0, 0, [1, .4, 1]); const b = M.benda({}); b.position.set(.08, 0, .15); g.add(b); return g; };
+  // le fiale: la scatolina aperta col cartoncino a nido, cinque fiale ambrate, una rotta col collo
+  M.fiale = o => { const g = G(); put(g, rbox(.1, .02, .05, .002), mat('#f2f0ea', 'cartone'), 0, .01, 0); decal(g, etichetta({ bg: '#f2f0ea', fg: '#c83a2a', testo: o.testo || 'MORFINA', sub: '10 mg', band: '#c83a2a', w: 256, h: 96 }), .095, .018, 0, .01, .0252); for (let i = 0; i < 5; i++) { const s = G(); s.position.set(-.04 + i * .02, .02, 0); s.rotation.x = PI / 2 - .3; g.add(s); put(s, lat([[0, 0], [.0055, 0], [.0065, .003], [.0065, .04], [.003, .046], [.002, .05], [.004, .057], [0, .06]], 12), mat('#c89048', 'vetroS'), 0, -.02, 0); put(s, cyl(.0067, .0067, .005, 12), mat('#c83a2a', 'carta'), 0, -.002, 0); } return g; };
+  // --- vestiti e tessuti ---
+  // la pezza di stoffa: il rotolo piatto avvolto sulla tavoletta, un lembo aperto con la cimosa e il cartellino del prezzo
+  M.stoffa = o => {
+    const g = G(), c = o.c || '#8a5a6a';
+    const tx = o.disegno === 'quadri' || !o.disegno ? disegno('stoffa' + c, 64, 64, (x) => { x.fillStyle = c; x.fillRect(0, 0, 64, 64); x.fillStyle = 'rgba(255,240,220,.22)'; for (let i = 0; i < 64; i += 16) { x.fillRect(i, 0, 5, 64); x.fillRect(0, i, 64, 5); } x.fillStyle = 'rgba(0,0,0,.15)'; for (let i = 8; i < 64; i += 16) { x.fillRect(i, 0, 2, 64); x.fillRect(0, i, 64, 2); } }) : null;
+    if (tx) { tx.repeat.set(3, 2); tx.wrapT = T.RepeatWrapping; }
+    const m = new T.MeshStandardMaterial({ color: tx ? '#ffffff' : c, map: tx, roughness: 1 });
+    put(g, rbox(.5, .07, .16, .03), m, 0, .035, 0);
+    put(g, rbox(.48, .006, .3, .003), m, .0, .004, .22, 0, 0, 0);   // il lembo srotolato
+    put(g, box(.48, .0065, .01), mat(shade(c, .7), 'tessuto'), 0, .0045, .37);   // la cimosa
+    put(g, rbox(.04, .002, .06, .002), mat('#f2ead8', 'cartone'), .2, .071, 0, 0, .3, 0); put(g, tubo([[.2, .072, -.03], [.22, .071, -.06], [.25, .07, -.05]], .0008, 6, 3), mat('#c83a2a', 'tessuto'));
+    return g;
+  };
+  P.stoffa = { how: 'regge', w: .5, d: .2 };
+  // la pelle conciata: la sagoma dell'animale distesa (zampe e collo), il bordo irregolare, la grana
+  M.pelle = o => {
+    const g = G(), c = o.c || '#9a6a3a';
+    const s = new T.Shape(); const P0 = [[0, .22], [.06, .2], [.08, .26], [.12, .27], [.13, .2], [.2, .14], [.28, .18], [.31, .14], [.24, .06], [.25, -.08], [.31, -.14], [.28, -.18], [.18, -.14], [.08, -.2], [.06, -.28], [0, -.3], [-.06, -.28], [-.08, -.2], [-.18, -.14], [-.28, -.18], [-.31, -.14], [-.25, -.08], [-.24, .06], [-.31, .14], [-.28, .18], [-.2, .14], [-.13, .2], [-.12, .27], [-.08, .26], [-.06, .2]];
+    P0.forEach((p, i) => i ? s.lineTo(p[0], p[1]) : s.moveTo(p[0], p[1]));
+    const gr = disegno('pellegrana', 64, 64, (x) => { x.fillStyle = c; x.fillRect(0, 0, 64, 64); const r = rng(5); for (let i = 0; i < 500; i++) { x.fillStyle = r() < .5 ? 'rgba(0,0,0,.12)' : 'rgba(255,230,190,.1)'; x.fillRect(r() * 64, r() * 64, 2, 1); } });
+    put(g, ext(s, .006, .002), new T.MeshStandardMaterial({ color: '#ffffff', map: gr, roughness: .85 }), 0, .003, 0, -PI / 2);
+    return g;
+  };
+  P.pelle = { how: 'piatto' };
+  // la lana: le matasse ritorte e due gomitoli, nel cestino
+  M.gomitoli = o => {
+    const g = M.cestino({ f: 'noce' }); g.children.slice().forEach(c => { if (c.geometry && c.geometry.type === 'SphereGeometry') g.remove(c); });
+    ['#c84a6a', '#e8d8b0', '#4a6a9a'].forEach((c, i) => { const x = (i - 1) * .045; put(g, sfe(.032, 14, 10), mat(c, 'tessuto'), x, .095, (i % 2) * .02); for (let j = 0; j < 4; j++) put(g, tor(.032, .002, PI * .8, 4, 16), mat(shade(c, .8), 'tessuto'), x, .095, (i % 2) * .02, j * .8, j * 1.3, 0); });
+    const mt = G(); mt.position.set(.1, .01, .08); mt.rotation.y = .4; g.add(mt); for (let k = 0; k < 7; k++) put(mt, tor(.05, .005, 0, 5, 20), mat('#7a9a4a', 'tessuto'), 0, .006, 0, PI / 2, 0, k * .04, [1.6, 1, 1]);
+    return g;
+  };
+  P.gomitoli = { how: 'appeso' };
+  // le calze di nylon: la bustina col cartoncino disegnato (la gamba), la calza velata che esce
+  M.calze = o => {
+    const g = G(); const t = disegno('calzepack', 160, 220, (x) => { x.fillStyle = '#1a1a2a'; x.fillRect(0, 0, 160, 220); x.fillStyle = '#e8c8a8'; x.beginPath(); x.moveTo(70, 10); x.bezierCurveTo(90, 60, 95, 120, 80, 170); x.lineTo(100, 195); x.lineTo(110, 205); x.lineTo(70, 205); x.lineTo(62, 175); x.bezierCurveTo(68, 120, 55, 60, 50, 10); x.fill(); x.fillStyle = '#e84a8a'; x.font = 'italic bold 24px serif'; x.fillText('Velo', 90, 40); x.font = '12px sans-serif'; x.fillStyle = '#e8d8c0'; x.fillText('nylon 15 den', 86, 58); });
+    put(g, rbox(.15, .006, .21, .002), mat('#1a1a2a', 'cartone'), 0, .003, 0); put(g, pia(.15, .21), mat('#ffffff', 'carta', t), 0, .0062, 0, -PI / 2); put(g, box(.152, .002, .212), mat('#f0f0f4', 'vetro'), 0, .008, 0);
+    put(g, tubo([[.04, .006, .1], [.08, .004, .16], [.1, .003, .22], [.14, .003, .26]], .012, 16, 8), new T.MeshStandardMaterial({ color: '#c89a78', transparent: true, opacity: .65, roughness: .6 }));
+    return g;
+  };
+  // --- armi ---
+  // i triboli: quattro chiodi a tre punte grossi, saldati, uno in piedi sulla punta come si vede
+  M.triboli = o => { const g = G(), A = mat('#4a4e54', 'ghisa'); const dirs = [[0, 1, 0], [.94, -.33, 0], [-.47, -.33, .82], [-.47, -.33, -.82]]; [[0, 0, 0], [.08, 0, .04], [-.07, 0, .05], [.02, 0, -.08]].forEach(([x, , z], i) => { const s = G(); s.position.set(x, .016, z); s.rotation.set(i * .7, i * 1.3, 0); g.add(s); dirs.forEach(d => { const e = [d[0] * .035, d[1] * .035, d[2] * .035]; asta(s, [0, 0, 0], e, .004, A, 6); put(s, new T.ConeGeometry(.004, .012, 6), A, e[0], e[1], e[2]).quaternion.setFromUnitVectors(V3(0, 1, 0), V3(d[0], d[1], d[2])); }); put(s, sfe(.007, 8, 6), A); }); return g; };
+  // il tirapugni d'ottone: quattro anelli per le dita sopra, la barra d'appoggio sotto, unite
+  M.tirapugni = o => {
+    const g = G(), A = mat('#b8902a', 'ottone');
+    const s = new T.Shape(); s.moveTo(-.052, .02); s.bezierCurveTo(-.054, .05, .054, .05, .052, .02); s.lineTo(.04, -.005); s.bezierCurveTo(.03, -.04, -.03, -.04, -.04, -.005); s.lineTo(-.052, .02);
+    put(g, ext(s, .012, .003, [{ x: -.036, y: .024, r: .0105 }, { x: -.012, y: .028, r: .0105 }, { x: .012, y: .028, r: .0105 }, { x: .036, y: .024, r: .0105 }, [[-.025, -.004], [.025, -.004], [.018, -.022], [-.018, -.022]]], 24), A, 0, .006, 0, -PI / 2);
+    return g;
+  };
+  // il kit di sabotaggio: la borsa di tela aperta, il timer coi fili, la pinza, il rotolo di nastro, il detonatore
+  M.kit_sabotaggio = o => { const g = G(); put(g, rbox(.26, .03, .16, .01), mat('#3a3a2a', 'tessuto'), 0, .015, 0); put(g, rbox(.26, .006, .1, .004), mat('#2e2e22', 'tessuto'), 0, .04, -.12, -1.1); const t = M.timer({}); t.scale.setScalar(.7); t.position.set(-.05, .03, .0); g.add(t); const p = M.pinze({ tronchese: true, c: '#c83a2a' }); p.rotation.set(-PI / 2, 0, 1.2); p.position.set(.06, .036, .04); p.scale.setScalar(.8); g.add(p); const r = M.rotolino({ c: '#1a1a1e', big: true }); r.scale.setScalar(.7); r.position.set(.09, .03, -.04); g.add(r); return g; };
+  // --- valori ---
+  // il tabacco: la busta di trinciato aperta col tabacco che esce, il libretto delle cartine e una sigaretta rollata
+  M.tabacco = o => { const g = G(); put(g, rbox(.12, .02, .09, .008), mat('#3a5a3a', 'opaco'), 0, .01, 0); decal(g, etichetta({ bg: '#3a5a3a', fg: '#e8c860', testo: 'TRINCIATO', band: '#e8c860', w: 256, h: 128 }), .1, .05, 0, .0205, .0, 0, -PI / 2); const r = rng(3); for (let i = 0; i < 30; i++) put(g, box(.012, .0015, .002), mat('#8a5a2a', 'cibo'), .06 + r() * .04, .004 + r() * .01, -.02 + r() * .05, r(), r() * 3, r()); put(g, rbox(.05, .006, .03, .002), mat('#e8a040', 'cartone'), -.06, .003, .07, 0, .3, 0); put(g, box(.045, .0012, .028), mat('#f4f0e6', 'carta'), -.06, .0068, .07, 0, .3, 0); const s = put(g, cyl(.004, .0045, .07, 10), mat('#f4f0e6', 'carta'), .02, .005, .07, 0, -.4, PI / 2); return g; };
+  // la valuta: le banconote verdi a ventaglio con la fascetta, il fermasoldi
+  M.banconote = o => {
+    const g = G(), c = o.c || '#5a8a5a';
+    const b = disegno('banco2' + c, 160, 70, (x) => { x.fillStyle = mix(c, '#efe8d0', .55); x.fillRect(0, 0, 160, 70); x.strokeStyle = c; x.lineWidth = 3; x.strokeRect(4, 4, 152, 62); x.fillStyle = c; x.beginPath(); x.ellipse(80, 35, 20, 24, 0, 0, PI * 2); x.fill(); x.fillStyle = mix(c, '#efe8d0', .55); x.beginPath(); x.arc(80, 30, 8, 0, PI * 2); x.fill(); x.fillStyle = c; x.font = 'bold 20px serif'; x.fillText(o.testo || '20', 10, 28); x.fillText(o.testo || '20', 112, 60); for (let i = 0; i < 6; i++) x.fillRect(110, 10 + i * 4, 40, 1.5); });
+    for (let i = 0; i < 5; i++) { const a = -.5 + i * .25; put(g, box(.155, .0012, .068), mat(mix(c, '#efe8d0', .55), 'carta'), Math.sin(a) * .03, .001 + i * .0013, Math.cos(a) * .01, 0, a, 0); put(g, pia(.155, .068), mat('#ffffff', 'carta', b), Math.sin(a) * .03, .0018 + i * .0013, Math.cos(a) * .01, -PI / 2, 0, a); }
+    put(g, rbox(.012, .012, .07, .004), mat('#c8ccd4', 'cromo'), -.04, .006, 0, 0, -.5, 0);
+    return g;
+  };
+  // la roba: il fagotto annodato al bastone (si porta in spalla)
+  M.fagotto = o => {
+    const g = G(), c = o.c || '#8a3a3a';
+    const q = disegno('pois' + c, 64, 64, (x) => { x.fillStyle = c; x.fillRect(0, 0, 64, 64); x.fillStyle = 'rgba(255,255,255,.75)'; for (let i = 0; i < 64; i += 16) for (let j = 0; j < 64; j += 16) { x.beginPath(); x.arc(i + 8 + (j % 32 ? 8 : 0), j + 8, 3, 0, PI * 2); x.fill(); } });
+    const m = new T.MeshStandardMaterial({ color: '#ffffff', map: q, roughness: 1 });
+    put(g, sfe(.12, 18, 14), m, 0, .11, 0, 0, 0, 0, [1.15, .9, 1]);
+    [[.07, .21, .03, .6], [-.06, .22, -.02, -.7]].forEach(([x, y, z, r]) => put(g, new T.ConeGeometry(.04, .12, 10), m, x, y, z, 0, 0, r));
+    put(g, sfe(.032, 10, 8), m, 0, .21, 0);
+    put(g, cyl(.014, .014, .9, 10), mat('#8a6a42', 'legno'), .1, .26, 0, 0, 0, .65);
+    g.userData.manico = [0, .22, 0]; return g;
+  };
+  // i francobolli: l'album aperto con le serie dentellate, la pinzetta, la lente
+  M.album = o => {
+    const g = G(); put(g, rbox(.2, .016, .28, .004), mat('#3a2a2a', 'opaco'), -.1, .008, 0); put(g, rbox(.2, .016, .28, .004), mat('#3a2a2a', 'opaco'), .1, .008, 0); put(g, box(.38, .004, .26), mat('#efe8d8', 'carta'), 0, .018, 0);
+    const fb = c => disegno('franc' + c, 48, 56, (x) => { x.fillStyle = '#f4f0e6'; x.fillRect(0, 0, 48, 56); x.fillStyle = c; x.fillRect(6, 6, 36, 44); x.fillStyle = '#f4f0e6'; x.beginPath(); x.arc(24, 24, 9, 0, PI * 2); x.fill(); x.fillStyle = '#efe8d8'; for (let i = 0; i < 12; i++) { x.beginPath(); x.arc(i * 4.3, 0, 1.8, 0, PI * 2); x.arc(i * 4.3, 56, 1.8, 0, PI * 2); x.fill(); } for (let i = 0; i < 14; i++) { x.beginPath(); x.arc(0, i * 4.3, 1.8, 0, PI * 2); x.arc(48, i * 4.3, 1.8, 0, PI * 2); x.fill(); } });
+    const cs = ['#c83a2a', '#2a5aa8', '#3a7a3a', '#c8a040', '#7a3a8a', '#e86a2a'];
+    for (let i = 0; i < 12; i++) put(g, pia(.034, .04), mat('#ffffff', 'carta', fb(cs[i % 6])), -.16 + (i % 6) * .06 + (i % 6 > 2 ? .02 : 0), .0204, -.06 + Math.floor(i / 6) * .1, -PI / 2);
+    asta(g, [.12, .022, .08], [.2, .03, .14], .002, mat('#c8ccd4', 'cromo')); asta(g, [.125, .022, .078], [.205, .03, .138], .002, mat('#c8ccd4', 'cromo'));
+    put(g, tor(.03, .004, 0, 6, 20), mat('#1a1a1e', 'plastica'), -.12, .03, .1, PI / 2); put(g, cyl(.029, .029, .002, 20), mat('#e8f0ee', 'vetro'), -.12, .03, .1); put(g, rbox(.07, .01, .014, .004), mat('#1a1a1e', 'plastica'), -.06, .03, .12, 0, -.4, 0);
+    return g;
+  };
+  // --- rottami ---
+  // le lattine schiacciate: corpi accartocciati (cilindri con le pieghe), i colori delle bibite, il buco dell'apertura
+  M.lattine = o => {
+    const g = G(), r = rng(7), cs = ['#c83a2a', '#2a5aa8', '#e8c040', '#3a8a3a', '#c8ccd4'];
+    for (let i = 0; i < 6; i++) {
+      const s = G(); s.position.set((r() - .5) * .2, .016, (r() - .5) * .16); s.rotation.set(PI / 2, r() * PI, r() * PI); g.add(s);
+      const geo = new T.CylinderGeometry(.033, .033, .11, 16, 8), P0 = geo.attributes.position; for (let v = 0; v < P0.count; v++) { const y = P0.getY(v), k = Math.sin(y * 70 + i) * .006 + (Math.abs(y) < .03 ? -.01 : 0); const x = P0.getX(v), z = P0.getZ(v); P0.setX(v, x * (1 + k / .033)); P0.setZ(v, z * .45 * (1 + k / .033)); P0.setY(v, y * .55); } geo.computeVertexNormals();
+      put(s, geo, mat(cs[i % 5], 'metallo')); put(s, cyl(.03, .03, .002, 14), mat('#c8ccd4', 'acciaio'), 0, .031, 0, 0, 0, 0, [1, 1, .45]);
+    }
+    return g;
+  };
+  // il piombo: i pani colati con le lettere in rilievo e il tubo vecchio schiacciato
+  M.piombo = o => { const g = G(), A = mat('#6a6e74', 'metallo'); for (let i = 0; i < 3; i++) { put(g, ext([[-.07, 0], [.07, 0], [.06, .035], [-.06, .035]], .05, .004), A, 0, i * .036, (i - 1) * .015, 0, i * .3 + (i % 2) * PI / 2, 0); decal(g, etichetta({ bg: '#6a6e74', fg: '#4a4e54', testo: 'Pb', w: 128, h: 64 }), .05, .025, 0, i * .036 + .0352, (i - 1) * .015, i * .3 + (i % 2) * PI / 2, -PI / 2); } const geo = new T.CylinderGeometry(.018, .018, .25, 14, 6); const P0 = geo.attributes.position; for (let v = 0; v < P0.count; v++) P0.setZ(v, P0.getZ(v) * (.4 + .3 * Math.cos(P0.getY(v) * 20))); geo.computeVertexNormals(); put(g, geo, A, .05, .01, .09, 0, .4, PI / 2); return g; };
+  // la catena della bici attorno alla corona dentata
+  M.catena_bici = o => {
+    const g = G(), A = mat('#3a3a3e', 'acciaio'), N = 28, R = .07;
+    const cor = new T.Shape(); for (let i = 0; i < 64; i++) { const a = i / 64 * PI * 2, r = R - (i % 2 ? .006 : 0); i ? cor.lineTo(Math.cos(a) * r, Math.sin(a) * r) : cor.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+    put(g, ext(cor, .004, .0005, [{ x: 0, y: 0, r: .015 }, { x: .035, y: 0, r: .012 }, { x: -.035, y: 0, r: .012 }, { x: 0, y: .035, r: .012 }, { x: 0, y: -.035, r: .012 }]), mat('#a8acb4', 'cromo'), -.05, .004, 0, -PI / 2);
+    const pts = []; for (let i = 0; i < 40; i++) { const t = i / 40 * PI * 2; pts.push([Math.cos(t) * .12 - .0 + (Math.cos(t) > 0 ? .03 : -.0), .01, Math.sin(t) * (R + .004)]); }
+    for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length], an = Math.atan2(b[2] - a[2], b[0] - a[0]); put(g, rbox(.016, .008, .004, .0015), A, (a[0] + b[0]) / 2 - .02, .01, (a[2] + b[2]) / 2, 0, -an, 0); put(g, cyl(.003, .003, .009, 6), mat('#8a8e96', 'acciaio'), a[0] - .02, .01, a[2]); }
+    return g;
+  };
+  // --- attrezzi ---
+  // la rete da pesca stesa a metà: la maglia vera, i sugheri in fila sulla lima in alto, i piombi in basso
+  M.rete_pesca = o => {
+    const g = G();
+    const rt = disegno('rete2', 64, 64, (x) => { x.clearRect(0, 0, 64, 64); x.strokeStyle = '#4a7a6a'; x.lineWidth = 2; for (let i = -64; i < 128; i += 10) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 64, 64); x.stroke(); x.beginPath(); x.moveTo(i, 64); x.lineTo(i + 64, 0); x.stroke(); } });
+    rt.repeat.set(4, 3); rt.wrapT = T.RepeatWrapping;
+    const m = new T.MeshStandardMaterial({ color: '#7aa898', map: rt, transparent: true, alphaTest: .3, side: T.DoubleSide, roughness: .9 });
+    const geo = new T.PlaneGeometry(.5, .36, 20, 14), P0 = geo.attributes.position; for (let i = 0; i < P0.count; i++) { const x = P0.getX(i), y = P0.getY(i); P0.setZ(i, Math.max(0, x + .05) * .3 * Math.sin(y * 18) * .3 + (x > .1 ? (x - .1) * .6 : 0)); } geo.computeVertexNormals();
+    put(g, geo, m, 0, .004, 0, -PI / 2, 0, 0);
+    put(g, tubo([[-.25, .005, -.18], [0, .005, -.18], [.25, .1, -.18]], .003, 10, 4), mat('#d8c8a0', 'tessuto')); put(g, tubo([[-.25, .005, .18], [0, .005, .18], [.25, .1, .18]], .003, 10, 4), mat('#3a3a3a', 'tessuto'));
+    for (let i = 0; i < 6; i++) { const x = -.22 + i * .08, y = x > 0 ? x * .38 + .005 : .005; put(g, rbox(.03, .016, .024, .006), mat('#c8904a', 'legno'), x, y + .006, -.18); put(g, cyl(.006, .006, .014, 8), mat('#5a5e64', 'metallo'), x, y + .004, .18, 0, 0, PI / 2); }
+    return g;
+  };
+  // lo stagno per saldare: la bobina col filo che esce e si arriccia, la punta del saldatore accanto
+  M.stagno = o => { const g = M.rocchetto({ c: '#c8ccd4', metallo: true }); put(g, tubo([[.02, .03, 0], [.05, .028, .02], [.07, .015, .05], [.09, .004, .04], [.11, .003, .07]], .0015, 16, 5), mat('#d8dce4', 'cromo')); decal(g, etichetta({ bg: '#e8c040', fg: '#1a1a1a', testo: 'Sn 60', w: 128, h: 128 }), .03, .03, 0, .0545, 0, 0, -PI / 2); return g; };
+  P.stagno = { how: 'pugno' };
+  // il grimaldello: il mazzetto di ferri ad anello e il lucchetto con un ferro infilato nella toppa
+  M.grimaldello = o => { const g = M.grimaldelli({}); const l = M.lucchetto({}); l.position.set(.1, 0, .02); l.scale.setScalar(1.3); g.add(l); put(g, rbox(.06, .002, .003, .0006), mat('#c8ccd4', 'cromo'), .1 - .03, .018, .02 + .012, 0, .3, 0); return g; };
+  P.grimaldello = { how: 'piatto' };
+  // la canna da pesca smontata in due pezzi affiancati, il mulinello grande e la lenza con l'amo e il galleggiante
+  M.canna_pesca = o => {
+    const g = G();
+    [[0, .0], [.03, .01]].forEach(([z, y], i) => { put(g, cyl(i ? .004 : .007, i ? .006 : .012, .7, 12), mat(o.c || '#5a3a2a', 'lucido'), .0, .012 + y, z, 0, 0, PI / 2); for (let k = 0; k < 3; k++) put(g, tor(.007, .001, 0, 4, 10), mat('#c8ccd4', 'cromo'), -.25 + k * .2, .02 + y, z, 0, 0, 0); });
+    put(g, cyl(.013, .013, .16, 12), mat('#2a2a2e', 'gomma'), .26, .013, 0, 0, 0, PI / 2);
+    const mu = G(); mu.position.set(.18, .04, -.02); g.add(mu); put(mu, cyl(.035, .035, .025, 22), mat('#3a3a40', 'metallo'), 0, 0, 0, PI / 2); put(mu, cyl(.028, .028, .027, 20), mat('#e8e0c8', 'tessuto'), 0, 0, 0, PI / 2); asta(mu, [0, 0, .014], [0, -.03, .03], .003, mat('#c8ccd4', 'cromo')); put(mu, rbox(.012, .008, .02, .003), mat('#1a1a1e', 'plastica'), 0, -.032, .036); asta(mu, [0, -.025, 0], [0, -.028, .0], .004, mat('#3a3a40', 'metallo'));
+    put(g, tubo([[.18, .06, -.02], [.1, .1, -.08], [-.05, .06, -.12], [-.15, .01, -.1]], .0005, 30, 3), mat('#e8e8e8', 'plastica'));
+    put(g, lat([[0, 0], [.008, .01], [.008, .02], [0, .04]], 12), mat('#e84a2a', 'plastica'), -.15, .004, -.1, 0, 0, PI / 2); put(g, tor(.006, .001, PI * 1.4, 4, 10), mat('#c8ccd4', 'cromo'), -.2, .004, -.09);
+    g.userData.arma = [.26, .013, 0]; return g;
+  };
+  P.canna_pesca = { how: 'lungo' };
+
   // =====================================================================================================================
   // GLI OGGETTI DEL CATALOGO → MODELLO E PARAMETRI
   // =====================================================================================================================
@@ -14343,11 +14943,11 @@ var Roba3D = (function () {
     // --- da mangiare ---
     pane: ['pagnotta'], focaccia: ['focaccia'], pane_nero: ['pagnotta', { c: '#6a4022', forma: 'filone' }],
     biscotti: ['pacco', { c: '#e8c040', w: .16, h: .1, d: .06, et: E('#e8c040', '#7a2a1a', 'FROLLINI', 'della nonna', '#7a2a1a') }],
-    gallette: ['pacco', { c: '#6a7a4a', w: .12, h: .08, d: .05, et: E('#6a7a4a', '#e8e0c0', 'GALLETTE', 'razione', '#3a4a2a') }],
+    gallette: ['gallette'],
     verdura: ['verdura'], patate: ['retina', { f: 'patata', rete: '#c8a040' }], pomodori: ['cassetta_frutta', { f: 'pomodoro' }], cipolle: ['retina', { f: 'cipolla', rete: '#c83a2a' }],
     frutta: ['cassetta_frutta', { f: 'mista' }], limoni: ['retina', { f: 'limone', rete: '#3a8a3a' }], olive: ['vasetto', { liq: '#a8b070', pezzi: '#4a5a1a', et: E('#f2ead8', '#3a5a1a', 'OLIVE', 'in salamoia') }],
     uova: ['uova'], latte: ['brik'], formaggio: ['forma'], ricotta: ['ricotta'],
-    carne: ['bistecca'], salsiccia: ['salsicce'], salame: ['salame'], mortadella: ['salame', { big: true, c: '#d89090', fetta: '#e8a0a0' }],
+    carne: ['bistecca'], salsiccia: ['salsicce'], salame: ['salame'], mortadella: ['mortadella'],
     pesce: ['pesce'], sarde: ['sarde'], polpo: ['polpo'], baccala: ['baccala'], acciughe: ['latta_bassa', { rett: true }],
     scatolame: ['latta_bassa'], carne_scatola: ['latta', { r: .042, h: .09, apriti: true, et: E('#8a2a2a', '#e8d8a0', 'CARNE', 'in scatola', '#e8d8a0') }],
     legumi: ['latta', { et: E('#3a7a3a', '#f2ead8', 'FAGIOLI', 'borlotti', '#e8c040') }], ceci: ['latta', { et: E('#c8a040', '#3a2a1a', 'CECI', 'lessati', '#3a2a1a') }],
@@ -14355,11 +14955,11 @@ var Roba3D = (function () {
     miele: ['vasetto', { liq: '#d89a2a', pieno: .9, cap: '#3a2a1a', et: E('#e8c860', '#5a3a1a', 'MIELE', 'millefiori') }],
     marmellata: ['vasetto', { liq: '#8a2a4a', opaco: true, pieno: .85, stoffa: '#c84a4a', et: E('#f2ead8', '#8a2a4a', 'MARMELLATA') }],
     razione: ['scatolone', { w: .26, h: .14, d: .18, c: '#a89a6a', et: { testo: 'VIVERI', sub: 'pacco aiuti' } }], razione_tutela: ['scatolone', { w: .22, h: .12, d: .16, c: '#7a7e78', et: { testo: 'TUTELA', sub: 'razione unica', fg: '#1a1a1a' } }],
-    panino: ['panino'], pasto: ['piatto'], minestra: ['gavetta'], minestrone: ['gavetta', { dentro: '#7a8a3a' }], polenta: ['polenta'],
+    panino: ['panino'], pasto: ['piatto'], minestra: ['scodella'], minestrone: ['scodella', { brodo: '#8a7a3a', verde: true }], polenta: ['polenta'],
     gelato: ['cono'], cioccolato: ['tavoletta'], castagne: ['cartoccio', { f: 'castagna' }], castagne_arrosto: ['cartoccio', { f: 'castagna' }], noci: ['cartoccio', { f: 'noce' }],
     funghi: ['cestino', { f: 'fungo' }], mele: ['mucchietto', { f: 'mela' }], arance: ['retina', { f: 'arancia' }], fichi_secchi: ['collana_fichi'],
     latte_polvere: ['latta', { r: .055, h: .14, et: E('#f2f0ea', '#2a5aa8', 'LATTE', 'in polvere', '#2a5aa8') }],
-    chewing_gum: ['pacco', { c: '#e84a8a', w: .07, h: .02, d: .03, et: E('#e84a8a', '#f2f0ea', 'GOMME', null, '#4ae8e8') }],
+    chewing_gum: ['gomme'],
     capi: ['pecora'],
     // --- da bere ---
     acqua: ['bottiglia', { forma: 'acqua', c: '#a8d0e8', liq: '#c8e8f8', et: E('#f2f8fa', '#2a5aa8', 'FONTE', 'oligominerale', '#2a8ac8', { stile: 'onde' }) }],
@@ -14377,33 +14977,33 @@ var Roba3D = (function () {
     farina: ['sacchetto_carta'], farina_mais: ['sacchetto_carta', { c: '#e8c870', et: { bg: '#e8c870', testo: 'MAIS', sub: 'per polenta' } }],
     pasta: ['pacco', { c: '#2a5aa8', w: .1, h: .24, d: .05, finestra: true, dentro: '#e8c878', et: E('#2a5aa8', '#f2ead8', 'SPAGHETTI', 'n. 5', '#e8c040') }],
     riso: ['pacco', { c: '#e8e4d8', w: .12, h: .18, d: .05, et: E('#e8e4d8', '#c83a2a', 'RISO', 'arborio', '#c83a2a') }],
-    sale: ['pacco', { c: '#2a6ab0', w: .09, h: .14, d: .05, et: E('#2a6ab0', '#f2f0ea', 'SALE', 'grosso', '#f2f0ea') }],
-    zucchero: ['pacco', { c: '#f2f0ea', w: .1, h: .17, d: .06, et: E('#f2f0ea', '#2a5aa8', 'ZUCCHERO', '1 kg', '#2a5aa8') }],
+    sale: ['sale'],
+    zucchero: ['zucchero'],
     orzo: ['pacco', { c: '#a87a4a', w: .1, h: .16, d: .06, et: E('#a87a4a', '#f2ead8', 'ORZO', 'solubile', '#5a3a1a') }],
     passata: ['bottiglia', { forma: 'passata', c: '#e8e0d8', liq: '#b82a1a', cap: '#c8a040', et: E('#c83a2a', '#f2ead8', 'PASSATA', 'di pomodoro', '#3a7a3a') }],
     olio: ['bottiglia', { forma: 'liquore', c: '#6a7a2a', liq: '#9a9a2a', cap: '#3a5a1a', et: E('#e8dcb0', '#3a5a1a', 'OLIO', 'extra vergine', '#3a5a1a') }],
     aceto: ['bottiglia', { forma: 'liquore', c: '#dce8e4', liq: '#a83a3a', cap: '#c83a2a', et: E('#f2ead8', '#8a2a2a', 'ACETO', 'di vino') }],
-    caffe: ['panetto', { w: .07, h: .11, d: .045, c: '#8a2a1a', lucido: true, et: E('#8a2a1a', '#e8c860', 'CAFFÈ', 'moka', '#e8c860') }],
-    te_foglie: ['latta', { r: .035, h: .09, et: E('#2a5a4a', '#e8c860', 'TÈ', 'nero', '#e8c860') }],
-    lievito: ['panetto', { w: .05, h: .025, d: .05, c: '#e8e0b0', et: E('#e8e0b0', '#c83a2a', 'LIEVITO') }],
-    strutto: ['panetto', { w: .1, h: .06, d: .07, c: '#f2ead8', et: E('#f2ead8', '#8a2a2a', 'STRUTTO') }],
-    burro: ['panetto'], uva: ['grappolo'],
-    spezie: ['vasetto', { r: .02, h: .06, liq: '#a8401a', opaco: true, pieno: .9, cap: '#c83a2a', et: E('#f2ead8', '#8a2a1a', 'PEPE') }],
+    caffe: ['caffe'],
+    te_foglie: ['te_foglie'],
+    lievito: ['lievito'],
+    strutto: ['strutto'],
+    burro: ['burro'], uva: ['grappolo'],
+    spezie: ['spezie'],
     // --- combustibili ---
-    legna: ['fascina'], carbone: ['sacco', { c: '#3a3434', et: { testo: 'CARBONE', fg: '#e8e0c8' } }], carbonella: ['sacchetto_carta', { c: '#3a3434', et: { bg: '#3a3434', fg: '#e8c040', testo: 'CARBONELLA', bordo: '#e8c040' } }],
+    legna: ['fascina'], carbone: ['sacco_aperto', { c: '#8a7a5a', et: { testo: 'CARBONE' } }], carbonella: ['sacco_aperto', { carta: true, c: '#3a3434', dentro: '#2a2626', et: { testo: 'CARBONELLA' } }],
     benzina: ['tanica'], gasolio: ['tanica', { c: '#3a6a3a' }], petrolio: ['tanica', { c: '#2a4a7a', w: .22, h: .3, d: .12 }],
     bombola: ['bombola'], fiammiferi: ['fiammiferi'], accendino: ['accendino'], candele: ['candele'],
     alcol: ['flacone', { c: '#e8a0c0', cap: '#c83a2a', et: E('#e8a0c0', '#7a1a3a', 'ALCOL', 'denaturato', '#7a1a3a') }],
     olio_motore: ['latta', { r: .055, h: .17, et: E('#e8c040', '#1a1a1a', 'OLIO', 'motore 20W', '#1a1a1a') }],
     lampada_petrolio: ['lume'], razzo: ['razzo'],
     // --- edilizia ---
-    legno: ['tavole', { c: '#c8a070', L: .7 }], assi: ['tavole', { c: '#b8905a', n: 6, L: 1 }], travi: ['trave'], compensato: ['pannello'], sughero: ['pannello', { c: '#a87a4a', kind: 'cartone', s: .02 }],
+    legno: ['tavole', { c: '#c8a070', L: .7 }], assi: ['tavole', { c: '#b8905a', n: 6, L: 1 }], travi: ['trave'], compensato: ['compensato'], sughero: ['sughero'],
     mattoni: ['mattoni'], cemento: ['sacco_carta'], calce: ['sacco_carta', { c: '#e8e4d8', et: { bg: '#e8e4d8', testo: 'CALCE', sub: 'idrata', band: '#2a5aa8' } }],
-    sabbia: ['sacco', { c: '#c8b080', et: { testo: 'SABBIA' } }], ghiaia: ['sacco', { c: '#a8a090', et: { testo: 'GHIAIA' } }], sacco_sabbia: ['sacco', { c: '#b8a070', legato: false }],
+    sabbia: ['sacco', { c: '#c8b080', et: { testo: 'SABBIA' } }], ghiaia: ['sacco', { c: '#a8a090', et: { testo: 'GHIAIA' } }], sacco_sabbia: ['sacchi_sabbia'],
     pietre: ['pietre'], malta: ['secchio', { dentro: '#a8a49a' }], catrame: ['secchio', { c: '#2a2a2e', dentro: '#0a0a0c' }],
-    lamiera: ['ondulata'], latta: ['pannello', { c: '#c8ccd2', kind: 'metallo', s: .002, n: 4, w: .5, d: .35 }],
-    tondino: ['fascio'], ferro: ['fascio', { k: 'profilati' }], tubi: ['fascio', { k: 'tubi', c: '#8a8e96' }],
-    rete: ['rotolo', { k: 'rete', R: .2, L: .6 }], filo_spinato: ['rotolo', { k: 'spinato', R: .16 }], isolante: ['rotolo', { k: 'isolante', c: '#e8c860', R: .2, L: .6, legato: true }],
+    lamiera: ['ondulata'], latta: ['fogli_latta'],
+    tondino: ['tondino'], ferro: ['profilati'], tubi: ['fascio', { k: 'tubi', c: '#8a8e96' }],
+    rete: ['rotolo', { k: 'rete', R: .2, L: .6 }], filo_spinato: ['rotolo', { k: 'spinato', R: .16 }], isolante: ['isolante'],
     telo: ['telo'], vetro: ['lastra_vetro'], plexiglas: ['lastra_vetro', { c: '#e8f0f0' }], tubo_stufa: ['tubo_stufa'], pallet: ['pallet'], grata: ['grata'],
     // --- ferramenta ---
     chiodi: ['minuteria', { k: 'chiodi' }], viti: ['minuteria', { k: 'viti', c: '#c83a2a' }], bulloni: ['minuteria', { k: 'bulloni', c: '#2a5aa8' }], tasselli: ['minuteria', { k: 'tasselli', c: '#e8c040' }], molle: ['minuteria', { k: 'molle', c: '#5a8a5a' }],
@@ -14412,35 +15012,35 @@ var Roba3D = (function () {
     nastro: ['rotolino'], nastro_telato: ['rotolino', { c: '#9a9e9a', big: true }],
     colla: ['tubetto'], sacchi: ['sacchi_piegati'], secchio: ['secchio'], vernice: ['barattolo_vernice'], bomboletta: ['bomboletta'], pennarello: ['pennarello'], gesso: ['gessetti'],
     tanica_vuota: ['tanica', { c: '#7a3a2a' }], guanti: ['guanti'], fascette: ['fascette'],
-    carta_vetrata: ['fogli', { c: '#c8a868', w: .23, d: .28, n: 6 }], lubrificante: ['oliatore'], moschettoni: ['moschettone'], silicone: ['cartuccia'],
+    carta_vetrata: ['carta_vetrata'], lubrificante: ['oliatore'], moschettoni: ['moschettone'], silicone: ['cartuccia'],
     // --- attrezzi ---
     martello: ['martello'], cacciavite: ['cacciavite'], pinze: ['pinze'], tronchesi: ['pinze', { tronchese: true, c: '#2a5aa8' }], chiave_inglese: ['chiave_inglese'],
     seghetto: ['seghetto'], sega: ['sega'], ascia: ['ascia'], lima: ['lima'], trapano: ['trapano'], stetoscopio: ['stetoscopio'],
     taglierino: ['o3:coltello'], forbici: ['forbici'], cazzuola: ['cazzuola'], pala: ['pala'], piccone: ['piccone'], piede: ['piede_porco'],
-    grimaldello: ['grimaldelli'], carriola: ['carriola'], saldatore: ['saldatore'], stagno: ['rocchetto', { c: '#c8ccd4', metallo: true }],
+    grimaldello: ['grimaldello'], carriola: ['carriola'], saldatore: ['saldatore'], stagno: ['stagno'],
     pentola: ['pentola'], padella: ['padella'], moka: ['moka'], ferri_maglia: ['ferri_maglia'], ago_filo: ['rocchetto', { ago: true }],
     rete_pesca: ['rete_pesca'], canna: ['canna_pesca'], torcia: ['torcia'], morsa: ['morsa'], pialla: ['pialla'], scalpello: ['scalpello'], metro: ['metro'],
     mazza: ['mazza'], zappa: ['zappa'], falce: ['falce'], cesoie: ['cesoie'], chiave_tubo: ['chiave_tubo'], tester: ['tester'], binocolo: ['binocolo'], bussola: ['bussola'],
     coltellino: ['coltellino'], pompa: ['pompa'],
     // --- elettrico ---
-    pile: ['pile'], lampadine: ['lampadina'], cavo: ['matassa', { c: '#1a1a1e', kind: 'gomma', r: .004 }], cavo_coax: ['matassa', { c: '#e8e4d8', kind: 'plastica', r: .005 }],
-    valvole: ['valvola'], transistor: ['transistor'], altoparlante: ['altoparlante'], batteria_auto: ['batteria_auto'], sveglia: ['sveglia'], interruttore: ['interruttore'],
-    radiolina: ['radiolina'], ricetrasmittente: ['ricetrasmittente'], antenna_kit: ['antenna'], disturbatore: ['scatola_el', { antenna: true, led: '#e84a2a' }], timer: ['scatola_el', { display: '12:00', c: '#2a2a2e' }],
+    pile: ['pile'], lampadine: ['lampadina'], cavo: ['cavo_spina'], cavo_coax: ['cavo_spina', { c: '#e8e4d8', c2: '#e8e4d8', r: .005, coax: true }],
+    valvole: ['valvole'], transistor: ['transistor'], altoparlante: ['altoparlante'], batteria_auto: ['batteria_auto'], sveglia: ['sveglia'], interruttore: ['interruttore'],
+    radiolina: ['radiolina'], ricetrasmittente: ['ricetrasmittente'], antenna_kit: ['antenna'], disturbatore: ['disturbatore'], timer: ['timer'],
     telefono: ['telefono'], fotocamera: ['fotocamera'], rullino: ['rullino'], cassetta: ['cassetta'], cuffie: ['cuffie'], microfono: ['microfono'], registratore: ['registratore'],
     walkie: ['walkie'], dinamo: ['dinamo'], rame: ['matassa', { c: '#c86a2a', kind: 'ottone', r: .002 }], motore_el: ['motore_el'], telefono_campo: ['telefono_campo'], radio_galena: ['radio_galena'],
     // --- stampa ---
     carta: ['risma'], cartoncino: ['risma', { c: '#e8d8a8', carta: '#c83a2a', testo: 'CARTONCINO' }], inchiostro: ['boccetta'], penne: ['penne'], quaderno: ['quaderno'],
-    buste: ['busta', { c: '#f2ead8', testo: 'POSTA' }], carta_bollata: ['fogli', { c: '#f2ead8', n: 3, t: etichetta({ bg: '#f2ead8', fg: '#2a2a2a', testo: 'BOLLO', bordo: '#2a5aa8', righe: 6, w: 128, h: 160 }) }],
+    buste: ['buste'], carta_bollata: ['carta_bollata'],
     giornale: ['giornale'], volantini: ['volantini'], poster: ['rotolo_poster'], libretto: ['libretto', { c: '#c83a2a', testo: 'LIBRETTO', fg: '#f2ead8' }],
-    stencil: ['stencil'], timbro_falso: ['timbro'], foto_tessera: ['foto'], documenti: ['cartellina', { testo: 'DOCUMENTI' }], prove: ['busta', { testo: 'PROVE' }],
-    fascicolo: ['cartellina', { c: '#c8b080', testo: 'FASCICOLO', timbro: 'SEGRETO' }], moduli: ['fogli', { c: '#f2ead8', t: etichetta({ bg: '#f2ead8', fg: '#2a2a2a', testo: 'MODULO', band: '#2a5aa8', righe: 6, w: 128, h: 160 }) }],
-    macchina_scrivere: ['macchina_scrivere'], nastro_mds: ['nastro_mds'], matrici: ['fogli', { c: '#5a7ac8', n: 4 }],
-    tessera_annonaria: ['tessera', { c: '#c8b890', testo: 'ANNONARIA', sub: 'pane latte zucchero' }], tessera_partito: ['tessera', { c: '#c83a2a', fg: '#f2ead8', band: '#e8c040', testo: 'PARTITO', sub: 'iscritto' }],
-    mappa: ['mappa'], piantina: ['mappa', { c: '#e8e0c8' }], rivista_proibita: ['rivista'],
+    stencil: ['stencil'], timbro_falso: ['timbro'], foto_tessera: ['foto'], documenti: ['documenti'], prove: ['prove'],
+    fascicolo: ['documenti', { c: '#c8b080', timbro: 'SEGRETO' }], moduli: ['moduli'],
+    macchina_scrivere: ['macchina_scrivere'], nastro_mds: ['nastro_mds'], matrici: ['matrici'],
+    tessera_annonaria: ['tessera', { c: '#c8b890', testo: 'ANNONARIA', bollini: true }], tessera_partito: ['tessera', { c: '#c83a2a', fg: '#f2ead8', band: '#e8c040', testo: 'PARTITO', sub: 'iscritto' }],
+    mappa: ['mappa2'], piantina: ['mappa2', { c: '#e8e0c8' }], rivista_proibita: ['rivista'],
     // --- medicine ---
-    medicine: ['scatola_farmaco'], antibiotici: ['pillole', { c: '#e88a2a', testo: 'ANTIB.' }], garze: ['garze'], bende: ['benda'], cerotti: ['scatola_farmaco', { c: '#e8a040', testo: 'CEROTTI', sub: 'assortiti', w: .08, h: .03, d: .05 }],
+    medicine: ['scatola_farmaco'], antibiotici: ['pillole', { c: '#e88a2a', testo: 'ANTIB.' }], garze: ['garze'], bende: ['benda'], cerotti: ['cerotti'],
     disinfettante: ['flacone', { c: '#f2f0ea', cap: '#c83a2a', w: .06, d: .04, h: .15, et: E('#f2f0ea', '#c83a2a', 'DISINF.', null, '#c83a2a') }],
-    siringhe: ['siringa'], morfina: ['fiala'], kit_medico: ['valigetta_medica'], sciroppo: ['bottiglia', { forma: 'sciroppo', c: '#6a3a1a', liq: '#8a2a1a', cap: '#f2f0ea', et: E('#f2f0ea', '#2a5aa8', 'SCIROPPO', 'tosse') }],
+    siringhe: ['siringa'], morfina: ['fiale'], kit_medico: ['valigetta_medica'], sciroppo: ['bottiglia', { forma: 'sciroppo', c: '#6a3a1a', liq: '#8a2a1a', cap: '#f2f0ea', et: E('#f2f0ea', '#2a5aa8', 'SCIROPPO', 'tosse') }],
     vitamine: ['pillole', { c: '#e8c040', testo: 'VIT. C' }], iodio: ['boccetta', { c: '#5a3a1a', liq: '#6a2a1a', et: E('#f2ead8', '#6a2a1a', 'IODIO') }],
     laccio: ['laccio'], stecca: ['stecca'], termometro: ['termometro'], sonniferi: ['blister'],
     // --- igiene ---
@@ -14470,14 +15070,14 @@ var Roba3D = (function () {
     fumogeno: ['fumogeno'], petardi: ['petardi'],
     // --- valori ---
     sigarette: ['sigarette'], sigarette_contr: ['sigarette', { stecca: true, c: '#2a4a8a', testo: 'EXPORT' }], marlboro: ['sigarette', { c: '#c83a2a', testo: 'AMERICANE' }],
-    tabacco: ['tabacco'], carte: ['carte'], orologio: ['orologio'], gioielli: ['portagioie'], valuta: ['banconote', { c: '#4a7a5a', testo: '$ 20' }],
+    tabacco: ['tabacco'], carte: ['carte'], orologio: ['orologio'], gioielli: ['portagioie'], valuta: ['banconote', { c: '#4a7a5a', testo: '20' }],
     merce: ['cassa_legno', { w: .5, h: .32, d: .34, stampa: 'MADE IN', sub: 'HONG KONG' }], roba: ['fagotto'], refurtiva: ['borsone'],
     anello_oro: ['anello'], posate_argento: ['posate'], quadro: ['quadro'], francobolli: ['album'], dischi: ['dischi'], cassette_proibite: ['cassetta', { c: '#e84a8a' }],
     profumo: ['profumo'], calze_nylon: ['calze'], fossile: ['fossile'], anfora: ['anfora'], moneta_romana: ['moneta', { n: 3 }], medaglia: ['medaglia'], moschetto: ['moschetto'],
     // --- rottami ---
     rottami: ['rottami'], radio_rotta: ['radio_rotta'], tv_rotta: ['tv'], elettrodomestico: ['ferro_stiro'], mobile_rotto: ['mobile_rotto'], ricambi: ['ricambi'],
     pneumatico: ['pneumatico'], frigo_rotto: ['frigo'], bici_rotta: ['bici', { rotta: true }], telaio: ['telaio_bici'], ruota_bici: ['ruota_bici', { storta: true }],
-    catena_bici: ['catena', { fine: true, c: '#3a3a3e' }], lattine: ['lattine'], piombo: ['piombo'], batterie_esauste: ['pile', { esauste: true }],
+    catena_bici: ['catena_bici'], lattine: ['lattine'], piombo: ['piombo'], batterie_esauste: ['pile', { esauste: true }],
   };
   // la presa di ripiego per i modelli che non la dicono: le cose grosse a due mani, il resto nel pugno
   const PRESA_DEF = { how: 'pugno' };
@@ -14495,14 +15095,76 @@ var Roba3D = (function () {
     const g = f(Object.assign({}, o || {})); g.userData.modello = k; return g;
   }
   // le mesh con lo stesso materiale diventano una sola (un oggetto in mano costa 3-8 chiamate di disegno invece di 20-100)
+  // ---------------- il deformatore: niente primitive perfette per le cose organiche ----------------
+  // Le sfere, i cilindri e le scatole del cibo, della stoffa, della carta, della pietra e della cera si suddividono (lato massimo
+  // ~ 1/10 della misura del pezzo) e si spostano lungo la normale media con un rumore morbido a due ottave: il pane diventa
+  // bitorzoluto, la frutta irregolare, il sacco e lo straccio raggrinziti, il sasso scheggiato. Le normali si rifanno lisce.
+  // Solo i materiali con la patina (le etichette restano dritte). Ampiezza e frequenza per genere, in proporzione al pezzo.
+  let LEGGERO = false;   // in mano (inHand): meno suddivisione, la gente ne porta tante
+  const DEF = { cibo: [.05, 1.6], tessuto: [.035, 2.2], cera: [.02, 1.2], pietra: [.07, 2.5], carta: [.012, 3], cartone: [.008, 2.5] };
+  function vnoise(x, y, z) {
+    const h = (i, j, k) => { let n = (i * 374761393 + j * 668265263 + k * 1274126177) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296 * 2 - 1; };
+    const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z), xf = x - xi, yf = y - yi, zf = z - zi, f = t => t * t * (3 - 2 * t), u = f(xf), v = f(yf), w = f(zf);
+    const L = (a, b, t) => a + (b - a) * t;
+    return L(L(L(h(xi, yi, zi), h(xi + 1, yi, zi), u), L(h(xi, yi + 1, zi), h(xi + 1, yi + 1, zi), u), v), L(L(h(xi, yi, zi + 1), h(xi + 1, yi, zi + 1), u), L(h(xi, yi + 1, zi + 1), h(xi + 1, yi + 1, zi + 1), u), v), w);
+  }
+  const kq = (x, y, z) => Math.round(x * 2e4) + ',' + Math.round(y * 2e4) + ',' + Math.round(z * 2e4);
+  function deforma(geo, kd, seme) {
+    const D = DEF[kd]; if (!D) return geo;
+    let g = geo.index ? geo.toNonIndexed() : geo; g.computeBoundingBox(); const bb = g.boundingBox, S = bb.getSize(V3(0, 0, 0)), size = Math.max(S.x, S.y, S.z), small = Math.min(S.x, S.y, S.z);
+    if (size < .004) return g;
+    // suddivisione: ogni triangolo col lato più lungo di Lmax si spezza a metà (fino a un tetto di triangoli)
+    const Lmax = Math.max(size / (LEGGERO ? 3 : 6), .006); let P = Array.from(g.attributes.position.array), giri = 0;
+    while (giri++ < 4 && P.length / 9 < (LEGGERO ? 300 : 1200)) {
+      const Q = []; let rotto = false;
+      for (let i = 0; i < P.length; i += 9) {
+        const a = P.slice(i, i + 3), b = P.slice(i + 3, i + 6), c = P.slice(i + 6, i + 9), d2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2;
+        const ab = d2(a, b), bc = d2(b, c), ca = d2(c, a), m = Math.max(ab, bc, ca);
+        if (m <= Lmax * Lmax) { Q.push(...a, ...b, ...c); continue; }
+        rotto = true; const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
+        if (m === ab) { const e = mid(a, b); Q.push(...a, ...e, ...c, ...e, ...b, ...c); } else if (m === bc) { const e = mid(b, c); Q.push(...a, ...b, ...e, ...a, ...e, ...c); } else { const e = mid(c, a); Q.push(...a, ...b, ...e, ...e, ...b, ...c); }
+      }
+      P = Q; if (!rotto) break;
+    }
+    const n = P.length / 3, nor = new Float32Array(n * 3), acc = new Map();
+    // la normale media per posizione (dalle facce), così i vertici uguali si spostano insieme e non si aprono crepe
+    for (let i = 0; i < n; i += 3) {
+      const ax = P[i * 3], ay = P[i * 3 + 1], az = P[i * 3 + 2], bx = P[i * 3 + 3] - ax, by = P[i * 3 + 4] - ay, bz = P[i * 3 + 5] - az, cx = P[i * 3 + 6] - ax, cy = P[i * 3 + 7] - ay, cz = P[i * 3 + 8] - az;
+      const fx = by * cz - bz * cy, fy = bz * cx - bx * cz, fz = bx * cy - by * cx;
+      for (let j = 0; j < 3; j++) { const k = kq(P[(i + j) * 3], P[(i + j) * 3 + 1], P[(i + j) * 3 + 2]); const v = acc.get(k) || [0, 0, 0]; v[0] += fx; v[1] += fy; v[2] += fz; acc.set(k, v); }
+    }
+    const amp = Math.min(D[0] * size, small * .35), fr = D[1] / size, off = (seme % 97) * 3.7;
+    const nuovo = new Map(), out = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], k = kq(x, y, z);
+      let q = nuovo.get(k);
+      if (!q) { const v = acc.get(k), L = Math.hypot(v[0], v[1], v[2]) || 1; const nz = vnoise(x * fr + off, y * fr, z * fr) * .7 + vnoise(x * fr * 2.7, y * fr * 2.7 + off, z * fr * 2.7) * .3; const d = nz * amp; q = [x + v[0] / L * d, y + v[1] / L * d, z + v[2] / L * d]; nuovo.set(k, q); }
+      out[i * 3] = q[0]; out[i * 3 + 1] = q[1]; out[i * 3 + 2] = q[2];
+    }
+    // normali lisce sulle posizioni nuove
+    const acc2 = new Map();
+    for (let i = 0; i < n; i += 3) {
+      const ax = out[i * 3], ay = out[i * 3 + 1], az = out[i * 3 + 2], bx = out[i * 3 + 3] - ax, by = out[i * 3 + 4] - ay, bz = out[i * 3 + 5] - az, cx = out[i * 3 + 6] - ax, cy = out[i * 3 + 7] - ay, cz = out[i * 3 + 8] - az;
+      const fx = by * cz - bz * cy, fy = bz * cx - bx * cz, fz = bx * cy - by * cx;
+      for (let j = 0; j < 3; j++) { const k = kq(P[(i + j) * 3], P[(i + j) * 3 + 1], P[(i + j) * 3 + 2]); const v = acc2.get(k) || [0, 0, 0]; v[0] += fx; v[1] += fy; v[2] += fz; acc2.set(k, v); }
+    }
+    for (let i = 0; i < n; i++) { const v = acc2.get(kq(P[i * 3], P[i * 3 + 1], P[i * 3 + 2])), L = Math.hypot(v[0], v[1], v[2]) || 1; nor[i * 3] = v[0] / L; nor[i * 3 + 1] = v[1] / L; nor[i * 3 + 2] = v[2] / L; }
+    const r = new T.BufferGeometry(); r.setAttribute('position', new T.BufferAttribute(out, 3)); r.setAttribute('normal', new T.BufferAttribute(nor, 3)); r.userData = Object.assign({}, geo.userData);
+    return r;
+  }
   // la patina sui vertici: uv "a scatola" in metri per i materiali con la tela dei segni, colori per vertice (contatto, sfumatura, tono per pezzo)
   const _n = V3(0, 0, 0);
   function patina(g) {
     g.updateMatrixWorld(true); const inv = new T.Matrix4().copy(g.matrixWorld).invert(), bb = new T.Box3().setFromObject(g, true), H = Math.max(.02, bb.max.y - bb.min.y), y0 = bb.min.y;
-    let pezzo = 0;
-    g.traverse(o => {
+    let pezzo = 0; const lista = []; g.traverse(o => lista.push(o));   // (prima la lista: il deformatore sposta le mesh nel gruppo)
+    lista.forEach(o => {
       if (!o.isMesh || !o.material || !o.material.userData || !o.material.userData.vc || o.geometry.userData.patinata) return;
-      const geo = o.geometry.clone(); geo.userData = Object.assign({}, geo.userData, { patinata: true }); o.geometry = geo;   // (clone condivide userData con la geometria in cache)
+      let geo = o.geometry.clone(); geo.userData = Object.assign({}, geo.userData, { patinata: true }); o.geometry = geo;   // (clone condivide userData con la geometria in cache)
+      const kd = o.material.userData.kd;
+      if (o.material.userData.patina && DEF[kd] && !o.userData.liscio) {   // il deformatore: si lavora nel sistema del gruppo, poi la mesh torna all'origine
+        geo.applyMatrix4(new T.Matrix4().multiplyMatrices(inv, o.matrixWorld)); geo = deforma(geo, kd, pezzo * 31 + 7); geo.userData = Object.assign({}, geo.userData, { patinata: true }); o.geometry = geo;
+        if (o.parent !== g) { g.attach(o); } o.position.set(0, 0, 0); o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); o.updateMatrixWorld(true);
+      }
       const M4 = new T.Matrix4().multiplyMatrices(inv, o.matrixWorld), NM = new T.Matrix3().getNormalMatrix(M4), P = geo.attributes.position, Nn = geo.attributes.normal, n = P.count;
       const col = new Float32Array(n * 3), tono = 1 + ((hashS(String(pezzo++)) % 100) / 100 - .5) * .1, pat = o.material.userData.patina, uv = pat ? new Float32Array(n * 2) : null, v = V3(0, 0, 0);
       for (let i = 0; i < n; i++) {
@@ -14551,7 +15213,7 @@ var Roba3D = (function () {
   // in (0, gy, gz)), o nel sistema del corpo per 'regge' (centrato). Restituisce { obj, D } oppure null.
   const _b = new T.Box3(), _c = V3(0, 0, 0), _s = V3(0, 0, 0), _m4 = new T.Matrix4();
   function inHand(id, gy, gz) {
-    const g = make(id); if (!g) return null;
+    LEGGERO = true; let g; try { g = make(id); } finally { LEGGERO = false; } if (!g) return null;
     const D = presa(id, g), w = new T.Group(), root = new T.Group(); w.add(g); root.add(w);
     const ud = g.userData;
     _b.setFromObject(g); _b.getCenter(_c); _b.getSize(_s);
