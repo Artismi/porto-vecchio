@@ -23,7 +23,7 @@ var Riva = (function () {
   function crepa(x, y, s) { const xi = Math.floor(x), yi = Math.floor(y); let d1 = 9, d2 = 9; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const px = xi + a + h2(xi + a, yi + b, s), py = yi + b + h2(xi + a, yi + b, s + 1), d = Math.hypot(x - px, y - py); if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; } return d2 - d1; }   // 0 sulla frattura
   // le famiglie della riva: S sabbia, R scogli, F falesia; il porto e il frangiflutti restano come sono (opere dell'uomo)
   const FAM = { spiaggia: 1, duna: 1, foce: 1, cala: 1, reef: 1, scogli: 2, falesia: 3 };
-  const BANDA = { 1: [-9, 16], 2: [-6, 12], 3: [-5, 9] };   // da quanto in mare a quanto in terra (m dalla riva) si ridisegna
+  const BANDA = { 1: [-14, 16], 2: [-6, 12], 3: [-5, 9] };   // da quanto in mare a quanto in terra (m dalla riva) si ridisegna
   const SUB = 4, ST = 2 / SUB;   // 4 campioni per casella: mezzo metro
   const R = { on: !SPENTA, W: null, TS: 2, stat: { blocchi: 0, tri: 0, scogli: 0, ciottoli: 0 } };
   let W, GW, GH, VW, TS, T, WL, vD, vQ, vN, tF, tK, dF, cel = new Map();
@@ -133,6 +133,13 @@ var Riva = (function () {
       const quanti = wn < .5 || !famT(tx, ty) ? 0 : k === 'cala' ? (dc > -.5 && dc < 5 ? 14 : 0) : f === 2 ? (dc > -1 && dc < 3 ? 6 : 0) : f === 3 ? (dc > -1 && dc < 2 ? 8 : 0) : f === 1 && k !== 'duna' ? (dc > 3.5 && dc < 7 ? 3 : 0) : 0;
       for (let c = 0; c < quanti; c++) { const x = (tx + h2(tx, ty, 420 + c)) * TS, y = (ty + h2(tx, ty, 440 + c)) * TS; if (fbm(x / 5, y / 5, 421, 2) < .42) continue;
         B.ciottoli.push({ x, y, s: .06 + h2(tx, ty, 460 + c) ** 2 * .22, ry: h2(tx, ty, 480 + c) * 6.283, t: h2(tx, ty, 500 + c) }); } }
+    // i detriti del mare d'inverno: la posidonia spiaggiata a mucchi lungo la berma (la banquette), il legno portato dalle mareggiate
+    B.detriti = [];
+    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { if (!mask[j * n + i]) continue; const tx = tx0 + i, ty = ty0 + j; if (famT(tx, ty) !== 1) continue;
+      for (let c = 0; c < 3; c++) { const x = (tx + h2(tx, ty, 520 + c)) * TS, y = (ty + h2(tx, ty, 530 + c)) * TS, u = x / TS - tx, v = y / TS - ty, d = bil(dV(tx, ty), dV(tx + 1, ty), dV(tx, ty + 1), dV(tx + 1, ty + 1), u, v), wn = bil(nV(tx, ty), nV(tx + 1, ty), nV(tx, ty + 1), nV(tx + 1, ty + 1), u, v);
+        if (wn < .7) continue; const bD = 5 + 3 * fbm(x / 9, y / 9, 301, 3), cl = fbm(x / 11, y / 11, 541, 2), p = h2(tx, ty, 550 + c);
+        if (Math.abs(d - bD) < 1.6 && cl > .45 && p < .55) B.detriti.push({ k: 'alga', x, y, s: .5 + h2(tx, ty, 560 + c) * .8, ry: h2(tx, ty, 570 + c) * 6.283, t: h2(tx, ty, 580 + c) });
+        else if (d > 1.5 && d < bD + 3 && p < .018) B.detriti.push({ k: 'legno', x, y, s: .6 + h2(tx, ty, 560 + c) * 1.6, ry: h2(tx, ty, 570 + c) * 6.283, t: h2(tx, ty, 580 + c) }); } }
     return B;
   }
   const BL = (tx, ty) => blocco(Math.floor(tx / CH), Math.floor(ty / CH));
@@ -211,11 +218,12 @@ var Riva = (function () {
       // LA SABBIA: due toni larghi, la grana, le increspature del vento (asciutto) e dell'onda (bagnato), le linee della risacca,
       // la linea della posidonia sulla berma, i gusci e la ghiaietta
       float n1 = rf9(p * .3), n2 = rf9(p * 1.6 + 3.), n3 = rf9(p * vec2(.9, 3.2) + 5.), g1 = rh9(floor(p * 11.)), g2 = rh9(floor(p * 23.) + 5.);
-      vec3 sab = mix(vec3(.6, .54, .43), vec3(.77, .71, .58), n1) * (.93 + (n2 - .5) * .2);
+      vec3 sab = mix(vec3(.6, .54, .43), vec3(.77, .71, .58), n1) * (.93 + (n2 - .5) * .2) * (.9 + .2 * rf9(p * .06 + 40.));   // i toni larghi: la sabbia asciutta e smossa, la compatta
+      sab = mix(sab, sab * vec3(.9, .88, .86), smoothstep(.55, .7, rf9(p * .22 + 17.)) * .6);
       sab = mix(sab, sab * vec3(.82, .8, .78), smoothstep(.6, .75, n3) * (1. - wet) * .7);   // le strisce scure della sabbia pesante, pettinate dal vento
       float an = .55 + (rf9(p * .07) - .5) * 1.4; vec2 dr = vec2(cos(an), sin(an));
       float rip = (rf9(p * 1.3 + 2.) - .5) * 2.;   // la grana larga della sabbia smossa (niente righe: a questa distanza fanno moiré)
-      float sw = 0.; for (int k = 0; k < 3; k++) { float c = .9 + float(k) * .85 + (rn9(p * .13 + float(k) * 7.) - .5) * 1.3; sw = max(sw, 1. - smoothstep(0., .05 + .03 * float(k), abs(d - c))); }
+      float sw = 0.; for (int k = 0; k < 3; k++) { float c = .9 + float(k) * .75 + (rn9(p * .13 + float(k) * 7.) - .5) * 1.4; sw = max(sw, (1. - smoothstep(0., .06 + .03 * float(k), abs(d - c))) * smoothstep(.35, .65, rn9(p * .45 + float(k) * 3.)) * (1. - float(k) * .3)); }   // le linee della risacca, rotte
       float wr = smoothstep(.56, .74, rf9(p * 1.9 + 11.)) * (1. - smoothstep(.9, 2.2, abs(d - 5.4 - (rn9(p * .09) - .5) * 3.4)));
       float gu = smoothstep(.86, .93, rn9(p * 6.3 + 4.)) * smoothstep(.6, .8, rn9(p * .7 + 2.)) * aaM, gh = smoothstep(.8, .95, rn9(p * 4.1 + 8.)) * aaM * .6;   // conchiglie e ghiaietta, a macchie morbide
       sab *= 1. + (rn9(p * 9.) - .5) * .08 * aaM + rip * .035 * aaL;
@@ -327,10 +335,18 @@ var Riva = (function () {
     if (B.ciottoli.length) { if (!MATC) { MATC = new THREE.MeshStandardMaterial({ roughness: .8, metalness: 0 }); }
       const g = new THREE.SphereGeometry(1, 9, 6), im = new THREE.InstancedMesh(g, MATC, B.ciottoli.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), SC = new THREE.Vector3(), Cc = new THREE.Color();
       B.ciottoli.forEach((c, i) => { const h = quota(c.x, c.y); E.set(0, c.ry, 0); Q.setFromEuler(E); V.set(c.x, (h === null ? 0 : h) + c.s * .22, c.y); SC.set(c.s * 1.2, c.s * .5, c.s); M4.compose(V, Q, SC); im.setMatrixAt(i, M4);
-        const t = c.t; Cc.setRGB(t < .7 ? .5 + t * .4 : .66, t < .7 ? .48 + t * .38 : .57, t < .7 ? .45 + t * .34 : .45); im.setColorAt(i, Cc); });
+        const t = c.t; Cc.setRGB(t < .7 ? .44 + t * .3 : .58, t < .7 ? .42 + t * .28 : .5, t < .7 ? .39 + t * .26 : .4); im.setColorAt(i, Cc); });
       im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.computeBoundingSphere && im.computeBoundingSphere(); im.receiveShadow = true; im.castShadow = false; im.name = 'riva9c'; grp.add(im); }
+    if (B.detriti && B.detriti.length) { const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), SC = new THREE.Vector3(), Cc = new THREE.Color();
+      [['alga', new THREE.SphereGeometry(1, 10, 6), '#ffffff'], ['legno', new THREE.CylinderGeometry(.045, .065, 1, 6).rotateZ(Math.PI / 2), '#ffffff']].forEach(([k, g, c0]) => { const L = B.detriti.filter(q => q.k === k); if (!L.length) return;
+        if (k === 'alga') { const P = g.attributes.position; for (let i = 0; i < P.count; i++) { const x = P.getX(i), z = P.getZ(i), n = .7 + .5 * fbm(x * 2 + 3, z * 2, 590, 2); P.setXYZ(i, x * n, Math.max(-.2, P.getY(i)) * n, z * n); } g.computeVertexNormals(); }
+        const im = new THREE.InstancedMesh(g, MATC || (MATC = new THREE.MeshStandardMaterial({ roughness: .8, metalness: 0 })), L.length);
+        L.forEach((q, i) => { const h = quota(q.x, q.y); E.set(0, q.ry, k === 'legno' ? (q.t - .5) * .1 : 0); Q.setFromEuler(E); V.set(q.x, (h === null ? 0 : h) + (k === 'alga' ? .01 : .04), q.y);
+          if (k === 'alga') SC.set(q.s * 1.5, .035 + q.t * .05, q.s * .8); else SC.set(q.s, 1, 1); M4.compose(V, Q, SC); im.setMatrixAt(i, M4);
+          if (k === 'alga') Cc.setRGB(.36 + q.t * .14, .31 + q.t * .1, .24 + q.t * .07); /* la posidonia secca, bruno grigia */ else Cc.setRGB(.66 + q.t * .1, .63 + q.t * .09, .58 + q.t * .07); im.setColorAt(i, Cc); });
+        im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.receiveShadow = true; im.castShadow = k === 'legno'; im.name = 'riva9d'; grp.add(im); }); }
     R.stat.blocchi++; R.stat.tri += tri; R.stat.scogli += B.scogli.length; R.stat.ciottoli += B.ciottoli.length; if (typeof window !== 'undefined') window.__riva9 = R.stat;
-    return { grp, mat, tri, scogli: B.scogli.length, ciottoli: B.ciottoli.length, dispose() { grp.traverse(o => { if (o.geometry && o.name !== 'riva9c') o.geometry.dispose(); if (o.isInstancedMesh) { o.geometry.dispose(); o.dispose && o.dispose(); } }); mat.dispose(); } };
+    return { grp, mat, tri, scogli: B.scogli.length, ciottoli: B.ciottoli.length, dispose() { grp.traverse(o => { if (o.geometry && !o.isInstancedMesh) o.geometry.dispose(); if (o.isInstancedMesh) { o.geometry.dispose(); o.dispose && o.dispose(); } }); mat.dispose(); } };
   }
   // ---- la grafica dei margini: una mesh per settore di 128 m per la banchina, una per la roccia tagliata, le istanze dei paletti ----
   const GLSL_M = `
