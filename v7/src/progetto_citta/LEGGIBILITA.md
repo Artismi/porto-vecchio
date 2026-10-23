@@ -264,3 +264,25 @@ pendenza che si adatta e il tetto che sbiadisce di A, che continuano a lavorare 
 Centro vuol dire la visuale automatica di sempre: sul computer l'orientamento fisso dell'isola, sul telefono quella che segue la marcia
 ([camera3]). Sul telefono la contromarcia sostenuta lascia fare alla visuale che segue anche il mezzo giro che prima rifiutava (oltre 100°):
 è il «si ricentra nella direzione nuova». Sul computer, in centro, la contromarcia non fa niente (l'orientamento fisso è il centro).
+
+## 10. Gli scorci composti ([scorci], 23 ottobre)
+
+Il committente, coi quattro riferimenti in `_immagini/riferimenti/scorci/` (l'edicola con la serranda, la drogheria col telefono, l'angolo in
+diorama, il diorama del bar): «mancano ancora degli scorci veri». Uno scorcio è una pagina della sez. 5 composta a mano come un diorama, dove
+l'occhio si deve fermare. Ricette in `src/scorci.js` (dati, gira in Node), kit e posa in `src/scorci_arte.js`, prova `src/test_scorci.js`,
+fogli in `_immagini/scorci/` (`strumenti/fogli_scorci.py`; la città senza scorci si vede con `?noscorci`).
+
+- **Agganci solo ai dati**: il luogo-missione (`W.luoghi`), la scenografia (`W.sets`), la bottega per mestiere (`b.shopFront.use`), la porta
+  di un edificio con nome; fra le facce S ed E si sceglie il fronte più visto dalla camera (raggi verso la camera contro le case, `vista`).
+- **La gabbia**: la fascia sopra le aperture, il pilastro pieno fra le aperture, il piede del muro, la fascia di 1,2 m davanti alla propria
+  vetrina, lo spazio davanti, il filo di traverso. Le cose a muro che cadrebbero su una finestra vera scivolano sul pieno più vicino.
+- **Le regole**: niente nel corridoio di una porta (2 m × 2,6), ai piedi di una scala, davanti alla vetrina d'altri; la propria merce entro
+  1,2 m. Le pareti degli scorci tacciono per scena.js (niente bidoni, cassonetti, targhe, civici, dehors) e per rete.js (niente mensole,
+  contatori, bracci); niente tettoie di passaggio davanti. Mai nella Passeggiata, sulla spianata, nel Recinto e nella Rocca.
+- **Il costo**: ogni scorcio fuso per stato e per classe di materiale (colori nei vertici, un atlante per le scritte): 5-16 chiamate di
+  disegno, al più 9k triangoli; i pezzi registrati nel regista di pulizia2 come fissi (`scorcio`, `scorcio_muro`, `scorcio_filo`).
+- **Gli stati per ora**: serrande su, a metà (la pausa), giù con la tag; luci, luminarie e pozza di luce la sera; tavoli fuori o sedie
+  impilate; merce fuori; la bocca del forno accesa all'alba. La gente: i posti `carte`, `comari`, `gioco`, `telefono` e le scene `scopa`,
+  `comari`, `rincorsa`; i mezzi in sosta sono mezzi veri (la 500, la 126, l'Ape, il Ciao).
+- **Il limite della camera**: la Piazzetta del Pozzo è un cortile chiuso; dalla camera fissa si vede solo la sagoma, lo scorcio si legge con la
+  camera che si adatta (si alza nella stretta).
