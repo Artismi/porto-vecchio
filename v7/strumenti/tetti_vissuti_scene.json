@@ -1,0 +1,10 @@
+{
+  "nota": "[vissuti] Gli scorci dei tetti vissuti (strumenti/galleria.js): il borgo da vicino, i terrazzi dell'Ottocento sulla Vittoria, la marina, la Vittoria alla camera di gioco. Prima: PV_QUERY='?cittanuova&novissuti'. node strumenti/galleria.js <cartella> strumenti/tetti_vissuti_scene.json 960 600",
+  "pulita": true,
+  "scorci": [
+    { "nome": "a_borgo", "titolo": "Il borgo: vasi, latte di basilico, l'orto in cassetta, il gatto", "x": 1402, "y": 312, "zoom": 0.55, "ora": 700, "meteo": "sereno" },
+    { "nome": "b_ottocento", "titolo": "L'Ottocento: l'ombrellone e il canniccio sui terrazzi della Vittoria", "x": 1440, "y": 329, "zoom": 0.55, "ora": 730, "meteo": "sereno" },
+    { "nome": "c_marina", "titolo": "La marina: reti, cassette, remi, il sale", "x": 1338, "y": 446, "zoom": 0.6, "ora": 760, "meteo": "sereno" },
+    { "nome": "d_vittoria", "titolo": "La Vittoria alla camera di gioco", "x": 1360, "y": 334, "zoom": 1.0, "ora": 700, "meteo": "sereno" }
+  ]
+}

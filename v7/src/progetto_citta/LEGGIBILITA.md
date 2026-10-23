@@ -264,3 +264,44 @@ pendenza che si adatta e il tetto che sbiadisce di A, che continuano a lavorare 
 Centro vuol dire la visuale automatica di sempre: sul computer l'orientamento fisso dell'isola, sul telefono quella che segue la marcia
 ([camera3]). Sul telefono la contromarcia sostenuta lascia fare alla visuale che segue anche il mezzo giro che prima rifiutava (oltre 100°):
 è il «si ricentra nella direzione nuova». Sul computer, in centro, la contromarcia non fa niente (l'orientamento fisso è il centro).
+
+## 10. I tetti vissuti ([vissuti], 23 ottobre)
+
+Richiesta del committente: «i tetti non mi convincono, serve che ci siano dei dettagli». Dalla camera di gioco i tetti sono la cosa che
+si vede di più: devono sembrare abitati, nel registro del diorama (caldo, leggibile, mai ingombro). Il codice sta in `src/tetti_vissuti.js`
+(il dato in Node e nella pagina, la grafica, lo shader del manto); render.js ha solo i ganci (`TettiVissuti.terrazzo`, `costruisci`,
+`vicino`, `manto`, le compenetrazioni in `__tetti3`). `?novissuti` spegne tutto. Prova: `src/test_tetti_vissuti.js`; misura nel gioco
+vero: `strumenti/tetti_vissuti_misura.js` (`--prima` per il confronto); foto: `strumenti/tetti_vissuti_scene.json` con `galleria.js`.
+
+- **Una scenetta per terrazzo abitato, non roba sparsa.** Ogni terrazzo abitato di `Tetti.PIANO` riceve UNA composizione di 2-6 pezzi
+  pensati insieme (chi ci vive); un terrazzo calmo al più una scenetta piccola (20-45%) e due o tre dettagli del tempo. Mai un doppione
+  dei gruppi del piano (niente stendino dove c'è il filo del bucato, niente canniccio dove c'è il pergolato).
+- **Per quartiere.** Borgo: la sedia impagliata coi vasi di geranio e le latte di basilico, l'orto in cassetta con l'annaffiatoio, lo
+  stendino con la cesta, il gatto sulla cassetta; il più fitto (7 cose sui terrazzi abitati, 2,5 sui calmi) e il più sporco. Marina: le
+  reti col sughero, le boe, le cassette del pesce, la cima, i remi, le chiazze di sale. Ottocento: le sdraio col tavolino, l'ombrellone, il
+  canniccio col tavolo, il limone nel vaso grande, la cisterna; il più pulito (meno di una cosa sui terrazzi calmi).
+- **I dettagli del tempo**, con misura: le pozze nelle conche verso il bocchettone (sud, est), l'erba e la valeriana al piede del
+  parapetto (di più a nord e a ovest), il cappero e la valeriana nelle crepe della copertina, il vaso di cactus sul davanzale basso, le
+  colature sotto la copertina dei parapetti verso la camera, il sale sulla marina; le cartacce (la busta di carta bagnata, il giornale
+  fradicio, le cartacce appallottolate, i tappi, la lattina, rara una palla o una scarpa persa) negli angoli e dietro i comignoli.
+- **Sulle falde**: la malta del colmo a pezzi (interrotta dai comignoli), l'erba fra i coppi della gronda (anche su quella di nord), il
+  ciuffo sul colmo, qualche busta o palla ferma nel canale. Mai davanti agli abbaini: l'erba resta sullo sbalzo, prima del filo del muro.
+- **Mai sulla rete dei tetti.** Corridoio libero di 1,2 m sulle linee dei giri, delle vie, dei rami e delle alternative delle porte, e
+  sulle linee fra tutte le porte del tetto prese a due a due (dove si arriva da una scala, una passerella, un salto, un tetto vicino);
+  1 m libero attorno a ogni porta; le riserve del piano. La pozza e il sale si attraversano: contano solo alle porte.
+- **Niente di alto verso la camera**: come il piano, niente sopra 1,2 m a meno di 1,5 m dai bordi sud ed est (l'ombrellone e il canniccio
+  stanno dietro, le sdraio davanti guardano la camera). Le cose basse possono stare nella fascia contro il parapetto (dai 30 cm).
+- **Il manto ha il tempo dal mondo, non dalla tela**: rappezzi di coppi nuovi e campi vecchi, muschio verso nord e sulla gronda, licheni,
+  qualche coppo rotto; sui lastrici le chiazze d'umido, le crepe, i rappezzi di cemento fra le pianelle. Lo shader legge la posizione
+  vera, quindi la tela da 16 m non si ripete più a vista; sopravvive alla fusione, alla tavolozza e alla pila di [leggero] e a `?noleggero`.
+- **Il costo.** Mobili, piante, malta e colature hanno un materiale per colore, tutti uguali a meno del colore, e stanno nel gruppo del
+  tetto della casa: finiscono nelle mesh fuse per settore (si tagliano e sbiadiscono con la casa), un secchio in più per settore col colore
+  nella tavolozza di [leggero]; ~110 mila triangoli in tutta la città. Non le celle dell'atlante FA: quando si arriva ai tetti le 256 celle
+  sono già finite (1005 chieste) e oltre la 255 tutto prende l'ultimo colore disegnato (un difetto di prima, da guardare a parte). Cartacce e pozze
+  sono istanze vicine: 8 disegni fissi, entro 36 m (cartacce) e 64 m (pozze) dal personaggio, 24 e 44 m sul telefono, tolte dalle case
+  tagliate o col tetto sbiadito. Le pozze non riflettono davvero: il disco scuro col bordo bagnato e la tinta del cielo col fresnel.
+- **Misurato** (`strumenti/tetti_vissuti_misura.js`, 960×600, SwiftShader; i disegni dei tetti vissuti spegnendo le loro mesh nello
+  stesso fotogramma, perché fra due caricamenti il totale balla di ±150): borgo (1400, 312) +46 disegni su 1874; Vittoria (1360, 334)
+  +22 su 1439; la città dall'alto (zoom 4,2) +0 (le istanze vicine spente, le fuse fuori campo). In tutta la scena: +43 secchi fusi
+  (2155 → 2198) e 8 istanze, cioè al più +51 mesh. Compenetrazioni sui tetti (`TETTI3_ESIGI=1 strumenti/compenetrazioni.js`): 0.
+  Foto: `_immagini/tetti_vissuti/` (prima/dopo per scorcio e i dettagli).
