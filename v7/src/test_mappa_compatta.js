@@ -26,7 +26,12 @@ const W_OK = { 10: 1, 7: 1, 5: 1 }, larghe = R.filter(r => !(W_OK[r.w] || r.w <=
 ok(!larghe.length, `le larghezze ammesse: 10, 7, 5, ≤ 3 m (${larghe.map(r => r.id + ' ' + r.w).join(', ') || 'tutte'})`);
 const vit = W.roads.find(r => r.id === 'vittoria'), cor = W.roads.find(r => r.id === 'corso'), rua = W.roads.find(r => r.id === 'rua'), mar = W.roads.find(r => r.id === 'marina');
 ok(vit && vit.w === 7 && vit.viva && lungo(vit.pts) > 200, `la Vittoria: una via viva di 7 m, dal Mercato alla Rocca (${vit && Math.round(lungo(vit.pts))} m)`);   // [cucitura] non più l'asse di parata da 10 m
-ok(cor && cor.w === 7 && rua && rua.w === 5 && mar && mar.w === 5, 'tre vie: il Corso 7 m, la Rua e la Marina 5 m');
+ok(cor && cor.w === 7 && rua && rua.w === 5 && mar && mar.w === 7 && mar.kind === 'citta', 'le vie: il Corso 7 m, la Rua 5 m (ZTL), la Marina lungomare di 7 m coi marciapiedi');   // [pianta] la tavola della viabilità
+{ const lit = ['lung_nord', 'passeggiata', 'passeggiata_sud', 'marina'].map(id => W.roads.find(r => r.id === id));
+  ok(lit.every(r => r && r.kind === 'citta' && r.w === 7), `[pianta] l'anello sul mare: Lungomare di Tramontana, Viale della Spianata, Via del Lido, Via della Marina, tutte di 7 m (${lit.map(r => r ? r.name + ' ' + r.w : 'manca').join(', ')})`);
+  const L = lit[0], R = W.railCity, ryA = x => { let b = R[0]; R.forEach(q => { if (Math.abs(q[0] - x) < Math.abs(b[0] - x)) b = q; }); return b[1]; };
+  const tra = L.pts.filter(q => q[0] > 1360 && q[0] < 1450), dmin = Math.min(...tra.map(q => ryA(q[0]) - q[1]));
+  ok(tra.length > 10 && dmin >= 8.5, `[pianta] fra la ferrovia e il mare passa il Lungomare: l'asse a ${dmin.toFixed(1)} m dai binari, dal lato del mare`); }
 const nVic = R.filter(r => r.w <= 3).length; ok(nVic >= 20 && nVic <= 34, `i vicoli: ${nVic} (il progetto: ~28)`);
 const { strade, nodi } = I.dalMondo(W, CORNICE), C = I.controlla(strade, nodi);
 console.log('     incroci', JSON.stringify(C.conti));

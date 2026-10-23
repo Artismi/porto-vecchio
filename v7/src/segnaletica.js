@@ -415,23 +415,31 @@ var Segnaletica = (function () {
   const scorciFirma = b => { const S = W.scorci; if (!S) return null; const L = Array.isArray(S) ? S : Object.values(S); return L.find(s => s && (s.bi === G.BUILDINGS.indexOf(b) || s.b === b.id || s.edificio === b.id || s.id === b.id || (s.bottega && s.bottega === b.id)) && (s.insegna || s.sign || s.firma || (Array.isArray(s.kit) && s.kit.some(k => /insegna/.test(k))))) || null; };
   // la bandiera di una bottega sotto casa: sulla faccia della bottega, appena fuori dal fronte, dal lato lontano dal portone
   function bandieraDi(b, tipo, testo) {
-    const S = b.shopFront, f = S && S.face || latoDi(b, b.door); if (!f) return null; const F = facciata(b, f), dS = S && S.door ? S.door : b.door;
+    const S = b.shopFront, f0 = S && S.face || latoDi(b, b.door); if (!f0) return null; const f = f0, F = facciata(b, f), dS = S && S.door ? S.door : b.door;
     const us = (S && S.span ? S.span : [dS, dS]).map(t => uDi(F, t[0], t[1])), u0 = Math.min(...us) - TS / 2, u1 = Math.max(...us) + TS / 2, up = b.door && latoDi(b, b.door) === f ? uDi(F, b.door[0], b.door[1]) : null;
     const porte = []; (fronti() || []).forEach(q => { if (q.b === b || Math.abs((q.x - F.ox) * F.nx + (q.z - F.oy) * F.ny) < .8) { const u = (q.x - F.ox) * F.tx + (q.z - F.oy) * F.ty; if (u > -1 && u < F.L + 1 && q.tipo === 'porta') porte.push(u); } });
     const lontano = up === null ? 1 : (u0 + u1) / 2 >= up ? 1 : -1, cands = [];
     for (const sd of [lontano, -lontano]) for (const o of [.35, .7, 1.1]) cands.push(sd > 0 ? u1 + o : u0 - o);
     cands.push(F.L - .35, .35);
-    const larga = (u) => { const x = F.ox + F.tx * u, y = F.oy + F.ty * u; let w = CFG.bandiera.a; for (const d of [1.2, 1.6, 2.2]) if (PIENO(tile(x + F.nx * d, y + F.ny * d)) && tile(x + F.nx * d, y + F.ny * d) === T.BLD) { w = Math.min(w, d * .5); break; } return w; };
-    for (const vede of [true, false]) for (const u of cands) { if (u < .3 || u > F.L - .3) continue; if (porte.some(pu => Math.abs(pu - u) < .55)) continue;   // mai sull'asse di una porta (sopra c'è l'architrave)
+    for (const sd of [lontano, -lontano]) for (const o of [1.6, 2.2, 2.8]) cands.push(sd > 0 ? u1 + o : u0 - o);   // [pianta] un po' più in là, se lì la camera la vede (solo nel primo giro, quello che cerca la vista)
+    const prova = (f, F, u, vede) => { if (u < .3 || u > F.L - .3) return null; if (f === f0 && porte.some(pu => Math.abs(pu - u) < .55)) return null;   // mai sull'asse di una porta (sopra c'è l'architrave)
       const x = F.ox + F.tx * u, y = F.oy + F.ty * u, pt = porticoDi(F, u);
-      if (vede && !pt && !visibile(x + F.nx * .7, y + F.ny * .7, 3.1)) continue;   // prima dove la camera la vede
+      if (vede && !pt && !visibile(x + F.nx * .7, y + F.ny * .7, 3.1)) return null;   // prima dove la camera la vede
       if (pt) return { montaggio: 'lunetta', f, u, x: pt.xa, y: pt.ya, nx: 0, ny: 1, w: Math.min(1.9, pt.luce - .9), h: .5, y0: pt.h - .55 - .5, bi: G.BUILDINGS.indexOf(b) };
-      const w = larga(u); if (w < .55) continue; if (PIENO(tile(x + F.nx * .3, y + F.ny * .3))) continue;
-      if (INS.some(q => q.montaggio === 'bandiera' && hyp(q.x - x, q.y - y) < 2.4)) continue;
-      if (targheVicine(G.BUILDINGS.indexOf(b), x, y)) continue;
-      const R = RT(); if (R && R.grafo().nodi.some(n => (n.k === 'mensola' || n.k === 'contatore' || n.k === 'lampione') && n.bi === G.BUILDINGS.indexOf(b) && hyp(n.x - x, n.z - y) < .9)) continue;
+      const larga = (u) => { const x = F.ox + F.tx * u, y = F.oy + F.ty * u; let w = CFG.bandiera.a; for (const d of [1.2, 1.6, 2.2]) if (PIENO(tile(x + F.nx * d, y + F.ny * d)) && tile(x + F.nx * d, y + F.ny * d) === T.BLD) { w = Math.min(w, d * .5); break; } return w; };
+      const w = larga(u); if (w < .55) return null; if (PIENO(tile(x + F.nx * .3, y + F.ny * .3))) return null;
+      if (INS.some(q => q.montaggio === 'bandiera' && hyp(q.x - x, q.y - y) < 2.4)) return null;
+      if (targheVicine(G.BUILDINGS.indexOf(b), x, y)) return null;
+      if (f !== f0 && (fronti() || []).some(q => q.tipo === 'porta' && hyp(q.x - x, q.z - y) < .9)) return null;
+      const R = RT(); if (R && R.grafo().nodi.some(n => (n.k === 'mensola' || n.k === 'contatore' || n.k === 'lampione') && n.bi === G.BUILDINGS.indexOf(b) && hyp(n.x - x, n.z - y) < .9)) return null;
       const fo = (TIPI[tipo] || {}).forma, wq = Math.min(w, CFG.bandiera.a) - CFG.bandiera.da;   // la croce quadrata, il pannello alto dei tabacchi
-      return { montaggio: 'bandiera', f, u, x, y, nx: F.nx, ny: F.ny, w: fo === 'croce' ? Math.min(wq, .7) : fo === 'alta' ? Math.min(wq, .6) : wq, h: fo === 'croce' ? .7 : fo === 'alta' ? .76 : CFG.bandiera.h, y0: fo === 'alta' || fo === 'croce' ? 2.72 : CFG.bandiera.y0, bi: G.BUILDINGS.indexOf(b) };
+      return { montaggio: 'bandiera', f, u, x, y, nx: F.nx, ny: F.ny, w: fo === 'croce' ? Math.min(wq, .7) : fo === 'alta' ? Math.min(wq, .6) : wq, h: fo === 'croce' ? .7 : fo === 'alta' ? .76 : CFG.bandiera.h, y0: fo === 'alta' || fo === 'croce' ? 2.72 : CFG.bandiera.y0, bi: G.BUILDINGS.indexOf(b) }; };
+    for (const vede of [true, false]) {
+      for (const [ci, u] of cands.entries()) { if (!vede && ci >= 8) continue; const q = prova(f0, F, u, vede); if (q) return q; }
+      // [pianta] la bottega d'angolo: se la sua faccia non si vede, la bandiera gira l'angolo, sulla faccia verso la camera (sud o est), vicino allo spigolo
+      if (vede) for (const f2 of ['S', 'E']) { if (f2 === f0) continue; const F2 = facciata(b, f2), d0 = Math.hypot(F2.ox - F.ox, F2.oy - F.oy), d1 = Math.hypot(F2.ox + F2.tx * F2.L - F.ox - F.tx * F.L, F2.oy + F2.ty * F2.L - F.oy - F.ty * F.L);
+        const lato = Math.min(Math.hypot(F2.ox - F.ox - F.tx * F.L, F2.oy - F.oy - F.ty * F.L), d0) < Math.min(d1, Math.hypot(F2.ox + F2.tx * F2.L - F.ox, F2.oy + F2.ty * F2.L - F.oy)) ? 0 : 1;
+        for (const o of [.6, 1, 1.4]) { const q = prova(f2, F2, lato ? F2.L - o : o, true); if (q) return q; } }
     }
     return null;
   }
