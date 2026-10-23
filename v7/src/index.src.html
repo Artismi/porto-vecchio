@@ -170,10 +170,18 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 #tbtns button.big { width: 84px; height: 84px; font-size: 14px; border-color: rgba(255,210,58,.6); }
 #tbtns button small { display: block; font-size: 8px; opacity: .7; margin-top: 2px; }
 #tbtns button.on { background: rgba(255,210,58,.3); border-color: var(--amber); }
-/* [console] dentro il Game Boy di Porto Vecchio i comandi stanno sulla plastica (main.js, sezione [console]): sullo schermo restano
-   le persone, le porte, la minimappa (la mappa) e i soldi (il taccuino) */
-#app.console #touch, #app.console #dock, #app.console #bookBtn, #app.console #sound { display: none !important; }
-#app.console #debt { pointer-events: auto; cursor: pointer; }
+/* [console] dentro il Game Boy di Porto Vecchio lo schermo resta pulito (main.js, sezione [console]): i comandi stanno nella
+   pulsantiera della console; soldi, ora, minimappa, taccuino, cantiere e suggerimenti nel menu (lo zaino). Sopra il mondo restano
+   le scritte dei posti, le stelle solo quando ti cercano, un avviso alla volta in basso e, in casa, una riga sola col piano */
+#app.console #touch, #app.console #dock, #app.console #bookBtn, #app.console #sound, #app.console #debt, #app.console #mini,
+#app.console #ctx, #app.console #cnBtn, #app.console #rs-hud, #app.console #rs-here, #app.console #me-box, #app.console #weapon,
+#app.console #rs-open, #app.console #rs-sneak, body.pv-console #pvDevBtn { display: none !important; }
+#app.console #wanted:not(:has(.star.on)) { display: none !important; }
+#app.console #feed { top: auto !important; bottom: 10px; left: 50% !important; transform: translateX(-50%); width: min(92%, 440px) !important; text-align: center; }
+#app.console #feed .fi { font-size: 13px; padding: 5px 12px; border-left: 0; border-radius: 14px; background: rgba(13, 11, 26, .72); text-shadow: none; animation: fin2 .25s ease-out; }
+#app.console #feed .fi:nth-child(n+2) { display: none; }   /* un avviso alla volta: il più recente */
+@keyframes fin2 { from { transform: translateY(6px); opacity: 0; } }
+#app.console #rs-indoor { top: 8px !important; max-width: 92%; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; padding: 3px 10px; border-radius: 12px; border: 0; opacity: .9; }
 @media (pointer: coarse) { #mini { top: 96px; bottom: auto; right: 4px; transform: scale(.72); transform-origin: top right; } #ctx { bottom: auto; top: 150px; max-width: calc(100vw - 24px); } #ctx .chip kbd { display: none; } #feed { top: 200px; } }
 @media (prefers-reduced-motion: reduce) { .fi, #wanted.chase .star.on { animation: none; } }
 

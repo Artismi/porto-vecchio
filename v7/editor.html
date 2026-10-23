@@ -170,10 +170,18 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 #tbtns button.big { width: 84px; height: 84px; font-size: 14px; border-color: rgba(255,210,58,.6); }
 #tbtns button small { display: block; font-size: 8px; opacity: .7; margin-top: 2px; }
 #tbtns button.on { background: rgba(255,210,58,.3); border-color: var(--amber); }
-/* [console] dentro il Game Boy di Porto Vecchio i comandi stanno sulla plastica (main.js, sezione [console]): sullo schermo restano
-   le persone, le porte, la minimappa (la mappa) e i soldi (il taccuino) */
-#app.console #touch, #app.console #dock, #app.console #bookBtn, #app.console #sound { display: none !important; }
-#app.console #debt { pointer-events: auto; cursor: pointer; }
+/* [console] dentro il Game Boy di Porto Vecchio lo schermo resta pulito (main.js, sezione [console]): i comandi stanno nella
+   pulsantiera della console; soldi, ora, minimappa, taccuino, cantiere e suggerimenti nel menu (lo zaino). Sopra il mondo restano
+   le scritte dei posti, le stelle solo quando ti cercano, un avviso alla volta in basso e, in casa, una riga sola col piano */
+#app.console #touch, #app.console #dock, #app.console #bookBtn, #app.console #sound, #app.console #debt, #app.console #mini,
+#app.console #ctx, #app.console #cnBtn, #app.console #rs-hud, #app.console #rs-here, #app.console #me-box, #app.console #weapon,
+#app.console #rs-open, #app.console #rs-sneak, body.pv-console #pvDevBtn { display: none !important; }
+#app.console #wanted:not(:has(.star.on)) { display: none !important; }
+#app.console #feed { top: auto !important; bottom: 10px; left: 50% !important; transform: translateX(-50%); width: min(92%, 440px) !important; text-align: center; }
+#app.console #feed .fi { font-size: 13px; padding: 5px 12px; border-left: 0; border-radius: 14px; background: rgba(13, 11, 26, .72); text-shadow: none; animation: fin2 .25s ease-out; }
+#app.console #feed .fi:nth-child(n+2) { display: none; }   /* un avviso alla volta: il più recente */
+@keyframes fin2 { from { transform: translateY(6px); opacity: 0; } }
+#app.console #rs-indoor { top: 8px !important; max-width: 92%; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; padding: 3px 10px; border-radius: 12px; border: 0; opacity: .9; }
 @media (pointer: coarse) { #mini { top: 96px; bottom: auto; right: 4px; transform: scale(.72); transform-origin: top right; } #ctx { bottom: auto; top: 150px; max-width: calc(100vw - 24px); } #ctx .chip kbd { display: none; } #feed { top: 200px; } }
 @media (prefers-reduced-motion: reduce) { .fi, #wanted.chase .star.on { animation: none; } }
 
@@ -70148,35 +70156,38 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   }
 
   // ---------- [console] Il Game Boy di Porto Vecchio ----------
-  // Sul sito di Artismi il gioco sta dentro un Game Boy fatto apposta: levetta, croce, A e B, L e R, SELECT e START sono tasti
-  // veri sulla plastica, non disegni sullo schermo. La pagina che ospita il gioco si presenta con {pvc:'ciao'}: da lì il gioco
-  // nasconde levetta, pulsanti e icone a schermo, riceve {pvc:'levetta', x, y} (da -1 a 1, come la levetta a schermo) e
-  // {pvc:'tasto', k, giu}, e risponde con le scritte dei tasti di adesso ({pv:'tasti', t: {a:'Salta', b:'Corri', …}, n, audio}),
-  // che la console stampa accanto a ogni tasto (null = il tasto ora non fa niente). {pvc:'lascia'} rilascia tutto.
-  // Lo schermo resta da toccare: persone, porte, posti, la minimappa (la mappa) e i soldi (il taccuino).
-  //   levetta  cammina e guida, come quella a schermo (inclinata poco è il passo, a fondo la corsa)
-  //   croce    ◄ ► gira la visuale, ▲ ▼ avvicina e allontana
-  //   A        il pulsante principale di adesso (Salta, Freno, Ollie, Colore); nei dialoghi conferma; all'inizio si gioca
-  //   B        il secondo (Scendi, Impenna, Modo); a piedi: con l'arma spara (mira da sola), con un oggetto lo usa,
-  //            a mani libere corre finché lo tieni; nei menu, nei dialoghi e nel taccuino torna indietro
-  //   L        le ruote: a piedi → BMX → skate → a piedi          R  cambia arma (pugni compresi); con un oggetto in mano lo posa
-  //   SELECT   la tavoletta dei graffiti                           START  lo zaino, col numero delle cose da fare qui
-  //   rotella  l'audio (la rotella in metallo sul fianco)
-  const CON = { on: false, rot: 0, zoom: 0, run: false, fire: false, dir: {}, held: {}, sent: '' };
+  // Sul sito di Artismi il gioco sta dentro un Game Boy fatto apposta, e lo schermo resta pulito: niente levetta, pulsanti, icone,
+  // soldi, minimappa né suggerimenti sopra il mondo. I comandi sono tasti veri nella pulsantiera della console; soldi, ora, mappa,
+  // taccuino e il resto stanno nel menu (lo zaino), in ordine; sullo schermo un avviso alla volta (CSS: #app.console).
+  // La pagina che ospita il gioco si presenta con {pvc:'ciao'}: il gioco risponde {pv:'console', v:2}.
+  // Dalla console: {pvc:'levetta', x, y} (da -1 a 1, come la levetta a schermo), {pvc:'tasto', k, giu}, {pvc:'lascia'} (rilascia tutto).
+  // Alla console, solo quando cambiano: {pv:'tasti', t:{a, b, bomboletta, bici, zaino}, on:{bomboletta, bici, zaino}, n, audio} (la scritta
+  // di ogni tasto, null = ora non fa niente; acceso o spento; le cose da fare qui) e {pv:'stato', giorno, ora, soldi, debito, scade,
+  // ricercato}, per il display della console.
+  //   levetta     cammina e guida, come quella a schermo (inclinata poco è il passo, a fondo la corsa)
+  //   croce       la visuale: ◄ ► la gira, ▲ ▼ avvicina e allontana (k: sx dx su giu, si tengono premuti)
+  //   A           il pulsante principale di adesso (Salta, Freno, Ollie, Colore); nei dialoghi conferma; all'inizio si gioca
+  //               (ricominciare la partita sta nel menu, Chi è; a partita finita c'è il pulsante sullo schermo)
+  //   B           il secondo (Scendi, Impenna, Modo); a piedi: con l'arma spara (mira da sola), con un oggetto lo usa,
+  //               a mani libere corre finché lo tieni; nei menu, nei dialoghi e nel taccuino torna indietro
+  //   bomboletta  la tavoletta dei graffiti (accesa quando ce l'hai in mano)
+  //   bici        a piedi → BMX → skate → a piedi (accesa quando pedali; al chiuso niente)
+  //   zaino       il menu, col numero delle cose da fare qui; col menu aperto lo chiude
+  //   rotella     l'audio
+  const CON = { on: false, run: false, fire: false, rot: 0, zoom: 0, dir: {}, held: {}, sent: '', stato: '' };
   const conSend = m => { try { window.parent.postMessage(m, '*'); } catch (e) { } };
   const conFake = k => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
   const conCmd = (f, ...a) => () => { if (typeof Comandi !== 'undefined' && Comandi[f]) Comandi[f](...a); };
+  const conSpray = p => p.hand === 'bomboletta' || p.hand === 'pennarello';
   // i tasti di adesso: {k: {l: scritta, dn, up}}; quelli che mancano ora non fanno niente
   function conMap() {
     const p = st.player, M = {};
-    if (ui.intro || ui.over) {
-      M.a = M.start = { l: ui.over ? 'Ricomincia' : 'Gioca', dn: () => { if (ui.over) conFake('Enter'); else { const b = $('go'); if (b && !b.disabled) b.click(); } } };
-      return M;
-    }
+    if (ui.over) return M;   // a partita finita c'è il suo pulsante sullo schermo
+    if (ui.intro) { M.a = { l: 'Gioca', dn: () => { const b = $('go'); if (b && !b.disabled) b.click(); } }; return M; }
     if (ui.dialog || ui.book || ui.menu || ring.n || (window.Cantiere && Cantiere.active())) {
       M.b = { l: 'Indietro', dn: () => conFake('Escape') };
       if (ui.dialog && $('dialog').querySelectorAll('.opt').length === 1) M.a = { l: 'Ok', dn: () => conFake('Enter') };
-      if (ui.menu) M.start = { l: 'Chiudi', dn: conCmd('zaino') };
+      if (ui.menu) M.zaino = { l: 'Chiudi', dn: conCmd('zaino') };
       return M;
     }
     const set = touchSet(), tb = k => ({ l: lab(TB[k]), dn: TB[k].dn, up: TB[k].up });
@@ -70186,19 +70197,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     else if (!veh && !sk) {
       const Wp = !p.hand && p.cur !== 'pugni' && G.WEAPONS[p.cur], a = Wp && p.arms[p.cur];
       if (Wp) M.b = { l: (Wp.throw ? 'Lancia ×' + ((a.mag || 0) + (a.reserve || 0)) : 'Spara ' + (a.mag || 0) + '/' + (a.reserve || 0)), dn: () => { CON.fire = true; mouse.pressed = true; }, up: () => { CON.fire = false; } };
-      else if (p.hand === 'bomboletta' || p.hand === 'pennarello') M.b = { l: 'Posa', dn: conCmd('via') };   // con la tavoletta i pulsanti non ci sono
+      else if (conSpray(p)) M.b = { l: 'Posa', dn: conCmd('via') };   // con la tavoletta i pulsanti non ci sono
       else if (p.hand) M.b = { l: 'Usa', dn: conCmd('usaMano') };
       else M.b = { l: 'Corri', dn: () => { CON.run = true; }, up: () => { CON.run = false; } };
     }
-    if (!p.indoor && (!veh || bmx || sk)) M.l = { l: sk ? 'A piedi' : bmx ? (window.Skate && Skate.S(st).owned ? 'Skate' : 'A piedi') : 'BMX', dn: conCmd('ruote') };
-    if (p.hand) M.r = { l: 'Posa', dn: conCmd('via') };
-    else if (Object.keys(G.WEAPONS).filter(k => p.arms[k] && (k !== 'molotov' || p.arms.molotov.mag > 0)).length > 1) M.r = { l: 'Arma', dn: () => G.switchWeapon(st, 1) };
-    if (!veh) M.select = { l: 'Graffiti', dn: conCmd('graffiti') };
-    M.start = { l: 'Zaino', dn: conCmd('zaino') };
+    if (!p.indoor && (!veh || bmx || sk)) M.bici = { l: sk ? 'A piedi' : bmx ? (window.Skate && Skate.S(st).owned ? 'Skate' : 'A piedi') : 'BMX', dn: conCmd('ruote') };
+    if (!veh) M.bomboletta = { l: conSpray(p) ? 'Posa' : 'Graffiti', dn: conCmd('graffiti') };
+    M.zaino = { l: 'Zaino', dn: conCmd('zaino') };
     return M;
   }
   function conKey(k, down) {
-    if (k === 'sx' || k === 'dx' || k === 'su' || k === 'giu') {   // la croce: si tiene premuta
+    if (k === 'sx' || k === 'dx' || k === 'su' || k === 'giu') {   // la croce: la visuale, finché la tieni
       CON.dir[k] = down; CON.rot = (CON.dir.dx ? 1 : 0) - (CON.dir.sx ? 1 : 0); CON.zoom = (CON.dir.giu ? 1 : 0) - (CON.dir.su ? 1 : 0); return;
     }
     if (k === 'audio') { if (down) { A.init(); A.toggle(); } CON.sent = ''; return; }
@@ -70207,21 +70216,22 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     CON.sent = '';   // le scritte cambiano subito, non al prossimo giro dell'HUD
   }
   function conLetGo() { Object.keys(CON.held).forEach(k => conKey(k, false)); CON.dir = {}; CON.rot = CON.zoom = 0; CON.run = CON.fire = false; stick.x = stick.y = 0; }
-  // ogni decimo di secondo, con l'HUD: le scritte dei tasti, solo se sono cambiate
+  function conTick(dt) { if (CON.zoom && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 + CON.zoom * dt); }   // la croce tenuta: lo zoom
+  // ogni decimo di secondo, con l'HUD: le scritte dei tasti e il display della console, solo se sono cambiati
   function conLabels() {
     if (!CON.on) return;
-    const M = conMap(), t = {}; ['a', 'b', 'l', 'r', 'select', 'start'].forEach(k => { t[k] = M[k] ? M[k].l : null; });
-    const n = !ui.intro && typeof MenuUI !== 'undefined' && MenuUI.quiCount ? MenuUI.quiCount(st) : 0, key = JSON.stringify(t) + n + A.on;
-    if (key !== CON.sent) { CON.sent = key; conSend({ pv: 'tasti', t, n, audio: A.on }); }
-  }
-  function conTick(dt) {
-    if (CON.zoom && !ui.intro && !ui.dialog && !ui.book) zoomBy(1 + CON.zoom * dt);
+    const p = st.player, M = conMap(), t = {}; ['a', 'b', 'bomboletta', 'bici', 'zaino'].forEach(k => { t[k] = M[k] ? M[k].l : null; });
+    const veh = p.vehicle && st.vehicles.find(q => q.id === p.vehicle), on = { bomboletta: conSpray(p), bici: !!(veh && veh.kind === 'bmx') || !!(window.Skate && Skate.on(st)), zaino: !!ui.menu };
+    const n = !ui.intro && typeof MenuUI !== 'undefined' && MenuUI.quiCount ? MenuUI.quiCount(st) : 0, key = JSON.stringify(t) + JSON.stringify(on) + n + A.on;
+    if (key !== CON.sent) { CON.sent = key; conSend({ pv: 'tasti', t, on, n, audio: A.on }); }
+    const hl = G.hoursLeft(st), s = { giorno: G.dayName(st.t), ora: G.clockStr(st.t), soldi: fmt(p.money), debito: fmt(st.debt), scade: st.deadline > 1e8 ? null : hl, ricercato: G.wanted(st) }, sk = JSON.stringify(s);
+    if (sk !== CON.stato) { CON.stato = sk; conSend(Object.assign({ pv: 'stato' }, s)); }
   }
   addEventListener('message', e => {
     const d = e.data; if (window.parent === window || e.source !== window.parent || !d || typeof d.pvc !== 'string') return;
     if (d.pvc === 'ciao') {
-      if (!CON.on) { CON.on = true; app.classList.add('console'); $('debt').addEventListener('click', () => { if (!touchMode && !ui.intro && !ui.over) toggleBook(); }); }   // il taccuino: si toccano i soldi (sul telefono era già così)
-      CON.sent = ''; conSend({ pv: 'console', v: 1 }); conLabels(); return;
+      if (!CON.on) { CON.on = true; app.classList.add('console'); document.body.classList.add('pv-console'); }   // body: per quello che sta fuori da #app (il DEV)
+      CON.sent = CON.stato = ''; conSend({ pv: 'console', v: 2 }); conLabels(); return;
     }
     if (!CON.on) return;
     if (d.pvc === 'levetta') { const c = v => Math.max(-1, Math.min(1, +v || 0)); stick.x = c(d.x); stick.y = c(d.y); const l = Math.hypot(stick.x, stick.y); if (l > 1) { stick.x /= l; stick.y /= l; } }
@@ -70341,7 +70351,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       if (resT > 3 && resAvg > .024 && ri < 2) { R.setRes(RL[ri + 1]); resT = 0; resAvg = .018; }
       else if (resT > 12 && resAvg < .013 && ri > 0) { R.setRes(RL[ri - 1]); resT = 0; } }
     padPoll(dt);   // [fluido] il controller si legge prima di tutto: il comando di questo fotogramma muove già questo fotogramma
-    conTick(dt);   // [console] la croce del Game Boy tenuta: lo zoom
+    conTick(dt);   // [console]
     let inpF = null;
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
@@ -70362,7 +70372,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if (touchMode && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
@@ -70370,7 +70380,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
-  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)
+  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; } };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }
 })();
 </script>
@@ -77608,6 +77618,8 @@ var MenuUI = (function () {
 #mu footer kbd { font: 600 10.5px var(--fl); border: 1px solid rgba(233,220,188,.3); color: var(--crema); padding: 1px 7px; border-radius: 10px; margin-right: 6px; }
 #mu footer .r { margin-left: auto; display: flex; gap: 20px; align-items: center; } #mu footer .r b { color: var(--crema); font-weight: 700; } #mu footer .over { color: var(--neon); }
 #mu footer .tm { color: var(--ott); }
+#mu .again { grid-column: 1 / -1; } #mu .again .row { margin-top: 8px; }   /* [console] */
+#mu footer .stato { color: rgba(233,220,188,.75); } #mu footer .stato b { color: var(--crema); font-weight: 700; }   /* [console] */
 #mu .msg { position: absolute; left: 50%; bottom: 50px; transform: translateX(-50%); background: var(--mad2); border: 1px solid var(--ott); color: var(--crema); padding: 8px 16px; border-radius: 18px; font-size: 14px; max-width: 70%; text-align: center; pointer-events: none; } #mu .msg.no { border-color: var(--neon); }
 #mu h4 { margin: 0 0 10px; font: 600 12px var(--fl); letter-spacing: .2em; text-transform: uppercase; color: rgba(233,220,188,.5); }
 #mu .dim { color: rgba(233,220,188,.6); font-size: 13.5px; line-height: 1.5; }
@@ -77759,17 +77771,21 @@ var MenuUI = (function () {
 @media (max-width: 640px) {
   #mu .case { inset: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0) 0; border-radius: 0; padding: 6px; grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 6px; }
   #mu .case::before, #mu .case::after { display: none; }
-  #mu .rail { order: 2; flex-direction: row; overflow-x: auto; padding: 2px 4px; gap: 6px; justify-content: flex-start; scrollbar-width: none; }
+  /* [console] le schede in una fila sola che entra sempre (da 320 px in su), senza scorrere: tasti a mattonella, non tondi */
+  #mu .rail { order: 2; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); padding: 0; gap: 4px; }
   #mu .rail .sp { display: none; }
-  #mu .rail button { flex: 0 0 auto; width: 60px; height: 60px; font-size: 9px; }
-  #mu .rail button canvas { width: 24px; height: 24px; }
+  #mu .rail button { width: auto; height: 50px; border-radius: 12px; font-size: min(9.5px, 2.6vw); letter-spacing: .04em; gap: 3px; }
+  #mu .rail button canvas { width: 20px; height: 20px; }
+  #mu .rail button .lb { max-width: 100%; padding: 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mu .rail button .dot { right: 1px; top: 1px; min-width: 16px; height: 16px; font-size: 10px; line-height: 16px; }
   #mu header { flex-wrap: wrap; gap: 4px 10px; padding: 12px 14px 8px; }
   #mu header b { font-size: 28px; white-space: normal; }
   #mu header span { order: 3; flex-basis: 100%; white-space: normal; font-size: 14px; }
   #mu header .tabs { order: 4; flex-basis: 100%; margin-left: 0; }
   #mu header .x { width: 44px; height: 44px; font-size: 20px; }
   #mu main { padding: 6px 14px 14px; }
-  #mu footer { padding: 8px 14px; gap: 10px; font-size: 10.5px; } #mu footer > :not(.r) { display: none; }
+  #mu footer { padding: 8px 14px; gap: 4px 10px; font-size: 10.5px; flex-wrap: wrap; } #mu footer > :not(.r):not(.stato) { display: none; }
+  #mu footer .r { gap: 12px; }
   #mu .bag { --c: calc((100vw - 92px) / 8); padding: 8px; } #mu .zaino > *, #mu .lav > *, #mu .jobs > * { min-width: 0; } #mu main * { white-space: normal; }
   #mu .acts { grid-template-columns: 1fr; } #mu .act { font-size: 18px; }
   #mu .recs { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); padding: 8px; }
@@ -77785,15 +77801,23 @@ var MenuUI = (function () {
   #mu .addosso .nmw { font-size: 20px; }
   #mu .dress2 { grid-template-columns: 1fr 96px 1fr; gap: 6px; }
   #mu .dress2 .nino canvas { width: 96px !important; height: 160px !important; }
-  #mu .zc { gap: 4px; } #mu .zr { min-height: 34px; padding: 3px 6px; } #mu .zr label { font-size: 9px; margin-bottom: 1px; } #mu .inv .hands { display: none; }
+  #mu .zc { gap: 4px; } #mu .zr { min-height: 34px; padding: 3px 6px; } #mu .zr label { font-size: 9px; margin-bottom: 1px; } #mu .inv .hands { margin-top: 4px; }   /* [console] le mani stanno nell'inventario: Equip. sul telefono non c'è */
   #mu .hands { transform: scale(.85); transform-origin: top center; margin-bottom: -10px; }
   #mu .inv .bag, #mu .roba .bag { --c: calc((100vw - 92px) / 6); } #mu .roba .bag { --c: calc((100vw - 92px) / 5); }
+}
+/* [console] schermi bassi (il telefono di traverso, dentro il Game Boy): titolo piccolo, niente sottotitolo, schede e piè più bassi */
+@media (max-height: 460px) {
+  #mu header { padding: 8px 12px 4px; } #mu header b { font-size: 22px; } #mu header > span:not(.tabs) { display: none; }
+  #mu header .x { width: 36px; height: 36px; font-size: 17px; }
+  #mu .rail button { height: 42px; } #mu .rail button canvas { width: 18px; height: 18px; }
+  #mu footer { padding: 4px 12px 6px; flex-wrap: nowrap; }
 }
 `;
 
   // =====================================================================================================================
   // SCHEDE
   // =====================================================================================================================
+  const SHORT = { zaino: 'Zaino', lavora: 'Crea' };   // [console] i nomi delle schede sul telefono
   const TABS = [['mappa', 'Mappa', 'mappa'], ['zaino', 'Inventario', 'zaino'], ['equip', 'Equip.', 'maglione'], ['lavora', 'Crafting', 'martello'], ['pg', 'Chi è', 'cappello'], ['lavori', 'Lavori', 'chiave_inglese'], ['qui', 'Qui', 'giornale']];
   const CTX = { bottega: ['Bottega', 'moneta_shop'], fruga: ['Frugare', 'casse'] };
   function mount() {
@@ -77857,18 +77881,28 @@ var MenuUI = (function () {
     } catch (e) { body = `<div class="dim">Qualcosa non va: ${esc(e.message)}</div>`; console.error('[Menu]', e); }
     const pv = O().pocketsView(st), over = pv.peso > pv.cap;
     const hasB = typeof Cantiere !== 'undefined' && Cantiere.bauleHere && !!Cantiere.bauleHere(st);
-    const rail = TABS.concat(hasB ? [['baule', 'Baule', 'casse']] : []).map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="tab" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}${l}${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
+    // [console] sul telefono le schede stanno tutte in una fila, senza scorrere: Equip. sta dentro l'Inventario (che mostra già
+    // addosso e mani), i nomi si accorciano; nel Game Boy c'è anche il taccuino (i soldi sullo schermo non ci sono più)
+    const narrow = matchMedia('(max-width: 640px)').matches, con = !!(PV() && PV().console);
+    const tabsNow = TABS.filter(([k]) => !(narrow && k === 'equip')).concat(hasB ? [['baule', 'Baule', 'casse']] : []).concat(con ? [['taccuino', 'Taccuino', 'quaderno']] : []);
+    const rail = tabsNow.map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="${k === 'taccuino' ? 'book' : 'tab'}" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}<span class="lb">${narrow && SHORT[k] || l}</span>${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
       + (U.tab === 'bottega' || U.tab === 'fruga' ? `<span class="sp"></span><button class="on">${ic(U.tab === 'bottega' ? 'valuta' : 'casse')}${CTX[U.tab][0]}</button>` : '');
     const showMsg = U.msg && Date.now() - (U.msgT || 0) < 6000;
     const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
       <header><b>${esc(title)}</b><span>${esc(sub)}</span><span class="tabs">${tabs}</span><button class="x" data-a="close" aria-label="Chiudi">×</button></header>
       <main>${body}</main>
-      <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span><span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-7</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
+      <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span>${con ? stato(st) : ''}<span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-7</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
         <span class="r"><span class="${over ? 'over' : ''}">${pv.peso}/${pv.cap} kg${over ? ' · troppo peso' : ''}</span><span>in tasca <b>${L(pv.money)}</b> lire</span></span></footer>
       ${showMsg ? `<div class="msg ${U.ok ? '' : 'no'}">${esc(U.msg)}</div>` : ''}</div></div>`;
     if (!force && html === U.sig) return; U.sig = html;
     const m = $('mu'), sc = m.querySelector('main') ? m.querySelector('main').scrollTop : 0;
     m.innerHTML = html; paintAll(m); const mm = m.querySelector('main'); if (mm) mm.scrollTop = sc;
+  }
+
+  // [console] nel Game Boy l'ora, la scadenza e il debito stanno qui (sullo schermo non c'è più il riquadro dei soldi)
+  function stato(st) {
+    const g = G(), hl = g.hoursLeft(st), urg = st.deadline < 1e8 && hl <= 6;
+    return `<span class="stato">${esc(g.dayName(st.t))} <b>${esc(g.clockStr(st.t))}</b>${st.deadline > 1e8 ? '' : ` · <span class="${urg ? 'over' : ''}">${hl <= 1 ? 'meno di un\'ora' : hl + 'h all\'alba'}</span>`} · debito <b>${L(st.debt)}</b></span>`;
   }
 
   // ---------------- ZAINO ----------------
@@ -77951,8 +77985,10 @@ var MenuUI = (function () {
       <div style="display:grid;gap:16px"><div class="mcard"><h4>Come stai</h4>${bar('Salute', p.hp, p.maxHp || 100, 'g')}${Object.keys(NEED).map(k => bar(NEED[k], (N[k] || 0) * 100, 100, '', true)).join('')}<div class="dim">Sigarette ${M.cig || 0} · dispensa ${M.pantry || 0}</div></div>
         <div class="mcard"><h4>Il tuo conto</h4><div class="stat" style="grid-template-columns:1fr auto;row-gap:6px">${[['Ore lavorate', Math.round((S.lavorato || 0) / 60)], ['Guadagnato', L(S.guadagnato || 0)], ['Speso', L(S.speso || 0)], ['Bevuto', S.bevuto || 0], ['Fumato', S.fumato || 0], ['Dormito (ore)', Math.round((S.dormito || 0) / 60)]].map(([a, b]) => `<span>${a}</span><em>${b}</em>`).join('')}</div></div></div>
       <div style="display:grid;gap:16px"><div class="mcard"><h4>Mestieri${job ? ` — da ${esc(job.title)}` : ''}</h4>${ab.length ? ab.map(([id, a]) => `<div class="ab">${ic(abIcon(id))}<div><b>${esc(a.label)}</b><small>${a.night ? 'di notte · ' : ''}${a.mins ? (a.mins >= 60 ? Math.round(a.mins / 6) / 10 + ' ore' : a.mins + ' min') : ''} · rischio ${a.risk > .15 ? 'alto' : a.risk > .08 ? 'medio' : 'basso'}</small></div></div>`).join('') : '<div class="dim">Ogni mestiere apre cose che gli altri non possono fare: le chiavi del posto, la gente che conosci. Trova un lavoro (scheda Lavori).</div>'}</div>
-        <div class="mcard"><h4>Amici del quartiere</h4>${fr.length ? fr.map(n => `<div class="fr3">${r3('npc:' + n.id, 'bust', 128, 128) || ic('maglione')}<div><b>${n.dead || n.inside ? esc(n.name || n.first) : `<span class="link" data-a="vai" data-x="${esc(JSON.stringify({ x: n.x, y: n.y }))}" title="vai da lui">${esc(n.name || n.first)}</span>`}</b><small>${esc((n.pop && n.pop.job && n.pop.job.title) || '')}${n.meFriend && n.meFriend.lent ? ` · ti ha prestato ${L(n.meFriend.lent)}` : ''}${n.dead ? ' · morto' : n.inside ? ' · in casa' : ` · ${Math.round(Math.hypot(n.x - p.x, n.y - p.y))} m`}</small></div></div>`).join('') : '<div class="dim">Nessuno.</div>'}</div></div></div>`;
+        <div class="mcard"><h4>Amici del quartiere</h4>${fr.length ? fr.map(n => `<div class="fr3">${r3('npc:' + n.id, 'bust', 128, 128) || ic('maglione')}<div><b>${n.dead || n.inside ? esc(n.name || n.first) : `<span class="link" data-a="vai" data-x="${esc(JSON.stringify({ x: n.x, y: n.y }))}" title="vai da lui">${esc(n.name || n.first)}</span>`}</b><small>${esc((n.pop && n.pop.job && n.pop.job.title) || '')}${n.meFriend && n.meFriend.lent ? ` · ti ha prestato ${L(n.meFriend.lent)}` : ''}${n.dead ? ' · morto' : n.inside ? ' · in casa' : ` · ${Math.round(Math.hypot(n.x - p.x, n.y - p.y))} m`}</small></div></div>`).join('') : '<div class="dim">Nessuno.</div>'}</div></div></div>${again()}`;
   }
+  // [console] ricominciare da capo: sta qui, non su un tasto. Il primo tocco chiede conferma, il secondo ricomincia
+  const again = () => `<div class="mcard again"><h4>Partita</h4>${U.again && Date.now() - U.again < 5000 ? `<div class="dim">Ricominci da capo: soldi, roba e conoscenze si perdono.</div><div class="row">${btn('ricomincia', 'Sì, ricomincia', true, 'bad')}${btn('ricomincia', 'No', false)}</div>` : btn('ricomincia', 'Ricomincia da capo', 'chiedi')}</div>`;
   const abIcon = id => /stampa|tessere|timbri|fascicoli|volantin/.test(id) ? 'carta' : /cassa|soldi/.test(id) ? 'valuta' : /ascolta|radio/.test(id) ? 'radiolina' : /chiav|porta/.test(id) ? 'grimaldello' : /vino|beve/.test(id) ? 'vino' : /medic|cura/.test(id) ? 'medicine' : 'cacciavite';
 
   // ---------------- BANCO DI LAVORO ----------------
@@ -78080,6 +78116,10 @@ var MenuUI = (function () {
   function quiList(st) {
     const out = [], seen = new Set();
     try { (Risacca.here(st) || []).forEach(a => { if (seen.has(a.label)) return; seen.add(a.label); out.push({ label: a.label, bad: a.bad, run: () => { if (typeof RisaccaUI !== 'undefined' && RisaccaUI.doHere) { close(); RisaccaUI.doHere(a); return ''; } const r = Risacca.playerAct(st, a.id, a.arg); return r && r.msg; } }); }); } catch (e) { }
+    try {
+      const p = st.player, lv = p.indoor ? `in:${p.indoor.b}:${p.indoor.f}` : p.lv && p.lv.k === 'ug' ? 'ug' : null;
+      if (PV() && PV().console && typeof Cantiere !== 'undefined' && Cantiere.covoOf && Cantiere.toggle && !p.vehicle && Cantiere.covoOf(st, p.x, p.y, lv)) out.push({ label: 'Cantiere del covo', run: () => { close(); Cantiere.toggle(); return ''; } });
+    } catch (e) { }   // [console]
     try { (Azioni.playerActions(st) || []).forEach(a => { if (seen.has(a.label)) return; seen.add(a.label); out.push({ label: a.label, off: a.run ? '' : a.off, run: a.run, bad: /ruba|rapina|scasso|forza|borsegg|alleggerisci|sabota/i.test(a.label) }); }); } catch (e) { }
     return out;
   }
@@ -78117,6 +78157,8 @@ var MenuUI = (function () {
     switch (a) {
       case 'close': close(); return;
       case 'tab': U.tab = x; U.sel = null; U.arg = null; break;
+      case 'book': close(); if (PV() && PV().book) PV().book(true); return;   // [console] il taccuino, dal menu
+      case 'ricomincia': if (x === 'chiedi') U.again = Date.now(); else { U.again = 0; if (x === true && PV() && PV().restart) { close(); PV().restart(); return; } } break;   // [console]
       case 'sel': U.sel = x; break;
       case 'filt': U.filt = x; U.sel = null; break;
       case 'shoptab': U.shopTab = x; U.sel = null; break;
