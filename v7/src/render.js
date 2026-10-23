@@ -4055,7 +4055,8 @@ var Render = (function () {
     }
     const t = canvasTex(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return (RT1.tex[key] = t);
   }
-  const roofMat1 = (kind, v, tint) => { const k = kind + (v || 0) + (tint || ''); return RT1.mat[k] || (RT1.mat[k] = std({ map: roofTex1(kind, v), color: tint || '#ffffff', roughness: kind === 'lamiera' ? .62 : .92, metalness: kind === 'lamiera' ? .3 : 0 })); };
+  const tv1 = (m, kind) => window.TettiVissuti ? TettiVissuti.manto(m, kind) : m;   // [vissuti] il tempo sul manto (tetti_vissuti.js: il muschio, i rappezzi, i coppi rotti, l'umido)
+  const roofMat1 = (kind, v, tint) => { const k = kind + (v || 0) + (tint || ''); return RT1.mat[k] || (RT1.mat[k] = tv1(std({ map: roofTex1(kind, v), color: tint || '#ffffff', roughness: kind === 'lamiera' ? .62 : .92, metalness: kind === 'lamiera' ? .3 : 0 }), kind)); };
   // intonaco dei timpani e dei torrini: una tinta con la grana (niente cella del kit da mappare)
   function plasterMat1(hex) {
     const k = 'pl' + hex; if (RT1.mat[k]) return RT1.mat[k];
@@ -4238,7 +4239,7 @@ var Render = (function () {
   }
 
   // ---------------- tetti piani: lastrico, copertina, bocchettoni, torrino ----------------
-  function deckMat1(kind, w, d, tint) { const t = roofTex1(kind, 0).clone(); t.needsUpdate = true; t.repeat.set(w / RSPAN, d / RSPAN); return std({ map: t, roughness: .95, color: tint || '#ffffff' }); }
+  function deckMat1(kind, w, d, tint) { const t = roofTex1(kind, 0).clone(); t.needsUpdate = true; t.repeat.set(w / RSPAN, d / RSPAN); return tv1(std({ map: t, roughness: .95, color: tint || '#ffffff' }), kind); }   // [vissuti]
   // [profondita] il lastrico prende una tinta per livello (tre sole, per non spezzare la fusione): i bassi più spenti e freddi, gli alti più caldi
   const DECKQ1 = ['#e4e1dc', '#f4efe6', '#fff8ec'], deckQ1 = fl => DECKQ1[fl <= 2 ? 0 : fl === 3 ? 1 : 2];
   function flatKind1(b, i) { const PL3 = cn1() && window.Tetti && Tetti.PIANO ? Tetti.PIANO[i] : null; if (PL3 && G.BUILDINGS[i] === b) return PL3.manto === 'quadrotti' ? 'cemento' : 'pianelle';   // [tetti3] due lastrici soli: il cotto del borgo, i quadrotti del regime e del boom
@@ -4332,6 +4333,7 @@ var Render = (function () {
       O.tetti++; O.oggetti += n; O.max = Math.max(O.max, n); if (!n) O.vuoti++; const k = n >= 8 ? '8+' : String(n); O.istogramma[k] = (O.istogramma[k] || 0) + 1;
       const E = O.perEra[b.era] || (O.perEra[b.era] = { tetti: 0, oggetti: 0 }); E.tetti++; E.oggetti += n; });
     O.urti = []; RP1.forEach(P => { if (P.urti3) O.urti.push(...P.urti3); });
+    if (window.TettiVissuti && TettiVissuti.urti) { O.urti.push(...TettiVissuti.urti()); O.vissuti = TettiVissuti.conto(); }   // [vissuti] i pezzi dei tetti vissuti, misurati sul modello vero
     // sulle falde: i comignoli del colmo e l'antenna della rete non si toccano
     try { const R = window.Rete && Rete.grafo && Rete.grafo(); (R ? R.nodi : []).forEach(n => { if (n.k !== 'antenna' || n.bi === null || !n.falda) return; const b = G.BUILDINGS[n.bi], q = Tetti.loc3(b, n.x, n.z); (b.__chims || []).forEach(c => { if (Math.hypot(c.x - q[0], c.z - q[1]) < .7) O.urti.push([n.bi, 'antenna/comignolo', 'urto']); }); }); } catch (e) { }
     O.media = O.tetti ? +(O.oggetti / O.tetti).toFixed(2) : 0; Object.values(O.perEra).forEach(E => E.media = +(E.oggetti / E.tetti).toFixed(2));
@@ -12481,6 +12483,9 @@ var Render = (function () {
       scatole.forEach((T2, j) => { if (j <= i) return; const o = T2.B; if (Bx.min.x < o.max.x - .02 && Bx.max.x > o.min.x + .02 && Bx.min.z < o.max.z - .02 && Bx.max.z > o.min.z + .02) U.push([bi, S.k + '/' + T2.k, 'urto']); });
       PL.riserve.forEach(([rx, rz, rr]) => { const dx = Math.max(Bx.min.x - rx, 0, rx - Bx.max.x), dz = Math.max(Bx.min.z - rz, 0, rz - Bx.max.z); if (dx * dx + dz * dz < (rr * .8) ** 2) U.push([bi, S.k, 'riserva']); }); });
   }
+  // [vissuti] il kit per tetti_vissuti.js: i pezzi dell'atlante, la fusione del gruppo della casa, la scena
+  let KTV1 = null;
+  function kitTV1() { return KTV1 || (KTV1 = { THREE, scene, fB, fC, fL, fI, fT, fAt, fRod, shade, std, sm, mergeGroup, shadowed, rotRec, ownMats, rotOf, bRec: DZ.bRec, phone: PHONE, get atlas() { return FA.n; }, get vis3() { return VIS3; } }); }
   function buildRoofs() {   // [ordine1] un programma per tetto (rp1), ogni cosa chiede il suo posto (rpTake): niente roba sparsa a caso
     const metal = sm('#5a5e66', { roughness: .6, metalness: .4 }), dark = sm('#1c1c22', { roughness: 1 });
     const tarps = ['#3e6272', '#7a3c3c', '#4c6a4c', '#8a7438', '#5a4a6a'].map(c => sm(c, { roughness: 1 }));
@@ -12533,7 +12538,7 @@ var Render = (function () {
           [-L / 2 + .1, L / 2 - .1].forEach(o => put(box(.06, 1.1, .06, metal), sx + o, .55, sz)); }
       } else if (prog === 'regime' || prog === 'insegna') { if (r() < .5) antenna(near[0] + 1.8, near[1]); }
       else if (prog === 'colombaia' || prog === 'orto' || prog === 'ritrovo' || prog === 'cantiere') storiaTetto1(prog, P, g, top, r, bi);
-      if (P.plan && P.plan.tipo === 'piano') { tetti3Gruppi(P, g, top, r, bi, { metal, dark, cloth }); rec.chim3 = P.chim3 || []; }   // [tetti3] i gruppi del piano, e nient'altro
+      if (P.plan && P.plan.tipo === 'piano') { tetti3Gruppi(P, g, top, r, bi, { metal, dark, cloth }); rec.chim3 = P.chim3 || []; if (window.TettiVissuti) TettiVissuti.terrazzo(g, rec, top, kitTV1()); }   // [vissuti] chi ci vive (tetti_vissuti.js)   // [tetti3] i gruppi del piano, e nient'altro
       vitaTetto1(P, g, top, r, bi, low, prog);   // [ordine1] la vita di ogni tetto: acqua ferma, toppe, sfiati, la canalina, i piccioni, la roba dimenticata
       if (!g.children.length) return;
       const gm = shadowed(mergeGroup(g)); rotRec(rec, gm); ownMats(gm, rec); scene.add(gm); rec.roofDone = true; rec.roofGrp = gm; n++;
@@ -14353,7 +14358,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     const TT = (n, f) => { P2.src = n; const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
-    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('costa2', buildCosta2);   /* [costa2] */ TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('percorsi1', buildPercorsi1);   /* [percorsi] */ TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
+    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('costa2', buildCosta2);   /* [costa2] */ TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('vissuti', () => window.TettiVissuti && TettiVissuti.costruisci(kitTV1()));   /* [vissuti] */ TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('percorsi1', buildPercorsi1);   /* [percorsi] */ TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
@@ -15568,6 +15573,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const fy = (feet0 !== null ? feet0 : groundH(focus[0][0], focus[0][1])), fuori = !ui.intro && !ui.studio && !ui.focus && !p.indoor && !indoorNow && !ugNow && feet0 === null;
       if (VIS4.muretto || VIS3.vivi.size) try { vis3Tick(focus[0][0], focus[0][1], fy, VIS4.muretto && fuori, dt, pitch); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } }   // un errore del muretto non ferma mai il fotogramma
       vis3Personaggio(dyn.people.__player, p.x, playerH, p.y, night, dt);   // [visuale3] il personaggio si stacca in ombra (in ogni visuale)
+      if (window.TettiVissuti) try { TettiVissuti.vicino(focus[0][0], focus[0][1], frameN, night); } catch (e) { }   // [vissuti] le cartacce e le pozze vicine
       // [visuale4] A: il tetto della casa che copre sbiadisce (alle stesse condizioni del muretto); in tutti e due la sagoma di chi conta
       if (VIS4.camera || VIS4.T.size) try { vis4Tetti(focus[0][0], focus[0][1], fy, VIS4.camera && fuori, dt); } catch (e) { if (!VIS4.err) { VIS4.err = 1; console.warn('[visuale4]', e); } }
       if (VIS4.on) try { vis4Sagome(ui.intro || ui.studio ? null : { pveh, ids: focus.length > 1 ? (mo && mo.npcs || []).concat(ui.dialogNpc ? [ui.dialogNpc] : []) : [] }); } catch (e) { if (!VIS4.err) { VIS4.err = 1; console.warn('[visuale4]', e); } }
