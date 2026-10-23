@@ -12,7 +12,9 @@ ok(soloCase.length > city.length * .5, `molti palazzi restano solo case (${soloC
 const per = e => { const t = city.filter(b => b.era === e), s = t.filter(b => b.shopFront); return [s.length, t.length]; };
 ['E0', 'E2', 'E3', 'E4', 'E6', 'E7'].forEach(e => { const [s, t] = per(e); console.log(`  ${e}: ${s}/${t}`); });
 ok(per('E7')[0] <= Math.max(1, per('E7')[1] * .1), 'fra le baracche quasi nessuna bottega');
-ok(per('E0')[0] >= 8 && per('E3')[0] >= 6 && per('E4')[0] >= 3, 'botteghe nel borgo, nell\'Ottocento e sotto i portici');
+// [cucitura] la Vittoria viva: le case dei portici sono dell'Ottocento (E3) e del borgo (E0); le botteghe si contano sui suoi due fronti
+const sulV = city.filter(b => b.shopFront && (b.vittoria || b.vittoriaSud)).length;
+ok(per('E0')[0] >= 8 && per('E3')[0] >= 6 && (per('E4')[0] >= 3 || sulV >= 5), `botteghe nel borgo, nell'Ottocento e sotto i portici (sulla Vittoria ${sulV})`);
 // i dati: formato completo, porta della bottega accanto al portone sullo stesso lato, caselle libere e distinte
 const adj = (p, q) => Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]);
 ok(SF.every(b => { const S = b.shopFront; return S.use && S.name && S.sign && S.era && (S.piano === 0 || S.piano === 1); }), 'ogni shopFront ha use, name, sign, era, piano');

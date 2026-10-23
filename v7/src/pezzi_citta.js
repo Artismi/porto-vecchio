@@ -403,7 +403,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     pareteArchi(g, L, hA, .4, porte, 'calce', 0, 0, -P / 2 - .25);                            // il fondo: vetrine e portoni delle botteghe
     if (!LOD) porte.forEach(a => { if (a.v) { blocco(g, a.w, a.h - a.h0, .08, 'vetro', a.x, a.h0, -P / 2 - .25); blocco(g, a.w + .2, .12, .3, 'pietraChiara', a.x, a.h0 - .12, -P / 2 - .1); }
       else { blocco(g, a.w, a.h, .1, 'legnoScuro', a.x, 0, -P / 2 - .3); blocco(g, .5, .5, .1, 'vetro', a.x, a.h - .7, -P / 2 - .24); } });
-    blocco(g, L, .5, P + .5, 'intradosso', L / 2, hA - .5, -.25);                               // il soffitto in ombra
+    blocco(g, L, .5, P, 'intradosso', L / 2, hA - .5, -.25);                                    // il soffitto in ombra
     blocco(g, L + .2, .2, .7, 'pietraChiara', L / 2, hA, zF - .1, .02);                          // il marcapiano sopra le arcate
     // i piani: il corpo d'intonaco con le finestre a filo dell'arcata, le persiane aperte, socchiuse o chiuse
     blocco(g, L, hP, P + .1, tinta, L / 2, hA + .2, -.25);
@@ -413,8 +413,8 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       if (p === 0 && q > .4 && q < .6) { blocco(g, 1.5, .1, .55, 'pietraChiara', x, y0 - .15, zF + .28); ringhiera(g, 1.5, .9, 'ferroScuro', x - .75, y0 - .05, zF + .52, 0, .12); } }   // un balconcino
     const yC = hA + .2 + hP;
     for (let x = .5; x < L; x += 1.1) if (!LOD) mensola(g, .4, .3, .16, 'pietraChiara', x, yC + .02, zF + .05, 0);   // le mensole del cornicione
-    cornice(g, L, P + .2, .45, .5, 'pietraChiara', 0, yC, -.25);                              // il cornicione
-    tettoFalde(g, L, P + .4, 1.1, 'coppi', 0, yC + .5, -.25, .4);                             // il tetto di coppi
+    cornice(g, L, P - 1.2, .45, .5, 'pietraChiara', 0, yC, .3);                               // il cornicione (sporge sulla strada, non sulla casa dietro)
+    tettoFalde(g, L, P, 1.1, 'coppi', 0, yC + .5, -.05, .2);                                  // il tetto di coppi
     g.userData.misure = [L + .8, yC + 1.8, P + .9]; return g;
   }
   T.portico = o => {

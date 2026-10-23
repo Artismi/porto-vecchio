@@ -25,7 +25,7 @@ ok(porte.every(q => C.davanti(F, q.x + q.nx * 2, q.z + q.nz * 2) && C.davanti(F,
 const S = C.strade(W.roads);
 console.log('vie alberate', S.map(s => `${s.rd.name}:${s.kind}:${s.sp || 'leccio'}:lati ${s.lati.length}`).join(' · '));
 ok(!S.some(s => s.rd.pennoni), 'nessun albero sulla Vittoria dei pennoni');
-ok(!S.some(s => s.rd.kind === 'vicolo' || s.rd.w < 7), 'nessun albero nei vicoli e nelle vie strette');
+ok(!S.some(s => (s.rd.kind === 'vicolo' || s.rd.w < 7) && !s.rd.passeggio), 'nessun albero nei vicoli e nelle vie strette (la Passeggiata della Spianata ha il suo filare verso la spianata)');
 ok(S.some(s => s.kind === 'filare' && s.sp === 'leccio'), 'il Corso ha il suo filare di lecci');
 ok(S.filter(s => s.kind === 'viale').every(s => s.lati.length === 1), 'le altre vie alberate solo su un lato');
 // i filari dopo il filtro dei fronti

@@ -25,7 +25,7 @@ const R = W.roads.filter(r => r.pts && r.kind !== 'sterrato' && r.pts.some(([x, 
 const W_OK = { 10: 1, 7: 1, 5: 1 }, larghe = R.filter(r => !(W_OK[r.w] || r.w <= 3));
 ok(!larghe.length, `le larghezze ammesse: 10, 7, 5, ≤ 3 m (${larghe.map(r => r.id + ' ' + r.w).join(', ') || 'tutte'})`);
 const vit = W.roads.find(r => r.id === 'vittoria'), cor = W.roads.find(r => r.id === 'corso'), rua = W.roads.find(r => r.id === 'rua'), mar = W.roads.find(r => r.id === 'marina');
-ok(vit && vit.w === 10 && lungo(vit.pts) > 200, `un asse: la Vittoria, 10 m (${vit && Math.round(lungo(vit.pts))} m)`);
+ok(vit && vit.w === 7 && vit.viva && lungo(vit.pts) > 200, `la Vittoria: una via viva di 7 m, dal Mercato alla Rocca (${vit && Math.round(lungo(vit.pts))} m)`);   // [cucitura] non più l'asse di parata da 10 m
 ok(cor && cor.w === 7 && rua && rua.w === 5 && mar && mar.w === 5, 'tre vie: il Corso 7 m, la Rua e la Marina 5 m');
 const nVic = R.filter(r => r.w <= 3).length; ok(nVic >= 20 && nVic <= 34, `i vicoli: ${nVic} (il progetto: ~28)`);
 const { strade, nodi } = I.dalMondo(W, CORNICE), C = I.controlla(strade, nodi);

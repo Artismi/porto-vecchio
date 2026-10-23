@@ -238,14 +238,15 @@ var Vievive = (function () {
         for (const dS of [0, 4, -4, 8, -8, 12, -12, 16, -16, 20, -20, 24, -24]) { const c = lAt(rdL, clamp(sc + dS * verso, 2, rdL.L - 2)), sgn = (Math.cos(c.ang) * ux + Math.sin(c.ang) * uy) >= 0 ? 1 : -1, nx = -Math.sin(c.ang) * sgn, ny = Math.cos(c.ang) * sgn;
           for (const o of [.8, 1.3, 2.1, 2.9]) { const x = c.x + nx * (half + o), y = c.y + ny * (half + o), ux2 = Math.cos(c.ang), uy2 = Math.sin(c.ang); if (!fascia(x, y, ux2, uy2, 1.4, .35) || davanti(x, y, 1.2) || vicinoIncrocio(x, y, -2)) continue; got = { x, y, ang: Math.atan2(-ny, -nx), cx: c.x + nx * (half - 1.4), cy: c.y + ny * (half - 1.4), largo: fascia(x + nx * .9, y + ny * .9, ux2, uy2, 1.6, .7) }; break; }
           if (got) break; }
-        if (!got) return;
+        if (!got) { if (process.env.DBGV) console.error("[vv] fermata senza posto", S.nome, q.rd.id, Math.round(q.x), Math.round(q.y), verso); return; }
         const sg = lNear(Ln, got.cx, got.cy);
-        const nome = S.nome === 'Vittoria' && A.asse ? A.asse.nome : S.nome;
+        const nome = S.nome === 'Vittoria' && A.asse ? A.asse.nome : S.nome; if (process.env.DBGV) console.error('[vv] fermata', si, S.nome, verso, Math.round(got.x), Math.round(got.y));
         const pl = lAt(Ln, sg.s);
         LIN.fermate.push({ id: 'vv_fermata_' + (nid++), nome, x: got.x, y: got.y, dir: got.ang, lx: got.cx - pl.x, ly: got.cy - pl.y, pensilina: got.largo && q.rd.era !== 'E4', capolinea: capi.has(si), verso, s: sg.s, sd: sg.d, rd: q.rd.id, zona: q.rd.era || '' });
       });
     });
     LIN.fermate.sort((a, b) => a.s - b.s);
+    if (process.env.DBGV) console.error("[vv] prima del filtro", JSON.stringify(LIN.fermate.map(f => [f.nome, Math.round(f.x), Math.round(f.y), +f.sd.toFixed(1)])));
     LIN.fermate = LIN.fermate.filter((f, i, A2) => f.sd < 4 && !A2.slice(0, i).some(g => hyp(g.x - f.x, g.y - f.y) < 8));
     LIN.nomi = stopK.map(z => z.nome); LIN.ok = LIN.fermate.length >= 2;
     LIN.orario = 'LINEA 1 · ' + LIN.nomi.join(' – ').toUpperCase() + '\nFERIALE 6.00 – 21.30 · OGNI 20 MINUTI\nFESTIVO OGNI 40 MINUTI · ULTIMA CORSA 21.30';

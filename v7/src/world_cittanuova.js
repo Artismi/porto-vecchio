@@ -611,7 +611,8 @@ var World = (function () {
     // del varco) e la Pietra dell'Onda (la caserma) stanno nel Recinto del Garante, al porto (il posto lo dà il recinto, non RELOC); il cinema
     // prende il posto del Ministero sulla Piazza Grande, col fronte sulla piazza
     RELOC.cinema = [1015, 121];
-    const RECINTO_N = { governo: [7, 5], ministero: [6, 5], garante: [3, 3], pietra: [4, 16] };
+    RELOC.cultura = [1124, 178];   // [cucitura] il Palazzo della Cultura lascia il fronte della Vittoria: sta dietro, sulla Via di Mezzo verso la marina
+    const RECINTO_N = { governo: [7, 5], ministero: [5, 5], garante: [3, 3], pietra: [4, 16] };
     NAMED.forEach(q => { const p = RELOC[q[0]]; if (p) { q[6] = p; q[7] = Object.assign({}, q[7], { nuovo: true }); }
       const rc = RECINTO_N[q[0]]; if (rc) { q[2] = rc[0]; q[3] = rc[1]; q[7] = Object.assign({}, q[7], { recinto: true }); } }); }
 
@@ -869,7 +870,7 @@ var World = (function () {
       const add = (id, name, w, kind, pts, ex) => { const rd = Object.assign({ id, name, w, kind, pts, main: kind === 'citta' }, ex || {}); CITY.roads.push(rd); return rd; };
       // E3 la ferrovia (1880): sulla costa nord su un rilevato 15 m dentro la riva, con le baracche fra i binari e il mare;
       // all'altezza del Corso si accosta all'acqua e corre sugli scogli sotto le mura di tramontana fino al Muro
-      const RAIL = []; for (let x = 756; x <= 1166; x += 6) RAIL.push([x, RAILY(x)]);
+      const RAIL = []; for (let x = 756; x <= 1142; x += 6)   /* [cucitura] il binario finisce col respingente alla fine delle mura, non più in mezzo alla spianata */ RAIL.push([x, RAILY(x)]);
       CITY.rail = smooth(RAIL, 4); const ry = x => yOn(CITY.rail, x); CITY.railY = ry;
       // [mappa_compatta] LA CITTÀ COMPATTA (progetto_citta/MAPPA_COMPATTA.md, passi 1 e 2): la città finisce alla stazione (gen 930, finale
       // 1250); niente Via Nazionale, Viale della Tutela, Via del Porto lunga, Raccordo del Muro. Un asse (la Vittoria, 10 m), tre vie (Corso 7,
@@ -903,12 +904,19 @@ var World = (function () {
       // E0 il borgo: la Rua Maestra storta dal Corso (sotto la Porta di Terra) alla spianata; E2 la marina dallo Scalo al Lido; la Via di Mezzo
       const RUA = chaikin([[972, 109], [995, 106], [1012, 104], [1034, 107], [1050, 111], [1063, 110], [1078, 107], [1094, 111], [1110, 114], [1126, 110], [1147, 113]], 3);
       add('rua', 'Rua Maestra', 5, 'vicolo', RUA, { fogna: true, era: 'E0' });
-      const MAR = chaikin([[990, 187], [998, 186], [1030, 185], [1060, 185.5], [1085, 186], [1100, 193], [1118, 201], [1140, 205], [1158, 206.5]], 3);
-      add('marina', 'Via della Marina', 5, 'vicolo', MAR, { fogna: true, era: 'E2', capi: [null, { tipo: 'affaccio', perche: 'la Via al Mare finisce sulla spiaggia del Lido, sotto la spianata' }] });
+      const MAR = chaikin([[990, 187], [998, 186], [1030, 185], [1060, 185.5], [1085, 186], [1100, 193], [1118, 201], [1134, 204.2], [1145.5, 205.6]], 3);
+      // [cucitura] la Via della Marina finisce sulla Passeggiata della Spianata (prima correva oltre, dentro quello che ora è il Recinto)
+      add('marina', 'Via della Marina', 5, 'vicolo', MAR, { fogna: true, era: 'E2' });
       const MEZ = chaikin([[985, 170.5], [1004, 170], [1020, 170], [1036, 170], [1052, 169], [1070, 172], [1092, 174], [1112, 180], [1128, 191], [1135, yOn(MAR, 1135)]], 2);
       add('mezzo', 'Via di Mezzo', 3, 'vicolo', MEZ, { era: 'E0' });
       // la Via delle Mura: il vicolo dentro la cinta (il pomerio), dalla scala di ronda della mura alla spianata; i pettini del nord ci arrivano
       const MURA_IN = x => ry(x) + 10.5, MV = []; for (let x = 1047; x <= 1147; x += 4) MV.push([x, MURA_IN(x)]);
+      // [cucitura] LA PASSEGGIATA DELLA SPIANATA: l'ultimo filo della città, dove le case si girano a guardare la spianata (il glacis della
+      // Rocca). Da tramontana, sopra gli scogli, alla Vittoria col filare di lecci dalla parte della spianata; dalla Vittoria alla spiaggia del
+      // Lido lungo il muro del Recinto, senza alberi. Ci arrivano la Rua, la Via delle Mura, la Vittoria e la Via della Marina.
+      CITY.passeggiata = 1145.5;
+      add('passeggiata', 'Passeggiata della Spianata', 5, 'vicolo', vline(1145.5, MURA_IN(1145.5) - 3, 139.5), { era: 'E1', passeggio: true, alberi: 'lecci', alberiLato: -1, capi: [{ tipo: 'affaccio', perche: 'il belvedere sugli scogli di tramontana, in fondo alle mura' }, null] });
+      add('passeggiata_sud', 'Passeggiata della Spianata', 5, 'vicolo', vline(1145.5, 146.5, 213), { era: 'E1', capi: [null, { tipo: 'affaccio', perche: 'scende alla spiaggia del Lido, accanto al muro del Recinto' }] });
       add('vic_mura', 'Via delle Mura', 2.5, 'vicolo', MV, { era: 'E0', capi: [{ tipo: 'scala', perche: 'la scala di ferro delle mura: sale sul camminamento di tramontana' }, null] });
       // i vicoli a pettine (Molfetta): paralleli e storti dalla stessa parte, ognuno da asse ad asse (Rua → mura, Rua → Vittoria,
       // Vittoria → Via di Mezzo); il Vico Lungo dalla Vittoria scende alla marina. Niente monconi: ogni capo sta su un'altra strada.
@@ -1235,6 +1243,8 @@ var World = (function () {
       POSA.port = { x0: 1024, x1: CITY.spian0 - .5, d0: 5, d1: 9, lati: [0] };   // lati: 0 il nord, 1 il sud
       for (let ty = T2i(VY - 14); ty <= T2i(VY - 1); ty++) for (let tx = T2i(POSA.port.x0); tx < T2i(POSA.port.x1); tx++) { const i = ty * GW + tx, d = Math.abs(ty * TS + 1 - VY);
         if (d <= POSA.port.d0 || d >= POSA.port.d1 || roadW[i] > 0 || grid[i] === T.WATER) continue; grid[i] = T.WALK; reserved[i] = 1; }
+      // [cucitura] la fermata del Mercato: con la via stretta, fra la tettoia e il Corso uno slargo di 9 × 8 m a nord della via (la pensilina, nessuna porta davanti)
+      for (let ty = T2i(VY - 13); ty < T2i(VY - 5); ty++) for (let tx = T2i(968); tx < T2i(977); tx++) { const i = ty * GW + tx; if (roadW[i] > 0 || grid[i] === T.WATER) continue; grid[i] = T.WALK; reserved[i] = 1; }
       // E3 la Piazza del Mercato: la tettoia in ghisa sull'ottagono (già piazza riservata)
       if (CITY.octa) { const [ox, oy, orr] = CITY.octa; PZ('tettoia_mercato', ox - (orr - 2), oy, 0, { diametro: 2 * (orr - 2), h: 7.5, lanterna: true, orologio: true }, { nome: 'Tettoia del Mercato' }); }
       // E3 la stazione in testa alla griglia: il fabbricato fra il binario e la Via della Stazione, il marciapiede col binario di corsa
@@ -1314,7 +1324,8 @@ var World = (function () {
         // sopra lungo lo stesso muro (la posa il blocco degli edifici con nome); i pali dei riflettori agli angoli del piazzale
         R.yDep = riva(xw + 9) - 9.5; R.yCas = R.yDep - 5.5;
         R.deposito = PZ('polveriera', xw + 15, R.yDep, Math.PI, { L: 12, p: 6.2, cinta: false }, { nome: 'Deposito del porto', recinto: true }); pzRis(R.deposito, 'B', -.4, 12.4, -3.5, 3.5);
-        R.pali = [PZ('palo_riflettori', xw + 13, yN + 28, Math.PI / 2, { h: 12, n: 3 }, { nome: 'Palo dei riflettori', recinto: true }), PZ('palo_riflettori', R.quay - 1, yN + 14, -Math.PI / 2, { h: 12, n: 3 }, { nome: 'Palo dei riflettori', recinto: true })];
+        R.pali = [PZ('palo_riflettori', xw + 13, yN + 28, Math.PI / 2, { h: 12, n: 3 }, { nome: 'Palo dei riflettori', recinto: true }), PZ('palo_riflettori', R.quay - 1, yN + 14, -Math.PI / 2, { h: 12, n: 3 }, { nome: 'Palo dei riflettori', recinto: true }),
+          PZ('palo_riflettori', XCAN - 3, yN - 3, Math.PI, { h: 12, n: 3 }, { nome: 'Palo dei riflettori della testa di ponte', recinto: true })];   // il terzo illumina la testa di ponte e il ponte
         R.pali.forEach(p => pzRis(p, 'B', -.5, .5, -.5, .5)); }
       // [cucitura] la fontana della Piazza Grande, nella metà a sud della Vittoria (a nord resta libero il sagrato del cinema)
       { const q = GOV.piazza, fx = (q[0] + q[2]) / 2, fy = (VY + 3.5 + q[3]) / 2 + 1; PZ('fontana', fx, fy, 0, { r: 2.2, h: 2.8, lati: 8, cannelle: 4 }, { nome: 'Fontana della Piazza Grande' });
@@ -1390,7 +1401,7 @@ var World = (function () {
       FORT.gates.push({ x: XF, y: gy, ang: 0, kind: 'terra' }, { x: 1239, y: 177, ang: Math.PI / 2, kind: 'mare' });
       // il suolo: la spianata in terra battuta fino al canale; sullo scoglio cortili lastricati e, sulla riva, la roccia bassa
       for (let ty = 0; ty < GH; ty++) for (let tx = Math.floor((CITY.spian0 || WALL.x + 2) / TS); tx <= Math.floor((xT + 4) / TS); tx++) { const i = ty * GW + tx, v = grid[i];
-        if (tx * TS < XF - CW) { if (v !== T.VIA && v !== T.BLD && v !== T.WATER && v !== T.PIER && v !== T.QUAY && v !== T.GRAVEL && v !== T.SAND) grid[i] = T.PIAZZA; }
+        if (tx * TS < XF - CW) { if (roadW[i] === 0 && v !== T.VIA && v !== T.BLD && v !== T.WATER && v !== T.PIER && v !== T.QUAY && v !== T.GRAVEL && v !== T.SAND) grid[i] = T.PIAZZA; }
         else if (tx * TS >= XF && (v === T.GRASS || v === T.SHRUB || v === T.TREE || v === T.DIRT || v === T.FIELD || v === T.VIA)) { grid[i] = T.COB; roadW[i] = 0; } }
       // la banchina del vecchio porto cargo sulla riva dello scoglio torna scoglio (restano le radici dei due moli a sud)
       for (let ty = 1; ty < GH - 1; ty++) for (let tx = T2i(XF); tx <= T2i(xT + 4); tx++) { const i = ty * GW + tx, x = tx * TS + 1, y = ty * TS + 1; if (grid[i] !== T.QUAY || zone[i] !== Z.CITTA) continue;
@@ -1513,7 +1524,7 @@ var World = (function () {
       // corpo di guardia nella testa di ponte accanto al varco, la caserma lungo il muro verso la città, il Ministero sulla riva accanto alla torre
       if (ex.recinto && POSA.recinto) { const R = POSA.recinto, xw = T2i(R.xw) + 2, yn = T2i(R.yN) + 1;
         const P = { governo: [xw, yn, w, h], garante: [T2i(R.gx) + 1, T2i(R.yP) + 1, w, h], pietra: [xw, yn + 7, w, Math.max(5, Math.min(h, T2i(R.yCas) - (yn + 7)))],
-          ministero: [T2i(R.xe - 9) - w, yn + 7, w, h] }[id];
+          ministero: [T2i(R.xe - 9) - w - 1, yn + 7, w, h] }[id];
         if (P) { s = P; for (let ty = P[1]; ty < P[1] + P[3]; ty++) for (let tx = P[0]; tx < P[0] + P[2]; tx++) reserved[ty * GW + tx] = 0; } }
       if (!s) { const q = site(at[0], at[1], w, h, 1); if (q) s = [q[0], q[1], w, h]; }
       if (!s) { const q = site(at[0], at[1], w, h, 0) || site(at[0], at[1], h, w, 0); if (q) s = [q[0], q[1], w, h]; }   // [isola] in città lo spazio è poco
@@ -1923,6 +1934,7 @@ var World = (function () {
       ['barbiere', 'BARBIERE', '#35e6ff', 2], ['tabacchi', 'TABACCHI', '#5aff9a', 2], ['panetteria', 'PANETTERIA', '#ffb35c', 2], ['farmacia', '✚ FARMACIA', '#4dff9a', 1], ['lavanderia', 'LAVANDERIA', '#8affd0', 1],
       ['tipografia', 'TIPOGRAFIA', '#e8e0d0', 1], ['circolo', 'CIRCOLO', '#ff6a3b', 1, 'Circolo dei Lavoratori'], ['scuola', 'SCUOLA', '#ffffff', 1, 'Scuola elementare'], ['sartoria', 'SARTORIA', '#ff7ad9', 1], ['pescheria', 'PESCHERIA', '#35e6ff', 1],
       // [attività] dopo le altre, così le botteghe di prima restano dov'erano
+      ['bar', 'CAFFÈ DELLA VITTORIA', '#35e6ff', 1, 'Caffè della Vittoria'], ['farmacia', '✚ FARMACIA', '#4dff9a', 1, 'Farmacia della Vittoria'],   // [cucitura] la via viva: il caffè e la farmacia sotto i portici
       ['autorimessa', 'AUTORIMESSA', '#ffd23b', 1, 'Autorimessa Centrale'], ['armeria', 'ARMERIA', '#ff4a3b', 1, 'Armeria del Cacciatore'], ['abbigliamento', 'ABBIGLIAMENTO', '#ff7ad9', 1, 'Abiti e Confezioni'], ['pub', 'BIRRERIA', '#ffb030', 1, 'Birreria del Porto'],
     ];
     const taken = new Set();
@@ -1930,10 +1942,11 @@ var World = (function () {
     const INTERO = { teatro: 1, scuola: 1, ufficio: 1, autorimessa: 1 }, PRIMO = { sartoria: .5, palestra: .5, circolo: .6, tipografia: .3, barbiere: .15 };
     const sottoCasa = (b, use, name, sign) => { if (INTERO[use] || fronte(b) < 3 || (b.fl || 1) < 2) return;
       b.abitato = true; b.shopFront = { use, name, sign, era: b.era || (b.__acqua ? 'E2' : 'E0'), piano: (b.fl || 1) >= 3 && hash2(b.x, b.y, 61) < (PRIMO[use] || 0) ? 1 : 0 }; };
-    const pref = use => use === 'teatro' || use === 'autorimessa' ? big : use === 'pescheria' || use === 'pub' ? city.filter(q => q.__acqua).concat(city) : use === 'scuola' || use === 'ufficio' ? city.slice().reverse() : city;
+    const sulV = city.filter(q => q.__via === 'vittoria' && (q.vittoria || q.vittoriaSud));   // [cucitura] i fronti della Vittoria
+    const pref = (use, label) => /Vittoria/.test(label || '') ? sulV.concat(city) : use === 'teatro' || use === 'autorimessa' ? big : use === 'pescheria' || use === 'pub' ? city.filter(q => q.__acqua).concat(city) : use === 'scuola' || use === 'ufficio' ? city.slice().reverse() : city;
     USES.forEach(([use, sign, col, n, label], k) => {
       for (let i = 0; i < n; i++) {
-        const b = pref(use).find(q => !taken.has(q)); if (!b) return; taken.add(b);
+        const b = pref(use, label).find(q => !taken.has(q) && (!/Vittoria/.test(label || '') || (fronte(q) >= 3 && (q.fl || 1) >= 2))); if (!b) return; taken.add(b);
         b.use = use; b.shop = true;
         b.name = label || (use.charAt(0).toUpperCase() + use.slice(1)) + ' ' + NOMI[(k * 3 + i) % NOMI.length];
         b.sign = { t: !label && use !== 'ufficio' && /^[A-Z ]+$/.test(sign) && b.name.length <= 16 ? b.name.toUpperCase() : sign, c: col };   // insegna col nome della bottega quando ci sta: «FERRAMENTA BRUNO»
