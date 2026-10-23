@@ -19,7 +19,7 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
     await pg.goto(`http://localhost:${port}/index.html${q}`); await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: 900000 });
     await pg.keyboard.press('Enter'); await pg.waitForTimeout(1500);
     await pg.addStyleTag({ content: '#app > *:not(#cv) { visibility: hidden !important; }' });
-    await pg.evaluate(() => { const pv = window.__pv, st = pv.st; st.deadline = 1e12; setInterval(() => { const u = pv.ui; u.flash = 0; u.fade = 0; u.desat = false; u.letterbox = false; u.dialog = null; st.over = null; st.player.hp = 100; }, 50); });
+    await pg.evaluate(() => { const pv = window.__pv, st = pv.st; st.deadline = 1e12; if (pv.R.gpuTiming) pv.R.gpuTiming(true); setInterval(() => { const u = pv.ui; u.flash = 0; u.fade = 0; u.desat = false; u.letterbox = false; u.dialog = null; st.over = null; st.player.hp = 100; }, 50); });
     console.log(q, 'caricato in', ((Date.now() - t0) / 1000).toFixed(0), 's');
     for (const s of CFG.scene) {
       const ts = Date.now();
@@ -29,7 +29,7 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
       await pg.waitForTimeout(+(process.env.RIVA_ATTESA || 6000));
       await pg.screenshot({ path: path.join(outDir, s.nome + suf + '.png'), timeout: 600000 });
       const mis = await pg.evaluate(() => new Promise(res => { const ren = window.__pv.R.__models.renderer, t = []; let last = performance.now(), k = 0;
-        const step = () => { const n = performance.now(); t.push(n - last); last = n; if (++k < 6) requestAnimationFrame(step); else { const i = ren.info.render; t.shift(); t.sort((a, b) => a - b); res({ riva: window.__riva9 || null, dc: i.calls, tri: i.triangles, ms: Math.round(t[Math.floor(t.length / 2)]) }); } };
+        const step = () => { const n = performance.now(); t.push(n - last); last = n; if (++k < 6) requestAnimationFrame(step); else { const g = window.__pv.R.gpuTimes, i = g && g.info || ren.info.render; t.shift(); t.sort((a, b) => a - b); res({ riva: window.__riva9 || null, dc: i.calls, tri: i.tris || i.triangles, ms: Math.round(t[Math.floor(t.length / 2)]) }); } };
         requestAnimationFrame(step); }));
       console.log(s.nome + suf, JSON.stringify(mis), ((Date.now() - ts) / 1000).toFixed(0) + ' s');
     }
