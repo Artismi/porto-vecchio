@@ -27,7 +27,7 @@ var Scorci = (function () {
 
   // ================= LE MISURE =================
   const CFG = {
-    ATTESA_CUCITURA: true,     // la Vittoria e la cucitura città–Rocca sono di un altro filone: lì niente scorci finché non arriva
+    ATTESA_CUCITURA: false,    // la cucitura è arrivata (la Vittoria viva, la Piazza Grande): resta fuori solo il Recinto, la spianata e la Rocca
     porta: { meta: 1.0, prof: 2.6 },   // m: il corridoio libero davanti a ogni porta (mezza larghezza dall'asse, profondità)
     vetrina: { prof: 1.5, propria: 1.2 },   // m: davanti a una vetrina d'altri niente; davanti alla propria solo la sua merce, entro 1,2 m
     scala: .4,                 // m in più attorno alla fascia libera delle scale di [chiarezza]
@@ -120,7 +120,7 @@ var Scorci = (function () {
       focale: 'bocca_forno',
       fronte: { stile: 'dipinta', testo: 'FORNO A LEGNA', sotto: 'PANE · FOCACCE · BISCOTTI' },
       cose: [['bocca_forno', 'pilastro', { pref: 'centro', min: 1.7 }], ['fascia', 'fascia_muro', { w: 2.8 }], ['lavagna_muro', 'pilastro', { pref: 'vicino', testo: 'PANE CALDO\nDALLE 6.30' }], ['lampada', 'lampada'],
-        ['catasta', 'piede', { pref: 'lontano' }], ['banchetto', 'piede', { pref: 'vicino', merce: 'pane', gruppo: 'merce' }], ['sacchi', 'piede', { pref: 'angolo' }], ['zoccolo', 'zoccolo']],
+        ['catasta', 'piede', { pref: 'lontano', anche: 'spazio' }], ['banchetto', 'piede', { pref: 'vicino', merce: 'pane', gruppo: 'merce', anche: 'spazio' }], ['sacchi', 'piede', { pref: 'angolo', anche: 'spazio' }], ['zoccolo', 'zoccolo']],
       posti: [['fila', 'banchetto']],
       ore: { forno: [[4, 10], [16.5, 19.5]], merce: [6, 13.5], luci: [18.5, 6.5] } },
     { id: 'sagrato_votiva', nome: 'L\'angolo del sagrato, la Madonna dei lumini', luogo: 'chiesa', aggancio: { tipo: 'parete', set: q => q.k === 'sagrato', faccia: 'E' },
@@ -201,11 +201,14 @@ var Scorci = (function () {
   const RD = id => (W.roads || []).find(r => r.id === id);
   function distRoad(rd, x, y) { if (!rd || !rd.pts) return 1e9; let d = 1e9; for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, ay] = rd.pts[k], [bx, by] = rd.pts[k + 1], L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1); d = Math.min(d, hyp(ax + (bx - ax) * t - x, ay + (by - ay) * t - y)); } return d; }
   function cucitura(x, y) {
+    // sempre fuori: la Passeggiata della Spianata, la spianata, il Recinto del Garante e la Rocca (il palco del potere: niente diorami)
+    const pas = RD('passeggiata'); if (pas && x > Math.min(...pas.pts.map(p => p[0])) - 6) return true;
+    if (W.recinto && x > W.recinto.xw - 8) return true;
+    if (W.WALL && x > W.WALL.x - 30) return true;
     if (!CFG.ATTESA_CUCITURA) return false;
     const vit = RD('vittoria'); if (vit && distRoad(vit, x, y) < vit.w / 2 + 12) return true;   // la Vittoria coi suoi due fronti
     const ad = (W.sets || []).find(s => s.k === 'adunata'); if (ad && x > ad.x0 - 5 && x < ad.x1 + 5 && y > ad.y0 - 5 && y < ad.y1 + 5) return true;   // la Piazza Grande
-    const pas = RD('passeggiata'); if (pas && x > Math.min(...pas.pts.map(p => p[0])) - 6) return true;
-    return x > 1458 && W.FORT ? x > Math.min(W.FORT.x, (W.WALL ? W.WALL.x : 1e9)) - 30 || x > 1458 : false;   // la spianata, il Recinto, la Rocca
+    return false;
   }
 
   // ================= IL FRONTE: la gabbia di un lato di un edificio =================
@@ -381,7 +384,9 @@ var Scorci = (function () {
         const P = []; for (let u = ua + K.w / 2 + .1; u <= ub - K.w / 2 - .1 + 1e-6; u += .25) P.push(u);
         const dist = u => Math.abs(u - centro), ang = u => Math.min(u - ua, ub - u);
         if (o.pref === 'lontano') P.sort((p, q) => dist(q) - dist(p)); else if (o.pref === 'angolo') P.sort((p, q) => ang(p) - ang(q)); else if (o.pref === 'centro') P.sort((p, q) => Math.abs(p - (ua + ub) / 2) - Math.abs(q - (ua + ub) / 2)); else P.sort((p, q) => dist(p) - dist(q));
-        for (const u of P) { const v = K.d / 2 + .1, yaw = fr.rot, [x, z] = fr.wp(u, v); if ((!K.piatto && usoTerra(u, K.w)) || (!K.piatto && apAt(u - K.w / 2, u + K.w / 2, 0, 1))) continue; if (prova(k, x, z, yaw, { propria: !!K.piatto })) continue; posa(k, x, z, yaw, { u, v, gruppo: o.gruppo, opz: o }); return; }
+        for (const u of P) { const v = K.d / 2 + .1, yaw = fr.rot, [x, z] = fr.wp(u, v); if (!K.piatto && presi.some(p => p.muro && !p.filo && p.k !== 'zoccolo' && (p.y || 0) < K.h && Math.abs(p.u - u) < (p.w + K.w) / 2 + .1)) continue;   // non davanti alle cose basse a muro (la bocca del forno, il telefono, i manifesti)
+          if ((!K.piatto && usoTerra(u, K.w)) || (!K.piatto && apAt(u - K.w / 2, u + K.w / 2, 0, 1))) continue; if (prova(k, x, z, yaw, { propria: !!K.piatto })) continue; posa(k, x, z, yaw, { u, v, gruppo: o.gruppo, opz: o }); return; }
+        if (o.anche === 'spazio') { const q = spazio(sc, k, o, ag, prova); if (q) { posa(k, q.x, q.z, q.yaw, { gruppo: o.gruppo, opz: o }); return; } }
         scarta(k, slot, 'nessun pilastro libero a terra'); return; }
       if (slot === 'spazio') { const q = spazio(sc, k, o, ag, prova); if (!q) { scarta(k, slot, 'nessuno spazio libero'); return; } posa(k, q.x, q.z, q.yaw, { gruppo: o.gruppo, opz: o }); return; }
       if (slot === 'traverso') { const t = traverso(sc, fr, ua, ub, o, presi); if (!t) { scarta(k, slot, 'nessun muro di fronte'); return; } metti(k, Object.assign({ muro: true, filo: 'traverso', opz: o }, t)); return; }
