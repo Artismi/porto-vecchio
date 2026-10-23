@@ -55176,11 +55176,15 @@ var Pavimenti = (function () {
   // ---------------- 2. LE MAPPE DEL BLOCCO ----------------
   function famSuolo(tx, ty, px, pz) {
     const G = A.G, T = G.T, v = A.gT(tx, ty), z = A.zoneT(tx, ty);
+    if (z === A.ZN.CITTA && v === T.COB && vicinoSabbia(tx, ty)) return FAM.lastre;   // il terrapieno davanti alle case sulla spiaggia (costa): il lungomare di lastre
     if (z === A.ZN.CITTA && (v === T.COB || v === T.PIAZZA || v === T.DIRT || v === T.VIA || v === T.WALK)) { const k = (px !== undefined && A.suoloW && A.suoloK(tx, ty) ? A.suoloW(px, pz) : null) || A.suoloK(tx, ty); if (k) return FAM[k] || 0; }   // il punto, col confine organico come sulla tela
     if (v === T.QUAY) return FAM.banchina; if (v === T.SAND) return FAM.sabbia; if (v === T.PIAZZA) return FAM.piazza;
     if (v === T.DIRT || v === T.GRAVEL) return FAM.terra; if (v === T.VIA || v === T.COB) return FAM.asfalto;
     return 0;
   }
+  // una casella di città entro tre caselle dalla sabbia (in memoria per casella)
+  const VS = new Map();
+  function vicinoSabbia(tx, ty) { const k = tx * 8192 + ty; if (VS.has(k)) return VS.get(k); const T = A.G.T; let r = false; for (let b = -3; b <= 3 && !r; b++) for (let a = -3; a <= 3; a++) if (A.gT(tx + a, ty + b) === T.SAND) { r = true; break; } VS.set(k, r); return r; }
   const famVia = rd => rd.kind === 'vicolo' ? FAM.basoli : rd.kind === 'sterrato' ? FAM.terra : rd.era === 'E3' ? FAM.porfido : rd.era === 'E4' ? FAM.travertino : FAM.asfalto;
   function mappe(tx0, ty0, n, m) {
     const TS = A.TS, X0 = tx0 * TS, Z0 = ty0 * TS, NI = n * RID, MJ = m * RID, q = TS / RID, G = A.G, T = G.T;
