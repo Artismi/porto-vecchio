@@ -214,7 +214,7 @@ var Visuale = (function () {
     resta: 1.5,           // s: dopo un ricentro per contromarcia, un altro non scatta prima di tanto
     tau: .22,             // s: lo smorzamento del ricentro (95% in 3τ ≈ 0,66 s)
     giro: 1.2,            // s: dopo la contromarcia la visuale che segue la marcia (telefono) può fare anche il mezzo giro
-    bordo: .5,            // [visuale5] era .72: in prospettiva il lato vicino alla camera è più stretto; lo scarto della camera (a mano più lo sguardo avanti) resta entro tanto della mezza inquadratura: il personaggio
+    bordo: .7,            // lo scarto della camera (a mano più lo sguardo avanti) resta entro tanto della mezza inquadratura: il personaggio
                           // non esce mai dallo schermo
     giraK: 1.7,           // rad/s: la levetta destra e i tasti , . girano di tanto a corsa piena
     spostaK: .9,          // la levetta destra in verticale sposta la visuale di tanto (mezze inquadrature al secondo)
@@ -245,11 +245,12 @@ var Visuale = (function () {
       if (Math.abs(S.yaw) < 1e-3 && Math.hypot(S.px, S.pz) < .01) { S.yaw = S.px = S.pz = 0; S.ric = false; S.off = false; } }
     return S;
   }
-  // lo scarto della camera resta nell'inquadratura: (lx, lz) lo sguardo avanti, yaw la visuale, hu e hv le mezze inquadrature in metri
-  // (di lato e in profondità sul suolo). Se lo scarto a mano più lo sguardo esce dal bordo, si tira dentro la sola parte a mano
-  function limita(S, lx, lz, yaw, hu, hv, K) {
-    K = K || MANO; const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = -fz, rz = fx, B = K.bordo, tx = S.px + lx, tz = S.pz + lz;
-    const sr = tx * rx + tz * rz, sf = tx * fx + tz * fz, cr = Math.max(-B * hu, Math.min(B * hu, sr)), cf = Math.max(-B * hv, Math.min(B * hv, sf));
+  // lo scarto della camera resta nell'inquadratura: (lx, lz) lo sguardo avanti, yaw la visuale, hu la mezza inquadratura di lato, hv e hvL
+  // quanto suolo c'è fra il centro e il bordo basso (verso la camera: lì finisce il personaggio quando la camera va avanti) e il bordo alto
+  // (in prospettiva il basso è più corto; hvL di difetto uguale). Se lo scarto a mano più lo sguardo esce, si tira dentro la sola parte a mano
+  function limita(S, lx, lz, yaw, hu, hv, K, hvL) {
+    K = K || MANO; if (hvL === undefined) hvL = hv; const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = -fz, rz = fx, B = K.bordo, tx = S.px + lx, tz = S.pz + lz;
+    const sr = tx * rx + tz * rz, sf = tx * fx + tz * fz, cr = Math.max(-B * hu, Math.min(B * hu, sr)), cf = Math.max(-B * hvL, Math.min(B * hv, sf));
     if (cr !== sr || cf !== sf) { S.px += (cr - sr) * rx + (cf - sf) * fx; S.pz += (cr - sr) * rz + (cf - sf) * fz; }
     return S;
   }

@@ -9,7 +9,7 @@
 //   6. sul tetto niente cambia (niente stretta, niente tetti sbiaditi, niente muretti);
 //   7. [visuale5] la camera a mano e il ricentro, con l'ingresso simulato a 60 e 20 fps: fermo, giri, parti → si ricentra; giri camminando
 //      → resta; ti fermi e riparti → si ricentra; contromarcia sostenuta → si ricentra dopo il ritardo, l'esitazione corta no; il ricentro
-//      non lotta col giocatore, è uguale a ogni frequenza, e lo scarto non porta il personaggio fuori dallo schermo.
+//      non lotta col giocatore, è uguale a ogni frequenza, e lo scarto non porta il personaggio fuori dallo schermo (nel gioco vero: prova_fluido pad).
 // node src/test_visuale4.js   (dalla cartella v7)
 const path = require('path'), src = __dirname;
 global.World = require(path.join(src, 'world_cittanuova.js'));
@@ -147,8 +147,8 @@ const lati = r => W.roads.filter(q => /^vic_/.test(q.id) && q.pts && q.pts.some(
   { const S = {}; gioca(S, 60, 1, () => ({ v: 1.4, dir: su, segue: true })); let g = null; gioca(S, 60, 1.5, () => ({ v: 1.4, dir: su + Math.PI, segue: true }), (t, S) => { if (g === null && S.giro === 0) g = t; });
     ok(g !== null && Math.abs(g - KN.tContro) < .05 && S.n === 0 && !S.off, `in centro, sul telefono: dopo ${g && g.toFixed(2)} s di contromarcia la visuale che segue la marcia può girarsi (nessun ricentro a mano)`); }
   // lo scarto non porta mai il personaggio fuori dallo schermo
-  { let peggio = 0; for (let k = 0; k < 64; k++) { const yaw = k * .37, S = { px: Math.cos(k) * 40, pz: Math.sin(k * 1.3) * 40 }, lx = Math.cos(k * .7) * 3, lz = Math.sin(k * .7) * 3, hu = 14, hv = 11;
-      V.limita(S, lx, lz, yaw, hu, hv, KN); const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = -fz, rz = fx, tx = S.px + lx, tz = S.pz + lz;
-      peggio = Math.max(peggio, Math.abs(tx * rx + tz * rz) / hu, Math.abs(tx * fx + tz * fz) / hv); }
-    ok(peggio <= KN.bordo + 1e-9, `lo scarto a mano più lo sguardo avanti resta entro ${KN.bordo} della mezza inquadratura (il peggiore ${peggio.toFixed(3)}): il personaggio resta nello schermo`); } }
+  { let peggio = 0; for (let k = 0; k < 64; k++) { const yaw = k * .37, S = { px: Math.cos(k) * 40, pz: Math.sin(k * 1.3) * 40 }, lx = Math.cos(k * .7) * 3, lz = Math.sin(k * .7) * 3, hu = 14, hv = 8, hvL = 15;   // in prospettiva il suolo verso la camera (in basso) è più corto
+      V.limita(S, lx, lz, yaw, hu, hv, KN, hvL); const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = -fz, rz = fx, tx = S.px + lx, tz = S.pz + lz;
+      peggio = Math.max(peggio, Math.abs(tx * rx + tz * rz) / hu, (tx * fx + tz * fz) / hv, -(tx * fx + tz * fz) / hvL); }
+    ok(peggio <= KN.bordo + 1e-9, `lo scarto a mano più lo sguardo avanti resta entro ${KN.bordo} della mezza inquadratura, in basso e in alto la sua (il peggiore ${peggio.toFixed(3)}): il personaggio resta nello schermo`); } }
 console.log(fail ? `\n${fail} prove fallite` : '\ntutto a posto'); process.exit(fail ? 1 : 0);

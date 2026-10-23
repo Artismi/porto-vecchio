@@ -15292,7 +15292,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       // alla ripartenza dopo una sosta se l'hai spostata camminando, dopo un secondo di marcia contro la visuale. MN.yaw si somma alla visuale
       // automatica (sotto, cam.yaw), MN.px e MN.pz allo sguardo avanti; lo scarto resta nell'inquadratura (Visuale.limita)
       const MN = cam.mano || (cam.mano = {}), KM = Visuale.MANO, yaw0 = cam.yaw === undefined ? YAW : cam.yaw;
-      const fx0 = -Math.sin(yaw0), fz0 = -Math.cos(yaw0), asp0 = W / Math.max(1, H), vh0 = vw * (H > W * 1.05 ? .78 : 1) * (VIS4.camera && VIS4.C.z ? VIS4.C.z : 1), sp0 = Math.sin(VIS4.camera && VIS4.C.p ? VIS4.C.p : PEND3.v);
+      const fx0 = -Math.sin(yaw0), fz0 = -Math.cos(yaw0), asp0 = W / Math.max(1, H), vh0 = VIEW * (cam.zoom || 1) * (H > W * 1.05 ? .78 : 1) * (VIS4.camera && VIS4.C.z ? VIS4.C.z : 1), pp0 = VIS4.camera && VIS4.C.p ? VIS4.C.p : PEND3.v, sp0 = Math.sin(pp0);   // [visuale5] l'inquadratura vera (lo zoom della camera, non quello chiesto)
       let dyaw = 0, dpx = 0, dpz = 0;
       if (!ui.intro) { if (ui.edge && !pveh) dyaw -= ui.edge * dt * 1.4;   // alla guida il bordo no: il puntatore serve a sterzare
         if (ui.rot) dyaw += ui.rot * dt * KM.giraK; if (ui.drag) dyaw += ui.drag;   // [monte] la visuale gira; [varco1] anche in auto, in Vespa e in bici
@@ -15304,7 +15304,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const yA = MN.yaw || 0;
       Visuale.mano(MN, { dyaw, dpx, dpz, attivo: !!(ui.camMano || dyaw || dpx || dpz), vel: Math.hypot(cam.mvx, cam.mvy), dir: Math.atan2(cam.mvy, cam.mvx), avanti: Math.atan2(fz0, fx0), segue: PHONE && !p.indoor, forza }, dt, KM);
       if (!ui.lead || pveh) cam.lock = 0; else cam.lock = (cam.lock || 0) - (MN.yaw - yA - dyaw);   // [visuale5] la levetta tenuta non gira col ricentro (sotto, camBasis)
-      if (!pveh && !ui.intro && !ui.focus) Visuale.limita(MN, cam.lx, cam.ly, yaw0, vh0 / 2 * asp0, vh0 / 2 / sp0, KM);
+      if (!pveh && !ui.intro && !ui.focus) { const d0 = vh0 / 2 / Math.tan(15 * Math.PI / 180), a0 = 15 * Math.PI / 180;   // in prospettiva: quanto suolo c'è fra il centro e il bordo basso (verso la camera) e alto
+        Visuale.limita(MN, cam.lx, cam.ly, yaw0, vh0 / 2 * asp0, d0 * (Math.cos(pp0) - sp0 / Math.tan(pp0 + a0)), KM, d0 * (sp0 / Math.tan(Math.max(.05, pp0 - a0)) - Math.cos(pp0))); }
       cam.panX = MN.px; cam.panY = MN.pz;
       cam.addX = 0; cam.addY = 0; if (!pveh && !ui.intro && !ui.focus) { cam.addX = cam.lx + cam.panX; cam.addY = cam.ly + cam.panY; }   // [fluido] sommati dopo lo smorzamento (sotto)
     }

@@ -258,7 +258,7 @@ pendenza che si adatta e il tetto che sbiadisce di A, che continuano a lavorare 
 | contro la visuale | marcia a più di 110° dal davanti della visuale (verso la camera) per 1 s: si ricentra; sotto gli 80° il conto si azzera, in mezzo resta (isteresi); dopo un ricentro così niente altro per 1,5 s |
 | il ricentro | smorzamento esponenziale, τ 0,22 s (95% in 0,66 s), uguale a 20, 60 e 144 fps; appena il giocatore tocca la camera si ferma lì |
 | forzato | salendo su un mezzo, nei dialoghi, nell'intro, con l'editor |
-| lo scarto | a mano più lo sguardo avanti, entro il 50% della mezza inquadratura (il 72% portava il personaggio sul bordo, in prospettiva) (di lato e in profondità): il personaggio non esce dallo schermo |
+| lo scarto | a mano più lo sguardo avanti, entro il 70% della mezza inquadratura, misurata in prospettiva (in basso, verso la camera, c'è meno suolo che in alto) (di lato e in profondità): il personaggio non esce dallo schermo |
 | la levetta | segue la visuale di adesso, anche girata a mano: in su è sempre in su sullo schermo. Solo il ricentro automatico fatto mentre la tieni non la gira (la direzione nel mondo resta quella data, niente giri in tondo) finché non la lasci |
 
 Centro vuol dire la visuale automatica di sempre: sul computer l'orientamento fisso dell'isola, sul telefono quella che segue la marcia
