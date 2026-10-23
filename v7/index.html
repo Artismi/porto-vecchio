@@ -55195,7 +55195,7 @@ var Riva = (function () {
   let vS = null;
   function qS(i, j) { if (!vS) vS = new Float32Array(VW * (GH + 1)).fill(NaN); const k = VI(i, j); let v = vS[k]; if (v !== v) { let t = 0; for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) t += qV(i + a, j + b); v = vS[k] = t / 25; } return v; }   // la quota di prima sfocata (4 m): il bersaglio liscio dentro la fascia
   function qV(i, j) { const k = VI(i, j); let v = vQ[k]; if (v !== v) v = vQ[k] = W.quotaRiva(i, j); return v; }
-  function nV(i, j) { const k = VI(i, j); let v = vN[k]; if (v < 0) { let m = 8; for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) if (a >= 0 && b >= 0 && a < GW && b < GH) m = Math.min(m, dF[b * GW + a]); v = vN[k] = sstep(1.5, 5, m); } return v; }   // 0 accanto alla città, 1 a 10 m
+  function nV(i, j) { const k = VI(i, j); let v = vN[k]; if (v < 0) { let m = 8; for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) if (a >= 0 && b >= 0 && a < GW && b < GH) m = Math.min(m, dF[b * GW + a]); v = vN[k] = i < 3 || j < 3 || i > GW - 3 || j > GH - 3 ? 0 : sstep(1.5, 5, m); } return v; }   // e spenta sul bordo della mappa   // 0 accanto alla città, 1 a 10 m
   function famT(tx, ty) { const i = ty * GW + tx; let f = tF[i]; if (f < 0) { const k = W.coastKind2(tx * TS + 1, ty * TS + 1); tK[i] = k; f = tF[i] = FAM[k] || 0; } return f; }
   const kindT = (tx, ty) => (famT(tx, ty), tK[ty * GW + tx]);
   // i tipi ai vertici (2 m), da interpolare: così fra una casella di sabbia e una di scogli la forma passa piano, senza gradino
