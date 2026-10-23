@@ -118,6 +118,14 @@ const ME = SG.mete(), campi = new Map(ME.map(m => [m.id, SG.campo(m.x, m.y)])); 
 P.indicazioni.forEach(q => q.frecce.forEach(f => { const D = campi.get(f.meta), d0 = SG.dAt(D, q.incrocio[0], q.incrocio[1]), d1 = SG.dAt(D, q.incrocio[0] + Math.cos(f.dir) * 12, q.incrocio[1] + Math.sin(f.dir) * 12); if (!(d1 < d0)) freKo.push(f.testo); }));
 ok(!freKo.length, `ogni freccia punta verso la sua meta sul cammino vero (${P.indicazioni.reduce((a, q) => a + q.frecce.length, 0)} frecce${freKo.length ? '; no: ' + freKo.join(' ') : ''})`);
 
+// ---------------- 3b. LA CAMERA LE VEDE ----------------
+// dalla camera di gioco (sud-est, ~41° in giù), senza il taglio delle case attorno al personaggio: i pali (in cima) e le bandiere (al centro)
+const vPali = aTerra.filter(p => SG.visibile(p.x, p.y, p.tipo === 'indicazioni' ? 2.9 : 2.7)).length, vBand = band.filter(q => SG.visibile(q.x + q.nx * .7, q.y + q.ny * .7, 3.1)).length;
+const facceVis = band.filter(q => q.f === 'S' || q.f === 'E').length;
+console.log(`     dalla camera: pali ${vPali}/${aTerra.length}, bandiere ${vBand}/${band.length} (sulle facce S/E ${facceVis}; le altre si vedono col taglio delle case vicino al personaggio)`);
+ok(vPali >= aTerra.length * .6, `la camera vede almeno il 60% dei pali (${Math.round(vPali / aTerra.length * 100)}%)`);
+ok(vBand >= band.length * .35, `la camera vede almeno un terzo delle bandiere senza il taglio (${Math.round(vBand / band.length * 100)}%)`);
+
 // ---------------- 4. IL BILANCIO ----------------
 const RQ = SG.riquadri();
 ok(RQ.n <= 100, `le chiamate di disegno in più: al più ${RQ.n} mesh fuse per tutta la città (riquadri di ${SG.SETT} m × 4 materiali; bilancio 100)`);

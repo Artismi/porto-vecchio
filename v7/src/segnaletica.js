@@ -250,11 +250,17 @@ var Segnaletica = (function () {
     if (STR.some(s => s.k === 'zebra' && hyp(s.x - x, s.y - y) < 1.6)) return false;
     return true;
   }
+  // QUELLO CHE LA CAMERA VEDE: la camera sta a sud-est e guarda in giù di ~0,72 rad (LEGGIBILITA.md: una casa alta H nasconde ~0,8-1,15 H
+  // di suolo dietro di sé). Un punto a quota h si vede se lungo il raggio verso la camera (+x, +y, in salita di tan 0,72 a metro) nessuna
+  // casa (il tetto con la falda) sta più in alto del raggio. Le cose si mettono prima dove si vedono, poi dove si può.
+  const TANP = Math.tan(.72), ELV = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GW || ty >= GH || !M.elev ? 0 : M.elev[ty * GW + tx] || 0; };
+  const altezzaCasa = bi => { const b = G.BUILDINGS[bi]; return (b.fl >= 1 ? 3.6 + (b.fl - 1) * 2.4 : 3) + .9 + (b.base || 0); };
+  function visibile(x, y, h) { const s = Math.SQRT1_2, h0 = ELV(x, y) + h; for (let d = .4; d < 32; d += .4) { const px = x + s * d, py = y + s * d, bi = bIdx(px, py); if (bi >= 0 && G.BUILDINGS[bi] && ELV(px, py) + altezzaCasa(bi) > h0 + d * TANP) return false; } return true; }
   // il palo sul marciapiede accanto al punto (x, y) della carreggiata, dal lato n: si cerca lungo il cordolo (avanti e indietro)
   function paloAlCordolo(rd, x, y, nx, ny, tx, ty, yaw, pref, spazio) {
     const Ln = lin(rd), q = lNear(Ln, x, y), c = lAt(Ln, q.s), half = rd.w / 2 + CFG.palo.dal;
-    for (const d of pref || [0, -1, 1, -2, 2, -3, 3, -4, 4, -6, 6]) { const p = lAt(Ln, q.s + d), sgn = (Math.cos(p.ang) * tx + Math.sin(p.ang) * ty) >= 0 ? 1 : -1, px = p.x + nx * half, py = p.y + ny * half;
-      if (liberoPalo(px, py, null, spazio)) return { x: px, y: py, yaw }; }
+    for (const vede of [true, false]) for (const d of pref || [0, -1, 1, -2, 2, -3, 3, -4, 4, -6, 6]) { const p = lAt(Ln, q.s + d), px = p.x + nx * half, py = p.y + ny * half;
+      if (liberoPalo(px, py, null, spazio) && (!vede || visibile(px, py, 2.7))) return { x: px, y: py, yaw }; }
     return null;
   }
   // un cartello: si appende al palo vicino se c'è posto (due per palo), se no un palo nuovo
@@ -280,9 +286,9 @@ var Segnaletica = (function () {
       const p = paloAlCordolo(rd, q.x, q.y, q.rx, q.ry, -q.ux, -q.uy, yaw, [0, 1, 2, 3, 4, 5, 6]); if (p) cartello(q.k, p, 'incrocio'); });
     // l'attraversamento pedonale: uno per zebra, sul marciapiede dal lato della camera se si può
     (PIANO.zebre || []).forEach(c => { if (!inC(c.x, c.y)) return; const nx = -c.uy, ny = c.ux, sds = (nx + ny) <= 0 ? [1, -1] : [-1, 1];   // dal lato lontano dalla camera (nord-ovest): davanti al muro, non dietro la casa d'angolo
-      for (const sd of sds) {
-        const half = c.rd.w / 2 + CFG.palo.dal; let got = null; for (const d of [1.9, 2.5, 3.1, -1.9, -2.5, -3.1]) { const x = c.x + nx * sd * half + c.ux * d, y = c.y + ny * sd * half + c.uy * d; if (liberoPalo(x, y)) { got = { x, y, yaw: Math.atan2(c.ux * Math.sign(d), c.uy * Math.sign(d)) }; break; } }
-        if (got) { cartello('attraversamento', got, c.motivo); break; } } });
+      let got = null; for (const vede of [true, false]) for (const sd of sds) { if (got) break;
+        const half = c.rd.w / 2 + CFG.palo.dal; for (const d of [1.9, 2.5, 3.1, -1.9, -2.5, -3.1]) { const x = c.x + nx * sd * half + c.ux * d, y = c.y + ny * sd * half + c.uy * d; if (liberoPalo(x, y) && (!vede || visibile(x, y, 2.7))) { got = { x, y, yaw: Math.atan2(c.ux * Math.sign(d), c.uy * Math.sign(d)) }; break; } } }
+      if (got) cartello('attraversamento', got, c.motivo); });
     // l'area pedonale agli ingressi del borgo: dove un vicolo del borgo (E0-E2) sbocca sulla via, sul muro di fianco (al più sei, i più frequentati)
     const bocche = []; junctions().forEach(([jx, jy, jr]) => { if (!zonaC(jx, jy)) return; const A = armsAt(jx, jy, jr, true), vie = A.filter(a => a.rd.kind === 'citta'); if (!vie.length) return;
       A.forEach(a => { if (a.rd.kind !== 'vicolo' || !/^E[0-2]$/.test(a.rd.era || '')) return; bocche.push({ a, jx, jy, d0: Math.max(...vie.map(v => v.w)) / 2 + 1.6, peso: a.w * 10 + (a.rd.id === 'rua' || a.rd.id === 'marina' ? 30 : 0) }); }); });
@@ -352,7 +358,7 @@ var Segnaletica = (function () {
       const ang = J.arms.map(a => Math.atan2(a.uy, a.ux)).sort((a, b) => a - b), bis = []; for (let i = 0; i < ang.length; i++) { const a0 = ang[i], a1 = i + 1 < ang.length ? ang[i + 1] : ang[0] + 2 * PI, m = (a0 + a1) / 2; bis.push({ m, sp: a1 - a0 }); }
       bis.sort((p, q) => (Math.cos(p.m) + Math.sin(p.m)) - (Math.cos(q.m) + Math.sin(q.m)));   // l'angolo lontano dalla camera (nord-ovest): la camera (sud-est) lo vede attraverso l'incrocio; quello vicino lo nasconde la sua casa
       const dita = (x, y) => tieni.every(f => { const a = Math.atan2(f.a.uy, f.a.ux); for (let d = .2; d <= 1.75; d += .2) if (tile(x + Math.cos(a) * d, y + Math.sin(a) * d) === T.BLD) return false; return true; });   // le frecce non entrano nei muri
-      let pos = null; for (const b of bis) { if (b.sp < .9) continue; for (let o = J.r + 1; o < J.r + 7 && !pos; o += .5) { const x = J.x + Math.cos(b.m) * o, y = J.y + Math.sin(b.m) * o; if (liberoPalo(x, y, null, 3) && dita(x, y)) pos = { x, y }; } if (pos) break; }
+      let pos = null; for (const vede of [true, false]) for (const b of bis) { if (b.sp < .9 || pos) continue; for (let o = J.r + 1; o < J.r + 7 && !pos; o += .5) { const x = J.x + Math.cos(b.m) * o, y = J.y + Math.sin(b.m) * o; if (liberoPalo(x, y, null, 3) && dita(x, y) && (!vede || visibile(x, y, 2.9))) pos = { x, y }; } }
       if (!pos) return;
       const P = { tipo: 'indicazioni', x: pos.x, y: pos.y, yaw: 0, plates: tieni.map((f, i) => ({ k: 'freccia|' + f.m.id, meta: f.m.id, testo: f.m.testo, colore: f.m.colore, dir: Math.atan2(f.a.uy, f.a.ux), y: 2.35 + i * .44 })) };
       PALI.push(P); IND.push({ x: P.x, y: P.y, incrocio: [J.x, J.y], frecce: P.plates.map(p => ({ meta: p.meta, testo: p.testo, dir: +p.dir.toFixed(3), colore: p.colore })) });
@@ -415,8 +421,9 @@ var Segnaletica = (function () {
     for (const sd of [lontano, -lontano]) for (const o of [.35, .7, 1.1]) cands.push(sd > 0 ? u1 + o : u0 - o);
     cands.push(F.L - .35, .35);
     const larga = (u) => { const x = F.ox + F.tx * u, y = F.oy + F.ty * u; let w = CFG.bandiera.a; for (const d of [1.2, 1.6, 2.2]) if (PIENO(tile(x + F.nx * d, y + F.ny * d)) && tile(x + F.nx * d, y + F.ny * d) === T.BLD) { w = Math.min(w, d * .5); break; } return w; };
-    for (const u of cands) { if (u < .3 || u > F.L - .3) continue; if (porte.some(pu => Math.abs(pu - u) < .55)) continue;   // mai sull'asse di una porta (sopra c'è l'architrave)
+    for (const vede of [true, false]) for (const u of cands) { if (u < .3 || u > F.L - .3) continue; if (porte.some(pu => Math.abs(pu - u) < .55)) continue;   // mai sull'asse di una porta (sopra c'è l'architrave)
       const x = F.ox + F.tx * u, y = F.oy + F.ty * u, pt = porticoDi(F, u);
+      if (vede && !pt && !visibile(x + F.nx * .7, y + F.ny * .7, 3.1)) continue;   // prima dove la camera la vede
       if (pt) return { montaggio: 'lunetta', f, u, x: pt.xa, y: pt.ya, nx: 0, ny: 1, w: Math.min(1.9, pt.luce - .9), h: .5, y0: pt.h - .55 - .5, bi: G.BUILDINGS.indexOf(b) };
       const w = larga(u); if (w < .55) continue; if (PIENO(tile(x + F.nx * .3, y + F.ny * .3))) continue;
       if (INS.some(q => q.montaggio === 'bandiera' && hyp(q.x - x, q.y - y) < 2.4)) continue;
@@ -463,7 +470,7 @@ var Segnaletica = (function () {
         let x = l.x, y = l.y; if (l.id === 'rocca' || l.id === 'posto_blocco') { const F = W.FORT, gt = F && F.gates ? F.gates.find(g => g.kind === 'terra') : null; if (gt) { x = Math.min(F.ditch[0], F.ditch[2]) - (l.id === 'rocca' ? 5 : 16); y = gt.y; } }
         if (l.id === 'mercato') { const p = (W.pezzi || []).find(q => q.tipo === 'tettoia_mercato'); if (p) { x = p.x + (p.opz.diametro || 28) / 2 + 2; y = p.y + 3; } }
         if (l.id === 'chiesa') { const S = (W.sets || []).find(q => q.k === 'sagrato'); if (S) { x = S.x1 - 1.5; y = S.y1 + .2; } }
-        let got = null; for (let r = 0; r < 14 && !got; r += .5) for (let a = 0; a < 16 && !got; a++) { const px = x + Math.cos(a * PI / 8 + PI / 4) * r, py = y + Math.sin(a * PI / 8 + PI / 4) * r; if (liberoPalo(px, py) || (l.id !== 'mercato' && l.id !== 'chiesa' && !zonaC(px, py) && !PIENO(tile(px, py)) && !suCarreggiata(px, py, .3) && !PALI.some(p => hyp(p.x - px, p.y - py) < 1.1))) got = { x: px, y: py }; }
+        let got = null; for (let r = 0; r < 14 && !got; r += .5) for (let a = 0; a < 16 && !got; a++) { const px = x + Math.cos(a * PI / 8 + PI / 4) * r, py = y + Math.sin(a * PI / 8 + PI / 4) * r; if ((liberoPalo(px, py) && (r > 8 || visibile(px, py, 2.4))) || (l.id !== 'mercato' && l.id !== 'chiesa' && !zonaC(px, py) && !PIENO(tile(px, py)) && !suCarreggiata(px, py, .3) && !PALI.some(p => hyp(p.x - px, p.y - py) < 1.1))) got = { x: px, y: py }; }
         if (!got) return; const yaw = Math.atan2(1, 1);   // la faccia verso la camera (sud-est)
         const P = { tipo: 'pannello', x: got.x, y: got.y, yaw, plates: [{ k: 'ins|' + l.id, ins: base.id }], forma: T0.forma }; PALI.push(P);
         return voce(Object.assign(base, { montaggio: T0.forma === 'tavola' ? 'tavola' : 'pannello', x: got.x, y: got.y, facing: yaw, w: T0.forma === 'tavola' ? 1.3 : 1.5, h: T0.forma === 'tavola' ? .6 : .9, y0: T0.forma === 'tavola' ? 1.2 : 1.9 })); }
@@ -756,7 +763,7 @@ var Segnaletica = (function () {
     try { prenota(); } catch (e) { console.error('[segnaletica] prenota', e); }   // subito, solo le insegne: le bandiere al neon di render.js sanno già quali botteghe hanno la loro
   }
 
-  const API = { ATTIVO, attivo: ATTIVO, CFG, TIPI, SEGNI, SETT, CORNICE, piano, conta, riquadri, junctions, junc1, crossings35, armsAt, nearJ, facciata, tipoDi, mete, campo, dAt, suCarreggiata, liberoPalo, lin, lNear, lAt, attach, tick, mostra, get mesh() { return MESH; }, get costruito() { return CNT; } };
+  const API = { visibile, ATTIVO, attivo: ATTIVO, CFG, TIPI, SEGNI, SETT, CORNICE, piano, conta, riquadri, junctions, junc1, crossings35, armsAt, nearJ, facciata, tipoDi, mete, campo, dAt, suCarreggiata, liberoPalo, lin, lNear, lAt, attach, tick, mostra, get mesh() { return MESH; }, get costruito() { return CNT; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   return API;
 })();

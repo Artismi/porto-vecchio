@@ -11,7 +11,8 @@ if (!outDir) { console.log('uso: node strumenti/segnaletica_foto.js <cartella> [
 const SCENE0 = [
   { nome: 'vittoria', titolo: 'La Via della Vittoria: mezzeria, margini, zebre, il divieto di sosta, le lunette sotto i portici', x: 1404, y: 343, zoom: .95, ora: 720 },
   { nome: 'borgo', titolo: 'Il borgo: le bandiere dei mestieri sulla Rua, l\'area pedonale', x: 1430, y: 318, zoom: .72, ora: 660 },
-  { nome: 'corso', titolo: 'Il Corso al Mercato: le frecce verso Stazione, Scalo, Porto; zebre, BUS, STOP', x: 1300, y: 350, zoom: .8, ora: 600 },
+  { nome: 'corso', titolo: 'Vittoria e Corso: zebre, mezzeria e margini, il riquadro BUS, le frecce verso Stazione, Scalo, Porto', x: 1312, y: 345, zoom: .55, ora: 640 },
+  { nome: 'corso_solo', titolo: 'La stessa scena, solo la segnaletica (per vedere cosa c\'è, anche dietro le case)', x: 1312, y: 345, zoom: .55, ora: 640, solo: true, attesa: 500 },
   { nome: 'marina', titolo: 'La marina: pescheria, osterie, la freccia per il Lido e la Rocca', x: 1405, y: 386, zoom: .8, ora: 540 },
   { nome: 'notte', titolo: 'Di notte: si accendono farmacia, bar, tabacchi, trattorie', x: 1430, y: 318, zoom: .72, ora: 1290 },
   { nome: 'citta', titolo: 'La città intera (per contare le chiamate di disegno)', x: 1420, y: 340, zoom: 4, ora: 840 },
@@ -51,7 +52,9 @@ const srv = http.createServer((req, res) => {
     await pg.waitForTimeout(2500);
     for (let k = 0, quiet = 0, tb = Date.now(); Date.now() - tb < 60000 && quiet < 2; k++) { await pg.waitForTimeout(1000); quiet = (await pg.evaluate(() => !(window.__pv.R.ISO && window.__pv.R.ISO.job) && !!window.__segnaletica)) ? quiet + 1 : 0; }
     await pg.waitForTimeout(s.attesa || 3000);
+    if (s.solo) await pg.evaluate(() => { window.__nasc = []; window.__pv.R.__models.scene.traverse(o => { if ((o.isMesh || o.isLine || o.isPoints || o.isSprite) && !o.userData.segnaletica && o.visible) { o.visible = false; window.__nasc.push(o); } }); });   // "solo": solo il filone (per controllarlo)
     const dopo = await scatta(path.join(outDir, s.nome + '_dopo.png'));
+    if (s.solo) await pg.evaluate(() => { (window.__nasc || []).forEach(o => { o.visible = true; }); });
     await pg.evaluate(() => window.Segnaletica && Segnaletica.mostra(false));
     const prima = await scatta(path.join(outDir, s.nome + '_prima.png'));
     await pg.evaluate(() => window.Segnaletica && Segnaletica.mostra(true));
