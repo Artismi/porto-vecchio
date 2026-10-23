@@ -1,0 +1,75 @@
+{
+ "pulita": true,
+ "scorci": [
+  {
+   "nome": "s1_incrocio_porto",
+   "titolo": "L'incrocio sulla Via del Porto",
+   "x": 1290,
+   "y": 384,
+   "zoom": 0.5,
+   "ora": 840,
+   "meteo": "sereno",
+   "luce": "metropoli"
+  },
+  {
+   "nome": "s2_via_vittoria",
+   "titolo": "La Via della Vittoria",
+   "x": 1350,
+   "y": 340,
+   "zoom": 0.5,
+   "ora": 720,
+   "meteo": "sereno",
+   "luce": "metropoli"
+  },
+  {
+   "nome": "s3_corso",
+   "titolo": "Il Corso (porfido e asfalto)",
+   "x": 1306,
+   "y": 312,
+   "zoom": 0.6,
+   "ora": 1000,
+   "meteo": "sereno",
+   "luce": "metropoli"
+  },
+  {
+   "nome": "s4_stazione",
+   "titolo": "La Via della Stazione",
+   "x": 1268,
+   "y": 302,
+   "zoom": 0.6,
+   "ora": 800,
+   "meteo": "sereno",
+   "luce": "metropoli"
+  },
+  {
+   "nome": "s5_marina",
+   "titolo": "La Via della Marina",
+   "x": 1380,
+   "y": 398,
+   "zoom": 0.6,
+   "ora": 900,
+   "meteo": "sereno",
+   "luce": "borgo"
+  },
+  {
+   "nome": "s6_pioggia",
+   "titolo": "La Via del Porto con la pioggia",
+   "x": 1290,
+   "y": 384,
+   "zoom": 0.6,
+   "ora": 990,
+   "meteo": "pioggia",
+   "luce": "metropoli"
+  },
+  {
+   "nome": "s7_notte",
+   "titolo": "La notte sulla Vittoria",
+   "x": 1395,
+   "y": 343,
+   "zoom": 0.7,
+   "ora": 1380,
+   "meteo": "sereno",
+   "luce": "metropoli"
+  }
+ ]
+}
