@@ -208,6 +208,17 @@ const Comandi = (() => {
   }
   setInterval(() => { try { upd(false); } catch (e) { if (!upd.err) { upd.err = 1; console.warn('[comandi]', e); } } }, 200);
   const via = () => { equip(null); say('Mani libere.'); upd(true); };   // la ✕ della mano
+  // [console] quello che hai in mano e cosa ci fa usaMano, per la scritta del tasto B: {nome, verbo} o null (mani libere)
+  function mano() {
+    const st = ST(), p = st.player, pv = PV(), h = p.hand;
+    if (!h) { const Wp = p.cur !== 'pugni' && pv.G.WEAPONS[p.cur]; return Wp ? { nome: Wp.name, verbo: Wp.throw ? 'Lancia' : 'Spara' } : null; }
+    const nome = typeof Oggetti !== 'undefined' && Oggetti.nm ? Oggetti.nm(h) : h;
+    if (h === 'bomboletta' || h === 'pennarello') return { nome, verbo: null };
+    const C = typeof Oggetti !== 'undefined' && Oggetti.CAT[h], E = C && C.eat;
+    if (E) return { nome, verbo: E.alcol || ((E.sete || 0) <= -.15 && (E.fame || 0) < .1) ? 'Bevi' : 'Mangia' };
+    const a = (typeof Azioni !== 'undefined' ? (Azioni.playerActions(st) || []) : []).find(x => HANDACT.includes(x.id));
+    return { nome, verbo: a && a.run ? a.label.split(' ')[0] : 'Usa' };
+  }
   // [console] graffiti, ruote e via: per i tasti del Game Boy (main.js, sezione [console])
-  return { bomboletta, tavoletta, bmx, skate, mappa, zaino, usaMano, graffiti: () => { graffiti(); upd(true); }, ruote: () => { ruote(); upd(true); }, via, update: upd };
+  return { bomboletta, tavoletta, bmx, skate, mappa, zaino, usaMano, mano, graffiti: () => { graffiti(); upd(true); }, ruote: () => { ruote(); upd(true); }, via, update: upd };
 })();
