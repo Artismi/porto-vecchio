@@ -55277,6 +55277,25 @@ var Pavimenti = (function () {
   // una casella di città entro tre caselle dalla sabbia (in memoria per casella)
   const VS = new Map();
   function vicinoSabbia(tx, ty) { const k = tx * 8192 + ty; if (VS.has(k)) return VS.get(k); const T = A.G.T; let r = false; for (let b = -3; b <= 3 && !r; b++) for (let a = -3; a <= 3; a++) if (A.gT(tx + a, ty + b) === T.SAND) { r = true; break; } VS.set(k, r); return r; }
+  // [pavimenti] le vie che si interrompono: due capi di via di città vicini (entro 30 m), quasi allineati, con fra loro solo suolo
+  // fatto (selciato, banchina, strada: niente case né acqua), si cuciono con un tratto finto, solo per il disegno del suolo
+  let VIE = null; const CUCITE = [];
+  function vieTutte() {
+    if (VIE) return VIE; const R = (A.M.roads || []).filter(rd => rd.pts && rd.pts.length > 1), T = A.G.T, TS = A.TS, out = R.slice();
+    const capi = []; R.forEach(rd => { if (rd.kind === 'vicolo' || rd.kind === 'sterrato') return; const P = rd.pts, n = P.length;
+      [[0, 1], [n - 1, n - 2]].forEach(([a, b]) => { const dx = P[a][0] - P[b][0], dz = P[a][1] - P[b][1], L = Math.hypot(dx, dz) || 1; capi.push({ rd, x: P[a][0], z: P[a][1], ux: dx / L, uz: dz / L, fine: a > 0 }); }); });
+    const toccata = c => R.some(o => o !== c.rd && o.pts.some(q => Math.hypot(q[0] - c.x, q[1] - c.z) < o.w / 2 + 1));   // il capo entra già in un'altra via
+    const usati = new Set();
+    capi.forEach(a => { if (usati.has(a) || toccata(a)) return; let best = null, bd = 30;
+      capi.forEach(b => { if (b === a || b.rd === a.rd || usati.has(b)) return;   /* l'altro capo può stare in un incrocio */ const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz); if (d < 2 || d >= bd) return;
+        if ((dx * a.ux + dz * a.uz) / d < .85 || (-dx * b.ux - dz * b.uz) / d < .85) return;   // l'uno davanti all'altro
+        for (let t = .5; t < d; t += .5) { const v = A.gT(Math.floor((a.x + dx * t / d) / TS), Math.floor((a.z + dz * t / d) / TS)); if (v === T.BLD || v === T.WATER) return; }
+        best = b; bd = d; });
+      if (!best) return; usati.add(a); usati.add(best);
+      const g0 = A.geo1(a.rd), s0 = a.fine ? g0.s[g0.n - 1] : -bd, w = Math.min(a.rd.w, best.rd.w), pts = a.fine ? [[a.x, a.z], [best.x, best.z]] : [[best.x, best.z], [a.x, a.z]];
+      const cu = { id: 'cucita_' + a.rd.id + '_' + best.rd.id, kind: a.rd.kind, era: a.rd.era, w, pts, __g: { s: [s0, s0 + bd], n: 2 } }; out.push(cu); CUCITE.push([cu.id, Math.round(bd), pts.map(q => q.map(Math.round))]); });
+    return (VIE = out);
+  }
   const famVia = rd => rd.kind === 'vicolo' ? FAM.basoli : rd.kind === 'sterrato' ? FAM.terra : rd.era === 'E3' ? FAM.porfido : rd.era === 'E4' ? FAM.travertino : FAM.asfalto;
   function mappe(tx0, ty0, n, m) {
     const TS = A.TS, X0 = tx0 * TS, Z0 = ty0 * TS, NI = n * RID, MJ = m * RID, q = TS / RID, G = A.G, T = G.T;
@@ -55287,7 +55306,7 @@ var Pavimenti = (function () {
     const sab = (px, pz) => { const tx = Math.floor(px / TS), ty = Math.floor(pz / TS); if (A.zoneT(tx, ty) !== A.ZN.CITTA) return 0; let d = 9;   // fuori città le lingue di sabbia sulle costiere le fa la costa (riva.js)
       for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { if (A.gT(tx + a, ty + b) !== T.SAND) continue; const x0 = (tx + a) * TS, z0 = (ty + b) * TS; d = Math.min(d, Math.hypot(Math.max(x0 - px, 0, px - x0 - TS), Math.max(z0 - pz, 0, pz - z0 - TS))); } return d >= 4 ? 0 : Math.round(15 * (1 - d / 4)); };
     const PR = { 4: 5, 2: 4, 3: 3, 1: 2, 6: 1 }, put = (A4, kk, s0, v, th, f, hw) => { A4[kk * 4] = s0; A4[kk * 4 + 1] = v; A4[kk * 4 + 2] = th; A4[kk * 4 + 3] = f + 256 * Math.min(127, Math.round(hw * 8)); };
-    (A.M.roads || []).forEach((rd, ri) => { const P = rd.pts; if (!P || P.length < 2) return; const hw = rd.w / 2, ext = hw + 2.8, g = A.geo1(rd), f = famVia(rd), pr = PR[f] || 1;
+    vieTutte().forEach((rd, ri) => { const P = rd.pts; if (!P || P.length < 2) return; const hw = rd.w / 2, ext = hw + 2.8, g = rd.__g || A.geo1(rd), f = famVia(rd), pr = PR[f] || 1;
       for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az); if (L < 1e-4) continue;
         if (Math.max(ax, bx) < X0 - ext || Math.min(ax, bx) > X0 + n * TS + ext || Math.max(az, bz) < Z0 - ext || Math.min(az, bz) > Z0 + m * TS + ext) continue;
         const ux = (bx - ax) / L, uz = (bz - az) / L, th = Math.atan2(uz, ux);
@@ -55634,7 +55653,7 @@ var Pavimenti = (function () {
   function sonda(x, z) { const C = A.TS * 32, key = Math.floor(x / C) + ',' + Math.floor(z / C), b = BLK.get(key); if (!b) return { key, blocco: false, blocchi: BLK.size, STAT };
     const i = Math.floor((x - b.box.x) / b.box.z * b.res.x), j = Math.floor((z - b.box.y) / b.box.w * b.res.y), d = b.id.image.data, o = (j * b.res.x + i) * 4, pk = d[o + 3];
     return { key, s: d[o], v: d[o + 1], th: d[o + 2], rf: pk % 16, gf: Math.floor(pk / 16) % 16, hw: Math.floor(pk / 256) / 8, blocchi: BLK.size, STAT }; }
-  const API = { qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
+  const API = { cucite: () => (vieTutte(), CUCITE), qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
   if (typeof window !== 'undefined') window.__PAV = API;
   return API;
 })();
