@@ -2867,6 +2867,10 @@ var World = (function () {
       const e = W.eco[i], h = (s) => hash2(tx, ty, 900 + s);
       if (e === E.CANNETO && (v === T.GRASS || v === T.SHRUB || v === T.SAND || v === T.GRAVEL)) { const n = 2 + Math.floor(h(1) * 3); for (let k = 0; k < n; k++) { const x = x0 + .3 + h(10 + k) * 1.4, y = y0 + .3 + h(20 + k) * 1.4; if (libero(x, y, .3)) A.piante.push({ k: 'canna', x, y, s: .8 + h(30 + k) * .6, r: h(40 + k) * 6.28 }); } continue; }
       if (e === E.COSTA && v !== T.TREE && v !== T.ROCK) { const x = x0 + .5 + h(2), y = y0 + .5 + h(3); if (h(4) < .16 && libero(x, y, .9)) A.piante.push({ k: 'fico', x, y, s: .8 + h(5) * .7, r: h(6) * 6.28 }); else if (h(4) < .27 && libero(x, y, .6)) A.piante.push({ k: 'agave', x, y, s: .7 + h(5) * .6, r: h(6) * 6.28 }); continue; }
+      if (e === E.DUNA && v === T.SAND && h(7) >= .05) {   // il manto della duna: ciuffi di sparto, cuscini di lentisco e ginepro (oltre la spiaggia nuda)
+        const x = x0 + .3 + h(90) * 1.4, y = y0 + .3 + h(91) * 1.4, inl = W.inland(x, y); if (inl < 11 || !libero(x, y, .4)) continue;
+        const p = h(92), k = p < .45 ? 'sparto' : p < .52 ? 'lentisco' : p < .58 ? 'ginepro' : null; if (k) A.piante.push({ k, x, y, s: .75 + h(93) * .6, r: h(94) * 6.28 });
+        if (p < .3 && libero(x + .7, y - .5, .3)) A.piante.push({ k: 'sparto', x: x + .7, y: y - .5, s: .6 + h(95) * .5, r: h(96) * 6.28 }); continue; }
       if (e === E.DUNA && v === T.SAND && h(7) < .05) { const x = x0 + 1, y = y0 + 1, inl = W.inland(x, y); if (inl > 12 && libero(x, y, .5)) for (let k = 0; k < 3; k++) A.piante.push({ k: 'giglio', x: x + (h(50 + k) - .5) * 1.2, y: y + (h(60 + k) - .5) * 1.2, s: .8 + h(70 + k) * .5, r: h(80 + k) * 6.28 }); continue; }
       if (v === T.ROCK) {
         let mare = false; for (let b = -2; b <= 2 && !mare; b++) for (let a = -2; a <= 2; a++) if (isSea(i + b * GWx + a)) { mare = true; break; }

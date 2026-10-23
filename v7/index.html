@@ -23537,6 +23537,10 @@ var World = (function () {
       const e = W.eco[i], h = (s) => hash2(tx, ty, 900 + s);
       if (e === E.CANNETO && (v === T.GRASS || v === T.SHRUB || v === T.SAND || v === T.GRAVEL)) { const n = 2 + Math.floor(h(1) * 3); for (let k = 0; k < n; k++) { const x = x0 + .3 + h(10 + k) * 1.4, y = y0 + .3 + h(20 + k) * 1.4; if (libero(x, y, .3)) A.piante.push({ k: 'canna', x, y, s: .8 + h(30 + k) * .6, r: h(40 + k) * 6.28 }); } continue; }
       if (e === E.COSTA && v !== T.TREE && v !== T.ROCK) { const x = x0 + .5 + h(2), y = y0 + .5 + h(3); if (h(4) < .16 && libero(x, y, .9)) A.piante.push({ k: 'fico', x, y, s: .8 + h(5) * .7, r: h(6) * 6.28 }); else if (h(4) < .27 && libero(x, y, .6)) A.piante.push({ k: 'agave', x, y, s: .7 + h(5) * .6, r: h(6) * 6.28 }); continue; }
+      if (e === E.DUNA && v === T.SAND && h(7) >= .05) {   // il manto della duna: ciuffi di sparto, cuscini di lentisco e ginepro (oltre la spiaggia nuda)
+        const x = x0 + .3 + h(90) * 1.4, y = y0 + .3 + h(91) * 1.4, inl = W.inland(x, y); if (inl < 11 || !libero(x, y, .4)) continue;
+        const p = h(92), k = p < .45 ? 'sparto' : p < .52 ? 'lentisco' : p < .58 ? 'ginepro' : null; if (k) A.piante.push({ k, x, y, s: .75 + h(93) * .6, r: h(94) * 6.28 });
+        if (p < .3 && libero(x + .7, y - .5, .3)) A.piante.push({ k: 'sparto', x: x + .7, y: y - .5, s: .6 + h(95) * .5, r: h(96) * 6.28 }); continue; }
       if (e === E.DUNA && v === T.SAND && h(7) < .05) { const x = x0 + 1, y = y0 + 1, inl = W.inland(x, y); if (inl > 12 && libero(x, y, .5)) for (let k = 0; k < 3; k++) A.piante.push({ k: 'giglio', x: x + (h(50 + k) - .5) * 1.2, y: y + (h(60 + k) - .5) * 1.2, s: .8 + h(70 + k) * .5, r: h(80 + k) * 6.28 }); continue; }
       if (v === T.ROCK) {
         let mare = false; for (let b = -2; b <= 2 && !mare; b++) for (let a = -2; a <= 2; a++) if (isSea(i + b * GWx + a)) { mare = true; break; }
@@ -56041,6 +56045,11 @@ var Render = (function () {
     { const P = [[new THREE.CylinderGeometry(.012, .015, .32, 4), c2M([0, .16, 0]), '#7a9a70']]; for (let k = 0; k < 6; k++) { const a = k / 6 * 6.28; P.push([new THREE.BoxGeometry(.13, .008, .03), c2M([Math.cos(a) * .06, .33, Math.sin(a) * .06], [0, -a, .3]), '#f6f4ec']); }
       for (let k = 0; k < 4; k++) { const a = k * 1.7; P.push([new THREE.BoxGeometry(.32, .01, .04), c2M([Math.cos(a) * .12, .03, Math.sin(a) * .12], [0, -a, .15]), '#8aa894']); }
       F.giglio = [c2Geo(P), false]; }
+    // la duna: lo sparto (ciuffo di foglie dure e chiare), il lentisco (cuscino scuro e lucido), il ginepro (cuscino basso azzurrognolo)
+    { const P = []; for (let k = 0; k < 13; k++) { const a = r() * 6.28, t = .25 + r() * .5, L = .45 + r() * .4; P.push([new THREE.ConeGeometry(.025, L, 3), c2M([Math.cos(a) * Math.sin(t) * L * .5, Math.cos(t) * L * .5, Math.sin(a) * Math.sin(t) * L * .5], [0, -a, t]), r() < .5 ? '#c8bc84' : '#a8ac70']); }
+      F.sparto = [c2Geo(P), false]; }
+    { const P = []; for (let k = 0; k < 5; k++) P.push([new THREE.IcosahedronGeometry(.42, 0), c2M([(r() - .5) * .7, .28 + r() * .15, (r() - .5) * .7], [0, r() * 3, 0], [1, .7, 1]), k % 2 ? '#4c6a38' : '#5a7a40']); F.lentisco = [c2Geo(P), true]; }
+    { const P = []; for (let k = 0; k < 4; k++) P.push([new THREE.IcosahedronGeometry(.5, 0), c2M([(r() - .5) * .9, .16, (r() - .5) * .9], [0, r() * 3, 0], [1.1, .4, 1]), k % 2 ? '#5e7a62' : '#6c8a6a']); F.ginepro = [c2Geo(P), true]; }
     // la lastra di calcare: una tavola bassa, spigoli rotti, chiara sopra
     { const g = new THREE.DodecahedronGeometry(.8, 0); F.lastra = [c2Geo([[g, c2M([0, .02, 0], [0, 0, 0], [1.15, .15, .75]), '#a49c8a']]), false]; }
     F.masso = [c2Geo([[new THREE.DodecahedronGeometry(.6, 0), c2M([0, .22, 0], [0, 0, 0], [1, .65, .85]), '#8e877b']]), true];
