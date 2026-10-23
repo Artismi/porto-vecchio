@@ -99,7 +99,7 @@ var Render = (function () {
     return VH(i, j) * (1 - u) * (1 - v) + VH(i + 1, j) * u * (1 - v) + VH(i, j + 1) * (1 - u) * v + VH(i + 1, j + 1) * u * v + swH(x, z);   // [isola35] sopra il marciapiede
   }
   // [riva] la riva fine (src/riva.js): accesa se c'è il modulo e il mondo della città nuova; ?vecchiacosta la spegne
-  let RIVA9W = null; function RIVA9() { if (RIVA9W === M.world) return RIVA9W !== null && Riva.on; if (typeof Riva === 'undefined' || !M.world || !Riva.init(M.world)) return false; RIVA9W = M.world; return Riva.on; }
+  let RIVA9W = null; function RIVA9() { if (RIVA9W === M.world) return RIVA9W !== null && Riva.on; if (typeof Riva === 'undefined' || !M.world) return false; if (Riva.leggera) Riva.leggera(PHONE); if (!Riva.init(M.world)) return false;   /* [leggero] sui telefoni la riva a 1 m */ RIVA9W = M.world; return Riva.on; }
   function cornerH(tx, ty, cx, cz) { return VH(tx + cx, ty + cz); }
   const isWall = (tx, ty) => false;
   const zoneOf = tx => 'C';

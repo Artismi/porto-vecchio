@@ -24,10 +24,12 @@ var Riva = (function () {
   // le famiglie della riva: S sabbia, R scogli, F falesia; il porto e il frangiflutti restano come sono (opere dell'uomo)
   const FAM = { spiaggia: 1, duna: 1, foce: 1, cala: 1, reef: 1, scogli: 2, falesia: 3 };
   const BANDA = { 1: [-14, 16], 2: [-6, 12], 3: [-5, 9] };   // da quanto in mare a quanto in terra (m dalla riva) si ridisegna
-  const SUB = 4, ST = 2 / SUB;   // 4 campioni per casella: mezzo metro
+  let SUB = 4, LEGGERA = false;   // 4 campioni per casella: mezzo metro (sui telefoni 2: un metro)
   const R = { on: !SPENTA, W: null, TS: 2, stat: { blocchi: 0, tri: 0, scogli: 0, ciottoli: 0 } };
   let W, GW, GH, VW, TS, T, WL, vD, vQ, vN, tF, tK, dF, dN, vM, cel = new Map();
 
+  // [leggero] sui telefoni il suolo fine a 1 m, gli scogli meno fitti, i ciottoli e i detriti radi (da chiamare prima di init)
+  function leggera(on) { if (R.W) return; LEGGERA = !!on; SUB = on ? 2 : 4; R.SUB = SUB; }
   function init(w) {
     if (R.W === w) return true; if (!w || !w.inland || !w.quotaRiva || !w.coastKind2) { R.on = false; return false; }
     W = R.W = w; GW = w.GW; GH = w.GH; VW = GW + 1; TS = R.TS = w.TS; T = w.T; WL = w.WL !== undefined ? w.WL : -.45; R.WL = WL;
@@ -174,12 +176,12 @@ var Riva = (function () {
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { if (!mask[j * n + i]) continue; const tx = tx0 + i, ty = ty0 + j, f = famT(tx, ty), k = tK[ty * GW + tx];
       const dc = dV(tx, ty) * .25 + dV(tx + 1, ty + 1) * .25 + dV(tx + 1, ty) * .25 + dV(tx, ty + 1) * .25, wn = nV(tx, ty) * nV(tx + 1, ty + 1);
       const quanti = wn < .5 || !famT(tx, ty) ? 0 : k === 'cala' ? (dc > -.5 && dc < 5 ? 14 : 0) : f === 2 ? (dc > -1 && dc < 3 ? 6 : 0) : f === 3 ? (dc > -1 && dc < 2 ? 8 : 0) : f === 1 && k !== 'duna' ? (dc > 3.5 && dc < 7 ? 3 : 0) : 0;
-      for (let c = 0; c < quanti; c++) { const x = (tx + h2(tx, ty, 420 + c)) * TS, y = (ty + h2(tx, ty, 440 + c)) * TS; if (fbm(x / 5, y / 5, 421, 2) < .42) continue;
+      for (let c = 0; c < (LEGGERA ? Math.ceil(quanti / 3) : quanti); c++) { const x = (tx + h2(tx, ty, 420 + c)) * TS, y = (ty + h2(tx, ty, 440 + c)) * TS; if (fbm(x / 5, y / 5, 421, 2) < .42) continue;
         B.ciottoli.push({ x, y, s: .06 + h2(tx, ty, 460 + c) ** 2 * .22, ry: h2(tx, ty, 480 + c) * 6.283, t: h2(tx, ty, 500 + c) }); } }
     // i detriti del mare d'inverno: la posidonia spiaggiata a mucchi lungo la berma (la banquette), il legno portato dalle mareggiate
     B.detriti = [];
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { if (!mask[j * n + i]) continue; const tx = tx0 + i, ty = ty0 + j; if (famT(tx, ty) !== 1) continue;
-      for (let c = 0; c < 3; c++) { const x = (tx + h2(tx, ty, 520 + c)) * TS, y = (ty + h2(tx, ty, 530 + c)) * TS, u = x / TS - tx, v = y / TS - ty, d = bil(dV(tx, ty), dV(tx + 1, ty), dV(tx, ty + 1), dV(tx + 1, ty + 1), u, v), wn = bil(nV(tx, ty), nV(tx + 1, ty), nV(tx, ty + 1), nV(tx + 1, ty + 1), u, v);
+      for (let c = 0; c < (LEGGERA ? 1 : 3); c++) { const x = (tx + h2(tx, ty, 520 + c)) * TS, y = (ty + h2(tx, ty, 530 + c)) * TS, u = x / TS - tx, v = y / TS - ty, d = bil(dV(tx, ty), dV(tx + 1, ty), dV(tx, ty + 1), dV(tx + 1, ty + 1), u, v), wn = bil(nV(tx, ty), nV(tx + 1, ty), nV(tx, ty + 1), nV(tx + 1, ty + 1), u, v);
         if (wn < .7) continue; const bD = 5 + 3 * fbm(x / 9, y / 9, 301, 3), cl = fbm(x / 11, y / 11, 541, 2), p = h2(tx, ty, 550 + c);
         if (Math.abs(d - bD) < 1.6 && cl > .45 && p < .55) B.detriti.push({ k: 'alga', x, y, s: .5 + h2(tx, ty, 560 + c) * .8, ry: h2(tx, ty, 570 + c) * 6.283, t: h2(tx, ty, 580 + c) });
         else if (d > 1.5 && d < bD + 3 && p < .018) B.detriti.push({ k: 'legno', x, y, s: .6 + h2(tx, ty, 560 + c) * 1.6, ry: h2(tx, ty, 570 + c) * 6.283, t: h2(tx, ty, 580 + c) }); } }
@@ -356,7 +358,7 @@ var Riva = (function () {
   function geoMasso() { if (GM) return GM; return (GM = sasso(41, 3, true)); }
   function fondiScogli(L) {
     if (!L.length) return null; const THREE = window.THREE, P = [], N2 = [], C = [], IX = [], M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), SC = new THREE.Vector3(), nm = new THREE.Matrix3(), vv = new THREE.Vector3();
-    L.forEach(s => { const F = formaScoglio(s.v, s.f, s.r > .9), tl = (h2(Math.round(s.x * 7), Math.round(s.y * 7), 811) - .5) * .12; E.set(tl, s.ry, tl * .6, 'YXZ'); Q.setFromEuler(E); V.set(s.x, s.z, s.y); SC.set(s.r * 1.15, s.h, s.r * .85); M4.compose(V, Q, SC); nm.getNormalMatrix(M4);
+    L.forEach(s => { const F = formaScoglio(s.v, s.f, s.r > .9 && !LEGGERA), tl = (h2(Math.round(s.x * 7), Math.round(s.y * 7), 811) - .5) * .12; E.set(tl, s.ry, tl * .6, 'YXZ'); Q.setFromEuler(E); V.set(s.x, s.z, s.y); SC.set(s.r * 1.15, s.h, s.r * .85); M4.compose(V, Q, SC); nm.getNormalMatrix(M4);
       const tint = .9 + h2(Math.round(s.x * 3), Math.round(s.y * 3), 812) * .2;
       F.forEach(g => { const pa = g.attributes.position, na = g.attributes.normal, ca = g.attributes.color, o = P.length / 3; for (let i = 0; i < pa.count; i++) { vv.set(pa.getX(i), pa.getY(i), pa.getZ(i)).applyMatrix4(M4); P.push(vv.x, vv.y, vv.z); vv.set(na.getX(i), na.getY(i), na.getZ(i)).applyMatrix3(nm).normalize(); N2.push(vv.x, vv.y, vv.z); C.push(ca.getX(i) * tint, ca.getY(i) * tint, ca.getZ(i) * tint * .98); }
         const ix = g.index.array; for (let i = 0; i < ix.length; i++) IX.push(ix[i] + o); }); });
@@ -451,7 +453,7 @@ var Riva = (function () {
       im.instanceMatrix.needsUpdate = true; im.castShadow = true; im.receiveShadow = true; im.name = 'riva9p'; grp.add(im); });
     R.stat.margini = { tri: nTri, taglio: nTaglio, paletti: C.length }; return grp;
   }
-  Object.assign(R, { init, inBanda, pesoForma: (tx, ty, x, y) => bil(nV(tx, ty), nV(tx + 1, ty), nV(tx, ty + 1), nV(tx + 1, ty + 1), x / TS - tx, y / TS - ty), costruisci, costruisciMargini, tipi, margini, cippi, geoMasso, matRoccia: () => matRoccia(), quota, blocco: (ci, cj) => blocco(ci, cj), quotaNuda, suolo, famT, kindT, CH, SUB, fbm, h2 });
+  Object.assign(R, { init, leggera, inBanda, pesoForma: (tx, ty, x, y) => bil(nV(tx, ty), nV(tx + 1, ty), nV(tx, ty + 1), nV(tx + 1, ty + 1), x / TS - tx, y / TS - ty), costruisci, costruisciMargini, tipi, margini, cippi, geoMasso, matRoccia: () => matRoccia(), quota, blocco: (ci, cj) => blocco(ci, cj), quotaNuda, suolo, famT, kindT, CH, SUB, fbm, h2 });
   if (typeof module !== 'undefined') module.exports = R;
   return R;
 })();
