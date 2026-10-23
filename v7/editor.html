@@ -55600,6 +55600,8 @@ if (typeof window !== 'undefined') { window.PesoLontano = PesoLontano; (window._
       fotogrammi stanno sopra il 118% del ritmo (60 Hz, o 30 quando main.js ha fermato il ritmo a 30), si scende di un gradino; se per 6 s
       stanno sotto il 90%, si risale. Gradini 1, 0,9, 0,8 (0,72 sulla bassa); al più un cambio ogni 3 s. L'interfaccia è nel DOM e la tela
       finale resta a piena risoluzione (render.js [sviluppo]): restano nitide. Sul computer ci pensa già main.js.
+   3. Il pavimento (pavimenti.js, fino a 8 letture di mappa per pixel): sul telefono e sulla scheda 'bassa' Pavimenti.qualita('leggera'),
+      altrove 'alta'. ?nopesosuolo lo lascia com'è. window.__pesoLivello.suolo dice quale.
    ?nopesoschermo spegne tutto (come prima: telefono a risoluzione fissa).                                                             */
 var PesoSchermo = (function () {
   'use strict';
@@ -55622,11 +55624,19 @@ var PesoSchermo = (function () {
     try { const ext = gl.getExtension('WEBGL_debug_renderer_info'); S.nome = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (e) { S.nome = ''; }
     S.livello = livelloDa(S.nome); window.__pesoLivello = { livello: S.livello, scheda: S.nome };
     S.telefono = !!(pv.R.phone || (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches));
+    suolo(0);
     if (!S.telefono || !ON) return;
     // il ritmo: l'intervallo fra due fotogrammi del gioco (R.frame), non quello del browser (con il ritmo a 30 il gioco salta un giro su due)
     const R = pv.R, f0 = R.frame;
     R.frame = function () { const t = performance.now(); if (S.ultimo) { S.buf.push(t - S.ultimo); if (S.buf.length > 60) S.buf.shift(); } S.ultimo = t; valuta(t); return f0.apply(this, arguments); };
     if (S.livello === 'bassa' && R.setRes) { S.gradino = 1; R.setRes(GRADINI.bassa[1]); }   // la bassa parte un gradino sotto
+  }
+  // il pavimento leggero dove la scheda è piccola (pavimenti.js può arrivare dopo: si riprova per un po')
+  function suolo(n) {
+    if (!ON || /[?&]nopesosuolo\b/.test(Q)) return;
+    const P = window.Pavimenti; if (!P || typeof P.qualita !== 'function') { if (n < 40) setTimeout(() => suolo(n + 1), 500); return; }
+    const q = S.telefono || S.livello === 'bassa' ? 'leggera' : 'alta';
+    try { P.qualita(q); window.__pesoLivello.suolo = q; } catch (e) { console.warn('[peso] pavimento', e); }
   }
   function valuta(t) {
     const R = window.__pv.R; if (S.bloccato || !R.setRes || S.buf.length < 30 || window.__pv.ui.intro) return;
@@ -55772,7 +55782,8 @@ var PesoOmbre = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const ON = !/[?&]nopeso(ombre)?\b/.test(Q);
-  const P = { M: 8, ang: .0026, ferma: 90, giro: 8, lotto: 250, fine: 1.4, fineTel: 1.25 };   // fine: il texel del sole più piccolo (computer 2048 → ~2870 di base; la mappa con il margine ~3500)
+  const STRETTA = ON && !/[?&]nopesostretta\b/.test(Q);   // il riquadro del sole stretto sulla visuale lungo la direzione del sole (?nopesostretta: quadrato)
+  const P = { alto: 70, M: 8, ang: .0026, ferma: 90, giro: 8, lotto: 250, fine: 1.4, fineTel: 1.25 };   // fine: il texel del sole più piccolo (computer 2048 → ~2870 di base; la mappa con il margine ~3500)
   const MOT = { chiave: 0, firma: 0, misura: 0, aggancio: 0 }, DIAG = { on: false, mob: new Map(), firma: new Map() };
   const ST = { cotture: 0, sottofondo: 0, lotti: 0, riprese: 0, dinamici: 0, fermi: 0, lanciatori: 0, luci: 0, ms: 0, fotogrammi: 0 };
   const REC = new Map();
@@ -55826,8 +55837,26 @@ var PesoOmbre = (function () {
   // A è l'aggancio in uso (la camera dell'ombra vera), A.next quello verso cui si sta cuocendo in sottofondo (dalla metà del margine):
   // camminando la mappa nuova è già pronta quando serve; solo un salto oltre il margine (un teletrasporto, un'auto velocissima) cuoce subito
   function base(d) { const z = d.clone().negate(), x = new T3.Vector3(0, 1, 0).cross(z); if (x.lengthSq() < 1e-12) x.set(1, 0, 0); x.normalize(); return { x, y: z.clone().cross(x) }; }
-  function aggancia(T, B, tex) { const a = T.x * B.x.x + T.y * B.x.y + T.z * B.x.z, b = T.x * B.y.x + T.y * B.y.y + T.z * B.y.z; return T.clone().addScaledVector(B.x, Math.round(a / tex) * tex - a).addScaledVector(B.y, Math.round(b / tex) * tex - b); }
-  function metti(m, G) { m.target.position.copy(G.T); m.position.copy(G.T).addScaledVector(G.d, -G.D); m.updateMatrixWorld(); m.target.updateMatrixWorld(); }
+  function aggancia(T, B, tex, ty) { ty = ty || tex; const a = T.x * B.x.x + T.y * B.x.y + T.z * B.x.z, b = T.x * B.y.x + T.y * B.y.y + T.z * B.y.z; return T.clone().addScaledVector(B.x, Math.round(a / tex) * tex - a).addScaledVector(B.y, Math.round(b / ty) * ty - b); }
+  // [peso] il riquadro stretto: col sole basso un texel della mappa a terra si allunga di 1/sin(altezza) lungo la direzione del sole (i dentini
+  // sui bordi delle ombre lunghe, le strisce a sega della piazza d'adunata). Il quadrato del gioco lungo quell'asse copre a terra molto più
+  // della visuale: qui l'asse y della camera dell'ombra si stringe a quello che la camera di gioco vede fra terra e P.alto metri (più il
+  // margine del cammino), con lo stesso numero di texel: texel più fini proprio dove si allungano. Si rifà a ogni scatto del sole o di zoom.
+  const VQ = [];
+  function stretto(G, halfE, ms) {
+    if (!A.st) return G; const cam = K.camera(); if (!cam || !cam.isCamera) return G; cam.updateMatrixWorld();
+    if (!VQ.length) for (let i = 0; i < 4; i++) VQ.push(new T3.Vector3(), new T3.Vector3());
+    let lo = 1e9, hi = -1e9; const T = G.T, By = G.y;
+    for (let i = 0; i < 4; i++) { const a = VQ[2 * i].set(i & 1 ? 1 : -1, i & 2 ? 1 : -1, -1).unproject(cam), b = VQ[2 * i + 1].set(i & 1 ? 1 : -1, i & 2 ? 1 : -1, 1).unproject(cam);
+      for (const h of [0, P.alto]) { const dy = b.y - a.y; let t = Math.abs(dy) < 1e-9 ? 1 : (h - a.y) / dy; t = Math.min(1, Math.max(0, t));
+        const v = (a.x + (b.x - a.x) * t - T.x) * By.x + (a.y + dy * t - T.y) * By.y + (a.z + (b.z - a.z) * t - T.z) * By.z; if (v < lo) lo = v; if (v > hi) hi = v; } }
+    lo = Math.max(-halfE, Math.floor(lo - P.M - 1)); hi = Math.min(halfE, Math.ceil(hi + P.M + 1));   // a metri interi: il reticolo dei texel non cambia camminando
+    if (!(hi > lo) || hi - lo > 2 * halfE * .9) return G;   // poco da guadagnare: il quadrato
+    const ty = (hi - lo) / ms; G.ty = ty; G.y0 = lo; G.y1 = hi; G.T = aggancia(G.T, G, G.tex, ty); return G;
+  }
+  function metti(m, G) { const sc = m.shadow.camera, y0 = G.y0 != null ? G.y0 : -A.halfSet, y1 = G.y1 != null ? G.y1 : A.halfSet;
+    if (sc.top !== y1 || sc.bottom !== y0) { sc.top = y1; sc.bottom = y0; sc.updateProjectionMatrix(); }
+    m.target.position.copy(G.T); m.position.copy(G.T).addScaledVector(G.d, -G.D); m.updateMatrixWorld(); m.target.updateMatrixWorld(); }
   function sole() {
     const m = K.moon, sc = m.shadow.camera, T = m.target.position, Pp = m.position;
     if (!A.base) { const mt = (K.renderer.capabilities && K.renderer.capabilities.maxTextureSize) || 4096; A.base0 = m.shadow.mapSize.x; A.base = Math.min(Math.floor(A.base0 * (K.phone ? P.fineTel : P.fine)), mt - 512); A.maxT = mt; }
@@ -55840,13 +55869,14 @@ var PesoOmbre = (function () {
     if (m.shadow.mapSize.x !== ms) { m.shadow.mapSize.set(ms, ms); if (m.shadow.map) { m.shadow.map.dispose(); m.shadow.map = null; } A.G = null; A.next = null; }
     if (sc.right !== halfE) { sc.left = -halfE; sc.right = halfE; sc.top = halfE; sc.bottom = -halfE; sc.updateProjectionMatrix(); } A.halfSet = halfE;
     const D = Math.hypot(T.x - Pp.x, T.y - Pp.y, T.z - Pp.z) || 1, d = new T3.Vector3(T.x - Pp.x, T.y - Pp.y, T.z - Pp.z).divideScalar(D);
+    const st = STRETTA && !window.__nostretta; if (st !== A.st) { A.st = st; A.G = null; }   // window.__nostretta: il confronto nella stessa pagina
     const G = A.G; let want = null, forza = false;
-    if (!G || G.tex !== tex) { forza = true; const B = base(d); want = { d, D, x: B.x, y: B.y, tex, T: aggancia(T, B, tex) }; }
+    if (!G || G.tex !== tex || G.half !== halfE) { forza = true; const B = base(d); want = stretto({ d, D, x: B.x, y: B.y, tex, half: halfE, T: aggancia(T, B, tex) }, halfE, ms); }
     else {
       const nuova = Math.abs(D - G.D) > 1 || Math.acos(Math.min(1, d.dot(G.d))) > P.ang;
-      const ts = aggancia(T, G, tex), ex = (ts.x - G.T.x) * G.x.x + (ts.y - G.T.y) * G.x.y + (ts.z - G.T.z) * G.x.z, ey = (ts.x - G.T.x) * G.y.x + (ts.y - G.T.y) * G.y.y + (ts.z - G.T.z) * G.y.z, deriva = Math.max(Math.abs(ex), Math.abs(ey));
+      const ts = aggancia(T, G, tex, G.ty), ex = (ts.x - G.T.x) * G.x.x + (ts.y - G.T.y) * G.x.y + (ts.z - G.T.z) * G.x.z, ey = (ts.x - G.T.x) * G.y.x + (ts.y - G.T.y) * G.y.y + (ts.z - G.T.z) * G.y.z, deriva = Math.max(Math.abs(ex), Math.abs(ey));
       if (deriva > P.M - tex) forza = true;
-      if (nuova || deriva > P.M / 2) { const B = nuova ? base(d) : G; want = { d: nuova ? d : G.d, D: nuova ? D : G.D, x: B.x, y: B.y, tex, T: aggancia(T, B, tex) }; }
+      if (nuova || deriva > P.M / 2) { const B = nuova ? base(d) : G; want = stretto({ d: nuova ? d : G.d, D: nuova ? D : G.D, x: B.x, y: B.y, tex, half: halfE, T: aggancia(T, B, tex) }, halfE, ms); }
     }
     if (forza) { A.G = want; A.next = null; A.rifai = true; }   // cottura subito: con la lista di chi fa ombra rifatta ora (dopo un salto la vecchia è di un altro posto)
     else if (want) { const N = A.next; if (!N || N.T.distanceTo(want.T) > P.M / 4 || N.d.dot(want.d) < Math.cos(P.ang)) A.next = want; }
@@ -55878,7 +55908,7 @@ var PesoOmbre = (function () {
     const n = Math.min(J.list.length, J.i + P.lotto), part = J.list.slice(J.i, n);
     sh.map = J.rt; try { disegna(light, part, J.i === 0); } finally { sh.map = m0; }
     J.i = n; ST.lotti++;
-    if (pos) { light.position.copy(pos[0]); light.target.position.copy(pos[1]); light.updateMatrixWorld(); light.target.updateMatrixWorld(); }
+    if (pos) { if (A.G) metti(light, A.G); else { light.position.copy(pos[0]); light.target.position.copy(pos[1]); light.updateMatrixWorld(); light.target.updateMatrixWorld(); } }
     sh.updateMatrices(light);
     return J.i >= J.list.length;
   }
@@ -55902,7 +55932,7 @@ var PesoOmbre = (function () {
       if (vuole && (!r.job || r.job.tipo !== vuole || (vuole === 'next' && r.job.G !== A.next))) {
         let list = C.fermi, e = C.e, sig = C.sig, G = null;
         if (vuole === 'next') { const pos = [light.position.clone(), light.target.position.clone()]; G = A.next; metti(light, G); const C2 = contenuto(light, tutti, { key: new Float64Array(16), ver: -1 }); list = C2.fermi; e = C2.e; sig = C2.sig;
-          light.position.copy(pos[0]); light.target.position.copy(pos[1]); light.updateMatrixWorld(); light.target.updateMatrixWorld(); sh.updateMatrices(light); r.ver++; }
+          if (A.G) metti(light, A.G); else { light.position.copy(pos[0]); light.target.position.copy(pos[1]); light.updateMatrixWorld(); light.target.updateMatrixWorld(); } sh.updateMatrices(light); r.ver++; }
         r.job = { tipo: vuole, list, i: 0, e, sig, n: list.length, G, rt: r.job ? r.job.rt : null }; if (vuole === 'qui') MOT.firma++; else MOT.aggancio++;
         if (DIAG.on && vuole === 'qui' && r.ids) { const now = new Set(C.fermi.map(o => o.id)), nome = o => { let q = o; while (q.parent && q.parent !== K.scene) q = q.parent; return (q.name || q.type) + (Object.keys(q.userData || {}).length ? ' {' + Object.keys(q.userData).slice(0, 3).join(',') + '}' : '') + ' > ' + (o.name || o.type); };
           C.fermi.forEach(o => { if (!r.ids.has(o.id)) { const k = '+ ' + nome(o); DIAG.firma.set(k, (DIAG.firma.get(k) || 0) + 1); } }); r.idsObj.forEach(o => { if (!now.has(o.id)) { const k = '- ' + nome(o); DIAG.firma.set(k, (DIAG.firma.get(k) || 0) + 1); } }); }
@@ -55954,7 +55984,7 @@ var PesoOmbre = (function () {
   function diag(on) { DIAG.on = on !== false; return { motivi: Object.assign({}, MOT), mobili: [...DIAG.mob.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25), firma: [...DIAG.firma.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25) }; }
   return { ON, P, prima, dopo, conto, azzera, diag, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) spegni(); } };
 })();
-if (typeof window !== 'undefined') { window.PesoOmbre = PesoOmbre; (window.__pesoAB = window.__pesoAB || {}).ombre = v => { PesoOmbre.attivo = v; }; }
+if (typeof window !== 'undefined') { window.PesoOmbre = PesoOmbre; (window.__pesoAB = window.__pesoAB || {}).ombre = v => { PesoOmbre.attivo = v; }; if (PesoOmbre.ON) window.__pesoAB.stretta = v => { window.__nostretta = !v; }; }
 </script>   <!-- [peso] le ombre in cache -->
 <script data-m="render">
 /* Porto Vecchio — resa 3D in stile pixel art (Three.js r149).

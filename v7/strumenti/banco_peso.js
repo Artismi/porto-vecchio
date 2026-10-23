@@ -23,7 +23,7 @@ const has = k => process.argv.includes('--' + k);
 const OUT = process.argv.slice(2).find(a => !a.startsWith('--')) || path.join(root, 'reports', 'banco_peso');
 const Q = '?cittanuova' + arg('query', ''), RIF = arg('rif', null), SOLO = arg('solo', null), NF = +arg('nf', 8), W = +arg('vw', 480), H = +arg('vh', 300), SEME = +arg('seme', 12345);
 const SOGLIA = 8;
-// le otto inquadrature: x, y (metri), zoom, ora (minuti dalla mezzanotte), folla: il riempimento dei posti come in galleria.js
+// le inquadrature (le otto di partenza, più adunata e suolo): x, y (metri), zoom, ora (minuti dalla mezzanotte), folla: il riempimento dei posti come in galleria.js
 const SCATTI = [
   { nome: 'borgo', x: 1424, y: 322, zoom: .75, ora: 660 },
   { nome: 'marina', x: 1372, y: 388, zoom: .95, ora: 600 },
@@ -33,6 +33,8 @@ const SCATTI = [
   { nome: 'citta', x: 1420, y: 340, zoom: 4, ora: 840 },
   { nome: 'notte', x: 1424, y: 322, zoom: .75, ora: 1320 },
   { nome: 'folla', x: 1278, y: 340, zoom: .85, ora: 600, folla: true },
+  { nome: 'adunata', x: 1328, y: 343, zoom: .75, ora: 1050 },   // la piazza d'adunata col sole basso della sera: i dentini delle ombre lunghe
+  { nome: 'suolo', x: 1424, y: 322, zoom: .5, ora: 660 },   // la piazza del borgo da vicino: quasi tutto lo schermo è pavimento (il costo per pixel del suolo)
 ].filter(s => !SOLO || SOLO.split(',').includes(s.nome));
 const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.glb': 'model/gltf-binary', '.bin': 'application/octet-stream' };
 fs.mkdirSync(OUT, { recursive: true });

@@ -7,6 +7,8 @@
       fotogrammi stanno sopra il 118% del ritmo (60 Hz, o 30 quando main.js ha fermato il ritmo a 30), si scende di un gradino; se per 6 s
       stanno sotto il 90%, si risale. Gradini 1, 0,9, 0,8 (0,72 sulla bassa); al più un cambio ogni 3 s. L'interfaccia è nel DOM e la tela
       finale resta a piena risoluzione (render.js [sviluppo]): restano nitide. Sul computer ci pensa già main.js.
+   3. Il pavimento (pavimenti.js, fino a 8 letture di mappa per pixel): sul telefono e sulla scheda 'bassa' Pavimenti.qualita('leggera'),
+      altrove 'alta'. ?nopesosuolo lo lascia com'è. window.__pesoLivello.suolo dice quale.
    ?nopesoschermo spegne tutto (come prima: telefono a risoluzione fissa).                                                             */
 var PesoSchermo = (function () {
   'use strict';
@@ -29,11 +31,19 @@ var PesoSchermo = (function () {
     try { const ext = gl.getExtension('WEBGL_debug_renderer_info'); S.nome = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (e) { S.nome = ''; }
     S.livello = livelloDa(S.nome); window.__pesoLivello = { livello: S.livello, scheda: S.nome };
     S.telefono = !!(pv.R.phone || (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches));
+    suolo(0);
     if (!S.telefono || !ON) return;
     // il ritmo: l'intervallo fra due fotogrammi del gioco (R.frame), non quello del browser (con il ritmo a 30 il gioco salta un giro su due)
     const R = pv.R, f0 = R.frame;
     R.frame = function () { const t = performance.now(); if (S.ultimo) { S.buf.push(t - S.ultimo); if (S.buf.length > 60) S.buf.shift(); } S.ultimo = t; valuta(t); return f0.apply(this, arguments); };
     if (S.livello === 'bassa' && R.setRes) { S.gradino = 1; R.setRes(GRADINI.bassa[1]); }   // la bassa parte un gradino sotto
+  }
+  // il pavimento leggero dove la scheda è piccola (pavimenti.js può arrivare dopo: si riprova per un po')
+  function suolo(n) {
+    if (!ON || /[?&]nopesosuolo\b/.test(Q)) return;
+    const P = window.Pavimenti; if (!P || typeof P.qualita !== 'function') { if (n < 40) setTimeout(() => suolo(n + 1), 500); return; }
+    const q = S.telefono || S.livello === 'bassa' ? 'leggera' : 'alta';
+    try { P.qualita(q); window.__pesoLivello.suolo = q; } catch (e) { console.warn('[peso] pavimento', e); }
   }
   function valuta(t) {
     const R = window.__pv.R; if (S.bloccato || !R.setRes || S.buf.length < 30 || window.__pv.ui.intro) return;
