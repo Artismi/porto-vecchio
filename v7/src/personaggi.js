@@ -25,7 +25,7 @@ var Personaggi = (function () {
   // =====================================================================================
   const STILI = {
     a: { nome: 'Statuina dipinta', testa: 1, mani: 1, piedi: 1, naso: 1, p: 2.25, seg: 16, spalle: 1, toon: 0, contorno: 0 },
-    b: { nome: 'Linea chiara', testa: 1.08, mani: 1, piedi: 1, naso: .6, p: 2.12, seg: 16, spalle: 1, toon: 3, contorno: .008 },
+    b: { nome: 'Linea chiara', testa: 1.08, mani: 1, piedi: 1, naso: .6, p: 3.1, seg: 14, pTesta: 2.7, spalle: 1, toon: 3, contorno: .008 },
     c: { nome: 'Carosello', testa: 1.55, mani: 1.4, piedi: 1.35, naso: 1.8, p: 2.0, seg: 16, spalle: .9, toon: 3, contorno: 0 },
   };
   const S = () => STILI[CFG.stile] || STILI.a;
@@ -159,7 +159,7 @@ var Personaggi = (function () {
   // I CAPI: dal descrittore ai pezzi sulle catene (busto 0..1, braccio 0..1, gamba 0..1) e ai pezzi liberi
   // =====================================================================================
   // tessere dell'atlante (disegni): 0 liscio
-  const TL = { liscio: 0, camicia: 1, giacca: 2, divisa: 3, cerata: 4, grembiule: 5, maglione: 6, canotta: 7, abito: 8, tuta: 9, cappotto: 10, gilet: 11 };
+  const TL = { liscio: 0, camicia: 1, giacca: 2, divisa: 3, cerata: 4, grembiule: 5, maglione: 6, canotta: 7, abito: 8, tuta: 9, cappotto: 10, gilet: 11, bande: 12 };
   const PT = { liscio: 0, righe: 1, quadri: 2, fiori: 3, maglia: 4, pois: 5, righine: 6 };
   // [catena, da, a, spessore, extra]
   const CAPI = {
@@ -184,9 +184,16 @@ var Personaggi = (function () {
     grembiule: { grembiule: [.4, .95] },
     scialle: { scialle: 1 },
     calze: { gamba: [.55, 1, .002] },
+    maglietta_larga: { busto: [-.03, 1, .024], braccio: [0, .48, .026], orlo: .03, falda: [0, .1, 1] },
+    felpa_larga: { busto: [-.03, 1, .03], braccio: [0, .99, .026], orlo: .07, orloSp: .008, colletto: 'cappuccio', falda: [0, .1, 1] },
+    tuta_giacca: { busto: [-.02, 1, .02], braccio: [0, .97, .018], tile: 'tuta', orlo: .05, orloSp: .006, colletto: 'alto', bande: 1 },
+    bomber: { busto: [-.02, 1, .034], braccio: [0, .97, .03], tile: 'tuta', orlo: .07, orloSp: .01, colletto: 'giro' },
+    larghi: { gamba: [-.06, 1, .014], orlo: .02, dritti: 1, bacino: .012 },
+    tuta_pantaloni: { gamba: [-.06, 1, .012], orlo: .05, orloSp: .006, dritti: .6, bacino: .01, bande: 1 },
+    catena: { catena: 1 },
   };
   // scarpe: [altezza del gambale (0 scarpa bassa … 1 al ginocchio), punta, tacco]
-  const SCARPE = { scarpe: [0, 1, 0], stivali: [.62, 1.05, 0], stivaletti: [.12, 1, 0], sandali: [0, .95, 0, 1], tacchi: [0, .85, 1], ciabatte: [0, .95, 0, 1], scarponi: [.15, 1.12, 0] };
+  const SCARPE = { sneakers: [0, 1.06, 0, 0, 1], basket: [.07, 1.08, 0, 0, 1], scarpe: [0, 1, 0], stivali: [.62, 1.05, 0], stivaletti: [.12, 1, 0], sandali: [0, .95, 0, 1], tacchi: [0, .85, 1], ciabatte: [0, .95, 0, 1], scarponi: [.15, 1.12, 0] };
 
   // =====================================================================================
   // LA FIGURA: costruisce la geometria nello spazio del personaggio
@@ -216,8 +223,9 @@ var Personaggi = (function () {
     vesti.forEach((v, i) => {
       const base = { col: v.col, col2: v.col2 || sotto(i, 'busto'), col3: v.col3 || mulc(v.col, .55), tile: tileOf(v), ptile: ptOf(v), orlo: v.orlo || 0, orloSp: v.orloSp, colOrlo: v.colOrlo ? C3(v.colOrlo) : null };
       if (v.busto) listaB.push(Object.assign({}, base, { da: v.busto[0], a: v.busto[1], sp: v.busto[2] }));
-      if (v.braccio) listaA.push(Object.assign({}, base, { tile: 0, da: v.braccio[0], a: v.braccio[1], sp: v.braccio[2], orlo: v.polsino ? .1 : base.orlo ? .06 : 0, orloSp: v.polsino ? .004 : base.orloSp, orloSolo: 'giu', colOrlo: v.polsino ? base.col : null }));
-      if (v.gamba) listaG.push(Object.assign({}, base, { tile: 0, da: v.gamba[0], a: v.gamba[1], sp: v.gamba[2], orlo: base.orlo ? .04 : 0, orloSolo: 'giu', zampa: v.zampa || 0 }));
+      const bnd = v.bande ? { tileC: TL.bande, col2: v.col3 ? C3v(v.col3) : [.95, .94, .9] } : {};
+      if (v.braccio) listaA.push(Object.assign({}, base, bnd, { tile: bnd.tileC || 0, da: v.braccio[0], a: v.braccio[1], sp: v.braccio[2], orlo: v.polsino ? .1 : base.orlo ? .06 : 0, orloSp: v.polsino ? .004 : base.orloSp, orloSolo: 'giu', colOrlo: v.polsino ? base.col : null }));
+      if (v.gamba) listaG.push(Object.assign({}, base, bnd, { dritti: v.dritti || 0, tile: bnd.tileC || 0, da: v.gamba[0], a: v.gamba[1], sp: v.gamba[2], orlo: base.orlo ? .04 : 0, orloSolo: 'giu', zampa: v.zampa || 0 }));
       if (v.bacino && !v.busto) listaB.push(Object.assign({}, base, { tile: 0, ptile: ptOf(v), da: -.05, a: .2, sp: v.bacino, orlo: .05, orloSp: .004, orloSolo: 'su', colOrlo: mulc(v.col, .8) }));
     });
     const campB = []; for (let k = 0; k <= 14; k++) campB.push(-.15 + k / 14 * 1.15);
@@ -246,11 +254,11 @@ var Personaggi = (function () {
     const sc = SCARPE[D.scarpe && D.scarpe.tipo] || SCARPE.scarpe, colS = C3((D.scarpe && D.scarpe.col) || '#2a2018');
     ['L', 'R'].forEach(sd => {
       const sg = sd === 'L' ? 1 : -1, j0 = J['UpperLeg' + sd], j1 = J['LowerLeg' + sd], j2 = J['Foot' + sd];
-      const y0 = j0[1] + .06, y1 = j2[1] + .06, Lg = y0 - y1;
+      const y0 = j0[1] + .025, y1 = j2[1] + .06, Lg = y0 - y1;
       const geomG = t => {   // t: 0 all'anca … 1 alla caviglia
         const y = lerp(y0, y1, t), u = (j0[1] - y) / (j0[1] - j1[1]), w2 = (j1[1] - y) / (j1[1] - j2[1]);
         let r = K.gamba;
-        if (u < 1) r *= u < .1 ? 1.08 : lerp(1.05, .7, Math.pow(cl(u, 0, 1), 1.2)); else r *= w2 < .1 ? lerp(.7, .72, w2 / .1) : w2 < .35 ? lerp(.72, .78, Math.sin((w2 - .1) / .25 * Math.PI * .5)) : lerp(.78, .42, Math.pow((w2 - .35) / .65, .8));
+        if (u < 1) r *= u < .1 ? lerp(.9, 1.04, sm((u + .06) / .16)) : lerp(1.04, .7, Math.pow(cl(u, 0, 1), 1.2)); else r *= w2 < .1 ? lerp(.7, .72, w2 / .1) : w2 < .35 ? lerp(.72, .78, Math.sin((w2 - .1) / .25 * Math.PI * .5)) : lerp(.78, .42, Math.pow((w2 - .35) / .65, .8));
         const x = lerp(j0[0], j1[0], cl(u, 0, 1)) * (u > 1 ? 1 : 1) - sg * (u > .9 && u < 1.3 ? .005 : 0), z = u < 1 ? lerp(j0[2], j1[2], cl(u, 0, 1)) : lerp(j1[2], j2[2] - .01, cl(w2, 0, 1));
         const calf = u > 1 && w2 < .45 ? -.012 * Math.sin(w2 / .45 * Math.PI) : 0;
         return { c: [x - sg * .022 * (1 - sm(t / .45)), y, z], t: [0, -1, 0], f: [0, 0, 1], a: r * (u < 1 ? .95 : .9), b: r, fz: calf, ao: t < .1 ? .8 : 1, w: catena(-y, [-y0 - .1, -j0[1] - .02, -j1[1], -j2[1] - .06], ['Hips', 'UpperLeg' + sd, 'LowerLeg' + sd, 'Foot' + sd], [0, .05, .04, .03]) };
@@ -262,7 +270,7 @@ var Personaggi = (function () {
       const camp = []; for (let k = 0; k <= 12; k++) camp.push(k / 12);
       const gonne = vesti.filter(v => v.gonna).map(v => lerp(J.UpperLegL[1], J.FootL[1] + .03, v.gonna[1]) + .16), yv = Math.max(-1, ...gonne), tg0 = yv > -1 ? cl((y0 - yv) / Lg, 0, .9) : 0;
       const zampa = lst.find(L => L.zampa && L.a > .9 && !(sc[0] > 0));
-      catenaStrati(B, lst, tg0, 1, camp, t => { const G = geomG(t); if (zampa && t > .55) { const k = sm((t - .55) / .45) * zampa.zampa; G.a += k * .8; G.b += k; } return G; }, pelle, { lung: Lg });
+      catenaStrati(B, lst, tg0, 1, camp, t => { const G = geomG(t); const dr = lst.reduce((m, L) => Math.max(m, t >= L.da && t <= L.a && L.dritti ? L.dritti : 0), 0); if (dr && t > .3) { const R0 = K.gamba * .92, k = dr * sm((t - .3) / .25); G.a = lerp(G.a, Math.max(G.a, R0), k); G.b = lerp(G.b, Math.max(G.b, R0 * 1.05), k); } if (zampa && t > .55) { const k = sm((t - .55) / .45) * zampa.zampa; G.a += k * .8; G.b += k; } return G; }, pelle, { lung: Lg });
       scarpa(B, J, sd, sg, sc, colS, D, pelle);
     });
     // ---------------- TESTA ----------------
@@ -275,6 +283,7 @@ var Personaggi = (function () {
       if (v.scialle) scialle(B, J, profAt, zAt, yOf, v);
       if (v.colletto) colletto(B, J, profAt, zAt, yOf, v, listaB);
       if (v.cintura) cintura(B, J, profAt, zAt, yOf, v, listaB);
+      if (v.catena) { const y = yOf(.9), P0 = profAt(y), sp = strati(listaB, .9).sp, N = 9, pts = []; for (let j = 0; j <= N; j++) { const a = (j / N - .5) * Math.PI * 1.1; pts.push([Math.sin(a) * (P0[0] * .62 + sp), y + .03 - Math.cos(a) * .05 - .02, zAt(y) + P0[2] + Math.cos(a) * (P0[1] + sp + .004)]); } loft(B, pts.map((p, j) => ({ c: p, t: norm(sub(pts[Math.min(N, j + 1)], pts[Math.max(0, j - 1)])), f: [0, 0, 1], a: .006, b: .006, col: C3v(v.col || '#d8b040'), w: [['Chest', 1]] })), { seg: 5 }); }
       if (v.spalline) ['L', 'R'].forEach(sd => { const sg = sd === 'L' ? 1 : -1, p = J['UpperArm' + sd]; uovo(B, [sg * (Math.abs(p[0]) - .02), p[1] + .045, p[2]], [sg, 0, 0], .012, .04, .055, mulc(v.col, .8), [['Shoulder' + sd, .6], ['UpperArm' + sd, .4]], { anelli: 3, seg: 6, p: 3.5, f: [0, 1, 0] }); });
     });
     (D.extra || []).forEach(e => { if (e === 'bandoliera') bandoliera(B, J, profAt, zAt, yOf, listaB, D); });
@@ -299,12 +308,13 @@ var Personaggi = (function () {
   function scarpa(B, J, sd, sg, sc, col, D, pelle) {
     const st = S(), k = st.piedi * (D.sesso === 'f' ? .88 : 1), f = J['Foot' + sd], y0 = Math.max(.0, f[1] - .02), z0 = f[2] - .06 * k, L = .27 * k * sc[1], tacco = sc[2] || 0, sand = sc[3];
     const w = [['Foot' + sd, 1]], wA = [['LowerLeg' + sd, .5], ['Foot' + sd, .5]];
-    const dark = mulc(col, .45), cm = sand ? pelle : col;
+    const gin = sc[4], kw = gin ? 1.16 : 1, kh = gin ? 1.18 : 1, bianco = C3((D.scarpe && D.scarpe.col2) || '#f2eee6');
+    const dark = gin ? bianco : mulc(col, .45), cm = sand ? pelle : col;
     // la tomaia: sezioni lungo il piede, dalla caviglia (alta) alla punta (bassa e tonda)
     const R = [[0, .05, .06, .08], [.12, .052, .075, .1], [.35, .05, .07, .085], [.6, .052, .045, .06], [.82, .046, .036, .045], [.95, .034, .028, .03], [1, .01, .016, .016]];
-    loft(B, R.map(([q, a, h, hh], j) => ({ c: [f[0] - sg * .004 * q, y0 + .012 + tacco * .05 * (1 - q) + h * .5 + (j === 0 ? .02 : 0), z0 + q * L], t: [0, 0, 1], f: [0, 1, 0], a: a * k * (D.sesso === 'f' ? .9 : 1), b: h * .62 * (j === 0 ? 1.3 : 1), p: 2.4, col: sand && q > .25 && q < .85 ? mulc(col, 1) : cm, ao: j === 0 ? .85 : 1, w: j === 0 ? wA : w })), { seg: 10 });
+    loft(B, R.map(([q, a, h, hh], j) => ({ c: [f[0] - sg * .004 * q, y0 + .012 + tacco * .05 * (1 - q) + h * .5 + (j === 0 ? .02 : 0), z0 + q * L], t: [0, 0, 1], f: [0, 1, 0], a: a * k * kw * (D.sesso === 'f' ? .9 : 1), b: h * .62 * kh * (j === 0 ? 1.3 : 1), p: gin ? 3 : 2.4, col: cm, colFn: gin ? (th => { const sx = Math.abs(Math.sin(th)); return q > .25 && q < .7 && sx > .8 && Math.cos(th) > -.2 ? bianco : q > .86 ? mixc(cm, bianco, .7) : cm; }) : null, ao: j === 0 ? .85 : 1, w: j === 0 ? wA : w })), { seg: 10 });
     // la suola: una lastra appena più larga, scura
-    loft(B, [[0, .048], [.25, .052], [.6, .056], [.85, .05], [1, .02]].map(([q, a]) => ({ c: [f[0] - sg * .004 * q, y0 + .008 + (tacco ? (q < .3 ? .04 : .04 * (1 - (q - .3) / .7) * .4) : 0), z0 + q * L * 1.01], t: [0, 0, 1], f: [0, 1, 0], a: a * k * (D.sesso === 'f' ? .9 : 1), b: .009, p: 4, col: dark, w })), { seg: 8 });
+    loft(B, [[0, .048], [.25, .052], [.6, .056], [.85, .05], [1, .02]].map(([q, a]) => ({ c: [f[0] - sg * .004 * q, y0 + .008 + (tacco ? (q < .3 ? .04 : .04 * (1 - (q - .3) / .7) * .4) : 0), z0 + q * L * 1.01], t: [0, 0, 1], f: [0, 1, 0], a: a * k * kw * 1.04 * (D.sesso === 'f' ? .9 : 1), b: gin ? .017 : .009, p: 4, col: dark, w })), { seg: 8 });
     if (tacco) loft(B, [0, 1].map(q => ({ c: [f[0], y0 + .005 + q * .045, z0 + .03], t: [0, 1, 0], f: [0, 0, 1], a: .016, b: .02, p: 3, col: dark, w })), { seg: 6 });
     else loft(B, [0, 1].map(q => ({ c: [f[0], y0 + .004 + q * .022, z0 + .045 * k], t: [0, 1, 0], f: [0, 0, 1], a: .044 * k, b: .04 * k, p: 3.5, col: dark, w })), { seg: 8 });
   }
@@ -320,7 +330,7 @@ var Personaggi = (function () {
     const P = TESTE[T.forma] || TESTE.ovale, at = (y, x, z) => [base[0] + x * K, base[1] + y * K, base[2] + z * K];
     const capH = (D.capelli && D.capelli.col) ? C3(D.capelli.col) : C3('#2a1a12'), labbra = mixc(pelle, [.55, .25, .22], .35), occ = C3('#1a1414');
     const ru = mixc(pelle, [.8, .35, .3], .12);   // un filo di rosso sulle guance
-    loft(B, P.map(([y, a, b, fz], j) => ({ c: at(y, 0, 0), t: [0, 1, 0], f: [0, 0, 1], a: a * K, b: b * K, fz: fz * K, p: 2.2, col: pelle, colFn: (th) => { const fr = Math.cos(th); return y > .0 && y < .07 && fr > .3 && Math.abs(Math.sin(th)) > .35 ? ru : pelle; }, w: wH, ao: j === 0 ? .9 : 1 })), { seg: st.seg + 2 });
+    loft(B, P.map(([y, a, b, fz], j) => ({ c: at(y, 0, 0), t: [0, 1, 0], f: [0, 0, 1], a: a * K, b: b * K, fz: fz * K, p: st.pTesta || 2.2, col: pelle, colFn: (th) => { const fr = Math.cos(th); return y > .0 && y < .07 && fr > .3 && Math.abs(Math.sin(th)) > .35 ? ru : pelle; }, w: wH, ao: j === 0 ? .9 : 1 })), { seg: st.seg + 2 });
     const front = (y) => { let i = 0; while (i < P.length - 2 && y > P[i + 1][0]) i++; const a = P[i], b = P[i + 1], t = cl((y - a[0]) / (b[0] - a[0]), 0, 1); return lerp(a[2] + a[3], b[2] + b[3], t); };
     const pa = (y, k) => { let i = 0; while (i < P.length - 2 && y > P[i + 1][0]) i++; const a = P[i], b = P[i + 1], t = cl((y - a[0]) / (b[0] - a[0]), 0, 1); return lerp(a[k], b[k], t); };
     const wid = (y) => { let i = 0; while (i < P.length - 2 && y > P[i + 1][0]) i++; const a = P[i], b = P[i + 1], t = cl((y - a[0]) / (b[0] - a[0]), 0, 1); return lerp(a[1], b[1], t); };
@@ -361,7 +371,7 @@ var Personaggi = (function () {
   function capelli(B, at, K, D, col, front, wid, wH, pa) {
     const tipo = (D.capelli && D.capelli.tipo) || 'corti', hat = D.cappello && D.cappello.tipo, scuro = mulc(col, .78), chiaro = mixc(col, [1, 1, 1], .12);
     const cc = (y, x, z, ax, a, b, l, c, o) => uovo(B, at(y, x, z), ax, a * K, b * K, l * K, c || col, wH, Object.assign({ anelli: 4, seg: 7 }, o || {}));
-    const top = pa(1, 0), sotto = hat && hat !== 'fazzoletto' ? (hat === 'paglia' || hat === 'cappello' ? .16 : .14) : 0;
+    const top = pa(1, 0), sotto = hat && hat !== 'fazzoletto' ? (hat === 'paglia' || hat === 'cappello' ? .16 : .135) : 0;
     const cuffia = (y0, k, back, cut) => loft(B, (sotto ? [y0, y0 + .03, .1, sotto - .01, sotto + .005, sotto + .012] : [y0, y0 + .03, .1, .15, .19, .215, top - .004, top + .008 * k, top + .014 * k]).map((y, j, A) => { const last = j === A.length - 1, yy = Math.min(y, top - .004), o = sotto ? (j >= A.length - 2 ? -.004 : .009 + .003 * k) : (.009 + .003 * k) * (j > 6 ? (last ? .2 : .6) : 1); return { c: at(y, 0, 0), t: [0, 1, 0], f: [0, 0, 1], a: (pa(yy, 1) * (j > 6 && !sotto ? .55 : 1) + o) * K * (last && !sotto ? .3 : 1), b: (pa(yy, 2) * (j > 6 && !sotto ? .55 : 1) + o) * K * (last && !sotto ? .3 : 1), fz: (pa(yy, 3) + (back || 0)) * K, col: j < 2 ? scuro : col, w: wH, mod: cut ? (th => cut(th, y)) : null }; }), { seg: 16 });
     if (tipo === 'calvo') { [1, -1].forEach(s => cc(.1, s * (pa(.1, 1) - .004), -.035, [0, .25, -1], .01, .022, .05, scuro)); cc(.095, 0, pa(.095, 3) - pa(.095, 2) + .006, [1, 0, 0], .014, .02, .06, scuro); return; }
     if (hat === 'fazzoletto') { cc(.06, 0, .035, [1, 0, 0], .01, .01, .04, scuro); return; }
@@ -411,6 +421,11 @@ var Personaggi = (function () {
       cupola(.14, [[.0, .102, .11], [.03, .104, .112]], mulc(c, .45), .01);
       loft(B, [[.0, .085], [.5, .09], [1, .07]].map(([q, a]) => ({ c: at(.145 - q * .02, 0, front(.15) - .005 + q * .055), t: [0, 0, 1], f: [0, 1, .4], a: a * K, b: .005 * K, p: 2.6, col: C3('#121214'), w: wH })), { seg: 8 });
       uovo(B, at(.205, 0, front(.15) + .02), [0, 0, 1], .014 * K, .016 * K, .006 * K, C3('#d8b040'), wH, { anelli: 2, seg: 6 });
+    } else if (tipo === 'cappellino' || tipo === 'cappellino_indietro') {
+      const dz = tipo === 'cappellino' ? 1 : -1;
+      cupola(.13, [[-.005, .1, .11], [.04, .104, .114], [.08, .094, .104], [.11, .066, .076], [.125, .02, .024]], c, -.004);
+      loft(B, [[0, .085], [.5, .09], [1, .07]].map(([q, a]) => ({ c: at(.14 - q * .012, 0, (dz > 0 ? front(.14) - .01 : -.11) + dz * q * .075), t: [0, 0, dz], f: [0, 1, .15], a: a * K, b: .005 * K, p: 3, col: sc, w: wH })), { seg: 8 });
+      uovo(B, at(.257, 0, -.008), [0, 1, 0], .012 * K, .012 * K, .005 * K, sc, wH, { anelli: 2, seg: 6 });
     } else if (tipo === 'elmetto') {
       cupola(.12, [[-.01, .125, .135], [.0, .12, .13], [.07, .112, .124], [.12, .07, .08], [.135, .01, .01]], c);
     } else if (tipo === 'fazzoletto') {   // il fazzoletto delle anziane: annodato sotto il mento, la punta dietro
@@ -536,6 +551,8 @@ var Personaggi = (function () {
     T(10, c => { add(c); c.fillStyle = R; c.beginPath(); c.moveTo(.44, 1.01); c.lineTo(.5, .72); c.lineTo(.56, 1.01); c.fill(); line(c, .008, [[.55, .72], [.55, 0]]); bottoni(c, .45, .34, .62, 3, .013); bottoni(c, .56, .34, .62, 3, .013); line(c, .01, [[.3, .1], [.36, .22]]); line(c, .01, [[.7, .1], [.64, .22]]); });
     // 11 gilet: lo scollo a V profondo, i bottoncini, i taschini
     T(11, c => { add(c); c.fillStyle = R; c.beginPath(); c.moveTo(.4, 1.01); c.lineTo(.5, .62); c.lineTo(.6, 1.01); c.fill(); line(c, .006, [[.5, .62], [.5, 0]]); bottoni(c, .51, .1, .56, 5, .01); line(c, .008, [[.36, .3], [.44, .3]]); line(c, .008, [[.56, .3], [.64, .3]]); });
+    // 12 le due bande della tuta sui fianchi (u 0,25 e 0,75)
+    T(12, c => { c.fillStyle = R; [.25, .75].forEach(u => { c.fillRect(u - .045, 0, .03, 1); c.fillRect(u + .015, 0, .03, 1); }); });
     // i motivi (ripetuti ogni 'prep' metri): R = secondo colore (col3)
     const P = (j, fn) => T(16 + j, fn);
     P(1, c => { c.fillStyle = R; for (let k = 0; k < 4; k++) c.fillRect(0, k / 4, 1, .1); });   // righe da marinaio
