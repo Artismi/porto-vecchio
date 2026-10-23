@@ -6901,14 +6901,17 @@ var Render = (function () {
     const T = G.T, R = .5, K = Math.round(TS / R), NW = Math.ceil(G.GW * TS / R) + 1, NH = Math.ceil(G.GH * TS / R) + 1;
     let m = new Float32Array(NW * NH), any = 0; const S38 = new Float32Array(NW * NH).fill(-9), D38 = new Float32Array(NW * NH).fill(9), C38 = new Uint8Array(NW * NH);   // [isola38]
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) { if (G.tileAt(tx, ty) !== T.WALK) continue; any++; for (let j = 0; j < K; j++) for (let i = 0; i < K; i++) m[(ty * K + j) * NW + tx * K + i] = 1; }
-    { const DM = new Float32Array(NW * NH).fill(1e9), HW = new Float32Array(NW * NH);   // [isola31]
-      (window.Pavimenti && Pavimenti.on && cn1() ? Pavimenti.vie({ roads: M.roads, gT, TS, T, geo1 }) : (M.roads || [])).forEach(rd => { if (rd.rect || !rd.pts || !(rd.kind === 'citta' || rd.kind === 'litoranea')) return; const h2 = rd.w / 2 + 3.4;   /* [pavimenti] le vie cucite fanno anche il loro marciapiede */
+    { const DM = new Float32Array(NW * NH).fill(1e9), HW = new Float32Array(NW * NH), SM1 = window.Pavimenti && Pavimenti.on && cn1() && !Pavimenti.SPIGOLI, E1 = SM1 ? new Float32Array(NW * NH).fill(1e9) : null, E2 = SM1 ? new Float32Array(NW * NH).fill(1e9) : null, R1 = SM1 ? new Int32Array(NW * NH).fill(-1) : null;   // [isola31]   [pavimenti] le due vie più vicine, per il raccordo curvo
+      (window.Pavimenti && Pavimenti.on && cn1() ? Pavimenti.vie({ roads: M.roads, gT, TS, T, geo1 }) : (M.roads || [])).forEach((rd, ri) => { if (rd.rect || !rd.pts || !(rd.kind === 'citta' || rd.kind === 'litoranea')) return; const h2 = rd.w / 2 + 3.4;   /* [pavimenti] le vie cucite fanno anche il loro marciapiede */
         for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L2 = (bx - ax) * (bx - ax) + (bz - az) * (bz - az) || 1;
           for (let j = Math.max(0, Math.floor((Math.min(az, bz) - h2) / R)); j <= Math.min(NH - 1, Math.ceil((Math.max(az, bz) + h2) / R)); j++) for (let i = Math.max(0, Math.floor((Math.min(ax, bx) - h2) / R)); i <= Math.min(NW - 1, Math.ceil((Math.max(ax, bx) + h2) / R)); i++) {
             const x = i * R, z = j * R, t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / L2)), d = Math.hypot(x - ax - (bx - ax) * t, z - az - (bz - az) * t), kk = j * NW + i;
-            if (d < DM[kk]) { DM[kk] = d; HW[kk] = rd.w / 2; } } } });
+            if (d < DM[kk]) { DM[kk] = d; HW[kk] = rd.w / 2; }
+            if (SM1) { const e = d - rd.w / 2; if (R1[kk] === ri) { if (e < E1[kk]) E1[kk] = e; } else if (e < E1[kk]) { E2[kk] = E1[kk]; E1[kk] = e; R1[kk] = ri; } else if (e < E2[kk]) E2[kk] = e; } } } });
       for (let kk = 0; kk < DM.length; kk++) { const x = (kk % NW) * R, z = Math.floor(kk / NW) * R, tx = Math.floor(x / TS), tz = Math.floor(z / TS);
-        if (zoneT(tx, tz) !== ZN.CITTA) continue; C38[kk] = 1; m[kk] = 0; if (DM[kk] > 1e8) continue; const d = DM[kk], h0 = HW[kk]; D38[kk] = d - h0; S38[kk] = Math.min(d - h0 - .02, h0 + 2.1 - d); } }   // [isola35] in città solo la fascia lungo le vie
+        if (zoneT(tx, tz) !== ZN.CITTA) continue; C38[kk] = 1; m[kk] = 0; if (DM[kk] > 1e8) continue; const d = DM[kk], h0 = HW[kk];
+        let e0 = d - h0; if (SM1 && E2[kk] < 1e8) { const a = E1[kk], b = E2[kk], hk = Math.max(3.8 - Math.abs(a - b), 0) / 3.8; e0 = Math.min(a, b) - hk * hk * 3.8 / 4; }   // [pavimenti] l'unione morbida: il cordolo gira l'angolo col raggio della svolta dipinta (3,2 m)
+        D38[kk] = e0; S38[kk] = Math.min(e0 - .02, 2.1 - e0); } }   // [isola35] in città solo la fascia lungo le vie
     // [carico] le colonne si sommano tutte insieme riga per riga (prima una colonna alla volta, saltando in memoria): stessi conti
     // nello stesso ordine per ogni colonna, quindi stessi numeri, ma 4 s in meno all'avvio della città nuova
     const CS = new Float64Array(NW);
