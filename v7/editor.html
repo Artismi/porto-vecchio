@@ -55527,18 +55527,21 @@ var Riva = (function () {
       sab = mix(sab, mix(vec3(.24, .2, .15), vec3(.36, .3, .22), rh9(floor(p * 9.))), wr * .8);
       // LA ROCCIA: il calcare a strati, le fratture grandi e le crepe piccole, i buchi del carsismo, i licheni sopra gli spruzzi,
       // la fascia nera degli spruzzi, le alghe sul pelo dell'acqua
-      vec3 c1 = rc9(p * .4), c2 = rc9(p * 1.7 + 5.);
-      vec3 roc = mix(vec3(.58, .56, .51), vec3(.71, .68, .62), rf9(p * .55)) * (.93 + sin(y * 19.6 + rf9(p * .45) * 5.) * .05);
-      float crk = (1. - smoothstep(0., .06, c1.y)) * .5 + (1. - smoothstep(0., .035, c2.y)) * .28 * aaM;
-      float pit = smoothstep(.82, .9, rh9(floor(p * 13.))) * smoothstep(.5, .2, length(fract(p * 13.) - .5)) * aaF;
-      roc *= (1. - crk) * (1. - pit * .45);
+      vec3 roc = vec3(.6); float crk = 0., pit = 0.;
+      if (vRS9.y > .01) {   // la roccia solo dove c'è (le celle costano)
+        vec3 c1 = rc9(p * .4), c2 = rc9(p * 1.7 + 5.);
+        roc = mix(vec3(.58, .56, .51), vec3(.71, .68, .62), rf9(p * .55)) * (.93 + sin(y * 19.6 + rf9(p * .45) * 5.) * .05);
+        crk = (1. - smoothstep(0., .06, c1.y)) * .5 + (1. - smoothstep(0., .035, c2.y)) * .28 * aaM;
+        pit = smoothstep(.82, .9, rh9(floor(p * 13.))) * smoothstep(.5, .2, length(fract(p * 13.) - .5)) * aaF;
+        roc *= (1. - crk) * (1. - pit * .45);
       roc = mix(roc, vec3(.76, .53, .22), smoothstep(.63, .72, rf9(p * .85 + 21.)) * smoothstep(.9, 1.5, ab) * .55);
       roc = mix(roc, vec3(.83, .83, .79), smoothstep(.6, .7, rf9(p * 1.25 + 31.)) * smoothstep(.6, 1.1, ab) * .35);
       roc = mix(roc, vec3(.16, .16, .15), (1. - smoothstep(.5, 1.05, ab)) * smoothstep(.04, .22, ab) * (.55 + .45 * rf9(p * 2.1)) * .75);
-      roc = mix(roc, vec3(.19, .26, .16), (1. - smoothstep(-.05, .14, ab)) * .6);
+      roc = mix(roc, vec3(.19, .26, .16), (1. - smoothstep(-.05, .14, ab)) * .6); }
       // I CIOTTOLI: celle tonde, ognuna col suo grigio o ocra, i giunti scuri di sabbia bagnata
-      vec3 cc = rc9(p * 5.2); vec3 cio = mix(mix(vec3(.52, .5, .47), vec3(.8, .77, .71), cc.z), vec3(.66, .58, .46), step(.82, rh9(vec2(cc.z * 91.))));
-      float giu = smoothstep(.33, .47, cc.x); cio = mix(cio * (1.04 - cc.x * .3), vec3(.33, .3, .26), giu);
+      vec3 cio = vec3(.6); float giu = 0.;
+      if (vRS9.w > .01) { vec3 cc = rc9(p * 5.2); cio = mix(mix(vec3(.52, .5, .47), vec3(.8, .77, .71), cc.z), vec3(.66, .58, .46), step(.82, rh9(vec2(cc.z * 91.))));
+        giu = smoothstep(.33, .47, cc.x); cio = mix(cio * (1.04 - cc.x * .3), vec3(.33, .3, .26), giu); }
       vec3 pr = mix(sab, roc, clamp(vRS9.y, 0., 1.)); pr = mix(pr, cio, clamp(vRS9.w, 0., 1.) * aaL);
       pr = mix(pr, pr * vec3(.52, .54, .57), wet * .9); pr = mix(pr, vec3(.86, .84, .78), sw * wet * aaM * (1. - vRS9.y) * .45);   // le linee bianche della risacca (schiuma asciugata)
       diffuseColor.rgb = mix(diffuseColor.rgb, pr, rW9);
