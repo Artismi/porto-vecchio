@@ -55497,7 +55497,7 @@ var Riva = (function () {
   // bagnato e i ciottoli disegnati nello shader alla scala vera (granelli, increspature, fratture, licheni, la fascia nera degli spruzzi).
   // Una mesh per blocco per il suolo, una per gli scogli (fusi, colori ai vertici), una d'istanze per i ciottoli: 3 disegni a blocco.
   const GLSL_P = `
-    varying vec4 vRS9; varying float vRD9; varying vec3 vRW9;
+    varying vec4 vRS9; varying float vRD9; varying vec3 vRW9; varying vec4 vRT9; varying vec2 vRU9;
     float rh9(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     float rn9(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3. - 2.*f); return mix(mix(rh9(i), rh9(i + vec2(1., 0.)), f.x), mix(rh9(i + vec2(0., 1.)), rh9(i + 1.), f.x), f.y); }
     float rf9(vec2 p){ return rn9(p) * .5 + rn9(p * 2.03 + 7.) * .3 + rn9(p * 4.1 + 13.) * .2; }
@@ -55507,42 +55507,36 @@ var Riva = (function () {
   const GLSL_A = `
     float rB9 = 0.; float rWet9 = 0., rW9 = clamp(vRS9.x + vRS9.y + vRS9.w, 0., 1.);
     if (rW9 > .002 || vRS9.z > .002) {
+      // [leggero] i toni larghi (chiazze, strisce, la linea della posidonia, i licheni) arrivano dai vertici (vRT9, vRU9): nel pixel
+      // restano la grana, la risacca, le crepe e i ciottoli (prima ~25 rumori a pixel, ora 3-5)
       vec2 p = vRW9.xz; float y = vRW9.y, d = vRD9, ab = y + .45;
       vec2 fw = fwidth(p); float mpp = max(fw.x, fw.y), aaF = 1. - smoothstep(.015, .05, mpp), aaM = 1. - smoothstep(.05, .16, mpp), aaL = 1. - smoothstep(.16, .45, mpp);
-      float wet = clamp(vRS9.z, 0., 1.);
-      // LA SABBIA: due toni larghi, la grana, le increspature del vento (asciutto) e dell'onda (bagnato), le linee della risacca,
-      // la linea della posidonia sulla berma, i gusci e la ghiaietta
-      float n1 = rf9(p * .3), n2 = rf9(p * 1.6 + 3.), n3 = rf9(p * vec2(.9, 3.2) + 5.), g1 = rh9(floor(p * 11.)), g2 = rh9(floor(p * 23.) + 5.);
-      vec3 sab = mix(vec3(.6, .54, .43), vec3(.77, .71, .58), n1) * (.93 + (n2 - .5) * .2) * (.9 + .2 * rf9(p * .06 + 40.));   // i toni larghi: la sabbia asciutta e smossa, la compatta
-      sab = mix(sab, sab * vec3(.9, .88, .86), smoothstep(.55, .7, rf9(p * .22 + 17.)) * .6);
-      sab = mix(sab, sab * vec3(.82, .8, .78), smoothstep(.6, .75, n3) * (1. - wet) * .7);   // le strisce scure della sabbia pesante, pettinate dal vento
-      float an = .55 + (rf9(p * .07) - .5) * 1.4; vec2 dr = vec2(cos(an), sin(an));
-      float rip = (rf9(p * 1.3 + 2.) - .5) * 2.;   // la grana larga della sabbia smossa (niente righe: a questa distanza fanno moiré)
-      float sw = 0.; for (int k = 0; k < 3; k++) { float c = .9 + float(k) * .75 + (rn9(p * .13 + float(k) * 7.) - .5) * 1.4; sw = max(sw, (1. - smoothstep(0., .06 + .03 * float(k), abs(d - c))) * smoothstep(.35, .65, rn9(p * .45 + float(k) * 3.)) * (1. - float(k) * .3)); }   // le linee della risacca, rotte
-      float wr = smoothstep(.56, .74, rf9(p * 1.9 + 11.)) * (1. - smoothstep(.9, 2.2, abs(d - 5.4 - (rn9(p * .09) - .5) * 3.4)));
-      float gu = smoothstep(.86, .93, rn9(p * 6.3 + 4.)) * smoothstep(.6, .8, rn9(p * .7 + 2.)) * aaM, gh = smoothstep(.8, .95, rn9(p * 4.1 + 8.)) * aaM * .6;   // conchiglie e ghiaietta, a macchie morbide
-      sab *= 1. + (rn9(p * 9.) - .5) * .08 * aaM + rip * .035 * aaL;
-      sab = mix(sab, vec3(.92, .89, .82), gu * .85); sab = mix(sab, vec3(.38, .34, .3), gh * .35);
-      sab = mix(sab, mix(vec3(.24, .2, .15), vec3(.36, .3, .22), rh9(floor(p * 9.))), wr * .8);
-      // LA ROCCIA: il calcare a strati, le fratture grandi e le crepe piccole, i buchi del carsismo, i licheni sopra gli spruzzi,
-      // la fascia nera degli spruzzi, le alghe sul pelo dell'acqua
+      float wet = clamp(vRS9.z, 0., 1.), tone = vRT9.x, str = vRT9.y, wr = vRT9.z, dsw = vRT9.w;
+      float gr = rn9(p * 9.), rip = (rn9(p * 1.3 + 2.) - .5) * 2.;
+      vec3 sab = mix(vec3(.6, .54, .43), vec3(.77, .71, .58), tone);
+      sab = mix(sab, sab * vec3(.82, .8, .78), str * (1. - wet) * .7);
+      float sw = 0.; for (int k = 0; k < 3; k++) { float c = .9 + float(k) * .75; sw = max(sw, (1. - smoothstep(0., .06 + .03 * float(k), abs(dsw - c))) * (1. - float(k) * .3)); }   // le linee della risacca
+      sw *= smoothstep(.35, .65, rn9(p * .45));
+      float gu = smoothstep(.86, .93, gr) * smoothstep(.55, .75, tone) * aaM;   // conchiglie e ghiaietta
+      sab *= 1. + (gr - .5) * .08 * aaM + rip * .035 * aaL;
+      sab = mix(sab, vec3(.92, .89, .82), gu * .85);
+      sab = mix(sab, mix(vec3(.24, .2, .15), vec3(.36, .3, .22), gr), wr * .8);
       vec3 roc = vec3(.6); float crk = 0., pit = 0.;
-      if (vRS9.y > .01) {   // la roccia solo dove c'è (le celle costano)
-        vec3 c1 = rc9(p * .4), c2 = rc9(p * 1.7 + 5.);
-        roc = mix(vec3(.58, .56, .51), vec3(.71, .68, .62), rf9(p * .55)) * (.93 + sin(y * 19.6 + rf9(p * .45) * 5.) * .05);
-        crk = (1. - smoothstep(0., .06, c1.y)) * .5 + (1. - smoothstep(0., .035, c2.y)) * .28 * aaM;
+      if (vRS9.y > .01) {   // la roccia solo dove c'è
+        vec3 c1 = rc9(p * .4);
+        roc = mix(vec3(.58, .56, .51), vec3(.71, .68, .62), tone) * (.93 + sin(y * 19.6 + tone * 5.) * .05);
+        crk = (1. - smoothstep(0., .06, c1.y)) * .5 + (1. - smoothstep(.0, .05, abs(gr - .5))) * .2 * aaM;
         pit = smoothstep(.82, .9, rh9(floor(p * 13.))) * smoothstep(.5, .2, length(fract(p * 13.) - .5)) * aaF;
         roc *= (1. - crk) * (1. - pit * .45);
-      roc = mix(roc, vec3(.76, .53, .22), smoothstep(.63, .72, rf9(p * .85 + 21.)) * smoothstep(.9, 1.5, ab) * .55);
-      roc = mix(roc, vec3(.83, .83, .79), smoothstep(.6, .7, rf9(p * 1.25 + 31.)) * smoothstep(.6, 1.1, ab) * .35);
-      roc = mix(roc, vec3(.16, .16, .15), (1. - smoothstep(.5, 1.05, ab)) * smoothstep(.04, .22, ab) * (.55 + .45 * rf9(p * 2.1)) * .75);
-      roc = mix(roc, vec3(.19, .26, .16), (1. - smoothstep(-.05, .14, ab)) * .6); }
-      // I CIOTTOLI: celle tonde, ognuna col suo grigio o ocra, i giunti scuri di sabbia bagnata
+        roc = mix(roc, vec3(.76, .53, .22), vRU9.x * smoothstep(.9, 1.5, ab) * .5);
+        roc = mix(roc, vec3(.83, .83, .79), vRU9.y * smoothstep(.6, 1.1, ab) * .32);
+        roc = mix(roc, vec3(.16, .16, .15), (1. - smoothstep(.5, 1.05, ab)) * smoothstep(.04, .22, ab) * (.55 + .45 * str) * .75);
+        roc = mix(roc, vec3(.19, .26, .16), (1. - smoothstep(-.05, .14, ab)) * .6); }
       vec3 cio = vec3(.6); float giu = 0.;
       if (vRS9.w > .01) { vec3 cc = rc9(p * 5.2); cio = mix(mix(vec3(.52, .5, .47), vec3(.8, .77, .71), cc.z), vec3(.66, .58, .46), step(.82, rh9(vec2(cc.z * 91.))));
         giu = smoothstep(.33, .47, cc.x); cio = mix(cio * (1.04 - cc.x * .3), vec3(.33, .3, .26), giu); }
       vec3 pr = mix(sab, roc, clamp(vRS9.y, 0., 1.)); pr = mix(pr, cio, clamp(vRS9.w, 0., 1.) * aaL);
-      pr = mix(pr, pr * vec3(.52, .54, .57), wet * .9); pr = mix(pr, vec3(.86, .84, .78), sw * wet * aaM * (1. - vRS9.y) * .45);   // le linee bianche della risacca (schiuma asciugata)
+      pr = mix(pr, pr * vec3(.52, .54, .57), wet * .9); pr = mix(pr, vec3(.86, .84, .78), sw * wet * aaM * (1. - vRS9.y) * .45);
       diffuseColor.rgb = mix(diffuseColor.rgb, pr, rW9);
       rWet9 = wet * rW9;
       rB9 = (rip * .02 * aaL * (1. - vRS9.y) - crk * .05 * vRS9.y - pit * .02 * vRS9.y + (.04 - giu * .05) * vRS9.w * aaL) * rW9;
@@ -55555,8 +55549,8 @@ var Riva = (function () {
     const m = base.clone(); if (prep) prep(m); const prev = m.onBeforeCompile, pk = m.customProgramCacheKey && m.customProgramCacheKey !== window.THREE.Material.prototype.customProgramCacheKey ? m.customProgramCacheKey() : '';
     m.customProgramCacheKey = () => pk + '|riva9';
     m.onBeforeCompile = (sh, r) => { if (prev) prev.call(m, sh, r);
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aRS; attribute float aRD; varying vec4 vRS9; varying float vRD9; varying vec3 vRW9;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRS9 = aRS; vRD9 = aRD; vRW9 = (modelMatrix * vec4(transformed, 1.)).xyz;');
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aRS; attribute float aRD; attribute vec4 aRT; attribute vec2 aRU; varying vec4 vRS9; varying float vRD9; varying vec3 vRW9; varying vec4 vRT9; varying vec2 vRU9;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRS9 = aRS; vRD9 = aRD; vRT9 = aRT; vRU9 = aRU; vRW9 = (modelMatrix * vec4(transformed, 1.)).xyz;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GLSL_P)
         .replace('#include <color_fragment>', '#include <color_fragment>\n' + GLSL_A)
         .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, .34, rWet9);')
@@ -55621,13 +55615,17 @@ var Riva = (function () {
     const B = blocco(Math.floor(tx0 / CH), Math.floor(ty0 / CH)); if (!B.any && !B.piede.length) return null;
     if (!B.any) { const grp = new THREE.Group(), g = fondiScogli(B.piede); if (g) { const ms = new THREE.Mesh(g, matRoccia()); ms.castShadow = ms.receiveShadow = true; ms.name = 'riva9s'; grp.add(ms); } R.stat.piede = (R.stat.piede || 0) + B.piede.length;
       return { grp, mat: { emissiveIntensity: 0, envMapIntensity: 0, dispose() {} }, tri: 0, scogli: 0, ciottoli: 0, dispose() { grp.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } }; }
-    const NX = B.NX, H = B.h, pos = [], uv = [], aS = [], aD = [], idx = [], map = new Int32Array(NX * B.NY).fill(-1);
+    const NX = B.NX, H = B.h, pos = [], uv = [], aS = [], aD = [], aT = [], aU = [], idx = [], map = new Int32Array(NX * B.NY).fill(-1);
     const vtx = (gi, gj) => { const k = gj * NX + gi; let q = map[k]; if (q >= 0) return q; q = map[k] = pos.length / 3; const tx = tx0 + Math.min(n - 1, Math.floor(gi / SUB)), ty = ty0 + Math.min(m - 1, Math.floor(gj / SUB)), x = (tx0 + gi / SUB) * TS, y = (ty0 + gj / SUB) * TS, h = H[k];
-      pos.push(x, h, y); uv.push(gi / SUB / n, 1 - gj / SUB / m); const s = suolo(tx, ty, x, y, h); aS.push(s[0], s[1], s[2], s[3]); aD.push(s[4]); return q; };
+      pos.push(x, h, y); uv.push(gi / SUB / n, 1 - gj / SUB / m); const s = suolo(tx, ty, x, y, h); aS.push(s[0], s[1], s[2], s[3]); aD.push(s[4]);
+      // i toni larghi ai vertici: la sabbia asciutta o compatta, le strisce pesanti, la linea della posidonia, la risacca spostata, i licheni
+      const n1 = fbm(x / 3.3, y / 3.3, 701, 3), big = fbm(x / 16, y / 16, 702, 2), str = sstep(.6, .75, fbm(x / 1.1, y / .31, 703, 2)), bD = 5.4 + (fbm(x / 11, y / 11, 704, 2) - .5) * 3.4;
+      aT.push(Math.max(0, Math.min(1, n1 * .8 + big * .4 - .1)), str, sstep(.56, .74, fbm(x / .55, y / .55, 705, 2)) * (1 - sstep(.9, 2.2, Math.abs(s[4] - bD))), s[4] + (fbm(x / 7.7, y / 7.7, 706, 2) - .5) * 1.4);
+      aU.push(sstep(.63, .72, fbm(x / 1.2, y / 1.2, 707, 2)), sstep(.6, .7, fbm(x / .8, y / .8, 708, 2))); return q; };
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { if (!B.mask[j * n + i]) continue;
       for (let b = 0; b < SUB; b++) for (let a = 0; a < SUB; a++) { const gi = i * SUB + a, gj = j * SUB + b, p0 = vtx(gi, gj), p1 = vtx(gi, gj + 1), p2 = vtx(gi + 1, gj + 1), p3 = vtx(gi + 1, gj); idx.push(p0, p1, p2, p0, p2, p3); } }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    geo.setAttribute('aRS', new THREE.Float32BufferAttribute(aS, 4)); geo.setAttribute('aRD', new THREE.Float32BufferAttribute(aD, 1)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
+    geo.setAttribute('aRS', new THREE.Float32BufferAttribute(aS, 4)); geo.setAttribute('aRD', new THREE.Float32BufferAttribute(aD, 1)); geo.setAttribute('aRT', new THREE.Float32BufferAttribute(aT, 4)); geo.setAttribute('aRU', new THREE.Float32BufferAttribute(aU, 2)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
     const mat = materiale(base, prep), mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; mesh.name = 'riva9';
     const grp = new THREE.Group(); grp.add(mesh); let tri = idx.length / 3;
     // gli scogli del blocco (e del piede delle opere), fusi in una geometria sola
