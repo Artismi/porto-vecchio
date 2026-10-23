@@ -63,7 +63,8 @@ var Tetti = (function () {
   const LADDERS = [];
   // [pulizia2] i pezzi urbani grandi della città nuova (W.pezzi, le caselle che riservano): una scala che ci sta dietro, vista dalla camera
   // (che guarda da sud-est), non si vede; meglio un altro lato
-  const PZ = (W.pezzi || []).filter(p => p.imp && p.tipo !== 'binari' && p.tipo !== 'bitta'), CAM = Math.SQRT1_2;
+  const PZ = (W.pezzi || []).map(p => p.imp || !p.opz ? p : p.tipo === 'portico' ? Object.assign({}, p, { imp: [[0, 0, p.opz.campate * p.opz.campata, -p.opz.profondita / 2, p.opz.profondita / 2]] }) : p.tipo === 'carro_merci' ? Object.assign({}, p, { imp: [[0, 0, 10, -1.5, 1.5]] }) : p)   // [pianta] il portico e il carro sul tronchino non riservano caselle: l'ingombro dalle misure
+    .filter(p => p.imp && p.tipo !== 'binari' && p.tipo !== 'bitta'), CAM = Math.SQRT1_2;
   const inPz = (x, y, pad0) => PZ.some(p => { const pad = /portico|porta_terra|tettoia/.test(p.tipo) ? pad0 + 2 : pad0, c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c; return p.imp.some(r => l >= r[1] - pad && l <= r[2] + pad && z >= r[3] - pad && z <= r[4] + pad); });   // le volte dei portici sporgono oltre le caselle riservate
   const coperta = (wx, wy, ox, oy) => { if (!PZ.length) return false; for (let a = .3; a <= 2.3; a += .5) for (let b = 0; b <= 8; b += 1) if (inPz(wx + ox * a + CAM * b, wy + oy * a + CAM * b, .3)) return true; return false; };
   // [tetti3] LA CITTÀ NUOVA (le case con l'epoca): le salite si vedono. La camera guarda da sud-est, alta 41°: una scala sui lati
@@ -109,7 +110,7 @@ var Tetti = (function () {
           else if (!G.walkT(tx, ty)) continue;
           let s = (sd.f === front ? -4 : 0) + (k === 0 || k === sd.n - 1 ? 2 : 0) + (sd.f === 'E' || sd.f === 'W' ? 1 : 0) + (foot >= 0 ? -3 : 0);
           // [pulizia2] davanti alla scala, verso la camera, non deve esserci un pezzo grande (arco, portico, mura, tettoia): la coprirebbe
-          const cop = (() => { const [wx0, wy0] = sd.wall(k), [ox0, oy0] = sd.out; return coperta(wx0, wy0, ox0, oy0); })(); if (cop) s -= 8;
+          const cop = (() => { const [wx0, wy0] = sd.wall(k), [ox0, oy0] = sd.out; return coperta(wx0, wy0, ox0, oy0); })(); if (cop) continue;   // [pianta] coperta da un pezzo grande (il portico, un arco, il carro sul tronchino): lì la scala non si mette
           // la casella davanti alla scala deve avere un po' di spazio (non un budello fra due muri ciechi)
           if (foot < 0) { const [ox, oy] = sd.out; if (!G.walkT(tx + ox, ty + oy)) s -= 1.5; }
           // [tetti3] nella città nuova la scala sta dalla parte della camera (sud, est) e nessuno davanti la copre: il lato della porta va
