@@ -291,6 +291,88 @@ var Percorsi = (function () {
     { id: 'giro_marina', nome: 'Il giro della marina', x0: 1420, x1: 1466, y0: 350, y1: 410 },
     { id: 'giro_mercato', nome: 'Il giro del Mercato', x0: 1250, x1: 1318, y0: 286, y1: 362, fuoriBorgo: true },   // [mappa_compatta] i tetti dell'Ottocento
   ];
+  // [tetti4] I GIRI COME ESPLORAZIONE: ogni giro ha un tema (quello che si vede passando) e un premio in fondo a un ramo (perché ci si
+  // va): un BELVEDERE (la panca e la bandierina sul tetto più alto lì attorno), una TERRAZZA nascosta (il pergolato in un cul-de-sac),
+  // un TESORO (la cassetta di latta dietro il comignolo), una CORTE (la scala che scende nel cortile chiuso). Più di una via per salire
+  // e per scendere, viste dalla strada (la regola di [tetti3]).
+  const TEMI4 = {
+    giro_porta: { tema: 'le altane della Porta', premio: 'belvedere', altro: 'tesoro' },
+    giro_forno: { tema: 'i comignoli del Forno', premio: 'tesoro', altro: 'terrazza' },
+    giro_campanile: { tema: "all'ombra del campanile", premio: 'belvedere', altro: 'corte' },
+    giro_marina: { tema: 'le terrazze dei pescatori', premio: 'corte', altro: 'belvedere' },
+    giro_mercato: { tema: 'le tegole del Mercato', premio: 'terrazza', altro: 'belvedere' },
+    giro_sagrato: { tema: 'gli orti pensili delle Monache', premio: 'terrazza', altro: 'tesoro' },
+    giro_pozzo: { tema: 'le corti del Pozzo', premio: 'corte', altro: 'belvedere' },
+    giro_reti: { tema: 'le reti stese sulla marina', premio: 'belvedere', altro: 'tesoro' },
+    giro_scalo: { tema: "i magazzini dell'Ottocento", premio: 'tesoro', altro: 'terrazza' },
+    giro_stazione: { tema: 'i fumi della ferrovia', premio: 'belvedere', altro: 'terrazza' },
+    giro_torre: { tema: "i serbatoi sotto la torre dell'acqua", premio: 'tesoro', altro: 'belvedere' },
+    giro_tramontana: { tema: 'il vento di tramontana sulle mura', premio: 'belvedere', altro: 'tesoro' },
+    giro_molo: { tema: 'le reti e le nasse del molo', premio: 'terrazza', altro: 'tesoro' },
+  };
+  // i giri nuovi: uno per ogni pezzo grande della rete dei tetti che non ha ancora il suo giro, col nome del nodo (W.percorsi) o del
+  // landmark più vicino fra questi; al più nove giri sui tetti in tutto (più il camminamento delle mura)
+  const GIRI4 = [
+    { id: 'giro_sagrato', nome: 'Il giro del sagrato', ancora: 'sagrato' },
+    { id: 'giro_pozzo', nome: 'Il giro del Pozzo', ancora: 'pozzo' },
+    { id: 'giro_reti', nome: 'Il giro delle reti', ancora: 'piazza_marina' },
+    { id: 'giro_molo', nome: 'Il giro del molo', ancora: 'molo_vecchio' },
+    { id: 'giro_scalo', nome: 'Il giro dello Scalo', ancora: 'scalo', fuoriBorgo: true },
+    { id: 'giro_stazione', nome: 'Il giro della Stazione', ancora: 'stazione', fuoriBorgo: true },
+    { id: 'giro_torre', nome: "Il giro della torre dell'acqua", ancora: 'torre_acqua' },
+    { id: 'giro_tramontana', nome: 'Il giro di tramontana', ancora: 'covo' },
+  ], MAXGIRI4 = 9;
+  const ancora4 = id => { const n = NODI.find(q => q.id === id) || LANDMARK.find(q => q.tipo === id); return n ? [n.x, n.y] : null; };
+  const NOMI4 = { belvedere: 'il belvedere', terrazza: 'la terrazza nascosta', tesoro: 'la cassetta nascosta', corte: 'la scala nella corte' };
+  function vieRami4(TT, BB, E, cen, passOk, passo4) {
+    const giri = CIRCUITI.filter(c => c.k === 'tetti'), altrui = new Map(), presi = new Set();
+    giri.forEach(c => c.edifici.forEach(i => altrui.set(i, c.id)));
+    const R = new Map(); E.forEach(L => L.forEach(e => { const A = R.get(e.b) || R.set(e.b, []).get(e.b); A.push(e); }));   // il grafo rovescio
+    // avanti: da S dove si arriva (e col passo che ci porta); indietro: da dove si arriva a S
+    const avanti = (S, ok, max) => { const P = new Map(); S.forEach(i => P.set(i, { h: 0, e: null })); const Q = [...S];
+      for (let k = 0; k < Q.length; k++) { const a = Q[k], h = P.get(a).h; if (h >= max) continue; (E.get(a) || []).forEach(e => { if (P.has(e.b) || !ok(e.b) || !passOk(e)) return; P.set(e.b, { h: h + 1, e }); Q.push(e.b); }); } return P; };
+    const indietro = (S, ok, max) => { const P = new Map(); S.forEach(i => P.set(i, { h: 0, e: null })); const Q = [...S];
+      for (let k = 0; k < Q.length; k++) { const b = Q[k], h = P.get(b).h; if (h >= max) continue; (R.get(b) || []).forEach(e => { if (P.has(e.a) || !ok(e.a) || !passOk(e)) return; P.set(e.a, { h: h + 1, e }); Q.push(e.a); }); } return P; };
+    const viaA = (P, t) => { const out = []; let c = t; while (P.get(c) && P.get(c).e) { const e = P.get(c).e; out.unshift(e); c = e.a; } return out; };   // da S a t
+    const viaI = (P, t) => { const out = []; let c = t; while (P.get(c) && P.get(c).e) { const e = P.get(c).e; out.push(e); c = e.b; } return out; };    // da t a S
+    const grado = i => new Set((E.get(i) || []).map(e => e.b)).size;
+    const linea = (pas, a0, z0) => [a0].concat(pas.map(e => [e.x, e.y])).concat(z0 ? [z0] : []);
+    giri.forEach(c => {
+      const T = TEMI4[c.id] || {}, S = new Set(c.edifici); c.tema = T.tema || ''; c.premio = T.premio || 'belvedere';
+      const g = c.edifici.map(cen).reduce((s, q) => [s[0] + q[0] / c.edifici.length, s[1] + q[1] / c.edifici.length], [0, 0]);
+      const ok = i => (!altrui.has(i) || altrui.get(i) === c.id) && !presi.has(i) && BB[i] && !BB[i].lighthouse && hyp(cen(i)[0] - g[0], cen(i)[1] - g[1]) <= 50;
+      const AV = avanti(S, ok, 7), IN = indietro(S, ok, 7);
+      // le vie: altre scale da terra da cui si arriva al giro e da cui si torna giù dal giro
+      const L0 = TT.LADDERS[c.sali], L1 = TT.LADDERS[c.scendi], prese = [[L0.fx, L0.fy], [L1.fx, L1.fy]];
+      const cand = TT.LADDERS.filter(L => L.footB < 0 && !L.camm && L.corte === undefined && L.vis !== false && L.i !== c.sali && L.i !== c.scendi && AV.has(L.bi) && IN.has(L.bi) && !(altrui.has(L.bi) && altrui.get(L.bi) !== c.id));
+      c.vie = [];
+      for (let n = 0; n < 3; n++) {
+        let best = null; cand.forEach(L => { if (c.vie.some(v => v.i === L.i)) return; const d = Math.min(...prese.map(([x, y]) => hyp(x - L.fx, y - L.fy))); if (d < 8) return; const s = d - (AV.get(L.bi).h + IN.get(L.bi).h) * 2; if (!best || s > best.s) best = { s, L }; });
+        if (!best) break; const L = best.L, su = viaI(IN, L.bi), giu = viaA(AV, L.bi);
+        const ed = [...new Set([L.bi].concat(su.map(e => e.b), giu.map(e => e.a)))].filter(i => !S.has(i));
+        c.vie.push({ i: L.i, su: su.map(passo4), giu: giu.map(passo4), edifici: ed, verso: 'entrambi', pts: linea(su, [L.fx, L.fy]).concat([cen(su.length ? su[su.length - 1].b : L.bi)]) });
+        prese.push([L.fx, L.fy]); ed.forEach(i => presi.add(i));
+      }
+      c.salite = [c.sali].concat(c.vie.map(v => v.i)); c.discese = [c.scendi].concat(c.vie.map(v => v.i));
+      // i rami: dal giro al premio (e ritorno), un vicolo cieco che paga
+      c.rami = [];
+      const ramo = k => {
+        const torna = i => IN.has(i) && AV.has(i) && !S.has(i) && !presi.has(i) && AV.get(i).h >= 1;
+        if (typeof process !== 'undefined' && process.env.RAMI_DBG) console.error(c.id, k, 'AV', AV.size, 'IN', IN.size, 'torna', [...AV.keys()].filter(torna).length);
+        let t = null, scala = null;
+        if (k === 'corte') { const Lc = TT.LADDERS.filter(L => L.corte !== undefined && AV.has(L.bi) && IN.has(L.bi) && !presi.has(L.bi)).sort((p, q) => AV.get(p.bi).h - AV.get(q.bi).h)[0]; if (Lc) { t = Lc.bi; scala = Lc; } }
+        else { const C = [...AV.keys()].filter(i => torna(i) && (k === 'tesoro' || (BB[i].w >= 2 && BB[i].h >= 2 && !BB[i].annesso)) && (k !== 'terrazza' || BB[i].era !== 'E4'));   // [tetti4] la cassetta sta anche su un annesso
+          const sc = i => k === 'belvedere' ? TT.roofRule(BB[i]) * 10 + AV.get(i).h : k === 'terrazza' ? AV.get(i).h * 2 - grado(i) * 1.5 + BB[i].w * BB[i].h * .1 : AV.get(i).h * 3 - grado(i) * 2;
+          C.sort((p, q) => sc(q) - sc(p) || p - q); t = C.length ? C[0] : null; }
+        if (t === null || t === undefined) return null;
+        const pas = viaA(AV, t), ed = [...new Set(pas.map(e => e.b))].filter(i => !S.has(i)), [x, y] = scala ? [scala.tx, scala.ty] : cen(t);
+        const r = { premio: k, nome: NOMI4[k] + (c.tema ? ' · ' + c.tema : ''), bi: t, passi: pas.map(passo4), edifici: ed, x, y, scala: scala ? scala.i : -1, pts: linea(pas, pas.length ? [pas[0].x, pas[0].y] : [x, y], [x, y]) };
+        c.rami.push(r); ed.forEach(i => presi.add(i)); return r;
+      };
+      if (!ramo(c.premio)) { const alt = ['terrazza', 'tesoro', 'belvedere'].find(k => k !== c.premio && !c.rami.length && ramo(k)); if (alt) c.premio = alt; }
+      if (T.altro && !c.rami.some(r => r.premio === T.altro)) ramo(T.altro);
+    });
+  }
   function lega(api) {
     if (DATI.legato) return DATI; const TT = api && api.Tetti, SO = api && api.Sottosuolo, G = api && api.Game; if (!TT || !G) return DATI;
     const BB = G.BUILDINGS, cen = i => [(BB[i].x + BB[i].w / 2) * TS, (BB[i].y + BB[i].h / 2) * TS], GBI = G.MAP.world.bIndex;
@@ -298,28 +380,53 @@ var Percorsi = (function () {
     const E = TT.grafo();
     const inZ = (Z, i) => { const [x, y] = cen(i); return x >= Z.x0 && x <= Z.x1 && y >= Z.y0 && y <= Z.y1; };
     const usati = new Set();
-    ZONE.forEach(Z => {
-      const scale = TT.LADDERS.filter(L => L.footB < 0 && !L.camm && inZ(Z, L.bi));
+    // [tetti4] i passaggi buoni per un giro: niente annessi da 2 m né tetti stretti nel verso del passo (scendendo ci si cade oltre),
+    // niente salti verso un tetto più alto ([mappa_compatta])
+    const passOk = e => !((BB[e.b].annesso && Math.min(BB[e.b].w, BB[e.b].h) < 2) || (e.k === 'tetto' && Math.abs(e.ux || 0) * BB[e.b].w * TS + Math.abs(e.uy || 0) * BB[e.b].h * TS < (Math.abs(TT.roofRule(BB[e.b]) - TT.roofRule(BB[e.a])) <= TT.STEP ? 1.9 : 4.5)) || (e.k === 'salto' && TT.roofRule(BB[e.b]) > TT.roofRule(BB[e.a]) + .5));   // [tetti4] a pari quota anche i tetti di una casella; gli annessi larghi due caselle sì
+    const crema4 = e => e.k === 'salto' || e.k === 'passerella' || e.k === 'scala';
+    const passo4 = e => ({ k: e.k, a: e.a, b: e.b, x: e.x, y: e.y, i: e.i, ux: e.ux, uy: e.uy });
+    function cerca(Z, inZ, ex) {
+      const scale = TT.LADDERS.filter(L => L.footB < 0 && !L.camm && L.corte === undefined && inZ(L.bi) && !usati.has(L.bi));
       let best = null;
       scale.forEach(L => {
         // il cammino migliore da questa scala: si premiano i passaggi crema (salti, passerelle, scale fra tetti) e la lunghezza
         const prev = new Map([[L.bi, null]]), Q = [L.bi];
-        for (let k = 0; k < Q.length; k++) { const a = Q[k]; (E.get(a) || []).forEach(e => { if (prev.has(e.b) || !inZ(Z, e.b) || usati.has(e.b) || BB[e.b].annesso || (e.k === 'tetto' && Math.abs(e.ux || 0) * BB[e.b].w * TS + Math.abs(e.uy || 0) * BB[e.b].h * TS < 4.5) || (e.k === 'salto' && TT.roofRule(BB[e.b]) > TT.roofRule(BB[e.a]) + .5)) return; prev.set(e.b, { a, e }); Q.push(e.b); }); }   /* [mappa_compatta] niente annessi da 2 m né tetti stretti nel verso del passo (scendendo ci si cade oltre), niente salti verso un tetto più alto */
+        for (let k = 0; k < Q.length; k++) { const a = Q[k]; (E.get(a) || []).forEach(e => { if (prev.has(e.b) || !inZ(e.b) || usati.has(e.b) || !passOk(e)) return; prev.set(e.b, { a, e }); Q.push(e.b); }); }
         scale.forEach(M => { if (M.bi === L.bi || !prev.has(M.bi) || usati.has(M.bi)) return; const dd = hyp(M.fx - L.fx, M.fy - L.fy); if (dd < 18) return;
           const pass = []; let c = M.bi; while (prev.get(c)) { const q = prev.get(c); pass.unshift(q.e); c = q.a; }
-          const crema = pass.filter(e => e.k === 'salto' || e.k === 'passerella' || e.k === 'scala').length; if (!crema) return;
+          if (ex && ex.maxPassi && pass.length > ex.maxPassi) return;
+          const crema = pass.filter(crema4).length; if (!crema) return;
           let Lr = hyp(L.tx - cen(L.bi)[0], L.ty - cen(L.bi)[1]); let px = L.tx, py = L.ty; pass.forEach(e => { Lr += hyp(e.x - px, e.y - py); px = e.x; py = e.y; }); Lr += hyp(M.tx - px, M.ty - py);
           const s = Lr + crema * 12 + dd * .5; if (!best || s > best.s) best = { s, L, M, pass, Lr, crema }; });
       });
-      if (!best) return;
+      if (!best) return null;
       const bs = [best.L.bi].concat(best.pass.map(e => e.b)); bs.forEach(i => usati.add(i));
       const pts = [[best.L.fx, best.L.fy], [best.L.tx, best.L.ty]].concat(best.pass.map(e => [e.x, e.y])).concat([[best.M.tx, best.M.ty], [best.M.fx, best.M.fy]]);
-      CIRCUITI.push({ id: Z.id, nome: Z.nome, k: 'tetti', fuoriBorgo: !!Z.fuoriBorgo, sali: best.L.i, scendi: best.M.i, edifici: bs, passi: best.pass.map(e => ({ k: e.k, a: e.a, b: e.b, x: e.x, y: e.y, i: e.i, ux: e.ux, uy: e.uy })), pts, L: best.Lr, crema: best.crema });
-    });
+      const c = { id: Z.id, nome: Z.nome, k: 'tetti', fuoriBorgo: !!Z.fuoriBorgo || !(pts[0][0] > BORGO.x0 && pts[0][0] < BORGO.x1 && pts[0][1] > BORGO.y0 && pts[0][1] < BORGO.y1), sali: best.L.i, scendi: best.M.i, edifici: bs, passi: best.pass.map(passo4), pts, L: best.Lr, crema: best.crema };
+      CIRCUITI.push(c); return c;
+    }
+    ZONE.forEach(Z => cerca(Z, i => inZ(Z, i)));
+    // [tetti4] I GIRI NUOVI: ognuno attorno a un nodo della rete (una piazzetta, un sagrato, uno scalo), fra le case delle sue epoche;
+    // nessuna coordinata scritta: cambia la pianta, il giro si rifà attorno al suo nodo
+    { const ERE4 = ['E0', 'E2', 'E3'], par = new Map(), find = a => { while (par.get(a) !== a) a = par.get(a); return a; };
+      BB.forEach((b, i) => par.set(i, i)); E.forEach((L, a) => L.forEach(e => { if ((E.get(e.b) || []).some(f => f.b === a)) { const u = find(a), v = find(e.b); if (u !== v) par.set(u, v); } }));
+      const pezzi = new Map(); BB.forEach((b, i) => { if (!ERE4.includes(b.era)) return; const r = find(i); (pezzi.get(r) || pezzi.set(r, []).get(r)).push(i); });
+      const liberi = [...pezzi.values()].filter(P => P.length >= 8).sort((p, q) => q.length - p.length || p[0] - q[0]), presi4 = new Set();
+      for (const P of liberi) {
+        if (CIRCUITI.filter(c => c.k === 'tetti').length >= MAXGIRI4) break;
+        if (P.filter(i => usati.has(i)).length >= 2) continue;   // il pezzo ha già il suo giro
+        const S = new Set(P), Z = { id: 'giro_' + P[0], nome: 'Il giro dei tetti' }, c = cerca(Z, i => S.has(i), { maxPassi: 16 }); if (!c) continue;
+        const g = c.edifici.map(cen).reduce((s, q) => [s[0] + q[0] / c.edifici.length, s[1] + q[1] / c.edifici.length], [0, 0]);
+        const A = GIRI4.filter(q => !presi4.has(q.id) && ancora4(q.ancora)).map(q => ({ q, d: hyp(ancora4(q.ancora)[0] - g[0], ancora4(q.ancora)[1] - g[1]) })).sort((u, v) => u.d - v.d)[0];
+        if (A && A.d < 80) { presi4.add(A.q.id); c.id = A.q.id; c.nome = A.q.nome; }
+        { const [x0, y0] = c.pts[0]; c.fuoriBorgo = !!(A && A.d < 80 && A.q.fuoriBorgo) || !(x0 > BORGO.x0 && x0 < BORGO.x1 && y0 > BORGO.y0 && y0 < BORGO.y1); }   // nel borgo se ci si sale nel borgo
+      } }
+    // [tetti4] il tema e il premio di ogni giro, le altre vie su e giù, i rami verso il premio
+    vieRami4(TT, BB, E, cen, passOk, passo4);
     // il camminamento delle mura di tramontana: dalla scala di ronda alla scala di ferro dall'altra parte
     const CM = (TT.CAMM || []).filter(c => c.tipo === 'mura_tramontana');
     if (CM.length) { const sc = TT.LADDERS.filter(L => L.camm && L.camm.tipo === 'mura_tramontana'); const pts = []; CM.forEach(c => { pts.push(c.a, c.b); });
-      const Lm = CM.reduce((s, c) => s + c.L, 0); CIRCUITI.push({ id: 'mura', nome: 'Il camminamento delle mura di tramontana', k: 'mura', scale: sc.map(L => L.i), camm: CM.map(c => c.i), pts: [sc[0] ? [sc[0].fx, sc[0].fy] : pts[0]].concat(pts).concat(sc[1] ? [[sc[1].fx, sc[1].fy]] : []), L: Lm, crema: 0 }); }
+      const Lm = CM.reduce((s, c) => s + c.L, 0); CIRCUITI.push({ id: 'mura', nome: 'Il camminamento delle mura di tramontana', k: 'mura', tema: 'la ronda sopra il mare', premio: 'belvedere', scale: sc.map(L => L.i), camm: CM.map(c => c.i), pts: [sc[0] ? [sc[0].fx, sc[0].fy] : pts[0]].concat(pts).concat(sc[1] ? [[sc[1].fx, sc[1].fy]] : []), L: Lm, crema: 0 }); }
     // le alternative delle porte: i tetti (una catena di tetti da una scala da una parte a una scala dall'altra) o un tombino
     const tomb = SO && SO.TPL ? SO.TPL.portals.filter(P => P.kind === 'tombino' || P.kind === 'grata' || P.kind === 'botola' || P.kind === 'pozzo').map(P => ({ P, x: (P.s[0] + .5) * TS, y: (P.s[1] + .5) * TS })) : [];
     const ugOk = (a, b) => { if (!SO || !SO.TPL) return false; const ug = SO.TPL.ug, s = a.P.s[1] * GW + a.P.s[0], t = b.P.s[1] * GW + b.P.s[0], seen = new Uint8Array(GW * GH), Q = [s]; seen[s] = 1;
