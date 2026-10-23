@@ -443,6 +443,18 @@ var Veicoli3D = (function () {
       k.fanali(.5, .6, .2, .1, 'frb');
       for (let i = 0; i < 6; i++) { const z = -1.15 - i * .04, y = ytAt(k.D, z) + k.D.crown + .004; M(k.g, BX(.62, .012, .022), C.nero, 0, y, z, Math.atan2(ytAt(k.D, z - .02) - ytAt(k.D, z + .02), .04)); }   // le griglie del motore
     } }; };
+  // [scorci] Fiat Nuova 500 (1957-75): la bombatissima, il muso tondo senza griglia coi fari tondi sui parafanghi e i baffi cromati,
+  // i paraurti sottili cromati, il lunotto piccolo e il cofano del motore dietro con le feritoie. Nel 1986 c'è ancora, in sosta nei vicoli.
+  AUTO.f500 = () => { const zf = 1.46, zr = -1.48; return {
+    id: 'f500', nome: 'Fiat 500', L: 2.97, W: 1.32, r: .255, tw: .125, asse: [.92, -.92], R: .3, sill: .25, ybF: .36, ybR: .36, rf: .32, rr: .3, sh: .14, tuck: .06, crown: .05,
+    top: [[zf, .47], [zf - .03, .56], [zf - .12, .64], [zf - .3, .7], [.85, .74], [.6, .76], [-.92, .8], [-1.1, .78], [-1.3, .7], [zr + .05, .6], [zr, .5]],
+    cab: { w0: [.6, .76], w1: [.18, 1.29], r1: [-.58, 1.31], r0: [-.96, .8], inset: .09, tumble: .17, B: [-.26], S: -.86, pw: .045, crown: .05 },
+    porte: [[.56, -.26]], paraurti: { y: .3, h: .045, t: .035, wrap: .22, tipo: 'cromo' }, cerchi: 'coppa', colCerchi: '#c4c6ca', sedile: .8, divano: .55, interni: '#7a3a2a', antenna: false,
+    muso(k) { k.fari([['tondo', .47, .58, .07]]); const b = k.davanti(new THREE.Group(), 0, .5); [-1, 1].forEach(s => M(b, BX(.13, .022, .02), C.cromo, s * .08, 0, .006, 0, 0, s * .2)); b.add(stemmaFiat(.07).translateZ(.012)); k.frecce(.42, .44, .05, .035); },   // i baffi cromati e lo stemma
+    coda(k) {
+      k.fanali(.5, .58, .07, .12, 'frb');
+      for (let i = 0; i < 7; i++) { const z = -1.2 - i * .035, y = ytAt(k.D, z) + k.D.crown + .004; M(k.g, BX(.42, .012, .018), C.nero, 0, y, z, Math.atan2(ytAt(k.D, z - .02) - ytAt(k.D, z + .02), .04)); }   // le feritoie del cofano del motore
+    } }; };
   // Fiat Panda 30/45 (1980): tutta piatta, vetri dritti, la fascia grigia tutt'attorno, griglia asimmetrica
   AUTO.panda = () => { const zf = 1.63, zr = -1.63; return {
     id: 'panda', nome: 'Fiat Panda', L: 3.38, W: 1.46, r: .28, tw: .145, asse: [1.11, -1.05], R: .32, sill: .27, ybF: .3, ybR: .32, rf: .07, rr: .06, sh: .04, tuck: .03, crown: .012,
@@ -1066,6 +1078,7 @@ var Veicoli3D = (function () {
   function hash(s) { let h = 0; s = String(s || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h >>> 0; }
   function scegli(v) {
     const k = v.kind, h = hash(v.id);
+    if (v.modello && COSTR[v.modello]) return v.modello;   // [scorci] il mezzo dello scorcio ha il suo modello (la 500 in sosta)
     if (k === 'polizia') return v.livrea ? 'f131' : 'alfetta';
     if (k === 'camion') return v.military || v.tutela ? 'telonato' : ['rifiuti', 'cassonato'][h % 2];
     if (k === 'furgone') return h % 3 === 2 ? 'om' : 'ducato';

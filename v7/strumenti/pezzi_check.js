@@ -85,6 +85,23 @@ for (const tipo of P.TIPI) {
   const pv = PROVE[tipo] || [{}]; if (!PROVE[tipo]) console.log(`  (nessuna combinazione per ${tipo}: solo le opzioni di base)`);
   pv.forEach(o => prova(tipo, o)); prova(tipo, Object.assign({}, pv[0], { lod: 'basso' }));
 }
+// [scorci] il kit dei fronti e degli scorci (src/scorci_arte.js): gli stessi controlli. I pezzi a muro hanno l'origine sul filo del muro, in
+// basso al centro: la quota di posa è il loro punto più basso dichiarato (la tenda e la fascia pendono dal loro attacco, il resto parte da 0)
+global.Arredo3D = require(path.join(src, 'arredo3d.js'));
+const SK = require(path.join(src, 'scorci_arte.js')).ScorciKit;
+const FILI = [{ a: [0, 0], b: [4, 1.5], y: 4.4 }];   // un filo per prova: due fili sono due pezzi appesi ognuno ai suoi muri
+const PROVE_SC = { fascia: [{ w: 3.4, stile: 'cassonetto', testo: 'TABACCHI', marchio: 'cocacola' }, { w: 3, stile: 'dipinta', testo: 'DROGHERIA', sotto: 'SALUMI · VINI' }, { w: 2.6, stile: 'tavola', testo: 'FERRAMENTA' }, { w: 3.4, stile: 'mano', testo: 'RADIO LUNA' }],
+  tenda: [{ w: 1.8, testo: 'ALIMENTARI' }, { w: 3.2, d: .9, col: '#2f6a46' }], serranda: [{ w: 1.1 }, { w: 3.1, tag: true }], bandiera: [{ marchio: 'T' }, { marchio: 'peroni' }], luminarie: [{ fili: FILI }], bucato: [{ fili: FILI }],
+  insegna2: [{ testo: 'SALI E TABACCHI' }], targa: [{ testo: 'PIAZZA\nSAN ROCCO' }], manifesti: [{ carta: 'concerti' }], cartellone: [{ testo: 'OFFICINA DORINO', sotto: 'GOMMISTA' }], zoccolo: [{ w: 4, tratti: [[-2, -.5], [.6, 2]] }], cassette: [{ merce: 'verdura' }, { merce: 'pesce' }] };
+for (const tipo of SK.TIPI) {
+  if (solo && tipo !== solo) continue;
+  (PROVE_SC[tipo] || [{}]).forEach(o => { const g0 = SK.make(tipo, o);
+    // il muro a cui è appeso (un velo dietro z = 0) e il suolo per le cose separate: ci si attaccano davvero
+    if (g0.userData.aMuro || g0.userData.sparso) { const bb = new THREE.Box3().setFromObject(g0), sz = bb.getSize(new THREE.Vector3()), c = bb.getCenter(new THREE.Vector3()), m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ name: 'appoggio' }));
+      if (g0.userData.aMuro) { m.scale.set(sz.x + .1, sz.y + .1, .02); m.position.set(c.x, c.y, -.01); } else { m.scale.set(sz.x + 4, .02, sz.z + 4); m.position.set(c.x, bb.min.y - .01, c.z); } g0.add(m); }
+    { const bb1 = new THREE.Box3().setFromObject(g0); g0.userData.quotaPosa = Math.round(bb1.min.y * 1000) / 1000; }   // a muro la quota di posa è l'attacco più basso (la tenda pende dal rullo)
+    const mk = P.make; P.make = () => g0; try { prova('scorci:' + tipo, o); } finally { P.make = mk; } });
+}
 for (const k in PROVE) if (!P.TIPI.includes(k) && !solo) console.log(`  (manca il tipo ${k})`);
 console.log(`\n${totali - fail}/${totali} prove passate` + (fail ? `, ${fail} fallite` : ''));
 process.exit(fail ? 1 : 0);

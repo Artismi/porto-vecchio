@@ -250,6 +250,12 @@ var Arredo3D = (function () {
     for (let k = 0; k < 2; k++) for (let q = 0; q < 6; q++) { const p = sulPiano(c0, rx, -.2 + k * .42, .016); put(g, slabG(.28, .34, .012, 0), mat(['#d84a4a', '#ece0c0', '#4a7ad0', '#e8b840', '#e0e0d8', '#50b098'][(q + k * 2) % 6], 'carta'), -.95 + q * .38, p[1], p[2], rx, 0, 0); }
     put(g, slabG(1.3, .32, .06, .01), LU, 0, H - .05, D / 2 + .04).name = 'luce'; targa(g, 'GIORNALI · TABACCHI', 1.26, .28, 0, H - .05, D / 2 + .074, 0, '#f4e8c8', '#2a4a3a', 0); luci(g, 0, H - .05, D / 2 + .1, '#ffe0a0');
     slab(g, .7, 1.8, .04, vdS, 0, 1.1, -D / 2 - .02, .006); if (F()) { cerniera(g, -.36, 1.5, -D / 2 - .04, .1, 'y'); cerniera(g, -.36, .7, -D / 2 - .04, .1, 'y'); maniglia(g, .25, 1.1, -D / 2 - .04, .12, ZS, true); }   // la porta di servizio dietro
+    // [scorci] stipata come quella del Quarticciolo: sui due fianchi le riviste appese ai fili con le mollette, due file per lato (le copertine
+    // coi colori dei settimanali del 1986 e la testata scura), il filo teso fra due occhielli; sul bancone le pile dei quotidiani legate
+    const COP = ['#d84a4a', '#ece0c0', '#4a7ad0', '#e8b840', '#e070a0', '#50b098', '#f4f0e0', '#c8302a'], TES = mat('#1e1e22', 'carta');
+    [-1, 1].forEach(s => { const x = s * (W / 2 + .006); [1.62, 1.12].forEach((y, r) => { asta(g, [x + s * .02, y + .2, -D / 2 + .12], [x + s * .02, y + .2, D / 2 - .12], .005, ZS, 4);
+        for (let q = 0; q < 4; q++) { const z = -D / 2 + .32 + q * .32; put(g, planeG(.28, .4), mat(COP[(q + r * 3 + (s > 0 ? 1 : 4)) % COP.length], 'carta'), x + s * .008, y, z, 0, s * PI / 2, 0); put(g, planeG(.26, .07), TES, x + s * .012, y + .14, z, 0, s * PI / 2, 0); } }); });
+    [-.7, .55].forEach((x, i) => { slab(g, .34, .1 + i * .04, .24, mat('#ece6d4', 'carta'), x, .99 + (.1 + i * .04) / 2, D / 2 + .2, .004); if (F()) asta(g, [x - .17, 1.02, D / 2 + .2], [x + .17, 1.02, D / 2 + .2], .004, mat('#c8a050', 'tela'), 4); });   // i quotidiani in pila, legati
     return g; };
   T.chiosco = () => {   // chiosco del lungomare: pianta ottagonale bianca e azzurra, bancone tutto intorno, tetto a cono con la punta, frigo delle bibite, insegna
     const g = new THREE.Group(), R = 1.3, H = 2.3, bi = mat('#e6e4da', 'vernice'), az = mat('#5a92b0', 'vernice');
