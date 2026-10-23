@@ -343,7 +343,7 @@ var Writing = (function () {
     const w = Object.assign(sk, { by: n.id, hand: wr.hand || seed, surf: 'muro', spot: sp, place: sp && sp.place, prog: 0, done: false });
     if (style === 'tag' || style === 'mtag') { const k = .8 + rnd() * .55; w.tagK = k; }
     if (style === 'tag' || style === 'mtag') { if (rnd() < .3) w.sign = pick(WA.SIGNS); }
-    else if (style === 'burner' && rnd() < .3) w.words = pick(WA.WORDS);
+    else if (style === 'burner' && wr.crew && rnd() < .25) w.words = wr.crew;
     // [graffiti3] gli stili nuovi: la scritta di chi è politico parla di politica, gli altri d'amore o di strada; lo stencil di un
     // writer è sempre lo stesso (la sua mascherina, ripetuta per la città); il rullo e il verticale dicono la crew o una parola
     else if (style === 'scritta') { const pol = (dna && dna.pol != null) ? dna.pol : .4; w.kind = rnd() < pol ? 'politica' : pick(['amore', 'ultras', 'strada', 'amore']); if (w.kind === 'strada' && wr.crew) w.words = pick([wr.crew + ' IN CASA', 'ZONA ' + wr.crew, wr.crew + ' ' + wr.aka]); }

@@ -185,8 +185,8 @@ var WriterVita = (function () {
     const wr = n.pop.writer, r = rnd() + (wr.skill || .5) * .2;
     if (kind === 'heaven') return r < .5 ? 'throw' : r < .85 ? 'pezzo' : 'rullo';
     if (kind === 'facciata') return r < .6 ? 'verticale' : 'estintore';
-    if (kind === 'hall') return r < .3 ? 'pezzo' : r < .55 ? 'burner' : r < .7 ? 'mostro' : r < .82 ? 'murale' : r < .92 ? 'calli' : 'rullo';   // [graffiti3] murali, calligraffiti, rulli
-    return r < .3 ? 'tag' : r < .5 ? 'throw' : r < .56 ? 'gotico' : r < .64 ? 'mostro' : r < .7 ? 'scritta' : r < .76 ? 'stencil' : r < .8 ? 'calli' : r < .94 ? 'pezzo' : 'burner';
+    if (kind === 'hall') return r < .3 ? 'pezzo' : r < .55 ? 'burner' : r < .7 ? 'pezzo' : r < .82 ? 'murale' : r < .92 ? 'calli' : 'rullo';   // [graffiti3] murali, calligraffiti, rulli
+    return r < .3 ? 'tag' : r < .5 ? 'throw' : r < .56 ? 'gotico' : r < .64 ? 'throw' : r < .7 ? 'scritta' : r < .76 ? 'stencil' : r < .8 ? 'calli' : r < .94 ? 'pezzo' : 'burner';
   }
   const spotOf = (s, du, h) => ({ x: s.x + s.along[0] * (du || 0), y: s.y + s.along[1] * (du || 0), face: s.face, h: h != null ? h : s.h, place: placeOf(s), kind: s.kind });
   // UNA USCITA: muro di strada, heaven spot, hall of fame con la crew, treno al deposito
@@ -297,17 +297,17 @@ var WriterVita = (function () {
       let style;
       if (s.kind === 'facciata') style = r < .5 ? 'verticale' : r < .8 ? 'estintore' : s.len >= 8 ? 'rullo' : 'verticale';   // [graffiti3] sui palazzi
       else if (s.kind === 'heaven') style = r < .4 ? 'throw' : r < .55 ? 'gotico' : r < .8 ? 'pezzo' : s.len >= 7 ? 'rullo' : 'pezzo';
-      else if (s.kind === 'muro') style = r < .15 ? 'tag' : r < .35 ? 'throw' : r < .45 ? 'mostro' : r < .55 ? 'scritta' : r < .66 ? 'murale' : r < .71 ? 'calli' : r < .9 ? 'pezzo' : 'burner';   // sul Muro le produzioni e le parole
-      else if (s.kind === 'ponte') style = r < .25 ? 'tag' : r < .45 ? 'throw' : r < .55 ? 'gotico' : r < .65 ? 'mostro' : r < .75 ? 'scritta' : r < .82 ? 'stencil' : r < .9 ? 'estintore' : 'pezzo';
-      else if (s.kind === 'hall') style = r < .12 ? 'tag' : r < .22 ? 'throw' : r < .28 ? 'scritta' : r < .33 ? 'stencil' : r < .4 ? 'calli' : r < .5 ? 'mostro' : r < .7 ? 'pezzo' : r < .82 ? 'burner' : r < .94 ? 'murale' : 'rullo';
-      else style = r < .3 ? 'tag' : r < .42 ? 'mtag' : r < .56 ? 'throw' : r < .62 ? 'stencil' : r < .68 ? 'scritta' : r < .74 ? 'adesivi' : r < .78 ? 'manifesto' : r < .81 ? 'gotico' : r < .85 ? 'mostro' : r < .88 ? 'calli' : r < .96 ? 'pezzo' : 'burner';
+      else if (s.kind === 'muro') style = r < .15 ? 'tag' : r < .35 ? 'throw' : r < .45 ? 'pezzo' : r < .55 ? 'scritta' : r < .66 ? 'murale' : r < .71 ? 'calli' : r < .9 ? 'pezzo' : 'burner';   // sul Muro le produzioni e le parole
+      else if (s.kind === 'ponte') style = r < .25 ? 'tag' : r < .45 ? 'throw' : r < .55 ? 'gotico' : r < .65 ? 'throw' : r < .75 ? 'scritta' : r < .82 ? 'stencil' : r < .9 ? 'estintore' : 'pezzo';
+      else if (s.kind === 'hall') style = r < .12 ? 'tag' : r < .22 ? 'throw' : r < .28 ? 'scritta' : r < .33 ? 'stencil' : r < .4 ? 'calli' : r < .5 ? 'pezzo' : r < .7 ? 'pezzo' : r < .82 ? 'burner' : r < .94 ? 'murale' : 'rullo';
+      else style = r < .3 ? 'tag' : r < .42 ? 'mtag' : r < .56 ? 'throw' : r < .62 ? 'stencil' : r < .68 ? 'scritta' : r < .74 ? 'adesivi' : r < .78 ? 'manifesto' : r < .81 ? 'gotico' : r < .85 ? 'throw' : r < .88 ? 'calli' : r < .96 ? 'pezzo' : 'burner';
       if (wr.crew === 'TOY' && !/^(mtag|adesivi|stencil|manifesto)$/.test(style)) style = r < .5 ? 'tag' : r < .8 ? 'throw' : 'adesivi';   // i ragazzini: tag e throw storti, adesivi
       if (/^(pezzo|burner|calli)$/.test(style) && s.kind === 'strada' && s.len < 5) continue;
       if (/^(murale|rullo)$/.test(style) && s.kind !== 'heaven' && s.kind !== 'facciata' && s.len < 7) style = 'pezzo';
       const big = BIG.test(style), top = s.kind === 'heaven' || s.kind === 'facciata';
       const du = top ? (style === 'estintore' ? (rnd() - .5) * Math.max(0, s.len - 3.5) : 0) : (rnd() - .5) * Math.max(0, s.len - (big ? 4 : 1.2));
       const h = s.kind === 'facciata' ? heightFor(s, style) : s.kind === 'heaven' ? (style === 'rullo' ? s.h - .5 : s.h - .3) : null;
-      const words = (s.kind === 'muro' || (wr.crew === 'RSC' && big)) && rnd() < .55 && /^(pezzo|burner|mostro)$/.test(style) ? pick(POLW) : undefined;
+      const words = (s.kind === 'muro' || (wr.crew === 'RSC' && big)) && rnd() < .3 && /^(pezzo|burner)$/.test(style) ? pick(POLW) : undefined;
       const extra = { sign: (style === 'tag' || style === 'mtag') && rnd() < .3 ? pick(WA.SIGNS) : undefined };
       if (words) extra.words = words;
       const w = place(s, who, wr, style, du, h, extra); if (!w) continue;

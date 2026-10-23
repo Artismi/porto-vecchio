@@ -200,3 +200,14 @@ lettere latine; licenze in `assets/fonts_graffiti/licenze`, elenco in `assets/fo
   `fasce` (il nastro di fasce che corre dritto e piega giù, la supergrafica anni '70), `parola` (una parola sola, enorme, in un
   font pieno, con l'ombra lunga a 45 gradi e la metà alta in un'altra tinta). Il tipo lo sceglie il seme, o `w.mkind`; in
   galleria si forza col campo fam (`murale:fasce:6:821`). Senza font si torna al `muralArt` di prima.
+
+### Graffiti 5 (23 ottobre): via quello che faceva «cringe»
+Il problema non erano le lettere ma il contorno: pupazzi da clip-art, slogan, parole da poster, brillantini.
+- **Niente personaggi accanto** a throw-up, pezzi, burner e treni (`who = null`; il treno ha di lato solo il throw-up della crew).
+  Lo stile `mostro` resta nel gioco ma i writer NPC non lo scelgono più da soli (`writer_vita.js`).
+- Il throw-up ha al massimo le punte (una volta su cinque): niente bomba con la miccia, sigaretta, bomboletta, pupazzo.
+- **Niente slogan sotto i pezzi** (`choose`/`conceive`: `slogan` solo se dato a mano). La voce politica resta nelle scritte, nei
+  rulli, negli stencil, nei manifesti; sul Muro un pezzo su tre e mezzo può ancora dire una parola (`POLW`).
+- Il burner dice il **nome del writer**, a volte quello della crew; non più SOLE, RADICI, DISGELO.
+- Stelline e aureole: una stellina su quattro pezzi, l'aureola quasi mai, un asterisco su tre throw-up, il cielo senza stelle.
+  Niente fondo a scoppio da fumetto: solo la nuvola, a volte.

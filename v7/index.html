@@ -36731,8 +36731,8 @@ var WriterArte = (function () {
     const fam = w.fam && FAM[w.fam] ? (throwUp && !THROW_FAMS.includes(w.fam) ? pickR(r, THROW_FAMS) : w.fam) : throwUp ? (P.chrome ? 'chrome' : pickR(r, THROW_FAMS)) : wild ? pickR(r, ['wild', 'wild', 'semi', 'spiky', 'heavy']) : pickR(r, FAMS);
     const fillk = w.fillk || (FAM[fam].chrome || P.chrome ? 'chrome' : throwUp || q < .3 ? pickR(r, ['fade', 'diag']) : pickR(r, FILLS));
     const bgk = w.bgk !== undefined ? w.bgk : (w.style === 'wholecar' ? pickR(r, ['sole', 'radici', 'skyline', 'skyline']) : w.style === 'burner' ? pickR(r, ['sole', 'radici', 'skyline', 'esplosione', 'ovale']) : throwUp ? (r() < .35 ? pickR(r, ['ovale', 'splat', 'esplosione']) : null) : pickR(r, BADGES));
-    const chr = w.chr !== undefined ? w.chr : (wild && q > .75 && r() < .35 ? pickR(r, CHARS) : null);   // [writer] il personaggio: raro, solo da chi sa farlo
-    return { fam, fillk, bgk, chr, q, yr: w.yr !== undefined ? w.yr : (r() < .12 ? pickR(r, YEARS) : ''), slogan: w.slogan !== undefined ? w.slogan : (wild && q > .4 || r() < .2 ? pickR(r, SLOGANS) : null) };
+    const chr = w.chr || null;   // [writer] il personaggio: raro, solo da chi sa farlo
+    return { fam, fillk, bgk, chr, q, yr: w.yr !== undefined ? w.yr : (r() < .12 ? pickR(r, YEARS) : ''), slogan: w.slogan || null };   // [graffiti5] lo slogan sotto il pezzo era da cartellone: la voce politica sta nelle scritte, nei rulli, negli stencil
   }
   // IL BOZZETTO: un writer pensa il suo pezzo. dna = { fam, pals, chars, pol (quanto è politico), skill }; tutto il resto lo decide il caso
   function conceive(o) {
@@ -36744,8 +36744,8 @@ var WriterArte = (function () {
     const pals = d.pals && d.pals.length ? d.pals : [Math.floor(r() * PAL.length)];
     const pol = d.pol != null ? d.pol : .4;
     const sk = { style, aka: o.aka, crew: o.crew, seed, q, fam, cons: d.cons || consOf(seed), pal: pickR(r, pals) % PAL.length,
-      words: wild && r() < pol * .5 ? pickR(r, WORDS) : null,
-      slogan: !throwUp && style !== 'tag' && r() < pol * (wild ? .5 : .25) ? pickR(r, SLOGANS) : null,
+      words: wild && o.crew && r() < .12 ? o.crew : null,   // [graffiti5] il burner dice il nome, o quello della crew: non una parola da poster
+      slogan: null,
       chr: null,
       fillk: FAM[fam].chrome ? 'chrome' : pickR(r, ['flat', 'flat', 'bande', 'bande', 'bande', 'due', r() < .1 ? pickR(r, FILLS) : 'flat']),
       bgk: style === 'wholecar' ? pickR(r, ['rullo', 'rullo', 'skyline']) : throwUp ? (r() < .3 ? 'rullo' : null) : r() < .45 ? 'rullo' : r() < .08 ? pickR(r, BADGES) : null,
@@ -37365,7 +37365,7 @@ var WriterArte = (function () {
     const [bx0, by0, bx1, by1] = B.box;
     if (S0.ref && (!S0.pz || r() < .5)) decorate(x, B, S0, u, r, w.aka || 'NINO', Wp, Hp, ol);
     else if (C.fam === 'throwie' && S0.fill === '#141418' && r() < .6) decorate(x, B, Object.assign({}, S0, { deco: '#141418' }), u, r, w.aka || 'NINO', Wp, Hp, ol);   // [writer] aureole, corone, crocette, stelline, mini-tag, gocce
-    else if (q > .6) for (let k = 0; k < 2; k++) sparkle(x, bx0 + r() * (bx1 - bx0), by0 + r() * (by1 - by0) * .3, u * .08, S0.shine === '#141418' ? '#141418' : '#ffffff');
+    else if (q > .6 && r() < .2) for (let k = 0; k < 1; k++) sparkle(x, bx0 + r() * (bx1 - bx0), by0 + r() * (by1 - by0) * .3, u * .08, S0.shine === '#141418' ? '#141418' : '#ffffff');
     smallTag(x, w.words && w.aka ? w.aka + ' ' + (w.crew || 'PV') : (w.crew || 'PV'), Math.min(Wp - Hp * .3, bx1 - Hp * .15), Math.min(Hp - sloganH - Hp * .06, by1 + ol * 2), Hp * .1, S0.ol === '#f6f4ee' ? '#141418' : S0.ol, r, Wp * .3);
     if (!throwUp && C.yr) smallTag(x, C.yr, bx0 + Hp * .12, Math.max(Hp * .06, by0 + Hp * .02), Hp * .08, S0.ol === '#f6f4ee' ? '#141418' : S0.ol, r);
     if (sloganH) { const r2 = mulberry((w.seed || 1) + 99), r3 = mulberry((w.seed || 1) + 99); smallTag(x, C.slogan, Wp / 2, Hp - sloganH * .55, sloganH * .7, '#ffffff', r2, Wp * .85, 2.6); smallTag(x, C.slogan, Wp / 2, Hp - sloganH * .55, sloganH * .7, '#141418', r3, Wp * .85); }
@@ -37560,14 +37560,14 @@ var WriterArte = (function () {
     const B = blurThresh(M, S * .14, .5), T = cv(Wp, Hp), tx = T.getContext('2d'); tx.filter = `blur(${(S * .025).toFixed(1)}px)`; tx.drawImage(B, 0, 0); tx.filter = 'none'; tx.globalCompositeOperation = 'source-in';
     const g = tx.createLinearGradient(0, 0, 0, Hp); g.addColorStop(0, shade(P.bg, .12)); g.addColorStop(1, shade(P.bg, -.12)); tx.fillStyle = g; tx.fillRect(0, 0, Wp, Hp); tx.globalCompositeOperation = 'source-over';
     bg.save(); bg.globalAlpha = .9; bg.filter = `blur(${(S * .1).toFixed(1)}px)`; bg.drawImage(T, 0, 0); bg.restore(); bg.drawImage(T, 0, 0);   // il velo attorno, poi la nuvola piena
-    if (q > .5) for (let k = 0; k < 4 + r() * 6; k++) sparkle(bg, r() * Wp, Hp * (.08 + r() * .3), S * (.06 + r() * .08), 'rgba(255,255,255,.9)');
+    if (q > .5 && r() < .2) for (let k = 0; k < 2; k++) sparkle(bg, r() * Wp, Hp * (.08 + r() * .3), S * (.06 + r() * .08), 'rgba(255,255,255,.9)');
   }
   // la nuvola da una maschera qualunque (bolle, tratti): la sagoma delle lettere gonfiata e resa morbida, il bordo mosso piano
   function cloudOf(bg, FILL, P, Wp, Hp, r, q) {
     const NF = noiseField(Wp, Hp, Math.floor(r() * 1e6), Hp * .22), B = blurThresh(FILL, Hp * .055, .1, .45, NF), T = cv(Wp, Hp), tx = T.getContext('2d'); tx.drawImage(B, 0, 0); tx.globalCompositeOperation = 'destination-in'; tx.filter = `blur(${(Hp * .035).toFixed(1)}px)`; tx.fillStyle = '#fff'; tx.fillRect(Hp * .09, Hp * .09, Wp - Hp * .18, Hp * .82); tx.filter = 'none'; tx.globalCompositeOperation = 'source-in';   // sfuma prima del bordo del muro
     const g = tx.createLinearGradient(0, 0, 0, Hp); g.addColorStop(0, shade(P.bg, .12)); g.addColorStop(1, shade(P.bg, -.12)); tx.fillStyle = g; tx.fillRect(0, 0, Wp, Hp); tx.globalCompositeOperation = 'source-over';
     bg.save(); bg.globalAlpha = .9; bg.filter = `blur(${(Hp * .03).toFixed(1)}px)`; bg.drawImage(T, 0, 0); bg.restore(); bg.save(); bg.filter = `blur(${(Hp * .006).toFixed(1)}px)`; bg.drawImage(T, 0, 0); bg.restore();
-    if (q > .5) for (let k = 0; k < 3 + r() * 5; k++) sparkle(bg, r() * Wp, Hp * (.08 + r() * .3), Hp * (.03 + r() * .04), 'rgba(255,255,255,.9)');
+    if (q > .5 && r() < .2) for (let k = 0; k < 2; k++) sparkle(bg, r() * Wp, Hp * (.08 + r() * .3), Hp * (.03 + r() * .04), 'rgba(255,255,255,.9)');
   }
   function blockArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
     const q = C.q, F = FAM[C.fam], CN = w.cons || consOf(w.hand || w.seed || 1), text = DEACC(w.words || w.aka || 'NINO').replace(/[^A-Z0-9]/g, '') || 'NINO';
@@ -37633,7 +37633,7 @@ var WriterArte = (function () {
       if (sys.fx & 1) { for (let k = 0; k < 2 + rs() * 3; k++) { const top0 = rs() < .5, a = bb[0] + (bb[2] - bb[0]) * rs(), b = top0 ? bb[1] - S * (.04 + rs() * .1) : bb[3] + S * (.02 + rs() * .1); bub(a, Math.max(S * .1, Math.min(Hp - S * .1, b)), S * (.025 + rs() * .045)); } }
       if (sys.fx & 2) { o.strokeStyle = OL; o.lineCap = 'round'; o.lineWidth = Math.max(2, ol * .8); for (let k = 0; k < 3; k++) { const y = bb[1] + (bb[3] - bb[1]) * (.3 + k * .18), x1 = bb[0] - S * .05, x0 = Math.max(ol * 2, x1 - S * (.15 + rs() * .2) * (k === 1 ? 1.5 : 1)); o.beginPath(); o.moveTo(x0, y); o.lineTo(x1, y); o.stroke(); }
         for (let k = 0; k < 2; k++) { const a = bb[2] + S * (.04 + rs() * .1), b = bb[1] + (bb[3] - bb[1]) * rs() * .5, z = S * .05; o.beginPath(); o.moveTo(a - z, b); o.lineTo(a + z, b); o.moveTo(a, b - z); o.lineTo(a, b + z); o.stroke(); } }
-      sparkle(o, bb[0] + (bb[2] - bb[0]) * (.15 + rs() * .7), bb[1] - S * .02, S * .1, P.hi); }
+      if (rs() < .15) sparkle(o, bb[0] + (bb[2] - bb[0]) * (.15 + rs() * .7), bb[1] - S * .02, S * .1, P.hi); }
     [...masks.keys()].reverse().forEach(i => {
       const m = masks[i];
       if (!hollow) { o.save(); o.globalAlpha = .3; o.filter = `blur(${(ol * 1.6).toFixed(1)}px)`; o.drawImage(tintC(grow(m, ol * 1.4), P.f[1]), 0, 0); o.restore(); }   // la nebbia del riempimento che scappa fuori
@@ -37645,7 +37645,7 @@ var WriterArte = (function () {
       if (sys.inline) { const a = Math.max(1.5, t * S * .09), h = Math.max(1.5, t * S * .06), E1 = erode(m, a), R1 = cv(Wp, Hp), r1 = R1.getContext('2d'); r1.drawImage(E1, 0, 0); r1.globalCompositeOperation = 'destination-out'; r1.drawImage(erode(m, a + h), 0, 0); lx.globalAlpha = .9; lx.drawImage(tintC(R1, lum(P.f[1]) > .6 ? shade(P.f[1], -.35) : P.hi), 0, 0); lx.globalAlpha = 1; }   // la seconda linea: corre dentro, tutta attorno
       { const l = L[i], g = Math.max(2, t * S * .14); lx.save(); lx.globalCompositeOperation = 'source-atop'; lx.fillStyle = lx.strokeStyle = '#ffffff'; lx.lineCap = 'round'; lx.globalAlpha = .9;   // i riflessi: il colpo di bianco sull'angolo in alto, il punto, a volte la stella
         const [ax, ay] = toPx(l, [t * .3, th0 * .35]); lx.lineWidth = g * .55; lx.beginPath(); lx.moveTo(ax, ay); lx.lineTo(ax + S * Math.min(.18, l.w * .4), ay - S * .005); lx.stroke(); lx.beginPath(); lx.moveTo(ax, ay); lx.lineTo(ax - S * .005, ay + S * .12); lx.stroke(); lx.beginPath(); lx.arc(ax + S * Math.min(.26, l.w * .55), ay, g * .3, 0, 7); lx.fill();
-        if (q > .55 && rs() < .3) { const [bx, by] = toPx(l, [l.w * (.4 + rs() * .4), .5 + rs() * .3]); sparkle(lx, bx, by, S * .07, '#ffffff'); } lx.restore(); }
+        if (q > .75 && rs() < .06) { const [bx, by] = toPx(l, [l.w * (.4 + rs() * .4), .5 + rs() * .3]); sparkle(lx, bx, by, S * .07, '#ffffff'); } lx.restore(); }
       if (q > .45 && !sys.inline) {   // la luce: una riga sottile lungo i bordi in alto a sinistra, rientrata dal contorno
         const g = Math.max(1.5, t * S * .1), h = Math.max(1.5, t * S * .07), B1 = cv(Wp, Hp), b1 = B1.getContext('2d'); b1.drawImage(m, g, g); b1.globalCompositeOperation = 'destination-out'; b1.drawImage(m, g + h, g + h); b1.globalCompositeOperation = 'destination-in'; b1.drawImage(m, 0, 0);
         lx.globalAlpha = .8; lx.drawImage(tintC(B1, P.hi), 0, 0); lx.globalAlpha = 1;
@@ -37975,7 +37975,7 @@ var WriterArte = (function () {
     const drips = r() < .3 ? 3 + Math.floor(r() * 5) : 0, lay = { adv: fat ? .66 + r() * .08 : .72 + r() * .08, jit: .12 + (1 - q) * .1, rot: .14 + (1 - q) * .12, bounce: .06 + r() * .07, squash: .8 + r() * .22, slant: (r() - .3) * .3, puff: fat ? 1.16 + r() * .1 : 1.06 + r() * .1 };
     // [graffiti4] gli extra dei fogli: il personaggio accanto, le lettere dentro un oggetto (la bomboletta, la sigaretta), la bomba con la
     // miccia, la corona di punte; gli occhi dentro una lettera, gli scarabocchi
-    const extra = pre ? null : r() < .55 ? null : pickR(r, ['personaggio', 'personaggio', 'personaggio', 'bomboletta', 'sigaretta', 'bomba', 'punte', 'punte']), who = extra === 'personaggio' ? pickR(r, ['ragazzo', 'occhio', 'bomba', 'lattina']) : null;
+    const extra = pre ? null : r() < .8 ? null : 'punte', who = extra === 'personaggio' ? pickR(r, ['ragazzo', 'occhio', 'bomba', 'lattina']) : null;
     let LW = Wp * .96, LX = 0; if (who) { LW = Wp * .7; LX = r() < .7 ? 0 : Wp * .3; } else if (extra === 'bomboletta' || extra === 'sigaretta') { LW = Wp * .64; LX = Wp * .17; }
     if (extra === 'sigaretta') Object.assign(sc, { fill: '#f4f2ee', light: '#ffffff', shade: '#d4d0c8', acc: '#e8a050' });
     fixInk(sc);
@@ -38015,7 +38015,7 @@ var WriterArte = (function () {
           const pts = []; for (let t = 0; t <= 1.001; t += .2) { const a = a0 + (a1 - a0) * t; pts.push([c[0] + Math.cos(a) * R0, c[1] + Math.sin(a) * R0]); } taperLine(ctx, pts, u * .05, u * .016, sc.hi);
           if (r() < .7) { const a = a1 + .28; ctx.beginPath(); ctx.arc(c[0] + Math.cos(a) * R0, c[1] + Math.sin(a) * R0, u * .024, 0, 7); ctx.fill(); } }); }); ctx.restore(); },
       deco: (ctx, U, bx) => {
-        const n = Math.floor(r() * 4); for (let k = 0; k < n; k++) asterisk(ctx, bx[0] + r() * (bx[2] - bx[0]), Math.max(u * .1, bx[1] - u * (.05 + r() * .1)), u * (.06 + r() * .05), sc.ink === '#f4f4f2' ? '#141418' : sc.ink, r);   // gli asterischi sopra
+        const n = r() < .3 ? 1 : 0; for (let k = 0; k < n; k++) asterisk(ctx, bx[0] + r() * (bx[2] - bx[0]), Math.max(u * .1, bx[1] - u * (.05 + r() * .1)), u * (.06 + r() * .05), sc.ink === '#f4f4f2' ? '#141418' : sc.ink, r);   // gli asterischi sopra
         if (r() < .25) { ctx.save(); ctx.strokeStyle = sc.ink; ctx.lineWidth = Math.max(1.2, u * .018); ctx.lineCap = 'round'; const side = r() < .5 ? -1 : 1, X0 = side < 0 ? bx[0] - u * .06 : bx[2] + u * .06; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(X0 - side * u * (.25 + k * .08), (bx[1] + bx[3]) / 2, u * (.25 + k * .06), side < 0 ? PI * .8 : -PI * .2, side < 0 ? PI * 1.2 : PI * .2); ctx.stroke(); } ctx.restore(); }   // le linee di velocità
         if (r() < .3 && WM) { const l = pickR(r, B.L), b = l.body.reduce((a, c) => (c.r > a.r ? c : a)), c = b.c || b.a, tw = b.r * 1.3, th = b.r * .6, t = cv(Math.round(tw), Math.round(th)); WM.handTag(t.getContext('2d'), w.aka || 'NINO', Object.assign({}, WM.dna((w.hand || w.seed || 1) + 3), { skill: .8 }), t.width, t.height, r, sc.inner, 'mtag'); ctx.drawImage(t, c[0] - tw / 2, c[1] - th / 2); }   // la mini-tag dentro una lettera
         if (r() < .15) { const l = B.L[0], t = l.body.reduce((a, b) => { const cc = b.c || b.a; return cc[1] - b.r < a[1] ? [cc[0], cc[1] - b.r] : a; }, [0, 1e9]); ctx.save(); ctx.strokeStyle = r() < .5 ? '#f2d21a' : '#ffffff'; ctx.lineWidth = Math.max(2, u * .04); ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = u * .05; ctx.beginPath(); ctx.ellipse(t[0], t[1] - u * .12, u * .22, u * .06, -.1, 0, 7); ctx.stroke(); ctx.restore(); }   // l'aureola
@@ -38067,7 +38067,7 @@ var WriterArte = (function () {
     const wild = /^(wild|spiky)$/.test(C.fam) && q > .4, semi = wild || C.fam === 'semi' || C.fam === 'astratto' || C.fam === 'script', heavy = C.fam === 'heavy' || C.fam === 'tridi';
     const t = clamp(CN.weight * (heavy ? 1.3 : 1.12), .2, heavy ? .38 : .32), wL = Math.max(clamp(CN.width, .62, .95), 2 * t + .22), sl = .1 + Math.abs(CN.slant) * .8, gap = -(.03 + r() * .06) - (wild ? .04 : 0);
     const rs = mulberry((w.hand || w.seed || 1) * 104729 + 1), th0 = Math.min(t, .22);
-    const sloganH = C.slogan ? Hp * .1 : 0, pad = Hp * .16, d3k = .14 + r() * .1, ang = .5 + r() * .5, who = r() < (w.style === 'burner' ? .35 : .12) ? pickR(r, ['ragazzo', 'occhio', 'bomba', 'lattina']) : null, LWp = who ? Wp - Hp * .95 : Wp, LX = who && r() < .35 ? Hp * .95 : 0;   // [graffiti4] il personaggio accanto al pezzo
+    const sloganH = C.slogan ? Hp * .1 : 0, pad = Hp * .16, d3k = .14 + r() * .1, ang = .5 + r() * .5, who = null, LWp = who ? Wp - Hp * .95 : Wp, LX = who && r() < .35 ? Hp * .95 : 0;   // [graffiti4] il personaggio accanto al pezzo
     let L = [], cur = 0, S, toPx, masks;
     const fpick = FONTS.ok && r() < .75 ? wpick(r, F_PIECE) : null; let pieceCuts = null;
     if (fpick) {   // [graffiti4] le lettere dei pezzi da un font vero (o dalla mano da tag ingrassata: il pezzo «dalla tag»)
@@ -38097,7 +38097,7 @@ var WriterArte = (function () {
     masks = L.map(l => { const m = cv(Wp, Hp); fillPolys(m.getContext('2d'), l, toPx); return blurThresh(m, Math.max(.6, corner * t * S), .5); });
     }
     const d3 = S * d3k * (heavy ? 1.5 : 1), dx = Math.cos(ang) * d3, dy = Math.sin(ang) * d3, ow = Math.max(3, S * (.05 + r() * .02)), iw = Math.max(2, S * (.03 + r() * .012));
-    const bgk = r() < .35 ? 'burst' : r() < .55 ? 'cloud' : null;
+    const bgk = r() < .3 ? 'cloud' : null;
     const border = r() < .55 ? S * (.04 + r() * .04) : 0;
     inkRender({ Wp, Hp, masks, sc, r, S, x, snap, paths, radii, seed: (w.seed || 1) * 7 + 5, ow, iw, dx, dy, extrude: true, border, inner: pieceCuts ? (ctx, i) => { const H = i < masks.length && pieceCuts(i); if (H) ctx.drawImage(tintTo(H, sc.inner, Wp, Hp), 0, 0); } : null, aura: r() < .28 ? mixC(sc.acc, '#ffffff', .2) : null, dbl: r() < .14 ? pickR(r, ['#f2d21a', '#3ad6f0', '#ffffff', sc.acc]) : null, dash: border && r() < .3, drips: r() < .2 ? 2 + Math.floor(r() * 4) : 0, dripLen: S * .4, dripW: S * .035, rim: true,
       fillKind: pickR(r, (P.fills && r() < .5) ? P.fills.map(f => ({ macchie: 'macchie', sfumato: 'sfuma', strisce: 'strisce', split: 'ombra', scacchi: 'pois' })[f] || 'sfuma') : ['sfuma', 'sfuma', 'sfuma', 'ombra', 'ombra', 'macchie', 'tratteggio', 'strisce', 'liquido', 'mattoni', 'taglio', 'taglio']),
@@ -38112,8 +38112,8 @@ var WriterArte = (function () {
           cx2.globalCompositeOperation = 'destination-in'; cx2.drawImage(erode(m, ow * .5), 0, 0); ctx.drawImage(tintTo(c, sc.hi, Wp, Hp), 0, 0); });
         ctx.restore(); },
       deco: (ctx, U, bx) => {
-        for (let k = 0; k < 1 + Math.floor(r() * 3); k++) { const cx2 = bx[0] + r() * (bx[2] - bx[0]), cy2 = bx[1] + r() * (bx[3] - bx[1]) * .4; ctx.save(); ctx.strokeStyle = '#ffffff'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1, S * .012); const s2 = S * (.12 + r() * .1); for (const a of [0, PI / 2]) { ctx.beginPath(); ctx.moveTo(cx2 - Math.cos(a) * s2, cy2 - Math.sin(a) * s2); ctx.lineTo(cx2 + Math.cos(a) * s2, cy2 + Math.sin(a) * s2); ctx.stroke(); } for (const a of [PI / 4, -PI / 4]) { ctx.beginPath(); ctx.moveTo(cx2 - Math.cos(a) * s2 * .45, cy2 - Math.sin(a) * s2 * .45); ctx.lineTo(cx2 + Math.cos(a) * s2 * .45, cy2 + Math.sin(a) * s2 * .45); ctx.stroke(); } ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx2, cy2, S * .02, 0, 7); ctx.fill(); ctx.restore(); }   // la stella a raggi sottili
-        if (r() < .2) { const [hx, hy] = toPx(L[0], [L[0].w * .5, -.12]); ctx.save(); ctx.strokeStyle = r() < .5 ? '#f2d21a' : '#ffffff'; ctx.lineWidth = Math.max(2, S * .035); ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = S * .06; ctx.beginPath(); ctx.ellipse(hx, hy, S * .28, S * .07, -.12, 0, 7); ctx.stroke(); ctx.restore(); }   // l'aureola
+        for (let k = 0, nk = r() < .25 ? 1 : 0; k < nk; k++) { const cx2 = bx[0] + r() * (bx[2] - bx[0]), cy2 = bx[1] + r() * (bx[3] - bx[1]) * .4; ctx.save(); ctx.strokeStyle = '#ffffff'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1, S * .012); const s2 = S * (.12 + r() * .1); for (const a of [0, PI / 2]) { ctx.beginPath(); ctx.moveTo(cx2 - Math.cos(a) * s2, cy2 - Math.sin(a) * s2); ctx.lineTo(cx2 + Math.cos(a) * s2, cy2 + Math.sin(a) * s2); ctx.stroke(); } for (const a of [PI / 4, -PI / 4]) { ctx.beginPath(); ctx.moveTo(cx2 - Math.cos(a) * s2 * .45, cy2 - Math.sin(a) * s2 * .45); ctx.lineTo(cx2 + Math.cos(a) * s2 * .45, cy2 + Math.sin(a) * s2 * .45); ctx.stroke(); } ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx2, cy2, S * .02, 0, 7); ctx.fill(); ctx.restore(); }   // la stella a raggi sottili
+        if (r() < .03) { const [hx, hy] = toPx(L[0], [L[0].w * .5, -.12]); ctx.save(); ctx.strokeStyle = r() < .5 ? '#f2d21a' : '#ffffff'; ctx.lineWidth = Math.max(2, S * .035); ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = S * .06; ctx.beginPath(); ctx.ellipse(hx, hy, S * .28, S * .07, -.12, 0, 7); ctx.stroke(); ctx.restore(); }   // l'aureola
         if (who) { const K0 = { ragazzo: [.24, .36], occhio: [.27, .5], bomba: [.28, .62], lattina: [.27, .52] }[who]; cartoon(ctx, who, LX ? Hp * .48 : Wp - Hp * .48, Hp * K0[1], Hp * K0[0], sc, r, Math.max(2, Hp * .016)); }
         const ink = lumC(sc.border) > .6 || !sc.border ? '#141418' : '#f4f4f2';
         if (WM) { const tw = Math.min(Wp * .22, S * 1.2), th = S * .35, t2 = cv(Math.round(tw), Math.round(th)); WM.handTag(t2.getContext('2d'), (w.crew || 'PVK') + (C.yr ? ' ' + C.yr : ''), Object.assign({}, WM.dna((w.seed || 1) * 3 + 1), { skill: .85 }), t2.width, t2.height, r, ink, 'mtag'); ctx.drawImage(t2, Math.min(Wp - tw - 2, bx[2] - tw * .8), Math.min(Hp - th - 2, bx[3] + S * .05)); }   // la crew e l'anno a pennarello
@@ -38140,7 +38140,7 @@ var WriterArte = (function () {
     { b.save(); b.globalCompositeOperation = 'destination-out'; b.fillStyle = '#000'; const edge = (y0, dir) => { b.beginPath(); b.moveTo(0, dir < 0 ? 0 : Hp); for (let xx = 0; xx <= Wp; xx += Hp * .04) b.lineTo(xx, y0 + (r() - .5) * Hp * .02); b.lineTo(Wp, dir < 0 ? 0 : Hp); b.closePath(); b.fill(); }; edge(m0, -1); edge(Hp - m1, 1); b.restore(); }
     x.drawImage(BG, 0, 0); stages.push(handify(out, (w.seed || 1) * 7 + 1, q, {})); paths.push(raster(Wp, Hp, 6)); radii.push(Hp * .13);
     // 2. il pezzo grande: alto quasi quanto la fiancata, a sinistra o al centro
-    const side = r() < .55 ? (r() < .5 ? 'crew' : 'mostro') : null, pw = w.W * (side ? .57 : .8), ph = w.H * .84, base = { aka: w.aka, crew: w.crew, words: w.words, hand: w.hand, cons: w.cons, dna: w.dna, pal: w.pal, q: w.q, by: w.by, slogan: null, bgk: null };
+    const side = r() < .5 ? 'crew' : null, pw = w.W * (side ? .57 : .8), ph = w.H * .84, base = { aka: w.aka, crew: w.crew, words: w.words, hand: w.hand, cons: w.cons, dna: w.dna, pal: w.pal, q: w.q, by: w.by, slogan: null, bgk: null };
     const fam = /^(block|heavy|piatto|astratto|bubble|fat|semi)$/.test(C.fam) ? C.fam : pickR(r, ['block', 'heavy', 'astratto', 'bubble', 'fat']);
     const main = art(Object.assign({}, base, { style: 'burner', fam, W: pw, H: ph, seed: (w.seed || 1) * 3 + 1 })), ox = Math.round(side ? Wp * .03 : (Wp - main.Wp) / 2), oy = Math.round((Hp - main.Hp) / 2);
     main.stages.forEach(s0 => { x.clearRect(0, 0, Wp, Hp); x.drawImage(BG, 0, 0); x.drawImage(s0, ox, oy); push(); });
@@ -39769,8 +39769,8 @@ var WriterArte = (function () {
     const fam = w.fam && FAM[w.fam] ? (throwUp && !THROW_FAMS.includes(w.fam) ? pickR(r, THROW_FAMS) : w.fam) : throwUp ? (P.chrome ? 'chrome' : pickR(r, THROW_FAMS)) : wild ? pickR(r, ['wild', 'wild', 'semi', 'spiky', 'heavy']) : pickR(r, FAMS);
     const fillk = w.fillk || (FAM[fam].chrome || P.chrome ? 'chrome' : throwUp || q < .3 ? pickR(r, ['fade', 'diag']) : pickR(r, FILLS));
     const bgk = w.bgk !== undefined ? w.bgk : (w.style === 'wholecar' ? pickR(r, ['sole', 'radici', 'skyline', 'skyline']) : w.style === 'burner' ? pickR(r, ['sole', 'radici', 'skyline', 'esplosione', 'ovale']) : throwUp ? (r() < .35 ? pickR(r, ['ovale', 'splat', 'esplosione']) : null) : pickR(r, BADGES));
-    const chr = w.chr !== undefined ? w.chr : (wild && q > .75 && r() < .35 ? pickR(r, CHARS) : null);   // [writer] il personaggio: raro, solo da chi sa farlo
-    return { fam, fillk, bgk, chr, q, yr: w.yr !== undefined ? w.yr : (r() < .12 ? pickR(r, YEARS) : ''), slogan: w.slogan !== undefined ? w.slogan : (wild && q > .4 || r() < .2 ? pickR(r, SLOGANS) : null) };
+    const chr = w.chr || null;   // [writer] il personaggio: raro, solo da chi sa farlo
+    return { fam, fillk, bgk, chr, q, yr: w.yr !== undefined ? w.yr : (r() < .12 ? pickR(r, YEARS) : ''), slogan: w.slogan || null };   // [graffiti5] lo slogan sotto il pezzo era da cartellone: la voce politica sta nelle scritte, nei rulli, negli stencil
   }
   // IL BOZZETTO: un writer pensa il suo pezzo. dna = { fam, pals, chars, pol (quanto è politico), skill }; tutto il resto lo decide il caso
   function conceive(o) {
@@ -39782,8 +39782,8 @@ var WriterArte = (function () {
     const pals = d.pals && d.pals.length ? d.pals : [Math.floor(r() * PAL.length)];
     const pol = d.pol != null ? d.pol : .4;
     const sk = { style, aka: o.aka, crew: o.crew, seed, q, fam, cons: d.cons || consOf(seed), pal: pickR(r, pals) % PAL.length,
-      words: wild && r() < pol * .5 ? pickR(r, WORDS) : null,
-      slogan: !throwUp && style !== 'tag' && r() < pol * (wild ? .5 : .25) ? pickR(r, SLOGANS) : null,
+      words: wild && o.crew && r() < .12 ? o.crew : null,   // [graffiti5] il burner dice il nome, o quello della crew: non una parola da poster
+      slogan: null,
       chr: null,
       fillk: FAM[fam].chrome ? 'chrome' : pickR(r, ['flat', 'flat', 'bande', 'bande', 'bande', 'due', r() < .1 ? pickR(r, FILLS) : 'flat']),
       bgk: style === 'wholecar' ? pickR(r, ['rullo', 'rullo', 'skyline']) : throwUp ? (r() < .3 ? 'rullo' : null) : r() < .45 ? 'rullo' : r() < .08 ? pickR(r, BADGES) : null,
@@ -40403,7 +40403,7 @@ var WriterArte = (function () {
     const [bx0, by0, bx1, by1] = B.box;
     if (S0.ref && (!S0.pz || r() < .5)) decorate(x, B, S0, u, r, w.aka || 'NINO', Wp, Hp, ol);
     else if (C.fam === 'throwie' && S0.fill === '#141418' && r() < .6) decorate(x, B, Object.assign({}, S0, { deco: '#141418' }), u, r, w.aka || 'NINO', Wp, Hp, ol);   // [writer] aureole, corone, crocette, stelline, mini-tag, gocce
-    else if (q > .6) for (let k = 0; k < 2; k++) sparkle(x, bx0 + r() * (bx1 - bx0), by0 + r() * (by1 - by0) * .3, u * .08, S0.shine === '#141418' ? '#141418' : '#ffffff');
+    else if (q > .6 && r() < .2) for (let k = 0; k < 1; k++) sparkle(x, bx0 + r() * (bx1 - bx0), by0 + r() * (by1 - by0) * .3, u * .08, S0.shine === '#141418' ? '#141418' : '#ffffff');
     smallTag(x, w.words && w.aka ? w.aka + ' ' + (w.crew || 'PV') : (w.crew || 'PV'), Math.min(Wp - Hp * .3, bx1 - Hp * .15), Math.min(Hp - sloganH - Hp * .06, by1 + ol * 2), Hp * .1, S0.ol === '#f6f4ee' ? '#141418' : S0.ol, r, Wp * .3);
     if (!throwUp && C.yr) smallTag(x, C.yr, bx0 + Hp * .12, Math.max(Hp * .06, by0 + Hp * .02), Hp * .08, S0.ol === '#f6f4ee' ? '#141418' : S0.ol, r);
     if (sloganH) { const r2 = mulberry((w.seed || 1) + 99), r3 = mulberry((w.seed || 1) + 99); smallTag(x, C.slogan, Wp / 2, Hp - sloganH * .55, sloganH * .7, '#ffffff', r2, Wp * .85, 2.6); smallTag(x, C.slogan, Wp / 2, Hp - sloganH * .55, sloganH * .7, '#141418', r3, Wp * .85); }
@@ -40598,14 +40598,14 @@ var WriterArte = (function () {
     const B = blurThresh(M, S * .14, .5), T = cv(Wp, Hp), tx = T.getContext('2d'); tx.filter = `blur(${(S * .025).toFixed(1)}px)`; tx.drawImage(B, 0, 0); tx.filter = 'none'; tx.globalCompositeOperation = 'source-in';
     const g = tx.createLinearGradient(0, 0, 0, Hp); g.addColorStop(0, shade(P.bg, .12)); g.addColorStop(1, shade(P.bg, -.12)); tx.fillStyle = g; tx.fillRect(0, 0, Wp, Hp); tx.globalCompositeOperation = 'source-over';
     bg.save(); bg.globalAlpha = .9; bg.filter = `blur(${(S * .1).toFixed(1)}px)`; bg.drawImage(T, 0, 0); bg.restore(); bg.drawImage(T, 0, 0);   // il velo attorno, poi la nuvola piena
-    if (q > .5) for (let k = 0; k < 4 + r() * 6; k++) sparkle(bg, r() * Wp, Hp * (.08 + r() * .3), S * (.06 + r() * .08), 'rgba(255,255,255,.9)');
+    if (q > .5 && r() < .2) for (let k = 0; k < 2; k++) sparkle(bg, r() * Wp, Hp * (.08 + r() * .3), S * (.06 + r() * .08), 'rgba(255,255,255,.9)');
   }
   // la nuvola da una maschera qualunque (bolle, tratti): la sagoma delle lettere gonfiata e resa morbida, il bordo mosso piano
   function cloudOf(bg, FILL, P, Wp, Hp, r, q) {
     const NF = noiseField(Wp, Hp, Math.floor(r() * 1e6), Hp * .22), B = blurThresh(FILL, Hp * .055, .1, .45, NF), T = cv(Wp, Hp), tx = T.getContext('2d'); tx.drawImage(B, 0, 0); tx.globalCompositeOperation = 'destination-in'; tx.filter = `blur(${(Hp * .035).toFixed(1)}px)`; tx.fillStyle = '#fff'; tx.fillRect(Hp * .09, Hp * .09, Wp - Hp * .18, Hp * .82); tx.filter = 'none'; tx.globalCompositeOperation = 'source-in';   // sfuma prima del bordo del muro
     const g = tx.createLinearGradient(0, 0, 0, Hp); g.addColorStop(0, shade(P.bg, .12)); g.addColorStop(1, shade(P.bg, -.12)); tx.fillStyle = g; tx.fillRect(0, 0, Wp, Hp); tx.globalCompositeOperation = 'source-over';
     bg.save(); bg.globalAlpha = .9; bg.filter = `blur(${(Hp * .03).toFixed(1)}px)`; bg.drawImage(T, 0, 0); bg.restore(); bg.save(); bg.filter = `blur(${(Hp * .006).toFixed(1)}px)`; bg.drawImage(T, 0, 0); bg.restore();
-    if (q > .5) for (let k = 0; k < 3 + r() * 5; k++) sparkle(bg, r() * Wp, Hp * (.08 + r() * .3), Hp * (.03 + r() * .04), 'rgba(255,255,255,.9)');
+    if (q > .5 && r() < .2) for (let k = 0; k < 2; k++) sparkle(bg, r() * Wp, Hp * (.08 + r() * .3), Hp * (.03 + r() * .04), 'rgba(255,255,255,.9)');
   }
   function blockArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
     const q = C.q, F = FAM[C.fam], CN = w.cons || consOf(w.hand || w.seed || 1), text = DEACC(w.words || w.aka || 'NINO').replace(/[^A-Z0-9]/g, '') || 'NINO';
@@ -40671,7 +40671,7 @@ var WriterArte = (function () {
       if (sys.fx & 1) { for (let k = 0; k < 2 + rs() * 3; k++) { const top0 = rs() < .5, a = bb[0] + (bb[2] - bb[0]) * rs(), b = top0 ? bb[1] - S * (.04 + rs() * .1) : bb[3] + S * (.02 + rs() * .1); bub(a, Math.max(S * .1, Math.min(Hp - S * .1, b)), S * (.025 + rs() * .045)); } }
       if (sys.fx & 2) { o.strokeStyle = OL; o.lineCap = 'round'; o.lineWidth = Math.max(2, ol * .8); for (let k = 0; k < 3; k++) { const y = bb[1] + (bb[3] - bb[1]) * (.3 + k * .18), x1 = bb[0] - S * .05, x0 = Math.max(ol * 2, x1 - S * (.15 + rs() * .2) * (k === 1 ? 1.5 : 1)); o.beginPath(); o.moveTo(x0, y); o.lineTo(x1, y); o.stroke(); }
         for (let k = 0; k < 2; k++) { const a = bb[2] + S * (.04 + rs() * .1), b = bb[1] + (bb[3] - bb[1]) * rs() * .5, z = S * .05; o.beginPath(); o.moveTo(a - z, b); o.lineTo(a + z, b); o.moveTo(a, b - z); o.lineTo(a, b + z); o.stroke(); } }
-      sparkle(o, bb[0] + (bb[2] - bb[0]) * (.15 + rs() * .7), bb[1] - S * .02, S * .1, P.hi); }
+      if (rs() < .15) sparkle(o, bb[0] + (bb[2] - bb[0]) * (.15 + rs() * .7), bb[1] - S * .02, S * .1, P.hi); }
     [...masks.keys()].reverse().forEach(i => {
       const m = masks[i];
       if (!hollow) { o.save(); o.globalAlpha = .3; o.filter = `blur(${(ol * 1.6).toFixed(1)}px)`; o.drawImage(tintC(grow(m, ol * 1.4), P.f[1]), 0, 0); o.restore(); }   // la nebbia del riempimento che scappa fuori
@@ -40683,7 +40683,7 @@ var WriterArte = (function () {
       if (sys.inline) { const a = Math.max(1.5, t * S * .09), h = Math.max(1.5, t * S * .06), E1 = erode(m, a), R1 = cv(Wp, Hp), r1 = R1.getContext('2d'); r1.drawImage(E1, 0, 0); r1.globalCompositeOperation = 'destination-out'; r1.drawImage(erode(m, a + h), 0, 0); lx.globalAlpha = .9; lx.drawImage(tintC(R1, lum(P.f[1]) > .6 ? shade(P.f[1], -.35) : P.hi), 0, 0); lx.globalAlpha = 1; }   // la seconda linea: corre dentro, tutta attorno
       { const l = L[i], g = Math.max(2, t * S * .14); lx.save(); lx.globalCompositeOperation = 'source-atop'; lx.fillStyle = lx.strokeStyle = '#ffffff'; lx.lineCap = 'round'; lx.globalAlpha = .9;   // i riflessi: il colpo di bianco sull'angolo in alto, il punto, a volte la stella
         const [ax, ay] = toPx(l, [t * .3, th0 * .35]); lx.lineWidth = g * .55; lx.beginPath(); lx.moveTo(ax, ay); lx.lineTo(ax + S * Math.min(.18, l.w * .4), ay - S * .005); lx.stroke(); lx.beginPath(); lx.moveTo(ax, ay); lx.lineTo(ax - S * .005, ay + S * .12); lx.stroke(); lx.beginPath(); lx.arc(ax + S * Math.min(.26, l.w * .55), ay, g * .3, 0, 7); lx.fill();
-        if (q > .55 && rs() < .3) { const [bx, by] = toPx(l, [l.w * (.4 + rs() * .4), .5 + rs() * .3]); sparkle(lx, bx, by, S * .07, '#ffffff'); } lx.restore(); }
+        if (q > .75 && rs() < .06) { const [bx, by] = toPx(l, [l.w * (.4 + rs() * .4), .5 + rs() * .3]); sparkle(lx, bx, by, S * .07, '#ffffff'); } lx.restore(); }
       if (q > .45 && !sys.inline) {   // la luce: una riga sottile lungo i bordi in alto a sinistra, rientrata dal contorno
         const g = Math.max(1.5, t * S * .1), h = Math.max(1.5, t * S * .07), B1 = cv(Wp, Hp), b1 = B1.getContext('2d'); b1.drawImage(m, g, g); b1.globalCompositeOperation = 'destination-out'; b1.drawImage(m, g + h, g + h); b1.globalCompositeOperation = 'destination-in'; b1.drawImage(m, 0, 0);
         lx.globalAlpha = .8; lx.drawImage(tintC(B1, P.hi), 0, 0); lx.globalAlpha = 1;
@@ -41013,7 +41013,7 @@ var WriterArte = (function () {
     const drips = r() < .3 ? 3 + Math.floor(r() * 5) : 0, lay = { adv: fat ? .66 + r() * .08 : .72 + r() * .08, jit: .12 + (1 - q) * .1, rot: .14 + (1 - q) * .12, bounce: .06 + r() * .07, squash: .8 + r() * .22, slant: (r() - .3) * .3, puff: fat ? 1.16 + r() * .1 : 1.06 + r() * .1 };
     // [graffiti4] gli extra dei fogli: il personaggio accanto, le lettere dentro un oggetto (la bomboletta, la sigaretta), la bomba con la
     // miccia, la corona di punte; gli occhi dentro una lettera, gli scarabocchi
-    const extra = pre ? null : r() < .55 ? null : pickR(r, ['personaggio', 'personaggio', 'personaggio', 'bomboletta', 'sigaretta', 'bomba', 'punte', 'punte']), who = extra === 'personaggio' ? pickR(r, ['ragazzo', 'occhio', 'bomba', 'lattina']) : null;
+    const extra = pre ? null : r() < .8 ? null : 'punte', who = extra === 'personaggio' ? pickR(r, ['ragazzo', 'occhio', 'bomba', 'lattina']) : null;
     let LW = Wp * .96, LX = 0; if (who) { LW = Wp * .7; LX = r() < .7 ? 0 : Wp * .3; } else if (extra === 'bomboletta' || extra === 'sigaretta') { LW = Wp * .64; LX = Wp * .17; }
     if (extra === 'sigaretta') Object.assign(sc, { fill: '#f4f2ee', light: '#ffffff', shade: '#d4d0c8', acc: '#e8a050' });
     fixInk(sc);
@@ -41053,7 +41053,7 @@ var WriterArte = (function () {
           const pts = []; for (let t = 0; t <= 1.001; t += .2) { const a = a0 + (a1 - a0) * t; pts.push([c[0] + Math.cos(a) * R0, c[1] + Math.sin(a) * R0]); } taperLine(ctx, pts, u * .05, u * .016, sc.hi);
           if (r() < .7) { const a = a1 + .28; ctx.beginPath(); ctx.arc(c[0] + Math.cos(a) * R0, c[1] + Math.sin(a) * R0, u * .024, 0, 7); ctx.fill(); } }); }); ctx.restore(); },
       deco: (ctx, U, bx) => {
-        const n = Math.floor(r() * 4); for (let k = 0; k < n; k++) asterisk(ctx, bx[0] + r() * (bx[2] - bx[0]), Math.max(u * .1, bx[1] - u * (.05 + r() * .1)), u * (.06 + r() * .05), sc.ink === '#f4f4f2' ? '#141418' : sc.ink, r);   // gli asterischi sopra
+        const n = r() < .3 ? 1 : 0; for (let k = 0; k < n; k++) asterisk(ctx, bx[0] + r() * (bx[2] - bx[0]), Math.max(u * .1, bx[1] - u * (.05 + r() * .1)), u * (.06 + r() * .05), sc.ink === '#f4f4f2' ? '#141418' : sc.ink, r);   // gli asterischi sopra
         if (r() < .25) { ctx.save(); ctx.strokeStyle = sc.ink; ctx.lineWidth = Math.max(1.2, u * .018); ctx.lineCap = 'round'; const side = r() < .5 ? -1 : 1, X0 = side < 0 ? bx[0] - u * .06 : bx[2] + u * .06; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(X0 - side * u * (.25 + k * .08), (bx[1] + bx[3]) / 2, u * (.25 + k * .06), side < 0 ? PI * .8 : -PI * .2, side < 0 ? PI * 1.2 : PI * .2); ctx.stroke(); } ctx.restore(); }   // le linee di velocità
         if (r() < .3 && WM) { const l = pickR(r, B.L), b = l.body.reduce((a, c) => (c.r > a.r ? c : a)), c = b.c || b.a, tw = b.r * 1.3, th = b.r * .6, t = cv(Math.round(tw), Math.round(th)); WM.handTag(t.getContext('2d'), w.aka || 'NINO', Object.assign({}, WM.dna((w.hand || w.seed || 1) + 3), { skill: .8 }), t.width, t.height, r, sc.inner, 'mtag'); ctx.drawImage(t, c[0] - tw / 2, c[1] - th / 2); }   // la mini-tag dentro una lettera
         if (r() < .15) { const l = B.L[0], t = l.body.reduce((a, b) => { const cc = b.c || b.a; return cc[1] - b.r < a[1] ? [cc[0], cc[1] - b.r] : a; }, [0, 1e9]); ctx.save(); ctx.strokeStyle = r() < .5 ? '#f2d21a' : '#ffffff'; ctx.lineWidth = Math.max(2, u * .04); ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = u * .05; ctx.beginPath(); ctx.ellipse(t[0], t[1] - u * .12, u * .22, u * .06, -.1, 0, 7); ctx.stroke(); ctx.restore(); }   // l'aureola
@@ -41105,7 +41105,7 @@ var WriterArte = (function () {
     const wild = /^(wild|spiky)$/.test(C.fam) && q > .4, semi = wild || C.fam === 'semi' || C.fam === 'astratto' || C.fam === 'script', heavy = C.fam === 'heavy' || C.fam === 'tridi';
     const t = clamp(CN.weight * (heavy ? 1.3 : 1.12), .2, heavy ? .38 : .32), wL = Math.max(clamp(CN.width, .62, .95), 2 * t + .22), sl = .1 + Math.abs(CN.slant) * .8, gap = -(.03 + r() * .06) - (wild ? .04 : 0);
     const rs = mulberry((w.hand || w.seed || 1) * 104729 + 1), th0 = Math.min(t, .22);
-    const sloganH = C.slogan ? Hp * .1 : 0, pad = Hp * .16, d3k = .14 + r() * .1, ang = .5 + r() * .5, who = r() < (w.style === 'burner' ? .35 : .12) ? pickR(r, ['ragazzo', 'occhio', 'bomba', 'lattina']) : null, LWp = who ? Wp - Hp * .95 : Wp, LX = who && r() < .35 ? Hp * .95 : 0;   // [graffiti4] il personaggio accanto al pezzo
+    const sloganH = C.slogan ? Hp * .1 : 0, pad = Hp * .16, d3k = .14 + r() * .1, ang = .5 + r() * .5, who = null, LWp = who ? Wp - Hp * .95 : Wp, LX = who && r() < .35 ? Hp * .95 : 0;   // [graffiti4] il personaggio accanto al pezzo
     let L = [], cur = 0, S, toPx, masks;
     const fpick = FONTS.ok && r() < .75 ? wpick(r, F_PIECE) : null; let pieceCuts = null;
     if (fpick) {   // [graffiti4] le lettere dei pezzi da un font vero (o dalla mano da tag ingrassata: il pezzo «dalla tag»)
@@ -41135,7 +41135,7 @@ var WriterArte = (function () {
     masks = L.map(l => { const m = cv(Wp, Hp); fillPolys(m.getContext('2d'), l, toPx); return blurThresh(m, Math.max(.6, corner * t * S), .5); });
     }
     const d3 = S * d3k * (heavy ? 1.5 : 1), dx = Math.cos(ang) * d3, dy = Math.sin(ang) * d3, ow = Math.max(3, S * (.05 + r() * .02)), iw = Math.max(2, S * (.03 + r() * .012));
-    const bgk = r() < .35 ? 'burst' : r() < .55 ? 'cloud' : null;
+    const bgk = r() < .3 ? 'cloud' : null;
     const border = r() < .55 ? S * (.04 + r() * .04) : 0;
     inkRender({ Wp, Hp, masks, sc, r, S, x, snap, paths, radii, seed: (w.seed || 1) * 7 + 5, ow, iw, dx, dy, extrude: true, border, inner: pieceCuts ? (ctx, i) => { const H = i < masks.length && pieceCuts(i); if (H) ctx.drawImage(tintTo(H, sc.inner, Wp, Hp), 0, 0); } : null, aura: r() < .28 ? mixC(sc.acc, '#ffffff', .2) : null, dbl: r() < .14 ? pickR(r, ['#f2d21a', '#3ad6f0', '#ffffff', sc.acc]) : null, dash: border && r() < .3, drips: r() < .2 ? 2 + Math.floor(r() * 4) : 0, dripLen: S * .4, dripW: S * .035, rim: true,
       fillKind: pickR(r, (P.fills && r() < .5) ? P.fills.map(f => ({ macchie: 'macchie', sfumato: 'sfuma', strisce: 'strisce', split: 'ombra', scacchi: 'pois' })[f] || 'sfuma') : ['sfuma', 'sfuma', 'sfuma', 'ombra', 'ombra', 'macchie', 'tratteggio', 'strisce', 'liquido', 'mattoni', 'taglio', 'taglio']),
@@ -41150,8 +41150,8 @@ var WriterArte = (function () {
           cx2.globalCompositeOperation = 'destination-in'; cx2.drawImage(erode(m, ow * .5), 0, 0); ctx.drawImage(tintTo(c, sc.hi, Wp, Hp), 0, 0); });
         ctx.restore(); },
       deco: (ctx, U, bx) => {
-        for (let k = 0; k < 1 + Math.floor(r() * 3); k++) { const cx2 = bx[0] + r() * (bx[2] - bx[0]), cy2 = bx[1] + r() * (bx[3] - bx[1]) * .4; ctx.save(); ctx.strokeStyle = '#ffffff'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1, S * .012); const s2 = S * (.12 + r() * .1); for (const a of [0, PI / 2]) { ctx.beginPath(); ctx.moveTo(cx2 - Math.cos(a) * s2, cy2 - Math.sin(a) * s2); ctx.lineTo(cx2 + Math.cos(a) * s2, cy2 + Math.sin(a) * s2); ctx.stroke(); } for (const a of [PI / 4, -PI / 4]) { ctx.beginPath(); ctx.moveTo(cx2 - Math.cos(a) * s2 * .45, cy2 - Math.sin(a) * s2 * .45); ctx.lineTo(cx2 + Math.cos(a) * s2 * .45, cy2 + Math.sin(a) * s2 * .45); ctx.stroke(); } ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx2, cy2, S * .02, 0, 7); ctx.fill(); ctx.restore(); }   // la stella a raggi sottili
-        if (r() < .2) { const [hx, hy] = toPx(L[0], [L[0].w * .5, -.12]); ctx.save(); ctx.strokeStyle = r() < .5 ? '#f2d21a' : '#ffffff'; ctx.lineWidth = Math.max(2, S * .035); ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = S * .06; ctx.beginPath(); ctx.ellipse(hx, hy, S * .28, S * .07, -.12, 0, 7); ctx.stroke(); ctx.restore(); }   // l'aureola
+        for (let k = 0, nk = r() < .25 ? 1 : 0; k < nk; k++) { const cx2 = bx[0] + r() * (bx[2] - bx[0]), cy2 = bx[1] + r() * (bx[3] - bx[1]) * .4; ctx.save(); ctx.strokeStyle = '#ffffff'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1, S * .012); const s2 = S * (.12 + r() * .1); for (const a of [0, PI / 2]) { ctx.beginPath(); ctx.moveTo(cx2 - Math.cos(a) * s2, cy2 - Math.sin(a) * s2); ctx.lineTo(cx2 + Math.cos(a) * s2, cy2 + Math.sin(a) * s2); ctx.stroke(); } for (const a of [PI / 4, -PI / 4]) { ctx.beginPath(); ctx.moveTo(cx2 - Math.cos(a) * s2 * .45, cy2 - Math.sin(a) * s2 * .45); ctx.lineTo(cx2 + Math.cos(a) * s2 * .45, cy2 + Math.sin(a) * s2 * .45); ctx.stroke(); } ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx2, cy2, S * .02, 0, 7); ctx.fill(); ctx.restore(); }   // la stella a raggi sottili
+        if (r() < .03) { const [hx, hy] = toPx(L[0], [L[0].w * .5, -.12]); ctx.save(); ctx.strokeStyle = r() < .5 ? '#f2d21a' : '#ffffff'; ctx.lineWidth = Math.max(2, S * .035); ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = S * .06; ctx.beginPath(); ctx.ellipse(hx, hy, S * .28, S * .07, -.12, 0, 7); ctx.stroke(); ctx.restore(); }   // l'aureola
         if (who) { const K0 = { ragazzo: [.24, .36], occhio: [.27, .5], bomba: [.28, .62], lattina: [.27, .52] }[who]; cartoon(ctx, who, LX ? Hp * .48 : Wp - Hp * .48, Hp * K0[1], Hp * K0[0], sc, r, Math.max(2, Hp * .016)); }
         const ink = lumC(sc.border) > .6 || !sc.border ? '#141418' : '#f4f4f2';
         if (WM) { const tw = Math.min(Wp * .22, S * 1.2), th = S * .35, t2 = cv(Math.round(tw), Math.round(th)); WM.handTag(t2.getContext('2d'), (w.crew || 'PVK') + (C.yr ? ' ' + C.yr : ''), Object.assign({}, WM.dna((w.seed || 1) * 3 + 1), { skill: .85 }), t2.width, t2.height, r, ink, 'mtag'); ctx.drawImage(t2, Math.min(Wp - tw - 2, bx[2] - tw * .8), Math.min(Hp - th - 2, bx[3] + S * .05)); }   // la crew e l'anno a pennarello
@@ -41178,7 +41178,7 @@ var WriterArte = (function () {
     { b.save(); b.globalCompositeOperation = 'destination-out'; b.fillStyle = '#000'; const edge = (y0, dir) => { b.beginPath(); b.moveTo(0, dir < 0 ? 0 : Hp); for (let xx = 0; xx <= Wp; xx += Hp * .04) b.lineTo(xx, y0 + (r() - .5) * Hp * .02); b.lineTo(Wp, dir < 0 ? 0 : Hp); b.closePath(); b.fill(); }; edge(m0, -1); edge(Hp - m1, 1); b.restore(); }
     x.drawImage(BG, 0, 0); stages.push(handify(out, (w.seed || 1) * 7 + 1, q, {})); paths.push(raster(Wp, Hp, 6)); radii.push(Hp * .13);
     // 2. il pezzo grande: alto quasi quanto la fiancata, a sinistra o al centro
-    const side = r() < .55 ? (r() < .5 ? 'crew' : 'mostro') : null, pw = w.W * (side ? .57 : .8), ph = w.H * .84, base = { aka: w.aka, crew: w.crew, words: w.words, hand: w.hand, cons: w.cons, dna: w.dna, pal: w.pal, q: w.q, by: w.by, slogan: null, bgk: null };
+    const side = r() < .5 ? 'crew' : null, pw = w.W * (side ? .57 : .8), ph = w.H * .84, base = { aka: w.aka, crew: w.crew, words: w.words, hand: w.hand, cons: w.cons, dna: w.dna, pal: w.pal, q: w.q, by: w.by, slogan: null, bgk: null };
     const fam = /^(block|heavy|piatto|astratto|bubble|fat|semi)$/.test(C.fam) ? C.fam : pickR(r, ['block', 'heavy', 'astratto', 'bubble', 'fat']);
     const main = art(Object.assign({}, base, { style: 'burner', fam, W: pw, H: ph, seed: (w.seed || 1) * 3 + 1 })), ox = Math.round(side ? Wp * .03 : (Wp - main.Wp) / 2), oy = Math.round((Hp - main.Hp) / 2);
     main.stages.forEach(s0 => { x.clearRect(0, 0, Wp, Hp); x.drawImage(BG, 0, 0); x.drawImage(s0, ox, oy); push(); });
@@ -42213,7 +42213,7 @@ var Writing = (function () {
     const w = Object.assign(sk, { by: n.id, hand: wr.hand || seed, surf: 'muro', spot: sp, place: sp && sp.place, prog: 0, done: false });
     if (style === 'tag' || style === 'mtag') { const k = .8 + rnd() * .55; w.tagK = k; }
     if (style === 'tag' || style === 'mtag') { if (rnd() < .3) w.sign = pick(WA.SIGNS); }
-    else if (style === 'burner' && rnd() < .3) w.words = pick(WA.WORDS);
+    else if (style === 'burner' && wr.crew && rnd() < .25) w.words = wr.crew;
     // [graffiti3] gli stili nuovi: la scritta di chi è politico parla di politica, gli altri d'amore o di strada; lo stencil di un
     // writer è sempre lo stesso (la sua mascherina, ripetuta per la città); il rullo e il verticale dicono la crew o una parola
     else if (style === 'scritta') { const pol = (dna && dna.pol != null) ? dna.pol : .4; w.kind = rnd() < pol ? 'politica' : pick(['amore', 'ultras', 'strada', 'amore']); if (w.kind === 'strada' && wr.crew) w.words = pick([wr.crew + ' IN CASA', 'ZONA ' + wr.crew, wr.crew + ' ' + wr.aka]); }
@@ -43663,8 +43663,8 @@ var WriterVita = (function () {
     const wr = n.pop.writer, r = rnd() + (wr.skill || .5) * .2;
     if (kind === 'heaven') return r < .5 ? 'throw' : r < .85 ? 'pezzo' : 'rullo';
     if (kind === 'facciata') return r < .6 ? 'verticale' : 'estintore';
-    if (kind === 'hall') return r < .3 ? 'pezzo' : r < .55 ? 'burner' : r < .7 ? 'mostro' : r < .82 ? 'murale' : r < .92 ? 'calli' : 'rullo';   // [graffiti3] murali, calligraffiti, rulli
-    return r < .3 ? 'tag' : r < .5 ? 'throw' : r < .56 ? 'gotico' : r < .64 ? 'mostro' : r < .7 ? 'scritta' : r < .76 ? 'stencil' : r < .8 ? 'calli' : r < .94 ? 'pezzo' : 'burner';
+    if (kind === 'hall') return r < .3 ? 'pezzo' : r < .55 ? 'burner' : r < .7 ? 'pezzo' : r < .82 ? 'murale' : r < .92 ? 'calli' : 'rullo';   // [graffiti3] murali, calligraffiti, rulli
+    return r < .3 ? 'tag' : r < .5 ? 'throw' : r < .56 ? 'gotico' : r < .64 ? 'throw' : r < .7 ? 'scritta' : r < .76 ? 'stencil' : r < .8 ? 'calli' : r < .94 ? 'pezzo' : 'burner';
   }
   const spotOf = (s, du, h) => ({ x: s.x + s.along[0] * (du || 0), y: s.y + s.along[1] * (du || 0), face: s.face, h: h != null ? h : s.h, place: placeOf(s), kind: s.kind });
   // UNA USCITA: muro di strada, heaven spot, hall of fame con la crew, treno al deposito
@@ -43775,17 +43775,17 @@ var WriterVita = (function () {
       let style;
       if (s.kind === 'facciata') style = r < .5 ? 'verticale' : r < .8 ? 'estintore' : s.len >= 8 ? 'rullo' : 'verticale';   // [graffiti3] sui palazzi
       else if (s.kind === 'heaven') style = r < .4 ? 'throw' : r < .55 ? 'gotico' : r < .8 ? 'pezzo' : s.len >= 7 ? 'rullo' : 'pezzo';
-      else if (s.kind === 'muro') style = r < .15 ? 'tag' : r < .35 ? 'throw' : r < .45 ? 'mostro' : r < .55 ? 'scritta' : r < .66 ? 'murale' : r < .71 ? 'calli' : r < .9 ? 'pezzo' : 'burner';   // sul Muro le produzioni e le parole
-      else if (s.kind === 'ponte') style = r < .25 ? 'tag' : r < .45 ? 'throw' : r < .55 ? 'gotico' : r < .65 ? 'mostro' : r < .75 ? 'scritta' : r < .82 ? 'stencil' : r < .9 ? 'estintore' : 'pezzo';
-      else if (s.kind === 'hall') style = r < .12 ? 'tag' : r < .22 ? 'throw' : r < .28 ? 'scritta' : r < .33 ? 'stencil' : r < .4 ? 'calli' : r < .5 ? 'mostro' : r < .7 ? 'pezzo' : r < .82 ? 'burner' : r < .94 ? 'murale' : 'rullo';
-      else style = r < .3 ? 'tag' : r < .42 ? 'mtag' : r < .56 ? 'throw' : r < .62 ? 'stencil' : r < .68 ? 'scritta' : r < .74 ? 'adesivi' : r < .78 ? 'manifesto' : r < .81 ? 'gotico' : r < .85 ? 'mostro' : r < .88 ? 'calli' : r < .96 ? 'pezzo' : 'burner';
+      else if (s.kind === 'muro') style = r < .15 ? 'tag' : r < .35 ? 'throw' : r < .45 ? 'pezzo' : r < .55 ? 'scritta' : r < .66 ? 'murale' : r < .71 ? 'calli' : r < .9 ? 'pezzo' : 'burner';   // sul Muro le produzioni e le parole
+      else if (s.kind === 'ponte') style = r < .25 ? 'tag' : r < .45 ? 'throw' : r < .55 ? 'gotico' : r < .65 ? 'throw' : r < .75 ? 'scritta' : r < .82 ? 'stencil' : r < .9 ? 'estintore' : 'pezzo';
+      else if (s.kind === 'hall') style = r < .12 ? 'tag' : r < .22 ? 'throw' : r < .28 ? 'scritta' : r < .33 ? 'stencil' : r < .4 ? 'calli' : r < .5 ? 'pezzo' : r < .7 ? 'pezzo' : r < .82 ? 'burner' : r < .94 ? 'murale' : 'rullo';
+      else style = r < .3 ? 'tag' : r < .42 ? 'mtag' : r < .56 ? 'throw' : r < .62 ? 'stencil' : r < .68 ? 'scritta' : r < .74 ? 'adesivi' : r < .78 ? 'manifesto' : r < .81 ? 'gotico' : r < .85 ? 'throw' : r < .88 ? 'calli' : r < .96 ? 'pezzo' : 'burner';
       if (wr.crew === 'TOY' && !/^(mtag|adesivi|stencil|manifesto)$/.test(style)) style = r < .5 ? 'tag' : r < .8 ? 'throw' : 'adesivi';   // i ragazzini: tag e throw storti, adesivi
       if (/^(pezzo|burner|calli)$/.test(style) && s.kind === 'strada' && s.len < 5) continue;
       if (/^(murale|rullo)$/.test(style) && s.kind !== 'heaven' && s.kind !== 'facciata' && s.len < 7) style = 'pezzo';
       const big = BIG.test(style), top = s.kind === 'heaven' || s.kind === 'facciata';
       const du = top ? (style === 'estintore' ? (rnd() - .5) * Math.max(0, s.len - 3.5) : 0) : (rnd() - .5) * Math.max(0, s.len - (big ? 4 : 1.2));
       const h = s.kind === 'facciata' ? heightFor(s, style) : s.kind === 'heaven' ? (style === 'rullo' ? s.h - .5 : s.h - .3) : null;
-      const words = (s.kind === 'muro' || (wr.crew === 'RSC' && big)) && rnd() < .55 && /^(pezzo|burner|mostro)$/.test(style) ? pick(POLW) : undefined;
+      const words = (s.kind === 'muro' || (wr.crew === 'RSC' && big)) && rnd() < .3 && /^(pezzo|burner)$/.test(style) ? pick(POLW) : undefined;
       const extra = { sign: (style === 'tag' || style === 'mtag') && rnd() < .3 ? pick(WA.SIGNS) : undefined };
       if (words) extra.words = words;
       const w = place(s, who, wr, style, du, h, extra); if (!w) continue;
