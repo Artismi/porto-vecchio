@@ -291,6 +291,10 @@ var Posti = (function () {
           [-1, 1].forEach(sd => { const q = freeNear(p0[0] + nx * sd * (vit.w / 2 + 1.5), p0[1] + ny * sd * (vit.w / 2 + 1.5), 2); if (q) add('parata', cx(q[0]), cx(q[1]), Math.atan2(-ny * sd, -nx * sd), { nome: 'la parata della Vittoria' }); }); }); }
     }
 
+    // --- [scorci] i posti degli scorci composti (scorci.js): la scopa al tavolino, le comari, i ragazzini, il telefono a gettoni ---
+    { const SC = typeof Scorci !== 'undefined' && Scorci && Scorci.attivo ? Scorci : null;
+      if (SC) { Object.assign(TIPI, SC.TIPI_POSTI); SC.posti().forEach(q => { if (TIPI[q.k]) add(q.k, q.x, q.y, q.dir, { scorcio: q.scorcio, nome: q.nome }); }); } }
+
     // --- stenditoi sui tetti: le case basse del borgo, una su sei ---
     { const TT = typeof Tetti !== 'undefined' ? Tetti : null, MG = 3.1;
       B.forEach((b, bi) => {

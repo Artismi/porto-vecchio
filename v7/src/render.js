@@ -7140,6 +7140,18 @@ var Render = (function () {
     addLight(lx, y - .1, lz, '#ffc070', 1.35, 6, .02); PC1.n++;
     return [lx, lz];
   }
+  // [scorci] GLI SCORCI: i diorami composti (scorci.js le ricette, scorci_arte.js il kit). Si posano qui, prima del regista finale, così
+  // pulizia2 li misura come le altre voci (fissi: non li sposta; sposta gli altri che li urtano) e la visuale li taglia con la loro casa.
+  // Le aperture vere del piano terra di una faccia (dai moduli della casa) servono al kit per non appendere niente su porte e finestre.
+  function buildScorci() {
+    if (!cn1() || !window.ScorciArte || !window.Scorci || !Scorci.attivo) return 0;
+    let sporge = 0; try { const kp = Kit.get('bkit/wall'); kp.updateMatrixWorld(true); sporge = clamp(new THREE.Box3().setFromObject(kp).max.x, 0, .3); } catch (e) { sporge = 0; }
+    const aperture = (b, f) => (b.__win || []).filter(W0 => W0.f === f && W0.g && W0.name !== 'wall' && W0.name !== 'wall-low').map(W0 => { const D = WIN[W0.name] || [1, 2.1, 1.05], y0 = W0.y + D[2] - D[1] / 2 - (DZ.bRec[G.BUILDINGS.indexOf(b)] ? DZ.bRec[G.BUILDINGS.indexOf(b)].geo.y0 : W0.y);
+      return { u0: W0.u - D[0] / 2 - .08, u1: W0.u + D[0] / 2 + .08, y0: Math.max(0, y0) - .05, y1: y0 + D[1] + .12, tipo: W0.name.includes('door') ? 'porta' : 'finestra' }; });
+    const R = ScorciArte.costruisci({ scene, G, groundH, bRec: i => DZ.bRec[i], aperture, sporge, reg: p2Parti });
+    ScorciArte.aggancia(); if (window.__dbg35 && R) console.log('[scorci]', JSON.stringify(ScorciArte.conta().scorci.map(q => [q.id, q.draws, q.tri])));
+    return R ? R.sc.length : 0;
+  }
   function buildPercorsi1() {
     const D = pcDati1(); if (!D) return;
     const iron = sm('#2a2a2e', { metalness: .4, roughness: .6 }), lit = caseLit('#ffc878'), geo = { box: new THREE.BoxGeometry(1, 1, 1), sph: new THREE.SphereGeometry(.085, 8, 6) };
@@ -7165,16 +7177,18 @@ var Render = (function () {
   // toglie. Priorità: porta, scala, tombino > vetrina > insegna > tenda > dehors > arredo minuto. Il validatore
   // (strumenti/compenetrazioni.js) legge window.__pulizia2: la misura prima e dopo, per tipo, e i punti per la pianta.
   const P2 = { on: true, k: null, kc: null, g: 0, src: '', list: [], n: 0, kit: null };   // k: la voce di chi posa con addStatic; kc: quella di buildCase; g: la composizione
-  const PRIO2 = { porta: 100, scala: 100, tombino: 100, passerella: 100, vetrina: 90, grande: 85, ingombro: 20, rete: 80, lampione: 80, cartello: 80, gradino: 80, portale: 78, serranda: 78, balcone: 75, insegna: 70, citofono: 68, tettoia: 62, tenda: 60, pluviale: 55, applique: 50, tabellone: 45, festone: 40, dehors: 30, bucato: 25, arredo: 10 };
-  const FISSI2 = new Set(['porta', 'scala', 'tombino', 'passerella', 'vetrina', 'grande', 'rete', 'lampione', 'cartello', 'gradino', 'portale', 'serranda']);   // non si spostano e non si tolgono
-  const MURO2 = new Set(['insegna', 'tenda', 'pluviale', 'applique', 'tabellone', 'festone', 'balcone', 'portale', 'serranda', 'citofono', 'rete', 'bucato']);   // appesi al muro: non sono arredo a terra
-  const VUOTI2 = new Set(['grande', 'ingombro', 'tettoia', 'tenda', 'bucato', 'festone', 'balcone']);   // scatole vuote dentro (telai, falde inclinate): contano solo i loro vertici
+  const PRIO2 = { porta: 100, scala: 100, tombino: 100, passerella: 100, scorcio: 92, scorcio_muro: 92, scorcio_filo: 92, vetrina: 90, grande: 85, ingombro: 20, rete: 80, lampione: 80, cartello: 80, gradino: 80, portale: 78, serranda: 78, balcone: 75, insegna: 70, citofono: 68, tettoia: 62, tenda: 60, pluviale: 55, applique: 50, tabellone: 45, festone: 40, dehors: 30, bucato: 25, arredo: 10 };
+  const FISSI2 = new Set(['porta', 'scala', 'tombino', 'passerella', 'vetrina', 'grande', 'rete', 'lampione', 'cartello', 'gradino', 'portale', 'serranda', 'scorcio', 'scorcio_muro', 'scorcio_filo']);   // [scorci] i pezzi degli scorci   // non si spostano e non si tolgono
+  const MURO2 = new Set(['insegna', 'tenda', 'pluviale', 'applique', 'tabellone', 'festone', 'balcone', 'portale', 'serranda', 'citofono', 'rete', 'bucato', 'scorcio_muro', 'scorcio_filo']);   // appesi al muro: non sono arredo a terra
+  const VUOTI2 = new Set(['grande', 'ingombro', 'tettoia', 'tenda', 'bucato', 'festone', 'balcone', 'scorcio_filo']);   // scatole vuote dentro (telai, falde inclinate): contano solo i loro vertici
   const PRAT2 = new Set(['porta', 'scala', 'tombino', 'passerella']);
   const MURATI2 = new Set(['rete', 'lampione']);
   const mk2 = (o, k, b, f, g) => { if (o) o.userData.p2 = { k, b: b || null, f: f || null, g: g || 0 }; return o; };
   const yawM2 = m => Math.atan2(m.elements[8], m.elements[10]);
   function p2New(meta) { const e = { id: P2.n++, k: meta.k, b: meta.b || null, f: meta.f || null, g: meta.g || (P2.k ? P2.g : 0), src: P2.src, parts: [], objs: [], yaw0: 0, tag: null }; P2.list.push(e); return e; }
   function p2Obj(o, k, b, f, free) { if (!P2.on || !cn1() || !o) return null; const e = p2New({ k, b, f }); e.objs.push(o); e.direct = true; e.free = !!free; return e; }   // una cosa messa in scena da sola (o tenuta da parte, free)
+  // [scorci] un pezzo già fuso: i suoi vertici nelle mesh fuse dello scorcio (parts: { M, s, n }), il verso, la composizione (non si urta da sé)
+  function p2Parti(k, b, f, parts, yaw, g, id) { if (!P2.on || !cn1() || !parts || !parts.length) return null; const e = p2New({ k, b, f, g }); parts.forEach(p => e.parts.push(p)); e.yaw0 = yaw || 0; e.tipo = id; return e; }
   // il frame di un lato della casa: u lungo il muro, n verso fuori (come buildCase e fronteBottega)
   const FYAW2 = { S: 0, N: Math.PI, E: Math.PI / 2, W: -Math.PI / 2 };
   function faccia2(b, rec, f, u) {
@@ -9240,6 +9254,7 @@ var Render = (function () {
     const metal = sm('#6e7174', { roughness: .6, metalness: .4 }), stone = sm(era === 'E4' ? '#d8ccae' : '#cfc6b4', { roughness: .95 });
     b.__blade = true;   // la bandiera al neon no: l'insegna è una sola, sulla fascia
     const ents = B0.ents, sid = ents.length ? Math.sign(ents.reduce((s2, e) => s2 + e.u, 0) / ents.length - B0.portoneU) || 1 : 1;
+    const SCX = !!(window.Scorci && Scorci.attivo && Scorci.copre(b, 'fronte', f));   // [scorci] il fronte lo veste lo scorcio (scorci_arte.js): qui solo il portone
     // ---- il portone: portale per epoca, citofono e cassetta dal lato lontano dalla bottega ----
     const pu = B0.portoneU;
     if (era === 'E3' || era === 'E4') { [-1, 1].forEach(s2 => at(box(.2, 2.45, .08, stone), pu + s2 * .66, base + 1.22, .04)); at(box(1.52, .24, .1, stone), pu, base + 2.5, .05); if (era === 'E3') at(box(.34, .2, .12, stone), pu, base + 2.5, .06); }
@@ -9253,6 +9268,7 @@ var Render = (function () {
       at(pl, tu, base + 1.62, .025); scene.add(mergeGroup(g)); return;
     }
     const u0 = Math.min(...ents.map(e => e.u - e.w / 2)), u1 = Math.max(...ents.map(e => e.u + e.w / 2)), um = (u0 + u1) / 2;
+    if (SCX) { { const q = wp(um, .9); addLight(q[0], base + 2.2, q[1], '#ffd890', 1.1, 6, .02); } scene.add(mergeGroup(g)); return; }   // [scorci] la vetrina accesa la sera resta
     // ---- l'insegna sulla fascia, a tutta luce della bottega ----
     const iw = Math.min(u1 - u0 + .2, 6.2), ih = stile === 'lapidaria' ? .42 : .52, it = insegnaTex(S.sign && S.sign.t || S.name || '', stile, S.sign && S.sign.c, iw / ih);
     const im = std({ map: it.t, transparent: it.alpha, alphaTest: it.alpha ? .4 : 0, roughness: stile === 'marmo' ? .35 : .9, emissive: stile === 'plexi' ? '#ffffff' : '#000000', emissiveMap: stile === 'plexi' ? it.t : null, emissiveIntensity: stile === 'plexi' ? .9 : 0 });
@@ -9286,6 +9302,7 @@ var Render = (function () {
   }
   function addSign(b, base, w, d, x0, z0, top, signY, awnY) {
     const face = faceOf(b);
+    if (window.Scorci && Scorci.attivo && Scorci.copre(b, 'fronte', face)) return;   // [scorci] la fascia la dipinge lo scorcio
     const dx = b.door[0] * TS + TS / 2, dz = b.door[1] * TS + TS / 2;
     if (b.deco && b.fl >= 4) { // insegna verticale a bandiera sull'angolo
       const word = shortWord(b) || b.sign.t, tex = bladeTexture(word, b.sign.c), n = word.replace(/^HOTEL /, '').replace(/ /g, '').length;
@@ -11586,6 +11603,7 @@ var Render = (function () {
         gg.setAttribute('uv', src.attributes.uv || new THREE.BufferAttribute(new Float32Array(src.attributes.position.count * 2), 2));
         gg.applyMatrix4(o.matrixWorld); b.geos.push(gg); PO1.tri += gg.attributes.position.count / 3; }); };
     L.forEach(p => {
+      if (window.Scorci && Scorci.attivo && Scorci.sostituisce(p)) return;   // [scorci] l'edicola votiva la porta lo scorcio, rivolta alla camera
       const sk = Math.floor(p.x / SEC) + ',' + Math.floor(p.y / SEC);
       for (const lev of ['alto', 'basso']) {
         const o = Object.assign({}, p.opz, lev === 'basso' ? { lod: 'basso' } : {});
@@ -13628,6 +13646,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (b.__pent || b.__bot) return;   // [case] c'è già la tettoia in coppi   // [botteghe] o il fronte della bottega con la sua tenda
       if (!(((b.shop || b.sign) && r() < .9) || r() < .5)) return;
       const f = faceOf(b), x0 = b.x * TS, z0 = b.y * TS, w = b.w * TS, d = b.h * TS, cx = (dx + .5) * TS, cz = (dy + .5) * TS;
+      if (window.Scorci && Scorci.attivo && Scorci.riservato(cx, cz, 3)) return;   // [scorci] davanti a uno scorcio composto niente tettoie di passaggio
       const P = f === 'S' ? [cx, z0 + d, 0] : f === 'N' ? [cx, z0, Math.PI] : f === 'E' ? [x0 + w, cz, Math.PI / 2] : [x0, cz, -Math.PI / 2];
       const gg = mk2(A(P[0], P[1], P[2]), 'tettoia', b, f), k = Math.floor(r() * 4), W = k === 1 ? 6 : 4.4, D = 2.0 + (k === 1 ? .2 : 0);   // [pulizia2]
       if (k === 0) { // lamiera
@@ -13711,6 +13730,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const pl = box(g.w + .18, zh, g.d + .18, plinthM); pl.position.set(g.x0 + g.w / 2, low + zh / 2 - .02, g.z0 + g.d / 2); addStatic(pl);
       // gradini davanti alla porta
       P2.k = 'gradino'; [b.door, b.shopFront && b.shopFront.door].forEach(door => { if (!door) return;   // [botteghe] anche davanti alla porta della bottega   [pulizia2] i gradini sono della porta
+        if (b.shopFront && door === b.shopFront.door && window.Scorci && Scorci.attivo && Scorci.copre(b, 'gradino', b.__bot && b.__bot.face)) return;   // [scorci] la soglia consumata è dello scorcio
         const [dx, dy] = door, cx = dx * TS + 1, cz = dy * TS + 1, side = dy >= b.y + b.h ? [0, 1] : dy < b.y ? [0, -1] : dx >= b.x + b.w ? [1, 0] : [-1, 0];
         const ex = side[0] ? (side[0] > 0 ? g.x0 + g.w : g.x0) : cx, ez = side[1] ? (side[1] > 0 ? g.z0 + g.d : g.z0) : cz;
         // [percorsi2] nella città nuova la porta è la cosa più contrastata del fotogramma: gradini di pietra chiara col bordo acceso
@@ -14328,7 +14348,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     const TT = (n, f) => { P2.src = n; const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
-    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('costa2', buildCosta2);   /* [costa2] */ TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('percorsi1', buildPercorsi1);   /* [percorsi] */ TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
+    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('costa2', buildCosta2);   /* [costa2] */ TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('percorsi1', buildPercorsi1);   /* [percorsi] */ TT('scorci', buildScorci);   /* [scorci] */ TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
