@@ -21648,7 +21648,7 @@ var World = (function () {
       // Rocca). Da tramontana, sopra gli scogli, alla Vittoria col filare di lecci dalla parte della spianata; dalla Vittoria alla spiaggia del
       // Lido lungo il muro del Recinto, senza alberi. Ci arrivano la Rua, la Via delle Mura, la Vittoria e la Via della Marina.
       CITY.passeggiata = 1145.5;
-      add('passeggiata', 'Passeggiata della Spianata', 5, 'vicolo', vline(1145.5, MURA_IN(1145.5) - 3, 139.5), { era: 'E1', passeggio: true, alberi: 'lecci', alberiLato: -1, capi: [{ tipo: 'affaccio', perche: 'il belvedere sugli scogli di tramontana, in fondo alle mura' }, null] });
+      add('passeggiata', 'Passeggiata della Spianata', 5, 'vicolo', vline(1145.5, MURA_IN(1145.5) - 3, 139.5), { era: 'E1', passeggio: true, alberi: 'lecci', alberiLato: -1, alberiOff: 5, capi: [{ tipo: 'affaccio', perche: 'il belvedere sugli scogli di tramontana, in fondo alle mura' }, null] });
       add('passeggiata_sud', 'Passeggiata della Spianata', 5, 'vicolo', vline(1145.5, 146.5, 213), { era: 'E1', capi: [null, { tipo: 'affaccio', perche: 'scende alla spiaggia del Lido, accanto al muro del Recinto' }] });
       add('vic_mura', 'Via delle Mura', 2.5, 'vicolo', MV, { era: 'E0', capi: [{ tipo: 'scala', perche: 'la scala di ferro delle mura: sale sul camminamento di tramontana' }, null] });
       // i vicoli a pettine (Molfetta): paralleli e storti dalla stessa parte, ognuno da asse ad asse (Rua → mura, Rua → Vittoria,
@@ -51445,7 +51445,7 @@ var Chiarezza = (function () {
     (roads || []).forEach((rd, ri) => {
       if (!rd || !rd.pts || rd.pennoni) return;
       if (rd.alberi) { const sp = rd.alberi === 'palme' ? 'palma' : rd.era === 'E6' ? 'pino' : 'leccio';
-        out.push({ rd, kind: 'filare', sp, passo: sp === 'palma' ? 10 : PASSO, off: rd.w / 2 + 1.1, lati: rd.alberiLato ? [rd.alberiLato] : [-1, 1], inizio: PASSO / 2 }); return; }
+        out.push({ rd, kind: 'filare', sp, passo: sp === 'palma' ? 10 : PASSO, off: rd.alberiOff || rd.w / 2 + 1.1, lati: rd.alberiLato ? [rd.alberiLato] : [-1, 1], inizio: PASSO / 2 }); return; }
       if (rd.nudo) return;   // [mappa_compatta] le vie della città compatta senza alberi (filari solo sul Corso, da un lato, e ai Giardini)
       if ((rd.kind === 'citta' || rd.kind === 'litoranea') && rd.w >= 7) out.push({ rd, kind: 'viale', passo: 14, off: rd.w / 2 + 1.25, lati: [hash(ri, 7, 351) < .5 ? -1 : 1], inizio: 5 + hash(ri, 0, 352) * 8 });
     });
@@ -52204,7 +52204,7 @@ var Palco = (function () {
   //   - le COSE A TERRA: al varco (dalle due parti della sbarra), al piede del muro verso la città, ai capi delle file;
   //   - le TRACCE: dal varco dentro la testa di ponte e giù per il corsoio fino al piazzale, la ronda lungo il muro, le manovre dei carri.
   function recinto(W, F, WL, ty, libero, cerca, posa, sovr, occ, asse, eliporto, antenna, dentro, x1) {
-    const R = W.recinto, z1 = Math.max(R.yS + 30, R.yN + 60), xA = R.xw - 4;
+    const R = W.recinto, z1 = Math.max(R.yS + 30, R.yN + 60), xA = R.xw;   // (il filare della passeggiata resta fuori dal palco)
     const dentroR = (x, z) => x > R.xw + .8 && x < R.xe && z > R.yP + .8 && z < z1;
     const zona = (x, z) => (x >= xA && x <= x1 && z >= (WL.y0 - 80) && z <= z1) || dentro(x, z);
     // 3) i carri: la colonna più lunga che sta sul piazzale (al più CARRO.n), il più vicino possibile al Ministero e al centro del piazzale
@@ -52221,7 +52221,7 @@ var Palco = (function () {
     // 5) le cose a terra, a mucchietti nelle scene
     const mucchi = [], mucchio = (x, z, scena, n, r) => { if (mucchi.length >= MUCCHI.max || !libero(x, z, .6, .6) || sovr(x, z, r, r) || mucchi.some(m => Math.hypot(m.x - x, m.z - z) < 6)) return; mucchi.push({ x, z, scena, n, r }); };
     mucchio(R.gx - 5.5, asse.z0 - 2.6, 'posto_blocco', 6, 1.4); mucchio(R.gx - 5.5, asse.z1 + 2.6, 'posto_blocco', 5, 1.2); mucchio(R.gx + 4, asse.z1 + 3, 'posto_blocco', 4, 1.1);   // ai due lati della sbarra
-    for (let z = R.yN + 10; z < z1 - 8; z += MUCCHI.recinto) { const zz = z + (hash(Math.round(z), 3, 771) - .5) * 6; if (hash(Math.round(z), 5, 772) < .35) continue; mucchio(R.xw - 2.4, zz, 'recinto', 4, 1.1); }   // al piede del muro, dalla parte della città
+    for (let z = R.yN + 10; z < z1 - 8; z += MUCCHI.recinto) { const zz = z + (hash(Math.round(z), 3, 771) - .5) * 6; if (hash(Math.round(z), 5, 772) < .35) continue; mucchio(R.xw + 3.2, zz, 'recinto', 4, 1.1); }   // al piede del muro, dentro (fuori c'è la passeggiata)
     if (container.length) { const c1 = container[container.length - 1]; mucchio(c1.x - 2.6, c1.z + CONT.hz + 1.6, 'container', 5, 1.2); }
     if (carri.length) { const c = carri[carri.length - 1]; mucchio(c.x - CARRO.hx - 1.8, c.z, 'parco_mezzi', 4, 1); }
     // 6) le tracce: il camion entra dal varco, gira nella testa di ponte e scende al piazzale lungo la banchina; la ronda lungo il muro; i carri

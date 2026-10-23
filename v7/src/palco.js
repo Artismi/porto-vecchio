@@ -94,7 +94,7 @@ var Palco = (function () {
   //   - le COSE A TERRA: al varco (dalle due parti della sbarra), al piede del muro verso la città, ai capi delle file;
   //   - le TRACCE: dal varco dentro la testa di ponte e giù per il corsoio fino al piazzale, la ronda lungo il muro, le manovre dei carri.
   function recinto(W, F, WL, ty, libero, cerca, posa, sovr, occ, asse, eliporto, antenna, dentro, x1) {
-    const R = W.recinto, z1 = Math.max(R.yS + 30, R.yN + 60), xA = R.xw - 4;
+    const R = W.recinto, z1 = Math.max(R.yS + 30, R.yN + 60), xA = R.xw;   // (il filare della passeggiata resta fuori dal palco)
     const dentroR = (x, z) => x > R.xw + .8 && x < R.xe && z > R.yP + .8 && z < z1;
     const zona = (x, z) => (x >= xA && x <= x1 && z >= (WL.y0 - 80) && z <= z1) || dentro(x, z);
     // 3) i carri: la colonna più lunga che sta sul piazzale (al più CARRO.n), il più vicino possibile al Ministero e al centro del piazzale
@@ -111,7 +111,7 @@ var Palco = (function () {
     // 5) le cose a terra, a mucchietti nelle scene
     const mucchi = [], mucchio = (x, z, scena, n, r) => { if (mucchi.length >= MUCCHI.max || !libero(x, z, .6, .6) || sovr(x, z, r, r) || mucchi.some(m => Math.hypot(m.x - x, m.z - z) < 6)) return; mucchi.push({ x, z, scena, n, r }); };
     mucchio(R.gx - 5.5, asse.z0 - 2.6, 'posto_blocco', 6, 1.4); mucchio(R.gx - 5.5, asse.z1 + 2.6, 'posto_blocco', 5, 1.2); mucchio(R.gx + 4, asse.z1 + 3, 'posto_blocco', 4, 1.1);   // ai due lati della sbarra
-    for (let z = R.yN + 10; z < z1 - 8; z += MUCCHI.recinto) { const zz = z + (hash(Math.round(z), 3, 771) - .5) * 6; if (hash(Math.round(z), 5, 772) < .35) continue; mucchio(R.xw - 2.4, zz, 'recinto', 4, 1.1); }   // al piede del muro, dalla parte della città
+    for (let z = R.yN + 10; z < z1 - 8; z += MUCCHI.recinto) { const zz = z + (hash(Math.round(z), 3, 771) - .5) * 6; if (hash(Math.round(z), 5, 772) < .35) continue; mucchio(R.xw + 3.2, zz, 'recinto', 4, 1.1); }   // al piede del muro, dentro (fuori c'è la passeggiata)
     if (container.length) { const c1 = container[container.length - 1]; mucchio(c1.x - 2.6, c1.z + CONT.hz + 1.6, 'container', 5, 1.2); }
     if (carri.length) { const c = carri[carri.length - 1]; mucchio(c.x - CARRO.hx - 1.8, c.z, 'parco_mezzi', 4, 1); }
     // 6) le tracce: il camion entra dal varco, gira nella testa di ponte e scende al piazzale lungo la banchina; la ronda lungo il muro; i carri

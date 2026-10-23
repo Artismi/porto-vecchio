@@ -560,9 +560,9 @@ recinto. Ora il regime sta **in un recinto solo, al porto fortificato** (`W.reci
 | **Testa di ponte** | 1492-1504 × 331-355 | il piazzaletto fra il varco e il ponte; il muro a tramontana fino al canale; il **corpo di guardia** (gli Uffici del Garante, 2 piani) |
 | **Muro del Garante** | lungo la spianata (y 355, da 1471 a 1492) e verso la città (x 1471, da 355 fino in mare, 63 m) | lastre a L di 3,6 m, filo spinato, la fascia dipinta, le scritte di settore (1-B … 1-G), il **camminamento di ronda** sul retro con la ringhiera e le scalette (`camminamento: true`) |
 | **Torri di guardia** (7) | ai due lati del varco, sull'angolo del canale, sullo spigolo, ogni 22 m lungo il muro verso la città, sulla riva | pezzo nuovo `torre_guardia`: fusto di cemento, cabina vetrata, ballatoio, riflettore che spazza (i fasci di render.js), luce rossa |
-| **Palazzo del Governo** | 1474-1488 × 357-367 | il primo dei due palazzi del regime, contro il muro della spianata: dalla Vittoria se ne vede il retro sopra il muro |
-| **Ministero dell'Ordine e torre littoria** | 1482-1494 × 371-381, la torre 1496-1504 × 371-380 (28 m) | il secondo palazzo; la torre sulla punta della banchina, dove il canale sbocca in mare, guarda il porto e il ponte (arengario verso il piazzale) |
-| **Caserma** (la Pietra dell'Onda) | 1476-1484 × 371-401 | la `caserma` lunga contro il muro verso la città, col fronte sul piazzale |
+| **Palazzo del Governo** | 1476-1490 × 358-368 | il primo dei due palazzi del regime, contro il muro della spianata: dalla Vittoria se ne vede il retro sopra il muro |
+| **Ministero dell'Ordine e torre littoria** | 1484-1494 × 372-382, la torre 1496-1504 × 373-382 (28 m) | il secondo palazzo; la torre sulla punta della banchina, dove il canale sbocca in mare, guarda il porto e il ponte (arengario verso il piazzale) |
+| **Caserma** (la Pietra dell'Onda) | 1476-1484 × 372-402 | la `caserma` lunga contro il muro verso la città, col fronte sul piazzale |
 | **Deposito** | 1474-1486 × 404-411 | la `polveriera` senza cinta, in fondo al piazzale contro la riva |
 | **Piazzale dei mezzi** | 1484-1497 × 382-402 | i carri in colonna, i solchi dei cingoli (palco.js) |
 | **Banchina** | lungo il canale (1498-1504) e sul mare (4 m) | i container in fila sulla banchina del canale, i pali dei riflettori (3) |
@@ -580,7 +580,7 @@ col fossato e il ponte verso il borgo, la piazza davanti). La sequenza, da ovest
 | | x | largo | cosa si legge dalla camera |
 |---|---|---|---|
 | l'ultimo isolato del borgo | fino a 1462 | — | le case girate verso la spianata: le porte e le botteghe sulla passeggiata (prima muri ciechi di case «mozzate») |
-| **Passeggiata della Spianata** | 1463-1468 | 5 m | una via di basoli da tramontana (il belvedere sugli scogli, in fondo alle mura) al Lido; a nord della Vittoria il **filare di lecci** dalla parte della spianata, a sud corre lungo il muro del recinto e scende alla spiaggia |
+| **Passeggiata della Spianata** | 1463-1468 | 5 m | una via di basoli da tramontana (il belvedere sugli scogli, in fondo alle mura) al Lido; a nord della Vittoria il **filare di lecci** dalla parte della spianata (x 1470,5, ogni 12 m; `alberiOff`), a sud corre lungo il muro del recinto e scende alla spiaggia |
 | **la Spianata** (il glacis) | 1468-1492 | 24 m sull'asse, 36 × 76 m a nord | terra battuta, vuota; la Vittoria la attraversa |
 | **il varco del Muro** | 1492 | 6 m | il posto di blocco, le due torri |
 | **la testa di ponte** | 1492-1504 | 12 m | il corpo di guardia, il palo dei riflettori |
@@ -605,5 +605,5 @@ colonna), `test_percorsi` (gradini e salti nel borgo: la soglia scende da 36 a 2
 `pezzi_check` (`torre_guardia`, `muro_garante` col camminamento, `portico` ottocento).
 
 Rischi: la costa del recinto la segue il generatore (`riva`), ma se [costa2] sposta la riva sud di molto il piazzale si stringe (i carri
-scendono a due); il palazzo del Governo e il Ministero sono ancora i «civic» grigi di render.js, ora fuori dalla città; i salti sui tetti
+scendono a due); in render il filare della passeggiata esce più rado del previsto (lo sfoltisce il filtro dei filari di render.js: da guardare); `test_vievive` resta ballerino come prima (le scene dell'attacchino e dell'edicola senza seme, e un `Cannot redefine property: bio` di popolo.js che capita a caso); il palazzo del Governo e il Ministero sono ancora i «civic» grigi di render.js, ora fuori dalla città; i salti sui tetti
 attorno alla Vittoria sono meno di prima.
