@@ -64679,7 +64679,7 @@ var Render = (function () {
           (b.__win || []).forEach(q => { if (!q.name.includes('doorway') || Math.abs(q.y - base) > .05) return; const F = faccia2(b, rec, q.f, q.u);
             if (L.some(o => o.b === b && o.f === q.f && Math.hypot(o.F.p[0] - F.p[0], o.F.p[1] - F.p[1]) < .8)) return; L.push({ F, w: (WIN[q.name] || [1.1])[0], b, f: q.f, y: base }); }); });
         return L; },
-      atlanti: () => ({ FA: FA.n, FAmax: FAMAX + 1, CA: CA.n }),   // [pulizia] le celle usate degli atlanti dei modelli (oltre il massimo l'ultima si riscrive)
+      atlanti: () => ({ FA: FA.n, FAmax: FA.N, CA: CA.n }),   // [pulizia] le celle usate degli atlanti dei modelli (oltre il massimo l'ultima si riscrive)
       vissuti: () => { try { return window.TettiVissuti && TettiVissuti.conto ? TettiVissuti.conto() : null; } catch (e) { return null; } },
       bid: b => BI.get(b), prio: e => PRIO2[e.k] || 10,
       larghezza: (b, f) => { const g = geoOf(b); return g ? (f === 'S' || f === 'N' ? g.w : g.d) : 0; },
