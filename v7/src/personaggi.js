@@ -13,7 +13,7 @@
 var Personaggi = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
-  const CFG = { facce: ((Q.match(/[?&]facce=(\w+)/) || [])[1] || 'scolpite'), on: !/[?&]vecchiagente\b/.test(Q), stile: ((Q.match(/[?&]stile=([abc])/i) || [])[1] || 'b').toLowerCase() };
+  const CFG = { teste: ((Q.match(/[?&]teste=(\w+)/) || [])[1] || 'kit'), facce: ((Q.match(/[?&]facce=(\w+)/) || [])[1] || 'scolpite'), on: !/[?&]vecchiagente\b/.test(Q), stile: ((Q.match(/[?&]stile=([abc])/i) || [])[1] || 'b').toLowerCase() };
   const cl = (x, a, b) => x < a ? a : x > b ? b : x, lerp = (a, b, t) => a + (b - a) * t, sm = t => (t = cl(t, 0, 1), t * t * (3 - 2 * t));
   const spow = (v, e) => Math.sign(v) * Math.pow(Math.abs(v), e);
   function rng(seed) { let h = 2166136261; for (const ch of String(seed)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h |= 0; h = (h + 0x6D2B79F5) | 0; let t = Math.imul(h ^ (h >>> 15), 1 | h); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -370,11 +370,72 @@ var Personaggi = (function () {
     if (f) return old ? pk([14, 15]) : um > .3 ? 11 : pk([10, 12, 13]);
     if (old) return pk([8, 9]); if (sb < -.35) return pk([1, 5]); if (um > .3) return pk([2, 6]); return pk([0, 3, 4, 7]);
   }
+  // =====================================================================================
+  // LE TESTE DEL KIT: facce e capelli dei modelli di oggi (Quaternius), presi nello spazio del personaggio e cuciti nella figura
+  // =====================================================================================
+  // Si mescolano: la faccia di un modello coi capelli di un altro. Pelle, capelli, sopracciglia e occhi si ricolorano;
+  // sotto i cappelli i capelli si tagliano alla fascia. ?teste=mie torna alle teste costruite qui.
+  const KT = { ok: false, f: {} }, KITF = ['Casual', 'Casual_2', 'Casual_Hoodie', 'Worker', 'Formal'];
+  function kindOf(nm, file) { if (/^Skin_Darker/.test(nm)) return 'ombra'; if (/^Skin/.test(nm)) return 'pelle'; if (/Worker_Yellow/.test(nm)) return 'casco'; if (/Moustache/.test(nm)) return 'baffi';
+    if (/^Eye$|^Brown$/.test(nm)) return 'occhi'; if (/Eyebrows|Hair_Brown/.test(nm)) return 'ciglia'; if (/Hair|^Red$/.test(nm)) return 'capelli'; return null; }
+  function kitTeste(person) {
+    if (KT.ok || typeof THREE === 'undefined') return KT.ok; const ready = KITF.every(f => window.Models && Models.loadChar && Models.charsReady && Models.charsReady());
+    if (!ready) return false;
+    KITF.forEach(file => {
+      const g = person.call(Models, { model: file, hat: 'none', extra: '' }, null); if (!g) return; g.userData.body.scale.set(1, 1, 1); g.updateMatrixWorld(true);
+      let body = null; g.traverse(o => { if (o.isSkinnedMesh && /Body/.test(o.name) && !body) body = o; }); if (!body) return;
+      const { J } = giunture(g, body), gi = new THREE.Matrix4().copy(g.matrixWorld).invert(), parts = [];
+      g.traverse(o => { if (!o.isSkinnedMesh || !/Head/.test(o.name)) return; const nm = [].concat(o.material)[0].name, kind = kindOf(nm, file); if (!kind) return;
+        const M = new THREE.Matrix4().multiplyMatrices(gi, o.matrixWorld).multiply(o.bindMatrix), Nm = new THREE.Matrix3().getNormalMatrix(M), ge = o.geometry, n = ge.attributes.position.count;
+        const P = new Float32Array(n * 3), N = new Float32Array(n * 3), v = new THREE.Vector3();
+        for (let i = 0; i < n; i++) { v.fromBufferAttribute(ge.attributes.position, i).applyMatrix4(M); P.set([v.x - J.Head[0], v.y - J.Head[1], v.z - J.Head[2]], i * 3); v.fromBufferAttribute(ge.attributes.normal, i).applyMatrix3(Nm).normalize(); N.set([v.x, v.y, v.z], i * 3); }
+        parts.push({ kind, P, N, I: Array.from(ge.index ? ge.index.array : P.map((_, i) => i).slice(0, n)) }); });
+      KT.f[file] = { parts, neck: J.Neck[1] - J.Head[1] };
+    });
+    KT.ok = Object.keys(KT.f).length === KITF.length; return KT.ok;
+  }
+  // quale faccia e quali capelli: dal sesso e dal tipo di capelli, poi dal seme
+  const HAIR_KIT = { lunghi: 'Casual', caschetto: 'Casual', coda: 'Formal', raccolti: 'Formal', permanente: 'Formal', riga: 'Casual_2', indietro: 'Casual_2', corti: 'Casual_Hoodie', ricci: 'Casual_Hoodie', brizzolati: 'Casual_2', calvo: 'Worker' };
+  function sceltaKit(D) {
+    const T = D.testa || {}, r = rng('kit' + (D.seme !== undefined ? D.seme : JSON.stringify(D))), f = D.sesso === 'f';
+    const faccia = T.kit || (f ? (r() < .5 ? 'Casual' : 'Formal') : ['Casual_2', 'Casual_Hoodie', 'Worker'][Math.floor(r() * 3)]);
+    const tipo = (D.capelli && D.capelli.tipo) || (f ? 'lunghi' : 'corti'), capelli = (D.capelli && D.capelli.kit) || HAIR_KIT[tipo] || (f ? 'Casual' : 'Casual_Hoodie');
+    return { faccia, capelli };
+  }
+  // cuce le parti nella figura; restituisce il profilo della testa misurato (per cappelli, baffi, barbe, occhiali)
+  function testaKit(B, J, D, pelle, capH, K, base, taglio) {
+    const sc = sceltaKit(D), F = KT.f[sc.faccia], H = KT.f[sc.capelli], hb = J.Head, sk = D.testa && D.testa.scala || 1;
+    const col = { pelle, ombra: mulc(pelle, .86), occhi: [.06, .045, .04], ciglia: mulc(capH, .72), capelli: capH, baffi: mulc(capH, .85), casco: C3('#e8b030') };
+    const neckY = hb[1] + F.neck, wOf = y => y < neckY + .035 ? [['Neck', 1 - sm((y - neckY) / .035)], ['Head', sm((y - neckY) / .035)]].filter(e => e[1] > 1e-3) : [['Head', 1]];
+    const usa = [...F.parts.filter(p => p.kind !== 'capelli' && p.kind !== 'casco' && (p.kind !== 'baffi' || D.baffi)), ...H.parts.filter(p => p.kind === 'capelli')];
+    if (sc.capelli === 'Worker' && sc.faccia !== 'Worker') usa.push(...H.parts.filter(p => p.kind === 'ciglia'));   // il calvo: la corona di capelli del Worker sta nelle sue "sopracciglia"
+    if (D.cappello && D.cappello.tipo === 'casco_cantiere') usa.push(...KT.f.Worker.parts.filter(p => p.kind === 'casco'));
+    if (D.baffi && !usa.some(p => p.kind === 'baffi')) usa.push(...KT.f.Worker.parts.filter(p => p.kind === 'baffi'));   // i baffi del Worker, su qualunque faccia
+    const prof = new Map(); let eyS = 0, eyN = 0;
+    usa.forEach(pt => {
+      const v0 = B.n, c = col[pt.kind] || pelle, n = pt.P.length / 3; B.ol = pt.kind === 'occhi' || pt.kind === 'ciglia' || pt.kind === 'baffi' ? 0 : 1;
+      const keep = new Uint8Array(n).fill(1);
+      for (let i = 0; i < n; i++) {
+        const p = [hb[0] + pt.P[i * 3] * sk, hb[1] + pt.P[i * 3 + 1] * sk, hb[2] + pt.P[i * 3 + 2] * sk];
+        if (taglio && pt.kind === 'capelli' && p[1] > taglio) keep[i] = 0;
+        B.v(p, c, ZERO, ZERO, [0, 0, 0], [0, 0, 0], wOf(p[1])); B.N[(v0 + i) * 3] = pt.N[i * 3]; B.N[(v0 + i) * 3 + 1] = pt.N[i * 3 + 1]; B.N[(v0 + i) * 3 + 2] = pt.N[i * 3 + 2];
+        if (pt.kind === 'occhi') { eyS += (p[1] - base[1]) / K; eyN++; }
+        if (pt.kind === 'pelle') { const y = Math.round((p[1] - base[1]) / K / .01) * .01; const e = prof.get(y) || [0, -9, 9]; e[0] = Math.max(e[0], Math.abs(p[0] - base[0])); e[1] = Math.max(e[1], p[2] - base[2]); e[2] = Math.min(e[2], p[2] - base[2]); prof.set(y, e); }
+      }
+      for (let k = 0; k < pt.I.length; k += 3) { const a = pt.I[k], b = pt.I[k + 1], d = pt.I[k + 2]; if (keep[a] && keep[b] && keep[d]) B.I.push(v0 + a, v0 + b, v0 + d); }
+    });
+    B.ol = 1;
+    // il profilo come TESTE: [quota, mezza larghezza, mezza profondità, centro in avanti], in unità di K
+    const out = [...prof.entries()].sort((a, b) => a[0] - b[0]).map(([y, e]) => [y, e[0] / K, (e[1] - e[2]) / 2 / K, (e[1] + e[2]) / 2 / K]); out.ey = eyN ? eyS / eyN : .093; return out;
+  }
   function testa(B, J, D, pelle) {
     const st = S(), T = D.testa || {}, K = st.testa * (T.scala || 1) * (D.sesso === 'f' ? .95 : 1), h = J.Head, base = [h[0], h[1] - .01 * K, h[2] - .005], wH = [['Head', 1]];
     const r = rng(D.seme !== undefined ? D.seme : JSON.stringify(D)), vv = (a, b) => lerp(a, b, r());
     const masc = T.mascella || vv(.9, 1.06), zig = T.zigomi || vv(.96, 1.05), fro = T.fronte || vv(.97, 1.03), mento = T.mento !== undefined ? T.mento : vv(-.006, .006);
-    const P = (TESTE[T.forma] || TESTE.ovale).map(([y, a, b, fz]) => { const kj = y < .04 ? masc : y < .12 ? zig : fro; return [y < 0 ? y - mento : y, a * kj, b * (y < .04 ? lerp(1, masc, .5) : 1), fz + (y < 0 ? mento * .6 : 0)]; });
+    const kitOn = KT.ok && CFG.teste !== 'mie', capH0 = (D.capelli && D.capelli.col) ? C3(D.capelli.col) : C3('#2a1a12');
+    const taglio = D.cappello && D.cappello.tipo === 'fazzoletto' ? -9 : D.cappello && D.cappello.tipo ? h[1] - .01 * K + (/paglia|cappello/.test(D.cappello.tipo) ? .16 : .135) * K : 0;
+    const PK = kitOn ? testaKit(B, J, D, pelle, capH0, K, base, taglio) : null;
+    const P = PK && PK.length > 4 ? PK : (TESTE[T.forma] || TESTE.ovale).map(([y, a, b, fz]) => { const kj = y < .04 ? masc : y < .12 ? zig : fro; return [y < 0 ? y - mento : y, a * kj, b * (y < .04 ? lerp(1, masc, .5) : 1), fz + (y < 0 ? mento * .6 : 0)]; });
     const at = (y, x, z) => [base[0] + x * K, base[1] + y * K, base[2] + z * K];
     const capH = (D.capelli && D.capelli.col) ? C3(D.capelli.col) : C3('#2a1a12'), labbra = mixc(pelle, [.55, .25, .22], .35), occ = C3('#1a1414');
     const ru = mixc(pelle, [.8, .35, .3], .12);   // un filo di rosso sulle guance
@@ -398,7 +459,7 @@ var Personaggi = (function () {
     };
     const yS = [...new Set(P.map(r => r[0]).concat([-.022, -.01, .004, .018, .04, .055, .07, .082, .1, .112, .126, .155]))].sort((a, b) => a - b).filter(y => y >= P[0][0] && y <= P[P.length - 1][0]);
     const pr = (y, k) => { let i = 0; while (i < P.length - 2 && y > P[i + 1][0]) i++; const a = P[i], b = P[i + 1], t = cl((y - a[0]) / (b[0] - a[0]), 0, 1); return lerp(a[k], b[k], t); };
-    loft(B, yS.map((y, j) => ({ c: at(y, 0, 0), t: [0, 1, 0], f: [0, 0, 1], a: pr(y, 1) * K, b: pr(y, 2) * K, fz: pr(y, 3) * K, p: st.pTesta || 2.2, col: pelle, v: (y - y0f) / (y1f - y0f), tile: fac, col2: mulc(capH, .85), col3: labbra, mod: th => scolpisci(th, y), colFn: (th) => { const fr = Math.cos(th); return y > .0 && y < .07 && fr > .3 && Math.abs(Math.sin(th)) > .35 ? ru : pelle; }, w: wH, ao: j === 0 ? .9 : 1 })), { seg: 20, uS: 2.5 });
+    if (!kitOn) loft(B, yS.map((y, j) => ({ c: at(y, 0, 0), t: [0, 1, 0], f: [0, 0, 1], a: pr(y, 1) * K, b: pr(y, 2) * K, fz: pr(y, 3) * K, p: st.pTesta || 2.2, col: pelle, v: (y - y0f) / (y1f - y0f), tile: fac, col2: mulc(capH, .85), col3: labbra, mod: th => scolpisci(th, y), colFn: (th) => { const fr = Math.cos(th); return y > .0 && y < .07 && fr > .3 && Math.abs(Math.sin(th)) > .35 ? ru : pelle; }, w: wH, ao: j === 0 ? .9 : 1 })), { seg: 20, uS: 2.5 });
     const front = (y) => { let i = 0; while (i < P.length - 2 && y > P[i + 1][0]) i++; const a = P[i], b = P[i + 1], t = cl((y - a[0]) / (b[0] - a[0]), 0, 1); return lerp(a[2] + a[3], b[2] + b[3], t); };
     const pa = (y, k) => { let i = 0; while (i < P.length - 2 && y > P[i + 1][0]) i++; const a = P[i], b = P[i + 1], t = cl((y - a[0]) / (b[0] - a[0]), 0, 1); return lerp(a[k], b[k], t); };
     const wid = (y) => { let i = 0; while (i < P.length - 2 && y > P[i + 1][0]) i++; const a = P[i], b = P[i + 1], t = cl((y - a[0]) / (b[0] - a[0]), 0, 1); return lerp(a[1], b[1], t); };
@@ -406,20 +467,22 @@ var Personaggi = (function () {
     // il naso: a cuneo, sporge dalla faccia; la forma per tipo (dritto, aquilino, a patata, all'insù)
     const nk = (T.naso || 1) * st.naso * vv(.92, 1.08), nt = T.nasoTipo || 'dritto', ny = .075, nz = front(ny) - .006;
     const NR = { dritto: [[.104, .008, .006, 0], [.08, .011, .01, .01], [.062, .014, .013, .019], [.054, .011, .009, .02]], aquilino: [[.104, .008, .006, 0], [.085, .011, .011, .015], [.064, .013, .013, .022], [.054, .01, .009, .019]], patata: [[.1, .008, .007, 0], [.08, .012, .01, .01], [.063, .019, .017, .019], [.055, .014, .011, .019]], insu: [[.1, .007, .006, 0], [.08, .01, .009, .008], [.066, .013, .012, .016], [.06, .01, .008, .018]] }[nt] || null;
-    loft(B, NR.map(([y, a, b, fz]) => ({ c: at(y, 0, nz), t: [0, -1, 0], f: [0, 0, 1], a: a * nk, b: b * nk, fz: fz * nk * K, p: 2, col: mixc(pelle, ru, .4), w: wH })), { seg: 8 });
+    if (!kitOn) loft(B, NR.map(([y, a, b, fz]) => ({ c: at(y, 0, nz), t: [0, -1, 0], f: [0, 0, 1], a: a * nk, b: b * nk, fz: fz * nk * K, p: 2, col: mixc(pelle, ru, .4), w: wH })), { seg: 8 });
     // le orecchie
-    [1, -1].forEach(s => uovo(B, at(.075, s * (wid(.075) - .004), -.012), [0, 1, 0], .012 * K, .02 * K, .03 * K, mulc(pelle, .93), wH, { anelli: 4, seg: 7 }));
-    const ey = .093;
+    if (!kitOn) [1, -1].forEach(s => uovo(B, at(.075, s * (wid(.075) - .004), -.012), [0, 1, 0], .012 * K, .02 * K, .03 * K, mulc(pelle, .93), wH, { anelli: 4, seg: 7 }));
+    const ey = PK && PK.ey ? PK.ey : .093;
     // il mento e le guance degli anziani: un filo di doppio mento
     if (false) uovo(B, at(-.02, 0, front(-.02) - .03), [0, 0, 1], .06 * K, .025 * K, .03 * K, mulc(pelle, .96), wH, { anelli: 3, seg: 8 });
     B.ol = 1;
-    capelli(B, at, K, D, capH, front, wid, wH, pa);
+    if (!kitOn) capelli(B, at, K, D, capH, front, wid, wH, pa);
     B.ol = 0;
-    if (D.baffi) { const by = .036, bz = front(by) + .002, tipo = D.baffi; [1, -1].forEach(s => uovo(B, at(by - (tipo === 'spioventi' ? .006 : 0), s * .019, bz), [s, tipo === 'spioventi' ? -.6 : -.18, 0], .008 * K * (tipo === 'folti' || tipo === 'spioventi' ? 1.5 : 1), .009 * K, .026 * K * (tipo === 'spioventi' ? 1.2 : 1), capH, wH, { anelli: 4, seg: 6, punta: -.3, f: [0, 0, 1] })); }
+    if (D.baffi && !kitOn) { const by = .036, bz = front(by) + .002, tipo = D.baffi; [1, -1].forEach(s => uovo(B, at(by - (tipo === 'spioventi' ? .006 : 0), s * .019, bz), [s, tipo === 'spioventi' ? -.6 : -.18, 0], .008 * K * (tipo === 'folti' || tipo === 'spioventi' ? 1.5 : 1), .009 * K, .026 * K * (tipo === 'spioventi' ? 1.2 : 1), capH, wH, { anelli: 4, seg: 6, punta: -.3, f: [0, 0, 1] })); }
     if (D.barba) { const corta = D.barba === 'corta' || D.barba === 'pizzetto';
       if (D.barba === 'pizzetto') uovo(B, at(-.025, 0, front(-.025) - .008), [0, 1, .2], .022 * K, .014 * K, .028 * K, capH, wH, { anelli: 4, seg: 7 });
-      else loft(B, [[-.06, .02, .02, .07], [-.045, .05, .045, .06], [-.02, .078, .078, .03], [.01, .09, .1, .012], [.045, .094, .104, .004]].map(([y, a, b, fz], j) => ({ c: at(y + (corta ? .012 : 0) * (j < 2 ? 1 : 0), 0, 0), t: [0, 1, 0], f: [0, 0, 1], a: (a + (corta ? .003 : .008)) * K, b: (b + (corta ? .003 : .008)) * K, fz: fz * K, col: capH, w: wH, mod: th => { const fr = Math.cos(th); return fr < .1 ? -.5 * sm((.1 - fr) / .5) : 0; } })), { seg: 14 }); }
-    if (D.occhiali) { const sole = D.occhiali === 'sole', fc = sole ? C3('#141416') : C3(D.occhiali === 'oro' ? '#b8963a' : '#2a2422'), oz = front(ey) + .002;
+      else { const y0 = P[0][0], yM = ey - .07, yT = ey - .02, ys = corta ? [y0 - .004, y0 + .01, yM, yT] : [y0 - .03, y0 - .012, y0 + .01, yM, yT];   // la barba segue la mascella misurata, dal mento alle basette
+        loft(B, ys.map((y, j) => { const yy = Math.max(y, y0), q = j / (ys.length - 1), ex = (corta ? .009 : .016) * (1 - q * .4) + (y < y0 ? .0 : 0); return { c: at(y, 0, 0), t: [0, 1, 0], f: [0, 0, 1], a: (pa(yy, 1) * (y < y0 ? lerp(.55, 1, (y - (y0 - .03)) / .03) : 1) + ex) * K, b: (pa(yy, 2) * (y < y0 ? .7 : 1) + ex) * K, fz: pa(yy, 3) * K + (y < y0 ? .012 * K : 0), col: capH, w: wH,
+          mod: th => { const fr = Math.cos(th); return (fr < .05 ? -.6 * sm((.05 - fr) / .4) : 0) - (y > yM - .005 && fr > .55 ? .25 * sm((fr - .55) / .2) : 0); } }; }), { seg: 16 }); } }
+    if (D.occhiali) { const sole = D.occhiali === 'sole', fc = sole ? C3('#141416') : C3(D.occhiali === 'oro' ? '#b8963a' : '#2a2422'), oz = front(ey) + (PK ? .008 : .002);
       [1, -1].forEach(s => loft(B, [0, 1].map(q => ({ c: at(ey, s * .038, oz + q * .004), t: [0, 0, 1], f: [0, 1, 0], a: .024 * K, b: .019 * K, p: 3, col: sole ? C3('#0c1418') : mixc(fc, [.8, .85, .9], .3), w: wH })), { seg: 10 }));
       loft(B, [-1, 1].map(q => ({ c: at(ey + .004, q * .016, oz + .002), t: [1, 0, 0], f: [0, 1, 0], a: .003 * K, b: .003 * K, col: fc, w: wH })), { seg: 4 });
       [1, -1].forEach(s => loft(B, [0, 1].map(q => ({ c: at(ey + .004, s * (.062 + q * .03), oz - q * .1), t: [0, 0, -1], f: [0, 1, 0], a: .003 * K, b: .003 * K, col: fc, w: wH })), { seg: 4 })); }
@@ -834,7 +897,7 @@ var Personaggi = (function () {
   // =====================================================================================
   const POSE = ['Idle', 'Walk', 'Run', 'Death', 'Punch_Right', 'Punch_Left', 'HitRecieve', 'Wave', 'Interact', 'Idle_Gun', 'Run_Shoot', 'Roll', 'Kick_Right'];
   function figura(D, who, raw) {
-    if (!window.Models) return null; const person = raw || RAW || Models.person;
+    if (!window.Models) return null; const person = raw || RAW || Models.person; kitTeste(person);
     const g = person.call(Models, { model: D.sesso === 'f' ? 'Casual' : 'Casual_2', hat: 'none', extra: '', skin: D.pelle, top: '#888', bottom: '#888', hair: '#222' }, who === 'player' ? 'player' : who === 'cop' ? 'cop' : null);
     if (!g) return null;
     if (!veste(g, D)) return g;
