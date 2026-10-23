@@ -40,7 +40,7 @@ var PuliziaRumore = (function () {
   const ARCHI = new Set(['balcone', 'portale', 'serranda', 'gradino', 'tettoia', 'grande', 'scorcio', 'scorcio_muro', 'scorcio_filo', 'porta', 'vetrina']);   // non contano nella densità della facciata
   const APPESI = new Set(['insegna', 'citofono', 'rete', 'tenda', 'bucato', 'festone', 'applique', 'pluviale', 'tabellone']);
   const SU_PARETE = new Set(['insegna', 'citofono', 'applique', 'pluviale', 'tabellone', 'rete']);   // si coprono fra loro nel piano del muro (tende, bucato e festoni stanno avanti per forza)
-  const RANGO_PARETE = { insegna: 100, cartello: 95, citofono: 90, rete: 60, applique: 50, tabellone: 40, pluviale: 30 };   // chi resta quando due cose appese si coprono
+  const RANGO_PARETE = { insegna: 100, cartello: 95, citofono: 90, rete: 60, pluviale: 55, applique: 50, tabellone: 40 };   // il tubo scende per tutta la casa: cede la lampada, che scivola di poco   // chi resta quando due cose appese si coprono
   const DAVANTI = new Set(['insegna', 'citofono', 'applique', 'tabellone']);   // le cose appese che una cosa a terra non deve coprire (il tubo arriva a terra: si può)
   const COPRE_FIN = new Set(['citofono', 'applique', 'pluviale', 'tabellone', 'rete']);   // non devono stare sopra una finestra
   const A_TERRA = new Set(['arredo', 'dehors', 'ingombro', 'lampione', 'cartello']);
@@ -147,7 +147,7 @@ var PuliziaRumore = (function () {
     const D = densita(A, E.concat(X), FAC, vicini, terra); D.facciate.forEach(([e]) => segna('facciata_piena', e)); D.tratti.forEach(([e]) => segna('tratto_pieno', e));
     out.tot = TIPI.reduce((s, t) => s + out.per[t], 0); out.facciate = FAC.size; out.densita = D.conti;
     out.esterni = {}; X.forEach(x => { const k = x.fonte + ':' + x.k; out.esterni[k] = (out.esterni[k] || 0) + 1; });
-    const TV = A.vissuti && A.vissuti(); if (TV) out.vissuti = TV;
+    const TV = A.vissuti && A.vissuti(); if (TV) out.vissuti = TV; if (A.atlanti) out.atlanti = A.atlanti();
     return { rep: out, E, X, FAC, D, vicini, viciniX, terra };
   }
 
@@ -206,6 +206,9 @@ var PuliziaRumore = (function () {
     E.forEach(e => { if (e.gone || !e.ru || !e.ru.includes('verso') || !e.dVerso) return; const d = -e.dVerso;
       const dritto = () => { const S = sagoma(e); return S && Math.abs(deg(wrap90(S.a - e.rif))) <= CFG.verso.terra; };   // girata, la sagoma deve stare davvero dritta
       if (A.ruotabile(e) && prova([e], () => A.ruota(e, d), () => A.ruota(e, -d))) { if (dritto()) { conta(az.ruotati, e.k); return; } A.ruota(e, -d); A.rimetti(I, e); }
+      else if (A.ruotabile(e)) {   // girata urta qualcosa: girata e scostata di poco (a terra)
+        for (const s of [.12, .25, .4]) for (let a = 0; a < 8; a++) { const dx = Math.cos(a * PI / 4) * s, dz = Math.sin(a * PI / 4) * s, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]);
+          if (prova([e], () => { A.ruota(e, d); A.sposta(e, dx, dy, dz); }, () => { A.sposta(e, -dx, -dy, -dz); A.ruota(e, -d); })) { if (dritto()) { conta(az.ruotati, e.k); return; } A.sposta(e, -dx, -dy, -dz); A.ruota(e, -d); A.rimetti(I, e); } } }
       conta(az.tenuti, 'verso:' + e.k); });
     // 3) la quota: si posa a terra
     E.forEach(e => { if (e.gone || e.dQuota === undefined) return; const dy = e.dQuota;
@@ -250,7 +253,8 @@ var PuliziaRumore = (function () {
   // (il contorno dei vertici proiettato, m²), i triangoli, le mesh e quante di esse sono scatole nude (BoxGeometry)
   function modelli(A, E) {
     const M = new Map();
-    E.forEach(e => { if (e.gone || !e.B) return; const chi = e.chi || (e.tipo ? (e.k === 'grande' ? 'pezzo:' : 'scorcio:') + e.tipo : 'casa:' + e.k); let q = M.get(chi); if (!q) M.set(chi, q = { chi, k: {}, n: 0, schermo: 0, tri: 0, mesh: 0, scatole: 0 });
+    const CORNICE = [1202, 230, 1630, 472];   // la città che si gioca (segnaletica.js CORNICE, con 20 m di margine): fuori si vede poco
+    E.forEach(e => { if (e.gone || !e.B || e.k === 'grande') return; const [cx, cz] = A.ctr(e.B); if (cx < CORNICE[0] || cx > CORNICE[2] || cz < CORNICE[1] || cz > CORNICE[3]) return; const chi = e.chi || (e.tipo ? (e.k === 'grande' ? 'pezzo:' : 'scorcio:') + e.tipo : 'casa:' + e.k); let q = M.get(chi); if (!q) M.set(chi, q = { chi, k: {}, n: 0, schermo: 0, tri: 0, mesh: 0, scatole: 0 });
       q.n++; q.k[e.k] = (q.k[e.k] || 0) + 1; q.schermo += A.schermo(e); q.tri += A.triangoli(e); q.mesh += e.nm || 0; q.scatole += e.nb || 0; });
     return [...M.values()].map(q => Object.assign(q, { schermo: +q.schermo.toFixed(1), triPer: Math.round(q.tri / q.n), meshPer: +(q.mesh / q.n).toFixed(1), quotaScatole: q.mesh ? +(q.scatole / q.mesh).toFixed(2) : null, triPerM2: q.schermo ? Math.round(q.tri / q.schermo) : 0 })).sort((a, b) => b.schermo - a.schermo);
   }

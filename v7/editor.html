@@ -55170,7 +55170,7 @@ var PuliziaRumore = (function () {
   const ARCHI = new Set(['balcone', 'portale', 'serranda', 'gradino', 'tettoia', 'grande', 'scorcio', 'scorcio_muro', 'scorcio_filo', 'porta', 'vetrina']);   // non contano nella densità della facciata
   const APPESI = new Set(['insegna', 'citofono', 'rete', 'tenda', 'bucato', 'festone', 'applique', 'pluviale', 'tabellone']);
   const SU_PARETE = new Set(['insegna', 'citofono', 'applique', 'pluviale', 'tabellone', 'rete']);   // si coprono fra loro nel piano del muro (tende, bucato e festoni stanno avanti per forza)
-  const RANGO_PARETE = { insegna: 100, cartello: 95, citofono: 90, rete: 60, applique: 50, tabellone: 40, pluviale: 30 };   // chi resta quando due cose appese si coprono
+  const RANGO_PARETE = { insegna: 100, cartello: 95, citofono: 90, rete: 60, pluviale: 55, applique: 50, tabellone: 40 };   // il tubo scende per tutta la casa: cede la lampada, che scivola di poco   // chi resta quando due cose appese si coprono
   const DAVANTI = new Set(['insegna', 'citofono', 'applique', 'tabellone']);   // le cose appese che una cosa a terra non deve coprire (il tubo arriva a terra: si può)
   const COPRE_FIN = new Set(['citofono', 'applique', 'pluviale', 'tabellone', 'rete']);   // non devono stare sopra una finestra
   const A_TERRA = new Set(['arredo', 'dehors', 'ingombro', 'lampione', 'cartello']);
@@ -55277,7 +55277,7 @@ var PuliziaRumore = (function () {
     const D = densita(A, E.concat(X), FAC, vicini, terra); D.facciate.forEach(([e]) => segna('facciata_piena', e)); D.tratti.forEach(([e]) => segna('tratto_pieno', e));
     out.tot = TIPI.reduce((s, t) => s + out.per[t], 0); out.facciate = FAC.size; out.densita = D.conti;
     out.esterni = {}; X.forEach(x => { const k = x.fonte + ':' + x.k; out.esterni[k] = (out.esterni[k] || 0) + 1; });
-    const TV = A.vissuti && A.vissuti(); if (TV) out.vissuti = TV;
+    const TV = A.vissuti && A.vissuti(); if (TV) out.vissuti = TV; if (A.atlanti) out.atlanti = A.atlanti();
     return { rep: out, E, X, FAC, D, vicini, viciniX, terra };
   }
 
@@ -55336,6 +55336,9 @@ var PuliziaRumore = (function () {
     E.forEach(e => { if (e.gone || !e.ru || !e.ru.includes('verso') || !e.dVerso) return; const d = -e.dVerso;
       const dritto = () => { const S = sagoma(e); return S && Math.abs(deg(wrap90(S.a - e.rif))) <= CFG.verso.terra; };   // girata, la sagoma deve stare davvero dritta
       if (A.ruotabile(e) && prova([e], () => A.ruota(e, d), () => A.ruota(e, -d))) { if (dritto()) { conta(az.ruotati, e.k); return; } A.ruota(e, -d); A.rimetti(I, e); }
+      else if (A.ruotabile(e)) {   // girata urta qualcosa: girata e scostata di poco (a terra)
+        for (const s of [.12, .25, .4]) for (let a = 0; a < 8; a++) { const dx = Math.cos(a * PI / 4) * s, dz = Math.sin(a * PI / 4) * s, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]);
+          if (prova([e], () => { A.ruota(e, d); A.sposta(e, dx, dy, dz); }, () => { A.sposta(e, -dx, -dy, -dz); A.ruota(e, -d); })) { if (dritto()) { conta(az.ruotati, e.k); return; } A.sposta(e, -dx, -dy, -dz); A.ruota(e, -d); A.rimetti(I, e); } } }
       conta(az.tenuti, 'verso:' + e.k); });
     // 3) la quota: si posa a terra
     E.forEach(e => { if (e.gone || e.dQuota === undefined) return; const dy = e.dQuota;
@@ -55380,7 +55383,8 @@ var PuliziaRumore = (function () {
   // (il contorno dei vertici proiettato, m²), i triangoli, le mesh e quante di esse sono scatole nude (BoxGeometry)
   function modelli(A, E) {
     const M = new Map();
-    E.forEach(e => { if (e.gone || !e.B) return; const chi = e.chi || (e.tipo ? (e.k === 'grande' ? 'pezzo:' : 'scorcio:') + e.tipo : 'casa:' + e.k); let q = M.get(chi); if (!q) M.set(chi, q = { chi, k: {}, n: 0, schermo: 0, tri: 0, mesh: 0, scatole: 0 });
+    const CORNICE = [1202, 230, 1630, 472];   // la città che si gioca (segnaletica.js CORNICE, con 20 m di margine): fuori si vede poco
+    E.forEach(e => { if (e.gone || !e.B || e.k === 'grande') return; const [cx, cz] = A.ctr(e.B); if (cx < CORNICE[0] || cx > CORNICE[2] || cz < CORNICE[1] || cz > CORNICE[3]) return; const chi = e.chi || (e.tipo ? (e.k === 'grande' ? 'pezzo:' : 'scorcio:') + e.tipo : 'casa:' + e.k); let q = M.get(chi); if (!q) M.set(chi, q = { chi, k: {}, n: 0, schermo: 0, tri: 0, mesh: 0, scatole: 0 });
       q.n++; q.k[e.k] = (q.k[e.k] || 0) + 1; q.schermo += A.schermo(e); q.tri += A.triangoli(e); q.mesh += e.nm || 0; q.scatole += e.nb || 0; });
     return [...M.values()].map(q => Object.assign(q, { schermo: +q.schermo.toFixed(1), triPer: Math.round(q.tri / q.n), meshPer: +(q.mesh / q.n).toFixed(1), quotaScatole: q.mesh ? +(q.scatole / q.mesh).toFixed(2) : null, triPerM2: q.schermo ? Math.round(q.tri / q.schermo) : 0 })).sort((a, b) => b.schermo - a.schermo);
   }
@@ -62896,6 +62900,7 @@ var Render = (function () {
     return {
       R, G, TS, groundH, ctr: ctr2, corners: corners2, palo: palo2, roadDir: roadDir2, sat: sat2, yov: yov2, esterni: X,
       togliEsterno: e => { if (e.plancia) { const L = Vievive.plance(), i = L.indexOf(e.plancia); if (i >= 0) L.splice(i, 1); } else if (e.key) PuliziaRumore.SALTA.add(e.key); e.gone = true; },
+      atlanti: () => ({ FA: FA.n, FAmax: FAMAX + 1, CA: CA.n }),   // [pulizia] le celle usate degli atlanti dei modelli (oltre il massimo l'ultima si riscrive)
       vissuti: () => { try { return window.TettiVissuti && TettiVissuti.conto ? TettiVissuti.conto() : null; } catch (e) { return null; } },
       bid: b => BI.get(b), prio: e => PRIO2[e.k] || 10,
       larghezza: (b, f) => { const g = geoOf(b); return g ? (f === 'S' || f === 'N' ? g.w : g.d) : 0; },
@@ -62950,9 +62955,14 @@ var Render = (function () {
     });
   }
   // pezzi piccoli: tutti in metri, con la base a terra
+  const VASI35 = new Map();
+  let PIEDE35G = null; const PIEDE35 = () => PIEDE35G || (PIEDE35G = (() => { const sh = new THREE.Shape(); sh.moveTo(-.3, 0); sh.lineTo(.3, 0); sh.lineTo(.22, .14); sh.lineTo(-.22, .14); sh.closePath(); const e = new THREE.ExtrudeGeometry(sh, { depth: .22, bevelEnabled: false, curveSegments: 1 }); e.translate(0, 0, -.11); return e; })());   // il piede di cemento delle recinzioni di cantiere   // [pulizia] le geometrie dei vasi, per altezza
   const B35 = {
-    cassa(g, x, z, ry, col, full) { const w = sm(col || '#8a6440'); add(g, box(.55, .05, .38, w), x, .02, z, 0, ry, 0); [-1, 1].forEach(s => { add(g, box(.55, .26, .03, w), x + Math.sin(ry) * s * .18, .16, z + Math.cos(ry) * s * .18, 0, ry, 0); }); [-1, 1].forEach(s => add(g, box(.03, .26, .36, w), x + Math.cos(ry) * s * .26, .16, z - Math.sin(ry) * s * .26, 0, ry, 0));
-      if (full) { const q = rng(Math.round(x * 31 + z * 17) >>> 0); for (let k = 0; k < 6; k++) add(g, new THREE.IcosahedronGeometry ? new THREE.Mesh(new THREE.IcosahedronGeometry(.07, 0), sm(full)) : box(.1, .1, .1, sm(full)), x + (q() - .5) * .4, .26, z + (q() - .5) * .25); } },
+    cassa(g, x, z, ry, col, full) {   // [pulizia] la cassetta della frutta: fondo, fianchi a due doghe con la luce in mezzo, testate piene, i cantonali; un gruppo solo
+      const w = sm(col || '#8a6440'), d = sm(shade(col || '#8a6440', .72)), c = G0(); add(c, box(.55, .03, .38, w), 0, .015, 0);
+      [-1, 1].forEach(q => { [.07, .2].forEach(y => add(c, box(.55, .075, .02, w), 0, y, q * .18)); add(c, box(.02, .26, .34, w), q * .265, .13, 0); [-1, 1].forEach(p => add(c, box(.035, .26, .035, d), q * .255, .13, p * .17)); });
+      if (full) { const qq = rng(Math.round(x * 31 + z * 17) >>> 0); for (let k = 0; k < 6; k++) add(c, new THREE.Mesh(new THREE.IcosahedronGeometry(.07, 0), sm(full)), (qq() - .5) * .4, .26, (qq() - .5) * .25); }
+      c.position.set(x, 0, z); c.rotation.y = ry || 0; g.add(c); },
     cartone(g, x, z, ry, s, open) { s = s || 1; const m = std({ map: cardTex35('cartone'), roughness: 1 }); add(g, box(.5 * s, .36 * s, .4 * s, m), x, .18 * s, z, 0, ry, 0); if (open) { add(g, box(.5 * s, .02, .2 * s, m), x + Math.sin(ry) * .28 * s, .4 * s, z + Math.cos(ry) * .28 * s, -.9, ry, 0); } },
     sacco(g, x, z, ry, col) { const geo = new THREE.IcosahedronGeometry(.32, 1); geo.scale(1, .78, .9); const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); p.setY(i, Math.max(y, -.18)); if (y > .15) { p.setX(i, p.getX(i) * .5); p.setZ(i, p.getZ(i) * .5); } } geo.computeVertexNormals(); const m = new THREE.Mesh(geo, sm(col || '#1a1a1e', { roughness: .45, metalness: .1 })); m.scale.setScalar(.9 + (x * 7 % 1) * .3); add(g, m, x, .2, z, 0, ry, 0); add(g, box(.06, .08, .06, sm('#e8e2d0')), x, .44, z); },
     bidone(g, x, z, ry, col) { const m = sm(col || '#3a5a3e', { roughness: .7, metalness: .3 }); add(g, cyl(.32, .28, .9, 10, m), x, .45, z); add(g, cyl(.35, .35, .07, 10, m), x + .05, .93, z, .12, 0, 0); },
@@ -62960,10 +62970,26 @@ var Render = (function () {
     gomma(g, x, z, y, tilt) { const t = new THREE.Mesh(new THREE.TorusGeometry(.3, .11, 6, 12), sm('#1c1c1e', { roughness: .9 })); add(g, t, x, (y || 0) + (tilt ? .32 : .11), z, tilt ? .2 : Math.PI / 2, 0, tilt || 0); },
     fusto(g, x, z, col, down) { const m = sm(col || '#3a4a6a', { roughness: .6, metalness: .4 }); if (down) add(g, cyl(.29, .29, .88, 12, m), x, .29, z, 0, 0, Math.PI / 2); else { add(g, cyl(.29, .29, .88, 12, m), x, .44, z); add(g, cyl(.3, .3, .04, 12, m), x, .2, z); add(g, cyl(.3, .3, .04, 12, m), x, .66, z); } },
     bombola(g, x, z, col) { const m = sm(col || '#c84a2a', { roughness: .5, metalness: .3 }); add(g, cyl(.15, .15, .55, 10, m), x, .28, z); add(g, new THREE.Mesh(new THREE.SphereGeometry(.15, 10, 5, 0, 6.3, 0, 1.6), m), x, .55, z); add(g, cyl(.04, .04, .1, 6, sm('#8a8a80', { metalness: .6 })), x, .72, z); },
-    sedia(g, x, z, ry, col, down) { const m = sm(col || '#e8e4dc', { roughness: .5 }); const s = G0(); add(s, box(.42, .04, .42, m), 0, .44, 0); add(s, box(.42, .4, .04, m), 0, .66, -.2, -.1, 0, 0); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => add(s, cyl(.02, .02, .44, 5, m), a * .18, .22, b * .18)); s.position.set(x, down ? .21 : 0, z); s.rotation.set(down ? -1.5 : 0, ry, 0); g.add(s); },
+    sedia(g, x, z, ry, col, down) {   // [pulizia] le gambe dietro salgono a fare lo schienale, due stecche; il sedile con l'orlo
+      const m = sm(col || '#e8e4dc', { roughness: .5 }), m2 = sm(shade(col || '#e8e4dc', .82), { roughness: .5 }); const s = G0(); add(s, box(.42, .035, .42, m), 0, .445, 0); add(s, box(.44, .03, .03, m2), 0, .425, .2);
+      [[-1, 1], [1, 1]].forEach(([a, b]) => add(s, cyl(.018, .018, .44, 6, m), a * .18, .22, b * .18)); [-1, 1].forEach(a => add(s, cyl(.02, .02, .9, 6, m), a * .18, .45, -.19, -.06, 0, 0));
+      [.64, .8].forEach(y => add(s, box(.38, .07, .022, m), 0, y, -.2 - (y - .45) * .06, -.06, 0, 0));
+      s.position.set(x, down ? .21 : 0, z); s.rotation.set(down ? -1.5 : 0, ry, 0); g.add(s); },
     tavolino(g, x, z, col) { const m = sm(col || '#e8e4dc', { roughness: .5 }); add(g, cyl(.38, .38, .03, 14, m), x, .72, z); add(g, cyl(.03, .03, .72, 6, m), x, .36, z); add(g, cyl(.22, .26, .04, 10, m), x, .02, z); },
-    vaso(g, x, z, h, leaf) { const t = sm('#9a4a30', { roughness: .9 }); h = h || .32; add(g, cyl(h * .55, h * .4, h, 9, t), x, h / 2, z); const p = new THREE.Mesh(new THREE.IcosahedronGeometry(h * .7, 0), sl(leaf || '#3f6a35')); p.scale.set(1, 1.1, 1); add(g, p, x, h + h * .5, z); },
-    bici(g, x, z, ry) { const m = sm('#5a2a24', { roughness: .5, metalness: .4 }), tk = sm('#1a1a1c'); const s = G0(); [-.5, .5].forEach(o => add(s, new THREE.Mesh(new THREE.TorusGeometry(.32, .025, 5, 14), tk), o, .34, 0)); add(s, box(.9, .03, .03, m), 0, .5, 0, 0, 0, -.2); add(s, box(.03, .5, .03, m), -.1, .55, 0, 0, 0, .25); add(s, box(.03, .45, .03, m), .45, .6, 0, 0, 0, -.2); add(s, box(.22, .04, .1, tk), -.18, .82, 0); add(s, box(.04, .04, .45, m), .4, .85, 0);
+    vaso(g, x, z, h, leaf) {   // [pulizia] tornito (piede, pancia svasata, orlo) e la pianta morbida a facce (era un cilindro e un cristallo)
+      h = h || .32; const k = Math.round(h * 50) / 50, t = sm('#9a4a30', { roughness: .9 }), lf = leaf || '#3f6a35';
+      const pv = VASI35.get('v' + k) || VASI35.set('v' + k, new THREE.LatheGeometry([[.001, .005], [k * .36, 0], [k * .4, .02], [k * .52, k * .84], [k * .58, k * .86], [k * .58, k], [k * .5, k], [k * .48, k * .9], [.001, k * .9]].map(([a, b]) => new THREE.Vector2(a, b)), 9)).get('v' + k);
+      add(g, new THREE.Mesh(pv, t), x, 0, z);
+      const fk = 'f' + k, pf = VASI35.get(fk) || VASI35.set(fk, (() => { const q = new THREE.IcosahedronGeometry(k * .62, 1), P = q.attributes.position; for (let i = 0; i < P.count; i++) { const X = P.getX(i), Y = P.getY(i), Z = P.getZ(i), n = .86 + .28 * Math.abs(Math.sin(X * 37.1 + Y * 23.7 + Z * 41.3)); P.setXYZ(i, X * n, Y * n * .82, Z * n); } q.computeVertexNormals(); return q; })()).get(fk);
+      add(g, new THREE.Mesh(pf, sl(lf)), x, k * .9 + k * .42, z); },
+    bici(g, x, z, ry) {   // [pulizia] il telaio a diamante di tubi, la forcella, il manubrio, la sella, le ruote col mozzo (erano stecche)
+      const m = sm('#5a2a24', { roughness: .5, metalness: .4 }), tk = sm('#1a1a1c'), cr = sm('#a8a8a4', { roughness: .3, metalness: .7 }), s = G0();
+      const rod = (a, b, r, mm) => { const d = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), L = d.length(), c = cyl(r, r, L, 5, mm); c.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); s.add(c); };
+      const Rh = [-.5, .34, 0], BB = [-.06, .3, 0], ST = [-.16, .76, 0], HT = [.36, .76, 0], HB = [.4, .62, 0], Fh = [.5, .34, 0];
+      rod(BB, ST, .018, m); rod(ST, HT, .016, m); rod(BB, HB, .02, m); rod(HB, HT, .02, m); [-.04, .04].forEach(o => { rod([Rh[0], Rh[1], o], [BB[0], BB[1], o * .5], .011, m); rod([Rh[0], Rh[1], o], [ST[0], ST[1] - .02, o * .3], .011, m); rod([Fh[0], Fh[1], o], [HB[0], HB[1], o * .3], .012, cr); });
+      rod(HT, [.34, .9, 0], .014, cr); rod([.34, .9, -.24], [.34, .9, .24], .013, cr); rod(ST, [ST[0] - .02, .84, 0], .012, cr); add(s, box(.24, .045, .11, tk), ST[0] - .03, .865, 0);
+      [-.5, .5].forEach(o => { add(s, new THREE.Mesh(new THREE.TorusGeometry(.32, .022, 4, 16), tk), o, .34, 0); add(s, cyl(.03, .03, .1, 6, cr), o, .34, 0, Math.PI / 2, 0, 0); });
+      add(s, cyl(.09, .09, .015, 10, cr), BB[0], BB[1], .03, Math.PI / 2, 0, 0);
       s.position.set(x, 0, z); s.rotation.set(0, ry, .32); g.add(s); },
     poltrona(g, x, z, ry, col) { const m = sm(col || '#8a2a24', { roughness: 1 }), s = G0(); add(s, box(.8, .4, .75, m), 0, .25, 0); add(s, box(.8, .55, .2, m), 0, .65, -.3, -.15, 0, 0); [-1, 1].forEach(q => add(s, box(.16, .35, .75, m), q * .38, .55, 0)); add(s, box(.7, .1, .55, sm(shade(col || '#8a2a24', .8))), 0, .5, .05); s.position.set(x, 0, z); s.rotation.y = ry; g.add(s); },
     tv(g, x, z, ry) { const s = G0(); add(s, box(.55, .45, .45, sm('#3a3632', { roughness: .6 })), 0, .23, 0); add(s, box(.42, .32, .02, sm('#1e2a2a', { roughness: .2, metalness: .3 })), 0, .25, .23); s.position.set(x, 0, z); s.rotation.set(0, ry, (x * 3 % 1) < .3 ? .4 : 0); g.add(s); },
@@ -62976,8 +63002,8 @@ var Render = (function () {
     mattoni(g, x, z, ry) { B35.pallet(g, x, z, ry, 1); const m = sm('#9a5a40', { roughness: 1 }); for (let k = 0; k < 4; k++) add(g, box(1, .2, .9, m), x, .24 + k * .21, z, 0, ry + (k % 2) * .03, 0); add(g, box(1.02, .02, .92, sm('#d8d4c8', { transparent: true, opacity: .5 })), x, 1.08, z, 0, ry, 0); },
     sacchiCemento(g, x, z, ry) { B35.pallet(g, x, z, ry, 1); const m = std({ map: cardTex35('cemento'), roughness: 1 }); for (let k = 0; k < 7; k++) add(g, box(.55, .13, .38, m), x + Math.cos(ry) * ((k % 2) - .5) * .58 + Math.sin(ry) * (Math.floor(k / 2) % 3 - 1) * .38, .2 + Math.floor(k / 6) * .13, z - Math.sin(ry) * ((k % 2) - .5) * .58 + Math.cos(ry) * (Math.floor(k / 2) % 3 - 1) * .38, 0, ry + (k * .13 % .2), 0); },
     rete(g, x, z, ry, L) { const fm = new THREE.MeshStandardMaterial({ map: cardTex35('rete'), transparent: true, alphaTest: .4, side: THREE.DoubleSide, roughness: .6, metalness: .4 }); cardTex35('rete').repeat && 0;
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(L, 1.9), fm); add(g, p, x, 1.05, z, 0, ry, 0); const ft = sm('#8a8c88', { metalness: .5, roughness: .5 }); [-1, 1].forEach(s => { add(g, box(.04, 1.95, .04, ft), x + Math.cos(ry) * s * L / 2, 1.05, z - Math.sin(ry) * s * L / 2); add(g, box(.6, .14, .22, sm('#5a5a5c')), x + Math.cos(ry) * s * L / 2, .07, z - Math.sin(ry) * s * L / 2, 0, ry, 0); }); },
-    pannello(g, x, z, ry, L) { const m = std({ map: cardTex35('righe'), roughness: .8 }); add(g, box(L, 1.1, .05, m), x, .62, z, 0, ry, 0); [-1, 1].forEach(s => add(g, box(.5, .1, .25, sm('#2a2a2c')), x + Math.cos(ry) * s * L * .4, .05, z - Math.sin(ry) * s * L * .4, 0, ry, 0)); },
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(L, 1.9), fm); add(g, p, x, 1.05, z, 0, ry, 0); const ft = sm('#8a8c88', { metalness: .5, roughness: .5 }); [-1, 1].forEach(s => { add(g, box(.04, 1.95, .04, ft), x + Math.cos(ry) * s * L / 2, 1.05, z - Math.sin(ry) * s * L / 2); add(g, new THREE.Mesh(PIEDE35(), sm('#6a6864', { roughness: 1 })), x + Math.cos(ry) * s * L / 2, 0, z - Math.sin(ry) * s * L / 2, 0, ry, 0); }); },   // [pulizia] il piede di cemento a tronco di piramide (era una scatola)
+    pannello(g, x, z, ry, L) { const m = std({ map: cardTex35('righe'), roughness: .8 }); add(g, box(L, 1.1, .05, m), x, .62, z, 0, ry, 0); [-1, 1].forEach(s => add(g, new THREE.Mesh(PIEDE35(), sm('#2a2a2c')), x + Math.cos(ry) * s * L * .4, 0, z - Math.sin(ry) * s * L * .4, 0, ry, 0)); },
     cesso(g, x, z, ry) { const s = G0(), m = sm('#2a5aa0', { roughness: .5 }); add(s, box(1.1, 2.2, 1.1, m), 0, 1.1, 0); add(s, box(1.16, .1, 1.16, sm('#e8e8e4')), 0, 2.25, 0); add(s, box(.7, 1.8, .02, sm('#24508a')), 0, 1, .56); s.position.set(x, 0, z); s.rotation.y = ry; g.add(s); },
     torre(g, x, z, ry) { const y = sm('#d0a028', { roughness: .6 }), d = sm('#2a2a2c'); add(g, box(1.4, .9, .9, y), x, .5, z, 0, ry, 0); add(g, cyl(.05, .07, 4.4, 6, d), x, 2.6, z); add(g, box(1.2, .1, .1, d), x, 4.8, z, 0, ry, 0); [-1, 1].forEach(s => add(g, box(.4, .3, .2, sm('#e8e4d4', { emissive: '#3a3020' })), x + Math.cos(ry) * s * .4, 4.7, z - Math.sin(ry) * s * .4, 0, ry, 0)); },
   };
@@ -63002,7 +63028,7 @@ var Render = (function () {
         for (let k = 0; k < 2; k++) { const [x, z] = at(side * (1.6 + k * 1.6), 1.3); const g = G0(); B35.tavolino(g, 0, 0, pick(rb, ['#e8e4dc', '#c8302a', '#2a5a8a'])); B35.sedia(g, -.55, .1, 1.2 + rb(), '#e8e4dc'); B35.sedia(g, .5, -.1, -1.6 + rb(), '#e8e4dc', rb() < .15); if (rb() < .7) B35.bottiglia(g, .1, 0, '#3a2a14', true); put(g, x, z, ry + rb() * .3, .9, .7); }
         { const [x, z] = at(-side * 1.4, .45); const g = G0(); const bm = std({ map: cardTex35('birra'), roughness: .7 }); for (let k = 0; k < 4 + Math.floor(rb() * 4); k++) add(g, box(.42, .28, .32, bm), (k % 2) * .05 - .02, .14 + k * .29 * .5 * (k % 2 ? 1 : 1), Math.floor(k / 2) * .02, 0, rb() * .2, 0).position.y = .14 + Math.floor(k / 2) * .29; for (let k = 0; k < 3; k++) B35.bottiglia(g, .4 + rb() * .5, .3 + rb() * .3, pick(rb, ['#2a5a2a', '#3a2a14', '#5a6a6a'])); put(g, x, z, ry, .45, .45); }
       } else if (food && b.shop) {   // alimentari: casse di frutta fuori, i cartoni vuoti accatastati di lato, un sacco
-        const [x, z] = at(side * 1.5, .6); const g = G0(); for (let k = 0; k < 3; k++) B35.cassa(g, (k - 1) * .6, 0, 0, '#8a6440', pick(rb, ['#c43c32', '#e8a030', '#d8c840', '#5a8a3a'])); B35.cassa(g, 0, 0, 0, '#7a5a3a'); g.children.slice(-5).forEach(o => o.position.y += .3); put(g, x, z, ry, 1, .35);
+        const [x, z] = at(side * 1.5, .6); const g = G0(); for (let k = 0; k < 3; k++) B35.cassa(g, (k - 1) * .6, 0, 0, '#8a6440', pick(rb, ['#c43c32', '#e8a030', '#d8c840', '#5a8a3a'])); B35.cassa(g, 0, 0, 0, '#7a5a3a'); g.children.slice(-1).forEach(o => o.position.y += .3);   // [pulizia] la cassetta è un gruppo solo put(g, x, z, ry, 1, .35);
         const [x2, z2] = at(-side * 1.6, .45); const g2 = G0(); B35.cartone(g2, 0, 0, .2, 1); B35.cartone(g2, .1, 0, -.1, .85); g2.children[g2.children.length - 1].position.y += .36; B35.cartone(g2, .55, .1, .6, .9, true); put(g2, x2, z2, ry, .6, .35);
       } else if (off) {   // officina o ferramenta: pila di gomme, fusto dell'olio, taniche
         const [x, z] = at(side * 1.7, .6); const g = G0(); for (let k = 0; k < 4; k++) B35.gomma(g, 0, 0, k * .22); B35.gomma(g, .75, .1, 0, .3); B35.fusto(g, -.8, 0, '#2a3a5a'); put(g, x, z, ry, 1.2, .45);
@@ -64768,7 +64794,7 @@ var Render = (function () {
     if (stile === 'plexi') { const q = wp(um, 1.2); const lr = addLight(q[0], iy - .3, q[1], S.sign && S.sign.c || '#ffd890', 2, 8, .04); lr.always = true; const q2 = wp(um, .3); glow(q2[0], iy, q2[1], S.sign && S.sign.c || '#ffd890', 4).material.opacity = .35; }
     else if (stile === 'marmo' || stile === 'lapidaria') { [-1, 1].forEach(s2 => { at(box(.04, .04, .32, metal), um + s2 * iw * .32, iy + ih / 2 + .1, .16); at(box(.16, .06, .1, metal), um + s2 * iw * .32, iy + ih / 2 + .06, .33); }); }   // i faretti sopra la lastra
     // ---- serrande: il cassonetto sopra ogni apertura della bottega, le guide ai lati ----
-    K2 = 'serranda'; ents.forEach(e => { at(box(e.w + .1, .2, .15, metal), e.u, base + 2.47, .08); [-1, 1].forEach(s2 => at(box(.035, 2.37, .04, metal), e.u + s2 * (e.w / 2 + .02), base + 1.185, .03)); });
+    K2 = 'serranda'; ents.forEach(e => { const cs = cyl(.105, .105, e.w + .1, 10, metal); cs.rotation.z = Math.PI / 2; at(cs, e.u, base + 2.48, .1); at(box(e.w + .1, .21, .03, metal), e.u, base + 2.48, .015); [-1, 1].forEach(s2 => at(box(.035, 2.37, .04, metal), e.u + s2 * (e.w / 2 + .02), base + 1.185, .03)); });   // [pulizia] il rullo tondo della serranda sulla piastra (era una scatola)
     // ---- la tenda sulle vetrine (sotto i portici no) ----
     const vet = ents.filter(e => e.role === 'vetrina'); K2 = 'tenda';
     if (vet.length && era !== 'E4' && !b.portico && r() < .75) { const v0 = Math.min(...vet.map(e => e.u - e.w / 2)) - .1, v1 = Math.max(...vet.map(e => e.u + e.w / 2)) + .1, tw = v1 - v0, tm = tendaMat(era);
@@ -65255,10 +65281,13 @@ var Render = (function () {
 
   // --- casse, barili, fusti ---
   function crate(x, z, rot, goods, y) {
+    // [pulizia] la cassa a doghe: dentro l'ombra, fuori tre doghe per lato con la luce fra l'una e l'altra, il coperchio a tre assi (si vede
+    // dall'alto), i cantonali; prima era un cubo pieno con le stecche mezze sepolte dentro
     const g = G0(), wm = PM.woodL(), dm = PM.woodD();
-    add(g, box(.9, .7, .9, wm), 0, .35, 0);
-    for (let k = 0; k < 3; k++) [.46, -.46].forEach(s => { add(g, box(.92, .06, .03, dm), 0, .12 + k * .23, s); add(g, box(.03, .06, .92, dm), s, .12 + k * .23, 0); });
-    [[.44, .44], [-.44, .44], [.44, -.44], [-.44, -.44]].forEach(([a, b]) => add(g, box(.08, .72, .08, dm), a, .36, b));
+    add(g, box(.82, .66, .82, sm('#2e241c', { roughness: 1 })), 0, .34, 0);
+    for (let k = 0; k < 3; k++) [.44, -.44].forEach(s => { add(g, box(.84, .17, .03, wm), 0, .13 + k * .22, s); add(g, box(.03, .17, .84, wm), s, .13 + k * .22, 0); });
+    for (let k = 0; k < 3; k++) add(g, box(.9, .03, .26, k === 1 ? dm : wm), 0, .695, (k - 1) * .3);
+    [[.44, .44], [-.44, .44], [.44, -.44], [-.44, -.44]].forEach(([a, b]) => add(g, box(.07, .7, .07, dm), a, .35, b));
     if (goods === 'fish') { for (let k = 0; k < 6; k++) { const f = add(g, box(.12, .06, .45, sm('#9ab0c0', { roughness: .3, metalness: .5 })), -.3 + (k % 3) * .3, .72, -.15 + Math.floor(k / 3) * .3, 0, (k - 3) * .2, 0); } add(g, box(.8, .02, .8, sb('#e8f4ff')), 0, .7, 0); }
     else if (goods === 'bottles') { for (let k = 0; k < 9; k++) { add(g, cyl(.05, .05, .22, 6, sm(k % 2 ? '#3a6a2a' : '#6a3a1a', { roughness: .2 })), -.28 + (k % 3) * .28, .81, -.28 + Math.floor(k / 3) * .28); add(g, cyl(.02, .03, .1, 5, sm('#e8c040')), -.28 + (k % 3) * .28, .96, -.28 + Math.floor(k / 3) * .28); } }
     else if (goods) { for (let k = 0; k < 9; k++) add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(.13, 0), sl(goods)), -.28 + (k % 3) * .28, .78, -.28 + Math.floor(k / 3) * .28); }
@@ -68077,12 +68106,16 @@ var Render = (function () {
   //                   (scheggiature con la ruggine sotto, colature, sporco che sale dal basso, calcare, muschio, graffi).
   // Tutte le parti usano un atlante solo (FA.mat, celle da 32 px): un materiale per edificio, si fonde con mergeGroup.
   const FA = { n: 0, map: {} };
-  function faAtlas() { if (FA.c) return; FA.c = mk(512, 512); FA.x = FA.c.getContext('2d'); FA.tex = canvasTex(FA.c); FA.mat = std({ map: FA.tex, roughness: .85 }); }
+  // [pulizia] 1024 × 512 (512 celle) e i colori a 16 livelli per canale: con 256 celle e i colori continui le chiavi erano 1287 e dalla
+  // 256ª in poi tutte finivano sull'ultima cella, col colore dell'ultima dipinta (i cementi delle facciate, le vernici, i vasi)
+  const FAW = 1024, FAH = 512, FAC = FAW / 32, FAMAX = FAC * (FAH / 32) - 1;
+  const faQ = hex => { const c = parseInt(String(hex).slice(1, 7), 16); if (!/^#[0-9a-fA-F]{6}/.test(hex) || isNaN(c)) return hex; const q = v => Math.round(Math.round(v / 17) * 17).toString(16).padStart(2, '0'); return '#' + q(c >> 16 & 255) + q(c >> 8 & 255) + q(c & 255); };
+  function faAtlas() { if (FA.c) return; FA.c = mk(FAW, FAH); FA.x = FA.c.getContext('2d'); FA.tex = canvasTex(FA.c); FA.mat = std({ map: FA.tex, roughness: .85 }); }
   // una cella di materia: colore + grana + usura, decisa dal tipo
   function fCell(hex, kind) {
-    faAtlas(); kind = kind || 'solid';
+    faAtlas(); kind = kind || 'solid'; hex = faQ(hex);
     const key = hex + kind; if (FA.map[key] !== undefined) return FA.map[key];
-    const i = Math.min(255, FA.n++), cx = (i % 16) * 32, cy = Math.floor(i / 16) * 32, x = FA.x, r = rng(i * 131 + 17);
+    const i = Math.min(FAMAX, FA.n++), cx = (i % FAC) * 32, cy = Math.floor(i / FAC) * 32, x = FA.x, r = rng(i * 131 + 17);
     const px = (a, b, w, h, c) => { x.fillStyle = c; x.fillRect(cx + a, cy + b, w, h); };
     const grad = (top, bot) => { for (let y = 0; y < 32; y++) px(0, y, 32, 1, shade(hex, top + (bot - top) * y / 31)); };
     const specks = (n, lo, hi, s) => { for (let k = 0; k < n; k++) px(Math.floor(r() * 32), Math.floor(r() * 32), s || 1, s || 1, shade(hex, lo + r() * (hi - lo))); };
@@ -68121,14 +68154,14 @@ var Render = (function () {
   }
   // coordinate di tessitura nella cella: proiezione a scatola (oppure quelle già buone di torni e cilindri)
   function fUV(geo, cell, mode) {
-    const uv = geo.attributes.uv, pos = geo.attributes.position, nor = geo.attributes.normal, u0 = (cell % 16) * 32, v0 = Math.floor(cell / 16) * 32;
+    const uv = geo.attributes.uv, pos = geo.attributes.position, nor = geo.attributes.normal, u0 = (cell % FAC) * 32, v0 = Math.floor(cell / FAC) * 32;
     let bb = null, s = null; if (mode === 'box') { geo.computeBoundingBox(); bb = geo.boundingBox; s = bb.max.clone().sub(bb.min).addScalar(1e-4); }
     for (let k = 0; k < uv.count; k++) {
       let u = uv.getX(k), v = uv.getY(k);
       if (bb) { const X = pos.getX(k), Y = pos.getY(k), Z = pos.getZ(k), nx = Math.abs(nor.getX(k)), ny = Math.abs(nor.getY(k)), nz = Math.abs(nor.getZ(k));
         if (nx >= ny && nx >= nz) { u = (Z - bb.min.z) / s.z; v = (Y - bb.min.y) / s.y; } else if (ny >= nz) { u = (X - bb.min.x) / s.x; v = (Z - bb.min.z) / s.z; } else { u = (X - bb.min.x) / s.x; v = (Y - bb.min.y) / s.y; } }
       u = Math.min(1, Math.max(0, u)); v = Math.min(1, Math.max(0, v));
-      uv.setXY(k, (u0 + 1 + u * 30) / 512, 1 - (v0 + 1 + (1 - v) * 30) / 512);
+      uv.setXY(k, (u0 + 1 + u * 30) / FAW, 1 - (v0 + 1 + (1 - v) * 30) / FAH);
     }
     return geo;
   }
@@ -68758,7 +68791,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       showF.forEach(f => { const F = FACES[f]; if (!F.cam || F.L < 3) return;
         if (!rec.flat || r() < .5) at(f, cbox(F.L + .1, .13, .16, zinc), F.L / 2, top - .14, .12);
         const ends = r() < .5 ? [.22] : [.22, F.L - .22];
-        ends.forEach(u => { if (inMural(f, u)) return; const pp = ccyl(.07, .07, top - base, 6, zinc); at(f, pp, u, base + (top - base) / 2, .14); for (let y = base + 1.2; y < top - .4; y += MF) at(f, cbox(.18, .05, .2, shade(zinc, .7)), u, y, .1); at(f, cbox(.16, .12, .34, zinc), u, base + .1, .3); });
+        ends.forEach(u => { if (inMural(f, u)) return; const pp = ccyl(.07, .07, top - base - .3, 8, zinc); at(f, pp, u, base + .3 + (top - base - .3) / 2, .14);   // [pulizia] il tubo tondo, i collari ad anello, il gomito che scarica sul selciato (era una scatola)
+          for (let y = base + 1.2; y < top - .4; y += MF) at(f, ccyl(.085, .085, .05, 8, shade(zinc, .7)), u, y, .14);
+          const gm = ccyl(.07, .07, .34, 8, zinc); gm.rotation.x = -.75; at(f, gm, u, base + .2, .25); at(f, ccyl(.075, .085, .06, 8, shade(zinc, .85)), u, base + .32, .14); });
       });
       // ---- la vita alla base dei muri: casse di plastica, vasi, sacchi, legna, bombole, bici, secchi, contatori ----
       const doorsU = kitHouse ? (b.door ? [[face0, { S: (b.door[0] - b.x) * TS + 1, N: (b.x + b.w - 1 - b.door[0]) * TS + 1, E: (b.y + b.h - 1 - b.door[1]) * TS + 1, W: (b.door[1] - b.y) * TS + 1 }[face0]]] : []) : WINS.filter(W0 => W0.name.includes('door')).map(W0 => [W0.f, W0.u]);
@@ -68992,8 +69027,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // 4) applique accanto alle porte che danno sulla strada; festone di lampadine sulle botteghe
     P2.kc = 'applique'; doorsU.forEach(([f, du]) => { const F = FACES[f]; P2.g++; if (!F || !F.open || r() > .75 || (b.__bot && b.__bot.face === f)) return;   // [botteghe] sul fronte della bottega le luci sono sue
       const s = r() < .5 ? -1 : 1, u = Math.min(F.L - .2, Math.max(.2, du + s * 1.18)), y = base + 2.35, lit = caseLit(pick(r, ['#ffc070', '#ffb050', '#ffd890']));
-      at(f, fB(.16, .22, .06, '#2a2a2e', 'paint', .01), u, y, .07); fRod(fr(f), [u, y, .08], [u, y - .05, .3], .015, '#2a2a2e'); at(f, fC(.09, .12, .1, 8, '#2a2a2e', 'paint'), u, y + .02, .32);
-      const gl = new THREE.Mesh(new THREE.SphereGeometry(.075, 8, 6), lit); at(f, gl, u, y - .07, .32);
+      at(f, fB(.16, .22, .06, '#2a2a2e', 'paint', .01), u, y, .07); fRod(fr(f), [u, y, .08], [u, y + .02, .3], .015, '#2a2a2e');   // [pulizia] il paralume tornito con l'orlo e il codolo, la lampadina dentro
+      at(f, fL([[.125, -.045], [.118, -.03], [.09, .025], [.05, .055], [.02, .065], [.02, .1]], 8, '#2a2a2e', 'paint'), u, y + .02, .32);
+      const gl = new THREE.Mesh(new THREE.SphereGeometry(.065, 8, 5), lit); at(f, gl, u, y - .04, .32);
       if (r() < .45) { const N = [Math.sin(F.yaw), Math.cos(F.yaw)], T2 = [Math.cos(F.yaw), -Math.sin(F.yaw)]; addLight(F.p[0] + T2[0] * u + N[0] * .6, y - .2, F.p[1] + T2[1] * u + N[1] * .6, '#ffb868', 1.3, 5.5, .03); } });
     P2.kc = 'festone'; P2.g++; if ((b.shop || b.sign) && !b.__bot && FACES[face0] && FACES[face0].open && !b.__pent && r() < .45) {   // [pulizia] niente festone sotto la tettoia
       const F = FACES[face0], du = dU(face0), u0 = Math.max(.3, du - 3), u1 = Math.min(F.L - .3, du + 3), y0 = base + 3.25, lit = caseLit('#ffd27a');
@@ -69228,6 +69264,19 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const gm = shadowed(mergeGroup(g), true, true); scene.add(gm);
     return nc + nb + ns + na + nk;
   }
+  // [pulizia] il gradino di pietra: il profilo (in x la profondità dal muro, in y l'altezza) col naso smussato davanti, tirato per la
+  // larghezza; senza la faccia di sotto (sta sul selciato). 14 triangoli contro i 12 della scatola, e lo spigolo prende la luce
+  const GRAD1 = new Map();
+  function gradino1(dep, h, w, c) {
+    const key = [dep, h, w, c].map(v => v.toFixed(3)).join(); let g = GRAD1.get(key); if (g) return g;
+    c = Math.min(c, h * .45, dep * .3); const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(dep, 0); sh.lineTo(dep, h - c); sh.lineTo(dep - c, h); sh.lineTo(0, h); sh.closePath();
+    let e = new THREE.ExtrudeGeometry(sh, { depth: w, bevelEnabled: false, curveSegments: 1 }); e.translate(0, 0, -w / 2); if (e.index) e = e.toNonIndexed(); e.computeVertexNormals();
+    const P = e.attributes.position, N = e.attributes.normal, U = e.attributes.uv, keep = [];
+    for (let t = 0; t < P.count; t += 3) if (!(N.getY(t) < -.9 && N.getY(t + 1) < -.9 && N.getY(t + 2) < -.9)) keep.push(t);
+    const out = new THREE.BufferGeometry(), cp = (A, n) => { const a = new Float32Array(keep.length * 3 * n); keep.forEach((t, j) => { for (let q = 0; q < 3 * n; q++) a[j * 3 * n + q] = A.array[t * n + q]; }); return new THREE.BufferAttribute(a, n); };
+    out.setAttribute('position', cp(P, 3)); out.setAttribute('normal', cp(N, 3)); if (U) out.setAttribute('uv', cp(U, 2));
+    GRAD1.set(key, out); return out;
+  }
   function buildVolumes() {
     const T = G.T, r = rng(4242), I4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), S = new THREE.Vector3(), C = new THREE.Color();
     const big = new THREE.Sphere(new THREE.Vector3(G.WW / 2, 0, G.WH / 2), Math.hypot(G.WW, G.WH));
@@ -69247,8 +69296,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         // [percorsi2] nella città nuova la porta è la cosa più contrastata del fotogramma: gradini di pietra chiara col bordo acceso
         // (lo spigolo lucidato che prende la luce) e la base netta (la riga scura del piede, sul selciato)
         const nuova = cn1(), sM = nuova ? (BOT.marmo || (BOT.marmo = sm('#cfc6b2', { roughness: .6 }))) : stepM;
-        [[.5, .2], [1, .1]].forEach(([dep, hh], k) => { const st = box(side[0] ? dep : 1.7, hh + (base - low), side[1] ? dep : 1.7, sM); st.position.set(ex + side[0] * dep / 2, low + (hh + base - low) / 2, ez + side[1] * dep / 2); addStatic(st);
-          if (nuova) { const nm = BOT.naso || (BOT.naso = std({ color: '#f4ecd8', emissive: '#4a3e28', emissiveIntensity: .6, roughness: .35 })), ns = box(side[0] ? .07 : 1.72, .035, side[1] ? .07 : 1.72, nm); ns.position.set(ex + side[0] * (dep - .03), low + hh + (base - low) + .005, ez + side[1] * (dep - .03)); addStatic(ns); } });
+        [[.5, .2], [1, .1]].forEach(([dep, hh], k) => { const st = new THREE.Mesh(gradino1(dep, hh + (base - low), 1.7, .035), sM); st.position.set(ex, low, ez); st.rotation.y = Math.atan2(-side[1], side[0]); addStatic(st);   // [pulizia] la pietra col naso smussato
+          if (nuova) { const nm = BOT.naso || (BOT.naso = std({ color: '#f4ecd8', emissive: '#4a3e28', emissiveIntensity: .6, roughness: .35 })), ns = box(side[0] ? .05 : 1.72, .03, side[1] ? .05 : 1.72, nm); ns.position.set(ex + side[0] * (dep - .06), low + hh + (base - low) + .004, ez + side[1] * (dep - .06)); addStatic(ns); } });
         if (nuova) { const fm = BOT.piede || (BOT.piede = sm('#1c1816', { roughness: 1 })), fo = box(side[0] ? .1 : 1.86, .03, side[1] ? .1 : 1.86, fm); fo.position.set(ex + side[0] * 1.04, low + .005, ez + side[1] * 1.04); addStatic(fo); }
         // [botteghe] il gradino consumato: in mezzo la pietra è lisciata e più chiara, dove si mette il piede da cent'anni
         const wm = nuova ? (BOT.worn2 || (BOT.worn2 = sm('#e6dcc6', { roughness: .3 }))) : BOT.worn || (BOT.worn = sm('#8a857c', { roughness: .35 })), wn = box(side[0] ? .3 : .8, .012, side[1] ? .3 : .8, wm); wn.position.set(ex + side[0] * .27, low + .2 + (base - low) + .002, ez + side[1] * .27); addStatic(wn);
