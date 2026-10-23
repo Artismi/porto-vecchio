@@ -476,7 +476,7 @@ var World = (function () {
   const lerp = (a, b, t) => a + (b - a) * t;
   const interp = (tab, x) => { if (x <= tab[0][0]) return tab[0][1]; for (let k = 0; k < tab.length - 1; k++) { const [a, ha] = tab[k], [b, hb] = tab[k + 1]; if (x < b) { const t = (x - a) / (b - a), s2 = t * t * (3 - 2 * t); return ha + (hb - ha) * s2; } } return tab[tab.length - 1][1]; };
   // la cresta: quota e posizione lungo x (da ovest: scarpata della Sila, altopiano, il Pizzo, la sella, il Monte dei Pini, giù verso il centro)
-  const CREST = [[146, 0], [172, 4], [202, 12], [230, 19], [250, 23], [272, 19.5], [290, 17], [312, 18], [338, 10], [358, 3], [370, .4]];   // [isola] una cima e una sella larga
+  const CREST = [[146, 0], [170, 3], [194, 8.5], [216, 11.5], [240, 12.5], [262, 13], [286, 12.5], [310, 12], [334, 7.5], [356, 2.5], [370, .4]];   // [altopiano] un tavolato largo a 12-13 m, come i pianori del Gran Paradiso
   const crestY = x => yc(x) + 5 * Math.sin(x / 41) - 2;
   const ALTO = { x: 190, y: 150, rx: 27, ry: 30 };                     // l'altopiano del lago
   const PIZZO = [248, crestY(248)];
@@ -503,12 +503,13 @@ var World = (function () {
     const cy = crestY(x), dy = y - cy, side = dy < 0 ? -1 : 1;
     const shore = side < 0 ? northY(x) : southY(x), room = Math.abs(shore - cy) - 9;
     const t = clamp(Math.abs(dy) / Math.max(10, room), 0, 1);
-    const Hc = crestH(x), prof = Math.pow(.5 + .5 * Math.cos(Math.PI * t), .8);
-    let h = Hc * prof + (fbm(x / 110, y / 110, 301, 2) - .5) * 1.4 * prof;
+    // [altopiano] il pianoro resta in quota per un buon tratto, poi scende al mare con un fianco dolce; sopra, dossi morbidi di 1-2 m
+    const Hc = crestH(x), prof = 1 - sstep(.22, 1, t), plat = 1 - sstep(.15, .55, t);
+    let h = Hc * prof + (fbm(x / 110, y / 110, 301, 2) - .5) * 1.4 * prof + (fbm(x / 34, y / 34, 303, 3) - .5) * 4.5 * plat * sstep(2, 8, Hc);
     const inl = inland(x, y); h = .4 + (h - .4) * sstep(7, 26, inl);
     // i borghi stanno su un ripiano
     for (const id in BORGHI) { const [bx, by, br0, bh] = BORGHI[id], d = dist(x, y, bx, by); if (d < br0 + 6) { const k = 1 - sstep(br0, br0 + 6, d); h = lerp(h, Math.min(bh, h + 1.5), k); if (k > .5) f |= MF.BORGO; } }
-    if (Hc * prof > 13) f |= MF.ALTO;
+    if (Hc * prof > 9) f |= MF.ALTO;
     return { h: Math.max(.4, h), f };
   }
   // la quota del crinale: interpolazione morbida (coseno) dei punti di CREST, poi una media larga: niente spigoli
