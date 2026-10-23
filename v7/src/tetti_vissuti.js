@@ -10,7 +10,7 @@
       boe, le cassette del pesce, i remi, il sale), l'Ottocento (le sdraio con l'ombrellone, il canniccio col tavolo, il limone in vaso).
       Niente sulla rete dei tetti: un corridoio di 1,2 m sui giri, sulle vie, sui rami e fra tutte le porte del tetto (scale, passerelle,
       salti, i passaggi da tetto a tetto), le riserve di Tetti.PIANO, i gruppi del piano, la cupola; niente di alto verso la camera.
-   2. LA GRAFICA (render.js chiama terrazzo, costruisci, vicino, manto): i mobili e le piante col kit dell'atlante (FA.mat), dentro il
+   2. LA GRAFICA (render.js chiama terrazzo, costruisci, vicino, manto): i mobili e le piante (un materiale per colore, uguali a meno del colore), dentro il
       gruppo del tetto della casa, quindi nelle mesh fuse per settore di [leggero] (nessun disegno in più, il taglio e lo sbiadire del
       tetto li prendono con la casa); le cartacce e le pozze sono istanze vicino al personaggio (8 disegni per tutta la città, spente
       oltre ~36 m e ~64 m, sui telefoni meno), tolte dalla casa tagliata o col tetto sbiadito.
@@ -301,21 +301,32 @@ var TettiVissuti = (function () {
   function firma() { let h = 2166136261 >>> 0; const s = JSON.stringify(VISSUTI.filter(Boolean).map(T0 => [T0.bi, T0.storia, T0.cose.map(o => [o.k, o.x.toFixed(3), o.y.toFixed(3), (o.qz || 0).toFixed(3), (o.ry || 0).toFixed(3), o.v === undefined ? '' : String(o.v).slice(0, 6)])]));
     for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); }
   // IL BILANCIO della grafica: i disegni fissi che aggiunge (le istanze vicine: un disegno per tipo di cartaccia e uno per le pozze; i mobili,
-  // le piante e la malta stanno nelle mesh fuse col materiale dell'atlante, che c'è già in ogni settore) e le distanze delle istanze
+  // le piante e la malta stanno nelle mesh fuse: un secchio per settore, col colore nella tavolozza) e le distanze delle istanze
   const VICINO = { carte: 36, pozze: 64, carteTel: 24, pozzeTel: 44, passo: 3 };
-  const bilancio = () => ({ disegni: CARTE.length + 1, materiali: 2, vicino: VICINO, fusi: 'atlante (FA.mat)', istanze: CARTE.concat(['pozza']) });
+  const bilancio = () => ({ disegni: CARTE.length + 1, materiali: 2, vicino: VICINO, fusi: 'un materiale per colore, un secchio per settore con la tavolozza', istanze: CARTE.concat(['pozza']) });
 
   // =====================================================================================================================
   // LA GRAFICA (solo nella pagina; K: il kit di render.js, kitTV1)
   // =====================================================================================================================
-  // i colori: pochi e caldi (ogni coppia colore-tipo è una cella dell'atlante, 256 in tutto: qui ne servono una trentina)
+  // i colori: pochi e caldi (una quarantina, ognuno un posto nella tavolozza di [leggero])
   const COL = { cotto: '#a8583a', cotto2: '#b8683e', cotto3: '#8a4a32', foglia: '#4a6a38', foglia2: '#5a8a3a', foglia3: '#3e5a32', erba: '#7a8a3a', erba2: '#5a7a34', fiore: '#c84a5a', valer: '#c8506a',
     bianco: '#e8e4dc', ferro: '#26262c', legno: '#4a3626', legno2: '#8a6a44', canna: '#c8b078', panno: ['#2f6f8f', '#c8473a', '#e0b040', '#3f7f5f'], tela: ['#e8dcc0', '#c8473a', '#2f6f8f'],
     latta: '#a8a8a0', zinco: '#8a8e90', blu: '#3a6a9a', rosso: '#a83a2e', verde: '#3a6a3a', rete: ['#3a6a6a', '#5a7a3a', '#4a5a6a'], boa: '#e86a2a', corda: '#c8b890', poli: '#e8e8e2',
     gatto: ['#c87a3a', '#3a3a3e', '#d8d4cc'], limone: '#e8c840', malta: '#d0c8b8', macchia: '#5a5048', macchia2: '#6e665a', sale: '#d8d2c6', paglia: '#b89a5a', vimini: '#a88a5a' };
   const pk = (a, u) => Array.isArray(a) ? a[Math.floor((u || 0) * a.length) % a.length] : a;
   function costruttori(K) {
-    const { fB, fC, fL, fI, fT, fAt, fRod } = K, T3 = K.THREE;
+    // i pezzi: geometrie semplici con un materiale per colore (K.sm, la cache di render.js), tutti uguali a meno del colore: nella fusione
+    // di [leggero] vanno in un secchio solo per settore col colore nella tavolozza. Non le celle dell'atlante (FA): l'atlante ha 256 celle e
+    // quando la città arriva ai tetti sono già finite (oltre la 255 tutto finisce nell'ultima cella, con l'ultimo colore disegnato).
+    const T3 = K.THREE, mat = hex => K.sm(hex, { roughness: .82, userData: { vissuti: 1 } }),   /* il marchio: la misura li ritrova nella mesh fusa */ GEO = new Map(), geo = (k, f) => GEO.get(k) || GEO.set(k, f()).get(k);
+    const fB = (w, h, d, hex) => new T3.Mesh(geo('B' + w + ',' + h + ',' + d, () => new T3.BoxGeometry(w, h, d)), mat(hex));
+    const fC = (rt, rb, h, seg, hex) => new T3.Mesh(geo('C' + [rt, rb, h, seg], () => new T3.CylinderGeometry(rt, rb, h, seg || 8)), mat(hex));
+    const fL = (prof, seg, hex) => new T3.Mesh(geo('L' + prof.join(';') + seg, () => new T3.LatheGeometry(prof.map(([a, b]) => new T3.Vector2(Math.max(.001, a), b)), seg || 8)), mat(hex));
+    const fI = (r, det, hex) => new T3.Mesh(geo('I' + r + ',' + det, () => new T3.IcosahedronGeometry(r, det)), mat(hex));
+    const fT = (R, t, seg, hex) => { const m = new T3.Mesh(geo('T' + [R, t, seg], () => new T3.TorusGeometry(R, t, 4, seg || 12)), mat(hex)); m.rotation.x = PI / 2; return m; };
+    const fAt = (g, o, x, y, z) => { o.position.set(x, y, z); g.add(o); return o; };
+    const fRod = (g, a, b, r, hex) => { const d = new T3.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), L = d.length(), m = new T3.Mesh(geo('R' + r + ',' + L.toFixed(3), () => new T3.CylinderGeometry(r, r, L, 5)), mat(hex));
+      m.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2); m.quaternion.setFromUnitVectors(new T3.Vector3(0, 1, 0), d.normalize()); g.add(m); return m; };
     const g = () => new T3.Group();
     const vaso = (o, r, h, col) => fAt(o, fL([[.001, 0], [r * .74, 0], [r, h * .9], [r * 1.1, h * .92], [r * 1.1, h], [r * .9, h], [.001, h * .88]], 8, col, 'clay'), 0, 0, 0);
     const foglie = (o, n, y, R, col, rad) => { for (let k = 0; k < n; k++) { const a = k * 2.4 + .3, f = fI(rad, 0, k % 2 ? col : COL.foglia3, 'leaf'); f.position.set(Math.cos(a) * R, y + (k % 3) * .04, Math.sin(a) * R); f.scale.set(1, .8, 1); o.add(f); } };
@@ -362,7 +373,7 @@ var TettiVissuti = (function () {
         else { fAt(o, fB(.6, .2, .4, COL.poli, 'plastic', 0), 0, .1, 0); fAt(o, fB(.54, .02, .34, '#3a2e24', 'solid', 0), 0, .19, 0); [-.16, 0, .16].forEach((x, k) => { const f = fI(.08, 0, k % 2 ? COL.foglia2 : COL.foglia, 'leaf'); f.position.set(x, .25, 0); o.add(f); }); }
         return o; },
       annaffiatoio: () => { const o = g(); fAt(o, fL([[.001, 0], [.11, 0], [.11, .2], [.08, .22], [.001, .22]], 8, COL.verde, 'paint'), 0, 0, 0); fRod(o, [.08, .1, 0], [.22, .24, 0], .012, COL.verde, 'paint'); return o; },
-      rete: v => { const o = g(); [[0, 0, .42, .3], [.2, .08, .3, .24], [-.2, -.05, .3, .22]].forEach(([x, z, r, s], k) => { const f = fI(r, 1, pk(COL.rete, (v + k * .3) % 1), 'cloth'); f.scale.set(1, s * .9 / r, .85); f.position.set(x, .02, z); o.add(f); });
+      rete: v => { const o = g(); [[0, 0, .42, .3], [.2, .08, .3, .24], [-.2, -.05, .3, .22]].forEach(([x, z, r, s], k) => { const f = fI(r, 1, pk(COL.rete, (v + k * .3) % 1), 'cloth'); f.scale.set(1, s * .5 / r, .85); f.position.set(x, s * .5 + .005, z); o.add(f); });
         [[.3, .2, -.15], [-.25, .15, .2], [.05, .24, .12]].forEach(([x, y, z]) => fAt(o, fI(.05, 0, COL.boa, 'plastic'), x, y, z)); return o; },
       boe: () => { const o = g(); [[-.12, .11, 0, COL.boa], [.12, .11, .04, COL.boa], [0, .09, -.12, COL.bianco]].forEach(([x, y, z, c]) => fAt(o, fI(y, 1, c, 'plastic'), x, y, z)); return o; },
       cima: () => { const o = g(); const t = fT(.17, .035, 10, COL.corda, 'cloth'); t.position.y = .035; o.add(t); const t2 = fT(.1, .03, 8, COL.corda, 'cloth'); t2.position.y = .07; o.add(t2); return o; },
@@ -460,7 +471,7 @@ var TettiVissuti = (function () {
         const gk = Math.floor(wx / VIC.cella) + ',' + Math.floor(wz / VIC.cella); (VIC.griglia.get(gk) || VIC.griglia.set(gk, []).get(gk)).push([t, v]); }); });
     VIC.tipi.forEach(t => { if (!t.voci.length) return; const geo = t.k === 'pozza' ? geoPozza(T3) : geoCarta(T3, t.k);
       t.max = Math.min(t.voci.length, t.k === 'pozza' ? 160 : 120);
-      const im = new T3.InstancedMesh(geo, t.k === 'pozza' ? POZ : CAR, t.max); im.count = 0; im.frustumCulled = false; im.castShadow = false; im.receiveShadow = true; im.matrixAutoUpdate = false; im.userData.vissuti = t.k; im.userData.keep = true;
+      const im = new T3.InstancedMesh(geo, t.k === 'pozza' ? POZ : CAR, t.max); im.count = 0; im.frustumCulled = false; im.castShadow = false; im.receiveShadow = true; im.matrixAutoUpdate = false; im.userData.vissuti = t.k; im.material.userData.vissuti = 1; im.userData.keep = true;
       im.instanceColor = new T3.InstancedBufferAttribute(new Float32Array(t.max * 3), 3); t.im = im; K.scene.add(im); });
     VIC.POZ = POZ; VIC.on = true; VIC.K = K;
   }
@@ -499,7 +510,7 @@ var TettiVissuti = (function () {
         if (!S.ciglio && P.tipo === 'piano' && X.min.y < top + .08 - .03) U.push([bi, 'vissuti:' + S.k, 'lastrico']);
         P.gruppi.forEach(g => { if (X.min.x < g.x + g.hx - .02 && X.max.x > g.x - g.hx + .02 && X.min.z < g.y + g.hy - .02 && X.max.z > g.y - g.hy + .02 && X.min.y < top + .08 + (g.alto || 1)) U.push([bi, 'vissuti:' + S.k + '/' + g.k, 'urto']); });
         if (P.cupola) { const c = P.cupola; if (X.min.x < c.x + c.hx && X.max.x > c.x - c.hx && X.min.z < c.y + c.hy && X.max.z > c.y - c.hy) U.push([bi, 'vissuti:' + S.k + '/' + c.k, 'urto']); }
-        L.forEach((T2, j) => { if (j <= i || !!T2.ciglio !== !!S.ciglio) return; const Y = T2.B; if (S.scena && S.scena === T2.scena && (S.sopra === T2.k || T2.sopra === S.k)) return;
+        L.forEach((T2, j) => { if (j <= i || !!T2.ciglio !== !!S.ciglio) return; const Y = T2.B; if (S.scena && S.scena === T2.scena && (S.sopra === T2.k || T2.sopra === S.k || CAT[S.k].con === T2.k)) return;
           if (X.min.x < Y.max.x - .02 && X.max.x > Y.min.x + .02 && X.min.z < Y.max.z - .02 && X.max.z > Y.min.z + .02 && X.min.y < Y.max.y - .02 && X.max.y > Y.min.y + .02) U.push([bi, 'vissuti:' + S.k + '/' + T2.k, 'urto']); }); }); });
     return U;
   }

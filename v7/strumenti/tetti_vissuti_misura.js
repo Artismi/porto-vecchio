@@ -33,6 +33,14 @@ const srv = http.createServer((req, res) => {
     const m = await pg.evaluate(() => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => { const R = window.__pv.R, i = R.gpuTimes.info || {}; res({ calls: i.calls, tris: i.tris, progs: i.progs }); }))));
     const buf = await pg.evaluate(() => new Promise(res => requestAnimationFrame(() => res(document.getElementById('cv').toDataURL('image/png')))));
     fs.writeFileSync(path.join(out, (prima ? 'prima_' : 'dopo_') + v.nome + '.png'), Buffer.from(buf.split(',')[1], 'base64'));
+    // i disegni dei tetti vissuti nella stessa scena: si spengono le mesh col marchio (le fuse per settore col materiale dei pezzi, le
+    // istanze vicine) e le loro sagome d'ombra, si misura il fotogramma dopo, si riaccendono: la differenza è il loro costo esatto
+    if (!prima) { const d = await pg.evaluate(() => new Promise(res => { const S = window.__pv.R.__models.scene, mie = [], pos = new Set();
+      S.traverse(o => { if (o.isMesh && o.visible && o.material && o.material.userData && o.material.userData.vissuti) { mie.push(o); if (o.geometry.attributes.position) pos.add(o.geometry.attributes.position); } });
+      S.traverse(o => { if (o.isMesh && o.visible && o.userData.ombra1 && pos.has(o.geometry.attributes.position)) mie.push(o); });
+      requestAnimationFrame(() => requestAnimationFrame(() => { const a = Object.assign({}, window.__pv.R.gpuTimes.info); mie.forEach(o => o.visible = false);
+        requestAnimationFrame(() => requestAnimationFrame(() => { const b = Object.assign({}, window.__pv.R.gpuTimes.info); mie.forEach(o => o.visible = true); res({ mesh: mie.length, conTutto: a.calls, senza: b.calls, disegni: a.calls - b.calls, triangoli: a.tris - b.tris }); })); })); }));
+      m.vissuti = d; }
     R.viste[v.nome] = m; console.log(v.nome, JSON.stringify(m));
   }
   R.scena = await pg.evaluate(() => { const S = window.__pv.R.__models.scene; let mesh = 0, vis = 0, ist = 0; S.traverse(o => { if (o.isMesh) { mesh++; if (o.visible) { vis++; if (o.isInstancedMesh) ist++; } } }); return { mesh, accese: vis, istanze: ist }; });

@@ -76,7 +76,7 @@ const ff = TV.firma(); ok(ff === f1, `col seme 12345 la firma è ${ff}`);
 
 // ---------------- 5. il bilancio ----------------
 const BL = TV.bilancio(); console.log('bilancio', JSON.stringify(BL));
-ok(BL.disegni <= 150, `i disegni fissi aggiunti: ${BL.disegni} (le istanze vicine; mobili, piante e malta nelle mesh fuse dell'atlante)`);
+ok(BL.disegni <= 150, `i disegni fissi aggiunti: ${BL.disegni} (le istanze vicine; mobili, piante e malta nelle mesh fuse per settore, un secchio in più dove ci sono)`);
 ok(BL.vicino.carte <= 40 && BL.vicino.carteTel < BL.vicino.carte && BL.vicino.pozze <= 70 && BL.vicino.pozzeTel < BL.vicino.pozze, `le cartacce solo entro ${BL.vicino.carte} m (sul telefono ${BL.vicino.carteTel}), le pozze entro ${BL.vicino.pozze} m (${BL.vicino.pozzeTel})`);
 ok(TV.VISSUTI.every(t => !t || t.cose.every(o => !['busta', 'cartaccia', 'giornale', 'tappi', 'pallone', 'scarpa', 'lattina', 'pozza'].includes(o.k) || TV.CAT[o.k].vicino)), 'ogni cartaccia e ogni pozza è un\'istanza vicina');
 const fusi = V.cose - V.vicini.carte - V.vicini.pozze; ok(fusi <= 3200, `i pezzi fusi (nei gruppi dei tetti, nelle mesh per settore): ${fusi}`);
