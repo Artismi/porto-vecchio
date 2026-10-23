@@ -1,0 +1,18 @@
+{
+ "nota": "[visuale4] Le sei inquadrature del confronto fra le visuali (strumenti/galleria.js con GALLERIA_VARIANTI=strumenti/visuale4_varianti.json, GALLERIA_CARICO=900000; i fogli con strumenti/fogli_visuale4.py): un vicolo stretto del borgo, l'attacco del giro dei tetti (p4 di percorsi2), l'arco del sottopasso, una corte, la Vittoria, la marina. La camera segue il personaggio (segui), come si gioca.",
+ "pulita": true,
+ "scorci": [
+  { "nome": "w1_vicolo", "titolo": "Vico delle Monache: il vicolo stretto del borgo", "x": 1421, "y": 305, "zoom": 0.4, "ora": 660, "meteo": "sereno", "luce": "borgo", "segui": true, "attesa": 15000,
+    "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "w2_tetti_p4", "titolo": "Il giro della Porta: dove si sale sui tetti (p4)", "x": 1351, "y": 287, "zoom": 0.4, "ora": 700, "meteo": "sereno", "luce": "borgo", "segui": true, "attesa": 25000,
+    "js": "const TSg=pv.G.TS; pv.G.BUILDINGS.forEach((b,bi)=>{ if (Math.hypot((b.x+b.w/2)*TSg-st.player.x,(b.y+b.h/2)*TSg-st.player.y)<40) try { Tetti.scanRoof(pv.R,bi); } catch(e){} }); Tetti._.GFX.dirty=true; Tetti._.GFX.stableT=0; Tetti._.GFX.builtT=0; const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "w3_arco", "titolo": "L'arco del sottopasso sul Vico dell'Arco", "x": 1408.2, "y": 299.7, "zoom": 0.4, "ora": 660, "meteo": "sereno", "luce": "borgo", "segui": true, "attesa": 15000,
+    "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "w4_corte", "titolo": "Corte dei Pescatori", "x": 1391, "y": 361, "zoom": 0.4, "ora": 600, "meteo": "sereno", "luce": "borgo", "segui": true, "attesa": 15000,
+    "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "w5_vittoria", "titolo": "Via della Vittoria", "x": 1410, "y": 343, "zoom": 0.4, "ora": 720, "meteo": "sereno", "luce": "metropoli", "segui": true, "attesa": 15000,
+    "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" },
+  { "nome": "w6_marina", "titolo": "La marina, la calata", "x": 1372, "y": 388, "zoom": 0.4, "ora": 600, "meteo": "sereno", "luce": "borgo", "segui": true, "attesa": 15000,
+    "js": "const R=pv.R,ld=setInterval(()=>{ try { Render.ISO.rush=true; R.updateChunks(R.cam.x,R.cam.y); } finally { Render.ISO.rush=false; } }, 150); setTimeout(()=>clearInterval(ld), 40000);" }
+ ]
+}

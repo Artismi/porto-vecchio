@@ -148,6 +148,9 @@ due estremi veri (mensola, isolatore, cassetta, palo, contatore): mai nel vuoto.
 
 ## 7. La visuale sul personaggio e i vicoli in ombra ([visuale3], 21 ottobre)
 
+> **Superata dalla sezione 9 ([visuale5], 23 ottobre):** il taglio, l'ellisse e la sezione non ci sono più; resta la macchina del taglio che
+> usa il muretto e resta l'equilibrio della luce nei vicoli (la tabella sotto). `src/test_visuale3.js` è confluita in `src/test_visuale4.js`.
+
 Giudizio del committente sul giro della Porta: «la zona in mezzo al vicolo all'ombra è completamente illeggibile, e la visuale sul
 personaggio fa solo confusione in più». Due cambi; regole in `src/visuale.js`, prove in `src/test_visuale3.js` (Node: i raggi contro le case in pianta),
 fogli in `_immagini/visuale3/` (strumenti/galleria.js con `visuale3_varianti.json`, strumenti/fogli_visuale3.py).
@@ -177,3 +180,87 @@ che non sono case del gioco (le masse di pezzi_citta, le mura) e le cose fuori d
 | `ALONE3` | — | 3 cm, 0,5, ×1,55 | il personaggio in ombra (raggio verso il sole contro le case) o di notte: alone chiaro sottile attorno alla sagoma e luce propria più alta; al sole niente |
 
 La pendenza della visuale a piedi (0,78 rad) si prova più bassa con `?pendenza=0.62` (non attiva per difetto).
+
+## 8. Senza buco: due prototipi a confronto ([visuale4], 22 ottobre)
+
+Giudizio del committente sul taglio e sull'ellisse: «bucano l'immagine, lasciano monconi, anelli e sezioni che nessun fotografo terrebbe».
+Due alternative, tutte e due con la sagoma del personaggio, da scegliere sui fogli `_immagini/visuale4/` (stesse sei inquadrature, quattro
+visuali: taglio, ellisse, A, B; più la striscia del movimento di A). Il modo di difetto restava il taglio (oggi è A: sezione 9). Regole in `src/visuale.js`, prova in
+`src/test_visuale4.js`, il controllo del level designer in `strumenti/copertura_visuale4.js` (esce `_immagini/visuale4/copertura.json`).
+
+**A, `?visuale=camera`: la camera che si adatta.** La stretta si misura dai dati in pianta (`Visuale.mappa`, `Visuale.misura`): la larghezza
+libera attorno al personaggio (la più stretta di quattro coppie di direzioni), la pendenza che chiede il pieno sul lato camera per liberare
+il busto, i vicoli della rete (W.roads ≤ 3,6 m), le volte (portici, archi, sottopassi). Punteggio `s = sW·(0,4 + 0,6·sC)` (+0,12 nel vicolo
+stretto), 0,85 sotto una volta. Nella stretta la pendenza sale da 0,78 a `max(1,08, pendenza chiesta + 0,08)`, al più 1,22 rad, e lo zoom si
+stringe a 0,9. Isteresi: si entra sopra 0,6 per 0,2 s, si esce sotto 0,32 per 0,8 s, e dopo un cambio non se ne fa un altro prima di 2,05 s;
+smorzamento esponenziale (τ 0,26 s: 95% in 0,8 s, uguale a ogni frequenza). Il giro della visuale lungo il vicolo c'è (`CAMERA4.giro`, al
+più 25°) ma è spento: gira i comandi sotto le dita. Cambia solo pendenza e distanza: lo sguardo della levetta e gli scarti di [fluido]
+restano. Il tetto della casa che copre (i raggi del corpo nella sua scatola) sbiadisce intero fino a 0,3 di opacità in 0,35 s, con sotto la
+copertina alla gronda nel tono del muro (non il nucleo scuro della casa), e resta così 0,6 s dopo che ha smesso di coprire; gli oggetti del
+tetto si spengono oltre metà. I muri restano: dove coprono ancora, la sagoma.
+
+**B, `?visuale=muretto`: le case davanti scendono.** Le case col centro sul lato camera (≥ 0,5 m davanti al personaggio) la cui scatola,
+proiettata, tocca il disco di 8 m attorno a lui scendono tutte insieme a un muretto di 1 m sopra la loro base (in 0,5 s; risalgono in 0,65 s,
+0,8 s dopo essere uscite da un disco di 11 m). La copertina è il muro scurito al 52% col filo chiaro. Sul tetto non scende niente. Usa la stessa
+macchina del taglio (la quota nella tessitura delle case fuse, il piano di taglio sui pezzi fuori dalla fusione, il registro delle cose sui tetti).
+
+**La sagoma** (A e B): il modello vero ridisegnato dove è coperto (profondità invertita), tinta piatta calda quasi piena (`#ff7f24`, 0,9) col filo
+caldo chiaro sul contorno (dove la superficie gira di taglio: `#ffe28c`; crema spariva sui muri chiari), tirata verso la camera 0,6 m (1,4 m sul mezzo) così non si accende su se
+stessa. Anche per chi conta nella scena (i personaggi del momento, chi ti parla) e per il mezzo che guidi.
+
+**La visibilità di una casa passa da un punto solo**, `R.casaVisibile(casa, 'quota' | 'tetto', v)`: la usano taglio, muretto e tetto; chi rifà
+la fusione delle case ([leggero]) la rifà lì.
+
+**Il controllo del level designer** (coperto: almeno due dei tre raggi del corpo fermati; un campione ogni 0,5 m a 1,4 m/s):
+percorsi principali 1.510 m, coperti oggi 32%, con A 17%, con B 2%; scorciatoie 677 m: 71%, 37%, 23%. Tratto coperto più lungo: oggi 104 m
+(Sotto le mura), con A 30 m. I punti peggiori con A, da correggere nella mappa: Sotto le mura 1426-1455 × 273 (case 225, 230, 224: E0 di 3-4
+piani sul lato camera), Vico Scuro e Vico dell'Arco sotto l'arco del sottopasso (la volta non sbiadisce), la Rua a 1375-1393 × 309 (casa 347,
+4 piani) e a 1397-1426 × 308-313, Dal Corso alla stazione 1274-1290 × 310-315 (Condominio Aurora). Elenco intero in `copertura.json`.
+
+## 9. Camera e muretto, e la camera a mano ([visuale5], 23 ottobre)
+
+**La scelta del committente.** Restano i due prototipi di [visuale4]: **A, `camera`, è il modo di difetto**; B, il muretto, si sceglie con
+`?visuale=muretto` (il gioco non ha un menu delle impostazioni: niente interruttore in gioco; gli strumenti lo cambiano dal vivo con
+`R.setVisuale`). Via dal gioco l'ellisse ([varco2]: l'involucro del varco su ogni materiale, il varco nelle chiome, l'anello e il filo del
+varco nel post, le manopole `QUADRO.varco*`), il taglio ([visuale3]: `Visuale.scegli`, `Visuale.chiesta`, `?visuale=taglio`) e la
+sezione ([visuale]: la casa che sbiadiva intera, la sagoma a cubetti). Resta la macchina che usa il muretto: `Visuale.passo` e `quota`, la
+quota per casa in `R.casaVisibile` (la tessitura FD1 delle case fuse), il piano di taglio sui pezzi fuori dalla fusione, il registro delle
+cose sui tetti, la copertina. Prova in `src/test_visuale4.js` (ci sono confluite le due prove della macchina che erano in `test_visuale3.js`).
+
+**Il guadagno**, misurato nel gioco vero (`?cittanuova`, Chromium senza testa con SwiftShader, 960×600, nel borgo a 1400 × 312 e sulla
+Vittoria a 1360 × 334, dopo 15 s; programmi della scheda video e disegni della scena per fotogramma):
+
+| Modo | Programmi (borgo / Vittoria) | Disegni della scena (borgo / Vittoria) |
+|---|---|---|
+| prima, ellisse (`?visuale=ellisse`) | 230 / 234 | — / 2.251 |
+| prima, taglio (il difetto di allora) | 169 / 169 | 2.233 / 2.085 |
+| prima, camera (`?visuale=camera`) | 165 / 165 | 2.250 / 1.776 |
+| **dopo, camera (il difetto)** | **158 / 160** | — / 2.000 |
+| dopo, muretto | 161 / 163 | — / 2.102 |
+
+Contro l'ellisse il gioco ha 72-74 programmi in meno (l'involucro del varco su ogni materiale: le 46 famiglie dette in [visuale4] più le
+loro varianti con ombra e istanze); contro la camera di prima 5-7 in meno (il varco nelle chiome, il post più corto, la sagoma a cubetti e
+quella di riserva). I disegni per fotogramma non cambiano per la visuale: dipendono dai blocchi caricati (i numeri ballano di qualche
+centinaio fra una prova e l'altra sotto SwiftShader, «—» dove il fotogramma non è arrivato nei 4 s della misura); il varco non aggiungeva
+disegni, solo programmi e lavoro per pixel. Nessun errore di pagina in nessun modo.
+
+**La camera a mano** (`Visuale.mano`, `Visuale.limita`, manopole `Visuale.MANO`; in render.js la parte a mano `cam.mano` si somma alla
+visuale automatica). Il giocatore gira la visuale attorno al personaggio (levetta destra di lato, tasti `,` `.`, il bordo dello schermo,
+la rotella premuta trascinata di lato, un dito, la torsione di due dita) e la sposta (levetta destra in su e in giù, la rotella trascinata
+in su e in giù o con Maiusc in ogni verso, due dita che scorrono; lo zoom del controller resta sulla croce). Poi torna da sola, sopra la
+pendenza che si adatta e il tetto che sbiadisce di A, che continuano a lavorare sulla visuale girata:
+
+| Regola | Valore |
+|---|---|
+| in marcia / fermo | sopra 0,6 m/s si cammina; fermo sotto 0,25 m/s per 0,3 s (un passo incerto non è una sosta) |
+| spostata da fermo | alla partenza si ricentra |
+| spostata camminando | resta finché si cammina; si ferma e riparte: si ricentra. Una partenza entro 0,3 s dall'ultimo tocco vale come «camminando» |
+| contro la visuale | marcia a più di 110° dal davanti della visuale (verso la camera) per 1 s: si ricentra; sotto gli 80° il conto si azzera, in mezzo resta (isteresi); dopo un ricentro così niente altro per 1,5 s |
+| il ricentro | smorzamento esponenziale, τ 0,22 s (95% in 0,66 s), uguale a 20, 60 e 144 fps; appena il giocatore tocca la camera si ferma lì |
+| forzato | salendo su un mezzo, nei dialoghi, nell'intro, con l'editor |
+| lo scarto | a mano più lo sguardo avanti, entro il 70% della mezza inquadratura, misurata in prospettiva (in basso, verso la camera, c'è meno suolo che in alto) (di lato e in profondità): il personaggio non esce dallo schermo |
+| la levetta | segue la visuale di adesso, anche girata a mano: in su è sempre in su sullo schermo. Solo il ricentro automatico fatto mentre la tieni non la gira (la direzione nel mondo resta quella data, niente giri in tondo) finché non la lasci |
+
+Centro vuol dire la visuale automatica di sempre: sul computer l'orientamento fisso dell'isola, sul telefono quella che segue la marcia
+([camera3]). Sul telefono la contromarcia sostenuta lascia fare alla visuale che segue anche il mezzo giro che prima rifiutava (oltre 100°):
+è il «si ricentra nella direzione nuova». Sul computer, in centro, la contromarcia non fa niente (l'orientamento fisso è il centro).

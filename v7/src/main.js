@@ -51,20 +51,26 @@
   cv.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; const r = cv.getBoundingClientRect(); mouse.nx = (e.clientX - r.left) / r.width; mouse.ny = (e.clientY - r.top) / r.height; mouse.cx = e.clientX - app.getBoundingClientRect().left; mouse.cy = e.clientY - app.getBoundingClientRect().top; mouse.active = true; });
   cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { mouse.down = false; const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width; if (nx < .08) mouse.nx = 0; else if (nx > .92) mouse.nx = 1; else mouse.active = false; } });
   // [monte] tenendo premuta la rotella del mouse e trascinando, la visuale gira attorno al giocatore
+  // [visuale5] e la sposta: di lato gira, in su e in giù sposta la visuale (il mondo segue il mouse); con Maiusc sposta anche di lato.
+  // ui.pan si somma fino al fotogramma (frazioni dello schermo); render.js (Visuale.mano) decide quando la camera torna da sola
   let camDrag = null; ui.drag = 0;
+  function addPan(dx, dy) { const q = ui.pan || (ui.pan = { dx: 0, dy: 0 }); q.dx += dx; q.dy += dy; }
   // [telefono] due dita sullo schermo: pizzico per lo zoom (il secondo dito non cammina, non spara, non spruzza)
-  const pin = new Map(); let pinD = 0, pinA = 0;
+  const pin = new Map(); let pinD = 0, pinA = 0, pinM = null;
   const pinDist = () => { const [a, b] = [...pin.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
   const pinAng = () => { const [a, b] = [...pin.values()]; return Math.atan2(b.y - a.y, b.x - a.x); };
+  const pinMid = () => { const [a, b] = [...pin.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };   // [visuale5]
   cv.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') return; pin.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pin.size === 2) { pinD = pinDist(); pinA = pinAng(); tg = null; if (tp.id !== null) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } mouse.pressed = false; click.t = null; ui.mark = null; }
+    if (pin.size === 2) { pinD = pinDist(); pinA = pinAng(); pinM = pinMid(); tg = null; if (tp.id !== null) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } mouse.pressed = false; click.t = null; ui.mark = null; }
     if (pin.size >= 2) e.stopImmediatePropagation(); });
   cv.addEventListener('pointermove', e => { const q = pin.get(e.pointerId); if (!q) return; q.x = e.clientX; q.y = e.clientY;
-    if (pin.size === 2) { const d = pinDist(), a = pinAng(); let da = a - pinA; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; zoomBy(pinD / d); ui.drag = (ui.drag || 0) + da; ui.rotUser = true; pinD = d; pinA = a; e.stopImmediatePropagation(); } });   // due dita: pizzico = zoom, torsione = la visuale gira
-  const pinUp = e => { pin.delete(e.pointerId); };
+    if (pin.size === 2) { const d = pinDist(), a = pinAng(); let da = a - pinA; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; zoomBy(pinD / d); ui.drag = (ui.drag || 0) + da; ui.rotUser = true; pinD = d; pinA = a;
+      const m = pinMid(), r = cv.getBoundingClientRect(); if (pinM) addPan((m.x - pinM.x) / r.width, (m.y - pinM.y) / r.height); pinM = m; e.stopImmediatePropagation(); } });   // due dita: pizzico = zoom, torsione = la visuale gira   // [visuale5] scorrere = la visuale si sposta
+  const pinUp = e => { pin.delete(e.pointerId); pinM = null; };
   addEventListener('pointerup', pinUp); addEventListener('pointercancel', pinUp);
-  cv.addEventListener('pointerdown', e => { if (e.button === 1) { camDrag = e.clientX; e.preventDefault(); } });
-  addEventListener('pointermove', e => { if (camDrag !== null) { ui.drag += (e.clientX - camDrag) * .008; camDrag = e.clientX; } });
+  cv.addEventListener('pointerdown', e => { if (e.button === 1) { camDrag = { x: e.clientX, y: e.clientY }; e.preventDefault(); } });
+  addEventListener('pointermove', e => { if (camDrag !== null) { const r = cv.getBoundingClientRect(), dx = e.clientX - camDrag.x, dy = e.clientY - camDrag.y;
+    if (e.shiftKey) addPan(dx / r.width, dy / r.height); else { ui.drag += dx * .008; addPan(0, dy / r.height); } camDrag = { x: e.clientX, y: e.clientY }; } });   // [visuale5]
   addEventListener('pointerup', e => { if (e.button === 1) camDrag = null; });
   cv.addEventListener('pointerdown', e => { cv.focus(); A.init(); const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
     if (window.Cantiere && Cantiere.active() && e.button !== 1) { Cantiere.down(e.button, nx, ny); return; }   // [cantiere] si costruisce, non si cammina
@@ -777,10 +783,10 @@
   // Prima il gioco non leggeva il controller: chi lo usava passava da una mappatura sui tasti (WASD, niente corsa, visuale col mouse).
   // Ora si legge a ogni fotogramma, prima del passo del motore. La levetta sinistra cammina rispetto a quello che vedi: zona morta
   // rotonda del 15%, poi una curva (poco inclinata è il passo lento) che arriva alla corsa piena all'85%. La destra gira la visuale
-  // (in orizzontale) e la avvicina o allontana (in verticale). I tasti diventano quelli della tastiera: A salta (Invio nei menu),
+  // (in orizzontale) e la sposta avanti e indietro (in verticale: [visuale5], prima era lo zoom, che resta sulla croce). I tasti diventano quelli della tastiera: A salta (Invio nei menu),
   // B monta o scende, X agisce, Y parla, LB ricarica, RB cambia arma, Back esce, Start il taccuino; il grilletto destro spara dove
   // guardi (alla guida: destro gas, sinistro freno e retro); la croce su e giù fa lo zoom.
-  const PAD = { on: false, x: 0, y: 0, m: 0, rot: 0, zoom: 0, fire: false, gas: 0, brk: 0, down: [] };
+  const PAD = { on: false, x: 0, y: 0, m: 0, rot: 0, pan: 0, fire: false, gas: 0, brk: 0, down: [] };
   const PAD_DZ = .15, PAD_RUN = .85, PAD_KEYS = { 0: ' ', 1: 'f', 2: 'e', 3: 't', 4: 'r', 5: 'q', 8: 'Escape', 9: 'Tab' };
   // la stessa risposta per il controller e per la levetta a schermo: 0 nella zona morta, 1 (la corsa) da PAD_RUN in su
   function stickResp(l) { const d = Math.max(0, Math.min(1, (l - PAD_DZ) / (PAD_RUN - PAD_DZ))); return d > 0 ? Math.pow(d, 1.4) : 0; }
@@ -794,12 +800,12 @@
   function padPoll(dt) {
     let g = null;
     try { const L = navigator.getGamepads ? navigator.getGamepads() : null; if (L) for (let i = 0; i < L.length; i++) { const q = L[i]; if (q && q.connected !== false && q.axes && q.axes.length >= 2) { g = q; break; } } } catch (e) { }
-    if (!g) { if (PAD.on) { PAD.on = false; PAD.x = PAD.y = PAD.m = PAD.rot = PAD.zoom = PAD.gas = PAD.brk = 0; PAD.fire = false; PAD.down.forEach((d, i) => { if (d) padKey(i, false); }); PAD.down = []; } return; }
+    if (!g) { if (PAD.on) { PAD.on = false; PAD.x = PAD.y = PAD.m = PAD.rot = PAD.pan = PAD.gas = PAD.brk = 0; PAD.fire = false; PAD.down.forEach((d, i) => { if (d) padKey(i, false); }); PAD.down = []; } return; }
     const ax = g.axes[0] || 0, ay = g.axes[1] || 0, l = Math.hypot(ax, ay), m = stickResp(l);
     PAD.m = m; PAD.x = m > 0 ? ax / l : 0; PAD.y = m > 0 ? ay / l : 0;
-    PAD.rot = -axis1(g.axes[2] || 0) * 1.6; PAD.zoom = axis1(g.axes[3] || 0);
+    PAD.rot = -axis1(g.axes[2] || 0) * 1.6; PAD.pan = -axis1(g.axes[3] || 0);   // [visuale5] in su la visuale va avanti
     const B = g.buttons || [], bv = i => { const b = B[i]; return !b ? 0 : typeof b === 'object' ? (b.pressed ? Math.max(.6, b.value || 0) : b.value || 0) : +b; };
-    let any = m > 0 || PAD.rot !== 0 || PAD.zoom !== 0;
+    let any = m > 0 || PAD.rot !== 0 || PAD.pan !== 0;
     for (let i = 0; i < B.length && i < 16; i++) {
       const d = bv(i) > .5; if (d) any = true; if (d === !!PAD.down[i]) continue; PAD.down[i] = d;
       if (PAD_KEYS[i]) padKey(i, d);
@@ -807,7 +813,7 @@
     }
     PAD.gas = bv(7); PAD.brk = bv(6);
     const fire = PAD.gas > .5 && !st.player.vehicle && !ui.dialog && !ui.book && !ui.menu; if (fire && !PAD.fire) mouse.pressed = true; PAD.fire = fire;
-    if (PAD.zoom && !ui.intro && !ui.dialog && !ui.book) zoomBy(1 + PAD.zoom * dt * 1.6);
+    if (PAD.pan && !ui.intro && !ui.dialog && !ui.book) addPan(0, PAD.pan * dt * (window.Visuale ? Visuale.MANO.spostaK : .6));   // [visuale5] la levetta destra in verticale sposta la visuale
     if (any) { PAD.on = true; mouse.active = false; mouse.down = false; lastAim = null; ui.aimPoint = null; }
   }
 
@@ -875,7 +881,6 @@
   const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', KITS), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
   Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
   function boot() {
-  if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
   let glOk = true;
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }
   if (!glOk) {
@@ -889,7 +894,6 @@
   new ResizeObserver(size).observe(app); size();
   // [fluido] i programmi della scheda video si preparano adesso, durante il caricamento, non a scatti mentre si gioca
   try { const M0 = R.__models; if (M0 && M0.renderer && M0.scene && R.getCamera) M0.renderer.compile(M0.scene, R.getCamera()); } catch (e) { console.warn('[compile]', e); }
-  requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il menu è disegnato: si può mostrare
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
   const loop = typeof Misura !== 'undefined' ? Misura.timed(loop0, 'main:ciclo') : loop0;   // [misura]
   // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
@@ -943,14 +947,24 @@
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if (touchMode && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: touchMode && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot, drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: touchMode && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot, drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); }
     requestAnimationFrame(loop);
   }
-  requestAnimationFrame(loop);
+  // [carico] i programmi della scheda video si preparano insieme (vedi render.js, KHR_parallel_shader_compile): finché non
+  // sono pronti il gioco non disegna (il primo fotogramma li aspetterebbe fermo), il pulsante dice a che punto siamo e la
+  // pagina resta viva. Oltre i 60 s si parte comunque
+  const shT0 = performance.now();
+  (function shWait() {
+    let f = 1; try { f = R.shadersPronti ? R.shadersPronti() : 1; } catch (e) { }
+    if (f < 1 && performance.now() - shT0 < 60000) { if (goBtn) goBtn.textContent = 'Preparo la grafica… ' + Math.round(f * 100) + '%'; host(.85 + .15 * f); setTimeout(shWait, 100); return; }
+    if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
+    last = performance.now(); requestAnimationFrame(loop);
+    requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il menu è disegnato: si può mostrare
+  })();
   window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)
   }
 })();

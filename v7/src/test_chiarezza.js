@@ -25,7 +25,7 @@ ok(porte.every(q => C.davanti(F, q.x + q.nx * 2, q.z + q.nz * 2) && C.davanti(F,
 const S = C.strade(W.roads);
 console.log('vie alberate', S.map(s => `${s.rd.name}:${s.kind}:${s.sp || 'leccio'}:lati ${s.lati.length}`).join(' · '));
 ok(!S.some(s => s.rd.pennoni), 'nessun albero sulla Vittoria dei pennoni');
-ok(!S.some(s => s.rd.kind === 'vicolo' || s.rd.w < 7), 'nessun albero nei vicoli e nelle vie strette');
+ok(!S.some(s => (s.rd.kind === 'vicolo' || s.rd.w < 7) && !s.rd.passeggio), 'nessun albero nei vicoli e nelle vie strette (la Passeggiata della Spianata ha il suo filare verso la spianata)');
 ok(S.some(s => s.kind === 'filare' && s.sp === 'leccio'), 'il Corso ha il suo filare di lecci');
 ok(S.filter(s => s.kind === 'viale').every(s => s.lati.length === 1), 'le altre vie alberate solo su un lato');
 // i filari dopo il filtro dei fronti
@@ -50,12 +50,16 @@ ok(['consegna', 'cantiere'].every(k => C.SCENE_A_TERRA.includes(k)), 'pannelli e
 // 5) [spianata2] il palco del potere (palco.js): le cose disegnate al loro posto, le vie libere, le cose a terra solo nelle scene
 { const PA = require(path.join(src, 'palco.js')), Pl = PA.piano(W, W.BUILDINGS, tile, W.T, TS), T = W.T;
   if (process.env.V) console.log("palco", JSON.stringify({ asse: Pl && Pl.asse, eli: Pl && Pl.eliporto, ant: Pl && Pl.antenna, F: [W.FORT.x, W.FORT.y, W.FORT.tip] }));
-  ok(!!Pl && Pl.carri.length === PA.CARRO.n && Pl.container.length === PA.CONT.n && !!Pl.eliporto && !!Pl.antenna, `il palco ha i suoi pezzi (carri ${Pl && Pl.carri.length}, container ${Pl && Pl.container.length}, eliporto, antenna)`);
+  // [cucitura] nel Recinto del Garante il piazzale e la banchina sono stretti: la colonna dei carri e la fila dei container ne tengono almeno due
+  const nMin = W.recinto ? 2 : PA.CARRO.n, cMin = W.recinto ? 2 : PA.CONT.n;
+  ok(!!Pl && Pl.carri.length >= nMin && Pl.carri.length <= PA.CARRO.n && Pl.container.length >= cMin && Pl.container.length <= PA.CONT.n && !!Pl.eliporto && !!Pl.antenna, `il palco ha i suoi pezzi (carri ${Pl && Pl.carri.length}, container ${Pl && Pl.container.length}, eliporto, antenna)`);
   const sotto = (x, z, hx, hz) => { const S = new Set(); for (let a = -hx; a <= hx + .01; a += .5) for (let b = -hz; b <= hz + .01; b += .5) S.add(tile(Math.floor((x + a) / TS), Math.floor((z + b) / TS))); return [...S]; };
   const pezzi = [].concat(Pl.carri.map(c => ['carro', c.x, c.z, PA.CARRO.hx, PA.CARRO.hz]), Pl.container.map(c => ['container', c.x, c.z, PA.CONT.hx, PA.CONT.hz]), [['eliporto', Pl.eliporto.x, Pl.eliporto.z, PA.PAD, PA.PAD], ['antenna', Pl.antenna.x, Pl.antenna.z, PA.ANT.r, PA.ANT.r]]);
   ok(pezzi.every(([k, x, z, hx, hz]) => sotto(x, z, hx, hz).every(v => v !== T.BLD && v !== T.WATER && v !== T.VIA)), 'carri, container, eliporto e antenna su suolo aperto, mai sulla strada né dentro un edificio');
   ok(pezzi.every((p, i) => pezzi.every((q, j) => i === j || Math.abs(p[1] - q[1]) >= p[3] + q[3] || Math.abs(p[2] - q[2]) >= p[4] + q[4])), 'nessuna sagoma del palco ne copre un\'altra');
-  ok(Pl.carri.every(c => c.z === Pl.carri[0].z && c.rot === Pl.carri[0].rot) && Pl.carri.every((c, i) => !i || Math.abs(c.x - Pl.carri[i - 1].x - PA.CARRO.passo) < .01), 'i carri in fila: stessa linea, stesso verso, passo fisso');
+  ok(Pl.carri.every(c => c.rot === Pl.carri[0].rot) && (Pl.carri.every((c, i) => c.z === Pl.carri[0].z && (!i || Math.abs(c.x - Pl.carri[i - 1].x - PA.CARRO.passo) < .01)) || Pl.carri.every((c, i) => c.x === Pl.carri[0].x && (!i || Math.abs(c.z - Pl.carri[i - 1].z - PA.CARRO.passo) < .01))), 'i carri in fila (o in colonna): stessa linea, stesso verso, passo fisso');
+  if (W.recinto) { const R = W.recinto, den = (x, z) => x > R.xw && x < R.xe && z > R.yP && z < R.yS + 40;
+    ok(Pl.carri.concat(Pl.container).every(c => den(c.x, c.z)), '[cucitura] carri e container dentro il Recinto del Garante, non sulla spianata'); }
   ok(Pl.container.every(c => c.x === Pl.container[0].x && c.rot === 0), 'i container in fila contro il Muro');
   ok(Math.hypot(Pl.antenna.x - Pl.eliporto.x, Pl.antenna.z - Pl.eliporto.z) > PA.PAD + PA.ANT.r, 'l\'antenna non sta sulla piazzola');
   ok(pezzi.every(([k, x, z, hx, hz]) => z + hz <= Pl.asse.z0 || z - hz >= Pl.asse.z1 || x + hx < W.FORT.x), `l'asse della Porta resta libero (z ${Pl.asse.z0.toFixed(1)}-${Pl.asse.z1.toFixed(1)})`);

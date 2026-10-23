@@ -551,9 +551,23 @@ var Writing = (function () {
   function canvasTexture(c) { const t = new (T3().CanvasTexture)(c); t.encoding = T3().sRGBEncoding; t.anisotropy = 4; return t; }
   // il piano del muro davanti a un punto: raggio orizzontale verso face (gli NPC) o il colpo del giocatore
   function cands(x, z) { const R = R_(); try { return R.__bmb.bmbCands(x, z).filter(o => !o.userData.velo && !o.userData.wr); } catch (e) { return []; } }
+  // [leggera] solo le mesh che il tratto di raggio può toccare: three scarta una mesh se la retta INFINITA non passa per la sua sfera e
+  // il limite far lo applica dopo, sui punti trovati; così un raggio di 1,3 m provava triangolo per triangolo ogni mesh sulla sua
+  // linea fino a 25 m (in `wallRect`, 27 raggi per lavoro, era il primo peso del processore sulla Vittoria). Un punto a distanza ≤ far
+  // sta nel tratto e nella sfera della sua mesh: chi resta fuori non poteva dare un punto, il risultato è lo stesso.
+  function segList(o, d, far, list) {
+    const THREE = T3(), out = GFX.seg || (GFX.seg = []), S = GFX.sph || (GFX.sph = new THREE.Sphere()); out.length = 0;
+    for (const m of list) {
+      const g = m.geometry; if (!g || (m.userData && typeof m.userData.lazy1 === 'function')) { out.push(m); continue; }   // il pezzo che si rifà prima del raggio: com'era
+      if (!g.boundingSphere) g.computeBoundingSphere(); S.copy(g.boundingSphere).applyMatrix4(m.matrixWorld);
+      const cx = S.center.x - o.x, cy = S.center.y - o.y, cz = S.center.z - o.z, t = Math.max(0, Math.min(far, cx * d.x + cy * d.y + cz * d.z));
+      const ex = cx - d.x * t, ey = cy - d.y * t, ez = cz - d.z * t; if (ex * ex + ey * ey + ez * ez <= S.radius * S.radius * 1.0001 + 1e-6) out.push(m);
+    }
+    return out;
+  }
   function rayWall(o, d, far, list) {
     const THREE = T3(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.set(o, d); rc.far = far; rc.near = 0;
-    const h = rc.intersectObjects(list, false).find(h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
+    const h = rc.intersectObjects(segList(o, rc.ray.direction, far, list), false).find(h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
     if (!h) return null; const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (n.dot(d) > 0) n.negate(); return { p: h.point.clone(), n, obj: h.object };
   }
   // il riquadro W × H centrato in c sul piano (n orizzontale): è tutto muro? (9 raggi); se no si rimpicciolisce
@@ -1577,6 +1591,6 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { ARTW, placeWall, artFor, scanNear, cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
+  return { __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { ARTW, placeWall, artFor, scanNear, cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;

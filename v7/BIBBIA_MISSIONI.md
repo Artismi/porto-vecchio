@@ -127,7 +127,11 @@ La città nuova è stata **compattata** (progetto in `src/progetto_citta/MAPPA_C
 di gioco della città nuova, non quelle della mappa vecchia qui sopra). Le regioni **D**, **E** e **G** cambiano così:
 - **D (periferia ovest)**: niente più quartiere a ovest della stazione. A ovest di x 1250 ci sono i **Giardini di Ponente** (sotto: la
   **Città dei Topi**), la pineta e gli orti. Officina, Discoteca/Radio Luna e il covo si sono spostati dentro la città (vedi sotto).
-- **E (quartiere del governo)**: tolto come quartiere. Il **Palazzo del Governo** sta sul Corso, l'**Archivio** e la **Biblioteca** sul
+- **E (quartiere del governo)**: tolto come quartiere. [cucitura] Il regime non sta più sulla Vittoria (che è una via viva di 7 m coi
+  portici di bottega): il **Palazzo del Governo**, il **Ministero dell'Ordine** con la **torre littoria**, gli **Uffici del Garante** (il corpo
+  di guardia) e la **Pietra dell'Onda** (la caserma) stanno nel **Recinto del Garante**, al porto fortificato fra la spianata, il canale della
+  Rocca e il mare (muro col camminamento, sette torri, il varco col posto di blocco sulla Vittoria). L'ex piazza d'adunata è la **Piazza
+  Grande** (`piazza_gov`) col **Cinema Astor** e la fontana; il rifugio antiaereo resta sotto. L'**Archivio** e la **Biblioteca** sul
   piazzale della stazione; la **stanza murata del regime** è sotto la stazione. Il boom resta solo lungo la **Via del Porto**.
 - **G (periferia est, Lido)**: gli alberghi (Flamingo, Paradiso, Oceano, Miramare, Gabbiano, Stella) stanno nel borgo e sulla marina; la
   **discarica** è alle **baracche** dietro il rilevato della ferrovia (sotto: l'**autobus sepolto**).
@@ -149,7 +153,7 @@ segna in rosa con `PV_CITTANUOVA=1 node src/mappa_luoghi.js`):
 | 8 | Mercato ottagonale | 1274, 343 | hub, pericolo | i tetti dell'Ottocento (il giro del Mercato) |
 | 9 | Stazione e scalo merci | 1273, 309 | pericolo, premio | la stanza murata sotto il fabbricato |
 | 10 | Baracche e grata del vapore | 1286, 271 | hub, segreto | l'autobus sepolto sotto la discarica |
-| 11 | Posto di blocco della Vittoria | 1469, 343 | pericolo | i tetti delle case mozzate |
+| 11 | Posto di blocco della Vittoria (il varco del Recinto del Garante) | 1492, 343 | pericolo | il borgo sepolto sotto il Muro: la grata della spianata e quella dentro il recinto |
 | 12 | La Rocca | 1556, 334 | pericolo | per mare fino alla porta d'acqua; il cunicolo e la cisterna |
 
 Le **porte** della città sono sei (Porta di Terra, sottoportico dei Bottai, sottopasso Cavour, scala dei pescatori, posto di blocco,

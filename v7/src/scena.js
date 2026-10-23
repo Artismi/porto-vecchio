@@ -56,7 +56,7 @@ var Scena = (function () {
     sagrato: { tipo: 'piazzetta', set: 'sagrato', dom: 'alberi', sec: ['panchina', 'cabina_sip', 'edicola_giornali'], acc: ['gesso'] },
     marina: { tipo: 'piazzetta', set: 'marina', dom: 'dehors', sec: ['rete', 'merce', 'bitta'], acc: ['gesso'] },
     mercato: { tipo: 'piazzetta', set: 'mercato', dom: 'tettoia', sec: ['banchi', 'cassonetti', 'bidone'], acc: ['gesso'] },
-    adunata: { tipo: 'piazzetta', set: 'adunata', dom: 'palco', sec: ['pennoni', 'transenne'], acc: ['stencil'] },
+    adunata: { tipo: 'piazzetta', set: 'adunata', dom: 'dehors', sec: ['panchina', 'edicola_giornali', 'cabina_sip'], acc: ['gesso'] },   // [cucitura] la Piazza Grande (l'ex adunata): il caffè, non il palco
   };
   for (const k in CATALOGO) CATALOGO[k].nome = k;
   // le famiglie dei dominanti (mai due della stessa famiglia a meno di 15 m)
@@ -105,7 +105,7 @@ var Scena = (function () {
         reg({ tipo: 'sbocco', via: q.id, era: q.era, rango: 1, x: e[0], z: e[1], ux, uz, w: q.w, fondale: fd }); }); });
     // 3) le piazzette e i nodi (le scenografie di world_cittanuova)
     W.sets.forEach(q => { if (q.k === 'calata') return; const x = q.x !== undefined ? q.x : (q.x0 + q.x1) / 2, z = q.y !== undefined ? q.y : (q.y0 + q.y1) / 2, r = q.r || Math.max(q.x1 - q.x0, q.y1 - q.y0) / 2;
-      reg({ tipo: 'piazzetta', set: q.k, bar: !!q.bar, forno: !!q.forno, era: q.k === 'adunata' ? 'E4' : q.k === 'mercato' ? 'E3' : q.k === 'marina' ? 'E2' : 'E0', rango: 3, x, z, r, fondale: fondale(x, z) }); });
+      reg({ tipo: 'piazzetta', set: q.k, bar: !!q.bar, forno: !!q.forno, era: q.k === 'adunata' ? (q.civica ? 'E3' : 'E4') : q.k === 'mercato' ? 'E3' : q.k === 'marina' ? 'E2' : 'E0', rango: 3, x, z, r, fondale: fondale(x, z) }); });
     // ---- l'impaginazione per ogni pagina ----
     const vicine = (p, R) => { const out = [], n = Math.max(0, Math.ceil(R / 12) - 1), seen = new Set(); for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) for (const o of S.celle.get(cella(p.x + i * 12, p.z + j * 12)) || []) { if (o === p || !o.imp || seen.has(o)) continue; seen.add(o); if (Math.hypot(o.x - p.x, o.z - p.z) < R) out.push(o); } return out; };
     // ordine di assegnazione: per via e progressiva, così «mai la stessa a meno di 3 pagine» vale lungo la strada

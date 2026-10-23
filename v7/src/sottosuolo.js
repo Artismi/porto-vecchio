@@ -105,7 +105,7 @@ var Sottosuolo = (function () {
       for (let yL = Math.floor(W.FORT.ditch[1] / TS) + 6; yL < Math.floor(W.FORT.ditch[3] / TS) + 2; yL += 12) {
         let m = 1e9; for (let tx = X0; tx <= X1; tx++) if (inb(tx, yL) && G.tileAt(tx, yL) !== T.WATER) m = Math.min(m, E(tx, yL)); if (m > 1e8) continue;
         const f = m - 4.4, lane = []; for (let tx = X0; tx <= X1; tx++) { if (ug[idx(tx, yL)] && kind[idx(tx, yL)] === K.FOGNA && lane.length) { lane.push(tx); continue; }   // la fogna sotto la strada della spianata: il vicolo ci sbuca e prosegue
-          if (!free(tx, yL) || G.tileAt(tx, yL) === T.BLD) { if (lane.length > 3) break; lane.length = 0; continue; } lane.push(tx); }
+          if (!free(tx, yL) || (G.tileAt(tx, yL) === T.BLD && (!W.recinto || W.bIndex[idx(tx, yL)] >= 0))) { if (lane.length > 3) break; lane.length = 0; continue; } lane.push(tx); }   // [cucitura] sotto i muri del Recinto (pezzi) il vicolo sepolto passa
         if (lane.length < 5) continue; lane.forEach(tx => { if (kind[idx(tx, yL)] !== K.FOGNA) put(tx, yL, f, K.SEPOLTA, true); });
         const Rl = { x: cen((lane[0] + lane[lane.length - 1]) / 2), y: cen(yL), f, deco: 'vicolo_sepolto', w: lane.length * TS, h: TS, x0: lane[0], y0: yL, tw: lane.length, th: 1, light: LIGHT.sepolta, name: 'Il borgo sepolto' }; rooms.push(Rl);
         let nh = 0;
@@ -121,6 +121,9 @@ var Sottosuolo = (function () {
       lanes.forEach((q, k) => { if (k) corridor(q.lane[0], lanes[k - 1].yL, q.lane[0], q.yL, lanes[k - 1].f, q.f, K.SEPOLTA);
         if (k % 2 === 0) { const ex = exitOn(q.lane[2], q.yL, q.lane.length - 4, 1, 'grata', 'Il borgo sepolto'); if (!ex) { const n2 = nearWalk(q.lane[q.lane.length >> 1], q.yL, 3); if (n2) { corridor(q.lane[q.lane.length >> 1], q.yL, n2[0], n2[1], q.f, E(n2[0], n2[1]) - 3, K.SEPOLTA); portal('grata', n2, 'Il borgo sepolto'); } } }
         lamp(cen(q.lane[1]), cen(q.yL), q.f + 1.7, '#ffa050', 'torcia'); });
+      // [cucitura] dove il vicolo sepolto passa sotto il Muro del Garante, una grata anche dall'altra parte: dentro il Recinto (la testa di ponte,
+      // il piazzale), così il borgo raso è la via sotto il posto di blocco
+      if (W.recinto && W.WALL) lanes.forEach(q => { for (let i = q.lane.length - 1; i >= 0 && cen(q.lane[i]) > W.WALL.x + 1.5; i--) { const tx = q.lane[i]; if (G.walkT(tx, q.yL) && !taken(tx, q.yL)) { portal('grata', [tx, q.yL], 'Il borgo sepolto, sotto il Recinto'); break; } } });
       if (lanes.length) { const q = lanes[lanes.length >> 1]; toSewer(q.lane[0], q.yL, q.f, K.SEPOLTA); place('borgo_sepolto', 'Il borgo sepolto (raso nel 1660)', first.x, first.y, 10, 'sepolta'); }
       // ---- LE CASE DELLO SVENTRAMENTO (1932) SOTTO LA VIA DELLA VITTORIA: cantine e pianterreni del borgo tagliato ----
       // a destra e a sinistra della fogna, case di 6×4 m, ciascuna con la sua porta sulla fogna (il vecchio vicolo)

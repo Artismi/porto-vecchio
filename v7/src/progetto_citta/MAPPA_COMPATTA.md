@@ -521,3 +521,89 @@ Cosa resta e i rischi:
   Mercato la tettoia prende la piazza); le edicole al Mercato, alla Stazione e sulla Vittoria.
 - Il **Corso** ha il filare da un lato solo: 5 lecci su 85 m.
 - `BIBBIA_MISSIONI.md` sez. 3.2 resta per la mappa vecchia; la città compatta è nella sez. 3.2bis.
+
+---
+
+## 13. La cucitura: la Vittoria viva, il Recinto del Garante e il passaggio fra città e Rocca ([cucitura], 23 ottobre)
+
+Il committente: «La via centrale vuota non mi piace, con questi palazzoni grigi governativi: togliamoli, o al massimo vicino al porto
+fortificato, dove ora ci sono un sacco di torri di controllo senza un muro, che non hanno senso. Il modo in cui la città si connette alla
+fortezza è netto, molto basic e casuale, non sembra vero». Immagini in `_immagini/cucitura/` (piante prima e dopo, quattro foto).
+
+### 13.1 La Via della Vittoria: una via, non un asse di parata
+
+| | prima | dopo |
+|---|---|---|
+| larghezza | 10 m di travertino, portici di 4,5 m sui due lati, case a 13 m dall'asse: 26 m fra i fronti | **7 m** (6 di carreggiata a basoli e 2 di marciapiede per parte), **portico di bottega solo a nord** (3,6 m, il lato lontano dalla camera), case a 9 m a nord e a 5 m a sud: **14 m fra i fronti** |
+| fronti | cortina del regime (E4), 5 piani portati a 3, travertino con le lettere (DOPOLAVORO, PREFETTURA…) | a nord palazzetti dell'Ottocento (E3) di 3 piani dietro il portico ad archi d'intonaco (ocra, calce, rosso), persiane, cornicione e coppi (`portico` con `stile: 'ottocento'`); a sud case del borgo (E0) di 2 piani a filo del marciapiede |
+| arredo | pennoni ogni 12 m, lampioni del regime, fascia di bardiglio, posto di blocco in mezzo | lampioni a palo dell'Ottocento sul lato sud ogni 18 m, niente pennoni, il lastrico a basoli scuri (`rd.viva`, `rd.nudo`) |
+| vita | `Posti.DENS.vittoria` 0,15 («deve restare vuota») | 0,9; caffè e farmacia della Vittoria, le botteghe dell'Ottocento sotto il portico, la fermata del Mercato in uno slargo fra la tettoia e il Corso |
+
+**La Piazza Grande** (l'ex piazza d'adunata, 1313-1343 × 329-362; la scenografia resta `k: 'adunata'` con `civica: true`, il posto
+`piazza_gov` si chiama Piazza Grande): via il Palazzo del Governo, il Ministero e la torre littoria; sul lato nord il **Cinema Astor**
+(prende il posto del Ministero, col fronte sulla piazza), nella metà sud la **fontana** (pezzo), le panchine, il dehors del caffè,
+l'edicola e la cabina. Il rifugio antiaereo resta sotto la piazza (il segreto Cripta → rifugio → bunker non cambia). Il **Palazzo della
+Cultura** lascia il fronte della Vittoria: sta dietro, sulla Via di Mezzo.
+
+La linea 1 (Stazione – Vittoria – Mercato – Marina) resta: le fermate sono sulla Piazza Grande e nello slargo del Mercato.
+La parata della domenica passa ancora sulla Vittoria (`parata`), fra le botteghe: è il contrasto che racconta il regime.
+
+### 13.2 Il Recinto del Garante: un muro vero che chiude qualcosa
+
+Prima: un Muro di lastre da riva a riva in mezzo alla spianata (x 1488, con sette torri, quasi tutto invisibile in gioco: si vedevano solo
+le torri), un secondo muretto col posto di blocco a 1469 e quattro pali dei riflettori in fila. Tre segni per la stessa cosa e nessun
+recinto. Ora il regime sta **in un recinto solo, al porto fortificato** (`W.recinto`, `POSA.recinto` nel generatore):
+
+| Parte | Dove (metri finali) | Com'è |
+|---|---|---|
+| **Varco col posto di blocco** | x 1492, y 331-355, attraverso la Vittoria | il `muro_garante` col varco di 6 m, la sbarra, la garitta, i sacchi, il riflettore; è la sola porta di terra del recinto e della Rocca |
+| **Testa di ponte** | 1492-1504 × 331-355 | il piazzaletto fra il varco e il ponte; il muro a tramontana fino al canale; il **corpo di guardia** (gli Uffici del Garante, 2 piani) |
+| **Muro del Garante** | lungo la spianata (y 355, da 1471 a 1492) e verso la città (x 1471, da 355 fino in mare, 63 m) | lastre a L di 3,6 m, filo spinato, la fascia dipinta, le scritte di settore (1-B … 1-G), il **camminamento di ronda** sul retro con la ringhiera e le scalette (`camminamento: true`) |
+| **Torri di guardia** (7) | ai due lati del varco, sull'angolo del canale, sullo spigolo, ogni 22 m lungo il muro verso la città, sulla riva | pezzo nuovo `torre_guardia`: fusto di cemento, cabina vetrata, ballatoio, riflettore che spazza (i fasci di render.js), luce rossa |
+| **Palazzo del Governo** | 1476-1490 × 358-368 | il primo dei due palazzi del regime, contro il muro della spianata: dalla Vittoria se ne vede il retro sopra il muro |
+| **Ministero dell'Ordine e torre littoria** | 1484-1494 × 372-382, la torre 1496-1504 × 373-382 (28 m) | il secondo palazzo; la torre sulla punta della banchina, dove il canale sbocca in mare, guarda il porto e il ponte (arengario verso il piazzale) |
+| **Caserma** (la Pietra dell'Onda) | 1476-1484 × 372-402 | la `caserma` lunga contro il muro verso la città, col fronte sul piazzale |
+| **Deposito** | 1474-1486 × 404-411 | la `polveriera` senza cinta, in fondo al piazzale contro la riva |
+| **Piazzale dei mezzi** | 1484-1497 × 382-402 | i carri in colonna, i solchi dei cingoli (palco.js) |
+| **Banchina** | lungo il canale (1498-1504) e sul mare (4 m) | i container in fila sulla banchina del canale, i pali dei riflettori (3) |
+
+`palco.js` impagina il palco del potere dentro il recinto (carri, container, cose a terra al varco e al piede del muro, tracce, canalette);
+la spianata davanti resta vuota. In render il Muro lungo non si disegna più quando c'è il recinto: muri, torri e varco sono pezzi.
+
+### 13.3 La cucitura fra la città e la Rocca
+
+I riferimenti: i castelli aragonesi a mare stanno davanti alla città oltre un fossato d'acqua, con una spianata libera (il tiro delle
+artiglierie) e una testa di ponte; la città gira le facciate verso la spianata e ci fa la sua passeggiata (Taranto: la Città vecchia, il
+canale navigabile, il castello e la piazza; Brindisi: il Forte a Mare staccato dall'isola di Sant'Andrea; Otranto e Gallipoli: il castello
+col fossato e il ponte verso il borgo, la piazza davanti). La sequenza, da ovest a est lungo la Vittoria (y 343):
+
+| | x | largo | cosa si legge dalla camera |
+|---|---|---|---|
+| l'ultimo isolato del borgo | fino a 1462 | — | le case girate verso la spianata: le porte e le botteghe sulla passeggiata (prima muri ciechi di case «mozzate») |
+| **Passeggiata della Spianata** | 1463-1468 | 5 m | una via di basoli da tramontana (il belvedere sugli scogli, in fondo alle mura) al Lido; a nord della Vittoria il **filare di lecci** dalla parte della spianata (x 1470,5, ogni 12 m; `alberiOff`), a sud corre lungo il muro del recinto e scende alla spiaggia |
+| **la Spianata** (il glacis) | 1468-1492 | 24 m sull'asse, 36 × 76 m a nord | terra battuta, vuota; la Vittoria la attraversa |
+| **il varco del Muro** | 1492 | 6 m | il posto di blocco, le due torri |
+| **la testa di ponte** | 1492-1504 | 12 m | il corpo di guardia, il palo dei riflettori |
+| **il canale** e il **ponte** | 1504-1518 | 14 m (ponte 4,8 m) | il ponte in muratura col levatoio |
+| **la Porta della Rocca** | 1518 | — | il fronte di terra, il cannocchiale della Vittoria |
+
+E di fianco, a sud, il **porto del recinto**: la banchina del canale e quella sul mare, la torre littoria sulla punta, davanti ai due moli
+della Rocca. Tolti: il Muro da riva a riva con le sette torri, il muretto del posto di blocco a 1469, i quattro pali in fila a 1477, gli Uffici
+del Garante e la Pietra dell'Onda sul bordo della spianata, il **binario** che finiva in mezzo alla spianata (ora finisce alla fine delle mura,
+x ≈ 1462), la **Via della Marina** che correva oltre, dentro quello che ora è il recinto (ora finisce sulla passeggiata).
+Tutte le strade che arrivano alla cucitura finiscono su qualcosa: la Rua, la Via delle Mura e la Marina sulla passeggiata (a T), la
+passeggiata sul belvedere e sulla spiaggia, la Vittoria sulla Porta (`strumenti/incroci.js`: 0 capi aperti, 0 errori).
+
+**Il segreto del posto di blocco**: il borgo raso nel 1660 passa sotto il Muro (sottosuolo.js): la grata dalla spianata e quella dentro il
+recinto sono la via sotto il varco.
+
+### 13.4 Prove e rischi
+
+Prove aggiornate: `test_mappa_compatta` (la Vittoria di 7 m, viva), `test_botteghe` (le botteghe sui due fronti della Vittoria),
+`test_segni` (sulla Vittoria viva niente monconi), `test_chiarezza` (il filare della passeggiata; carri e container nel recinto, in
+colonna), `test_percorsi` (gradini e salti nel borgo: la soglia scende da 36 a 24 perché il fronte sud della Vittoria è a 2 piani),
+`pezzi_check` (`torre_guardia`, `muro_garante` col camminamento, `portico` ottocento).
+
+Rischi: la costa del recinto la segue il generatore (`riva`), ma se [costa2] sposta la riva sud di molto il piazzale si stringe (i carri
+scendono a due); in render il filare della passeggiata esce più rado del previsto (lo sfoltisce il filtro dei filari di render.js: da guardare); `test_vievive` resta ballerino come prima (le scene dell'attacchino e dell'edicola senza seme, e un `Cannot redefine property: bio` di popolo.js che capita a caso); il palazzo del Governo e il Ministero sono ancora i «civic» grigi di render.js, ora fuori dalla città; i salti sui tetti
+attorno alla Vittoria sono meno di prima.

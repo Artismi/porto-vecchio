@@ -14,13 +14,19 @@ const F = { x0: 1222, y0: 238, x1: 1622, y1: 452, s: 4 };   // la cornice (metri
 
 // ---------- il terreno: acqua, terra, banchine (per casella da 2 m) ----------
 const terra = [];
-for (let y = F.y0; y < F.y1; y += TS) { const row = []; for (let x = F.x0; x < F.x1; x += TS) { const v = W.grid[Math.floor(y / TS) * GW + Math.floor(x / TS)]; row.push(v === T.WATER ? 0 : v === T.QUAY || v === T.PIER ? 2 : 1); } terra.push(row); }
+// [costa2] la riva nuova: la casella di terra che tocca il mare porta il suo tipo (3 + indice in RIVA2), così la pianta disegna la costa colorata
+const RIVA2 = ['scogli', 'falesia', 'cala', 'spiaggia', 'duna', 'foce', 'frangiflutti', 'porto'];
+const mare = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return W.grid[ty * GW + tx] === T.WATER && W.zone[ty * GW + tx] === W.Z.MARE; };
+for (let y = F.y0; y < F.y1; y += TS) { const row = []; for (let x = F.x0; x < F.x1; x += TS) { const v = W.grid[Math.floor(y / TS) * GW + Math.floor(x / TS)];
+  let c = v === T.WATER ? 0 : v === T.QUAY || v === T.PIER ? 2 : 1;
+  if (c === 1 && (mare(x + TS, y) || mare(x - TS, y) || mare(x, y + TS) || mare(x, y - TS))) c = 3 + Math.max(0, RIVA2.indexOf(W.coastKind2 ? W.coastKind2(x + 1, y + 1) : W.coastKind(x + 1, y + 1)));
+  row.push(c); } terra.push(row); }
 const rail = (W.railCity || []).filter(p => p[0] > F.x0 - 10 && p[0] < 1490).map(p => [+p[0].toFixed(1), +p[1].toFixed(1)]);
 
 // ---------- il progetto ----------
 const EPOCA = {
   E0: { nome: 'E0 Borgo medievale', col: '#e6c58c' }, E2: { nome: 'E2 Marina', col: '#86bfb0' }, E3: { nome: 'E3 Ottocento e Mercato', col: '#d7856a' },
-  E4: { nome: 'E4 Regime: la Vittoria', col: '#efe7d2' }, E6: { nome: 'E6 Boom (un angolo, niente torri)', col: '#a5adb8' }, E7: { nome: 'E7 Baracche', col: '#8c6a50' },
+  E4: { nome: 'E4 La Vittoria: via viva, portici di bottega', col: '#efe7d2' }, RG: { nome: 'Recinto del Garante (il regime, al porto)', col: '#8e8a82' }, E6: { nome: 'E6 Boom (un angolo, niente torri)', col: '#a5adb8' }, E7: { nome: 'E7 Baracche', col: '#8c6a50' },
   E1s: { nome: 'E1 Spianata (palco vuoto)', col: '#e9dfc6' }, E1: { nome: 'E1 Rocca', col: '#b88f57' }, V: { nome: 'Giardini di Ponente e orti', col: '#b7cf98' },
 };
 // [incroci] v2: la rete come grafo. Ogni strada ha i suoi capi: o finisce su un'altra strada (incrocio a T o a Y, con l'angolo giusto),
@@ -28,15 +34,15 @@ const EPOCA = {
 // mai con un tondo né oltre l'incrocio. La controlla strumenti/incroci.js, che calcola anche gli smussi degli angoli.
 const yOn = (P, x) => { for (let k = 0; k < P.length - 1; k++) { const a = P[k], b = P[k + 1]; if ((x - a[0]) * (x - b[0]) <= 0 && a[0] !== b[0]) return a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]); } return x < P[0][0] ? P[0][1] : P[P.length - 1][1]; };
 const RUA = [[1292, 309], [1318, 303], [1334, 302], [1352, 305], [1368, 310], [1383, 312], [1398, 309], [1414, 312], [1426, 317], [1446, 313], [1468, 313]];
-const MURA_V = [[1367, 282], [1385, 279], [1400, 276], [1430, 273], [1468, 271]];   // la Via delle Mura: il vicolo dentro le mura (il pomerio)
+const MURA_V = [[1367, 282], [1385, 279], [1400, 276], [1430, 273], [1465.5, 271.2]];   // [cucitura] finisce sulla Passeggiata   // la Via delle Mura: il vicolo dentro le mura (il pomerio)
 const MEZZO = [[1305, 370.5], [1324, 370], [1340, 370], [1356, 370], [1372, 369], [1390, 372], [1412, 374], [1432, 380], [1450, 392], [1455, 403]];
-const MARINA = [[1310, 387], [1318, 386], [1350, 385], [1380, 385.5], [1405, 386], [1420, 393], [1438, 401], [1460, 405], [1478, 406.5]];
+const MARINA = [[1310, 387], [1318, 386], [1350, 385], [1380, 385.5], [1405, 386], [1420, 393], [1438, 401], [1454, 404.2], [1465.5, 405.6]];   // [cucitura] finisce sulla Passeggiata della Spianata
 const LEAN = .16;   // i vicoli a pettine pendono tutti dalla stessa parte (Molfetta)
 // un vicolo a pettine dalla polilinea A (all'ascissa xk) fino alla polilinea B: il capo cade esattamente sull'asse di B
 const pettine = (xk, A, B, yB) => { const y0 = yOn(A, xk), X = y => xk + LEAN * (y0 - y); let y = yB !== undefined ? yB : yOn(B, xk); for (let it = 0; it < 6; it++) y = yB !== undefined ? yB : yOn(B, X(y));
   const ym = (y0 + y) / 2; return [[xk, +y0.toFixed(2)], [+(X(ym) + .6).toFixed(2), +ym.toFixed(2)], [+X(y).toFixed(2), +y.toFixed(2)]]; };
 const VIC = (id, nome, P, w, capi) => ['vicolo', w || 3, nome, P, capi || null, id];
-const PN = [1370, 1406, 1420, 1442, 1456], PS1 = [1346, 1376, 1398, 1432, 1452], PS2 = [1352, 1360, 1386, 1400, 1440];
+const PN = [1370, 1406, 1420, 1442, 1452], PS1 = [1346, 1376, 1398, 1432, 1452], PS2 = [1352, 1360, 1386, 1400, 1440];
 const nomiN = ['Vicolo dei Lanternini', "Vico dell'Arco", 'Vico delle Monache', 'Vico Scuro', 'Vico dei Cordai'];
 const nomiS1 = ['Caruggio dei Pescatori', 'Vico dei Gatti', 'Vico dei Bottai', 'Vico del Pozzo', 'Vico del Sale'];
 const nomiS2 = ['Vicolo Storto', 'Vico della Fame', 'Vicolo delle Reti', 'Vico dei Tonnaroti', 'Vico delle Sorelle'];
@@ -57,16 +63,19 @@ const D = {
     ['E0', [[1312, 349], [1466, 349], [1466, 368], [1420, 375], [1314, 378]]],
     ['E2', [[1292, 386], [1314, 384], [1314, 378], [1420, 375], [1466, 368], [1490, 384], [1490, 426], [1292, 426]]],
     ['E4', [[1290, 337.5], [1466, 337.5], [1466, 348.5], [1290, 348.5]]],
-    ['E4', [[1311, 326], [1340, 326], [1340, 362], [1311, 362]]],
-    ['E1s', [[1466, 252], [1508, 252], [1508, 426], [1466, 426]]],
+    ['E3', [[1311, 326], [1340, 326], [1340, 362], [1311, 362]]],
+    ['E1s', [[1468, 252], [1504, 252], [1504, 426], [1468, 426]]],
+    ['RG', [[1492, 331], [1504, 331], [1504, 383], [1497, 392], [1488, 404], [1478, 412], [1471, 418], [1471, 355], [1492, 355]]],
   ],
   // la rete: [livello, larghezza m, nome, punti, capi, id]. livello: asse | via | vicolo. capi: [chiusura del primo capo, dell'ultimo] o null
   // (null: il capo sta su un'altra strada o dentro un nodo; lo verifica incroci.js)
   strade: [
-    ['asse', 10, 'Via della Vittoria (asse di parata, 10 m; passa la spianata e il canale sul ponte)', [[1288, 343], [1530, 343]], [null, { tipo: 'porta', perche: 'la Porta della Rocca, col ponte sul canale' }], 'vittoria'],
+    ['asse', 7, 'Via della Vittoria (via viva, 7 m, portici di bottega a nord; passa il varco del Muro, la testa di ponte e il ponte)', [[1288, 343], [1519, 343]], [null, { tipo: 'porta', perche: 'la Porta della Rocca, col ponte sul canale' }], 'vittoria'],
     ['via', 7, 'Corso Garibaldi (7 m)', [[1290, 309], [1302, 318], [1302, 328], [1299, 343], [1301, 358], [1306, 374], [1310, 387]], null, 'corso'],
     ['via', 5, 'Rua Maestra (5 m)', RUA, null, 'rua'],
-    ['via', 5, 'Via della Marina (5 m)', MARINA, [null, { tipo: 'scala', perche: 'scende alla spiaggetta del Lido e al Santuario del Mare' }], 'marina'],
+    ['via', 5, 'Via della Marina (5 m)', MARINA, null, 'marina'],
+    ['via', 5, 'Passeggiata della Spianata (5 m, il filare verso la spianata)', [[1465.5, 271.2], [1465.5, 339.5]], null, 'passeggiata'],
+    ['via', 5, 'Passeggiata della Spianata (lungo il muro del Recinto)', [[1465.5, 346.5], [1465.5, 413]], [null, { tipo: 'affaccio', perche: 'scende alla spiaggia del Lido' }], 'passeggiata_sud'],
     ['via', 7, 'Costiera Nord e Via della Stazione (passaggio a livello)', [[1222, 276], [1249, 273], [1245, 281], [1242, 294], [1248, 303], [1256, 308]], [{ tipo: 'fuori', perche: "la Costiera Nord verso l'entroterra" }, null], 'nord'],
     ['via', 7, 'Costiera Sud', [[1222, 388], [1249, 387], [1264, 386.5], [1286, 386.5]], [{ tipo: 'fuori', perche: "la Costiera Sud verso l'entroterra" }, null], 'sud'],
     VIC('mezzo', 'Via di Mezzo', MEZZO),
@@ -83,16 +92,20 @@ const D = {
   // i nodi: dove le strade finiscono senza chiusura (le piazze del progetto, più la spianata e i Giardini)
   nodi: [{ nome: 'Spianata', poly: [[1466, 256], [1508, 256], [1508, 398], [1466, 398]] }, { nome: 'Giardini di Ponente', poly: [[1222, 290], [1250, 290], [1250, 392], [1222, 392]] }],
   mura: [[1324, 286], [1340, 279], [1370, 274], [1400, 270], [1430, 267], [1462, 265]],
-  muro: [[1488, 256], [1488, 337], null, [1488, 349], [1488, 420]],
+  // [cucitura] il Muro del Garante: il Recinto al porto (la testa di ponte col varco, il muro lungo la spianata, quello verso la città fino al mare)
+  muro: [[1503.4, 331], [1492, 331], [1492, 338.5], null, [1492, 347.5], [1492, 355], [1471, 355], [1471, 418]],
+  torri: [[1492, 331], [1492, 355], [1502.4, 331], [1471, 355], [1471, 376.8], [1471, 398.7], [1471, 415.5]],
+  filare: [[1470, 276], [1470, 288], [1470, 300], [1470, 312], [1470, 324], [1470, 336]],
   piazze: [
-    ['otto', 'Mercato', 1274, 343, 16], ['rect', 'Piazzale della Stazione', 1250, 304, 1296, 313], ['rect', "Piazza d'adunata", 1313, 328, 1338, 358],
+    ['otto', 'Mercato', 1274, 343, 16], ['rect', 'Piazzale della Stazione', 1250, 304, 1296, 313], ['rect', 'Piazza Grande', 1313, 328, 1338, 358],
     ['rect', 'Sagrato', 1368, 296, 1396, 307], ['tondo', 'Pozzo', 1428, 324, 6], ['tondo', 'Forno', 1356, 367, 5], ['rect', 'Piazza della Marina', 1386, 375, 1410, 387],
     ['tondo', 'Lotto del fuoco', 1286, 271, 5], ['rect', 'Scalo', 1278, 380, 1318, 393],
   ],
   // i volumi che contano (rettangoli scuri)
   volumi: [
     ['Stazione', 1252, 287, 1282, 304, '#5b4a3e'], ['Chiesa Madre', 1370, 285, 1389, 296, '#7a5a3a'], ['Magazzino Neri', 1316, 373, 1334, 382, '#6a5a48'], ['Magazzini a volta', 1336, 374, 1349, 382, '#6a5a48'], ['Magazzini a volta', 1358, 374, 1378, 382, '#6a5a48'],
-    ['Radio Luna', 1296, 264, 1314, 274, '#4a3a5a'], ['Autosalone', 1254, 382, 1278, 392, '#7fa3c0'], ['Ministero', 1311, 319, 1330, 327, '#8a8270'],
+    ['Radio Luna', 1296, 264, 1314, 274, '#4a3a5a'], ['Autosalone', 1254, 382, 1278, 392, '#7fa3c0'], ['Cinema Astor', 1330, 316, 1340, 329, '#a0523a'], ['Palazzo del Governo', 1474, 357, 1488, 367, '#5f5b54'], ['Ministero', 1484, 371, 1496, 381, '#5f5b54'],
+    ['Caserma (Pietra dell\'Onda)', 1476, 371, 1484, 401, '#6b6b5b'], ['Deposito', 1474, 404, 1486, 410, '#6b6b5b'], ['Corpo di guardia', 1494, 332, 1500, 338, '#5f5b54'],
     ['Caserma della Guardia', 1316, 360, 1338, 368, '#6b6b5b'],
   ],
   stecca: [1270, 371, 34, 8, -.2],   // l'unica stecca del boom: centro, lungo, largo, rotazione (3 piani)
@@ -129,7 +142,7 @@ const D = {
   // i landmark: [nome, x, y, altezza m, colore di notte, viste: [[x, y], ...]]
   landmark: [
     ['Campanile (30 m)', 1392, 291, 30, '#f2c14e', [[1288, 334], [1428, 324], [1470, 318], [1400, 380]]],
-    ['Torre littoria (34 m)', 1335, 323, 34, '#ffffff', [[1272, 301], [1460, 343], [1360, 386], [1288, 272]]],
+    ['Torre littoria (28 m)', 1500, 375, 28, '#ffffff', [[1440, 343], [1420, 393], [1470, 313], [1512, 343]]],
     ["Orologio della stazione (14 m)", 1270, 289, 14, '#ffd27a', [[1272, 330], [1303, 368], [1288, 272]]],
     ['Torre dell\'acqua e antenna (18 m)', 1310, 272, 18, '#9ff0ff', [[1282, 332], [1323, 302], [1386, 272]]],
     ['Gru del porto (22 m)', 1372, 414, 22, '#ff9a3c', [[1398, 380], [1356, 370], [1304, 398], [1398, 352]]],
@@ -147,7 +160,7 @@ const D = {
     [8, 'Mercato', 1274, 343, ['hub', 'pericolo'], 'otto', -16, 22],
     [9, 'Stazione e scalo merci', 1267, 297, ['pericolo', 'premio'], 'orologio', -18, -16],
     [10, 'Baracche e grata del vapore', 1284, 270, ['hub', 'segreto'], 'fiamma', -26, -14],
-    [11, 'Posto di blocco', 1478, 343, ['pericolo'], 'sbarra', 6, -16],
+    [11, 'Posto di blocco', 1492, 343, ['pericolo'], 'sbarra', 6, -16],
     [12, 'La Rocca', 1556, 334, ['pericolo'], 'torre', 4, -18],
   ],
   // le vie fra i luoghi: [tipo, nome, punti]. tipo: principale | scorciatoia | tetti | sotto | acqua (seguono le strade della rete)
@@ -201,7 +214,7 @@ function disegna(cv, D, F, terra, rail, EPOCA, modo, sfondo) {
   if (modo === 'progetto') { ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; for (let y = 6; y < H0; y += 12) { ctx.beginPath(); for (let x = 0; x < W0; x += 24) { ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 6, y - 3, x + 12, y); } ctx.stroke(); } }
   // la terra (maschera)
   const mask = document.createElement('canvas'); mask.width = W0; mask.height = H0; const m = mask.getContext('2d');
-  terra.forEach((row, j) => row.forEach((v, i) => { if (modo === 'progetto' && F.x0 + i * 2 >= 1504 && F.x0 + i * 2 < 1518) return;   /* il canale della Rocca */ if (v) { m.fillStyle = v === 2 ? '#c9c4b8' : '#f3eee2'; m.fillRect(i * 2 * S, j * 2 * S, 2 * S + .5, 2 * S + .5); } }));
+  terra.forEach((row, j) => row.forEach((v, i) => { if (modo === 'progetto' && F.x0 + i * 2 >= 1504 && F.x0 + i * 2 < 1518) return;   /* il canale della Rocca */ if (v) { m.fillStyle = v === 2 ? '#c9c4b8' : v >= 3 ? ['#9a948a', '#5c4a42', '#f2b46a', '#f6e2a6', '#ecc46e', '#7a9e4a', '#cfd6de', '#c9c4b8'][v - 3] : '#f3eee2';   /* [costa2] la riva per tipo */ m.fillRect(i * 2 * S, j * 2 * S, 2 * S + .5, 2 * S + .5); } }));
   if (modo === 'progetto') ctx.drawImage(mask, 0, 0);
   else ctx.drawImage(sfondo, 0, 0, W0, H0);
   // i distretti per epoca, solo sulla terra
@@ -286,7 +299,9 @@ function disegna(cv, D, F, terra, rail, EPOCA, modo, sfondo) {
     ['vicolo', 'via', 'asse'].forEach(L => D.strade.filter(s => s[0] === L).forEach(([k, w, n, P]) => { line(P, ctx); ctx.strokeStyle = STY[k][1]; ctx.lineWidth = w * S; ctx.stroke(); }));
     (D.smussi || []).forEach(P => { tri(P, ctx); ctx.fillStyle = '#fbf7ec'; ctx.fill(); });
     // i pennoni e i portici della Vittoria
-    ctx.fillStyle = '#5d5446'; for (let x = 1346; x < 1462; x += 9) { ctx.fillRect(X(x), Y(337.6), 3, 3); ctx.fillRect(X(x), Y(348.2), 3, 3); }
+    // [cucitura] i portici di bottega solo a nord: la fila dei pilastri sul filo; il filare di lecci della passeggiata
+    ctx.fillStyle = '#5d5446'; for (let x = 1346; x < 1462; x += 4) ctx.fillRect(X(x), Y(338.2), 2.5, 2.5);
+    (D.filare || []).forEach(([x, y]) => { ctx.beginPath(); ctx.arc(X(x), Y(y), 2.6 * S, 0, 7); ctx.fillStyle = 'rgba(70,110,60,.85)'; ctx.fill(); });
     // 3) le chiusure: la strada finisce contro qualcosa
     (D.capi || []).filter(c => c.k === 'chiuso').forEach(c => { const s = D.strade.find(q => (q[5] || q[2]) === c.id), P = s[3], w = s[1], e = c.e ? P.length - 1 : 0, o = c.e ? P.length - 2 : 1,
       ux = P[e][0] - P[o][0], uy = P[e][1] - P[o][1], L = Math.hypot(ux, uy), u = [ux / L, uy / L], n = [-u[1], u[0]], x = P[e][0], y = P[e][1], h = w / 2 + .6;
@@ -312,7 +327,8 @@ function disegna(cv, D, F, terra, rail, EPOCA, modo, sfondo) {
   if (rail.length) { line(rail, ctx); ctx.strokeStyle = modo === 'progetto' ? '#3b3b3b' : '#ff5a4a'; ctx.lineWidth = 4; ctx.stroke(); if (modo === 'progetto') { ctx.strokeStyle = '#f3eee2'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]); ctx.stroke(); ctx.setLineDash([]); } }
   // le mura di tramontana e il Muro del Garante
   line(D.mura, ctx); ctx.strokeStyle = '#6e5230'; ctx.lineWidth = 6; ctx.stroke(); ctx.strokeStyle = '#f3eee2'; ctx.lineWidth = 2; ctx.setLineDash([4, 6]); ctx.stroke(); ctx.setLineDash([]);
-  line(D.muro, ctx); ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 5; ctx.setLineDash([10, 4]); ctx.stroke(); ctx.setLineDash([]);
+  line(D.muro, ctx); ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 5; ctx.stroke();
+  (D.torri || []).forEach(([x, y]) => { ctx.fillStyle = '#2a2a2a'; ctx.fillRect(X(x) - 5, Y(y) - 5, 10, 10); ctx.fillStyle = '#f4f0d0'; ctx.fillRect(X(x) - 2, Y(y) - 2, 4, 4); });   // [cucitura] le torri sul muro
   // i landmark e le loro visuali
   if (modo === 'progetto') {
     D.landmark.forEach(([n, x, y, h, c, V]) => { V.forEach(([vx, vy]) => { ctx.beginPath(); ctx.moveTo(X(x), Y(y)); ctx.lineTo(X(vx), Y(vy)); ctx.strokeStyle = 'rgba(60,40,90,.30)'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4]); ctx.stroke(); ctx.setLineDash([]);
@@ -348,16 +364,16 @@ function disegna(cv, D, F, terra, rail, EPOCA, modo, sfondo) {
       ctx.beginPath(); ctx.arc(px + r * .8, py - r * .8, 7.5, 0, 7); ctx.fillStyle = '#1e1e1e'; ctx.fill(); ctx.font = 'bold 10px Inter'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText(String(n), px + r * .8, py - r * .8 + 3.5);
       halo(nome, px + dx + (dx < 0 ? -6 : 6), py + dy, 'bold 13px Inter', '#1e1e1e', dx < 0 ? 'right' : 'left'); });
     // i nomi dei quartieri
-    [['IL BORGO', 1392, 333], ['IL BORGO', 1394, 360], ['LA MARINA', 1440, 394], ["L'OTTOCENTO", 1262, 318], ['LA SPIANATA', 1468, 396], ['LA ROCCA', 1560, 310], ['BOOM', 1256, 368], ['GIARDINI', 1226, 352],
+    [['IL BORGO', 1392, 333], ['IL BORGO', 1394, 360], ['LA MARINA', 1440, 394], ["L'OTTOCENTO", 1262, 318], ['LA SPIANATA', 1486, 296], ['RECINTO', 1489, 392], ['LA ROCCA', 1560, 310], ['BOOM', 1256, 368], ['GIARDINI', 1226, 352],
       ['VIA DELLA VITTORIA', 1440, 346], ['RUA MAESTRA', 1350, 300], ['CORSO', 1288, 366]].forEach(([t, x, y]) => halo(t, X(x), Y(y), (t.length > 12 ? '600 11px' : '800 13px') + ' Inter', '#4a3a2a'));
     // le cose che non hanno un numero ma si nominano
-    [['Porta di Terra', 1323, 297], ['Molo Vecchio', 1392, 432], ['Darsena', 1358, 425], ['Muro del Garante', 1490, 432], ['mura di tramontana', 1370, 266]].forEach(([t, x, y]) => halo(t, X(x), Y(y), 'italic 11px Inter', '#3a3a3a', 'center'));
+    [['Porta di Terra', 1323, 297], ['Molo Vecchio', 1392, 432], ['Darsena', 1358, 425], ['Muro del Garante', 1452, 428], ['Passeggiata', 1458, 262], ['mura di tramontana', 1370, 266]].forEach(([t, x, y]) => halo(t, X(x), Y(y), 'italic 11px Inter', '#3a3a3a', 'center'));
   } else {
     // il confronto: le note su cosa cambia
     const nota = (t, x, y, tx, ty) => { ctx.beginPath(); ctx.moveTo(X(x), Y(y)); ctx.lineTo(X(tx), Y(ty)); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.font = 'bold 12px Inter'; const w = ctx.measureText(t).width + 10; ctx.fillStyle = 'rgba(20,20,20,.82)'; ctx.fillRect(X(tx) - 4, Y(ty) - 13, w, 18); ctx.fillStyle = '#ffe9a8'; ctx.textAlign = 'left'; ctx.fillText(t, X(tx) + 1, Y(ty)); };
-    nota('Vittoria 12 → 10 m, portici 5 → 3 piani', 1420, 343, 1392, 326.5);
+    nota('Vittoria 10 → 7 m, portici di bottega a nord, niente palazzi del regime', 1420, 343, 1392, 326.5);
     nota('Corso 10 → 7 m, un filare', 1304, 360, 1236, 372);
-    nota('Raccordo del Muro 8 m → pista di terra', 1481, 300, 1500, 278);
+    nota('Muro da riva a riva e torri sparse → Recinto del Garante al porto', 1488, 380, 1500, 278);
     nota('Viale della Tutela nella Rocca → piazza d\'armi lastricata', 1540, 343, 1520, 412);
     nota('Via della Stazione e lungomare: via (finiscono alle porte)', 1240, 300, 1226, 246);
     nota('Ottocento: da 128 m a 68 m, stazione da x 1194 a 1270', 1270, 330, 1226, 438);
@@ -386,7 +402,7 @@ function legenda(cv, D, F, EPOCA) {
   tit('Epoche');
   Object.values(EPOCA).forEach(e => { ctx.fillStyle = e.col; ctx.fillRect(x0, y - 10, 22, 13); ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.strokeRect(x0, y - 10, 22, 13); txt(e.nome, 30); y += 17; });
   y += 6; tit('Strade (solo quattro livelli)');
-  [['asse', 10, 'Asse di parata: la Vittoria, 10 m'], ['via', 7, 'Vie: Corso 7 m, Rua e Marina 5 m'], ['vicolo', 3, 'Vicoli 2–3 m (scorciatoie o nascondigli)']].forEach(([k, w, t]) => {
+  [['asse', 7, 'La Vittoria: via viva, 7 m'], ['via', 7, 'Vie: Corso 7 m, Rua e Marina 5 m'], ['vicolo', 3, 'Vicoli 2–3 m (scorciatoie o nascondigli)']].forEach(([k, w, t]) => {
     ctx.strokeStyle = '#6b5b47'; ctx.lineWidth = w * 1.6 + 3; ctx.beginPath(); ctx.moveTo(x0, y - 4); ctx.lineTo(x0 + 34, y - 4); ctx.stroke(); ctx.strokeStyle = '#fbf7ec'; ctx.lineWidth = w * 1.6; ctx.stroke(); txt(t, 44); y += 20; });
   ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = '#7b6a55'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x0 + 10, y - 5, 8, 0, 7); ctx.fill(); ctx.stroke(); txt('Piazzette e piazze: i nodi (mai due a meno di 40 m)', 30); y += 20;
   { const C = D.conti || {}, P = C.perTipo || {}; txt(`Incroci ${C.incroci}: ${C.T} a T, ${C.Y} a Y, ${C.X} a croce; angoli smussati, cordolo continuo`, 0, '600 12px Inter'); y += 16;
@@ -440,7 +456,7 @@ function legenda(cv, D, F, EPOCA) {
       { let ly=90; const lx=${W0}+16; d.fillStyle='#2c2238'; d.font='800 13px Inter'; d.fillText('LA PIANTA DI OGGI',lx,ly); ly+=20; d.font='12px Inter';
         [['#46464f','asfalto (strade e anelli 8-16 m)'],['#f0be78','vicoli e basoli del borgo'],['#d7c8aa','piazze e lastricati'],['#8c6e66','case (più scure = più alte)'],['#c9c4b8','banchine e moli'],['#ff5a4a','ferrovia']].forEach(([c,t])=>{d.fillStyle=c;d.fillRect(lx,ly-10,22,13);d.fillStyle='#222';d.fillText(t,lx+30,ly);ly+=18;});
         ly+=10; d.fillStyle='#2c2238'; d.font='800 13px Inter'; d.fillText('IL PROGETTO SOPRA',lx,ly); ly+=20; d.font='12px Inter';
-        [['#ffe14d','cornice della città compatta'],['#fff3b0','asse di parata (Vittoria 10 m)'],['#ffd9a0','vie (Corso 7, Rua e Marina 5 m)'],['#ffffff','tracciati nuovi (tratteggio)']].forEach(([c,t])=>{d.fillStyle=c;d.fillRect(lx,ly-10,22,13);d.strokeStyle='#555';d.strokeRect(lx,ly-10,22,13);d.fillStyle='#222';d.fillText(t,lx+30,ly);ly+=18;});
+        [['#ffe14d','cornice della città compatta'],['#fff3b0','Vittoria (7 m)'],['#ffd9a0','vie (Corso 7, Rua e Marina 5 m)'],['#ffffff','tracciati nuovi (tratteggio)']].forEach(([c,t])=>{d.fillStyle=c;d.fillRect(lx,ly-10,22,13);d.strokeStyle='#555';d.strokeRect(lx,ly-10,22,13);d.fillStyle='#222';d.fillText(t,lx+30,ly);ly+=18;});
         d.fillText('bordi tratteggiati colorati: i quartieri per epoca',lx,ly+6); }
       const tx=16+620*k+30; let ty=y0+20; d.fillStyle='#2c2238'; d.font='800 15px Inter'; d.fillText('OGGI → PROGETTO',tx,ty); ty+=26; d.font='13px Inter'; d.fillStyle='#222';
       ${JSON.stringify([

@@ -379,12 +379,46 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
   };
 
   // ================= 2. IL REGIME: portico razionalista e torre littoria (E4) =================
-  DOC.portico = { campate: 6, campata: 4, h: 5, piani: 4, profondita: 4, pilastro: .8, lettere: 'MINISTERO DELL\'ORDINE', nota: 'pilastri quadrati di travertino a passo di campata, trabeazione con le lettere lapidarie, cortina di travertino sopra con le finestre a nastro; il retro è cieco; L = campate × campata' };
+  DOC.portico = { campate: 6, campata: 4, h: 5, piani: 4, profondita: 4, pilastro: .8, lettere: 'MINISTERO DELL\'ORDINE', stile: 'regime', tinta: 'ocra', nota: '[cucitura] stile: regime (travertino) o ottocento (arcate d\'intonaco nella tinta, persiane, cornicione e coppi); pilastri quadrati di travertino a passo di campata, trabeazione con le lettere lapidarie, cortina di travertino sopra con le finestre a nastro; il retro è cieco; L = campate × campata' };
   // [facciate2] il portico vero: pilastri con la base e il capitello, l'intradosso con le travi fra i pilastri (e la sua ombra), il
   // marcapiano al piano delle arcate, la cortina di travertino a lastre (i giunti li disegna il materiale) con le finestre incassate
   // (lo sguincio è lo spessore del muro), la cornice piatta razionalista e il davanzale, le tapparelle a più altezze, il cornicione con
   // l'aggetto e le mensole; qualche segno di vita composto: una bandiera, i vasi su un davanzale, le tende dietro i vetri.
+  // [cucitura] il portico di bottega dell'Ottocento (stile: 'ottocento'), quello di una via vissuta e non di una parata: l'arcata a tutto sesto
+  // nel muro d'intonaco (tinta), lo zoccolo e le imposte di pietra, la chiave in cima a ogni arco, sotto le vetrine e i portoni di legno delle
+  // botteghe, il soffitto a volta in ombra; sopra uno o due piani d'intonaco con le finestre incorniciate e le persiane verdi, il marcapiano,
+  // il cornicione su mensole e il tetto di coppi che scende verso la strada. Stesse misure e stesso piano di posa del portico del regime.
+  function porticoOttocento(o) {
+    const g = new THREE.Group(), cw = o.campata, n = o.campate, L = n * cw, P = o.profondita, H = o.h, pl = o.pilastro, hP = o.piani * 3.2, tinta = o.tinta || 'ocra';
+    const hs = (a, b) => { let h = (a * 374761393 + b * 668265263 + L * 131) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+    const zF = P / 2 - .25, hA = H + .7;   // il filo dell'arcata, l'altezza del piano delle arcate (chiave e imposta comprese)
+    blocco(g, L, .15, P + .5, 'pietra', L / 2, 0, -.25);                                       // il pavimento del portico, a lastre
+    const archi = []; for (let i = 0; i < n; i++) archi.push({ x: i * cw + cw / 2, w: cw - pl, h: H });
+    pareteArchi(g, L, hA, .5, archi, tinta, 0, 0, zF);                                         // l'arcata nel muro d'intonaco
+    for (let i = 0; i <= n; i++) { const x = Math.min(L - pl / 2, Math.max(pl / 2, i * cw));
+      blocco(g, pl + .12, .6, .56, 'pietraChiara', x, 0, zF, .02);                            // lo zoccolo di pietra dei pilastri
+      if (!LOD) blocco(g, pl + .1, .16, .58, 'pietraChiara', x, H - (cw - pl) / 2 - .08, zF, .02); }   // l'imposta dell'arco
+    if (!LOD) archi.forEach(a => blocco(g, .34, .5, .58, 'pietraChiara', a.x, H - .28, zF, .02));   // la chiave
+    const porte = []; for (let i = 0; i < n; i++) { const v = hs(i, 1) < .62; porte.push({ x: i * cw + cw / 2, w: v ? Math.min(2.6, cw - 1) : 1.5, h: v ? 3.1 : 3.3, tipo: 'rett', h0: v ? .55 : 0, v }); }
+    pareteArchi(g, L, hA, .4, porte, 'calce', 0, 0, -P / 2 - .25);                            // il fondo: vetrine e portoni delle botteghe
+    if (!LOD) porte.forEach(a => { if (a.v) { blocco(g, a.w, a.h - a.h0, .08, 'vetro', a.x, a.h0, -P / 2 - .25); blocco(g, a.w + .2, .12, .3, 'pietraChiara', a.x, a.h0 - .12, -P / 2 - .1); }
+      else { blocco(g, a.w, a.h, .1, 'legnoScuro', a.x, 0, -P / 2 - .3); blocco(g, .5, .5, .1, 'vetro', a.x, a.h - .7, -P / 2 - .24); } });
+    blocco(g, L, .5, P, 'intradosso', L / 2, hA - .5, -.25);                                    // il soffitto in ombra
+    blocco(g, L + .2, .2, .7, 'pietraChiara', L / 2, hA, zF - .1, .02);                          // il marcapiano sopra le arcate
+    // i piani: il corpo d'intonaco con le finestre a filo dell'arcata, le persiane aperte, socchiuse o chiuse
+    blocco(g, L, hP, P + .1, tinta, L / 2, hA + .2, -.25);
+    if (!LOD) for (let p = 0; p < o.piani; p++) for (let i = 0; i < n; i++) { const x = i * cw + cw / 2, y0 = hA + .2 + p * 3.2 + .9, q = hs(i, p + 7);
+      finestra(g, 1.05, 1.6, x, y0, zF + .06, { cornice: 'pietraChiara', persiane: q < .7 ? 'persiana' : null });
+      if (q >= .7) blocco(g, 1.05, 1.6, .05, 'persiana', x, y0, zF + .1);                       // le persiane chiuse
+      if (p === 0 && q > .4 && q < .6) { blocco(g, 1.5, .1, .55, 'pietraChiara', x, y0 - .15, zF + .28); ringhiera(g, 1.5, .9, 'ferroScuro', x - .75, y0 - .05, zF + .52, 0, .12); } }   // un balconcino
+    const yC = hA + .2 + hP;
+    for (let x = .5; x < L; x += 1.1) if (!LOD) mensola(g, .4, .3, .16, 'pietraChiara', x, yC + .02, zF + .05, 0);   // le mensole del cornicione
+    cornice(g, L, P - 1.2, .45, .5, 'pietraChiara', 0, yC, .3);                               // il cornicione (sporge sulla strada, non sulla casa dietro)
+    tettoFalde(g, L, P, 1.1, 'coppi', 0, yC + .5, -.05, .2);                                  // il tetto di coppi
+    g.userData.misure = [L + .8, yC + 1.8, P + .9]; return g;
+  }
   T.portico = o => {
+    if (o && o.stile === 'ottocento') return porticoOttocento(def(o, DOC.portico));
     o = def(o, DOC.portico); const g = new THREE.Group(), L = o.campate * o.campata, P = o.profondita, H = o.h, pl = o.pilastro, hP = o.piani * 3.4, zF = P / 2 - pl / 2, cw = o.campata;
     const hs = (a, b) => { let h = (a * 374761393 + b * 668265263 + L * 97) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
     blocco(g, L, .15, P + .5, 'travertino', L / 2, 0, -.25);                                 // il pavimento del portico
@@ -1527,9 +1561,16 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     g.userData.misure = [2 * R + 1.1, .18 + hv + H - .25 + .45, 2 * R + 1.1]; return g;
   };
 
-  DOC.muro_garante = { L: 24, h: 3.6, posto_blocco: true, riflettore: true, settore: 'SETTORE 4', nota: 'il Muro del Garante: lastre prefabbricate di cemento a L coi giunti, la fascia dipinta e la scritta del settore a stencil, filo spinato a spirale sui bracci; il varco del posto di blocco in mezzo (strada lungo Z) con la sbarra, la garitta di lamiera, i cavalli di Frisia, i sacchi di sabbia, il cartello ALT; il palo col riflettore. Il fronte (+Z) è il lato dei controllati' };
+  DOC.muro_garante = { L: 24, h: 3.6, posto_blocco: true, riflettore: true, camminamento: false, settore: 'SETTORE 4', nota: '[cucitura] camminamento: la passerella di ronda sul retro (−Z) con la ringhiera e la scaletta; il Muro del Garante: lastre prefabbricate di cemento a L coi giunti, la fascia dipinta e la scritta del settore a stencil, filo spinato a spirale sui bracci; il varco del posto di blocco in mezzo (strada lungo Z) con la sbarra, la garitta di lamiera, i cavalli di Frisia, i sacchi di sabbia, il cartello ALT; il palo col riflettore. Il fronte (+Z) è il lato dei controllati' };
   T.muro_garante = o => {
     o = def(o, DOC.muro_garante); const g = new THREE.Group(), L = o.L, h = o.h, pw = 1.2, wv = o.posto_blocco ? 6 : 0, xv = L / 2, r = caso(L * 3 + h);
+    // [cucitura] il camminamento di ronda sul retro (−Z): la passerella di grigliato su mensole a 1,3 m sotto la cima, la ringhiera verso
+    // dentro; si interrompe sul varco e scende a terra con una scaletta a un capo
+    if (o.camminamento) { const yw = h - 1.3, tratti = wv ? [[0, xv - wv / 2], [xv + wv / 2, L]] : [[0, L]];
+      tratti.forEach(([a, b], k) => { if (b - a < 1) return; blocco(g, b - a, .08, 1.1, 'ferroScuro', (a + b) / 2, yw, -.66);   // la passerella
+        for (let x = a + .3; x < b; x += 1.8) { blocco(g, .08, .08, 1, 'ferro', x, yw - .12, -.6); if (!LOD) blocco(g, .06, .5, .06, 'ferro', x, yw - .6, -.16).rotation.x = -.7; }   // le mensole
+        if (!LOD) { for (let x = a + .1; x <= b - .05; x += 1.2) blocco(g, .04, 1, .04, 'ferro', x, yw + .08, -1.18); blocco(g, b - a, .04, .04, 'ferro', (a + b) / 2, yw + 1.04, -1.18); blocco(g, b - a, .03, .03, 'ferro', (a + b) / 2, yw + .55, -1.18); }   // la ringhiera
+        const xs = k ? b - .5 : a + .5; for (let y = .3; y < yw; y += .3) blocco(g, .45, .03, .05, 'ferro', xs, y, -1.18); blocco(g, .03, yw, .03, 'ferro', xs - .22, 0, -1.2); blocco(g, .03, yw, .03, 'ferro', xs + .22, 0, -1.2); }); }   // la scaletta
     blocco(g, L, .05, 2.2, 'cemento', L / 2, 0, -.6);                                                 // la platea
     const lastre = []; for (let x = 0; x + pw <= L + .01; x += pw) if (!wv || x + pw <= xv - wv / 2 + .01 || x >= xv + wv / 2 - .01) lastre.push(x);
     lastre.forEach(x => { blocco(g, pw - .03, h, .2, 'cemento', x + pw / 2, .05, 0); if (!LOD) { blocco(g, pw - .03, .2, 1.2, 'cemento', x + pw / 2, .05, -.7); blocco(g, pw - .03, .5, .02, (Math.floor(x / pw) % 2) ? 'giallo' : 'buio', x + pw / 2, .9, .11); } });   // lastre a L e la fascia
@@ -1551,6 +1592,27 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       for (const s of [-1, 1]) { const gr2 = grp(g, xr + s * .35, h + 3, -.2); blocco(gr2, .45, .35, .3, 'ferroScuro', 0, 0, 0).rotation.x = .5; blocco(gr2, .38, .28, .02, 'lampada', 0, .08, .17).rotation.x = .5; }
       blocco(g, .9, .06, .06, 'ferro', xr, h + 2.95, -.3); }
     g.userData.misure = [L + (wv ? 2.6 : 0), h + (o.riflettore ? 3.5 : .7), wv ? 9 : 2.2]; return g;
+  };
+
+  // [cucitura] la torre di guardia del Recinto del Garante: plinto, fusto tondo di cemento coi giunti dei getti, la scala alla marinara, la
+  // cabina ottagonale con la fascia di vetri, il ballatoio con la ringhiera, il riflettore sul ballatoio e l'antenna con la luce rossa
+  DOC.torre_guardia = { h: 11, riflettore: true, nota: 'torre di guardia del Garante: plinto, fusto cilindrico di cemento, cabina ottagonale vetrata a h − 3, ballatoio con ringhiera, riflettore puntato verso +Z, antenna con la luce rossa; centrata sull\'origine' };
+  T.torre_guardia = o => {
+    o = def(o, DOC.torre_guardia); const g = new THREE.Group(), H = o.h, hC = H - 3.2;
+    blocco(g, 2.6, .45, 2.6, 'cemento', 0, 0, 0, LOD ? 0 : .05);                                      // il plinto
+    cil(g, .95, .85, hC - .45, 12, 'cemento', 0, .45, 0);                                              // il fusto
+    if (!LOD) { for (let y = 2.3; y < hC - .3; y += 1.9) cil(g, .97, .97, .06, 12, 'cementoScuro', 0, y, 0);   // i giunti dei getti
+      for (let y = .9; y < hC; y += .32) blocco(g, .42, .03, .05, 'ferro', 0, y, 1.0); blocco(g, .03, hC - .6, .03, 'ferro', -.21, .6, 1.02); blocco(g, .03, hC - .6, .03, 'ferro', .21, .6, 1.02); }   // la scala alla marinara
+    cil(g, 1.9, 1.75, .3, 8, 'cementoScuro', 0, hC, 0);                                                // il ballatoio
+    cil(g, 1.5, 1.5, 2.2, 8, 'cemento', 0, hC + .3, 0);                                                // la cabina
+    cil(g, 1.52, 1.52, .9, 8, 'vetro', 0, hC + 1.1, 0);                                                // la fascia dei vetri
+    cil(g, 1.75, 1.6, .25, 8, 'cementoScuro', 0, hC + 2.5, 0);                                         // il tetto
+    if (!LOD) for (let k = 0; k < 16; k++) { const a = k / 16 * PI * 2; blocco(g, .04, .9, .04, 'ferroScuro', Math.cos(a) * 1.82, hC + .3, Math.sin(a) * 1.82); }   // la ringhiera
+    if (!LOD) toro(g, 1.82, .025, 16, 'ferroScuro', 0, hC + 1.2, 0, HP);
+    if (o.riflettore) { const gr = grp(g, 0, hC + .3, 1.55); blocco(gr, .12, .5, .12, 'ferroScuro', 0, 0, 0); const b = blocco(gr, .5, .38, .42, 'ferroScuro', 0, .5, .05); b.rotation.x = .45; const v = blocco(gr, .42, .3, .02, 'lampada', 0, .54, .27); v.rotation.x = .45; }
+    cil(g, .03, .03, 2.6, 5, 'ferro', -.7, hC + 2.75, .3);                                             // l'antenna
+    if (!LOD) { const l = add(g, new THREE.SphereGeometry(.11, 6, 4), 'faro', -.7, hC + 5.4, .3); void l; }
+    g.userData.misure = [3.8, H + 2.5, 3.8]; return g;
   };
 
   DOC.palo_riflettori = { h: 12, n: 4, nota: 'palo dei riflettori del Garante: plinto di cemento, cassetta elettrica, fusto tronco-conico zincato con i pioli e il cavo, corona in cima e n riflettori in file da tre puntati in basso verso +Z' };

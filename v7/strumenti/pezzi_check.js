@@ -10,7 +10,7 @@ const P = require(path.join(src, 'pezzi_citta.js'));
 const PROVE = {
   campanile: [{}, { h: 22, lato: 4, campane: 1, orologio: false }, { h: 34, lato: 6, cuspide: false }],
   facciata_chiesa: [{}, { w: 10, h: 12, rosone: false, gradini: 2 }, { w: 18, h: 20, corpo: 30 }],
-  portico: [{}, { campate: 3, piani: 2, lettere: '' }, { campate: 6, piani: 3, h: 6 }],   // [volumi2] in città i corpi del portico hanno 2-3 campate e al più 3 piani: il caso largo resta a 6 × 3
+  portico: [{}, { campate: 3, piani: 2, lettere: '' }, { campate: 6, piani: 3, h: 6 }, { campate: 3, campata: 4, piani: 1, h: 4.4, profondita: 3.6, pilastro: .7, stile: 'ottocento', tinta: 'ocra' }, { campate: 2, campata: 4.4, piani: 2, h: 4.4, profondita: 3.6, pilastro: .7, stile: 'ottocento', tinta: 'intonacoRosso' }],   // [cucitura] il portico di bottega della Vittoria   // [volumi2] in città i corpi del portico hanno 2-3 campate e al più 3 piani: il caso largo resta a 6 × 3
   torre_littoria: [{}, { h: 24, orologio: false, antenna: false }, { h: 36, lato: 10 }],
   tettoia_mercato: [{}, { diametro: 24, h: 6 }, { diametro: 40, h: 8 }],
   stazione: [{}, { L: 28, piani: 1, piazzale: false }, { L: 52, binari: 4 }],
@@ -45,7 +45,8 @@ const PROVE = {
   pozzo: [{}, { r: .6, arco: false }, { r: 1.1 }],
   lavatoio: [{}, { L: 4, tettoia: false }, { L: 9 }],
   fontana: [{}, { h: 2, lati: 6 }, { h: 3.2, lati: 8, cannelle: 4 }],
-  muro_garante: [{}, { L: 16, posto_blocco: false }, { L: 48, h: 5, riflettore: false }],
+  muro_garante: [{}, { L: 16, posto_blocco: false }, { L: 48, h: 5, riflettore: false }, { L: 24, camminamento: true }, { L: 21, posto_blocco: false, riflettore: false, camminamento: true }],   // [cucitura] col camminamento di ronda
+  torre_guardia: [{}, { h: 9, riflettore: false }, { h: 14 }],   // [cucitura] le torri del Recinto del Garante
   palo_riflettori: [{}, { h: 8, n: 2 }, { h: 16, n: 6 }],
   mastio: [{}, { L: 10, P: 12, h: 18, lanterna: false }, { L: 16, P: 20, h: 26, merli: false }],   // [rocca2]
   corpo_rocca: [{}, { L: 14, P: 10, h: 7, scarpa: true, erba: true }, { L: 30, P: 16, h: 15, merli: true, finestre: 3 }],
