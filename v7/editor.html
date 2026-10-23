@@ -44281,6 +44281,10 @@ var Tetti = (function () {
   // si attraversa il quartiere senza scendere. Le estremità scendono a rampa dal parapetto al lastrico.
   // Una passerella: P0 (dentro il tetto a) → P1 (bordo di a) → P2 (bordo di b) → P3 (dentro b), larga 2·hw.
   const PLANKS = [], PCELL = new Map();
+  // [tetti4] l'impronta della passerella (col margine di 60 cm per parte, le gronde) tocca solo case col piano dei tetti: sopra un palazzo,
+  // una chiesa o un pezzo grande la quota del tetto non si conosce e la passerella non si mette
+  const sgombra4 = P => { for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .25) for (let t = -P.hw - .6; t <= P.hw + .6 + 1e-6; t += .3) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t, tx = Math.floor(x / TS), ty = Math.floor(y / TS);
+    if (!inb(tx, ty)) return false; const o = BI[ty * GW + tx]; if (o >= 0 && o !== P.a && o !== P.b && (!conPiano4(B[o]) || Math.abs(t) <= P.hw + .1 || roofRule(B[o]) > Math.min(roofRule(B[P.a]), roofRule(B[P.b])) - .2)) return false;   /* sotto l'impalcato solo le sue due case; accanto solo case più basse (i muri, i cornicioni e i balconi di una casa più alta sporgono) */ if (o < 0 && G.tileAt(tx, ty) === G.T.BLD) return false; } return true; };
   const conPiano4 = b => !!(b && b.era && b.era !== 'E7' && !b.shack && !b.pezzo && !b.lighthouse && !b.kiosk && !b.__tierOf);   // [tetti4] come ok3 di piano3
   const PIN = 1.5, PHW = .5;   // quanto entra nel tetto la rampa, mezza larghezza delle assi
   function buildPlanks() {
@@ -44313,6 +44317,7 @@ var Tetti = (function () {
           const gap = g * TS, P = { i: PLANKS.length, a: bi, b: bj, ox, oy, px: -oy, py: ox, hw: PHW, gap,
             x0: wx - ox * PIN, y0: wy - oy * PIN, wa: [wx, wy], wb: [wx + ox * gap, wy + oy * gap] };
           P.L = PIN * 2 + gap; P.s1 = PIN; P.s2 = PIN + gap;
+          if (CN3 && !sgombra4(P)) return;   // [tetti4]
           PLANKS.push(P); pairs.add(key); per.set(bi, (per.get(bi) || 0) + 1); per.set(bj, (per.get(bj) || 0) + 1);
           // le caselle che tocca, per trovarla in fretta
           for (let s2 = 0; s2 <= P.L; s2 += .5) for (const t of [-PHW, 0, PHW]) { const x = P.x0 + ox * s2 + P.px * t, y = P.y0 + oy * s2 + P.py * t, ck = Math.floor(y / TS) * GW + Math.floor(x / TS);
@@ -44481,6 +44486,7 @@ var Tetti = (function () {
         const pin = (ox ? Math.min(B[C.a].w, B[C.b].w) : Math.min(B[C.a].h, B[C.b].h)) >= 2 ? PIN : 1.36;   // [tetti4] sulle case di una casella la rampa si ferma a 64 cm dal muro di là (il parapetto e la copertina): la scaletta resta dolce   // la testa delle assi entra un metro e mezzo; sulle case di una casella (2 m) novanta centimetri
         const P = { i: PLANKS.length, a: C.a, b: C.b, ox, oy, px: -oy, py: ox, hw: C.tipo === 'arco' ? .45 : PHW, gap, pin, x0: wx - ox * pin, y0: wy - oy * pin, wa: [wx, wy], wb: [wx + ox * gap, wy + oy * gap], arco: C.tipo === 'arco', tipo4: C.tipo };
         P.L = pin * 2 + gap; P.s1 = pin; P.s2 = pin + gap;
+        if (!sgombra4(P)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'ingombro']), false);   // [tetti4] accanto a un palazzo, una chiesa o un pezzo grande no
         PLANKS.push(P); passi.push([cx, cy]); if (C.v5) { archi5.push([cx, cy]); P.via5 = true; } (C.tipo === 'arco' ? RETE4.archi : RETE4.passerelle).push(P.i);
         for (let s2 = 0; s2 <= P.L; s2 += .5) for (const t of [-P.hw, 0, P.hw]) { const x = P.x0 + ox * s2 + P.px * t, y = P.y0 + oy * s2 + P.py * t, ck = Math.floor(y / TS) * GW + Math.floor(x / TS);
           const A = PCELL.get(ck) || PCELL.set(ck, []).get(ck); if (A.indexOf(P) < 0) A.push(P); }
@@ -44810,8 +44816,8 @@ var Tetti = (function () {
           caseSotto4(x, y).forEach(bi => { const L = partiDi(bi); if (!L.length) return; o.set(x, fondo + 6, y); rc.set(o, dn); rc.far = 12;
             const h = rc.intersectObjects(L, true).find(q => !q.object.userData.noRoof && !q.object.userData.velo); if (!h) return; const d = h.point.y - fondo;
             if (sc && d < .1) return;   // la pedata sul lastrico (l'onda del lastrico, i bocchettoni a filo)
-            if (d > TOLL4) { n++; if (d > peggio) { peggio = d; dove = { x, y, z: fondo, casa: B[bi].id }; } } }); } }
-      if (n) out.urti.push({ i: P.i, tipo: P.tipo4 || 'passerella', n, cm: Math.round(peggio * 100), x: +dove.x.toFixed(2), y: +dove.y.toFixed(2), z: +dove.z.toFixed(2), casa: dove.casa }); });
+            if (d > TOLL4) { n++; if (d > peggio) { peggio = d; dove = { x, y, z: fondo, casa: B[bi].id, s: +s2.toFixed(2), t: +t.toFixed(2), hy: +h.point.y.toFixed(2), rr: +(h.point.y - roofRule(B[bi])).toFixed(2), og: (h.object.name || '') + '|' + (h.object.parent ? h.object.parent.name || h.object.parent.type : '') + '|' + (h.object.geometry && h.object.geometry.attributes.position ? h.object.geometry.attributes.position.count : 0), sc }; } } }); } }
+      if (n) out.urti.push(Object.assign({ i: P.i, tipo: P.tipo4 || 'passerella', n, cm: Math.round(peggio * 100), L: +P.L.toFixed(2), s1: P.s1, s2: +P.s2.toFixed(2), k: P.prof.k.map(q => q.map(v => +v.toFixed(2))) }, dove)); });
     return out;
   }
   if (typeof window !== 'undefined') window.__passerelle4 = () => { const pv = window.__pv; return pv && pv.R && window.THREE ? misuraPasserelle4(pv.R) : null; };
@@ -44931,7 +44937,7 @@ var Tetti = (function () {
         if (!P.arco) for (const t of [-(hw - .03), hw - .03]) { const [x0, , z0] = at(u0, t), [x1, , z1] = at(u1, t); seg(rails, x0, pav + .04, z0, x1, alto - .06, z1, .04, .08, yaw); }   // i cosciali, dal lastrico al pianerottolo
       });
       // i montanti e il corrimano (non sull'arco)
-      if (!P.arco) { const pali = [a0 + .05, P.s1 + .25, P.s2 - .25, b1 - .05];
+      if (!P.arco) { const pali = [a0 + .05, P.s1 + .08, P.s2 - .08, b1 - .05];
         for (const t of [-(hw - .02), hw - .02]) { pali.forEach(u => { const [x, y, z] = at(u, t); put(rails, x, y + .47, z, .04, .94, .04, yaw); });
           for (let k = 0; k < pali.length - 1; k++) { const A = at(pali[k], t, .93), Z = at(pali[k + 1], t, .93); seg(ferro ? rails : ropes, A[0], A[1], A[2], Z[0], Z[1], Z[2], .03, .03, yaw); } } }
       for (const s2 of [P.s1, P.s2]) box4(crema, s2, 0, plankH(P, s2) + .005, .3, .03, w2);   // i capi chiari sul filo dei muri
@@ -45064,7 +45070,10 @@ var Tetti = (function () {
     D.circuiti.filter(c => c.k === 'tetti').forEach(c => (c.rami || []).forEach(r => {
       const b = B[r.bi]; let x = r.x, y = r.y;
       if (r.premio === 'tesoro' || r.premio === 'belvedere' || r.premio === 'terrazza') {   // il posto: nel quarto del tetto più lontano dalla camera (nord-ovest), dentro il parapetto
-        const x0 = b.x * TS, y0 = b.y * TS, W1 = b.w * TS, D1 = b.h * TS; x = x0 + Math.max(1.1, W1 * .3); y = y0 + Math.max(1.1, D1 * .3); }
+        const x0 = b.x * TS, y0 = b.y * TS, W1 = b.w * TS, D1 = b.h * TS; x = x0 + Math.max(1.1, W1 * .3); y = y0 + Math.max(1.1, D1 * .3);
+        // [tetti4] lontano dalle passerelle e dalle scale che arrivano su questo tetto: fra i posti dentro il parapetto, quello più staccato
+        const via = []; PLANKS.forEach(Q => { if (Q.a !== r.bi && Q.b !== r.bi) return; for (let s2 = 0; s2 <= Q.L; s2 += .25) via.push([Q.x0 + Q.ox * s2, Q.y0 + Q.oy * s2]); }); LADDERS.forEach(L => { if (L.bi === r.bi) via.push([L.tx, L.ty]); if (L.footB === r.bi) via.push([L.fx, L.fy]); });
+        if (via.length) { let best = -1; for (let u = .25; u <= .76; u += .25) for (let w = .25; w <= .76; w += .25) { const px = x0 + .7 + (W1 - 1.4) * u, py = y0 + .7 + (D1 - 1.4) * w, d = Math.min(...via.map(([a, c]) => hyp(a - px, c - py))); if (d > best) { best = d; x = px; y = py; } } } }
       const q = { i: PREMI.length, k: r.premio, x, y, bi: r.bi, nome: r.nome, giro: c.id, scala: r.scala };
       PREMI.push(q); r.premioI = q.i;
       if (r.premio === 'belvedere' && !BELV.some(v => v.bi === r.bi)) BELV.push({ i: BELV.length, bi: r.bi, x, y, name: 'Belvedere · ' + (c.tema || c.nome), dist: '', giro: c.id });
@@ -45265,11 +45274,11 @@ var Tetti = (function () {
       const sp = (P.arco ? ARCO4 : FONDO4) + .015, larg = P.hw + .06, fa = roofRule(B[P.a]) + .08, fb = roofRule(B[P.b]) + .08;
       const solMax = (u0, u1) => { let m = -Infinity; for (let s2 = u0 - .1; s2 <= u1 + .1 + 1e-6; s2 += .05) for (let t = -larg - .05; t <= larg + .05 + 1e-6; t += (larg + .05) / 4) {   /* un poco più largo e più fitto della misura */ const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t; caseSotto4(x, y).forEach(bi => { m = Math.max(m, solido4(bi, x, y)); }); } return m; };
       const a0 = Math.max(.25, P.s1 - .45), b1 = Math.min(P.L - .25, P.s2 + .45);   // il pianerottolo copre il parapetto (28 cm) e la copertina (21), la scaletta il resto
-      let Ha = solMax(a0, P.s1 + .3) + sp, Hb = solMax(P.s2 - .3, b1) + sp;
+      let Ha = solMax(a0, P.s1 + .14) + sp, Hb = solMax(P.s2 - .14, b1) + sp;
       // sopra il vicolo: se una gronda vicina sporge sotto la retta, si alzano i due pianerottoli
-      let alza = 0; for (let s2 = P.s1 + .3; s2 <= P.s2 - .3 + 1e-6; s2 += .1) { const t0 = (s2 - P.s1 - .3) / Math.max(.1, P.s2 - P.s1 - .6), h = Ha + (Hb - Ha) * t0, m = solMax(s2, s2) + sp; if (m - h > alza) alza = m - h; }
+      let alza = 0; for (let s2 = P.s1 + .14; s2 <= P.s2 - .14 + 1e-6; s2 += .1) { const t0 = (s2 - P.s1 - .14) / Math.max(.1, P.s2 - P.s1 - .28), h = Ha + (Hb - Ha) * t0, m = solMax(s2, s2) + sp; if (m - h > alza) alza = m - h; }
       Ha += alza; Hb += alza;
-      P.prof = { k: [[0, fa], [a0, Ha], [P.s1 + .3, Ha], [P.s2 - .3, Hb], [b1, Hb], [P.L, fb]], scala: [[0, a0], [b1, P.L]], fa, fb, pavimento: s2 => s2 < P.L / 2 ? fa : fb };
+      P.prof = { k: [[0, fa], [a0, Ha], [P.s1 + .14, Ha], [P.s2 - .14, Hb], [b1, Hb], [P.L, fb]], scala: [[0, a0], [b1, P.L]], fa, fb, pavimento: s2 => s2 < P.L / 2 ? fa : fb };
     });
   }
   profili4();
@@ -45360,8 +45369,8 @@ var Tetti = (function () {
       const dW = lx - x0, dE = x1 - lx, dN = ly - y0, dS = y1 - ly, pp = P.parapetti || {}, ph = f => pp[f] !== undefined ? pp[f] : .5;
       if (dentro) su(top + .08);
       // il parapetto e la copertina (21 cm fuori e dentro il filo del muro), per lato
-      [['W', dW, ly >= y0 - .21 && ly <= y1 + .21], ['E', dE, ly >= y0 - .21 && ly <= y1 + .21], ['N', dN, lx >= x0 - .21 && lx <= x1 + .21], ['S', dS, lx >= x0 - .21 && lx <= x1 + .21]].forEach(([f, d, ok]) => {
-        if (!ok) return; if (d >= 0 && d <= .28) su(top + ph(f)); if (d >= -.21 && d <= .4) su(top + ph(f) + .07); });   /* la copertina: 8 cm fuori, 36 dentro (render.js), con margine */
+      [['W', dW, ly >= y0 - .12 && ly <= y1 + .12], ['E', dE, ly >= y0 - .12 && ly <= y1 + .12], ['N', dN, lx >= x0 - .12 && lx <= x1 + .12], ['S', dS, lx >= x0 - .12 && lx <= x1 + .12]].forEach(([f, d, ok]) => {
+        if (!ok) return; if (d >= 0 && d <= .28) su(top + ph(f)); if (d >= -.12 && d <= .4) su(top + ph(f) + .07); });   /* render.js: la copertina del piano sporge 8 cm fuori, 36 dentro */   /* la copertina: 8 cm fuori, 36 dentro (render.js), con margine */
       if (!dentro) return h;
       P.gruppi.forEach(g => { if (inRect(g, .05)) su(top + .08 + (g.alto || 1)); });
       if (P.cupola && inRect(P.cupola, 0)) su(top + .08 + P.cupola.alto);
@@ -45398,7 +45407,7 @@ var Tetti = (function () {
           const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t;
           caseSotto4(x, y).forEach(bi => { const sol = solido4(bi, x, y); if (sol === -Infinity) return;
             const fondo = inScala ? P.prof.pavimento(s2) : h - spess, d = sol - fondo;
-            if (inScala) { const PL = PIANO[bi]; if (PL && PL.tipo === 'piano' && Math.abs(sol - (roofRule(B[bi]) + .08)) < .005) return; }   // la scaletta poggia sul lastrico: contatto, non urto
+            // sulla scaletta il fondo è il lastrico su cui posa: un solido più alto del lastrico (un vicino, una cosa) è un urto
             if (d > TOLL4) { n++; if (d > peggio) { peggio = d; dove = { x, y, z: fondo, bi, s: s2, t }; } } }); } }
       if (n) { urti.push({ i: P.i, a: P.a, b: P.b, tipo: P.tipo4 || 'passerella', n, cm: Math.round(peggio * 100), x: +dove.x.toFixed(2), y: +dove.y.toFixed(2), z: +dove.z.toFixed(2), contro: B[dove.bi].id, forma: PIANO[dove.bi] ? (PIANO[dove.bi].forma || PIANO[dove.bi].tipo) : 'senza piano', s: +dove.s.toFixed(2), t: +dove.t.toFixed(2), L: +P.L.toFixed(2) }); }
       perP.push(n);
