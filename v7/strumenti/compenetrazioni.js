@@ -43,6 +43,10 @@ const srv = http.createServer((req, res) => {
     const ut = {}; (T3.urti || []).forEach(u => ut[u[2]] = (ut[u[2]] || 0) + 1);
     console.log('[tetti3] compenetrazioni sui tetti', (T3.urti || []).length, JSON.stringify(ut)); (T3.urti || []).slice(0, 30).forEach(u => console.log('  ' + u.join('  ')));
     if (process.env.TETTI3_ESIGI && (T3.urti || []).length) process.exitCode = 1; }
+  // [tetti4] LE PASSERELLE sul modello vero (window.__passerelle4): l'impalcato contro i modelli delle case sotto, 2 cm; con TETTI3_ESIGI=1 devono essere zero
+  const P4 = await pg.evaluate(() => window.__passerelle4 ? window.__passerelle4() : null);
+  if (P4) { console.log('[tetti4] passerelle', P4.passerelle, 'con urti', P4.urti.length); P4.urti.slice(0, 40).forEach(u => console.log(`  #${u.i} ${u.tipo} ${u.n} punti, ${u.cm} cm dentro ${u.casa} a (${u.x}, ${u.y}, ${u.z})`));
+    if (process.env.TETTI3_ESIGI && P4.urti.length) process.exitCode = 1; }
   // [scorci] GLI SCORCI: il costo di ognuno (window.__scorci) e le compenetrazioni dei loro pezzi, che il regista misura come le altre voci
   // (fissi: non li sposta; quello che resta, coi pezzi degli scorci da una parte o dall'altra, si stampa). SCORCI_ESIGI=1 esce con errore se non sono zero.
   const SCO = await pg.evaluate(() => window.__scorci ? window.__scorci() : null);
