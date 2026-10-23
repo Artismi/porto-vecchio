@@ -1139,9 +1139,9 @@ var Game = (function () {
   // ---------------- DECISIONI ----------------
   function say(st, n, text, dur) { n.bark = { text, until: st.clock + (dur || 3.4) }; n.barkCd = st.clock + 8; }
   const COMBAT_BARKS = {
-    cop: ['Polizia! Getta l\'arma!', 'Fermo o sparo!', 'Centrale, sparatoria in corso!', 'A terra!'],
-    squalo: ['Lo Squalo ti saluta!', 'Vieni fuori, Nino!', 'Sei un uomo morto!', 'Te la sei cercata!'],
-    marsiglia: ['Tirez! Tirez!', 'Putain, il est là!', 'Crève, petit!', 'À gauche! À gauche!'],
+    cop: ['Polizia! Getta l\'arma!', 'Fermo o sparo!', 'Centrale, sparatoria in corso!', 'A terra!', 'Centrale, sparatoria! Sì, lo so che è la mia pausa!', 'Ogni proiettile è un modulo da compilare, maledetto!', 'Arrenditi! Ho la suocera a cena, non ho tempo!'],
+    squalo: ['Lo Squalo ti saluta!', 'Vieni fuori, Nino!', 'Sei un uomo morto!', 'Te la sei cercata!', 'Nino! Lo Squalo dice che ti vuole bene! Ma deve spararti!', 'Esci, che mia madre mi aspetta per pranzo!'],
+    marsiglia: ['Tirez! Tirez!', 'Putain, il est là!', 'Crève, petit!', 'À gauche! À gauche!', 'Mais qui a pris ma baguette?! Pardon. Tirez!'],
     // [arcipelago]
     'isola:tribu': ['Uuh-ah! Uuh-ah!', 'Carne fresca!', 'Circondatelo!', 'Il fuoco è acceso!'],
     tutela_isola: ['Fuoco! Fuoco!', 'Intruso nella zona militare!', 'Copritemi!', 'Non farlo scappare!'],
