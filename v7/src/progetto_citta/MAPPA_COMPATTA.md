@@ -607,3 +607,74 @@ colonna), `test_percorsi` (gradini e salti nel borgo: la soglia scende da 36 a 2
 Rischi: la costa del recinto la segue il generatore (`riva`), ma se [costa2] sposta la riva sud di molto il piazzale si stringe (i carri
 scendono a due); in render il filare della passeggiata esce più rado del previsto (lo sfoltisce il filtro dei filari di render.js: da guardare); `test_vievive` resta ballerino come prima (le scene dell'attacchino e dell'edicola senza seme, e un `Cannot redefine property: bio` di popolo.js che capita a caso); il palazzo del Governo e il Ministero sono ancora i «civic» grigi di render.js, ora fuori dalla città; i salti sui tetti
 attorno alla Vittoria sono meno di prima.
+
+---
+
+## 14. La pianta e la viabilità: l'anello sul mare, la spianata costruita ([pianta], 23 ottobre)
+
+Il committente, davanti a una foto della spianata: «campo vuoto senza tanto senso, la città finisce di colpo, vuoto e poi fortezza, come
+se l'avessero appena costruita; loro se ne sono appropriati ma la fortezza fa parte del tessuto urbano della città. […] l'arco di trionfo
+al massimo nella piazza, un po' più piccolo […]; il mercato coperto è enorme […] spesso la costa è mangiata dal mare. Poi tra la ferrovia
+e le case e il mare/litorale deve passare una strada, adesso è tutto compresso, manca qualcuno che si occupi davvero di viabilità».
+
+Le tavole stanno in `_immagini/pianta/` e le rifà `node strumenti/tavola_viabilita.js` (con `PIANTA_PRIMA=<src di un worktree del commit
+di partenza>` esce anche `venuta.png`, la rete di prima e quella di adesso lette dal gioco):
+- `tavola_viabilita.png`: la rete di oggi coi sei problemi segnati, il progetto, le sezioni tipo (mostrata al committente prima dei lavori);
+- `opzioni_spianata.png`: le due letture di «potresti metterlo lì l'arco che rimane sul mare». Il committente ha scelto la **A**: il
+  mercato scende sulla spianata, la Porta di Terra resta al suo posto ma ridotta. Ha scelto anche il Lungomare **dal lato del mare**;
+- `venuta.png`: com'è venuta.
+
+### 14.1 La gerarchia delle strade
+
+| livello | quali | sezione | traffico |
+|---|---|---|---|
+| **litoranea** (l'anello sul mare) | Lungomare di Tramontana (nuovo), Viale della Spianata (era la Passeggiata), Via del Lido (era la Passeggiata sud), Via della Marina (era un vicolo di 5 m) | 7 m a doppio senso, marciapiedi di 2 m, parapetto sul mare | auto, bus, la sosta su un lato |
+| **viali** | Corso Garibaldi, Via della Vittoria, Via della Stazione | 7 m coi marciapiedi | auto, bus |
+| **vie** (ZTL) | Rua Maestra, Via di Mezzo, Via delle Mura, Riva della Rocca | 3-5 m di basoli | Ape, moto, a piedi |
+| **vicoli** | il pettine del borgo, Vico del Glacis | 2-3 m | a piedi |
+
+- **Lungomare di Tramontana** (`lung_nord`, `CITY.lungN`): parte a T dalla Costiera Nord prima del bivio della stazione, passa i binari
+  al passaggio a livello (le sbarre ora stanno lì) e corre sulla riva davanti alle baracche e poi a 10 m dai binari (l'asse; la prova
+  lo misura), su una **colmata**: dove il mare mangiava la riva la terra arriva al filo del parapetto, fuori c'è la banchina di 1,5 m e
+  in acqua la **scogliera** di massi (pezzo `scogliera`). Sul mare il **parapetto** di pietra con la ringhiera, verso la ferrovia il
+  **guardrail** (pezzo nuovo `parapetto`, `tipo: 'mare' | 'guardrail'`); fra il marciapiede e la massicciata la striscia di ghiaia
+  riservata: niente più case schiacciate fra i binari e il mare. Oltre il parapetto solo scogli (riservati). Arriva a T sul Viale della
+  Spianata davanti al respingente dei binari.
+- **Viale della Spianata** (id `passeggiata`, x 1467,5): 7 m, il marciapiede della passeggiata davanti alle case del borgo, i lecci sul
+  lato della spianata; dal belvedere sugli scogli alla Vittoria, che passa con un **incrocio a croce** vero (dall'altra parte la Via del Lido,
+  sullo stesso asse).
+- **Via del Lido** (id `passeggiata_sud`): 7 m lungo il muro del Recinto (spostato di 2,5 m: `xw = spian0 + 10,5`), scende al Lido.
+- **Via della Marina**: 7 m coi marciapiedi; sulla calata il marciapiede sud porta le bitte, sul Lido la **ringhiera** (la spiaggia sotto).
+  La fila delle case sul porto parte 2,5 m più su (la soglia di epoca E2 ora è a 14,5 m dalla via).
+- **Bus**: la linea 1 passa sull'anello: Stazione – Lungomare – Mercato della Rocca – Vittoria – Marina, con le fermate intermedie ogni
+  150 m al più (`vievive.js`, `ancore().lungomare`). **Sosta**: le vie da 7 m tengono gli stalli sul lato lontano: 36 stalli (prima 6),
+  al più 30 auto in sosta (`CFG.sostaMax`).
+- **Incroci** (`strumenti/incroci.js`): 41 strade, 59 incroci, 0 capi aperti, 0 errori; i capi chiusi sono 4 (la porta della Rocca, due
+  affacci, la scala delle mura). Le indicazioni stanno su dieci incroci (erano otto).
+
+### 14.2 La spianata costruita, il mercato, la porta
+
+- **Le case del glacis** (`CITY.glacis`, `W.glacis`): fra il Viale e la Riva della Rocca due isolati bassi (1-2 piani, lotti stretti come
+  nel borgo, era E0: le case costruite sul glacis quando le artiglierie non servirono più), tagliati dal **Vico del Glacis**; 42 case dove
+  prima ce n'era una. La **Riva della Rocca** (5 m) corre sul canale col suo parapetto, davanti al fronte di terra del castello.
+- **La Piazza della Rocca** col **Mercato della Rocca** all'aperto (scenografia `mercato` con `aperto: true`: solo i banchi con le tende,
+  niente tettoia): è il luogo-missione 8 (firma: le tende a strisce davanti al canale e alla Rocca). Il palco del potere (`palco.js`) e la
+  terra battuta della spianata (render.js, epoca 9) restano a sud della testa di ponte.
+- **L'ottagono** (scenografia `ottagono`, «Piazza dell'Ottagono»): la tettoia di 28 m non c'è più; restano la piazza, la fontana in mezzo e
+  i lecci sull'anello. La stazione del metrò sotto la vecchia piazza del mercato resta lì (`sottosuolo.js` cerca prima l'`ottagono`).
+- **La Porta di Terra**: 8,4 m senza le torri (era 23 m, «un arco di trionfo»), con lo slargo lastricato dove stavano le torri: l'arco sta
+  in una piazzetta all'imbocco della Rua. Il giro del Mercato sui tetti si cerca attorno all'ottagono (`percorsi.js`).
+- **Radio Luna**: il magazzino (12 × 10 m) sta sul lungomare, fra il lotto del fuoco e la torre dell'acqua, il portone verso il tronchino.
+
+### 14.3 Prove e rischi
+
+Verdi: test_mappa_compatta (nuove righe: l'anello di 7 m e il Lungomare dal lato del mare), test_percorsi, test_tetti4,
+test_tetti_vissuti, test_costa2, test_scorci, test_segnaletica, test_chiarezza, test_visuale4, test_botteghe, test_posti,
+`test_eventi --seme=12345`, `TETTI3_ESIGI=1 node strumenti/compenetrazioni.js` (0 sui tetti). Toccate per seguire la pianta: test_posti
+(i banchi al mercato nuovo), test_mappa_compatta (le larghezze), scorci.js (le cose piatte provate e posate con la stessa regola),
+segnaletica.js (la bandiera d'angolo gira sulla faccia verso la camera; dieci incroci con le indicazioni).
+
+Rischi: `test_vievive` era rosso già alla partenza (la fila all'edicola del Mercato, l'attacchino); adesso resta l'attacchino e la soglia
+dei mezzi alla passeggiata (1,00 per 100 m, sul filo): con più strade i mezzi si diradano. La colmata è nelle caselle e nelle quote ma non
+nella riva analitica (`NorthY`): `W.quotaRiva` la tiene all'asciutto perché sono caselle fatte (strada, marciapiede, banchina); gli scogli
+fuori sono il pezzo `scogliera`. Le case del glacis sono E0 basse: se un filone alza il borgo, `flFix` le tiene a 1-2 piani.

@@ -7,20 +7,25 @@
 //   node strumenti/tavola_viabilita.js [cartella]   (predefinita: _immagini/pianta)
 // Esce: tavola_viabilita.png (oggi sopra, progetto sotto, le sezioni e la legenda a destra) e opzioni_spianata.png (le due letture di
 // «potresti metterlo lì l'arco che rimane sul mare», da far scegliere al committente). Disegna in Chromium senza testa (per le scritte).
-// Con PIANTA_OGGI=1 la metà «progetto» la legge dal mondo del gioco (dopo la migrazione: la tavola diventa il controllo di com'è venuta).
+// Con PIANTA_PRIMA=<cartella src di prima> (un worktree del commit di partenza) esce anche venuta.png: sopra la rete di prima, sotto quella
+// del gioco di adesso, tutte e due lette dai dati (strade per livello, la linea del bus col giro e le fermate, gli stalli della sosta).
 const path = require('path'), fs = require('fs');
 const { chromium } = require(process.env.PW || '/opt/node22/lib/node_modules/playwright');
 const SRC = path.join(__dirname, '..', 'src'), OUT = path.resolve(process.argv[2] || path.join(__dirname, '..', '_immagini', 'pianta'));
 fs.mkdirSync(OUT, { recursive: true });
 const log = console.log, warn = console.warn; console.log = () => {}; console.warn = () => {};
+// [pianta] il mondo di prima (se c'è): solo le caselle e le strade, prima di caricare quello di adesso
+let PRIMA = null;
+if (process.env.PIANTA_PRIMA) { global.World = require(path.join(path.resolve(process.env.PIANTA_PRIMA), 'world_cittanuova.js')); PRIMA = World; }
 global.World = require(path.join(SRC, 'world_cittanuova.js'));
+let VV = null; if (PRIMA) { global.Interior = require(path.join(SRC, 'interiors.js')); global.Game = require(path.join(SRC, 'game.js')); global.Chiarezza = require(path.join(SRC, 'chiarezza.js')); VV = require(path.join(SRC, 'vievive.js')); }
 console.log = log; console.warn = warn;
 const W = World, T = W.T, TS = W.TS, GW = W.GW, B = W.BUILDINGS;
 const F = { x0: 1222, y0: 236, x1: 1612, y1: 452, s: 3.2 };   // la cornice (metri) e i pixel per metro
 
 // ---------- il fondo: le caselle di oggi, smorzate ----------
 const nx = Math.ceil((F.x1 - F.x0) / TS), ny = Math.ceil((F.y1 - F.y0) / TS);
-const fondo = (smorza) => { const px = Buffer.alloc(nx * ny * 4);
+const fondo = (smorza, W = World) => { const T = W.T, B = W.BUILDINGS, GW = W.GW; const px = Buffer.alloc(nx * ny * 4);
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const tx = Math.floor(F.x0 / TS) + i, ty = Math.floor(F.y0 / TS) + j, k = ty * GW + tx, v = W.grid[k]; let c;
     if (v === T.WATER) c = W.zone[k] === W.Z.MARE ? [168, 196, 214] : [176, 204, 220];
     else if (v === T.BLD) { const b = B[W.bIndex[k]], f = b ? b.fl || 1 : 3; const l = Math.max(118, 212 - f * 16); c = b && b.military ? [150, 152, 140] : [l, l * .95, l * .9]; }
@@ -32,12 +37,14 @@ const fondo = (smorza) => { const px = Buffer.alloc(nx * ny * 4);
 
 // ---------- OGGI: la rete del gioco, classificata ----------
 const inC = p => p[0] > F.x0 - 30 && p[0] < F.x1 && p[1] > F.y0 && p[1] < F.y1;
-const livello = rd => rd.kind === 'litoranea' ? 'lit' : rd.kind === 'citta' ? 'viale' : rd.kind === 'vicolo' ? (rd.w >= 4.5 ? 'via' : 'vicolo') : 'altro';
-const oggi = W.roads.filter(rd => rd.pts && rd.pts.some(inC) && rd.kind !== 'sterrato').map(rd => ({ id: rd.id, nome: rd.name, w: rd.w, liv: livello(rd), pts: rd.pts.map(q => [+q[0].toFixed(1), +q[1].toFixed(1)]) }));
+const ANELLO = new Set(['lung_nord', 'passeggiata', 'passeggiata_sud', 'marina']);
+const livello = rd => rd.kind === 'litoranea' || (rd.kind === 'citta' && (rd.litorale || ANELLO.has(rd.id))) ? 'lit' : rd.kind === 'citta' ? 'viale' : rd.kind === 'vicolo' ? (rd.w >= 4.5 ? 'via' : 'vicolo') : 'altro';
+const rete = W => W.roads.filter(rd => rd.pts && rd.pts.some(inC) && rd.kind !== 'sterrato').map(rd => ({ id: rd.id, nome: rd.name, w: rd.w, liv: livello(rd), pts: rd.pts.map(q => [+q[0].toFixed(1), +q[1].toFixed(1)]) }));
+const oggi = rete(PRIMA || W);
 const rail = (W.railCity || []).filter(p => p[0] > F.x0 - 20 && p[0] < 1470).map(p => [+p[0].toFixed(1), +p[1].toFixed(1)]);
 const ry = x => { let a = rail[0], b = rail[rail.length - 1]; for (let k = 0; k < rail.length - 1; k++) if (rail[k][0] <= x && rail[k + 1][0] >= x) { a = rail[k]; b = rail[k + 1]; break; } return a[1] + (b[1] - a[1]) * (x - a[0]) / ((b[0] - a[0]) || 1); };
 // i problemi di oggi, misurati
-const mare = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS), i = ty * GW + tx; return W.grid[i] === T.WATER && W.zone[i] === W.Z.MARE; };
+const mare = (x, y) => { const WW = PRIMA || W, tx = Math.floor(x / TS), ty = Math.floor(y / TS), i = ty * GW + tx; return WW.grid[i] === T.WATER && WW.zone[i] === WW.Z.MARE; };
 const costaN = x => { let y = ry(Math.min(1460, x)); while (y > F.y0 && !mare(x, y)) y -= 1; return y + 1; };
 const strettoia = []; for (let x = 1256; x <= 1460; x += 4) { const d = ry(x) - 3 - costaN(x); if (d < 9) strettoia.push([x, ry(x) - 3, +d.toFixed(1)]); }
 const PROBLEMI = [
@@ -107,15 +114,20 @@ const COSTA_NUOVA = [
   { k: 'spiaggia', pts: [[1408, 405], [1436, 413], [1462, 416]] },
 ];
 const SEZIONI = [
-  { nome: 'S1 · Lungomare di Tramontana', x: 1400, y: ry(1400) - 10, fasce: [['mare', 3, '#a8c4d6'], ['scogliera', 3.5, '#9a948c'], ['marciapiede + parapetto', 2.5, '#d8d0c0'], ['carreggiata 2 × 3,25', 6.5, '#55575c'], ['guardrail', .6, '#b0b4b8'], ['ferrovia (rilevato)', 6, '#8a6e58'], ['mura', 2.4, '#b8a888'], ['Via delle Mura', 2.5, '#efe4cc'], ['case', 4, '#c9b9a5']] },
-  { nome: 'S2 · Viale della Spianata', x: SPIAN_X, y: 300, fasce: [['case del borgo', 4, '#c9b9a5'], ['marciapiede (la passeggiata)', 3, '#e6dcc6'], ['carreggiata 2 × 3', 6, '#55575c'], ['marciapiede coi lecci', 2.5, '#b9c8a0'], ['isolati bassi', 4, '#d4bfa0'], ['vico', 2, '#efe4cc'], ['riva della Rocca', 4, '#e6dcc6'], ['canale', 3, '#a8c4d6']] },
-  { nome: 'S3 · Lungomare della Marina', x: 1395, y: 388, fasce: [['case della marina', 4, '#c9b9a5'], ['marciapiede', 1.5, '#e6dcc6'], ['carreggiata 2 × 3', 6, '#55575c'], ['marciapiede + ringhiera', 2, '#d8d0c0'], ['calata / spiaggia', 5, '#e2d8bc'], ['mare', 3, '#a8c4d6']] },
+  { nome: 'S1 · Lungomare di Tramontana', x: 1400, y: ry(1400) - 10, fasce: [['mare', 3, '#a8c4d6'], ['scogliera', 3.5, '#9a948c'], ['marciapiede + parapetto', 2.5, '#d8d0c0'], ['carreggiata 2 × 3,5', 7, '#55575c'], ['guardrail', .6, '#b0b4b8'], ['ferrovia (rilevato)', 6, '#8a6e58'], ['mura', 2.4, '#b8a888'], ['Via delle Mura', 2.5, '#efe4cc'], ['case', 4, '#c9b9a5']] },
+  { nome: 'S2 · Viale della Spianata', x: SPIAN_X, y: 300, fasce: [['case del borgo', 4, '#c9b9a5'], ['marciapiede (la passeggiata)', 3, '#e6dcc6'], ['carreggiata 2 × 3,5', 7, '#55575c'], ['marciapiede coi lecci', 2, '#b9c8a0'], ['isolati bassi', 4, '#d4bfa0'], ['vico', 2, '#efe4cc'], ['riva della Rocca', 4, '#e6dcc6'], ['canale', 3, '#a8c4d6']] },
+  { nome: 'S3 · Via della Marina (lungomare)', x: 1395, y: 388, fasce: [['case della marina', 4, '#c9b9a5'], ['marciapiede', 2, '#e6dcc6'], ['carreggiata 2 × 3,5', 7, '#55575c'], ['marciapiede (bitte / ringhiera)', 2, '#d8d0c0'], ['calata / spiaggia', 5, '#e2d8bc'], ['mare', 3, '#a8c4d6']] },
   { nome: 'S4 · Via della Vittoria (com\'è)', x: 1420, y: 343, fasce: [['case', 3, '#c9b9a5'], ['portico', 3.6, '#e0cfae'], ['marciapiede', 1.4, '#e6dcc6'], ['carreggiata 2 × 3', 6, '#55575c'], ['marciapiede', 1.6, '#e6dcc6'], ['case', 3, '#c9b9a5']] },
   { nome: 'S5 · Rua Maestra (ZTL)', x: 1420, y: 312, fasce: [['case', 3, '#c9b9a5'], ['basoli, senza marciapiede: Ape, moto, a piedi', 5, '#d6c6a4'], ['case', 3, '#c9b9a5']] },
 ];
 
-const dati = { F, nx, ny, base: fondo(0), baseP: fondo(.35), oggi, rail, PROBLEMI, strettoia, PRJ, ISOLATI, PIAZZA_ROCCA, BUS, PARK, COSTA_NUOVA, SEZIONI, SPIAN_X,
-  octa: [1274, 343, 16], porta: [1306, 303] };
+const venuta = PRIMA ? (() => { const L = VV.linea(), par = (W.pezzi || []).filter(p => p.tipo === 'parapetto').map(p => { const c = Math.cos(p.rot), s2 = Math.sin(p.rot); return [[p.x, p.y], [p.x + p.opz.L * c, p.y - p.opz.L * s2], p.opz.tipo]; });
+  const conta = R => { const o = {}; R.forEach(r => { const L2 = r.pts.reduce((a, q, k) => k ? a + Math.hypot(q[0] - r.pts[k - 1][0], q[1] - r.pts[k - 1][1]) : 0, 0); o[r.liv] = (o[r.liv] || 0) + L2; }); return o; };
+  const R0 = rete(PRIMA), R1 = rete(W);
+  return { prima: R0, dopo: R1, base0: fondo(.25, PRIMA), base1: fondo(.25), giro: L.giro ? L.giro.pts.filter((q, k) => k % 3 === 0) : [], fermate: L.fermate.map(f => [f.x, f.y, f.nome]), nomi: L.nomi, stalli: VV.stalli().map(s2 => [s2.x, s2.y]), parapetti: par,
+    m0: conta(R0), m1: conta(R1), case0: PRIMA.BUILDINGS.filter(b => b.x * TS > 1462 && b.x * TS < 1504 && b.y * TS > 250 && b.y * TS < 340).length, case1: W.BUILDINGS.filter(b => b.x * TS > 1462 && b.x * TS < 1504 && b.y * TS > 250 && b.y * TS < 340).length }; })() : null;
+const dati = { F, nx, ny, base: fondo(0, PRIMA || W), baseP: fondo(.35, PRIMA || W), oggi, rail, PROBLEMI, strettoia, PRJ, ISOLATI, PIAZZA_ROCCA, BUS, PARK, COSTA_NUOVA, SEZIONI, SPIAN_X,
+  octa: [1274, 343, 16], porta: [1306, 303], venuta };
 
 (async () => {
   const b = await chromium.launch(), pg = await b.newPage({ viewport: { width: 1800, height: 1500 } });
@@ -133,15 +145,39 @@ const dati = { F, nx, ny, base: fondo(0), baseP: fondo(.35), oggi, rail, PROBLEM
     const txt = (s, wx, wy, col, sz, bold, al) => { const [a, b] = P(wx, wy); x.font = (bold ? 'bold ' : '') + (sz || 11) + 'px sans-serif'; x.textAlign = al || 'left'; x.lineWidth = 3.5; x.strokeStyle = 'rgba(250,247,240,.92)'; x.strokeText(s, a, b); x.fillStyle = col; x.fillText(s, a, b); x.textAlign = 'left'; };
     const sTxt = (s, X, Y, col, sz, bold, al) => { x.font = (bold ? 'bold ' : '') + (sz || 12) + 'px sans-serif'; x.textAlign = al || 'left'; x.fillStyle = col || '#222'; x.fillText(s, X, Y); x.textAlign = 'left'; };
     // il passo dei livelli: larghezza disegnata (in metri veri, più il bordo), colore
-    const LIV = { lit: { w: 9.5, col: '#b5651d', bordo: '#5a3210', nome: 'litoranea · 6,5 m + marciapiede lato mare, doppio senso' }, viale: { w: 7, col: '#e0b040', bordo: '#7a5a10', nome: 'viale · 7 m, doppio senso, marciapiedi' }, via: { w: 5, col: '#f2dc9a', bordo: '#9a8450', nome: 'via · 5 m, ZTL (Ape, moto, carico/scarico)' }, vicolo: { w: 2.6, col: '#fff7e6', bordo: '#b8a888', nome: 'vicolo · 2-3 m, a piedi' }, altro: { w: 2, col: '#ddd', bordo: '#999', nome: '' } };
+    const LIV = { lit: { w: 9.5, col: '#b5651d', bordo: '#5a3210', nome: 'litoranea · 7 m + marciapiedi, parapetto sul mare, doppio senso' }, viale: { w: 7, col: '#e0b040', bordo: '#7a5a10', nome: 'viale · 7 m, doppio senso, marciapiedi' }, via: { w: 5, col: '#f2dc9a', bordo: '#9a8450', nome: 'via · 5 m, ZTL (Ape, moto, carico/scarico)' }, vicolo: { w: 2.6, col: '#fff7e6', bordo: '#b8a888', nome: 'vicolo · 2-3 m, a piedi' }, altro: { w: 2, col: '#ddd', bordo: '#999', nome: '' } };
     const strada = (pts, liv, extra) => { const L = LIV[liv]; line(pts, L.w * S + 2.4, L.bordo, null, 'butt'); line(pts, L.w * S, extra && extra.pedonale ? '#efe4cc' : L.col, null, 'butt'); if (extra && extra.nuova) line(pts, 1.2, 'rgba(0,0,0,.55)', [6, 5]); };
     const etich = (pts, s, col, sz, f) => { const m = pts[Math.floor(pts.length * (f || .45))]; txt(s, m[0] + 2, m[1] - 3, col, sz || 11, true); };
     const pianta = (tile, titolo) => { x.imageSmoothingEnabled = false; x.drawImage(tile, OX, OY, MW, MH); x.imageSmoothingEnabled = true; x.strokeStyle = '#999'; x.lineWidth = 1; x.strokeRect(OX, OY, MW, MH); sTxt(titolo, OX, OY - 10, '#1a1a1a', 17, true); };
     const binari = () => { line(d.rail, 3 * S, '#8a6e58'); line(d.rail, 1.2, '#f4f0e8', [5, 4]); };
     const Z0 = [1246, 250, 1512, 420];
-    c.width = PAD * 3 + MW + SIDE; c.height = modo === 'opzioni' ? Math.round(70 + (Z0[3] - Z0[1]) * ((c.width - 3 * PAD) / 2) / (Z0[2] - Z0[0]) + 90) : 2 * (MH + HEAD + 18) + 60;
+    c.width = PAD * 3 + MW + SIDE; c.height = modo === 'venuta' ? 2 * (MH + HEAD + 18) + 60 : modo === 'opzioni' ? Math.round(70 + (Z0[3] - Z0[1]) * ((c.width - 3 * PAD) / 2) / (Z0[2] - Z0[0]) + 90) : 2 * (MH + HEAD + 18) + 60;
     x.fillStyle = '#f7f4ee'; x.fillRect(0, 0, c.width, c.height);
 
+    if (modo === 'venuta') {
+      const V = d.venuta, t0 = await img(V.base0), t1 = await img(V.base1);
+      const metri = m => ['lit', 'viale', 'via', 'vicolo'].map(lv => LIV[lv].nome.split(' ·')[0] + ' ' + Math.round(m[lv] || 0) + ' m').join(' · ');
+      pianta(t0, 'PRIMA — la rete del gioco al commit di partenza');
+      ['vicolo', 'via', 'viale', 'lit'].forEach(lv => V.prima.filter(r => r.liv === lv).forEach(r => strada(r.pts, lv))); binari();
+      sTxt(metri(V.m0), OX, OY + MH + 18, '#333', 12);
+      let X = OX + MW + PAD, Y = OY + 8; ['lit', 'viale', 'via', 'vicolo'].forEach(lv => { const L = LIV[lv]; x.fillStyle = L.bordo; x.fillRect(X, Y - 9, 40, L.w * 1.6 + 2); x.fillStyle = L.col; x.fillRect(X, Y - 8, 40, L.w * 1.6); sTxt(L.nome, X + 50, Y + 2, '#222', 12, lv === 'lit'); Y += 22; });
+      sTxt('case sulla spianata (1462-1504 × 250-340): ' + V.case0, X, Y + 10, '#333', 13);
+      OY += MH + HEAD + 40;
+      pianta(t1, 'DOPO — la rete del gioco adesso ([pianta]): l\'anello sul mare, la spianata costruita');
+      ['vicolo', 'via', 'viale', 'lit'].forEach(lv => V.dopo.filter(r => r.liv === lv).forEach(r => strada(r.pts, lv))); binari();
+      V.parapetti.forEach(([a, b2, tp]) => line([a, b2], 2.2, tp === 'guardrail' ? '#555' : '#1a1a1a'));
+      V.stalli.forEach(([a, b2]) => { const [px, py] = P(a, b2); x.fillStyle = '#2a5aa0'; x.fillRect(px - 2.5, py - 2.5, 5, 5); });
+      line(V.giro, 2.4, '#c0392b', null, 'round'); V.fermate.forEach(([a, b2]) => dot(a, b2, 4.2, '#fff', '#c0392b'));
+      sTxt(metri(V.m1), OX, OY + MH + 18, '#333', 12);
+      X = OX + MW + PAD; Y = OY + 8;
+      x.strokeStyle = '#c0392b'; x.lineWidth = 3; x.beginPath(); x.moveTo(X, Y - 4); x.lineTo(X + 40, Y - 4); x.stroke(); sTxt('Linea 1: ' + [...new Set(V.nomi.map(n => n.replace(/ di Tramontana| della Spianata/, '')))].join(' – '), X + 50, Y, '#222', 12); Y += 20;
+      sTxt(V.fermate.length + ' fermate (i due versi)', X + 50, Y, '#222', 12); Y += 22;
+      x.fillStyle = '#2a5aa0'; x.fillRect(X + 17, Y - 8, 6, 6); sTxt(V.stalli.length + ' stalli di sosta lungo le vie (prima 6)', X + 50, Y, '#222', 12); Y += 22;
+      x.strokeStyle = '#1a1a1a'; x.lineWidth = 2.2; x.beginPath(); x.moveTo(X, Y - 4); x.lineTo(X + 40, Y - 4); x.stroke(); sTxt('parapetti sul mare (' + V.parapetti.filter(q => q[2] !== 'guardrail').length + ' tratti)', X + 50, Y, '#222', 12); Y += 20;
+      x.strokeStyle = '#555'; x.beginPath(); x.moveTo(X, Y - 4); x.lineTo(X + 40, Y - 4); x.stroke(); sTxt('guardrail verso la ferrovia (' + V.parapetti.filter(q => q[2] === 'guardrail').length + ')', X + 50, Y, '#222', 12); Y += 26;
+      sTxt('case sulla spianata (1462-1504 × 250-340): ' + V.case1, X, Y, '#333', 13);
+      return c.toDataURL('image/png').split(',')[1];
+    }
     if (modo === 'tavola') {
       // ===== OGGI =====
       pianta(tO, 'OGGI — la rete com\'è nel gioco (?cittanuova)');
@@ -227,8 +263,9 @@ const dati = { F, nx, ny, base: fondo(0), baseP: fondo(.35), oggi, rail, PROBLEM
     }
     return c.toDataURL('image/png').split(',')[1];
   }, [dati, modo]);
-  fs.writeFileSync(path.join(OUT, 'tavola_viabilita.png'), Buffer.from(await disegna('tavola'), 'base64'));
-  fs.writeFileSync(path.join(OUT, 'opzioni_spianata.png'), Buffer.from(await disegna('opzioni'), 'base64'));
+  if (process.env.PIANTA_SOLO_VENUTA !== '1') fs.writeFileSync(path.join(OUT, 'tavola_viabilita.png'), Buffer.from(await disegna('tavola'), 'base64'));
+  if (process.env.PIANTA_SOLO_VENUTA !== '1') fs.writeFileSync(path.join(OUT, 'opzioni_spianata.png'), Buffer.from(await disegna('opzioni'), 'base64'));
+  if (dati.venuta) fs.writeFileSync(path.join(OUT, 'venuta.png'), Buffer.from(await disegna('venuta'), 'base64'));
   log('tavola', path.join(OUT, 'tavola_viabilita.png'), 'strettoie', dati.strettoia.length);
   await b.close();
 })();
