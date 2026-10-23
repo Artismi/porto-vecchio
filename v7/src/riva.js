@@ -32,7 +32,7 @@ var Riva = (function () {
     if (R.W === w) return true; if (!w || !w.inland || !w.quotaRiva || !w.coastKind2) { R.on = false; return false; }
     W = R.W = w; GW = w.GW; GH = w.GH; VW = GW + 1; TS = R.TS = w.TS; T = w.T; WL = w.WL !== undefined ? w.WL : -.45; R.WL = WL;
     vD = new Float32Array(VW * (GH + 1)).fill(NaN); vQ = new Float32Array(VW * (GH + 1)).fill(NaN); vN = new Float32Array(VW * (GH + 1)).fill(-1);
-    tF = new Int8Array(GW * GH).fill(-1); tK = new Array(GW * GH); cel = new Map(); vK = null; vS = null;
+    tF = new Int8Array(GW * GH).fill(-1); tK = new Array(GW * GH); cel = new Map(); vK = null; vK0 = null; vS = null;
     // la distanza dalla città (in caselle, fino a 6): case, strade, vicoli, piazze, banchine, pontili, le strade dei veicoli
     const FATTO = new Set([T.BLD, T.VIA, T.COB, T.PIAZZA, T.WALK, T.STAIRS, T.FOUNT, T.QUAY, T.PIER]);
     dF = new Uint8Array(GW * GH); for (let i = 0; i < GW * GH; i++) dF[i] = FATTO.has(w.grid[i]) || (w.roadW && w.roadW[i] > 0) ? 0 : 8;
@@ -52,8 +52,12 @@ var Riva = (function () {
   // i tipi ai vertici (2 m), da interpolare: così fra una casella di sabbia e una di scogli la forma passa piano, senza gradino
   // [sabbia, scogli, falesia, duna, cala]
   let vK = null;
-  function kV(i, j) { if (!vK) vK = new Float32Array(VW * (GH + 1) * 5).fill(NaN); const k = VI(i, j) * 5; if (vK[k] !== vK[k]) { const kk = W.coastKind2(i * TS, j * TS), f = FAM[kk] || 0;
-      vK[k] = f === 1 ? 1 : 0; vK[k + 1] = f === 2 ? 1 : 0; vK[k + 2] = f === 3 ? 1 : 0; vK[k + 3] = kk === 'duna' ? 1 : 0; vK[k + 4] = kk === 'cala' ? 1 : 0; } return k; }
+  let vK0 = null;
+  function kV0(i, j) { if (!vK0) vK0 = new Float32Array(VW * (GH + 1) * 5).fill(NaN); const k = VI(i, j) * 5; if (vK0[k] !== vK0[k]) { const kk = W.coastKind2(i * TS, j * TS), f = FAM[kk] || 0;
+      vK0[k] = f === 1 ? 1 : 0; vK0[k + 1] = f === 2 ? 1 : 0; vK0[k + 2] = f === 3 ? 1 : 0; vK0[k + 3] = kk === 'duna' ? 1 : 0; vK0[k + 4] = kk === 'cala' ? 1 : 0; } return k; }
+  function kV(i, j) { if (!vK) vK = new Float32Array(VW * (GH + 1) * 5).fill(NaN); const k = VI(i, j) * 5; if (vK[k] !== vK[k]) {   // sfumati su 5×5 vertici (10 m): fra sabbia e scogli la forma passa piano
+      const t = [0, 0, 0, 0, 0]; let n = 0; for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { const q = kV0(i + a, j + b); for (let c = 0; c < 5; c++) t[c] += vK0[q + c]; n++; }
+      const own = kV0(i, j), fam = vK0[own] + vK0[own + 1] + vK0[own + 2]; for (let c = 0; c < 5; c++) vK[k + c] = fam > 0 || c > 2 ? t[c] / n : 0; } return k; }
   const LAND = (f, du, ca) => f === 1 ? 16 + 14 * du - 4 * ca : BANDA[f][1];
   // la casella entra nella fascia fine? (lontano dalla città, e per una delle famiglie che ha ai vertici la distanza dalla riva entra nella sua fascia)
   function inBanda(tx, ty) {
@@ -74,9 +78,9 @@ var Riva = (function () {
       h += .13 * Math.sin(al * 6.2832 / 12 + 6 * n1) * Math.exp(-(((d - 1.6) / 1.8) ** 2));   // le cuspidi (ogni 12 m la battigia avanza e rientra di un metro)
       h += .24 * Math.exp(-(((d - bD) / 1.2) ** 2)) + Math.max(0, d - bD) * .012;           // la berma, poi la retrospiaggia
       h += .55 * Math.max(0, fbm(x / 6.5, y / 6.5, 307, 3) - .44) * sstep(bD + .5, bD + 5, d) + (fbm(x / 2.2, y / 2.2, 308, 2) - .5) * .08 * sstep(bD, bD + 3, d);   // le dune embrionali e le gobbe del vento dietro la berma
-      if (du > 0) { const A = 1.1 + 1.5 * fbm(x / 40, y / 40, 303, 2), dz = d - (15 + 4 * n1); let dn = A * Math.exp(-dz * dz / (20 + 12 * n1)) * (.5 + .95 * fbm(x / 7, y / 7, 304, 3)); if (fbm(x / 26, y / 26, 306, 2) > .63) dn *= .3; h += dn * du; }   // il cordone, le gobbe, le conche del vento
+      if (du > 0) { const A = 1.1 + 1.5 * fbm(x / 40, y / 40, 303, 2), dz = d - (15 + 4 * n1); let dn = A * Math.exp(-dz * dz / (20 + 12 * n1)) * (.5 + .95 * fbm(x / 7, y / 7, 304, 3)); dn *= 1 - .7 * sstep(.58, .68, fbm(x / 26, y / 26, 306, 2)); h += dn * du; }   // il cordone, le gobbe, le conche del vento
       h += (fbm(x / 3.1, y / 3.1, 302, 2) - .5) * .05;
-      if (q > h + .3) { const L = LAND(1, du, ca), t = Math.max(0, Math.min(1, (d - bD) / Math.max(2, L - bD))); h += (q - h) * t; }   // dietro la spiaggia il terreno sale (la scarpata), piano: dalla berma al bordo della fascia
+      if (q > h) { const L = LAND(1, du, ca), t = Math.max(0, Math.min(1, (d - bD) / Math.max(2, L - bD))); h += (q - h) * t * sstep(.05, .6, q - h); }   // dietro la spiaggia il terreno sale (la scarpata), piano: dalla berma al bordo della fascia
       return h;
     }
     const n1 = fbm(x / 7, y / 7, 311, 3), off = n1 * .7, F = f === 3, pas = F ? .55 : .32;
