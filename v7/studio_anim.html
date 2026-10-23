@@ -32,7 +32,7 @@
   // S.pose = [{ nome, anim: { act, upper, mood, talk, lookAt }, o: { speed, weapon, held, ... }, who, look, ang, t }]
   window.studio = {
     async run(list, opts) {
-      opts = opts || {}; if (window.Personaggi) { Personaggi.set('stile', opts.stile || 'b'); Personaggi.set('facce', opts.facce || 'pulite'); }
+      opts = opts || {}; if (window.Personaggi) { Personaggi.set('stile', opts.stile || 'b'); Personaggi.set('facce', opts.facce || 'scolpite'); }
       people.forEach(p => scene.remove(p.g)); people.length = 0;
       const cols = opts.cols || Math.min(6, list.length), sp = opts.sp || 1.8;
       list.forEach((d, i) => {
