@@ -84,7 +84,7 @@ const srv = http.createServer((req, res) => {
         const put = (dst, src) => { for (const k in src) { if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) && dst[k]) put(dst[k], src[k]); else dst[k] = cp(src[k]); } };
         K.forEach(k => { const w = window['__' + k]; if (!w) return; put(w, window.__M0[k]); put(w, o[k] || {}); });   // QUADRO e SCENA (luce e colore), OCCL (l'ombra degli angoli), PROF (la separazione dei livelli)
         const R = window.__pv.R; if (R.setPendenza) R.setPendenza(o.PENDENZA || window.__pend0 || (window.__pend0 = R.setPendenza()));   // [visuale3] "PENDENZA": la pendenza della visuale a piedi (radianti)
-        if (R.setVisuale) R.setVisuale(o.VISUALE || window.__vis0 || (window.__vis0 = R.setVisuale()), true);   // [visuale3] "VISUALE": ellisse, sezione o taglio sulla stessa scena (subito: niente transizioni)
+        if (R.setVisuale) R.setVisuale(o.VISUALE || window.__vis0 || (window.__vis0 = R.setVisuale()), true);   // [visuale3] "VISUALE": il modo sulla stessa scena (subito: niente transizioni)   // [visuale5] solo "camera" o "muretto": gli altri nomi non cambiano niente
       }, v.manopole);
       if (v.manopole.VISUALE || v.manopole.PENDENZA || process.env.GALLERIA_DUE) await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));   // [visuale3] due fotogrammi: il modo nuovo entra (programmi, taglio, sagoma)
       const dir = v.nome ? path.join(outDir, v.nome) : outDir; fs.mkdirSync(dir, { recursive: true });

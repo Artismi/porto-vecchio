@@ -1,51 +1,33 @@
-/* Porto Vecchio — [visuale3] LA VISUALE SUL PERSONAGGIO E L'INQUADRATURA (le regole, senza grafica: le usa render.js, le prova test_visuale3.js).
-   Tre modi di vedere il personaggio quando una casa lo copre, scelti all'avvio con ?visuale= (in gioco non si cambia):
-   - 'taglio' (il modo di difetto): la SEZIONE ARCHITETTONICA. Le case fra la camera e il personaggio si tagliano con un piano orizzontale
-     poco sopra i suoi piedi, come una pianta d'architetto o il taglio dei Sims: tutto quello che appartiene alla casa (muri, facciate,
-     balconi, tetto e roba sul tetto) sopra il piano non si disegna, e la faccia tagliata è un poché pieno, bruno caldo, col filo chiaro.
-     Spigoli dritti, niente trasparenze; il taglio scende e risale in un attimo (il piano scivola dal tetto alla quota) e ha l'isteresi
-     (si chiude solo dopo un po' che la casa non copre più), così camminando lungo un muro non lampeggia. Sul tetto non si taglia niente.
-     La sagoma arancione resta solo come riserva, dove una cosa piccola (un palo, un cavo, un'insegna) copre ancora il personaggio.
-   - 'ellisse' ([varco2]): il buco ellittico attorno al personaggio, in ogni materiale.
-   - 'sezione' ([visuale]): la casa davanti sbiadisce intera e il personaggio si vede come sagoma.
-   [visuale4] Il committente non è convinto dal buco (ellisse e taglio lasciano monconi, anelli e sezioni che nessun fotografo terrebbe):
-   due prototipi da mettere a confronto sulle stesse inquadrature, entrambi con la sagoma del personaggio attraverso i muri.
-   - 'camera' (prototipo A): la camera si adatta. Nei vicoli, sotto archi e portici e nelle corti strette sale verso l'alto (la pendenza
-     da 0,78 fino a 1,22 rad), nelle vie e nelle piazze torna quella di sempre; la stretta si misura dai dati (la larghezza libera attorno
-     al personaggio, i muri e i tetti sul lato camera, i vicoli della rete, le volte). Solo il tetto della casa che copre sbiadisce, intero
-     (mai un buco); se un muro copre ancora, c'è la sagoma.
-   - 'muretto' (prototipo B, come The Sims): le case fra il personaggio e la camera, entro un raggio sullo schermo, scendono tutte insieme
-     a un muretto di un metro con la copertina scura e il filo chiaro. Sul tetto non scende niente.
-   La quota del taglio di ogni casa è la più alta che lascia vedere il personaggio e il suolo attorno a lui: il raggio da ogni punto di
-   prova (i piedi, il busto, la testa e un anello di suolo attorno) verso la camera entra nella scatola della casa a una certa quota; il
-   piano sta un filo sotto la più bassa. Con la camera a 41° il raggio sale di 0,88 m per metro: il muro sul lato camera di un vicolo di
-   2,5 m resta alto un metro o poco più, quanto basta a leggere la pianta della strada. */
+/* Porto Vecchio — LA VISUALE SUL PERSONAGGIO (le regole, senza grafica: le usa render.js, le prova test_visuale4.js).
+   [visuale5] Il committente ha scelto (23 ottobre): restano due modi, scelti all'avvio con ?visuale= (gli strumenti li cambiano dal vivo):
+   - 'camera' (il modo di difetto, era il prototipo A di [visuale4]): la camera si adatta. Nei vicoli, sotto archi e portici e nelle corti
+     strette sale verso l'alto (la pendenza da 0,78 fino a 1,22 rad), nelle vie e nelle piazze torna quella di sempre; la stretta si misura
+     dai dati (la larghezza libera attorno al personaggio, i muri e i tetti sul lato camera, i vicoli della rete, le volte). Solo il tetto
+     della casa che copre sbiadisce, intero (mai un buco); se un muro copre ancora, c'è la sagoma.
+   - 'muretto' (?visuale=muretto, era il prototipo B, come The Sims): le case fra il personaggio e la camera, entro un raggio sullo schermo,
+     scendono tutte insieme a un muretto di un metro con la copertina scura e il filo chiaro. Sul tetto non scende niente.
+   Via l'ellisse ([varco2]), il taglio ([visuale3]) e la sezione ([visuale]): bucavano l'immagine. Del taglio resta la macchina che usa il
+   muretto: passo() (l'isteresi e lo scivolare del piano), la quota per casa (R.casaVisibile, la tessitura FD1 delle case fuse) e il registro.
+   E la camera non è più una forza assoluta: il giocatore la gira e la sposta a mano, e lei torna da sola quando serve (mano(), sotto). */
 var Visuale = (function () {
   'use strict';
-  const MODI = ['taglio', 'ellisse', 'sezione', 'camera', 'muretto'];   // [visuale4] i due prototipi
-  function modo(search) { const m = /[?&]visuale=([a-z]+)/.exec(search || ''); return m && MODI.includes(m[1]) ? m[1] : 'taglio'; }
-  // le manopole del taglio (window.__TAGLIO per le prove dal vivo)
+  const MODI = ['camera', 'muretto'];   // [visuale5] solo i due scelti; 'camera' di difetto
+  function modo(search) { const m = /[?&]visuale=([a-z]+)/.exec(search || ''); return m && MODI.includes(m[1]) ? m[1] : 'camera'; }
+  // [visuale5] le manopole condivise col muretto (window.__TAGLIO per le prove dal vivo): il passo di difetto di passo(), quanto si allarga
+  // la casa per il registro delle cose sulla sua pianta, la copertina
   const TAGLIO = {
-    margine: .1,          // m: il piano sta tanto sotto il punto dove il raggio più basso entra nella casa
-    passo: .25,           // m: la quota si arrotonda in giù a questo passo (niente piano che trema di centimetri)
-    moncone: .55,         // m sopra i piedi: il taglio più basso che l'anello di suolo può chiedere (il muro resta un moncone che disegna la pianta)
-    minimo: .15,          // m sopra i piedi: il taglio più basso in assoluto (il personaggio a ridosso del muro)
-    massimo: 3.2,         // m sopra i piedi: fin qui la quota va a passi di `passo`; più su a piani interi (la casa lontana perde solo i piani alti)
-    piano: 3.2,           // m: l'altezza di un piano
-    dentro: 2.3,          // m sopra i piedi: la casa che ha il personaggio dentro la sua pianta (portico, sottopasso): taglio sopra la testa, senza poché
-    anello: 1.35,         // m: il raggio dell'anello di suolo attorno ai piedi che deve restare visibile
-    allarga: .7,          // m: la scatola della casa si allarga di tanto per la prova (balconi, gronde e insegne sporgono)
-    tieni: .55,           // s: la casa resta tagliata tanto dopo che ha smesso di coprire (l'isteresi)
-    alza: .45,            // s: il taglio risale (di almeno `salto`) solo se la quota più alta resta buona per tanto
+    allarga: .7,          // m: la scatola della casa si allarga di tanto per le cose del registro (balconi, gronde e insegne sporgono)
+    tieni: .55,           // s: la casa resta giù tanto dopo che ha smesso di servire (l'isteresi; il muretto ha la sua)
+    alza: .45,            // s: la quota risale (di almeno `salto`) solo se la quota più alta resta buona per tanto
     salto: .75,           // m
     apri: .22, chiudi: .32, // s: quanto dura lo scivolare del piano in giù e in su
-    poche: '#47342a',     // il poché: bruno caldo scuro, la sezione piena del muro (non nero: si legge come materia, non come buco)
-    filo: '#eadcc2',      // il filo chiaro sul bordo della sezione
+    poche: '#47342a',     // la copertina di riserva (prima del colore del muro): bruno caldo scuro
+    filo: '#eadcc2',      // il filo chiaro sul bordo della copertina
     filoLargo: .07,       // m
   };
   // un passo dell'isteresi. S: Map(id -> stato) che dura fra un fotogramma e l'altro; vuole: Map(id -> { y: quota chiesta, top: cima }) di
-  // questo fotogramma (le case che coprono adesso). Ogni stato: on (tagliata), y (quota del piano), a (quanto è aperto, 0-1), top,
-  // lost (s da quando non copre), up (s da quando potrebbe risalire). Ritorna il numero di case che hanno cambiato on/off.
+  // questo fotogramma (le case che servono adesso). Ogni stato: on (giù), y (quota del piano), a (quanto è aperto, 0-1), top,
+  // lost (s da quando non serve), up (s da quando potrebbe risalire). Ritorna il numero di case che hanno cambiato on/off.
   function passo(S, vuole, dt, K) {
     K = K || TAGLIO; let cambi = 0;
     vuole.forEach((v, id) => { let s = S.get(id);
@@ -62,18 +44,8 @@ var Visuale = (function () {
     return cambi;
   }
   const liscio = a => a * a * (3 - 2 * a);
-  // la quota del piano che si disegna adesso: scivola dalla cima della casa alla quota del taglio
+  // la quota del piano che si disegna adesso: scivola dalla cima della casa alla quota del muretto
   const quota = s => s.top + (s.y - s.top) * liscio(s.a);
-  // la quota chiesta a una casa dai suoi raggi: entrate = [{ y: quota d'ingresso del raggio, suolo: è un punto dell'anello }]; piedi
-  // (sopra K.massimo dai piedi la quota scende a piani interi, K.piano: la casa lontana perde i suoi piani alti, non si affetta a caso)
-  function chiesta(entrate, piedi, K) {
-    K = K || TAGLIO; let y = Infinity, ylo = Infinity;
-    entrate.forEach(e => { const lo = piedi + (e.suolo ? K.moncone : K.minimo); ylo = Math.min(ylo, lo); y = Math.min(y, Math.max(lo, e.y - K.margine)); });
-    if (y - piedi > K.massimo) return piedi + Math.max(K.massimo, Math.floor((y - piedi) / K.piano) * K.piano);
-    // [mappa_compatta] l'arrotondamento al passo non scende sotto il pavimento del taglio: prima, a ridosso del muro (nei vicoli da 2-3 m
-    // della città compatta succede spesso) la quota tenuta a 0,15 m dai piedi finiva arrotondata in giù a 0 (un taglio raso terra)
-    return Math.max(ylo, Math.floor(y / K.passo) * K.passo);
-  }
   // dove un raggio (o: origine, d: direzione unitaria) entra in una scatola { min: {x,y,z}, max: {x,y,z} }: la quota y del punto d'ingresso
   // (l'origine stessa se ci sta dentro), o null se la manca
   function entra(o, d, b) {
@@ -83,29 +55,6 @@ var Visuale = (function () {
       let a = (lo - o[k]) / d[k], c = (hi - o[k]) / d[k]; if (a > c) { const q = a; a = c; c = q; }
       if (a > t0) t0 = a; if (c < t1) t1 = c; if (t0 > t1) return null; }
     return o.y + d.y * t0;
-  }
-  const dentro = (p, b, m) => p.x > b.min.x - m && p.x < b.max.x + m && p.y > b.min.y && p.y < b.max.y && p.z > b.min.z - m && p.z < b.max.z + m;
-  // quali case tagliare e a che quota, in questo fotogramma: il personaggio (px, pz, piedi fy), la camera (cam: x, y, z), le case (ognuna
-  // con box3: min e max). Ritorna Map(casa -> { y, top, nodisc }). tetto: il personaggio sta su un tetto o sulle sue scale (niente taglio)
-  function scegli(px, pz, fy, cam, case_, K, tetto, out) {
-    K = K || TAGLIO; out = out || new Map(); out.clear(); if (tetto) return out;
-    const P = [[px, fy + .15, pz, false], [px, fy + .95, pz, false], [px, fy + 1.75, pz, false]];
-    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; P.push([px + Math.cos(a) * K.anello, fy + .05, pz + Math.sin(a) * K.anello, true]); }
-    const R = P.map(([x, y, z, suolo]) => { const dx = cam.x - x, dy = cam.y - y, dz = cam.z - z, l = Math.hypot(dx, dy, dz) || 1; return { o: { x, y, z }, d: { x: dx / l, y: dy / l, z: dz / l }, suolo }; });
-    const sdx = cam.x - px, sdz = cam.z - pz, sl2 = sdx * sdx + sdz * sdz || 1, A = K.allarga, E = [];
-    for (const B of case_) {
-      const b3 = B.box3; if (!b3 || b3.max.y < fy + K.minimo + .4) continue;
-      const bx = (b3.min.x + b3.max.x) / 2, bz = (b3.min.z + b3.max.z) / 2, br = Math.hypot(b3.max.x - b3.min.x, b3.max.z - b3.min.z) / 2 + 4;
-      const t = Math.max(0, Math.min(1, ((bx - px) * sdx + (bz - pz) * sdz) / sl2)), ex = px + sdx * t - bx, ez = pz + sdz * t - bz; if (ex * ex + ez * ez > br * br) continue;
-      if (px > b3.min.x - .3 && px < b3.max.x + .3 && pz > b3.min.z - .3 && pz < b3.max.z + .3 && fy > b3.min.y - 1 && fy < b3.max.y - 1.5) {   // dentro la pianta (portico, sottopasso): sopra la testa, senza poché
-        if (b3.max.y > fy + K.dentro + .3) out.set(B, { y: fy + K.dentro, top: b3.max.y, nodisc: true }); continue; }
-      const bx3 = { min: { x: b3.min.x - A, y: b3.min.y, z: b3.min.z - A }, max: { x: b3.max.x + A, y: b3.max.y, z: b3.max.z + A } }; E.length = 0;
-      for (const q of R) { const inX = dentro(q.o, bx3, 0); if (inX && q.suolo) continue;   // un punto di suolo sotto la gronda di questa casa non conta
-        const y = entra(q.o, q.d, inX ? b3 : bx3); if (y !== null) E.push({ y, suolo: q.suolo }); }   // il busto sotto un balcone: conta la casa vera, non quella allargata
-      if (!E.length) continue;
-      const y = chiesta(E, fy, K); if (b3.max.y <= y + .05) continue;
-      out.set(B, { y, top: b3.max.y }); }
-    return out;
   }
   // ================= [visuale4] A: LA CAMERA CHE SI ADATTA =================
   // le manopole (window.__CAMERA4 per le prove dal vivo)
@@ -241,8 +190,71 @@ var Visuale = (function () {
       out.set(B, { y, top: b3.max.y }); }
     return out;
   }
-  const api = { MODI, modo, TAGLIO, passo, quota, chiesta, liscio, entra, scegli, CAMERA4, mappa, misura, camPasso, TETTO4, tetti, sbiadito, MURETTO, muretto };   // [visuale4]
-  if (typeof window !== 'undefined') { window.__TAGLIO = TAGLIO; window.__CAMERA4 = CAMERA4; window.__TETTO4 = TETTO4; window.__MURETTO = MURETTO; }   // [visuale4]
+  // ================= [visuale5] LA CAMERA A MANO E IL RICENTRO =================
+  // Il committente: «la camera non è una forza assoluta, il giocatore la deve poter spostare». Con la levetta destra, trascinando col mouse
+  // (rotella premuta) o con due dita il giocatore gira la visuale attorno al personaggio e la sposta: la camera va fuori centro. Poi torna:
+  //   - spostata da fermo: quando il personaggio parte, la camera si ricentra (piano);
+  //   - spostata camminando: resta dov'è finché il personaggio cammina; quando si ferma e riparte, si ricentra;
+  //   - contro la visuale: se il personaggio va per più di un secondo in aperto contrasto con quello che la visuale gli mostra davanti
+  //     (verso la camera, o a più di 110° dal suo davanti), si ricentra nella direzione nuova; sotto gli 80° il conto si azzera (in mezzo
+  //     resta: l'isteresi) e dopo un ricentro così non ne scatta un altro prima di 1,5 s: non oscilla mai;
+  //   - il ricentro è uno smorzamento esponenziale (uguale a ogni frequenza di fotogrammi) e non lotta mai col giocatore: appena lui tocca
+  //     la camera il ricentro si ferma lì.
+  // Centro vuol dire la visuale automatica di sempre: sul computer l'orientamento fisso dell'isola (YAW), sul telefono quella che segue
+  // la marcia ([camera3]); la pendenza che si adatta e il tetto che sbiadisce ([visuale4]) lavorano sopra la visuale a mano.
+  // Le manopole (window.__MANO per le prove dal vivo)
+  const MANO = {
+    mosso: .6,            // m/s: sopra questa velocità il personaggio cammina
+    fermo: .25,           // m/s: sotto questa sta fermo...
+    tFermo: .3,           // s: ...ma solo dopo tanto (un passo incerto, una curva stretta non sono una sosta)
+    grazia: .3,           // s: una partenza entro tanto dall'ultimo tocco della camera vale come «spostata camminando» (resta)
+    contro: 1.92,         // rad (110°): fra la direzione di marcia e il davanti della visuale, oltre questo si va contro la visuale
+    controEsce: 1.4,      // rad (80°): sotto questo il conto si azzera
+    tContro: 1,           // s contro la visuale prima di ricentrare
+    resta: 1.5,           // s: dopo un ricentro per contromarcia, un altro non scatta prima di tanto
+    tau: .22,             // s: lo smorzamento del ricentro (95% in 3τ ≈ 0,66 s)
+    giro: 1.2,            // s: dopo la contromarcia la visuale che segue la marcia (telefono) può fare anche il mezzo giro
+    bordo: .72,           // lo scarto della camera (a mano più lo sguardo avanti) resta entro tanto della mezza inquadratura: il personaggio
+                          // non esce mai dallo schermo
+    giraK: 1.7,           // rad/s: la levetta destra e i tasti , . girano di tanto a corsa piena
+    spostaK: .9,          // la levetta destra in verticale sposta la visuale di tanto (mezze inquadrature al secondo)
+  };
+  const ang = a => Math.atan2(Math.sin(a), Math.cos(a));
+  // un passo della camera a mano. S dura fra i fotogrammi; q è questo fotogramma:
+  //   dyaw (rad), dpx, dpz (m, nel mondo): quanto il giocatore ha girato e spostato adesso; attivo: la sta toccando (anche se ferma);
+  //   vel (m/s) e dir (rad, atan2(vz, vx) in pianta): la marcia del personaggio (o del mezzo); avanti (rad): il davanti della visuale in
+  //   pianta; segue: la visuale automatica segue la marcia (telefono); forza: si ricentra adesso (si sale su un mezzo, un dialogo, l'intro).
+  // S.yaw, S.px, S.pz: la parte a mano, da sommare alla visuale automatica; S.off: fuori centro; S.ric: si sta ricentrando; S.perche:
+  // l'ultima ragione ('partenza', 'contro', 'forza'); S.n: quanti ricentri; S.giro: s dall'ultima contromarcia
+  function mano(S, q, dt, K) {
+    K = K || MANO; if (S.yaw === undefined) Object.assign(S, { yaw: 0, px: 0, pz: 0, off: false, ric: false, mosso: false, sotto: 0, tAtt: 99, tc: 0, tr: 99, giro: 99, perche: '', n: 0 });
+    S.tAtt += dt; S.tr += dt; S.giro += dt;
+    if (q.attivo) { S.tAtt = 0; S.ric = false;   // il ricentro non lotta mai col giocatore
+      if (q.dyaw || q.dpx || q.dpz) { S.yaw += q.dyaw || 0; S.px += q.dpx || 0; S.pz += q.dpz || 0; S.off = true; } }
+    const prima = S.mosso, v = q.vel || 0;   // fermo e in marcia, con l'isteresi
+    if (v > K.mosso) { S.mosso = true; S.sotto = 0; } else if (v < K.fermo) { S.sotto += dt; if (S.sotto >= K.tFermo) S.mosso = false; } else S.sotto = 0;
+    const via = c => { S.perche = c; if (!S.off) return; if (!S.ric) S.n++; S.ric = true; S.yaw = ang(S.yaw); };   // per la via più corta
+    if (q.forza) via('forza');
+    else if (!prima && S.mosso && !q.attivo && S.tAtt > K.grazia) via('partenza');
+    if (S.mosso && !q.attivo && q.dir !== undefined && q.avanti !== undefined) {   // contro la visuale
+      const a = Math.abs(ang(q.dir - q.avanti));
+      if (a > K.contro) S.tc += dt; else if (a < K.controEsce) S.tc = 0;
+      if (S.tc >= K.tContro && S.tr >= K.resta) { S.tc = 0; S.tr = 0; if (S.off || q.segue) { S.giro = 0; via('contro'); } } }
+    else S.tc = 0;
+    if (S.ric) { const k = 1 - Math.exp(-dt / K.tau); S.yaw -= S.yaw * k; S.px -= S.px * k; S.pz -= S.pz * k;
+      if (Math.abs(S.yaw) < 1e-3 && Math.hypot(S.px, S.pz) < .01) { S.yaw = S.px = S.pz = 0; S.ric = false; S.off = false; } }
+    return S;
+  }
+  // lo scarto della camera resta nell'inquadratura: (lx, lz) lo sguardo avanti, yaw la visuale, hu e hv le mezze inquadrature in metri
+  // (di lato e in profondità sul suolo). Se lo scarto a mano più lo sguardo esce dal bordo, si tira dentro la sola parte a mano
+  function limita(S, lx, lz, yaw, hu, hv, K) {
+    K = K || MANO; const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = -fz, rz = fx, B = K.bordo, tx = S.px + lx, tz = S.pz + lz;
+    const sr = tx * rx + tz * rz, sf = tx * fx + tz * fz, cr = Math.max(-B * hu, Math.min(B * hu, sr)), cf = Math.max(-B * hv, Math.min(B * hv, sf));
+    if (cr !== sr || cf !== sf) { S.px += (cr - sr) * rx + (cf - sf) * fx; S.pz += (cr - sr) * rz + (cf - sf) * fz; }
+    return S;
+  }
+  const api = { MODI, modo, TAGLIO, passo, quota, liscio, entra, CAMERA4, mappa, misura, camPasso, TETTO4, tetti, sbiadito, MURETTO, muretto, MANO, mano, limita };   // [visuale4] [visuale5]
+  if (typeof window !== 'undefined') { window.__TAGLIO = TAGLIO; window.__CAMERA4 = CAMERA4; window.__TETTO4 = TETTO4; window.__MURETTO = MURETTO; window.__MANO = MANO; }   // [visuale4] [visuale5]
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Visuale;

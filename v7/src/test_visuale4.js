@@ -1,11 +1,15 @@
-// [visuale4] prova dei due prototipi della visuale (visuale.js), sulla città compatta in pianta (case come scatole fino alla gronda più il
+// [visuale4] prova dei due modi della visuale (visuale.js), sulla città compatta in pianta (case come scatole fino alla gronda più il
 // tetto, la camera del gioco a piedi):
-//   1. ?visuale=camera e ?visuale=muretto si scelgono; il modo di difetto resta il taglio;
+//   1. [visuale5] restano solo 'camera' (di difetto) e 'muretto'; ellisse, taglio e sezione non si scelgono più;
 //   2. A, la camera: nei vicoli del borgo la pendenza sale, nelle vie larghe e nelle piazze no;
 //   3. A, niente pompa: camminando lungo le vie con i vicoli di lato la stretta cambia stato al più una volta ogni 2 s (60 e 20 fps);
 //   4. A, il tetto che sbiadisce: solo la casa che copre il personaggio (i raggi del corpo entrano nella sua scatola), mai quella dietro;
-//   5. B, il muretto: scendono solo le case sul lato camera e dentro il raggio; camminando non si riaprono;
-//   6. sul tetto niente cambia (niente stretta, niente tetti sbiaditi, niente muretti).
+//   5. B, il muretto: scendono solo le case sul lato camera e dentro il raggio; camminando non si riaprono; la macchina del taglio che
+//      usa (l'isteresi, lo scivolare del piano: le prove che erano in test_visuale3);
+//   6. sul tetto niente cambia (niente stretta, niente tetti sbiaditi, niente muretti);
+//   7. [visuale5] la camera a mano e il ricentro, con l'ingresso simulato a 60 e 20 fps: fermo, giri, parti → si ricentra; giri camminando
+//      → resta; ti fermi e riparti → si ricentra; contromarcia sostenuta → si ricentra dopo il ritardo, l'esitazione corta no; il ricentro
+//      non lotta col giocatore, è uguale a ogni frequenza, e lo scarto non porta il personaggio fuori dallo schermo.
 // node src/test_visuale4.js   (dalla cartella v7)
 const path = require('path'), src = __dirname;
 global.World = require(path.join(src, 'world_cittanuova.js'));
@@ -14,7 +18,9 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); i
 const M = V.mappa(W), KC = V.CAMERA4, KT = V.TETTO4, KM = V.MURETTO;
 // 1. i modi
 ok(V.modo('?cittanuova&visuale=camera') === 'camera' && V.modo('?visuale=muretto') === 'muretto', '?visuale=camera e ?visuale=muretto');
-ok(V.modo('') === 'taglio' && V.modo('?visuale=ellisse') === 'ellisse', 'il modo di difetto resta il taglio; ellisse e taglio restano per il confronto');
+ok(V.modo('') === 'camera' && V.modo('?cittanuova') === 'camera' && ['ellisse', 'taglio', 'sezione', 'boh'].every(m => V.modo('?visuale=' + m) === 'camera') && V.MODI.join() === 'camera,muretto',
+  '[visuale5] il modo di difetto è la camera; ellisse, taglio e sezione non ci sono più (tornano alla camera)');
+ok(V.scegli === undefined && V.chiesta === undefined, '[visuale5] via la scelta e la quota del taglio: resta la macchina che usa il muretto (passo, quota, entra)');
 // le case come scatole: dalla base alla gronda più 2,5 m (come le scatole di render.js: top + 2,5)
 const CASE = W.BUILDINGS.map((b, i) => ({ b, i, geo: { y0: b.base || 0 }, box3: { min: { x: b.x * TS + .3, y: b.base || 0, z: b.y * TS + .3 }, max: { x: (b.x + b.w) * TS - .3, y: M.gronda(b) + 2.5, z: (b.y + b.h) * TS - .3 } } }));
 const tile = (tx, ty) => tx < 0 || ty < 0 || tx >= GW || ty >= GH ? -1 : W.grid[ty * GW + tx];
@@ -89,4 +95,60 @@ const lati = r => W.roads.filter(q => /^vic_/.test(q.id) && q.pts && q.pts.some(
   const S = {}; for (let i = 0; i < 60; i++) V.camPasso(S, V.misura(M, x, z, fy, CDX, CDZ, KC), 1 / 30, KC, YAW); const su = S.on;
   for (let i = 0; i < 60; i++) V.camPasso(S, null, 1 / 30, KC, YAW);
   ok(su && !S.on && Math.abs(S.p - KC.base) < .01 && Math.abs(S.z - 1) < .01, `salito sul tetto dal vicolo la camera torna quella di sempre (${S.p.toFixed(3)} rad, zoom ${S.z.toFixed(3)})`); }
+// [visuale3] la macchina del taglio che resta al muretto (da test_visuale3, che non c'è più): l'isteresi e lo scivolare del piano
+{ const S = new Map(), C = {}, dt = 1 / 60; let n = 0; for (let i = 0; i < 120; i++) { const T = new Map(); if (i % 5 < 3) T.set(C, { y: 1, top: 9 }); n += V.passo(S, T, dt, KM); }
+  ok(n === 1 && S.get(C).on, `a intermittenza la casa resta giù (${n} cambio in 2 s)`); }
+{ const S = new Map(), C = {}; V.passo(S, new Map([[C, { y: 1, top: 9 }]]), 1 / 60, KM); const y0 = V.quota(S.get(C)); for (let i = 0; i < 40; i++) V.passo(S, new Map([[C, { y: 1, top: 9 }]]), 1 / 60, KM);
+  ok(y0 > 8 && Math.abs(V.quota(S.get(C)) - 1) < 1e-6, `il piano scivola dalla cima (${y0.toFixed(2)} m) al muretto (1 m) in ${KM.apri} s`); }
+// 7. [visuale5] la camera a mano e il ricentro (Visuale.mano), con l'ingresso simulato: la levetta destra (o il mouse, le dita) gira la
+// visuale; il personaggio sta fermo o cammina in una direzione del mondo. La visuale del gioco: YAW più la parte a mano; il suo davanti in
+// pianta è -π/2 - yaw (come render.js: la camera sta a (sin yaw, cos yaw) dal punto guardato)
+{ const KN = V.MANO, YB = Math.PI / 4, avanti = S => -Math.PI / 2 - (YB + (S.yaw || 0)), A = a => Math.atan2(Math.sin(a), Math.cos(a));
+  // f(t) -> { v: m/s, dir: direzione del mondo, w: rad/s girati a mano (mentre la tocca), pan: m/s, segue }
+  const gioca = (S, fps, T, f, log) => { const dt = 1 / fps; for (let i = 0, n = Math.round(T * fps); i < n; i++) { const t = i * dt, q = f(t) || {}, att = !!(q.w || q.pan);
+      V.mano(S, { dyaw: (q.w || 0) * dt, dpx: (q.pan || 0) * dt, dpz: 0, attivo: att, vel: q.v || 0, dir: q.dir, avanti: avanti(S), segue: !!q.segue }, dt, KN); if (log) log(t + dt, S); } return S; };
+  const su = -Math.PI / 2 - YB;   // la direzione del mondo che nella visuale di sempre è «in su» sullo schermo
+  [60, 20].forEach(fps => {
+    // a) fermo, la giri, poi cammini: si ricentra
+    const S = {}; gioca(S, fps, .5, () => ({})); gioca(S, fps, .5, () => ({ w: 2.4 })); const y1 = S.yaw; gioca(S, fps, 1.5, () => ({}));
+    const fermo = S.off && Math.abs(S.yaw - y1) < 1e-9; let t95 = null, salti = 0, prima = S.yaw;
+    gioca(S, fps, 2, () => ({ v: 1.4, dir: su }), (t, S) => { if (t95 === null && Math.abs(S.yaw) < .05 * Math.abs(y1)) t95 = t; if (S.yaw > prima + 1e-9) salti++; prima = S.yaw; });
+    ok(fermo && t95 !== null && t95 > .4 && t95 < .9 && salti === 0 && !S.off && S.perche === 'partenza', `${fps} fps — fermo, la giri di ${y1.toFixed(2)} rad: resta girata finché stai fermo; parti e si ricentra liscia (95% in ${t95 && t95.toFixed(2)} s, sempre in calo)`);
+    // b) cammini, la giri camminando: resta; ti fermi e riparti: si ricentra
+    const S2 = {}; gioca(S2, fps, 1, () => ({ v: 1.4, dir: su })); gioca(S2, fps, .5, () => ({ v: 1.4, dir: su, w: 2 })); const y2 = S2.yaw;
+    gioca(S2, fps, 3, () => ({ v: 1.4, dir: su })); const resta = S2.off && !S2.ric && Math.abs(S2.yaw - y2) < 1e-9;
+    gioca(S2, fps, .15, () => ({ v: .1, dir: su })); gioca(S2, fps, .5, () => ({ v: 1.4, dir: su })); const passoIncerto = S2.off && Math.abs(S2.yaw - y2) < 1e-9;   // un attimo sotto la soglia non è una sosta
+    gioca(S2, fps, .8, () => ({})); const fermo2 = S2.off && Math.abs(S2.yaw - y2) < 1e-9; gioca(S2, fps, .8, () => ({ v: 1.4, dir: su }));
+    ok(resta && passoIncerto && fermo2 && Math.abs(S2.yaw) < .05 * Math.abs(y2) && S2.perche === 'partenza', `${fps} fps — la giri camminando (${y2.toFixed(2)} rad): resta per 3 s di marcia e dopo un passo incerto di 0,15 s; ferma resta; alla ripartenza si ricentra (${S2.yaw.toFixed(3)} rad dopo 0,8 s)`);
+    // c) contromarcia sostenuta: si ricentra dopo il ritardo; d) un'esitazione corta no
+    const S3 = {}; gioca(S3, fps, 1, () => ({ v: 1.4, dir: su })); gioca(S3, fps, .4, () => ({ v: 1.4, dir: su, w: 1.5 })); const y3 = S3.yaw, giu = su + Math.PI - y3;   // verso la camera girata
+    let tRic = null; gioca(S3, fps, 2.5, () => ({ v: 1.4, dir: giu }), (t, S) => { if (tRic === null && S.ric) tRic = t; });
+    ok(tRic !== null && tRic >= KN.tContro - 1e-6 && tRic < KN.tContro + .1 && S3.perche === 'contro' && Math.abs(S3.yaw) < .1 * Math.abs(y3), `${fps} fps — giri camminando e poi vai verso la camera: si ricentra dopo ${tRic && tRic.toFixed(2)} s di contromarcia (soglia ${(KN.contro * 180 / Math.PI).toFixed(0)}°, ${KN.tContro} s)`);
+    const S4 = {}; gioca(S4, fps, 1, () => ({ v: 1.4, dir: su })); gioca(S4, fps, .4, () => ({ v: 1.4, dir: su, w: 1.5 })); const y4 = S4.yaw, giu4 = su + Math.PI - y4;
+    gioca(S4, fps, 6, t => ({ v: 1.4, dir: (t % 1.1) < .6 ? giu4 : su - y4 }));   // 0,6 s contro e 0,5 s con, per 6 s
+    const S5 = {}; gioca(S5, fps, 1, () => ({ v: 1.4, dir: su })); gioca(S5, fps, .4, () => ({ v: 1.4, dir: su, w: 1.5 })); const y5 = S5.yaw;
+    gioca(S5, fps, 4, () => ({ v: 1.4, dir: su - y5 + 1.66 }));   // 95° dal davanti: nella banda dell'isteresi, mai oltre la soglia
+    ok(S4.off && Math.abs(S4.yaw - y4) < 1e-9 && S4.n === 0 && S5.off && S5.n === 0, `${fps} fps — l'esitazione corta (0,6 s contro e 0,5 s con, per 6 s) e la marcia di traverso a 95° non ricentrano`);
+    // e) il ricentro non lotta col giocatore: appena la tocca si ferma lì, e la segue
+    const S6 = {}; gioca(S6, fps, .3, () => ({ w: 3 })); gioca(S6, fps, .5, () => ({})); gioca(S6, fps, .25, () => ({ v: 1.4, dir: su })); const ric = S6.ric, y6 = S6.yaw;
+    gioca(S6, fps, .5, () => ({ v: 1.4, dir: su, w: -1 }));
+    ok(ric && !S6.ric && S6.off && Math.abs(S6.yaw - (y6 - .5)) < 1e-6, `${fps} fps — durante il ricentro la tocchi: il ricentro si ferma e la camera fa solo quello che chiedi (${y6.toFixed(3)} → ${S6.yaw.toFixed(3)} rad)`);
+  });
+  // la stessa curva a ogni frequenza di fotogrammi (lo smorzamento esponenziale)
+  { const curva = fps => { const S = {}; gioca(S, fps, .3, () => ({ w: 3 })); gioca(S, fps, .5, () => ({})); gioca(S, fps, .5, () => ({ v: 1.4, dir: -Math.PI / 2 - Math.PI / 4 })); return S.yaw; };
+    const a = curva(60), b = curva(20), c = curva(144); ok(Math.abs(a - b) < .02 && Math.abs(a - c) < .02, `il ricentro è uguale a 20, 60 e 144 fps: dopo 0,5 s ${b.toFixed(3)}, ${a.toFixed(3)}, ${c.toFixed(3)} rad`); }
+  // la partenza subito dopo averla girata vale come «girata camminando»: resta
+  { const S = {}; gioca(S, 60, .4, () => ({ w: 2 })); const y = S.yaw; gioca(S, 60, 1, () => ({ v: 1.4, dir: su }));
+    ok(S.off && Math.abs(S.yaw - y) < 1e-9, `parti mentre la stai girando (entro ${KN.grazia} s): resta dove l'hai messa`); }
+  // lo spostamento torna insieme al giro
+  { const S = {}; gioca(S, 60, .5, () => ({ pan: 6 })); const p0 = S.px; gioca(S, 60, .5, () => ({})); gioca(S, 60, 2, () => ({ v: 1.4, dir: su }));
+    ok(p0 > 2 && Math.abs(S.px) < .05 && !S.off, `spostata da fermo di ${p0.toFixed(1)} m: alla partenza torna sul personaggio`); }
+  // sul telefono la visuale segue la marcia: in centro la contromarcia non tocca la parte a mano ma lascia fare il mezzo giro (S.giro)
+  { const S = {}; gioca(S, 60, 1, () => ({ v: 1.4, dir: su, segue: true })); let g = null; gioca(S, 60, 1.5, () => ({ v: 1.4, dir: su + Math.PI, segue: true }), (t, S) => { if (g === null && S.giro === 0) g = t; });
+    ok(g !== null && Math.abs(g - KN.tContro) < .05 && S.n === 0 && !S.off, `in centro, sul telefono: dopo ${g && g.toFixed(2)} s di contromarcia la visuale che segue la marcia può girarsi (nessun ricentro a mano)`); }
+  // lo scarto non porta mai il personaggio fuori dallo schermo
+  { let peggio = 0; for (let k = 0; k < 64; k++) { const yaw = k * .37, S = { px: Math.cos(k) * 40, pz: Math.sin(k * 1.3) * 40 }, lx = Math.cos(k * .7) * 3, lz = Math.sin(k * .7) * 3, hu = 14, hv = 11;
+      V.limita(S, lx, lz, yaw, hu, hv, KN); const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = -fz, rz = fx, tx = S.px + lx, tz = S.pz + lz;
+      peggio = Math.max(peggio, Math.abs(tx * rx + tz * rz) / hu, Math.abs(tx * fx + tz * fz) / hv); }
+    ok(peggio <= KN.bordo + 1e-9, `lo scarto a mano più lo sguardo avanti resta entro ${KN.bordo} della mezza inquadratura (il peggiore ${peggio.toFixed(3)}): il personaggio resta nello schermo`); } }
 console.log(fail ? `\n${fail} prove fallite` : '\ntutto a posto'); process.exit(fail ? 1 : 0);
