@@ -52855,7 +52855,9 @@ var Render = (function () {
       t.offset.x, t.offset.y, t.repeat.x, t.repeat.y, t.rotation, t.center.x, t.center.y, t.matrixAutoUpdate, t.matrixAutoUpdate ? '' : t.matrix.elements.join(',')].join('|');
   }
   function arrOk1(m, sig) {
-    const t = m.map; if (!ARR1.on || !t || !t.isTexture || t.isDataTexture || t.isVideoTexture || t.isCompressedTexture || t.isDataArrayTexture || t.premultiplyAlpha || t.format !== THREE.RGBAFormat || t.type !== THREE.UnsignedByteType) return false;
+    // non l'intonaco ([facciate2]): la sua grana è un hash della posizione nel mondo e col vertice cambiato dalla pila il compilatore la
+    // rifaceva diversa di 1-3 livelli su un pixel su venti (sonda_uguale_leggero); le sue mappe sono poche, resta con la sola tavolozza
+    const t = m.map; if (!ARR1.on || m.userData.plaster || !t || !t.isTexture || t.isDataTexture || t.isVideoTexture || t.isCompressedTexture || t.isDataArrayTexture || t.premultiplyAlpha || t.format !== THREE.RGBAFormat || t.type !== THREE.UnsignedByteType) return false;
     const im = t.image; if (!im || !(typeof HTMLCanvasElement !== 'undefined' && im instanceof HTMLCanvasElement) || !im.width || !im.height) return false;
     let cx = null; try { cx = im.getContext('2d'); } catch (e) { cx = null; } if (!cx) return false;
     const k = sig.replace(/\|map:[0-9A-Fa-f-]+/, ''); if (ARR1.ok.has(k)) return ARR1.ok.get(k);
