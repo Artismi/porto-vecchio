@@ -1321,9 +1321,9 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     g.userData.misure = [L, h + (o.merli ? 1.2 : .12), T2 + hs * .2 + (o.scala ? 1.4 : 0)]; return g;
   };
 
-  DOC.porta_terra = { w: 6, h: 9, torri: true, addossate: false, nota: 'addossate: sul retro delle torri le casupole a una falda (in città no: lì ci sono già le case vere del tassellatore). Porta di Terra della cinta medievale: corpo con il fornice a sesto acuto, la ghiera di conci, la saracinesca alzata che si vede in alto, l\'edicola col santo e la lapide sopra, beccatelli e merli ghibellini; le due torri quadrate avanzate con le feritoie, i beccatelli e i merli' };
+  DOC.porta_terra = { w: 6, h: 9, torri: true, tw: 6.5, addossate: false, nota: '[pianta] tw: la larghezza delle torri. addossate: sul retro delle torri le casupole a una falda (in città no: lì ci sono già le case vere del tassellatore). Porta di Terra della cinta medievale: corpo con il fornice a sesto acuto, la ghiera di conci, la saracinesca alzata che si vede in alto, l\'edicola col santo e la lapide sopra, beccatelli e merli ghibellini; le due torri quadrate avanzate con le feritoie, i beccatelli e i merli' };
   T.porta_terra = o => {
-    o = def(o, DOC.porta_terra); const g = new THREE.Group(), w = o.w, h = o.h, D = 6, Wc = w + 4, Hc = h + .22 * w + 4.4, tw = o.torri ? 6.5 : 0, W = Wc + 2 * tw, xc = W / 2, zF = D / 2;
+    o = def(o, DOC.porta_terra); const g = new THREE.Group(), w = o.w, h = o.h, D = 6, Wc = w + 4, Hc = h + .22 * w + 4.4, tw = o.torri ? (o.tw || 6.5) : 0, W = Wc + 2 * tw, xc = W / 2, zF = D / 2;
     pareteArchi(g, Wc, Hc, D, [{ x: Wc / 2, w, h, tipo: 'sesto' }], 'tufo', tw, 0, 0);
     const hs = h - w * .65;                                                                          // la ghiera dell'arco acuto: due archi di conci
     if (!LOD) for (const s of [-1, 1]) { const cxA = xc - s * w / 2, gk = grp(g, cxA, hs, zF - .1); for (let i = 0; i < 6; i++) { const t = (s > 0 ? 0 : PI) + s * (i + .5) * (PI / 3) / 6, b = blocco(gk, .45, .5, .4, 'pietraChiara', 0, 0, 0); b.position.set(Math.cos(t) * (w + .25), Math.sin(t) * (w + .25), 0); b.rotation.z = t - HP; } }

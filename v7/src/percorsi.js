@@ -112,7 +112,7 @@ var Percorsi = (function () {
   // ================= I NODI: piazze, porte, sbocchi =================
   const NODI = [];
   const nodo = (id, nome, k, x, y, ex) => { const n = Object.assign({ id, nome, k, x, y }, ex || {}); NODI.push(n); return n; };
-  const pt = pz('porta_terra')[0], ptX = pt ? ((pt.opz.w || 6) + 4 + (pt.opz.torri === false ? 0 : 13)) / 2 : 11.5, ptC = pt ? pzW(pt, ptX, 6.4) : [1323, 308];   // [pianta] il centro del fornice dalla misura della porta
+  const pt = pz('porta_terra')[0], ptX = pt ? ((pt.opz.w || 6) + 4 + (pt.opz.torri === false ? 0 : 2 * (pt.opz.tw || 6.5))) / 2 : 11.5, ptC = pt ? pzW(pt, ptX, 0) : [1323, 308];   // [pianta] il centro del fornice dalla misura della porta
   nodo('porta_terra', 'Porta di Terra', 'porta', ptC[0], ptC[1]);
   { const q = setOf('mercato'); if (q) nodo('mercato', 'Piazza del Mercato', 'piazza', q.x, q.y); }
   { const q = setOf('adunata'); if (q) nodo('adunata', 'Piazza d\'adunata', 'piazza', (q.x0 + q.x1) / 2, (q.y0 + q.y1) / 2); }
@@ -249,7 +249,7 @@ var Percorsi = (function () {
   const PORTE = [];
   const porta = (id, nome, k, x, y, lati, ex) => PORTE.push(Object.assign({ id, nome, k, x, y, lati, alternativa: null }, ex || {}));
   // lati: due punti a terra, uno per parte; l'alternativa li deve collegare senza passare dalla porta
-  porta('porta_terra', 'Porta di Terra', 'porta', ptC[0] - 6, ptC[1], [[ptC[0] - 14, ptC[1] + 2], [ptC[0] + 10, ptC[1] + 1]]);
+  porta('porta_terra', 'Porta di Terra', 'porta', ptC[0], ptC[1], pt ? [pzW(pt, ptX, 8), pzW(pt, ptX, -9)] : [[ptC[0] - 14, ptC[1] + 2], [ptC[0] + 10, ptC[1] + 1]]);   // [pianta] i due lati davanti e dietro il fornice, come gira la porta
   // il sottoportico: il Vico dei Bottai passa sotto il portico e attraversa la Vittoria (il collo è la carreggiata sorvegliata)
   { const v = road('vic_bottai'), s = v ? v.pts[v.pts.length - 1] : [1398, 335]; porta('sottoportico', 'Il sottoportico della Vittoria (Vico dei Bottai)', 'sottoportico', s[0], 343, [[s[0], 324], [s[0], 362]], { vic: 'vic_bottai', imbocco: s }); }
   { const C = road('cavour_sotto'), p = pz('sottopasso')[0]; if (C && p) { const a = C.pts[0], z = C.pts[C.pts.length - 1], c = pzW(p, 7, 0); porta('sottopasso', 'Il sottopasso della ferrovia (Via Cavour)', 'sottopasso', c[0], c[1], [[a[0], a[1] - 1], [z[0], z[1] + 2]]); } }
