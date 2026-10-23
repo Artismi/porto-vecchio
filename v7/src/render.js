@@ -3462,7 +3462,7 @@ var Render = (function () {
     navata: 'cotto', cantoria: 'legno', reparto: 'cemento', uffici: 'graniglia', ferramenta: 'graniglia', panetteria: 'graniglia', forno: 'cotto', tabacchi: 'graniglia', pescheria: 'piastrelle', cella_frigo: 'piastrelle', lavanderia: 'piastrelle', barbiere: 'piastrelle', farmacia: 'graniglia', tipografia: 'cemento', sala_giochi: 'piastrelle', spogliatoio: 'piastrelle', circolo: 'cotto', bar_circolo: 'cotto', atrio: 'graniglia', deposito: 'cemento', soppalco: 'cemento', magazzino: 'cemento', armeria: 'cemento', cella: 'cemento', ripostiglio: 'cotto', officina: 'cemento' };
   const WALLCOL = { casa: '#e8d8bc', bar: '#d8b890', bottega: '#e0d4c0', albergo: '#f0e4d0', caserma: '#a8b0a0', biblioteca: '#d8c8a8', ambulatorio: '#e0ece8', chiesa: '#e8e0d0', deposito: '#9a948a', officina: '#8e8c86' };
   function buildIndoor(b, f) {
-    if (window.InterniArte) { try { const g0 = InterniArte.build(b, f, { THREE, scene, cam, INDOOR, G, groundH }); if (g0) return g0; } catch (e) { console.error('[interni] InterniArte', e); } }
+    if (window.InterniArte) { try { const g0 = InterniArte.build(b, f, { THREE, scene, cam, INDOOR, G, groundH, lowq: LOWQ.on || PHONE }); if (g0) return g0; } catch (e) { console.error('[interni] InterniArte', e); } }
     const I = G.INT, L = I.layout(b), F = L.floors[f], grp = new THREE.Group(), [X0, Y0, W, H] = L.box, base = .4;
     // fondo nero tutto intorno: il fuori non c'è
     const under = new THREE.Mesh(new THREE.PlaneGeometry(W + 400, H + 400), new THREE.MeshBasicMaterial({ color: '#07050c' })); under.rotation.x = -Math.PI / 2; under.position.set(X0 + W / 2, base - .05, Y0 + H / 2); grp.add(under);
@@ -10880,7 +10880,9 @@ var Render = (function () {
                  spalla: .82, spallaForza: 3.2 },   // [spianata2] al sole pieno i muri non bruciano: meno luce (sole .97, esposizione .86), la spalla dei bianchi parte prima (.82 × QUADRO.spallaBianchi) e piega morbida (eccesso / (1 + eccesso × 3,2)), così i conci restano leggibili; il salto luce-ombra resta duro
     raggio: 36, mescola: 1.5,       // metri attorno a ogni casa che pesano sulla zona; velocità del cambio di luce
   };
-  if (typeof window !== 'undefined') { window.__QUADRO = QUADRO; window.__SCENA = SCENA; }
+  // [cinema] dentro le case la pellicola cambia: i neri possono chiudersi (pavimentoNeri × neri) e i bordi del quadro scuriscono
+  const INTERNO = { neri: .45, vignetta: .55 };
+  if (typeof window !== 'undefined') { window.__QUADRO = QUADRO; window.__SCENA = SCENA; window.__INTERNO = INTERNO; }
   const SCZ = { grid: null, nx: 0, cs: 16, w: { b: 0, m: 0, s: 0 }, tc: new THREE.Color() };
   function scenaInit() {
     const B = G.BUILDINGS || [], cs = SCZ.cs, nx = Math.ceil(G.GW * TS / cs), ny = Math.ceil(G.GH * TS / cs), g = new Float32Array(nx * ny * 3), R = SCENA.raggio;
@@ -15589,9 +15591,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     U.hurt.value = Math.max(hurtK, p.hp < 35 ? (.35 + Math.sin(time * 5) * .1) * (1 - p.hp / 35) : 0);
     {   // [luci4] ombre nella nebbia: le 4 luci con ombra accese più vicine
       U.vInvVP.value.multiplyMatrices(camera.matrixWorld, camera.projectionMatrixInverse); U.vCam.value.copy(camera.position);
-      U.vOn.value = (LOWQ.on || PHONE || p.indoor || indoorNow) ? 0 : night;
+      const inV = !!(p.indoor || indoorNow);   // [cinema] dentro: le luci chiave degli interni (InterniArte) nel fumo dei locali e nella polvere
+      U.vOn.value = (LOWQ.on || PHONE) ? 0 : inV ? (INDOOR.spots && INDOOR.spots.length ? INDOOR.haze || 0 : 0) : night;
       let j = 0;
-      for (const l of SPOOL) { if (j >= 4) break; if (!(l.intensity > .02) || !l.castShadow || !l.shadow.map) continue;
+      for (const l of (inV ? INDOOR.spots || [] : SPOOL)) { if (j >= 4) break; if (!(l.intensity > .02) || !l.castShadow || !l.shadow.map) continue;
         U['vSM' + j].value = l.shadow.map.texture; U.vSMat.value[j].copy(l.shadow.matrix);
         U.vLP.value[j].set(l.position.x, l.position.y, l.position.z, Math.min(l.distance || 10, 14));
         U.vLC.value[j].set(l.color.r, l.color.g, l.color.b).multiplyScalar(l.intensity);
@@ -15601,13 +15604,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     }
     {   // [amb2] la macchina da presa
       const A = AMB, dk = 1 - night; U.tBloom.value = APS.rts[3] ? APS.rts[3].texture : APS.rts[1] ? APS.rts[1].texture : null; U.tBloom2.value = APS.rts[5] ? APS.rts[5].texture : null; U.tBlur.value = APS.rts[7] ? APS.rts[7].texture : null;
-      A.thr = A.thrDay + (A.thrNight - A.thrDay) * night; U.aK.value.set(A.expo * (.95 + night * .39) /* [scena1] di giorno era .84: tutto cupo */ /* [unione7] */, A.bloom * (.22 + night * .78), A.dof * (pveh ? .45 : 1) * (p.indoor ? 0 : 1) * (1 - A.pal * .55), A.grain); U.aK2.value.set(A.ca, A.sharp, A.outline, A.vig); U.aTime.value = time; U.aHal.value = A.hal || 0; U.pK.value.set(A.pal, A.sat, A.ink, A.rim); U.pC.value.set(A.cav, A.clar);   /* [amb3] */
+      A.thr = A.thrDay + (A.thrNight - A.thrDay) * night; U.aK.value.set(A.expo * (.95 + night * .39) /* [scena1] di giorno era .84: tutto cupo */ /* [unione7] */, A.bloom * (.22 + night * .78), A.dof * (pveh ? .45 : 1) * (p.indoor ? 0 : 1) * (1 - A.pal * .55), A.grain); U.aK2.value.set(A.ca, A.sharp, A.outline, A.vig + (p.indoor || indoorNow ? INTERNO.vignetta : 0)); U.aTime.value = time; U.aHal.value = A.hal || 0; U.pK.value.set(A.pal, A.sat, A.ink, A.rim); U.pC.value.set(A.cav, A.clar);   /* [amb3] */
       PRATO9.k.value = A.prato === undefined ? 1 : A.prato;   /* [prato1] */
       {   // [regia2] la pellicola (QUADRO) e la luce di scena della zona (SCENA) nel colore finale
         const Q = QUADRO, ct = scenaK('contrasto');
         U.aK.value.x *= (1 + dk * (scenaK('esposizione') - 1) + night * (scenaK('espNotte') - 1)) * (1 + dusk * Q.luceCrepuscolo); U.sat.value *= 1 + dk * (scenaK('saturazione') - 1);
         U.qC.value.set(1 + (Q.contrastoCoperto - 1) * ct, 1 + (Q.contrastoSole - 1) * ct, Q.pernoMedi, Q.spallaBianchi * (1 + dk * (scenaK('spalla') - 1)));   /* [spianata2] */ U.qO.value.fromArray(Q.ombraFredda); U.qL.value.fromArray(Q.luceCalda);
-        U.qN.value.set(Q.ariaNeri[0], Q.ariaNeri[1], Q.ariaNeri[2], Q.pavimentoNeri); U.qS.value.set(Q.satCoperto, Q.satSole, Q.tettoCroma, Q.quieteGrigi); U.qA.value.set(Q.ariaGiorno, Q.ariaNotte, Q.coloreLontano, scenaK('velo', 0) * dk);
+        U.qN.value.set(Q.ariaNeri[0], Q.ariaNeri[1], Q.ariaNeri[2], Q.pavimentoNeri * (p.indoor || indoorNow ? INTERNO.neri : 1));   /* [cinema] dentro gli angoli possono andare al buio */ U.qS.value.set(Q.satCoperto, Q.satSole, Q.tettoCroma, Q.quieteGrigi); U.qA.value.set(Q.ariaGiorno, Q.ariaNotte, Q.coloreLontano, scenaK('velo', 0) * dk);
         U.qT.value.set(Q.piedeNeri, 1 + (Q.contrastoNotte - 1) * ct, SCENA.spianata.spallaForza || 0, SCZ.w.s * dk);   /* [spianata2] la spalla della spianata, solo di giorno */
         U.occK.value.set(U.tOcc.value ? OCCL.forza : 0, U.tOcc.value ? OCCL.suoloScuro : 0, Q.vicinoContrasto, Q.gialliQuieti); U.occC.value.fromArray(OCCL.tinta); U.qF.value.set(Q.lontanoFreddo[0], Q.lontanoFreddo[1], Q.lontanoFreddo[2], Q.lontanoChiaro); }
       {   // [profondita] la separazione dei livelli (PROF): dentro le case niente (la quota non vuol dire niente)

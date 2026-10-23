@@ -38,6 +38,7 @@ var Interior = (function () {
     if (id === 'miniera' || id === 'stazione2') return 'stazione';
     if (id === 'cantiere') return 'cantiere';
     if (id === 'rocca') return 'rocca';
+    if (id === 'ministero' || id === 'archivio') return id;   // [luoghi] non sono case: uffici del regime e l'archivio
     if (b.use && b.use !== 'casa' && b.use !== 'cascina') return b.use;
     if (b.church) return 'chiesa';
     if (id === 'officina') return 'officina';
@@ -120,7 +121,7 @@ var Interior = (function () {
       case 'gelateria': return f === 0 ? { names: ['gelateria', 'laboratorio_gelati', 'bagno', 'magazzino'], mood: 'gelateria' } : up();
       case 'banja': return { names: ['banja', 'spogliatoio_banja', 'bagno'], mood: 'banja' };
       case 'disco': return { names: ['pista', 'bar_disco', 'guardaroba', 'bagno'], mood: 'disco' };
-      case 'albergo': return f === 0 ? { names: ['hall', 'sala_colazioni', 'cucina', 'bagno', 'ufficio'], mood: 'albergo' } : { names: ['corridoio_h', 'stanza_h', 'stanza_h', 'stanza_h', 'bagno', 'stanza_h'], mood: 'albergo' };
+      case 'albergo': return f === 0 ? { names: ['hall', 'sala_colazioni', 'cucina_albergo', 'bagno', 'ufficio'], mood: 'albergo' } : { names: ['corridoio_h', 'stanza_h', 'stanza_h', 'stanza_h', 'bagno', 'stanza_h'], mood: 'albergo' };
       case 'cultura': return P(['salone_cultura', 'atrio', 'guardaroba', 'bagno'], ['sala_riunioni', 'biblioteca_partito', 'ufficio', 'archivio'], ['museo_regime', 'archivio', 'ufficio', 'bagno']);
       case 'ambulatorio': return P(['attesa', 'visite', 'farmacia', 'bagno'], ['corsia', 'studio_medico', 'archivio', 'bagno']);
       case 'alimentari': return f === 0 ? { names: ['alimentari', 'magazzino', 'retro', 'bagno'], mood: 'alimentari' } : up();
@@ -151,6 +152,9 @@ var Interior = (function () {
       case 'video': return f === 0 ? { names: ['videoteca', 'radio_r', 'magazzino', 'bagno'], mood: kind } : up();
       case 'cantina': return f === 0 ? { names: ['cantina_r', 'magazzino', 'retro', 'bagno'], mood: kind } : up();
       case 'banca': return P(['sportelli', 'caveau', 'direzione', 'bagno'], ['ufficio', 'archivio', 'bagno', 'ufficio']);
+      // [luoghi] il Ministero dell'Ordine: sportello e uffici sotto, la direzione e gli schedari sopra; l'Archivio di Stato: scaffali e schedari a ogni piano
+      case 'ministero': return P(['ingresso_uff', 'ufficio', 'archivio', 'ufficio', 'bagno'], ['ufficio', 'schedario', 'sala_riunioni', 'archivio', 'bagno'], ['direzione', 'ufficio', 'schedario', 'bagno']);
+      case 'archivio': return P(['ingresso_uff', 'archivio', 'schedario', 'archivio', 'bagno'], ['archivio', 'archivio', 'schedario', 'ufficio', 'bagno']);
       case 'ufficio': return P(['ingresso_uff', 'ufficio', 'ufficio', 'archivio'], ['ufficio', 'ufficio', 'archivio', 'bagno']);
       case 'tipografia': return f === 0 ? { names: ['tipografia', 'magazzino', 'ufficio', 'bagno'], mood: 'tipografia' } : up();
       case 'barbiere': case 'tabacchi': case 'farmacia': case 'lavanderia': case 'sartoria': case 'ferramenta':
@@ -256,6 +260,9 @@ var Interior = (function () {
     bancone_corto: [2.8, 2.4, [['ia_scaffale_bottiglie', 0, .2, 0], ['ia_bancone_bar', -.9, 1.2, 0], ['ia_bancone_bar', 0, 1.2, 0], ['ia_bancone_bar', .9, 1.2, 0], ['kitchenCoffeeMachine', -.8, 1.15, 0, 1.0], ['ar_cash-register', .8, 1.15, 0, 1.0], ['stoolBar', -.5, 1.95, PI], ['stoolBar', .5, 1.95, PI], ['?ia_spillatore', 0, 1.15, 0, 1.0], [':banco', 0, .64, 0], [':bevi', 0, 1.72, PI], [':bevi', 1.15, 1.72, PI]]],
     tavolino: [1.8, 1.8, [['ia_tavolino_tondo', 0, .9, 0], ['chair', 0, .2, 0], ['chair', 0, 1.6, PI], ['?chair', -.75, .9, PI / 2], ['?ia_bicchieri', .1, .9, 0, .74], ['?ia_posacenere', -.15, .85, 0, .74]]],
     tavolata: [3.4, 1.9, [['ia_tavolo_lungo', 0, .95, 0], ['chair', -1.1, .3, 0], ['chair', 0, .3, 0], ['chair', 1.1, .3, 0], ['chair', -1.1, 1.6, PI], ['chair', 0, 1.6, PI], ['chair', 1.1, 1.6, PI], ['?ia_bicchieri', .4, .95, 0, .76], ['?ia_pane', -.6, .9, 0, .76]]],
+    // [luoghi] nei posti pubblici il tavolo non è quello di casa: in biblioteca i libri aperti e la lampada verde, in riunione le carte e i bicchieri d'acqua
+    tavolo_lettura: [2.4, 2.5, [['table', 0, 1.25, 0], ['chair', -.45, .6, 0], ['chair', .45, .6, 0], ['chair', -.45, 1.9, PI], ['?chair', .45, 1.9, PI], ['ia_lampada_tavolo', .35, 1.2, 0, .76], ['ia_libro', -.3, 1.3, 0, .76], ['?ia_pila_carte', .05, 1.05, 0, .76]]],
+    riunione: [3.4, 2.1, [['ia_tavolo_lungo', 0, 1.05, 0], ['chair', -1.1, .35, 0], ['chair', 0, .35, 0], ['chair', 1.1, .35, 0], ['chair', -1.1, 1.75, PI], ['chair', 0, 1.75, PI], ['?chair', 1.1, 1.75, PI], ['ia_pila_carte', -.6, 1.0, 0, .77], ['?ia_bicchieri', .3, 1.05, 0, .77], ['?ia_posacenere', .9, 1.0, 0, .77]]],
     mensa: [3.4, 1.5, [['ia_tavolo_lungo', 0, .75, 0], ['ia_panca_lunga', 0, .1, 0], ['ia_panca_lunga', 0, 1.4, PI]]],
     biliardo: [3.8, 2.9, [['ia_biliardo', 0, 1.3, 0], [':biliardo', -1.7, 1.3, null], [':biliardo', 1.7, 1.3, null], [':biliardo', -.7, 2.55, null], [':biliardo', .7, 2.55, null]]],
     carte: [2.2, 2.2, [['tableRound', 0, 1.1, 0], ['chair', 0, .2, 0], ['chair', 0, 2.0, PI], ['chair', -.95, 1.1, PI / 2], ['chair', .95, 1.1, -PI / 2], ['ia_carte_gioco', 0, 1.1, 0, .76], ['?ia_posacenere', .3, 1.0, 0, .76], ['?ia_bottiglie', .9, 1.9, 0]]],
@@ -318,7 +325,7 @@ var Interior = (function () {
   // [design] mobili alti e composizioni larghe: i primi negli angoli, le seconde in mezzo al muro
   const CENTERED = /^(letto|salotto|divano|zona_tv|pranzo|cena|bancone)|bed|ia_divano|mobile_tv|lavabo|consolle/;
   // [vissuto] quanto è sporco, secondo chi ci vive o lavora (0 lucido, 1 rudere)
-  const DIRT = { rudere: 1, kommunalka: .75, operaio: .65, pescatore: .55, contadino: .6, intellettuale: .45, famiglia: .3, anziana: .15, funzionario: .03, condominio: .55, albergo: .08, cultura: .05, banca: .03, bar: .55, pub: .6, magazzino: .75, deposito: .8, hangar: .7, officina: .8, cantiere: .8, caserma: .2, rocca: .25, ambulatorio: .1, disco: .6, sala_giochi: .65, baracca: .7, emporio: .1, supermercato: .15, profumeria: .08, orologiaio: .12, elettrodomestici: .15, mobili: .15, latteria: .2, cartoleria: .2, merceria: .25, drogheria: .3, calzolaio: .5 };   // [botteghe]
+  const DIRT = { rudere: 1, kommunalka: .75, operaio: .65, pescatore: .55, contadino: .6, intellettuale: .45, famiglia: .3, anziana: .15, funzionario: .03, condominio: .55, albergo: .08, cultura: .05, banca: .03, bar: .55, pub: .6, magazzino: .75, deposito: .8, hangar: .7, officina: .8, cantiere: .8, caserma: .2, rocca: .25, ministero: .05, archivio: .3, ambulatorio: .1, disco: .6, sala_giochi: .65, baracca: .7, emporio: .1, supermercato: .15, profumeria: .08, orologiaio: .12, elettrodomestici: .15, mobili: .15, latteria: .2, cartoleria: .2, merceria: .25, drogheria: .3, calzolaio: .5 };   // [botteghe]
   // [vissuto] le pareti di chi: dove si ribellano (stencil, poster dei ragazzi, volantini) e dove si crede alla propaganda (manifesti, pubblicità)
   const REBEL = /cameretta|atelier|mono_artista|stanza_vuota|rudere|cantine|androne|corridoio_k|stanza_fam|camera_spoglia|rimessa_reti|soppalco|magazzino_neri|sala_biliardo|biliardo|sala_giochi|pista|bar_disco/;
   const PROPA = /ufficio|ingresso_caserma|caserma|comando|archivio|schedario|direzione|presidenza|hall|atrio|sala_riunioni|museo_regime|salone_cultura|sportelli|ingresso_uff|corsia|attesa|aula|mensa_t|camerata|emporio|supermercato/;
@@ -358,6 +365,7 @@ var Interior = (function () {
     camera: ['parquet|spina', 'fiori|righe|rombi|ocra|crema', 'lampadario', ['!@letto_design|@letto2|@letto1_design|@letto1|@letto_ferro', 'ia_armadio_design|ia_armadio', 'ia_como|ia_cassapanca', '?ia_pianta_alta|ia_pianta_grande', '?@lettura_design|ia_pouf', '??~ia_ventilatore', '?^ia_specchio_tondo', '^ia_quadro_grande|^ia_tappeto_muro|^ia_quadro', '?^ia_icona|^ia_foto', '^ia_termosifone', '?~ia_valigia', '?rugRound', '??@partenza', '?%@cucito|@stiro', '??^ia_altarino', '?~ia_scarpe'], ['%@cucito|@stiro', '~ia_scarpe', 'ia_cassapanca', 'chair']],
     cameretta: ['parquet|linoleum', 'righe|blu|rombi|rosa|azzurro', 'bulbo', ['@letto_patch|@castello|@letto1_design|@letto1', '%@compiti|@studio_design|@scrivania|@letto1_design', 'ia_armadio|ia_armadio_design', '?ia_mobile_dipinto', '?^ia_mensola_skate', '?ia_tappeto_tondo', '?ia_libreria_piena', '?~ia_boombox', '?~ia_skate', '?^ia_poster_design|^ia_poster_film|^ia_manifesto', '^ia_calendario', '?~ia_pila_libri', '?~ia_valigia', '?@angolo_bimbi', '?~ia_palla', '?~ia_giocattoli'], ['@angolo_bimbi', '~ia_giocattoli', '~ia_palla']],
     bagno: ['piastrelle|piastrelle_b', 'piastrelle', 'bulbo', ['ia_lavabo_design|bathroomSink', 'toilet', 'ia_vasca_design|bathtub|shower|ia_tinozza', '?washer', '?ia_portasciugamani', '??ia_pianta_alta', '?^ia_specchio', '?~ia_secchio', '?~ia_bacinella']],
+    servizi: ['piastrelle|piastrelle_b', 'piastrelle', 'neon', ['toilet', '?toilet', 'bathroomSink', '?bathroomSink', '^ia_specchio', '?trashcan', '?~ia_secchio', '??^ia_stencil']],   // [luoghi] i servizi di un locale o di un ufficio: niente vasca, lavatrice, piante
     // [design] l'ingresso di casa, la stanza degli ospiti, la lavanderia
     ingresso_casa: ['spina|graniglia|parquet|scacchi', 'righe|fiori|crema|verde', 'lampadario', ['ia_consolle_ingresso|coatRackStanding', 'ia_scarpiera', 'ia_attaccapanni_design|coatRackStanding', 'ia_passatoia', '?ia_pianta_alta', '^ia_specchio_tondo|^ia_specchio', '?^ia_quadro|^ia_poster_design', '^ia_appendiabiti', '?~ia_stivali', '?~ia_scarpe', '??ia_bici']],
     stanza_ospiti: ['parquet|spina', 'fiori|righe|crema', 'bulbo', ['!@letto1_design|@letto1|@letto2', 'ia_armadio|ia_armadio_design', '?ia_como', '?ia_pouf', '?ia_pianta_alta', '^ia_quadro|^ia_poster_design', '^ia_termosifone', '?~ia_valigia', '?@stiro'], ['ia_pianta_alta', '@cucito']],
@@ -401,6 +409,7 @@ var Interior = (function () {
     retro: ['piastrelle|cemento', 'piastrelle|calce', 'neon', ['!st_cassaforte', 'st_cassetta', '@cucina_corta|kitchenStove', 'kitchenFridge', 'cardboardBoxClosed', 'trashcan', '?pv_banco_lavoro', '~ia_casse', '~ia_bottiglie', '^ia_calendario', '^ia_mensola', '??~ia_pistola', '?ia_scaffale_barattoli']],
     magazzino: ['cemento', 'cemento|calce', 'neon', ['ia_scaffale_metallo|bookcaseOpen', 'bookcaseOpen', 'ia_casse', 'cardboardBoxClosed', 'cardboardBoxClosed', '?pv_banco_lavoro', '~ia_sacchi', '~ia_casse', '^ia_quadro_elettrico'], ['ia_casse', 'cardboardBoxClosed', 'ia_sacchi', '*ia_casse']],
     sala_trattoria: ['cotto|scacchi', 'crema|ocra|mattoni', 'lampadario', ['!@cucina_corta', '*@tavolata', '*@tavolino', '?*@tavolino', '@bancone_corto|ia_credenza', 'st_stufa', '?fd_barrel', '^ia_ritratto', '^ia_menu', '^ia_salami', '?^ia_quadro', '?^ia_orologio'], ['*@tavolino', '*@tavolata']],
+    cucina_albergo: ['piastrelle', 'piastrelle', 'neon', ['@cucina_linea', 'kitchenStove', 'kitchenStove', 'pv_banco_lavoro', '*table', 'kitchenFridge', '~ia_casse', '~ia_secchio', '^ia_mensola', '^ia_mensola_alta', '^ia_tabella_turni']],   // [luoghi]
     cucina_trattoria: ['piastrelle', 'piastrelle', 'neon', ['?st_cassaforte', '@cucina_linea', 'kitchenStove', 'pv_banco_lavoro', '*table', '~ia_secchio', '~ia_casse', '^ia_mensola', '^ia_mensola_alta', '?^ia_salami']],
     gelateria: ['scacchi', 'rosa|azzurro', 'neon', ['@gelati', 'ar_cash-register', '*@tavolino', '?*@tavolino', 'st_stufa', '^ia_ritratto', '^ia_menu', '?^ia_insegna_neon', '~ia_secchio']],
     laboratorio_gelati: ['piastrelle', 'piastrelle', 'neon', ['kitchenFridge', 'kitchenFridge', 'pv_banco_lavoro', 'kitchenSink', '~ia_secchio']],
@@ -427,8 +436,8 @@ var Interior = (function () {
     // --- regime, cultura, uffici ---
     salone_cultura: ['marmo|spina', 'velluto|rosso', 'lampadario', ['*ia_palco', 'rc_seat', 'rc_seat', 'rc_seat', 'rc_seat', 'rc_seat', 'rc_seat', 'ia_bandiera', 'ia_bandiera', 'ia_busto', '^ia_ritratto', '^ia_bandiera_muro', '^ia_bandiera_muro', '^ia_stella_regime', '^ia_manifesto', '^ia_altoparlante']],
     atrio: ['marmo|graniglia', 'crema|rosso', 'lampadario', ['kitchenBar', 'kitchenBar', 'ar_vending-machine', 'pottedPlant', 'pv_banco_vendita', '?ia_busto', '^ia_ritratto', '^ia_manifesto', '^ia_bacheca', '^ia_poster_film'], ['pottedPlant', 'bench']],
-    sala_riunioni: ['parquet|linoleum', 'legno|crema', 'neon', ['*ia_tavolo_lungo', 'chair', 'chair', 'chair', 'chair', 'chair', 'chair', 'ia_bandiera', '^ia_ritratto', '^ia_lavagna', '^ia_mappa', '^ia_orologio']],
-    biblioteca_partito: ['parquet', 'legno', 'lampadario', ['bookcaseClosedWide', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', '*@pranzo', 'ia_busto', '^ia_ritratto', '^ia_stella_regime']],
+    sala_riunioni: ['parquet|linoleum', 'legno|crema', 'neon', ['*@riunione', 'chair', 'chair', 'ia_bandiera', '^ia_ritratto', '^ia_lavagna', '^ia_mappa', '^ia_orologio']],
+    biblioteca_partito: ['parquet', 'legno', 'lampadario', ['bookcaseClosedWide', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', '*@tavolo_lettura', 'ia_busto', '^ia_ritratto', '^ia_stella_regime']],
     museo_regime: ['marmo', 'velluto|crema', 'lampadario', ['*ia_vetrina', '*ia_vetrina', 'ia_vetrina', 'ia_busto', 'ia_bandiera', '^ia_ritratto', '^ia_foto', '^ia_bandiera_muro', '^ia_mappa', '^ia_stella_regime']],
     ufficio: ['linoleum|parquet', 'crema|verde|legno', 'neon', ['?st_cassaforte', '@ufficio_t|@scrivania', 'ia_schedario', 'ia_schedario', 'bookcaseClosedWide', '?ia_cassapanca', '^ia_ritratto', '^ia_calendario', '?^ia_mappa', '^ia_termosifone', '~ia_giornali']],
     archivio: ['linoleum|cemento', 'verde|cemento', 'neon', ['bookcaseClosedWide', 'bookcaseClosedWide', 'ia_schedario', 'ia_schedario', 'ia_schedario', 'bookcaseOpen', '~cardboardBoxClosed', '~ia_pila_carte', '^ia_ritratto']],
@@ -463,7 +472,7 @@ var Interior = (function () {
     aula: ['linoleum|parquet', 'verde|blu', 'neon', ['desk', 'chairDesk', '*@banchi', '?*@banchi', '@banchi', '^ia_lavagna', '^ia_ritratto', '^ia_mappa', '^ia_orologio', '^ia_termosifone']],
     corridoio: ['linoleum', 'verde', 'neon', ['coatRackStanding', 'coatRackStanding', 'bench', '^ia_appendiabiti', '^ia_bacheca', '^ia_manifesto']],
     presidenza: ['parquet', 'legno', 'lampadario', ['?st_cassaforte', '@scrivania', 'bookcaseClosedWide', 'ia_bandiera', '^ia_ritratto', '^ia_calendario']],
-    lettura: ['spina|parquet', 'legno|crema', 'lampadario', ['*@pranzo', '?*@pranzo', 'bookcaseOpen', 'bookcaseOpen', 'lampRoundFloor', '^ia_ritratto', '^ia_orologio', '^ia_mappa']],
+    lettura: ['spina|parquet', 'legno|crema', 'lampadario', ['*@tavolo_lettura', '?*@tavolo_lettura', 'bookcaseOpen', 'bookcaseOpen', 'lampRoundFloor', '^ia_ritratto', '^ia_orologio', '^ia_mappa']],
     scaffali: ['parquet', 'legno|crema', 'bulbo', ['bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseClosedWide', 'bookcaseOpen', '~ia_pila_libri', '~ia_pila_libri', '?^ia_volantini']],
     circolo: ['cotto|graniglia', 'crema|legno', 'bulbo', ['*@carte', '?*@carte', '@tv', 'st_stufa', 'speaker', '^ia_ritratto', '^ia_bandiera_muro', '^ia_bacheca', '^ia_ventaglio_carte'], ['*@carte', '*@tavolino']],
     bar_circolo: ['graniglia', 'crema', 'bulbo', ['?st_cassaforte', '@bancone_corto', 'kitchenFridge', '^ia_menu', '^ia_ritratto', '~ia_casse']],
@@ -529,6 +538,8 @@ var Interior = (function () {
   const SURF = { table: .76, tableRound: .76, tableCloth: .76, ia_tavolino: .74, ia_tavolino_tondo: .74, ia_tavolo_lungo: .77, desk: .75, sideTable: .55, kitchenBar: .95, ia_bancone_bar: 1.0, kitchenCabinet: .92, ia_credenza: .9, pv_banco_vendita: .95, ia_scrivania_grande: .78, tableCoffee: .42, ia_cassapanca: .55,
     ia_tavolino_design: .42, ia_madia: .81, ia_comodino: .56, ia_como: .87, ia_tavolo_design: .76, ia_consolle_ingresso: .83, ia_scarpiera: .56, ia_scrivania_design: .76, ia_cucina_componibile: .92, ia_lavabo_design: .86, ia_mobile_dipinto: .88, bookcaseOpenLow: .82 };
   const DRESS = [
+    [/^servizi$/, ['ia_sigarette', 'ia_accendino', 'ia_fiammiferi'], .25],   // [luoghi]
+    [/cucina_trattoria|cucina_albergo|forno|laboratorio_gelati/, ['ia_barattoli', 'ia_olio_bottiglia', 'ia_pasta_pacco', 'ia_pane', 'ia_bottiglia_vino', 'ia_zucchero_pacco', 'ia_caffe_barattolo', 'ia_barattoli', 'ia_fiammiferi'], .8],
     [/^bagno$/, ['ia_rasoio', 'ia_profumo', 'ia_medicine', 'ia_rasoio', 'ia_profumo', 'ia_medicine', 'ia_orologio_polso'], .95],   // [design]
     [/ingresso_casa/, ['ia_portafoglio', 'ia_lettere', 'nx_lettera', 'ia_documenti', 'ia_torcia', 'ia_sigarette', 'ia_accendino', 'ia_rivista', 'ia_vaso_fiori', 'ia_portafoglio'], .95],
     [/sala_bar|sala_pub|bar_|circolo|biliardo|magazzino_neri|pista|sala_trattoria/, ['ia_birre', 'ia_sigarette', 'ia_vodka', 'ia_bicchieri', 'ia_posacenere', 'nx_semi', 'nx_crostini', 'ia_carte_gioco', 'ia_birre', 'ia_sigarette', 'ia_grappa', 'ia_whisky', 'ia_marlboro', 'ia_accendino', 'ia_fiammiferi', 'ia_banconote'], .9],
@@ -801,7 +812,8 @@ var Interior = (function () {
       }
       const walls = wallsOf(f, P.inner), dw = P.inner.filter(q => q.gap);
       const moodQ = q => f === 0 && P.PS && inVB(q, SP.s) ? progS.mood : prog.mood;   // [botteghe] lo sporco della bottega è il suo, quello dell'androne del condominio
-      const rooms = P.rooms.map(q => { const name = names.get(q), st = roomStyle(name, rf), md = moodQ(q); return { x: q.x, y: q.y, w: q.w, h: q.h, name, floor: st.floor, wall: st.wall, light: st.light, dirt: Math.max(0, Math.min(1, (DIRT[md] != null ? DIRT[md] : .35) + (rf() - .5) * .2)) }; });
+      const pub = md => !HOME[md] && md !== 'condominio' && !(md === 'albergo' && f > 0);   // [luoghi] dove entra il pubblico o si lavora
+      const rooms = P.rooms.map(q => { const md = moodQ(q), name = names.get(q) === 'bagno' && pub(md) ? 'servizi' : names.get(q), st = roomStyle(name, rf); return { x: q.x, y: q.y, w: q.w, h: q.h, name, floor: st.floor, wall: st.wall, light: st.light, dirt: Math.max(0, Math.min(1, (DIRT[md] != null ? DIRT[md] : .35) + (rf() - .5) * .2)) }; });
       const F = { f, mood: f === 0 && P.PS ? progS.mood : prog.mood, walls, rooms, inner: dw, segs: P.inner, wins: /disco|cinema|sala_giochi/.test(prog.mood) ? [] : windows(Lb, f, P.inner, prog.names[0] === 'lanterna' || prog.mood === 'chiesa'), doors: dw.map(q => ({ x: q.v ? q.a[0] : q.gap[0], y: q.v ? q.gap[0] : q.a[1], v: q.v })), furn: [] };
       Lb.floors.push(F);
       F.furn = furnish(Lb, F, rf, dw, kind);
@@ -940,15 +952,18 @@ var Interior = (function () {
         const mg = rug ? .1 : grp ? .3 : .5, pad = rug ? 0 : .25;   // [design] i tappeti (la passatoia del corridoio) stanno anche vicini ai muri
         for (let x = x0 + hw + mg; x <= x1 - hw - mg + 1e-6; x += .25) for (let y = y0 + hd + mg; y <= y1 - hd - mg + 1e-6; y += .25) cand.push([x, y, Math.hypot(x - mx, y - my) + r() * .3]);
         cand.sort((a, c) => a[2] - c[2]);
-        for (const [cx, cy] of cand) if (free(cx, cy, hw + pad, hd + pad, rug) && (rug || !blocked(cx, cy, hw, hd))) return { cx, cy, hw, hd, side: rot };
+        for (const [cx, cy] of cand) if (free(cx, cy, hw + pad, hd + pad, rug) && (rug || !blocked(cx, cy, hw, hd))) return { cx, cy, hw, hd, side: rot, mid: 1 };
         return null;
       };
       const placeGroup = (vn, spot) => {
         const [w, d, items] = V[vn], S = SIDE[spot.side];
         const gi = ++F.ngrp;
+        // [cinema] i tavoli in mezzo alla stanza non stanno in squadra coi muri: il gruppo intero gira un po' attorno al suo centro (i tondi di più)
+        const gA = spot.mid && /^(tavolino|carte|carte_interrotta|pranzo|pranzo_piccolo|cena|colazione|tavolata|tavolo_lettura|salotto_isola|interrogatorio|banco_conta)$/.test(vn) ? (r() - .5) * (/tavolino|carte/.test(vn) ? .7 : .28) : 0, gc = Math.cos(gA), gs = Math.sin(gA);
         items.forEach(([id0, lx, ly, rot, h]) => {
           let id = id0; if (id[0] === '?') { if (r() > .55) return; id = id.slice(1); }
-          const x = spot.cx + S.t[0] * lx + S.n[0] * (ly - d / 2), y = spot.cy + S.t[1] * lx + S.n[1] * (ly - d / 2);
+          const x0 = S.t[0] * lx + S.n[0] * (ly - d / 2), y0 = S.t[1] * lx + S.n[1] * (ly - d / 2), x = spot.cx + x0 * gc - y0 * gs, y = spot.cy + x0 * gs + y0 * gc;
+          if (gA && rot !== null) rot -= gA;
           // [attività] un punto dove si sta: chi ci lavora, chi usa il mobile (guarda il mobile o il centro del gruppo)
           if (id[0] === ':') { F.spots.push({ k: id.slice(1), x, y, face: rot === null ? Math.atan2(spot.cy - y, spot.cx - x) : PI / 2 - (S.ry + rot), room: qi, grp: vn, gi }); return; }
           put(id, x, y, S.ry + rot, h, Object.assign({ grp: vn, gi }, rot === 0 && ly < 1 ? wallOf(spot) : null));
@@ -1218,7 +1233,7 @@ var Interior = (function () {
     ia_candela: 'candela', ia_lettere: 'lettere', ia_pila_carte: 'carte' };
   // i nomi delle stanze da leggere
   const RNAME = { salotto_buono: 'salotto buono', stanza_chiusa: 'stanza chiusa', cucina_abitabile: 'cucina', camera_spoglia: 'camera', stanza_vuota: 'stanza vuota', rimessa_reti: 'rimessa delle reti', studio_libri: 'studio', sala_pranzo: 'sala da pranzo', corridoio_k: 'corridoio comune', stanza_fam: 'stanza di una famiglia', cucina_comune: 'cucina comune', cucina_focolare: 'cucina col focolare',
-    magazzino_sale: 'magazzino del sale', ingresso_faro: 'ingresso del faro', alloggio_guardiano: 'alloggio del guardiano', deposito_olio: 'deposito dell\'olio', stanza_radio: 'stanza della radio', lanterna: 'lanterna', sala_bar: 'sala', sala_trattoria: 'sala', cucina_trattoria: 'cucina', laboratorio_gelati: 'laboratorio', spogliatoio_banja: 'spogliatoio', bar_disco: 'bar', corridoio_h: 'corridoio', stanza_h: 'camera',
+    magazzino_sale: 'magazzino del sale', ingresso_faro: 'ingresso del faro', alloggio_guardiano: 'alloggio del guardiano', deposito_olio: 'deposito dell\'olio', stanza_radio: 'stanza della radio', lanterna: 'lanterna', sala_bar: 'sala', sala_trattoria: 'sala', cucina_trattoria: 'cucina', cucina_albergo: 'cucina', laboratorio_gelati: 'laboratorio', spogliatoio_banja: 'spogliatoio', bar_disco: 'bar', corridoio_h: 'corridoio', stanza_h: 'camera',
     salone_cultura: 'salone delle adunanze', biblioteca_partito: 'biblioteca del Partito', museo_regime: 'museo della Tutela', studio_medico: 'studio del medico', cassa_benzina: 'cassa', ingresso_caserma: 'ingresso', ufficio_t: 'ufficio', mensa_t: 'mensa', sala_radio_t: 'sala radio', magazzino_neri: 'magazzino', magazzino_porto: 'magazzino', ufficio_porto: 'ufficio', sala_comandi: 'sala comandi', spogliatoio_m: 'spogliatoio', sala_cinema: 'sala', bar_circolo: 'bar', ingresso_uff: 'ingresso', cella_frigo: 'cella frigo', radio_r: 'laboratorio radio', cantina_r: 'cantina', direzione: 'ufficio del direttore', sportelli: 'sala degli sportelli', caveau: 'caveau',
     sala_biliardo: 'sala del biliardo', sala_pub: 'birreria', cantina_birra: 'cantina della birra', armeria_negozio: 'armeria', laboratorio_armi: 'laboratorio', negozio_vestiti: 'negozio', salone_auto: 'salone', officina_r: 'officina', ufficio_vendite: 'ufficio vendite', ingresso_casa: 'ingresso', stanza_ospiti: 'stanza degli ospiti', lavanderia_casa: 'lavanderia' };
   RNAME.laboratorio_b = 'laboratorio delle riparazioni'; RNAME.elettrodomestici = 'negozio di elettrodomestici'; RNAME.mobili = 'mobilificio';   // [botteghe]

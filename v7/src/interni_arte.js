@@ -38,8 +38,14 @@ var InterniArte = (function () {
   const GL = (c, i) => { const k = 'G' + c + i; return MC[k] || (MC[k] = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: i == null ? 1.2 : i, roughness: .6 })); };
   const BASIC = c => { const k = 'B' + c; return MC[k] || (MC[k] = new THREE.MeshBasicMaterial({ color: c, toneMapped: false })); };
   const GEO = {}; const bgeo = (w, h, d) => { const k = w + ',' + h + ',' + d; return GEO[k] || (GEO[k] = new THREE.BoxGeometry(w, h, d)); };
-  const cgeo = (r0, r1, h, s) => { const k = 'c' + r0 + ',' + r1 + ',' + h + ',' + s; return GEO[k] || (GEO[k] = new THREE.CylinderGeometry(r0, r1, h, s || 8)); };
-  const sgeo = (r, s) => { const k = 's' + r + ',' + s; return GEO[k] || (GEO[k] = new THREE.SphereGeometry(r, s || 8, Math.max(4, (s || 8) - 2))); };
+  const cgeo = (r0, r1, h, s) => { s = Math.max(s || 8, Math.max(r0, r1) > .12 ? 18 : Math.max(r0, r1) > .03 ? 12 : 8); const k = 'c' + r0 + ',' + r1 + ',' + h + ',' + s; return GEO[k] || (GEO[k] = new THREE.CylinderGeometry(r0, r1, h, s)); };   // [cinema] più facce
+  const sgeo = (r, s) => { s = Math.max(s || 8, r > .08 ? 14 : 10); const k = 's' + r + ',' + s; return GEO[k] || (GEO[k] = new THREE.SphereGeometry(r, s, Math.max(4, s - 2))); };
+  // [cinema] la scatola con gli spigoli tondi (cuscini, sedute, schienali, imbottiture) e il tubo curvo (legno curvato, tubolari, braccioli)
+  const rgeo = (w, h, d, rr) => { rr = Math.min(rr, w / 2 - .001, h / 2 - .001, d / 2 - .001); const k = 'r' + w + ',' + h + ',' + d + ',' + rr; if (GEO[k]) return GEO[k];
+    const g = new THREE.BoxGeometry(w, h, d, 5, 5, 5), p = g.attributes.position, hx = w / 2 - rr, hy = h / 2 - rr, hz = d / 2 - rr, v = new THREE.Vector3(), c = new THREE.Vector3();
+    for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); c.set(Math.max(-hx, Math.min(hx, v.x)), Math.max(-hy, Math.min(hy, v.y)), Math.max(-hz, Math.min(hz, v.z))); v.sub(c); if (v.lengthSq() > 1e-12) v.setLength(rr); p.setXYZ(i, c.x + v.x, c.y + v.y, c.z + v.z); }
+    g.computeVertexNormals(); return (GEO[k] = g); };
+  const tubeGeo = (pts, rad) => { const k = 'u' + pts.map(q => q.map(n => n.toFixed(3)).join(',')).join(';') + rad; return GEO[k] || (GEO[k] = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(q => new THREE.Vector3(q[0], q[1], q[2]))), Math.max(8, pts.length * 6), rad, 8)); };
 
   // =====================================================================================================================
   // PAVIMENTI (una tela per stanza, in metri × PPM)
@@ -309,7 +315,7 @@ var InterniArte = (function () {
   const DES = ['#7a5a48', '#5a6458', '#8a7a5a', '#4a5560', '#6a4a42', '#8a8478', '#5a4a3a', '#6e6a5c', '#3e4448', '#7a6e60', '#5e5048', '#8a6e52'];
   const WOODD = ['#5a3e2a', '#6a4a30', '#4a3424', '#7a5a3a', '#5e4632'], LEATHER = ['#4a2e22', '#2e2420', '#5a3a2a', '#1e1e22'], BRASS = { metalness: .8, roughness: .3 };
   const MT = (key, t, o) => MC['T' + key] || (MC['T' + key] = new THREE.MeshStandardMaterial(Object.assign({ map: t, roughness: .9 }, o || {})));
-  const tgeo = (R, rr, arc) => { const k = 't' + R + ',' + rr + ',' + arc; return GEO[k] || (GEO[k] = new THREE.TorusGeometry(R, rr, 5, 12, arc)); };
+  const tgeo = (R, rr, arc) => { const k = 't' + R + ',' + rr + ',' + arc; return GEO[k] || (GEO[k] = new THREE.TorusGeometry(R, rr, 8, 24, arc)); };   // [cinema] più facce
   function build(id, r, opt) {
     const g = new THREE.Group(); g.userData.ia = id;
     // [design] la sfumatura del pezzo: un po' più caldo o più freddo, più chiaro o più scuro (due mobili uguali non sono mai identici)
@@ -318,6 +324,8 @@ var InterniArte = (function () {
     const B = (w, h, d, x, y, z, c) => { const m = new THREE.Mesh(bgeo(w, h, d), typeof c === 'string' ? (w * h * d > .0004 ? TM(nu(c)) : M(c)) : c); m.position.set(x, y + h / 2, z); g.add(m); return m; };
     const C = (r0, h, x, y, z, c, s, r1) => { const m = new THREE.Mesh(cgeo(r0, r1 == null ? r0 : r1, h, s), typeof c === 'string' ? (r0 * h > .002 ? TM(nu(c)) : M(c)) : c); m.position.set(x, y + h / 2, z); g.add(m); return m; };
     const S = (rad, x, y, z, c, s) => { const m = new THREE.Mesh(sgeo(rad, s), typeof c === 'string' ? (rad > .06 ? TM(nu(c)) : M(c)) : c); m.position.set(x, y, z); g.add(m); return m; };
+    const RB = (w, h, d, x, y, z, c, rr) => { const m = new THREE.Mesh(rgeo(w, h, d, rr == null ? Math.min(w, h, d) * .3 : rr), typeof c === 'string' ? TM(nu(c)) : c); m.position.set(x, y + h / 2, z); g.add(m); return m; };   // [cinema]
+    const TU = (pts, rad, c) => { const m = new THREE.Mesh(tubeGeo(pts, rad), typeof c === 'string' ? M(nu(c)) : c); g.add(m); return m; };
     const wood = pick(r, WOOD), fab = pick(r, FAB);
     const legs = (w, d, h, c, t) => [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => B(t || .05, h, t || .05, a * (w / 2 - .06), 0, b * (d / 2 - .06), c));
     const bottle = (x, y, z, c) => { C(.035, .2, x, y, z, M(c || pick(r, ['#2a5a2a', '#5a3a1a', '#3a4a2a', '#c8d8d8']), { roughness: .2 }), 6); C(.012, .07, x, y + .2, z, '#2a2a2a', 5); };
@@ -357,14 +365,23 @@ var InterniArte = (function () {
       case 'ia_lettino': { const c = M('#2a2a2e', { metalness: .5 }); B(.85, .12, 1.95, 0, .35, 0, c); [[-.4, -.95], [.4, -.95], [-.4, .95], [.4, .95]].forEach(([x, z]) => B(.04, .45, .04, x, 0, z, c)); B(.85, .55, .04, 0, .35, -.97, c); for (let i = 0; i < 5; i++) B(.02, .5, .02, -.3 + i * .15, .35, -.97, c); B(.78, .14, 1.85, 0, .47, 0, '#d0ccc0'); B(.8, .08, 1.2, 0, .6, .3, pick(r, FAB)); B(.4, .1, .28, 0, .62, -.7, '#ece8e0'); break; }
       case 'ia_materasso': B(.95, .14, 1.9, 0, 0, 0, '#b8b0a0'); B(.9, .1, 1.1, .03, .14, .35, pick(r, ['#4a4e44', '#6a3a3a', '#3a4a5a'])); B(.4, .1, .3, 0, .14, -.7, '#d0ccc0'); break;
       case 'ia_letto_ospedale': { const c = M('#d8dcdc', { metalness: .4 }); B(.9, .1, 2, 0, .55, 0, c); legs(.9, 2, .55, c, .04); B(.86, .14, 1.9, 0, .65, 0, '#f0f4f4'); B(.9, .4, .04, 0, .55, -.98, c); B(.9, .3, .04, 0, .55, .98, c); B(.85, .06, 1.2, 0, .79, .3, '#b8ccd8'); B(.02, .02, 1.5, .47, .9, 0, c); break; }
-      case 'ia_poltrona': { const c = fab; B(.85, .4, .8, 0, .1, 0, c); B(.85, .55, .2, 0, .45, -.3, c); B(.16, .55, .8, -.37, .1, 0, shade(c, .85)); B(.16, .55, .8, .37, .1, 0, shade(c, .85)); B(.3, .02, .2, 0, .9, -.25, '#f0ece0'); legs(.8, .75, .1, '#2a1a10'); break; }
-      case 'ia_divano': { const c = fab; B(2.1, .42, .85, 0, .1, 0, c); B(2.1, .55, .22, 0, .48, -.32, c); [-1, 1].forEach(s => B(.2, .58, .85, s * .95, .1, 0, shade(c, .85))); B(.4, .02, .25, -.5, 1.0, -.3, '#f0ece0'); B(.4, .02, .25, .5, 1.0, -.3, '#f0ece0'); legs(2, .8, .1, '#2a1a10'); if (r() < .5) B(.45, .12, .35, .6, .52, .1, pick(r, FAB)); break; }
+      case 'ia_poltrona': {   // [cinema] la poltrona di casa: imbottita tonda, cuscino gonfio, braccioli a rullo, gambe tornite, il centrino sullo schienale
+        const c = fab, lg = shade(wood, .7); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => C(.03, .12, a * .33, 0, b * .3, lg, 10, .02));
+        RB(.84, .3, .8, 0, .11, 0, c, .07); RB(.62, .14, .62, 0, .38, .06, shade(c, 1.06), .06); const bk = RB(.66, .56, .2, 0, .4, -.3, c, .08); bk.rotation.x = -.12;
+        [-1, 1].forEach(s0 => { RB(.15, .32, .78, s0 * .36, .38, 0, shade(c, .9), .06); const a = C(.09, .78, 0, 0, 0, shade(c, .9), 14); a.rotation.x = PI / 2; a.position.set(s0 * .36, .68, 0); });
+        if (r() < .6) { const cn = C(.13, .01, 0, .92, -.32, '#f0ece0', 16); cn.rotation.x = -.5; } break; }
+      case 'ia_divano': {   // [cinema] il divano vecchio: tre cuscini gonfi, schienale tondo, braccioli a rullo, il cuscino di traverso
+        const c = fab, lg = shade(wood, .7); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => C(.03, .12, a * .95, 0, b * .32, lg, 10, .02));
+        RB(2.1, .3, .84, 0, .11, 0, c, .07); [-.6, 0, .6].forEach(x => RB(.6, .14, .64, x, .38, .07, shade(c, 1.05 - Math.abs(x) * .05), .06));
+        const bk = RB(1.92, .56, .22, 0, .4, -.31, c, .09); bk.rotation.x = -.1; [-1, 1].forEach(s0 => { RB(.17, .32, .82, s0 * .97, .38, 0, shade(c, .9), .06); const a = C(.1, .82, 0, 0, 0, shade(c, .9), 14); a.rotation.x = PI / 2; a.position.set(s0 * .97, .68, 0); });
+        if (r() < .5) { const k0 = RB(.42, .36, .12, .55, .48, -.12, pick(r, FAB), .05); k0.rotation.set(-.35, .2, .25); } if (r() < .5) [-.5, .5].forEach(x => C(.12, .01, x, .97, -.36, '#f0ece0', 16).rotation.x = -.4); break; }
+      case '__ia_divano_box': { const c = fab; B(2.1, .42, .85, 0, .1, 0, c); B(2.1, .55, .22, 0, .48, -.32, c); [-1, 1].forEach(s => B(.2, .58, .85, s * .95, .1, 0, shade(c, .85))); B(.4, .02, .25, -.5, 1.0, -.3, '#f0ece0'); B(.4, .02, .25, .5, 1.0, -.3, '#f0ece0'); legs(2, .8, .1, '#2a1a10'); if (r() < .5) B(.45, .12, .35, .6, .52, .1, pick(r, FAB)); break; }
       case 'ia_tv': { B(.8, .5, .45, 0, .3, 0, M(shade(wood, 1.1), { roughness: .5 })); legs(.7, .4, .3, '#2a2a2a', .03); const s = new THREE.Mesh(plane(.42, .32), new THREE.MeshStandardMaterial({ map: T.tv(), emissive: '#ffffff', emissiveMap: T.tv(), emissiveIntensity: .9 })); s.position.set(-.08, .56, .231); g.add(s); s.userData.screen = 1; B(.14, .3, .02, .28, .4, .228, '#3a3028'); B(.03, .03, .03, .28, .62, .24, '#c8b070'); B(.02, .3, .02, -.1, .8, -.1, '#8a8a8a'); B(.02, .3, .02, .1, .8, -.1, '#8a8a8a'); g.userData.screen = [0, .56, .3]; break; }
       case 'ia_radio_grande': { B(1.1, .75, .45, 0, .15, 0, M(wood, { roughness: .5 })); legs(1, .4, .15, '#2a1a10', .04); B(.6, .4, .02, -.15, .3, .23, '#8a7a5a'); for (let i = 0; i < 6; i++) B(.58, .01, .01, -.15, .34 + i * .06, .24, '#5a4a32'); const d = B(.3, .1, .02, .3, .6, .23, GL('#ffcf7a', .8)); d.userData.dial = 1; B(.06, .06, .03, .3, .38, .24, '#c8b070'); B(.06, .06, .03, .3, .25, .24, '#c8b070'); B(1.12, .04, .47, 0, .9, 0, shade(wood, .7)); break; }
       case 'ia_tavolino': { B(1.1, .04, .8, 0, .72, 0, wood); legs(1, .7, .72, shade(wood, .8)); decal(g, T.oilcloth(Math.floor(r() * 3)), 1.12, .82, 0, .745, 0).rotation.x = -PI / 2; break; }
       case 'ia_tavolino_tondo': { C(.4, .04, 0, .72, 0, M('#e8e0d0'), 14); C(.03, .72, 0, 0, 0, '#2a2a2e', 6); C(.22, .03, 0, 0, 0, '#2a2a2e', 10); if (r() < .5) C(.42, .1, 0, .63, 0, pick(r, ['#c83a3a', '#e8e4dc', '#3a6aa0']), 14, .44); break; }
       case 'ia_tavolo_lungo': B(3.2, .05, .9, 0, .72, 0, wood); legs(3.1, .8, .72, shade(wood, .8)); B(3, .04, .04, 0, .3, 0, shade(wood, .8)); break;
-      case 'ia_panca_lunga': B(3, .05, .35, 0, .42, 0, wood); legs(2.9, .3, .42, shade(wood, .8)); break;
+      case 'ia_panca_lunga': RB(3, .05, .35, 0, .42, 0, wood, .015); [-1.3, 0, 1.3].forEach(x => { RB(.05, .42, .3, x, 0, 0, shade(wood, .8), .012); }); RB(2.7, .03, .04, 0, .14, 0, shade(wood, .8), .01); break;   // [cinema]
       case 'ia_panca_chiesa': B(2, .06, .42, 0, .44, 0, '#4a2e1a'); B(2, .5, .05, 0, .5, -.19, '#4a2e1a'); B(.06, .95, .5, -1, 0, 0, '#3e2616'); B(.06, .95, .5, 1, 0, 0, '#3e2616'); B(2, .04, .1, 0, .12, .1, '#3e2616'); break;
       case 'ia_cucina_gas': { B(.75, .82, .58, 0, 0, 0, '#e8e4d8'); B(.75, .03, .58, 0, .82, 0, '#2a2a2e'); [[-.18, -.13], [.18, -.13], [-.18, .13], [.18, .13]].forEach(([x, z]) => C(.07, .02, x, .85, z, '#1a1a1a', 8)); B(.6, .35, .02, 0, .2, .3, '#3a3a40'); for (let i = 0; i < 4; i++) B(.04, .04, .03, -.24 + i * .16, .65, .3, '#2a2a2a'); C(.13, .5, .5, 0, -.1, M('#c83a2a', { metalness: .3 }), 10); if (r() < .6) C(.13, .18, .18, .87, .13, '#7a7a80', 10, .11); break; }
       case 'ia_lavello': { B(1.2, .1, .6, 0, .78, 0, '#e8e8e4'); B(.5, .02, .4, -.25, .88, 0, '#c8ccd0'); legs(1.15, .55, .78, '#5a5a5a', .04); B(1.2, .62, .02, 0, .1, .28, pick(r, ['#c8a060', '#a85a5a', '#6a8aa0'])); B(.05, .25, .05, -.25, .88, -.25, M('#a8a8b0', { metalness: .7 })); B(.04, .04, .18, -.25, 1.1, -.17, M('#a8a8b0', { metalness: .7 })); break; }
@@ -549,7 +566,7 @@ var InterniArte = (function () {
       case 'ia_cesto_cucito': { C(.2, .14, 0, 0, 0, '#a8844a', 12, .17); for (let i = 0; i < 4; i++) S(.05, (r() - .5) * .2, .14, (r() - .5) * .2, pick(r, ['#c83a2a', '#3a6aa0', '#e8d040', '#e8e0d0']), 6); B(.26, .02, .2, .05, .14, .05, pick(r, ['#8a6a8a', '#6a8a6a'])); B(.01, .01, .14, -.05, .18, 0, '#c8c8c0'); break; }
       case 'ia_valigia_aperta': { const c = pick(r, ['#6a3a2a', '#3a4a5a', '#7a6040']); B(.7, .12, .45, 0, 0, 0, c); const lid = B(.7, .45, .05, 0, .12, -.22, c); lid.rotation.x = -.3; for (let i = 0; i < 3; i++) B(.3, .04, .18, -.18 + i * .18, .12 + i * .01, .02, pick(r, ['#e8e0d0', '#5a6a8a', '#8a3a3a'])); break; }
       case 'ia_scarpe': [[-.1, 0, .2], [.12, .05, -.3]].forEach(([x, z, ry]) => { const m = B(.1, .08, .26, x, 0, z, pick(r, ['#1e1c1a', '#5a3a24', '#7a5a3a'])); m.rotation.y = ry; }); break;
-      case 'ia_sgabello': { C(.17, .04, 0, .45, 0, shade(wood, 1.1), 10); [0, 1, 2].forEach(i => { const a = i * 2.1; const l = B(.03, .46, .03, Math.cos(a) * .12, 0, Math.sin(a) * .12, shade(wood, .8)); }); break; }
+      case 'ia_sgabello': { C(.17, .04, 0, .45, 0, shade(wood, 1.1), 16); [0, 1, 2].forEach(i => { const a = i * 2.1; TU([[Math.cos(a) * .17, 0, Math.sin(a) * .17], [Math.cos(a) * .11, .45, Math.sin(a) * .11]], .016, shade(wood, .8)); }); TU([[.15, .18, 0], [-.07, .18, .13], [-.07, .18, -.13], [.15, .18, 0]], .008, shade(wood, .8)); break; }   // [cinema] gambe aperte
       case 'ia_sedia_rovesciata': { const g2 = new THREE.Group(); g.add(g2); const c = shade(wood, 1.05); const m1 = new THREE.Mesh(bgeo(.45, .05, .45), M(c)); m1.position.set(0, .22, 0); m1.rotation.x = PI / 2; g2.add(m1); const m2 = new THREE.Mesh(bgeo(.45, .5, .05), M(c)); m2.position.set(0, .03, .3); m2.rotation.x = PI / 2; g2.add(m2); [[-.2], [.2]].forEach(([x]) => { const l = new THREE.Mesh(bgeo(.04, .04, .45), M(shade(c, .8))); l.position.set(x, .45, -.05); g2.add(l); }); break; }
       case 'ia_asse_stiro': { B(1.2, .03, .35, 0, .82, 0, pick(r, ['#c8d0e0', '#e8d8c0'])); const a = B(.03, .9, .03, -.25, 0, 0, '#8a8e94'); a.rotation.z = .35; const b2 = B(.03, .9, .03, .25, 0, 0, '#8a8e94'); b2.rotation.z = -.35; B(.12, .06, .22, .4, .85, 0, M('#a8acb0', { metalness: .8 })); break; }
       // ---- [case] appeso: l'altarino della nonna ----
@@ -870,16 +887,22 @@ var InterniArte = (function () {
         break; }
       // ---- [stile] la sala giochi degli anni '80 ----
       // ---- [stile] il resto del kit, rifatto a mano con le stesse misure ----
-      case 'chair': {   // la sedia da cucina: a stecche, imbottita in finta pelle o a pioli
-        const k = Math.floor(r() * 3), wc = pick(r, ['#5a3e2a', '#6a4a30', '#4a3424', '#7a5a3a', '#8a7a5a']); taper(.4, .4, .44, wc, .04);
-        if (k === 1) { B(.42, .06, .42, 0, .42, 0, M(pick(r, ['#6a2a24', '#2a4a3a', '#5a4a3a', '#3a3a4a']), { roughness: .45 })); B(.42, .04, .42, 0, .4, 0, wc); } else B(.42, .04, .42, 0, .42, 0, wc);
-        [-1, 1].forEach(sx => B(.035, .5, .035, sx * .18, .44, -.19, wc));
-        if (k === 2) for (let i = 0; i < 3; i++) B(.36, .03, .02, 0, .58 + i * .11, -.19, wc); else { B(.4, .12, .02, 0, .8, -.19, wc); for (let i = 0; i < 3; i++) B(.04, .3, .015, -.1 + i * .1, .5, -.19, wc); }
+      case 'chair': {   // [cinema] la sedia da cucina rifatta: gambe tornite che si aprono, traversine, le gambe di dietro che salgono e si piegano
+        // nello schienale curvo; seduta di paglia col bordo, imbottita in finta pelle o di legno. Tre modelli, il legno dei mobili di casa
+        const k = Math.floor(r() * 3), wc = TM(nu(pick(r, ['#5a3e2a', '#6a4a30', '#4a3424', '#7a5a3a', '#8a7a5a', '#2a2420'])));
+        [-1, 1].forEach(sx => { TU([[sx * .185, 0, .185], [sx * .175, .2, .175], [sx * .17, .42, .165]], .017, wc); S(.024, sx * .172, .3, .17, wc, 10);   // davanti: fuso con la perlina
+          TU([[sx * .18, 0, -.2], [sx * .172, .42, -.175], [sx * .165, .7, -.2], [sx * .158, .9, -.24]], .016, wc); });   // dietro: sale nello schienale
+        [[.12, .185], [.12, -.19]].forEach(([y, z]) => TU([[-.17, y, z], [.17, y, z]], .009, wc)); [-1, 1].forEach(sx => TU([[sx * .178, .16, .17], [sx * .175, .16, -.18]], .009, wc));
+        const curve = (y, rad) => TU([[-.16, y, -.23], [-.08, y, -.255], [0, y, -.262], [.08, y, -.255], [.16, y, -.23]], rad, wc);   // lo schienale curvo
+        if (k === 0) { RB(.42, .04, .4, 0, .41, 0, M('#c8a868', { roughness: .95 }), .012); RB(.44, .03, .42, 0, .4, 0, wc, .01); for (let i = 0; i < 5; i++) B(.38, .004, .012, 0, .452, -.15 + i * .075, '#a8884a'); curve(.86, .022); curve(.8, .018); curve(.6, .014); }
+        else if (k === 1) { RB(.43, .07, .42, 0, .4, .005, M(pick(r, ['#6a2a24', '#2a4a3a', '#5a4a3a', '#3a3a4a', '#7a5a3a']), { roughness: .42 }), .03); curve(.87, .024); const pd = RB(.3, .18, .05, 0, .64, -.24, M(pick(r, ['#6a2a24', '#2a4a3a', '#5a4a3a']), { roughness: .42 }), .02); pd.rotation.x = -.18; }
+        else { RB(.43, .035, .41, 0, .41, 0, wc, .012); curve(.88, .02); for (let i = -1; i <= 1; i++) TU([[i * .07, .45, -.2 - Math.abs(i) * .012], [i * .075, .86, -.24 - Math.abs(i) * .012]], .012, wc); }
         break; }
       case 'chairDesk': {   // la poltroncina girevole da ufficio, anni '70: base a stella, finta pelle, braccioli
         const st0 = M('#3a3a3e', { metalness: .6, roughness: .4 }), up = M(pick(r, ['#4a3a2a', '#2a3a2a', '#5a2a24', '#3a3a3e']), { roughness: .5 });
         for (let i = 0; i < 5; i++) { const a = i * 2 * PI / 5, l = B(.3, .03, .04, Math.cos(a) * .14, .04, Math.sin(a) * .14, st0); l.rotation.y = -a; S(.025, Math.cos(a) * .28, .025, Math.sin(a) * .28, '#1e1e22', 5); }
-        C(.025, .35, 0, .05, 0, st0, 8); B(.48, .08, .46, 0, .42, 0, up); const bk = B(.44, .5, .07, 0, .5, -.22, up); bk.rotation.x = -.12; [-1, 1].forEach(sx => { B(.04, .2, .04, sx * .24, .46, 0, st0); B(.06, .03, .3, sx * .24, .66, .02, '#2a2a2e'); }); break; }
+        C(.025, .35, 0, .05, 0, st0, 8); RB(.5, .09, .48, 0, .42, 0, up, .035); const bk = RB(.46, .52, .09, 0, .52, -.23, up, .04); bk.rotation.x = -.12; B(.06, .3, .03, 0, .38, -.2, st0);   // [cinema] imbottitura tonda
+        [-1, 1].forEach(sx => { TU([[sx * .24, .47, -.05], [sx * .25, .62, -.02], [sx * .25, .66, .12], [sx * .24, .6, .2]], .016, st0); RB(.06, .035, .28, sx * .25, .655, .04, '#2a2a2e', .015); }); break; }
       case 'desk': {   // la scrivania dell'impiegato: legno o lamiera grigia del ministero, cassettiera, pannello davanti
         const steel = r() < .35, c = steel ? M('#7a7e78', { metalness: .4, roughness: .5 }) : pick(r, ['#5a3e2a', '#6a4a30', '#4a3424']), hd = M('#c8ccd0', { metalness: .8, roughness: .3 });
         B(1.45, .04, .78, 0, .71, 0, steel ? '#5a6a5a' : c); B(.42, .66, .7, .48, .05, 0, c); for (let k = 0; k < 3; k++) { B(.38, .19, .01, .48, .1 + k * .21, .355, steel ? c : shade(c, 1.12)); B(.12, .02, .02, .48, .22 + k * .21, .365, hd); }
@@ -927,7 +950,7 @@ var InterniArte = (function () {
       case 'kitchenCabinet': {   // il mobile base: la formica, il cassetto, due ante
         const c = pick(r, ['#d8d0bc', '#b8b0a0', '#8a8070', '#6a7064', '#5a3e2a']), hd = M('#c8ccd0', { metalness: .8, roughness: .3 }); B(.86, .82, .58, 0, .06, -.02, shade(c, .9)); B(.9, .04, .62, 0, .88, 0, M(pick(r, ['#c8c0b0', '#e0d8c8', '#8a8a84']), { roughness: .35 }));
         B(.84, .16, .01, 0, .68, .275, c); B(.14, .02, .02, 0, .76, .285, hd); [-.21, .21].forEach(x0 => { B(.4, .54, .01, x0, .1, .275, c); B(.02, .1, .02, x0 + (x0 < 0 ? .16 : -.16), .5, .285, hd); }); break; }
-      case 'bench': { const c = pick(r, ['#5a3e2a', '#6a4a30', '#4a3424']); [-1, 1].forEach(sx => { B(.05, .44, .34, sx * .34, 0, 0, c); }); B(.8, .05, .38, 0, .44, 0, c); B(.7, .03, .03, 0, .15, 0, c); break; }
+      case 'bench': { const c = pick(r, ['#5a3e2a', '#6a4a30', '#4a3424']); [-1, 1].forEach(sx => { RB(.05, .44, .34, sx * .34, 0, 0, c, .012); }); for (let i = 0; i < 3; i++) RB(.82, .03, .11, 0, .44, -.13 + i * .13, c, .01); RB(.7, .03, .03, 0, .15, 0, c, .01); break; }   // [cinema] a doghe
       case 'cardboardBoxClosed': {   // gli scatoloni: col nastro, i timbri, uno a volte aperto
         const n = 1 + Math.floor(r() * 3); let y = 0; for (let i = 0; i < n; i++) { const w0 = .42 - i * .05, h0 = .26 + r() * .1, c = shade(pick(r, ['#a88a5a', '#9a7a4a', '#b89a6a']), .9 + r() * .2), m = B(w0, h0, w0 * .9, (r() - .5) * .04, y, (r() - .5) * .04, c); m.rotation.y = (r() - .5) * .3;
           B(w0 + .002, .005, .06, m.position.x, y + h0, m.position.z, '#c8b890').rotation.y = m.rotation.y; if (r() < .5) B(.1, .06, .002, m.position.x - .08, y + h0 * .5, m.position.z + w0 * .45 + .002, pick(r, ['#8a2a22', '#2a2a2e'])); y += h0; } break; }
@@ -986,7 +1009,7 @@ var InterniArte = (function () {
   // =====================================================================================================================
   // IL PIANO
   // =====================================================================================================================
-  const S = { grp: null, mats: [], lights: [], fires: [], neons: [], screens: [], wins: [], patches: [], radar: [], lantern: [], blinks: [], hidden: [] };
+  const S = { grp: null, mats: [], lights: [], fires: [], neons: [], screens: [], wins: [], patches: [], radar: [], lantern: [], blinks: [], hidden: [], beams: [], lamps: [] };
   const LIGHT = { bulbo: ['#ffb468', 1.1], lampadario: ['#ffc888', 1.2], neon: ['#d0e6ff', 1.1], neon_rosa: ['#ff5ab0', 1.3], candela: ['#ff9a40', .7], spenta: null, buio: ['#7a90c0', .8], verde: ['#ffe0a0', 1.1], rossa: ['#ff3a2a', .9], fuoco: ['#ff8a3a', 1.0], disco: ['#c05cff', 1.4] };
   function fixture(grp, q, type, r) {
     const cx = q.x + q.w / 2, cz = q.y + q.h / 2, top = BASE + WALLH;
@@ -1058,6 +1081,7 @@ var InterniArte = (function () {
       const pm = new THREE.MeshBasicMaterial({ map: T.patch(), color: '#b8d0ff', transparent: true, opacity: .18, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
       const patch = new THREE.Mesh(plane(1.5, 2.6), pm); patch.rotation.x = -PI / 2; patch.rotation.z = -ry; patch.position.set(w.x + n[0] * 1.45, BASE + .025, w.y + n[1] * 1.45); grp.add(patch);
       S.wins.push({ gm, fm }); S.patches.push(pm);
+      S.beams.push({ at: [w.x - n[0] * 1.1, BASE + 2.75, w.y - n[1] * 1.1], to: [w.x + n[0] * 2.3, BASE, w.y + n[1] * 2.3] });   // [cinema] la luce del giorno entra di qui
     });
     // scala
     if (L.stairs) stairsFor(grp, L, f);
@@ -1099,7 +1123,20 @@ var InterniArte = (function () {
         cand.push({ pri: (i + j) * 100 - q.w * q.h, at: [at[0], Math.min(at[1], BASE + 2.15), at[2]], col: LIGHT[type][0], int: LIGHT[type][1] * (nx * ny > 1 ? .8 : 1), dist: Math.max(sub.w, sub.h) * 1.1 + 3, type, q });
       }
     });
+    // [cinema] le lampade vere (abat-jour, lampade a stelo, candele, televisori) fanno luce davvero; nelle stanze di casa dove ce n'è una,
+    // la luce dall'alto si abbassa: di sera si vive alla luce delle lampade, pozze calde e angoli bui
+    S.lamps = [];
+    F.furn.forEach(o => { if (o.taken) return; const L0 = LAMPS.find(([re]) => re.test(o.id)); if (!L0) return; const q = F.rooms[o.room]; const tv = /tv/.test(o.id), fl = /piede|lampRoundFloor|arco|casco|pavimento/.test(o.id);
+      const fx = Math.sin(o.ry || 0) * L0[4], fz = Math.cos(o.ry || 0) * L0[4];
+      S.lamps.push({ at: [o.x + fx * .5, BASE + (o.h || 0) + (fl ? 1.45 : tv ? .7 : .35), o.y + fz * .5], col: L0[1], int: tv ? .35 : /candel|altarino|icona/.test(o.id) ? .3 : .75, dist: tv ? 3 : L0[3] * 2.1, q }); });
+    S.lamps = S.lamps.slice(0, ctx.lowq ? 2 : 5);   // sul telefono e sui computer lenti due sole
+    const CASA = /soggiorno|salotto|camera|studio|stanza_h|stanza_ospiti|mansarda|monolocale|mono_|atelier|stanza_fam/;
+    cand.forEach(c => { if (CASA.test(c.q.name || '') && S.lamps.some(l => l.q === c.q)) c.int *= .4; });
     cand.sort((a, c) => a.pri - c.pri).slice(0, 8).forEach(c => S.roomLights.push(c));
+    // [cinema] le luci chiave: le due lampade d'alto più importanti fanno ombra e si vedono nell'aria (fumo, polvere: render.js, ombre nella nebbia)
+    S.keys = S.roomLights.filter(c => c.type !== 'buio' && c.type !== 'disco' && c.int > .3).slice(0, 2); S.keys.forEach(c => { c.key = true; });
+    // quanta aria si vede: nei locali il fumo, nelle case e negli uffici un velo; nei magazzini e nelle officine la polvere
+    S.haze = /bar|pub|circolo|biliardo|disco|sala_giochi|banja|trattoria/.test(F.mood || '') ? 1 : /magazzino|deposito|hangar|officina|cantiere|fabbrica|rudere|chiesa/.test(F.mood || '') ? .8 : .5;
     function addLights() { }
     // le luci si accendono dopo: i fuochi arrivano con i modelli
     setTimeout(() => { if (S.grp === grp) placeLights(ctx); }, 0);
@@ -1107,9 +1144,20 @@ var InterniArte = (function () {
     return grp;
   }
   function placeLights(ctx) {
-    const scene = ctx.scene, INDOOR = ctx.INDOOR;
-    (INDOOR.lights || []).forEach(l => scene.remove(l)); INDOOR.lights = []; S.lights = [];
-    S.roomLights.forEach(R0 => { const l = new THREE.PointLight(R0.col, R0.int, R0.dist, 1.5); l.position.set(R0.at[0], R0.at[1], R0.at[2]); scene.add(l); INDOOR.lights.push(l); S.lights.push({ l, base: R0.int, type: R0.type, ph: Math.random() * 10, bad: R0.type === 'neon' && Math.random() < .3 }); });
+    const scene = ctx.scene, INDOOR = ctx.INDOOR, grp = S.grp;
+    (INDOOR.lights || []).forEach(l => scene.remove(l)); INDOOR.lights = []; S.lights = []; INDOOR.spots = []; INDOOR.haze = ctx.lowq ? 0 : S.haze || 0;
+    // [cinema] il faretto con l'ombra: cono largo e bordo morbido; il bersaglio sta nel gruppo del piano (se ne va con lui)
+    const spot = (at, to, col, int, dist, ang, shadow) => { const l = new THREE.SpotLight(col, int, dist, ang, .8, 1.3); l.position.set(at[0], at[1], at[2]); const t = new THREE.Object3D(); t.position.set(to[0], to[1], to[2]); if (grp) grp.add(t); l.target = t; t.updateMatrixWorld();
+      if (shadow && !ctx.lowq) { l.castShadow = true; l.shadow.mapSize.set(1024, 1024); l.shadow.bias = -.0008; l.shadow.normalBias = .03; l.shadow.radius = 4; l.shadow.camera.near = .15; l.shadow.camera.far = dist; INDOOR.spots.push(l); }
+      scene.add(l); INDOOR.lights.push(l); return l; };
+    S.roomLights.forEach(R0 => {
+      const l = R0.key ? spot(R0.at, [R0.at[0], BASE, R0.at[2]], R0.col, R0.int * 2.2, R0.dist * 1.3, 1.25, true) : new THREE.PointLight(R0.col, R0.int, R0.dist, 1.5);
+      if (!R0.key) { l.position.set(R0.at[0], R0.at[1], R0.at[2]); scene.add(l); INDOOR.lights.push(l); }
+      S.lights.push({ l, base: R0.key ? R0.int * 2.2 : R0.int, type: R0.type, ph: Math.random() * 10, bad: R0.type === 'neon' && Math.random() < .3 }); });
+    // le lampade vere: una pozza calda ciascuna, senz'ombra
+    S.lamps.forEach(L0 => { const l = new THREE.PointLight(L0.col, L0.int, L0.dist, 1.8); l.position.set(L0.at[0], L0.at[1], L0.at[2]); scene.add(l); INDOOR.lights.push(l); S.lights.push({ l, base: L0.int, type: 'lampada', ph: Math.random() * 10 }); });
+    // la luce del giorno: dalla finestra più grande della stanza più grande una lama fredda con l'ombra dei mobili (di notte spenta)
+    S.beams.slice(0, 1).forEach(B0 => { const l = spot(B0.at, B0.to, '#dfe8ff', 0, 7, .62, true); S.lights.push({ l, base: 2.4, type: 'giorno', ph: 0 }); });
     S.fires.slice(0, 2).forEach(F0 => { const l = new THREE.PointLight(F0.big ? '#ff7a2a' : '#ffa850', F0.big ? 1.1 : .5, F0.big ? 5.5 : 3, 1.6); l.position.set(F0.at[0], F0.at[1] + .1, F0.at[2] + .1); scene.add(l); INDOOR.lights.push(l); S.lights.push({ l, base: F0.big ? 1.1 : .5, type: 'fuoco', ph: Math.random() * 10, f: F0 }); });
   }
   function stairsFor(grp, L, f) {
@@ -1143,8 +1191,8 @@ var InterniArte = (function () {
     const st = o.st, h = st ? ((st.t / 60) % 24) : 12, day = Math.max(0, Math.min(1, (Math.min(h - 6.5, 17.5 - h)) / 1.5)), dusk = h > 16 && h < 19 ? 1 : 0;
     tAcc += 1 / 60; const t = (o.time != null ? o.time : tAcc);
     // la luce di fuori entra poco: siamo dentro
-    if (o.hemi) { o.hemi.intensity = .2 + day * .2; o.hemi.color.set(day > .5 ? '#c8d4e4' : '#5a6888'); o.hemi.groundColor.set('#2a2228'); }
-    if (o.fillAmb) { o.fillAmb.intensity = .12 + day * .06; o.fillAmb.color.set('#3a3440'); }
+    if (o.hemi) { o.hemi.intensity = .09 + day * .22; o.hemi.color.set(day > .5 ? '#c8d4e4' : '#5a6888'); o.hemi.groundColor.set('#2a2228'); }   // [cinema] di notte la stanza vive delle sue lampade
+    if (o.fillAmb) { o.fillAmb.intensity = .05 + day * .06; o.fillAmb.color.set('#3a3440'); }
     if (o.moon) o.moon.intensity = .1 + day * .22;
     if (o.dyn) { if (o.dyn.fill) o.dyn.fill.intensity = .08 + day * .1; if (o.dyn.rim) o.dyn.rim.intensity = .05; }
     // le luci di fuori (lampioni, insegne) non entrano
@@ -1157,6 +1205,7 @@ var InterniArte = (function () {
       if (L0.type === 'fuoco' || L0.type === 'candela') k = .82 + Math.sin(t * 11 + L0.ph) * .08 + Math.sin(t * 23 + L0.ph * 2) * .06 + (Math.random() - .5) * .08;
       else if (L0.bad) k = Math.sin(t * 31 + L0.ph) > .93 || (Math.sin(t * 1.7 + L0.ph) > .97) ? .25 : 1;
       else if (L0.type === 'disco') { L0.l.color.setHSL((t * .15) % 1, .8, .55); }
+      else if (L0.type === 'giorno') { k = day + dusk * .5; L0.l.color.set(dusk && day < .6 ? '#ffc48a' : '#dfe8ff'); L0.l.visible = k > .02; }   // [cinema] al tramonto la lama si scalda
       L0.l.intensity = L0.base * k;
     });
     S.neons.forEach(N => { const off = N.bad && (Math.sin(t * 29 + N.ph) > .9 || Math.sin(t * 2.1 + N.ph) > .985); N.m.material.emissiveIntensity = off ? N.base * .15 : N.base; });
