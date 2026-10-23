@@ -730,6 +730,28 @@ var Render = (function () {
   }
 
   // ---------------- MARE ----------------
+  // [riva] LA PROFONDITÀ FINE NEL MARE, BLOCCO PER BLOCCO: quando un blocco di riva si costruisce, il suo pezzo delle due mappe del mare
+  // (la profondità, 2 px a metro; la terra, 1 px a metro) prende la quota fine; si sfuma appena e si carica sulla scheda solo quel pezzo
+  const ACQ9 = { set: null, fatti: new Set() };
+  function acquaFine9(tx0, ty0, n, m) {
+    const A = ACQ9.set, key = tx0 + ',' + ty0; if (!A || ACQ9.fatti.has(key) || !renderer || !renderer.copyTextureToTexture) return; ACQ9.fatti.add(key);
+    const T = G.T, P = 4, x0 = Math.max(0, tx0 * P - 3), y0 = Math.max(0, ty0 * P - 3), w = Math.min(A.big.width, (tx0 + n) * P + 3) - x0, h = Math.min(A.big.height, (ty0 + m) * P + 3) - y0;
+    const id = A.bgx.getImageData(x0, y0, w, h), D = id.data, R0 = new Uint8Array(w * h); let tocco = false;
+    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue; tocco = true;
+      for (let b = 0; b < P; b++) for (let a = 0; a < P; a++) { const q = Riva.quota((tx + (a + .5) / P) * TS, (ty + (b + .5) / P) * TS); if (q === null) continue; const px = tx * P + a - x0, py = ty * P + b - y0, o = (py * w + px) * 4;
+        D[o] = Math.round(Math.sqrt(Math.min(1, Math.max(0, WL - q) / 16)) * 255); if (q > WL + .05) D[o + 1] = 255; R0[py * w + px] = 1; } }
+    if (!tocco) return;
+    { const src = new Uint8Array(D); for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { if (!R0[y * w + x]) continue; let t = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) t += src[((y + b) * w + x + a) * 4]; D[(y * w + x) * 4] = Math.round(t / 9); } }   // la sfumatura leggera
+    A.bgx.putImageData(id, x0, y0);
+    const up = (tex, data, X, Y, W2, H2, Htot) => { const dt = new THREE.DataTexture(data, W2, H2, THREE.RGBAFormat); dt.flipY = true; dt.needsUpdate = true; renderer.copyTextureToTexture(new THREE.Vector2(X, Htot - Y - H2), dt, tex); dt.dispose(); };
+    try { up(A.stx, new Uint8Array(D.buffer.slice(0)), x0, y0, w, h, A.big.height); } catch (e) { A.stx.needsUpdate = true; }
+    // la terra (1 px a metro)
+    const S = A.S, mx0 = Math.max(0, tx0 * S - 2), my0 = Math.max(0, ty0 * S - 2), mw = Math.min(A.bc.width, (tx0 + n) * S + 2) - mx0, mh = Math.min(A.bc.height, (ty0 + m) * S + 2) - my0, md = A.bx.getImageData(mx0, my0, mw, mh), MD = md.data;
+    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue;
+      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; const o = ((ty * S + b - my0) * mw + tx * S + a - mx0) * 4, v = q > WL ? 255 : 0; MD[o] = MD[o + 1] = MD[o + 2] = Math.round(MD[o] * .35 + v * .65); } }
+    A.bx.putImageData(md, mx0, my0);
+    try { up(A.btx, new Uint8Array(MD.buffer.slice(0)), mx0, my0, mw, mh, A.bc.height); } catch (e) { A.btx.needsUpdate = true; }
+  }
   function buildWater() {
     // [costa] il mare rifatto: due mappe dal mondo. «sea»: R profondità (0-16 m), G fondo di roccia, B posidonia; «mask»: la terra sfocata
     // (per la schiuma sulla riva). Nello shader: il fondale si vede dove l'acqua è bassa (sabbia con le increspature, roccia, posidonia,
@@ -748,22 +770,18 @@ var Render = (function () {
     const R9 = RIVA9(), big = mk(G.GW * 4, G.GH * 4), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(2px)' : 'blur(3px)'; bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
     // [riva] nella fascia della riva fine la profondità e la terra vengono dalla quota vera (a 50 cm): l'acqua bassa e la schiuma
     // seguono la battigia con le sue cuspidi, gli scogli, le pozze, non più le caselle
-    if (R9) { const bd = bgx.getImageData(0, 0, big.width, big.height), D = bd.data;
-      for (let ty = 1; ty < G.GH - 1; ty++) for (let tx = 1; tx < G.GW - 1; tx++) { if (!Riva.inBanda(tx, ty)) continue;
-        for (let b = 0; b < 4; b++) for (let a = 0; a < 4; a++) { const x = (tx + (a + .5) / 4) * TS, y = (ty + (b + .5) / 4) * TS, q = Riva.quota(x, y); if (q === null) continue; const o = ((ty * 4 + b) * big.width + tx * 4 + a) * 4;
-          D[o] = Math.round(Math.sqrt(Math.min(1, Math.max(0, WL - q) / 16)) * 255); if (q > WL + .05) D[o + 1] = 255; } }
-      // dove sotto l'acqua non c'è fondale (il blocco a caselle non lo disegna accanto a banchine e pontili, né lontano dalla riva) e la
-      // riva fine non c'è, l'acqua resta opaca: almeno 80 cm nella mappa (niente buchi chiari nell'acqua trasparente)
-      const MIN = Math.round(Math.sqrt(.8 / 16) * 255);
+    // [riva] il fondale senza fondo: dove sotto l'acqua non c'è terreno (accanto a banchine e pontili, lontano dalla riva) e la riva fine
+    // non c'è, l'acqua resta opaca: almeno 80 cm nella mappa (niente buchi chiari nell'acqua trasparente). La profondità fine della riva
+    // (a 50 cm) arriva poi blocco per blocco, quando il blocco si costruisce (acquaFine9): niente calcolo di tutta la costa al caricamento
+    if (R9) { const bd = bgx.getImageData(0, 0, big.width, big.height), D = bd.data, MIN = Math.round(Math.sqrt(.8 / 16) * 255);
       for (let ty = 1; ty < G.GH - 1; ty++) for (let tx = 1; tx < G.GW - 1; tx++) { if (gT(tx, ty) !== T.WATER || Riva.inBanda(tx, ty)) continue; let buco = coastIn((tx + .5) * TS, (ty + .5) * TS) < -3;
         if (!buco) for (let b = -1; b <= 1 && !buco; b++) for (let a = -1; a <= 1; a++) { const vv = gT(tx + a, ty + b); if (vv === T.QUAY || vv === T.PIER) { buco = true; break; } }
         if (!buco) continue; for (let b = 0; b < 4; b++) for (let a = 0; a < 4; a++) { const o = ((ty * 4 + b) * big.width + tx * 4 + a) * 4; if (D[o] < MIN) D[o] = MIN; } }
-      bgx.putImageData(bd, 0, 0); const tmp = mk(big.width, big.height), tx2 = tmp.getContext('2d'); tx2.filter = 'blur(2px)'; tx2.drawImage(big, 0, 0); tx2.filter = 'none'; bgx.clearRect(0, 0, big.width, big.height); bgx.drawImage(tmp, 0, 0); }   // una sfocatura leggera: niente quadretti fra la profondità fine e quella a caselle
+      bgx.putImageData(bd, 0, 0); }
     const stx = new THREE.CanvasTexture(big); stx.minFilter = stx.magFilter = THREE.LinearFilter;
-    if (R9) for (let ty = 1; ty < G.GH - 1; ty++) for (let tx = 1; tx < G.GW - 1; tx++) { if (!Riva.inBanda(tx, ty)) continue;   // [riva] la terra vera, a mezzo metro
-      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; mx.fillStyle = q > WL ? '#fff' : '#000'; mx.fillRect(tx * S + a, ty * S + b, 1, 1); } }
     const bc = mk(mc.width, mc.height), bx = bc.getContext('2d'); bx.filter = 'blur(2px)'; bx.drawImage(mc, 0, 0); bx.filter = 'none';
     const btx = new THREE.CanvasTexture(bc); btx.minFilter = btx.magFilter = THREE.LinearFilter;
+    if (R9) { stx.generateMipmaps = btx.generateMipmaps = false; ACQ9.set = { big, bgx, bc, bx, stx, btx, S }; }   // [riva] per la profondità fine, blocco per blocco
     const geo = new THREE.PlaneGeometry(2400, 2400, 1, 1); geo.rotateX(-Math.PI / 2);
     const mat = new THREE.ShaderMaterial({
       transparent: !!R9, uniforms: { RIVA9: { value: R9 ? 1 : 0 }, time: { value: 0 }, night: { value: 1 }, dusk: { value: 0 }, mask: { value: btx }, sea: { value: stx }, wsize: { value: new THREE.Vector2(G.WW, G.WH) }, fogC: { value: new THREE.Color() }, camP: { value: new THREE.Vector3() }, fogN: { value: 60 }, fogF: { value: 160 }, wx: { value: new THREE.Vector4() }, sun: { value: new THREE.Vector3(-1, .3, -.3).normalize() }, moonD: { value: new THREE.Vector3(0, 1, 0) }, lp: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) }, lc: { value: Array.from({ length: 16 }, () => new THREE.Color()) } },
@@ -1239,7 +1257,7 @@ var Render = (function () {
   }
   // chioma grumosa: icosaedro lavorato, scuro sotto, neve sopra
   function blobGeo(detail, amp, seed) {
-    const g0 = new THREE.IcosahedronGeometry(1, detail).toNonIndexed(), p = g0.attributes.position, b = vegBuilder();
+    const g0 = new THREE.IcosahedronGeometry(1, detail),   /* [pulizia] è già senza indice: toNonIndexed() avvisava e basta */ p = g0.attributes.position, b = vegBuilder();
     const v = i => { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 1 + amp * (vegHash(Math.round(x * 5), Math.round(y * 5 + z * 3), seed) - .5) * 2; return [x * k, y * k * .9, z * k]; };
     for (let i = 0; i < p.count; i += 3) { const A = v(i), B = v(i + 1), C = v(i + 2), br = y => .5 + .5 * Math.max(0, Math.min(1, (y + 1) / 2)); b.tri(A, B, C, br(A[1]), br(B[1]), br(C[1]), 1, 1, 1, Math.max(0, A[1] + 1) * .4, Math.max(0, B[1] + 1) * .4, Math.max(0, C[1] + 1) * .4); }
     return b.build();
@@ -2604,6 +2622,7 @@ var Render = (function () {
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const riva = RV9 ? Riva.costruisci(tx0, ty0, n, m, mat, prato9) : null; if (riva) grp.add(riva.grp);   // [riva] la fascia della riva: suolo fine, scogli, ciottoli
+    if (riva) acquaFine9(tx0, ty0, n, m);   // [riva] e il suo pezzo di mare
     yield;
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
     yield;
@@ -7562,7 +7581,8 @@ var Render = (function () {
       if (p.k === 'porta' || p.k === 'scala') { const n = p.k === 'porta' ? p.info.F.n : [p.info.L.ox, p.info.L.oy], q = p.k === 'porta' ? p.info.F.p : [p.info.L.x, p.info.L.y]; if ((cx - q[0]) * n[0] + (cz - q[1]) * n[1] < -.05) return; }
       if ((e.k === 'portale' || e.k === 'serranda' || e.k === 'citofono') && p.k === 'porta') return;   // le parti della porta stessa
       const cut = clip2(e.hull, p.hull), a = cut.length >= 3 ? area2(cut) : 0; if (a <= p.harea * .12) return;
-      if (pezzo2(e)) { const f = raggi2(e, p); if (f > .2) out.push({ t: 'pezzo', p, a: f }); return; }   // un portico, un arco, una tettoia sono vuoti: si guarda coi raggi attraverso i fornici
+      if (pezzo2(e)) { const [px, pz] = ctr2(p.B); if (inB2(e.B, px, (e.B.y0 + e.B.y1) / 2, pz, -.6) && e.B.y1 > p.B.y1) { (P2.sotto = P2.sotto || new Set()).add(p.id); return; }   // [pulizia] la porta sta SOTTO il portico, l'arco, la scalinata: coperta per costruzione (la visuale la apre quando ci si passa), si conta a parte
+        const f = raggi2(e, p); if (f > .2) { const B = e.B, u = px * B.c - pz * B.s, v = px * B.s + pz * B.c, du = Math.max(B.u0 - u, 0, u - B.u1), dv = Math.max(B.v0 - v, 0, v - B.v1); out.push({ t: 'pezzo', p, a: f, fuori: Math.hypot(du, dv) }); } return; }   // un portico, un arco, una tettoia sono vuoti: si guarda coi raggi attraverso i fornici
       out.push({ t: 'coperto', p, a: a / p.harea }); }, 14);
     }
     return out;
@@ -7586,8 +7606,8 @@ var Render = (function () {
       V.forEach(v => { if (v.o) { const key = Math.min(e.id, v.o.id) + ':' + Math.max(e.id, v.o.id); if (coppie.has(key)) return; coppie.add(key); }
         if (v.t === 'coperto' || (v.t === 'pezzo' && v.p)) { const ck = v.t + v.p.id; if (coperti.has(ck)) return; coperti.add(ck); }
         rep.per[v.t]++; rep.tot++; const kk = v.t + ':' + e.k + (v.o ? '/' + v.o.k : v.p ? '/' + v.p.k : ''); rep.perVoce[kk] = (rep.perVoce[kk] || 0) + 1; const ps = v.t + ':' + e.src; rep.perPasso[ps] = (rep.perPasso[ps] || 0) + 1;
-        const [x, z] = ctr2(e.B); pts.push([v.t, Math.round(x * 10) / 10, Math.round(z * 10) / 10, e.k + (e.tipo ? ':' + e.tipo : ''), e.src, v.o ? v.o.k + (v.o.tipo ? ':' + v.o.tipo : '') : v.p ? v.p.k : v.z ? v.z.t : v.h ? 'casa ' + (v.h.b.id || v.h.b.i) + (v.h.b === e.b ? ' (sua)' : '') + ' [' + ['u0', 'u1', 'v0', 'v1', 'y0', 'y1'].map(k => v.h.B[k].toFixed(2)).join(',') + '] F' + (e.F ? e.F.p.map(q => q.toFixed(2)) + '/' + e.F.n : '-') + ' ' + v.n + 'v ' + (e.vx.length / 3) + ' ' + (e.B.u1 - e.B.u0).toFixed(2) + 'x' + (e.B.v1 - e.B.v0).toFixed(2) + 'x' + (e.B.y1 - e.B.y0).toFixed(2) : '', Math.round(e.B.y0 * 10) / 10]); }); });
-    rep.praticabili = { porte: R.P.filter(p => p.k === 'porta').length, scale: R.P.filter(p => p.k === 'scala').length, tombini: R.P.filter(p => p.k === 'tombino').length, passerelle: R.P.filter(p => p.k === 'passerella').length, coperti: [...coperti].filter(k => k[0] === 'c').length, dietroPezzi: [...coperti].filter(k => k[0] === 'p').length };
+        const [x, z] = ctr2(e.B); pts.push([v.t, Math.round(x * 10) / 10, Math.round(z * 10) / 10, e.k + (e.tipo ? ':' + e.tipo : ''), e.src, v.o ? v.o.k + (v.o.tipo ? ':' + v.o.tipo : '') : v.p ? v.p.k + (v.fuori !== undefined ? ' a ' + v.fuori.toFixed(1) + ' m, ' + Math.round(v.a * 100) + '%' : '') : v.z ? v.z.t : v.h ? 'casa ' + (v.h.b.id || v.h.b.i) + (v.h.b === e.b ? ' (sua)' : '') + ' [' + ['u0', 'u1', 'v0', 'v1', 'y0', 'y1'].map(k => v.h.B[k].toFixed(2)).join(',') + '] F' + (e.F ? e.F.p.map(q => q.toFixed(2)) + '/' + e.F.n : '-') + ' ' + v.n + 'v ' + (e.vx.length / 3) + ' ' + (e.B.u1 - e.B.u0).toFixed(2) + 'x' + (e.B.v1 - e.B.v0).toFixed(2) + 'x' + (e.B.y1 - e.B.y0).toFixed(2) : '', Math.round(e.B.y0 * 10) / 10]); }); });
+    rep.praticabili = { porte: R.P.filter(p => p.k === 'porta').length, scale: R.P.filter(p => p.k === 'scala').length, tombini: R.P.filter(p => p.k === 'tombino').length, passerelle: R.P.filter(p => p.k === 'passerella').length, coperti: [...coperti].filter(k => k[0] === 'c').length, dietroPezzi: [...coperti].filter(k => k[0] === 'p').length, sottoPezzi: P2.sotto ? P2.sotto.size : 0 };
     rep.case = R.H.length; return { rep, pts };
   }
 
@@ -7715,6 +7735,7 @@ var Render = (function () {
       posto: e => { const [x, z] = ctr2(e.B); for (let i = Math.floor(x / 4) - 1; i <= Math.floor(x / 4) + 1; i++) for (let j = Math.floor(z / 4) - 1; j <= Math.floor(z / 4) + 1; j++) for (const p of PO.get(i * 8192 + j) || []) if (Math.hypot(p.x - x, p.y - z) < 1.3) return true; return false; },
       appoggiato: e => { let su = false; I0.near(I0.E, e.B, o => { if (o !== e && !o.gone && Math.abs(o.B.y1 - e.B.y0) < .12 && sat2(e.B, o.B) > .02) { su = true; return false; } }); if (!su) I0.near(I0.H, e.B, h => { if (vicino2(e.B, h.B, .1)) { su = true; return false; } }, .2); return su; },
       firma: e => e.firma || (e.firma = e.k + '|' + e.parts.reduce((s, p) => s + p.n, 0) + '|' + [e.B.u1 - e.B.u0, e.B.v1 - e.B.v0].map(v => v.toFixed(1)).sort().join('x') + 'x' + (e.B.y1 - e.B.y0).toFixed(1)),
+      inCasa: e => { let n = 0; I0.near(I0.H, e.B, h => { if (yov2(e.B, h.B) > .05 && sat2(e.B, h.B) > .03 && vertIn2(e, h.B, .03) > 0) { n++; return false; } }); return n > 0; },   // [pulizia] un vertice dentro una casa
       schermo: e => { if (!e.hull) proj2(e); return e.harea || 0; },
       triangoli: e => { let n = e.parts.reduce((s, p) => s + p.n, 0); e.objs.forEach(o => o.traverse(m => { if (m.isMesh && m.geometry && m.geometry.attributes.position) { const c = m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count; n += c * (m.isInstancedMesh ? m.count : 1); } })); return n / 3; },
       indici: () => p2Indici(R), viol: (e, I) => viol2(e, R, I, true),   // con le colpe dell'altro: una correzione non deve far perdere nessuno
@@ -8271,7 +8292,7 @@ var Render = (function () {
     };
     // lobo: icosaedro lavorato, scuro sotto e dentro, chiaro in alto, ogni vertice col suo tono
     const lobe = (cx, cy, cz, rx, ry, rz, cB, cT, seed, amp, det, sw, mix) => {
-      const g0 = new THREE.IcosahedronGeometry(1, det || 0).toNonIndexed(), p = g0.attributes.position;
+      const g0 = new THREE.IcosahedronGeometry(1, det || 0),   /* [pulizia] già senza indice */ p = g0.attributes.position;
       const vv = i => { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), q = [Math.round(x * 5), Math.round(y * 5 + z * 3), Math.round(z * 5)], k = 1 + amp * (vegHash(q[0] + seed, q[1], q[2] + seed * 3) - .5) * 2;
         let c = vdL(cB, cT, Math.max(0, Math.min(1, (y + 1) / 2))); if (mix) c = vdL(c, mix, vegHash(q[0], q[1] + seed, q[2]) < .35 ? .55 : 0); c = vdK(c, .88 + .24 * vegHash(q[2], q[0], q[1] + seed));
         return [[cx + x * rx * k, cy + y * ry * k, cz + z * rz * k], c, Math.max(0, cy + y * ry) * (sw || 0)]; };
@@ -10112,7 +10133,7 @@ var Render = (function () {
     [[.44, .44], [-.44, .44], [.44, -.44], [-.44, -.44]].forEach(([a, b]) => add(g, box(.07, .7, .07, dm), a, .35, b));
     if (goods === 'fish') { for (let k = 0; k < 6; k++) { const f = add(g, box(.12, .06, .45, sm('#9ab0c0', { roughness: .3, metalness: .5 })), -.3 + (k % 3) * .3, .72, -.15 + Math.floor(k / 3) * .3, 0, (k - 3) * .2, 0); } add(g, box(.8, .02, .8, sb('#e8f4ff')), 0, .7, 0); }
     else if (goods === 'bottles') { for (let k = 0; k < 9; k++) { add(g, cyl(.05, .05, .22, 6, sm(k % 2 ? '#3a6a2a' : '#6a3a1a', { roughness: .2 })), -.28 + (k % 3) * .28, .81, -.28 + Math.floor(k / 3) * .28); add(g, cyl(.02, .03, .1, 5, sm('#e8c040')), -.28 + (k % 3) * .28, .96, -.28 + Math.floor(k / 3) * .28); } }
-    else if (goods) { for (let k = 0; k < 9; k++) add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(.13, 0), sl(goods)), -.28 + (k % 3) * .28, .78, -.28 + Math.floor(k / 3) * .28); }
+    else if (goods && goods !== 'none') { const FR = ['#d8402a', '#e8a030', '#d8c840', '#7aa83a'], col = k => goods === 'fruit' ? FR[(k * 7 + Math.round(x * 3)) % 4] : goods; for (let k = 0; k < 9; k++) add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(.13, 0), sl(col(k))), -.28 + (k % 3) * .28, .78, -.28 + Math.floor(k / 3) * .28); }   // [pulizia] 'fruit' e 'none' sono merci, non colori (THREE.Color: Unknown color)
     g.rotation.y = rot || 0; g.position.set(x, (y || 0) + groundH(x, z), z); const tag = newTag(); curTag = tag; addStatic(g); curTag = null; regProp(g, tag); return g;
   }
   function crateStack(x, z, n, r, goods) { for (let k = 0; k < n; k++) crate(x + (k % 2) * .95, z + (k > 2 ? .15 : 0), (r() - .5) * .3, k >= n - 2 ? goods : null, Math.floor(k / 2) * .72); }

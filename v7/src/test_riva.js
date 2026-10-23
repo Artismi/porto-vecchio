@@ -13,8 +13,8 @@ const W = World, T = W.T, TS = W.TS, GW = W.GW, GH = W.GH, WL = W.WL;
 let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
 const t0 = Date.now(); ok(Riva.init(W) && Riva.on, 'la riva fine si accende sul mondo della città nuova');
 // tutti i blocchi
-const NCX = Math.ceil(GW / Riva.CH), NCY = Math.ceil(GH / Riva.CH); let nT = 0, nS = 0, nC = 0; const BL = [];
-for (let cj = 0; cj < NCY; cj++) for (let ci = 0; ci < NCX; ci++) { const B = Riva.blocco(ci, cj); if (!B.any) continue; BL.push(B); nT += B.any; nS += B.scogli.length; nC += B.ciottoli.length; }
+const NCX = Math.ceil(GW / Riva.CH), NCY = Math.ceil(GH / Riva.CH); let nT = 0, nS = 0, nC = 0; const BL = [], TB = [];
+for (let cj = 0; cj < NCY; cj++) for (let ci = 0; ci < NCX; ci++) { const t1 = Date.now(), B = Riva.blocco(ci, cj); if (B.any) TB.push(Date.now() - t1); if (!B.any) continue; BL.push(B); nT += B.any; nS += B.scogli.length; nC += B.ciottoli.length; }
 const ms = Date.now() - t0;
 // ---------------- 1. nessuna cucitura ----------------
 const qR = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS), u = x / TS - tx, v = y / TS - ty; return W.quotaRiva(tx, ty) * (1 - u) * (1 - v) + W.quotaRiva(tx + 1, ty) * u * (1 - v) + W.quotaRiva(tx, ty + 1) * (1 - u) * v + W.quotaRiva(tx + 1, ty + 1) * u * v; };
@@ -52,7 +52,9 @@ ok(pS / nPS < .04, `la spiaggia si cammina: ${(pS / nPS * 100).toFixed(1)}% dei 
 ok(gr / nGr > .6, `gli scogli hanno i gradoni (${(gr / nGr).toFixed(2)} salti ogni 2 m)`);
 // ---------------- 5. i numeri ----------------
 ok(nT > 2000, `le caselle della fascia fine: ${nT} (${(nT * 4).toLocaleString('it')} m²), i ciottoli ${nC}`);
-ok(ms < 6000, `il calcolo di tutti i blocchi in ${ms} ms`);
+// [leggero] nel gioco un blocco si calcola solo quando il terreno lì si costruisce (uno alla volta, vicino alla camera): conta il blocco singolo
+{ TB.sort((a, b) => a - b); const med = TB[Math.floor(TB.length / 2)] || 0, p90 = TB[Math.floor(TB.length * .9)] || 0;
+  ok(med < 120 && p90 < 400, `un blocco di riva (32 caselle) si calcola in ${med} ms (mediana; 90° percentile ${p90} ms, il più lento ${TB[TB.length - 1]} ms; ${TB.length} blocchi, in tutto ${ms} ms)`); }
 // la stessa riva due volte (deterministica)
 { const a = tutti.slice(0, 50).map(s => s.x + ',' + s.y + ',' + s.r).join(';'); delete require.cache[require.resolve(path.join(__dirname, 'riva.js'))]; const R2 = require(path.join(__dirname, 'riva.js')); R2.init(W); const t2 = []; for (let cj = 0; cj < NCY; cj++) for (let ci = 0; ci < NCX; ci++) { const B = R2.blocco(ci, cj); B.scogli.forEach(s => t2.push(s)); }
   ok(a === t2.slice(0, 50).map(s => s.x + ',' + s.y + ',' + s.r).join(';'), 'la stessa riva ogni volta (niente a caso)'); }
