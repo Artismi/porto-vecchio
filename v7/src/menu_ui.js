@@ -223,6 +223,7 @@ var MenuUI = (function () {
   const famOf = id => { try { return fam(id); } catch (e) { for (const [re, s, c] of FAM) if (re.test(id)) return [s, c]; return ['cassa', null]; } };
   const tipo3 = id => /^(pistola|lupara|mitra|fucile)$/.test(id) ? id : /coltell|taglierino/.test(id) ? 'coltello' : /thermos/.test(id) ? 'thermos' : /torcia/.test(id) ? 'torcia' : /martell/.test(id) ? 'martello' : /^chiave/.test(id) ? 'chiave'
     : famOf(id)[0] === 'bottiglia' && !/molotov/.test(id) ? 'bottiglia' : famOf(id)[0] === 'latta' && /scatol|conserva|passata|latta|lattine|carne_scatola/.test(id) ? 'latta' : null;
+  const ID3 = id => (typeof Roba3D !== 'undefined' && Roba3D && Roba3D.ID[id] || [''])[0];
   let THR = null;
   function makeThumb(id) {
     const T = THREE, st = ST();
@@ -241,9 +242,13 @@ var MenuUI = (function () {
       const R = PV() && PV().R, W = st && G().WEAPONS && G().WEAPONS[id] && R && R.__models && R.__models.weaponModel;
       // [modelli] armi e attrezzi coi modelli definiti di oggetti3d.js (pistola, lupara, mitra, bottiglie, latte, martello, chiave...)
       const o3 = typeof Oggetti3D !== 'undefined' && Oggetti3D && tipo3(id);
-      obj = CUST[id] ? CUST[id]() : o3 ? Oggetti3D.make(o3, TINTS[id] || famOf(id)[1], id) : W ? R.__models.weaponModel(id) : mini(id);
-      if (o3 && /^(pistola|lupara|mitra|fucile)$/.test(o3)) obj.rotation.y = -Math.PI / 2;   // di profilo, la canna a destra
-      else if (o3 && /^(martello|chiave|coltello|torcia)$/.test(o3)) obj.rotation.z = -.8;   // gli attrezzi lunghi in diagonale: riempiono il riquadro
+      // [roba3d] prima il modello vero dell'oggetto (roba3d.js), poi quelli di oggetti3d.js, l'arma del gioco, il modellino di famiglia
+      const rb = !CUST[id] && typeof Roba3D !== 'undefined' && Roba3D && Roba3D.has(id) ? Roba3D.make(id) : null;
+      obj = CUST[id] ? CUST[id]() : rb || (o3 ? Oggetti3D.make(o3, TINTS[id] || famOf(id)[1], id) : W ? R.__models.weaponModel(id) : mini(id));
+      const ud = obj.userData || {};
+      if (ud.arma3 || (!rb && o3 && /^(pistola|lupara|mitra|fucile)$/.test(o3))) obj.rotation.y = -Math.PI / 2;   // di profilo, la canna a destra
+      else if (ud.diag || (!rb && o3 && /^(martello|chiave|coltello|torcia)$/.test(o3)) || (rb && ud.modello === undefined && /coltello/.test(ID3(id)))) obj.rotation.z = -.8;   // gli attrezzi lunghi in diagonale: riempiono il riquadro
+      else if (ud.arma) obj.rotation.y = -.25;
       // [anteprime] si inquadra la sfera che contiene l'oggetto già girato: niente più latte e casse tagliate in alto
       const box = new T.Box3().setFromObject(obj), ctr = box.getCenter(new T.Vector3());
       const holder = new T.Group(); obj.position.sub(ctr); holder.add(obj); holder.rotation.set(.42, -.6, 0); obj = holder; holder.updateMatrixWorld(true);

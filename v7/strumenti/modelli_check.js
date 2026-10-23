@@ -14,7 +14,8 @@ const A = require(path.join(src, 'arredo3d.js'));
 const args = process.argv.slice(2), DETT = args.includes('--dett'), SOLO = args.filter(a => !a.startsWith('--'));
 const TOL = .02;
 // tetto dei triangoli al livello pieno: poche centinaia (800) per ogni oggetto, di più solo per le cose grandi e composte
-const GRANDI = { cabina_enel: 1600, carretto: 1400, lampione_corso: 1300, bancarella: 1300, semaforo: 1200, fermata: 1200, paletti_catena: 1200, reti: 1000, cassonetto: 1000, impalcatura: 1000, cabina_sip: 900, cassone: 900 };
+const GRANDI = { cabina_enel: 1600, carretto: 1400, lampione_corso: 1300, bancarella: 1300, semaforo: 1200, fermata: 1200, paletti_catena: 1200, reti: 1000, cassonetto: 1000, impalcatura: 1000, cabina_sip: 900, cassone: 900,
+  container: 1900, gru: 1800, muletto: 1450, invasatura: 1500, pila_gomme: 1200 };   // [roba3d] le cose grandi del porto e del magazzino
 const TETTO = t => GRANDI[t] || 800;
 
 const V = THREE.Vector3, tri = new THREE.Triangle(), _p = new V(), _q = new V(), ray = new THREE.Ray(), _hit = new V();
