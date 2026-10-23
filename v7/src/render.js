@@ -115,12 +115,17 @@ var Render = (function () {
     };
     return LD1;
   }
+  // [pulizia] il nome di chi posa (la prima funzione della pila che non è un attrezzo di posa), col numero di riga di index.html
+  const CHI_SALTA2 = /^(addStatic|place|placeYS1|put|settle|snapRot2|regProp|at|add|mk2|vesti3|pm3|G0|Array\.forEach|forEach|map|Map\.forEach|Set\.forEach|<anonymous>)$/;
+  function chi2() { const L = (new Error().stack || '').split('\n'); let riga = null;   // la riga più interna che non è un attrezzo (anche dentro una funzione senza nome), col nome della prima funzione che ce l'ha
+    for (let i = 2; i < L.length; i++) { const m = /at (?:new )?(?:Object\.)?([\w$.<>]+) \(.*:(\d+):\d+\)/.exec(L[i]), a = m ? null : /at .*:(\d+):\d+\)?$/.exec(L[i]);
+      if (a) { if (!riga) riga = a[1]; continue; } if (!m || CHI_SALTA2.test(m[1])) continue; return m[1] + ':' + (riga || m[2]); } return '?'; }
   function addStatic(obj, noShadow) {
     if (window.Officina) Officina.onStatic(obj);   // [studio] modifiche ai modelli di strada
     obj.updateMatrixWorld(true); curObj = obj;
     if (window.__probeAt) { const bx = new THREE.Box3().setFromObject(obj), sz = bx.getSize(new THREE.Vector3()), cc = bx.getCenter(new THREE.Vector3()); for (const q of window.__probeAt) if (Math.hypot(cc.x - q[0], cc.z - q[1]) < q[2]) { (window.__probe = window.__probe || []).push([q[3], Math.round(cc.x), Math.round(cc.z), sz.x.toFixed(1), sz.y.toFixed(1), sz.z.toFixed(1), (new Error().stack.split('\n').slice(2, 6).map(l => l.trim().split(' ')[1]).join('<'))]); break; } }   // [ordine1] strumento: chi ha messo cosa
     const m2 = obj.userData.p2, e2 = P2.on && (curTag || P2.k || m2 || noShadow === 'lamp') && cn1() ? p2New(m2 || { k: P2.k || (noShadow === 'lamp' ? 'lampione' : 'arredo'), b: P2.b, f: P2.f }) : null;   // [pulizia2] il registro
-    if (e2) { e2.tag = curTag; e2.yaw0 = yawM2(obj.matrixWorld); }
+    if (e2) { e2.tag = curTag; e2.yaw0 = yawM2(obj.matrixWorld); if (window.__rumoreChi) { e2.chi = chi2(); e2.nm = 0; e2.nb = 0; } }   // [pulizia] chi l'ha fatto (solo per il censimento dei modelli)
     obj.traverse(o => {
       if (!o.isMesh || Array.isArray(o.material)) return;
       o.getWorldPosition(_wp);
@@ -128,6 +133,7 @@ var Render = (function () {
       let b = STATIC.get(key); if (!b) { b = { mat: o.material, geos: [], noShadow }; STATIC.set(key, b); }
       let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
       g.applyMatrix4(o.matrixWorld);
+      if (e2 && e2.nm !== undefined) { e2.nm++; if (o.geometry.type === 'BoxGeometry') e2.nb++; }   // [pulizia]
       b.geos.push(g); if (curTag) tagPart(b, g.attributes.position.count); if (e2) e2.parts.push({ bk: b, gi: b.geos.length - 1, n: g.attributes.position.count });   // [pulizia2]
       if (window.Officina && Officina.wantParts) Officina.onPart(o, b, b.geos.length - 1, g.attributes.position.count);   // [studio] dove finisce ogni mesh
     });
@@ -7437,13 +7443,59 @@ var Render = (function () {
     P2.dirty.forEach(g => { g.computeBoundingSphere(); g.computeBoundingBox(); }); P2.dirty.clear();
     return az;
   }
+  // ---- [pulizia] gli attrezzi per pulizia_rumore.js: ruotare una voce attorno al suo centro, le finestre e le porte di una facciata,
+  // la casa più vicina (col verso e il lato), il vicolo sotto un punto, i posti delle persone (panchine, fermate, dehors: non si toccano) ----
+  const _x2 = new THREE.Vector3(), _n3 = new THREE.Matrix3();
+  function xf2(g, s, n, M) { const a = g.attributes.position.array, A = g.attributes.normal, nr = A && A.array instanceof Float32Array ? A.array : null; _n3.getNormalMatrix(M);
+    for (let i = s; i < s + n; i++) { _x2.fromArray(a, i * 3).applyMatrix4(M).toArray(a, i * 3); if (nr) _x2.fromArray(nr, i * 3).applyMatrix3(_n3).normalize().toArray(nr, i * 3); }
+    g.attributes.position.needsUpdate = true; if (A) A.needsUpdate = true; }
+  function ruota2(e, da) {
+    const [cx, cz] = ctr2(e.B), Rw = new THREE.Matrix4().makeTranslation(cx, 0, cz).multiply(new THREE.Matrix4().makeRotationY(da)).multiply(new THREE.Matrix4().makeTranslation(-cx, 0, -cz));
+    e.parts.forEach(p => { if (p.bk) { const g = p.bk.geos[p.gi]; if (g) xf2(g, 0, p.n, Rw); }
+      else if (p.M) { const L = new THREE.Matrix4().copy(p.M.matrixWorld).invert().multiply(Rw).multiply(p.M.matrixWorld); xf2(p.M.geometry, p.s, p.n, L); P2.dirty.add(p.M.geometry); } });
+    e.objs.forEach(o => { if (!o.parent) return; o.updateMatrixWorld(true); const W = new THREE.Matrix4().multiplyMatrices(Rw, o.matrixWorld).premultiply(new THREE.Matrix4().copy(o.parent.matrixWorld).invert()); W.decompose(o.position, o.quaternion, o.scale); o.updateMatrixWorld(true); });
+    if (e.rec && e.rec.obj && !e.rec.obj.parent) { e.rec.obj.applyMatrix4(Rw); e.rec.obj.updateMatrixWorld(true); }
+    e.yaw += da; const V = verts2(e, e.yaw); if (V) { e.B = V.B; e.vx = V.vx; } e.hull = null;
+  }
+  function rumore2(R) {
+    const I0 = p2Indici(R), BI = new Map(); G.BUILDINGS.forEach((b, i) => BI.set(b, i));
+    const PORTE = new Map(); R.P.forEach(p => { if (p.k === 'porta' && p.info) { const k = BI.get(p.info.b) + p.info.f; PORTE.set(k, (PORTE.get(k) || 0) + 1); } });
+    const geoOf = b => { const r = DZ.bRec[BI.get(b)]; return r && r.geo; };
+    const FIN = new Map();
+    const PO = new Map(), KP = new Set(['panchina', 'pensilina', 'fermata', 'dehors', 'edicola', 'banco_pesce', 'mercato', 'fila', 'cypher', 'carico']);
+    try { if (typeof Posti !== 'undefined') Posti.all().forEach(p => { if (!KP.has(p.k)) return; const kk = Math.floor(p.x / 4) * 8192 + Math.floor(p.y / 4); let a = PO.get(kk); if (!a) PO.set(kk, a = []); a.push(p); }); } catch (e) { }
+    const VIC = []; (M.roads || []).forEach(rd => { if (rd.kind !== 'vicolo' || !rd.pts) return; for (let k = 0; k < rd.pts.length - 1; k++) VIC.push([rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd.w || 2]); });
+    const VH = new Map(); VIC.forEach(q => { for (let i = Math.floor(Math.min(q[0], q[2]) / 8) - 1; i <= Math.floor(Math.max(q[0], q[2]) / 8) + 1; i++) for (let j = Math.floor(Math.min(q[1], q[3]) / 8) - 1; j <= Math.floor(Math.max(q[1], q[3]) / 8) + 1; j++) { const kk = i * 4096 + j; let a = VH.get(kk); if (!a) VH.set(kk, a = []); a.push(q); } });
+    return {
+      R, G, TS, groundH, ctr: ctr2, corners: corners2, palo: palo2, roadDir: roadDir2,
+      bid: b => BI.get(b), prio: e => PRIO2[e.k] || 10,
+      larghezza: (b, f) => { const g = geoOf(b); return g ? (f === 'S' || f === 'N' ? g.w : g.d) : 0; },
+      porte: (b, f) => PORTE.get(BI.get(b) + f) || 0,
+      finestre: (b, f) => { const k = BI.get(b) + f; if (FIN.has(k)) return FIN.get(k); const L = (b.__win || []).filter(q => q.f === f && WIN[q.name] && !q.name.includes('doorway')).map(q => { const d = WIN[q.name]; return { name: q.name, u0: q.u - d[0] / 2, u1: q.u + d[0] / 2, y0: q.y + d[2] - d[1] / 2, y1: q.y + d[2] + d[1] / 2 }; }); FIN.set(k, L); return L; },
+      casaVicina: (x, z, maxd) => { let best = null; I0.near(I0.H, box2(x, z, 0, .01, .01, -1e3, 1e3), h => { const B = h.B, u = x * B.c - z * B.s, v = x * B.s + z * B.c, du = Math.max(B.u0 - u, 0, u - B.u1), dv = Math.max(B.v0 - v, 0, v - B.v1), d = Math.hypot(du, dv);
+        if (d > maxd || (best && d >= best.d)) return; const lato = du > dv ? (u < B.u0 ? 'u0' : 'u1') : (v < B.v0 ? 'v0' : 'v1'); best = { i: R.H.indexOf(h), h, d, lato, u: du > dv ? v - B.v0 : u - B.u0, yaw: Math.atan2(B.s, B.c) }; }, maxd); return best; },
+      vicolo: (x, z) => { let best = null; for (const q of VH.get(Math.floor(x / 8) * 4096 + Math.floor(z / 8)) || []) { const dx = q[2] - q[0], dz = q[3] - q[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - q[0]) * dx + (z - q[1]) * dz) / L2, 0, 1), px = q[0] + dx * t, pz = q[1] + dz * t, d = Math.hypot(px - x, pz - z);
+        if (d > q[4] / 2 || (best && d >= Math.abs(best.d))) continue; const L = Math.sqrt(L2), n = [-dz / L, dx / L]; best = { w: q[4], d: (x - px) * n[0] + (z - pz) * n[1], n }; } return best; },
+      posto: e => { const [x, z] = ctr2(e.B); for (let i = Math.floor(x / 4) - 1; i <= Math.floor(x / 4) + 1; i++) for (let j = Math.floor(z / 4) - 1; j <= Math.floor(z / 4) + 1; j++) for (const p of PO.get(i * 8192 + j) || []) if (Math.hypot(p.x - x, p.y - z) < 1.3) return true; return false; },
+      appoggiato: e => { let su = false; I0.near(I0.E, e.B, o => { if (o !== e && !o.gone && Math.abs(o.B.y1 - e.B.y0) < .12 && sat2(e.B, o.B) > .02) { su = true; return false; } }); if (!su) I0.near(I0.H, e.B, h => { if (vicino2(e.B, h.B, .1)) { su = true; return false; } }, .2); return su; },
+      firma: e => e.firma || (e.firma = e.k + '|' + e.parts.reduce((s, p) => s + p.n, 0) + '|' + [e.B.u1 - e.B.u0, e.B.v1 - e.B.v0].map(v => v.toFixed(1)).sort().join('x') + 'x' + (e.B.y1 - e.B.y0).toFixed(1)),
+      schermo: e => { if (!e.hull) proj2(e); return e.harea || 0; },
+      triangoli: e => { let n = e.parts.reduce((s, p) => s + p.n, 0); e.objs.forEach(o => o.traverse(m => { if (m.isMesh && m.geometry && m.geometry.attributes.position) { const c = m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count; n += c * (m.isInstancedMesh ? m.count : 1); } })); return n / 3; },
+      indici: () => p2Indici(R), viol: (e, I) => viol2(e, R, I, true),   // con le colpe dell'altro: una correzione non deve far perdere nessuno
+      sopra: (e, I) => { const L = []; I.near(I.E, e.B, o => { if (o !== e && !o.gone && Math.abs(o.B.y0 - e.B.y1) < .12 && sat2(e.B, o.B) > .02) L.push(o); }); return L; }, rimetti: (I, e) => I.put(I.E, e.B, e),
+      togli: e => togli2(e), sposta: (e, dx, dy, dz) => { sposta2(e, dx, dy, dz); e.c = ctr2(e.B); }, ruota: (e, da) => { ruota2(e, da); e.c = ctr2(e.B); }, ruotabile: e => !e.free && (e.parts.length || e.objs.length),
+      fine: () => { P2.dirty.forEach(g => { g.computeBoundingSphere(); g.computeBoundingBox(); }); P2.dirty.clear(); },
+    };
+  }
   function pulizia2() {
     if (!cn1() || !P2.on) return 0;
     try { const kp = Kit.get('bkit/wall'); kp.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(kp); P2.kit = Math.max(0, bb.max.x); } catch (e) { P2.kit = 0; }   // quanto sporge il modulo di muro dal filo
     P2.dirty = new Set();
     const R = p2Raccogli(), prima = p2Misura(R), off = /[?&]nopulizia2\b/.test(location.search);
-    const az = off ? { spento: true } : p2Regista(R), dopo = off ? prima : p2Misura(R);
-    window.__pulizia2 = { prima: prima.rep, dopo: dopo.rep, azioni: az, punti: { prima: prima.pts, dopo: dopo.pts }, kit: P2.kit, spento: off };
+    const az = off ? { spento: true } : p2Regista(R);
+    let RU = null; if (typeof PuliziaRumore !== 'undefined') try { RU = PuliziaRumore.passa(rumore2(R)); } catch (e) { console.error('[rumore]', e); }   // [pulizia] il rumore (pulizia_rumore.js): dopo il regista, sulle stesse voci
+    const dopo = off ? prima : p2Misura(R);
+    window.__pulizia2 = { prima: prima.rep, dopo: dopo.rep, azioni: az, punti: { prima: prima.pts, dopo: dopo.pts }, kit: P2.kit, spento: off, rumore: RU ? RU.numeri : null };
     if (window.__dbg35) console.log('[dbg] pulizia2 prima', JSON.stringify(prima.rep.per), 'dopo', JSON.stringify(dopo.rep.per), 'azioni', JSON.stringify(az));
     VIS3.reg = R.E.filter(e => !e.gone && e.B);   // [visuale3] il registro resta al taglio: le cose sui tetti e sulle facciate che non stanno nei gruppi della casa (antenne e mensole della rete, insegne, pluviali)
     P2.list = []; P2.on = false; return dopo.rep.tot;
