@@ -24,7 +24,7 @@ const PPM = 8, cv = document.createElement('canvas'); cv.width = GW * TS * PPM; 
 const COL = { basoli: '#6a655d', travertino: '#7a7262', porfido: '#4a3a38', spianata: '#5c5244', asfalto: '#2f2d2c', banchina: '#66625c', sabbia: '#b8a078', terra: '#54483a', bld: '#2a2433' };
 for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const v = tile(tx, ty); x.fillStyle = v === T.SAND ? COL.sabbia : v === T.QUAY ? COL.banchina : v === T.BLD ? COL.bld : COL[kindAt(tx, ty)]; x.fillRect(tx * 16, ty * 16, 16, 16); }
 const stroke = (P, w, c) => { x.beginPath(); P.forEach(([a, b], i) => i ? x.lineTo(a * PPM, b * PPM) : x.moveTo(a * PPM, b * PPM)); x.lineWidth = w * PPM; x.strokeStyle = c; x.lineCap = 'butt'; x.stroke(); };
-stroke(roads[3].pts, 3.5, COL.terra); stroke(arc, 4.6, 'rgba(62,56,48,.9)'); stroke(arc, 4, COL.basoli); stroke(roads[1].pts, 9.2, '#2e2c2a'); stroke(roads[1].pts, 8, COL.asfalto); stroke(roads[2].pts, 8.2, '#3a2e2c'); stroke(roads[2].pts, 7, COL.porfido);
+stroke(roads[3].pts, 3.5, COL.terra); stroke(arc, 4.6, 'rgba(62,56,48,.9)'); stroke(arc, 4, COL.basoli); stroke(roads[2].pts, 8.2, '#3a2e2c'); stroke(roads[2].pts, 7, COL.porfido); stroke(roads[1].pts, 9.2, '#2e2c2a'); stroke(roads[1].pts, 8, COL.asfalto);   // l'asfalto sopra, come nel gioco
 x.fillStyle = '#403b37'; x.beginPath(); x.arc(30 * PPM, 26 * PPM, .36 * PPM, 0, 7); x.fill();   // un tombino dipinto
 x.fillStyle = 'rgba(236,232,220,.55)'; for (let k = 0; k < 6; k++) x.fillRect((8 + k * 1.2) * PPM, 22.5 * PPM, .6 * PPM, 7 * PPM);   // le strisce
 const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.magFilter = THREE.LinearFilter; tex.anisotropy = 4;
@@ -39,7 +39,7 @@ const swM = new THREE.MeshLambertMaterial({ color: '#8a857b' }); if (!/nopavimen
 // gli oggetti posati: casse, panchine, una fioriera, due case
 const bm = new THREE.MeshStandardMaterial({ color: '#8a6a4a', roughness: .8 });
 OB.forEach(([x0, z0, w, d], i) => { const h = i % 2 ? .9 : .45; const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bm); m.position.set(x0, h / 2 + (z0 > 19.9 && z0 < 22 || z0 > 30 && z0 < 32.1 ? .15 : 0), z0); m.castShadow = m.receiveShadow = true; S.add(m); });
-[[4, 2, 1, 3], [26, 2, 4, 3]].forEach(([tx, ty, w, h]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(8, 9, 6), new THREE.MeshStandardMaterial({ color: '#d8b48a', roughness: .9 })); m.position.set((tx + 2) * TS, 4.5, (ty + 1.5) * TS + 1); m.castShadow = m.receiveShadow = true; S.add(m); });
+[[8, 5], [56, 5]].forEach(([hx, hz]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(8, 9, 6), new THREE.MeshStandardMaterial({ color: "#d8b48a", roughness: .9 })); m.position.set(hx, 4.5, hz); m.castShadow = m.receiveShadow = true; S.add(m); });
 const ang = +(Q.get('ang') || 35) * Math.PI / 180, sun = new THREE.DirectionalLight('#fff2dc', 2.6); sun.position.set(32 + Math.cos(ang) * 30, 40, 20 + Math.sin(ang) * 30); sun.target.position.set(32, 0, 20); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 120 }); sun.shadow.bias = -.0004; S.add(sun, sun.target);
 S.add(new THREE.HemisphereLight('#c8d4e8', '#5a4a3a', .9));

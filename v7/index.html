@@ -55184,9 +55184,11 @@ var Pavimenti = (function () {
   const famVia = rd => rd.kind === 'vicolo' ? FAM.basoli : rd.kind === 'sterrato' ? FAM.terra : rd.era === 'E3' ? FAM.porfido : rd.era === 'E4' ? FAM.travertino : FAM.asfalto;
   function mappe(tx0, ty0, n, m) {
     const TS = A.TS, X0 = tx0 * TS, Z0 = ty0 * TS, NI = n * RID, MJ = m * RID, q = TS / RID, G = A.G, T = G.T;
-    const I = new Float32Array(NI * MJ * 4), best = new Float32Array(NI * MJ).fill(1e9), RF = new Uint8Array(NI * MJ), HW = new Float32Array(NI * MJ);
-    // le vie: per ogni tratto i texel entro la mezza larghezza più il marciapiede; vince la via in cui il punto sta più dentro
-    (A.M.roads || []).forEach(rd => { const P = rd.pts; if (!P || P.length < 2) return; const hw = rd.w / 2, ext = hw + 2.8, g = A.geo1(rd), f = famVia(rd);
+    const I = new Float32Array(NI * MJ * 4), I2 = new Float32Array(NI * MJ * 4), K1 = new Float32Array(NI * MJ).fill(1e9), K2 = new Float32Array(NI * MJ).fill(1e9), S2 = new Float32Array(NI * MJ).fill(9), R1 = new Int32Array(NI * MJ).fill(-1), R2 = new Int32Array(NI * MJ).fill(-1);
+    // le vie: per ogni tratto i texel entro la mezza larghezza più il marciapiede. Ogni texel ricorda due vie (agli incroci): la prima è
+    // quella dipinta sopra se il texel ci sta dentro (asfalto > travertino > porfido > basoli > terra, come strade1Era), se no la più vicina
+    const PR = { 4: 5, 2: 4, 3: 3, 1: 2, 6: 1 }, put = (A4, kk, s0, v, th, f, hw) => { A4[kk * 4] = s0; A4[kk * 4 + 1] = v; A4[kk * 4 + 2] = th; A4[kk * 4 + 3] = f + 256 * Math.min(127, Math.round(hw * 8)); };
+    (A.M.roads || []).forEach((rd, ri) => { const P = rd.pts; if (!P || P.length < 2) return; const hw = rd.w / 2, ext = hw + 2.8, g = A.geo1(rd), f = famVia(rd), pr = PR[f] || 1;
       for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az); if (L < 1e-4) continue;
         if (Math.max(ax, bx) < X0 - ext || Math.min(ax, bx) > X0 + n * TS + ext || Math.max(az, bz) < Z0 - ext || Math.min(az, bz) > Z0 + m * TS + ext) continue;
         const ux = (bx - ax) / L, uz = (bz - az) / L, th = Math.atan2(uz, ux);
@@ -55194,37 +55196,45 @@ var Pavimenti = (function () {
         const j0 = Math.max(0, Math.floor((Math.min(az, bz) - ext - Z0) / q)), j1 = Math.min(MJ - 1, Math.ceil((Math.max(az, bz) + ext - Z0) / q));
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q, dx = px - ax, dz = pz - az, t = dx * ux + dz * uz;
           if (t < -.6 || t > L + .6) continue; const v = ux * dz - uz * dx, sc = Math.abs(v) - hw; if (Math.abs(v) > ext) continue;
-          const kk = j * NI + i; if (sc >= best[kk]) continue; best[kk] = sc; RF[kk] = f; HW[kk] = hw;
-          I[kk * 4] = g.s[k] + t; I[kk * 4 + 1] = v; I[kk * 4 + 2] = th; } } });
-    for (let j = 0; j < MJ; j++) for (let i = 0; i < NI; i++) { const kk = j * NI + i, tx = tx0 + Math.floor(i / RID), ty = ty0 + Math.floor(j / RID);
-      I[kk * 4 + 3] = RF[kk] + 16 * famSuolo(tx, ty) + 256 * Math.min(127, Math.round(HW[kk] * 8)); }
-    const id = new THREE.DataTexture(I, NI, MJ, THREE.RGBAFormat, THREE.FloatType); id.magFilter = id.minFilter = THREE.NearestFilter; id.generateMipmaps = false; id.needsUpdate = true;
-    // le maschere: R muro vicino, G umido della riva, B ombra di contatto
+          const kk = j * NI + i, key = sc < 0 ? sc - pr * 100 : sc, s0 = g.s[k] + t;
+          if (R1[kk] === ri) { if (key < K1[kk]) { K1[kk] = key; put(I, kk, s0, v, th, f, hw); } continue; }
+          if (R2[kk] === ri) { if (key < K2[kk]) { K2[kk] = key; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); } }
+          else if (key < K1[kk]) { if (R1[kk] >= 0) { K2[kk] = K1[kk]; R2[kk] = R1[kk]; S2[kk] = 0; I2.set(I.subarray(kk * 4, kk * 4 + 4), kk * 4); const o = I2[kk * 4 + 3] % 256; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; }
+            K1[kk] = key; R1[kk] = ri; put(I, kk, s0, v, th, f, hw); continue; }
+          else if (key < K2[kk]) { K2[kk] = key; R2[kk] = ri; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); continue; }
+          if (K2[kk] < K1[kk]) { const a = I.slice(kk * 4, kk * 4 + 4); I.set(I2.subarray(kk * 4, kk * 4 + 4), kk * 4); I2.set(a, kk * 4); [K1[kk], K2[kk]] = [K2[kk], K1[kk]]; [R1[kk], R2[kk]] = [R2[kk], R1[kk]]; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; } } } });
+    for (let j = 0; j < MJ; j++) for (let i = 0; i < NI; i++) { const kk = j * NI + i, tx = tx0 + Math.floor(i / RID), ty = ty0 + Math.floor(j / RID), two = R2[kk] >= 0 && S2[kk] < .9;
+      if (R1[kk] < 0) I[kk * 4 + 3] = 0; if (!two) I2.fill(0, kk * 4, kk * 4 + 4);
+      I[kk * 4 + 3] += 16 * famSuolo(tx, ty) + (two ? 32768 : 0); }
+    const tex = A4 => { const t = new THREE.DataTexture(A4, NI, MJ, THREE.RGBAFormat, THREE.FloatType); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t; };
+    const id = tex(I), id2 = tex(I2);
+    // le maschere: R muro vicino, G umido della riva, B ombra di contatto, A il raccordo al piede del muro
     const NI2 = n * RMK, MJ2 = m * RMK, q2 = TS / RMK, K = new Uint8Array(NI2 * MJ2 * 4), BLD = (tx, ty) => tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && A.gT(tx, ty) === T.BLD;
     const near = new Uint8Array((n + 2) * (m + 2)); for (let ty = -1; ty <= m; ty++) for (let tx = -1; tx <= n; tx++) near[(ty + 1) * (n + 2) + tx + 1] = BLD(tx0 + tx, ty0 + ty) ? 1 : 0;
     const wetT = new Float32Array(n * 2 * m * 2);   // l'umido a 1 m: la distanza dalla riva costa
     for (let j = 0; j < m * 2; j++) for (let i = 0; i < n * 2; i++) { const tx = tx0 + (i >> 1), ty = ty0 + (j >> 1), v = A.gT(tx, ty); wetT[j * n * 2 + i] = v === T.SAND || v === T.QUAY || v === T.PIER || v === T.ROCK ? A.coastIn(X0 + i + .5, Z0 + j + .5) : 99; }
     for (let j = 0; j < MJ2; j++) for (let i = 0; i < NI2; i++) { const px = X0 + (i + .5) * q2, pz = Z0 + (j + .5) * q2, lx = Math.floor(i / RMK), ly = Math.floor(j / RMK), o = (j * NI2 + i) * 4;
       let dw = 9; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { if (!near[(ly + b + 1) * (n + 2) + lx + a + 1]) continue; const x0 = (tx0 + lx + a) * TS, z0 = (ty0 + ly + b) * TS, ddx = Math.max(x0 - px, 0, px - x0 - TS), ddz = Math.max(z0 - pz, 0, pz - z0 - TS); dw = Math.min(dw, Math.hypot(ddx, ddz)); }
-      const w = Math.max(0, 1 - dw / 1.4); K[o] = Math.round(255 * w * w);
-      const ci = wetT[(j >> 2) * n * 2 + (i >> 2)]; K[o + 1] = ci < 4 ? Math.round(255 * Math.max(0, Math.min(1, 1 - ci / 4))) : 0; }
+      const w = Math.max(0, 1 - dw / 1.4), w2 = Math.max(0, 1 - dw / .32); K[o] = Math.round(255 * w * w); K[o + 3] = Math.round(255 * w2 * w2);   // A: il raccordo, la riga scura proprio al piede
+      const ci = wetT[(j >> 2) * n * 2 + (i >> 2)], wr = A.gT(tx0 + lx, ty0 + ly) === T.SAND ? 4 : 1.3; K[o + 1] = ci < wr ? Math.round(255 * Math.max(0, Math.min(1, 1 - ci / wr))) : 0; }   // la sabbia bagnata larga, la banchina solo sul ciglio
     (OMB.get(tx0 / 32 + ',' + ty0 / 32) || []).forEach(([cx, cz, rx, rz, f]) => {   // le ombre di contatto: un ovale sfumato più largo dell'impronta
-      const ex = rx * 1.5 + .25, ez = rz * 1.5 + .25, i0 = Math.max(0, Math.floor((cx - ex - X0) / q2)), i1 = Math.min(NI2 - 1, Math.ceil((cx + ex - X0) / q2)), j0 = Math.max(0, Math.floor((cz - ez - Z0) / q2)), j1 = Math.min(MJ2 - 1, Math.ceil((cz + ez - Z0) / q2));
+      const ex = rx * 1.18 + .16, ez = rz * 1.18 + .16, i0 = Math.max(0, Math.floor((cx - ex - X0) / q2)), i1 = Math.min(NI2 - 1, Math.ceil((cx + ex - X0) / q2)), j0 = Math.max(0, Math.floor((cz - ez - Z0) / q2)), j1 = Math.min(MJ2 - 1, Math.ceil((cz + ez - Z0) / q2));
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const dx = (X0 + (i + .5) * q2 - cx) / ex, dz = (Z0 + (j + .5) * q2 - cz) / ez, r = Math.hypot(dx, dz); if (r >= 1) continue;
         const o = (j * NI2 + i) * 4 + 2, t = 1 - r, v = Math.round(255 * f * t * t * (3 - 2 * t)); if (v > K[o]) K[o] = v; } });
     const mk = new THREE.DataTexture(K, NI2, MJ2, THREE.RGBAFormat, THREE.UnsignedByteType); mk.magFilter = mk.minFilter = THREE.LinearFilter; mk.generateMipmaps = false; mk.needsUpdate = true;
-    return { id, mk, box: new THREE.Vector4(X0, Z0, n * TS, m * TS), res: new THREE.Vector2(NI, MJ) };
+    return { id, id2, mk, box: new THREE.Vector4(X0, Z0, n * TS, m * TS), res: new THREE.Vector2(NI, MJ) };
   }
 
   // ---------------- 3. LO SHADER ----------------
   const GLSL = `
-    uniform sampler2D pvId; uniform sampler2D pvMk; uniform vec4 pvBox; uniform vec2 pvRes; uniform float pvHas; uniform float pvForza; uniform float pvForce;
+    uniform sampler2D pvId; uniform sampler2D pvId2; uniform sampler2D pvMk; uniform vec4 pvBox; uniform vec2 pvRes; uniform float pvHas; uniform float pvForza; uniform float pvForce;
     varying vec3 vPw;
     vec2 pvTilt; float pvWet; float pvPol;
     float pvH(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
     vec2 pvH2(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * vec3(.1031, .1030, .0973)); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.xx + p3.yz) * p3.zy); }
     float pvN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3. - 2.*f); return mix(mix(pvH(i), pvH(i + vec2(1., 0.)), f.x), mix(pvH(i + vec2(0., 1.)), pvH(i + 1.), f.x), f.y); }
     float pvLum(vec3 c){ return dot(c, vec3(.3, .59, .11)); }
+    float pvG(float x){ return exp(-x * x); }
     // file di pietre: q.x lungo la fila, q.y attraverso; rw la fila, l0-l1 la lunghezza (per fila), i giunti sfalsati a caso.
     // x: distanza dal giunto più vicino, y: la pietra (0-1), zw: verso il giunto più vicino (spazio q)
     float pvJ(float c, float row, float L, float sd){ return c * L + (pvH(vec2(c, row * 1.37 + sd)) - .5) * L * .6; }
@@ -55248,17 +55258,20 @@ var Pavimenti = (function () {
     vec3 pvDett(vec3 base, vec2 p){
       pvTilt = vec2(0.); pvWet = 0.; pvPol = 0.;
       vec2 fw = fwidth(p); float mpp = max(max(fw.x, fw.y), 1e-4);                   // metri per pixel
-      float lod = 1. - smoothstep(.035, .11, mpp), fin = 1. - smoothstep(.006, .022, mpp), aa = mpp * .75;
+      float lod = 1. - smoothstep(.035, .11, mpp), fin = 1. - smoothstep(.006, .022, mpp), aa = mpp * 1.2;   // giunti morbidi: il quadro non ha antialiasing e il post affila
       if (lod <= 0.) return base * (.95 + pvN(p * .045) * .08);
       vec2 uv = (p - pvBox.xy) / pvBox.zw; vec4 I = vec4(0.), K = vec4(0.);
       float rf = 0., hw = 0., s = 0., v = 0., best = 1e9; vec2 du = vec2(1., 0.);
       if (pvHas > .5) { I = texture2D(pvId, uv); K = texture2D(pvMk, uv);
-        // la via: fra i quattro texel attorno vince quella in cui il punto sta più dentro, misurata nel punto (confine liscio, non a gradini)
-        vec2 tb = floor(uv * pvRes - .5);
-        for (int k = 0; k < 4; k++) { vec2 tc = (tb + vec2(float(k - (k / 2) * 2), float(k / 2)) + .5) / pvRes; vec4 J = texture2D(pvId, tc); float r0 = mod(J.a, 16.); if (r0 < .5) continue;
-          float h0 = floor(J.a / 256.) / 8.; vec2 dd = p - (pvBox.xy + tc * pvBox.zw), u0 = vec2(cos(J.b), sin(J.b)); float v0 = J.g + (u0.x * dd.y - u0.y * dd.x), sc = abs(v0) - h0;
+        // la via: fra i quattro texel attorno, misurata nel punto (confine liscio, non a gradini). Se il punto sta dentro più vie vince
+        // quella che sulla tela è dipinta sopra (l'asfalto sul travertino sul porfido sui basoli dei vicoli, come strade1Era), fuori la più vicina
+        vec2 tb = floor(uv * pvRes - .5); bool due = false;
+        for (int k = 0; k < 8; k++) { if (k == 4 && !due) break; vec2 tc = (tb + vec2(float(k - (k / 2) * 2 - (k / 4) * 2), float(k / 2 - (k / 4) * 2)) + .5) / pvRes;
+          vec4 J = k < 4 ? texture2D(pvId, tc) : texture2D(pvId2, tc); if (J.a >= 32768.) due = true; float r0 = mod(J.a, 16.); if (r0 < .5) continue;
+          float h0 = mod(floor(J.a / 256.), 128.) / 8.; vec2 dd = p - (pvBox.xy + tc * pvBox.zw), u0 = vec2(cos(J.b), sin(J.b)); float v0 = J.g + (u0.x * dd.y - u0.y * dd.x), sc = abs(v0) - h0;
+          float pr = r0 > 3.5 && r0 < 4.5 ? 5. : r0 > 1.5 && r0 < 2.5 ? 4. : r0 > 2.5 && r0 < 3.5 ? 3. : r0 < 1.5 ? 2. : 1.; sc = sc < 0. ? sc - pr * 100. : sc;
           if (sc < best) { best = sc; s = J.r + dot(dd, u0); v = v0; du = u0; rf = r0; hw = h0; } } }
-      float gf = mod(floor(I.a / 16.), 16.), av = abs(v);
+      float gf = mod(floor(I.a / 16.), 16.), av = abs(v);   // il suolo sotto, dal texel più vicino
       bool via = rf > 0. && av < hw;
       float fam = pvForce > 0. ? pvForce : via ? rf : gf;
       if (fam < .5) return base;
@@ -55267,7 +55280,7 @@ var Pavimenti = (function () {
       vec2 q = lungo ? vec2(s, v + hw) : pvRot(p, .6 + fam * .37), ux = lungo ? du : vec2(cos(.6 + fam * .37), sin(.6 + fam * .37)), uy = vec2(-ux.y, ux.x);
       vec3 col = base; float jt = 0., bv = 0., jw = .012; vec2 tq = vec2(0.); float tone = 1., mean = 1.;
       if (fam < 1.5 || (fam > 1.5 && fam < 2.5) || (fam > 4.5 && fam < 5.5) || fam > 8.5) {   // pietre a file: basoli, travertino, banchina, lastre
-        float rw = fam < 1.5 ? .62 : fam < 2.5 ? .9 : fam < 5.5 ? 1.2 : .5, l0 = fam < 1.5 ? .7 : fam < 2.5 ? 1.1 : fam < 5.5 ? 1.6 : .45, l1 = fam < 1.5 ? 1.25 : fam < 2.5 ? 1.8 : fam < 5.5 ? 2.6 : .8;
+        float rw = fam < 1.5 ? .52 : fam < 2.5 ? .9 : fam < 5.5 ? 1.2 : .5, l0 = fam < 1.5 ? .6 : fam < 2.5 ? 1.1 : fam < 5.5 ? 1.6 : .45, l1 = fam < 1.5 ? 1.05 : fam < 2.5 ? 1.8 : fam < 5.5 ? 2.6 : .8;
         float bev = fam < 1.5 ? .06 : fam < 2.5 ? .035 : fam < 5.5 ? .07 : .025, wob = fam < 1.5 ? .05 : .012;
         vec2 qq = q; bool cord = fam > 8.5 && lungo && pvForce > 0. && v + hw > hw * 2. - .02 && v + hw < hw * 2. + .3;   // il cordolo di granito sul ciglio del marciapiede
         if (cord) { rw = .3; l0 = .8; l1 = 1.4; bev = .03; qq.y -= hw * 2.; qq.y = clamp(qq.y, .001, .299); }
@@ -55277,7 +55290,7 @@ var Pavimenti = (function () {
         jw = fam > 4.5 && fam < 5.5 ? .016 : fam > 8.5 ? .008 : .012;
         float jwE = max(jw, mpp * .5); jt = (1. - smoothstep(jwE - aa, jwE + aa, F.x)) * sqrt(jw / jwE); bv = 1. - smoothstep(jw, jw + bev, F.x); tq = F.zw * bv;
         float h = F.y;
-        if (fam < 1.5) { float lava = step(.9, h); tone = mix(.88 + h * .22, .62, lava); col *= mix(vec3(1.02, 1., .97), vec3(.86, .88, .94), lava); }
+        if (fam < 1.5) { float lava = step(.94, h); tone = mix(.86 + h * .26, .7, lava); col *= mix(vec3(1.03, 1., .95), vec3(.9, .86, .84), lava); }   // calcare caldo, qualche basolo di lava
         else if (fam < 2.5) { tone = .92 + h * .14; float pore = smoothstep(.78, .86, pvN(p * vec2(34., 9.) + h * 40.)) * fin; tone -= pore * .18; }
         else if (fam < 5.5) { tone = .86 + h * .2; tone += (pvH(floor(p * 70.)) - .5) * .16 * fin; }
         else { tone = cord ? 1.16 + h * .08 : .93 + h * .1; if (cord) col *= vec3(.97, .99, 1.03); }
@@ -55292,17 +55305,18 @@ var Pavimenti = (function () {
         tone += (pvN(p * 19.) - .5) * .08 * fin; mean = .9;
       } else if (fam < 4.5) {   // asfalto: la grana degli inerti, le chiazze, le crepe, le ruote sulle corsie, la canaletta
         float g1 = pvN(p * 38.), sp = step(.94, pvH(floor(p * 85.))), pt = pvN(p * .37) * .6 + pvN(p * 1.3) * .4, ag = pvN(p * 9.) * .6 + pvN(p * 17.) * .4;
-        tone = .92 + (pt - .5) * .2 + (ag - .5) * .14 * lod + ((g1 - .5) * .12 + sp * .22) * fin;
+        float mid = 1. - smoothstep(.02, .06, mpp), gr = step(.9, pvH(floor(p * 24.) + 7.)) - step(pvH(floor(p * 24.) + 3.), .07);   // gli inerti grossi (4 cm): chiari e scuri, leggibili allo zoom del gioco
+        tone = .92 + (pt - .5) * .2 + (ag - .5) * .14 * lod + gr * .07 * mid + ((g1 - .5) * .12 + sp * .22) * fin;
         // le crepe: la curva di livello di un rumore, larga uguale ovunque (distanza in metri dalla curva), solo dove l'asfalto è vecchio
         vec2 qc = lungo ? q : p; float cn = pvN(qc * vec2(.22, 1.7) + 3.) * .75 + pvN(qc * 2.6) * .25, cdist = abs(cn - .5) * mpp / max(fwidth(cn), 1e-5), cz = smoothstep(.62, .8, pvN(p * .11 + 17.));   // corrono lungo la via
         float crack = (1. - smoothstep(.005, .005 + mpp, cdist)) * cz; tone -= crack * .3 * lod;
-        if (via) { float lane = abs(av - hw * .5), tr = exp(-pow((lane - .8) / .3, 2.)), oil = exp(-pow(lane / .35, 2.)) * step(2.6, hw);
+        if (via) { float lane = abs(av - hw * .5), tr = pvG((lane - .8) / .3), oil = pvG(lane / .35) * step(2.6, hw);
           tone *= 1. + tr * .07 - oil * .1; pvPol = tr * .6;
           float gut = smoothstep(hw - .5, hw - .05, av); tone *= 1. - gut * .14; pvWet = max(pvWet, gut * .35); }
       } else if (fam < 6.5 || fam > 7.5) {   // terra battuta e spianata: polvere a chiazze, sassolini, le carreggiate delle sterrate
         vec4 S = pvSassi(p / .09, .9); float peb = (1. - smoothstep(.22, .36, length(S.zw))) * step(.7, S.y) * fin;
         tone = .9 + (pvN(p * .9) - .5) * .18 + (pvN(p * 4.) - .5) * .1 + peb * .14; tq = normalize(S.zw + 1e-5) * peb * .7;
-        if (via) { float rut = exp(-pow((av - .75) / .22, 2.)); tone *= 1. - rut * .12; pvPol = rut * .3; }
+        if (via) { float rut = pvG((av - .75) / .22); tone *= 1. - rut * .12; pvPol = rut * .3; }
       } else {   // sabbia: le increspature del vento, la grana, più scura e liscia dove è bagnata
         float ph = dot(p, vec2(.8, .6)) * 11. + pvN(p * .7) * 7.;
         tone = .96 + sin(ph) * .035 * lod + (pvH(floor(p * 120.)) - .5) * .1 * fin + (pvN(p * .3) - .5) * .08;
@@ -55310,8 +55324,8 @@ var Pavimenti = (function () {
       }
       // il disegno da lontano si fonde nel suo valore medio (niente moiré)
       tone = mix(mean, tone / mean, lod) ;
-      col *= tone * (1. - jt * .5 * lod);
-      vec2 tw = (ux * tq.x + uy * tq.y) * .55 * lod;
+      col *= tone * (1. - jt * .38 * lod);
+      vec2 tw = (ux * tq.x + uy * tq.y) * .42 * lod;
       // la scala del mondo: due rumori lenti sopra la tinta della tela (niente ripetizione a 16 m)
       col *= .95 + pvN(p * .045) * .08 + (pvN(p * .21) - .5) * .06;
       // sporco e umido nei punti giusti
@@ -55321,8 +55335,9 @@ var Pavimenti = (function () {
       float pud = smoothstep(.76, .81, pvN(p * .42 + 5.)) * smoothstep(.45, .6, pvN(p * .09 + 2.)) * step(fam, 5.5);   // pozze rade (e piccole) nei punti bassi
       pvWet = max(max(pvWet, K.g * .9), pud * .55 + jt * .25 * wall);
       if (fam > 6.5 && fam < 7.5) pvWet = K.g;
-      col *= 1. - pvWet * .32;
-      col *= 1. - K.b * .62 * pvForza;   // l'ombra di contatto
+      col *= 1. - pvWet * .26;
+      col = mix(col, col * vec3(.42, .38, .36), K.b * pvForza);   // l'ombra di contatto, calda
+      col = mix(col, col * vec3(.62, .56, .5), K.a * .55);   // il raccordo muro-terreno: la riga calda e scura dove il muro tocca terra
       pvTilt = tw * pvForza;
       return mix(base, col, pvForza);
     }`;
@@ -55344,42 +55359,52 @@ var Pavimenti = (function () {
     mat.needsUpdate = true; return mat;
   }
   const FORZA = { value: 1 };   // window.__PAV.forza.value = 0 per confrontare dal vivo
-  function uniforms(b, force) { const d = dummy(); return { pvId: { value: b ? b.id : d.id }, pvMk: { value: b ? b.mk : d.mk }, pvBox: { value: b ? b.box : new THREE.Vector4(0, 0, 1, 1) }, pvRes: { value: b ? b.res : new THREE.Vector2(1, 1) }, pvHas: { value: b ? 1 : 0 }, pvForza: FORZA, pvForce: { value: force || 0 } }; }
+  function uniforms(b, force) { const d = dummy(); return { pvId: { value: b ? b.id : d.id }, pvId2: { value: b ? b.id2 : d.id }, pvMk: { value: b ? b.mk : d.mk }, pvBox: { value: b ? b.box : new THREE.Vector4(0, 0, 1, 1) }, pvRes: { value: b ? b.res : new THREE.Vector2(1, 1) }, pvHas: { value: b ? 1 : 0 }, pvForza: FORZA, pvForce: { value: force || 0 } }; }
 
   // il suolo di un blocco: le mappe e il materiale (chiamato da buildChunkGen)
   function suolo(mat, tx0, ty0, n, m) {
     if (!attivo()) return mat; const key = tx0 / 32 + ',' + ty0 / 32, b = mappe(tx0, ty0, n, m); BLK.set(key, b); mat.userData.pav = key; mat.userData.pavB = b;
     return patch(mat, uniforms(b, 0), 'pav1');
   }
-  function via(mat) { const key = mat && mat.userData.pav, b = mat && mat.userData.pavB; if (!b) return; b.id.dispose(); b.mk.dispose(); if (BLK.get(key) === b) BLK.delete(key); }   // il blocco rifatto ha già messo la sua
+  function via(mat) { const key = mat && mat.userData.pav, b = mat && mat.userData.pavB; if (!b) return; b.id.dispose(); b.id2.dispose(); b.mk.dispose(); if (BLK.get(key) === b) BLK.delete(key); }   // il blocco rifatto ha già messo la sua
   // il marciapiede di un riquadro da 64 m: la stessa mappa del blocco sotto (le file seguono la via, il cordolo sul ciglio)
   function marciapiede(mesh, i, j) {
     if (!attivo()) return; if (i === undefined) { const g = mesh.geometry; if (!g.boundingSphere) g.computeBoundingSphere(); const C = A.TS * 32; i = Math.floor(g.boundingSphere.center.x / C); j = Math.floor(g.boundingSphere.center.z / C); }
     const key = i + ',' + j, U = uniforms(null, FAM.lastre), mat = patch(mesh.material.clone(), U, 'pav1m'); mesh.material = mat;
-    mesh.onBeforeRender = () => { const b = BLK.get(key); if (b) { U.pvId.value = b.id; U.pvMk.value = b.mk; U.pvBox.value = b.box; U.pvRes.value = b.res; U.pvHas.value = 1; } else U.pvHas.value = 0; };
+    mesh.onBeforeRender = () => { const b = BLK.get(key); if (b) { U.pvId.value = b.id; U.pvId2.value = b.id2; U.pvMk.value = b.mk; U.pvBox.value = b.box; U.pvRes.value = b.res; U.pvHas.value = 1; } else U.pvHas.value = 0; };
   }
 
   // ---------------- 4. L'APPOGGIO: chi è posato a terra lascia l'ombra di contatto nel suolo; e la misura del piede ----------------
   const _b = typeof THREE !== 'undefined' ? new THREE.Box3() : null, _s = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
-  function oggetto(obj, nome) {
-    if (!attivo() || !obj) return; _b.setFromObject(obj); if (_b.isEmpty()) return; _b.getSize(_s);
+  // posa: se vero e l'oggetto è piccolo e libero, rende quanto abbassarlo (galleggia di 2,5-12 cm: tocca terra nel punto più basso) o
+  // alzarlo (negativo: sepolto di 10-35 cm anche lì); render.js lo sposta prima di fonderlo. I pezzi fissi (porte, gradini, reti) no
+  const POSA = { giu: 0, su: 0 };
+  function oggetto(obj, nome, posa) {
+    if (!attivo() || !obj) return 0; _b.setFromObject(obj); if (_b.isEmpty()) return 0; _b.getSize(_s);
     const cx = (_b.min.x + _b.max.x) / 2, cz = (_b.min.z + _b.max.z) / 2, gh = A.groundH(cx, cz), dy = _b.min.y - gh;
-    if (_s.y < .25 || _s.x * _s.z < .06 || Math.max(_s.x, _s.z) > 9 || dy > .35 || dy < -.5) return;
-    if (MIS.length < 60000) MIS.push([nome || obj.name || '', +cx.toFixed(2), +cz.toFixed(2), +dy.toFixed(3), +_s.y.toFixed(2)]);
-    if (dy > .12) return;   // sospeso (su un davanzale, un tavolo): niente ombra a terra
-    const f = Math.min(.85, .45 + _s.y * .12);   // più alto, più ombra (fino a un tetto)
+    if (_s.y < .25 || _s.x * _s.z < .06 || Math.max(_s.x, _s.z) > 9 || dy > .35 || dy < -.5) return 0;
+    // il suolo sotto l'impronta: il punto più basso e il più alto (al centro e ai quattro angoli, appena dentro)
+    let g0 = gh, g1 = gh; [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, c]) => { const h = A.groundH(cx + a * _s.x * .45, cz + c * _s.z * .45); if (h < g0) g0 = h; if (h > g1) g1 = h; });
+    let su = _b.min.y - g0;   // > 3 cm: c'è luce sotto anche nel punto più basso; < -10 cm: sepolto anche lì
+    let mv = 0; if (posa && Math.max(_s.x, _s.z) < 3.5) { if (su > .025 && su <= .12) { mv = su - .005; POSA.giu++; } else if (su < -.1 && su > -.35) { mv = su + .02; POSA.su++; } }
+    if (MIS.length < 60000) { const flag = su > .03 || su < -.1; MIS.push([nome || obj.name || (flag ? chi() : ''), +cx.toFixed(2), +cz.toFixed(2), +(su - mv).toFixed(3), +_s.y.toFixed(2), +(g1 - g0).toFixed(3), +su.toFixed(3)]); }   // [.., dopo la posa, altezza, pendenza sotto, prima della posa]
+    su -= mv; if (su > .12 || Math.max(_s.x, _s.z) > 3.2 || _s.y > 3.5) return mv;   // sospeso (su un davanzale, un tavolo), o grande e aperto (gru, tettoie): niente ombra a terra
+    const f = Math.min(.7, .4 + _s.y * .1) * (Math.max(_s.x, _s.z) > 1.6 ? .7 : 1);   // più alto, più ombra; i lunghi (panche, banchi) più leggera
     ombra(cx, cz, _s.x / 2, _s.z / 2, f);
+    return mv;
   }
+  // chi l'ha messo: la prima funzione di render.js sopra addStatic (solo per i casi segnati: costa)
+  function chi() { const st = (new Error().stack || '').split('\n').map(l => (l.match(/at (?:Object\.)?([\w$]+) /) || [])[1]).filter(Boolean); const i = st.findIndex(f => f === 'addStatic'); return (i >= 0 ? st.slice(i + 1).find(f => !/^(place|at1|put|G0|add)$/.test(f)) : st[3]) || '?'; }
   function ombra(cx, cz, rx, rz, f) {
-    if (!attivo()) return; const C = A.TS * 32, ks = new Set(); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => ks.add(Math.floor((cx + a * (rx * 1.5 + .3)) / C) + ',' + Math.floor((cz + b * (rz * 1.5 + .3)) / C)));
+    if (!attivo()) return; const C = A.TS * 32, ks = new Set(); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => ks.add(Math.floor((cx + a * (rx * 1.18 + .2)) / C) + ',' + Math.floor((cz + b * (rz * 1.18 + .2)) / C)));
     ks.forEach(k => { (OMB.get(k) || OMB.set(k, []).get(k)).push([cx, cz, rx, rz, f]); if (BLK.has(k)) { DIRTY.add(k); if (!dirtyT) dirtyT = setTimeout(() => { dirtyT = null; DIRTY.forEach(k2 => { const [i, j] = k2.split(',').map(Number); A.dirtyAt((i + .5) * C, (j + .5) * C); }); DIRTY.clear(); }, 400); } });
   }
-  // la misura: chi galleggia e chi affonda (rispetto a groundH, al centro dell'impronta)
+  // la misura: chi galleggia e chi affonda (rispetto al punto più basso di groundH sotto l'impronta); i gradini scendono apposta sotto terra (la fondazione)
   function misura(soglia) {
-    const s = soglia || .03, su = MIS.filter(q => q[3] > s && q[3] <= .12), giu = MIS.filter(q => q[3] < -s * 2), per = L => { const o = {}; L.forEach(q => { const k = q[0] || '?'; o[k] = (o[k] || 0) + 1; }); return Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 25); };
-    return { oggetti: MIS.length, galleggiano: su.length, affondano: giu.length, perNomeSu: per(su), perNomeGiu: per(giu), esempiSu: su.slice(0, 20), esempiGiu: giu.slice(0, 20) };
+    const s = soglia || .03, su = MIS.filter(q => q[3] > s && q[3] <= .12), giu = MIS.filter(q => q[3] < -.1 && q[0] !== 'gradino'), per = L => { const o = {}; L.forEach(q => { const k = q[0] || '?'; o[k] = (o[k] || 0) + 1; }); return Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 25); };
+    const su0 = MIS.filter(q => q[6] > s && q[6] <= .12).length, giu0 = MIS.filter(q => q[6] < -.1 && q[0] !== 'gradino').length;
+    return { primaDellaPosa: { galleggiano: su0, affondano: giu0 }, posati: POSA, oggetti: MIS.length, galleggiano: su.length, affondano: giu.length, perNomeSu: per(su), perNomeGiu: per(giu), esempiSu: su.slice(0, 20), esempiGiu: giu.slice(0, 20), tutti: MIS };
   }
-
   // la sonda: cosa dice la mappa in (x, z)
   const STAT = { comp: 0, ok: null };
   function sonda(x, z) { const C = A.TS * 32, key = Math.floor(x / C) + ',' + Math.floor(z / C), b = BLK.get(key); if (!b) return { key, blocco: false, blocchi: BLK.size, STAT };
@@ -55511,7 +55536,8 @@ var Render = (function () {
   function addStatic(obj, noShadow) {
     if (window.Officina) Officina.onStatic(obj);   // [studio] modifiche ai modelli di strada
     obj.updateMatrixWorld(true); curObj = obj;
-    if (window.Pavimenti && noShadow !== 'lamp') Pavimenti.oggetto(obj, P2.k || (obj.userData.p2 && obj.userData.p2.k) || obj.name);   // [pavimenti] l'ombra di contatto nel suolo e la misura del piede
+    if (window.Pavimenti && noShadow !== 'lamp') { const k2 = P2.k || (obj.userData.p2 && obj.userData.p2.k), dy = Pavimenti.oggetto(obj, k2 || obj.name, !FISSI2.has(k2) && !obj.parent);   // [pavimenti] l'ombra di contatto nel suolo, la misura del piede e la posa corretta
+      if (dy) { obj.position.y -= dy; obj.updateMatrixWorld(true); } }
     if (window.__probeAt) { const bx = new THREE.Box3().setFromObject(obj), sz = bx.getSize(new THREE.Vector3()), cc = bx.getCenter(new THREE.Vector3()); for (const q of window.__probeAt) if (Math.hypot(cc.x - q[0], cc.z - q[1]) < q[2]) { (window.__probe = window.__probe || []).push([q[3], Math.round(cc.x), Math.round(cc.z), sz.x.toFixed(1), sz.y.toFixed(1), sz.z.toFixed(1), (new Error().stack.split('\n').slice(2, 6).map(l => l.trim().split(' ')[1]).join('<'))]); break; } }   // [ordine1] strumento: chi ha messo cosa
     const m2 = obj.userData.p2, e2 = P2.on && (curTag || P2.k || m2 || noShadow === 'lamp') && cn1() ? p2New(m2 || { k: P2.k || (noShadow === 'lamp' ? 'lampione' : 'arredo'), b: P2.b, f: P2.f }) : null;   // [pulizia2] il registro
     if (e2) { e2.tag = curTag; e2.yaw0 = yawM2(obj.matrixWorld); }
@@ -69156,7 +69182,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const piles = [];
     dyn.buildings.forEach(rec => {
       const b = rec.b, g = rec.geo; if (!b || !g) return;
-      const base = g.y0, low = Math.min(groundH(g.x0, g.z0), groundH(g.x0 + g.w, g.z0 + g.d), base);
+      const base = g.y0, low = Math.min(groundH(g.x0, g.z0), groundH(g.x0 + g.w, g.z0 + g.d), base, ...(window.Pavimenti && Pavimenti.attivo() ? [groundH(g.x0 + g.w, g.z0), groundH(g.x0, g.z0 + g.d), groundH(g.x0 + g.w / 2, g.z0), groundH(g.x0 + g.w / 2, g.z0 + g.d), groundH(g.x0, g.z0 + g.d / 2), groundH(g.x0 + g.w, g.z0 + g.d / 2)].map(h => h - .03) : []));   // [pavimenti] lo zoccolo e i gradini arrivano a terra anche sull'angolo in discesa
       const zh = .55 + (base - low);
       const pl = box(g.w + .18, zh, g.d + .18, plinthM); pl.position.set(g.x0 + g.w / 2, low + zh / 2 - .02, g.z0 + g.d / 2); addStatic(pl);
       // gradini davanti alla porta
@@ -69169,7 +69195,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         const nuova = cn1(), sM = nuova ? (BOT.marmo || (BOT.marmo = sm('#cfc6b2', { roughness: .6 }))) : stepM;
         [[.5, .2], [1, .1]].forEach(([dep, hh], k) => { const st = box(side[0] ? dep : 1.7, hh + (base - low), side[1] ? dep : 1.7, sM); st.position.set(ex + side[0] * dep / 2, low + (hh + base - low) / 2, ez + side[1] * dep / 2); addStatic(st);
           if (nuova) { const nm = BOT.naso || (BOT.naso = std({ color: '#f4ecd8', emissive: '#4a3e28', emissiveIntensity: .6, roughness: .35 })), ns = box(side[0] ? .07 : 1.72, .035, side[1] ? .07 : 1.72, nm); ns.position.set(ex + side[0] * (dep - .03), low + hh + (base - low) + .005, ez + side[1] * (dep - .03)); addStatic(ns); } });
-        if (nuova) { const fm = BOT.piede || (BOT.piede = sm('#1c1816', { roughness: 1 })), fo = box(side[0] ? .1 : 1.86, .03, side[1] ? .1 : 1.86, fm); fo.position.set(ex + side[0] * 1.04, low + .005, ez + side[1] * 1.04); addStatic(fo); }
+        if (nuova) { const fm = BOT.piede || (BOT.piede = sm('#1c1816', { roughness: 1 })), fo = box(side[0] ? .1 : 1.86, .03, side[1] ? .1 : 1.86, fm); fo.position.set(ex + side[0] * 1.04, (window.Pavimenti && Pavimenti.attivo() ? groundH(ex + side[0] * 1.04, ez + side[1] * 1.04) : low) + .005, ez + side[1] * 1.04);   /* [pavimenti] la riga del piede sul suolo vero */ addStatic(fo); }
         // [botteghe] il gradino consumato: in mezzo la pietra è lisciata e più chiara, dove si mette il piede da cent'anni
         const wm = nuova ? (BOT.worn2 || (BOT.worn2 = sm('#e6dcc6', { roughness: .3 }))) : BOT.worn || (BOT.worn = sm('#8a857c', { roughness: .35 })), wn = box(side[0] ? .3 : .8, .012, side[1] ? .3 : .8, wm); wn.position.set(ex + side[0] * .27, low + .2 + (base - low) + .002, ez + side[1] * .27); addStatic(wn);
       }); P2.k = null;
