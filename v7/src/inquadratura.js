@@ -23,7 +23,7 @@ var Inquadratura = (function () {
     taglio: { camera: 'adatta', taglio: true },
     asse_taglio: { camera: 'adatta', asse: true, taglio: true },
   };
-  const DIFETTO = 'asse_taglio';   // la variante del gioco (senza ?inquadratura=)
+  const DIFETTO = 'asse';   // [inquadratura] il taglio mirato confonde (case a quote diverse chiuse da lastre piatte): resta in prova con ?inquadratura=taglio   // la variante del gioco (senza ?inquadratura=)
   // le manopole (window.__INQUADRATURA per le prove dal vivo)
   const K = {
     asseLargo: 6.5,       // m: le vie fino a tanto si guardano lungo l'asse (vicoli 2,5-3, Rua e Marina 5, Vittoria 7 solo dove si stringe)

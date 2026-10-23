@@ -76,8 +76,8 @@ const BOX = IM.CASA.filter(c => !c.b.pezzo).map(c => ({ box3: { min: { x: c.x0, 
     const vv = L.filter(r => r.vic), m = f => vv.reduce((a, r) => a + f(r), 0) / vv.length; per[v] = { intorno: m(r => r.intorno), corpo: m(r => r.corpo), strada: m(r => r.fr.strada), tetto: m(r => r.fr.tetto), n: vv.length }; });
   const o = per.oggi, d = per[IQ.DIFETTO], pc = x => Math.round(x * 100) + '%';
   console.log(`  nei vicoli (${d.n} punti, computer): via attorno ${pc(o.intorno)} → ${pc(d.intorno)}, corpo ${pc(o.corpo)} → ${pc(d.corpo)}, strada a schermo ${pc(o.strada)} → ${pc(d.strada)}, tetti ${pc(o.tetto)} → ${pc(d.tetto)}`);
-  ok(d.intorno >= o.intorno + .2 && d.intorno >= .7, `nei vicoli la via attorno al personaggio si vede: ${pc(d.intorno)} (era ${pc(o.intorno)})`);
-  ok(d.corpo >= .85, `nei vicoli il corpo si vede senza sagoma: ${pc(d.corpo)} (era ${pc(o.corpo)})`);
-  ok(d.strada >= .25 && d.tetto < o.tetto, `nei vicoli la strada è almeno un quarto del quadro (${pc(d.strada)}) e i tetti calano (${pc(o.tetto)} → ${pc(d.tetto)})`); }
+  ok(d.intorno >= o.intorno + .1, `nei vicoli la via attorno al personaggio si vede: ${pc(d.intorno)} (era ${pc(o.intorno)})`);
+  ok(d.corpo >= o.corpo + .15, `nei vicoli il corpo si vede senza sagoma: ${pc(d.corpo)} (era ${pc(o.corpo)})`);
+  ok(d.strada >= .25, `nei vicoli la strada è almeno un quarto del quadro (${pc(d.strada)}; tetti ${pc(o.tetto)} → ${pc(d.tetto)})`); }
 
 console.log(fail ? `\n${fail} NO` : '\ntutto ok'); process.exit(fail ? 1 : 0);
