@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset=utf8><title>Studio pavimenti</title>
+<style>html,body{margin:0;background:#1a1612;overflow:hidden}canvas{display:block}</style></head><body>
+<!-- [pavimenti] lo studio dei suoli: un pezzo di città finto (64 × 40 m) con tutti i materiali, la vera mappa di pavimenti.js
+     e il vero shader, per regolare il disegno in pochi secondi. ?z=0.5 lo zoom (metri per pixel ≈ z/14), ?x=&y= il centro, ?ang= la luce.
+     node strumenti/studio_pavimenti.js uscita.png [query] -->
+<script src="../src/three.min.js"></script>
+<script src="../src/pavimenti.js"></script>
+<script>
+const Q = new URLSearchParams(location.search), TS = 2, GW = 32, GH = 20;
+const T = { COB: 1, PIAZZA: 2, DIRT: 3, VIA: 4, WALK: 5, QUAY: 6, SAND: 7, BLD: 8, GRASS: 9, PIER: 10, ROCK: 11, GRAVEL: 12, WATER: 13 };
+const SCAL = [[2, 16], [3, 16], [4, 15], [5, 15], [6, 14], [7, 14]];   // una fila di casette a scaletta sulla sabbia
+const tile = (tx, ty) => { if (SCAL.some(([a, b]) => a === tx && b === ty)) return T.BLD; if (ty >= 17 || (tx < 8 && ty >= 15 + Math.floor((8 - tx) / 2) - 2 && ty > 14)) return tx < 16 ? T.SAND : T.QUAY; if (tx >= 2 && tx <= 5 && ty >= 1 && ty <= 3) return T.BLD; if (tx >= 26 && tx <= 29 && ty >= 1 && ty <= 3) return T.BLD; return T.COB; };
+const kindAt = (tx, ty) => tx < 8 ? 'basoli' : tx < 16 ? 'travertino' : tx < 24 ? 'porfido' : 'spianata';
+const arc = []; for (let k = 0; k <= 64; k++) { const x = k; arc.push([x, 13 - Math.sin(k / 64 * Math.PI) * 4]); }
+const roads = [{ kind: 'vicolo', w: 4, pts: arc }, { kind: 'citta', era: 'E6', w: 8, pts: [[0, 26], [64, 26]] }, { kind: 'citta', era: 'E3', w: 7, pts: [[44, 0], [44, 34]] }, { kind: 'sterrato', w: 3.5, pts: [[0, 5], [20, 7], [40, 5]] }];
+const geo1 = rd => { if (rd._g) return rd._g; const P = rd.pts, s = [0]; for (let k = 1; k < P.length; k++) s.push(s[k - 1] + Math.hypot(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1])); return (rd._g = { s }); };
+const api = { G: { T, GW, GH }, M: { roads }, TS, PPM: 8, gT: tile, zoneT: () => 1, ZN: { CITTA: 1 }, cn1: () => true, groundH: () => 0, coastIn: (x, z) => 40 - z, geo1, suoloK: kindAt, dirtyAt: () => {} };
+Pavimenti.init(api);
+// le ombre di contatto di qualche oggetto posato (panchine, casse, una fioriera)
+const OB = [[10, 20, 1.8, .5, .45], [30, 21, .5, .5, .8], [36, 16, 1.2, .6, .5], [52, 18, .8, .8, .9], [22, 36, 1.6, .6, .45], [58, 34, 1, 1, .8]];
+OB.forEach(([x, z, w, d]) => Pavimenti.ombra(x, z, w / 2, d / 2, .7));
+const B = Pavimenti.__mappe(0, 0, GW, GH);
+// la tela di fondo: il colore medio di ogni materiale (come le tele sfumate del gioco), più qualche segno dipinto
+const PPM = 8, cv = document.createElement('canvas'); cv.width = GW * TS * PPM; cv.height = GH * TS * PPM; const x = cv.getContext('2d');
+const COL = { basoli: '#6a655d', travertino: '#7a7262', porfido: '#4a3a38', spianata: '#5c5244', asfalto: '#2f2d2c', banchina: '#66625c', sabbia: '#b8a078', terra: '#54483a', bld: '#2a2433' };
+for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const v = tile(tx, ty); x.fillStyle = v === T.SAND ? COL.sabbia : v === T.QUAY ? COL.banchina : v === T.BLD ? COL.bld : COL[kindAt(tx, ty)]; x.fillRect(tx * 16, ty * 16, 16, 16); }
+const stroke = (P, w, c) => { x.beginPath(); P.forEach(([a, b], i) => i ? x.lineTo(a * PPM, b * PPM) : x.moveTo(a * PPM, b * PPM)); x.lineWidth = w * PPM; x.strokeStyle = c; x.lineCap = 'butt'; x.stroke(); };
+stroke(roads[3].pts, 3.5, COL.terra); stroke(arc, 4.6, 'rgba(62,56,48,.9)'); stroke(arc, 4, COL.basoli); stroke(roads[2].pts, 8.2, '#3a2e2c'); stroke(roads[2].pts, 7, COL.porfido); stroke(roads[1].pts, 9.2, '#2e2c2a'); stroke(roads[1].pts, 8, COL.asfalto);   // l'asfalto sopra, come nel gioco
+x.fillStyle = '#403b37'; x.beginPath(); x.arc(30 * PPM, 26 * PPM, .36 * PPM, 0, 7); x.fill();   // un tombino dipinto
+x.fillStyle = 'rgba(236,232,220,.55)'; for (let k = 0; k < 6; k++) x.fillRect((8 + k * 1.2) * PPM, 22.5 * PPM, .6 * PPM, 7 * PPM);   // le strisce
+const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.magFilter = THREE.LinearFilter; tex.anisotropy = 4;
+const R = new THREE.WebGLRenderer({ antialias: true }); R.setSize(innerWidth, innerHeight); R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.shadowMap.enabled = true; document.body.appendChild(R.domElement);
+const S = new THREE.Scene(); S.background = new THREE.Color('#1a1612');
+const g = new THREE.PlaneGeometry(GW * TS, GH * TS, GW, GH); g.rotateX(-Math.PI / 2); g.translate(GW, 0, GH);
+const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: .95 }); if (!/nopavimenti/.test(location.search)) Pavimenti.__patch(mat, Pavimenti.__uniforms(B, 0), 'studio');
+const ground = new THREE.Mesh(g, mat); ground.receiveShadow = true; S.add(ground);
+// il marciapiede lungo l'asfalto (alto 15 cm, col cordolo smussato): lastre e granito
+const swM = new THREE.MeshLambertMaterial({ color: '#8a857b' }); if (!/nopavimenti/.test(location.search)) Pavimenti.__patch(swM, Pavimenti.__uniforms(B, 9), 'studio9');
+[[30.02, 32.1], [19.9, 21.98]].forEach(([z0, z1]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(64, .15, z1 - z0), swM); m.position.set(32, .075, (z0 + z1) / 2); m.receiveShadow = m.castShadow = true; S.add(m); });
+// gli oggetti posati: casse, panchine, una fioriera, due case
+const bm = new THREE.MeshStandardMaterial({ color: '#8a6a4a', roughness: .8 });
+OB.forEach(([x0, z0, w, d], i) => { const h = i % 2 ? .9 : .45; const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bm); m.position.set(x0, h / 2 + (z0 > 19.9 && z0 < 22 || z0 > 30 && z0 < 32.1 ? .15 : 0), z0); m.castShadow = m.receiveShadow = true; S.add(m); });
+SCAL.forEach(([tx, ty]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(2, 3.2, 2), new THREE.MeshStandardMaterial({ color: '#d89a5a', roughness: .9 })); m.position.set(tx * 2 + 1, 1.6, ty * 2 + 1); m.castShadow = m.receiveShadow = true; S.add(m); });
+[[8, 5], [56, 5]].forEach(([hx, hz]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(8, 9, 6), new THREE.MeshStandardMaterial({ color: "#d8b48a", roughness: .9 })); m.position.set(hx, 4.5, hz); m.castShadow = m.receiveShadow = true; S.add(m); });
+const ang = +(Q.get('ang') || 35) * Math.PI / 180, sun = new THREE.DirectionalLight('#fff2dc', 2.6); sun.position.set(32 + Math.cos(ang) * 30, 40, 20 + Math.sin(ang) * 30); sun.target.position.set(32, 0, 20); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 120 }); sun.shadow.bias = -.0004; S.add(sun, sun.target);
+S.add(new THREE.HemisphereLight('#c8d4e8', '#5a4a3a', .9));
+const z = +(Q.get('z') || .5), cx = +(Q.get('x') || 32), cz = +(Q.get('y') || 20), cam = new THREE.PerspectiveCamera(22, innerWidth / innerHeight, 1, 600), dist = 110 * z;
+cam.position.set(cx + dist * .35, dist * .85, cz + dist * .55); cam.lookAt(cx, 0, cz);
+R.render(S, cam); requestAnimationFrame(() => { R.render(S, cam);
+  if (Q.has('bench')) {   // ?bench: il tempo di disegno del fotogramma (letto alla fine con readPixels, sincrono), mediana di 15; senza ombre per isolare il suolo
+    R.shadowMap.enabled = false; scene_mats(); R.render(S, cam); const gl = R.getContext(), px = new Uint8Array(4), T = [];
+    for (let i = 0; i < 17; i++) { const t0 = performance.now(); R.render(S, cam); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); T.push(performance.now() - t0); }
+    T.sort((a, b) => a - b); window.__ms = T[8]; }
+  window.__done = true; });
+function scene_mats() { S.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
+</script></body></html>
