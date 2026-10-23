@@ -55151,8 +55151,11 @@ var Inquadratura = (function () {
     verticale: { camera: 'verticale', tetti: true },
     taglio: { camera: 'adatta', taglio: true },
     asse_taglio: { camera: 'adatta', asse: true, taglio: true },
+    // [inquadratura] la scelta del committente: lungo la via e, solo nella stretta (la camera che si adatta è salita), le case davanti che
+    // coprono la via coi muri scendono tutte alla stessa quota bassa (il muretto, un metro); se copre solo il tetto, quello sbiadisce
+    via_muretto: { camera: 'adatta', asse: true, tetti: true, taglio: true, uniforme: true, soloStretta: true },
   };
-  const DIFETTO = 'asse';   // [inquadratura] il taglio mirato confonde (case a quote diverse chiuse da lastre piatte): resta in prova con ?inquadratura=taglio   // la variante del gioco (senza ?inquadratura=)
+  const DIFETTO = 'via_muretto';   // [inquadratura] il taglio a quote diverse confondeva (case chiuse da lastre piatte a ogni altezza): ora tutte alla stessa quota   // la variante del gioco (senza ?inquadratura=)
   // le manopole (window.__INQUADRATURA per le prove dal vivo)
   const K = {
     asseLargo: 6.5,       // m: le vie fino a tanto si guardano lungo l'asse (vicoli 2,5-3, Rua e Marina 5, Vittoria 7 solo dove si stringe)
@@ -55226,7 +55229,8 @@ var Inquadratura = (function () {
   // le case da abbassare e la loro quota: Map(casa -> { y, top }). case_: i record con box3 ({ min, max }) e geo.y0 (la base), come
   // dyn.buildings; cam: la posizione della camera. Solo le case sul lato camera che coprono un punto del disco di suolo attorno al
   // personaggio (o il suo corpo); la quota è la linea di solaio più alta sotto il primo raggio che vi entra
-  function tagli(px, pz, fy, cam, case_, V, on, out) {
+  // uniforme: tutte al muretto, e solo le case che coprono coi muri (sotto la gronda)
+  function tagli(px, pz, fy, cam, case_, V, on, out, uniforme) {
     out = out || new Map(); out.clear(); if (!on) return out;
     const P = [], R = K.raggio, st = K.passoD;
     for (let a = -R; a <= R + 1e-6; a += st) for (let b = -R; b <= R + 1e-6; b += st) if (a * a + b * b <= R * R) P.push({ x: px + a, y: fy + .1, z: pz + b });
@@ -55244,6 +55248,7 @@ var Inquadratura = (function () {
       if (need === Infinity) continue;
       const base = B.geo && B.geo.y0 !== undefined ? B.geo.y0 : b3.min.y, gr = B.gr !== undefined ? B.gr : B.b && B.b.__top !== undefined ? B.b.__top : b3.max.y - 2.5;
       const lim = need - K.margine; let y = base + K.muretto;
+      if (uniforme) { if (lim < gr) out.set(B, { y, top: b3.max.y }); continue; }
       for (let h = base + K.primo; h <= Math.min(lim, gr); h += K.piano) y = h;
       if (lim >= gr) y = gr;   // basta togliere il tetto: la casa resta coi suoi muri fino alla gronda
       out.set(B, { y, top: b3.max.y }); }
@@ -55261,7 +55266,7 @@ var Inquadratura = (function () {
     const out = new Map(), vic = q.vicine ? q.vicine(32) : [];
     if (v.tetti) { S.tetti = S.tetti || new Map(); const vu = V.tetti(q.x, q.z, q.fy, cam, vic, V.TETTO4, !q.ok); V.passo(S.tetti, vu, dt, V.TETTO4);
       S.tetti.forEach((s, B) => { if (V.sbiadito(s) > .5) out.set(B, B.gr !== undefined ? B.gr : B.box3.max.y - 2.5); }); }
-    if (v.taglio) { S.tagli = S.tagli || new Map(); const vu = tagli(q.x, q.z, q.fy, cam, vic, V, q.ok); V.passo(S.tagli, vu, dt, K);
+    if (v.taglio) { S.tagli = S.tagli || new Map(); const vu = tagli(q.x, q.z, q.fy, cam, vic, V, q.ok && (!v.soloStretta || !!(S.cam4 && S.cam4.on)), null, v.uniforme); V.passo(S.tagli, vu, dt, K);
       S.tagli.forEach((s, B) => { const y = V.quota(s); if (s.a > .5) out.set(B, Math.min(out.has(B) ? out.get(B) : Infinity, y)); }); }
     return { yaw: c.yaw, pitch: c.pitch, zoom: c.zoom, tagli: out, cam, largo: c.asse };
   }
@@ -56573,7 +56578,7 @@ var Render = (function () {
   function vis3Tick(px, pz, fy, on, dt, pitch) {
     const iq = !!(IQ5.v && IQ5.v.taglio), K = iq ? Inquadratura.K : Visuale.MURETTO,   // [inquadratura] la scelta del taglio mirato si rifà ogni tre fotogrammi (i raggi del disco)
       S = VIS3.S, vv = VIS3.vuole || (VIS3.vuole = new Map());   // [visuale4] il muretto usa la macchina del taglio, con la sua scelta   // [visuale5] solo lui   // [inquadratura] o il taglio mirato
-    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on, vv)) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);
+    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on && (!IQ5.v.soloStretta || !!VIS4.C.on), vv, IQ5.v.uniforme)) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);
     VIS3.cambi += Visuale.passo(S, vuole, VIS3.subito ? 10 : dt, K);
     const prima = VIS3.vivi; VIS3.vivi = new Set();
     S.forEach((s, B) => { const y = Visuale.quota(s); VIS3.vivi.add(B);
