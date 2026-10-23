@@ -454,7 +454,7 @@ var Personaggi = (function () {
   // =====================================================================================
   // Si mescolano: la faccia di un modello coi capelli di un altro. Pelle, capelli, sopracciglia e occhi si ricolorano;
   // sotto i cappelli i capelli si tagliano alla fascia. ?teste=mie torna alle teste costruite qui.
-  const KT = { ok: false, f: {} }, KITF = ['Casual', 'Casual_2', 'Casual_Hoodie', 'Worker', 'Formal'];
+  const PROF = new Map(), KT = { ok: false, f: {} }, KITF = ['Casual', 'Casual_2', 'Casual_Hoodie', 'Worker', 'Formal'];
   function kindOf(nm, file) { if (/^Skin_Darker/.test(nm)) return 'ombra'; if (/^Skin/.test(nm)) return 'pelle'; if (/Worker_Yellow/.test(nm)) return 'casco'; if (/Moustache/.test(nm)) return 'baffi';
     if (/^Eye$|^Brown$/.test(nm)) return 'occhi'; if (/Eyebrows|Hair_Brown/.test(nm)) return 'ciglia'; if (/Hair|^Red$/.test(nm)) return 'capelli'; return null; }
   function kitTeste(person) {
@@ -490,6 +490,7 @@ var Personaggi = (function () {
     if (sc.capelli === 'Worker' && sc.faccia !== 'Worker') usa.push(...H.parts.filter(p => p.kind === 'ciglia'));   // il calvo: la corona di capelli del Worker sta nelle sue "sopracciglia"
     if (D.cappello && D.cappello.tipo === 'casco_cantiere') usa.push(...KT.f.Worker.parts.filter(p => p.kind === 'casco'));
     if (D.baffi && !usa.some(p => p.kind === 'baffi')) usa.push(...KT.f.Worker.parts.filter(p => p.kind === 'baffi'));   // i baffi del Worker, su qualunque faccia
+    const pk = [sc.faccia, sc.capelli, sk, taglio, D.baffi ? 1 : 0, D.cappello && D.cappello.tipo === 'casco_cantiere' ? 1 : 0, hb.map(v => v.toFixed(4))].join('|'), cached = PROF.get(pk), misura = !cached;   // [leggera] il profilo della testa si misura una volta per combinazione
     const tris = []; let eyS = 0, eyN = 0, chinY = 9, skTop = -9; const eyA = { y: 0, x: 0, z: -9 };
     usa.forEach(pt => {
       const v0 = B.n, c = col[pt.kind] || pelle, n = pt.P.length / 3; B.ol = pt.kind === 'occhi' || pt.kind === 'ciglia' || pt.kind === 'baffi' ? 0 : 1;
@@ -501,16 +502,17 @@ var Personaggi = (function () {
         if (pt.kind === 'occhi') { eyS += (p[1] - base[1]) / K; eyN++; eyA.y += p[1]; eyA.x += Math.abs(p[0] - hb[0]); eyA.z = Math.max(eyA.z, p[2]); }
         if (pt.kind === 'pelle') { chinY = Math.min(chinY, p[1]); skTop = Math.max(skTop, p[1]); }
       }
-      for (let k = 0; k < pt.I.length; k += 3) { const a = pt.I[k], b = pt.I[k + 1], d = pt.I[k + 2]; if (keep[a] && keep[b] && keep[d]) B.I.push(v0 + a, v0 + b, v0 + d); if (pt.kind === 'pelle' || pt.kind === 'capelli') tris.push(Object.assign([v0 + a, v0 + b, v0 + d].map(q => [B.P[q * 3], B.P[q * 3 + 1], B.P[q * 3 + 2]]), { pelle: pt.kind === 'pelle' })); }
+      for (let k = 0; k < pt.I.length; k += 3) { const a = pt.I[k], b = pt.I[k + 1], d = pt.I[k + 2]; if (keep[a] && keep[b] && keep[d]) B.I.push(v0 + a, v0 + b, v0 + d); if (misura && (pt.kind === 'pelle' || pt.kind === 'capelli')) tris.push(Object.assign([v0 + a, v0 + b, v0 + d].map(q => [B.P[q * 3], B.P[q * 3 + 1], B.P[q * 3 + 2]]), { pelle: pt.kind === 'pelle' })); }
     });
     B.ol = 1;
     // il profilo come TESTE: [quota, mezza larghezza, mezza profondità, centro in avanti], in unità di K
     // il profilo si misura coi raggi sulla pelle vera: davanti e dietro al centro, di lato a metà profondità
+    if (cached) { KT.ultimo = cached; return cached; }
     const ray = (o, d, solo) => { let best = null; for (const T3 of tris) { if (solo && !T3.pelle) continue; const [A, Bv, C] = T3; const e1 = sub(Bv, A), e2 = sub(C, A), pv = cross(d, e2), det = dot(e1, pv); if (Math.abs(det) < 1e-9) continue; const iv = 1 / det, tv = sub(o, A), u = dot(tv, pv) * iv; if (u < 0 || u > 1) continue; const qv = cross(tv, e1), w = dot(d, qv) * iv; if (w < 0 || u + w > 1) continue; const t = dot(e2, qv) * iv; if (t > 0 && (best === null || t < best)) best = t; } return best; };
     const out = []; for (let yk = -.05; yk <= .24; yk += .01) { const y = base[1] + yk * K;
       const tf = ray([base[0], y, base[2] + .5], [0, 0, -1], true), tb = ray([base[0], y, base[2] - .5], [0, 0, 1]); if (tf === null || tb === null) continue;
       const zf = .5 - tf, zb = -.5 + tb, zc = (zf + zb) / 2, ts = ray([base[0] + .5, y, base[2] + zc], [-1, 0, 0]); if (ts === null) continue;
-      out.push([yk, (.5 - ts) / K, (zf - zb) / 2 / K, zc / K]); } out.ey = eyN ? eyS / eyN : .093; out.tris = tris; out.eye = eyN ? { y: eyA.y / eyN, x: eyA.x / eyN, z: eyA.z } : null; out.chin = chinY; out.skTop = skTop; out.hb = hb.slice(); KT.ultimo = out; return out;
+      out.push([yk, (.5 - ts) / K, (zf - zb) / 2 / K, zc / K]); } out.ey = eyN ? eyS / eyN : .093; out.tris = tris; out.eye = eyN ? { y: eyA.y / eyN, x: eyA.x / eyN, z: eyA.z } : null; out.chin = chinY; out.skTop = skTop; out.hb = hb.slice(); KT.ultimo = out; PROF.set(pk, out); return out;
   }
   function testa(B, J, D, pelle) {
     const st = S(), T = D.testa || {}, K = st.testa * (T.scala || 1) * (D.sesso === 'f' ? .95 : 1), h = J.Head, base = [h[0], h[1] - .01 * K, h[2] - .005], wH = [['Head', 1]];
@@ -1144,8 +1146,8 @@ var Personaggi = (function () {
   // =====================================================================================
   // DALLA GEOMETRIA ALLA PELLE SUL SCHELETRO
   // =====================================================================================
-  function geometria(D, mesh, rel, J) {
-    const B = costruisci(D, J), bones = mesh.skeleton.bones, idx = new Map(); bones.forEach((b, i) => idx.set(b.name, i));
+  function geometria(D, mesh, rel, J, B0) {
+    const B = B0 || costruisci(D, J), bones = mesh.skeleton.bones, idx = new Map(); bones.forEach((b, i) => idx.set(b.name, i));
     const n = B.n, inv = new THREE.Matrix4().copy(rel).invert(), nm = new THREE.Matrix3().getNormalMatrix(inv), v = new THREE.Vector3();
     const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
     for (let i = 0; i < n; i++) {
@@ -1164,19 +1166,23 @@ var Personaggi = (function () {
     return g;
   }
   // il modello del kit diventa la figura: le sue mesh se ne vanno, resta lo scheletro (con armi e attrezzi agganciati)
-  function veste(g, D) {
-    const u = g.userData, m = u.mixer && u.mixer.getRoot ? u.mixer.getRoot() : null; let ref = null; const kit = [];
-    (m || g).traverse(o => { if (o.isSkinnedMesh && !o.userData.personaggi) { kit.push(o); if (!ref || /Body/.test(o.name)) ref = ref && /Body/.test(ref.name) ? ref : o; } });
+  const GEO = new Map(), GEO_MAX = 260, STAT = { n: 0, ms: 0 };
+  function veste(g, D) { const it = vesteGen(g, D); let r; do r = it.next(); while (!r.done); return r.value; }
+  function* vesteGen(g, D) {
+    const u = g.userData, m = u.mixer && u.mixer.getRoot ? u.mixer.getRoot() : null; let ref = null; const kit = [], vecchie = [];
+    (m || g).traverse(o => { if (o.isSkinnedMesh && !o.userData.personaggi) { kit.push(o); if (!ref || /Body/.test(o.name)) ref = ref && /Body/.test(ref.name) ? ref : o; } if (o.isSkinnedMesh && o.userData.personaggi) vecchie.push(o); });
+    if (!ref && u.pelle) ref = u.pelle;   // si riveste: lo scheletro è quello della pelle di prima
     if (!ref) return false;
     const corr = []; g.traverse(o => { if (o.userData && o.userData.corredo) corr.push(o); }); corr.forEach(o => o.parent && o.parent.remove(o));   // il corredo a scatole di models.js
     const bs = u.body.scale.clone(); u.body.scale.set(1, 1, 1);
-    const { J, rel } = giunture(g, ref), geo = geometria(D, ref, rel, J);
+    const { J, rel } = giunture(g, ref), gk = (u.model || '') + '|' + CFG.stile + '|' + CFG.teste + '|' + JSON.stringify(D);
+    let geo = GEO.get(gk); if (geo) { GEO.delete(gk); GEO.set(gk, geo); } else { let t0 = performance.now(); const B0 = costruisci(D, J); STAT.ms += performance.now() - t0; yield; t0 = performance.now(); geo = geometria(D, ref, rel, J, B0); STAT.n++; STAT.ms += performance.now() - t0; GEO.set(gk, geo); if (GEO.size > GEO_MAX) { const k0 = GEO.keys().next().value; GEO.delete(k0); } }   // la stessa persona (stesso descrittore) riusa la sua geometria
     const sk = new THREE.SkinnedMesh(geo, materiale()); sk.name = 'Personaggio'; sk.userData.personaggi = true; sk.castShadow = true; sk.frustumCulled = false;
     sk.bind(ref.skeleton, ref.bindMatrix); ref.parent.add(sk); sk.position.copy(ref.position); sk.quaternion.copy(ref.quaternion); sk.scale.copy(ref.scale);
     if (S().contorno) { const ws = new THREE.Vector3(); ref.getWorldScale(ws); const gs = new THREE.Vector3(); g.getWorldScale(gs); OLU.value = S().contorno / (ws.x / gs.x || 1); const ol = new THREE.SkinnedMesh(geo, contorno()); ol.bind(ref.skeleton, ref.bindMatrix); ol.userData.personaggi = true; ol.frustumCulled = false; ref.parent.add(ol); ol.position.copy(ref.position); ol.quaternion.copy(ref.quaternion); ol.scale.copy(ref.scale); }
-    kit.forEach(o => { if (o.parent) o.parent.remove(o); });
-    ['L', 'R'].forEach(sd => { const ua = ref.skeleton.bones.find(b => b.name === 'UpperArm' + sd), wr = ref.skeleton.bones.find(b => b.name === 'Wrist' + sd); if (!ua) return; ua.scale.multiplyScalar(BRACCIO);
-      if (wr) wr.children.forEach(ch => { if (!ch.isBone) ch.scale.multiplyScalar(1 / BRACCIO); }); });   // armi e attrezzi già agganciati al polso restano della loro misura
+    kit.forEach(o => { if (o.parent) o.parent.remove(o); }); vecchie.forEach(o => { if (o.parent) o.parent.remove(o); });
+    if (!u.braccioLungo) { u.braccioLungo = true; ['L', 'R'].forEach(sd => { const ua = ref.skeleton.bones.find(b => b.name === 'UpperArm' + sd), wr = ref.skeleton.bones.find(b => b.name === 'Wrist' + sd); if (!ua) return; ua.scale.multiplyScalar(BRACCIO);
+      if (wr) wr.children.forEach(ch => { if (!ch.isBone) ch.scale.multiplyScalar(1 / BRACCIO); }); }); }   // armi e attrezzi già agganciati al polso restano della loro misura
     const C = D.corpo || {}; u.body.scale.set(bs.x ? (C.largo || 1) : 1, C.alt || 1, C.largo || 1);
     u.personaggio = D; u.tri = geo.userData.tri; u.pelle = sk;
     return true;
@@ -1258,15 +1264,46 @@ var Personaggi = (function () {
   // LA FIGURA PRONTA: lo scheletro del kit (clip e pose di sempre) con la pelle nuova
   // =====================================================================================
   const POSE = ['Idle', 'Walk', 'Run', 'Death', 'Punch_Right', 'Punch_Left', 'HitRecieve', 'Wave', 'Interact', 'Idle_Gun', 'Run_Shoot', 'Roll', 'Kick_Right'];
-  function figura(D, who, raw) {
+  function figura(D, who, raw, aRate) {
     if (!window.Models) return null; const person = raw || RAW || Models.person; kitTeste(person);
     const g = person.call(Models, { model: D.sesso === 'f' ? 'Casual' : 'Casual_2', hat: 'none', extra: '', skin: D.pelle, top: '#888', bottom: '#888', hair: '#222' }, who === 'player' ? 'player' : who === 'cop' ? 'cop' : null);
     if (!g) return null;
-    if (!veste(g, D)) return g;
     if (g.userData.riotHat && D.cappello) g.userData.copHat = null;
-    return g;
+    if (aRate) { g.userData.dressing = vesteGen(g, D); g.userData.nuova = true; return g; }   // [fluido] in strada si veste a rate (render.js lo tiene nascosto finché non ha finito)
+    veste(g, D); return g;
   }
   const RAW = typeof Models !== 'undefined' && Models.person && !Models.person.__vesti ? Models.person : null;   // il costruttore del kit, prima che Vesti3D lo avvolga
-  return { DA_CAPO, daGuardaroba, KT, CFG, STILI, CAPI, SCARPE, TESTE, figura, veste, geometria, giunture, descrittore, materiale, atlante, POSE, PELLI, CAPELLI, GRIGI, set: (k, v) => { CFG[k] = v; } };
+  // =====================================================================================
+  // NEL GIOCO: Models.person fa le figure nuove (gli abitanti secondo chi sono, Nino con quello che ha addosso). ?vecchiagente: come prima
+  // =====================================================================================
+  const ST = () => typeof window !== 'undefined' && window.__pv && window.__pv.st, players = new Set();
+  let npcSt = null; const npcByLook = new WeakMap();
+  function npcOf(look) { const st = ST(); if (!st || !look) return null; if (npcSt !== st) { npcSt = st; st.npcs.forEach(n => { if (n.look) npcByLook.set(n.look, n); }); } let n = npcByLook.get(look); if (!n) { n = st.npcs.find(k => k.look === look); if (n) npcByLook.set(look, n); } return n || null; }
+  const wsig = st => { const W = (st && st.player && st.player.worn) || {}; return JSON.stringify([typeof Guardaroba !== 'undefined' ? Guardaroba.ZORD.map(z => W[z]) : 0, W.sx]); };
+  function perGioco(look, who) {
+    const st = ST(); let n = null, of = null;
+    if (who === 'player' && st && typeof Guardaroba !== 'undefined') { Guardaroba.worn(st); of = Guardaroba.outfitOfPlayer(st); }
+    else { n = npcOf(look); if (who === 'cop' && n && !n.cop) n = Object.assign({}, n, { cop: true }); }
+    return descrittore(Object.assign({}, look || {}, who === 'player' ? { fem: false } : {}), who, n, of);
+  }
+  function aggancia() {
+    if (typeof window === 'undefined' || !CFG.on || !RAW) return;
+    const iv = setInterval(() => {
+      if (!window.Models || !Models.person || (typeof Vesti3D !== 'undefined' && !Models.person.__vesti)) return; clearInterval(iv);
+      const p1 = Models.person;
+      Models.person = function (look, who) {
+        if (KT.ok || kitTeste(RAW)) try {
+          const D = perGioco(look, who), g = figura(D, who, RAW, !!Models.__aRate && who !== 'player');
+          if (g && (g.userData.pelle || g.userData.nuova)) { g.userData.look0 = look; if (who === 'player') { players.add(g); g.userData.wsig = wsig(ST()); } return g; }
+        } catch (e) { console.error('[Personaggi]', e); }
+        return p1.apply(this, arguments);
+      };
+      Models.person.__vesti = true; Models.person.__personaggi = true;
+      const loop = () => { try { const st = ST(); if (st && players.size) { const sg = wsig(st); players.forEach(g => { if (!g.parent && !g.userData.keep) { players.delete(g); return; } if (g.userData.wsig !== sg) { g.userData.wsig = sg; veste(g, perGioco(g.userData.look0, 'player')); } }); } } catch (e) { console.error('[Personaggi] rivestire', e); } requestAnimationFrame(loop); };
+      requestAnimationFrame(loop);
+    }, 50);
+  }
+  aggancia();
+  return { STAT, GEO, perGioco, DA_CAPO, daGuardaroba, KT, CFG, STILI, CAPI, SCARPE, TESTE, figura, veste, geometria, giunture, descrittore, materiale, atlante, POSE, PELLI, CAPELLI, GRIGI, set: (k, v) => { CFG[k] = v; } };
 })();
 if (typeof module !== 'undefined') module.exports = Personaggi;
