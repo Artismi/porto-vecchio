@@ -2920,7 +2920,7 @@ var World = (function () {
       flush();
     });
     W.SEA.costa2 = A;
-    W.COSTA2 = { N: COSTA2.N.map(([a, k]) => [a + OX, k]), S: COSTA2.S.map(([a, k]) => [a + OX, k]), nomi: C2N.concat(C2S).filter(q => q[3]).map(([c, w, a, nome]) => ({ nome, x: c + OX, lato: C2N.some(q => q[3] === nome) ? 'N' : 'S', capo: a > 0 })), strada: C2STRADA.map(([a, b]) => [a + OX, b + OX]) };
+    W.COSTA2 = { N: COSTA2.N.map(([a, k]) => [a + OX, k]), S: COSTA2.S.map(([a, k]) => [a + OX, k]), nomi: C2N.concat(C2S).filter(q => q[3]).map(([c, w, a, nome]) => { const N = C2N.some(q => q[3] === nome); return { nome, x: c + OX, y: +(N ? NorthY(c) : SouthY(c)).toFixed(1) + OY, lato: N ? 'N' : 'S', capo: a > 0 }; }), strada: C2STRADA.map(([a, b]) => [a + OX, b + OX]) };
     return W;
   }
   const W = costa2Arredo(expand(generate()));
