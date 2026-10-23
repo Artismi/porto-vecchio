@@ -55740,7 +55740,7 @@ var Riva = (function () {
       vec3 sab = mix(vec3(.6, .54, .43), vec3(.77, .71, .58), tone);
       sab = mix(sab, sab * vec3(.82, .8, .78), str * (1. - wet) * .7);
       float sw = 0.; for (int k = 0; k < 3; k++) { float c = .9 + float(k) * .75; sw = max(sw, (1. - smoothstep(0., .06 + .03 * float(k), abs(dsw - c))) * (1. - float(k) * .3)); }   // le linee della risacca
-      sw *= smoothstep(.35, .65, rn9(p * .45));
+      sw *= smoothstep(.55, .8, rn9(p * .9 + 3.)) * smoothstep(.3, .6, rn9(p * 2.7));   // rotte a pezzi corti, come il pizzo che l'onda lascia
       float gu = smoothstep(.86, .93, gr) * smoothstep(.55, .75, tone) * aaM;   // conchiglie e ghiaietta
       sab *= 1. + (gr - .5) * .08 * aaM + rip * .035 * aaL;
       sab = mix(sab, vec3(.92, .89, .82), gu * .85);
@@ -55760,7 +55760,7 @@ var Riva = (function () {
       if (vRS9.w > .01) { vec3 cc = rc9(p * 5.2); cio = mix(mix(vec3(.52, .5, .47), vec3(.8, .77, .71), cc.z), vec3(.66, .58, .46), step(.82, rh9(vec2(cc.z * 91.))));
         giu = smoothstep(.33, .47, cc.x); cio = mix(cio * (1.04 - cc.x * .3), vec3(.33, .3, .26), giu); }
       vec3 pr = mix(sab, roc, clamp(vRS9.y, 0., 1.)); pr = mix(pr, cio, clamp(vRS9.w, 0., 1.) * aaL);
-      pr = mix(pr, pr * vec3(.52, .54, .57), wet * .9); pr = mix(pr, vec3(.86, .84, .78), sw * wet * aaM * (1. - vRS9.y) * .45);
+      pr = mix(pr, pr * vec3(.52, .54, .57), wet * .9); pr = mix(pr, vec3(.8, .78, .72), sw * wet * aaM * (1. - vRS9.y) * .28);
       diffuseColor.rgb = mix(diffuseColor.rgb, pr, rW9);
       rWet9 = wet * rW9;
       rB9 = (rip * .02 * aaL * (1. - vRS9.y) - crk * .05 * vRS9.y - pit * .02 * vRS9.y + (.04 - giu * .05) * vRS9.w * aaL) * rW9;
