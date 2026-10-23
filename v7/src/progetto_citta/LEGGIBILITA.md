@@ -216,3 +216,51 @@ percorsi principali 1.510 m, coperti oggi 32%, con A 17%, con B 2%; scorciatoie 
 (Sotto le mura), con A 30 m. I punti peggiori con A, da correggere nella mappa: Sotto le mura 1426-1455 × 273 (case 225, 230, 224: E0 di 3-4
 piani sul lato camera), Vico Scuro e Vico dell'Arco sotto l'arco del sottopasso (la volta non sbiadisce), la Rua a 1375-1393 × 309 (casa 347,
 4 piani) e a 1397-1426 × 308-313, Dal Corso alla stazione 1274-1290 × 310-315 (Condominio Aurora). Elenco intero in `copertura.json`.
+
+## 9. Camera e muretto, e la camera a mano ([visuale5], 23 ottobre)
+
+**La scelta del committente.** Restano i due prototipi di [visuale4]: **A, `camera`, è il modo di difetto**; B, il muretto, si sceglie con
+`?visuale=muretto` (il gioco non ha un menu delle impostazioni: niente interruttore in gioco; gli strumenti lo cambiano dal vivo con
+`R.setVisuale`). Via dal gioco l'ellisse ([varco2]: l'involucro del varco su ogni materiale, il varco nelle chiome, l'anello e il filo del
+varco nel post, le manopole `QUADRO.varco*`), il taglio ([visuale3]: `Visuale.scegli`, `Visuale.chiesta`, `?visuale=taglio`) e la
+sezione ([visuale]: la casa che sbiadiva intera, la sagoma a cubetti). Resta la macchina che usa il muretto: `Visuale.passo` e `quota`, la
+quota per casa in `R.casaVisibile` (la tessitura FD1 delle case fuse), il piano di taglio sui pezzi fuori dalla fusione, il registro delle
+cose sui tetti, la copertina. Prova in `src/test_visuale4.js` (ci sono confluite le due prove della macchina che erano in `test_visuale3.js`).
+
+**Il guadagno**, misurato nel gioco vero (`?cittanuova`, Chromium senza testa con SwiftShader, 960×600, nel borgo a 1400 × 312 e sulla
+Vittoria a 1360 × 334, dopo 15 s; programmi della scheda video e disegni della scena per fotogramma):
+
+| Modo | Programmi (borgo / Vittoria) | Disegni della scena (borgo / Vittoria) |
+|---|---|---|
+| prima, ellisse (`?visuale=ellisse`) | 230 / 234 | — / 2.251 |
+| prima, taglio (il difetto di allora) | 169 / 169 | 2.233 / 2.085 |
+| prima, camera (`?visuale=camera`) | 165 / 165 | 2.250 / 1.776 |
+| **dopo, camera (il difetto)** | **158 / 160** | — / 2.000 |
+| dopo, muretto | 161 / 163 | — / 2.102 |
+
+Contro l'ellisse il gioco ha 72-74 programmi in meno (l'involucro del varco su ogni materiale: le 46 famiglie dette in [visuale4] più le
+loro varianti con ombra e istanze); contro la camera di prima 5-7 in meno (il varco nelle chiome, il post più corto, la sagoma a cubetti e
+quella di riserva). I disegni per fotogramma non cambiano per la visuale: dipendono dai blocchi caricati (i numeri ballano di qualche
+centinaio fra una prova e l'altra sotto SwiftShader, «—» dove il fotogramma non è arrivato nei 4 s della misura); il varco non aggiungeva
+disegni, solo programmi e lavoro per pixel. Nessun errore di pagina in nessun modo.
+
+**La camera a mano** (`Visuale.mano`, `Visuale.limita`, manopole `Visuale.MANO`; in render.js la parte a mano `cam.mano` si somma alla
+visuale automatica). Il giocatore gira la visuale attorno al personaggio (levetta destra di lato, tasti `,` `.`, il bordo dello schermo,
+la rotella premuta trascinata di lato, un dito, la torsione di due dita) e la sposta (levetta destra in su e in giù, la rotella trascinata
+in su e in giù o con Maiusc in ogni verso, due dita che scorrono; lo zoom del controller resta sulla croce). Poi torna da sola, sopra la
+pendenza che si adatta e il tetto che sbiadisce di A, che continuano a lavorare sulla visuale girata:
+
+| Regola | Valore |
+|---|---|
+| in marcia / fermo | sopra 0,6 m/s si cammina; fermo sotto 0,25 m/s per 0,3 s (un passo incerto non è una sosta) |
+| spostata da fermo | alla partenza si ricentra |
+| spostata camminando | resta finché si cammina; si ferma e riparte: si ricentra. Una partenza entro 0,3 s dall'ultimo tocco vale come «camminando» |
+| contro la visuale | marcia a più di 110° dal davanti della visuale (verso la camera) per 1 s: si ricentra; sotto gli 80° il conto si azzera, in mezzo resta (isteresi); dopo un ricentro così niente altro per 1,5 s |
+| il ricentro | smorzamento esponenziale, τ 0,22 s (95% in 0,66 s), uguale a 20, 60 e 144 fps; appena il giocatore tocca la camera si ferma lì |
+| forzato | salendo su un mezzo, nei dialoghi, nell'intro, con l'editor |
+| lo scarto | a mano più lo sguardo avanti, entro il 72% della mezza inquadratura (di lato e in profondità): il personaggio non esce dallo schermo |
+| la levetta | segue la visuale di adesso, anche girata a mano: in su è sempre in su sullo schermo. Solo il ricentro automatico fatto mentre la tieni non la gira (la direzione nel mondo resta quella data, niente giri in tondo) finché non la lasci |
+
+Centro vuol dire la visuale automatica di sempre: sul computer l'orientamento fisso dell'isola, sul telefono quella che segue la marcia
+([camera3]). Sul telefono la contromarcia sostenuta lascia fare alla visuale che segue anche il mezzo giro che prima rifiutava (oltre 100°):
+è il «si ricentra nella direzione nuova». Sul computer, in centro, la contromarcia non fa niente (l'orientamento fisso è il centro).
