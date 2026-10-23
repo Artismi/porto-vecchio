@@ -209,6 +209,10 @@ var Pavimenti = (function () {
       } else if (fam < 6.5 || fam > 7.5) {   // terra battuta e spianata: polvere a chiazze, sassolini, le carreggiate delle sterrate
         vec4 S = pvSassi(p / .09, .9); float peb = (1. - smoothstep(.22, .36, length(S.zw))) * step(.7, S.y) * fin;
         tone = .9 + (pvN(p * .9) - .5) * .18 + (pvN(p * 4.) - .5) * .1 + peb * .14; tq = normalize(S.zw + 1e-5) * peb * .7;
+        float mid = 1. - smoothstep(.05, .12, mpp), gv = pvH(floor(p * 22.) + 11.), bat = smoothstep(.55, .7, pvN(p * .5 + 4.));   // la ghiaia da 4 cm, chiara e scura; la terra battuta più liscia e chiara a chiazze
+        tone += ((step(.88, gv) * .16 - step(gv, .1) * .14) * (1. - bat * .7)) * mid + bat * .05;
+        float pass = smoothstep(.62, .7, pvN(p * vec2(.25, .9) + 9.)) * smoothstep(.4, .6, pvN(p * .12));   // le tracce dei passi, più lisce e scure
+        tone *= 1. - pass * .07; pvPol = max(pvPol, pass * .3);
         if (via) { float rut = pvG((av - .75) / .22); tone *= 1. - rut * .12; pvPol = rut * .3; }
       } else {   // sabbia: le increspature del vento, la grana, più scura e liscia dove è bagnata
         float ph = dot(p, vec2(.8, .6)) * 11. + pvN(p * .7) * 7.;
