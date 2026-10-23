@@ -41,6 +41,7 @@ var Inquadratura = (function () {
     passoD: 1.25,         // m: il passo dei punti del disco
     margine: .25,         // m sotto il primo raggio che entra nella casa
     muretto: 1,           // m sopra la base: la quota più bassa (come il muretto)
+    muro: .32,            // m: la casa tagliata è cava, della faccia tagliata resta la sezione dei muri larga tanto (render.js capCavo5)
     primo: 3.4,           // m sopra la base: il primo solaio, poi ogni `piano`
     piano: 2.4,
     davanti: -1,          // m: la casa sta sul lato camera se il suo centro è davanti al personaggio di tanto (verso la camera)

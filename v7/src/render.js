@@ -1243,7 +1243,7 @@ var Render = (function () {
   // [inquadratura] la via in strada (src/inquadratura.js): la visuale lungo l'asse della via, il taglio mirato delle case che coprono la via,
   // il ricentro dietro al personaggio sul computer. ?inquadratura=<variante> per confrontare; ?vecchiacamera: la camera di [visuale5]
   const IQ5 = (() => { let n = null; try { const s = location.search; if (typeof Inquadratura !== 'undefined' && !/[?&]vecchiacamera/.test(s)) { const m = /[?&]inquadratura=([a-z_]+)/.exec(s); n = m && Inquadratura.VARIANTI[m[1]] ? m[1] : Inquadratura.DIFETTO; } } catch (e) { n = null; }
-    return { nome: n, get v() { return this.nome && VIS4.camera ? Inquadratura.VARIANTI[this.nome] : null; }, S: {}, rete: null, dy: 0, p: 0, z: 1, n0: 0 }; })();
+    return { nome: n, get v() { return this.nome && VIS4.camera ? Inquadratura.VARIANTI[this.nome] : null; }, S: {}, rete: null, dy: 0, p: 0, z: 1, n0: 0, pav: new Map(), pavM: null }; })();
   const VIS5 = {
     // la sagoma: il modello vero del giocatore (anche le parti con lo scheletro) disegnato una seconda volta solo dove è coperto
     // (profondità invertita: GreaterDepth), col materiale ripulito di [visuale4] (SAG4). Si rifà quando il modello cambia (il personaggio
@@ -1307,12 +1307,13 @@ var Render = (function () {
       casaVisibile(B, 'quota', y);   // [visuale4] dall'API della casa
       if (!B.__pl3) B.__pl3 = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
       B.__pl3.constant = y; if (!B.__cl3) { B.__cl3 = true; B.mats.forEach(m => { m.clippingPlanes = [B.__pl3]; }); }
-      const cap = vis3Cap(B); cap.visible = !s.nodisc && s.a > 0; cap.position.y = y + .004; cap.material = capMat4(B);   // [visuale4] la copertina del muretto nel tono del muro
+      const cap = vis3Cap(B); cap.visible = !s.nodisc && s.a > 0; cap.position.y = y + .004; cap.material = iq ? capCavo5(B) : capMat4(B);   // [visuale4] la copertina del muretto nel tono del muro   // [inquadratura] o cava: solo il filo dei muri
+      if (iq) { const pv = iq5Pav(B); pv.visible = cap.visible; pv.position.y = y - .3; }   // e dentro, appena sotto la cornice, il pavimento della casa (sotto c'è il nucleo scuro e lo zoccolo)
       if (B.__y3 === undefined || Math.abs(B.__y3 - s.y) > .3) { try { vis3Cose(B, false); B.__y3 = s.y; vis3Cose(B, true, s.y); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } } } });
     prima.forEach(B => { if (VIS3.vivi.has(B)) return;
       casaVisibile(B, 'quota', null);   // [visuale4]
       if (B.__cl3) { B.__cl3 = false; B.mats.forEach(m => { m.clippingPlanes = null; }); }
-      const cap = VIS3.caps.get(B); if (cap) cap.visible = false; vis3Cose(B, false); B.__y3 = undefined; });
+      const cap = VIS3.caps.get(B); if (cap) cap.visible = false; const pv = IQ5.pav.get(B); if (pv) pv.visible = false; vis3Cose(B, false); B.__y3 = undefined; });
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }
   }
   // [visuale3] le cose del registro di pulizia2 (VIS3.reg) che stanno sulla pianta della casa tagliata e salgono sopra il piano (l'antenna e
@@ -1449,6 +1450,42 @@ var Render = (function () {
           diffuseColor.rgb = mix(diffuseColor.rgb, uFilo3.yzw, 1. - smoothstep(uFilo3.x - fw, uFilo3.x + fw, ed)); }`); };
     m.customProgramCacheKey = () => 'cap3';
     VIS4.caps.set(key, m); return m;
+  }
+  // [inquadratura] LA CASA TAGLIATA CAVA (la scelta del committente: «il coperchio pieno confonde»): della faccia tagliata resta solo la
+  // sezione dei muri, una cornice larga Inquadratura.K.muro nel tono del muro scurito col filo chiaro fuori e uno scuro dentro; dentro si
+  // vede il pavimento della casa (il tavolato di legno, che non si confonde col cotto dei terrazzi; più scuro verso i muri: l'ombra dei muri). Un programma per la cornice, uno per il pavimento
+  const CAVO5 = { muro: { value: new THREE.Vector4(.32, .07, .03, 0) }, filo: { value: new THREE.Vector3(.95, .9, .8) } };
+  function capCavo5(B) {
+    const K = Visuale.MURETTO, b = B.b || {}, hex = (b.__ep && b.__ep.pal && typeof b.__ep.pal[0] === 'string' && b.__ep.pal[0]) || b.__wallHex || '#b8a084', key = 'cavo|' + hex;
+    let m = VIS4.caps.get(key); if (m) return m;
+    const KI = Inquadratura.K, fc = new THREE.Color(K.filo); CAVO5.muro.value.set(KI.muro, Visuale.TAGLIO.filoLargo, .04, 0); CAVO5.filo.value.set(fc.r, fc.g, fc.b);
+    m = new THREE.MeshBasicMaterial({ color: new THREE.Color(hex).multiplyScalar(.72) });
+    m.onBeforeCompile = sh => { sh.uniforms.uMuro5 = CAVO5.muro; sh.uniforms.uFilo5 = CAVO5.filo;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 m3; varying vec4 vM3;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvM3 = m3;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vM3; uniform vec4 uMuro5; uniform vec3 uFilo5;')
+        .replace('#include <color_fragment>', `#include <color_fragment>
+        { vec2 e5 = min(vM3.xy, vM3.zw - vM3.xy); float ed = min(e5.x, e5.y), fw = max(fwidth(ed), 1e-4);
+          if (ed > uMuro5.x + fw) discard;
+          diffuseColor.rgb = mix(diffuseColor.rgb, uFilo5, 1. - smoothstep(uMuro5.y - fw, uMuro5.y + fw, ed));
+          diffuseColor.rgb *= mix(1., .45, smoothstep(uMuro5.x - uMuro5.z - fw, uMuro5.x - fw, ed)); }`); };
+    m.customProgramCacheKey = () => 'cavo5';
+    VIS4.caps.set(key, m); return m;
+  }
+  function iq5Pav(B) {
+    let c = IQ5.pav.get(B); if (c) return c;
+    const cap = vis3Cap(B); c = new THREE.Mesh(cap.geometry, IQ5.pavM || (IQ5.pavM = (() => {
+      const m = new THREE.MeshBasicMaterial({ color: '#7a5a3e' });   // il tavolato di legno: non si confonde col cotto dei terrazzi
+      m.onBeforeCompile = sh => { sh.uniforms.uMuro5 = CAVO5.muro;
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 m3; varying vec4 vM3;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvM3 = m3;');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vM3; uniform vec4 uMuro5;')
+          .replace('#include <color_fragment>', `#include <color_fragment>
+          { vec2 e5 = min(vM3.xy, vM3.zw - vM3.xy); float ed = min(e5.x, e5.y);
+            float ax = step(vM3.w, vM3.z); vec2 u5 = mix(vM3.yx, vM3.xy, ax);   // le assi lungo il lato lungo
+            float ri = floor(u5.y / .22), q5 = fract(u5.y / .22), gi = step(.9, q5), tg = step(.97, fract(u5.x / 1.6 + fract(ri * .37)));
+            diffuseColor.rgb *= (.88 + .12 * fract(ri * .618)) * (1. - .4 * max(gi, tg));
+            diffuseColor.rgb *= mix(.55, 1., smoothstep(uMuro5.x, uMuro5.x + .9, ed)); }`); };
+      m.customProgramCacheKey = () => 'pav5'; return m; })()));
+    c.rotation.copy(cap.rotation); c.position.copy(cap.position); c.castShadow = c.receiveShadow = false; c.visible = false; scene.add(c); IQ5.pav.set(B, c); return c;
   }
   // A: la camera. La misura della stretta attorno al personaggio (Visuale.misura sulla città in pianta), l'isteresi e lo smorzamento
   // (Visuale.camPasso): VIS4.C.p la pendenza, .z lo zoom, .g il giro. Lavora sotto la camera [fluido] (sguardo della levetta, dito, momenti):
