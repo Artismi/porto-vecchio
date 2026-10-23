@@ -981,6 +981,8 @@ var Vesti3D = (function () {
       for (let r = 1; r <= 3 && best.length < 4; r++) { best.length = 0; for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) for (let k = -r; k <= r; k++) { const a = H.get((cx + i) + ',' + (cy + j) + ',' + (cz + k)); if (a) for (const q of a) { const d = (I[q * 3] - x) ** 2 + (I[q * 3 + 1] - y) ** 2 + (I[q * 3 + 2] - z) ** 2; best.push([d, q]); } } }
       best.sort((a, b) => a[0] - b[0]); return best.slice(0, 4); };
     obj.updateMatrixWorld(true); const v = new THREE.Vector3(), out = new THREE.Group(); out.userData.vesti = true;
+    const grp = new Map(), skinM = (g0, mat) => { const sm = new THREE.SkinnedMesh(g0, mat); sm.userData.vesti = true; sm.castShadow = true; sm.frustumCulled = false;
+      sm.position.copy(ref.position); sm.quaternion.copy(ref.quaternion); sm.scale.copy(ref.scale); ref.parent.add(sm); sm.bind(ref.skeleton, ref.bindMatrix); };
     const nm = new THREE.Matrix3().getNormalMatrix(B.reli);
     obj.traverse(m => {
       if (!m.isMesh) return; const g0 = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone(); if (!g0.attributes.normal) g0.computeVertexNormals(); g0.applyMatrix4(m.matrixWorld);
@@ -990,8 +992,12 @@ var Vesti3D = (function () {
         const e = [...acc.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4); let s4 = 0; e.forEach(x => { s4 += x[1]; }); e.forEach((x, k) => { SI[i * 4 + k] = x[0]; SW[i * 4 + k] = x[1] / (s4 || 1); }); if (!e.length) SW[i * 4] = 1;
         v.fromBufferAttribute(P, i).applyMatrix4(B.reli); P.setXYZ(i, v.x, v.y, v.z); v.fromBufferAttribute(N, i).applyMatrix3(nm).normalize(); N.setXYZ(i, v.x, v.y, v.z); }
       g0.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(SI, 4)); g0.setAttribute('skinWeight', new THREE.Float32BufferAttribute(SW, 4));
-      const mat = m.material; const sm = new THREE.SkinnedMesh(g0, mat); sm.userData.vesti = true; sm.castShadow = true; sm.frustumCulled = false;
-      sm.position.copy(ref.position); sm.quaternion.copy(ref.quaternion); sm.scale.copy(ref.scale); ref.parent.add(sm); sm.bind(ref.skeleton, ref.bindMatrix); });
+      const mat = m.material, k = Sartoria.firmaAtt ? Sartoria.firmaAtt(g0) : '', single = Array.isArray(mat) || !Sartoria.concatGeo || !Sartoria.FONDI.on || (mat && mat.transparent) || m.renderOrder;
+      if (single) { skinM(g0, mat); return; }
+      let e = grp.get(mat); if (!e) grp.set(mat, e = new Map()); let L = e.get(k); if (!L) e.set(k, L = []); L.push(g0); });
+    // [leggera] i pezzi dello stesso materiale in una SkinnedMesh sola: stessi vertici, stessi pesi, stesso scheletro e stessa matrice
+    // (prima una per pezzo: ogni pezzo un disegno). I trasparenti restano a parte: per loro conta l'ordine
+    grp.forEach((e, mat) => e.forEach(L => { if (L.length === 1) skinM(L[0], mat); else { const gm = Sartoria.concatGeo(L); L.forEach(g1 => g1.dispose()); skinM(gm, mat); } }));
     return out;
   }
   function accessories(g, outfit, held, D) {
@@ -1129,6 +1135,45 @@ var Vesti3D = (function () {
   const PROP = { Head: .9, UpperArmL: 1.18, UpperArmR: 1.18, WristL: 1 / 1.18, WristR: 1 / 1.18 };
   function proporzioni(g, on) { const m = g.userData.model && g.userData.model.isObject3D ? g.userData.model : g; for (const n in PROP) { const b = m.getObjectByName(n); if (b && b.isBone) b.scale.setScalar(on ? PROP[n] : 1); } }
   function dress(g, outfit, look, held, seed) { const it = dressGen(g, outfit, look, held, seed); while (!it.next().done); }
+  // [leggera] I CAPI IN TINTA UNITA IN UNA MESH SOLA. Dopo la vestizione una persona ha ~50 pezzi con la pelle (bottoni, cuciture, orli,
+  // colli, scarpe…) in MeshStandardMaterial uguali in tutto tranne il colore: ognuno era un disegno. Qui diventano una SkinnedMesh sola
+  // per gruppo (stesso osso, stesso scheletro, stessa matrice, stesso materiale a meno del colore): ogni vertice porta il numero del suo
+  // pezzo e lo shader prende il colore da una tavolozza con gli stessi valori dei materiali di prima, passato senza interpolare (flat):
+  // stesso colore, stessi vertici, stessi pesi. Solo gli abitanti (il giocatore no: il taglio della visuale clona i suoi materiali) e solo
+  // con WebGL2. ?notavolozza lo spegne.
+  const PAL = { on: typeof location === 'undefined' || !/[?&]notavolozza\b/.test(location.search), N: 64, mats: new Map() };
+  const TEXK = ['map', 'normalMap', 'bumpMap', 'roughnessMap', 'metalnessMap', 'alphaMap', 'emissiveMap', 'aoMap', 'lightMap', 'envMap', 'displacementMap'];
+  const PSKIP = new Set(['uuid', 'id', 'name', 'color', 'version', 'userData', '_listeners', 'needsUpdate']);
+  const palSig = m => Object.keys(m).filter(k => !PSKIP.has(k)).sort().map(k => { const v = m[k]; return k + ':' + (v && v.isColor ? v.getHexString() : v && v.isTexture ? v.uuid : typeof v === 'function' ? 'f' + String(v).length : v && typeof v === 'object' ? JSON.stringify(v.toArray ? v.toArray() : v) : v); }).join('|');
+  function palMat(m0) {   // il materiale comune del gruppo: lo stesso del primo pezzo, col colore preso dalla tavolozza
+    const m = m0.clone(), U = { value: Array.from({ length: PAL.N }, () => new THREE.Color()) };
+    m.userData = Object.assign({}, m0.userData, { pal: U });
+    m.onBeforeCompile = sh => { sh.uniforms.uPal = U;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>\nattribute float pal; uniform vec3 uPal[${PAL.N}]; flat varying vec3 vPal;`).replace('#include <begin_vertex>', '#include <begin_vertex>\nvPal = uPal[int(pal + .5)];');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nflat varying vec3 vPal;').replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( vPal, opacity );'); };
+    m.customProgramCacheKey = () => 'tavolozza' + PAL.N; return m;
+  }
+  function tavolozza(g) {
+    if (!PAL.on || !window.Sartoria || !Sartoria.concatGeo) return 0;
+    const rd = window.__pv && window.__pv.R && window.__pv.R.__models && window.__pv.R.__models.renderer; if (!rd || !rd.capabilities.isWebGL2) return 0;
+    const grp = new Map();
+    g.traverse(o => {
+      if (!o.isSkinnedMesh || !o.userData.vesti || !o.visible || !o.parent || o.renderOrder || o.children.length) return; const m = o.material, ge = o.geometry;
+      if (!m || Array.isArray(m) || m.type !== 'MeshStandardMaterial' || m.transparent || m.vertexColors || m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || TEXK.some(k => m[k])) return;
+      if (ge.index || (ge.morphAttributes && Object.keys(ge.morphAttributes).length) || (ge.userData && ge.userData.sartoria) || ge.groups.length) return;
+      const k = [o.parent.uuid, o.skeleton.uuid, o.bindMatrix.elements.join(','), o.position.toArray().join(','), o.quaternion.toArray().join(','), o.scale.toArray().join(','), o.castShadow, o.receiveShadow, Sartoria.firmaAtt(ge), palSig(m)].join('#');
+      let L = grp.get(k); if (!L) grp.set(k, L = []); L.push(o);
+    });
+    let tolti = 0;
+    grp.forEach(L => { for (let a = 0; a + 1 < L.length; a += PAL.N) {
+      const part = L.slice(a, a + PAL.N); if (part.length < 2) break;
+      const geos = part.map((o, i) => { const g1 = o.geometry.clone(); const n = g1.attributes.position.count; g1.setAttribute('pal', new THREE.BufferAttribute(new Uint8Array(n).fill(i), 1)); return g1; });
+      const geo = Sartoria.concatGeo(geos); geos.forEach(g1 => g1.dispose()); const o0 = part[0], mat = palMat(o0.material); part.forEach((o, i) => mat.userData.pal.value[i].copy(o.material.color));
+      const sm = new THREE.SkinnedMesh(geo, mat); sm.userData.vesti = true; sm.userData.tavolozza = part.length; sm.castShadow = o0.castShadow; sm.receiveShadow = o0.receiveShadow; sm.frustumCulled = false;
+      sm.position.copy(o0.position); sm.quaternion.copy(o0.quaternion); sm.scale.copy(o0.scale); o0.parent.add(sm); sm.bind(o0.skeleton, o0.bindMatrix);
+      part.forEach(o => { o.parent.remove(o); o.geometry.dispose(); }); tolti += part.length - 1; } });
+    return tolti;
+  }
   function* dressGen(g, outfit, look, held, seed) {
     proporzioni(g, false); strip(g); bare(g, look);
     // gli abitanti: ogni capo nella sua variante (scollo a V, collo alto, righe, quadri…), sempre la stessa per persona
@@ -1164,6 +1209,7 @@ var Vesti3D = (function () {
     yield;
     try { accessories(g, outfit, held, D); } catch (e) { console.error('[Vesti3D] pezzi', e); }
     if (window.Officina) try { Officina.onDress(g, outfit); } catch (e) { console.error('[Vesti3D] officina', e); }   // [studio]
+    if (seed !== undefined && !(window.PV_STUDIO)) try { tavolozza(g); } catch (e) { console.error('[Vesti3D] tavolozza', e); }   // [leggera] gli abitanti (il giocatore si veste senza seme)
     proporzioni(g, true);
   }
   const npcByLook = new WeakMap(); let npcSt = null;
@@ -1199,5 +1245,5 @@ var Vesti3D = (function () {
     requestAnimationFrame(loop);
   }
   const iv = setInterval(() => { if (hook()) { clearInterval(iv); requestAnimationFrame(loop); } }, 50);
-  return { dress, strip, proporzioni, players, analyze, PARTI, fromLook, EXTRA };
+  return { PAL, tavolozza, dress, strip, proporzioni, players, analyze, PARTI, fromLook, EXTRA };
 })();
