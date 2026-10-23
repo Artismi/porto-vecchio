@@ -3038,7 +3038,8 @@ var World = (function () {
     const inPolyA = (x, y, Q) => { let c = false; for (let a = 0, b = Q.length - 1; a < Q.length; b = a++) if ((Q[a][1] > y) !== (Q[b][1] > y) && x < (Q[b][0] - Q[a][0]) * (y - Q[a][1]) / (Q[b][1] - Q[a][1]) + Q[a][0]) c = !c; return c; };
     if (mv) { const Pm = mv.pts; for (let k = 1; k < Pm.length; k++) { const a = Pm[k - 1], b = Pm[k], L = dist(a[0], a[1], b[0], b[1]), tx = (b[0] - a[0]) / L, ty = (b[1] - a[1]) / L;
       for (let s = 0; s < L; s += 1.7) for (const sd of [-1, 1]) for (const o of [mv.w / 2 + 4.6, mv.w / 2 + 6.4]) {   // fuori dal muro paraonde
-        const j1 = hash2(Math.round((a[0] + tx * s) * 3), Math.round((a[1] + ty * s) * 3), 931 + Math.round(o * 7) + sd), x = a[0] + tx * s - ty * sd * o + (j1 - .5) * .8, y = a[1] + ty * s + tx * sd * o + (j1 - .5) * .6;
+        const j1 = hash2(Math.round((a[0] + tx * s) * 3), Math.round((a[1] + ty * s) * 3), 931 + Math.round(o * 7) + sd); let oo = o, x = 0, y = 0;
+        for (let q = 0; q < 12; q++) { x = a[0] + tx * s - ty * sd * oo + (j1 - .5) * .8; y = a[1] + ty * s + tx * sd * oo + (j1 - .5) * .6; const ii = at(x, y); if (ii < 0 || g[ii] !== T.QUAY) break; oo += .9; }   // [costa] oltre la banchina nuova sotto le case
         const i = at(x, y); if (i < 0 || !(isSea(i) || g[i] === T.ROCK) || (bas && inPolyA(x, y, bas.poly))) continue;   // solo verso il largo, mai dentro il bacino né sulla terra
         A.tetrapodi.push({ x, y, r: j1 * 6.28, t: hash2(i, k, 934) * 6.28, s: 1.05, molo: true }); } } }
     // le passerelle sul golfo delle dune: dalla costiera (dietro il cordone) giù fino alla spiaggia, seguendo la discesa della distanza dal mare
@@ -3060,7 +3061,7 @@ var World = (function () {
             for (let s = -7; s <= 7; s += 1) for (const o of [0, 1.6, 3.2]) { const i = at(q.ex + q.tx * s + q.nx * (o + .4), q.ey + q.ty * s + q.ny * (o + .4)); if (i < 0 || isSea(i) || g[i] === T.BLD) okP = false; }
             if (okP && !A.piazzole.some(p => dist(p.x, p.y, cx, cy) < 90)) { A.piazzole.push({ x: cx, y: cy, ang: Math.atan2(q.ty, q.tx), L: 14, w: 3.4, nx: q.nx, ny: q.ny }); for (let s = -7; s <= 7; s += 1.75) A.muretti.push({ x: cx + q.tx * s + q.nx * 1.9, y: cy + q.ty * s + q.ny * 1.9, nx: q.nx, ny: q.ny, piazzola: true }); } }
           // la scaletta: dove sotto il ciglio c'è sabbia (una cala, la spiaggetta), giù dritta fino alla sabbia
-          for (let c = 2; c < run.length - 2; c++) { const q = run[c]; let sx = null; for (let d = 1; d < 12; d += .5) { const i = at(q.ex + q.nx * d, q.ey + q.ny * d); if (i < 0 || isSea(i)) break; if (g[i] === T.SAND) { sx = d; break; } }
+          for (let c = 2; c < run.length - 2; c++) { const q = run[c]; let sx = null; for (let d = 1; d < 12; d += .5) { const i = at(q.ex + q.nx * d, q.ey + q.ny * d); if (i < 0 || isSea(i)) break; if ((g[i] === T.SAND || g[i] === T.DIRT || g[i] === T.ROCK) && d >= 1.5) { sx = d; break; } }   /* [costa] anche sul terrapieno delle case e sullo scoglio davanti */
             if (sx !== null && sx >= 1.5 && !A.scale.some(s => dist(s.x0, s.y0, q.ex, q.ey) < 60)) A.scale.push({ x0: q.ex + q.nx * .3, y0: q.ey + q.ny * .3, x1: q.ex + q.nx * (sx + .8), y1: q.ey + q.ny * (sx + .8), w: 1.5 }); }
         }
         run.length = 0;
@@ -3074,11 +3075,54 @@ var World = (function () {
       }
       flush();
     });
-    W.SEA.costa2 = A;
+    A.terrapieni = W.SEA.terrapieni || []; W.SEA.costa2 = A;
     W.COSTA2 = { N: COSTA2.N.map(([a, k]) => [a + OX, k]), S: COSTA2.S.map(([a, k]) => [a + OX, k]), nomi: C2N.concat(C2S).filter(q => q[3]).map(([c, w, a, nome]) => { const N = C2N.some(q => q[3] === nome); return { nome, x: c + OX, y: +(N ? NorthY(c) : SouthY(c)).toFixed(1) + OY, lato: N ? 'N' : 'S', capo: a > 0 }; }), strada: C2STRADA.map(([a, b]) => [a + OX, b + OX]) };
     return W;
   }
-  const W = costa2Arredo(expand(generate()));
+  // [costa] I TERRAPIENI: nessuna casa in mezzo alla sabbia. Il committente: «non si sono mai viste case in mezzo alla sabbia». Le case
+  // dei borghi dei pescatori, del Lido e della marina stanno su un terrapieno: attorno a ogni casa che tocca la sabbia, fino a 3 caselle
+  // (6 m), la sabbia diventa terra battuta (fuori città) o acciottolato (in città, dalla stazione in là); verso la spiaggia il muretto
+  // di contenimento in pietra (W.SEA.costa2.terrapieni: i lati fra il terrapieno e la sabbia, li costruisce render.js). La spiaggia comincia
+  // davanti al muretto. Prima di costa2Arredo: le piante della duna e le passerelle vedono già la terra nuova.
+  function terrapieni(W) {
+    const g = W.grid, GWx = W.GW, GHx = W.GH, CITTA_X = 1222 / TS, fatti = new Uint8Array(GWx * GHx), lati = [];
+    W.BUILDINGS.forEach(b => { if (b.use === 'capanno' && /palme/.test(b.id || '')) return;   // i capanni sulle spiagge delle isole restano sulla sabbia (sono capanni)
+      let tocca = false; for (let ty = b.y - 2; ty <= b.y + b.h + 2 && !tocca; ty++) for (let tx = b.x - 2; tx <= b.x + b.w + 2; tx++) { const i = ty * GWx + tx; if (tx >= 0 && ty >= 0 && tx < GWx && ty < GHx && g[i] === T.SAND) { tocca = true; break; } }
+      if (!tocca) return; const R = 3;
+      for (let ty = b.y - R; ty <= b.y + b.h + R; ty++) for (let tx = b.x - R; tx <= b.x + b.w + R; tx++) { if (tx < 0 || ty < 0 || tx >= GWx || ty >= GHx) continue; const i = ty * GWx + tx; if (g[i] !== T.SAND) continue;
+        const dx = Math.max(b.x - tx, 0, tx - (b.x + b.w)), dy = Math.max(b.y - ty, 0, ty - (b.y + b.h)); if (dx * dx + dy * dy > R * R + 1) continue;   // gli angoli smussati
+        let mare = false; for (const [a, c] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const j = (ty + c) * GWx + tx + a; if (g[j] === T.WATER) mare = true; }
+        if (mare) { if (dx <= 1 && dy <= 1) g[i] = T.ROCK; continue; }   // sul filo dell'acqua: accanto alla casa lo scoglio (la casa sul mare sta sulla roccia), più in là resta la battigia
+        g[i] = tx >= CITTA_X ? T.COB : T.DIRT; fatti[i] = 1; } });
+    // [costa] le case sul mare: nessuna casa col mare al piede su più lati (la segnalazione dell'inquadratura: case mezze in acqua sul
+    // Molo Vecchio, sulla spianata, alla marina). Sotto ogni casa che ha il mare accanto la banchina si allarga di una casella (2 m,
+    // QUAY: il muro di blocchi lo fa render.js dai lati della banchina), alla quota della banchina vicina; mai a meno di 3,5 m da un
+    // ormeggio o da un pontile (le barche restano al loro posto)
+    { const MOOR = (W.SEA.moorings || []).map(m => [m.x, m.y]).concat((W.SEA.structs || []).filter(st => st.type === 'pontile').flatMap(st => st.pts)), VWx = W.VW, isSeaT = i => g[i] === T.WATER && W.zone[i] === Z.MARE; let nq = 0;
+      W.BUILDINGS.forEach(b => { if (b.military || b.use === 'capanno') return; let hq = -9;
+        for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) hq = Math.max(hq, W.elev[ty * GWx + tx]);
+        for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) { if (tx < 1 || ty < 1 || tx >= GWx - 1 || ty >= GHx - 1) continue; const i = ty * GWx + tx; if (!isSeaT(i)) continue;
+          const x = (tx + .5) * TS, y = (ty + .5) * TS; if (MOOR.some(([mx, my]) => Math.hypot(mx - x, my - y) < 3.5)) continue;
+          g[i] = T.QUAY; W.zone[i] = Z.CITTA; W.elev[i] = Math.max(W.elev[i], hq > -9 ? Math.min(hq, 1.2) : .8); nq++;
+          for (const [a, c] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const k = (ty + c) * VWx + tx + a; W.vh[k] = Math.max(W.vh[k], W.elev[i]); } } });
+      W.SEA.calate = nq; }
+    // [costa] le case del Molo Vecchio seguono la curva del molo: ognuna gira (al più 32°, come le case delle vie storte, b.rot) secondo il
+    // tratto di molo più vicino; se il rettangolo girato urta una vicina l'angolo si dimezza, fino a tre volte, poi resta dritta
+    { const mv = (W.SEA.structs || []).find(st => st.id === 'molo_vecchio'); let nr = 0;
+      if (mv) { const P = mv.pts, rect = (b, a) => { const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, hw = b.w * TS / 2 - .05, hh = b.h * TS / 2 - .05, c = Math.cos(a), sn = Math.sin(a); return [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].map(([x, y]) => [cx + x * c - y * sn, cy + x * sn + y * c]); };
+        const sat = (A, B) => { for (const Q of [A, B]) for (let i = 0; i < 4; i++) { const p0 = Q[i], p1 = Q[(i + 1) % 4], nx = p1[1] - p0[1], ny = p0[0] - p1[0]; let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9; A.forEach(p => { const d = p[0] * nx + p[1] * ny; a0 = Math.min(a0, d); a1 = Math.max(a1, d); }); B.forEach(p => { const d = p[0] * nx + p[1] * ny; b0 = Math.min(b0, d); b1 = Math.max(b1, d); }); if (a1 <= b0 || b1 <= a0) return false; } return true; };
+        const near = b => { const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS; let best = null, bd = 1e9; for (let k = 1; k < P.length; k++) { const [ax, ay] = P[k - 1], [bx, by] = P[k], ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey, t = Math.max(0, Math.min(1, ((cx - ax) * ex + (cy - ay) * ey) / L2)), d = Math.hypot(cx - ax - ex * t, cy - ay - ey * t); if (d < bd) { bd = d; best = Math.atan2(ey, ex); } } return [bd, best]; };
+        const cand = W.BUILDINGS.filter(b => !b.military && !b.rot && near(b)[0] < 12);
+        cand.forEach(b => { let a = near(b)[1]; a = ((a + Math.PI / 4) % (Math.PI / 2) + Math.PI / 2) % (Math.PI / 2) - Math.PI / 4; if (Math.abs(a) < .06) return; a = Math.max(-.56, Math.min(.56, a));
+          const vic = W.BUILDINGS.filter(o => o !== b && Math.abs(o.x - b.x) < 10 && Math.abs(o.y - b.y) < 10);
+          for (let t = 0; t < 4; t++, a /= 2) { const R0 = rect(b, a); if (!vic.some(o => sat(R0, rect(o, o.rot || 0)))) { b.rot = +a.toFixed(3); delete b.norot; nr++; break; } } }); }
+      W.SEA.caseGirate = nr; }
+    for (let ty = 1; ty < GHx - 1; ty++) for (let tx = 1; tx < GWx - 1; tx++) { const i = ty * GWx + tx; if (!fatti[i]) continue;
+      for (const [a, c, ex, ey, ux, uy] of [[1, 0, 1, 0, 0, 1], [-1, 0, 0, 0, 0, 1], [0, 1, 0, 1, 1, 0], [0, -1, 0, 0, 1, 0]]) { if (g[(ty + c) * GWx + tx + a] !== T.SAND) continue;
+        lati.push({ x: (tx + ex) * TS, y: (ty + ey) * TS, ux, uy, L: TS, nx: a, ny: c, citta: tx >= CITTA_X }); } }   // il lato: da (x, y) lungo (ux, uy) per L metri; (nx, ny) verso la sabbia
+    W.SEA.terrapieni = lati; W.SEA.terrapieniM = fatti; return W;
+  }
+  const W = costa2Arredo(terrapieni(expand(generate())));
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
