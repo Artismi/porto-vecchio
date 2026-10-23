@@ -44,7 +44,7 @@ ok(P.ofType('fuoco').every(p => P.openAt(p, MIN(0, 21)) && P.openAt(p, MIN(0, 1)
 ok(P.ofType('dehors').every(p => !P.openAt(p, MIN(0, 5))), 'i dehors chiusi alle 5');
 // la ricerca attorno a un punto
 if (CN) { const q = P.near(1428, 324, 30, 'dehors'); ok(q.length > 0, `dehors attorno alla piazzetta col bar: ${q.length} (il più vicino a ${q[0] ? q[0].__d.toFixed(1) : '-'} m)`);
-  const m = P.near(1275, 343, 20, 'mercato'); ok(m.length === 8, `banchi attorno al Mercato: ${m.length}`);
+  const MK = (World.sets || []).find(s => s.k === 'mercato') || { x: 1275, y: 343 }, m = P.near(MK.x, MK.y, 20, 'mercato'); ok(m.length === 8, `banchi al Mercato (${Math.round(MK.x)},${Math.round(MK.y)}): ${m.length}`);   // [pianta] il mercato è sceso sulla spianata
   const c = P.near(1395, 390, 40, 'calata'); ok(c.length >= 3, `posti sulla calata: ${c.length}`); }
 // un esempio per tipo
 Object.keys(cnt).forEach(k => { const p = P.ofType(k)[0]; console.log(`  ${k.padEnd(24)} ${p.x.toFixed(0)},${p.y.toFixed(0)} dir ${p.dir.toFixed(2)} cap ${p.cap} ore ${JSON.stringify(p.h)} zona ${p.zona}${p.nome ? ' «' + p.nome + '»' : ''}${p.uso ? ' (' + p.uso + ')' : ''}`); });

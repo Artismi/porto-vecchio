@@ -327,3 +327,41 @@ fogli in `_immagini/scorci/` (`strumenti/fogli_scorci.py`; la città senza scorc
   `comari`, `rincorsa`; i mezzi in sosta sono mezzi veri (la 500, la 126, l'Ape, il Ciao).
 - **Il limite della camera**: la Piazzetta del Pozzo è un cortile chiuso; dalla camera fissa si vede solo la sagoma, lo scorcio si legge con la
   camera che si adatta (si alza nella stretta).
+
+## 12. La strada che si legge: strisce, cartelli, indicazioni, insegne ([segnaletica], 23 ottobre)
+
+«Attenzione analoga per le strade: segnaletica orizzontale, cartelli, indicazioni, insegne chiare per tutte le attività, evidenti.»
+Il filone sta in `segnaletica.js` (il piano è un dato: `W.insegne`, `W.segnaletica`; la grafica sta nello stesso file, agganciata a
+`ordine_arte.js` come `vievive_arte.js`) e si prova con `node src/test_segnaletica.js`. Le regole:
+
+- **Si guida a destra** (le corsie di `G.LANES` e di `vievive.js`; il volante di `veicoli3d.js` è a sinistra): la linea d'arresto, lo STOP
+  e le frecce stanno sulla corsia di destra di chi arriva; lo STOP è scritto lungo la corsia, alto nel verso di marcia.
+- **Le strisce seguono il profilo della via** (`Vievive.segnaletica`): la mezzeria solo dove ci sono due corsie (Vittoria, Corso, Via della
+  Stazione, Via del Porto), tratteggiata 3/3 m e continua nei 15 m prima dell'incrocio; il margine sul lato senza sosta. La Rua e la Via
+  della Marina (una corsia a senso alternato, Ape e motorini) non hanno mezzeria: hanno i triangoli dove sboccano sulle vie. Le costiere,
+  dove arrivano in città, ripetono la regola della tela del suolo; dove se ne staccano la Via del Porto e la Via della Stazione, sulla
+  corsia di chi arriva la freccia e la scritta PORTO o STAZIONE. Niente strisce nei vicoli.
+- **Le zebre** stanno dove le dipinge già il suolo (`crossings35`, gli incroci veri), più una davanti alla scuola, una per piazza, una per
+  fermata, sempre fuori dall'incrocio e fuori dal riquadro giallo BUS (12 m al cordolo). Ogni zebra ha il suo cartello di attraversamento.
+- **Consumate, non sporche**: la vernice ha i buchi (la tela) e ogni pezzo la sua opacità (55-90%); decalcomanie fuse con polygonOffset,
+  3 cm sopra il suolo e divise in pezzi di 1,4 m che seguono la quota: niente sfarfallio, niente pezzi sospesi.
+- **Cartelli dove servono, non a ogni angolo** (≤ 40 in città): STOP e dare precedenza dove si cede, attraversamento alle zebre, AREA
+  PEDONALE agli ingressi del borgo (al più sei, a bandiera dal muro: nei vicoli il marciapiede non c'è; schiena contro schiena col dare
+  precedenza di chi esce), divieto di sosta ai capi della Vittoria, P dove ci sono gli stalli. Il palo zincato sta a 0,45 m dal cordolo e
+  dietro restano ≥ 1 m; mai a meno di 1 m da porte, vetrine, scale, da un altro palo, da lampioni, fermate, edicole, plance, bidoni,
+  cassonetti e tavolini. Bordo basso del cartello a 2,2 m.
+- **Indicazioni**: frecce bianche (la città) e marroni (i luoghi da vedere: Rocca, San Rocco, Lido) agli incroci dove si sceglie, uno ogni
+  ~40 m, al più quattro frecce e due per direzione; la meta si sceglie sul cammino vero (campo di distanza sulla griglia percorribile), non
+  a vista; il palo all'angolo lontano dalla camera (nord-ovest), che si vede attraverso l'incrocio (quello vicino lo nasconde la sua casa). Le targhe delle vie e i civici restano quelli del piano dell'arredo (`scena.js`).
+- **Insegne: una voce per attività e per luogo-missione** (`W.insegne`: id, posto, testo, tipo, posizione, verso, fonte). La bottega sotto
+  casa ha il nome sulla fascia (render.js) e qui prende la **bandiera** perpendicolare col segno del mestiere (la T dei tabacchi, la croce
+  verde della farmacia, la tazza del bar, il pesce, il fiasco dell'osteria…): si legge in prospettiva di strada, anche sulle facce nord e
+  ovest che la camera non vede. Sporgenza ≤ 1,05 m, fra 2,8 e 3,46 m (sopra le tende, sotto i balconi), mai sull'asse di una porta, a
+  ≥ 2,3 m da un'altra bandiera, lontana da mensole, contatori e lampioni a braccio della rete, da targhe e civici. Sotto i portici della
+  Vittoria l'insegna sta nella lunetta dell'arco (sotto la volta la camera non vede). I locali con l'insegna grande accesa di render.js
+  restano come sono (`fonte: 'facciata'`); quelli che firma uno scorcio (`W.scorci`) si saltano (`fonte: 'scorci'`). I luoghi senza
+  bottega hanno la loro: il pannello del Mercato, di San Rocco, della Rocca e del posto di blocco, la tavola delle baracche, la bandiera
+  del Forno, la foglia dipinta del covo (piccola: per chi lo sa). Di notte si accendono bar, tabacchi, farmacia, osterie, forno, cinema.
+  Contrasto fra fondo e segno ≥ 3:1, parola ≤ 12 lettere: il segno si riconosce prima della parola.
+- **Il bilancio**: un atlante (2048²), quattro materiali (cartelli, cartelli accesi, pali a colori nei vertici, strisce), fusi in riquadri
+  di 96 m: al più ~30 mesh per tutta la città, e si disegnano solo quelle in campo.
