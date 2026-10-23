@@ -8618,7 +8618,7 @@ var Render = (function () {
   const cn1 = () => !!(M.world && M.world.sets);
   // [pavimenti] i motivi dipinti diventano tinta: il disegno delle pietre lo fa lo shader del suolo (pavimenti.js)
   const PAVR1 = typeof location !== 'undefined' && /[?&]pavrush\b/.test(location.search);
-  const PAV1 = (c, ppm, kind) => window.Pavimenti && Pavimenti.on && cn1() ? Pavimenti.piatto(c, ppm, kind === 'lastre' ? .25 : .6) : c;
+  const PAV1 = (c, ppm, kind) => window.Pavimenti && Pavimenti.on && cn1() ? Pavimenti.piatto(c, ppm, kind === 'lastre' ? .25 : .6, kind) : c;
   const SG1 = { pat: {}, pc: null };
   const ERAC1 = { E0: 1, E2: 2, E3: 3, E4: 4, E5: 5, E6: 6, E7: 7 };   // 9: la spianata della Rocca
   const SPIAN1 = 1463;   // il filo delle case demolite per la spianata (CITY.spian0 + OX nel generatore)
