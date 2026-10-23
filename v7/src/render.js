@@ -8246,7 +8246,8 @@ var Render = (function () {
     const grp = new THREE.Group(); grp.name = 'verde'; const tapG = new THREE.Group(); tapG.name = 'tap'; grp.add(tapG); grp.userData.tap = tapG;
     if (!VD.on) return grp;
     const Gm = vdGeoms(), T = G.T, W0 = M.world, F = W0 && W0.feat, B = new Map(), low = LOWQ.on, E = (W0 && W0.ECO) || {};
-    const put = (sp, r, x, z, o) => { const vs = Gm[sp]; if (!vs) return; const key = sp + '|' + Math.floor(r() * vs.length); let a = B.get(key); if (!a) B.set(key, a = []); const sr = VDSC[sp] || [1, 1];
+    const VR = typeof Vegetazione !== 'undefined' && Vegetazione.attivo && W0 && W0.vegetazione ? Vegetazione.respiro : null;   // [vegetazione] il respiro: il tappeto si dirada dove il piano lo vuole leggero
+    const put = (sp, r, x, z, o) => { const vs = Gm[sp]; if (!vs) return; if (VR) { const k = VR(W0, x, z); if (k < 1 && r() > k * (VDSHADOW[sp] ? .85 : 1)) return; } const key = sp + '|' + Math.floor(r() * vs.length); let a = B.get(key); if (!a) B.set(key, a = []); const sr = VDSC[sp] || [1, 1];
       a.push(Object.assign({ x, z, s: sr[0] + r() * (sr[1] - sr[0]), ry: r() * 6.2832, rx: (r() - .5) * .12, rz: (r() - .5) * .12, sy: 1, col: null }, o || {})); };
     const tone = (hex, k, X, Y) => { const c = new THREE.Color(hex), w = vdWet(X, Y), l = k * (.84 + (vnz(X / 22 + 3, Y / 22 + 8) + .5) * .3 + vnz(X / 7, Y / 7) * .06); return '#' + c.setRGB(Math.min(1, c.r * l * (1 - w * .05)), Math.min(1, c.g * l * (1 + w * .06)), Math.min(1, c.b * l)).getHexString(); };
     const natural = v => v === T.GRASS || v === T.SHRUB || v === T.ROCK || v === T.GRAVEL || v === T.FIELD || v === T.TREE || v === T.SAND || v === T.DIRT || v === T.VIA;
