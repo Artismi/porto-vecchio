@@ -55324,8 +55324,8 @@ var Pavimenti = (function () {
       }
       // il disegno da lontano si fonde nel suo valore medio (niente moiré)
       tone = mix(mean, tone / mean, lod) ;
-      col *= tone * (1. - jt * .38 * lod);
-      vec2 tw = (ux * tq.x + uy * tq.y) * .42 * lod;
+      col *= tone * (1. - jt * .34 * lod) * (1. - bv * bv * .16 * lod);   // il bordo a cuscino: la pietra si arrotonda verso il giunto, uguale da ogni lato
+      vec2 tw = (ux * tq.x + uy * tq.y) * .22 * lod;   // la luce radente sullo smusso, leggera
       // la scala del mondo: due rumori lenti sopra la tinta della tela (niente ripetizione a 16 m)
       col *= .95 + pvN(p * .045) * .08 + (pvN(p * .21) - .5) * .06;
       // sporco e umido nei punti giusti
