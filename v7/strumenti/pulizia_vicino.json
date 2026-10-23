@@ -1,0 +1,9 @@
+{
+  "nota": "[pulizia] Tre inquadrature da vicino (zoom 0,3) per i modelli rifatti: gradini, pluviali, vasi, biciclette, casse, sedie, serrande, paralumi. Prima: PV_PAGINA con la build del ramo d'anteprima; dopo: questa.",
+  "pulita": true,
+  "scorci": [
+    { "nome": "v1_marina", "titolo": "Da vicino: la marina", "x": 1398, "y": 368, "zoom": 0.3, "ora": 630, "meteo": "sereno" },
+    { "nome": "v2_borgo", "titolo": "Da vicino: il borgo", "x": 1350, "y": 304, "zoom": 0.3, "ora": 630, "meteo": "sereno" },
+    { "nome": "v3_ottocento", "titolo": "Da vicino: l'Ottocento", "x": 1306, "y": 352, "zoom": 0.3, "ora": 630, "meteo": "sereno" }
+  ]
+}
