@@ -55388,6 +55388,563 @@ var Visuale = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = Visuale;
 </script>   <!-- [visuale3] -->
+<script data-m="inquadratura">/* Porto Vecchio — L'INQUADRATURA IN STRADA (le regole, senza grafica: le usano render.js e strumenti/inquadratura.js, le prova
+   test_inquadratura.js). [inquadratura] Il committente: «i tetti sono belli ma in certe zone si vedono solo tetti a schermo, e i palazzi
+   coprono troppo le vie». Quando il giocatore è in strada la via deve leggersi; quando è sui tetti si vedono i tetti (qui non si tocca niente).
+   Tre leve, che si provano una alla volta o insieme (VARIANTI, scelte con ?inquadratura=; ?vecchiacamera torna alla camera di [visuale5]):
+   - L'ASSE: nelle vie strette la visuale si gira lungo l'asse della via (letto dalla rete stradale, W.roads), nel verso più vicino a
+     dietro il personaggio: si guarda dentro il vicolo invece che sopra le case di un lato. Il giro è lento, con l'isteresi, e non scatta
+     per lo sbocco di un vicolo di lato; nelle piazze e nelle vie larghe la visuale resta dov'è (non torna all'orientamento dell'isola).
+   - LA PENDENZA: quella della camera che si adatta (Visuale.camPasso), che con l'asse chiede meno (lungo la via il muro di lato non copre).
+   - IL TAGLIO MIRATO: solo le case che coprono davvero il suolo attorno al personaggio (un disco di punti, raggi verso la camera) scendono,
+     intere, a un piano: la quota più alta che libera la via, presa sulla linea di un solaio (un metro, poi 3,4 m, poi a ogni piano), con la
+     copertina e il filo chiaro del muretto. Le altre case restano intere, coi loro tetti. */
+var Inquadratura = (function () {
+  'use strict';
+  const MANO_TAU = .22;   // s: il ricentro (Visuale.MANO.tau)
+  const cl = (v, a, b) => Math.max(a, Math.min(b, v)), ang = a => Math.atan2(Math.sin(a), Math.cos(a));
+  // le varianti. camera: la pendenza ('adatta' = Visuale.camPasso con CAMERA4; 'verticale' = più dall'alto nei vicoli; 'fissa' = quella di
+  // sempre); tetti: il tetto della casa che copre sbiadisce (Visuale.tetti); asse: la visuale lungo la via; taglio: il taglio mirato;
+  // dietro: sul computer la visuale automatica sta dietro alla marcia (come sul telefono) invece che sull'orientamento dell'isola
+  const VARIANTI = {
+    oggi: { camera: 'adatta', tetti: true },
+    asse: { camera: 'adatta', tetti: true, asse: true },
+    verticale: { camera: 'verticale', tetti: true },
+    taglio: { camera: 'adatta', taglio: true },
+    asse_taglio: { camera: 'adatta', asse: true, taglio: true },
+    // [inquadratura] la scelta del committente: lungo la via e, solo nella stretta (la camera che si adatta è salita), le case davanti che
+    // coprono la via coi muri scendono tutte alla stessa quota bassa (il muretto, un metro); se copre solo il tetto, quello sbiadisce
+    via_muretto: { camera: 'adatta', asse: true, tetti: true, taglio: true, uniforme: true, soloStretta: true, asseTel: false },   // sul telefono la visuale segue già la marcia: lì l'asse peggiorava (misura sulla pianta nuova)
+  };
+  const DIFETTO = 'via_muretto';   // [inquadratura] il taglio a quote diverse confondeva (case chiuse da lastre piatte a ogni altezza): ora tutte alla stessa quota   // la variante del gioco (senza ?inquadratura=)
+  // le manopole (window.__INQUADRATURA per le prove dal vivo)
+  const K = {
+    asseLargo: 6.5,       // m: le vie fino a tanto si guardano lungo l'asse (vicoli 2,5-3, Rua e Marina 5, Vittoria 7 solo dove si stringe)
+    asseVicino: 1.6,      // m oltre la mezza larghezza: fin dove il personaggio sta ancora sulla via
+    asseMax: 1.75,        // rad (100°): più di tanto la visuale non gira per allinearsi (nel verso più vicino a dietro il personaggio)
+    asseBanda: .3,        // rad: il bersaglio cambia solo oltre questo scarto (le curve dolci della Rua non la fanno girare a ogni passo)
+    tAsse: .45,           // s sulla stessa via (o fuori) prima che il bersaglio cambi: lo sbocco di un vicolo di lato non la fa girare
+    tauAsse: .55,         // s: lo smorzamento del giro (95% in 1,6 s)
+    verticale: { stretta: 1.16, max: 1.32, larga: 7, strettaL: 4.2, entra: .5 },   // la variante 'verticale': sopra CAMERA4
+    // il taglio mirato
+    raggio: 5,            // m: il disco di suolo attorno al personaggio che deve vedersi
+    passoD: 1.25,         // m: il passo dei punti del disco
+    margine: .25,         // m sotto il primo raggio che entra nella casa
+    muretto: 1,           // m sopra la base: la quota più bassa (come il muretto)
+    muro: .32,            // m: la casa tagliata è cava, della faccia tagliata resta la sezione dei muri larga tanto (render.js capCavo5)
+    primo: 3.4,           // m sopra la base: il primo solaio, poi ogni `piano`
+    piano: 2.4,
+    davanti: -1,          // m: la casa sta sul lato camera se il suo centro è davanti al personaggio di tanto (verso la camera)
+    vicine: 28,           // m: fin dove si cercano le case
+    tieni: .7, alza: .6, salto: .75, apri: .35, chiudi: .55,   // l'isteresi e lo scivolare del piano (Visuale.passo)
+  };
+  // ---------------- LA RETE: la via e il suo asse in un punto ----------------
+  function rete(W) {
+    const C = new Map(), cella = (x, z) => Math.floor(x / 8) * 8192 + Math.floor(z / 8);
+    (W.roads || []).forEach(r => { if (!r.pts || r.pts.length < 2) return; const w = r.w || 3;
+      for (let k = 1; k < r.pts.length; k++) { const a = r.pts[k - 1], b = r.pts[k]; if (Math.hypot(b[0] - a[0], b[1] - a[1]) < .05) continue; const sg = { ax: a[0], az: a[1], bx: b[0], bz: b[1], w, id: r.id, r: w / 2 + K.asseVicino };
+        for (let x = Math.min(a[0], b[0]) - sg.r; x <= Math.max(a[0], b[0]) + sg.r + 8; x += 8) for (let z = Math.min(a[1], b[1]) - sg.r; z <= Math.max(a[1], b[1]) + sg.r + 8; z += 8) { const kk = cella(x, z); const L = C.get(kk) || C.set(kk, []).get(kk); if (!L.includes(sg)) L.push(sg); } } });
+    // la via che contiene il punto, col suo asse in pianta: quella su cui si è già (pref: chi passa davanti allo sbocco di un vicolo resta
+    // sulla sua via), se no la più stretta (entrando da una via in un vicolo è lì che serve guardare lungo)
+    function asse(x, z, pref) { let best = null, mia = null;
+      for (const s of C.get(cella(x, z)) || []) { const dx = s.bx - s.ax, dz = s.bz - s.az, l2 = dx * dx + dz * dz, t = cl(((x - s.ax) * dx + (z - s.az) * dz) / l2, 0, 1), d = Math.hypot(s.ax + dx * t - x, s.az + dz * t - z);
+        if (d > s.r) continue; const q = { a: Math.atan2(dz, dx), w: s.w, id: s.id, d };
+        if (pref && s.id === pref && (!mia || d < mia.d)) mia = q;
+        if (!best || s.w < best.w - .1 || (Math.abs(s.w - best.w) <= .1 && d < best.d)) best = q; }
+      return mia || best; }
+    return { asse };
+  }
+  // la visuale (yaw di render.js: la camera sta a (sin yaw, cos yaw) dal personaggio) che guarda lungo la direzione a in pianta
+  const yawDa = a => Math.atan2(-Math.cos(a), -Math.sin(a));
+  // ---------------- LA CAMERA: yaw, pendenza, zoom ----------------
+  // S dura fra i fotogrammi; q: x, z, fy (i piedi), dir (la marcia in pianta, atan2(dz, dx); undefined da fermo), vel (m/s), tel (la visuale
+  // segue la marcia), yaw0 (la visuale automatica di adesso: l'isola sul computer, la marcia sul telefono), base (la pendenza di sempre),
+  // rete, mappa (Visuale.mappa), V (Visuale), v (la variante), ok (in strada: non sul tetto, non al chiuso, non alla guida).
+  // Ritorna { dy: lo scarto di yaw da sommare a yaw0, yaw, pitch, zoom, asse }
+  function camera(S, q, dt) {
+    const v = q.v || VARIANTI.oggi, V = q.V;
+    if (S.dy === undefined) Object.assign(S, { dy: 0, dyT: 0, t: 0, via: null, cam4: {} });
+    // il ricentro sul computer (q.ricentro: Visuale.mano ha appena deciso di ricentrare): non l'orientamento dell'isola ma dietro al
+    // personaggio. render.js passa qui la parte girata a mano (q.assorbi) e la azzera: il giro riparte da dove si guarda, col τ del ricentro
+    if (q.assorbi) { S.dy = ang(S.dy + q.assorbi); S.dyT = S.dy; }
+    if (q.ricentro && q.dir !== undefined) { S.dyT = ang(yawDa(q.dir) - q.yaw0); S.tau = MANO_TAU; }
+    // l'asse
+    let dyT = S.dyT;
+    if (v.asse && !(q.tel && v.asseTel === false) && q.ok && !q.tieni) { const a = q.rete.asse(q.x, q.z, S.via), via = a && a.w <= K.asseLargo ? a.id : null;
+      if (via !== S.via) { S.t += dt; if (S.t >= K.tAsse) { S.via = via; S.t = 0; } } else S.t = 0;
+      if (S.via && a && a.id === S.via) {   // sulla via: i due versi dell'asse, quello più vicino a dietro la marcia (o alla visuale di adesso)
+        const rif = q.dir !== undefined && q.vel > .6 ? yawDa(q.dir) : q.yaw0 + S.dy; let best = null;
+        for (const y of [yawDa(a.a), yawDa(a.a + Math.PI)]) { const d = Math.abs(ang(y - rif)); if (!best || d < best.d) best = { y, d }; }
+        const t = ang(best.y - q.yaw0); if (Math.abs(ang(best.y - rif)) <= K.asseMax && Math.abs(ang(t - S.dyT)) > K.asseBanda) { dyT = t; S.tau = 0; } } }   // nelle piazze e nelle vie larghe la visuale resta dov'è
+    else if (!v.asse && !q.ok) S.via = null;
+    if (!q.ok || q.tieni) S.via = q.ok ? S.via : null;
+    S.dyT = dyT; const ka = 1 - Math.exp(-dt / (S.tau || K.tauAsse)); S.dy += ang(S.dyT - S.dy) * ka; S.dy = ang(S.dy);
+    if (S.tau && Math.abs(ang(S.dyT - S.dy)) < 1e-3) S.tau = 0;
+    const yaw = q.yaw0 + S.dy;
+    // la pendenza
+    let pitch = q.base, zoom = 1;
+    if (v.camera !== 'fissa') { const KC = Object.assign({}, V.CAMERA4, { base: q.base }, v.camera === 'verticale' ? K.verticale : {});
+      const m = q.ok ? V.misura(q.mappa, q.x, q.z, q.fy, Math.sin(yaw), Math.cos(yaw), KC) : null; V.camPasso(S.cam4, m, dt, KC, yaw); pitch = S.cam4.p; zoom = S.cam4.z; }
+    return { dy: S.dy, yaw, pitch, zoom, asse: S.via };
+  }
+  // ---------------- IL TAGLIO MIRATO ----------------
+  // le case da abbassare e la loro quota: Map(casa -> { y, top }). case_: i record con box3 ({ min, max }) e geo.y0 (la base), come
+  // dyn.buildings; cam: la posizione della camera. Solo le case sul lato camera che coprono un punto del disco di suolo attorno al
+  // personaggio (o il suo corpo); la quota è la linea di solaio più alta sotto il primo raggio che vi entra
+  // uniforme: tutte al muretto, e solo le case che coprono coi muri (sotto la gronda)
+  function tagli(px, pz, fy, cam, case_, V, on, out, uniforme) {
+    out = out || new Map(); out.clear(); if (!on) return out;
+    const P = [], R = K.raggio, st = K.passoD;
+    for (let a = -R; a <= R + 1e-6; a += st) for (let b = -R; b <= R + 1e-6; b += st) if (a * a + b * b <= R * R) P.push({ x: px + a, y: fy + .1, z: pz + b });
+    P.push({ x: px, y: fy + .9, z: pz }, { x: px, y: fy + 1.7, z: pz });
+    const dx = cam.x - px, dz = cam.z - pz, l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
+    const D = P.map(p => { const ex = cam.x - p.x, ey = cam.y - p.y, ez = cam.z - p.z, ll = Math.hypot(ex, ey, ez) || 1; return { x: ex / ll, y: ey / ll, z: ez / ll }; });
+    const o0 = { x: px, y: fy + .1, z: pz }, l0 = Math.hypot(cam.x - px, cam.y - o0.y, cam.z - pz) || 1, d0 = { x: (cam.x - px) / l0, y: (cam.y - o0.y) / l0, z: (cam.z - pz) / l0 }, E = R + 2, bb = { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } };
+    for (const B of case_) { const b3 = B.box3; if (!b3 || b3.max.y < fy + 1.5) continue;
+      const cx = (b3.min.x + b3.max.x) / 2 - px, cz = (b3.min.z + b3.max.z) / 2 - pz; if (cx * cx + cz * cz > K.vicine * K.vicine) continue;
+      // lo scarto veloce: il raggio dal centro del disco verso la camera manca la casa allargata del raggio del disco (più lo scarto delle direzioni)
+      bb.min.x = b3.min.x - E; bb.min.y = b3.min.y - E; bb.min.z = b3.min.z - E; bb.max.x = b3.max.x + E; bb.max.y = b3.max.y + E; bb.max.z = b3.max.z + E; if (V.entra(o0, d0, bb) === null) continue;
+      if (cx * ux + cz * uz < K.davanti) continue;   // dietro il personaggio: non copre
+      if (px > b3.min.x && px < b3.max.x && pz > b3.min.z && pz < b3.max.z) continue;   // ci sta sotto (androne, sottopasso)
+      let need = Infinity; for (let i = 0; i < P.length; i++) { const y = V.entra(P[i], D[i], b3); if (y !== null && y < need) need = y; }
+      if (need === Infinity) continue;
+      const base = B.geo && B.geo.y0 !== undefined ? B.geo.y0 : b3.min.y, gr = B.gr !== undefined ? B.gr : B.b && B.b.__top !== undefined ? B.b.__top : b3.max.y - 2.5;
+      const lim = need - K.margine; let y = base + K.muretto;
+      if (uniforme) { if (lim < gr) out.set(B, { y, top: b3.max.y }); continue; }
+      for (let h = base + K.primo; h <= Math.min(lim, gr); h += K.piano) y = h;
+      if (lim >= gr) y = gr;   // basta togliere il tetto: la casa resta coi suoi muri fino alla gronda
+      out.set(B, { y, top: b3.max.y }); }
+    return out;
+  }
+  // un fotogramma della variante: la camera (sopra) e, se la variante taglia o sbiadisce, le case. Per gli strumenti (render.js fa i due
+  // passi a parte, con la camera vera). q come camera() più dist (la distanza della camera a zoom 1), vicine(R) (le case attorno).
+  // Ritorna anche tagli: Map(casa -> quota disegnata) delle case abbassate o col tetto via (sbiadito oltre metà)
+  function passo(S, q, dt) {
+    const v = q.v || (q.K && typeof q.K === 'object' ? q.K : VARIANTI.oggi), V = q.V; q.v = v; if (q.ok === undefined) q.ok = true;
+    const y0 = q.tel && q.dir !== undefined ? yawDa(q.dir) : q.yaw0;
+    S.y0 = S.y0 === undefined ? y0 : S.y0 + ang(y0 - S.y0) * (1 - Math.exp(-dt * 3.2));   // sul telefono la visuale segue la marcia (render.js [camera3])
+    const c = camera(S, Object.assign({}, q, { yaw0: S.y0 }), dt), d = (q.dist || 59) * c.zoom, cp = Math.cos(c.pitch);
+    const cam = { x: q.x + Math.sin(c.yaw) * cp * d, y: q.fy + Math.sin(c.pitch) * d, z: q.z + Math.cos(c.yaw) * cp * d };
+    const out = new Map(), vic = q.vicine ? q.vicine(32) : [];
+    if (v.tetti) { S.tetti = S.tetti || new Map(); const vu = V.tetti(q.x, q.z, q.fy, cam, vic, V.TETTO4, !q.ok); V.passo(S.tetti, vu, dt, V.TETTO4);
+      S.tetti.forEach((s, B) => { if (V.sbiadito(s) > .5) out.set(B, B.gr !== undefined ? B.gr : B.box3.max.y - 2.5); }); }
+    if (v.taglio) { S.tagli = S.tagli || new Map(); const vu = tagli(q.x, q.z, q.fy, cam, vic, V, q.ok && (!v.soloStretta || !!(S.cam4 && S.cam4.on)), null, v.uniforme); V.passo(S.tagli, vu, dt, K);
+      S.tagli.forEach((s, B) => { const y = V.quota(s); if (s.a > .5) out.set(B, Math.min(out.has(B) ? out.get(B) : Infinity, y)); }); }
+    return { yaw: c.yaw, pitch: c.pitch, zoom: c.zoom, tagli: out, cam, largo: c.asse };
+  }
+  const api = { VARIANTI, DIFETTO, K, rete, yawDa, camera, tagli, passo };
+  if (typeof window !== 'undefined') window.__INQUADRATURA = K;
+  return api;
+})();
+if (typeof module !== 'undefined') module.exports = Inquadratura;
+</script>   <!-- [inquadratura] la via in strada -->
+<script data-m="pavimenti">/* Porto Vecchio — [pavimenti] Le superfici a terra della città nuova.
+   Prima: il suolo era una tela a 8 px per metro (un texel = 12,5 cm), coi motivi che si ripetevano ogni 16 m; da vicino sfocato e a
+   scalini, i giunti dei basoli larghi come un dito. Qui la tela resta per il COLORE (la tinta di fondo, le macchie larghe, i segni
+   dipinti: tombini, gesso, olio), ma i suoi motivi si sfumano (piatto) e il disegno delle pietre lo fa lo shader del suolo, al pixel
+   vero e a scala mondo:
+   1. una MAPPA per blocco (64 m), a mezzo metro: che materiale c'è (della via e del suolo sotto), e per le vie le coordinate lungo e
+      attraverso la via (s, v), la direzione e la mezza larghezza. Nel frammento il punto si ricava dal texel più vicino più lo
+      spostamento ruotato: le file dei basoli seguono la via anche in curva, senza cuciture;
+   2. una seconda mappa a 25 cm, filtrata: quanto il punto è vicino a un muro (sporco, muschio nei giunti), l'umido della riva e
+      l'OMBRA DI CONTATTO degli oggetti posati (panchine, banchi, fioriere, casse: la macchia morbida sotto, fusa nel suolo);
+   3. i materiali: basoli del borgo, travertino, porfido, asfalto, banchina, terra battuta, sabbia, lastre del marciapiede col cordolo
+      di granito. Stessa scala di dettaglio (giunto 1-1,5 cm, smusso 4-6 cm), la stessa tavolozza calda; i giunti e gli smussi piegano
+      la normale (la luce radente li fa leggere), da lontano il disegno sfuma nel suo valore medio (niente sfarfallio).
+   Nessuna mesh in più: cambia solo il materiale del suolo e dei marciapiedi (stesse draw call). ?nopavimenti: com'era. */
+var Pavimenti = (function () {
+  'use strict';
+  const ON = !/[?&]nopavimenti\b/.test(typeof location !== 'undefined' ? location.search : '');
+  // i materiali (numero nella mappa); 0 = nessun disegno (prato, roccia, acqua: restano come sono)
+  const FAM = { basoli: 1, travertino: 2, porfido: 3, asfalto: 4, banchina: 5, terra: 6, sabbia: 7, spianata: 8, lastre: 9, piazza: 2 };
+  let A = null;                               // le funzioni di render.js (init)
+  const RID = 4, RMK = 8;                     // texel per casella (2 m): mappa dei materiali a 50 cm, maschere a 25 cm
+  const BLK = new Map();                      // blocco 'ci,cj' -> { id, mk, box, res }
+  const OMB = new Map();                      // ombre di contatto per blocco: [x, z, rx, rz, forza]
+  const MIS = [];                             // la misura dei piedi: [nome, x, z, piede - suolo]
+  let dirtyT = null; const DIRTY = new Set();
+
+  function init(api) { A = api; if (api.phone && !/[?&]pavalta\b/.test(typeof location !== 'undefined' ? location.search : '')) QUAL.v = 'leggera'; }   // sul telefono parte leggera
+  const attivo = () => ON && !!A && A.cn1();
+
+  // ---------------- 1. LA TELA SFUMATA: il motivo dipinto diventa tinta (resta il colore, le macchie larghe) ----------------
+  // sfocatura a scatola, tre passate, periodica sul lato della tela (le tele sono motivi che si ripetono)
+  const PIA = new Map();
+  function piatto(c, ppm, metri) {
+    if (!ON) return c; const k = c; if (PIA.has(k)) return PIA.get(k);
+    const W = c.width, H = c.height, x = c.getContext('2d'), id = x.getImageData(0, 0, W, H), d = id.data, r = Math.max(1, Math.round((metri || .5) * ppm));
+    const a = new Float32Array(W * H * 3); for (let i = 0; i < W * H; i++) { a[i * 3] = d[i * 4]; a[i * 3 + 1] = d[i * 4 + 1]; a[i * 3 + 2] = d[i * 4 + 2]; }
+    const b = new Float32Array(a.length), n = 2 * r + 1;
+    const pass = (src, dst, horiz) => { const L = horiz ? W : H, M = horiz ? H : W;
+      for (let m = 0; m < M; m++) for (let ch = 0; ch < 3; ch++) { const at = l => ((horiz ? m * W + ((l % W) + W) % W : (((l % H) + H) % H) * W + m) * 3 + ch); let s = 0; for (let l = -r; l <= r; l++) s += src[at(l)];
+        for (let l = 0; l < L; l++) { dst[at(l)] = s / n; s += src[at(l + r + 1)] - src[at(l - r)]; } } };
+    for (let it = 0; it < 3; it++) { pass(a, b, true); pass(b, a, false); }
+    // le macchie larghe della tela (sporco, olio, pozze asciutte) a metà forza: la variazione la danno i rumori lenti dello shader
+    const mu = [0, 0, 0]; for (let i = 0; i < W * H; i++) for (let c = 0; c < 3; c++) mu[c] += a[i * 3 + c] / (W * H);
+    for (let i = 0; i < W * H; i++) for (let c = 0; c < 3; c++) a[i * 3 + c] = mu[c] + (a[i * 3 + c] - mu[c]) * .5;
+    const o = document.createElement('canvas'); o.width = W; o.height = H; const ox = o.getContext('2d'), od = ox.createImageData(W, H);
+    for (let i = 0; i < W * H; i++) { od.data[i * 4] = a[i * 3]; od.data[i * 4 + 1] = a[i * 3 + 1]; od.data[i * 4 + 2] = a[i * 3 + 2]; od.data[i * 4 + 3] = 255; }
+    ox.putImageData(od, 0, 0); PIA.set(k, o); return o;
+  }
+
+  // ---------------- 2. LE MAPPE DEL BLOCCO ----------------
+  function famSuolo(tx, ty, px, pz) {
+    const G = A.G, T = G.T, v = A.gT(tx, ty), z = A.zoneT(tx, ty);
+    if (z === A.ZN.CITTA && v === T.COB && vicinoSabbia(tx, ty)) return FAM.lastre;   // il terrapieno davanti alle case sulla spiaggia (costa): il lungomare di lastre
+    if (z === A.ZN.CITTA && (v === T.COB || v === T.PIAZZA || v === T.DIRT || v === T.VIA || v === T.WALK)) { const k = (px !== undefined && A.suoloW && A.suoloK(tx, ty) ? A.suoloW(px, pz) : null) || A.suoloK(tx, ty); if (k) return FAM[k] || 0; }   // il punto, col confine organico come sulla tela
+    if (v === T.QUAY) return FAM.banchina; if (v === T.SAND) return FAM.sabbia; if (v === T.PIAZZA) return FAM.piazza;
+    if (v === T.DIRT || v === T.GRAVEL) return FAM.terra; if (v === T.VIA || v === T.COB) return FAM.asfalto;
+    return 0;
+  }
+  // una casella di città entro tre caselle dalla sabbia (in memoria per casella)
+  const VS = new Map();
+  function vicinoSabbia(tx, ty) { const k = tx * 8192 + ty; if (VS.has(k)) return VS.get(k); const T = A.G.T; let r = false; for (let b = -3; b <= 3 && !r; b++) for (let a = -3; a <= 3; a++) if (A.gT(tx + a, ty + b) === T.SAND) { r = true; break; } VS.set(k, r); return r; }
+  const famVia = rd => rd.kind === 'vicolo' ? FAM.basoli : rd.kind === 'sterrato' ? FAM.terra : rd.era === 'E3' ? FAM.porfido : rd.era === 'E4' ? FAM.travertino : FAM.asfalto;
+  function mappe(tx0, ty0, n, m) {
+    const TS = A.TS, X0 = tx0 * TS, Z0 = ty0 * TS, NI = n * RID, MJ = m * RID, q = TS / RID, G = A.G, T = G.T;
+    const I = new Float32Array(NI * MJ * 4), I2 = new Float32Array(NI * MJ * 4), K1 = new Float32Array(NI * MJ).fill(1e9), K2 = new Float32Array(NI * MJ).fill(1e9), S2 = new Float32Array(NI * MJ).fill(9), R1 = new Int32Array(NI * MJ).fill(-1), R2 = new Int32Array(NI * MJ).fill(-1);
+    // le vie: per ogni tratto i texel entro la mezza larghezza più il marciapiede. Ogni texel ricorda due vie (agli incroci): la prima è
+    // quella dipinta sopra se il texel ci sta dentro (asfalto > travertino > porfido > basoli > terra, come strade1Era), se no la più vicina
+    // la sabbia vicina (0-15): entro 4 m da una casella di sabbia, per la sabbia portata dal vento sull'asfalto
+    const sab = (px, pz) => { const tx = Math.floor(px / TS), ty = Math.floor(pz / TS); if (A.zoneT(tx, ty) !== A.ZN.CITTA) return 0; let d = 9;   // fuori città le lingue di sabbia sulle costiere le fa la costa (riva.js)
+      for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { if (A.gT(tx + a, ty + b) !== T.SAND) continue; const x0 = (tx + a) * TS, z0 = (ty + b) * TS; d = Math.min(d, Math.hypot(Math.max(x0 - px, 0, px - x0 - TS), Math.max(z0 - pz, 0, pz - z0 - TS))); } return d >= 4 ? 0 : Math.round(15 * (1 - d / 4)); };
+    const PR = { 4: 5, 2: 4, 3: 3, 1: 2, 6: 1 }, put = (A4, kk, s0, v, th, f, hw) => { A4[kk * 4] = s0; A4[kk * 4 + 1] = v; A4[kk * 4 + 2] = th; A4[kk * 4 + 3] = f + 256 * Math.min(127, Math.round(hw * 8)); };
+    (A.M.roads || []).forEach((rd, ri) => { const P = rd.pts; if (!P || P.length < 2) return; const hw = rd.w / 2, ext = hw + 2.8, g = A.geo1(rd), f = famVia(rd), pr = PR[f] || 1;
+      for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az); if (L < 1e-4) continue;
+        if (Math.max(ax, bx) < X0 - ext || Math.min(ax, bx) > X0 + n * TS + ext || Math.max(az, bz) < Z0 - ext || Math.min(az, bz) > Z0 + m * TS + ext) continue;
+        const ux = (bx - ax) / L, uz = (bz - az) / L, th = Math.atan2(uz, ux);
+        const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - ext - X0) / q)), i1 = Math.min(NI - 1, Math.ceil((Math.max(ax, bx) + ext - X0) / q));
+        const j0 = Math.max(0, Math.floor((Math.min(az, bz) - ext - Z0) / q)), j1 = Math.min(MJ - 1, Math.ceil((Math.max(az, bz) + ext - Z0) / q));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q, dx = px - ax, dz = pz - az, t = dx * ux + dz * uz;
+          if (t < -.6 || t > L + .6) continue; const v = ux * dz - uz * dx, sc = Math.abs(v) - hw; if (Math.abs(v) > ext) continue;
+          const kk = j * NI + i, key = sc < 0 ? sc - pr * 100 : sc, s0 = g.s[k] + t;
+          if (R1[kk] === ri) { if (key < K1[kk]) { K1[kk] = key; put(I, kk, s0, v, th, f, hw); } continue; }
+          if (R2[kk] === ri) { if (key < K2[kk]) { K2[kk] = key; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); } }
+          else if (key < K1[kk]) { if (R1[kk] >= 0) { K2[kk] = K1[kk]; R2[kk] = R1[kk]; S2[kk] = 0; I2.set(I.subarray(kk * 4, kk * 4 + 4), kk * 4); const o = I2[kk * 4 + 3] % 256; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; }
+            K1[kk] = key; R1[kk] = ri; put(I, kk, s0, v, th, f, hw); continue; }
+          else if (key < K2[kk]) { K2[kk] = key; R2[kk] = ri; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); continue; }
+          if (K2[kk] < K1[kk]) { const a = I.slice(kk * 4, kk * 4 + 4); I.set(I2.subarray(kk * 4, kk * 4 + 4), kk * 4); I2.set(a, kk * 4); [K1[kk], K2[kk]] = [K2[kk], K1[kk]]; [R1[kk], R2[kk]] = [R2[kk], R1[kk]]; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; } } } });
+    for (let j = 0; j < MJ; j++) for (let i = 0; i < NI; i++) { const kk = j * NI + i, tx = tx0 + Math.floor(i / RID), ty = ty0 + Math.floor(j / RID), two = R2[kk] >= 0 && S2[kk] < .9;
+      if (R1[kk] < 0) I[kk * 4 + 3] = 0; if (!two) I2.fill(0, kk * 4, kk * 4 + 4);
+      I[kk * 4 + 3] += 16 * famSuolo(tx, ty, X0 + (i + .5) * q, Z0 + (j + .5) * q) + (two ? 32768 : 0) + 65536 * sab(X0 + (i + .5) * q, Z0 + (j + .5) * q); }
+    const tex = A4 => { const t = new THREE.DataTexture(A4, NI, MJ, THREE.RGBAFormat, THREE.FloatType); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t; };
+    const id = tex(I), id2 = tex(I2);
+    // le maschere: R muro vicino, G umido della riva, B ombra di contatto, A il raccordo al piede del muro
+    const NI2 = n * RMK, MJ2 = m * RMK, q2 = TS / RMK, K = new Uint8Array(NI2 * MJ2 * 4), BLD = (tx, ty) => tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && A.gT(tx, ty) === T.BLD;
+    const NB = n + 4, near = new Uint8Array(NB * (m + 4)); for (let ty = -2; ty <= m + 1; ty++) for (let tx = -2; tx <= n + 1; tx++) near[(ty + 2) * NB + tx + 2] = BLD(tx0 + tx, ty0 + ty) ? 1 : 0;
+    const wetT = new Float32Array(n * 2 * m * 2);   // l'umido a 1 m: la distanza dalla riva costa
+    for (let j = 0; j < m * 2; j++) for (let i = 0; i < n * 2; i++) { const tx = tx0 + (i >> 1), ty = ty0 + (j >> 1), v = A.gT(tx, ty); wetT[j * n * 2 + i] = v === T.SAND || v === T.QUAY || v === T.PIER || v === T.ROCK ? A.coastIn(X0 + i + .5, Z0 + j + .5) : 99; }
+    for (let j = 0; j < MJ2; j++) for (let i = 0; i < NI2; i++) { const px = X0 + (i + .5) * q2, pz = Z0 + (j + .5) * q2, lx = Math.floor(i / RMK), ly = Math.floor(j / RMK), o = (j * NI2 + i) * 4;
+      let dw = 9; for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { if (!near[(ly + b + 2) * NB + lx + a + 2]) continue; const x0 = (tx0 + lx + a) * TS, z0 = (ty0 + ly + b) * TS, ddx = Math.max(x0 - px, 0, px - x0 - TS), ddz = Math.max(z0 - pz, 0, pz - z0 - TS); dw = Math.min(dw, Math.hypot(ddx, ddz)); }
+      const w2 = Math.max(0, 1 - dw / .32); K[o] = Math.round(255 * Math.max(0, 1 - dw / 3.5));   // R: la distanza dal muro (0-3,5 m) K[o + 3] = Math.round(255 * w2 * w2);   // A: il raccordo, la riga scura proprio al piede
+      const ci = wetT[(j >> 2) * n * 2 + (i >> 2)], wr = A.gT(tx0 + lx, ty0 + ly) === T.SAND ? 4 : 1.3; K[o + 1] = ci < wr ? Math.round(255 * Math.max(0, Math.min(1, 1 - ci / wr))) : 0; }   // la sabbia bagnata larga, la banchina solo sul ciglio
+    (OMB.get(tx0 / 32 + ',' + ty0 / 32) || []).forEach(([cx, cz, rx, rz, f]) => {   // le ombre di contatto: un ovale sfumato più largo dell'impronta
+      const ex = rx * 1.18 + .16, ez = rz * 1.18 + .16, i0 = Math.max(0, Math.floor((cx - ex - X0) / q2)), i1 = Math.min(NI2 - 1, Math.ceil((cx + ex - X0) / q2)), j0 = Math.max(0, Math.floor((cz - ez - Z0) / q2)), j1 = Math.min(MJ2 - 1, Math.ceil((cz + ez - Z0) / q2));
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const dx = (X0 + (i + .5) * q2 - cx) / ex, dz = (Z0 + (j + .5) * q2 - cz) / ez, r = Math.hypot(dx, dz); if (r >= 1) continue;
+        const o = (j * NI2 + i) * 4 + 2, t = 1 - r, v = Math.round(255 * f * t * t * (3 - 2 * t)); if (v > K[o]) K[o] = v; } });
+    const mk = new THREE.DataTexture(K, NI2, MJ2, THREE.RGBAFormat, THREE.UnsignedByteType); mk.magFilter = mk.minFilter = THREE.LinearFilter; mk.generateMipmaps = false; mk.needsUpdate = true;
+    return { id, id2, mk, box: new THREE.Vector4(X0, Z0, n * TS, m * TS), res: new THREE.Vector2(NI, MJ) };
+  }
+
+  // ---------------- 3. LO SHADER ----------------
+  const GLSL = `
+    uniform sampler2D pvId; uniform sampler2D pvId2; uniform sampler2D pvMk; uniform vec4 pvBox; uniform vec2 pvRes; uniform float pvHas; uniform float pvForza; uniform float pvForce;
+    varying vec3 vPw;
+    #ifdef PV_LITE
+    #define PV_K 1
+    #else
+    #define PV_K 8
+    #endif
+    vec2 pvTilt; float pvWet; float pvPol; float pvSab;
+    float pvH(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+    vec2 pvH2(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * vec3(.1031, .1030, .0973)); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.xx + p3.yz) * p3.zy); }
+    uniform sampler2D pvNz;
+    float pvN(vec2 p){ return texture2D(pvNz, p * (1. / 256.)).r; }   // il rumore di valore da una lettura (256 celle a caso, filtrate, ripetute ogni 256): non quattro hash
+    float pvLum(vec3 c){ return dot(c, vec3(.3, .59, .11)); }
+    float pvG(float x){ return exp(-x * x); }
+    // file di pietre: q.x lungo la fila, q.y attraverso; rw la fila, l0-l1 la lunghezza (per fila), i giunti sfalsati a caso.
+    // x: distanza dal giunto più vicino, y: la pietra (0-1), zw: verso il giunto più vicino (spazio q)
+    float pvJ(float c, float row, float L, float sd){ return c * L + (pvH(vec2(c, row * 1.37 + sd)) - .5) * L * .6; }
+    vec4 pvFile(vec2 q, float rw, float l0, float l1, float sd){
+      float row = floor(q.y / rw), fy = q.y - row * rw, L = mix(l0, l1, pvH(vec2(row, sd)));
+      float u = q.x + pvH(vec2(row, sd + 7.)) * L * 3., c = floor(u / L), a = pvJ(c, row, L, sd), b = pvJ(c + 1., row, L, sd);
+      if (u < a) { b = a; c -= 1.; a = pvJ(c, row, L, sd); } else if (u > b) { a = b; c += 1.; b = pvJ(c + 1., row, L, sd); }
+      float ex = min(u - a, b - u), ey = min(fy, rw - fy);
+      vec2 dir = ex < ey ? vec2(u - a < b - u ? -1. : 1., 0.) : vec2(0., fy < rw - fy ? -1. : 1.);
+      return vec4(min(ex, ey), pvH(vec2(c, row) + sd * 3.1), dir);
+    }
+    // sassi (porfido, ciottoli, ghiaia): x = distanza dal giunto (circa, in celle), y = il sasso, zw = dal centro del sasso
+    vec4 pvSassi(vec2 p, float jit){
+      vec2 i = floor(p), f = fract(p); float d1 = 8., d2 = 8.; vec2 c1 = vec2(0.), id = vec2(0.);
+      for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) { vec2 g = vec2(float(x), float(y)), o = g + .5 + (pvH2(i + g) - .5) * jit, r = o - f; float d = dot(r, r);
+        if (d < d1) { d2 = d1; d1 = d; c1 = r; id = i + g; } else if (d < d2) d2 = d; }
+      return vec4((sqrt(d2) - sqrt(d1)) * .5, pvH(id), -c1);
+    }
+    vec2 pvRot(vec2 p, float a){ float c = cos(a), s = sin(a); return vec2(c * p.x + s * p.y, -s * p.x + c * p.y); }
+    // il disegno: rende il colore, riempie pvTilt (la normale piegata, nel piano xz del mondo), pvWet, pvPol
+    vec3 pvDett(vec3 base, vec2 p){
+      pvTilt = vec2(0.); pvWet = 0.; pvPol = 0.; pvSab = 0.;
+      vec2 fw = fwidth(p); float mpp = max(max(fw.x, fw.y), 1e-4);                   // metri per pixel
+      #ifdef PV_LITE
+      float lod = 1. - smoothstep(.04, .12, mpp), fin = 0., aa = mpp * 1.2;   // leggera: si spegne prima, niente grana fine
+      #else
+      float lod = 1. - smoothstep(.07, .2, mpp), fin = 1. - smoothstep(.01, .035, mpp),   // pieno fino allo zoom del gioco (5-6 cm a pixel), sfuma solo dalla città intera in su
+            aa = mpp * 1.2;
+      #endif   // giunti morbidi: il quadro non ha antialiasing e il post affila
+      if (lod <= 0.) return base * (.95 + pvN(p * .045) * .08);
+      vec2 uv = (p - pvBox.xy) / pvBox.zw; vec4 I = vec4(0.), K = vec4(0.);
+      float rf = 0., hw = 0., s = 0., v = 0., best = 1e9; vec2 du = vec2(1., 0.);
+      if (pvHas > .5) { I = texture2D(pvId, uv); K = texture2D(pvMk, uv);
+        // la via: fra i quattro texel attorno, misurata nel punto (confine liscio, non a gradini). Se il punto sta dentro più vie vince
+        // quella che sulla tela è dipinta sopra (l'asfalto sul travertino sul porfido sui basoli dei vicoli, come strade1Era), fuori la più vicina
+        #ifdef PV_LITE
+        vec2 tb = floor(uv * pvRes - .5) + step(.5, fract(uv * pvRes - .5)), fb = vec2(0.); bool due = false;   // leggera: il texel più vicino, una lettura sola
+        #else
+        vec2 tb = floor(uv * pvRes - .5), fb = fract(uv * pvRes - .5); bool due = false;
+        #endif
+        for (int k = 0; k < PV_K; k++) { if (k == 4 && !due) break;   // leggera: solo la prima via di ogni texel
+          vec2 tc = (tb + vec2(float(k - (k / 2) * 2 - (k / 4) * 2), float(k / 2 - (k / 4) * 2)) + .5) / pvRes;
+          vec4 J = k < 4 ? texture2D(pvId, tc) : texture2D(pvId2, tc); if (k < 4 && mod(floor(J.a / 32768.), 2.) > .5) due = true;
+          if (k < 4) pvSab += floor(J.a / 65536.) / 15. * (k - (k / 2) * 2 == 1 ? fb.x : 1. - fb.x) * (k / 2 == 1 ? fb.y : 1. - fb.y);   /* la sabbia vicina, interpolata */ float r0 = mod(J.a, 16.); if (r0 < .5) continue;
+          float h0 = mod(floor(J.a / 256.), 128.) / 8.; vec2 dd = p - (pvBox.xy + tc * pvBox.zw), u0 = vec2(cos(J.b), sin(J.b)); float v0 = J.g + (u0.x * dd.y - u0.y * dd.x), sc = abs(v0) - h0;
+          float pr = r0 > 3.5 && r0 < 4.5 ? 5. : r0 > 1.5 && r0 < 2.5 ? 4. : r0 > 2.5 && r0 < 3.5 ? 3. : r0 < 1.5 ? 2. : 1.; sc = sc < 0. ? sc - pr * 100. : sc;
+          if (sc < best) { best = sc; s = J.r + dot(dd, u0); v = v0; du = u0; rf = r0; hw = h0; } } }
+      float gf = mod(floor(I.a / 16.), 16.), av = abs(v);   // il suolo sotto, dal texel più vicino
+      bool via = rf > 0. && av < hw;
+      float fam = pvForce > 0. ? pvForce : via ? rf : gf;
+      if (fam < .5) return base;
+      // coordinate del disegno: lungo e attraverso la via, o il mondo ruotato
+      bool lungo = rf > 0. && av < hw + 3.;
+      vec2 q = lungo ? vec2(s, v + hw) : pvRot(p, .6 + fam * .37), ux = lungo ? du : vec2(cos(.6 + fam * .37), sin(.6 + fam * .37)), uy = vec2(-ux.y, ux.x);
+      vec3 col = base; float jt = 0., bv = 0., jw = .012; vec2 tq = vec2(0.); float tone = 1., mean = 1.;
+      if (fam < 1.5 || (fam > 1.5 && fam < 2.5) || (fam > 4.5 && fam < 5.5) || fam > 8.5) {   // pietre a file: basoli, travertino, banchina, lastre
+        float rw = fam < 1.5 ? .52 : fam < 2.5 ? .9 : fam < 5.5 ? 1.2 : .5, l0 = fam < 1.5 ? .6 : fam < 2.5 ? 1.1 : fam < 5.5 ? 1.6 : .45, l1 = fam < 1.5 ? 1.05 : fam < 2.5 ? 1.8 : fam < 5.5 ? 2.6 : .8;
+        float bev = fam < 1.5 ? .06 : fam < 2.5 ? .035 : fam < 5.5 ? .07 : .025, wob = fam < 1.5 ? .05 : .012;
+        vec2 qq = q; bool cord = fam > 8.5 && lungo && pvForce > 0. && v + hw > hw * 2. - .02 && v + hw < hw * 2. + .3;   // il cordolo di granito sul ciglio del marciapiede
+        if (cord) { rw = .3; l0 = .8; l1 = 1.4; bev = .03; qq.y -= hw * 2.; qq.y = clamp(qq.y, .001, .299); }
+        else if (fam > 8.5 && lungo) qq.y -= hw * 2. + .3;
+        #ifndef PV_LITE
+        qq += (vec2(pvN(q * 2.3), pvN(q * 2.3 + 9.)) - .5) * wob;
+        #endif
+        vec4 F = pvFile(qq, rw, l0, l1, fam * 11. + (cord ? 5. : 0.));
+        jw = fam > 4.5 && fam < 5.5 ? .016 : fam > 8.5 ? .008 : .012;
+        float jwE = max(jw, mpp * .5); jt = (1. - smoothstep(jwE - aa, jwE + aa, F.x)) * sqrt(jw / jwE); bv = 1. - smoothstep(jw, jw + bev, F.x); tq = F.zw * bv;
+        float h = F.y;
+        if (fam < 1.5) { float lava = step(.94, h); tone = mix(.86 + h * .26, .7, lava); col *= mix(vec3(1.03, 1., .95), vec3(.9, .86, .84), lava); }   // calcare caldo, qualche basolo di lava
+        else if (fam < 2.5) { tone = .9 + h * .19;
+          #ifndef PV_LITE
+          float pore = smoothstep(.78, .86, pvN(p * vec2(34., 9.) + h * 40.)) * fin; tone -= pore * .18;
+          #endif
+          if (!lungo) {   // le piazze di travertino: le fasce di pietra scura ogni 6 m, il disegno del regime (allineate alle file)
+            vec2 g6 = abs(fract(q / 6. + .5) - .5) * 6.; float fa = 1. - smoothstep(.3 - aa, .3 + aa, min(g6.x, g6.y));
+            tone = mix(tone, .7 + h * .08, fa); col = mix(col, col * vec3(.94, .95, 1.), fa);
+            float fj = 1. - smoothstep(.012 - aa, .012 + aa, abs(min(g6.x, g6.y) - .3)); jt = max(jt, fj); } }
+        else if (fam < 5.5) { tone = .86 + h * .2; tone += (pvH(floor(p * 70.)) - .5) * .16 * fin; }
+        else { tone = cord ? 1.16 + h * .08 : .93 + h * .1; if (cord) col *= vec3(.97, .99, 1.03); }
+        tone += (pvN(p * 7.) - .5) * .08;
+        #ifndef PV_LITE
+        tone += (pvN(p * 23.) - .5) * .06 * fin;
+        #endif
+        mean = 1. - (jw * 2. / rw) * .5;
+      } else if (fam < 3.5) {   // porfido a coda di pavone: cubetti di 11 cm su file ad arco (archi di 1,6 m), rosso-viola e grigio
+        float A = 1.6, u = fract(q.x / A) - .5; vec2 qa = vec2(q.x, q.y + u * u * A * .7);
+        #ifndef PV_LITE
+        qa += (vec2(pvN(q * 9.), pvN(q * 9. + 4.)) - .5) * .012;
+        #endif
+        vec4 F = pvFile(qa, .11, .09, .13, 31.); float jwE = max(.009, mpp * .5);
+        jt = (1. - smoothstep(jwE - aa, jwE + aa, F.x)) * sqrt(.009 / jwE); bv = 1. - smoothstep(.009, .032, F.x); tq = F.zw * bv;
+        float h = F.y; tone = .82 + h * .32; col *= h < .3 ? vec3(1.07, .94, .94) : h < .6 ? vec3(.95, .96, 1.05) : h < .8 ? vec3(1.03, 1., .96) : vec3(.92);
+        mean = .9;
+        #ifndef PV_LITE
+        tone += (pvN(p * 19.) - .5) * .08 * fin;
+        #endif
+        // da lontano i cubetti (2 pixel) farebbero grana: sfumano, e resta il ventaglio, gli archi e le file più scure ogni 55 cm
+        float pc = 1. - smoothstep(.02, .05, mpp); jt *= pc; tq *= pc; tone = mix(.92 + (pvN(qa * vec2(.8, 3.)) - .5) * .1, tone, pc);
+        float ar = min(abs(fract(qa.y / .55) - .5) * .55, abs(u) > .47 ? 0. : 9.), al = (1. - smoothstep(.012, .012 + mpp * 1.2, ar)) * (1. - pc * .6);
+        tone *= 1. - al * .22; jt = max(jt, al * .5);
+      } else if (fam < 4.5) {   // asfalto: la grana degli inerti, le chiazze, le crepe, le ruote sulle corsie, la canaletta
+        #ifdef PV_LITE
+        float pt = pvN(p * .5),
+        #else
+        float pt = pvN(p * .37) * .6 + pvN(p * 1.3) * .4,
+        #endif
+              mid = 1. - smoothstep(.04, .1, mpp), gr = step(.9, pvH(floor(p * 24.) + 7.)) - step(pvH(floor(p * 24.) + 3.), .07);   // gli inerti grossi (4 cm): chiari e scuri, leggibili allo zoom del gioco
+        tone = .92 + (pt - .5) * .2 + gr * .07 * mid;
+        #ifndef PV_LITE
+        float g1 = pvN(p * 38.), sp = step(.94, pvH(floor(p * 85.))), ag = pvN(p * 9.) * .6 + pvN(p * 17.) * .4;
+        tone += (ag - .5) * .14 * lod + ((g1 - .5) * .12 + sp * .22) * fin;
+        // le crepe: la curva di livello di un rumore, larga uguale ovunque (distanza in metri dalla curva), solo dove l'asfalto è vecchio
+        vec2 qc = lungo ? q : p; float cn = pvN(qc * vec2(.16, 1.9) + 3.) * .85 + pvN(qc * vec2(.6, 3.)) * .15, cdist = abs(cn - .5) * mpp / max(fwidth(cn), 1e-5), cz = smoothstep(.74, .86, pvN(p * .11 + 17.)) * (lungo ? 1. : .4);
+        float crack = (1. - smoothstep(.004, .004 + mpp * .8, cdist)) * cz; tone -= crack * .2 * lod;
+        #endif
+        if (via) { float lane = abs(av - hw * .5), tr = pvG((lane - .8) / .3), oil = pvG(lane / .35) * step(2.6, hw);
+          tone *= 1. + tr * .07 - oil * .1; pvPol = tr * .6;
+          float gut = smoothstep(hw - .5, hw - .05, av); tone *= 1. - gut * .14; pvWet = max(pvWet, gut * .35);
+          float sk = pvSab;   // la sabbia portata dal vento: lingue dal ciglio verso il centro, a chiazze
+          if (sk > 0.) { float dr = sk * sk * smoothstep(.62, .8, pvN(vec2(s * .4, v * 1.6) + 3.) * .6 + pvN(p * 2.2) * .25 + (av / hw - .6) * .8);   // solo lingue rade sul ciglio
+            col = mix(col, vec3(.6, .5, .34) * (.9 + pvN(p * 9.) * .2), clamp(dr, 0., .6)); tone = mix(tone, 1., dr); pvPol = 0.; } }
+      } else if (fam < 6.5 || fam > 7.5) {   // terra battuta e spianata: polvere a chiazze, sassolini, le carreggiate delle sterrate
+        #ifdef PV_LITE
+        vec4 S = vec4(0., 0., 1., 0.); float peb = 0.;
+        #else
+        vec4 S = pvSassi(p / .09, .9); float peb = (1. - smoothstep(.22, .36, length(S.zw))) * step(.7, S.y) * fin;
+        #endif
+        tone = .9 + (pvN(p * .9) - .5) * .18 + (pvN(p * 4.) - .5) * .1 + peb * .14; tq = normalize(S.zw + 1e-5) * peb * .7;
+        float mid = 1. - smoothstep(.05, .12, mpp), gv = pvH(floor(p * 22.) + 11.), bat = smoothstep(.55, .7, pvN(p * .5 + 4.));   // la ghiaia da 4 cm, chiara e scura; la terra battuta più liscia e chiara a chiazze
+        tone += ((step(.88, gv) * .16 - step(gv, .1) * .14) * (1. - bat * .7)) * mid + bat * .05;
+        #ifndef PV_LITE
+        float pass = smoothstep(.62, .7, pvN(p * vec2(.25, .9) + 9.)) * smoothstep(.4, .6, pvN(p * .12));   // le tracce dei passi, più lisce e scure
+        tone *= 1. - pass * .07; pvPol = max(pvPol, pass * .3);
+        #endif
+        if (via) { float rut = pvG((av - .75) / .22); tone *= 1. - rut * .12; pvPol = rut * .3; }
+      } else {   // sabbia: le increspature del vento, la grana, più scura e liscia dove è bagnata
+        float ph = dot(p, vec2(.8, .6)) * 11. + pvN(p * .7) * 7.;
+        tone = .96 + sin(ph) * .035 * lod + (pvH(floor(p * 120.)) - .5) * .1 * fin + (pvN(p * .3) - .5) * .08;
+        tq = vec2(.8, .6) * cos(ph) * .12 * lod;
+      }
+      // il disegno da lontano si fonde nel suo valore medio (niente moiré)
+      tone = mix(mean, tone / mean, lod) ;
+      col *= tone * (1. - jt * .34 * lod) * (1. - bv * bv * .16 * lod);   // il bordo a cuscino: la pietra si arrotonda verso il giunto, uguale da ogni lato
+      vec2 tw = (ux * tq.x + uy * tq.y) * .22 * lod;   // (sotto: il selciato attorno alle case vi aggiunge la sua luce)   // la luce radente sullo smusso, leggera
+      // la scala del mondo: due rumori lenti sopra la tinta della tela (niente ripetizione a 16 m)
+      #ifdef PV_LITE
+      col *= .95 + pvN(p * .07) * .09;
+      #else
+      col *= .95 + pvN(p * .045) * .08 + (pvN(p * .21) - .5) * .06;
+      #endif
+      // il selciato attorno alle case che stanno su sabbia o terra: ciottoli fitti per un metro circa, il bordo irregolare, qualche sasso
+      // che scappa oltre; così la casa non è una scatola posata sullo spiazzo
+      float dw = (1. - K.r) * 3.5, wall = pow(max(0., 1. - dw / 1.4), 2.);   // la distanza dal muro più vicino e la sua vicinanza
+      #ifdef PV_LITE
+      if (fam > 5.5 && fam < 8.5 && dw < 2.8) { float ed = fam > 6.5 && fam < 7.5 ? 2.6 : .8, inL = (1. - smoothstep(ed - .1, ed + .1, dw)) * lod;   // leggera: la fascia di pietra, senza disegno
+        col = mix(col, mix(base * vec3(.8, .78, .74), vec3(pvLum(base)) * vec3(.98, .93, .86) * .78, .55), inL); }
+      #else
+      if (fam > 6.5 && fam < 7.5 && dw < 3.4) {   // il lungomare: davanti alle case che stanno sulla sabbia, lastre a correre, la cordonata, la sabbia che ci soffia sopra
+        float ed = 2.6 + (pvN(p * .35) - .5) * .25, inL = 1. - smoothstep(ed - aa * 2., ed + aa * 2., dw);
+        vec2 ql = pvRot(p, .785); vec4 F = pvFile(ql + (vec2(pvN(ql * 2.), pvN(ql * 2. + 5.)) - .5) * .015, .45, .5, .85, 77.);
+        float cb = smoothstep(ed - .34, ed - .3, dw) * inL, lj = 1. - smoothstep(.01 - aa, .01 + aa, cb > .5 ? abs(fract(dot(ql, vec2(1., 0.)) / 1.1) - .5) * 1.1 : F.x);
+        vec3 lst = mix(base * vec3(.8, .78, .74), vec3(pvLum(base)) * vec3(.98, .93, .86) * .78, .55) * (.84 + F.y * .24) * (cb > .5 ? 1.18 : 1.);   // pietra calda, più grigia della sabbia
+        float drift = smoothstep(.55, .75, pvN(p * 1.1 + 8.)) * smoothstep(ed - 1.4, ed, dw);   // la sabbia portata dal vento sul bordo
+        lst = mix(lst * (1. - lj * .4) * (1. - (1. - smoothstep(.01, .04, F.x)) * .12), base, drift * .8);
+        col = mix(col, lst, inL * lod); tw += F.zw * (1. - smoothstep(.01, .04, F.x)) * .15 * inL * (1. - drift);
+        col *= 1. - (1. - smoothstep(0., .12, abs(dw - ed - .06))) * .3 * lod;   // la riga in ombra dove la cordonata finisce nella sabbia
+        jt = max(jt, lj * inL);
+      }
+      if (fam > 5.5 && fam < 8.5 && fam != 7. && dw < 1.6) {
+        float edge = .8 + (pvN(p * 1.3) - .5) * .35, inA = 1. - smoothstep(edge - .06, edge + .06, dw);
+        #ifdef PV_LITE
+        vec4 C = vec4(.1, pvN(p * 4.), 1., 0.);   // leggera: la fascia di pietra senza i ciottoli
+        #else
+        vec4 C = pvSassi(p / .2, .8);
+        #endif
+        float ce = C.x * .2, cj = 1. - smoothstep(.014 - aa, .014 + aa, ce);
+        float stray = (1. - smoothstep(.2, .34, length(C.zw))) * step(.62, C.y) * (1. - smoothstep(edge, edge + .5, dw)) * (1. - inA);
+        vec3 stone = base * vec3(.86, .84, .82) * (.78 + C.y * .3);   // la pietra del posto: la tinta del suolo, più scura e grigia
+        float k = max(inA, stray) * lod;
+        col = mix(col, stone * (1. - cj * .45) * (1. - (1. - smoothstep(.012, .045, ce)) * .14), k);
+        tw += normalize(C.zw + 1e-5) * (1. - smoothstep(.012, .045, ce)) * .18 * k;
+        jt = max(jt, cj * inA);
+      }
+      #endif
+      // sporco e umido nei punti giusti
+      float dirt = wall * (.18 + jt * .3);
+      col = mix(col, col * vec3(1.05, .97, .84), wall * .35); col *= 1. - dirt;
+      if (fam < 3.5 || fam > 8.5) col = mix(col, vec3(.2, .26, .13) * (pvLum(base) * 2.2 + .1), jt * wall * .5 * lod);   // muschio nei giunti al piede dei muri
+      #ifdef PV_LITE
+      float pud = 0.;
+      #else
+      float pud = smoothstep(.76, .81, pvN(p * .42 + 5.)) * smoothstep(.45, .6, pvN(p * .09 + 2.)) * step(fam, 5.5);   // pozze rade (e piccole) nei punti bassi
+      #endif
+      pvWet = max(max(pvWet, K.g * .9), pud * .4 + jt * .25 * wall);
+      if (fam > 6.5 && fam < 7.5) pvWet = K.g;
+      col *= 1. - pvWet * .26;
+      col = mix(col, col * vec3(.42, .38, .36), K.b * pvForza);   // l'ombra di contatto, calda
+      col = mix(col, col * vec3(.62, .56, .5), K.a * .55);   // il raccordo muro-terreno: la riga calda e scura dove il muro tocca terra
+      pvTilt = tw * pvForza;
+      return mix(base, col, pvForza);
+    }`;
+  // aggiunge il disegno a un materiale (suolo: MeshStandardMaterial; marciapiede: MeshLambertMaterial)
+  const DUMMY = { id: null, mk: null };
+  function dummy() { if (DUMMY.id) return DUMMY; DUMMY.id = new THREE.DataTexture(new Float32Array(4), 1, 1, THREE.RGBAFormat, THREE.FloatType); DUMMY.id.needsUpdate = true; DUMMY.mk = new THREE.DataTexture(new Uint8Array(4), 1, 1); DUMMY.mk.needsUpdate = true; return DUMMY; }
+  function patch(mat, U, chiave) {
+    const prev = mat.onBeforeCompile, pk = mat.customProgramCacheKey;
+    mat.onBeforeCompile = function (sh, r) {
+      if (prev) prev.call(this, sh, r); STAT.comp++; STAT.ok = sh.fragmentShader.includes('#include <map_fragment>');
+      Object.assign(sh.uniforms, U); if (QUAL.v === 'leggera') sh.fragmentShader = '#define PV_LITE\n' + sh.fragmentShader;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vPw;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvPw = (modelMatrix * vec4(transformed, 1.)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GLSL)
+        .replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb = pvDett(diffuseColor.rgb, vPw.xz);')
+        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, .32, pvWet * pvForza); roughnessFactor = mix(roughnessFactor, roughnessFactor * .75, pvPol * pvForza);')
+        .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n #ifndef PV_LITE\n normal = normalize(normal + (viewMatrix * vec4(pvTilt.x, 0., pvTilt.y, 0.)).xyz);\n #endif');
+    };
+    mat.customProgramCacheKey = () => (pk ? pk.call(mat) : '') + '|' + chiave + '|' + QUAL.v;
+    mat.needsUpdate = true; MATS.add(mat); return mat;
+  }
+  // [pavimenti] la qualità: 'alta' (il disegno pieno) o 'leggera' (telefoni e qualità bassa: una via per texel, niente grana fine,
+  // niente celle di ciottoli, il disegno si spegne prima). In automatico all'avvio; il livello di qualità del gioco la pilota con qualita()
+  const QUAL = { v: /[?&]pavleggero\b/.test(typeof location !== 'undefined' ? location.search : '') ? 'leggera' : 'alta' }, MATS = new Set();
+  function qualita(q) { if (q === undefined) return QUAL.v; if (q !== 'alta' && q !== 'leggera') return QUAL.v; if (q === QUAL.v) return q; QUAL.v = q; MATS.forEach(m => { m.needsUpdate = true; }); return q; }
+  const FORZA = { value: 1 };   // window.__PAV.forza.value = 0 per confrontare dal vivo
+  let NZ = null;   // la tessitura di rumore della variante leggera: valori a caso per cella, filtrata, ripetuta
+  function nz() { if (NZ) return NZ; const N = 256, a = new Uint8Array(N * N * 4); let sd = 7; for (let i = 0; i < a.length; i++) { sd = (sd * 16807) % 2147483647; a[i] = sd & 255; }
+    NZ = new THREE.DataTexture(a, N, N, THREE.RGBAFormat); NZ.wrapS = NZ.wrapT = THREE.RepeatWrapping; NZ.magFilter = NZ.minFilter = THREE.LinearFilter; NZ.generateMipmaps = false; NZ.needsUpdate = true; return NZ; }
+  function uniforms(b, force) { const d = dummy(); return { pvNz: { value: nz() }, pvId: { value: b ? b.id : d.id }, pvId2: { value: b ? b.id2 : d.id }, pvMk: { value: b ? b.mk : d.mk }, pvBox: { value: b ? b.box : new THREE.Vector4(0, 0, 1, 1) }, pvRes: { value: b ? b.res : new THREE.Vector2(1, 1) }, pvHas: { value: b ? 1 : 0 }, pvForza: FORZA, pvForce: { value: force || 0 } }; }
+
+  // il suolo di un blocco: le mappe e il materiale (chiamato da buildChunkGen)
+  function suolo(mat, tx0, ty0, n, m) {
+    if (!attivo()) return mat; const key = tx0 / 32 + ',' + ty0 / 32, b = mappe(tx0, ty0, n, m); BLK.set(key, b); mat.userData.pav = key; mat.userData.pavB = b;
+    return patch(mat, uniforms(b, 0), 'pav1');
+  }
+  function via(mat) { const key = mat && mat.userData.pav, b = mat && mat.userData.pavB; if (!b) return; MATS.delete(mat); b.id.dispose(); b.id2.dispose(); b.mk.dispose(); if (BLK.get(key) === b) BLK.delete(key); }   // il blocco rifatto ha già messo la sua
+  // il marciapiede di un riquadro da 64 m: la stessa mappa del blocco sotto (le file seguono la via, il cordolo sul ciglio)
+  function marciapiede(mesh, i, j) {
+    if (!attivo()) return; if (i === undefined) { const g = mesh.geometry; if (!g.boundingSphere) g.computeBoundingSphere(); const C = A.TS * 32; i = Math.floor(g.boundingSphere.center.x / C); j = Math.floor(g.boundingSphere.center.z / C); }
+    const key = i + ',' + j, U = uniforms(null, FAM.lastre), mat = patch(mesh.material.clone(), U, 'pav1m'); mesh.material = mat;
+    mesh.onBeforeRender = () => { const b = BLK.get(key); if (b) { U.pvId.value = b.id; U.pvId2.value = b.id2; U.pvMk.value = b.mk; U.pvBox.value = b.box; U.pvRes.value = b.res; U.pvHas.value = 1; } else U.pvHas.value = 0; };
+  }
+
+  // ---------------- 4. L'APPOGGIO: chi è posato a terra lascia l'ombra di contatto nel suolo; e la misura del piede ----------------
+  const _b = typeof THREE !== 'undefined' ? new THREE.Box3() : null, _s = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
+  // posa: se vero e l'oggetto è piccolo e libero, rende quanto abbassarlo (galleggia di 2,5-12 cm: tocca terra nel punto più basso) o
+  // alzarlo (negativo: sepolto di 10-35 cm anche lì); render.js lo sposta prima di fonderlo. I pezzi fissi (porte, gradini, reti) no
+  const POSA = { giu: 0, su: 0 };
+  function oggetto(obj, nome, posa) {
+    if (!attivo() || !obj) return 0; _b.setFromObject(obj); if (_b.isEmpty()) return 0; _b.getSize(_s);
+    const cx = (_b.min.x + _b.max.x) / 2, cz = (_b.min.z + _b.max.z) / 2, gh = A.groundH(cx, cz), dy = _b.min.y - gh;
+    if (_s.y < .25 || _s.x * _s.z < .06 || Math.max(_s.x, _s.z) > 9 || dy > .35 || dy < -.5) return 0;
+    // il suolo sotto l'impronta: il punto più basso e il più alto (al centro e ai quattro angoli, appena dentro)
+    let g0 = gh, g1 = gh; [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, c]) => { const h = A.groundH(cx + a * _s.x * .45, cz + c * _s.z * .45); if (h < g0) g0 = h; if (h > g1) g1 = h; });
+    let su = _b.min.y - g0;   // > 3 cm: c'è luce sotto anche nel punto più basso; < -10 cm: sepolto anche lì
+    let mv = 0; if (posa && Math.max(_s.x, _s.z) < 3.5) { if (su > .025 && su <= .12) { mv = su - .005; POSA.giu++; } else if (su < -.1 && su > -.35) { mv = su + .02; POSA.su++; } }
+    if (MIS.length < 60000) { const flag = su > .03 || su < -.1; MIS.push([nome || obj.name || (flag ? chi() : ''), +cx.toFixed(2), +cz.toFixed(2), +(su - mv).toFixed(3), +_s.y.toFixed(2), +(g1 - g0).toFixed(3), +su.toFixed(3)]); }   // [.., dopo la posa, altezza, pendenza sotto, prima della posa]
+    su -= mv; if (su > .12 || Math.max(_s.x, _s.z) > 3.2 || _s.y > 3.5) return mv;   // sospeso (su un davanzale, un tavolo), o grande e aperto (gru, tettoie): niente ombra a terra
+    const f = Math.min(.7, .4 + _s.y * .1) * (Math.max(_s.x, _s.z) > 1.6 ? .7 : 1);   // più alto, più ombra; i lunghi (panche, banchi) più leggera
+    ombra(cx, cz, _s.x / 2, _s.z / 2, f);
+    return mv;
+  }
+  // chi l'ha messo: la prima funzione di render.js sopra addStatic (solo per i casi segnati: costa)
+  function chi() { const st = (new Error().stack || '').split('\n').map(l => (l.match(/at (?:Object\.)?([\w$]+) /) || [])[1]).filter(Boolean); const i = st.findIndex(f => f === 'addStatic'); return (i >= 0 ? st.slice(i + 1).find(f => !/^(place|at1|put|G0|add)$/.test(f)) : st[3]) || '?'; }
+  function ombra(cx, cz, rx, rz, f) {
+    if (!attivo()) return; const C = A.TS * 32, ks = new Set(); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => ks.add(Math.floor((cx + a * (rx * 1.18 + .2)) / C) + ',' + Math.floor((cz + b * (rz * 1.18 + .2)) / C)));
+    ks.forEach(k => { (OMB.get(k) || OMB.set(k, []).get(k)).push([cx, cz, rx, rz, f]); if (BLK.has(k)) { DIRTY.add(k); if (!dirtyT) dirtyT = setTimeout(() => { dirtyT = null; DIRTY.forEach(k2 => { const [i, j] = k2.split(',').map(Number); A.dirtyAt((i + .5) * C, (j + .5) * C); }); DIRTY.clear(); }, 400); } });
+  }
+  // la misura: chi galleggia e chi affonda (rispetto al punto più basso di groundH sotto l'impronta); i gradini scendono apposta sotto terra (la fondazione)
+  function misura(soglia) {
+    const s = soglia || .03, su = MIS.filter(q => q[3] > s && q[3] <= .12), giu = MIS.filter(q => q[3] < -.1 && q[0] !== 'gradino'), per = L => { const o = {}; L.forEach(q => { const k = q[0] || '?'; o[k] = (o[k] || 0) + 1; }); return Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 25); };
+    const su0 = MIS.filter(q => q[6] > s && q[6] <= .12).length, giu0 = MIS.filter(q => q[6] < -.1 && q[0] !== 'gradino').length;
+    return { primaDellaPosa: { galleggiano: su0, affondano: giu0 }, posati: POSA, oggetti: MIS.length, galleggiano: su.length, affondano: giu.length, perNomeSu: per(su), perNomeGiu: per(giu), esempiSu: su.slice(0, 20), esempiGiu: giu.slice(0, 20), tutti: MIS };
+  }
+  // la sonda: cosa dice la mappa in (x, z)
+  const STAT = { comp: 0, ok: null };
+  function sonda(x, z) { const C = A.TS * 32, key = Math.floor(x / C) + ',' + Math.floor(z / C), b = BLK.get(key); if (!b) return { key, blocco: false, blocchi: BLK.size, STAT };
+    const i = Math.floor((x - b.box.x) / b.box.z * b.res.x), j = Math.floor((z - b.box.y) / b.box.w * b.res.y), d = b.id.image.data, o = (j * b.res.x + i) * 4, pk = d[o + 3];
+    return { key, s: d[o], v: d[o + 1], th: d[o + 2], rf: pk % 16, gf: Math.floor(pk / 16) % 16, hw: Math.floor(pk / 256) / 8, blocchi: BLK.size, STAT }; }
+  const API = { qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
+  if (typeof window !== 'undefined') window.__PAV = API;
+  return API;
+})();
+if (typeof window !== 'undefined') window.Pavimenti = Pavimenti;
+</script>   <!-- [pavimenti] le superfici a terra -->
 <script data-m="render">
 /* Porto Vecchio — resa 3D in stile pixel art (Three.js r149).
    Scena renderizzata a bassa risoluzione, poi ingrandita con contorni e color grading.
@@ -55508,6 +56065,8 @@ var Render = (function () {
   function addStatic(obj, noShadow) {
     if (window.Officina) Officina.onStatic(obj);   // [studio] modifiche ai modelli di strada
     obj.updateMatrixWorld(true); curObj = obj;
+    if (window.Pavimenti && noShadow !== 'lamp') { const k2 = P2.k || (obj.userData.p2 && obj.userData.p2.k), dy = Pavimenti.oggetto(obj, k2 || obj.name, !FISSI2.has(k2) && !obj.parent);   // [pavimenti] l'ombra di contatto nel suolo, la misura del piede e la posa corretta
+      if (dy) { obj.position.y -= dy; obj.updateMatrixWorld(true); } }
     if (window.__probeAt) { const bx = new THREE.Box3().setFromObject(obj), sz = bx.getSize(new THREE.Vector3()), cc = bx.getCenter(new THREE.Vector3()); for (const q of window.__probeAt) if (Math.hypot(cc.x - q[0], cc.z - q[1]) < q[2]) { (window.__probe = window.__probe || []).push([q[3], Math.round(cc.x), Math.round(cc.z), sz.x.toFixed(1), sz.y.toFixed(1), sz.z.toFixed(1), (new Error().stack.split('\n').slice(2, 6).map(l => l.trim().split(' ')[1]).join('<'))]); break; } }   // [ordine1] strumento: chi ha messo cosa
     const m2 = obj.userData.p2, e2 = P2.on && (curTag || P2.k || m2 || noShadow === 'lamp') && cn1() ? p2New(m2 || { k: P2.k || (noShadow === 'lamp' ? 'lampione' : 'arredo'), b: P2.b, f: P2.f }) : null;   // [pulizia2] il registro
     if (e2) { e2.tag = curTag; e2.yaw0 = yawM2(obj.matrixWorld); }
@@ -56630,6 +57189,10 @@ var Render = (function () {
   // entrambi con la sagoma ripulita (SAG4). C: lo stato della camera (Visuale.camPasso); T: i tetti che sbiadiscono
   const VIS4 = { camera: VISUALE === 'camera', muretto: VISUALE === 'muretto', get on() { return this.camera || this.muretto; }, C: {}, T: new Map(), tvivi: new Set(), M: null,
     filo: { value: new THREE.Vector4(.07, .95, .9, .8) }, caps: new Map(), sag: new Set(), err: 0 };
+  // [inquadratura] la via in strada (src/inquadratura.js): la visuale lungo l'asse della via, il taglio mirato delle case che coprono la via,
+  // il ricentro dietro al personaggio sul computer. ?inquadratura=<variante> per confrontare; ?vecchiacamera: la camera di [visuale5]
+  const IQ5 = (() => { let n = null; try { const s = location.search; if (typeof Inquadratura !== 'undefined' && !/[?&]vecchiacamera/.test(s)) { const m = /[?&]inquadratura=([a-z_]+)/.exec(s); n = m && Inquadratura.VARIANTI[m[1]] ? m[1] : Inquadratura.DIFETTO; } } catch (e) { n = null; }
+    return { nome: n, get v() { return this.nome && VIS4.camera ? Inquadratura.VARIANTI[this.nome] : null; }, S: {}, rete: null, dy: 0, p: 0, z: 1, n0: 0, pav: new Map(), pavM: null }; })();
   const VIS5 = {
     // la sagoma: il modello vero del giocatore (anche le parti con lo scheletro) disegnato una seconda volta solo dove è coperto
     // (profondità invertita: GreaterDepth), col materiale ripulito di [visuale4] (SAG4). Si rifà quando il modello cambia (il personaggio
@@ -56684,20 +57247,22 @@ var Render = (function () {
   // un fotogramma del muretto: px, pz, fy il personaggio e la quota dei suoi piedi; on: le case possono scendere (fuori, non sui tetti né
   // sulle scale; spento fuori dal muretto: le case giù risalgono)
   function vis3Tick(px, pz, fy, on, dt, pitch) {
-    const K = Visuale.MURETTO, S = VIS3.S, vv = VIS3.vuole || (VIS3.vuole = new Map());   // [visuale4] il muretto usa la macchina del taglio, con la sua scelta   // [visuale5] solo lui
-    const vuole = Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);
+    const iq = !!(IQ5.v && IQ5.v.taglio), K = iq ? Inquadratura.K : Visuale.MURETTO,   // [inquadratura] la scelta del taglio mirato si rifà ogni tre fotogrammi (i raggi del disco)
+      S = VIS3.S, vv = VIS3.vuole || (VIS3.vuole = new Map());   // [visuale4] il muretto usa la macchina del taglio, con la sua scelta   // [visuale5] solo lui   // [inquadratura] o il taglio mirato
+    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on && (!IQ5.v.soloStretta || !!VIS4.C.on), vv, IQ5.v.uniforme)) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);
     VIS3.cambi += Visuale.passo(S, vuole, VIS3.subito ? 10 : dt, K);
     const prima = VIS3.vivi; VIS3.vivi = new Set();
     S.forEach((s, B) => { const y = Visuale.quota(s); VIS3.vivi.add(B);
       casaVisibile(B, 'quota', y);   // [visuale4] dall'API della casa
       if (!B.__pl3) B.__pl3 = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
       B.__pl3.constant = y; if (!B.__cl3) { B.__cl3 = true; B.mats.forEach(m => { m.clippingPlanes = [B.__pl3]; }); }
-      const cap = vis3Cap(B); cap.visible = !s.nodisc && s.a > 0; cap.position.y = y + .004; cap.material = capMat4(B);   // [visuale4] la copertina del muretto nel tono del muro
+      const cap = vis3Cap(B); cap.visible = !s.nodisc && s.a > 0; cap.position.y = y + .004; cap.material = iq ? capCavo5(B) : capMat4(B);   // [visuale4] la copertina del muretto nel tono del muro   // [inquadratura] o cava: solo il filo dei muri
+      if (iq) { const pv = iq5Pav(B); pv.visible = cap.visible; pv.position.y = y - .3; }   // e dentro, appena sotto la cornice, il pavimento della casa (sotto c'è il nucleo scuro e lo zoccolo)
       if (B.__y3 === undefined || Math.abs(B.__y3 - s.y) > .3) { try { vis3Cose(B, false); B.__y3 = s.y; vis3Cose(B, true, s.y); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } } } });
     prima.forEach(B => { if (VIS3.vivi.has(B)) return;
       casaVisibile(B, 'quota', null);   // [visuale4]
       if (B.__cl3) { B.__cl3 = false; B.mats.forEach(m => { m.clippingPlanes = null; }); }
-      const cap = VIS3.caps.get(B); if (cap) cap.visible = false; vis3Cose(B, false); B.__y3 = undefined; });
+      const cap = VIS3.caps.get(B); if (cap) cap.visible = false; const pv = IQ5.pav.get(B); if (pv) pv.visible = false; vis3Cose(B, false); B.__y3 = undefined; });
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }
   }
   // [visuale3] le cose del registro di pulizia2 (VIS3.reg) che stanno sulla pianta della casa tagliata e salgono sopra il piano (l'antenna e
@@ -56772,6 +57337,8 @@ var Render = (function () {
     if (subito !== undefined) VIS3.subito = !!subito;
     return VISUALE;
   }
+  // [inquadratura] solo per gli strumenti: la variante dal vivo (null: la camera di [visuale5], come ?vecchiacamera)
+  function setInquadratura(n) { if (n === null || (typeof Inquadratura !== 'undefined' && Inquadratura.VARIANTI[n])) { IQ5.nome = n; IQ5.S = {}; IQ5.dy = 0; IQ5.p = 0; IQ5.z = 1; } return IQ5.nome; }
   // ================= [visuale4] I DUE PROTOTIPI: la camera che si adatta (A) e il muretto (B), con la sagoma (src/visuale.js per le regole) =================
   // LA VISIBILITÀ DI UNA CASA in un punto solo: la scrivono il taglio, il muretto e il tetto che sbiadisce. Chi fonde le case (oggi FD1,
   // domani i pezzi per zona di [leggero], che tengono il numero della casa su ogni vertice) la rifà qui sotto senza toccare chi la chiama.
@@ -56833,6 +57400,42 @@ var Render = (function () {
     m.customProgramCacheKey = () => 'cap3';
     VIS4.caps.set(key, m); return m;
   }
+  // [inquadratura] LA CASA TAGLIATA CAVA (la scelta del committente: «il coperchio pieno confonde»): della faccia tagliata resta solo la
+  // sezione dei muri, una cornice larga Inquadratura.K.muro nel tono del muro scurito col filo chiaro fuori e uno scuro dentro; dentro si
+  // vede il pavimento della casa (il tavolato di legno, che non si confonde col cotto dei terrazzi; più scuro verso i muri: l'ombra dei muri). Un programma per la cornice, uno per il pavimento
+  const CAVO5 = { muro: { value: new THREE.Vector4(.32, .07, .03, 0) }, filo: { value: new THREE.Vector3(.95, .9, .8) } };
+  function capCavo5(B) {
+    const K = Visuale.MURETTO, b = B.b || {}, hex = (b.__ep && b.__ep.pal && typeof b.__ep.pal[0] === 'string' && b.__ep.pal[0]) || b.__wallHex || '#b8a084', key = 'cavo|' + hex;
+    let m = VIS4.caps.get(key); if (m) return m;
+    const KI = Inquadratura.K, fc = new THREE.Color(K.filo); CAVO5.muro.value.set(KI.muro, Visuale.TAGLIO.filoLargo, .04, 0); CAVO5.filo.value.set(fc.r, fc.g, fc.b);
+    m = new THREE.MeshBasicMaterial({ color: new THREE.Color(hex).multiplyScalar(.72) });
+    m.onBeforeCompile = sh => { sh.uniforms.uMuro5 = CAVO5.muro; sh.uniforms.uFilo5 = CAVO5.filo;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 m3; varying vec4 vM3;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvM3 = m3;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vM3; uniform vec4 uMuro5; uniform vec3 uFilo5;')
+        .replace('#include <color_fragment>', `#include <color_fragment>
+        { vec2 e5 = min(vM3.xy, vM3.zw - vM3.xy); float ed = min(e5.x, e5.y), fw = max(fwidth(ed), 1e-4);
+          if (ed > uMuro5.x + fw) discard;
+          diffuseColor.rgb = mix(diffuseColor.rgb, uFilo5, 1. - smoothstep(uMuro5.y - fw, uMuro5.y + fw, ed));
+          diffuseColor.rgb *= mix(1., .45, smoothstep(uMuro5.x - uMuro5.z - fw, uMuro5.x - fw, ed)); }`); };
+    m.customProgramCacheKey = () => 'cavo5';
+    VIS4.caps.set(key, m); return m;
+  }
+  function iq5Pav(B) {
+    let c = IQ5.pav.get(B); if (c) return c;
+    const cap = vis3Cap(B); c = new THREE.Mesh(cap.geometry, IQ5.pavM || (IQ5.pavM = (() => {
+      const m = new THREE.MeshBasicMaterial({ color: '#7a5a3e' });   // il tavolato di legno: non si confonde col cotto dei terrazzi
+      m.onBeforeCompile = sh => { sh.uniforms.uMuro5 = CAVO5.muro;
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 m3; varying vec4 vM3;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvM3 = m3;');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vM3; uniform vec4 uMuro5;')
+          .replace('#include <color_fragment>', `#include <color_fragment>
+          { vec2 e5 = min(vM3.xy, vM3.zw - vM3.xy); float ed = min(e5.x, e5.y);
+            float ax = step(vM3.w, vM3.z); vec2 u5 = mix(vM3.yx, vM3.xy, ax);   // le assi lungo il lato lungo
+            float ri = floor(u5.y / .22), q5 = fract(u5.y / .22), gi = step(.9, q5), tg = step(.97, fract(u5.x / 1.6 + fract(ri * .37)));
+            diffuseColor.rgb *= (.88 + .12 * fract(ri * .618)) * (1. - .4 * max(gi, tg));
+            diffuseColor.rgb *= mix(.55, 1., smoothstep(uMuro5.x, uMuro5.x + .9, ed)); }`); };
+      m.customProgramCacheKey = () => 'pav5'; return m; })()));
+    c.rotation.copy(cap.rotation); c.position.copy(cap.position); c.castShadow = c.receiveShadow = false; c.visible = false; scene.add(c); IQ5.pav.set(B, c); return c;
+  }
   // A: la camera. La misura della stretta attorno al personaggio (Visuale.misura sulla città in pianta), l'isteresi e lo smorzamento
   // (Visuale.camPasso): VIS4.C.p la pendenza, .z lo zoom, .g il giro. Lavora sotto la camera [fluido] (sguardo della levetta, dito, momenti):
   // cambia solo pendenza e distanza, il punto guardato resta quello. Sul tetto, al chiuso, alla guida, sotto terra: la pendenza di sempre
@@ -56840,8 +57443,23 @@ var Render = (function () {
     const K = Visuale.CAMERA4; K.base = PEND3.v; if (VIS4.fermo) return;   // VIS4.fermo: gli strumenti tengono lo stato che hanno messo (la striscia del movimento)
     const ok = !pveh && !ui.intro && !ui.focus && !ui.studio && !p.indoor && !(p.lv && (p.lv.k === 'tetto' || p.lv.k === 'scala' || p.lv.k === 'ug'));
     const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), yw = YAW + (cam.uy || 0) + (cam.mano && cam.mano.yaw || 0);   // [visuale5] anche girata a mano
+    if (IQ5.v) { iq5Camera(p, fy, ok, M, K, dt, ui); return; }   // [inquadratura] la pendenza la fa Inquadratura.camera, con l'asse
     const m = ok ? Visuale.misura(M, p.x, p.y, fy, Math.sin(yw), Math.cos(yw), K) : null;
     Visuale.camPasso(VIS4.C, m, VIS3.subito ? 10 : Math.min(.1, dt || .016), K, yw); VIS4.m = m;
+  }
+  // [inquadratura] la visuale lungo la via e il ricentro dietro al personaggio: IQ5.dy si somma all'automatica (cam.uy) e alla parte a mano;
+  // IQ5.p e IQ5.z prendono il posto di VIS4.C.p e .z (la pendenza della camera che si adatta, più bassa e più vicina lungo la via)
+  const ang1 = a => Math.atan2(Math.sin(a), Math.cos(a));
+  function iq5Camera(p, fy, ok, M, K, dt, ui) {
+    const MN = cam.mano || {}, S = IQ5.S; S.cam4 = VIS4.C;
+    const ric = MN.n !== IQ5.n0 && MN.ric && !PHONE && MN.perche !== 'forza'; IQ5.n0 = MN.n;   // il ricentro è appena partito (sul computer)
+    let assorbi = 0; if (ric && MN.yaw) { assorbi = MN.yaw; MN.yaw = 0; }   // la parte a mano passa al giro: si ricentra da dove si guarda
+    const vel = Math.hypot(cam.mvx || 0, cam.mvy || 0), dir = vel > .3 ? Math.atan2(cam.mvy, cam.mvx) : undefined;
+    const r = Inquadratura.camera(S, { x: p.x, z: p.y, fy, dir, vel, yaw0: YAW + (cam.uy || 0), base: PEND3.v, rete: IQ5.rete || (IQ5.rete = Inquadratura.rete(G.MAP.world)), mappa: M, V: Visuale, v: IQ5.v, ok, tel: PHONE,
+      tieni: !!(MN.off && !MN.ric), ricentro: ric, assorbi }, VIS3.subito ? 10 : Math.min(.1, dt || .016));
+    if (ui.lead && cam.lock !== undefined) cam.lock -= ang1(r.dy - IQ5.dy - assorbi);   // la levetta tenuta non gira col giro (come col ricentro: camBasis)
+    IQ5.dy = r.dy; IQ5.p = r.pitch; IQ5.z = r.zoom; IQ5.via = r.asse;
+    if (PHONE && !r.asse && IQ5.dy && !(MN.off && !MN.ric)) { cam.uy = (cam.uy || 0) + IQ5.dy; S.dy = S.dyT = 0; IQ5.dy = 0; }   // sul telefono fuori dalla via la visuale torna a seguire la marcia, da dove guarda
   }
   // LA SAGOMA RIPULITA (SAG4): il modello vero (anche con lo scheletro) disegnato una seconda volta solo dove qualcosa lo copre (profondità
   // invertita) come una tinta piatta calda e un filo chiaro sul contorno (dove la superficie gira di taglio rispetto alla vista: niente
@@ -56891,6 +57509,8 @@ var Render = (function () {
   }
   // [visuale3] LA PENDENZA DELLA VISUALE A PIEDI, una prova sola (il committente: «forse troppo dall'alto»): ?pendenza=0.62 abbassa la camera
   // (radianti; di difetto PITCH, 0,78). Non cambia altro: il taglio segue la camera vera (i raggi partono verso camera.position)
+  // [visuale4] la pendenza e lo zoom della camera che si adatta   // [inquadratura] o quelli di Inquadratura.camera
+  const c4p = () => IQ5.v && IQ5.p ? IQ5.p : VIS4.camera && VIS4.C.p ? VIS4.C.p : PEND3.v, c4z = () => IQ5.v && IQ5.p ? IQ5.z : VIS4.camera && VIS4.C.z ? VIS4.C.z : 1;
   const PEND3 = { v: (() => { try { const m = /[?&]pendenza=([0-9.]+)/.exec(location.search), v = m ? +m[1] : NaN; return v > .3 && v < 1.3 ? v : PITCH; } catch (e) { return PITCH; } })() };
   function natMat(map, leafy, tint) {
     const k = (map ? map.uuid : 'x') + (leafy ? 'L' : 'B') + (tint || ''); if (NAT.mats[k]) return NAT.mats[k];
@@ -57847,6 +58467,7 @@ var Render = (function () {
     const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
     yield;
     const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
+    if (window.Pavimenti) try { Pavimenti.suolo(mat, tx0, ty0, n, m); } catch (e) { console.error('[pavimenti]', e && e.stack); }   // [pavimenti] il disegno delle pietre al pixel vero
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
@@ -57859,7 +58480,7 @@ var Render = (function () {
     return { grp, geo, mat, tex, btex, veg, nat, lt, vd, rev: ISO.rev };
   }
   function dropChunk(ch) {
-    scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose();
+    scene.remove(ch.grp); if (window.Pavimenti) Pavimenti.via(ch.mat); /* [pavimenti] */ ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose();
     ch.veg.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });
     if (ch.vd) ch.vd.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });   // [verde]
     if (ch.nat) ch.nat.children.forEach(im => { im.geometry.dispose(); if (im.dispose) im.dispose(); });
@@ -57920,7 +58541,7 @@ var Render = (function () {
   }
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
   function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true; }
-  function buildIsland() { buildBase(); }
+  function buildIsland() { buildBase(); if (window.Pavimenti) Pavimenti.init({ G, M, TS, PPM, gT, zoneT, ZN, cn1, groundH, coastIn, geo1, suoloK: (tx, ty) => SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)] || null, suoloW: (x, z) => suoloW1(x, z), phone: PHONE, dirtyAt });   /* [pavimenti] */ }
 
   // ---- arredo statico: lampioni, palme, porto, spiaggia, piazza, poligono ----
 
@@ -61925,7 +62546,7 @@ var Render = (function () {
       for (let i = 0; i < 26; i++) { let px = r() * S, py = r() * S, a = r() * 6.3; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 8; k++) { a += (r() - .5) * 1.2; px += Math.cos(a) * 4; py += Math.sin(a) * 4; x.lineTo(px, py); } x.strokeStyle = 'rgba(20,18,18,.7)'; x.lineWidth = 1; x.stroke(); }
       for (let i = 0; i < 120; i++) { x.fillStyle = pick(r, ['rgba(170,160,90,.55)', 'rgba(190,190,180,.45)', 'rgba(70,90,50,.55)']); x.beginPath(); x.arc(r() * S, r() * S, .6 + r() * 2.4, 0, 6.3); x.fill(); }
     }
-    TEXM1[kind] = c; return c;
+    TEXM1[kind] = kind === 'roccia' ? c : PAV1(c, 256 / 32, kind); return TEXM1[kind];   // [pavimenti]
   }
   function wpat1(x, kind, X0, Y0) {   // motivo da 32 m allineato al mondo
     const c = texCanvas1(kind), p = x.createPattern(c, 'repeat'), M0 = 32 * PPM, sc = M0 / c.width;
@@ -62125,7 +62746,7 @@ var Render = (function () {
       for (let i = 0; i < 8; i++) { x.fillStyle = 'rgba(40,36,34,.12)'; x.beginPath(); x.ellipse(r() * S, r() * S, 2 + r() * 6, 2 + r() * 4, 0, 0, 6.3); x.fill(); }   // macchie e gomme da masticare
       for (let i = 0; i < 30; i++) { x.fillStyle = 'rgba(30,30,30,.2)'; x.fillRect(r() * S, r() * S, 1, 1); }
     }
-    return (P35[kind] = c);
+    return (P35[kind] = PAV1(c, kind === 'lastre' ? 64 : 8, kind));   // [pavimenti]
   }
   // [ferrovia] il suolo della linea: terra battuta e pietrisco sparso lungo il tracciato liscio (le caselle di ghiaia servono
   // solo alle collisioni: a terra niente scalini), sfumato verso l'erba; negli scali la fascia si allarga sotto i binari secondari
@@ -64003,6 +64624,9 @@ var Render = (function () {
   // lastricato grigio a giunti di 6 m sulla spianata della Rocca. Sopra, i segni dell'uso: rattoppi, crepe, tombini, caditoie,
   // gesso dei bambini, l'olio. La mappa vecchia non passa mai di qui (cn1).
   const cn1 = () => !!(M.world && M.world.sets);
+  // [pavimenti] i motivi dipinti diventano tinta: il disegno delle pietre lo fa lo shader del suolo (pavimenti.js)
+  const PAVR1 = typeof location !== 'undefined' && /[?&]pavrush\b/.test(location.search);
+  const PAV1 = (c, ppm, kind) => window.Pavimenti && Pavimenti.on && cn1() ? Pavimenti.piatto(c, ppm, kind === 'lastre' ? .25 : .6) : c;
   const SG1 = { pat: {}, pc: null };
   const ERAC1 = { E0: 1, E2: 2, E3: 3, E4: 4, E5: 5, E6: 6, E7: 7 };   // 9: la spianata della Rocca
   const SPIAN1 = 1463;   // il filo delle case demolite per la spianata (CITY.spian0 + OX nel generatore)
@@ -64083,7 +64707,7 @@ var Render = (function () {
       for (let i = 0; i < 7; i++) { const g2 = x.createRadialGradient(0, 0, 0, 0, 0, 1); g2.addColorStop(0, 'rgba(36,30,24,.26)'); g2.addColorStop(.7, 'rgba(36,30,24,.12)'); g2.addColorStop(1, 'rgba(36,30,24,0)'); x.save(); x.translate(r() * S, r() * S); x.scale(6 + r() * 14, 3 + r() * 7); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, 1, 0, 6.3); x.fill(); x.restore(); }   // pozze asciutte
       for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(70,84,44,.45)'; x.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1 + Math.floor(r() * 2), 1); }   // erba rada
     }
-    return (SG1.pat[kind] = c);
+    return (SG1.pat[kind] = PAV1(c, PPM, kind));   // [pavimenti]
   }
   function segPat1(x, kind, X0, Y0) {
     const k = kind + '|' + X0 + '|' + Y0; if (SG1.pc && SG1.pc.k === k && SG1.pc.x === x) return SG1.pc.p;
@@ -64097,8 +64721,13 @@ var Render = (function () {
   function suoloEra1(x, px, py, P, tx, ty, v) {
     const T = G.T; if (!(v === T.COB || v === T.PIAZZA || v === T.DIRT || v === T.VIA || v === T.WALK)) return false;
     const k = SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)]; if (!k) return false;
+    if (window.Pavimenti && Pavimenti.attivo()) {   // [pavimenti] il confine fra due suoli non segue più le caselle: a quarti di metro, col dominio spostato
+      const q = P / 8, kk = []; let uno = true; for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) { const w = suoloW1(tx * TS + (i + .5) * TS / 8, ty * TS + (j + .5) * TS / 8) || k; kk.push(w); if (w !== k) uno = false; }
+      if (!uno) { for (let c = 0; c < 64; c++) { x.fillStyle = segPat1(x, kk[c], tx * TS - px / PPM, ty * TS - py / PPM); x.fillRect(px + (c % 8) * q, py + Math.floor(c / 8) * q, q, q); } return true; } }
     x.fillStyle = segPat1(x, k, tx * TS - px / PPM, ty * TS - py / PPM); x.fillRect(px, py, P, P); return true;
   }
+  // [pavimenti] il suolo d'epoca in un punto, col dominio spostato di ±1,3 m da un rumore lento: confini organici, non a gradini di 2 m
+  function suoloW1(x, z) { return SUOLO1[eraAt1(x + vnz(x / 4.3, z / 4.3) * 2.6, z + vnz(x / 4.3 + 19, z / 4.3 - 7) * 2.6)] || null; }
   // le vie: i vicoli di basoli col centro lucidato e la canaletta, le strade col materiale della loro epoca
   function strade1Era(x, pass, X0, Y0, vic, strd) {
     x.lineCap = 'butt';   // [incroci] i capi tagliati dritti: una via finisce su un'altra (ci entra fino all'asse), in un nodo o contro la sua chiusura, mai con un tondo
@@ -64348,6 +64977,8 @@ var Render = (function () {
       ng.computeBoundingSphere(); const nm = new THREE.Mesh(ng, m.material); nm.receiveShadow = m.receiveShadow; nm.castShadow = m.castShadow; out.push(nm); });
     g.dispose(); return out;
   }
+  // [pavimenti] il poligono del marciapiede diviso sulla curva s = c0: la parte piena e la fascia dello smusso
+  function bevSplit1(P, c0, lerpP) { const A = [], B = []; for (let k = 0; k < P.length; k++) { const p = P[k], q = P[(k + 1) % P.length], ip = p.s >= c0, iq = q.s >= c0; (ip ? A : B).push(p); if (ip !== iq) { const m = lerpP(p, q, c0); A.push(m); B.push(m); } } return [A, B]; }
   function marciapiedi38(F) {
     if (!F || !F.S38) return 0;
     const { R, NW, NH, S38, D38, C38 } = F;
@@ -64359,18 +64990,19 @@ var Render = (function () {
       const n = vnz(x / 3.1, z / 3.1) * .22 + vnz(x / .9, z / .9) * .08;
       if (dc < .28) c.copy(cs); else c.copy(cp).lerp(ce, Math.max(0, 1 - de / .45) * .8);
       c.multiplyScalar(1 + n); return c; };
-    const emitTop = (P) => { for (let q = 1; q < P.length - 1; q++) for (const p of [P[0], P[q], P[q + 1]]) { pos.push(p.x, terr(p.x, p.z) + HC, p.z); topCol(p.x, p.z, p.dc, p.de); col.push(c.r, c.g, c.b); uv.push(p.x / 2, p.z / 2); } };
-    const emitWall = (a, b) => { const curb = (a.dc + b.dc) * .5 < 1, w = curb ? cs : ce, ya0 = terr(a.x, a.z) - .06, yb0 = terr(b.x, b.z) - .06, ya1 = ya0 + .06 + HC, yb1 = yb0 + .06 + HC;
+    const BEV = window.Pavimenti && Pavimenti.attivo() ? .03 : 0;   // [pavimenti] lo smusso del ciglio: 3 cm a 45°, prende la luce
+    const emitTop = (P) => { for (let q = 1; q < P.length - 1; q++) for (const p of [P[0], P[q], P[q + 1]]) { pos.push(p.x, terr(p.x, p.z) + HC - Math.max(0, BEV - p.s), p.z); topCol(p.x, p.z, p.dc, p.de); col.push(c.r, c.g, c.b); uv.push(p.x / 2, p.z / 2); } };
+    const emitWall = (a, b) => { const curb = (a.dc + b.dc) * .5 < 1, w = curb ? cs : ce, ya0 = terr(a.x, a.z) - .06, yb0 = terr(b.x, b.z) - .06, ya1 = ya0 + .06 + HC - BEV, yb1 = yb0 + .06 + HC - BEV;
       [[a.x, ya0, a.z], [b.x, yb0, b.z], [b.x, yb1, b.z], [a.x, ya0, a.z], [b.x, yb1, b.z], [a.x, ya1, a.z]].forEach((p, k) => { wpos.push(p[0], p[1], p[2]); const s = k === 2 || k === 4 || k === 5 ? 1 : .62; wcol.push(w.r * s, w.g * s, w.b * s); }); };
     const V = (i, j) => { const k = j * NW + i, s = S38[k], d = D38[k]; return { x: i * R, z: j * R, s, dc: d, de: 2.1 - d, iso: false }; };
-    const lerpP = (p, q) => { const t = p.s / (p.s - q.s); return { x: p.x + (q.x - p.x) * t, z: p.z + (q.z - p.z) * t, s: 0, dc: p.dc + (q.dc - p.dc) * t, de: p.de + (q.de - p.de) * t, iso: true }; };
+    const lerpP = (p, q, c0) => { c0 = c0 || 0; const t = (p.s - c0) / (p.s - q.s); return { x: p.x + (q.x - p.x) * t, z: p.z + (q.z - p.z) * t, s: c0, dc: p.dc + (q.dc - p.dc) * t, de: p.de + (q.de - p.de) * t, iso: true }; };
     const clip = (T3) => { const out = []; for (let k = 0; k < 3; k++) { const p = T3[k], q = T3[(k + 1) % 3]; if (p.s >= 0) out.push(p); if ((p.s >= 0) !== (q.s >= 0)) out.push(lerpP(p, q)); } return out; };
     let nt = 0;
     for (let j = 0; j < NH - 1; j++) for (let i = 0; i < NW - 1; i++) {
       const k = j * NW + i; if (!(C38[k] || C38[k + 1] || C38[k + NW] || C38[k + NW + 1])) continue;
       if (S38[k] < 0 && S38[k + 1] < 0 && S38[k + NW] < 0 && S38[k + NW + 1] < 0) continue;
       const a = V(i, j), b = V(i, j + 1), cc = V(i + 1, j + 1), d = V(i + 1, j);
-      for (const T3 of [[a, b, cc], [a, cc, d]]) { const P = clip(T3); if (P.length < 3) continue; emitTop(P); nt++;
+      for (const T3 of [[a, b, cc], [a, cc, d]]) { const P = clip(T3); if (P.length < 3) continue; if (BEV && P.some(p => p.s < BEV)) bevSplit1(P, BEV, lerpP).forEach(Q => Q.length > 2 && emitTop(Q)); else emitTop(P); nt++;
         for (let q = 0; q < P.length; q++) { const p1 = P[q], p2 = P[(q + 1) % P.length]; if (p1.iso && p2.iso) emitWall(p1, p2); } }
     }
     if (!pos.length) return 0;
@@ -64378,7 +65010,7 @@ var Render = (function () {
     const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.Float32BufferAttribute(wpos, 3)); g2.setAttribute('color', new THREE.Float32BufferAttribute(wcol, 3)); g2.computeVertexNormals();
     const top = new THREE.Mesh(g1, new THREE.MeshLambertMaterial({ map: lastre35(), vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
     const wall = new THREE.Mesh(g2, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
-    [top, wall].forEach(m => { m.receiveShadow = true; tileSplit4(m, 64).forEach(t => scene.add(t)); });   // [fluido4] a riquadri: si disegna solo quello che si vede
+    [top, wall].forEach(m => { m.receiveShadow = true; tileSplit4(m, 64).forEach(t => { if (window.Pavimenti) Pavimenti.marciapiede(t);   /* [pavimenti] le lastre e il cordolo di granito */ scene.add(t); }); });   // [fluido4] a riquadri: si disegna solo quello che si vede
     return nt;
   }
 
@@ -66848,7 +67480,7 @@ var Render = (function () {
   }
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
   function setRes(k) { k = Math.max(.7, Math.min(1, k));   /* [colore1] non sotto il 70% (a metà era pastoso) */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
-  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
+  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; if (window.Pavimenti) Pavimenti.qualita('leggera');   /* [pavimenti] */ moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
     PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 640 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
@@ -67321,7 +67953,7 @@ var Render = (function () {
         g.setIndex(new THREE.BufferAttribute(nV < 65536 ? new Uint16Array(idx) : new Uint32Array(idx), 1));
         let y0 = 1e9, y1 = -1e9; for (let q = 0; q < idx.length; q++) { const y = PA[idx[q] * 3 + 1]; if (y < y0) y0 = y; if (y > y1) y1 = y; }
         g.boundingSphere = new THREE.Sphere(new THREE.Vector3((i + .5) * TILE, (y0 + y1) / 2, (j + .5) * TILE), Math.hypot(TILE / 2 + 1, TILE / 2 + 1, (y1 - y0) / 2 + 1));
-        const m = new THREE.Mesh(g, sMat); m.receiveShadow = true; scene.add(m); }); }
+        const m = new THREE.Mesh(g, sMat); m.receiveShadow = true; if (window.Pavimenti) Pavimenti.marciapiede(m, i, j);   /* [pavimenti] */ scene.add(m); }); }
     // [memoria] le griglie di lavoro dei marciapiedi non servono più: a gioco resta solo l'altezza (H, per swH). ~130 MB
     if (SWF35) { SWF35.m = SWF35.Hn = SWF35.S38 = SWF35.D38 = SWF35.C38 = null; } S1.ramp = null;
     return ind.length / 3;
@@ -69146,7 +69778,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const piles = [];
     dyn.buildings.forEach(rec => {
       const b = rec.b, g = rec.geo; if (!b || !g) return;
-      const base = g.y0, low = Math.min(groundH(g.x0, g.z0), groundH(g.x0 + g.w, g.z0 + g.d), base);
+      const base = g.y0, low = Math.min(groundH(g.x0, g.z0), groundH(g.x0 + g.w, g.z0 + g.d), base, ...(window.Pavimenti && Pavimenti.attivo() ? [groundH(g.x0 + g.w, g.z0), groundH(g.x0, g.z0 + g.d), groundH(g.x0 + g.w / 2, g.z0), groundH(g.x0 + g.w / 2, g.z0 + g.d), groundH(g.x0, g.z0 + g.d / 2), groundH(g.x0 + g.w, g.z0 + g.d / 2)].map(h => h - .03) : []));   // [pavimenti] lo zoccolo e i gradini arrivano a terra anche sull'angolo in discesa
       const zh = .55 + (base - low);
       const pl = box(g.w + .18, zh, g.d + .18, plinthM); pl.position.set(g.x0 + g.w / 2, low + zh / 2 - .02, g.z0 + g.d / 2); addStatic(pl);
       // gradini davanti alla porta
@@ -69159,7 +69791,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         const nuova = cn1(), sM = nuova ? (BOT.marmo || (BOT.marmo = sm('#cfc6b2', { roughness: .6 }))) : stepM;
         [[.5, .2], [1, .1]].forEach(([dep, hh], k) => { const st = box(side[0] ? dep : 1.7, hh + (base - low), side[1] ? dep : 1.7, sM); st.position.set(ex + side[0] * dep / 2, low + (hh + base - low) / 2, ez + side[1] * dep / 2); addStatic(st);
           if (nuova) { const nm = BOT.naso || (BOT.naso = std({ color: '#f4ecd8', emissive: '#4a3e28', emissiveIntensity: .6, roughness: .35 })), ns = box(side[0] ? .07 : 1.72, .035, side[1] ? .07 : 1.72, nm); ns.position.set(ex + side[0] * (dep - .03), low + hh + (base - low) + .005, ez + side[1] * (dep - .03)); addStatic(ns); } });
-        if (nuova) { const fm = BOT.piede || (BOT.piede = sm('#1c1816', { roughness: 1 })), fo = box(side[0] ? .1 : 1.86, .03, side[1] ? .1 : 1.86, fm); fo.position.set(ex + side[0] * 1.04, low + .005, ez + side[1] * 1.04); addStatic(fo); }
+        if (nuova) { const fm = BOT.piede || (BOT.piede = sm('#1c1816', { roughness: 1 })), fo = box(side[0] ? .1 : 1.86, .03, side[1] ? .1 : 1.86, fm); fo.position.set(ex + side[0] * 1.04, (window.Pavimenti && Pavimenti.attivo() ? groundH(ex + side[0] * 1.04, ez + side[1] * 1.04) : low) + .005, ez + side[1] * 1.04);   /* [pavimenti] la riga del piede sul suolo vero */ addStatic(fo); }
         // [botteghe] il gradino consumato: in mezzo la pietra è lisciata e più chiara, dove si mette il piede da cent'anni
         const wm = nuova ? (BOT.worn2 || (BOT.worn2 = sm('#e6dcc6', { roughness: .3 }))) : BOT.worn || (BOT.worn = sm('#8a857c', { roughness: .35 })), wn = box(side[0] ? .3 : .8, .012, side[1] ? .3 : .8, wm); wn.position.set(ex + side[0] * .27, low + .2 + (base - low) + .002, ez + side[1] * .27); addStatic(wn);
       }); P2.k = null;
@@ -70617,7 +71249,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     meteoAt(st.t, METEO); { const rg = regimeAt(cam.x, cam.y); METEO.reg += (rg - METEO.reg) * Math.min(1, (dt || .016) * 1.5); } dyn.meteo = METEO;   /* [amb1] */
     const WXc = METEO.w[0], WXwet = METEO.w[1], WXfog = METEO.w[2], WXst = METEO.w[3], SUNK = (1 - night) * (1 - WXc * .82);   /* [amb1] quanto sole arriva */
     const SZ = scenaStep(cam.x, cam.y, dt);   // [regia2] in quale luce di scena sta la camera (borgo, metropoli, spianata)
-    ISO.rush = !!(ui && ui.intro);   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
+    ISO.rush = !!(ui && ui.intro) || PAVR1;   // [pavimenti] ?pavrush: gli strumenti senza scheda video vogliono il suolo vero subito   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
     updateChunks(cam.x, cam.y);
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, (.22 - night * .16) * METEO.reg).multiplyScalar(1 - night * .45 * (1 - WXfog * .4)); /* [amb1] */ /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
@@ -70855,7 +71487,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       // alla ripartenza dopo una sosta se l'hai spostata camminando, dopo un secondo di marcia contro la visuale. MN.yaw si somma alla visuale
       // automatica (sotto, cam.yaw), MN.px e MN.pz allo sguardo avanti; lo scarto resta nell'inquadratura (Visuale.limita)
       const MN = cam.mano || (cam.mano = {}), KM = Visuale.MANO, yaw0 = cam.yaw === undefined ? YAW : cam.yaw;
-      const fx0 = -Math.sin(yaw0), fz0 = -Math.cos(yaw0), asp0 = W / Math.max(1, H), vh0 = VIEW * (cam.zoom || 1) * (H > W * 1.05 ? .78 : 1) * (VIS4.camera && VIS4.C.z ? VIS4.C.z : 1), pp0 = VIS4.camera && VIS4.C.p ? VIS4.C.p : PEND3.v, sp0 = Math.sin(pp0);   // [visuale5] l'inquadratura vera (lo zoom della camera, non quello chiesto)
+      const fx0 = -Math.sin(yaw0), fz0 = -Math.cos(yaw0), asp0 = W / Math.max(1, H), vh0 = VIEW * (cam.zoom || 1) * (H > W * 1.05 ? .78 : 1) * c4z(), pp0 = c4p(), sp0 = Math.sin(pp0);   // [visuale5] l'inquadratura vera (lo zoom della camera, non quello chiesto)
       let dyaw = 0, dpx = 0, dpz = 0;
       if (!ui.intro) { if (ui.edge && !pveh) dyaw -= ui.edge * dt * 1.4;   // alla guida il bordo no: il puntatore serve a sterzare
         if (ui.rot) dyaw += ui.rot * dt * KM.giraK; if (ui.drag) dyaw += ui.drag;   // [monte] la visuale gira; [varco1] anche in auto, in Vespa e in bici
@@ -70911,18 +71543,18 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // [visuale5] cam.uy è la sola visuale automatica (gli strumenti, la visuale che segue la marcia sul telefono): quello che il giocatore
     // gira a mano sta in cam.mano.yaw (sopra) e torna da sé
     cam.uy = cam.uy || 0; const MNy = cam.mano ? cam.mano.yaw : 0, MNtieni = !!(cam.mano && cam.mano.off && !cam.mano.ric), MNgiro = !!(cam.mano && cam.mano.giro < Visuale.MANO.giro);
-    if (PHONE && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !MNtieni) {   // [camera3] la visuale gira attorno al personaggio, dietro alla direzione di marcia   // [visuale5] non mentre la tieni spostata a mano
+    if (PHONE && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !MNtieni && !IQ5.via) {   // [inquadratura] lungo la via la visuale sta sull'asse   // [camera3] la visuale gira attorno al personaggio, dietro alla direzione di marcia   // [visuale5] non mentre la tieni spostata a mano
       const vs = pveh ? Math.abs(pveh.speed || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
       const hd = pveh ? (vs > .8 && (pveh.speed || 0) > 0 ? pveh.ang : null) : (vs > .4 && ui.stick ? p.face : null);
       // [fluido] a piedi: se tiri la levetta indietro il personaggio si volta e la visuale guarda subito là (sguardo avanti), senza il
       // mezzo giro lento della camera alle spalle (era l'arco largo e il ritardo); nelle curve la segue più pronta (2,2 → 3,2)
       // [visuale5] ma se vai contro la visuale per più di un secondo (Visuale.mano: la contromarcia) il mezzo giro si fa: si ricentra nella direzione nuova
-      const tgt = hd === null ? 0 : Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW, far = hd !== null && !pveh && !MNgiro && Math.abs(Math.atan2(Math.sin(tgt - cam.uy - MNy), Math.cos(tgt - cam.uy - MNy))) > 1.75;
+      const tgt = hd === null ? 0 : Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW, far = hd !== null && !pveh && !MNgiro && Math.abs(Math.atan2(Math.sin(tgt - cam.uy - MNy - IQ5.dy), Math.cos(tgt - cam.uy - MNy - IQ5.dy))) > 1.75;
       if (hd !== null && !far) cam.uy = angLerp(cam.uy, tgt, 1 - Math.exp(-dt * (pveh ? 2.6 : 3.2))); }
     if (VIS4.camera) try { vis4Camera(p, pveh, playerH, ui, dt); } catch (e) { if (!VIS4.err) { VIS4.err = 1; console.warn('[visuale4]', e); } }   // [visuale4] A: la camera che si adatta (la misura, l'isteresi, lo smorzamento)
-    cam.yaw = YAW + cam.uy + MNy + (VIS4.camera && VIS4.C.g ? VIS4.C.g : 0); // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa   // [visuale4] il giro lungo il vicolo (spento per difetto)   // [visuale5] più la parte a mano
+    cam.yaw = YAW + cam.uy + (cam.mano ? cam.mano.yaw : 0) + (VIS4.camera && VIS4.C.g ? VIS4.C.g : 0) + (IQ5.v ? IQ5.dy : 0);   // [inquadratura] più il giro lungo la via (la parte a mano riletta: il ricentro può averla passata al giro) // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa   // [visuale4] il giro lungo il vicolo (spento per difetto)   // [visuale5] più la parte a mano
     cam.yawIn = cam.yaw + (cam.lock || 0);   // [visuale5] la base della levetta (camBasis): la visuale di adesso, meno il ricentro fatto mentre la tieni
-    let pitch = lerp(VIS4.camera && VIS4.C.p ? VIS4.C.p : PEND3.v, onVespa ? .78 : .82, ease);   // [visuale4] a piedi la pendenza della camera che si adatta   // [visuale3] a piedi la pendenza di ?pendenza= (prova, non attiva per difetto)
+    let pitch = lerp(c4p(), onVespa ? .78 : .82, ease);   // [visuale4] a piedi la pendenza della camera che si adatta   // [visuale3] a piedi la pendenza di ?pendenza= (prova, non attiva per difetto)
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
     if (!pveh && !ui.intro) {
       const ph0 = (p.lv && typeof Livelli !== 'undefined' ? Livelli.heightOf(st, p) : null), py0 = (ph0 !== null ? ph0 : groundH(p.x, p.y)) + 1.5, ux = Math.sin(cam.yaw), uz = Math.cos(cam.yaw);
@@ -70931,7 +71563,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       pitch = lerp(pitch, 1.15, cam.lift);
     }
     const fov = lerp(30, onVespa ? 40 : 40, ease) * (1 + (pveh ? Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) : 0) / 18 * .16 * ease);
-    const viewH = VIEW * cam.zoom * (VIS4.camera && VIS4.C.z ? VIS4.C.z : 1) * (H > W * 1.05 ? .78 : 1);   // [visuale4] nella stretta la visuale si stringe un poco   // [telefono] in verticale la visuale si stringe: il personaggio non è un puntino
+    const viewH = VIEW * cam.zoom * c4z() * (H > W * 1.05 ? .78 : 1);   // [visuale4] nella stretta la visuale si stringe un poco   // [telefono] in verticale la visuale si stringe: il personaggio non è un puntino
     const walkDist = (viewH / 2) / Math.tan(30 * Math.PI / 360);
     let driveDist = ((onVespa ? 26 : 32) * (ui.zoom || 1) * (PHONE && H > W * 1.05 ? 1.3 : 1))   /* [telefono] in verticale un po' più indietro: di lato si vedeva pochissimo */ + (pveh ? Math.min(14, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .5) : 0);
     if (false) {
@@ -70982,11 +71614,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { ugNow = true; scene.fog.near = dist + 3; scene.fog.far = dist + 46; scene.fog.color.copy(UGR.fogC || tmpC.set('#0c0b0a')); scene.background.copy(scene.fog.color); } }   // [monte] [sotto2] la nebbia prende il colore della cavità
     {   // [visuale5] la visuale sul personaggio: il muretto o il tetto che sbiadisce, fuori, mai sul tetto o sulle scale dei tetti (feet0)
       const fy = (feet0 !== null ? feet0 : groundH(focus[0][0], focus[0][1])), fuori = !ui.intro && !ui.studio && !ui.focus && !p.indoor && !indoorNow && !ugNow && feet0 === null;
-      if (VIS4.muretto || VIS3.vivi.size) try { vis3Tick(focus[0][0], focus[0][1], fy, VIS4.muretto && fuori, dt, pitch); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } }   // un errore del muretto non ferma mai il fotogramma
+      const iqT = !!(IQ5.v && IQ5.v.taglio), iqS = !IQ5.v || IQ5.v.tetti;   // [inquadratura] il taglio mirato usa la macchina del muretto; i tetti sbiaditi solo se la variante li vuole
+      if (VIS4.muretto || iqT || VIS3.vivi.size) try { vis3Tick(focus[0][0], focus[0][1], fy, (VIS4.muretto || iqT) && fuori, dt, pitch); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } }   // un errore del muretto non ferma mai il fotogramma
       vis3Personaggio(dyn.people.__player, p.x, playerH, p.y, night, dt);   // [visuale3] il personaggio si stacca in ombra (in ogni visuale)
       if (window.TettiVissuti) try { TettiVissuti.vicino(focus[0][0], focus[0][1], frameN, night); } catch (e) { }   // [vissuti] le cartacce e le pozze vicine
       // [visuale4] A: il tetto della casa che copre sbiadisce (alle stesse condizioni del muretto); in tutti e due la sagoma di chi conta
-      if (VIS4.camera || VIS4.T.size) try { vis4Tetti(focus[0][0], focus[0][1], fy, VIS4.camera && fuori, dt); } catch (e) { if (!VIS4.err) { VIS4.err = 1; console.warn('[visuale4]', e); } }
+      if (VIS4.camera || VIS4.T.size) try { vis4Tetti(focus[0][0], focus[0][1], fy, VIS4.camera && fuori && iqS, dt); } catch (e) { if (!VIS4.err) { VIS4.err = 1; console.warn('[visuale4]', e); } }
       if (VIS4.on) try { vis4Sagome(ui.intro || ui.studio ? null : { pveh, ids: focus.length > 1 ? (mo && mo.npcs || []).concat(ui.dialogNpc ? [ui.dialogNpc] : []) : [] }); } catch (e) { if (!VIS4.err) { VIS4.err = 1; console.warn('[visuale4]', e); } }
     }
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
@@ -71066,7 +71699,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
 </script>
 <script data-m="ordine_arte">/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
