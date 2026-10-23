@@ -1564,6 +1564,9 @@ var Render = (function () {
     return q < .55 ? [pick(r, NM.pine), .85 + r() * .35] : q < .6 ? [pick(r, NM.bare), .42 + r() * .12] : [pick(r, NM.oak), .7 + r() * .2];   /* [amb1] */
   }
   const nM4 = new THREE.Matrix4(), nQ = new THREE.Quaternion(), nE = new THREE.Euler(), nV = new THREE.Vector3(), nS = new THREE.Vector3(), nC = new THREE.Color();
+  // [vegetazione] il verde nuovo (vegetazione.js): sulle sue caselle il verde di prima non si disegna (?vecchioverde: com'era)
+  let VEGR = null;   // [vegetazione] la posa del verde nuovo (Vegetazione.monta)
+  const VEGN = (i) => typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione && Vegetazione.mia(M.world, i);
   function buildNat(tx0, ty0, n, m) {
     const grp = new THREE.Group(); grp.name = 'nat';
     if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/Pine_1')) return grp;
@@ -1581,6 +1584,7 @@ var Render = (function () {
       const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, v = gT(tx, ty), f = F ? F[ii] : 0, r = rng((tx * 50411 + ty * 81239) >>> 0);
       const cx = tx * TS + .6 + r() * .8, cz = ty * TS + .6 + r() * .8, th = thick(tx * TS, ty * TS), nt = nearT(tx, ty);
       const under = (x, z, s0) => { const q = r(); add(q < .45 ? 'Fern_1' : q < .75 ? 'Bush_Common' : q < .9 ? 'Grass_Wispy_Tall' : 'Plant_1_Big', x, 0, z, s0 * (q < .45 ? .32 : q < .75 ? .55 : .9), r() * 6.28, { ground: true, col: pick(r, LEAF) }); };
+      if (v === T.TREE && VEGN(ii)) continue;   // [vegetazione]
       if (v === T.TREE) {
         const [name, s, lean] = eco38(tx, ty, r), big = (th > .55 ? 1.05 : th < .35 ? .82 : .94) * .78;
         add(name, cx, groundH(cx, cz) - .15, cz, s * big * (.9 + r() * .2), r() * 6.28, { rx: (r() - .5) * .06, rz: (r() - .5) * .06 + (lean || 0), col: treeCol36(name, cx, cz, r) });   // [isola36]
@@ -1972,6 +1976,7 @@ var Render = (function () {
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, v = gT(tx, ty), z = zoneT(tx, ty), r = rng((tx * 92821 + ty * 68917) >>> 0);
       const cx = tx * TS + .4 + r() * 1.2, cz = ty * TS + .4 + r() * 1.2;
+      if (VEGN(ty * G.GW + tx)) continue;   // [vegetazione]
       if (v === T.TREE && r() < .45) tuft(tx * TS + r() * 2, ty * TS + r() * 2, DEAD, .9, r);
       if (v === T.TREE) { L = LT; tree(cx, cz, z === ZN.MACCHIA ? (q => q < .44 ? 'abete' : q < .58 ? 'betulla' : q < .7 ? 'pino' : q < .93 ? 'faggio' : 'secco')(r()) : z === ZN.MONTE ? (q => q < .3 ? 'pino' : q < .88 ? 'abete' : 'betulla')(r()) : z === ZN.CITTA ? (r() < .6 ? 'tiglio' : 'betulla') : (r() < .5 ? 'betulla' : 'secco'), r); L = L0; }
       else if (v === T.SHRUB) { for (let q = 0; q < 3; q++) tuft(tx * TS + r() * 2, ty * TS + r() * 2, r() < .5 ? DEAD : STRAW, 1, r); const k = r() < .6 ? 1 : 0; for (let q = 0; q < k; q++) { const x = tx * TS + r() * 2, zz = ty * TS + r() * 2, ss = .5 + r() * .6; put(LT.leaf, x, groundH(x, zz) + ss * .3, zz, ss * 1.1, ss * .7, ss * 1.1, r() * 6, pick(r, ['#3a4434', '#2e3a2c', '#4a4a3e'])); } }
@@ -2425,7 +2430,7 @@ var Render = (function () {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); sabbiaBagnata2(x, tx0, ty0, n, m); /* [costa2] */ yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); segniSuolo1(x, tx0, ty0, n, m); percorsiSuolo1(x, tx0, ty0, n, m); /* [percorsi] */ sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
+    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); sabbiaBagnata2(x, tx0, ty0, n, m); /* [costa2] */ yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); segniSuolo1(x, tx0, ty0, n, m); percorsiSuolo1(x, tx0, ty0, n, m); /* [percorsi] */ sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m); if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP);   /* [vegetazione] */
     yield;
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
@@ -8249,7 +8254,7 @@ var Render = (function () {
     const forest = e => e === E.ABETAIA || e === E.FAGGETA || e === E.VALLONE || e === E.PINETA || e === E.BETULLE || e === E.PINIMONTE;
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, z = zoneT(tx, ty); let v = gT(tx, ty);
-      if (z === ZN.CITTA || !natural(v)) continue;
+      if (z === ZN.CITTA || !natural(v) || VEGN(ii)) continue;   // [vegetazione]
       if (RW[ii] > 0 || v === T.VIA || v === T.DIRT) { if (RECT[ii] || !(RW[ii] > 0)) continue; v = T.GRASS; }   // le caselle sotto la strada: erba fino al ciglio vero
       const f = F ? F[ii] : 0; if ((f & 8192) && v !== T.GRASS && v !== T.ROCK && v !== T.GRAVEL) continue;
       const r = rng((tx * 69061 + ty * 30011) >>> 0), wx = tx * TS, wy = ty * TS, X0 = wx + 1, Y0 = wy + 1;
@@ -15229,6 +15234,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const SZ = scenaStep(cam.x, cam.y, dt);   // [regia2] in quale luce di scena sta la camera (borgo, metropoli, spianata)
     ISO.rush = !!(ui && ui.intro);   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
     updateChunks(cam.x, cam.y);
+    if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) {   // [vegetazione] il verde attorno alla camera
+      if (!VEGR) VEGR = Vegetazione.monta(scene, { W: M.world, groundH, telefono: PHONE || (LOWQ && LOWQ.on) }) || { aggiorna() {} };
+      VEGR.aggiorna(cam.x, cam.y, (st && st.t || 0) * 2.5); }
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, (.22 - night * .16) * METEO.reg).multiplyScalar(1 - night * .45 * (1 - WXfog * .4)); /* [amb1] */ /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
     // [inverno] luce di neve: tanto cielo, poco sole

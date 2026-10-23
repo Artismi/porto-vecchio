@@ -325,6 +325,10 @@ var Vegetazione = (function () {
     if (W.roadW && W.roadW[i] > 0) return null;
     const S = FORM[fi].strati.find(s => s.basso); if (!S) return null;
     const fit = P.fitto(x, y), ds = P.dSen[i];
+    // la lettiera: sotto i pini gli aghi caduti e le pigne, sotto i lecci le foglie secche e le felci (dove l'ombra è fitta)
+    { const fid = FORM[fi].id, h0 = hash2(Math.floor(x * 1.3), Math.floor(y * 1.3), 7711), o = P.ombra ? P.ombra[i] : fit;
+      if ((fid === 'pineta' || fid === 'pinetaM') && ds > 1.2) { if (h0 < .22 + o * .3) return { sp: 'tappetoAghi', t: h0 * 3 % 1 }; if (h0 > .985) return { sp: 'pigna', t: h0 }; if (h0 > .978) return { sp: 'rametto', t: h0 }; }
+      if ((fid === 'lecceta' || fid === 'macchia') && ds > 1.2 && o > .3) { if (h0 < .2 + o * .3) return { sp: 'tappetoFoglie', t: h0 * 3 % 1 }; if (h0 > .95 && fid === 'lecceta') return { sp: 'felce', t: h0 }; } }
     let p = S.p * (1.25 - fit * .9); if (ds < 1.2) p *= .25; else if (ds < 3) p *= 1.3;   // il bordo del sentiero è fiorito, il fondo pestato
     const u = hash2(Math.floor(x * 1.7), Math.floor(y * 1.7), 7701); if (u >= p) return null;
     let L = S.sp; if (fi === F.lecceta || fit > .8) L = [['erbaVerde', 1]];
@@ -374,7 +378,9 @@ var Vegetazione = (function () {
     const TINTA_FOTO = { leccio: [.8, .88, .84], lentisco: [.84, .9, .84], mirto: [.9, .96, .9], carrubo: [.88, .94, .84], agrume: [.86, .96, .82], pino: [.92, 1, .94], pinoM: [1, 1.02, .94], cipresso: [.78, .88, .84],
       ulivo: [1.06, 1.1, 1.08], eucalipto: [1, 1.06, 1.08], oleandro: [.95, 1, .95], mandorlo: [1.02, 1.04, .96], fico: [.74, .9, .7], tamerice: [1, 1, 1], edera: [.8, .9, .85], felce: [.95, 1, .95], erbaVerde: [.95, 1, .92], erbaSecca: [1.04, 1, .94] };
     const tintaF = sp => TINTA_FOTO[sp] || [1, 1, 1];
-    const colCella = (cell, sp, col) => FOTO.has(cell) ? tintaF(sp) : GRIGIE.has(cell) ? col : [1, 1, 1];
+    // [vegetazione] le foto si accendono solo con ?verdefoto (la strada dipinta è quella scelta: una gamma sola)
+    const FOTO_ON = typeof location !== 'undefined' && /[?&]verdefoto\b/.test(location.search || '');
+    const colCella = (cell, sp, col) => FOTO.has(cell) ? (FOTO_ON ? tintaF(sp) : col) : GRIGIE.has(cell) ? col : [1, 1, 1];
     const GRIGIE = new Set(['tamericeRamo', 'lettieraAghi', 'lettieraFoglie', 'erbaDab', 'erbaDab2', 'erbaAlta', 'felce', 'edera', 'pieno', 'corteccia', 'prato', 'lettieraAghi']);
     const CS = 256, NX = 8, NY = 5, IN = 3 / CS;
     const cellUV = k => { const i = CI[k], cx = i % NX, cy = Math.floor(i / NX); return [cx / NX + IN / NX, 1 - (cy + 1) / NY + IN / NY, (cx + 1) / NX - IN / NX, 1 - cy / NY - IN / NY]; };
@@ -423,8 +429,7 @@ var Vegetazione = (function () {
       });
       spray('ramoAghi', { forma: 'aghi', rami: 7, perRamo: 4, aghi: 22, L: 34, W: 2.2, apre: .5 });
       spray('ramoAghi2', { forma: 'aghi', rami: 6, perRamo: 3, aghi: 18, L: 42, W: 2, apre: .6 });
-      spray('ramoFoglioline', { forma: 'ovale', rami: 8, perRamo: 9, L: 17, W: 7.5, apre: .8 });
-      spray('ramoOvali', { forma: 'ovale', rami: 7, perRamo: 7, L: 22, W: 11, apre: .9 });
+      ciocca('ramoFoglioline', 'tonda', 90, 18, 30); ciocca('ramoOvali', 'tonda', 60, 24, 40);
       spray('ramoLanceolate', { forma: 'lancia', rami: 8, perRamo: 7, L: 30, W: 5.2, apre: .55, legno: 1.8 });
       spray('ramoLunghe', { forma: 'lancia', rami: 6, perRamo: 5, L: 52, W: 7, apre: .4, pende: .55, cy: 90, schiaccia: .5 });
       spray('ramoLarghe', { forma: 'larga', rami: 6, perRamo: 2, L: 50, W: 20, apre: .9, sotto: 1 });
@@ -482,7 +487,7 @@ var Vegetazione = (function () {
       grappoloC('fioriBianchi', 150, (x, y, k, t) => { if (k % 3 === 0) foglia(x, y, 22, 8, r() * TAU, `hsl(105,40%,${22 + t * 26}%)`); else fiore5(x, y, 6 + r() * 3, `hsl(50,30%,${90 + t * 8}%)`, '#e8d070'); });
       const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
       // l'atlante fotografico: quando arriva copre le celle FOTO e la corteccia
-      CARICATO = new Promise(ok => { const img = new Image(); img.onload = () => { [...FOTO, 'corteccia'].forEach(k => { const i = CI[k], x = (i % NX) * CS, y = Math.floor(i / NX) * CS; g.clearRect(x, y, CS, CS); g.drawImage(img, x, y, CS, CS, x, y, CS, CS); }); t.needsUpdate = true; ok(true); };
+      if (!FOTO_ON) CARICATO = Promise.resolve(true); else CARICATO = new Promise(ok => { const img = new Image(); img.onload = () => { [...FOTO, 'corteccia'].forEach(k => { const i = CI[k], x = (i % NX) * CS, y = Math.floor(i / NX) * CS; g.clearRect(x, y, CS, CS); g.drawImage(img, x, y, CS, CS, x, y, CS, CS); }); t.needsUpdate = true; ok(true); };
         img.onerror = () => ok(false); img.src = BASE + 'atlante_foto.png'; });
       return (ATL = t);
     }
@@ -827,7 +832,7 @@ var Vegetazione = (function () {
   const U = typeof THREE === 'undefined' ? null : { uT: { value: 0 }, uCam: { value: new THREE.Vector3() }, uWind: { value: .06 },
     uPittura: { value: 1 }, uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
     uMezzo: { value: new THREE.Vector3(1, 1.04, .98) }, uLuce: { value: new THREE.Vector3(1.24, 1.21, .94) }, uLuceAdd: { value: new THREE.Vector3(.05, .05, .01) },
-    uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .55 } };
+    uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .55 }, uGamma: { value: null }, uGain: { value: .62 }, uOff: { value: .02 }, uTintaSpecie: { value: .22 } };
   function materiale(band, opz) {
     opz = opz || {};
     // le carte hanno già le due facce: il materiale guarda solo il davanti (niente rovescio con la luce girata)
@@ -835,7 +840,7 @@ var Vegetazione = (function () {
     if (opz.senzaProfondita) m.depthWrite = false;   // [vegetazione] il prato di massa: niente profondità, quindi niente contorno del post
     const uBand = { value: new THREE.Vector4(band[0], band[1], band[2], band[3]) }; m.userData.uBand = uBand;
     m.onBeforeCompile = sh => {
-      for (const k in U) sh.uniforms[k] = U[k]; sh.uniforms.uBand = uBand;
+      if (!U.uGamma.value) U.uGamma.value = gammaTex(); for (const k in U) sh.uniforms[k] = U[k]; sh.uniforms.uBand = uBand;
       sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
 uniform float uT; uniform vec3 uCam; uniform vec4 uBand; uniform float uWind; attribute float flex; attribute float occ; varying float vK; varying float vOcc;
 #ifdef VEG_CENTRO
@@ -860,21 +865,21 @@ if (vK < .003) transformed = centro;
 if (vK < .003) transformed = vec3(0.0);
 #endif`);
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-varying float vK; varying float vOcc; uniform float uPittura; uniform vec3 uRamp; uniform vec3 uOmbra; uniform vec3 uOmbraAdd; uniform vec3 uMezzo; uniform vec3 uLuce; uniform vec3 uLuceAdd; uniform float uOcc; uniform float uTrasl; uniform float uTintaLuce;`)
+varying float vK; varying float vOcc; uniform float uPittura; uniform vec3 uRamp; uniform vec3 uOmbra; uniform vec3 uOmbraAdd; uniform vec3 uMezzo; uniform vec3 uLuce; uniform vec3 uLuceAdd; uniform float uOcc; uniform float uTrasl; uniform float uTintaLuce; uniform sampler2D uGamma; uniform float uGain; uniform float uOff; uniform float uTintaSpecie;`)
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
 if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (vK < vgN) discard; }`)
         .replace('#include <envmap_fragment>', `#include <envmap_fragment>
-{ // [vegetazione] la pittura: tre fasce, ombra fredda e luce calda, occlusione dipinta, controluce
+{ // [vegetazione] la pittura: la luce che la foglia prende (con l'occlusione dipinta) scelta sulla GAMMA del riferimento; la specie la
+  // tinge appena; la tinta della luce del gioco passa per metà (sera, notte); il controluce accende i bordi
   vec3 vgB = diffuseColor.rgb; float vgLb = max(dot(vgB, vec3(.299, .587, .114)), .002);
-  float vgLf = dot(outgoingLight, vec3(.299, .587, .114)) / vgLb;
-  vec3 vgHue = clamp(outgoingLight / max(vgB * vgLf, vec3(.002)), 0., 2.);
-  float vgB1 = smoothstep(uRamp.x - uRamp.z, uRamp.x + uRamp.z, vgLf), vgB2 = smoothstep(uRamp.y - uRamp.z, uRamp.y + uRamp.z, vgLf);
-  vec3 vgC = mix(mix(vgB * uOmbra + uOmbraAdd, vgB * uMezzo, vgB1), vgB * uLuce + uLuceAdd, vgB2);
-  vgC *= mix(uOcc, 1., vOcc) * mix(vec3(1.), vgHue, uTintaLuce);
+  float vgL = dot(outgoingLight, vec3(.299, .587, .114)) * mix(uOcc, 1., vOcc);
+  float vgLf = dot(outgoingLight, vec3(.299, .587, .114)) / vgLb; vec3 vgHue = clamp(outgoingLight / max(vgB * vgLf, vec3(.002)), 0., 2.);
+  vec3 vgC = texture2D(uGamma, vec2(clamp(vgL * uGain + uOff, .01, .99), .5)).rgb;
+  vgC *= mix(vec3(1.), vgB / vgLb, uTintaSpecie) * mix(vec3(1.), vgHue, uTintaLuce);
   #if NUM_DIR_LIGHTS > 0
   float vgBack = pow(max(dot(-normalize(vViewPosition), directionalLights[0].direction), 0.), 3.);
   float vgEdge = 1. - smoothstep(.5, .9, diffuseColor.a);
-  vgC += directionalLights[0].color * vgBack * (.3 + .7 * vgEdge) * vgB * uTrasl * vOcc;
+  vgC += directionalLights[0].color * vgBack * (.3 + .7 * vgEdge) * vec3(.8, .9, .5) * uTrasl * vOcc * .25;
   #endif
   outgoingLight = mix(outgoingLight, vgC, uPittura); }`);
     };
@@ -886,7 +891,108 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
   let DEPTH = null;
   function ombra() { return DEPTH || (DEPTH = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: KIT.atlante(), alphaTest: .5 })); }
 
-  const api = { SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra };
+
+  // ================= LA GAMMA: un solo colore per valore, per piante e suolo =================
+  // Dal riferimento dell'utente (la radura col rudere vista dall'alto, 23 ottobre): l'armonia viene da una gamma sola che sale dall'ombra
+  // blu notte al teal, al verde, al lime, alla luce crema. Il fogliame, l'erba e il suolo cadono tutti in questa scala secondo quanta luce
+  // prendono; la specie sposta appena la tinta (uTintaSpecie). Il suolo caldo (aghi, paglia, terra) ha la sua gamma calda che si
+  // mescola per formazione (CALDA).
+  const GAMMA = ['#122e5b', '#154c63', '#1f636e', '#2c7b7b', '#499d8f', '#6ea470', '#9ac770', '#c5e276', '#f5f3b0'];
+  const GAMMA_CALDA = ['#2a2440', '#4a3438', '#74503a', '#9a7448', '#b89458', '#cdb06a', '#dcc884', '#ece0a4', '#f8f0c8'];
+  const hexRGB = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const gammaAt = (G, t) => { t = Math.max(0, Math.min(1, t)) * (G.length - 1); const i = Math.min(G.length - 2, Math.floor(t)), f = t - i, a = hexRGB(G[i]), b = hexRGB(G[i + 1]); return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]; };
+  let GT = null;
+  function gammaTex() { if (GT) return GT; const d = new Uint8Array(256 * 4); for (let i = 0; i < 256; i++) { const c = gammaAt(GAMMA, i / 255); d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2]; d[i * 4 + 3] = 255; }
+    GT = new THREE.DataTexture(d, 256, 1, THREE.RGBAFormat); GT.magFilter = GT.minFilter = THREE.LinearFilter; GT.needsUpdate = true; return GT; }
+  // quanto calda è la formazione a terra (0 la gamma fredda, 1 la calda)
+  const CALDA = { pineta: .8, pinetaM: .65, lecceta: .25, macchia: .4, gariga: .75, prato: .55, uliveto: .45, agrumeto: .3, riparia: .15, eucalipteto: .55, giardino: .3 };
+
+  // ================= IL SUOLO DIPINTO SOTTO IL VERDE =================
+  // Le piante devono nascere dal suolo, non starci sopra: sotto le chiome il suolo scende nell'ombra (una pozza morbida, spostata dalla
+  // parte opposta al sole), nelle radure sale nella luce, lungo i sentieri si schiarisce e si scalda; la pennellata è allungata e segue
+  // il pendio del rumore, non è grana. I bordi verso il suolo dipinto dal gioco sfumano (la maschera delle caselle è interpolata).
+  function ombraSuolo(P) {   // la pozza d'ombra delle chiome per casella (0 … 1), calcolata una volta
+    if (P.ombra) return P.ombra; const W = P.W, GW = W.GW, GH = W.GH, TS = W.TS, O = new Float32Array(GW * GH);
+    P.piante.forEach(p => { const S = SP[p.sp]; if (!S || S.strato === 'C') return; const R = S.chioma * (S.strato === 'B' ? .8 : 1) * 1.1, cx = p.x - R * .25, cy = p.y - R * .35, k = S.strato === 'A' ? .7 : S.strato === 'M' ? .55 : .4;
+      for (let ty = Math.floor((cy - R) / TS); ty <= Math.ceil((cy + R) / TS); ty++) for (let tx = Math.floor((cx - R) / TS); tx <= Math.ceil((cx + R) / TS); tx++) { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue;
+        const d = Math.hypot(tx * TS + 1 - cx, ty * TS + 1 - cy) / R; if (d < 1) { const i = ty * GW + tx; O[i] = Math.min(1, O[i] + k * (1 - d * d)); } } });
+    return (P.ombra = O);
+  }
+  function dipingiSuolo(ctx, tx0, ty0, n, m, PX) {
+    if (SPENTO || !PIANO) return; const P = PIANO, W = P.W, GW = W.GW, GH = W.GH, TS = W.TS, form = P.form, O = ombraSuolo(P), ppm = PX / TS;
+    const mia = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return 0; const f = form[ty * GW + tx]; if (!f || f === F.costa || f === F.urbano) return 0; const v = W.grid[ty * GW + tx], T = W.T;
+      return v === T.TREE || v === T.SHRUB || v === T.GRASS || v === T.DIRT || v === T.FIELD || v === T.GRAVEL ? 1 : 0; };
+    let any = false; for (let j = -1; j <= m && !any; j++) for (let i = -1; i <= n; i++) if (mia(tx0 + i, ty0 + j)) { any = true; break; } if (!any) return;
+    const w = n * PX, h = m * PX, img = ctx.getImageData(0, 0, w, h), d = img.data;
+    const smp = (A, fx, fy) => { const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0, g = (x, y) => x < 0 || y < 0 || x >= GW || y >= GH ? 0 : A(x, y); return g(x0, y0) * (1 - ax) * (1 - ay) + g(x0 + 1, y0) * ax * (1 - ay) + g(x0, y0 + 1) * (1 - ax) * ay + g(x0 + 1, y0 + 1) * ax * ay; };
+    const omb = (x, y) => O[y * GW + x], ton = (x, y) => { const f = form[y * GW + x]; return f ? FORM[f].tono : .5; }, cal = (x, y) => { const f = form[y * GW + x]; return f ? CALDA[FORM[f].id] || .4 : .4; };
+    const sen = (x, y) => { const v = P.dSen[y * GW + x]; return v < 2.5 ? 1 - v / 2.5 : 0; };
+    for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
+      const wx = tx0 * TS + px / ppm, wy = ty0 * TS + py / ppm, fx = wx / TS - .5, fy = wy / TS - .5, a = smp(mia, fx, fy); if (a < .02) continue;
+      // la pennellata: rumore allungato (i colpi vanno tutti in una direzione, che cambia piano), più la macchia larga
+      const ang = fbm(wx / 30, wy / 30, 7801, 2) * 3.1, ca = Math.cos(ang), sa = Math.sin(ang), u = wx * ca + wy * sa, vv = -wx * sa + wy * ca;
+      const pen = fbm(u / 1.6, vv / .35, 7802, 2) - .5, mac = fbm(wx / 9, wy / 9, 7803, 3) - .5;
+      let t = .3 + smp(ton, fx, fy) * .42 - smp(omb, fx, fy) * .42 + mac * .22 + pen * .13 + smp(sen, fx, fy) * .14;
+      const k = smp(cal, fx, fy), c1 = gammaAt(GAMMA, t), c2 = gammaAt(GAMMA_CALDA, t * .92 + .04), q = (py * w + px) * 4;
+      const r = c1[0] + (c2[0] - c1[0]) * k, g = c1[1] + (c2[1] - c1[1]) * k, b = c1[2] + (c2[2] - c1[2]) * k;
+      d[q] = d[q] + (r - d[q]) * a; d[q + 1] = d[q + 1] + (g - d[q + 1]) * a; d[q + 2] = d[q + 2] + (b - d[q + 2]) * a;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // ================= LA POSA NEL GIOCO: attorno alla camera, per specie =================
+  // monta(scene, { W, groundH, telefono }) prepara i gruppi; aggiorna(cx, cz, t) a ogni fotogramma: quando la camera si sposta di qualche
+  // metro rifà gli elenchi: vicino (entro R0) il modello intero per specie e variante; a media distanza (R0 … R1) la sagoma per specie;
+  // la copertura bassa (erba, fiori, felci, lettiere) solo entro RC; le ombre di contatto sotto gli alberi vicini. Il passaggio fra i
+  // livelli si dissolve a retino nel materiale (uBand). Gli alberi abbattuti (casella non più TREE) non si disegnano.
+  function monta(scene, opz) {
+    if (SPENTO || !KIT) return null; opz = opz || {}; const W = opz.W, P = piano(W), gH = opz.groundH || (() => 0), tel = !!opz.telefono;
+    const R0 = tel ? 30 : 48, R1 = tel ? 90 : 150, RC = tel ? 14 : 24, F0 = 6;
+    const MV = materiale([-1, 0, R0 - F0, R0]), MS = materiale([R0 - F0, R0, R1 - 12, R1]), MC = materiale([-1, 0, RC - 4, RC]), MCm = materiale([-1, 0, RC - 4, RC], { senzaProfondita: true });
+    const gruppo = new THREE.Group(); gruppo.name = 'vegetazione'; scene.add(gruppo);
+    const C = 16, idx = new Map(); P.piante.forEach(p => { const k = Math.floor(p.x / C) * 65536 + Math.floor(p.y / C); (idx.get(k) || idx.set(k, []).get(k)).push(p); });
+    const IM = new Map(), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), eu = new THREE.Euler(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), col = new THREE.Color();
+    const im = (key, geo, mat, ombre) => { let g = IM.get(key); if (!g) { g = { cap: 0, mesh: null, n: 0, geo, mat, ombre }; IM.set(key, g); } return g; };
+    const metti = (g, x, y, z, s, ry, t) => { if (g.n >= g.cap) cresci(g); eu.set(0, ry, 0); q.setFromEuler(eu); sc.set(s, s, s); ps.set(x, y, z); m4.compose(ps, q, sc); g.mesh.setMatrixAt(g.n, m4); const dd = (t - .5) * .16; col.setRGB(1 + dd, 1 + dd * .8, 1 + dd * .5); g.mesh.setColorAt(g.n, col); g.n++; };
+    const cresci = g => { const cap = Math.max(16, g.cap * 2), m = new THREE.InstancedMesh(g.geo, g.mat, cap); m.frustumCulled = false; m.castShadow = !!g.ombre && !tel; m.receiveShadow = true; if (g.ombre) m.customDepthMaterial = ombra(); if (g.mat.depthWrite === false) m.renderOrder = 5;
+      if (g.mesh) { for (let i = 0; i < g.n; i++) { g.mesh.getMatrixAt(i, m4); m.setMatrixAt(i, m4); g.mesh.getColorAt(i, col); m.setColorAt(i, col); } gruppo.remove(g.mesh); g.mesh.dispose(); }
+      g.mesh = m; g.cap = cap; gruppo.add(m); };
+    // LONTANO: tutte le piante grandi dell'isola in una geometria sola (la sagoma più semplice, già posata), che lo shader chiude dentro R1
+    { const L = P.piante.filter(p => SP[p.sp].strato !== 'C' && (SP[p.sp].strato !== 'B' || SP[p.sp].chioma >= 1.2)); let nv = 0; const geos = L.map(p => { const g = KIT.sagoma(p.sp, 2); nv += g.attributes.position.count; return g; });
+      const Pp = new Float32Array(nv * 3), Nn = new Float32Array(nv * 3), Cc = new Float32Array(nv * 3), Uu = new Float32Array(nv * 2), Oo = new Float32Array(nv), Ff = new Float32Array(nv), Ce = new Float32Array(nv * 3); let o = 0;
+      L.forEach((p, k) => { const g = geos[k], A = g.attributes, s = p.h / KIT.H0(p.sp), cs = Math.cos(p.rot), sn = Math.sin(p.rot), y0 = gH(p.x, p.y) - .04;
+        for (let i = 0; i < A.position.count; i++, o++) { const x = A.position.getX(i) * s, y = A.position.getY(i) * s, z = A.position.getZ(i) * s, nx = A.normal.getX(i), nz = A.normal.getZ(i);
+          Pp[o * 3] = p.x + x * cs + z * sn; Pp[o * 3 + 1] = y0 + y; Pp[o * 3 + 2] = p.y - x * sn + z * cs; Nn[o * 3] = nx * cs + nz * sn; Nn[o * 3 + 1] = A.normal.getY(i); Nn[o * 3 + 2] = -nx * sn + nz * cs;
+          Cc[o * 3] = A.color.getX(i); Cc[o * 3 + 1] = A.color.getY(i); Cc[o * 3 + 2] = A.color.getZ(i); Uu[o * 2] = A.uv.getX(i); Uu[o * 2 + 1] = A.uv.getY(i); Oo[o] = A.occ.getX(i); Ff[o] = 0;
+          Ce[o * 3] = p.x; Ce[o * 3 + 1] = y0; Ce[o * 3 + 2] = p.y; } });
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(Pp, 3)); g.setAttribute('normal', new THREE.BufferAttribute(Nn, 3)); g.setAttribute('color', new THREE.BufferAttribute(Cc, 3));
+      g.setAttribute('uv', new THREE.BufferAttribute(Uu, 2)); g.setAttribute('occ', new THREE.BufferAttribute(Oo, 1)); g.setAttribute('flex', new THREE.BufferAttribute(Ff, 1)); g.setAttribute('centro', new THREE.BufferAttribute(Ce, 3)); g.computeBoundingSphere();
+      const far = new THREE.Mesh(g, materiale([R1 - 12, R1, 1e5, 1e5 + 1], { centro: true })); far.name = 'vegLontano'; far.frustumCulled = false; far.receiveShadow = true; gruppo.add(far); }
+    let lx = 1e9, lz = 1e9, lc = 1e9, lcz = 1e9;
+    const BASSE = new Set(['erbaSecca', 'erbaVerde', 'papavero', 'finocchietto', 'avena', 'cardo', 'asfodelo', 'fioriBianchi', 'tappetoAghi', 'tappetoFoglie', 'pigna', 'rametto']);
+    function aggiorna(cx, cz, t) {
+      U.uT.value = t || 0; U.uCam.value.set(cx, 0, cz);
+      if (Math.hypot(cx - lx, cz - lz) > 4) { lx = cx; lz = cz; IM.forEach((g, k) => { if (!k.startsWith('c|')) g.n = 0; });
+        const i0 = Math.floor((cx - R1) / C), i1 = Math.floor((cx + R1) / C), j0 = Math.floor((cz - R1) / C), j1 = Math.floor((cz + R1) / C);
+        for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) (idx.get(i * 65536 + j) || []).forEach(p => {
+          const d = Math.hypot(p.x - cx, p.y - cz); if (d > R1) return; const S = SP[p.sp]; if (S.tronco && p.tile !== undefined && W.grid[p.tile] !== W.T.TREE) return;
+          const y = gH(p.x, p.y) - .04, s = p.h / KIT.H0(p.sp);
+          if (d < R0) metti(im('v|' + p.sp + '|' + p.v, KIT.modello(p.sp, p.v), MV, S.strato !== 'C'), p.x, y, p.y, s, p.rot, p.t);
+          if (d > R0 - F0 && S.strato !== 'C') metti(im('s|' + p.sp, KIT.sagoma(p.sp, 1), MS, false), p.x, y, p.y, s, p.rot, p.t); });
+        IM.forEach((g, k) => { if (k.startsWith('c|') || !g.mesh) return; g.mesh.count = g.n; g.mesh.instanceMatrix.needsUpdate = true; if (g.mesh.instanceColor) g.mesh.instanceColor.needsUpdate = true; }); }
+      if (Math.hypot(cx - lc, cz - lcz) > 2.5) { lc = cx; lcz = cz; IM.forEach((g, k) => { if (k.startsWith('c|')) g.n = 0; });
+        const st = tel ? 1.1 : .8;
+        for (let y = Math.floor((cz - RC) / st) * st; y < cz + RC; y += st) for (let x = Math.floor((cx - RC) / st) * st; x < cx + RC; x += st) {
+          const jx = x + hash2(Math.round(x * 10), Math.round(y * 10), 7901) * st, jy = y + hash2(Math.round(x * 10), Math.round(y * 10), 7902) * st; if (Math.hypot(jx - cx, jy - cz) > RC) continue;
+          const c = copertura(P, jx, jy); if (!c) continue; const S = SP[c.sp]; if (!S) continue; const v = Math.floor(c.t * 4), hh = S.h[0] + (S.h[1] - S.h[0]) * c.t;
+          const eroe = c.sp === 'finocchietto' || c.sp === 'cardo' || c.sp === 'asfodelo' || (c.sp === 'papavero' && c.t < .3) || c.t < .04;   // [vegetazione] i pochi segni col contorno
+          metti(im('c|' + c.sp + '|' + v + (eroe ? 'e' : 'm'), KIT.modello(c.sp, v), eroe ? MC : MCm, false), jx, gH(jx, jy) - .02, jy, hh / KIT.H0(c.sp), c.t * 6.28, c.t); }
+        IM.forEach((g, k) => { if (!k.startsWith('c|') || !g.mesh) return; g.mesh.count = g.n; g.mesh.instanceMatrix.needsUpdate = true; if (g.mesh.instanceColor) g.mesh.instanceColor.needsUpdate = true; }); }
+    }
+    return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
+  }
+
+  const api = { SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, dipingiSuolo, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;

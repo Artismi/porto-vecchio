@@ -3087,6 +3087,8 @@ var World = (function () {
     if (!shopGeom(b, W.grid, W.reach, W.GW, W.GH, true, null)) { delete b.shopFront; delete b.abitato; return false; } return true; };
   W.shopGeom = shopGeom;
   W.hash2 = hash2; W.fbm = fbm; W.rng = rng; W.monte = monte; W.MF = MF;
+  { const VG = typeof Vegetazione !== 'undefined' ? Vegetazione : typeof require !== 'undefined' ? (() => { try { return require('./vegetazione.js'); } catch (e) { return null; } })() : null;
+    if (VG && VG.pianta) VG.pianta(W); }   // [vegetazione] il piano del verde: i tronchi sono le caselle TREE (?vecchioverde: com'era)
   return W;
 })();
 if (typeof module !== 'undefined') module.exports = World;
