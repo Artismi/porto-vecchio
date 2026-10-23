@@ -832,7 +832,7 @@ var Vegetazione = (function () {
   const U = typeof THREE === 'undefined' ? null : { uT: { value: 0 }, uCam: { value: new THREE.Vector3() }, uWind: { value: .06 },
     uPittura: { value: 1 }, uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
     uMezzo: { value: new THREE.Vector3(1, 1.04, .98) }, uLuce: { value: new THREE.Vector3(1.24, 1.21, .94) }, uLuceAdd: { value: new THREE.Vector3(.05, .05, .01) },
-    uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .55 }, uGamma: { value: null }, uGain: { value: .62 }, uOff: { value: .02 }, uTintaSpecie: { value: .22 } };
+    uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .2 }, uGamma: { value: null }, uGain: { value: .62 }, uOff: { value: .02 }, uTintaSpecie: { value: .22 } };
   function materiale(band, opz) {
     opz = opz || {};
     // le carte hanno già le due facce: il materiale guarda solo il davanti (niente rovescio con la luce girata)
@@ -897,7 +897,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
   // blu notte al teal, al verde, al lime, alla luce crema. Il fogliame, l'erba e il suolo cadono tutti in questa scala secondo quanta luce
   // prendono; la specie sposta appena la tinta (uTintaSpecie). Il suolo caldo (aghi, paglia, terra) ha la sua gamma calda che si
   // mescola per formazione (CALDA).
-  const GAMMA = ['#122e5b', '#154c63', '#1f636e', '#2c7b7b', '#499d8f', '#6ea470', '#9ac770', '#c5e276', '#f5f3b0'];
+  const GAMMA = ['#122e5b', '#154c63', '#1f636e', '#3f7451', '#6ea470', '#9ac770', '#c5e276', '#e4ee9a', '#f5f3b0'];   // il teal solo nell'ombra fonda; la luce delle foglie nei verdi e nei lime
   const GAMMA_CALDA = ['#2a2440', '#4a3438', '#74503a', '#9a7448', '#b89458', '#cdb06a', '#dcc884', '#ece0a4', '#f8f0c8'];
   const hexRGB = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   const gammaAt = (G, t) => { t = Math.max(0, Math.min(1, t)) * (G.length - 1); const i = Math.min(G.length - 2, Math.floor(t)), f = t - i, a = hexRGB(G[i]), b = hexRGB(G[i + 1]); return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]; };
