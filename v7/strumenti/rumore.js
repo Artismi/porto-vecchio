@@ -7,6 +7,7 @@
 //   parete        due cose appese alla stessa facciata che si coprono nel piano del muro
 //   finestra      una cosa appesa sopra una finestra
 //   marciapiede   una cosa a terra a ridosso del muro davanti a una cosa appesa
+//   sovrapposto   una cosa a terra dentro una voce esterna (un palo della segnaletica, una fermata, un'edicola, una plancia di vievive)
 //   doppione      due cose dello stesso tipo e della stessa sagoma troppo vicine
 //   passaggio     una cosa che strozza un vicolo (meno di 0,9 m per passare)
 //   facciata_piena, tratto_pieno: il di più sopra la densità leggibile (CFG.facciata, CFG.marciapiede)
@@ -43,6 +44,7 @@ const srv = http.createServer((req, res) => {
   const pad = (s, n) => String(s).padEnd(n), lp = (s, n) => String(s).padStart(n);
   console.log('caricato in', Math.round((Date.now() - t0) / 1000), 's; la passata in', R.ms, 'ms;', R.spento ? 'SPENTA (?norumore): solo la misura' : 'accesa');
   console.log('voci', R.prima.voci, '→', R.dopo.voci, '; facciate', R.prima.facciate);
+  console.log('voci esterne (fisse)', JSON.stringify(R.prima.esterni), '→', JSON.stringify(R.dopo.esterni)); if (R.prima.vissuti) console.log('tetti vissuti', JSON.stringify(R.prima.vissuti).slice(0, 300));
   console.log('\n' + pad('rumore', 16) + lp('prima', 7) + lp('dopo', 7));
   Object.keys(R.prima.per).forEach(t => console.log(pad(t, 16) + lp(R.prima.per[t], 7) + lp(R.dopo.per[t], 7)));
   console.log(pad('totale', 16) + lp(R.prima.tot, 7) + lp(R.dopo.tot, 7));
@@ -65,7 +67,7 @@ const srv = http.createServer((req, res) => {
   if (R.punti) { const png = await pg.evaluate(R => {
     const G = window.__pv.G, B = G.BUILDINGS, TS = G.TS, all = R.punti.prima; let x0 = 1222, x1 = 1610, z0 = 250, z1 = 452; all.forEach(p => { x0 = Math.min(x0, p[1]); x1 = Math.max(x1, p[1]); z0 = Math.min(z0, p[2]); z1 = Math.max(z1, p[2]); });
     x0 -= 6; x1 += 6; z0 -= 6; z1 += 6; const S = Math.min(1000 / (x1 - x0), 1000 / (z1 - z0)), W = Math.ceil((x1 - x0) * S), H = Math.ceil((z1 - z0) * S), c = document.createElement('canvas'); c.width = W * 2 + 30; c.height = H + 90; const x = c.getContext('2d');
-    const COL = { verso: '#e0302a', galleggia: '#a08000', affonda: '#704020', parete: '#ff8a00', finestra: '#20b0e0', marciapiede: '#a020f0', doppione: '#1060ff', passaggio: '#000', facciata_piena: '#40a040', tratto_pieno: '#e040a0' };
+    const COL = { verso: '#e0302a', galleggia: '#a08000', affonda: '#704020', parete: '#ff8a00', finestra: '#20b0e0', marciapiede: '#a020f0', sovrapposto: '#00a0a0', doppione: '#1060ff', passaggio: '#000', facciata_piena: '#40a040', tratto_pieno: '#e040a0' };
     x.fillStyle = '#f4f1ea'; x.fillRect(0, 0, c.width, c.height);
     [[R.punti.prima, 0, 'prima: ' + R.prima.tot], [R.punti.dopo, W + 30, 'dopo: ' + R.dopo.tot]].forEach(([P, ox, tit]) => {
       x.fillStyle = '#c9c2b4'; B.forEach(b => { const X = (b.x * TS - x0) * S, Z = (b.y * TS - z0) * S; if (X > W || Z > H || X + b.w * TS * S < 0 || Z + b.h * TS * S < 0) return; x.fillRect(ox + X, Z, b.w * TS * S, b.h * TS * S); });

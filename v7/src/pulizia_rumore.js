@@ -29,18 +29,18 @@ var PuliziaRumore = (function () {
     verso: { muro: 3, terra: 4, piede: .55, rapporto: 1.25, muroD: 1.5, viaD: 5 },   // gradi di tolleranza; il piede minimo (m); quanto deve essere rettangolare
     quota: .06,
     doppioni: { arredo: 1.2, applique: 2.2, tabellone: 3.0, pluviale: 1.0, citofono: .9, lampione: 3.5, cartello: 2.0, tenda: .6, ingombro: 2.0 },
-    stessaCasa: new Set(['applique', 'citofono', 'pluviale', 'tabellone', 'tenda']),   // questi sono doppioni solo sulla stessa casa (due porte accanto: ognuna la sua)
+    stessaCasa: { applique: .8, citofono: .5, pluviale: .5, tabellone: 1.0, tenda: 0 },   // fra due case accanto sono doppioni solo se quasi attaccati (due lampade ai due lati dello stesso muro di confine)
     facciata: { base: 1, ogni: 3.2, vita: 4, tabellone: 1, pluviale: 7, applique: 5 },   // cose appese: base + una ogni 3,2 m; di vita al più una ogni 4 m (almeno 2), 1 manifesto, 1 tubo ogni 7 m, 1 lampada ogni 5 m (più una per porta)
     marciapiede: { tratto: 6, max: 3, slargo: 4, fascia: 2.4 },
     vicolo: .9,
   };
   // la gerarchia: 0 si tiene sempre (ingresso, insegna, architettura, impianti), 1 la vita, 2 il resto
-  const LIV = { porta: 0, gradino: 0, portale: 0, serranda: 0, vetrina: 0, insegna: 0, citofono: 0, balcone: 0, rete: 0, lampione: 0, cartello: 0, grande: 0, scorcio: 0, scorcio_muro: 0, scorcio_filo: 0, tettoia: 0,
+  const LIV = { fermata: 0, edicola: 0, plancia: 1, porta: 0, gradino: 0, portale: 0, serranda: 0, vetrina: 0, insegna: 0, citofono: 0, balcone: 0, rete: 0, lampione: 0, cartello: 0, grande: 0, scorcio: 0, scorcio_muro: 0, scorcio_filo: 0, tettoia: 0,
     tenda: 1, bucato: 1, festone: 1, dehors: 1, ingombro: 1, applique: 2, pluviale: 2, tabellone: 2, arredo: 2 };
   const ARCHI = new Set(['balcone', 'portale', 'serranda', 'gradino', 'tettoia', 'grande', 'scorcio', 'scorcio_muro', 'scorcio_filo', 'porta', 'vetrina']);   // non contano nella densità della facciata
   const APPESI = new Set(['insegna', 'citofono', 'rete', 'tenda', 'bucato', 'festone', 'applique', 'pluviale', 'tabellone']);
   const SU_PARETE = new Set(['insegna', 'citofono', 'applique', 'pluviale', 'tabellone', 'rete']);   // si coprono fra loro nel piano del muro (tende, bucato e festoni stanno avanti per forza)
-  const RANGO_PARETE = { insegna: 100, citofono: 90, rete: 60, applique: 50, tabellone: 40, pluviale: 30 };   // chi resta quando due cose appese si coprono
+  const RANGO_PARETE = { insegna: 100, cartello: 95, citofono: 90, rete: 60, applique: 50, tabellone: 40, pluviale: 30 };   // chi resta quando due cose appese si coprono
   const DAVANTI = new Set(['insegna', 'citofono', 'applique', 'tabellone']);   // le cose appese che una cosa a terra non deve coprire (il tubo arriva a terra: si può)
   const COPRE_FIN = new Set(['citofono', 'applique', 'pluviale', 'tabellone', 'rete']);   // non devono stare sopra una finestra
   const A_TERRA = new Set(['arredo', 'dehors', 'ingombro', 'lampione', 'cartello']);
@@ -80,16 +80,19 @@ var PuliziaRumore = (function () {
   // ================= IL CENSIMENTO =================
   function censisci(A) {
     const { R, ctr, groundH } = A, E = R.E.filter(e => !e.gone && e.B), out = { voci: E.length, per: {}, punti: [], perTipo: {} };
-    const TIPI = ['verso', 'galleggia', 'affonda', 'parete', 'finestra', 'marciapiede', 'doppione', 'passaggio', 'facciata_piena', 'tratto_pieno'];
+    const TIPI = ['verso', 'galleggia', 'affonda', 'parete', 'finestra', 'marciapiede', 'sovrapposto', 'doppione', 'passaggio', 'facciata_piena', 'tratto_pieno'];
+    const X = (A.esterni || []).filter(x => !x.gone); X.forEach(x => { x.c = ctr(x.B); });   // le voci esterne (segnaletica, vie vive): fisse
     TIPI.forEach(t => out.per[t] = 0);
     const segna = (t, e, extra) => { out.per[t]++; const k = t + ':' + e.k + (e.tipo ? ':' + e.tipo : ''); out.perTipo[k] = (out.perTipo[k] || 0) + 1; if (out.punti.length < 6000) out.punti.push([t, Math.round(e.c[0] * 10) / 10, Math.round(e.c[1] * 10) / 10, e.k, e.src, extra || '']); (e.ru = e.ru || []).push(t); };
-    E.forEach(e => { e.c = ctr(e.B); e.ru = null; e.dVerso = e.dQuota = e.doppioneDi = e.davantiA = e.copreCon = e.strozza = e.suFinestra = undefined; });
+    E.concat(X).forEach(e => { e.c = ctr(e.B); e.ru = null; e.dVerso = e.dQuota = e.doppioneDi = e.davantiA = e.copreCon = e.strozza = e.suFinestra = e.sopraX = undefined; });
     const GR = new Map(); E.forEach(e => { if (!e.g) return; const kk = (e.b ? A.bid(e.b) : '-') + ':' + e.g; let a = GR.get(kk); if (!a) GR.set(kk, a = []); a.push(e); e.membri = a; });   // le composizioni (una lampada: piastra, braccio, lanterna) si muovono e se ne vanno insieme
     E.forEach(e => { if (!e.g) e.membri = null; });
     // indice a 4 m
     const IX = new Map(), k4 = (i, j) => i * 8192 + j; E.forEach(e => { const kk = k4(Math.floor(e.c[0] / 4), Math.floor(e.c[1] / 4)); let a = IX.get(kk); if (!a) IX.set(kk, a = []); a.push(e); });
     const vicini = (x, z, r, fn) => { for (let i = Math.floor((x - r) / 4); i <= Math.floor((x + r) / 4); i++) for (let j = Math.floor((z - r) / 4); j <= Math.floor((z + r) / 4); j++) for (const o of IX.get(k4(i, j)) || []) if (!o.gone) fn(o); };
-    const terra = e => A_TERRA.has(e.k) && Math.abs(e.B.y0 - groundH(e.c[0], e.c[1])) < .6;
+    const terra = e => (e.ext ? !!e.terra || (e.k === 'cartello' && !e.muro) : A_TERRA.has(e.k)) && Math.abs(e.B.y0 - groundH(e.c[0], e.c[1])) < .6;
+    const IXX = new Map(); X.forEach(x => { const kk = k4(Math.floor(x.c[0] / 4), Math.floor(x.c[1] / 4)); let a = IXX.get(kk); if (!a) IXX.set(kk, a = []); a.push(x); });
+    const viciniX = (x, z, r, fn) => { for (let i = Math.floor((x - r) / 4); i <= Math.floor((x + r) / 4); i++) for (let j = Math.floor((z - r) / 4); j <= Math.floor((z + r) / 4); j++) for (const o of IXX.get(k4(i, j)) || []) if (!o.gone) fn(o); };
 
     // 1) il verso
     E.forEach(e => {
@@ -109,12 +112,12 @@ var PuliziaRumore = (function () {
     });
     // 3) la parete: per facciata, le cose appese che si coprono nel piano del muro e quelle sopra le finestre
     const FAC = new Map();
-    E.forEach(e => { if (!e.b || !e.f || !e.F) return; const key = A.bid(e.b) + e.f; let L = FAC.get(key); if (!L) FAC.set(key, L = { b: e.b, f: e.f, F: e.F, E: [] }); e.fq = inFacciata(e, e.F); L.E.push(e); });
+    E.concat(X).forEach(e => { if (!e.b || !e.f || !e.F || (e.ext && e.terra)) return; const key = A.bid(e.b) + e.f; let L = FAC.get(key); if (!L) FAC.set(key, L = { b: e.b, f: e.f, F: e.F, E: [] }); e.fq = inFacciata(e, e.F); L.E.push(e); });
     FAC.forEach(L => {
-      const S = L.E.filter(e => SU_PARETE.has(e.k) && e.fq.d0 < 1.2);
-      for (let i = 0; i < S.length; i++) for (let j = i + 1; j < S.length; j++) { const a = S[i], b = S[j]; if (a.g && a.g === b.g) continue;
+      const S = L.E.filter(e => (SU_PARETE.has(e.k) || e.ext) && e.fq.d0 < 1.2);
+      for (let i = 0; i < S.length; i++) for (let j = i + 1; j < S.length; j++) { const a = S[i], b = S[j]; if ((a.g && a.g === b.g) || (a.ext && b.ext)) continue;
         const ou = ov1(a.fq.u0, a.fq.u1, b.fq.u0, b.fq.u1), oy = ov1(a.fq.y0, a.fq.y1, b.fq.y0, b.fq.y1), aa = (a.fq.u1 - a.fq.u0) * (a.fq.y1 - a.fq.y0), ab = (b.fq.u1 - b.fq.u0) * (b.fq.y1 - b.fq.y0);
-        if (ou * oy > .2 * Math.min(aa, ab) && ou > .05 && oy > .05) { const ra = RANGO_PARETE[a.k] || 0, rb = RANGO_PARETE[b.k] || 0, perde = ra < rb || (ra === rb && (a.vol < b.vol || (a.vol === b.vol && a.id > b.id))) ? a : b; perde.copreCon = perde === a ? b : a; segna('parete', perde, (perde === a ? b : a).k); } }
+        if (ou * oy > .2 * Math.min(aa, ab) && ou > .05 && oy > .05) { const ra = RANGO_PARETE[a.k] || 0, rb = RANGO_PARETE[b.k] || 0, perde0 = ra < rb || (ra === rb && (a.vol < b.vol || (a.vol === b.vol && a.id > b.id))) ? a : b, perde = perde0.ext ? (perde0 === a ? b : a) : perde0; perde.copreCon = perde === a ? b : a; segna('parete', perde, (perde === a ? b : a).k); } }
       const W = A.finestre(L.b, L.f); if (W.length) L.E.forEach(e => { if (!COPRE_FIN.has(e.k)) return; for (const w of W) { const ou = ov1(e.fq.u0, e.fq.u1, w.u0, w.u1), oy = ov1(e.fq.y0, e.fq.y1, w.y0, w.y1);
         if (ou > .08 && oy > .12 && ou * oy > .15 * Math.min((e.fq.u1 - e.fq.u0) * (e.fq.y1 - e.fq.y0), (w.u1 - w.u0) * (w.y1 - w.y0))) { e.suFinestra = w; segna('finestra', e, w.name); break; } } });
       L.W = W;
@@ -125,11 +128,15 @@ var PuliziaRumore = (function () {
       vicini(L.F.p[0] + L.F.u[0] * 5, L.F.p[1] + L.F.u[1] * 5, 30, o => { if (!terra(o) || o.k === 'lampione' || o.k === 'cartello') return; const q = inFacciata(o, L.F); if (q.d0 < -.3 || q.d0 > .8) return; T.push([o, q]); });
       T.forEach(([o, q]) => { for (const a of Ap) { if (ov1(q.u0, q.u1, a.fq.u0, a.fq.u1) > .1 && ov1(q.y0, q.y1, a.fq.y0, a.fq.y1) > .1) { o.davantiA = a; o.fqT = q; o.LF = L; segna('marciapiede', o, a.k); break; } } });
     });
+    // 4b) sovrapposto: una cosa a terra del registro dentro una cosa esterna (un palo della segnaletica, una fermata, un'edicola, una plancia)
+    E.forEach(e => { if (!terra(e) || LIV[e.k] === 0) return; viciniX(e.c[0], e.c[1], 4, x => { if (e.sopraX || !terra(x)) return; if (A.yov(e.B, x.B) > .03 && A.sat(e.B, x.B) > .03) { e.sopraX = x; segna('sovrapposto', e, x.k); } }); });
+    // i pali della segnaletica doppi (due pali di cartelli a meno di 1,2 m: il secondo se ne va)
+    X.forEach(x => { if (x.k !== 'cartello' || x.muro || x.indicazioni) return; viciniX(x.c[0], x.c[1], 1.2, o => { if (o === x || o.k !== 'cartello' || o.muro || o.indicazioni || o.id < x.id || o.doppioneDi) return; if (hyp(o.c[0] - x.c[0], o.c[1] - x.c[1]) < 1.2) { o.doppioneDi = x; segna('doppione', o, 'palo'); } }); });
     // 5) i doppioni: lo stesso tipo, la stessa sagoma, troppo vicini
     E.forEach(e => { const r = CFG.doppioni[e.k]; if (!r || e.free) return; const fe = A.firma(e);
       vicini(e.c[0], e.c[1], r, o => { if (o === e || o.id < e.id || o.k !== e.k || (e.g && e.g === o.g) || ((e.k === 'arredo' || e.k === 'ingombro') && A.firma(o) !== fe)) return;
         if (Math.abs(o.c[0] - e.c[0]) > r || Math.abs(o.c[1] - e.c[1]) > r || hyp(o.c[0] - e.c[0], o.c[1] - e.c[1]) > r || Math.abs(o.B.y0 - e.B.y0) > .8) return;
-        if (CFG.stessaCasa.has(e.k) && e.b !== o.b) return;   // due tubi su due case accanto: ognuno il suo
+        if (CFG.stessaCasa[e.k] !== undefined && e.b !== o.b && hyp(o.c[0] - e.c[0], o.c[1] - e.c[1]) > CFG.stessaCasa[e.k]) return;   // due tubi su due case accanto: ognuno il suo
         if (o.membri && e.membri && o.membri.some(m => m.k !== o.k) !== e.membri.some(m => m.k !== e.k)) return;
         if (o.doppioneDi) return; o.doppioneDi = e; segna('doppione', o, e.k); }); });
     // 6) i passaggi stretti nei vicoli
@@ -137,9 +144,11 @@ var PuliziaRumore = (function () {
       const hu = (e.B.u1 - e.B.u0) / 2, hv = (e.B.v1 - e.B.v0) / 2, r = Math.min(hu, hv), resta = Math.max(v.w / 2 - (v.d + r), v.w / 2 - (r - v.d));   // il lato più largo che resta
       if (resta < CFG.vicolo && v.w > 1.6) { e.strozza = v; segna('passaggio', e, v.w.toFixed(1) + ' m'); } });
     // 7) la densità: facciate e tratti di marciapiede pieni (cosa si toglierebbe)
-    const D = densita(A, E, FAC, vicini, terra); D.facciate.forEach(([e]) => segna('facciata_piena', e)); D.tratti.forEach(([e]) => segna('tratto_pieno', e));
+    const D = densita(A, E.concat(X), FAC, vicini, terra); D.facciate.forEach(([e]) => segna('facciata_piena', e)); D.tratti.forEach(([e]) => segna('tratto_pieno', e));
     out.tot = TIPI.reduce((s, t) => s + out.per[t], 0); out.facciate = FAC.size; out.densita = D.conti;
-    return { rep: out, E, FAC, D, vicini, terra };
+    out.esterni = {}; X.forEach(x => { const k = x.fonte + ':' + x.k; out.esterni[k] = (out.esterni[k] || 0) + 1; });
+    const TV = A.vissuti && A.vissuti(); if (TV) out.vissuti = TV;
+    return { rep: out, E, X, FAC, D, vicini, viciniX, terra };
   }
 
   // ---------- la densità: per facciata e per tratto, chi resta secondo la gerarchia ----------
@@ -148,7 +157,7 @@ var PuliziaRumore = (function () {
     const elementi = L => { const M = new Map(); L.forEach(e => { const key = e.g ? 'g' + e.g : 'e' + e.id; let q = M.get(key); if (!q) M.set(key, q = { E: [], k: e.k, liv: LIV[e.k] !== undefined ? LIV[e.k] : 2, vol: 0 }); q.E.push(e); q.vol += e.vol || 0; q.liv = Math.min(q.liv, LIV[e.k] !== undefined ? LIV[e.k] : 2); }); return [...M.values()]; };
     FAC.forEach(L => {
       const Lw = A.larghezza(L.b, L.f); if (!Lw) return;
-      const El = elementi(L.E.filter(e => APPESI.has(e.k) && !e.gone && !(e.k === 'festone' && !e.b))); if (!El.length) return;
+      const El = elementi(L.E.filter(e => (APPESI.has(e.k) || e.ext) && !e.gone && !(e.k === 'festone' && !e.b))); if (!El.length) return;
       const cap = Math.max(2, Math.round(CFG.facciata.base + Lw / CFG.facciata.ogni)), porte = A.porte(L.b, L.f), vitaMax = Math.max(2, Math.floor(Lw / CFG.facciata.vita));
       const per = { tabellone: CFG.facciata.tabellone, pluviale: Math.max(1, Math.floor(Lw / CFG.facciata.pluviale)), applique: 1 + porte + Math.floor(Lw / CFG.facciata.applique / 2) };
       El.sort((a, b) => a.liv - b.liv || (b.vol - a.vol));
@@ -164,7 +173,7 @@ var PuliziaRumore = (function () {
       if (h) key = 'c' + h.i + ':' + h.lato + ':' + Math.floor(h.u / CFG.marciapiede.tratto); else key = 's' + Math.floor(e.c[0] / 6) + ',' + Math.floor(e.c[1] / 6);
       let a = TR.get(key); if (!a) TR.set(key, a = []); a.push(e); });
     TR.forEach((L, key) => { const El = elementi(L), cap = key[0] === 'c' ? CFG.marciapiede.max : CFG.marciapiede.slargo;
-      El.forEach(q => { if (q.E.some(e => e.k === 'lampione' || e.k === 'cartello' || A.posto(e))) q.liv = 0; });
+      El.forEach(q => { if (q.E.some(e => e.k === 'lampione' || e.k === 'cartello' || (e.ext && e.k !== 'plancia') || A.posto(e))) q.liv = 0; });
       El.sort((a, b) => a.liv - b.liv || (b.vol - a.vol)); let n = 0;
       El.forEach(q => { if (q.liv === 0 || n < cap) { n++; return; } q.E.forEach(e => tratti.push([e, 'tratto'])); });
       conti.tratti.n++; conti.tratti.media += El.length; conti.tratti.max = Math.max(conti.tratti.max, El.length); if (El.length > cap) conti.tratti.pieni++; });
@@ -179,17 +188,20 @@ var PuliziaRumore = (function () {
   function correggi(A, C) {
     const az = { ruotati: {}, posati: {}, spostati: {}, tolti: {}, tenuti: {} }, conta = (o, k) => { o[k] = (o[k] || 0) + 1; };
     const I = A.indici(), grp = e => (e.membri || [e]).filter(m => !m.gone);
-    const nv = G => G.reduce((s, m) => s + A.viol(m, I).length, 0);
+    const X = C.X || [], nx = m => { let n = 0; C.viciniX(m.c[0], m.c[1], 4, x => { if (A.yov(m.B, x.B) > .03 && A.sat(m.B, x.B) > .03) n++; }); return n; };   // e le voci esterne: niente addosso
+    const nv = G => G.reduce((s, m) => s + A.viol(m, I).length + nx(m), 0);
     const muovi = (G, dx, dy, dz) => G.forEach(m => A.sposta(m, dx, dy, dz));
     const prova = (G, fai, disfa) => { const prima = nv(G); fai(); if (nv(G) <= prima) { G.forEach(m => A.rimetti(I, m)); return true; } disfa(); return false; };
-    const togli = (e, perche, anche0) => { const G = grp(e); if (!G.length) return false;
+    const togli = (e, perche, anche0) => { if (e.ext) { if (e.gone || (LIV[e.k] === 0 && !anche0)) { conta(az.tenuti, perche + ':' + e.k); return false; } A.togliEsterno(e); conta(az.tolti, perche + ':' + e.fonte + ':' + e.k); return true; }
+      const G = grp(e); if (!G.length) return false;
       if (G.some(m => (LIV[m.k] === 0 && !anche0) || A.posto(m) || m.free)) { conta(az.tenuti, perche + ':' + e.k); return false; }
       const su = []; G.forEach(m => A.sopra(m, I).forEach(o => { if (!G.includes(o) && !su.includes(o)) su.push(o); }));   // quello che ci poggia sopra se ne va con lei, se può
       if (su.some(o => LIV[o.k] === 0 || A.posto(o) || o.free || (o.membri && o.membri.some(m => !su.includes(m) && !G.includes(m))))) { conta(az.tenuti, perche + ':' + e.k); return false; }
       G.concat(su).forEach(m => A.togli(m)); conta(az.tolti, perche + ':' + e.k); return true; };
     const E = C.E;
     // 1) i doppioni se ne vanno (il primo posato resta); le lampade e i citofoni doppi anche se di solito si tengono
-    E.forEach(e => { if (e.doppioneDi && !e.gone && !e.doppioneDi.gone) togli(e, 'doppione', e.k === 'applique' || e.k === 'citofono'); });
+    E.forEach(e => { if (e.doppioneDi && !e.gone && !e.doppioneDi.gone && !(e.doppioneDi.membri || [e.doppioneDi]).every(m => m.gone)) togli(e, 'doppione', e.k === 'applique' || e.k === 'citofono'); });
+    X.forEach(x => { if (x.doppioneDi && !x.gone && !x.doppioneDi.gone) togli(x, 'doppione', true); });
     // 2) il verso: si ruota attorno al centro
     E.forEach(e => { if (e.gone || !e.ru || !e.ru.includes('verso') || !e.dVerso) return; const d = -e.dVerso;
       const dritto = () => { const S = sagoma(e); return S && Math.abs(deg(wrap90(S.a - e.rif))) <= CFG.verso.terra; };   // girata, la sagoma deve stare davvero dritta
@@ -214,13 +226,18 @@ var PuliziaRumore = (function () {
       for (const s of [.4, .8, 1.2, 1.7, 2.2]) for (const sg of [1, -1]) { const dx = F.u[0] * s * sg, dz = F.u[1] * s * sg, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz);
         if (libero() && nv(G) === 0) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
       togli(e, 'marciapiede'); });
+    // 5b) sopra una cosa esterna: qualche passo attorno (a terra), o via
+    E.forEach(e => { if (e.gone || !e.sopraX) return; const G = grp(e);
+      for (const s of [.3, .6, .9, 1.3, 1.8]) for (let a = 0; a < 8; a++) { const dx = Math.cos(a * PI / 4) * s, dz = Math.sin(a * PI / 4) * s, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz);
+        if (nv(G) === 0) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
+      togli(e, 'sovrapposto'); });
     // 6) i vicoli strozzati: verso il muro più vicino, o via
     E.forEach(e => { if (e.gone || !e.strozza) return; const v = e.strozza, sg = v.d >= 0 ? 1 : -1, G = grp(e), r = Math.min(e.B.u1 - e.B.u0, e.B.v1 - e.B.v0) / 2;
       for (const s of [.3, .5, .8]) { const dx = v.n[0] * s * sg, dz = v.n[1] * s * sg;
         if (prova(G, () => muovi(G, dx, 0, dz), () => muovi(G, -dx, 0, -dz))) { const c = A.ctr(e.B), w = A.vicolo(c[0], c[1]); if (!w || Math.max(w.w / 2 - (w.d + r), w.w / 2 - (r - w.d)) >= CFG.vicolo) { conta(az.spostati, e.k); return; } } }
       togli(e, 'passaggio'); });
     // 7) la densità, rifatta su quello che resta: si toglie il di più, dal fondo della gerarchia
-    const D = densita(A, E.filter(e => !e.gone), C.FAC, C.vicini, C.terra);
+    const D = densita(A, E.concat(X).filter(e => !e.gone), C.FAC, C.vicini, C.terra);
     D.facciate.forEach(([e]) => { if (!e.gone) togli(e, 'facciata'); });
     D.tratti.forEach(([e]) => { if (!e.gone) togli(e, 'tratto'); });
     A.fine();
@@ -253,7 +270,7 @@ var PuliziaRumore = (function () {
     if (typeof window !== 'undefined' && window.__dbg35) console.log('[rumore] prima', JSON.stringify(prima.rep.per), 'dopo', JSON.stringify(dopo.rep.per), 'numeri', JSON.stringify(R.numeri), R.ms + ' ms');
     return R;
   }
-  const API = { CFG, LIV, passa, censisci, sagoma, wrap90, spento };
+  const API = { CFG, LIV, passa, censisci, sagoma, wrap90, spento, SALTA: new Set() };   // SALTA: le voci della segnaletica tolte (segnaletica.js non le disegna)
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   return API;
 })();

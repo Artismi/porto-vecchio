@@ -688,6 +688,9 @@ var Segnaletica = (function () {
   }
   function costruisci() {
     built = true; const P = piano(true); MAT = null;
+    if (typeof PuliziaRumore !== 'undefined' && PuliziaRumore.SALTA && PuliziaRumore.SALTA.size) {   // [pulizia] quello che la passata del rumore ha tolto (doppioni, pali addosso a un altro): solo la grafica, il piano resta
+      const S = PuliziaRumore.SALTA, k = (c, q) => c + Math.round(q.x * 10) + ',' + Math.round(q.y * 10);
+      P.pali = P.pali.filter(p => !S.has(k('p', p))); P.insegne = P.insegne.filter(q => q.fonte !== 'segnaletica' || !S.has(k('i', q))); }
     ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = ATL.S; ATL.x = ATL.c.getContext('2d'); ATL.uv.clear(); ATL.riga = { x: 0, y: 0, h: 0 }; MU.clear();
     // ---- le strisce ----
     P.strisce.forEach(decal);

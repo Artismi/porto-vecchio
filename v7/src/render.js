@@ -7466,8 +7466,30 @@ var Render = (function () {
     try { if (typeof Posti !== 'undefined') Posti.all().forEach(p => { if (!KP.has(p.k)) return; const kk = Math.floor(p.x / 4) * 8192 + Math.floor(p.y / 4); let a = PO.get(kk); if (!a) PO.set(kk, a = []); a.push(p); }); } catch (e) { }
     const VIC = []; (M.roads || []).forEach(rd => { if (rd.kind !== 'vicolo' || !rd.pts) return; for (let k = 0; k < rd.pts.length - 1; k++) VIC.push([rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd.w || 2]); });
     const VH = new Map(); VIC.forEach(q => { for (let i = Math.floor(Math.min(q[0], q[2]) / 8) - 1; i <= Math.floor(Math.max(q[0], q[2]) / 8) + 1; i++) for (let j = Math.floor(Math.min(q[1], q[3]) / 8) - 1; j <= Math.floor(Math.max(q[1], q[3]) / 8) + 1; j++) { const kk = i * 4096 + j; let a = VH.get(kk); if (!a) VH.set(kk, a = []); a.push(q); } });
+    // le voci ESTERNE: quello che altri filoni posano dopo, dai loro piani (la segnaletica: pali, bandiere, targhe, pannelli; le vie
+    // vive: fermate, edicole, plance delle affissioni). Per il censimento sono fisse: chi del registro ci sta sopra o davanti cede
+    const X = [], vxB = B => { const P = []; corners2(B).forEach(([x, z]) => { P.push(x, B.y0, z, x, B.y1, z); }); const [cx, cz] = ctr2(B); P.push(cx, (B.y0 + B.y1) / 2, cz); return new Float32Array(P); };
+    const ext = (k, fonte, x, z, yaw, lu, lv, hu, hv, y0, y1, o) => { const c = Math.cos(yaw), sn = Math.sin(yaw), wx = x + lu * c + lv * sn, wz = z - lu * sn + lv * c, B = box2(wx, wz, yaw, hu, hv, y0, y1);
+      const e = Object.assign({ id: 'x' + X.length, k, fonte, ext: true, B, vx: vxB(B), yaw, parts: [], objs: [], vol: hu * hv * (y1 - y0) * 4, g: 0 }, o || {}); X.push(e); return e; };
+    try { if (typeof Segnaletica !== 'undefined' && Segnaletica.attivo) { const SP = Segnaletica.piano(), T0 = Segnaletica.TIPI || {}, SG = Segnaletica.SEGNI || {}, C = Segnaletica.CFG;
+      SP.pali.forEach(p => { const key = 'p' + Math.round(p.x * 10) + ',' + Math.round(p.y * 10);
+        if (p.tipo === 'cartelli') { const av = p.plates.filter(q => !q.retro), w = Math.max(.3, ...av.map(q => (SG[q.k] || { w: .6 }).w)), tot = av.reduce((s, q) => s + (SG[q.k] || { h: .6 }).h + .05, 0);
+          if (p.muro) { const m = p.muro, y0 = groundH(m.x + m.nx * .6, m.y + m.ny * .6), top = y0 + 2.55 + av.length * .9; ext('cartello', 'segnaletica', m.x, m.y, Math.atan2(m.nx, m.ny), 0, .36, w / 2, .36, top - tot - .2, top + .1, { key, muro: true }); }
+          else { const y0 = groundH(p.x, p.y); ext('cartello', 'segnaletica', p.x, p.y, p.yaw, 0, .02, Math.max(w / 2, .06), .08, y0, y0 + C.cartello + tot + .05, { key }); } }
+        else if (p.tipo === 'indicazioni') { const y0 = groundH(p.x, p.y), top = Math.max(...p.plates.map(q => q.y)) + .5; ext('cartello', 'segnaletica', p.x, p.y, 0, 0, 0, .07, .07, y0, y0 + top, { key, indicazioni: true }); } });
+      SP.insegne.forEach(q => { if (q.fonte !== 'segnaletica') return; const key = 'i' + Math.round(q.x * 10) + ',' + Math.round(q.y * 10), b = G.BUILDINGS[q.bi], yn = Math.atan2(q.nx || 0, q.ny || 1), o = { key, b: b || null, f: q.f || null };
+        if (q.montaggio === 'bandiera') { const y0 = groundH(q.x + q.nx * 1.2, q.y + q.ny * 1.2) + q.y0, d0 = C.bandiera.da; ext('insegna', 'segnaletica', q.x, q.y, yn, 0, (d0 + q.w) / 2, .05, (d0 + q.w) / 2, y0, y0 + q.h + .1, o); }
+        else if (q.montaggio === 'targa' || q.montaggio === 'segno') { const y0 = groundH(q.x + q.nx * .8, q.y + q.ny * .8) + q.y0; ext('insegna', 'segnaletica', q.x, q.y, yn, 0, .03, q.w / 2, .03, y0, y0 + q.h, o); }
+        else if (q.montaggio === 'pannello' || q.montaggio === 'tavola') { const y0 = groundH(q.x, q.y); ext('insegna', 'segnaletica', q.x, q.y, q.facing, 0, 0, q.w / 2, .08, y0, y0 + q.y0 + q.h, Object.assign(o, { terra: true })); } }); } } catch (e) { console.error('[rumore] segnaletica', e); }
+    try { if (typeof Vievive !== 'undefined' && Vievive.attivo) { const rot = a => Math.PI / 2 - a;
+      Vievive.fermate().forEach(f => { const y0 = groundH(f.x, f.y); ext('fermata', 'vievive', f.x, f.y, rot(f.dir), .05, -.35, 1.85, .95, y0, y0 + 2.6, { terra: true }); });
+      Vievive.edicole().forEach(q => { const y0 = groundH(q.kx, q.ky); ext('edicola', 'vievive', q.kx, q.ky, rot(q.kang), .37, .2, 1.58, 1.0, y0, y0 + 2.5, { terra: true }); });
+      Vievive.plance().forEach(q => { const y0 = groundH(q.x, q.y); ext('plancia', 'vievive', q.x, q.y, rot(q.ang + Math.PI / 2), 0, 0, 1.15, .08, y0, y0 + 2.45, { terra: true, plancia: q }); }); } } catch (e) { console.error('[rumore] vievive', e); }
+    X.forEach(e => { if (e.b && e.f && !e.F) { const r0 = DZ.bRec[BI.get(e.b)]; if (r0 && r0.geo) e.F = faccia2(e.b, r0, e.f, 0); } });
     return {
-      R, G, TS, groundH, ctr: ctr2, corners: corners2, palo: palo2, roadDir: roadDir2,
+      R, G, TS, groundH, ctr: ctr2, corners: corners2, palo: palo2, roadDir: roadDir2, sat: sat2, yov: yov2, esterni: X,
+      togliEsterno: e => { if (e.plancia) { const L = Vievive.plance(), i = L.indexOf(e.plancia); if (i >= 0) L.splice(i, 1); } else if (e.key) PuliziaRumore.SALTA.add(e.key); e.gone = true; },
+      vissuti: () => { try { return window.TettiVissuti && TettiVissuti.conto ? TettiVissuti.conto() : null; } catch (e) { return null; } },
       bid: b => BI.get(b), prio: e => PRIO2[e.k] || 10,
       larghezza: (b, f) => { const g = geoOf(b); return g ? (f === 'S' || f === 'N' ? g.w : g.d) : 0; },
       porte: (b, f) => PORTE.get(BI.get(b) + f) || 0,
@@ -9310,7 +9332,7 @@ var Render = (function () {
     const F = { S: [x0, z0 + d, 0], N: [x0 + w, z0, Math.PI], E: [x0 + w, z0 + d, Math.PI / 2], W: [x0, z0, -Math.PI / 2] }[f], L = B0.n * TS;
     if (b.__ep && b.__ep.portico === f) { F[0] -= Math.sin(F[2]) * TS; F[1] -= Math.cos(F[2]) * TS; }   // [pulizia2] sotto il portico il fronte sta sul muro arretrato, non sul filo dei pilastri
     const g = new THREE.Group(), a = new THREE.Group(); a.position.set(F[0], 0, F[1]); a.rotation.y = F[2]; g.add(a);
-    let K2 = 'portale'; const at = (o, u, y, z) => { o.position.set(u, y, z); a.add(o); return mk2(o, K2, b, f); };   // [pulizia2] ogni pezzo col suo nome, per il regista
+    let K2 = 'portale'; const G2 = {}, at = (o, u, y, z) => { o.position.set(u, y, z); a.add(o); return mk2(o, K2, b, f, G2[K2] || (G2[K2] = ++P2.g)); };   // [pulizia2] ogni pezzo col suo nome, per il regista   [pulizia] e la sua composizione: i tasti del citofono, i faretti dell'insegna, le guide della serranda stanno insieme
     const N = [Math.sin(F[2]), Math.cos(F[2])], T2 = [Math.cos(F[2]), -Math.sin(F[2])], wp = (u, z) => [F[0] + T2[0] * u + N[0] * z, F[1] + T2[1] * u + N[1] * z];
     const metal = sm('#6e7174', { roughness: .6, metalness: .4 }), stone = sm(era === 'E4' ? '#d8ccae' : '#cfc6b4', { roughness: .95 });
     b.__blade = true;   // la bandiera al neon no: l'insegna è una sola, sulla fascia
