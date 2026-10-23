@@ -11,6 +11,9 @@ var PesoVetro = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const ON = !/[?&](nopeso|nopesovetro|noleggero)\b/.test(Q);
+  // [peso] non solo i vetri: ogni materiale standard opaco senza mappa delle case (tinte, ruvidità, metallo, luce propria diversi) va nella stessa
+  // tavolozza: un secchio per settore invece di uno per tinta-ruvidità-luce. ?nopesotinte: solo i vetri
+  const TUTTI = ON && !/[?&]nopeso(tinte)?\b/.test(Q);
   const V = { col: [], idx: new Map(), ok: new Map(), W: 256, u: { value: null }, s: { value: null }, tex: null };
   const R = {
     dif: 'vec4 diffuseColor = vec4( diffuse, opacity );',
@@ -31,7 +34,7 @@ var PesoVetro = (function () {
   }
   // il materiale va in tavolozza? Solo vetri marcati, opachi, standard, senza mappa del colore, e solo se lo shader ha le quattro righe una volta
   function ok(m, sig, renderer) {
-    if (!ON || !m || !m.userData || !m.userData.vetro || m.type !== 'MeshStandardMaterial' || m.transparent || m.map || !sig || !renderer.capabilities.isWebGL2) return null;
+    if (!ON || !m || !m.userData || !(m.userData.vetro || TUTTI) || m.type !== 'MeshStandardMaterial' || m.transparent || m.map || !sig || !renderer.capabilities.isWebGL2) return null;
     const k = firma(sig); if (V.ok.has(k)) return V.ok.get(k);
     let res = null; const T = window.THREE, L = T.ShaderLib.standard;
     try { const sh = { vertexShader: L.vertexShader, fragmentShader: L.fragmentShader, uniforms: T.UniformsUtils.clone(L.uniforms), defines: {} }; m.onBeforeCompile(sh, renderer);

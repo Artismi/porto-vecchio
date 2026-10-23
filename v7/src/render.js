@@ -259,6 +259,8 @@ var Render = (function () {
   // [leggero] la manopola del settore delle case fuse (metri): più grande, meno disegni e meno sagome d'ombra, ma più triangoli fuori
   // campo mandati alla scheda video. ?settore=N per provarne un altro
   const SETT1 = LEGGERO ? (+((typeof location !== 'undefined' && location.search.match(/[?&]settore=(\d+)/)) || [])[1] || 48) : 32;
+  // [peso] anche l'intonaco in pila: la differenza della grana (1-3 livelli su un pixel ogni venti, misurata da [leggero]) non si vede; ?nopesointonaco: come prima
+  const PESOINT1 = LEGGERO && !/[?&]nopeso(intonaco)?\b/.test(typeof location !== 'undefined' ? location.search : '');
   const ARR1 = { on: LEGGERO && !/[?&]nopila/.test(typeof location !== 'undefined' ? location.search : ''), ok: new Map(), gr: new Map(), all: [], MB: 32, n: 0 };
   function incl1(s) { return s.replace(/^[ \t]*#include +<([\w\d./]+)>/gm, (m, i) => incl1(THREE.ShaderChunk[i] || '')); }
   const ARRRE1 = /texture2D\(\s*map\s*,/g;
@@ -269,7 +271,7 @@ var Render = (function () {
   function arrOk1(m, sig) {
     // non l'intonaco ([facciate2]): la sua grana è un hash della posizione nel mondo e col vertice cambiato dalla pila il compilatore la
     // rifaceva diversa di 1-3 livelli su un pixel su venti (sonda_uguale_leggero); le sue mappe sono poche, resta con la sola tavolozza
-    const t = m.map; if (!ARR1.on || m.userData.plaster || !t || !t.isTexture || t.isDataTexture || t.isVideoTexture || t.isCompressedTexture || t.isDataArrayTexture || t.premultiplyAlpha || t.format !== THREE.RGBAFormat || t.type !== THREE.UnsignedByteType) return false;
+    const t = m.map; if (!ARR1.on || (m.userData.plaster && !PESOINT1) || !t || !t.isTexture || t.isDataTexture || t.isVideoTexture || t.isCompressedTexture || t.isDataArrayTexture || t.premultiplyAlpha || t.format !== THREE.RGBAFormat || t.type !== THREE.UnsignedByteType) return false;
     const im = t.image; if (!im || !(typeof HTMLCanvasElement !== 'undefined' && im instanceof HTMLCanvasElement) || !im.width || !im.height) return false;
     let cx = null; try { cx = im.getContext('2d'); } catch (e) { cx = null; } if (!cx) return false;
     const k = sig.replace(/\|map:[0-9A-Fa-f-]+/, ''); if (ARR1.ok.has(k)) return ARR1.ok.get(k);
@@ -15629,7 +15631,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; } };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
-    if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */
+    if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
     renderer.setRenderTarget(rt); renderer.render(scene, camera); if (window.PesoOmbre) PesoOmbre.dopo();
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
     gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE();   /* [amb2] */
