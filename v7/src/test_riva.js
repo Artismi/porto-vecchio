@@ -43,7 +43,7 @@ const pro = {}, proD = {}; let pS = 0, pR = 0, nPS = 0, gr = 0, nGr = 0;
 for (const B of BL) for (let j = 0; j < B.m; j++) for (let i = 0; i < B.n; i++) { if (!B.mask[j * B.n + i]) continue; const tx = B.tx0 + i, ty = B.ty0 + j, f = Riva.famT(tx, ty), k = Riva.kindT(tx, ty);
   for (const [a, b] of [[.3, .3], [.7, .6]]) { const x = (tx + a) * TS, y = (ty + b) * TS, s = Riva.suolo(tx, ty, x, y, 0), d = s[4], q = Riva.quotaNuda(tx, ty, x, y);
     if (f === 1 && k !== 'cala' && d > -2 && d < 30) { const L = k === 'duna' ? proD : pro, c = Math.round(d); L[c] = L[c] || [0, 0]; L[c][0] += q; L[c][1]++;
-      if (d > 0 && d < 8) {   /* la spiaggia, dalla battigia alla retrospiaggia (il fianco della duna può essere ripido) */ const e = .5, gx = Riva.quotaNuda(tx, ty, x + e, y) - q, gy = Riva.quotaNuda(tx, ty, x, y + e) - q, sl = Math.hypot(gx, gy) / e; pS += sl > .45 ? 1 : 0; nPS++; } }
+      if (d > 0 && d < 8 && Riva.pesoForma(tx, ty, x, y) > .9) {   /* la spiaggia, dalla battigia alla retrospiaggia (il fianco della duna può essere ripido) */ const e = .5, gx = Riva.quotaNuda(tx, ty, x + e, y) - q, gy = Riva.quotaNuda(tx, ty, x, y + e) - q, sl = Math.hypot(gx, gy) / e; pS += sl > .45 ? 1 : 0; nPS++; } }
     if (f === 2 && d > 0 && d < 6) { const e = .25, hh = []; for (let t = -4; t <= 4; t++) hh.push(Riva.quotaNuda(tx, ty, x + t * e, y)); let salti = 0; for (let t = 1; t < hh.length; t++) if (Math.abs(hh[t] - hh[t - 1]) > .08) salti++; gr += salti; nGr++; } } }
 const m = (L, c) => L[c] ? L[c][0] / L[c][1] : NaN;
 ok(m(pro, 0) < WL + .25 && m(pro, 5) > m(pro, 1) + .2, `la spiaggia sale dalla battigia alla berma (d 0: ${(m(pro, 0) - WL).toFixed(2)} m sull'acqua, d 1: ${(m(pro, 1) - WL).toFixed(2)}, d 5: ${(m(pro, 5) - WL).toFixed(2)})`);

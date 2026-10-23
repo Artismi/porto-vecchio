@@ -55263,7 +55263,7 @@ var Riva = (function () {
   const BANDA = { 1: [-14, 16], 2: [-6, 12], 3: [-5, 9] };   // da quanto in mare a quanto in terra (m dalla riva) si ridisegna
   const SUB = 4, ST = 2 / SUB;   // 4 campioni per casella: mezzo metro
   const R = { on: !SPENTA, W: null, TS: 2, stat: { blocchi: 0, tri: 0, scogli: 0, ciottoli: 0 } };
-  let W, GW, GH, VW, TS, T, WL, vD, vQ, vN, tF, tK, dF, cel = new Map();
+  let W, GW, GH, VW, TS, T, WL, vD, vQ, vN, tF, tK, dF, dN, vM, cel = new Map();
 
   function init(w) {
     if (R.W === w) return true; if (!w || !w.inland || !w.quotaRiva || !w.coastKind2) { R.on = false; return false; }
@@ -55275,8 +55275,15 @@ var Riva = (function () {
     dF = new Uint8Array(GW * GH); for (let i = 0; i < GW * GH; i++) dF[i] = FATTO.has(w.grid[i]) || (w.roadW && w.roadW[i] > 0) ? 0 : 8;
     for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const i = ty * GW + tx; let v = dF[i]; if (tx) v = Math.min(v, dF[i - 1] + 1); if (ty) v = Math.min(v, dF[i - GW] + 1); if (tx && ty) v = Math.min(v, dF[i - GW - 1] + 1); if (ty && tx < GW - 1) v = Math.min(v, dF[i - GW + 1] + 1); dF[i] = v; }
     for (let ty = GH - 1; ty >= 0; ty--) for (let tx = GW - 1; tx >= 0; tx--) { const i = ty * GW + tx; let v = dF[i]; if (tx < GW - 1) v = Math.min(v, dF[i + 1] + 1); if (ty < GH - 1) v = Math.min(v, dF[i + GW] + 1); if (tx < GW - 1 && ty < GH - 1) v = Math.min(v, dF[i + GW + 1] + 1); if (ty < GH - 1 && tx) v = Math.min(v, dF[i + GW - 1] + 1); dF[i] = v; }
+    // [riva] la distanza dalla spiaggia vera (in caselle, fino a 4): sabbia, scoglio, ghiaia, acqua sono spiaggia; tutto il resto no.
+    // Il disegno della sabbia (non la forma) arriva fin qui: anche sulle spiagge della città, accanto alle case e alle strade
+    const NAT = new Set([T.SAND, T.ROCK, T.WATER, T.GRAVEL]); dN = new Uint8Array(GW * GH); for (let i = 0; i < GW * GH; i++) dN[i] = NAT.has(w.grid[i]) && !(w.roadW && w.roadW[i] > 0) ? 4 : 0;
+    for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const i = ty * GW + tx; let v = dN[i]; if (tx) v = Math.min(v, dN[i - 1] + 1); if (ty) v = Math.min(v, dN[i - GW] + 1); dN[i] = v; }
+    for (let ty = GH - 1; ty >= 0; ty--) for (let tx = GW - 1; tx >= 0; tx--) { const i = ty * GW + tx; let v = dN[i]; if (tx < GW - 1) v = Math.min(v, dN[i + 1] + 1); if (ty < GH - 1) v = Math.min(v, dN[i + GW] + 1); dN[i] = v; }
+    vM = new Float32Array(VW * (GH + 1)).fill(-1);
     return true;
   }
+  function mV(i, j) { const k = VI(i, j); let v = vM[k]; if (v < 0) { let m = 4; for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) if (a >= 0 && b >= 0 && a < GW && b < GH) m = Math.min(m, dN[b * GW + a]); v = vM[k] = i < 3 || j < 3 || i > GW - 3 || j > GH - 3 ? 0 : Math.max(nV(i, j), sstep(.5, 1.5, m)); } return v; }   // il peso del disegno: almeno quello della forma
   // ---- i valori ai vertici delle caselle (2 m), calcolati una volta ----
   const VI = (i, j) => Math.max(0, Math.min(GH, j)) * VW + Math.max(0, Math.min(GW, i));
   function dV(i, j) { const k = VI(i, j); let v = vD[k]; if (v !== v) v = vD[k] = W.inland(i * TS, j * TS); return v; }
@@ -55299,7 +55306,7 @@ var Riva = (function () {
   // la casella entra nella fascia fine? (lontano dalla città, e per una delle famiglie che ha ai vertici la distanza dalla riva entra nella sua fascia)
   function inBanda(tx, ty) {
     if (!R.on || tx < 1 || ty < 1 || tx >= GW - 1 || ty >= GH - 1) return false;
-    if (nV(tx, ty) + nV(tx + 1, ty) + nV(tx, ty + 1) + nV(tx + 1, ty + 1) <= 0) return false;
+    if (mV(tx, ty) + mV(tx + 1, ty) + mV(tx, ty + 1) + mV(tx + 1, ty + 1) <= 0) return false;
     let lo = 1e9, hi = -1e9; const has = [0, 0, 0, 0], du = [0, 0], ca = [0, 0];
     for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const d = dV(tx + a, ty + b), k = kV(tx + a, ty + b); lo = Math.min(lo, d); hi = Math.max(hi, d); for (let f = 1; f <= 3; f++) if (vK[k + f - 1] > 0) has[f] = 1; if (vK[k + 3] > 0) du[1] = 1; if (vK[k + 4] > 0) ca[1] = 1; }
     for (let f = 1; f <= 3; f++) if (has[f] && hi > BANDA[f][0] && lo < LAND(f, du[1], 0)) return true;
@@ -55398,7 +55405,7 @@ var Riva = (function () {
   }
   // i pesi del suolo in un punto: sabbia, roccia, bagnato, ciottoli, la distanza dal mare (per il disegno al pixel)
   function suolo(tx, ty, x, y, h) {
-    const u = x / TS - tx, v = y / TS - ty, d = bil(dV(tx, ty), dV(tx + 1, ty), dV(tx, ty + 1), dV(tx + 1, ty + 1), u, v), wn = bil(nV(tx, ty), nV(tx + 1, ty), nV(tx, ty + 1), nV(tx + 1, ty + 1), u, v), K = tipi(tx, ty, u, v);
+    const u = x / TS - tx, v = y / TS - ty, d = bil(dV(tx, ty), dV(tx + 1, ty), dV(tx, ty + 1), dV(tx + 1, ty + 1), u, v), wn = bil(mV(tx, ty), mV(tx + 1, ty), mV(tx, ty + 1), mV(tx + 1, ty + 1), u, v), K = tipi(tx, ty, u, v);
     const du = K[3] / Math.max(1e-6, K[0]), ca = K[4] / Math.max(1e-6, K[0]), wS = K[0] * wn * peso(1, d, du, ca), wR = K[1] * wn * peso(2, d, 0, 0) + K[2] * wn * peso(3, d, 0, 0);
     const sab = wS + wR * .35 * sstep(.62, .72, fbm(x / 6, y / 6, 432, 2)) * (1 - sstep(2, 4, d)), roc = wR;
     const cio = wS * ca * sstep(.42, .6, fbm(x / 5, y / 5, 421, 2)) * (1 - sstep(4, 7, d)) + wR * .4 * (1 - sstep(-1, 1.5, Math.abs(d - .3)));
@@ -55646,7 +55653,7 @@ var Riva = (function () {
       im.instanceMatrix.needsUpdate = true; im.castShadow = true; im.receiveShadow = true; im.name = 'riva9p'; grp.add(im); });
     R.stat.margini = { tri: nTri, taglio: nTaglio, paletti: C.length }; return grp;
   }
-  Object.assign(R, { init, inBanda, costruisci, costruisciMargini, tipi, margini, cippi, geoMasso, matRoccia: () => matRoccia(), quota, blocco: (ci, cj) => blocco(ci, cj), quotaNuda, suolo, famT, kindT, CH, SUB, fbm, h2 });
+  Object.assign(R, { init, inBanda, pesoForma: (tx, ty, x, y) => bil(nV(tx, ty), nV(tx + 1, ty), nV(tx, ty + 1), nV(tx + 1, ty + 1), x / TS - tx, y / TS - ty), costruisci, costruisciMargini, tipi, margini, cippi, geoMasso, matRoccia: () => matRoccia(), quota, blocco: (ci, cj) => blocco(ci, cj), quotaNuda, suolo, famT, kindT, CH, SUB, fbm, h2 });
   if (typeof module !== 'undefined') module.exports = R;
   return R;
 })();
