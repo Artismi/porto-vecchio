@@ -622,7 +622,9 @@ di partenza>` esce anche `venuta.png`, la rete di prima e quella di adesso lette
 - `tavola_viabilita.png`: la rete di oggi coi sei problemi segnati, il progetto, le sezioni tipo (mostrata al committente prima dei lavori);
 - `opzioni_spianata.png`: le due letture di «potresti metterlo lì l'arco che rimane sul mare». Il committente ha scelto la **A**: il
   mercato scende sulla spianata, la Porta di Terra resta al suo posto ma ridotta. Ha scelto anche il Lungomare **dal lato del mare**;
-- `venuta.png`: com'è venuta.
+- `venuta.png`: com'è venuta;
+- `prima_dopo_*.jpg`: le foto del gioco prima e dopo, alla stessa ora e dallo stesso punto (spianata, Mercato, Porta di Terra,
+  costa nord, Lido). L'avvio di `?cittanuova` e `?cittanuova&visuale=muretto` in Chromium senza testa: 0 errori.
 
 ### 14.1 La gerarchia delle strade
 
