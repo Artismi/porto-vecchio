@@ -211,3 +211,16 @@ Il problema non erano le lettere ma il contorno: pupazzi da clip-art, slogan, pa
 - Il burner dice il **nome del writer**, a volte quello della crew; non più SOLE, RADICI, DISGELO.
 - Stelline e aureole: una stellina su quattro pezzi, l'aureola quasi mai, un asterisco su tre throw-up, il cielo senza stelle.
   Niente fondo a scoppio da fumetto: solo la nuvola, a volte.
+
+### Graffiti 5, seconda passata: il gradino di mestiere
+- **Il 3D in due toni** (`inkRender`, `o.tone2`): le facce di lato (i bordi delle lettere rivolti a destra, trascinati lungo la
+  direzione del 3D) più chiare o più scure di quelle di sotto; sul 3D nero il lato è grigio scuro.
+- **Le luci del writer** nei pezzi: non più le due righe diagonali da vetro, ma un colpo di bianco che segue il bordo alto a sinistra
+  di ogni lettera e si assottiglia, col punto; la riga di luce spezzata (`rim`) solo una volta su tre.
+- **La sfumatura a bande** (`inkPAT` 'bande', ora la più frequente): tre o quattro tinte orizzontali, il passaggio stretto e
+  spruzzato, a volte la riga bianca fra due bande, la grana sul passaggio. Le macchie sfocate sono rare.
+- L'alone sfocato attorno al pezzo quasi sparito (5% pezzi, 8% throw-up): resta il contorno chiaro netto.
+- **Il nome si legge**: meno sovrapposizione nei pezzi (.03–.09) e nei throw-up (.1–.2, meno rotazione e gonfiaggio); le mani da
+  tag ingrassate poco (la E non si chiude in una B); Modak e Sedgwick più rari; i throw-up quasi sempre dai font.
+- Via anche le faccine, i cuoricini, le stelline e le aureole dentro e sopra i throw-up.
+- La galleria scrive nell'etichetta con cosa sono fatte le lettere (il font, «pennellate», «blocchi», «bolle»): `A.font`.
