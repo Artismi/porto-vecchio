@@ -344,7 +344,7 @@ var Percorsi = (function () {
       const AV = avanti(S, ok, 7), IN = indietro(S, ok, 7);
       // le vie: altre scale da terra da cui si arriva al giro e da cui si torna giù dal giro
       const L0 = TT.LADDERS[c.sali], L1 = TT.LADDERS[c.scendi], prese = [[L0.fx, L0.fy], [L1.fx, L1.fy]];
-      const cand = TT.LADDERS.filter(L => L.footB < 0 && !L.camm && !L.corte && L.vis !== false && L.i !== c.sali && L.i !== c.scendi && AV.has(L.bi) && IN.has(L.bi) && !(altrui.has(L.bi) && altrui.get(L.bi) !== c.id));
+      const cand = TT.LADDERS.filter(L => L.footB < 0 && !L.camm && L.corte === undefined && L.vis !== false && L.i !== c.sali && L.i !== c.scendi && AV.has(L.bi) && IN.has(L.bi) && !(altrui.has(L.bi) && altrui.get(L.bi) !== c.id));
       c.vie = [];
       for (let n = 0; n < 3; n++) {
         let best = null; cand.forEach(L => { if (c.vie.some(v => v.i === L.i)) return; const d = Math.min(...prese.map(([x, y]) => hyp(x - L.fx, y - L.fy))); if (d < 8) return; const s = d - (AV.get(L.bi).h + IN.get(L.bi).h) * 2; if (!best || s > best.s) best = { s, L }; });
@@ -358,9 +358,10 @@ var Percorsi = (function () {
       c.rami = [];
       const ramo = k => {
         const torna = i => IN.has(i) && AV.has(i) && !S.has(i) && !presi.has(i) && AV.get(i).h >= 1;
+        if (typeof process !== 'undefined' && process.env.RAMI_DBG) console.error(c.id, k, 'AV', AV.size, 'IN', IN.size, 'torna', [...AV.keys()].filter(torna).length);
         let t = null, scala = null;
-        if (k === 'corte') { const Lc = TT.LADDERS.filter(L => L.corte && AV.has(L.bi) && IN.has(L.bi) && !presi.has(L.bi)).sort((p, q) => AV.get(p.bi).h - AV.get(q.bi).h)[0]; if (Lc) { t = Lc.bi; scala = Lc; } }
-        else { const C = [...AV.keys()].filter(i => torna(i) && BB[i].w >= 2 && BB[i].h >= 2 && !BB[i].annesso && (k !== 'terrazza' || BB[i].era !== 'E4'));
+        if (k === 'corte') { const Lc = TT.LADDERS.filter(L => L.corte !== undefined && AV.has(L.bi) && IN.has(L.bi) && !presi.has(L.bi)).sort((p, q) => AV.get(p.bi).h - AV.get(q.bi).h)[0]; if (Lc) { t = Lc.bi; scala = Lc; } }
+        else { const C = [...AV.keys()].filter(i => torna(i) && (k === 'tesoro' || (BB[i].w >= 2 && BB[i].h >= 2 && !BB[i].annesso)) && (k !== 'terrazza' || BB[i].era !== 'E4'));   // [tetti4] la cassetta sta anche su un annesso
           const sc = i => k === 'belvedere' ? TT.roofRule(BB[i]) * 10 + AV.get(i).h : k === 'terrazza' ? AV.get(i).h * 2 - grado(i) * 1.5 + BB[i].w * BB[i].h * .1 : AV.get(i).h * 3 - grado(i) * 2;
           C.sort((p, q) => sc(q) - sc(p) || p - q); t = C.length ? C[0] : null; }
         if (t === null || t === undefined) return null;
@@ -385,7 +386,7 @@ var Percorsi = (function () {
     const crema4 = e => e.k === 'salto' || e.k === 'passerella' || e.k === 'scala';
     const passo4 = e => ({ k: e.k, a: e.a, b: e.b, x: e.x, y: e.y, i: e.i, ux: e.ux, uy: e.uy });
     function cerca(Z, inZ, ex) {
-      const scale = TT.LADDERS.filter(L => L.footB < 0 && !L.camm && !L.corte && inZ(L.bi) && !usati.has(L.bi));
+      const scale = TT.LADDERS.filter(L => L.footB < 0 && !L.camm && L.corte === undefined && inZ(L.bi) && !usati.has(L.bi));
       let best = null;
       scale.forEach(L => {
         // il cammino migliore da questa scala: si premiano i passaggi crema (salti, passerelle, scale fra tetti) e la lunghezza
@@ -425,7 +426,7 @@ var Percorsi = (function () {
     // il camminamento delle mura di tramontana: dalla scala di ronda alla scala di ferro dall'altra parte
     const CM = (TT.CAMM || []).filter(c => c.tipo === 'mura_tramontana');
     if (CM.length) { const sc = TT.LADDERS.filter(L => L.camm && L.camm.tipo === 'mura_tramontana'); const pts = []; CM.forEach(c => { pts.push(c.a, c.b); });
-      const Lm = CM.reduce((s, c) => s + c.L, 0); CIRCUITI.push({ id: 'mura', nome: 'Il camminamento delle mura di tramontana', k: 'mura', scale: sc.map(L => L.i), camm: CM.map(c => c.i), pts: [sc[0] ? [sc[0].fx, sc[0].fy] : pts[0]].concat(pts).concat(sc[1] ? [[sc[1].fx, sc[1].fy]] : []), L: Lm, crema: 0 }); }
+      const Lm = CM.reduce((s, c) => s + c.L, 0); CIRCUITI.push({ id: 'mura', nome: 'Il camminamento delle mura di tramontana', k: 'mura', tema: 'la ronda sopra il mare', premio: 'belvedere', scale: sc.map(L => L.i), camm: CM.map(c => c.i), pts: [sc[0] ? [sc[0].fx, sc[0].fy] : pts[0]].concat(pts).concat(sc[1] ? [[sc[1].fx, sc[1].fy]] : []), L: Lm, crema: 0 }); }
     // le alternative delle porte: i tetti (una catena di tetti da una scala da una parte a una scala dall'altra) o un tombino
     const tomb = SO && SO.TPL ? SO.TPL.portals.filter(P => P.kind === 'tombino' || P.kind === 'grata' || P.kind === 'botola' || P.kind === 'pozzo').map(P => ({ P, x: (P.s[0] + .5) * TS, y: (P.s[1] + .5) * TS })) : [];
     const ugOk = (a, b) => { if (!SO || !SO.TPL) return false; const ug = SO.TPL.ug, s = a.P.s[1] * GW + a.P.s[0], t = b.P.s[1] * GW + b.P.s[0], seen = new Uint8Array(GW * GH), Q = [s]; seen[s] = 1;
