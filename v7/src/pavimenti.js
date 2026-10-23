@@ -39,6 +39,9 @@ var Pavimenti = (function () {
       for (let m = 0; m < M; m++) for (let ch = 0; ch < 3; ch++) { const at = l => ((horiz ? m * W + ((l % W) + W) % W : (((l % H) + H) % H) * W + m) * 3 + ch); let s = 0; for (let l = -r; l <= r; l++) s += src[at(l)];
         for (let l = 0; l < L; l++) { dst[at(l)] = s / n; s += src[at(l + r + 1)] - src[at(l - r)]; } } };
     for (let it = 0; it < 3; it++) { pass(a, b, true); pass(b, a, false); }
+    // le macchie larghe della tela (sporco, olio, pozze asciutte) a metà forza: la variazione la danno i rumori lenti dello shader
+    const mu = [0, 0, 0]; for (let i = 0; i < W * H; i++) for (let c = 0; c < 3; c++) mu[c] += a[i * 3 + c] / (W * H);
+    for (let i = 0; i < W * H; i++) for (let c = 0; c < 3; c++) a[i * 3 + c] = mu[c] + (a[i * 3 + c] - mu[c]) * .5;
     const o = document.createElement('canvas'); o.width = W; o.height = H; const ox = o.getContext('2d'), od = ox.createImageData(W, H);
     for (let i = 0; i < W * H; i++) { od.data[i * 4] = a[i * 3]; od.data[i * 4 + 1] = a[i * 3 + 1]; od.data[i * 4 + 2] = a[i * 3 + 2]; od.data[i * 4 + 3] = 255; }
     ox.putImageData(od, 0, 0); PIA.set(k, o); return o;
