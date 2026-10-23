@@ -2498,7 +2498,8 @@ var Render = (function () {
     for (let j = 0; j <= m; j++) for (let i = 0; i <= n; i++) {
       const k = j * (n + 1) + i, tx = tx0 + i, ty = ty0 + j;
       let h = hv(tx, ty);
-      // [inverno] riva liscia: la quota segue la distanza vera dalla costa (curva), non le caselle; banchine e moli restano a filo
+      if (M.world && M.world.quotaRiva) h = M.world.quotaRiva(tx, ty);   // [costa2] la quota che si vede la dà il mondo: la città non affonda più (vedi world_cittanuova.js)
+      else // [inverno] riva liscia: la quota segue la distanza vera dalla costa (curva), non le caselle; banchine e moli restano a filo
       { const ci2 = coastIn(tx * TS, ty * TS); let hard = false; for (const [a, b] of [[tx - 1, ty - 1], [tx, ty - 1], [tx - 1, ty], [tx, ty]]) { const vv = gT(a, b); if (vv === T.QUAY || vv === T.PIER) hard = true; }
         const LK = M.world && M.world.LAKE, lk = LK && Math.hypot((tx * TS - LK.x) / LK.rx, (ty * TS - LK.y) / LK.ry) < 1.6, b0 = lk ? LK.h - 1.9 : -1.6;   // [monte] il lago è sull'altopiano
         if (!hard && ci2 < 4) { const land = Math.max(lk ? LK.h + .25 : .4, h > b0 + .6 ? h : .4), k = Math.max(0, Math.min(1, (ci2 + 1.2) / 5.2)); h = b0 + (land - b0) * k * k * (3 - 2 * k); } }
@@ -2543,7 +2544,7 @@ var Render = (function () {
     x.putImageData(img, 0, 0);
     const tex = new THREE.CanvasTexture(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter;   // [inverno17] sfumata
     const pos = [], uv = [], idx = [], PIECE = {};
-    for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { const tx = Math.min(G.GW, i * S), ty = Math.min(G.GH, j * S); pos.push(tx * TS, hv(tx, ty) - .08, ty * TS); uv.push(tx / G.GW, 1 - ty / G.GH); }
+    for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { const tx = Math.min(G.GW, i * S), ty = Math.min(G.GH, j * S); pos.push(tx * TS, (M.world && M.world.quotaRiva ? M.world.quotaRiva(tx, ty) : hv(tx, ty)) - .08, ty * TS);   /* [costa2] */ uv.push(tx / G.GW, 1 - ty / G.GH); }
     for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
       let land = false; for (let q = 0; q < S && !land; q++) for (let p = 0; p < S && !land; p++) { const v = gT(i * S + p, j * S + q); if (v !== T.WATER) land = true; }
       if (!land) continue; const a = j * (nx + 1) + i, b = (j + 1) * (nx + 1) + i;

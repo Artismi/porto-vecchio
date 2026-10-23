@@ -2812,6 +2812,26 @@ var World = (function () {
     (S.routes.giro || []).forEach(outIsle);
     S.routes.pesca = [[1020, 228], [1053, 233], [1062, 258], [1046, 292], [1022, 340], [985, 420], [930, 452], [860, 440]].map(([x, y]) => [x + OX, y + OY]); S.routes.pesca.forEach(outIsle);
     W.__isl = isl; W.__vfix = vfix; W.__ix = ix; W.__toD = toD;
+    // [costa2] LA CITTÀ SOTT'ACQUA: la causa e il rimedio. Il mare è un piano a −0,45 m. La grafica ammorbidiva la riva abbassando il
+    // terreno verso −1,6 m in tutta la fascia entro 4 m dalla riva «analitica» (W.inland), senza guardare cosa c'era sopra: le
+    // baracche fra binari e mare, il piede delle mura, il bordo della spianata sul canale, la marina fra i moli stavano in quella fascia
+    // (o oltre la riva analitica, sulla terra fatta dalla città) e affondavano: case, piazze e vicoli col mare sopra. In più alcune quote
+    // ai vertici della città sul canale scendevano sotto il pelo dell'acqua già qui.
+    // Ora (1) nessun vertice che tocca una casella costruita o calpestabile della città sta sotto WL_SECCO, (2) la riva si ammorbidisce
+    // solo dove attorno c'è terra naturale, (3) la quota che si vede la calcola questa funzione sola (render.js e test_costa2.js).
+    const WL_SECCO = -.45 + .2, FATTO = new Set([T_.BLD, T_.VIA, T_.COB, T_.PIAZZA, T_.WALK, T_.STAIRS, T_.FOUNT, T_.QUAY, T_.PIER]);
+    const fatto = (i, j) => { for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) { if (a < 0 || b < 0 || a >= GW2 || b >= GH2) continue; if (FATTO.has(grid[b * GW2 + a])) return true; } return false; };
+    for (let j = 0; j <= GH2; j++) for (let i = 0; i <= GW2; i++) { const k = j * VW2 + i; if (vh[k] < WL_SECCO && fatto(i, j)) vh[k] = WL_SECCO; }
+    for (let ty = 0; ty < GH2; ty++) for (let tx = 0; tx < GW2; tx++) { const i = ty * GW2 + tx; if (FATTO.has(grid[i])) { const k = ty * VW2 + tx; elev[i] = Math.max(elev[i], (vh[k] + vh[k + 1] + vh[k + VW2] + vh[k + VW2 + 1]) / 4); } }
+    W.WL = -.45; W.WL_SECCO = WL_SECCO;
+    W.quotaRiva = (i, j) => {   // la quota del terreno che si vede al vertice (i, j): quella del mondo, con la riva ammorbidita dove è naturale
+      const ii = Math.max(0, Math.min(GW2, i)), jj = Math.max(0, Math.min(GH2, j)); let h = vh[jj * VW2 + ii];
+      if (fatto(i, j)) return Math.max(h, WL_SECCO);
+      const x = i * TS, y = j * TS, L = W.LAKE, lq = L ? Math.hypot((x - L.x) / L.rx, (y - L.y) / L.ry) : 9, lk = lq < 1.6;
+      const ci = lq < 1.6 ? (lq - .9) * Math.min(L.rx, L.ry) : W.inland(x, y), b0 = lk ? L.h - 1.9 : -1.6;
+      if (ci < 4) { const land = Math.max(lk ? L.h + .25 : .4, h > b0 + .6 ? h : .4), k = Math.max(0, Math.min(1, (ci + 1.2) / 5.2)); h = b0 + (land - b0) * k * k * (3 - 2 * k); }
+      return h;
+    };
     if (W.sets) W.luoghi = luoghi(W);
     return W;
   }
