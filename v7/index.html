@@ -55397,7 +55397,7 @@ var Pavimenti = (function () {
       float fam = pvForce > 0. ? pvForce : via ? rf : gf;
       if (fam < .5) return base;
       // coordinate del disegno: lungo e attraverso la via, o il mondo ruotato
-      bool lungo = rf > 0. && av < hw + 3.;
+      bool lungo = rf > 0. && (av < hw || (pvForce > 0. && av < hw + 3.));   // le coordinate della via solo sulla carreggiata (e sul marciapiede): fuori il mondo, niente cuciture a 3 m
       vec2 q = lungo ? vec2(s, v + hw) : pvRot(p, .6 + fam * .37), ux = lungo ? du : vec2(cos(.6 + fam * .37), sin(.6 + fam * .37)), uy = vec2(-ux.y, ux.x);
       vec3 col = base; float jt = 0., bv = 0., jw = .012; vec2 tq = vec2(0.); float tone = 1., mean = 1.;
       if (fam < 1.5 || (fam > 1.5 && fam < 2.5) || (fam > 4.5 && fam < 5.5) || fam > 8.5) {   // pietre a file: basoli, travertino, banchina, lastre
@@ -55498,10 +55498,14 @@ var Pavimenti = (function () {
       #else
       col *= .95 + pvN(p * .045) * .08 + (pvN(p * .21) - .5) * .06;
       #endif
-      if (bord > 0. && !via) {   // la fila di confine fra due suoli: cubetti di pietra scura da 12 cm, come una cordonata a raso
-        vec4 Fb = pvFile(pvRot(p, .785), .12, .1, .14, 41.); float bj = 1. - smoothstep(.008 - aa, .008 + aa, Fb.x);
-        vec3 bs = vec3(pvLum(blur)) * vec3(.74, .71, .68) * (.82 + Fb.y * .28) * (1. - bj * .45);
-        col = mix(col, bs, bord * lod); jt = max(jt, bj * bord);
+      // la fila di confine: fra due suoli (sulla linea interpolata) e sul ciglio della via verso il suolo fuori (dove il disegno passa
+      // dalle coordinate della via a quelle del mondo): cubetti da 12 cm allineati, poco più scuri dei vicini, come una guida a raso
+      bool ciglio = rf > 0. && pvForce < .5 && av >= hw && av < hw + .5 && gf > .5;
+      if ((bord > 0. || ciglio) && !via) {
+        vec2 qb = ciglio ? vec2(s, av - hw) : pvRot(p, .785); float bw = ciglio ? 1. - smoothstep(.36, .4 + aa, av - hw) : bord;
+        vec4 Fb = pvFile(qb, .12, .1, .14, 41.); float bj = 1. - smoothstep(.008 - aa, .008 + aa, Fb.x);
+        vec3 bs = blur * vec3(.9, .89, .88) * (.86 + Fb.y * .2) * (1. - bj * .3);
+        col = mix(col, bs, bw * lod); jt = max(jt, bj * bw);
       }
       // il selciato attorno alle case che stanno su sabbia o terra: ciottoli fitti per un metro circa, il bordo irregolare, qualche sasso
       // che scappa oltre; così la casa non è una scatola posata sullo spiazzo
