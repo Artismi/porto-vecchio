@@ -1,0 +1,219 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Vegetazione: tavola</title>
+<style>html,body{margin:0;background:#e9e1cf;overflow:hidden}canvas{display:block}</style></head>
+<body>
+<!-- [vegetazione] Il banco della tavola: le scene di prova del verde, col kit vero (src/vegetazione.js) e il materiale vero (vento,
+     livelli, retino). Si apre con ?scena=nome (vedi SCENE). node strumenti/vegetazione_tavola.js fa le foto. -->
+<script src="../src/three.min.js"></script>
+<script src="../src/vegetazione.js"></script>
+<script>
+'use strict';
+const V = Vegetazione, K = V.KIT, Q = new URLSearchParams(location.search), NOME = Q.get('scena') || 'pineta';
+const W0 = +(Q.get('w') || 1200), H0 = +(Q.get('h') || 760);
+const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); R.setSize(W0, H0); R.setPixelRatio(1);
+R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap; document.body.appendChild(R.domElement);
+const S = new THREE.Scene(); S.background = new THREE.Color('#dfe6e4'); S.fog = new THREE.Fog('#e6e2d4', 90, 260);
+S.add(new THREE.HemisphereLight('#dfe8ee', '#8a7458', .8));
+const SUN = new THREE.DirectionalLight('#fff0d4', 1.05); SUN.position.set(-40, 70, 30); SUN.castShadow = true; SUN.shadow.mapSize.set(2048, 2048);
+Object.assign(SUN.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 220 }); SUN.shadow.bias = -.0006; SUN.shadow.normalBias = .04; S.add(SUN);
+const cam = new THREE.PerspectiveCamera(30, W0 / H0, .5, 600);
+const hx = h => new THREE.Color(h);
+const rng = s => { let a = s >>> 0 || 1; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+let r = rng(12345);
+// ---------- il suolo: una griglia con quota e colore per punto ----------
+let HF = () => 0;
+function suolo(w, d, colFn, hFn, seg) {
+  HF = hFn || (() => 0); seg = seg || 160; const g = new THREE.PlaneGeometry(w, d, seg, seg); g.rotateX(-Math.PI / 2); const P = g.attributes.position, C = [];
+  for (let i = 0; i < P.count; i++) { const x = P.getX(i), z = P.getZ(i); P.setY(i, HF(x, z)); const c = hx(colFn(x, z)); const n = (V.hash2(Math.round(x * 3), Math.round(z * 3), 5) - .5) * .06; C.push(c.r + n, c.g + n, c.b + n); }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true })); m.receiveShadow = true; S.add(m); return m;
+}
+const mixC = (a, b, t) => '#' + hx(a).lerp(hx(b), Math.max(0, Math.min(1, t))).getHexString();
+// ---------- le cose costruite: scatole, muretti a secco, case, persone ----------
+const MAT = {}; const mat = c => MAT[c] || (MAT[c] = new THREE.MeshLambertMaterial({ color: c }));
+function box(x, y, z, w, h, d, c, ry) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); m.position.set(x, y + h / 2, z); m.rotation.y = ry || 0; m.castShadow = m.receiveShadow = true; S.add(m); return m; }
+function cil(x, y, z, r0, r1, h, c, n) { const m = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, h, n || 10), mat(c)); m.position.set(x, y + h / 2, z); m.castShadow = m.receiveShadow = true; S.add(m); return m; }
+function muretto(x0, z0, x1, z1, h, c) {   // muretto a secco: pietre a corsi sfalsati
+  const L = Math.hypot(x1 - x0, z1 - z0), ry = -Math.atan2(z1 - z0, x1 - x0), ux = (x1 - x0) / L, uz = (z1 - z0) / L; c = c || '#b8aa94';
+  for (let y = 0, row = 0; y < h; y += .22, row++) for (let s = (row % 2) * .2; s < L; s += .36 + r() * .12) { const w = .3 + r() * .16; const t = mixC(c, r() < .5 ? '#8a7e6c' : '#d4c8b0', r() * .5);
+    box(x0 + ux * (s + w / 2), HF(x0 + ux * s, z0 + uz * s) + y, z0 + uz * (s + w / 2), w, .2 + r() * .04, .42, t, ry); }
+}
+function casa(x, z, w, d, h, c, ry, tetto) { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); b.position.y = h / 2; b.castShadow = b.receiveShadow = true; g.add(b);
+  if (tetto) { const t = new THREE.Mesh(new THREE.BoxGeometry(w + .3, .25, d + .3), mat(tetto)); t.position.y = h + .12; t.castShadow = true; g.add(t); }
+  g.position.set(x, HF(x, z), z); g.rotation.y = ry || 0; S.add(g); return g; }
+function finestra(x, y, z, w, h, ry, c) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, .08), mat(c || '#3a4a52')); m.position.set(x, y, z); m.rotation.y = ry || 0; S.add(m);
+  const f = new THREE.Mesh(new THREE.BoxGeometry(w * .48, h, .1), mat('#3e6a4a')); [-1, 1].forEach(s => { const q = f.clone(); q.position.set(x + Math.cos(ry || 0) * s * w * .78, y, z - Math.sin(ry || 0) * s * w * .78); q.rotation.y = ry || 0; S.add(q); }); }
+function persona(x, z, c, ry) { const y = HF(x, z); cil(x, y, z, .17, .2, .85, '#3a3a48', 8); cil(x, y + .85, z, .22, .2, .6, c || '#c85a3a', 8); const h = new THREE.Mesh(new THREE.SphereGeometry(.13, 10, 8), mat('#d8a888')); h.position.set(x, y + 1.6, z); h.castShadow = true; S.add(h); }
+function panchina(x, z, ry) { const g = new THREE.Group(); [[0, .42, 0, 1.6, .06, .42], [0, .7, -.2, 1.6, .3, .05], [-.7, 0, 0, .08, .42, .4], [.7, 0, 0, .08, .42, .4]].forEach(([a, b, c, w, h, d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(b > .4 ? '#7a5a3a' : '#3a3a3a')); m.position.set(a, b + h / 2, c); m.castShadow = true; g.add(m); });
+  g.position.set(x, HF(x, z), z); g.rotation.y = ry || 0; S.add(g); }
+function vaso(x, y, z, s, fiore) { cil(x, y, z, .22 * s, .16 * s, .32 * s, '#b8603a', 8); if (fiore) for (let k = 0; k < 6; k++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(.07 * s, 0), mat(k % 2 ? fiore : '#4a6a34')); m.position.set(x + (r() - .5) * .3 * s, y + .38 * s + r() * .12 * s, z + (r() - .5) * .3 * s); S.add(m); } }
+// ---------- le piante: per specie e variante, istanziate col materiale vero ----------
+const LISTA = []; let TRI = 0, DRAW = 0;
+function pianta(sp, x, z, h, ry, v, t, opz) { opz = opz || {}; LISTA.push({ sp, x, y: opz.y !== undefined ? opz.y : HF(x, z), z, h: h || K.H0(sp) * (.85 + r() * .3), ry: ry === undefined ? r() * 6.28 : ry, v: v === undefined ? Math.floor(r() * 4) : v, t: t === undefined ? r() : t }); }
+function posaPiante() {
+  const G = new Map(); LISTA.forEach(p => { const k = p.sp + '|' + p.v; (G.get(k) || G.set(k, []).get(k)).push(p); });
+  const M = V.materiale([-1, 0, 1e5, 1e5 + 1]), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), col = new THREE.Color();
+  G.forEach((L, k) => { const [sp, v] = k.split('|'), geo = K.modello(sp, +v), H = K.H0(sp), im = new THREE.InstancedMesh(geo, M, L.length);
+    L.forEach((p, i) => { const s = p.h / H; e.set(0, p.ry, 0); q.setFromEuler(e); sc.set(s, s, s); ps.set(p.x, p.y - .05, p.z); m4.compose(ps, q, sc); im.setMatrixAt(i, m4); const d = (p.t - .5) * .16; col.setRGB(1 + d, 1 + d * .7, 1 + d * .4); im.setColorAt(i, col); });
+    im.castShadow = !/^(erbaSecca|erbaVerde|papavero|finocchietto)$/.test(sp); im.receiveShadow = true; im.frustumCulled = false; S.add(im); DRAW++; TRI += geo.attributes.position.count / 3 * L.length; });
+}
+// la copertura bassa su un'area: fn(x, z) → [specie, peso] o null, a celle di passo m
+function prato(x0, z0, x1, z1, passo, fn) { for (let z = z0; z < z1; z += passo) for (let x = x0; x < x1; x += passo) { const xx = x + (r() - .5) * passo, zz = z + (r() - .5) * passo, L = fn(xx, zz); if (!L) continue;
+  let s = 0; L.forEach(q => s += q[1]); if (s <= 0) continue; let a = r() * Math.max(1, s); for (const q of L) { a -= q[1]; if (a <= 0) { pianta(q[0], xx, zz); break; } } } }
+const fbm = (x, z, s) => V.fbm(x, z, s, 3);
+const CAMS = (pos, tgt) => { cam.position.set(pos[0], pos[1], pos[2]); cam.lookAt(tgt[0], tgt[1], tgt[2]); };
+
+// ================= LE SCENE =================
+const PAL = V.PAL;
+const SCENE = {
+  // 1. la pineta con la radura e il casale diroccato: le colonne dei pini, il tetto scuro, il varco del sentiero, la luce nella radura
+  pineta() {
+    const rad = (x, z) => Math.hypot(x - 4, z + 2) / 13 + (fbm(x / 5, z / 5, 1) - .5) * .35;
+    const sent = (x, z) => Math.abs(z - (6 + Math.sin(x / 9) * 4 + x * .12)) ;
+    suolo(110, 110, (x, z) => { const q = rad(x, z); return q < 1 ? mixC('#cdb47a', '#b8a868', fbm(x / 4, z / 4, 2)) : sent(x, z) < 1.4 ? '#c4a27a' : mixC(PAL.aghi, '#a08058', fbm(x / 6, z / 6, 3) * .8 + (q < 1.4 ? .4 : 0)); }, (x, z) => fbm(x / 30, z / 30, 9) * 2.4);
+    for (let z = -50; z < 50; z += 7.5) for (let x = -50; x < 50; x += 7.5) { const xx = x + r() * 6, zz = z + r() * 6; if (rad(xx, zz) < 1.25 || sent(xx, zz) < 3.2) continue; if (r() < .9) pianta('pino', xx, zz, 10 + r() * 4); }
+    for (let k = 0; k < 160; k++) { const x = (r() - .5) * 100, z = (r() - .5) * 100; if (rad(x, z) < .95 || sent(x, z) < 1.8) continue; pianta(r() < .55 ? 'lentisco' : r() < .6 ? 'mirto' : 'ginestra', x, z); }
+    prato(-50, -50, 50, 50, 1.3, (x, z) => { const q = rad(x, z), s = sent(x, z); if (s < 1) return null; if (q < 1) return [['erbaSecca', 5], ['finocchietto', 1.6], ['papavero', .5]]; if (s < 2.6) return [['erbaSecca', 2], ['finocchietto', 1], ['papavero', .4]]; return r() < .18 ? [['erbaSecca', 1]] : null; });
+    // il casale diroccato nella radura, col suo carrubo-fulcro e il fico nato fra le pietre
+    const y0 = HF(4, -3); [[0, 0, 7, .5], [0, 5, 7, .5]].forEach(([dx, dz, w, d]) => box(1 + dx + 3, y0, -5 + dz, w, 2.6 - dz * .25, d, '#c8b494'));
+    box(1, y0, -2.5, .5, 3.2, 5.5, '#c4ae8e'); box(7.7, y0, -3.5, .5, 1.4, 3, '#c8b494'); box(4.6, y0 + 2.4, -5, 1.4, .6, .5, '#b8a080');
+    for (let k = 0; k < 12; k++) box(2 + r() * 7, y0, -1 + r() * 3, .4 + r() * .3, .25, .3 + r() * .3, '#bcae96', r());
+    pianta('carrubo', 13, 3, 8.5, 1); pianta('fico', 6, -4, 3.6, 2); pianta('cappero', 1.2, -2, .6, 0, 0, .5, { y: y0 + 2.9 }); pianta('ficodindia', 9, 0.5); pianta('agave', 0, 2.5, 1, 0, 3);
+    persona(-3, 6.5, '#d8b040', 1); persona(-1.5, 7.2, '#3a6a9a', 1);
+    CAMS([-42, 34, 52], [4, 2, -2]);
+  },
+  // 2. l'uliveto a terrazze: i muretti a secco con i capperi, gli ulivi argento in fila, l'erba verde coi papaveri, un fico d'India in cima
+  uliveto() {
+    const TER = z => Math.floor((z + 60) / 9), hT = z => TER(z) * -1.2 + 14;
+    suolo(110, 110, (x, z) => { const zz = ((z + 60) % 9 + 9) % 9; return zz > 8.2 ? '#a89070' : mixC('#8aa04a', '#c8b278', fbm(x / 7, z / 7, 4) * 1.2 - .1); }, (x, z) => hT(z) + fbm(x / 20, z / 20, 5) * .3 + (((z + 60) % 9 + 9) % 9) * .02);
+    for (let t = 0; t < 12; t++) { const zt = -60 + t * 9; muretto(-55, zt + .1, 55, zt + .1, 1.15, '#bcae98'); }
+    for (let z = -55; z < 55; z += 9) for (let x = -52; x < 52; x += 7) { const xx = x + (r() - .5) * 1, zz = z + 4.5 + (r() - .5) * 1.2; if (r() < .9) pianta('ulivo', xx, zz, 4.2 + r() * 1.6); else if (r() < .5) pianta('mandorlo', xx, zz, 4.5, undefined, 3); }
+    prato(-55, -55, 55, 55, 1.2, (x, z) => { const zz = ((z + 60) % 9 + 9) % 9; if (zz < .7 || zz > 8.3) return null; return [['erbaVerde', 3], ['erbaSecca', 2.5], ['papavero', 1.4], ['finocchietto', .6]]; });
+    for (let t = 0; t < 12; t++) for (let k = 0; k < 6; k++) pianta('cappero', -50 + r() * 100, -60 + t * 9 + .3, .55, 0, 0, .5, { y: hT(-60 + t * 9 + .5) + .9 + r() * .3 });
+    pianta('ficodindia', 18, -24, 2.2); pianta('ficodindia', 21, -23.4, 1.8); pianta('agave', 16, -23.5, 1, 0, 3);
+    casa(-14, -36, 6, 5, 3.2, '#e2d6c0', .1, '#b8603a'); persona(2, -8 + 4.5, '#5a7a3a', 2);
+    CAMS([-34, 42, 46], [2, 8, -8]);
+  },
+  // 3. il viale di città: lecci potati alti in filare sul marciapiede (la chioma sopra le porte), la piazzetta col pino-fulcro
+  viale() {
+    suolo(140, 140, (x, z) => Math.abs(z) < 4 ? '#5e5c5a' : Math.abs(z) < 6.4 ? '#b4aa9a' : '#c8baa0', () => 0, 60);
+    for (let x = -60; x < 60; x += 0.01) break;
+    box(0, 0, 4.1, 130, .14, .25, '#d8d0c0'); box(0, 0, -4.1, 130, .14, .25, '#d8d0c0');
+    const TIN = ['#e8c89a', '#d89a72', '#e8dcc4', '#c8a07a', '#f0e0b0', '#d4b0a0'];
+    for (let x = -60, k = 0; x < 60; k++) { const w = 7 + r() * 5, h = 7 + Math.floor(r() * 3) * 3, c = TIN[k % TIN.length]; casa(x + w / 2, -6.4 - 5, w - .2, 10, h, c, 0, '#9a8a7a');
+      for (let f = 0; f < h / 3 - 1; f++) for (let j = 0; j < Math.floor(w / 2.6); j++) finestra(x + 1.4 + j * 2.6, 4.4 + f * 3, -6.35, .9, 1.4, 0); box(x + w / 2, 0, -6.35, 1.4, 2.6, .1, '#3a2a22'); x += w; }
+    for (let x = -60, k = 0; x < 60; k++) { const w = 8 + r() * 5, h = 7 + Math.floor(r() * 3) * 3, c = TIN[(k + 3) % TIN.length]; if (x > -8 && x < 16) { x += 24; continue; } casa(x + w / 2, 6.4 + 5, w - .2, 10, h, c, 0, '#9a8a7a');
+      for (let f = 0; f < h / 3 - 1; f++) for (let j = 0; j < Math.floor(w / 2.6); j++) finestra(x + 1.4 + j * 2.6, 4.4 + f * 3, 6.35, .9, 1.4, Math.PI); x += w; }
+    for (let x = -56; x < 56; x += 12) { if (x > -8 && x < 16) continue; pianta('leccio', x, -5.3, 8.4, r() * 6, Math.floor(r() * 4), .5); }
+    // la piazzetta: il pino domestico grande in mezzo, le panchine attorno, l'oleandro e i vasi del bar
+    box(4, 0, 15, 22, .12, 16, '#d8c8a8'); pianta('pino', 4, 15, 13.5, 1); cil(4, .12, 15, 1.4, 1.5, .45, '#c8bcaa', 16);
+    panchina(-1, 13, 0); panchina(9, 17, Math.PI); pianta('oleandro', 13, 9, 2.6); pianta('oleandro', -5, 9.5, 2.4, undefined, 1);
+    for (let k = 0; k < 4; k++) vaso(-6 + k * 1.2, 0, 6.8, 1.2, k % 2 ? '#d83a3a' : '#f0e0e0');
+    pianta('bouganville', 18.2, 7.8, 3.4, Math.PI, 0); pianta('edera', -9, 7.8, 3, Math.PI);
+    persona(2, -5.6, '#c84a3a'); persona(-12, 5.5, '#3a5a8a'); persona(5, 12, '#e0c040');
+    prato(-60, -6.3, 60, -4.4, .9, (x, z) => r() < .06 ? [['erbaSecca', 1]] : null);
+    CAMS([-30, 30, 44], [4, 2, 2]);
+  },
+  // 4. i giardini pubblici: palme e pini, la vasca, i vialetti di ghiaia bordati, le aiuole d'oleandri e d'agavi, le panchine
+  giardino() {
+    const via = (x, z) => Math.min(Math.abs(x), Math.abs(z), Math.abs(Math.hypot(x, z) - 14));
+    suolo(110, 110, (x, z) => via(x, z) < 1.4 ? '#d8cdb4' : mixC('#7a9a48', '#a8a860', fbm(x / 6, z / 6, 7)), () => 0);
+    cil(0, 0, 0, 5, 5.2, .6, '#d8cec0', 24); cil(0, .3, 0, 4.4, 4.4, .32, '#6a9aa8', 24); cil(0, 0, 0, .5, .6, 1.8, '#d8cec0', 10);
+    [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(([a, b], k) => { pianta(k % 2 ? 'palma' : 'washingtonia', a * 7, b * 7, k % 2 ? 9 : 13); pianta('oleandro', a * 9.8, b * 4, 2.6, undefined, k % 3); pianta('oleandro', a * 4, b * 9.8, 2.4, undefined, (k + 1) % 3); });
+    for (let k = 0; k < 14; k++) { const a = k / 14 * 6.28 + .2, d = 22 + r() * 18; const x = Math.cos(a) * d, z = Math.sin(a) * d; if (via(x, z) < 4) continue; pianta(k % 3 ? 'pino' : 'leccio', x, z); }
+    for (let k = 0; k < 10; k++) { const a = k / 10 * 6.28 + .3; const x = Math.cos(a) * 17, z = Math.sin(a) * 17; if (via(x, z) < 2) continue; pianta(k % 2 ? 'agave' : 'lentisco', x, z); }
+    panchina(0, -15.6, 0); panchina(15.6, 0, -Math.PI / 2); panchina(-15.6, 3, Math.PI / 2);
+    prato(-50, -50, 50, 50, 1.4, (x, z) => via(x, z) < 1.6 ? null : Math.hypot(x, z) < 5.4 ? null : [['erbaVerde', 3], ['erbaSecca', 1], ['papavero', .2]]);
+    persona(2, -14.5, '#c86a3a'); persona(-1, 15, '#3a6a5a'); persona(14, 1, '#9a3a5a');
+    CAMS([-34, 36, 44], [0, 1, 2]);
+  },
+  // 5. la macchia sul versante: il mosaico (lecceta scura nel compluvio, macchia, gariga chiara sul dosso), il sentiero a tornanti
+  macchia() {
+    const hF = (x, z) => -z * .42 + Math.sin(x / 14) * 3 + fbm(x / 18, z / 18, 11) * 4;
+    const sent = (x, z) => { const zz = z + 40; const k = Math.floor(zz / 20), t = zz - k * 20, side = k % 2 ? 1 : -1; const xs = side * (-30 + (t / 20) * 60); return Math.abs(x - xs) < 30 ? Math.abs(t - 10) < 1 ? 0 : Math.abs(z - (-40 + k * 20 + 10 + (x - xs) * 0)) : 99; };
+    const path = (x, z) => { let d = 99; for (let k = 0; k < 5; k++) { const zc = -40 + k * 20 + 10; d = Math.min(d, Math.abs(z - zc - x * .04 * (k % 2 ? 1 : -1))); } const tor = Math.min(Math.hypot(x - 32, ((z + 40) % 40 + 40) % 40 - 20), Math.hypot(x + 32, ((z + 20) % 40 + 40) % 40 - 20)); return Math.min(d < 1.3 && Math.abs(x) < 33 ? d : 99, tor < 11 && Math.abs(tor - 10) < 1.3 ? 0 : 99); };
+    const zona = (x, z) => { const m = fbm(x / 16, z / 16, 21) + (Math.sin(x / 14) < -.4 ? .25 : 0); return m > .66 ? 'lecceta' : m < .4 ? 'gariga' : 'macchia'; };
+    suolo(110, 110, (x, z) => path(x, z) < 1.2 ? '#c8aa80' : zona(x, z) === 'gariga' ? mixC('#c8b47e', '#a8a078', fbm(x / 3, z / 3, 4)) : zona(x, z) === 'lecceta' ? '#5a4e3a' : '#8a7a58', hF);
+    for (let k = 0; k < 2600; k++) { const x = (r() - .5) * 104, z = (r() - .5) * 104; if (path(x, z) < 1.8) continue; const zn = zona(x, z), u = r();
+      if (zn === 'lecceta') { if (u < .07) pianta('leccio', x, z, 7 + r() * 3); else if (u < .2) pianta(r() < .6 ? 'mirto' : 'lentisco', x, z); }
+      else if (zn === 'macchia') { if (u < .012) pianta(r() < .5 ? 'carrubo' : 'pinoM', x, z); else if (u < .33) pianta(r() < .5 ? 'lentisco' : r() < .6 ? 'mirto' : 'ginestra', x, z, undefined, undefined, undefined); }
+      else { if (u < .004) pianta('pinoM', x, z, 7); else if (u < .17) pianta(r() < .55 ? 'rosmarino' : r() < .7 ? 'ginestra' : r() < .5 ? 'ficodindia' : 'agave', x, z); } }
+    prato(-52, -52, 52, 52, 1.4, (x, z) => { const zn = zona(x, z), p = path(x, z); if (p < 1) return null; if (p < 2.6) return [['erbaSecca', 2], ['finocchietto', 1], ['papavero', .3]]; return zn === 'gariga' ? [['erbaSecca', 3], ['finocchietto', .5]] : zn === 'macchia' && r() < .3 ? [['erbaSecca', 1]] : null; });
+    persona(0, 10, '#c8503a', 0); persona(1.4, 10.3, '#e0c040', 0);
+    CAMS([-44, 58, 66], [0, 2, -4]);
+  },
+  // 6. il torrente: il greto chiaro, le canne fitte sulle sponde, gli oleandri rosa, le tamerici, il fico sull'argine, il ponticello
+  canneto() {
+    const cx = z => Math.sin(z / 12) * 6, d = (x, z) => Math.abs(x - cx(z));
+    suolo(110, 110, (x, z) => d(x, z) < 2.2 ? '#5e8a98' : d(x, z) < 5 ? mixC('#d8ccb4', '#c4b8a0', fbm(x, z, 3)) : d(x, z) < 12 ? '#7a8a4a' : mixC('#b8a870', '#8a9a58', fbm(x / 6, z / 6, 8)), (x, z) => Math.min(2.4, Math.max(0, (d(x, z) - 3) * .35)) + fbm(x / 20, z / 20, 6) * 1.2 - 1);
+    for (let k = 0; k < 18; k++) { const z = -50 + r() * 100, x = cx(z) + (r() - .5) * 3.6; const m = new THREE.Mesh(new THREE.IcosahedronGeometry(.3 + r() * .4, 0), mat('#c8c0b0')); m.position.set(x, HF(x, z) + .1, z); m.castShadow = true; S.add(m); }
+    for (let k = 0; k < 900; k++) { const z = (r() - .5) * 104, side = r() < .5 ? -1 : 1, dd = 5 + r() * 9, x = cx(z) + side * dd; const u = r();
+      if (dd < 8) { if (u < .32) pianta('canna', x, z); else if (u < .4) pianta('oleandro', x, z, undefined, undefined, Math.floor(r() * 3)); }
+      else if (u < .025) pianta(r() < .5 ? 'tamerice' : 'fico', x, z); else if (u < .033) pianta('eucalipto', x, z); else if (u < .14) pianta(r() < .6 ? 'oleandro' : 'mirto', x, z); }
+    prato(-52, -52, 52, 52, 1.2, (x, z) => d(x, z) < 5 ? null : d(x, z) < 13 ? [['erbaVerde', 4], ['finocchietto', 1]] : [['erbaSecca', 3], ['erbaVerde', 1], ['papavero', .4]]);
+    box(cx(0), 1.2, 0, 1.6, .25, 12, '#a07850', Math.atan(Math.cos(0) * .5)); persona(cx(0), 1, '#3a6a9a');
+    CAMS([-40, 36, 48], [0, 1, 0]);
+  },
+  // ---------------- LE SCENE PICCOLE: i rapporti fra pianta e cosa costruita ----------------
+  // a. il cortile col fico: le quattro mura, il fico che riempie mezzo cielo, la panca sotto, il secchio, i vasi sulla scala
+  cortile() {
+    suolo(40, 40, (x, z) => Math.abs(x) < 6 && Math.abs(z) < 5 ? mixC('#c8b89a', '#a89a80', fbm(x * 2, z * 2, 3)) : '#c8b8a0', () => 0, 80);
+    const CC = '#e6d6b8'; box(0, 0, -5.3, 12.6, 7, .6, CC); box(-6.3, 0, 0, .6, 6, 11, '#e0c8a8'); box(6.3, 0, 0, .6, 4.2, 11, '#ead8c0');
+    finestra(-2, 4.5, -4.95, 1, 1.4, 0); finestra(2.5, 4.5, -4.95, 1, 1.4, 0); box(0, 0, -4.98, 1.2, 2.4, .1, '#4a3a2e');
+    for (let k = 0; k < 6; k++) box(4.2, k * .3, -2 + k * .55, 2.2, .3, .55, '#d8c8b0'); for (let k = 0; k < 4; k++) vaso(3.6 + (k % 2) * .9, (k + 1) * .3 + .3 * 1, -1.5 + k * .55, 1, ['#d83a3a', '#f0e0e0', '#e88a2a', '#c83a6a'][k]);
+    pianta('fico', -2.2, .5, 4.6, .6, 1); panchina(-2.5, 3.2, 0); cil(1.5, 0, 2.4, .25, .2, .45, '#7a8a9a');
+    pianta('cappero', -5.9, -3, .5, Math.PI / 2, 0, .5, { y: 4.4 }); pianta('edera', 5.95, -3, 3.5, -Math.PI / 2); pianta('vite', -3.2, -3.6, 2.6, 0, 1);
+    prato(-6, -5, 6, 5, .5, (x, z) => (Math.abs(x) > 5.4 || Math.abs(z) > 4.4) && r() < .4 ? [['erbaVerde', 1]] : null);
+    persona(-1, 3.5, '#5a4a7a');
+    CAMS([10, 13, 17], [-.5, 2, -.5]);
+  },
+  // b. la scala esterna con la bouganville, la pergola davanti all'osteria, il limone in vaso
+  pergola() {
+    suolo(40, 40, (x, z) => z < 2 ? '#c8baa2' : '#b8aa92', () => 0, 60);
+    box(0, 0, -3, 14, 7.5, 5, '#f0e8da'); finestra(-4, 5, -0.45, 1, 1.4, 0); finestra(2, 5, -.45, 1, 1.4, 0); box(-1.5, 0, -.45, 1.3, 2.5, .1, '#3a5a4a');
+    for (let k = 0; k < 10; k++) box(5 + k * .0, k * .32, -.1 + 0, 1.2, .32, .3 + 0, '#e6dccc').position.set(6.4 - k * .38, k * .32 + .16, .1);
+    pianta('bouganville', 5.2, -.3, 4.6, 0, 0); pianta('bouganville', 3.6, -.3, 3.2, 0, 1);
+    pianta('vite', -1.4, 1.8, 2.6, 0, 0); [[-2.6, 1.5], [-.4, 2.2]].forEach(([x, z]) => { box(x, 0, z, .8, .74, .8, '#e8e0d0'); });
+    for (let k = 0; k < 4; k++) box(-3.4 + k * 1.1, 0, 3, .4, .45, .4, '#5a7a9a');
+    vaso(-6, 0, .4, 2.1); pianta('agrume', -6, .4, 2.4, 0, 1, .5, { y: .66 }); vaso(-5.0, 0, .3, 1.1, '#d83a3a'); vaso(1.3, 0, .2, 1.1, '#f0f0f0');
+    persona(-2, 3.8, '#c85a3a', 3); persona(-.9, 2.7, '#3a5a8a', 2);
+    CAMS([9, 9.5, 16], [-1, 2.4, -.5]);
+  },
+  // c. la fonte nella radura: il carrubo grande sopra la fontanella di pietra, l'erba verde dove l'acqua scende, i lentischi attorno
+  fonte() {
+    suolo(50, 50, (x, z) => { const q = Math.hypot(x - 1, z - 3); return q < 2.5 ? mixC('#6a9a48', '#8aa850', fbm(x, z, 2)) : q < 9 ? mixC('#c4b07a', '#a8a060', fbm(x / 2, z / 2, 3)) : mixC('#8a7a58', '#6a5a42', fbm(x / 3, z / 3, 4)); }, (x, z) => fbm(x / 14, z / 14, 3) * 1.2);
+    box(0, HF(0, 0), 0, 2.6, 1.6, .7, '#c8bca8'); box(0, HF(0, 0) + 1.6, 0, 2.9, .18, .8, '#b8ac96'); cil(0, HF(0, 0), .9, .7, .7, .45, '#b4a892', 10); cil(0, HF(0, 0) + .3, .9, .6, .6, .1, '#6a9aa8', 10);
+    muretto(-6, -1.2, -1.5, -.5, .8, '#b8aa96'); muretto(1.5, -.5, 6, -1.4, .7, '#b8aa96');
+    pianta('carrubo', -1.5, -3.5, 8.4, .8, 2); for (let k = 0; k < 26; k++) { const a = r() * 6.28, d = 9 + r() * 12; pianta(r() < .5 ? 'lentisco' : r() < .5 ? 'mirto' : 'leccio', Math.cos(a) * d, Math.sin(a) * d - 2); }
+    prato(-20, -20, 20, 20, .8, (x, z) => { const q = Math.hypot(x - 1, z - 3); return q < 2.6 ? [['erbaVerde', 4], ['papavero', .4]] : q < 9 ? [['erbaSecca', 3], ['finocchietto', 1], ['papavero', .4]] : r() < .2 ? [['erbaSecca', 1]] : null; });
+    persona(2.2, 2.3, '#c8503a', 4);
+    CAMS([12, 11, 19], [0, 1.8, -.5]);
+  },
+  // d. il rudere sul ciglio: il muro con l'erba nelle crepe e i capperi, il fico d'India e l'agave al piede, la ginestra e il mare dietro
+  rudere() {
+    suolo(60, 60, (x, z) => z > 8 ? '#5e8aa0' : z > 6 ? '#bcae98' : mixC('#c8b47e', '#a8a078', fbm(x / 3, z / 3, 4)), (x, z) => z > 6 ? -3 - (z - 6) : fbm(x / 10, z / 10, 2) * .8, 120);
+    box(-2, 0, -2, 7, 3.4, .55, '#d0c2a8'); box(-5.3, 0, 0, .55, 2.2, 4.4, '#c8b89c'); box(2.6, 0, -2, 2.4, 1.6, .55, '#ccbca0'); box(-1.5, 0, -1.6, 1.1, 1.8, .2, '#3a3028');
+    for (let k = 0; k < 9; k++) box(-6 + r() * 10, 0, -.5 + r() * 3, .4 + r() * .4, .3, .35, '#c8b89c', r());
+    [[-4.3, 3.4], [0, 3.42], [1.2, 3.4], [3.2, 1.6], [-5.3, 2.2]].forEach(([x, y], k) => pianta(k % 2 ? 'cappero' : 'erbaSecca', x, k === 4 ? .8 : -2, k % 2 ? .6 : .55, 0, k, .5, { y }));
+    pianta('ficodindia', 2.5, .8, 2.3, .4, 1); pianta('ficodindia', 4.2, .1, 1.8, 2, 2); pianta('agave', -3.8, 1.8, 1.1, 0, 3); pianta('ginestra', 6, -3, 1.6); pianta('ginestra', -8, -4, 1.5); pianta('rosmarino', 0, 2.2); pianta('pinoM', -10, -7, 9, 1, 1);
+    prato(-20, -10, 20, 6, .7, (x, z) => [['erbaSecca', 3], ['finocchietto', 1.2], ['papavero', .5]]);
+    persona(3.5, 3.2, '#3a5a8a', 3);
+    CAMS([10, 9, 19], [-.5, 1.6, -1]);
+  },
+  // il campionario: tutte le specie in fila, con le misure (triangoli per modello)
+  specie() {
+    suolo(140, 60, () => '#d4c8ae', () => 0, 20);
+    const L = ['pino', 'pinoM', 'leccio', 'carrubo', 'eucalipto', 'cipresso', 'palma', 'washingtonia', 'ulivo', 'fico', 'agrume', 'mandorlo', 'tamerice', 'lentisco', 'mirto', 'ginestra', 'rosmarino', 'oleandro', 'ficodindia', 'agave', 'canna', 'bouganville', 'vite', 'erbaSecca', 'erbaVerde', 'finocchietto', 'papavero', 'cappero'];
+    let x = -60; window.__tri = {};
+    L.forEach((sp, k) => { const S0 = V.SP[sp], w = Math.max(1.6, S0.chioma * 2 + .8); x += w / 2; const row = k < 13 ? 0 : 1, z = row ? 10 : -6, xx = row ? x - 104 + 50 : x; pianta(sp, xx, z, K.H0(sp), .3, sp === 'mandorlo' || sp === 'agave' ? 3 : 1, .5); x += w / 2 + .6;
+      window.__tri[sp] = K.modello(sp, 1).attributes.position.count / 3; });
+    persona(-62, 2, '#c8503a'); CAMS([-4, 30, 78], [-4, 3, 2]);
+  },
+};
+(SCENE[NOME] || SCENE.pineta)(); posaPiante();
+let t0 = performance.now(); V.U.uT.value = 2.3; V.U.uCam.value.copy(cam.position);
+R.render(S, cam);
+window.__misure = { draw: DRAW, tri: Math.round(TRI), piante: LISTA.length };
+window.__pronto = true;
+</script>
+</body></html>
