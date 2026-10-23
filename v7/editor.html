@@ -20952,6 +20952,61 @@ var Vegetazione = (function () {
     giardino:    { fondale: ['cipressiSegno'], ritmo: [], cornice: ['sogliaPini'] },
   };
 
+  // ================= IL PRATO COMPOSTO: i bouquet piccoli =================
+  // Sopra il tappeto d'erba (che resta la base: il verde a carte di render.js), piccole composizioni di 0,5-2 m, come nei bouquet grandi:
+  // un pezzo al centro (l'eroe, l'unico col contorno), il riempimento attorno (senza contorno). Dove vanno:
+  // - A DERIVA nelle radure e nei prati: per chiazze di ≈ 8 m la stessa composizione si ripete con piccole variazioni (una macchia di
+  //   papaveri, una di asfodeli, una di cuscini bianchi), e fra una chiazza e l'altra resta il tappeto;
+  // - AL PIEDE degli alberi, dal lato in ombra (nord-ovest): felci ed erba alta;
+  // - SUL BORDO dei sentieri, a ritmo di 3-6 m alternando i lati: erba secca, finocchietto, un papavero.
+  // Gli elementi: [specie, dx, dy, scala (0 … 1 nella forchetta di altezza), eroe]
+  const FIORI = {
+    papaveriAvena: { el: [['avena', 0, 0, .9, 1], ['avena', .3, -.2, .6], ['papavero', -.5, .3, .7, 1], ['papavero', .6, .4, .5], ['papavero', -.2, -.6, .6], ['erbaVerde', .7, -.4, .5], ['erbaVerde', -.7, -.2, .6]] },
+    cuscinoBianco: { el: [['fioriBianchi', 0, 0, .8, 1], ['fioriBianchi', .5, .3, .6], ['fioriBianchi', -.4, .4, .5], ['erbaVerde', .8, -.2, .6], ['erbaVerde', -.7, -.3, .5]] },
+    finocchietto:  { el: [['finocchietto', 0, 0, .9, 1], ['finocchietto', .5, -.3, .6], ['erbaSecca', -.4, .3, .7], ['erbaSecca', .3, .5, .5], ['erbaSecca', -.5, -.4, .6]] },
+    asfodeli:      { el: [['asfodelo', -.5, 0, .8, 1], ['asfodelo', .1, .2, .95, 1], ['asfodelo', .6, -.1, .6], ['erbaVerde', 0, -.5, .6], ['erbaVerde', -.3, .6, .5], ['erbaVerde', .7, .5, .4]] },
+    cardi:         { el: [['cardo', 0, 0, .8, 1], ['cardo', .7, .3, .5], ['erbaSecca', -.5, .2, .7], ['erbaSecca', .3, -.5, .6]] },
+    piedeAlbero:   { el: [['felce', 0, 0, .8, 1], ['felce', .6, .4, .6], ['felce', -.5, .5, .5], ['erbaVerde', .9, -.1, .7], ['erbaVerde', -.8, -.2, .6]] },
+    bordoSentiero: { el: [['erbaSecca', 0, 0, .7], ['erbaSecca', .5, .1, .5], ['finocchietto', -.4, -.1, .8, 1], ['papavero', .9, .2, .5]] },
+    rosmarinoSasso:{ el: [['rosmarino', 0, 0, .7, 1], ['cappero', .7, .3, .6], ['erbaSecca', -.6, .2, .6], ['erbaSecca', .2, -.6, .5]] },
+  };
+  // le derive per formazione (quali chiazze ci sono, con che peso; il resto è tappeto)
+  const DERIVE = {
+    prato: [['papaveriAvena', 3], ['asfodeli', 2], ['cuscinoBianco', 2], ['finocchietto', 2], ['cardi', 1]],
+    uliveto: [['papaveriAvena', 3], ['cuscinoBianco', 2], ['asfodeli', 1]],
+    pineta: [['asfodeli', 2], ['cuscinoBianco', 1], ['finocchietto', 1]], pinetaM: [['asfodeli', 2], ['cardi', 1], ['papaveriAvena', 1]],
+    macchia: [['finocchietto', 1], ['cardi', 1]], gariga: [['rosmarinoSasso', 3], ['cardi', 2], ['finocchietto', 1]],
+    riparia: [['cuscinoBianco', 3]], giardino: [['cuscinoBianco', 2], ['papaveriAvena', 1]], eucalipteto: [['finocchietto', 1]], agrumeto: [['cuscinoBianco', 1]],
+  };
+  function prato(P, x0, y0, x1, y1) {
+    const W = P.W, GW = W.GW, GH = W.GH, TS = W.TS, out = [];
+    const tI = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GW || ty >= GH ? -1 : ty * GW + tx; };
+    const terra = i => { if (i < 0 || W.roadW[i] > 0) return false; const v = W.grid[i], T = W.T, f = P.form[i]; return !!f && f !== F.costa && f !== F.urbano && (v === T.GRASS || v === T.SHRUB || v === T.DIRT || v === T.FIELD || v === T.TREE); };
+    const metti = (nome, x, y, ang, k) => { const B = FIORI[nome]; const c = Math.cos(ang), sn = Math.sin(ang);
+      B.el.forEach(([sp, dx, dy, sc, eroe], j) => { const X = x + (dx * c - dy * sn) * k, Y = y + (dx * sn + dy * c) * k, i = tI(X, Y); if (!terra(i)) return; if (P.dSen[i] < .9) return;
+        const S = SP[sp], u = hash2(Math.round(X * 9), Math.round(Y * 9), 7951); out.push({ sp, x: X, y: Y, h: S.h[0] + (S.h[1] - S.h[0]) * Math.min(1, sc * (.85 + u * .3)), rot: u * 6.28, v: Math.floor(u * 4), t: u, eroe: !!eroe }); }); };
+    // 1) le derive: una griglia di 2,6 m; la chiazza (≈ 8 m, bordi mossi) decide la composizione o il vuoto
+    const G = 2.6;
+    for (let gy = Math.floor(y0 / G); gy <= y1 / G; gy++) for (let gx = Math.floor(x0 / G); gx <= x1 / G; gx++) {
+      const x = (gx + .2 + .6 * hash2(gx, gy, 7952)) * G, y = (gy + .2 + .6 * hash2(gx, gy, 7953)) * G, i = tI(x, y); if (!terra(i)) continue;
+      const fid = FORM[P.form[i]].id, L = DERIVE[fid]; if (!L) continue;
+      const cx = Math.floor((x + fbm(x / 12, y / 12, 7954, 2) * 9) / 8), cy = Math.floor((y + fbm(x / 12 + 7, y / 12, 7955, 2) * 9) / 8), hc = hash2(cx, cy, 7956);
+      const vuoto = fid === 'prato' || fid === 'uliveto' ? .45 : .7, om = P.ombra ? P.ombra[i] : 0; if (hc < vuoto || om > .45) continue;   // il tappeto fra le chiazze; niente fiori nell'ombra fitta
+      if (hash2(gx, gy, 7957) > .7) continue;   // dentro la chiazza, non ogni cella: la composizione respira
+      let tot = 0; L.forEach(q => tot += q[1]); let a = hash2(cx, cy, 7958) * tot, nome = L[0][0]; for (const q of L) { a -= q[1]; if (a <= 0) { nome = q[0]; break; } }
+      metti(nome, x, y, hash2(gx, gy, 7959) * 6.28, .8 + hash2(gx, gy, 7960) * .5); }
+    // 2) il piede degli alberi, dal lato in ombra
+    P.piante.forEach(p => { if (p.x < x0 - 4 || p.x > x1 + 4 || p.y < y0 - 4 || p.y > y1 + 4) return; const S = SP[p.sp]; if (S.strato !== 'A' && S.strato !== 'M') return;
+      const fid = FORM[p.f] ? FORM[p.f].id : ''; if (fid === 'gariga' || hash2(Math.round(p.x * 3), Math.round(p.y * 3), 7963) > .45) return;   /* non ogni albero: il piede fiorito è un accento */ const r = S.chioma * .35 + .6; metti(fid === 'lecceta' || fid === 'riparia' || fid === 'macchia' ? 'piedeAlbero' : 'finocchietto', p.x - r * .7, p.y - r * .7, p.rot, .7); });
+    // 3) il bordo dei sentieri
+    P.sentieri.forEach((sd, si) => { const Q = sd.pts; let lato = 1;
+      for (let k = 1; k < Q.length; k++) { const a = Q[k - 1], b = Q[k], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < .01) continue; const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+        if (Math.max(a[0], b[0]) < x0 - 5 || Math.min(a[0], b[0]) > x1 + 5 || Math.max(a[1], b[1]) < y0 - 5 || Math.min(a[1], b[1]) > y1 + 5) continue;
+        for (let t = hash2(k, si, 7961) * 3; t < L; t += 3 + hash2(Math.round(t * 3), k, 7962) * 3) { lato = -lato; const d = sd.w / 2 + .9, X = a[0] + Math.cos(ang) * t - Math.sin(ang) * lato * d, Y = a[1] + Math.sin(ang) * t + Math.cos(ang) * lato * d;
+          if (X < x0 || X > x1 || Y < y0 || Y > y1) continue; metti('bordoSentiero', X, Y, ang, .8); } } });
+    return out;
+  }
+
   // ================= LA MAPPA DELLE FORMAZIONI =================
   // dall'ambiente (eco) del generatore, che ha già la forma del paesaggio (versanti, valloni, terrazze, pianori), alla formazione
   // mediterranea; poi le regole che fanno la gerarchia: il mosaico dentro le masse, i versanti a tramontana scuri, le radure dei luoghi
@@ -21848,7 +21903,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
   // livelli si dissolve a retino nel materiale (uBand). Gli alberi abbattuti (casella non più TREE) non si disegnano.
   function monta(scene, opz) {
     if (SPENTO || !KIT) return null; opz = opz || {}; const W = opz.W, P = piano(W), gH = opz.groundH || (() => 0), tel = !!opz.telefono;
-    const R0 = tel ? 30 : 48, R1 = tel ? 90 : 150, RC = tel ? 14 : 24, F0 = 6;
+    const R0 = tel ? 30 : 48, R1 = tel ? 90 : 150, RC = tel ? 16 : 28, F0 = 6; ombraSuolo(P);
     const MV = materiale([-1, 0, R0 - F0, R0]), MS = materiale([R0 - F0, R0, R1 - 12, R1]), MC = materiale([-1, 0, RC - 4, RC]), MCm = materiale([-1, 0, RC - 4, RC], { senzaProfondita: true });
     const gruppo = new THREE.Group(); gruppo.name = 'vegetazione'; scene.add(gruppo);
     const C = 16, idx = new Map(); P.piante.forEach(p => { const k = Math.floor(p.x / C) * 65536 + Math.floor(p.y / C); (idx.get(k) || idx.set(k, []).get(k)).push(p); });
@@ -21881,6 +21936,10 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
           if (d < R0) metti(im('v|' + p.sp + '|' + p.v, KIT.modello(p.sp, p.v), MV, S.strato !== 'C'), p.x, y, p.y, s, p.rot, p.t);
           if (d > R0 - F0 && S.strato !== 'C') metti(im('s|' + p.sp, KIT.sagoma(p.sp, 1), MS, false), p.x, y, p.y, s, p.rot, p.t); });
         IM.forEach((g, k) => { if (k.startsWith('c|') || !g.mesh) return; g.mesh.count = g.n; g.mesh.instanceMatrix.needsUpdate = true; if (g.mesh.instanceColor) g.mesh.instanceColor.needsUpdate = true; }); }
+      if (!SUOLO && Math.hypot(cx - lc, cz - lcz) > 3) { lc = cx; lcz = cz; IM.forEach((g, k) => { if (k.startsWith('c|')) g.n = 0; });   // [vegetazione] il prato composto
+        prato(P, cx - RC, cz - RC, cx + RC, cz + RC).forEach(f => { if (Math.hypot(f.x - cx, f.y - cz) > RC) return;
+          metti(im('c|' + f.sp + '|' + f.v + (f.eroe ? 'e' : 'm'), KIT.modello(f.sp, f.v), f.eroe ? MC : MCm, false), f.x, gH(f.x, f.y) - .02, f.y, f.h / KIT.H0(f.sp), f.rot, f.t); });
+        IM.forEach((g, k) => { if (!k.startsWith('c|') || !g.mesh) return; g.mesh.count = g.n; g.mesh.instanceMatrix.needsUpdate = true; if (g.mesh.instanceColor) g.mesh.instanceColor.needsUpdate = true; }); }
       if (SUOLO && Math.hypot(cx - lc, cz - lcz) > 2.5) { lc = cx; lcz = cz; IM.forEach((g, k) => { if (k.startsWith('c|')) g.n = 0; });
         const st = tel ? 1.1 : .8;
         for (let y = Math.floor((cz - RC) / st) * st; y < cz + RC; y += st) for (let x = Math.floor((cx - RC) / st) * st; x < cx + RC; x += st) {
@@ -21893,7 +21952,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;
