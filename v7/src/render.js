@@ -8836,6 +8836,10 @@ var Render = (function () {
         .forEach(([a, b, c, d, n, col]) => { F(a, n, col); F(b, n, col); F(c, n, col); F(a, n, col); F(c, n, col); F(d, n, col); }); };
     box(-S, -S, S, -S + T); box(-S, S - T, S, S); box(-S, -S + T, -S + T, S - T); box(S - T, -S + T, S, S - T);
     const e = S - T, y = .04, up = [0, 1, 0]; A.v([-e, y, -e], up, earth, WU4); A.v([e, y, -e], up, earth, WU4); A.v([e, y, e], up, earth, WU4); A.v([-e, y, -e], up, earth, WU4); A.v([e, y, e], up, earth, WU4); A.v([-e, y, e], up, earth, WU4);
+    if (window.Pavimenti && Pavimenti.strade && Pavimenti.strade()) {   // [strade] la griglia di ghisa sulla formella: le sbarre incrociate, il foro per il fusto
+      const gh = vdH('#2c2a28'), gw = .022, yg = y + .02, q4 = (x0, z0, x1, z1) => { A.v([x0, yg, z0], up, gh, WU4); A.v([x1, yg, z0], up, gh, WU4); A.v([x1, yg, z1], up, gh, WU4); A.v([x0, yg, z0], up, gh, WU4); A.v([x1, yg, z1], up, gh, WU4); A.v([x0, yg, z1], up, gh, WU4); };
+      for (let k = -3; k <= 3; k++) { const c0 = k * e / 3.5; if (Math.abs(c0) < .16) { q4(-e, c0 - gw, -.16, c0 + gw); q4(.16, c0 - gw, e, c0 + gw); q4(c0 - gw, -e, c0 + gw, -.16); q4(c0 - gw, .16, c0 + gw, e); continue; } q4(-e, c0 - gw, e, c0 + gw); q4(c0 - gw, -e, c0 + gw, e); }
+      q4(-e, -e, e, -e + .05); q4(-e, e - .05, e, e); q4(-e, -e, -e + .05, e); q4(e - .05, -e, e, e); }   // il telaio
     for (let k = 0; k < 7; k++) { const x = (r() * 2 - 1) * e * .85, z = (r() * 2 - 1) * e * .85, s = .05 + r() * .04, c = pick(r, [vdH('#7a6034'), vdH('#5a4a2c'), vdH('#8a7444')]);
       A.v([x - s, y + .005, z], up, c, WU4); A.v([x, y + .005, z - s], up, c, WU4); A.v([x + s, y + .005, z], up, c, WU4); A.v([x - s, y + .005, z], up, c, WU4); A.v([x + s, y + .005, z], up, c, WU4); A.v([x, y + .005, z + s], up, c, WU4); }
   }

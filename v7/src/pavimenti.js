@@ -171,7 +171,7 @@ var Pavimenti = (function () {
     float pvRagno(vec2 p, float mpp){ vec4 S = pvSassi(p / .22, .9); return 1. - smoothstep(.0035, .0035 + mpp * 1.1, S.x * .22); }
 `;
   const GLSL = GLSL_FN + `
-    uniform sampler2D pvId; uniform sampler2D pvId2; uniform sampler2D pvFi; uniform float pvStr; uniform sampler2D pvMk; uniform vec4 pvBox; uniform vec2 pvRes; uniform float pvHas; uniform float pvForza; uniform float pvForce; uniform vec3 pvAsf;
+    uniform sampler2D pvId; uniform sampler2D pvId2; uniform sampler2D pvFi; uniform float pvStr; uniform float pvDbg; uniform sampler2D pvMk; uniform vec4 pvBox; uniform vec2 pvRes; uniform float pvHas; uniform float pvForza; uniform float pvForce; uniform vec3 pvAsf;
     varying vec3 vPw;
     #ifdef PV_LITE
     #define PV_K 1
@@ -293,7 +293,7 @@ var Pavimenti = (function () {
           float sk = pvSab * jf;   // la sabbia portata dal vento: lingue dal ciglio verso il centro, a chiazze
           if (sk > 0.) { float dr = sk * sk * smoothstep(.62, .8, pvN(vec2(s * .4, v * 1.6) + 3.) * .6 + pvN(p * 2.2) * .25 + (av / hw - .6) * .8);   // solo lingue rade sul ciglio
             col = mix(col, vec3(.6, .5, .34) * (.9 + pvN(p * 9.) * .2), clamp(dr, 0., .6)); tone = mix(tone, 1., dr); pvPol = 0.; } }
-        if (pvStr > .5) {   // [strade] l'asfalto vissuto
+        if (pvStr > .5 && mod(pvDbg, 2.) < .5) {   // [strade] l'asfalto vissuto
           if (lungo && via) {
             // i giunti di ripresa: quello lungo in mezzeria (la stesa in due passate) e quelli di traverso ogni 30-50 m
             float cs = floor(s / 41.), sj = cs * 41. + pvH(vec2(cs, 5.)) * 12., gl = (1. - smoothstep(.005, .005 + aa, abs(v))) * step(2.6, hw), gt = 1. - smoothstep(.005, .005 + aa, abs(s - sj));
@@ -337,7 +337,7 @@ var Pavimenti = (function () {
       col *= tone * (1. - jt * .34 * lod) * (1. - bv * bv * .16 * lod);   // il bordo a cuscino: la pietra si arrotonda verso il giunto, uguale da ogni lato
       vec2 tw = (ux * tq.x + uy * tq.y) * .22 * lod;   // (sotto: il selciato attorno alle case vi aggiunge la sua luce)   // la luce radente sullo smusso, leggera
       // [strade] le finiture: tombini, chiusini, caditoie, pozzetti, rattoppi, olio e gomma, nitidi (la lista di render.js, nella mappa)
-      if (pvStr > .5 && pvHas > .5) { vec4 Fi = texture2D(pvFi, uv); float ft = mod(Fi.a, 16.);
+      if (pvStr > .5 && pvHas > .5 && mod(floor(pvDbg / 2.), 2.) < .5) { vec4 Fi = texture2D(pvFi, uv); float ft = mod(Fi.a, 16.);
         if (ft > .5) { vec2 d0 = pvRot(p - Fi.xy, Fi.z); float rr = length(d0), sh = pvH(floor(Fi.xy * 3.) + 7.);
           if (ft < 1.5) {   // il tombino tondo di ghisa: la cornice, il disco a bugne, la scritta circolare, l'alone
             float rim = 1. - smoothstep(.36 - aa, .36 + aa, rr), dk = 1. - smoothstep(.3 - aa, .3 + aa, rr); vec2 gq = abs(fract(d0 / .045) - .5);
@@ -455,11 +455,11 @@ var Pavimenti = (function () {
   // niente celle di ciottoli, il disegno si spegne prima). In automatico all'avvio; il livello di qualità del gioco la pilota con qualita()
   const QUAL = { v: /[?&]pavleggero\b/.test(typeof location !== 'undefined' ? location.search : '') ? 'leggera' : 'alta' }, MATS = new Set();
   function qualita(q) { if (q === undefined) return QUAL.v; if (q !== 'alta' && q !== 'leggera') return QUAL.v; if (q === QUAL.v) return q; QUAL.v = q; MATS.forEach(m => { m.needsUpdate = true; }); return q; }
-  const FORZA = { value: 1 }, STRU = { value: STRADE ? 1 : 0 };   // window.__PAV.forza.value = 0 per confrontare dal vivo
+  const FORZA = { value: 1 }, STRU = { value: STRADE ? 1 : 0 }, DBG = { value: 0 };   // DBG: 1 spegne l'asfalto vissuto, 2 le finiture (per le prove)   // window.__PAV.forza.value = 0 per confrontare dal vivo
   let NZ = null;   // la tessitura di rumore della variante leggera: valori a caso per cella, filtrata, ripetuta
   function nz() { if (NZ) return NZ; const N = 256, a = new Uint8Array(N * N * 4); let sd = 7; for (let i = 0; i < a.length; i++) { sd = (sd * 16807) % 2147483647; a[i] = sd & 255; }
     NZ = new THREE.DataTexture(a, N, N, THREE.RGBAFormat); NZ.wrapS = NZ.wrapT = THREE.RepeatWrapping; NZ.magFilter = NZ.minFilter = THREE.LinearFilter; NZ.generateMipmaps = false; NZ.needsUpdate = true; return NZ; }
-  function uniforms(b, force) { const d = dummy(); return { pvNz: { value: nz() }, pvAsf: ASF, pvStr: STRU, pvId: { value: b ? b.id : d.id }, pvId2: { value: b ? b.id2 : d.id }, pvFi: { value: b ? b.fi : d.id }, pvMk: { value: b ? b.mk : d.mk }, pvBox: { value: b ? b.box : new THREE.Vector4(0, 0, 1, 1) }, pvRes: { value: b ? b.res : new THREE.Vector2(1, 1) }, pvHas: { value: b ? 1 : 0 }, pvForza: FORZA, pvForce: { value: force || 0 } }; }
+  function uniforms(b, force) { const d = dummy(); return { pvNz: { value: nz() }, pvAsf: ASF, pvStr: STRU, pvDbg: DBG, pvId: { value: b ? b.id : d.id }, pvId2: { value: b ? b.id2 : d.id }, pvFi: { value: b ? b.fi : d.id }, pvMk: { value: b ? b.mk : d.mk }, pvBox: { value: b ? b.box : new THREE.Vector4(0, 0, 1, 1) }, pvRes: { value: b ? b.res : new THREE.Vector2(1, 1) }, pvHas: { value: b ? 1 : 0 }, pvForza: FORZA, pvForce: { value: force || 0 } }; }
 
   // il suolo di un blocco: le mappe e il materiale (chiamato da buildChunkGen)
   function suolo(mat, tx0, ty0, n, m) {
@@ -542,7 +542,7 @@ var Pavimenti = (function () {
   function sonda(x, z) { const C = A.TS * 32, key = Math.floor(x / C) + ',' + Math.floor(z / C), b = BLK.get(key); if (!b) return { key, blocco: false, blocchi: BLK.size, STAT };
     const i = Math.floor((x - b.box.x) / b.box.z * b.res.x), j = Math.floor((z - b.box.y) / b.box.w * b.res.y), d = b.id.image.data, o = (j * b.res.x + i) * 4, pk = d[o + 3];
     return { key, s: d[o], v: d[o + 1], th: d[o + 2], rf: pk % 16, gf: Math.floor(pk / 16) % 16, hw: Math.floor(pk / 256) / 8, blocchi: BLK.size, STAT }; }
-  const API = { strade, ruote, quota: (x, z) => A && A.quota ? A.quota(x, z) : null, vernice, cucite: () => (vieTutte(), CUCITE), vie: B => ON ? vieTutte(B) : B.roads, qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
+  const API = { STRU, DBG, strade, ruote, quota: (x, z) => A && A.quota ? A.quota(x, z) : null, vernice, cucite: () => (vieTutte(), CUCITE), vie: B => ON ? vieTutte(B) : B.roads, qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
   if (typeof window !== 'undefined') window.__PAV = API;
   return API;
 })();
