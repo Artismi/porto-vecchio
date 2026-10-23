@@ -1174,6 +1174,7 @@ var Personaggi = (function () {
     if (!ref && u.pelle) ref = u.pelle;   // si riveste: lo scheletro è quello della pelle di prima
     if (!ref) return false;
     const corr = []; g.traverse(o => { if (o.userData && o.userData.corredo) corr.push(o); }); corr.forEach(o => o.parent && o.parent.remove(o));   // il corredo a scatole di models.js
+    if (u.copHat && D.cappello) { if (u.copHat.parent) u.copHat.parent.remove(u.copHat); u.copHat = null; }   // il berretto a scatole della Guardia: c'è quello nuovo
     const bs = u.body.scale.clone(); u.body.scale.set(1, 1, 1);
     const { J, rel } = giunture(g, ref), gk = (u.model || '') + '|' + CFG.stile + '|' + CFG.teste + '|' + JSON.stringify(D);
     let geo = GEO.get(gk); if (geo) { GEO.delete(gk); GEO.set(gk, geo); } else { let t0 = performance.now(); const B0 = costruisci(D, J); STAT.ms += performance.now() - t0; yield; t0 = performance.now(); geo = geometria(D, ref, rel, J, B0); STAT.n++; STAT.ms += performance.now() - t0; GEO.set(gk, geo); if (GEO.size > GEO_MAX) { const k0 = GEO.keys().next().value; GEO.delete(k0); } }   // la stessa persona (stesso descrittore) riusa la sua geometria
@@ -1268,7 +1269,7 @@ var Personaggi = (function () {
     if (!window.Models) return null; const person = raw || RAW || Models.person; kitTeste(person);
     const g = person.call(Models, { model: D.sesso === 'f' ? 'Casual' : 'Casual_2', hat: 'none', extra: '', skin: D.pelle, top: '#888', bottom: '#888', hair: '#222' }, who === 'player' ? 'player' : who === 'cop' ? 'cop' : null);
     if (!g) return null;
-    if (g.userData.riotHat && D.cappello) g.userData.copHat = null;
+
     if (aRate) { g.userData.dressing = vesteGen(g, D); g.userData.nuova = true; return g; }   // [fluido] in strada si veste a rate (render.js lo tiene nascosto finché non ha finito)
     veste(g, D); return g;
   }
@@ -1283,6 +1284,7 @@ var Personaggi = (function () {
   function perGioco(look, who) {
     const st = ST(); let n = null, of = null;
     if (who === 'player' && st && typeof Guardaroba !== 'undefined') { Guardaroba.worn(st); of = Guardaroba.outfitOfPlayer(st); }
+    else if (who === 'hazmat') of = [{ id: 'tuta', col: '#c8d23a' }, { id: 'maschera_gas', col: '#3a3e36' }, { id: 'stivali', col: '#2a2e26' }, { id: 'guanti', col: '#2a2e26' }];   // la squadra antigas della Rocca
     else { n = npcOf(look); if (who === 'cop' && n && !n.cop) n = Object.assign({}, n, { cop: true }); }
     return descrittore(Object.assign({}, look || {}, who === 'player' ? { fem: false } : {}), who, n, of);
   }
