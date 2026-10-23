@@ -1,0 +1,19 @@
+# Porto Vecchio su Netlify: il gioco (v7/index.html e v7/assets) come sito statico,
+# le tre api della Mente come funzioni. Le chiavi (GEMINI_API_KEY e le altre di
+# v7/VERCEL.md) si mettono nel pannello di Netlify, mai nel repository.
+[build]
+  # pubblica solo quello che serve al gioco: backup, sorgenti e strumenti restano fuori
+  command = "rm -rf dist && mkdir -p dist/v7 && cp index.html dist/ && cp v7/index.html dist/v7/ && cp -r v7/assets dist/v7/"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/v7/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
