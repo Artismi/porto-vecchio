@@ -118,6 +118,7 @@ var Render = (function () {
   function addStatic(obj, noShadow) {
     if (window.Officina) Officina.onStatic(obj);   // [studio] modifiche ai modelli di strada
     obj.updateMatrixWorld(true); curObj = obj;
+    if (window.Pavimenti && noShadow !== 'lamp') Pavimenti.oggetto(obj, P2.k || (obj.userData.p2 && obj.userData.p2.k) || obj.name);   // [pavimenti] l'ombra di contatto nel suolo e la misura del piede
     if (window.__probeAt) { const bx = new THREE.Box3().setFromObject(obj), sz = bx.getSize(new THREE.Vector3()), cc = bx.getCenter(new THREE.Vector3()); for (const q of window.__probeAt) if (Math.hypot(cc.x - q[0], cc.z - q[1]) < q[2]) { (window.__probe = window.__probe || []).push([q[3], Math.round(cc.x), Math.round(cc.z), sz.x.toFixed(1), sz.y.toFixed(1), sz.z.toFixed(1), (new Error().stack.split('\n').slice(2, 6).map(l => l.trim().split(' ')[1]).join('<'))]); break; } }   // [ordine1] strumento: chi ha messo cosa
     const m2 = obj.userData.p2, e2 = P2.on && (curTag || P2.k || m2 || noShadow === 'lamp') && cn1() ? p2New(m2 || { k: P2.k || (noShadow === 'lamp' ? 'lampione' : 'arredo'), b: P2.b, f: P2.f }) : null;   // [pulizia2] il registro
     if (e2) { e2.tag = curTag; e2.yaw0 = yawM2(obj.matrixWorld); }
@@ -2457,6 +2458,7 @@ var Render = (function () {
     const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
     yield;
     const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
+    if (window.Pavimenti) try { Pavimenti.suolo(mat, tx0, ty0, n, m); } catch (e) { console.error('[pavimenti]', e && e.stack); }   // [pavimenti] il disegno delle pietre al pixel vero
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
@@ -2469,7 +2471,7 @@ var Render = (function () {
     return { grp, geo, mat, tex, btex, veg, nat, lt, vd, rev: ISO.rev };
   }
   function dropChunk(ch) {
-    scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose();
+    scene.remove(ch.grp); if (window.Pavimenti) Pavimenti.via(ch.mat); /* [pavimenti] */ ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose();
     ch.veg.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });
     if (ch.vd) ch.vd.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });   // [verde]
     if (ch.nat) ch.nat.children.forEach(im => { im.geometry.dispose(); if (im.dispose) im.dispose(); });
@@ -2530,7 +2532,7 @@ var Render = (function () {
   }
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
   function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true; }
-  function buildIsland() { buildBase(); }
+  function buildIsland() { buildBase(); if (window.Pavimenti) Pavimenti.init({ G, M, TS, PPM, gT, zoneT, ZN, cn1, groundH, coastIn, geo1, suoloK: (tx, ty) => SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)] || null, dirtyAt });   /* [pavimenti] */ }
 
   // ---- arredo statico: lampioni, palme, porto, spiaggia, piazza, poligono ----
 
@@ -6535,7 +6537,7 @@ var Render = (function () {
       for (let i = 0; i < 26; i++) { let px = r() * S, py = r() * S, a = r() * 6.3; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 8; k++) { a += (r() - .5) * 1.2; px += Math.cos(a) * 4; py += Math.sin(a) * 4; x.lineTo(px, py); } x.strokeStyle = 'rgba(20,18,18,.7)'; x.lineWidth = 1; x.stroke(); }
       for (let i = 0; i < 120; i++) { x.fillStyle = pick(r, ['rgba(170,160,90,.55)', 'rgba(190,190,180,.45)', 'rgba(70,90,50,.55)']); x.beginPath(); x.arc(r() * S, r() * S, .6 + r() * 2.4, 0, 6.3); x.fill(); }
     }
-    TEXM1[kind] = c; return c;
+    TEXM1[kind] = kind === 'roccia' ? c : PAV1(c, 256 / 32, kind); return TEXM1[kind];   // [pavimenti]
   }
   function wpat1(x, kind, X0, Y0) {   // motivo da 32 m allineato al mondo
     const c = texCanvas1(kind), p = x.createPattern(c, 'repeat'), M0 = 32 * PPM, sc = M0 / c.width;
@@ -6735,7 +6737,7 @@ var Render = (function () {
       for (let i = 0; i < 8; i++) { x.fillStyle = 'rgba(40,36,34,.12)'; x.beginPath(); x.ellipse(r() * S, r() * S, 2 + r() * 6, 2 + r() * 4, 0, 0, 6.3); x.fill(); }   // macchie e gomme da masticare
       for (let i = 0; i < 30; i++) { x.fillStyle = 'rgba(30,30,30,.2)'; x.fillRect(r() * S, r() * S, 1, 1); }
     }
-    return (P35[kind] = c);
+    return (P35[kind] = PAV1(c, kind === 'lastre' ? 64 : 8, kind));   // [pavimenti]
   }
   // [ferrovia] il suolo della linea: terra battuta e pietrisco sparso lungo il tracciato liscio (le caselle di ghiaia servono
   // solo alle collisioni: a terra niente scalini), sfumato verso l'erba; negli scali la fascia si allarga sotto i binari secondari
@@ -8613,6 +8615,9 @@ var Render = (function () {
   // lastricato grigio a giunti di 6 m sulla spianata della Rocca. Sopra, i segni dell'uso: rattoppi, crepe, tombini, caditoie,
   // gesso dei bambini, l'olio. La mappa vecchia non passa mai di qui (cn1).
   const cn1 = () => !!(M.world && M.world.sets);
+  // [pavimenti] i motivi dipinti diventano tinta: il disegno delle pietre lo fa lo shader del suolo (pavimenti.js)
+  const PAVR1 = typeof location !== 'undefined' && /[?&]pavrush\b/.test(location.search);
+  const PAV1 = (c, ppm, kind) => window.Pavimenti && Pavimenti.on && cn1() ? Pavimenti.piatto(c, ppm, kind === 'lastre' ? .25 : .6) : c;
   const SG1 = { pat: {}, pc: null };
   const ERAC1 = { E0: 1, E2: 2, E3: 3, E4: 4, E5: 5, E6: 6, E7: 7 };   // 9: la spianata della Rocca
   const SPIAN1 = 1463;   // il filo delle case demolite per la spianata (CITY.spian0 + OX nel generatore)
@@ -8692,7 +8697,7 @@ var Render = (function () {
       for (let i = 0; i < 7; i++) { const g2 = x.createRadialGradient(0, 0, 0, 0, 0, 1); g2.addColorStop(0, 'rgba(36,30,24,.26)'); g2.addColorStop(.7, 'rgba(36,30,24,.12)'); g2.addColorStop(1, 'rgba(36,30,24,0)'); x.save(); x.translate(r() * S, r() * S); x.scale(6 + r() * 14, 3 + r() * 7); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, 1, 0, 6.3); x.fill(); x.restore(); }   // pozze asciutte
       for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(70,84,44,.45)'; x.fillRect(Math.floor(r() * S), Math.floor(r() * S), 1 + Math.floor(r() * 2), 1); }   // erba rada
     }
-    return (SG1.pat[kind] = c);
+    return (SG1.pat[kind] = PAV1(c, PPM, kind));   // [pavimenti]
   }
   function segPat1(x, kind, X0, Y0) {
     const k = kind + '|' + X0 + '|' + Y0; if (SG1.pc && SG1.pc.k === k && SG1.pc.x === x) return SG1.pc.p;
@@ -8957,6 +8962,8 @@ var Render = (function () {
       ng.computeBoundingSphere(); const nm = new THREE.Mesh(ng, m.material); nm.receiveShadow = m.receiveShadow; nm.castShadow = m.castShadow; out.push(nm); });
     g.dispose(); return out;
   }
+  // [pavimenti] il poligono del marciapiede diviso sulla curva s = c0: la parte piena e la fascia dello smusso
+  function bevSplit1(P, c0, lerpP) { const A = [], B = []; for (let k = 0; k < P.length; k++) { const p = P[k], q = P[(k + 1) % P.length], ip = p.s >= c0, iq = q.s >= c0; (ip ? A : B).push(p); if (ip !== iq) { const m = lerpP(p, q, c0); A.push(m); B.push(m); } } return [A, B]; }
   function marciapiedi38(F) {
     if (!F || !F.S38) return 0;
     const { R, NW, NH, S38, D38, C38 } = F;
@@ -8968,18 +8975,19 @@ var Render = (function () {
       const n = vnz(x / 3.1, z / 3.1) * .22 + vnz(x / .9, z / .9) * .08;
       if (dc < .28) c.copy(cs); else c.copy(cp).lerp(ce, Math.max(0, 1 - de / .45) * .8);
       c.multiplyScalar(1 + n); return c; };
-    const emitTop = (P) => { for (let q = 1; q < P.length - 1; q++) for (const p of [P[0], P[q], P[q + 1]]) { pos.push(p.x, terr(p.x, p.z) + HC, p.z); topCol(p.x, p.z, p.dc, p.de); col.push(c.r, c.g, c.b); uv.push(p.x / 2, p.z / 2); } };
-    const emitWall = (a, b) => { const curb = (a.dc + b.dc) * .5 < 1, w = curb ? cs : ce, ya0 = terr(a.x, a.z) - .06, yb0 = terr(b.x, b.z) - .06, ya1 = ya0 + .06 + HC, yb1 = yb0 + .06 + HC;
+    const BEV = window.Pavimenti && Pavimenti.attivo() ? .03 : 0;   // [pavimenti] lo smusso del ciglio: 3 cm a 45°, prende la luce
+    const emitTop = (P) => { for (let q = 1; q < P.length - 1; q++) for (const p of [P[0], P[q], P[q + 1]]) { pos.push(p.x, terr(p.x, p.z) + HC - Math.max(0, BEV - p.s), p.z); topCol(p.x, p.z, p.dc, p.de); col.push(c.r, c.g, c.b); uv.push(p.x / 2, p.z / 2); } };
+    const emitWall = (a, b) => { const curb = (a.dc + b.dc) * .5 < 1, w = curb ? cs : ce, ya0 = terr(a.x, a.z) - .06, yb0 = terr(b.x, b.z) - .06, ya1 = ya0 + .06 + HC - BEV, yb1 = yb0 + .06 + HC - BEV;
       [[a.x, ya0, a.z], [b.x, yb0, b.z], [b.x, yb1, b.z], [a.x, ya0, a.z], [b.x, yb1, b.z], [a.x, ya1, a.z]].forEach((p, k) => { wpos.push(p[0], p[1], p[2]); const s = k === 2 || k === 4 || k === 5 ? 1 : .62; wcol.push(w.r * s, w.g * s, w.b * s); }); };
     const V = (i, j) => { const k = j * NW + i, s = S38[k], d = D38[k]; return { x: i * R, z: j * R, s, dc: d, de: 2.1 - d, iso: false }; };
-    const lerpP = (p, q) => { const t = p.s / (p.s - q.s); return { x: p.x + (q.x - p.x) * t, z: p.z + (q.z - p.z) * t, s: 0, dc: p.dc + (q.dc - p.dc) * t, de: p.de + (q.de - p.de) * t, iso: true }; };
+    const lerpP = (p, q, c0) => { c0 = c0 || 0; const t = (p.s - c0) / (p.s - q.s); return { x: p.x + (q.x - p.x) * t, z: p.z + (q.z - p.z) * t, s: c0, dc: p.dc + (q.dc - p.dc) * t, de: p.de + (q.de - p.de) * t, iso: true }; };
     const clip = (T3) => { const out = []; for (let k = 0; k < 3; k++) { const p = T3[k], q = T3[(k + 1) % 3]; if (p.s >= 0) out.push(p); if ((p.s >= 0) !== (q.s >= 0)) out.push(lerpP(p, q)); } return out; };
     let nt = 0;
     for (let j = 0; j < NH - 1; j++) for (let i = 0; i < NW - 1; i++) {
       const k = j * NW + i; if (!(C38[k] || C38[k + 1] || C38[k + NW] || C38[k + NW + 1])) continue;
       if (S38[k] < 0 && S38[k + 1] < 0 && S38[k + NW] < 0 && S38[k + NW + 1] < 0) continue;
       const a = V(i, j), b = V(i, j + 1), cc = V(i + 1, j + 1), d = V(i + 1, j);
-      for (const T3 of [[a, b, cc], [a, cc, d]]) { const P = clip(T3); if (P.length < 3) continue; emitTop(P); nt++;
+      for (const T3 of [[a, b, cc], [a, cc, d]]) { const P = clip(T3); if (P.length < 3) continue; if (BEV && P.some(p => p.s < BEV)) bevSplit1(P, BEV, lerpP).forEach(Q => Q.length > 2 && emitTop(Q)); else emitTop(P); nt++;
         for (let q = 0; q < P.length; q++) { const p1 = P[q], p2 = P[(q + 1) % P.length]; if (p1.iso && p2.iso) emitWall(p1, p2); } }
     }
     if (!pos.length) return 0;
@@ -8987,7 +8995,7 @@ var Render = (function () {
     const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.Float32BufferAttribute(wpos, 3)); g2.setAttribute('color', new THREE.Float32BufferAttribute(wcol, 3)); g2.computeVertexNormals();
     const top = new THREE.Mesh(g1, new THREE.MeshLambertMaterial({ map: lastre35(), vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
     const wall = new THREE.Mesh(g2, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
-    [top, wall].forEach(m => { m.receiveShadow = true; tileSplit4(m, 64).forEach(t => scene.add(t)); });   // [fluido4] a riquadri: si disegna solo quello che si vede
+    [top, wall].forEach(m => { m.receiveShadow = true; tileSplit4(m, 64).forEach(t => { if (window.Pavimenti) Pavimenti.marciapiede(t);   /* [pavimenti] le lastre e il cordolo di granito */ scene.add(t); }); });   // [fluido4] a riquadri: si disegna solo quello che si vede
     return nt;
   }
 
@@ -11930,7 +11938,7 @@ var Render = (function () {
         g.setIndex(new THREE.BufferAttribute(nV < 65536 ? new Uint16Array(idx) : new Uint32Array(idx), 1));
         let y0 = 1e9, y1 = -1e9; for (let q = 0; q < idx.length; q++) { const y = PA[idx[q] * 3 + 1]; if (y < y0) y0 = y; if (y > y1) y1 = y; }
         g.boundingSphere = new THREE.Sphere(new THREE.Vector3((i + .5) * TILE, (y0 + y1) / 2, (j + .5) * TILE), Math.hypot(TILE / 2 + 1, TILE / 2 + 1, (y1 - y0) / 2 + 1));
-        const m = new THREE.Mesh(g, sMat); m.receiveShadow = true; scene.add(m); }); }
+        const m = new THREE.Mesh(g, sMat); m.receiveShadow = true; if (window.Pavimenti) Pavimenti.marciapiede(m, i, j);   /* [pavimenti] */ scene.add(m); }); }
     // [memoria] le griglie di lavoro dei marciapiedi non servono più: a gioco resta solo l'altezza (H, per swH). ~130 MB
     if (SWF35) { SWF35.m = SWF35.Hn = SWF35.S38 = SWF35.D38 = SWF35.C38 = null; } S1.ramp = null;
     return ind.length / 3;
@@ -15226,7 +15234,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     meteoAt(st.t, METEO); { const rg = regimeAt(cam.x, cam.y); METEO.reg += (rg - METEO.reg) * Math.min(1, (dt || .016) * 1.5); } dyn.meteo = METEO;   /* [amb1] */
     const WXc = METEO.w[0], WXwet = METEO.w[1], WXfog = METEO.w[2], WXst = METEO.w[3], SUNK = (1 - night) * (1 - WXc * .82);   /* [amb1] quanto sole arriva */
     const SZ = scenaStep(cam.x, cam.y, dt);   // [regia2] in quale luce di scena sta la camera (borgo, metropoli, spianata)
-    ISO.rush = !!(ui && ui.intro);   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
+    ISO.rush = !!(ui && ui.intro) || PAVR1;   // [pavimenti] ?pavrush: gli strumenti senza scheda video vogliono il suolo vero subito   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
     updateChunks(cam.x, cam.y);
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, (.22 - night * .16) * METEO.reg).multiplyScalar(1 - night * .45 * (1 - WXfog * .4)); /* [amb1] */ /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
