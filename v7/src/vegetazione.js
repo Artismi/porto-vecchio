@@ -1200,7 +1200,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
   // Il verde a carte di render.js (verde38) sceglie erbe e cespugli dall'ambiente (eco) del generatore, che sotto il verde nuovo è ancora
   // quello del bosco d'inverno (faggeta, vallone, abetaia: foglioni, felci larghe, palmette di sottobosco umido). Qui la formazione
   // mediterranea gli dice quale ambiente usare: prati da pascolo, macchia, pineta, gariga ventosa, uliveto.
-  const VD_DA_FORMA = { prato: 'PASCOLO', giardino: 'PASCOLO', gariga: 'FARO', macchia: 'MACCHIA', lecceta: 'MACCHIA', pineta: 'PINETA', pinetaM: 'PINETA', eucalipteto: 'PINETA', uliveto: 'ULIVETO', agrumeto: 'VIGNE', riparia: 'VALLONE' };
+  const VD_DA_FORMA = { prato: 'PASCOLO', giardino: 'PASCOLO', gariga: 'FARO', macchia: 'MACCHIA', lecceta: 'MACCHIA', pineta: 'COSTA', pinetaM: 'COSTA', eucalipteto: 'COSTA', uliveto: 'ULIVETO', agrumeto: 'VIGNE', riparia: 'RUDERALE' };   // niente PINETA e VALLONE: portano palmette, foglioni, tende e liane da sottobosco umido
   function ecoTappeto(W, i) { const P = W && W.vegetazione; if (!P || SPENTO) return 0; const f = P.form[i]; if (!f || f === F.costa || f === F.urbano) return 0; const k = VD_DA_FORMA[FORM[f].id]; return k && W.ECO ? W.ECO[k] || 0 : 0; }
 
   // ================= LA POSA NEL GIOCO: attorno alla camera, per specie =================
