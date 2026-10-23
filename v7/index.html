@@ -55179,11 +55179,14 @@ var Inquadratura = (function () {
     (W.roads || []).forEach(r => { if (!r.pts || r.pts.length < 2) return; const w = r.w || 3;
       for (let k = 1; k < r.pts.length; k++) { const a = r.pts[k - 1], b = r.pts[k]; if (Math.hypot(b[0] - a[0], b[1] - a[1]) < .05) continue; const sg = { ax: a[0], az: a[1], bx: b[0], bz: b[1], w, id: r.id, r: w / 2 + K.asseVicino };
         for (let x = Math.min(a[0], b[0]) - sg.r; x <= Math.max(a[0], b[0]) + sg.r + 8; x += 8) for (let z = Math.min(a[1], b[1]) - sg.r; z <= Math.max(a[1], b[1]) + sg.r + 8; z += 8) { const kk = cella(x, z); const L = C.get(kk) || C.set(kk, []).get(kk); if (!L.includes(sg)) L.push(sg); } } });
-    // la via più stretta che contiene il punto (in un incrocio vince il vicolo: è lì che serve guardare lungo), col suo asse in pianta
-    function asse(x, z) { let best = null;
+    // la via che contiene il punto, col suo asse in pianta: quella su cui si è già (pref: chi passa davanti allo sbocco di un vicolo resta
+    // sulla sua via), se no la più stretta (entrando da una via in un vicolo è lì che serve guardare lungo)
+    function asse(x, z, pref) { let best = null, mia = null;
       for (const s of C.get(cella(x, z)) || []) { const dx = s.bx - s.ax, dz = s.bz - s.az, l2 = dx * dx + dz * dz, t = cl(((x - s.ax) * dx + (z - s.az) * dz) / l2, 0, 1), d = Math.hypot(s.ax + dx * t - x, s.az + dz * t - z);
-        if (d > s.r) continue; if (!best || s.w < best.w - .1 || (Math.abs(s.w - best.w) <= .1 && d < best.d)) best = { a: Math.atan2(dz, dx), w: s.w, id: s.id, d }; }
-      return best; }
+        if (d > s.r) continue; const q = { a: Math.atan2(dz, dx), w: s.w, id: s.id, d };
+        if (pref && s.id === pref && (!mia || d < mia.d)) mia = q;
+        if (!best || s.w < best.w - .1 || (Math.abs(s.w - best.w) <= .1 && d < best.d)) best = q; }
+      return mia || best; }
     return { asse };
   }
   // la visuale (yaw di render.js: la camera sta a (sin yaw, cos yaw) dal personaggio) che guarda lungo la direzione a in pianta
@@ -55202,7 +55205,7 @@ var Inquadratura = (function () {
     if (q.ricentro && q.dir !== undefined) { S.dyT = ang(yawDa(q.dir) - q.yaw0); S.tau = MANO_TAU; }
     // l'asse
     let dyT = S.dyT;
-    if (v.asse && q.ok && !q.tieni) { const a = q.rete.asse(q.x, q.z), via = a && a.w <= K.asseLargo ? a.id : null;
+    if (v.asse && q.ok && !q.tieni) { const a = q.rete.asse(q.x, q.z, S.via), via = a && a.w <= K.asseLargo ? a.id : null;
       if (via !== S.via) { S.t += dt; if (S.t >= K.tAsse) { S.via = via; S.t = 0; } } else S.t = 0;
       if (S.via && a && a.id === S.via) {   // sulla via: i due versi dell'asse, quello più vicino a dietro la marcia (o alla visuale di adesso)
         const rif = q.dir !== undefined && q.vel > .6 ? yawDa(q.dir) : q.yaw0 + S.dy; let best = null;
@@ -55230,8 +55233,11 @@ var Inquadratura = (function () {
     P.push({ x: px, y: fy + .9, z: pz }, { x: px, y: fy + 1.7, z: pz });
     const dx = cam.x - px, dz = cam.z - pz, l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
     const D = P.map(p => { const ex = cam.x - p.x, ey = cam.y - p.y, ez = cam.z - p.z, ll = Math.hypot(ex, ey, ez) || 1; return { x: ex / ll, y: ey / ll, z: ez / ll }; });
+    const o0 = { x: px, y: fy + .1, z: pz }, l0 = Math.hypot(cam.x - px, cam.y - o0.y, cam.z - pz) || 1, d0 = { x: (cam.x - px) / l0, y: (cam.y - o0.y) / l0, z: (cam.z - pz) / l0 }, E = R + 2, bb = { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } };
     for (const B of case_) { const b3 = B.box3; if (!b3 || b3.max.y < fy + 1.5) continue;
       const cx = (b3.min.x + b3.max.x) / 2 - px, cz = (b3.min.z + b3.max.z) / 2 - pz; if (cx * cx + cz * cz > K.vicine * K.vicine) continue;
+      // lo scarto veloce: il raggio dal centro del disco verso la camera manca la casa allargata del raggio del disco (più lo scarto delle direzioni)
+      bb.min.x = b3.min.x - E; bb.min.y = b3.min.y - E; bb.min.z = b3.min.z - E; bb.max.x = b3.max.x + E; bb.max.y = b3.max.y + E; bb.max.z = b3.max.z + E; if (V.entra(o0, d0, bb) === null) continue;
       if (cx * ux + cz * uz < K.davanti) continue;   // dietro il personaggio: non copre
       if (px > b3.min.x && px < b3.max.x && pz > b3.min.z && pz < b3.max.z) continue;   // ci sta sotto (androne, sottopasso)
       let need = Infinity; for (let i = 0; i < P.length; i++) { const y = V.entra(P[i], D[i], b3); if (y !== null && y < need) need = y; }
@@ -56565,8 +56571,9 @@ var Render = (function () {
   // un fotogramma del muretto: px, pz, fy il personaggio e la quota dei suoi piedi; on: le case possono scendere (fuori, non sui tetti né
   // sulle scale; spento fuori dal muretto: le case giù risalgono)
   function vis3Tick(px, pz, fy, on, dt, pitch) {
-    const iq = !!(IQ5.v && IQ5.v.taglio), K = iq ? Inquadratura.K : Visuale.MURETTO, S = VIS3.S, vv = VIS3.vuole || (VIS3.vuole = new Map());   // [visuale4] il muretto usa la macchina del taglio, con la sua scelta   // [visuale5] solo lui   // [inquadratura] o il taglio mirato
-    const vuole = iq ? Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on, vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);
+    const iq = !!(IQ5.v && IQ5.v.taglio), K = iq ? Inquadratura.K : Visuale.MURETTO,   // [inquadratura] la scelta del taglio mirato si rifà ogni tre fotogrammi (i raggi del disco)
+      S = VIS3.S, vv = VIS3.vuole || (VIS3.vuole = new Map());   // [visuale4] il muretto usa la macchina del taglio, con la sua scelta   // [visuale5] solo lui   // [inquadratura] o il taglio mirato
+    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on, vv)) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);
     VIS3.cambi += Visuale.passo(S, vuole, VIS3.subito ? 10 : dt, K);
     const prima = VIS3.vivi; VIS3.vivi = new Set();
     S.forEach((s, B) => { const y = Visuale.quota(s); VIS3.vivi.add(B);
