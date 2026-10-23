@@ -44692,7 +44692,7 @@ var Tetti = (function () {
         [['S', 1], ['E', 1], ['N', 0], ['W', 0]].forEach(([f]) => [.25, .75, .5].forEach(u => {
           if (f === 'S' || f === 'N') posti.push({ lato: f, x: R.x0 + l + (iw - 2 * l) * u, y: f === 'S' ? R.y1 - .32 : R.y0 + .32, ry: 0 }); else posti.push({ lato: f, x: f === 'E' ? R.x1 - .32 : R.x0 + .32, y: R.y0 + l + (id - 2 * l) * u, ry: 1 }); }));
         return metti({ k, n, hx: l, hy: .32 }, posti.map(p => p.ry ? Object.assign(p, { hx: .32, hy: l }) : p)); }
-      if (k === 'comignoli') return metti({ k, hx: .75, hy: .38, n: 2, tipo4: testa4 }, [{ x: R.x0 + iw * .3, y: R.y0 + .38, ry: 0 }, { x: R.x0 + iw * .7, y: R.y0 + .38, ry: 0 }, { x: R.x0 + .38, y: R.y0 + id * .4, ry: 1, hx: .38, hy: .75 }]);
+      if (k === 'comignoli') return metti({ k, hx: .75, hy: .38, n: 2, tipo4: testa4 === 'vaso' ? 'vaso' : 'cappello' },   /* sul terrazzo le teste compatte */ [{ x: R.x0 + iw * .3, y: R.y0 + .38, ry: 0 }, { x: R.x0 + iw * .7, y: R.y0 + .38, ry: 0 }, { x: R.x0 + .38, y: R.y0 + id * .4, ry: 1, hx: .38, hy: .75 }]);
       if (k === 'antenna') return metti({ k, hx: .3, hy: .3 }, [[cx - iw * .15, R.y0 + 1.1], [R.x0 + 1.1, cy - id * .15], [cx + iw * .2, R.y0 + 1.1], [cx, cy - id * .2]].map(([x, y]) => ({ x, y })));
       return false;
     };
@@ -65528,7 +65528,7 @@ var Render = (function () {
         for (let q = 0; q < n; q++) { const u = -L / 2 + q * step, pot = oPot(r, .85 + r() * .3, pick(r, ['geranio', 'ciuffo', 'cespo', 'geranio', 'fico'])); at(pot, G0.x + (G0.ry ? 0 : u), G0.y + (G0.ry ? u : 0)); }
       } else if (G0.k === 'comignoli') {   // due canne fumarie in fila contro il parapetto di dietro, d'intonaco o di mattoni come la casa
         const kind = r() < .35 ? 'mattoni' : 'intonaco';
-        [-.36, .36].slice(0, Math.max(1, G0.n || 2)).forEach((o, q) => { const c = new THREE.Group(), hh = 1.35 + q * .25; comignolo1(c, 0, 0, 0, hh, kind, wallHex, r, 0, G0.tipo4 === 'canne' ? 'lastra' : G0.tipo4); at(c,   /* [tetti4] sul terrazzo niente tubo di stufa di lato: sfora il parapetto */  G0.x + (G0.ry ? 0 : o), G0.y + (G0.ry ? o : 0)); if (r() < .6) (P.chim3 || (P.chim3 = [])).push([G0.x + (G0.ry ? 0 : o), y + hh + .45, G0.y + (G0.ry ? o : 0)]); });   // il fumo lo accende initAir2 (girato con la casa)
+        [-.36, .36].slice(0, Math.max(1, G0.n || 2)).forEach((o, q) => { const c = new THREE.Group(), hh = 1.35 + q * .25; comignolo1(c, 0, 0, 0, hh, kind, wallHex, r, 0, G0.tipo4 === 'vaso' ? 'vaso' : 'cappello'); at(c,   /* [tetti4] sul terrazzo le teste compatte (il vaso, il cappello): il tettuccio, la lastra e il tubo di stufa sforano il parapetto */  G0.x + (G0.ry ? 0 : o), G0.y + (G0.ry ? o : 0)); if (r() < .6) (P.chim3 || (P.chim3 = [])).push([G0.x + (G0.ry ? 0 : o), y + hh + .45, G0.y + (G0.ry ? o : 0)]); });   // il fumo lo accende initAir2 (girato con la casa)
       } else if (G0.k === 'stanza') {   // la veranda di lamiera addossata: un vano, la falda di lamiera, la porta verso il terrazzo, la finestrella
         const pw = G0.hx * 2 - .6, pd = G0.hy * 2 - .6, sh = 2.1 + r() * .3,   /* la falda di lamiera sporge: il vano sta 30 cm dentro il suo rettangolo */ col = pick(r, ['#6a6e6a', '#5a6a5c', '#7a5a44', '#4a5a6a']);
         const body = box(pw, sh, pd, corrM(col)); body.position.set(G0.x, y + sh / 2, G0.y); g.add(body); P.cnt++;
