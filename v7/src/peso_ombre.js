@@ -18,7 +18,7 @@ var PesoOmbre = (function () {
   const Q = typeof location !== 'undefined' ? location.search : '';
   const ON = !/[?&]nopeso(ombre)?\b/.test(Q);
   const STRETTA = ON && !/[?&]nopesostretta\b/.test(Q);   // il riquadro del sole stretto sulla visuale lungo la direzione del sole (?nopesostretta: quadrato)
-  const P = { alto: 70, M: 8, ang: .0026, ferma: 90, giro: 8, lotto: 250, fine: 1.4, fineTel: 1.25 };   // fine: il texel del sole più piccolo (computer 2048 → ~2870 di base; la mappa con il margine ~3500)
+  const P = { alto: 70, M: 8, ang: .0026, ferma: 90, fermaLunga: 1800, giro: 8, lotto: 250, fine: 1.4, fineTel: 1.25 };   // fine: il texel del sole più piccolo (computer 2048 → ~2870 di base; la mappa con il margine ~3500)
   const MOT = { chiave: 0, firma: 0, misura: 0, aggancio: 0 }, DIAG = { on: false, mob: new Map(), firma: new Map() };
   const ST = { cotture: 0, sottofondo: 0, lotti: 0, riprese: 0, dinamici: 0, fermi: 0, lanciatori: 0, luci: 0, ms: 0, fotogrammi: 0 };
   const REC = new Map();
@@ -40,11 +40,22 @@ var PesoOmbre = (function () {
     const e = o.matrixWorld.elements; let u = o.__po;
     if (!u) { u = o.__po = { e: new Float64Array(7), dyn: -1e9, v: -1, c: new T3.Vector3(), r: 0, f: -1, sk: -1, sin: false, top: null }; u.e[0] = e[0]; u.e[1] = e[1]; u.e[2] = e[2]; u.e[3] = e[6]; u.e[4] = e[12]; u.e[5] = e[13]; u.e[6] = e[14]; u.v = o.isInstancedMesh ? o.instanceMatrix.version : 0; }
     else if (u.e[4] !== e[12] || u.e[5] !== e[13] || u.e[6] !== e[14] || u.e[0] !== e[0] || u.e[1] !== e[1] || u.e[2] !== e[2] || u.e[3] !== e[6]) {
-      u.e[0] = e[0]; u.e[1] = e[1]; u.e[2] = e[2]; u.e[3] = e[6]; u.e[4] = e[12]; u.e[5] = e[13]; u.e[6] = e[14]; u.dyn = frame; u.f = -1; }
-    if (o.isInstancedMesh && o.instanceMatrix.version !== u.v) { u.v = o.instanceMatrix.version; u.dyn = frame; u.f = -1; }
+      u.e[0] = e[0]; u.e[1] = e[1]; u.e[2] = e[2]; u.e[3] = e[6]; u.e[4] = e[12]; u.e[5] = e[13]; u.e[6] = e[14]; u.dyn = frame; u.f = -1; u.mosse = (u.mosse || 0) + 1; }
+    if (o.isInstancedMesh && o.instanceMatrix.version !== u.v) { u.v = o.instanceMatrix.version; u.dyn = frame; u.f = -1; u.mosse = (u.mosse || 0) + 1; }
     return u;
   }
-  const mobile = (o, u) => o.isSkinnedMesh || frame - u.dyn < P.ferma || (u.top && u.top.__poPers);
+  // chi si è mosso due volte (un'auto che riparte dal semaforo, una barca) resta fra i mobili per P.fermaLunga: ogni passaggio fermo ⇄ mobile
+  // costa una cottura intera della mappa del sole
+  const mobile = (o, u) => o.isSkinnedMesh || frame - u.dyn < (u.mosse > 1 ? P.fermaLunga : P.ferma) || (u.top && u.top.__poPers);
+  // l'impronta di una cosa ferma (dove sta, quanti vertici, che materiale): le scale dei tetti rifatte uguali (oggetti nuovi, stessa forma
+  // nello stesso posto) non cambiano la firma e non chiedono una cottura nuova
+  function impronta(o, u) {
+    const g = o.geometry; if (u.fpg === g && u.fpd === u.dyn) return u.fp;
+    const e = o.matrixWorld.elements, pa = g && g.attributes && g.attributes.position, mt = o.material, mc = mt && mt.color ? mt.color.getHex() : 0;
+    let h = (Math.round(e[12] * 64) | 0) * 73856093 ^ (Math.round(e[13] * 64) | 0) * 19349663 ^ (Math.round(e[14] * 64) | 0) * 83492791 ^ (Math.round(e[0] * 1024) | 0) * 2654435761 ^ (Math.round(e[10] * 1024) | 0) * 40503;
+    h = (h ^ ((pa ? pa.count : 0) * 2246822519) ^ ((g && g.index ? g.index.count : 0) * 3266489917) ^ (mc * 668265263) ^ (o.isInstancedMesh ? o.count * 374761393 : 0)) >>> 0;
+    u.fp = h; u.fpg = g; u.fpd = u.dyn; return h;
+  }
   function sferaDi(o, u) {
     if (u.f === frame || (u.f >= 0 && !mobile(o, u) && u.g === o.geometry)) return;
     const g = o.geometry; if (!g) { u.r = 1e9; return; } if (g.boundingSphere === null) g.computeBoundingSphere();
@@ -130,7 +141,7 @@ var PesoOmbre = (function () {
         if (!tutti) { sferaDi(o, u); const rr = R2 + u.r, ddx = u.c.x - lp.x, ddy = u.c.y - lp.y, ddz = u.c.z - lp.z; if (ddx * ddx + ddy * ddy + ddz * ddz > rr * rr) continue; if (!fz.intersectsObject(o)) continue; }
         else if (!mv && u.sk === r.ver && u.dynS === u.dyn) { if (!u.sin) continue; }
         else { u.sin = fz.intersectsObject(o); u.sk = r.ver; u.dynS = u.dyn; if (!u.sin) continue; } }
-      if (mv) mob.push(o); else { fermi.push(o); sig += o.id * 7919 + (o.geometry ? o.geometry.id : 0) * 104729 + (o.material ? o.material.id : 0); } }
+      if (mv) mob.push(o); else { fermi.push(o); sig += impronta(o, u); } }
     return { e, chiave, fermi, mob, sig };
   }
   function nuovaRT(w, h) { return new T3.WebGLRenderTarget(w, h, { minFilter: T3.NearestFilter, magFilter: T3.NearestFilter }); }

@@ -2,7 +2,7 @@
 
 Obiettivo (dal committente): «deve girare fluido ma con la pazzesca qualità che stiamo ottenendo». 60 fps sui telefoni recenti, 30 stabili
 sui medi; meno di 1000 disegni nel borgo, meno di 1500 nella vista peggiore; niente scatti di compilazione. **L'immagine non deve
-peggiorare**: ogni passo è misurato sulle stesse otto inquadrature e confrontato pixel per pixel.
+peggiorare**: ogni passo è misurato sulle stesse inquadrature e confrontato pixel per pixel.
 
 ## 1. Il banco del peso (`strumenti/banco_peso.js`)
 
@@ -13,7 +13,8 @@ python3 strumenti/fogli_peso.py <cartella prima> <cartella dopo> _immagini/peso 
 ```
 
 Chromium senza testa con SwiftShader (`/opt/pw-browsers/chromium`), seme 12345 (lo stesso generatore di `src/seme.js`), il giorno dopo
-quello di partenza, tempo sereno, 480×300. Otto inquadrature fisse:
+quello di partenza, tempo sereno, 480×300. Dieci inquadrature fisse (le otto del piano, più la piazza d'adunata col sole basso e il
+pavimento da vicino; le misure finali sono sulla pianta nuova: anello sul mare, Lungomare di Tramontana, segnaletica, pavimenti):
 
 | scatto | dove | zoom | ora |
 |---|---|---|---|
@@ -25,6 +26,8 @@ quello di partenza, tempo sereno, 480×300. Otto inquadrature fisse:
 | citta | 1420, 340 (la città dall'alto: la vista peggiore) | 4 | 14:00 |
 | notte | come il borgo | 0,75 | 22:00 |
 | folla | 1278, 340 (il Mercato, posti riempiti come in galleria.js) | 0,85 | 10:00 |
+| adunata | 1328, 343 (la piazza d'adunata: i dentini delle ombre lunghe) | 0,75 | 17:30 |
+| suolo | 1424, 322 (la piazza del borgo da vicino: quasi solo pavimento) | 0,5 | 11:00 |
 
 Per ogni inquadratura:
 
@@ -64,7 +67,15 @@ panni, barche, mezzi; una persona intera se ha uno scheletro). **Le stesse cose,
 
 - Il sole: il riquadro seguiva la camera a ogni fotogramma. Ora il centro si aggancia alla **griglia dei texel** (l'ombra non «nuota» più
   camminando) e resta fermo finché la camera resta entro 8 m; il riquadro è più largo di 8 m per lato e la mappa più grande nella stessa
-  proporzione (stesso texel: 2048 → 2480 sul computer, 1024 → ~1240 sul telefono). La direzione del sole va a scatti di 0,15°.
+  proporzione. La direzione del sole va a scatti di 0,15°.
+- **I dentini della piazza d'adunata** (strisce a sega sui bordi delle ombre lunghe, uguali con `?nopavimenti`): col sole basso (18-36°)
+  un texel della mappa a terra si allunga di 1/sin(altezza) lungo la direzione del sole, 1,7-3,2 volte. Due rimedi, a costo di disegni
+  zero: il texel di base 1,4 volte più fine (1,25 sul telefono; la mappa del computer ~3.470, sotto il lato massimo della scheda) con lo
+  scarto in proporzione (le stesse manopole `PROF.ombraBias` di `profSole`), e **il riquadro stretto** (`?nopesostretta`, A/B `stretta`):
+  lungo l'asse del sole il quadrato del gioco copriva a terra molto più della visuale; ora si stringe a quello che la camera di gioco vede
+  fra terra e 70 m (più il margine del cammino), a metri interi (il reticolo non cambia camminando), con gli stessi texel: alla piazza
+  d'adunata di mattina 57 m invece di 92, texel 1,6 volte più fini proprio lungo l'allungamento. Le ombre di chi sta fuori dalla visuale
+  sulla visuale restano (chi fa ombra su un punto sta sulla stessa retta del sole: stessa x, y nella mappa).
 - La cottura nuova si fa **in sottofondo, a lotti** (250 cose per fotogramma) su una mappa di riserva: dalla metà del margine la mappa del
   prossimo aggancio è già pronta quando serve; le cose ferme cambiate (un blocco che arriva, le scale dei tetti ricostruite) si ricuociono
   così, con la mappa vecchia in uso nel frattempo. Solo un salto oltre il margine (teletrasporto) cuoce subito.
@@ -130,11 +141,14 @@ oggetti oltre la cella 255 hanno finalmente il loro colore.
   118% del ritmo, su dopo 6 s sotto il 90%; tiene conto del ritmo a 30 di `main.js`). L'interfaccia è nel DOM e la tela finale resta a
   piena risoluzione: restano nitide. Il tetto del DPR c'era già: la risoluzione interna non dipende dal DPR (`render.js` resize: 640
   righe sul lato corto del telefono) e la tela finale è al più 2×.
+- Il pavimento (`pavimenti.js`, fino a 8 letture di mappa per pixel): `Pavimenti.qualita('leggera')` sul telefono e sulla scheda bassa,
+  `'alta'` altrove (`?nopesosuolo` lo lascia com'è). Il costo per pixel del suolo si vede nell'inquadratura *suolo*, su una scheda vera.
 
 ## 4. Gli interruttori
 
 `?nopeso` spegne tutto insieme (il «prima» del banco). Uno per uno: `?nopesoombre`, `?nopesovetro`, `?nopesotinte`, `?nopesogente`,
 `?nopesolontane`, `?nopesolontano`, `?nopesobagliori`, `?nopesotrasp`, `?nopesobotteghe`, `?nopesointonaco`, `?nopesoatlante`,
-`?nopesoschermo`. Dal vivo, per il banco: `window.__pesoAB.{ombre, gente, lontano, bagliori, trasp}(true|false)`.
+`?nopesoschermo`, `?nopesostretta`, `?nopesosuolo`. Dal vivo, per il banco: `window.__pesoAB.{ombre, stretta, gente, lontano, bagliori,
+trasp}(true|false)`.
 
 {{LIMITI}}

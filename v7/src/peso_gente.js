@@ -265,8 +265,8 @@ var PesoGente = (function () {
   }
   // per il banco: tutto quello che il ritmo normale farebbe in qualche secondo, subito (le persone fuse, le versioni lontane)
   function completa() {
-    const ms = P.ms; P.ms = 1e9; let k = 0;
-    try { for (let i = 0; i < 400; i++) { passo(null, KIT); if (!JOB) { k++; if (k > 3) break; } else k = 0; } } finally { P.ms = ms; }
+    const ms = P.ms, at = P.attesa; P.ms = 1e9; P.attesa = 0; let k = 0;   // senza l'attesa dei 20 fotogrammi (a pochi fotogrammi al secondo non passava mai)
+    try { for (let i = 0; i < 400; i++) { passo(null, KIT); if (!JOB) { k++; if (k > 3) break; } else k = 0; } } finally { P.ms = ms; P.attesa = at; }
     return conto(); }
   function conto() { return Object.assign({ on: ON, attive: LIVE.size, materiali: CANON.size, motivi: [...MOTIVI.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8) }, ST); }
   return { ON, P, passo, conto, sciogli, fondi, completa, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) [...LIVE].forEach(sciogli); } };

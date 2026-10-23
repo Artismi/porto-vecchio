@@ -8,7 +8,7 @@ import numpy as np
 A, B, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 NOME = sys.argv[4] if len(sys.argv) > 4 else 'peso'
 os.makedirs(OUT, exist_ok=True)
-SC = ['borgo', 'marina', 'vittoria', 'recinto', 'rocca', 'citta', 'notte', 'folla']
+SC = ['borgo', 'marina', 'vittoria', 'recinto', 'rocca', 'citta', 'notte', 'folla', 'adunata', 'suolo']
 righe = []
 for s in SC:
     fa, fb = os.path.join(A, s + '.png'), os.path.join(B, s + '.png')
