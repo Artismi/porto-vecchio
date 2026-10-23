@@ -2533,7 +2533,7 @@ var Render = (function () {
   }
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
   function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true; }
-  function buildIsland() { buildBase(); if (window.Pavimenti) Pavimenti.init({ G, M, TS, PPM, gT, zoneT, ZN, cn1, groundH, coastIn, geo1, suoloK: (tx, ty) => SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)] || null, suoloW: (x, z) => suoloW1(x, z), dirtyAt });   /* [pavimenti] */ }
+  function buildIsland() { buildBase(); if (window.Pavimenti) Pavimenti.init({ G, M, TS, PPM, gT, zoneT, ZN, cn1, groundH, coastIn, geo1, suoloK: (tx, ty) => SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)] || null, suoloW: (x, z) => suoloW1(x, z), phone: PHONE, dirtyAt });   /* [pavimenti] */ }
 
   // ---- arredo statico: lampioni, palme, porto, spiaggia, piazza, poligono ----
 
@@ -11472,7 +11472,7 @@ var Render = (function () {
   }
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
   function setRes(k) { k = Math.max(.7, Math.min(1, k));   /* [colore1] non sotto il 70% (a metà era pastoso) */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
-  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
+  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; if (window.Pavimenti) Pavimenti.qualita('leggera');   /* [pavimenti] */ moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
     PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 640 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */

@@ -7,5 +7,6 @@ const srv = http.createServer((req, res) => { const p = path.join(root, decodeUR
   const pg = await b.newPage({ viewport: { width: +(W || 1280), height: +(H || 800) } });
   pg.on('pageerror', e => console.log('[errore]', e.message)); pg.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') console.log('[console]', m.text().slice(0, 3000)); });
   await pg.goto(`http://localhost:${srv.address().port}/strumenti/studio_pavimenti.html${q || ''}`); await pg.waitForFunction(() => window.__done, null, { timeout: 120000 });
+  if (/bench/.test(q || '')) console.log('ms', await pg.evaluate(() => window.__ms));
   await pg.screenshot({ path: out }); await b.close(); srv.close(); console.log('ok', out);
 });

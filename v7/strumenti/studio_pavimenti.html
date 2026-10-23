@@ -47,5 +47,11 @@ sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -45
 S.add(new THREE.HemisphereLight('#c8d4e8', '#5a4a3a', .9));
 const z = +(Q.get('z') || .5), cx = +(Q.get('x') || 32), cz = +(Q.get('y') || 20), cam = new THREE.PerspectiveCamera(22, innerWidth / innerHeight, 1, 600), dist = 110 * z;
 cam.position.set(cx + dist * .35, dist * .85, cz + dist * .55); cam.lookAt(cx, 0, cz);
-R.render(S, cam); requestAnimationFrame(() => { R.render(S, cam); window.__done = true; });
+R.render(S, cam); requestAnimationFrame(() => { R.render(S, cam);
+  if (Q.has('bench')) {   // ?bench: il tempo di disegno del fotogramma (letto alla fine con readPixels, sincrono), mediana di 15; senza ombre per isolare il suolo
+    R.shadowMap.enabled = false; scene_mats(); R.render(S, cam); const gl = R.getContext(), px = new Uint8Array(4), T = [];
+    for (let i = 0; i < 17; i++) { const t0 = performance.now(); R.render(S, cam); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); T.push(performance.now() - t0); }
+    T.sort((a, b) => a - b); window.__ms = T[8]; }
+  window.__done = true; });
+function scene_mats() { S.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
 </script></body></html>
