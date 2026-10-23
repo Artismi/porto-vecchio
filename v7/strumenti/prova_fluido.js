@@ -159,20 +159,20 @@ const srv = http.createServer((req, res) => {
       const setR = (rx, ry) => pg.evaluate(([rx, ry]) => { window.__padOn = true; const p = window.__pad; p.axes[2] = rx; p.axes[3] = ry; p.timestamp++; }, [rx, ry]);
       const mano = () => pg.evaluate(() => { const R = window.__pv.R, M = R.cam.mano || {}, p = window.__pv.st.player, pr = R.project(p.x, 1, p.y), c = R.getCamera(), f = new THREE.Vector3(); c.getWorldDirection(f);
         return { yaw: M.yaw || 0, off: !!M.off, sposta: Math.hypot(M.px || 0, M.pz || 0), perche: M.perche || '', sx: pr.x, sy: pr.y, fw: Math.atan2(f.z, f.x) }; });
-      let fuori = 0; const guarda = async () => { const m = await mano(); if (m.sx < .03 || m.sx > .97 || m.sy < .03 || m.sy > .97) fuori++; return m; };
+      let fuori = 0; const sch = []; const guarda = async () => { const m = await mano(); sch.push([+m.sx.toFixed(2), +m.sy.toFixed(2)]); if (m.sx < .03 || m.sx > .97 || m.sy < .03 || m.sy > .97) fuori++; return m; };
       await setR(1, 0); await frames(12); await guarda(); await setR(0, -1); await frames(12); await guarda(); await setR(0, 0); await frames(20);
       const g = await guarda();
       await setPad(0, -1); R = await frames(6); const f0 = R.find(f => f.inp && Math.hypot(f.inp.x || 0, f.inp.y || 0) > .1);
       const suOk = !!f0 && ang(Math.atan2(f0.inp.y, f0.inp.x), g.fw) < .25;
       R = await frames(50); const h = await guarda(); await setPad(0, 0); await frames(10);
-      out.mano = { giro: +g.yaw.toFixed(2), sposta_m: +g.sposta.toFixed(1), resta: g.off, in_su: suOk, dopo: +h.yaw.toFixed(3), sposta_dopo: +h.sposta.toFixed(2), perche: h.perche, fuori,
+      out.mano = { giro: +g.yaw.toFixed(2), sposta_m: +g.sposta.toFixed(1), resta: g.off, in_su: suOk, dopo: +h.yaw.toFixed(3), sposta_dopo: +h.sposta.toFixed(2), perche: h.perche, fuori, schermo: sch,
         ok: Math.abs(g.yaw) > .8 && g.sposta > 1 && g.off && suOk && Math.abs(h.yaw) < .05 && h.sposta < .1 && h.perche === 'partenza' && fuori === 0 };
       if (!out.mano.ok) fail++; }
     // the keyboard still walks and runs (shift)
     await pg.evaluate(() => { window.__padOn = false; });
     await pg.keyboard.down('w'); R = await frames(10); const vk = R[R.length - 1].speed; await pg.keyboard.down('Shift'); R = await frames(10); const vks = R[R.length - 1].speed; await pg.keyboard.up('Shift'); await pg.keyboard.up('w');
     out.tastiera = { passo: +(vk || 0).toFixed(2), corsa: +(vks || 0).toFixed(2), ok: vk > 3 && vk < 5 && vks > 6 }; if (!out.tastiera.ok) fail++;
-    console.log('pad', JSON.stringify(out, ['posto', 'x', 'y', 'mare', 'corsa', 'mezza', 'inversione', 'sguardo', 'sguardo_lato', 'tremolio', 'cronaca_ferma', 'cronaca_nuova', 'tastiera', 'mano', 'velocita', 'ok', 'volto_s', 's', 'salto_max_m', 'scritture', 'passo', 'giro', 'sposta_m', 'resta', 'in_su', 'dopo', 'sposta_dopo', 'perche', 'fuori']));
+    console.log('pad', JSON.stringify(out, ['posto', 'x', 'y', 'mare', 'corsa', 'mezza', 'inversione', 'sguardo', 'sguardo_lato', 'tremolio', 'cronaca_ferma', 'cronaca_nuova', 'tastiera', 'mano', 'velocita', 'ok', 'volto_s', 's', 'salto_max_m', 'scritture', 'passo', 'giro', 'sposta_m', 'resta', 'in_su', 'dopo', 'sposta_dopo', 'perche', 'fuori', 'schermo']));
   }
   if (process.env.OUT) fs.writeFileSync(process.env.OUT, JSON.stringify(out, null, 1));
   await b.close(); srv.close(); process.exit(fail ? 1 : 0);

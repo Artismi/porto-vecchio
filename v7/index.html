@@ -52695,7 +52695,7 @@ var Visuale = (function () {
     resta: 1.5,           // s: dopo un ricentro per contromarcia, un altro non scatta prima di tanto
     tau: .22,             // s: lo smorzamento del ricentro (95% in 3τ ≈ 0,66 s)
     giro: 1.2,            // s: dopo la contromarcia la visuale che segue la marcia (telefono) può fare anche il mezzo giro
-    bordo: .72,           // lo scarto della camera (a mano più lo sguardo avanti) resta entro tanto della mezza inquadratura: il personaggio
+    bordo: .5,            // [visuale5] era .72: in prospettiva il lato vicino alla camera è più stretto; lo scarto della camera (a mano più lo sguardo avanti) resta entro tanto della mezza inquadratura: il personaggio
                           // non esce mai dallo schermo
     giraK: 1.7,           // rad/s: la levetta destra e i tasti , . girano di tanto a corsa piena
     spostaK: .9,          // la levetta destra in verticale sposta la visuale di tanto (mezze inquadrature al secondo)
