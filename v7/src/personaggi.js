@@ -277,8 +277,8 @@ var Personaggi = (function () {
     testa(B, J, D, pelle);
     // ---------------- PEZZI LIBERI: gonne, falde, grembiuli, scialli, colletti, cinture ----------------
     vesti.forEach((v, i) => {
-      if (v.gonna) gonna(B, J, K, profAt, zAt, v.gonna, v, tileOf(v), ptOf(v));
-      if (v.falda) gonna(B, J, K, profAt, zAt, [.3, v.falda[1], v.falda[2] || 1.08], Object.assign({}, v, { aperta: true }), 0, ptOf(v), true);
+      if (v.gonna) gonna(B, J, K, profAt, zAt, v.gonna, v, tileOf(v), ptOf(v), false, listaB);
+      if (v.falda) gonna(B, J, K, profAt, zAt, [.3, v.falda[1], v.falda[2] || 1.08], Object.assign({}, v, { aperta: true }), 0, ptOf(v), true, listaB);
       if (v.grembiule) grembiule(B, J, profAt, zAt, yOf, v);
       if (v.scialle) scialle(B, J, profAt, zAt, yOf, v);
       if (v.colletto) colletto(B, J, profAt, zAt, yOf, v, listaB);
@@ -436,14 +436,15 @@ var Personaggi = (function () {
     }
   }
   // ---------------- GONNE, FALDE DEI CAPPOTTI, VESTITI: pendono dal bacino e seguono le cosce ----------------
-  function gonna(B, J, K, profAt, zAt, g, v, tile, ptile, falda) {
+  function gonna(B, J, K, profAt, zAt, g, v, tile, ptile, falda, LB) {
     const yTop = lerp(J.UpperLegL[1] - .07, J.Neck[1] + .045, g[0]) + (falda ? 0 : 0), yKnee = J.LowerLegL[1], yBot = lerp(J.UpperLegL[1], J.FootL[1] + .03, g[1]), fl = g[2] || 1.2, n = 7, rings = [];
-    const sp = .008, legX = Math.abs(J.UpperLegL[0]);
+    let sp = .008; if (LB) for (let q = -.05; q <= .4; q += .05) sp = Math.max(sp, strati(LB, q).sp + .008);   // sopra tutto quello che sta sotto in vita
+    const legX = Math.abs(J.UpperLegL[0]);
     for (let j = 0; j <= n; j++) {
       const q = j / n, y = lerp(yTop, yBot, q), P0 = profAt(Math.max(y, J.UpperLegL[1] - .06));
-      const baseA = Math.max(P0[0] + .015, legX - .022 + K.gamba * 1.08 + .035), baseB = Math.max(P0[1] + .015, K.gamba + (g[1] > .4 ? .095 : .065));
+      const baseA = Math.max(P0[0] + .015, legX - .022 + K.gamba * 1.08 + .035), baseB = Math.max(P0[1] + .015, K.gamba + (g[1] > .4 ? .095 : .085));
       const qh = cl((yTop - y) / Math.max(.05, yTop - (J.UpperLegL[1] - .05)), 0, 1), k = lerp(1, fl, Math.pow(q, 1.3)), a = lerp(P0[0] + sp + .006 * (falda ? 2.5 : 1), baseA * k, sm(qh)), b = lerp(P0[1] + sp + .006 * (falda ? 2.5 : 1), baseB * k, sm(qh));
-      rings.push({ c: [0, y, zAt(Math.max(y, J.Hips[1] - .05)) - .005], t: [0, -1, 0], f: [0, 0, 1], a, b, fz: q > .3 && !falda ? .01 : P0[2] * (1 - sm(q * 2)), col: C3v(v.col), col2: v.col2 ? C3v(v.col2) : mulc(C3v(v.col), .6), col3: v.col3 ? C3v(v.col3) : mulc(C3v(v.col), .55), v: q, mv: q * (yTop - yBot), ao: lerp(1, .92, q), tile: falda ? tile : TL.abito * 0, ptile,
+      rings.push({ c: [0, y, zAt(Math.max(y, J.Hips[1] - .05)) - .005], t: [0, -1, 0], f: [0, 0, 1], a, b, fz: q > .3 && !falda ? .01 : P0[2] * (1 - sm(q * 2)) - (falda ? .012 * sm(q * 2) : 0), col: C3v(v.col), col2: v.col2 ? C3v(v.col2) : mulc(C3v(v.col), .6), col3: v.col3 ? C3v(v.col3) : mulc(C3v(v.col), .55), v: q, mv: q * (yTop - yBot), ao: lerp(1, .92, q), tile: falda ? tile : TL.abito * 0, ptile,
         mod: th => { const fr = Math.cos(th); let d = Math.sin(th * (falda ? 6 : 9)) * .035 * sm(q * 1.4); return d; } });
     }
     { const r0 = rings[0], P1 = profAt(yTop + .04); rings.unshift(Object.assign({}, r0, { c: [r0.c[0], yTop + .04, zAt(yTop + .04) - .005], a: P1[0] - .002, b: P1[1] - .002, fz: P1[2], mod: null, ao: .8 })); }   // l'attacco: dentro il busto, così dall'alto non si vede il vuoto
