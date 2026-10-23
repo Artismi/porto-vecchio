@@ -7487,8 +7487,15 @@ var Render = (function () {
       Vievive.plance().forEach(q => { const y0 = groundH(q.x, q.y); ext('plancia', 'vievive', q.x, q.y, rot(q.ang + Math.PI / 2), 0, 0, 1.15, .08, y0, y0 + 2.45, { terra: true, plancia: q }); }); } } catch (e) { console.error('[rumore] vievive', e); }
     X.forEach(e => { if (e.b && e.f && !e.F) { const r0 = DZ.bRec[BI.get(e.b)]; if (r0 && r0.geo) e.F = faccia2(e.b, r0, e.f, 0); } });
     return {
-      R, G, TS, groundH, ctr: ctr2, corners: corners2, palo: palo2, roadDir: roadDir2, sat: sat2, yov: yov2, esterni: X,
+      R, G, TS, groundH, ctr: ctr2, corners: corners2, box: box2, palo: palo2, roadDir: roadDir2, sat: sat2, yov: yov2, esterni: X,
       togliEsterno: e => { if (e.plancia) { const L = Vievive.plance(), i = L.indexOf(e.plancia); if (i >= 0) L.splice(i, 1); } else if (e.key) PuliziaRumore.SALTA.add(e.key); e.gone = true; },
+      // [pulizia] TUTTE le porte a piano terra: il portone e la porta di bottega del regista, e i vani porta del kit sulle facciate
+      // (b.__win: 'doorway' alla quota del piede), ognuna col suo frame sul muro e la sua larghezza
+      porteTutte: () => { const L = []; R.P.forEach(p => { if (p.k === 'porta' && p.info && p.info.F) L.push({ F: p.info.F, w: p.B.u1 - p.B.u0, b: p.info.b, f: p.info.f, y: p.B.y0 }); });
+        G.BUILDINGS.forEach((b, bi) => { const rec = DZ.bRec[bi]; if (!rec || !rec.geo || b.pezzo) return; const base = rec.geo.y0;
+          (b.__win || []).forEach(q => { if (!q.name.includes('doorway') || Math.abs(q.y - base) > .05) return; const F = faccia2(b, rec, q.f, q.u);
+            if (L.some(o => o.b === b && o.f === q.f && Math.hypot(o.F.p[0] - F.p[0], o.F.p[1] - F.p[1]) < .8)) return; L.push({ F, w: (WIN[q.name] || [1.1])[0], b, f: q.f, y: base }); }); });
+        return L; },
       atlanti: () => ({ FA: FA.n, FAmax: FAMAX + 1, CA: CA.n }),   // [pulizia] le celle usate degli atlanti dei modelli (oltre il massimo l'ultima si riscrive)
       vissuti: () => { try { return window.TettiVissuti && TettiVissuti.conto ? TettiVissuti.conto() : null; } catch (e) { return null; } },
       bid: b => BI.get(b), prio: e => PRIO2[e.k] || 10,
