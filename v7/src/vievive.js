@@ -165,6 +165,8 @@ var Vievive = (function () {
     if (asse) { const ad = set('adunata'), L = rdLinea(asse), q = ad ? lAt(L, lNear(L, c(ad).x, c(ad).y).s) : lAt(L, L.L * .35); out.asse = { x: q.x, y: q.y, nome: asse.name ? asse.name.replace(/^Via (della |del )?/, '') : 'Vittoria', rd: asse }; }
     const mar = [lg('pescheria'), set('marina'), set('scalo'), lg('officina'), PL.marina, PL.calata].filter(Boolean).map(c);
     if (mar.length) out.marina = Object.assign(mar, { nome: 'Marina' });
+    // [pianta] il Lungomare di Tramontana: la linea passa fra la ferrovia e il mare (la fermata davanti a Radio Luna e alle baracche)
+    const lun = ROADS().find(rd => rd.id === 'lung_nord'); if (lun) { const L = rdLinea(lun), q = lAt(L, L.L * .3); out.lungomare = { x: q.x, y: q.y, nome: 'Lungomare' }; }
     return (ANC = out);
   }
 
@@ -191,7 +193,7 @@ var Vievive = (function () {
       if (!isFinite(D[b])) return null; const out = []; for (let v = b; v >= 0; v = P[v]) out.unshift(v); return out; };
     const A = ancore(), seq = [];
     const pick = (o, nome) => { if (!o) return; const L = Array.isArray(o) ? o : [o]; let best = null; L.forEach(p => { const s = snap(p.x, p.y); if (s.d < 60 && (!best || s.d < best.d)) best = { q: s.q, d: s.d, nome: o.nome || nome, p }; }); if (best && !seq.some(z => z.q === best.q)) seq.push(best); };
-    pick(A.stazione, 'Stazione'); pick(A.asse, 'Vittoria'); pick(A.mercato, 'Mercato'); pick(A.marina, 'Marina');
+    pick(A.stazione, 'Stazione'); if (A.lungomare) { pick(A.lungomare, 'Lungomare'); pick(A.mercato, 'Mercato'); pick(A.asse, 'Vittoria'); } else { pick(A.asse, 'Vittoria'); pick(A.mercato, 'Mercato'); } pick(A.marina, 'Marina');   // [pianta] con l'anello sul mare: Stazione, Lungomare, Mercato della Rocca, Vittoria, Marina
     if (seq.length < 2) return LIN;
     let path = [seq[0].q.i]; seq[0].k = 0;
     for (let k = 1; k < seq.length; k++) { const p = dijkstra(path[path.length - 1], seq[k].q.i); if (!p) { seq.length = k; break; } path = path.concat(p.slice(1)); seq[k].k = path.length - 1; }

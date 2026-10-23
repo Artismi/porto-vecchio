@@ -1,0 +1,513 @@
+{
+ "vittoria": {
+  "titolo": "La Via della Vittoria: mezzeria, margini, zebre, il divieto di sosta, le lunette sotto i portici",
+  "dopo": {
+   "calls": 2298,
+   "tris": 3915279
+  },
+  "prima": {
+   "calls": 2307,
+   "tris": 3922527
+  },
+  "piu": -9,
+  "campo": {
+   "inCampo": 12,
+   "totale": 31,
+   "perMateriale": {
+    "strisce": 2,
+    "pali": 4,
+    "segni": 4,
+    "luce": 2
+   }
+  },
+  "segnaletica": {
+   "conta": {
+    "strisce": 762,
+    "perTessera": {
+     "bus": 2,
+     "zebra": 42,
+     "riga": 677,
+     "stop": 2,
+     "freccia_dritta": 6,
+     "triangolo": 28,
+     "P": 1,
+     "parola|PORTO": 1,
+     "freccia_destra": 2,
+     "parola|STAZIONE": 1
+    },
+    "zebre": 7,
+    "cartelli": 15,
+    "perCartello": {
+     "stop": 1,
+     "precedenza": 2,
+     "attraversamento": 5,
+     "pedonale": 5,
+     "divieto_sosta": 2
+    },
+    "pali": 24,
+    "indicazioni": 7,
+    "frecce": 26,
+    "insegne": 112,
+    "perFonte": {
+     "facciata:fascia": 46,
+     "segnaletica:bandiera": 51,
+     "facciata:bandiera_verticale": 2,
+     "segnaletica:lunetta": 2,
+     "segnaletica:targa": 5,
+     "segnaletica:segno": 1,
+     "segnaletica:pannello": 3,
+     "pezzo:pezzo": 1,
+     "segnaletica:tavola": 1
+    }
+   },
+   "costruito": {
+    "mesh": 31,
+    "vert": 21480,
+    "segni": 39,
+    "strisce": 762,
+    "insegne": 63,
+    "pali": 20,
+    "atlante": 1684
+   },
+   "riquadri": 31
+  }
+ },
+ "borgo": {
+  "titolo": "Il borgo: le bandiere dei mestieri sulla Rua, l'area pedonale",
+  "dopo": {
+   "calls": 1607,
+   "tris": 3312304
+  },
+  "prima": {
+   "calls": 1694,
+   "tris": 3342559
+  },
+  "piu": -87,
+  "campo": {
+   "inCampo": 10,
+   "totale": 31,
+   "perMateriale": {
+    "strisce": 2,
+    "pali": 3,
+    "segni": 3,
+    "luce": 2
+   }
+  },
+  "segnaletica": {
+   "conta": {
+    "strisce": 762,
+    "perTessera": {
+     "bus": 2,
+     "zebra": 42,
+     "riga": 677,
+     "stop": 2,
+     "freccia_dritta": 6,
+     "triangolo": 28,
+     "P": 1,
+     "parola|PORTO": 1,
+     "freccia_destra": 2,
+     "parola|STAZIONE": 1
+    },
+    "zebre": 7,
+    "cartelli": 15,
+    "perCartello": {
+     "stop": 1,
+     "precedenza": 2,
+     "attraversamento": 5,
+     "pedonale": 5,
+     "divieto_sosta": 2
+    },
+    "pali": 24,
+    "indicazioni": 7,
+    "frecce": 26,
+    "insegne": 112,
+    "perFonte": {
+     "facciata:fascia": 46,
+     "segnaletica:bandiera": 51,
+     "facciata:bandiera_verticale": 2,
+     "segnaletica:lunetta": 2,
+     "segnaletica:targa": 5,
+     "segnaletica:segno": 1,
+     "segnaletica:pannello": 3,
+     "pezzo:pezzo": 1,
+     "segnaletica:tavola": 1
+    }
+   },
+   "costruito": {
+    "mesh": 31,
+    "vert": 21480,
+    "segni": 39,
+    "strisce": 762,
+    "insegne": 63,
+    "pali": 20,
+    "atlante": 1684
+   },
+   "riquadri": 31
+  }
+ },
+ "corso": {
+  "titolo": "Vittoria e Corso: zebre, mezzeria e margini, il riquadro BUS, le frecce verso Stazione, Scalo, Porto",
+  "dopo": {
+   "calls": 1137,
+   "tris": 2092972
+  },
+  "prima": {
+   "calls": 1117,
+   "tris": 2088688
+  },
+  "piu": 20,
+  "campo": {
+   "inCampo": 8,
+   "totale": 31,
+   "perMateriale": {
+    "strisce": 1,
+    "pali": 3,
+    "segni": 3,
+    "luce": 1
+   }
+  },
+  "segnaletica": {
+   "conta": {
+    "strisce": 762,
+    "perTessera": {
+     "bus": 2,
+     "zebra": 42,
+     "riga": 677,
+     "stop": 2,
+     "freccia_dritta": 6,
+     "triangolo": 28,
+     "P": 1,
+     "parola|PORTO": 1,
+     "freccia_destra": 2,
+     "parola|STAZIONE": 1
+    },
+    "zebre": 7,
+    "cartelli": 15,
+    "perCartello": {
+     "stop": 1,
+     "precedenza": 2,
+     "attraversamento": 5,
+     "pedonale": 5,
+     "divieto_sosta": 2
+    },
+    "pali": 24,
+    "indicazioni": 7,
+    "frecce": 26,
+    "insegne": 112,
+    "perFonte": {
+     "facciata:fascia": 46,
+     "segnaletica:bandiera": 51,
+     "facciata:bandiera_verticale": 2,
+     "segnaletica:lunetta": 2,
+     "segnaletica:targa": 5,
+     "segnaletica:segno": 1,
+     "segnaletica:pannello": 3,
+     "pezzo:pezzo": 1,
+     "segnaletica:tavola": 1
+    }
+   },
+   "costruito": {
+    "mesh": 31,
+    "vert": 21480,
+    "segni": 39,
+    "strisce": 762,
+    "insegne": 63,
+    "pali": 20,
+    "atlante": 1684
+   },
+   "riquadri": 31
+  }
+ },
+ "corso_solo": {
+  "titolo": "La stessa scena, solo la segnaletica (per vedere cosa c'è, anche dietro le case)",
+  "dopo": {
+   "calls": 57,
+   "tris": 114526
+  },
+  "prima": {
+   "calls": 1265,
+   "tris": 2261088
+  },
+  "piu": -1208,
+  "campo": {
+   "inCampo": 8,
+   "totale": 31,
+   "perMateriale": {
+    "strisce": 1,
+    "pali": 3,
+    "segni": 3,
+    "luce": 1
+   }
+  },
+  "segnaletica": {
+   "conta": {
+    "strisce": 762,
+    "perTessera": {
+     "bus": 2,
+     "zebra": 42,
+     "riga": 677,
+     "stop": 2,
+     "freccia_dritta": 6,
+     "triangolo": 28,
+     "P": 1,
+     "parola|PORTO": 1,
+     "freccia_destra": 2,
+     "parola|STAZIONE": 1
+    },
+    "zebre": 7,
+    "cartelli": 15,
+    "perCartello": {
+     "stop": 1,
+     "precedenza": 2,
+     "attraversamento": 5,
+     "pedonale": 5,
+     "divieto_sosta": 2
+    },
+    "pali": 24,
+    "indicazioni": 7,
+    "frecce": 26,
+    "insegne": 112,
+    "perFonte": {
+     "facciata:fascia": 46,
+     "segnaletica:bandiera": 51,
+     "facciata:bandiera_verticale": 2,
+     "segnaletica:lunetta": 2,
+     "segnaletica:targa": 5,
+     "segnaletica:segno": 1,
+     "segnaletica:pannello": 3,
+     "pezzo:pezzo": 1,
+     "segnaletica:tavola": 1
+    }
+   },
+   "costruito": {
+    "mesh": 31,
+    "vert": 21480,
+    "segni": 39,
+    "strisce": 762,
+    "insegne": 63,
+    "pali": 20,
+    "atlante": 1684
+   },
+   "riquadri": 31
+  }
+ },
+ "marina": {
+  "titolo": "La marina: pescheria, osterie, la freccia per il Lido e la Rocca",
+  "dopo": {
+   "calls": 1328,
+   "tris": 3043873
+  },
+  "prima": {
+   "calls": 1391,
+   "tris": 3063643
+  },
+  "piu": -63,
+  "campo": {
+   "inCampo": 13,
+   "totale": 31,
+   "perMateriale": {
+    "strisce": 3,
+    "pali": 4,
+    "segni": 4,
+    "luce": 2
+   }
+  },
+  "segnaletica": {
+   "conta": {
+    "strisce": 762,
+    "perTessera": {
+     "bus": 2,
+     "zebra": 42,
+     "riga": 677,
+     "stop": 2,
+     "freccia_dritta": 6,
+     "triangolo": 28,
+     "P": 1,
+     "parola|PORTO": 1,
+     "freccia_destra": 2,
+     "parola|STAZIONE": 1
+    },
+    "zebre": 7,
+    "cartelli": 15,
+    "perCartello": {
+     "stop": 1,
+     "precedenza": 2,
+     "attraversamento": 5,
+     "pedonale": 5,
+     "divieto_sosta": 2
+    },
+    "pali": 24,
+    "indicazioni": 7,
+    "frecce": 26,
+    "insegne": 112,
+    "perFonte": {
+     "facciata:fascia": 46,
+     "segnaletica:bandiera": 51,
+     "facciata:bandiera_verticale": 2,
+     "segnaletica:lunetta": 2,
+     "segnaletica:targa": 5,
+     "segnaletica:segno": 1,
+     "segnaletica:pannello": 3,
+     "pezzo:pezzo": 1,
+     "segnaletica:tavola": 1
+    }
+   },
+   "costruito": {
+    "mesh": 31,
+    "vert": 21480,
+    "segni": 39,
+    "strisce": 762,
+    "insegne": 63,
+    "pali": 20,
+    "atlante": 1684
+   },
+   "riquadri": 31
+  }
+ },
+ "notte": {
+  "titolo": "Di notte: si accendono farmacia, bar, tabacchi, trattorie",
+  "dopo": {
+   "calls": 1837,
+   "tris": 3616019
+  },
+  "prima": {
+   "calls": 1859,
+   "tris": 3498557
+  },
+  "piu": -22,
+  "campo": {
+   "inCampo": 10,
+   "totale": 31,
+   "perMateriale": {
+    "strisce": 2,
+    "pali": 3,
+    "segni": 3,
+    "luce": 2
+   }
+  },
+  "segnaletica": {
+   "conta": {
+    "strisce": 762,
+    "perTessera": {
+     "bus": 2,
+     "zebra": 42,
+     "riga": 677,
+     "stop": 2,
+     "freccia_dritta": 6,
+     "triangolo": 28,
+     "P": 1,
+     "parola|PORTO": 1,
+     "freccia_destra": 2,
+     "parola|STAZIONE": 1
+    },
+    "zebre": 7,
+    "cartelli": 15,
+    "perCartello": {
+     "stop": 1,
+     "precedenza": 2,
+     "attraversamento": 5,
+     "pedonale": 5,
+     "divieto_sosta": 2
+    },
+    "pali": 24,
+    "indicazioni": 7,
+    "frecce": 26,
+    "insegne": 112,
+    "perFonte": {
+     "facciata:fascia": 46,
+     "segnaletica:bandiera": 51,
+     "facciata:bandiera_verticale": 2,
+     "segnaletica:lunetta": 2,
+     "segnaletica:targa": 5,
+     "segnaletica:segno": 1,
+     "segnaletica:pannello": 3,
+     "pezzo:pezzo": 1,
+     "segnaletica:tavola": 1
+    }
+   },
+   "costruito": {
+    "mesh": 31,
+    "vert": 21480,
+    "segni": 39,
+    "strisce": 762,
+    "insegne": 63,
+    "pali": 20,
+    "atlante": 1684
+   },
+   "riquadri": 31
+  }
+ },
+ "citta": {
+  "titolo": "La città intera (per contare le chiamate di disegno)",
+  "dopo": {
+   "calls": 8116,
+   "tris": 6519315
+  },
+  "prima": {
+   "calls": 8093,
+   "tris": 6512677
+  },
+  "piu": 23,
+  "campo": {
+   "inCampo": 29,
+   "totale": 31,
+   "perMateriale": {
+    "strisce": 7,
+    "pali": 9,
+    "segni": 9,
+    "luce": 4
+   }
+  },
+  "segnaletica": {
+   "conta": {
+    "strisce": 762,
+    "perTessera": {
+     "bus": 2,
+     "zebra": 42,
+     "riga": 677,
+     "stop": 2,
+     "freccia_dritta": 6,
+     "triangolo": 28,
+     "P": 1,
+     "parola|PORTO": 1,
+     "freccia_destra": 2,
+     "parola|STAZIONE": 1
+    },
+    "zebre": 7,
+    "cartelli": 15,
+    "perCartello": {
+     "stop": 1,
+     "precedenza": 2,
+     "attraversamento": 5,
+     "pedonale": 5,
+     "divieto_sosta": 2
+    },
+    "pali": 24,
+    "indicazioni": 7,
+    "frecce": 26,
+    "insegne": 112,
+    "perFonte": {
+     "facciata:fascia": 46,
+     "segnaletica:bandiera": 51,
+     "facciata:bandiera_verticale": 2,
+     "segnaletica:lunetta": 2,
+     "segnaletica:targa": 5,
+     "segnaletica:segno": 1,
+     "segnaletica:pannello": 3,
+     "pezzo:pezzo": 1,
+     "segnaletica:tavola": 1
+    }
+   },
+   "costruito": {
+    "mesh": 31,
+    "vert": 21480,
+    "segni": 39,
+    "strisce": 762,
+    "insegne": 63,
+    "pali": 20,
+    "atlante": 1684
+   },
+   "riquadri": 31
+  }
+ }
+}
