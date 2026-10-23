@@ -14,7 +14,7 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
   await pg.waitForFunction(() => window.__pv && window.__pv.st && window.__pv.R, null, { timeout: 600000, polling: 2000 });
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(3000);
   const R = await pg.evaluate(async () => {
-    const pv = window.__pv, R = pv.R, scene = typeof R.scene === 'function' ? R.scene() : R.scene, rend = typeof R.renderer === 'function' ? R.renderer() : R.renderer; 
+    const pv = window.__pv, R = pv.R, scene = R.__models.scene, rend = R.__models.renderer; 
     const S = { mesh: 0, tri: 0, statiche: 0, triStatiche: 0 };
     const sn = scene || window.__scene; if (sn) sn.traverse(o => { if (!o.isMesh || !o.geometry) return; const g = o.geometry, n = (g.index ? g.index.count : (g.attributes.position ? g.attributes.position.count : 0)) / 3 * (o.isInstancedMesh ? o.count : 1); S.mesh++; S.tri += n; if (o.matrixAutoUpdate === false && !o.isInstancedMesh) { S.statiche++; S.triStatiche += n; } });
     pv.ui.focus = { x: 1380, y: 343 }; pv.ui.zoom = .72; if (R.cam) { R.cam.x = R.cam.tx = 1380; R.cam.y = R.cam.ty = 343; R.cam.zoom = R.cam.tz = .72; }
