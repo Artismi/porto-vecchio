@@ -41,7 +41,7 @@ var Segnaletica = (function () {
     cartello: 2.2,                           // il bordo basso del cartello sul marciapiede
     bandiera: { y0: 2.8, h: .66, da: .26, a: 1.05, stretta: .72 },   // l'insegna a bandiera: dal muro, sopra le tende (2,68) e sotto i balconi (3,54)
     liberoPorta: 1.0,                        // m liberi attorno a porte, vetrine, scale
-    mezzeria: { on: 3, off: 3, w: .15 }, margine: .15, zebra: { b: .5, L: 2.6 },   // le linee un po' più larghe del vero (12 cm): dall'alto devono leggersi
+    mezzeria: { on: 3, off: 3, w: .2 }, margine: .18, zebra: { b: .5, L: 2.6 },   // le linee un po' più larghe del vero (12 cm): dall'alto devono leggersi
   };
 
   // ================= LA GRIGLIA E LE STRADE =================
@@ -631,7 +631,7 @@ var Segnaletica = (function () {
       else if (k.startsWith('freccia')) { const dx = /destra/.test(k), sx = /sinistra/.test(k), dr = /dritta/.test(k), m = h / 2; x.lineWidth = 12; x.lineCap = 'butt';
         if (dr || (!dx && !sx)) { x.fillRect(8, m - 7, w - 70, 14); x.beginPath(); x.moveTo(w - 4, m); x.lineTo(w - 66, m - 28); x.lineTo(w - 66, m + 28); x.closePath(); x.fill(); }
         [[dx, 1], [sx, -1]].forEach(([on, s]) => { if (!on) return; const bx = dr ? 70 : 110; x.beginPath(); x.moveTo(8, m); x.lineTo(bx, m); x.quadraticCurveTo(bx + 34, m, bx + 34, m + s * 18); x.stroke(); x.beginPath(); x.moveTo(bx + 34, m + s * 38); x.lineTo(bx + 14, m + s * 14); x.lineTo(bx + 54, m + s * 14); x.closePath(); x.fill(); }); }
-      usura(x, w, h, k.length * 101 + w, Math.round(w * h / 90), .9); }); }
+      usura(x, w, h, k.length * 101 + w, Math.round(w * h / (k === 'riga' ? 260 : 90)), k === 'riga' ? .6 : .9); }); }   // le righe sottili meno bucate: dall'alto sparivano
 
   // ================= LA COSTRUZIONE =================
   let scene = null, groundH = null, ready = false, built = false, MAT = null; const MESH = [], CNT = { mesh: 0, vert: 0, segni: 0, strisce: 0, insegne: 0, pali: 0 };
@@ -672,7 +672,7 @@ var Segnaletica = (function () {
   // una decalcomania a terra, divisa in pezzi che seguono il suolo
   function decal(s) {
     const uv = tessStriscia(s.k), ca = Math.cos(s.ang), sa = Math.sin(s.ang), vx = -sa, vy = ca, nu = Math.max(1, Math.ceil(s.L / 1.4)), nv = Math.max(1, Math.ceil(s.w / 1.4)), b = mucchio('strisce', s.x, s.y);
-    const col = s.giallo ? [.95, .74, .2, s.a] : [.93, .91, .86, s.a], H = (u, v) => { const x = s.x + ca * u + vx * v, z = s.y + sa * u + vy * v; return [x, groundH(x, z) + .028, z]; };
+    const col = s.giallo ? [.95, .74, .2, s.a] : [.97, .96, .92, Math.min(1, s.a * 1.12)], H = (u, v) => { const x = s.x + ca * u + vx * v, z = s.y + sa * u + vy * v; return [x, groundH(x, z) + .028, z]; };
     for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) { const ua = -s.L / 2 + s.L * i / nu, ub = -s.L / 2 + s.L * (i + 1) / nu, va = -s.w / 2 + s.w * j / nv, vb = -s.w / 2 + s.w * (j + 1) / nv;
       const U = q => uv[0] + (uv[2] - uv[0]) * ((q + s.L / 2) / s.L), V = q => uv[3] - (uv[3] - uv[1]) * ((q + s.w / 2) / s.w);   // l'alto della tessera (v1) sta a v = -w/2: come la tela ruotata di ang
       const A = H(ua, va), Bv = H(ub, va), C = H(ub, vb), D = H(ua, vb), N = [0, 1, 0];
