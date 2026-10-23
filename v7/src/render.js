@@ -704,18 +704,27 @@ var Render = (function () {
       const i = ty * G.GW + tx, v = gT(tx, ty), lake = v === T.WATER && M.zone && M.zone[i] !== (M.Z || {}).MARE, sea = v === T.PIER || v === T.WATER, o = i * 4;
       if (!sea) mx.fillRect(tx * S, ty * S, S, S);
       const dp = lake ? 2.5 : SEA0 ? SEA0.depth[i] : sea ? 4 : 0, bt = SEA0 && SEA0.bottom ? SEA0.bottom[i] : 0;
-      sd.data[o] = sea ? Math.round(Math.min(1, dp / 16) * 255) : 0; sd.data[o + 1] = sea && bt === 1 ? 255 : sea && bt === 3 ? 110 : sea ? 0 : 255; /* G: 255 roccia, 110 fango */ sd.data[o + 2] = bt === 2 ? 255 : 0; sd.data[o + 3] = 255;
+      sd.data[o] = sea ? Math.round(Math.sqrt(Math.min(1, dp / 16)) * 255) : 0;   /* [riva] la radice: più precisione nell'acqua bassa */ sd.data[o + 1] = sea && bt === 1 ? 255 : sea && bt === 3 ? 110 : sea ? 0 : 255; /* G: 255 roccia, 110 fango */ sd.data[o + 2] = bt === 2 ? 255 : 0; sd.data[o + 3] = 255;
     }
     sx.putImageData(sd, 0, 0);
     const big = mk(G.GW * 4, G.GH * 4), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = 'blur(3px)'; bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
+    // [riva] nella fascia della riva fine la profondità e la terra vengono dalla quota vera (a 50 cm): l'acqua bassa e la schiuma
+    // seguono la battigia con le sue cuspidi, gli scogli, le pozze, non più le caselle
+    const R9 = RIVA9(); if (R9) { const bd = bgx.getImageData(0, 0, big.width, big.height), D = bd.data;
+      for (let ty = 1; ty < G.GH - 1; ty++) for (let tx = 1; tx < G.GW - 1; tx++) { if (!Riva.inBanda(tx, ty)) continue;
+        for (let b = 0; b < 4; b++) for (let a = 0; a < 4; a++) { const x = (tx + (a + .5) / 4) * TS, y = (ty + (b + .5) / 4) * TS, q = Riva.quota(x, y); if (q === null) continue; const o = ((ty * 4 + b) * big.width + tx * 4 + a) * 4;
+          D[o] = Math.round(Math.sqrt(Math.min(1, Math.max(0, WL - q) / 16)) * 255); if (q > WL + .05) D[o + 1] = 255; } }
+      bgx.putImageData(bd, 0, 0); }
     const stx = new THREE.CanvasTexture(big); stx.minFilter = stx.magFilter = THREE.LinearFilter;
+    if (R9) for (let ty = 1; ty < G.GH - 1; ty++) for (let tx = 1; tx < G.GW - 1; tx++) { if (!Riva.inBanda(tx, ty)) continue;   // [riva] la terra vera, a mezzo metro
+      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; mx.fillStyle = q > WL ? '#fff' : '#000'; mx.fillRect(tx * S + a, ty * S + b, 1, 1); } }
     const bc = mk(mc.width, mc.height), bx = bc.getContext('2d'); bx.filter = 'blur(2px)'; bx.drawImage(mc, 0, 0); bx.filter = 'none';
     const btx = new THREE.CanvasTexture(bc); btx.minFilter = btx.magFilter = THREE.LinearFilter;
     const geo = new THREE.PlaneGeometry(2400, 2400, 1, 1); geo.rotateX(-Math.PI / 2);
     const mat = new THREE.ShaderMaterial({
-      uniforms: { time: { value: 0 }, night: { value: 1 }, dusk: { value: 0 }, mask: { value: btx }, sea: { value: stx }, wsize: { value: new THREE.Vector2(G.WW, G.WH) }, fogC: { value: new THREE.Color() }, camP: { value: new THREE.Vector3() }, fogN: { value: 60 }, fogF: { value: 160 }, wx: { value: new THREE.Vector4() }, sun: { value: new THREE.Vector3(-1, .3, -.3).normalize() }, moonD: { value: new THREE.Vector3(0, 1, 0) }, lp: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) }, lc: { value: Array.from({ length: 16 }, () => new THREE.Color()) } },
+      transparent: !!R9, uniforms: { RIVA9: { value: R9 ? 1 : 0 }, time: { value: 0 }, night: { value: 1 }, dusk: { value: 0 }, mask: { value: btx }, sea: { value: stx }, wsize: { value: new THREE.Vector2(G.WW, G.WH) }, fogC: { value: new THREE.Color() }, camP: { value: new THREE.Vector3() }, fogN: { value: 60 }, fogF: { value: 160 }, wx: { value: new THREE.Vector4() }, sun: { value: new THREE.Vector3(-1, .3, -.3).normalize() }, moonD: { value: new THREE.Vector3(0, 1, 0) }, lp: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) }, lc: { value: Array.from({ length: 16 }, () => new THREE.Color()) } },
       vertexShader: 'varying vec3 vP; void main(){ vec4 w = modelMatrix*vec4(position,1.); vP=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }',
-      fragmentShader: `uniform float time; uniform float night; uniform float dusk; uniform sampler2D mask; uniform sampler2D sea; uniform vec2 wsize; uniform vec3 fogC; uniform vec3 camP; uniform float fogN; uniform float fogF; uniform vec4 wx; uniform vec3 sun; uniform vec3 moonD; uniform vec4 lp[16]; uniform vec3 lc[16]; varying vec3 vP;
+      fragmentShader: `uniform float RIVA9; uniform float time; uniform float night; uniform float dusk; uniform sampler2D mask; uniform sampler2D sea; uniform vec2 wsize; uniform vec3 fogC; uniform vec3 camP; uniform float fogN; uniform float fogF; uniform vec4 wx; uniform vec3 sun; uniform vec3 moonD; uniform vec4 lp[16]; uniform vec3 lc[16]; varying vec3 vP;
         float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f); return mix(mix(h21(i), h21(i+vec2(1.,0.)), f.x), mix(h21(i+vec2(0.,1.)), h21(i+vec2(1.,1.)), f.x), f.y); }
         // un'onda: x altezza, yz pendenza
@@ -735,7 +744,7 @@ var Render = (function () {
           bool out1 = muv.x<0.||muv.x>1.||muv.y>1.||muv.y<0.;
           vec4 S = out1 ? vec4(1.,0.,0.,1.) : texture2D(sea, tuv);
           float land = out1 ? 0. : texture2D(mask, tuv).r;
-          float dep = S.r*16. + (out1 ? 20. : 0.), wind = clamp(.25 + wx.w*.75 + wx.y*.15, 0., 1.);
+          float dep = S.r*S.r*16. + (out1 ? 20. : 0.), wind = clamp(.25 + wx.w*.75 + wx.y*.15, 0., 1.);
           // onde: quattro treni d'onda che vanno sottovento, più una grana fine; sotto riva si smorzano
           vec3 w = vec3(0.);
           wv(w, q, vec2(.8,.6), .42, 1.0, .5); wv(w, q, normalize(vec2(-.35,.94)), .77, 1.35, .32); wv(w, q, normalize(vec2(.96,-.28)), 1.45, 1.9, .16); wv(w, q, normalize(vec2(-.7,-.7)), 2.6, 2.7, .09);
@@ -782,9 +791,23 @@ var Render = (function () {
           float foam = shore * smoothstep(.55, .8, sin(land*30. - time*1.5 + br*5.)*.5 + .5) * smoothstep(.35, .65, br) * .8;
           foam += smoothstep(.72, .92, land) * (1. - smoothstep(.93, .99, land)) * .4;   // un filo bianco dove l'onda tocca
           foam += smoothstep(.62, .95, w.x*.55 + fn*.35) * wind * wind * .55 * smoothstep(2., 6., dep);
+          // [riva] il bagnasciuga: dove l'acqua è sottile si vede la sabbia vera sotto (l'acqua si assottiglia fino a sparire sulla
+          // battigia), il velo dell'onda che sale e si ritira, il pizzo di schiuma che ne segna il bordo e resta un attimo sulla sabbia
+          float alA = 1.;
+          if (RIVA9 > .5) {
+            float al9 = dot(q, vec2(.083, .057)) + n2(q * .07) * 6.;   // il tempo dell'onda cambia lungo la riva
+            float ph9 = fract(time * .085 + al9 * .05), up9 = smoothstep(0., .45, ph9) * (1. - smoothstep(.45, 1., ph9));   // sale veloce, si ritira piano
+            float lim9 = .03 + up9 * .16 + (n2(q * .9 + time * .1) - .5) * .05;   // fin dove arriva il velo (in profondità d'acqua)
+            float pizzo = (1. - smoothstep(0., .035, abs(dep - lim9))) * smoothstep(.35, .7, n2(q * 3.3 + time * .2) * .6 + n2(q * 9.1) * .4);
+            float resto = (1. - smoothstep(0., .02, abs(dep - .02 - (1. - up9) * .1))) * smoothstep(.55, .8, n2(q * 5.7)) * .5;
+            alA = mix(.08, 1., smoothstep(.0, 1.25, dep));   // l'acqua sottile è trasparente
+            c = mix(c, vec3(.93, .96, .97) * (.3 + .7 * dayK), clamp(pizzo * .9 + resto, 0., 1.));
+            alA = max(alA, clamp(pizzo * .9 + resto, 0., 1.) * .95);
+            foam *= smoothstep(.05, .5, dep);   // la schiuma di prima (a caselle) si spegne dove c'è la riva vera
+          }
           c = mix(c, vec3(.93,.96,1.) * (.25 + .75*dayK), clamp(foam, 0., 1.) * .85);
           float dd = distance(vP, camP); c = mix(c, fogC, smoothstep(fogN, fogF, dd));
-          gl_FragColor = vec4(c, 1.);
+          gl_FragColor = vec4(c, alA);
         }`,
     });
     const m = new THREE.Mesh(geo, mat); m.position.set(G.WW / 2, -.45, G.WH / 2); m.renderOrder = 1; scene.add(m); dyn.water = mat;   // [costa] dopo le sagome delle barche
@@ -2856,8 +2879,8 @@ var Render = (function () {
       else push(q.x, WL - q.r * .45 + .1, q.y, q.r, .55 + r() * .3, pick(r, ['#4e4a46', '#5a5550', '#45423e', '#655f58']));
     });
     if (!list.length) return;
-    const geo = new THREE.IcosahedronGeometry(1, 0), mat = std({ roughness: .95 }), im = new THREE.InstancedMesh(geo, mat, list.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), Sv = new THREE.Vector3(), C = new THREE.Color();
-    list.forEach(([x, y, z, s, sy, a, b, col], k) => { E.set(a * .2, b, a * .15); Q.setFromEuler(E); V.set(x, y, z); Sv.set(s, s * sy, s * (.8 + (a % 1) * .4)); M4.compose(V, Q, Sv); im.setMatrixAt(k, M4); im.setColorAt(k, C.set(col)); });
+    const R9 = RIVA9(), geo = R9 ? Riva.geoMasso() : new THREE.IcosahedronGeometry(1, 0), mat = R9 ? Riva.matRoccia() : std({ roughness: .95 }), im = new THREE.InstancedMesh(geo, mat, list.length),   /* [riva] il masso scavato a strati, coi colori del calcare */ M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), Sv = new THREE.Vector3(), C = new THREE.Color();
+    list.forEach(([x, y, z, s, sy, a, b, col], k) => { E.set(a * .2, b, a * .15); Q.setFromEuler(E); V.set(x, y, z); Sv.set(s, s * sy, s * (.8 + (a % 1) * .4)); M4.compose(V, Q, Sv); im.setMatrixAt(k, M4); im.setColorAt(k, R9 ? C.set(col).multiplyScalar(2.5) : C.set(col)); });
     im.castShadow = true; im.receiveShadow = true; scene.add(im); COSTA.rocks = im;
   }
 
@@ -3078,6 +3101,13 @@ var Render = (function () {
     (A.scale || []).forEach(s => { const g = new THREE.Group(), L = Math.hypot(s.x1 - s.x0, s.y1 - s.y0), ux = (s.x1 - s.x0) / L, uz = (s.y1 - s.y0) / L, h0 = groundH(s.x0, s.y0), h1 = groundH(s.x1, s.y1), N = Math.max(3, Math.ceil(Math.abs(h0 - h1) / .19)), ang = Math.atan2(ux, uz);
       for (let k = 0; k < N; k++) { const t = (k + .5) / N, x = s.x0 + ux * L * t, z = s.y0 + uz * L * t, yt = h0 + (h1 - h0) * (k + 1) / N, st = box(s.w, Math.max(.2, yt - Math.min(h0, h1) + .2), L / N + .02, cem); st.position.set(x, (yt + Math.min(h0, h1) - .2) / 2, z); st.rotation.y = ang; g.add(st); }
       const rl = box(.05, .05, L, sm('#5e6a6e', { metalness: .5 })); rl.position.set((s.x0 + s.x1) / 2 + Math.cos(ang) * s.w / 2, (h0 + h1) / 2 + .95, (s.y0 + s.y1) / 2 - Math.sin(ang) * s.w / 2); rl.rotation.set(-Math.atan2(h1 - h0, L), ang, 0, 'YXZ'); g.add(rl); addStatic(g); });
+    // [costa] i terrapieni delle case sul mare: il muretto di contenimento verso la spiaggia (pietra a corsi con la copertina; in città intonacato)
+    { const pt = sm('#a89e8a', { roughness: .95 }), pt2 = sm('#9a917e', { roughness: .95 }), cop = sm('#c8bfae'), into = sm('#c9bba0', { roughness: .9 }), g = new THREE.Group(); let n = 0;
+      (A.terrapieni || []).forEach((q, k) => { const cx = q.x + q.ux * q.L / 2, cz = q.y + q.uy * q.L / 2, ys = groundH(cx + q.nx * .6, cz + q.ny * .6), yt = groundH(cx - q.nx * .6, cz - q.ny * .6), top = Math.max(yt, ys) + .32, hh = top - ys + .25, ang = Math.atan2(q.ux, q.uy);
+        const w = box(.42, hh, q.L + .04, q.citta ? into : (k % 3 ? pt : pt2)); w.position.set(cx + q.nx * .2, ys - .25 + hh / 2, cz + q.ny * .2); w.rotation.y = ang; g.add(w);
+        const c = box(.5, .08, q.L + .06, cop); c.position.set(cx + q.nx * .2, top + .04, cz + q.ny * .2); c.rotation.y = ang; g.add(c);
+        if (!q.citta) for (let r = 0; r < 2; r++) { const st = box(.44, .03, q.L + .05, sm('#7e7666')); st.position.set(cx + q.nx * .2, ys + .05 + r * (hh - .3) / 2, cz + q.ny * .2); st.rotation.y = ang; g.add(st); }   // i corsi
+        if (++n % 30 === 0) { addStatic(g.clone()); g.clear(); } }); if (g.children.length) addStatic(g); }
     window.__costa2 = { istanze: C2.n, mesh: C2.draw, passerelle: (A.passerelle || []).length, piazzole: (A.piazzole || []).length, muretti: (A.muretti || []).length, scale: (A.scale || []).length };
     if (window.__dbg35) console.log('[dbg] costa2', JSON.stringify(window.__costa2));
     return C2.n;
@@ -14384,7 +14414,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     const TT = (n, f) => { P2.src = n; const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
-    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('costa2', buildCosta2);   /* [costa2] */ TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('vissuti', () => window.TettiVissuti && TettiVissuti.costruisci(kitTV1()));   /* [vissuti] */ TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('percorsi1', buildPercorsi1);   /* [percorsi] */ TT('scorci', buildScorci);   /* [scorci] */ TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
+    TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('costa2', buildCosta2);   /* [costa2] */ TT('margini9', () => { const g = RIVA9() ? Riva.costruisciMargini(groundH) : null; if (g) scene.add(g); });   /* [riva] i margini delle costiere */ TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('vissuti', () => window.TettiVissuti && TettiVissuti.costruisci(kitTV1()));   /* [vissuti] */ TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('percorsi1', buildPercorsi1);   /* [percorsi] */ TT('scorci', buildScorci);   /* [scorci] */ TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */

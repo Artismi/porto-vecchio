@@ -2990,7 +2990,7 @@ var World = (function () {
             for (let s = -7; s <= 7; s += 1) for (const o of [0, 1.6, 3.2]) { const i = at(q.ex + q.tx * s + q.nx * (o + .4), q.ey + q.ty * s + q.ny * (o + .4)); if (i < 0 || isSea(i) || g[i] === T.BLD) okP = false; }
             if (okP && !A.piazzole.some(p => dist(p.x, p.y, cx, cy) < 90)) { A.piazzole.push({ x: cx, y: cy, ang: Math.atan2(q.ty, q.tx), L: 14, w: 3.4, nx: q.nx, ny: q.ny }); for (let s = -7; s <= 7; s += 1.75) A.muretti.push({ x: cx + q.tx * s + q.nx * 1.9, y: cy + q.ty * s + q.ny * 1.9, nx: q.nx, ny: q.ny, piazzola: true }); } }
           // la scaletta: dove sotto il ciglio c'è sabbia (una cala, la spiaggetta), giù dritta fino alla sabbia
-          for (let c = 2; c < run.length - 2; c++) { const q = run[c]; let sx = null; for (let d = 1; d < 12; d += .5) { const i = at(q.ex + q.nx * d, q.ey + q.ny * d); if (i < 0 || isSea(i)) break; if (g[i] === T.SAND) { sx = d; break; } }
+          for (let c = 2; c < run.length - 2; c++) { const q = run[c]; let sx = null; for (let d = 1; d < 12; d += .5) { const i = at(q.ex + q.nx * d, q.ey + q.ny * d); if (i < 0 || isSea(i)) break; if ((g[i] === T.SAND || g[i] === T.DIRT || g[i] === T.ROCK) && d >= 1.5) { sx = d; break; } }   /* [costa] anche sul terrapieno delle case e sullo scoglio davanti */
             if (sx !== null && sx >= 1.5 && !A.scale.some(s => dist(s.x0, s.y0, q.ex, q.ey) < 60)) A.scale.push({ x0: q.ex + q.nx * .3, y0: q.ey + q.ny * .3, x1: q.ex + q.nx * (sx + .8), y1: q.ey + q.ny * (sx + .8), w: 1.5 }); }
         }
         run.length = 0;
@@ -3004,11 +3004,31 @@ var World = (function () {
       }
       flush();
     });
-    W.SEA.costa2 = A;
+    A.terrapieni = W.SEA.terrapieni || []; W.SEA.costa2 = A;
     W.COSTA2 = { N: COSTA2.N.map(([a, k]) => [a + OX, k]), S: COSTA2.S.map(([a, k]) => [a + OX, k]), nomi: C2N.concat(C2S).filter(q => q[3]).map(([c, w, a, nome]) => { const N = C2N.some(q => q[3] === nome); return { nome, x: c + OX, y: +(N ? NorthY(c) : SouthY(c)).toFixed(1) + OY, lato: N ? 'N' : 'S', capo: a > 0 }; }), strada: C2STRADA.map(([a, b]) => [a + OX, b + OX]) };
     return W;
   }
-  const W = costa2Arredo(expand(generate()));
+  // [costa] I TERRAPIENI: nessuna casa in mezzo alla sabbia. Il committente: «non si sono mai viste case in mezzo alla sabbia». Le case
+  // dei borghi dei pescatori, del Lido e della marina stanno su un terrapieno: attorno a ogni casa che tocca la sabbia, fino a 3 caselle
+  // (6 m), la sabbia diventa terra battuta (fuori città) o acciottolato (in città, dalla stazione in là); verso la spiaggia il muretto
+  // di contenimento in pietra (W.SEA.costa2.terrapieni: i lati fra il terrapieno e la sabbia, li costruisce render.js). La spiaggia comincia
+  // davanti al muretto. Prima di costa2Arredo: le piante della duna e le passerelle vedono già la terra nuova.
+  function terrapieni(W) {
+    const g = W.grid, GWx = W.GW, GHx = W.GH, CITTA_X = 1222 / TS, fatti = new Uint8Array(GWx * GHx), lati = [];
+    W.BUILDINGS.forEach(b => { if (b.use === 'capanno' && /palme/.test(b.id || '')) return;   // i capanni sulle spiagge delle isole restano sulla sabbia (sono capanni)
+      let tocca = false; for (let ty = b.y - 2; ty <= b.y + b.h + 2 && !tocca; ty++) for (let tx = b.x - 2; tx <= b.x + b.w + 2; tx++) { const i = ty * GWx + tx; if (tx >= 0 && ty >= 0 && tx < GWx && ty < GHx && g[i] === T.SAND) { tocca = true; break; } }
+      if (!tocca) return; const R = 3;
+      for (let ty = b.y - R; ty <= b.y + b.h + R; ty++) for (let tx = b.x - R; tx <= b.x + b.w + R; tx++) { if (tx < 0 || ty < 0 || tx >= GWx || ty >= GHx) continue; const i = ty * GWx + tx; if (g[i] !== T.SAND) continue;
+        const dx = Math.max(b.x - tx, 0, tx - (b.x + b.w)), dy = Math.max(b.y - ty, 0, ty - (b.y + b.h)); if (dx * dx + dy * dy > R * R + 1) continue;   // gli angoli smussati
+        let mare = false; for (const [a, c] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const j = (ty + c) * GWx + tx + a; if (g[j] === T.WATER) mare = true; }
+        if (mare) { if (dx <= 1 && dy <= 1) g[i] = T.ROCK; continue; }   // sul filo dell'acqua: accanto alla casa lo scoglio (la casa sul mare sta sulla roccia), più in là resta la battigia
+        g[i] = tx >= CITTA_X ? T.COB : T.DIRT; fatti[i] = 1; } });
+    for (let ty = 1; ty < GHx - 1; ty++) for (let tx = 1; tx < GWx - 1; tx++) { const i = ty * GWx + tx; if (!fatti[i]) continue;
+      for (const [a, c, ex, ey, ux, uy] of [[1, 0, 1, 0, 0, 1], [-1, 0, 0, 0, 0, 1], [0, 1, 0, 1, 1, 0], [0, -1, 0, 0, 1, 0]]) { if (g[(ty + c) * GWx + tx + a] !== T.SAND) continue;
+        lati.push({ x: (tx + ex) * TS, y: (ty + ey) * TS, ux, uy, L: TS, nx: a, ny: c, citta: tx >= CITTA_X }); } }   // il lato: da (x, y) lungo (ux, uy) per L metri; (nx, ny) verso la sabbia
+    W.SEA.terrapieni = lati; return W;
+  }
+  const W = costa2Arredo(terrapieni(expand(generate())));
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.

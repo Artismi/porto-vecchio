@@ -25,7 +25,7 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
       const ts = Date.now();
       await pg.evaluate(s => { const pv = window.__pv, st = pv.st, p = st.player; p.vehicle = null; p.x = s.x + (s.px || 0); p.y = s.y + (s.py || 0); p.path = []; if (s.ora !== undefined) { let t = Math.floor(st.t / 1440) * 1440 + s.ora; if (t < st.t - 1) t += 1440; st.t = t; } window.__meteo = s.meteo || 'sereno'; pv.ui.focus = { x: s.x, y: s.y }; pv.ui.zoom = s.zoom || 1; }, s);
       await pg.waitForTimeout(+(process.env.RIVA_ATTESA || 25000));
-      await pg.screenshot({ path: path.join(outDir, s.nome + suf + '.png') });
+      await pg.screenshot({ path: path.join(outDir, s.nome + suf + '.png'), timeout: 600000 });
       const mis = await pg.evaluate(() => ({ riva: window.__riva9 || null, dc: window.__pv.R && window.__pv.R.renderer ? window.__pv.R.renderer.info.render.calls : null }));
       console.log(s.nome + suf, JSON.stringify(mis), ((Date.now() - ts) / 1000).toFixed(0) + ' s');
     }
