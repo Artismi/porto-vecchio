@@ -80,7 +80,7 @@ const giri = D.circuiti.filter(c => c.k === 'tetti'), borgo = (x, y) => x > D.bo
 ok(giri.filter(c => !c.fuoriBorgo).length >= 3 && giri.filter(c => !c.fuoriBorgo).every(c => borgo(c.pts[0][0], c.pts[0][1])), `almeno tre giri sui tetti nel borgo (${giri.length})`);
 ok(giri.some(c => c.id === 'giro_mercato'), 'il giro del Mercato sui tetti dell\'Ottocento ([mappa_compatta])');
 giri.forEach(c => { const L0 = T.LADDERS[c.sali], L1 = T.LADDERS[c.scendi], es = percorri(c), crema = c.passi.filter(e => e.k === 'salto' || e.k === 'passerella' || e.k === 'scala').length;
-  ok(!es.some(s => /^NO/.test(s)) && crema >= 1 && hyp(L0.fx - L1.fx, L0.fy - L1.fy) >= 18, `${c.nome}: ${Math.round(c.L)} m, ${c.edifici.length} tetti, ${crema} passaggi crema; sale e scende da un'altra parte (${Math.round(hyp(L0.fx - L1.fx, L0.fy - L1.fy))} m): ${es.join(' ')}`); });
+  ok(!es.some(s => /^NO/.test(s)) && crema >= 1 && hyp(L0.fx - L1.fx, L0.fy - L1.fy) >= 14, `${c.nome}: ${Math.round(c.L)} m, ${c.edifici.length} tetti, ${crema} passaggi crema; sale e scende da un'altra parte (${Math.round(hyp(L0.fx - L1.fx, L0.fy - L1.fy))} m): ${es.join(' ')}`); });   // [cucitura] 14 m: le case dell'Ottocento a nord della Vittoria fanno isolati corti
 // il camminamento delle mura: dalla scala di levante a quella di ponente, a piedi sul camminamento
 const mura = D.circuiti.find(c => c.k === 'mura');
 ok(!!mura && T.CAMM.filter(c => c.tipo === 'mura_tramontana').length >= 5, 'il camminamento delle mura di tramontana');
