@@ -716,6 +716,12 @@ var Render = (function () {
       for (let ty = 1; ty < G.GH - 1; ty++) for (let tx = 1; tx < G.GW - 1; tx++) { if (!Riva.inBanda(tx, ty)) continue;
         for (let b = 0; b < 4; b++) for (let a = 0; a < 4; a++) { const x = (tx + (a + .5) / 4) * TS, y = (ty + (b + .5) / 4) * TS, q = Riva.quota(x, y); if (q === null) continue; const o = ((ty * 4 + b) * big.width + tx * 4 + a) * 4;
           D[o] = Math.round(Math.sqrt(Math.min(1, Math.max(0, WL - q) / 16)) * 255); if (q > WL + .05) D[o + 1] = 255; } }
+      // dove sotto l'acqua non c'è fondale (il blocco a caselle non lo disegna accanto a banchine e pontili, né lontano dalla riva) e la
+      // riva fine non c'è, l'acqua resta opaca: almeno 80 cm nella mappa (niente buchi chiari nell'acqua trasparente)
+      const MIN = Math.round(Math.sqrt(.8 / 16) * 255);
+      for (let ty = 1; ty < G.GH - 1; ty++) for (let tx = 1; tx < G.GW - 1; tx++) { if (gT(tx, ty) !== T.WATER || Riva.inBanda(tx, ty)) continue; let buco = coastIn((tx + .5) * TS, (ty + .5) * TS) < -3;
+        if (!buco) for (let b = -1; b <= 1 && !buco; b++) for (let a = -1; a <= 1; a++) { const vv = gT(tx + a, ty + b); if (vv === T.QUAY || vv === T.PIER) { buco = true; break; } }
+        if (!buco) continue; for (let b = 0; b < 4; b++) for (let a = 0; a < 4; a++) { const o = ((ty * 4 + b) * big.width + tx * 4 + a) * 4; if (D[o] < MIN) D[o] = MIN; } }
       bgx.putImageData(bd, 0, 0); const tmp = mk(big.width, big.height), tx2 = tmp.getContext('2d'); tx2.filter = 'blur(2px)'; tx2.drawImage(big, 0, 0); tx2.filter = 'none'; bgx.clearRect(0, 0, big.width, big.height); bgx.drawImage(tmp, 0, 0); }   // una sfocatura leggera: niente quadretti fra la profondità fine e quella a caselle
     const stx = new THREE.CanvasTexture(big); stx.minFilter = stx.magFilter = THREE.LinearFilter;
     if (R9) for (let ty = 1; ty < G.GH - 1; ty++) for (let tx = 1; tx < G.GW - 1; tx++) { if (!Riva.inBanda(tx, ty)) continue;   // [riva] la terra vera, a mezzo metro

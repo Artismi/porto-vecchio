@@ -387,11 +387,11 @@ var Riva = (function () {
         const t = c.t; Cc.setRGB(t < .7 ? .44 + t * .3 : .58, t < .7 ? .42 + t * .28 : .5, t < .7 ? .39 + t * .26 : .4); im.setColorAt(i, Cc); });
       im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.computeBoundingSphere && im.computeBoundingSphere(); im.receiveShadow = true; im.castShadow = false; im.name = 'riva9c'; grp.add(im); }
     if (B.detriti && B.detriti.length) { const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), SC = new THREE.Vector3(), Cc = new THREE.Color();
-      [['alga', new THREE.SphereGeometry(1, 10, 6), '#ffffff'], ['legno', new THREE.CylinderGeometry(.045, .065, 1, 6).rotateZ(Math.PI / 2), '#ffffff']].forEach(([k, g, c0]) => { const L = B.detriti.filter(q => q.k === k); if (!L.length) return;
-        if (k === 'alga') { const P = g.attributes.position; for (let i = 0; i < P.count; i++) { const x = P.getX(i), z = P.getZ(i), n = .7 + .5 * fbm(x * 2 + 3, z * 2, 590, 2); P.setXYZ(i, x * n, Math.max(-.2, P.getY(i)) * n, z * n); } g.computeVertexNormals(); }
+      [['alga', new THREE.CircleGeometry(1, 14).rotateX(-Math.PI / 2), '#ffffff'], ['legno', new THREE.CylinderGeometry(.045, .065, 1, 6).rotateZ(Math.PI / 2), '#ffffff']].forEach(([k, g, c0]) => { const L = B.detriti.filter(q => q.k === k); if (!L.length) return;
+        if (k === 'alga') { const P = g.attributes.position; for (let i = 1; i < P.count; i++) { const x = P.getX(i), z = P.getZ(i), n = .55 + .7 * fbm(x * 2.2 + 3, z * 2.2, 590, 2); P.setXYZ(i, x * n, .02 + .03 * n, z * n); } P.setY(0, .05); g.computeVertexNormals(); }   // la chiazza piatta col bordo sfrangiato, appena gonfia al centro
         const im = new THREE.InstancedMesh(g, MATC || (MATC = new THREE.MeshStandardMaterial({ roughness: .8, metalness: 0 })), L.length);
         L.forEach((q, i) => { const h = quota(q.x, q.y); E.set(0, q.ry, k === 'legno' ? (q.t - .5) * .1 : 0); Q.setFromEuler(E); V.set(q.x, (h === null ? 0 : h) + (k === 'alga' ? .01 : .04), q.y);
-          if (k === 'alga') SC.set(q.s * 1.5, .035 + q.t * .05, q.s * .8); else SC.set(q.s, 1, 1); M4.compose(V, Q, SC); im.setMatrixAt(i, M4);
+          if (k === 'alga') SC.set(q.s * 1.4, 1, q.s * .7); else SC.set(q.s, 1, 1); M4.compose(V, Q, SC); im.setMatrixAt(i, M4);
           if (k === 'alga') Cc.setRGB(.36 + q.t * .14, .31 + q.t * .1, .24 + q.t * .07); /* la posidonia secca, bruno grigia */ else Cc.setRGB(.66 + q.t * .1, .63 + q.t * .09, .58 + q.t * .07); im.setColorAt(i, Cc); });
         im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.receiveShadow = true; im.castShadow = k === 'legno'; im.name = 'riva9d'; grp.add(im); }); }
     R.stat.blocchi++; R.stat.tri += tri; R.stat.scogli += B.scogli.length; R.stat.ciottoli += B.ciottoli.length; if (typeof window !== 'undefined') window.__riva9 = R.stat;
