@@ -1,0 +1,3 @@
+{ "pulita": true, "scorci": [
+ { "nome": "s1_incrocio_porto", "titolo": "L'incrocio sulla Via del Porto", "x": 1290, "y": 384, "zoom": 0.5, "ora": 840, "meteo": "sereno", "luce": "metropoli" },
+ { "nome": "s2_via_vittoria", "titolo": "La Via della Vittoria", "x": 1350, "y": 340, "zoom": 0.5, "ora": 720, "meteo": "sereno", "luce": "metropoli" } ] }

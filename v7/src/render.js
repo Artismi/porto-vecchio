@@ -2676,7 +2676,19 @@ var Render = (function () {
   }
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
   function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true; }
-  function buildIsland() { buildBase(); if (window.Pavimenti) Pavimenti.init({ G, M, TS, PPM, gT, zoneT, ZN, cn1, groundH, coastIn, geo1, suoloK: (tx, ty) => SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)] || null, suoloW: (x, z) => suoloW1(x, z), phone: PHONE, dirtyAt });   /* [pavimenti] */ }
+  // [pavimenti] la quota del suolo come la disegna il blocco: sui due triangoli della casella (non interpolata a quattro), più il marciapiede.
+  // Le decalcomanie a terra (le strisce) ci poggiano esatte: niente pezzi che galleggiano o affondano sui pendii
+  function quotaTri1(x, z) {
+    const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= G.GW || fz >= G.GH) return -2;
+    const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, Q = (a, b) => M.world && M.world.quotaRiva ? M.world.quotaRiva(a, b) : hv(a, b);
+    const h00 = Q(i, j), h10 = Q(i + 1, j), h01 = Q(i, j + 1), h11 = Q(i + 1, j + 1);
+    return (v >= u ? h00 + (h11 - h01) * u + (h01 - h00) * v : h00 + (h10 - h00) * u + (h11 - h10) * v) + swH(x, z);
+  }
+  function buildIsland() { buildBase(); if (window.Pavimenti) Pavimenti.init({ G, M, TS, PPM, gT, zoneT, ZN, cn1, groundH, coastIn, geo1, suoloK: (tx, ty) => SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)] || null, suoloW: (x, z) => suoloW1(x, z), phone: PHONE, quota: quotaTri1,
+      finiture: () => { const L = segniList1(), F = []; L.tombini.forEach(([x, z, a, k, sd]) => F.push([x, z, a, k === 'tondo' ? 1 : 2, sd])); L.caditoie.forEach(([x, z, a]) => F.push([x, z, a, 3, 0]));   /* [pavimenti] le finiture della strada */
+        if (typeof Rete !== 'undefined' && Rete.attivo()) Rete.grafo().pozzetti.forEach(q => F.push([q.x, q.z, 0, 4, 0])); L.olio.forEach(([x, z, a, sd]) => F.push([x, z, a, 5, sd])); L.rattoppi.forEach(([x, z, len, wid, a, sd]) => F.push([x, z, a, 6, sd, len, wid]));
+        try { if (typeof Segnaletica !== 'undefined' && Segnaletica.attivo) Segnaletica.piano().strisce.forEach(q => { if (q.k === 'bus' || q.k === 'stop') F.push([q.x, q.y, q.ang, 7, 0]); }); } catch (e) { }   // la gomma e l'olio dove si frena
+        return F; }, dirtyAt });   /* [pavimenti] */ }
 
   // ---- arredo statico: lampioni, palme, porto, spiaggia, piazza, poligono ----
 
@@ -9058,22 +9070,23 @@ var Render = (function () {
       for (let k = 0; k < g.n - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1]; if (!inb(ax, az, rd.w + 4)) continue; const nx = -g.uy[k], nz = g.ux[k];
         if (nearJ1((ax + bx) / 2, (az + bz) / 2, 0) < 1.5) continue;
         [-1, 1].forEach(sd => { const o = sd * (rd.w / 2 - .35); dotLine1(x, X0, Y0, ax + nx * o, az + nz * o, bx + nx * o, bz + nz * o, .3, YEL1, 1.6, 47 + sd); }); } });
-    L.rattoppi.forEach(([px, pz, len, wid, ang, sd]) => { if (!inb(px, pz, 5)) return; const r = rng(sd); x.save(); x.translate(cx(px), cz(pz)); x.rotate(ang);
+    const STR1 = window.Pavimenti && Pavimenti.strade && Pavimenti.strade();   // [pavimenti] rattoppi, olio, tombini, caditoie e pozzetti li disegna lo shader del suolo, nitidi
+    if (!STR1) L.rattoppi.forEach(([px, pz, len, wid, ang, sd]) => { if (!inb(px, pz, 5)) return; const r = rng(sd); x.save(); x.translate(cx(px), cz(pz)); x.rotate(ang);
       x.fillStyle = r() < .6 ? 'rgba(18,17,18,.55)' : 'rgba(84,80,76,.32)'; x.fillRect(-len / 2 * PPM, -wid / 2 * PPM, len * PPM, wid * PPM);
       x.strokeStyle = 'rgba(10,10,12,.7)'; x.lineWidth = 1; x.strokeRect(-len / 2 * PPM + .5, -wid / 2 * PPM + .5, len * PPM - 1, wid * PPM - 1);
       for (let i = 0; i < 3; i++) { x.beginPath(); let p = (r() - .5) * len * PPM, q = -wid / 2 * PPM; x.moveTo(p, q); for (let j = 0; j < 4; j++) { p += (r() - .5) * 5; q -= 1 + r() * 2; x.lineTo(p, q); } x.strokeStyle = 'rgba(12,12,14,.5)'; x.stroke(); }
       x.restore(); });
     // l'olio: macchie scure con l'alone iridescente dove le auto restano in sosta
-    L.olio.forEach(([px, pz, ang, sd]) => { if (!inb(px, pz, 3)) return; const r = rng(sd); x.save(); x.translate(cx(px), cz(pz)); x.rotate(ang);
+    if (!STR1) L.olio.forEach(([px, pz, ang, sd]) => { if (!inb(px, pz, 3)) return; const r = rng(sd); x.save(); x.translate(cx(px), cz(pz)); x.rotate(ang);
       for (let i = 0; i < 3; i++) { const g2 = x.createRadialGradient(0, 0, 0, 0, 0, 1); g2.addColorStop(0, 'rgba(10,10,14,.5)'); g2.addColorStop(.7, 'rgba(30,26,40,.25)'); g2.addColorStop(1, 'rgba(10,10,14,0)'); x.save(); x.translate((r() - .5) * 10, (r() - .5) * 4); x.scale(3 + r() * 5, 2 + r() * 3); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, 1, 0, 6.3); x.fill(); x.restore(); }
       x.restore(); });
     // i tombini di ghisa (tondi; quadri di pietra sulla Vittoria), le caditoie al cordolo, i pozzetti ENEL della rete interrata
-    L.tombini.forEach(([px, pz, ang, k, sd]) => { if (!inb(px, pz, 2)) return; const r = rng(sd); x.save(); x.translate(cx(px), cz(pz)); x.rotate(ang);
+    if (!STR1) L.tombini.forEach(([px, pz, ang, k, sd]) => { if (!inb(px, pz, 2)) return; const r = rng(sd); x.save(); x.translate(cx(px), cz(pz)); x.rotate(ang);
       if (k === 'tondo') { x.fillStyle = '#403b37';   /* [percorsi2] il chiusino dipinto (che non si apre) più quieto: il tombino vero è il più contrastato */ x.beginPath(); x.arc(0, 0, .36 * PPM, 0, 6.3); x.fill(); x.strokeStyle = 'rgba(90,86,80,.8)'; x.lineWidth = 1; x.beginPath(); x.arc(0, 0, .3 * PPM, 0, 6.3); x.stroke(); for (let i = -1; i <= 1; i++) { x.beginPath(); x.moveTo(-.22 * PPM, i * .1 * PPM); x.lineTo(.22 * PPM, i * .1 * PPM); x.stroke(); } }
       else { x.fillStyle = '#3a3632'; x.fillRect(-.35 * PPM, -.35 * PPM, .7 * PPM, .7 * PPM); x.strokeStyle = 'rgba(20,18,16,.8)'; x.strokeRect(-.35 * PPM + .5, -.35 * PPM + .5, .7 * PPM - 1, .7 * PPM - 1); }
       if (r() < .4) { x.fillStyle = 'rgba(16,14,14,.18)'; x.beginPath(); x.ellipse(.3 * PPM, 0, .8 * PPM, .4 * PPM, 0, 0, 6.3); x.fill(); } x.restore(); });   // la macchia d'acqua che ne esce
-    L.caditoie.forEach(([px, pz, ang]) => { if (!inb(px, pz, 2)) return; x.save(); x.translate(cx(px), cz(pz)); x.rotate(ang); x.fillStyle = '#141212'; x.fillRect(-.45 * PPM, -.18 * PPM, .9 * PPM, .36 * PPM); x.fillStyle = '#4a4440'; for (let i = -3; i <= 3; i++) x.fillRect(i * .12 * PPM - .5, -.15 * PPM, 1, .3 * PPM); x.restore(); });
-    (typeof Rete !== 'undefined' && Rete.attivo() ? Rete.grafo().pozzetti.map(q => [q.x, q.z]) : []).forEach(([px, pz]) => {   // letti al momento: la rete nasce dopo il primo blocco di suolo
+    if (!STR1) L.caditoie.forEach(([px, pz, ang]) => { if (!inb(px, pz, 2)) return; x.save(); x.translate(cx(px), cz(pz)); x.rotate(ang); x.fillStyle = '#141212'; x.fillRect(-.45 * PPM, -.18 * PPM, .9 * PPM, .36 * PPM); x.fillStyle = '#4a4440'; for (let i = -3; i <= 3; i++) x.fillRect(i * .12 * PPM - .5, -.15 * PPM, 1, .3 * PPM); x.restore(); });
+    (!STR1 && typeof Rete !== 'undefined' && Rete.attivo() ? Rete.grafo().pozzetti.map(q => [q.x, q.z]) : []).forEach(([px, pz]) => {   // letti al momento: la rete nasce dopo il primo blocco di suolo
       if (!inb(px, pz, 2)) return; x.save(); x.translate(cx(px), cz(pz)); x.fillStyle = '#4a4642'; x.fillRect(-.3 * PPM, -.3 * PPM, .6 * PPM, .6 * PPM); x.strokeStyle = '#26221e'; x.lineWidth = 1; x.strokeRect(-.3 * PPM + .5, -.3 * PPM + .5, .6 * PPM - 1, .6 * PPM - 1); x.fillStyle = 'rgba(30,26,22,.7)'; x.font = 'bold 6px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('ENEL', 0, 0); x.restore(); });
     // gli stalli del boom: le tacche bianche consumate sul lato lontano e la P dipinta ogni tanto
     L.stalli.forEach(([px, pz, nx, nz, ang, w, P, lun]) => { if (!inb(px, pz, 6)) return; const o = w / 2 - 2.1, ax = px + nx * o, az = pz + nz * o, bx = px + nx * (w / 2 - .3), bz = pz + nz * (w / 2 - .3);
