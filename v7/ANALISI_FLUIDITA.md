@@ -184,3 +184,51 @@ I passi 1 e 2 sono piccoli e da soli dovrebbero già cambiare molto. Il 3 e il 4
 una misura da 60 fps.
 
 **Da fare subito dopo**: una misura sul computer vero con `?perf` (F3), per avere i fotogrammi al secondo reali prima e dopo il passo 1.
+
+---
+
+## 9. Avanzamento (23 ottobre) — solo correzioni a parità d'immagine
+
+Regola: ogni correzione deve dare la stessa immagine. Le prove: `strumenti/sonda_uguale.js` (scena ferma disegnata due volte e
+confrontata pixel per pixel, e raggi dei graffiti contro il metodo lento puro) e `strumenti/sonda_vesti.js` (le stesse persone
+vestite con e senza le unioni).
+
+| Correzione | Dove | Verifica | Effetto misurato |
+| --- | --- | --- | --- |
+| I raggi veloci si riadattano (refit) quando una mesh cambia, invece di tornare per sempre al metodo lento | `render.js` `fast` | 200/200 raggi uguali al metodo lento | **raggi dei graffiti 58× più svelti** (31,8 → 0,55 s per 200); prima una mesh di 167.000 triangoli era provata intera a ogni raggio |
+| Solo le mesh che il tratto di raggio può toccare | `writing.js` `segList` | come sopra | (dentro il 58×) |
+| Ricerca dei percorsi con il mucchio in array tipizzati | `game.js` `findPath` | 1.500/1.500 percorsi uguali | 1,7× più svelta, niente spazzatura per il raccoglitore |
+| Tubi luminosi di una bottega in una mesh sola | `render.js` | stessi triangoli e materiale | ~1.250 → ~250 mesh |
+| Aloni e pozze di luce a opacità zero non disegnati (fuori dai livelli della camera) | `render.js` | si sommano: a zero non aggiungono niente | di giorno ~200-300 disegni in meno |
+| Pezzi degli accessori uniti per materiale; capi in tinta unita in una mesh sola con la tavolozza | `sartoria.js` `fondi`, `vestiario.js` `pelle`, `tavolozza` | 7/7 persone ripetibili identiche | pezzi delle persone da 1.248 a 1.011 (−19%) |
+| L'ombra dei lampioni fiochi (sotto il 30%) non si ridisegna a ogni passante, solo due volte al secondo | `render.js` `updateLights` | di giorno i lampioni «sempre accesi» stanno al 6% | si vede solo a 60 fps veri (qui un fotogramma dura 4-5 s) |
+
+**Prima e dopo** (`main` contro questo ramo, stessa sonda, stessi posti e ore, 3 giri, mediane; SwiftShader 480×300):
+
+| Posto | Disegni prima → dopo | Fotogramma prima → dopo |
+| --- | --- | --- |
+| Borgo, 15:00 | 2.537 → 2.296 (−9%) | 5.501 → 5.397 ms (−2%) |
+| Borgo, 22:00 | 3.307 → 2.951 (−11%) | 5.177 → 5.046 ms (−3%) |
+| Vittoria, 15:00 | 1.833 → 1.680 (−8%) | 3.990 → 3.980 ms (0%) |
+| Vittoria, 22:00 | 2.502 → 2.183 (−13%) | 4.210 → 4.214 ms (0%) |
+
+Senza scheda video il fotogramma dipende dai pixel, non dai disegni: qui il guadagno dei disegni non si vede, su un computer vero sì
+(ogni disegno costa al processore). Va misurato con F3 (`?cittanuova&perf`).
+
+**Provato e lasciato spento:**
+- *Saltare le luci spente nello shader* (`?lucispente`): stessa immagine al bit, ma in SwiftShader la scena costa di più
+  (3.920-4.190 contro 3.460-3.790 ms), anche nella variante col solo salto uniforme. Su una scheda video vera dovrebbe rendere:
+  da provare con F3, `?cittanuova&perf` contro `?cittanuova&perf&lucispente`.
+- *Settore della fusione a 48 o 64 m*: −9/−12% di disegni ma +3/+47% di triangoli. Resta 32 m.
+- *Unire le sagome d'ombra delle case per settore*: inutile, vedi sotto.
+
+**Trovato: le case fuse non fanno ombra sul selciato.** La fusione (`fusione1`) toglie l'ombra alle mesh fuse e la affida a
+3.588 sagome sul livello 1, che le camere delle ombre vedono. Ma three r149 sceglie chi fa ombra guardando i livelli della camera
+**principale** (`renderObject(oggetto, cameraPrincipale, cameraOmbra…)`), che vede solo il livello 0: le sagome non entrano in
+nessuna ombra. Con le sagome nell'ombra il 14% dei pixel del borgo diventa più scuro (strade e piazze all'ombra delle case).
+Rimetterle cambia l'aspetto che si conosce: è una scelta da fare guardando le foto. Se si rimettono, unirle per settore
+(provato: stessa mappa d'ombra) le rende quasi gratis.
+
+**Restano (cambiano l'immagine o servono misure su una scheda video vera):** le ombre dei 12 faretti lette da ogni pixel, le
+37 luci negli shader, l'ombra del sole a ogni fotogramma, il dopo-scena a piena risoluzione, i materiali delle case (atlanti),
+il modello di base delle persone (corpo e testa a più materiali).
