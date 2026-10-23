@@ -85,6 +85,7 @@ var Riva = (function () {
   // la casella entra nella fascia fine? (lontano dalla città, e per una delle famiglie che ha ai vertici la distanza dalla riva entra nella sua fascia)
   function inBanda(tx, ty) {
     if (!R.on || tx < 1 || ty < 1 || tx >= GW - 1 || ty >= GH - 1) return false;
+    if (Math.abs(griglia()[VI(tx, ty)]) > 40) return false;   // [leggero] lontano dal mare vero: subito no (senza chiedere la riva disegnata)
     if (mV(tx, ty) + mV(tx + 1, ty) + mV(tx, ty + 1) + mV(tx + 1, ty + 1) <= 0) return false;
     let lo = 1e9, hi = -1e9; const has = [0, 0, 0, 0], du = [0, 0], ca = [0, 0];
     for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const d = dV(tx + a, ty + b), k = kV(tx + a, ty + b); lo = Math.min(lo, d); hi = Math.max(hi, d); for (let f = 1; f <= 3; f++) if (vK[k + f - 1] > 0) has[f] = 1; if (vK[k + 3] > 0) du[1] = 1; if (vK[k + 4] > 0) ca[1] = 1; }
@@ -195,7 +196,9 @@ var Riva = (function () {
   // la quota fine nel punto (o null fuori dalla fascia): la usano groundH (chi cammina, le cose posate) e la grafica
   function quota(x, y) {
     if (!R.on || !W) return null; const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (tx < 1 || ty < 1 || tx >= GW - 1 || ty >= GH - 1) return null;
-    const B = BL(tx, ty); if (!B.any || !B.mask[(ty - B.ty0) * B.n + tx - B.tx0]) return null;
+    const B = cel.get(Math.floor(tx / CH) + ',' + Math.floor(ty / CH));
+    if (!B) return inBanda(tx, ty) ? quotaNuda(tx, ty, x, y) : null;   // [leggero] il blocco non c'è ancora (lo fa la grafica quando serve): la formula diretta, senza gli scogli
+    if (!B.any || !B.mask[(ty - B.ty0) * B.n + tx - B.tx0]) return null;
     const fx = (x / TS - B.tx0) * SUB, fy = (y / TS - B.ty0) * SUB, i = Math.min(B.NX - 2, Math.floor(fx)), j = Math.min(B.NY - 2, Math.floor(fy)), u = fx - i, v = fy - j, H = B.h, k = j * B.NX + i;
     const h = bil(H[k], H[k + 1], H[k + B.NX], H[k + B.NX + 1], u, v);
     return Math.max(h, sopraScogli(B, x, y));
@@ -454,7 +457,7 @@ var Riva = (function () {
       im.instanceMatrix.needsUpdate = true; im.castShadow = true; im.receiveShadow = true; im.name = 'riva9p'; grp.add(im); });
     R.stat.margini = { tri: nTri, taglio: nTaglio, paletti: C.length }; return grp;
   }
-  Object.assign(R, { init, leggera, inBanda, pesoForma: (tx, ty, x, y) => bil(nV(tx, ty), nV(tx + 1, ty), nV(tx, ty + 1), nV(tx + 1, ty + 1), x / TS - tx, y / TS - ty), costruisci, costruisciMargini, tipi, margini, cippi, geoMasso, matRoccia: () => matRoccia(), quota, blocco: (ci, cj) => blocco(ci, cj), quotaNuda, suolo, famT, kindT, CH, SUB, fbm, h2 });
+  Object.assign(R, { init, leggera, inBanda, pronto: (ci, cj) => cel.has(ci + ',' + cj), pesoForma: (tx, ty, x, y) => bil(nV(tx, ty), nV(tx + 1, ty), nV(tx, ty + 1), nV(tx + 1, ty + 1), x / TS - tx, y / TS - ty), costruisci, costruisciMargini, tipi, margini, cippi, geoMasso, matRoccia: () => matRoccia(), quota, blocco: (ci, cj) => blocco(ci, cj), quotaNuda, suolo, famT, kindT, CH, SUB, fbm, h2 });
   if (typeof module !== 'undefined') module.exports = R;
   return R;
 })();

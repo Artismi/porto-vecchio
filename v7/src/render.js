@@ -730,6 +730,28 @@ var Render = (function () {
   }
 
   // ---------------- MARE ----------------
+  // [riva] LA PROFONDITÀ FINE NEL MARE, BLOCCO PER BLOCCO: quando un blocco di riva si costruisce, il suo pezzo delle due mappe del mare
+  // (la profondità, 2 px a metro; la terra, 1 px a metro) prende la quota fine; si sfuma appena e si carica sulla scheda solo quel pezzo
+  const ACQ9 = { set: null, fatti: new Set() };
+  function acquaFine9(tx0, ty0, n, m) {
+    const A = ACQ9.set, key = tx0 + ',' + ty0; if (!A || ACQ9.fatti.has(key) || !renderer || !renderer.copyTextureToTexture) return; ACQ9.fatti.add(key);
+    const T = G.T, P = 4, x0 = Math.max(0, tx0 * P - 3), y0 = Math.max(0, ty0 * P - 3), w = Math.min(A.big.width, (tx0 + n) * P + 3) - x0, h = Math.min(A.big.height, (ty0 + m) * P + 3) - y0;
+    const id = A.bgx.getImageData(x0, y0, w, h), D = id.data, R0 = new Uint8Array(w * h); let tocco = false;
+    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue; tocco = true;
+      for (let b = 0; b < P; b++) for (let a = 0; a < P; a++) { const q = Riva.quota((tx + (a + .5) / P) * TS, (ty + (b + .5) / P) * TS); if (q === null) continue; const px = tx * P + a - x0, py = ty * P + b - y0, o = (py * w + px) * 4;
+        D[o] = Math.round(Math.sqrt(Math.min(1, Math.max(0, WL - q) / 16)) * 255); if (q > WL + .05) D[o + 1] = 255; R0[py * w + px] = 1; } }
+    if (!tocco) return;
+    { const src = new Uint8Array(D); for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { if (!R0[y * w + x]) continue; let t = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) t += src[((y + b) * w + x + a) * 4]; D[(y * w + x) * 4] = Math.round(t / 9); } }   // la sfumatura leggera
+    A.bgx.putImageData(id, x0, y0);
+    const up = (tex, data, X, Y, W2, H2, Htot) => { const dt = new THREE.DataTexture(data, W2, H2, THREE.RGBAFormat); dt.flipY = true; dt.needsUpdate = true; renderer.copyTextureToTexture(new THREE.Vector2(X, Htot - Y - H2), dt, tex); dt.dispose(); };
+    try { up(A.stx, new Uint8Array(D.buffer.slice(0)), x0, y0, w, h, A.big.height); } catch (e) { A.stx.needsUpdate = true; }
+    // la terra (1 px a metro)
+    const S = A.S, mx0 = Math.max(0, tx0 * S - 2), my0 = Math.max(0, ty0 * S - 2), mw = Math.min(A.bc.width, (tx0 + n) * S + 2) - mx0, mh = Math.min(A.bc.height, (ty0 + m) * S + 2) - my0, md = A.bx.getImageData(mx0, my0, mw, mh), MD = md.data;
+    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue;
+      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; const o = ((ty * S + b - my0) * mw + tx * S + a - mx0) * 4, v = q > WL ? 255 : 0; MD[o] = MD[o + 1] = MD[o + 2] = Math.round(MD[o] * .35 + v * .65); } }
+    A.bx.putImageData(md, mx0, my0);
+    try { up(A.btx, new Uint8Array(MD.buffer.slice(0)), mx0, my0, mw, mh, A.bc.height); } catch (e) { A.btx.needsUpdate = true; }
+  }
   function buildWater() {
     // [costa] il mare rifatto: due mappe dal mondo. «sea»: R profondità (0-16 m), G fondo di roccia, B posidonia; «mask»: la terra sfocata
     // (per la schiuma sulla riva). Nello shader: il fondale si vede dove l'acqua è bassa (sabbia con le increspature, roccia, posidonia,
@@ -748,22 +770,18 @@ var Render = (function () {
     const R9 = RIVA9(), big = mk(G.GW * 4, G.GH * 4), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(2px)' : 'blur(3px)'; bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
     // [riva] nella fascia della riva fine la profondità e la terra vengono dalla quota vera (a 50 cm): l'acqua bassa e la schiuma
     // seguono la battigia con le sue cuspidi, gli scogli, le pozze, non più le caselle
-    if (R9) { const bd = bgx.getImageData(0, 0, big.width, big.height), D = bd.data;
-      for (let ty = 1; ty < G.GH - 1; ty++) for (let tx = 1; tx < G.GW - 1; tx++) { if (!Riva.inBanda(tx, ty)) continue;
-        for (let b = 0; b < 4; b++) for (let a = 0; a < 4; a++) { const x = (tx + (a + .5) / 4) * TS, y = (ty + (b + .5) / 4) * TS, q = Riva.quota(x, y); if (q === null) continue; const o = ((ty * 4 + b) * big.width + tx * 4 + a) * 4;
-          D[o] = Math.round(Math.sqrt(Math.min(1, Math.max(0, WL - q) / 16)) * 255); if (q > WL + .05) D[o + 1] = 255; } }
-      // dove sotto l'acqua non c'è fondale (il blocco a caselle non lo disegna accanto a banchine e pontili, né lontano dalla riva) e la
-      // riva fine non c'è, l'acqua resta opaca: almeno 80 cm nella mappa (niente buchi chiari nell'acqua trasparente)
-      const MIN = Math.round(Math.sqrt(.8 / 16) * 255);
+    // [riva] il fondale senza fondo: dove sotto l'acqua non c'è terreno (accanto a banchine e pontili, lontano dalla riva) e la riva fine
+    // non c'è, l'acqua resta opaca: almeno 80 cm nella mappa (niente buchi chiari nell'acqua trasparente). La profondità fine della riva
+    // (a 50 cm) arriva poi blocco per blocco, quando il blocco si costruisce (acquaFine9): niente calcolo di tutta la costa al caricamento
+    if (R9) { const bd = bgx.getImageData(0, 0, big.width, big.height), D = bd.data, MIN = Math.round(Math.sqrt(.8 / 16) * 255);
       for (let ty = 1; ty < G.GH - 1; ty++) for (let tx = 1; tx < G.GW - 1; tx++) { if (gT(tx, ty) !== T.WATER || Riva.inBanda(tx, ty)) continue; let buco = coastIn((tx + .5) * TS, (ty + .5) * TS) < -3;
         if (!buco) for (let b = -1; b <= 1 && !buco; b++) for (let a = -1; a <= 1; a++) { const vv = gT(tx + a, ty + b); if (vv === T.QUAY || vv === T.PIER) { buco = true; break; } }
         if (!buco) continue; for (let b = 0; b < 4; b++) for (let a = 0; a < 4; a++) { const o = ((ty * 4 + b) * big.width + tx * 4 + a) * 4; if (D[o] < MIN) D[o] = MIN; } }
-      bgx.putImageData(bd, 0, 0); const tmp = mk(big.width, big.height), tx2 = tmp.getContext('2d'); tx2.filter = 'blur(2px)'; tx2.drawImage(big, 0, 0); tx2.filter = 'none'; bgx.clearRect(0, 0, big.width, big.height); bgx.drawImage(tmp, 0, 0); }   // una sfocatura leggera: niente quadretti fra la profondità fine e quella a caselle
+      bgx.putImageData(bd, 0, 0); }
     const stx = new THREE.CanvasTexture(big); stx.minFilter = stx.magFilter = THREE.LinearFilter;
-    if (R9) for (let ty = 1; ty < G.GH - 1; ty++) for (let tx = 1; tx < G.GW - 1; tx++) { if (!Riva.inBanda(tx, ty)) continue;   // [riva] la terra vera, a mezzo metro
-      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; mx.fillStyle = q > WL ? '#fff' : '#000'; mx.fillRect(tx * S + a, ty * S + b, 1, 1); } }
     const bc = mk(mc.width, mc.height), bx = bc.getContext('2d'); bx.filter = 'blur(2px)'; bx.drawImage(mc, 0, 0); bx.filter = 'none';
     const btx = new THREE.CanvasTexture(bc); btx.minFilter = btx.magFilter = THREE.LinearFilter;
+    if (R9) { stx.generateMipmaps = btx.generateMipmaps = false; ACQ9.set = { big, bgx, bc, bx, stx, btx, S }; }   // [riva] per la profondità fine, blocco per blocco
     const geo = new THREE.PlaneGeometry(2400, 2400, 1, 1); geo.rotateX(-Math.PI / 2);
     const mat = new THREE.ShaderMaterial({
       transparent: !!R9, uniforms: { RIVA9: { value: R9 ? 1 : 0 }, time: { value: 0 }, night: { value: 1 }, dusk: { value: 0 }, mask: { value: btx }, sea: { value: stx }, wsize: { value: new THREE.Vector2(G.WW, G.WH) }, fogC: { value: new THREE.Color() }, camP: { value: new THREE.Vector3() }, fogN: { value: 60 }, fogF: { value: 160 }, wx: { value: new THREE.Vector4() }, sun: { value: new THREE.Vector3(-1, .3, -.3).normalize() }, moonD: { value: new THREE.Vector3(0, 1, 0) }, lp: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) }, lc: { value: Array.from({ length: 16 }, () => new THREE.Color()) } },
@@ -2604,6 +2622,7 @@ var Render = (function () {
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const riva = RV9 ? Riva.costruisci(tx0, ty0, n, m, mat, prato9) : null; if (riva) grp.add(riva.grp);   // [riva] la fascia della riva: suolo fine, scogli, ciottoli
+    if (riva) acquaFine9(tx0, ty0, n, m);   // [riva] e il suo pezzo di mare
     yield;
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
     yield;
