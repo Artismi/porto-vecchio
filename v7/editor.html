@@ -20896,7 +20896,7 @@ var Vegetazione = (function () {
     { id: 'pineta', nome: 'Pineta di pini domestici', col: '#2f5240', tono: .35, suolo: 'aghi',
       strati: [{ sp: [['pino', 1]], passo: 7.5, p: .92 }, { sp: [['lentisco', 4], ['mirto', 2], ['ginestra', 1]], passo: 5, p: .3 }, { sp: [['erbaSecca', 3], ['finocchietto', 1]], passo: 2.6, p: .25, basso: true }] },
     { id: 'pinetaM', nome: 'Pineta di pini marittimi', col: '#4a6a4a', tono: .45, suolo: 'aghi',
-      strati: [{ sp: [['pinoM', 1]], passo: 6, p: .85 }, { sp: [['lentisco', 3], ['ginestra', 2], ['rosmarino', 1]], passo: 4, p: .38 }, { sp: [['erbaSecca', 2], ['finocchietto', 1]], passo: 2.5, p: .3, basso: true }] },
+      strati: [{ sp: [['pinoM', 1]], passo: 5.2, p: .9 }, { sp: [['lentisco', 3], ['ginestra', 2], ['rosmarino', 1]], passo: 4, p: .38 }, { sp: [['erbaSecca', 2], ['finocchietto', 1]], passo: 2.5, p: .3, basso: true }] },
     { id: 'lecceta', nome: 'Lecceta (il bosco scuro)', col: '#1f3a2c', tono: .1, suolo: 'lettiera',
       strati: [{ sp: [['leccio', 8], ['carrubo', 1], ['pinoM', 1]], passo: 5.2, p: .9 }, { sp: [['mirto', 3], ['lentisco', 2], ['edera', 1]], passo: 3.4, p: .45 }, { sp: [['erbaVerde', 1]], passo: 3.2, p: .12, basso: true }] },
     { id: 'macchia', nome: 'Macchia alta', col: '#3c5a36', tono: .3, suolo: 'terra',
@@ -21050,10 +21050,10 @@ var Vegetazione = (function () {
           const fit = fitto(x, y), u = hash2(ci, cj, seed + 2);
           let p = S.p * (strato === 'B' ? .55 + .7 * fit : .35 + .9 * fit);
           // le radure: dentro niente alberi e pochi cespugli; sul margine arbusti bassi
-          const R = radAt(x, y); if (R) { if (R.q < 1) p *= strato === 'B' ? .12 : 0; else if (R.q < 1.35 && strato !== 'B') p *= .3; }
+          const R = radAt(x, y); if (R) { if (R.q < .7) p *= strato === 'B' ? .12 : 0; else if (R.q < 1) p *= strato === 'B' ? .5 : .3; else if (R.q < 1.25 && strato !== 'B') p *= .7; }   // il cuore aperto, il margine che si chiude in fretta
           // i sentieri: il varco libero e leggibile; lungo il margine il bosco si dirada un poco (si vede dove si va)
           const ds = dSen[i], s = senOf[i] >= 0 ? sen[senOf[i]] : null;
-          if (s) { if (strato === 'B' ? ds < s.libB - s.w / 2 : ds < s.libA - s.w / 2) continue; if (ds < s.margine - s.w / 2) p *= strato === 'B' ? .7 : .45; }
+          if (s) { if (strato === 'B' ? ds < s.libB - s.w / 2 : ds < s.libA - s.w / 2) continue; if (ds < s.margine - s.w / 2) p *= strato === 'B' ? .8 : .65; }
           if (u >= p) continue;
           const sp = scegli(S.sp, hash2(ci, cj, seed + 3)), SS = SP[sp];
           if (!suoloOk(x, y, SS.strato, SS.strato === 'B' ? 0 : 1)) continue;
@@ -21709,7 +21709,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
       // la pennellata: rumore allungato (i colpi vanno tutti in una direzione, che cambia piano), più la macchia larga
       const ang = fbm(wx / 30, wy / 30, 7801, 2) * 3.1, ca = Math.cos(ang), sa = Math.sin(ang), u = wx * ca + wy * sa, vv = -wx * sa + wy * ca;
       const pen = fbm(u / 1.6, vv / .35, 7802, 2) - .5, mac = fbm(wx / 9, wy / 9, 7803, 3) - .5;
-      let t = .26 + smp(ton, fx, fy) * .36 - smp(omb, fx, fy) * .4 + mac * .2 + pen * .12 + smp(sen, fx, fy) * .12;
+      let t = .16 + smp(ton, fx, fy) * .3 - smp(omb, fx, fy) * .36 + mac * .2 + pen * .12 + smp(sen, fx, fy) * .12;
       const k = smp(cal, fx, fy), c1 = gammaAt(GAMMA, t), c2 = gammaAt(GAMMA_CALDA, t * .92 + .04), q = (py * w + px) * 4;
       const r = c1[0] + (c2[0] - c1[0]) * k, g = c1[1] + (c2[1] - c1[1]) * k, b = c1[2] + (c2[2] - c1[2]) * k;
       d[q] = d[q] + (r - d[q]) * a; d[q + 1] = d[q + 1] + (g - d[q + 1]) * a; d[q + 2] = d[q + 2] + (b - d[q + 2]) * a;
