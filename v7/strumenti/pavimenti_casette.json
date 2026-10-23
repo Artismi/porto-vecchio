@@ -1,0 +1,3 @@
+{ "pulita": true, "scorci": [
+ { "nome": "g1_casette_gradini", "titolo": "Le casette a gradini sotto la marina", "x": 1414, "y": 400, "zoom": 0.72, "ora": 900, "meteo": "sereno", "luce": "borgo" },
+ { "nome": "g2_casette_vicino", "titolo": "Le casette da vicino", "x": 1416, "y": 398, "zoom": 0.45, "ora": 900, "meteo": "sereno", "luce": "borgo" } ] }
