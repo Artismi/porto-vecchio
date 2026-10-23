@@ -55241,7 +55241,7 @@ var Inquadratura = (function () {
     asse_taglio: { camera: 'adatta', asse: true, taglio: true },
     // [inquadratura] la scelta del committente: lungo la via e, solo nella stretta (la camera che si adatta è salita), le case davanti che
     // coprono la via coi muri scendono tutte alla stessa quota bassa (il muretto, un metro); se copre solo il tetto, quello sbiadisce
-    via_muretto: { camera: 'adatta', asse: true, tetti: true, taglio: true, uniforme: true, soloStretta: true },
+    via_muretto: { camera: 'adatta', asse: true, tetti: true, taglio: true, uniforme: true, soloStretta: true, asseTel: false },   // sul telefono la visuale segue già la marcia: lì l'asse peggiorava (misura sulla pianta nuova)
   };
   const DIFETTO = 'via_muretto';   // [inquadratura] il taglio a quote diverse confondeva (case chiuse da lastre piatte a ogni altezza): ora tutte alla stessa quota   // la variante del gioco (senza ?inquadratura=)
   // le manopole (window.__INQUADRATURA per le prove dal vivo)
@@ -55297,7 +55297,7 @@ var Inquadratura = (function () {
     if (q.ricentro && q.dir !== undefined) { S.dyT = ang(yawDa(q.dir) - q.yaw0); S.tau = MANO_TAU; }
     // l'asse
     let dyT = S.dyT;
-    if (v.asse && q.ok && !q.tieni) { const a = q.rete.asse(q.x, q.z, S.via), via = a && a.w <= K.asseLargo ? a.id : null;
+    if (v.asse && !(q.tel && v.asseTel === false) && q.ok && !q.tieni) { const a = q.rete.asse(q.x, q.z, S.via), via = a && a.w <= K.asseLargo ? a.id : null;
       if (via !== S.via) { S.t += dt; if (S.t >= K.tAsse) { S.via = via; S.t = 0; } } else S.t = 0;
       if (S.via && a && a.id === S.via) {   // sulla via: i due versi dell'asse, quello più vicino a dietro la marcia (o alla visuale di adesso)
         const rif = q.dir !== undefined && q.vel > .6 ? yawDa(q.dir) : q.yaw0 + S.dy; let best = null;
@@ -56873,7 +56873,7 @@ var Render = (function () {
     const ric = MN.n !== IQ5.n0 && MN.ric && !PHONE && MN.perche !== 'forza'; IQ5.n0 = MN.n;   // il ricentro è appena partito (sul computer)
     let assorbi = 0; if (ric && MN.yaw) { assorbi = MN.yaw; MN.yaw = 0; }   // la parte a mano passa al giro: si ricentra da dove si guarda
     const vel = Math.hypot(cam.mvx || 0, cam.mvy || 0), dir = vel > .3 ? Math.atan2(cam.mvy, cam.mvx) : undefined;
-    const r = Inquadratura.camera(S, { x: p.x, z: p.y, fy, dir, vel, yaw0: YAW + (cam.uy || 0), base: PEND3.v, rete: IQ5.rete || (IQ5.rete = Inquadratura.rete(G.MAP.world)), mappa: M, V: Visuale, v: IQ5.v, ok,
+    const r = Inquadratura.camera(S, { x: p.x, z: p.y, fy, dir, vel, yaw0: YAW + (cam.uy || 0), base: PEND3.v, rete: IQ5.rete || (IQ5.rete = Inquadratura.rete(G.MAP.world)), mappa: M, V: Visuale, v: IQ5.v, ok, tel: PHONE,
       tieni: !!(MN.off && !MN.ric), ricentro: ric, assorbi }, VIS3.subito ? 10 : Math.min(.1, dt || .016));
     if (ui.lead && cam.lock !== undefined) cam.lock -= ang1(r.dy - IQ5.dy - assorbi);   // la levetta tenuta non gira col giro (come col ricentro: camBasis)
     IQ5.dy = r.dy; IQ5.p = r.pitch; IQ5.z = r.zoom; IQ5.via = r.asse;

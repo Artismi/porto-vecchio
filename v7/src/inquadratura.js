@@ -24,7 +24,7 @@ var Inquadratura = (function () {
     asse_taglio: { camera: 'adatta', asse: true, taglio: true },
     // [inquadratura] la scelta del committente: lungo la via e, solo nella stretta (la camera che si adatta è salita), le case davanti che
     // coprono la via coi muri scendono tutte alla stessa quota bassa (il muretto, un metro); se copre solo il tetto, quello sbiadisce
-    via_muretto: { camera: 'adatta', asse: true, tetti: true, taglio: true, uniforme: true, soloStretta: true },
+    via_muretto: { camera: 'adatta', asse: true, tetti: true, taglio: true, uniforme: true, soloStretta: true, asseTel: false },   // sul telefono la visuale segue già la marcia: lì l'asse peggiorava (misura sulla pianta nuova)
   };
   const DIFETTO = 'via_muretto';   // [inquadratura] il taglio a quote diverse confondeva (case chiuse da lastre piatte a ogni altezza): ora tutte alla stessa quota   // la variante del gioco (senza ?inquadratura=)
   // le manopole (window.__INQUADRATURA per le prove dal vivo)
@@ -80,7 +80,7 @@ var Inquadratura = (function () {
     if (q.ricentro && q.dir !== undefined) { S.dyT = ang(yawDa(q.dir) - q.yaw0); S.tau = MANO_TAU; }
     // l'asse
     let dyT = S.dyT;
-    if (v.asse && q.ok && !q.tieni) { const a = q.rete.asse(q.x, q.z, S.via), via = a && a.w <= K.asseLargo ? a.id : null;
+    if (v.asse && !(q.tel && v.asseTel === false) && q.ok && !q.tieni) { const a = q.rete.asse(q.x, q.z, S.via), via = a && a.w <= K.asseLargo ? a.id : null;
       if (via !== S.via) { S.t += dt; if (S.t >= K.tAsse) { S.via = via; S.t = 0; } } else S.t = 0;
       if (S.via && a && a.id === S.via) {   // sulla via: i due versi dell'asse, quello più vicino a dietro la marcia (o alla visuale di adesso)
         const rif = q.dir !== undefined && q.vel > .6 ? yawDa(q.dir) : q.yaw0 + S.dy; let best = null;
